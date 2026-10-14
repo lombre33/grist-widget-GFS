@@ -10,6 +10,8 @@ const bytes = Number(process.env.HEAVY_BYTES || 20000);
 const lab = await startLab({ lang: 'fr' });
 const started = Date.now();
 say('semis :', await seedFiles(lab.frame, { heavy: { rows, bytes } }), `en ${Date.now() - started} ms`, `(~${Math.round((rows * bytes) / 1e6)} Mo de contenu)`);
+// Le moteur de Grist tourne ici dans le navigateur : on le laisse finir ce que le semis lui a fait faire avant de mesurer.
+await lab.page.waitForTimeout(Number(process.env.SETTLE || 15) * 1000);
 for (let i = 1; i <= Number(process.env.READS || 3); i++) {
   await lab.frame.evaluate(() => location.reload());
   await lab.page.waitForTimeout(500);

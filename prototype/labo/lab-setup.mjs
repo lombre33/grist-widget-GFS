@@ -6,10 +6,10 @@ import { chromium, newLabPage, SHOTS } from './lab-common.mjs';
 
 const WIDGET = 'http://127.0.0.1:8911/prototype/index.html';
 
-export async function startLab({ lang = 'fr', colorScheme = 'light', width = 1280, height = 800, query = '', fullAccess = true } = {}) {
+export async function startLab({ lang = 'fr', colorScheme = 'light', width = 1280, height = 800, query = '', fullAccess = true, probes = false } = {}) {
   await mkdir(SHOTS, { recursive: true });
   const browser = await chromium.launch({ args: ['--no-sandbox', '--font-render-hinting=none'] });
-  const { page, context } = await newLabPage(browser, { lang, colorScheme, width, height });
+  const { page, context } = await newLabPage(browser, { lang, colorScheme, width, height, probes });
   const gfsFrame = async (re = /./) => {
     for (let i = 0; i < 80; i++) {
       const f = page.frames().find(f => f.url().startsWith(WIDGET) && re.test(f.url()));
@@ -20,7 +20,7 @@ export async function startLab({ lang = 'fr', colorScheme = 'light', width = 128
   };
   const appFrame = async (re = /./) => {
     for (let i = 0; i < 120; i++) {
-      const f = page.frames().find(f => f.url().startsWith('http://127.0.0.1:8911/prototype/apps/') && re.test(f.url()));
+      const f = page.frames().find(f => /^http:\/\/127\.0\.0\.1:8911\/prototype\/(apps|labo\/sondes)\//.test(f.url()) && re.test(f.url()));
       if (f) return f;
       await page.waitForTimeout(500);
     }

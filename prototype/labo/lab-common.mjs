@@ -9,6 +9,8 @@ export const LAB = dirname(fileURLToPath(import.meta.url));
 export const SHOTS = join(LAB, 'shots');
 // Sortie des essais : un texte par ligne (l'objet est écrit en JSON).
 export const say = (...parts) => process.stdout.write(parts.map(x => (typeof x === 'string' ? x : JSON.stringify(x))).join(' ') + '\n');
+// Une vérification : une ligne « OK » ou « ÉCHEC », et le code de sortie du script suit.
+export const check = (label, ok, detail = '') => { say(ok ? 'OK    ' : 'ÉCHEC ', label, detail === '' ? '' : (typeof detail === 'string' ? detail : JSON.stringify(detail))); if (!ok) process.exitCode = 1; };
 
 // Le miroir local des CDN (build-mirror.sh) : le conteneur du cloud n'atteint pas esm.sh, cdnjs ni jsDelivr. Absent, rien ne change.
 const MIRROR = join(LAB, 'mirror');
@@ -34,10 +36,25 @@ export function mirrored(url) {
   return null;
 }
 
-export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', width = 1280, height = 800 } = {}) {
+// Les sondes du labo (labo/sondes/) : des apps d'essai que GFS ne connaît pas. Elles entrent dans le catalogue SEULEMENT pour la page du labo qui le demande
+// (le fichier publié n'est pas modifié, les autres essais ne les voient pas) : la page reçoit un catalogue.js complété, après les apps du catalogue.
+const PROBE_FOLDERS = { a: 'a-self', b: 'b-host', c: 'c-hash', d: 'd-texte', e: 'e-blob', f: 'f-texte-ferme' };
+export function withProbes(text) {
+  const entries = Object.entries(PROBE_FOLDERS).map(([key, folder]) => `  Object.freeze({ id: 'sonde-${key}', dossier: 'labo/sondes/${folder}/', manifeste: 'labo/sondes/sonde-${key}.json' }),`);
+  return text.replace('\n]);', `\n${entries.join('\n')}\n]);`);
+}
+
+export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', width = 1280, height = 800, probes = false } = {}) {
   // L'interface de Grist reste en anglais (les gestes du labo cherchent ses libellés) ; la langue de GFS passe par l'adresse du widget (lab-setup.mjs).
-  const context = await browser.newContext({ viewport: { width, height }, colorScheme, bypassCSP: true, locale: 'en-US' });
+  // La politique de sécurité du contenu de GFS et des apps est ENFORCÉE (LAB_BYPASS_CSP=1 pour la suspendre : un diagnostic, jamais une mesure).
+  const context = await browser.newContext({ viewport: { width, height }, colorScheme, bypassCSP: process.env.LAB_BYPASS_CSP === '1', locale: 'en-US' });
   const page = await context.newPage();
+  if (probes) {
+    await page.route('**/prototype/js/catalogue.js', async route => {
+      const response = await route.fetch();
+      await route.fulfill({ response, body: withProbes(await response.text()) });
+    });
+  }
   page.on('pageerror', e => { if (process.env.LAB_CONSOLE) say('[pageerror]', e.message.slice(0, 200)); });
   page.on('console', m => { if (process.env.LAB_CONSOLE && (m.type() === 'error' || process.env.LAB_CONSOLE === 'all')) say('[console.' + m.type() + ']', m.text().slice(0, 240)); });
   await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, async route => {
@@ -45,6 +62,11 @@ export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', 
     try {
       if (/docs\.getgrist\.com\/grist-plugin-api\.js/.test(url)) {
         return route.fulfill({ status: 200, contentType: 'text/javascript; charset=utf-8', headers: { 'Access-Control-Allow-Origin': '*' }, body: await readFile(join(LAB, 'node_modules/grist-static/dist/grist-plugin-api.js'), 'utf8') });
+      }
+      // La galerie de widgets de Grist (gristlabs.github.io) n'est pas joignable d'ici : une galerie vide évite la bannière d'erreur de Grist sur les
+      // captures. Cela ne touche en rien le protocole entre Grist et le widget.
+      if (/gristlabs\.github\.io\/grist-widget\/manifest\.json/.test(url)) {
+        return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: '[]' });
       }
       const local = mirrored(url);
       if (local && existsSync(local)) {
@@ -60,8 +82,13 @@ export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', 
       return route.abort();
     }
   });
+  // Le miroir des CDN ne rend pas toujours les octets exacts du CDN (les paquets esm.sh) : l'attribut `integrity` est neutralisé, sauf dans les sondes
+  // (labo/sondes/), où l'empreinte est une mesure (le miroir de Plotly rend les octets du paquet : même empreinte que le CDN et que la copie de GFS).
   await page.addInitScript(() => {
-    try { Object.defineProperty(HTMLScriptElement.prototype, 'integrity', { configurable: true, get: () => '', set: () => {} }); } catch (e) { /* déjà posé */ }
+    try {
+      if (location.pathname.includes('/labo/sondes/')) return;
+      Object.defineProperty(HTMLScriptElement.prototype, 'integrity', { configurable: true, get: () => '', set: () => {} });
+    } catch (e) { /* déjà posé */ }
   });
   await page.addInitScript((l) => { try { if (location.port === '8911') localStorage.setItem('pp_lang', l); } catch (e) { /* stockage indisponible */ } }, lang);
   // Une app dans son sous-cadre n'a pas de stockage (sans allow-same-origin) : elle suit la langue du navigateur. Le labo la donne à ces cadres seulement.

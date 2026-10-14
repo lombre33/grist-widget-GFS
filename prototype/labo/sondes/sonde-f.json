@@ -1,0 +1,54 @@
+{
+  "contrat": 0,
+  "id": "sonde-f",
+  "nom": {
+    "fr": "Sonde F",
+    "en": "Probe F"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Essai de la politique script-src 'self' 'unsafe-eval'; connect-src 'self'",
+    "en": "Test of the policy script-src 'self' 'unsafe-eval'; connect-src 'self'"
+  },
+  "icone": "info",
+  "entree": "index.html",
+  "tables": {
+    "prefixe": "SondeF_"
+  },
+  "reglages": [],
+  "permissions": {
+    "acces": "none"
+  },
+  "extensions": [
+    {
+      "id": "graphique",
+      "nom": {
+        "fr": "Graphique",
+        "en": "Chart"
+      },
+      "texte": {
+        "fr": "Plotly, reçu de GFS",
+        "en": "Plotly, received from GFS"
+      },
+      "icone": "chart",
+      "poids": 1,
+      "dossier": "extensions/graphique/",
+      "pointsEntree": [
+        {
+          "genre": "bouton",
+          "id": "graphique"
+        }
+      ],
+      "bibliotheques": [
+        {
+          "id": "plotly",
+          "version": "2.13.2"
+        }
+      ]
+    }
+  ],
+  "actions": {
+    "ouvrir": [],
+    "choisir": []
+  }
+}

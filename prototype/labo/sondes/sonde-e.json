@@ -1,0 +1,54 @@
+{
+  "contrat": 0,
+  "id": "sonde-e",
+  "nom": {
+    "fr": "Sonde E",
+    "en": "Probe E"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Essai de la politique script-src 'self' blob:",
+    "en": "Test of the policy script-src 'self' blob:"
+  },
+  "icone": "info",
+  "entree": "index.html",
+  "tables": {
+    "prefixe": "SondeE_"
+  },
+  "reglages": [],
+  "permissions": {
+    "acces": "none"
+  },
+  "extensions": [
+    {
+      "id": "graphique",
+      "nom": {
+        "fr": "Graphique",
+        "en": "Chart"
+      },
+      "texte": {
+        "fr": "Plotly, reçu de GFS",
+        "en": "Plotly, received from GFS"
+      },
+      "icone": "chart",
+      "poids": 1,
+      "dossier": "extensions/graphique/",
+      "pointsEntree": [
+        {
+          "genre": "bouton",
+          "id": "graphique"
+        }
+      ],
+      "bibliotheques": [
+        {
+          "id": "plotly",
+          "version": "2.13.2"
+        }
+      ]
+    }
+  ],
+  "actions": {
+    "ouvrir": [],
+    "choisir": []
+  }
+}

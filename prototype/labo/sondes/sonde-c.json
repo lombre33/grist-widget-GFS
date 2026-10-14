@@ -1,0 +1,54 @@
+{
+  "contrat": 0,
+  "id": "sonde-c",
+  "nom": {
+    "fr": "Sonde C",
+    "en": "Probe C"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Essai de la politique script-src 'self' 'sha384-1heFF/cJ46y4QUvJzTPTs4/F4/UYCTLl6QErQgvqkxbzN+5yx5TQUVGf6ufPqcve'",
+    "en": "Test of the policy script-src 'self' 'sha384-1heFF/cJ46y4QUvJzTPTs4/F4/UYCTLl6QErQgvqkxbzN+5yx5TQUVGf6ufPqcve'"
+  },
+  "icone": "info",
+  "entree": "index.html",
+  "tables": {
+    "prefixe": "SondeC_"
+  },
+  "reglages": [],
+  "permissions": {
+    "acces": "none"
+  },
+  "extensions": [
+    {
+      "id": "graphique",
+      "nom": {
+        "fr": "Graphique",
+        "en": "Chart"
+      },
+      "texte": {
+        "fr": "Plotly, reçu de GFS",
+        "en": "Plotly, received from GFS"
+      },
+      "icone": "chart",
+      "poids": 1,
+      "dossier": "extensions/graphique/",
+      "pointsEntree": [
+        {
+          "genre": "bouton",
+          "id": "graphique"
+        }
+      ],
+      "bibliotheques": [
+        {
+          "id": "plotly",
+          "version": "2.13.2"
+        }
+      ]
+    }
+  ],
+  "actions": {
+    "ouvrir": [],
+    "choisir": []
+  }
+}

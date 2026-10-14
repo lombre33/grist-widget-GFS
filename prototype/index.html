@@ -5,19 +5,55 @@
 <title>Grist Factory Suite</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- Politique de sécurité du contenu de GFS. Chaque ligne a son motif :
-     script-src : le code de GFS ('self'), le script d'API de Grist (adresse entière) ; 'unsafe-eval' faute de mieux, le fichier que Grist sert est un bundle de développement qui s'évalue par eval() (même raison que dans les apps) ;
+     script-src : le code de GFS ('self'), la carte d'importation en ligne (par son empreinte, voir plus bas), le script d'API de Grist (adresse entière) ; 'unsafe-eval' faute de mieux, le fichier que Grist sert est un bundle de développement qui s'évalue par eval() (même raison que dans les apps) ;
      frame-src 'self' : les apps tournent dans des sous-cadres du site de GFS, jamais d'une autre adresse ;
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js; style-src 'self'; img-src 'self' data:; frame-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
-<link rel="stylesheet" href="css/gfs.css?v=2">
-<link rel="stylesheet" href="css/explorer.css?v=1">
-<link rel="stylesheet" href="css/modules.css?v=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-9Zm+5cSm8iCs9PTuvAF4mMrAHlZ8mN2z/JzAva3ySKk='; style-src 'self'; img-src 'self' data:; frame-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<link rel="stylesheet" href="css/gfs.css?v=f161bd6e01">
+<link rel="stylesheet" href="css/explorer.css?v=fba09688cb">
+<link rel="stylesheet" href="css/modules.css?v=a163bf1afc">
 <!-- Le routeur d'abord : il doit être enregistré avant que le script d'API de Grist n'affecte window.onmessage (contrats 1.2). -->
-<script src="js/router.js?v=1"></script>
+<script src="js/router.js?v=20d0f9a823"></script>
+<!-- La carte d'importation, écrite par outils/versions.mjs (ne pas la modifier à la main) : chaque module se charge à son adresse versionnée, si bien que le cache de Pages
+     (10 minutes) ne mélange jamais un module ancien avec un module neuf. Son empreinte (sha256) est dans la politique de sécurité ci-dessus. -->
+<script type="importmap">
+{
+  "imports": {
+    "./js/apps-state.js": "./js/apps-state.js?v=ad2145c3f8",
+    "./js/broker.js": "./js/broker.js?v=4e909305b8",
+    "./js/catalogue.js": "./js/catalogue.js?v=547dbc3cae",
+    "./js/context.js": "./js/context.js?v=fcc2867b42",
+    "./js/controller.js": "./js/controller.js?v=d81335f13a",
+    "./js/dom.js": "./js/dom.js?v=6093a9f23f",
+    "./js/envelope.js": "./js/envelope.js?v=a547d9834c",
+    "./js/explorer-data.js": "./js/explorer-data.js?v=05d52b28de",
+    "./js/explorer-model.js": "./js/explorer-model.js?v=fc33081a7e",
+    "./js/explorer-view.js": "./js/explorer-view.js?v=3e88d3fdc0",
+    "./js/explorer.js": "./js/explorer.js?v=b7e1ef096c",
+    "./js/extensions.js": "./js/extensions.js?v=5614c39c4b",
+    "./js/filter.js": "./js/filter.js?v=0bbd3af6df",
+    "./js/frames.js": "./js/frames.js?v=09ec1cb3a3",
+    "./js/i18n.js": "./js/i18n.js?v=e5f838565a",
+    "./js/icons.js": "./js/icons.js?v=99b6051789",
+    "./js/layers.js": "./js/layers.js?v=2d0c225b72",
+    "./js/libraries.js": "./js/libraries.js?v=25fb1ee5cf",
+    "./js/manifest.js": "./js/manifest.js?v=f826eae1b9",
+    "./js/menu.js": "./js/menu.js?v=de960bc759",
+    "./js/modules-model.js": "./js/modules-model.js?v=f215489de1",
+    "./js/modules-window.js": "./js/modules-window.js?v=32236bcf98",
+    "./js/options-slice.js": "./js/options-slice.js?v=5a2aa14e5f",
+    "./js/rpc.js": "./js/rpc.js?v=ab5d5f19e0",
+    "./js/search.js": "./js/search.js?v=0921c92eb3",
+    "./js/session.js": "./js/session.js?v=7d331d9008",
+    "./js/settings.js": "./js/settings.js?v=38063cd3f4",
+    "./js/state.js": "./js/state.js?v=27bc2b5e23"
+  }
+}
+</script>
 <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
-<script type="module" src="js/gfs.js?v=3"></script>
+<script type="module" src="js/gfs.js?v=44003a27d4"></script>
 </head>
 <body data-gfs="starting">
 <main class="stage" id="stage">

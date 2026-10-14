@@ -43,6 +43,10 @@ say('rappel :', await text(frame.locator('.mod-note')));
 check('le clavier est dans la fenêtre', await insideWindow());
 check('le fond est inerte', (await state()).explorerInert === true && (await state()).framesInert === true);
 check('Publipostage+ ne se décoche pas', await frame.locator('[data-fk="app:publipostage"]').isDisabled());
+// Le versionnage (outils/versions.mjs) : la carte d'importation passe la politique de sécurité, et chaque fichier de GFS se charge une seule fois, à son adresse versionnée.
+const loaded = await frame.evaluate(() => performance.getEntriesByType('resource').map(entry => entry.name).filter(name => /\/(js|css)\/[^/?]+\.(js|css)(\?|$)/.test(name)));
+check('chaque script et chaque feuille de style de GFS est chargé à son adresse versionnée', loaded.length > 25 && loaded.every(name => /\?v=[0-9a-f]{10}$/.test(name)), loaded.filter(name => !/\?v=/.test(name)));
+check('aucun fichier de GFS n\'est chargé deux fois', new Set(loaded.map(name => name.split('?')[0])).size === loaded.length);
 check('1 actif sur 3', /^1 /.test(await count()) || /^1 of 3/.test(await count()), await count());
 await shot('1-premiere-ouverture');
 await lab.shot(run, '1-page-grist');

@@ -29,20 +29,20 @@ const facts = async f => f.evaluate(() => ({
 }));
 
 // Le niveau d'accès, dans le panneau de droite de Grist (le geste de la personne : la vraie souris sur la liste).
+// Rend l'instant du clic sur le nouveau niveau (le temps se compte à partir de là).
 async function chooseAccess(from, to) {
-  await page.mouse.click(1263, 24);
-  await page.waitForTimeout(400);
   await page.locator('.test-right-panel').getByText(from, { exact: true }).first().click();
   await page.waitForTimeout(300);
+  const clicked = Date.now();
   await page.getByText(to, { exact: true }).last().click();
+  return clicked;
 }
-async function rebuilt(accessRegex, label) {
-  const started = Date.now();
+async function rebuilt(accessRegex, label, clicked) {
   const next = await lab.gfsFrame(accessRegex);
   const found = Date.now();
   await next.waitForFunction(() => Boolean(document.body) && document.body.dataset.gfs === 'ready', null, { timeout: 60000 }).catch(() => {});
   const ready = Date.now();
-  say(`${label} : cadre reconstruit trouvé ${found - started} ms après le geste, GFS prêt ${ready - started} ms après`);
+  say(`${label} : cadre reconstruit ${found - clicked} ms après le clic, GFS prêt ${ready - clicked} ms après`);
   await page.waitForTimeout(800);
   return next;
 }
@@ -59,8 +59,8 @@ say('avant :', { acces: levelOf(frame), gfs: await facts(frame), tables: tablesB
 await lab.shot(run, '1-page-grist-avant');
 
 // ----- Le niveau baisse : « Read selected table ».
-await chooseAccess('Full document access', 'Read selected table');
-frame = await rebuilt(/access=read/, 'accès « read table »');
+const downAt = await chooseAccess('Full document access', 'Read selected table');
+frame = await rebuilt(/access=read/, 'accès « read table »', downAt);
 const low = await facts(frame);
 say('après (read table) :', { acces: levelOf(frame), gfs: low });
 check('le cadre de GFS est un document neuf (la marque posée avant a disparu)', low.marque === null, low);
@@ -77,16 +77,17 @@ await frame.waitForFunction(() => document.body.dataset.gfsFirstRun === 'done', 
 say('fenêtre « Apps » ouverte toute seule ?', await frame.locator('.mod').count() > 0);
 
 // ----- Le niveau remonte : « Full document access ».
-await chooseAccess('Read selected table', 'Full document access');
-frame = await rebuilt(/access=full/, 'accès « full »');
+const upAt = await chooseAccess('Read selected table', 'Full document access');
+frame = await rebuilt(/access=full/, 'accès « full »', upAt);
 const high = await facts(frame);
 say('après (full) :', { acces: levelOf(frame), gfs: high });
 check('le cadre de GFS est encore un document neuf', high.marque === null, high);
 const tablesAfter = await tables(frame);
 check('aucune table de l\'app perdue ni créée en double', JSON.stringify(tablesAfter) === JSON.stringify(tablesBefore), { avant: tablesBefore, apres: tablesAfter });
-const reopened = await lab.openApp(appId, appPattern);
+const reopenedAt = Date.now();
+const reopened = await lab.openApp(appId, appPattern, frame);
 await page.waitForTimeout(appId === 'publipostage' ? 7000 : 1500);
-check('l\'app se rouvre', Boolean(reopened) && (await frame.evaluate(() => document.querySelectorAll('.app-frame').length)) === 1);
+check('l\'app se rouvre', Boolean(reopened) && (await frame.evaluate(() => document.querySelectorAll('.app-frame').length)) === 1, `${Date.now() - reopenedAt} ms`);
 const tablesFinal = await tables(frame);
 check('rouverte, l\'app ne recrée aucune table', JSON.stringify(tablesFinal) === JSON.stringify(tablesBefore), { avant: tablesBefore.length, apres: tablesFinal.length });
 await lab.shot(run, '3-page-grist-apres');

@@ -2,7 +2,8 @@
 // par GFS comme n'importe quelle app ; chaque essai part d'un clic de la vraie souris (Playwright : événements du pointeur du navigateur, jamais dispatchEvent).
 // Ce que la page ne voit pas d'elle-même (téléchargement arrivé, fenêtre ouverte, message du navigateur) est relevé ici.
 //
-//   CAP_CONFIG=courante|echappe|protocoles|memeOrigine|schemas  le sous-cadre (courante : celui de GFS ; les autres ajoutent un drapeau ou une source de frame-src, labo seulement)
+//   CAP_CONFIG=courante|echappe|protocoles|memeOrigine|schemas|grist  le sous-cadre (courante : celui de GFS ; les autres ajoutent un drapeau ou une source de frame-src, labo
+//                                                        seulement ; grist : la sonde est le widget de Grist, dans le cadre de Grist, sans GFS)
 //   CAP_ALONE=1                                          la sonde seule dans une page ordinaire (« comme seule ») : la référence
 //   CAP_ONLY=essai1,essai2                               seulement ces essais
 //   CAP_SET=main|nav                                     les essais d'une page (main) ou les navigations du cadre (nav, un lancement de Grist par essai)
@@ -74,6 +75,12 @@ async function openProbe() {
     await page.goto(PROBE);
     return { browser, page, context, app: page.mainFrame() };
   }
+  if (config === 'grist') {
+    const lab = await startLab({ lang: 'fr', widget: PROBE, fullAccess: false });
+    await lab.context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await lab.fitPanel(undefined, 700, 400);
+    return { browser: lab.browser, page: lab.page, context: lab.context, app: lab.frame };
+  }
   const lab = await startLab({ lang: 'fr', probes: true, frameAttributes: CONFIGS[config] });
   // Sans cette permission au niveau du navigateur, un navigateur sans écran refuse le presse-papiers même à la page de plus haut niveau : on mesure ce que les cadres laissent passer.
   await lab.context.grantPermissions(['clipboard-read', 'clipboard-write']);
@@ -94,6 +101,6 @@ async function session(names) {
   await browser.close();
 }
 
-say(`=== sonde G, ${alone ? 'seule dans une page ordinaire' : `sous GFS, configuration « ${config} »`}, essais « ${set} » ===`);
+say(`=== sonde G, ${alone ? 'seule dans une page ordinaire' : config === 'grist' ? 'widget de Grist, sans GFS' : `sous GFS, configuration « ${config} »`}, essais « ${set} » ===`);
 if (set === 'nav') for (const name of wanted(NAV)) await session([name]);
 else await session(wanted(MAIN));

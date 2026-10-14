@@ -1,0 +1,18 @@
+{
+  "contrat": 0,
+  "bibliotheques": [
+    {
+      "id": "plotly",
+      "version": "2.13.2",
+      "poids": 1021827,
+      "cdn": {
+        "src": "https://cdn.jsdelivr.net/npm/plotly.js-basic-dist-min@2.13.2/plotly-basic.min.js",
+        "integrite": "sha384-1heFF/cJ46y4QUvJzTPTs4/F4/UYCTLl6QErQgvqkxbzN+5yx5TQUVGf6ufPqcve"
+      },
+      "vendorise": {
+        "chemin": "vendor/plotly/2.13.2/plotly-basic.min.js",
+        "integrite": "sha384-1heFF/cJ46y4QUvJzTPTs4/F4/UYCTLl6QErQgvqkxbzN+5yx5TQUVGf6ufPqcve"
+      }
+    }
+  ]
+}

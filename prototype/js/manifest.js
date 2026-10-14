@@ -85,18 +85,21 @@ function checkPatterns(perm, errors) {
   }
 }
 
+// Une table nommée par une entrée de `gristInterne` : interne, jamais lue ou jamais écrite selon les listes de refus (contrats 3.3).
+function checkInternalTable(entry, table, writes, errors) {
+  const key = String(table).toLowerCase();
+  if (!key.startsWith('_grist_')) errors.push(`gristInterne : ${table} n'est pas une table interne`);
+  if (entry.lit && NEVER_READ.includes(key)) errors.push(`gristInterne : ${table} ne se lit jamais`);
+  if (writes && NEVER_WRITE.includes(key)) errors.push(`gristInterne : ${table} n'est jamais écrite`);
+  if (writes && key === '_grist_views_section' && (entry.ecrit || []).includes('options')) errors.push('gristInterne : la colonne options de _grist_Views_section n\'est jamais écrite');
+}
+
 function checkInternalEntry(entry, errors) {
   if (!isObject(entry) || !Array.isArray(entry.tables) || !entry.tables.length) { errors.push('gristInterne : tables obligatoires'); return; }
   if (!isBilingual(entry.pourquoi)) errors.push('gristInterne : pourquoi doit porter fr et en');
   const writes = Array.isArray(entry.ecrit) || entry.retire === true;
   if (!entry.lit && !writes) errors.push('gristInterne : lit, ecrit ou retire attendu');
-  for (const table of entry.tables) {
-    const key = String(table).toLowerCase();
-    if (!key.startsWith('_grist_')) errors.push(`gristInterne : ${table} n'est pas une table interne`);
-    if (entry.lit && NEVER_READ.includes(key)) errors.push(`gristInterne : ${table} ne se lit jamais`);
-    if (writes && NEVER_WRITE.includes(key)) errors.push(`gristInterne : ${table} n'est jamais écrite`);
-    if (writes && key === '_grist_views_section' && (entry.ecrit || []).includes('options')) errors.push('gristInterne : la colonne options de _grist_Views_section n\'est jamais écrite');
-  }
+  for (const table of entry.tables) checkInternalTable(entry, table, writes, errors);
   if (writes && !entry.lit) errors.push('gristInterne : une entrée qui écrit porte aussi lit: true');
   if (writes && entry.tables.length !== 1) errors.push('gristInterne : une entrée qui écrit nomme une seule table');
 }
@@ -118,8 +121,8 @@ function checkPermissions(m, errors) {
   checkCapabilities(perm, errors);
 }
 
-const LIBRARY_ID_RE = /^[a-z][a-z0-9-]*$/;
-const EXACT_VERSION_RE = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
+export const LIBRARY_ID_RE = /^[a-z][a-z0-9-]*$/;
+export const EXACT_VERSION_RE = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
 
 // Ce que le code d'une extension exige d'une bibliothèque (2.6, points 5 et 8) : un identifiant et une version EXACTE, jamais un intervalle,
 // jamais `latest`. L'adresse, l'empreinte et le mode sont à GFS.
@@ -132,9 +135,17 @@ function checkLibraries(ext, errors) {
   }
 }
 
+// Ce que la fenêtre des apps et extensions affiche : un texte (fr, en), une icône du jeu de GFS, un poids en Ko. Facultatifs (proposés par le prototype).
+function checkDisplay(item, where, errors) {
+  if (item.texte !== undefined && !isBilingual(item.texte)) errors.push(`${where} : texte doit porter fr et en`);
+  if (item.icone !== undefined && !isText(item.icone)) errors.push(`${where} : icone : chaîne attendue`);
+  if (item.poids !== undefined && !(Number.isFinite(item.poids) && item.poids >= 0)) errors.push(`${where} : poids : nombre de Ko attendu`);
+}
+
 function checkExtensions(m, errors) {
   for (const ext of m.extensions || []) {
     if (!isText(ext.id) || !isBilingual(ext.nom)) errors.push('extensions[] : id et nom (fr, en) attendus');
+    checkDisplay(ext, `extension ${ext.id}`, errors);
     if (!isSafePath(String(ext.dossier || '').replace(/\/$/, ''))) errors.push(`extension ${ext.id} : dossier hors de l'app`);
     checkLibraries(ext, errors);
   }
@@ -145,6 +156,7 @@ export function validateManifest(m, others = []) {
   const errors = [];
   if (!isObject(m)) return { ok: false, errors: ['le manifeste n\'est pas un objet'] };
   checkIdentity(m, errors);
+  checkDisplay(m, 'app', errors);
   checkCatalogue(m, others, errors);
   checkFiles(m, errors);
   checkSettings(m, errors);

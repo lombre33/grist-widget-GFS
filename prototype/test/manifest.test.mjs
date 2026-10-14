@@ -101,3 +101,16 @@ test('les noms bilingues se lisent dans la langue de la personne', () => {
   assert.equal(label({ fr: 'Graphique' }, 'en'), 'Graphique');
   assert.equal(label(null, 'fr'), '');
 });
+
+test('texte, icone et poids (fenêtre des apps et extensions) : facultatifs, mais bien formés quand ils sont là', () => {
+  assert.ok(validateManifest(publipostage(), [automation()]).ok);
+  const withText = extra => ({ ...publipostage(), ...extra });
+  assert.match(validateManifest(withText({ texte: { fr: 'seulement le français' } }), [automation()]).errors.join('|'), /texte doit porter fr et en/);
+  assert.match(validateManifest(withText({ icone: 3 }), [automation()]).errors.join('|'), /icone : chaîne attendue/);
+  const heavy = publipostage();
+  heavy.extensions[0].poids = -4;
+  heavy.extensions[0].texte = 'une chaîne';
+  const errors = validateManifest(heavy, [automation()]).errors.join('|');
+  assert.match(errors, /extension graphique : poids/);
+  assert.match(errors, /extension graphique : texte doit porter fr et en/);
+});

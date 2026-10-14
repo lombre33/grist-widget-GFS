@@ -3,6 +3,11 @@
   "id": "automation",
   "nom": { "fr": "Automation+", "en": "Automation+" },
   "version": "1.0.0",
+  "texte": {
+    "fr": "Des automatismes entre les tables du document (preuve de concept).",
+    "en": "Automations between the document’s tables (proof of concept)."
+  },
+  "icone": "bolt",
   "entree": "index.html",
   "tables": { "prefixe": "Automation_" },
   "reglages": ["workflow"],

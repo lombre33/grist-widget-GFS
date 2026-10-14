@@ -3,6 +3,11 @@
   "id": "publipostage",
   "nom": { "fr": "Publipostage+", "en": "Publipostage+" },
   "version": "1.0.0",
+  "texte": {
+    "fr": "Documents, e-mails, macro-modèles et grilles : le widget d’aujourd’hui.",
+    "en": "Documents, emails, macro templates and grids: today’s widget."
+  },
+  "icone": "doc",
   "entree": "index.html",
   "tables": { "prefixe": "Publipostage_" },
   "fichiers": [{
@@ -81,6 +86,7 @@
         "fr": "Un graphique réglé dans Grist, posé dans un document.",
         "en": "A chart configured in Grist, placed in a document."
       },
+      "icone": "chart",
       "poids": 66,
       "dossier": "extensions/graphique/",
       "pointsEntree": [{ "genre": "bouton", "id": "graphique" }],

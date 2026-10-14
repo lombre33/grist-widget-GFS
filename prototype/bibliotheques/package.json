@@ -1,0 +1,13 @@
+{
+  "name": "gfs-bibliotheques",
+  "private": true,
+  "description": "La liste unique des bibliotheques que GFS porte pour les extensions des apps (contrats 2.6). Les bibliotheques natives d'une app restent dans la liste de cette app. outils/bibliotheques.mjs en tire bibliotheques/catalogue.json et vendor/.",
+  "dependencies": {
+    "plotly.js-basic-dist-min": "2.13.2"
+  },
+  "gfs": {
+    "bibliotheques": {
+      "plotly": { "paquet": "plotly.js-basic-dist-min", "fichier": "plotly-basic.min.js" }
+    }
+  }
+}

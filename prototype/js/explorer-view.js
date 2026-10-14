@@ -18,6 +18,7 @@ export function buildShell(t) {
       h('div', { class: 'ex-title-row' },
         keep('title', h('h2', { class: 'ex-title', id: 'ex-title' }, t('ex.title'))),
         h('span', { class: 'grow' }),
+        keep('appsBtn', h('button', { type: 'button', class: 'tb', title: t('gfs.appsTip'), 'aria-haspopup': 'dialog' }, icon('modules'), t('gfs.apps'))),
         h('div', { class: 'tb-group', role: 'group', 'aria-label': t('ex.display') }, toggle('viewList', 'ex.list', 'list'), toggle('viewTiles', 'ex.tiles', 'tiles'))),
       h('div', { class: 'ex-nav-row' },
         keep('crumbs', h('nav', { class: 'crumbs', 'aria-label': t('ex.path') })),
@@ -121,20 +122,25 @@ export function folderRow(ctx, folder) {
     h('div', { class: 'acts', role: 'gridcell' }));
 }
 
-export function tile(ctx, row) {
+// Ce qu'une vignette montre : un dossier ou un fichier (grisé ou non).
+function tileFacts(ctx, row) {
   const { t } = ctx;
-  const folder = row.kind === 'folder';
+  if (row.kind === 'folder') return { folder: true, key: `dir:${row.path}`, lock: null, glyph: 'folder', name: row.name, caption: t('ex.fileCount', { n: row.count }), fam: null };
   const file = row.file;
-  const key = folder ? `dir:${row.path}` : file.key;
-  const lock = folder ? null : ctx.lockOf(file);
-  const glyph = folder ? 'folder' : (lock ? 'lock' : file.icon);
+  const lock = ctx.lockOf(file);
+  return { folder: false, key: file.key, lock, glyph: lock ? 'lock' : file.icon, name: file.name || t('ex.untitled'), caption: ctx.typeLabel(file), fam: lock ? null : family(file) };
+}
+
+export function tile(ctx, row) {
+  const { folder, key, lock, glyph, name, caption, fam } = tileFacts(ctx, row);
+  const selected = ctx.state.sel === key;
   return h('div', {
-    class: `th${folder ? ' folder' : ''}${lock ? ' lk' : ''}`, role: 'row', tabindex: ctx.state.sel === key ? '0' : '-1', dataset: { key },
-    'aria-selected': String(ctx.state.sel === key), 'data-fam': folder || lock ? null : family(file), title: lock ? lock.text : null,
+    class: `th${folder ? ' folder' : ''}${lock ? ' lk' : ''}`, role: 'row', tabindex: selected ? '0' : '-1', dataset: { key },
+    'aria-selected': String(selected), 'data-fam': fam, title: lock ? lock.text : null,
   },
   h('div', { class: 'th-pv' }, icon(glyph, folder ? 'fld' : '')),
-  h('span', { class: 'tn' }, folder ? row.name : (file.name || t('ex.untitled'))),
-  h('div', { class: 'tt' }, icon(folder ? 'folder' : glyph), folder ? t('ex.fileCount', { n: row.count }) : ctx.typeLabel(file)));
+  h('span', { class: 'tn' }, name),
+  h('div', { class: 'tt' }, icon(glyph), caption));
 }
 
 // Le message d'une liste vide : jamais une page blanche.

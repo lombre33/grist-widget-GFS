@@ -1,6 +1,7 @@
 // Une app ouverte : son sous-cadre, sa conversation, ce que Grist lui dit. Une seule à la fois est reliée à Grist (contrats 1.4).
 
 import { AppPeer } from './rpc.js';
+import { EnvelopePeer, isEnvelope } from './envelope.js';
 import { makePolicy, lowestAccess, levelOf } from './filter.js';
 import { sliceOf, sliceChanged } from './options-slice.js';
 import { makeCallHandler } from './broker.js';
@@ -13,11 +14,12 @@ const REVEAL_TIMEOUT_MS = 4000;
 export class AppSession {
   #frame = null;
   #peer = null;
+  #envelope = null;
   #unsubscribe = null;
   #timers = [];
   #lastSlice;
 
-  // ctx : { entry, manifest, catalogue, state, port, router, container, readonly, preferences, base, lang, onStatus }
+  // ctx : { entry, manifest, catalogue, state, port, router, container, readonly, preferences, base, lang, onStatus, envelopeHandlers(session) }
   constructor(ctx) {
     this.ctx = ctx;
     this.manifest = ctx.manifest;
@@ -56,14 +58,27 @@ export class AppSession {
       onReady: () => this.#onReady(),
     });
     const url = frameUrl({ entry: ctx.entry, manifest: this.manifest, access: this.access, readonly: ctx.readonly, preferences: ctx.preferences, base: ctx.base });
+    // Les messages propres à GFS (contrats 5.1) passent par le même canal, mais jamais par la même file : ils n'attendent pas le `ready` de l'app.
+    this.#envelope = new EnvelopePeer({ send: msg => this.frameWindow.postMessage(msg, '*'), handlers: ctx.envelopeHandlers(this) });
     this.#frame = buildFrame(url, label(this.manifest.nom, ctx.lang));
     this.#frame.classList.add('app-frame--hidden');
     ctx.container.append(this.#frame);
     // Le routeur reconnaît la fenêtre dès que l'élément est dans la page : avant le premier message de l'app.
-    ctx.router.setActive(this.frameWindow, data => this.#peer.receive(data));
+    ctx.router.setActive(this.frameWindow, data => this.#fromApp(data));
     this.#unsubscribe = ctx.state.subscribe((kind, message) => this.#fromGrist(kind, message));
     ctx.onStatus('loading', this);
     this.#timers.push(setTimeout(() => { if (!this.isReady) ctx.onStatus('timeout', this); }, READY_TIMEOUT_MS));
+  }
+
+  // Un message de l'app, déjà attribué à son cadre par le routeur : l'enveloppe de GFS (sans `mtype`) ou le protocole des widgets.
+  #fromApp(data) {
+    if (isEnvelope(data)) this.#envelope.receive(data);
+    else this.#peer.receive(data);
+  }
+
+  // L'événement `extensions` (contrats 5.2, point 2) : l'app le reçoit sans l'avoir demandé.
+  sendExtensions({ extensions, bibliotheques }) {
+    if (this.#envelope) this.#envelope.event('extensions', { extensions, bibliotheques });
   }
 
   // L'app n'a pas dit `themeInitialized` : on la montre quand même après un délai (Grist fait de même avec un cadre qui tarde).
@@ -127,9 +142,11 @@ export class AppSession {
     this.#timers = [];
     if (this.#unsubscribe) this.#unsubscribe();
     if (this.#peer) this.#peer.close();
+    if (this.#envelope) this.#envelope.close();
     this.ctx.router.clearActive();
     if (this.#frame) this.#frame.remove();
     this.#frame = null;
     this.#peer = null;
+    this.#envelope = null;
   }
 }

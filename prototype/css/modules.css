@@ -1,0 +1,67 @@
+/* La fenêtre « Apps et extensions » (maquette du 12/10, charte Grist Factory) : tout par les jetons de gfs.css, jamais une couleur en dur.
+   Une seule base : le titre et le pied restent en place, seule la liste défile. Grisé, jamais masqué : une ligne indisponible garde son texte
+   (jeton à 4,5:1), son cadenas et sa raison. Les couleurs de l'état (vert « Actif », ambre « manque ») ne servent qu'à l'état, avec un mot et une icône. */
+
+.mod-scrim { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 12px; background: var(--scrim); }
+.mod { display: flex; flex-direction: column; width: min(640px, 100%); max-height: 100%; overflow: hidden; background: var(--surface); color: var(--text);
+  border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: var(--shadow-float); font-family: var(--font-ui); font-size: 13px; line-height: 1.35; }
+
+.mod-head { flex: none; padding: 12px 16px 8px; border-bottom: 1px solid var(--border); }
+.mod-head h2 { margin: 0; font-size: 15px; font-weight: 700; }
+.mod-count { margin: 2px 0 0; font-size: 12px; color: var(--text-muted); }
+.mod-count strong { color: var(--text); font-weight: 700; }
+
+.mod-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 2px 8px; }
+
+.mod-foot { flex: none; display: flex; align-items: center; gap: 12px; padding: 8px 16px 10px; border-top: 1px solid var(--border); background: var(--surface-sunken); }
+.mod-note { flex: 1; min-width: 0; margin: 0; font-size: 12px; color: var(--text-muted); }
+
+/* ---------- une ligne par app, puis une par extension de cette app ---------- */
+.mr { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; column-gap: 8px; padding: 9px 8px; border-bottom: 1px solid var(--border); }
+.mr:last-child { border-bottom: 0; }
+.mr--ext { margin-left: 22px; padding-left: 12px; border-left: 2px solid var(--border); }
+.mr-check { padding-top: 1px; }
+.mr-check input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent-solid); }
+.mr-check input:not(:disabled) { cursor: pointer; }
+.mr-main { min-width: 0; }
+.mr-title { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.mr-title label { display: inline-flex; align-items: center; gap: 6px; min-width: 0; cursor: pointer; }
+.mr-title .ic { width: 15px; height: 15px; color: var(--text-muted); }
+.mr-title strong { font-size: 13px; font-weight: 700; }
+.mr-text { margin: 2px 0 0; font-size: 12px; color: var(--text-muted); }
+.mr-note, .mr-warn { margin: 4px 0 0; font-size: 12px; }
+.mr-note { color: var(--text-muted); }
+.mr-warn { color: var(--warn-ink); font-weight: 600; }
+.mr--app.is-locked .mr-warn { color: var(--danger-ink); }
+.mr.is-locked .mr-title strong { color: var(--text-muted); }
+.mr-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; padding-top: 1px; }
+.sz { font-size: 11px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+.btn.sm { height: 26px; padding: 0 8px; font-size: 12px; }
+
+/* L'état en un mot et une icône : la couleur ne le porte jamais seule. */
+.badge { display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 7px; border: 1px solid var(--border-strong); border-radius: 9px;
+  background: var(--surface); font-size: 10.5px; font-weight: 700; letter-spacing: .02em; color: var(--text-muted); white-space: nowrap; }
+.badge .ic { width: 10px; height: 10px; stroke-width: 2.4; color: inherit; }
+.badge.on { border-color: var(--good-soft-border); background: var(--good-soft); color: var(--good); }
+.badge.locked { border-style: dashed; }
+
+/* ---------- le mode d'une bibliothèque : CDN ou copie de GFS ---------- */
+.mr-mode { display: flex; flex-wrap: wrap; gap: 2px 16px; min-width: 0; margin: 8px 0 0; padding: 6px 10px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-sunken); }
+.mr-mode legend { padding: 0 4px; font-size: 11px; font-weight: 600; color: var(--text-muted); }
+.mr-mode:disabled .rd-label { color: var(--text-muted); }
+.rd { display: flex; flex: 1 1 200px; align-items: flex-start; gap: 7px; min-width: 0; padding: 3px 0; cursor: pointer; }
+.rd input { flex: none; width: 15px; height: 15px; margin: 1px 0 0; accent-color: var(--accent-solid); }
+.rd input:disabled { cursor: not-allowed; }
+.rd-text { display: flex; flex-direction: column; min-width: 0; }
+.rd-label { font-size: 12.5px; font-weight: 600; }
+.rd-hint { font-size: 11.5px; color: var(--text-muted); }
+
+/* ---------- étroit : l'état et le geste passent sous le texte ---------- */
+@media (max-width: 519px) {
+  .mod-scrim { padding: 6px; }
+  .mod-head { padding: 10px 12px 6px; }
+  .mod-foot { padding: 6px 12px 8px; }
+  .mr { grid-template-columns: 22px minmax(0, 1fr); }
+  .mr-side { grid-column: 2; flex-direction: row; align-items: center; justify-content: flex-start; padding-top: 4px; }
+  .mr--ext { margin-left: 10px; padding-left: 8px; }
+}

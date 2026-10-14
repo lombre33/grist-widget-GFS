@@ -19,7 +19,7 @@ export class Explorer {
   // Deux tris : celui des dossiers et des favoris (par nom), celui de Récents (par date, le plus récent d'abord).
   state = { view: 'folder', path: '', open: new Set(), display: 'list', sort: { key: 'name', dir: 1 }, recentSort: { key: 'mod', dir: -1 }, type: 'all', q: '', sel: null };
 
-  // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), onOpen(file), onNew(entry), onClose(), canClose(), notice(text) }
+  // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), onOpen(file), onNew(entry), onClose(), onApps(), canClose(), notice(text) }
   constructor(opts) {
     this.#opts = opts;
     const { root, refs } = buildShell(opts.i18n.t);
@@ -158,8 +158,9 @@ export class Explorer {
   // ---------- gestes ----------
 
   #bind() {
-    const { search, viewList, viewTiles, typeBtn, newBtn, openBtn, closeBtn, crumbs: crumbsNav, tree: treeNav, list } = this.#refs;
+    const { search, viewList, viewTiles, typeBtn, newBtn, openBtn, closeBtn, appsBtn, crumbs: crumbsNav, tree: treeNav, list } = this.#refs;
     search.addEventListener('input', () => { this.state.q = search.value; this.state.sel = null; this.#renderCrumbs(); this.#renderList(); });
+    appsBtn.addEventListener('click', () => this.#opts.onApps());
     viewList.addEventListener('click', () => this.#setDisplay('list'));
     viewTiles.addEventListener('click', () => this.#setDisplay('tiles'));
     typeBtn.addEventListener('click', () => this.#typeMenu());

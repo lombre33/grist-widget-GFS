@@ -41,7 +41,9 @@ export async function startLab({ lang = 'fr', colorScheme = 'light', width = 128
   await page.waitForTimeout(1500);
   await page.getByText('Custom URL', { exact: true }).first().click();
   await page.getByPlaceholder('Widget URL').click();
-  await page.getByPlaceholder('Widget URL').pressSequentially(WIDGET + query, { delay: 5 });
+  // Grist ajoute ses propres paramètres après ceux de l'adresse (searchParams.append) : le premier `language` gagne, c'est celui du labo.
+  const address = `${WIDGET}?language=${lang}&culture=${lang === 'en' ? 'en-GB' : 'fr-FR'}${query ? '&' + query.replace(/^\?/, '') : ''}`;
+  await page.getByPlaceholder('Widget URL').pressSequentially(address, { delay: 5 });
   await page.locator('.test-custom-widget-gallery-save').click();
   await page.waitForTimeout(800);
   await page.getByText('I confirm that I understand these warnings and accept the risks').click();
@@ -60,5 +62,23 @@ export async function startLab({ lang = 'fr', colorScheme = 'light', width = 128
     frame = await gfsFrame(/access=full/);
   }
   await gfsReady(frame);
-  return { browser, context, page, frame, gfsFrame, appFrame, gfsReady, shot: (run, name) => page.screenshot({ path: join(SHOTS, `${run}-${name}.png`) }) };
+  // Le panneau de référence : 700 × 400 (charte). On ajuste la fenêtre du navigateur jusqu'à ce que le cadre de GFS mesure cela dans la vraie page de
+  // Grist ; le protocole entre Grist et le widget n'est pas touché.
+  const fitPanel = async (target = frame, width = 700, height = 400) => {
+    const element = await target.frameElement();
+    // Le widget partage la page avec une autre section : la largeur ne suit qu'à moitié la fenêtre, d'où le gain de 2 (la hauteur suit 1 pour 1).
+    for (let i = 0; i < 12; i++) {
+      const box = await element.boundingBox();
+      const dw = Math.round(width - box.width);
+      const dh = Math.round(height - box.height);
+      if (Math.abs(dw) <= 1 && Math.abs(dh) <= 1) return box;
+      const size = page.viewportSize();
+      await page.setViewportSize({ width: size.width + (Math.abs(dw) > 1 ? dw * 2 : 0), height: size.height + dh });
+      await page.waitForTimeout(500);
+    }
+    return element.boundingBox();
+  };
+  return { browser, context, page, frame, gfsFrame, appFrame, gfsReady, fitPanel, shot: (run, name) => page.screenshot({ path: join(SHOTS, `${run}-${name}.png`) }),
+    // La capture du cadre de GFS seul (le panneau), pas de la page de Grist.
+    shotPanel: async (run, name, target = frame) => (await target.frameElement()).screenshot({ path: join(SHOTS, `${run}-${name}.png`) }) };
 }

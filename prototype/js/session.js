@@ -119,6 +119,9 @@ export class AppSession {
 
   show(visible) { if (this.#frame) this.#frame.classList.toggle('app-frame--behind', !visible); }
 
+  // Rend le clavier à l'app (au retour de l'explorateur) : `focus()` est permis sur une fenêtre d'une autre origine.
+  focus() { try { this.frameWindow.focus(); } catch (e) { /* cadre disparu */ } }
+
   close() {
     this.#timers.forEach(clearTimeout);
     this.#timers = [];

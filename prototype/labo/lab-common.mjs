@@ -35,7 +35,8 @@ export function mirrored(url) {
 }
 
 export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', width = 1280, height = 800 } = {}) {
-  const context = await browser.newContext({ viewport: { width, height }, colorScheme, bypassCSP: true });
+  // L'interface de Grist reste en anglais (les gestes du labo cherchent ses libellés) ; la langue de GFS passe par l'adresse du widget (lab-setup.mjs).
+  const context = await browser.newContext({ viewport: { width, height }, colorScheme, bypassCSP: true, locale: 'en-US' });
   const page = await context.newPage();
   page.on('pageerror', e => { if (process.env.LAB_CONSOLE) say('[pageerror]', e.message.slice(0, 200)); });
   page.on('console', m => { if (process.env.LAB_CONSOLE && (m.type() === 'error' || process.env.LAB_CONSOLE === 'all')) say('[console.' + m.type() + ']', m.text().slice(0, 240)); });
@@ -63,5 +64,14 @@ export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', 
     try { Object.defineProperty(HTMLScriptElement.prototype, 'integrity', { configurable: true, get: () => '', set: () => {} }); } catch (e) { /* déjà posé */ }
   });
   await page.addInitScript((l) => { try { if (location.port === '8911') localStorage.setItem('pp_lang', l); } catch (e) { /* stockage indisponible */ } }, lang);
+  // Une app dans son sous-cadre n'a pas de stockage (sans allow-same-origin) : elle suit la langue du navigateur. Le labo la donne à ces cadres seulement.
+  await page.addInitScript((l) => {
+    try {
+      if (location.port !== '8911' || !location.pathname.includes('/apps/')) return;
+      const languages = l === 'en' ? ['en-GB', 'en'] : ['fr-FR', 'fr'];
+      Object.defineProperty(Navigator.prototype, 'languages', { configurable: true, get: () => languages });
+      Object.defineProperty(Navigator.prototype, 'language', { configurable: true, get: () => languages[0] });
+    } catch (e) { /* déjà posé */ }
+  }, lang);
   return { context, page };
 }

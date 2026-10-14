@@ -52,7 +52,18 @@ function checkFiles(m, errors) {
     if (!isText(cols.id) || !isText(cols.nom)) errors.push('fichiers[].colonnes.id et nom obligatoires');
     for (const [key, value] of Object.entries(cols)) if (!isText(value)) errors.push(`fichiers[].colonnes.${key} : chaîne attendue`);
     if (!Array.isArray(file.types) || file.types.some(t => !isText(t.valeur) || !isBilingual(t.nom))) errors.push('fichiers[].types mal formé');
+    checkFiling(file.rangement, prefix, errors);
   }
+}
+
+// Le rangement propre à une app (2.4, `rangement`) : proposé par le prototype, à fixer à l'étape 6. Une table du préfixe et des noms de colonnes.
+function checkFiling(filing, prefix, errors) {
+  if (filing === undefined) return;
+  if (!isObject(filing) || !isText(filing.table) || !filing.table.toLowerCase().startsWith(prefix.toLowerCase())) {
+    errors.push('fichiers[].rangement.table hors du préfixe');
+    return;
+  }
+  for (const [key, value] of Object.entries(filing)) if (!isText(value)) errors.push(`fichiers[].rangement.${key} : chaîne attendue`);
 }
 
 function checkSettings(m, errors) {
@@ -107,10 +118,25 @@ function checkPermissions(m, errors) {
   checkCapabilities(perm, errors);
 }
 
+const LIBRARY_ID_RE = /^[a-z][a-z0-9-]*$/;
+const EXACT_VERSION_RE = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
+
+// Ce que le code d'une extension exige d'une bibliothèque (2.6, points 5 et 8) : un identifiant et une version EXACTE, jamais un intervalle,
+// jamais `latest`. L'adresse, l'empreinte et le mode sont à GFS.
+function checkLibraries(ext, errors) {
+  if (ext.bibliotheques === undefined) return;
+  if (!Array.isArray(ext.bibliotheques)) { errors.push(`extension ${ext.id} : bibliotheques : liste attendue`); return; }
+  for (const lib of ext.bibliotheques) {
+    if (!isObject(lib) || !LIBRARY_ID_RE.test(lib.id || '')) errors.push(`extension ${ext.id} : une bibliothèque sans id valable`);
+    else if (!EXACT_VERSION_RE.test(lib.version || '')) errors.push(`extension ${ext.id} : la version de ${lib.id} doit être exacte (ni intervalle ni latest)`);
+  }
+}
+
 function checkExtensions(m, errors) {
   for (const ext of m.extensions || []) {
     if (!isText(ext.id) || !isBilingual(ext.nom)) errors.push('extensions[] : id et nom (fr, en) attendus');
     if (!isSafePath(String(ext.dossier || '').replace(/\/$/, ''))) errors.push(`extension ${ext.id} : dossier hors de l'app`);
+    checkLibraries(ext, errors);
   }
 }
 

@@ -16,7 +16,7 @@
       { "valeur": "macro", "nom": { "fr": "Macro-modèle", "en": "Macro template" }, "icone": "macro" }
     ],
     "exclure": { "TypeModele": ["reglages"] },
-    "rangement": { "table": "Publipostage_PreferencesModeles" }
+    "rangement": { "table": "Publipostage_PreferencesModeles", "utilisateur": "Utilisateur", "fichier": "ModeleId", "dossier": "Dossier", "epingle": "Epingle" }
   }],
   "reglages": ["modeleDeLaVue", "modeleSelonLigne", "droitsAcces", "dateDernierExport"],
   "permissions": {
@@ -81,12 +81,12 @@
         "fr": "Un graphique réglé dans Grist, posé dans un document.",
         "en": "A chart configured in Grist, placed in a document."
       },
-      "poids": 3400,
+      "poids": 66,
       "dossier": "extensions/graphique/",
-      "pointsEntree": [{ "genre": "bouton", "id": "graphique" }]
+      "pointsEntree": [{ "genre": "bouton", "id": "graphique" }],
+      "bibliotheques": [{ "id": "plotly", "version": "2.13.2" }]
     }
   ],
-  "dependances": "package.json",
   "actions": {
     "ouvrir": ["document", "grille", "email", "macro"],
     "choisir": ["document", "grille"],

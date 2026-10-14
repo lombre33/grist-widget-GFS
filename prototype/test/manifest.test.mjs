@@ -39,6 +39,26 @@ test('contrats 2.4 : les tables de fichiers sont dans le préfixe, avec id et no
   assert.match(bad(m => { m.fichiers[0].colonnes.date = 3; }), /chaîne/);
 });
 
+test('contrats 2.4 : le rangement propre à une app est une table du préfixe, aux colonnes nommées', () => {
+  assert.match(bad(m => { m.fichiers[0].rangement.table = 'Clients'; }), /rangement\.table hors du préfixe/);
+  assert.match(bad(m => { m.fichiers[0].rangement = 'x'; }), /rangement\.table/);
+  assert.match(bad(m => { m.fichiers[0].rangement.dossier = 3; }), /rangement\.dossier/);
+});
+
+test('contrats 2.6 et 2.8 : la bibliothèque d\'une extension est un id et une version exacte', () => {
+  assert.deepEqual(publipostage().extensions[0].bibliotheques, [{ id: 'plotly', version: '2.13.2' }]);
+  assert.match(bad(m => { m.extensions[0].bibliotheques[0].version = 'latest'; }), /version de plotly doit être exacte/);
+  assert.match(bad(m => { m.extensions[0].bibliotheques[0].version = '^2.13.2'; }), /exacte/);
+  assert.match(bad(m => { m.extensions[0].bibliotheques[0].version = '>=2'; }), /exacte/);
+  assert.match(bad(m => { m.extensions[0].bibliotheques[0].version = '2.13'; }), /exacte/);
+  assert.match(bad(m => { delete m.extensions[0].bibliotheques[0].version; }), /exacte/);
+  assert.match(bad(m => { delete m.extensions[0].bibliotheques[0].id; }), /sans id/);
+  assert.match(bad(m => { m.extensions[0].bibliotheques = 'plotly'; }), /liste attendue/);
+  const ok = publipostage();
+  ok.extensions[0].bibliotheques.push({ id: 'autre-lib', version: '1.0.0-rc.1' });
+  assert.equal(validateManifest(ok).ok, true);
+});
+
 test('contrats 2.8 : règles des permissions', () => {
   assert.match(bad(m => { m.permissions.acces = 'tout'; }), /acces/);
   assert.match(bad(m => { m.permissions.acces = 'read table'; }), /accès full/);

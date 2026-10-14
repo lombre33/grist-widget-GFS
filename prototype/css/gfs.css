@@ -1,20 +1,27 @@
 /* GFS : couleurs par les jetons de la charte Grist Factory (section 1) : gris bleutés, un seul bleu d'accent, rouge et vert pour l'état seulement.
-   Thème : celui de Grist (le script d'API pose data-grist-appearance sur <html>) ; sans Grist, celui du système. */
+   Thème : celui de Grist (le script d'API pose data-grist-appearance sur <html>) ; sans Grist, celui du système.
+   Les couleurs par type (document, grille, présentation) ne servent que dans l'explorateur (explorer.css). */
 :root {
   color-scheme: light;
   --bg: #f4f6fa; --surface: #ffffff; --surface-sunken: #eef1f6;
   --border: #dde2ea; --border-strong: #c3cad6;
   --text: #1b2430; --text-muted: #5f6b7e;
-  --accent: #2f6fed; --accent-hover: #2558c4; --accent-solid: #2f6fed; --accent-ink: #2558c4;
+  --accent: #2f6fed; --accent-hover: #2558c4; --accent-solid: #2f6fed; --accent-solid-hover: #2558c4; --accent-ink: #2558c4; --on-accent: #ffffff;
   --accent-soft: #e8f0fe; --accent-soft-border: #c7dbfd;
   --good: #146c48; --good-soft: #e5f6ee; --good-soft-border: #bfe6d3;
   --danger: #d84343; --danger-soft: #fbe9e9; --danger-ink: #c53030;
   --warn-ink: #8a5300; --warn-soft: #fff4e0;
+  --solid-neutral: #1b2430;
+  --t-doc: #2f6fed; --t-doc-ink: #2558c4; --t-doc-soft: #e8f0fe; --t-doc-line: #c7dbfd;
+  --t-grid: #2e7d32; --t-grid-ink: #1f6a24; --t-grid-soft: #e7f4e8; --t-grid-line: #bfe0c2;
+  --t-slides: #c7600a; --t-slides-ink: #9a4a05; --t-slides-soft: #fff0e0; --t-slides-line: #f6cc9d;
   --scrim: rgba(15, 23, 42, .45);
-  --radius: 7px;
+  --radius-sm: 7px;
   --shadow-float: 0 14px 32px -8px rgba(9, 16, 35, .35), 0 2px 8px rgba(9, 16, 35, .12);
+  --shadow-card: 0 1px 2px rgba(20, 28, 46, .05);
   --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --z-frames: 1; --z-float: 10; --z-window: 20; --z-menu: 30; --z-toast: 40;
+  /* Les couches : l'écart de 100 laisse la place au rang que Layers.raise ajoute à chaque jeton. */
+  --z-frames: 1; --z-float: 100; --z-window: 200; --z-menu: 300; --z-toast: 400;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-grist-appearance="light"]) {
@@ -27,8 +34,13 @@
     --good: #6fd3a3; --good-soft: #163326; --good-soft-border: #2c5c45;
     --danger: #f08a8a; --danger-soft: #3a2426; --danger-ink: #f08a8a;
     --warn-ink: #f0c27a; --warn-soft: #3a2f1c;
+    --solid-neutral: #0b0f16;
+    --t-doc: #5b91f5; --t-doc-ink: #74a3f7; --t-doc-soft: #24324b; --t-doc-line: #35507d;
+    --t-grid: #6cc57a; --t-grid-ink: #8fd694; --t-grid-soft: #16301a; --t-grid-line: #2c5a31;
+    --t-slides: #f0933e; --t-slides-ink: #ffb06b; --t-slides-soft: #3a2412; --t-slides-line: #6b4420;
     --scrim: rgba(3, 6, 12, .62);
     --shadow-float: 0 14px 32px -8px rgba(0, 0, 0, .65), 0 2px 8px rgba(0, 0, 0, .45);
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, .45);
   }
 }
 :root[data-grist-appearance="dark"] {
@@ -41,33 +53,41 @@
   --good: #6fd3a3; --good-soft: #163326; --good-soft-border: #2c5c45;
   --danger: #f08a8a; --danger-soft: #3a2426; --danger-ink: #f08a8a;
   --warn-ink: #f0c27a; --warn-soft: #3a2f1c;
+  --solid-neutral: #0b0f16;
+  --t-doc: #5b91f5; --t-doc-ink: #74a3f7; --t-doc-soft: #24324b; --t-doc-line: #35507d;
+  --t-grid: #6cc57a; --t-grid-ink: #8fd694; --t-grid-soft: #16301a; --t-grid-line: #2c5a31;
+  --t-slides: #f0933e; --t-slides-ink: #ffb06b; --t-slides-soft: #3a2412; --t-slides-line: #6b4420;
   --scrim: rgba(3, 6, 12, .62);
   --shadow-float: 0 14px 32px -8px rgba(0, 0, 0, .65), 0 2px 8px rgba(0, 0, 0, .45);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, .45);
 }
 
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 var(--font-ui); overflow: hidden; }
 [hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 
+/* La scène : les sous-cadres des apps, l'explorateur et les fenêtres par-dessus. */
 .stage { position: relative; height: 100%; }
 .frames { position: absolute; inset: 0; z-index: var(--z-frames); }
 .app-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--surface); }
 .app-frame--hidden { visibility: hidden; }
 .app-frame--behind { visibility: hidden; }
 
-.idle { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 16px; text-align: center; }
-.idle-title { margin: 0; font-size: 18px; }
-.idle-text { margin: 0; color: var(--text-muted); max-width: 46ch; }
-.idle-apps { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+/* Repères provisoires au-dessus d'une app (« Fichiers », « Apps ») : le temps que les apps ouvrent l'explorateur elles-mêmes (« Organiser »). */
+.floaters { position: absolute; right: 8px; bottom: 8px; z-index: var(--z-float); display: flex; gap: 6px; }
+.floater { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--text); font-size: 12.5px; font-weight: 600; box-shadow: var(--shadow-card); cursor: pointer; }
+.floater:hover { background: var(--surface-sunken); }
+.floater .ic { width: 14px; height: 14px; }
 
-.status { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: var(--z-toast); margin: 0; padding: 6px 12px;
-  background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius); box-shadow: var(--shadow-float); color: var(--text); }
-.status--bad { border-color: var(--danger); color: var(--danger-ink); }
+/* Une phrase d'état : l'app se charge, ne répond pas, une consigne provisoire. */
+.status { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: var(--z-toast); max-width: calc(100% - 32px); margin: 0; padding: 7px 12px;
+  background: var(--solid-neutral); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); box-shadow: var(--shadow-float); color: var(--on-accent); font-size: 12.5px; }
+.status--bad { background: var(--danger-soft); border-color: var(--danger); color: var(--danger-ink); }
+.toast { bottom: 64px; }
 
-.btn { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 6px 12px; cursor: pointer; }
+.btn { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border-strong); cursor: pointer; }
 .btn:hover { background: var(--surface-sunken); }
 .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.btn[disabled] { opacity: .55; cursor: not-allowed; }
-.btn--primary { background: var(--accent-solid); border-color: var(--accent-solid); color: #fff; }
-.btn--primary:hover { background: var(--accent-hover); }

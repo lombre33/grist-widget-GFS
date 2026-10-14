@@ -1,0 +1,6 @@
+[submodule "prototype/apps/publipostage"]
+	path = prototype/apps/publipostage
+	url = https://github.com/lombre33/publipostageGrist.git
+[submodule "prototype/apps/automation"]
+	path = prototype/apps/automation
+	url = https://github.com/lombre33/GRIST_automation.git

@@ -229,8 +229,8 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
 4. [T] **La bibliothèque d'une extension est non native : GFS la porte** (décision du porteur, 14/10 ; cahier 4.7). Le code de
    l'extension, c'est-à-dire la façon dont l'app se sert de la bibliothèque, reste dans l'app ; la bibliothèque, son
    chargement, sa CSP, sa liste et ses empreintes sont à GFS. Le dépôt de l'app ne la nomme ni dans sa liste (`dependances`),
-   ni dans son import map, ni dans sa CSP. Défaut pris, à confirmer par le porteur : l'éditeur et les exports restent
-   natifs, avec leurs bibliothèques dans la liste de l'app.
+   ni dans son import map, ni dans sa CSP. Confirmé par le porteur (14/10) : l'éditeur et les exports restent natifs, avec
+   leurs bibliothèques dans la liste de l'app.
 5. [D] `bibliotheques` liste ce que le code de l'extension exige : `{ id, version }`, par exemple
    `{ "id": "plotly", "version": "2.13.2" }` (la version de Grist, celle pour laquelle le dessin du graphique est écrit).
    Ni adresse, ni empreinte, ni mode : elles sont à GFS.

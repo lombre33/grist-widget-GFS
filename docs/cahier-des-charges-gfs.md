@@ -101,7 +101,7 @@ Slides+ (`lombre33/SlidesPlus`) n'est pas une app de GFS : les diapositives devi
 | GFS **référence** le dépôt de chaque app, sans copie figée (« du code dupliqué, plus de maintenance ») | 14/10, 11 h 14 | Sous-modules Git à un commit précis |
 | Pas « tout vendoriser » : une copie dont personne ne corrige la faille | 14/10, 11 h 15 | Pas de copie permanente des bibliothèques dans GFS |
 | **CDN par défaut ; version vendorisée si le RSSI d'un client l'exige** | 14/10, 11 h 15 | Les deux modes depuis une liste : celle de l'app (natives) ou celle de GFS (non natives, ligne suivante) |
-| **GFS porte la partie dépendance des bibliothèques non natives** : « les dépôts des apps doivent rester clean ». Le code d'une fonction (la façon dont Publipostage+ gère ses graphiques) reste dans l'app ; la bibliothèque (Plotly), son chargement, sa CSP, sa liste et ses empreintes sont à GFS | 14/10 | Section 4.7 ; le dépôt d'une app n'a ni la liste, ni l'import map, ni la CSP d'une bibliothèque d'extension. Défaut pris : l'éditeur et les exports, sans lesquels l'app ne marche pas seule, gardent leurs bibliothèques dans l'app |
+| **GFS porte la partie dépendance des bibliothèques non natives** : « les dépôts des apps doivent rester clean ». Le code d'une fonction (la façon dont Publipostage+ gère ses graphiques) reste dans l'app ; la bibliothèque (Plotly), son chargement, sa CSP, sa liste et ses empreintes sont à GFS | 14/10 | Section 4.7 ; le dépôt d'une app n'a ni la liste, ni l'import map, ni la CSP d'une bibliothèque d'extension. Confirmé par le porteur : l'éditeur et les exports, sans lesquels l'app ne marche pas seule, gardent leurs bibliothèques dans l'app |
 | Une fonction dont la dépendance n'est pas activée est grisée, et un clic explique comment passer à l'adresse de GFS | 14/10 | Texte commun du grisé (guide des apps, section 5) |
 | On passe d'une app seule à GFS et on revient sans perte de données | 14/10 | Section 7 |
 | GFS charge l'app sans changer l'adresse du widget | 14/10 | Sous-cadre servi depuis le site de GFS |
@@ -339,8 +339,8 @@ commencer, ou un sous-cadre gardé ouvert et caché (question 4, section 12).
   version exacte, par exemple `plotly` 2.13.2) ; GFS tient la liste, les adresses CDN et leurs empreintes, la CSP qui les
   concerne et la version vendorisée, et donne à l'extension active la source à charger. Le code qui se sert de la
   bibliothèque (la façon dont Publipostage+ gère ses graphiques) reste dans l'app. L'app n'a pas à connaître l'adresse.
-- **Natif ou non** : une bibliothèque est native quand l'app ne marche pas seule sans elle. Défaut pris, à confirmer par le
-  porteur : l'éditeur et les exports restent natifs, avec leurs bibliothèques dans la liste de l'app.
+- **Natif ou non** : une bibliothèque est native quand l'app ne marche pas seule sans elle. Confirmé par le porteur (14/10) :
+  l'éditeur et les exports restent natifs, avec leurs bibliothèques dans la liste de l'app.
 - **Un outil en tire** : les adresses CDN et leurs empreintes SRI, l'import map, la CSP du mode CDN, le miroir des tests, et
   la **version vendorisée** (fichiers téléchargés, empreintes vérifiées, licences listées dans `NOTICE`, CSP
   `script-src 'self'`). L'outil du kit le fait pour la liste d'une app, celui de GFS pour la liste de GFS. Les fichiers

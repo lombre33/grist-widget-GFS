@@ -338,7 +338,9 @@ commencer, ou un sous-cadre gardé ouvert et caché (question 4, section 12).
   propres et auditables). L'extension déclare dans son entrée du manifeste ce que son code exige (un identifiant et une
   version exacte, par exemple `plotly` 2.13.2) ; GFS tient la liste, les adresses CDN et leurs empreintes, la CSP qui les
   concerne et la version vendorisée, et donne à l'extension active la source à charger. Le code qui se sert de la
-  bibliothèque (la façon dont Publipostage+ gère ses graphiques) reste dans l'app. L'app n'a pas à connaître l'adresse.
+  bibliothèque (la façon dont Publipostage+ gère ses graphiques) reste dans l'app. L'app n'a pas à connaître l'adresse : elle
+  demande la bibliothèque à GFS par son `GFS-ETAT.md` et ne pousse jamais dans le dépôt de GFS (décision du porteur, 14/10 ;
+  `consignes/LISEZ-MOI.md`, « Demander à GFS »).
 - **Natif ou non** : une bibliothèque est native quand l'app ne marche pas seule sans elle. Confirmé par le porteur (14/10) :
   l'éditeur et les exports restent natifs, avec leurs bibliothèques dans la liste de l'app.
 - **Un outil en tire** : les adresses CDN et leurs empreintes SRI, l'import map, la CSP du mode CDN, le miroir des tests, et

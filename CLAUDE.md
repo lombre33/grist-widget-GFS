@@ -100,6 +100,8 @@ Si un fait nouveau remet en cause une de ces lignes : le dire au porteur, avec l
 - Avancer la référence d'une app ou du kit, c'est un commit à part, relu (Dependabot le propose).
 - Les dépôts des apps et de l'outil d'audit se lisent depuis ce projet, sans s'y modifier : un changement dans une app
   s'écrit comme une consigne (section suivante), que le projet de l'app lit lui-même.
+- Seul ce projet pousse dans le dépôt de GFS (décision du porteur, 14/10) : un projet d'app y **demande** (section « Demandes
+  à GFS » de son `GFS-ETAT.md`) et teste dans une copie à lui (`consignes/TESTER-AVEC-GFS.md`).
 - Jamais de commit vide pour relancer une publication ; vérifier que Pages a publié et sert les fichiers.
 - Les dépôts publics de l'organisation `grist-factory` ne se poussent jamais depuis le cloud : un outil d'envoi prépare le
   dépôt propre, le porteur pousse depuis sa machine.
@@ -115,6 +117,10 @@ Les dépôts servent de boîte aux lettres ; chaque côté ne lit qu'une page (m
 - **Se mettre à jour sur une app** : lire son `GFS-ETAT.md` (racine de son dépôt), puis le journal des commits depuis le
   « dernier commit lu » de `docs/apps.md`, jamais tout le dépôt (commandes et pièges : `docs/apps.md`). Ensuite, passer les
   consignes faites à « faite » dans l'`INDEX.md`, avancer la ligne de `docs/apps.md` et répondre aux questions par une consigne.
+- **Traiter une demande d'app** (le porteur dit « demande de Publipostage+ », ou d'une autre app) : lire la section
+  « Demandes à GFS » de son `GFS-ETAT.md` ; ajouter la bibliothèque à la liste de GFS et lancer l'outil (catalogue,
+  empreintes, copie vendorisée) ; déclarer l'extension dans le manifeste ; avancer la référence de l'app (commit à part,
+  relu) ; pousser ; répondre par une consigne.
 - On ne pousse jamais dans le dépôt d'une app.
 
 ## Travailler avec le porteur

@@ -43,7 +43,8 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
    exports), une version exacte, inscrite dans la liste de l'app, chargée au premier usage si elle est lourde, jamais par
    un lien CDN non figé. Si c'est celle d'une extension (non native), elle ne s'inscrit ni dans la liste, ni dans l'import
    map, ni dans la CSP de l'app : l'extension dit seulement l'identifiant et la version exacte qu'elle exige, et GFS porte
-   le reste (cahier 4.7).
+   le reste (cahier 4.7). L'app le lui demande dans son `GFS-ETAT.md` et ne pousse jamais chez GFS
+   (`consignes/LISEZ-MOI.md`, « Demander à GFS »).
 10. **Une fonction lourde nouvelle naît comme une extension** : son code dans un dossier à part, atteint seulement à son
     premier usage ; ses points d'entrée (bouton, ligne de menu, type, export) déclarés à un seul endroit ; le grisé dessiné
     par le socle, pas par chaque point d'entrée (cahier 4.6). Le code de la fonction reste dans l'app ; sa bibliothèque lui

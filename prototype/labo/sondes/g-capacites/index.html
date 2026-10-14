@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Sonde G</title>
+<!-- Politique de l'app sonde G : celle de Publipostage+ (script-src 'self', frame-src 'none', form-action 'none', pas de default-src). -->
+<meta http-equiv="Content-Security-Policy" content="script-src 'self'; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'">
+</head>
+<body>
+<h1>Sonde G : ce qu'une app peut faire dans son sous-cadre</h1>
+<p>Un essai par bouton ; le résultat est écrit dans <code>body[data-cap]</code>, que le labo lit.</p>
+<p>
+  <button type="button" data-test="stockage">Stockage</button>
+  <button type="button" data-test="cadreImpression">Cadre d'impression</button>
+  <button type="button" data-test="impressionDirecte">Impression directe</button>
+  <button type="button" data-test="telechargementBlob">Téléchargement (blob)</button>
+  <button type="button" data-test="telechargementData">Téléchargement (data)</button>
+  <button type="button" data-test="fenetre">Fenêtre</button>
+  <button type="button" data-test="fenetreNoopener">Fenêtre (noopener)</button>
+  <button type="button" data-test="presse">Presse-papiers</button>
+  <button type="button" data-test="plein">Plein écran</button>
+  <button type="button" data-test="chercher">fetch</button>
+</p>
+<p>
+  <a data-test="lien" href="popup.html?lien" target="_blank" rel="noopener noreferrer">Lien</a>
+  <a data-test="mailtoMeme" href="mailto:essai@example.org?subject=Essai">Mailto</a>
+  <a data-test="mailtoBlank" href="mailto:essai@example.org?subject=Essai" target="_blank">Mailto (nouvelle fenêtre)</a>
+</p>
+<p>
+  <button type="button" data-test="naviguerMeme">Naviguer (même site)</button>
+  <button type="button" data-test="naviguerAutre">Naviguer (autre site)</button>
+  <button type="button" data-test="naviguerHaut">Naviguer (le haut)</button>
+  <button type="button" data-test="naviguerParent">Naviguer (le parent)</button>
+</p>
+<script src="capacites.js"></script>
+</body>
+</html>

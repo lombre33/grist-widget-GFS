@@ -6,10 +6,10 @@ import { chromium, newLabPage, SHOTS } from './lab-common.mjs';
 
 const WIDGET = 'http://127.0.0.1:8911/prototype/index.html';
 
-export async function startLab({ lang = 'fr', colorScheme = 'light', width = 1280, height = 800, query = '', fullAccess = true, probes = false } = {}) {
+export async function startLab({ lang = 'fr', colorScheme = 'light', width = 1280, height = 800, query = '', fullAccess = true, probes = false, frameAttributes = null, patches = [] } = {}) {
   await mkdir(SHOTS, { recursive: true });
   const browser = await chromium.launch({ args: ['--no-sandbox', '--font-render-hinting=none'] });
-  const { page, context } = await newLabPage(browser, { lang, colorScheme, width, height, probes });
+  const { page, context } = await newLabPage(browser, { lang, colorScheme, width, height, probes, frameAttributes, patches });
   const gfsFrame = async (re = /./) => {
     for (let i = 0; i < 80; i++) {
       const f = page.frames().find(f => f.url().startsWith(WIDGET) && re.test(f.url()));
@@ -78,7 +78,22 @@ export async function startLab({ lang = 'fr', colorScheme = 'light', width = 128
     }
     return element.boundingBox();
   };
-  return { browser, context, page, frame, gfsFrame, appFrame, gfsReady, fitPanel, shot: (run, name) => page.screenshot({ path: join(SHOTS, `${run}-${name}.png`) }),
+  // La fenêtre « Apps et extensions » : le bouton « Apps » de l'explorateur, ou le repère au-dessus d'une app.
+  const openModules = async (target = frame) => {
+    if (await target.locator('.mod').count()) return;
+    if (await target.locator('#floater-apps').isVisible()) await target.locator('#floater-apps').click();
+    else await target.locator('.ex-title-row .tb', { hasText: /Apps/ }).click();
+    await target.locator('.mod').waitFor();
+  };
+  // Installe une app par la fenêtre (une personne : la case, puis « Ouvrir ») et rend son cadre.
+  const openApp = async (id, pattern = /./) => {
+    await frame.waitForFunction(() => document.body.dataset.gfsFirstRun === 'done', null, { timeout: 30000 }).catch(() => {});
+    await openModules();
+    await frame.locator(`[data-fk="app:${id}"]`).check();
+    await frame.locator(`[data-open="${id}"]`).click();
+    return appFrame(pattern);
+  };
+  return { browser, context, page, frame, gfsFrame, appFrame, openModules, openApp, gfsReady, fitPanel, shot: (run, name) => page.screenshot({ path: join(SHOTS, `${run}-${name}.png`) }),
     // La capture du cadre de GFS seul (le panneau), pas de la page de Grist.
     shotPanel: async (run, name, target = frame) => (await target.frameElement()).screenshot({ path: join(SHOTS, `${run}-${name}.png`) }) };
 }

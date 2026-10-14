@@ -1,0 +1,40 @@
+{
+  "contrat": 0,
+  "id": "sonde-h",
+  "nom": {
+    "fr": "Sonde H",
+    "en": "Probe H"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Essai du courtier avec le vrai script d'API de Grist",
+    "en": "Test of the broker with Grist's real API script"
+  },
+  "icone": "info",
+  "entree": "index.html",
+  "tables": {
+    "prefixe": "SondeH_"
+  },
+  "reglages": [],
+  "permissions": {
+    "acces": "full",
+    "lit": [
+      "*"
+    ],
+    "ecrit": [
+      "*"
+    ],
+    "jeton": {
+      "lectureSeule": true,
+      "pourquoi": {
+        "fr": "Essai du relais du jeton d'accès",
+        "en": "Test of the access token relay"
+      }
+    }
+  },
+  "extensions": [],
+  "actions": {
+    "ouvrir": [],
+    "choisir": []
+  }
+}

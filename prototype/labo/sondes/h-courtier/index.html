@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Sonde H</title>
+<!-- Politique de l'app sonde H : celle de Publipostage+ pour le script d'API de Grist (adresse entière, 'unsafe-eval'), rien d'autre. -->
+<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'">
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+</head>
+<body>
+<p>Sonde H : une app qui parle à Grist par le vrai script d'API, à travers le courtier de GFS. Le labo lit <code>body[data-courtier]</code> et appelle <code>window.courtier</code>.</p>
+<script src="courtier.js"></script>
+</body>
+</html>

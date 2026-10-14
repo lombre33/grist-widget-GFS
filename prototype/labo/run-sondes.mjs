@@ -10,12 +10,7 @@ await lab.fitPanel(undefined, 700, 400);
 const frame = lab.frame;
 await frame.waitForFunction(() => document.body.dataset.gfsFirstRun === 'done', null, { timeout: 30000 }).catch(() => {});
 
-const windowOpen = async () => {
-  if (await frame.locator('.mod').count()) return;
-  if (await frame.locator('#floater-apps').isVisible()) await frame.locator('#floater-apps').click();
-  else await frame.locator('.ex-title-row .tb', { hasText: /Apps/ }).click();
-  await frame.locator('.mod').waitFor();
-};
+const windowOpen = () => lab.openModules();
 const probeOf = async app => JSON.parse(await app.evaluate(() => document.body.dataset.probe || '{}'));
 const waitLoads = (app, n) => app.waitForFunction(count => { const d = document.body.dataset.probe; return d && JSON.parse(d).chargements.length >= count; }, n, { timeout: 40000 });
 const modeOf = record => (/cdn\.jsdelivr\.net/.test(record.src) ? 'CDN' : 'copie de GFS');

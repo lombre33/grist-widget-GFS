@@ -38,21 +38,53 @@ export function mirrored(url) {
 
 // Les sondes du labo (labo/sondes/) : des apps d'essai que GFS ne connaît pas. Elles entrent dans le catalogue SEULEMENT pour la page du labo qui le demande
 // (le fichier publié n'est pas modifié, les autres essais ne les voient pas) : la page reçoit un catalogue.js complété, après les apps du catalogue.
-const PROBE_FOLDERS = { a: 'a-self', b: 'b-host', c: 'c-hash', d: 'd-texte', e: 'e-blob', f: 'f-texte-ferme' };
+const PROBE_FOLDERS = { a: 'a-self', b: 'b-host', c: 'c-hash', d: 'd-texte', e: 'e-blob', f: 'f-texte-ferme', g: 'g-capacites', h: 'h-courtier' };
 export function withProbes(text) {
   const entries = Object.entries(PROBE_FOLDERS).map(([key, folder]) => `  Object.freeze({ id: 'sonde-${key}', dossier: 'labo/sondes/${folder}/', manifeste: 'labo/sondes/sonde-${key}.json' }),`);
   return text.replace('\n]);', `\n${entries.join('\n')}\n]);`);
 }
 
-export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', width = 1280, height = 800, probes = false } = {}) {
+// Les attributs `sandbox` et `allow` du sous-cadre d'une app : ceux de GFS, ou ceux d'un essai (le labo seul, pour mesurer l'effet d'un drapeau en plus ou en moins ;
+// le fichier publié n'est pas modifié).
+export function withFrameAttributes(text, { sandbox, allow } = {}) {
+  let out = text;
+  if (sandbox !== undefined) out = out.replace(/export const SANDBOX = '[^']*';/, `export const SANDBOX = '${sandbox}';`);
+  if (allow !== undefined) out = out.replace(/setAttribute\('allow', '[^']*'\)/, `setAttribute('allow', '${allow}')`);
+  return out;
+}
+
+export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', width = 1280, height = 800, probes = false, frameAttributes = null, patches = [] } = {}) {
   // L'interface de Grist reste en anglais (les gestes du labo cherchent ses libellés) ; la langue de GFS passe par l'adresse du widget (lab-setup.mjs).
   // La politique de sécurité du contenu de GFS et des apps est ENFORCÉE (LAB_BYPASS_CSP=1 pour la suspendre : un diagnostic, jamais une mesure).
   const context = await browser.newContext({ viewport: { width, height }, colorScheme, bypassCSP: process.env.LAB_BYPASS_CSP === '1', locale: 'en-US' });
   const page = await context.newPage();
   if (probes) {
-    await page.route('**/prototype/js/catalogue.js', async route => {
+    await page.route(/\/prototype\/js\/catalogue\.js(\?|$)/, async route => {
       const response = await route.fetch();
       await route.fulfill({ response, body: withProbes(await response.text()) });
+    });
+  }
+  if (frameAttributes) {
+    await page.route(/\/prototype\/js\/frames\.js(\?|$)/, async route => {
+      const response = await route.fetch();
+      await route.fulfill({ response, body: withFrameAttributes(await response.text(), frameAttributes) });
+    });
+    // `frameSrc` : la source de `frame-src` dans la politique de sécurité de la page de GFS (les adresses où un sous-cadre peut aller), pour la mesurer.
+    if (frameAttributes.frameSrc) {
+      await page.route(/\/prototype\/index\.html(\?|$)/, async route => {
+        const response = await route.fetch();
+        await route.fulfill({ response, body: (await response.text()).replace("frame-src 'self';", `frame-src ${frameAttributes.frameSrc};`) });
+      });
+    }
+  }
+  // Des fichiers de GFS remplacés pour UN essai (le labo seul, le fichier publié n'est pas touché) : `{ fichier: 'filter.js', de: texte, vers: texte }`. Sert à
+  // affaiblir une défense pour mesurer celle qui la suit (le contrôle de l'identifiant réel que Grist rend, après un jugement volontairement trop large).
+  for (const patch of patches) {
+    await page.route(new RegExp(`/prototype/js/${patch.fichier.replace('.', '\\.')}(\\?|$)`), async route => {
+      const response = await route.fetch();
+      const text = await response.text();
+      if (!text.includes(patch.de)) throw new Error(`Le labo ne retrouve pas « ${patch.de.slice(0, 40)} » dans ${patch.fichier}`);
+      await route.fulfill({ response, body: text.replace(patch.de, patch.vers) });
     });
   }
   page.on('pageerror', e => { if (process.env.LAB_CONSOLE) say('[pageerror]', e.message.slice(0, 200)); });

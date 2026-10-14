@@ -1,0 +1,27 @@
+{
+  "contrat": 0,
+  "id": "sonde-g",
+  "nom": {
+    "fr": "Sonde G",
+    "en": "Probe G"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Essai de ce qu'une app peut faire dans le sous-cadre isolé",
+    "en": "Test of what an app can do in the isolated sub-frame"
+  },
+  "icone": "info",
+  "entree": "index.html",
+  "tables": {
+    "prefixe": "SondeG_"
+  },
+  "reglages": [],
+  "permissions": {
+    "acces": "none"
+  },
+  "extensions": [],
+  "actions": {
+    "ouvrir": [],
+    "choisir": []
+  }
+}

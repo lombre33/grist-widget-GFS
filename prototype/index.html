@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Grist Factory Suite</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Politique de sécurité du contenu de GFS. Chaque ligne a son motif :
+     script-src : le code de GFS ('self'), le script d'API de Grist (adresse entière) ; 'unsafe-eval' faute de mieux, le fichier que Grist sert est un bundle de développement qui s'évalue par eval() (même raison que dans les apps) ;
+     frame-src 'self' : les apps tournent dans des sous-cadres du site de GFS, jamais d'une autre adresse ;
+     connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne. Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
+     sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
+     img-src 'self' data: ; le reste est fermé. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js; style-src 'self'; img-src 'self' data:; frame-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<link rel="stylesheet" href="css/gfs.css?v=1">
+<!-- Le routeur d'abord : il doit être enregistré avant que le script d'API de Grist n'affecte window.onmessage (contrats 1.2). -->
+<script src="js/router.js?v=1"></script>
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+<script type="module" src="js/gfs.js?v=1"></script>
+</head>
+<body data-gfs="starting">
+<main class="stage" id="stage">
+  <div class="frames" id="frames"></div>
+  <section class="idle" id="idle" hidden>
+    <h1 class="idle-title" id="idle-title"></h1>
+    <p class="idle-text" id="idle-text"></p>
+    <div class="idle-apps" id="idle-apps"></div>
+  </section>
+  <p class="status" id="status" role="status" aria-live="polite" hidden></p>
+</main>
+</body>
+</html>

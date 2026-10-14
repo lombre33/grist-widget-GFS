@@ -1,0 +1,95 @@
+{
+  "contrat": 0,
+  "id": "publipostage",
+  "nom": { "fr": "Publipostage+", "en": "Publipostage+" },
+  "version": "1.0.0",
+  "entree": "index.html",
+  "tables": { "prefixe": "Publipostage_" },
+  "fichiers": [{
+    "table": "Publipostage_Modeles",
+    "colonnes": { "id": "id", "nom": "Nom", "type": "TypeModele", "date": "DateModif", "par": "ModifiePar" },
+    "typeParDefaut": "document",
+    "types": [
+      { "valeur": "document", "nom": { "fr": "Document", "en": "Document" }, "icone": "doc", "couleur": "document" },
+      { "valeur": "grille", "nom": { "fr": "Grille", "en": "Grid" }, "icone": "grid", "couleur": "grille" },
+      { "valeur": "email", "nom": { "fr": "E-mail", "en": "Email" }, "icone": "mail" },
+      { "valeur": "macro", "nom": { "fr": "Macro-modèle", "en": "Macro template" }, "icone": "macro" }
+    ],
+    "exclure": { "TypeModele": ["reglages"] },
+    "rangement": { "table": "Publipostage_PreferencesModeles" }
+  }],
+  "reglages": ["modeleDeLaVue", "modeleSelonLigne", "droitsAcces", "dateDernierExport"],
+  "permissions": {
+    "acces": "full",
+    "lit": ["*"],
+    "ecrit": ["*"],
+    "gristInterne": [
+      {
+        "tables": ["_grist_Tables"],
+        "lit": true,
+        "pourquoi": {
+          "fr": "Connaître les tables du document et repérer celles que des règles d'accès cachent.",
+          "en": "Know the document's tables and spot those hidden by access rules."
+        }
+      },
+      {
+        "tables": ["_grist_Tables_column"],
+        "lit": true,
+        "ecrit": ["visibleCol"],
+        "pourquoi": {
+          "fr": "Connaître les colonnes et leurs types, et régler la colonne affichée d'une Référence que la galerie de modèles vient de créer.",
+          "en": "Know the columns and their types, and set the displayed column of a Reference that the template gallery has just created."
+        }
+      },
+      {
+        "tables": ["_grist_Pages"],
+        "lit": true,
+        "ecrit": ["indentation", "pagePos", "options"],
+        "pourquoi": {
+          "fr": "Ranger dans le volet des pages celles que Grist crée avec les tables du widget, et replier la page des modèles.",
+          "en": "Tidy, in the page panel, the pages Grist creates with the widget's tables, and collapse the templates page."
+        }
+      },
+      {
+        "tables": ["_grist_Views", "_grist_Views_section", "_grist_Views_section_field", "_grist_Filters"],
+        "lit": true,
+        "pourquoi": {
+          "fr": "Retrouver les sections de la page et leurs filtres pour proposer un graphique du document.",
+          "en": "Find the page's sections and their filters to offer a chart of the document."
+        }
+      }
+    ],
+    "formules": {
+      "pourquoi": {
+        "fr": "La galerie crée des colonnes à formule et la colonne affichée des Références, et l'identification de la personne lit user.Email par une formule.",
+        "en": "The gallery creates formula columns and the displayed column of References, and the person's identification reads user.Email through a formula."
+      }
+    },
+    "jeton": {
+      "lectureSeule": true,
+      "pourquoi": {
+        "fr": "Télécharger les pièces jointes du document et nommer le document par son adresse d'interface de programmation.",
+        "en": "Download the document's attachments and name the document by its API address."
+      }
+    }
+  },
+  "extensions": [
+    {
+      "id": "graphique",
+      "nom": { "fr": "Graphique", "en": "Chart" },
+      "texte": {
+        "fr": "Un graphique réglé dans Grist, posé dans un document.",
+        "en": "A chart configured in Grist, placed in a document."
+      },
+      "poids": 3400,
+      "dossier": "extensions/graphique/",
+      "pointsEntree": [{ "genre": "bouton", "id": "graphique" }]
+    }
+  ],
+  "dependances": "package.json",
+  "actions": {
+    "ouvrir": ["document", "grille", "email", "macro"],
+    "choisir": ["document", "grille"],
+    "inserer": { "produit": [], "recoit": [] }
+  }
+}

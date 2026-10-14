@@ -1,0 +1,73 @@
+/* GFS : couleurs par les jetons de la charte Grist Factory (section 1) : gris bleutés, un seul bleu d'accent, rouge et vert pour l'état seulement.
+   Thème : celui de Grist (le script d'API pose data-grist-appearance sur <html>) ; sans Grist, celui du système. */
+:root {
+  color-scheme: light;
+  --bg: #f4f6fa; --surface: #ffffff; --surface-sunken: #eef1f6;
+  --border: #dde2ea; --border-strong: #c3cad6;
+  --text: #1b2430; --text-muted: #5f6b7e;
+  --accent: #2f6fed; --accent-hover: #2558c4; --accent-solid: #2f6fed; --accent-ink: #2558c4;
+  --accent-soft: #e8f0fe; --accent-soft-border: #c7dbfd;
+  --good: #146c48; --good-soft: #e5f6ee; --good-soft-border: #bfe6d3;
+  --danger: #d84343; --danger-soft: #fbe9e9; --danger-ink: #c53030;
+  --warn-ink: #8a5300; --warn-soft: #fff4e0;
+  --scrim: rgba(15, 23, 42, .45);
+  --radius: 7px;
+  --shadow-float: 0 14px 32px -8px rgba(9, 16, 35, .35), 0 2px 8px rgba(9, 16, 35, .12);
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --z-frames: 1; --z-float: 10; --z-window: 20; --z-menu: 30; --z-toast: 40;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-grist-appearance="light"]) {
+    color-scheme: dark;
+    --bg: #171b23; --surface: #1e2430; --surface-sunken: #262e3c;
+    --border: #323b4b; --border-strong: #465166;
+    --text: #e7ecf5; --text-muted: #9aa6bb;
+    --accent: #5b91f5; --accent-hover: #74a3f7; --accent-ink: #74a3f7;
+    --accent-soft: #24324b; --accent-soft-border: #35507d;
+    --good: #6fd3a3; --good-soft: #163326; --good-soft-border: #2c5c45;
+    --danger: #f08a8a; --danger-soft: #3a2426; --danger-ink: #f08a8a;
+    --warn-ink: #f0c27a; --warn-soft: #3a2f1c;
+    --scrim: rgba(3, 6, 12, .62);
+    --shadow-float: 0 14px 32px -8px rgba(0, 0, 0, .65), 0 2px 8px rgba(0, 0, 0, .45);
+  }
+}
+:root[data-grist-appearance="dark"] {
+  color-scheme: dark;
+  --bg: #171b23; --surface: #1e2430; --surface-sunken: #262e3c;
+  --border: #323b4b; --border-strong: #465166;
+  --text: #e7ecf5; --text-muted: #9aa6bb;
+  --accent: #5b91f5; --accent-hover: #74a3f7; --accent-ink: #74a3f7;
+  --accent-soft: #24324b; --accent-soft-border: #35507d;
+  --good: #6fd3a3; --good-soft: #163326; --good-soft-border: #2c5c45;
+  --danger: #f08a8a; --danger-soft: #3a2426; --danger-ink: #f08a8a;
+  --warn-ink: #f0c27a; --warn-soft: #3a2f1c;
+  --scrim: rgba(3, 6, 12, .62);
+  --shadow-float: 0 14px 32px -8px rgba(0, 0, 0, .65), 0 2px 8px rgba(0, 0, 0, .45);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 var(--font-ui); overflow: hidden; }
+[hidden] { display: none !important; }
+
+.stage { position: relative; height: 100%; }
+.frames { position: absolute; inset: 0; z-index: var(--z-frames); }
+.app-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--surface); }
+.app-frame--hidden { visibility: hidden; }
+.app-frame--behind { visibility: hidden; }
+
+.idle { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 16px; text-align: center; }
+.idle-title { margin: 0; font-size: 18px; }
+.idle-text { margin: 0; color: var(--text-muted); max-width: 46ch; }
+.idle-apps { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+
+.status { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: var(--z-toast); margin: 0; padding: 6px 12px;
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius); box-shadow: var(--shadow-float); color: var(--text); }
+.status--bad { border-color: var(--danger); color: var(--danger-ink); }
+
+.btn { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 6px 12px; cursor: pointer; }
+.btn:hover { background: var(--surface-sunken); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn[disabled] { opacity: .55; cursor: not-allowed; }
+.btn--primary { background: var(--accent-solid); border-color: var(--accent-solid); color: #fff; }
+.btn--primary:hover { background: var(--accent-hover); }

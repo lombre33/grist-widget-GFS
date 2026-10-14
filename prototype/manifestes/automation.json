@@ -1,0 +1,15 @@
+{
+  "contrat": 0,
+  "id": "automation",
+  "nom": { "fr": "Automation+", "en": "Automation+" },
+  "version": "1.0.0",
+  "entree": "index.html",
+  "tables": { "prefixe": "Automation_" },
+  "reglages": ["workflow"],
+  "permissions": {
+    "acces": "full",
+    "lit": ["*"],
+    "ecrit": ["*"]
+  },
+  "actions": { "ouvrir": [], "choisir": [] }
+}

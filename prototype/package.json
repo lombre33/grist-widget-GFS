@@ -1,0 +1,12 @@
+{
+  "name": "gfs-prototype",
+  "private": true,
+  "type": "module",
+  "description": "Prototype du courtier de GFS (étape 2 du plan) : modules ES pour le navigateur, essayés aussi sous Node (node --test).",
+  "scripts": {
+    "test": "node --test \"test/*.test.mjs\""
+  },
+  "devDependencies": {
+    "grain-rpc": "0.1.7"
+  }
+}

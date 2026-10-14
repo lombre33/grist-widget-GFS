@@ -5,7 +5,18 @@
 (function () {
   'use strict';
   const results = {};
-  const publish = () => { document.body.dataset.cap = JSON.stringify(results); };
+  // `?hote` : la page de mesures du navigateur (labo/navigateur/) héberge la sonde et veut ses résultats ; sous GFS, rien n'est envoyé.
+  const toHost = new URLSearchParams(location.search).has('hote');
+  const publish = () => {
+    document.body.dataset.cap = JSON.stringify(results);
+    if (toHost) window.parent.postMessage({ sondeG: results }, '*');
+  };
+  // Pour une personne, la page garde les essais qu'elle peut juger à l'œil et qui ne détruisent pas le cadre ; les autres restent au labo.
+  if (toHost) {
+    for (const name of ['cadreImpression', 'fenetreNoopener', 'plein', 'chercher', 'mailtoMeme', 'naviguerMeme', 'naviguerAutre', 'naviguerHaut', 'naviguerParent']) {
+      document.querySelector(`[data-test="${name}"]`).remove();
+    }
+  }
   const describe = error => `${(error && error.name) || 'Error'} : ${String((error && error.message) || error).slice(0, 110)}`;
   const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
   const page = name => new URL(name, location.href).href;

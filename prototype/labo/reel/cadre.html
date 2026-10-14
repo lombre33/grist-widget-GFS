@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Cadre isolé de la sonde</title>
+<!-- Le cadre d'une app sous GFS (sandbox sans allow-same-origin, origine opaque) qui interroge l'API REST de Grist. connect-src https: : l'adresse de l'instance n'est connue
+     qu'à l'exécution (c'est le baseUrl du jeton) ; l'app réelle nommera la sienne dans sa politique. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; connect-src https:">
+</head>
+<body>
+<script src="rest.js?v=1"></script>
+<script src="cadre.js?v=1"></script>
+</body>
+</html>

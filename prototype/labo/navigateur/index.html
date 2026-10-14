@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Mesures du navigateur</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- La politique de GFS pour ses sous-cadres, à l'identique : frame-src 'self' (le cadre de la sonde est de ce site), rien d'autre. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-src 'self'">
+<link rel="stylesheet" href="../../css/gfs.css">
+<link rel="stylesheet" href="../mesures.css?v=1">
+</head>
+<body>
+<main>
+  <h1>Mesures du navigateur pour Grist Factory Suite</h1>
+  <p>Cette page mesure ce que ton navigateur fait des cadres isolés où GFS fait tourner les apps. Elle ne touche à aucun document Grist. Compte cinq minutes ; à la fin, copie le résultat et colle-le dans la conversation.</p>
+  <p class="note" id="ua"></p>
+
+  <h2>1. L'ordre des écouteurs (automatique)</h2>
+  <p id="ordre-verdict">Mesure en cours…</p>
+  <details><summary>Le détail</summary><table id="ordre-table"><thead><tr><th>Ce que la page enregistre, dans l'ordre</th><th>Ce que la fenêtre exécute</th></tr></thead><tbody></tbody></table></details>
+
+  <h2>2. Un cadre isolé, comme celui d'une app</h2>
+  <p>Dans le cadre ci-dessous, clique sur chaque bouton, de haut en bas. Après un essai qui doit faire quelque chose de visible (téléchargement, fenêtre, impression), réponds à la question qui lui correspond plus bas. Si ton navigateur demande une permission, accorde-la.</p>
+  <iframe class="sonde" id="sonde" title="Sonde G"></iframe>
+  <p class="note" id="attributs"></p>
+
+  <h3>Ce que le cadre a répondu (automatique)</h3>
+  <table id="reponses"><thead><tr><th>Essai</th><th>Réponse du cadre</th></tr></thead><tbody></tbody></table>
+
+  <h3>Ce que tu as vu</h3>
+  <div id="questions"></div>
+  <p class="note">Presse-papiers : après avoir cliqué sur « Presse-papiers » dans le cadre, clique ici et fais Ctrl+V (⌘V sur Mac).</p>
+  <textarea class="colle" id="colle" aria-label="Zone où coller après l'essai du presse-papiers"></textarea>
+
+  <h2>3. Envoyer le résultat</h2>
+  <div class="row"><button type="button" class="btn primary" id="copier">Copier le résultat</button><span class="note" id="copie-etat" role="status"></span></div>
+  <textarea class="rapport" id="rapport" readonly aria-label="Résultat à copier"></textarea>
+</main>
+<script type="module" src="navigateur.js?v=1"></script>
+<script src="ordre.js?v=1"></script>
+</body>
+</html>

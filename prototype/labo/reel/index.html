@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Sonde GFS pour un vrai Grist</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- script-src : le code de la sonde ('self') et le script d'API de Grist (adresse entière) ; 'unsafe-eval' comme GFS, faute de mieux (le fichier que Grist sert s'évalue).
+     connect-src https: : l'adresse de l'instance de Grist n'est connue qu'à l'exécution (c'est le baseUrl du jeton) ; la sonde n'interroge que cette adresse.
+     frame-src 'self' : le cadre isolé de la sonde est de ce site. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js; style-src 'self'; img-src 'self' data:; connect-src https:; frame-src 'self'">
+<link rel="stylesheet" href="../../css/gfs.css">
+<link rel="stylesheet" href="../mesures.css?v=1">
+<script src="rest.js?v=1"></script>
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+</head>
+<body>
+<main>
+  <h1>Sonde GFS pour un vrai Grist</h1>
+  <p>Cette sonde mesure ce que seul ton Grist peut dire à Grist Factory Suite : la lecture par jeton depuis un cadre isolé, les tables internes du document et les actions de Grist que GFS laisse passer. <strong>Utilise un document de test.</strong> Demande l'accès complet au document : accepte-le dans le panneau de droite de Grist.</p>
+  <p class="note">Instance : <span id="instance"></span></p>
+  <div class="row"><label for="version">Version de Grist (menu Aide, « À propos de Grist ») :</label> <input type="text" id="version" size="14" autocomplete="off"></div>
+
+  <h2>1. Lecture (ne modifie rien)</h2>
+  <div class="row"><button type="button" class="btn primary" id="lecture-lancer">Lancer la lecture</button></div>
+  <table id="lecture"><thead><tr><th>Mesure</th><th>Réponse</th></tr></thead><tbody></tbody></table>
+
+  <h2>2. Écriture dans une table d'essai</h2>
+  <p>Crée une table d'essai dans ce document, joue dessus les actions de Grist que GFS laisse passer, puis la supprime. Une confirmation te sera demandée.</p>
+  <div class="row"><button type="button" class="btn" id="ecriture-lancer">Écrire dans une table d'essai…</button></div>
+  <table id="ecriture"><thead><tr><th>Action</th><th>Réponse</th></tr></thead><tbody></tbody></table>
+
+  <h2>3. Envoyer le résultat</h2>
+  <p>Le texte ne contient ni le jeton ni l'identifiant du document.</p>
+  <div class="row"><button type="button" class="btn primary" id="copier">Copier le résultat</button><span class="note" id="copie-etat" role="status"></span></div>
+  <textarea class="rapport" id="rapport" readonly aria-label="Résultat à copier"></textarea>
+</main>
+
+<dialog id="consent" aria-labelledby="consent-titre">
+  <h2 id="consent-titre">Écrire dans ce document ?</h2>
+  <p>La sonde va créer dans ce document une table d'essai (« Sonde_GFS_essai », avec une page), jouer dessus une vingtaine d'actions de Grist, puis la supprimer. Les autres tables ne sont pas touchées.</p>
+  <p>Ne le fais que dans un document de test.</p>
+  <div class="row"><button type="button" class="btn" id="consent-non">Annuler</button><button type="button" class="btn primary" id="consent-oui">Créer la table d'essai et lancer</button></div>
+</dialog>
+<script type="module" src="reel.js?v=1"></script>
+</body>
+</html>

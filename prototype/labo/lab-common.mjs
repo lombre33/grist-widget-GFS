@@ -82,13 +82,15 @@ export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', 
       });
     }
   }
-  // Des fichiers de GFS remplacés pour UN essai (le labo seul, le fichier publié n'est pas touché) : `{ fichier: 'filter.js', de: texte, vers: texte }`. Sert à
-  // affaiblir une défense pour mesurer celle qui la suit (le contrôle de l'identifiant réel que Grist rend, après un jugement volontairement trop large).
+  // Des fichiers de GFS remplacés pour UN essai (le labo seul, le fichier publié n'est pas touché) : `{ fichier: 'filter.js', de: texte, vers: texte }` pour un module de js/,
+  // `{ chemin: '/prototype/labo/reel/index.html', de, vers }` pour tout autre fichier du dépôt. Sert à affaiblir une défense pour mesurer celle qui la suit (le contrôle
+  // de l'identifiant réel que Grist rend, après un jugement volontairement trop large), ou à ouvrir une adresse de test dans la politique d'une page de mesure.
   for (const patch of patches) {
-    await page.route(new RegExp(`/prototype/js/${patch.fichier.replace('.', '\\.')}(\\?|$)`), async route => {
+    const path = patch.chemin || `/prototype/js/${patch.fichier}`;
+    await page.route(new RegExp(`${path.replace(/\./g, '\\.')}(\\?|$)`), async route => {
       const response = await route.fetch();
       const text = await response.text();
-      if (!text.includes(patch.de)) throw new Error(`Le labo ne retrouve pas « ${patch.de.slice(0, 40)} » dans ${patch.fichier}`);
+      if (!text.includes(patch.de)) throw new Error(`Le labo ne retrouve pas « ${patch.de.slice(0, 40)} » dans ${path}`);
       await route.fulfill({ response, body: text.replace(patch.de, patch.vers) });
     });
   }

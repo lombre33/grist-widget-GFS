@@ -10,8 +10,9 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
 - **Dès maintenant, sans attendre GFS**, treize règles qui ne coûtent presque rien et évitent de la dette (section 1.1).
 - **Pour Publipostage+, une seule chose est urgente** : la garde « type inconnu », avant que quiconque écrive un nouveau
   type de modèle dans sa table (section 2.2).
-- **Quand GFS arrive** : le kit en sous-module, le manifeste `gfs.json`, la liste unique des bibliothèques, le contexte et
-  le stockage par le kit, les extensions (section 1.2).
+- **Quand GFS arrive** : le kit en sous-module, le manifeste `gfs.json`, la liste unique des bibliothèques natives, le
+  contexte et le stockage par le kit, les extensions, dont la bibliothèque n'est plus dans le dépôt de l'app mais portée par
+  GFS (section 1.2).
 
 ---
 
@@ -38,11 +39,14 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
    remplacerait l'écoute du script d'API de Grist (`grist-plugin-api.ts`, ligne 520) et couperait l'app de Grist.
 8. **Tables internes de Grist** (`_grist_*`) : aucune écriture sans une raison écrite. Elle devra être déclarée dans le
    manifeste, sinon le courtier la refusera.
-9. **Une bibliothèque nouvelle** : une version exacte, inscrite dans la liste de l'app, chargée au premier usage si elle est
-   lourde. Jamais de lien CDN non figé.
+9. **Une bibliothèque nouvelle** : si l'app ne marche pas seule sans elle (native), une version exacte, inscrite dans la
+   liste de l'app, chargée au premier usage si elle est lourde, jamais par un lien CDN non figé. Si c'est celle d'une
+   extension (non native), elle ne s'inscrit ni dans la liste, ni dans l'import map, ni dans la CSP de l'app : l'extension
+   dit seulement l'identifiant et la version exacte qu'elle exige, et GFS porte le reste (cahier 4.7).
 10. **Une fonction lourde nouvelle naît comme une extension** : son code dans un dossier à part, atteint seulement à son
     premier usage ; ses points d'entrée (bouton, ligne de menu, type, export) déclarés à un seul endroit ; le grisé dessiné
-    par le socle, pas par chaque point d'entrée (cahier 4.6).
+    par le socle, pas par chaque point d'entrée (cahier 4.6). Le code de la fonction reste dans l'app ; sa bibliothèque lui
+    vient de GFS, par un seul point d'accès dans l'extension (règle 9).
 11. **CSP stricte** : une adresse s'ajoute à la politique de sécurité de la page consciemment, avec ce qu'elle sert à faire.
 12. **La charte Grist Factory** (cahier 3.4 ; `contexte/charte-ui-ux-grist-factory.md`, section 1).
 13. **Ne jamais écrire** qu'activer ou cocher un module rend l'app plus sûre.
@@ -53,10 +57,12 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
    l'interface : accès à Grist, traduction, jetons et thème, fenêtres, liste avec recherche, couches, consentement des
    tables, rappel « Enregistrer ».
 2. Écrire `gfs.json` à la racine du dépôt (cahier 5.1).
-3. Passer à la liste unique (`package.json` à la racine, versions exactes) et à l'outil du kit qui en tire import map, CSP,
-   empreintes, miroir des tests et version vendorisée ; activer Dependabot (`npm`).
+3. Passer à la liste unique des bibliothèques natives (`package.json` à la racine, versions exactes) et à l'outil du kit qui
+   en tire import map, CSP, empreintes, miroir des tests et version vendorisée ; activer Dependabot (`npm`). Celles des
+   extensions n'y sont pas : elles sont à GFS.
 4. Passer le contexte et le stockage par le client du courtier du kit (avec ses replis quand l'app est seule).
-5. Ranger les fonctions lourdes dans `extensions/`, avec le registre et le grisé du kit.
+5. Ranger les fonctions lourdes dans `extensions/`, avec le registre et le grisé du kit, et retirer leurs bibliothèques de la
+   liste, de l'import map et de la CSP de l'app : GFS les porte.
 6. Montrer, dans l'app seule, la fenêtre du grisé (section 5).
 7. Ajouter les tests du contrat (section 4) et vérifier avec l'outil d'audit que `extensions/` n'est pas compté dans la
    surface de l'app seule.
@@ -101,23 +107,27 @@ ligne 330 ; seul `macro` a sa branche, ligne 270) et peut devenir le modèle de 
 
 - aucune définition nouvelle dans les réglages de la vue ; une clé nouvelle prend le préfixe `pp_`, celui des clés du
   navigateur (défaut pris ici, à changer si le porteur préfère un autre préfixe) ;
-- une bibliothèque nouvelle s'inscrit, comme aujourd'hui, dans l'import map, dans la CSP et dans
-  `dev-tests/.offline-cache/package.json` (la liste unique viendra à l'étape 4) ;
+- une bibliothèque nouvelle dont l'app a besoin pour marcher seule s'inscrit, comme aujourd'hui, dans l'import map, dans la
+  CSP et dans `dev-tests/.offline-cache/package.json` (la liste unique viendra à l'étape 4) ; celle d'une extension ne
+  s'y inscrit pas, GFS la porte (règle 9) ;
 - aucune lecture nouvelle de `document.referrer` ;
 - les fonctions lourdes à venir (diapositives, temps réel, formats Office) naissent en extensions, et le graphique en est le
-  pilote quand le porteur dit go.
+  pilote : sa consigne est posée (`consignes/publipostage/`), Plotly quitte alors la liste et la CSP de l'app.
 
 ### 2.3 Quand GFS arrive
 
 - **Kit** : Publipostage+ est la source du kit ; elle devient ensuite cliente de son propre code extrait, en rejouant ses
   tests à chaque remplacement (non-régression stricte).
-- **Liste unique** : `package.json` à la racine, tiré de `dev-tests/.offline-cache/package.json` (45 paquets aujourd'hui) ;
-  l'outil du kit régénère l'import map et la CSP d'`index.html`, les empreintes et le miroir des tests.
+- **Liste unique** : `package.json` à la racine, tiré de `dev-tests/.offline-cache/package.json` (45 paquets aujourd'hui,
+  dont Plotly, qui passe à la liste de GFS avec le graphique) ; l'outil du kit régénère l'import map et la CSP
+  d'`index.html`, les empreintes et le miroir des tests.
 - **Où est Grist** : `fixBaseUrl` (`js/grist-api.js`, lignes 930 à 944) lit `document.referrer` pour corriger une instance
   auto-hébergée mal réglée. Dans GFS, le référent est l'adresse de GFS : la fonction passe par le kit.
 - **Stockage** : les clés `pp_*` (liste `STORED` de `outils/depot-propre/controles.mjs`) passent par le stockage du kit.
 - **Manifeste** : `gfs.json`, d'après l'exemple du cahier (5.1).
-- **Extensions** : le graphique dans `extensions/graphique/` (pilote), puis diapositives, temps réel, formats Office.
+- **Extensions** : le graphique dans `extensions/graphique/` (pilote), puis diapositives, temps réel, formats Office. Leur
+  code reste dans l'app ; leur bibliothèque est à GFS : l'entrée du manifeste dit l'identifiant et la version exacte qu'elles
+  exigent, rien de plus (contrats 2.6).
 - **Publication** : l'outil d'envoi (`outils/depot-propre/`) publie `gfs.json`, `extensions/` et la référence au kit ; la
   carte du code gagne une ligne par extension.
 
@@ -151,6 +161,8 @@ ligne 330 ; seul `macro` a sa branche, ligne 270) et peut devenir le modèle de 
 - **Données** : aucune écriture d'une colonne absente (rejoué avec une table à qui il manque une colonne).
 - **Réglages** : l'app n'écrit que les clés de son manifeste, et jamais sans un geste.
 - **Stockage** : l'app démarre et marche quand `localStorage` lève une erreur.
+- **Bibliothèques d'extension** : ni la liste, ni l'import map, ni la CSP de l'app ne nomment la bibliothèque d'une de ses
+  extensions (garde de code, comme `codeHygiene`).
 - **Contexte et messages** : aucune lecture de `document.referrer` hors de la fonction prévue, aucun `window.onmessage =`
   (gardes de code, comme le groupe `codeHygiene` de Publipostage+).
 - **Aller-retour** : seule, puis GFS, puis seule, sans perte, dans un vrai Grist (dès que GFS v0 existe).

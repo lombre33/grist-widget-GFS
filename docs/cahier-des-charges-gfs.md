@@ -22,14 +22,15 @@ Il sert à deux équipes :
 3. **GFS référence le dépôt de chaque app à un commit précis** (sous-module Git) : aucune copie. Dependabot propose
    d'avancer la référence quand l'app avance.
 4. **Bibliothèques : CDN par défaut, version vendorisée pour les RSSI qui l'exigent.** Les deux se fabriquent depuis une
-   seule liste par app, que Dependabot surveille pour les failles.
+   liste que Dependabot surveille pour les failles : celle de l'app pour ses bibliothèques natives, celle de GFS pour les
+   bibliothèques non natives, que GFS porte seul pour que les dépôts des apps restent propres.
 5. **Le gain de sécurité vient de l'isolement** : chaque app tourne dans un sous-cadre sans `allow-same-origin`, et GFS,
    seul à parler à Grist, ne laisse passer que ce que le manifeste de l'app autorise.
 6. **Interopérables par la donnée et par des contrats écrits** (manifeste `gfs.json`, actions « ouvrir », « choisir »,
    « insérer », « fermer »), jamais en important le code d'une app dans une autre.
 7. **Aller-retour sans perte** entre une app seule et GFS : on change l'adresse dans le champ du panneau de droite de Grist
    (jamais par la galerie), les définitions vivent dans des tables, le contenu inconnu reste intact.
-8. **Ordre** : contrats, prototype du courtier, kit commun, liste unique des bibliothèques, apps prêtes, GFS v0, puis
+8. **Ordre** : contrats, prototype du courtier, kit commun, listes des bibliothèques, apps prêtes, GFS v0, puis
    extensions et nouvelles apps. Chaque étape se livre seule (section 10).
 
 ---
@@ -77,7 +78,7 @@ Slides+ (`lombre33/SlidesPlus`) n'est pas une app de GFS : les diapositives devi
 - **Kit** : le code commun aux apps et à GFS (accès à Grist, traduction, jetons de la charte, fenêtres, liste avec
   recherche, empilement des couches, client du courtier…), versionné, sans bibliothèque tierce.
 - **Extension** : une fonction d'une app qui demande une bibliothèque lourde (graphique, diapositives, temps réel,
-  PowerPoint). Son code vit dans le dépôt de l'app ; elle n'est active que dans GFS.
+  PowerPoint). Son code vit dans le dépôt de l'app ; sa bibliothèque est portée par GFS ; elle n'est active que dans GFS.
 - **Courtier** : la partie de GFS qui relaie l'API de Grist entre Grist et l'app active, et la filtre.
 - **Sous-cadre** : l'iframe dans laquelle GFS fait tourner une app.
 - **Manifeste** : le fichier `gfs.json` d'une app, qui dit ce qu'elle possède, ce qu'elle demande et ce qu'elle offre.
@@ -85,6 +86,9 @@ Slides+ (`lombre33/SlidesPlus`) n'est pas une app de GFS : les diapositives devi
   dans son interface.
 - **Mode CDN, mode vendorisé** : les bibliothèques chargées depuis un CDN (le défaut) ou servies avec l'app (pour un RSSI
   qui interdit les CDN).
+- **Bibliothèque native, non native** : une bibliothèque est native quand l'app ne marche pas seule sans elle (l'éditeur,
+  les exports) ; elle reste dans l'app, dans la liste de l'app. Elle est non native quand c'est celle d'une extension (Plotly
+  pour le graphique) : GFS la porte, avec sa liste, son chargement, sa CSP, ses empreintes et sa version vendorisée.
 - **Adresse** : l'URL d'un widget, celle qu'on écrit dans le champ du panneau de droite de Grist.
 
 ---
@@ -96,7 +100,8 @@ Slides+ (`lombre33/SlidesPlus`) n'est pas une app de GFS : les diapositives devi
 | Une app = un dépôt public complet, qui tourne seule | 14/10 | Audit possible app par app |
 | GFS **référence** le dépôt de chaque app, sans copie figée (« du code dupliqué, plus de maintenance ») | 14/10, 11 h 14 | Sous-modules Git à un commit précis |
 | Pas « tout vendoriser » : une copie dont personne ne corrige la faille | 14/10, 11 h 15 | Pas de copie permanente des bibliothèques dans GFS |
-| **CDN par défaut ; version vendorisée si le RSSI d'un client l'exige** | 14/10, 11 h 15 | Les deux modes depuis une seule liste par app |
+| **CDN par défaut ; version vendorisée si le RSSI d'un client l'exige** | 14/10, 11 h 15 | Les deux modes depuis une liste : celle de l'app (natives) ou celle de GFS (non natives, ligne suivante) |
+| **GFS porte la partie dépendance des bibliothèques non natives** : « les dépôts des apps doivent rester clean ». Le code d'une fonction (la façon dont Publipostage+ gère ses graphiques) reste dans l'app ; la bibliothèque (Plotly), son chargement, sa CSP, sa liste et ses empreintes sont à GFS | 14/10 | Section 4.7 ; le dépôt d'une app n'a ni la liste, ni l'import map, ni la CSP d'une bibliothèque d'extension. Défaut pris : l'éditeur et les exports, sans lesquels l'app ne marche pas seule, gardent leurs bibliothèques dans l'app |
 | Une fonction dont la dépendance n'est pas activée est grisée, et un clic explique comment passer à l'adresse de GFS | 14/10 | Texte commun du grisé (guide des apps, section 5) |
 | On passe d'une app seule à GFS et on revient sans perte de données | 14/10 | Section 7 |
 | GFS charge l'app sans changer l'adresse du widget | 14/10 | Sous-cadre servi depuis le site de GFS |
@@ -147,7 +152,8 @@ Numérotées pour que les tests les citent (« 3.1, point 4 »).
 3. GFS ne charge jamais de code depuis une adresse lue dans des réglages, une table ou un message : le code des apps vient
    des sous-modules publiés avec GFS.
 4. Une app ne peut changer ni l'accès de la section, ni les réglages des autres apps, ni ses propres permissions.
-5. Toute bibliothèque tierce figure dans la liste de son app, à une version exacte, avec son empreinte quand le CDN le permet.
+5. Toute bibliothèque tierce figure dans une liste, à une version exacte, avec son empreinte quand le CDN le permet : celle
+   de son app si elle est native, celle de GFS si elle est non native (4.7).
 6. GFS et chaque app ont une politique de sécurité du contenu (CSP) stricte.
 7. Aucune page de démonstration ni de test n'est publiée sur l'origine de production.
 8. Le courtier reste petit (quelques centaines de lignes), sans bibliothèque, couvert par ses propres tests.
@@ -160,9 +166,11 @@ Numérotées pour que les tests les citent (« 3.1, point 4 »).
    code, fonction de 81 lignes ou plus, complexité au-dessus de 15 (`faits-verifies.md`).
 2. Le code d'une extension n'est pas atteint depuis la page d'entrée de l'app seule (à vérifier avec l'outil, section 9).
 3. Aucune duplication entre dépôts : ce qui sert à deux apps va dans le kit.
-4. Une seule liste des bibliothèques par app. Import map, CSP, empreintes, miroir des tests et version vendorisée en sont
-   tirés par un outil, jamais tenus à la main.
-5. Dependabot surveille la liste de chaque app (`npm` : versions et failles) et les sous-modules (`gitsubmodule` : versions).
+4. Une seule liste des bibliothèques natives par app, et la liste de GFS pour les non natives. Import map, CSP, empreintes,
+   miroir des tests et version vendorisée en sont tirés par un outil, jamais tenus à la main. Le dépôt d'une app ne garde
+   rien d'une bibliothèque d'extension : ni liste, ni import map, ni CSP.
+5. Dependabot surveille la liste de chaque app et celle de GFS (`npm` : versions et failles), et les sous-modules
+   (`gitsubmodule` : versions).
 6. Un audit clone avec `--recurse-submodules`.
 
 ### 3.4 Interface (charte Grist Factory)
@@ -204,16 +212,18 @@ avant toute interface. L'essentiel :
 ```
 Kit commun ........ versionné, sans bibliothèque tierce
   référencé (sous-module) par
-Apps .............. une par dépôt public, complète, autonome ; une liste unique de ses bibliothèques
-  + Extensions .... fonctions à bibliothèque lourde, dans le dossier extensions/ de leur app
+Apps .............. une par dépôt public, complète, autonome ; une liste unique de ses bibliothèques natives
+  + Extensions .... fonctions à bibliothèque lourde : code dans extensions/ de leur app, bibliothèque à GFS
   référencées (sous-modules) par
-GFS ............... courtier, explorateur, installation, références aux versions des apps
+GFS ............... courtier, explorateur, installation, références aux versions des apps ; porte les bibliothèques non natives
 ```
 
 - Le kit n'importe rien. Une app importe le kit, jamais une autre app. Une extension importe son app et le kit, jamais une
   autre extension.
 - GFS importe le kit et référence les apps ; il ne charge leur code que dans des sous-cadres.
 - Une app seule, c'est son socle natif. Ses extensions ne s'activent que dans GFS.
+- **Le code d'une fonction reste dans l'app, la bibliothèque non native est à GFS** (décision du 14/10) : le dépôt d'une app
+  reste propre et auditable, sans la liste, l'import map ni la CSP de la bibliothèque d'une extension (4.7).
 
 ### 4.2 Dépôts, adresses et publication
 
@@ -307,7 +317,7 @@ commencer, ou un sous-cadre gardé ouvert et caché (question 4, section 12).
 
 | Extension | App | Où on en est (14/10) |
 |---|---|---|
-| Graphique | Publipostage+ | Existe : ≈ 820 lignes, 3 fichiers, Plotly chargé au premier graphique ; 4 fichiers le citent. **C'est le pilote.** |
+| Graphique | Publipostage+ | Existe : ≈ 820 lignes, 3 fichiers ; 4 fichiers le citent. Plotly, chargé au premier graphique, passe à GFS (4.7). **C'est le pilote.** |
 | Diapositives (type « présentation ») | Publipostage+ | Conçu : une diapositive est une page 16:9 du même éditeur, bande de miniatures, « Présenter », « Réutiliser » (`contexte/etude-slides-explorateur-parcours-2026-10-12.md`, sections 3 et 4) |
 | Écriture en temps réel | Publipostage+ | Essai isolé en ligne (`prototypes/edition-live/` du dépôt) : TipTap et Yjs, transport par une table Grist, ≈ 90 ms d'un cadre à l'autre ; impact : `contexte/edition-live-impact-2026-10-13.md` |
 | PowerPoint et formats Office | Publipostage+ | À l'étude : cadres libres d'abord ; import par le convertisseur d'OnlyOffice en WebAssembly (licence AGPL à lire) ; étude sur cinq vraies présentations proposée |
@@ -315,17 +325,33 @@ commencer, ou un sous-cadre gardé ouvert et caché (question 4, section 12).
 - Une extension **déclare ses points d'entrée** (bouton, ligne de menu, type de fichier, export) ; le socle de l'app dessine
   le grisé. Un seul code pour tous : dans la maquette du 12/10, une seule extension absente touche huit endroits.
 - Absente, une extension ne fait rien disparaître : ce qu'elle a créé reste enregistré et s'affiche grisé.
+- **Le code d'une extension reste dans le dépôt de son app ; sa bibliothèque est portée par GFS** (4.7). L'extension la reçoit
+  de GFS quand elle est active, et ne la nomme ni dans la liste, ni dans l'import map, ni dans la CSP de l'app.
 
 ### 4.7 Dépendances : CDN par défaut, vendorisé pour les RSSI
 
-- **Une seule liste par app** : un `package.json` à la racine, versions exactes. Pour Publipostage+, elle existe déjà
-  (`dev-tests/.offline-cache/package.json`, 45 paquets) mais elle est tenue à la main à côté de l'import map et de la CSP.
-- **Un outil du kit en tire** : les adresses CDN et leurs empreintes SRI, l'import map, la CSP du mode CDN, le miroir des
-  tests, et la **version vendorisée** (fichiers téléchargés, empreintes vérifiées, licences listées dans `NOTICE`, CSP
-  `script-src 'self'`). Les fichiers produits sont commités : la page servie n'a besoin d'aucune construction.
+- **Deux listes, aucune copie permanente.** Celle de l'**app** : un `package.json` à la racine, versions exactes, pour ses
+  bibliothèques natives. Celle de **GFS** : les bibliothèques non natives, celles des extensions. Pour Publipostage+, la liste
+  de l'app existe déjà (`dev-tests/.offline-cache/package.json`, 45 paquets), tenue à la main à côté de l'import map et de la
+  CSP ; Plotly, la bibliothèque du graphique, en sort et passe à la liste de GFS.
+- **La partie dépendance d'une extension est à GFS** (décision du porteur, 14/10, pour que les dépôts des apps restent
+  propres et auditables). L'extension déclare dans son entrée du manifeste ce que son code exige (un identifiant et une
+  version exacte, par exemple `plotly` 2.13.2) ; GFS tient la liste, les adresses CDN et leurs empreintes, la CSP qui les
+  concerne et la version vendorisée, et donne à l'extension active la source à charger. Le code qui se sert de la
+  bibliothèque (la façon dont Publipostage+ gère ses graphiques) reste dans l'app. L'app n'a pas à connaître l'adresse.
+- **Natif ou non** : une bibliothèque est native quand l'app ne marche pas seule sans elle. Défaut pris, à confirmer par le
+  porteur : l'éditeur et les exports restent natifs, avec leurs bibliothèques dans la liste de l'app.
+- **Un outil en tire** : les adresses CDN et leurs empreintes SRI, l'import map, la CSP du mode CDN, le miroir des tests, et
+  la **version vendorisée** (fichiers téléchargés, empreintes vérifiées, licences listées dans `NOTICE`, CSP
+  `script-src 'self'`). L'outil du kit le fait pour la liste d'une app, celui de GFS pour la liste de GFS. Les fichiers
+  produits sont commités : la page servie n'a besoin d'aucune construction.
 - **La version vendorisée** se fabrique à chaque version, jamais retouchée à la main. Elle se livre en archive à héberger
   chez soi, ou à une adresse à part ; jamais comme deuxième page d'entrée du même dépôt public (l'outil d'audit
-  additionnerait les deux).
+  additionnerait les deux). Pour les bibliothèques de GFS, elle se fabrique de même depuis la liste de GFS, jamais comme une
+  copie permanente de son dépôt.
+- **Le choix CDN ou vendorisé d'une extension se fait dans GFS**, à son activation (V0.2 du prototype). Comment le sous-cadre
+  reçoit la source, et comment sa CSP l'autorise en CDN comme en vendorisé sans nommer la bibliothèque dans le dépôt de l'app,
+  se fixe au prototype (question 11, section 12) ; le défaut à essayer est écrit dans les contrats (2.6 et 5.2).
 - **Une faille** se corrige pareil dans les deux modes : en changeant de version dans la liste, puis l'outil régénère tout.
   Dependabot (`npm`) donne les alertes et propose les mises à jour de sécurité.
 - **esm.sh** reste l'exception du mode CDN : il reconstruit ses fichiers, aucune empreinte n'y est possible, et c'est là que
@@ -342,7 +368,7 @@ updates:
   - package-ecosystem: "gitsubmodule"   # avance les références aux apps et au kit
     directory: "/"
     schedule: { interval: "weekly" }
-  - package-ecosystem: "npm"            # liste des bibliothèques de GFS, s'il en a une
+  - package-ecosystem: "npm"            # liste des bibliothèques non natives, portée par GFS
     directory: "/"
     schedule: { interval: "weekly" }
 ```
@@ -368,8 +394,8 @@ de Grist, que l'outil d'audit lit comme des pages d'entrée.
 | `fichiers` | Pour chaque table de fichiers : la table, les colonnes (identifiant, nom, type, dossier, date), les types (valeur, nom, icône, famille de couleur) et les lignes à exclure (lignes réservées) |
 | `reglages` | Les clés de réglages de la vue que l'app lit et écrit |
 | `permissions` | Accès demandé ; tables lues ; tables écrites ; tables `_grist_*` écrites, avec la raison |
-| `extensions` | Pour chacune : identifiant, nom, texte, poids, dossier, points d'entrée |
-| `dependances` | Le chemin de la liste des bibliothèques (`package.json`) |
+| `extensions` | Pour chacune : identifiant, nom, texte, poids, dossier, points d'entrée, bibliothèques exigées (identifiant et version exacte, sans adresse : elles sont à GFS) |
+| `dependances` | Le chemin de la liste des bibliothèques natives de l'app (`package.json`) |
 | `actions` | Ce que l'app accepte : « ouvrir » (types), « choisir » (types qu'elle sait montrer), « insérer » (ce qu'elle sait produire et recevoir) |
 
 Exemple pour Publipostage+, d'après son code au 14/10 (`main` 92ecd58) :
@@ -402,7 +428,10 @@ Exemple pour Publipostage+, d'après son code au 14/10 (`main` 92ecd58) :
     "gristInterne": [{ "table": "_grist_Tables_column", "pourquoi": "colonne affichée d'une Référence créée par la galerie" }]
   },
   "extensions": [
-    { "id": "graphique", "nom": { "fr": "Graphique", "en": "Chart" }, "dossier": "extensions/graphique/" }
+    {
+      "id": "graphique", "nom": { "fr": "Graphique", "en": "Chart" }, "dossier": "extensions/graphique/",
+      "bibliotheques": [{ "id": "plotly", "version": "2.13.2" }]
+    }
   ],
   "dependances": "package.json",
   "actions": { "ouvrir": ["document", "grille", "email", "macro"], "choisir": ["document", "grille"], "inserer": [] }
@@ -584,7 +613,7 @@ Un test de bout en bout le vérifie dans un vrai Grist, pour chaque app : seule,
 |---|---|
 | Tout le code du cadre de GFS a l'accès accordé, souvent « complet » | Sous-cadres isolés ; courtier qui filtre d'après le manifeste ; accès minimal déclaré par app |
 | Du code qui change sans que GFS le voie | Références à un commit (sous-modules), avancées par une demande relue ; aucune adresse de code lue dans des réglages, des tables ou des messages |
-| Bibliothèques tierces | Liste unique, versions exactes, empreintes SRI ; Dependabot ; version vendorisée pour les RSSI ; esm.sh remplacé à terme par un fichier figé |
+| Bibliothèques tierces | Une liste par propriétaire (l'app pour ses bibliothèques natives, GFS pour celles des extensions), versions exactes, empreintes SRI ; Dependabot ; version vendorisée pour les RSSI ; esm.sh remplacé à terme par un fichier figé |
 | Une seule origine pour tous les sites d'un compte GitHub (`lombre33.github.io`, `grist-factory.github.io`) : des pages de même origine partagent le stockage et, dans des cadres voisins, peuvent agir l'une sur l'autre | Sous-cadres sans `allow-same-origin` ; stockage par app ; aucune page de démonstration ni de test sur l'origine de production ; un domaine par app seulement si un audit l'exige |
 | Écriture des tables internes de Grist (`_grist_*`) | Refusée par défaut ; déclarée et justifiée dans le manifeste (Form+ écrit `_grist_Views_section` ; Publipostage+ une fois `_grist_Tables_column`) |
 | Apps sans CSP (Form+, Grist-BI) | Gabarit de CSP du kit, appliqué partout |
@@ -606,7 +635,8 @@ faux Grist écrit par nous.
 3. Impression, téléchargements (`<a download>` de Publipostage+), fenêtres surgissantes et liens `mailto:`, presse-papiers,
    plein écran, dans un sous-cadre isolé.
 4. La CSP de l'app (`'self'`, CDN) et les modules ES dans un sous-cadre à origine opaque ; l'import map d'esm.sh ; la CSP de
-   GFS lui-même (`frame-src 'self'` pour ses sous-cadres).
+   GFS lui-même (`frame-src 'self'` pour ses sous-cadres) ; la bibliothèque d'une extension (Plotly) reçue de GFS par adresse
+   et empreinte, en CDN comme en vendorisé, avec une CSP de l'app qui ne la nomme pas (question 11).
 5. Le stockage du navigateur indisponible en origine opaque : comportement des apps, stockage fourni par le courtier.
 6. L'API REST de Grist par jeton (`getAccessToken`, pièces jointes) depuis un sous-cadre isolé. D'après le code de Grist,
    une origine non reconnue, `null` compris, reçoit `Access-Control-Allow-Origin: *` sans identifiants : le jeton passé dans
@@ -630,7 +660,7 @@ Chaque étape se livre seule, avec ses tests, et attend le go du porteur avant l
 | 1 | Contrats | `docs/contrats.md` dans le dépôt de GFS : manifeste, actions, données, réglages, contexte, stockage, protocole du courtier | GFS | Le porteur l'a relu et a dit go |
 | 2 | Prototype du courtier | `prototype/` et le rapport de la section 9 | GFS | Les dix points mesurés ; isolement décidé |
 | 3 | Kit commun v0 | Dépôt du kit, première étiquette ; Automation+ le référence | GFS, puis Automation+ | Automation+ tourne avec le kit, sans copie de fenêtres, traduction, thème ni jetons |
-| 4 | Liste unique des bibliothèques | L'outil (dans le kit) ; `package.json` de Publipostage+ ; Dependabot activé | GFS (outil), Publipostage+ (adoption) | Import map, CSP, empreintes et miroir des tests régénérés à l'identique depuis la liste |
+| 4 | Listes des bibliothèques | L'outil (dans le kit) ; `package.json` de Publipostage+ ; la liste de GFS pour les bibliothèques d'extensions ; Dependabot activé | GFS (outil, liste), Publipostage+ (adoption) | Import map, CSP, empreintes et miroir des tests régénérés à l'identique depuis la liste |
 | 5 | Apps prêtes pour GFS | Garde « inconnu » ; définitions en tables ; contexte et stockage par le kit ; `gfs.json` | Chaque app (guide des apps) | L'aller-retour seule, GFS, seule passe dans un vrai Grist |
 | 6 | GFS v0 | Références aux apps, courtier, explorateur, installation, texte du grisé | GFS | Exigences 3.1 à 3.3 couvertes par des tests ; audit de GFS sous les seuils |
 | 7 | Extensions et nouvelles apps | Graphique (pilote), diapositives, temps réel, formats Office ; Dashboard, Thusday | Publipostage+, nouvelles apps | Chacune avec son étude et le go du porteur |
@@ -667,6 +697,7 @@ fait passer par le porteur.
 | 8 | Couleurs des types des autres apps | Étape 6 | Neutres tant qu'il ne les demande pas |
 | 9 | Où retenir les apps installées : réglages de la section, ou une table pour tout le document ? | Étape 1 | Réglages de la section, avec le rappel « Enregistrer » ; une table seulement si le réglage doit valoir pour tout le document |
 | 10 | Les quatre choix de parcours (6.7) | Étape 6 | Les défauts pris |
+| 11 | Comment le sous-cadre reçoit la bibliothèque d'une extension (Plotly), comment sa CSP l'autorise en CDN comme en vendorisé sans que le dépôt de l'app la nomme, et où se retient le choix CDN ou vendorisé | V0.2 du prototype | Adresse et empreinte données par GFS, chargées par l'extension (contrats 5.2) ; la CSP se mesure d'abord |
 
 ---
 

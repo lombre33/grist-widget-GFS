@@ -22,7 +22,8 @@ Dans ces documents, `contexte/`, `maquettes/` et `outils/` désignent des dossie
 
 - Une app = un dépôt public complet, qui tourne seule. GFS **référence** chaque app à un commit (sous-module), sans copie.
 - Bibliothèques : **CDN par défaut**, version vendorisée seulement si le RSSI d'un client l'exige ; les deux depuis une
-  seule liste par app. Pas « tout vendoriser ».
+  liste : celle de l'app pour ses bibliothèques natives, celle de GFS pour les non natives (celles des extensions, que GFS
+  porte : le dépôt d'une app n'en garde ni liste, ni import map, ni CSP). Pas « tout vendoriser ».
 - Isolement : une app par sous-cadre, sans `allow-same-origin` ; GFS est le seul à parler à Grist.
 - Interopérabilité par la donnée et par des contrats écrits, jamais par l'import du code d'une app dans une autre.
 - Fonctions sans leur extension : grisées, jamais cachées ; un clic explique comment passer à GFS (changer l'adresse dans le

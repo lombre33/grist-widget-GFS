@@ -44,7 +44,8 @@ connaît pas.
 4. **Messages propres à GFS** (contexte, stockage, actions « ouvrir », « choisir », « insérer », « installer », « fermer ») :
    une enveloppe à part, sans `mtype`, que le script d'API de Grist ignore (sections 4 et 5).
 5. **Installer ne télécharge rien** : le code de toutes les apps livrées est déjà dans le site de GFS ; installer inscrit
-   l'identifiant de l'app dans la section (section 7).
+   l'identifiant de l'app dans la section (section 7). La bibliothèque d'une extension n'est pas dans l'app : GFS la porte et
+   donne sa source (2.6, 5.2).
 6. **Réglages de la vue** : une tranche par app, mêmes clés seule ou dans GFS ; les clés de GFS commencent par `gfs.`.
    **Question 9** : où retenir les apps installées. Ce document prend le conseil du cahier (réglages de la section) et décrit
    la variante « table » en quelques lignes (section 7.4).
@@ -79,6 +80,9 @@ connaît pas.
     `section` devient « au mieux » : Grist ne dit pas à un widget quelle est sa section.
 11. **Le rejeu de l'état à l'app qui devient prête est obligatoire** : Grist ne renvoie l'état initial (réglages, thème, table)
     qu'au `ready` de GFS, pas à chaque app (4.2).
+12. **La bibliothèque d'une extension est à GFS** (décision du porteur, 14/10 ; cahier 4.7) : le contrat en tire `bibliotheques`
+    dans l'entrée de l'extension (2.6), un catalogue tenu par GFS, et la source donnée à l'app par le contexte et l'événement
+    `extensions` (5.2). La CSP qui l'autorise reste à mesurer (9, point 11).
 
 ---
 
@@ -171,7 +175,7 @@ L'app (sous-cadre sans allow-same-origin)
 | `reglages` | liste | non | Les clés de réglages de la vue que l'app lit et écrit (2.5). |
 | `permissions` | objet | oui | Accès, tables, tables internes, capacités (section 3). |
 | `extensions` | liste | non | Les extensions de l'app (2.6). |
-| `dependances` | chaîne | non | Chemin de la liste des bibliothèques (`package.json`). |
+| `dependances` | chaîne | non | Chemin de la liste des bibliothèques **natives** de l'app (`package.json`) : celles d'une extension n'y figurent pas (2.6, point 4). |
 | `actions` | objet | non | Ce que l'app accepte de la part des autres (2.7). |
 
 Un champ inconnu est ignoré (le contrat s'étend par ajout) ; un champ obligatoire absent ou mal formé invalide le manifeste.
@@ -215,13 +219,29 @@ Une entrée de `fichiers` par table de fichiers :
 
 ### 2.6 Les extensions
 
-Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, dossier, pointsEntree }`.
+Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, dossier, pointsEntree, bibliotheques }`.
 
 1. [T] `dossier` est un chemin relatif à l'app (`extensions/graphique/`) ; `poids` est une indication en Ko pour la fenêtre
    d'installation.
 2. [T] `pointsEntree` liste ce que l'extension ajoute à l'app : `{ genre, id }` où `genre` vaut `bouton`, `menu`, `type` ou
    `export`. Le socle de l'app dessine le grisé de chacun (cahier 4.6) ; un `type` renvoie à `fichiers[].types[].extension`.
 3. [T] Une extension n'a aucun effet dans l'app seule : `contexte.extensions` y est vide.
+4. [T] **La bibliothèque d'une extension est non native : GFS la porte** (décision du porteur, 14/10 ; cahier 4.7). Le code de
+   l'extension, c'est-à-dire la façon dont l'app se sert de la bibliothèque, reste dans l'app ; la bibliothèque, son
+   chargement, sa CSP, sa liste et ses empreintes sont à GFS. Le dépôt de l'app ne la nomme ni dans sa liste (`dependances`),
+   ni dans son import map, ni dans sa CSP. Défaut pris, à confirmer par le porteur : l'éditeur et les exports restent
+   natifs, avec leurs bibliothèques dans la liste de l'app.
+5. [D] `bibliotheques` liste ce que le code de l'extension exige : `{ id, version }`, par exemple
+   `{ "id": "plotly", "version": "2.13.2" }` (la version de Grist, celle pour laquelle le dessin du graphique est écrit).
+   Ni adresse, ni empreinte, ni mode : elles sont à GFS.
+6. [D] GFS tient un catalogue des bibliothèques d'extensions : pour chacune, `id`, `version`, l'adresse du CDN avec son
+   empreinte (`cdn: { src, integrite }`) et le fichier de la version vendorisée avec la sienne
+   (`vendorise: { chemin, integrite }`), tirés par son outil d'une liste de son dépôt (`package.json`). Le catalogue est publié
+   avec GFS : la source d'une bibliothèque n'est jamais lue dans un réglage, une table ou un message d'une app (cahier 3.2,
+   point 3). Une extension dont une bibliothèque exigée manque au catalogue (identifiant ou version) est grisée dans GFS, avec
+   la raison.
+7. [D] Le mode, CDN (le défaut) ou vendorisé, se choisit dans GFS, à l'activation de l'extension ; l'app ne le connaît pas.
+   [Q] Où se retient ce choix (par extension, ou pour toute la section) : cahier, question 11.
 
 ### 2.7 Les actions acceptées
 
@@ -251,7 +271,8 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
      une table ou une colonne de la liste fermée 3.3, une entrée `gristInterne` qui lit `_grist_Shares` ou `_grist_Triggers`,
      qui écrit sans `lit: true` ou qui écrit plus d'une table, `lit`/`ecrit`/`gristInterne`/capacités avec un accès autre que
      `full`) ;
-   - une extension dont le `dossier` sort de l'app.
+   - une extension dont le `dossier` sort de l'app, ou dont une entrée de `bibliotheques` n'a pas d'`id` ou n'a pas une
+     `version` exacte (un intervalle, `latest`).
 
 ### 2.9 Exemple : Publipostage+
 
@@ -336,7 +357,10 @@ nomme une seule table et porte aussi `lit: true` (3.3, point 5).
     }
   },
   "extensions": [
-    { "id": "graphique", "nom": { "fr": "Graphique", "en": "Chart" }, "dossier": "extensions/graphique/" }
+    {
+      "id": "graphique", "nom": { "fr": "Graphique", "en": "Chart" }, "dossier": "extensions/graphique/",
+      "bibliotheques": [{ "id": "plotly", "version": "2.13.2" }]
+    }
   ],
   "dependances": "package.json",
   "actions": {
@@ -595,7 +619,7 @@ Les noms de la v0 :
 | `inserer` | app → GFS, puis GFS → app qui fournit | 5.4 | 5.4 |
 | `installer` | app → GFS | 5.4 | 5.4 |
 | `fermer` | GFS → app active | 5.4 | 5.4 |
-| `extensions` (événement) | GFS → app | `{ extensions: [ … ] }` (5.2) | aucune |
+| `extensions` (événement) | GFS → app | `{ extensions: [ … ], bibliotheques: { … } }` (5.2) | aucune |
 
 1. [D] `gfs` est le numéro de contrat de l'émetteur (pour l'app, celui de son manifeste). Un message sans `gfs` entier, ou d'un
    numéro que le destinataire ne connaît pas, est ignoré.
@@ -625,18 +649,26 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 | `lectureSeule` | `readonly` de l'adresse | celui de GFS | celui de l'adresse |
 | `acces` | niveau de **cette app** (3.1) | oui | celui de Grist |
 | `extensions` | identifiants des extensions actives de l'app | liste de la section | `[]` |
+| `bibliotheques` | source de chaque bibliothèque que les extensions actives exigent : `{ "<id>": { src, integrite } }` (2.6) | oui | `{}` |
 | `ouverture` | pourquoi et sur quoi l'app s'ouvre, ou `null` (5.4) | oui | `null` |
 | `stockage` | copie initiale du stockage de l'app (5.3) | oui | contenu du navigateur |
 
 1. [T] Les six paramètres de l'adresse (1.3) et le contexte disent la même chose : l'adresse existe pour le code des apps qui la
    lit déjà, le contexte pour le kit.
-2. [D] Un seul événement en cours de vie : `extensions` (`{ "extensions": [ … ] }`), quand la personne active ou désactive une
-   extension dans GFS. L'app charge alors l'extension au premier usage, comme ses moteurs d'export.
+2. [D] Un seul événement en cours de vie : `extensions` (`{ "extensions": [ … ], "bibliotheques": { … } }`), quand la personne
+   active ou désactive une extension dans GFS. L'app charge alors l'extension au premier usage, comme ses moteurs d'export.
 3. [D] `ouverture` : `null` quand l'app s'ouvre sans consigne (elle applique son propre ordre d'arrivée, cahier 6.2, point 4) ;
    sinon `{ fichier, type, dossier, raison }` où `fichier` est `{ id, type }` (ou `null` pour « Nouveau »), `type` le type
    demandé quand `fichier` est `null`, `dossier` le dossier courant de l'explorateur (une indication), `raison` l'un de
    `explorateur`, `nouveau`, `lien`. L'app affiche elle-même la raison dans son coin d'état (« par la ligne… », « depuis
    l'explorateur »).
+4. [D] `bibliotheques` : GFS cherche dans son catalogue (2.6, point 6) les bibliothèques qu'exigent les extensions actives de
+   l'app et donne, pour chacune, l'adresse du mode choisi (CDN ou vendorisé) et son empreinte. L'extension charge la
+   bibliothèque par cette adresse, avec l'empreinte (`integrity`) et `crossorigin="anonymous"`, au premier usage, et ne charge
+   rien d'autre qui ne soit dans son dossier, dans la liste de son app ou dans ce champ. Le message vient de GFS seul
+   (`event.source`, 1.2), et l'adresse vient du catalogue de GFS, jamais d'une app.
+5. [M] Ce que le sous-cadre doit autoriser pour que ce chargement passe sa CSP, en CDN comme en vendorisé, sans que le dépôt de
+   l'app nomme la bibliothèque : section 9, point 11 (cahier, question 11).
 
 ### 5.3 Le stockage du navigateur
 
@@ -837,7 +869,7 @@ Relevé du 14/10, pour que le projet de chaque app relise ce qui le touche (cahi
 
 | App | À changer ou à déclarer |
 |---|---|
-| Publipostage+ | Déclarer les sept lectures de `_grist_*` et ses deux écritures (`visibleCol` de `_grist_Tables_column` ; `indentation`, `pagePos` et `options` de `_grist_Pages`), le jeton en lecture seule, les formules ; lire l'adresse du widget (`isOwnWidget`), l'instance et le document dans le contexte (`fixBaseUrl`, `documentKey`) ; ranger ses clés `pp_*` dans le stockage du kit ; garde `source` avant le script d'API ; garde « type inconnu » (guide 2.2) |
+| Publipostage+ | Déclarer les sept lectures de `_grist_*` et ses deux écritures (`visibleCol` de `_grist_Tables_column` ; `indentation`, `pagePos` et `options` de `_grist_Pages`), le jeton en lecture seule, les formules ; lire l'adresse du widget (`isOwnWidget`), l'instance et le document dans le contexte (`fixBaseUrl`, `documentKey`) ; ranger ses clés `pp_*` dans le stockage du kit ; garde `source` avant le script d'API ; garde « type inconnu » (guide 2.2) ; graphique en extension, sans Plotly dans sa liste ni sa CSP, avec `bibliotheques` dans l'entrée de l'extension (2.6) |
 | Form+ | Cesser d'écrire `_grist_Views_section.options` (marqueur `formplusDuplicate`, réglages : `poc/js/grist-meta.js` lignes 191, 270, 290) : une table `FormPlus_…` ; déclarer `structure` (`CreateViewSection`), la lecture de cinq tables internes et les écritures qu'il fait : `shareOptions` de `_grist_Views_section`, `parentId`, `colRef` et `widgetOptions` de `_grist_Views_section_field` (avec `retire`, pour les champs que Grist ajoute tout seuls), `visibleCol` de `_grist_Tables_column` ; ne plus lire `_grist_Shares` (`findExistingShareKey` : la clé se colle) ; prendre la page et l'instance dans le contexte ; ses clés de réglages passent d'un `setOptions` de tout l'objet à une tranche déclarée |
 | Automation+ | Clé `workflow` déclarée en attendant que le graphe passe dans une table `Automation_…` ; lit et écrit des tables de la personne (`*`) ; section à part dans GFS (cahier, question 4) |
 | Grist-BI | Déclarer la lecture de `_grist_Tables` et `_grist_Tables_column` ; préfixe `BI_` (`BI_Dashboard_Config`, `BI_StressTest`, `BI_Dashboard_Comments`) ; ses `RenameTable` visent des tables qu'il possède déjà, ou que `ecrit` couvre |
@@ -864,6 +896,9 @@ Dans un vrai Grist (labo `outils/labo-grist-reel/`), avec Publipostage+ et Autom
 8. **Cadre qui navigue** (1.4, point 3) et politique imposable au sous-cadre (3.7, point 4).
 9. **Coût de la lecture des tables de fichiers** (2.4) dans un document lourd.
 10. **Cadre reconstruit** (3.1, point 6) : GFS repart, l'app aussi, sans perte, comme seule.
+11. **Bibliothèque d'extension** (2.6, 5.2) : Plotly reçu de GFS par adresse et empreinte dans un sous-cadre isolé, en CDN comme
+    en vendorisé ; la CSP du sous-cadre qui l'autorise sans que le dépôt de l'app le nomme (GitHub Pages n'impose aucun en-tête
+    à un sous-cadre, 3.7 point 4) ; le graphique qui tourne avec cette bibliothèque (`Plotly.toImage`).
 
 ## 10. Laissé aux étapes suivantes
 

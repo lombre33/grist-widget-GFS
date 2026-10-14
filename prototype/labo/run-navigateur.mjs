@@ -58,5 +58,8 @@ check('le cadre a répondu à chaque essai fait', ['stockage', 'impressionDirect
 // Le dernier essai du presse-papiers écrit « essai » (execCommand) après « essai de GFS » (writeText) : le collage montre l'un ou l'autre.
 check('le collage est relevé', /collage après « Presse-papiers » : « essai/.test(text), text.match(/collage[^\n]*/)[0]);
 check('la copie dit qu\'elle a réussi', status === 'Copié.', status);
-await page.screenshot({ path: join(SHOTS, `navigateur-${engineName}-${scheme}.png`), fullPage: true });
+// La page entière, mais par une fenêtre assez haute : une capture « page entière » de Playwright laisse vide le cadre isolé.
+await page.setViewportSize({ width: 900, height: Math.min(await page.evaluate(() => document.documentElement.scrollHeight), 4000) });
+await page.waitForTimeout(500);
+await page.screenshot({ path: join(SHOTS, `navigateur-${engineName}-${scheme}.png`) });
 await browser.close();

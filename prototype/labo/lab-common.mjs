@@ -95,7 +95,7 @@ export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', 
     });
   }
   page.on('pageerror', e => { if (process.env.LAB_CONSOLE) say('[pageerror]', e.message.slice(0, 200)); });
-  page.on('console', m => { if (process.env.LAB_CONSOLE && (m.type() === 'error' || process.env.LAB_CONSOLE === 'all')) say('[console.' + m.type() + ']', m.text().slice(0, 240)); });
+  page.on('console', m => { if (process.env.LAB_CONSOLE && (m.type() === 'error' || process.env.LAB_CONSOLE === 'all')) say('[console.' + m.type() + ']', `(${m.location().url.replace(/^http:\/\/127\.0\.0\.1:\d+/, '')}:${m.location().lineNumber})`, m.text().slice(0, 240)); });
   await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, async route => {
     const url = route.request().url();
     try {

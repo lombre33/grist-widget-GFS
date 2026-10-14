@@ -802,7 +802,8 @@ l'accord de la personne à la première rangée d'un fichier (ou à la première
 1. [T] Le socle de chaque app connaît la forme de tous ses objets, même ceux d'une extension absente. Un graphique dans un
    document ouvert sans l'extension s'affiche grisé et se réenregistre intact.
 2. [T] Un type de fichier inconnu est listé grisé, jamais ouvert, jamais réenregistré, jamais proposé comme fichier de départ.
-   Deux textes : « Demande l'extension {nom} (Grist Factory Suite) » pour un type qui renvoie à une extension du manifeste ;
+   Deux textes : « Demande l'extension {nom} (Grist Factory Suite) » pour un type qui renvoie à une extension du manifeste,
+   où {nom} est le `nom` de cette extension (2.6) dans la langue de l'interface, jamais son `id` ;
    « Créé avec une version plus récente de {app} » pour un type absent du manifeste (guide des apps, 2.2).
 3. [T] GFS applique la même règle dans l'explorateur : un type absent de `types`, ou d'une extension non active, est grisé avec
    un cadenas, sans couleur.
@@ -920,5 +921,7 @@ document en petits commits, les points 8 (cadre qui navigue, politique imposable
 - **Étape 6 (GFS v0)** : le rangement propre à une app dans l'explorateur ; « Fermer quand même » ; « Recharger » ; la
   fenêtre d'installation qui montre `pourquoi`.
 - **Étape 7 (extensions et nouvelles apps)** : le déroulement d'« insérer » (deux sous-cadres), la taille du rendu ; le
-  mappage de colonnes pour une app qui en demanderait.
+  mappage de colonnes pour une app qui en demanderait ; qui fait suivre un renommage de colonne aux modèles d'un type
+  d'extension (le socle ne réécrit jamais un type inconnu, guide 2.2 ; relire le schéma ne montre pas le renommage, dont les
+  anciens noms ne sont que dans l'instantané de l'app, `pp_schema_…`), à fixer avec la première extension de modèle.
 - **Une fois GFS v0 publié** : le numéro de contrat passe à 1, et le tableau des changements du contrat s'ouvre dans ce document.

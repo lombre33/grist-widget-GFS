@@ -102,8 +102,9 @@ ligne 330 ; seul `macro` a sa branche, ligne 270) et peut devenir le modèle de 
 
 - un type inconnu n'est jamais chargé dans l'éditeur, jamais enregistré, jamais proposé comme ★ ;
 - il est listé grisé dans le sélecteur et dans « Organiser », avec deux textes possibles : « Demande l'extension
-  {nom} (Grist Factory Suite) » pour un type que le socle connaît mais dont l'extension manque, « Créé avec une version plus
-  récente de Publipostage+ » pour un type que le socle ne connaît pas ;
+  {nom} (Grist Factory Suite) » pour un type que le socle connaît mais dont l'extension manque (`{nom}` est le nom lisible de
+  l'extension, celui de son manifeste, dans la langue de l'interface), « Créé avec une version plus récente de Publipostage+ »
+  pour un type que le socle ne connaît pas ;
 - son test échoue sur le code d'aujourd'hui : un modèle `TypeModele = 'presentation'` n'est ni ouvert, ni réenregistré, ni
   proposé comme ★.
 

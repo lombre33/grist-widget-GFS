@@ -643,8 +643,8 @@ faux Grist écrit par nous.
    plein écran, dans un sous-cadre isolé.
 4. La CSP de l'app (`'self'`, CDN) et les modules ES dans un sous-cadre à origine opaque ; l'import map d'esm.sh ; la CSP de
    GFS lui-même (`frame-src 'self'` pour ses sous-cadres) ; la bibliothèque d'une extension (Plotly) reçue de GFS par adresse
-   et empreinte, en CDN comme en vendorisé, avec une CSP de l'app qui ne la nomme pas (question 11 ; mesuré : en CDN, la CSP de
-   l'app doit laisser entrer l'adresse, rapport point 4).
+   et empreinte, en CDN comme en vendorisé (question 11 ; mesuré : en CDN, la CSP de l'app doit nommer l'adresse du catalogue,
+   en copie `'self'` suffit, rapport point 4).
 5. Le stockage du navigateur indisponible en origine opaque : comportement des apps, stockage fourni par le courtier.
 6. L'API REST de Grist par jeton (`getAccessToken`, pièces jointes) depuis un sous-cadre isolé. D'après le code de Grist,
    une origine non reconnue, `null` compris, reçoit `Access-Control-Allow-Origin: *` sans identifiants : le jeton passé dans
@@ -706,7 +706,7 @@ fait passer par le porteur.
 | 8 | Couleurs des types des autres apps | Étape 6 | Neutres tant qu'il ne les demande pas |
 | 9 | Où retenir les apps installées : réglages de la section, ou une table pour tout le document ? | Étape 1 | Réglages de la section, avec le rappel « Enregistrer » ; une table seulement si le réglage doit valoir pour tout le document |
 | 10 | Les quatre choix de parcours (6.7) | Étape 6 | Les défauts pris |
-| 11 | Comment le sous-cadre reçoit la bibliothèque d'une extension (Plotly), comment sa CSP l'autorise en CDN comme en vendorisé sans que le dépôt de l'app la nomme, et où se retient le choix CDN ou vendorisé | V0.2 du prototype | Adresse et empreinte données par GFS, chargées par l'extension (contrats 5.2) ; la CSP se mesure d'abord. **Tranché le 14/10 : CDN d'abord ; chaque app nomme l'adresse du catalogue dans sa CSP** (rapport, point 4) |
+| 11 | Comment le sous-cadre reçoit la bibliothèque d'une extension (Plotly), comment sa CSP l'autorise en CDN comme en vendorisé (le dépôt de l'app n'en garde que l'adresse du CDN, mesuré), et où se retient le choix CDN ou vendorisé | V0.2 du prototype | Adresse et empreinte données par GFS, chargées par l'extension (contrats 5.2) ; la CSP se mesure d'abord. **Tranché le 14/10 : CDN d'abord ; chaque app nomme l'adresse du catalogue dans sa CSP** (rapport, point 4) |
 
 ---
 

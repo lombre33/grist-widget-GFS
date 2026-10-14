@@ -39,10 +39,11 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
    remplacerait l'écoute du script d'API de Grist (`grist-plugin-api.ts`, ligne 520) et couperait l'app de Grist.
 8. **Tables internes de Grist** (`_grist_*`) : aucune écriture sans une raison écrite. Elle devra être déclarée dans le
    manifeste, sinon le courtier la refusera.
-9. **Une bibliothèque nouvelle** : si l'app ne marche pas seule sans elle (native), une version exacte, inscrite dans la
-   liste de l'app, chargée au premier usage si elle est lourde, jamais par un lien CDN non figé. Si c'est celle d'une
-   extension (non native), elle ne s'inscrit ni dans la liste, ni dans l'import map, ni dans la CSP de l'app : l'extension
-   dit seulement l'identifiant et la version exacte qu'elle exige, et GFS porte le reste (cahier 4.7).
+9. **Une bibliothèque nouvelle** : si l'app ne marche pas seule sans elle (native, comme celles de l'éditeur et des
+   exports), une version exacte, inscrite dans la liste de l'app, chargée au premier usage si elle est lourde, jamais par
+   un lien CDN non figé. Si c'est celle d'une extension (non native), elle ne s'inscrit ni dans la liste, ni dans l'import
+   map, ni dans la CSP de l'app : l'extension dit seulement l'identifiant et la version exacte qu'elle exige, et GFS porte
+   le reste (cahier 4.7).
 10. **Une fonction lourde nouvelle naît comme une extension** : son code dans un dossier à part, atteint seulement à son
     premier usage ; ses points d'entrée (bouton, ligne de menu, type, export) déclarés à un seul endroit ; le grisé dessiné
     par le socle, pas par chaque point d'entrée (cahier 4.6). Le code de la fonction reste dans l'app ; sa bibliothèque lui

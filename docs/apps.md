@@ -24,7 +24,8 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
 
 - Publipostage+ : le guide des apps et les repères de lignes de `faits-verifies.md` datent de `92ecd58`, les contrats de
   `e4a239c`. `main` était déjà à `ad1f88c`, six commits plus loin (surtout l'historique des versions des modèles) : à lire à la
-  première mise à jour.
+  première mise à jour. Les consignes 003 et 004 citent des lignes de `89ebdd2`, un commit plus loin que la 002 (`ad1f88c`) : un
+  correctif d'impression, sans rapport avec elles.
 - SlidesPlus : suivre `main`. La branche par défaut du dépôt sur GitHub est une autre, donc `origin/HEAD` ne convient pas.
 - Grist-widget-audit : aucun commit n'avait été noté ; `3a1b3d5` est le sommet de `main` (4 octobre), qui n'a pas bougé depuis.
 - Les dossiers de `consignes/` portent l'identifiant court de l'app ; l'`id` du manifeste se fixe avec chaque `gfs.json`

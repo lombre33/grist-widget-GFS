@@ -7,3 +7,5 @@ Avant chaque lot : cette page, puis seulement les consignes « à faire ».
 |---|---|---|---|
 | 001 | [Suivre le guide des apps](001-guide-des-apps.md) | à lire avant le prochain lot, puis à chaque lot | à faire |
 | 002 | [Garde « type inconnu »](002-garde-type-inconnu.md) | **urgent** : avant qu'un nouveau type de modèle soit écrit dans la table | à faire |
+| 003 | [Accepter « ouvrir » de GFS](003-accepter-ouvrir.md) | pour que la V0.1 du prototype ouvre le modèle cliqué ; sans effet dans l'app seule | à faire |
+| 004 | [Le graphique en extension](004-graphique-en-extension.md) | avant la V0.2 du prototype, après la 003 ; seule, l'app grise le graphique | à faire |

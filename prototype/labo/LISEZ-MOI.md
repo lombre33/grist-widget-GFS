@@ -22,12 +22,13 @@ Variables utiles : `LAB_LANG=fr|en`, `LAB_SCHEME=light|dark`, `LAB_BROWSER=chrom
 
 | Essai | Ce qu'il mesure |
 |---|---|
-| `run-slice1`, `probe-app` | GFS ouvre Publipostage+ non modifié dans un sous-cadre isolé |
+| `run-slice1`, `probe-app`, `run-automation` | GFS ouvre Publipostage+ et Automation+, non modifiées, dans un sous-cadre isolé : leurs tables, ce qu'elles voient, ce que le courtier leur refuse |
 | `run-explorer`, `run-modules` | l'explorateur et la fenêtre « Apps et extensions » (interface) |
 | `run-courtier` | le courtier avec le vrai script d'API de Grist : rejeu, `configure`, jeton, noms de tables |
 | `run-capacites` | ce qu'une app peut faire dans son sous-cadre (stockage, impression, téléchargements, fenêtres, presse-papiers, navigation) ; `CAP_CONFIG=grist` : la même sonde sans GFS |
 | `run-impression` | « Print widget » de Grist relayé à l'app active |
 | `run-ordre`, `run-routeur` | l'ordre des écouteurs de `message` (le routeur de GFS) |
+| `run-politique` | peut-on imposer une politique de sécurité du contenu à un sous-cadre servi sans en-tête (attribut `csp`, `srcdoc`, `blob:`) ? Sans Grist : la question est celle du navigateur |
 | `run-acces-none`, `run-reconstruit` | GFS sans l'accès complet ; le cadre que Grist reconstruit quand le niveau d'accès change |
 | `run-cout-cadre`, `run-heavy` | le coût d'un cadre de plus ; la lecture des fichiers dans un document lourd |
 | `run-sondes` | la bibliothèque d'une extension (CDN et copie de GFS) sous six politiques d'app |
@@ -53,4 +54,4 @@ GitHub Pages met tout en cache dix minutes : après une mise à jour, recharge l
 
 Pour refaire à la main, sur une machine qui a Firefox et WebKit de Playwright, ce que le cloud ne peut pas faire :
 `npm install && npm install --no-save playwright && npx playwright install chromium firefox webkit`, lancer `lab-server.mjs`, puis
-`LAB_BROWSER=firefox REPO_DIR=… node run-ordre.mjs`, de même pour `run-routeur.mjs` et `run-navigateur.mjs`.
+`LAB_BROWSER=firefox REPO_DIR=… node run-ordre.mjs`, de même pour `run-routeur.mjs`, `run-navigateur.mjs` et `run-politique.mjs`.

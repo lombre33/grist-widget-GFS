@@ -2,9 +2,9 @@
 import { startLab } from './lab-setup.mjs';
 import { say } from './lab-common.mjs';
 
-const lab = await startLab({ query: '?ouvrir=publipostage' });
-await lab.page.waitForTimeout(5000);
-const app = await lab.appFrame();
+const lab = await startLab({ colorScheme: process.env.LAB_SCHEME || 'light' });
+const app = await lab.openApp('publipostage');
+await lab.page.waitForTimeout(4000);
 const consent = app.getByRole('button', { name: /Create the tables|Créer les tables/ });
 if (await consent.count()) { await consent.first().click(); await lab.page.waitForTimeout(6000); }
 const seen = await app.evaluate(() => {

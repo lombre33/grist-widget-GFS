@@ -1,7 +1,7 @@
 // Le contrôleur de GFS (contrats 4.1, cahier 6) : le démarrage, l'explorateur, l'app active et le passage de l'un à l'autre.
 // Deux lieux dans le cadre : l'explorateur (qui remplace le cadre) et le fichier ouvert (le sous-cadre de l'app, resté vivant et caché quand on explore).
 
-import { CATALOGUE, catalogueEntry } from './catalogue.js';
+import { CATALOGUE } from './catalogue.js';
 import { loadAll, label } from './manifest.js';
 import { GristState } from './state.js';
 import { createPort } from './broker.js';
@@ -140,9 +140,7 @@ export class GfsController {
     this.state.subscribe(kind => { if (kind === 'options') this.registry.read(this.state.allOptions); });
     this.#buildExplorer();
     this.#buildFloaters();
-    const wanted = this.params.get('ouvrir');
-    if (wanted && catalogueEntry(wanted) && this.registry.has(wanted) && this.#activate(wanted, null)) this.hideExplorer();
-    else this.showExplorer();
+    this.showExplorer();
     doc.body.dataset.gfs = 'ready';
     await this.#firstRun();
     doc.body.dataset.gfsFirstRun = 'done';

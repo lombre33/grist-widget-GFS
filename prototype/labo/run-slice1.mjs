@@ -2,11 +2,11 @@
 import { startLab } from './lab-setup.mjs';
 import { say } from './lab-common.mjs';
 
-const lab = await startLab({ query: '?ouvrir=publipostage' });
+const lab = await startLab();
 const warnings = [];
 lab.page.on('console', m => { if (m.type() === 'warning' && m.text().startsWith('GFS')) warnings.push(m.text()); });
-await lab.page.waitForTimeout(6000);
-const app = await lab.appFrame();
+const app = await lab.openApp('publipostage');
+await lab.page.waitForTimeout(4000);
 say('app frame :', app.url());
 await lab.shot('slice1', '1-ouverture');
 const consent = app.getByRole('button', { name: /Create the tables|Créer les tables/ });

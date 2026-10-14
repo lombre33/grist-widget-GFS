@@ -23,8 +23,10 @@ d'une app qui demandent une bibliothèque lourde (graphique, diapositives, temps
 - **La sécurité vient de l'isolement.** Chaque app tourne dans un sous-cadre isolé (sans `allow-same-origin`) ; GFS est seul à
   parler à Grist et ne laisse passer que ce que le manifeste de l'app déclare. Jamais « cocher un module rend plus sûr ».
 - **Des dépôts d'apps propres et auditables.** Le code d'une fonction reste dans l'app ; la bibliothèque d'une extension (Plotly
-  pour le graphique), son chargement, sa liste, sa CSP et ses empreintes sont à GFS, en CDN par défaut ou en copie vendorisée
-  pour les réseaux fermés. Les bibliothèques sans lesquelles l'app ne marche pas seule (l'éditeur, les exports) restent à l'app.
+  pour le graphique), son chargement, sa liste et ses empreintes sont à GFS, en CDN par défaut ou en copie vendorisée pour les
+  réseaux fermés. Une seule trace reste dans l'app : la CSP de sa page garde l'adresse du CDN, car GFS ne peut imposer aucune
+  politique à un sous-cadre. Les bibliothèques sans lesquelles l'app ne marche pas seule (l'éditeur, les exports) restent à
+  l'app.
 - **Rien à héberger.** Des pages statiques (GitHub Pages, ou chez le client) et aucune étape de construction pour les servir.
 
 ## Ce qui change pour une app

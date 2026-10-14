@@ -81,7 +81,8 @@ Une app ne pousse jamais dans le dépôt de GFS, même pour essayer : seul le pr
 Ce dont elle a besoin chez GFS, elle le demande dans la section « Demandes à GFS » de son `GFS-ETAT.md`, une ligne par demande.
 La demande prévue aujourd'hui est la **bibliothèque d'une extension**, que GFS porte (cahier 4.7 ; guide 1.1, règle 9) :
 
-1. **Coder la fonction sans la bibliothèque** : ni dans la liste de l'app, ni dans son import map, ni dans sa CSP. Une
+1. **Coder la fonction sans la bibliothèque** : ni dans la liste de l'app, ni dans son import map ; sa CSP ne garde que l'adresse
+   que GFS donne pour le mode CDN (GFS ne peut imposer aucune politique à un sous-cadre : mesuré à l'étape 2). Une
    bibliothèque dont l'app ne peut pas se passer pour tourner seule (l'éditeur, les exports) n'est pas une demande : elle reste
    dans l'app.
 2. **Écrire la demande** : l'identifiant (court et stable, par exemple `plotly`), la **version exacte** (ni `^`, ni `latest`), la

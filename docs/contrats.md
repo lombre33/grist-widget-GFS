@@ -82,7 +82,8 @@ connaît pas.
     qu'au `ready` de GFS, pas à chaque app (4.2).
 12. **La bibliothèque d'une extension est à GFS** (décision du porteur, 14/10 ; cahier 4.7) : le contrat en tire `bibliotheques`
     dans l'entrée de l'extension (2.6), un catalogue tenu par GFS, et la source donnée à l'app par le contexte et l'événement
-    `extensions` (5.2). La CSP qui l'autorise reste à mesurer (9, point 11).
+    `extensions` (5.2). Mesuré à l'étape 2 : en CDN, la CSP de l'app nomme l'adresse du catalogue ; la copie de GFS passe sans
+    rien nommer (2.6, point 4).
 
 ---
 
@@ -228,9 +229,11 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
 3. [T] Une extension n'a aucun effet dans l'app seule : `contexte.extensions` y est vide.
 4. [T] **La bibliothèque d'une extension est non native : GFS la porte** (décision du porteur, 14/10 ; cahier 4.7). Le code de
    l'extension, c'est-à-dire la façon dont l'app se sert de la bibliothèque, reste dans l'app ; la bibliothèque, son
-   chargement, sa CSP, sa liste et ses empreintes sont à GFS. Le dépôt de l'app ne la nomme ni dans sa liste (`dependances`),
-   ni dans son import map, ni dans sa CSP. Confirmé par le porteur (14/10) : l'éditeur et les exports restent natifs, avec
-   leurs bibliothèques dans la liste de l'app.
+   chargement, sa liste et ses empreintes sont à GFS. Le dépôt de l'app ne la nomme ni dans sa liste (`dependances`), ni dans
+   son import map. **Sa CSP garde l'adresse exacte du CDN que donne le catalogue, et rien d'autre** : GFS ne peut imposer
+   aucune politique à un sous-cadre (3.7, point 4), donc sans cette adresse le navigateur refuse le CDN ; la copie de GFS
+   passe avec `'self'`, sans rien nommer (5.2, point 5). Confirmé par le porteur (14/10) : l'éditeur et les exports restent
+   natifs, avec leurs bibliothèques dans la liste de l'app.
 5. [D] `bibliotheques` liste ce que le code de l'extension exige : `{ id, version }`, par exemple
    `{ "id": "plotly", "version": "2.13.2" }` (la version de Grist, celle pour laquelle le dessin du graphique est écrit).
    Ni adresse, ni empreinte, ni mode : elles sont à GFS.
@@ -513,7 +516,10 @@ mesurés, pas une promesse (cahier 1.3, 8).
    coupe pas le réseau. La politique de sécurité du contenu de sa page le limite tant que son code est sain, mais elle est
    dans la page de l'app, donc retirée par une app compromise ; GitHub Pages ne permet pas d'imposer une politique au
    sous-cadre par un en-tête. Chez un client qui héberge GFS (mode vendorisé), son serveur peut imposer les en-têtes.
-   [M] Confirmer qu'aucune des voies du navigateur ne permet d'imposer une politique au sous-cadre depuis GFS.
+   Mesuré à l'étape 2 : aucune voie ne le permet depuis GFS. L'attribut `csp` du cadre est refusé tant que le serveur de
+   l'enfant n'envoie pas l'en-tête `Allow-CSP-From` (Pages ne le fait pas) ; un cadre fabriqué par `srcdoc` ou `blob:` hérite
+   de la politique de GFS et perd les scripts en ligne de l'app ; `blob:` est refusé par `frame-src 'self'` tant qu'on ne
+   l'ajoute pas. Chez un client qui héberge GFS, son serveur peut envoyer l'accord, et l'attribut impose alors la politique.
 5. [T] Le filtre limite ce qu'une app compromise peut atteindre ; il ne rend pas son code digne de confiance. Une app qui
    déclare `*` voit toutes les données de la personne dans le document.
 6. [T] **Lire une table interne, c'est lire la structure de tout le document.** `_grist_Tables` et `_grist_Tables_column` donnent
@@ -667,8 +673,11 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    bibliothèque par cette adresse, avec l'empreinte (`integrity`) et `crossorigin="anonymous"`, au premier usage, et ne charge
    rien d'autre qui ne soit dans son dossier, dans la liste de son app ou dans ce champ. Le message vient de GFS seul
    (`event.source`, 1.2), et l'adresse vient du catalogue de GFS, jamais d'une app.
-5. [M] Ce que le sous-cadre doit autoriser pour que ce chargement passe sa CSP, en CDN comme en vendorisé, sans que le dépôt de
-   l'app nomme la bibliothèque : section 9, point 11 (cahier, question 11).
+5. [T] **Ce que la CSP de l'app doit autoriser** (mesuré à l'étape 2 avec six CSP d'app ; cahier, question 11 tranchée le
+   14/10 : CDN d'abord). En mode copie, rien : `'self'` suffit. En mode CDN, l'adresse exacte que donne le catalogue (ou son
+   empreinte), et rien d'autre. Une CSP qui n'en dit rien (`script-src 'self'`), ou qui ferme les connexions quand l'extension
+   charge le texte avant de l'exécuter, refuse le CDN ; une fausse empreinte est toujours refusée.
+   [D] Quand le chargement échoue (CSP, réseau, empreinte), l'extension reste grisée avec la raison, jamais muette.
 
 ### 5.3 Le stockage du navigateur
 
@@ -869,7 +878,7 @@ Relevé du 14/10, pour que le projet de chaque app relise ce qui le touche (cahi
 
 | App | À changer ou à déclarer |
 |---|---|
-| Publipostage+ | Déclarer les sept lectures de `_grist_*` et ses deux écritures (`visibleCol` de `_grist_Tables_column` ; `indentation`, `pagePos` et `options` de `_grist_Pages`), le jeton en lecture seule, les formules ; lire l'adresse du widget (`isOwnWidget`), l'instance et le document dans le contexte (`fixBaseUrl`, `documentKey`) ; ranger ses clés `pp_*` dans le stockage du kit ; garde `source` avant le script d'API ; garde « type inconnu » (guide 2.2) ; graphique en extension, sans Plotly dans sa liste ni sa CSP, avec `bibliotheques` dans l'entrée de l'extension (2.6) |
+| Publipostage+ | Déclarer les sept lectures de `_grist_*` et ses deux écritures (`visibleCol` de `_grist_Tables_column` ; `indentation`, `pagePos` et `options` de `_grist_Pages`), le jeton en lecture seule, les formules ; lire l'adresse du widget (`isOwnWidget`), l'instance et le document dans le contexte (`fixBaseUrl`, `documentKey`) ; ranger ses clés `pp_*` dans le stockage du kit ; garde `source` avant le script d'API ; garde « type inconnu » (guide 2.2) ; graphique en extension, sans Plotly dans sa liste ni son import map (sa CSP garde l'adresse du CDN, 2.6 point 4), avec `bibliotheques` dans l'entrée de l'extension (2.6) |
 | Form+ | Cesser d'écrire `_grist_Views_section.options` (marqueur `formplusDuplicate`, réglages : `poc/js/grist-meta.js` lignes 191, 270, 290) : une table `FormPlus_…` ; déclarer `structure` (`CreateViewSection`), la lecture de cinq tables internes et les écritures qu'il fait : `shareOptions` de `_grist_Views_section`, `parentId`, `colRef` et `widgetOptions` de `_grist_Views_section_field` (avec `retire`, pour les champs que Grist ajoute tout seuls), `visibleCol` de `_grist_Tables_column` ; ne plus lire `_grist_Shares` (`findExistingShareKey` : la clé se colle) ; prendre la page et l'instance dans le contexte ; ses clés de réglages passent d'un `setOptions` de tout l'objet à une tranche déclarée |
 | Automation+ | Clé `workflow` déclarée en attendant que le graphe passe dans une table `Automation_…` ; lit et écrit des tables de la personne (`*`) ; section à part dans GFS (cahier, question 4) |
 | Grist-BI | Déclarer la lecture de `_grist_Tables` et `_grist_Tables_column` ; préfixe `BI_` (`BI_Dashboard_Config`, `BI_StressTest`, `BI_Dashboard_Comments`) ; ses `RenameTable` visent des tables qu'il possède déjà, ou que `ecrit` couvre |
@@ -879,7 +888,8 @@ Relevé du 14/10, pour que le projet de chaque app relise ce qui le touche (cahi
 ## 9. À mesurer au prototype (étape 2)
 
 Dans un vrai Grist (labo `outils/labo-grist-reel/`), avec Publipostage+ et Automation+ non modifiés. Les dix points du cahier
-(section 9) restent ; ce document en précise ou ajoute :
+(section 9) restent ; ce document en précise ou ajoute. Résultats du 14/10 : `prototype/rapport.md` ; ils entrent dans ce
+document en petits commits, les points 8 (cadre qui navigue, politique imposable) et 11 (bibliothèque d'extension) d'abord :
 
 1. **Rejeu à la reprise** (4.2) : une app qui démarre après GFS apprend sa table et ses réglages (`getTable`, `onRecords`,
    `onOptions`, `themeInitialized`).
@@ -898,7 +908,8 @@ Dans un vrai Grist (labo `outils/labo-grist-reel/`), avec Publipostage+ et Autom
 10. **Cadre reconstruit** (3.1, point 6) : GFS repart, l'app aussi, sans perte, comme seule.
 11. **Bibliothèque d'extension** (2.6, 5.2) : Plotly reçu de GFS par adresse et empreinte dans un sous-cadre isolé, en CDN comme
     en vendorisé ; la CSP du sous-cadre qui l'autorise sans que le dépôt de l'app le nomme (GitHub Pages n'impose aucun en-tête
-    à un sous-cadre, 3.7 point 4) ; le graphique qui tourne avec cette bibliothèque (`Plotly.toImage`).
+    à un sous-cadre, 3.7 point 4) ; le graphique qui tourne avec cette bibliothèque (`Plotly.toImage`). **Mesuré le 14/10** :
+    en CDN la CSP de l'app doit nommer l'adresse du catalogue, la copie de GFS passe sans rien nommer (2.6 point 4, 5.2 point 5).
 
 ## 10. Laissé aux étapes suivantes
 

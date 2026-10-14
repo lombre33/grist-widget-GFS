@@ -43,9 +43,10 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
 9. **Une bibliothèque nouvelle** : si l'app ne marche pas seule sans elle (native, comme celles de l'éditeur et des
    exports), une version exacte, inscrite dans la liste de l'app, chargée au premier usage si elle est lourde, jamais par
    un lien CDN non figé. Si c'est celle d'une extension (non native), elle ne s'inscrit ni dans la liste, ni dans l'import
-   map, ni dans la CSP de l'app : l'extension dit seulement l'identifiant et la version exacte qu'elle exige, et GFS porte
-   le reste (cahier 4.7). L'app le lui demande dans son `GFS-ETAT.md` et ne pousse jamais chez GFS
-   (`consignes/LISEZ-MOI.md`, « Demander à GFS »).
+   map de l'app : l'extension dit seulement l'identifiant et la version exacte qu'elle exige, et GFS porte le reste (cahier
+   4.7). Seule la CSP de la page garde l'adresse exacte que le catalogue de GFS donne pour le mode CDN : GFS ne peut imposer
+   aucune politique à un sous-cadre (mesuré à l'étape 2), et sans cette adresse le navigateur refuse le CDN. L'app le lui
+   demande dans son `GFS-ETAT.md` et ne pousse jamais chez GFS (`consignes/LISEZ-MOI.md`, « Demander à GFS »).
 10. **Une fonction lourde nouvelle naît comme une extension** : son code dans un dossier à part, atteint seulement à son
     premier usage ; ses points d'entrée (bouton, ligne de menu, type, export) déclarés à un seul endroit ; le grisé dessiné
     par le socle, pas par chaque point d'entrée (cahier 4.6). Le code de la fonction reste dans l'app ; sa bibliothèque lui
@@ -65,7 +66,7 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
    extensions n'y sont pas : elles sont à GFS.
 4. Passer le contexte et le stockage par le client du courtier du kit (avec ses replis quand l'app est seule).
 5. Ranger les fonctions lourdes dans `extensions/`, avec le registre et le grisé du kit, et retirer leurs bibliothèques de la
-   liste, de l'import map et de la CSP de l'app : GFS les porte.
+   liste et de l'import map de l'app : GFS les porte (la CSP garde l'adresse du mode CDN, règle 9).
 6. Montrer, dans l'app seule, la fenêtre du grisé (section 5).
 7. Ajouter les tests du contrat (section 4) et vérifier avec l'outil d'audit que `extensions/` n'est pas compté dans la
    surface de l'app seule.
@@ -115,7 +116,8 @@ ligne 330 ; seul `macro` a sa branche, ligne 270) et peut devenir le modèle de 
   s'y inscrit pas, GFS la porte (règle 9) ;
 - aucune lecture nouvelle de `document.referrer` ;
 - les fonctions lourdes à venir (diapositives, temps réel, formats Office) naissent en extensions, et le graphique en est le
-  pilote : sa consigne est posée (`consignes/publipostage/`), Plotly quitte alors la liste et la CSP de l'app.
+  pilote : sa consigne est posée (`consignes/publipostage/`), Plotly quitte alors la liste et l'import map de l'app ; la CSP de
+  sa page garde l'adresse du mode CDN.
 
 ### 2.3 Quand GFS arrive
 
@@ -164,8 +166,8 @@ ligne 330 ; seul `macro` a sa branche, ligne 270) et peut devenir le modèle de 
 - **Données** : aucune écriture d'une colonne absente (rejoué avec une table à qui il manque une colonne).
 - **Réglages** : l'app n'écrit que les clés de son manifeste, et jamais sans un geste.
 - **Stockage** : l'app démarre et marche quand `localStorage` lève une erreur.
-- **Bibliothèques d'extension** : ni la liste, ni l'import map, ni la CSP de l'app ne nomment la bibliothèque d'une de ses
-  extensions (garde de code, comme `codeHygiene`).
+- **Bibliothèques d'extension** : ni la liste ni l'import map de l'app ne nomment la bibliothèque d'une de ses extensions, et
+  la CSP de sa page ne la nomme que par l'adresse du catalogue de GFS (garde de code, comme `codeHygiene`).
 - **Contexte et messages** : aucune lecture de `document.referrer` hors de la fonction prévue, aucun `window.onmessage =`
   (gardes de code, comme le groupe `codeHygiene` de Publipostage+).
 - **Aller-retour** : seule, puis GFS, puis seule, sans perte, dans un vrai Grist (dès que GFS v0 existe).

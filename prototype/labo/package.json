@@ -1,0 +1,9 @@
+{
+  "name": "gfs-labo",
+  "private": true,
+  "type": "module",
+  "description": "Labo « vrai Grist » (grist-static) pour mesurer le prototype du courtier de GFS",
+  "dependencies": {
+    "grist-static": "0.1.6"
+  }
+}

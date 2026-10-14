@@ -4,7 +4,12 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const require = createRequire(import.meta.url);
-export const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+// Playwright : celui du dossier du labo si on l'y a installé, sinon celui du conteneur du cloud.
+const playwright = (() => { try { return require('playwright'); } catch (error) { return require('/opt/node22/lib/node_modules/playwright'); } })();
+export const { chromium } = playwright;
+// Le navigateur des mesures : Chromium, ou `LAB_BROWSER=firefox` / `webkit` pour refaire une mesure ailleurs (ce que le cloud n'a pas : à faire sur une machine qui les a).
+export const engineName = process.env.LAB_BROWSER || 'chromium';
+export const engine = playwright[engineName];
 export const LAB = dirname(fileURLToPath(import.meta.url));
 export const SHOTS = join(LAB, 'shots');
 // Sortie des essais : un texte par ligne (l'objet est écrit en JSON).

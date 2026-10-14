@@ -2,13 +2,13 @@
 // et rend le cadre de GFS, ou celui d'une app (sous-cadre de GFS) quand on le demande.
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { chromium, newLabPage, SHOTS } from './lab-common.mjs';
+import { engine, engineName, newLabPage, SHOTS } from './lab-common.mjs';
 
 const WIDGET = 'http://127.0.0.1:8911/prototype/index.html';
 
 export async function startLab({ lang = 'fr', colorScheme = 'light', width = 1280, height = 800, query = '', fullAccess = true, probes = false, frameAttributes = null, patches = [] } = {}) {
   await mkdir(SHOTS, { recursive: true });
-  const browser = await chromium.launch({ args: ['--no-sandbox', '--font-render-hinting=none'] });
+  const browser = await engine.launch(engineName === 'chromium' ? { args: ['--no-sandbox', '--font-render-hinting=none'] } : {});
   const { page, context } = await newLabPage(browser, { lang, colorScheme, width, height, probes, frameAttributes, patches });
   const gfsFrame = async (re = /./) => {
     for (let i = 0; i < 80; i++) {

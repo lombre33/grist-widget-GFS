@@ -16,7 +16,7 @@ import { activeExtensionIds, extensionsOf } from './extensions.js';
 import { AppsState } from './apps-state.js';
 import { ModulesWindow, rowKey } from './modules-window.js';
 import { buildContext, instanceOf, pageOf } from './context.js';
-import { Refus, ERR } from './filter.js';
+import { Refus, ERR, levelOf } from './filter.js';
 
 const NOTICE_MS = 6000;
 
@@ -74,6 +74,9 @@ export class GfsController {
 
   // ---------- noms, grisé, types à créer : ce que l'explorateur demande ----------
 
+  // Sous `full`, GFS ne lit pas les tables de fichiers des apps (contrats 3.1, point 2) : l'explorateur le dit au lieu de rendre l'erreur de Grist.
+  get fullAccess() { return levelOf(this.state.grantedAccess) >= levelOf('full'); }
+
   appById(id) { return this.apps.find(item => item.app.id === id && item.ok) || null; }
   appName = id => { const app = this.appById(id); return app ? label(app.manifest.nom, this.lang) : id; };
   validApps() { return this.apps.filter(item => item.ok); }
@@ -82,6 +85,7 @@ export class GfsController {
   // Grisé, jamais masqué (charte) : un fichier d'une app non installée, un type absent du manifeste, un type d'une extension non active sont listés
   // avec la raison (contrats 5.4, point 1, et 6.5, point 3). `focus` : la ligne de la fenêtre « Apps et extensions » qui le débloque, s'il y en a une.
   lockOf = file => {
+    if (!this.fullAccess) return { text: this.t('gfs.needsFullAccess'), hint: this.t('gfs.needsFullAccessHint') };
     if (!this.registry.has(file.app)) return { text: this.t('ex.lockedApp', { app: this.appName(file.app) }), focus: rowKey(file.app) };
     if (!file.known) return { text: this.t('ex.lockedType', { app: this.appName(file.app) }) };
     const extension = file.typeInfo.extension;
@@ -96,25 +100,27 @@ export class GfsController {
 
   // Le menu « Nouveau » : un article par type que l'app sait ouvrir (`actions.ouvrir`), le nom de l'app quand il y en a plusieurs.
   newTypes = () => {
-    const apps = this.validApps();
     const several = this.registry.installedIds().length > 1;
     const entries = [];
-    for (const { manifest } of apps) {
+    for (const { manifest } of this.validApps()) {
       const canOpen = new Set((manifest.actions && manifest.actions.ouvrir) || []);
       for (const spec of manifest.fichiers || []) {
         for (const type of spec.types || []) {
-          if (!canOpen.has(type.valeur)) continue;
-          const probe = { app: manifest.id, known: true, typeInfo: type };
-          const lock = this.lockOf(probe);
-          entries.push({
-            app: manifest.id, type: type.valeur, label: label(type.nom, this.lang), icon: type.icone || 'doc', family: lock ? null : ({ document: 'doc', grille: 'grid', presentation: 'slides' })[type.couleur] || null,
-            greyed: Boolean(lock), focus: lock ? lock.focus : null, hint: lock ? lock.text : (several ? label(manifest.nom, this.lang) : ''),
-          });
+          if (canOpen.has(type.valeur)) entries.push(this.#newEntry(manifest, type, several));
         }
       }
     }
     return entries;
   };
+
+  // Un article du menu « Nouveau » : grisé avec sa raison (`reason`, dite au clic) et son rappel court (`hint`, sous le nom).
+  #newEntry(manifest, type, several) {
+    const lock = this.lockOf({ app: manifest.id, known: true, typeInfo: type });
+    return {
+      app: manifest.id, type: type.valeur, label: label(type.nom, this.lang), icon: type.icone || 'doc', family: lock ? null : ({ document: 'doc', grille: 'grid', presentation: 'slides' })[type.couleur] || null,
+      greyed: Boolean(lock), focus: lock ? lock.focus : null, hint: lock ? (lock.hint || lock.text) : (several ? label(manifest.nom, this.lang) : ''), reason: lock ? lock.text : '',
+    };
+  }
 
   // ---------- démarrage ----------
 
@@ -204,6 +210,11 @@ export class GfsController {
   }
 
   async refreshFiles() {
+    if (!this.fullAccess) {
+      this.explorer.setFiles([]);
+      this.explorer.setStatus({ restricted: true, problems: [this.t('gfs.needsFullAccess')] });
+      return;
+    }
     this.explorer.setStatus({ loading: true });
     try {
       const { files, problems, stats } = await loadFiles(this.port, this.validApps());
@@ -287,6 +298,8 @@ export class GfsController {
 
   // « Ouvrir » sur une ligne de la fenêtre : l'app s'ouvre sans consigne (elle applique son propre ordre d'arrivée, contrats 5.2, point 3).
   #openApp(id) {
+    const app = this.appById(id);
+    if (app && levelOf(app.manifest.permissions.acces) > levelOf(this.state.grantedAccess)) { this.notice(this.t('gfs.needsFullAccess')); return; }
     if (!this.#activate(id, null)) return;
     this.hideExplorer();
   }
@@ -342,7 +355,7 @@ export class GfsController {
   }
 
   #openNew(entry) {
-    if (entry.greyed) { this.#greyedClick({ text: entry.hint, focus: entry.focus }); return; }
+    if (entry.greyed) { this.#greyedClick({ text: entry.reason || entry.hint, focus: entry.focus }); return; }
     this.#openIn(entry.app, { fichier: null, type: entry.type, dossier: this.explorer.state.path, raison: 'nouveau' }, 'ex.notice.new');
   }
 

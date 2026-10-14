@@ -14,6 +14,8 @@ const STRINGS = {
     'gfs.appsTip': 'Apps et extensions de Grist Factory Suite',
     'gfs.idle': 'Aucune app ouverte. Choisis un fichier dans l’explorateur.',
     'gfs.settingsFailed': 'Ce choix n’a pas pu être écrit dans les réglages : {reason}',
+    'gfs.needsFullAccess': 'GFS a besoin de l’accès complet au document pour lister tes fichiers et ouvrir tes apps. Dans le panneau de droite de Grist, accepte la demande d’accès ou règle le niveau d’accès sur « accès complet ».',
+    'gfs.needsFullAccessHint': 'Demande l’accès complet au document.',
 
     'mod.title': 'Apps et extensions',
     'mod.count': '{n} {n|actif|actifs} sur {total}',
@@ -67,6 +69,7 @@ const STRINGS = {
     'ex.emptyFolder': 'Dossier vide.',
     'ex.emptyFav': 'Aucun favori pour le moment.',
     'ex.emptySearch': 'Aucun fichier ne correspond.',
+    'ex.emptyNoAccess': 'Les fichiers s’afficheront dès que l’accès complet sera accordé.',
     'ex.hintPersonal': 'Rangement personnel : les autres personnes ne le voient pas.',
     'ex.hintFav': 'Favori, le tien seulement.',
     'ex.hintSelect': 'Sélectionne un fichier pour voir ses détails.',
@@ -106,6 +109,8 @@ const STRINGS = {
     'gfs.appsTip': 'Apps and extensions of Grist Factory Suite',
     'gfs.idle': 'No app is open. Pick a file in the explorer.',
     'gfs.settingsFailed': 'This choice could not be written to the settings: {reason}',
+    'gfs.needsFullAccess': 'GFS needs full access to the document to list your files and open your apps. In Grist’s right panel, accept the access request or set the access level to “full document access”.',
+    'gfs.needsFullAccessHint': 'Needs full access to the document.',
 
     'mod.title': 'Apps and extensions',
     'mod.count': '{n} of {total} active',
@@ -159,6 +164,7 @@ const STRINGS = {
     'ex.emptyFolder': 'Empty folder.',
     'ex.emptyFav': 'No favorites yet.',
     'ex.emptySearch': 'No file matches.',
+    'ex.emptyNoAccess': 'Your files will show up as soon as full access is granted.',
     'ex.hintPersonal': 'Personal folders: other people do not see them.',
     'ex.hintFav': 'Favorite, yours only.',
     'ex.hintSelect': 'Select a file to see its details.',

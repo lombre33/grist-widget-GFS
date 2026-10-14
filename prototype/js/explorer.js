@@ -16,6 +16,7 @@ export class Explorer {
   #rows = [];
   #loading = false;
   #problems = [];
+  #restricted = false;
   // Deux tris : celui des dossiers et des favoris (par nom), celui de Récents (par date, le plus récent d'abord).
   state = { view: 'folder', path: '', open: new Set(), display: 'list', sort: { key: 'name', dir: 1 }, recentSort: { key: 'mod', dir: -1 }, type: 'all', q: '', sel: null };
 
@@ -39,9 +40,11 @@ export class Explorer {
     if (this.isOpen) this.render();
   }
 
-  setStatus({ loading = false, problems = [] }) {
+  // `restricted` : GFS n'a pas l'accès complet, la liste est vide pour cette raison et non parce qu'il n'y a aucun fichier.
+  setStatus({ loading = false, problems = [], restricted = false }) {
     this.#loading = loading;
     this.#problems = problems;
+    this.#restricted = restricted;
     if (this.isOpen) this.#renderList();
   }
 
@@ -119,7 +122,7 @@ export class Explorer {
     list.replaceChildren(...(tiles ? [h('div', { class: 'th-grid' }, ...cards)] : [listHead(ctx), ...cards]));
     list.classList.toggle('is-tiles', tiles);
     notices.replaceChildren(...this.#problems.map(text => h('div', { class: 'banner', role: 'alert' }, icon('warning'), text)));
-    const message = this.#loading ? this.#opts.i18n.t('ex.loading') : (this.#rows.length ? '' : emptyMessage(ctx));
+    const message = this.#loading ? this.#opts.i18n.t('ex.loading') : (this.#rows.length ? '' : (this.#restricted ? this.#opts.i18n.t('ex.emptyNoAccess') : emptyMessage(ctx)));
     empty.textContent = message;
     empty.hidden = !message;
     scroll.scrollTop = top;

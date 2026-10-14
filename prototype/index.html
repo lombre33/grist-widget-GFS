@@ -10,7 +10,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-9Zm+5cSm8iCs9PTuvAF4mMrAHlZ8mN2z/JzAva3ySKk='; style-src 'self'; img-src 'self' data:; frame-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-ei5yWjiOYaVq+QOkmuRdWpDkA1mH91rYuInOYqx87sA='; style-src 'self'; img-src 'self' data:; frame-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=f161bd6e01">
 <link rel="stylesheet" href="css/explorer.css?v=fba09688cb">
 <link rel="stylesheet" href="css/modules.css?v=a163bf1afc">
@@ -25,17 +25,17 @@
     "./js/broker.js": "./js/broker.js?v=4e909305b8",
     "./js/catalogue.js": "./js/catalogue.js?v=547dbc3cae",
     "./js/context.js": "./js/context.js?v=fcc2867b42",
-    "./js/controller.js": "./js/controller.js?v=d81335f13a",
+    "./js/controller.js": "./js/controller.js?v=372d591ac3",
     "./js/dom.js": "./js/dom.js?v=6093a9f23f",
     "./js/envelope.js": "./js/envelope.js?v=a547d9834c",
     "./js/explorer-data.js": "./js/explorer-data.js?v=05d52b28de",
     "./js/explorer-model.js": "./js/explorer-model.js?v=fc33081a7e",
     "./js/explorer-view.js": "./js/explorer-view.js?v=3e88d3fdc0",
-    "./js/explorer.js": "./js/explorer.js?v=b7e1ef096c",
+    "./js/explorer.js": "./js/explorer.js?v=759374488f",
     "./js/extensions.js": "./js/extensions.js?v=5614c39c4b",
     "./js/filter.js": "./js/filter.js?v=0bbd3af6df",
     "./js/frames.js": "./js/frames.js?v=09ec1cb3a3",
-    "./js/i18n.js": "./js/i18n.js?v=e5f838565a",
+    "./js/i18n.js": "./js/i18n.js?v=b2ea79c51c",
     "./js/icons.js": "./js/icons.js?v=99b6051789",
     "./js/layers.js": "./js/layers.js?v=2d0c225b72",
     "./js/libraries.js": "./js/libraries.js?v=25fb1ee5cf",

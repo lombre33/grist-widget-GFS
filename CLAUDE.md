@@ -98,10 +98,23 @@ Si un fait nouveau remet en cause une de ces lignes : le dire au porteur, avec l
   Publipostage+ ; le porteur peut la changer).
 - Avancer la référence d'une app ou du kit, c'est un commit à part, relu (Dependabot le propose).
 - Les dépôts des apps et de l'outil d'audit se lisent depuis ce projet, sans s'y modifier : un changement dans une app
-  s'écrit comme proposition dans un fichier à part, que le porteur transmet au projet de l'app.
+  s'écrit comme une consigne (section suivante), que le projet de l'app lit lui-même.
 - Jamais de commit vide pour relancer une publication ; vérifier que Pages a publié et sert les fichiers.
 - Les dépôts publics de l'organisation `grist-factory` ne se poussent jamais depuis le cloud : un outil d'envoi prépare le
   dépôt propre, le porteur pousse depuis sa machine.
+
+## Les apps : consignes et état
+
+Les dépôts servent de boîte aux lettres ; chaque côté ne lit qu'une page (mode d'emploi : `consignes/LISEZ-MOI.md`).
+
+- **Écrire à une app** : une consigne est un fichier `consignes/<app>/NNN-sujet.md` (Quoi, Pourquoi, Fait quand) avec sa ligne
+  dans l'`INDEX.md` de l'app, dans le même commit. Une consigne publiée ne change pas : un changement de fond est une nouvelle
+  consigne qui remplace l'ancienne. Elle ne dit que ce que le cahier, le guide, les contrats relus ou une décision du porteur
+  disent déjà ; sinon, carte de décision d'abord.
+- **Se mettre à jour sur une app** : lire son `GFS-ETAT.md` (racine de son dépôt), puis le journal des commits depuis le
+  « dernier commit lu » de `docs/apps.md`, jamais tout le dépôt (commandes et pièges : `docs/apps.md`). Ensuite, passer les
+  consignes faites à « faite » dans l'`INDEX.md`, avancer la ligne de `docs/apps.md` et répondre aux questions par une consigne.
+- On ne pousse jamais dans le dépôt d'une app.
 
 ## Travailler avec le porteur
 

@@ -1,5 +1,7 @@
 # Consignes de GFS aux apps
 
+**À lire une fois, avant le reste : [`docs/gfs-en-bref.md`](../docs/gfs-en-bref.md)**, GFS et ce qui est en jeu, en une page.
+
 Ce dossier est la boîte aux lettres de GFS vers les projets des apps ; le `GFS-ETAT.md` que chaque app tient à la racine de son
 dépôt est celle des apps vers GFS. Chaque côté ne lit qu'une page : l'app lit l'`INDEX.md` de ses consignes, GFS lit le
 `GFS-ETAT.md` de l'app. Personne ne pousse dans le dépôt de l'autre : GFS écrit ici, l'app écrit chez elle. Une app qui a

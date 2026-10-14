@@ -2,7 +2,8 @@
 
 Version 1 du 14 octobre 2026. Pour le projet de chaque app, Publipostage+ d'abord. Ce guide dit ce qu'une app doit
 respecter pour tourner dans Grist Factory Suite (GFS) sans rien perdre quand elle tourne seule. Le pourquoi est dans le
-cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont cités entre parenthèses.
+cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont cités entre parenthèses. Le tableau d'ensemble
+(ce qu'est GFS, ce qui est en jeu) est dans `gfs-en-bref.md`.
 
 ## En bref
 

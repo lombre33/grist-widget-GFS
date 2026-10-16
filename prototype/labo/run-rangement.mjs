@@ -16,11 +16,10 @@ let frame = lab.frame;
 // Ce que la table dit (la lecture que partagent les essais : lab.rangement) : ses colonnes, ses lignes, la valeur de la ligne réservée, le nombre de pages du document.
 const state = f => lab.rangement(f);
 // Une autre section (ou la personne dans Grist) écrit la ligne : GFS n'en est pas prévenu (7.4 point 3).
-const writeValue = (f, value) => f.evaluate(async json => {
-  const data = await grist.docApi.fetchTable('GFS_Rangement');
-  const at = data.id.findIndex((id, i) => data.Utilisateur[i] === '@document' && data.App[i] === 'gfs' && data.Fichier[i] === 'apps');
-  await grist.docApi.applyUserActions([['UpdateRecord', 'GFS_Rangement', data.id[at], { Valeur: json }]]);
-}, JSON.stringify(value));
+const writeValue = async (f, value) => {
+  const { reservedId } = await lab.rangement(f);
+  await f.evaluate(([id, json]) => grist.docApi.applyUserActions([['UpdateRecord', 'GFS_Rangement', id, { Valeur: json }]]), [reservedId, JSON.stringify(value)]);
+};
 const reload = async () => {
   await page.keyboard.press('Escape');
   await frame.evaluate(() => location.reload());

@@ -132,6 +132,10 @@ export class AppSession {
   // GFS appelle une fonction que l'app a enregistrée (`print`, `editOptions`).
   callApp(name, args, timeoutMs) { return this.#peer.callApp(name, args, timeoutMs); }
 
+  // L'app est déjà ouverte : GFS lui demande d'ouvrir ce fichier (contrats 5.4, point 1). Elle pose sa propre question d'enregistrement avant ; la réponse
+  // `{ ouvert: true | false }` vient quand la personne a répondu, sans délai. Rejetée avec le code de l'app si elle ne connaît pas l'appel.
+  openFile(opening) { return this.#envelope.call('ouvrir', opening); }
+
   show(visible) { if (this.#frame) this.#frame.classList.toggle('app-frame--behind', !visible); }
 
   // Rend le clavier à l'app (au retour de l'explorateur) : `focus()` est permis sur une fenêtre d'une autre origine.

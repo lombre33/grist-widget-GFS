@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Sonde O</title>
+<!-- Politique de l'app sonde O : celle de Publipostage+ (script-src 'self', frame-src 'none', form-action 'none', pas de default-src). -->
+<meta http-equiv="Content-Security-Policy" content="script-src 'self'; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'">
+</head>
+<body data-reponse="oui">
+<h1>Sonde O : une app qui répond à l'appel « ouvrir » de GFS</h1>
+<p>Ce que la sonde a reçu est écrit dans <code>body[data-sonde]</code>, que le labo lit ; <code>body[data-reponse]</code> (<code>oui</code>, <code>non</code>, <code>inconnu</code>, <code>echec</code>, <code>muet</code>) choisit sa réponse.</p>
+<script src="ouvrir.js"></script>
+</body>
+</html>

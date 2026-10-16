@@ -26,7 +26,9 @@ Variables utiles : `LAB_LANG=fr|en`, `LAB_SCHEME=light|dark`, `LAB_BROWSER=chrom
 | Essai | Ce qu'il mesure |
 |---|---|
 | `run-slice1`, `probe-app`, `run-automation` | GFS ouvre Publipostage+ (la version que GFS référence, qui parle à GFS) et Automation+ (non modifiée) dans un sous-cadre isolé : leurs tables, ce qu'elles voient, ce que le courtier leur refuse |
-| `run-explorer`, `run-modules` | l'explorateur et la fenêtre « Apps et extensions » (interface) |
+| `run-explorer`, `run-modules` | l'explorateur et la fenêtre « Apps et extensions » (interface), dont la question de la table du document et son refus (contrats 7.4) |
+| `run-rangement` | la table `GFS_Rangement` d'une autre version ou d'un autre auteur : colonne absente ajoutée, apps et champs inconnus gardés, ce qu'une autre section écrit entre deux gestes n'est pas défait |
+| `run-ouvrir` | GFS demande à l'app déjà ouverte d'ouvrir le fichier cliqué (contrats 5.4) : la sonde O (`sondes/o-ouvrir/`) répond comme le fera Publipostage+ avec la consigne 010 ; double-clic, « Nouveau », annulation, erreur, appel inconnu, attente |
 | `run-courtier` | le courtier avec le vrai script d'API de Grist : rejeu, `configure`, jeton, noms de tables |
 | `run-capacites` | ce qu'une app peut faire dans son sous-cadre (stockage, impression, téléchargements, fenêtres, presse-papiers, navigation) ; `CAP_CONFIG=grist` : la même sonde sans GFS |
 | `run-impression` | « Print widget » de Grist relayé à l'app active |

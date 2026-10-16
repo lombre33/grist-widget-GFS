@@ -1,0 +1,52 @@
+{
+  "contrat": 0,
+  "id": "sonde-o",
+  "nom": {
+    "fr": "Sonde O",
+    "en": "Probe O"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Une app qui répond à l'appel « ouvrir » de GFS, comme Publipostage+ après la consigne 010",
+    "en": "An app that answers GFS's “open” call, like Publipostage+ after instruction 010"
+  },
+  "icone": "doc",
+  "entree": "index.html",
+  "tables": {
+    "prefixe": "SondeO_"
+  },
+  "fichiers": [
+    {
+      "table": "SondeO_Fichiers",
+      "colonnes": {
+        "id": "id",
+        "nom": "Nom",
+        "type": "Type",
+        "date": "DateModif"
+      },
+      "typeParDefaut": "document",
+      "types": [
+        {
+          "valeur": "document",
+          "nom": {
+            "fr": "Document",
+            "en": "Document"
+          },
+          "icone": "doc",
+          "couleur": "document"
+        }
+      ]
+    }
+  ],
+  "reglages": [],
+  "permissions": {
+    "acces": "none"
+  },
+  "extensions": [],
+  "actions": {
+    "ouvrir": [
+      "document"
+    ],
+    "choisir": []
+  }
+}

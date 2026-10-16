@@ -776,6 +776,13 @@ stockage par app (étape 3) :
    est listée grisée avec « Installer ». « Nouveau » est `ouvrir` avec `fichier: null` et un `type` : l'app ouvre un fichier
    vierge de ce type et le crée à son premier enregistrement ; si son manifeste déclare `colonnes.dossier`, elle y écrit
    `dossier` (sinon le fichier arrive à la racine). [D]
+   Quand l'app est déjà active, GFS (prototype V0.3) n'envoie l'appel qu'à une app qui a déjà demandé son `contexte` : avant, elle
+   y lit l'`ouverture`, celle du dernier clic. L'appel n'a pas de délai. `{ ouvert: false }` (la personne a annulé dans l'app) ne
+   se commente pas ; `GFS_INCONNU` (l'app n'a pas la porte) vaut la phrase provisoire ; toute autre erreur est dite avec le texte
+   de l'app ; une app retirée ou remplacée pendant l'attente abandonne l'appel sans rien dire. [D] **Mesuré le 16/10** dans un
+   vrai Grist, à la vraie souris, avec une app d'essai (sonde O, `run-ouvrir.mjs`) : le double-clic, « Nouveau », l'annulation,
+   l'erreur, l'appel inconnu, l'attente sans réponse et le retrait de l'app pendant l'attente ; les messages vont et reviennent
+   par le routeur jusqu'à un cadre isolé. Pas encore avec Publipostage+ : cela attend sa consigne 010. [M]
 2. [T] **choisir** : l'explorateur s'ouvre en mode choix, filtré par `types` (et `apps` si elle est donnée), parmi les types que
    les manifestes déclarent dans `actions.choisir`. Un fichier d'une app non installée est grisé, avec « Installer ». `titre`
    est un texte déjà traduit, montré par GFS.
@@ -981,7 +988,11 @@ le document, pour que l'installation s'enregistre tout de suite.
     réservée est écrite par `AddRecord`. Les gestes suivants ne posent plus de question et écrivent par `UpdateRecord` après une
     relecture de la ligne. Le cadre de GFS rechargé retrouve les apps installées, n'ouvre pas la fenêtre tout seul et ne récrit
     rien ; reconstruit avec la section, il retrouve la table. Un document en lecture seule, ou un accès du widget inférieur à
-    `full`, grise les cases avec la raison (`run-modules.mjs` avec `LAB_READONLY=1`, `run-acces-none.mjs`).
+    `full`, grise les cases avec la raison (`run-modules.mjs` avec `LAB_READONLY=1`, `run-acces-none.mjs`). Une table
+    `GFS_Rangement` plus ancienne, sans la colonne `Valeur` (`run-rangement.mjs`) : aucune question, `AddColumn` ajoute la
+    colonne avant l'écriture, la ligne d'un autre auteur n'est pas touchée, aucune page de plus ; une app et un champ que cette
+    version ne connaît pas restent dans `Valeur` après un geste (6.5, point 4) ; ce qu'une autre section a écrit entre deux
+    gestes n'est pas défait, la ligne étant relue avant chaque écriture.
     [M] Non mesuré : une écriture que refuse une règle d'accès de Grist (le labo n'en pose pas) ; le test unitaire la couvre
     contre un port qui refuse, pas contre Grist.
 

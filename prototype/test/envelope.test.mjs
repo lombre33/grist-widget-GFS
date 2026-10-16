@@ -58,3 +58,63 @@ test('un événement part sans file d\'attente, une fois fermé plus rien ne par
   await settle();
   assert.equal(sent.length, 1);
 });
+
+// ----- GFS appelle l'app (contrats 5.1 : `ouvrir`, `fermer`) : la réponse revient par l'id, sans délai.
+
+test('call : l\'appel part avec un id à partir de 1, la réponse de même id résout la promesse', async () => {
+  const { peer, sent } = make({});
+  const first = peer.call('ouvrir', { type: 'document' });
+  const second = peer.call('ouvrir', { type: 'grille' });
+  assert.deepEqual(sent, [
+    { gfs: 0, type: 'appel', id: 1, nom: 'ouvrir', args: { type: 'document' } },
+    { gfs: 0, type: 'appel', id: 2, nom: 'ouvrir', args: { type: 'grille' } },
+  ]);
+  peer.receive({ gfs: 0, type: 'reponse', id: 2, data: { ouvert: false } });
+  peer.receive({ gfs: 0, type: 'reponse', id: 1, data: { ouvert: true } });
+  assert.deepEqual(await second, { ouvert: false });
+  assert.deepEqual(await first, { ouvert: true });
+});
+
+test('call : une erreur de l\'app rejette avec son code et son message ; une réponse sans corps vaut null', async () => {
+  const { peer } = make({});
+  const refused = peer.call('ouvrir', {});
+  const empty = peer.call('fermer', {});
+  peer.receive({ gfs: 0, type: 'erreur', id: 1, code: 'GFS_INCONNU', message: 'inconnu' });
+  peer.receive({ gfs: 0, type: 'reponse', id: 2 });
+  await assert.rejects(refused, error => error.code === 'GFS_INCONNU' && error.message === 'inconnu');
+  assert.equal(await empty, null);
+});
+
+test('call : une réponse que personne n\'attend, d\'un autre numéro de contrat ou du protocole des widgets ne résout rien', async () => {
+  const { peer } = make({});
+  let settled = false;
+  const pending = peer.call('ouvrir', {}).then(() => { settled = true; }, () => { settled = true; });
+  peer.receive({ gfs: 0, type: 'reponse', id: 9, data: {} });
+  peer.receive({ gfs: 1, type: 'reponse', id: 1, data: {} });
+  peer.receive({ gfs: 0, mtype: 2, type: 'reponse', id: 1, data: {} });
+  await settle();
+  assert.equal(settled, false);
+  peer.receive({ gfs: 0, type: 'reponse', id: 1, data: { ouvert: true } });
+  peer.receive({ gfs: 0, type: 'reponse', id: 1, data: { ouvert: false } }); // une seconde réponse au même appel est ignorée
+  await pending;
+  assert.equal(settled, true);
+});
+
+test('call : l\'id d\'un appel de l\'app n\'a rien à voir avec celui d\'un appel de GFS', async () => {
+  const { peer, sent } = make({ contexte: async () => ({ a: 1 }) });
+  const pending = peer.call('ouvrir', {});
+  peer.receive({ gfs: 0, type: 'appel', id: 1, nom: 'contexte' }); // l'app appelle `contexte` sous son propre id 1
+  await settle();
+  assert.deepEqual(sent.map(msg => [msg.type, msg.id]), [['appel', 1], ['reponse', 1]]);
+  peer.receive({ gfs: 0, type: 'reponse', id: 1, data: { ouvert: true } });
+  assert.deepEqual(await pending, { ouvert: true });
+});
+
+test('call : fermé, les appels en attente sont rejetés (l\'app n\'est plus active), un nouvel appel ne part pas', async () => {
+  const { peer, sent } = make({});
+  const pending = peer.call('ouvrir', {});
+  peer.close();
+  await assert.rejects(pending, error => error.code === 'GFS_INACTIF');
+  await assert.rejects(peer.call('ouvrir', {}), error => error.code === 'GFS_INACTIF');
+  assert.equal(sent.length, 1);
+});

@@ -22,8 +22,8 @@ import { Refus, ERR, levelOf } from './filter.js';
 
 const NOTICE_MS = 6000;
 
-// Provisoire : tant que l'app ne comprend pas l'action « ouvrir » (consigne 003), GFS ouvre l'app sur son modèle habituel et le dit.
-// Une app qui l'accepte passe à `true` ici (puis la ligne disparaît avec le catalogue provisoire).
+// Provisoire : tant que l'app ne comprend pas l'`ouverture` du contexte ni l'appel `ouvrir` (consigne 010), GFS ouvre l'app sur son modèle habituel et le dit.
+// Une app qui les accepte passe à `true` ici (puis la ligne disparaît avec le catalogue provisoire).
 const ACCEPTS_OPEN = Object.freeze({ publipostage: false, automation: false });
 
 // Provisoire (étape 2) : les apps qui ne se retirent pas, comme dans la maquette (Publipostage+ ne se décoche pas).
@@ -51,6 +51,7 @@ export class GfsController {
   #noticeTimer = null;
   #facts = null;
   #sentExtensions = null;
+  #contextServed = false; // l'app active a demandé son contexte : elle a lu l'ouverture qui s'y trouvait
   #modulesWaiters = [];
 
   // env : { grist, router, search, doc }
@@ -305,6 +306,7 @@ export class GfsController {
     this.session.close();
     this.session = null;
     this.#sentExtensions = null;
+    this.#contextServed = false;
   }
 
   // L'événement `extensions` (contrats 5.2, point 2) : seulement quand ce que l'app doit charger a vraiment changé.
@@ -344,6 +346,7 @@ export class GfsController {
   }
 
   async #contextFor(session) {
+    if (session === this.session) this.#contextServed = true;
     const given = this.registry.extensionsFor(session.id, this.doc.baseURI);
     this.#sentExtensions = JSON.stringify([given.extensions, given.bibliotheques]);
     const facts = await this.#readFacts();
@@ -380,9 +383,26 @@ export class GfsController {
   }
 
   #openIn(appId, opening, noticeKey) {
+    // L'app déjà ouverte a lu son contexte : elle n'y relira pas l'ouverture, GFS la lui dit par l'appel `ouvrir` (contrats 5.4, point 1).
+    // Sinon (une autre app, ou celle-ci qui démarre) l'ouverture part dans le contexte qu'elle va demander.
+    const running = Boolean(this.session) && this.session.id === appId && this.#contextServed;
     if (!this.#activate(appId, opening)) return;
     this.hideExplorer();
     if (!ACCEPTS_OPEN[appId]) this.notice(this.t(noticeKey, { app: this.appName(appId) }));
+    else if (running) void this.#askToOpen(this.session, opening, noticeKey);
+  }
+
+  // L'app ouvre le fichier elle-même, après sa propre question d'enregistrement : `{ ouvert: false }` veut dire que la personne a annulé, GFS n'ajoute rien.
+  // Une app qui ne connaît pas l'appel (GFS_INCONNU) reçoit la phrase provisoire ; une autre erreur est dite avec son texte.
+  async #askToOpen(session, opening, noticeKey) {
+    try {
+      await session.openFile(opening);
+    } catch (error) {
+      if (session !== this.session) return; // l'app a été fermée ou remplacée pendant l'attente : plus rien à dire
+      const app = this.appName(session.id);
+      if (error && error.code === ERR.INCONNU) this.notice(this.t(noticeKey, { app }));
+      else this.notice(this.t('ex.notice.openFailed', { app, reason: String((error && error.message) || '').slice(0, 120) }));
+    }
   }
 
   // Active l'app : la même reste en place, une autre remplace l'app active (une seule à la fois, contrats 1.4).

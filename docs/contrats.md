@@ -87,6 +87,11 @@ connaît pas.
 13. **Les apps installées se retiennent dans `GFS_Rangement`** (décision du porteur, 16/10, question 9) : une ligne réservée
     et une colonne `Valeur` de plus (6.4, 7.4). Le conseil du cahier était les réglages de la section, qui restent un brouillon
     jusqu'à « Enregistrer ».
+14. **Une bibliothèque d'extension peut être un fichier assemblé par GFS** (décision du porteur, 16/10, sur la demande d'écriture
+    en direct de Publipostage+) : plusieurs paquets npm dans un seul module, qui laisse en noms nus les bibliothèques natives de
+    l'app (2.6, points 8 à 11 ; 5.2, points 4 et 5). Sans lui, le curseur des autres disparaît sans erreur.
+15. **La table d'un direct n'est pas prévenue par Grist** : seule la table de la section l'est. GFS ne promet pas de canal plus
+    rapide que la table ; il fixe le rythme de la relecture et donne ce qu'elle coûte, mesuré (5.5).
 
 ---
 
@@ -252,13 +257,48 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
    `{ "id": "plotly", "version": "2.13.2" }` (la version de Grist, celle pour laquelle le dessin du graphique est écrit).
    Ni adresse, ni empreinte, ni mode : elles sont à GFS.
 6. [D] GFS tient un catalogue des bibliothèques d'extensions : pour chacune, `id`, `version`, l'adresse du CDN avec son
-   empreinte (`cdn: { src, integrite }`) et le fichier de la version vendorisée avec la sienne
+   empreinte (`cdn: { src, integrite }`, ou `cdn: null` au point 11) et le fichier de la version vendorisée avec la sienne
    (`vendorise: { chemin, integrite }`), tirés par son outil d'une liste de son dépôt (`package.json`). Le catalogue est publié
    avec GFS : la source d'une bibliothèque n'est jamais lue dans un réglage, une table ou un message d'une app (cahier 3.2,
    point 3). Une extension dont une bibliothèque exigée manque au catalogue (identifiant ou version) est grisée dans GFS, avec
    la raison.
 7. [D] Le mode, CDN (le défaut) ou vendorisé, se choisit dans GFS, à l'activation de l'extension ; l'app ne le connaît pas.
    [Q] Où se retient ce choix (par extension, ou pour toute la section) : cahier, question 11.
+8. [T] **Un fichier assemblé, quand plusieurs paquets doivent partager leurs instances avec l'éditeur natif de l'app** (choix du
+   porteur, 16/10, sur la demande d'écriture en direct de Publipostage+). Les six paquets de cette demande importent
+   `prosemirror-*` et `@tiptap/core` : si l'extension apporte sa propre copie de ProseMirror, le texte se synchronise mais les
+   curseurs des autres disparaissent sans une erreur, et une carte d'importation posée à l'exécution est refusée par la CSP de
+   l'app (faits vérifiés, 9). GFS construit donc **un seul fichier module**, qui contient les paquets demandés et leurs
+   dépendances (par exemple `lib0`) et laisse en noms nus les bibliothèques natives de l'app, que la carte d'importation de
+   l'app nomme déjà. L'entrée du catalogue (point 6) porte alors `forme: "module"`, `contient` (les paquets npm et leurs
+   versions exactes), `modules` (les paquets que l'extension prend dans le fichier) et `externes` (les noms nus que le fichier
+   laisse à l'app) :
+
+   ```json
+   { "id": "edition-live", "version": "1.0.0", "forme": "module", "poids": 145862,
+     "contient": [ { "paquet": "yjs", "version": "13.6.33" }, … ],
+     "modules": [ "yjs", "y-protocols/awareness", "@tiptap/y-tiptap", "@tiptap/extension-collaboration",
+                  "@tiptap/extension-collaboration-caret" ],
+     "externes": [ "@tiptap/core", "prosemirror-model", "prosemirror-state", "prosemirror-transform", "prosemirror-view" ],
+     "cdn": null,
+     "vendorise": { "chemin": "vendor/edition-live/1.0.0/edition-live.js", "integrite": "sha384-…" } }
+   ```
+
+   L'app ne nomme toujours aucun de ces paquets dans sa liste ni dans sa carte d'importation (point 4) ; elle garde, comme avant,
+   les `externes`, qui sont ses bibliothèques natives. Une entrée sans `forme` est un script classique (Plotly).
+9. [D] **Le fichier se range sous une clé de GFS.** Chargé, il pose `globalThis.GfsPaquets[id] = { version, modules }`, où
+   `modules` associe à chaque paquet npm de `modules` son espace de noms (`modules['yjs']` vaut `import * as … from 'yjs'`) :
+   l'extension prend ce qu'elle veut sous les noms qu'elle connaît déjà. Le fichier ne pose rien d'autre sur la fenêtre.
+10. [D] **Construit par l'outil de GFS, jamais à la main.** La liste de GFS donne les versions exactes ; l'outil tire les paquets,
+    les assemble (esbuild, version exacte) en un fichier minifié, calcule son empreinte (sha384), garde la copie vendorisée
+    (`vendor/<id>/<version>/<id>.js` : `.js`, pour qu'il soit servi comme du JavaScript partout) et écrit l'entrée du
+    catalogue. **La version est celle de GFS** (`1.0.0` au départ ; le troisième nombre monte quand une version contenue
+    change) et `contient` dit ce qu'elle contient. L'extension exige `{ id, version }` comme pour toute bibliothèque (point 5).
+11. [T] **Sans CDN tant que GFS n'a pas d'adresse publique** (cahier, question 5 ; choix du porteur, 16/10) : l'entrée porte
+    `cdn: null`. La copie de GFS est alors le seul mode : la fenêtre « Apps et extensions » ne propose pas le CDN pour cette
+    bibliothèque et le dit, l'extension marche avec la copie, et la CSP de l'app ne nomme rien (5.2, point 5). À la publication,
+    l'outil ajoute l'adresse du CDN avec la même empreinte, et les apps nomment alors cette adresse dans leur CSP, comme pour
+    Plotly (consigne 007).
 
 ### 2.7 Les actions acceptées
 
@@ -673,7 +713,7 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 | `lectureSeule` | `readonly` de l'adresse | celui de GFS | celui de l'adresse |
 | `acces` | niveau de **cette app** (3.1) | oui | celui de Grist |
 | `extensions` | identifiants des extensions actives de l'app | liste de la section | `[]` |
-| `bibliotheques` | source de chaque bibliothèque que les extensions actives exigent : `{ "<id>": { src, integrite } }` (2.6) | oui | `{}` |
+| `bibliotheques` | source de chaque bibliothèque que les extensions actives exigent : `{ "<id>": { src, integrite, forme } }` (2.6) ; `forme` vaut `script` (le défaut) ou `module` | oui | `{}` |
 | `ouverture` | pourquoi et sur quoi l'app s'ouvre, ou `null` (5.4) | oui | `null` |
 | `stockage` | copie initiale du stockage de l'app (5.3) | oui | contenu du navigateur |
 
@@ -691,11 +731,17 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    bibliothèque par cette adresse, avec l'empreinte (`integrity`) et `crossorigin="anonymous"`, au premier usage, et ne charge
    rien d'autre qui ne soit dans son dossier, dans la liste de son app ou dans ce champ. Le message vient de GFS seul
    (`event.source`, 1.2), et l'adresse vient du catalogue de GFS, jamais d'une app.
+   Une bibliothèque de forme `script` (Plotly) se charge par `<script src>` et pose son nom global ; une de forme `module`
+   (le fichier assemblé, 2.6, point 8) par `<script type="module" src>`, puis l'extension lit `globalThis.GfsPaquets[id]`
+   (2.6, point 9). Aucune des deux par `import()` : une empreinte ne se pose pas sur un import dynamique (faits vérifiés, 9).
+   Sans CDN (2.6, point 11), `src` est celui de la copie de GFS.
 5. [T] **Ce que la CSP de l'app doit autoriser** (mesuré à l'étape 2 avec six CSP d'app ; cahier, question 11 tranchée le
    14/10 : CDN d'abord). En mode copie, rien : `'self'` suffit. En mode CDN, l'adresse exacte que donne le catalogue (ou son
    empreinte), et rien d'autre. Une CSP qui n'en dit rien (`script-src 'self'`), ou qui ferme les connexions quand l'extension
    charge le texte avant de l'exécuter, refuse le CDN ; une fausse empreinte est toujours refusée.
    [D] Quand le chargement échoue (CSP, réseau, empreinte), l'extension reste grisée avec la raison, jamais muette.
+   Pour un fichier de forme `module`, mesuré le 16/10 dans un cadre isolé (origine nulle, `sandbox` de GFS) sous
+   `script-src 'self'` : une bonne empreinte charge le fichier, une mauvaise le refuse et rien n'est posé (faits vérifiés, 9).
 
 ### 5.3 Le stockage du navigateur
 
@@ -759,6 +805,37 @@ stockage par app (étape 3) :
 6. [T] Une app qui reçoit un rendu ne charge jamais le code de l'app qui l'a produit, et **traite `donnees` comme une donnée
    non fiable** : un SVG s'affiche par `<img src="data:image/svg+xml…">` (ou un canevas), jamais en l'insérant dans la page,
    car un SVG inséré exécute ses scripts.
+
+### 5.5 La table d'un direct : être prévenu quand une autre table change
+
+Une app qui fait passer un travail à plusieurs par une table du document (l'écriture en direct de Publipostage+ : une ligne par
+paquet de frappes, une par personne pour la présence) doit savoir quand cette table change.
+
+1. [T] **Grist ne prévient un widget que des changements de la table de sa section** (`TableNotifier`, `WidgetFrame.ts` ; faits
+   vérifiés, 2). La table du direct est une autre table que celle de la section de GFS : aucun événement ne l'annonce, quelle
+   que soit la façon dont GFS relaie. `fetchTable` est un appel au serveur du document, pas la lecture de la copie en mémoire
+   qu'est `onRecords`.
+2. [T] **Mesuré le 16/10** (labo, `run-direct.mjs`, **sans réseau**) : écrite par un cadre, une ligne arrive à un autre cadre
+   en 20 ms (médiane) par la prévenance de Grist, 21 ms par un relais, **156 ms (p90 244) par une relecture toutes les 250 ms**,
+   55 ms (p90 99) toutes les 100 ms, 265 ms toutes les 500 ms, 515 ms toutes les secondes : la prévenance plus la moitié de
+   l'intervalle. Un réseau simulé à 50 ms par sens ne change pas cet écart (+108 ms à 250 ms). Une relecture coûte 5 à 9 ms pour
+   14 à 54 Ko, 18 ms pour 280 Ko (faits vérifiés, 2).
+3. [D] **L'app relit la table du direct par `fetchTable`, à ce rythme** : toutes les **250 ms** tant qu'une autre personne est
+   présente (une ligne de présence récente) et que la page est visible ; toutes les **2 s** quand elle est seule ; jamais plus
+   vite que toutes les **100 ms** ; à l'arrêt quand la page est cachée ou que l'app n'est plus active (`GFS_INACTIF`, 4.2,
+   point 5). La table est déclarée dans `permissions.lit` (et `ecrit` pour y écrire) et le courtier relaie : GFS n'a rien à
+   ajouter. Le délai que cela ajoute à celui de la prévenance de Grist est de **125 ms en moyenne et de 250 ms au plus**, pas de
+   0,5 à 1,5 s. Défaut à confirmer sur un Grist en ligne (point 6).
+4. [D] **Quand la table du direct est celle de la section** (la personne a lié la section de GFS à cette table), l'app n'a rien à
+   relire : la prévenance de Grist arrive par `onRecords` (4.3). Le canal de l'app reste un détail interne (le `connect(rappel)`
+   de son essai) : relecture ou prévenance, le rappel reçoit la liste complète des lignes.
+5. [Q] **Une vignette relais** (une seconde section de GFS, liée à la table du direct, que Grist prévient et qui passe
+   l'information à GFS par un canal local à la page) ramènerait le délai à celui de la prévenance (+1 ms mesuré). Elle coûte à
+   la personne une vignette de plus à ajouter à la page et à garder, et à GFS un second mode d'ouverture. Elle ne se construit
+   que si une mesure sur un Grist en ligne montre que la relecture ne suffit pas, et s'ajoute alors derrière le même canal de
+   l'app.
+6. [M] **À mesurer sur un Grist en ligne** : l'aller-retour réel d'une relecture, la charge de quatre relectures par seconde et
+   par personne qui écrit, les plafonds de l'offre, le délai de bout en bout entre deux navigateurs.
 
 ---
 
@@ -940,6 +1017,11 @@ document en petits commits, les points 8 (cadre qui navigue, politique imposable
     en CDN la CSP de l'app doit nommer l'adresse du catalogue, la copie de GFS passe sans rien nommer (2.6 point 4, 5.2 point 5).
 12. **Table du document** (6.4, 7.4) : création de `GFS_Rangement` avec l'accord de la personne, écriture et relecture de la ligne
     `apps`, refus de l'accord, écriture refusée par Grist. À mesurer avec la V0.3 du prototype.
+13. **La table d'un direct** (5.5) : prévenance, relais et relecture d'une table qui n'est pas celle de la section. **Mesuré le
+    16/10** dans le labo, sans réseau (5.5, point 2) ; à refaire sur un Grist en ligne (5.5, point 6).
+14. **Un fichier assemblé en cadre isolé** (2.6, points 8 à 11 ; 5.2) : chargé par empreinte, rangé sous `GfsPaquets`, deux
+    éditeurs de l'app synchronisés. **Mesuré le 16/10** hors Grist, dans un cadre isolé (faits vérifiés, 9) ; à refaire avec le
+    vrai fichier de GFS, dans un sous-cadre de GFS du labo, quand l'outil l'aura construit.
 
 ## 10. Laissé aux étapes suivantes
 

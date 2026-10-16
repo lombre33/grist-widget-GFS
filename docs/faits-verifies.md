@@ -46,6 +46,27 @@ réponses, sans que l'app change.
 - Lu dans `WidgetFrame.ts` (13/10) : un widget n'est prévenu que des changements de la table de sa section ; `onRecords`
   relit toute la table dans la copie en mémoire de la page Grist (sans réseau) ; une colonne ajoutée par `AddColumn` est
   masquée dans la section (la lire avec `includeColumns: 'normal'`).
+- Lu le 16/10 dans `WidgetFrame.ts` (les sources que le paquet grist-static 0.1.6 embarque dans ses cartes de sources, pas la
+  branche principale) : `GristDocAPIImpl.fetchTable` rend `docComm.fetchTable(tableId)`, donc **un appel au serveur du
+  document** ; `GristViewImpl.fetchSelectedTable` lit au contraire la copie en mémoire de la section (`sortedRows`,
+  `tableData`) et ne rend que la table de la section. `TableNotifier` n'écoute que les champs (`viewFields`), les lignes
+  (`sortedRows`, `rowNotify`) et le mappage de la **section** : rien ne prévient un widget du changement d'une autre table.
+- Mesuré le 16/10 dans un vrai Grist (grist-static 0.1.6, Chromium 141, `labo/run-direct.mjs`) : trois widgets de
+  `labo/sondes/direct/` sur deux tables d'un document de test, dans une seule page donc une seule horloge. Un widget écrit
+  une ligne ; les autres notent l'heure où ils la voient. Médiane sur 40 lignes, **sans réseau** (le moteur de Grist tourne dans le
+  navigateur) : écriture jusqu'au moteur 12 ms ; widget lié à la table écrite, prévenu par Grist **20 ms** (p90 25) ; relais de
+  ce widget vers un widget lié à une autre table par `BroadcastChannel` **21 ms** (+1 ms) ; relecture par
+  `docApi.fetchTable` à intervalle fixe, d'une table qui n'est pas celle de la section : **55 ms** (toutes les 100 ms ; p90 99),
+  **156 ms** (250 ms ; p90 244), 265 ms (500 ms ; p90 462), 515 ms (1 000 ms ; p90 927). C'est la prévenance plus **la moitié
+  de l'intervalle** (l'intervalle entier au pire) : les deux chemins paient les mêmes trajets, la relecture attend en plus
+  le prochain tour. Réseau simulé à 50 ms par sens (écriture, prévenance, requête et réponse de la relecture) : prévenance
+  122 ms, relecture à 250 ms 230 ms (p90 336), soit +108 ms, la demi-période. Une relecture coûte 5 à 9 ms pour 14 à 54 Ko,
+  11 ms pour 130 Ko, 18 ms pour 280 Ko. **Non mesuré** : le réseau réel d'un Grist en ligne, plusieurs navigateurs ou comptes,
+  les plafonds de l'offre, un widget de relais sur une autre origine que celle de GFS.
+- Mesuré le 16/10 (même essai) : un widget en lecture de la table (« Read table ») ne peut pas demander
+  `includeColumns: 'normal'` (« Setting includeColumns to normal requires full access. Current access level is read table »),
+  et les colonnes que `AddColumn` ajoute sont masquées dans la section : un widget de relais est donc en accès complet,
+  comme GFS.
 
 ## 3. Grist : données
 
@@ -133,3 +154,30 @@ refaits dans Automation+.
 | Fenêtres de premier contact ; consentement des tables ; rappel « Enregistrer » | `js/first-contact.js`, `js/table-consent.js`, `js/save-reminder.js` |
 | Base des fenêtres ; saisies ; liste avec recherche ; couches ; traduction | `js/modal-base.js`, `js/dialogs.js`, `js/search-select.js`, `js/layers.js`, `js/i18n.js` |
 | Outil d'envoi vers le dépôt public | `outils/depot-propre/` (`publier.sh`, `controles.mjs`) |
+
+## 9. Un fichier assemblé pour une extension (mesuré le 16/10, hors Grist)
+
+Page de test servie par un serveur statique qui répond `Access-Control-Allow-Origin: *` (comme GitHub Pages), Chromium 141,
+esbuild 0.28.2, les six paquets de la demande d'écriture en direct de Publipostage+ (`yjs` 13.6.33, `y-protocols` 1.0.7,
+`lib0` 0.2.119, `@tiptap/y-tiptap` 3.0.10, `@tiptap/extension-collaboration` et `-collaboration-caret` 3.31.3). Les bibliothèques
+natives de l'app (`@tiptap/core`, `prosemirror-*`) y sont des modules d'essai posés par une carte d'importation statique,
+comme dans l'app ; ni esm.sh (injoignable depuis le cloud), ni la vraie page de l'app, ni jsDelivr ne sont dans la mesure.
+
+- **Un seul fichier** : 145 862 octets, environ 46 600 gzippés (`edition-live.js`), qui contient les six paquets et leurs 33 modules
+  `lib0`, et laisse en noms nus **cinq noms**, tous déjà dans la carte d'importation d'`index.html` de l'app : `@tiptap/core`,
+  `prosemirror-model`, `prosemirror-state`, `prosemirror-transform`, `prosemirror-view` (les imports `@tiptap/pm/<x>` des
+  paquets sont renvoyés à `prosemirror-<x>` par un alias de l'outil de construction).
+- **Deux éditeurs** de l'app, montés avec les modules du fichier, se synchronisent : un texte, des frappes simultanées, la
+  coupe d'un bloc, et le curseur avec le nom de l'autre.
+- **Témoin** : avec **sa propre copie de ProseMirror** dans le fichier (404 Ko), le texte se synchronise mais **aucun curseur
+  n'apparaît et aucune erreur n'est levée** : les plugins de l'éditeur de l'app ne reconnaissent plus l'état de l'autre copie.
+  C'est la panne silencieuse que le fichier unique, aux noms de l'app laissés en externes, évite.
+- **Carte d'importation à l'exécution** : refusée par une CSP comme celle de l'app (`script-src` avec l'empreinte de sa carte
+  statique). GFS ne peut donc pas livrer les modules un à un en posant sa carte : l'app garderait la sienne.
+- **Empreinte d'un script de type module créé à la volée** (`<script type="module" src integrity crossorigin>`) : la bonne
+  empreinte charge le fichier, une mauvaise est refusée. Aucune empreinte ne se pose sur un `import()`.
+- **Dans un cadre isolé** (`sandbox="allow-scripts allow-forms allow-popups allow-modals allow-downloads"`, origine nulle,
+  `self.origin === 'null'`), sous `script-src 'self'` et l'empreinte de la carte : le fichier d'empreinte fausse est refusé et
+  ne pose rien, le fichier d'empreinte exacte se charge, range ses modules dans `globalThis.GfsPaquets['edition-live']`, et les
+  deux éditeurs se synchronisent comme hors du cadre.
+

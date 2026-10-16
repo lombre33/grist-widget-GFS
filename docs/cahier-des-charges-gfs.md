@@ -118,6 +118,7 @@ Slides+ (`lombre33/SlidesPlus`) n'est pas une app de GFS : les diapositives devi
 | **Ouvrir le fichier cliqué : une petite porte dans l'app** (l'`ouverture` du contexte et l'appel `ouvrir`) | 16/10 | Consigne 010 à Publipostage+ ; contrats 5.2, point 3, et 5.4 |
 | **Deux environnements séparés** : les dépôts de développement (`lombre33`) et les dépôts publics (`grist-factory`) ; le GFS public référence les seconds, où le porteur ne pousse que des versions propres | 16/10 | Section 4.2 ; question 1 tranchée |
 | **Premier client du kit commun : Form+**, et non Automation+, trop éloigné du périmètre de Publipostage+ | 16/10 | Sections 4.5 et 10 (étape 3, qui attend toujours son go) |
+| **Les six bibliothèques de l'écriture en direct de Publipostage+ : un seul fichier module, assemblé par GFS**, qui laisse en noms nus les bibliothèques natives de l'app (son éditeur) ; la copie de GFS d'abord, le CDN une fois l'adresse publique fixée | 16/10 | Section 4.7 ; contrats 2.6 (points 8 à 11) et 5.2 ; consigne 012 à Publipostage+ |
 
 Si un fait nouveau remet en cause une de ces lignes, le dire au porteur avec ce fait, sur une carte de décision. Ne jamais
 proposer l'inverse de son propre chef.
@@ -336,7 +337,7 @@ commencer, ou un sous-cadre gardé ouvert et caché (question 4, section 12).
 |---|---|---|
 | Graphique | Publipostage+ | Existe : ≈ 820 lignes, 3 fichiers ; 4 fichiers le citent. Plotly, chargé au premier graphique, passe à GFS (4.7). **C'est le pilote.** |
 | Diapositives (type « présentation ») | Publipostage+ | Conçu : une diapositive est une page 16:9 du même éditeur, bande de miniatures, « Présenter », « Réutiliser » (`contexte/etude-slides-explorateur-parcours-2026-10-12.md`, sections 3 et 4) |
-| Écriture en temps réel | Publipostage+ | Essai isolé en ligne (`prototypes/edition-live/` du dépôt) : TipTap et Yjs, transport par une table Grist, ≈ 90 ms d'un cadre à l'autre ; impact : `contexte/edition-live-impact-2026-10-13.md` |
+| Écriture en temps réel | Publipostage+ | Essai isolé en ligne (`prototypes/edition-live/` du dépôt) : TipTap et Yjs, transport par une table Grist, ≈ 90 ms d'un cadre à l'autre quand la table est celle de la section ; dans GFS, la table du direct est une autre table que celle de la section : Grist ne la pousse pas, l'app la relit toutes les 250 ms, 125 ms de plus en moyenne (contrats 5.5) ; six bibliothèques en un seul fichier assemblé (4.7) ; impact : `contexte/edition-live-impact-2026-10-13.md` |
 | PowerPoint et formats Office | Publipostage+ | À l'étude : cadres libres d'abord ; import par le convertisseur d'OnlyOffice en WebAssembly (licence AGPL à lire) ; étude sur cinq vraies présentations proposée |
 
 - Une extension **déclare ses points d'entrée** (bouton, ligne de menu, type de fichier, export) ; le socle de l'app dessine
@@ -379,6 +380,10 @@ commencer, ou un sous-cadre gardé ouvert et caché (question 4, section 12).
 - **esm.sh** reste l'exception du mode CDN : il reconstruit ses fichiers, aucune empreinte n'y est possible, et c'est là que
   sont les 69 bloquants de l'audit de Publipostage+ du 04/10. À terme : TipTap et ProseMirror construits une fois en un seul
   fichier, servi par jsDelivr depuis un dépôt à une version étiquetée, avec empreinte (question 2, section 12).
+- **Un fichier assemblé quand les bibliothèques d'une extension doivent partager l'éditeur de l'app** (choix du porteur, 16/10,
+  écriture en direct de Publipostage+) : GFS construit un seul fichier module, empreinte comprise, qui laisse en noms nus l'éditeur
+  natif de l'app (une seule copie de ProseMirror : avec deux, le curseur des autres disparaît sans erreur). L'app n'en nomme aucun
+  paquet. Pas de CDN tant que GFS n'a pas d'adresse publique (question 5) : la copie de GFS d'abord (contrats 2.6, points 8 à 11).
 - **Le script d'API de Grist** vient de `docs.getgrist.com` dans les deux modes (validé par la DINUM d'après le README
   d'Automation+).
 

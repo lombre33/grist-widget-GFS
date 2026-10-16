@@ -37,8 +37,9 @@ Variables utiles : `LAB_LANG=fr|en`, `LAB_SCHEME=light|dark`, `LAB_BROWSER=chrom
 | `run-sondes` | la bibliothèque d'une extension (CDN et copie de GFS) sous six politiques d'app ; la matrice du rapport (mesure 4) est vérifiée, ligne par ligne |
 | `run-navigateur` | la page `navigateur/` jouée à la souris (voir plus bas) |
 | `run-reel` | la sonde `reel/`, avec un répondeur REST de remplacement pour la tuyauterie (`rest-standin.mjs`) |
+| `run-direct` | comment un widget apprend qu'une autre table que celle de sa section a changé (contrats 5.5) : la prévenance de Grist, un relais par `BroadcastChannel`, la relecture `fetchTable` à 100, 250, 500 et 1 000 ms, un réseau simulé, la taille de la table. Trois widgets de `sondes/direct/` posés directement dans Grist (ce ne sont pas des apps de GFS), une seule page donc une seule horloge ; le réseau réel n'y est pas |
 
-Les sondes (`sondes/`) sont des apps d'essai que GFS ne connaît pas : elles n'entrent dans le catalogue que pour la page du labo qui le demande.
+Les sondes (`sondes/`) sont des apps d'essai que GFS ne connaît pas : elles n'entrent dans le catalogue que pour la page du labo qui le demande. `sondes/direct/` fait exception : un widget que Grist reçoit tel quel, pour `run-direct`.
 
 ## Ce que seul ton navigateur ou ton Grist peut dire
 

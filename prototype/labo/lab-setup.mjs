@@ -126,7 +126,10 @@ export async function startLab(options = {}) {
     if (!tables.includes('GFS_Rangement')) return { table: false, pages, tables: tables.length };
     const data = await grist.docApi.fetchTable('GFS_Rangement');
     const at = data.id.findIndex((id, i) => data.Utilisateur[i] === '@document' && data.App[i] === 'gfs' && data.Fichier[i] === 'apps');
-    return { table: true, pages, tables: tables.length, rows: data.id.length, columns: Object.keys(data).filter(name => /^[A-Z]/.test(name)), value: at >= 0 ? JSON.parse(data.Valeur[at]) : null };
+    const columns = Object.keys(data).filter(name => /^[A-Z]/.test(name));
+    // `lines` : toutes les lignes, avec leurs colonnes (celles d'un autre auteur comprises), pour vérifier qu'une écriture n'y a pas touché.
+    const lines = data.id.map((id, i) => ({ id, ...Object.fromEntries(columns.map(name => [name, data[name][i]])) }));
+    return { table: true, pages, tables: tables.length, rows: data.id.length, columns, lines, value: at >= 0 && data.Valeur ? JSON.parse(data.Valeur[at]) : null };
   });
   return { browser, context, page, frame, gfsFrame, appFrame, openModules, openApp, settle, gfsReady, fitPanel, rangement, shot: (run, name) => page.screenshot({ path: join(SHOTS, `${run}-${name}.png`) }),
     // La capture du cadre de GFS seul (le panneau), pas de la page de Grist.

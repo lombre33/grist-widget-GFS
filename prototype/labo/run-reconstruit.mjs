@@ -21,12 +21,7 @@ const levelOf = f => (/access=([^&]+)/.exec(f.url()) || [])[1];
 const text = async locator => (await locator.innerText()).replace(/\s+/g, ' ').trim();
 const tables = f => f.evaluate(async () => (await grist.docApi.listTables()).slice().sort());
 // Les apps installées : la ligne réservée de la table `GFS_Rangement` (null tant qu'aucune app n'a été installée). Sous « read table », Grist refuse la lecture.
-const option = f => f.evaluate(async () => {
-  if (!(await grist.docApi.listTables()).includes('GFS_Rangement')) return null;
-  const data = await grist.docApi.fetchTable('GFS_Rangement');
-  const at = data.id.findIndex((id, i) => data.Utilisateur[i] === '@document' && data.App[i] === 'gfs' && data.Fichier[i] === 'apps');
-  return at >= 0 ? JSON.parse(data.Valeur[at]) : null;
-});
+const option = async f => (await lab.rangement(f)).value ?? null;
 const facts = async f => f.evaluate(() => ({
   etat: document.body.dataset.gfs,
   explorateurVisible: !document.querySelector('.ex').hidden,

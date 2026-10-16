@@ -13,14 +13,8 @@ const warnings = [];
 page.on('console', m => { if ((m.type() === 'warning' || m.type() === 'error') && m.text().startsWith('GFS')) warnings.push(m.text()); });
 let frame = lab.frame;
 
-// Ce que la table dit : ses colonnes, ses lignes, la valeur de la ligne réservée, le nombre de pages du document.
-const state = f => f.evaluate(async () => {
-  const data = await grist.docApi.fetchTable('GFS_Rangement');
-  const keys = Object.keys(data).filter(name => /^[A-Z]/.test(name));
-  const lines = data.id.map((id, i) => ({ id, ...Object.fromEntries(keys.map(key => [key, data[key][i]])) }));
-  const reserved = lines.find(line => line.Utilisateur === '@document' && line.App === 'gfs' && line.Fichier === 'apps');
-  return { colonnes: keys, lignes: lines, valeur: reserved && reserved.Valeur ? JSON.parse(reserved.Valeur) : null, pages: (await grist.docApi.fetchTable('_grist_Pages')).id.length };
-});
+// Ce que la table dit (la lecture que partagent les essais : lab.rangement) : ses colonnes, ses lignes, la valeur de la ligne réservée, le nombre de pages du document.
+const state = f => lab.rangement(f);
 // Une autre section (ou la personne dans Grist) écrit la ligne : GFS n'en est pas prévenu (7.4 point 3).
 const writeValue = (f, value) => f.evaluate(async json => {
   const data = await grist.docApi.fetchTable('GFS_Rangement');
@@ -59,16 +53,16 @@ await frame.evaluate(async () => {
 });
 await reload();
 const start = await state(frame);
-say('départ :', { colonnes: start.colonnes, lignes: start.lignes.length, pages: start.pages });
-check('la table du départ n\'a pas de colonne Valeur', start.colonnes.length === 6 && !start.colonnes.includes('Valeur'), start.colonnes);
+say('départ :', { colonnes: start.columns, lignes: start.lines.length, pages: start.pages });
+check('la table du départ n\'a pas de colonne Valeur', start.columns.length === 6 && !start.columns.includes('Valeur'), start.columns);
 
 const asked1 = await gesture('app:automation');
 const first = await state(frame);
-say('après Automation+ :', { colonnes: first.colonnes, valeur: first.valeur, pages: first.pages });
+say('après Automation+ :', { colonnes: first.columns, valeur: first.value, pages: first.pages });
 check('la table existe : aucune question de création', asked1 === 0, asked1);
-check('la colonne Valeur manquante est ajoutée, sans autre changement de colonnes', first.colonnes.length === 7 && first.colonnes.includes('Valeur'), first.colonnes);
-check('la ligne qui n\'est pas à GFS n\'a pas bougé', same(first.lignes[0], start.lignes[0], ['id', 'Utilisateur', 'App', 'Fichier', 'Favori', 'Dossier', 'Replie']), first.lignes[0]);
-check('la ligne réservée est ajoutée avec Automation+', first.lignes.length === 2 && Boolean(first.valeur && first.valeur.automation), first.valeur);
+check('la colonne Valeur manquante est ajoutée, sans autre changement de colonnes', first.columns.length === 7 && first.columns.includes('Valeur'), first.columns);
+check('la ligne qui n\'est pas à GFS n\'a pas bougé', same(first.lines[0], start.lines[0], ['id', 'Utilisateur', 'App', 'Fichier', 'Favori', 'Dossier', 'Replie']), first.lines[0]);
+check('la ligne réservée est ajoutée avec Automation+', first.lines.length === 2 && Boolean(first.value && first.value.automation), first.value);
 check('aucune page de plus : la table existait', first.pages === start.pages, { avant: start.pages, apres: first.pages });
 
 // 2. Une valeur qu'une version plus récente a écrite : une app et un champ que celle-ci ne connaît pas.
@@ -80,17 +74,17 @@ say('cases des apps :', rows);
 check('Automation+ est cochée, l\'app inconnue n\'est pas listée', rows.some(row => row.app === 'automation' && row.cochee) && !rows.some(row => row.app === 'inconnue'), rows);
 await gesture('ext:publipostage/graphique');
 const second = await state(frame);
-say('après Graphique :', second.valeur);
+say('après Graphique :', second.value);
 check('l\'extension est retenue ; l\'app et le champ inconnus sont gardés tels quels',
-  JSON.stringify(second.valeur) === JSON.stringify({ automation: { extensions: [], futur: 1 }, inconnue: { extensions: ['z'] }, publipostage: { extensions: ['graphique'] } }), second.valeur);
+  JSON.stringify(second.value) === JSON.stringify({ automation: { extensions: [], futur: 1 }, inconnue: { extensions: ['z'] }, publipostage: { extensions: ['graphique'] } }), second.value);
 
 // 3. Une autre section écrit la ligne entre deux gestes : GFS relit avant d'écrire, rien n'est défait.
-await writeValue(frame, { ...second.valeur, autre: { extensions: [] } });
+await writeValue(frame, { ...second.value, autre: { extensions: [] } });
 await gesture('mode:publipostage/graphique/vendorise');
 const third = await state(frame);
-say('après le mode :', third.valeur);
-check('le geste suivant garde ce que l\'autre section a écrit', Boolean(third.valeur && third.valeur.autre) && third.valeur.publipostage.modes && third.valeur.publipostage.modes.graphique === 'vendorise', third.valeur);
-check('toujours une seule ligne réservée, la ligne d\'un autre intacte', third.lignes.length === 2 && same(third.lignes[0], start.lignes[0], ['id', 'Utilisateur', 'App', 'Fichier', 'Favori', 'Dossier', 'Replie']), third.lignes.length);
+say('après le mode :', third.value);
+check('le geste suivant garde ce que l\'autre section a écrit', Boolean(third.value && third.value.autre) && third.value.publipostage.modes && third.value.publipostage.modes.graphique === 'vendorise', third.value);
+check('toujours une seule ligne réservée, la ligne d\'un autre intacte', third.lines.length === 2 && same(third.lines[0], start.lines[0], ['id', 'Utilisateur', 'App', 'Fichier', 'Favori', 'Dossier', 'Replie']), third.lines.length);
 say('avertissements GFS :', warnings);
 check('aucun avertissement de GFS', warnings.length === 0, warnings);
 await lab.browser.close();

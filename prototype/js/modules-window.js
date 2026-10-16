@@ -216,12 +216,14 @@ export class ModulesWindow {
     const { t } = this.#opts.i18n;
     const group = `mode-${item.app}-${item.extension.id}`;
     const names = item.libraries.map(lib => (lib.poids ? t('mod.library', { lib: cap(lib.id), size: this.#size(lib.poids / 1024) }) : cap(lib.id))).join(' · ');
-    const option = mode => h('label', { class: 'rd' },
+    // Sans CDN (GFS n'a pas encore d'adresse publique, 2.6 point 11), l'option CDN reste là, grisée, avec la raison.
+    const option = mode => h('label', { class: mode === 'cdn' && item.noCdn ? 'rd is-off' : 'rd' },
       h('input', {
-        type: 'radio', name: group, value: mode, checked: item.mode === mode, disabled: !enabled,
+        type: 'radio', name: group, value: mode, checked: item.mode === mode, disabled: !enabled || (mode === 'cdn' && item.noCdn),
         dataset: { modeFor: item.extension.id, parent: item.app, fk: `mode:${item.app}/${item.extension.id}/${mode}` },
       }),
-      h('span', { class: 'rd-text' }, h('span', { class: 'rd-label' }, t(`mod.mode.${mode}`)), h('span', { class: 'rd-hint' }, t(`mod.mode.${mode}Hint`))));
+      h('span', { class: 'rd-text' }, h('span', { class: 'rd-label' }, t(`mod.mode.${mode}`)),
+        h('span', { class: 'rd-hint' }, t(mode === 'cdn' && item.noCdn ? 'mod.mode.cdnNone' : `mod.mode.${mode}Hint`))));
     return h('fieldset', { class: 'mr-mode', disabled: !enabled }, h('legend', null, names), option('cdn'), option('vendorise'));
   }
 }

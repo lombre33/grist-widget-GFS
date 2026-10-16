@@ -33,7 +33,7 @@ const LIBRARIES = (() => {
 })();
 export function mirrored(url) {
   const u = new URL(url);
-  const library = LIBRARIES.find(entry => entry.cdn.src === u.origin + u.pathname);
+  const library = LIBRARIES.find(entry => entry.cdn && entry.cdn.src === u.origin + u.pathname); // un fichier assemblé n'a pas de CDN (contrats 2.6, point 11)
   if (library) return join(LAB, '..', library.vendorise.chemin);
   if (u.hostname === 'esm.sh') {
     const base = u.pathname.split('/').pop();

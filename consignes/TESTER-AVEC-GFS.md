@@ -10,6 +10,10 @@ Pas encore essayé : une extension nouvelle qui reçoit sa bibliothèque dans ce
 sont ceux du prototype de GFS à cette date ; si l'un a bougé ou si une étape bloque, l'écrire dans « Questions pour GFS »
 plutôt que la contourner.
 
+Au 16/10/2026 : **le fichier assemblé** (section 2 bis, consigne 012) est construit par l'outil depuis le registre npm, à
+l'identique de l'essai de GFS, et la fenêtre « Apps et extensions » le montre sans CDN, avec la raison ; aucune app ne l'a
+encore essayé dans ce labo.
+
 ## 1. La copie de GFS, l'app à la place de son sous-module
 
 ```bash
@@ -31,6 +35,51 @@ C'est ce que GFS fera pour de bon quand la demande sera prête (`LISEZ-MOI.md`, 
    relit ces fichiers sans réseau (« catalogue cohérent »).
 3. `gfs-essai/prototype/manifestes/<app>.json`, clé `extensions` : copier l'entrée `graphique` et l'adapter (`id`, `nom` en
    français et en anglais, `dossier` de l'extension dans l'app, `bibliotheques: [{ "id": "<id>", "version": "<version>" }]`).
+
+## 2 bis. Plusieurs paquets en un seul fichier assemblé par GFS (consigne 012)
+
+Quand une extension a besoin de plusieurs paquets qui partagent leurs instances avec les bibliothèques natives de l'app (le cas
+de l'écriture en direct), GFS les assemble en un seul module (contrats 2.6, points 8 à 11). Remplacer l'étape 1 de la
+section 2 par ceci, une seule fois par copie :
+
+1. `cd gfs-essai/prototype && npm ci` : installe `esbuild`, épinglé en version exacte, que l'outil n'appelle que pour cela.
+2. `gfs-essai/prototype/bibliotheques/package.json` : les six paquets dans `dependencies` (versions exactes, celles de ta
+   demande) et l'entrée `assemble` de la liste :
+
+```json
+{
+  "dependencies": {
+    "yjs": "13.6.33", "y-protocols": "1.0.7", "lib0": "0.2.119", "@tiptap/y-tiptap": "3.0.10",
+    "@tiptap/extension-collaboration": "3.31.3", "@tiptap/extension-collaboration-caret": "3.31.3"
+  },
+  "gfs": { "bibliotheques": { "edition-live": { "assemble": {
+    "version": "1.0.0",
+    "paquets": ["yjs", "y-protocols", "lib0", "@tiptap/y-tiptap",
+                "@tiptap/extension-collaboration", "@tiptap/extension-collaboration-caret"],
+    "modules": ["yjs", "y-protocols/awareness", "@tiptap/y-tiptap",
+                "@tiptap/extension-collaboration", "@tiptap/extension-collaboration-caret"],
+    "externes": ["@tiptap/core", "prosemirror-model", "prosemirror-state",
+                 "prosemirror-transform", "prosemirror-view"],
+    "alias": { "@tiptap/pm/model": "prosemirror-model", "@tiptap/pm/state": "prosemirror-state",
+               "@tiptap/pm/transform": "prosemirror-transform", "@tiptap/pm/view": "prosemirror-view" }
+  } } } }
+}
+```
+
+3. `node outils/bibliotheques.mjs` (trois secondes) écrit `vendor/edition-live/1.0.0/edition-live.js` (145 862 octets),
+   `LICENCES.txt` à côté et l'entrée du catalogue : `forme: "module"`, `cdn: null`, l'empreinte. L'outil **refuse** de rien
+   écrire si le fichier contient un paquet de plus que la liste, ou laisse un nom nu de plus ou de moins que `externes` ;
+   si tes versions ou ton éditeur demandent un autre `@tiptap/pm/<x>`, il le dit, et c'est alors à toi de l'écrire dans
+   « Questions pour GFS » (une ligne de plus dans `externes` et `alias`, décidée par GFS). `--verifier` relit le tout sans
+   réseau.
+4. `manifestes/<app>.json`, clé `extensions` : comme à l'étape 3 de la section 2, avec
+   `bibliotheques: [{ "id": "edition-live", "version": "1.0.0" }]`.
+
+Ce que ton extension reçoit dans la copie : `contexte.bibliotheques['edition-live']` vaut
+`{ src, integrite, forme: 'module' }`, `src` étant l'adresse de la copie de GFS (**sans CDN**, c'est son seul mode : la
+fenêtre grise « Depuis un CDN » et dit pourquoi). Elle se charge par `<script type="module" src integrity
+crossorigin="anonymous">` (jamais `import()`), puis `globalThis.GfsPaquets['edition-live'].modules['yjs']` et les quatre autres.
+Dans le labo, `@tiptap/core` et `prosemirror-*` viennent de la carte d'importation de ton app, par le miroir de tes CDN.
 
 ## 3. Le labo « vrai Grist »
 
@@ -61,7 +110,8 @@ await lab.browser.close();
 
 - **Mode « Copie de GFS »** (case `[data-fk="mode:<app>/<extension>/vendorise"]`) : le miroir est construit avec la liste de
   l'app, il n'a donc pas la bibliothèque d'une extension (la nouvelle, ni Plotly une fois la 005 faite). L'essai se fait avec
-  la copie que le labo sert depuis `vendor/`, pas avec le CDN.
+  la copie que le labo sert depuis `vendor/`, pas avec le CDN. Pour un fichier assemblé, la case n'existe pas à choisir : la
+  copie est déjà le mode de l'extension, et `[data-fk="mode:<app>/<extension>/cdn"]` est grisée.
 - **700 × 400** : `lab.fitPanel(undefined, 700, 400)`.
 - Ce que l'essai apprend sur GFS (la source de la bibliothèque, la sécurité, un contrat qui manque) va dans « Questions pour
   GFS » ; la copie se supprime à la fin.

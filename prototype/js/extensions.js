@@ -30,13 +30,18 @@ export function libraryNeeds(manifest, activeIds) {
 
 export const modeOfExtension = (setting, extensionId) => (setting && setting.modes && setting.modes[extensionId]) || DEFAULT_MODE;
 
-// Une ligne par extension pour la fenêtre : { extension, checked, greyed, missing, mode, libraries: [{ id, version, poids }] }.
+// Une extension dont une bibliothèque n'a pas de CDN (GFS sans adresse publique, 2.6 point 11) n'a qu'un mode : la copie de GFS. La fenêtre grise
+// alors le CDN avec la raison ; le choix retenu dans les réglages n'est pas modifié (rien ne s'écrit sans un geste de la personne).
+export const withoutCdn = (extension, catalogue) => requirementsOf(extension).some(({ id, version }) => { const entry = lookup(catalogue, id, version); return Boolean(entry) && !entry.cdn; });
+const effectiveMode = (setting, extension, catalogue) => (catalogue && withoutCdn(extension, catalogue) ? 'vendorise' : modeOfExtension(setting, extension.id));
+
+// Une ligne par extension pour la fenêtre : { extension, checked, greyed, missing, mode, noCdn, libraries: [{ id, version, poids }] }.
 export function extensionRows(manifest, setting, catalogue) {
   return extensionsOf(manifest).map(extension => {
     const missing = missingLibraries(extension, catalogue);
     const libraries = requirementsOf(extension).map(({ id, version }) => ({ id, version, poids: (lookup(catalogue, id, version) || {}).poids || 0 }));
     return {
-      extension, missing, libraries, greyed: missing.length > 0, mode: modeOfExtension(setting, extension.id),
+      extension, missing, libraries, greyed: missing.length > 0, mode: effectiveMode(setting, extension, catalogue), noCdn: withoutCdn(extension, catalogue),
       checked: Boolean(setting && (setting.extensions || []).includes(extension.id)) && !missing.length,
     };
   });
@@ -44,11 +49,13 @@ export function extensionRows(manifest, setting, catalogue) {
 
 // Le mode de chaque bibliothèque que les extensions actives exigent : la copie de GFS dès qu'une seule extension active la demande
 // (le choix est par extension, question 11 ; une bibliothèque n'est chargée qu'une fois, par un seul mode). Rend Map(id de bibliothèque -> mode).
-export function libraryModes(manifest, setting, activeIds) {
+// `catalogue` (facultatif) dit quelles extensions n'ont pas de CDN : elles sont toujours en copie de GFS.
+export function libraryModes(manifest, setting, activeIds, catalogue) {
   const modes = new Map();
   for (const id of activeIds) {
-    const mode = modeOfExtension(setting, id);
-    for (const { id: library } of requirementsOf(findExtension(manifest, id))) {
+    const extension = findExtension(manifest, id);
+    const mode = effectiveMode(setting, extension, catalogue);
+    for (const { id: library } of requirementsOf(extension)) {
       if (mode === 'vendorise' || !modes.has(library)) modes.set(library, mode);
     }
   }
@@ -59,7 +66,7 @@ export function libraryModes(manifest, setting, activeIds) {
 // `base` : l'adresse de GFS, d'où part le chemin de la copie vendorisée.
 export function extensionsState(manifest, setting, catalogue, base) {
   const extensions = activeExtensionIds(manifest, setting, catalogue);
-  const modes = libraryModes(manifest, setting, extensions);
+  const modes = libraryModes(manifest, setting, extensions, catalogue);
   const { libraries } = resolveLibraries(catalogue, libraryNeeds(manifest, extensions), id => modes.get(id), base);
   return { extensions, bibliotheques: forContext(libraries), details: libraries };
 }

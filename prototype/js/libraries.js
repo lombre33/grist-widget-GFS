@@ -1,6 +1,8 @@
 // Le catalogue des bibliothèques d'extensions (contrats 2.6, points 5 à 7) : ce que GFS sait servir à une extension, à quelle adresse et avec
 // quelle empreinte. Il est livré avec GFS (bibliotheques/catalogue.json, tiré de bibliotheques/package.json par outils/bibliotheques.mjs) :
 // l'adresse d'une bibliothèque n'est jamais lue dans un réglage, une table ou un message d'une app (cahier 3.2, point 3).
+// Une entrée est soit un script classique (Plotly : `<script src>`, un nom global), soit un fichier assemblé par GFS, de forme `module` (2.6, points 8
+// à 11), qui n'a pas d'adresse de CDN (`cdn: null`) tant que GFS n'a pas d'adresse publique : sa copie est alors son seul mode.
 // Du code sans effet de bord : il lit, valide, résout ; le contrôleur charge le fichier.
 
 import { isSafePath, LIBRARY_ID_RE, EXACT_VERSION_RE } from './manifest.js';
@@ -10,10 +12,13 @@ import { isSafePath, LIBRARY_ID_RE, EXACT_VERSION_RE } from './manifest.js';
 export const CDN_HOSTS = Object.freeze(['cdn.jsdelivr.net']);
 export const MODES = Object.freeze(['cdn', 'vendorise']);
 export const DEFAULT_MODE = 'cdn';
+export const FORMS = Object.freeze(['script', 'module']);
+export const DEFAULT_FORM = 'script';
 const SRI_RE = /^sha384-[A-Za-z0-9+/]{64}$/;
 const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 
 function cdnProblem(cdn) {
+  if (cdn === null) return null; // pas d'adresse publique de GFS : la copie est le seul mode (2.6, point 11)
   if (!isObject(cdn) || typeof cdn.src !== 'string') return 'cdn.src absent';
   let url;
   try { url = new URL(cdn.src); } catch (error) { return 'cdn.src n\'est pas une adresse'; }
@@ -27,6 +32,18 @@ function vendoredProblem(vendored) {
   return SRI_RE.test(vendored.integrite || '') ? null : 'vendorise.integrite : sha384 en base 64 attendu';
 }
 
+const isNames = (value, min) => Array.isArray(value) && value.length >= min && value.every(name => typeof name === 'string' && name !== '');
+const isContent = item => isObject(item) && typeof item.paquet === 'string' && EXACT_VERSION_RE.test(item.version || '');
+
+// La forme d'une entrée : `script` (le défaut) ou `module` ; un module dit ce qu'il contient, ce qu'il range et ce qu'il laisse à l'app (2.6, point 8).
+function formProblem(entry) {
+  if (entry.forme !== undefined && !FORMS.includes(entry.forme)) return `forme : ${FORMS.join(' ou ')} attendu`;
+  if (entry.forme !== 'module') return null;
+  if (!Array.isArray(entry.contient) || !entry.contient.length || !entry.contient.every(isContent)) return 'contient : liste de { paquet, version exacte } attendue';
+  if (!isNames(entry.modules, 1)) return 'modules : liste de noms de paquets attendue';
+  return isNames(entry.externes, 0) ? null : 'externes : liste de noms attendue';
+}
+
 function entryProblems(entry) {
   if (!isObject(entry)) return ['une entrée n\'est pas un objet'];
   const name = `${entry.id}@${entry.version}`;
@@ -34,7 +51,7 @@ function entryProblems(entry) {
   if (!LIBRARY_ID_RE.test(entry.id || '')) found.push('id hors format');
   if (!EXACT_VERSION_RE.test(entry.version || '')) found.push('version exacte attendue');
   if (entry.poids !== undefined && !(Number.isInteger(entry.poids) && entry.poids >= 0)) found.push('poids : entier d\'octets attendu');
-  found.push(cdnProblem(entry.cdn), vendoredProblem(entry.vendorise));
+  found.push(formProblem(entry), cdnProblem(entry.cdn), vendoredProblem(entry.vendorise));
   return found.filter(Boolean).map(text => `${name} : ${text}`);
 }
 
@@ -56,23 +73,24 @@ export function readCatalogue(doc) {
 export const lookup = (catalogue, id, version) => catalogue.entries.get(`${id}@${version}`) || null;
 
 // `required` : [{ id, version }] ; `modeOf(id)` : 'cdn' ou 'vendorise' ; `base` : l'adresse de GFS (la copie vendorisée est servie à côté de lui).
-// Rend { libraries: { id: { version, mode, src, integrite, poids } }, missing: [{ id, version }] }.
+// Une entrée sans CDN est toujours servie par la copie de GFS, quel que soit le mode demandé.
+// Rend { libraries: { id: { version, mode, forme, src, integrite, poids } }, missing: [{ id, version }] }.
 export function resolveLibraries(catalogue, required, modeOf, base) {
   const libraries = {};
   const missing = [];
   for (const { id, version } of required) {
     const entry = lookup(catalogue, id, version);
     if (!entry) { missing.push({ id, version }); continue; }
-    const mode = modeOf(id) === 'vendorise' ? 'vendorise' : DEFAULT_MODE;
+    const mode = modeOf(id) === 'vendorise' || !entry.cdn ? 'vendorise' : DEFAULT_MODE;
     const source = mode === 'vendorise' ? { src: new URL(entry.vendorise.chemin, base).href, integrite: entry.vendorise.integrite } : entry.cdn;
-    libraries[id] = { version, mode, src: source.src, integrite: source.integrite, poids: entry.poids || 0 };
+    libraries[id] = { version, mode, forme: entry.forme || DEFAULT_FORM, src: source.src, integrite: source.integrite, poids: entry.poids || 0 };
   }
   return { libraries, missing };
 }
 
-// Ce que `contexte.bibliotheques` et l'événement `extensions` portent (5.2) : l'adresse et l'empreinte, rien d'autre.
+// Ce que `contexte.bibliotheques` et l'événement `extensions` portent (5.2) : l'adresse, l'empreinte et la forme (comment la charger), rien d'autre.
 export function forContext(libraries) {
   const out = {};
-  for (const [id, { src, integrite }] of Object.entries(libraries)) out[id] = { src, integrite };
+  for (const [id, { src, integrite, forme }] of Object.entries(libraries)) out[id] = { src, integrite, forme };
   return out;
 }

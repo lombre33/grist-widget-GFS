@@ -29,6 +29,7 @@ Variables utiles : `LAB_LANG=fr|en`, `LAB_SCHEME=light|dark`, `LAB_BROWSER=chrom
 | `run-explorer`, `run-modules` | l'explorateur et la fenêtre « Apps et extensions » (interface), dont la question de la table du document et son refus (contrats 7.4) |
 | `run-rangement` | la table `GFS_Rangement` d'une autre version ou d'un autre auteur : colonne absente ajoutée, apps et champs inconnus gardés, ce qu'une autre section écrit entre deux gestes n'est pas défait |
 | `run-ouvrir` | GFS demande à l'app déjà ouverte d'ouvrir le fichier cliqué (contrats 5.4) : la sonde O (`sondes/o-ouvrir/`) répond comme le fera Publipostage+ avec la consigne 010 ; double-clic, « Nouveau », annulation, erreur, appel inconnu, attente |
+| `run-sans-cdn` | une extension dont la bibliothèque n'a pas de CDN (un fichier assemblé par GFS, contrats 2.6 point 11) dans la fenêtre « Apps et extensions » : le CDN grisé avec la raison, la copie de GFS choisie, rien d'écrit sans un geste, l'extension du graphique inchangée. Le catalogue et le manifeste de Publipostage+ sont complétés pour cet essai seulement (`patches`), à la vraie souris, `LAB_LANG` et `LAB_SCHEME` |
 | `run-courtier` | le courtier avec le vrai script d'API de Grist : rejeu, `configure`, jeton, noms de tables |
 | `run-capacites` | ce qu'une app peut faire dans son sous-cadre (stockage, impression, téléchargements, fenêtres, presse-papiers, navigation) ; `CAP_CONFIG=grist` : la même sonde sans GFS |
 | `run-impression` | « Print widget » de Grist relayé à l'app active |

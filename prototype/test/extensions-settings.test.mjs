@@ -117,16 +117,46 @@ test('libraryModes : la copie de GFS dès qu\'une extension active la demande', 
   assert.equal(libraryModes(two, undefined, []).size, 0);
 });
 
-test('extensionsState : ce que l\'app reçoit (adresse et empreinte seulement) et ce que GFS garde', () => {
+test('extensionsState : ce que l\'app reçoit (adresse, empreinte et forme seulement) et ce que GFS garde', () => {
   const base = 'https://exemple.test/gfs/';
   const off = extensionsState(pub, { extensions: [], modes: {} }, catalogue, base);
   assert.deepEqual(off, { extensions: [], bibliotheques: {}, details: {} });
   const cdn = extensionsState(pub, { extensions: ['graphique'], modes: {} }, catalogue, base);
   assert.deepEqual(cdn.extensions, ['graphique']);
-  assert.deepEqual(cdn.bibliotheques, { plotly: { src: 'https://cdn.jsdelivr.net/npm/plotly.js-basic-dist-min@2.13.2/plotly-basic.min.js', integrite: SRI } });
+  assert.deepEqual(cdn.bibliotheques, { plotly: { src: 'https://cdn.jsdelivr.net/npm/plotly.js-basic-dist-min@2.13.2/plotly-basic.min.js', integrite: SRI, forme: 'script' } });
   assert.equal(cdn.details.plotly.mode, 'cdn');
   const local = extensionsState(pub, { extensions: ['graphique'], modes: { graphique: 'vendorise' } }, catalogue, base);
-  assert.deepEqual(local.bibliotheques, { plotly: { src: 'https://exemple.test/gfs/vendor/plotly/2.13.2/plotly-basic.min.js', integrite: SRI } });
+  assert.deepEqual(local.bibliotheques, { plotly: { src: 'https://exemple.test/gfs/vendor/plotly/2.13.2/plotly-basic.min.js', integrite: SRI, forme: 'script' } });
   assert.equal(local.details.plotly.mode, 'vendorise');
   assert.deepEqual(extensionsState(pub, { extensions: ['graphique'], modes: {} }, empty, base).extensions, [], 'une bibliothèque absente du catalogue : l\'extension n\'est pas servie');
+});
+
+// Un fichier assemblé par GFS (2.6, points 8 à 11) : sans CDN tant que GFS n'a pas d'adresse publique, la copie de GFS est son seul mode.
+const SRI_MODULE = `sha384-${'C'.repeat(64)}`;
+const withModule = readCatalogue({ bibliotheques: [{
+  id: 'edition-live', version: '1.0.0', forme: 'module', poids: 145862,
+  contient: [{ paquet: 'yjs', version: '13.6.33' }], modules: ['yjs'], externes: ['prosemirror-state'],
+  cdn: null, vendorise: { chemin: 'vendor/edition-live/1.0.0/edition-live.js', integrite: SRI_MODULE },
+}, ...catalogue.entries.values()] });
+const live = { ...pub, extensions: [...pub.extensions, { ...pub.extensions[0], id: 'edition', nom: { fr: 'Édition', en: 'Editing' }, bibliotheques: [{ id: 'edition-live', version: '1.0.0' }] }] };
+
+test('une extension dont la bibliothèque n\'a pas de CDN : la copie de GFS est son seul mode, quel que soit le choix retenu', () => {
+  const [graph, edition] = extensionRows(live, { extensions: ['graphique', 'edition'], modes: { graphique: 'cdn', edition: 'cdn' } }, withModule);
+  assert.equal(graph.noCdn, false);
+  assert.equal(graph.mode, 'cdn');
+  assert.equal(edition.noCdn, true);
+  assert.equal(edition.mode, 'vendorise', 'le CDN n\'existe pas : la ligne montre la copie de GFS');
+  assert.equal(edition.greyed, false, 'sans CDN ne veut pas dire grisée : la copie sert');
+  assert.equal(modeOfExtension({ modes: { edition: 'cdn' } }, 'edition'), 'cdn', 'le réglage retenu n\'est pas réécrit');
+  assert.equal(libraryModes(live, { extensions: ['edition'], modes: {} }, ['edition'], withModule).get('edition-live'), 'vendorise');
+  assert.equal(libraryModes(live, { extensions: ['edition'], modes: {} }, ['edition']).get('edition-live'), 'cdn', 'sans catalogue, le réglage seul décide');
+});
+
+test('extensionsState : un fichier assemblé arrive à l\'app sous la forme module, servi par la copie de GFS', () => {
+  const base = 'https://exemple.test/gfs/';
+  const state = extensionsState(live, { extensions: ['edition'], modes: {} }, withModule, base);
+  assert.deepEqual(state.extensions, ['edition']);
+  assert.deepEqual(state.bibliotheques, { 'edition-live': { src: 'https://exemple.test/gfs/vendor/edition-live/1.0.0/edition-live.js', integrite: SRI_MODULE, forme: 'module' } });
+  assert.equal(state.details['edition-live'].mode, 'vendorise');
+  assert.deepEqual(extensionsState(live, { extensions: ['edition'], modes: {} }, empty, base).extensions, [], 'absent du catalogue : grisée comme toute extension');
 });

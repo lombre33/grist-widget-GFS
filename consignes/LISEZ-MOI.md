@@ -87,7 +87,10 @@ La demande prévue aujourd'hui est la **bibliothèque d'une extension**, que GFS
    dans l'app.
 2. **Écrire la demande** : l'identifiant (court et stable, par exemple `plotly`), la **version exacte** (ni `^`, ni `latest`), la
    fonction de l'app qui s'en sert, et à quoi elle sert en une phrase (avec le fichier voulu du paquet, s'il en propose
-   plusieurs).
+   plusieurs). Si la fonction a besoin de **plusieurs paquets qui partagent leurs instances avec les bibliothèques natives de
+   l'app** (l'écriture en direct : Yjs avec TipTap), GFS les assemble en un seul fichier (contrats 2.6, points 8 à 11) : la
+   demande liste alors chaque paquet en version exacte, les modules que la fonction y prend et les noms que l'app garde
+   (`TESTER-AVEC-GFS.md`, section 2 bis, donne la forme).
 3. **Tester l'assemblage** dans une copie de GFS à soi, sans rien pousser : `TESTER-AVEC-GFS.md`.
 4. **Pousser le code chez l'app, puis dire au porteur que c'est prêt.** Il dit à GFS « demande de Publipostage+ » (ou de l'app
    concernée) : GFS ajoute la bibliothèque à sa liste (adresse CDN, empreinte, copie vendorisée, sécurité), déclare

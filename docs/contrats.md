@@ -289,11 +289,17 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
 9. [D] **Le fichier se range sous une clé de GFS.** Chargé, il pose `globalThis.GfsPaquets[id] = { version, modules }`, où
    `modules` associe à chaque paquet npm de `modules` son espace de noms (`modules['yjs']` vaut `import * as … from 'yjs'`) :
    l'extension prend ce qu'elle veut sous les noms qu'elle connaît déjà. Le fichier ne pose rien d'autre sur la fenêtre.
-10. [D] **Construit par l'outil de GFS, jamais à la main.** La liste de GFS donne les versions exactes ; l'outil tire les paquets,
-    les assemble (esbuild, version exacte) en un fichier minifié, calcule son empreinte (sha384), garde la copie vendorisée
-    (`vendor/<id>/<version>/<id>.js` : `.js`, pour qu'il soit servi comme du JavaScript partout) et écrit l'entrée du
-    catalogue. **La version est celle de GFS** (`1.0.0` au départ ; le troisième nombre monte quand une version contenue
-    change) et `contient` dit ce qu'elle contient. L'extension exige `{ id, version }` comme pour toute bibliothèque (point 5).
+10. [D] **Construit par l'outil de GFS, jamais à la main.** La liste de GFS (`bibliotheques/package.json`) donne les versions
+    exactes des paquets et, sous `gfs.bibliotheques.<id>.assemble`, ce que le fichier est : `version` (celle de GFS), `paquets`,
+    `modules`, `externes` et `alias` (les `@tiptap/pm/<x>` renvoyés à `prosemirror-<x>`). L'outil tire les paquets (`npm pack`,
+    avec l'intégrité du registre), les assemble (esbuild, version exacte, épinglée dans `prototype/package.json`) en un fichier
+    minifié, calcule son empreinte (sha384), garde la copie vendorisée (`vendor/<id>/<version>/<id>.js` : `.js`, pour qu'il soit
+    servi comme du JavaScript partout) et écrit l'entrée du catalogue. **La version est celle de GFS** (`1.0.0` au départ ; le
+    troisième nombre monte quand une version contenue change) et `contient` dit ce qu'elle contient. L'extension exige
+    `{ id, version }` comme pour toute bibliothèque (point 5).
+    L'outil **refuse** le fichier qui contiendrait un paquet que la liste ne nomme pas, ou dont les noms nus ne seraient pas
+    exactement les `externes` de la liste : une seconde copie d'une bibliothèque de l'app entrerait sans bruit dans le fichier
+    (faits vérifiés, 9). Il recopie les licences des paquets contenus (MIT) dans `vendor/<id>/<version>/LICENCES.txt`, à côté.
 11. [T] **Sans CDN tant que GFS n'a pas d'adresse publique** (cahier, question 5 ; choix du porteur, 16/10) : l'entrée porte
     `cdn: null`. La copie de GFS est alors le seul mode : la fenêtre « Apps et extensions » ne propose pas le CDN pour cette
     bibliothèque et le dit, l'extension marche avec la copie, et la CSP de l'app ne nomme rien (5.2, point 5). À la publication,
@@ -713,7 +719,7 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 | `lectureSeule` | `readonly` de l'adresse | celui de GFS | celui de l'adresse |
 | `acces` | niveau de **cette app** (3.1) | oui | celui de Grist |
 | `extensions` | identifiants des extensions actives de l'app | liste de la section | `[]` |
-| `bibliotheques` | source de chaque bibliothèque que les extensions actives exigent : `{ "<id>": { src, integrite, forme } }` (2.6) ; `forme` vaut `script` (le défaut) ou `module` | oui | `{}` |
+| `bibliotheques` | source de chaque bibliothèque que les extensions actives exigent : `{ "<id>": { src, integrite, forme } }` (2.6) ; `forme` vaut toujours `script` ou `module` | oui | `{}` |
 | `ouverture` | pourquoi et sur quoi l'app s'ouvre, ou `null` (5.4) | oui | `null` |
 | `stockage` | copie initiale du stockage de l'app (5.3) | oui | contenu du navigateur |
 
@@ -734,7 +740,8 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    Une bibliothèque de forme `script` (Plotly) se charge par `<script src>` et pose son nom global ; une de forme `module`
    (le fichier assemblé, 2.6, point 8) par `<script type="module" src>`, puis l'extension lit `globalThis.GfsPaquets[id]`
    (2.6, point 9). Aucune des deux par `import()` : une empreinte ne se pose pas sur un import dynamique (faits vérifiés, 9).
-   Sans CDN (2.6, point 11), `src` est celui de la copie de GFS.
+   Sans CDN (2.6, point 11), `src` est celui de la copie de GFS. `forme` est un ajout du 16/10 : une app qui ne lit que `src` et
+   `integrite` (Plotly, consignes 005 et 007) n'a rien à changer.
 5. [T] **Ce que la CSP de l'app doit autoriser** (mesuré à l'étape 2 avec six CSP d'app ; cahier, question 11 tranchée le
    14/10 : CDN d'abord). En mode copie, rien : `'self'` suffit. En mode CDN, l'adresse exacte que donne le catalogue (ou son
    empreinte), et rien d'autre. Une CSP qui n'en dit rien (`script-src 'self'`), ou qui ferme les connexions quand l'extension

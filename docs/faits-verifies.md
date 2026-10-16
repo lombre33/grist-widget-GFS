@@ -180,4 +180,8 @@ comme dans l'app ; ni esm.sh (injoignable depuis le cloud), ni la vraie page de 
   `self.origin === 'null'`), sous `script-src 'self'` et l'empreinte de la carte : le fichier d'empreinte fausse est refusé et
   ne pose rien, le fichier d'empreinte exacte se charge, range ses modules dans `globalThis.GfsPaquets['edition-live']`, et les
   deux éditeurs se synchronisent comme hors du cadre.
-
+- **L'outil de GFS** (`outils/bibliotheques.mjs`, mode `assemble`) reconstruit ce fichier d'après la liste, depuis le registre
+  npm (`npm pack` des six versions exactes, trois secondes) : **les mêmes octets que l'essai** (145 862 ; 46 585 gzippés au
+  maximum de compression), donc la même empreinte et le même comportement dans le cadre isolé. Deux constructions de la même
+  liste donnent les mêmes octets (testé). Les six paquets sont sous licence MIT ; l'outil en recopie les textes dans
+  `LICENCES.txt`, à côté du fichier.

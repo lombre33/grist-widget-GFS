@@ -57,7 +57,7 @@
 .mr-mode:disabled .rd-label { color: var(--text-muted); }
 .rd { display: flex; flex: 1 1 200px; align-items: flex-start; gap: 7px; min-width: 0; padding: 3px 0; cursor: pointer; }
 .rd input { flex: none; width: 15px; height: 15px; margin: 1px 0 0; accent-color: var(--accent-solid); }
-.rd input:disabled { cursor: not-allowed; }
+.rd input:disabled, .rd.is-off { cursor: not-allowed; }
 .rd-text { display: flex; flex-direction: column; min-width: 0; }
 .rd-label { font-size: 12.5px; font-weight: 600; }
 .rd-hint { font-size: 11.5px; color: var(--text-muted); }

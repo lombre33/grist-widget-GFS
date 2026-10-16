@@ -64,9 +64,48 @@ test('resolveLibraries : CDN par défaut, copie vendorisée servie à côté de 
   assert.deepEqual(none.libraries, {});
 });
 
-test('forContext : l\'adresse et l\'empreinte, rien d\'autre', () => {
+test('forContext : l\'adresse, l\'empreinte et la forme, rien d\'autre', () => {
   const { libraries } = resolveLibraries(read([entry()]), [{ id: 'plotly', version: '2.13.2' }], () => 'cdn', BASE);
-  assert.deepEqual(forContext(libraries), { plotly: { src: entry().cdn.src, integrite: SRI } });
+  assert.deepEqual(forContext(libraries), { plotly: { src: entry().cdn.src, integrite: SRI, forme: 'script' } });
+});
+
+// Un fichier assemblé par GFS (2.6, points 8 à 11) : forme module, ce qu'il contient et range, et pas de CDN tant que GFS n'a pas d'adresse publique.
+const assembled = (extra = {}) => ({
+  id: 'edition-live', version: '1.0.0', forme: 'module', poids: 145862,
+  contient: [{ paquet: 'yjs', version: '13.6.33' }, { paquet: 'lib0', version: '0.2.119' }], modules: ['yjs'], externes: ['prosemirror-state'],
+  cdn: null, vendorise: { chemin: 'vendor/edition-live/1.0.0/edition-live.js', integrite: SRI },
+  ...extra,
+});
+
+test('readCatalogue : un fichier assemblé sans CDN entre ; une forme inconnue, un module sans contenu ou un CDN absent sont écartés', () => {
+  const bad = [
+    assembled({ version: '1.0.1', forme: 'bundle' }),
+    assembled({ version: '1.0.2', contient: undefined }),
+    assembled({ version: '1.0.3', contient: [{ paquet: 'yjs', version: '^13' }] }),
+    assembled({ version: '1.0.4', modules: [] }),
+    assembled({ version: '1.0.5', externes: 'prosemirror-state' }),
+    assembled({ version: '1.0.6', cdn: undefined }),
+    assembled({ version: '1.0.7', cdn: { src: 'https://evil.example/x.js', integrite: SRI } }),
+  ];
+  const { entries, errors } = read([assembled(), ...bad]);
+  assert.deepEqual([...entries.keys()], ['edition-live@1.0.0']);
+  assert.equal(errors.length, bad.length);
+  assert.match(errors.join('\n'), /forme : script ou module attendu/);
+  assert.match(errors.join('\n'), /contient : liste de \{ paquet, version exacte \} attendue/);
+  assert.match(errors.join('\n'), /evil\.example n'est pas un CDN de GFS/);
+  assert.equal(read([entry({ cdn: null })]).entries.size, 1, 'sans adresse publique de GFS, un script classique peut aussi ne pas avoir de CDN');
+});
+
+test('resolveLibraries : sans CDN, la copie de GFS sert quel que soit le mode demandé, et la forme suit', () => {
+  const catalogue = read([assembled(), entry()]);
+  const need = [{ id: 'edition-live', version: '1.0.0' }, { id: 'plotly', version: '2.13.2' }];
+  const asked = resolveLibraries(catalogue, need, () => 'cdn', BASE);
+  assert.equal(asked.libraries['edition-live'].mode, 'vendorise');
+  assert.equal(asked.libraries['edition-live'].forme, 'module');
+  assert.equal(asked.libraries['edition-live'].src, 'https://exemple.github.io/grist-widget-GFS/prototype/vendor/edition-live/1.0.0/edition-live.js');
+  assert.equal(asked.libraries.plotly.mode, 'cdn', 'les autres bibliothèques gardent leur mode');
+  assert.equal(asked.libraries.plotly.forme, 'script');
+  assert.deepEqual(forContext(asked.libraries)['edition-live'], { src: asked.libraries['edition-live'].src, integrite: SRI, forme: 'module' });
 });
 
 test('chaque bibliothèque qu\'une extension des manifestes livrés exige est au catalogue, en version exacte', () => {

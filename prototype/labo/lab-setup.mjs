@@ -119,7 +119,16 @@ export async function startLab(options = {}) {
     await target.locator(`[data-open="${id}"]`).click();
     return appFrame(pattern);
   };
-  return { browser, context, page, frame, gfsFrame, appFrame, openModules, openApp, settle, gfsReady, fitPanel, shot: (run, name) => page.screenshot({ path: join(SHOTS, `${run}-${name}.png`) }),
+  // Ce que le document retient : la table `GFS_Rangement` (si elle existe) et la valeur de sa ligne réservée `@document` / `gfs` / `apps` (contrats 7.4).
+  const rangement = (target = frame) => target.evaluate(async () => {
+    const tables = await grist.docApi.listTables();
+    const pages = (await grist.docApi.fetchTable('_grist_Pages')).id.length;
+    if (!tables.includes('GFS_Rangement')) return { table: false, pages, tables: tables.length };
+    const data = await grist.docApi.fetchTable('GFS_Rangement');
+    const at = data.id.findIndex((id, i) => data.Utilisateur[i] === '@document' && data.App[i] === 'gfs' && data.Fichier[i] === 'apps');
+    return { table: true, pages, tables: tables.length, rows: data.id.length, columns: Object.keys(data).filter(name => /^[A-Z]/.test(name)), value: at >= 0 ? JSON.parse(data.Valeur[at]) : null };
+  });
+  return { browser, context, page, frame, gfsFrame, appFrame, openModules, openApp, settle, gfsReady, fitPanel, rangement, shot: (run, name) => page.screenshot({ path: join(SHOTS, `${run}-${name}.png`) }),
     // La capture du cadre de GFS seul (le panneau), pas de la page de Grist.
     shotPanel: async (run, name, target = frame) => (await target.frameElement()).screenshot({ path: join(SHOTS, `${run}-${name}.png`) }) };
 }

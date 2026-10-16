@@ -18,15 +18,7 @@ await lab.fitPanel(undefined, panelWidth, 400);
 const frame = lab.frame;
 const shot = name => lab.shotPanel(run, name, frame);
 const text = async locator => (await locator.innerText()).replace(/\s+/g, ' ').trim();
-// Ce que le document retient : la table `GFS_Rangement` (si elle existe) et la valeur de sa ligne réservée `@document` / `gfs` / `apps`.
-const rangement = () => frame.evaluate(async () => {
-  const tables = await grist.docApi.listTables();
-  const pages = (await grist.docApi.fetchTable('_grist_Pages')).id.length;
-  if (!tables.includes('GFS_Rangement')) return { table: false, pages, tables: tables.length };
-  const data = await grist.docApi.fetchTable('GFS_Rangement');
-  const at = data.id.findIndex((id, i) => data.Utilisateur[i] === '@document' && data.App[i] === 'gfs' && data.Fichier[i] === 'apps');
-  return { table: true, pages, tables: tables.length, rows: data.id.length, columns: Object.keys(data).filter(name => /^[A-Z]/.test(name)), value: at >= 0 ? JSON.parse(data.Valeur[at]) : null };
-});
+const rangement = () => lab.rangement(frame);
 const appsOption = async () => (await rangement()).value;
 const insideWindow = () => frame.evaluate(() => Boolean(document.activeElement && document.activeElement.closest('.mod')));
 const count = () => text(frame.locator('.mod-count'));

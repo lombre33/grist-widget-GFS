@@ -170,7 +170,11 @@ Numérotées pour que les tests les citent (« 3.1, point 4 »).
    qu'atteignent les pages d'entrée du dépôt (`index.html` et celles d'un `manifest.json`), en un seul ensemble.
    Seuils : 4 000 lignes exécutées (mineur) et 12 000 (majeur) pour la règle B-VERB-01 ; fichier de plus de 600 lignes de
    code, fonction de 81 lignes ou plus, complexité au-dessus de 15 (`faits-verifies.md`).
-2. Le code d'une extension n'est pas atteint depuis la page d'entrée de l'app seule (à vérifier avec l'outil, section 9).
+2. Le code d'une extension n'est pas atteint depuis la page d'entrée de l'app seule si l'app le charge par une adresse
+   calculée : l'outil lit un `import()` dont le chemin commence par un texte fixe, il ne lit pas une adresse calculée (mesuré
+   à l'étape 2 : avec une adresse calculée, 2 fichiers sur 3 dans la surface et les défauts de l'extension, un `eval` et un
+   `innerHTML`, n'apparaissent pas ; avec un chemin à début fixe, 3 sur 3, défauts rapportés). Garder les extensions hors de
+   la surface comptée a donc un prix : leur code n'est relu par aucun audit. Question 12.
 3. Aucune duplication entre dépôts : ce qui sert à deux apps va dans le kit.
 4. Une seule liste des bibliothèques natives par app, et la liste de GFS pour les non natives. Import map, CSP, empreintes,
    miroir des tests et version vendorisée en sont tirés par un outil, jamais tenus à la main. Le dépôt d'une app ne garde
@@ -718,6 +722,7 @@ fait passer par le porteur.
 | 9 | Où retenir les apps installées : réglages de la section, ou une table pour tout le document ? | Étape 1 | Réglages de la section, avec le rappel « Enregistrer » ; une table seulement si le réglage doit valoir pour tout le document. **Tranché le 16/10 : une table pour tout le document** (`GFS_Rangement`, contrats 7.4) |
 | 10 | Les quatre choix de parcours (6.7) | Étape 6 | Les défauts pris |
 | 11 | Comment le sous-cadre reçoit la bibliothèque d'une extension (Plotly), comment sa CSP l'autorise en CDN comme en vendorisé (le dépôt de l'app n'en garde que l'adresse du CDN, mesuré), et où se retient le choix CDN ou vendorisé | V0.2 du prototype | Adresse et empreinte données par GFS, chargées par l'extension (contrats 5.2) ; la CSP se mesure d'abord. **Tranché le 14/10 : CDN d'abord ; chaque app nomme l'adresse du catalogue dans sa CSP** (rapport, point 4) |
+| 12 | L'audit des extensions : les garder hors de la surface comptée de l'app (adresse calculée, code relu par personne), ou les compter (chemin à début fixe) | Étape 5 | Les auditer (chemin à début fixe) ; si un seuil de lignes saute, demander à l'outil d'audit de compter les extensions à part (rapport de l'étape 2, section 6) |
 
 ---
 

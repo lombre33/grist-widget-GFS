@@ -119,8 +119,10 @@ L'app (sous-cadre sans allow-same-origin)
 1. [T] **Le routeur de GFS est un écouteur `message` enregistré avant le script d'API de Grist.** Mesuré le 14/10 dans Chromium
    141 : le script d'API affecte `window.onmessage` ; un écouteur enregistré **après** passe après lui, phase de capture
    comprise, et le script d'API de GFS voit alors le message d'un sous-cadre (une fausse réponse portant un `reqId` connu
-   suffirait). Un écouteur enregistré **avant** passe avant lui et l'arrête par `stopImmediatePropagation()`. [M] Reprendre dans
-   Firefox et WebKit (seul Chromium est installé dans le labo du cloud).
+   suffirait). Un écouteur enregistré **avant** passe avant lui et l'arrête par `stopImmediatePropagation()`. La phase de capture
+   ne protège donc pas : c'est l'ordre d'enregistrement qui décide (contrôle fait avec le vrai script d'API de Grist : si le
+   routeur s'enregistre après lui, un faux message d'un cadre voisin arrive à Grist). [M] Reprendre dans Firefox et WebKit
+   (seul Chromium est installé dans le labo du cloud : la page de mesure du porteur, rapport de l'étape 2, section 7).
 2. [T] Le routeur applique trois cas, dans cet ordre : (a) `event.source === window.parent` : c'est Grist, il laisse passer ;
    (b) `event.source` est la fenêtre du sous-cadre actif : il traite le message lui-même (le courtier) et arrête la
    propagation ; (c) tout autre cas : il arrête la propagation et jette le message. Mesuré : un sous-cadre isolé peut écrire
@@ -132,9 +134,14 @@ L'app (sous-cadre sans allow-same-origin)
 
 ### 1.3 Le sous-cadre
 
-1. [T] `sandbox="allow-scripts allow-forms allow-popups allow-modals allow-downloads"`, jamais `allow-same-origin`.
-   [D] `allow="clipboard-write"`, comme le cadre de Grist ; [M] liste exacte des permissions (impression, téléchargement,
-   fenêtres, `mailto:`, presse-papiers, plein écran : cahier 9, point 3).
+1. [T] `sandbox="allow-scripts allow-forms allow-popups allow-modals allow-downloads"`, jamais `allow-same-origin` (décision du
+   16/10, question 3). [D] `allow="clipboard-write"`, comme le cadre de Grist. Mesuré dans Chromium (rapport de l'étape 2,
+   section 3) : avec ces permissions, `window.print`, les téléchargements, les fenêtres et les liens en nouvel onglet,
+   l'écriture dans le presse-papiers marchent ; l'impression par un cadre caché, les cinq stockages du navigateur, la lecture du
+   presse-papiers et le plein écran sont refusés ; un lien `mailto:` dans le même cadre le fait mourir, `frame-src` de GFS ne
+   le connaissant pas. [D] Pour un lien `mailto:` ou `tel:`, l'app ouvre un nouvel onglet (`target="_blank"`), ce qui ne demande
+   rien de plus à GFS ; les ajouter à `frame-src` de GFS serait l'autre voie, à confirmer à l'étape 6. [M] Firefox et Safari :
+   la page de mesure du porteur.
 2. [T] **L'adresse du sous-cadre est calculée par GFS** : `apps/<id>/<entree>` sur son propre site, `<id>` et `<entree>`
    venant du manifeste livré avec GFS. Elle n'est jamais lue dans un réglage, une table ou un message (cahier 3.2, point 3).
 3. [T] Elle porte les six paramètres que Grist ajoute à l'adresse d'un widget (`access`, `readonly`, `language`, `culture`,
@@ -149,8 +156,10 @@ L'app (sous-cadre sans allow-same-origin)
    le contrat se complète alors.
 2. [D] Un sous-cadre qui n'a pas dit `ready` au bout de 15 secondes est signalé à la personne (« l'app ne répond pas »), avec
    « Recharger ». Durée à confirmer à l'étape 6.
-3. [M] Un sous-cadre peut-il naviguer de lui-même hors du site de GFS ? La politique `frame-src 'self'` de GFS s'applique-t-elle
-   aux navigations du cadre lui-même (cahier 9, point 4) ?
+3. [T] Mesuré dans Chromium (rapport de l'étape 2, section 3) : un sous-cadre peut aller sur une autre page du site de GFS sans
+   perdre son canal ; il ne peut pas aller sur un autre site (`frame-src 'self'` s'applique à ses navigations : le cadre
+   meurt), ni renvoyer la page de Grist ailleurs (aucun `allow-top-navigation`). [M] Firefox et Safari : la page de mesure du
+   porteur.
 
 ---
 
@@ -210,7 +219,9 @@ Une entrée de `fichiers` par table de fichiers :
 1. [T] L'identifiant d'un fichier est la valeur de `colonnes.id`, prise comme texte (pour Publipostage+, le numéro de ligne).
 2. [T] GFS lit la table entière (l'API de Grist n'a pas de projection par colonne), ne garde que les colonnes déclarées, et ne
    l'écrit jamais. Une colonne déclarée mais absente de la table se lit comme vide : un document ancien n'a pas toutes les
-   colonnes. [M] Coût de cette lecture dans une table lourde (Publipostage+ y range le contenu des modèles).
+   colonnes. Coût mesuré à l'étape 2 dans un document lourd (Publipostage+ y range le contenu des modèles : 118 modèles, environ
+   20 Mo) : l'explorateur est prêt 2,7 s après le démarrage (première lecture 2,9 s), puis 0,2 à 1,6 s ; Grist ne sait pas lire
+   une partie d'une table, donc la lecture prend toute la table.
 3. [T] Un fichier dont le type n'est pas dans `types` est listé grisé, jamais ouvert (section 6.5).
 
 ### 2.5 Les réglages
@@ -442,8 +453,10 @@ ne lit pas).
 4. [D] **Noms normalisés.** Grist change le nom qu'on lui donne (accents enlevés, caractères autres que lettres et chiffres
    remplacés, « _ » de tête retirés, capitale initiale, numéro si le nom est pris). Le courtier juge donc un nom après avoir
    retiré les « _ » de tête, sans tenir compte de la casse, **et** contrôle l'identifiant réel que Grist rend : s'il lit
-   `GFS_` ou le préfixe d'une autre app, il retire la table créée et refuse. Après un lot qui crée ou renomme une table
-   (`RenameTable` ne rend rien d'exploitable), il relit `_grist_Tables` pour le vérifier. [M] Mesurer à l'étape 2.
+   `GFS_` ou le préfixe d'une autre app, il retire la table créée et refuse. Après un lot qui crée ou renomme une table, il
+   relit `_grist_Tables` pour le vérifier : cette relecture ne dépend pas de la forme de la réponse (`RenameTable` rend bien
+   l'identifiant réel). Mesuré à l'étape 2 : 27 noms, aucun écart dangereux ; même avec un jugement volontairement affaibli, le
+   contrôle de l'identifiant réel arrête chaque nom réservé et retire la table.
 5. [D] **Tables internes.** Une écriture dans `_grist_*` n'est permise que par une entrée `gristInterne` qui nomme la table et
    la liste de ses colonnes (`ecrit`). Le courtier compare les clés des objets de valeurs (`AddRecord`, `BulkAddRecord`,
    `UpdateRecord`, `BulkUpdateRecord`, `AddOrUpdateRecord`, `BulkAddOrUpdateRecord` : ses deux objets `require` et `col_values`) à
@@ -593,7 +606,9 @@ Le niveau minimal est celui que Grist exige de GFS (`CustomView.ts`, `WidgetFram
 
 **`print`** : Grist appelle `print` sur GFS. Le script d'API de GFS en a enregistré un qui imprime la page de GFS ; GFS le
 remplace (`unregisterFunc`, puis `registerFunc`) par un qui appelle `print` sur l'app active et, sans app active (l'explorateur
-est au premier plan), imprime sa propre page. [M] Cahier 9, point 3.
+est au premier plan), imprime sa propre page. [D] Le relais attend l'app 10 secondes au plus. Mesuré à l'étape 2 : « Print widget »
+de Grist arrive à l'app active et GFS n'imprime pas ; sans app, GFS imprime sa page ; une app sans fonction `print` ne répond
+pas, et au bout de 10 secondes la page de GFS s'imprime, l'app dedans.
 
 **`editOptions`** : GFS déclare `onEditOptions` à Grist. L'appel est transmis à l'app active si elle a déclaré
 `hasCustomOptions` ; sinon GFS ouvre sa propre fenêtre d'installation [D].
@@ -684,7 +699,9 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 
 ### 5.3 Le stockage du navigateur
 
-Dans un sous-cadre à origine opaque, `localStorage` lève une erreur (mesuré). Le kit offre un stockage par app :
+Dans un sous-cadre à origine opaque, les cinq stockages (`localStorage`, `sessionStorage`, cookies, `indexedDB`, cache) sont
+refusés (mesuré à l'étape 2, décision d'isolement du 16/10). `contexte.stockage` reste vide dans le prototype ; le kit offre un
+stockage par app (étape 3) :
 
 1. [T] La lecture est immédiate, dans une copie en mémoire remplie au démarrage : par le navigateur quand l'app est seule, par
    `contexte.stockage` dans GFS. L'écriture suit : `stockage.ecrire` avec `{ cle, valeur }` (`valeur: null` retire la clé).

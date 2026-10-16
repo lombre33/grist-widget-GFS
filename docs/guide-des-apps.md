@@ -68,8 +68,10 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
 5. Ranger les fonctions lourdes dans `extensions/`, avec le registre et le grisé du kit, et retirer leurs bibliothèques de la
    liste et de l'import map de l'app : GFS les porte (la CSP garde l'adresse du mode CDN, règle 9).
 6. Montrer, dans l'app seule, la fenêtre du grisé (section 5).
-7. Ajouter les tests du contrat (section 4) et vérifier avec l'outil d'audit que `extensions/` n'est pas compté dans la
-   surface de l'app seule.
+7. Ajouter les tests du contrat (section 4) et vérifier avec l'outil d'audit ce que compte la surface de l'app seule : l'outil lit
+   un `import()` dont le chemin commence par un texte fixe, il ne lit pas une adresse calculée (mesuré à l'étape 2). Une
+   extension chargée par une adresse calculée sort donc de la surface, et son code n'est relu par aucun audit : le mode de
+   chargement des extensions se décide avec GFS (cahier 3.3, point 2, question 12).
 
 ---
 

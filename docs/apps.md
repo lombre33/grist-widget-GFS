@@ -7,7 +7,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le |
 |---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `ef299c9` | 16/10/2026 |
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `9d9c6da` | 16/10/2026 |
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `b073d03` | 14/10/2026 |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `ee8f0a9` | 14/10/2026 |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `c8c819f` | 14/10/2026 |
@@ -36,6 +36,12 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   de scripts de l'app (`ExportCommon.scriptRefusal`) n'accepte qu'un des deux CDN de sa liste, avec empreinte, ou un fichier
   de la même origine que sa page : la copie de GFS passe parce que GFS et l'app sont servis par le même site ; servie
   d'ailleurs (un client qui héberge GFS à part), ce chargeur la refuserait (lu dans son code, non mesuré).
+- Publipostage+ plus tard le 16/10 : lu jusqu'à `9d9c6da` (neuf commits depuis `ef299c9`) ; son `GFS-ETAT.md` (commit
+  `ebf1785`) donne la 009 pour faite : `js/gfs-link.js` garde `adresseWidget` du contexte et `ownWidgetUrl()` en part, seul
+  ou sans réponse de GFS rien ne change. Le reste (numérotation « Article », sommaire, menu « Édition collaborative »,
+  tests, journal) ne touche ni table, ni colonne, ni clé de réglages, ni action, ni bibliothèque, ni adresse de la CSP
+  (dans `index.html`, des numéros de version et deux menus). « Demandes à GFS » : aucune. Un commentaire de la barre d'outils
+  dit que « l'écriture en direct y prendra sa ligne avec l'extension de GFS » : la demande n'est pas encore écrite.
 - Publipostage+ change de langue en rechargeant la page (`53d36de` : plus de retraduction à chaud, `I18n.onChange` n'existe
   plus), ce qui va avec le contrat (5.2, point 2 : un seul événement en cours de vie, `extensions`). Son `initialLang()` ne lit
   que `localStorage` (clé `pp_lang`) puis les langues du navigateur, pas `contexte.langue` : à voir à l'étape 5, quand le kit

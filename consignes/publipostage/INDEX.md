@@ -13,4 +13,4 @@ Avant chaque lot : cette page, puis seulement les consignes « à faire ».
 | 006 | [Une bibliothèque nouvelle : la demander à GFS](006-bibliotheque-nouvelle.md) | avant la prochaine fonction à bibliothèque nouvelle ; sans effet tant qu'il n'y en a pas | faite · `b044cab` |
 | 007 | [Précision de la 005 : la CSP garde l'adresse du CDN de Plotly](007-csp-adresse-du-cdn.md) | avant de toucher à la CSP dans la 005 ; elle en change le point 4 | faite · `fc03813` |
 | 008 | [Deux réponses : le nom du grisé, les renommages de colonnes](008-reponses-grise-et-renommages.md) | au prochain lot, sans urgence ; aucun code à changer | faite · `fc03813` |
-| 009 | [L'adresse du widget, et l'adresse publique de GFS](009-adresse-du-widget.md) | avant de proposer le graphique à une page qui porte GFS ; sans effet dans l'app seule | à faire |
+| 009 | [L'adresse du widget, et l'adresse publique de GFS](009-adresse-du-widget.md) | avant de proposer le graphique à une page qui porte GFS ; sans effet dans l'app seule | faite · `ebf1785` |

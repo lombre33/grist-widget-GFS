@@ -57,4 +57,14 @@ for (const { key, csp, first, second, control, events } of rows) {
   const cell = r => `${modeOf(r)} : ${r.resultat}${r.violations.length ? ` [${r.violations.map(v => v.directive).join(', ')}]` : ''}${r.moteur ? ` ; moteur ${r.moteur.version}, SVG ${r.moteur.svg} octets` : ''}`;
   say(`sonde ${key.toUpperCase()} | ${csp}\n   ${cell(first)}\n   ${cell(second)}\n   contrôle (empreinte fausse) : ${control ? control.resultat : 'non mesuré'}${control && control.violations.length ? ` [${control.violations.map(v => v.directive).join(', ')}]` : ''} ; événements reçus : ${events}`);
 }
+
+// Ce que le rapport donne (mesure 4) : la copie de GFS se charge et dessine sous les six politiques ; le CDN, seulement quand la politique de l'app le laisse
+// entrer (son adresse, son empreinte, ou le texte puis l'exécution : B, C, D, E) ; une empreinte fausse est toujours refusée.
+const CDN_LOADS = { a: false, b: true, c: true, d: true, f: false, e: true };
+for (const { key, first, second, control } of rows) {
+  const name = `sonde ${key.toUpperCase()}`;
+  check(`${name} : le CDN ${CDN_LOADS[key] ? 'se charge' : 'est refusé'}`, (first.resultat === 'charge') === CDN_LOADS[key], first.resultat);
+  check(`${name} : la copie de GFS se charge et dessine`, second.resultat === 'charge' && Boolean(second.moteur) && second.moteur.svg > 0, second.resultat);
+  check(`${name} : une fausse empreinte est refusée`, Boolean(control) && control.resultat !== 'charge', control ? control.resultat : 'non mesuré');
+}
 await lab.browser.close();

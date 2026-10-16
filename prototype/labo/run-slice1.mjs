@@ -1,4 +1,4 @@
-// Tranche 1 : GFS ouvre Publipostage+ (non modifié) dans un sous-cadre isolé, dans un vrai Grist ; Publipostage+ crée ses tables par le courtier.
+// Tranche 1 : GFS ouvre Publipostage+ (la version référencée, qui parle à GFS) dans un sous-cadre isolé, dans un vrai Grist ; Publipostage+ crée ses tables par le courtier.
 import { startLab } from './lab-setup.mjs';
 import { say } from './lab-common.mjs';
 

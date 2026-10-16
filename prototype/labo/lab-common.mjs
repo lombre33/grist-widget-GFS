@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readCatalogue } from '../js/libraries.js';
 const require = createRequire(import.meta.url);
 // Playwright : celui du dossier du labo si on l'y a installé, sinon celui du conteneur du cloud.
 const playwright = (() => { try { return require('playwright'); } catch (error) { return require('/opt/node22/lib/node_modules/playwright'); } })();
@@ -21,12 +22,19 @@ export const check = (label, ok, detail = '') => { say(ok ? 'OK    ' : 'ÉCHEC '
 const MIRROR = join(LAB, 'mirror');
 const ESM_MAP = existsSync(join(MIRROR, 'esm-map.json')) ? JSON.parse(readFileSync(join(MIRROR, 'esm-map.json'), 'utf8')) : {};
 const UMD_BY_URL = [
-  [/plotly-basic\.min\.js/, 'plotly-basic.min.js'], [/marked\.min\.js/, 'marked.min.js'], [/pdfmake\.min\.js/, 'pdfmake.min.js'],
+  [/marked\.min\.js/, 'marked.min.js'], [/pdfmake\.min\.js/, 'pdfmake.min.js'],
   [/vfs_fonts\.min\.js/, 'vfs_fonts.min.js'], [/jszip\.min\.js/, 'jszip.min.js'], [/pdf-lib\.min\.js/, 'pdf-lib.min.js'],
   [/exceljs\.min\.js/, 'exceljs.min.js'], [/docx.*index\.iife\.js/, 'docx.iife.js'], [/qrcode\.min\.js/, 'qrcode.min.js'],
 ];
+// Les bibliothèques d'extensions ne sont plus dans la liste d'une app (la bibliothèque du graphique est à GFS, consigne 005) : à l'adresse du CDN que nomme le
+// catalogue de GFS (lu comme GFS le lit), le miroir rend la copie de GFS, les mêmes octets que le CDN (même empreinte, vérifiée par l'outil des bibliothèques).
+const LIBRARIES = (() => {
+  try { return [...readCatalogue(JSON.parse(readFileSync(join(LAB, '..', 'bibliotheques', 'catalogue.json'), 'utf8'))).entries.values()]; } catch (error) { return []; }
+})();
 export function mirrored(url) {
   const u = new URL(url);
+  const library = LIBRARIES.find(entry => entry.cdn.src === u.origin + u.pathname);
+  if (library) return join(LAB, '..', library.vendorise.chemin);
   if (u.hostname === 'esm.sh') {
     const base = u.pathname.split('/').pop();
     if (/^chunk-.*\.js$/.test(base)) return join(MIRROR, 'esm', base);
@@ -122,7 +130,7 @@ export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', 
     }
   });
   // Le miroir des CDN ne rend pas toujours les octets exacts du CDN (les paquets esm.sh) : l'attribut `integrity` est neutralisé, sauf dans les sondes
-  // (labo/sondes/), où l'empreinte est une mesure (le miroir de Plotly rend les octets du paquet : même empreinte que le CDN et que la copie de GFS).
+  // (labo/sondes/), où l'empreinte est une mesure (à l'adresse du CDN de Plotly, le miroir rend la copie de GFS : même empreinte que le CDN).
   await page.addInitScript(() => {
     try {
       if (location.pathname.includes('/labo/sondes/')) return;

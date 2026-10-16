@@ -15,6 +15,9 @@ REPO_DIR="$(realpath ../..)" node lab-server.mjs &                # Grist sur 89
 REPO_DIR="$(realpath ../..)" node run-ordre.mjs                   # un essai ; la sortie dit « OK » ou « ÉCHEC »
 ```
 
+Le miroir ne construit que les bibliothèques de l'app. Celles que GFS porte (Plotly, pour le graphique) n'y sont pas : à leur adresse de CDN, le labo
+rend la copie de GFS (`vendor/…`, nommée par `bibliotheques/catalogue.json`), qui a les mêmes octets et la même empreinte que le CDN.
+
 Variables utiles : `LAB_LANG=fr|en`, `LAB_SCHEME=light|dark`, `LAB_BROWSER=chromium|firefox|webkit` (les deux derniers : sur une machine qui les a),
 `LAB_CONSOLE=error|all` (la console du navigateur), `LAB_BYPASS_CSP=1` (diagnostic seulement, jamais une mesure).
 
@@ -22,7 +25,7 @@ Variables utiles : `LAB_LANG=fr|en`, `LAB_SCHEME=light|dark`, `LAB_BROWSER=chrom
 
 | Essai | Ce qu'il mesure |
 |---|---|
-| `run-slice1`, `probe-app`, `run-automation` | GFS ouvre Publipostage+ et Automation+, non modifiées, dans un sous-cadre isolé : leurs tables, ce qu'elles voient, ce que le courtier leur refuse |
+| `run-slice1`, `probe-app`, `run-automation` | GFS ouvre Publipostage+ (la version que GFS référence, qui parle à GFS) et Automation+ (non modifiée) dans un sous-cadre isolé : leurs tables, ce qu'elles voient, ce que le courtier leur refuse |
 | `run-explorer`, `run-modules` | l'explorateur et la fenêtre « Apps et extensions » (interface) |
 | `run-courtier` | le courtier avec le vrai script d'API de Grist : rejeu, `configure`, jeton, noms de tables |
 | `run-capacites` | ce qu'une app peut faire dans son sous-cadre (stockage, impression, téléchargements, fenêtres, presse-papiers, navigation) ; `CAP_CONFIG=grist` : la même sonde sans GFS |
@@ -31,7 +34,7 @@ Variables utiles : `LAB_LANG=fr|en`, `LAB_SCHEME=light|dark`, `LAB_BROWSER=chrom
 | `run-politique` | peut-on imposer une politique de sécurité du contenu à un sous-cadre servi sans en-tête (attribut `csp`, `srcdoc`, `blob:`) ? Sans Grist : la question est celle du navigateur |
 | `run-acces-none`, `run-reconstruit` | GFS sans l'accès complet ; le cadre que Grist reconstruit quand le niveau d'accès change |
 | `run-cout-cadre`, `run-heavy` | le coût d'un cadre de plus ; la lecture des fichiers dans un document lourd |
-| `run-sondes` | la bibliothèque d'une extension (CDN et copie de GFS) sous six politiques d'app |
+| `run-sondes` | la bibliothèque d'une extension (CDN et copie de GFS) sous six politiques d'app ; la matrice du rapport (mesure 4) est vérifiée, ligne par ligne |
 | `run-navigateur` | la page `navigateur/` jouée à la souris (voir plus bas) |
 | `run-reel` | la sonde `reel/`, avec un répondeur REST de remplacement pour la tuyauterie (`rest-standin.mjs`) |
 

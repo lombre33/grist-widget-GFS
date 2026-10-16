@@ -1,4 +1,4 @@
-// Sonde : ce que Publipostage+ (non modifié) voit dans son sous-cadre isolé, une fois ouvert par GFS.
+// Sonde : ce que Publipostage+ (la version référencée) voit dans son sous-cadre isolé, une fois ouvert par GFS.
 import { startLab } from './lab-setup.mjs';
 import { say } from './lab-common.mjs';
 

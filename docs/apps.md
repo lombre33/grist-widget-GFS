@@ -7,7 +7,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le |
 |---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `0880ba0` | 14/10/2026 |
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `ef299c9` | 16/10/2026 |
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `b073d03` | 14/10/2026 |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `ee8f0a9` | 14/10/2026 |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `c8c819f` | 14/10/2026 |
@@ -28,6 +28,14 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   « Nommer… », existait déjà). Le guide des apps et les repères de lignes de `faits-verifies.md` datent de `92ecd58`, les
   contrats de `e4a239c`, les consignes 003 à 005 de `89ebdd2` et la 007 de `9d0230f` : relire sur `origin/main` avant de s'y
   fier.
+- Publipostage+ au 16/10 : trois commits de plus (`fc03813`, `9702c77`, `ef299c9`) ; son `GFS-ETAT.md` (commit `fc03813`)
+  donne les consignes 001, 005, 007 et 008 pour faites. Le graphique est l'extension `graphique` (`extensions/graphique/`),
+  Plotly n'est plus dans sa liste, et `js/gfs-link.js` parle à GFS (contrat 0). Mesuré dans le labo, avec GFS à `4403f41` :
+  Plotly 2.13.2 arrive de GFS en CDN comme en copie de GFS, se charge sous la CSP de l'app avec son empreinte et dessine ;
+  la ligne grisée ouvre la fenêtre « Apps et extensions », cocher Graphique la dégrise, le décocher la regrise. Le chargeur
+  de scripts de l'app (`ExportCommon.scriptRefusal`) n'accepte qu'un des deux CDN de sa liste, avec empreinte, ou un fichier
+  de la même origine que sa page : la copie de GFS passe parce que GFS et l'app sont servis par le même site ; servie
+  d'ailleurs (un client qui héberge GFS à part), ce chargeur la refuserait (lu dans son code, non mesuré).
 - Publipostage+ change de langue en rechargeant la page (`53d36de` : plus de retraduction à chaud, `I18n.onChange` n'existe
   plus), ce qui va avec le contrat (5.2, point 2 : un seul événement en cours de vie, `extensions`). Son `initialLang()` ne lit
   que `localStorage` (clé `pp_lang`) puis les langues du navigateur, pas `contexte.langue` : à voir à l'étape 5, quand le kit

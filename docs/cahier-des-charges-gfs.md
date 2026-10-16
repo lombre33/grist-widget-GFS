@@ -113,6 +113,11 @@ Slides+ (`lombre33/SlidesPlus`) n'est pas une app de GFS : les diapositives devi
 | Couleurs par type, dans l'explorateur seulement : document bleu, grille vert, présentation orange | 12/10 | Section 6.5 |
 | Notes = un document ; diapositives d'abord ; PowerPoint précis et OnlyOffice libre « très importants » | 12/10 | Extensions de Publipostage+ ; cadres libres avant PowerPoint |
 | Barre d'outils de Publipostage+ gelée : aucun bouton de plus | 12/10 | Dans Publipostage+, l'entrée de l'explorateur est « Organiser » |
+| **Isolement : chaque app dans un sous-cadre sans `allow-same-origin`** ; un domaine par app seulement si un audit l'exige. Critères du porteur : interopérabilité par GFS, bonne performance, code clair et modulaire, sécurité maximale | 16/10 | Rapport de l'étape 2, section 3 ; trois prix, chacun à un seul endroit : stockage par le kit, impression de Publipostage+ par sa propre page, lien e-mail dans un nouvel onglet |
+| **Les apps installées se retiennent dans une table du document** (`GFS_Rangement`), créée avec l'accord de la personne | 16/10 | Contrats 6.4 et 7.4 : l'installation s'enregistre tout de suite, sans « Enregistrer », et vaut pour tout le document |
+| **Ouvrir le fichier cliqué : une petite porte dans l'app** (l'`ouverture` du contexte et l'appel `ouvrir`) | 16/10 | Consigne 010 à Publipostage+ ; contrats 5.2, point 3, et 5.4 |
+| **Deux environnements séparés** : les dépôts de développement (`lombre33`) et les dépôts publics (`grist-factory`) ; le GFS public référence les seconds, où le porteur ne pousse que des versions propres | 16/10 | Section 4.2 ; question 1 tranchée |
+| **Premier client du kit commun : Form+**, et non Automation+, trop éloigné du périmètre de Publipostage+ | 16/10 | Sections 4.5 et 10 (étape 3, qui attend toujours son go) |
 
 Si un fait nouveau remet en cause une de ces lignes, le dire au porteur avec ce fait, sur une carte de décision. Ne jamais
 proposer l'inverse de son propre chef.
@@ -242,7 +247,10 @@ GFS ............... courtier, explorateur, installation, références aux versio
 - **GitHub Pages** construit le site de GFS avec ses sous-modules ; une app y est servie à `…/apps/<id>/`. Pages répond
   `Access-Control-Allow-Origin: *` et met en cache 10 minutes, sans adresse par version : tout fichier modifié monte son
   `?v=` dans la page qui le charge. Pages ne sert aucun fichier ni dossier dont le nom commence par « _ » ou « . ».
-- **Mettre une app à jour dans GFS** : avancer sa référence (une ligne), relue. Dependabot le propose.
+- **Mettre une app à jour dans GFS** : avancer sa référence (une ligne). Dans le dépôt de développement, chaque avance est un
+  commit relu, car les apps y sont en chantier. Dans le GFS public, la référence va vers la version que le porteur a publiée
+  dans le dépôt public de l'app : son push vaut feu vert et le dépôt public ne reçoit que des versions propres (décision du
+  16/10, question 1). Dependabot le propose.
 - **L'adresse vivante** d'une app (sa dernière publication, sans référence figée) sert seulement à un canal de test, jamais
   à un client dont le RSSI veut une version fixe.
 
@@ -312,8 +320,11 @@ commencer, ou un sous-cadre gardé ouvert et caché (question 4, section 12).
   stockage du navigateur dans un `try/catch`, « choisir » par la liste avec recherche, actions vers une autre app grisées
   avec le texte commun).
 - **Point de départ** : extraire de Publipostage+, le code le plus mûr et déjà conforme à la charte. Premier client :
-  Automation+ (petit, sans bibliothèque, qui a refait fenêtres, traduction, thème et jetons), puis Publipostage+, Form+,
-  Grist-BI.
+  **Form+** (choix du porteur, 16/10 : Automation+ est trop éloigné du périmètre de Publipostage+), puis Publipostage+,
+  Automation+, Grist-BI. Relevé du 14/10 (`d3c8475`) : Form+ est une preuve de concept d'environ 2 300 lignes en modules ES,
+  sans bibliothèque (un script de QR code à lui), mais sans traduction (français seul), avec les fenêtres du navigateur
+  (`prompt` et `confirm`) et sa propre palette : l'étape 3 les lui apporte, au lieu de seulement remplacer des copies comme
+  chez Automation+.
 
 ### 4.6 Les extensions
 
@@ -523,7 +534,7 @@ enregistrée par l'autre app.
 
 ### 6.2 Arrivée (proposition à valider avec les contrats)
 
-1. GFS lit les réglages de sa section : apps installées, app de départ.
+1. GFS lit les apps installées dans `GFS_Rangement` (si la table existe) et les réglages de sa section : app de départ.
 2. Sans app de départ, mais avec des clés de réglages qu'un manifeste déclare (la section servait à cette app seule), GFS
    ouvre cette app, sans rien écrire : c'est l'aller-retour sans perte.
 3. Sinon, une seule app installée : elle s'ouvre. Sinon : l'explorateur.
@@ -668,7 +679,7 @@ Chaque étape se livre seule, avec ses tests, et attend le go du porteur avant l
 |---|---|---|---|---|
 | 1 | Contrats | `docs/contrats.md` dans le dépôt de GFS : manifeste, actions, données, réglages, contexte, stockage, protocole du courtier | GFS | Le porteur l'a relu et a dit go |
 | 2 | Prototype du courtier | `prototype/` et le rapport de la section 9 | GFS | Les dix points mesurés ; isolement décidé |
-| 3 | Kit commun v0 | Dépôt du kit, première étiquette ; Automation+ le référence | GFS, puis Automation+ | Automation+ tourne avec le kit, sans copie de fenêtres, traduction, thème ni jetons |
+| 3 | Kit commun v0 | Dépôt du kit, première étiquette ; Form+ le référence | GFS, puis Form+ | Form+ tourne avec le kit : fenêtres, traduction (français et anglais), thème et jetons viennent du kit, sans copie |
 | 4 | Listes des bibliothèques | L'outil (dans le kit) ; `package.json` de Publipostage+ ; la liste de GFS pour les bibliothèques d'extensions ; Dependabot activé | GFS (outil, liste), Publipostage+ (adoption) | Import map, CSP, empreintes et miroir des tests régénérés à l'identique depuis la liste |
 | 5 | Apps prêtes pour GFS | Garde « inconnu » ; définitions en tables ; contexte et stockage par le kit ; `gfs.json` | Chaque app (guide des apps) | L'aller-retour seule, GFS, seule passe dans un vrai Grist |
 | 6 | GFS v0 | Références aux apps, courtier, explorateur, installation, texte du grisé | GFS | Exigences 3.1 à 3.3 couvertes par des tests ; audit de GFS sous les seuils |
@@ -696,15 +707,15 @@ fait passer par le porteur.
 
 | # | Question | Quand | Conseil |
 |---|---|---|---|
-| 1 | Référence des apps : sous-module ou adresse vivante ? | Étape 2 | Sous-module ; l'adresse vivante pour un canal de test |
+| 1 | Référence des apps : sous-module ou adresse vivante ? | Étape 2 | Sous-module ; l'adresse vivante pour un canal de test. **Tranché le 16/10 : sous-module** ; le GFS public référence les dépôts publics (`grist-factory`), et le push du porteur vaut feu vert (4.2) |
 | 2 | TipTap en mode CDN : esm.sh, ou un seul fichier figé servi par jsDelivr avec empreinte ? | Étape 4 | Le fichier figé |
-| 3 | Isolement : sous-cadres sans `allow-same-origin`, ou un domaine par app ? | Fin de l'étape 2 | Sous-cadres ; des domaines seulement si un audit l'exige |
+| 3 | Isolement : sous-cadres sans `allow-same-origin`, ou un domaine par app ? | Fin de l'étape 2 | Sous-cadres ; des domaines seulement si un audit l'exige. **Tranché le 16/10 : sous-cadres** (rapport, section 3) |
 | 4 | Automation+ dans GFS : section à part, ou sous-cadre gardé en fond ? | Étape 6 | Section à part pour commencer |
 | 5 | Où publier GFS et les apps ? | Avant la première publication | Organisation `grist-factory`, un dépôt public par app, un pour GFS, un pour le kit ; aucune page de test sur cette origine |
 | 6 | Dashboard et Grist-BI : deux apps, ou une ? | Au lancement de Dashboard | À préciser avec le porteur |
 | 7 | Entrée de l'explorateur dans chaque app, ou un repère de GFS au-dessus des apps ? | Étape 6 | Dans chaque app (« Organiser » pour Publipostage+), sans barre de plus |
 | 8 | Couleurs des types des autres apps | Étape 6 | Neutres tant qu'il ne les demande pas |
-| 9 | Où retenir les apps installées : réglages de la section, ou une table pour tout le document ? | Étape 1 | Réglages de la section, avec le rappel « Enregistrer » ; une table seulement si le réglage doit valoir pour tout le document |
+| 9 | Où retenir les apps installées : réglages de la section, ou une table pour tout le document ? | Étape 1 | Réglages de la section, avec le rappel « Enregistrer » ; une table seulement si le réglage doit valoir pour tout le document. **Tranché le 16/10 : une table pour tout le document** (`GFS_Rangement`, contrats 7.4) |
 | 10 | Les quatre choix de parcours (6.7) | Étape 6 | Les défauts pris |
 | 11 | Comment le sous-cadre reçoit la bibliothèque d'une extension (Plotly), comment sa CSP l'autorise en CDN comme en vendorisé (le dépôt de l'app n'en garde que l'adresse du CDN, mesuré), et où se retient le choix CDN ou vendorisé | V0.2 du prototype | Adresse et empreinte données par GFS, chargées par l'extension (contrats 5.2) ; la CSP se mesure d'abord. **Tranché le 14/10 : CDN d'abord ; chaque app nomme l'adresse du catalogue dans sa CSP** (rapport, point 4) |
 

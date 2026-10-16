@@ -44,11 +44,11 @@ connaît pas.
 4. **Messages propres à GFS** (contexte, stockage, actions « ouvrir », « choisir », « insérer », « installer », « fermer ») :
    une enveloppe à part, sans `mtype`, que le script d'API de Grist ignore (sections 4 et 5).
 5. **Installer ne télécharge rien** : le code de toutes les apps livrées est déjà dans le site de GFS ; installer inscrit
-   l'identifiant de l'app dans la section (section 7). La bibliothèque d'une extension n'est pas dans l'app : GFS la porte et
-   donne sa source (2.6, 5.2).
+   l'identifiant de l'app dans une table du document (sections 6.4 et 7.4). La bibliothèque d'une extension n'est pas dans
+   l'app : GFS la porte et donne sa source (2.6, 5.2).
 6. **Réglages de la vue** : une tranche par app, mêmes clés seule ou dans GFS ; les clés de GFS commencent par `gfs.`.
-   **Question 9** : où retenir les apps installées. Ce document prend le conseil du cahier (réglages de la section) et décrit
-   la variante « table » en quelques lignes (section 7.4).
+   **Question 9, tranchée le 16/10** : les apps installées se retiennent dans une table du document, `GFS_Rangement`
+   (section 7.4) ; l'installation s'enregistre tout de suite, sans « Enregistrer ».
 7. **Ce qu'un filtre de tables ne peut pas garantir** est écrit en toutes lettres (section 3.7).
 8. **À mesurer à l'étape 2** : liste en section 9.
 
@@ -84,6 +84,9 @@ connaît pas.
     dans l'entrée de l'extension (2.6), un catalogue tenu par GFS, et la source donnée à l'app par le contexte et l'événement
     `extensions` (5.2). Mesuré à l'étape 2 : en CDN, la CSP de l'app nomme l'adresse du catalogue ; la copie de GFS passe sans
     rien nommer (2.6, point 4).
+13. **Les apps installées se retiennent dans `GFS_Rangement`** (décision du porteur, 16/10, question 9) : une ligne réservée
+    et une colonne `Valeur` de plus (6.4, 7.4). Le conseil du cahier était les réglages de la section, qui restent un brouillon
+    jusqu'à « Enregistrer ».
 
 ---
 
@@ -773,9 +776,9 @@ Dans un sous-cadre à origine opaque, `localStorage` lève une erreur (mesuré).
 
 ### 6.4 `GFS_Rangement`, le rangement commun
 
-Dossiers et favoris, communs à toutes les apps, par personne (cahier 3.1 point 7, 6.7 point 3). Une seule table, créée avec
-l'accord de la personne à la première rangée d'un fichier (ou à la première installation si la question 9 prend la variante
-« table », 7.4).
+Dossiers et favoris, communs à toutes les apps, par personne (cahier 3.1 point 7, 6.7 point 3), et les apps installées du
+document (7.4). Une seule table, créée avec l'accord de la personne à la première installation d'une app ou à la première
+rangée d'un fichier, selon ce qui vient d'abord.
 
 | Colonne | Type Grist | Contenu |
 |---|---|---|
@@ -785,6 +788,7 @@ l'accord de la personne à la première rangée d'un fichier (ou à la première
 | `Favori` | Bool | Épinglé par la personne |
 | `Dossier` | Text | Chemin séparé par « / » (`Factures/Clients A`) ; vide = racine |
 | `Replie` | Bool | Lignes d'état de dossier seulement : dossier replié par défaut |
+| `Valeur` | Text | Lignes réservées de GFS seulement (point 6) : un texte JSON |
 
 1. [D] Une ligne par (personne, app, fichier) qui a un dossier ou un favori ; une ligne d'état par (personne, dossier). Un
    dossier existe tant qu'une ligne le nomme.
@@ -796,6 +800,9 @@ l'accord de la personne à la première rangée d'un fichier (ou à la première
    l'étape 3 fait passer dans le kit ; sans identité, repli vide, jamais bloquant.
 5. [T] Le rangement propre à une app (les dossiers personnels de Publipostage+) reste valable dans l'app. Comment l'explorateur
    le montre dans GFS se décide à l'étape 6 (champ `fichiers[].rangement`, réservé en 2.4).
+6. [T] Une ligne dont `Utilisateur` commence par `@` est une ligne réservée de GFS : l'état du document, jamais le rangement
+   d'une personne. La seule à ce jour : `@document` / `gfs` / `apps`, les apps installées (7.4). Une app n'écrit jamais cette
+   table (6.1, point 1).
 
 ### 6.5 Préserver l'inconnu
 
@@ -807,8 +814,8 @@ l'accord de la personne à la première rangée d'un fichier (ou à la première
    « Créé avec une version plus récente de {app} » pour un type absent du manifeste (guide des apps, 2.2).
 3. [T] GFS applique la même règle dans l'explorateur : un type absent de `types`, ou d'une extension non active, est grisé avec
    un cadenas, sans couleur.
-4. [T] GFS préserve aussi ses propres champs inconnus : quand il réécrit `gfs.apps` ou une ligne de `GFS_Rangement`, il garde
-   ce qu'une version plus récente de GFS y a ajouté.
+4. [T] GFS préserve aussi ses propres champs inconnus : quand il réécrit la ligne `apps` ou une autre ligne de `GFS_Rangement`,
+   il garde ce qu'une version plus récente de GFS y a ajouté.
 
 ---
 
@@ -842,34 +849,37 @@ l'accord de la personne à la première rangée d'un fichier (ou à la première
 2. [T] Un widget n'écrit jamais un réglage sans geste de la personne : Grist afficherait « Enregistrer » pour rien. Cela vaut
    pour GFS et ses clés `gfs.`.
 3. [T] **Installer ne télécharge rien** : le code de toutes les apps livrées est déjà dans le site de GFS (sous-modules). Installer
-   une app, c'est inscrire son `id` dans la liste de la section ; activer une extension, l'inscrire à la ligne de l'app ;
+   une app, c'est inscrire son `id` dans la liste du document (7.4) ; activer une extension, l'inscrire à la ligne de l'app ;
    désinstaller, retirer l'inscription. Désinstaller ne supprime aucune donnée (cahier 3.1, point 1) : réinstaller retrouve
    tout.
 
-### 7.4 Question 9 : où retenir les apps installées
+### 7.4 Question 9, tranchée le 16/10 : les apps installées se retiennent dans une table du document
 
-**[Q]** Réglages de la section, ou une table pour tout le document ? Défaut pris ici, qui est le conseil du cahier :
-**les réglages de la section**. Le reste du document en dépend en un seul endroit, cette section.
+Le conseil du cahier était les réglages de la section, avec le rappel « Enregistrer ». Le porteur a choisi une table pour tout
+le document, pour que l'installation s'enregistre tout de suite.
 
-**Défaut : les réglages de la section.**
-
-- Deux clés : `gfs.apps` (un objet `{ "<id>": { "extensions": [ "…" ] } }`) et `gfs.depart` (l'`id` de l'app de départ,
-  facultative).
-- Ce sont des brouillons jusqu'à « Enregistrer » : GFS affiche le rappel du kit après chaque installation, désinstallation
-  ou activation d'extension.
-- Chaque section GFS a ses apps ; deux sections d'une même page sont deux cadres indépendants (cahier 6.3). Aucune table à
-  créer pour installer.
-- L'aller-retour (cahier 6.2, point 2) en profite : une section sans `gfs.apps` mais avec des clés qu'un manifeste déclare
-  ouvre cette app, sans rien écrire.
-
-**Variante si le porteur choisit « une table ».**
-
-- Les mêmes données dans une ligne réservée de `GFS_Rangement` (`Utilisateur` = `@document`, `App` = `gfs`, `Fichier` =
-  `apps`), dans une colonne `Valeur` (texte JSON) ajoutée à la table.
-- Immédiat, valable pour tout le document, sans « Enregistrer » pour l'installation (il reste pour les réglages des apps).
-- La table doit exister dès la première installation : l'accord de la personne est demandé là, et non à la première rangée
-  d'un fichier. Une personne qui le refuse ne peut rien installer.
-- Les sections d'une même page partagent la liste des apps.
+1. [T] **Où.** Une ligne réservée de `GFS_Rangement` (6.4) : `Utilisateur` = `@document`, `App` = `gfs`, `Fichier` = `apps`,
+   et dans `Valeur` un texte JSON `{ "<id>": { "extensions": [ "…" ], "modes": { "<extension>": "cdn" | "vendorise" } } }`
+   (`modes` est facultatif, le défaut est le CDN : question 11). La ligne n'existe qu'après la première installation.
+2. [T] **Immédiat.** Installer, désinstaller, activer une extension, choisir son mode : l'écriture de la ligne suffit, sans
+   « Enregistrer ». Ce rappel reste pour les réglages que chaque app garde dans sa tranche (7.3), pas pour ceux de GFS.
+3. [T] **Pour tout le document.** Les sections GFS d'un document partagent la liste des apps. GFS la relit au chargement de
+   la section et juste avant d'écrire. [D] Un widget ne reçoit pas les changements d'une table qui n'est pas la sienne : une
+   autre section ne voit un changement qu'à son prochain chargement. [M]
+4. [T] **L'accord de la personne** (6.2, point 1) se demande au premier geste d'installation, puisque la table doit alors
+   exister : une fenêtre du widget, jamais `confirm()`, qui dit le nom de la table, qu'elle vaut pour tout le document et que
+   Grist ajoute une page pour elle. [D] Si la personne refuse, rien ne s'installe, la case revient et la question se repose au
+   geste suivant ; Publipostage+, toujours là dans le prototype, marche sans table.
+5. [D] **Sans droit d'écrire** (document en lecture seule, accès du widget insuffisant, règle d'accès de Grist qui refuse
+   l'écriture) : les cases sont grisées, avec la raison ; une écriture refusée rend la liste à ce que la table disait en dernier.
+6. [T] **Lire ne crée rien.** Au chargement, GFS lit `GFS_Rangement` si elle existe ; sinon la liste est celle par défaut.
+7. [T] **L'aller-retour** (cahier 6.2, point 2) ne change pas : une section sans app de départ, mais dont les réglages portent
+   des clés qu'un manifeste déclare, ouvre cette app sans rien écrire, que la table existe ou non.
+8. [D] **L'app de départ** (`gfs.depart`) reste un réglage de la section : un brouillon jusqu'à « Enregistrer », écrit
+   seulement sur un geste de la personne.
+9. [D] **L'ancienne clé `gfs.apps`** du prototype V0.2 n'est plus ni lue ni écrite ; une section qui la porte n'est pas modifiée.
+10. [M] À mesurer dans un vrai Grist : la création par `AddTable` (page ajoutée, identifiant réel relu, colonnes), l'écriture
+    puis la relecture après un rechargement, le refus de l'accord, une écriture que Grist refuse.
 
 ---
 
@@ -911,6 +921,8 @@ document en petits commits, les points 8 (cadre qui navigue, politique imposable
     en vendorisé ; la CSP du sous-cadre qui l'autorise sans que le dépôt de l'app le nomme (GitHub Pages n'impose aucun en-tête
     à un sous-cadre, 3.7 point 4) ; le graphique qui tourne avec cette bibliothèque (`Plotly.toImage`). **Mesuré le 14/10** :
     en CDN la CSP de l'app doit nommer l'adresse du catalogue, la copie de GFS passe sans rien nommer (2.6 point 4, 5.2 point 5).
+12. **Table du document** (6.4, 7.4) : création de `GFS_Rangement` avec l'accord de la personne, écriture et relecture de la ligne
+    `apps`, refus de l'accord, écriture refusée par Grist. À mesurer avec la V0.3 du prototype.
 
 ## 10. Laissé aux étapes suivantes
 

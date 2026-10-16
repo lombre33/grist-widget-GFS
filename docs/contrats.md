@@ -972,8 +972,18 @@ le document, pour que l'installation s'enregistre tout de suite.
 8. [D] **L'app de départ** (`gfs.depart`) reste un réglage de la section : un brouillon jusqu'à « Enregistrer », écrit
    seulement sur un geste de la personne.
 9. [D] **L'ancienne clé `gfs.apps`** du prototype V0.2 n'est plus ni lue ni écrite ; une section qui la porte n'est pas modifiée.
-10. [M] À mesurer dans un vrai Grist : la création par `AddTable` (page ajoutée, identifiant réel relu, colonnes), l'écriture
-    puis la relecture après un rechargement, le refus de l'accord, une écriture que Grist refuse.
+10. [T] **Mesuré le 16/10** dans un vrai Grist (labo grist-static 0.1.6, Chromium, panneau 700 × 400, V0.3 du prototype ;
+    `run-modules.mjs` et `run-reconstruit.mjs`). Lire ne crée rien : sans geste, ni table ni page de plus. Le premier geste
+    d'installation pose la question (le nom de la table, qu'elle vaut pour tout le document, qu'une page s'ajoute) ; Échap,
+    « Annuler » ou un clic hors de la fenêtre la refusent : la case revient, aucune table ni page n'est créée, la personne en est
+    avertie, et la question se repose au geste suivant. Accord donné : `AddTable` rend `{ id, table_id, columns, views }` (GFS
+    relit l'identifiant dans `table_id`), la table a ses sept colonnes, **Grist ajoute une page pour elle**, et la ligne
+    réservée est écrite par `AddRecord`. Les gestes suivants ne posent plus de question et écrivent par `UpdateRecord` après une
+    relecture de la ligne. Le cadre de GFS rechargé retrouve les apps installées, n'ouvre pas la fenêtre tout seul et ne récrit
+    rien ; reconstruit avec la section, il retrouve la table. Un document en lecture seule, ou un accès du widget inférieur à
+    `full`, grise les cases avec la raison (`run-modules.mjs` avec `LAB_READONLY=1`, `run-acces-none.mjs`).
+    [M] Non mesuré : une écriture que refuse une règle d'accès de Grist (le labo n'en pose pas) ; le test unitaire la couvre
+    contre un port qui refuse, pas contre Grist.
 
 ---
 
@@ -1016,7 +1026,8 @@ document en petits commits, les points 8 (cadre qui navigue, politique imposable
     à un sous-cadre, 3.7 point 4) ; le graphique qui tourne avec cette bibliothèque (`Plotly.toImage`). **Mesuré le 14/10** :
     en CDN la CSP de l'app doit nommer l'adresse du catalogue, la copie de GFS passe sans rien nommer (2.6 point 4, 5.2 point 5).
 12. **Table du document** (6.4, 7.4) : création de `GFS_Rangement` avec l'accord de la personne, écriture et relecture de la ligne
-    `apps`, refus de l'accord, écriture refusée par Grist. À mesurer avec la V0.3 du prototype.
+    `apps`, refus de l'accord, écriture refusée par Grist. **Mesuré le 16/10** avec la V0.3 du prototype (7.4 point 10), sauf
+    l'écriture refusée par une règle d'accès de Grist.
 13. **La table d'un direct** (5.5) : prévenance, relais et relecture d'une table qui n'est pas celle de la section. **Mesuré le
     16/10** dans le labo, sans réseau (5.5, point 2) ; à refaire sur un Grist en ligne (5.5, point 6).
 14. **Un fichier assemblé en cadre isolé** (2.6, points 8 à 11 ; 5.2) : chargé par empreinte, rangé sous `GfsPaquets`, deux

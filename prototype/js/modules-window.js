@@ -1,6 +1,7 @@
 // La fenêtre « Apps et extensions » (cahier 6, contrats 7.3) : une case par app et par extension, le mode de la bibliothèque d'une extension
-// (CDN ou copie de GFS), le rappel « Enregistrer ». Une fenêtre sur une seule base : titre et boutons fixes, la liste défile. Elle ne
-// décide rien : chaque geste est rendu au contrôleur, qui écrit les réglages et recalcule ce qu'elle montre.
+// (CDN ou copie de GFS). Les choix s'enregistrent tout de suite, pour tout le document (7.4) ; quand ils ne peuvent pas, les cases sont grisées avec la
+// raison. Une fenêtre sur une seule base : titre et boutons fixes, la liste défile. Elle ne décide rien : chaque geste est rendu au contrôleur, qui
+// écrit la table et recalcule ce qu'elle montre.
 // Elle s'ouvre par trois portes (maquette du 12/10) : une fonction grisée, les réglages de la vue dans Grist, le premier lancement.
 
 import { h } from './dom.js';
@@ -24,10 +25,13 @@ export class ModulesWindow {
   #onKey = null;
   #ids = new Map();
 
-  // opts : { container, i18n, locale, model(), readonly(), inertTargets(), on: { app(id, on), extension(app, id, on), mode(app, id, mode), open(app) }, onClose() }
+  // opts : { container, i18n, locale, model(), blocked(), inertTargets(), on: { app(id, on), extension(app, id, on), mode(app, id, mode), open(app) }, onClose() }
+  // `blocked()` : la raison pour laquelle rien ne peut s'enregistrer (texte), ou null.
   constructor(opts) { this.#opts = opts; }
 
   get isOpen() { return this.#root !== null; }
+  // Le fond de la fenêtre, pour qu'une question posée par-dessus (ask-window.js) le rende inerte.
+  get element() { return this.#root; }
 
   open({ focus = null } = {}) {
     if (this.#root) { this.refresh(); this.#reveal(focus); return; }
@@ -68,11 +72,12 @@ export class ModulesWindow {
     const doc = this.#root.ownerDocument;
     const kept = doc.activeElement && this.#root.contains(doc.activeElement) ? doc.activeElement.dataset.fk : null;
     const top = this.#body.scrollTop;
-    const readonly = this.#opts.readonly();
+    const blocked = this.#opts.blocked();
+    const readonly = blocked !== null;
     this.#body.replaceChildren(...model.items.map(item => (item.kind === 'app' ? this.#appRow(item, readonly) : this.#extensionRow(item, readonly, model))));
     this.#body.scrollTop = top;
     this.#root.querySelector('.mod-count').replaceChildren(h('strong', null, t('mod.count', { n: model.active, total: model.total })), ` · ${t('mod.countNote')}`);
-    this.#root.querySelector('.mod-note').textContent = readonly ? t('mod.readonly') : t('mod.save');
+    this.#root.querySelector('.mod-note').textContent = readonly ? blocked : t('mod.saved');
     if (kept) {
       const again = [...this.#root.querySelectorAll('[data-fk]')].find(node => node.dataset.fk === kept && !node.disabled);
       if (again) again.focus({ preventScroll: true });
@@ -100,7 +105,7 @@ export class ModulesWindow {
   }
 
   #keydown(event) {
-    if (!this.#root) return;
+    if (!this.#root || this.#root.inert) return; // une question posée par-dessus (ask-window.js) a le clavier
     if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); this.close(); return; }
     if (event.key !== 'Tab') return;
     const nodes = [...this.#root.querySelectorAll(FOCUSABLE)];

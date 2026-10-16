@@ -1,9 +1,9 @@
-// Les extensions d'une app (contrats 2.6) et ce que GFS retient dans les réglages de la section (7.4) : `gfs.apps`.
+// Les extensions d'une app (contrats 2.6) et ce que GFS retient des apps installées dans la table du document (7.4, 6.5 point 4).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readCatalogue } from '../js/libraries.js';
 import { activeExtensionIds, libraryNeeds, extensionRows, missingLibraries, modeOfExtension, libraryModes, extensionsState } from '../js/extensions.js';
-import { readApps, toOption, withApp, withExtension, withMode, APPS_KEY } from '../js/settings.js';
+import { readApps, toOption, patchApps, withApp, withExtension, withMode } from '../js/settings.js';
 import { publipostage } from './helpers.mjs';
 
 const SRI = `sha384-${'B'.repeat(64)}`;
@@ -43,17 +43,18 @@ test('extensionRows : coché, grisé avec ce qui manque, mode, poids de la bibli
   assert.equal(modeOfExtension({ modes: {} }, 'graphique'), 'cdn');
 });
 
-test('readApps : sans gfs.apps, l\'app qui ne se retire pas ; avec, seulement des apps et extensions connues', () => {
+test('readApps : sans valeur retenue, l\'app qui ne se retire pas ; avec, seulement des apps et extensions connues', () => {
   assert.deepEqual(readApps(null, manifests, ['publipostage']), { apps: { publipostage: { extensions: [], modes: {} } }, stored: false });
-  const stored = readApps({ [APPS_KEY]: {
+  const stored = readApps({
     publipostage: { extensions: ['graphique', 'x'], modes: { graphique: 'vendorise', x: 'cdn' } },
     automation: { extensions: [] }, fantome: { extensions: [] },
-  } }, manifests, ['publipostage']);
+  }, manifests, ['publipostage']);
   assert.equal(stored.stored, true);
   assert.deepEqual(Object.keys(stored.apps), ['publipostage', 'automation']);
   assert.deepEqual(stored.apps.publipostage, { extensions: ['graphique'], modes: { graphique: 'vendorise' } });
-  assert.deepEqual(readApps({ [APPS_KEY]: 'texte' }, manifests, ['publipostage']).apps, { publipostage: { extensions: [], modes: {} } });
-  assert.deepEqual(readApps({ [APPS_KEY]: { automation: {} } }, manifests, ['publipostage']).apps.publipostage, { extensions: [], modes: {} }, 'Publipostage+ reste, même absent de la valeur retenue');
+  assert.deepEqual(readApps('texte', manifests, ['publipostage']).apps, { publipostage: { extensions: [], modes: {} } });
+  assert.deepEqual(readApps(['liste'], manifests, ['publipostage']).stored, false, 'une liste n\'est pas une valeur retenue');
+  assert.deepEqual(readApps({ automation: {} }, manifests, ['publipostage']).apps.publipostage, { extensions: [], modes: {} }, 'Publipostage+ reste, même absent de la valeur retenue');
 });
 
 test('toOption : dans l\'ordre du catalogue, sans modes vides', () => {
@@ -61,6 +62,31 @@ test('toOption : dans l\'ordre du catalogue, sans modes vides', () => {
   const value = toOption(apps, ['publipostage', 'automation']);
   assert.deepEqual(Object.keys(value), ['publipostage', 'automation']);
   assert.deepEqual(value, { publipostage: { extensions: ['graphique'], modes: { graphique: 'vendorise' } }, automation: { extensions: [] } });
+});
+
+test('patchApps : ne change que l\'entrée touchée et garde ce que cette version ne connaît pas (contrats 6.5, point 4)', () => {
+  const raw = {
+    publipostage: { extensions: ['graphique', 'futur'], modes: { graphique: 'vendorise', futur: 'cdn' }, champ: 1 },
+    nouvelle: { extensions: ['x'] },
+    automation: { extensions: [] },
+  };
+  const entry = { extensions: ['graphique'], modes: {} };
+  const next = patchApps(raw, 'publipostage', entry, pub);
+  assert.deepEqual(next.publipostage, { extensions: ['graphique', 'futur'], modes: { futur: 'cdn' }, champ: 1 }, 'l\'extension, le mode et le champ inconnus restent');
+  assert.deepEqual(next.nouvelle, { extensions: ['x'] }, 'une app inconnue de cette version reste');
+  assert.deepEqual(next.automation, { extensions: [] });
+  assert.deepEqual(raw.publipostage.modes, { graphique: 'vendorise', futur: 'cdn' }, 'la valeur relue n\'est pas modifiée');
+  assert.deepEqual(patchApps(raw, 'automation', null, automation).automation, undefined, 'retirer une app');
+  assert.ok(Object.hasOwn(patchApps(raw, 'automation', null, automation), 'nouvelle'));
+  const bare = patchApps({ automation: { extensions: [] } }, 'publipostage', { extensions: [], modes: {} }, pub);
+  assert.deepEqual(bare.publipostage, { extensions: [] }, 'sans mode, pas de clé modes');
+});
+
+test('patchApps : sans valeur relue, le point de départ est ce que la fenêtre montrait', () => {
+  const seed = toOption({ publipostage: { extensions: [], modes: {} } }, ['publipostage', 'automation']);
+  assert.deepEqual(patchApps(null, 'automation', { extensions: [], modes: {} }, automation, seed), { publipostage: { extensions: [] }, automation: { extensions: [] } });
+  assert.deepEqual(patchApps('texte', 'automation', { extensions: [], modes: {} }, automation, seed), { publipostage: { extensions: [] }, automation: { extensions: [] } }, 'un texte n\'est pas une valeur : on repart du point de départ');
+  assert.deepEqual(patchApps(null, 'automation', { extensions: [], modes: {} }, automation), { automation: { extensions: [] } });
 });
 
 test('withApp, withExtension, withMode : chacun rend un nouvel objet et borne ce qu\'il écrit', () => {

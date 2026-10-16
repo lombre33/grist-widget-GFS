@@ -25,8 +25,12 @@ for (const key of ['a', 'b', 'c', 'd', 'f', 'e']) {
   const id = `sonde-${key}`;
   await windowOpen();
   await frame.locator(`[data-fk="app:${id}"]`).check();
+  await lab.settle(); // le premier geste crée la table du document, avec l'accord de la personne (contrats 7.4)
   const staged = key === 'a'; // la sonde A : app installée seule d'abord, l'extension ensuite (l'événement `extensions` arrive en cours de vie)
-  if (!staged) await frame.locator(`[data-fk="ext:${id}/graphique"]`).check();
+  if (!staged) {
+    await frame.locator(`[data-fk="ext:${id}/graphique"]`).check();
+    await lab.settle();
+  }
   await frame.locator(`[data-open="${id}"]`).click();
   const app = await lab.appFrame(new RegExp(`sondes/`));
   check(`${id} : l'app est ouverte`, Boolean(app) && app.url().includes('sondes/'));
@@ -37,6 +41,7 @@ for (const key of ['a', 'b', 'c', 'd', 'f', 'e']) {
     check(`${id} : sans extension, aucune bibliothèque dans le contexte`, probe.contexte && probe.contexte.extensions.length === 0 && probe.contexte.bibliotheques.length === 0 && probe.chargements.length === 0);
     await windowOpen();
     await frame.locator(`[data-fk="ext:${id}/graphique"]`).check();
+    await lab.settle();
     await page.keyboard.press('Escape');
   }
   await waitLoads(app, 1);
@@ -44,6 +49,7 @@ for (const key of ['a', 'b', 'c', 'd', 'f', 'e']) {
   const first = probe.chargements[0];
   await windowOpen();
   await frame.locator(`[data-fk="mode:${id}/graphique/vendorise"]`).check();
+  await lab.settle();
   await page.keyboard.press('Escape');
   await waitLoads(app, 2);
   probe = await probeOf(app);

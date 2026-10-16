@@ -50,6 +50,7 @@ say('GFS seul :', before);
 
 await lab.openModules();
 await frame.locator(`[data-fk="app:${appId}"]`).check();
+await lab.settle(); // la table du document naît avec l'accord de la personne (contrats 7.4) : on répond, puis on mesure
 const clicked = Date.now();
 await frame.locator(`[data-open="${appId}"]`).click();
 await frame.waitForFunction(() => { const el = document.querySelector('.app-frame'); return Boolean(el) && !el.classList.contains('app-frame--hidden') && !el.classList.contains('app-frame--behind'); }, null, { timeout: 60000 });

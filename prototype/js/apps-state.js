@@ -1,8 +1,8 @@
-// Les apps installées et leurs extensions (contrats 7.3, 7.4) : ce que la section retient dans `gfs.apps`, borné par les manifestes.
-// La fenêtre répond tout de suite : l'état change d'abord, l'écriture suit, et si Grist la refuse l'état revient à ce que Grist a dit en dernier.
-// Une écriture n'a lieu que sur un geste de la personne (7.3, point 2) : `read` ne fait que lire.
+// Les apps installées et leurs extensions (contrats 7.3, 7.4) : ce que le document retient dans la table `GFS_Rangement`, borné par les manifestes.
+// La fenêtre répond tout de suite : l'état change d'abord, l'écriture suit (une à la fois, relue juste avant d'écrire), et si elle échoue l'état revient
+// à ce que la table a dit en dernier. Une écriture n'a lieu que sur un geste de la personne (7.3, point 2) : `load` ne fait que lire.
 
-import { readApps, toOption, withApp, withExtension, withMode, APPS_KEY } from './settings.js';
+import { readApps, toOption, patchApps, withApp, withExtension, withMode } from './settings.js';
 import { extensionsState, extensionsOf } from './extensions.js';
 import { modulesModel } from './modules-model.js';
 
@@ -10,18 +10,19 @@ export class AppsState {
   #loaded = [];
   #manifests = new Map();
   #order = [];
-  #last = null;
+  #raw = null;
+  #chain = Promise.resolve();
   #pending = 0;
-  #write;
+  #store;
   #onChange;
   catalogue = { entries: new Map(), errors: [] };
   apps = {};
   stored = false;
 
-  // opts : { always: [id], write(key, value) -> Promise, onChange() }
-  constructor({ always, write, onChange }) {
+  // opts : { always: [id], store: { read() -> { raw }, update(mutate) -> raw écrit }, onChange() }
+  constructor({ always, store, onChange }) {
     this.always = always;
-    this.#write = write;
+    this.#store = store;
     this.#onChange = onChange;
   }
 
@@ -31,7 +32,7 @@ export class AppsState {
     const valid = loaded.filter(item => item.ok);
     this.#manifests = new Map(valid.map(item => [item.manifest.id, item.manifest]));
     this.#order = valid.map(item => item.manifest.id);
-    this.#apply(this.#last);
+    this.#settle();
   }
 
   setCatalogue(catalogue) { this.catalogue = catalogue; }
@@ -39,54 +40,61 @@ export class AppsState {
   manifest(id) { return this.#manifests.get(id) || null; }
   has(id) { return Object.hasOwn(this.apps, id); }
   installedIds() { return this.#order.filter(id => this.has(id)); }
+  get busy() { return this.#pending > 0; }
   model() { return modulesModel(this.#loaded, { apps: this.apps }, this.catalogue, this.always); }
   extensionsFor(id, base) { return extensionsState(this.manifest(id), this.apps[id], this.catalogue, base); }
 
-  // Ce que Grist a dit en dernier (le message de réglages). Pendant une écriture en cours, l'écho d'une écriture plus ancienne ne défait pas
-  // le choix que la personne vient de faire : l'état se recalera sur le dernier écho.
-  read(allOptions) {
-    this.#last = allOptions;
-    if (!this.#pending) this.#apply(allOptions);
+  // Ce que la table dit. Une table illisible vaut une table absente : la liste par défaut, et un avertissement.
+  async load() {
+    try { this.#raw = (await this.#store.read()).raw; } catch (error) {
+      console.warn('GFS : les apps installées sont illisibles', error);
+      this.#raw = null;
+    }
+    this.#settle();
   }
 
-  #apply(allOptions) {
-    const before = JSON.stringify(this.apps);
-    const { apps, stored } = readApps(allOptions, this.#manifests, this.always);
+  // L'état redevient ce que la table a dit en dernier (au démarrage, à la fin des écritures, après un refus).
+  #settle() {
+    const { apps, stored } = readApps(this.#raw, this.#manifests, this.always);
     this.apps = apps;
     this.stored = stored;
-    if (JSON.stringify(apps) !== before) this.#onChange();
+    this.#onChange();
   }
 
   // Les gestes de la personne : chacun rend `true` quand l'état a changé (et donc qu'une écriture est partie).
   setApp(id, on) {
     const manifest = this.manifest(id);
     if (!manifest || this.always.includes(id) || this.has(id) === on) return Promise.resolve(false);
-    return this.#change(withApp(this.apps, manifest, on));
+    return this.#change(id, withApp(this.apps, manifest, on));
   }
 
   setExtension(id, extensionId, on) {
     const manifest = this.manifest(id);
     if (!manifest || !extensionsOf(manifest).some(ext => ext.id === extensionId)) return Promise.resolve(false);
-    return this.#change(withExtension(this.apps, manifest, extensionId, on));
+    return this.#change(id, withExtension(this.apps, manifest, extensionId, on));
   }
 
   setMode(id, extensionId, mode) {
     const manifest = this.manifest(id);
     if (!manifest) return Promise.resolve(false);
-    return this.#change(withMode(this.apps, manifest, extensionId, mode));
+    return this.#change(id, withMode(this.apps, manifest, extensionId, mode));
   }
 
-  async #change(next) {
+  async #change(id, next) {
     if (JSON.stringify(next) === JSON.stringify(this.apps)) return false;
+    const seed = toOption(this.apps, this.#order);
+    const entry = next[id] || null;
+    const manifest = this.manifest(id);
     this.apps = next;
-    this.#onChange();
     this.#pending += 1;
+    this.#onChange();
+    const job = this.#chain.then(() => this.#store.update(raw => patchApps(raw, id, entry, manifest, seed)));
+    this.#chain = job.catch(() => {});
     let failure = null;
-    try { await this.#write(APPS_KEY, toOption(next, this.#order)); } catch (error) { failure = error; }
+    try { this.#raw = await job; } catch (error) { failure = error; }
     this.#pending -= 1;
-    // Écriture refusée et plus rien en cours : l'état redevient celui que Grist a dit en dernier. Une écriture réussie ne relit rien : l'écho
-    // qui peut encore venir est celui d'une écriture plus ancienne, le dernier dira la même chose que l'état.
-    if (failure && !this.#pending) this.#apply(this.#last);
+    // Plus rien en cours : l'état est celui de la table. Pendant une autre écriture, l'état attendu des gestes suivants reste celui de la fenêtre.
+    if (!this.#pending) this.#settle();
     if (failure) throw failure;
     return true;
   }

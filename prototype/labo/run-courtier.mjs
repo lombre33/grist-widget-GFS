@@ -80,7 +80,8 @@ say('renommer vers GFS_ :', forbidden);
 check('renommer vers un nom réservé est refusé', !forbidden.ok);
 if (wide) check('jugement affaibli : le refus vient du contrôle d\'après', /Grist a donné à une table le nom/.test(forbidden.message), forbidden.message);
 const stillThere = await tableIds();
-check('la table garde son nom après le refus', stillThere.includes('SondeH_Apres') && !stillThere.some(id => /^GFS_/i.test(id)), stillThere.filter(id => !baseline.includes(id)));
+// GFS a pu créer sa propre table du document (GFS_Rangement, avec l'accord de la personne) avant l'essai : elle est dans `baseline`, seul un GFS_ de plus compterait.
+check('la table garde son nom après le refus', stillThere.includes('SondeH_Apres') && !stillThere.some(id => /^GFS_/i.test(id) && !baseline.includes(id)), stillThere.filter(id => !baseline.includes(id)));
 // Que rend RenameTable quand le nom demandé est normalisé par Grist ? (le contrat 3.3, point 4, dit « rien d'exploitable »)
 const odd = await direct([['RenameTable', 'SondeH_Apres', 'sondeh \u00e9tat nouveau']]);
 const oddIds = (await tableIds()).filter(id => !baseline.includes(id));

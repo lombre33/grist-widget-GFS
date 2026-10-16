@@ -1,7 +1,8 @@
 // L'ordre des écouteurs (contrats 1.2 et 9 point 4) dans un vrai navigateur, avec le VRAI script d'API de Grist : un cadre qui n'est ni Grist ni l'app
 // active écrit à GFS un message `onOptions` (celui par lequel Grist donne ses réglages à une section). Le script d'API de Grist prend tout message de la
-// fenêtre, quelle qu'en soit la source (`window.onmessage = e => rpc.receiveMessage(e.data)`) : s'il le reçoit, GFS croit qu'Automation+ est installée et que
-// l'app ouverte ne l'est plus. Le routeur doit donc le jeter avant.
+// fenêtre, quelle qu'en soit la source (`window.onmessage = e => rpc.receiveMessage(e.data)`) : s'il le reçoit, GFS croit n'avoir plus l'accès au document
+// (`accessLevel: 'none'`) et sa fenêtre « Apps et extensions » se bloque en le disant. Le routeur doit donc le jeter avant. (Les apps installées ne sont plus
+// dans les réglages de la vue mais dans la table du document : un faux `onOptions` ne peut plus les changer, il reste l'accès, que GFS lit là.)
 //
 //   ROUTEUR=courant,apres-capture,apres-bulle   les variantes à jouer (toutes par défaut) :
 //     courant        le routeur de GFS tel qu'il est publié (premier script de la page, écouteur de la phase de capture) ;
@@ -22,9 +23,10 @@ const VARIANTS = {
 };
 const wanted = (process.env.ROUTEUR ? process.env.ROUTEUR.split(',') : Object.keys(VARIANTS)).filter(name => VARIANTS[name]);
 const ROGUE = 'http://127.0.0.1:8911/prototype/labo/sondes/rogue/';
-const FORGED = { mtype: 4, data: { settings: { accessLevel: 'full' }, options: { 'gfs.apps': { publipostage: { extensions: [] }, automation: { extensions: [] } } } } };
+const FORGED = { mtype: 4, data: { settings: { accessLevel: 'none' }, options: {} } };
 
-// L'état des apps vu de la fenêtre « Apps et extensions » (rouverte à chaque lecture : elle montre l'état du moment).
+// L'état vu de la fenêtre « Apps et extensions » (rouverte à chaque lecture : elle montre l'état du moment) : ce que la personne y verrait, dont la raison
+// qui bloque les cases quand GFS croit n'avoir plus l'accès complet.
 async function appsState(lab) {
   await lab.page.keyboard.press('Escape');
   await lab.page.waitForTimeout(200);
@@ -33,6 +35,8 @@ async function appsState(lab) {
     compte: (document.querySelector('.mod-count') || { textContent: '' }).textContent.replace(/\s+/g, ' ').trim(),
     cochees: [...document.querySelectorAll('.mod input[data-fk^="app:"]')].filter(input => input.checked).map(input => input.dataset.fk.replace('app:', '')),
     cadresDApp: document.querySelectorAll('.app-frame').length,
+    note: (document.querySelector('.mod-note') || { textContent: '' }).textContent.replace(/\s+/g, ' ').trim(),
+    casesBloquees: document.querySelectorAll('.mod input:disabled').length,
   }));
 }
 
@@ -69,12 +73,15 @@ async function measure(name) {
   say('après le cadre voisin :', afterNeighbour, '| messages jetés :', await thrown());
   verdict(variant, 'cadre voisin', neighbourLeaked, { avant: base, apres: afterNeighbour });
 
-  // Une app ouverte (installée par une personne : la case, puis « Ouvrir »), puis un cadre dans son cadre, puis l'app elle-même.
-  if (variant.attendu === 'fuite') {
-    check('le routeur tardif a bien vu passer le message (il le jette, mais trop tard)', (await thrown()) >= 1, await thrown());
+  // Le faux message a atteint Grist : GFS croit n'avoir plus l'accès, sa fenêtre des apps n'enregistre plus rien et la suite est sans objet.
+  if (variant.attendu === 'fuite' || neighbourLeaked) {
+    if (variant.attendu === 'fuite') check('le routeur tardif a bien vu passer le message (il le jette, mais trop tard)', (await thrown()) >= 1, await thrown());
+    else say('(le faux message a bloqué GFS : la suite est sans objet)');
     await lab.browser.close();
     return;
   }
+
+  // Une app ouverte (installée par une personne : la case, puis « Ouvrir »), puis un cadre dans son cadre, puis l'app elle-même.
   const app = await lab.openApp('sonde-g', /g-capacites\//);
   await page.waitForTimeout(1200);
   const withApp = await appsState(lab);

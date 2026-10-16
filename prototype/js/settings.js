@@ -1,12 +1,11 @@
-// Ce que GFS retient dans les réglages de la section (contrats 7.4, défaut de la question 9) : `gfs.apps`, un objet
-// `{ "<id>": { "extensions": [ "…" ], "modes": { "<extension>": "cdn" | "vendorise" } } }`. `modes` est facultatif (le défaut est le CDN) :
-// proposé par le prototype, d'après la question 11 du cahier (le mode se retient par extension).
+// Ce que GFS retient des apps installées (contrats 7.4) : un objet `{ "<id>": { "extensions": [ "…" ], "modes": { "<extension>": "cdn" | "vendorise" } } }`,
+// rangé en JSON dans la ligne réservée `@document` / `gfs` / `apps` de la table `GFS_Rangement` (rangement.js). `modes` est facultatif (le défaut est
+// le CDN) : proposé par le prototype, d'après la question 11 du cahier (le mode se retient par extension).
 // Du code sans effet de bord : il lit, il rend de nouveaux objets ; le contrôleur écrit, et seulement sur un geste de la personne.
 
 import { extensionsOf } from './extensions.js';
 import { MODES, DEFAULT_MODE } from './libraries.js';
 
-export const APPS_KEY = 'gfs.apps';
 const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 
 // L'état d'une app installée, borné par son manifeste : seules ses extensions déclarées, seuls les modes connus.
@@ -21,10 +20,9 @@ function cleanApp(manifest, raw) {
   return { extensions, modes };
 }
 
-// `manifests` : Map(id -> manifeste valide) ; `always` : les apps qui ne se retirent pas (provisoire : Publipostage+, comme dans la maquette).
-// Rend { apps: { id: { extensions, modes } }, stored } : `stored` dit si la section porte déjà `gfs.apps`.
-export function readApps(allOptions, manifests, always) {
-  const raw = isObject(allOptions) ? allOptions[APPS_KEY] : undefined;
+// `raw` : la valeur retenue dans la table (un objet), ou null ; `manifests` : Map(id -> manifeste valide) ; `always` : les apps qui ne se retirent
+// pas (provisoire : Publipostage+, comme dans la maquette). Rend { apps: { id: { extensions, modes } }, stored } : `stored` dit si le document a déjà retenu ses apps.
+export function readApps(raw, manifests, always) {
   const stored = isObject(raw);
   const apps = {};
   for (const id of always) if (manifests.has(id)) apps[id] = cleanApp(manifests.get(id), stored ? raw[id] : undefined);
@@ -32,7 +30,7 @@ export function readApps(allOptions, manifests, always) {
   return { apps, stored };
 }
 
-// La valeur à écrire dans `gfs.apps` : sans `modes` quand il est vide, dans l'ordre du catalogue (une écriture ne change que ce qui a changé).
+// La valeur à écrire pour des apps : sans `modes` quand il est vide, dans l'ordre du catalogue. Sert de point de départ au premier enregistrement.
 export function toOption(apps, order) {
   const out = {};
   for (const id of order) {
@@ -41,6 +39,23 @@ export function toOption(apps, order) {
     out[id] = Object.keys(modes).length ? { extensions: [...extensions], modes: { ...modes } } : { extensions: [...extensions] };
   }
   return out;
+}
+
+// La valeur relue, avec la seule entrée de `id` remplacée par `entry` (ou retirée quand `entry` est null) : tout ce que cette version de GFS ne connaît
+// pas (une app, une extension, un mode, un champ qu'une version plus récente a ajoutés) est gardé tel quel (contrats 6.5, point 4).
+// `seed` : ce que l'on écrit quand rien n'est encore retenu.
+export function patchApps(raw, id, entry, manifest, seed = {}) {
+  const base = isObject(raw) ? { ...raw } : { ...seed };
+  if (!entry) { delete base[id]; return base; }
+  const before = isObject(base[id]) ? base[id] : {};
+  const known = new Set(extensionsOf(manifest).map(ext => ext.id));
+  const keptExtensions = Array.isArray(before.extensions) ? before.extensions.filter(ext => !known.has(ext)) : [];
+  const keptModes = isObject(before.modes) ? Object.entries(before.modes).filter(([ext]) => !known.has(ext)) : [];
+  const modes = { ...Object.fromEntries(keptModes), ...entry.modes };
+  const next = { ...before, extensions: [...entry.extensions, ...keptExtensions] };
+  if (Object.keys(modes).length) next.modes = modes; else delete next.modes;
+  base[id] = next;
+  return base;
 }
 
 // Installer, retirer, activer une extension, changer son mode : chacun rend un nouvel objet `apps`.

@@ -100,16 +100,26 @@ export async function startLab(options = {}) {
     else await target.locator('.ex-title-row .tb', { hasText: /Apps/ }).click();
     await target.locator('.mod').waitFor();
   };
+  // L'enregistrement d'un choix de la fenêtre « Apps » : tant qu'il dure (`data-registry="busy"`), et si GFS demande de créer la table du document (contrats 7.4,
+  // point 4), la personne répond avec la vraie souris : « accept » (par défaut) ou « decline ».
+  const settle = async (target = frame, answer = 'accept') => {
+    for (let i = 0; i < 100; i++) {
+      if (await target.locator('.ask').count()) await target.locator(`[data-fk="ask-${answer === 'accept' ? 'yes' : 'no'}"]`).click();
+      else if (await target.evaluate(() => document.body.dataset.registry !== 'busy')) return;
+      await page.waitForTimeout(100);
+    }
+  };
   // Installe une app par la fenêtre (une personne : la case, puis « Ouvrir ») et rend son cadre.
   // `target` : le cadre de GFS à utiliser quand il a été reconstruit (le cadre de départ n'existe plus).
   const openApp = async (id, pattern = /./, target = frame) => {
     await target.waitForFunction(() => Boolean(document.body) && document.body.dataset.gfsFirstRun === 'done', null, { timeout: 30000 }).catch(() => {});
     await openModules(target);
     await target.locator(`[data-fk="app:${id}"]`).check();
+    await settle(target);
     await target.locator(`[data-open="${id}"]`).click();
     return appFrame(pattern);
   };
-  return { browser, context, page, frame, gfsFrame, appFrame, openModules, openApp, gfsReady, fitPanel, shot: (run, name) => page.screenshot({ path: join(SHOTS, `${run}-${name}.png`) }),
+  return { browser, context, page, frame, gfsFrame, appFrame, openModules, openApp, settle, gfsReady, fitPanel, shot: (run, name) => page.screenshot({ path: join(SHOTS, `${run}-${name}.png`) }),
     // La capture du cadre de GFS seul (le panneau), pas de la page de Grist.
     shotPanel: async (run, name, target = frame) => (await target.frameElement()).screenshot({ path: join(SHOTS, `${run}-${name}.png`) }) };
 }

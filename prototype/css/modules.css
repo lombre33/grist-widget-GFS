@@ -16,6 +16,12 @@
 .mod-foot { flex: none; display: flex; align-items: center; gap: 12px; padding: 8px 16px 10px; border-top: 1px solid var(--border); background: var(--surface-sunken); }
 .mod-note { flex: 1; min-width: 0; margin: 0; font-size: 12px; color: var(--text-muted); }
 
+/* La question posée par-dessus (ask-window.js, la création de la table du document) : la même base, plus étroite, les boutons à droite. */
+.mod.ask { width: min(420px, 100%); }
+.ask-body { flex: 0 1 auto; min-height: 0; overflow-y: auto; padding: 12px 16px; }
+.ask-body p { margin: 0; }
+.ask-foot { justify-content: flex-end; }
+
 /* ---------- une ligne par app, puis une par extension de cette app ---------- */
 .mr { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; column-gap: 8px; padding: 9px 8px; border-bottom: 1px solid var(--border); }
 .mr:last-child { border-bottom: 0; }

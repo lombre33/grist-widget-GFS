@@ -14,6 +14,8 @@ import { loadFiles } from './explorer-data.js';
 import { readCatalogue } from './libraries.js';
 import { activeExtensionIds, extensionsOf } from './extensions.js';
 import { AppsState } from './apps-state.js';
+import { Rangement, TableDeclined } from './rangement.js';
+import { ask } from './ask-window.js';
 import { ModulesWindow, rowKey } from './modules-window.js';
 import { buildContext, instanceOf, pageOf } from './context.js';
 import { Refus, ERR, levelOf } from './filter.js';
@@ -65,8 +67,10 @@ export class GfsController {
     this.state = new GristState();
     this.port = createPort(grist);
     this.readonly = this.params.get('readonly') === 'true';
-    // Les apps installées et leurs extensions : ce que la section retient dans `gfs.apps` (contrats 7.4), écrit seulement sur un geste de la personne.
-    this.registry = new AppsState({ always: ALWAYS_ON, write: (key, value) => this.port.widget.setOption(key, value), onChange: () => this.#onRegistryChange() });
+    // Les apps installées et leurs extensions : ce que le document retient dans la table `GFS_Rangement` (contrats 7.4), écrit seulement sur un geste
+    // de la personne, et la table seulement avec son accord.
+    this.rangement = new Rangement({ port: this.port, consent: () => this.#askTableConsent() });
+    this.registry = new AppsState({ always: ALWAYS_ON, store: this.rangement, onChange: () => this.#onRegistryChange() });
   }
 
   $ = id => this.doc.getElementById(id);
@@ -136,8 +140,7 @@ export class GfsController {
     this.registry.setApps(this.apps);
     this.registry.setCatalogue(await this.#loadLibraries());
     await this.state.whenOptions();
-    this.registry.read(this.state.allOptions);
-    this.state.subscribe(kind => { if (kind === 'options') this.registry.read(this.state.allOptions); });
+    if (this.fullAccess) await this.registry.load();
     this.#buildExplorer();
     this.#buildFloaters();
     this.showExplorer();
@@ -236,11 +239,12 @@ export class GfsController {
 
   #buildModules() {
     const change = pending => pending.catch(error => {
-      console.error('GFS : écriture des réglages impossible', error);
+      if (error instanceof TableDeclined) { this.notice(this.t('table.declined')); return; }
+      console.error('GFS : enregistrement des apps impossible', error);
       this.notice(this.t('gfs.settingsFailed', { reason: String(error && error.message) }));
     });
     return new ModulesWindow({
-      container: this.$('stage'), i18n: this.i18n, locale: this.locale, model: () => this.registry.model(), readonly: () => this.readonly,
+      container: this.$('stage'), i18n: this.i18n, locale: this.locale, model: () => this.registry.model(), blocked: () => this.#writeBlock(),
       inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')],
       on: {
         app: (id, on) => change(this.registry.setApp(id, on)),
@@ -249,6 +253,22 @@ export class GfsController {
         open: id => this.#openApp(id),
       },
       onClose: () => this.#modulesWaiters.splice(0).forEach(resolve => resolve()),
+    });
+  }
+
+  // Pourquoi rien ne peut s'enregistrer (contrats 7.4, point 5), ou null : le document est en lecture seule, ou GFS n'a pas l'accès complet.
+  // Une écriture que Grist refuse malgré tout (une règle d'accès) revient par l'avis de `change`.
+  #writeBlock() {
+    if (this.readonly) return this.t('mod.readonly');
+    return this.fullAccess ? null : this.t('mod.needsAccess');
+  }
+
+  // La table n'existe pas encore : la personne décide de la créer (contrats 6.2, point 1). Une fenêtre du widget, au-dessus de celle des apps.
+  #askTableConsent() {
+    const above = this.modulesWindow && this.modulesWindow.element ? [this.modulesWindow.element] : [];
+    return ask({
+      container: this.$('stage'), title: this.t('table.title'), message: this.t('table.text'), confirmLabel: this.t('table.create'), cancelLabel: this.t('table.cancel'),
+      inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters'), ...above],
     });
   }
 
@@ -266,8 +286,10 @@ export class GfsController {
     void this.openModules();
   }
 
-  // Un changement des apps installées (un geste, ou ce que Grist dit après « Enregistrer » ou « Annuler ») : tout ce qui en dépend se met à jour.
+  // Un changement des apps installées (un geste, ou le retour à ce que la table dit) : tout ce qui en dépend se met à jour.
+  // `data-registry` dit si une écriture est en cours : les essais du labo l'attendent.
   #onRegistryChange() {
+    this.doc.body.dataset.registry = this.registry.busy ? 'busy' : 'idle';
     if (!this.explorer) return;
     if (this.modulesWindow) this.modulesWindow.refresh();
     if (this.explorer.isOpen) this.explorer.render();

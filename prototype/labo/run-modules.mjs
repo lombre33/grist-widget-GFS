@@ -1,6 +1,7 @@
-// V0.2 : la fenêtre « Apps et extensions » dans un vrai Grist (grist-static), à 700 × 400, à la vraie souris et au vrai clavier (Playwright :
-// événements du pointeur et du clavier du navigateur, jamais dispatchEvent). LAB_LANG=fr|en, LAB_SCHEME=light|dark, LAB_W (largeur du panneau),
-// LAB_READONLY=1 (la vue est ouverte en lecture seule : la fenêtre se grise).
+// V0.2 et V0.3 : la fenêtre « Apps et extensions » dans un vrai Grist (grist-static), à 700 × 400, à la vraie souris et au vrai clavier (Playwright :
+// événements du pointeur et du clavier du navigateur, jamais dispatchEvent). Les apps installées se retiennent dans la table `GFS_Rangement` du document
+// (contrats 7.4) : la question de la création, le refus, l'accord, l'écriture, le rechargement du cadre de GFS.
+// LAB_LANG=fr|en, LAB_SCHEME=light|dark, LAB_W (largeur du panneau), LAB_READONLY=1 (la vue est ouverte en lecture seule : la fenêtre se grise).
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';
 
@@ -17,8 +18,16 @@ await lab.fitPanel(undefined, panelWidth, 400);
 const frame = lab.frame;
 const shot = name => lab.shotPanel(run, name, frame);
 const text = async locator => (await locator.innerText()).replace(/\s+/g, ' ').trim();
-const options = () => frame.evaluate(async () => (await grist.getOptions()) || {});
-const appsOption = async () => (await options())['gfs.apps'];
+// Ce que le document retient : la table `GFS_Rangement` (si elle existe) et la valeur de sa ligne réservée `@document` / `gfs` / `apps`.
+const rangement = () => frame.evaluate(async () => {
+  const tables = await grist.docApi.listTables();
+  const pages = (await grist.docApi.fetchTable('_grist_Pages')).id.length;
+  if (!tables.includes('GFS_Rangement')) return { table: false, pages, tables: tables.length };
+  const data = await grist.docApi.fetchTable('GFS_Rangement');
+  const at = data.id.findIndex((id, i) => data.Utilisateur[i] === '@document' && data.App[i] === 'gfs' && data.Fichier[i] === 'apps');
+  return { table: true, pages, tables: tables.length, rows: data.id.length, columns: Object.keys(data).filter(name => /^[A-Z]/.test(name)), value: at >= 0 ? JSON.parse(data.Valeur[at]) : null };
+});
+const appsOption = async () => (await rangement()).value;
 const insideWindow = () => frame.evaluate(() => Boolean(document.activeElement && document.activeElement.closest('.mod')));
 const count = () => text(frame.locator('.mod-count'));
 const state = () => frame.evaluate(() => ({
@@ -76,20 +85,54 @@ if (readonly) {
   process.exit(process.exitCode || 0);
 }
 
-// ----- Installer une app : un geste, un brouillon dans les réglages de la section.
-check('rien n\'est écrit avant un geste', (await appsOption()) === undefined, await appsOption());
+// ----- Installer une app : un geste, la table du document naît avec l'accord de la personne, l'installation s'enregistre tout de suite.
+const before = await rangement();
+check('rien n\'est écrit avant un geste : pas de table GFS_Rangement', before.table === false, before);
+check('la fenêtre dit que les choix s\'enregistrent tout de suite', /tout de suite|right away/.test(await text(frame.locator('.mod-note'))), await text(frame.locator('.mod-note')));
+
+// Le refus : rien ne s'installe, rien n'est créé, la case revient, la personne en est avertie.
 await frame.locator('label', { hasText: 'Automation+' }).first().click();
+await frame.locator('.ask').waitFor();
+say('question :', await text(frame.locator('.ask')));
+check('la question nomme la table et dit ce qui est ajouté', /GFS_Rangement/.test(await text(frame.locator('.ask'))) && /page/.test(await text(frame.locator('.ask-body'))));
+check('la fenêtre des apps est inerte derrière la question', await frame.locator('.mod-scrim').first().evaluate(node => node.inert));
+check('le clavier est sur le bouton principal', await frame.evaluate(() => document.activeElement && document.activeElement.dataset.fk === 'ask-yes'));
+let askKept = true;
+for (let i = 0; i < 4; i++) { await page.keyboard.press('Tab'); askKept = askKept && await frame.evaluate(() => Boolean(document.activeElement.closest('.ask'))); }
+check('Tab reste dans la question', askKept);
+await shot('3a-question-creer-la-table');
+await lab.shot(run, '3a-page-grist-question');
+await page.keyboard.press('Escape');
 await page.waitForTimeout(500);
+check('Échap refuse : la question est partie, la fenêtre des apps reste', (await frame.locator('.ask').count()) === 0 && (await state()).windows === 1);
+check('refusé : la case revient, 1 actif sur 3', !(await frame.locator('[data-fk="app:automation"]').isChecked()) && /^1 /.test(await count()), await count());
+const refused = await rangement();
+check('refusé : aucune table créée, aucune page de plus', refused.table === false && refused.pages === before.pages && refused.tables === before.tables, refused);
+check('refusé : la personne est avertie', /GFS_Rangement/.test(await text(frame.locator('#toast'))), await text(frame.locator('#toast')));
+check('refusé : le clavier est revenu sur la case', await frame.evaluate(() => document.activeElement && document.activeElement.dataset.fk === 'app:automation'));
+await shot('3b-apres-refus');
+
+// L'accord : la table naît avec ses colonnes et une page, la ligne réservée porte les apps.
+await frame.locator('label', { hasText: 'Automation+' }).first().click();
+await frame.locator('.ask').waitFor();
+await frame.locator('[data-fk="ask-yes"]').click();
+await frame.waitForFunction(() => document.body.dataset.registry === 'idle' && document.querySelectorAll('.ask').length === 0, null, { timeout: 15000 });
 check('Automation+ installée : 2 actifs sur 3', /^2 /.test(await count()), await count());
-check('le réglage est écrit pour la section', JSON.stringify(await appsOption()) === JSON.stringify({ publipostage: { extensions: [] }, automation: { extensions: [] } }), await appsOption());
+const made = await rangement();
+say('table du document :', made);
+check('la table GFS_Rangement existe avec ses sept colonnes', made.table && ['Utilisateur', 'App', 'Fichier', 'Favori', 'Dossier', 'Replie', 'Valeur'].every(name => made.columns.includes(name)), made.columns);
+check('Grist a ajouté une page pour elle', made.pages === before.pages + 1 && made.tables === before.tables + 1, made);
+check('une seule ligne : la ligne réservée, avec les apps', made.rows === 1 && JSON.stringify(made.value) === JSON.stringify({ publipostage: { extensions: [] }, automation: { extensions: [] } }), made);
 check('Automation+ a son bouton Ouvrir', await frame.locator('[data-open="automation"]').isVisible());
-await lab.shot(run, '3-page-grist-brouillon');
+check('le clavier est revenu sur la case', await frame.evaluate(() => document.activeElement && document.activeElement.dataset.fk === 'app:automation'));
+await lab.shot(run, '3-page-grist-apres-accord');
 await shot('3-automation-installee');
 
 // ----- Activer l'extension, choisir la copie de GFS.
 check('le mode est grisé tant que l\'extension est décochée', await frame.locator('.mr-mode').evaluate(node => node.disabled));
 await frame.locator('label', { hasText: /^\s*Graphique|^\s*Chart/ }).first().click();
 await page.waitForTimeout(500);
+check('la table existe déjà : aucune question de plus', (await frame.locator('.ask').count()) === 0);
 check('Graphique cochée : 3 actifs sur 3', /^3 /.test(await count()), await count());
 check('le mode se choisit maintenant', !(await frame.locator('.mr-mode').evaluate(node => node.disabled)));
 await frame.locator('.rd', { hasText: /Copie de GFS|GFS copy/ }).click();
@@ -99,6 +142,19 @@ await shot('4-extension-copie-de-gfs');
 await frame.locator('.rd', { hasText: /CDN/ }).click();
 await page.waitForTimeout(400);
 check('retour au CDN : le défaut ne s\'écrit pas', JSON.stringify((await appsOption()).publipostage) === JSON.stringify({ extensions: ['graphique'] }), (await appsOption()).publipostage);
+
+// ----- Le cadre de GFS est rechargé (la page de Grist se recharge, ou le niveau d'accès change : le cadre est reconstruit) : les apps reviennent de la table.
+const saved = await rangement();
+await frame.evaluate(() => location.reload());
+await frame.waitForFunction(() => document.body.dataset.gfs === 'ready' && document.body.dataset.gfsFirstRun === 'done', null, { timeout: 60000 });
+await page.waitForTimeout(500);
+check('rechargé : la fenêtre des apps ne s\'ouvre pas toute seule', (await state()).windows === 0);
+await frame.locator('.ex-title-row .tb', { hasText: /Apps/ }).click();
+await frame.locator('.mod').waitFor();
+check('rechargé : 3 actifs sur 3, comme avant', /^3 /.test(await count()), await count());
+check('rechargé : Automation+ et Graphique sont cochées', (await frame.locator('[data-fk="app:automation"]').isChecked()) && (await frame.locator('[data-fk="ext:publipostage/graphique"]').isChecked()));
+check('rechargé : rien n\'a été récrit ni créé', JSON.stringify(await rangement()) === JSON.stringify(saved), await rangement());
+await shot('4b-apres-rechargement');
 
 // ----- Ouvrir une app depuis sa ligne, puis la fenêtre depuis l'app (le bouton « Apps » flottant).
 await frame.locator('[data-open="publipostage"]').click();

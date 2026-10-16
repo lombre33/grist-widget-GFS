@@ -1,6 +1,7 @@
 // Le cadre reconstruit (contrats 3.1 point 6 et 9 point 10) dans un vrai Grist : la personne change le niveau d'accès de la section dans le panneau de droite de
 // Grist, de « Full document access » à « Read selected table », puis revient. Grist reconstruit le cadre du widget avec la nouvelle adresse (`access=…`). On relève :
-// ce qui disparaît (le document de GFS, le cadre de l'app), ce qui reste (les réglages de la section, les tables de l'app), ce que GFS dit à la personne, le temps.
+// ce qui disparaît (le document de GFS, le cadre de l'app), ce qui reste (les apps installées, retenues dans la table du document, et les tables de l'app),
+// ce que GFS dit à la personne, le temps.
 //
 //   RECO_APP=publipostage|sonde-g   l'app ouverte avant le changement (Publipostage+ par défaut : le vrai code, ses tables)
 //   LAB_LANG=fr|en
@@ -19,7 +20,13 @@ let frame = lab.frame;
 const levelOf = f => (/access=([^&]+)/.exec(f.url()) || [])[1];
 const text = async locator => (await locator.innerText()).replace(/\s+/g, ' ').trim();
 const tables = f => f.evaluate(async () => (await grist.docApi.listTables()).slice().sort());
-const option = f => f.evaluate(async () => ((await grist.getOptions()) || {})['gfs.apps'] || null);
+// Les apps installées : la ligne réservée de la table `GFS_Rangement` (null tant qu'aucune app n'a été installée). Sous « read table », Grist refuse la lecture.
+const option = f => f.evaluate(async () => {
+  if (!(await grist.docApi.listTables()).includes('GFS_Rangement')) return null;
+  const data = await grist.docApi.fetchTable('GFS_Rangement');
+  const at = data.id.findIndex((id, i) => data.Utilisateur[i] === '@document' && data.App[i] === 'gfs' && data.Fichier[i] === 'apps');
+  return at >= 0 ? JSON.parse(data.Valeur[at]) : null;
+});
 const facts = async f => f.evaluate(() => ({
   etat: document.body.dataset.gfs,
   explorateurVisible: !document.querySelector('.ex').hidden,
@@ -72,7 +79,7 @@ let tablesLow = null;
 try { tablesLow = await tables(frame); } catch (error) { tablesLow = `refus : ${String(error.message).slice(0, 100)}`; }
 say('lecture des tables sous « read table » :', Array.isArray(tablesLow) ? `${tablesLow.length} table(s)` : tablesLow);
 const optionLow = await option(frame).catch(error => `refus : ${String(error.message).slice(0, 100)}`);
-check('les réglages de la section (les apps choisies) survivent à la reconstruction', JSON.stringify(optionLow) === JSON.stringify(optionBefore), { avant: optionBefore, apres: optionLow });
+say('lecture des apps installées sous « read table » :', typeof optionLow === 'string' ? optionLow : 'lisible');
 await frame.waitForFunction(() => document.body.dataset.gfsFirstRun === 'done', null, { timeout: 30000 }).catch(() => {});
 say('fenêtre « Apps » ouverte toute seule ?', await frame.locator('.mod').count() > 0);
 
@@ -82,6 +89,8 @@ frame = await rebuilt(/access=full/, 'accès « full »', upAt);
 const high = await facts(frame);
 say('après (full) :', { acces: levelOf(frame), gfs: high });
 check('le cadre de GFS est encore un document neuf', high.marque === null, high);
+const optionAfter = await option(frame);
+check('les apps installées (retenues dans la table du document) survivent à la reconstruction', JSON.stringify(optionAfter) === JSON.stringify(optionBefore), { avant: optionBefore, apres: optionAfter });
 const tablesAfter = await tables(frame);
 check('aucune table de l\'app perdue ni créée en double', JSON.stringify(tablesAfter) === JSON.stringify(tablesBefore), { avant: tablesBefore, apres: tablesAfter });
 const reopenedAt = Date.now();

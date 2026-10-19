@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readCatalogue } from '../js/libraries.js';
 import { activeExtensionIds, libraryNeeds, extensionRows, missingLibraries, modeOfExtension, libraryModes, extensionsState } from '../js/extensions.js';
 import { readApps, toOption, patchApps, withApp, withExtension, withMode } from '../js/settings.js';
-import { publipostage } from './helpers.mjs';
+import { publipostage, readJson } from './helpers.mjs';
 
 const SRI = `sha384-${'B'.repeat(64)}`;
 const catalogue = readCatalogue({ bibliotheques: [{
@@ -138,7 +138,7 @@ const withModule = readCatalogue({ bibliotheques: [{
   contient: [{ paquet: 'yjs', version: '13.6.33' }], modules: ['yjs'], externes: ['prosemirror-state'],
   cdn: null, vendorise: { chemin: 'vendor/edition-live/1.0.0/edition-live.js', integrite: SRI_MODULE },
 }, ...catalogue.entries.values()] });
-const live = { ...pub, extensions: [...pub.extensions, { ...pub.extensions[0], id: 'edition', nom: { fr: 'Édition', en: 'Editing' }, bibliotheques: [{ id: 'edition-live', version: '1.0.0' }] }] };
+const live = pub;   // le manifeste de Publipostage+ déclare l'extension « edition », qui exige edition-live 1.0.0
 
 test('une extension dont la bibliothèque n\'a pas de CDN : la copie de GFS est son seul mode, quel que soit le choix retenu', () => {
   const [graph, edition] = extensionRows(live, { extensions: ['graphique', 'edition'], modes: { graphique: 'cdn', edition: 'cdn' } }, withModule);
@@ -150,6 +150,26 @@ test('une extension dont la bibliothèque n\'a pas de CDN : la copie de GFS est 
   assert.equal(modeOfExtension({ modes: { edition: 'cdn' } }, 'edition'), 'cdn', 'le réglage retenu n\'est pas réécrit');
   assert.equal(libraryModes(live, { extensions: ['edition'], modes: {} }, ['edition'], withModule).get('edition-live'), 'vendorise');
   assert.equal(libraryModes(live, { extensions: ['edition'], modes: {} }, ['edition']).get('edition-live'), 'cdn', 'sans catalogue, le réglage seul décide');
+});
+
+test('le manifeste et le catalogue réels s\'accordent : chaque extension a ses bibliothèques, l\'édition collaborative n\'a que la copie de GFS', () => {
+  const real = readCatalogue(readJson('bibliotheques/catalogue.json'));
+  assert.deepEqual(pub.extensions.map(extension => extension.id), ['graphique', 'edition']);
+  assert.deepEqual(pub.extensions.flatMap(extension => missingLibraries(extension, real)), [], 'aucune extension déclarée n\'est grisée par le catalogue');
+  const rows = extensionRows(pub, { extensions: ['graphique', 'edition'], modes: {} }, real);
+  const edition = rows.find(row => row.extension.id === 'edition');
+  assert.equal(edition.greyed, false);
+  assert.equal(edition.noCdn, true);
+  assert.equal(edition.mode, 'vendorise');
+  assert.deepEqual(edition.libraries.map(lib => `${lib.id}@${lib.version}`), ['edition-live@1.0.0']);
+  assert.ok(edition.libraries[0].poids > 100000, 'le poids du fichier assemblé est celui du catalogue');
+  const state = extensionsState(pub, { extensions: ['edition'], modes: {} }, real, 'https://exemple.test/gfs/');
+  assert.deepEqual(state.extensions, ['edition']);
+  assert.deepEqual(Object.keys(state.bibliotheques), ['edition-live']);
+  const given = state.bibliotheques['edition-live'];
+  assert.equal(given.forme, 'module');
+  assert.equal(given.src, 'https://exemple.test/gfs/vendor/edition-live/1.0.0/edition-live.js');
+  assert.match(given.integrite, /^sha384-[A-Za-z0-9+/]{64}$/);
 });
 
 test('extensionsState : un fichier assemblé arrive à l\'app sous la forme module, servi par la copie de GFS', () => {

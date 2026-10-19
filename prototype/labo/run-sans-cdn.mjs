@@ -1,32 +1,16 @@
 // Une extension dont la bibliothèque n'a pas de CDN (un fichier assemblé par GFS, tant que GFS n'a pas d'adresse publique : contrats 2.6, point 11), dans la
 // fenêtre « Apps et extensions » d'un vrai Grist (grist-static), à 700 × 400, à la vraie souris (Playwright : événements du pointeur du navigateur, jamais
 // dispatchEvent). LAB_LANG=fr|en, LAB_SCHEME=light|dark.
-// Le catalogue des bibliothèques et le manifeste de Publipostage+ sont complétés POUR CET ESSAI (le labo remplace les deux fichiers au passage ; les fichiers
-// publiés ne changent pas) : une extension « Édition » exige edition-live 1.0.0, dont l'entrée n'a pas de CDN. Ce que la fenêtre doit montrer : le CDN grisé
-// avec la raison, la copie de GFS choisie, rien d'écrit dans les réglages sans un geste, et l'extension du graphique (avec CDN) inchangée.
+// Les données sont les vraies : l'extension « Édition collaborative » du manifeste de Publipostage+ exige edition-live 1.0.0, dont l'entrée du catalogue n'a pas de CDN.
+// Ce que la fenêtre doit montrer : le CDN grisé avec la raison, la copie de GFS choisie, rien d'écrit dans les réglages sans un geste, et l'extension du graphique
+// (avec CDN) inchangée.
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
 const run = `sans-cdn-${lang}-${scheme}`;
-const ENTRY = {
-  id: 'edition-live', version: '1.0.0', forme: 'module', poids: 145862,
-  contient: [{ paquet: 'yjs', version: '13.6.33' }], modules: ['yjs'], externes: ['prosemirror-state'],
-  cdn: null, vendorise: { chemin: 'vendor/edition-live/1.0.0/edition-live.js', integrite: `sha384-${'A'.repeat(64)}` },
-};
-const EXTENSION = {
-  id: 'edition', nom: { fr: 'Édition collaborative', en: 'Collaborative editing' },
-  texte: { fr: 'Plusieurs personnes écrivent dans le même modèle.', en: 'Several people write in the same template.' },
-  icone: 'modules', poids: 142, dossier: 'extensions/edition/', pointsEntree: [{ genre: 'menu', id: 'edition' }], bibliotheques: [{ id: 'edition-live', version: '1.0.0' }],
-};
-const lab = await startLab({
-  lang, colorScheme: scheme,
-  patches: [
-    { chemin: '/prototype/bibliotheques/catalogue.json', de: '"bibliotheques": [', vers: `"bibliotheques": [${JSON.stringify(ENTRY)},` },
-    { chemin: '/prototype/manifestes/publipostage.json', de: '"extensions": [', vers: `"extensions": [${JSON.stringify(EXTENSION)},` },
-  ],
-});
+const lab = await startLab({ lang, colorScheme: scheme });
 const { page } = lab;
 await lab.fitPanel(undefined, 700, 400);
 const frame = lab.frame;
@@ -76,7 +60,7 @@ await page.waitForTimeout(400);
 check('un clic sur l\'option grisée ne change rien', !(await radio('edition', 'cdn').isChecked()) && (await radio('edition', 'vendorise').isChecked()));
 const saved = await stored();
 say('ce que le document retient :', saved);
-check('seules les cases cochées sont écrites : la copie imposée par l\'absence de CDN n\'est pas un choix de la personne', JSON.stringify(saved && saved.publipostage) === JSON.stringify({ extensions: ['edition', 'graphique'] }), saved && saved.publipostage);
+check('seules les cases cochées sont écrites : la copie imposée par l\'absence de CDN n\'est pas un choix de la personne', JSON.stringify(saved && saved.publipostage) === JSON.stringify({ extensions: ['graphique', 'edition'] }), saved && saved.publipostage);
 
 // ----- Le choix du graphique reste libre : copie de GFS, puis retour au CDN.
 await row('graphique').locator('.rd', { hasText: /Copie de GFS|GFS copy/ }).click();

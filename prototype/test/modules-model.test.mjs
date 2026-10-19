@@ -18,10 +18,11 @@ const loaded = (bad = false) => [
 
 test('une app, ses extensions juste après, le compte des actifs et du total', () => {
   const model = modulesModel(loaded(), { apps: { publipostage: { extensions: ['graphique'], modes: {} } } }, catalogue, ['publipostage']);
-  assert.deepEqual(model.items.map(item => `${item.kind}:${item.id || item.extension.id}`), ['app:publipostage', 'ext:graphique', 'app:automation']);
+  assert.deepEqual(model.items.map(item => `${item.kind}:${item.id || item.extension.id}`), ['app:publipostage', 'ext:graphique', 'ext:edition', 'app:automation']);
   assert.equal(model.items[0].always, true);
-  assert.equal(model.items[2].installed, false);
-  assert.equal(model.total, 3);
+  assert.equal(model.items[2].greyed, true, 'l\'édition collaborative exige edition-live, que ce catalogue d\'essai n\'a pas');
+  assert.equal(model.items[3].installed, false);
+  assert.equal(model.total, 4);
   assert.equal(model.active, 2, 'Publipostage+ et son graphique');
 });
 
@@ -38,5 +39,5 @@ test('une app au manifeste invalide reste dans la liste, grisée avec son motif,
   const broken = model.items.find(item => item.id === 'automation');
   assert.equal(broken.ok, false);
   assert.deepEqual(broken.errors, ['manifeste illisible : 404']);
-  assert.equal(model.total, 2);
+  assert.equal(model.total, 3, 'l\'app et ses deux extensions ; l\'invalide ne compte pas');
 });

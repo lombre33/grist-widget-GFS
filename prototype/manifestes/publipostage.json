@@ -91,6 +91,19 @@
       "dossier": "extensions/graphique/",
       "pointsEntree": [{ "genre": "bouton", "id": "graphique" }],
       "bibliotheques": [{ "id": "plotly", "version": "2.13.2" }]
+    },
+    {
+      "id": "edition",
+      "nom": { "fr": "Édition collaborative", "en": "Collaborative editing" },
+      "texte": {
+        "fr": "Plusieurs personnes écrivent en même temps le texte d’un même modèle.",
+        "en": "Several people write the text of the same template at the same time."
+      },
+      "icone": "edit",
+      "poids": 73,
+      "dossier": "extensions/edition/",
+      "pointsEntree": [{ "genre": "menu", "id": "edition" }],
+      "bibliotheques": [{ "id": "edition-live", "version": "1.0.0" }]
     }
   ],
   "actions": {

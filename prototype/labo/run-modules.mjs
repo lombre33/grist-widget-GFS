@@ -22,6 +22,8 @@ const rangement = () => lab.rangement(frame);
 const appsOption = async () => (await rangement()).value;
 const insideWindow = () => frame.evaluate(() => Boolean(document.activeElement && document.activeElement.closest('.mod')));
 const count = () => text(frame.locator('.mod-count'));
+// La ligne d'une extension : Publipostage+ en déclare deux, le graphique (avec un CDN) et l'édition collaborative (sans : la copie de GFS est son seul mode).
+const extRow = id => frame.locator('.mr', { has: frame.locator(`[data-ext="${id}"]`) });
 const state = () => frame.evaluate(() => ({
   explorerInert: document.querySelector('.ex').inert, framesInert: document.getElementById('frames').inert, floatersInert: document.getElementById('floaters').inert,
   explorerHidden: document.querySelector('.ex').hidden, windows: document.querySelectorAll('.mod').length, appFrames: document.querySelectorAll('.app-frame').length,
@@ -48,7 +50,7 @@ check('Publipostage+ ne se décoche pas', await frame.locator('[data-fk="app:pub
 const loaded = await frame.evaluate(() => performance.getEntriesByType('resource').map(entry => entry.name).filter(name => /\/(js|css)\/[^/?]+\.(js|css)(\?|$)/.test(name)));
 check('chaque script et chaque feuille de style de GFS est chargé à son adresse versionnée', loaded.length > 25 && loaded.every(name => /\?v=[0-9a-f]{10}$/.test(name)), loaded.filter(name => !/\?v=/.test(name)));
 check('aucun fichier de GFS n\'est chargé deux fois', new Set(loaded.map(name => name.split('?')[0])).size === loaded.length);
-check('1 actif sur 3', /^1 /.test(await count()) || /^1 of 3/.test(await count()), await count());
+check('1 actif sur 4', /^1 /.test(await count()) || /^1 of 4/.test(await count()), await count());
 await shot('1-premiere-ouverture');
 await lab.shot(run, '1-page-grist');
 
@@ -97,7 +99,7 @@ await lab.shot(run, '3a-page-grist-question');
 await page.keyboard.press('Escape');
 await page.waitForTimeout(500);
 check('Échap refuse : la question est partie, la fenêtre des apps reste', (await frame.locator('.ask').count()) === 0 && (await state()).windows === 1);
-check('refusé : la case revient, 1 actif sur 3', !(await frame.locator('[data-fk="app:automation"]').isChecked()) && /^1 /.test(await count()), await count());
+check('refusé : la case revient, 1 actif sur 4', !(await frame.locator('[data-fk="app:automation"]').isChecked()) && /^1 /.test(await count()), await count());
 const refused = await rangement();
 check('refusé : aucune table créée, aucune page de plus', refused.table === false && refused.pages === before.pages && refused.tables === before.tables, refused);
 check('refusé : la personne est avertie', /GFS_Rangement/.test(await text(frame.locator('#toast'))), await text(frame.locator('#toast')));
@@ -109,7 +111,7 @@ await frame.locator('label', { hasText: 'Automation+' }).first().click();
 await frame.locator('.ask').waitFor();
 await frame.locator('[data-fk="ask-yes"]').click();
 await frame.waitForFunction(() => document.body.dataset.registry === 'idle' && document.querySelectorAll('.ask').length === 0, null, { timeout: 15000 });
-check('Automation+ installée : 2 actifs sur 3', /^2 /.test(await count()), await count());
+check('Automation+ installée : 2 actifs sur 4', /^2 /.test(await count()), await count());
 const made = await rangement();
 say('table du document :', made);
 check('la table GFS_Rangement existe avec ses sept colonnes', made.table && ['Utilisateur', 'App', 'Fichier', 'Favori', 'Dossier', 'Replie', 'Valeur'].every(name => made.columns.includes(name)), made.columns);
@@ -121,17 +123,17 @@ await lab.shot(run, '3-page-grist-apres-accord');
 await shot('3-automation-installee');
 
 // ----- Activer l'extension, choisir la copie de GFS.
-check('le mode est grisé tant que l\'extension est décochée', await frame.locator('.mr-mode').evaluate(node => node.disabled));
+check('le mode est grisé tant que l\'extension est décochée', await extRow('graphique').locator('.mr-mode').evaluate(node => node.disabled));
 await frame.locator('label', { hasText: /^\s*Graphique|^\s*Chart/ }).first().click();
 await page.waitForTimeout(500);
 check('la table existe déjà : aucune question de plus', (await frame.locator('.ask').count()) === 0);
-check('Graphique cochée : 3 actifs sur 3', /^3 /.test(await count()), await count());
-check('le mode se choisit maintenant', !(await frame.locator('.mr-mode').evaluate(node => node.disabled)));
-await frame.locator('.rd', { hasText: /Copie de GFS|GFS copy/ }).click();
+check('Graphique cochée : 3 actifs sur 4', /^3 /.test(await count()), await count());
+check('le mode se choisit maintenant', !(await extRow('graphique').locator('.mr-mode').evaluate(node => node.disabled)));
+await extRow('graphique').locator('.rd', { hasText: /Copie de GFS|GFS copy/ }).click();
 await page.waitForTimeout(500);
 check('mode « copie de GFS » retenu pour l\'extension', JSON.stringify(await appsOption()) === JSON.stringify({ publipostage: { extensions: ['graphique'], modes: { graphique: 'vendorise' } }, automation: { extensions: [] } }), await appsOption());
 await shot('4-extension-copie-de-gfs');
-await frame.locator('.rd', { hasText: /CDN/ }).click();
+await extRow('graphique').locator('.rd', { hasText: /CDN/ }).click();
 await page.waitForTimeout(400);
 check('retour au CDN : le défaut ne s\'écrit pas', JSON.stringify((await appsOption()).publipostage) === JSON.stringify({ extensions: ['graphique'] }), (await appsOption()).publipostage);
 
@@ -143,7 +145,7 @@ await page.waitForTimeout(500);
 check('rechargé : la fenêtre des apps ne s\'ouvre pas toute seule', (await state()).windows === 0);
 await frame.locator('.ex-title-row .tb', { hasText: /Apps/ }).click();
 await frame.locator('.mod').waitFor();
-check('rechargé : 3 actifs sur 3, comme avant', /^3 /.test(await count()), await count());
+check('rechargé : 3 actifs sur 4, comme avant', /^3 /.test(await count()), await count());
 check('rechargé : Automation+ et Graphique sont cochées', (await frame.locator('[data-fk="app:automation"]').isChecked()) && (await frame.locator('[data-fk="ext:publipostage/graphique"]').isChecked()));
 check('rechargé : rien n\'a été récrit ni créé', JSON.stringify(await rangement()) === JSON.stringify(saved), await rangement());
 await shot('4b-apres-rechargement');

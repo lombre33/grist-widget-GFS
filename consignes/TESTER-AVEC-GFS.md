@@ -14,6 +14,10 @@ Au 16/10/2026 : **le fichier assemblé** (section 2 bis, consigne 012) est const
 l'identique de l'essai de GFS, et la fenêtre « Apps et extensions » le montre sans CDN, avec la raison ; aucune app ne l'a
 encore essayé dans ce labo.
 
+Au 19/10/2026 : `edition-live` 1.0.0 et l'extension « Édition collaborative » de Publipostage+ sont dans la liste, le catalogue et le
+manifeste réels de GFS (consigne 013) : une copie neuve de GFS les a déjà, et la section 2 bis ne sert plus que pour une extension
+nouvelle. Le labo les joue de bout en bout avec ton app (`prototype/labo/run-edition.mjs`).
+
 ## 1. La copie de GFS, l'app à la place de son sous-module
 
 ```bash

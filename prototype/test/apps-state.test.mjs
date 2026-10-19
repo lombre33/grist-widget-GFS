@@ -179,6 +179,6 @@ test('le premier geste refusé n\'empêche pas le suivant d\'être écrit', asyn
 test('model : une ligne par app (l\'invalide grisée) puis par extension', async () => {
   const { state } = await setup();
   const model = state.model();
-  assert.deepEqual(model.items.map(item => `${item.kind}:${item.id || item.extension.id}`), ['app:publipostage', 'ext:graphique', 'ext:edition', 'app:automation', 'app:casse']);
+  assert.deepEqual(model.items.map(item => `${item.kind}:${item.id || item.extension.id}`), ['app:publipostage', 'ext:graphique', 'ext:edition', 'ext:diapositives', 'app:automation', 'app:casse']);
   assert.equal(model.items.at(-1).ok, false);
 });

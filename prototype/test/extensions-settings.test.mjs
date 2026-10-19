@@ -154,7 +154,7 @@ test('une extension dont la bibliothèque n\'a pas de CDN : la copie de GFS est 
 
 test('le manifeste et le catalogue réels s\'accordent : chaque extension a ses bibliothèques, l\'édition collaborative n\'a que la copie de GFS', () => {
   const real = readCatalogue(readJson('bibliotheques/catalogue.json'));
-  assert.deepEqual(pub.extensions.map(extension => extension.id), ['graphique', 'edition']);
+  assert.deepEqual(pub.extensions.map(extension => extension.id), ['graphique', 'edition', 'diapositives']);
   assert.deepEqual(pub.extensions.flatMap(extension => missingLibraries(extension, real)), [], 'aucune extension déclarée n\'est grisée par le catalogue');
   const rows = extensionRows(pub, { extensions: ['graphique', 'edition'], modes: {} }, real);
   const edition = rows.find(row => row.extension.id === 'edition');
@@ -170,6 +170,25 @@ test('le manifeste et le catalogue réels s\'accordent : chaque extension a ses 
   assert.equal(given.forme, 'module');
   assert.equal(given.src, 'https://exemple.test/gfs/vendor/edition-live/1.0.0/edition-live.js');
   assert.match(given.integrite, /^sha384-[A-Za-z0-9+/]{64}$/);
+});
+
+// Une extension sans bibliothèque (les diapositives de Publipostage+ : un type de fichier et une ligne de menu, du code qui reste dans l'app).
+test('une extension sans bibliothèque : jamais grisée, rien à charger, l\'app ne reçoit que son identifiant', () => {
+  const real = readCatalogue(readJson('bibliotheques/catalogue.json'));
+  const slides = pub.extensions.find(extension => extension.id === 'diapositives');
+  assert.deepEqual(slides.bibliotheques, undefined);
+  assert.deepEqual(missingLibraries(slides, real), []);
+  const [row] = extensionRows({ extensions: [slides] }, { extensions: ['diapositives'], modes: {} }, readCatalogue({ bibliotheques: [] }));
+  assert.equal(row.greyed, false, 'même avec un catalogue vide : rien n\'est exigé, rien ne peut manquer');
+  assert.equal(row.checked, true);
+  assert.deepEqual(row.libraries, []);
+  assert.equal(row.noCdn, false, 'pas de bibliothèque, donc pas de question de CDN');
+  assert.equal(activeExtensionIds(pub, { extensions: ['diapositives'] }, real).join(), 'diapositives');
+  const state = extensionsState(pub, { extensions: ['diapositives'], modes: {} }, real, 'https://exemple.test/gfs/');
+  assert.deepEqual(state.extensions, ['diapositives']);
+  assert.deepEqual(state.bibliotheques, {}, 'aucune bibliothèque dans le contexte : l\'app n\'a rien à charger');
+  assert.deepEqual(state.details, {});
+  assert.deepEqual(extensionsState(pub, { extensions: [], modes: {} }, real, 'https://exemple.test/gfs/').extensions, [], 'éteinte, elle n\'est pas dite à l\'app');
 });
 
 test('extensionsState : un fichier assemblé arrive à l\'app sous la forme module, servi par la copie de GFS', () => {

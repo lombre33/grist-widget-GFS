@@ -17,6 +17,7 @@
     "types": [
       { "valeur": "document", "nom": { "fr": "Document", "en": "Document" }, "icone": "doc", "couleur": "document" },
       { "valeur": "grille", "nom": { "fr": "Grille", "en": "Grid" }, "icone": "grid", "couleur": "grille" },
+      { "valeur": "presentation", "nom": { "fr": "Présentation", "en": "Presentation" }, "icone": "slides", "couleur": "presentation", "extension": "diapositives" },
       { "valeur": "email", "nom": { "fr": "E-mail", "en": "Email" }, "icone": "mail" },
       { "valeur": "macro", "nom": { "fr": "Macro-modèle", "en": "Macro template" }, "icone": "macro" }
     ],
@@ -104,10 +105,22 @@
       "dossier": "extensions/edition/",
       "pointsEntree": [{ "genre": "menu", "id": "edition" }],
       "bibliotheques": [{ "id": "edition-live", "version": "1.0.0" }]
+    },
+    {
+      "id": "diapositives",
+      "nom": { "fr": "Diapositives", "en": "Slides" },
+      "texte": {
+        "fr": "Des présentations en 16:9, écrites avec le même éditeur que les documents.",
+        "en": "16:9 presentations, written with the same editor as documents."
+      },
+      "icone": "slides",
+      "poids": 0,
+      "dossier": "extensions/diapositives/",
+      "pointsEntree": [{ "genre": "type", "id": "presentation" }, { "genre": "menu", "id": "nouveau" }]
     }
   ],
   "actions": {
-    "ouvrir": ["document", "grille", "email", "macro"],
+    "ouvrir": ["document", "grille", "presentation", "email", "macro"],
     "choisir": ["document", "grille"],
     "inserer": { "produit": [], "recoit": [] }
   }

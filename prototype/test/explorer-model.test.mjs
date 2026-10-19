@@ -46,6 +46,16 @@ test('readFiles : la ligne réservée est exclue, le type vide devient le type p
   assert.equal(first.key, 'publipostage:1');
 });
 
+test('readFiles : une présentation est un type connu, de la famille orange, possédé par l\'extension des diapositives', () => {
+  const data = { id: [1, 2], Nom: ['Cours', 'Lettre'], TypeModele: ['presentation', ''], DateModif: [T0, T0], ModifiePar: ['', ''], Contenu: ['x', 'y'] };
+  const [slides, letter] = readFiles(manifest, spec, data);
+  assert.equal(slides.known, true);
+  assert.equal(slides.family, 'slides');
+  assert.equal(slides.typeInfo.icone, 'slides');
+  assert.equal(slides.typeInfo.extension, 'diapositives', 'grisée tant que l\'extension est éteinte (contrats 2.4)');
+  assert.equal(letter.typeInfo.extension, undefined, 'un document est du socle : jamais grisé par une extension');
+});
+
 test('readFiles : une date codée est lue, une cellule vide n\'est pas une date', () => {
   const list = readFiles(manifest, spec, models());
   assert.equal(list.find(f => f.id === '6').ts, T0 - 2 * DAY);

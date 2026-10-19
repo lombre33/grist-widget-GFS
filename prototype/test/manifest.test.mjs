@@ -82,6 +82,29 @@ test('contrats 2.8 : le dossier d\'une extension reste dans l\'app', () => {
   assert.equal(isSafePath(''), false);
 });
 
+// Les renvois du manifeste réel que le validateur ne juge pas (il juge la forme) : un type d'extension nomme une extension qui existe et qui le déclare
+// en point d'entrée `type` ; un point d'entrée `type` renvoie à un type de l'app qui lui appartient ; ce que l'app ouvre est un type déclaré.
+test('contrats 2.4 et 2.6 : les renvois du manifeste de Publipostage+ se recoupent (type d\'extension, point d\'entrée, ouverture)', () => {
+  const m = publipostage();
+  const types = m.fichiers[0].types;
+  const owners = new Map(m.extensions.map(extension => [extension.id, extension]));
+  for (const type of types.filter(item => item.extension)) {
+    const owner = owners.get(type.extension);
+    assert.ok(owner, `${type.valeur} : l'extension ${type.extension} existe`);
+    assert.ok((owner.pointsEntree || []).some(point => point.genre === 'type' && point.id === type.valeur), `${type.extension} déclare le type ${type.valeur}`);
+  }
+  for (const extension of m.extensions) {
+    for (const point of (extension.pointsEntree || []).filter(item => item.genre === 'type')) {
+      const type = types.find(item => item.valeur === point.id);
+      assert.ok(type && type.extension === extension.id, `${extension.id} : le type ${point.id} est déclaré et lui appartient`);
+    }
+  }
+  for (const valeur of m.actions.ouvrir) assert.ok(types.some(item => item.valeur === valeur), `ouvrir : ${valeur} est un type déclaré`);
+  const slides = types.find(item => item.valeur === 'presentation');
+  assert.deepEqual([slides.couleur, slides.icone, slides.extension], ['presentation', 'slides', 'diapositives']);
+  assert.ok(m.actions.ouvrir.includes('presentation'), 'le double-clic d\'une présentation ouvre l\'app (contrats 5.4)');
+});
+
 test('contrats 2.1 point 3 : un manifeste illisible ou invalide reste dans la liste, grisé, avec le motif', async () => {
   const fetchJson = async path => {
     if (path.includes('automation')) throw new Error('404');

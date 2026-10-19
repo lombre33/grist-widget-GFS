@@ -1,7 +1,8 @@
 // Ouvrir le bon modèle de Publipostage+ depuis l'explorateur de GFS (consigne 010 ; contrats 5.2 point 3 et 5.4 point 1), avec la vraie app, celle que GFS référence, dans un vrai Grist, à
 // 700 × 400, à la vraie souris et au vrai clavier. Le double-clic d'un fichier lance l'app sur ce modèle (l'`ouverture` du contexte) ; l'app déjà ouverte reçoit l'appel `ouvrir`, et pose
-// sa question « Enregistrer / Abandonner / Annuler » dans le panneau quand des modifications attendent : GFS attend, sans rien dire. « Nouveau » garde la phrase provisoire : l'app ne crée
-// pas encore de fichier vierge. LAB_LANG=fr|en, LAB_SCHEME=light|dark.
+// sa question « Enregistrer / Abandonner / Annuler » dans le panneau quand des modifications attendent : GFS attend, sans rien dire. « Nouveau » (consigne 014) ouvre un modèle vierge du
+// type, au démarrage comme app déjà ouverte, sans phrase de GFS ; l'ouverture n'est rendue qu'une fois (contrats 5.2, point 3) : un cadre rechargé sur place ne refait pas le « Nouveau ».
+// LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check } from './lab-common.mjs';
@@ -10,8 +11,9 @@ const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
 const run = `ouvrir-publipostage-${lang}-${scheme}`;
 const WORDS = lang === 'fr'
-  ? { opened: /Ouvert depuis l.explorateur\./, provisional: /Provisoire/, buttons: ['Annuler', 'Abandonner', 'Enregistrer'] }
-  : { opened: /Opened from the explorer\./, provisional: /Provisional/, buttons: ['Cancel', 'Discard', 'Save'] };
+  ? { opened: /Ouvert depuis l.explorateur\./, unsaved: /^Modèle non enregistré/, buttons: ['Annuler', 'Abandonner', 'Enregistrer'], types: { document: /Document/, grille: /Grille/, email: /E-mail/, macro: /Macro/ } }
+  : { opened: /Opened from the explorer\./, unsaved: /^Template not saved/, buttons: ['Cancel', 'Discard', 'Save'], types: { document: /Document/, grille: /Grid/, email: /Email/, macro: /Macro/ } };
+const USUAL = 'Feuille d’émargement'; // le modèle ★ du document d'essai : celui que l'app ouvre d'elle-même
 const lab = await startLab({ lang, colorScheme: scheme });
 const { page } = lab;
 const warnings = [];
@@ -70,14 +72,69 @@ const contentOf = name => frame.evaluate(async n => {
   return data.Contenu[data.Nom.indexOf(n)];
 }, name);
 
-// 1. « Nouveau » quand l'app n'est pas ouverte : elle démarre sur son modèle habituel (le ★), GFS dit pourquoi (elle ne sait pas encore créer un fichier vierge).
-await frame.locator('.btn.primary').click();
-await frame.locator('.menu-item', { hasText: /Document/ }).click();
+// 1. « Nouveau » quand l'app n'est pas ouverte (consigne 014) : elle démarre sur un modèle vierge du type demandé, à la place du ★ ; GFS ne dit rien, le coin d'état de l'app garde « modèle non
+//    enregistré », rien n'est écrit dans le document.
+const blankShown = () => app.evaluate(() => ({
+  id: String(Templates.getCurrentId() || ''), name: document.getElementById('template-name').value, text: document.querySelector('.ProseMirror').textContent,
+  status: document.getElementById('status-msg').textContent, email: !document.getElementById('btn-create-email').hidden, grid: GridEditor.isActive(),
+  macro: getComputedStyle(document.getElementById('macro-editor-modal')).display !== 'none',
+}));
+const isBlank = seen => Boolean(seen) && seen.id === '' && seen.name === '' && seen.text === '' && WORDS.unsaved.test(seen.status);
+const waitFor = async (test, ms = 12000) => {
+  for (let i = 0; i < ms / 100; i++) {
+    const seen = await blankShown().catch(() => null);
+    if (test(seen)) return seen;
+    await page.waitForTimeout(100);
+  }
+  return blankShown().catch(() => null);
+};
+// Le premier départ de l'app écrit lui-même dans le document (des colonnes ajoutées à ses tables) : il passe par la fenêtre des apps, sans consigne, avant la première mesure.
+await lab.openModules(frame);
+await frame.locator('[data-open="publipostage"]').click();
 app = await lab.appFrame(/publipostage/);
 await waitStarted();
+const before = await snapshot();
+await restart();
+await frame.locator('.btn.primary').click();
+await frame.locator('.menu-item', { hasText: WORDS.types.document }).click();
+app = await lab.appFrame(/publipostage/);
+await waitStarted();
+const blank = await waitFor(isBlank);
+say('au démarrage, « Nouveau » :', blank, 'phrase de GFS :', await toast());
+check('« Nouveau » quand l\'app n\'est pas ouverte : elle démarre sur un modèle vierge à la place du ★, son coin d\'état garde « modèle non enregistré », GFS ne dit rien',
+  isBlank(blank) && (await toast()) === '' && (await explorerHidden()), { blank, phrase: await toast() });
+const afterStart = await snapshot();
+const diffOf = (a, b) => {
+  const x = JSON.parse(a); const y = JSON.parse(b);
+  const columns = Object.keys({ ...x.modeles, ...y.modeles }).filter(key => JSON.stringify(x.modeles[key]) !== JSON.stringify(y.modeles[key]));
+  return { colonnes: columns, vueAvant: x.vue, vueApres: y.vue };
+};
+check('rien n\'est écrit dans le document par cette ouverture (ni modèle, ni ★, ni réglage de la vue)', afterStart === before, diffOf(before, afterStart));
+await lab.shotPanel(run, '0-nouveau-au-demarrage', frame);
+
+// 1 bis. La personne écrit, nomme et enregistre ce modèle, puis le cadre de l'app est rechargé sur place (sa langue, un réglage qui le demande) : l'app redemande son contexte, n'y retrouve pas le
+//    « Nouveau » déjà fait et reprend son ordre habituel (le ★), au lieu de rouvrir un modèle vierge.
+const NAMED = 'Modèle du labo';
+const WRITTEN = 'Écrit dans le modèle vierge';
+const box = await app.locator('.ProseMirror p').first().boundingBox();
+await page.mouse.click(box.x + 20, box.y + box.height / 2);
+await page.keyboard.type(WRITTEN);
+await app.locator('#btn-rename-template').click();
+await page.keyboard.type(NAMED);
+await page.keyboard.press('Enter');
+await app.locator('#btn-save').click();
+let namedSaved = false;
+for (let i = 0; i < 100 && !namedSaved; i++) { namedSaved = Boolean(await contentOf(NAMED).catch(() => undefined)); if (!namedSaved) await page.waitForTimeout(100); }
+check('le modèle vierge est enregistré sous son nom, avec ce qui a été écrit', namedSaved && (await contentOf(NAMED)).includes(WRITTEN), await contentOf(NAMED));
+await app.evaluate(() => { window.__avant = true; });
+await app.evaluate(() => location.reload()).catch(() => {});
+await app.waitForFunction(() => !window.__avant && Boolean(document.getElementById('status-msg') && document.getElementById('status-msg').textContent), null, { timeout: 30000 });
+await page.waitForTimeout(800);
 const usual = await shown().catch(() => ({ name: '' }));
-say('modèle habituel de l\'app :', usual, 'phrase de GFS :', await toast());
-check('« Nouveau » : GFS dit que Publipostage+ ne sait pas encore créer un fichier, l\'app s\'ouvre sur son modèle habituel (le ★)', WORDS.provisional.test(await toast()) && /Publipostage\+/.test(await toast()) && usual.name === 'Feuille d’émargement' && !WORDS.opened.test(usual.status), { usual, phrase: await toast() });
+say('modèle ouvert après le rechargement du cadre :', usual, 'phrase de GFS :', await toast());
+check('le cadre de l\'app rechargé sur place reprend son ordre habituel (le ★), il ne rouvre pas de modèle vierge, GFS ne dit rien',
+  usual.name === USUAL && usual.id !== '' && !WORDS.opened.test(usual.status) && !WORDS.unsaved.test(usual.status) && (await toast()) === '', { usual, phrase: await toast() });
+await lab.shotPanel(run, '1-apres-rechargement', frame);
 const base = await snapshot();
 
 // 2. Le double-clic d'un fichier quand l'app n'est pas ouverte : elle démarre sur CE modèle.
@@ -175,14 +232,71 @@ await row('Facture / devis multi-TVA').dblclick();
 seen = await waitShown('Facture / devis multi-TVA');
 check('un fichier d\'un dossier s\'ouvre aussi : l\'app ouvre ce modèle', seen && seen.name === 'Facture / devis multi-TVA' && seen.text === 'Facture / devis multi-TVA' && (await explorerHidden()), seen);
 
-// 7. « Nouveau » quand l'app est ouverte : l'explorateur se ferme, GFS dit ce qui est provisoire, l'app n'a pas bougé.
-await showFiles();
-await frame.locator('.btn.primary').click();
-await frame.locator('.menu-item', { hasText: /Document/ }).click();
-await page.waitForTimeout(600);
-const afterNew = await shown();
-check('« Nouveau » avec l\'app ouverte : la phrase provisoire, l\'app garde son modèle', WORDS.provisional.test(await toast()) && /Publipostage\+/.test(await toast()) && afterNew.name === 'Facture / devis multi-TVA' && (await explorerHidden()), { afterNew, phrase: await toast() });
-await lab.shotPanel(run, '3-nouveau', frame);
+// 7. « Nouveau » quand l'app est ouverte (consigne 014) : GFS envoie « ouvrir » sans fichier ; l'app ouvre un modèle vierge du type par le chemin de son bouton « Nouveau » (avec sa question quand des
+//    modifications attendent), l'explorateur se ferme, GFS ne dit rien. Un modèle vierge de chaque type, sans rien écrire dans le document.
+const newOfType = async type => {
+  await showFiles();
+  await frame.locator('.btn.primary').click();
+  await frame.locator('.menu-item', { hasText: WORDS.types[type] }).click();
+};
+let open = 'Facture / devis multi-TVA'; // le modèle ouvert : l'enregistrement automatique peut passer entre la frappe et la demande, l'app ouvre alors le vierge sans question et l'essai recommence sur un modèle de la racine
+const pendingNew = async token => {
+  for (let attempt = 1; attempt <= 8; attempt++) {
+    const typed = `${token}${attempt}`;
+    await typeAtEnd(` ${typed}`);
+    await page.waitForTimeout(((attempt - 1) % 4) * 350); // décale le clic par rapport au passage de l'enregistrement automatique, qui tourne toutes les 2,5 s
+    await newOfType('document');
+    for (let i = 0; i < 25 && !(await dialog()); i++) await page.waitForTimeout(100);
+    if (await dialog()) return { typed, attempt };
+    say(`(essai ${attempt} : l'enregistrement automatique est passé, l'app a ouvert le vierge sans question)`);
+    open = open === 'Quittance de loyer' ? 'Contrat de prestation' : 'Quittance de loyer';
+    await showFiles();
+    await row(open).dblclick();
+    await waitShown(open);
+  }
+  return null;
+};
+
+episode = await pendingNew('NOUVEAU-ANNULE');
+asked = episode && (await dialog());
+await lab.shotPanel(run, '3-nouveau-question', frame);
+check('« Nouveau » avec des modifications en attente : l\'app pose sa question dans le panneau (Annuler, Abandonner, Enregistrer), l\'explorateur est fermé, GFS ne dit rien',
+  Boolean(asked) && asked.inPanel && asked.buttons.join('|') === WORDS.buttons.join('|') && (await explorerHidden()) && (await toast()) === '', { asked, phrase: await toast() });
+await button(WORDS.buttons[0]).click();
+await page.waitForTimeout(800);
+seen = await shown();
+check('« Annuler » : le modèle ouvert reste avec ce qui a été tapé, pas de vierge, GFS ne dit rien', seen.name === open && seen.text.includes(episode.typed) && (await toast()) === '' && !(await dialog()), { seen, phrase: await toast() });
+
+// Un passage de l'enregistrement automatique déjà parti quand la question s'ouvre écrit parfois le texte tapé pendant qu'elle est posée : l'épisode recommence alors, sur un autre modèle.
+let abandoned = null;
+let kept = true;
+for (let attempt = 1; attempt <= 4 && kept; attempt++) {
+  episode = await pendingNew(`NOUVEAU-ABANDONNE${attempt}-`);
+  const left = open;
+  await button(WORDS.buttons[1]).click();
+  abandoned = await waitFor(isBlank);
+  kept = (await contentOf(left)).includes(episode.typed);
+  if (kept && attempt < 4) {
+    say(`(épisode ${attempt} : l'enregistrement automatique a écrit le texte tapé pendant la question)`);
+    open = open === 'Quittance de loyer' ? 'Contrat de prestation' : 'Quittance de loyer';
+    await showFiles();
+    await row(open).dblclick();
+    await waitShown(open);
+  }
+}
+check('« Abandonner » : le modèle vierge s\'ouvre (coin d\'état « modèle non enregistré »), ce qui a été tapé n\'est pas gardé, GFS ne dit rien', isBlank(abandoned) && !kept && (await toast()) === '', { abandoned, kept, phrase: await toast() });
+const afterBlank = await snapshot();
+
+const WAITS = { grille: s => Boolean(s) && s.grid, email: s => Boolean(s) && s.email, macro: s => Boolean(s) && s.macro };
+const SHOWN = { grille: 'une grille vierge', email: 'un e-mail vierge (le bouton « Créer l\'e-mail »)', macro: 'l\'écran de composition d\'un macro-modèle vide' };
+for (const type of ['grille', 'email', 'macro']) {
+  await newOfType(type);
+  const result = await waitFor(WAITS[type]);
+  say(`« Nouveau » ${type} :`, result, 'phrase de GFS :', await toast());
+  check(`« Nouveau » (${type}) avec l'app ouverte : ${SHOWN[type]}, l'explorateur se ferme, GFS ne dit rien`, WAITS[type](result) && (await explorerHidden()) && (await toast()) === '', { result, phrase: await toast() });
+  if (type === 'macro') await lab.shotPanel(run, '4-nouveau-macro', frame);
+}
+check('rien n\'est écrit dans le document par ces ouvertures de modèles vierges', (await snapshot()) === afterBlank);
 say('avertissements GFS :', warnings);
 check('aucun avertissement de GFS', warnings.length === 0, warnings);
 await lab.browser.close();

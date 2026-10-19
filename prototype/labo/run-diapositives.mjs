@@ -3,7 +3,8 @@
 //   1. Extension éteinte (le défaut) : la ligne « Nouvelle présentation » du menu « + » de l'app est grisée avec sa raison ; son clic appelle `installer` et la fenêtre de GFS s'ouvre sur la ligne
 //      « Diapositives », sans bibliothèque (ni mode, ni poids à choisir).
 //   2. La personne la coche : l'app la reçoit, sans rien charger ; la ligne s'utilise, une présentation vierge s'ouvre à la page 16:9 en paysage, nommée et enregistrée sous le type « presentation ».
-//   3. L'explorateur de GFS : la présentation y est connue (famille orange, pastille « Présentation »), le menu « Nouveau » la propose, et le double-clic ouvre l'app sur elle.
+//   3. L'explorateur de GFS : la présentation y est connue (famille orange, pastille « Présentation »), le menu « Nouveau » la propose et, l'app ouverte, y ouvre une présentation vierge (consigne 014),
+//      et le double-clic ouvre l'app sur elle.
 //   4. La personne éteint l'extension : la ligne de l'app se grise, la présentation ouverte reste ouverte et s'enregistre toujours sous son type ; dans l'explorateur la présentation est grisée avec
 //      sa raison, et son double-clic ouvre la fenêtre de GFS sur la ligne « Diapositives ».
 import { startLab } from './lab-setup.mjs';
@@ -13,8 +14,8 @@ const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
 const run = `diapositives-${lang}-${scheme}`;
 const WORDS = lang === 'fr'
-  ? { row: 'Nouvelle présentation', reason: /Demande l.extension Diapositives \(Grist Factory Suite\)/, type: 'Présentation', name: 'Ma présentation', opened: /Ouvert depuis l.explorateur\./, text: 'Première diapositive' }
-  : { row: 'New presentation', reason: /Needs the Slides extension \(Grist Factory Suite\)/, type: 'Presentation', name: 'My presentation', opened: /Opened from the explorer\./, text: 'First slide' };
+  ? { row: 'Nouvelle présentation', reason: /Demande l.extension Diapositives \(Grist Factory Suite\)/, type: 'Présentation', name: 'Ma présentation', opened: /Ouvert depuis l.explorateur\./, unsaved: /^Modèle non enregistré/, text: 'Première diapositive' }
+  : { row: 'New presentation', reason: /Needs the Slides extension \(Grist Factory Suite\)/, type: 'Presentation', name: 'My presentation', opened: /Opened from the explorer\./, unsaved: /^Template not saved/, text: 'First slide' };
 const FK = 'ext:publipostage/diapositives';
 
 const lab = await startLab({ lang, colorScheme: scheme });
@@ -110,7 +111,8 @@ check('elle n\'est pas grisée : aucune bibliothèque ne peut lui manquer', !(aw
 await lab.shotPanel(run, '2-fenetre-diapositives');
 
 // ===== 2. La personne la coche
-const scriptsBefore = await app.evaluate(() => document.scripts.length);
+const filesNow = () => app.evaluate(() => ({ scripts: [...document.scripts].map(node => node.src).filter(Boolean), styles: [...document.querySelectorAll('link[rel="stylesheet"]')].map(node => node.href) }));
+const filesBefore = await filesNow();
 await toggleSlides(true);
 await app.waitForFunction(() => Extensions.isActive('diapositives'), null, { timeout: 15000 });
 check('l\'app reçoit l\'extension, et aucune bibliothèque avec elle', await app.evaluate(() => GfsLink.extensions().join() === 'diapositives' && GfsLink.library('edition-live') === null && GfsLink.library('plotly') === null), await app.evaluate(() => GfsLink.extensions()));
@@ -122,7 +124,12 @@ await clickRow();
 await app.waitForFunction(() => PageLayout.getFormat() === PageLayout.SLIDE_FORMAT, null, { timeout: 15000 });
 let pageNow = await pageState();
 check('une présentation vierge s\'ouvre à la page 16:9 en paysage', pageNow.slide && pageNow.landscape && pageNow.ratio === 1.778, pageNow);
-check('rien n\'a été chargé pour cela (aucun script de plus), aucun refus de la politique de sécurité', (await app.evaluate(() => document.scripts.length)) === scriptsBefore && (await app.evaluate(() => window.__csp)).length === 0, await app.evaluate(() => window.__csp));
+const filesAfter = await filesNow();
+const newScripts = filesAfter.scripts.filter(src => !filesBefore.scripts.includes(src));
+const newStyles = filesAfter.styles.filter(href => !filesBefore.styles.includes(href));
+check('l\'extension charge ses deux fichiers, depuis le dossier de l\'app (la bande des diapositives), rien d\'une autre adresse, aucun refus de la politique de sécurité',
+  newScripts.length === 1 && /\/apps\/publipostage\/extensions\/diapositives\/slide-strip\.js\?/.test(newScripts[0]) && newStyles.length === 1 && /\/apps\/publipostage\/extensions\/diapositives\/slide-strip\.css\?/.test(newStyles[0])
+    && (await app.evaluate(() => window.__csp)).length === 0, { newScripts, newStyles, csp: await app.evaluate(() => window.__csp) });
 await leaveMenu();
 await app.locator('#editor-container .ProseMirror').click();
 await page.keyboard.type(WORDS.text, { delay: 15 });
@@ -188,6 +195,27 @@ seen = await waitShown(WORDS.name);
 pageNow = await pageState();
 check('du document à la présentation : l\'appel `ouvrir` d\'une présentation passe, dans le même cadre, à la page de la diapositive',
   Boolean(seen) && seen.text.includes(WORDS.text) && pageNow.slide && pageNow.landscape && (await app.evaluate(() => window.__marque)) === 'avant' && WORDS.opened.test(seen.status), { seen, pageNow });
+
+// « Nouveau » > « Présentation » de l'explorateur (consignes 014 et 015 : cinq types) : l'app déjà ouverte ouvre une présentation vierge à la page de la diapositive, dans le même cadre, sans phrase
+// de GFS et sans rien écrire dans le document (le modèle naît à son premier « Enregistrer »).
+const rowsBefore = (await savedRow(WORDS.name)).count;
+await showFiles(WORDS.name);
+await gfs.locator('.btn.primary').click();
+await entry.click();
+let blank = null;
+for (let i = 0; i < 120 && !(blank && blank.name === '' && blank.slide); i++) {
+  blank = await app.evaluate(() => ({ name: document.getElementById('template-name').value, text: document.querySelector('.ProseMirror').textContent, status: document.getElementById('status-msg').textContent, slide: PageLayout.getFormat() === PageLayout.SLIDE_FORMAT, landscape: PageLayout.getOrientation() === PageLayout.LANDSCAPE })).catch(() => null);
+  await page.waitForTimeout(100);
+}
+say('« Nouveau » > « Présentation » :', blank, 'phrase de GFS :', (await gfs.locator('#toast').isVisible()) ? await gfs.locator('#toast').innerText() : '');
+check('« Nouveau » > « Présentation » avec l\'app ouverte : une présentation vierge à la page 16:9 en paysage, dans le même cadre, le coin d\'état garde « modèle non enregistré », GFS ne dit rien',
+  Boolean(blank) && blank.slide && blank.landscape && blank.text === '' && WORDS.unsaved.test(blank.status) && (await app.evaluate(() => window.__marque)) === 'avant' && (await gfs.locator('#toast').isVisible()) === false, blank);
+check('rien n\'est écrit dans le document par cette ouverture (aucune ligne de plus)', (await savedRow(WORDS.name)).count === rowsBefore);
+await lab.shotPanel(run, '5b-nouveau-presentation');
+// La présentation nommée revient à l'écran (le vierge n'a rien à garder) : la suite part d'elle.
+await showFiles(WORDS.name);
+await fileRow().dblclick();
+await waitShown(WORDS.name);
 
 // ===== 4. La personne éteint l'extension
 await toggleSlides(false);

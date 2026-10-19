@@ -9,8 +9,8 @@ const lang = process.env.LAB_LANG || 'fr';
 const NAME = lang === 'fr' ? 'Sonde O' : 'Probe O'; // le nom de la sonde dans la langue de GFS
 const ACCEPTS = {
   fichier: 'controller.js',
-  de: 'const ACCEPTS_OPEN = Object.freeze({ publipostage: { fichier: true, nouveau: false }, automation: { fichier: false, nouveau: false } });',
-  vers: "const ACCEPTS_OPEN = Object.freeze({ publipostage: { fichier: true, nouveau: false }, automation: { fichier: false, nouveau: false }, 'sonde-o': { fichier: true, nouveau: true } });",
+  de: 'const ACCEPTS_OPEN = Object.freeze({ publipostage: { fichier: true, nouveau: true }, automation: { fichier: false, nouveau: false } });',
+  vers: "const ACCEPTS_OPEN = Object.freeze({ publipostage: { fichier: true, nouveau: true }, automation: { fichier: false, nouveau: false }, 'sonde-o': { fichier: true, nouveau: true } });",
 };
 const lab = await startLab({ lang, probes: true, patches: [ACCEPTS] });
 await lab.fitPanel(undefined, 700, 400);
@@ -122,6 +122,27 @@ await frame.locator('[data-fk="app:sonde-o"]').uncheck();
 await lab.settle(frame);
 await page.waitForTimeout(600);
 check('retirer l\'app pendant l\'attente : le cadre part, l\'explorateur revient, aucune phrase d\'erreur', frames() === 0 && (await frame.locator('.ex').isVisible()) && (await toast().isHidden()), { cadres: frames(), phrase: await toast().innerText() });
+
+// 6. L'ouverture n'est rendue qu'une fois (contrats 5.2, point 3) : l'app qui démarre sur un fichier la reçoit à son premier `contexte` ; son cadre rechargé sur place (sa langue, un réglage)
+//    redemande le contexte et n'y retrouve plus ni ce fichier ni un « Nouveau » déjà fait. Sans cela, un modèle vierge enregistré puis rechargé reviendrait vierge.
+await lab.openModules(frame);
+await frame.locator('[data-fk="app:sonde-o"]').check();
+await lab.settle(frame);
+await page.keyboard.press('Escape');
+await row('Deuxième').dblclick();
+const again = await lab.appFrame(/o-ouvrir\//);
+await waitFor('la sonde relancée a reçu son contexte', async () => (await again.evaluate(() => JSON.parse(document.body.dataset.sonde || '{}'))).contexte);
+const started = await again.evaluate(() => JSON.parse(document.body.dataset.sonde));
+say('contexte au démarrage :', started.ouverture);
+check('l\'app qui démarre sur un fichier reçoit l\'ouverture à son premier contexte',
+  Boolean(started.ouverture) && started.ouverture.fichier.type === 'document' && started.ouverture.raison === 'explorateur' && started.appels.length === 0, started);
+await again.evaluate(() => { window.__avant = true; });
+await again.evaluate(() => location.reload()).catch(() => {});
+await waitFor('le cadre rechargé a reçu son contexte', () => again.evaluate(() => !window.__avant && JSON.parse(document.body.dataset.sonde || '{}').contexte).catch(() => false));
+const reloaded = await again.evaluate(() => JSON.parse(document.body.dataset.sonde));
+say('contexte après le rechargement sur place :', reloaded.ouverture);
+check('le cadre rechargé sur place redemande son contexte et n\'y retrouve pas l\'ouverture (nulle), l\'app reprend son ordre habituel', reloaded.contexte && reloaded.ouverture === null && frames() === 1, reloaded);
+await lab.shot(`ouvrir-${lang}`, '6-rechargement');
 say('avertissements GFS :', warnings);
 check('aucun avertissement de GFS', warnings.length === 0, warnings);
 await lab.browser.close();

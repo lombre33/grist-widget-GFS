@@ -23,9 +23,9 @@ import { Refus, ERR, levelOf } from './filter.js';
 const NOTICE_MS = 6000;
 
 // Provisoire : ce que chaque app sait faire d'une ouverture. `fichier` : ouvrir le fichier désigné, au démarrage (`ouverture` du contexte) comme déjà ouverte (appel `ouvrir`), consigne 010 ;
-// `nouveau` : créer un fichier vierge du type demandé (contrats 5.4, point 1), pas encore demandé aux apps. Ce qu'une app ne sait pas, GFS ouvre l'app sur son modèle habituel et le dit.
+// `nouveau` : créer un fichier vierge du type demandé (contrats 5.4, point 1), consigne 014 (Publipostage+ depuis bfbe112). Ce qu'une app ne sait pas, GFS ouvre l'app sur son modèle habituel et le dit.
 // Une app qui le sait passe à `true` ici (puis la ligne disparaît avec le catalogue provisoire).
-const ACCEPTS_OPEN = Object.freeze({ publipostage: { fichier: true, nouveau: false }, automation: { fichier: false, nouveau: false } });
+const ACCEPTS_OPEN = Object.freeze({ publipostage: { fichier: true, nouveau: true }, automation: { fichier: false, nouveau: false } });
 
 // Provisoire (étape 2) : les apps qui ne se retirent pas, comme dans la maquette (Publipostage+ ne se décoche pas).
 export const ALWAYS_ON = Object.freeze(['publipostage']);
@@ -52,7 +52,7 @@ export class GfsController {
   #noticeTimer = null;
   #facts = null;
   #sentExtensions = null;
-  #contextServed = false; // l'app active a demandé son contexte : elle a lu l'ouverture qui s'y trouvait
+  #contextServed = false; // l'app active a demandé son contexte : elle a lu l'ouverture qui s'y trouvait, et ne la relira pas
   #modulesWaiters = [];
 
   // env : { grist, router, search, doc }
@@ -347,11 +347,20 @@ export class GfsController {
   }
 
   async #contextFor(session) {
-    if (session === this.session) this.#contextServed = true;
+    const opening = this.#takeOpening(session);
     const given = this.registry.extensionsFor(session.id, this.doc.baseURI);
     this.#sentExtensions = JSON.stringify([given.extensions, given.bibliotheques]);
     const facts = await this.#readFacts();
-    return buildContext(facts, { access: session.access, extensions: given.extensions, libraries: given.bibliotheques, opening: this.opening }, { preferences: this.preferences, readonly: this.readonly });
+    return buildContext(facts, { access: session.access, extensions: given.extensions, libraries: given.bibliotheques, opening }, { preferences: this.preferences, readonly: this.readonly });
+  }
+
+  // L'ouverture n'est rendue qu'au premier `contexte` de l'app qui vient d'être activée (contrats 5.2, point 3) : une app dont le cadre est rechargé sur place (sa langue, un
+  // réglage qui le demande) retrouve son ordre habituel, au lieu de refaire un « Nouveau » déjà fait ou de rouvrir le modèle du dernier clic. Une app déjà ouverte reçoit l'appel `ouvrir`.
+  #takeOpening(session) {
+    if (session !== this.session) return null;
+    const opening = this.#contextServed ? null : this.opening;
+    this.#contextServed = true;
+    return opening;
   }
 
   // L'appel `installer` (5.4, point 4) : la fenêtre s'ouvre sur la ligne de l'extension, rien ne se télécharge ; la réponse dit les extensions

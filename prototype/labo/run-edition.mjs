@@ -5,7 +5,8 @@
 // octets exacts de la copie de GFS, qui sont ceux que jsDelivr sert au commit épinglé).
 //   Partie 1 : la personne coche « Édition collaborative » et choisit « Copie de GFS » ; l'app reçoit le fichier de GFS (adresse, empreinte, forme « module »), ne le demande
 //   qu'au premier clic, le charge dans son sous-cadre isolé sous sa politique de sécurité, et le direct démarre par le menu de l'app ; la table `Publipostage_Direct` naît par le
-//   courtier, se remplit à la frappe, et se vide quand la dernière personne s'arrête.
+//   courtier, se remplit à la frappe, et se vide quand la dernière personne s'arrête. Autour de cela, on compte ce que l'app lit toute seule pour l'entrée automatique (js/live-entry.js, contrats
+//   5.5, point 7) : la liste des tables sans la table du direct, rien juste après l'arrêt par la personne, la table du direct une fois le modèle rouvert.
 //   Partie 2 : l'empreinte de la copie dans le catalogue est remplacée par une fausse (pour cet essai seulement) : le navigateur refuse le fichier, le direct ne démarre pas.
 //   Partie 3 : la personne garde le défaut, « Depuis un CDN » (jsDelivr, au commit épinglé), mais la politique de sécurité de l'app ne nomme pas encore cette adresse : le navigateur
 //   la refuse, l'app le dit sans rien casser, et le choix de « Copie de GFS » remet le direct en marche.
@@ -93,6 +94,25 @@ const hasTable = gfs => gfs.evaluate(async () => (await grist.docApi.listTables(
 const violations = app => app.evaluate(() => window.__csp);
 const scriptsOf = app => app.evaluate(() => [...document.scripts].filter(script => /edition-live/.test(script.src)).map(script => ({ src: script.src, type: script.type, integrity: script.getAttribute('integrity'), crossorigin: script.crossOrigin })));
 
+// Les appels que l'app fait à GFS pendant `ms` millisecondes, sans que la personne touche à rien : leur nom, leur table et leur durée (de l'app à GFS, à Grist et retour). Le courtier relaie un
+// appel de l'app par un appel à Grist : ce qu'on compte ici est ce que Grist reçoit. L'entrée automatique de l'app (`js/live-entry.js`) relit la table du direct en tâche de fond.
+async function backgroundCalls(app, page, ms) {
+  await app.evaluate(() => {
+    window.__fond = [];
+    if (window.__fondPose) return;
+    window.__fondPose = true;
+    for (const name of ['listTables', 'fetchTable']) {
+      const original = grist.docApi[name].bind(grist.docApi);
+      grist.docApi[name] = async (...args) => {
+        const start = performance.now();
+        try { return await original(...args); } finally { window.__fond.push({ name, table: args[0] || null, ms: Math.round((performance.now() - start) * 10) / 10 }); }
+      };
+    }
+  });
+  await page.waitForTimeout(ms);
+  return app.evaluate(() => window.__fond.splice(0));
+}
+
 // Le direct de bout en bout, par l'adresse `where` : démarrage, chargement, table, frappe, arrêt. `label` dit le mode dans les vérifications.
 async function liveWorks(lab, { app, gfs }, observed, where, integrity, label) {
   const { page } = lab;
@@ -101,6 +121,15 @@ async function liveWorks(lab, { app, gfs }, observed, where, integrity, label) {
   check(`${label} : rien n'est demandé du fichier tant que la personne n'a pas allumé le direct`, observed.requests.length === 0 && (await app.evaluate(() => typeof GfsPaquets)) === 'undefined', observed.requests);
   check(`${label} : la table du direct n'existe pas encore`, !(await hasTable(gfs)));
   check(`${label} : la ligne « Écriture en direct » est utilisable`, await app.evaluate(() => LiveEntry.unavailable() === null));
+  // La lecture de fond de l'entrée automatique (contrats 5.5, point 7) : l'extension est active, un modèle enregistré est à l'écran, personne n'a allumé le direct, la table n'existe pas.
+  // Les appels du direct sont `listTables` et la lecture de `Publipostage_Direct` ; le reste (la relecture du modèle par l'enregistrement automatique de l'app) est dit à part.
+  const isDirect = call => call.name === 'listTables' || call.table === 'Publipostage_Direct';
+  const before = label === 'copie' ? await backgroundCalls(app, lab.page, 13000) : null;
+  if (before) {
+    say('lecture de fond en 13 s, sans table du direct :', before);
+    check(`${label} : sans table du direct, l'app liste les tables une fois toutes les 3 s environ et ne lit jamais la table`,
+      before.filter(isDirect).length >= 3 && before.filter(isDirect).length <= 6 && before.filter(isDirect).every(call => call.name === 'listTables'), before);
+  }
 
   await clickLive(lab, app);
   await app.waitForFunction(() => LiveEntry.state() === 'live', null, { timeout: 30000 });
@@ -131,6 +160,26 @@ async function liveWorks(lab, { app, gfs }, observed, where, integrity, label) {
   await app.waitForFunction(() => LiveEntry.state() === 'off', null, { timeout: 30000 });
   for (let i = 0; i < 40 && (await rowsOf(gfs)).length > 0; i++) await page.waitForTimeout(250);
   check(`${label} : à l'arrêt, la dernière personne vide la table du direct`, (await rowsOf(gfs)).length === 0, await rowsOf(gfs));
+  if (before) {
+    // La personne qui vient d'arrêter n'est pas ramenée dans le salon avant d'avoir rouvert le modèle (js/live-entry.js, `leftEpoch`) : l'app ne relit pas la table du direct.
+    const stopped = await backgroundCalls(app, lab.page, 13000);
+    say('lecture de fond en 13 s, juste après son arrêt :', stopped);
+    check(`${label} : la personne qui vient d'arrêter n'est pas ramenée dans le salon : l'app ne relit pas la table du direct`, !stopped.some(call => call.table === 'Publipostage_Direct'), stopped);
+    // Elle recharge la page (le cadre de l'app repart sans modèle ouvert) et rouvre « Rapport » dans l'explorateur de GFS : la table existe, vide, et l'app la relit.
+    await app.evaluate(() => { window.__avant = true; });
+    await app.evaluate(() => location.reload()).catch(() => {});
+    await app.waitForFunction(() => !window.__avant && Boolean(document.getElementById('status-msg') && document.getElementById('status-msg').textContent), null, { timeout: 30000 });
+    await page.waitForTimeout(800);
+    await gfs.locator('#floater-files').click();
+    await gfs.locator('.ls-row', { hasText: 'Rapport' }).first().dblclick();
+    await app.waitForFunction(() => document.getElementById('template-name').value === 'Rapport', null, { timeout: 15000 });
+    await page.waitForTimeout(1500);
+    const reopened = await backgroundCalls(app, lab.page, 13000);
+    say('lecture de fond en 13 s, le modèle rouvert, la table du direct vide :', reopened);
+    check(`${label} : le modèle rouvert, la table du direct existe, vide : l'app la relit, une lecture toutes les 3 s environ`,
+      reopened.filter(call => call.table === 'Publipostage_Direct').length >= 3 && reopened.filter(call => call.table === 'Publipostage_Direct').length <= 5 && reopened.filter(call => call.name === 'listTables').length <= 1, reopened);
+    check(`${label} : chaque lecture du direct revient vite (moins de 400 ms de l'app à Grist et retour)`, [...before, ...reopened].filter(isDirect).every(call => call.ms < 400), [...before, ...reopened].filter(isDirect).map(call => call.ms));
+  }
   check(`${label} : rien d'autre n'a bougé : aucune erreur de politique, aucun avertissement de GFS`, (await violations(app)).length === 0 && observed.console.length === 0, observed.console);
   await lab.shotPanel(run, `3-direct-arrete-${label}`);
 }

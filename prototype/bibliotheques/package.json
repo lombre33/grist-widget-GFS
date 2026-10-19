@@ -3,11 +3,31 @@
   "private": true,
   "description": "La liste unique des bibliotheques que GFS porte pour les extensions des apps (contrats 2.6). Les bibliotheques natives d'une app restent dans la liste de cette app. outils/bibliotheques.mjs en tire bibliotheques/catalogue.json et vendor/.",
   "dependencies": {
-    "plotly.js-basic-dist-min": "2.13.2"
+    "@tiptap/extension-collaboration": "3.31.3",
+    "@tiptap/extension-collaboration-caret": "3.31.3",
+    "@tiptap/y-tiptap": "3.0.10",
+    "lib0": "0.2.119",
+    "plotly.js-basic-dist-min": "2.13.2",
+    "y-protocols": "1.0.7",
+    "yjs": "13.6.33"
   },
   "gfs": {
     "bibliotheques": {
-      "plotly": { "paquet": "plotly.js-basic-dist-min", "fichier": "plotly-basic.min.js" }
+      "plotly": { "paquet": "plotly.js-basic-dist-min", "fichier": "plotly-basic.min.js" },
+      "edition-live": {
+        "assemble": {
+          "version": "1.0.0",
+          "paquets": ["yjs", "y-protocols", "lib0", "@tiptap/y-tiptap", "@tiptap/extension-collaboration", "@tiptap/extension-collaboration-caret"],
+          "modules": ["yjs", "y-protocols/awareness", "@tiptap/y-tiptap", "@tiptap/extension-collaboration", "@tiptap/extension-collaboration-caret"],
+          "externes": ["@tiptap/core", "prosemirror-model", "prosemirror-state", "prosemirror-transform", "prosemirror-view"],
+          "alias": {
+            "@tiptap/pm/model": "prosemirror-model",
+            "@tiptap/pm/state": "prosemirror-state",
+            "@tiptap/pm/transform": "prosemirror-transform",
+            "@tiptap/pm/view": "prosemirror-view"
+          }
+        }
+      }
     }
   }
 }

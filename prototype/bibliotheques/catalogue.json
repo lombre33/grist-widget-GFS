@@ -13,6 +13,57 @@
         "chemin": "vendor/plotly/2.13.2/plotly-basic.min.js",
         "integrite": "sha384-1heFF/cJ46y4QUvJzTPTs4/F4/UYCTLl6QErQgvqkxbzN+5yx5TQUVGf6ufPqcve"
       }
+    },
+    {
+      "id": "edition-live",
+      "version": "1.0.0",
+      "forme": "module",
+      "poids": 145862,
+      "contient": [
+        {
+          "paquet": "yjs",
+          "version": "13.6.33"
+        },
+        {
+          "paquet": "y-protocols",
+          "version": "1.0.7"
+        },
+        {
+          "paquet": "lib0",
+          "version": "0.2.119"
+        },
+        {
+          "paquet": "@tiptap/y-tiptap",
+          "version": "3.0.10"
+        },
+        {
+          "paquet": "@tiptap/extension-collaboration",
+          "version": "3.31.3"
+        },
+        {
+          "paquet": "@tiptap/extension-collaboration-caret",
+          "version": "3.31.3"
+        }
+      ],
+      "modules": [
+        "yjs",
+        "y-protocols/awareness",
+        "@tiptap/y-tiptap",
+        "@tiptap/extension-collaboration",
+        "@tiptap/extension-collaboration-caret"
+      ],
+      "externes": [
+        "@tiptap/core",
+        "prosemirror-model",
+        "prosemirror-state",
+        "prosemirror-transform",
+        "prosemirror-view"
+      ],
+      "cdn": null,
+      "vendorise": {
+        "chemin": "vendor/edition-live/1.0.0/edition-live.js",
+        "integrite": "sha384-FVwm2wpVR0CpCNfOg5gpvarCdXlhtI52aCc1Ea/a4wvcy0UUw0/vP4NTBn7KMSU4"
+      }
     }
   ]
 }

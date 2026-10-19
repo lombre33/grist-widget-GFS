@@ -101,7 +101,7 @@
         "en": "Several people write the text of the same template at the same time."
       },
       "icone": "edit",
-      "poids": 73,
+      "poids": 74,
       "dossier": "extensions/edition/",
       "pointsEntree": [{ "genre": "menu", "id": "edition" }],
       "bibliotheques": [{ "id": "edition-live", "version": "1.0.0" }]
@@ -114,7 +114,7 @@
         "en": "16:9 presentations, written with the same editor as documents."
       },
       "icone": "slides",
-      "poids": 0,
+      "poids": 36,
       "dossier": "extensions/diapositives/",
       "pointsEntree": [{ "genre": "type", "id": "presentation" }, { "genre": "menu", "id": "nouveau" }]
     }

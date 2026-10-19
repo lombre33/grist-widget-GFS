@@ -451,7 +451,9 @@ nomme une seule table et porte aussi `lit: true` (3.3, point 5).
 5. [T] Le niveau que l'app lit dans l'événement d'options (`settings.accessLevel`, comme Publipostage+) est son niveau, pas
    celui de GFS.
 6. [T] Un changement d'accès **reconstruit le cadre de GFS** (mesuré, faits vérifiés 2) : GFS repart de zéro, avec ses
-   sous-cadres. Une app doit donc pouvoir être rechargée à tout moment sans perte, comme seule.
+   sous-cadres. Une app doit donc pouvoir être rechargée à tout moment sans perte, comme seule. Ajouter une section à la page le
+   fait aussi (mesuré le 19/10, faits vérifiés 2, `run-section-ajoutee.mjs`, avec ou sans GFS : c'est Grist qui recharge le cadre) ;
+   GFS ne peut pas le garder en place.
 
 ### 3.2 Les tables lisibles
 

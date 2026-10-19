@@ -42,6 +42,7 @@ Variables utiles : `LAB_LANG=fr|en`, `LAB_SCHEME=light|dark`, `LAB_BROWSER=chrom
 | `run-ordre`, `run-routeur` | l'ordre des écouteurs de `message` (le routeur de GFS) |
 | `run-politique` | peut-on imposer une politique de sécurité du contenu à un sous-cadre servi sans en-tête (attribut `csp`, `srcdoc`, `blob:`) ? Sans Grist : la question est celle du navigateur |
 | `run-acces-none`, `run-reconstruit` | GFS sans l'accès complet ; le cadre que Grist reconstruit quand le niveau d'accès change |
+| `run-section-ajoutee` | le cadre qu'une section de plus fait recharger : d'abord sans GFS (une sonde seule : le même élément `<iframe>`, un autre document), puis avec GFS et Publipostage+ ouverte (GFS repart de zéro, l'app est fermée ; contrats 3.1, point 6). Ajoute la section à la vraie souris, comme la première |
 | `run-cout-cadre`, `run-heavy` | le coût d'un cadre de plus ; la lecture des fichiers dans un document lourd |
 | `run-sondes` | la bibliothèque d'une extension (CDN et copie de GFS) sous six politiques d'app ; la matrice du rapport (mesure 4) est vérifiée, ligne par ligne |
 | `run-navigateur` | la page `navigateur/` jouée à la souris (voir plus bas) |

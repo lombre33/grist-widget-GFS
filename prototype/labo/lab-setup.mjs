@@ -6,18 +6,22 @@ import { engine, engineName, newLabPage, SHOTS } from './lab-common.mjs';
 
 const WIDGET = 'http://127.0.0.1:8911/prototype/index.html';
 
-// La personne ajoute un widget personnalisé à la page par son adresse et accepte l'avertissement de Grist.
-async function addCustomWidget(page, address) {
+// La personne ouvre le document de test.
+async function openDocument(page) {
   await page.goto('http://127.0.0.1:8910/lab.html', { waitUntil: 'load' });
   await page.waitForSelector('text=Dupont', { timeout: 60000 });
+}
+
+// La personne ajoute un widget personnalisé à la page par son adresse et accepte l'avertissement de Grist.
+async function addCustomWidget(page, address) {
   await page.locator('.test-dp-add-new').first().click();
   await page.locator('.test-dp-add-widget-to-page').click();
   await page.waitForTimeout(500);
-  await page.getByText('Custom', { exact: true }).click();
-  await page.locator('[class*="wselect"]').getByText('clients').first().click().catch(() => {});
+  await page.locator('.test-wselect-type').filter({ hasText: /^Custom$/ }).click();
+  await page.locator('.test-wselect-table-label').filter({ hasText: /^clients$/ }).first().click().catch(() => {});
   await page.getByText('Add to page', { exact: true }).click();
   await page.waitForTimeout(1500);
-  await page.getByText('Custom URL', { exact: true }).first().click();
+  await page.locator('.test-custom-widget-gallery-widget-name').filter({ hasText: 'Custom URL' }).click();
   await page.getByPlaceholder('Widget URL').click();
   await page.getByPlaceholder('Widget URL').pressSequentially(address, { delay: 5 });
   await page.locator('.test-custom-widget-gallery-save').click();
@@ -67,6 +71,7 @@ export async function startLab(options = {}) {
     await page.waitForTimeout(500);
   };
   // Grist ajoute ses propres paramètres après ceux de l'adresse (searchParams.append) : le premier `language` gagne, c'est celui du labo.
+  await openDocument(page);
   await addCustomWidget(page, `${widget}?language=${lang}&culture=${lang === 'en' ? 'en-GB' : 'fr-FR'}${query ? '&' + query.replace(/^\?/, '') : ''}`);
   let frame = await gfsFrame(/access=none/);
   await page.waitForTimeout(1500);
@@ -131,7 +136,9 @@ export async function startLab(options = {}) {
     const lines = data.id.map((id, i) => ({ id, ...Object.fromEntries(columns.map(name => [name, data[name][i]])) }));
     return { table: true, pages, tables: tables.length, rows: data.id.length, columns, lines, reservedId: at >= 0 ? data.id[at] : null, value: at >= 0 && data.Valeur ? JSON.parse(data.Valeur[at]) : null };
   });
-  return { browser, context, page, frame, gfsFrame, appFrame, openModules, openApp, settle, gfsReady, fitPanel, rangement, shot: (run, name) => page.screenshot({ path: join(SHOTS, `${run}-${name}.png`) }),
+  // Une section de plus sur la page, par la même suite de gestes que la première (accès « aucun », comme Grist le donne à un widget qu'on ajoute).
+  const addSection = address => addCustomWidget(page, address);
+  return { browser, context, page, frame, gfsFrame, appFrame, openModules, openApp, settle, gfsReady, fitPanel, rangement, addSection, shot: (run, name) => page.screenshot({ path: join(SHOTS, `${run}-${name}.png`) }),
     // La capture du cadre de GFS seul (le panneau), pas de la page de Grist.
     shotPanel: async (run, name, target = frame) => (await target.frameElement()).screenshot({ path: join(SHOTS, `${run}-${name}.png`) }) };
 }

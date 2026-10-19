@@ -82,6 +82,11 @@ réponses, sans que l'app change.
   `includeColumns: 'normal'` (« Setting includeColumns to normal requires full access. Current access level is read table »),
   et les colonnes que `AddColumn` ajoute sont masquées dans la section : un widget de relais est donc en accès complet,
   comme GFS.
+- Mesuré le 19/10 dans un vrai Grist (grist-static 0.1.6, Chromium, `labo/run-section-ajoutee.mjs`) : **ajouter une section à la page
+  recharge le cadre de la première**. Avec une sonde sans GFS comme première section, l'élément `<iframe>` reste le même (une
+  propriété posée à la main dessus survit) mais son document change : l'ancien est détaché, la marque posée dans sa page a disparu.
+  Avec GFS et Publipostage+ ouverte, GFS repart de zéro (l'explorateur, plus d'app), comme à un changement d'accès (contrats 3.1,
+  point 6). **Non mesuré** : les autres changements de mise en page (déplacer, redimensionner, retirer une section).
 
 ## 3. Grist : données
 

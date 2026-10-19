@@ -130,11 +130,22 @@ export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', 
     }
   });
   // Le miroir des CDN ne rend pas toujours les octets exacts du CDN (les paquets esm.sh) : l'attribut `integrity` est neutralisé, sauf dans les sondes
-  // (labo/sondes/), où l'empreinte est une mesure (à l'adresse du CDN de Plotly, le miroir rend la copie de GFS : même empreinte que le CDN).
+  // (labo/sondes/), où l'empreinte est une mesure (à l'adresse du CDN de Plotly, le miroir rend la copie de GFS : même empreinte que le CDN), et sauf pour un
+  // script que GFS sert lui-même (`vendor/`, la copie de GFS d'une bibliothèque d'extension) : ses octets sont ceux que le catalogue empreint, le navigateur
+  // contrôle donc l'empreinte pour de bon, y compris pour un module dans un sous-cadre à origine opaque.
   await page.addInitScript(() => {
     try {
       if (location.pathname.includes('/labo/sondes/')) return;
-      Object.defineProperty(HTMLScriptElement.prototype, 'integrity', { configurable: true, get: () => '', set: () => {} });
+      const real = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'integrity');
+      const fromGfs = (script) => {
+        const src = script.getAttribute('src');
+        try { return Boolean(src) && new URL(src, location.href).origin === 'http://127.0.0.1:8911'; } catch (e) { return false; }
+      };
+      Object.defineProperty(HTMLScriptElement.prototype, 'integrity', {
+        configurable: true,
+        get() { return fromGfs(this) ? real.get.call(this) : ''; },
+        set(value) { if (fromGfs(this)) real.set.call(this, value); },
+      });
     } catch (e) { /* déjà posé */ }
   });
   await page.addInitScript((l) => { try { if (location.port === '8911') localStorage.setItem('pp_lang', l); } catch (e) { /* stockage indisponible */ } }, lang);

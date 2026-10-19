@@ -18,6 +18,9 @@ REPO_DIR="$(realpath ../..)" node run-ordre.mjs                   # un essai ; l
 Le miroir ne construit que les bibliothèques de l'app. Celles que GFS porte (Plotly, pour le graphique) n'y sont pas : à leur adresse de CDN, le labo
 rend la copie de GFS (`vendor/…`, nommée par `bibliotheques/catalogue.json`), qui a les mêmes octets et la même empreinte que le CDN.
 
+L'attribut `integrity` des scripts est neutralisé (le miroir ne rend pas toujours les octets exacts du CDN), sauf dans les sondes et pour un script que GFS sert
+lui-même (`vendor/…`) : là, le navigateur contrôle l'empreinte pour de bon, y compris pour un module dans un sous-cadre à origine opaque.
+
 Variables utiles : `LAB_LANG=fr|en`, `LAB_SCHEME=light|dark`, `LAB_BROWSER=chromium|firefox|webkit` (les deux derniers : sur une machine qui les a),
 `LAB_CONSOLE=error|all` (la console du navigateur), `LAB_BYPASS_CSP=1` (diagnostic seulement, jamais une mesure).
 
@@ -31,6 +34,7 @@ Variables utiles : `LAB_LANG=fr|en`, `LAB_SCHEME=light|dark`, `LAB_BROWSER=chrom
 | `run-ouvrir` | GFS demande à l'app déjà ouverte d'ouvrir le fichier cliqué (contrats 5.4) : la sonde O (`sondes/o-ouvrir/`) répond comme Publipostage+ (consigne 010) ; double-clic, « Nouveau », annulation, erreur, appel inconnu, attente |
 | `run-ouvrir-publipostage` | la même porte avec la vraie Publipostage+ (la version que GFS référence) : le double-clic lance l'app sur le modèle cliqué, avant le ★ ; l'app déjà ouverte change de modèle sans se recharger ; la question « Enregistrer / Abandonner / Annuler » dans le panneau (GFS attend sans rien dire) ; un fichier d'un dossier ; « Nouveau » garde la phrase provisoire ; rien d'écrit par l'ouverture. L'enregistrement automatique de l'app (2,5 s) peut passer entre la frappe et la demande : l'essai recommence alors (huit fois au plus) |
 | `run-sans-cdn` | une extension dont la bibliothèque n'a pas de CDN (un fichier assemblé par GFS, contrats 2.6 point 11) dans la fenêtre « Apps et extensions » : le CDN grisé avec la raison, la copie de GFS choisie, rien d'écrit sans un geste, l'extension du graphique inchangée. Les données sont les vraies (l'extension « Édition collaborative » de Publipostage+ et `edition-live` du catalogue), à la vraie souris, `LAB_LANG` et `LAB_SCHEME` |
+| `run-edition` | l'écriture en direct de Publipostage+ de bout en bout, avec les vraies données : la fenêtre « Apps et extensions » coche « Édition collaborative », l'app reçoit le fichier assemblé `edition-live` (adresse, empreinte, forme « module »), ne le demande qu'au premier clic, le charge dans son sous-cadre isolé sous sa politique, et le direct démarre par le menu de l'app ; la table `Publipostage_Direct` naît par le courtier, se remplit à la frappe et se vide à l'arrêt. Seconde partie : une fausse empreinte dans le catalogue, le navigateur refuse le fichier et l'app le dit. Il faut l'app à la référence de GFS dans `prototype/apps/publipostage/` et son miroir (`build-mirror.sh`) |
 | `run-courtier` | le courtier avec le vrai script d'API de Grist : rejeu, `configure`, jeton, noms de tables |
 | `run-capacites` | ce qu'une app peut faire dans son sous-cadre (stockage, impression, téléchargements, fenêtres, presse-papiers, navigation) ; `CAP_CONFIG=grist` : la même sonde sans GFS |
 | `run-impression` | « Print widget » de Grist relayé à l'app active |

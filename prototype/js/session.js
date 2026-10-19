@@ -3,7 +3,7 @@
 import { AppPeer } from './rpc.js';
 import { EnvelopePeer, isEnvelope } from './envelope.js';
 import { makePolicy, lowestAccess, levelOf } from './filter.js';
-import { sliceOf, sliceChanged } from './options-slice.js';
+import { optionsFor, contentChanged } from './options-slice.js';
 import { makeCallHandler } from './broker.js';
 import { frameUrl, buildFrame } from './frames.js';
 import { label } from './manifest.js';
@@ -17,7 +17,7 @@ export class AppSession {
   #envelope = null;
   #unsubscribe = null;
   #timers = [];
-  #lastSlice;
+  #lastContent;
 
   // ctx : { entry, manifest, catalogue, state, port, router, container, readonly, preferences, base, lang, onStatus, envelopeHandlers(session) }
   constructor(ctx) {
@@ -92,12 +92,12 @@ export class AppSession {
     if (data && data.message === 'themeInitialized') this.#reveal();
   }
 
-  // Le rejeu de l'état à l'app qui devient prête (contrats 4.2, point 2) : réglages, thème, état de la table.
+  // Le rejeu de l'état à l'app qui devient prête (contrats 4.2, point 2) : réglages, thème, état de la table avec la ligne courante d'à présent.
   #onReady() {
     const { state } = this.ctx;
     if (state.options) this.#sendOptions(state.options, true);
     if (state.theme) this.#sendTheme(state.theme, true);
-    if (state.table) this.#sendTable(state.table, true);
+    if (state.table) this.#sendTable(state.tableNow(), true);
     this.ctx.onStatus('ready', this);
     this.#timers.push(setTimeout(() => this.#reveal(), REVEAL_TIMEOUT_MS));
   }
@@ -112,12 +112,12 @@ export class AppSession {
     }
   }
 
+  // La tranche de l'app et le lien « Select by » de la section : un changement de l'un ou de l'autre est transmis, le reste des réglages jamais (contrats 4.2, point 3).
   #sendOptions(message, fromReady) {
-    const slice = sliceOf(message.options, this.policy.reglages);
-    if (!fromReady && !sliceChanged(this.#lastSlice, slice)) return;
-    this.#lastSlice = slice;
-    const linking = message.settings && message.settings.linking;
-    this.#peer.postMessage({ options: slice, settings: { accessLevel: this.access, linking }, fromReady: fromReady || undefined });
+    const content = optionsFor(message, this.policy.reglages);
+    if (!fromReady && !contentChanged(this.#lastContent, content)) return;
+    this.#lastContent = content;
+    this.#peer.postMessage({ options: content.options, settings: { accessLevel: this.access, linking: content.linking }, fromReady: fromReady || undefined });
   }
 
   #sendTheme(message, fromReady) {

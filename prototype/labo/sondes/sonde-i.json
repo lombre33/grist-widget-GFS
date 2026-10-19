@@ -1,0 +1,31 @@
+{
+  "contrat": 0,
+  "id": "sonde-i",
+  "nom": {
+    "fr": "Sonde I",
+    "en": "Probe I"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Une app qui s'abonne à la ligne choisie et au lien « Select by », comme le mode lecture de Publipostage+",
+    "en": "An app that subscribes to the chosen row and the “Select by” link, like Publipostage+ reading mode"
+  },
+  "icone": "info",
+  "entree": "index.html",
+  "tables": {
+    "prefixe": "SondeI_"
+  },
+  "reglages": [],
+  "permissions": {
+    "acces": "full",
+    "lit": [
+      "*"
+    ],
+    "ecrit": []
+  },
+  "extensions": [],
+  "actions": {
+    "ouvrir": [],
+    "choisir": []
+  }
+}

@@ -606,11 +606,20 @@ mesurés, pas une promesse (cahier 1.3, 8).
 1. [T] Comme Grist, le courtier **garde tout ce qu'il envoie à l'app, réponses comprises, jusqu'au message `ready` (`mtype` 5)
    de l'app**. L'app envoie `ready` par `grist.ready()`, puis un appel `configure` (4.3).
 2. [T] À la réception de `ready`, le courtier **rejoue** à l'app, dans cet ordre, le dernier `options`, le dernier `theme` et
-   le dernier état de table (avec `dataChange: true` et `mappingsChange: true`), avec `fromReady: true` (le champ qui déclenche
+   l'état de la table (avec `dataChange: true` et `mappingsChange: true`), avec `fromReady: true` (le champ qui déclenche
    `themeInitialized` chez le script d'API). Sans ce rejeu, une app qui démarre après GFS n'apprendrait jamais le nom de
-   sa table : `grist.getTable()` et `onRecords` en dépendent.
-3. [T] Ensuite, chaque événement de Grist est transmis dès qu'il arrive, reconstruit selon 4.3. Un événement dont le
-   contenu pour l'app n'a pas changé (une clé de GFS ou d'une autre app dans les réglages) n'est pas transmis.
+   sa table : `grist.getTable()` et `onRecords` en dépendent. **La ligne de ce rejeu est la ligne d'à présent**, pas celle du
+   dernier message de table : au `ready`, Grist ne dit la ligne que dans son message de table, et ne le refait que quand la table
+   change ; la ligne que la personne choisit ensuite, dans le widget que la section suit (« Select by »), n'arrive que dans
+   un message de ligne. GFS garde donc le plus récent des deux messages et rejoue la ligne de celui-là (`GristState.tableNow`).
+   Mesuré le 19/10 (labo, `run-select-by.mjs`) : en rejouant le message de table tel quel, une app ouverte après le choix d'une
+   ligne lisait la ligne du démarrage de GFS (le mode lecture de Publipostage+ montrait le premier client).
+3. [T] Ensuite, chaque événement de Grist est transmis dès qu'il arrive, reconstruit selon 4.3. Un événement de réglages dont le
+   contenu pour l'app n'a pas changé (une clé de GFS ou d'une autre app dans les réglages) n'est pas transmis. Ce contenu est
+   **la tranche de l'app et le lien « Select by » de la section** (`settings.linking`) : un changement du lien seul est transmis,
+   car c'est ainsi que Grist dit à une app que sa section vient d'être reliée à un autre widget, ou ne l'est plus
+   (`getLinkState()` de Publipostage+). Mesuré le 19/10 (labo, `run-select-by.mjs`) : en ne comparant que la tranche, une app
+   ouverte gardait le lien qu'elle avait à l'ouverture.
 4. [T] Les appels de l'app avant `ready` sont reçus et exécutés ; seule leur réponse attend `ready`.
 5. [T] Un appel venu d'un sous-cadre qui n'est pas le sous-cadre actif reçoit `GFS_INACTIF` (3.6), sauf la réponse à un appel que
    GFS lui a fait (par exemple `fermer`) : un sous-cadre qu'on remplace ne parle plus à Grist pendant qu'il se ferme.
@@ -639,7 +648,7 @@ Le niveau minimal est celui que Grist exige de GFS (`CustomView.ts`, `WidgetFram
 | Événement (`mtype` 4) | Champs transmis |
 |---|---|
 | ligne courante (`onRecord`) et table (`onRecords`) | `tableId`, `rowId`, `dataChange`, `mappingsChange` ; niveau minimal `read table` |
-| réglages (`onOptions`) | `options` : la tranche de l'app, ou `null` ; `settings` : `accessLevel` de l'**app** et `linking` tel que Grist le dit pour la section ; `fromReady` |
+| réglages (`onOptions`) | `options` : la tranche de l'app, ou `null` ; `settings` : `accessLevel` de l'**app** et `linking` tel que Grist le dit pour la section (transmis à chaque changement du lien, 4.2 point 3) ; `fromReady` |
 | thème | `theme` et `fromReady`, tels que Grist les envoie : le script d'API de l'app applique les variables de thème de lui-même, comme aujourd'hui |
 
 **`configure`** (envoyé par `grist.ready()` de l'app) n'est jamais relayé. Le courtier répond sans erreur et :

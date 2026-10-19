@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Sonde I</title>
+<!-- Politique de l'app sonde I : celle de Publipostage+ pour le script d'API de Grist (adresse entière, 'unsafe-eval'), rien d'autre. -->
+<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'">
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+</head>
+<body>
+<p>Sonde I : une app qui s'abonne à la ligne choisie et au lien « Select by » de sa section comme Publipostage+, avec le vrai script d'API de Grist. Le labo lit <code>body[data-lecture]</code>.</p>
+<script src="lecture.js"></script>
+</body>
+</html>

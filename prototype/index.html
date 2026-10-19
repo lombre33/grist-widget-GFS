@@ -10,7 +10,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-ssGAuy655Y2SytX7w/W1w0zoi2kfULU4l+yCIKdgRi8='; style-src 'self'; img-src 'self' data:; frame-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-6rXbNExK/3+ld22Ujx7BMIx5COUgba5cjoR096S9fcY='; style-src 'self'; img-src 'self' data:; frame-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=f161bd6e01">
 <link rel="stylesheet" href="css/explorer.css?v=fba09688cb">
 <link rel="stylesheet" href="css/modules.css?v=4cfbac62f5">
@@ -44,13 +44,13 @@
     "./js/menu.js": "./js/menu.js?v=de960bc759",
     "./js/modules-model.js": "./js/modules-model.js?v=f215489de1",
     "./js/modules-window.js": "./js/modules-window.js?v=0e6101b668",
-    "./js/options-slice.js": "./js/options-slice.js?v=5a2aa14e5f",
+    "./js/options-slice.js": "./js/options-slice.js?v=f99c742fb4",
     "./js/rangement.js": "./js/rangement.js?v=18acba24ff",
     "./js/rpc.js": "./js/rpc.js?v=ab5d5f19e0",
     "./js/search.js": "./js/search.js?v=0921c92eb3",
-    "./js/session.js": "./js/session.js?v=63b79dba5f",
+    "./js/session.js": "./js/session.js?v=be48a1d8be",
     "./js/settings.js": "./js/settings.js?v=a425d4248c",
-    "./js/state.js": "./js/state.js?v=27bc2b5e23"
+    "./js/state.js": "./js/state.js?v=289f010ea6"
   }
 }
 </script>

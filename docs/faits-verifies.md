@@ -51,6 +51,21 @@ réponses, sans que l'app change.
   document** ; `GristViewImpl.fetchSelectedTable` lit au contraire la copie en mémoire de la section (`sortedRows`,
   `tableData`) et ne rend que la table de la section. `TableNotifier` n'écoute que les champs (`viewFields`), les lignes
   (`sortedRows`, `rowNotify`) et le mappage de la **section** : rien ne prévient un widget du changement d'une autre table.
+- Lu le 19/10 (mêmes sources de grist-static 0.1.6) : **la ligne choisie ne passe pas par les mêmes messages au `ready` et ensuite.**
+  `RecordNotifier` (ligne 653) n'envoie son message de ligne (`{ tableId, rowId, dataChange: false }`) qu'au **changement de
+  ligne** de la section, jamais au `ready` ; `TableNotifier._ready` (ligne 798) envoie, au `ready`, le message de table avec le
+  `rowId` d'alors (ligne 808) et ne le refait que si les champs, les lignes ou le mappage de la section changent. Choisir une ligne dans
+  le widget que la section suit (« Select by ») ne refait donc pas le message de table. Côté widget, `onRecord`
+  (`grist-plugin-api.ts`, ligne 376) réagit à **tout** message qui porte un `tableId` et un `rowId` (celui de table compris), puis relit la ligne
+  par `fetchSelectedRecord`. `ConfigNotifier` (ligne 681) redit le message de réglages, avec `settings.linking`
+  `{ asTarget, asSource }`, à chaque changement des réglages **ou du lien** de la section (lignes 688 à 745) ; `asTarget` est la
+  description du lien entrant (`linkTypeDescription`), `null` sans lien.
+- Mesuré le 19/10 dans un vrai Grist (grist-static 0.1.6, Chromium, `labo/run-select-by.mjs`, la sonde I et le vrai Publipostage+) :
+  section de GFS reliée au tableau CLIENTS (« Select by »), `settings.linking.asTarget` = `"Cursor:Same-Table"` (`null` quand le lien
+  est retiré), puis la ligne 2 choisie **avant** d'ouvrir l'app : GFS qui rejouait le message de table du démarrage disait la ligne 1, et
+  l'app lisait le mauvais client ; le lien retiré ou posé après l'ouverture n'arrivait pas à l'app (le message de réglages ne
+  différait du précédent que par `linking`, et GFS ne comparait que la tranche de l'app). Les lignes choisies **après**
+  l'ouverture arrivaient correctement (messages de ligne relayés).
 - Mesuré le 16/10 dans un vrai Grist (grist-static 0.1.6, Chromium 141, `labo/run-direct.mjs`) : trois widgets de
   `labo/sondes/direct/` sur deux tables d'un document de test, dans une seule page donc une seule horloge. Un widget écrit
   une ligne ; les autres notent l'heure où ils la voient. Médiane sur 40 lignes, **sans réseau** (le moteur de Grist tourne dans le

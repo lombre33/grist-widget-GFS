@@ -16,6 +16,7 @@ export class GristState {
   theme = null;
   table = null;
   record = null;
+  cursor = null; // { tableId, rowId } : la ligne courante, d'après le plus récent des messages de ligne et de table
   #listeners = new Set();
   #waiters = [];
 
@@ -24,6 +25,7 @@ export class GristState {
     const kind = classify(message);
     if (!kind) return null;
     this[kind] = message;
+    if (kind === 'table' || kind === 'record') this.cursor = { tableId: message.tableId, rowId: message.rowId };
     if (kind === 'options') this.#waiters.splice(0).forEach(resolve => resolve(message));
     for (const listener of this.#listeners) listener(kind, message);
     return kind;
@@ -33,6 +35,11 @@ export class GristState {
     this.#listeners.add(listener);
     return () => this.#listeners.delete(listener);
   }
+
+  // L'état de la table qu'un widget qui devient prêt maintenant recevrait de Grist : le dernier message de table, avec la ligne courante. Au `ready`, Grist ne dit la ligne
+  // que dans le message de table (le message de ligne ne part qu'au changement de ligne, `RecordNotifier`), et ne le refait que quand la table change : rejouer le dernier
+  // message de table tel quel redirait la ligne du démarrage de GFS, pas celle que la personne a choisie depuis, dans le widget lié (« Select by »).
+  tableNow() { return this.table && { ...this.table, ...this.cursor }; }
 
   // Les réglages de la section : le dernier objet complet que Grist a envoyé, ou null.
   get allOptions() { return this.options && this.options.options ? this.options.options : null; }

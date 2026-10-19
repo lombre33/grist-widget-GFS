@@ -131,7 +131,7 @@ test('extensionsState : ce que l\'app reçoit (adresse, empreinte et forme seule
   assert.deepEqual(extensionsState(pub, { extensions: ['graphique'], modes: {} }, empty, base).extensions, [], 'une bibliothèque absente du catalogue : l\'extension n\'est pas servie');
 });
 
-// Un fichier assemblé par GFS (2.6, points 8 à 11) : sans CDN tant que GFS n'a pas d'adresse publique, la copie de GFS est son seul mode.
+// Un fichier assemblé par GFS (2.6, points 8 à 11) : sans CDN quand GFS n'a pas d'adresse publique épinglée, la copie de GFS est son seul mode.
 const SRI_MODULE = `sha384-${'C'.repeat(64)}`;
 const withModule = readCatalogue({ bibliotheques: [{
   id: 'edition-live', version: '1.0.0', forme: 'module', poids: 145862,
@@ -152,15 +152,15 @@ test('une extension dont la bibliothèque n\'a pas de CDN : la copie de GFS est 
   assert.equal(libraryModes(live, { extensions: ['edition'], modes: {} }, ['edition']).get('edition-live'), 'cdn', 'sans catalogue, le réglage seul décide');
 });
 
-test('le manifeste et le catalogue réels s\'accordent : chaque extension a ses bibliothèques, l\'édition collaborative n\'a que la copie de GFS', () => {
+test('le manifeste et le catalogue réels s\'accordent : chaque extension a ses bibliothèques, l\'édition collaborative a ses deux modes, le CDN par défaut', () => {
   const real = readCatalogue(readJson('bibliotheques/catalogue.json'));
   assert.deepEqual(pub.extensions.map(extension => extension.id), ['graphique', 'edition', 'diapositives']);
   assert.deepEqual(pub.extensions.flatMap(extension => missingLibraries(extension, real)), [], 'aucune extension déclarée n\'est grisée par le catalogue');
   const rows = extensionRows(pub, { extensions: ['graphique', 'edition'], modes: {} }, real);
   const edition = rows.find(row => row.extension.id === 'edition');
   assert.equal(edition.greyed, false);
-  assert.equal(edition.noCdn, true);
-  assert.equal(edition.mode, 'vendorise');
+  assert.equal(edition.noCdn, false, 'GFS épingle un commit de son dépôt public : jsDelivr sert le fichier assemblé');
+  assert.equal(edition.mode, 'cdn');
   assert.deepEqual(edition.libraries.map(lib => `${lib.id}@${lib.version}`), ['edition-live@1.0.0']);
   assert.ok(edition.libraries[0].poids > 100000, 'le poids du fichier assemblé est celui du catalogue');
   const state = extensionsState(pub, { extensions: ['edition'], modes: {} }, real, 'https://exemple.test/gfs/');
@@ -168,8 +168,13 @@ test('le manifeste et le catalogue réels s\'accordent : chaque extension a ses 
   assert.deepEqual(Object.keys(state.bibliotheques), ['edition-live']);
   const given = state.bibliotheques['edition-live'];
   assert.equal(given.forme, 'module');
-  assert.equal(given.src, 'https://exemple.test/gfs/vendor/edition-live/1.0.0/edition-live.js');
+  assert.match(given.src, /^https:\/\/cdn\.jsdelivr\.net\/gh\/lombre33\/grist-widget-GFS@[0-9a-f]{40}\/prototype\/vendor\/edition-live\/1\.0\.0\/edition-live\.js$/);
   assert.match(given.integrite, /^sha384-[A-Za-z0-9+/]{64}$/);
+  assert.equal(state.details['edition-live'].mode, 'cdn');
+  const local = extensionsState(pub, { extensions: ['edition'], modes: { edition: 'vendorise' } }, real, 'https://exemple.test/gfs/').bibliotheques['edition-live'];
+  assert.equal(local.src, 'https://exemple.test/gfs/vendor/edition-live/1.0.0/edition-live.js');
+  assert.equal(local.integrite, given.integrite, 'les deux modes portent la même empreinte : un seul fichier, deux adresses');
+  assert.equal(local.forme, 'module');
 });
 
 // Une extension sans bibliothèque (les diapositives de Publipostage+ : un type de fichier et une ligne de menu, du code qui reste dans l'app).

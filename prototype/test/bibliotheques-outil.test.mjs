@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { integrity, readList, buildEntry, checkFiles, checkCdn, ROOT } from '../outils/bibliotheques.mjs';
+import { integrity, readList, readPublication, githubAddress, buildEntry, checkFiles, checkCdn, verify, ROOT } from '../outils/bibliotheques.mjs';
 
 const pkg = extra => ({ dependencies: { 'plotly.js-basic-dist-min': '2.13.2' }, gfs: { bibliotheques: { plotly: { paquet: 'plotly.js-basic-dist-min', fichier: 'plotly-basic.min.js' } } }, ...extra });
 const BYTES = Buffer.from('console.log("exemple")');
@@ -51,8 +51,18 @@ test('checkCdn : le CDN sert le même fichier, un autre, ou ne répond pas', asy
   assert.match((await checkCdn(catalogue, async () => { throw new Error('HTTP 503'); }))[0], /n'a pas répondu \(HTTP 503\)/);
 });
 
-test('les fichiers commités (liste, catalogue, copie vendorisée) sont cohérents', () => {
-  const list = readList(JSON.parse(readFileSync(join(ROOT, 'bibliotheques/package.json'), 'utf8')));
+test('les fichiers commités (liste, catalogue, copie vendorisée, commit épinglé) sont cohérents', () => {
+  assert.deepEqual(verify(ROOT).problems, []);
+});
+
+test('la liste de GFS épingle un commit complet de son dépôt public, et le CDN du fichier assemblé est l\'adresse jsDelivr de ce commit', () => {
+  const packageJson = JSON.parse(readFileSync(join(ROOT, 'bibliotheques/package.json'), 'utf8'));
+  const publication = readPublication(packageJson);
+  assert.match(publication.commit, /^[0-9a-f]{40}$/, 'jamais une branche ni une étiquette : elles bougent sous l\'empreinte');
+  assert.equal(publication.racine, 'prototype/', 'GFS est le dossier prototype/ de son dépôt');
   const catalogue = JSON.parse(readFileSync(join(ROOT, 'bibliotheques/catalogue.json'), 'utf8'));
-  assert.deepEqual(checkFiles(catalogue, list, path => readFileSync(join(ROOT, path))), []);
+  const live = catalogue.bibliotheques.find(entry => entry.id === 'edition-live');
+  assert.equal(live.cdn.src, githubAddress(publication, live.vendorise.chemin));
+  assert.equal(live.cdn.integrite, live.vendorise.integrite);
+  assert.equal(catalogue.bibliotheques.find(entry => entry.id === 'plotly').cdn.src.includes('/gh/'), false, 'Plotly reste servi depuis npm, octet pour octet');
 });

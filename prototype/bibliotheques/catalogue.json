@@ -59,7 +59,10 @@
         "prosemirror-transform",
         "prosemirror-view"
       ],
-      "cdn": null,
+      "cdn": {
+        "src": "https://cdn.jsdelivr.net/gh/lombre33/grist-widget-GFS@cc8707c2ff18a32fd8f43a92a3e1a3026579f713/prototype/vendor/edition-live/1.0.0/edition-live.js",
+        "integrite": "sha384-FVwm2wpVR0CpCNfOg5gpvarCdXlhtI52aCc1Ea/a4wvcy0UUw0/vP4NTBn7KMSU4"
+      },
       "vendorise": {
         "chemin": "vendor/edition-live/1.0.0/edition-live.js",
         "integrite": "sha384-FVwm2wpVR0CpCNfOg5gpvarCdXlhtI52aCc1Ea/a4wvcy0UUw0/vP4NTBn7KMSU4"

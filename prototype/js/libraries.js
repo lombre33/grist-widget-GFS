@@ -2,20 +2,28 @@
 // quelle empreinte. Il est livré avec GFS (bibliotheques/catalogue.json, tiré de bibliotheques/package.json par outils/bibliotheques.mjs) :
 // l'adresse d'une bibliothèque n'est jamais lue dans un réglage, une table ou un message d'une app (cahier 3.2, point 3).
 // Une entrée est soit un script classique (Plotly : `<script src>`, un nom global), soit un fichier assemblé par GFS, de forme `module` (2.6, points 8
-// à 11), qui n'a pas d'adresse de CDN (`cdn: null`) tant que GFS n'a pas d'adresse publique : sa copie est alors son seul mode.
+// à 11). Le CDN d'un fichier assemblé est jsDelivr, qui sert le dépôt public de GFS à un commit complet ; sans dépôt public épinglé, il n'a pas
+// d'adresse de CDN (`cdn: null`) et sa copie est son seul mode.
 // Du code sans effet de bord : il lit, valide, résout ; le contrôleur charge le fichier.
 
 import { isSafePath, LIBRARY_ID_RE, EXACT_VERSION_RE } from './manifest.js';
 
 // Les seules adresses de CDN que GFS accepte au catalogue, chacune ajoutée en conscience avec ce qu'elle sert à faire :
-//  - cdn.jsdelivr.net : le fichier d'un paquet npm, octet pour octet (plotly.js-basic-dist-min, le moteur du graphique).
+//  - cdn.jsdelivr.net/npm/ : le fichier d'un paquet npm, octet pour octet (plotly.js-basic-dist-min, le moteur du graphique) ; le paquet et sa version
+//    exacte sont dans l'adresse que l'outil écrit et contrôle ;
+//  - cdn.jsdelivr.net/gh/ : un fichier du dépôt public de GFS à un commit complet (le fichier assemblé de l'écriture en direct, que GFS ne tire d'aucun
+//    paquet). Une branche ou une étiquette bougerait sous l'empreinte : l'adresse nomme le commit en entier.
 export const CDN_HOSTS = Object.freeze(['cdn.jsdelivr.net']);
+const GITHUB_PINNED_RE = /^\/gh\/[^/@]+\/[^/@]+@[0-9a-f]{40}\/[^/]/;
 export const MODES = Object.freeze(['cdn', 'vendorise']);
 export const DEFAULT_MODE = 'cdn';
 export const FORMS = Object.freeze(['script', 'module']);
 export const DEFAULT_FORM = 'script';
 const SRI_RE = /^sha384-[A-Za-z0-9+/]{64}$/;
 const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+
+const githubProblem = url => (url.pathname.startsWith('/gh/') && !GITHUB_PINNED_RE.test(url.pathname)
+  ? 'cdn.src : une adresse /gh/ nomme le dépôt et un commit complet (40 chiffres hexadécimaux), jamais une branche ni une étiquette' : null);
 
 function cdnProblem(cdn) {
   if (cdn === null) return null; // pas d'adresse publique de GFS : la copie est le seul mode (2.6, point 11)
@@ -24,6 +32,8 @@ function cdnProblem(cdn) {
   try { url = new URL(cdn.src); } catch (error) { return 'cdn.src n\'est pas une adresse'; }
   if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) return 'cdn.src doit être une adresse https sans identifiants ni requête';
   if (!CDN_HOSTS.includes(url.hostname)) return `cdn.src : ${url.hostname} n'est pas un CDN de GFS`;
+  const unpinned = githubProblem(url);
+  if (unpinned) return unpinned;
   return SRI_RE.test(cdn.integrite || '') ? null : 'cdn.integrite : sha384 en base 64 attendu';
 }
 

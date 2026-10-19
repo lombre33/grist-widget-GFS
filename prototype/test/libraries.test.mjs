@@ -69,7 +69,8 @@ test('forContext : l\'adresse, l\'empreinte et la forme, rien d\'autre', () => {
   assert.deepEqual(forContext(libraries), { plotly: { src: entry().cdn.src, integrite: SRI, forme: 'script' } });
 });
 
-// Un fichier assemblé par GFS (2.6, points 8 à 11) : forme module, ce qu'il contient et range, et pas de CDN tant que GFS n'a pas d'adresse publique.
+// Un fichier assemblé par GFS (2.6, points 8 à 11) : forme module, ce qu'il contient et range ; son CDN est l'adresse jsDelivr du dépôt public de GFS à un
+// commit épinglé, ou aucun (`cdn: null`) quand GFS n'a pas d'adresse publique.
 const assembled = (extra = {}) => ({
   id: 'edition-live', version: '1.0.0', forme: 'module', poids: 145862,
   contient: [{ paquet: 'yjs', version: '13.6.33' }, { paquet: 'lib0', version: '0.2.119' }], modules: ['yjs'], externes: ['prosemirror-state'],
@@ -106,6 +107,45 @@ test('resolveLibraries : sans CDN, la copie de GFS sert quel que soit le mode de
   assert.equal(asked.libraries.plotly.mode, 'cdn', 'les autres bibliothèques gardent leur mode');
   assert.equal(asked.libraries.plotly.forme, 'script');
   assert.deepEqual(forContext(asked.libraries)['edition-live'], { src: asked.libraries['edition-live'].src, integrite: SRI, forme: 'module' });
+});
+
+const COMMIT = 'cc8707c2ff18a32fd8f43a92a3e1a3026579f713';
+const github = (ref = COMMIT, path = 'prototype/vendor/edition-live/1.0.0/edition-live.js', repo = 'lombre33/grist-widget-GFS') => `https://cdn.jsdelivr.net/gh/${repo}@${ref}/${path}`;
+
+test('readCatalogue : une adresse jsDelivr du dépôt de GFS nomme un commit complet, jamais une branche, une étiquette ni un commit abrégé', () => {
+  const at = (version, src) => assembled({ version, cdn: { src, integrite: SRI } });
+  const bad = [
+    at('1.0.1', github('main')),
+    at('1.0.2', github('v1.0.0')),
+    at('1.0.3', github('cc8707c')),
+    at('1.0.4', github('cc8707c2ff18a32fd8f43a92a3e1a3026579f71')),
+    at('1.0.5', github('CC8707C2FF18A32FD8F43A92A3E1A3026579F713')),
+    at('1.0.6', 'https://cdn.jsdelivr.net/gh/lombre33/grist-widget-GFS/prototype/vendor/edition-live/1.0.0/edition-live.js'),
+    at('1.0.7', `https://cdn.jsdelivr.net/gh/lombre33@${COMMIT}/x.js`),
+    at('1.0.8', `https://cdn.jsdelivr.net/gh/lombre33/grist-widget-GFS@${COMMIT}`),
+    at('1.0.9', `https://cdn.jsdelivr.net/gh/lombre33/grist-widget-GFS@${COMMIT}/`),
+  ];
+  const { entries, errors } = read([at('1.0.0', github()), ...bad]);
+  assert.deepEqual([...entries.keys()], ['edition-live@1.0.0']);
+  assert.equal(errors.length, bad.length);
+  assert.match(errors.join('\n'), /une adresse \/gh\/ nomme le dépôt et un commit complet \(40 chiffres hexadécimaux\), jamais une branche ni une étiquette/);
+  assert.equal(read([at('1.0.0', 'https://cdn.jsdelivr.net/npm/yjs@13.6.33/dist/yjs.mjs')]).entries.size, 1, 'une adresse /npm/ garde sa règle : le paquet et la version sont dans l\'adresse que l\'outil écrit');
+  assert.match(read([at('1.0.0', github(COMMIT, 'x.js').replace('cdn.jsdelivr.net', 'raw.githubusercontent.com'))]).errors[0], /raw\.githubusercontent\.com n'est pas un CDN de GFS/, 'seul jsDelivr sert GFS');
+});
+
+test('resolveLibraries : un fichier assemblé avec son CDN se sert par jsDelivr (le défaut) ou par la copie de GFS, de la même empreinte, sous la même forme', () => {
+  const catalogue = read([assembled({ cdn: { src: github(), integrite: SRI } })]);
+  const need = [{ id: 'edition-live', version: '1.0.0' }];
+  const cdn = resolveLibraries(catalogue, need, () => 'cdn', BASE);
+  assert.equal(cdn.libraries['edition-live'].mode, 'cdn');
+  assert.equal(cdn.libraries['edition-live'].src, github());
+  assert.equal(cdn.libraries['edition-live'].forme, 'module');
+  assert.deepEqual(forContext(cdn.libraries)['edition-live'], { src: github(), integrite: SRI, forme: 'module' });
+  const copy = resolveLibraries(catalogue, need, () => 'vendorise', BASE);
+  assert.equal(copy.libraries['edition-live'].mode, 'vendorise');
+  assert.equal(copy.libraries['edition-live'].src, 'https://exemple.github.io/grist-widget-GFS/prototype/vendor/edition-live/1.0.0/edition-live.js');
+  assert.equal(copy.libraries['edition-live'].integrite, SRI);
+  assert.equal(resolveLibraries(catalogue, need, () => undefined, BASE).libraries['edition-live'].mode, 'cdn', 'le CDN est le défaut');
 });
 
 test('chaque bibliothèque qu\'une extension des manifestes livrés exige est au catalogue, en version exacte', () => {

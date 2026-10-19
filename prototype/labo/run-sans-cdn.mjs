@@ -1,16 +1,24 @@
-// Une extension dont la bibliothèque n'a pas de CDN (un fichier assemblé par GFS, tant que GFS n'a pas d'adresse publique : contrats 2.6, point 11), dans la
-// fenêtre « Apps et extensions » d'un vrai Grist (grist-static), à 700 × 400, à la vraie souris (Playwright : événements du pointeur du navigateur, jamais
-// dispatchEvent). LAB_LANG=fr|en, LAB_SCHEME=light|dark.
-// Les données sont les vraies : l'extension « Édition collaborative » du manifeste de Publipostage+ exige edition-live 1.0.0, dont l'entrée du catalogue n'a pas de CDN.
+// Une extension dont la bibliothèque n'a pas de CDN (un fichier assemblé par un GFS qui n'épingle aucun commit de son dépôt public, `gfs.publication` : contrats 2.6,
+// point 11), dans la fenêtre « Apps et extensions » d'un vrai Grist (grist-static), à 700 × 400, à la vraie souris (Playwright : événements du pointeur du navigateur,
+// jamais dispatchEvent). LAB_LANG=fr|en, LAB_SCHEME=light|dark.
+// Les données sont les vraies, sauf une, pour cet essai seulement : l'extension « Édition collaborative » du manifeste de Publipostage+ exige edition-live 1.0.0, dont
+// l'entrée du catalogue livré a son CDN (jsDelivr, au commit épinglé) ; le catalogue de cet essai le retire (`cdn: null`), comme celui d'un GFS sans dépôt public.
 // Ce que la fenêtre doit montrer : le CDN grisé avec la raison, la copie de GFS choisie, rien d'écrit dans les réglages sans un geste, et l'extension du graphique
 // (avec CDN) inchangée.
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { startLab } from './lab-setup.mjs';
-import { say, check } from './lab-common.mjs';
+import { say, check, LAB } from './lab-common.mjs';
+
+const catalogueText = readFileSync(join(LAB, '..', 'bibliotheques', 'catalogue.json'), 'utf8');
+const live = JSON.parse(catalogueText).bibliotheques.find(item => item.id === 'edition-live');
+const cdnBlock = `"cdn": {\n        "src": "${live.cdn.src}",\n        "integrite": "${live.cdn.integrite}"\n      }`;
+if (!catalogueText.includes(cdnBlock)) throw new Error('Le catalogue n\'a plus la forme que l\'essai remplace');
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
 const run = `sans-cdn-${lang}-${scheme}`;
-const lab = await startLab({ lang, colorScheme: scheme });
+const lab = await startLab({ lang, colorScheme: scheme, patches: [{ chemin: '/prototype/bibliotheques/catalogue.json', de: cdnBlock, vers: '"cdn": null' }] });
 const { page } = lab;
 await lab.fitPanel(undefined, 700, 400);
 const frame = lab.frame;
@@ -53,7 +61,8 @@ check('graphique : l\'option CDN reste choisie et libre', (await radio('graphiqu
 check('graphique : sa raison est celle du CDN, pas celle de l\'absence', /jsDelivr/.test(await option('graphique', 'cdn').locator('.rd-hint').innerText()));
 await lab.shotPanel(run, '1-deux-extensions');
 
-// ----- Un clic sur l'option grisée ne change rien (vraie souris, au centre de la ligne).
+// ----- Un clic sur l'option grisée ne change rien (vraie souris, au centre de la ligne, une fois la ligne amenée dans la fenêtre : à 700 × 400, la fenêtre défile).
+await option('edition', 'cdn').scrollIntoViewIfNeeded();
 const box = await option('edition', 'cdn').boundingBox();
 await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 await page.waitForTimeout(400);

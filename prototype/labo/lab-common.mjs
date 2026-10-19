@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
 import { readFile } from 'node:fs/promises';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readCatalogue } from '../js/libraries.js';
@@ -31,10 +31,18 @@ const UMD_BY_URL = [
 const LIBRARIES = (() => {
   try { return [...readCatalogue(JSON.parse(readFileSync(join(LAB, '..', 'bibliotheques', 'catalogue.json'), 'utf8'))).entries.values()]; } catch (error) { return []; }
 })();
+// Les adresses de CDN du catalogue de GFS (un fichier assemblé n'a un CDN que si GFS épingle un commit de son dépôt public : contrats 2.6, point 11). À chacune, le miroir
+// rend les octets EXACTS de la copie de GFS, ceux que le CDN sert (même empreinte, vérifiée par l'outil des bibliothèques) : le navigateur y contrôle l'empreinte pour de bon.
+const EXACT_ADDRESSES = LIBRARIES.filter(entry => entry.cdn).map(entry => entry.cdn.src);
+export function exactMirror(url) {
+  const u = new URL(url);
+  const library = LIBRARIES.find(entry => entry.cdn && entry.cdn.src === u.origin + u.pathname);
+  return library ? join(LAB, '..', library.vendorise.chemin) : null;
+}
 export function mirrored(url) {
   const u = new URL(url);
-  const library = LIBRARIES.find(entry => entry.cdn && entry.cdn.src === u.origin + u.pathname); // un fichier assemblé n'a pas de CDN (contrats 2.6, point 11)
-  if (library) return join(LAB, '..', library.vendorise.chemin);
+  const exact = exactMirror(url);
+  if (exact) return exact;
   if (u.hostname === 'esm.sh') {
     const base = u.pathname.split('/').pop();
     if (/^chunk-.*\.js$/.test(base)) return join(MIRROR, 'esm', base);
@@ -66,6 +74,45 @@ export function withFrameAttributes(text, { sandbox, allow } = {}) {
   return out;
 }
 
+// Les pages modifiées d'un essai : `add(corps)` les écrit dans un dossier que le serveur du labo sert (shots/, hors du dépôt) et rend l'adresse où le navigateur ira les chercher ;
+// elles disparaissent avec le navigateur.
+function servePages(browser) {
+  const dir = join(SHOTS, 'pages-modifiees');
+  mkdirSync(dir, { recursive: true });
+  const files = [];
+  browser.on('disconnected', () => files.forEach(file => rmSync(file, { force: true })));
+  return {
+    add(body) {
+      const name = `${process.pid}-${files.length}.html`;
+      files.push(join(dir, name));
+      writeFileSync(files.at(-1), body);
+      return `http://127.0.0.1:8911/prototype/labo/shots/pages-modifiees/${name}`;
+    },
+  };
+}
+
+// Des fichiers de GFS remplacés pour UN essai (le labo seul, le fichier publié n'est pas touché) : `{ fichier: 'filter.js', de: texte, vers: texte }` pour un module de js/,
+// `{ chemin: '/prototype/labo/reel/index.html', de, vers }` pour tout autre fichier du dépôt. Sert à affaiblir une défense pour mesurer celle qui la suit (le contrôle
+// de l'identifiant réel que Grist rend, après un jugement volontairement trop large), ou à ouvrir une adresse de test dans la politique d'une page de mesure.
+// Une page HTML modifiée n'est pas rendue par `fulfill` : le navigateur la prendrait pour un document d'adresse inconnue et refuserait (accès au réseau local) tous les
+// fichiers que son sous-cadre, à origine opaque, demande ensuite à 127.0.0.1. Elle arrive donc par le réseau, que le serveur du labo sert (même origine, sans quoi la politique
+// de GFS refuse le sous-cadre), sous l'adresse d'origine (le navigateur ne voit pas le détour).
+async function routePatches(browser, page, patches) {
+  let pagesServer = null;
+  for (const patch of patches) {
+    const path = patch.chemin || `/prototype/js/${patch.fichier}`;
+    await page.route(new RegExp(`${path.replace(/\./g, '\\.')}(\\?|$)`), async route => {
+      const response = await route.fetch();
+      const text = await response.text();
+      if (!text.includes(patch.de)) throw new Error(`Le labo ne retrouve pas « ${patch.de.slice(0, 40)} » dans ${path}`);
+      const body = text.replace(patch.de, patch.vers);
+      if (!path.endsWith('.html')) return route.fulfill({ response, body });
+      pagesServer = pagesServer || servePages(browser);
+      return route.continue({ url: pagesServer.add(body) });
+    });
+  }
+}
+
 export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', width = 1280, height = 800, probes = false, frameAttributes = null, patches = [] } = {}) {
   // L'interface de Grist reste en anglais (les gestes du labo cherchent ses libellés) ; la langue de GFS passe par l'adresse du widget (lab-setup.mjs).
   // La politique de sécurité du contenu de GFS et des apps est ENFORCÉE (LAB_BYPASS_CSP=1 pour la suspendre : un diagnostic, jamais une mesure).
@@ -90,18 +137,7 @@ export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', 
       });
     }
   }
-  // Des fichiers de GFS remplacés pour UN essai (le labo seul, le fichier publié n'est pas touché) : `{ fichier: 'filter.js', de: texte, vers: texte }` pour un module de js/,
-  // `{ chemin: '/prototype/labo/reel/index.html', de, vers }` pour tout autre fichier du dépôt. Sert à affaiblir une défense pour mesurer celle qui la suit (le contrôle
-  // de l'identifiant réel que Grist rend, après un jugement volontairement trop large), ou à ouvrir une adresse de test dans la politique d'une page de mesure.
-  for (const patch of patches) {
-    const path = patch.chemin || `/prototype/js/${patch.fichier}`;
-    await page.route(new RegExp(`${path.replace(/\./g, '\\.')}(\\?|$)`), async route => {
-      const response = await route.fetch();
-      const text = await response.text();
-      if (!text.includes(patch.de)) throw new Error(`Le labo ne retrouve pas « ${patch.de.slice(0, 40)} » dans ${path}`);
-      await route.fulfill({ response, body: text.replace(patch.de, patch.vers) });
-    });
-  }
+  await routePatches(browser, page, patches);
   page.on('pageerror', e => { if (process.env.LAB_CONSOLE) say('[pageerror]', e.message.slice(0, 200)); });
   page.on('console', m => { if (process.env.LAB_CONSOLE && (m.type() === 'error' || process.env.LAB_CONSOLE === 'all')) say('[console.' + m.type() + ']', `(${m.location().url.replace(/^http:\/\/127\.0\.0\.1:\d+/, '')}:${m.location().lineNumber})`, m.text().slice(0, 240)); });
   await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, async route => {
@@ -114,6 +150,11 @@ export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', 
       // captures. Cela ne touche en rien le protocole entre Grist et le widget.
       if (/gristlabs\.github\.io\/grist-widget\/manifest\.json/.test(url)) {
         return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: '[]' });
+      }
+      const exact = exactMirror(url);
+      if (exact && existsSync(exact)) {
+        // Comme jsDelivr : le type JavaScript et l'en-tête CORS (un module à empreinte, dans un sous-cadre à origine opaque, n'est pas contrôlé sans lui).
+        return route.fulfill({ status: 200, contentType: 'application/javascript; charset=utf-8', headers: { 'Access-Control-Allow-Origin': '*' }, body: await readFile(exact) });
       }
       const local = mirrored(url);
       if (local && existsSync(local)) {
@@ -130,16 +171,20 @@ export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', 
     }
   });
   // Le miroir des CDN ne rend pas toujours les octets exacts du CDN (les paquets esm.sh) : l'attribut `integrity` est neutralisé, sauf dans les sondes
-  // (labo/sondes/), où l'empreinte est une mesure (à l'adresse du CDN de Plotly, le miroir rend la copie de GFS : même empreinte que le CDN), et sauf pour un
+  // (labo/sondes/), où l'empreinte est une mesure (à l'adresse du CDN de Plotly, le miroir rend la copie de GFS : même empreinte que le CDN), sauf pour un
   // script que GFS sert lui-même (`vendor/`, la copie de GFS d'une bibliothèque d'extension) : ses octets sont ceux que le catalogue empreint, le navigateur
-  // contrôle donc l'empreinte pour de bon, y compris pour un module dans un sous-cadre à origine opaque.
-  await page.addInitScript(() => {
+  // contrôle donc l'empreinte pour de bon, y compris pour un module dans un sous-cadre à origine opaque, et sauf à une adresse de CDN du catalogue de GFS
+  // (`EXACT_ADDRESSES`), dont le miroir rend les octets exacts.
+  await page.addInitScript((exact) => {
     try {
       if (location.pathname.includes('/labo/sondes/')) return;
       const real = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'integrity');
       const fromGfs = (script) => {
         const src = script.getAttribute('src');
-        try { return Boolean(src) && new URL(src, location.href).origin === 'http://127.0.0.1:8911'; } catch (e) { return false; }
+        try {
+          const url = new URL(src, location.href);
+          return Boolean(src) && (url.origin === 'http://127.0.0.1:8911' || exact.includes(url.origin + url.pathname));
+        } catch (e) { return false; }
       };
       Object.defineProperty(HTMLScriptElement.prototype, 'integrity', {
         configurable: true,
@@ -147,7 +192,7 @@ export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', 
         set(value) { if (fromGfs(this)) real.set.call(this, value); },
       });
     } catch (e) { /* déjà posé */ }
-  });
+  }, EXACT_ADDRESSES);
   await page.addInitScript((l) => { try { if (location.port === '8911') localStorage.setItem('pp_lang', l); } catch (e) { /* stockage indisponible */ } }, lang);
   // Une app dans son sous-cadre n'a pas de stockage (sans allow-same-origin) : elle suit la langue du navigateur. Le labo la donne à ces cadres seulement.
   await page.addInitScript((l) => {

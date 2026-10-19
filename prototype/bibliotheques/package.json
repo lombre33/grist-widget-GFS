@@ -28,6 +28,11 @@
           }
         }
       }
+    },
+    "publication": {
+      "depot": "lombre33/grist-widget-GFS",
+      "commit": "cc8707c2ff18a32fd8f43a92a3e1a3026579f713",
+      "racine": "prototype/"
     }
   }
 }

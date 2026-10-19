@@ -789,7 +789,14 @@ stockage par app (étape 3) :
    de l'app ; une app retirée ou remplacée pendant l'attente abandonne l'appel sans rien dire. [D] **Mesuré le 16/10** dans un
    vrai Grist, à la vraie souris, avec une app d'essai (sonde O, `run-ouvrir.mjs`) : le double-clic, « Nouveau », l'annulation,
    l'erreur, l'appel inconnu, l'attente sans réponse et le retrait de l'app pendant l'attente ; les messages vont et reviennent
-   par le routeur jusqu'à un cadre isolé. Pas encore avec Publipostage+ : cela attend sa consigne 010. [M]
+   par le routeur jusqu'à un cadre isolé. [M] **Mesuré le 19/10 avec Publipostage+** (la version que GFS référence, `abfb600` ;
+   `run-ouvrir-publipostage.mjs`, à 700 × 400, à la vraie souris, en français et en anglais, en clair et en sombre) : le double-clic
+   lance l'app sur le modèle cliqué, avant le ★ ; l'app déjà ouverte change de modèle dans son cadre, sans rechargement ; le modèle
+   déjà ouvert ne change rien ; avec des modifications en attente, l'app pose sa question dans le panneau et GFS attend sans rien
+   dire (« Annuler » : l'app reste, « Abandonner » : elle ouvre, « Enregistrer » : son écriture passe par GFS pendant que l'appel
+   attend, puis elle ouvre) ; un fichier rangé dans un dossier s'ouvre aussi ; l'ouverture n'écrit rien dans le document (ni
+   modèle, ni ★, ni réglage de la vue). « Nouveau » n'est pas encore pris par Publipostage+ (sa consigne 010 l'exclut) : GFS garde
+   sa phrase provisoire pour « Nouveau » seulement (`ACCEPTS_OPEN` a une valeur par app pour `fichier` et pour `nouveau`). [M]
 2. [T] **choisir** : l'explorateur s'ouvre en mode choix, filtré par `types` (et `apps` si elle est donnée), parmi les types que
    les manifestes déclarent dans `actions.choisir`. Un fichier d'une app non installée est grisé, avec « Installer ». `titre`
    est un texte déjà traduit, montré par GFS.

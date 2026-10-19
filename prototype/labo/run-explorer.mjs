@@ -115,7 +115,7 @@ const app = await lab.appFrame();
 await page.waitForTimeout(6000);
 say('app ouverte :', app && app.url().replace(/\?.*/, ''));
 say('explorateur caché :', await frame.locator('.ex').isHidden());
-say('phrase provisoire :', await frame.locator('#toast').innerText());
+say('phrase de GFS (aucune : Publipostage+ ouvre le fichier lui-même) :', (await frame.locator('#toast').isVisible()) ? await frame.locator('#toast').innerText() : '(aucune)');
 await shot('14-app-ouverte');
 
 await frame.locator('#floater-files').click();

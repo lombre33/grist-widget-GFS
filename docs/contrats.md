@@ -765,7 +765,13 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    sinon `{ fichier, type, dossier, raison }` où `fichier` est `{ id, type }` (ou `null` pour « Nouveau »), `type` le type
    demandé quand `fichier` est `null`, `dossier` le dossier courant de l'explorateur (une indication), `raison` l'un de
    `explorateur`, `nouveau`, `lien`. L'app affiche elle-même la raison dans son coin d'état (« par la ligne… », « depuis
-   l'explorateur »).
+   l'explorateur »). **GFS ne la rend qu'une fois**, au premier `contexte` de l'app qu'il vient d'activer : un cadre rechargé sur
+   place (Publipostage+ le fait au changement de langue, de caractère de déclenchement et au premier contact) redemande son
+   contexte et reçoit `null`, donc reprend son ordre d'arrivée habituel, au lieu de refaire un « Nouveau » déjà fait (le modèle
+   vierge enregistré reviendrait vierge) ou de rouvrir le fichier du dernier clic. Une app déjà ouverte n'a pas de seconde
+   `ouverture` : elle reçoit l'appel `ouvrir` (5.4, point 1). [M] **Mesuré le 19/10** dans un vrai Grist, avec la sonde O et
+   avec Publipostage+ (`71287c4`) : le cadre rechargé retrouve l'ordre habituel, et les deux essais échouent sur l'ancien
+   comportement (l'ouverture rendue à chaque `contexte`).
 4. [D] `bibliotheques` : GFS cherche dans son catalogue (2.6, point 6) les bibliothèques qu'exigent les extensions actives de
    l'app et donne, pour chacune, l'adresse du mode choisi (CDN ou vendorisé) et son empreinte. L'extension charge la
    bibliothèque par cette adresse, avec l'empreinte (`integrity`) et `crossorigin="anonymous"`, au premier usage, et ne charge
@@ -818,20 +824,26 @@ stockage par app (étape 3) :
    vierge de ce type et le crée à son premier enregistrement ; si son manifeste déclare `colonnes.dossier`, elle y écrit
    `dossier` (sinon le fichier arrive à la racine). [D]
    Quand l'app est déjà active, GFS (prototype V0.3) n'envoie l'appel qu'à une app qui a déjà demandé son `contexte` : avant, elle
-   y lit l'`ouverture`, celle du dernier clic. L'appel n'a pas de délai. `{ ouvert: false }` (la personne a annulé dans l'app) ne
-   se commente pas ; `GFS_INCONNU` (l'app n'a pas la porte) vaut la phrase provisoire ; toute autre erreur est dite avec le texte
-   de l'app ; une app retirée ou remplacée pendant l'attente abandonne l'appel sans rien dire. [D] **Mesuré le 16/10** dans un
-   vrai Grist, à la vraie souris, avec une app d'essai (sonde O, `run-ouvrir.mjs`) : le double-clic, « Nouveau », l'annulation,
-   l'erreur, l'appel inconnu, l'attente sans réponse et le retrait de l'app pendant l'attente ; les messages vont et reviennent
-   par le routeur jusqu'à un cadre isolé. [M] **Mesuré le 19/10 avec Publipostage+** (la version que GFS référence, `abfb600` ;
-   `run-ouvrir-publipostage.mjs`, à 700 × 400, à la vraie souris, en français et en anglais, en clair et en sombre) : le double-clic
-   lance l'app sur le modèle cliqué, avant le ★ ; l'app déjà ouverte change de modèle dans son cadre, sans rechargement ; le modèle
-   déjà ouvert ne change rien ; avec des modifications en attente, l'app pose sa question dans le panneau et GFS attend sans rien
-   dire (« Annuler » : l'app reste, « Abandonner » : elle ouvre, « Enregistrer » : son écriture passe par GFS pendant que l'appel
-   attend, puis elle ouvre) ; un fichier rangé dans un dossier s'ouvre aussi ; l'ouverture n'écrit rien dans le document (ni
-   modèle, ni ★, ni réglage de la vue). « Nouveau » n'est pas encore pris par Publipostage+ (sa consigne 010 l'exclut, la 014 le
-   demande : un modèle vierge du type) : GFS garde sa phrase provisoire pour « Nouveau » seulement (`ACCEPTS_OPEN` a une valeur
-   par app pour `fichier` et pour `nouveau`). [M]
+   y lit l'`ouverture`, celle du dernier clic, rendue une seule fois (5.2, point 3). L'appel n'a pas de délai. `{ ouvert: false }`
+   (la personne a annulé dans l'app) ne se commente pas ; `GFS_INCONNU` (l'app n'a pas la porte) vaut la phrase provisoire ;
+   toute autre erreur est dite avec le texte de l'app ; une app retirée ou remplacée pendant l'attente abandonne l'appel sans
+   rien dire. [D] **Mesuré le 16/10** dans un vrai Grist, à la vraie souris, avec une app d'essai (sonde O, `run-ouvrir.mjs`) :
+   le double-clic, « Nouveau », l'annulation, l'erreur, l'appel inconnu, l'attente sans réponse et le retrait de l'app pendant
+   l'attente ; les messages vont et reviennent par le routeur jusqu'à un cadre isolé. [M] **Mesuré le 19/10 avec Publipostage+**
+   (la version que GFS référençait alors, `abfb600` ; `run-ouvrir-publipostage.mjs`, à 700 × 400, à la vraie souris, en français
+   et en anglais, en clair et en sombre) : le double-clic lance l'app sur le modèle cliqué, avant le ★ ; l'app déjà ouverte
+   change de modèle dans son cadre, sans rechargement ; le modèle déjà ouvert ne change rien ; avec des modifications en
+   attente, l'app pose sa question dans le panneau et GFS attend sans rien dire (« Annuler » : l'app reste, « Abandonner » :
+   elle ouvre, « Enregistrer » : son écriture passe par GFS pendant que l'appel attend, puis elle ouvre) ; un fichier rangé
+   dans un dossier s'ouvre aussi ; l'ouverture n'écrit rien dans le document (ni modèle, ni ★, ni réglage de la vue). [M] **«
+   Nouveau » mesuré le 19/10 avec Publipostage+ à `71287c4`** (sa consigne 014, `bfbe112` ; `run-ouvrir-publipostage.mjs` et
+   `run-diapositives.mjs`, mêmes conditions) : l'app ouvre un modèle vierge du type demandé, pour les cinq types (le document
+   au démarrage de l'app, à la place du ★ ; la grille, l'e-mail et le macro-modèle quand elle est déjà ouverte ; la
+   présentation avec l'extension « Diapositives » cochée). Le coin d'état garde son avertissement « modèle non enregistré ».
+   Avec des modifications en attente, l'app pose sa question (Enregistrer, Abandonner, Annuler) et GFS attend sans rien dire.
+   Rien n'est écrit dans le document avant le premier « Enregistrer » de la personne. `ACCEPTS_OPEN` passe donc `nouveau` à
+   `true` pour Publipostage+ : GFS ne dit plus sa phrase provisoire pour cette app, et la garde pour une app qui n'accepte
+   pas l'ouverture (Automation+ aujourd'hui).
 2. [T] **choisir** : l'explorateur s'ouvre en mode choix, filtré par `types` (et `apps` si elle est donnée), parmi les types que
    les manifestes déclarent dans `actions.choisir`. Un fichier d'une app non installée est grisé, avec « Installer ». `titre`
    est un texte déjà traduit, montré par GFS.
@@ -891,7 +903,23 @@ paquet de frappes, une par personne pour la présence) doit savoir quand cette t
    que si une mesure sur un Grist en ligne montre que la relecture ne suffit pas, et s'ajoute alors derrière le même canal de
    l'app.
 6. [M] **À mesurer sur un Grist en ligne** : l'aller-retour réel d'une relecture, la charge de quatre relectures par seconde et
-   par personne qui écrit, les plafonds de l'offre, le délai de bout en bout entre deux navigateurs.
+   par personne qui écrit, la charge de fond du point 7 (une lecture toutes les 3 s par page ouverte), les plafonds de l'offre,
+   le délai de bout en bout entre deux navigateurs.
+7. [M] **La lecture de fond de l'entrée automatique** (Publipostage+ à `71287c4`, `js/live-entry.js`). Une page qui n'écrit pas
+   en direct n'est pas prévenue (point 1) : pour rejoindre seule le salon qu'une autre personne allume, l'app relit de loin en
+   loin, et seulement quand rejoindre aurait un sens (l'extension « Édition collaborative » est active, un modèle enregistré
+   de type document est à l'écran, la page est visible, rien n'est à perdre à l'écran, la personne n'a pas quitté le direct).
+   Sans la table du direct : `listTables` toutes les 3 s. Une fois la table vue : sa lecture (`fetchTable`) toutes les 3 s, ou
+   toutes les 10 s quand elle ne porte que des restes (une page fermée sans prévenir) ; après une lecture en échec, 6 s, 12 s
+   puis 30 s. Dans un salon, les cadences du point 3 ne changent pas. Le courtier n'y ajoute rien : un appel de l'app est un
+   appel à Grist (4.3), sans file, sans cadence ni plafond propres à GFS. **Mesuré le 19/10** (labo, `run-edition.mjs`, vrai Grist,
+   avec la vraie app, une seule page, sans réseau, en français clair et en anglais sombre) : 4 `listTables` en 13 s tant que la table
+   n'existe pas ; 4 lectures de `Publipostage_Direct` en 13 s une fois la table créée, vide et le modèle rouvert, de 8 à 12 ms chacune de
+   l'app à Grist et retour ; aucune lecture de cette table dans les 13 s qui suivent l'arrêt du direct par la personne elle-même
+   (elle n'y est pas ramenée avant d'avoir rouvert le modèle). À l'échelle : une page ouverte dans ces conditions lit une fois
+   toutes les 3 s, donc N pages lisent N/3 fois par seconde (30 pages : 10 lectures par seconde), même quand personne n'écrit.
+   Le plafond d'un Grist en ligne face à cette charge reste à mesurer (point 6) ; cadence et conditions sont celles de l'app, et
+   GFS ne les limite pas.
 
 ---
 

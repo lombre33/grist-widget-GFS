@@ -806,8 +806,9 @@ stockage par app (étape 3) :
    déjà ouvert ne change rien ; avec des modifications en attente, l'app pose sa question dans le panneau et GFS attend sans rien
    dire (« Annuler » : l'app reste, « Abandonner » : elle ouvre, « Enregistrer » : son écriture passe par GFS pendant que l'appel
    attend, puis elle ouvre) ; un fichier rangé dans un dossier s'ouvre aussi ; l'ouverture n'écrit rien dans le document (ni
-   modèle, ni ★, ni réglage de la vue). « Nouveau » n'est pas encore pris par Publipostage+ (sa consigne 010 l'exclut) : GFS garde
-   sa phrase provisoire pour « Nouveau » seulement (`ACCEPTS_OPEN` a une valeur par app pour `fichier` et pour `nouveau`). [M]
+   modèle, ni ★, ni réglage de la vue). « Nouveau » n'est pas encore pris par Publipostage+ (sa consigne 010 l'exclut, la 014 le
+   demande : un modèle vierge du type) : GFS garde sa phrase provisoire pour « Nouveau » seulement (`ACCEPTS_OPEN` a une valeur
+   par app pour `fichier` et pour `nouveau`). [M]
 2. [T] **choisir** : l'explorateur s'ouvre en mode choix, filtré par `types` (et `apps` si elle est donnée), parmi les types que
    les manifestes déclarent dans `actions.choisir`. Un fichier d'une app non installée est grisé, avec « Installer ». `titre`
    est un texte déjà traduit, montré par GFS.

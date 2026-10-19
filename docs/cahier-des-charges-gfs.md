@@ -119,6 +119,7 @@ Slides+ (`lombre33/SlidesPlus`) n'est pas une app de GFS : les diapositives devi
 | **Deux environnements séparés** : les dépôts de développement (`lombre33`) et les dépôts publics (`grist-factory`) ; le GFS public référence les seconds, où le porteur ne pousse que des versions propres | 16/10 | Section 4.2 ; question 1 tranchée |
 | **Premier client du kit commun : Form+**, et non Automation+, trop éloigné du périmètre de Publipostage+ | 16/10 | Sections 4.5 et 10 (étape 3, qui attend toujours son go) |
 | **Les six bibliothèques de l'écriture en direct de Publipostage+ : un seul fichier module, assemblé par GFS**, qui laisse en noms nus les bibliothèques natives de l'app (son éditeur) ; la copie de GFS d'abord, le CDN une fois l'adresse publique fixée | 16/10 | Section 4.7 ; contrats 2.6 (points 8 à 11) et 5.2 ; consigne 012 à Publipostage+ |
+| **Le CDN de ce fichier assemblé : jsDelivr, qui le sert depuis le dépôt public de GFS, à un commit épinglé** ; l'adresse change avec le dépôt définitif, et chaque app qui l'accueille la nomme dans sa CSP | 19/10 | Section 4.7 ; contrats 2.6 (point 11) ; consigne 016 à Publipostage+ |
 
 Si un fait nouveau remet en cause une de ces lignes, le dire au porteur avec ce fait, sur une carte de décision. Ne jamais
 proposer l'inverse de son propre chef.
@@ -383,7 +384,9 @@ commencer, ou un sous-cadre gardé ouvert et caché (question 4, section 12).
 - **Un fichier assemblé quand les bibliothèques d'une extension doivent partager l'éditeur de l'app** (choix du porteur, 16/10,
   écriture en direct de Publipostage+) : GFS construit un seul fichier module, empreinte comprise, qui laisse en noms nus l'éditeur
   natif de l'app (une seule copie de ProseMirror : avec deux, le curseur des autres disparaît sans erreur). L'app n'en nomme aucun
-  paquet. Pas de CDN tant que GFS n'a pas d'adresse publique (question 5) : la copie de GFS d'abord (contrats 2.6, points 8 à 11).
+  paquet. La copie de GFS d'abord ; depuis le 19/10 (choix du porteur), le CDN est jsDelivr, qui sert ce fichier depuis le dépôt public de
+  GFS à un commit complet épinglé dans la liste de GFS (contrats 2.6, points 8 à 11). L'adresse suit le dépôt : celle du dépôt de
+  développement aujourd'hui, celle du dépôt public définitif (question 5) quand il existera, par une consigne à chaque app.
 - **Le script d'API de Grist** vient de `docs.getgrist.com` dans les deux modes (validé par la DINUM d'après le README
   d'Automation+).
 
@@ -720,7 +723,7 @@ fait passer par le porteur.
 | 2 | TipTap en mode CDN : esm.sh, ou un seul fichier figé servi par jsDelivr avec empreinte ? | Étape 4 | Le fichier figé |
 | 3 | Isolement : sous-cadres sans `allow-same-origin`, ou un domaine par app ? | Fin de l'étape 2 | Sous-cadres ; des domaines seulement si un audit l'exige. **Tranché le 16/10 : sous-cadres** (rapport, section 3) |
 | 4 | Automation+ dans GFS : section à part, ou sous-cadre gardé en fond ? | Étape 6 | Section à part pour commencer |
-| 5 | Où publier GFS et les apps ? | Avant la première publication | Organisation `grist-factory`, un dépôt public par app, un pour GFS, un pour le kit ; aucune page de test sur cette origine |
+| 5 | Où publier GFS et les apps ? | Avant la première publication | Organisation `grist-factory`, un dépôt public par app, un pour GFS, un pour le kit ; aucune page de test sur cette origine. Le 19/10, le CDN du fichier assemblé de l'écriture en direct pointe provisoirement le dépôt de développement ; il suivra le dépôt définitif |
 | 6 | Dashboard et Grist-BI : deux apps, ou une ? | Au lancement de Dashboard | À préciser avec le porteur |
 | 7 | Entrée de l'explorateur dans chaque app, ou un repère de GFS au-dessus des apps ? | Étape 6 | Dans chaque app (« Organiser » pour Publipostage+), sans barre de plus |
 | 8 | Couleurs des types des autres apps | Étape 6 | Neutres tant qu'il ne les demande pas |

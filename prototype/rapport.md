@@ -187,7 +187,9 @@ l'exige.**
    demandée : une table d'essai est créée, une vingtaine d'actions y sont jouées, puis elle est supprimée), puis
    « Copier le résultat ». Le texte ne contient ni le jeton ni l'identifiant du document.
 3. **L'empreinte du CDN (facultatif).** Depuis `prototype/`, avec Node 18 ou plus et du réseau :
-   `node outils/bibliotheques.mjs --verifier-cdn`. Il dit « catalogue cohérent » ou l'écart.
+   `node outils/bibliotheques.mjs --verifier-cdn`. Il dit « catalogue cohérent » ou l'écart. Depuis le 19/10, il contrôle aussi le fichier
+   assemblé de l'écriture en direct, servi par jsDelivr depuis le dépôt public de GFS : les octets (l'empreinte), l'en-tête CORS et le type
+   JavaScript, que le navigateur exige d'un module à empreinte.
 
 GitHub Pages met tout en cache dix minutes : après une mise à jour, recharge avec Ctrl+F5 (⌘⇧R sur Mac).
 

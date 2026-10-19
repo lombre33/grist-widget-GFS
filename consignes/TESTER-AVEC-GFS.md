@@ -18,6 +18,11 @@ Au 19/10/2026 : `edition-live` 1.0.0 et l'extension « Édition collaborative »
 manifeste réels de GFS (consigne 013) : une copie neuve de GFS les a déjà, et la section 2 bis ne sert plus que pour une extension
 nouvelle. Le labo les joue de bout en bout avec ton app (`prototype/labo/run-edition.mjs`).
 
+Aussi au 19/10/2026 : le fichier assemblé a son CDN dans le catalogue réel de GFS, jsDelivr, qui le sert depuis le dépôt public de GFS à un
+commit épinglé (consigne 016 : l'adresse exacte que la CSP de ton app nomme). `run-edition.mjs` joue le CDN, sans puis avec cette adresse
+dans la CSP. Une extension nouvelle essayée dans ta copie n'a pas de CDN : l'outil écrit `cdn: null` tant que le commit épinglé de la liste
+ne porte pas le fichier, la copie de GFS est son seul mode, et le CDN entre à la publication par GFS.
+
 ## 1. La copie de GFS, l'app à la place de son sous-module
 
 ```bash
@@ -71,7 +76,8 @@ section 2 par ceci, une seule fois par copie :
 ```
 
 3. `node outils/bibliotheques.mjs` (trois secondes) écrit `vendor/edition-live/1.0.0/edition-live.js` (145 862 octets),
-   `LICENCES.txt` à côté et l'entrée du catalogue : `forme: "module"`, `cdn: null`, l'empreinte. L'outil **refuse** de rien
+   `LICENCES.txt` à côté et l'entrée du catalogue : `forme: "module"`, `cdn: null` (l'adresse jsDelivr ne vient qu'à la publication par
+   GFS, quand un commit épinglé porte le fichier), l'empreinte. L'outil **refuse** de rien
    écrire si le fichier contient un paquet de plus que la liste, ou laisse un nom nu de plus ou de moins que `externes` ;
    si tes versions ou ton éditeur demandent un autre `@tiptap/pm/<x>`, il le dit, et c'est alors à toi de l'écrire dans
    « Questions pour GFS » (une ligne de plus dans `externes` et `alias`, décidée par GFS). `--verifier` relit le tout sans
@@ -80,9 +86,10 @@ section 2 par ceci, une seule fois par copie :
    `bibliotheques: [{ "id": "edition-live", "version": "1.0.0" }]`.
 
 Ce que ton extension reçoit dans la copie : `contexte.bibliotheques['edition-live']` vaut
-`{ src, integrite, forme: 'module' }`, `src` étant l'adresse de la copie de GFS (**sans CDN**, c'est son seul mode : la
-fenêtre grise « Depuis un CDN » et dit pourquoi). Elle se charge par `<script type="module" src integrity
-crossorigin="anonymous">` (jamais `import()`), puis `globalThis.GfsPaquets['edition-live'].modules['yjs']` et les quatre autres.
+`{ src, integrite, forme: 'module' }`, `src` étant l'adresse de la copie de GFS (dans ta copie, **sans CDN** : c'est son seul mode, la
+fenêtre grise « Depuis un CDN » et dit pourquoi ; dans GFS, l'adresse jsDelivr du catalogue donne le même fichier avec la même empreinte, et
+ta CSP doit la nommer). Elle se charge par `<script type="module" src integrity crossorigin="anonymous">` (jamais `import()`), puis
+`globalThis.GfsPaquets['edition-live'].modules['yjs']` et les quatre autres.
 Dans le labo, `@tiptap/core` et `prosemirror-*` viennent de la carte d'importation de ton app, par le miroir de tes CDN.
 
 ## 3. Le labo « vrai Grist »

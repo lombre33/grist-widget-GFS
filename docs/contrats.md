@@ -280,7 +280,8 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
      "modules": [ "yjs", "y-protocols/awareness", "@tiptap/y-tiptap", "@tiptap/extension-collaboration",
                   "@tiptap/extension-collaboration-caret" ],
      "externes": [ "@tiptap/core", "prosemirror-model", "prosemirror-state", "prosemirror-transform", "prosemirror-view" ],
-     "cdn": null,
+     "cdn": { "src": "https://cdn.jsdelivr.net/gh/<propriétaire>/<dépôt>@<commit complet>/prototype/vendor/edition-live/1.0.0/edition-live.js",
+              "integrite": "sha384-…" },
      "vendorise": { "chemin": "vendor/edition-live/1.0.0/edition-live.js", "integrite": "sha384-…" } }
    ```
 
@@ -300,11 +301,33 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     L'outil **refuse** le fichier qui contiendrait un paquet que la liste ne nomme pas, ou dont les noms nus ne seraient pas
     exactement les `externes` de la liste : une seconde copie d'une bibliothèque de l'app entrerait sans bruit dans le fichier
     (faits vérifiés, 9). Il recopie les licences des paquets contenus (MIT) dans `vendor/<id>/<version>/LICENCES.txt`, à côté.
-11. [T] **Sans CDN tant que GFS n'a pas d'adresse publique** (cahier, question 5 ; choix du porteur, 16/10) : l'entrée porte
-    `cdn: null`. La copie de GFS est alors le seul mode : la fenêtre « Apps et extensions » ne propose pas le CDN pour cette
-    bibliothèque et le dit, l'extension marche avec la copie, et la CSP de l'app ne nomme rien (5.2, point 5). À la publication,
-    l'outil ajoute l'adresse du CDN avec la même empreinte, et les apps nomment alors cette adresse dans leur CSP, comme pour
-    Plotly (consigne 007).
+11. [T] **Le CDN d'un fichier assemblé est jsDelivr, qui sert le dépôt public de GFS à un commit épinglé** (cahier, question 5 ;
+    choix du porteur, 16/10 pour la copie de GFS d'abord, 19/10 pour le CDN). Un fichier assemblé n'est le fichier d'aucun paquet npm :
+    jsDelivr le sert depuis le dépôt de GFS, octet pour octet, à l'adresse
+    `https://cdn.jsdelivr.net/gh/<propriétaire>/<dépôt>@<commit>/<dossier de GFS>vendor/<id>/<version>/<id>.js`. La liste de GFS dit où
+    (`gfs.publication` de `bibliotheques/package.json` : `depot`, `commit`, `racine`, le dossier de GFS dans le dépôt, `prototype/`).
+    **Le commit est complet** (40 chiffres hexadécimaux, jamais une branche ni une étiquette, qui bougent sous l'empreinte) et **porte
+    exactement la copie vendorisée** : l'outil le lit dans git, sans réseau (`--verifier` le contrôle ; l'adresse ne s'écrit pas sinon),
+    puis `--catalogue` écrit `cdn: { src, integrite }` avec la même empreinte que la copie. La copie se commite donc d'abord, puis
+    son commit entre dans la liste : le commit épinglé précède celui du catalogue. Le catalogue refuse à son tour une adresse `/gh/` qui
+    ne nomme pas un commit complet (`js/libraries.js`). jsDelivr n'est joignable ni du cloud ni du labo : `--verifier-cdn` (réseau, sur
+    une machine qui y accède) compare au CDN réel les octets, l'en-tête CORS et le type JavaScript, sans quoi un module à empreinte est
+    refusé dans un sous-cadre à origine opaque.
+    **Les apps nomment l'adresse exacte dans leur CSP**, comme pour Plotly (consigne 007) : sans elle, le navigateur de l'app refuse le
+    CDN ; la copie de GFS passe avec `'self'`, sans rien nommer (5.2, point 5). L'adresse change avec le commit épinglé et avec le dépôt
+    (le dépôt public définitif de GFS aura la sienne, question 5) : chaque changement est une consigne aux apps. Sans `gfs.publication`
+    (un GFS sans dépôt public, une copie d'essai), l'entrée porte `cdn: null` : la copie de GFS est alors le seul mode, la fenêtre
+    « Apps et extensions » ne propose pas le CDN pour cette bibliothèque et le dit.
+    [M] **Mesuré le 19/10 avec Publipostage+** (la version que GFS référence, `da919fc` ; `run-edition.mjs`, à 700 × 400, à la vraie
+    souris et au vrai clavier, en français / clair et en anglais / sombre) : par défaut (« Depuis un CDN », rien d'écrit dans le
+    document), l'app reçoit l'adresse jsDelivr et l'empreinte du catalogue ; **tant que sa CSP ne nomme pas cette adresse, le
+    navigateur refuse le script** (`script-src-elem`, à l'adresse exacte), l'app dit « Écriture en direct impossible » avec la raison, la
+    ligne reste grisée pour réessayer, rien n'est posé et aucune table n'est créée, et le choix de « Copie de GFS » remet le direct en
+    marche au clic suivant ; **avec l'adresse dans sa CSP** (la page servie à l'essai seulement), le direct démarre par le CDN comme
+    par la copie (un seul `<script type="module" integrity crossorigin="anonymous">`, aucun refus, les cinq modules, la table du
+    direct née puis vidée à l'arrêt) ; **avec une fausse empreinte du CDN**, la CSP laisse passer et le navigateur refuse le fichier.
+    Le labo n'atteint pas jsDelivr : à l'adresse du CDN, son miroir rend les octets exacts de la copie de GFS, avec l'en-tête CORS et
+    le type JavaScript que `--verifier-cdn` contrôle sur le vrai CDN. [M]
 
 ### 2.7 Les actions acceptées
 

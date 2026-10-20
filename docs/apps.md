@@ -7,7 +7,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le |
 |---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `69a3dc9` | 20/10/2026 |
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `d87ea5f` | 20/10/2026 |
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `b073d03` | 14/10/2026 |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `ee8f0a9` | 14/10/2026 |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `c8c819f` | 14/10/2026 |
@@ -107,13 +107,31 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   la consigne 018 (qui répond aussi à la question du stockage). Restent ouverts : la langue (le porteur), le titre de
   l'impression (011), le chiffre du réseau réel, l'adresse définitive du CDN (016).
 - Langue commune (20/10, après le choix du porteur, « Réglage dans GFS ») : faite dans GFS et mesurée avec une sonde
-  (contrats 5.2, point 6 ; `run-langue.mjs`, 37 vérifications par combinaison). Publipostage+ à `dc00b9d` ne lit pas encore
-  `contexte.langue` et n'écoute pas l'événement `langue` : la consigne 019 le lui demande. GFS ne pourra mesurer avec l'app
-  elle-même qu'une fois sa référence avancée (commit à part, relu).
+  (contrats 5.2, point 6 ; `run-langue.mjs`, 37 vérifications par combinaison). Publipostage+ à `dc00b9d` ne lisait pas
+  encore `contexte.langue` et n'écoutait pas l'événement `langue` : la consigne 019 le lui a demandé, l'app l'a fait à
+  `f6d3fd0` (deux lignes plus bas). La référence de GFS reste à `dc00b9d` : la mesure avec l'app elle-même s'écrit, avec son
+  essai, quand la référence avance (commit à part, relu).
 - Publipostage+ change de langue en rechargeant la page (`53d36de` : plus de retraduction à chaud, `I18n.onChange` n'existe
   plus), ce qui va avec le contrat (5.2, points 2 et 6 : l'événement `langue`, que l'app suit en se rechargeant). Son
-  `initialLang()` ne lit que `localStorage` (clé `pp_lang`) puis les langues du navigateur, pas `contexte.langue` : la
-  consigne 019 le lui demande (20/10), sans attendre l'étape 5.
+  `initialLang()` ne lisait que `localStorage` (clé `pp_lang`) puis les langues du navigateur, pas `contexte.langue` : la
+  consigne 019 le lui a demandé (20/10), sans attendre l'étape 5 ; fait à `f6d3fd0`, où `initialLang()` prend d'abord la
+  langue de GFS.
+- Publipostage+ à `d87ea5f` (20/10, après-midi) : quatre commits de plus depuis `69a3dc9`, dont trois de code. Son
+  `GFS-ETAT.md` (`d87ea5f`, qui décrit `f6d3fd0` ; GFS lu à `a90f4a2`) dit la 018 « faite · lue, aucun code » et la 019
+  « faite · `f6d3fd0` » ; la 016 reste « lue, pas faite » (l'adresse du dépôt public définitif). `f6d3fd0` : hébergée, l'app
+  prend la langue de GFS au départ (le paramètre `language` de l'adresse de son cadre, seulement avec `gfs=<n>`, ou le
+  fragment `#pp-open=<id>&pp-lang=fr|en` qu'elle se laisse en se rechargeant), garde `langue` du contexte et écoute
+  l'événement `langue` (`js/gfs-link.js` : `language()` et `onLanguage`), le suit comme son propre changement de langue
+  (`js/settings.js`, `followGfsLanguage` : la question Enregistrer / Abandonner / Annuler d'abord, puis le rechargement qui
+  rouvre le modèle), rattrape à la fin du démarrage une langue changée pendant un rechargement, et grise les deux cases de
+  langue de Réglages avec la phrase de la 019 (jamais masquées). Elle ne lit ni n'écrit la langue dans le stockage du
+  navigateur ; aucune clé, table, adresse, CSP, carte d'importation ni liste de paquets de plus (`index.html` : des numéros
+  de version et la phrase du grisé, cachée seule). Les deux autres commits de code (`6e7c5f9`, `c9e0532` : en-tête et pied,
+  « Sommaire » et « Saut de page » grisés dans une zone, le trait d'une zone fermée) ne lisent ni n'écrivent rien chez GFS.
+  « Questions pour GFS » : deux, le titre de l'impression (à mesurer dans un vrai Chrome) et l'adresse du CDN (016).
+  « Demandes à GFS » : la référence de l'app à `f6d3fd0` (GFS la tient à `dc00b9d`) ; rien n'est traité, elle attend le mot du
+  porteur. GFS a essayé l'app à `f6d3fd0` dans une copie du labo (sans avancer la référence) le 20/10 : le détail s'écrit
+  avec la référence (contrats 5.2, point 6).
 - SlidesPlus : suivre `main`. La branche par défaut du dépôt sur GitHub est une autre, donc `origin/HEAD` ne convient pas.
 - Grist-widget-audit : aucun commit n'avait été noté ; `3a1b3d5` est le sommet de `main` (4 octobre), qui n'a pas bougé depuis.
 - Les dossiers de `consignes/` portent l'identifiant court de l'app ; l'`id` du manifeste se fixe avec chaque `gfs.json`

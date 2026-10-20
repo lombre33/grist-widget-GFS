@@ -109,8 +109,8 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
 - Langue commune (20/10, après le choix du porteur, « Réglage dans GFS ») : faite dans GFS et mesurée avec une sonde
   (contrats 5.2, point 6 ; `run-langue.mjs`, 37 vérifications par combinaison). Publipostage+ à `dc00b9d` ne lisait pas
   encore `contexte.langue` et n'écoutait pas l'événement `langue` : la consigne 019 le lui a demandé, l'app l'a fait à
-  `f6d3fd0` (deux lignes plus bas). La référence de GFS reste à `dc00b9d` : la mesure avec l'app elle-même s'écrit, avec son
-  essai, quand la référence avance (commit à part, relu).
+  `f6d3fd0` (deux lignes plus bas). La référence de GFS est à `f6d3fd0` depuis le 20/10 (15 h 40) : la mesure avec l'app
+  elle-même est au contrat 5.2, point 6 (`run-langue-publipostage.mjs`).
 - Publipostage+ change de langue en rechargeant la page (`53d36de` : plus de retraduction à chaud, `I18n.onChange` n'existe
   plus), ce qui va avec le contrat (5.2, points 2 et 6 : l'événement `langue`, que l'app suit en se rechargeant). Son
   `initialLang()` ne lisait que `localStorage` (clé `pp_lang`) puis les langues du navigateur, pas `contexte.langue` : la
@@ -129,9 +129,13 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   de version et la phrase du grisé, cachée seule). Les deux autres commits de code (`6e7c5f9`, `c9e0532` : en-tête et pied,
   « Sommaire » et « Saut de page » grisés dans une zone, le trait d'une zone fermée) ne lisent ni n'écrivent rien chez GFS.
   « Questions pour GFS » : deux, le titre de l'impression (à mesurer dans un vrai Chrome) et l'adresse du CDN (016).
-  « Demandes à GFS » : la référence de l'app à `f6d3fd0` (GFS la tient à `dc00b9d`) ; rien n'est traité, elle attend le mot du
-  porteur. GFS a essayé l'app à `f6d3fd0` dans une copie du labo (sans avancer la référence) le 20/10 : le détail s'écrit
-  avec la référence (contrats 5.2, point 6).
+  « Demandes à GFS » : la référence de l'app à `f6d3fd0`. Traitée le 20/10 (15 h 40), après le « oui » du porteur, qui a
+  aussi dit de se tenir à jour sur les apps et de monter les versions au fur et à mesure (plus besoin de son mot pour une
+  référence) : la référence avancée (`aaeb800`, commit à part, relu), l'app mesurée dans un vrai Grist (contrats 5.2, point 6 ;
+  `run-langue-publipostage.mjs`, 25 vérifications par combinaison ; ouverture 28, présentations 29, écriture en direct 60), la
+  consigne 020. Constat de l'essai : la question de l'app est posée derrière l'explorateur ouvert, et « Abandonner » peut n'avoir
+  rien à abandonner quand une écriture de l'enregistrement automatique finit pendant la question (dit à l'app, sans rien lui
+  demander).
 - SlidesPlus : suivre `main`. La branche par défaut du dépôt sur GitHub est une autre, donc `origin/HEAD` ne convient pas.
 - Grist-widget-audit : aucun commit n'avait été noté ; `3a1b3d5` est le sommet de `main` (4 octobre), qui n'a pas bougé depuis.
 - Les dossiers de `consignes/` portent l'identifiant court de l'app ; l'`id` du manifeste se fixe avec chaque `gfs.json`

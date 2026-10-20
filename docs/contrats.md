@@ -781,9 +781,9 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    son cadre (`#pp-open=<id>`, que GFS ne touche pas, sans aucun stockage), l'efface au démarrage et rouvre ce modèle avant
    tout le reste, `ouverture` comprise. [M] **Mesuré le 20/10** avec cette app : Réglages, Déclencheur, « Recharger
    maintenant » la rouvre sur le modèle où la personne était (non sur le ★), GFS ne dit rien, l'adresse du cadre redevient
-   celle que GFS a donnée (`access`, `gfs`) et rien n'est écrit dans le document ; l'essai échoue avec l'app à `71287c4`. Le
-   choix de langue de l'app reste refusé dans GFS (le cadre n'a pas de stockage) : la case revient sur la langue de la page,
-   sans rechargement.
+   celle que GFS a donnée (`access`, `gfs`) et rien n'est écrit dans le document ; l'essai échoue avec l'app à `71287c4`. À
+   `dc00b9d`, le choix de langue de l'app restait refusé dans GFS (le cadre n'a pas de stockage : la case revenait sur la
+   langue de la page, sans rechargement) ; depuis `f6d3fd0` il est grisé et la langue est celle de GFS (point 6).
 4. [D] `bibliotheques` : GFS cherche dans son catalogue (2.6, point 6) les bibliothèques qu'exigent les extensions actives de
    l'app et donne, pour chacune, l'adresse du mode choisi (CDN ou vendorisé) et son empreinte. L'extension charge la
    bibliothèque par cette adresse, avec l'empreinte (`integrity`) et `crossorigin="anonymous"`, au premier usage, et ne charge
@@ -818,9 +818,18 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    langue de l'adresse et du contexte au départ ; l'événement à chaque changement qui compte, une seule fois ; rien quand le
    choix redit la langue de Grist ; son cadre jamais rechargé ; une app ouverte après le choix la reçoit dès son départ ;
    deux sections de GFS dans la page se suivent, la fenêtre « Apps et extensions » ouverte comprise ; un navigateur qui
-   refuse d'écrire laisse le choix valable pour la page et le dit dans la langue choisie. **Non mesuré** : Publipostage+
-   (elle n'écoute pas encore l'événement : consigne 019), deux onglets de Grist (même mécanisme du navigateur que deux
-   sections, non joué), Firefox, Safari.
+   refuse d'écrire laisse le choix valable pour la page et le dit dans la langue choisie.
+   [M] **Mesuré le 20/10 avec Publipostage+ à `f6d3fd0`** (consigne 019 ; `prototype/labo/run-langue-publipostage.mjs`, 25
+   vérifications en français clair et en anglais sombre ; avec l'app à `dc00b9d`, qui ne lit pas la langue, l'essai s'arrête
+   dès le départ) : l'app démarre dans la langue de GFS, grise ses deux cases de langue avec la phrase qui dit où choisir ;
+   quand GFS change la sienne, l'app se recharge d'elle-même dans l'autre langue et rouvre le même modèle (non le ★), sans que
+   GFS touche à son cadre (l'adresse garde la langue de sa création) et sans rien écrire dans le document ; après un F5 du
+   cadre, elle repart dans la langue de son adresse puis rattrape celle de GFS ; quand des modifications attendent, elle pose
+   d'abord sa question « Enregistrer / Abandonner / Annuler » (« Annuler » garde la langue d'avant, « Abandonner » ne garde pas
+   ce qui a été tapé, « Enregistrer » enregistre avant de recharger) ; une langue redite ne pose aucune question. **À connaître** :
+   l'explorateur ouvert cache le cadre de l'app et le rend inerte, donc cette question est posée derrière lui et ne se voit
+   qu'en le fermant (elle y attend, rien n'est perdu). **Non mesuré** : deux onglets de Grist (même mécanisme du navigateur que
+   deux sections, non joué), Firefox, Safari.
 
 ### 5.3 Le stockage du navigateur
 

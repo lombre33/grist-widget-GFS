@@ -1,5 +1,5 @@
 // Le choix de langue de GFS avec la vraie app (consigne 019 ; contrats 5.2, point 6), Publipostage+ à `f6d3fd0` ou après, dans un vrai Grist (grist-static), à 700 × 400, à la vraie
-// souris et au vrai clavier. Tant que la référence de GFS est à `dc00b9d`, la passe n'y peut pas passer : cette version de l'app ne lit pas `contexte.langue`. run-langue.mjs mesure le côté de GFS avec une sonde ; ici l'app elle-même lit `contexte.langue` au départ, suit l'événement `langue` comme son propre changement
+// souris et au vrai clavier. C'est la référence de GFS depuis le 20/10 ; avec une version plus ancienne (`dc00b9d`), la passe s'arrête dès le départ : cette version de l'app ne lit pas `contexte.langue`. run-langue.mjs mesure le côté de GFS avec une sonde ; ici l'app elle-même lit `contexte.langue` au départ, suit l'événement `langue` comme son propre changement
 // de langue (la question « Enregistrer / Abandonner / Annuler » d'abord, puis le rechargement qui rouvre le modèle) et grise son choix de langue. LAB_LANG=fr|en est la langue de Grist,
 // LAB_SCHEME=light|dark. Ce que la passe mesure :
 //   1. le départ : l'app parle la langue de GFS, ses Réglages grisent les deux cases de langue (jamais masquées) et disent où choisir ;
@@ -121,6 +121,7 @@ const settingsState = async () => {
   });
 };
 const closeSettings = async () => { await app.locator('#settings-close').click(); await page.waitForTimeout(200); };
+// Pendant que l'app se recharge d'elle-même (l'enregistrement automatique est passé avant la demande de GFS), son contexte disparaît : rien n'est affiché, donc pas de question.
 const dialog = () => app.evaluate(() => {
   const overlay = document.getElementById('pp-dialog-modal');
   if (!overlay || getComputedStyle(overlay).display === 'none') return null;
@@ -130,6 +131,9 @@ const dialog = () => app.evaluate(() => {
     buttons: [...overlay.querySelectorAll('.pp-modal-actions button')].filter(b => !b.hidden).map(b => b.textContent),
     inPanel: box.left >= 0 && box.top >= 0 && box.right <= innerWidth && box.bottom <= innerHeight,
   };
+}).catch(error => {
+  if (/context was destroyed|navigation|detached/i.test(error.message)) return null;
+  throw error;
 });
 const dialogButton = label => app.locator('#pp-dialog-modal .pp-modal-actions button', { hasText: label });
 const typeAtEnd = async text => {
@@ -151,6 +155,10 @@ app = await lab.appFrame(/publipostage/);
 await waitStarted();
 let seen = await waitShown(OPEN);
 const base = await snapshot();
+// Cette passe demande l'app à `f6d3fd0` ou après (consigne 019) : une version plus ancienne n'offre pas `GfsLink.language()`, et rien de ce qui suit n'aurait d'objet.
+const reads = await app.evaluate(() => typeof GfsLink !== 'undefined' && typeof GfsLink.language === 'function' && typeof GfsLink.onLanguage === 'function');
+check('l\'app lit la langue de GFS (`GfsLink.language()` et `onLanguage`, consigne 019) : c\'est une version à `f6d3fd0` ou après', reads);
+if (!reads) { await lab.browser.close(); process.exit(1); }
 let state = await appLang();
 say('au départ :', state, seen && seen.name, 'adresse du cadre :', app.url());
 
@@ -220,7 +228,9 @@ await closeExplorer();
 // ---------- 5. des modifications attendent ----------
 // L'enregistrement automatique de l'app (toutes les 2,5 s) peut passer entre la frappe et le changement de langue : elle enregistre alors, se recharge sans question, et l'essai recommence dans
 // l'autre sens (jamais plus de huit fois).
-const pendingFlip = async token => {
+// Pour « Abandonner » (discards), une écriture de l'enregistrement automatique partie juste avant la question peut finir pendant qu'elle est posée : ce qui a été tapé est alors déjà dans le
+// document et il n'y a plus rien à abandonner. L'essai le voit en relisant le document 1,5 s après la question ; il répond « Enregistrer » à cette question-là et recommence.
+const pendingFlip = async (token, { discards = false } = {}) => {
   for (let attempt = 1; attempt <= 8; attempt++) {
     if (!(await explorerHidden())) await closeExplorer();
     const typed = `${token}${attempt}`;
@@ -229,8 +239,15 @@ const pendingFlip = async token => {
     await mark();
     await flip();
     for (let i = 0; i < 35 && !(await dialog()); i++) await page.waitForTimeout(100);
-    if (await dialog()) return { typed, attempt };
-    say(`(essai ${attempt} : l'enregistrement automatique est passé, l'app s'est rechargée sans question)`);
+    if (await dialog()) {
+      if (!discards) return { typed, attempt };
+      await page.waitForTimeout(1500);
+      if (!(await contentOf(named)).includes(typed)) return { typed, attempt };
+      say(`(essai ${attempt} : une écriture de l'enregistrement automatique, partie juste avant la question, a fini pendant qu'elle était posée ; il n'y aurait rien à abandonner)`);
+      const leakLang = (await appLang()).lang;
+      await closeExplorer();
+      await dialogButton(WORDS[leakLang].buttons[2]).click();
+    } else say(`(essai ${attempt} : l'enregistrement automatique est passé, l'app s'est rechargée sans question)`);
     await reloadedIn(await gfsLang());
     await waitShown(named);
   }
@@ -268,7 +285,7 @@ check('un changement de GFS qui redit la langue de l\'app ne pose aucune questio
 await closeExplorer();
 
 // « Abandonner » : ce qui a été tapé n'est pas gardé, l'app se recharge dans la langue de GFS et rouvre le modèle.
-episode = await pendingFlip('ABANDONNE');
+episode = await pendingFlip('ABANDONNE', { discards: true });
 askedLang = (await appLang()).lang;
 await closeExplorer();
 let target = await gfsLang();

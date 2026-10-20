@@ -771,7 +771,14 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    vierge enregistré reviendrait vierge) ou de rouvrir le fichier du dernier clic. Une app déjà ouverte n'a pas de seconde
    `ouverture` : elle reçoit l'appel `ouvrir` (5.4, point 1). [M] **Mesuré le 19/10** dans un vrai Grist, avec la sonde O et
    avec Publipostage+ (`71287c4`) : le cadre rechargé retrouve l'ordre habituel, et les deux essais échouent sur l'ancien
-   comportement (l'ouverture rendue à chaque `contexte`).
+   comportement (l'ouverture rendue à chaque `contexte`). Une app peut garder elle-même le modèle ouvert à travers un
+   rechargement qu'elle déclenche : Publipostage+ (`dc00b9d`) laisse l'identifiant du modèle dans le fragment de l'adresse de
+   son cadre (`#pp-open=<id>`, que GFS ne touche pas, sans aucun stockage), l'efface au démarrage et rouvre ce modèle avant
+   tout le reste, `ouverture` comprise. [M] **Mesuré le 20/10** avec cette app : Réglages, Déclencheur, « Recharger
+   maintenant » la rouvre sur le modèle où la personne était (non sur le ★), GFS ne dit rien, l'adresse du cadre redevient
+   celle que GFS a donnée (`access`, `gfs`) et rien n'est écrit dans le document ; l'essai échoue avec l'app à `71287c4`. Le
+   choix de langue de l'app reste refusé dans GFS (le cadre n'a pas de stockage) : la case revient sur la langue de la page,
+   sans rechargement.
 4. [D] `bibliotheques` : GFS cherche dans son catalogue (2.6, point 6) les bibliothèques qu'exigent les extensions actives de
    l'app et donne, pour chacune, l'adresse du mode choisi (CDN ou vendorisé) et son empreinte. L'extension charge la
    bibliothèque par cette adresse, avec l'empreinte (`integrity`) et `crossorigin="anonymous"`, au premier usage, et ne charge

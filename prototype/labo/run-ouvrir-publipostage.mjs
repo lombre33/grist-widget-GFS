@@ -1,7 +1,7 @@
 // Ouvrir le bon modèle de Publipostage+ depuis l'explorateur de GFS (consigne 010 ; contrats 5.2 point 3 et 5.4 point 1), avec la vraie app, celle que GFS référence, dans un vrai Grist, à
 // 700 × 400, à la vraie souris et au vrai clavier. Le double-clic d'un fichier lance l'app sur ce modèle (l'`ouverture` du contexte) ; l'app déjà ouverte reçoit l'appel `ouvrir`, et pose
 // sa question « Enregistrer / Abandonner / Annuler » dans le panneau quand des modifications attendent : GFS attend, sans rien dire. « Nouveau » (consigne 014) ouvre un modèle vierge du
-// type, au démarrage comme app déjà ouverte, sans phrase de GFS ; l'ouverture n'est rendue qu'une fois (contrats 5.2, point 3) : un cadre rechargé sur place ne refait pas le « Nouveau ».
+// type, au démarrage comme app déjà ouverte, sans phrase de GFS ; l'ouverture n'est rendue qu'une fois (contrats 5.2, point 3) : un cadre rechargé sur place ne refait pas le « Nouveau », sauf quand l'app l'a voulu elle-même (Réglages) : elle rouvre alors le modèle où la personne était.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
@@ -164,6 +164,34 @@ await page.waitForTimeout(800);
 const again = await shown();
 check('le modèle demandé est déjà ouvert : rien ne change, l\'explorateur se ferme, aucune phrase', JSON.stringify(again) === JSON.stringify(seen) && (await explorerHidden()) && (await toast()) === '', { again, phrase: await toast() });
 check('rien n\'est écrit dans le document par ces ouvertures (ni modèle, ni ★, ni réglage de la vue)', (await snapshot()) === base);
+
+// 4 bis. Le rechargement que l'app veut elle-même (Réglages > Déclencheur : changer le caractère, puis « Recharger maintenant » ; le changement de langue passe par le même chemin) : elle rouvre le
+//    modèle où la personne était, ici celui du dernier double-clic, et non le ★ comme après un rechargement venu d'ailleurs (1 bis). L'identifiant passe par le fragment de l'adresse du cadre (le
+//    stockage est refusé dans le cadre isolé) ; GFS ne rend pas l'ouverture une seconde fois et ne dit rien. Le choix de langue de l'app est, lui, refusé dans GFS : sans stockage, il ne survivrait pas.
+await app.evaluate(() => { window.__langue = 'avant'; });
+await app.locator('#v2-btn-settings').click();
+const langBefore = await app.evaluate(() => document.querySelector('input[name="settings-lang"]:checked').value);
+await app.locator(`label:has(input[name="settings-lang"][value="${langBefore === 'fr' ? 'en' : 'fr'}"])`).click();
+await page.waitForTimeout(1500);
+const langAfter = await app.evaluate(() => ({ mark: window.__langue, checked: document.querySelector('input[name="settings-lang"]:checked').value }));
+check('le choix de langue de l\'app est refusé dans GFS (pas de stockage dans le cadre isolé) : le cadre n\'est pas rechargé et la case revient sur la langue de la page',
+  langAfter.mark === 'avant' && langAfter.checked === langBefore, { langBefore, langAfter });
+await app.locator('[data-settings-tab="triggerKey"]').click();
+await app.locator('#settings-trigger-char').focus();
+await page.keyboard.press('ArrowDown');
+const notice = await app.locator('#settings-trigger-reload-notice').isVisible();
+await app.evaluate(() => { window.__rechargement = 'avant'; });
+await app.locator('#settings-trigger-reload-btn').click();
+await app.waitForFunction(() => !window.__rechargement && Boolean(document.getElementById('status-msg') && document.getElementById('status-msg').textContent), null, { timeout: 30000 });
+await page.waitForTimeout(800);
+const reopened = await shown().catch(() => ({ name: '' }));
+say('après « Recharger maintenant » :', reopened, 'adresse du cadre :', app.url(), 'phrase de GFS :', await toast());
+check('« Recharger maintenant » (Déclencheur) : l\'app se recharge et rouvre le modèle où la personne était, pas le ★ ; GFS ne dit rien',
+  notice && reopened.name === 'Quittance de loyer' && reopened.text === 'Quittance de loyer' && reopened.name !== USUAL && (await toast()) === '', { notice, reopened, phrase: await toast() });
+check('l\'adresse du cadre redevient celle de GFS (access et gfs gardés, plus de fragment) et l\'app reste un seul cadre',
+  /access=/.test(app.url()) && /gfs=/.test(app.url()) && !app.url().includes('#') && page.frames().filter(f => /\/apps\/publipostage\//.test(f.url())).length === 1, app.url());
+check('rien n\'est écrit dans le document par ce rechargement', (await snapshot()) === base);
+if (reopened.name !== 'Quittance de loyer') { await showFiles(); await row('Quittance de loyer').dblclick(); await waitShown('Quittance de loyer'); }
 
 // 5. Des modifications attendent : l'app pose sa question dans le panneau, GFS attend sans rien dire. L'enregistrement automatique de l'app (toutes les 2,5 s) peut passer entre la frappe
 //    et la demande : elle enregistre alors, ouvre sans question, et l'essai recommence sur l'autre modèle (jamais plus de huit fois).

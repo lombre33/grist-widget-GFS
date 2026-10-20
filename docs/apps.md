@@ -8,16 +8,16 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le |
 |---|---|---|---|---|
 | Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `d87ea5f` | 20/10/2026 |
-| Form+ | `lombre33/FormPlus` | `consignes/form/` | `b073d03` | 14/10/2026 |
-| Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `ee8f0a9` | 14/10/2026 |
-| Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `c8c819f` | 14/10/2026 |
+| Form+ | `lombre33/FormPlus` | `consignes/form/` | `d3c8475` | 20/10/2026 |
+| Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `ee8f0a9` | 20/10/2026 |
+| Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `c8c819f` | 20/10/2026 |
 
 ## Lus pour référence (pas des apps de GFS)
 
 | Dépôt | Pourquoi | Dernier commit lu | Lu le |
 |---|---|---|---|
-| `lombre33/SlidesPlus` | référence des diapositives (cahier 1.2) | `747a700` | 14/10/2026 |
-| `lombre33/Grist-widget-audit` | outil d'audit (cahier 3.3) | `3a1b3d5` | 14/10/2026 |
+| `lombre33/SlidesPlus` | référence des diapositives (cahier 1.2) | `747a700` | 20/10/2026 |
+| `lombre33/Grist-widget-audit` | outil d'audit (cahier 3.3) | `cc82061` | 20/10/2026 |
 
 « Dernier commit lu » est le sommet de `main` à la dernière lecture : le journal a été parcouru jusque-là, et le diff ouvert
 seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
@@ -137,7 +137,15 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   rien à abandonner quand une écriture de l'enregistrement automatique finit pendant la question (dit à l'app, sans rien lui
   demander).
 - SlidesPlus : suivre `main`. La branche par défaut du dépôt sur GitHub est une autre, donc `origin/HEAD` ne convient pas.
-- Grist-widget-audit : aucun commit n'avait été noté ; `3a1b3d5` est le sommet de `main` (4 octobre), qui n'a pas bougé depuis.
+- Grist-widget-audit : aucun commit n'avait été noté ; `3a1b3d5` était le sommet de `main` (4 octobre). Lu le 20/10 : un
+  commit de plus (`cc82061`, 15/10) : un appel à l'API Grist officielle ne coûte plus de points à la règle réseau ; rien à
+  changer chez GFS.
+- Form+, Automation+, Grist-BI, SlidesPlus (20/10) : relus par le sommet de `main`. Automation+ (`ee8f0a9`), Grist-BI
+  (`c8c819f`) et SlidesPlus (`747a700`) n'ont pas bougé depuis le 14/10. Form+ : cinq commits de plus, tous du 14/10
+  (`d3c8475`), des études et procédures de test d'une synchro entre deux documents Grist et un correctif de l'envoi de
+  pièces jointes par un répondant anonyme (`poc/js/respond.js`, l'en-tête `X-Requested-With`, sur la page des répondants et
+  non dans le widget) : ni table, ni colonne, ni clé de réglages, ni adresse de la CSP, ni appel de plus chez GFS. Pas
+  encore de `GFS-ETAT.md` chez Form+ : rien à traiter.
 - Les dossiers de `consignes/` portent l'identifiant court de l'app ; l'`id` du manifeste se fixe avec chaque `gfs.json`
   (étape 5 du plan).
 - Aucun de ces dépôts n'avait de `GFS-ETAT.md` : chaque projet d'app le crée en lisant sa consigne 001.

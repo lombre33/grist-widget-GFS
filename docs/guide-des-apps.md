@@ -72,6 +72,11 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
    un `import()` dont le chemin commence par un texte fixe, il ne lit pas une adresse calculée (mesuré à l'étape 2). Une
    extension chargée par une adresse calculée sort donc de la surface, et son code n'est relu par aucun audit : le mode de
    chargement des extensions se décide avec GFS (cahier 3.3, point 2, question 12).
+8. Suivre la langue de GFS (contrats 5.2, point 6) : dans GFS, la langue de l'app est `contexte.langue` (`fr` ou `en`) à
+   chaque démarrage, et l'événement `langue` la change en cours de vie ; l'app se retraduit, ou se recharge d'elle-même
+   après sa question d'enregistrement s'il y a des modifications en attente (Enregistrer, Abandonner, Annuler) et rouvre ce
+   qu'elle avait ouvert. Son propre choix de langue y est grisé avec la raison (« La langue se choisit dans Grist Factory
+   Suite »), jamais masqué ; seule, l'app garde son choix.
 
 ---
 
@@ -132,6 +137,8 @@ ligne 330 ; seul `macro` a sa branche, ligne 270) et peut devenir le modèle de 
 - **Où est Grist** : `fixBaseUrl` (`js/grist-api.js`, lignes 930 à 944) lit `document.referrer` pour corriger une instance
   auto-hébergée mal réglée. Dans GFS, le référent est l'adresse de GFS : la fonction passe par le kit.
 - **Stockage** : les clés `pp_*` (liste `STORED` de `outils/depot-propre/controles.mjs`) passent par le stockage du kit.
+- **Langue** : `initialLang()` lit `contexte.langue` dans GFS (avant `pp_lang` et la langue du navigateur), le gestionnaire
+  de messages de `GfsLink` écoute l'événement `langue`, et son choix de langue (Réglages) est grisé dans GFS (consigne 019).
 - **Manifeste** : `gfs.json`, d'après l'exemple du cahier (5.1).
 - **Extensions** : le graphique dans `extensions/graphique/` (pilote), puis diapositives, temps réel, formats Office. Leur
   code reste dans l'app ; leur bibliothèque est à GFS : l'entrée du manifeste dit l'identifiant et la version exacte qu'elles

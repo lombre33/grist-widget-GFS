@@ -81,6 +81,14 @@ export class AppSession {
     if (this.#envelope) this.#envelope.event('extensions', { extensions, bibliotheques });
   }
 
+  // L'événement `langue` (contrats 5.2, points 2 et 6) : la personne a changé la langue de GFS ; l'app le reçoit sans l'avoir demandé et décide comment suivre. Le titre du
+  // cadre (ce que lit un lecteur d'écran) suit tout de suite ; le cadre lui-même n'est jamais rechargé par GFS.
+  sendLanguage(language) {
+    this.ctx.lang = language;
+    if (this.#frame) this.#frame.title = label(this.manifest.nom, language);
+    if (this.#envelope) this.#envelope.event('langue', { langue: language });
+  }
+
   // L'app n'a pas dit `themeInitialized` : on la montre quand même après un délai (Grist fait de même avec un cadre qui tarde).
   #reveal() {
     if (this.visible || !this.#frame) return;

@@ -165,6 +165,7 @@ button { cursor: pointer; }
 /* ---------- étroit : le volet se replie, il reste le fil d'Ariane, Récents et Favoris (cahier 4.4) ---------- */
 @media (max-width: 519px) {
   .ex-head { padding: 8px 10px 6px; }
+  .tb-lang .lbl { display: none; }
   .ex-nav-row { flex-wrap: wrap; }
   .crumbs { flex-basis: 100%; }
   .inp-search { flex: 1; width: auto; min-width: 120px; }

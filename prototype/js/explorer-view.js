@@ -4,39 +4,68 @@
 import { h } from './dom.js';
 import { icon } from './icons.js';
 import { person, formatDate, pathParts } from './explorer-model.js';
+import { LANGUAGE_NAMES } from './language.js';
 
 export const SORT_HEADERS = [['name', 'ex.name'], ['type', 'ex.type'], ['mod', 'ex.modified'], ['by', 'ex.by']];
 const FAMILIES = new Set(['doc', 'grid', 'slides']);
 
 // Le cadre fixe : titre, bascule liste/vignettes, fil d'Ariane, recherche, filtre de type, « Nouveau », volet, liste, barre d'information.
-export function buildShell(t) {
+// Ses textes sont posés par `relabel` : la même fonction les réécrit quand la personne change la langue de GFS.
+export function buildShell(i18n) {
   const refs = {};
   const keep = (key, node) => { refs[key] = node; return node; };
-  const toggle = (key, name, glyph) => keep(key, h('button', { type: 'button', class: 'tb', title: t(name), 'aria-label': t(name), 'aria-pressed': 'false' }, icon(glyph)));
+  const toggle = (key, glyph) => keep(key, h('button', { type: 'button', class: 'tb', 'aria-pressed': 'false' }, icon(glyph)));
   const root = h('section', { class: 'ex', 'aria-labelledby': 'ex-title', hidden: true },
     h('header', { class: 'ex-head' },
       h('div', { class: 'ex-title-row' },
-        keep('title', h('h2', { class: 'ex-title', id: 'ex-title' }, t('ex.title'))),
+        keep('title', h('h2', { class: 'ex-title', id: 'ex-title' })),
         h('span', { class: 'grow' }),
-        keep('appsBtn', h('button', { type: 'button', class: 'tb', title: t('gfs.appsTip'), 'aria-haspopup': 'dialog' }, icon('modules'), t('gfs.apps'))),
-        h('div', { class: 'tb-group', role: 'group', 'aria-label': t('ex.display') }, toggle('viewList', 'ex.list', 'list'), toggle('viewTiles', 'ex.tiles', 'tiles'))),
+        keep('appsBtn', h('button', { type: 'button', class: 'tb', 'aria-haspopup': 'dialog' })),
+        keep('langBtn', h('button', { type: 'button', class: 'tb tb-lang', 'aria-haspopup': 'menu', 'aria-expanded': 'false' })),
+        keep('display', h('div', { class: 'tb-group', role: 'group' }, toggle('viewList', 'list'), toggle('viewTiles', 'tiles')))),
       h('div', { class: 'ex-nav-row' },
-        keep('crumbs', h('nav', { class: 'crumbs', 'aria-label': t('ex.path') })),
-        h('label', { class: 'inp-search' }, icon('search'),
-          keep('search', h('input', { type: 'search', placeholder: t('ex.search'), 'aria-label': t('ex.searchLabel'), autocomplete: 'off' }))),
-        keep('typeBtn', h('button', { type: 'button', class: 'btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false', title: t('ex.typeFilter') })),
-        keep('newBtn', h('button', { type: 'button', class: 'btn primary', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, icon('plus'), t('ex.new'))))),
+        keep('crumbs', h('nav', { class: 'crumbs' })),
+        h('label', { class: 'inp-search' }, icon('search'), keep('search', h('input', { type: 'search', autocomplete: 'off' }))),
+        keep('typeBtn', h('button', { type: 'button', class: 'btn', 'aria-haspopup': 'menu', 'aria-expanded': 'false' })),
+        keep('newBtn', h('button', { type: 'button', class: 'btn primary', 'aria-haspopup': 'menu', 'aria-expanded': 'false' })))),
     keep('notices', h('div', { class: 'ex-notices' })),
     h('div', { class: 'ex-body' },
-      keep('tree', h('nav', { class: 'ex-tree', 'aria-label': t('ex.folders') })),
+      keep('tree', h('nav', { class: 'ex-tree' })),
       h('div', { class: 'ex-main' }, keep('scroll', h('div', { class: 'ex-scroll' },
-        keep('list', h('div', { class: 'ex-list', role: 'grid', 'aria-label': t('ex.title') })),
+        keep('list', h('div', { class: 'ex-list', role: 'grid' })),
         keep('empty', h('div', { class: 'empty', hidden: true })))))),
     h('footer', { class: 'ex-foot' },
       keep('info', h('div', { class: 'ex-info', 'aria-live': 'polite' })),
-      keep('openBtn', h('button', { type: 'button', class: 'btn' }, t('ex.open'))),
-      keep('closeBtn', h('button', { type: 'button', class: 'btn' }, t('ex.close')))));
+      keep('openBtn', h('button', { type: 'button', class: 'btn' })),
+      keep('closeBtn', h('button', { type: 'button', class: 'btn' }))));
+  relabel(refs, i18n);
   return { root, refs };
+}
+
+// Les textes du cadre fixe, dans la langue de `i18n` : à la construction, puis à chaque changement de langue. Le contenu qui change au fil de l'usage (fil d'Ariane, volet,
+// liste, bouton du filtre de type) est redessiné par l'explorateur ; le bouton de langue dit celle qui vaut, dans sa propre langue.
+export function relabel(refs, i18n) {
+  const { t, lang } = i18n;
+  const name = LANGUAGE_NAMES[lang];
+  const describe = (node, text) => { node.setAttribute('title', text); node.setAttribute('aria-label', text); };
+  refs.title.textContent = t('ex.title');
+  refs.appsBtn.title = t('gfs.appsTip');
+  refs.appsBtn.replaceChildren(icon('modules'), t('gfs.apps'));
+  refs.langBtn.title = t('lang.tip');
+  refs.langBtn.setAttribute('aria-label', t('lang.btn', { name }));
+  refs.langBtn.replaceChildren(icon('globe'), h('span', { class: 'lbl' }, name));
+  refs.display.setAttribute('aria-label', t('ex.display'));
+  describe(refs.viewList, t('ex.list'));
+  describe(refs.viewTiles, t('ex.tiles'));
+  refs.crumbs.setAttribute('aria-label', t('ex.path'));
+  refs.search.placeholder = t('ex.search');
+  refs.search.setAttribute('aria-label', t('ex.searchLabel'));
+  refs.typeBtn.title = t('ex.typeFilter');
+  refs.newBtn.replaceChildren(icon('plus'), t('ex.new'));
+  refs.tree.setAttribute('aria-label', t('ex.folders'));
+  refs.list.setAttribute('aria-label', t('ex.title'));
+  refs.openBtn.textContent = t('ex.open');
+  refs.closeBtn.textContent = t('ex.close');
 }
 
 const family = file => (FAMILIES.has(file.family) ? file.family : null);

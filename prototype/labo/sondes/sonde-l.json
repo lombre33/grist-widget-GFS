@@ -1,0 +1,27 @@
+{
+  "contrat": 0,
+  "id": "sonde-l",
+  "nom": {
+    "fr": "Sonde L",
+    "en": "Probe L"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Une app qui lit la langue de GFS et suit ses changements, comme Publipostage+ après la consigne 019",
+    "en": "An app that reads GFS's language and follows its changes, like Publipostage+ after instruction 019"
+  },
+  "icone": "doc",
+  "entree": "index.html",
+  "tables": {
+    "prefixe": "SondeL_"
+  },
+  "reglages": [],
+  "permissions": {
+    "acces": "none"
+  },
+  "extensions": [],
+  "actions": {
+    "ouvrir": [],
+    "choisir": []
+  }
+}

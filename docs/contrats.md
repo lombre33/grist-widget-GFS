@@ -151,8 +151,10 @@ L'app (sous-cadre sans allow-same-origin)
    venant du manifeste livré avec GFS. Elle n'est jamais lue dans un réglage, une table ou un message (cahier 3.2, point 3).
 3. [T] Elle porte les six paramètres que Grist ajoute à l'adresse d'un widget (`access`, `readonly`, `language`, `culture`,
    `timeZone`, `currency` : `WidgetFrame.ts`, `_urlWithAccess`), **avec les mêmes noms**, les valeurs de GFS, sauf `access` :
-   le niveau de l'**app** (3.1). Publipostage+ lit `readonly` dans son adresse (`isReadOnlyAddress`). S'y ajoute `gfs=<n>`
-   (le numéro de contrat de GFS) : c'est ainsi qu'une app sait, tout de suite, qu'elle est hébergée.
+   le niveau de l'**app** (3.1), et `language` : la langue que la personne a choisie dans GFS (`fr` ou `en`, 5.2 point 6),
+   ou à défaut celle de Grist, telle qu'elle est quand le cadre est créé. Publipostage+ lit `readonly` dans son adresse
+   (`isReadOnlyAddress`). S'y ajoute `gfs=<n>` (le numéro de contrat de GFS) : c'est ainsi qu'une app sait, tout de suite,
+   qu'elle est hébergée.
 
 ### 1.4 Un sous-cadre à la fois
 
@@ -749,7 +751,8 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 | `page` | numéro de la page, ou `null` | au mieux, d'après le référent de GFS | au mieux |
 | `section` | numéro de la section, ou `null` | au mieux : Grist ne le dit pas au widget | au mieux |
 | `adresseWidget` | adresse du widget dans Grist, sans requête | celle de GFS | celle de l'app |
-| `langue`, `culture`, `fuseau`, `devise` | paramètres `language`, `culture`, `timeZone`, `currency` de l'adresse | ceux de GFS | ceux de l'adresse |
+| `langue` | `fr` ou `en` | le choix de la personne dans GFS, sinon la langue de Grist (point 6) | le choix de l'app, sinon l'adresse |
+| `culture`, `fuseau`, `devise` | paramètres `culture`, `timeZone`, `currency` de l'adresse | ceux de GFS | ceux de l'adresse |
 | `lectureSeule` | `readonly` de l'adresse | celui de GFS | celui de l'adresse |
 | `acces` | niveau de **cette app** (3.1) | oui | celui de Grist |
 | `extensions` | identifiants des extensions actives de l'app | liste de la section | `[]` |
@@ -757,10 +760,12 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 | `ouverture` | pourquoi et sur quoi l'app s'ouvre, ou `null` (5.4) | oui | `null` |
 | `stockage` | copie initiale du stockage de l'app (5.3) | oui | contenu du navigateur |
 
-1. [T] Les six paramètres de l'adresse (1.3) et le contexte disent la même chose : l'adresse existe pour le code des apps qui la
-   lit déjà, le contexte pour le kit.
-2. [D] Un seul événement en cours de vie : `extensions` (`{ "extensions": [ … ], "bibliotheques": { … } }`), quand la personne
-   active ou désactive une extension dans GFS. L'app charge alors l'extension au premier usage, comme ses moteurs d'export.
+1. [T] Les six paramètres de l'adresse (1.3) et le contexte disent la même chose : l'adresse existe pour le code des apps
+   qui la lit déjà, le contexte pour le kit. Une seule différence dans le temps : la langue de l'adresse est celle du cadre
+   quand il a été créé, et le contexte dit la langue qui vaut maintenant (point 6).
+2. [D] Deux événements en cours de vie. `extensions` (`{ "extensions": [ … ], "bibliotheques": { … } }`), quand la personne
+   active ou désactive une extension dans GFS : l'app charge alors l'extension au premier usage, comme ses moteurs d'export.
+   `langue` (`{ "langue": "fr" | "en" }`), quand la personne change la langue de GFS (point 6).
 3. [D] `ouverture` : `null` quand l'app s'ouvre sans consigne (elle applique son propre ordre d'arrivée, cahier 6.2, point 4) ;
    sinon `{ fichier, type, dossier, raison }` où `fichier` est `{ id, type }` (ou `null` pour « Nouveau »), `type` le type
    demandé quand `fichier` est `null`, `dossier` le dossier courant de l'explorateur (une indication), `raison` l'un de
@@ -796,6 +801,26 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    [D] Quand le chargement échoue (CSP, réseau, empreinte), l'extension reste grisée avec la raison, jamais muette.
    Pour un fichier de forme `module`, mesuré le 16/10 dans un cadre isolé (origine nulle, `sandbox` de GFS) sous
    `script-src 'self'` : une bonne empreinte charge le fichier, une mauvaise le refuse et rien n'est posé (faits vérifiés, 9).
+6. [D] `langue` : **un seul choix de langue par personne, pour GFS et pour toutes ses apps** (décision du porteur, 20/10).
+   Le bouton « Langue » de l'explorateur offre « Comme Grist » (par défaut : le paramètre `language` de Grist, sinon la
+   langue du navigateur), « Français » et « English ». Le choix est retenu dans le `localStorage` de GFS (clé `gfs.langue`),
+   jamais dans le document ni dans une table, et toutes les sections de GFS d'une même page le suivent (événement `storage`
+   du navigateur) ; un navigateur qui refuse de le retenir n'empêche rien : le choix vaut pour la page, et GFS le dit.
+   `contexte.langue` vaut `fr` ou `en` et fait foi à chaque appel `contexte` ; le paramètre `language` de l'adresse du cadre
+   n'en est que la valeur à sa création. Quand la langue qui vaut change, GFS envoie à l'app ouverte l'événement `langue`,
+   une seule fois, sans toucher à son cadre : choisir la langue que Grist donne déjà ne change pas la langue, donc n'envoie
+   rien. L'app décide comment suivre : se retraduire, ou se recharger après sa question d'enregistrement s'il y a des
+   modifications en attente (point 3) ; une app qui n'écoute pas l'événement garde sa langue jusqu'à son prochain démarrage.
+   Dans GFS, l'app n'offre plus de choix de langue à elle : le sien est grisé avec la raison, jamais masqué. `culture` reste
+   celle de Grist (celle du document) ; seules les dates de GFS lui-même suivent la langue choisie. [M] **Mesuré le 20/10**
+   dans un vrai Grist, à 700 × 400, à la vraie souris et au vrai clavier, en clair et en sombre, en français et en anglais
+   (`prototype/labo/run-langue.mjs`, 37 vérifications par combinaison) avec la sonde L, qui fait ce que fera l'app : la
+   langue de l'adresse et du contexte au départ ; l'événement à chaque changement qui compte, une seule fois ; rien quand le
+   choix redit la langue de Grist ; son cadre jamais rechargé ; une app ouverte après le choix la reçoit dès son départ ;
+   deux sections de GFS dans la page se suivent, la fenêtre « Apps et extensions » ouverte comprise ; un navigateur qui
+   refuse d'écrire laisse le choix valable pour la page et le dit dans la langue choisie. **Non mesuré** : Publipostage+
+   (elle n'écoute pas encore l'événement : consigne 019), deux onglets de Grist (même mécanisme du navigateur que deux
+   sections, non joué), Firefox, Safari.
 
 ### 5.3 Le stockage du navigateur
 
@@ -810,9 +835,9 @@ stockage par app (étape 3) :
 3. [D] GFS garde ces espaces dans son propre `localStorage` (clés `gfs.stockage.<id>.…`), dans un `try/catch`, et en mémoire seule
    si le navigateur le refuse. Quota par app : 1 Mo, à fixer à l'étape 5 d'après la plus grosse clé de Publipostage+
    (`pp_schema_…`, un instantané du schéma par document) ; dépassement : `GFS_QUOTA`.
-4. [T] Un choix gardé par navigateur (langue, thème, zoom, raccourcis) reste un confort : l'app marche sans lui (cahier 5.7).
-   L'espace de GFS n'est pas celui de l'app seule : un réglage de navigateur fait seule ne suit pas dans GFS, et c'est sans
-   perte de données.
+4. [T] Un choix gardé par navigateur (thème, zoom, raccourcis) reste un confort : l'app marche sans lui (cahier 5.7). La
+   langue en est sortie : c'est un seul choix par personne, que GFS garde lui-même (5.2, point 6). L'espace de GFS n'est pas
+   celui de l'app seule : un réglage de navigateur fait seule ne suit pas dans GFS, et c'est sans perte de données.
 
 ### 5.4 Les actions
 

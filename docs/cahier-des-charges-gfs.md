@@ -120,6 +120,7 @@ Slides+ (`lombre33/SlidesPlus`) n'est pas une app de GFS : les diapositives devi
 | **Premier client du kit commun : Form+**, et non Automation+, trop éloigné du périmètre de Publipostage+ | 16/10 | Sections 4.5 et 10 (étape 3, qui attend toujours son go) |
 | **Les six bibliothèques de l'écriture en direct de Publipostage+ : un seul fichier module, assemblé par GFS**, qui laisse en noms nus les bibliothèques natives de l'app (son éditeur) ; la copie de GFS d'abord, le CDN une fois l'adresse publique fixée | 16/10 | Section 4.7 ; contrats 2.6 (points 8 à 11) et 5.2 ; consigne 012 à Publipostage+ |
 | **Le CDN de ce fichier assemblé : jsDelivr, qui le sert depuis le dépôt public de GFS, à un commit épinglé** ; l'adresse change avec le dépôt définitif, et chaque app qui l'accueille la nomme dans sa CSP | 19/10 | Section 4.7 ; contrats 2.6 (point 11) ; consigne 016 à Publipostage+ |
+| **Un seul choix de langue pour GFS et toutes ses apps** : « Comme Grist » (par défaut), Français ou English, retenu sur le navigateur, suivi par les apps ouvertes | 20/10 | Contrats 1.3, 5.2 (point 6) et 5.3 (point 4) ; section 5.7 ; consigne 019 à Publipostage+ |
 
 Si un fait nouveau remet en cause une de ces lignes, le dire au porteur avec ce fait, sur une carte de décision. Ne jamais
 proposer l'inverse de son propre chef.
@@ -148,7 +149,8 @@ Numérotées pour que les tests les citent (« 3.1, point 4 »).
    dans l'app seule, un clic explique comment passer à GFS (guide des apps, section 5).
 9. À l'arrivée, GFS ouvre l'app de la section, puis l'app applique son propre ordre d'arrivée (section 6.2).
 10. Un compte Lecteur de Grist voit tout en lecture : rien ne s'installe, rien ne s'écrit, les gestes d'écriture sont grisés.
-11. Toute l'interface existe en français et en anglais ; ce que GFS écrit dans le document suit la langue de l'interface.
+11. Toute l'interface existe en français et en anglais ; ce que GFS écrit dans le document suit la langue de l'interface. La
+    langue est un seul choix par personne, pour GFS et pour toutes ses apps (section 5.7).
 12. Tout tient et se manie dans un panneau de 700 × 400, à la souris et au clavier (Tab, Échap), en thème clair et sombre.
 
 ### 3.2 Sécurité
@@ -523,13 +525,18 @@ enregistrée par l'autre app.
   demande au kit, qui les lit dans Grist quand l'app est seule et auprès du courtier dans GFS.
 - Raison de l'ouverture (« par la ligne… », « par la vue », « par le ★ », « à la main », « depuis l'explorateur ») : passée
   par GFS, affichée par l'app dans son coin d'état.
+- Langue : celle que la personne a choisie dans GFS (sinon celle de Grist), donnée par le contexte et annoncée aux apps
+  ouvertes par l'événement `langue` (contrats 5.2, point 6).
 
 ### 5.7 Le stockage du navigateur
 
 - Dans un sous-cadre à origine opaque, `localStorage` lève une erreur. Le kit offre un stockage par app : une lecture
   immédiate dans une copie en mémoire, remplie au démarrage (par le navigateur quand l'app est seule, par le courtier dans
   GFS), et une écriture qui suit.
-- Un choix gardé par navigateur (langue, thème, zoom, raccourcis) reste un confort : l'app marche sans lui.
+- Un choix gardé par navigateur (thème, zoom, raccourcis) reste un confort : l'app marche sans lui.
+- **La langue n'en fait plus partie** (décision du 20/10) : un seul choix par personne, gardé par GFS dans son propre
+  stockage, que les apps lisent dans le contexte et suivent par un événement (contrats 5.2, point 6). L'app seule garde le
+  sien.
 
 ---
 

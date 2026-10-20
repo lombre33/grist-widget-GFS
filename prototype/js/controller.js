@@ -8,6 +8,7 @@ import { createPort } from './broker.js';
 import { AppSession } from './session.js';
 import { readPreferences } from './frames.js';
 import { createI18n } from './i18n.js';
+import { LanguageSetting, browserStore, languageOfGrist, localeFor, watchStorage } from './language.js';
 import { installSprite, icon } from './icons.js';
 import { Explorer } from './explorer.js';
 import { loadFiles } from './explorer-data.js';
@@ -39,11 +40,6 @@ const readJson = async path => {
   return response.json();
 };
 
-function localeOf(preferences, lang) {
-  const wanted = preferences.culture || (lang === 'en' ? 'en-GB' : 'fr-FR');
-  try { return Intl.DateTimeFormat.supportedLocalesOf([wanted])[0] || (lang === 'en' ? 'en-GB' : 'fr-FR'); } catch (error) { return lang === 'en' ? 'en-GB' : 'fr-FR'; }
-}
-
 export class GfsController {
   apps = [];
   session = null;
@@ -54,6 +50,7 @@ export class GfsController {
   #sentExtensions = null;
   #contextServed = false; // l'app active a demandé son contexte : elle a lu l'ouverture qui s'y trouvait, et ne la relira pas
   #modulesWaiters = [];
+  #fileStatus = { loading: false, restricted: false, problems: [] }; // ce que l'explorateur dit sous la liste, gardé pour être redit dans la langue qui vaut
 
   // env : { grist, router, search, doc }
   constructor({ grist, router, search, doc = document }) {
@@ -62,10 +59,9 @@ export class GfsController {
     this.doc = doc;
     this.params = new URLSearchParams(search);
     this.preferences = readPreferences(search);
-    const language = (this.params.get('language') || navigator.language || 'fr').toLowerCase().startsWith('en') ? 'en' : 'fr';
-    this.i18n = createI18n(language);
-    this.lang = this.i18n.lang;
-    this.locale = localeOf(this.preferences, this.lang);
+    // La langue de GFS et de ses apps : le choix de la personne, retenu sur ce navigateur ; à défaut celle de Grist, ou du navigateur (contrats 5.2).
+    this.language = new LanguageSetting({ grist: languageOfGrist(this.params.get('language'), navigator.language), store: browserStore(window) });
+    this.#useLanguage();
     this.state = new GristState();
     this.port = createPort(grist);
     this.readonly = this.params.get('readonly') === 'true';
@@ -135,6 +131,8 @@ export class GfsController {
     if (window.parent === window) { this.#setStatus(this.t('gfs.noGrist'), true); doc.body.dataset.gfs = 'standalone'; return; }
     installSprite(doc);
     doc.documentElement.lang = this.lang;
+    this.language.onChange(event => this.#onLanguage(event));
+    watchStorage(this.language);
     this.grist.on('message', message => this.state.feed(message));
     this.grist.ready({ requiredAccess: 'full', onEditOptions: () => this.onEditOptions() });
     this.#installPrint();
@@ -177,19 +175,57 @@ export class GfsController {
     this.explorer = new Explorer({
       container: this.$('stage'), i18n: this.i18n, locale: this.locale, now: () => new Date(), appName: this.appName, typeLabel: this.typeLabel, lockOf: this.lockOf,
       newTypes: this.newTypes, canClose: () => Boolean(this.session), notice: text => this.notice(text),
+      language: () => ({ choice: this.language.choice, grist: this.language.grist }), onLanguage: choice => this.#chooseLanguage(choice),
       onOpen: file => this.#openFile(file), onNew: entry => this.#openNew(entry), onClose: () => this.hideExplorer(), onApps: () => void this.openModules(),
     });
   }
 
   #buildFloaters() {
+    this.$('floater-files').addEventListener('click', () => this.showExplorer());
+    this.$('floater-apps').addEventListener('click', () => void this.openModules());
+    this.#labelFloaters();
+  }
+
+  // Les deux repères au-dessus de l'app ouverte : leurs textes suivent la langue.
+  #labelFloaters() {
     const files = this.$('floater-files');
     files.replaceChildren(icon('folder'), this.t('gfs.files'));
     files.title = this.t('gfs.filesTip');
-    files.addEventListener('click', () => this.showExplorer());
     const apps = this.$('floater-apps');
     apps.replaceChildren(icon('modules'), this.t('gfs.apps'));
     apps.title = this.t('gfs.appsTip');
-    apps.addEventListener('click', () => void this.openModules());
+  }
+
+  // ---------- la langue ----------
+
+  // Pose la langue qui vaut : les textes, les noms d'apps, le format des dates de GFS.
+  #useLanguage() {
+    this.i18n = createI18n(this.language.language);
+    this.lang = this.i18n.lang;
+    this.locale = localeFor({ culture: this.preferences.culture, language: this.lang, grist: this.language.grist });
+  }
+
+  // Les paramètres de Grist que les apps reçoivent (adresse du cadre, `contexte`) : ceux de Grist, sauf la langue, qui est celle que la personne a choisie dans GFS.
+  #appPreferences() { return { ...this.preferences, language: this.lang }; }
+
+  // La personne choisit la langue de GFS et de ses apps. Si le navigateur refuse de la retenir, elle vaut pour cette page, et GFS le dit (dans la langue choisie).
+  #chooseLanguage(choice) {
+    if (!this.language.choose(choice)) this.notice(this.t('lang.notKept'));
+  }
+
+  // La langue qui vaut a changé (un geste, ou un autre onglet de la personne) : tout ce que GFS écrit se redit dans la nouvelle langue, et l'app ouverte est prévenue
+  // (contrats 5.2, points 2 et 6) sans que son cadre soit touché. Choisir la langue que Grist donne déjà ne change rien : les apps n'ont rien à apprendre.
+  #onLanguage({ languageChanged }) {
+    if (!languageChanged) return;
+    this.#useLanguage();
+    this.doc.documentElement.lang = this.lang;
+    if (!this.explorer) return; // le démarrage n'a pas encore construit le cadre : il le fera dans cette langue
+    const live = { i18n: this.i18n, locale: this.locale };
+    this.explorer.relocalize(live);
+    if (this.modulesWindow) this.modulesWindow.relocalize(live);
+    this.#labelFloaters();
+    this.#showFileStatus();
+    if (this.session) this.session.sendLanguage(this.lang);
   }
 
   // ---------- les deux lieux ----------
@@ -215,19 +251,28 @@ export class GfsController {
   async refreshFiles() {
     if (!this.fullAccess) {
       this.explorer.setFiles([]);
-      this.explorer.setStatus({ restricted: true, problems: [this.t('gfs.needsFullAccess')] });
+      this.#fileStatus = { loading: false, restricted: true, problems: [{ key: 'gfs.needsFullAccess' }] };
+      this.#showFileStatus();
       return;
     }
-    this.explorer.setStatus({ loading: true });
+    this.#fileStatus = { loading: true, restricted: false, problems: [] };
+    this.#showFileStatus();
     try {
       const { files, problems, stats } = await loadFiles(this.port, this.validApps());
       this.explorer.setFiles(files);
-      this.explorer.setStatus({ problems: problems.map(item => this.t('ex.readFailed', { app: this.appName(item.app), reason: item.reason })) });
+      this.#fileStatus = { loading: false, restricted: false, problems: problems.map(item => ({ key: 'ex.readFailed', app: item.app, reason: item.reason })) };
+      this.#showFileStatus();
       this.doc.body.dataset.explorerStats = JSON.stringify(stats);
     } catch (error) {
       console.error('GFS : lecture des fichiers impossible', error);
-      this.explorer.setStatus({ problems: [this.t('gfs.loadFailed', { reason: String(error && error.message) })] });
+      this.#fileStatus = { loading: false, restricted: false, problems: [{ key: 'gfs.loadFailed', reason: String(error && error.message) }] };
+      this.#showFileStatus();
     }
+  }
+
+  #showFileStatus() {
+    const { loading, restricted, problems } = this.#fileStatus;
+    this.explorer.setStatus({ loading, restricted, problems: problems.map(({ key, app, reason }) => this.t(key, { app: app ? this.appName(app) : '', reason })) });
   }
 
   // ---------- la fenêtre « Apps et extensions » ----------
@@ -351,7 +396,7 @@ export class GfsController {
     const given = this.registry.extensionsFor(session.id, this.doc.baseURI);
     this.#sentExtensions = JSON.stringify([given.extensions, given.bibliotheques]);
     const facts = await this.#readFacts();
-    return buildContext(facts, { access: session.access, extensions: given.extensions, libraries: given.bibliotheques, opening }, { preferences: this.preferences, readonly: this.readonly });
+    return buildContext(facts, { access: session.access, extensions: given.extensions, libraries: given.bibliotheques, opening }, { preferences: this.#appPreferences(), readonly: this.readonly });
   }
 
   // L'ouverture n'est rendue qu'au premier `contexte` de l'app qui vient d'être activée (contrats 5.2, point 3) : une app dont le cadre est rechargé sur place (sa langue, un
@@ -431,7 +476,7 @@ export class GfsController {
   #sessionContext(app) {
     return {
       entry: app.app, manifest: app.manifest, catalogue: this.apps.filter(item => item.ok).map(item => item.manifest), state: this.state, port: this.port, router: this.router,
-      container: this.$('frames'), readonly: this.readonly, preferences: this.preferences, base: this.doc.baseURI, lang: this.lang, onStatus: (kind, current) => this.#onStatus(kind, current),
+      container: this.$('frames'), readonly: this.readonly, preferences: this.#appPreferences(), base: this.doc.baseURI, lang: this.lang, onStatus: (kind, current) => this.#onStatus(kind, current),
       envelopeHandlers: session => this.#envelopeHandlers(session),
     };
   }

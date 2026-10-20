@@ -44,13 +44,13 @@ say('fil d\'Ariane :', (await frame.locator('.crumbs').innerText()).replace(/\s+
 say('lignes du dossier :', await frame.locator('.ls-row').allInnerTexts().then(a => a.map(t => t.replace(/\s+/g, ' ').slice(0, 60))));
 await shot('3-dossier-formation');
 
-await frame.locator('button[aria-haspopup="menu"]').first().click();
+await frame.locator('.ex-nav-row button[aria-haspopup="menu"]').first().click();
 await shot('4-menu-types');
 await frame.locator('.menu-item', { hasText: /Grille|Grid/ }).click();
 await page.waitForTimeout(200);
 say('filtre grille :', await frame.locator('.ls-row').allInnerTexts().then(a => a.map(t => t.replace(/\s+/g, ' ').slice(0, 50))));
 await shot('5-filtre-grille');
-await frame.locator('button[aria-haspopup="menu"]').first().click();
+await frame.locator('.ex-nav-row button[aria-haspopup="menu"]').first().click();
 await frame.locator('.menu-item').first().click();
 
 await frame.locator('.inp-search input').click();

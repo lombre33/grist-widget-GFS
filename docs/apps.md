@@ -106,10 +106,14 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   la référence avancée à `dc00b9d` (commit à part, relu), la réouverture mesurée dans un vrai Grist (contrats 5.2, point 3),
   la consigne 018 (qui répond aussi à la question du stockage). Restent ouverts : la langue (le porteur), le titre de
   l'impression (011), le chiffre du réseau réel, l'adresse définitive du CDN (016).
+- Langue commune (20/10, après le choix du porteur, « Réglage dans GFS ») : faite dans GFS et mesurée avec une sonde
+  (contrats 5.2, point 6 ; `run-langue.mjs`, 37 vérifications par combinaison). Publipostage+ à `dc00b9d` ne lit pas encore
+  `contexte.langue` et n'écoute pas l'événement `langue` : la consigne 019 le lui demande. GFS ne pourra mesurer avec l'app
+  elle-même qu'une fois sa référence avancée (commit à part, relu).
 - Publipostage+ change de langue en rechargeant la page (`53d36de` : plus de retraduction à chaud, `I18n.onChange` n'existe
-  plus), ce qui va avec le contrat (5.2, point 2 : un seul événement en cours de vie, `extensions`). Son `initialLang()` ne lit
-  que `localStorage` (clé `pp_lang`) puis les langues du navigateur, pas `contexte.langue` : à voir à l'étape 5, quand le kit
-  donne le contexte.
+  plus), ce qui va avec le contrat (5.2, points 2 et 6 : l'événement `langue`, que l'app suit en se rechargeant). Son
+  `initialLang()` ne lit que `localStorage` (clé `pp_lang`) puis les langues du navigateur, pas `contexte.langue` : la
+  consigne 019 le lui demande (20/10), sans attendre l'étape 5.
 - SlidesPlus : suivre `main`. La branche par défaut du dépôt sur GitHub est une autre, donc `origin/HEAD` ne convient pas.
 - Grist-widget-audit : aucun commit n'avait été noté ; `3a1b3d5` est le sommet de `main` (4 octobre), qui n'a pas bougé depuis.
 - Les dossiers de `consignes/` portent l'identifiant court de l'app ; l'`id` du manifeste se fixe avec chaque `gfs.json`

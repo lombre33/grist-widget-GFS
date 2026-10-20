@@ -17,6 +17,12 @@ const STRINGS = {
     'gfs.needsFullAccess': 'GFS a besoin de l’accès complet au document pour lister tes fichiers et ouvrir tes apps. Dans le panneau de droite de Grist, accepte la demande d’accès ou règle le niveau d’accès sur « accès complet ».',
     'gfs.needsFullAccessHint': 'Demande l’accès complet au document.',
 
+    'lang.btn': 'Langue : {name}',
+    'lang.tip': 'Langue de Grist Factory Suite et de ses apps',
+    'lang.menu': 'Langue',
+    'lang.auto': 'Comme Grist ({name})',
+    'lang.notKept': 'Ce choix ne sera pas gardé : ton navigateur refuse l’enregistrement.',
+
     'mod.title': 'Apps et extensions',
     'mod.count': '{n} {n|actif|actifs} sur {total}',
     'mod.countNote': 'seul le code coché est chargé',
@@ -119,6 +125,12 @@ const STRINGS = {
     'gfs.settingsFailed': 'This choice could not be saved: {reason}',
     'gfs.needsFullAccess': 'GFS needs full access to the document to list your files and open your apps. In Grist’s right panel, accept the access request or set the access level to “full document access”.',
     'gfs.needsFullAccessHint': 'Needs full access to the document.',
+
+    'lang.btn': 'Language: {name}',
+    'lang.tip': 'Language of Grist Factory Suite and its apps',
+    'lang.menu': 'Language',
+    'lang.auto': 'Same as Grist ({name})',
+    'lang.notKept': 'This choice will not be kept: your browser refuses to store it.',
 
     'mod.title': 'Apps and extensions',
     'mod.count': '{n} of {total} active',

@@ -6,7 +6,8 @@ import { h } from './dom.js';
 import { icon } from './icons.js';
 import { listItems, treeRows, typeChoices } from './explorer-model.js';
 import { words } from './search.js';
-import { buildShell, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar } from './explorer-view.js';
+import { buildShell, relabel, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar } from './explorer-view.js';
+import { LANGUAGE_NAMES } from './language.js';
 import { openMenu, closeMenu } from './menu.js';
 
 export class Explorer {
@@ -20,10 +21,11 @@ export class Explorer {
   // Deux tris : celui des dossiers et des favoris (par nom), celui de Récents (par date, le plus récent d'abord).
   state = { view: 'folder', path: '', open: new Set(), display: 'list', sort: { key: 'name', dir: 1 }, recentSort: { key: 'mod', dir: -1 }, type: 'all', q: '', sel: null };
 
-  // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), onOpen(file), onNew(entry), onClose(), onApps(), canClose(), notice(text) }
+  // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), onOpen(file), onNew(entry), onClose(), onApps(), canClose(), notice(text),
+  //          language() → { choice, grist }, onLanguage(choice) }
   constructor(opts) {
     this.#opts = opts;
-    const { root, refs } = buildShell(opts.i18n.t);
+    const { root, refs } = buildShell(opts.i18n);
     this.root = root;
     this.#refs = refs;
     opts.container.append(root);
@@ -58,6 +60,14 @@ export class Explorer {
   close() {
     closeMenu();
     this.root.hidden = true;
+  }
+
+  // La langue de GFS a changé : les textes du cadre fixe se réécrivent, et tout le reste se redessine dans la nouvelle langue (dates comprises).
+  relocalize({ i18n, locale }) {
+    this.#opts = { ...this.#opts, i18n, locale };
+    closeMenu();
+    relabel(this.#refs, i18n);
+    if (this.isOpen) this.render();
   }
 
   // ---------- état ----------
@@ -161,9 +171,10 @@ export class Explorer {
   // ---------- gestes ----------
 
   #bind() {
-    const { search, viewList, viewTiles, typeBtn, newBtn, openBtn, closeBtn, appsBtn, crumbs: crumbsNav, tree: treeNav, list } = this.#refs;
+    const { search, viewList, viewTiles, typeBtn, newBtn, openBtn, closeBtn, appsBtn, langBtn, crumbs: crumbsNav, tree: treeNav, list } = this.#refs;
     search.addEventListener('input', () => { this.state.q = search.value; this.state.sel = null; this.#renderCrumbs(); this.#renderList(); });
     appsBtn.addEventListener('click', () => this.#opts.onApps());
+    langBtn.addEventListener('click', () => this.#languageMenu());
     viewList.addEventListener('click', () => this.#setDisplay('list'));
     viewTiles.addEventListener('click', () => this.#setDisplay('tiles'));
     typeBtn.addEventListener('click', () => this.#typeMenu());
@@ -302,6 +313,15 @@ export class Explorer {
   }
 
   #setType(value) { this.state.type = value; this.state.sel = null; this.render(); }
+
+  // Le menu de langue : « comme Grist », le français, l'anglais. Le choix est rendu au contrôleur, qui le retient et le fait suivre aux apps.
+  #languageMenu() {
+    const { t } = this.#opts.i18n;
+    const { choice, grist } = this.#opts.language();
+    const item = (value, label) => ({ label, check: choice === value, run: () => this.#opts.onLanguage(value) });
+    const items = [item('auto', t('lang.auto', { name: LANGUAGE_NAMES[grist] })), '-', item('fr', LANGUAGE_NAMES.fr), item('en', LANGUAGE_NAMES.en)];
+    openMenu(this.#refs.langBtn, items, { host: this.root, align: 'right', label: t('lang.menu') });
+  }
 
   #newMenu() {
     const { t } = this.#opts.i18n;

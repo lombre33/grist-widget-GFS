@@ -64,6 +64,15 @@ export class ModulesWindow {
     this.#opts.onClose();
   }
 
+  // La langue de GFS a changé : une fenêtre ouverte réécrit ses textes et se redessine, une fenêtre fermée prendra les nouveaux à son ouverture.
+  relocalize({ i18n, locale }) {
+    this.#opts = { ...this.#opts, i18n, locale };
+    if (!this.#root) return;
+    this.#root.querySelector('#mod-title').textContent = i18n.t('mod.title');
+    this.#root.querySelector('[data-fk="close"]').textContent = i18n.t('mod.close');
+    this.refresh();
+  }
+
   // Redessine la liste d'après le modèle, en gardant le défilement et l'élément qui avait le clavier.
   refresh() {
     if (!this.#root) return;

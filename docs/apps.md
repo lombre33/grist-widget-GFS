@@ -7,7 +7,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le |
 |---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `8b7b5ab` | 19/10/2026 |
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `1bd277f` | 20/10/2026 |
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `b073d03` | 14/10/2026 |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `ee8f0a9` | 14/10/2026 |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `c8c819f` | 14/10/2026 |
@@ -82,6 +82,17 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   réglages. Traité le 19/10 : les poids, la référence à `71287c4`, « Nouveau » activé, l'ouverture rendue une seule fois (sa
   question), la lecture de fond (sa réponse), consigne 017. Restent ouverts : le titre de l'impression (011) et le chiffre du
   réseau réel (le porteur).
+- Publipostage+ à `1bd277f` (20/10, matin) : cinq commits de plus depuis `8b7b5ab`. Son `GFS-ETAT.md` (`ca943d7`, qui décrit
+  `4829cf5`) dit la 016 « lue, pas faite » : le porteur a choisi le 20/10 d'attendre l'adresse du dépôt public définitif,
+  parce que celle de la 016 passe par le dépôt de développement et porte son compte personnel, que le contrôle d'envoi de
+  l'app au dépôt public refuse dans un fichier publié (`index.html` en est un). Sa CSP, sa garde de code et son essai restent
+  comme à la 007 : le défaut « Depuis un CDN » y est refusé, « Copie de GFS » marche (mesuré le 19/10, `run-edition`). L'état
+  n'a pas encore lu la 017 (il lit GFS à `3760817`) : sa demande et ses quatre premières questions y sont encore posées.
+  Nouvelle question : quand l'adresse sera-t-elle celle du dépôt public définitif (cahier, question 5) ? Nouvelle demande :
+  avancer la référence de l'app de `71287c4` à `4829cf5` (le PDF d'une présentation ne demande plus « Exporter quand même ? »
+  pour une diapositive vide ; rien d'autre pour GFS). Les deux commits suivants (`e218fd9`, `1bd277f`, le menu Image des
+  variables avec une colonne Pièces jointes) n'ajoutent aucun appel à Grist, ni CSP, ni carte d'importation, ni liste de
+  l'app. Rien n'est traité : la demande attend le mot du porteur.
 - Publipostage+ change de langue en rechargeant la page (`53d36de` : plus de retraduction à chaud, `I18n.onChange` n'existe
   plus), ce qui va avec le contrat (5.2, point 2 : un seul événement en cours de vie, `extensions`). Son `initialLang()` ne lit
   que `localStorage` (clé `pp_lang`) puis les langues du navigateur, pas `contexte.langue` : à voir à l'étape 5, quand le kit

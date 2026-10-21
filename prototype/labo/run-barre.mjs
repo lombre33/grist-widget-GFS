@@ -19,9 +19,9 @@ const scheme = process.env.LAB_SCHEME || 'light';
 const RUN = `barre-${lang}-${scheme}`;
 const GAP = 4;
 const WORDS = {
-  fr: { files: 'Ouvrir l’explorateur de fichiers', apps: 'Apps et extensions de Grist Factory Suite', place: 'Position de la barre', group: 'Grist Factory Suite', close: /^Fermer$/,
+  fr: { files: 'Ouvrir l’explorateur de fichiers', apps: 'Apps et extensions de Grist Factory Suite', work: /^Table de travail/, place: 'Position de la barre', group: 'Grist Factory Suite', close: /^Fermer$/,
     edges: { gauche: 'À gauche', haut: 'En haut', droite: 'À droite', bas: 'En bas' }, notKept: 'Ce choix ne sera pas gardé : ton navigateur refuse l’enregistrement.' },
-  en: { files: 'Open the file explorer', apps: 'Apps and extensions of Grist Factory Suite', place: 'Bar position', group: 'Grist Factory Suite', close: /^Close$/,
+  en: { files: 'Open the file explorer', apps: 'Apps and extensions of Grist Factory Suite', work: /^Working table/, place: 'Bar position', group: 'Grist Factory Suite', close: /^Close$/,
     edges: { gauche: 'Left', haut: 'Top', droite: 'Right', bas: 'Bottom' }, notKept: 'This choice will not be kept: your browser refuses to store it.' },
 }[lang];
 const ORDER = ['gauche', 'haut', 'droite', 'bas']; // l'ordre du menu
@@ -132,8 +132,10 @@ check('l\'app ouverte, la barre est à l\'écran, à gauche par défaut', state.
 check('GFS n\'a rien écrit sans un geste de la personne (pas de clé `gfs.barre`)', state.stored === null, state.stored);
 check('la barre mesure 34 × 124 px, à 4 px du bord gauche et centrée sur lui', near(rect.largeur, 34, 0.6) && near(rect.hauteur, 124, 0.6) && placedAt('gauche', rect, stage), rect);
 check('le groupe de boutons a un nom accessible (« Grist Factory Suite ») et un rôle de groupe', state.role === 'group' && state.label === WORDS.group, state);
-const names = await frame.evaluate(() => ['floater-files', 'floater-apps', 'floater-place'].map(id => { const b = document.getElementById(id); return { title: b.title, label: b.getAttribute('aria-label'), text: b.textContent.trim(), icons: b.querySelectorAll('svg').length }; }));
-check('trois boutons à icône seule, dont le nom (info-bulle et nom accessible) est dans la langue de GFS', JSON.stringify(names) === JSON.stringify([WORDS.files, WORDS.apps, WORDS.place].map(text => ({ title: text, label: text, text: '', icons: 1 }))), names);
+const names = await frame.evaluate(() => ['floater-files', 'floater-apps', 'floater-work', 'floater-place'].map(id => { const b = document.getElementById(id); return { title: b.title, label: b.getAttribute('aria-label'), text: b.textContent.trim(), icons: b.querySelectorAll('svg').length }; }));
+// Le nom du bouton « Table de travail » dit aussi ce qui vaut (la table de la page, ou celle choisie) : seul son début est fixe.
+const named = (name, text) => name.title === name.label && name.text === '' && name.icons === 1 && (text instanceof RegExp ? text.test(name.title) : name.title === text);
+check('quatre boutons à icône seule, dont le nom (info-bulle et nom accessible) est dans la langue de GFS', [WORDS.files, WORDS.apps, WORDS.work, WORDS.place].every((text, i) => named(names[i], text)), names);
 const colors = await frame.evaluate(() => {
   const parse = c => c.match(/[\d.]+/g).slice(0, 3).map(Number);
   const lum = ([r, g, b]) => { const f = v => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };

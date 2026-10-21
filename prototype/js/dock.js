@@ -65,7 +65,7 @@ export class Dock {
     this.#place.dataset.edge = this.edge;
   }
 
-  // La ligne de travail choisie, dite par l'info-bulle du bouton ; `active` : une ligne est choisie (le bouton est enfoncé), sinon la page décide.
+  // La table de travail choisie, dite par l'info-bulle du bouton ; `active` : une table est choisie (le bouton est enfoncé), sinon la page décide.
   setWork(text, active) {
     this.#workTip = text;
     this.#name(this.#work, 'work-row', text);

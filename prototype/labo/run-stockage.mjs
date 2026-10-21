@@ -14,7 +14,8 @@ const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
 const QUOTA = 1048576;
 
-const lab = await startLab({ lang, colorScheme: scheme, probes: true });
+// `newsSeen: false` : la passe relit tout l'espace des apps chez GFS, sans la clé que le labo pose pour la fenêtre des nouveautés de Publipostage+.
+const lab = await startLab({ lang, colorScheme: scheme, probes: true, newsSeen: false });
 const { page } = lab;
 const warnings = [];
 page.on('console', m => { if (m.type() === 'warning' && m.text().startsWith('GFS')) warnings.push(m.text()); });

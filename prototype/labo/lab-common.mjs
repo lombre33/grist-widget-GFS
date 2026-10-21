@@ -120,7 +120,8 @@ async function routePatches(browser, page, patches) {
   }
 }
 
-export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', width = 1280, height = 800, probes = false, frameAttributes = null, patches = [] } = {}) {
+// `newsSeen` : le labo dit la fenêtre des nouveautés de Publipostage+ déjà vue (plus bas) ; faux pour la passe qui la mesure et pour celle qui relit tout le stockage de GFS.
+export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', width = 1280, height = 800, probes = false, frameAttributes = null, patches = [], newsSeen = true } = {}) {
   // L'interface de Grist reste en anglais (les gestes du labo cherchent ses libellés) ; la langue de GFS passe par l'adresse du widget (lab-setup.mjs).
   // La politique de sécurité du contenu de GFS et des apps est ENFORCÉE (LAB_BYPASS_CSP=1 pour la suspendre : un diagnostic, jamais une mesure).
   const context = await browser.newContext({ viewport: { width, height }, colorScheme, bypassCSP: process.env.LAB_BYPASS_CSP === '1', locale: 'en-US' });
@@ -201,6 +202,16 @@ export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', 
     } catch (e) { /* déjà posé */ }
   }, EXACT_ADDRESSES);
   await page.addInitScript((l) => { try { if (location.port === '8911') localStorage.setItem('pp_lang', l); } catch (e) { /* stockage indisponible */ } }, lang);
+  // La fenêtre des nouveautés de Publipostage+ s'ouvre toute seule, une fois par personne (`1f336ac`, la clé `pp_news_seen`) : chaque passe part d'un navigateur neuf, elle s'ouvrirait donc
+  // par-dessus ce que la passe mesure. Le labo la dit vue, chez GFS (`gfs.stockage.publipostage.`) et pour l'app seule, avec une version plus récente que toute version de l'app.
+  if (newsSeen) {
+    await page.addInitScript(() => {
+      try {
+        if (location.port !== '8911') return;
+        for (const key of ['gfs.stockage.publipostage.pp_news_seen', 'pp_news_seen']) if (localStorage.getItem(key) === null) localStorage.setItem(key, '9999');
+      } catch (e) { /* stockage indisponible : le cadre d'une app chez GFS */ }
+    });
+  }
   // Une app dans son sous-cadre n'a pas de stockage (sans allow-same-origin) : elle suit la langue du navigateur. Le labo la donne à ces cadres seulement.
   await page.addInitScript((l) => {
     try {

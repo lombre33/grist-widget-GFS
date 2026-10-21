@@ -43,13 +43,13 @@ async function chooseFullAccess(page) {
 }
 
 // `widget` : l'adresse de la page que Grist reçoit comme widget personnalisé (GFS par défaut ; une sonde, pour la mesurer SANS GFS, dans le cadre même de Grist).
-const DEFAULTS = { lang: 'fr', colorScheme: 'light', width: 1280, height: 800, query: '', fullAccess: true, probes: false, frameAttributes: null, patches: [], widget: WIDGET };
+const DEFAULTS = { lang: 'fr', colorScheme: 'light', width: 1280, height: 800, query: '', fullAccess: true, probes: false, frameAttributes: null, patches: [], widget: WIDGET, newsSeen: true };
 
 export async function startLab(options = {}) {
-  const { lang, colorScheme, width, height, query, fullAccess, probes, frameAttributes, patches, widget } = { ...DEFAULTS, ...options };
+  const { lang, colorScheme, width, height, query, fullAccess, probes, frameAttributes, patches, widget, newsSeen } = { ...DEFAULTS, ...options };
   await mkdir(SHOTS, { recursive: true });
   const browser = await engine.launch(engineName === 'chromium' ? { args: ['--no-sandbox', '--font-render-hinting=none'] } : {});
-  const { page, context } = await newLabPage(browser, { lang, colorScheme, width, height, probes, frameAttributes, patches });
+  const { page, context } = await newLabPage(browser, { lang, colorScheme, width, height, probes, frameAttributes, patches, newsSeen });
   const gfsFrame = async (re = /./) => {
     for (let i = 0; i < 80; i++) {
       const f = page.frames().find(f => f.url().startsWith(widget) && re.test(f.url()));

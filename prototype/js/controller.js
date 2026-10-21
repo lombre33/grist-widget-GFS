@@ -15,6 +15,8 @@ import { Dock } from './dock.js';
 import { WorkControl } from './work-control.js';
 import { Explorer } from './explorer.js';
 import { loadFiles } from './explorer-data.js';
+import { Filing } from './filing.js';
+import { askName, chooseFolder } from './filing-window.js';
 import { readCatalogue } from './libraries.js';
 import { activeExtensionIds, extensionsOf } from './extensions.js';
 import { AppsState } from './apps-state.js';
@@ -51,6 +53,8 @@ export class GfsController {
   session = null;
   explorer = null;
   modulesWindow = null;
+  // L'adresse de la personne, '' tant que GFS ne la lit pas : son rangement est alors commun au document (contrats 6.4, point 4).
+  identity = '';
   #noticeTimer = null;
   #facts = null;
   #sentExtensions = null;
@@ -188,7 +192,18 @@ export class GfsController {
       newTypes: this.newTypes, canClose: () => Boolean(this.session), notice: text => this.notice(text),
       language: () => ({ choice: this.language.choice, grist: this.language.grist }), onLanguage: choice => this.#chooseLanguage(choice),
       onOpen: file => this.#openFile(file), onNew: entry => this.#openNew(entry), onClose: () => this.hideExplorer(), onApps: () => void this.openModules(),
-      onDemo: this.devMode ? () => void this.#runDemo() : null,
+      personal: () => Boolean(this.identity), filing: this.#buildFiling(), onDemo: this.devMode ? () => void this.#runDemo() : null,
+    });
+  }
+
+  // Épingler, renommer, déplacer depuis l'explorateur (js/filing.js) : les fenêtres du widget par-dessus l'explorateur, et la liste relue après chaque geste.
+  #buildFiling() {
+    const layer = opts => ({ ...opts, t: this.t, container: this.$('stage'), inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')] });
+    return new Filing({
+      port: this.port, rangement: this.rangement, t: this.t, locale: () => this.locale, identity: () => this.identity, files: () => this.explorer.files, appName: this.appName,
+      here: () => (this.explorer.state.view === 'folder' ? this.explorer.state.path : ''), writeBlock: () => this.#writeBlock(), notice: text => this.notice(text),
+      specOf: file => ((this.appById(file.app) || { manifest: {} }).manifest.fichiers || []).find(spec => spec.table === file.table) || null,
+      refresh: () => this.refreshFiles(), windows: { name: opts => askName(layer(opts)), folder: opts => chooseFolder(layer(opts)) },
     });
   }
 
@@ -273,7 +288,7 @@ export class GfsController {
     this.#fileStatus = { loading: true, restricted: false, problems: [] };
     this.#showFileStatus();
     try {
-      const { files, problems, stats } = await loadFiles(this.port, this.validApps());
+      const { files, problems, stats } = await loadFiles(this.port, this.validApps(), this.identity);
       this.explorer.setFiles(files);
       this.#fileStatus = { loading: false, restricted: false, problems: problems.map(item => ({ key: 'ex.readFailed', app: item.app, reason: item.reason })) };
       this.#showFileStatus();

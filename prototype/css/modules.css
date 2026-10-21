@@ -24,6 +24,13 @@
 .ask-items li + li { margin-top: 4px; }
 .ask-foot { justify-content: flex-end; }
 
+/* Nommer (filing-window.js : renommer un fichier ou un dossier) : la même base, un champ ; ce qui manque se dit sous lui, en rouge lisible. */
+.nw-label { display: block; margin: 0 0 4px; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.nw-input { display: block; width: 100%; height: 30px; padding: 0 8px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--text); font: inherit; }
+.nw-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.nw-note { margin-top: 6px; color: var(--danger-ink); }
+
 /* ---------- une ligne par app, puis une par extension de cette app ---------- */
 .mr { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; column-gap: 8px; padding: 9px 8px; border-bottom: 1px solid var(--border); }
 .mr:last-child { border-bottom: 0; }
@@ -86,6 +93,8 @@
 .wk-reason { font-size: 11.5px; font-weight: 400; color: var(--text-muted); }
 .wk-item.is-locked { cursor: not-allowed; }
 .wk-item.is-locked .wk-name { color: var(--text-muted); }
+/* Déplacer (filing-window.js) : le nouveau dossier que dit la recherche porte le « + » de l'accent. */
+.wk-item.is-fresh .ic { color: var(--accent-ink); }
 
 /* ---------- étroit : l'état et le geste passent sous le texte ---------- */
 @media (max-width: 519px) {

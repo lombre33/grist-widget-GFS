@@ -130,10 +130,13 @@ function fileCells(ctx, file, flat) {
     h('div', { class: 'md', role: 'gridcell' }, formatDate(file.ts, ctx.now, ctx.locale, t)),
     h('div', { class: 'by', role: 'gridcell' }, who.initials ? h('span', { class: 'who', title: who.name }, who.initials) : null),
     h('div', { class: 'acts', role: 'gridcell' },
-      h('button', { type: 'button', class: `rb pin${file.pinned ? ' on' : ''}`, dataset: { pin: file.key }, title: pinTitle, 'aria-label': pinTitle, 'aria-pressed': String(file.pinned), 'aria-disabled': 'true' }, icon('pin')),
-      h('button', { type: 'button', class: 'rb mn', dataset: { menu: file.key }, title: t('ex.more'), 'aria-label': t('ex.more'), 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, icon('more'))),
+      h('button', { type: 'button', class: `rb pin${file.pinned ? ' on' : ''}`, dataset: { pin: file.key }, title: pinTitle, 'aria-label': pinTitle, 'aria-pressed': String(file.pinned) }, icon('pin')),
+      moreButton(t, file.key)),
   ];
 }
+
+// « Plus d'actions » d'une ligne (fichier ou dossier) : le menu de js/explorer.js.
+const moreButton = (t, key) => h('button', { type: 'button', class: 'rb mn', dataset: { menu: key }, title: t('ex.more'), 'aria-label': t('ex.more'), 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, icon('more'));
 
 export function fileRow(ctx, file, flat) {
   const lock = ctx.lockOf(file);
@@ -151,7 +154,7 @@ export function folderRow(ctx, folder) {
     h('div', { class: 'ty', role: 'gridcell' }, h('span', { class: 'pill' }, t('ex.fileCount', { n: folder.count }))),
     h('div', { class: 'md', role: 'gridcell' }, formatDate(folder.ts, ctx.now, ctx.locale, t)),
     h('div', { class: 'by', role: 'gridcell' }),
-    h('div', { class: 'acts', role: 'gridcell' }));
+    h('div', { class: 'acts', role: 'gridcell' }, moreButton(t, key)));
 }
 
 // Ce qu'une vignette montre : un dossier ou un fichier (grisé ou non).
@@ -186,16 +189,18 @@ export function emptyMessage(ctx) {
 
 const infoLine1 = (...nodes) => h('div', { class: 'l1' }, ...nodes);
 
-// La barre d'information : le fichier choisi (l'app qui l'ouvre, la date, le grisé), sinon un rappel du rangement.
+// La barre d'information : le fichier choisi (l'app qui l'ouvre, la date, le grisé), sinon un rappel du rangement : à la personne seule, ou commun au
+// document tant que GFS ne sait pas qui elle est (contrats 6.4, point 4).
 export function infoBar(ctx) {
   const { t, selected } = ctx;
+  const filingHint = ctx.personal ? t('ex.hintPersonal') : t('ex.hintShared');
   if (!selected) {
-    return h('div', { class: 'inf' }, infoLine1(icon('info'), h('span', { class: 'mu' }, ctx.state.view === 'folder' ? t('ex.hintPersonal') : t('ex.hintSelect'))),
-      h('div', { class: 'l2' }, icon('pin'), h('span', { class: 'lt' }, t('ex.hintFav'))));
+    return h('div', { class: 'inf' }, infoLine1(icon('info'), h('span', { class: 'mu' }, ctx.state.view === 'folder' ? filingHint : t('ex.hintSelect'))),
+      h('div', { class: 'l2' }, icon('pin'), h('span', { class: 'lt' }, ctx.personal ? t('ex.hintFav') : t('ex.hintFavShared'))));
   }
   if (selected.kind === 'folder') {
     return h('div', { class: 'inf' }, infoLine1(icon('folder'), h('b', null, selected.name), h('span', { class: 'mu' }, `· ${t('ex.fileCount', { n: selected.count })}`)),
-      h('div', { class: 'l2' }, h('span', { class: 'lt' }, t('ex.hintPersonal'))));
+      h('div', { class: 'l2' }, h('span', { class: 'lt' }, filingHint)));
   }
   const { file } = selected;
   const lock = ctx.lockOf(file);

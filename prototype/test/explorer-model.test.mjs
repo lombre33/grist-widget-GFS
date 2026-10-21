@@ -1,8 +1,8 @@
 // Le modèle de l'explorateur : lecture des tables d'après le manifeste (contrats 2.4), rangement (6.4), dossiers, recherche, tri.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFiles, readFiling, applyFiling, subfolders, treeRows, pathParts, listItems, typeChoices, person, formatDate, normalizePath, inside }
-  from '../js/explorer-model.js';
+import { readFiles, readFiling, readGfsFiling, applyFiling, folderPaths, folderName, folderMoves, subfolders, treeRows, pathParts, listItems, typeChoices, person,
+  formatDate, normalizePath, inside } from '../js/explorer-model.js';
 import { createI18n } from '../js/i18n.js';
 import { publipostage } from './helpers.mjs';
 
@@ -92,6 +92,62 @@ test('applyFiling : un fichier garde son rangement, une ligne dont le fichier n\
   assert.equal(list.find(f => f.id === '4').folder, '');
   assert.ok(!list.some(f => f.id === '99'));
   assert.match(list.find(f => f.id === '2').search, /convocation de session formation sessions/);
+});
+
+test('readFiles : chaque fichier dit sa table et sa ligne de Grist (renommer écrit là, et seulement là)', () => {
+  const list = readFiles(manifest, spec, models());
+  assert.deepEqual(list.map(f => [f.table, f.row]), [[spec.table, 1], [spec.table, 2], [spec.table, 4], [spec.table, 5], [spec.table, 6]]);
+});
+
+// Le rangement de GFS (`GFS_Rangement`, contrats 6.4) : une ligne par (personne, app, fichier), qui passe devant celui de l'app.
+const gfsRows = () => ({
+  id: [1, 2, 3, 4, 5, 6, 7],
+  Utilisateur: ['', '@document', '', 'autre@exemple.org', '', '', ''],
+  App: ['publipostage', 'gfs', 'publipostage', 'publipostage', '', 'publipostage', 'form'],
+  Fichier: ['2', 'apps', '4', '1', '', '2', '9'],
+  Favori: [true, false, false, true, false, false, true],
+  Dossier: ['Archives / 2026', '', 'Formation', 'Prive', 'Vide', 'Doublon', ''],
+});
+
+test('readGfsFiling : la personne seule, ni la ligne réservée ni une ligne sans fichier, la première ligne fait foi', () => {
+  const filing = readGfsFiling(gfsRows(), '');
+  assert.deepEqual([...filing.keys()], ['publipostage:2', 'publipostage:4', 'form:9']);
+  assert.deepEqual(filing.get('publipostage:2'), { folder: 'Archives/2026', pinned: true });
+  assert.deepEqual([...readGfsFiling(gfsRows(), 'autre@exemple.org').keys()], ['publipostage:1']);
+  assert.equal(readGfsFiling(gfsRows(), '@document').size, 0, 'une identité réservée ne lit rien');
+  assert.equal(readGfsFiling(null).size, 0);
+});
+
+test('applyFiling : le rangement de GFS passe devant celui de l\'app, fichier par fichier ; sans ligne, celui de l\'app reste', () => {
+  const list = applyFiling(readFiles(manifest, spec, models()), readFiling(spec.rangement, prefs(), ''), readGfsFiling(gfsRows(), ''));
+  const of = id => list.find(f => f.id === id);
+  assert.deepEqual([of('2').folder, of('2').pinned], ['Archives/2026', true], 'GFS a rangé le fichier 2');
+  assert.deepEqual([of('4').folder, of('4').pinned], ['Formation', false], 'GFS seul connaît le fichier 4');
+  assert.deepEqual([of('1').folder, of('1').pinned], ['Formation', true], 'le fichier 1 garde le rangement de l\'app');
+  assert.match(of('2').search, /archives 2026/);
+});
+
+test('folderPaths : chaque dossier et ses parents, une fois, triés ; folderName : sans « / » ni espaces autour', () => {
+  const list = [{ folder: 'B/C' }, { folder: '' }, { folder: 'a' }, { folder: 'B/C/D' }, { folder: 'B' }];
+  assert.deepEqual(folderPaths(list, 'fr'), ['a', 'B', 'B/C', 'B/C/D']);
+  assert.equal(folderName('  Factures / 2026  '), 'Factures 2026');
+  assert.equal(folderName(' // '), '');
+  assert.equal(folderName(null), '');
+});
+
+test('folderMoves : un dossier renommé ou déplacé emporte ses fichiers et ses sous-dossiers ; jamais en lui-même', () => {
+  const list = [
+    { app: 'p', id: '1', pinned: true, folder: 'A/B' }, { app: 'p', id: '2', pinned: false, folder: 'A/B/C' },
+    { app: 'f', id: '3', pinned: false, folder: 'A' }, { app: 'p', id: '4', pinned: false, folder: 'A/Bis' },
+  ];
+  assert.deepEqual(folderMoves(list, 'A/B', 'A/Z'), [
+    { app: 'p', file: '1', pinned: true, folder: 'A/Z' }, { app: 'p', file: '2', pinned: false, folder: 'A/Z/C' },
+  ], '« A/Bis » n\'est pas dans « A/B »');
+  assert.deepEqual(folderMoves(list, 'A/B', 'X/B').map(entry => entry.folder), ['X/B', 'X/B/C']);
+  assert.deepEqual(folderMoves(list, 'A/B', 'B').map(entry => entry.folder), ['B', 'B/C'], 'vers la racine');
+  assert.deepEqual(folderMoves(list, 'A', 'A/B/A'), [], 'dans un de ses sous-dossiers : rien');
+  assert.deepEqual(folderMoves(list, 'A/B', 'A/B'), []);
+  assert.deepEqual(folderMoves(list, '', 'X'), [], 'la racine ne se déplace pas');
 });
 
 test('dossiers : un dossier existe tant qu\'un fichier le nomme, avec ses sous-dossiers', () => {

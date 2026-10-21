@@ -1,6 +1,7 @@
-// L'explorateur de fichiers (cahier 4.4, 6.3) : le cadre qu'ouvre GFS pour choisir un fichier de n'importe quelle app. Il lit, il n'écrit jamais.
+// L'explorateur de fichiers (cahier 4.4, 6.3) : le cadre qu'ouvre GFS pour choisir un fichier de n'importe quelle app. Il n'écrit rien lui-même.
 // Il remplace le cadre (défaut 6.7, point 1) ; « Fermer » ou Échap ramène à l'app, restée vivante et cachée. Il ne connaît pas les apps :
-// le contrôleur lui donne les fichiers, les noms, le grisé et ce qu'on peut créer, et reçoit « ouvrir », « nouveau » et « fermer ».
+// le contrôleur lui donne les fichiers, les noms, le grisé et ce qu'on peut créer, et reçoit « ouvrir », « nouveau » et « fermer ». Épingler, renommer
+// et déplacer passent à `filing` (js/filing.js) ; dupliquer et supprimer restent grisés : ils se font dans l'app (contrats 6.4).
 
 import { h } from './dom.js';
 import { icon } from './icons.js';
@@ -22,7 +23,8 @@ export class Explorer {
   state = { view: 'folder', path: '', open: new Set(), display: 'list', sort: { key: 'name', dir: 1 }, recentSort: { key: 'mod', dir: -1 }, type: 'all', q: '', sel: null };
 
   // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), onOpen(file), onNew(entry), onClose(), onApps(), canClose(), notice(text),
-  //          language() → { choice, grist }, onLanguage(choice), onDemo()? (le bouton « Démo », en mode développement seulement) }
+  //          language() → { choice, grist }, onLanguage(choice), personal() → le rangement est-il à la personne seule ?,
+  //          filing: { togglePin(file), rename(file), moveFile(file), renameFolder(path), moveFolder(path) }, onDemo()? (le bouton « Démo », en mode développement seulement) }
   constructor(opts) {
     this.#opts = opts;
     const { root, refs } = buildShell(opts.i18n);
@@ -34,6 +36,8 @@ export class Explorer {
   }
 
   get isOpen() { return !this.root.hidden; }
+
+  get files() { return this.#files; }
 
   setFiles(files) {
     this.#files = files;
@@ -83,7 +87,7 @@ export class Explorer {
     return {
       t: this.#opts.i18n.t, state, locale: this.#opts.locale, now: this.#opts.now(), appName: this.#opts.appName, typeLabel: this.#opts.typeLabel,
       lockOf: this.#opts.lockOf, sort: this.#sort(), filtering: this.#filtering, favCount: this.#files.filter(file => file.pinned).length, totalFiles: this.#files.length,
-      selected: row, ...extra,
+      selected: row, personal: this.#opts.personal(), ...extra,
     };
   }
 
@@ -141,10 +145,11 @@ export class Explorer {
     if (focused) this.#focusKey(focused);
   }
 
-  // Redessiner la liste ne doit pas faire perdre la ligne où se trouve le clavier.
+  // Redessiner la liste ne doit pas faire perdre la ligne où se trouve le clavier, ni celle dont un bouton l'a (l'étoile, « Plus d'actions »).
   #focusedKey() {
     const active = this.root.ownerDocument.activeElement;
-    return active && this.#refs.list.contains(active) && active.dataset ? (active.dataset.key || null) : null;
+    const row = active && this.#refs.list.contains(active) ? active.closest('[data-key]') : null;
+    return row ? row.dataset.key : null;
   }
 
   #focusKey(key) {
@@ -235,7 +240,7 @@ export class Explorer {
     const more = event.target.closest('[data-menu]');
     const row = event.target.closest('[data-key]');
     if (sort) this.#setSort(sort.dataset.sort);
-    else if (pin) this.#filingNotice(pin.dataset.pin);
+    else if (pin) this.#togglePin(pin.dataset.pin);
     else if (more) this.#rowMenu(more.dataset.menu, more);
     else if (row) this.#select(row.dataset.key, false);
   }
@@ -300,9 +305,9 @@ export class Explorer {
     if (file) this.#opts.onOpen(file);
   }
 
-  #filingNotice(key) {
+  #togglePin(key) {
     const file = this.#files.find(item => item.key === key);
-    this.#opts.notice(this.#opts.i18n.t('ex.notice.filing', { app: file ? this.#opts.appName(file.app) : '' }));
+    if (file) void this.#opts.filing.togglePin(file);
   }
 
   // ---------- menus ----------
@@ -335,17 +340,26 @@ export class Explorer {
     openMenu(this.#refs.newBtn, items, { host: this.root, align: 'right', label: t('ex.new') });
   }
 
+  // Le menu d'une ligne. Dupliquer et supprimer touchent au fichier lui-même : grisés, ils disent que l'app le fait.
   #rowMenu(key, anchor) {
     const { t } = this.#opts.i18n;
-    const folder = key.startsWith('dir:');
-    const file = folder ? null : this.#files.find(item => item.key === key);
+    const { filing } = this.#opts;
     this.#select(key, false);
-    const notice = () => this.#filingNotice(key);
-    const grey = (label, glyph) => ({ label, icon: glyph, greyed: true, run: notice });
-    const items = folder
-      ? [{ label: t('ex.openFolder'), icon: 'open', run: () => this.#activate(key) }, grey(t('ex.rename'), 'edit'), grey(t('ex.move'), 'move')]
-      : [{ label: t('ex.open'), icon: 'open', run: () => this.#activate(key) }, grey(file && file.pinned ? t('ex.unpin') : t('ex.pin'), 'pin'),
-        grey(t('ex.rename'), 'edit'), grey(t('ex.duplicate'), 'copy'), grey(t('ex.move'), 'move'), '-', grey(t('ex.delete'), 'trash')];
+    const item = (label, glyph, run) => ({ label, icon: glyph, run });
+    let items;
+    if (key.startsWith('dir:')) {
+      const path = key.slice(4);
+      items = [item(t('ex.openFolder'), 'open', () => this.#activate(key)), item(t('ex.rename'), 'edit', () => void filing.renameFolder(path)),
+        item(t('ex.move'), 'move', () => void filing.moveFolder(path))];
+    } else {
+      const file = this.#files.find(entry => entry.key === key);
+      if (!file) return;
+      const appOnly = () => this.#opts.notice(t('ex.notice.appOnly', { app: this.#opts.appName(file.app) }));
+      const grey = (label, glyph) => ({ label, icon: glyph, greyed: true, run: appOnly });
+      items = [item(t('ex.open'), 'open', () => this.#activate(key)), item(file.pinned ? t('ex.unpin') : t('ex.pin'), 'pin', () => void filing.togglePin(file)),
+        item(t('ex.rename'), 'edit', () => void filing.rename(file)), grey(t('ex.duplicate'), 'copy'), item(t('ex.move'), 'move', () => void filing.moveFile(file)),
+        '-', grey(t('ex.delete'), 'trash')];
+    }
     openMenu(anchor, items, { host: this.root, align: 'right', label: t('ex.more') });
   }
 }

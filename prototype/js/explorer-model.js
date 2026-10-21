@@ -1,5 +1,5 @@
 // Le modèle de l'explorateur (contrats 2.4, 6.4) : des fonctions sans effet de bord. Elles lisent les tables de fichiers d'après le manifeste
-// de chaque app (GFS ne garde que les colonnes déclarées, n'écrit jamais), rangent les fichiers en dossiers, filtrent et trient.
+// de chaque app (GFS ne garde que les colonnes déclarées), rangent les fichiers en dossiers, filtrent et trient, et disent ce qu'un rangement change.
 //
 // Les tables arrivent telles que `fetchTable` les rend : { id: [..], <colonne>: [..] }. Une colonne déclarée mais absente se lit comme vide :
 // un document ancien n'a pas toutes les colonnes (2.4, point 2).
@@ -29,7 +29,8 @@ function isExcluded(spec, data, i) {
   return Object.entries(spec.exclure || {}).some(([column, values]) => Array.isArray(values) && values.includes(text(cell(data, column, i))));
 }
 
-// Les fichiers d'une table : { key, app, id, name, type, typeInfo, known, family, icon, ts, by, folder, pinned, search }.
+// Les fichiers d'une table : { key, app, id, table, row, name, type, typeInfo, known, family, icon, ts, by, folder, pinned, search } ; `table` et `row` : la table
+// du manifeste et la ligne de Grist (renommer).
 // `typeInfo` est l'entrée de `types` qui porte le type, ou null : un type que le manifeste ne connaît pas est listé grisé (6.5, point 3).
 export function readFiles(manifest, spec, data) {
   const cols = spec.colonnes || {};
@@ -42,7 +43,7 @@ export function readFiles(manifest, spec, data) {
     const typeInfo = (spec.types || []).find(item => item.valeur === type) || null;
     const name = text(cell(data, cols.nom, i));
     files.push({
-      key: `${manifest.id}:${rawId}`, app: manifest.id, id: String(rawId), name, type, typeInfo, known: Boolean(typeInfo),
+      key: `${manifest.id}:${rawId}`, app: manifest.id, id: String(rawId), table: spec.table, row: data.id[i], name, type, typeInfo, known: Boolean(typeInfo),
       family: (typeInfo && FAMILIES[typeInfo.couleur]) || '', icon: (typeInfo && typeInfo.icone) || 'doc',
       ts: seconds(cell(data, cols.date, i)), by: text(cell(data, cols.par, i)), folder: normalizePath(cell(data, cols.dossier, i)), pinned: false,
       search: '',
@@ -68,14 +69,48 @@ export function readFiling(rangement, data, identity = '') {
   return byFile;
 }
 
-// Pose dossier et favori sur les fichiers, et le texte de recherche (nom et dossier, normalisés une fois).
-export function applyFiling(files, filing) {
+// Le rangement de GFS pour la personne `identity` (`GFS_Rangement`, 6.4) : Map « app:fichier » -> { folder, pinned }. Les lignes réservées (« @… ») et les
+// lignes d'état de dossier (sans app ni fichier) n'ont rien à dire d'un fichier ; plusieurs lignes pour un même fichier : la première fait foi.
+export function readGfsFiling(data, identity = '') {
+  const byFile = new Map();
+  for (let i = 0; i < rowCount(data); i++) {
+    const user = text(cell(data, 'Utilisateur', i));
+    const app = text(cell(data, 'App', i));
+    const file = text(cell(data, 'Fichier', i));
+    if (user !== identity || user.startsWith('@') || !app || !file || byFile.has(`${app}:${file}`)) continue;
+    byFile.set(`${app}:${file}`, { folder: normalizePath(cell(data, 'Dossier', i)), pinned: cell(data, 'Favori', i) === true });
+  }
+  return byFile;
+}
+
+// Pose dossier et favori sur les fichiers, et le texte de recherche (nom et dossier, normalisés une fois). Le rangement propre de l'app (`filing`, par
+// identifiant) sert de point de départ ; celui de GFS (`gfsFiling`, par clé « app:fichier ») passe devant : l'app seule garde le sien (6.4, point 5).
+export function applyFiling(files, filing, gfsFiling = null) {
   for (const file of files) {
-    const entry = filing && filing.get(file.id);
+    const entry = (gfsFiling && gfsFiling.get(file.key)) || (filing && filing.get(file.id));
     if (entry) { file.folder = entry.folder; file.pinned = entry.pinned; }
     file.search = normalize(`${file.name} ${file.folder}`);
   }
   return files;
+}
+
+// Tous les dossiers que nomment les fichiers, leurs parents compris, triés : la liste où choisir où ranger.
+export function folderPaths(files, locale) {
+  const found = new Set();
+  for (const file of files) for (const part of pathParts(file.folder)) found.add(part.path);
+  return [...found].sort((a, b) => a.localeCompare(b, locale, { sensitivity: 'base', numeric: true }));
+}
+
+// Le nom d'un dossier : sans « / » (il sépare les dossiers), sans espaces autour ; '' s'il ne reste rien.
+export const folderName = name => text(name).replace(/\//g, ' ').replace(/\s+/g, ' ').trim();
+
+// Ce que change le dossier `from` qui devient `to` (renommé, ou déplacé : `to` est alors le dossier d'arrivée suivi de son nom) : les fichiers qu'il contient,
+// sous-dossiers compris, avec leur nouveau chemin, au format de `setFiling` ({ app, file, pinned, folder }). Rien quand `to` est `from` ou un de ses
+// sous-dossiers : un dossier ne va pas en lui-même.
+export function folderMoves(files, from, to) {
+  if (!from || to === from || inside(to, from)) return [];
+  return files.filter(file => inside(file.folder, from))
+    .map(file => ({ app: file.app, file: file.id, pinned: file.pinned, folder: normalizePath(`${to}/${file.folder.slice(from.length)}`) }));
 }
 
 // Le fichier est-il dans le dossier `path` (ou dans un de ses sous-dossiers) ? La racine '' contient tout.

@@ -6,10 +6,9 @@
 import { h } from './dom.js';
 import { icon } from './icons.js';
 import { Layers } from './layers.js';
+import { LIST_SHOWN as SHOWN, listKeys } from './modal.js';
 import { normalize, words, matchesWords } from './search.js';
 
-// Au-delà, la liste demande d'affiner la recherche : vingt mille boutons ralentiraient la fenêtre sans aider personne.
-const SHOWN = 200;
 const FOCUSABLE = 'input, button:not([disabled])';
 
 export class WorkWindow {
@@ -179,15 +178,8 @@ export class WorkWindow {
     if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); this.close(); return; }
     const items = [...this.#list.querySelectorAll('.wk-item')];
     const active = this.#root.ownerDocument.activeElement;
-    const at = items.indexOf(active);
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      const step = event.key === 'ArrowDown' ? 1 : -1;
-      const next = at < 0 ? (step > 0 ? items[0] : null) : (items[at + step] || (step < 0 ? this.#search : null));
-      if (next) { event.preventDefault(); next.focus(); next.scrollIntoView({ block: 'nearest' }); }
-      return;
-    }
-    if (event.key === 'ArrowRight' && at >= 0 && active.nextElementSibling) { event.preventDefault(); active.nextElementSibling.click(); return; }
-    if (event.key === 'Enter' && active === this.#search && items.length === 1) { event.preventDefault(); items[0].click(); return; }
+    if (event.key === 'ArrowRight' && items.includes(active) && active.nextElementSibling) { event.preventDefault(); active.nextElementSibling.click(); return; }
+    if (listKeys(event, { search: this.#search, items })) return;
     if (event.key !== 'Tab') return;
     const nodes = [...this.#root.querySelectorAll(FOCUSABLE)].filter(node => !node.hidden && node.offsetParent !== null);
     const first = nodes[0];

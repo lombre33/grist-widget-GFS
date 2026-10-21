@@ -95,10 +95,10 @@ if (await frame.locator('.hd[data-sort="mod"]').isVisible()) {
 await row('Contrat de prestation').hover();
 await row('Contrat de prestation').locator('.rb.mn').click();
 await shot('10-menu-ligne');
-// Un article grisé reste cliquable (il explique) : le geste est forcé, mais c'est toujours la vraie souris.
-await frame.locator('.menu-item', { hasText: /Déplacer|Move/ }).click({ force: true });
+// Un article grisé reste cliquable (il explique) : le geste est forcé, mais c'est toujours la vraie souris. Épingler, renommer et déplacer : run-ranger.mjs.
+await frame.locator('.menu-item', { hasText: /Dupliquer|Duplicate/ }).click({ force: true });
 await page.waitForTimeout(200);
-say('phrase provisoire :', await frame.locator('#toast').innerText());
+say('« Dupliquer », grisé :', await frame.locator('#toast').innerText());
 await shot('11-notice');
 
 await frame.locator('.btn.primary').click();

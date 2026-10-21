@@ -226,14 +226,15 @@ Une entrée de `fichiers` par table de fichiers :
 | `typeParDefaut` | Le type d'un fichier dont la cellule de type est vide (Publipostage+ : `document`). |
 | `types` | Liste de `{ valeur, nom: { fr, en }, icone, couleur, extension }`. `couleur` : `document`, `grille` ou `presentation` (les trois du cahier 6.5), sinon neutre. `icone` : identifiant d'une icône du kit [D]. `extension` : l'extension qui possède ce type (absente : le socle). |
 | `exclure` | `{ "<colonne>": [valeurs] }` : lignes que l'explorateur ignore (les lignes réservées, comme `reglages`). |
-| `rangement` | Réservé, vide en v0 : le rangement propre à une app (3.1 point 7 du cahier) se fixe à l'étape 6. |
+| `rangement` | Le rangement propre à l'app (3.1 point 7 du cahier), s'il y en a un : `{ table, utilisateur, fichier, dossier, epingle }`, des noms de colonnes. L'explorateur le lit comme point de départ et n'y écrit jamais (6.4, point 8). |
 
 1. [T] L'identifiant d'un fichier est la valeur de `colonnes.id`, prise comme texte (pour Publipostage+, le numéro de ligne).
-2. [T] GFS lit la table entière (l'API de Grist n'a pas de projection par colonne), ne garde que les colonnes déclarées, et ne
-   l'écrit jamais. Une colonne déclarée mais absente de la table se lit comme vide : un document ancien n'a pas toutes les
-   colonnes. Coût mesuré à l'étape 2 dans un document lourd (Publipostage+ y range le contenu des modèles : 118 modèles, environ
-   20 Mo) : l'explorateur est prêt 2,7 s après le démarrage (première lecture 2,9 s), puis 0,2 à 1,6 s ; Grist ne sait pas lire
-   une partie d'une table, donc la lecture prend toute la table.
+2. [T] GFS lit la table entière (l'API de Grist n'a pas de projection par colonne), ne garde que les colonnes déclarées, et n'y
+   écrit que le nom d'un fichier que la personne renomme dans l'explorateur (6.3, point 2). Une colonne déclarée mais absente
+   de la table se lit comme vide : un document ancien n'a pas toutes les colonnes. Coût mesuré à l'étape 2 dans un document
+   lourd (Publipostage+ y range le contenu des modèles : 118 modèles, environ 20 Mo) : l'explorateur est prêt 2,7 s après le
+   démarrage (première lecture 2,9 s), puis 0,2 à 1,6 s ; Grist ne sait pas lire une partie d'une table, donc la lecture prend
+   toute la table.
 3. [T] Un fichier dont le type n'est pas dans `types` est listé grisé, jamais ouvert (section 6.5).
 
 ### 2.5 Les réglages
@@ -1133,7 +1134,10 @@ paquet de frappes, une par personne pour la présence) doit savoir quand cette t
 
 1. [T] Une ligne réservée d'une table de fichiers se déclare dans `exclure` (2.4) : l'explorateur l'ignore, l'app ne la montre
    jamais comme un fichier.
-2. [T] GFS n'écrit jamais dans la table d'une app.
+2. [T] GFS n'écrit jamais dans la table d'une app, sauf le nom d'un fichier (le porteur, 21/10) : quand la personne renomme un
+   fichier dans l'explorateur, GFS écrit le nouveau nom, et lui seul, dans la colonne `colonnes.nom` de sa ligne (2.4), après
+   avoir vérifié que la colonne existe ; ni date ni auteur. Une app relit donc le nom d'un fichier ouvert avant de l'enregistrer,
+   et ne réécrit jamais un nom périmé (guide des apps). Dupliquer et supprimer restent à l'app : l'explorateur les grise.
 
 ### 6.4 `GFS_Rangement`, le rangement commun
 
@@ -1158,12 +1162,20 @@ rangée d'un fichier, selon ce qui vient d'abord.
 3. [T] Changements additifs seulement, colonnes inconnues gardées ; désinstaller une app n'efface aucune ligne ; une ligne dont
    le fichier n'existe plus est ignorée.
 4. [D] L'identité de la personne (`Utilisateur`) vient du mécanisme de Publipostage+ (une table-sonde lue par formule), que
-   l'étape 3 fait passer dans le kit ; sans identité, repli vide, jamais bloquant.
-5. [T] Le rangement propre à une app (les dossiers personnels de Publipostage+) reste valable dans l'app. Comment l'explorateur
-   le montre dans GFS se décide à l'étape 6 (champ `fichiers[].rangement`, réservé en 2.4).
+   l'étape 3 fait passer dans le kit ; sans identité, repli vide, jamais bloquant : le rangement est alors commun au document,
+   et l'explorateur le dit (« Rangement commun au document »).
+5. [T] Le rangement propre à une app (les dossiers personnels de Publipostage+) reste valable dans l'app ; l'explorateur de GFS
+   le lit (champ `fichiers[].rangement`, 2.4) et n'y écrit jamais (point 8).
 6. [T] Une ligne dont `Utilisateur` commence par `@` est une ligne réservée de GFS : l'état du document, jamais le rangement
    d'une personne. La seule à ce jour : `@document` / `gfs` / `apps`, les apps installées (7.4). Une app n'écrit jamais cette
    table (6.1, point 1).
+7. [D] GFS écrit ces lignes sur un geste de la personne dans l'explorateur, avant qu'aucune app ne soit ouverte (le porteur,
+   21/10) : épingler un fichier, le déplacer, renommer ou déplacer un dossier. Chaque geste relit la table puis écrit en un
+   seul lot ; un dossier renommé ou déplacé réécrit la ligne de chaque fichier qu'il contient, sous-dossiers compris ; un
+   dossier ne va ni en lui-même ni dans un de ses sous-dossiers.
+8. [D] Dans l'explorateur, la ligne de GFS d'un fichier passe devant le rangement propre de l'app (point 5) ; sans ligne de
+   GFS, celui de l'app reste le point de départ. L'app garde le sien, que GFS ne réécrit pas : un fichier rangé dans GFS
+   peut donc avoir une autre place dans l'app.
 
 ### 6.5 Préserver l'inconnu
 

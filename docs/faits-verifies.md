@@ -155,6 +155,14 @@ réponses, sans que l'app change.
   (`visibleCol`) des tables vers lesquelles pointent les Références de ces formulaires (`_shareTableReferencesForForm`,
   ligne 325). Une section de formulaire publiée sur une table ouvre donc cette table à l'ajout, pas à la lecture.
   **Non mesuré** : grist-static n'a pas de partages (pas de serveur).
+- Mesuré le 21/10 (`labo/run-ranger.mjs`, à 700 × 400, souris et clavier, fr clair et en sombre) : épingler, déplacer et
+  renommer depuis l'explorateur de GFS. La première étoile, sans table, pose la question ; « Annuler » ne crée rien ;
+  « Créer la table » crée `GFS_Rangement` (avec sa page) puis la ligne du fichier, et **le cadre de GFS n'est pas reconstruit**
+  (la page nouvelle n'est pas celle du widget) : l'étoile s'allume 0,2 s après le clic, liste relue. Renommer écrit
+  `UpdateRecord` sur la seule colonne du nom : dans `Publipostage_Modeles`, après le geste, seule la colonne `Nom` diffère, sur
+  la seule ligne du fichier (date et auteur intacts). `_grist_Tables` et `_grist_Tables_column`, lues par la connexion de GFS
+  (accès complet), donnent le nom réel de la table et ses colonnes. Le rangement de Publipostage+
+  (`Publipostage_PreferencesModeles`) n'est jamais écrit.
 
 ## 4. Grist : API REST et origines
 

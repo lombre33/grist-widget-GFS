@@ -1,7 +1,7 @@
 // Le bouton « Démo » de l'explorateur (mode développement, `?dev` dans l'adresse du widget), dans un vrai Grist, à 700 × 400, à la vraie souris et au vrai clavier : la fenêtre
 // d'accord annonce ce qui sera posé, puis un seul geste pose les tables Sessions et Participants (formules calculées par Grist, Références affichées par leur numéro), installe
-// Automation+, écrit trois modèles de Publipostage+, deux règles de liaison, un automatisme éteint, et met GFS à droite du tableau sur les pages Participants et Sessions, qui
-// suit la ligne choisie. Le compte rendu dit quoi faire, et la personne le fait : « Accept » sur la page, une inscription choisie, la convocation lue pour elle ; Automation+
+// Automation+ et Form+, écrit trois modèles de Publipostage+, deux règles de liaison, un automatisme éteint, un formulaire de Form+ (un repère : Form+ ne l'ouvre
+// pas encore), et met GFS à droite du tableau sur les pages Participants et Sessions, qui suit la ligne choisie. Le compte rendu dit quoi faire, et la personne le fait : « Accept » sur la page, une inscription choisie, la convocation lue pour elle ; Automation+
 // allumé remplit le statut des inscriptions ajoutées au tableau ; l'émargement lu pour la session choisie. Un second clic ne pose rien ; sans `?dev`, pas de bouton.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { startLab } from './lab-setup.mjs';
@@ -46,7 +46,7 @@ const asked = await frame.evaluate(() => ({
   buttons: [...document.querySelectorAll('.ask button')].map(b => b.textContent),
 }));
 say('fenêtre d\'accord :', asked);
-check('la fenêtre annonce les tables, les modèles, l\'automatisme, les pages prêtes, les tables qui manquent et les pages de Grist', asked.items.length === 6 && /Publipostage_Modeles/.test(asked.items[4]), asked.items.length);
+check('la fenêtre annonce les tables, les modèles, l\'automatisme, le formulaire, les pages prêtes, les tables qui manquent et les pages de Grist', asked.items.length === 7 && /FormPlus_Formulaires/.test(asked.items[5]) && /Form\+/.test(asked.items[3]), asked.items.length);
 check('rien n\'est écrit avant l\'accord', (await tables()).length === before.length);
 await lab.shotPanel(run, '2-accord');
 
@@ -58,7 +58,7 @@ check('la démo est posée', state === 'done', `${state} ${await toast()} ${erro
 await frame.locator('.ask').waitFor();
 const report = await frame.evaluate(() => ({ text: document.querySelector('.ask')?.innerText || '', steps: document.querySelectorAll('.ask .ask-items li').length, buttons: [...document.querySelectorAll('.ask button')].map(b => b.textContent) }));
 say('compte rendu :', report);
-check('le compte rendu donne quatre étapes', report.steps === 4, report.steps);
+check('le compte rendu donne quatre étapes, et dit que le formulaire est provisoire', report.steps === 5 && /Form\+/.test(report.text), report.steps);
 check('le compte rendu a un seul bouton', report.buttons.length === 1, report.buttons);
 check('le compte rendu dit le titre', report.text.includes(WORDS.ready));
 check('la phrase « la démo se pose » s\'est effacée', (await toast()) === '', await toast());
@@ -69,7 +69,7 @@ await page.waitForTimeout(800);
 // 3. Ce que Grist a fait du geste.
 const after = await tables();
 say('tables après :', after);
-check('les tables du parcours, des apps et de GFS sont là', ['Sessions', 'Participants', 'Publipostage_Modeles', 'Publipostage_LiensTables', 'Automation', 'GFS_Rangement'].every(id => after.includes(id)), after);
+check('les tables du parcours, des apps et de GFS sont là', ['Sessions', 'Participants', 'Publipostage_Modeles', 'Publipostage_LiensTables', 'Automation', 'FormPlus_Formulaires', 'GFS_Rangement'].every(id => after.includes(id)), after);
 const sessions = await rows('Sessions');
 const people = await rows('Participants');
 say('sessions :', sessions.map(row => ({ Numero: row.Numero, Places: row.Places, Confirmees: row.Confirmees, PlacesRestantes: row.PlacesRestantes, Debut: row.Debut })));
@@ -93,13 +93,15 @@ const automation = await rows('Automation');
 say('automatisme :', automation.map(row => ({ Type: row.Type, Table: row.Table, Actif: row.Actif, Version: row.Version, Auteur: row.Auteur })), Object.keys(automation[0] || {}));
 check('un automatisme éteint sur Participants', automation.length === 1 && automation[0].Type === 'Workflow' && automation[0].Table === 'Participants' && automation[0].Actif === false);
 const kept = await lab.rangement(frame);
-check('Automation+ est installée dans GFS', Boolean(kept.value && kept.value.automation), kept.value);
+check('Automation+ et Form+ sont installées dans GFS', Boolean(kept.value && kept.value.automation && kept.value.form), kept.value);
+const forms = await rows('FormPlus_Formulaires');
+check('un formulaire de Form+, sans définition', forms.length === 1 && forms[0].Nom === 'Inscription à une formation' && forms[0].TypeFormulaire === 'formulaire' && !forms[0].Definition, forms.map(row => row.Nom));
 
 // 4. L'explorateur montre les modèles.
 await frame.locator('.ls-row', { hasText: WORDS.convocation }).first().waitFor({ timeout: 10000 });
 const listed = await frame.locator('.ls-row').allInnerTexts().then(a => a.map(t => t.replace(/\s+/g, ' ').trim().slice(0, 50)));
 say('explorateur :', listed);
-check('l\'explorateur montre les trois modèles', ['Convocation', 'Émargement', 'Attestation de formation'].every(name => listed.some(line => line.includes(name))), listed);
+check('l\'explorateur montre les trois modèles et le formulaire', ['Convocation', 'Émargement', 'Attestation de formation', 'Inscription à une formation'].every(name => listed.some(line => line.includes(name))), listed);
 await lab.shotPanel(run, '4-modeles');
 
 // 5. La page prête : la personne ouvre une page dans le menu de gauche de Grist ; le tableau est à gauche, GFS à droite, sans accès ; « Accept » dans le panneau de droite.

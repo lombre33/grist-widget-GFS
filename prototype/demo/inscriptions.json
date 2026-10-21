@@ -47,8 +47,11 @@
       {"DateInscription": {"jours": -7}, "Statut": "Confirmée"}
     ]
   },
-  "apps": ["automation"],
+  "apps": ["automation", "form"],
   "pages": ["Participants", "Sessions"],
+  "formplus": {
+    "formulaires": [{ "nom": "Inscription à une formation" }]
+  },
   "publipostage": {
     "modeles": [
       {"nom": "Convocation", "contenu": "demo/inscriptions/convocation.html", "pdf": "Convocation #Participants.Nom", "page": {"format": "A4", "orientation": "portrait", "marges": [22, 22, 22, 22]}},

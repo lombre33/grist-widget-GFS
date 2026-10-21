@@ -7,7 +7,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ROOT } from './helpers.mjs';
 import { createI18n } from '../js/i18n.js';
-import { APP_TABLES, DemoError, dateValue, demoReport, demoSummary, displayActions, formulaActions, freeName, loadDemo, modelRecord, ownAddress, planDemo,
+import { APP_TABLES, DemoError, dateValue, demoReport, demoSummary, displayActions, formRecord, formulaActions, freeName, loadDemo, modelRecord, ownAddress, planDemo,
   rowsAction, runDemo, tableActions } from '../js/demo.js';
 
 const read = { json: async path => JSON.parse(await readFile(join(ROOT, path), 'utf8')), text: path => readFile(join(ROOT, path), 'utf8') };
@@ -122,7 +122,8 @@ test('les lots : les tables sans leurs formules, puis les formules ; les lignes 
 test('le plan : une table du parcours déjà là arrête tout ; les tables des apps et de GFS qui manquent seront créées', async () => {
   const pack = await loadDemo(read);
   const schema = new Map([['participants', { id: 'participants' }], ['automation', { id: 'Automation' }]]);
-  assert.deepEqual(planDemo(pack, schema), { taken: ['Participants'], created: ['Publipostage_Modeles', 'Publipostage_LiensTables', 'GFS_Rangement'] });
+  assert.deepEqual(planDemo(pack, schema), { taken: ['Participants'], created: ['Publipostage_Modeles', 'Publipostage_LiensTables', 'FormPlus_Formulaires', 'GFS_Rangement'] });
+  assert.ok(!planDemo({ ...pack, forms: [] }, schema).created.includes('FormPlus_Formulaires'));
 });
 
 test('un modèle s\'écrit dans les seules colonnes que la table a ; un nom pris reçoit un numéro', async () => {
@@ -134,6 +135,12 @@ test('un modèle s\'écrit dans les seules colonnes que la table a ; un nom pris
   assert.equal(freeName('Attestation', ['Convocation']), 'Attestation');
 });
 
+test('un formulaire s\'écrit avec son nom et son état, jamais sa définition, que Form+ seule écrit', () => {
+  const all = new Set(APP_TABLES.forms.columns.map(([id]) => id.toLowerCase()));
+  assert.deepEqual(formRecord('Inscription à une formation', all, NOW), { Nom: 'Inscription à une formation', TypeFormulaire: 'formulaire', DateModif: Math.floor(NOW.getTime() / 1000), ModifiePar: 'Grist Factory Suite (démo)' });
+  assert.deepEqual(Object.keys(formRecord('F', new Set(['nom', 'typeformulaire']), NOW)), ['Nom', 'TypeFormulaire']);
+});
+
 test('le geste entier : tables, formules, lignes, Références affichées, apps installées, modèles, règles et automatisme', async () => {
   const pack = await loadDemo(read);
   const { doc, tables, actions } = fakeGrist({ Clients: { columns: ['Nom'], rows: [] } });
@@ -143,7 +150,9 @@ test('le geste entier : tables, formules, lignes, Références affichées, apps 
   assert.equal(tables.Participants.rows.length, 20);
   assert.deepEqual([...new Set(tables.Participants.rows.map(row => row.Session))], [1, 2]);
   assert.ok(actions.some(action => action[0] === 'SetDisplayFormula' && action[4] === '$Session.Numero'));
-  assert.deepEqual(installed, ['automation']);
+  assert.deepEqual(installed, ['automation', 'form']);
+  assert.deepEqual(tables.FormPlus_Formulaires.rows.map(row => [row.Nom, row.TypeFormulaire, row.Definition]), [['Inscription à une formation', 'formulaire', undefined]]);
+  assert.ok(tables.FormPlus_Formulaires.columns.includes('Definition'));
   assert.deepEqual(tables.Publipostage_Modeles.rows.map(row => row.Nom), ['Convocation', 'Émargement', 'Attestation de formation']);
   assert.ok(tables.Publipostage_Modeles.rows.every(row => row.TypeModele === 'document' && row.ModifiePar));
   assert.deepEqual(tables.Publipostage_LiensTables.rows.map(row => [row.TableCible, row.ColonneCible, row.ColonneSource]), [['Sessions', 'id', 'Session'], ['Participants', 'Session', 'id']]);
@@ -152,7 +161,7 @@ test('le geste entier : tables, formules, lignes, Références affichées, apps 
   assert.equal(workflow.Actif, false);
   assert.equal(JSON.parse(workflow.Config).nodes.length, 4);
   assert.ok(tables.Automation.columns.includes('Auteur'));
-  assert.deepEqual(report, { models: { count: 3 }, links: { count: 2 }, workflow: { count: 1 }, pages: { count: 2 } });
+  assert.deepEqual(report, { models: { count: 3 }, links: { count: 2 }, workflow: { count: 1 }, forms: { count: 1 }, pages: { count: 2 } });
 });
 
 test('le parcours déjà posé : rien n\'est écrit', async () => {
@@ -180,7 +189,7 @@ test('les tables des apps déjà là : leurs colonnes sont respectées, une règ
   assert.deepEqual(tables.Publipostage_Modeles.rows.map(row => row.Nom), ['Convocation', 'Convocation (2)', 'Émargement', 'Attestation de formation']);
   assert.deepEqual(tables.Publipostage_LiensTables.rows.map(row => [row.TableCible, row.Mode]), [['Sessions', 'singleton'], ['Participants', 'match']]);
   assert.equal(tables.Automation.rows.length, 1);
-  assert.deepEqual(report, { models: { count: 3 }, links: { count: 1 }, workflow: { count: 0, skipped: 'Automation' }, pages: { count: 2 } });
+  assert.deepEqual(report, { models: { count: 3 }, links: { count: 1 }, workflow: { count: 0, skipped: 'Automation' }, forms: { count: 1 }, pages: { count: 2 } });
 });
 
 test('un Grist qui refuse la formule d\'auteur reçoit la table d\'Automation+ sans elle, comme l\'app la crée', async () => {
@@ -205,10 +214,10 @@ test('ce que la personne lit, en français et en anglais', async () => {
   for (const lang of ['fr', 'en']) {
     const { t } = createI18n(lang);
     const lines = demoSummary(pack, { created: ['Automation'] }, t);
-    assert.equal(lines.length, 6);
+    assert.equal(lines.length, 7);
     assert.ok(lines.every(line => !/\{|demo\./.test(line)), lines.join(' | '));
-    const report = demoReport({ models: { count: 3 }, links: { count: 1 }, workflow: { count: 0, skipped: 'Automation' }, pages: { count: 2 } }, t);
-    assert.equal(report.length, 5);
+    const report = demoReport({ models: { count: 3 }, links: { count: 1 }, workflow: { count: 0, skipped: 'Automation' }, forms: { count: 1 }, pages: { count: 2 } }, t);
+    assert.equal(report.length, 6);
     assert.ok(report.every(line => !/\{|demo\./.test(line)), report.join(' | '));
     const manual = demoReport({ models: { count: 3 }, links: { count: 2 }, workflow: { count: 1 }, pages: { count: 0, error: 'refus' } }, t);
     assert.equal(manual.length, 1);

@@ -1,10 +1,10 @@
 // La démo du parcours « inscriptions à une formation » (étude d'orchestration du 21/10) : le bouton « Démo » de l'explorateur, visible seulement
 // avec `?dev` dans l'adresse du widget, comme la galerie de développement de Publipostage+. Après l'accord de la personne, un seul geste pose
 // les tables Sessions et Participants (le schéma et les exemples de la famille « formation » de la galerie de Publipostage+, lus à leur place,
-// plus les colonnes du parcours et leurs formules), installe les apps, trois modèles de Publipostage+ et un automatisme d'Automation+.
-// Exception voulue par le porteur (21/10), au mode développement seulement : GFS écrit ici dans les tables de deux apps, sous la forme que
-// chacune lit (Publipostage+ : js/templates.js, js/grist-api.js ; Automation+ : js/store.js). Ce code peut disparaître, ou devenir les
-// « parcours prêts à installer » de l'étape 7.
+// plus les colonnes du parcours et leurs formules), installe les apps, trois modèles de Publipostage+, un automatisme d'Automation+ et un
+// formulaire de Form+. Exception voulue par le porteur (21/10), au mode développement seulement : GFS écrit ici dans les tables de trois apps,
+// sous la forme que chacune lit (Publipostage+ : js/templates.js, js/grist-api.js ; Automation+ : js/store.js ; Form+ : sa table de fichiers,
+// consigne 007, sans la définition, que Form+ seule écrit). Ce code peut disparaître, ou devenir les « parcours prêts à installer » de l'étape 7.
 
 import { TABLE as RANGEMENT } from './rangement.js';
 
@@ -23,6 +23,8 @@ export const APP_TABLES = Object.freeze({
     ['Config', 'Text'], ['Evenement', 'Text'], ['Ligne', 'Int'], ['Resultat', 'Text'], ['Detail', 'Text']], required: ['Type', 'Table', 'Config'],
   // La colonne « Auteur » d'Automation+ : une formule déclenchée à la création de la ligne.
   extra: [{ id: 'Auteur', type: 'Text', isFormula: false, formula: 'user.Email', recalcWhen: 0 }] },
+  forms: { id: 'FormPlus_Formulaires', columns: [['Nom', 'Text'], ['TypeFormulaire', 'Text'], ['DateModif', 'DateTime'], ['ModifiePar', 'Text'], ['Definition', 'Text']],
+    required: ['Nom', 'TypeFormulaire'] },
 });
 
 // Une erreur de la démo : `code` (taken, renamed) et ce qui la précise.
@@ -53,7 +55,8 @@ export async function loadDemo(read) {
   const rows = Object.fromEntries(tables.map(({ id }) => [id, ((examples.rows || {})[id] || []).map((row, i) => ({ ...row, ...((raw.lignes[id] || [])[i] || {}) }))]));
   const gallery = await read.json(`${raw.galerie}catalogue.json`);
   const models = await Promise.all(raw.publipostage.modeles.map(spec => loadModel(spec, raw.galerie, gallery, read)));
-  return { name: raw.nom, tables, rows, apps: raw.apps, models, links: raw.publipostage.liens, workflow: raw.automation, pages: raw.pages || [] };
+  const forms = ((raw.formplus && raw.formplus.formulaires) || []).map(form => ({ name: form.nom }));
+  return { name: raw.nom, tables, rows, apps: raw.apps, models, links: raw.publipostage.liens, workflow: raw.automation, forms, pages: raw.pages || [] };
 }
 
 // Un modèle : un modèle de la galerie de Publipostage+ (son texte, sa page, son en-tête), ou un texte du parcours.
@@ -91,7 +94,8 @@ export async function readSchema(doc) {
 // Le plan : les tables du parcours déjà là arrêtent tout (rien n'est écrit) ; les tables des apps et de GFS qui manquent seront créées.
 export function planDemo(pack, schema) {
   const taken = pack.tables.map(table => table.id).filter(id => schema.has(lower(id)));
-  const created = [APP_TABLES.models.id, APP_TABLES.links.id, APP_TABLES.automation.id, RANGEMENT].filter(id => !schema.has(lower(id)));
+  const apps = [APP_TABLES.models.id, APP_TABLES.links.id, APP_TABLES.automation.id, ...(pack.forms.length ? [APP_TABLES.forms.id] : [])];
+  const created = [...apps, RANGEMENT].filter(id => !schema.has(lower(id)));
   return { taken, created };
 }
 
@@ -168,6 +172,12 @@ export function modelRecord(model, name, columns, now) {
 
 export const linkRecord = link => ({ TableCible: link.table, Mode: link.mode, ColonneCible: link.cible || '', ColonneSource: link.source || '' });
 
+// La ligne d'un formulaire, dans les seules colonnes que la table a : son nom et son état, sans définition (elle est à Form+).
+export function formRecord(name, columns, now) {
+  const record = { Nom: name, TypeFormulaire: 'formulaire', DateModif: Math.floor(now.getTime() / 1000), ModifiePar: AUTHOR };
+  return Object.fromEntries(Object.entries(record).filter(([column]) => columns.has(lower(column))));
+}
+
 export const workflowRecord = workflow => ({ Type: 'Workflow', Table: workflow.table, Actif: false, Version: workflow.graphe.version, Resume: workflow.resume, Config: JSON.stringify({ ...workflow.graphe, active: false }) });
 
 // ---------- ce que la personne lit ----------
@@ -180,6 +190,7 @@ export function demoSummary(pack, plan, t) {
     t('demo.models', { n: pack.models.length, links: pack.links.length }),
     t('demo.automation'),
   ];
+  if (pack.forms.length) lines.push(t('demo.forms', { name: pack.forms.map(form => form.name).join(', ') }));
   if (pack.pages.length) lines.push(t('demo.pagesReady'));
   if (plan.created.length) lines.push(t('demo.appTables', { tables: plan.created.join(', ') }));
   return [...lines, t('demo.pages')];
@@ -190,7 +201,8 @@ export function demoReport(report, t) {
   const lines = report.pages.count
     ? [t('demo.step.access'), t('demo.step.letter'), t('demo.step.flow'), t('demo.step.sheet')]
     : [t('demo.pagesFailed', { reason: report.pages.error || '—' })];
-  for (const part of [report.models, report.links, report.workflow]) if (part.skipped) lines.push(t('demo.skipped', { table: part.skipped }));
+  if (report.forms && report.forms.count) lines.push(t('demo.step.form'));
+  for (const part of [report.models, report.links, report.workflow, report.forms || {}]) if (part.skipped) lines.push(t('demo.skipped', { table: part.skipped }));
   return lines;
 }
 
@@ -251,18 +263,23 @@ async function rowsOf(doc, id) {
   return (data.id || []).map((rowId, i) => Object.fromEntries(Object.keys(data).map(column => [column, data[column][i]])));
 }
 
-async function addModels(doc, schema, pack, now) {
-  const columns = await appTable(doc, schema, APP_TABLES.models);
-  if (!columns) return { count: 0, skipped: APP_TABLES.models.id };
-  const names = (await rowsOf(doc, APP_TABLES.models.id)).map(row => row.Nom);
-  const records = pack.models.map(model => {
-    const name = freeName(model.name, names);
+// Des fichiers d'une app (modèles, formulaires), chacun sous un nom libre : `build(item, nom, colonnes)` donne sa ligne.
+async function addFiles(doc, schema, spec, items, build) {
+  if (!items.length) return { count: 0 };
+  const columns = await appTable(doc, schema, spec);
+  if (!columns) return { count: 0, skipped: spec.id };
+  const names = (await rowsOf(doc, spec.id)).map(row => row.Nom);
+  const records = items.map(item => {
+    const name = freeName(item.name, names);
     names.push(name);
-    return ['AddRecord', APP_TABLES.models.id, null, modelRecord(model, name, columns, now)];
+    return ['AddRecord', spec.id, null, build(item, name, columns)];
   });
   await doc.applyUserActions(records);
   return { count: records.length };
 }
+
+const addModels = (doc, schema, pack, now) => addFiles(doc, schema, APP_TABLES.models, pack.models, (model, name, columns) => modelRecord(model, name, columns, now));
+const addForms = (doc, schema, pack, now) => addFiles(doc, schema, APP_TABLES.forms, pack.forms, (form, name, columns) => formRecord(name, columns, now));
 
 // Une seule règle par table, pour tout le document : une règle déjà posée reste telle quelle.
 async function addLinks(doc, schema, pack) {
@@ -333,7 +350,7 @@ async function tryPages(doc, pack, address) {
 }
 
 // Le geste entier. `install(ids)` installe les apps du parcours dans GFS ; `address` : l'adresse de GFS (origine et chemin). Rend ce qui a été posé :
-// { models, links, workflow, pages } (chacun { count, skipped?, error? }).
+// { models, links, workflow, forms, pages } (chacun { count, skipped?, error? }).
 export async function runDemo({ doc, pack, now, install, address }) {
   const before = await readSchema(doc);
   const { taken } = planDemo(pack, before);
@@ -351,6 +368,7 @@ export async function runDemo({ doc, pack, now, install, address }) {
   }
   await install(pack.apps);
   const schema = await readSchema(doc);
-  const report = { models: await addModels(doc, schema, pack, now), links: await addLinks(doc, schema, pack), workflow: await addWorkflow(doc, schema, pack) };
+  const report = { models: await addModels(doc, schema, pack, now), links: await addLinks(doc, schema, pack), workflow: await addWorkflow(doc, schema, pack),
+    forms: await addForms(doc, schema, pack, now) };
   return { ...report, pages: await tryPages(doc, pack, address) };
 }

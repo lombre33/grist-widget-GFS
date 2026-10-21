@@ -1137,9 +1137,9 @@ paquet de frappes, une par personne pour la présence) doit savoir quand cette t
 2. [T] GFS n'écrit jamais dans la table d'une app, sauf le nom d'un fichier (le porteur, 21/10) : quand la personne renomme un
    fichier dans l'explorateur, GFS écrit le nouveau nom, et lui seul, dans la colonne `colonnes.nom` de sa ligne (2.4), après
    avoir vérifié que la colonne existe ; ni date ni auteur. Un nom qu'un autre fichier de la même table porte déjà (casse et
-   espaces autour ignorés, la règle de Publipostage+) est refusé dans la fenêtre. Une app relit donc le nom d'un fichier ouvert
-   avant de l'enregistrer, et ne réécrit jamais un nom périmé (guide des apps). Dupliquer et supprimer restent à l'app :
-   l'explorateur les grise.
+   espaces autour ignorés, la règle de Publipostage+) est refusé dans la fenêtre. Une app ne réécrit donc jamais un nom périmé :
+   elle ne met le nom dans la ligne qu'elle écrit qu'à la création du fichier et quand la personne l'a changé chez elle (guide
+   des apps). Dupliquer et supprimer restent à l'app : l'explorateur les grise.
 
 ### 6.4 `GFS_Rangement`, le rangement commun
 

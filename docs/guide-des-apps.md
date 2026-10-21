@@ -86,10 +86,13 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
    bord (barre d'outils, bulle, menu, fenêtre, bande de diapositives, volet, repères fixes des coins) s'écarte de la zone, sans
    bande réservée : hors de la zone, tout le cadre est à l'app. Une app qui masque la barre (un diaporama plein cadre) le
    demande par `barre.masquer` et offre elle-même la sortie, puisque la barre n'est plus là pour ouvrir l'explorateur.
-10. Relire le nom d'un fichier avant de l'enregistrer (contrats 6.3, point 2) : dans GFS, la personne peut renommer un fichier
-    depuis l'explorateur pendant que l'app le tient ouvert ; GFS n'écrit alors que la colonne du nom (`colonnes.nom`). L'app
-    relit ce nom juste avant d'écrire la ligne et ne réécrit jamais un nom périmé ; une app qui ne retient pas de nom n'a rien
-    à faire. Les favoris et les dossiers que la personne pose dans GFS sont à GFS (`GFS_Rangement`) : l'app garde les siens.
+10. Ne jamais remettre un ancien nom (contrats 6.3, point 2) : dans GFS, la personne peut renommer un fichier depuis
+    l'explorateur pendant que l'app le tient ouvert ; GFS n'écrit alors que la colonne du nom (`colonnes.nom`), et refuse un nom
+    qu'un autre fichier de la même table porte déjà. L'app ne met donc le nom dans la ligne qu'elle écrit qu'à la création du
+    fichier et quand la personne l'a changé chez elle ; sinon il reste hors du lot (le relire avant chaque enregistrement
+    coûterait la table entière, qui peut peser des mégaoctets). À la prochaine ouverture, l'app lit le nom de la table. Une app
+    qui n'écrit pas de nom n'a rien à faire. Les favoris et les dossiers que la personne pose dans GFS sont à GFS
+    (`GFS_Rangement`) : l'app garde les siens.
 
 ### 1.3 Licence : GPL 3.0 dans tous les dépôts (décision du porteur, 21/10)
 

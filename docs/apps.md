@@ -7,7 +7,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `b711d80` | 21/10/2026 | GPL 3.0 |
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `dc95ebe` | 21/10/2026 | GPL 3.0 |
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `16701fe` | 21/10/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `4110eaf` | 21/10/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `23647eb` | 21/10/2026 | GPL 3.0 |
@@ -373,6 +373,18 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   sa table à l'ajout, pas à la lecture. Traité le 21/10 : la référence avancée à `038dd1b` (commit à part, relu) ; le labo
   (enregistrer un formulaire, dans GFS et sans GFS) ; l'`INDEX.md` (007 faite) ; la consigne 008 (enregistrer, les répondants,
   une ligne par formulaire, la page à compléter, l'annonce du rangement par GFS).
+- Publipostage+ à `dc95ebe` (21/10, soir) : six commits de plus depuis `b711d80`. Son `GFS-ETAT.md` (`dc95ebe`, qui décrit
+  `2f6440a` ; consignes lues jusqu'à la 027) dit la 024 faite (la onzième clé, `pp_news_seen` : la fenêtre des nouveautés
+  s'ouvre toute seule, une fois par personne, `1f336ac`) et la 025 en cours (premier lot `9d3c52d`, la barre de GFS lue ;
+  second lot commencé : la barre d'outils laisse un vide à la barre posée en haut, `f81bd8a`, et les fenêtres se calent sur la
+  place libre, `2f6440a`). « Demandes à GFS » ne garde que la barre. Lus : de `4f00ac2` à `2f6440a`, 27 fichiers, six ajoutés
+  dont quatre essais ; la CSP, la carte d'importation et la liste de bibliothèques ne changent pas ; ni appel à Grist, stockage
+  du navigateur ni adresse de plus. Traité le 21/10 : la référence avancée à `2f6440a` (`105ff46`, commit à part, relu) ; la
+  fenêtre des nouveautés mesurée avec l'app (`run-stockage-publipostage` 2 x 15), le labo la disant vue dans les autres passes
+  (`ff574d0`) ; un modèle renommé dans GFS pendant que l'app le tient ouvert reprend son ancien nom à l'enregistrement suivant
+  (`run-ranger`, partie 7, `f3ab290`) ; l'`INDEX.md` (024 faite, 025 en cours) ; la consigne 029 (le contrat du rangement et du
+  renommage par GFS, et ne jamais remettre un ancien nom). Form+ n'a pas bougé depuis `16701fe` : la consigne 009 lui porte la
+  même règle du nom. Restent ouverts chez Publipostage+ : la 025, le titre d'impression (011), l'adresse du CDN (016).
 - Licences (21/10, le porteur : tous les dépôts sous GPL 3.0). Relevé sur le sommet de `main` de chaque dépôt :
   Publipostage+, Grist-BI et SlidesPlus ont un `LICENSE` qui est le texte officiel de la GPL 3.0 (mêmes octets que celui de
   GFS, SHA-256 `3972dc97…`) ; Grist-BI était sous MIT jusqu'au 29/09 (`fb3ab41`), passé en GPL 3.0 ce jour-là. Form+ :

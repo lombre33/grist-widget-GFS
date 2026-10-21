@@ -715,18 +715,21 @@ Voir la section 5. Ils portent la clé `gfs` et jamais de `mtype` : le script d'
 ignore (mesuré dans `grain-rpc` 0.1.7 : `_dispatch` n'agit que sur les `mtype` connus). Aucun champ d'un message `gfs` ne porte
 un nom que le script d'API lit (`tableId`, `rowId`, `settings`, `theme`, `options`).
 
-### 4.5 La ligne de travail : une table et une ligne choisies dans GFS
+### 4.5 La table de travail : une table, et au besoin sa ligne, choisies dans GFS
 
 Décidée par le porteur le 21/10 (« Oui, le construire dans GFS »), après la mesure du même jour (faits vérifiés, 1 ; labo,
 `run-travail.mjs`). Sans elle, la section de GFS décide de la table et de la ligne de chaque app (4.2, 4.3) : il faut un GFS par
 table, réglé dans le panneau de Grist.
 
-1. [T] **Le geste.** Le bouton « Table et ligne de travail » de la barre de GFS (5.2, point 7) ouvre une fenêtre du widget : la
-   table, puis la ligne, chacune dans une liste avec recherche. Le premier article, « La table de la page », rend la main à la
+1. [T] **Le geste.** Le bouton « Table de travail » de la barre de GFS (5.2, point 7) ouvre une fenêtre du widget : la liste des
+   tables, avec recherche. Un clic sur une table la choisit, et c'est l'essentiel (le porteur, 21/10 : « la core feature c'est la
+   table ») ; sa ligne est alors celle d'une section qui s'ouvre : la première du tableau, ou la ligne d'ajout (`new`) d'une table
+   vide. Le bouton « Ligne » d'une table (ou la flèche droite) mène, pour qui le veut, à la liste de ses lignes, avec recherche.
+   Choisir de nouveau la même table, sans ligne, ne change rien. Le premier article, « La table de la page », rend la main à la
    section : c'est l'état de départ, celui d'avant 4.5. La liste des tables ne montre ni les tables internes de Grist
    (`_grist_*`), ni celles de GFS (`GFS_*`), ni celles des apps (leur préfixe, 2.3, le préfixe sans son « _ » final, et les
    tables de leurs fichiers, 2.4). Une table que l'app ouverte ne peut pas lire (3.2) est grisée, avec la raison.
-2. [T] **Ce que l'app reçoit.** Tant qu'une ligne de travail est choisie, le courtier présente à l'app la table et la ligne
+2. [T] **Ce que l'app reçoit.** Tant qu'une table de travail est choisie, le courtier présente à l'app la table et la ligne
    choisies comme celles de sa section : le message de table et de ligne (4.3) porte leur `tableId` et leur `rowId`, au `ready`
    comme ensuite ; ceux de Grist pour la section ne passent plus. `fetchSelectedTable` et `fetchSelectedRecord` sont rendus
    depuis la table choisie, lue par GFS (`fetchTable`), sous la forme de la vue de Grist (faits vérifiés, 1) : colonnes visibles
@@ -739,14 +742,14 @@ table, réglé dans le panneau de Grist.
    une app peut lire sa table une seule fois, au démarrage (Automation+). Changer de ligne dans la même table envoie un message
    de ligne, sans rouvrir.
 4. [D] **Relire pour voir les changements.** Grist ne prévient pas GFS des changements d'une autre table que celle de sa section
-   (5.5, point 1). Tant qu'une app est ouverte sur une ligne de travail, GFS relit la table choisie et envoie un message de table
+   (5.5, point 1). Tant qu'une app est ouverte sur une table de travail, GFS relit la table choisie et envoie un message de table
    (`dataChange`) quand elle a changé : toutes les **2 s** jusqu'à 5 000 lignes, toutes les **5 s** jusqu'à 20 000, toutes les
    **10 s** au-delà ; à l'arrêt quand la page est cachée. Mesuré le 21/10 (labo, sans réseau) : une relecture coûte 11 à 14 ms
    pour 1 000 lignes, 38 ms pour 5 000, 135 à 166 ms pour 20 000 ; à 20 000 lignes relues toutes les 1,5 s, la page de Grist
    accroche à chaque relecture (0,19 s au plus). Deux lectures demandées en même temps n'en font qu'une.
 5. [T] **Ce que le courtier refuse.** Une table que l'app ne peut pas lire (3.2) n'est jamais présentée : la fenêtre la grise, et
    une app ouverte ensuite qui ne peut pas la lire suit la page, et GFS le dit.
-6. [D] **Ce qui est retenu.** Rien, dans le document comme dans le navigateur : la ligne de travail vaut pour le cadre de GFS
+6. [D] **Ce qui est retenu.** Rien, dans le document comme dans le navigateur : la table de travail vaut pour le cadre de GFS
    ouvert, et se perd quand Grist le recharge (changement de page, d'accès). La plus prudente des réponses, en attendant
    l'usage.
 7. [M] **À mesurer sur un Grist en ligne** : le coût d'une relecture par le réseau, et un repère léger « le document a changé »
@@ -890,7 +893,7 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    (décision du porteur, 21/10 : la barre se place à gauche, en haut, à droite ou en bas, à la guise de la personne ; les apps
    adaptent leur interface aux quatre emplacements sans recouvrement ; l'emprise reste minimale, donc pas de bande en plus, mais
    un recouvrement de l'espace que les apps laissent vide). Elle porte quatre boutons à icône seule (« Fichiers », « Apps et
-   extensions », « Table et ligne de travail », 4.5, depuis le 21/10 au soir, et « Position de la barre »), de 34 × 124 px au bord
+   extensions », « Table de travail », 4.5, depuis le 21/10 au soir, et « Position de la barre »), de 34 × 124 px au bord
    gauche ou droit et de 124 × 34 px en haut ou en bas (34 × 94 avec les trois premiers boutons), à 4 px du bord et centrée sur lui ; elle remplace les deux boutons que GFS posait au coin bas droit. Le cadre de l'app reste plein :
    rien ne le réduit. `contexte.barre` dit ce qui est recouvert :
    `{ "bord": "gauche", "epaisseur": 42, "zone": { "x": 0, "y": 134, "largeur": 42, "hauteur": 132 } }` (l'exemple d'un cadre de

@@ -1,4 +1,4 @@
-// La ligne de travail (contrats 4.5) : une table et une ligne choisies dans GFS, que l'app ouverte reçoit comme celles de la section de GFS. Le courtier ne change pas :
+// La table de travail (contrats 4.5) : une table, et au besoin sa ligne, choisies dans GFS, que l'app ouverte reçoit comme celles de la section de GFS. Le courtier ne change pas :
 // la session reçoit un état (`state`) et une vue de Grist (`port`) qui, sans choix, sont ceux de Grist ; avec un choix, ils disent la table et la ligne choisies et
 // rendent leurs lignes depuis la table lue par GFS (`fetchTable`), sous la forme de la vue de Grist. Grist ne prévient pas des changements d'une autre table que celle
 // de la section (5.5, point 1) : GFS relit la table choisie tant qu'une app l'écoute.
@@ -106,17 +106,19 @@ export class WorkRow {
     };
   }
 
-  // Choisit la table et la ligne. Rend `{ tableChanged }` : une autre table demande de rouvrir l'app (4.5, point 3) ; une autre ligne de la même table part en
-  // message de ligne aux apps qui écoutent.
-  async choose(tableId, rowId) {
+  // Choisit la table, et la ligne quand elle est donnée ; sans ligne, celle d'une section qui s'ouvre : la première du tableau, ou la ligne d'ajout (`new`) d'une
+  // table vide (4.5, point 1). Rend `{ tableChanged }` : une autre table demande de rouvrir l'app (4.5, point 3) ; une autre ligne de la même table part en
+  // message de ligne aux apps qui écoutent ; la même table sans ligne ne change rien.
+  async choose(tableId, rowId = null) {
     if (this.#choice && this.#choice.tableId === tableId) {
+      if (rowId === null || rowId === this.#choice.rowId) return { tableChanged: false };
       this.#choice = { tableId, rowId };
       this.#emit('record');
       return { tableChanged: false };
     }
     const [columns, data] = await Promise.all([this.#readColumns(tableId), this.#read(tableId)]);
     this.#stop();
-    this.#choice = { tableId, rowId };
+    this.#choice = { tableId, rowId: rowId ?? firstRow(data) };
     this.#columns = columns;
     this.#remember(data);
     this.#schedule(data.id.length);
@@ -247,4 +249,10 @@ function orderOf(data) {
   const order = data.id.map((id, i) => i);
   if (data.manualSort) order.sort((a, b) => data.manualSort[a] - data.manualSort[b]);
   return order;
+}
+
+// La ligne d'une section qui s'ouvre : la première du tableau, ou la ligne d'ajout d'une table vide.
+function firstRow(data) {
+  const [at] = orderOf(data);
+  return at === undefined ? 'new' : data.id[at];
 }

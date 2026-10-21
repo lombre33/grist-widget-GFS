@@ -1,5 +1,6 @@
-// La fenêtre « Table et ligne de travail » (contrats 4.5, point 1) : la table, puis la ligne, chacune dans une liste avec recherche (mots dans n'importe quel ordre,
-// accents, casse et ponctuation ignorés). Le premier article rend la main à la page. Une table que l'app ouverte ne lit pas est grisée avec sa raison, jamais masquée.
+// La fenêtre « Table de travail » (contrats 4.5, point 1) : un clic sur une table la choisit ; son bouton « Ligne » mène, pour qui le veut, à la liste de ses lignes.
+// Chaque liste a sa recherche (mots dans n'importe quel ordre, accents, casse et ponctuation ignorés). Le premier article rend la main à la page. Une table que l'app
+// ouverte ne lit pas est grisée avec sa raison, jamais masquée.
 // Une fenêtre sur une seule base : le titre, la recherche et le pied restent en place, seule la liste défile. Elle ne décide rien : le choix est rendu au contrôleur.
 
 import { h } from './dom.js';
@@ -22,7 +23,7 @@ export class WorkWindow {
   #inert = [];
   #onKey = null;
 
-  // opts : { container, i18n, inertTargets() -> [élément], source, onPick({ tableId, rowId, label } | null), onClose() }
+  // opts : { container, i18n, inertTargets() -> [élément], source, onPick({ tableId, rowId, label } | null), onClose() } ; une table choisie seule a `rowId` null.
   // source : { pageTable, current, tables() -> [{ id, locked: texte | null }], rows(id) -> Promise<[{ id, label, search }]> } ; la recherche d'une ligne porte sur `search`.
   constructor(opts) { this.#opts = opts; }
 
@@ -138,22 +139,29 @@ export class WorkWindow {
   }
 
   #item(item, index) {
+    const { t } = this.#opts.i18n;
     const reason = item.locked ? h('span', { class: 'wk-reason' }, item.locked) : null;
+    const locked = item.locked ? ' is-locked' : '';
+    const disabled = item.locked ? 'true' : null;
+    // Le bouton « Ligne » d'une table : facultatif, il mène à la liste de ses lignes ; grisé comme sa table.
+    const rows = item.more ? h('button', { type: 'button', class: `btn sm wk-rows${locked}`, dataset: { index: String(index), fk: `work-rows-${item.id}` }, 'aria-disabled': disabled,
+      'aria-label': t('work.rowOf', { table: item.label }) }, t('work.row'), icon('chev-right')) : null;
     return h('li', { class: 'wk-row' },
-      h('button', { type: 'button', class: `wk-item${item.locked ? ' is-locked' : ''}`, dataset: { index: String(index), fk: `work-item-${item.id ?? 'page'}` },
-        'aria-disabled': item.locked ? 'true' : null, 'aria-current': item.checked ? 'true' : null },
-      item.glyph ? icon(item.glyph) : null, h('span', { class: 'wk-label' }, h('span', { class: 'wk-name' }, item.label), reason),
-      item.checked ? icon('check') : null, item.more && !item.locked ? icon('chev-right') : null));
+      h('button', { type: 'button', class: `wk-item${locked}`, dataset: { index: String(index), fk: `work-item-${item.id ?? 'page'}` }, 'aria-disabled': disabled,
+        'aria-current': item.checked ? 'true' : null },
+      item.glyph ? icon(item.glyph) : null, h('span', { class: 'wk-label' }, h('span', { class: 'wk-name' }, item.label), reason), item.checked ? icon('check') : null),
+      rows);
   }
 
   #onClick(event) {
-    const button = event.target.closest('.wk-item');
+    const button = event.target.closest('.wk-item, .wk-rows');
     if (!button) return;
     const item = this.#found()[Number(button.dataset.index)];
     if (!item) return;
     if (item.locked) { this.#note.textContent = item.locked; return; }
     if (this.#step.kind === 'tables' && item.id === null) { this.#pick(null); return; }
-    if (this.#step.kind === 'tables') { void this.#showRows(item.id); return; }
+    if (this.#step.kind === 'tables' && event.target.closest('.wk-rows')) { void this.#showRows(item.id); return; }
+    if (this.#step.kind === 'tables') { this.#pick({ tableId: item.id, rowId: null, label: null }); return; }
     this.#pick({ tableId: this.#step.tableId, rowId: item.id, label: item.label });
   }
 
@@ -165,7 +173,7 @@ export class WorkWindow {
 
   // ---------- le clavier ----------
 
-  // Échap ferme ; les flèches vont de la recherche à la liste et d'un article à l'autre ; Tab reste dans la fenêtre.
+  // Échap ferme ; les flèches vont de la recherche à la liste et d'un article à l'autre, la flèche droite d'une table à ses lignes ; Tab reste dans la fenêtre.
   #keydown(event) {
     if (!this.#root) return;
     if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); this.close(); return; }
@@ -178,6 +186,7 @@ export class WorkWindow {
       if (next) { event.preventDefault(); next.focus(); next.scrollIntoView({ block: 'nearest' }); }
       return;
     }
+    if (event.key === 'ArrowRight' && at >= 0 && active.nextElementSibling) { event.preventDefault(); active.nextElementSibling.click(); return; }
     if (event.key === 'Enter' && active === this.#search && items.length === 1) { event.preventDefault(); items[0].click(); return; }
     if (event.key !== 'Tab') return;
     const nodes = [...this.#root.querySelectorAll(FOCUSABLE)].filter(node => !node.hidden && node.offsetParent !== null);

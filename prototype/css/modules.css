@@ -64,7 +64,7 @@
 .rd-label { font-size: 12.5px; font-weight: 600; }
 .rd-hint { font-size: 11.5px; color: var(--text-muted); }
 
-/* ---------- la fenêtre « Table et ligne de travail » (contrats 4.5) : la recherche reste en haut, seule la liste défile ---------- */
+/* ---------- la fenêtre « Table de travail » (contrats 4.5) : la recherche reste en haut, seule la liste défile ---------- */
 .mod.wk { width: min(480px, 100%); height: 100%; }
 .wk-title-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .wk-title-row h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -72,6 +72,8 @@
 .wk-back .ic { width: 14px; height: 14px; }
 .inp-search.wk-search { display: block; width: 100%; margin-top: 8px; }
 .wk-list { margin: 0; padding: 4px 0; list-style: none; }
+.wk-row { display: flex; align-items: center; gap: 6px; }
+.wk-rows { flex: none; gap: 2px; }
 .wk-item { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 32px; padding: 5px 8px; border: 0; border-radius: var(--radius-sm); background: transparent;
   color: var(--text); font: inherit; text-align: left; cursor: pointer; }
 .wk-item:hover { background: var(--surface-sunken); }

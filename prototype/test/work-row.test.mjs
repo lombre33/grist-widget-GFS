@@ -125,6 +125,21 @@ test('une autre ligne de la même table part en message de ligne, sans rouvrir ;
   assert.deepEqual(work.choice, { tableId: 'Participants', rowId: 3 });
 });
 
+test('une table choisie seule : sa ligne est la première du tableau, ou la ligne d\'ajout d\'une table vide ; la même table de nouveau ne change rien', async () => {
+  const { base } = gristSide();
+  const work = new WorkRow({ doc: fakeDoc({ Vide: { id: [], manualSort: [], Nom: [] } }), timers: fakeTimers() });
+  const seen = [];
+  work.state(base).subscribe((kind, message) => seen.push([kind, message.rowId]));
+  assert.deepEqual(await work.choose('Participants'), { tableChanged: true });
+  assert.deepEqual(work.choice, { tableId: 'Participants', rowId: 2 });
+  await work.choose('Participants', 3);
+  assert.deepEqual(await work.choose('Participants'), { tableChanged: false });
+  assert.deepEqual(work.choice, { tableId: 'Participants', rowId: 3 });
+  assert.deepEqual(seen, [['record', 3]]);
+  assert.deepEqual(await work.choose('Vide'), { tableChanged: true });
+  assert.deepEqual(work.choice, { tableId: 'Vide', rowId: 'new' });
+});
+
 test('la relecture : un changement part en message de table, rien sinon ; à l\'arrêt sans app qui écoute, en attente quand la page est cachée', async () => {
   const { base } = gristSide();
   const doc = fakeDoc();

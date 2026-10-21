@@ -1,8 +1,8 @@
-// La ligne de travail choisie dans GFS (contrats 4.5), dans un vrai Grist, à 700 × 400, à la vraie souris et au vrai clavier. GFS reste sur la page Clients : sa section
-// suit Clients, et rien n'est réglé dans Grist. La démo pose ses tables ; la personne ouvre la convocation, puis choisit, par le bouton « Table et ligne de travail » de la
-// barre de GFS, la table Participants et une inscription (recherche au clavier, mots dans le désordre) : l'app est rouverte sur elle, la convocation lue est la sienne.
-// Une autre ligne de la même table : la lecture suit, sans rouvrir. « La table de la page » rend la main à la section. Automation+, ouverte sur Participants, traite une
-// inscription créée ailleurs (relue par GFS). LAB_LANG=fr|en, LAB_SCHEME=light|dark. LAB_COUT=1 ajoute le coût de la relecture de tables de 1 000 à 20 000 lignes
+// La table de travail choisie dans GFS (contrats 4.5), dans un vrai Grist, à 700 × 400, à la vraie souris et au vrai clavier. GFS reste sur la page Clients : sa section
+// suit Clients, et rien n'est réglé dans Grist. La démo pose ses tables ; la personne ouvre la convocation, puis, par le bouton « Table de travail » de la barre de GFS,
+// va au clavier de la table Participants à ses lignes et choisit une inscription (mots dans le désordre) : l'app est rouverte sur elle, la convocation lue est la sienne.
+// Une autre ligne de la même table, par le bouton « Ligne » : la lecture suit, sans rouvrir. « La table de la page » rend la main à la section. Un clic sur Participants
+// la choisit seule : la convocation de sa première ligne. Automation+, ouverte sur elle, traite une inscription créée ailleurs (relue par GFS). LAB_LANG=fr|en, LAB_SCHEME=light|dark. LAB_COUT=1 ajoute le coût de la relecture de tables de 1 000 à 20 000 lignes
 // (LAB_SIZES) et le retard qu'elle donne au fil de la page de Grist.
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';
@@ -11,8 +11,8 @@ const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
 const run = `travail-${lang}-${scheme}`;
 const WORDS = lang === 'fr'
-  ? { button: 'Démo', page: 'La table de la page : Clients', tip: /^Table et ligne de travail : Participants, /, tipPage: /celles de la page \(Clients\)/, back: 'Tables' }
-  : { button: 'Demo', page: 'The page’s table: Clients', tip: /^Working table and row: Participants, /, tipPage: /the page’s \(Clients\)/, back: 'Tables' };
+  ? { button: 'Démo', page: 'La table de la page : Clients', tip: /^Table de travail : Participants, ligne /, tipTable: /^Table de travail : Participants$/, tipPage: /celle de la page \(Clients\)/ }
+  : { button: 'Demo', page: 'The page’s table: Clients', tip: /^Working table: Participants, row /, tipTable: /^Working table: Participants$/, tipPage: /the page’s \(Clients\)/ };
 const lab = await startLab({ lang, colorScheme: scheme, query: 'dev' });
 const { page } = lab;
 const errors = [];
@@ -51,13 +51,14 @@ await page.waitForTimeout(800);
 const sessions = await rows('Sessions');
 const people = await rows('Participants');
 const first = people.find(row => row.Session === sessions[1].id);
+const top = [...people].sort((a, b) => a.manualSort - b.manualSort)[0];
 const second = people.find(row => row.Session === sessions[0].id);
 const name = row => `${row.Prenom} ${row.Nom}`;
 
 // 1. La convocation ouverte depuis l'explorateur : elle suit la page (Clients) ; le bouton le dit.
 await frame.locator('.ls-row', { hasText: 'Convocation' }).first().dblclick();
 let app = await readingApp();
-check('le bouton « Table et ligne de travail » est dans la barre, relâché, et dit que la page décide', await workButton().getAttribute('aria-pressed') === 'false' && WORDS.tipPage.test(await workButton().getAttribute('title')),
+check('le bouton « Table de travail » est dans la barre, relâché, et dit que la page décide', await workButton().getAttribute('aria-pressed') === 'false' && WORDS.tipPage.test(await workButton().getAttribute('title')),
   await workButton().getAttribute('title'));
 
 // 2. La fenêtre : la page d'abord, puis les tables de données, sans celles de Grist, de GFS ni des apps.
@@ -71,7 +72,10 @@ check('la recherche a le clavier', await frame.evaluate(() => document.activeEle
 await lab.shotPanel(run, '1-tables', frame);
 await page.keyboard.type('partic', { delay: 20 });
 check('la recherche ne garde que Participants', JSON.stringify(await items()) === JSON.stringify(['Participants']), await items());
-await frame.locator('.wk-item', { hasText: 'Participants' }).click();
+check('Participants a son bouton « Ligne », facultatif', await frame.locator('[data-fk="work-rows-Participants"]').isVisible());
+// Au clavier : la flèche descend sur la table, la flèche droite mène à ses lignes.
+await page.keyboard.press('ArrowDown');
+await page.keyboard.press('ArrowRight');
 await frame.locator('.wk-back').waitFor({ state: 'visible' });
 await frame.waitForFunction(() => document.querySelectorAll('.wk-item').length > 5, null, { timeout: 15000 });
 check('les lignes de Participants sont là, avec leur texte', (await items()).some(text => text.includes(first.Nom)), (await items()).slice(0, 3));
@@ -103,7 +107,7 @@ const before = app;
 await workButton().click();
 await frame.locator('.wk').waitFor();
 check('la table choisie est marquée', await frame.locator('.wk-item[aria-current="true"]').innerText().then(text => text.trim()) === 'Participants');
-await frame.locator('.wk-item', { hasText: 'Participants' }).click();
+await frame.locator('[data-fk="work-rows-Participants"]').click();
 await frame.waitForFunction(() => document.querySelectorAll('.wk-item').length > 5, null, { timeout: 15000 });
 check('la ligne choisie est marquée', (await frame.locator('.wk-item[aria-current="true"]').innerText()).includes(first.Nom));
 await frame.locator('.wk-item', { hasText: second.Nom }).first().click();
@@ -121,13 +125,21 @@ await page.waitForTimeout(1500);
 check('revenue à la page : le bouton est relâché', await workButton().getAttribute('aria-pressed') === 'false');
 check('l\'app suit de nouveau la table de la page', before.isDetached() && await app.evaluate(() => grist.getSelectedTableId && grist.getSelectedTableId()).catch(() => null) !== 'Participants');
 
-// 6. Automation+ sur Participants : la ligne de travail d'abord, puis l'app ; une inscription créée ailleurs reçoit son statut.
+// 6. Un clic sur Participants la choisit seule : la fenêtre se ferme, la convocation est celle de sa première ligne, le bouton ne nomme que la table.
 await workButton().click();
 await frame.locator('.wk').waitFor();
 await frame.locator('.wk-item', { hasText: 'Participants' }).click();
-await frame.waitForFunction(() => document.querySelectorAll('.wk-item').length > 5, null, { timeout: 15000 });
-await frame.locator('.wk-item').first().click();
 await page.waitForTimeout(1500);
+check('un clic sur la table la choisit : la fenêtre s\'est fermée', !(await frame.locator('.wk').count()));
+app = await readingApp();
+await readerHas(app, top.Nom);
+const opened = await reader(app);
+check('la convocation est celle de la première ligne de Participants', opened.includes(name(top)), { attendu: name(top), lu: opened.slice(0, 120) });
+check('le bouton est enfoncé et ne nomme que la table', await workButton().getAttribute('aria-pressed') === 'true' && WORDS.tipTable.test(await workButton().getAttribute('title')),
+  await workButton().getAttribute('title'));
+await lab.shotPanel(run, '5-table-seule', frame);
+
+// 7. Automation+ sur la table choisie ; une inscription créée ailleurs reçoit son statut.
 await lab.openModules(frame);
 await frame.locator('[data-open="automation"]').click();
 const flow = await lab.appFrame(/automation/);
@@ -154,7 +166,7 @@ check('une inscription créée ailleurs à la seconde session est confirmée', s
 check('une inscription créée ailleurs à la session pleine passe en liste d\'attente', full.Statut === 'Liste d’attente', full.Statut);
 await lab.shotPanel(run, '4-automatisme', frame);
 
-// 7. Facultatif : le coût de la relecture (contrats 4.5, point 4).
+// 8. Facultatif : le coût de la relecture (contrats 4.5, point 4).
 if (process.env.LAB_COUT === '1') await measureCost();
 const own = errors.filter(text => !/Current access level none/.test(text));
 say('erreurs et avertissements de GFS :', own);
@@ -198,9 +210,6 @@ async function measureCost() {
   await workButton().click();
   await frame.locator('.wk').waitFor();
   await frame.locator('.wk-item', { hasText: `Mesure${sizes.at(-1)}` }).click();
-  await frame.waitForFunction(() => document.querySelectorAll('.wk-item').length > 5, null, { timeout: 30000 });
-  say('la fenêtre dit :', await frame.locator('.mod-note').innerText());
-  await frame.locator('.wk-item').first().click();
   await page.waitForTimeout(3000);
   say('fil de Grist sans relecture :', calm, '; avec la relecture de', `Mesure${sizes.at(-1)}`, ':', await lag(15000));
 }

@@ -117,7 +117,7 @@ Slides+ (`lombre33/SlidesPlus`) n'est pas une app de GFS : les diapositives devi
 | **Les apps installées se retiennent dans une table du document** (`GFS_Rangement`), créée avec l'accord de la personne | 16/10 | Contrats 6.4 et 7.4 : l'installation s'enregistre tout de suite, sans « Enregistrer », et vaut pour tout le document |
 | **Ouvrir le fichier cliqué : une petite porte dans l'app** (l'`ouverture` du contexte et l'appel `ouvrir`) | 16/10 | Consigne 010 à Publipostage+ ; contrats 5.2, point 3, et 5.4 |
 | **Deux environnements séparés** : les dépôts de développement (`lombre33`) et les dépôts publics (`grist-factory`) ; le GFS public référence les seconds, où le porteur ne pousse que des versions propres | 16/10 | Section 4.2 ; question 1 tranchée |
-| **Premier client du kit commun : Form+**, et non Automation+, trop éloigné du périmètre de Publipostage+ | 16/10 | Sections 4.5 et 10 (étape 3, qui attend toujours son go) |
+| **Premier client du kit commun : Form+**, et non Automation+, trop éloigné du périmètre de Publipostage+ | 16/10 | Sections 4.5 et 10 (étape 3, lancée le 21/10) |
 | **Les six bibliothèques de l'écriture en direct de Publipostage+ : un seul fichier module, assemblé par GFS**, qui laisse en noms nus les bibliothèques natives de l'app (son éditeur) ; la copie de GFS d'abord, le CDN une fois l'adresse publique fixée | 16/10 | Section 4.7 ; contrats 2.6 (points 8 à 11) et 5.2 ; consigne 012 à Publipostage+ |
 | **Le CDN de ce fichier assemblé : jsDelivr, qui le sert depuis le dépôt public de GFS, à un commit épinglé** ; l'adresse change avec le dépôt définitif, et chaque app qui l'accueille la nomme dans sa CSP | 19/10 | Section 4.7 ; contrats 2.6 (point 11) ; consigne 016 à Publipostage+ |
 | **Un seul choix de langue pour GFS et toutes ses apps** : « Comme Grist » (par défaut), Français ou English, retenu sur le navigateur, suivi par les apps ouvertes | 20/10 | Contrats 1.3, 5.2 (point 6) et 5.3 (point 4) ; section 5.7 ; consigne 019 à Publipostage+ |
@@ -244,7 +244,7 @@ GFS ............... courtier, explorateur, installation, références aux versio
 ### 4.2 Dépôts, adresses et publication
 
 - **Dépôts de développement** (compte `lombre33`) : un par app, un pour le kit, un pour GFS. Noms : `grist-widget-GFS`
-  pour GFS (créé le 14/10) ; `grist-factory-kit` proposé pour le kit.
+  pour GFS (créé le 14/10) ; `grist-factory-kit` pour le kit (créé le 21/10, public, GPL 3.0).
 - **Dépôts publics** (organisation `grist-factory`) : fabriqués par un outil d'envoi comme `outils/depot-propre/` de
   Publipostage+ (il ne copie que ce qui se publie, refuse un prénom, un lien de session, un secret, et ne pousse jamais),
   puis poussés par le porteur depuis sa machine. Aucune session cloud ne pousse sur `grist-factory`.
@@ -334,6 +334,17 @@ commencer, ou un sous-cadre gardé ouvert et caché (question 4, section 12).
   sans bibliothèque (un script de QR code à lui), mais sans traduction (français seul), avec les fenêtres du navigateur
   (`prompt` et `confirm`) et sa propre palette : l'étape 3 les lui apporte, au lieu de seulement remplacer des copies comme
   chez Automation+.
+- **V0.1 (21/10)** : dépôt `lombre33/grist-factory-kit`, version `v0.1.0` (commit `54c48f3`, mode d'emploi : son
+  `README.md`). Au périmètre de ce que demande le premier client : les jetons de la charte (clair et sombre), le thème, la traduction français / anglais
+  avec ses pluriels, les fenêtres (`ModalBase.create`), les saisies et confirmations (`Dialogs`), les couches (`Layers`) et
+  deux petits outils (`h`, et une garde « un module, une adresse »), en modules ES et deux feuilles de style, sans
+  bibliothèque. Mesuré : 38 essais sous Node et plus de 200 vérifications dans Chromium à 700 × 400, à la vraie souris et au
+  vrai clavier, en clair et en sombre, en français et en anglais, sous la CSP d'une app hébergée. Le reste de la liste
+  ci-dessus vient par lots, quand une app en a besoin : le client du courtier (contexte, stockage par app, identité), la
+  liste avec recherche et les icônes, le texte commun du grisé, `ModalBase.adopt` (que Publipostage+ emploie) ; l'outil des
+  bibliothèques est celui de l'étape 4. Essayé sur une copie de Form+ (`2c0ee50`) : sa suite de 536 essais reste verte en
+  français et en anglais ; la consigne est la 005. Appris : la couleur qu'une personne choisit pour son formulaire se pose
+  sur la zone du formulaire, jamais sur `<html>`, sinon elle gagne l'écran du concepteur et les fenêtres du kit.
 
 ### 4.6 Les extensions
 

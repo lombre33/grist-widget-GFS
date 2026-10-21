@@ -656,6 +656,12 @@ mesurés, pas une promesse (cahier 1.3, 8).
    un message de ligne. GFS garde donc le plus récent des deux messages et rejoue la ligne de celui-là (`GristState.tableNow`).
    Mesuré le 19/10 (labo, `run-select-by.mjs`) : en rejouant le message de table tel quel, une app ouverte après le choix d'une
    ligne lisait la ligne du démarrage de GFS (le mode lecture de Publipostage+ montrait le premier client).
+   **Le rejeu suit chaque `ready`**, pas seulement le premier : comme Grist, qui redéclenche « ready » à chaque message `ready`
+   (`WidgetFrame._onMessage`, sources de grist-static 0.1.6), si bien qu'un cadre qui se recharge sur place (Publipostage+ au
+   changement de langue, 5.2 point 3) retrouve ses réglages, son thème et sa table. [M] **Mesuré le 21/10** (labo,
+   `run-recharge.mjs`, en français clair et en anglais sombre) avec Form+, qui attend ses réglages pour démarrer : rechargée sur
+   place, elle retrouve ses départs, le thème de Grist et la table de la section ; avec le courtier d'avant, qui ne rejouait
+   qu'au premier `ready`, elle tombait sur son écran « widget seul », sans thème ni table.
 3. [T] Ensuite, chaque événement de Grist est transmis dès qu'il arrive, reconstruit selon 4.3. Un événement de réglages dont le
    contenu pour l'app n'a pas changé (une clé de GFS ou d'une autre app dans les réglages) n'est pas transmis. Ce contenu est
    **la tranche de l'app et le lien « Select by » de la section** (`settings.linking`) : un changement du lien seul est transmis,

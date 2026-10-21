@@ -81,6 +81,11 @@ réponses, sans que l'app change.
   l'app lisait le mauvais client ; le lien retiré ou posé après l'ouverture n'arrivait pas à l'app (le message de réglages ne
   différait du précédent que par `linking`, et GFS ne comparait que la tranche de l'app). Les lignes choisies **après**
   l'ouverture arrivaient correctement (messages de ligne relayés).
+- Lu le 21/10 (mêmes sources, `WidgetFrame.ts`, lignes 266 à 268) : **chaque** message `ready` du cadre redéclenche « ready »
+  (`this.trigger('ready', this)`), donc le rejeu de chaque source d'événements (réglages, thème, table), et pas seulement le
+  premier. Un widget qui recharge sa page dans le même cadre retrouve ainsi son état. Mesuré le même jour (`labo/run-recharge.mjs`,
+  Form+ rechargée sur place dans GFS) : le courtier, qui ne rejouait qu'au premier `ready`, laissait l'app sans réglages, sans thème
+  ni table ; il rejoue maintenant à chaque `ready` (contrats 4.2, point 2).
 - Mesuré le 16/10 dans un vrai Grist (grist-static 0.1.6, Chromium 141, `labo/run-direct.mjs`) : trois widgets de
   `labo/sondes/direct/` sur deux tables d'un document de test, dans une seule page donc une seule horloge. Un widget écrit
   une ligne ; les autres notent l'heure où ils la voient. Médiane sur 40 lignes, **sans réseau** (le moteur de Grist tourne dans le

@@ -52,6 +52,7 @@ Variables utiles : `LAB_LANG=fr|en`, `LAB_SCHEME=light|dark`, `LAB_BROWSER=chrom
 | `run-impression` | « Print widget » de Grist relayé à l'app active |
 | `run-ordre`, `run-routeur` | l'ordre des écouteurs de `message` (le routeur de GFS) |
 | `run-politique` | peut-on imposer une politique de sécurité du contenu à un sous-cadre servi sans en-tête (attribut `csp`, `srcdoc`, `blob:`) ? Sans Grist : la question est celle du navigateur |
+| `run-recharge` | un cadre d'app qui se recharge sur place redit `ready` et GFS lui rejoue réglages, thème et table, comme Grist (contrats 4.2, point 2) : Form+ rechargée retrouve ses départs, le thème de Grist et la table de la section ; avec le courtier d'avant, son écran « widget seul » |
 | `run-acces-none`, `run-reconstruit` | GFS sans l'accès complet ; le cadre que Grist reconstruit quand le niveau d'accès change |
 | `run-section-ajoutee` | le cadre qu'une section de plus fait recharger : d'abord sans GFS (une sonde seule : le même élément `<iframe>`, un autre document), puis avec GFS et Publipostage+ ouverte (GFS repart de zéro, l'app est fermée ; contrats 3.1, point 6). Ajoute la section à la vraie souris, comme la première |
 | `run-cout-cadre`, `run-heavy` | le coût d'un cadre de plus ; la lecture des fichiers dans un document lourd |

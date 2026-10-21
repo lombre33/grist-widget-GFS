@@ -41,6 +41,17 @@ test('contrats 4.2 point 1 : ce que GFS envoie, réponses comprises, attend le �
   assert.deepEqual(wire.toApp.map(m => m.mtype), [MSG.RESP, MSG.CUSTOM], 'l\'ordre d\'envoi est gardé');
 });
 
+test('contrats 4.2 point 2 : le cadre de l\'app rechargé sur place redit « ready » et GFS lui rejoue l\'état, comme Grist', async () => {
+  const { app, peer, wire } = connect();
+  await app.sendReadyMessage();
+  assert.equal(wire.ready, 1);
+  // La page rechargée : un nouveau script d'API de Grist dans le même cadre, qui redit `ready`.
+  const reloaded = new Rpc({ logger: {} });
+  reloaded.setSendMessage(msg => peer.receive(msg));
+  await reloaded.sendReadyMessage();
+  assert.equal(wire.ready, 2, 'chaque ready rejoue l\'état (réglages, thème, table)');
+});
+
 test('contrats 1.1 point 4 : un mdest autre que grist reçoit RPC_UNKNOWN_FORWARD_DEST', async () => {
   const { app } = connect();
   await app.sendReadyMessage();

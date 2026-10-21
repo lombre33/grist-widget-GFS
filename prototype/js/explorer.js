@@ -22,7 +22,7 @@ export class Explorer {
   state = { view: 'folder', path: '', open: new Set(), display: 'list', sort: { key: 'name', dir: 1 }, recentSort: { key: 'mod', dir: -1 }, type: 'all', q: '', sel: null };
 
   // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), onOpen(file), onNew(entry), onClose(), onApps(), canClose(), notice(text),
-  //          language() → { choice, grist }, onLanguage(choice) }
+  //          language() → { choice, grist }, onLanguage(choice), onDemo()? (le bouton « Démo », en mode développement seulement) }
   constructor(opts) {
     this.#opts = opts;
     const { root, refs } = buildShell(opts.i18n);
@@ -171,7 +171,11 @@ export class Explorer {
   // ---------- gestes ----------
 
   #bind() {
-    const { search, viewList, viewTiles, typeBtn, newBtn, openBtn, closeBtn, appsBtn, langBtn, crumbs: crumbsNav, tree: treeNav, list } = this.#refs;
+    const { search, viewList, viewTiles, typeBtn, newBtn, openBtn, closeBtn, appsBtn, langBtn, demoBtn, crumbs: crumbsNav, tree: treeNav, list } = this.#refs;
+    if (this.#opts.onDemo) {
+      demoBtn.hidden = false;
+      demoBtn.addEventListener('click', () => this.#opts.onDemo());
+    }
     search.addEventListener('input', () => { this.state.q = search.value; this.state.sel = null; this.#renderCrumbs(); this.#renderList(); });
     appsBtn.addEventListener('click', () => this.#opts.onApps());
     langBtn.addEventListener('click', () => this.#languageMenu());

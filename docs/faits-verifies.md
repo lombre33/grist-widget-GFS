@@ -87,6 +87,11 @@ réponses, sans que l'app change.
   propriété posée à la main dessus survit) mais son document change : l'ancien est détaché, la marque posée dans sa page a disparu.
   Avec GFS et Publipostage+ ouverte, GFS repart de zéro (l'explorateur, plus d'app), comme à un changement d'accès (contrats 3.1,
   point 6). **Non mesuré** : les autres changements de mise en page (déplacer, redimensionner, retirer une section).
+- Mesuré le 21/10 dans un vrai Grist (grist-static 0.1.6, Chromium, `labo/run-demo.mjs`) : **changer la table d'une section de
+  widget personnalisé** (panneau de droite, « Modifier la vue » / « Change widget », puis la table et « Enregistrer ») rouvre la
+  galerie des widgets, l'adresse déjà remplie (« Modifier le widget »), puis ses avertissements ; l'accès retombe à « aucun » et
+  Grist redemande l'accès complet (« Accept ») : le cadre est reconstruit sans accès, puis avec l'accès complet après l'accord.
+  GFS repart de zéro, l'explorateur d'abord. Les libellés français sont ceux de `grist-static/dist/locales/fr.client.json`.
 
 ## 3. Grist : données
 

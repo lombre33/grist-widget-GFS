@@ -20,6 +20,8 @@
 .mod.ask { width: min(420px, 100%); }
 .ask-body { flex: 0 1 auto; min-height: 0; overflow-y: auto; padding: 12px 16px; }
 .ask-body p { margin: 0; }
+.ask-items { margin: 8px 0 0; padding-left: 18px; }
+.ask-items li + li { margin-top: 4px; }
 .ask-foot { justify-content: flex-end; }
 
 /* ---------- une ligne par app, puis une par extension de cette app ---------- */

@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "nom": {"fr": "Inscriptions à une formation", "en": "Training registrations"},
+  "galerie": "apps/publipostage/templates-gallery/",
+  "famille": "formation",
+  "tables": {
+    "Sessions": { "ajouter": [
+      {"id": "Places", "type": "Int", "label": "Places"},
+      {"id": "Confirmees", "type": "Int", "label": "Inscriptions confirmées", "formula": "len(Participants.lookupRecords(Session=$id, Statut=\"Confirmée\"))"},
+      {"id": "PlacesRestantes", "type": "Int", "label": "Places restantes", "formula": "$Places - $Confirmees"}
+    ] },
+    "Participants": { "ajouter": [
+      {"id": "DateInscription", "type": "Date", "label": "Inscrit le"},
+      {"id": "Statut", "type": "Choice", "label": "Statut", "choices": ["Confirmée", "Liste d’attente", "Annulée"]},
+      {"id": "Present", "type": "Bool", "label": "Présent"},
+      {"id": "ConvoqueLe", "type": "Date", "label": "Convoqué le"},
+      {"id": "PlacesSession", "type": "Int", "label": "Places restantes de la session", "formula": "$Session.PlacesRestantes"},
+      {"id": "AConvoquer", "type": "Bool", "label": "À convoquer", "formula": "$Statut == \"Confirmée\" and not $ConvoqueLe"},
+      {"id": "AttestationDue", "type": "Bool", "label": "Attestation due", "formula": "bool($Present) and bool($Session.Fin) and $Session.Fin < TODAY()"}
+    ] }
+  },
+  "lignes": {
+    "Sessions": [
+      {"Debut": {"jours": -15}, "Fin": {"jours": -14}, "Places": 12},
+      {"Debut": {"jours": 20}, "Fin": {"jours": 20}, "Places": 8}
+    ],
+    "Participants": [
+      {"DateInscription": {"jours": -45}, "Statut": "Confirmée", "ConvoqueLe": {"jours": -30}, "Present": true},
+      {"DateInscription": {"jours": -44}, "Statut": "Confirmée", "ConvoqueLe": {"jours": -30}, "Present": true},
+      {"DateInscription": {"jours": -43}, "Statut": "Confirmée", "ConvoqueLe": {"jours": -30}, "Present": true},
+      {"DateInscription": {"jours": -42}, "Statut": "Confirmée", "ConvoqueLe": {"jours": -30}, "Present": true},
+      {"DateInscription": {"jours": -41}, "Statut": "Confirmée", "ConvoqueLe": {"jours": -30}, "Present": true},
+      {"DateInscription": {"jours": -40}, "Statut": "Confirmée", "ConvoqueLe": {"jours": -30}, "Present": true},
+      {"DateInscription": {"jours": -39}, "Statut": "Confirmée", "ConvoqueLe": {"jours": -30}, "Present": true},
+      {"DateInscription": {"jours": -38}, "Statut": "Confirmée", "ConvoqueLe": {"jours": -30}, "Present": true},
+      {"DateInscription": {"jours": -37}, "Statut": "Confirmée", "ConvoqueLe": {"jours": -30}, "Present": true},
+      {"DateInscription": {"jours": -36}, "Statut": "Confirmée", "ConvoqueLe": {"jours": -30}, "Present": true},
+      {"DateInscription": {"jours": -35}, "Statut": "Confirmée", "ConvoqueLe": {"jours": -30}, "Present": true},
+      {"DateInscription": {"jours": -34}, "Statut": "Confirmée", "ConvoqueLe": {"jours": -30}, "Present": false},
+      {"DateInscription": {"jours": -33}, "Statut": "Liste d’attente"},
+      {"DateInscription": {"jours": -32}, "Statut": "Annulée"},
+      {"DateInscription": {"jours": -12}, "Statut": "Confirmée", "ConvoqueLe": {"jours": -3}},
+      {"DateInscription": {"jours": -11}, "Statut": "Confirmée", "ConvoqueLe": {"jours": -3}},
+      {"DateInscription": {"jours": -10}, "Statut": "Confirmée", "ConvoqueLe": {"jours": -3}},
+      {"DateInscription": {"jours": -9}, "Statut": "Confirmée"},
+      {"DateInscription": {"jours": -8}, "Statut": "Annulée"},
+      {"DateInscription": {"jours": -7}, "Statut": "Confirmée"}
+    ]
+  },
+  "apps": ["automation"],
+  "publipostage": {
+    "modeles": [
+      {"nom": "Convocation", "contenu": "demo/inscriptions/convocation.html", "pdf": "Convocation #Participants.Nom", "page": {"format": "A4", "orientation": "portrait", "marges": [22, 22, 22, 22]}},
+      {"nom": "Émargement", "galerie": "emargement"},
+      {"nom": "Attestation de formation", "contenu": "demo/inscriptions/attestation.html", "pdf": "Attestation #Participants.Nom", "page": {"format": "A4", "orientation": "portrait", "marges": [25, 25, 25, 25]}}
+    ],
+    "liens": [
+      {"table": "Sessions", "mode": "match", "cible": "id", "source": "Session"},
+      {"table": "Participants", "mode": "match", "cible": "Session", "source": "id"}
+    ]
+  },
+  "automation": {
+    "table": "Participants",
+    "resume": "Une inscription créée est confirmée s’il reste une place dans sa session, sinon elle passe en liste d’attente.",
+    "graphe": {
+      "version": 3, "active": false,
+      "nodes": [
+        {"id": "n1", "type": "trigger", "x": 40, "y": 80, "config": {"action": "create", "column": "", "targetColumn": "", "targetValue": ""}},
+        {"id": "n2", "type": "condition", "x": 320, "y": 80, "config": {"join": "and", "checks": [{"column": "PlacesSession", "operator": "gt", "value": "0"}]}},
+        {"id": "n3", "type": "action", "x": 620, "y": 0, "config": {"type": "UpdateRecord", "table": "", "matchColumn": "", "matchValue": "", "column": "Statut", "value": "Confirmée"}},
+        {"id": "n4", "type": "action", "x": 620, "y": 200, "config": {"type": "UpdateRecord", "table": "", "matchColumn": "", "matchValue": "", "column": "Statut", "value": "Liste d’attente"}}
+      ],
+      "edges": [{"from": "n1", "to": "n2"}, {"from": "n2", "to": "n3"}, {"from": "n2", "to": "n4", "branch": "else"}]
+    }
+  }
+}

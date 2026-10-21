@@ -21,6 +21,7 @@ import { ask } from './ask-window.js';
 import { ModulesWindow, rowKey } from './modules-window.js';
 import { buildContext, instanceOf, pageOf } from './context.js';
 import { Refus, ERR, levelOf } from './filter.js';
+import { loadDemo, readSchema, planDemo, runDemo, demoSummary, demoReport, DemoError } from './demo.js';
 
 const NOTICE_MS = 6000;
 
@@ -35,11 +36,13 @@ export const ALWAYS_ON = Object.freeze(['publipostage']);
 const LIBRARIES_PATH = 'bibliotheques/catalogue.json';
 const FIRST_RUN_KEY = 'gfs.premier-lancement.';
 
-const readJson = async path => {
+const readFile = async path => {
   const response = await fetch(path, { cache: 'no-store' });
   if (!response.ok) throw new Error(`${path} : ${response.status}`);
-  return response.json();
+  return response;
 };
+const readJson = async path => (await readFile(path)).json();
+const readText = async path => (await readFile(path)).text();
 
 export class GfsController {
   apps = [];
@@ -50,6 +53,7 @@ export class GfsController {
   #facts = null;
   #sentExtensions = null;
   #contextServed = false; // l'app active a demandé son contexte : elle a lu l'ouverture qui s'y trouvait, et ne la relira pas
+  #consented = false; // la démo a déjà l'accord de la personne pour les tables qu'elle crée, dont GFS_Rangement : pas de seconde question
   #modulesWaiters = [];
   #fileStatus = { loading: false, restricted: false, problems: [] }; // ce que l'explorateur dit sous la liste, gardé pour être redit dans la langue qui vaut
 
@@ -68,6 +72,8 @@ export class GfsController {
     this.appStorage = new AppStorage({ backend: browserBackend(window) });
     this.port = createPort(grist);
     this.readonly = this.params.get('readonly') === 'true';
+    // Le mode développement (`?dev` dans l'adresse du widget, comme la galerie de développement de Publipostage+) : le bouton « Démo » de l'explorateur.
+    this.devMode = this.params.has('dev');
     // Les apps installées et leurs extensions : ce que le document retient dans la table `GFS_Rangement` (contrats 7.4), écrit seulement sur un geste
     // de la personne, et la table seulement avec son accord.
     this.rangement = new Rangement({ port: this.port, consent: () => this.#askTableConsent() });
@@ -180,6 +186,7 @@ export class GfsController {
       newTypes: this.newTypes, canClose: () => Boolean(this.session), notice: text => this.notice(text),
       language: () => ({ choice: this.language.choice, grist: this.language.grist }), onLanguage: choice => this.#chooseLanguage(choice),
       onOpen: file => this.#openFile(file), onNew: entry => this.#openNew(entry), onClose: () => this.hideExplorer(), onApps: () => void this.openModules(),
+      onDemo: this.devMode ? () => void this.#runDemo() : null,
     });
   }
 
@@ -315,11 +322,49 @@ export class GfsController {
 
   // La table n'existe pas encore : la personne décide de la créer (contrats 6.2, point 1). Une fenêtre du widget, au-dessus de celle des apps.
   #askTableConsent() {
+    if (this.#consented) return Promise.resolve(true);
+    return this.#ask({ title: this.t('table.title'), message: this.t('table.text'), confirmLabel: this.t('table.create'), cancelLabel: this.t('table.cancel') });
+  }
+
+  // Une fenêtre du widget au-dessus de tout ce qui est ouvert (charte : jamais `confirm()`).
+  #ask(opts) {
     const above = this.modulesWindow && this.modulesWindow.element ? [this.modulesWindow.element] : [];
-    return ask({
-      container: this.$('stage'), title: this.t('table.title'), message: this.t('table.text'), confirmLabel: this.t('table.create'), cancelLabel: this.t('table.cancel'),
-      inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters'), ...above],
-    });
+    return ask({ ...opts, container: this.$('stage'), inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters'), ...above] });
+  }
+
+  // ---------- la démo (mode développement) ----------
+
+  // Le bouton « Démo » : le parcours des inscriptions posé en un geste, après l'accord de la personne (js/demo.js). `data-demo` dit où il en est : les essais du labo l'attendent.
+  async #runDemo() {
+    const blocked = this.#writeBlock();
+    if (blocked) { this.notice(blocked); return; }
+    const say = state => { this.doc.body.dataset.demo = state; };
+    try {
+      const pack = await loadDemo({ json: readJson, text: readText });
+      const plan = planDemo(pack, await readSchema(this.port.doc));
+      if (plan.taken.length) { this.notice(this.t('demo.taken', { tables: plan.taken.join(', ') })); return; }
+      const items = demoSummary(pack, plan, this.t);
+      if (!(await this.#ask({ title: this.t('demo.title'), message: this.t('demo.text'), items, confirmLabel: this.t('demo.create'), cancelLabel: this.t('table.cancel') }))) return;
+      say('busy');
+      this.notice(this.t('demo.busy'));
+      this.#consented = true;
+      const report = await runDemo({ doc: this.port.doc, pack, now: new Date(), install: ids => this.#installAll(ids) });
+      say('done');
+      this.#hideNotice();
+      void this.refreshFiles();
+      await this.#ask({ title: this.t('demo.doneTitle'), message: this.t('demo.doneText'), items: demoReport(report, this.t), confirmLabel: this.t('demo.close') });
+    } catch (error) {
+      say('failed');
+      if (error instanceof DemoError && error.code === 'taken') { this.notice(this.t('demo.taken', { tables: error.detail })); return; }
+      console.error('GFS : la démo n’a pas pu être posée', error);
+      this.notice(this.t('demo.failed', { reason: String(error && error.message) }));
+    } finally {
+      this.#consented = false;
+    }
+  }
+
+  async #installAll(ids) {
+    for (const id of ids) await this.registry.setApp(id, true);
   }
 
   // La troisième porte : une section qui n'a encore rien retenu ouvre la fenêtre une fois, pour qu'on y choisisse ses apps (maquette du 12/10).
@@ -510,5 +555,11 @@ export class GfsController {
     el.hidden = false;
     clearTimeout(this.#noticeTimer);
     this.#noticeTimer = setTimeout(() => { el.hidden = true; }, NOTICE_MS);
+  }
+
+  // La phrase s'efface quand ce qu'elle annonçait est fini.
+  #hideNotice() {
+    clearTimeout(this.#noticeTimer);
+    this.$('toast').hidden = true;
   }
 }

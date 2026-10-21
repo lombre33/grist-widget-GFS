@@ -1,9 +1,11 @@
 // Le manifeste (contrats 2.8) : ceux du prototype sont valides, et chaque règle a son cas qui échoue.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { existsSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { validateManifest, isSafePath, loadAll, label } from '../js/manifest.js';
 import { CATALOGUE } from '../js/catalogue.js';
-import { publipostage, automation, readJson } from './helpers.mjs';
+import { publipostage, automation, readJson, ROOT } from './helpers.mjs';
 
 const bad = (mutate, others) => { const m = publipostage(); mutate(m); const r = validateManifest(m, others); assert.equal(r.ok, false); return r.errors.join(' | '); };
 
@@ -136,4 +138,21 @@ test('texte, icone et poids (fenêtre des apps et extensions) : facultatifs, mai
   const errors = validateManifest(heavy, [automation()]).errors.join('|');
   assert.match(errors, /extension graphique : poids/);
   assert.match(errors, /extension graphique : texte doit porter fr et en/);
+});
+
+const folderBytes = dir => readdirSync(dir, { withFileTypes: true })
+  .reduce((total, item) => total + (item.isDirectory() ? folderBytes(join(dir, item.name)) : statSync(join(dir, item.name)).size), 0);
+
+test('le poids annoncé de chaque extension est la taille de son dossier dans l\'app référencée, en Ko arrondis', () => {
+  let compared = 0;
+  for (const entry of CATALOGUE) {
+    const dir = join(ROOT, entry.dossier);
+    for (const ext of existsSync(dir) ? readJson(entry.manifeste).extensions || [] : []) {
+      if (ext.poids === undefined || !existsSync(join(dir, ext.dossier))) continue;
+      assert.equal(ext.poids, Math.round(folderBytes(join(dir, ext.dossier)) / 1000), `${entry.id} / ${ext.id}`);
+      compared++;
+    }
+  }
+  // Sous-module non récupéré : rien à comparer. Récupéré, les trois extensions de Publipostage+ le sont.
+  assert.ok(compared === 0 || compared >= 3, `${compared} extension(s) comparée(s)`);
 });

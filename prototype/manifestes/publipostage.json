@@ -96,7 +96,7 @@
         "en": "A chart configured in Grist, placed in a document."
       },
       "icone": "chart",
-      "poids": 66,
+      "poids": 64,
       "dossier": "extensions/graphique/",
       "pointsEntree": [{ "genre": "bouton", "id": "graphique" }],
       "bibliotheques": [{ "id": "plotly", "version": "2.13.2" }]
@@ -122,7 +122,7 @@
         "en": "16:9 presentations, written with the same editor as documents."
       },
       "icone": "slides",
-      "poids": 131,
+      "poids": 141,
       "dossier": "extensions/diapositives/",
       "pointsEntree": [{ "genre": "type", "id": "presentation" }, { "genre": "menu", "id": "nouveau" }]
     }

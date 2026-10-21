@@ -1,6 +1,6 @@
 // Le choix de langue de GFS avec la vraie app (consigne 019 ; contrats 5.2, point 6), Publipostage+ à `f6d3fd0` ou après, dans un vrai Grist (grist-static), à 700 × 400, à la vraie
 // souris et au vrai clavier. C'est la référence de GFS depuis le 20/10 ; avec une version plus ancienne (`dc00b9d`), la passe s'arrête dès le départ : cette version de l'app ne lit pas `contexte.langue`. run-langue.mjs mesure le côté de GFS avec une sonde ; ici l'app elle-même lit `contexte.langue` au départ, suit l'événement `langue` comme son propre changement
-// de langue (la question « Enregistrer / Abandonner / Annuler » d'abord, puis le rechargement qui rouvre le modèle) et grise son choix de langue. LAB_LANG=fr|en est la langue de Grist,
+// de langue (la question « Enregistrer / Ne pas enregistrer / Annuler » d'abord, puis le rechargement qui rouvre le modèle) et grise son choix de langue. LAB_LANG=fr|en est la langue de Grist,
 // LAB_SCHEME=light|dark. Ce que la passe mesure :
 //   1. le départ : l'app parle la langue de GFS, ses Réglages grisent les deux cases de langue (jamais masquées) et disent où choisir ;
 //   2. rien ne reste à enregistrer : GFS change de langue (explorateur ouvert, l'app cachée derrière), l'app se recharge dans l'autre langue et rouvre le même modèle, dans le même cadre ;
@@ -8,7 +8,7 @@
 //   3. un rechargement qui ne vient pas de l'app (F5) : la page repart dans la langue de l'adresse de son cadre, puis rattrape celle de GFS (`contexte.langue` fait foi) ;
 //   4. « comme Grist » ramène l'app à la langue de Grist ;
 //   5. des modifications attendent : la question de l'app est posée derrière l'explorateur (cadre caché, inerte), la personne la voit en fermant l'explorateur ; « Annuler » laisse la langue
-//      d'avant, « Abandonner » recharge sans garder ce qui a été tapé, « Enregistrer » enregistre d'abord ; un changement qui redit la langue de l'app ne pose aucune question.
+//      d'avant, « Ne pas enregistrer » recharge sans garder ce qui a été tapé, « Enregistrer » enregistre d'abord ; un changement qui redit la langue de l'app ne pose aucune question.
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check } from './lab-common.mjs';
@@ -19,8 +19,8 @@ const other = lang === 'fr' ? 'en' : 'fr';
 const run = `langue-publipostage-${lang}-${scheme}`;
 const NAMES = { fr: 'Français', en: 'English' };
 const WORDS = {
-  fr: { buttons: ['Annuler', 'Abandonner', 'Enregistrer'], note: 'La langue se choisit dans Grist Factory Suite (bouton Langue de l’explorateur).', theme: 'Thème', unsaved: 'Modifications non enregistrées' },
-  en: { buttons: ['Cancel', 'Discard', 'Save'], note: 'The language is chosen in Grist Factory Suite (Language button in the explorer).', theme: 'Theme', unsaved: 'Unsaved changes' },
+  fr: { buttons: ['Annuler', 'Ne pas enregistrer', 'Enregistrer'], note: 'La langue se choisit dans Grist Factory Suite (bouton Langue de l’explorateur).', theme: 'Thème', unsaved: 'Modifications non enregistrées' },
+  en: { buttons: ['Cancel', 'Don’t save', 'Save'], note: 'The language is chosen in Grist Factory Suite (Language button in the explorer).', theme: 'Theme', unsaved: 'Unsaved changes' },
 };
 const USUAL = 'Feuille d’émargement'; // le modèle ★ du document d'essai : celui que l'app ouvre d'elle-même
 const OPEN = 'Contrat de prestation'; // celui que la personne ouvre : la page doit le retrouver après chaque rechargement voulu
@@ -135,7 +135,8 @@ const dialog = () => app.evaluate(() => {
   if (/context was destroyed|navigation|detached/i.test(error.message)) return null;
   throw error;
 });
-const dialogButton = label => app.locator('#pp-dialog-modal .pp-modal-actions button', { hasText: label });
+// Le texte exact du bouton : « Enregistrer » est aussi dans « Ne pas enregistrer » (15aa696).
+const dialogButton = label => app.locator('#pp-dialog-modal .pp-modal-actions').getByRole('button', { name: label, exact: true });
 const typeAtEnd = async text => {
   const box = await app.locator('.ProseMirror p').first().boundingBox();
   await page.mouse.click(box.x + box.width - 3, box.y + box.height / 2);
@@ -228,7 +229,7 @@ await closeExplorer();
 // ---------- 5. des modifications attendent ----------
 // L'enregistrement automatique de l'app (toutes les 2,5 s) peut passer entre la frappe et le changement de langue : elle enregistre alors, se recharge sans question, et l'essai recommence dans
 // l'autre sens (jamais plus de huit fois).
-// Pour « Abandonner » (discards), une écriture de l'enregistrement automatique partie juste avant la question peut finir pendant qu'elle est posée : ce qui a été tapé est alors déjà dans le
+// Pour « Ne pas enregistrer » (discards), une écriture de l'enregistrement automatique partie juste avant la question peut finir pendant qu'elle est posée : ce qui a été tapé est alors déjà dans le
 // document et il n'y a plus rien à abandonner. L'essai le voit en relisant le document 1,5 s après la question ; il répond « Enregistrer » à cette question-là et recommence.
 // L'app l'a corrigé à 80deef7 (la question attend d'abord le passage déjà parti, ou n'est plus posée s'il a tout enregistré) : six passes sans reprise ; la garde reste pour une app plus ancienne.
 const pendingFlip = async (token, { discards = false } = {}) => {
@@ -264,7 +265,7 @@ let askedLang = (await appLang()).lang; // la question est dans la langue que l'
 let asked = await dialog();
 const behind = await behindExplorer();
 say('question posée :', asked, 'derrière l\'explorateur :', behind, 'langue de l\'app :', askedLang, 'langue de GFS :', await gfsLang());
-check('des modifications attendent : l\'app pose sa question (Annuler, Abandonner, Enregistrer) dans sa langue du moment, GFS ne dit rien',
+check('des modifications attendent : l\'app pose sa question (Annuler, Ne pas enregistrer, Enregistrer) dans sa langue du moment, GFS ne dit rien',
   Boolean(episode) && Boolean(asked) && asked.buttons.join('|') === WORDS[askedLang].buttons.join('|') && asked.title === WORDS[askedLang].unsaved && (await toast()) === '', { asked, phrase: await toast() });
 check('mesuré : explorateur ouvert, le cadre de l\'app est caché et inerte derrière lui, la question n\'est pas visible de la personne', behind.explorerOpen && behind.inert && !behind.frameShown, behind);
 await closeExplorer();
@@ -285,7 +286,7 @@ await page.waitForTimeout(1200);
 check('un changement de GFS qui redit la langue de l\'app ne pose aucune question et ne la recharge pas', !(await dialog()) && (await app.evaluate(() => Boolean(window.__avant))) && (await gfsLang()) === askedLang);
 await closeExplorer();
 
-// « Abandonner » : ce qui a été tapé n'est pas gardé, l'app se recharge dans la langue de GFS et rouvre le modèle.
+// « Ne pas enregistrer » : ce qui a été tapé n'est pas gardé, l'app se recharge dans la langue de GFS et rouvre le modèle.
 episode = await pendingFlip('ABANDONNE', { discards: true });
 askedLang = (await appLang()).lang;
 await closeExplorer();
@@ -295,7 +296,7 @@ await dialogButton(WORDS[askedLang].buttons[1]).click();
 ok = await reloadedIn(target);
 seen = await waitShown(named);
 state = await appLang();
-check('« Abandonner » : l\'app se recharge dans la langue de GFS et rouvre le même modèle, sans ce qui a été tapé',
+check('« Ne pas enregistrer » : l\'app se recharge dans la langue de GFS et rouvre le même modèle, sans ce qui a été tapé',
   ok && state.lang === target && seen.name === named && !seen.text.includes(episode.typed) && !(await contentOf(named)).includes(episode.typed) && frames() === 1 && (await toast()) === '', { ok, state, seen });
 
 // « Enregistrer » : le modèle est enregistré d'abord (l'écriture de l'app passe par GFS pendant que son appel attend), puis la page se recharge.

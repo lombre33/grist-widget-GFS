@@ -1,6 +1,6 @@
 // Ouvrir le bon modèle de Publipostage+ depuis l'explorateur de GFS (consigne 010 ; contrats 5.2 point 3 et 5.4 point 1), avec la vraie app, celle que GFS référence, dans un vrai Grist, à
 // 700 × 400, à la vraie souris et au vrai clavier. Le double-clic d'un fichier lance l'app sur ce modèle (l'`ouverture` du contexte) ; l'app déjà ouverte reçoit l'appel `ouvrir`, et pose
-// sa question « Enregistrer / Abandonner / Annuler » dans le panneau quand des modifications attendent : GFS attend, sans rien dire. « Nouveau » (consigne 014) ouvre un modèle vierge du
+// sa question « Enregistrer / Ne pas enregistrer / Annuler » dans le panneau quand des modifications attendent : GFS attend, sans rien dire. « Nouveau » (consigne 014) ouvre un modèle vierge du
 // type, au démarrage comme app déjà ouverte, sans phrase de GFS ; l'ouverture n'est rendue qu'une fois (contrats 5.2, point 3) : un cadre rechargé sur place ne refait pas le « Nouveau », sauf quand l'app l'a voulu elle-même (Réglages) : elle rouvre alors le modèle où la personne était.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { startLab } from './lab-setup.mjs';
@@ -11,8 +11,8 @@ const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
 const run = `ouvrir-publipostage-${lang}-${scheme}`;
 const WORDS = lang === 'fr'
-  ? { opened: /Ouvert depuis l.explorateur\./, unsaved: /^Modèle non enregistré/, buttons: ['Annuler', 'Abandonner', 'Enregistrer'], types: { document: /Document/, grille: /Grille/, email: /E-mail/, macro: /Macro/ } }
-  : { opened: /Opened from the explorer\./, unsaved: /^Template not saved/, buttons: ['Cancel', 'Discard', 'Save'], types: { document: /Document/, grille: /Grid/, email: /Email/, macro: /Macro/ } };
+  ? { opened: /Ouvert depuis l.explorateur\./, unsaved: /^Modèle non enregistré/, buttons: ['Annuler', 'Ne pas enregistrer', 'Enregistrer'], types: { document: /Document/, grille: /Grille/, email: /E-mail/, macro: /Macro/ } }
+  : { opened: /Opened from the explorer\./, unsaved: /^Template not saved/, buttons: ['Cancel', 'Don’t save', 'Save'], types: { document: /Document/, grille: /Grid/, email: /Email/, macro: /Macro/ } };
 const USUAL = 'Feuille d’émargement'; // le modèle ★ du document d'essai : celui que l'app ouvre d'elle-même
 const lab = await startLab({ lang, colorScheme: scheme });
 const { page } = lab;
@@ -165,7 +165,7 @@ const again = await shown();
 check('le modèle demandé est déjà ouvert : rien ne change, l\'explorateur se ferme, aucune phrase', JSON.stringify(again) === JSON.stringify(seen) && (await explorerHidden()) && (await toast()) === '', { again, phrase: await toast() });
 check('rien n\'est écrit dans le document par ces ouvertures (ni modèle, ni ★, ni réglage de la vue)', (await snapshot()) === base);
 
-// 4 bis. Le rechargement que l'app veut elle-même (Réglages > Déclencheur : changer le caractère, puis « Recharger maintenant » ; le changement de langue passe par le même chemin) : elle rouvre le
+// 4 bis. Le rechargement que l'app veut elle-même (Réglages > Insertion : changer le caractère, puis « Recharger maintenant » ; le changement de langue passe par le même chemin) : elle rouvre le
 //    modèle où la personne était, ici celui du dernier double-clic, et non le ★ comme après un rechargement venu d'ailleurs (1 bis). L'identifiant passe par le fragment de l'adresse du cadre (le
 //    stockage est refusé dans le cadre isolé) ; GFS ne rend pas l'ouverture une seconde fois et ne dit rien. Le choix de langue de l'app est, lui, grisé dans GFS (la langue est celle de GFS, consigne 019 : run-langue-publipostage).
 await app.evaluate(() => { window.__langue = 'avant'; });
@@ -188,7 +188,7 @@ await app.waitForFunction(() => !window.__rechargement && Boolean(document.getEl
 await page.waitForTimeout(800);
 const reopened = await shown().catch(() => ({ name: '' }));
 say('après « Recharger maintenant » :', reopened, 'adresse du cadre :', app.url(), 'phrase de GFS :', await toast());
-check('« Recharger maintenant » (Déclencheur) : l\'app se recharge et rouvre le modèle où la personne était, pas le ★ ; GFS ne dit rien',
+check('« Recharger maintenant » (Insertion) : l\'app se recharge et rouvre le modèle où la personne était, pas le ★ ; GFS ne dit rien',
   notice && reopened.name === 'Quittance de loyer' && reopened.text === 'Quittance de loyer' && reopened.name !== USUAL && (await toast()) === '', { notice, reopened, phrase: await toast() });
 check('l\'adresse du cadre redevient celle de GFS (access et gfs gardés, plus de fragment) et l\'app reste un seul cadre',
   /access=/.test(app.url()) && /gfs=/.test(app.url()) && !app.url().includes('#') && page.frames().filter(f => /\/apps\/publipostage\//.test(f.url())).length === 1, app.url());
@@ -224,12 +224,13 @@ const pending = async (token, via) => {
   }
   return null;
 };
-const button = label => app.locator('#pp-dialog-modal .pp-modal-actions button', { hasText: label });
+// Le texte exact du bouton : « Enregistrer » est aussi dans « Ne pas enregistrer » (15aa696).
+const button = label => app.locator('#pp-dialog-modal .pp-modal-actions').getByRole('button', { name: label, exact: true });
 
 let episode = await pending('ANNULE', 'bouton');
 let asked = episode && (await dialog());
 await lab.shotPanel(run, '1-question', frame);
-check('des modifications attendent : l\'app pose sa question dans le panneau (Annuler, Abandonner, Enregistrer), l\'explorateur est fermé, GFS ne dit rien',
+check('des modifications attendent : l\'app pose sa question dans le panneau (Annuler, Ne pas enregistrer, Enregistrer), l\'explorateur est fermé, GFS ne dit rien',
   Boolean(asked) && asked.inPanel && asked.buttons.join('|') === WORDS.buttons.join('|') && (await explorerHidden()) && (await toast()) === '', { asked, phrase: await toast() });
 await page.waitForTimeout(1500);
 check('GFS attend la personne sans délai : après 1,5 s, la question est toujours là, aucune phrase', Boolean(await dialog()) && (await toast()) === '');
@@ -242,7 +243,7 @@ episode = await pending('ABANDONNE', 'double-clic');
 await button(WORDS.buttons[1]).click();
 const left = pair.open;
 seen = await waitShown(pair.other);
-check('« Abandonner » : le modèle demandé s\'ouvre et dit pourquoi, ce qui a été tapé n\'est pas gardé', seen.name === pair.other && WORDS.opened.test(seen.status) && !(await contentOf(left)).includes(episode.typed), { seen, content: await contentOf(left) });
+check('« Ne pas enregistrer » : le modèle demandé s\'ouvre et dit pourquoi, ce qui a été tapé n\'est pas gardé', seen.name === pair.other && WORDS.opened.test(seen.status) && !(await contentOf(left)).includes(episode.typed), { seen, content: await contentOf(left) });
 [pair.open, pair.other] = [pair.other, pair.open];
 
 episode = await pending('ENREGISTRE', 'double-clic');
@@ -290,7 +291,7 @@ const pendingNew = async token => {
 episode = await pendingNew('NOUVEAU-ANNULE');
 asked = episode && (await dialog());
 await lab.shotPanel(run, '3-nouveau-question', frame);
-check('« Nouveau » avec des modifications en attente : l\'app pose sa question dans le panneau (Annuler, Abandonner, Enregistrer), l\'explorateur est fermé, GFS ne dit rien',
+check('« Nouveau » avec des modifications en attente : l\'app pose sa question dans le panneau (Annuler, Ne pas enregistrer, Enregistrer), l\'explorateur est fermé, GFS ne dit rien',
   Boolean(asked) && asked.inPanel && asked.buttons.join('|') === WORDS.buttons.join('|') && (await explorerHidden()) && (await toast()) === '', { asked, phrase: await toast() });
 await button(WORDS.buttons[0]).click();
 await page.waitForTimeout(800);
@@ -314,7 +315,7 @@ for (let attempt = 1; attempt <= 4 && kept; attempt++) {
     await waitShown(open);
   }
 }
-check('« Abandonner » : le modèle vierge s\'ouvre (coin d\'état « modèle non enregistré »), ce qui a été tapé n\'est pas gardé, GFS ne dit rien', isBlank(abandoned) && !kept && (await toast()) === '', { abandoned, kept, phrase: await toast() });
+check('« Ne pas enregistrer » : le modèle vierge s\'ouvre (coin d\'état « modèle non enregistré »), ce qui a été tapé n\'est pas gardé, GFS ne dit rien', isBlank(abandoned) && !kept && (await toast()) === '', { abandoned, kept, phrase: await toast() });
 const afterBlank = await snapshot();
 
 const WAITS = { grille: s => Boolean(s) && s.grid, email: s => Boolean(s) && s.email, macro: s => Boolean(s) && s.macro };

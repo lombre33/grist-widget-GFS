@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Sonde S</title>
+<!-- Politique de l'app sonde S : celle de Publipostage+ (script-src 'self', frame-src 'none', form-action 'none', pas de default-src). -->
+<meta http-equiv="Content-Security-Policy" content="script-src 'self'; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'">
+</head>
+<body>
+<h1>Sonde S : une app qui garde ses choix chez GFS</h1>
+<p>Ce que la sonde a reçu est écrit dans <code>body[data-sonde]</code>, que le labo lit : ce que rendent ses appels <code>contexte</code> (dont <code>stockage</code>), les réponses et les erreurs de ses appels <code>stockage.ecrire</code>, et ce que son propre navigateur lui laisse faire.</p>
+<script src="stockage.js"></script>
+</body>
+</html>

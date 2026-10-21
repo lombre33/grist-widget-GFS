@@ -32,7 +32,9 @@ test('buildContext : tous les champs du contrat, les paramètres de l\'adresse d
   assert.equal(context.fuseau, 'Europe/Paris');
   assert.equal(context.lectureSeule, false);
   assert.equal(context.section, null);
-  assert.deepEqual(context.stockage, {});
+  assert.deepEqual(context.stockage, {}, 'sans espace donné : vide');
+  const kept = buildContext(facts, { ...session, storage: { pp_theme: 'dark', pp_page_zoom: '{"m1":120}' } }, { preferences: {}, readonly: false });
+  assert.deepEqual(kept.stockage, { pp_theme: 'dark', pp_page_zoom: '{"m1":120}' }, 'la copie de l\'espace de l\'app, telle que le courtier la lit');
   assert.equal(buildContext(facts, { ...session, opening: null }, { preferences: {}, readonly: true }).ouverture, null);
   assert.equal(buildContext(facts, session, { preferences: {}, readonly: true }).lectureSeule, true);
 });

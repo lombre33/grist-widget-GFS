@@ -9,6 +9,7 @@ import { AppSession } from './session.js';
 import { readPreferences } from './frames.js';
 import { createI18n } from './i18n.js';
 import { LanguageSetting, browserStore, languageOfGrist, localeFor, watchStorage } from './language.js';
+import { AppStorage, browserBackend, storageHandlers } from './app-storage.js';
 import { installSprite, icon } from './icons.js';
 import { Explorer } from './explorer.js';
 import { loadFiles } from './explorer-data.js';
@@ -63,6 +64,8 @@ export class GfsController {
     this.language = new LanguageSetting({ grist: languageOfGrist(this.params.get('language'), navigator.language), store: browserStore(window) });
     this.#useLanguage();
     this.state = new GristState();
+    // Les choix de chaque app (contrats 5.3) : un espace par app dans le navigateur de GFS, jamais dans le document.
+    this.appStorage = new AppStorage({ backend: browserBackend(window) });
     this.port = createPort(grist);
     this.readonly = this.params.get('readonly') === 'true';
     // Les apps installées et leurs extensions : ce que le document retient dans la table `GFS_Rangement` (contrats 7.4), écrit seulement sur un geste
@@ -388,6 +391,7 @@ export class GfsController {
     return {
       contexte: () => this.#contextFor(session),
       installer: args => this.#install(session, args),
+      ...storageHandlers(this.appStorage, session.id),
     };
   }
 
@@ -396,7 +400,8 @@ export class GfsController {
     const given = this.registry.extensionsFor(session.id, this.doc.baseURI);
     this.#sentExtensions = JSON.stringify([given.extensions, given.bibliotheques]);
     const facts = await this.#readFacts();
-    return buildContext(facts, { access: session.access, extensions: given.extensions, libraries: given.bibliotheques, opening }, { preferences: this.#appPreferences(), readonly: this.readonly });
+    const storage = this.appStorage.read(session.id);
+    return buildContext(facts, { access: session.access, extensions: given.extensions, libraries: given.bibliotheques, opening, storage }, { preferences: this.#appPreferences(), readonly: this.readonly });
   }
 
   // L'ouverture n'est rendue qu'au premier `contexte` de l'app qui vient d'être activée (contrats 5.2, point 3) : une app dont le cadre est rechargé sur place (sa langue, un

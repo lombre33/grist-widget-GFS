@@ -3,7 +3,7 @@
 
 export const CONTRACT = 0;
 
-const ID_RE = /^[a-z][a-z0-9-]{1,23}$/;
+export const ID_RE = /^[a-z][a-z0-9-]{1,23}$/;
 const PREFIX_RE = /^[A-Z][A-Za-z0-9]*_$/;
 const ACCESS = ['none', 'read table', 'full'];
 const NEVER_READ = ['_grist_shares', '_grist_triggers'];

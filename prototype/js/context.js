@@ -19,7 +19,7 @@ export function pageOf(referrer) {
   } catch (error) { return null; }
 }
 
-// `facts` : ce que le contrôleur a lu (instance, page, document, adresse du widget), `session` : { access, extensions, libraries, opening }.
+// `facts` : ce que le contrôleur a lu (instance, page, document, adresse du widget), `session` : { access, extensions, libraries, opening, storage }.
 export function buildContext(facts, session, params) {
   const { preferences, readonly } = params;
   return {
@@ -39,6 +39,6 @@ export function buildContext(facts, session, params) {
     extensions: session.extensions,
     bibliotheques: session.libraries,
     ouverture: session.opening || null,
-    stockage: {}, // le stockage du navigateur (5.3) vient avec le kit, à l'étape 5
+    stockage: session.storage || {}, // la copie de l'espace de CETTE app dans le navigateur de GFS (5.3)
   };
 }

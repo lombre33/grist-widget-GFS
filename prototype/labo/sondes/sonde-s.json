@@ -1,0 +1,27 @@
+{
+  "contrat": 0,
+  "id": "sonde-s",
+  "nom": {
+    "fr": "Sonde S",
+    "en": "Probe S"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Une app qui garde ses choix chez GFS (contexte.stockage, stockage.ecrire), comme Publipostage+ après la consigne 024",
+    "en": "An app that keeps its choices with GFS (contexte.stockage, stockage.ecrire), like Publipostage+ after instruction 024"
+  },
+  "icone": "doc",
+  "entree": "index.html",
+  "tables": {
+    "prefixe": "SondeS_"
+  },
+  "reglages": [],
+  "permissions": {
+    "acces": "none"
+  },
+  "extensions": [],
+  "actions": {
+    "ouvrir": [],
+    "choisir": []
+  }
+}

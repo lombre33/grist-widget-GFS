@@ -551,6 +551,10 @@ enregistrée par l'autre app.
 - Dans un sous-cadre à origine opaque, `localStorage` lève une erreur. Le kit offre un stockage par app : une lecture
   immédiate dans une copie en mémoire, remplie au démarrage (par le navigateur quand l'app est seule, par le courtier dans
   GFS), et une écriture qui suit.
+- **Fait le 21/10** (le porteur l'a demandé tout de suite) : GFS garde les choix de chaque app dans son propre navigateur,
+  un espace par app (1 Mo au plus), les mêmes dans tous les documents de la personne sur ce navigateur ; pas d'un
+  navigateur ou d'un ordinateur à l'autre, et les onglets déjà ouverts ne sont pas prévenus (contrats 5.3). Cela ne
+  touche pas au document : cela marche en lecture seule.
 - Un choix gardé par navigateur (thème, zoom, raccourcis) reste un confort : l'app marche sans lui.
 - **La langue n'en fait plus partie** (décision du 20/10) : un seul choix par personne, gardé par GFS dans son propre
   stockage, que les apps lisent dans le contexte et suivent par un événement (contrats 5.2, point 6). L'app seule garde le

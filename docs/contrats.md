@@ -733,7 +733,7 @@ Les noms de la v0 :
 | Nom | Sens | Corps (`args` ou `data`) | Réponse |
 |---|---|---|---|
 | `contexte` | app → GFS | aucun | le contexte (5.2) |
-| `stockage.ecrire` | app → GFS | `{ cle, valeur }` (5.3) | aucune : appel sans `id` |
+| `stockage.ecrire` | app → GFS | `{ cle, valeur }` (5.3) | aucune sans `id` ; avec un `id`, `{ retenu }` (5.3, point 3) |
 | `ouvrir` | app → GFS, puis GFS → app active | 5.4 | 5.4 |
 | `choisir` | app → GFS | 5.4 | 5.4 |
 | `inserer` | app → GFS, puis GFS → app qui fournit | 5.4 | 5.4 |
@@ -772,7 +772,7 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 | `extensions` | identifiants des extensions actives de l'app | liste de la section | `[]` |
 | `bibliotheques` | source de chaque bibliothèque que les extensions actives exigent : `{ "<id>": { src, integrite, forme } }` (2.6) ; `forme` vaut toujours `script` ou `module` | oui | `{}` |
 | `ouverture` | pourquoi et sur quoi l'app s'ouvre, ou `null` (5.4) | oui | `null` |
-| `stockage` | copie initiale du stockage de l'app (5.3) | oui | contenu du navigateur |
+| `stockage` | copie de l'espace de cette app, `{ clé: valeur }` (5.3) | oui, relue à chaque appel | contenu du navigateur |
 
 1. [T] Les six paramètres de l'adresse (1.3) et le contexte disent la même chose : l'adresse existe pour le code des apps
    qui la lit déjà, le contexte pour le kit. Une seule différence dans le temps : la langue de l'adresse est celle du cadre
@@ -848,19 +848,48 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 ### 5.3 Le stockage du navigateur
 
 Dans un sous-cadre à origine opaque, les cinq stockages (`localStorage`, `sessionStorage`, cookies, `indexedDB`, cache) sont
-refusés (mesuré à l'étape 2, décision d'isolement du 16/10). `contexte.stockage` reste vide dans le prototype ; le kit offre un
-stockage par app (étape 3) :
+refusés (mesuré à l'étape 2, décision d'isolement du 16/10). GFS garde donc à leur place les choix de chaque app (thème,
+raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le faire tout de suite**, sans attendre l'étape 5 :
 
 1. [T] La lecture est immédiate, dans une copie en mémoire remplie au démarrage : par le navigateur quand l'app est seule, par
-   `contexte.stockage` dans GFS. L'écriture suit : `stockage.ecrire` avec `{ cle, valeur }` (`valeur: null` retire la clé).
-2. [D] Les clés sont des chaînes de 1 à 64 caractères parmi `A-Z a-z 0-9 _ . : -`, les valeurs des chaînes (comme
-   `localStorage`). Le courtier range tout sous l'`id` de l'app, déduit de la fenêtre : une app ne touche que son espace.
-3. [D] GFS garde ces espaces dans son propre `localStorage` (clés `gfs.stockage.<id>.…`), dans un `try/catch`, et en mémoire seule
-   si le navigateur le refuse. Quota par app : 1 Mo, à fixer à l'étape 5 d'après la plus grosse clé de Publipostage+
-   (`pp_schema_…`, un instantané du schéma par document) ; dépassement : `GFS_QUOTA`.
-4. [T] Un choix gardé par navigateur (thème, zoom, raccourcis) reste un confort : l'app marche sans lui (cahier 5.7). La
+   `contexte.stockage` dans GFS, un objet `{ clé: valeur }` qui est l'espace de **cette** app. GFS le relit à chaque appel
+   `contexte` : un cadre qui se recharge retrouve ce qu'il avait écrit. L'écriture suit : `stockage.ecrire` avec
+   `{ cle, valeur }` (`valeur: null` retire la clé).
+2. [D] Les clés sont des chaînes de 1 à 64 caractères parmi `A-Z a-z 0-9 _ . : -`, les valeurs des chaînes (la chaîne vide en
+   est une), comme `localStorage`. Le courtier range tout sous l'`id` de l'app, déduit de la fenêtre qui écrit (1.2), jamais
+   d'un champ du message : une app ne voit, ne change et ne vide que son espace.
+3. [D] Un appel sans `id` n'attend rien (5.1, point 2). Avec un `id`, la réponse est `{ retenu: true | false }` : `false` dit que
+   le navigateur a refusé de garder la clé (point 5). Une clé, une valeur ou un identifiant hors règle reçoit `GFS_REFUSE`, un
+   espace qui dépasserait son quota `GFS_QUOTA` (3.6) : rien ne change. Sans `id`, l'app n'apprend rien ; GFS le dit en console
+   (avertissement : l'app, le code et la raison), ce que lit l'auteur de l'app.
+4. [D] GFS garde ces espaces dans son propre `localStorage`, sous `gfs.stockage.<id>.<clé>` (un `id` n'a pas de point, 2.2 : la clé,
+   qui peut en avoir, commence après le premier), dans un `try/catch`. **Quota : 1 Mo par app**, soit 1 048 576 caractères, clés
+   et valeurs comptées (des unités UTF-16, ce que le navigateur compte lui-même). Un remplacement qui n'agrandit pas l'espace
+   passe toujours : une app au-dessus de son quota peut se vider. Les onze clés de Publipostage+ (`pp_theme` à `pp_news_seen`)
+   font une dizaine de ko ; `pp_schema_…` (un instantané du schéma par document, lourd) n'y entre pas, à voir à l'étape 5.
+5. [D] Un navigateur qui refuse de garder une clé (cadre sans stockage, quota du navigateur) n'arrête rien : la valeur vaut
+   jusqu'au rechargement de la page de GFS (le contexte la rend), la réponse dit `retenu: false`, et le quota de GFS vaut encore.
+6. [D] **Portée.** Par navigateur de la personne (son profil), non par compte Grist : on ne retrouve pas ses choix sur un autre
+   navigateur ni un autre ordinateur. Les mêmes dans tous ses documents de l'instance de Grist : le navigateur sépare le
+   stockage d'un cadre selon le site qui l'héberge, donc une autre instance a les siens (mesuré au labo : une page de GFS ouverte
+   seule ne partage pas le stockage de son cadre dans Grist, `run-langue`, partie 7).
+   Les onglets déjà ouverts ne sont pas prévenus ; l'app relit au prochain `contexte`. Une écriture ne touche qu'une clé : deux
+   onglets qui écrivent des clés différentes ne s'écrasent pas, sur la même clé la dernière écriture gagne. Ce n'est pas une
+   écriture du document : cela marche en lecture seule (par construction, non mesuré : le labo n'a pas de document en lecture
+   seule), et le manifeste n'a rien à déclarer.
+7. [T] Un choix gardé par navigateur (thème, zoom, raccourcis) reste un confort : l'app marche sans lui (cahier 5.7). La
    langue en est sortie : c'est un seul choix par personne, que GFS garde lui-même (5.2, point 6). L'espace de GFS n'est pas
    celui de l'app seule : un réglage de navigateur fait seule ne suit pas dans GFS, et c'est sans perte de données.
+8. [M] **Mesuré le 21/10** dans un vrai Grist, à 700 × 400, en français clair et en anglais sombre
+   (`prototype/labo/run-stockage.mjs`, 25 vérifications par combinaison ; avec le courtier d'avant, six échouent) avec deux sondes,
+   S et T (`labo/sondes/s-stockage/`, deux identifiants), qui font ce que fera Publipostage+ : le sous-cadre refuse son propre
+   `localStorage` ; le contexte rend un espace vide au départ ; un appel sans `id` n'a aucune réponse, avec un `id` il reçoit
+   `{ retenu: true }` ; la clé est chez GFS sous `gfs.stockage.<id>.<clé>` et le document n'a reçu aucune écriture ; le cadre de
+   l'app rechargé, puis GFS rechargé, retrouvent les valeurs ; la sonde T ne voit rien de l'espace de S, et un message de T qui
+   nomme l'app S écrit quand même dans l'espace de T ; `null` retire la clé ; une clé ou une valeur hors règle reçoit
+   `GFS_REFUSE` sans rien écrire, et sans `id` GFS le dit en console ; pile 1 048 576 caractères passe, un de plus reçoit
+   `GFS_QUOTA` ; un navigateur qui refuse d'écrire donne `{ retenu: false }`, la valeur vaut pour la page (le contexte la rend à
+   l'app rechargée) et disparaît avec la page de GFS. **Non mesuré** : un second onglet, un second document, Firefox, Safari.
 
 ### 5.4 Les actions
 
@@ -1181,7 +1210,7 @@ document en petits commits, les points 8 (cadre qui navigue, politique imposable
 
 - **Étape 3 (kit)** : où vit la table-sonde de l'identité quand le kit la partage ; liste des icônes (`icone`) ; le texte commun
   du grisé et la fenêtre d'installation.
-- **Étape 5 (apps)** : quota de stockage d'après `pp_schema_…` ; le contenu de chaque `gfs.json` ; la sortie de `_grist_*` pour
+- **Étape 5 (apps)** : où vivent les instantanés `pp_schema_…` (le quota de 1 Mo de 5.3 est fixé) ; le contenu de chaque `gfs.json` ; la sortie de `_grist_*` pour
   Form+.
 - **Étape 6 (GFS v0)** : le rangement propre à une app dans l'explorateur ; « Fermer quand même » ; « Recharger » ; la
   fenêtre d'installation qui montre `pourquoi`.

@@ -1,0 +1,27 @@
+{
+  "contrat": 0,
+  "id": "sonde-t",
+  "nom": {
+    "fr": "Sonde T",
+    "en": "Probe T"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "La même app, sous un autre identifiant : sert à vérifier que chaque app n'a que son espace",
+    "en": "The same app under another identifier: checks that each app only has its own space"
+  },
+  "icone": "doc",
+  "entree": "index.html",
+  "tables": {
+    "prefixe": "SondeT_"
+  },
+  "reglages": [],
+  "permissions": {
+    "acces": "none"
+  },
+  "extensions": [],
+  "actions": {
+    "ouvrir": [],
+    "choisir": []
+  }
+}

@@ -10,7 +10,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-tLX/SGvD8djPZdzVITCkI8nWAYsGEZjlgp43WIfXJ9E='; style-src 'self'; img-src 'self' data:; frame-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-xeg894vZQn1LORHJ/BIbzgiK3HDeyhdTKd3yADVukMQ='; style-src 'self'; img-src 'self' data:; frame-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=a915589c20">
 <link rel="stylesheet" href="css/explorer.css?v=f98b8b812a">
 <link rel="stylesheet" href="css/modules.css?v=ec61e659ed">
@@ -25,7 +25,7 @@
     "./js/apps-state.js": "./js/apps-state.js?v=f3ce6fe3d9",
     "./js/ask-window.js": "./js/ask-window.js?v=954295ac45",
     "./js/broker.js": "./js/broker.js?v=4e909305b8",
-    "./js/catalogue.js": "./js/catalogue.js?v=547dbc3cae",
+    "./js/catalogue.js": "./js/catalogue.js?v=af259e06c5",
     "./js/context.js": "./js/context.js?v=b0a00cb0b8",
     "./js/controller.js": "./js/controller.js?v=e5a22693fc",
     "./js/demo.js": "./js/demo.js?v=ca7c230f52",
@@ -41,7 +41,7 @@
     "./js/filter.js": "./js/filter.js?v=0bbd3af6df",
     "./js/frames.js": "./js/frames.js?v=09ec1cb3a3",
     "./js/i18n.js": "./js/i18n.js?v=06dd964729",
-    "./js/icons.js": "./js/icons.js?v=0a8ca21d31",
+    "./js/icons.js": "./js/icons.js?v=f0cdae2b10",
     "./js/language.js": "./js/language.js?v=b287c81a20",
     "./js/layers.js": "./js/layers.js?v=2d0c225b72",
     "./js/libraries.js": "./js/libraries.js?v=f8e30c6112",

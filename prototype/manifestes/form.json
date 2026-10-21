@@ -1,0 +1,71 @@
+{
+  "contrat": 0,
+  "id": "form",
+  "nom": { "fr": "Form+", "en": "Form+" },
+  "version": "0.1.0",
+  "texte": {
+    "fr": "Des formulaires aux questions conditionnelles, branchés sur les tables du document (preuve de concept).",
+    "en": "Forms with conditional questions, wired to the document’s tables (proof of concept)."
+  },
+  "icone": "form",
+  "entree": "poc/widget.html",
+  "tables": { "prefixe": "FormPlus_" },
+  "fichiers": [{
+    "table": "FormPlus_Formulaires",
+    "colonnes": { "id": "id", "nom": "Nom", "type": "TypeFormulaire", "date": "DateModif", "par": "ModifiePar" },
+    "typeParDefaut": "formulaire",
+    "types": [
+      { "valeur": "formulaire", "nom": { "fr": "Formulaire", "en": "Form" }, "icone": "form" }
+    ]
+  }],
+  "permissions": {
+    "acces": "full",
+    "lit": ["*"],
+    "ecrit": ["*"],
+    "gristInterne": [
+      {
+        "tables": ["_grist_Tables", "_grist_Pages"],
+        "lit": true,
+        "pourquoi": {
+          "fr": "Connaître les tables et les pages du document, pour proposer la table d'un formulaire et retrouver la page qui le porte.",
+          "en": "Know the document's tables and pages, to offer a form's table and find the page that holds it."
+        }
+      },
+      {
+        "tables": ["_grist_Tables_column"],
+        "lit": true,
+        "ecrit": ["visibleCol"],
+        "pourquoi": {
+          "fr": "Connaître les colonnes et leurs types, et régler la colonne affichée d'une Référence créée pour une question à choix.",
+          "en": "Know the columns and their types, and set the displayed column of a Reference created for a choice question."
+        }
+      },
+      {
+        "tables": ["_grist_Views_section"],
+        "lit": true,
+        "ecrit": ["shareOptions"],
+        "pourquoi": {
+          "fr": "Retrouver la section du formulaire natif de Grist et la publier.",
+          "en": "Find the section of Grist's native form and publish it."
+        }
+      },
+      {
+        "tables": ["_grist_Views_section_field"],
+        "lit": true,
+        "ecrit": ["parentId", "colRef", "widgetOptions"],
+        "retire": true,
+        "pourquoi": {
+          "fr": "Ajouter, retirer et régler les champs du formulaire natif de Grist.",
+          "en": "Add, remove and set the fields of Grist's native form."
+        }
+      }
+    ],
+    "structure": {
+      "pourquoi": {
+        "fr": "Poser dans une page la section du formulaire natif de Grist, quand la personne part de zéro ou duplique un formulaire.",
+        "en": "Place Grist's native form section in a page, when the person starts from scratch or duplicates a form."
+      }
+    }
+  },
+  "actions": { "ouvrir": [], "choisir": [] }
+}

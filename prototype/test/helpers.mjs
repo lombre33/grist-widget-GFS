@@ -8,5 +8,6 @@ export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const readJson = path => JSON.parse(readFileSync(join(ROOT, path), 'utf8'));
 export const publipostage = () => readJson('manifestes/publipostage.json');
 export const automation = () => readJson('manifestes/automation.json');
-export const catalogue = () => [publipostage(), automation()];
+export const form = () => readJson('manifestes/form.json');
+export const catalogue = () => [publipostage(), automation(), form()];
 export const policyOf = manifest => makePolicy(manifest, catalogue());

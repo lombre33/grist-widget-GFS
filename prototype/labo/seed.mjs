@@ -68,3 +68,28 @@ export async function seedFiles(frame, { heavy = null } = {}) {
     return { models: rows.length, prefs: prefs.length };
   }, { MODELS_COLUMNS, PREFS_COLUMNS, files: FILES(Date.now()), heavy });
 }
+
+// Les formulaires de Form+ tels que la consigne 007 les demande : une ligne par formulaire dans `FormPlus_Formulaires` (colonnes que le manifeste de Form+ nomme), et la
+// définition de chacun en JSON dans `Definition`, que GFS ne lit pas. Des libellés neutres : aucune personne.
+const FORMS_COLUMNS = [
+  { id: 'Nom', type: 'Text' }, { id: 'TypeFormulaire', type: 'Text' }, { id: 'DateModif', type: 'DateTime' }, { id: 'ModifiePar', type: 'Text' }, { id: 'Definition', type: 'Text' },
+];
+
+// [nom, il y a (secondes), par]
+const FORMS = (now) => [
+  ['Inscription à une formation', 2 * 3600, RH],
+  ['Demande de matériel', 2 * DAY, BUREAU],
+  ['Retour de session', 9 * DAY, ''],
+].map(([name, ago, by]) => ({ name, ts: Math.floor(now / 1000) - ago, by }));
+
+export async function seedForms(frame) {
+  return frame.evaluate(async ({ FORMS_COLUMNS, forms }) => {
+    const have = (await grist.docApi.listTables()).map(String);
+    if (!have.includes('FormPlus_Formulaires')) await grist.docApi.applyUserActions([['AddTable', 'FormPlus_Formulaires', FORMS_COLUMNS]]);
+    await grist.docApi.applyUserActions([['BulkAddRecord', 'FormPlus_Formulaires', forms.map(() => null), {
+      Nom: forms.map(form => form.name), TypeFormulaire: forms.map(() => 'formulaire'), DateModif: forms.map(form => form.ts), ModifiePar: forms.map(form => form.by),
+      Definition: forms.map(form => JSON.stringify({ formTitle: form.name, questions: [] })),
+    }]]);
+    return { forms: forms.length };
+  }, { FORMS_COLUMNS, forms: FORMS(Date.now()) });
+}

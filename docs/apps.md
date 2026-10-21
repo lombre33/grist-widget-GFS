@@ -5,19 +5,19 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 ## Apps de GFS
 
-| App | Dépôt de développement | Consignes | Dernier commit lu | Lu le |
-|---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `b9ba041` | 21/10/2026 |
-| Form+ | `lombre33/FormPlus` | `consignes/form/` | `c1237a2` | 21/10/2026 |
-| Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `ee8f0a9` | 20/10/2026 |
-| Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `c8c819f` | 20/10/2026 |
+| App | Dépôt de développement | Consignes | Dernier commit lu | Lu le | Licence (21/10) |
+|---|---|---|---|---|---|
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `b9ba041` | 21/10/2026 | GPL 3.0 |
+| Form+ | `lombre33/FormPlus` | `consignes/form/` | `2c0ee50` | 21/10/2026 | Apache 2.0, à passer en GPL 3.0 (consigne 004) |
+| Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `ee8f0a9` | 20/10/2026 | GPL 3.0 dans le code, `LICENSE` absent (consigne 002) |
+| Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `c8c819f` | 20/10/2026 | GPL 3.0 |
 
 ## Lus pour référence (pas des apps de GFS)
 
-| Dépôt | Pourquoi | Dernier commit lu | Lu le |
-|---|---|---|---|
-| `lombre33/SlidesPlus` | référence des diapositives (cahier 1.2) | `747a700` | 20/10/2026 |
-| `lombre33/Grist-widget-audit` | outil d'audit (cahier 3.3) | `cc82061` | 20/10/2026 |
+| Dépôt | Pourquoi | Dernier commit lu | Lu le | Licence (21/10) |
+|---|---|---|---|---|
+| `lombre33/SlidesPlus` | référence des diapositives (cahier 1.2) | `747a700` | 20/10/2026 | GPL 3.0 |
+| `lombre33/Grist-widget-audit` | outil d'audit (cahier 3.3) | `cc82061` | 20/10/2026 | MIT (question posée au porteur) |
 
 « Dernier commit lu » est le sommet de `main` à la dernière lecture : le journal a été parcouru jusque-là, et le diff ouvert
 seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
@@ -172,6 +172,26 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   le 14/10. Le relevé du guide (14/10) omettait l'écriture de `visibleCol`, déjà là à `b073d03` (`poc/js/grist-meta.js`,
   ligne 132) : le guide est complété le 21/10. Traité le 21/10 : la consigne 002 (lire, faire, ce qui vient ; elle annonce
   le kit sans le décrire, la consigne du kit étant celle de l'étape 3), et `docs/gfs-en-bref.md` remis à jour.
+- Form+ à `2c0ee50` (21/10, après la 002) : neuf commits de plus depuis `c1237a2`, dont le saut d'étape conditionnel et la
+  carte interactive grisée par défaut (`96cf415`), des études (comparatif, checklist du catalogue gristgouv), des correctifs
+  d'accessibilité et des captures. Son `GFS-ETAT.md` (créé à `2c0ee50`, qui décrit `8a0bf20`) dit la 001 faite avec ses
+  écarts (règles 2, 5 et 11) et la 002 lue, relève la colonne cachée `FormPlus_srcL_…` (`96cf415`), pose deux questions
+  (garder le chargement autonome de Leaflet ; déclarer les écritures `_grist_Views_section_field` et `shareOptions` avant
+  l'étape 5) et une demande : Leaflet 1.9.4 pour le type « Lieu sur carte » (un script, une feuille de style et des images,
+  des tuiles OpenStreetMap, un repli en champ texte). Lu dans le code : `window.FORMPLUS_ENABLE_MAP` et deux adresses unpkg
+  dans `poc/js/kinds.js`, chargement à la demande dans `poc/js/respond.js`, aucune CSP, ni écriture dans `_grist_*` de plus.
+  Le guide est corrigé une seconde fois (écritures dans `poc/js/grist-meta.js`, quatre lectures de `document.referrer`,
+  `options` de `_grist_Views_section` qui ne se déclare jamais, `CreateViewSection`). Traité le 21/10 : la consigne 003
+  (réponses : garder la carte autonome, les écritures à l'étape 5) et la 004 (licence). La demande Leaflet n'est pas traitée :
+  le catalogue ne porte qu'un fichier par bibliothèque et l'adresse des tuiles entrerait dans une CSP, deux choix du
+  porteur (question posée le 21/10).
+- Licences (21/10, le porteur : tous les dépôts sous GPL 3.0). Relevé sur le sommet de `main` de chaque dépôt :
+  Publipostage+, Grist-BI et SlidesPlus ont un `LICENSE` qui est le texte officiel de la GPL 3.0 (mêmes octets que celui de
+  GFS, SHA-256 `3972dc97…`) ; Grist-BI était sous MIT jusqu'au 29/09 (`fb3ab41`), passé en GPL 3.0 ce jour-là. Form+ :
+  `LICENSE` sous Apache 2.0, README et documents de même (consigne 004). Automation+ : `package.json` (`GPL-3.0-only`),
+  README et panneau « Crédits » disent GPL 3.0, mais le dépôt n'a pas de fichier `LICENSE` (consigne 002). L'outil d'audit
+  est sous MIT, au nom du porteur : question posée. Le dépôt public `grist-factory/Publipostage-Plus` est sous GPL 3.0. GFS :
+  `LICENSE` ajouté le 21/10 et `license` dans ses trois `package.json` ; le kit naît sous GPL 3.0.
 - Les dossiers de `consignes/` portent l'identifiant court de l'app ; l'`id` du manifeste se fixe avec chaque `gfs.json`
   (étape 5 du plan).
 - Aucun de ces dépôts n'avait de `GFS-ETAT.md` : chaque projet d'app le crée en lisant sa consigne 001.

@@ -30,8 +30,8 @@ Dans ces documents, `contexte/`, `maquettes/` et `outils/` désignent des dossie
 - Fonctions sans leur extension : grisées, jamais cachées ; un clic explique comment passer à GFS (changer l'adresse dans le
   champ du panneau de droite de Grist, jamais par la galerie).
 - Pas de calcul dans le widget ; limiter le nombre de tables ; ne pas dupliquer de code.
-- Licence : GPL 3.0 pour tous les dépôts de la suite (GFS, kit, apps) : `LICENSE` à la racine, `GPL-3.0-only` dans les
-  `package.json` ; le code d'un tiers garde sa licence, compatible (21/10).
+- Licence : GPL 3.0 pour tous les dépôts de la suite (GFS, kit, apps, outil d'audit) : `LICENSE` à la racine,
+  `GPL-3.0-only` dans les `package.json` ; le code d'un tiers garde sa licence, compatible (21/10).
 
 Si un fait nouveau remet en cause une de ces lignes : le dire au porteur, avec le fait, sur une carte de décision.
 

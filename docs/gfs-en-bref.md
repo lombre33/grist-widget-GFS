@@ -28,8 +28,8 @@ d'une app qui demandent une bibliothèque lourde (graphique, diapositives, temps
   politique à un sous-cadre. Les bibliothèques sans lesquelles l'app ne marche pas seule (l'éditeur, les exports) restent à
   l'app.
 - **Rien à héberger.** Des pages statiques (GitHub Pages, ou chez le client) et aucune étape de construction pour les servir.
-- **Une seule licence, la GPL 3.0**, dans le dépôt de GFS, du kit et de chaque app (guide des apps, section 1.3) ; une
-  bibliothèque tierce garde la sienne.
+- **Une seule licence, la GPL 3.0**, dans le dépôt de GFS, du kit, de chaque app et de l'outil d'audit (guide des apps,
+  section 1.3) ; une bibliothèque tierce garde la sienne.
 
 ## Ce qui change pour une app
 

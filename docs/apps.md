@@ -17,7 +17,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 | Dépôt | Pourquoi | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|
 | `lombre33/SlidesPlus` | référence des diapositives (cahier 1.2) | `747a700` | 20/10/2026 | GPL 3.0 |
-| `lombre33/Grist-widget-audit` | outil d'audit (cahier 3.3) | `cc82061` | 20/10/2026 | MIT (question posée au porteur) |
+| `lombre33/Grist-widget-audit` | outil d'audit (cahier 3.3) | `cc82061` | 20/10/2026 | MIT, à passer en GPL 3.0 (décision du 21/10) |
 
 « Dernier commit lu » est le sommet de `main` à la dernière lecture : le journal a été parcouru jusque-là, et le diff ouvert
 seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
@@ -216,8 +216,10 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   GFS, SHA-256 `3972dc97…`) ; Grist-BI était sous MIT jusqu'au 29/09 (`fb3ab41`), passé en GPL 3.0 ce jour-là. Form+ :
   `LICENSE` sous Apache 2.0, README et documents de même (consigne 004). Automation+ : `package.json` (`GPL-3.0-only`),
   README et panneau « Crédits » disent GPL 3.0, mais le dépôt n'a pas de fichier `LICENSE` (consigne 002). L'outil d'audit
-  est sous MIT, au nom du porteur : question posée. Le dépôt public `grist-factory/Publipostage-Plus` est sous GPL 3.0. GFS :
-  `LICENSE` ajouté le 21/10 et `license` dans ses trois `package.json` ; le kit naît sous GPL 3.0.
+  est sous MIT, au nom du porteur : il passe aussi en GPL 3.0 (le porteur a dit oui le 21/10), par un message à coller dans
+  son projet (il n'a pas de dossier `consignes/` ici) ; à relire sur `main` de son dépôt. Le dépôt public
+  `grist-factory/Publipostage-Plus` est sous GPL 3.0. GFS : `LICENSE` ajouté le 21/10 et `license` dans ses trois
+  `package.json` ; le kit naît sous GPL 3.0.
 - Les dossiers de `consignes/` portent l'identifiant court de l'app ; l'`id` du manifeste se fixe avec chaque `gfs.json`
   (étape 5 du plan).
 - Aucun de ces dépôts n'avait de `GFS-ETAT.md` : chaque projet d'app le crée en lisant sa consigne 001.

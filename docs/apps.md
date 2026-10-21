@@ -7,7 +7,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le |
 |---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `d87ea5f` | 20/10/2026 |
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `b9ba041` | 21/10/2026 |
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `d3c8475` | 20/10/2026 |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `ee8f0a9` | 20/10/2026 |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `c8c819f` | 20/10/2026 |
@@ -136,6 +136,23 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   consigne 020. Constat de l'essai : la question de l'app est posée derrière l'explorateur ouvert, et « Abandonner » peut n'avoir
   rien à abandonner quand une écriture de l'enregistrement automatique finit pendant la question (dit à l'app, sans rien lui
   demander).
+- Publipostage+ à `b9ba041` (21/10, matin) : quatorze commits de plus depuis `d87ea5f`, dont douze de code. Son
+  `GFS-ETAT.md` (`c4aa76f`, qui décrit `80deef7` ; GFS lu à `8110d87`) dit la 020 « faite · lue, aucun code » et rapporte le
+  correctif de « Abandonner » (`80deef7`, constat 2 de la 020 : la question attend d'abord le passage d'enregistrement
+  automatique déjà parti, 8 secondes au plus). La 016 reste « lue, pas faite » ; « Questions pour GFS » : le titre
+  d'impression (le porteur le mesure lui-même) et l'adresse du CDN (016) ; « Demandes à GFS » : aucune. Les onze commits de
+  code après cet état (`a851780` à `b9ba041` : nom du modèle, bulles orange des variables, Boucle sur « toutes les lignes de
+  la table », format de date, « Répéter la ligne », règles de condition) ne sont pas encore décrits par lui ; un seul ajoute
+  un échange avec Grist, l'écoute du message `dataChange` (`js/batch-scope.js`, `ab428ba`), que GFS relaie déjà
+  (`session.js`). Ni table, ni colonne, ni clé de réglages, ni adresse de la CSP, ni extension changée. Traité le 21/10 : la
+  référence avancée à `80deef7` (commit à part, relu), la consigne 021 (réponse sur la 016) ; l'avance des onze autres
+  commits attend que l'app les décrive.
+- Dépôts publics (organisation `grist-factory`, cahier 4.2 et question 5) : Publipostage+ est à
+  `grist-factory/Publipostage-Plus` (bêta 1.0.0-beta.1 du 05/10 ; le porteur l'a redit le 21/10) ; aucun autre dépôt public
+  d'app n'est noté, et rien n'est poussé sur l'organisation depuis le cloud. Le 21/10, le porteur garde les dépôts de
+  `lombre33` tant que le code de GFS y est : références des apps dans GFS et adresse du CDN de la 016 ne changent pas ; à la
+  bascule de GFS sous `grist-factory`, GFS adapte ses liens et chaque app reçoit les adresses nouvelles par une consigne,
+  sans date (consigne 021).
 - SlidesPlus : suivre `main`. La branche par défaut du dépôt sur GitHub est une autre, donc `origin/HEAD` ne convient pas.
 - Grist-widget-audit : aucun commit n'avait été noté ; `3a1b3d5` était le sommet de `main` (4 octobre). Lu le 20/10 : un
   commit de plus (`cc82061`, 15/10) : un appel à l'API Grist officielle ne coûte plus de points à la règle réseau ; rien à

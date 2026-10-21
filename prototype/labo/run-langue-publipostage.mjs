@@ -230,6 +230,7 @@ await closeExplorer();
 // l'autre sens (jamais plus de huit fois).
 // Pour « Abandonner » (discards), une écriture de l'enregistrement automatique partie juste avant la question peut finir pendant qu'elle est posée : ce qui a été tapé est alors déjà dans le
 // document et il n'y a plus rien à abandonner. L'essai le voit en relisant le document 1,5 s après la question ; il répond « Enregistrer » à cette question-là et recommence.
+// L'app l'a corrigé à 80deef7 (la question attend d'abord le passage déjà parti, ou n'est plus posée s'il a tout enregistré) : six passes sans reprise ; la garde reste pour une app plus ancienne.
 const pendingFlip = async (token, { discards = false } = {}) => {
   for (let attempt = 1; attempt <= 8; attempt++) {
     if (!(await explorerHidden())) await closeExplorer();

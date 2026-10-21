@@ -7,7 +7,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `5c8800c` | 21/10/2026 | GPL 3.0 |
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `2ed567c` | 21/10/2026 | GPL 3.0 |
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `a5d2207` | 21/10/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `4110eaf` | 21/10/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `23647eb` | 21/10/2026 | GPL 3.0 |
@@ -290,6 +290,22 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
 - Grist-widget-audit à `f5f251e` (21/10) : neuf commits de plus depuis `cc82061`, tous des règles de l'audit (code minifié exempté
   des axes A et B et plafonnant la note, exemption de l'API Grist du réseau, lecture de l'objet `grist` par l'AST,
   `--sans-reseau`), lus par leurs titres seulement : rien à changer chez GFS. Toujours sous MIT à ce commit.
+- Publipostage+ à `2ed567c` (21/10, soir) : trois commits de plus depuis `5c8800c`. Son `GFS-ETAT.md` (`2ed567c`, qui décrit
+  `fcca7b4` ; GFS lu à `6068ce1`) dit la 023 « faite · lue, aucun code », garde la question du titre d'impression (le porteur la
+  mesure lui-même) et pose deux demandes : les choix de chaque personne retenus par GFS (onze clés `pp_*`, une dizaine de ko ; le
+  porteur a choisi GFS le 21/10) et la barre de GFS avec la place libre de l'app (la barre la plus étroite possible, au bord que
+  la personne choisit ; un champ `barre` du contexte et un événement ; un appel `barre.masquer` pour le diaporama). Lus : de
+  `7a723ce` à `fcca7b4`, 53 fichiers ; la CSP d'`index.html` (seuls des `?v=` changent), la carte d'importation, la liste de
+  bibliothèques et `js/gfs-link.js` ne changent pas ; ni table, colonne, clé de réglages, table `_grist_*` ou adresse de plus ;
+  `diapositives` passe de 0.10 à 0.11 (choisir plusieurs diapositives, `6ca67c6` : 140 508 octets) ; la galerie gagne un 22e
+  modèle (`a2a27a6`, sans adresse) ; « 11:30pm » dans la liste « Heure » (`fcca7b4`). Aucun code de l'app n'appelle encore
+  `contexte.stockage` ni `stockage.ecrire`. Traité le 21/10 : la référence avancée à `fcca7b4` (`c4b3026`, commit à part, relu ;
+  langue 2 x 25, ouverture 2 x 28, présentations 2 x 50 sur 51, direct 60) ; le poids de Diapositives à 141 Ko et celui du
+  Graphique à 64 Ko, avec un essai qui les compare au dossier de l'app (`6bcecc1`) ; le stockage de chaque personne livré
+  (`14cfd19`, contrats 5.3, mesuré dans un vrai Grist) ; la consigne 024 (le stockage, la référence, la barre). La barre : le
+  porteur a tranché le 21/10 (bord au choix de la personne, apps adaptées aux quatre places, sans bande en plus, par-dessus
+  l'espace laissé libre) ; la forme de l'échange suit dans la consigne 025. Restent ouverts : le titre d'impression (011),
+  l'adresse du CDN (016).
 - Licences (21/10, le porteur : tous les dépôts sous GPL 3.0). Relevé sur le sommet de `main` de chaque dépôt :
   Publipostage+, Grist-BI et SlidesPlus ont un `LICENSE` qui est le texte officiel de la GPL 3.0 (mêmes octets que celui de
   GFS, SHA-256 `3972dc97…`) ; Grist-BI était sous MIT jusqu'au 29/09 (`fb3ab41`), passé en GPL 3.0 ce jour-là. Form+ :

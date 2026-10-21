@@ -48,6 +48,7 @@
     ]
   },
   "apps": ["automation"],
+  "pages": ["Participants", "Sessions"],
   "publipostage": {
     "modeles": [
       {"nom": "Convocation", "contenu": "demo/inscriptions/convocation.html", "pdf": "Convocation #Participants.Nom", "page": {"format": "A4", "orientation": "portrait", "marges": [22, 22, 22, 22]}},

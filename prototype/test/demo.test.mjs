@@ -7,28 +7,36 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ROOT } from './helpers.mjs';
 import { createI18n } from '../js/i18n.js';
-import { APP_TABLES, DemoError, dateValue, demoReport, demoSummary, displayActions, formulaActions, freeName, loadDemo, modelRecord, planDemo,
+import { APP_TABLES, DemoError, dateValue, demoReport, demoSummary, displayActions, formulaActions, freeName, loadDemo, modelRecord, ownAddress, planDemo,
   rowsAction, runDemo, tableActions } from '../js/demo.js';
 
 const read = { json: async path => JSON.parse(await readFile(join(ROOT, path), 'utf8')), text: path => readFile(join(ROOT, path), 'utf8') };
 const NOW = new Date(2026, 9, 21, 15, 30);
 const TODAY = Date.UTC(2026, 9, 21) / 1000;
+const ADDRESS = 'https://exemple.org/gfs/index.html';
+const OWN = `${ADDRESS}?language=fr&dev`;
 
-// Un faux Grist : des tables en mémoire, leurs métadonnées lues comme `_grist_Tables` et `_grist_Tables_column`.
+// Un faux Grist : des tables en mémoire, leurs métadonnées lues comme `_grist_Tables`, `_grist_Tables_column` et `_grist_Views_section`. Chaque
+// table a sa page (le numéro de la page est celui de la table) avec son tableau ; la section de GFS posée par la personne est sur la page 0.
 function fakeGrist(initial = {}, { failOn = null, refuse = () => false } = {}) {
   const tables = structuredClone(initial);
   const actions = [];
+  const custom = [{ id: 900, parentId: 0, parentKey: 'custom', options: JSON.stringify({ customView: JSON.stringify({ mode: 'url', url: OWN }) }) }];
   let ref = 0;
   const refs = new Map();
   const refOf = key => { if (!refs.has(key)) refs.set(key, ++ref); return refs.get(key); };
   const meta = () => {
     const names = Object.keys(tables);
     const columns = names.flatMap(name => tables[name].columns.map(column => [name, column]));
+    const sections = [...names.map(name => ({ id: refOf(`grid:${name}`), parentId: refOf(name), parentKey: 'record', options: '' })), ...custom];
     return {
-      _grist_Tables: { id: names.map(name => refOf(name)), tableId: names },
+      _grist_Tables: { id: names.map(name => refOf(name)), tableId: names, primaryViewId: names.map(name => refOf(name)) },
       _grist_Tables_column: { id: columns.map(([name, column]) => refOf(`${name}.${column}`)), parentId: columns.map(([name]) => refOf(name)), colId: columns.map(([, column]) => column) },
+      _grist_Views_section: Object.fromEntries(['id', 'parentId', 'parentKey', 'options'].map(key => [key, sections.map(section => section[key])])),
     };
   };
+  const section = (tableRef, view, kind) => { custom.push({ id: 1000 + custom.length, tableRef, parentId: view, parentKey: kind, options: '' }); return { sectionRef: 1000 + custom.length - 1 }; };
+  const update = (name, id, values) => { if (name === '_grist_Views_section') Object.assign(custom.find(item => item.id === id), values); return null; };
   const insert = (name, record) => {
     const table = tables[name];
     const unknown = Object.keys(record).filter(column => !table.columns.includes(column));
@@ -43,7 +51,9 @@ function fakeGrist(initial = {}, { failOn = null, refuse = () => false } = {}) {
     if (verb === 'AddColumn') { tables[name].columns.push(a); return null; }
     if (verb === 'AddRecord') return insert(name, b);
     if (verb === 'BulkAddRecord') return a.map((_, i) => insert(name, Object.fromEntries(Object.entries(b).map(([column, values]) => [column, values[i]]))));
-    if (verb === 'UpdateRecord' || verb === 'SetDisplayFormula') return null;
+    if (verb === 'CreateViewSection') return section(name, a, b);
+    if (verb === 'UpdateRecord') return update(name, a, b);
+    if (verb === 'SetDisplayFormula') return null;
     throw new Error(`verbe inattendu ${verb} ${c ?? ''}`);
   };
   const doc = {
@@ -58,7 +68,7 @@ function fakeGrist(initial = {}, { failOn = null, refuse = () => false } = {}) {
       try { return { retValues: list.map(apply) }; } catch (error) { for (const key of Object.keys(tables)) delete tables[key]; Object.assign(tables, snapshot); throw error; }
     },
   };
-  return { doc, tables, actions };
+  return { doc, tables, actions, custom };
 }
 
 test('une date du parcours : n jours après aujourd\'hui, ou une date ISO de la galerie, en secondes à minuit UTC', () => {
@@ -128,7 +138,7 @@ test('le geste entier : tables, formules, lignes, Références affichées, apps 
   const pack = await loadDemo(read);
   const { doc, tables, actions } = fakeGrist({ Clients: { columns: ['Nom'], rows: [] } });
   const installed = [];
-  const report = await runDemo({ doc, pack, now: NOW, install: async ids => installed.push(...ids) });
+  const report = await runDemo({ doc, pack, now: NOW, install: async ids => installed.push(...ids), address: ADDRESS });
   assert.equal(tables.Sessions.rows.length, 2);
   assert.equal(tables.Participants.rows.length, 20);
   assert.deepEqual([...new Set(tables.Participants.rows.map(row => row.Session))], [1, 2]);
@@ -142,7 +152,7 @@ test('le geste entier : tables, formules, lignes, Références affichées, apps 
   assert.equal(workflow.Actif, false);
   assert.equal(JSON.parse(workflow.Config).nodes.length, 4);
   assert.ok(tables.Automation.columns.includes('Auteur'));
-  assert.deepEqual(report, { models: { count: 3 }, links: { count: 2 }, workflow: { count: 1 } });
+  assert.deepEqual(report, { models: { count: 3 }, links: { count: 2 }, workflow: { count: 1 }, pages: { count: 2 } });
 });
 
 test('le parcours déjà posé : rien n\'est écrit', async () => {
@@ -170,7 +180,7 @@ test('les tables des apps déjà là : leurs colonnes sont respectées, une règ
   assert.deepEqual(tables.Publipostage_Modeles.rows.map(row => row.Nom), ['Convocation', 'Convocation (2)', 'Émargement', 'Attestation de formation']);
   assert.deepEqual(tables.Publipostage_LiensTables.rows.map(row => [row.TableCible, row.Mode]), [['Sessions', 'singleton'], ['Participants', 'match']]);
   assert.equal(tables.Automation.rows.length, 1);
-  assert.deepEqual(report, { models: { count: 3 }, links: { count: 1 }, workflow: { count: 0, skipped: 'Automation' } });
+  assert.deepEqual(report, { models: { count: 3 }, links: { count: 1 }, workflow: { count: 0, skipped: 'Automation' }, pages: { count: 2 } });
 });
 
 test('un Grist qui refuse la formule d\'auteur reçoit la table d\'Automation+ sans elle, comme l\'app la crée', async () => {
@@ -195,11 +205,14 @@ test('ce que la personne lit, en français et en anglais', async () => {
   for (const lang of ['fr', 'en']) {
     const { t } = createI18n(lang);
     const lines = demoSummary(pack, { created: ['Automation'] }, t);
-    assert.equal(lines.length, 5);
+    assert.equal(lines.length, 6);
     assert.ok(lines.every(line => !/\{|demo\./.test(line)), lines.join(' | '));
-    const report = demoReport({ models: { count: 3 }, links: { count: 1 }, workflow: { count: 0, skipped: 'Automation' } }, t);
-    assert.equal(report.length, 2);
+    const report = demoReport({ models: { count: 3 }, links: { count: 1 }, workflow: { count: 0, skipped: 'Automation' }, pages: { count: 2 } }, t);
+    assert.equal(report.length, 5);
     assert.ok(report.every(line => !/\{|demo\./.test(line)), report.join(' | '));
+    const manual = demoReport({ models: { count: 3 }, links: { count: 2 }, workflow: { count: 1 }, pages: { count: 0, error: 'refus' } }, t);
+    assert.equal(manual.length, 1);
+    assert.match(manual[0], /refus/);
   }
   assert.match(demoSummary(pack, { created: [] }, createI18n('fr').t)[0], /2 sessions, 20 inscriptions/);
 });
@@ -215,4 +228,44 @@ test('les colonnes affichées des Références : seulement quand les deux colonn
     ['SetDisplayFormula', 'Participants', null, 11, '$Session.Numero'],
   ]);
   assert.deepEqual(displayActions(pack, new Map()), []);
+});
+
+test('l\'adresse des pages prêtes : celle que la personne a posée pour GFS, sinon celle de la page avec `?dev`', () => {
+  const sections = { options: ['', '{"customView":"{\\"mode\\":\\"url\\",\\"url\\":\\"https://autre.org/x\\"}"}', JSON.stringify({ customView: JSON.stringify({ mode: 'url', url: OWN }) }), '{illisible'] };
+  assert.equal(ownAddress(sections, ADDRESS), OWN);
+  assert.equal(ownAddress({ options: [] }, ADDRESS), `${ADDRESS}?dev`);
+});
+
+test('les pages prêtes : GFS à droite du tableau de Participants et de Sessions, à son adresse, qui suit la ligne choisie, sans accès donné', async () => {
+  const pack = await loadDemo(read);
+  const { doc, actions, custom } = fakeGrist();
+  await runDemo({ doc, pack, now: NOW, install: async () => {}, address: ADDRESS });
+  const meta = await doc.fetchTable('_grist_Tables');
+  const added = custom.filter(item => item.id !== 900);
+  assert.equal(added.length, 2);
+  pack.pages.forEach((id, i) => {
+    const view = meta.primaryViewId[meta.tableId.indexOf(id)];
+    const layout = (actions.find(action => action[0] === 'UpdateRecord' && action[1] === '_grist_Views' && action[2] === view) || [])[3];
+    assert.equal(added[i].tableRef, meta.id[meta.tableId.indexOf(id)]);
+    assert.equal(added[i].parentId, view);
+    assert.equal(added[i].parentKey, 'custom');
+    assert.ok(added[i].linkSrcSectionRef && added[i].linkSrcColRef === 0 && added[i].linkTargetColRef === 0);
+    const customView = JSON.parse(JSON.parse(added[i].options).customView);
+    assert.equal(customView.url, OWN);
+    assert.equal(customView.access, '');
+    assert.deepEqual(JSON.parse(layout.layoutSpec), { children: [{ children: [{ leaf: added[i].linkSrcSectionRef }, { leaf: added[i].id }] }] });
+  });
+});
+
+test('des pages qui ne se préparent pas n\'annulent rien : le compte rendu le dit', async () => {
+  const pack = await loadDemo(read);
+  const { doc, tables } = fakeGrist({}, { failOn: 'CreateViewSection' });
+  const warn = console.warn;
+  console.warn = () => {};
+  try {
+    const report = await runDemo({ doc, pack, now: NOW, install: async () => {}, address: ADDRESS });
+    assert.deepEqual(report.pages, { count: 0, error: 'refus de CreateViewSection' });
+    assert.equal(tables.Participants.rows.length, 20);
+    assert.equal(tables.Publipostage_Modeles.rows.length, 3);
+  } finally { console.warn = warn; }
 });

@@ -343,7 +343,8 @@ export class GfsController {
       say('busy');
       this.notice(this.t('demo.busy'));
       this.#consented = true;
-      const report = await runDemo({ doc: this.port.doc, pack, now: new Date(), install: ids => this.#installAll(ids) });
+      const address = `${location.origin}${location.pathname}`;
+      const report = await runDemo({ doc: this.port.doc, pack, now: new Date(), install: ids => this.#installAll(ids), address });
       say('done');
       this.#hideNotice();
       void this.refreshFiles();

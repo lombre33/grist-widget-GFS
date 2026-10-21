@@ -53,7 +53,7 @@ export async function loadDemo(read) {
   const rows = Object.fromEntries(tables.map(({ id }) => [id, ((examples.rows || {})[id] || []).map((row, i) => ({ ...row, ...((raw.lignes[id] || [])[i] || {}) }))]));
   const gallery = await read.json(`${raw.galerie}catalogue.json`);
   const models = await Promise.all(raw.publipostage.modeles.map(spec => loadModel(spec, raw.galerie, gallery, read)));
-  return { name: raw.nom, tables, rows, apps: raw.apps, models, links: raw.publipostage.liens, workflow: raw.automation };
+  return { name: raw.nom, tables, rows, apps: raw.apps, models, links: raw.publipostage.liens, workflow: raw.automation, pages: raw.pages || [] };
 }
 
 // Un modèle : un modèle de la galerie de Publipostage+ (son texte, sa page, son en-tête), ou un texte du parcours.
@@ -180,14 +180,16 @@ export function demoSummary(pack, plan, t) {
     t('demo.models', { n: pack.models.length, links: pack.links.length }),
     t('demo.automation'),
   ];
+  if (pack.pages.length) lines.push(t('demo.pagesReady'));
   if (plan.created.length) lines.push(t('demo.appTables', { tables: plan.created.join(', ') }));
   return [...lines, t('demo.pages')];
 }
 
-// Le compte rendu : ce qui a été posé, et la table d'une app qui n'a pas servi.
+// Le compte rendu : quoi faire ensuite, pas à pas, et la table d'une app qui n'a pas servi. Sans les pages prêtes, la marche à suivre à la main.
 export function demoReport(report, t) {
-  const lines = [t('demo.doneModels', { n: report.models.count, links: report.links.count })];
-  if (report.workflow.count) lines.push(t('demo.doneWorkflow'));
+  const lines = report.pages.count
+    ? [t('demo.step.access'), t('demo.step.letter'), t('demo.step.flow'), t('demo.step.sheet')]
+    : [t('demo.pagesFailed', { reason: report.pages.error || '—' })];
   for (const part of [report.models, report.links, report.workflow]) if (part.skipped) lines.push(t('demo.skipped', { table: part.skipped }));
   return lines;
 }
@@ -281,8 +283,58 @@ async function addWorkflow(doc, schema, pack) {
   return { count: 1 };
 }
 
-// Le geste entier. `install(ids)` installe les apps du parcours dans GFS. Rend ce qui a été posé : { models, links, workflow } (chacun { count, skipped? }).
-export async function runDemo({ doc, pack, now, install }) {
+// ---------- les pages prêtes ----------
+
+const customViewOf = options => { try { return JSON.parse(JSON.parse(options).customView); } catch (error) { return null; } };
+
+// L'adresse de GFS telle que la personne l'a posée (celle d'une section de GFS du document), sinon l'adresse de cette page avec `?dev`.
+export function ownAddress(sections, address) {
+  for (const options of sections.options || []) {
+    const view = customViewOf(options);
+    if (view && view.mode === 'url' && typeof view.url === 'string' && view.url.startsWith(address)) return view.url;
+  }
+  return `${address}?dev`;
+}
+
+// Les réglages d'une section de GFS, comme Grist les écrit pour un widget posé par son adresse. L'accès reste à « aucun » : Grist le
+// demande à la personne, comme pour tout widget qu'on ajoute.
+export function sectionOptions(url) {
+  const customView = JSON.stringify({ mode: 'url', url, widgetDef: null, access: '', pluginId: '', sectionId: '', renderAfterReady: false, widgetId: null, widgetOptions: null, columnsMapping: null });
+  return JSON.stringify({ customView });
+}
+
+// Sur la page que Grist a créée pour chaque table du parcours : GFS à droite du tableau, qui suit la ligne choisie (« Sélectionner par »).
+async function addPages(doc, pack, address) {
+  const [tables, sections] = await Promise.all([doc.fetchTable('_grist_Tables'), doc.fetchTable('_grist_Views_section')]);
+  const url = ownAddress(sections, address);
+  let count = 0;
+  for (const id of pack.pages) {
+    const at = tables.tableId.indexOf(id);
+    const view = at >= 0 ? tables.primaryViewId[at] : 0;
+    const grid = (sections.id || []).find((ref, i) => view && sections.parentId[i] === view && sections.parentKey[i] === 'record');
+    if (!grid) continue;
+    const result = await doc.applyUserActions([['CreateViewSection', tables.id[at], view, 'custom', null, null]]);
+    const section = result.retValues[0].sectionRef;
+    await doc.applyUserActions([
+      ['UpdateRecord', '_grist_Views_section', section, { title: 'Grist Factory Suite', options: sectionOptions(url), linkSrcSectionRef: grid, linkSrcColRef: 0, linkTargetColRef: 0 }],
+      ['UpdateRecord', '_grist_Views', view, { layoutSpec: JSON.stringify({ children: [{ children: [{ leaf: grid }, { leaf: section }] }] }) }],
+    ]);
+    count += 1;
+  }
+  return { count };
+}
+
+// Des pages qui n'ont pas pu être préparées n'annulent pas le reste : le compte rendu donne alors la marche à suivre à la main.
+async function tryPages(doc, pack, address) {
+  try { return await addPages(doc, pack, address); } catch (error) {
+    console.warn('GFS : les pages de la démo n’ont pas pu être préparées', error);
+    return { count: 0, error: String(error && error.message) };
+  }
+}
+
+// Le geste entier. `install(ids)` installe les apps du parcours dans GFS ; `address` : l'adresse de GFS (origine et chemin). Rend ce qui a été posé :
+// { models, links, workflow, pages } (chacun { count, skipped?, error? }).
+export async function runDemo({ doc, pack, now, install, address }) {
   const before = await readSchema(doc);
   const { taken } = planDemo(pack, before);
   if (taken.length) throw new DemoError('taken', taken.join(', '));
@@ -299,5 +351,6 @@ export async function runDemo({ doc, pack, now, install }) {
   }
   await install(pack.apps);
   const schema = await readSchema(doc);
-  return { models: await addModels(doc, schema, pack, now), links: await addLinks(doc, schema, pack), workflow: await addWorkflow(doc, schema, pack) };
+  const report = { models: await addModels(doc, schema, pack, now), links: await addLinks(doc, schema, pack), workflow: await addWorkflow(doc, schema, pack) };
+  return { ...report, pages: await tryPages(doc, pack, address) };
 }

@@ -92,6 +92,13 @@ réponses, sans que l'app change.
   galerie des widgets, l'adresse déjà remplie (« Modifier le widget »), puis ses avertissements ; l'accès retombe à « aucun » et
   Grist redemande l'accès complet (« Accept ») : le cadre est reconstruit sans accès, puis avec l'accès complet après l'accord.
   GFS repart de zéro, l'explorateur d'abord. Les libellés français sont ceux de `grist-static/dist/locales/fr.client.json`.
+- Mesuré le 21/10 (même essai) : **un widget en accès complet peut poser une section de widget personnalisé** sur une page :
+  `CreateViewSection` (table, page, `'custom'`) rend `sectionRef` ; ses réglages s'écrivent comme Grist les écrit
+  (`options.customView`, une chaîne JSON : `mode`, `url`, `access`, `widgetDef`…), le lien « Select by » par
+  `linkSrcSectionRef` (la section du tableau), `linkSrcColRef` et `linkTargetColRef` à 0, et la disposition par
+  `_grist_Views.layoutSpec` (`{"children":[{"children":[{"leaf":tableau},{"leaf":widget}]}]}` : côte à côte). Avec `access` vide,
+  Grist charge le widget sans accès et demande l'accès complet dans le panneau de droite (« Accept ») ; après l'accord, le widget
+  suit la ligne choisie dans le tableau. Aucun avertissement de Grist sur l'adresse.
 
 ## 3. Grist : données
 

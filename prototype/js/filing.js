@@ -5,8 +5,10 @@
 
 import { folderMoves, folderName, folderPaths, inside, normalizePath } from './explorer-model.js';
 import { TableDeclined } from './rangement.js';
+import { normalize } from './search.js';
 
-const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
+// Un nom de fichier pris : casse et espaces autour ignorés, la règle de Publipostage+ (`Templates.sameName`) ; un nom de table de même.
+const sameName = (a, b) => String(a ?? '').trim().toLowerCase() === String(b ?? '').trim().toLowerCase();
 const lastPart = path => path.split('/').pop();
 const parentOf = path => path.split('/').slice(0, -1).join('/');
 const reasonOf = error => String((error && error.message) || error).slice(0, 120);
@@ -55,23 +57,29 @@ export class Filing {
     });
   }
 
+  // Deux dossiers voisins ne portent pas le même nom (comparé comme la recherche : accents, casse et ponctuation ignorés) : les fondre se fait en déplaçant.
   renameFolder(path) {
     return this.#gesture(async () => {
       const { t, windows } = this.#opts;
+      const siblings = this.#folders().filter(other => other !== path && parentOf(other) === parentOf(path)).map(other => normalize(lastPart(other)));
+      const refuse = name => (!name ? t('ex.nameEmpty') : (siblings.includes(normalize(name)) ? t('ex.folderTaken') : null));
       const name = await windows.name({ title: t('ex.renameFolderTitle', { name: lastPart(path) }), label: t('ex.folderNameLabel'), value: lastPart(path), confirmLabel: t('ex.rename'),
-        clean: folderName, emptyText: t('ex.nameEmpty') });
+        clean: folderName, refuse });
       if (name !== null && name !== lastPart(path)) await this.#write(folderMoves(this.#opts.files(), path, normalizePath(`${parentOf(path)}/${name}`)));
     });
   }
 
-  // Le nom seul, dans la colonne du nom que le manifeste désigne (choix du porteur, 21/10) : ni date ni auteur. Une colonne absente n'est jamais écrite.
+  // Le nom seul, dans la colonne du nom que le manifeste désigne (choix du porteur, 21/10) : ni date ni auteur. Une colonne absente n'est jamais écrite ;
+  // un nom qu'un autre fichier de la même table porte déjà est refusé.
   rename(file) {
     return this.#gesture(async () => {
       const { t, windows, port, notice, appName } = this.#opts;
       const now = this.#now(file);
       const spec = this.#opts.specOf(now);
       const column = spec && spec.colonnes ? spec.colonnes.nom : null;
-      const name = await windows.name({ title: t('ex.renameTitle', { name: this.#title(now) }), label: t('ex.nameLabel'), value: now.name, confirmLabel: t('ex.rename'), emptyText: t('ex.nameEmpty') });
+      const taken = name => this.#opts.files().some(other => other.key !== now.key && other.app === now.app && other.table === now.table && sameName(other.name, name));
+      const refuse = name => (!name ? t('ex.nameEmpty') : (taken(name) ? t('ex.nameTaken', { app: appName(now.app) }) : null));
+      const name = await windows.name({ title: t('ex.renameTitle', { name: this.#title(now) }), label: t('ex.nameLabel'), value: now.name, confirmLabel: t('ex.rename'), refuse });
       if (name === null || name === now.name) return;
       try {
         const found = column ? await columnsOf(port.doc, spec.table) : null;

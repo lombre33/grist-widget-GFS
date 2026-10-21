@@ -7,8 +7,9 @@ import { icon } from './icons.js';
 import { LIST_SHOWN as SHOWN, listKeys, openModal } from './modal.js';
 import { normalize, words, matchesWords } from './search.js';
 
-// opts : { container, inertTargets, t, title, label, value, confirmLabel, clean(texte) -> texte ('' : refusé, `emptyText` le dit) }.
-export function askName({ container, inertTargets, t, title, label, value, confirmLabel, clean = text => text.trim(), emptyText }) {
+// opts : { container, inertTargets, t, title, label, value, confirmLabel, clean(texte) -> nom, refuse(nom) -> pourquoi ce nom ne va pas, ou null }.
+// Un nom refusé laisse la fenêtre ouverte et dit pourquoi sous le champ.
+export function askName({ container, inertTargets, t, title, label, value, confirmLabel, clean = text => text.trim(), refuse }) {
   const input = h('input', { type: 'text', class: 'nw-input', id: 'nw-input', autocomplete: 'off', spellcheck: 'false', dataset: { fk: 'name-input' } });
   input.value = value;
   const note = h('p', { class: 'mod-note nw-note', 'aria-live': 'polite' });
@@ -21,8 +22,9 @@ export function askName({ container, inertTargets, t, title, label, value, confi
   const { done, result } = openModal({ container, section, inertTargets, first: input, cancel: null });
   const submit = () => {
     const name = clean(input.value);
-    if (name) { done(name); return; }
-    note.textContent = emptyText;
+    const reason = refuse(name);
+    if (!reason) { done(name); return; }
+    note.textContent = reason;
     input.focus();
   };
   ok.addEventListener('click', submit);

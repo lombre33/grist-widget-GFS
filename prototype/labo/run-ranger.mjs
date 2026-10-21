@@ -3,8 +3,8 @@
 //   1. L'étoile sans la table : la question ; « Annuler » ne crée rien ; « Créer la table » crée `GFS_Rangement` et la ligne du fichier ; le rangement de l'app ne bouge pas.
 //   2. Retirer le favori au clavier, par le menu de la ligne : le clavier reste sur la ligne.
 //   3. Déplacer un fichier vers un nouveau dossier (la recherche, Entrée), puis vers un dossier existant (la souris).
-//   4. Renommer un dossier (un nom vide est refusé dans la fenêtre), puis le déplacer : ni lui ni ses sous-dossiers ne sont proposés.
-//   5. Renommer un fichier : le nom seul, dans la table de l'app ; ses autres colonnes ne bougent pas.
+//   4. Renommer un dossier (un nom vide, ou celui d'un dossier voisin, est refusé dans la fenêtre), puis le déplacer : ni lui ni ses sous-dossiers ne sont proposés.
+//   5. Renommer un fichier : un nom pris est refusé ; le nom seul, dans la table de l'app ; ses autres colonnes ne bougent pas.
 //   6. Dupliquer reste grisé et dit pourquoi ; Échap et un clic hors de la fenêtre ferment sans rien écrire, l'explorateur reste ouvert.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { startLab } from './lab-setup.mjs';
@@ -144,6 +144,11 @@ await page.keyboard.press('Enter');
 const emptyNote = await frame.locator('.nw-note').innerText();
 await shot('5-nom-vide');
 check('un nom vide est refusé : la fenêtre reste et dit pourquoi', /ne peut pas être vide|cannot be empty/.test(emptyNote) && (await frame.locator('.nw').count()) === 1, emptyNote);
+await page.keyboard.type('stock', { delay: 20 });
+await page.keyboard.press('Enter');
+const takenFolder = await frame.locator('.nw-note').innerText();
+check('le nom d\'un dossier voisin (« Stock », casse ignorée) est refusé de même', /porte déjà ce nom à cet endroit|already has this name/.test(takenFolder) && (await frame.locator('.nw').count()) === 1, takenFolder);
+await page.keyboard.press('Control+A');
 await page.keyboard.type('Habitat / 2026', { delay: 20 });
 await page.keyboard.press('Enter');
 const renamed = await until(async () => (await folderNames()).includes('Habitat 2026') && !(await folderNames()).includes('Logement'));
@@ -170,8 +175,14 @@ await openRowMenu(row(contract));
 await menuItem(/Renommer|Rename/).click();
 await frame.locator('.nw').waitFor();
 await shot('7-renommer');
-await page.keyboard.press('End');
-await page.keyboard.type(' 2026', { delay: 20 });
+await page.keyboard.type('bon de commande fournisseur ', { delay: 10 });
+await page.keyboard.press('Enter');
+const takenFile = await frame.locator('.nw-note').innerText();
+await shot('7b-nom-pris');
+check('le nom d\'un autre modèle (casse et espaces ignorés, la règle de Publipostage+) est refusé dans la fenêtre, rien n\'est écrit', /porte déjà ce nom|already has this name/.test(takenFile)
+  && (await frame.locator('.nw').count()) === 1 && JSON.stringify((await table('Publipostage_Modeles')).Nom) === JSON.stringify(modelsBefore.Nom), takenFile);
+await page.keyboard.press('Control+A');
+await page.keyboard.type(`${contract} 2026`, { delay: 10 });
 await page.keyboard.press('Enter');
 const newName = `${contract} 2026`;
 const shown = await until(async () => (await fileNames()).includes(newName));

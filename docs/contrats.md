@@ -1136,8 +1136,10 @@ paquet de frappes, une par personne pour la présence) doit savoir quand cette t
    jamais comme un fichier.
 2. [T] GFS n'écrit jamais dans la table d'une app, sauf le nom d'un fichier (le porteur, 21/10) : quand la personne renomme un
    fichier dans l'explorateur, GFS écrit le nouveau nom, et lui seul, dans la colonne `colonnes.nom` de sa ligne (2.4), après
-   avoir vérifié que la colonne existe ; ni date ni auteur. Une app relit donc le nom d'un fichier ouvert avant de l'enregistrer,
-   et ne réécrit jamais un nom périmé (guide des apps). Dupliquer et supprimer restent à l'app : l'explorateur les grise.
+   avoir vérifié que la colonne existe ; ni date ni auteur. Un nom qu'un autre fichier de la même table porte déjà (casse et
+   espaces autour ignorés, la règle de Publipostage+) est refusé dans la fenêtre. Une app relit donc le nom d'un fichier ouvert
+   avant de l'enregistrer, et ne réécrit jamais un nom périmé (guide des apps). Dupliquer et supprimer restent à l'app :
+   l'explorateur les grise.
 
 ### 6.4 `GFS_Rangement`, le rangement commun
 
@@ -1172,7 +1174,8 @@ rangée d'un fichier, selon ce qui vient d'abord.
 7. [D] GFS écrit ces lignes sur un geste de la personne dans l'explorateur, avant qu'aucune app ne soit ouverte (le porteur,
    21/10) : épingler un fichier, le déplacer, renommer ou déplacer un dossier. Chaque geste relit la table puis écrit en un
    seul lot ; un dossier renommé ou déplacé réécrit la ligne de chaque fichier qu'il contient, sous-dossiers compris ; un
-   dossier ne va ni en lui-même ni dans un de ses sous-dossiers.
+   dossier ne va ni en lui-même ni dans un de ses sous-dossiers. Deux dossiers voisins ne portent pas le même nom (comparé
+   comme la recherche) : renommer vers le nom d'un voisin est refusé, déplacer dans un dossier qui a déjà ce nom les réunit.
 8. [D] Dans l'explorateur, la ligne de GFS d'un fichier passe devant le rangement propre de l'app (point 5) ; sans ligne de
    GFS, celui de l'app reste le point de départ. L'app garde le sien, que GFS ne réécrit pas : un fichier rangé dans GFS
    peut donc avoir une autre place dans l'app.

@@ -160,7 +160,8 @@ réponses, sans que l'app change.
   « Créer la table » crée `GFS_Rangement` (avec sa page) puis la ligne du fichier, et **le cadre de GFS n'est pas reconstruit**
   (la page nouvelle n'est pas celle du widget) : l'étoile s'allume 0,2 s après le clic, liste relue. Renommer écrit
   `UpdateRecord` sur la seule colonne du nom : dans `Publipostage_Modeles`, après le geste, seule la colonne `Nom` diffère, sur
-  la seule ligne du fichier (date et auteur intacts). `_grist_Tables` et `_grist_Tables_column`, lues par la connexion de GFS
+  la seule ligne du fichier (date et auteur intacts) ; le nom d'un autre modèle, tapé en minuscules, est refusé dans la
+  fenêtre et rien n'est écrit. `_grist_Tables` et `_grist_Tables_column`, lues par la connexion de GFS
   (accès complet), donnent le nom réel de la table et ses colonnes. Le rangement de Publipostage+
   (`Publipostage_PreferencesModeles`) n'est jamais écrit.
 

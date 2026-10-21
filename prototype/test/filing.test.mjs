@@ -138,3 +138,22 @@ test('un geste qui échoue ne bloque pas le suivant', async () => {
   assert.equal(calls, 2);
   assert.equal(log.refreshes, 1);
 });
+
+test('renommer un fichier : un nom vide, ou celui d\'un autre fichier de la même table (casse et espaces ignorés), est refusé dans la fenêtre', async () => {
+  const { filing, log } = harness({ answers: [null] });
+  await filing.rename(file(1));
+  const { refuse } = log.windows[0];
+  assert.equal(refuse(''), t('ex.nameEmpty'));
+  assert.equal(refuse('  modèle 2 '), t('ex.nameTaken', { app: 'Publipostage+' }));
+  assert.equal(refuse('Modèle 1'), null, 'son propre nom, en changeant la casse par exemple');
+  assert.equal(refuse('Neuf'), null);
+});
+
+test('renommer un dossier : le nom d\'un dossier voisin est refusé (accents et casse ignorés, comme la recherche) ; un dossier ailleurs ne gêne pas', async () => {
+  const { filing, log } = harness({ answers: [null] });
+  await filing.renameFolder('X');
+  const { refuse } = log.windows[0];
+  assert.equal(refuse('À'), t('ex.folderTaken'), '« A » est à côté de « X »');
+  assert.equal(refuse('B'), null, '« B » est dans « A », pas à côté');
+  assert.equal(refuse(''), t('ex.nameEmpty'));
+});

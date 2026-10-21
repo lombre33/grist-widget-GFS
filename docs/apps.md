@@ -7,7 +7,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `2ed567c` | 21/10/2026 | GPL 3.0 |
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `fd4af98` | 21/10/2026 | GPL 3.0 |
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `77ffd71` | 21/10/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `4110eaf` | 21/10/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `23647eb` | 21/10/2026 | GPL 3.0 |
@@ -321,8 +321,24 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   colonnes), `structure`), mesuré dans un vrai Grist (`run-form`, `run-form-seul` : l'app démarre sans refus, « Partir de
   zéro » passe, `options` et `_grist_Shares` sont refusés, `setOptions` n'écrit rien ; Grist recharge le cadre dès qu'une
   section est posée, avec ou sans GFS) ; la consigne 007 (la définition dans la table) ; l'`INDEX.md` (006 faite). Leaflet
-  attend le catalogue (script, feuille de style, images) et la porte « ouvrir » un client du courtier dans le kit : une
-  consigne chacun.
+  attend le catalogue (script, feuille de style, images) ; la porte « ouvrir » attend un client du courtier, que le porteur a
+  choisi d'écrire dans le kit (21/10, soir) : une consigne chacun.
+- Publipostage+ à `fd4af98` (21/10, soir) : sept commits de plus depuis `2ed567c`. Son `GFS-ETAT.md` (`5c6575a`, qui décrit
+  `15aa696` ; GFS lu à `6068ce1`) ajoute trois changements : les diapositives liées à leur original (`8d68bb4`, la case
+  « Garder liée » du volet « Importer » ; elles écrivent `Contenu` et `DateModif` d'autres lignes de `Publipostage_Modeles`, et
+  le `Jeton` d'une source, par ce qui était déjà là ; `diapositives` en 0.12, 165 473 octets), le menu d'Enregistrer refermé
+  au clic (`9b2b877`) et les textes des fenêtres réécrits (`15aa696` : « Ne pas enregistrer », « Insertion », « Email »). Lus :
+  de `fcca7b4` à `15aa696`, 119 fichiers dont 91 essais ; la CSP d'`index.html`, la carte d'importation, la liste de
+  bibliothèques et `js/gfs-link.js` ne changent pas ; ni table, colonne, clé de réglages, table `_grist_*` ou adresse de plus.
+  Après la page : `fd4af98` (les menus « + », « Mode lecture » et « Type d'export » refermés au clic : trois marques
+  `data-close-on-click` et un `?v=` dans `index.html`, sans effet chez GFS) ; `487d66b` (la 024 dans son code :
+  `js/person-store.js`, `js/gfs-link.js`) est vu, à lire quand sa page le décrira. Traité le 21/10 : la référence avancée à
+  `15aa696` (`600f2c9`, commit à part, relu) ; le poids de Diapositives à 165 Ko (`78bcdb1`) ; les diapositives liées mesurées
+  dans un vrai Grist (`run-diapositives`, partie 3 bis, 2 x 57 : le courtier laisse passer l'écriture de la source dans le même
+  lot que la présentation) ; les essais de l'ouverture et de la langue sur ses nouveaux textes (`d29aa41`) ; rejoués avec l'app à `15aa696` : ouverture 2 x 28, langue 2 x 25, direct 60, barre 7
+  (avec la barre à quatre boutons), rangement 11, ligne de travail 20, démo 34 ; la
+  consigne 026 (avec ce que la barre à quatre boutons recouvre chez elle). Restent ouverts : la 024 et la 025 chez elle, le
+  titre d'impression (011), l'adresse du CDN (016).
 - Licences (21/10, le porteur : tous les dépôts sous GPL 3.0). Relevé sur le sommet de `main` de chaque dépôt :
   Publipostage+, Grist-BI et SlidesPlus ont un `LICENSE` qui est le texte officiel de la GPL 3.0 (mêmes octets que celui de
   GFS, SHA-256 `3972dc97…`) ; Grist-BI était sous MIT jusqu'au 29/09 (`fb3ab41`), passé en GPL 3.0 ce jour-là. Form+ :

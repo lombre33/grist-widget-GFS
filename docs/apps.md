@@ -7,7 +7,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `89890c8` | 21/10/2026 | GPL 3.0 |
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `b711d80` | 21/10/2026 | GPL 3.0 |
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `77ffd71` | 21/10/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `4110eaf` | 21/10/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `23647eb` | 21/10/2026 | GPL 3.0 |
@@ -351,6 +351,16 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   rechargement, la clé du zoom retirée, aucun lot au document) ; l'`INDEX.md` (024 faite pour dix clés, 025 lue) ; la consigne 027
   (avec le nouveau nom du bouton de la barre, « Table de travail »). Restent ouverts : `pp_news_seen`, la 025 chez elle, le titre
   d'impression (011), l'adresse du CDN (016).
+- Publipostage+ à `b711d80` (21/10, soir ; le porteur : « demande de Publipostage+ ») : trois commits de plus depuis `89890c8`.
+  Son `GFS-ETAT.md` (`b711d80`, qui décrit `4f00ac2` ; GFS lu à `a4dff37`, consignes lues jusqu'à la 027) dit la 026 et la 027
+  faites (lues, aucun code) et deux corrections demandées par le porteur : les pages qui commencent où elles doivent
+  (`daaf364`) et le bouton ▶ « Présenter » qui reste à gauche de la pastille du zoom quand une présentation s'ouvre au
+  démarrage (`4f00ac2`). « Demandes à GFS » ne garde que la barre (la 025). Lus : de `487d66b` à `4f00ac2`, 13 fichiers, un
+  ajouté ; la CSP, la carte d'importation et la liste de bibliothèques ne changent pas ; ni appel à Grist, message, adresse ni
+  stockage de plus. Traité le 21/10 : la référence avancée à `4f00ac2` avec le poids de Diapositives à 166 Ko (`14cc617`,
+  commit à part, relu) ; le bouton ▶ mesuré à l'ouverture par GFS (`1936aef`, `run-diapositives` 2 x 58 ; la vérification
+  passe aussi avec l'ancien `slide-show.js` : le cas de la page de l'app ne se reproduit pas au labo) ; l'`INDEX.md` (026 et 027
+  faites) ; la consigne 028 (avec l'annonce : épingler, ranger et renommer depuis les fichiers de GFS, choix du porteur).
 - Licences (21/10, le porteur : tous les dépôts sous GPL 3.0). Relevé sur le sommet de `main` de chaque dépôt :
   Publipostage+, Grist-BI et SlidesPlus ont un `LICENSE` qui est le texte officiel de la GPL 3.0 (mêmes octets que celui de
   GFS, SHA-256 `3972dc97…`) ; Grist-BI était sous MIT jusqu'au 29/09 (`fb3ab41`), passé en GPL 3.0 ce jour-là. Form+ :

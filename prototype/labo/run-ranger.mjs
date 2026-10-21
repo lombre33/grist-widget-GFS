@@ -6,6 +6,8 @@
 //   4. Renommer un dossier (un nom vide, ou celui d'un dossier voisin, est refusé dans la fenêtre), puis le déplacer : ni lui ni ses sous-dossiers ne sont proposés.
 //   5. Renommer un fichier : un nom pris est refusé ; le nom seul, dans la table de l'app ; ses autres colonnes ne bougent pas.
 //   6. Dupliquer reste grisé et dit pourquoi ; Échap et un clic hors de la fenêtre ferment sans rien écrire, l'explorateur reste ouvert.
+//   7. Renommer un modèle que Publipostage+ tient ouvert, puis l'enregistrer dans l'app : il garde le nom donné dans GFS (l'app ne remet jamais l'ancien, consigne 029 ;
+//      avec l'app à `2f6440a`, cette vérification échoue : l'ancien nom revient).
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
@@ -39,7 +41,6 @@ const starOn = async name => (await row(name).locator('.rb.pin').getAttribute('c
 const favCount = async () => Number(await frame.locator('.tr-row[data-view="fav"] .cnt').innerText());
 const menuItem = re => frame.locator('.menu-item', { hasText: re });
 const openRowMenu = async locator => { await locator.hover(); await locator.locator('.rb.mn').click(); await frame.locator('.menu').waitFor(); };
-const goMe = async () => { const link = frame.locator('.crumbs [data-path=""]'); if (await link.count()) await link.click(); await page.waitForTimeout(200); };
 // Les lignes de rangement de GFS (sans la ligne réservée), et les tables de Publipostage+, lues par la connexion de GFS.
 const gfsLines = async () => { const state = await lab.rangement(frame); return state.table ? state.lines.filter(line => !String(line.Utilisateur).startsWith('@')) : null; };
 const lineOf = async id => ((await gfsLines()) || []).find(line => line.App === 'publipostage' && line.Fichier === id) || null;
@@ -217,6 +218,37 @@ const scrim = await frame.locator('.mod-scrim').boundingBox();
 await page.mouse.click(scrim.x + 4, scrim.y + 4);
 await page.waitForTimeout(300);
 check('un clic hors de la fenêtre la ferme sans rien écrire', (await frame.locator('.mv').count()) === 0 && JSON.stringify(await gfsLines()) === lines);
-await goMe();
+
+// ----- 7. Renommer un modèle que Publipostage+ tient ouvert : l'app ne doit jamais remettre l'ancien nom (guide des apps 1.2, point 10 ; consigne 029).
+say('\n7. Renommer un modèle ouvert dans l\'app');
+const nameOf = async id => { const data = await table('Publipostage_Modeles'); const i = data.id.map(String).indexOf(id); return { nom: data.Nom[i], date: String(data.DateModif[i]) }; };
+await row(newName).dblclick();
+const app = await lab.appFrame(/\/apps\/publipostage\//);
+await app.waitForFunction(name => { const status = document.getElementById('status-msg'); const input = document.getElementById('template-name'); return Boolean(status && status.textContent) && Boolean(input) && input.value === name; },
+  newName, { timeout: 30000 });
+await page.waitForTimeout(800);
+await frame.locator('#floater-files').click();
+await frame.locator('.ex').waitFor({ state: 'visible' });
+const givenInGfs = `${contract} (GFS)`;
+await openRowMenu(row(newName));
+await menuItem(/Renommer|Rename/).click();
+await frame.locator('.nw').waitFor();
+await page.keyboard.press('Control+A');
+await page.keyboard.type(givenInGfs, { delay: 10 });
+await page.keyboard.press('Enter');
+await until(async () => (await fileNames()).includes(givenInGfs));
+const whileOpen = await nameOf(contractId);
+check('l\'app ouverte sur le modèle, « Fichiers » puis « Renommer » : la table a le nom donné dans GFS', whileOpen.nom === givenInGfs, whileOpen);
+// Retour à l'app par le double-clic : le modèle est déjà ouvert, l'explorateur se ferme. Une lettre tapée, puis « Enregistrer » à la souris.
+await row(givenInGfs).dblclick();
+await page.waitForTimeout(800);
+say('le nom que l\'app montre au retour :', await app.evaluate(() => document.getElementById('template-name').value));
+const paragraph = await app.locator('.ProseMirror p').first().boundingBox();
+await page.mouse.click(paragraph.x + Math.min(40, paragraph.width / 2), paragraph.y + paragraph.height / 2);
+await page.keyboard.type(' x', { delay: 20 });
+await app.locator('#btn-save').click();
+const saved = await until(async () => { const now = await nameOf(contractId); return now.date !== whileOpen.date ? now : false; }, 15000);
+await shot('9-renomme-ouvert');
+check('enregistré ensuite dans l\'app, le modèle garde le nom donné dans GFS : l\'app ne remet pas l\'ancien', Boolean(saved) && saved.nom === givenInGfs, saved || await nameOf(contractId));
 check('aucun avertissement de GFS, aucune erreur de script', warnings.length === 0, warnings);
 await lab.browser.close();

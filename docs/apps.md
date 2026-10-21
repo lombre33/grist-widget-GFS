@@ -8,7 +8,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|---|
 | Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `2ed567c` | 21/10/2026 | GPL 3.0 |
-| Form+ | `lombre33/FormPlus` | `consignes/form/` | `a5d2207` | 21/10/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
+| Form+ | `lombre33/FormPlus` | `consignes/form/` | `77ffd71` | 21/10/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `4110eaf` | 21/10/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `23647eb` | 21/10/2026 | GPL 3.0 |
 
@@ -307,6 +307,22 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   l'espace laissé libre) ; la forme de l'échange est dans la consigne 025 (posée le 21/10, soir ; contrats 5.2, point 7 ;
   mesurée dans un vrai Grist, 2 x 82 vérifications, et avec l'app à `fcca7b4` : le ▶ se clique, et en haut la barre recouvre trois
   boutons de sa barre d'outils). Restent ouverts : le titre d'impression (011), l'adresse du CDN (016).
+- Form+ à `77ffd71` (21/10, soir) : quatorze commits de plus depuis `a5d2207`. Son `GFS-ETAT.md` (`84f429d`, qui décrit
+  `39e0740`) dit la 006 faite (les deux ombres du kit remplacées par `--shadow-card` et `--shadow-float`), aucune question, une
+  demande (Leaflet, en attente de l'entrée de Form+ dans GFS). Pas décrits par la page : un type de question « Créneau
+  horaire » (`cbf3d10`, une colonne `Choice`), la synthèse des réponses, le contrôle du type d'une colonne avant d'y écrire
+  (`514341f`), la correction du lien public, l'audit de l'outil (`aa13d26` : une CSP pour `widget.html` et `public-form.html`,
+  un `manifest.json`, `SECURITY.md`) et le mode interne (`02be13c`) : une table-sonde `FormPlus_Repondants` créée sans
+  demander, dont la colonne `Email` est à formule déclenchée (`user.Email`) ; elle demandera la capacité `formules` (contrats
+  3.4) et l'accord de la personne (règle 4), à reprendre quand la page de l'app la décrira. Traité le 21/10, à la demande du
+  porteur (« il faut que Form+ soit visible dans les fichiers de GFS ») : Form+ entre dans le catalogue, la référence à
+  `39e0740` (le dernier commit de code que sa page décrit ; commit à part), un manifeste provisoire (table
+  `FormPlus_Formulaires`, type « Formulaire », icône `form`, cinq lectures `_grist_*`, trois tables internes écrites (cinq
+  colonnes), `structure`), mesuré dans un vrai Grist (`run-form`, `run-form-seul` : l'app démarre sans refus, « Partir de
+  zéro » passe, `options` et `_grist_Shares` sont refusés, `setOptions` n'écrit rien ; Grist recharge le cadre dès qu'une
+  section est posée, avec ou sans GFS) ; la consigne 007 (la définition dans la table) ; l'`INDEX.md` (006 faite). Leaflet
+  attend le catalogue (script, feuille de style, images) et la porte « ouvrir » un client du courtier dans le kit : une
+  consigne chacun.
 - Licences (21/10, le porteur : tous les dépôts sous GPL 3.0). Relevé sur le sommet de `main` de chaque dépôt :
   Publipostage+, Grist-BI et SlidesPlus ont un `LICENSE` qui est le texte officiel de la GPL 3.0 (mêmes octets que celui de
   GFS, SHA-256 `3972dc97…`) ; Grist-BI était sous MIT jusqu'au 29/09 (`fb3ab41`), passé en GPL 3.0 ce jour-là. Form+ :

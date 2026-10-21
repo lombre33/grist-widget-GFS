@@ -92,6 +92,18 @@ réponses, sans que l'app change.
   galerie des widgets, l'adresse déjà remplie (« Modifier le widget »), puis ses avertissements ; l'accès retombe à « aucun » et
   Grist redemande l'accès complet (« Accept ») : le cadre est reconstruit sans accès, puis avec l'accès complet après l'accord.
   GFS repart de zéro, l'explorateur d'abord. Les libellés français sont ceux de `grist-static/dist/locales/fr.client.json`.
+- Mesuré le 21/10 dans un vrai Grist (grist-static 0.1.6, Chromium, `labo/run-form.mjs` et `run-form-seul.mjs`), avec Form+ non
+  modifiée à `39e0740` : posée dans le sous-cadre isolé de GFS, elle démarre sans refus ni erreur (origine `null`, pas de stockage).
+  Le courtier lui refuse ce que son code fait pour ranger une définition : `UpdateRecord` de `options` sur une section (« Action 1
+  refusée : La colonne options de _grist_Views_section n'est jamais écrite par une app. »), et le lot entier tombe quand il porte
+  aussi `shareOptions`, qui est déclaré (le marqueur de copie de `duplicateFormSection`) ; `fetchTable('_grist_Shares')`
+  (« _grist_Shares ne se lit jamais. »). `grist.setOptions(objet)` d'une app qui ne déclare aucune clé ne dit rien et n'écrit rien
+  (`getOptions()` rend `null`, les lignes de `_grist_Views_section` ne changent pas). « Partir de zéro » passe avec la structure et les
+  écritures déclarées (table, `CreateViewSection` sur la page de GFS), puis **Grist recharge le cadre dès que la section de
+  formulaire est posée**, avec ou sans GFS : le retrait du champ que Grist ajoute tout seul, que l'app fait ensuite, n'a pas lieu
+  (un champ reste dans le formulaire « vide »), et dans GFS l'explorateur revient, l'app est fermée. Une table `FormPlus_Formulaires`
+  aux colonnes du manifeste donne des lignes d'explorateur au type « Formulaire » (icône `form`, aucune couleur de famille), qui
+  s'ouvrent par le double-clic sur le modèle habituel de l'app (aucune porte « ouvrir » déclarée).
 - Mesuré le 21/10 (même essai) : **un widget en accès complet peut poser une section de widget personnalisé** sur une page :
   `CreateViewSection` (table, page, `'custom'`) rend `sectionRef` ; ses réglages s'écrivent comme Grist les écrit
   (`options.customView`, une chaîne JSON : `mode`, `url`, `access`, `widgetDef`…), le lien « Select by » par

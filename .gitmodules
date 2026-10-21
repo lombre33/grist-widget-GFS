@@ -4,3 +4,6 @@
 [submodule "prototype/apps/automation"]
 	path = prototype/apps/automation
 	url = https://github.com/lombre33/GRIST_automation.git
+[submodule "prototype/apps/form"]
+	path = prototype/apps/form
+	url = https://github.com/lombre33/FormPlus.git

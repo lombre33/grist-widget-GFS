@@ -390,6 +390,16 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   `16701fe` : la consigne 010 lui demande d'avancer son `kit/` à ce commit et d'y prendre l'ouverture (au démarrage et par
   l'appel « ouvrir »), la langue de GFS, son thème gardé chez GFS et la page du contexte ; à sa « faite », GFS avance la
   référence, déclare `ouvrir` dans le manifeste de Form+ et mesure le double-clic. Publipostage+ garde son propre lien.
+- La barre aux quatre bords (21/10, nuit ; le porteur : « Mesurer d'abord ») : ce qu'elle recouvre de chaque app, mesuré dans un
+  vrai Grist à 700 × 400, en français / clair et en anglais / sombre (`run-barre-apps.mjs`, `barre-lab.mjs`), avant d'écrire aux
+  apps. Form+ (`038dd1b`) : presque rien (en haut, le haut de l'onglet « Réponses » ; en bas, un champ au bas de la vue, libre au
+  bout du défilement) ; consigne 011, qui dit aussi le rejeu au rechargement (`75276d7`). Automation+ (`4110eaf`) : « Ajouter » en
+  haut (45 % du bouton en français), le journal ouvert en bas (10 %), rien à gauche ni à droite ; consigne 003, pour le lot où
+  elle prend le lien du kit. Grist-BI (`23647eb`), que GFS ne référence pas encore, mesurée seule dans la section, la barre posée
+  par le calcul à la place du contrat : à gauche (le défaut), le début de « Page 1 », des vues et de « Exporter en PDF » (son
+  contenu commence à 16 px du bord) ; consigne 002. Publipostage+ rejouée avec sa référence (`2f6440a`, sa 025 en cours) : en
+  haut, sa barre d'outils laisse déjà la place ; à gauche, le haut du surligneur de sa deuxième ligne d'outils (17 %) : à revoir
+  quand sa page dira la 025 faite.
 - Licences (21/10, le porteur : tous les dépôts sous GPL 3.0). Relevé sur le sommet de `main` de chaque dépôt :
   Publipostage+, Grist-BI et SlidesPlus ont un `LICENSE` qui est le texte officiel de la GPL 3.0 (mêmes octets que celui de
   GFS, SHA-256 `3972dc97…`) ; Grist-BI était sous MIT jusqu'au 29/09 (`fb3ab41`), passé en GPL 3.0 ce jour-là. Form+ :

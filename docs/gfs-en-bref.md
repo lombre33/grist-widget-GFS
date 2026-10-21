@@ -56,10 +56,12 @@ extensions et nouvelles apps (cahier, section 10). Les étapes 1 (contrats) et 2
 contrats restent un document qui évolue avec le prototype. Le prototype montre l'explorateur, l'installation des apps et des
 extensions, et Publipostage+ ouvert dans un sous-cadre isolé, dans un vrai Grist, avec ses extensions (graphique,
 présentations, écriture en direct) et une langue commune : un seul choix par personne, dans GFS, pour toutes les apps.
-L'étape 3, le kit commun, est lancée (21/10) : la version 0.1.0 est en ligne (dépôt `lombre33/grist-factory-kit` : jetons,
-thème, traduction, fenêtres, saisies et couches) et sa consigne est posée chez Form+, son premier client. Publipostage+ est
-mûr ; Form+, Automation+ et Grist-BI sont des preuves de concept. Tous les dépôts passent sous GPL 3.0 (décision du 21/10) :
-fait pour GFS, Publipostage+, Grist-BI et Automation+ (son `LICENSE` est arrivé le 21/10) ; Form+ a une consigne.
+L'étape 3, le kit commun, est livrée (21/10) : la version 0.1.0 est en ligne (dépôt `lombre33/grist-factory-kit` : jetons,
+thème, traduction, fenêtres, saisies et couches) et Form+, son premier client, tourne avec (sous-module au commit `54c48f3` ; ses
+542 essais passent en français et en anglais ; mesuré par GFS dans un vrai Grist) ; l'étiquette `v0.1.0` reste à poser par le
+porteur. L'étape 4 attend son go. Publipostage+ est mûr ; Form+, Automation+ et Grist-BI sont des preuves de concept (Automation+
+a corrigé trois écarts au guide le 21/10). Tous les dépôts passent sous GPL 3.0 (décision du 21/10) : fait pour GFS,
+Publipostage+, Grist-BI, Automation+ et Form+ ; reste l'outil d'audit.
 
 ## Pour la suite
 

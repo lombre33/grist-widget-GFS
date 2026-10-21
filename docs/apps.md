@@ -7,17 +7,17 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `8f2fde6` | 21/10/2026 | GPL 3.0 |
-| Form+ | `lombre33/FormPlus` | `consignes/form/` | `2c0ee50` | 21/10/2026 | Apache 2.0, à passer en GPL 3.0 (consigne 004) |
-| Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `78d3619` | 21/10/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
-| Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `70d8374` | 21/10/2026 | GPL 3.0 |
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `5c8800c` | 21/10/2026 | GPL 3.0 |
+| Form+ | `lombre33/FormPlus` | `consignes/form/` | `a5d2207` | 21/10/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
+| Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `4110eaf` | 21/10/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
+| Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `23647eb` | 21/10/2026 | GPL 3.0 |
 
 ## Lus pour référence (pas des apps de GFS)
 
 | Dépôt | Pourquoi | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|
 | `lombre33/SlidesPlus` | référence des diapositives (cahier 1.2) | `747a700` | 20/10/2026 | GPL 3.0 |
-| `lombre33/Grist-widget-audit` | outil d'audit (cahier 3.3) | `cc82061` | 20/10/2026 | MIT, à passer en GPL 3.0 (décision du 21/10) |
+| `lombre33/Grist-widget-audit` | outil d'audit (cahier 3.3) | `f5f251e` | 21/10/2026 | MIT, à passer en GPL 3.0 (décision du 21/10) |
 
 « Dernier commit lu » est le sommet de `main` à la dernière lecture : le journal a été parcouru jusque-là, et le diff ouvert
 seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
@@ -244,10 +244,57 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   `BI_Dashboard_UserProbe` (une colonne à formule `user.Email`, `js/grist-api.js`) créée au démarrage sans demander à la
   personne (règle 4 ; la formule demandera la capacité `formules`) ; lit `_grist_Tables` et `_grist_Tables_column` ; ni CSP,
   ni bibliothèque de plus. Toujours pas de `GFS-ETAT.md`. Traité le 21/10 : la ligne du guide mise à jour.
+- Publipostage+ à `5c8800c` (21/10, après-midi) : vingt commits de plus depuis `8f2fde6`. Son `GFS-ETAT.md` (`a8e161d`, qui
+  décrit `7a723ce` ; GFS lu à `eee2d5a`) dit la 022 « faite · lue, aucun code », garde la question du titre d'impression (le
+  porteur la mesure lui-même) et pose quatre demandes : la référence à `7a723ce`, la lecture de `_grist_DocInfo`, le plein écran
+  du sous-cadre pour « Présenter », les choix de chaque personne retenus par GFS (stockage, contrats 5.3). Lus : de `cef298e` à
+  `7a723ce`, 95 fichiers ; seul fait nouveau chez GFS, `_grist_DocInfo` lue par `js/grist-api.js` (`32822d6`, le bouton « Comme
+  dans Grist ») ; ni table, colonne, clé de réglages, adresse de la CSP, carte d'importation ni liste de bibliothèques de plus
+  (un lien vers le journal des changements dans la fenêtre des nouveautés) ; `diapositives` passe de 0.6 à 0.10 (importer une
+  diapositive, glisser une miniature, cinq mises en page, « Présenter » : quatre fichiers neufs, 131 349 octets) ; `pp_news_seen`
+  n'est pas encore dans le code (clé annoncée pour la demande de stockage). Pas décrits par la page : `6ca67c6` (choisir
+  plusieurs diapositives), `a2a27a6` (la présentation commerciale de la galerie), `5c8800c` (journal) : la référence s'arrête à
+  `7a723ce`. Traité le 21/10 : la référence avancée à `7a723ce` (`fc722c5`, commit à part, relu ; langue 2 x 25, ouverture 2 x 28,
+  présentations 2 x 50 sur 51, direct 60) ; `_grist_DocInfo` déclarée (`0bbced7`, huitième lecture) ; le poids de Diapositives à
+  131 Ko ; le plein écran mesuré (`fullscreen` dans `allow` du seul sous-cadre ne change rien : il faut aussi le cadre que Grist
+  donne à GFS, qui n'a que `clipboard-write`, donc rien n'est ajouté) ; la consigne 023. Constat de l'essai : les boutons
+  « Fichiers » et « Apps » de GFS recouvrent le ▶ « Présenter » et la pastille du zoom à 700 × 400 (le ▶ ne se clique pas à la
+  souris, Maj+F5 marche). Deux questions posées au porteur (cartes du 21/10) : le stockage de chaque personne, et le coin bas
+  droit du panneau ; rien n'est codé avant ses réponses. Restent ouverts : le titre d'impression (011), l'adresse du CDN (016).
+- Form+ à `a5d2207` (21/10, après-midi) : dix commits de plus depuis `2c0ee50`. Son `GFS-ETAT.md` (`80c1636`, qui décrit
+  `952fe4c`) dit la 002 et la 003 « lues », la 004 faite (`196734d`) et la 005 faite (`90958ac` à `952fe4c` : kit en sous-module
+  à `54c48f3`, jetons et fenêtres du kit, thème par `Theme`, traduction française et anglaise par `I18n`, `Dialogs` à la place de
+  `prompt` et `confirm`) ; une question (le dépôt du kit n'a pas d'étiquette `v0.1.0`) ; une demande (Leaflet, en attente du
+  porteur). Lu : sous-module au bon commit en commit à part, CI avec `submodules: true`, plus de `prompt`, `confirm` ni `alert`
+  hors des essais ; restes de couleur en dur : deux ombres `rgba` (`poc/css/widget.css`, lignes 80 et 229) et `#qrCanvas`. Mesuré
+  par GFS : ses 542 essais passent en `fr-FR` et en `en-US` ; le widget posé tel quel dans un vrai Grist (700 × 400, à la vraie
+  souris, fr/clair, fr/sombre, en/clair, en/sombre) : 25 vérifications par combinaison, aucun échec. Pas décrits : `a5d2207`
+  (création automatique d'une colonne, `AddColumn`, `poc/js/grist-meta.js`) et `adba2b4` (le comparatif). Traité le 21/10 :
+  l'`INDEX.md` (003 lue, 004 et 005 faites), la consigne 006 (l'étiquette : la 005 avait tort, la référence est le commit
+  `54c48f3` ; Leaflet décidé le 21/10 et porté avec Form+ ; les deux ombres), le cahier et « GFS en bref » (étape 3 livrée).
+  Form+ n'est toujours pas référencé dans GFS (pas de manifeste).
+- Automation+ à `4110eaf` (21/10, après-midi) : deux commits de plus depuis `78d3619`. Son `GFS-ETAT.md` (`4110eaf`, qui décrit
+  `6eb0165`, version 0.11.1) dit la 001 corrigée pour les règles 3, 4 et 12 (sauf le logo) : un graphe illisible n'est plus
+  réécrit (« Workflow conservé tel quel »), l'identifiant réel est relu après `AddTable`, plus aucune écriture dans une colonne
+  absente, jetons `--z-*` et plus de vert hors palette ; restent la règle 2 (le graphe aussi dans les réglages de la vue, clé
+  `workflow` ; table `Automation` sans le « _ » final du préfixe) et le logo. Questions et demandes : aucune. Lu : 23 fichiers ;
+  deux lectures de plus (`listTables` avant et après `AddTable`, `Automation` au démarrage), rien d'autre ne change pour GFS.
+  Traité le 21/10 : la référence avancée à `4110eaf` (`b60eaa7`, commit à part, relu ; 3 vérifications en fr/clair et en
+  en/sombre, sans refus) et la ligne du guide ; pas de consigne, l'app n'avait rien demandé. Le nom de la table (`Automation`
+  contre le préfixe `Automation_`) se règle avant l'étape 5.
+- Grist-BI à `23647eb` (21/10) : huit commits de plus depuis `70d8374`, trois demandes de tirage fusionnées : les tuiles
+  Waterfall et Radar, la table de test de charge `BI_StressTest` retirée (l'app se connecte d'elle-même à la première table
+  existante, `js/grist-api.js`), trois défauts de l'audit UX/UI corrigés. Chez GFS : ni table de plus, ni `_grist_*` de plus (toujours
+  `_grist_Tables` et `_grist_Tables_column`), ni adresse ni bibliothèque ; la table `BI_Dashboard_UserProbe` est toujours créée
+  sans demander (règle 4). Toujours pas de `GFS-ETAT.md`. Traité le 21/10 : la ligne du guide.
+- Grist-widget-audit à `f5f251e` (21/10) : neuf commits de plus depuis `cc82061`, tous des règles de l'audit (code minifié exempté
+  des axes A et B et plafonnant la note, exemption de l'API Grist du réseau, lecture de l'objet `grist` par l'AST,
+  `--sans-reseau`), lus par leurs titres seulement : rien à changer chez GFS. Toujours sous MIT à ce commit.
 - Licences (21/10, le porteur : tous les dépôts sous GPL 3.0). Relevé sur le sommet de `main` de chaque dépôt :
   Publipostage+, Grist-BI et SlidesPlus ont un `LICENSE` qui est le texte officiel de la GPL 3.0 (mêmes octets que celui de
   GFS, SHA-256 `3972dc97…`) ; Grist-BI était sous MIT jusqu'au 29/09 (`fb3ab41`), passé en GPL 3.0 ce jour-là. Form+ :
-  `LICENSE` sous Apache 2.0, README et documents de même (consigne 004). Automation+ : `package.json` (`GPL-3.0-only`),
+  passée à la GPL 3.0 à `196734d` (consigne 004 faite) : son `LICENSE` a les mêmes octets que celui de GFS (SHA-256
+  `3972dc97…`, relu le 21/10 sur `a5d2207`) et son README le dit. Automation+ : `package.json` (`GPL-3.0-only`),
   README et panneau « Crédits » disaient GPL 3.0 sans fichier `LICENSE` ; il est arrivé à `e356021` (consigne 002 faite),
   mêmes octets que celui de GFS. L'outil d'audit est sous MIT, au nom du porteur : il passe aussi en GPL 3.0 (le porteur a
   dit oui le 21/10), par un message à coller dans son projet (il n'a pas de dossier `consignes/` ici) ; à relire sur `main`

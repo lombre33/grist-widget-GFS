@@ -985,6 +985,10 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
    `GFS_REFUSE` sans rien écrire, et sans `id` GFS le dit en console ; pile 1 048 576 caractères passe, un de plus reçoit
    `GFS_QUOTA` ; un navigateur qui refuse d'écrire donne `{ retenu: false }`, la valeur vaut pour la page (le contexte la rend à
    l'app rechargée) et disparaît avec la page de GFS. **Non mesuré** : un second onglet, un second document, Firefox, Safari.
+   **Avec l'app, le 21/10 au soir** : Publipostage+ à `487d66b` (`prototype/labo/run-stockage-publipostage.mjs`, 12 vérifications
+   par combinaison, mêmes conditions) : le thème choisi dans ses Réglages, à la souris puis au clavier, et le zoom de la page
+   (Ctrl + plus) arrivent chez GFS sous `gfs.stockage.publipostage.*`, sans lot au document ni refus du courtier ; GFS rechargé,
+   l'app revient dans ce thème et à ce zoom ; Ctrl + 0 retire la clé du zoom.
 
 ### 5.4 Les actions
 

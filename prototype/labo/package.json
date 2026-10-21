@@ -1,6 +1,7 @@
 {
   "name": "gfs-labo",
   "private": true,
+  "license": "GPL-3.0-only",
   "type": "module",
   "description": "Labo « vrai Grist » (grist-static) pour mesurer le prototype du courtier de GFS",
   "dependencies": {

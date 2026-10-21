@@ -1,6 +1,7 @@
 {
   "name": "gfs-prototype",
   "private": true,
+  "license": "GPL-3.0-only",
   "type": "module",
   "description": "Prototype du courtier de GFS (étape 2 du plan) : modules ES pour le navigateur, essayés aussi sous Node (node --test).",
   "scripts": {

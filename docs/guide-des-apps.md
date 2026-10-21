@@ -9,6 +9,7 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
 
 - Une app reste **complète et autonome** : GFS ne lui retire rien, il l'héberge.
 - **Dès maintenant, sans attendre GFS**, treize règles qui ne coûtent presque rien et évitent de la dette (section 1.1).
+- **Une seule licence, la GPL 3.0**, dans le dépôt de chaque app (section 1.3).
 - **Pour Publipostage+, une seule chose est urgente** : la garde « type inconnu », avant que quiconque écrive un nouveau
   type de modèle dans sa table (section 2.2).
 - **Quand GFS arrive** : le kit en sous-module, le manifeste `gfs.json`, la liste unique des bibliothèques natives, le
@@ -77,6 +78,18 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
    après sa question d'enregistrement s'il y a des modifications en attente (Enregistrer, Abandonner, Annuler) et rouvre ce
    qu'elle avait ouvert. Son propre choix de langue y est grisé avec la raison (« La langue se choisit dans Grist Factory
    Suite »), jamais masqué ; seule, l'app garde son choix.
+
+### 1.3 Licence : GPL 3.0 dans tous les dépôts (décision du porteur, 21/10)
+
+1. **Le texte officiel de la GNU General Public License version 3** est le fichier `LICENSE`, à la racine du dépôt : 674
+   lignes, à reprendre octet pour octet de celui du dépôt de GFS. Aucun autre texte de licence ne couvre le code propre de
+   l'app.
+2. **Chaque `package.json`** dit `"license": "GPL-3.0-only"` ; le README, les docs et un panneau « Crédits » éventuel disent
+   « GPL 3.0 ».
+3. **Le code d'un tiers** gardé dans le dépôt (un QR code, une bibliothèque copiée) garde sa licence et son avis d'origine,
+   à côté du fichier. Elle doit être compatible avec la GPL 3.0 (MIT, BSD et Apache 2.0 le sont) : lire la licence avant
+   d'ajouter du code tiers.
+4. **Aucun en-tête de licence** n'est demandé dans chaque fichier.
 
 ---
 

@@ -2,7 +2,7 @@
 // que la personne choisit (gauche, haut, droite, bas), sans prendre de place à l'app, qui apprend la zone à laisser libre. La sonde R (labo/sondes/r-barre/) fait ce que fera Publipostage+ :
 // elle note `contexte.barre` et chaque événement `barre`, écarte son titre et sa légende de la zone, et sait appeler `barre.masquer`. LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 // Tout se fait à 700 × 400, à la vraie souris (et au vrai clavier pour le premier choix). Ce que la passe mesure :
-//   1. le départ : pas de barre sous l'explorateur ; l'app ouverte, la barre est à gauche, 34 × 94 px à 4 px du bord, centrée ; GFS n'a rien écrit sans un geste ; le contexte dit la zone mesurée ;
+//   1. le départ : pas de barre sous l'explorateur ; l'app ouverte, la barre est à gauche, 34 × 124 px (quatre boutons) à 4 px du bord, centrée ; GFS n'a rien écrit sans un geste ; le contexte dit la zone mesurée ;
 //   2. les quatre bords, un par un : le menu de position s'ouvre à côté de la barre sans la recouvrir, le choix est gardé (`gfs.barre`), la barre se pose au bord et au milieu, l'app reçoit un événement
 //      `barre` (et un contexte) qui disent exactement la zone mesurée, son titre et sa légende s'en écartent, les coins et les trois autres milieux de côté restent cliquables, pas le milieu du côté de la barre ;
 //   3. la taille du cadre change (un bord vertical, un bord horizontal) : la barre reste centrée et l'app le sait ;
@@ -130,7 +130,7 @@ say('au départ :', { barre: seen.contextes[0].barre, rect, stage, state });
 check('le cadre de GFS mesure bien 700 × 400', near(stage.largeur, 700) && near(stage.hauteur, 400), stage);
 check('l\'app ouverte, la barre est à l\'écran, à gauche par défaut', state.visible && state.edge === 'gauche' && state.place === 'gauche', state);
 check('GFS n\'a rien écrit sans un geste de la personne (pas de clé `gfs.barre`)', state.stored === null, state.stored);
-check('la barre mesure 34 × 94 px, à 4 px du bord gauche et centrée sur lui', near(rect.largeur, 34, 0.6) && near(rect.hauteur, 94, 0.6) && placedAt('gauche', rect, stage), rect);
+check('la barre mesure 34 × 124 px, à 4 px du bord gauche et centrée sur lui', near(rect.largeur, 34, 0.6) && near(rect.hauteur, 124, 0.6) && placedAt('gauche', rect, stage), rect);
 check('le groupe de boutons a un nom accessible (« Grist Factory Suite ») et un rôle de groupe', state.role === 'group' && state.label === WORDS.group, state);
 const names = await frame.evaluate(() => ['floater-files', 'floater-apps', 'floater-place'].map(id => { const b = document.getElementById(id); return { title: b.title, label: b.getAttribute('aria-label'), text: b.textContent.trim(), icons: b.querySelectorAll('svg').length }; }));
 check('trois boutons à icône seule, dont le nom (info-bulle et nom accessible) est dans la langue de GFS', JSON.stringify(names) === JSON.stringify([WORDS.files, WORDS.apps, WORDS.place].map(text => ({ title: text, label: text, text: '', icons: 1 }))), names);
@@ -145,7 +145,7 @@ const colors = await frame.evaluate(() => {
 });
 check('l\'icône se lit sur le fond de la barre à 4,5:1 au moins (jetons de la charte)', colors.icone >= 4.5, colors);
 check('le contexte de l\'app dit la zone mesurée : { bord, epaisseur, zone } = la barre et 4 px autour', flat(seen.contextes[0].barre) === flat(expectedBarre('gauche', rect, stage)), { recu: seen.contextes[0].barre, attendu: expectedBarre('gauche', rect, stage) });
-check('à 700 × 400 la zone du bord gauche est x 0, y 149, 42 × 102 (épaisseur 42)', stage.largeur !== 700 || stage.hauteur !== 400 || flat(seen.contextes[0].barre) === 'gauche,42,0,149,42,102', seen.contextes[0].barre);
+check('à 700 × 400 la zone du bord gauche est x 0, y 134, 42 × 132 (épaisseur 42)', stage.largeur !== 700 || stage.hauteur !== 400 || flat(seen.contextes[0].barre) === 'gauche,42,0,134,42,132', seen.contextes[0].barre);
 const documentBefore = await lab.rangement(frame);
 let reach = await reachability();
 say('cliquable :', reach);

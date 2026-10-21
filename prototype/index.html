@@ -10,10 +10,10 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-qHMZOYZRQYx4Dn3RAJglRtpbmiIyihNKyKyOgKaLLGM='; style-src 'self'; img-src 'self' data:; frame-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
-<link rel="stylesheet" href="css/gfs.css?v=a915589c20">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-SwGL9dh5gUzOlp92QabGOU2te39x7IE2I5Ioc+bjgjA='; style-src 'self'; img-src 'self' data:; frame-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<link rel="stylesheet" href="css/gfs.css?v=fce5d2ff06">
 <link rel="stylesheet" href="css/explorer.css?v=f98b8b812a">
-<link rel="stylesheet" href="css/modules.css?v=ec61e659ed">
+<link rel="stylesheet" href="css/modules.css?v=b70c2dc5c7">
 <!-- Le routeur d'abord : il doit être enregistré avant que le script d'API de Grist n'affecte window.onmessage (contrats 1.2). -->
 <script src="js/router.js?v=20d0f9a823"></script>
 <!-- La carte d'importation, écrite par outils/versions.mjs (ne pas la modifier à la main) : chaque module se charge à son adresse versionnée, si bien que le cache de Pages
@@ -27,10 +27,10 @@
     "./js/broker.js": "./js/broker.js?v=4e909305b8",
     "./js/catalogue.js": "./js/catalogue.js?v=af259e06c5",
     "./js/context.js": "./js/context.js?v=b0a00cb0b8",
-    "./js/controller.js": "./js/controller.js?v=e5a22693fc",
+    "./js/controller.js": "./js/controller.js?v=e95cf6816d",
     "./js/demo.js": "./js/demo.js?v=6bcb117862",
     "./js/dock-state.js": "./js/dock-state.js?v=8eec913fd1",
-    "./js/dock.js": "./js/dock.js?v=dc419f956a",
+    "./js/dock.js": "./js/dock.js?v=cf25af8eeb",
     "./js/dom.js": "./js/dom.js?v=6093a9f23f",
     "./js/envelope.js": "./js/envelope.js?v=8586bc1508",
     "./js/explorer-data.js": "./js/explorer-data.js?v=05d52b28de",
@@ -40,8 +40,8 @@
     "./js/extensions.js": "./js/extensions.js?v=a6b2033702",
     "./js/filter.js": "./js/filter.js?v=0bbd3af6df",
     "./js/frames.js": "./js/frames.js?v=09ec1cb3a3",
-    "./js/i18n.js": "./js/i18n.js?v=dfd22c974b",
-    "./js/icons.js": "./js/icons.js?v=f0cdae2b10",
+    "./js/i18n.js": "./js/i18n.js?v=d027e76907",
+    "./js/icons.js": "./js/icons.js?v=33c23e4464",
     "./js/language.js": "./js/language.js?v=b287c81a20",
     "./js/layers.js": "./js/layers.js?v=2d0c225b72",
     "./js/libraries.js": "./js/libraries.js?v=f8e30c6112",
@@ -56,7 +56,10 @@
     "./js/session.js": "./js/session.js?v=e6a7a9c786",
     "./js/settings.js": "./js/settings.js?v=a425d4248c",
     "./js/state.js": "./js/state.js?v=289f010ea6",
-    "./js/stored-choice.js": "./js/stored-choice.js?v=e1e93b893c"
+    "./js/stored-choice.js": "./js/stored-choice.js?v=e1e93b893c",
+    "./js/work-control.js": "./js/work-control.js?v=3c80e39045",
+    "./js/work-row.js": "./js/work-row.js?v=b0f9ffdd91",
+    "./js/work-window.js": "./js/work-window.js?v=c3522e9562"
   }
 }
 </script>
@@ -71,6 +74,7 @@
   <div class="floaters" id="floaters" role="group" data-edge="gauche" hidden>
     <button type="button" class="floater" id="floater-files"></button>
     <button type="button" class="floater" id="floater-apps" aria-haspopup="dialog"></button>
+    <button type="button" class="floater" id="floater-work" aria-haspopup="dialog" aria-pressed="false"></button>
     <button type="button" class="floater" id="floater-place" aria-haspopup="menu"></button>
   </div>
   <p class="status" id="status" role="status" aria-live="polite" hidden></p>

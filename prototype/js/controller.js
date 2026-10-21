@@ -12,6 +12,7 @@ import { LanguageSetting, browserStore, languageOfGrist, localeFor, watchStorage
 import { AppStorage, browserBackend, storageHandlers } from './app-storage.js';
 import { installSprite } from './icons.js';
 import { Dock } from './dock.js';
+import { WorkControl } from './work-control.js';
 import { Explorer } from './explorer.js';
 import { loadFiles } from './explorer-data.js';
 import { readCatalogue } from './libraries.js';
@@ -195,9 +196,17 @@ export class GfsController {
   // (événement `barre`, contrats 5.2, point 7).
   #buildDock() {
     this.dock = new Dock({
-      root: this.$('floaters'), stage: this.$('stage'), onFiles: () => this.showExplorer(), onApps: () => void this.openModules(), onNotKept: () => this.notice(this.t('lang.notKept')),
+      root: this.$('floaters'), stage: this.$('stage'), onFiles: () => this.showExplorer(), onApps: () => void this.openModules(), onWork: () => void this.workControl.open(),
+      onNotKept: () => this.notice(this.t('lang.notKept')),
+    });
+    // La ligne de travail (contrats 4.5) : une autre table rouvre l'app active, qui la reçoit dès son démarrage.
+    this.workControl = new WorkControl({
+      port: this.port, state: this.state, dock: this.dock, container: this.$('stage'), t: this.t, appName: this.appName, manifests: () => this.validApps().map(item => item.manifest),
+      session: () => this.session, inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')], notice: text => this.notice(text),
+      reopen: id => { this.#closeSession(); this.#activate(id, this.opening); }, hidden: () => this.doc.hidden,
     });
     this.dock.relabel(this.t);
+    this.workControl.relabel();
     this.dock.onChange(barre => { if (this.session) this.session.sendBar(barre); });
   }
 
@@ -229,6 +238,7 @@ export class GfsController {
     this.explorer.relocalize(live);
     if (this.modulesWindow) this.modulesWindow.relocalize(live);
     this.dock.relabel(this.t);
+    this.workControl.relabel();
     this.#showFileStatus();
     if (this.session) this.session.sendLanguage(this.lang);
   }
@@ -523,8 +533,9 @@ export class GfsController {
   }
 
   #sessionContext(app) {
+    const { state, port } = this.workControl.sourceFor(app.manifest);
     return {
-      entry: app.app, manifest: app.manifest, catalogue: this.apps.filter(item => item.ok).map(item => item.manifest), state: this.state, port: this.port, router: this.router,
+      entry: app.app, manifest: app.manifest, catalogue: this.apps.filter(item => item.ok).map(item => item.manifest), state, port, router: this.router,
       container: this.$('frames'), readonly: this.readonly, preferences: this.#appPreferences(), base: this.doc.baseURI, lang: this.lang, onStatus: (kind, current) => this.#onStatus(kind, current),
       envelopeHandlers: session => this.#envelopeHandlers(session),
     };

@@ -64,6 +64,27 @@
 .rd-label { font-size: 12.5px; font-weight: 600; }
 .rd-hint { font-size: 11.5px; color: var(--text-muted); }
 
+/* ---------- la fenêtre « Table et ligne de travail » (contrats 4.5) : la recherche reste en haut, seule la liste défile ---------- */
+.mod.wk { width: min(480px, 100%); height: 100%; }
+.wk-title-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.wk-title-row h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wk-back { flex: none; display: inline-flex; align-items: center; gap: 2px; }
+.wk-back .ic { width: 14px; height: 14px; }
+.inp-search.wk-search { display: block; width: 100%; margin-top: 8px; }
+.wk-list { margin: 0; padding: 4px 0; list-style: none; }
+.wk-item { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 32px; padding: 5px 8px; border: 0; border-radius: var(--radius-sm); background: transparent;
+  color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.wk-item:hover { background: var(--surface-sunken); }
+.wk-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.wk-item .ic { flex: none; width: 15px; height: 15px; color: var(--text-muted); }
+.wk-item[aria-current="true"] { background: var(--accent-soft); color: var(--accent-ink); font-weight: 700; }
+.wk-item[aria-current="true"] .ic { color: var(--accent-ink); }
+.wk-label { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.wk-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wk-reason { font-size: 11.5px; font-weight: 400; color: var(--text-muted); }
+.wk-item.is-locked { cursor: not-allowed; }
+.wk-item.is-locked .wk-name { color: var(--text-muted); }
+
 /* ---------- étroit : l'état et le geste passent sous le texte ---------- */
 @media (max-width: 519px) {
   .mod-scrim { padding: 6px; }

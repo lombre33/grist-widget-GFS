@@ -47,6 +47,11 @@ const ICONS = {
   'dock-right': '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M15 4v16"/>',
   'dock-top': '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 10h18"/>',
   'dock-bottom': '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 14h18"/>',
+  // La ligne de travail (contrats 4.5) : la ligne d'un tableau que désigne la flèche ; une table de Grist ; la page qui décide (le lien) ; revenir.
+  'work-row': '<rect x="5" y="4" width="16" height="16" rx="1.5"/><path d="M5 9.3h16M5 14.6h16"/><path d="M1.5 10.2l2.5 1.8-2.5 1.8"/>',
+  table: '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 9h18M9 9v11"/>',
+  link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  'chev-left': '<path d="M15 6l-6 6 6 6"/>',
 };
 
 export const iconNames = () => Object.keys(ICONS);

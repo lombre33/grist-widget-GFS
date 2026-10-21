@@ -1,4 +1,5 @@
-// La barre de GFS au-dessus d'une app (cahier 6.3, contrats 5.2 point 7) : trois boutons à icône seule (« Fichiers », « Apps » et la position de la barre) posés par-dessus le cadre de l'app, au
+// La barre de GFS au-dessus d'une app (cahier 6.3, contrats 5.2 point 7) : quatre boutons à icône seule (« Fichiers », « Apps », la ligne de travail, contrats 4.5, et la position
+// de la barre) posés par-dessus le cadre de l'app, au
 // bord que la personne choisit, centrés sur ce bord. Le cadre de l'app reste plein : la barre ne prend de place à personne, et dit à l'app ce qu'elle recouvre (`dock-state.js`).
 // Le bord est retenu dans le `localStorage` de GFS (clé `gfs.barre`), comme la langue : jamais dans le document.
 
@@ -17,24 +18,28 @@ export class Dock {
   #stage;
   #files;
   #apps;
+  #work;
+  #workTip = null;
   #place;
   #state;
   #t = key => key;
   #onNotKept;
 
-  // root : l'élément de la barre, avec ses trois boutons ; stage : la scène (sa taille est celle du cadre de l'app) ; onFiles et onApps : les deux premiers boutons ;
+  // root : l'élément de la barre, avec ses boutons ; stage : la scène (sa taille est celle du cadre de l'app) ; onFiles, onApps et onWork : les trois premiers boutons ;
   // onNotKept : le navigateur refuse de retenir le bord choisi (il vaut alors pour la page).
-  constructor({ root, stage, onFiles, onApps, onNotKept, win = window }) {
+  constructor({ root, stage, onFiles, onApps, onWork, onNotKept, win = window }) {
     this.#root = root;
     this.#stage = stage;
     this.#files = root.querySelector('#floater-files');
     this.#apps = root.querySelector('#floater-apps');
+    this.#work = root.querySelector('#floater-work');
     this.#place = root.querySelector('#floater-place');
     this.#onNotKept = onNotKept;
     const setting = new StoredChoice({ choices: EDGES, fallback: DEFAULT_EDGE, store: keyStore(win, STORAGE_KEY) });
     this.#state = new DockState({ setting, measure: () => this.#measure(), render: view => this.#render(view) });
     this.#files.addEventListener('click', onFiles);
     this.#apps.addEventListener('click', onApps);
+    this.#work.addEventListener('click', onWork);
     this.#place.addEventListener('click', () => this.#openPlaceMenu());
     watchKey(setting, STORAGE_KEY, win);
     // La barre est centrée sur son bord : un cadre qui change de taille la déplace.
@@ -55,8 +60,16 @@ export class Dock {
     this.#root.setAttribute('aria-label', t('gfs.title'));
     this.#name(this.#files, 'folder', t('gfs.filesTip'));
     this.#name(this.#apps, 'modules', t('gfs.appsTip'));
+    this.#name(this.#work, 'work-row', this.#workTip || t('work.title'));
     this.#name(this.#place, EDGE_ICONS[this.edge], t('dock.place'));
     this.#place.dataset.edge = this.edge;
+  }
+
+  // La ligne de travail choisie, dite par l'info-bulle du bouton ; `active` : une ligne est choisie (le bouton est enfoncé), sinon la page décide.
+  setWork(text, active) {
+    this.#workTip = text;
+    this.#name(this.#work, 'work-row', text);
+    this.#work.setAttribute('aria-pressed', active ? 'true' : 'false');
   }
 
   #name(button, iconName, text) {

@@ -715,6 +715,43 @@ Voir la section 5. Ils portent la clé `gfs` et jamais de `mtype` : le script d'
 ignore (mesuré dans `grain-rpc` 0.1.7 : `_dispatch` n'agit que sur les `mtype` connus). Aucun champ d'un message `gfs` ne porte
 un nom que le script d'API lit (`tableId`, `rowId`, `settings`, `theme`, `options`).
 
+### 4.5 La ligne de travail : une table et une ligne choisies dans GFS
+
+Décidée par le porteur le 21/10 (« Oui, le construire dans GFS »), après la mesure du même jour (faits vérifiés, 1 ; labo,
+`run-travail.mjs`). Sans elle, la section de GFS décide de la table et de la ligne de chaque app (4.2, 4.3) : il faut un GFS par
+table, réglé dans le panneau de Grist.
+
+1. [T] **Le geste.** Le bouton « Table et ligne de travail » de la barre de GFS (5.2, point 7) ouvre une fenêtre du widget : la
+   table, puis la ligne, chacune dans une liste avec recherche. Le premier article, « La table de la page », rend la main à la
+   section : c'est l'état de départ, celui d'avant 4.5. La liste des tables ne montre ni les tables internes de Grist
+   (`_grist_*`), ni celles de GFS (`GFS_*`), ni celles des apps (leur préfixe, 2.3, le préfixe sans son « _ » final, et les
+   tables de leurs fichiers, 2.4). Une table que l'app ouverte ne peut pas lire (3.2) est grisée, avec la raison.
+2. [T] **Ce que l'app reçoit.** Tant qu'une ligne de travail est choisie, le courtier présente à l'app la table et la ligne
+   choisies comme celles de sa section : le message de table et de ligne (4.3) porte leur `tableId` et leur `rowId`, au `ready`
+   comme ensuite ; ceux de Grist pour la section ne passent plus. `fetchSelectedTable` et `fetchSelectedRecord` sont rendus
+   depuis la table choisie, lue par GFS (`fetchTable`), sous la forme de la vue de Grist (faits vérifiés, 1) : colonnes visibles
+   (sans `manualSort` ni colonnes d'aide), Référence par sa colonne affichée (`expandRefs`, vrai par défaut), nombre d'une colonne
+   Date, DateTime ou Référence encodé, lignes dans l'ordre du tableau (`manualSort`). Sans section, il n'y a ni filtre ni tri de
+   la personne : toutes les lignes. `setCursorPos` d'une ligne de la table choisie change la ligne de travail ;
+   `setSelectedRows` ne fait rien. L'app n'a rien à changer : elle lit sa table par `getSelectedTableId`, `onRecord` et
+   `onRecords`, que le script d'API tire de ces messages et de ces appels.
+3. [T] **Une autre table, l'app est rouverte.** Changer de table (ou revenir à celle de la page) ferme l'app active et la rouvre :
+   une app peut lire sa table une seule fois, au démarrage (Automation+). Changer de ligne dans la même table envoie un message
+   de ligne, sans rouvrir.
+4. [D] **Relire pour voir les changements.** Grist ne prévient pas GFS des changements d'une autre table que celle de sa section
+   (5.5, point 1). Tant qu'une app est ouverte sur une ligne de travail, GFS relit la table choisie et envoie un message de table
+   (`dataChange`) quand elle a changé : toutes les **2 s** jusqu'à 5 000 lignes, toutes les **5 s** jusqu'à 20 000, toutes les
+   **10 s** au-delà ; à l'arrêt quand la page est cachée. Mesuré le 21/10 (labo, sans réseau) : une relecture coûte 11 à 14 ms
+   pour 1 000 lignes, 38 ms pour 5 000, 135 à 166 ms pour 20 000 ; à 20 000 lignes relues toutes les 1,5 s, la page de Grist
+   accroche à chaque relecture (0,19 s au plus). Deux lectures demandées en même temps n'en font qu'une.
+5. [T] **Ce que le courtier refuse.** Une table que l'app ne peut pas lire (3.2) n'est jamais présentée : la fenêtre la grise, et
+   une app ouverte ensuite qui ne peut pas la lire suit la page, et GFS le dit.
+6. [D] **Ce qui est retenu.** Rien, dans le document comme dans le navigateur : la ligne de travail vaut pour le cadre de GFS
+   ouvert, et se perd quand Grist le recharge (changement de page, d'accès). La plus prudente des réponses, en attendant
+   l'usage.
+7. [M] **À mesurer sur un Grist en ligne** : le coût d'une relecture par le réseau, et un repère léger « le document a changé »
+   (l'historique du document par l'API REST) qui éviterait de relire une table qui n'a pas changé.
+
 ---
 
 ## 5. Les messages propres à GFS
@@ -852,12 +889,12 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 7. [D] `barre` : **la barre de GFS recouvre un petit morceau du cadre de l'app, et l'app laisse libre la place qu'elle y prend**
    (décision du porteur, 21/10 : la barre se place à gauche, en haut, à droite ou en bas, à la guise de la personne ; les apps
    adaptent leur interface aux quatre emplacements sans recouvrement ; l'emprise reste minimale, donc pas de bande en plus, mais
-   un recouvrement de l'espace que les apps laissent vide). Elle porte trois boutons à icône seule (« Fichiers », « Apps et
-   extensions » et « Position de la barre »), de 34 × 94 px au bord gauche ou droit et de 94 × 34 px en haut ou en bas, à 4 px du
-   bord et centrée sur lui ; elle remplace les deux boutons que GFS posait au coin bas droit. Le cadre de l'app reste plein :
+   un recouvrement de l'espace que les apps laissent vide). Elle porte quatre boutons à icône seule (« Fichiers », « Apps et
+   extensions », « Table et ligne de travail », 4.5, depuis le 21/10 au soir, et « Position de la barre »), de 34 × 124 px au bord
+   gauche ou droit et de 124 × 34 px en haut ou en bas (34 × 94 avec les trois premiers boutons), à 4 px du bord et centrée sur lui ; elle remplace les deux boutons que GFS posait au coin bas droit. Le cadre de l'app reste plein :
    rien ne le réduit. `contexte.barre` dit ce qui est recouvert :
-   `{ "bord": "gauche", "epaisseur": 42, "zone": { "x": 0, "y": 149, "largeur": 42, "hauteur": 102 } }` (l'exemple d'un cadre de
-   700 × 400 avec la barre à gauche). `bord` vaut `gauche`, `haut`, `droite` ou `bas` ; `zone` est le rectangle à laisser libre,
+   `{ "bord": "gauche", "epaisseur": 42, "zone": { "x": 0, "y": 134, "largeur": 42, "hauteur": 132 } }` (l'exemple d'un cadre de
+   700 × 400 avec la barre à gauche ; la taille de la barre peut changer, l'app lit toujours la zone qu'on lui donne). `bord` vaut `gauche`, `haut`, `droite` ou `bas` ; `zone` est le rectangle à laisser libre,
    en pixels du cadre de l'app (origine en haut à gauche) : la barre et 4 px tout autour, bornés par le cadre ; `epaisseur` est la
    largeur de la zone (bords gauche et droit) ou sa hauteur (haut et bas), la profondeur dont l'app écarte ce qu'elle pose à ce
    bord. Hors de la zone, le cadre est à l'app, coins compris. L'app ne suppose aucun bord : les menus, bulles, fenêtres et bandes
@@ -883,7 +920,8 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    (`labo/sondes/r-barre/`), qui fait ce que fera Publipostage+ : aux quatre bords la barre mesure 34 × 94 px (94 × 34 en haut et
    en bas), à 4 px du bord et centrée ; la zone que reçoit l'app (dans `contexte` et dans l'événement, un seul événement par
    changement) est exactement la barre mesurée dans la page, 4 px autour : `{ x: 0, y: 149, largeur: 42, hauteur: 102 }` à gauche,
-   `{ x: 658, … }` à droite, `{ x: 299, y: 0, largeur: 102, hauteur: 42 }` en haut ; le menu de position s'ouvre à côté de la
+   `{ x: 658, … }` à droite, `{ x: 299, y: 0, largeur: 102, hauteur: 42 }` en haut (trois boutons ; avec le quatrième, 4.5, le même essai
+   mesure 34 × 124 px et `{ x: 0, y: 134, largeur: 42, hauteur: 132 }` à gauche, le 21/10 au soir) ; le menu de position s'ouvre à côté de la
    barre sans la recouvrir (à droite, au-dessous, à gauche ou au-dessus d'elle selon le bord) et se manie au clavier (Entrée,
    flèches, Échap, le focus revient au bouton) ; les coins et les trois autres milieux de côté de l'app restent cliquables à la
    vraie souris, à travers le cadre de GFS, pas le milieu du côté de la barre ; un cadre de 560 × 300 déplace la zone avec la barre

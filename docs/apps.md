@@ -304,8 +304,9 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   Graphique à 64 Ko, avec un essai qui les compare au dossier de l'app (`6bcecc1`) ; le stockage de chaque personne livré
   (`14cfd19`, contrats 5.3, mesuré dans un vrai Grist) ; la consigne 024 (le stockage, la référence, la barre). La barre : le
   porteur a tranché le 21/10 (bord au choix de la personne, apps adaptées aux quatre places, sans bande en plus, par-dessus
-  l'espace laissé libre) ; la forme de l'échange suit dans la consigne 025. Restent ouverts : le titre d'impression (011),
-  l'adresse du CDN (016).
+  l'espace laissé libre) ; la forme de l'échange est dans la consigne 025 (posée le 21/10, soir ; contrats 5.2, point 7 ;
+  mesurée dans un vrai Grist, 2 x 82 vérifications, et avec l'app à `fcca7b4` : le ▶ se clique, et en haut la barre recouvre trois
+  boutons de sa barre d'outils). Restent ouverts : le titre d'impression (011), l'adresse du CDN (016).
 - Licences (21/10, le porteur : tous les dépôts sous GPL 3.0). Relevé sur le sommet de `main` de chaque dépôt :
   Publipostage+, Grist-BI et SlidesPlus ont un `LICENSE` qui est le texte officiel de la GPL 3.0 (mêmes octets que celui de
   GFS, SHA-256 `3972dc97…`) ; Grist-BI était sous MIT jusqu'au 29/09 (`fb3ab41`), passé en GPL 3.0 ce jour-là. Form+ :

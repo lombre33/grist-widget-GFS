@@ -8,7 +8,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|---|
 | Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `b711d80` | 21/10/2026 | GPL 3.0 |
-| Form+ | `lombre33/FormPlus` | `consignes/form/` | `77ffd71` | 21/10/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
+| Form+ | `lombre33/FormPlus` | `consignes/form/` | `16701fe` | 21/10/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `4110eaf` | 21/10/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `23647eb` | 21/10/2026 | GPL 3.0 |
 
@@ -361,6 +361,18 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   commit à part, relu) ; le bouton ▶ mesuré à l'ouverture par GFS (`1936aef`, `run-diapositives` 2 x 58 ; la vérification
   passe aussi avec l'ancien `slide-show.js` : le cas de la page de l'app ne se reproduit pas au labo) ; l'`INDEX.md` (026 et 027
   faites) ; la consigne 028 (avec l'annonce : épingler, ranger et renommer depuis les fichiers de GFS, choix du porteur).
+- Form+ à `16701fe` (21/10, soir ; le porteur : « check aussi form + qui normalement a fini les consignes données ») : quatre
+  commits de plus depuis `77ffd71`. Son `GFS-ETAT.md` (`16701fe`, qui décrit `038dd1b`) dit la 007 faite : la définition de chaque
+  formulaire dans `FormPlus_Formulaires` (`Nom`, `TypeFormulaire`, `DateModif`, `ModifiePar`, `Definition` en JSON, et
+  `IdSectionWidget`, à elle), créée avec l'accord de la personne ; plus d'écriture de `options` ni de lecture de `_grist_Shares`.
+  Attention : `038dd1b` part de `84f429d`, à côté des douze commits de `514341f` à `85ac56d` (mode interne, CSP, lien public,
+  créneau horaire…), que la fusion `652b156` réunit et que la page ne décrit pas. Lus : de `39e0740` à `038dd1b`, 13 fichiers.
+  Mesuré dans un vrai Grist (`run-form` 2 x 26, `run-form-seul` 2 x 7) : la fenêtre d'accord et la table passent, puis
+  `ensureTableGate` pose une section de formulaire sur la page du widget et Grist recharge le cadre, avec ou sans GFS : aucune
+  ligne écrite, une section de plus à chaque essai. Lu dans le code de Grist (`ACLRulesReader.ts`) : une section publiée ouvre
+  sa table à l'ajout, pas à la lecture. Traité le 21/10 : la référence avancée à `038dd1b` (commit à part, relu) ; le labo
+  (enregistrer un formulaire, dans GFS et sans GFS) ; l'`INDEX.md` (007 faite) ; la consigne 008 (enregistrer, les répondants,
+  une ligne par formulaire, la page à compléter, l'annonce du rangement par GFS).
 - Licences (21/10, le porteur : tous les dépôts sous GPL 3.0). Relevé sur le sommet de `main` de chaque dépôt :
   Publipostage+, Grist-BI et SlidesPlus ont un `LICENSE` qui est le texte officiel de la GPL 3.0 (mêmes octets que celui de
   GFS, SHA-256 `3972dc97…`) ; Grist-BI était sous MIT jusqu'au 29/09 (`fb3ab41`), passé en GPL 3.0 ce jour-là. Form+ :

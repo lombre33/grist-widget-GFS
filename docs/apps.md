@@ -7,7 +7,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `64937df` | 21/10/2026 | GPL 3.0 |
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `8f2fde6` | 21/10/2026 | GPL 3.0 |
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `2c0ee50` | 21/10/2026 | Apache 2.0, à passer en GPL 3.0 (consigne 004) |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `f5e4100` | 21/10/2026 | GPL 3.0 dans le code, `LICENSE` absent (consigne 002) |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `70d8374` | 21/10/2026 | GPL 3.0 |
@@ -196,6 +196,23 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   `catalogue.json` (l'audit externe de l'app le lisait comme le manifeste d'un widget Grist). Traité le 21/10 : la référence
   avancée à `e1f5d2b` (commit à part, relu ; dix essais dans un vrai Grist, sans échec) et le poids de Diapositives (37 Ko) ;
   pas de consigne, l'app n'avait rien demandé.
+- Publipostage+ à `8f2fde6` (21/10, midi) : dix-huit commits de plus depuis `64937df`, tous du 21/10. Son `GFS-ETAT.md`
+  (`8f2fde6`, qui décrit `cef298e` ; GFS lu à `21e5d20`) ajoute trois lignes à « Changements qui touchent GFS » (`da1a4c3`,
+  `e816ae5`, `cef298e`) ; « Demandes à GFS » : aucune ; « Questions pour GFS » : le titre d'impression, toujours ouverte (le
+  porteur la mesure lui-même). Lus : de `e1f5d2b` à `cef298e`, trente-sept fichiers changent et rien de ce que GFS suit ne
+  bouge (ni table, colonne, clé de réglages, `_grist_*`, adresse de la CSP, carte d'importation, liste de bibliothèques, ni
+  appel à GFS de plus) ; les corrections (`448812b`, `e438124`, `6975658`, `c5efc16`, `a60d9f3`, `22dc1a8`, `f761b7d`)
+  touchent l'éditeur, l'Excel, le PDF et le texte des interfaces. Pour les diapositives : `js/extensions.js` monte
+  `diapositives` de 0.3 à 0.6 ; `slide-strip.js` passe de 29 220 à 54 487 octets et le CSS reste à 7 351, soit 61 838 octets
+  (l'indication `poids` vaut 62 au lieu de 37) ; une présentation chargée reste légère (`da1a4c3`, un `IntersectionObserver`
+  sur la liste des miniatures), une image en calque suit sa diapositive (`e816ae5`), et une diapositive se copie et se colle
+  (`cef298e`, Ctrl+C et Ctrl+V) par les événements `copy` et `paste` du navigateur, sans l'API Clipboard ; éteinte, Ctrl+C
+  et Ctrl+V sur une miniature appellent `installer`. Pas lus : `32822d6` (le bouton « Comme dans Grist » des variables),
+  `6262b36`, `74dffd7` et `8f2fde6`, que la page ne décrit pas encore (la référence ira jusque-là à la prochaine lecture).
+  Traité le 21/10 : la référence avancée à `cef298e` (commit à part, relu ; sept essais dans un vrai Grist, sans échec) ; le
+  copier-coller des diapositives, que l'app n'avait pas essayé dans le cadre isolé de GFS, y marche (Ctrl+C sur une
+  miniature, Ctrl+V sur une autre, un seul Ctrl+Z, un mot du texte copié comme toujours, extension éteinte : `installer`) ;
+  le poids de Diapositives à 62 Ko ; pas de consigne, l'app n'avait rien demandé.
 - Automation+ à `f5e4100` (21/10) : sept commits de plus depuis `ee8f0a9`, tous du 21/10 (versions 0.6.0 à 0.8.0). Chez GFS :
   le graphe est aussi gardé dans une table du document, créée avec l'accord de la personne (`js/store.js`) ; d'abord des
   tables `Automation_*` (`7dae9e3`), puis une seule, `Automation` (`5a166f4`), qui porte les workflows, le journal et un

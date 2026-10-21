@@ -4,9 +4,11 @@
 //      « Diapositives », sans bibliothèque (ni mode, ni poids à choisir).
 //   2. La personne la coche : l'app la reçoit, sans rien charger ; la ligne s'utilise, une présentation vierge s'ouvre à la page 16:9 en paysage, nommée et enregistrée sous le type « presentation ».
 //   3. L'explorateur de GFS : la présentation y est connue (famille orange, pastille « Présentation »), le menu « Nouveau » la propose et, l'app ouverte, y ouvre une présentation vierge (consigne 014),
-//      et le double-clic ouvre l'app sur elle.
-//   4. La personne éteint l'extension : la ligne de l'app se grise, la présentation ouverte reste ouverte et s'enregistre toujours sous son type ; dans l'explorateur la présentation est grisée avec
-//      sa raison, et son double-clic ouvre la fenêtre de GFS sur la ligne « Diapositives ».
+//      et le double-clic ouvre l'app sur elle. Puis, dans une présentation de trois diapositives, le copier-coller de l'app : Ctrl+C sur une miniature, Ctrl+V sur une autre, dans le cadre isolé de GFS
+//      (sans `allow-same-origin`) où seuls les événements `copy` et `paste` du navigateur servent, sans autorisation du presse-papiers.
+//   4. La personne éteint l'extension : la ligne de l'app se grise, la présentation ouverte reste ouverte, Ctrl+V et Ctrl+C sur une miniature ouvrent la fenêtre de GFS sur la ligne « Diapositives »
+//      (appel `installer`) sans rien changer, et elle s'enregistre toujours sous son type ; dans l'explorateur la présentation est grisée avec sa raison, et son double-clic ouvre cette même fenêtre.
+import { readFileSync } from 'node:fs';
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';
 
@@ -14,9 +16,11 @@ const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
 const run = `diapositives-${lang}-${scheme}`;
 const WORDS = lang === 'fr'
-  ? { row: 'Nouvelle présentation', reason: /Demande l.extension Diapositives \(Grist Factory Suite\)/, type: 'Présentation', name: 'Ma présentation', opened: /Ouvert depuis l.explorateur\./, unsaved: /^Modèle non enregistré/, text: 'Première diapositive' }
-  : { row: 'New presentation', reason: /Needs the Slides extension \(Grist Factory Suite\)/, type: 'Presentation', name: 'My presentation', opened: /Opened from the explorer\./, unsaved: /^Template not saved/, text: 'First slide' };
+  ? { row: 'Nouvelle présentation', reason: /Demande l.extension Diapositives \(Grist Factory Suite\)/, type: 'Présentation', name: 'Ma présentation', opened: /Ouvert depuis l.explorateur\./, unsaved: /^Modèle non enregistré/, text: 'Première diapositive', deck: 'Trois diapositives', copied: n => `Diapositive ${n} copiée.` }
+  : { row: 'New presentation', reason: /Needs the Slides extension \(Grist Factory Suite\)/, type: 'Presentation', name: 'My presentation', opened: /Opened from the explorer\./, unsaved: /^Template not saved/, text: 'First slide', deck: 'Three slides', copied: n => `Slide ${n} copied.` };
 const FK = 'ext:publipostage/diapositives';
+// Le poids que le manifeste de l'app donne à l'extension (contrats 2.6, point 1, en Ko) : la ligne de la fenêtre de GFS doit le dire.
+const WEIGHT = JSON.parse(readFileSync(new URL('../manifestes/publipostage.json', import.meta.url), 'utf8')).extensions.find(extension => extension.id === 'diapositives').poids;
 
 const lab = await startLab({ lang, colorScheme: scheme });
 const { page } = lab;
@@ -91,6 +95,27 @@ async function toggleSlides(wantOn) {
   await gfs.locator('.mod').waitFor({ state: 'hidden' });
 }
 
+// La bande des diapositives, au clavier et à la souris : la miniature `n` (la première : 1) à la souris, puis Échap et Tab rendent le clavier à la bande, sur elle (le clic le rend au document).
+const thumbFocus = () => app.evaluate(() => {
+  const item = document.activeElement && document.activeElement.closest('.pp-slide-item');
+  return item ? Array.from(document.querySelectorAll('.pp-slide-item')).indexOf(item) + 1 : 0;
+});
+async function intoStrip(n) {
+  await app.locator('.pp-slide-thumb').nth(n - 1).click();
+  await page.waitForTimeout(250);
+  await page.keyboard.press('Escape');
+  for (let i = 0; i < 10 && (await thumbFocus()) === 0; i++) { await page.keyboard.press('Tab'); await page.waitForTimeout(150); }
+  return thumbFocus();
+}
+// Ce que la personne voit de la présentation ouverte : ses miniatures, le texte de chaque diapositive, le coin d'état, et le document.
+const slidesNow = () => app.evaluate(() => {
+  const editor = EditorCore.getEditor();
+  return {
+    count: document.querySelectorAll('.pp-slide-item').length, status: document.getElementById('status-msg').textContent, html: editor.getHTML(),
+    texts: SlideStrip.slidesOf(editor.state.doc).map(slide => slide.nodes.map(entry => entry.node.textContent).join('')),
+  };
+});
+
 // ===== 1. Extension éteinte
 check('éteinte par défaut : l\'app ne reçoit pas l\'extension « diapositives »', await app.evaluate(() => !Extensions.isActive('diapositives') && !GfsLink.extensions().includes('diapositives')));
 let state = await (async () => { await hoverRow(); return rowState(); })();
@@ -104,9 +129,9 @@ const line = gfs.locator(`[data-row="${FK}"]`);
 const text = (await line.innerText()).replace(/\s+/g, ' ');
 say('la ligne dans la fenêtre :', text);
 const sizes = await line.locator('.sz').allInnerTexts();
-check('la ligne dit ce qu\'elle apporte et sa taille du manifeste (≈ 37 Ko), sans choix de bibliothèque (rien à charger)',
+check(`la ligne dit ce qu'elle apporte et sa taille du manifeste (≈ ${WEIGHT} Ko), sans choix de bibliothèque (rien à charger)`,
   (lang === 'fr' ? /Diapositives.*présentations en 16:9/ : /Slides.*16:9 presentations/).test(text) && (await line.locator('.mr-mode').count()) === 0
-    && sizes.length === 1 && /^≈\s37\s(Ko|KB)$/.test(sizes[0].trim()), `${text} | ${JSON.stringify(sizes)}`);
+    && sizes.length === 1 && new RegExp(`^≈\\s${WEIGHT}\\s(Ko|KB)$`).test(sizes[0].trim()), `${text} | ${JSON.stringify(sizes)}`);
 check('elle n\'est pas grisée : aucune bibliothèque ne peut lui manquer', !(await line.evaluate(node => node.classList.contains('is-locked'))));
 await lab.shotPanel(run, '2-fenetre-diapositives');
 
@@ -146,7 +171,12 @@ await lab.shotPanel(run, '4-presentation-ouverte');
 
 // ===== 3. L'explorateur de GFS
 // Un document de plus, déjà là quand l'app démarre (l'app lit ses modèles au démarrage) : de quoi passer d'un type à l'autre.
-await gfs.evaluate(() => grist.docApi.applyUserActions([['AddRecord', 'Publipostage_Modeles', null, { Nom: 'Lettre', TypeModele: 'document', Contenu: '<p>Cher client</p>' }]]));
+const BREAK = '<div class="page-break-marker" contenteditable="false">Saut de page</div>';
+const DECK = `<h2>Titre un</h2><p>Premier texte</p>${BREAK}<h2>Titre deux</h2><p>Deuxième texte <strong>gras</strong></p>${BREAK}<p>Trois</p>`;
+await gfs.evaluate(({ deck, html }) => grist.docApi.applyUserActions([
+  ['AddRecord', 'Publipostage_Modeles', null, { Nom: 'Lettre', TypeModele: 'document', Contenu: '<p>Cher client</p>' }],
+  ['AddRecord', 'Publipostage_Modeles', null, { Nom: deck, TypeModele: 'presentation', Contenu: html }],
+]), { deck: WORDS.deck, html: DECK });
 const restart = async () => {
   await gfs.evaluate(() => location.reload());
   await page.waitForTimeout(1000);
@@ -212,6 +242,52 @@ check('« Nouveau » > « Présentation » avec l\'app ouverte : une présentati
   Boolean(blank) && blank.slide && blank.landscape && blank.text === '' && WORDS.unsaved.test(blank.status) && (await app.evaluate(() => window.__marque)) === 'avant' && (await gfs.locator('#toast').isVisible()) === false, blank);
 check('rien n\'est écrit dans le document par cette ouverture (aucune ligne de plus)', (await savedRow(WORDS.name)).count === rowsBefore);
 await lab.shotPanel(run, '5b-nouveau-presentation');
+
+// Copier et coller une diapositive, l'extension cochée : Ctrl+C sur une miniature, Ctrl+V sur une autre. L'app n'écoute que les événements `copy` et `paste` du navigateur, dans son cadre isolé (sans
+// `allow-same-origin`), sans demander le presse-papiers à Grist.
+await showFiles(WORDS.deck);
+await gfs.locator('.ls-row', { hasText: WORDS.deck }).first().dblclick();
+seen = await waitShown(WORDS.deck);
+await app.waitForFunction(() => document.querySelectorAll('.pp-slide-item').length === 3, null, { timeout: 15000 }).catch(() => {});
+const deck = await slidesNow();
+check('une présentation de trois diapositives s\'ouvre, avec sa bande de trois miniatures', Boolean(seen) && deck.count === 3 && deck.texts.length === 3 && deck.texts[1] === 'Titre deuxDeuxième texte gras', { seen, count: deck.count, texts: deck.texts });
+await lab.shotPanel(run, '5c-trois-diapositives');
+const onSecond = await intoStrip(2);
+await page.keyboard.press('Control+c');
+await page.waitForTimeout(400);
+let clip = await slidesNow();
+check(`Ctrl+C sur la miniature 2 : le coin d'état dit « ${WORDS.copied(2)} », le clavier reste sur elle et le document ne change pas`,
+  onSecond === 2 && clip.status === WORDS.copied(2) && (await thumbFocus()) === 2 && clip.html === deck.html, { onSecond, status: clip.status, focus: await thumbFocus(), same: clip.html === deck.html });
+await intoStrip(1);
+await page.keyboard.press('Control+v');
+await page.waitForTimeout(900);
+clip = await slidesNow();
+check('Ctrl+V sur la miniature 1 : la diapositive copiée arrive après elle, en deuxième, avec son titre et son texte en gras ; le clavier reste sur sa miniature',
+  clip.count === 4 && JSON.stringify(clip.texts) === JSON.stringify([deck.texts[0], deck.texts[1], deck.texts[1], deck.texts[2]]) && (clip.html.match(/<strong>gras<\/strong>/g) || []).length === 2
+    && (await thumbFocus()) === 2, { count: clip.count, texts: clip.texts, focus: await thumbFocus() });
+await lab.shotPanel(run, '5d-diapositive-collee');
+await page.keyboard.press('Control+z');
+await page.waitForTimeout(600);
+clip = await slidesNow();
+check('un seul Ctrl+Z, sans quitter la bande, rend la présentation à l\'identique', clip.html === deck.html && clip.count === 3 && (await thumbFocus()) > 0, { count: clip.count, same: clip.html === deck.html, focus: await thumbFocus() });
+// Le copier de toujours : un mot du texte, choisi au clavier, se copie et se colle au curseur, sans diapositive de plus.
+// Une pause entre deux touches : l'éditeur relit la sélection du navigateur après chaque touche, et des touches trop serrées la lui font perdre.
+const press = async (key, pause = 120) => { await page.keyboard.press(key); await page.waitForTimeout(pause); };
+await app.locator('.ProseMirror p', { hasText: 'Premier texte' }).first().click();
+await page.waitForTimeout(200);
+await press('Home');
+for (let i = 0; i < 'Premier'.length; i++) await press('Shift+ArrowRight', 80);
+await press('Control+c', 250);
+await press('End');
+await press('Control+v', 600);
+clip = await slidesNow();
+check('un mot choisi dans le texte garde le copier-coller de toujours : « Premier » se colle au curseur, sans diapositive de plus', clip.count === 3 && clip.texts[0] === 'Titre unPremier textePremier', { count: clip.count, texts: clip.texts });
+await page.keyboard.press('Control+z');
+await page.waitForTimeout(400);
+check('aucun refus de la politique de sécurité pendant le copier-coller', (await app.evaluate(() => window.__csp)).length === 0, await app.evaluate(() => window.__csp));
+// L'enregistrement automatique de l'app range ces essais dans la ligne de la présentation : on attend qu'il ait fini, sans quoi l'ouverture suivante ouvrirait sa question « Enregistrer ? ».
+await app.waitForFunction(() => !LiveEntry.hasUnsavedEdits(), null, { timeout: 20000 }).catch(() => {});
+await page.waitForTimeout(500);
 // La présentation nommée revient à l'écran (le vierge n'a rien à garder) : la suite part d'elle.
 await showFiles(WORDS.name);
 await fileRow().dblclick();
@@ -226,6 +302,22 @@ check('la ligne « Nouvelle présentation » se grise de nouveau, avec sa raison
 await leaveMenu();
 seen = await shown();
 check('la présentation ouverte reste ouverte, intacte', seen.name === WORDS.name && seen.text.includes(WORDS.text), seen);
+// Ctrl+V puis Ctrl+C sur sa miniature : l'app explique (appel `installer`, la fenêtre de GFS s'ouvre sur la ligne « Diapositives »), le document ne change pas.
+const idle = await slidesNow();
+await intoStrip(1);
+await page.keyboard.press('Control+v');
+await gfs.locator('.mod').waitFor({ timeout: 15000 });
+check('éteinte, Ctrl+V sur une miniature ouvre la fenêtre de GFS sur la ligne « Diapositives » (appel `installer`), et le document ne change pas',
+  (await focusedRow()) === FK && (await slidesNow()).html === idle.html, { focus: await focusedRow(), same: (await slidesNow()).html === idle.html });
+await page.keyboard.press('Escape');
+await gfs.locator('.mod').waitFor({ state: 'hidden' });
+await intoStrip(1);
+await page.keyboard.press('Control+c');
+await gfs.locator('.mod').waitFor({ timeout: 15000 });
+clip = await slidesNow();
+check('Ctrl+C sur la miniature aussi : la même fenêtre, et le coin d\'état ne dit pas « copiée »', (await focusedRow()) === FK && clip.html === idle.html && clip.status !== WORDS.copied(1), { focus: await focusedRow(), status: clip.status });
+await page.keyboard.press('Escape');
+await gfs.locator('.mod').waitFor({ state: 'hidden' });
 await app.locator('#editor-container .ProseMirror').click();
 await page.keyboard.press('End');
 await page.keyboard.type(' bis', { delay: 20 });

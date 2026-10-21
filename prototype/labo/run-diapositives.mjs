@@ -4,7 +4,7 @@
 //      « Diapositives », sans bibliothèque (ni mode, ni poids à choisir).
 //   2. La personne la coche : l'app la reçoit, sans rien charger ; la ligne s'utilise, une présentation vierge s'ouvre à la page 16:9 en paysage, nommée et enregistrée sous le type « presentation ».
 //   3. L'explorateur de GFS : la présentation y est connue (famille orange, pastille « Présentation »), le menu « Nouveau » la propose et, l'app ouverte, y ouvre une présentation vierge (consigne 014),
-//      et le double-clic ouvre l'app sur elle. Puis, dans une présentation de trois diapositives, le copier-coller de l'app : Ctrl+C sur une miniature, Ctrl+V sur une autre, dans le cadre isolé de GFS
+//      et le double-clic ouvre l'app sur elle, le bouton ▶ à sa place. Puis, dans une présentation de trois diapositives, le copier-coller de l'app : Ctrl+C sur une miniature, Ctrl+V sur une autre, dans le cadre isolé de GFS
 //      (sans `allow-same-origin`) où seuls les événements `copy` et `paste` du navigateur servent, sans autorisation du presse-papiers ; le menu des mises en page de « Ajouter » ; une miniature glissée
 //      à la vraie souris jusqu'à sa place ; « Présenter » (le bouton ▶, F5, les flèches, la barre du bas, Échap), dont le plein écran du navigateur dépend des cadres au-dessus de l'app.
 //   3 bis. Les diapositives liées (case « Garder liée » du volet « Importer », 8d68bb4) : une diapositive importée liée à sa source ; l'app écrit d'autres lignes de sa table que celle qui est
@@ -111,6 +111,18 @@ async function intoStrip(n) {
   for (let i = 0; i < 10 && (await thumbFocus()) === 0; i++) { await page.keyboard.press('Tab'); await page.waitForTimeout(150); }
   return thumbFocus();
 }
+// Le bouton ▶ « Présenter » et la pastille du zoom, tels que la personne les voit : le bouton à gauche de la pastille, sur sa ligne, en bas du panneau.
+const playGeometry = () => app.evaluate(() => {
+  const button = document.querySelector('.pp-slide-show-open');
+  const pill = document.getElementById('pp-page-zoom');
+  if (!button || !pill) return null;
+  const at = button.getBoundingClientRect();
+  const zoom = pill.getBoundingClientRect();
+  return {
+    hidden: button.hidden, shown: getComputedStyle(button).visibility !== 'hidden', disabled: button.getAttribute('aria-disabled'), leftOfZoom: at.right <= zoom.left + 1,
+    sameLine: Math.abs(at.bottom - zoom.bottom) <= 1, low: at.top >= innerHeight / 2, inPanel: at.width > 0 && at.bottom <= innerHeight + 0.5 && at.right <= innerWidth + 0.5,
+  };
+});
 // Ce que la personne voit de la présentation ouverte : ses miniatures, le texte de chaque diapositive, le coin d'état, et le document.
 const slidesNow = () => app.evaluate(() => {
   const editor = EditorCore.getEditor();
@@ -211,6 +223,12 @@ check('le double-clic ouvre l\'app sur la présentation, dans le coin d\'état �
 pageNow = await pageState();
 check('elle s\'ouvre à la page de la diapositive', pageNow.slide && pageNow.landscape, pageNow);
 check('GFS n\'a ajouté aucune phrase', (await gfs.locator('#toast').isVisible()) === false);
+// Ouverte au démarrage de l'app par GFS : le bouton ▶ est à sa place. Depuis 4f00ac2, sans pastille du zoom posée, il attend, invisible, et la pastille qui arrive le place à sa gauche ;
+// la page de l'app dit qu'avant, il pouvait rester au coin haut gauche du panneau. Ce geste ne le reproduit pas : la vérification passe aussi avec l'app à 487d66b (21/10, soir).
+let play = null;
+for (let i = 0; i < 30 && !(play && play.shown && play.leftOfZoom && play.sameLine && play.low); i++) { play = await playGeometry(); await page.waitForTimeout(100); }
+check('ouverte au démarrage par GFS, le bouton ▶ « Présenter » est déjà à gauche de la pastille du zoom, sur sa ligne, en bas du panneau (pas au coin haut gauche)',
+  Boolean(play) && play.shown && play.leftOfZoom && play.sameLine && play.low, play);
 
 // L'app est déjà ouverte : GFS lui envoie l'appel `ouvrir`, de la présentation vers un document, puis du document vers la présentation, dans le même cadre (l'app n'est pas rechargée).
 await app.evaluate(() => { window.__marque = 'avant'; });
@@ -338,14 +356,7 @@ check('un seul Ctrl+Z la remet à sa place', clip.count === 3 && clip.html === d
 
 // « Présenter » : le bouton ▶ à gauche de la pastille du zoom. Le plein écran du navigateur dépend de chaque cadre au-dessus de l'app (celui de GFS ne donne que `clipboard-write`) : ce que le
 // navigateur en dit est relevé, et le diaporama couvre le panneau de l'app dans tous les cas, sans erreur ; la souris et le clavier l'avancent, Échap le ferme, la page ne se recharge pas.
-const playButton = await app.evaluate(() => {
-  const button = document.querySelector('.pp-slide-show-open');
-  const pill = document.getElementById('pp-page-zoom');
-  if (!button || !pill) return null;
-  const at = button.getBoundingClientRect();
-  const zoom = pill.getBoundingClientRect();
-  return { hidden: button.hidden, disabled: button.getAttribute('aria-disabled'), leftOfZoom: at.right <= zoom.left + 1, inPanel: at.width > 0 && at.bottom <= innerHeight + 0.5 && at.right <= innerWidth + 0.5 };
-});
+const playButton = await playGeometry();
 check('le bouton ▶ « Présenter » est là, actif, à gauche de la pastille du zoom, dans le panneau', Boolean(playButton) && !playButton.hidden && playButton.disabled === 'false' && playButton.leftOfZoom && playButton.inPanel, playButton);
 await app.evaluate(() => { window.__pres = 'avant'; });
 await intoStrip(2);

@@ -7,6 +7,8 @@
 //      et le double-clic ouvre l'app sur elle. Puis, dans une présentation de trois diapositives, le copier-coller de l'app : Ctrl+C sur une miniature, Ctrl+V sur une autre, dans le cadre isolé de GFS
 //      (sans `allow-same-origin`) où seuls les événements `copy` et `paste` du navigateur servent, sans autorisation du presse-papiers ; le menu des mises en page de « Ajouter » ; une miniature glissée
 //      à la vraie souris jusqu'à sa place ; « Présenter » (le bouton ▶, F5, les flèches, la barre du bas, Échap), dont le plein écran du navigateur dépend des cadres au-dessus de l'app.
+//   3 bis. Les diapositives liées (case « Garder liée » du volet « Importer », 8d68bb4) : une diapositive importée liée à sa source ; l'app écrit d'autres lignes de sa table que celle qui est
+//      ouverte (le numéro de la diapositive dans sa source, son jeton, la colonne créée au premier besoin, puis ce qui change, dans le même lot) : le courtier laisse tout passer.
 //   4. La personne éteint l'extension : la ligne de l'app se grise, la présentation ouverte reste ouverte, Ctrl+V, Ctrl+C et le bouton ▶ ouvrent la fenêtre de GFS sur la ligne « Diapositives »
 //      (appel `installer`) sans rien changer, et elle s'enregistre toujours sous son type ; dans l'explorateur la présentation est grisée avec sa raison, et son double-clic ouvre cette même fenêtre.
 import { readFileSync } from 'node:fs';
@@ -154,11 +156,13 @@ check('une présentation vierge s\'ouvre à la page 16:9 en paysage', pageNow.sl
 const filesAfter = await filesNow();
 const newScripts = filesAfter.scripts.filter(src => !filesBefore.scripts.includes(src));
 const newStyles = filesAfter.styles.filter(href => !filesBefore.styles.includes(href));
-// Les trois modules de l'extension (la bande, le volet « Importer », « Présenter ») et leurs trois feuilles de style, tous du dossier de l'app, chargés ensemble.
-const MODULES = ['slide-strip', 'slide-import', 'slide-show'];
-const fromFolder = (list, kind) => MODULES.every(name => list.filter(url => new RegExp(`/apps/publipostage/extensions/diapositives/${name}\\.${kind}\\?`).test(url)).length === 1);
-check('l\'extension charge ses six fichiers (trois scripts, trois feuilles de style), depuis le dossier de l\'app, rien d\'une autre adresse, aucun refus de la politique de sécurité',
-  newScripts.length === 3 && fromFolder(newScripts, 'js') && newStyles.length === 3 && fromFolder(newStyles, 'css')
+// Les quatre scripts de l'extension (la bande, le volet « Importer », les diapositives liées, « Présenter ») et ses trois feuilles de style, tous du dossier de l'app, chargés ensemble.
+const SCRIPTS = ['slide-strip', 'slide-import', 'slide-links-ui', 'slide-show'];
+const STYLES = ['slide-strip', 'slide-import', 'slide-show'];
+const fromFolder = (list, names, kind) => list.length === names.length
+  && names.every(name => list.filter(url => new RegExp(`/apps/publipostage/extensions/diapositives/${name}\\.${kind}\\?`).test(url)).length === 1);
+check('l\'extension charge ses sept fichiers (quatre scripts, trois feuilles de style), depuis le dossier de l\'app, rien d\'une autre adresse, aucun refus de la politique de sécurité',
+  fromFolder(newScripts, SCRIPTS, 'js') && fromFolder(newStyles, STYLES, 'css')
     && (await app.evaluate(() => window.__csp)).length === 0, { newScripts, newStyles, csp: await app.evaluate(() => window.__csp) });
 await leaveMenu();
 await app.locator('#editor-container .ProseMirror').click();
@@ -393,6 +397,81 @@ check('aucun refus de la politique de sécurité pendant le copier-coller, les m
 await app.waitForFunction(() => !LiveEntry.hasUnsavedEdits(), null, { timeout: 20000 }).catch(() => {});
 await page.waitForTimeout(500);
 // La présentation nommée revient à l'écran (le vierge n'a rien à garder) : la suite part d'elle.
+await showFiles(WORDS.name);
+await fileRow().dblclick();
+await waitShown(WORDS.name);
+
+// ===== 3 bis. Les diapositives liées (8d68bb4), l'extension cochée, « Ma présentation » à l'écran : la diapositive 2 de « Trois diapositives » importée liée après la première. L'app écrit
+// alors d'autres lignes de Publipostage_Modeles que celle qui est ouverte : le numéro de la diapositive dans sa source et le jeton de la source (colonne `Jeton`, créée au premier besoin), puis
+// ce qui change, dans le même lot que sa propre ligne. Les lots sont relevés dans le cadre de l'app, sans rien changer à ce qu'elle envoie.
+const LINK = lang === 'fr'
+  ? { keep: 'Garder liée', search: 'Trois', both: `Liée à « ${WORDS.deck} », dans les deux sens` }
+  : { keep: 'Keep linked', search: 'Three', both: `Linked to “${WORDS.deck}”, both ways` };
+const plain = html => String(html || '').replace(/<[^>]+>/g, '');
+const sourceRow = () => gfs.evaluate(async name => {
+  const data = await grist.docApi.fetchTable('Publipostage_Modeles');
+  const at = data.Nom.indexOf(name);
+  return at < 0 ? null : { id: data.id[at], content: data.Contenu[at], tokenColumn: 'Jeton' in data, token: data.Jeton ? String(data.Jeton[at] || '') : '' };
+}, WORDS.deck);
+const linkedBefore = await sourceRow();
+await app.locator('.ProseMirror p', { hasText: WORDS.text }).first().click();
+await app.locator('.pp-slide-import-open').click();
+await app.locator('.pp-slide-import .ss-trigger').click();
+await page.keyboard.type(LINK.search, { delay: 30 });
+await page.keyboard.press('Enter');
+const keepRow = app.locator('.pp-slide-import-keep');
+await keepRow.waitFor({ timeout: 10000 });
+const keep = await keepRow.evaluate(row => {
+  const box = row.getBoundingClientRect();
+  return { text: row.textContent.trim(), checked: row.querySelector('input').checked, inPanel: box.width > 0 && box.bottom <= innerHeight + 0.5 && box.right <= innerWidth + 0.5 };
+});
+check(`le volet « Importer », « ${WORDS.deck} » choisie : la case « ${LINK.keep} » est là, décochée, dans le panneau`, keep.text === LINK.keep && !keep.checked && keep.inPanel, keep);
+await keepRow.locator('input').click();
+await lab.shotPanel(run, '5i-importer-garder-liee');
+await app.evaluate(() => {
+  window.__lots = [];
+  const real = grist.docApi.applyUserActions.bind(grist.docApi);
+  grist.docApi.applyUserActions = (actions, ...rest) => { window.__lots.push(actions.map(action => [action[0], action[1], action[2]])); return real(actions, ...rest); };
+});
+await app.locator('.pp-slide-import .pp-slide-thumb').nth(1).click();
+await app.waitForFunction(() => document.querySelectorAll('.pp-slide-strip .pp-slide-item').length === 2, null, { timeout: 10000 }).catch(() => {});
+await page.waitForTimeout(1500);
+let linked = await slidesNow();
+const badges = await app.evaluate(() => Array.from(document.querySelectorAll('.pp-slide-strip .pp-slide-item'))
+  .map(item => { const mark = item.querySelector('.pp-slide-link-badge'); return mark && !mark.hidden ? mark.title : null; }));
+// Le volet est encore ouvert, avec les miniatures de la source : les diapositives se comptent dans le document.
+check('un clic sur la miniature 2 l\'importe, liée, après la première ; sa pastille dit le lien', linked.texts.length === 2 && linked.texts[1] === deck.texts[1] && badges[1] === LINK.both && !badges[0], { texts: linked.texts, badges });
+let source = await sourceRow();
+check('la ligne de la source reçoit tout de suite le numéro de sa diapositive et son jeton : le courtier laisse passer',
+  Boolean(source) && /data-slide-id="[a-z0-9]+"/.test(source.content) && !/data-slide-id/.test(linkedBefore.content) && source.tokenColumn && source.token !== '' && warnings.length === 0,
+  { tokenColumnBefore: linkedBefore.tokenColumn, token: source && source.token, warnings });
+await lab.shotPanel(run, '5j-diapositive-liee');
+// La barre de GFS est posée par-dessus l'app, au bord gauche par défaut (contrats 5.2, point 7) : recouvre-t-elle la pastille ? Relevé seulement : l'app s'écarte de sa zone (consigne 025).
+const barBox = await gfs.locator('#floaters').boundingBox();
+const badgeBox = await app.locator('.pp-slide-strip .pp-slide-item').nth(1).locator('.pp-slide-link-badge').boundingBox();
+const overlaps = (a, b) => Boolean(a && b) && a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+say('la pastille du lien sous la barre de GFS (bord gauche, le défaut) :', overlaps(barBox, badgeBox) ? 'oui' : 'non', JSON.stringify({ barBox, badgeBox }));
+await app.locator('.pp-slide-import-close').click();
+await app.locator('.ProseMirror p', { hasText: 'Deuxième texte' }).first().click();
+await page.keyboard.press('End');
+await page.keyboard.type(' ici', { delay: 30 });
+await page.keyboard.press('Control+s');
+for (let i = 0; i < 60 && !plain(source.content).includes('gras ici'); i++) { await page.waitForTimeout(250); source = await sourceRow(); }
+const lots = await app.evaluate(() => window.__lots);
+const actions = lots.flat();
+const together = lots.some(lot => [saved.id, source.id].every(id => lot.some(action => action[1] === 'Publipostage_Modeles' && [].concat(action[2]).includes(id))));
+say('lots de l\'app pendant les diapositives liées :', JSON.stringify([...new Set(actions.map(action => `${action[0]} ${action[1]}`))]));
+check('du texte tapé dans la diapositive liée, puis Ctrl+S : la source le reçoit, dans le même lot que la présentation ouverte ; rien hors des tables de l\'app, aucun refus du courtier',
+  plain(source.content).includes('gras ici') && together && actions.every(action => /^Publipostage_/.test(String(action[1]))) && warnings.length === 0, { together, lots: lots.length, warnings });
+await app.waitForFunction(() => !LiveEntry.hasUnsavedEdits(), null, { timeout: 20000 }).catch(() => {});
+await showFiles(WORDS.deck);
+await gfs.locator('.ls-row', { hasText: WORDS.deck }).first().dblclick();
+await waitShown(WORDS.deck);
+await page.waitForTimeout(800);
+linked = await slidesNow();
+check(`« ${WORDS.deck} » ouverte depuis l'explorateur : sa diapositive 2 porte le changement`, linked.count === 3 && linked.texts[1].includes('gras ici'), linked.texts);
+await lab.shotPanel(run, '5k-source-changee');
+check('aucun refus de la politique de sécurité pendant les diapositives liées', (await app.evaluate(() => window.__csp)).length === 0, await app.evaluate(() => window.__csp));
 await showFiles(WORDS.name);
 await fileRow().dblclick();
 await waitShown(WORDS.name);

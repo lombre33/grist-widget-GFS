@@ -122,7 +122,7 @@
         "en": "16:9 presentations, written with the same editor as documents."
       },
       "icone": "slides",
-      "poids": 141,
+      "poids": 165,
       "dossier": "extensions/diapositives/",
       "pointsEntree": [{ "genre": "type", "id": "presentation" }, { "genre": "menu", "id": "nouveau" }]
     }

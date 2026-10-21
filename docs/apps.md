@@ -7,10 +7,10 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `b9ba041` | 21/10/2026 | GPL 3.0 |
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `64937df` | 21/10/2026 | GPL 3.0 |
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `2c0ee50` | 21/10/2026 | Apache 2.0, à passer en GPL 3.0 (consigne 004) |
-| Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `ee8f0a9` | 20/10/2026 | GPL 3.0 dans le code, `LICENSE` absent (consigne 002) |
-| Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `c8c819f` | 20/10/2026 | GPL 3.0 |
+| Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `f5e4100` | 21/10/2026 | GPL 3.0 dans le code, `LICENSE` absent (consigne 002) |
+| Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `70d8374` | 21/10/2026 | GPL 3.0 |
 
 ## Lus pour référence (pas des apps de GFS)
 
@@ -185,6 +185,31 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   (réponses : garder la carte autonome, les écritures à l'étape 5) et la 004 (licence). La demande Leaflet n'est pas traitée :
   le catalogue ne porte qu'un fichier par bibliothèque et l'adresse des tuiles entrerait dans une CSP, deux choix du
   porteur (question posée le 21/10).
+- Publipostage+ à `64937df` (21/10) : huit commits de plus depuis `b9ba041`, dont trois corrigent l'app (`4ae8eeb`,
+  `62db523`, `e1f5d2b`), les autres sont ses essais, son audit et sa page d'état. Son `GFS-ETAT.md` (`64937df`, qui décrit
+  `e1f5d2b` ; GFS lu à `21e5d20`) dit la 021 « faite · lue » (la 016 attend la bascule), rapporte l'écoute de `dataChange`
+  de la Boucle et les sauts de page d'une présentation qui ne se voient plus dans l'éditeur ; « Demandes à GFS » : aucune ;
+  « Questions pour GFS » : le titre d'impression. Lus : les commits de code de `a851780` à `e1f5d2b` ne lisent ni n'écrivent
+  rien de nouveau chez GFS (ni table, colonne, clé de réglages, `_grist_*`, adresse de la CSP, carte d'importation ni liste
+  de bibliothèques) ; `js/extensions.js` monte la version de l'extension de Diapositives de 0.2 à 0.3 et son dossier passe
+  de 36 045 à 36 571 octets (trois lignes de `slide-strip.css`) ; le catalogue de la galerie de développement s'appelle
+  `catalogue.json` (l'audit externe de l'app le lisait comme le manifeste d'un widget Grist). La référence de GFS reste à
+  `80deef7` (rien n'est demandé par l'app).
+- Automation+ à `f5e4100` (21/10) : sept commits de plus depuis `ee8f0a9`, tous du 21/10 (versions 0.6.0 à 0.8.0). Chez GFS :
+  le graphe est aussi gardé dans une table du document, créée avec l'accord de la personne (`js/store.js`) ; d'abord des
+  tables `Automation_*` (`7dae9e3`), puis une seule, `Automation` (`5a166f4`), qui porte les workflows, le journal et un
+  verrou d'exécution entre onglets (`064edcf`, relais après 20 s) ; elle n'a pas le « _ » final du préfixe (contrats 2.3) ;
+  une colonne à formule `Auteur` (`user.Email`). Le graphe reste aussi dans les réglages de la vue
+  (`grist.setOption('workflow', …)`). Une CSP existe (`'unsafe-eval'` à cause du script de Grist, dit `SECURITY.md`) ; ni
+  bibliothèque, ni écriture dans `_grist_*`. Toujours pas de `GFS-ETAT.md` : la 001 attend. La référence de GFS reste à
+  `ee8f0a9` (le manifeste d'Automation+ décrit les réglages `workflow`). Traité le 21/10 : la ligne du guide mise à jour, la
+  consigne 002 (licence).
+- Grist-BI à `70d8374` (21/10) : treize commits de plus depuis `c8c819f`, six demandes de tirage fusionnées (agrégations
+  DuckDB-WASM au-delà d'un seuil de lignes, modale de détail par tuile, clés de jointure suggérées, export Excel des valeurs
+  de tuile en mode mesure, auteur des commentaires reconnu, drill-down catégoriel). Chez GFS : une table-sonde
+  `BI_Dashboard_UserProbe` (une colonne à formule `user.Email`, `js/grist-api.js`) créée au démarrage sans demander à la
+  personne (règle 4 ; la formule demandera la capacité `formules`) ; lit `_grist_Tables` et `_grist_Tables_column` ; ni CSP,
+  ni bibliothèque de plus. Toujours pas de `GFS-ETAT.md`. Traité le 21/10 : la ligne du guide mise à jour.
 - Licences (21/10, le porteur : tous les dépôts sous GPL 3.0). Relevé sur le sommet de `main` de chaque dépôt :
   Publipostage+, Grist-BI et SlidesPlus ont un `LICENSE` qui est le texte officiel de la GPL 3.0 (mêmes octets que celui de
   GFS, SHA-256 `3972dc97…`) ; Grist-BI était sous MIT jusqu'au 29/09 (`fb3ab41`), passé en GPL 3.0 ce jour-là. Form+ :

@@ -59,7 +59,8 @@ connaît pas.
 2. **Le filtre ferme davantage** que « tables lisibles, tables modifiables, `_grist_*` sur déclaration » : verbes d'écriture
    en liste fermée ; tables internes déclarées par table et par colonne ; sept tables internes et une colonne jamais écrites
    par une app ; trois capacités à déclarer (`jeton`, `formules`, `structure`) (section 3).
-3. **Les lectures de tables internes se déclarent aussi** (`gristInterne`) : Publipostage+ en lit sept, Grist-BI deux. Le
+3. **Les lectures de tables internes se déclarent aussi** (`gristInterne`) : Publipostage+ en lit huit (la huitième, `_grist_DocInfo`,
+   depuis le 21/10), Grist-BI deux. Le
    brouillon ne parlait que des écritures, et n'en comptait qu'une pour Publipostage+ (`_grist_Tables_column`, cahier 8) : il
    en fait deux, car `js/page-tree.js` écrit aussi `_grist_Pages` pour ranger les pages que Grist crée avec ses tables.
 4. **Form+ ne pourra plus écrire la colonne `options` de ses sections** (trois endroits de `poc/js/grist-meta.js`) : c'est
@@ -145,8 +146,12 @@ L'app (sous-cadre sans allow-same-origin)
    l'écriture dans le presse-papiers marchent ; l'impression par un cadre caché, les cinq stockages du navigateur, la lecture du
    presse-papiers et le plein écran sont refusés ; un lien `mailto:` dans le même cadre le fait mourir, `frame-src` de GFS ne
    le connaissant pas. [D] Pour un lien `mailto:` ou `tel:`, l'app ouvre un nouvel onglet (`target="_blank"`), ce qui ne demande
-   rien de plus à GFS ; les ajouter à `frame-src` de GFS serait l'autre voie, à confirmer à l'étape 6. [M] Firefox et Safari :
-   la page de mesure du porteur.
+   rien de plus à GFS ; les ajouter à `frame-src` de GFS serait l'autre voie, à confirmer à l'étape 6. [M] Plein écran (demande de
+   Publipostage+ du 21/10) : `fullscreen` ajouté à `allow` du seul sous-cadre ne change rien (« Disallowed by permissions
+   policy »), pas plus que dans le seul cadre de Grist ; le navigateur le veut dans chaque cadre au-dessus de l'app, celui que
+   Grist donne à GFS compris, qui n'a que `clipboard-write`. Avec les deux ajoutés (labo seulement, `run-capacites.mjs`,
+   `CAP_CONFIG=pleinDeux`), la demande aboutit. GFS n'ajoute donc rien tant que Grist ne laisse pas passer le plein écran ; le jour
+   où il le fait, c'est un mot de plus dans `allow`. [M] Firefox et Safari : la page de mesure du porteur.
 2. [T] **L'adresse du sous-cadre est calculée par GFS** : `apps/<id>/<entree>` sur son propre site, `<id>` et `<entree>`
    venant du manifeste livré avec GFS. Elle n'est jamais lue dans un réglage, une table ou un message (cahier 3.2, point 3).
 3. [T] Elle porte les six paramètres que Grist ajoute à l'adresse d'un widget (`access`, `readonly`, `language`, `culture`,
@@ -367,7 +372,8 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
 D'après son code du 14/10 (`e4a239c`). Les sept tables internes qu'il lit viennent de `chart-source.js`, `schema-renames.js`,
 `page-tree.js`, `grist-api.js` et `settings-columns.js` ; les deux qu'il écrit, de `template-pack.js` (`visibleCol` de
 `_grist_Tables_column`) et de `page-tree.js` (`indentation`, `pagePos` et `options` de `_grist_Pages`). Une entrée qui écrit
-nomme une seule table et porte aussi `lit: true` (3.3, point 5).
+nomme une seule table et porte aussi `lit: true` (3.3, point 5). Depuis le 21/10, une huitième lecture : `_grist_DocInfo`, pour
+la langue et la devise du document (demande de l'app, `32822d6`) ; elle ne s'écrit jamais (3.3, point 6).
 
 ```json
 {
@@ -427,6 +433,14 @@ nomme une seule table et porte aussi `lit: true` (3.3, point 5).
         "pourquoi": {
           "fr": "Retrouver les sections de la page et leurs filtres pour proposer un graphique du document.",
           "en": "Find the page's sections and their filters to offer a chart of the document."
+        }
+      },
+      {
+        "tables": ["_grist_DocInfo"],
+        "lit": true,
+        "pourquoi": {
+          "fr": "Connaître la langue et la devise du document pour écrire un nombre ou une date comme sa colonne dans Grist.",
+          "en": "Know the document's language and currency to write a number or a date as its column does in Grist."
         }
       }
     ],

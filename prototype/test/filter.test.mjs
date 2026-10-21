@@ -27,6 +27,9 @@ test('contrats 3.2 point 2 : « * » désigne les tables de la personne, jamais 
 test('contrats 3.2 point 4 : une table interne se lit seulement si elle est déclarée ; _grist_Shares et _grist_Triggers jamais', () => {
   assert.equal(readRefusal(pp, '_grist_Tables'), null);
   assert.equal(readRefusal(pp, '_grist_Views_section_field'), null);
+  assert.equal(readRefusal(pp, '_grist_DocInfo'), null);
+  assert.notEqual(readRefusal(au, '_grist_DocInfo'), null);
+  refused(pp, [['UpdateRecord', '_grist_DocInfo', 1, { locale: 'fr' }]]);
   assert.notEqual(readRefusal(pp, '_grist_Shares'), null);
   assert.notEqual(readRefusal(pp, '_grist_Triggers'), null);
   assert.notEqual(readRefusal(au, '_grist_Tables'), null);

@@ -4,6 +4,8 @@
 //
 //   CAP_CONFIG=courante|echappe|protocoles|memeOrigine|schemas|grist  le sous-cadre (courante : celui de GFS ; les autres ajoutent un drapeau ou une source de frame-src, labo
 //                                                        seulement ; grist : la sonde est le widget de Grist, dans le cadre de Grist, sans GFS)
+//   CAP_CONFIG=pleinGfs|pleinGrist|pleinDeux             le plein écran (demande de Publipostage+ du 21/10) : `fullscreen` ajouté à `allow` du sous-cadre de GFS seul, à celui du
+//                                                        cadre que Grist donne à GFS seul, ou aux deux (labo seulement : Grist n'a que `clipboard-write`) ; CAP_ONLY=plein
 //   CAP_ALONE=1                                          la sonde seule dans une page ordinaire (« comme seule ») : la référence
 //   CAP_ONLY=essai1,essai2                               seulement ces essais
 //   CAP_SET=main|nav                                     les essais d'une page (main) ou les navigations du cadre (nav, un lancement de Grist par essai)
@@ -17,7 +19,13 @@ const CONFIGS = {
   protocoles: { sandbox: `${SANDBOX} allow-top-navigation-to-custom-protocols` },
   memeOrigine: { sandbox: `${SANDBOX} allow-same-origin` },
   schemas: { frameSrc: "'self' mailto: tel:" },
+  pleinGfs: { allow: 'clipboard-write; fullscreen' },
+  pleinGrist: undefined,
+  pleinDeux: { allow: 'clipboard-write; fullscreen' },
 };
+// Le cadre que Grist donne à GFS est écrit par Grist (`WidgetFrame.ts`) : le labo remplace, pour l'essai, l'attribut de son fichier compilé.
+const GRIST_FRAME = { chemin: '/dist/GristDoc.bundle.js', de: '{allow:"clipboard-write"}', vers: '{allow:"clipboard-write; fullscreen"}' };
+const PATCHES = { pleinGrist: [GRIST_FRAME], pleinDeux: [GRIST_FRAME] };
 const config = process.env.CAP_CONFIG || 'courante';
 const alone = process.env.CAP_ALONE === '1';
 const set = process.env.CAP_SET || 'main';
@@ -81,7 +89,7 @@ async function openProbe() {
     await lab.fitPanel(undefined, 700, 400);
     return { browser: lab.browser, page: lab.page, context: lab.context, app: lab.frame };
   }
-  const lab = await startLab({ lang: 'fr', probes: true, frameAttributes: CONFIGS[config] });
+  const lab = await startLab({ lang: 'fr', probes: true, frameAttributes: CONFIGS[config], patches: PATCHES[config] || [] });
   // Sans cette permission au niveau du navigateur, un navigateur sans écran refuse le presse-papiers même à la page de plus haut niveau : on mesure ce que les cadres laissent passer.
   await lab.context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await lab.fitPanel(undefined, 700, 400);
@@ -95,7 +103,9 @@ async function session(names) {
   const { seen } = observe(page, context);
   if (!alone) {
     const attributes = await (await app.frameElement()).evaluate(el => ({ sandbox: el.getAttribute('sandbox'), allow: el.getAttribute('allow') }));
-    say('attributs du sous-cadre :', attributes);
+    // Le cadre que Grist donne à GFS (le parent du sous-cadre) : son `allow` borne ce que GFS peut passer à l'app.
+    const gristFrame = await app.parentFrame()?.frameElement().then(el => el.evaluate(node => node.getAttribute('allow')), () => null);
+    say('attributs du sous-cadre :', gristFrame === undefined || gristFrame === null ? attributes : { ...attributes, allowDuCadreDeGrist: gristFrame });
   }
   for (const name of names) say(await runOne(app, name, seen));
   await browser.close();

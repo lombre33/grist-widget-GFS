@@ -63,6 +63,14 @@
           "fr": "Retrouver les sections de la page et leurs filtres pour proposer un graphique du document.",
           "en": "Find the page's sections and their filters to offer a chart of the document."
         }
+      },
+      {
+        "tables": ["_grist_DocInfo"],
+        "lit": true,
+        "pourquoi": {
+          "fr": "Connaître la langue et la devise du document pour écrire un nombre ou une date comme sa colonne dans Grist.",
+          "en": "Know the document's language and currency to write a number or a date as its column does in Grist."
+        }
       }
     ],
     "formules": {
@@ -114,7 +122,7 @@
         "en": "16:9 presentations, written with the same editor as documents."
       },
       "icone": "slides",
-      "poids": 62,
+      "poids": 131,
       "dossier": "extensions/diapositives/",
       "pointsEntree": [{ "genre": "type", "id": "presentation" }, { "genre": "menu", "id": "nouveau" }]
     }

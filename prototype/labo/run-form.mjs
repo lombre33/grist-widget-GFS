@@ -1,12 +1,15 @@
-// Form+ (non modifiée, référencée à 39e0740) dans GFS, dans un vrai Grist (consigne 007) : à la vraie souris et au vrai clavier, à 700 × 400.
+// Form+ (non modifiée, référencée à 038dd1b) dans GFS, dans un vrai Grist (consignes 007 et 008) : à la vraie souris et au vrai clavier, à 700 × 400.
 //   1. L'app s'ouvre dans le sous-cadre isolé, sans refus du courtier ni erreur de script.
-//   2. Ce que le courtier refuse à ses deux écritures de définition (`options` de la section, lecture de `_grist_Shares`) et ce que devient `setOptions` : mesuré depuis le
-//      cadre de l'app, avec les mêmes appels que `persistOptions`, `duplicateFormSection` et `findExistingShareKey` ; rien n'est écrit (le courtier refuse avant Grist).
+//   2. Ce que le courtier refuse aux deux écritures de définition d'avant la 007 (`options` de la section, lecture de `_grist_Shares`) et ce que devient `setOptions` : mesuré
+//      depuis le cadre de l'app, avec les appels de `39e0740` (Form+ ne les fait plus) ; rien n'est écrit (le courtier refuse avant Grist).
 //   3. « Partir de zéro » passe avec le manifeste de Form+ (table, section de formulaire) ; Grist recharge alors le cadre de GFS, et le retrait du champ automatique est perdu.
-//   4. Le type « Formulaire » dans l'explorateur, quand une table `FormPlus_Formulaires` existe (la forme que la consigne 007 demande à l'app).
+//   4. Enregistrer un formulaire par son lien (la 007) : l'accord de la personne, la table `FormPlus_Formulaires`, et ce que Grist fait du cadre quand Form+ pose la section qui
+//      ouvre cette table aux répondants sur la page de son widget. Même geste sans GFS : `run-form-seul`.
+//   5. Le type « Formulaire » dans l'explorateur, quand `FormPlus_Formulaires` a des lignes.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { startLab } from './lab-setup.mjs';
 import { seedForms } from './seed.mjs';
+import { savedForms, saveByLink } from './form-lab.mjs';
 import { say, check } from './lab-common.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
@@ -98,9 +101,34 @@ check('une section de formulaire est posée sur la page de GFS', Boolean(formSec
 say('champs restés dans la section de formulaire :', created.fields.filter(field => formSection && field.section === formSection.id).length);
 check('GFS repart de zéro : l\'explorateur, plus d\'app', await reloaded.locator('.ex-title-row').count() > 0);
 
-// ----- 4. Le type « Formulaire » dans l'explorateur.
-say('semis des formulaires :', JSON.stringify(await seedForms(reloaded)));
-await reloaded.evaluate(() => location.reload());
+// ----- 4. Enregistrer un formulaire (consigne 007) : le lien du formulaire posé en 3, l'accord de la personne, sa ligne dans `FormPlus_Formulaires`.
+// Une personne ouvre Form+ depuis GFS et enregistre ; puis elle recommence, quand rien n'a été enregistré.
+const saveOnce = async gfs => {
+  const form = await lab.openApp('form', /apps\/form\//, gfs);
+  const asked = await saveByLink(page, form, formSection.id, () => lab.shotPanel(run, '4-accord', gfs));
+  await page.waitForTimeout(7000);
+  const after = await lab.gfsFrame(/access=full/);
+  await lab.gfsReady(after);
+  return { asked, gfsRebuilt: gfs.isDetached(), appGone: form.isDetached(), saved: await savedForms(after), gfs: after };
+};
+refusals.length = 0;
+const first = await saveOnce(reloaded);
+say('premier enregistrement :', JSON.stringify({ ...first, gfs: undefined }));
+await lab.shot(run, '4-apres-enregistrer');
+check('Form+ demande l\'accord de la personne avant de créer sa table (fenêtre du kit)', /FormPlus_Formulaires/.test(first.asked || ''), first.asked);
+check('« Créer la table » : `FormPlus_Formulaires` est créée', first.saved.table, first.saved);
+check('Form+ pose alors une section de formulaire pour cette table sur la page de son widget, celle de GFS', first.saved.gates.length === 1 && first.saved.gates[0].page === gfsSection.page, first.saved.gates);
+check('Grist reconstruit aussitôt le cadre de GFS : le cadre de Form+ disparaît avant la suite', first.gfsRebuilt && first.appGone, { gfs: first.gfsRebuilt, app: first.appGone });
+check('la suite est perdue : la section n\'est pas publiée, et aucune ligne n\'est écrite (le formulaire n\'est pas enregistré)', !first.saved.gates[0]?.publiee && first.saved.rows.length === 0, first.saved);
+const second = await saveOnce(first.gfs);
+say('second enregistrement :', JSON.stringify({ ...second, gfs: undefined }));
+check('au second essai, sans fenêtre (la table existe) : une section de plus sur la page de GFS, toujours aucune ligne', !second.asked && second.saved.gates.length === 2 && second.saved.rows.length === 0, second.saved);
+check('aucun refus du courtier pendant ces essais : rien de cela ne vient de GFS', refusals.length === 0, refusals);
+const afterSave = second.gfs;
+
+// ----- 5. Le type « Formulaire » dans l'explorateur.
+say('semis des formulaires :', JSON.stringify(await seedForms(afterSave)));
+await afterSave.evaluate(() => location.reload());
 await page.waitForTimeout(1000);
 const explorer = await lab.gfsFrame(/access=full/);
 await lab.gfsReady(explorer);

@@ -119,6 +119,13 @@ réponses, sans que l'app change.
   (un champ reste dans le formulaire « vide »), et dans GFS l'explorateur revient, l'app est fermée. Une table `FormPlus_Formulaires`
   aux colonnes du manifeste donne des lignes d'explorateur au type « Formulaire » (icône `form`, aucune couleur de famille), qui
   s'ouvrent par le double-clic sur le modèle habituel de l'app (aucune porte « ouvrir » déclarée).
+- Mesuré le 21/10 (mêmes essais), avec Form+ à `038dd1b` (la consigne 007 faite) : **enregistrer un formulaire par son lien n'écrit
+  aucune ligne, avec ou sans GFS.** Form+ demande l'accord (fenêtre du kit), crée `FormPlus_Formulaires`, puis pose sur la page de
+  son widget une section de formulaire pour cette table (`ensureTableGate`) : Grist recharge aussitôt le cadre (celui de GFS, ou
+  celui de Form+ seule), et la suite est perdue (section ni vidée, ses six champs restent, ni publiée ; formulaire ni dupliqué ni
+  enregistré). Un second
+  essai, sans fenêtre puisque la table existe, pose une section de plus, toujours sans ligne : chaque essai ajoute une section
+  visible sur la page. Le courtier ne refuse rien pendant ces essais.
 - Mesuré le 21/10 (même essai) : **un widget en accès complet peut poser une section de widget personnalisé** sur une page :
   `CreateViewSection` (table, page, `'custom'`) rend `sectionRef` ; ses réglages s'écrivent comme Grist les écrit
   (`options.customView`, une chaîne JSON : `mode`, `url`, `access`, `widgetDef`…), le lien « Select by » par
@@ -139,6 +146,15 @@ réponses, sans que l'app change.
   `RemoveTable` retire la table, sa vue et sa page.
 - Une Référence montre une colonne par `visibleCol`, puis `SetDisplayFormula` range la formule dans une colonne d'aide
   (`gristHelper_Display`…).
+- Lu le 21/10 dans `app/common/ACLRulesReader.ts` (les sources que grist-static 0.1.6 embarque ; le serveur de Grist applique ces
+  règles) : **une session de partage (le lien d'un formulaire publié) ne lit ni n'écrit aucune table de données par défaut**
+  (`-CRUDS` sur chacune, `_addDefaultShareRules`, ligne 277 ; les tables `_grist_*` restent hors de ces règles, censurées
+  autrement). Pour chaque table qui a une section de formulaire publiée (`shareOptions` : `publish` et `form`) sur une page du
+  partage (`_addRulesForShare`, ligne 205), elle **crée des lignes** dans toutes les colonnes (`+C`, ligne 301) et **ne lit que la
+  ligne `rec.id == 0`** (`+R`, ligne 308), c'est-à-dire aucune ligne existante ; elle lit en plus les colonnes montrées
+  (`visibleCol`) des tables vers lesquelles pointent les Références de ces formulaires (`_shareTableReferencesForForm`,
+  ligne 325). Une section de formulaire publiée sur une table ouvre donc cette table à l'ajout, pas à la lecture.
+  **Non mesuré** : grist-static n'a pas de partages (pas de serveur).
 
 ## 4. Grist : API REST et origines
 

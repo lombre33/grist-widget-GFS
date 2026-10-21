@@ -207,12 +207,13 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   (l'indication `poids` vaut 62 au lieu de 37) ; une présentation chargée reste légère (`da1a4c3`, un `IntersectionObserver`
   sur la liste des miniatures), une image en calque suit sa diapositive (`e816ae5`), et une diapositive se copie et se colle
   (`cef298e`, Ctrl+C et Ctrl+V) par les événements `copy` et `paste` du navigateur, sans l'API Clipboard ; éteinte, Ctrl+C
-  et Ctrl+V sur une miniature appellent `installer`. Pas lus : `32822d6` (le bouton « Comme dans Grist » des variables),
-  `6262b36`, `74dffd7` et `8f2fde6`, que la page ne décrit pas encore (la référence ira jusque-là à la prochaine lecture).
-  Traité le 21/10 : la référence avancée à `cef298e` (commit à part, relu ; sept essais dans un vrai Grist, sans échec) ; le
-  copier-coller des diapositives, que l'app n'avait pas essayé dans le cadre isolé de GFS, y marche (Ctrl+C sur une
-  miniature, Ctrl+V sur une autre, un seul Ctrl+Z, un mot du texte copié comme toujours, extension éteinte : `installer`) ;
-  le poids de Diapositives à 62 Ko ; pas de consigne, l'app n'avait rien demandé.
+  et Ctrl+V sur une miniature appellent `installer`. Pas lus : `32822d6` (le bouton « Comme dans Grist » des variables) et
+  son essai `6262b36`, que la page ne décrit pas encore (la référence ira jusque-là quand elle les décrira) ; `74dffd7` et
+  `8f2fde6` ne changent que des documents. Traité le 21/10 : la référence avancée à `cef298e` (commit à part, relu ; sept
+  essais dans un vrai Grist, sans échec) ; le copier-coller des diapositives, que l'app n'avait pas essayé dans le cadre
+  isolé de GFS, y marche (Ctrl+C sur une miniature, Ctrl+V sur une autre, un seul Ctrl+Z, un mot du texte copié comme
+  toujours, extension éteinte : `installer`) ; le poids de Diapositives à 62 Ko ; la consigne 022 le dit à l'app (la
+  référence, le copier-coller mesuré, ce qui reste ouvert).
 - Automation+ à `f5e4100` (21/10) : sept commits de plus depuis `ee8f0a9`, tous du 21/10 (versions 0.6.0 à 0.8.0). Chez GFS :
   le graphe est aussi gardé dans une table du document, créée avec l'accord de la personne (`js/store.js`) ; d'abord des
   tables `Automation_*` (`7dae9e3`), puis une seule, `Automation` (`5a166f4`), qui porte les workflows, le journal et un

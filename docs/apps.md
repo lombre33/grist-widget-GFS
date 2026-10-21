@@ -8,7 +8,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le |
 |---|---|---|---|---|
 | Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `b9ba041` | 21/10/2026 |
-| Form+ | `lombre33/FormPlus` | `consignes/form/` | `d3c8475` | 20/10/2026 |
+| Form+ | `lombre33/FormPlus` | `consignes/form/` | `c1237a2` | 21/10/2026 |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `ee8f0a9` | 20/10/2026 |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `c8c819f` | 20/10/2026 |
 
@@ -163,6 +163,15 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   pièces jointes par un répondant anonyme (`poc/js/respond.js`, l'en-tête `X-Requested-With`, sur la page des répondants et
   non dans le widget) : ni table, ni colonne, ni clé de réglages, ni adresse de la CSP, ni appel de plus chez GFS. Pas
   encore de `GFS-ETAT.md` chez Form+ : rien à traiter.
+- Form+ à `c1237a2` (21/10, le porteur demande de lui donner de quoi démarrer la liaison) : un commit de plus depuis
+  `d3c8475`, de nouveaux types de question (Date et heure, Liste de références, Échelle, Classement, Signature / dessin,
+  l'option « Autre », la capture photo). Chez GFS : une colonne cachée de plus dans la table du formulaire pour une « Liste
+  de références » (`FormPlus_srcL_…`, `ensureRefListField`, `poc/js/grist-meta.js`), comme `FormPlus_src_…` pour un choix,
+  avec la même écriture de `visibleCol` (`_grist_Tables_column`) et un champ caché (`_grist_Views_section_field`) ; ni
+  table, ni clé de réglages, ni adresse de la CSP de plus. Toujours pas de `GFS-ETAT.md` chez Form+ : la 001 attend depuis
+  le 14/10. Le relevé du guide (14/10) omettait l'écriture de `visibleCol`, déjà là à `b073d03` (`poc/js/grist-meta.js`,
+  ligne 132) : le guide est complété le 21/10. Traité le 21/10 : la consigne 002 (lire, faire, ce qui vient ; elle annonce
+  le kit sans le décrire, la consigne du kit étant celle de l'étape 3), et `docs/gfs-en-bref.md` remis à jour.
 - Les dossiers de `consignes/` portent l'identifiant court de l'app ; l'`id` du manifeste se fixe avec chaque `gfs.json`
   (étape 5 du plan).
 - Aucun de ces dépôts n'avait de `GFS-ETAT.md` : chaque projet d'app le crée en lisant sa consigne 001.

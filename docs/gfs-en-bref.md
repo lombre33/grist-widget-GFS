@@ -4,7 +4,7 @@
 Suite (GFS), ce qui est en jeu, ce qui change pour une app et ce qui ne change pas, et qui fait quoi. Les règles à suivre sont
 dans le guide des apps (`guide-des-apps.md`), les raisons dans le cahier des charges (`cahier-des-charges-gfs.md`), les messages
 entre GFS et les apps dans les contrats (`contrats.md`). Le porteur est la personne qui porte le projet Grist Factory : c'est
-elle qui décide. À jour au 14/10/2026.
+elle qui décide. À jour au 21/10/2026.
 
 ## Ce qu'est GFS
 
@@ -47,12 +47,15 @@ Le projet de GFS écrit les contrats, le courtier, l'explorateur et le kit commu
 a changé qui touche GFS, ses questions, ses demandes (la bibliothèque d'une extension, par exemple). Il teste l'assemblage dans
 une copie de GFS à lui et ne pousse jamais dans le dépôt de GFS ; GFS ne pousse jamais dans celui d'une app.
 
-## Où on en est (14/10/2026)
+## Où on en est (21/10/2026)
 
-L'ordre : contrats, prototype du courtier, kit commun, listes des bibliothèques, apps prêtes pour GFS, GFS v0, puis extensions et
-nouvelles apps (cahier, section 10). Les contrats sont un brouillon qui évolue avec le prototype, lequel montre déjà
-l'explorateur, la fenêtre « Apps et extensions » et Publipostage+ ouvert dans un sous-cadre isolé, dans un vrai Grist.
-Publipostage+ est mûr ; Form+, Automation+ et Grist-BI sont des preuves de concept.
+L'ordre : contrats, prototype du courtier, kit commun, listes des bibliothèques, apps prêtes pour GFS, GFS v0, puis
+extensions et nouvelles apps (cahier, section 10). Les étapes 1 (contrats) et 2 (prototype du courtier) sont livrées ; les
+contrats restent un document qui évolue avec le prototype. Le prototype montre l'explorateur, l'installation des apps et des
+extensions, et Publipostage+ ouvert dans un sous-cadre isolé, dans un vrai Grist, avec ses extensions (graphique,
+présentations, écriture en direct) et une langue commune : un seul choix par personne, dans GFS, pour toutes les apps.
+L'étape 3, le kit commun, est lancée (21/10) ; son premier client est Form+. Publipostage+ est mûr ; Form+, Automation+ et
+Grist-BI sont des preuves de concept.
 
 ## Pour la suite
 

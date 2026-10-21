@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Sonde R</title>
+<!-- Politique de l'app sonde R : celle de Publipostage+ (script-src 'self', frame-src 'none', form-action 'none', pas de default-src). -->
+<meta http-equiv="Content-Security-Policy" content="script-src 'self'; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'">
+<style>
+  html, body { height: 100%; margin: 0; }
+  body { position: relative; overflow: hidden; font: 14px/1.4 system-ui, sans-serif; background: #ffffff; color: #1b2430; }
+  @media (prefers-color-scheme: dark) { body { background: #1e2430; color: #e7ecf5; } }
+  /* Le titre en haut et la légende en bas, centrés : ils s'écartent de la zone quand la barre est au bord qu'ils occupent. */
+  .centre { position: absolute; left: 0; right: 0; margin: 0; text-align: center; }
+  #titre { top: 8px; font-size: 16px; font-weight: 600; }
+  #legende { bottom: 8px; font-size: 12px; opacity: .8; }
+  /* La zone que GFS dit de laisser libre : un cadre en tirets, pour qu'on la voie sur les captures. */
+  #zone-libre { position: absolute; box-sizing: border-box; border: 1px dashed #c53030; background: rgba(197, 48, 48, .08); pointer-events: none; }
+  /* Huit boutons, aux quatre coins et au milieu de chaque côté : la souris vérifie lesquels la barre recouvre. */
+  .coin { position: absolute; width: 24px; height: 24px; padding: 0; border: 1px solid #5f6b7e; border-radius: 4px; background: #e8f0fe; color: #1b2430; font: 10px system-ui, sans-serif; }
+  @media (prefers-color-scheme: dark) { .coin { background: #24324b; color: #e7ecf5; } }
+  #nw { left: 0; top: 0; } #ne { right: 0; top: 0; } #sw { left: 0; bottom: 0; } #se { right: 0; bottom: 0; }
+  #n { left: calc(50% - 12px); top: 0; } #s { left: calc(50% - 12px); bottom: 0; } #w { left: 0; top: calc(50% - 12px); } #e { right: 0; top: calc(50% - 12px); }
+</style>
+</head>
+<body>
+<h1 id="titre" class="centre">Sonde R : une app qui laisse libre la zone de la barre</h1>
+<p id="legende" class="centre">Ce que la sonde a reçu est écrit dans <code>body[data-sonde]</code>.</p>
+<div id="zone-libre" hidden></div>
+<button type="button" class="coin" id="nw">NO</button><button type="button" class="coin" id="n">N</button><button type="button" class="coin" id="ne">NE</button>
+<button type="button" class="coin" id="w">O</button><button type="button" class="coin" id="e">E</button>
+<button type="button" class="coin" id="sw">SO</button><button type="button" class="coin" id="s">S</button><button type="button" class="coin" id="se">SE</button>
+<script src="barre.js"></script>
+</body>
+</html>

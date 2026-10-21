@@ -10,7 +10,8 @@ import { readPreferences } from './frames.js';
 import { createI18n } from './i18n.js';
 import { LanguageSetting, browserStore, languageOfGrist, localeFor, watchStorage } from './language.js';
 import { AppStorage, browserBackend, storageHandlers } from './app-storage.js';
-import { installSprite, icon } from './icons.js';
+import { installSprite } from './icons.js';
+import { Dock } from './dock.js';
 import { Explorer } from './explorer.js';
 import { loadFiles } from './explorer-data.js';
 import { readCatalogue } from './libraries.js';
@@ -151,7 +152,7 @@ export class GfsController {
     await this.state.whenOptions();
     if (this.fullAccess) await this.registry.load();
     this.#buildExplorer();
-    this.#buildFloaters();
+    this.#buildDock();
     this.showExplorer();
     doc.body.dataset.gfs = 'ready';
     await this.#firstRun();
@@ -190,20 +191,14 @@ export class GfsController {
     });
   }
 
-  #buildFloaters() {
-    this.$('floater-files').addEventListener('click', () => this.showExplorer());
-    this.$('floater-apps').addEventListener('click', () => void this.openModules());
-    this.#labelFloaters();
-  }
-
-  // Les deux repères au-dessus de l'app ouverte : leurs textes suivent la langue.
-  #labelFloaters() {
-    const files = this.$('floater-files');
-    files.replaceChildren(icon('folder'), this.t('gfs.files'));
-    files.title = this.t('gfs.filesTip');
-    const apps = this.$('floater-apps');
-    apps.replaceChildren(icon('modules'), this.t('gfs.apps'));
-    apps.title = this.t('gfs.appsTip');
+  // La barre de GFS au-dessus de l'app ouverte (js/dock.js) : ses boutons ouvrent l'explorateur et la fenêtre des apps ; quand ce qu'elle recouvre change, l'app ouverte le sait
+  // (événement `barre`, contrats 5.2, point 7).
+  #buildDock() {
+    this.dock = new Dock({
+      root: this.$('floaters'), stage: this.$('stage'), onFiles: () => this.showExplorer(), onApps: () => void this.openModules(), onNotKept: () => this.notice(this.t('lang.notKept')),
+    });
+    this.dock.relabel(this.t);
+    this.dock.onChange(barre => { if (this.session) this.session.sendBar(barre); });
   }
 
   // ---------- la langue ----------
@@ -233,7 +228,7 @@ export class GfsController {
     const live = { i18n: this.i18n, locale: this.locale };
     this.explorer.relocalize(live);
     if (this.modulesWindow) this.modulesWindow.relocalize(live);
-    this.#labelFloaters();
+    this.dock.relabel(this.t);
     this.#showFileStatus();
     if (this.session) this.session.sendLanguage(this.lang);
   }
@@ -242,7 +237,7 @@ export class GfsController {
 
   showExplorer() {
     this.$('frames').inert = true;
-    this.$('floaters').hidden = true;
+    this.dock.setPresent(false);
     if (this.session) this.session.show(false);
     this.explorer.open();
     void this.refreshFiles();
@@ -251,7 +246,7 @@ export class GfsController {
   hideExplorer() {
     this.explorer.close();
     this.$('frames').inert = false;
-    this.$('floaters').hidden = !this.session;
+    this.dock.setPresent(Boolean(this.session));
     if (this.session) {
       this.session.show(true);
       this.session.focus();
@@ -397,6 +392,7 @@ export class GfsController {
   }
 
   #closeSession() {
+    this.dock.mask(false);
     this.session.close();
     this.session = null;
     this.#sentExtensions = null;
@@ -437,16 +433,18 @@ export class GfsController {
       contexte: () => this.#contextFor(session),
       installer: args => this.#install(session, args),
       ...storageHandlers(this.appStorage, session.id),
+      ...this.dock.handlers(session.id),
     };
   }
 
   async #contextFor(session) {
+    this.dock.mask(false); // un cadre qui redemande son contexte repart avec la barre (contrats 5.2, point 7)
     const opening = this.#takeOpening(session);
     const given = this.registry.extensionsFor(session.id, this.doc.baseURI);
     this.#sentExtensions = JSON.stringify([given.extensions, given.bibliotheques]);
     const facts = await this.#readFacts();
     const storage = this.appStorage.read(session.id);
-    return buildContext(facts, { access: session.access, extensions: given.extensions, libraries: given.bibliotheques, opening, storage }, { preferences: this.#appPreferences(), readonly: this.readonly });
+    return buildContext(facts, { access: session.access, extensions: given.extensions, libraries: given.bibliotheques, opening, storage, bar: this.dock.barre() }, { preferences: this.#appPreferences(), readonly: this.readonly });
   }
 
   // L'ouverture n'est rendue qu'au premier `contexte` de l'app qui vient d'être activée (contrats 5.2, point 3) : une app dont le cadre est rechargé sur place (sa langue, un

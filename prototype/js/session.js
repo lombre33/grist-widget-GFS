@@ -81,6 +81,11 @@ export class AppSession {
     if (this.#envelope) this.#envelope.event('extensions', { extensions, bibliotheques });
   }
 
+  // L'événement `barre` (contrats 5.2, points 2 et 7) : la barre de GFS a changé de bord, de taille, d'état (montrée, cachée) ; `null` quand rien ne recouvre plus le cadre.
+  sendBar(barre) {
+    if (this.#envelope) this.#envelope.event('barre', { barre });
+  }
+
   // L'événement `langue` (contrats 5.2, points 2 et 6) : la personne a changé la langue de GFS ; l'app le reçoit sans l'avoir demandé et décide comment suivre. Le titre du
   // cadre (ce que lit un lecteur d'écran) suit tout de suite ; le cadre lui-même n'est jamais rechargé par GFS.
   sendLanguage(language) {

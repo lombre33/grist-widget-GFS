@@ -347,10 +347,10 @@ await app.evaluate(() => { window.__pres = 'avant'; });
 await intoStrip(2);
 const counterNow = () => app.evaluate(() => { const counter = document.querySelector('.pp-slide-show-counter'); return counter ? counter.textContent.trim() : null; });
 const waitCounter = async wanted => { for (let i = 0; i < 100 && (await counterNow()) !== wanted; i++) await page.waitForTimeout(100); return counterNow(); };
-// Le bouton est-il sous un autre ? (les boutons « Fichiers » et « Apps » de GFS sont posés au coin bas droit du panneau, par-dessus l'app) : un essai de clic, sans cliquer, le dit.
+// Le bouton est-il sous un autre ? (la barre de GFS est posée par-dessus l'app, au bord gauche par défaut ; avant elle, deux boutons de GFS recouvraient le coin bas droit) : un essai de clic, sans cliquer, le dit.
 const clickable = await app.locator('.pp-slide-show-open').click({ trial: true, timeout: 2500 }).then(() => true, () => false);
 check('le bouton ▶ « Présenter » se clique à la vraie souris : aucun bouton de GFS ne le recouvre', clickable);
-// Le coin bas droit du panneau tel que la personne le voit, puis sans les deux boutons de GFS : ce qu'ils recouvrent (le ▶ et la pastille du zoom de l'app).
+// Le coin bas droit du panneau tel que la personne le voit (le ▶ et la pastille du zoom de l'app), puis sans la barre de GFS.
 const panel = await (await gfs.frameElement()).boundingBox();
 const corner = { x: panel.x + panel.width - 250, y: panel.y + panel.height - 64, width: 250, height: 64 };
 await page.screenshot({ path: join(SHOTS, `${run}-5g-coin-bas-droit.png`), clip: corner });

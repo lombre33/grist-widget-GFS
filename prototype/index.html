@@ -10,8 +10,8 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-IjHlBhU6jP2y78FYoU05q0etmmFrlLgA3C/r4qrVBjc='; style-src 'self'; img-src 'self' data:; frame-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
-<link rel="stylesheet" href="css/gfs.css?v=f161bd6e01">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-6sbpr7zLug1XnUns5ORn/2XA5alVibJIpVOZ+iyAFcc='; style-src 'self'; img-src 'self' data:; frame-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<link rel="stylesheet" href="css/gfs.css?v=a915589c20">
 <link rel="stylesheet" href="css/explorer.css?v=f98b8b812a">
 <link rel="stylesheet" href="css/modules.css?v=ec61e659ed">
 <!-- Le routeur d'abord : il doit être enregistré avant que le script d'API de Grist n'affecte window.onmessage (contrats 1.2). -->
@@ -26,9 +26,11 @@
     "./js/ask-window.js": "./js/ask-window.js?v=954295ac45",
     "./js/broker.js": "./js/broker.js?v=4e909305b8",
     "./js/catalogue.js": "./js/catalogue.js?v=547dbc3cae",
-    "./js/context.js": "./js/context.js?v=764e6d7118",
-    "./js/controller.js": "./js/controller.js?v=30bbc2501a",
+    "./js/context.js": "./js/context.js?v=b0a00cb0b8",
+    "./js/controller.js": "./js/controller.js?v=2bf9d3b1ec",
     "./js/demo.js": "./js/demo.js?v=800f202484",
+    "./js/dock-state.js": "./js/dock-state.js?v=8eec913fd1",
+    "./js/dock.js": "./js/dock.js?v=dc419f956a",
     "./js/dom.js": "./js/dom.js?v=6093a9f23f",
     "./js/envelope.js": "./js/envelope.js?v=8586bc1508",
     "./js/explorer-data.js": "./js/explorer-data.js?v=05d52b28de",
@@ -38,22 +40,23 @@
     "./js/extensions.js": "./js/extensions.js?v=a6b2033702",
     "./js/filter.js": "./js/filter.js?v=0bbd3af6df",
     "./js/frames.js": "./js/frames.js?v=09ec1cb3a3",
-    "./js/i18n.js": "./js/i18n.js?v=5753edc6f2",
-    "./js/icons.js": "./js/icons.js?v=5b3a378c07",
-    "./js/language.js": "./js/language.js?v=6df971f86f",
+    "./js/i18n.js": "./js/i18n.js?v=c90a205baf",
+    "./js/icons.js": "./js/icons.js?v=0a8ca21d31",
+    "./js/language.js": "./js/language.js?v=b287c81a20",
     "./js/layers.js": "./js/layers.js?v=2d0c225b72",
     "./js/libraries.js": "./js/libraries.js?v=f8e30c6112",
     "./js/manifest.js": "./js/manifest.js?v=03f5509606",
-    "./js/menu.js": "./js/menu.js?v=de960bc759",
+    "./js/menu.js": "./js/menu.js?v=878f52da47",
     "./js/modules-model.js": "./js/modules-model.js?v=f215489de1",
     "./js/modules-window.js": "./js/modules-window.js?v=c9dc57794d",
     "./js/options-slice.js": "./js/options-slice.js?v=f99c742fb4",
     "./js/rangement.js": "./js/rangement.js?v=18acba24ff",
     "./js/rpc.js": "./js/rpc.js?v=ab5d5f19e0",
     "./js/search.js": "./js/search.js?v=0921c92eb3",
-    "./js/session.js": "./js/session.js?v=248cb6674e",
+    "./js/session.js": "./js/session.js?v=e6a7a9c786",
     "./js/settings.js": "./js/settings.js?v=a425d4248c",
-    "./js/state.js": "./js/state.js?v=289f010ea6"
+    "./js/state.js": "./js/state.js?v=289f010ea6",
+    "./js/stored-choice.js": "./js/stored-choice.js?v=e1e93b893c"
   }
 }
 </script>
@@ -63,10 +66,12 @@
 <body data-gfs="starting">
 <main class="stage" id="stage">
   <div class="frames" id="frames"></div>
-  <!-- Repères provisoires au-dessus d'une app : le temps que les apps ouvrent l'explorateur elles-mêmes (« Organiser » de Publipostage+, cahier 6.3). -->
-  <div class="floaters" id="floaters" hidden>
+  <!-- La barre de GFS au-dessus d'une app : « Fichiers », « Apps » et la position de la barre, trois boutons à icône seule (js/dock.js) posés au bord que la personne choisit
+       (`data-edge`), par-dessus l'espace que l'app laisse libre ; l'app apprend ce qu'elle recouvre (contrats 5.2, point 7). -->
+  <div class="floaters" id="floaters" role="group" data-edge="gauche" hidden>
     <button type="button" class="floater" id="floater-files"></button>
     <button type="button" class="floater" id="floater-apps" aria-haspopup="dialog"></button>
+    <button type="button" class="floater" id="floater-place" aria-haspopup="menu"></button>
   </div>
   <p class="status" id="status" role="status" aria-live="polite" hidden></p>
   <p class="status toast" id="toast" role="status" aria-live="polite" hidden></p>

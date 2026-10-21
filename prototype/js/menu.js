@@ -23,21 +23,27 @@ function itemNode(item, close) {
   return node;
 }
 
-function place(menu, anchor, host, align) {
+// `side` : 'below' (par défaut : au-dessous du bouton, au-dessus s'il n'y a pas la place), 'above', ou à côté de lui, 'right' ou 'left' (le menu d'une barre posée sur un bord).
+function place(menu, anchor, host, align, side) {
   const a = anchor.getBoundingClientRect();
   const box = host.getBoundingClientRect();
   const width = menu.offsetWidth;
   const height = menu.offsetHeight;
+  const fit = (value, size, room) => Math.min(Math.max(4, value), Math.max(4, room - size - 4));
   let left = align === 'right' ? a.right - box.left - width : a.left - box.left;
-  left = Math.min(Math.max(4, left), Math.max(4, box.width - width - 4));
   let top = a.bottom - box.top + 4;
-  if (top + height > box.height - 4) top = Math.max(4, a.top - box.top - height - 4);
-  menu.style.left = `${left}px`;
-  menu.style.top = `${top}px`;
+  if (side === 'right' || side === 'left') {
+    left = side === 'right' ? a.right - box.left + 4 : a.left - box.left - width - 4;
+    top = a.top - box.top;
+  } else if (side === 'above' || top + height > box.height - 4) {
+    top = a.top - box.top - height - 4;
+  }
+  menu.style.left = `${fit(left, width, box.width)}px`;
+  menu.style.top = `${fit(top, height, box.height)}px`;
 }
 
 // items : { label, icon, family, check, greyed, hint, title, run } ou '-' (séparateur). Rend { close }.
-export function openMenu(anchor, items, { host, align = 'left', label = '' } = {}) {
+export function openMenu(anchor, items, { host, align = 'left', label = '', side = 'below' } = {}) {
   closeMenu();
   const container = host || document.body;
   const menu = h('div', { class: 'menu', role: 'menu', 'aria-label': label || null });
@@ -65,7 +71,7 @@ export function openMenu(anchor, items, { host, align = 'left', label = '' } = {
   });
   container.append(menu);
   Layers.raise(menu, '--z-menu');
-  place(menu, anchor, container, align);
+  place(menu, anchor, container, align, side);
   anchor.setAttribute('aria-expanded', 'true');
   document.addEventListener('pointerdown', outside, true);
   const first = menu.querySelector('[aria-checked="true"]') || menu.querySelector('.menu-item');

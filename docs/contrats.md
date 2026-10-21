@@ -41,7 +41,7 @@ connaît pas.
 3. **Listes fermées, tenues par GFS** : les verbes d'écriture que le courtier laisse passer ; sept tables internes
    (règles d'accès, partages, rappels, réglages du document) qu'aucune app n'écrit, quoi qu'elle déclare ; la colonne
    `options` de `_grist_Views_section`, qui porte l'adresse et l'accès de chaque widget, GFS compris (section 3).
-4. **Messages propres à GFS** (contexte, stockage, actions « ouvrir », « choisir », « insérer », « installer », « fermer ») :
+4. **Messages propres à GFS** (contexte, stockage, barre, actions « ouvrir », « choisir », « insérer », « installer », « fermer ») :
    une enveloppe à part, sans `mtype`, que le script d'API de Grist ignore (sections 4 et 5).
 5. **Installer ne télécharge rien** : le code de toutes les apps livrées est déjà dans le site de GFS ; installer inscrit
    l'identifiant de l'app dans une table du document (sections 6.4 et 7.4). La bibliothèque d'une extension n'est pas dans
@@ -734,12 +734,15 @@ Les noms de la v0 :
 |---|---|---|---|
 | `contexte` | app → GFS | aucun | le contexte (5.2) |
 | `stockage.ecrire` | app → GFS | `{ cle, valeur }` (5.3) | aucune sans `id` ; avec un `id`, `{ retenu }` (5.3, point 3) |
+| `barre.masquer` | app → GFS | `{ masquee }`, vrai ou faux (5.2, point 7) | aucune sans `id` ; avec un `id`, `{ masquee }`, l'état qui vaut (5.2, point 7) |
 | `ouvrir` | app → GFS, puis GFS → app active | 5.4 | 5.4 |
 | `choisir` | app → GFS | 5.4 | 5.4 |
 | `inserer` | app → GFS, puis GFS → app qui fournit | 5.4 | 5.4 |
 | `installer` | app → GFS | 5.4 | 5.4 |
 | `fermer` | GFS → app active | 5.4 | 5.4 |
 | `extensions` (événement) | GFS → app | `{ extensions: [ … ], bibliotheques: { … } }` (5.2) | aucune |
+| `langue` (événement) | GFS → app | `{ langue }` (5.2, point 6) | aucune |
+| `barre` (événement) | GFS → app | `{ barre }` : `{ bord, epaisseur, zone }` ou `null` (5.2, point 7) | aucune |
 
 1. [D] `gfs` est le numéro de contrat de l'émetteur (pour l'app, celui de son manifeste). Un message sans `gfs` entier, ou d'un
    numéro que le destinataire ne connaît pas, est ignoré.
@@ -747,7 +750,7 @@ Les noms de la v0 :
    pas de réponse (comme un appel sans `reqId` chez `grain-rpc`).
 3. [D] Un appel de `nom` inconnu reçoit `GFS_INCONNU` ; un événement inconnu est ignoré. Les erreurs de 3.6 valent ici aussi.
 4. [D] Délais : l'app attend `contexte` 5 secondes au plus ; les appels qui attendent une personne (`ouvrir`, `choisir`,
-   `installer`, `inserer`) n'ont pas de délai ; `stockage.ecrire` n'attend pas de réponse pour continuer.
+   `installer`, `inserer`) n'ont pas de délai ; `stockage.ecrire` et `barre.masquer` n'attendent pas de réponse pour continuer.
 5. [T] Le courtier attribue chaque message à une app par la fenêtre qui l'a envoyé (1.2), jamais par un champ du message.
 
 ### 5.2 Le contexte
@@ -773,13 +776,15 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 | `bibliotheques` | source de chaque bibliothèque que les extensions actives exigent : `{ "<id>": { src, integrite, forme } }` (2.6) ; `forme` vaut toujours `script` ou `module` | oui | `{}` |
 | `ouverture` | pourquoi et sur quoi l'app s'ouvre, ou `null` (5.4) | oui | `null` |
 | `stockage` | copie de l'espace de cette app, `{ clé: valeur }` (5.3) | oui, relue à chaque appel | contenu du navigateur |
+| `barre` | la barre de GFS qui recouvre le cadre de l'app, `{ bord, epaisseur, zone }`, ou `null` quand rien ne le recouvre (point 7) | oui, mesurée à chaque appel | `null` |
 
 1. [T] Les six paramètres de l'adresse (1.3) et le contexte disent la même chose : l'adresse existe pour le code des apps
    qui la lit déjà, le contexte pour le kit. Une seule différence dans le temps : la langue de l'adresse est celle du cadre
    quand il a été créé, et le contexte dit la langue qui vaut maintenant (point 6).
-2. [D] Deux événements en cours de vie. `extensions` (`{ "extensions": [ … ], "bibliotheques": { … } }`), quand la personne
+2. [D] Trois événements en cours de vie. `extensions` (`{ "extensions": [ … ], "bibliotheques": { … } }`), quand la personne
    active ou désactive une extension dans GFS : l'app charge alors l'extension au premier usage, comme ses moteurs d'export.
-   `langue` (`{ "langue": "fr" | "en" }`), quand la personne change la langue de GFS (point 6).
+   `langue` (`{ "langue": "fr" | "en" }`), quand la personne change la langue de GFS (point 6). `barre` (`{ "barre": { … } | null }`),
+   quand la barre de GFS change de bord, de taille, ou disparaît et revient (point 7).
 3. [D] `ouverture` : `null` quand l'app s'ouvre sans consigne (elle applique son propre ordre d'arrivée, cahier 6.2, point 4) ;
    sinon `{ fichier, type, dossier, raison }` où `fichier` est `{ id, type }` (ou `null` pour « Nouveau »), `type` le type
    demandé quand `fichier` est `null`, `dossier` le dossier courant de l'explorateur (une indication), `raison` l'un de
@@ -844,6 +849,55 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    l'explorateur ouvert cache le cadre de l'app et le rend inerte, donc cette question est posée derrière lui et ne se voit
    qu'en le fermant (elle y attend, rien n'est perdu). **Non mesuré** : deux onglets de Grist (même mécanisme du navigateur que
    deux sections, non joué), Firefox, Safari.
+7. [D] `barre` : **la barre de GFS recouvre un petit morceau du cadre de l'app, et l'app laisse libre la place qu'elle y prend**
+   (décision du porteur, 21/10 : la barre se place à gauche, en haut, à droite ou en bas, à la guise de la personne ; les apps
+   adaptent leur interface aux quatre emplacements sans recouvrement ; l'emprise reste minimale, donc pas de bande en plus, mais
+   un recouvrement de l'espace que les apps laissent vide). Elle porte trois boutons à icône seule (« Fichiers », « Apps et
+   extensions » et « Position de la barre »), de 34 × 94 px au bord gauche ou droit et de 94 × 34 px en haut ou en bas, à 4 px du
+   bord et centrée sur lui ; elle remplace les deux boutons que GFS posait au coin bas droit. Le cadre de l'app reste plein :
+   rien ne le réduit. `contexte.barre` dit ce qui est recouvert :
+   `{ "bord": "gauche", "epaisseur": 42, "zone": { "x": 0, "y": 149, "largeur": 42, "hauteur": 102 } }` (l'exemple d'un cadre de
+   700 × 400 avec la barre à gauche). `bord` vaut `gauche`, `haut`, `droite` ou `bas` ; `zone` est le rectangle à laisser libre,
+   en pixels du cadre de l'app (origine en haut à gauche) : la barre et 4 px tout autour, bornés par le cadre ; `epaisseur` est la
+   largeur de la zone (bords gauche et droit) ou sa hauteur (haut et bas), la profondeur dont l'app écarte ce qu'elle pose à ce
+   bord. Hors de la zone, le cadre est à l'app, coins compris. L'app ne suppose aucun bord : les menus, bulles, fenêtres et bandes
+   qu'elle pose près d'un bord s'écartent de la zone, quel que soit le bord (cahier 6.3).
+   `barre` vaut `null` quand rien ne recouvre le cadre : l'explorateur est ouvert (le cadre de l'app est caché derrière lui),
+   l'app a demandé à ne pas avoir la barre (plus bas), ou GFS ne l'affiche pas ; une app seule n'a pas de barre non plus. L'app la
+   lit dans chaque `contexte`, et l'événement `barre` (`{ "barre": { … } | null }`) lui dit chaque changement, une seule fois :
+   la personne choisit un autre bord (ou une autre section de GFS dans la page le change), le cadre change de taille (la barre est
+   centrée sur son bord, la zone bouge avec elle), l'explorateur s'ouvre ou se ferme, l'app masque la barre ou la rend. L'app
+   s'adapte sans recharger son cadre.
+   `barre.masquer` (`{ "masquee": true | false }`) : l'app demande à ne pas avoir la barre (le diaporama plein cadre de
+   Publipostage+), puis la rend ; avec un `id`, la réponse est `{ masquee }`, l'état qui vaut. **La demande ne vaut que pendant
+   que l'app est montrée** : elle tombe quand l'explorateur s'ouvre ou quand l'app se ferme, et tout `contexte` remet la barre (un
+   cadre qui se recharge repart avec elle). Une app qui masque la barre offre elle-même la sortie (la touche Échap), puisque la
+   barre n'est plus là pour ouvrir l'explorateur. Un argument qui n'est pas vrai ou faux reçoit `GFS_REFUSE` et, comme pour
+   `stockage.ecrire`, GFS le dit en console (avertissement : l'app, le code, la raison).
+   Le bord est un choix de la personne : GFS le garde dans son `localStorage` (clé `gfs.barre`, `gauche` tant que rien n'est
+   retenu), jamais dans le document ni dans une table, et n'écrit rien sans un geste de sa part ; toutes les sections de GFS d'une
+   même page le suivent (événement `storage`) ; un navigateur qui refuse de le retenir n'empêche rien : le choix vaut pour la
+   page et GFS le dit (même mécanisme que la langue, point 6).
+   [M] **Mesuré le 21/10** dans un vrai Grist, à 700 × 400, à la vraie souris et au vrai clavier, en français clair et en anglais
+   sombre (`prototype/labo/run-barre.mjs`, 82 vérifications par combinaison, aucune en échec) avec la sonde R
+   (`labo/sondes/r-barre/`), qui fait ce que fera Publipostage+ : aux quatre bords la barre mesure 34 × 94 px (94 × 34 en haut et
+   en bas), à 4 px du bord et centrée ; la zone que reçoit l'app (dans `contexte` et dans l'événement, un seul événement par
+   changement) est exactement la barre mesurée dans la page, 4 px autour : `{ x: 0, y: 149, largeur: 42, hauteur: 102 }` à gauche,
+   `{ x: 658, … }` à droite, `{ x: 299, y: 0, largeur: 102, hauteur: 42 }` en haut ; le menu de position s'ouvre à côté de la
+   barre sans la recouvrir (à droite, au-dessous, à gauche ou au-dessus d'elle selon le bord) et se manie au clavier (Entrée,
+   flèches, Échap, le focus revient au bouton) ; les coins et les trois autres milieux de côté de l'app restent cliquables à la
+   vraie souris, à travers le cadre de GFS, pas le milieu du côté de la barre ; un cadre de 560 × 300 déplace la zone avec la barre
+   et l'app le sait ; `barre.masquer` va et vient (la réponse dit l'état, l'app reçoit `null`, un argument hors règle reçoit
+   `GFS_REFUSE` avec ou sans `id` et l'avertissement se lit en console) ; l'explorateur efface la barre, l'app l'apprend, et une
+   demande de masquer faite pendant ce temps ne tient pas ; un cadre rechargé repart avec la barre ; le bord choisi tient au
+   rechargement de GFS, une valeur inconnue du navigateur est ignorée, une autre section de GFS qui change la clé est suivie sans
+   rechargement ; un navigateur qui refuse d'écrire donne la phrase d'avertissement (au-dessus de la barre quand elle est en bas)
+   et le choix vaut pour la page ; GFS n'écrit rien sans un geste, et le document ne reçoit aucune écriture. [M] **Avec
+   Publipostage+ à `fcca7b4`** (`prototype/labo/run-diapositives.mjs`, 51 vérifications, aucune en échec) : le bouton ▶
+   « Présenter », recouvert par les deux anciens boutons de GFS dans les passes précédentes, se clique maintenant à la vraie
+   souris ; la barre, à gauche par défaut, recouvre le début de la bande des diapositives, ce que l'app écarte (consigne 025).
+   **Non mesuré** : un second onglet de Grist (même mécanisme du navigateur que deux sections), Firefox, Safari, l'adaptation de
+   Publipostage+ elle-même (elle n'a pas encore le code).
 
 ### 5.3 Le stockage du navigateur
 

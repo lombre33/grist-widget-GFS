@@ -40,6 +40,11 @@ const ICONS = {
   move: '<path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/><path d="M9 14h6M13 11l3 3-3 3"/>',
   trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5"/>',
   flask: '<path d="M9 3h6M10 3v6l-5.5 9.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3"/><path d="M7.5 15h9"/>',
+  // La position de la barre de GFS : un cadre dont le trait dit de quel côté elle est.
+  'dock-left': '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M9 4v16"/>',
+  'dock-right': '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M15 4v16"/>',
+  'dock-top': '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 10h18"/>',
+  'dock-bottom': '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 14h18"/>',
 };
 
 export const iconNames = () => Object.keys(ICONS);

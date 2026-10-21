@@ -14,7 +14,7 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
   type de modèle dans sa table (section 2.2).
 - **Quand GFS arrive** : le kit en sous-module, le manifeste `gfs.json`, la liste unique des bibliothèques natives, le
   contexte et le stockage par le kit, les extensions, dont la bibliothèque n'est plus dans le dépôt de l'app mais portée par
-  GFS (section 1.2).
+  GFS, la langue de GFS et la zone de sa barre à laisser libre (section 1.2).
 
 ---
 
@@ -79,6 +79,13 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
    après sa question d'enregistrement s'il y a des modifications en attente (Enregistrer, Abandonner, Annuler) et rouvre ce
    qu'elle avait ouvert. Son propre choix de langue y est grisé avec la raison (« La langue se choisit dans Grist Factory
    Suite »), jamais masqué ; seule, l'app garde son choix.
+9. Laisser libre la zone de la barre de GFS (contrats 5.2, point 7). Dans GFS, `contexte.barre` dit de quel bord la barre recouvre
+   le cadre et le rectangle à garder libre (`zone`, en pixels du cadre) ; l'événement `barre` le redit à chaque changement (le
+   bord choisi par la personne, la taille du cadre, l'explorateur ouvert ou fermé), sans recharger le cadre. La personne place
+   la barre à gauche, en haut, à droite ou en bas : aucune interface de l'app ne suppose un bord. Ce que l'app pose près d'un
+   bord (barre d'outils, bulle, menu, fenêtre, bande de diapositives, volet, repères fixes des coins) s'écarte de la zone, sans
+   bande réservée : hors de la zone, tout le cadre est à l'app. Une app qui masque la barre (un diaporama plein cadre) le
+   demande par `barre.masquer` et offre elle-même la sortie, puisque la barre n'est plus là pour ouvrir l'explorateur.
 
 ### 1.3 Licence : GPL 3.0 dans tous les dépôts (décision du porteur, 21/10)
 

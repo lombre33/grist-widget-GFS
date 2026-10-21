@@ -19,7 +19,7 @@ export function pageOf(referrer) {
   } catch (error) { return null; }
 }
 
-// `facts` : ce que le contrôleur a lu (instance, page, document, adresse du widget), `session` : { access, extensions, libraries, opening, storage }.
+// `facts` : ce que le contrôleur a lu (instance, page, document, adresse du widget), `session` : { access, extensions, libraries, opening, storage, bar }.
 export function buildContext(facts, session, params) {
   const { preferences, readonly } = params;
   return {
@@ -40,5 +40,6 @@ export function buildContext(facts, session, params) {
     bibliotheques: session.libraries,
     ouverture: session.opening || null,
     stockage: session.storage || {}, // la copie de l'espace de CETTE app dans le navigateur de GFS (5.3)
+    barre: session.bar || null, // la barre de GFS qui recouvre le cadre : { bord, epaisseur, zone }, ou `null` quand rien ne le recouvre (5.2, point 7)
   };
 }

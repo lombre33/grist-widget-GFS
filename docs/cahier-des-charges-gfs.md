@@ -589,8 +589,11 @@ enregistrée par l'autre app.
 - **L'explorateur remplace le cadre**, et « Retour » ou Échap ramène au même fichier, tel quel : le sous-cadre de l'app
   reste vivant, caché, pendant qu'on explore.
 - **Dans Publipostage+, l'entrée est « Organiser »** (en tête du sélecteur de modèle, déjà là) : sa barre d'outils est gelée.
-  Une app sans équivalent reçoit du kit une entrée « Fichiers » à la place que sa charte prévoit. GFS n'ajoute aucune barre
-  au-dessus des apps (question 7, section 12).
+  Une app sans équivalent reçoit du kit une entrée « Fichiers » à la place que sa charte prévoit.
+- **GFS pose en plus, par-dessus l'app, une petite barre de trois boutons à icône seule** (« Fichiers », « Apps et extensions »,
+  « Position de la barre »), que la personne place où elle veut : à gauche (par défaut), en haut, à droite ou en bas. Elle ne
+  prend la place de personne : le cadre de l'app reste plein, et chaque app laisse libre, aux quatre bords, la petite zone que la
+  barre recouvre et que GFS lui dit (contrats 5.2, point 7). Décision du porteur, 21/10 (question 7, section 12).
 - Ouvrir un fichier d'une autre app : « fermer » d'abord (section 5.2).
 - GFS n'ajoute aucune étape à l'historique du navigateur : « Précédent » reste celui de Grist.
 - Deux sections GFS dans une page sont deux cadres indépendants : elles ne se parlent que par la ligne choisie de Grist.
@@ -754,7 +757,7 @@ fait passer par le porteur.
 | 4 | Automation+ dans GFS : section à part, ou sous-cadre gardé en fond ? | Étape 6 | Section à part pour commencer |
 | 5 | Où publier GFS et les apps ? | Avant la première publication | Organisation `grist-factory`, un dépôt public par app, un pour GFS, un pour le kit ; aucune page de test sur cette origine. Le 19/10, le CDN du fichier assemblé de l'écriture en direct pointe provisoirement le dépôt de développement ; il suivra le dépôt définitif. Le 21/10, le porteur garde les dépôts de `lombre33` tant que le code de GFS y est (les liens vers les apps et l'adresse du CDN comprises) et adaptera les liens à la bascule de GFS sous `grist-factory`, par une consigne à chaque app, sans date ; dépôt public de Publipostage+ : `grist-factory/Publipostage-Plus` |
 | 6 | Dashboard et Grist-BI : deux apps, ou une ? | Au lancement de Dashboard | À préciser avec le porteur |
-| 7 | Entrée de l'explorateur dans chaque app, ou un repère de GFS au-dessus des apps ? | Étape 6 | Dans chaque app (« Organiser » pour Publipostage+), sans barre de plus |
+| 7 | Entrée de l'explorateur dans chaque app, ou un repère de GFS au-dessus des apps ? | Étape 6 | Dans chaque app (« Organiser » pour Publipostage+), sans barre de plus. **Reprise et tranchée le 21/10 : les deux.** L'entrée de chaque app reste, et GFS pose une barre de trois boutons à icône seule, que la personne place à gauche, en haut, à droite ou en bas ; elle recouvre un espace que les apps laissent libre, sans bande en plus (6.3, contrats 5.2, point 7) |
 | 8 | Couleurs des types des autres apps | Étape 6 | Neutres tant qu'il ne les demande pas |
 | 9 | Où retenir les apps installées : réglages de la section, ou une table pour tout le document ? | Étape 1 | Réglages de la section, avec le rappel « Enregistrer » ; une table seulement si le réglage doit valoir pour tout le document. **Tranché le 16/10 : une table pour tout le document** (`GFS_Rangement`, contrats 7.4) |
 | 10 | Les quatre choix de parcours (6.7) | Étape 6 | Les défauts pris |

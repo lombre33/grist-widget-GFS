@@ -1,0 +1,27 @@
+{
+  "contrat": 0,
+  "id": "sonde-r",
+  "nom": {
+    "fr": "Sonde R",
+    "en": "Probe R"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Une app qui laisse libre la zone que la barre de GFS recouvre (contexte.barre, événement barre, barre.masquer), comme Publipostage+ après la consigne 025",
+    "en": "An app that keeps free the zone the GFS bar covers (contexte.barre, barre event, barre.masquer), like Publipostage+ after instruction 025"
+  },
+  "icone": "doc",
+  "entree": "index.html",
+  "tables": {
+    "prefixe": "SondeR_"
+  },
+  "reglages": [],
+  "permissions": {
+    "acces": "none"
+  },
+  "extensions": [],
+  "actions": {
+    "ouvrir": [],
+    "choisir": []
+  }
+}

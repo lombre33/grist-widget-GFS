@@ -21,9 +21,9 @@ const run = `langue-${lang}-${scheme}${panelWidth === 700 ? '' : `-${panelWidth}
 const NAMES = { fr: 'Français', en: 'English' };
 // Ce que le labo cherche à l'écran, dans chaque langue (les textes de js/i18n.js).
 const WORDS = {
-  fr: { title: 'Mes fichiers', add: 'Nouveau', open: 'Ouvrir', close: 'Fermer', search: 'Rechercher…', allTypes: 'Tous les types', recent: 'Récents', today: 'Auj.', locked: 'Créé avec une version plus récente', files: 'Fichiers',
+  fr: { title: 'Mes fichiers', add: 'Nouveau', open: 'Ouvrir', close: 'Fermer', search: 'Rechercher…', allTypes: 'Tous les types', recent: 'Récents', today: 'Auj.', locked: 'Créé avec une version plus récente', filesTip: 'Ouvrir l’explorateur de fichiers',
     appsTitle: 'Apps et extensions', button: n => `Langue : ${n}`, menu: 'Langue', auto: n => `Comme Grist (${n})`, notKept: 'Ce choix ne sera pas gardé : ton navigateur refuse l’enregistrement.' },
-  en: { title: 'My files', add: 'New', open: 'Open', close: 'Close', search: 'Search…', allTypes: 'All types', recent: 'Recent', today: 'Today', locked: 'Created with a newer version', files: 'Files',
+  en: { title: 'My files', add: 'New', open: 'Open', close: 'Close', search: 'Search…', allTypes: 'All types', recent: 'Recent', today: 'Today', locked: 'Created with a newer version', filesTip: 'Open the file explorer',
     appsTitle: 'Apps and extensions', button: n => `Language: ${n}`, menu: 'Language', auto: n => `Same as Grist (${n})`, notKept: 'This choice will not be kept: your browser refuses to store it.' },
 };
 const words = WORDS[lang];
@@ -88,7 +88,7 @@ check('rien n\'est retenu tant que la personne n\'a rien choisi', (await stored(
 const layout = await frame.evaluate(() => {
   const rect = selector => { const node = document.querySelector(selector); const r = node.getBoundingClientRect(); return { left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top), bottom: Math.round(r.bottom), width: Math.round(r.width) }; };
   const label = document.querySelector('.tb-lang .lbl');
-  return { apps: rect('.ex-title-row .tb[aria-haspopup="dialog"]'), lang: rect('.tb-lang'), group: rect('.tb-group'), view: window.innerWidth, scroll: document.documentElement.scrollWidth, labelShown: getComputedStyle(label).display !== 'none' };
+  return { apps: rect('.ex-title-row .tb[aria-haspopup="dialog"]:not([hidden])'), lang: rect('.tb-lang'), group: rect('.tb-group'), view: window.innerWidth, scroll: document.documentElement.scrollWidth, labelShown: getComputedStyle(label).display !== 'none' };
 });
 say('mise en page de la ligne du titre :', layout);
 check('la ligne du titre tient dans le panneau sans défilement horizontal, les boutons ne se chevauchent pas', layout.scroll <= layout.view && layout.apps.right <= layout.lang.left && layout.lang.right <= layout.group.left && layout.group.right <= layout.view, layout);
@@ -166,8 +166,8 @@ check('une app qui redemande son contexte (un rechargement de sa part) reçoit l
 check('GFS n\'a pas touché au cadre de l\'app : le même cadre, la même adresse (qui garde la langue de départ), un seul cadre', !app.isDetached() && seen.adresse === lang && page.frames().filter(f => /l-langue\//.test(f.url())).length === 1, { detached: app.isDetached(), adresse: seen.adresse });
 await frame.locator('.ex-foot .btn', { hasText: new RegExp(`^${wordsOther.close}$`) }).click();
 await frame.locator('#floaters').waitFor({ state: 'visible' });
-const floaters = await frame.evaluate(() => ({ files: document.querySelector('#floater-files').textContent.trim(), filesTip: document.querySelector('#floater-files').title }));
-check('les repères au-dessus de l\'app suivent la langue', floaters.files === wordsOther.files, floaters);
+const floaters = await frame.evaluate(() => { const b = document.querySelector('#floater-files'); return { text: b.textContent.trim(), filesTip: b.title, label: b.getAttribute('aria-label') }; });
+check('les repères au-dessus de l\'app suivent la langue (le nom du bouton « Fichiers » est son info-bulle et son nom accessible : il n\'a pas d\'autre texte)', floaters.text === '' && floaters.filesTip === wordsOther.filesTip && floaters.label === wordsOther.filesTip, floaters);
 await frame.locator('#floater-files').click();
 await frame.locator('.ex').waitFor({ state: 'visible' });
 await chooseAuto();
@@ -229,7 +229,7 @@ now = await screen();
 check('une autre section change le choix : GFS suit sans rechargement (événement `storage` du navigateur)', followed && now.title === wordsOther.title && now.buttonLabel === wordsOther.button(NAMES[other]), { html: now.html, title: now.title });
 check('l\'autre section est passée dans la langue choisie elle aussi', (await sibling.evaluate(() => document.documentElement.lang)) === other);
 await shot('6-section-suivie');
-await frame.locator('.ex-title-row .tb[aria-haspopup="dialog"]').click();
+await frame.locator('.ex-title-row .tb[aria-haspopup="dialog"]:not([hidden])').click();
 await frame.locator('.mod').waitFor();
 check('la fenêtre « Apps et extensions » s\'ouvre dans la langue qui vaut', (await frame.locator('#mod-title').textContent()) === wordsOther.appsTitle);
 await shot('7-fenetre-apps');

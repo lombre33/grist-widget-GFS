@@ -23,6 +23,21 @@ mémoire ni contre un faux Grist écrit par nous. Les numéros de ligne bougent 
 - Lu le 12/10 dans `grist-plugin-api.js` servi aux widgets : un widget lit et écrit les tables, lit et pose les réglages de
   sa section, suit la ligne choisie, déplace la ligne ou la sélection de sa table. **Aucune commande pour changer de page ni
   ouvrir une autre section.**
+- Lu le 21/10 dans `grist-plugin-api.js` et `GristDoc.bundle.js` (grist-static 0.1.6) : la table d'un widget
+  (`getSelectedTableIdSync`, `selectedTable`) est le `tableId` du **dernier message** reçu (`ready`, `_tableId = msg.tableId`) ;
+  `onRecord` et `onRecords` relisent par `GristView.fetchSelectedRecord` et `fetchSelectedTable`. Celles-ci rendent les colonnes
+  visibles de la section, une Référence par sa colonne affichée (`expandRefs`, vrai par défaut), et encodent un nombre d'une
+  colonne Date, DateTime ou Référence (`['d', v]`, `['D', v, fuseau]`, `['R', table, v]`) ; `fetchSelectedTable` rend les lignes
+  de la section filtrées et triées.
+- Mesuré le 21/10 dans un vrai Grist (`labo/run-travail.mjs`, couche du labo seulement) : **une app reçoit une autre table que
+  celle de la section de GFS sans changer**, si GFS lui envoie cette table dans ses messages et répond à ses lectures de la vue
+  depuis `fetchTable`. Publipostage+ lit la convocation d'une inscription de Participants, GFS restant sur la page Clients, et
+  suit un changement de ligne ; Automation+, ouverte ainsi sur Participants, traite en 1,1 à 1,6 s une inscription créée
+  ailleurs (relecture toutes les 1,5 s ; deux passages). Automation+ lit sa table une fois, au démarrage.
+- Mesuré le 21/10 (même essai, grist-static, tout dans le navigateur) : `fetchTable` d'une table de six colonnes, médiane de
+  dix lectures, deux passages : 11 à 14 ms pour 1 000 lignes (70 Ko), 38 ms pour 5 000 (360 Ko), 135 à 166 ms pour 20 000
+  (1,5 Mo). Relue toutes les 1,5 s, la table de 20 000 lignes retarde le fil de la page de Grist de plus de 50 ms à chaque
+  relecture (9 fois en 15 s, 190 ms au plus), contre aucune fois sans relecture. **Non mesuré** : un vrai serveur Grist (lecture par le réseau).
 
 **Conséquence** : une app dans un sous-cadre de GFS envoie ses messages à GFS, qui peut les relayer à Grist et rendre les
 réponses, sans que l'app change.

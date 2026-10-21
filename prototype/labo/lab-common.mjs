@@ -97,15 +97,22 @@ function servePages(browser) {
 // Une page HTML modifiée n'est pas rendue par `fulfill` : le navigateur la prendrait pour un document d'adresse inconnue et refuserait (accès au réseau local) tous les
 // fichiers que son sous-cadre, à origine opaque, demande ensuite à 127.0.0.1. Elle arrive donc par le réseau, que le serveur du labo sert (même origine, sans quoi la politique
 // de GFS refuse le sous-cadre), sous l'adresse d'origine (le navigateur ne voit pas le détour).
+// Plusieurs remplacements d'un même fichier s'appliquent l'un après l'autre (une seule route par fichier : la dernière posée cacherait les autres).
 async function routePatches(browser, page, patches) {
   let pagesServer = null;
+  const byPath = new Map();
   for (const patch of patches) {
     const path = patch.chemin || `/prototype/js/${patch.fichier}`;
+    byPath.set(path, [...(byPath.get(path) || []), patch]);
+  }
+  for (const [path, list] of byPath) {
     await page.route(new RegExp(`${path.replace(/\./g, '\\.')}(\\?|$)`), async route => {
       const response = await route.fetch();
-      const text = await response.text();
-      if (!text.includes(patch.de)) throw new Error(`Le labo ne retrouve pas « ${patch.de.slice(0, 40)} » dans ${path}`);
-      const body = text.replace(patch.de, patch.vers);
+      let body = await response.text();
+      for (const patch of list) {
+        if (!body.includes(patch.de)) throw new Error(`Le labo ne retrouve pas « ${patch.de.slice(0, 40)} » dans ${path}`);
+        body = body.replace(patch.de, patch.vers);
+      }
       if (!path.endsWith('.html')) return route.fulfill({ response, body });
       pagesServer = pagesServer || servePages(browser);
       return route.continue({ url: pagesServer.add(body) });

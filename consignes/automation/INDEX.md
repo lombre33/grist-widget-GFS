@@ -5,5 +5,5 @@ lot : cette page, puis seulement les consignes « à faire ».
 
 | N° | Consigne | Quand | État |
 |---|---|---|---|
-| 001 | [Suivre le guide des apps](001-guide-des-apps.md) | à lire avant le prochain lot, puis à chaque lot | à faire |
-| 002 | [Licence : ajouter le fichier `LICENSE` (GNU GPL version 3)](002-licence-gpl-3.md) | au prochain lot ; aucun code ne change ; décision du porteur du 21/10 pour tous les dépôts | à faire |
+| 001 | [Suivre le guide des apps](001-guide-des-apps.md) | à lire avant le prochain lot, puis à chaque lot | faite · `e356021` |
+| 002 | [Licence : ajouter le fichier `LICENSE` (GNU GPL version 3)](002-licence-gpl-3.md) | au prochain lot ; aucun code ne change ; décision du porteur du 21/10 pour tous les dépôts | faite · `e356021` |

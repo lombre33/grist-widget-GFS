@@ -9,7 +9,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 |---|---|---|---|---|---|
 | Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `8f2fde6` | 21/10/2026 | GPL 3.0 |
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `2c0ee50` | 21/10/2026 | Apache 2.0, à passer en GPL 3.0 (consigne 004) |
-| Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `f5e4100` | 21/10/2026 | GPL 3.0 dans le code, `LICENSE` absent (consigne 002) |
+| Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `78d3619` | 21/10/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `70d8374` | 21/10/2026 | GPL 3.0 |
 
 ## Lus pour référence (pas des apps de GFS)
@@ -222,6 +222,21 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   bibliothèque, ni écriture dans `_grist_*`. Toujours pas de `GFS-ETAT.md` : la 001 attend. La référence de GFS reste à
   `ee8f0a9` (le manifeste d'Automation+ décrit les réglages `workflow`). Traité le 21/10 : la ligne du guide mise à jour, la
   consigne 002 (licence).
+- Automation+ à `78d3619` (21/10, midi) : cinq commits de plus depuis `f5e4100`, dont trois de code (versions 0.9.0 à 0.11.0 :
+  mise à jour d'une ligne repérée par une clé dans une autre table ; nœud Lecture, valeurs `{Colonne}` dans les conditions
+  et déclencheur sur une ligne précise ; test à blanc sur la ligne sélectionnée, historique par pages, activation et
+  désactivation tracées). Son premier `GFS-ETAT.md` (`78d3619`, qui décrit `9b19567`) passe la 001 et la 002 à « faite »
+  (`e356021`) ; « Questions pour GFS » et « Demandes à GFS » : aucune. 001 : écarts aux règles 2, 3, 4 et 12 (le détail est
+  dans la ligne du guide) ; la ligne du guide est juste, sauf « premier client du kit » (c'est Form+, cahier 4.5) ; `Auteur`
+  est une formule déclenchée, avec repli sans formule. 002 : `LICENSE` relu sur `e356021`, 674 lignes, SHA-256 `3972dc97…`,
+  mêmes octets que celui de GFS. Lus : les trois commits de code n'ajoutent ni table, ni colonne, ni clé de réglages, ni
+  `_grist_*`, ni bibliothèque, ni adresse ; seuls faits nouveaux chez GFS : la lecture de la ligne sélectionnée
+  (`grist.onRecord` avec `includeColumns: 'all'`, pour « Tester » ; niveau `full`, contrats 4.3) et deux valeurs de plus
+  dans `Evenement` (`activate`, `deactivate`) ; le journal se relit par pages (`logsPage`, même table). Pas de `gfs.json`
+  encore. Traité le 21/10 : l'`INDEX.md` (001 et 002 « faites »), la ligne du guide corrigée, la page « GFS en bref » et la
+  référence avancée à `78d3619` (commit à part ; le code est celui de `9b19567`, les deux derniers commits ne portent que la
+  page d'état et la licence ; essai dans un vrai Grist, sans refus du courtier ni erreur) ; pas de consigne, l'app n'avait
+  rien demandé.
 - Grist-BI à `70d8374` (21/10) : treize commits de plus depuis `c8c819f`, six demandes de tirage fusionnées (agrégations
   DuckDB-WASM au-delà d'un seuil de lignes, modale de détail par tuile, clés de jointure suggérées, export Excel des valeurs
   de tuile en mode mesure, auteur des commentaires reconnu, drill-down catégoriel). Chez GFS : une table-sonde
@@ -232,11 +247,11 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   Publipostage+, Grist-BI et SlidesPlus ont un `LICENSE` qui est le texte officiel de la GPL 3.0 (mêmes octets que celui de
   GFS, SHA-256 `3972dc97…`) ; Grist-BI était sous MIT jusqu'au 29/09 (`fb3ab41`), passé en GPL 3.0 ce jour-là. Form+ :
   `LICENSE` sous Apache 2.0, README et documents de même (consigne 004). Automation+ : `package.json` (`GPL-3.0-only`),
-  README et panneau « Crédits » disent GPL 3.0, mais le dépôt n'a pas de fichier `LICENSE` (consigne 002). L'outil d'audit
-  est sous MIT, au nom du porteur : il passe aussi en GPL 3.0 (le porteur a dit oui le 21/10), par un message à coller dans
-  son projet (il n'a pas de dossier `consignes/` ici) ; à relire sur `main` de son dépôt. Le dépôt public
-  `grist-factory/Publipostage-Plus` est sous GPL 3.0. GFS : `LICENSE` ajouté le 21/10 et `license` dans ses trois
-  `package.json` ; le kit naît sous GPL 3.0.
+  README et panneau « Crédits » disaient GPL 3.0 sans fichier `LICENSE` ; il est arrivé à `e356021` (consigne 002 faite),
+  mêmes octets que celui de GFS. L'outil d'audit est sous MIT, au nom du porteur : il passe aussi en GPL 3.0 (le porteur a
+  dit oui le 21/10), par un message à coller dans son projet (il n'a pas de dossier `consignes/` ici) ; à relire sur `main`
+  de son dépôt. Le dépôt public `grist-factory/Publipostage-Plus` est sous GPL 3.0. GFS : `LICENSE` ajouté le 21/10 et
+  `license` dans ses trois `package.json` ; le kit naît sous GPL 3.0.
 - Les dossiers de `consignes/` portent l'identifiant court de l'app ; l'`id` du manifeste se fixe avec chaque `gfs.json`
   (étape 5 du plan).
 - Aucun de ces dépôts n'avait de `GFS-ETAT.md` : chaque projet d'app le crée en lisant sa consigne 001.

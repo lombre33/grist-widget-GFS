@@ -59,7 +59,7 @@ présentations, écriture en direct) et une langue commune : un seul choix par p
 L'étape 3, le kit commun, est lancée (21/10) : la version 0.1.0 est en ligne (dépôt `lombre33/grist-factory-kit` : jetons,
 thème, traduction, fenêtres, saisies et couches) et sa consigne est posée chez Form+, son premier client. Publipostage+ est
 mûr ; Form+, Automation+ et Grist-BI sont des preuves de concept. Tous les dépôts passent sous GPL 3.0 (décision du 21/10) :
-fait pour GFS, Publipostage+ et Grist-BI ; Form+ et Automation+ ont chacun une consigne.
+fait pour GFS, Publipostage+, Grist-BI et Automation+ (son `LICENSE` est arrivé le 21/10) ; Form+ a une consigne.
 
 ## Pour la suite
 

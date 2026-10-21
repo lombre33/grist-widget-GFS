@@ -193,8 +193,9 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   rien de nouveau chez GFS (ni table, colonne, clé de réglages, `_grist_*`, adresse de la CSP, carte d'importation ni liste
   de bibliothèques) ; `js/extensions.js` monte la version de l'extension de Diapositives de 0.2 à 0.3 et son dossier passe
   de 36 045 à 36 571 octets (trois lignes de `slide-strip.css`) ; le catalogue de la galerie de développement s'appelle
-  `catalogue.json` (l'audit externe de l'app le lisait comme le manifeste d'un widget Grist). La référence de GFS reste à
-  `80deef7` (rien n'est demandé par l'app).
+  `catalogue.json` (l'audit externe de l'app le lisait comme le manifeste d'un widget Grist). Traité le 21/10 : la référence
+  avancée à `e1f5d2b` (commit à part, relu ; dix essais dans un vrai Grist, sans échec) et le poids de Diapositives (37 Ko) ;
+  pas de consigne, l'app n'avait rien demandé.
 - Automation+ à `f5e4100` (21/10) : sept commits de plus depuis `ee8f0a9`, tous du 21/10 (versions 0.6.0 à 0.8.0). Chez GFS :
   le graphe est aussi gardé dans une table du document, créée avec l'accord de la personne (`js/store.js`) ; d'abord des
   tables `Automation_*` (`7dae9e3`), puis une seule, `Automation` (`5a166f4`), qui porte les workflows, le journal et un

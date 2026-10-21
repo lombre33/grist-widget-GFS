@@ -104,9 +104,9 @@ const line = gfs.locator(`[data-row="${FK}"]`);
 const text = (await line.innerText()).replace(/\s+/g, ' ');
 say('la ligne dans la fenêtre :', text);
 const sizes = await line.locator('.sz').allInnerTexts();
-check('la ligne dit ce qu\'elle apporte et sa taille du manifeste (≈ 36 Ko), sans choix de bibliothèque (rien à charger)',
+check('la ligne dit ce qu\'elle apporte et sa taille du manifeste (≈ 37 Ko), sans choix de bibliothèque (rien à charger)',
   (lang === 'fr' ? /Diapositives.*présentations en 16:9/ : /Slides.*16:9 presentations/).test(text) && (await line.locator('.mr-mode').count()) === 0
-    && sizes.length === 1 && /^≈\s36\s(Ko|KB)$/.test(sizes[0].trim()), `${text} | ${JSON.stringify(sizes)}`);
+    && sizes.length === 1 && /^≈\s37\s(Ko|KB)$/.test(sizes[0].trim()), `${text} | ${JSON.stringify(sizes)}`);
 check('elle n\'est pas grisée : aucune bibliothèque ne peut lui manquer', !(await line.evaluate(node => node.classList.contains('is-locked'))));
 await lab.shotPanel(run, '2-fenetre-diapositives');
 

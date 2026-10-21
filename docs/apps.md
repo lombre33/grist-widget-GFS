@@ -385,6 +385,11 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   (`run-ranger`, partie 7, `f3ab290`) ; l'`INDEX.md` (024 faite, 025 en cours) ; la consigne 029 (le contrat du rangement et du
   renommage par GFS, et ne jamais remettre un ancien nom). Form+ n'a pas bougé depuis `16701fe` : la consigne 009 lui porte la
   même règle du nom. Restent ouverts chez Publipostage+ : la 025, le titre d'impression (011), l'adresse du CDN (016).
+- Kit 0.2.0 (21/10, soir ; le porteur : « Dans le kit ») : le lien avec GFS (`js/gfs-link.js`) poussé dans
+  `lombre33/grist-factory-kit` à `c0c8660`, sans étiquette (le porteur la pose, comme la `v0.1.0`). Form+ n'a pas bougé depuis
+  `16701fe` : la consigne 010 lui demande d'avancer son `kit/` à ce commit et d'y prendre l'ouverture (au démarrage et par
+  l'appel « ouvrir »), la langue de GFS, son thème gardé chez GFS et la page du contexte ; à sa « faite », GFS avance la
+  référence, déclare `ouvrir` dans le manifeste de Form+ et mesure le double-clic. Publipostage+ garde son propre lien.
 - Licences (21/10, le porteur : tous les dépôts sous GPL 3.0). Relevé sur le sommet de `main` de chaque dépôt :
   Publipostage+, Grist-BI et SlidesPlus ont un `LICENSE` qui est le texte officiel de la GPL 3.0 (mêmes octets que celui de
   GFS, SHA-256 `3972dc97…`) ; Grist-BI était sous MIT jusqu'au 29/09 (`fb3ab41`), passé en GPL 3.0 ce jour-là. Form+ :

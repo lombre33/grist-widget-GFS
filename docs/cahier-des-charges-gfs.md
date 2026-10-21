@@ -352,6 +352,12 @@ commencer, ou un sous-cadre gardé ouvert et caché (question 4, section 12).
   quel dans un vrai Grist à 700 × 400, passe 25 vérifications par combinaison (français et anglais, clair et sombre), sans
   échec. Restent : l'étiquette `v0.1.0`, que le porteur pose (le cloud de GFS ne pousse pas d'étiquette) ; deux ombres en dur
   chez Form+ (consigne 006) ; le client du courtier, la liste avec recherche et le texte commun du grisé, qui viennent par lots.
+- **V0.2 (21/10, soir) : le client du courtier** (choix du porteur, « Dans le kit ») : `js/gfs-link.js`, commit `c0c8660`,
+  d'après celui de Publipostage+ (`487d66b`), avec la barre de GFS et le stockage par app : le contexte, l'ouverture et l'appel
+  « ouvrir », la langue, la barre, les choix de la personne, les extensions et « installer » ; seule, l'app ne parle à personne.
+  Mesuré : 56 essais sous Node, dont 18 pour le lien, et 209 vérifications dans Chromium, dont le cadre d'une app isolé comme
+  chez GFS face à une page qui joue GFS. Form+ le reprend par la consigne 010 ; GFS ouvre alors sa porte « ouvrir ». Restent
+  hors du lien : l'identité, « choisir » et « insérer ». L'étiquette `v0.2.0`, comme la `v0.1.0`, est à poser par le porteur.
 
 ### 4.6 Les extensions
 

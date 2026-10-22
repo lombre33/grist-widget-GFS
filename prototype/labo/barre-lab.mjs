@@ -15,7 +15,7 @@ export function barRect(edge, { largeur, hauteur }) {
 }
 const sameRect = (a, b) => ['x', 'y', 'largeur', 'hauteur'].every(k => Math.abs(a[k] - b[k]) <= 1);
 
-const dockRect = frame => frame.evaluate(() => {
+export const dockRect = frame => frame.evaluate(() => {
   const r = document.getElementById('floaters').getBoundingClientRect();
   const s = document.getElementById('stage').getBoundingClientRect();
   return { x: r.left - s.left, y: r.top - s.top, largeur: r.width, hauteur: r.height };
@@ -24,15 +24,17 @@ export const dockEdge = frame => frame.evaluate(() => { const d = document.getEl
 
 // Ce que l'app montre près des bords, avec son rectangle dans le cadre de l'app : les contrôles qu'une main peut atteindre (boutons, champs, liens, onglets, zones d'écriture ou de
 // dessin), et les panneaux qu'elle pose par-dessus son contenu (menus, bulles, journaux : position fixe ou absolue, un fond, un bord ou une ombre ; fenêtres : la boîte peinte
-// posée dans un voile fixe qui couvre le cadre), hors des voiles eux-mêmes et hors d'un panneau déjà compté.
-export const appParts = app => app.evaluate(() => {
+// posée dans un voile fixe qui couvre le cadre), hors des voiles eux-mêmes et hors d'un panneau déjà compté. `group` : un sélecteur CSS ; chaque élément qu'il contient reçoit `groupe: true`
+// (la barre d'outils d'une app, pour la dire à part) ; chaque part porte aussi ses `classes` (pour en écarter un fond). `extra` : des sélecteurs de plus, pour ce que l'app montre sans en faire un contrôle (un logo, une pastille).
+export const appParts = (app, { group = null, extra = '' } = {}) => app.evaluate(({ group, extra }) => {
   const label = el => (el.getAttribute('aria-label') || el.title || el.textContent || el.id || String(el.className || '') || el.tagName).replace(/\s+/g, ' ').trim().slice(0, 40);
   const shown = (el, r) => {
     const style = getComputedStyle(el);
     return r.width >= 2 && r.height >= 2 && style.visibility !== 'hidden' && style.display !== 'none' && !el.closest('[hidden]');
   };
-  const part = (el, r) => ({ nom: `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''} « ${label(el)} »`, x: r.left, y: r.top, largeur: r.width, hauteur: r.height });
-  const wanted = 'button, [role="button"], [role="tab"], input, select, textarea, a[href], summary, [contenteditable="true"], .ProseMirror, [tabindex="0"], [draggable="true"], canvas';
+  const classes = el => (typeof el.className === 'string' ? el.className : (el.className && el.className.baseVal) || '');
+  const part = (el, r) => ({ nom: `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''} « ${label(el)} »`, x: r.left, y: r.top, largeur: r.width, hauteur: r.height, groupe: Boolean(group) && Boolean(el.closest(group)), classes: classes(el) });
+  const wanted = 'button, [role="button"], [role="tab"], input, select, textarea, a[href], summary, [contenteditable="true"], .ProseMirror, [tabindex="0"], [draggable="true"], canvas' + (extra ? `, ${extra}` : '');
   const controls = [...document.querySelectorAll(wanted)].map(el => [el, el.getBoundingClientRect()]).filter(([el, r]) => shown(el, r)).map(([el, r]) => part(el, r));
   const frameArea = innerWidth * innerHeight;
   const area = el => { const r = el.getBoundingClientRect(); return r.width * r.height; };
@@ -47,7 +49,7 @@ export const appParts = app => app.evaluate(() => {
   const found = [...document.body.querySelectorAll('*')].filter(isPanel);
   const outer = found.filter(el => !found.some(other => other !== el && other.contains(el)));
   return { controls, panels: outer.map(el => part(el, el.getBoundingClientRect())) };
-});
+}, { group, extra });
 
 const overlap = (a, b) => {
   const w = Math.min(a.x + a.largeur, b.x + b.largeur) - Math.max(a.x, b.x);

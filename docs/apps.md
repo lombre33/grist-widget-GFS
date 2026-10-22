@@ -7,7 +7,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `dc95ebe` | 21/10/2026 | GPL 3.0 |
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `016eebb` | 22/10/2026 | GPL 3.0 |
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `16701fe` | 21/10/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `f3ab8d6` | 22/10/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `23647eb` | 21/10/2026 | GPL 3.0 |
@@ -407,6 +407,24 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   se caleront sur la zone libre, jamais écrite en dur. Questions et demandes : aucune. Traité le 22/10 : l'`INDEX.md` (003
   « lue · `f3ab8d6` », le code attend le lot du lien du kit) et la référence avancée à `f3ab8d6` (commit à part, relu : un seul
   fichier de plus que `4110eaf`, `GFS-ETAT.md`). Le rejeu de la barre chez elle, avec `run-barre-apps.mjs`, attend ce lot.
+- Publipostage+ à `011c74c` (22/10, le porteur : « La 025 est faite côté Publipostage+ … avance la référence … rejoue la barre ») :
+  vingt-six commits de plus depuis `dc95ebe`, dont dix-huit de code. Son `GFS-ETAT.md` (`011c74c`, qui décrit `2d9d4ed` ;
+  consignes lues jusqu'à la 027) dit la 025 **faite** (`9d3c52d`, `f81bd8a`, `2ebd68d`, `2f6440a`, `d590d7c`, `40b156f`, `2928d03`,
+  `103e45a` et `727c083`) : la barre d'outils laisse un vide à la barre de GFS aux quatre bords et dans les petits panneaux
+  (choix du porteur « Laisser un vide », 21 et 22/10), plus aucun point ouvert. Elle porte aussi la pagination, dix lots de
+  l'extension `diapositives` (0.14 à 0.23 : formes, lignes et flèches, transitions, fond, notes de l'intervenant, rotation, les
+  trois icônes du bas de la bande) et l'export PowerPoint (`c919855`, dans le socle). « Demandes à GFS » : la référence, `2d9d4ed`
+  ou plus loin, et la barre à rejouer. Lus : de `62002ca` à `2d9d4ed`, 36 fichiers, deux ajoutés (`js/pptx-export.js` et son
+  essai) ; la CSP, la carte d'importation et la liste de bibliothèques ne changent pas ; ni appel à Grist, `fetch`, message ni
+  stockage de plus ; les seules adresses ajoutées sont des espaces de noms XML. Traité le 22/10 : la référence avancée à `2d9d4ed`
+  (`2a4b694`, commit à part, relu) ; la barre rejouée avec l'app aux quatre bords, à 700 × 400, 560 × 300 et 700 × 180, en français /
+  clair et en anglais / sombre (`run-barre-ecartee`, 227 vérifications par combinaison, aucun échec) : rien ne passe sous la barre,
+  « Présenter » la masque et la rend à chaque sortie, la barre d'outils passe de cinq cas (jusqu'à quatre boutons) à aucun bouton
+  sous la barre et un seul à 1,4 px dans la marge de 4 px ; l'`INDEX.md` (025 faite) ; la consigne 030. Depuis, six commits de
+  plus jusqu'à `016eebb` (sa page décrit `d52e40b`) : le point rouge d'une miniature dont un cadre dépasse, l'avertissement de
+  contraste de la fenêtre « Fond… », le trait seul caché aussi dans la rangée de mise en forme ; lus, rien pour GFS ; la
+  référence reste à `2d9d4ed` jusqu'au prochain rejeu. Restent ouverts chez Publipostage+ : le titre d'impression (011),
+  l'adresse du CDN (016), la 028 et la 029, que l'app n'a pas encore lues (la partie 7 de `run-ranger` attend la 029).
 
 - Licences (21/10, le porteur : tous les dépôts sous GPL 3.0). Relevé sur le sommet de `main` de chaque dépôt :
   Publipostage+, Grist-BI et SlidesPlus ont un `LICENSE` qui est le texte officiel de la GPL 3.0 (mêmes octets que celui de

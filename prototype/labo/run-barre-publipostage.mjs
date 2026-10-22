@@ -1,5 +1,5 @@
 // La barre de GFS devant la vraie Publipostage+ (la version que GFS référence), dans un vrai Grist (grist-static), à 700 × 400, à la vraie souris : ce que la barre recouvre de l'app aux quatre bords, tant
-// que l'app n'écarte rien (consigne 025 : l'app n'a pas encore le code). L'app est ouverte sur le modèle que la personne ouvre (« Contrat de prestation »), le cadre de l'app est plein (aucune bande) ; pour chaque
+// que l'app n'écarte rien (la mesure de départ de la consigne 025 ; depuis que l'app l'a faite, `run-barre-ecartee.mjs` vérifie que rien ne passe sous la barre, et cette passe dit ce qui reste dessous). L'app est ouverte sur le modèle que la personne ouvre (« Contrat de prestation »), le cadre de l'app est plein (aucune bande) ; pour chaque
 // bord, la passe relève chaque contrôle visible de l'app (boutons, champs, liens, zone d'écriture) que la barre recouvre, en tout ou en partie, et le dit : c'est ce que l'app doit écarter pour que
 // rien ne soit sous la barre. Elle vérifie aussi ce qui doit rester vrai quoi qu'il arrive : la barre est à l'écran à chaque bord, l'app répond encore (son état d'enregistrement ne change pas) et un clic dans le
 // coin bas droit atteint l'app (là où la pastille du zoom et le ▶ sont). LAB_LANG=fr|en, LAB_SCHEME=light|dark.

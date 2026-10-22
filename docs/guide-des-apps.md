@@ -26,7 +26,9 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
    le note, on ne le copie pas.
 2. **Le contenu de l'app vit dans des tables préfixées par l'app** (un modèle, un formulaire, un graphe, un tableau de bord).
    Les réglages de la vue ne gardent que ce qui se refait en un clic. Toute clé de réglage nouvelle porte le préfixe de
-   l'app (cahier 5.5).
+   l'app (cahier 5.5). Une clé déclarée dans `reglages` sert aussi à l'arrivée : une vue qui en porte une, avec une valeur,
+   s'ouvre sur ton app dans GFS (cahier 6.2, point 2) ; pour retirer un choix, écris `null` ou retire la clé, les deux
+   disent « pas de choix ».
 3. **Préserver l'inconnu** : un fichier d'un type que l'app ne sait pas ouvrir est listé grisé, jamais ouvert, jamais
    réenregistré, jamais proposé comme fichier de départ ; un nœud ou un attribut inconnu dans un contenu est gardé tel quel à
    l'enregistrement (cahier 5.4).

@@ -20,6 +20,7 @@ import { askName, chooseFolder } from './filing-window.js';
 import { readCatalogue } from './libraries.js';
 import { activeExtensionIds, extensionsOf } from './extensions.js';
 import { AppsState } from './apps-state.js';
+import { arrivalApp } from './arrival.js';
 import { Rangement, TableDeclined } from './rangement.js';
 import { ask } from './ask-window.js';
 import { ModulesWindow, rowKey } from './modules-window.js';
@@ -159,10 +160,22 @@ export class GfsController {
     if (this.fullAccess) await Promise.all([this.registry.load(), this.rangement.identify()]);
     this.#buildExplorer();
     this.#buildDock();
-    this.showExplorer();
+    const arrived = this.#arrive();
     doc.body.dataset.gfs = 'ready';
-    await this.#firstRun();
+    if (!arrived) await this.#firstRun(); // une section qui s'ouvre sur son app n'est pas neuve : la fenêtre des apps ne passe pas par-dessus
     doc.body.dataset.gfsFirstRun = 'done';
+  }
+
+  // L'arrivée (cahier 6.2, point 2 ; js/arrival.js) : une section qui servait à une app s'ouvre sur elle, sans consigne et sans rien écrire ; sinon l'explorateur. Rend `true` si une app s'est ouverte.
+  #arrive() {
+    const manifests = this.validApps().map(item => item.manifest);
+    const id = arrivalApp(this.state.allOptions, manifests, { installed: appId => this.registry.has(appId), granted: this.state.grantedAccess });
+    if (id && this.#activate(id, null)) {
+      this.hideExplorer();
+      return true;
+    }
+    this.showExplorer();
+    return false;
   }
 
   // Le catalogue des bibliothèques d'extensions est livré avec GFS (contrats 2.6, point 6) : un fichier illisible ou une entrée invalide grise

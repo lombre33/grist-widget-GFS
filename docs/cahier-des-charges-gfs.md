@@ -589,8 +589,14 @@ enregistrée par l'autre app.
 
 1. GFS lit les apps installées dans `GFS_Rangement` (si la table existe) et les réglages de sa section : app de départ.
 2. Sans app de départ, mais avec des clés de réglages qu'un manifeste déclare (la section servait à cette app seule), GFS
-   ouvre cette app, sans rien écrire : c'est l'aller-retour sans perte.
-3. Sinon, une seule app installée : elle s'ouvre. Sinon : l'explorateur.
+   ouvre cette app, sans rien écrire : c'est l'aller-retour sans perte. **Construit au prototype le 22/10** (décision du
+   porteur, « comme avant GFS » : le modèle de la vue de Publipostage+, un document, une grille ou une présentation, s'ouvre
+   à l'arrivée, comme dans l'app seule) : une clé compte quand elle a une valeur (`null` et le texte vide, par lesquels une
+   app retire un choix, ne comptent pas) ; l'app doit être installée et l'accès que Grist a donné à GFS lui suffire ; avec
+   deux apps servies par la section, GFS ne devine pas : l'explorateur. Contrats 7.4, point 7.
+3. Sinon, une seule app installée : elle s'ouvre. Sinon : l'explorateur. *Pas codé au prototype : « une seule app
+   installée : elle s'ouvre » (sans clé d'une app, l'explorateur, le plus prudent), ni le point 1 (rien n'écrit encore
+   `gfs.depart`).*
 4. L'app applique ensuite son propre ordre d'arrivée. Pour Publipostage+ : la ligne choisie si une règle la retient, puis le
    modèle de la vue, puis le ★ du document, sinon une page blanche (`js/main.js`, démarrage).
 5. Une section neuve, sans rien : l'explorateur vide, qui propose « Installer une app ». Rien ne s'installe sans un geste.

@@ -654,7 +654,8 @@ mesurés, pas une promesse (cahier 1.3, 8).
    `ready` (`queueOutgoingUntilReadyMessage`).
 2. [T] GFS s'abonne aux événements de Grist par l'API publique et tient, dans une copie en mémoire, le **dernier** message de
    chacun : `options` (avec `settings`), `theme`, état de la table (`onRecords`) et ligne courante (`onRecord`).
-3. [T] GFS lit ensuite les réglages de sa section, décide de l'app à ouvrir (cahier 6.2) et crée le sous-cadre.
+3. [T] GFS lit ensuite les réglages de sa section, décide de l'app à ouvrir (cahier 6.2 ; la règle est au point 7 de 7.4) et
+   crée le sous-cadre.
 
 ### 4.2 Le sous-cadre, de la création au `ready`
 
@@ -846,7 +847,8 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    active ou désactive une extension dans GFS : l'app charge alors l'extension au premier usage, comme ses moteurs d'export.
    `langue` (`{ "langue": "fr" | "en" }`), quand la personne change la langue de GFS (point 6). `barre` (`{ "barre": { … } | null }`),
    quand la barre de GFS change de bord, de taille, ou disparaît et revient (point 7).
-3. [D] `ouverture` : `null` quand l'app s'ouvre sans consigne (elle applique son propre ordre d'arrivée, cahier 6.2, point 4) ;
+3. [D] `ouverture` : `null` quand l'app s'ouvre sans consigne (elle applique son propre ordre d'arrivée, cahier 6.2, point 4 : c'est
+   le cas du bouton « Ouvrir » de la fenêtre « Apps et extensions » et de l'arrivée sur une vue qui porte ses réglages, 7.4, point 7) ;
    sinon `{ fichier, type, dossier, raison }` où `fichier` est `{ id, type }` (ou `null` pour « Nouveau »), `type` le type
    demandé quand `fichier` est `null`, `dossier` le dossier courant de l'explorateur (une indication), `raison` l'un de
    `explorateur`, `nouveau`, `lien`. L'app affiche elle-même la raison dans son coin d'état (« par la ligne… », « depuis
@@ -1298,8 +1300,36 @@ le document, pour que l'installation s'enregistre tout de suite.
 5. [D] **Sans droit d'écrire** (document en lecture seule, accès du widget insuffisant, règle d'accès de Grist qui refuse
    l'écriture) : les cases sont grisées, avec la raison ; une écriture refusée rend la liste à ce que la table disait en dernier.
 6. [T] **Lire ne crée rien.** Au chargement, GFS lit `GFS_Rangement` si elle existe ; sinon la liste est celle par défaut.
-7. [T] **L'aller-retour** (cahier 6.2, point 2) ne change pas : une section sans app de départ, mais dont les réglages portent
-   des clés qu'un manifeste déclare, ouvre cette app sans rien écrire, que la table existe ou non.
+7. [T] **L'aller-retour** (cahier 6.2, point 2) : une section sans app de départ, mais dont les réglages portent des clés
+   qu'un manifeste déclare, ouvre cette app sans rien écrire, que la table existe ou non. **Construit le 22/10** (`js/arrival.js`),
+   sur le choix du porteur, « comme avant GFS » : le modèle de la vue de Publipostage+ (un document, une grille ou une
+   présentation) s'ouvre à l'arrivée, comme dans l'app seule. La règle :
+   - une clé compte quand elle a une valeur : `null` et le texte vide, par lesquels une app retire un choix (Publipostage+,
+     « Retirer » du modèle de la vue : `setWidgetOption(clé, null)`), ne comptent pas ; `0`, `false` et un objet comptent ;
+   - ne comptent que les apps qu'on peut ouvrir ici : installées (rien ne s'installe à l'arrivée) et dont l'accès demandé ne
+     dépasse pas celui que Grist a donné à GFS ;
+   - une seule app servie par la section : elle s'ouvre **sans consigne** (`ouverture` à `null`, 5.2, point 3 : elle applique
+     son propre ordre d'arrivée, pour Publipostage+ la ligne, le modèle de la vue, puis le ★) ; aucune, ou deux (la section a servi
+     plusieurs apps tour à tour) : l'explorateur, GFS ne devine pas ;
+   - rien n'est écrit : ni réglage, ni table, ni page, ni clé `gfs.` ;
+   - la fenêtre « Apps et extensions » du premier lancement ne s'ouvre pas par-dessus une app qui s'ouvre toute seule ; sans app,
+     elle s'ouvre comme avant.
+
+   Pas fait : « une seule app installée : elle s'ouvre » (cahier 6.2, point 3) ; sans clé d'une app, l'explorateur, le plus prudent.
+   [M] **Mesuré le 22/10** (labo grist-static 0.1.6, Chromium, panneau 700 × 400, à la vraie souris et au vrai clavier ;
+   `run-arrivee.mjs`, avec les vraies apps : Publipostage+ à `2d9d4ed`, Automation+ à `f3ab8d6`) : 25 vérifications sur 25 en
+   français / clair et en anglais / sombre, 20 sur 20 en lecture seule. Sans réglage, avec `null`, avec un texte vide, avec des
+   clés de GFS ou inconnues seules : l'explorateur, comme avant. Le modèle de la vue, un document ou une grille : Publipostage+
+   s'ouvre dessus ; une présentation avec l'extension « Diapositives » cochée : la présentation, éteinte : le ★, comme dans
+   l'app seule, et la vue garde son choix ; un modèle disparu : le ★ ; une autre clé de l'app (`dateDernierExport`) sans modèle :
+   le ★. Rien n'est écrit : les modèles, les réglages enregistrés, les tables, les pages, la table du rangement et les réglages de
+   la section sont les mêmes avant et après ; GFS ne dit rien. La fenêtre du premier lancement ne vient pas par-dessus l'app, et
+   vient comme avant sans app. « Fichiers » (la barre) ouvre l'explorateur, Échap ramène au même modèle, dans le même cadre.
+   Automation+ : le graphe dans la vue et l'app non installée, l'explorateur ; installée, elle s'ouvre ; servies toutes deux avec
+   Publipostage+ : l'explorateur. Aucun avertissement du courtier, aucune erreur de script, aucun refus de la politique de
+   sécurité (hors le style en ligne que le script d'API de Grist pose chez GFS, accepté : rapport du prototype). En lecture seule,
+   l'app s'ouvre aussi ; ses écritures de migration sont refusées par le courtier (`GFS_LECTURE_SEULE`), l'arrivée n'en fait
+   aucune. L'essai échoue sur l'ancien contrôleur : l'explorateur s'ouvre, avec la fenêtre du premier lancement.
 8. [D] **L'app de départ** (`gfs.depart`) reste un réglage de la section : un brouillon jusqu'à « Enregistrer », écrit
    seulement sur un geste de la personne.
 9. [D] **L'ancienne clé `gfs.apps`** du prototype V0.2 n'est plus ni lue ni écrite ; une section qui la porte n'est pas modifiée.

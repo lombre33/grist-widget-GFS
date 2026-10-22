@@ -1162,6 +1162,7 @@ rangée d'un fichier, selon ce qui vient d'abord.
 | `Dossier` | Text | Chemin séparé par « / » (`Factures/Clients A`) ; vide = racine |
 | `Replie` | Bool | Lignes d'état de dossier seulement : dossier replié par défaut |
 | `Valeur` | Text | Lignes réservées de GFS seulement (point 6) : un texte JSON |
+| `Adresse` | Text | Colonne à formule déclenchée (point 9) : Grist y écrit l'adresse de la personne pour la ligne-sonde, rien pour les autres |
 
 1. [D] Une ligne par (personne, app, fichier) qui a un dossier ou un favori ; une ligne d'état par (personne, dossier). Un
    dossier existe tant qu'une ligne le nomme.
@@ -1169,13 +1170,17 @@ rangée d'un fichier, selon ce qui vient d'abord.
    dossier (chemin avec « / ») et l'état replié.
 3. [T] Changements additifs seulement, colonnes inconnues gardées ; désinstaller une app n'efface aucune ligne ; une ligne dont
    le fichier n'existe plus est ignorée.
-4. [D] L'identité de la personne (`Utilisateur`) vient du mécanisme de Publipostage+ (une table-sonde lue par formule), que
-   l'étape 3 fait passer dans le kit ; sans identité, repli vide, jamais bloquant : le rangement est alors commun au document,
-   et l'explorateur le dit (« Rangement commun au document »).
+4. [D] L'identité de la personne (`Utilisateur`) vient du mécanisme de Publipostage+ (une ligne ajoutée dont une formule
+   déclenchée lit `user.Email`, point 9), que GFS lit lui-même : le porteur a choisi, le 22/10, un rangement « à soi seul », et
+   non commun à tout le document. Sans identité (anonyme, adresse illisible, document en lecture seule, table pas encore
+   créée), repli vide, jamais bloquant : le rangement est alors commun au document, et l'explorateur le dit (« Rangement
+   commun au document »). Les lignes écrites sans identité (`Utilisateur` vide) restent dans la table, intactes ; une personne
+   identifiée ne les voit plus, quiconque n'est pas identifié les voit toujours.
 5. [T] Le rangement propre à une app (les dossiers personnels de Publipostage+) reste valable dans l'app ; l'explorateur de GFS
    le lit (champ `fichiers[].rangement`, 2.4) et n'y écrit jamais (point 8).
 6. [T] Une ligne dont `Utilisateur` commence par `@` est une ligne réservée de GFS : l'état du document, jamais le rangement
-   d'une personne. La seule à ce jour : `@document` / `gfs` / `apps`, les apps installées (7.4). Une app n'écrit jamais cette
+   d'une personne. Deux à ce jour : `@document` / `gfs` / `apps`, les apps installées (7.4), et `@sonde`, la ligne-sonde
+   (point 9), qui n'existe que le temps d'une lecture. Le rangement ignore toute ligne en « @ ». Une app n'écrit jamais cette
    table (6.1, point 1).
 7. [D] GFS écrit ces lignes sur un geste de la personne dans l'explorateur, avant qu'aucune app ne soit ouverte (le porteur,
    21/10) : épingler un fichier, le déplacer, renommer ou déplacer un dossier. Chaque geste relit la table puis écrit en un
@@ -1185,6 +1190,20 @@ rangée d'un fichier, selon ce qui vient d'abord.
 8. [D] Dans l'explorateur, la ligne de GFS d'un fichier passe devant le rangement propre de l'app (point 5) ; sans ligne de
    GFS, celui de l'app reste le point de départ. L'app garde le sien, que GFS ne réécrit pas : un fichier rangé dans GFS
    peut donc avoir une autre place dans l'app.
+9. [T] **La sonde de l'adresse.** La colonne `Adresse` porte une formule déclenchée (`recalcWhen: 0`, `recalcDeps: null` : calculée
+   à la création d'une ligne, jamais ensuite) : `user.Email if $Utilisateur == '@sonde' else ''`. Une fois à chaque ouverture
+   de GFS, avant la première lecture du rangement ou à la première écriture, GFS ajoute une ligne `Utilisateur = '@sonde'`,
+   relit `Adresse` par `fetchTable`, puis retire la ligne : en cas d'échec, un seul avertissement, et la ligne est retirée
+   quand même. Seule la ligne-sonde reçoit une adresse (minimisation : aucune ligne de rangement n'en porte). La réponse,
+   avec adresse ou sans, est gardée dans la mémoire de la page, jamais dans le navigateur (une autre personne sur le même poste
+   doit être reconnue) ; sans table (la sonde ne la crée jamais), en lecture seule (la sonde n'écrirait que des refus) ou sur
+   une erreur, rien n'est gardé et le geste suivant réessaie. Ne sont pas une adresse : une valeur vide, une erreur de la
+   formule, `anon@getgrist.com` (l'anonyme de Grist), une valeur en « @ », ou qui n'a pas la forme `nom@domaine`. L'adresse
+   se compare à la lettre près, telle que Grist la donne : Publipostage+ écrit la même chaîne (`user.Email`) dans
+   `Publipostage_PreferencesModeles.Utilisateur`. Une table d'avant sans `Adresse` reçoit la colonne (6.1, point 3 : additif).
+   GFS écrit cette formule par sa propre connexion : la capacité `formules` (3.4) ne concerne que les apps. [M] **Mesuré le
+   22/10** dans le vrai moteur de Grist (grist-static, Pyodide ; `prototype/labo/run-identite.mjs`, 41 vérifications, fr/clair
+   et en/sombre) : voir `faits-verifies.md`, section 3.
 
 ### 6.5 Préserver l'inconnu
 

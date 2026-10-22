@@ -42,7 +42,8 @@ const gesture = async (key, mode = 'check') => {
 };
 const same = (a, b, keys) => keys.every(key => a[key] === b[key]);
 
-// 1. Une table d'une version plus ancienne : six colonnes, sans `Valeur`, et une ligne qui n'est pas à GFS.
+// 1. Une table d'une version plus ancienne : six colonnes, sans `Valeur`, et une ligne qui n'est pas à GFS. À l'ouverture, GFS lit l'adresse de la personne : la colonne `Adresse`
+// (et sa ligne-sonde, ajoutée puis retirée) est la seule chose qu'il pose seul ; `Valeur` attend un geste.
 await frame.evaluate(async () => {
   await grist.docApi.applyUserActions([['AddTable', 'GFS_Rangement', [
     { id: 'Utilisateur', type: 'Text' }, { id: 'App', type: 'Text' }, { id: 'Fichier', type: 'Text' },
@@ -53,13 +54,15 @@ await frame.evaluate(async () => {
 await reload();
 const start = await state(frame);
 say('départ :', { colonnes: start.columns, lignes: start.lines.length, pages: start.pages });
-check('la table du départ n\'a pas de colonne Valeur', start.columns.length === 6 && !start.columns.includes('Valeur'), start.columns);
+const OLD = ['Utilisateur', 'App', 'Fichier', 'Favori', 'Dossier', 'Replie'];
+check('la table du départ n\'a pas de colonne Valeur : ses six colonnes, puis Adresse (posée à l\'ouverture)', !start.columns.includes('Valeur') && JSON.stringify(start.columns) === JSON.stringify([...OLD, 'Adresse']), start.columns);
+check('aucune ligne-sonde ne reste', start.lines.length === 1 && !start.lines.some(line => String(line.Utilisateur).startsWith('@')), start.lines);
 
 const asked1 = await gesture('app:automation');
 const first = await state(frame);
 say('après Automation+ :', { colonnes: first.columns, valeur: first.value, pages: first.pages });
 check('la table existe : aucune question de création', asked1 === 0, asked1);
-check('la colonne Valeur manquante est ajoutée, sans autre changement de colonnes', first.columns.length === 7 && first.columns.includes('Valeur'), first.columns);
+check('la colonne Valeur manquante est ajoutée, sans autre changement de colonnes', JSON.stringify(first.columns) === JSON.stringify([...start.columns, 'Valeur']), first.columns);
 check('la ligne qui n\'est pas à GFS n\'a pas bougé', same(first.lines[0], start.lines[0], ['id', 'Utilisateur', 'App', 'Fichier', 'Favori', 'Dossier', 'Replie']), first.lines[0]);
 check('la ligne réservée est ajoutée avec Automation+', first.lines.length === 2 && Boolean(first.value && first.value.automation), first.value);
 check('aucune page de plus : la table existait', first.pages === start.pages, { avant: start.pages, apres: first.pages });

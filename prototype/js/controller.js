@@ -53,8 +53,6 @@ export class GfsController {
   session = null;
   explorer = null;
   modulesWindow = null;
-  // L'adresse de la personne, '' tant que GFS ne la lit pas : son rangement est alors commun au document (contrats 6.4, point 4).
-  identity = '';
   #noticeTimer = null;
   #facts = null;
   #sentExtensions = null;
@@ -81,13 +79,16 @@ export class GfsController {
     // Le mode développement (`?dev` dans l'adresse du widget, comme la galerie de développement de Publipostage+) : le bouton « Démo » de l'explorateur.
     this.devMode = this.params.has('dev');
     // Les apps installées et leurs extensions : ce que le document retient dans la table `GFS_Rangement` (contrats 7.4), écrit seulement sur un geste
-    // de la personne, et la table seulement avec son accord.
-    this.rangement = new Rangement({ port: this.port, consent: () => this.#askTableConsent() });
+    // de la personne, et la table seulement avec son accord. Cette table apprend aussi à GFS l'adresse de la personne (6.4, point 6) : sans écriture possible, elle reste inconnue.
+    this.rangement = new Rangement({ port: this.port, consent: () => this.#askTableConsent(), canWrite: () => !this.#writeBlock(), onIdentity: () => this.#onIdentity() });
     this.registry = new AppsState({ always: ALWAYS_ON, store: this.rangement, onChange: () => this.#onRegistryChange() });
   }
 
   $ = id => this.doc.getElementById(id);
   t = (key, vars) => this.i18n.t(key, vars);
+
+  // L'adresse de la personne, '' tant que GFS ne la connaît pas : son rangement est alors commun au document (contrats 6.4, point 4).
+  get identity() { return this.rangement.identity; }
 
   // ---------- noms, grisé, types à créer : ce que l'explorateur demande ----------
 
@@ -155,7 +156,7 @@ export class GfsController {
     this.registry.setApps(this.apps);
     this.registry.setCatalogue(await this.#loadLibraries());
     await this.state.whenOptions();
-    if (this.fullAccess) await this.registry.load();
+    if (this.fullAccess) await Promise.all([this.registry.load(), this.rangement.identify()]);
     this.#buildExplorer();
     this.#buildDock();
     this.showExplorer();
@@ -200,7 +201,7 @@ export class GfsController {
   #buildFiling() {
     const layer = opts => ({ ...opts, t: this.t, container: this.$('stage'), inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')] });
     return new Filing({
-      port: this.port, rangement: this.rangement, t: this.t, locale: () => this.locale, identity: () => this.identity, files: () => this.explorer.files, appName: this.appName,
+      port: this.port, rangement: this.rangement, t: this.t, locale: () => this.locale, files: () => this.explorer.files, appName: this.appName,
       here: () => (this.explorer.state.view === 'folder' ? this.explorer.state.path : ''), writeBlock: () => this.#writeBlock(), notice: text => this.notice(text),
       specOf: file => ((this.appById(file.app) || { manifest: {} }).manifest.fichiers || []).find(spec => spec.table === file.table) || null,
       refresh: () => this.refreshFiles(), windows: { name: opts => askName(layer(opts)), folder: opts => chooseFolder(layer(opts)) },
@@ -400,6 +401,11 @@ export class GfsController {
       localStorage.setItem(key, '1');
     } catch (error) { return; }
     void this.openModules();
+  }
+
+  // GFS vient d'apprendre l'adresse de la personne (la table est née pendant la session) : sa liste de fichiers se relit avec son propre rangement.
+  #onIdentity() {
+    if (this.explorer && this.explorer.isOpen) void this.refreshFiles();
   }
 
   // Un changement des apps installées (un geste, ou le retour à ce que la table dit) : tout ce qui en dépend se met à jour.

@@ -169,6 +169,21 @@ réponses, sans que l'app change.
   fenêtre et rien n'est écrit. `_grist_Tables` et `_grist_Tables_column`, lues par la connexion de GFS
   (accès complet), donnent le nom réel de la table et ses colonnes. Le rangement de Publipostage+
   (`Publipostage_PreferencesModeles`) n'est jamais écrit.
+- Mesuré le 22/10 (`labo/run-identite.mjs`, 41 vérifications, fr clair et en sombre) : **lire l'adresse de la personne comme le fait
+  Publipostage+** (contrats 6.4, point 9). Dans le vrai moteur de Grist (grist-static 0.1.6, Pyodide), `user.Email` vaut `None` : il n'y
+  a pas de compte. Le labo glisse donc la personne à la frontière du Worker (l'argument `user` de `apply_user_actions`, ce que le serveur
+  de Grist ajoute) ; le moteur, la formule et les actions restent ceux de Grist. Une colonne de texte à formule déclenchée
+  (`isFormula: false`, `recalcWhen: 0`, `recalcDeps: null`) est calculée à la création d'une ligne seulement et jamais après ; sa formule
+  peut se conditionner à une autre colonne : `user.Email if $Utilisateur == '@sonde' else ''` ne donne une adresse qu'à la ligne-sonde,
+  les lignes de rangement gardent `''`. Les numéros de ligne libérés sont réutilisés (le prochain est le plus grand plus un) : la sonde
+  prend un numéro puis le rend. Dans l'ordre, le moteur reçoit `AddTable`, `AddRecord` (`@sonde`), `RemoveRecord`, puis la ligne de la
+  personne à son adresse ; à chaque réouverture, une paire `AddRecord` / `RemoveRecord` et rien d'autre ; en lecture seule et sans
+  table, aucune écriture. Une sonde coûte de 23 à 28 ms, lecture de la table comprise. Deux personnes (Ana, Ben) dans un même
+  document ne voient ni les favoris ni les dossiers l'une de l'autre ; l'anonyme (`anon@getgrist.com`) et une formule sans adresse
+  rangent dans le rangement commun (`Utilisateur` vide) ; une table d'avant sans `Adresse` reçoit la colonne avant la sonde. Les
+  favoris et les dossiers que Publipostage+ range par adresse (`Publipostage_PreferencesModeles`) se retrouvent dans GFS pour la même
+  personne, et GFS n'y écrit rien. **Non mesuré** : l'adresse que le vrai serveur de Grist donne à `user.Email` (Publipostage+ s'appuie
+  sur le même mécanisme et le même moteur, chez le porteur, sur l'instance de la DINUM) ; Firefox et Safari.
 
 ## 4. Grist : API REST et origines
 

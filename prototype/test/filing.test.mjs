@@ -19,14 +19,14 @@ const META = {
 function harness({ files = [file(1), file(2, 'A/B'), file(3, 'A/B/C'), file(4, 'X')], block = null, answers = [], setFiling = null, meta = META } = {}) {
   const log = { writes: [], actions: [], notices: [], windows: [], refreshes: 0 };
   let list = files;
-  const rangement = { setFiling: setFiling || (async (identity, entries) => {
-    log.writes.push({ identity, entries });
+  const rangement = { setFiling: setFiling || (async entries => {
+    log.writes.push({ entries });
     list = list.map(item => { const entry = entries.find(e => e.app === item.app && e.file === item.id); return entry ? { ...item, pinned: entry.pinned, folder: entry.folder } : item; });
   }) };
   const ask = kind => async opts => { log.windows.push({ kind, ...opts }); return answers.shift() ?? null; };
   const port = { doc: { fetchTable: async name => meta[name], applyUserActions: async actions => { log.actions.push(...actions); } } };
   const filing = new Filing({
-    port, rangement, t, locale: () => 'fr', identity: () => '', files: () => list, here: () => 'X', specOf: () => SPEC, appName: () => 'Publipostage+',
+    port, rangement, t, locale: () => 'fr', files: () => list, here: () => 'X', specOf: () => SPEC, appName: () => 'Publipostage+',
     writeBlock: () => block, notice: text => log.notices.push(text), refresh: async () => { log.refreshes += 1; }, windows: { name: ask('name'), folder: ask('folder') },
   });
   return { filing, log, current: () => list };
@@ -35,7 +35,7 @@ function harness({ files = [file(1), file(2, 'A/B'), file(3, 'A/B/C'), file(4, '
 test('épingler : une ligne pour ce fichier, son dossier gardé, puis la liste est relue', async () => {
   const { filing, log } = harness();
   await filing.togglePin(file(2, 'A/B'));
-  assert.deepEqual(log.writes, [{ identity: '', entries: [{ app: 'publipostage', file: '2', pinned: true, folder: 'A/B' }] }]);
+  assert.deepEqual(log.writes, [{ entries: [{ app: 'publipostage', file: '2', pinned: true, folder: 'A/B' }] }]);
   assert.equal(log.refreshes, 1);
 });
 

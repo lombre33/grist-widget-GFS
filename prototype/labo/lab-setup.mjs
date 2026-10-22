@@ -43,13 +43,13 @@ async function chooseFullAccess(page) {
 }
 
 // `widget` : l'adresse de la page que Grist reçoit comme widget personnalisé (GFS par défaut ; une sonde, pour la mesurer SANS GFS, dans le cadre même de Grist).
-const DEFAULTS = { lang: 'fr', colorScheme: 'light', width: 1280, height: 800, query: '', fullAccess: true, probes: false, frameAttributes: null, patches: [], widget: WIDGET, newsSeen: true };
+const DEFAULTS = { lang: 'fr', colorScheme: 'light', width: 1280, height: 800, query: '', fullAccess: true, probes: false, frameAttributes: null, patches: [], widget: WIDGET, newsSeen: true, user: null };
 
 export async function startLab(options = {}) {
-  const { lang, colorScheme, width, height, query, fullAccess, probes, frameAttributes, patches, widget, newsSeen } = { ...DEFAULTS, ...options };
+  const { lang, colorScheme, width, height, query, fullAccess, probes, frameAttributes, patches, widget, newsSeen, user } = { ...DEFAULTS, ...options };
   await mkdir(SHOTS, { recursive: true });
   const browser = await engine.launch(engineName === 'chromium' ? { args: ['--no-sandbox', '--font-render-hinting=none'] } : {});
-  const { page, context } = await newLabPage(browser, { lang, colorScheme, width, height, probes, frameAttributes, patches, newsSeen });
+  const { page, context } = await newLabPage(browser, { lang, colorScheme, width, height, probes, frameAttributes, patches, newsSeen, user });
   const gfsFrame = async (re = /./) => {
     for (let i = 0; i < 80; i++) {
       const f = page.frames().find(f => f.url().startsWith(widget) && re.test(f.url()));
@@ -138,7 +138,13 @@ export async function startLab(options = {}) {
   });
   // Une section de plus sur la page, par la même suite de gestes que la première (accès « aucun », comme Grist le donne à un widget qu'on ajoute).
   const addSection = address => addCustomWidget(page, address);
-  return { browser, context, page, frame, gfsFrame, appFrame, openModules, openApp, settle, gfsReady, fitPanel, rangement, addSection, shot: (run, name) => page.screenshot({ path: join(SHOTS, `${run}-${name}.png`) }),
+  // La personne devant l'écran (lab-common.mjs : le moteur de Grist reçoit son adresse) : { Email, Name, IsLoggedIn, UserID }, ou null (grist-static : une personne sans adresse). Un widget déjà
+  // ouvert garde ce qu'il a lu : pour une autre personne, il se recharge (c'est ce que fait Grist quand quelqu'un d'autre ouvre le document).
+  const setUser = who => page.evaluate(next => { window.__labUser = next; }, who);
+  // Ce que le moteur a reçu depuis le début (ou depuis le dernier `forgetActions`) : « Verbe Table [Utilisateur de la ligne ajoutée] ».
+  const actions = () => page.evaluate(() => window.__labActions.slice());
+  const forgetActions = () => page.evaluate(() => { window.__labActions.length = 0; });
+  return { browser, context, page, frame, gfsFrame, appFrame, openModules, openApp, settle, gfsReady, fitPanel, rangement, addSection, setUser, actions, forgetActions, shot: (run, name) => page.screenshot({ path: join(SHOTS, `${run}-${name}.png`) }),
     // La capture du cadre de GFS seul (le panneau), pas de la page de Grist.
     shotPanel: async (run, name, target = frame) => (await target.frameElement()).screenshot({ path: join(SHOTS, `${run}-${name}.png`) }) };
 }

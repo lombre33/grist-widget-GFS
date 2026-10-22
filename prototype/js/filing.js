@@ -26,7 +26,7 @@ export class Filing {
   #opts;
   #queue = Promise.resolve();
 
-  // opts : { port, rangement, t, locale(), identity() -> texte, files() -> [fichier], here() -> le dossier ouvert, specOf(file) -> son entrée `fichiers` du manifeste,
+  // opts : { port, rangement, t, locale(), files() -> [fichier], here() -> le dossier ouvert, specOf(file) -> son entrée `fichiers` du manifeste,
   //          appName(id), writeBlock() -> texte | null, notice(texte), refresh() -> Promise,
   //          windows: { name(opts) -> Promise<texte | null>, folder(opts) -> Promise<chemin | null> } }
   constructor(opts) { this.#opts = opts; }
@@ -118,10 +118,10 @@ export class Filing {
 
   // Rien quand la liste est vide (un dossier qui ne change pas) ; l'explorateur se relit après.
   async #write(entries) {
-    const { rangement, identity, notice, t } = this.#opts;
+    const { rangement, notice, t } = this.#opts;
     if (!entries.length) return;
     try {
-      await rangement.setFiling(identity(), entries);
+      await rangement.setFiling(entries);
     } catch (error) {
       if (error instanceof TableDeclined) { notice(t('ex.filingDeclined')); return; }
       console.warn('GFS : le rangement n’a pas pu être enregistré', error);

@@ -121,7 +121,7 @@ async function routePatches(browser, page, patches) {
 }
 
 // `newsSeen` : le labo dit la fenêtre des nouveautés de Publipostage+ déjà vue (plus bas) ; faux pour la passe qui la mesure et pour celle qui relit tout le stockage de GFS.
-export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', width = 1280, height = 800, probes = false, frameAttributes = null, patches = [], newsSeen = true } = {}) {
+export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', width = 1280, height = 800, probes = false, frameAttributes = null, patches = [], newsSeen = true, user = null } = {}) {
   // L'interface de Grist reste en anglais (les gestes du labo cherchent ses libellés) ; la langue de GFS passe par l'adresse du widget (lab-setup.mjs).
   // La politique de sécurité du contenu de GFS et des apps est ENFORCÉE (LAB_BYPASS_CSP=1 pour la suspendre : un diagnostic, jamais une mesure).
   const context = await browser.newContext({ viewport: { width, height }, colorScheme, bypassCSP: process.env.LAB_BYPASS_CSP === '1', locale: 'en-US' });
@@ -202,6 +202,31 @@ export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', 
     } catch (e) { /* déjà posé */ }
   }, EXACT_ADDRESSES);
   await page.addInitScript((l) => { try { if (location.port === '8911') localStorage.setItem('pp_lang', l); } catch (e) { /* stockage indisponible */ } }, lang);
+  // La personne que Grist donne au moteur de données. grist-static (0.1.6) ouvre le document sans compte : la formule `user.Email` y rend None. Le labo ne change que cela : l'argument `user` de
+  // `apply_user_actions` (l'objet que les formules lisent), à la frontière du moteur, de la page de Grist à son bac à sable Python. La formule, le moteur et les actions sont ceux de Grist :
+  // une colonne à formule déclenchée `user.Email` se remplit pour de bon, avec l'adresse de la personne du moment (`window.__labUser`, changée par `lab.setUser`).
+  // `window.__labActions` garde ce que le moteur a reçu (verbe, table et, pour une ligne ajoutée, sa colonne Utilisateur) : ce que GFS écrit se compte.
+  await page.addInitScript((initial) => {
+    try {
+      if (location.port !== '8910') return;
+      window.__labUser = initial;
+      window.__labActions = [];
+      const post = Worker.prototype.postMessage;
+      Worker.prototype.postMessage = function (message, ...rest) {
+        try {
+          if (message && message.type === 'call' && message.name === 'apply_user_actions' && Array.isArray(message.args)) {
+            for (const action of Array.isArray(message.args[0]) ? message.args[0] : []) {
+              if (!Array.isArray(action)) continue;
+              const record = action[0] === 'AddRecord' ? action[3] : null;
+              window.__labActions.push(`${action[0]} ${action[1]}${record && record.Utilisateur !== undefined ? ` [${record.Utilisateur}]` : ''}`);
+            }
+            if (window.__labUser) message = { ...message, args: [message.args[0], { ...(message.args[1] || {}), ...window.__labUser }, ...message.args.slice(2)] };
+          }
+        } catch (e) { /* le relais ne casse jamais l'appel */ }
+        return post.call(this, message, ...rest);
+      };
+    } catch (e) { /* déjà posé */ }
+  }, user);
   // La fenêtre des nouveautés de Publipostage+ s'ouvre toute seule, une fois par personne (`1f336ac`, la clé `pp_news_seen`) : chaque passe part d'un navigateur neuf, elle s'ouvrirait donc
   // par-dessus ce que la passe mesure. Le labo la dit vue, chez GFS (`gfs.stockage.publipostage.`) et pour l'app seule, avec une version plus récente que toute version de l'app.
   if (newsSeen) {

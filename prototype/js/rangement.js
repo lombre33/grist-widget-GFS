@@ -1,21 +1,34 @@
-// La table du document où GFS retient ce qui vaut pour tout le document et le rangement des fichiers : `GFS_Rangement` (contrats 6.4). Deux sortes de lignes :
-// la ligne réservée des apps installées (`@document` / `gfs` / `apps`, la valeur en JSON dans `Valeur`, contrats 7.4) et une ligne par (personne, app, fichier)
-// qui a un favori ou un dossier (6.4, point 1). GFS seul l'écrit, par sa propre connexion à Grist.
+// La table du document où GFS retient ce qui vaut pour tout le document et le rangement des fichiers : `GFS_Rangement` (contrats 6.4). Trois sortes de lignes :
+// la ligne réservée des apps installées (`@document` / `gfs` / `apps`, la valeur en JSON dans `Valeur`, contrats 7.4), la ligne-sonde qui apprend à GFS l'adresse de la personne
+// (`@sonde`, ajoutée puis retirée aussitôt, 6.4 point 6) et une ligne par (personne, app, fichier) qui a un favori ou un dossier (6.4, point 1). GFS seul l'écrit, par sa propre
+// connexion à Grist.
 //   lire ne crée rien (7.4, point 6) ; écrire relit d'abord, et ne crée la table qu'avec l'accord de la personne (6.2, point 1) ;
 //   après `AddTable`, l'identifiant réel est relu (6.2, point 2) ; une colonne absente est ajoutée avant d'être écrite (6.1, point 3).
 
 export const TABLE = 'GFS_Rangement';
 export const RESERVED = Object.freeze({ Utilisateur: '@document', App: 'gfs', Fichier: 'apps' });
+// La ligne-sonde : ajoutée puis retirée aussitôt, c'est elle seule que Grist remplit de l'adresse de la personne (formule déclenchée de `Adresse`, 6.4 point 6).
+const PROBE = Object.freeze({ Utilisateur: '@sonde' });
 const COLUMNS = Object.freeze([
   { id: 'Utilisateur', type: 'Text' }, { id: 'App', type: 'Text' }, { id: 'Fichier', type: 'Text' },
   { id: 'Favori', type: 'Bool' }, { id: 'Dossier', type: 'Text' }, { id: 'Replie', type: 'Bool' }, { id: 'Valeur', type: 'Text' },
+  // Une formule déclenchée (`recalcWhen: 0` : à la création d'une ligne ; `recalcDeps: null` : jamais ensuite) : Grist y écrit `user.Email` pour la ligne-sonde, rien pour les autres.
+  { id: 'Adresse', type: 'Text', isFormula: false, formula: `user.Email if $Utilisateur == '${PROBE.Utilisateur}' else ''`, recalcWhen: 0, recalcDeps: null },
 ]);
 // Les colonnes sans lesquelles la ligne réservée ne s'écrit pas, puis celles d'une ligne de rangement.
 const REQUIRED = Object.freeze(['Utilisateur', 'App', 'Fichier', 'Valeur']);
 const FILING = Object.freeze(['Utilisateur', 'App', 'Fichier', 'Favori', 'Dossier']);
 
+const ANONYMOUS = 'anon@getgrist.com'; // l'adresse que Grist donne à quiconque n'est pas connecté
 const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
-const typeOf = id => COLUMNS.find(column => column.id === id).type;
+const infoOf = id => Object.fromEntries(Object.entries(COLUMNS.find(column => column.id === id)).filter(([key]) => key !== 'id'));
+
+// Ce que Grist a écrit dans `Adresse`, ou '' quand ce n'est pas l'adresse d'une personne : rien, une erreur de la formule, l'anonyme de Grist, un nom réservé à GFS (en « @ »).
+function addressOf(value) {
+  if (typeof value !== 'string') return '';
+  const text = value.trim();
+  return /^[^@\s]+@[^@\s]+$/.test(text) && text.toLowerCase() !== ANONYMOUS ? text : '';
+}
 
 // La personne a refusé de créer la table : rien ne s'installe, rien ne se range.
 export class TableDeclined extends Error {
@@ -37,12 +50,65 @@ function findRow(data, values) {
 export class Rangement {
   #port;
   #consent;
+  #canWrite;
+  #onIdentity;
   #tableId = TABLE;
+  #identity = null; // null : pas encore lue ; '' : lue, sans adresse de personne ; sinon l'adresse
+  #pending = null;
 
-  // `port` : { doc } (les interfaces brutes de Grist) ; `consent()` : une promesse, true quand la personne accepte la création de la table.
-  constructor({ port, consent }) {
+  // `port` : { doc } (les interfaces brutes de Grist) ; `consent()` : une promesse, true quand la personne accepte la création de la table ;
+  // `canWrite()` : faux quand le document est en lecture seule (la sonde n'écrirait que des refus) ; `onIdentity(adresse)` : appelé quand GFS apprend l'adresse de la personne.
+  constructor({ port, consent, canWrite = () => true, onIdentity = () => {} }) {
     this.#port = port;
     this.#consent = consent;
+    this.#canWrite = canWrite;
+    this.#onIdentity = onIdentity;
+  }
+
+  // L'adresse de la personne, '' tant que GFS ne la connaît pas : son rangement est alors commun au document (contrats 6.4, point 4).
+  get identity() { return this.#identity || ''; }
+
+  // Apprend l'adresse de la personne (6.4, point 6) : une ligne-sonde est ajoutée, Grist en remplit `Adresse`, GFS la lit et la retire. Une fois par ouverture : la réponse,
+  // avec adresse ou sans, est gardée en mémoire (jamais dans le navigateur : une autre personne sur le même poste doit être reconnue). Sans table (elle ne se crée pas ici), en lecture
+  // seule ou sur une erreur, rien n'est gardé et le geste suivant réessaie. Ne lève jamais : une adresse non lue, c'est une personne inconnue.
+  identify() {
+    if (this.#identity !== null) return Promise.resolve(this.#identity);
+    if (!this.#pending) {
+      this.#pending = this.#probe()
+        .then(found => this.#learn(found), error => {
+          console.warn('GFS : l’adresse de la personne n’a pas pu être lue', error);
+          return this.identity;
+        })
+        .finally(() => { this.#pending = null; });
+    }
+    return this.#pending;
+  }
+
+  #learn(found) {
+    if (found === null) return this.identity;
+    this.#identity = found;
+    if (found) this.#onIdentity(found);
+    return found;
+  }
+
+  // La sonde : l'adresse que Grist a écrite dans `Adresse` de la ligne ajoutée ('' si ce n'est pas celle d'une personne), ou null quand rien ne peut être tenté (pas de table, lecture seule).
+  // Une colonne absente est ajoutée avant.
+  async #probe() {
+    if (!this.#canWrite()) return null;
+    const { exists, columns } = await this.#load();
+    if (!exists || !columns.includes('Utilisateur')) return null;
+    const { doc } = this.#port;
+    if (!columns.includes('Adresse')) await doc.applyUserActions([['AddColumn', this.#tableId, 'Adresse', infoOf('Adresse')]]);
+    const added = await doc.applyUserActions([['AddRecord', this.#tableId, null, { ...PROBE }]]);
+    const rowId = added && Array.isArray(added.retValues) ? added.retValues[0] : null;
+    if (rowId == null) throw new Error(`AddRecord sur ${this.#tableId} n’a renvoyé aucun identifiant de ligne`);
+    try {
+      const data = await doc.fetchTable(this.#tableId);
+      const at = (data.id || []).indexOf(rowId);
+      return addressOf(at >= 0 && data.Adresse ? data.Adresse[at] : '');
+    } finally {
+      await doc.applyUserActions([['RemoveRecord', this.#tableId, rowId]]).catch(error => console.warn('GFS : la ligne-sonde n’a pas pu être retirée', error));
+    }
   }
 
   // La table telle qu'elle est : { exists, columns, data }.
@@ -63,7 +129,7 @@ export class Rangement {
     return { exists: true, columns, rowId: at >= 0 ? data.id[at] : null, raw: at >= 0 && data.Valeur ? parseValue(data.Valeur[at]) : null };
   }
 
-  // La table prête à être écrite, relue juste avant, avec les colonnes `needed` : sans table, l'accord de la personne, puis la création.
+  // La table prête à être écrite, relue juste avant, avec les colonnes `needed` : sans table, l'accord de la personne, puis la création. La personne est reconnue avant la première écriture.
   async #ready(needed) {
     let state = await this.#load();
     if (!state.exists) {
@@ -72,8 +138,9 @@ export class Rangement {
       if (!state.exists) state = await this.#create();
     }
     for (const column of needed.filter(name => !state.columns.includes(name))) {
-      await this.#port.doc.applyUserActions([['AddColumn', this.#tableId, column, { type: typeOf(column) }]]);
+      await this.#port.doc.applyUserActions([['AddColumn', this.#tableId, column, infoOf(column)]]);
     }
+    await this.identify();
     return state;
   }
 
@@ -87,13 +154,13 @@ export class Rangement {
     return next;
   }
 
-  // Range des fichiers pour la personne `identity` ('' quand son identité n'est pas résolue : le rangement est partagé, 6.4 point 4) : la ligne de chaque
-  // (personne, app, fichier) est mise à jour si elle existe, ajoutée sinon. `entries` : [{ app, file, pinned, folder }], le dossier en chemin normalisé.
+  // Range des fichiers pour la personne que Grist connaît (`identity`, ou '' quand son adresse n'est pas lue : le rangement est alors commun au document, 6.4 point 4) :
+  // la ligne de chaque (personne, app, fichier) est mise à jour si elle existe, ajoutée sinon. `entries` : [{ app, file, pinned, folder }], le dossier en chemin normalisé.
   // Relit d'abord ; tout part en un seul lot, que Grist rejoue en entier ou pas du tout.
-  async setFiling(identity, entries) {
-    if (String(identity).startsWith('@')) throw new Error('Une identité qui commence par « @ » est réservée à GFS (contrats 6.4, point 6).');
+  async setFiling(entries) {
     if (!entries.length) return;
     const { data } = await this.#ready(FILING);
+    const identity = this.identity;
     const actions = entries.map(({ app, file, pinned, folder }) => {
       const key = { Utilisateur: identity, App: app, Fichier: String(file) };
       const at = findRow(data, key);

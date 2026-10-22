@@ -100,6 +100,10 @@ connaît pas.
 16. **Les permissions des personnes ont leur section** (11, 22/10) : le brouillon du cahier ne parlait que du filtre des apps (3).
     Le manifeste gagne `classes` (2.2, 11.2), le contexte gagne `role` (5.2, point 8), et les règles de Grist que GFS posera sont
     écrites (11.4). La sonde de l'adresse a sa règle sous « Partagé » (6.4, point 9), mesurée.
+17. **« Importer » est `ouvrir` avec le fichier que la personne a choisi** (décision du porteur, 22/10, « Nouveau > Importer ») : comme
+    « Nouveau » (point 8), aucune action de plus. Le manifeste gagne `actions.importer` (2.7, point 4), l'ouverture gagne `importation`
+    (5.2, point 3) et GFS ouvre lui-même le sélecteur de fichier (5.4, point 1). Mesuré avec une app d'essai : le `File` arrive lisible
+    dans le cadre isolé.
 
 ---
 
@@ -368,6 +372,9 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
   "actions": {
     "ouvrir":  ["document", "grille", "email", "macro"],
     "choisir": ["document", "grille"],
+    "importer": [
+      { "valeur": "excel", "type": "grille", "nom": { "fr": "Excel", "en": "Excel" }, "extensions": [".xlsx", ".xlsm"] }
+    ],
     "inserer": { "produit": [], "recoit": [] }
   }
 }
@@ -377,6 +384,12 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
 2. [T] `choisir` : les types de **ses** fichiers qu'une autre app peut faire choisir (l'explorateur en mode choix les montre).
 3. [D] `inserer` : `produit` liste les rendus portables que l'app sait fournir, `recoit` ceux qu'elle sait accepter ; vides tant
    que l'étape 7 n'a pas écrit le déroulement (5.4).
+4. [D] `importer` (facultatif ; décision du porteur du 22/10, « Nouveau > Importer ») : les formats de fichier d'un autre logiciel
+   (un classeur Excel, un Markdown, un PowerPoint) que l'app sait lire pour en faire un modèle vierge. GFS en fait le sous-menu
+   « Importer » du menu « Nouveau » de l'explorateur : un article par format, au nom du format (`nom`), que suivent le type qu'il crée
+   (`type`, un type de `actions.ouvrir`) et l'app quand il y en a plusieurs. `valeur` nomme le format auprès de l'app (une chaîne
+   qui ne se répète pas dans la liste) ; `extensions` sont les terminaisons que le sélecteur de fichier propose et que GFS contrôle
+   avant d'ouvrir l'app. Sans `importer`, l'app n'a pas d'article. Le déroulement est en 5.4, point 1.
 
 ### 2.8 Validation
 
@@ -391,6 +404,9 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
      `full`) ;
    - une extension dont le `dossier` sort de l'app, ou dont une entrée de `bibliotheques` n'a pas d'`id` ou n'a pas une
      `version` exacte (un intervalle, `latest`) ;
+   - dans `actions.importer` (2.7, point 4) : une entrée sans `valeur` ou sans `nom` en français et en anglais, une `valeur` déjà
+     prise, un `type` qui n'est pas dans `actions.ouvrir`, des `extensions` qui ne sont pas une liste non vide de terminaisons (un
+     point, puis un à huit caractères ou chiffres : `.xlsx`) ;
    - dans `classes` (11.2) : une table hors du préfixe de l'app, une classe inconnue, un champ de la classe absent (`personne`
      pour `personnel`, les quatre rôles de `etiquette` pour `reserve`, `de` et `lien` pour `derivee`), une table `derivee` dont
      `de` n'est pas une table `reserve`, un `secrets` qui n'est pas une liste de noms de colonnes.
@@ -401,7 +417,11 @@ D'après son code du 14/10 (`e4a239c`). Les sept tables internes qu'il lit vienn
 `page-tree.js`, `grist-api.js` et `settings-columns.js` ; les deux qu'il écrit, de `template-pack.js` (`visibleCol` de
 `_grist_Tables_column`) et de `page-tree.js` (`indentation`, `pagePos` et `options` de `_grist_Pages`). Une entrée qui écrit
 nomme une seule table et porte aussi `lit: true` (3.3, point 5). Depuis le 21/10, une huitième lecture : `_grist_DocInfo`, pour
-la langue et la devise du document (demande de l'app, `32822d6`) ; elle ne s'écrit jamais (3.3, point 6).
+la langue et la devise du document (demande de l'app, `32822d6`) ; elle ne s'écrit jamais (3.3, point 6). Depuis le 22/10,
+`actions.importer` déclare les imports que l'app fait par son menu « + » (`js/main.js` : `onImportXlsx`, `onImportMd`,
+`onImportPptx`) : Excel (une grille), Markdown (un document) et PowerPoint (une présentation, le type de l'extension
+« Diapositives », absent de cet exemple, qui n'en montre que les deux premiers). GFS les grise, avec « Pas encore », jusqu'à ce que l'app
+sache recevoir le fichier de lui (consigne 035 ; 5.4, point 1).
 
 ```json
 {
@@ -496,6 +516,10 @@ la langue et la devise du document (demande de l'app, `32822d6`) ; elle ne s'éc
   "actions": {
     "ouvrir": ["document", "grille", "email", "macro"],
     "choisir": ["document", "grille"],
+    "importer": [
+      { "valeur": "excel", "type": "grille", "nom": { "fr": "Excel", "en": "Excel" }, "extensions": [".xlsx", ".xlsm"] },
+      { "valeur": "markdown", "type": "document", "nom": { "fr": "Markdown", "en": "Markdown" }, "extensions": [".md", ".markdown", ".mdown", ".mkd", ".txt"] }
+    ],
     "inserer": { "produit": [], "recoit": [] }
   }
 }
@@ -914,8 +938,11 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    le cas du bouton « Ouvrir » de la fenêtre « Apps et extensions » et de l'arrivée sur une vue qui porte ses réglages, 7.4, point 7) ;
    sinon `{ fichier, type, dossier, raison }` où `fichier` est `{ id, type }` (ou `null` pour « Nouveau »), `type` le type
    demandé quand `fichier` est `null`, `dossier` le dossier courant de l'explorateur (une indication), `raison` l'un de
-   `explorateur`, `nouveau`, `lien`. L'app affiche elle-même la raison dans son coin d'état (« par la ligne… », « depuis
-   l'explorateur »). **GFS ne la rend qu'une fois**, au premier `contexte` de l'app qu'il vient d'activer : un cadre rechargé sur
+   `explorateur`, `nouveau`, `lien`, `importer`. Avec `importer`, l'ouverture porte de plus `importation: { valeur, fichier }` :
+   `valeur` est celle d'un format de `actions.importer` (2.7, point 4) et `fichier` l'objet `File` que la personne a choisi dans le
+   sélecteur de GFS (le `fichier` de l'ouverture reste `null`, `type` est celui du format) ; le sous-cadre le lit comme tout fichier
+   choisi (`name`, `size`, `type`, `text()`, `arrayBuffer()`), GFS ne le lit ni ne le garde (5.4, point 1). L'app affiche elle-même
+   la raison dans son coin d'état (« par la ligne… », « depuis l'explorateur »). **GFS ne la rend qu'une fois**, au premier `contexte` de l'app qu'il vient d'activer : un cadre rechargé sur
    place (Publipostage+ le fait au changement de langue, de caractère de déclenchement et au premier contact) redemande son
    contexte et reçoit `null`, donc reprend son ordre d'arrivée habituel, au lieu de refaire un « Nouveau » déjà fait (le modèle
    vierge enregistré reviendrait vierge) ou de rouvrir le fichier du dernier clic. Une app déjà ouverte n'a pas de seconde
@@ -1091,7 +1118,7 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
 
 | Action | Appel | Réponse | Dans l'app seule |
 |---|---|---|---|
-| **ouvrir** | app → GFS : `{ app, fichier: { id, type }, raison? }` ; GFS → app active : `{ fichier, type, dossier, raison }` | `{ ouvert: true \| false }` (`false` si la personne annule la question de l'app) | l'app ouvre ses propres fichiers ; ceux d'une autre app sont grisés, texte commun |
+| **ouvrir** | app → GFS : `{ app, fichier: { id, type }, raison? }` ; GFS → app active : `{ fichier, type, dossier, raison, importation? }` | `{ ouvert: true \| false }` (`false` si la personne annule la question de l'app) | l'app ouvre ses propres fichiers ; ceux d'une autre app sont grisés, texte commun |
 | **choisir** | app → GFS : `{ types, apps?, titre? }` | `{ app, id, nom, type }`, ou `null` si la personne annule | la liste avec recherche de l'app, sur ses propres fichiers |
 | **inserer** | app qui reçoit → GFS : `{ formats, types? }` ; GFS → app qui fournit : même corps | `{ rendu }` (ci-dessous) | grisé, texte commun |
 | **installer** | app → GFS : `{ extension, fonction? }` | `{ actives: [ … ] }` : les extensions actives après le choix de la personne | la fenêtre du grisé (guide des apps, section 5) |
@@ -1136,6 +1163,36 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
    les lignes portent la section partagée de l'hôte) ; l'app déjà ouverte montre bien l'écran de départ, mais laisse l'éditeur
    du formulaire précédent affiché dessous (`showConfig()` ne cache `#editor` que par « Changer de formulaire source »). Le
    labo les écrit en `CONSTAT`, sans les exiger.
+
+   « Importer » (décision du porteur du 22/10) est `ouvrir` avec `fichier: null`, le `type` du format, `raison: importer` et
+   `importation: { valeur, fichier }` (5.2, point 3), où `fichier` est le `File` que la personne a choisi. L'app le lit par le
+   chemin de son propre menu d'import (mêmes lectures, mêmes refus dits dans son coin d'état, même question « Enregistrer /
+   Abandonner / Annuler » avant de quitter un modèle modifié), en fait un modèle vierge du type, sans nom, qui naît à son premier
+   « Enregistrer », et répond `{ ouvert: true }` quand ce modèle est ouvert à la fin, `{ ouvert: false }` quand la personne annule
+   ou que le fichier est refusé. [D] **GFS ouvre lui-même le sélecteur de fichier** : un champ `file` caché, cliqué dans le geste
+   de la personne (un sous-cadre isolé n'a pas ce geste), qui propose les `extensions` du manifeste. Annuler le sélecteur ne change
+   rien ; un fichier d'une autre terminaison est refusé par GFS, qui dit celles que le format attend et n'ouvre pas l'app. Le
+   fichier part une seule fois : avec l'ouverture, ou avec l'appel `ouvrir` quand l'app est déjà ouverte. **Une app qui ne sait pas
+   encore le recevoir** a ses formats grisés, jamais masqués, avec « Pas encore » et, au clic, la phrase qui dit d'importer depuis
+   le menu de l'app (`ACCEPTS_OPEN.<app>.importer`, la ligne provisoire de `fichier` et `nouveau` : elle passe à `true` quand le
+   `GFS-ETAT.md` de l'app dit la consigne faite et que GFS l'a rejouée). La précaution compte : l'app d'aujourd'hui lit
+   « `fichier: null` et un `type` » comme un « Nouveau » ; elle ouvrirait un modèle vierge, dirait `{ ouvert: true }`, et le fichier
+   de la personne serait perdu sans un mot. Le kit (`gfs-link.js`, `normalizeOpening`) comme le `gfs-link.js` de Publipostage+ ne
+   gardent que `fichier`, `type`, `dossier` et `raison` : ils laissent tomber `importation`. Publipostage+ la garde chez lui
+   (consigne 035) ; le kit la gardera dans sa prochaine version. [M] **Mesuré le 22/10** dans un vrai Grist, à 700 × 400, à la vraie
+   souris et au vrai clavier, en français et en anglais, en clair et en sombre (`run-importer.mjs`, avec la sonde P : une app
+   d'essai qui fait ce que fera Publipostage+ et qui lit ce qu'elle reçoit ; le labo seul la range dans `ACCEPTS_OPEN`) : « Nouveau »
+   gagne « Importer » après un séparateur, avec la flèche des sous-menus ; le sous-menu s'ouvre au clic, à Entrée et à la flèche
+   droite, se referme à Échap et à la flèche gauche (le focus revient sur « Importer ») et à un clic à côté ; il se pose à côté du
+   menu sans recouvrir « Importer » (le menu « Nouveau » est large : le sous-menu se rétrécit à la place qui reste, ses mentions se
+   coupent par « … » et l'infobulle dit la raison en entier) ; les cinq formats du labo sont d'abord grisés (Publipostage+ : « Pas
+   encore » pour Excel et Markdown, l'extension « Diapositives » pour PowerPoint ; la sonde, non installée : l'app à installer) et
+   leur clic ouvre la phrase ou la fenêtre des apps, jamais un sélecteur de fichier ; la sonde installée, ses deux formats se
+   dégrisent, avec leur type et le nom de l'app ; le sélecteur propose les terminaisons du manifeste et un seul fichier ;
+   **l'app qui démarre reçoit le `File` dans la réponse à `contexte`, l'app déjà ouverte dans l'appel `ouvrir`, dans le même cadre
+   non rechargé : un vrai `File` (`instanceof File`, nom, taille, type, texte accents compris) dans un cadre sans
+   `allow-same-origin`** ; un fichier d'une autre terminaison est dit (nom, format, terminaisons) sans rien envoyer ; GFS n'écrit
+   aucun avertissement.
 2. [T] **choisir** : l'explorateur s'ouvre en mode choix, filtré par `types` (et `apps` si elle est donnée), parmi les types que
    les manifestes déclarent dans `actions.choisir`. Un fichier d'une app non installée est grisé, avec « Installer ». `titre`
    est un texte déjà traduit, montré par GFS.

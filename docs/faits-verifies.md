@@ -38,6 +38,13 @@ mémoire ni contre un faux Grist écrit par nous. Les numéros de ligne bougent 
   dix lectures, deux passages : 11 à 14 ms pour 1 000 lignes (70 Ko), 38 ms pour 5 000 (360 Ko), 135 à 166 ms pour 20 000
   (1,5 Mo). Relue toutes les 1,5 s, la table de 20 000 lignes retarde le fil de la page de Grist de plus de 50 ms à chaque
   relecture (9 fois en 15 s, 190 ms au plus), contre aucune fois sans relecture. **Non mesuré** : un vrai serveur Grist (lecture par le réseau).
+- Mesuré le 22/10 (Chromium, `labo/run-importer.mjs`, sonde P) : **un objet `File` envoyé par `postMessage` à un sous-cadre isolé** (`sandbox`
+  sans `allow-same-origin`, origine opaque) **arrive et se lit** : `instanceof File`, nom, taille, type et `text()` (accents compris),
+  que l'app démarre (dans la réponse à son `contexte`) ou soit déjà ouverte (dans l'appel `ouvrir`). Les messages de GFS à l'app sont
+  postés sans étape JSON (`postMessage(message, '*')`) : ce qui passe est un clone structuré. Le sélecteur de fichier est ouvert par
+  GFS, dans le geste de la personne (un champ `file` caché cliqué dans le clic ou la touche Entrée) : un sous-cadre isolé n'a pas ce
+  geste dans GFS, et GFS peut ainsi refuser une autre terminaison avant d'ouvrir l'app. **Non mesuré** : Firefox et WebKit (seul Chromium
+  est installé dans le labo du cloud).
 
 **Conséquence** : une app dans un sous-cadre de GFS envoie ses messages à GFS, qui peut les relayer à Grist et rendre les
 réponses, sans que l'app change.

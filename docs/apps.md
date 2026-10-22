@@ -475,6 +475,13 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   lue. « Demandes à GFS » : aucune. Le guide omettait `BI_Dashboard_Comments` (créée depuis le 30/09) : ajoutée. Traité le 22/10 :
   l'`INDEX.md` (001 faite, 002 lue). GFS ne référence pas encore Grist-BI.
 
+- « Nouveau > Importer » (22/10, le porteur : « les imports possibles par Publipostage+ (Excel, docx, pptx…) il faudrait qu'ils soient aussi
+  disponibles dans le menu Nouveau, sous-menu Import ? », puis sa réponse « Sous-menu Importer ») : GFS livre le sous-menu. Le
+  manifeste déclare les formats (`actions.importer`, contrats 2.7, point 4), GFS ouvre le sélecteur de fichier et rend le `File` à l'app
+  avec l'ouverture ou l'appel `ouvrir` (contrats 5.2, point 3, et 5.4, point 1) ; mesuré avec une app d'essai (`run-importer`, quatre
+  combinaisons) : le `File` arrive lisible dans le cadre isolé. Les trois formats de Publipostage+ restent grisés (« Pas encore »)
+  tant que sa consigne 035 n'est pas faite : l'app d'aujourd'hui prendrait l'appel pour un « Nouveau » et ouvrirait un modèle vierge.
+  Le kit (`normalizeOpening`) laisse tomber `importation` : à ajouter à sa prochaine version.
 - Licences (21/10, le porteur : tous les dépôts sous GPL 3.0). Relevé sur le sommet de `main` de chaque dépôt :
   Publipostage+, Grist-BI et SlidesPlus ont un `LICENSE` qui est le texte officiel de la GPL 3.0 (mêmes octets que celui de
   GFS, SHA-256 `3972dc97…`) ; Grist-BI était sous MIT jusqu'au 29/09 (`fb3ab41`), passé en GPL 3.0 ce jour-là. Form+ :

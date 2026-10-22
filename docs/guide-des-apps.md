@@ -109,6 +109,19 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     envoi, dans ton `GFS-ETAT.md` (« Changements qui touchent GFS » : ce que GFS doit rejouer). La référence du sous-module ne
     sert plus qu'aux mesures de GFS et de repli : la ligne « à avancer à … » de ta page n'a plus lieu d'être, celle de ton en-tête
     (le dernier commit de code que la page décrit) dit où GFS rejoue ses essais.
+12. Recevoir le fichier d'un « Nouveau > Importer » (décision du porteur du 22/10 ; contrats 2.7, point 4, et 5.4, point 1). Une app qui
+    sait lire un fichier d'un autre logiciel (un classeur, un Markdown, un PowerPoint) le déclare dans `actions.importer` (une
+    `valeur`, un `nom` en français et en anglais, le `type` du modèle qu'il crée, les `extensions`) : GFS en fait le sous-menu
+    « Importer » du menu « Nouveau », ouvre lui-même le sélecteur de fichier, et donne le `File` à l'app avec l'ouverture
+    (`raison: importer`, `importation: { valeur, fichier }`) ou, quand elle est déjà ouverte, avec l'appel `ouvrir`. L'app prend ce
+    fichier **par le chemin de son propre menu d'import** : mêmes lectures, mêmes refus dits dans son coin d'état, même question
+    « Enregistrer / Abandonner / Annuler » avant de quitter un modèle modifié, un modèle vierge sans nom qui naît à son premier
+    « Enregistrer » ; elle répond `{ ouvert: true }` quand il est ouvert à la fin, `{ ouvert: false }` si la personne annule ou si le
+    fichier est refusé. Elle ne le prend **jamais pour un « Nouveau » du type** (`fichier: null` et un `type`) : elle ouvrirait un
+    modèle vierge et dirait `ouvert`. Elle garde `importation` dans sa lecture de l'ouverture (le `normalizeOpening` du kit la
+    gardera dans sa prochaine version), ne lit le `File` qu'une fois (GFS ne le rend qu'une fois) et vérifie son contenu comme celui
+    de son sélecteur : la terminaison est déjà contrôlée par GFS, rien d'autre. Tant que GFS n'a pas lu dans le `GFS-ETAT.md` de l'app
+    que la consigne est faite, ses formats sont grisés (« Pas encore »).
 
 ### 1.3 Licence : GPL 3.0 dans tous les dépôts (décision du porteur, 21/10)
 
@@ -184,6 +197,8 @@ ligne 330 ; seul `macro` a sa branche, ligne 270) et peut devenir le modèle de 
 - **Langue** : `initialLang()` lit `contexte.langue` dans GFS (avant `pp_lang` et la langue du navigateur), le gestionnaire
   de messages de `GfsLink` écoute l'événement `langue`, et son choix de langue (Réglages) est grisé dans GFS (consigne 019).
 - **Manifeste** : `gfs.json`, d'après l'exemple du cahier (5.1).
+- **Importer** : ses trois imports (Excel, Markdown, PowerPoint) sont déclarés dans `actions.importer` ; le fichier que GFS lui donne
+  prend le chemin de son menu « + » (`onImportXlsx`, `onImportMd`, `onImportPptx` de `js/main.js`), consigne 035 et règle 12 de 1.2.
 - **Extensions** : le graphique dans `extensions/graphique/` (pilote), puis diapositives, temps réel, formats Office. Leur
   code reste dans l'app ; leur bibliothèque est à GFS : l'entrée du manifeste dit l'identifiant et la version exacte qu'elles
   exigent, rien de plus (contrats 2.6).

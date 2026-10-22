@@ -8,7 +8,9 @@
 //      aucun lot au document et le courtier ne refuse rien ;
 //   3. le zoom de la page au clavier (Ctrl + plus) : GFS garde `pp_page_zoom`, le niveau du modèle ouvert ;
 //   4. GFS rechargé, le même modèle rouvert depuis l'explorateur : l'app revient dans le thème choisi (ses Réglages le cochent) et au même zoom ;
-//   5. Ctrl + 0 rend l'affichage d'origine : l'app retire la clé (`valeur: null`), GFS ne la garde plus.
+//   5. Ctrl + 0 rend l'affichage d'origine : l'app retire la clé (`valeur: null`), GFS ne la garde plus ;
+//   6. les bulles et les puces de l'éditeur (`84002e4`, la douzième clé, `pp_bubble_marks`) : « Mise en forme » choisi à la souris dans l'onglet Thème, l'app l'applique à l'instant et GFS le garde ;
+//      GFS rechargé, le modèle rouvert, le choix est revenu (case cochée, attribut posé dès le départ) ; aucun lot au document.
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check } from './lab-common.mjs';
@@ -192,4 +194,34 @@ check('Ctrl + 0 rend l\'affichage d\'origine : l\'app retire la clé, GFS ne gar
 const resetLots = await lots();
 check('Ctrl + 0 n\'envoie aucun lot non plus ; aucun refus du courtier, aucune erreur de page pendant la passe',
   resetLots.length === resetClickLots && resetLots.flat().every(action => / Publipostage_UserProbe$/.test(action)) && warnings.length === 0 && errors.length === 0, { resetLots, warnings, errors });
+
+// ---------- 6. les bulles et les puces de l'éditeur (la douzième clé, `pp_bubble_marks`) ----------
+// « Par défaut » ou « Mise en forme » : un seul choix pour tous les modèles de la personne ; comme le thème, il s'applique à l'instant (un attribut sur <html>) et dès le chargement de la page.
+const bubbleAttr = () => app.evaluate(() => document.documentElement.getAttribute('data-bubble-marks'));
+const checkedBubble = () => app.evaluate(() => { const r = document.querySelector('input[name="settings-bubble-marks"]:checked'); return r ? r.value : null; });
+await watchLots();
+await openThemeTab();
+const bubbleAtStart = { checked: await checkedBubble(), attr: await bubbleAttr(), kept: (await kept()).pp_bubble_marks };
+await app.locator('label:has(input[name="settings-bubble-marks"][value="marks"])').click();
+await waitFor('le choix des bulles gardé par GFS', async () => (await kept()).pp_bubble_marks === 'marks');
+const bubbleChosen = { checked: await checkedBubble(), attr: await bubbleAttr(), kept: (await kept()).pp_bubble_marks };
+say('bulles et puces, au départ :', bubbleAtStart, '; « Mise en forme » choisi :', bubbleChosen);
+check('au départ, « Par défaut » est coché, aucun attribut sur <html> et GFS ne garde rien sous pp_bubble_marks',
+  bubbleAtStart.checked === 'default' && bubbleAtStart.attr === null && bubbleAtStart.kept === undefined, bubbleAtStart);
+check('« Mise en forme » choisi à la souris : l\'app l\'applique à l\'instant (data-bubble-marks sur <html>) et GFS le garde (gfs.stockage.publipostage.pp_bubble_marks, la douzième clé)',
+  bubbleChosen.checked === 'marks' && bubbleChosen.attr === 'marks' && bubbleChosen.kept === 'marks', bubbleChosen);
+await lab.shotPanel(run, '4-bulles-choisies');
+await closeSettings();
+const bubbleLots = await lots();
+await restart();
+await openFromExplorer();
+const bubbleReloaded = { attr: await bubbleAttr() };
+await openThemeTab();
+bubbleReloaded.checked = await checkedBubble();
+await closeSettings();
+const keptAfter = await kept();
+check('GFS rechargé, le modèle rouvert : l\'attribut est posé et « Mise en forme » est cochée, le choix a survécu au rechargement du cadre ; GFS garde la clé telle quelle',
+  bubbleReloaded.attr === 'marks' && bubbleReloaded.checked === 'marks' && keptAfter.pp_bubble_marks === 'marks', { bubbleReloaded, keptAfter });
+check('ce choix n\'envoie aucun lot au document, le courtier ne refuse rien et la page n\'a aucune erreur',
+  bubbleLots.length === 0 && warnings.length === 0 && errors.length === 0, { bubbleLots, warnings, errors });
 await lab.browser.close();

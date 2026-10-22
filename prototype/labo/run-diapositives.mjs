@@ -151,6 +151,36 @@ check(`la ligne dit ce qu'elle apporte et sa taille du manifeste (≈ ${WEIGHT} 
 check('elle n\'est pas grisée : aucune bibliothèque ne peut lui manquer', !(await line.evaluate(node => node.classList.contains('is-locked'))));
 await lab.shotPanel(run, '2-fenetre-diapositives');
 
+// Le bouton « Objets » de la barre d'outils du haut (865afa3, 0.31 : il a quitté la bande), extension éteinte : grisé, jamais caché, sa raison dans son menu ; son clic appelle `installer` comme la ligne du menu « + ».
+await page.keyboard.press('Escape');
+await gfs.locator('.mod').waitFor({ state: 'hidden' });
+const objectsButton = app.locator('#v2-btn-objects');
+await objectsButton.hover();
+await page.waitForTimeout(700);
+const objectsOff = await app.evaluate(() => {
+  const button = document.getElementById('v2-btn-objects');
+  const box = button.getBoundingClientRect();
+  const reason = document.querySelector('#v2-objects-flyout .v2-objects-reason');
+  const reasonBox = reason ? reason.getBoundingClientRect() : null;
+  const flyout = document.getElementById('v2-objects-flyout').getBoundingClientRect();
+  return {
+    shown: box.width > 0 && box.height > 0 && getComputedStyle(button).visibility !== 'hidden', disabled: button.getAttribute('aria-disabled'), explains: button.hasAttribute('data-explains'),
+    reason: reason ? reason.textContent.trim() : '', reasonShown: Boolean(reasonBox) && reasonBox.width > 0 && reasonBox.height > 0,
+    flyoutInPanel: flyout.height > 0 && flyout.top >= -0.5 && flyout.bottom <= innerHeight + 0.5 && flyout.left >= -0.5 && flyout.right <= innerWidth + 0.5,
+  };
+});
+check('extension éteinte, le bouton « Objets » de la barre d\'outils est là, grisé, jamais caché ; son menu dit la raison, dans le panneau',
+  objectsOff.shown && objectsOff.disabled === 'true' && objectsOff.explains && WORDS.reason.test(objectsOff.reason) && objectsOff.reasonShown && objectsOff.flyoutInPanel, objectsOff);
+await lab.shotPanel(run, '2b-objets-grise');
+// Le bouton est `aria-disabled` : Playwright refuse de le « cliquer » (non actif) ; la vraie souris, elle, appuie sur ce que la personne voit.
+const objectsBox = await objectsButton.boundingBox();
+await page.mouse.click(objectsBox.x + objectsBox.width / 2, objectsBox.y + objectsBox.height / 2);
+await gfs.locator('.mod').waitFor({ timeout: 15000 });
+check('un clic sur le bouton « Objets » grisé ouvre la fenêtre de GFS sur la ligne « Diapositives » (appel `installer`)', (await focusedRow()) === FK, await focusedRow());
+await page.keyboard.press('Escape');
+await gfs.locator('.mod').waitFor({ state: 'hidden' });
+await page.mouse.move(690, 390, { steps: 4 });
+
 // ===== 2. La personne la coche
 const filesNow = () => app.evaluate(() => ({ scripts: [...document.scripts].map(node => node.src).filter(Boolean), styles: [...document.querySelectorAll('link[rel="stylesheet"]')].map(node => node.href) }));
 const filesBefore = await filesNow();
@@ -168,13 +198,13 @@ check('une présentation vierge s\'ouvre à la page 16:9 en paysage', pageNow.sl
 const filesAfter = await filesNow();
 const newScripts = filesAfter.scripts.filter(src => !filesBefore.scripts.includes(src));
 const newStyles = filesAfter.styles.filter(href => !filesBefore.styles.includes(href));
-// Les dix scripts de l'extension (la bande, une page de document en diapositives, le volet « Importer », « Objets », les diapositives liées, les transitions et leur fenêtre, le fond, les notes,
-// « Présenter ») et ses sept feuilles de style (version 0.28, app à 84002e4), tous du dossier de l'app, chargés ensemble.
-const SCRIPTS = ['slide-strip', 'page-slides', 'slide-import', 'slide-objects', 'slide-links-ui', 'slide-transitions', 'slide-transitions-ui', 'slide-background-ui', 'slide-notes-ui', 'slide-show'];
-const STYLES = ['slide-strip', 'slide-import', 'slide-objects', 'slide-transitions', 'slide-background', 'slide-notes', 'slide-show'];
+// Les neuf scripts de l'extension (la bande, une page de document en diapositives, le volet « Importer », les diapositives liées, les transitions et leur fenêtre, le fond, les notes,
+// « Présenter ») et ses six feuilles de style (version 0.31, app à 865afa3), tous du dossier de l'app, chargés ensemble. Le menu « Objets » est passé dans le cœur de l'app (js/objects-menu.js).
+const SCRIPTS = ['slide-strip', 'page-slides', 'slide-import', 'slide-links-ui', 'slide-transitions', 'slide-transitions-ui', 'slide-background-ui', 'slide-notes-ui', 'slide-show'];
+const STYLES = ['slide-strip', 'slide-import', 'slide-transitions', 'slide-background', 'slide-notes', 'slide-show'];
 const fromFolder = (list, names, kind) => list.length === names.length
   && names.every(name => list.filter(url => new RegExp(`/apps/publipostage/extensions/diapositives/${name}\\.${kind}\\?`).test(url)).length === 1);
-check('l\'extension charge ses dix-sept fichiers (dix scripts, sept feuilles de style), depuis le dossier de l\'app, rien d\'une autre adresse, aucun refus de la politique de sécurité',
+check('l\'extension charge ses quinze fichiers (neuf scripts, six feuilles de style), depuis le dossier de l\'app, rien d\'une autre adresse, aucun refus de la politique de sécurité',
   fromFolder(newScripts, SCRIPTS, 'js') && fromFolder(newStyles, STYLES, 'css')
     && (await app.evaluate(() => window.__csp)).length === 0, { newScripts, newStyles, csp: await app.evaluate(() => window.__csp) });
 await leaveMenu();
@@ -431,7 +461,8 @@ await app.locator('.pp-slide-import-open').click();
 await app.locator('.pp-slide-import .ss-trigger').click();
 await page.keyboard.type(LINK.search, { delay: 30 });
 await page.keyboard.press('Enter');
-const keepRow = app.locator('.pp-slide-import-keep');
+// Deux cases portent cette classe depuis 0.31 (« Garder liée » et « Garder la mise en forme d'origine », la seconde cachée pour une présentation) : celle qui se montre.
+const keepRow = app.locator('.pp-slide-import-keep:not([hidden])');
 await keepRow.waitFor({ timeout: 10000 });
 const keep = await keepRow.evaluate(row => {
   const box = row.getBoundingClientRect();

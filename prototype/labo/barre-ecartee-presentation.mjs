@@ -1,11 +1,12 @@
 // La barre de GFS devant les présentations de Publipostage+ (extension « Diapositives », consigne 025 faite) : le rejeu de run-barre-ecartee.mjs, dans une présentation de trois diapositives ouverte depuis l'explorateur
-// de GFS. Aux mêmes tailles et aux mêmes bords que le reste : la bande des diapositives et ce qu'elle montre (miniatures, numéros, « Ajouter », « Importer », « Objets »), le ▶ et la pastille du zoom ; les menus de
-// la bande (le « ⋯ » d'une miniature, les mises en page d'« Ajouter », le menu « Objets ») ; les fenêtres Transition, Fond et Notes ; le volet « Importer » et sa liste avec recherche ; puis « Présenter » (barre-ecartee-diaporama.mjs).
+// de GFS. Aux mêmes tailles et aux mêmes bords que le reste : la bande des diapositives et ce qu'elle montre (miniatures, numéros, « Ajouter », « Importer »), le ▶ et la pastille du zoom ; les menus de
+// la bande (le « ⋯ » d'une miniature, les mises en page d'« Ajouter ») et le menu « Objets » de la barre d'outils (il a quitté la bande à 865afa3, 0.31) ; les fenêtres Transition, Fond et Notes ; le volet « Importer »
+// et sa liste avec recherche ; puis « Présenter » : le menu ▾ du ▶ (4dfcd0c), puis les tours (barre-ecartee-diaporama.mjs).
 // La bande et le volet étendent exprès leur fond sous la barre (une gouttière : `--pp-slide-strip-bar`) : on juge leur contenu, pas ce fond.
 import { check, say } from './lab-common.mjs';
 import { stands, judge, asked, none, label, wait, hits, inFrame, rectOf, shownRect, clickOpener, unopened } from './barre-ecartee-lab.mjs';
-import { atRest, windows } from './barre-ecartee-scenarios.mjs';
-import { TOURS, tour } from './barre-ecartee-diaporama.mjs';
+import { atRest, windows, menus as toolbarMenus } from './barre-ecartee-scenarios.mjs';
+import { TOURS, tour, showMenu } from './barre-ecartee-diaporama.mjs';
 
 const FK = 'ext:publipostage/diapositives';
 export const DECK = 'Trois diapositives';
@@ -18,9 +19,9 @@ const SURFACES = ['pp-slide-strip', 'pp-slide-import'];
 const STRIP = '.pp-slide-strip';
 const MORE = `${STRIP} .pp-slide-item[aria-selected="true"] + .pp-slide-more`;
 const THUMB = `${STRIP} .pp-slide-item[aria-selected="true"] .pp-slide-thumb`;
-const ADD = `${STRIP} .pp-slide-add:not(.pp-slide-import-open):not(.pp-slide-objects-open)`;
+const ADD = `${STRIP} .pp-slide-add:not(.pp-slide-import-open)`;
 const IMPORT = `${STRIP} .pp-slide-import-open`;
-const OBJECTS = `${STRIP} .pp-slide-objects-open`;
+const OBJECTS_GROUP = '#v2-objects-group';
 
 // La présentation de trois diapositives et une autre, la source du volet « Importer » (sa liste n'existe qu'avec une autre présentation), dans la table des modèles avant que l'app démarre (elle lit ses modèles au démarrage).
 export const seedDeck = frame => frame.evaluate(rows => grist.docApi.applyUserActions(rows.map(([name, html]) => ['AddRecord', 'Publipostage_Modeles', null, { Nom: name, TypeModele: 'presentation', Contenu: html }])),
@@ -71,7 +72,7 @@ async function stripAtRest(r) {
   return out;
 }
 
-// 2. Les menus de la bande, ouverts à la vraie souris : le « ⋯ » de la diapositive du curseur, les mises en page d'« Ajouter », le menu « Objets ».
+// 2. Les menus de la bande, ouverts à la vraie souris : le « ⋯ » de la diapositive du curseur, les mises en page d'« Ajouter » ; puis le menu « Objets » de la barre d'outils, qui s'ouvre au survol de son bouton.
 // La miniature du curseur, amenée dans la liste et visée là où on la voit : dans un cadre bas, la liste n'en montre qu'une bande de quelques pixels (560 × 300 : 16 px), que la personne fait défiler.
 const LIST = `${STRIP} .pp-slide-list`;
 async function visibleThumb(r) {
@@ -106,8 +107,7 @@ async function openSlideMenu(r) {
 }
 const MENUS = [
   { name: 'menu ⋯ d\'une diapositive', open: openSlideMenu, panel: '.pp-slide-menu.visible' },
-  { name: 'mises en page d\'« Ajouter »', open: r => clickOpener(r, ADD), panel: '.pp-slide-layouts:not(.pp-slide-objects).visible' },
-  { name: 'menu « Objets »', open: r => clickOpener(r, OBJECTS), panel: '.pp-slide-objects.visible' },
+  { name: 'mises en page d\'« Ajouter »', open: r => clickOpener(r, ADD), panel: '.pp-slide-layouts.visible' },
 ];
 // Un menu ouvert se referme par Échap ; s'il reste, par un appui hors de lui.
 async function closeMenu(r, panel) {
@@ -129,6 +129,13 @@ async function stripMenus(r) {
     if (!inFrame(box, r.size)) out.notes.push(label(`${menu.name} hors du cadre`, box));
     await closeMenu(r, menu.panel);
   }
+  // Le menu « Objets » (cadre de texte, seize formes, trois lignes) : dans une présentation il est vivant, son menu s'ouvre au survol du bouton, derrière « Image ».
+  const objects = await toolbarMenus(r, OBJECTS_GROUP);
+  out.mesures += objects.mesures;
+  out.sur.push(...objects.sur);
+  out.dessous.push(...objects.dessous);
+  out.notes.push(...objects.notes);
+  if (!objects.mesures && !objects.dessous.length) out.notes.push('menu « Objets » de la barre d\'outils : ne s\'est pas ouvert');
   await r.hand.park();
   return out;
 }
@@ -189,6 +196,7 @@ export async function runPresentation(ctx) {
     if (want('diapos-fenetres')) judge(tag, 'les fenêtres Transition, Fond et Notes', await windows(r, SLIDE_WINDOWS), asked(r.size, 'diapos-fenetres'));
     if (want('diapos-volet')) judge(tag, 'le volet « Importer »', await importPanel(r, () => lab.shotPanel(run, name('volet'), frame)), asked(r.size, 'diapos-volet'));
     if (want('presenter')) {
+      judge(tag, 'le menu ▾ de « Présenter »', await showMenu(r, tag), asked(r.size, 'presenter'));
       let first = true;
       for (const pair of TOURS) {
         await tour(r, tag, pair, first ? () => lab.shotPanel(run, name('diaporama'), frame) : null);

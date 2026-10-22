@@ -30,10 +30,11 @@ export async function atRest(r, { surfaces = [] } = {}) {
   return { ...none(), mesures: all.length, sur, barreDOutils: inMargin };
 }
 
-// 2. Les menus déroulants de la barre d'outils : chaque groupe s'ouvre au survol de son bouton ; la boîte du menu ne recouvre pas la zone.
-export async function menus(r) {
+// 2. Les menus déroulants de la barre d'outils : chaque groupe s'ouvre au survol de son bouton ; la boîte du menu ne recouvre pas la zone. `only` : le sélecteur d'un seul groupe (le menu « Objets » d'une présentation).
+export async function menus(r, only = null) {
   const out = none();
-  const ids = await r.app.evaluate(() => [...document.querySelectorAll('.v2-hover-group > .v2-hover-flyout')].map((el, i) => { if (!el.id) el.id = `lab-flyout-${i}`; return el.id; }));
+  const ids = await r.app.evaluate(only => [...document.querySelectorAll('.v2-hover-group > .v2-hover-flyout')]
+    .map((el, i) => { if (!el.id) el.id = `lab-flyout-${i}`; return el; }).filter(el => !only || el.parentElement.matches(only)).map(el => el.id), only);
   for (const id of ids) {
     const trigger = await r.app.evaluate(fid => {
       const group = document.getElementById(fid).parentElement;

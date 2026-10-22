@@ -96,8 +96,9 @@ export async function seedForms(frame) {
 
 // Un formulaire que Form+ a enregistré pour la section de son widget, comme elle le fait (consigne 007 : sa ligne dans `FormPlus_Formulaires`, `IdSectionWidget` à elle) : une section
 // de formulaire natif de `Clients` sur une nouvelle page, puis la ligne qui la gère, avec deux questions. À son démarrage, Form+ y retrouve sa définition et montre son concepteur.
-export async function seedFormDesigner(frame) {
-  return frame.evaluate(async ({ FORMS_COLUMNS }) => {
+// `title` et `questions` : un autre formulaire que celui par défaut (deux questions), pour en semer plusieurs.
+export async function seedFormDesigner(frame, { title = 'Inscription à une formation', questions = null } = {}) {
+  return frame.evaluate(async ({ FORMS_COLUMNS, title, questions }) => {
     const sections = await grist.docApi.fetchTable('_grist_Views_section');
     const widget = sections.id[sections.parentKey.indexOf('custom')];
     const tables = await grist.docApi.fetchTable('_grist_Tables');
@@ -108,8 +109,8 @@ export async function seedFormDesigner(frame) {
     else if (!('IdSectionWidget' in await grist.docApi.fetchTable('FormPlus_Formulaires'))) await grist.docApi.applyUserActions([['AddColumn', 'FormPlus_Formulaires', 'IdSectionWidget', { type: 'Numeric' }]]);
     const definition = {
       formLink: `http://127.0.0.1:8910/o/docs/forms/LABO/${made.sectionRef}`, vsId: made.sectionRef, sourceVsId: made.sectionRef, viewRef: made.viewRef,
-      formTitle: 'Inscription à une formation', formDescription: '',
-      questions: [
+      formTitle: title, formDescription: '',
+      questions: questions || [
         { id: 'q1', kind: 'text', label: 'Ville de départ', writeTable: 'Clients', writeCol: 'Ville' },
         { id: 'q2', kind: 'choice', label: 'Client', sourceTable: 'Clients', sourceCol: 'Nom' },
       ],
@@ -118,5 +119,5 @@ export async function seedFormDesigner(frame) {
       Nom: definition.formTitle, TypeFormulaire: 'formulaire', DateModif: Math.floor(Date.now() / 1000), ModifiePar: 'Form+', IdSectionWidget: widget, Definition: JSON.stringify(definition),
     }]]);
     return { widget, form: made.sectionRef, page: made.viewRef };
-  }, { FORMS_COLUMNS });
+  }, { FORMS_COLUMNS, title, questions });
 }

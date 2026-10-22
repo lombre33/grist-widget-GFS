@@ -119,7 +119,7 @@ test('contrats 2.4, 3.3 et 8 : le manifeste de Form+ range ses formulaires dans 
   assert.equal(files.typeParDefaut, 'formulaire');
   assert.deepEqual(files.types.map(item => item.valeur), ['formulaire']);
   assert.ok(files.types.every(item => item.couleur === undefined), 'la couleur est réservée au document, à la grille et à la présentation (charte)');
-  assert.deepEqual(m.actions.ouvrir, [], 'pas de porte « ouvrir » tant que l\'app ne parle pas au courtier');
+  assert.deepEqual(m.actions.ouvrir, ['formulaire'], 'la porte « ouvrir » est ouverte depuis la consigne 010 de Form+ (c249c4a) : « Nouveau » et le double-clic démarrent l\'app');
   assert.deepEqual(m.extensions || [], [], 'Leaflet vient avec sa consigne, pas avec l\'entrée de l\'app');
   const internal = m.permissions.gristInterne;
   assert.ok(internal.every(entry => !(entry.ecrit || []).includes('options')), 'la définition ne passe plus par les options de la section');

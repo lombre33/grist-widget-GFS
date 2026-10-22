@@ -1069,7 +1069,19 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
    Avec des modifications en attente, l'app pose sa question (Enregistrer, Abandonner, Annuler) et GFS attend sans rien dire.
    Rien n'est écrit dans le document avant le premier « Enregistrer » de la personne. `ACCEPTS_OPEN` passe donc `nouveau` à
    `true` pour Publipostage+ : GFS ne dit plus sa phrase provisoire pour cette app, et la garde pour une app qui n'accepte
-   pas l'ouverture (Automation+ aujourd'hui).
+   pas l'ouverture (Automation+ aujourd'hui). [M] **Mesuré le 22/10 avec Form+ à `c249c4a`** (sa consigne 010 ;
+   `run-ouvrir-form.mjs`, mêmes conditions, sur la copie et sur le site en ligne) : le menu « Nouveau » gagne « Formulaire »
+   (grisé tant que l'app n'est pas installée, un clic dit pourquoi) ; dans un document sans formulaire, « Nouveau » lance l'app
+   sur son écran de départ, sans phrase de GFS, et la table `FormPlus_Formulaires` n'existe toujours pas ensuite ; le
+   double-clic d'un formulaire lance l'app sur CE formulaire (son titre, ses questions), l'app déjà ouverte change de formulaire
+   dans son cadre sans le recharger, le même deux fois ne change rien ; le changement de langue recharge l'app, qui rouvre son
+   formulaire (la ligne ouverte est gardée chez GFS, `formplus_open_row`). `ACCEPTS_OPEN` passe donc `fichier` et `nouveau` à
+   `true` pour Form+. **Deux écarts de l'app, dits à Form+ (sa consigne 012)** : avec des formulaires enregistrés, « Nouveau »
+   lancé quand l'app n'est pas ouverte rouvre un ancien formulaire au lieu de l'écran de départ (`onOptions` ne lit pas
+   `raison: nouveau` : elle prend le formulaire gardé ouvert, sinon `resolveMyDefinition()`, ambiguë dans GFS puisque toutes
+   les lignes portent la section partagée de l'hôte) ; l'app déjà ouverte montre bien l'écran de départ, mais laisse l'éditeur
+   du formulaire précédent affiché dessous (`showConfig()` ne cache `#editor` que par « Changer de formulaire source »). Le
+   labo les écrit en `CONSTAT`, sans les exiger.
 2. [T] **choisir** : l'explorateur s'ouvre en mode choix, filtré par `types` (et `apps` si elle est donnée), parmi les types que
    les manifestes déclarent dans `actions.choisir`. Un fichier d'une app non installée est grisé, avec « Installer ». `titre`
    est un texte déjà traduit, montré par GFS.

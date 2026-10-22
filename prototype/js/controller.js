@@ -33,7 +33,7 @@ const NOTICE_MS = 6000;
 // Provisoire : ce que chaque app sait faire d'une ouverture. `fichier` : ouvrir le fichier désigné, au démarrage (`ouverture` du contexte) comme déjà ouverte (appel `ouvrir`), consigne 010 ;
 // `nouveau` : créer un fichier vierge du type demandé (contrats 5.4, point 1), consigne 014 (Publipostage+ depuis bfbe112). Ce qu'une app ne sait pas, GFS ouvre l'app sur son modèle habituel et le dit.
 // Une app qui le sait passe à `true` ici (puis la ligne disparaît avec le catalogue provisoire).
-const ACCEPTS_OPEN = Object.freeze({ publipostage: { fichier: true, nouveau: true }, automation: { fichier: false, nouveau: false } });
+const ACCEPTS_OPEN = Object.freeze({ publipostage: { fichier: true, nouveau: true }, form: { fichier: true, nouveau: true }, automation: { fichier: false, nouveau: false } });
 
 // Provisoire (étape 2) : les apps qui ne se retirent pas, comme dans la maquette (Publipostage+ ne se décoche pas).
 export const ALWAYS_ON = Object.freeze(['publipostage']);

@@ -9,7 +9,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 |---|---|---|---|---|---|
 | Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `dc95ebe` | 21/10/2026 | GPL 3.0 |
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `16701fe` | 21/10/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
-| Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `4110eaf` | 21/10/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
+| Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `f3ab8d6` | 22/10/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `23647eb` | 21/10/2026 | GPL 3.0 |
 
 ## Lus pour référence (pas des apps de GFS)
@@ -400,6 +400,14 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   contenu commence à 16 px du bord) ; consigne 002. Publipostage+ rejouée avec sa référence (`2f6440a`, sa 025 en cours) : en
   haut, sa barre d'outils laisse déjà la place ; à gauche, le haut du surligneur de sa deuxième ligne d'outils (17 %) : à revoir
   quand sa page dira la 025 faite.
+- Automation+ à `f3ab8d6` (22/10, le porteur : « automations+ a fait son taff ») : un commit de plus depuis `4110eaf`, qui ne touche
+  que son `GFS-ETAT.md` (le code reste celui de `6eb0165`, version 0.11.1). Il dit la consigne 003 **lue** : la barre de GFS
+  recouvre « Ajouter » (barre en haut) et le début du journal (barre en bas) ; rien ne change avant le lot qui prend le lien
+  avec GFS du kit (guide 1.2, point 4), où `GfsLink.onBar` écartera la barre d'outils et le journal, puis les menus et fenêtres
+  se caleront sur la zone libre, jamais écrite en dur. Questions et demandes : aucune. Traité le 22/10 : l'`INDEX.md` (003
+  « lue · `f3ab8d6` », le code attend le lot du lien du kit) et la référence avancée à `f3ab8d6` (commit à part, relu : un seul
+  fichier de plus que `4110eaf`, `GFS-ETAT.md`). Le rejeu de la barre chez elle, avec `run-barre-apps.mjs`, attend ce lot.
+
 - Licences (21/10, le porteur : tous les dépôts sous GPL 3.0). Relevé sur le sommet de `main` de chaque dépôt :
   Publipostage+, Grist-BI et SlidesPlus ont un `LICENSE` qui est le texte officiel de la GPL 3.0 (mêmes octets que celui de
   GFS, SHA-256 `3972dc97…`) ; Grist-BI était sous MIT jusqu'au 29/09 (`fb3ab41`), passé en GPL 3.0 ce jour-là. Form+ :

@@ -157,8 +157,13 @@ button { cursor: pointer; }
 .menu-item[aria-disabled="true"] .ic { opacity: .8; }
 .menu-item .ic { width: 14px; height: 14px; color: var(--text-muted); }
 .menu-item .ck { margin-left: auto; color: var(--accent); }
+.menu-item .sub-chev { margin-left: auto; width: 12px; height: 12px; color: var(--text-muted); }
+.menu-item[aria-expanded="true"] { background: var(--surface-sunken); }
 .menu-item .menu-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .menu-item .menu-hint { margin-left: auto; padding-left: 10px; font-size: 11px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+/* Un sous-menu trop large pour le panneau se rétrécit (menu.js, sideFor) : son nom reste entier, sa mention se coupe par « … » (la raison complète est dans l'infobulle et au clic). */
+.menu-sub .menu-label { flex: 0 0 auto; }
+.menu-sub .menu-hint { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .menu .ic-sp { width: 14px; height: 14px; flex: none; }
 .menu hr { border: 0; border-top: 1px solid var(--border); margin: 4px 0; }
 

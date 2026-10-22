@@ -130,6 +130,11 @@
   "actions": {
     "ouvrir": ["document", "grille", "presentation", "email", "macro"],
     "choisir": ["document", "grille"],
+    "importer": [
+      { "valeur": "excel", "type": "grille", "nom": { "fr": "Excel", "en": "Excel" }, "extensions": [".xlsx", ".xlsm"] },
+      { "valeur": "markdown", "type": "document", "nom": { "fr": "Markdown", "en": "Markdown" }, "extensions": [".md", ".markdown", ".mdown", ".mkd", ".txt"] },
+      { "valeur": "powerpoint", "type": "presentation", "nom": { "fr": "PowerPoint", "en": "PowerPoint" }, "extensions": [".pptx", ".ppsx", ".potx"] }
+    ],
     "inserer": { "produit": [], "recoit": [] }
   }
 }

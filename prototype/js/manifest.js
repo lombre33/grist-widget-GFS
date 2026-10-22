@@ -143,6 +143,27 @@ function checkDisplay(item, where, errors) {
   if (item.poids !== undefined && !(Number.isFinite(item.poids) && item.poids >= 0)) errors.push(`${where} : poids : nombre de Ko attendu`);
 }
 
+const EXTENSION_RE = /^\.[a-z0-9]{1,8}$/i;
+
+// Un format que l'app reçoit de GFS (`actions.importer`, 2.7 point 4) : une valeur à elle, un nom (fr, en), le type de fichier qu'il crée (un type que l'app ouvre) et les extensions du sélecteur.
+function checkImport(item, opens, seen, errors) {
+  if (!isObject(item) || !isText(item.valeur) || !isBilingual(item.nom)) { errors.push('actions.importer[] : valeur et nom (fr, en) attendus'); return; }
+  const where = `actions.importer ${item.valeur}`;
+  if (seen.has(item.valeur)) errors.push(`${where} : valeur déjà prise`);
+  seen.add(item.valeur);
+  if (!opens.has(item.type)) errors.push(`${where} : le type ${item.type} n'est pas dans actions.ouvrir`);
+  if (!Array.isArray(item.extensions) || !item.extensions.length || !item.extensions.every(extension => EXTENSION_RE.test(extension))) errors.push(`${where} : extensions : une liste de « .ext » attendue`);
+}
+
+function checkImports(m, errors) {
+  const actions = isObject(m.actions) ? m.actions : {};
+  if (actions.importer === undefined) return;
+  if (!Array.isArray(actions.importer)) { errors.push('actions.importer : liste attendue'); return; }
+  const opens = new Set(Array.isArray(actions.ouvrir) ? actions.ouvrir : []);
+  const seen = new Set();
+  for (const item of actions.importer) checkImport(item, opens, seen, errors);
+}
+
 function checkExtensions(m, errors) {
   for (const ext of m.extensions || []) {
     if (!isText(ext.id) || !isBilingual(ext.nom)) errors.push('extensions[] : id et nom (fr, en) attendus');
@@ -162,6 +183,7 @@ export function validateManifest(m, others = []) {
   checkFiles(m, errors);
   checkSettings(m, errors);
   checkPermissions(m, errors);
+  checkImports(m, errors);
   checkExtensions(m, errors);
   return { ok: errors.length === 0, errors };
 }

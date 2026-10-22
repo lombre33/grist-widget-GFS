@@ -1,0 +1,87 @@
+{
+  "contrat": 0,
+  "id": "sonde-p",
+  "nom": {
+    "fr": "Sonde P",
+    "en": "Probe P"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Une app qui reçoit le fichier d'un « Nouveau > Importer » de GFS, comme Publipostage+ après la consigne 035",
+    "en": "An app that receives the file of a GFS “New > Import”, like Publipostage+ after instruction 035"
+  },
+  "icone": "doc",
+  "entree": "index.html",
+  "tables": {
+    "prefixe": "SondeP_"
+  },
+  "fichiers": [
+    {
+      "table": "SondeP_Fichiers",
+      "colonnes": {
+        "id": "id",
+        "nom": "Nom",
+        "type": "Type",
+        "date": "DateModif"
+      },
+      "typeParDefaut": "document",
+      "types": [
+        {
+          "valeur": "document",
+          "nom": {
+            "fr": "Document",
+            "en": "Document"
+          },
+          "icone": "doc",
+          "couleur": "document"
+        },
+        {
+          "valeur": "grille",
+          "nom": {
+            "fr": "Grille",
+            "en": "Grid"
+          },
+          "icone": "grid",
+          "couleur": "grille"
+        }
+      ]
+    }
+  ],
+  "reglages": [],
+  "permissions": {
+    "acces": "none"
+  },
+  "extensions": [],
+  "actions": {
+    "ouvrir": [
+      "document",
+      "grille"
+    ],
+    "choisir": [],
+    "importer": [
+      {
+        "valeur": "texte",
+        "type": "document",
+        "nom": {
+          "fr": "Texte",
+          "en": "Text"
+        },
+        "extensions": [
+          ".txt",
+          ".md"
+        ]
+      },
+      {
+        "valeur": "tableur",
+        "type": "grille",
+        "nom": {
+          "fr": "Tableur",
+          "en": "Spreadsheet"
+        },
+        "extensions": [
+          ".csv"
+        ]
+      }
+    ]
+  }
+}

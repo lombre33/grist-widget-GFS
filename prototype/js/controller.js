@@ -23,6 +23,7 @@ import { AppsState } from './apps-state.js';
 import { arrivalApp } from './arrival.js';
 import { Rangement, TableDeclined } from './rangement.js';
 import { ask } from './ask-window.js';
+import { importFormats, acceptsFile, importOpening, openingKind, pickFile } from './import-file.js';
 import { publicationQuestion } from './publication-window.js';
 import { ModulesWindow, rowKey } from './modules-window.js';
 import { buildContext, instanceOf, pageOf } from './context.js';
@@ -32,9 +33,10 @@ import { loadDemo, readSchema, planDemo, runDemo, demoSummary, demoReport, DemoE
 const NOTICE_MS = 6000;
 
 // Provisoire : ce que chaque app sait faire d'une ouverture. `fichier` : ouvrir le fichier désigné, au démarrage (`ouverture` du contexte) comme déjà ouverte (appel `ouvrir`), consigne 010 ;
-// `nouveau` : créer un fichier vierge du type demandé (contrats 5.4, point 1), consigne 014 (Publipostage+ depuis bfbe112). Ce qu'une app ne sait pas, GFS ouvre l'app sur son modèle habituel et le dit.
-// Une app qui le sait passe à `true` ici (puis la ligne disparaît avec le catalogue provisoire).
-const ACCEPTS_OPEN = Object.freeze({ publipostage: { fichier: true, nouveau: true }, form: { fichier: true, nouveau: true }, automation: { fichier: false, nouveau: false } });
+// `nouveau` : créer un fichier vierge du type demandé (contrats 5.4, point 1), consigne 014 (Publipostage+ depuis bfbe112) ; `importer` : créer un fichier d'après celui que GFS lui passe (`importation`
+// de l'ouverture, consigne 035 de Publipostage+). Ce qu'une app ne sait pas, GFS ouvre l'app sur son modèle habituel et le dit ; un format qu'elle ne reçoit pas encore est grisé dans « Importer »,
+// et le sélecteur de fichier ne s'ouvre pas pour rien. Une app qui le sait passe à `true` ici (puis la ligne disparaît avec le catalogue provisoire).
+const ACCEPTS_OPEN = Object.freeze({ publipostage: { fichier: true, nouveau: true, importer: false }, form: { fichier: true, nouveau: true }, automation: { fichier: false, nouveau: false } });
 
 // Provisoire (étape 2) : les apps qui ne se retirent pas, comme dans la maquette (Publipostage+ ne se décoche pas).
 export const ALWAYS_ON = Object.freeze(['publipostage']);
@@ -135,13 +137,35 @@ export class GfsController {
     return entries;
   };
 
-  // Un article du menu « Nouveau » : grisé avec sa raison (`reason`, dite au clic) et son rappel court (`hint`, sous le nom).
+  // Ce que les articles de « Nouveau » et de son sous-menu « Importer » ont en commun : l'app, le type créé, son icône et sa famille de couleur, et le grisé avec sa raison (`reason`, dite au clic).
+  #entry(manifest, type, lock) {
+    return {
+      app: manifest.id, type: type.valeur, icon: type.icone || 'doc', family: lock ? null : ({ document: 'doc', grille: 'grid', presentation: 'slides' })[type.couleur] || null,
+      greyed: Boolean(lock), focus: lock ? lock.focus : null, reason: lock ? lock.text : '',
+    };
+  }
+
+  // Un article du menu « Nouveau » : grisé avec sa raison et son rappel court (`hint`, sous le nom).
   #newEntry(manifest, type, several) {
     const lock = this.lockOf({ app: manifest.id, known: true, typeInfo: type });
-    return {
-      app: manifest.id, type: type.valeur, label: label(type.nom, this.lang), icon: type.icone || 'doc', family: lock ? null : ({ document: 'doc', grille: 'grid', presentation: 'slides' })[type.couleur] || null,
-      greyed: Boolean(lock), focus: lock ? lock.focus : null, hint: lock ? (lock.hint || lock.text) : (several ? label(manifest.nom, this.lang) : ''), reason: lock ? lock.text : '',
-    };
+    return { ...this.#entry(manifest, type, lock), label: label(type.nom, this.lang), hint: lock ? (lock.hint || lock.text) : (several ? label(manifest.nom, this.lang) : '') };
+  }
+
+  // Le sous-menu « Importer » : un article par format que le manifeste d'une app déclare (`actions.importer`, contrats 2.7, point 4), au nom du format ; le type qu'il crée le suit (l'icône et le mot du type vont ensemble).
+  importTypes = () => {
+    const several = this.registry.installedIds().length > 1;
+    return this.validApps().flatMap(({ manifest }) => importFormats(manifest).map(format => this.#importEntry(manifest, format, several)));
+  };
+
+  #importEntry(manifest, { item, type }, several) {
+    const lock = this.lockOf({ app: manifest.id, known: true, typeInfo: type }) || this.#importLock(manifest.id);
+    const shown = [label(type.nom, this.lang), several ? label(manifest.nom, this.lang) : ''].filter(Boolean).join(' · ');
+    return { ...this.#entry(manifest, type, lock), valeur: item.valeur, extensions: item.extensions, label: label(item.nom, this.lang), hint: lock ? (lock.hint || lock.text) : shown };
+  }
+
+  // Une app qui ne reçoit pas encore le fichier : le format est grisé et le clic dit quoi faire en attendant (jamais un sélecteur de fichier pour rien).
+  #importLock(appId) {
+    return ACCEPTS_OPEN[appId] && ACCEPTS_OPEN[appId].importer ? null : { text: this.t('ex.import.notYet', { app: this.appName(appId) }), hint: this.t('ex.import.notYetHint') };
   }
 
   // ---------- démarrage ----------
@@ -206,9 +230,9 @@ export class GfsController {
   #buildExplorer() {
     this.explorer = new Explorer({
       container: this.$('stage'), i18n: this.i18n, locale: this.locale, now: () => new Date(), appName: this.appName, typeLabel: this.typeLabel, lockOf: this.lockOf,
-      newTypes: this.newTypes, canClose: () => Boolean(this.session), notice: text => this.notice(text),
+      newTypes: this.newTypes, importTypes: this.importTypes, canClose: () => Boolean(this.session), notice: text => this.notice(text),
       language: () => ({ choice: this.language.choice, grist: this.language.grist }), onLanguage: choice => this.#chooseLanguage(choice),
-      onOpen: file => this.#openFile(file), onNew: entry => this.#openNew(entry), onClose: () => this.hideExplorer(), onApps: () => void this.openModules(),
+      onOpen: file => this.#openFile(file), onNew: entry => this.#openNew(entry), onImport: entry => void this.#importFile(entry), onClose: () => this.hideExplorer(), onApps: () => void this.openModules(),
       personal: () => Boolean(this.identity), filing: this.#buildFiling(), onDemo: this.devMode ? () => void this.#runDemo() : null,
     });
   }
@@ -506,6 +530,7 @@ export class GfsController {
     if (session !== this.session) return null;
     const opening = this.#contextServed ? null : this.opening;
     this.#contextServed = true;
+    if (opening && opening.importation) this.opening = null; // le fichier part une seule fois : une réouverture de l'app ne le reprend pas
     return opening;
   }
 
@@ -538,15 +563,26 @@ export class GfsController {
     this.#openIn(entry.app, { fichier: null, type: entry.type, dossier: this.explorer.state.path, raison: 'nouveau' }, 'ex.notice.new');
   }
 
+  // « Importer » (contrats 5.4, point 1) : la personne choisit le fichier dans le sélecteur de GFS (ouvert ici, dans son geste), puis l'app le reçoit avec l'ouverture et en fait un modèle vierge.
+  // Annuler le sélecteur ne change rien ; un fichier qui n'est pas du format est dit sans ouvrir l'app.
+  async #importFile(entry) {
+    if (entry.greyed) { this.#greyedClick({ text: entry.reason || entry.hint, focus: entry.focus }); return; }
+    const file = await pickFile(this.doc, entry.extensions.join(','));
+    if (!file) return;
+    if (!acceptsFile(file.name, entry.extensions)) { this.notice(this.t('ex.import.wrong', { name: file.name, format: entry.label, extensions: entry.extensions.join(', ') })); return; }
+    this.#openIn(entry.app, importOpening(entry, file, this.explorer.state.path), 'ex.notice.import');
+  }
+
   #openIn(appId, opening, noticeKey) {
     // L'app déjà ouverte a lu son contexte : elle n'y relira pas l'ouverture, GFS la lui dit par l'appel `ouvrir` (contrats 5.4, point 1).
     // Sinon (une autre app, ou celle-ci qui démarre) l'ouverture part dans le contexte qu'elle va demander.
     const running = Boolean(this.session) && this.session.id === appId && this.#contextServed;
     if (!this.#activate(appId, opening)) return;
     this.hideExplorer();
-    const knows = ACCEPTS_OPEN[appId] && ACCEPTS_OPEN[appId][opening.fichier ? 'fichier' : 'nouveau']; // ouvrir un fichier précis, ou en créer un vierge (« Nouveau »)
+    const knows = ACCEPTS_OPEN[appId] && ACCEPTS_OPEN[appId][openingKind(opening)]; // ouvrir un fichier précis, en créer un vierge (« Nouveau »), ou en créer un d'après un fichier (« Importer »)
     if (!knows) this.notice(this.t(noticeKey, { app: this.appName(appId) }));
     else if (running) void this.#askToOpen(this.session, opening, noticeKey);
+    if (running && opening.importation) this.opening = null; // le fichier part une seule fois, avec l'appel : une réouverture de l'app (#activate avec l'ouverture gardée) ne le reprend pas
   }
 
   // L'app ouvre le fichier elle-même, après sa propre question d'enregistrement : `{ ouvert: false }` veut dire que la personne a annulé, GFS n'ajoute rien.

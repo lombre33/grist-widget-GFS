@@ -9,8 +9,8 @@ const lang = process.env.LAB_LANG || 'fr';
 const NAME = lang === 'fr' ? 'Sonde O' : 'Probe O'; // le nom de la sonde dans la langue de GFS
 const ACCEPTS = {
   fichier: 'controller.js',
-  de: 'const ACCEPTS_OPEN = Object.freeze({ publipostage: { fichier: true, nouveau: true }, automation: { fichier: false, nouveau: false } });',
-  vers: "const ACCEPTS_OPEN = Object.freeze({ publipostage: { fichier: true, nouveau: true }, automation: { fichier: false, nouveau: false }, 'sonde-o': { fichier: true, nouveau: true } });",
+  de: 'const ACCEPTS_OPEN = Object.freeze({',
+  vers: "const ACCEPTS_OPEN = Object.freeze({ 'sonde-o': { fichier: true, nouveau: true },",
 };
 const lab = await startLab({ lang, probes: true, patches: [ACCEPTS] });
 await lab.fitPanel(undefined, 700, 400);

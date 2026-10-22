@@ -186,3 +186,30 @@ test('le poids annoncé de chaque extension est la taille de son dossier dans l\
   // Sous-module non récupéré : rien à comparer. Récupéré, les trois extensions de Publipostage+ le sont.
   assert.ok(compared === 0 || compared >= 3, `${compared} extension(s) comparée(s)`);
 });
+
+// « Nouveau > Importer » (contrats 2.7, point 4) : les formats qu'une app reçoit d'un autre logiciel, chacun avec le type qu'il crée.
+test('contrats 2.7, point 4 : Publipostage+ déclare Excel, Markdown et PowerPoint, chacun vers un type qu\'il ouvre', () => {
+  const { importer, ouvrir } = publipostage().actions;
+  assert.deepEqual(importer.map(item => [item.valeur, item.type]), [['excel', 'grille'], ['markdown', 'document'], ['powerpoint', 'presentation']]);
+  for (const item of importer) {
+    assert.ok(ouvrir.includes(item.type), `${item.valeur} : ${item.type} est un type que l'app ouvre`);
+    assert.ok(item.extensions.every(extension => /^\.[a-z0-9]{1,8}$/i.test(extension)), `${item.valeur} : des extensions « .ext »`);
+  }
+  assert.deepEqual(importer[0].extensions, ['.xlsx', '.xlsm'], 'ce que le sélecteur de l\'app propose déjà pour un classeur');
+});
+
+test('contrats 2.7 et 2.8 : un format importé mal formé invalide le manifeste', () => {
+  assert.match(bad(m => { m.actions.importer = 'excel'; }), /actions\.importer : liste attendue/);
+  assert.match(bad(m => { delete m.actions.importer[0].valeur; }), /valeur et nom/);
+  assert.match(bad(m => { m.actions.importer[0].nom = { fr: 'Excel' }; }), /valeur et nom/);
+  assert.match(bad(m => { m.actions.importer[1].valeur = 'excel'; }), /excel : valeur déjà prise/);
+  assert.match(bad(m => { m.actions.importer[0].type = 'tableau'; }), /le type tableau n'est pas dans actions\.ouvrir/);
+  assert.match(bad(m => { m.actions.ouvrir = ['document']; }), /le type grille n'est pas dans actions\.ouvrir/);
+  assert.match(bad(m => { m.actions.importer[0].extensions = []; }), /extensions/);
+  assert.match(bad(m => { m.actions.importer[0].extensions = ['xlsx']; }), /extensions/);
+  assert.match(bad(m => { m.actions.importer[0].extensions = ['.xlsx', 3]; }), /extensions/);
+  assert.match(bad(m => { delete m.actions.importer[0].extensions; }), /extensions/);
+  const without = publipostage();
+  delete without.actions.importer;
+  assert.deepEqual(validateManifest(without), { ok: true, errors: [] }, 'une app qui n\'importe rien n\'a pas à le dire');
+});

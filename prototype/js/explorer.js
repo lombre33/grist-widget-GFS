@@ -22,7 +22,7 @@ export class Explorer {
   // Deux tris : celui des dossiers et des favoris (par nom), celui de Récents (par date, le plus récent d'abord).
   state = { view: 'folder', path: '', open: new Set(), display: 'list', sort: { key: 'name', dir: 1 }, recentSort: { key: 'mod', dir: -1 }, type: 'all', q: '', sel: null };
 
-  // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), onOpen(file), onNew(entry), onClose(), onApps(), canClose(), notice(text),
+  // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), importTypes(), onOpen(file), onNew(entry), onImport(entry), onClose(), onApps(), canClose(), notice(text),
   //          language() → { choice, grist }, onLanguage(choice), personal() → le rangement est-il à la personne seule ?,
   //          filing: { togglePin(file), rename(file), moveFile(file), renameFolder(path), moveFolder(path) }, onDemo()? (le bouton « Démo », en mode développement seulement) }
   constructor(opts) {
@@ -332,11 +332,14 @@ export class Explorer {
     openMenu(this.#refs.langBtn, items, { host: this.root, align: 'right', label: t('lang.menu') });
   }
 
+  // Le menu « Nouveau » : un article par type de fichier à créer, et « Importer » (un sous-menu : un article par format qu'une app reçoit d'un autre logiciel, contrats 2.7, point 4).
   #newMenu() {
     const { t } = this.#opts.i18n;
-    const items = this.#opts.newTypes().map(entry => ({
-      label: entry.label, icon: entry.icon, family: entry.family, greyed: entry.greyed, hint: entry.hint, run: () => this.#opts.onNew(entry),
-    }));
+    const article = (entry, run) => ({ label: entry.label, icon: entry.icon, family: entry.family, greyed: entry.greyed, hint: entry.hint, run });
+    const items = this.#opts.newTypes().map(entry => article(entry, () => this.#opts.onNew(entry)));
+    // Un format grisé garde sa mention courte, coupée si le panneau est étroit : l'infobulle dit la raison en entier (le clic aussi).
+    const imports = this.#opts.importTypes().map(entry => ({ ...article(entry, () => this.#opts.onImport(entry)), title: entry.greyed ? entry.reason : null }));
+    if (imports.length) items.push('-', { label: t('ex.import'), icon: 'import', submenu: imports });
     openMenu(this.#refs.newBtn, items, { host: this.root, align: 'right', label: t('ex.new') });
   }
 

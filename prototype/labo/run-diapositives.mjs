@@ -168,12 +168,13 @@ check('une présentation vierge s\'ouvre à la page 16:9 en paysage', pageNow.sl
 const filesAfter = await filesNow();
 const newScripts = filesAfter.scripts.filter(src => !filesBefore.scripts.includes(src));
 const newStyles = filesAfter.styles.filter(href => !filesBefore.styles.includes(href));
-// Les quatre scripts de l'extension (la bande, le volet « Importer », les diapositives liées, « Présenter ») et ses trois feuilles de style, tous du dossier de l'app, chargés ensemble.
-const SCRIPTS = ['slide-strip', 'slide-import', 'slide-links-ui', 'slide-show'];
-const STYLES = ['slide-strip', 'slide-import', 'slide-show'];
+// Les neuf scripts de l'extension (la bande, le volet « Importer », « Objets », les diapositives liées, les transitions et leur fenêtre, le fond, les notes, « Présenter ») et ses sept feuilles de
+// style (version 0.22, app à 62002ca), tous du dossier de l'app, chargés ensemble.
+const SCRIPTS = ['slide-strip', 'slide-import', 'slide-objects', 'slide-links-ui', 'slide-transitions', 'slide-transitions-ui', 'slide-background-ui', 'slide-notes-ui', 'slide-show'];
+const STYLES = ['slide-strip', 'slide-import', 'slide-objects', 'slide-transitions', 'slide-background', 'slide-notes', 'slide-show'];
 const fromFolder = (list, names, kind) => list.length === names.length
   && names.every(name => list.filter(url => new RegExp(`/apps/publipostage/extensions/diapositives/${name}\\.${kind}\\?`).test(url)).length === 1);
-check('l\'extension charge ses sept fichiers (quatre scripts, trois feuilles de style), depuis le dossier de l\'app, rien d\'une autre adresse, aucun refus de la politique de sécurité',
+check('l\'extension charge ses seize fichiers (neuf scripts, sept feuilles de style), depuis le dossier de l\'app, rien d\'une autre adresse, aucun refus de la politique de sécurité',
   fromFolder(newScripts, SCRIPTS, 'js') && fromFolder(newStyles, STYLES, 'css')
     && (await app.evaluate(() => window.__csp)).length === 0, { newScripts, newStyles, csp: await app.evaluate(() => window.__csp) });
 await leaveMenu();

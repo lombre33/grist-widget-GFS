@@ -22,6 +22,12 @@
     "acces": "full",
     "lit": ["*"],
     "ecrit": ["*"],
+    "formules": {
+      "pourquoi": {
+        "fr": "Le mode interne pose une table-sonde dont une colonne lit user.Email par une formule, pour connaître l'adresse de la personne qui remplit le formulaire.",
+        "en": "Internal mode places a probe table whose column reads user.Email through a formula, to know the address of the person filling in the form."
+      }
+    },
     "gristInterne": [
       {
         "tables": ["_grist_Tables", "_grist_Pages"],

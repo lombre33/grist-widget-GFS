@@ -601,7 +601,10 @@ Trois capacités contournent un filtre de tables. L'app les déclare, avec une r
    tout ce que la personne peut lire dans le document, donc au-delà de `lit` (3.7).
 2. [D] **`formules`** : `{ "pourquoi": { … } }`. Sans elle, le courtier refuse toute colonne qui porte une formule
    (`formula` non vide, qu'`isFormula` soit vrai ou non : une formule déclenchée s'exécute aussi), dans `AddColumn`,
-   `AddVisibleColumn`, `AddHiddenColumn` et les colonnes d'`AddTable`, ainsi que `SetDisplayFormula`.
+   `AddVisibleColumn`, `AddHiddenColumn` et les colonnes d'`AddTable`, ainsi que `SetDisplayFormula`. [M] **Mesuré le 22/10 avec Form+ à `c249c4a`**
+   (`run-form.mjs`) : son mode interne pose `FormPlus_Repondants` et sa colonne `Email`, une formule déclenchée `user.Email` ; sans la
+   capacité, le courtier la refusait (« Une colonne à formule demande la capacité « formules » ») ; avec elle, déclarée dans le manifeste
+   de l'app, la table et la colonne naissent, sans refus.
 3. [D] **`structure`** : `{ "pourquoi": { … } }`. Sans elle, les verbes de la classe « Structure » du tableau 3.3
    (`CreateViewSection` en v0) sont refusés : une app qui crée des sections change les pages de la personne.
 4. [D] **Les entrées de `gristInterne`** ont la forme `{ "tables": [ … ], "lit": true, "ecrit": [ "colonne", … ], "retire": true,
@@ -1076,7 +1079,7 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
    double-clic d'un formulaire lance l'app sur CE formulaire (son titre, ses questions), l'app déjà ouverte change de formulaire
    dans son cadre sans le recharger, le même deux fois ne change rien ; le changement de langue recharge l'app, qui rouvre son
    formulaire (la ligne ouverte est gardée chez GFS, `formplus_open_row`). `ACCEPTS_OPEN` passe donc `fichier` et `nouveau` à
-   `true` pour Form+. **Deux écarts de l'app, dits à Form+ (sa consigne 012)** : avec des formulaires enregistrés, « Nouveau »
+   `true` pour Form+. **Deux écarts de l'app, dits à Form+ (sa consigne 012, point 4)** : avec des formulaires enregistrés, « Nouveau »
    lancé quand l'app n'est pas ouverte rouvre un ancien formulaire au lieu de l'écran de départ (`onOptions` ne lit pas
    `raison: nouveau` : elle prend le formulaire gardé ouvert, sinon `resolveMyDefinition()`, ambiguë dans GFS puisque toutes
    les lignes portent la section partagée de l'hôte) ; l'app déjà ouverte montre bien l'écran de départ, mais laisse l'éditeur

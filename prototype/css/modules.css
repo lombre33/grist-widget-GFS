@@ -22,6 +22,7 @@
 .ask-body p { margin: 0; }
 .ask-items { margin: 8px 0 0; padding-left: 18px; }
 .ask-items li + li { margin-top: 4px; }
+.ask-body .ask-note { margin-top: 8px; }
 .ask-foot { justify-content: flex-end; }
 
 /* Nommer (filing-window.js : renommer un fichier ou un dossier) : la même base, un champ ; ce qui manque se dit sous lui, en rouge lisible. */

@@ -75,3 +75,18 @@ export function ownPageForm(target) {
     return (await grist.docApi.applyUserActions([['CreateViewSection', clients, 0, 'form', null, null]])).retValues[0];
   });
 }
+
+// Les fenêtres d'accord à la publication que GFS ouvre pendant un geste de Form+ (contrats 3.3, point 9) : « Autoriser » à la vraie souris à chacune, et le texte de ce qu'elle dit. `host` : le
+// cadre de GFS. Rend la liste des fenêtres vues ({ title, items }) ; vide quand le geste n'ouvre rien de nouveau. `wait` : combien de temps attendre la première (ms).
+export async function allowPublications(host, wait = 8000) {
+  const seen = [];
+  const dialog = host.locator('.ask');
+  for (;;) {
+    const opened = await dialog.first().waitFor({ timeout: seen.length ? 3000 : wait }).then(() => true, () => false);
+    if (!opened) return seen;
+    seen.push({ title: await dialog.locator('h2').innerText(), items: await dialog.locator('.ask-items li').allInnerTexts() });
+    await host.locator('[data-fk="ask-yes"]').click();
+    await dialog.first().waitFor({ state: 'detached', timeout: 5000 }).catch(() => {});
+  }
+}
+

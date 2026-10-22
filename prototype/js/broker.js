@@ -8,6 +8,7 @@
 import { ERR, Refus, levelOf, checkBatch, readRefusal, visibleTables, cleanApplyOptions, batchTouchesTables, batchCreatesSection,
   realNameRefusal, tokenOptions } from './filter.js';
 import { sliceOf, optionOf, checkKey, planSetOptions, planClear } from './options-slice.js';
+import { touchesPublication, publicationOpens, protectedRefusal } from './publication.js';
 
 export function createPort(grist) {
   return {
@@ -54,16 +55,40 @@ async function verifyNames(env, before, actions) {
   fail(ERR.REFUSE, `Grist a donné à une table le nom ${bad.join(', ')}, qui n'est pas permis à cette app : la table est retirée ou retrouve son nom.`);
 }
 
-async function applyActions(env, [actions, options]) {
-  guardWrite(env);
-  const ctx = Array.isArray(actions) && batchCreatesSection(actions) ? { tableRefs: await tableMap(env.port) } : {};
-  const verdict = checkBatch(env.policy, actions, ctx);
-  if (!verdict.ok) fail(ERR.REFUSE, `Action ${verdict.rank + 1} refusée : ${verdict.reason}`);
+async function applyChecked(env, actions, options) {
   const watch = batchTouchesTables(actions);
   const before = watch ? await realIds(env.port) : null;
   const result = await env.port.doc.applyUserActions(actions, cleanApplyOptions(options));
   if (watch) await verifyNames(env, before, actions);
   return result;
+}
+
+// Un lot qui ouvre une table ou une colonne à qui aura le lien d'un formulaire publié ne passe qu'avec l'accord de la personne (contrats 3.3, point 9), et jamais pour une table
+// protégée. Sans moyen de le demander, il est refusé : le courtier ne laisse jamais publier en silence.
+async function agreePublication(env, actions) {
+  const opens = await publicationOpens(env.port, actions);
+  if (!opens) return;
+  const refusal = protectedRefusal(env.policy, opens);
+  if (refusal) throw refusal;
+  if (typeof env.authorize !== 'function') fail(ERR.REFUSE, 'Ce lot publie un formulaire, ce qui demande l\'accord de la personne : cette session ne sait pas le demander.');
+  if (!(await env.authorize(opens))) fail(ERR.ANNULE, 'La personne a refusé d\'ouvrir ce formulaire au public.');
+}
+
+// Les lots qui publient passent l'un après l'autre : le second est jugé sur un document où le premier est déjà posé, et deux demandes ne se superposent pas.
+const lanes = new WeakMap();
+function inLane(env, task) {
+  const run = (lanes.get(env) || Promise.resolve()).then(task);
+  lanes.set(env, run.catch(() => {}));
+  return run;
+}
+
+async function applyActions(env, [actions, options]) {
+  guardWrite(env);
+  const ctx = Array.isArray(actions) && batchCreatesSection(actions) ? { tableRefs: await tableMap(env.port) } : {};
+  const verdict = checkBatch(env.policy, actions, ctx);
+  if (!verdict.ok) fail(ERR.REFUSE, `Action ${verdict.rank + 1} refusée : ${verdict.reason}`);
+  if (!touchesPublication(actions)) return applyChecked(env, actions, options);
+  return inLane(env, async () => { await agreePublication(env, actions); return applyChecked(env, actions, options); });
 }
 
 function docHandlers(env) {

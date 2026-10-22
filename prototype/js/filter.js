@@ -16,7 +16,7 @@ export class Refus extends Error {
   constructor(code, message) { super(message); this.code = code; }
 }
 
-const ROW_VERBS = new Set(['AddRecord', 'BulkAddRecord', 'UpdateRecord', 'BulkUpdateRecord', 'RemoveRecord',
+export const ROW_VERBS = new Set(['AddRecord', 'BulkAddRecord', 'UpdateRecord', 'BulkUpdateRecord', 'RemoveRecord',
   'BulkRemoveRecord', 'AddOrUpdateRecord', 'BulkAddOrUpdateRecord']);
 const REMOVE_VERBS = new Set(['RemoveRecord', 'BulkRemoveRecord']);
 const COLUMN_VERBS = new Set(['AddColumn', 'AddVisibleColumn', 'AddHiddenColumn', 'RemoveColumn', 'SetDisplayFormula']);
@@ -27,7 +27,12 @@ const STRUCTURE_VERBS = new Set(['CreateViewSection']);
 const NEVER_READ = new Set(['_grist_shares', '_grist_triggers']);
 const NEVER_WRITE = new Set(['_grist_aclrules', '_grist_aclresources', '_grist_aclprincipals', '_grist_aclmemberships',
   '_grist_shares', '_grist_triggers', '_grist_docinfo']);
-const NEVER_WRITE_COLUMNS = { _grist_views_section: new Set(['options']) };
+// `shareRef` rattache une page à un partage déjà là : l'écrire ouvrirait les formulaires de cette page à un autre lien (3.3, point 6).
+const NEVER_WRITE_COLUMNS = { _grist_views_section: new Set(['options']), _grist_pages: new Set(['shareRef']) };
+// Les tables internes dont une écriture peut changer ce que le lien d'un formulaire ouvre : le courtier en juge le lot (js/publication.js, 3.3 point 9), ce qui exclut
+// les verbes « ajouter ou mettre à jour » (le lot se joue sur des lignes qu'on ne peut pas nommer d'avance).
+export const PUBLISHING_TABLES = new Set(['_grist_tables_column', '_grist_views_section', '_grist_views_section_field']);
+const UPSERT_VERBS = new Set(['AddOrUpdateRecord', 'BulkAddOrUpdateRecord']);
 
 const LEVELS = ['none', 'read table', 'full'];
 export const levelOf = access => Math.max(0, LEVELS.indexOf(access));
@@ -135,6 +140,7 @@ function internalWriteRefusal(policy, verb, tableId, args) {
   if (NEVER_WRITE.has('_' + key)) return `${tableId} n'est jamais écrite par une app.`;
   const entry = policy.interne.get(key);
   if (!entry || !entry.ecrit) return `Écriture de ${tableId} non déclarée (permissions.gristInterne).`;
+  if (UPSERT_VERBS.has(verb) && PUBLISHING_TABLES.has('_' + key)) return `${verb} ne vise pas ${tableId} : ce que ce lot ouvrirait au public ne se juge pas (AddRecord ou UpdateRecord).`;
   if (REMOVE_VERBS.has(verb)) return entry.retire ? null : `Retirer des lignes de ${tableId} n'est pas déclaré (retire).`;
   const blocked = NEVER_WRITE_COLUMNS['_' + key];
   for (const column of valueKeys(verb, args)) {

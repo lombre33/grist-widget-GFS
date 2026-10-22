@@ -23,6 +23,7 @@ import { AppsState } from './apps-state.js';
 import { arrivalApp } from './arrival.js';
 import { Rangement, TableDeclined } from './rangement.js';
 import { ask } from './ask-window.js';
+import { publicationQuestion } from './publication-window.js';
 import { ModulesWindow, rowKey } from './modules-window.js';
 import { buildContext, instanceOf, pageOf } from './context.js';
 import { Refus, ERR, levelOf } from './filter.js';
@@ -362,6 +363,11 @@ export class GfsController {
     return this.#ask({ title: this.t('table.title'), message: this.t('table.text'), confirmLabel: this.t('table.create'), cancelLabel: this.t('table.cancel') });
   }
 
+  // Une app publie un formulaire (contrats 3.3, point 9) : la personne dit si le lien peut ouvrir ce que le lot ouvre.
+  #askPublication(manifest, opens) {
+    return this.#ask(publicationQuestion({ t: this.t, app: label(manifest.nom, this.lang), opens }));
+  }
+
   // Une fenêtre du widget au-dessus de tout ce qui est ouvert (charte : jamais `confirm()`).
   #ask(opts) {
     const above = this.modulesWindow && this.modulesWindow.element ? [this.modulesWindow.element] : [];
@@ -573,7 +579,7 @@ export class GfsController {
     return {
       entry: app.app, manifest: app.manifest, catalogue: this.apps.filter(item => item.ok).map(item => item.manifest), state, port, router: this.router,
       container: this.$('frames'), readonly: this.readonly, preferences: this.#appPreferences(), base: this.doc.baseURI, live: this.live, lang: this.lang, onStatus: (kind, current) => this.#onStatus(kind, current),
-      envelopeHandlers: session => this.#envelopeHandlers(session),
+      envelopeHandlers: session => this.#envelopeHandlers(session), authorize: (manifest, opens) => this.#askPublication(manifest, opens),
     };
   }
 

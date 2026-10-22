@@ -13,7 +13,7 @@
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark ; LAB_LIVE=1 pour jouer le site en ligne de l'app au lieu de sa copie.
 import { startLab } from './lab-setup.mjs';
 import { seedForms } from './seed.mjs';
-import { savedForms, saveByLink, pasteLink, ownPageForm } from './form-lab.mjs';
+import { savedForms, saveByLink, pasteLink, ownPageForm, allowPublications } from './form-lab.mjs';
 import { say, check } from './lab-common.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
@@ -151,8 +151,13 @@ refusals.length = 0;
 const own = await ownPageForm(afterSame);
 const ownApp = await lab.openApp('form', FORM_URL, afterSame);
 await saveByLink(page, ownApp, own.sectionRef);
+// GFS demande l'accord de la personne à chaque fois que le lien ouvre quelque chose de plus : d'abord la publication de la copie (la table des réponses, ouverte à l'ajout), puis le champ
+// caché `FormPlusDef` (la colonne `Definition` de `FormPlus_Formulaires`, que tout lien pourra lire : consigne 013).
+const windows = await allowPublications(afterSame);
+say('fenêtres d\'accord de GFS :', JSON.stringify(windows));
 await page.waitForTimeout(6000);
 const first = await savedForms(afterSame);
+check('GFS demande l\'accord deux fois : la table `Clients` ouverte à l\'ajout, puis la lecture de `Definition`', windows.length === 2 && /Clients/.test(windows[0].items.join()) && /Definition/.test(windows[1].items.join()) && /FormPlus_Formulaires/.test(windows[1].items.join()), windows);
 say('premier enregistrement, page propre :', JSON.stringify(first));
 await lab.shotPanel(run, '4-apres-enregistrer', afterSame);
 check('aucune section de garde n\'est posée pour cette table', first.gates.length === 0, first.gates);
@@ -168,8 +173,10 @@ const again = await savedForms(afterSame);
 check('le même lien une seconde fois : aucune copie de plus, aucune ligne de plus', again.forms === first.forms && again.rows.length === 1, { formulaires: again.forms, lignes: again.rows.length });
 const own2 = await ownPageForm(afterSame);
 await pasteLink(page, ownApp, own2.sectionRef);
+const openedAgain = await allowPublications(afterSame, 4000);
 await page.waitForTimeout(5000);
 const second = await savedForms(afterSame);
+check('le second formulaire n\'ouvre rien de plus (même table, même colonne lue) : GFS ne demande rien', openedAgain.length === 0, openedAgain);
 check('un second formulaire a sa propre ligne et sa propre copie', second.rows.length === 2 && second.rows[0].vsId !== second.rows[1].vsId, second.rows);
 // Le second formulaire natif est posé APRÈS la colonne `FormPlusDef` : Grist en fait un champ du formulaire d'origine, donc de la copie, et Form+ ne cache que le champ qu'elle ajoute.
 constat('la copie du second formulaire cache aussi son champ `FormPlusDef` (008, point 3)', second.rows.every(row => row.cache), second.rows.map(row => row.champ));

@@ -92,6 +92,7 @@ function checkInternalTable(entry, table, writes, errors) {
   if (entry.lit && NEVER_READ.includes(key)) errors.push(`gristInterne : ${table} ne se lit jamais`);
   if (writes && NEVER_WRITE.includes(key)) errors.push(`gristInterne : ${table} n'est jamais écrite`);
   if (writes && key === '_grist_views_section' && (entry.ecrit || []).includes('options')) errors.push('gristInterne : la colonne options de _grist_Views_section n\'est jamais écrite');
+  if (writes && key === '_grist_pages' && (entry.ecrit || []).includes('shareRef')) errors.push('gristInterne : la colonne shareRef de _grist_Pages n\'est jamais écrite');
 }
 
 function checkInternalEntry(entry, errors) {

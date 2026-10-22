@@ -162,6 +162,21 @@ test('contrats 3.4 point 1 : Form+ télécharge une pièce jointe par un jeton e
   assert.notEqual(readRefusal(without, '_grist_Attachments'), null, 'sans la déclaration, la lecture de _grist_Attachments est refusée');
 });
 
+test('contrats 3.3, points 6 et 9 : le rattachement d\'une page à un partage ne s\'écrit jamais, et les lots « ajouter ou mettre à jour » sur les tables qui décident d\'une publication sont refusés', () => {
+  const fp = policyOf(form());
+  const declaring = entries => policyOf({ ...form(), permissions: { ...form().permissions, gristInterne: [...form().permissions.gristInterne, ...entries] } });
+  const pages = declaring([{ tables: ['_grist_Pages'], lit: true, ecrit: ['shareRef', 'pagePos'], pourquoi: { fr: 'a', en: 'a' } }]);
+  assert.match(refused(pages, [['UpdateRecord', '_grist_Pages', 3, { shareRef: 2 }]]).reason, /shareRef.*jamais écrite/);
+  allowed(pages, [['UpdateRecord', '_grist_Pages', 3, { pagePos: 2 }]]);
+  allowed(fp, [['AddRecord', '_grist_Views_section_field', null, { parentId: 100, colRef: 10 }]]);
+  for (const action of [
+    ['AddOrUpdateRecord', '_grist_Views_section_field', { parentId: 100 }, { colRef: 10 }],
+    ['BulkAddOrUpdateRecord', '_grist_Views_section_field', { parentId: [100] }, { colRef: [10] }],
+  ]) assert.match(refused(fp, [action]).reason, /ne se juge pas/);
+  // Les tables de la personne gardent leurs verbes : « ajouter ou mettre à jour » reste permis sur elles (Publipostage+ s'en sert pour son écriture en direct).
+  allowed(pp, [['BulkAddOrUpdateRecord', 'Publipostage_Modeles', { Nom: ['a'] }, { Nom: ['a'] }, {}]]);
+});
+
 test('contrats 3.1 : le niveau d\'une app est le plus bas entre son manifeste et celui accordé à GFS', () => {
   assert.equal(lowestAccess('full', 'read table'), 'read table');
   assert.equal(lowestAccess('none', 'full'), 'none');

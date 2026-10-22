@@ -20,7 +20,7 @@ export class AppSession {
   #lastContent;
   #pinnedUrl = null; // la copie figée de l'app, tant que le site vivant n'a pas répondu : c'est là qu'on se replie
 
-  // ctx : { entry, manifest, catalogue, state, port, router, container, readonly, preferences, base, live, lang, onStatus, envelopeHandlers(session) }
+  // ctx : { entry, manifest, catalogue, state, port, router, container, readonly, preferences, base, live, lang, onStatus, envelopeHandlers(session), authorize(manifest, opens) }
   constructor(ctx) {
     this.ctx = ctx;
     this.manifest = ctx.manifest;
@@ -52,6 +52,7 @@ export class AppSession {
     const env = {
       policy: this.policy, port: ctx.port, level: this.access, readonly: ctx.readonly,
       declared: this.policy.reglages, onConfigure: settings => { this.hasCustomOptions = Boolean(settings.hasCustomOptions); },
+      authorize: ctx.authorize ? opens => ctx.authorize(this.manifest, opens) : undefined,
     };
     this.#peer = new AppPeer({
       send: msg => this.frameWindow.postMessage(msg, '*'),

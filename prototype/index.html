@@ -10,10 +10,10 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-CgGWW8QTkwVb8wIAfN33K17xUIvxFBeCe1bzgCJCnro='; style-src 'self'; img-src 'self' data:; frame-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-40bPKF/Aw6yF74KpvqwO4cGMWEq0a5KhazA7aafRW9k='; style-src 'self'; img-src 'self' data:; frame-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=fce5d2ff06">
 <link rel="stylesheet" href="css/explorer.css?v=f98b8b812a">
-<link rel="stylesheet" href="css/modules.css?v=d891e9e0ad">
+<link rel="stylesheet" href="css/modules.css?v=20d7c83c04">
 <!-- Le routeur d'abord : il doit être enregistré avant que le script d'API de Grist n'affecte window.onmessage (contrats 1.2). -->
 <script src="js/router.js?v=20d0f9a823"></script>
 <!-- La carte d'importation, écrite par outils/versions.mjs (ne pas la modifier à la main) : chaque module se charge à son adresse versionnée, si bien que le cache de Pages
@@ -24,11 +24,11 @@
     "./js/app-storage.js": "./js/app-storage.js?v=634cc35a22",
     "./js/apps-state.js": "./js/apps-state.js?v=f3ce6fe3d9",
     "./js/arrival.js": "./js/arrival.js?v=7824138f62",
-    "./js/ask-window.js": "./js/ask-window.js?v=1befded0df",
-    "./js/broker.js": "./js/broker.js?v=4e909305b8",
+    "./js/ask-window.js": "./js/ask-window.js?v=1a3e63add6",
+    "./js/broker.js": "./js/broker.js?v=93f275a314",
     "./js/catalogue.js": "./js/catalogue.js?v=13543d1715",
     "./js/context.js": "./js/context.js?v=b0a00cb0b8",
-    "./js/controller.js": "./js/controller.js?v=6786bc11a4",
+    "./js/controller.js": "./js/controller.js?v=14c64c8220",
     "./js/demo.js": "./js/demo.js?v=6bcb117862",
     "./js/dock-state.js": "./js/dock-state.js?v=8eec913fd1",
     "./js/dock.js": "./js/dock.js?v=959ef9fe05",
@@ -41,23 +41,25 @@
     "./js/extensions.js": "./js/extensions.js?v=a6b2033702",
     "./js/filing-window.js": "./js/filing-window.js?v=ffaa75bf79",
     "./js/filing.js": "./js/filing.js?v=c8ed41b01b",
-    "./js/filter.js": "./js/filter.js?v=0bbd3af6df",
+    "./js/filter.js": "./js/filter.js?v=ae74ff8c2d",
     "./js/frames.js": "./js/frames.js?v=554a438e75",
-    "./js/i18n.js": "./js/i18n.js?v=990b1e4ab4",
+    "./js/i18n.js": "./js/i18n.js?v=5adbbd054c",
     "./js/icons.js": "./js/icons.js?v=33c23e4464",
     "./js/language.js": "./js/language.js?v=b287c81a20",
     "./js/layers.js": "./js/layers.js?v=2d0c225b72",
     "./js/libraries.js": "./js/libraries.js?v=f8e30c6112",
-    "./js/manifest.js": "./js/manifest.js?v=03f5509606",
+    "./js/manifest.js": "./js/manifest.js?v=721948887f",
     "./js/menu.js": "./js/menu.js?v=878f52da47",
     "./js/modal.js": "./js/modal.js?v=3b22f6acc7",
     "./js/modules-model.js": "./js/modules-model.js?v=f215489de1",
     "./js/modules-window.js": "./js/modules-window.js?v=c9dc57794d",
     "./js/options-slice.js": "./js/options-slice.js?v=f99c742fb4",
+    "./js/publication-window.js": "./js/publication-window.js?v=dbe050782a",
+    "./js/publication.js": "./js/publication.js?v=22e6b6ebb2",
     "./js/rangement.js": "./js/rangement.js?v=5a647c2de4",
     "./js/rpc.js": "./js/rpc.js?v=2133dc4192",
     "./js/search.js": "./js/search.js?v=0921c92eb3",
-    "./js/session.js": "./js/session.js?v=9563a270a6",
+    "./js/session.js": "./js/session.js?v=e2e639eeb6",
     "./js/settings.js": "./js/settings.js?v=a425d4248c",
     "./js/state.js": "./js/state.js?v=289f010ea6",
     "./js/stored-choice.js": "./js/stored-choice.js?v=e1e93b893c",

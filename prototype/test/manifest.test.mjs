@@ -73,6 +73,7 @@ test('contrats 2.8 : règles des permissions', () => {
   assert.match(bad(m => { m.permissions.gristInterne.push({ tables: ['_grist_ACLRules'], lit: true, ecrit: ['x'], pourquoi: { fr: 'a', en: 'a' } }); }), /jamais écrite/);
   assert.match(bad(m => { m.permissions.gristInterne.push({ tables: ['_grist_Views_section'], lit: true, ecrit: ['options'], pourquoi: { fr: 'a', en: 'a' } }); }), /options/);
   assert.match(bad(m => { m.permissions.gristInterne.push({ tables: ['_grist_Pages'], ecrit: ['pagePos'], pourquoi: { fr: 'a', en: 'a' } }); }), /lit: true/);
+  assert.match(bad(m => { m.permissions.gristInterne.push({ tables: ['_grist_Pages'], lit: true, ecrit: ['shareRef'], pourquoi: { fr: 'a', en: 'a' } }); }), /shareRef/);
   assert.match(bad(m => { m.permissions.gristInterne.push({ tables: ['_grist_Pages', '_grist_Views'], lit: true, ecrit: ['pagePos'], pourquoi: { fr: 'a', en: 'a' } }); }), /une seule table/);
   assert.match(bad(m => { m.permissions.gristInterne.push({ tables: ['Clients'], lit: true, pourquoi: { fr: 'a', en: 'a' } }); }), /pas une table interne/);
   assert.match(bad(m => { m.permissions.jeton = { lectureSeule: true }; }), /jeton/);

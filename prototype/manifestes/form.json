@@ -58,8 +58,8 @@
         "lit": true,
         "ecrit": ["shareOptions"],
         "pourquoi": {
-          "fr": "Retrouver la section du formulaire natif de Grist et la publier.",
-          "en": "Find the section of Grist's native form and publish it."
+          "fr": "Retrouver la section du formulaire natif de Grist et la publier. Publier ouvre sa table à toute personne qui a le lien : GFS demande l'accord de la personne à chaque fois.",
+          "en": "Find the section of Grist's native form and publish it. Publishing opens its table to anyone who has the link: GFS asks the person's agreement each time."
         }
       },
       {
@@ -68,8 +68,8 @@
         "ecrit": ["parentId", "colRef", "widgetOptions"],
         "retire": true,
         "pourquoi": {
-          "fr": "Ajouter, retirer et régler les champs du formulaire natif de Grist.",
-          "en": "Add, remove and set the fields of Grist's native form."
+          "fr": "Ajouter, retirer et régler les champs du formulaire natif de Grist. Un champ Référence, même caché, rend lisible à toute personne qui a le lien la colonne qu'il montre : GFS en demande l'accord.",
+          "en": "Add, remove and set the fields of Grist's native form. A Reference field, even a hidden one, makes the column it shows readable by anyone who has the link: GFS asks for agreement."
         }
       },
       {

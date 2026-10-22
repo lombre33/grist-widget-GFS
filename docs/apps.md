@@ -7,10 +7,10 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `016eebb` | 22/10/2026 | GPL 3.0 |
-| Form+ | `lombre33/FormPlus` | `consignes/form/` | `16701fe` | 21/10/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `f5df308` | 22/10/2026 | GPL 3.0 |
+| Form+ | `lombre33/FormPlus` | `consignes/form/` | `cc21a27` | 22/10/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `f3ab8d6` | 22/10/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
-| Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `23647eb` | 21/10/2026 | GPL 3.0 |
+| Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `586c7c4` | 22/10/2026 | GPL 3.0 |
 
 ## Lus pour référence (pas des apps de GFS)
 
@@ -425,6 +425,55 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   contraste de la fenêtre « Fond… », le trait seul caché aussi dans la rangée de mise en forme ; lus, rien pour GFS ; la
   référence reste à `2d9d4ed` jusqu'au prochain rejeu. Restent ouverts chez Publipostage+ : le titre d'impression (011),
   l'adresse du CDN (016), la 028 et la 029, que l'app n'a pas encore lues (la partie 7 de `run-ranger` attend la 029).
+
+- Les apps s'ouvrent sur leur site en ligne (22/10, le porteur : « important : tu dois servir les dépôts live pas une copie figée ! »,
+  `4394fb0`) : GFS ouvre chaque app sur son site GitHub Pages (`site` du catalogue : `publipostageGrist/`, `GRIST_automation/`,
+  `FormPlus/`), `live=0` pour la copie du sous-module, repli sur la copie au bout de 15 secondes (contrats 1.3, point 2). La
+  référence ne sert plus qu'aux mesures du labo et au repli : GFS l'avance de lui-même, un commit à part, relu, et les pages
+  d'état n'ont plus à la demander. GitHub Pages est injoignable depuis l'environnement de GFS : le chemin est mesuré avec les
+  fichiers de la copie rendus à l'adresse du site (`run-live.mjs`), pas sur le site réel. Dit aux apps : consigne 033 (Publipostage+),
+  012 point 8 (Form+), 005 (Automation+).
+- Publipostage+ à `f5df308` (22/10, après-midi ; le porteur : « publipostage a mis à jour ses éléments ») : trente-deux commits de plus
+  depuis `016eebb`, dont vingt-deux de code. Son `GFS-ETAT.md` (`55bf715`, qui décrit `865afa3` ; consignes lues jusqu'à la 032) dit la 028
+  lue, la 029 **faite** (`8e2f06f` : un modèle renommé dans GFS garde son nom), les 030, 031 et 032 lues. « Demandes à GFS » : servir
+  l'app en direct (faite, voir plus haut), cinq points à rejouer avec `865afa3` (la partie 7 de `run-ranger`, la barre d'outils avec
+  `d52e40b`, la douzième clé de stockage `pp_bubble_marks`, le menu ▾ de « Présenter », « Objets » dans la barre d'outils) et
+  `allow="fullscreen"` (rien à ajouter tant que Grist ne laisse pas passer le plein écran : contrats 1.3, point 1). Lus : de
+  `84002e4` à `865afa3`, 54 fichiers dont cinq ajoutés (`js/objects-menu.js`, `js/slide-copies.js`, `css/slide-copies.css` et deux essais)
+  et deux retirés (`slide-objects.js`, `slide-objects.css`) ; la CSP, la carte d'importation et la liste de bibliothèques ne changent
+  pas ; ni appel à Grist, `fetch`, message, stockage du navigateur ni adresse de plus ; `diapositives` passe en 0.31 (269 039 octets
+  en quinze fichiers). Puis `f5df308` (la puce d'une liste suit la couleur et la taille du texte) : rien pour GFS. Traité le 22/10 : la
+  référence avancée à `865afa3` (commit à part, relu) ; les cinq points rejoués, tous passés, avec trois essais nouveaux
+  (`run-trait-seul`, la partie 6 de `run-stockage-publipostage`, le ▾ de « Présenter » et le menu « Objets » dans
+  `run-barre-ecartee`) et un cas de plus dans `run-diapositives` (« Objets » grisé, son clic appelle `installer`) ; `run-echap-entete`
+  (demande du porteur : Échap quitte l'édition de l'en-tête, comme « Terminer ») : GFS n'avale pas la touche, l'app n'a pas de
+  gestionnaire (deux `CONSTAT`) ; l'`INDEX.md` (028 à 032 faites) ; les consignes 033 (la réponse) et 034 (Échap). Restent ouverts chez
+  Publipostage+ : le titre d'impression (011), l'adresse du CDN (016), la 033 et la 034 ; côté porteur, deux constats sans cause
+  établie (le téléchargement de l'export PowerPoint, LanguageTool dans Firefox).
+- Form+ à `cc21a27` (22/10, le porteur : « check ce qui est remonté des projets ») : trois commits de plus depuis `16701fe`. Son
+  `GFS-ETAT.md` (`0614f73`, qui décrit `c249c4a`) dit les consignes 008 à 011 **faites** : le formulaire natif s'enregistre dans
+  `FormPlus_Formulaires` (avec la fenêtre d'accord de l'app, une ligne par formulaire par `Definition.vsId`), les répondants, le lien
+  avec GFS du kit 0.2.0 (l'ouverture, la langue, le thème, la page) et la barre. Traité le 22/10 : la référence avancée à `c249c4a`
+  (`02fa4da`, commit à part, relu) ; le manifeste déclare la capacité `formules` (sans elle, le courtier refusait la colonne du mode
+  interne) ; le menu « Nouveau » propose « Formulaire » (`46e62e6`) ; l'enregistrement mesuré dans GFS et sans GFS (`run-form`,
+  `run-form-seul`, `run-ouvrir-form`) : il passe quand le formulaire a sa propre page ; six points à reprendre dits dans la consigne
+  012 (le formulaire natif posé sur la page du widget n'écrit jamais sa ligne, « Changer de formulaire source » disparaît, « Nouveau »
+  rouvre un ancien formulaire, le champ caché du second formulaire est visible, le mode interne crée `FormPlus_Repondants` sans accord,
+  un portillon d'un document déjà touché) ; l'`INDEX.md` (008 à 011 faites). `cc21a27` (une image attachable à la description d'une
+  question, collée ou prise dans une pièce jointe de Grist) lu : le collage ne demande rien à GFS, la pièce jointe demande la capacité
+  `jeton` et la lecture de `_grist_Attachments` ; et les pages de réponse d'un lien public reçoivent toutes les définitions de
+  `FormPlus_Formulaires` (mesure de l'app elle-même, 008). Le porteur a répondu aux deux cartes le 22/10 : « Autoriser » (le manifeste
+  déclare `jeton`, en lecture seule, et la lecture de `_grist_Attachments` ; testé) et « Form+ et GFS » : la consigne 013 (un lien ne
+  montre que son formulaire et n'ouvre que ce que son formulaire remplit, une porte et sa table de réception) et, côté GFS, l'accord de la
+  personne à chaque publication d'un formulaire, qui dit les tables ouvertes à l'ajout, leurs colonnes que le formulaire ne montre pas et
+  les colonnes lues (contrats 3.3, point 9 ; `run-publication`, 30 vérifications, quatre combinaisons langue et thème ; `run-form` : deux
+  fenêtres au premier enregistrement, aucune au second) ; GFS refuse sans demander une table de GFS, d'une autre app ou de l'app à
+  l'ajout. L'`INDEX.md` : 012 et 013 à faire.
+- Grist-BI à `586c7c4` (22/10) : deux commits de plus depuis `23647eb`, qui ne touchent que son `GFS-ETAT.md` (le code reste celui de
+  `23647eb`). Il dit la 001 faite (écarts à la règle 4 : ses trois tables internes, `BI_Dashboard_Config`, `BI_Dashboard_Comments` et
+  `BI_Dashboard_UserProbe`, se créent au démarrage sans l'accord de la personne ; à la règle 11 : pas de CSP, déjà au guide) et la 002
+  lue. « Demandes à GFS » : aucune. Le guide omettait `BI_Dashboard_Comments` (créée depuis le 30/09) : ajoutée. Traité le 22/10 :
+  l'`INDEX.md` (001 faite, 002 lue). GFS ne référence pas encore Grist-BI.
 
 - Licences (21/10, le porteur : tous les dépôts sous GPL 3.0). Relevé sur le sommet de `main` de chaque dépôt :
   Publipostage+, Grist-BI et SlidesPlus ont un `LICENSE` qui est le texte officiel de la GPL 3.0 (mêmes octets que celui de

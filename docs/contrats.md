@@ -158,7 +158,10 @@ L'app (sous-cadre sans allow-same-origin)
    policy »), pas plus que dans le seul cadre de Grist ; le navigateur le veut dans chaque cadre au-dessus de l'app, celui que
    Grist donne à GFS compris, qui n'a que `clipboard-write`. Avec les deux ajoutés (labo seulement, `run-capacites.mjs`,
    `CAP_CONFIG=pleinDeux`), la demande aboutit. GFS n'ajoute donc rien tant que Grist ne laisse pas passer le plein écran ; le jour
-   où il le fait, c'est un mot de plus dans `allow`. [M] Firefox et Safari : la page de mesure du porteur.
+   où il le fait, c'est un mot de plus dans `allow`. [M] Avec l'interrupteur « Plein écran » du menu ▾ de « Présenter » de Publipostage+
+   (`4dfcd0c`, mesuré le 22/10 avec `865afa3` : `run-barre-ecartee`, partie `presenter`) : dans GFS le cadre de l'app dit que le plein
+   écran n'est pas permis (`document.fullscreenEnabled` faux), la ligne est grisée avec sa raison, un clic dessus ne change rien
+   et le diaporama prend le panneau. [M] Firefox et Safari : la page de mesure du porteur.
 2. [T] **L'adresse du sous-cadre est calculée par GFS**, d'après le catalogue et le manifeste livrés avec lui ; elle n'est jamais lue
    dans un réglage, une table ou un message (cahier 3.2, point 3). Deux formes, selon `live` dans l'adresse du widget :
    - **le site en ligne de l'app** (le défaut des essais, décision du porteur du 22/10 : « servir les dépôts live, pas une copie
@@ -585,11 +588,46 @@ ne lit pas).
    - `_grist_DocInfo` : les réglages du document ;
    - la colonne `options` de `_grist_Views_section`, sur n'importe quelle ligne : elle contient `customView`, donc l'adresse et
      l'accès de chaque widget, GFS compris. Une app qui l'écrirait pourrait remplacer GFS par un autre code, avec l'accès
-     de son choix, et ce changement survivrait à son retrait.
+     de son choix, et ce changement survivrait à son retrait ;
+   - la colonne `shareRef` de `_grist_Pages` : elle lie une page à un partage, donc ouvre au public les formulaires publiés de la
+     page (point 9). Une app peut la lire ; la poser ou la changer est un geste de la personne, dans Grist.
 7. [D] Du deuxième argument de `applyUserActions`, le courtier ne transmet que `desc` et `parseStrings` [M : relire
    `ApplyUAOptions` dans l'instance visée].
 8. [T] En **lecture seule** (`readonly=true` dans l'adresse de GFS), toute écriture est refusée sans appeler Grist
    (`GFS_LECTURE_SEULE`), réglages compris (cahier 3.1, point 10).
+9. [D] **Publier un formulaire demande l'accord de la personne** (décision du porteur du 22/10 : « Form+ et GFS »). Le lien d'un
+   formulaire publié (une section dont `shareOptions` porte `publish` et `form`, sur une page partagée) ouvre à qui l'a, sans passer
+   par GFS : **l'ajout de lignes** dans la table de chaque formulaire publié de la page, dans toutes ses colonnes (celles que le
+   formulaire ne montre pas, celles qu'on ajoutera ensuite), et **la lecture de toutes les lignes** de la colonne affichée
+   (`visibleCol`) de la table que vise chaque Référence de leurs champs, champs cachés compris ; rien d'autre (3.7, point 8). Le
+   courtier ne laisse donc rien s'ouvrir sans elle :
+   - un lot qui écrit `_grist_Tables_column`, `_grist_Views_section` ou `_grist_Views_section_field` est rejoué sur une copie de leurs
+     lignes (et de celles de `_grist_Tables`, qu'il lit), avant et après ; la différence est ce que le lot ouvre **de nouveau**, sans
+     regarder si une page est partagée (un drapeau posé aujourd'hui ouvre dès qu'elle l'est, et la personne peut la partager sans GFS) :
+     une table de plus ouverte à l'ajout (avec ses colonnes que le formulaire ne montre pas), une colonne de plus lue ;
+   - **avant même de demander**, le courtier refuse (`GFS_REFUSE`, avec la raison, sans fenêtre) d'ouvrir à l'ajout une table de GFS,
+     d'une autre app ou de l'app qui publie, d'ouvrir à la lecture une table de GFS ou d'une autre app, et ce que le manifeste de
+     l'app ne lui laisserait pas écrire (ou lire) elle-même (11.9, point 4c). La lecture d'une table de l'app qui publie passe encore par
+     l'accord : le formulaire de Form+ y lit sa définition (consigne 013, qui la lui fait retirer, après quoi GFS la refusera aussi). Les
+     classes protégées de 11.2 et le propriétaire seul (11.9, points 4c et 7) viendront avec la section 11 : GFS ne connaît pas encore
+     le rôle de la personne ;
+   - s'il y a une différence, la personne en décide dans une fenêtre de GFS qui dit, dans cet ordre (11.9, point 6) : que le lien est
+     public (toute personne qui l'a, sans compte), les tables qu'il remplit (avec les colonnes que le formulaire ne montre pas mais que
+     le lien pourra remplir), les colonnes qu'il rend lisibles, que rien ne limite le nombre de lignes ni ne contrôle ce qu'elles
+     contiennent, comment le fermer (« Dépublier » le formulaire, dans Grist) ; le clavier y part sur « Refuser » ; « Refuser », Échap ou
+     un clic à côté : `GFS_ANNULE`, rien n'est envoyé à Grist ; « Autoriser » : le lot passe ;
+   - ce qui est déjà ouvert ne se redemande pas ; les lots qui publient passent **un par un** par session (le suivant est jugé sur un
+     document où le précédent est posé) ; un lot qui ne touche pas ces trois tables ne coûte aucune lecture ;
+   - **GFS échoue fermé** : une session sans moyen de demander, une structure illisible, un verbe que le courtier ne sait pas juger
+     sur ces trois tables (`AddOrUpdateRecord`, `BulkAddOrUpdateRecord`, une forme `Bulk…` sans les valeurs attendues) refusent le lot
+     (`GFS_REFUSE`).
+   [M] Mesuré le 22/10, à 700 × 400, à la vraie souris et au vrai clavier, en français / clair, anglais / sombre, français / sombre et
+   anglais / clair : `run-publication.mjs` (30 vérifications : la fenêtre et ce qu'elle dit, les trois refus par souris, Entrée et
+   Échap, l'accord, le lot rejoué sans fenêtre, le champ Référence ajouté à une section publiée, la deuxième section sur la même table
+   sans fenêtre, une autre table, trois tables protégées refusées sans fenêtre, un verbe refusé) et `run-form.mjs` avec Form+ non
+   modifiée à `c249c4a` (son enregistrement par le lien ouvre deux fenêtres : la table des réponses à l'ajout, puis la lecture de
+   `FormPlus_Formulaires.Definition` ; le second formulaire, aucune). **Non mesuré** : ce que Grist ouvre vraiment à qui a le lien,
+   grist-static n'a pas de partages (faits vérifiés 10.11 ; la mesure est celle de Form+, sur un vrai Grist, et les six mesures du porteur).
 
 ### 3.4 Les capacités à déclarer
 
@@ -628,7 +666,7 @@ Le courtier répond à l'app par une erreur du protocole (`mtype` 3, avec `mesg`
 | `GFS_CLE_NON_DECLAREE` | écriture d'une clé de réglage hors de la tranche |
 | `GFS_INCONNU` | interface, méthode, action ou événement que GFS ne connaît pas |
 | `GFS_INACTIF` | appel venu d'un sous-cadre qui n'est pas l'app active |
-| `GFS_ANNULE` | la personne a annulé (choisir, installer…) |
+| `GFS_ANNULE` | la personne a annulé ou refusé (choisir, installer, ouvrir un formulaire au public…) |
 | `GFS_QUOTA` | espace de stockage plein |
 
 ### 3.7 Ce que le filtre ne garantit pas
@@ -658,6 +696,15 @@ mesurés, pas une promesse (cahier 1.3, 8).
    pas ; `_grist_Views_section` et ses voisines, les pages et leurs filtres. `gristInterne` dit qui peut le lire, rien de plus.
 7. [T] **Le filtre n'arrête pas une personne.** Il borne le code d'une app ; ce qu'une personne lit et écrit, ce sont les règles
    d'accès de Grist qui le décident (section 11), et un verrou d'interface n'en tient pas lieu.
+8. [T] **Un formulaire publié est une porte ouverte à toute personne qui a le lien, et GFS n'est pas sur son chemin.** Elle parle à
+   Grist directement. Le lien ouvre à l'ajout **toutes** les colonnes de la table du formulaire (celles qu'il ne montre pas, celles
+   qu'on ajoutera ensuite : Grist le note lui-même), et à la lecture la colonne affichée de chaque table qu'une Référence de ses champs
+   vise, **sur toutes les lignes**, champs cachés compris. Une clé de partage porte sur la **page** : chaque lien ouvre les tables de
+   tous les formulaires publiés de sa page. L'accord de 3.3, point 9, ne couvre que ce qu'une app publie par GFS : un formulaire publié
+   depuis l'interface de Grist, ou avant ce contrôle, n'est jamais soumis à la personne. Ce qui réduit l'ouverture, c'est la conception
+   de l'app (consigne 013 de Form+) : une table faite pour les réponses, sans colonne de travail ; le moins de Références possible,
+   aucune qui montre la définition d'autres formulaires ; des formulaires qui n'écrivent pas dans les mêmes tables sur des pages
+   différentes.
 
 ---
 
@@ -1006,7 +1053,7 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
 4. [D] GFS garde ces espaces dans son propre `localStorage`, sous `gfs.stockage.<id>.<clé>` (un `id` n'a pas de point, 2.2 : la clé,
    qui peut en avoir, commence après le premier), dans un `try/catch`. **Quota : 1 Mo par app**, soit 1 048 576 caractères, clés
    et valeurs comptées (des unités UTF-16, ce que le navigateur compte lui-même). Un remplacement qui n'agrandit pas l'espace
-   passe toujours : une app au-dessus de son quota peut se vider. Les onze clés de Publipostage+ (`pp_theme` à `pp_news_seen`)
+   passe toujours : une app au-dessus de son quota peut se vider. Les douze clés de Publipostage+ (`pp_theme` à `pp_news_seen`, puis `pp_bubble_marks`, 22/10)
    font une dizaine de ko ; `pp_schema_…` (un instantané du schéma par document, lourd) n'y entre pas, à voir à l'étape 5.
 5. [D] Un navigateur qui refuse de garder une clé (cadre sans stockage, quota du navigateur) n'arrête rien : la valeur vaut
    jusqu'au rechargement de la page de GFS (le contexte la rend), la réponse dit `retenu: false`, et le quota de GFS vaut encore.
@@ -1034,7 +1081,11 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
    **Avec l'app, le 21/10 au soir** : Publipostage+ à `487d66b` (`prototype/labo/run-stockage-publipostage.mjs`, 12 vérifications
    par combinaison, mêmes conditions) : le thème choisi dans ses Réglages, à la souris puis au clavier, et le zoom de la page
    (Ctrl + plus) arrivent chez GFS sous `gfs.stockage.publipostage.*`, sans lot au document ni refus du courtier ; GFS rechargé,
-   l'app revient dans ce thème et à ce zoom ; Ctrl + 0 retire la clé du zoom.
+   l'app revient dans ce thème et à ce zoom ; Ctrl + 0 retire la clé du zoom. **La douzième clé, mesurée le 22/10** avec `865afa3`
+   (`run-stockage-publipostage`, partie 6, 19 vérifications par combinaison) : « Mise en forme » (les bulles et les puces de
+   l'éditeur), choisi à la souris dans Réglages > Thème, s'applique à l'instant, arrive chez GFS sous
+   `gfs.stockage.publipostage.pp_bubble_marks`, sans lot au document ni refus du courtier, et le choix survit au rechargement du
+   cadre (case cochée, attribut posé dès le départ).
 
 ### 5.4 Les actions
 
@@ -1735,7 +1786,7 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
    | App | Ce qu'on lui demande |
    |---|---|
    | Publipostage+ | Déclarer `classes` : ses modèles (`reserve`), ses versions, commentaires et écriture en direct (`derivee`), ses préférences par personne (`personnel`) ; ajouter l'étiquette (quatre colonnes) ; vivre sans la colonne du mot de passe commun d'un PDF protégé (la saisir à chaque export, ce que l'app propose déjà) ; dire « seul un propriétaire enregistre ce réglage » pour les quatre réglages de sa vue quand la structure est fermée ; présenter son tableau de droits comme un confort : il masque des boutons, il ne protège rien |
-   | Form+ | Dire que concevoir ou republier un formulaire est un geste de propriétaire dès que la structure est fermée : il écrit dans la structure ; pour un lien public (11.9) : un partage et une table de réception par formulaire, aucune colonne de gestion écrite dans cette table, la définition de son seul formulaire dans ce que le lien peut lire, des réponses traitées comme non fiables ; sa page des répondants écrit avec la session anonyme du partage : sa tenue structure fermée est à mesurer (11.8) |
+   | Form+ | Dire que concevoir ou republier un formulaire est un geste de propriétaire dès que la structure est fermée : il écrit dans la structure ; pour un lien public (11.9 ; consigne 013) : un partage et une table de réception par formulaire, aucune colonne de gestion écrite dans cette table, la définition de son seul formulaire dans ce que le lien peut lire, des réponses traitées comme non fiables ; sa page des répondants écrit avec la session anonyme du partage : sa tenue structure fermée est à mesurer (11.8) |
    | Automation+ | Déclarer `proprietaires` pour ses lignes `Workflow` (le type de ligne est déjà là) : un workflow s'exécute avec les droits de la personne qui a l'onglet ouvert, donc un workflow qu'un éditeur pourrait changer s'exécuterait chez un propriétaire, avec ses droits |
    | Grist-BI | Vivre sans sa table-sonde si un éditeur ne peut plus la créer (l'identité viendra du kit) ; dire que les chiffres sont ceux que la personne a le droit de lire, pour que deux personnes qui voient deux totaux sachent pourquoi |
 

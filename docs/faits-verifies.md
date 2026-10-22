@@ -138,6 +138,16 @@ réponses, sans que l'app change.
   `_grist_Views.layoutSpec` (`{"children":[{"children":[{"leaf":tableau},{"leaf":widget}]}]}` : côte à côte). Avec `access` vide,
   Grist charge le widget sans accès et demande l'accès complet dans le panneau de droite (« Accept ») ; après l'accord, le widget
   suit la ligne choisie dans le tableau. Aucun avertissement de Grist sur l'adresse.
+- Mesuré le 22/10 (`labo/run-publication.mjs`, 30 vérifications, à 700 × 400, à la vraie souris et au vrai clavier, en français / clair,
+  anglais / sombre, français / sombre et anglais / clair) avec Form+ non modifiée à `c249c4a` : **un appel de l'app qui publie un
+  formulaire (`UpdateRecord` de `shareOptions` sur sa section) ou qui ajoute un champ Référence à une section publiée est tenu par GFS
+  jusqu'à la réponse de la personne** ; la fenêtre dit la table ouverte à l'ajout et ses colonnes que le formulaire ne montre pas, ou la
+  colonne rendue lisible ; « Refuser », Entrée (le clavier part sur « Refuser ») et Échap donnent `GFS_ANNULE` et le document ne bouge
+  pas ; « Autoriser » laisse passer, le même lot rejoué ne demande plus rien, une deuxième section sur la même table non plus ; une table
+  de GFS, d'une autre app ou de l'app est refusée sans fenêtre (`GFS_REFUSE`). Avec `run-form.mjs` : l'enregistrement d'un formulaire par
+  son lien ouvre deux fenêtres (la table `Clients` à l'ajout, puis la lecture de `FormPlus_Formulaires.Definition`, que tout lien pourra
+  lire), le second formulaire aucune. **Non mesuré** : ce que Grist ouvre vraiment à qui a le lien (10.11), grist-static n'a pas de
+  partages.
 
 ## 3. Grist : données
 

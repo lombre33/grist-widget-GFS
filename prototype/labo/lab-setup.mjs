@@ -42,14 +42,31 @@ async function chooseFullAccess(page) {
   await page.waitForTimeout(500);
 }
 
+// Le site en ligne de chaque app (js/catalogue.js, `site`) et le dossier de sa copie dans le dépôt : GFS ouvre l'app sur son site, le labo rend les fichiers de la copie à cette adresse.
+const SITES = { publipostageGrist: 'publipostage', GRIST_automation: 'automation', FormPlus: 'form' };
+
 // `widget` : l'adresse de la page que Grist reçoit comme widget personnalisé (GFS par défaut ; une sonde, pour la mesurer SANS GFS, dans le cadre même de Grist).
-const DEFAULTS = { lang: 'fr', colorScheme: 'light', width: 1280, height: 800, query: '', fullAccess: true, probes: false, frameAttributes: null, patches: [], widget: WIDGET, newsSeen: true, user: null };
+// `live` : GFS sert les apps sur leur site en ligne (le défaut de GFS depuis le 22/10) ; le labo mesure la copie figée du sous-module (`live=0`) sauf `LAB_LIVE=1` ou `live: true`.
+// `liveAbsent` : les sites (`FormPlus`…) qui ne répondent pas, pour mesurer le repli sur la copie.
+const DEFAULTS = { lang: 'fr', colorScheme: 'light', width: 1280, height: 800, query: '', fullAccess: true, probes: false, frameAttributes: null, patches: [], widget: WIDGET, newsSeen: true, user: null, live: process.env.LAB_LIVE === '1', liveAbsent: [] };
+
+// Les sites en ligne des apps, vus du labo : `/<site>/…` rend le fichier de la copie de l'app (même serveur, même origine que GFS), ou 404 pour un site « hors ligne ».
+async function routeLiveSites(page, absent) {
+  await page.route(new RegExp(`^http://127\\.0\\.0\\.1:8911/(${Object.keys(SITES).join('|')})/`), async route => {
+    const url = new URL(route.request().url());
+    const [, site, rest] = /^\/([^/]+)\/(.*)$/.exec(url.pathname);
+    if (absent.includes(site)) return route.fulfill({ status: 404, contentType: 'text/plain', body: 'not found' });
+    url.pathname = `/prototype/apps/${SITES[site]}/${rest}`;
+    return route.continue({ url: url.href });
+  });
+}
 
 export async function startLab(options = {}) {
-  const { lang, colorScheme, width, height, query, fullAccess, probes, frameAttributes, patches, widget, newsSeen, user } = { ...DEFAULTS, ...options };
+  const { lang, colorScheme, width, height, query, fullAccess, probes, frameAttributes, patches, widget, newsSeen, user, live, liveAbsent } = { ...DEFAULTS, ...options };
   await mkdir(SHOTS, { recursive: true });
   const browser = await engine.launch(engineName === 'chromium' ? { args: ['--no-sandbox', '--font-render-hinting=none'] } : {});
   const { page, context } = await newLabPage(browser, { lang, colorScheme, width, height, probes, frameAttributes, patches, newsSeen, user });
+  if (live) await routeLiveSites(page, liveAbsent);
   const gfsFrame = async (re = /./) => {
     for (let i = 0; i < 80; i++) {
       const f = page.frames().find(f => f.url().startsWith(widget) && re.test(f.url()));
@@ -60,7 +77,7 @@ export async function startLab(options = {}) {
   };
   const appFrame = async (re = /./) => {
     for (let i = 0; i < 120; i++) {
-      const f = page.frames().find(f => /^http:\/\/127\.0\.0\.1:8911\/prototype\/(apps|labo\/sondes)\//.test(f.url()) && re.test(f.url()));
+      const f = page.frames().find(f => /^http:\/\/127\.0\.0\.1:8911\/(prototype\/(apps|labo\/sondes)|publipostageGrist|GRIST_automation|FormPlus)\//.test(f.url()) && re.test(f.url()));
       if (f) return f;
       await page.waitForTimeout(500);
     }
@@ -72,7 +89,8 @@ export async function startLab(options = {}) {
   };
   // Grist ajoute ses propres paramètres après ceux de l'adresse (searchParams.append) : le premier `language` gagne, c'est celui du labo.
   await openDocument(page);
-  await addCustomWidget(page, `${widget}?language=${lang}&culture=${lang === 'en' ? 'en-GB' : 'fr-FR'}${query ? '&' + query.replace(/^\?/, '') : ''}`);
+  const liveParam = widget === WIDGET && !live ? '&live=0' : '';
+  await addCustomWidget(page, `${widget}?language=${lang}&culture=${lang === 'en' ? 'en-GB' : 'fr-FR'}${liveParam}${query ? '&' + query.replace(/^\?/, '') : ''}`);
   let frame = await gfsFrame(/access=none/);
   await page.waitForTimeout(1500);
   if (fullAccess) {

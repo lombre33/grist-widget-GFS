@@ -159,8 +159,20 @@ L'app (sous-cadre sans allow-same-origin)
    Grist donne à GFS compris, qui n'a que `clipboard-write`. Avec les deux ajoutés (labo seulement, `run-capacites.mjs`,
    `CAP_CONFIG=pleinDeux`), la demande aboutit. GFS n'ajoute donc rien tant que Grist ne laisse pas passer le plein écran ; le jour
    où il le fait, c'est un mot de plus dans `allow`. [M] Firefox et Safari : la page de mesure du porteur.
-2. [T] **L'adresse du sous-cadre est calculée par GFS** : `apps/<id>/<entree>` sur son propre site, `<id>` et `<entree>`
-   venant du manifeste livré avec GFS. Elle n'est jamais lue dans un réglage, une table ou un message (cahier 3.2, point 3).
+2. [T] **L'adresse du sous-cadre est calculée par GFS**, d'après le catalogue et le manifeste livrés avec lui ; elle n'est jamais lue
+   dans un réglage, une table ou un message (cahier 3.2, point 3). Deux formes, selon `live` dans l'adresse du widget :
+   - **le site en ligne de l'app** (le défaut des essais, décision du porteur du 22/10 : « servir les dépôts live, pas une copie
+     figée ») : `/<site>/<entree>` à la racine de l'origine de GFS, `<site>` étant la ligne `site` du catalogue (le site GitHub
+     Pages du dépôt de développement de l'app : `publipostageGrist/`, `GRIST_automation/`, `FormPlus/`) et `<entree>` celle du
+     manifeste (`index.html`, `poc/widget.html`). GitHub Pages sert tous les sites d'un compte sur la même origine (faits vérifiés,
+     section 5) : `frame-src 'self'` les laisse passer, **la CSP de GFS ne change pas** ; si GFS et une app étaient un jour sur
+     deux comptes, cette ligne devrait nommer l'autre origine, et ce serait un choix fait en connaissance de cause. Ce que l'app
+     pousse est ce que la personne ouvre, au cache de Pages près (10 minutes).
+   - **la copie figée** (`live=0`, et le repli ci-dessous) : `apps/<id>/<entree>` sur le site de GFS, le sous-module à la référence
+     que GFS a relue. C'est ce que mesure le labo (`startLab`, `live: false` par défaut), et ce que GFS livrera à un client.
+   Un site en ligne qui n'a pas dit `ready` au bout de 15 secondes (1.4, point 2) : GFS ouvre la copie figée dans le même cadre et le
+   dit (« {app} : la dernière version ne répond pas, GFS ouvre sa copie figée. »). `data-app-source` du corps de la page de GFS
+   vaut `live` ou `pinned` (les essais le lisent). Mesuré : `run-live.mjs`.
 3. [T] Elle porte les six paramètres que Grist ajoute à l'adresse d'un widget (`access`, `readonly`, `language`, `culture`,
    `timeZone`, `currency` : `WidgetFrame.ts`, `_urlWithAccess`), **avec les mêmes noms**, les valeurs de GFS, sauf `access` :
    le niveau de l'**app** (3.1), et `language` : la langue que la personne a choisie dans GFS (`fr` ou `en`, 5.2 point 6),
@@ -174,7 +186,8 @@ L'app (sous-cadre sans allow-same-origin)
    le détruit après « fermer » (5.4), puis en crée un neuf. L'action « insérer » (étape 7) en gardera deux, dont un suspendu :
    le contrat se complète alors.
 2. [D] Un sous-cadre qui n'a pas dit `ready` au bout de 15 secondes est signalé à la personne (« l'app ne répond pas »), avec
-   « Recharger ». Durée à confirmer à l'étape 6.
+   « Recharger ». Durée à confirmer à l'étape 6. Pour un site en ligne (1.3, point 2), la première échéance ouvre d'abord la copie
+   figée ; « ne répond pas » vient si elle tarde aussi.
 3. [T] Mesuré dans Chromium (rapport de l'étape 2, section 3) : un sous-cadre peut aller sur une autre page du site de GFS sans
    perdre son canal ; il ne peut pas aller sur un autre site (`frame-src 'self'` s'applique à ses navigations : le cadre
    meurt), ni renvoyer la page de Grist ailleurs (aucun `allow-top-navigation`). [M] Firefox et Safari : la page de mesure du

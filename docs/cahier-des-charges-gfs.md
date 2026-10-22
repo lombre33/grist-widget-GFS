@@ -692,7 +692,7 @@ Un test de bout en bout le vérifie dans un vrai Grist, pour chaque app : seule,
 | Enjeu | Mesure |
 |---|---|
 | Tout le code du cadre de GFS a l'accès accordé, souvent « complet » | Sous-cadres isolés ; courtier qui filtre d'après le manifeste ; accès minimal déclaré par app |
-| Du code qui change sans que GFS le voie | Références à un commit (sous-modules), avancées par une demande relue ; aucune adresse de code lue dans des réglages, des tables ou des messages |
+| Du code qui change sans que GFS le voie | Références à un commit (sous-modules), avancées par une demande relue ; aucune adresse de code lue dans des réglages, des tables ou des messages. Tant que les essais servent le site en ligne des apps (22/10), la mesure ne vaut que pour la copie livrée : la page d'état de chaque app prévient des changements de contrat, et le filtre du courtier, qui lit le manifeste de GFS, refuse ce que l'app n'a pas déclaré |
 | Bibliothèques tierces | Une liste par propriétaire (l'app pour ses bibliothèques natives, GFS pour celles des extensions), versions exactes, empreintes SRI ; Dependabot ; version vendorisée pour les RSSI ; esm.sh remplacé à terme par un fichier figé |
 | Une seule origine pour tous les sites d'un compte GitHub (`lombre33.github.io`, `grist-factory.github.io`) : des pages de même origine partagent le stockage et, dans des cadres voisins, peuvent agir l'une sur l'autre | Sous-cadres sans `allow-same-origin` ; stockage par app ; aucune page de démonstration ni de test sur l'origine de production ; un domaine par app seulement si un audit l'exige |
 | Écriture des tables internes de Grist (`_grist_*`) | Refusée par défaut ; déclarée et justifiée dans le manifeste (Form+ écrit `_grist_Views_section` ; Publipostage+ une fois `_grist_Tables_column`) |
@@ -769,7 +769,7 @@ fait passer par le porteur.
 
 | # | Question | Quand | Conseil |
 |---|---|---|---|
-| 1 | Référence des apps : sous-module ou adresse vivante ? | Étape 2 | Sous-module ; l'adresse vivante pour un canal de test. **Tranché le 16/10 : sous-module** ; le GFS public référence les dépôts publics (`grist-factory`), et le push du porteur vaut feu vert (4.2) |
+| 1 | Référence des apps : sous-module ou adresse vivante ? | Étape 2 | Sous-module ; l'adresse vivante pour un canal de test. **Tranché le 16/10 : sous-module** ; le GFS public référence les dépôts publics (`grist-factory`), et le push du porteur vaut feu vert (4.2). **Précisé le 22/10 (porteur : « servir les dépôts live, pas une copie figée »)** : les essais de GFS ouvrent chaque app sur son site en ligne par défaut, `live=0` ramène à la copie du sous-module, qui sert aussi de repli et aux mesures du labo ; ce que GFS livre à un client reste le sous-module (contrats 1.3, point 2) |
 | 2 | TipTap en mode CDN : esm.sh, ou un seul fichier figé servi par jsDelivr avec empreinte ? | Étape 4 | Le fichier figé |
 | 3 | Isolement : sous-cadres sans `allow-same-origin`, ou un domaine par app ? | Fin de l'étape 2 | Sous-cadres ; des domaines seulement si un audit l'exige. **Tranché le 16/10 : sous-cadres** (rapport, section 3) |
 | 4 | Automation+ dans GFS : section à part, ou sous-cadre gardé en fond ? | Étape 6 | Section à part pour commencer |

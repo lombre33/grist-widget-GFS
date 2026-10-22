@@ -18,12 +18,14 @@ export class AppSession {
   #unsubscribe = null;
   #timers = [];
   #lastContent;
+  #pinnedUrl = null; // la copie figée de l'app, tant que le site vivant n'a pas répondu : c'est là qu'on se replie
 
-  // ctx : { entry, manifest, catalogue, state, port, router, container, readonly, preferences, base, lang, onStatus, envelopeHandlers(session) }
+  // ctx : { entry, manifest, catalogue, state, port, router, container, readonly, preferences, base, live, lang, onStatus, envelopeHandlers(session) }
   constructor(ctx) {
     this.ctx = ctx;
     this.manifest = ctx.manifest;
     this.id = ctx.manifest.id;
+    this.source = ctx.live && ctx.entry.site ? 'live' : 'pinned'; // où l'app est servie : son site en ligne, ou la copie figée de GFS
     this.access = lowestAccess(ctx.manifest.permissions.acces, ctx.state.grantedAccess);
     this.policy = makePolicy(ctx.manifest, ctx.catalogue);
     this.hasCustomOptions = false;
@@ -57,7 +59,10 @@ export class AppSession {
       onMessage: data => this.#onAppMessage(data),
       onReady: () => this.#onReady(),
     });
-    const url = frameUrl({ entry: ctx.entry, manifest: this.manifest, access: this.access, readonly: ctx.readonly, preferences: ctx.preferences, base: ctx.base });
+    const where = { entry: ctx.entry, manifest: this.manifest, access: this.access, readonly: ctx.readonly, preferences: ctx.preferences, base: ctx.base };
+    const live = this.source === 'live';
+    const url = frameUrl({ ...where, live });
+    if (live) this.#pinnedUrl = frameUrl({ ...where, live: false });
     // Les messages propres à GFS (contrats 5.1) passent par le même canal, mais jamais par la même file : ils n'attendent pas le `ready` de l'app.
     this.#envelope = new EnvelopePeer({ send: msg => this.frameWindow.postMessage(msg, '*'), handlers: ctx.envelopeHandlers(this) });
     this.#frame = buildFrame(url, label(this.manifest.nom, ctx.lang));
@@ -67,7 +72,20 @@ export class AppSession {
     ctx.router.setActive(this.frameWindow, data => this.#fromApp(data));
     this.#unsubscribe = ctx.state.subscribe((kind, message) => this.#fromGrist(kind, message));
     ctx.onStatus('loading', this);
-    this.#timers.push(setTimeout(() => { if (!this.isReady) ctx.onStatus('timeout', this); }, READY_TIMEOUT_MS));
+    this.#timers.push(setTimeout(() => this.#onSlow(), READY_TIMEOUT_MS));
+  }
+
+  // Le site vivant n'a pas dit `ready` à temps (pas en ligne, ou injoignable) : GFS ouvre la copie figée de l'app, dans le même cadre, et le dit. Sans copie à ouvrir, ou si la
+  // copie tarde aussi, c'est le « ne répond pas » de toujours (contrats 1.4, point 2).
+  #onSlow() {
+    if (this.isReady || !this.#frame) return;
+    if (!this.#pinnedUrl) { this.ctx.onStatus('timeout', this); return; }
+    const url = this.#pinnedUrl;
+    this.#pinnedUrl = null;
+    this.source = 'pinned';
+    this.#frame.src = url;
+    this.ctx.onStatus('fallback', this);
+    this.#timers.push(setTimeout(() => this.#onSlow(), READY_TIMEOUT_MS));
   }
 
   // Un message de l'app, déjà attribué à son cadre par le routeur : l'enveloppe de GFS (sans `mtype`) ou le protocole des widgets.

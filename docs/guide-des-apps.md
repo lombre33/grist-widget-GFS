@@ -95,6 +95,13 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     coûterait la table entière, qui peut peser des mégaoctets). À la prochaine ouverture, l'app lit le nom de la table. Une app
     qui n'écrit pas de nom n'a rien à faire. Les favoris et les dossiers que la personne pose dans GFS sont à GFS
     (`GFS_Rangement`) : l'app garde les siens.
+11. Rester en ligne là où GFS l'ouvre (décision du porteur du 22/10 : « servir les dépôts live, pas une copie figée »). Dans GFS,
+    la personne ouvre ton app sur son site GitHub Pages, tel qu'il est en ligne (contrats 1.3, point 2) : garde l'adresse du site et
+    l'entrée de ton manifeste, et ne pousse pas un changement de contrat (ce que GFS lit ou te donne, les tables, colonnes, clés
+    de réglages et de stockage que tu écris, les adresses, bibliothèques, CSP, poids des extensions) sans le dire, dans le même
+    envoi, dans ton `GFS-ETAT.md` (« Changements qui touchent GFS » : ce que GFS doit rejouer). La référence du sous-module ne
+    sert plus qu'aux mesures de GFS et de repli : la ligne « à avancer à … » de ta page n'a plus lieu d'être, celle de ton en-tête
+    (le dernier commit de code que la page décrit) dit où GFS rejoue ses essais.
 
 ### 1.3 Licence : GPL 3.0 dans tous les dépôts (décision du porteur, 21/10)
 

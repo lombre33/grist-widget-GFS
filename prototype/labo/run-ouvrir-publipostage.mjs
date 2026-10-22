@@ -154,7 +154,7 @@ await row('Quittance de loyer').dblclick();
 seen = await waitShown('Quittance de loyer');
 say('app déjà ouverte :', seen, 'phrase de GFS :', await toast());
 check('l\'app déjà ouverte ouvre le modèle cliqué, dans le même cadre (elle n\'est pas rechargée)',
-  seen.name === 'Quittance de loyer' && seen.text === 'Quittance de loyer' && (await app.evaluate(() => window.__marque)) === 'avant' && page.frames().filter(f => /\/apps\/publipostage\//.test(f.url())).length === 1, seen);
+  seen.name === 'Quittance de loyer' && seen.text === 'Quittance de loyer' && (await app.evaluate(() => window.__marque)) === 'avant' && page.frames().filter(f => /\/(apps\/publipostage|publipostageGrist)\//.test(f.url())).length === 1, seen);
 check('le coin d\'état dit pourquoi, l\'explorateur se ferme, GFS n\'ajoute aucune phrase', WORDS.opened.test(seen.status) && (await explorerHidden()) && (await toast()) === '', { status: seen.status, phrase: await toast() });
 
 // 4. Le modèle déjà ouvert : rien ne change.
@@ -191,7 +191,7 @@ say('après « Recharger maintenant » :', reopened, 'adresse du cadre :', app.u
 check('« Recharger maintenant » (Insertion) : l\'app se recharge et rouvre le modèle où la personne était, pas le ★ ; GFS ne dit rien',
   notice && reopened.name === 'Quittance de loyer' && reopened.text === 'Quittance de loyer' && reopened.name !== USUAL && (await toast()) === '', { notice, reopened, phrase: await toast() });
 check('l\'adresse du cadre redevient celle de GFS (access et gfs gardés, plus de fragment) et l\'app reste un seul cadre',
-  /access=/.test(app.url()) && /gfs=/.test(app.url()) && !app.url().includes('#') && page.frames().filter(f => /\/apps\/publipostage\//.test(f.url())).length === 1, app.url());
+  /access=/.test(app.url()) && /gfs=/.test(app.url()) && !app.url().includes('#') && page.frames().filter(f => /\/(apps\/publipostage|publipostageGrist)\//.test(f.url())).length === 1, app.url());
 check('rien n\'est écrit dans le document par ce rechargement', (await snapshot()) === base);
 if (reopened.name !== 'Quittance de loyer') { await showFiles(); await row('Quittance de loyer').dblclick(); await waitShown('Quittance de loyer'); }
 

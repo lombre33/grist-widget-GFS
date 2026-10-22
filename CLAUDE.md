@@ -21,6 +21,9 @@ Dans ces documents, `contexte/`, `maquettes/` et `outils/` désignent des dossie
 ## Décisions à ne pas rouvrir
 
 - Une app = un dépôt public complet, qui tourne seule. GFS **référence** chaque app à un commit (sous-module), sans copie.
+  Précisé par le porteur le 22/10 (« servir les dépôts live, pas une copie figée ») : les essais ouvrent chaque app sur son site en
+  ligne (`site` du catalogue, `live=0` pour la copie), la référence sert aux mesures du labo et de repli ; la livraison à un client
+  reste figée (contrats 1.3, point 2).
 - Bibliothèques : **CDN par défaut**, version vendorisée seulement si le RSSI d'un client l'exige ; les deux depuis une
   liste : celle de l'app pour ses bibliothèques natives, celle de GFS pour les non natives (celles des extensions, que GFS
   porte : le dépôt d'une app n'en garde ni liste ni import map, et sa CSP ne garde que l'adresse du CDN que donne GFS, car

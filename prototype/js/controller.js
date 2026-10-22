@@ -6,7 +6,7 @@ import { loadAll, label } from './manifest.js';
 import { GristState } from './state.js';
 import { createPort } from './broker.js';
 import { AppSession } from './session.js';
-import { readPreferences } from './frames.js';
+import { readPreferences, liveSwitch } from './frames.js';
 import { createI18n } from './i18n.js';
 import { LanguageSetting, browserStore, languageOfGrist, localeFor, watchStorage } from './language.js';
 import { AppStorage, browserBackend, storageHandlers } from './app-storage.js';
@@ -77,6 +77,8 @@ export class GfsController {
     this.appStorage = new AppStorage({ backend: browserBackend(window) });
     this.port = createPort(grist);
     this.readonly = this.params.get('readonly') === 'true';
+    // Les apps sont servies par leur site en ligne (le porteur, 22/10) ; `?live=0` : la copie figée du sous-module, celle des mesures de GFS.
+    this.live = liveSwitch(search);
     // Le mode développement (`?dev` dans l'adresse du widget, comme la galerie de développement de Publipostage+) : le bouton « Démo » de l'explorateur.
     this.devMode = this.params.has('dev');
     // Les apps installées et leurs extensions : ce que le document retient dans la table `GFS_Rangement` (contrats 7.4), écrit seulement sur un geste
@@ -570,7 +572,7 @@ export class GfsController {
     const { state, port } = this.workControl.sourceFor(app.manifest);
     return {
       entry: app.app, manifest: app.manifest, catalogue: this.apps.filter(item => item.ok).map(item => item.manifest), state, port, router: this.router,
-      container: this.$('frames'), readonly: this.readonly, preferences: this.#appPreferences(), base: this.doc.baseURI, lang: this.lang, onStatus: (kind, current) => this.#onStatus(kind, current),
+      container: this.$('frames'), readonly: this.readonly, preferences: this.#appPreferences(), base: this.doc.baseURI, live: this.live, lang: this.lang, onStatus: (kind, current) => this.#onStatus(kind, current),
       envelopeHandlers: session => this.#envelopeHandlers(session),
     };
   }
@@ -580,7 +582,9 @@ export class GfsController {
   #onStatus(kind, current) {
     const app = label(current.manifest.nom, this.lang);
     this.doc.body.dataset.appStatus = kind;
+    this.doc.body.dataset.appSource = current.source;
     if (kind === 'loading') this.#setStatus(this.t('gfs.loading', { app }));
+    else if (kind === 'fallback') { this.#setStatus(this.t('gfs.loading', { app })); this.notice(this.t('gfs.fallback', { app })); }
     else if (kind === 'timeout') this.#setStatus(this.t('gfs.timeout', { app }), true);
     else this.#setStatus('');
   }

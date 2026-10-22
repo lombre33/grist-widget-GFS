@@ -10,7 +10,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-1o1VAl+7T0+N3ntGeT0uub7BzoR8JDZIdd9o4Iy6hAo='; style-src 'self'; img-src 'self' data:; frame-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-dbiDoBgChTn4N2Ve7Vdmlj92vM9nsh/y07mj9OEt+JM='; style-src 'self'; img-src 'self' data:; frame-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=fce5d2ff06">
 <link rel="stylesheet" href="css/explorer.css?v=f98b8b812a">
 <link rel="stylesheet" href="css/modules.css?v=d891e9e0ad">
@@ -26,9 +26,9 @@
     "./js/arrival.js": "./js/arrival.js?v=7824138f62",
     "./js/ask-window.js": "./js/ask-window.js?v=1befded0df",
     "./js/broker.js": "./js/broker.js?v=4e909305b8",
-    "./js/catalogue.js": "./js/catalogue.js?v=af259e06c5",
+    "./js/catalogue.js": "./js/catalogue.js?v=13543d1715",
     "./js/context.js": "./js/context.js?v=b0a00cb0b8",
-    "./js/controller.js": "./js/controller.js?v=3f530baf6c",
+    "./js/controller.js": "./js/controller.js?v=61d6d4e206",
     "./js/demo.js": "./js/demo.js?v=6bcb117862",
     "./js/dock-state.js": "./js/dock-state.js?v=8eec913fd1",
     "./js/dock.js": "./js/dock.js?v=959ef9fe05",
@@ -42,8 +42,8 @@
     "./js/filing-window.js": "./js/filing-window.js?v=ffaa75bf79",
     "./js/filing.js": "./js/filing.js?v=c8ed41b01b",
     "./js/filter.js": "./js/filter.js?v=0bbd3af6df",
-    "./js/frames.js": "./js/frames.js?v=09ec1cb3a3",
-    "./js/i18n.js": "./js/i18n.js?v=416bb1436e",
+    "./js/frames.js": "./js/frames.js?v=554a438e75",
+    "./js/i18n.js": "./js/i18n.js?v=990b1e4ab4",
     "./js/icons.js": "./js/icons.js?v=33c23e4464",
     "./js/language.js": "./js/language.js?v=b287c81a20",
     "./js/layers.js": "./js/layers.js?v=2d0c225b72",
@@ -57,7 +57,7 @@
     "./js/rangement.js": "./js/rangement.js?v=5a647c2de4",
     "./js/rpc.js": "./js/rpc.js?v=2133dc4192",
     "./js/search.js": "./js/search.js?v=0921c92eb3",
-    "./js/session.js": "./js/session.js?v=e6a7a9c786",
+    "./js/session.js": "./js/session.js?v=9563a270a6",
     "./js/settings.js": "./js/settings.js?v=a425d4248c",
     "./js/state.js": "./js/state.js?v=289f010ea6",
     "./js/stored-choice.js": "./js/stored-choice.js?v=e1e93b893c",

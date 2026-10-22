@@ -124,5 +124,8 @@ await lab.browser.close();
   la copie que le labo sert depuis `vendor/`, pas avec le CDN. Pour un fichier assemblé, la case n'existe pas à choisir : la
   copie est déjà le mode de l'extension, et `[data-fk="mode:<app>/<extension>/cdn"]` est grisée.
 - **700 × 400** : `lab.fitPanel(undefined, 700, 400)`.
+- **La copie, pas le site en ligne** (22/10) : GFS ouvre les apps sur leur site en ligne par défaut ; le labo les ouvre dans la copie
+  (`live=0`, la ligne `apps/<app>` de ta copie), c'est ce que tu mesures. `startLab({ live: true })` (ou `LAB_LIVE=1`) joue le chemin du
+  site en ligne : le labo rend alors les fichiers de ta copie à l'adresse du site (`prototype/labo/run-live.mjs`).
 - Ce que l'essai apprend sur GFS (la source de la bibliothèque, la sécurité, un contrat qui manque) va dans « Questions pour
   GFS » ; la copie se supprime à la fin.

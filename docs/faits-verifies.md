@@ -486,4 +486,76 @@ responsable ne recharge rien et fait apparaître les modèles chez la personne ;
 propriétaire écrit-il les règles ?) ; qui est vraiment propriétaire, héritage de l'espace de travail compris ; le
 téléchargement et la copie refusés à un éditeur ; l'historique des actions ; la version de Grist et le libellé exact de la
 case ; le jeton du widget et la liste des utilisateurs du document ; l'adresse que voient les règles par l'interface et par
-l'API, et la ligne-sonde sous « Partagé » (10.8). Les contrats 11 (version 0) ne deviennent définitifs qu'après elles.
+l'API, et la ligne-sonde sous « Partagé » (10.8). Les contrats 11 (version 0) ne deviennent définitifs qu'après elles. Les liens publics ont leurs
+propres mesures : 10.11.
+
+### 10.11 Les liens publics et les formulaires publiés (22/10)
+
+Le porteur, le 22/10 : « segmenter et limiter les droits d'écriture d'un formulaire, être super vigilant là-dessus ». **Lu** :
+`grist-core`, branche principale, relu le 22/10 (`ACLRulesReader.ts`, `GranularAccess.ts`, `HomeDBManager.ts`, `DocApi.ts`,
+`DocWorker.ts`, `FormView.ts`). **Aucune mesure avec un vrai lien** : le labo n'a pas de partages (pas de serveur d'accueil).
+Complète le § 3 (« une session de partage ne lit ni n'écrit aucune table de données par défaut »).
+
+- Lu : l'adresse d'un lien porte une clé de partage que le serveur d'accueil tire au hasard pour chaque partage du document
+  (`HomeDBManager.ts` 3214–3231) ; il y retrouve le document et donne à la session le rôle « éditeurs », « à contrôler au niveau
+  fin » (`HomeDBManager.ts` 1097–1127). Cette clé n'est pas l'identifiant `linkId` que le document garde dans `_grist_Shares` :
+  la demander au serveur est réservé aux propriétaires (`getShare`, `DocWorker.ts` 151 ; `FormView.ts` 739–757 en fait l'adresse
+  du formulaire). Grist fait du visiteur l'utilisateur anonyme (10.1) et met dans `user.ShareRef` la ligne de `_grist_Shares` du
+  lien (`GranularAccess.ts` 360–371 et 390–400).
+- Lu : **les règles posées ne valent pas pour un lien.** Dès que le document a un partage, Grist réécrit chaque règle enregistrée
+  en `user.ShareRef is None and (…)` : elle ne vaut plus que pour les sessions qui ne sont pas des partages (`ACLRulesReader.ts`
+  138–150 et 497–507 ; le commentaire de l'option `addShareRules`, 98–105, dit que partages et règles « s'excluent pour
+  l'instant »). Les règles de GFS (contrats 11.4) sont donc muettes pour un visiteur : aucune ne peut le restreindre.
+- Lu : **ce qu'un lien a, au plus.** Aucune table de données et aucune structure par défaut (`-CRUDS` sur chaque table qui n'est pas
+  `_grist_*`, `-S` sur la règle par défaut : `_addDefaultShareRules`, 270–282) ; un partage non publié est refusé en entier
+  (`_blockShare`, 452–464). Pour chaque table que cible une section de formulaire publiée sur une page du partage (section et
+  partage publiés : `_addRulesForShare`, 205–259) : la création `+C` dans **toutes les colonnes** (`colIds: "*"`, 287–302 ; le
+  code note lui-même que « hidden columns could be written », 250–253), la lecture de la ligne 0 seulement (304–317, « a hack »)
+  et la lecture de la **colonne entière** que montre chaque Référence du formulaire (325–372 ; la colonne `id` si elle n'en montre
+  aucune). Aucune lecture d'une ligne existante, aucune modification, aucune suppression.
+- Lu : les tables `_grist_*` échappent à ces règles, « censurées d'une autre façon » (`ACLRulesReader.ts` 261–269) : un visiteur
+  reçoit la structure (pages, sections de vue et leurs réglages, colonnes) comme tout le monde, filtrée d'après son accès aux
+  tables de données ; seules `_grist_ACLResources`, `_grist_ACLRules` et `_grist_Shares` ne vont qu'aux propriétaires
+  (`GranularAccess.ts` 3348–3356). Ce qu'une app range dans les réglages d'un widget (la colonne `options` de sa section) peut donc
+  se lire dans la session d'un visiteur dont la page porte ce widget. Rapporté (Form+, mesuré dans un vrai Grist, relu le 22/10) :
+  le lien d'un formulaire donne la définition de tous les formulaires du document, clés de partage comprises ; il ne modifie,
+  ne supprime et ne relit aucune ligne existante.
+- Lu : toute action sur une table `_grist_*` demande le droit de structure, que le partage refuse (`GranularAccess.ts` 2786–2805).
+  Rapporté pourtant (Form+, 16/09, 10.9) : une session de partage a écrit les réglages d'un widget sur l'instance de la DINUM.
+  **C'est la première chose à remesurer chez le porteur** (mesure 1).
+- Lu : l'interface de Grist n'affiche Publier, Dépublier et Partager qu'aux propriétaires (`FormView.ts` 409 et 700–733). Publier
+  n'est pourtant qu'une suite d'écritures ordinaires : `AddRecord` dans `_grist_Shares`, puis `UpdateRecord` de
+  `_grist_Pages.shareRef` et de `shareOptions` sur la section (`FormView.ts` 559–585), que seul le droit de structure arrête
+  (`GranularAccess.ts` 2786–2805 : l'exception des propriétaires ne vaut que pour les tables de règles). Structure ouverte, un
+  éditeur a ce droit. **Non lu** : si le serveur d'accueil rend alors le lien utilisable (mesure 4).
+- Lu : le formulaire natif de Grist écarte les colonnes-formules (« Formulas are currently unsupported », `DocApi.ts` 1452–1458),
+  mais le partage ne le fait pas pour la création : toutes les colonnes de la table l'acceptent.
+- Mesuré (22/10, `mesure-formulaire-public.mjs`, grist-static 0.1.6). **Le labo ne simule pas un visiteur de lien** (ni `ShareRef`,
+  ni anonyme) : il mesure ce qui n'en dépend pas. (A) *Le moteur de données*, un éditeur sans règle : une valeur fournie pour une
+  colonne de gestion que le formulaire ne montre pas est gardée ; pour une colonne à formule déclenchée (comme `Adresse`, 10.8)
+  aussi (« forgé » prend la place de « auto ») ; pour une colonne-formule pure, elle est **refusée** à l'ajout comme à la
+  modification (l'erreur du labo n'a pas de texte ; le système, sans règle, est refusé de même) et la ligne n'est pas créée ; un
+  choix hors de la liste, une référence vers une ligne qui n'existe pas (424242) et du texte dans une colonne numérique sont
+  **gardés tels quels**. (B) *Des règles équivalentes à celles d'un partage* (les autres tables et la structure refusées, la
+  création et la lecture de la ligne 0 sur la table du formulaire), données à une personne nommée (editor2@) : elle crée une ligne en
+  remplissant une colonne de gestion et une colonne déclenchée ; elle ne lit **aucune ligne** de la table, pas même la sienne ;
+  modifier une ligne, même celle qu'elle vient de créer, ou en supprimer une est refusé (« Blocked by table update | delete
+  access rules ») ; créer dans une autre table (« table create ») et ajouter une colonne (« table structure ») aussi.
+- Non lu : toute limite de nombre, de taille ou de débit propre à un lien. Il y a un suivi des appels de l'API par document
+  (`DocApiUsageTracker`, `DocWorker.ts` 11 et 33) et des limites de l'offre de l'instance (lignes, taille) que ce travail n'a pas
+  lues : ce qu'un lien qui les dépasse fait au document est à demander au porteur (mesure 5).
+
+À mesurer chez le porteur, avec un vrai lien de formulaire publié et deux comptes (ces six points précisent le premier des dix
+de 10.10) :
+
+1. ce qu'une session de partage écrit : une ligne dans la table du formulaire ; une ligne dans une autre table ; un réglage de
+   widget ; une colonne ; avec quel texte de refus (Form+ doit l'expliquer) ;
+2. ce qu'elle lit : les réglages d'un widget de sa page et des autres pages, les noms des autres tables et colonnes, la colonne
+   d'une Référence, et rien d'une ligne existante ;
+3. avec les règles de GFS posées (Partagé, puis Encadré), le lien crée-t-il encore dans la table du formulaire ? (Lu : oui.)
+4. structure ouverte : un éditeur publie-t-il un formulaire par l'API (les trois écritures de `FormView.ts` 559–585), et le lien
+   répond-il ?
+5. les limites de l'offre de l'instance (lignes du document, taille, appels de l'API par jour) et ce que devient le document quand
+   un lien les dépasse (lecture seule pour tous ?).
+6. un widget en accès complet, ouvert par un propriétaire, lit-il `_grist_Shares` (les identifiants et les options des liens), et
+   ouvert par un éditeur, n'en reçoit-il rien ?

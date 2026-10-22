@@ -1458,7 +1458,8 @@ projet) ; les preuves, avec le fichier et la ligne du code de Grist, sont dans `
 
 Cette section est en **version 0** : elle ne devient définitive qu'après les dix mesures sur le Grist du porteur (11.8), qui
 peuvent changer une règle de 11.4. Une carte reste ouverte, celle de la structure du document (11.7, point 1) : rien ici n'en
-dépend, sauf un mot du pied de GFS.
+dépend, sauf un mot du pied de GFS. Les liens publics et les formulaires publiés, que les règles de GFS n'atteignent pas, ont
+leur sous-section : 11.9.
 
 ### 11.1 Les principes
 
@@ -1490,7 +1491,7 @@ dépend, sauf un mot du pied de GFS.
 8. [T] **Ce qu'aucune règle ne garantit.** Qui peut utiliser un contenu peut le lire, le copier et le capturer : « utiliser sans
    voir » n'existe pas dans un widget (comme 3.7 pour les apps). Un propriétaire hérité de l'espace de travail de Grist voit
    tout. Un contenu réservé n'est *secret* que si la structure est fermée ; sinon il est *discret* : une ligne cachée n'arrive pas
-   chez la personne, mais un éditeur qui pose une colonne-formule la lit encore (mesuré, 10.2).
+   chez la personne, mais un éditeur qui pose une colonne-formule la lit encore (mesuré, 10.2). Un lien public échappe à toutes les règles (11.9).
 
 ### 11.2 Les classes de tables : `classes` dans `gfs.json`
 
@@ -1703,7 +1704,7 @@ soit la dernière de sa ressource. Les droits s'écrivent comme Grist les range 
 7. [T] **Ne jamais** : donner à tous le droit de copier le document entier (cela rend ce que les règles cachent) ; poser un jeu de
    règles sans celle des propriétaires en tête ; retirer la règle d'un autre auteur sans case « Retirer » cochée ; ranger un
    secret ; écrire dans une table de données ; déclarer un attribut de personne ; écrire une règle de lecture qui cite `newRec` ;
-   fermer la structure de lui-même (11.7, point 1).
+   fermer la structure de lui-même (11.7, point 1) ; laisser publier un formulaire qui remplit une table protégée (11.9, point 4).
 8. [D] Une nouvelle table de classe (une app installée plus tard) demande de poser ses règles : c'est une action sur les tables
    de règles, donc la même liasse, le même avertissement, le même rechargement.
 
@@ -1734,9 +1735,13 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
    | App | Ce qu'on lui demande |
    |---|---|
    | Publipostage+ | Déclarer `classes` : ses modèles (`reserve`), ses versions, commentaires et écriture en direct (`derivee`), ses préférences par personne (`personnel`) ; ajouter l'étiquette (quatre colonnes) ; vivre sans la colonne du mot de passe commun d'un PDF protégé (la saisir à chaque export, ce que l'app propose déjà) ; dire « seul un propriétaire enregistre ce réglage » pour les quatre réglages de sa vue quand la structure est fermée ; présenter son tableau de droits comme un confort : il masque des boutons, il ne protège rien |
-   | Form+ | Dire que concevoir ou republier un formulaire est un geste de propriétaire dès que la structure est fermée : il écrit dans la structure ; sa page des répondants écrit avec la session anonyme du partage : sa tenue structure fermée est à mesurer (11.8) |
+   | Form+ | Dire que concevoir ou republier un formulaire est un geste de propriétaire dès que la structure est fermée : il écrit dans la structure ; pour un lien public (11.9) : un partage et une table de réception par formulaire, aucune colonne de gestion écrite dans cette table, la définition de son seul formulaire dans ce que le lien peut lire, des réponses traitées comme non fiables ; sa page des répondants écrit avec la session anonyme du partage : sa tenue structure fermée est à mesurer (11.8) |
    | Automation+ | Déclarer `proprietaires` pour ses lignes `Workflow` (le type de ligne est déjà là) : un workflow s'exécute avec les droits de la personne qui a l'onglet ouvert, donc un workflow qu'un éditeur pourrait changer s'exécuterait chez un propriétaire, avec ses droits |
    | Grist-BI | Vivre sans sa table-sonde si un éditeur ne peut plus la créer (l'identité viendra du kit) ; dire que les chiffres sont ceux que la personne a le droit de lire, pour que deux personnes qui voient deux totaux sachent pourquoi |
+
+9. [D] **Les liens publics** (11.9) : toute app traite une valeur de donnée comme du texte non fiable (elle l'échappe, ne la prend
+   jamais pour du code), et ne déclenche rien d'elle-même sur les lignes d'une table qu'un lien public remplit. Publipostage+,
+   Automation+ et Grist-BI le disent dans leur état ; aucune consigne avant la réponse du porteur (11.7, point 9).
 
 ### 11.7 Ce qui n'est pas décidé
 
@@ -1744,7 +1749,8 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
    ou la proposer d'un clic avec son prix. Carte ouverte du porteur. En attendant : [T] GFS ne la ferme jamais de lui-même ; il
    dit, dans le pied, si elle est ouverte ou fermée et ce que cela change. Seul « Protégé » (11.4, point 7) et le caractère
    *secret* des contenus réservés (11.1, point 8) en dépendent. Grist décoche la case de lui-même quand un propriétaire active les
-   Permissions avancées (lu), et le porteur a confirmé qu'elle se décoche sur son instance (21/10).
+   Permissions avancées (lu), et le porteur a confirmé qu'elle se décoche sur son instance (21/10). Elle pèse aussi sur les liens publics : structure ouverte,
+   un éditeur peut écrire les tables qui publient un formulaire (11.9, point 7), ce qu'il reste à mesurer (10.11, mesure 4).
 2. [Q] **Qui écrit l'étiquette d'un contenu** (visibilité, personnes, espace) : l'app dans son interface, ou GFS dans
    l'explorateur, ce qui ajouterait une exception à 6.3, point 2. À fixer à l'étape 7 avec l'écran des espaces. D'ici là, l'app
    écrit `auteur` à la création et `tous` en visibilité, et aucune interface ne change la visibilité d'un contenu.
@@ -1767,6 +1773,18 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
 8. **Le jeu complet** (rangement, contenus, espaces, workflows) n'a pas été mesuré d'un seul bloc : les règles des espaces et du
    responsable l'ont été sur les contenus, les personnes nommées et les tables dérivées avant les espaces. Un contrôle d'ensemble
    fait partie de l'étape 7.
+9. [Q] **Que reçoit un lien public : la table du formulaire, ou une boîte aux lettres ?** Carte au porteur le 22/10. (a) *Boîte aux
+   lettres* : le lien ne dépose qu'un message dans une table de réception à **une seule colonne** (la réponse, en texte), qu'une
+   personne valide avant que les réponses rejoignent les vraies tables, l'app les y répartissant d'après la définition du
+   formulaire ; aucune de ses tables n'est ouverte, aucune colonne ne se lit, aucune colonne de gestion ne se forge, et la liste des
+   choix d'une Référence se copie dans la définition à la publication (11.9, point 4d). (b) *La table du formulaire*, une par
+   formulaire, colonnes de gestion écartées (11.9, point 4b) et accord à la publication : ce que la liaison met en place avec
+   Form+. (c) *Rien de plus que l'accord*. Défaut en attendant : (b).
+10. [Q] **Fermer ou renouveler un lien depuis GFS** (une écriture, étape 7) : dépublier (`publish` à faux), ou renouveler (retirer le
+    partage et en créer un autre, donc une autre clé, ce qui rend inutile un lien qui a circulé : à vérifier). À décider avec les
+    autres écritures de GFS dans la structure.
+11. [Q] **Dire aux apps quelles tables un lien remplit**, dans le contexte (5.2), pour que Publipostage+ et Automation+ ne
+    déclenchent rien d'elles-mêmes sur ces lignes (11.9, point 5). À fixer avec le panneau des liens (11.9, point 8).
 
 ### 11.8 À mesurer sur le Grist du porteur
 
@@ -1778,3 +1796,74 @@ refusés ; historique des actions ; version de Grist et libellé de la case ; je
 document ; adresse que voient les règles par l'interface et par l'API, ligne-sonde comprise. Chacun peut changer une règle de
 11.4, un champ de `contexte.role` (5.2, point 8) ou la preuve du pied (11.4, point 7). Cette section sort de la version 0 quand
 ils sont faits.
+
+S'y ajoutent les six mesures des liens publics (faits vérifiés, 10.11), à faire dans la même séance avec un vrai lien de formulaire
+publié. La première, une session de partage écrit-elle une table interne ou un réglage de widget ?, passe avant toutes : elle dit
+si un lien peut plus que créer des lignes (11.9, point 2).
+
+### 11.9 Les liens publics et les formulaires publiés
+
+Un lien public (un formulaire publié, natif de Grist ou de Form+) laisse n'importe qui écrire dans le document sans y avoir de
+compte. Le porteur, le 22/10 : un formulaire est « une porte d'entrée pour venir écrire des bêtises dans un document », et il faut
+« segmenter et limiter les droits d'écriture d'un formulaire », avec une vigilance de tous les instants. Les preuves sont dans
+`faits-verifies.md`, 10.11. L'accord demandé à chaque publication (la fenêtre de GFS, la consigne à Form+) se construit dans la
+liaison avec les apps ; cette sous-section lui donne son cadre. Un formulaire qu'on remplit dans le document, connecté, n'est pas un
+lien public : il passe par les règles des personnes (11.4). Rien n'est codé ici.
+
+1. [T] **Un lien ne passe ni par le courtier ni par les règles de GFS.** Le visiteur parle à Grist, dans une session de partage
+   anonyme, et Grist rend muettes pour lui toutes les règles posées (10.11). Aucun niveau (11.4), aucune classe (11.2), aucun
+   espace (11.3) ne l'arrête ; un verrou d'interface encore moins (11.1, point 1). Aucune règle ne peut resserrer un lien après
+   coup : seul ce qu'on publie (quelle table, quelles colonnes, quelles Références) fixe ce qu'il peut.
+2. [T] **Ce qu'un lien a, au plus** (lu, 10.11) : créer des lignes, dans **toutes** les colonnes, des tables que ciblent les
+   sections de formulaire publiées de sa page ; lire la colonne entière que montre chaque Référence de ces formulaires ; rien
+   d'autre : ni lire une ligne existante, ni la modifier, ni la supprimer, ni toucher à la structure. [M] À mesurer avec un vrai
+   lien (10.11, mesures 1 à 3) : un rapport de Form+ (16/09) dit qu'une session de partage a écrit les réglages d'un widget sur
+   l'instance de la DINUM.
+3. [T] **Grist ne vérifie rien de ce qu'un lien écrit** (mesuré au moteur, 10.11). Une colonne que le formulaire ne montre pas, une
+   colonne à formule déclenchée (une date de réception, un auteur), un choix hors de la liste, une référence vers une ligne
+   absente, du texte dans un nombre : tout est gardé tel quel. Seule une colonne-formule pure refuse d'être écrite. Aucune limite
+   de nombre, de taille ni de débit propre à un lien n'est connue (mesure 5). **Toute ligne venue d'un lien est une entrée non
+   fiable**, même dans une colonne que l'app croit remplir elle-même.
+4. **Segmenter : une porte, sa table de réception.**
+   a. [D] Un formulaire publié a **son partage** (sa page) et n'ouvre que **les tables qu'il remplit**, dites une à une dans
+      l'accord (point 6) : jamais deux formulaires sur le même partage, jamais un lien qui écrit dans la table d'un autre formulaire.
+   b. [D] La table qu'un lien remplit est une **table de réception** : elle reçoit, et ce qu'on en tire (valider, publipostage,
+      workflow) se fait après le geste d'une personne (point 5). Ce que le formulaire ne montre pas (statut, note, état de
+      traitement) n'y est pas une colonne de donnée : c'est une colonne-formule pure, ou une colonne d'une autre table liée à la
+      ligne reçue. Tant que ce n'est pas le cas, l'accord liste ces colonnes (« le lien pourrait les remplir ») et le propriétaire
+      accepte ou annule.
+   c. [T] **Une table protégée n'est jamais ouverte à un lien**, parce que ses règles seraient muettes pour la création : une
+      table de GFS (`GFS_Espaces` : un visiteur y écrirait la liste des responsables d'un espace), une table de classe `personnel`,
+      `reserve`, `derivee` ou `proprietaires` (11.2), une table qui porte les colonnes de l'étiquette (11.2, point 4), une table de
+      l'app qui publie (`FormPlus_…`). [D] GFS **refuse** la publication d'un formulaire qui en remplirait une, sans la proposer à
+      l'accord.
+   d. [D] Une **Référence** rend lisible, pour toute personne qui a le lien, la colonne entière qu'elle montre (lu) : l'accord la
+      liste, et refuse une table protégée (c). Un formulaire de Form+ peut garder la liste des choix dans sa propre définition au
+      moment de la publication, et le lien ne lit alors aucune autre table (à mesurer) ; pour un formulaire natif de Grist, ce n'est
+      pas possible.
+5. [T] **Ce qu'une app fait d'une ligne reçue.** Elle la traite comme du texte non fiable : elle l'échappe, ne la prend jamais pour
+   du code, une formule ou une adresse de script (comme 10.9 pour un modèle), et ne croit aucune colonne d'auteur ni de date.
+   [D] Elle ne lance aucun envoi, workflow ni document à partir d'elle sans le geste d'une personne (11.6, point 9).
+6. [D] **Ce que l'accord à la publication dit**, dans cet ordre, en mots simples : que le lien est **public** et que toute personne
+   qui l'a peut écrire ; les **tables** qu'il remplit ; les **colonnes qu'il pourrait remplir sans les montrer** ; les **colonnes
+   qu'il rend lisibles** (Références) ; que **rien ne limite** le nombre de lignes qu'il ajoute ni ne contrôle ce qu'elles
+   contiennent ; comment le fermer. Si une table est protégée (point 4c), il n'y a pas d'accord : la publication est refusée,
+   avec la raison.
+7. [D] **Qui ouvre et ferme une porte.** Seul un propriétaire publie ou dépublie un formulaire, comme dans l'interface de Grist
+   (lu), et GFS le tient lui-même : le courtier ne laisse passer les écritures d'une publication (les tables de partages, de pages
+   et de sections de formulaire, 10.11) que pour un propriétaire connu (`contexte.role.proprietaire` vrai), après l'accord. C'est
+   un refus de plus que Grist n'en fait (structure ouverte, un éditeur peut écrire ces tables), jamais une permission de plus :
+   l'exception à 11.6, point 4 tient parce que c'est le courtier, non l'app, qui décide.
+8. [D] **Voir toutes les portes, d'où qu'elles viennent.** Un propriétaire peut publier par l'interface de Grist, sans GFS, donc
+   sans accord. Le panneau « Permissions » (étape 6, en lecture) liste **tous** les partages du document, publiés ou non (lecture de
+   `_grist_Shares`, `_grist_Pages` et `_grist_Views_section`) : la table de chacun et son nombre de lignes, les colonnes que le lien
+   peut remplir (montrées ou non), celles qu'il rend lisibles, et si une table protégée est ouverte (point 4c). Seul un propriétaire
+   le voit (ces tables ne vont qu'à eux) ; une autre personne lit « seul un propriétaire voit les liens publics ». Fermer ou
+   renouveler un lien depuis GFS est une écriture : étape 7 (11.7, point 10).
+9. [T] **Ce que GFS ne sait pas faire** : limiter le nombre ou le débit des lignes d'un lien, valider une valeur, reconnaître un
+   robot. Grist n'offre rien de tel pour un partage et GFS n'est pas là quand son widget est fermé. La seule parade immédiate est
+   de fermer le lien. Un contrôle fait dans la page d'un formulaire (champ obligatoire, longueur) est un confort : un lien s'écrit
+   sans la page (11.1, point 1).
+10. [T] **Rien de sensible chez un visiteur.** Ce qu'une app range dans les réglages d'un widget ou dans une table interne peut se
+    lire dans la session d'un visiteur (10.11). Une app qui publie n'y range que ce que le lien peut lire sans dommage : la
+    définition de **son seul formulaire**, jamais celle des autres ni les clés de leurs liens.

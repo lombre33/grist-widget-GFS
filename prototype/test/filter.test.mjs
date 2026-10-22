@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { checkBatch, readRefusal, writeRefusal, visibleTables, cleanApplyOptions, realNameRefusal, tokenOptions, classify,
   lowestAccess, batchTouchesTables } from '../js/filter.js';
-import { policyOf, publipostage, automation } from './helpers.mjs';
+import { policyOf, publipostage, automation, form } from './helpers.mjs';
 
 const pp = policyOf(publipostage());
 const au = policyOf(automation());
@@ -143,6 +143,23 @@ test('contrats 3.4 point 1 : le jeton est en lecture seule sauf déclaration con
   const rw = policyOf({ ...publipostage(), permissions: { ...publipostage().permissions, jeton: { lectureSeule: false, pourquoi: { fr: 'a', en: 'a' } } } });
   assert.deepEqual(tokenOptions(rw, { readOnly: false }), { readOnly: false, route: undefined });
   assert.deepEqual(tokenOptions(rw, {}), { readOnly: false, route: undefined });
+});
+
+// Form+ à `cc21a27` (22/10) : une image de la description d'une question peut venir d'une pièce jointe du document. Elle demande un jeton, et la liste des pièces jointes
+// (`_grist_Attachments`) pour les proposer. Le porteur a autorisé la lecture seule le 22/10 : sans la déclaration, le courtier refusait les deux.
+test('contrats 3.4 point 1 : Form+ télécharge une pièce jointe par un jeton en lecture seule et lit _grist_Attachments sans jamais l\'écrire', () => {
+  const fp = policyOf(form());
+  assert.ok(fp.jeton, 'le jeton est déclaré');
+  assert.deepEqual(tokenOptions(fp, { readOnly: false, route: 'attachments' }), { readOnly: true, route: 'attachments' });
+  assert.equal(readRefusal(fp, '_grist_Attachments'), null);
+  assert.notEqual(writeRefusal(fp, '_grist_Attachments'), null);
+  refused(fp, [['AddRecord', '_grist_Attachments', null, { fileName: 'x.png' }]]);
+  refused(fp, [['RemoveRecord', '_grist_Attachments', 1]]);
+  const bare = { ...form(), permissions: { ...form().permissions, jeton: undefined } };
+  bare.permissions.gristInterne = bare.permissions.gristInterne.filter(entry => !entry.tables.includes('_grist_Attachments'));
+  const without = policyOf(bare);
+  assert.equal(without.jeton, null, 'sans la déclaration, getAccessToken est refusé par le courtier');
+  assert.notEqual(readRefusal(without, '_grist_Attachments'), null, 'sans la déclaration, la lecture de _grist_Attachments est refusée');
 });
 
 test('contrats 3.1 : le niveau d\'une app est le plus bas entre son manifeste et celui accordé à GFS', () => {

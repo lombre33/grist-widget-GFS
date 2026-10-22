@@ -126,6 +126,11 @@ test('contrats 2.4, 3.3 et 8 : le manifeste de Form+ range ses formulaires dans 
   assert.ok(internal.every(entry => !(entry.ecrit || []).includes('options')), 'la définition ne passe plus par les options de la section');
   assert.ok(internal.every(entry => !entry.tables.includes('_grist_Shares')), '_grist_Shares ne se lit jamais');
   assert.ok(m.permissions.structure.pourquoi.fr && m.permissions.structure.pourquoi.en, 'la structure se déclare, avec son pourquoi');
+  assert.equal(m.permissions.jeton.lectureSeule, true, 'cc21a27 : le jeton de Form+ ne sert qu\'à télécharger une pièce jointe, en lecture seule (accord du porteur, 22/10)');
+  assert.ok(m.permissions.jeton.pourquoi.fr && m.permissions.jeton.pourquoi.en, 'le jeton se déclare, avec son pourquoi');
+  const attachments = internal.find(entry => entry.tables.includes('_grist_Attachments'));
+  assert.ok(attachments && attachments.lit === true && attachments.ecrit === undefined && attachments.retire === undefined, '_grist_Attachments se lit, ne s\'écrit jamais');
+  assert.deepEqual(attachments.tables, ['_grist_Attachments']);
   const names = iconNames();
   for (const name of [m.icone, ...files.types.map(item => item.icone)]) assert.ok(names.includes(name), `l'icône ${name} est dans la feuille de symboles`);
 });

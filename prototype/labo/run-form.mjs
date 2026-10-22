@@ -2,6 +2,7 @@
 //   1. L'app s'ouvre dans le sous-cadre isolé, sans refus du courtier ni erreur de script.
 //   2. Ce que le courtier refuse aux deux écritures de définition d'avant la 007 (`options` de la section, lecture de `_grist_Shares`) et ce que devient `setOptions` : mesuré
 //      depuis le cadre de l'app, avec les appels de `39e0740` (Form+ ne les fait plus) ; rien n'est écrit (le courtier refuse avant Grist).
+//      Puis les pièces jointes (cc21a27) : la liste se lit, le jeton passe, l'écriture reste refusée (accord du porteur, 22/10).
 //   3. « Partir de zéro » passe avec le manifeste de Form+ (table, section de formulaire) ; Grist recharge alors le cadre de GFS, et le retrait du champ automatique est perdu.
 //   4. Enregistrer un formulaire par son lien (007 et 008). D'abord le formulaire natif sur la page du WIDGET (celui de « Partir de zéro », posé en 3) : l'accord de la personne, la table
 //      `FormPlus_Formulaires`, puis Grist reconstruit le cadre de GFS avant que la ligne soit écrite (la personne recommence : une copie de plus). Même geste sans GFS : `run-form-seul`.
@@ -83,6 +84,15 @@ check('l\'écriture de `options` d\'une section est refusée par le courtier (co
 check('la lecture de `_grist_Shares` est refusée (contrats 3.2, point 4)', shares.refused && /GFS_REFUSE|refus|_grist_Shares/i.test(shares.message), shares);
 check('le lot qui écrit `shareOptions` ET `options` est refusé en entier (contrats 3.3, point 1)', marker.refused, marker);
 check('`setOptions` de tout l\'objet ne dit rien et n\'écrit rien : aucune clé de Form+ n\'est déclarée', !setOptions.refused && (readBack.value === null || readBack.value === 'null'), { setOptions, readBack });
+// Les pièces jointes (Form+ à `cc21a27`, accord du porteur le 22/10) : l'app lit la liste (`_grist_Attachments`) et demande un jeton pour télécharger celle que la personne choisit.
+// grist-static ne délivre pas de jeton : le courtier doit seulement le laisser passer, l'erreur est celle de Grist. L'écriture de la table reste refusée.
+const attachments = await attempt('pièces jointes', 'async () => { const table = await grist.docApi.fetchTable(\'_grist_Attachments\'); return { colonnes: Object.keys(table).includes(\'fileName\'), lignes: table.id.length }; }');
+const token = await attempt('jeton', 'async () => grist.docApi.getAccessToken({ readOnly: false })');
+const attachmentWrite = await attempt('écriture des pièces jointes', 'async () => grist.docApi.applyUserActions([[\'AddRecord\', \'_grist_Attachments\', null, { fileName: \'x.png\' }]])');
+for (const item of [attachments, token, attachmentWrite]) say(`${item.name} :`, JSON.stringify(item));
+check('la liste des pièces jointes (`_grist_Attachments`) se lit depuis l\'app : le manifeste la déclare', !attachments.refused && /"colonnes":true/.test(attachments.value), attachments);
+check('le jeton est relayé à Grist, non refusé par le courtier (grist-static n\'en délivre pas : l\'erreur est celle de Grist)', !token.refused || !/GFS_REFUSE|permissions\.jeton|déclaré dans le manifeste/.test(token.message), token);
+check('l\'écriture de `_grist_Attachments` est refusée par le courtier (colonnes non déclarées)', attachmentWrite.refused && /GFS_REFUSE|déclarées|_grist_Attachments/.test(attachmentWrite.message), attachmentWrite);
 const afterRefusals = await documentState(lab.frame);
 check('rien n\'a été écrit dans les sections du document par ces essais', JSON.stringify(afterRefusals.sections) === JSON.stringify(before.sections), 'les lignes de _grist_Views_section sont les mêmes');
 refusals.length = 0;

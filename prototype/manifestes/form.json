@@ -28,6 +28,13 @@
         "en": "Internal mode places a probe table whose column reads user.Email through a formula, to know the address of the person filling in the form."
       }
     },
+    "jeton": {
+      "lectureSeule": true,
+      "pourquoi": {
+        "fr": "Télécharger la pièce jointe que la personne choisit, pour la mettre en image dans la description d'une question.",
+        "en": "Download the attachment the person picks, to place it as an image in a question's description."
+      }
+    },
     "gristInterne": [
       {
         "tables": ["_grist_Tables", "_grist_Pages"],
@@ -63,6 +70,14 @@
         "pourquoi": {
           "fr": "Ajouter, retirer et régler les champs du formulaire natif de Grist.",
           "en": "Add, remove and set the fields of Grist's native form."
+        }
+      },
+      {
+        "tables": ["_grist_Attachments"],
+        "lit": true,
+        "pourquoi": {
+          "fr": "Connaître les pièces jointes du document, pour les proposer quand la personne choisit une image pour la description d'une question.",
+          "en": "Know the document's attachments, to offer them when the person picks an image for a question's description."
         }
       }
     ],

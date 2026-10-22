@@ -289,3 +289,201 @@ comme dans l'app ; ni esm.sh (injoignable depuis le cloud), ni la vraie page de 
   maximum de compression), donc la même empreinte et le même comportement dans le cadre isolé. Deux constructions de la même
   liste donnent les mêmes octets (testé). Les six paquets sont sous licence MIT ; l'outil en recopie les textes dans
   `LICENCES.txt`, à côté du fichier.
+
+## 10. Grist : les permissions (lu et mesuré les 21 et 22/10)
+
+Étude : le document « Permissions de Grist Factory : la stratégie » (Claude Doc, dans les fichiers du projet) ; ses preuves
+sont ici, avec le fichier et la ligne. **Lu** : le code de `grist-core`, branche principale, relu le 21/10 (les sources que
+grist-static 0.1.6 embarque) ; ce n'est pas forcément la version de l'instance du porteur. **Mesuré** : dans le labo « vrai
+Grist » (grist-static 0.1.6 : `ActiveDoc`, `GranularAccess` et `DocClients` réels), une personne à la fois par « Voir en tant
+que » (owner@, editor1@, editor2@, viewer@example.com) ; pour les rechargements, chaque message que le serveur enverrait est
+rejoué pour chacune de ces personnes avec une copie de la session. Les scripts, les patchs de grist-static et la sortie de
+chaque mesure sont dans les fichiers du projet (`gfs/etudes/permissions-2026-10-21/mesures/`, son `LISEZ-MOI.md` dit comment
+les rejouer) ; ils ne sont pas dans le dépôt. **Rapporté** : dit par un autre projet ou par le porteur, pas remesuré. Le labo n'a
+ni lien public, ni téléchargement, ni historique d'actions, ni les messages d'erreur de la page de Grist, et il n'est pas
+l'instance du porteur : les dix mesures de la fin sont à refaire chez lui.
+
+### 10.1 Où vivent les droits et les rôles
+
+- Lu : le rôle d'une personne sur le document n'est pas rangé dans le document ; Grist le tire de sa base d'accueil, comme le
+  plus fort entre le rôle donné sur le document et celui qui vient de l'espace de travail ou de l'organisation, plafonné par
+  le réglage d'héritage (`app/common/UserAPI.ts` 347–376 ; `app/server/lib/Authorizer.ts` 700–729).
+- Lu : les règles fines sont dans deux tables internes du document, `_grist_ACLResources` et `_grist_ACLRules` ; une règle
+  spéciale a sa ressource `*SPECIAL`, sauf la structure, que l'interface range sur la règle par défaut quand la case est
+  décochée (`app/server/lib/GranularAccess.ts` 77–81 et 244–245 ; `app/common/ACLRuleCollection.ts` 23 et 136–142). Ces deux
+  tables ne sont envoyées qu'aux propriétaires (`GranularAccess.ts` 1149–1153) : seul un propriétaire peut prouver ce qu'elles
+  disent.
+- Lu : personne ne range « qui est la personne » ; Grist le calcule à chaque demande (rôle, identifiant, adresse, nom,
+  paramètres du lien, connecté ou non). Un visiteur anonyme (lien public, formulaire publié) n'a pas d'adresse vide : il a
+  l'adresse nominale `anon@getgrist.com`, et `user.IsLoggedIn` est faux (`GranularAccess.ts` 360–371 et 399–414 ;
+  `sandbox/grist/user.py` 14–23 ; `UserAPI.ts` 47 ; `UsersManager.ts` 355–364).
+- Lu : le lien ouvert à tout le monde est un rôle donné à un utilisateur spécial (« anonyme » ou « tout le monde ») dans la
+  base d'accueil ; un formulaire publié est une ligne de la table interne `_grist_Shares`, que seuls les propriétaires reçoivent
+  (`UsersManager.ts` 48 ; `HomeDBManager.ts` 5049–5070 ; `GranularAccess.ts` 360–371 et 3349–3355).
+- Lu : l'API rend la liste des utilisateurs du document avec leur rôle ; pour un propriétaire seulement, elle ajoute le drapeau
+  « les éditeurs contournent les règles », qui n'existe que dans la branche principale, pas dans la version du labo
+  (`UserAPI.ts` 321–331 et 500).
+- Lu : l'adresse d'un widget et son niveau d'accès sont dans la colonne `options` de la section de page, sous la clé
+  `customView` (`app/server/lib/ActiveDoc.ts` 3396–3408 ; `app/client/components/CustomView.ts` 255–271).
+
+### 10.2 La structure est un réglage du document entier
+
+- Lu et mesuré : le droit de modifier la structure n'existe que sur la règle par défaut, celle de toutes les tables ; posé sur
+  une table ou une colonne, il est écarté sans erreur et l'éditeur supprime encore la table (`app/common/ACLPermissions.ts`
+  72–73 ; `ACLRuleCollection.ts` 814–817 ; labo, `diag-s.mjs`).
+- Lu : la case « Droits d'édition de la structure » est la règle « les non-propriétaires n'ont pas le droit de structure » sur
+  toutes les tables (`ACLRuleCollection.ts` 183–188). Quand un propriétaire active les Permissions avancées, Grist décoche la
+  case de lui-même et prévient (`app/client/aclui/AccessRules.ts` 701–720) ; cochée, il avertit qu'un éditeur peut contourner
+  les règles de table et de colonne et lire et changer toutes les données (`AccessRules.ts` 1516–1521). Rapporté par le
+  porteur, le 21/10 à 18 h 15 : la case existe sur son instance et se décoche sans souci.
+- Mesuré, structure ouverte, des règles de lignes en place : un éditeur change l'adresse du widget, enregistre un réglage de vue,
+  supprime une section, une colonne ou une table, pose une colonne-formule, et cette formule lit tous les modèles malgré les
+  règles de lignes qui les cachent. Une colonne-formule posée avant la fermeture continue de tout lire.
+- Mesuré, structure fermée : ces actions sont refusées (« Blocked by table structure access rules ») ; les lignes restent
+  écrivables, les responsables d'espace continuent d'administrer leur espace.
+- Lu : toute action sur une table interne demande la permission de structure ; le refus porte la note de la règle
+  (`GranularAccess.ts` 2786–2813, 3073–3101 et 3097–3102).
+
+### 10.3 Ce que coûte la première règle
+
+- Lu : dès qu'une règle existe, quelle qu'elle soit, l'import, l'ajout de vue et les colonnes cachées sont refusés aux
+  non-propriétaires (`GranularAccess.ts` 108–135, 1080–1083 et 1490–1512 ; `ACLRuleCollection.ts` 290–293 et 401). Mesuré :
+  l'import est refusé aux éditeurs (« need uncomplicated access ») ; ajouter une page par l'interface, une table ou un tableau de
+  synthèse passe sans la structure fermée et s'arrête avec elle.
+- Lu : le téléchargement et la copie du document entier sont refusés aux non-propriétaires dès qu'une règle existe, sauf droit
+  spécial (`GranularAccess.ts` 1155–1163 ; `ACLRuleCollection.ts` 71–112 et 154–189).
+
+### 10.4 Écrire les règles depuis un widget
+
+- Mesuré (21/10, `mesure-acl.mjs`) : un widget en accès complet, ouvert par un propriétaire, pose les règles en **une seule**
+  `applyUserActions` : `AddRecord` dans `_grist_ACLResources` et `BulkAddRecord` dans `_grist_ACLRules`, avec des identifiants et
+  des `rulePos` explicites ; tout ou rien. Un non-propriétaire reçoit « Only owners can modify access rules ».
+- Mesuré (21/10) : une règle sur une table qui n'existe pas est refusée (« Invalid tables in rules »).
+- Lu et mesuré : le moteur analyse lui-même la formule écrite dans `aclFormula` (`aclFormulaParsed` se remplit : toutes les règles
+  posées par les mesures sont « analysées »). Lu : Grist refuse une règle dont la formule n'est pas analysée, et une règle sans
+  condition qui n'est pas la dernière de sa ressource (`ACLRuleCollection.ts` 809 et 811). L'ordre entre ressources ne compte
+  pas : les règles d'une colonne passent avant celles de sa table, puis la règle par défaut du document (`PermissionInfo.ts`
+  60–65 et 74–99).
+- Mesuré : un propriétaire est soumis aux règles comme les autres ; sans sa règle en premier, sur une table qui n'a qu'un refus
+  par défaut, il ne lit plus rien. Ce que le labo montrait d'abord (une session « système » qui ignore les règles) était son
+  artefact.
+- Mesuré : une ligne cachée n'arrive pas du tout ; un modèle de propriétaire ne se modifie ni ne se supprime ; on ne crée pas
+  de ligne au nom d'un autre ; une colonne protégée n'arrive pas ; les refus s'écrivent « Blocked by row create|update|delete
+  access rules ». Les règles ne suivent pas une référence (`rec.Modele.Visibilite` ne correspond à rien) : une colonne-aide qui
+  recopie l'étiquette marche et suit les changements.
+- Lu : une règle d'attribut (une table cherchée par l'adresse de la personne) a sa forme et ses contraintes
+  (`ACLRuleCollection.ts` 349–360, 507–520 et 763–835). Mesuré : une table d'équipes et une règle d'attribut marchent, mais la
+  table devient un privilège (un éditeur s'y ajoute) : les espaces la remplacent.
+
+### 10.5 Le responsable d'espace et les adresses
+
+- Mesuré (21/10, `mesure-espaces*.mjs`, avec deux éditeurs, un lecteur et un propriétaire) : un responsable ajoute et retire
+  des membres de son espace, et l'effet se voit à la lecture suivante de la personne concernée ; il crée, modifie et supprime ce
+  qui est dans son espace ; un membre crée à son nom ; un non-membre ne crée rien dans l'espace ; personne ne déplace un contenu
+  vers un espace qui n'est pas le sien (un premier jeu de règles le laissait faire ; resserré, puis remesuré). Il ne nomme aucun
+  responsable et ne renomme, ne crée ni ne supprime aucun espace (« Blocked by … »). Avec la structure fermée pour tout le
+  document, les mêmes essais donnent les mêmes résultats.
+- Mesuré : un lecteur nommé responsable lit ce que les règles lui ouvrent et n'écrit rien (« Only owners or editors can modify
+  documents ») : le rôle de base plafonne les règles. Un responsable retiré de la liste perd ses pouvoirs à son action suivante
+  (« Blocked by row update access rules ») et lit encore ce que l'espace ouvre à ses membres, s'il en est resté un.
+- Lu : `user.Email` est l'adresse affichée quand la demande vient de l'interface, et l'adresse normalisée en minuscules quand
+  elle vient de l'API ; Grist n'a corrigé l'écart que pour ses propriétés d'utilisateur, dont la comparaison ignore la casse
+  (`Authorizer.ts` 163–171 ; `GranularAccess.ts` 2177–2194). Une condition de règle n'accepte que `lower()` et `upper()` comme
+  appels de méthode (`app/common/PredicateFormula.ts` 182–188 et 304–308).
+- Mesuré (21/10, `mesure-casse.mjs`, jeux `naif` et `robuste`) : avec un responsable tapé « Editor1@Example.COM » et un membre
+  tapé « EDITOR2@example.com », des règles qui comparent l'adresse telle quelle retirent au responsable la lecture de son
+  espace, de sa ligne de rangement et toute administration, et au membre la lecture des modèles de son espace ; avec des
+  colonnes-aide en minuscules et `lower()` des deux côtés, les mêmes essais passent tous. Une personne nommée dont l'adresse est
+  tapée en majuscules lit le modèle qui la nomme, un autre éditeur non. Le labo passe par l'adresse affichée : l'écart de l'API
+  n'y est pas reproductible.
+- Mesuré (22/10, `mesure-casse-gfs.mjs`) : la même suite avec les noms définitifs du contrat (la table des espaces s'appelle
+  `GFS_Espaces` et se cherche par une clé, `lookupOne(Cle=$Espace)` ; les colonnes d'aide des contenus s'appellent `GFS_Resp`,
+  `GFS_Memb` et `GFS_PersonnesL`) donne exactement les mêmes résultats que le jeu sans préfixe.
+- Mesuré (22/10, `mesure-aide-absente.mjs`) : une colonne d'aide dont la formule nomme `GFS_Espaces`, créée **avant** que la
+  table existe, vaut `NameError` pour les lignes existantes ; quand la table naît, puis reçoit un espace, ces lignes ne se
+  recalculent pas (même avec une formule qui attrape `NameError`) ; une ligne ajoutée ensuite se calcule ; réécrire la formule
+  avec un autre texte recalcule la colonne (le même texte, non). D'où l'ordre : la table d'abord, les colonnes ensuite.
+
+### 10.6 Ce qui fait recharger la page de Grist (22/10)
+
+- Lu : toute action sur `_grist_ACLRules` ou `_grist_ACLResources` renvoie à chaque personne connectée l'ordre de recharger le
+  document, celle qui pose comprise ; le code note qu'il pourrait l'éviter dans bien des cas, sans l'avoir fait. La page rouvre
+  alors le document en cours : les widgets repartent de zéro (`GranularAccess.ts` 332–333 et 745–750 ; `DocClients.ts`,
+  `_prepareMessage` ; `App.ts`, écoute de `docShutdown`). Mesuré (`mesure-rechargement.mjs`, `patch-observe.mjs`) :
+  poser des règles, en poser une qui ne change rien, poser la règle de la case de structure : le propriétaire, les deux
+  éditeurs et le lecteur observés reçoivent tous l'ordre de recharger.
+- Mesuré : ajouter ou retirer un membre, nommer ou retirer un responsable, changer la visibilité d'un modèle, le déplacer vers un
+  autre espace, créer un modèle ou un espace : personne ne reçoit l'ordre de recharger ; la personne concernée reçoit l'ajout ou
+  le retrait des lignes en direct. Ajouter une colonne ou une table, ou renommer une colonne que les règles lisent (Grist
+  réécrit alors les règles lui-même) : pas de rechargement non plus. Lu : quand une ligne devient lisible ou cesse de l'être
+  pour une personne, Grist remplace la modification par un ajout ou un retrait de la ligne (`GranularAccess.ts` 1742–1871).
+- Lu et mesuré : une table déclarée « attribut de personne » recharge la page de la personne dont la ligne trouvée change ou
+  disparaît, elle seule ; si elle n'avait pas de ligne et en reçoit une, rien ne se passe et aucune ligne ne lui est envoyée
+  (elle ne voit le nouvel accès qu'au prochain chargement) ; la recherche par adresse ignore la casse (`GranularAccess.ts`
+  421–452, 709–721 et 2134–2168).
+- Lu, non mesuré : quand un formulaire est publié et que des règles existent, tout changement des tables internes fait recharger
+  les visiteurs du formulaire (`GranularAccess.ts` 616–652 et 753–755).
+
+### 10.7 La lecture ne cite que `rec` (22/10)
+
+- Lu : si Grist n'arrive pas à filtrer une diffusion pour une personne, il lui envoie une erreur à la place des lignes ; sa page
+  affiche l'erreur et n'applique pas les actions du lot (`GranularAccess.ts` 2031–2046 ; `DocClients.ts` ; `GristDoc.ts`,
+  `_onDocUserAction`). Pour accepter une création, `newRec` est la ligne à la fin du lot, formules comprises ; pour la diffuser,
+  Grist évalue la lecture pas à pas, sans `newRec`, avant que les formules aient tourné (`GranularAccess.ts` 1894–1925,
+  2046–2060 et 2313–2370).
+- Lu : pour une création, Grist fait de `rec` la ligne créée, et pour une suppression de `newRec` la ligne supprimée, « pour la
+  commodité de qui écrit les règles » (`GranularAccess.ts` 1959–1966) : une règle de création ou de suppression peut donc ne citer
+  que `rec`, comme la règle de la ligne-sonde (10.8).
+- Mesuré (`mesure-rechargement.mjs`, `aides` puis `aides split` ; `mesure-casse.mjs` avec `SPLIT=1`) : avec une règle de lecture
+  écrite avec `newRec`, le responsable ou l'auteur qui crée un modèle reçoit « Unexpected row removal » à la place de sa ligne ;
+  avec la lecture écrite avec `rec` seul et la création, la modification et la suppression écrites avec `newRec`, il la reçoit,
+  et la suite de mesures des droits d'écriture (adresses en majuscules, responsable retiré, lecteur nommé) donne les mêmes
+  résultats. **Une règle qui donne la lecture ne cite que `rec`.**
+
+### 10.8 La sonde de l'adresse sous « Partagé » (22/10)
+
+La sonde de GFS (contrats 6.4, point 9) ajoute une ligne `Utilisateur = '@sonde'` dont la colonne `Adresse`, une formule
+déclenchée (`user.Email`), reçoit l'adresse de la personne ; elle la relit puis retire la ligne. Mesuré (`mesure-sonde.mjs`,
+quatre jeux de règles sur le même rangement, trois éditeurs et un lecteur observés, dont ce que le serveur enverrait à chacun) :
+
+- **Avec les règles « Partagé » de l'annexe seules** (propriétaires, ligne `@document` en lecture, ses propres lignes), un éditeur
+  ne peut pas ajouter la ligne-sonde : « Blocked by row create access rules ». Il ne connaît plus son adresse, donc n'écrit plus
+  aucune ligne de rangement : le niveau cassait la sonde pour tous les non-propriétaires.
+- **Une règle « la ligne `@sonde` : création, lecture, suppression pour tous »** la rétablit, mais l'adresse de l'éditeur est
+  envoyée en direct à toutes les personnes connectées (la ligne arrive chez l'autre éditeur et chez le lecteur), une ligne
+  forgée avec l'adresse d'un autre est acceptée et lisible de tous, et n'importe qui retire la ligne d'un autre.
+- **Deux règles (création et suppression pour tous, lecture seulement si `rec.Adresse` est l'adresse de la personne)** : l'adresse
+  reste chez son propriétaire, mais une ligne forgée au nom d'un autre est encore acceptée et n'importe qui retire la ligne d'un
+  autre.
+- **Une seule règle** `rec.Utilisateur == "@sonde" and user.Email and rec.Adresse and rec.Adresse.lower() == user.Email.lower()`
+  en création, lecture et suppression : l'éditeur ajoute sa ligne, la lit avec son adresse (`editor1@example.com`) puis la retire ;
+  les autres personnes ne reçoivent rien ; une ligne forgée avec l'adresse du propriétaire est refusée (« Blocked by row create
+  access rules ») ; l'éditeur qui la met à sa propre adresse est accepté ; un autre éditeur ne peut pas la retirer. Un lecteur
+  reste refusé (« Only owners or editors can modify documents »), comme sans règle. La valeur de `Adresse` fournie à l'ajout est
+  gardée telle quelle (la formule déclenchée ne tourne qu'à défaut) : c'est la règle qui oblige cette valeur à être l'adresse de
+  la personne.
+- Pour l'éditeur qui crée la ligne, la diffusion arrive en deux temps que Grist rassemble (la ligne d'abord illisible, puis lisible
+  une fois `Adresse` calculée : `BulkAddRecord` avec la colonne), sans l'erreur « Unexpected row removal » de 10.7.
+
+### 10.9 Les tables des apps et le reste
+
+- Mesuré : sans règle sur les tables dérivées (versions, commentaires, écriture en direct), le texte d'un modèle réservé se lit
+  dans les versions ; avec des colonnes-formules qui recopient l'étiquette dans chaque table dérivée, les mêmes règles s'y
+  appliquent et la visibilité suit quand le propriétaire la change. La colonne du mot de passe PDF n'arrive pas aux
+  non-propriétaires quand une règle de colonne la protège. Table d'Automation+ : les workflows s'écrivent par les propriétaires,
+  le journal et le verrou par tous.
+- Rapporté (Form+, 16/09) : sur l'instance de la DINUM, une session de partage a pu écrire les réglages d'un widget ; les tables
+  internes échappent au refus par défaut d'un partage. À remesurer chez le porteur avec la structure fermée.
+- Rapporté (audit de Publipostage+, 4/10) : un modèle écrit par un éditeur est du contenu que l'app affiche chez les autres ;
+  liste blanche de balises, adresses de script retirées, politique de sécurité du contenu.
+
+### 10.10 À mesurer sur le Grist du porteur
+
+Dix points, avec deux ou trois comptes (un propriétaire, des éditeurs) : une session de lien public ou de formulaire publié,
+structure fermée ; le texte qu'un éditeur voit quand Grist refuse d'enregistrer un réglage de vue ; la note d'une règle dans le
+refus de la page de Grist ; les rechargements (une règle posée recharge la page de l'autre compte, un membre ajouté par un
+responsable ne recharge rien et fait apparaître les modèles chez la personne ; un widget en accès complet ouvert par un
+propriétaire écrit-il les règles ?) ; qui est vraiment propriétaire, héritage de l'espace de travail compris ; le
+téléchargement et la copie refusés à un éditeur ; l'historique des actions ; la version de Grist et le libellé exact de la
+case ; le jeton du widget et la liste des utilisateurs du document ; l'adresse que voient les règles par l'interface et par
+l'API, et la ligne-sonde sous « Partagé » (10.8). Les contrats 11 (version 0) ne deviennent définitifs qu'après elles.

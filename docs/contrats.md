@@ -4,7 +4,7 @@ Version 0 du 14 octobre 2026. Étape 1 du plan (cahier, section 10) : aucun code
 section 5 du cahier (`cahier-des-charges-gfs.md`) à partir des faits vérifiés (`faits-verifies.md`) et d'un relevé fait le
 14/10 dans le code de Grist (branche principale de `grist-core`) et dans quatre apps : Publipostage+ (`e4a239c`), Form+
 (`b073d03`), Automation+ (`ee8f0a9`) et Grist-BI (`c8c819f`). Il attend la relecture du porteur : sa réponse (go ou
-changements) ferme l'étape 1.
+changements) ferme l'étape 1. La section 11, les permissions des personnes, s'y est ajoutée le 22/10 (version 0).
 
 Il sert à deux équipes : le projet qui code GFS (courtier, explorateur, kit) et le projet de chaque app, qui y trouve ce que
 son manifeste doit dire, ce que GFS lui garantit et ce qu'il lui refuse.
@@ -51,6 +51,10 @@ connaît pas.
    (section 7.4) ; l'installation s'enregistre tout de suite, sans « Enregistrer ».
 7. **Ce qu'un filtre de tables ne peut pas garantir** est écrit en toutes lettres (section 3.7).
 8. **À mesurer à l'étape 2** : liste en section 9.
+9. **Les permissions des personnes** (section 11, version 0 du 22/10) : seul Grist arrête une personne, par les règles d'accès
+   qu'un propriétaire pose ; deux zones (les tables de données restent à Grist, celles de GFS et des apps sont encadrées) ; trois
+   niveaux (Ouvert, Partagé, Encadré) ; un responsable d'espace entre le propriétaire et l'éditeur ; chaque app déclare la
+   classe de ses tables (`classes`, 11.2). Rien n'est codé ; la structure du document reste une carte ouverte du porteur.
 
 ## Ce qui change par rapport au brouillon du cahier (à relire en premier)
 
@@ -93,6 +97,9 @@ connaît pas.
     l'app (2.6, points 8 à 11 ; 5.2, points 4 et 5). Sans lui, le curseur des autres disparaît sans erreur.
 15. **La table d'un direct n'est pas prévenue par Grist** : seule la table de la section l'est. GFS ne promet pas de canal plus
     rapide que la table ; il fixe le rythme de la relecture et donne ce qu'elle coûte, mesuré (5.5).
+16. **Les permissions des personnes ont leur section** (11, 22/10) : le brouillon du cahier ne parlait que du filtre des apps (3).
+    Le manifeste gagne `classes` (2.2, 11.2), le contexte gagne `role` (5.2, point 8), et les règles de Grist que GFS posera sont
+    écrites (11.4). La sonde de l'adresse a sa règle sous « Partagé » (6.4, point 9), mesurée.
 
 ---
 
@@ -202,6 +209,7 @@ L'app (sous-cadre sans allow-same-origin)
 | `extensions` | liste | non | Les extensions de l'app (2.6). |
 | `dependances` | chaîne | non | Chemin de la liste des bibliothèques **natives** de l'app (`package.json`) : celles d'une extension n'y figurent pas (2.6, point 4). |
 | `actions` | objet | non | Ce que l'app accepte de la part des autres (2.7). |
+| `classes` | objet | non | La classe de chaque table de l'app pour les règles des personnes (11.2) ; une table non déclarée est du travail courant. |
 
 Un champ inconnu est ignoré (le contrat s'étend par ajout) ; un champ obligatoire absent ou mal formé invalide le manifeste.
 
@@ -366,7 +374,10 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
      qui écrit sans `lit: true` ou qui écrit plus d'une table, `lit`/`ecrit`/`gristInterne`/capacités avec un accès autre que
      `full`) ;
    - une extension dont le `dossier` sort de l'app, ou dont une entrée de `bibliotheques` n'a pas d'`id` ou n'a pas une
-     `version` exacte (un intervalle, `latest`).
+     `version` exacte (un intervalle, `latest`) ;
+   - dans `classes` (11.2) : une table hors du préfixe de l'app, une classe inconnue, un champ de la classe absent (`personne`
+     pour `personnel`, les quatre rôles de `etiquette` pour `reserve`, `de` et `lien` pour `derivee`), une table `derivee` dont
+     `de` n'est pas une table `reserve`, un `secrets` qui n'est pas une liste de noms de colonnes.
 
 ### 2.9 Exemple : Publipostage+
 
@@ -629,6 +640,8 @@ mesurés, pas une promesse (cahier 1.3, 8).
 6. [T] **Lire une table interne, c'est lire la structure de tout le document.** `_grist_Tables` et `_grist_Tables_column` donnent
    les noms, les colonnes, les types, les formules et les choix de toutes les tables, y compris celles que `lit` ne couvre
    pas ; `_grist_Views_section` et ses voisines, les pages et leurs filtres. `gristInterne` dit qui peut le lire, rien de plus.
+7. [T] **Le filtre n'arrête pas une personne.** Il borne le code d'une app ; ce qu'une personne lit et écrit, ce sont les règles
+   d'accès de Grist qui le décident (section 11), et un verrou d'interface n'en tient pas lieu.
 
 ---
 
@@ -824,6 +837,7 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 | `ouverture` | pourquoi et sur quoi l'app s'ouvre, ou `null` (5.4) | oui | `null` |
 | `stockage` | copie de l'espace de cette app, `{ clé: valeur }` (5.3) | oui, relue à chaque appel | contenu du navigateur |
 | `barre` | la barre de GFS qui recouvre le cadre de l'app, `{ bord, epaisseur, zone }`, ou `null` quand rien ne le recouvre (point 7) | oui, mesurée à chaque appel | `null` |
+| `role` | ce que GFS sait de la personne, `{ proprietaire, responsableDe }` (point 8) | oui, relu à chaque appel | `{ proprietaire: null, responsableDe: [] }` |
 
 1. [T] Les six paramètres de l'adresse (1.3) et le contexte disent la même chose : l'adresse existe pour le code des apps
    qui la lit déjà, le contexte pour le kit. Une seule différence dans le temps : la langue de l'adresse est celle du cadre
@@ -946,6 +960,13 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    souris ; la barre, à gauche par défaut, recouvre le début de la bande des diapositives, ce que l'app écarte (consigne 025).
    **Non mesuré** : un second onglet de Grist (même mécanisme du navigateur que deux sections), Firefox, Safari, l'adaptation de
    Publipostage+ elle-même (elle n'a pas encore le code).
+8. [D] `role` (22/10, permissions, 11.6 point 4) : `{ "proprietaire": true | false | null, "responsableDe": [ "<clé d'espace>", … ] }`.
+   `proprietaire` vaut `true` ou `false` quand GFS l'a prouvé (la lecture des règles d'accès, que Grist ne rend qu'aux
+   propriétaires, ou la liste des utilisateurs du document : à mesurer, 11.8) et `null` sinon, ce qui est le cas de départ.
+   `responsableDe` liste les clés des espaces dont l'adresse de la personne est dans `Responsables` de `GFS_Espaces` (11.3) ;
+   vide sans adresse résolue, sans espace, ou pour une app seule. L'app s'en sert pour **griser, jamais pour décider** : elle ne
+   grise que si `proprietaire` est `false`, et c'est Grist qui accepte ou refuse. Le champ est relu à chaque appel `contexte`,
+   sans événement : seule une règle posée recharge la page (11.5, point 3), et qui voit quoi est une donnée.
 
 ### 5.3 Le stockage du navigateur
 
@@ -1124,8 +1145,8 @@ paquet de frappes, une par personne pour la présence) doit savoir quand cette t
 3. [T] Tolérer les colonnes inconnues ; ne jamais écrire une colonne absente : une seule `UpdateRecord` ou `AddRecord` sur une
    colonne inconnue annule tout le lot ; `AddColumn` sur un identifiant pris le renomme (`Replie2`).
 4. [T] Une table lue par `fetchTable` rend toutes ses colonnes, dont les colonnes d'aide que Grist range dans la table
-   (`gristHelper_…`) : les ignorer. Une colonne ajoutée par `AddColumn` est masquée dans la section : la lire avec
-   `includeColumns: 'normal'` (niveau `full`).
+   (`gristHelper_…`) : les ignorer, comme les colonnes `GFS_…` que GFS ajoute aux tables classées (11.2, point 5). Une colonne
+   ajoutée par `AddColumn` est masquée dans la section : la lire avec `includeColumns: 'normal'` (niveau `full`).
 
 ### 6.2 Créer une table
 
@@ -1145,7 +1166,8 @@ paquet de frappes, une par personne pour la présence) doit savoir quand cette t
    avoir vérifié que la colonne existe ; ni date ni auteur. Un nom qu'un autre fichier de la même table porte déjà (casse et
    espaces autour ignorés, la règle de Publipostage+) est refusé dans la fenêtre. Une app ne réécrit donc jamais un nom périmé :
    elle ne met le nom dans la ligne qu'elle écrit qu'à la création du fichier et quand la personne l'a changé chez elle (guide
-   des apps). Dupliquer et supprimer restent à l'app : l'explorateur les grise.
+   des apps). Dupliquer et supprimer restent à l'app : l'explorateur les grise. Une exception de plus est proposée, non tranchée :
+   les colonnes d'aide `GFS_…` des tables classées, additives (11.7, point 6).
 
 ### 6.4 `GFS_Rangement`, le rangement commun
 
@@ -1203,7 +1225,9 @@ rangée d'un fichier, selon ce qui vient d'abord.
    `Publipostage_PreferencesModeles.Utilisateur`. Une table d'avant sans `Adresse` reçoit la colonne (6.1, point 3 : additif).
    GFS écrit cette formule par sa propre connexion : la capacité `formules` (3.4) ne concerne que les apps. [M] **Mesuré le
    22/10** dans le vrai moteur de Grist (grist-static, Pyodide ; `prototype/labo/run-identite.mjs`, 41 vérifications, fr/clair
-   et en/sombre) : voir `faits-verifies.md`, section 3.
+   et en/sombre) : voir `faits-verifies.md`, section 3. Sous le niveau « Partagé » (11.4, point 2), une règle laisse chaque
+   personne ajouter, lire et retirer sa seule ligne-sonde ; sans elle, la sonde est refusée à tout non-propriétaire. [M] Mesuré
+   le 22/10 : faits vérifiés, 10.8.
 
 ### 6.5 Préserver l'inconnu
 
@@ -1309,6 +1333,9 @@ Relevé du 14/10, pour que le projet de chaque app relise ce qui le touche (cahi
 | Automation+ | Clé `workflow` déclarée en attendant que le graphe passe dans une table `Automation_…` ; lit et écrit des tables de la personne (`*`) ; section à part dans GFS (cahier, question 4) |
 | Grist-BI | Déclarer la lecture de `_grist_Tables` et `_grist_Tables_column` ; préfixe `BI_` (`BI_Dashboard_Config`, `BI_StressTest`, `BI_Dashboard_Comments`) ; ses `RenameTable` visent des tables qu'il possède déjà, ou que `ecrit` couvre |
 
+Depuis le 22/10, chaque app déclare aussi la classe de ses tables (`classes`, 11.2) et suit 11.6, au lot de l'étape 5 et après
+les mesures de 11.8 ; la ligne de chaque app est en 11.6, point 8.
+
 ---
 
 ## 9. À mesurer au prototype (étape 2)
@@ -1350,11 +1377,346 @@ document en petits commits, les points 8 (cadre qui navigue, politique imposable
 - **Étape 3 (kit)** : où vit la table-sonde de l'identité quand le kit la partage ; liste des icônes (`icone`) ; le texte commun
   du grisé et la fenêtre d'installation.
 - **Étape 5 (apps)** : où vivent les instantanés `pp_schema_…` (le quota de 1 Mo de 5.3 est fixé) ; le contenu de chaque `gfs.json` ; la sortie de `_grist_*` pour
-  Form+.
+  Form+ ; les classes de tables et les colonnes de l'étiquette (11.2, 11.6), après les mesures de 11.8.
 - **Étape 6 (GFS v0)** : le rangement propre à une app dans l'explorateur ; « Fermer quand même » ; « Recharger » ; la
-  fenêtre d'installation qui montre `pourquoi`.
-- **Étape 7 (extensions et nouvelles apps)** : le déroulement d'« insérer » (deux sous-cadres), la taille du rendu ; le
+  fenêtre d'installation qui montre `pourquoi` ; le panneau « Permissions » en lecture, le pied honnête et `contexte.role`
+  (11.4, point 7 ; 5.2, point 8).
+- **Étape 7 (extensions et nouvelles apps)** : poser et retirer un niveau de règles, les espaces et leurs responsables, le
+  contrôle d'ensemble des règles (11.5, 11.7) ; le déroulement d'« insérer » (deux sous-cadres), la taille du rendu ; le
   mappage de colonnes pour une app qui en demanderait ; qui fait suivre un renommage de colonne aux modèles d'un type
   d'extension (le socle ne réécrit jamais un type inconnu, guide 2.2 ; relire le schéma ne montre pas le renommage, dont les
   anciens noms ne sont que dans l'instantané de l'app, `pp_schema_…`), à fixer avec la première extension de modèle.
 - **Une fois GFS v0 publié** : le numéro de contrat passe à 1, et le tableau des changements du contrat s'ouvre dans ce document.
+
+---
+
+## 11. Les permissions des personnes (version 0 du 22/10)
+
+Les sections 2 et 3 règlent ce qu'une **app** peut faire par le courtier. Celle-ci règle ce qu'une **personne** peut faire du
+document : qui lit quoi, qui écrit quoi, qui administre un espace. Elle est écrite sur le go du porteur du 22/10, après ses
+réponses du 21/10 (deux zones, un responsable d'espace). Rien n'est codé : GFS v0 (étape 6) lit les règles et les montre,
+l'étape 7 les pose. L'étude, avec ses mesures, est le document « Permissions de Grist Factory : la stratégie » (fichiers du
+projet) ; les preuves, avec le fichier et la ligne du code de Grist, sont dans `faits-verifies.md`, section 10.
+
+Cette section est en **version 0** : elle ne devient définitive qu'après les dix mesures sur le Grist du porteur (11.8), qui
+peuvent changer une règle de 11.4. Une carte reste ouverte, celle de la structure du document (11.7, point 1) : rien ici n'en
+dépend, sauf un mot du pied de GFS.
+
+### 11.1 Les principes
+
+1. [T] **Deux frontières, une seule arrête une personne.** Une personne passe par les règles d'accès de Grist. Le code d'une app
+   passe d'abord par le courtier (section 3), puis par les mêmes règles, avec les droits de la personne qui l'a ouverte. Seule
+   la première arrête une personne, et seul Grist la tient : un verrou d'interface n'est jamais une protection (le porteur,
+   21/10). Le droit réel est le plus petit des deux : un lecteur nommé responsable d'espace lit son espace et n'écrit rien (« Only
+   owners or editors can modify documents », mesuré).
+2. [T] **Deux zones** (le porteur, 21/10). *Les tables de données* (ce que la personne a créé ou importé, le travail courant des
+   apps compris) restent à Grist : GFS n'y pose aucune règle, n'y guide rien, n'y montre rien. *Les tables de GFS et des apps*
+   (rangement, contenus réservés et leurs versions, espaces, workflows, journaux) sont encadrées par des règles qu'un propriétaire
+   pose, sur ces tables seulement. Une table que son app ne déclare pas (11.2) est du travail courant : zone de données.
+3. [T] **Une seule source par fait.** GFS ne recopie jamais ce que Grist sait : il n'y a pas de table des personnes avec leur
+   rôle. Le rôle sur le document vient de la base d'accueil de Grist ; les règles, de `_grist_ACLRules` et `_grist_ACLResources` ;
+   l'étiquette d'un contenu, de colonnes de sa table (11.2) ; les espaces, d'une table de GFS (11.3). L'identité d'une personne
+   n'est rangée nulle part : Grist la calcule à chaque demande (faits vérifiés, 10.1).
+4. [T] **Trois niveaux de règles sur les tables de GFS et des apps**, qu'un propriétaire pose en un clic et retire en un clic :
+   *Ouvert* (aucune règle), *Partagé* (chacun garde ses affaires : le rangement et les tables de classe `personnel`), *Encadré*
+   (en plus : contenus réservés, espaces et workflows selon les rôles). Le niveau posé se lit dans les règles elles-mêmes, par
+   leur note (« GFS : Encadré »), non dans une table à part : il ne peut pas se désynchroniser. **La structure fermée n'est pas
+   un niveau** : c'est la case « Droits d'édition de la structure » de Grist, qui vaut pour tout le document (11.7).
+5. [T] **Rien n'est posé sans le geste d'un propriétaire**, ni à l'ouverture d'un document ni par une app. GFS ne retire que ses
+   propres règles, reconnues à leur note ; la règle d'un autre auteur ne part que par une case « Retirer » cochée.
+6. [T] **La règle des propriétaires passe toujours en premier**, sans option : un propriétaire est soumis aux règles comme les
+   autres, et sans elle il s'enferme dehors (mesuré).
+7. [T] **L'adresse e-mail est la clé de toute personne**, comparée en minuscules des deux côtés (11.4, point 1). Limite : une
+   personne qui change d'adresse perd ses affaires, ses contenus d'auteur et ses espaces tant qu'un propriétaire n'a pas mis les
+   listes à jour.
+8. [T] **Ce qu'aucune règle ne garantit.** Qui peut utiliser un contenu peut le lire, le copier et le capturer : « utiliser sans
+   voir » n'existe pas dans un widget (comme 3.7 pour les apps). Un propriétaire hérité de l'espace de travail de Grist voit
+   tout. Un contenu réservé n'est *secret* que si la structure est fermée ; sinon il est *discret* : une ligne cachée n'arrive pas
+   chez la personne, mais un éditeur qui pose une colonne-formule la lit encore (mesuré, 10.2).
+
+### 11.2 Les classes de tables : `classes` dans `gfs.json`
+
+Un champ facultatif du manifeste (2.2) : en ajouter un ne change pas le numéro de contrat. Il dit à GFS de quoi est faite
+chaque table de l'app, pour que les règles des personnes (11.4) la couvrent. **Il ne donne aucun droit à l'app** : ce que l'app
+peut lire et écrire reste `permissions` (section 3), et le courtier ne lit pas `classes`.
+
+| Classe | Une table qui… | Champs de l'entrée | Règles posées |
+|---|---|---|---|
+| `travail` | contient le travail courant de l'app (courriers produits, réponses d'un formulaire) ; **c'est la classe de toute table non déclarée** | aucun | aucune, jamais |
+| `personnel` | a une ligne par personne (préférences, dossiers, favoris) | `personne` : la colonne qui porte l'adresse | Partagé |
+| `reserve` | contient des contenus dont une étiquette dit qui peut les voir | `etiquette` : les colonnes `visibilite`, `personnes`, `auteur`, `espace` | Encadré |
+| `derivee` | dépend d'une table `reserve` et en suit l'étiquette (versions, commentaires, écriture en direct) | `de` : la table `reserve` ; `lien` : sa colonne de référence vers elle | Encadré |
+| `proprietaires` | ne s'écrit que par les propriétaires, tout le monde la lit (workflows) | `lignes` : `{ colonne, valeur }`, facultatif (sans lui, toute la table) | Encadré |
+
+Toute entrée sauf `travail` peut porter `secrets` : la liste des colonnes qu'un non-propriétaire ne lit ni ne modifie (11.6,
+point 7). Les noms de colonnes sont ceux de l'app ; leurs rôles sont ceux du contrat.
+
+```json
+{
+  "classes": {
+    "Publipostage_Modeles": {
+      "classe": "reserve",
+      "etiquette": { "visibilite": "Visibilite", "personnes": "Personnes", "auteur": "Auteur", "espace": "Espace" },
+      "secrets": ["MotDePassePdf"]
+    },
+    "Publipostage_PreferencesModeles": { "classe": "personnel", "personne": "Utilisateur" },
+    "Automation": { "classe": "proprietaires", "lignes": { "colonne": "Type", "valeur": "Workflow" } }
+  }
+}
+```
+
+1. [D] **Forme d'exemple, noms à fixer au lot de l'étape 5** : aucune app ne l'écrit avant les mesures de 11.8, ni n'ajoute une
+   colonne avant la consigne qui la nomme (11.6, point 6).
+2. [T] Une app ne classe que les tables de son préfixe (2.3) : jamais une table d'une autre app, jamais une table de la personne
+   (la zone de données n'est pas à l'app).
+3. [D] Les valeurs de `visibilite` : `tous`, `espace` (les membres de l'espace que dit `espace`), `nommees` (les adresses de
+   `personnes`) ; toute autre valeur, vide comprise, veut dire *privé* : l'auteur, le responsable de l'espace s'il y en a un, et
+   les propriétaires. Les contenus d'avant l'activation reçoivent `tous` : rien ne disparaît par surprise, le propriétaire réserve
+   ensuite un contenu à la fois. (Le document de stratégie dit « propriétaires seulement » : l'auteur garde la lecture de son
+   propre contenu, 11.4, règle 4.) Une ligne à `personne` vide, dans une table `personnel`, n'est lue que par les propriétaires.
+4. [D] `auteur` est rempli à la création avec l'adresse de la personne, par une formule déclenchée `user.Email` ou par l'app avec
+   l'adresse que la sonde de l'identité lui a donnée. La règle de création refuse tout autre auteur que la personne, sauf pour le
+   responsable de l'espace, dans son espace (mesuré). La sonde d'une app (`Publipostage_UserProbe`) reste de classe `travail` :
+   aucune règle ne la touche.
+5. [D] `espace` porte la **clé** de l'espace (`Cle` de `GFS_Espaces`, 11.3), non son nom : renommer un espace ne réécrit alors
+   aucune table d'app (6.3, point 2). **Les colonnes d'aide sont à GFS**, pas à l'app : des colonnes à formule nommées
+   `GFS_Resp`, `GFS_Memb` et `GFS_PersonnesL` sur une table `reserve`, et `GFS_Visibilite`, `GFS_PersonnesL`, `GFS_Resp` et
+   `GFS_Memb` sur une table `derivee` (formules en 11.4, point 4). Elles ne se créent qu'une fois `GFS_Espaces` née, et GFS les
+   crée avec l'accord du propriétaire, quand il pose Encadré (11.5, point 4) ; l'exception à 6.3, point 2 est proposée, non
+   tranchée (11.7, point 6).
+
+### 11.3 Les espaces et le responsable d'espace
+
+Le porteur veut, entre le propriétaire et l'éditeur, un statut comme celui d'animateur de Résana : une personne qui n'a pas les
+grosses fonctions et administre un espace (21/10). Grist n'a que trois rôles : ce statut se construit avec des règles de lignes,
+donc c'est Grist qui l'impose, jamais l'interface.
+
+1. [T] **Un espace** est un dossier partagé de l'explorateur : une clé, un nom, un ou plusieurs responsables, des membres. Un
+   contenu est dans un espace ou dans aucun ; une personne peut être dans plusieurs espaces. Les espaces remplacent les équipes
+   de la première étude, dont la table devenait un privilège qu'un éditeur utilisait pour s'y ajouter (mesuré).
+2. [T] **Jusqu'où va le responsable** (le porteur, 21/10 : « Membres et contenu de son espace ») :
+
+   | Il peut… | Propriétaire | Responsable d'espace | Membre | Autre éditeur |
+   |---|---|---|---|---|
+   | Voir ce que l'espace réserve à ses membres | oui | oui | oui | non |
+   | Créer un contenu dans l'espace | oui | oui | oui, à son nom | non |
+   | Modifier ou supprimer le contenu d'un autre membre | oui | oui | non | non |
+   | Ajouter ou retirer des membres de l'espace | oui | oui | non | non |
+   | Sortir un contenu vers un espace qui n'est pas le sien | oui | non | non | non |
+   | Créer, renommer ou supprimer un espace, nommer un responsable | oui | non | non | non |
+   | Installer une app, poser ou retirer des règles, écrire un workflow, fermer la structure | oui | non | non | non |
+
+3. [D] **`GFS_Espaces`**, une table de GFS (le préfixe `GFS_` est à lui, 2.3), créée avec l'accord d'un propriétaire (6.2),
+   au plus tard quand il pose Encadré, même sans espace. Colonnes : `Cle` (texte court, jamais changé), `Nom`, `Responsables` et
+   `Membres` (des listes d'adresses, tapées comme on veut), `RespL` et `MembL` (formules : les mêmes adresses, nettoyées et en
+   minuscules). Une seule table pour tous les espaces, séparée du rangement (11.7, point 5).
+4. [T] **Seuls les propriétaires écrivent `Responsables`** : c'est le privilège du système, une personne qui s'y ajouterait
+   deviendrait responsable. Un responsable écrit `Membres` de son espace, rien d'autre.
+5. [T] **Qui voit quoi est une donnée, pas une règle.** Aucune règle ne nomme une personne ou un espace : elles lisent les
+   colonnes d'aide, qui suivent `GFS_Espaces`. Ajouter ou retirer un membre, nommer un responsable, changer la visibilité d'un
+   contenu, le déplacer, en créer un ne recharge aucune page ; la personne concernée voit les contenus apparaître ou disparaître
+   en direct (mesuré, 10.6). **`GFS_Espaces` n'est jamais déclarée « attribut de personne »** : c'est la seule façon de la
+   brancher qui recharge la page de la personne dont la ligne change, et elle ne lui montre pas un nouvel accès avant son prochain
+   chargement.
+6. [T] Un responsable ou un membre qui n'a pas ou plus accès au document : rien, Grist l'arrête avant les règles. Un responsable
+   retiré de la liste perd ses pouvoirs à son action suivante et reste membre s'il y est encore (mesuré).
+7. [D] L'écran « Espaces » est dans l'explorateur de GFS (étape 7) : un propriétaire crée un espace et nomme ses responsables ;
+   un responsable ajoute et retire les membres du sien. Les boutons qu'une personne ne peut pas utiliser sont grisés avec la
+   raison, jamais masqués.
+
+### 11.4 Les règles, niveau par niveau
+
+Les règles de GFS sont celles du labo (faits vérifiés, 10.4 à 10.8). « Reste » est la règle sans condition ; Grist exige qu'elle
+soit la dernière de sa ressource. Les droits s'écrivent comme Grist les range (`+CRUD`, `-R`, `-S`…). Dans les tableaux,
+`<visibilite>`, `<auteur>`, `<espace>` et `<personnes>` sont les colonnes que le manifeste nomme sous `etiquette` ; les colonnes
+`GFS_…` sont celles de 11.2, point 5.
+
+1. [T] **Écrire une règle.** (a) Toute règle qui compare une adresse commence par `user.Email and …`, qui écarte une adresse
+   absente. (b) L'adresse se compare en minuscules des deux côtés : `user.Email.lower()` contre une colonne d'aide en minuscules ;
+   `lower()` et `upper()` sont les deux seuls appels de méthode que Grist accepte dans une condition. Pourquoi : `user.Email` est
+   l'adresse affichée quand la demande vient de l'interface et l'adresse en minuscules quand elle vient de l'API, et une liste
+   tapée « Editor1@Example.COM » ôte tout à son responsable (mesuré, 10.5). (c) **Une règle qui donne la lecture ne cite que
+   `rec`** ; seules les règles de création, de modification et de suppression citent `newRec` (sans quoi Grist n'envoie pas à la
+   personne la ligne qu'elle vient de créer : « Unexpected row removal », mesuré, 10.7). Pour une création ou une suppression,
+   `rec` et `newRec` sont la même ligne, donc une règle qui ne cite que `rec` y suffit. (d) Aucune règle ne nomme une personne ou
+   un espace (11.3, point 5). (e) Aucune règle sur une table de données (11.1, point 2) ; aucun « attribut de personne ».
+2. [T] **Partagé** : le rangement de GFS (`GFS_Rangement`, 6.4) et toute table `personnel` (alors sans les règles 2 et 5, et avec
+   la colonne `personne` à la place de `Utilisateur`).
+
+   | # | Condition | Droits |
+   |---|---|---|
+   | 1 | `user.Access in [OWNER]` | `+CRUD` |
+   | 2 | `rec.Utilisateur == "@document"` | `+R` |
+   | 3 | `user.Email and rec.Utilisateur and rec.Utilisateur.lower() == user.Email.lower()` | `+R` |
+   | 4 | `user.Email and rec.Utilisateur and rec.Utilisateur.lower() == user.Email.lower() and newRec.Utilisateur.lower() == user.Email.lower()` | `+CUD` |
+   | 5 | `rec.Utilisateur == "@sonde" and user.Email and rec.Adresse and rec.Adresse.lower() == user.Email.lower()` | `+CRD` |
+   | 6 | reste | `-CRUD` |
+
+   La règle 5 est celle de **la ligne-sonde** (6.4, point 9). Sans elle, la sonde est refusée à tout éditeur : il ne connaît plus
+   son adresse et n'écrit plus aucune ligne de rangement. Avec une règle plus large, l'adresse de la personne partirait en direct
+   chez les autres, ou une ligne forgée au nom d'un autre serait acceptée. Avec celle-ci, l'adresse reste chez son propriétaire,
+   une ligne forgée est refusée et personne ne retire la ligne d'un autre. [M] Mesuré le 22/10 (faits vérifiés, 10.8). Une
+   personne dont l'adresse n'est pas résolue n'a pas de rangement sous Partagé ni Encadré (les lignes à `Utilisateur` vide
+   restent, mais seuls les propriétaires les voient) : l'explorateur le dit, l'app continue sans.
+3. [T] **Encadré** : tout Partagé, plus ce qui suit.
+
+   *Une table `reserve`* :
+
+   | # | Condition | Droits |
+   |---|---|---|
+   | 1 | `user.Access in [OWNER]` | `+CRUD` |
+   | 2 | `user.Email and user.Email.lower() in rec.GFS_Resp` | `+R` |
+   | 3 | `user.Email and user.Email.lower() in rec.GFS_Resp and user.Email.lower() in newRec.GFS_Resp` | `+CUD` |
+   | 4 | `user.Email and rec.<auteur> and rec.<auteur>.lower() == user.Email.lower() and (not rec.<espace> or user.Email.lower() in rec.GFS_Memb or user.Email.lower() in rec.GFS_Resp)` | `+R` |
+   | 5 | `user.Email and rec.<auteur> and rec.<auteur>.lower() == user.Email.lower() and newRec.<auteur>.lower() == user.Email.lower() and (not newRec.<espace> or user.Email.lower() in newRec.GFS_Memb or user.Email.lower() in newRec.GFS_Resp)` | `+CUD` |
+   | 6 | `rec.<visibilite> == "tous"` | `+R` |
+   | 7 | `user.Email and rec.<visibilite> == "espace" and user.Email.lower() in rec.GFS_Memb` | `+R` |
+   | 8 | `user.Email and rec.<visibilite> == "nommees" and rec.GFS_PersonnesL and user.Email.lower() in rec.GFS_PersonnesL` | `+R` |
+   | 9 | reste | `-CRUD` |
+
+   Chaque colonne de `secrets`, sur sa propre ressource : `user.Access != OWNER` → `-RU`.
+
+   *Une table `derivee`* : les règles 1 à 3 et 6 à 9 ci-dessus, sur ses colonnes d'aide (`GFS_Visibilite` à la place de
+   `<visibilite>`, `GFS_PersonnesL`, `GFS_Resp`, `GFS_Memb`) ; les droits d'écriture propres à l'app s'ajoutent avant le reste
+   (11.7, point 3).
+
+   *Une table `proprietaires`* : `user.Access in [OWNER]` → `+CRUD`, puis `rec.Type == "Workflow" or newRec.Type == "Workflow"`
+   (la condition de `lignes` ; la règle « reste » sans `lignes`) → `-CUD`. Pas de règle de fin : tous lisent, et le reste de la
+   table (le journal, le verrou d'exécution) reste ouvert à tous (mesuré avec Automation+).
+
+   *`GFS_Espaces`* : sur la colonne `Membres`, `user.Email and user.Email.lower() in rec.RespL` → `+U` ; sur la table, `user.Access
+   in [OWNER]` → `+CRUD`, `user.Email and (user.Email.lower() in rec.RespL or user.Email.lower() in rec.MembL)` → `+R`, reste → `-CRUD`.
+   Les règles d'une colonne passent avant celles de sa table, puis la règle par défaut du document (lu, 10.4).
+4. [T] **Les colonnes d'aide** (formules mesurées). `GFS_Espaces` : `RespL` vaut `tuple(str(x).strip().lower() for x in
+   ($Responsables or ()))`, et `MembL` de même pour `Membres`. Une table `reserve` : `GFS_Resp` vaut `tuple(GFS_Espaces.lookupOne(Cle=
+   $<espace>).RespL or ())`, `GFS_Memb` de même avec `MembL`, `GFS_PersonnesL` vaut `tuple(str(x).strip().lower() for x in
+   ($<personnes> or ()))`. Une table `derivee` : `GFS_Visibilite` vaut `$<lien>.<visibilite>` du contenu, et `GFS_PersonnesL`,
+   `GFS_Resp`, `GFS_Memb` recopient ceux du contenu (`$<lien>.GFS_Resp`…). Les listes que les gens tapent restent telles quelles ;
+   les règles ne comparent que ces copies. [M] **Mesuré le 22/10** avec ces noms : mêmes résultats que le jeu d'essai sans préfixe
+   (faits vérifiés, 10.5), pour une table `reserve` ; la table `derivee` a été mesurée avant les espaces, avec des colonnes qui
+   copient le contenu.
+5. [T] **Structure fermée** (la case de Grist, pas un niveau) : une seule règle, sur la règle par défaut (toutes les tables) :
+   `user.Access != OWNER` → `-S`. Posée sur une table ou une colonne, Grist l'écarte sans erreur. Un éditeur ne peut alors plus
+   ajouter ni supprimer une table, une colonne ou une page, ni changer l'adresse d'un widget, ni poser une formule, ni enregistrer
+   un réglage partagé de la vue ; ses lignes restent écrivables et les responsables d'espace continuent d'administrer leur espace
+   (mesuré, 10.2). GFS ne la pose pas de lui-même (11.7, point 1).
+6. [T] **Ce qu'un éditeur peut**, tel que Grist l'applique (mesuré ou lu : faits vérifiés, 10.2 et 10.3) :
+
+   | Un éditeur peut… | Ouvert | Partagé | Encadré | Encadré, structure fermée |
+   |---|---|---|---|---|
+   | Saisir et modifier ses données (zone de données : Grist seul) | oui | oui | oui | oui |
+   | Lire ou changer le rangement d'une autre personne, changer la liste des apps | oui | non | non | non |
+   | Lire un contenu que son étiquette réserve | oui | oui | non, sauf par une formule | non |
+   | Changer l'adresse d'un widget, supprimer une table ou une section, enregistrer un réglage partagé de la vue | oui | oui | oui | non |
+   | Ajouter une page, une table ou une colonne, poser une formule qui lit tout, faire un tableau de synthèse | oui | oui | oui | non |
+   | Importer un fichier, télécharger ou copier le document entier | oui | non | non | non |
+
+   La dernière ligne vient de n'importe quelle règle du document, même une seule : la première règle posée coûte l'import et la
+   copie aux éditeurs, et le niveau choisi n'y change rien. Les propriétaires ne perdent ni l'un ni l'autre.
+7. [T] **Le pied de GFS** ne parle que des tables de GFS et des apps, jamais des tables de données. Trois mots : *Pas protégé*
+   (Ouvert), *Protégé en partie* (Partagé, ou Encadré avec la structure ouverte), *Protégé* (Encadré, structure fermée), et ce
+   dernier **seulement quand un propriétaire a prouvé la lecture des règles** : un éditeur ne lit pas les règles, donc ne prouve rien.
+
+### 11.5 Poser et retirer
+
+1. [T] **Qui et quand.** Un propriétaire, par un geste de sa part. Au premier lancement (GFS est installé par un propriétaire,
+   dont le widget en accès complet peut écrire les règles, mesuré), GFS peut proposer la mise en place en un clic, jamais en
+   silence. Seul le rangement existe alors : Grist refuse une règle sur une table absente (« Invalid tables in rules », mesuré),
+   donc les règles des espaces et des contenus se posent quand leur table naît.
+2. [T] **Une seule liasse.** Les règles d'un niveau sont posées en un seul `applyUserActions` : `AddRecord` dans
+   `_grist_ACLResources` et `BulkAddRecord` dans `_grist_ACLRules`, avec des identifiants et des `rulePos` explicites ; Grist
+   applique tout ou rien. Un non-propriétaire reçoit « Only owners can modify access rules » (mesuré, 10.4).
+3. [T] **Poser recharge la page de tout le monde.** Toute action sur `_grist_ACLRules` ou `_grist_ACLResources` renvoie à chaque
+   personne connectée l'ordre de recharger le document, celle qui pose comprise ; même une action qui ne change rien (lu et
+   mesuré, 10.6). GFS le dit au propriétaire avant, range ce qu'il faisait (le navigateur de GFS, jamais le document ; [D] clé
+   `gfs.reprise`, 5.3) et le reprend après le rechargement. Rien d'autre ne recharge : qui voit quoi est une donnée (11.3, point 5).
+4. [T] **Avant de poser**, GFS : relit les règles en place (seul un propriétaire le peut) et ne touche qu'aux siennes ; vérifie
+   que chaque table de règles commence par celle des propriétaires ; dit ce que la première règle coûte aux éditeurs (l'import et
+   la copie, 11.4, point 6) ; avant de fermer la structure, liste les tables dont les apps installées ont besoin et qui n'existent
+   pas, puisqu'un éditeur ne pourra plus les créer. [D] **Pour Encadré, dans cet ordre**, avec l'accord du propriétaire (ce sont
+   des changements de structure, additifs, qui ne rechargent personne, 10.6) : `GFS_Espaces` et ses deux colonnes d'aide ; puis
+   les colonnes d'aide `GFS_…` des tables classées (une colonne créée avant la table qu'elle nomme garde l'erreur pour les lignes
+   existantes, 10.5) ; puis la liasse de règles, après avoir vérifié que chaque table et chaque colonne qu'elle nomme existe
+   (sinon GFS le dit et ne pose pas).
+5. [D] **La note.** Chaque règle de GFS porte en `memo` « GFS : <niveau> » (`Partagé`, `Encadré`) ; c'est ainsi que GFS reconnaît
+   les siennes, lit le niveau posé et ne retire que celles-là. Le refus de Grist qui cite une règle emporte sa note (lu, 10.2) :
+   l'explication de l'app et de GFS peut la reprendre.
+6. [T] **Après**, GFS relit les règles ; il ne dit « Protégé » que quand un propriétaire a prouvé la lecture (11.4, point 7).
+7. [T] **Ne jamais** : donner à tous le droit de copier le document entier (cela rend ce que les règles cachent) ; poser un jeu de
+   règles sans celle des propriétaires en tête ; retirer la règle d'un autre auteur sans case « Retirer » cochée ; ranger un
+   secret ; écrire dans une table de données ; déclarer un attribut de personne ; écrire une règle de lecture qui cite `newRec` ;
+   fermer la structure de lui-même (11.7, point 1).
+8. [D] Une nouvelle table de classe (une app installée plus tard) demande de poser ses règles : c'est une action sur les tables
+   de règles, donc la même liasse, le même avertissement, le même rechargement.
+
+### 11.6 Ce que le contrat demande à chaque app
+
+Tout est additif, rien ne se code avant les mesures de 11.8, et une app seule n'a rien de plus à faire : ses tables restent sous
+les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
+
+1. [D] **Dire la classe de chaque table** (11.2). Une table non déclarée est du travail courant : ni cachée, ni verrouillée,
+   aucune règle.
+2. [T] **Tolérer l'absence.** Une ligne cachée, une colonne protégée, une table qu'un éditeur ne peut plus créer : l'app continue
+   sans, et ne présente jamais une liste ou un total comme complet quand une partie n'est pas lisible.
+3. [T] **Expliquer chaque refus.** Quand Grist répond « Blocked by … » ou « Only owners … », l'app affiche ce que dit la brique
+   « refus » du kit : qui refuse (Grist, l'app, le document), pourquoi, à qui s'adresser. La fonction reste grisée, jamais cachée.
+4. [D] **Réserver aux propriétaires ce qui touche tout le monde.** Réglage partagé, conception, création de table : l'éditeur voit
+   la fonction grisée avec « seul un propriétaire peut… ». L'app lit `contexte.role` (5.2, point 8) pour griser, **jamais pour
+   décider** : Grist décide. Elle ne grise que si `proprietaire` vaut `false` ; `null` veut dire « on ne sait pas » et laisse la
+   fonction utilisable.
+5. [T] **Ne rien croire sur l'identité.** L'adresse de la personne vient de Grist, par la table-sonde (6.4, point 9 pour GFS ; la
+   sienne pour l'app, puis celle du kit), jamais d'un champ qu'un éditeur peut changer. La ligne d'une sonde se relit par
+   l'identifiant que rend l'ajout, jamais en cherchant « la ligne-sonde ».
+6. [D] **L'app tient les colonnes de l'étiquette** (`visibilite`, `personnes`, `auteur`, `espace`) : additives (6.1), tolérées
+   absentes. **Les colonnes d'aide `GFS_…` ne sont pas à l'app** : elle les tolère (6.1, points 3 et 4), les ignore et ne les écrit
+   jamais. Les noms de l'étiquette viennent dans une consigne à part, après les mesures : aucune app n'ajoute de colonne avant.
+7. [T] **Aucun secret rangé en clair par GFS ; une app qui en garde un le déclare** (`secrets`) et vit sans quand il est illisible.
+8. [D] **App par app** (relevé du 22/10) :
+
+   | App | Ce qu'on lui demande |
+   |---|---|
+   | Publipostage+ | Déclarer `classes` : ses modèles (`reserve`), ses versions, commentaires et écriture en direct (`derivee`), ses préférences par personne (`personnel`) ; ajouter l'étiquette (quatre colonnes) ; vivre sans la colonne du mot de passe commun d'un PDF protégé (la saisir à chaque export, ce que l'app propose déjà) ; dire « seul un propriétaire enregistre ce réglage » pour les quatre réglages de sa vue quand la structure est fermée ; présenter son tableau de droits comme un confort : il masque des boutons, il ne protège rien |
+   | Form+ | Dire que concevoir ou republier un formulaire est un geste de propriétaire dès que la structure est fermée : il écrit dans la structure ; sa page des répondants écrit avec la session anonyme du partage : sa tenue structure fermée est à mesurer (11.8) |
+   | Automation+ | Déclarer `proprietaires` pour ses lignes `Workflow` (le type de ligne est déjà là) : un workflow s'exécute avec les droits de la personne qui a l'onglet ouvert, donc un workflow qu'un éditeur pourrait changer s'exécuterait chez un propriétaire, avec ses droits |
+   | Grist-BI | Vivre sans sa table-sonde si un éditeur ne peut plus la créer (l'identité viendra du kit) ; dire que les chiffres sont ceux que la personne a le droit de lire, pour que deux personnes qui voient deux totaux sachent pourquoi |
+
+### 11.7 Ce qui n'est pas décidé
+
+1. [Q] **Ce que GFS fait de la structure du document** (la case de Grist) : la montrer sans la poser (conseillé), n'en rien dire,
+   ou la proposer d'un clic avec son prix. Carte ouverte du porteur. En attendant : [T] GFS ne la ferme jamais de lui-même ; il
+   dit, dans le pied, si elle est ouverte ou fermée et ce que cela change. Seul « Protégé » (11.4, point 7) et le caractère
+   *secret* des contenus réservés (11.1, point 8) en dépendent. Grist décoche la case de lui-même quand un propriétaire active les
+   Permissions avancées (lu), et le porteur a confirmé qu'elle se décoche sur son instance (21/10).
+2. [Q] **Qui écrit l'étiquette d'un contenu** (visibilité, personnes, espace) : l'app dans son interface, ou GFS dans
+   l'explorateur, ce qui ajouterait une exception à 6.3, point 2. À fixer à l'étape 7 avec l'écran des espaces. D'ici là, l'app
+   écrit `auteur` à la création et `tous` en visibilité, et aucune interface ne change la visibilité d'un contenu.
+3. [Q] **Les tables dérivées** : ce que l'auteur d'un contenu lit et écrit de ses versions et de ses commentaires (versions à
+   l'auteur et aux propriétaires, commentaires à ceux qui lisent le contenu, d'après le document de stratégie) n'est pas mesuré.
+   À fixer avec Publipostage+ à l'étape 5 et à mesurer.
+4. [Q] **Les lignes réservées d'une table `reserve`** (la ligne `reglages` de Publipostage+, 6.3) : visibles de tous, écrites par
+   qui ? Sous Encadré, seuls son auteur, le responsable de son espace et les propriétaires écrivent une ligne. À fixer avec
+   Publipostage+.
+5. [D] **`GFS_Espaces` à part** plutôt que des lignes réservées du rangement : le cahier préfère limiter les tables, mais les deux
+   n'ont pas les mêmes règles (une personne lit ses lignes de rangement, un responsable lit sa ligne d'espace). Se tranche à
+   l'étape 7, avant que la table existe.
+6. [Q] **GFS ajoute les colonnes d'aide dans la table d'une app**, ce que 6.3, point 2 ne permet pas aujourd'hui (le porteur n'a
+   donné que le nom d'un fichier, 21/10). Les deux autres voies tiennent mal : l'app les crée (mesuré : une colonne créée avant
+   `GFS_Espaces` garde l'erreur ; et l'app n'est pas ouverte quand le propriétaire pose Encadré), ou les règles lisent autre
+   chose (une table « attribut de personne » recharge la page, 11.3, point 5). Défaut pris : GFS les crée, avec l'accord du
+   propriétaire, additives, sans toucher à une donnée. Une carte au porteur au moment de l'étape 7.
+7. [Q] **Le changement d'adresse e-mail** (une personne perd ses affaires) : GFS pourrait signaler les adresses des listes qui ne
+   sont plus celles d'un utilisateur du document, par la liste des utilisateurs que l'API rend aux propriétaires (11.8).
+8. **Le jeu complet** (rangement, contenus, espaces, workflows) n'a pas été mesuré d'un seul bloc : les règles des espaces et du
+   responsable l'ont été sur les contenus, les personnes nommées et les tables dérivées avant les espaces. Un contrôle d'ensemble
+   fait partie de l'étape 7.
+
+### 11.8 À mesurer sur le Grist du porteur
+
+Le labo (grist-static 0.1.6) n'a ni lien public, ni téléchargement, ni historique d'actions, ni les messages d'erreur de la page
+de Grist, et n'est pas l'instance du porteur. Les dix points sont dans `faits-verifies.md`, 10.10, avec deux ou trois comptes (un
+propriétaire, des éditeurs) : session de lien public ou de formulaire publié structure fermée ; texte du refus d'un réglage de
+vue ; note d'une règle dans le refus ; rechargements à deux comptes ; qui est vraiment propriétaire ; téléchargement et copie
+refusés ; historique des actions ; version de Grist et libellé de la case ; jeton du widget et liste des utilisateurs du
+document ; adresse que voient les règles par l'interface et par l'API, ligne-sonde comprise. Chacun peut changer une règle de
+11.4, un champ de `contexte.role` (5.2, point 8) ou la preuve du pied (11.4, point 7). Cette section sort de la version 0 quand
+ils sont faits.

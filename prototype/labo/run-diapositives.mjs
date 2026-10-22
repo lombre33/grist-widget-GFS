@@ -169,7 +169,7 @@ const filesAfter = await filesNow();
 const newScripts = filesAfter.scripts.filter(src => !filesBefore.scripts.includes(src));
 const newStyles = filesAfter.styles.filter(href => !filesBefore.styles.includes(href));
 // Les neuf scripts de l'extension (la bande, le volet « Importer », « Objets », les diapositives liées, les transitions et leur fenêtre, le fond, les notes, « Présenter ») et ses sept feuilles de
-// style (version 0.22, app à 62002ca), tous du dossier de l'app, chargés ensemble.
+// style (version 0.23, app à 2d9d4ed), tous du dossier de l'app, chargés ensemble.
 const SCRIPTS = ['slide-strip', 'slide-import', 'slide-objects', 'slide-links-ui', 'slide-transitions', 'slide-transitions-ui', 'slide-background-ui', 'slide-notes-ui', 'slide-show'];
 const STYLES = ['slide-strip', 'slide-import', 'slide-objects', 'slide-transitions', 'slide-background', 'slide-notes', 'slide-show'];
 const fromFolder = (list, names, kind) => list.length === names.length

@@ -489,8 +489,8 @@ sache recevoir le fichier de lui (consigne 035 ; 5.4, point 1).
         "tables": ["_grist_Views", "_grist_Views_section", "_grist_Views_section_field", "_grist_Filters"],
         "lit": true,
         "pourquoi": {
-          "fr": "Retrouver les sections de la page et leurs filtres pour proposer un graphique du document.",
-          "en": "Find the page's sections and their filters to offer a chart of the document."
+          "fr": "Retrouver les sections de la page et leurs filtres pour proposer un graphique du document, et pour que l'export en lot et la Boucle suivent la vue liée par « Sélectionner par ».",
+          "en": "Find the page's sections and their filters to offer a chart of the document, and so that the batch export and the loop follow the view linked by “Select by”."
         }
       },
       {

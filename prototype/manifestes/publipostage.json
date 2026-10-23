@@ -96,7 +96,7 @@
         "en": "A chart configured in Grist, placed in a document."
       },
       "icone": "chart",
-      "poids": 64,
+      "poids": 54,
       "dossier": "extensions/graphique/",
       "pointsEntree": [{ "genre": "bouton", "id": "graphique" }],
       "bibliotheques": [{ "id": "plotly", "version": "2.13.2" }]

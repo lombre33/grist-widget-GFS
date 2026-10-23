@@ -1,7 +1,8 @@
 // « Nouveau > Importer » (contrats 2.7 point 4, 5.2 point 3 et 5.4 point 1), dans un vrai Grist, à 700 × 400, à la vraie souris et au vrai clavier : le menu « Nouveau » de l'explorateur
 // a un sous-menu « Importer », un article par format que le manifeste d'une app déclare ; un clic ouvre le sélecteur de fichier de GFS (celui du navigateur), et l'app reçoit le fichier avec
-// l'ouverture (au démarrage) ou avec l'appel `ouvrir` (déjà ouverte). Publipostage+ (la vraie app) ne reçoit pas encore le fichier (consigne 035) : ses formats sont grisés, sans sélecteur.
-// La sonde P (labo/sondes/p-importer/) fait ce que fera Publipostage+ : le labo seul la range dans la ligne provisoire `ACCEPTS_OPEN` (`importer: true`) et elle LIT le fichier reçu.
+// l'ouverture (au démarrage) ou avec l'appel `ouvrir` (déjà ouverte). Publipostage+ reçoit le fichier depuis sa consigne 035 (la vraie app : run-importer-pp.mjs) ; ici le labo la remet à « pas encore » (`importer: false`) pour mesurer le grisé d'une
+// app qui déclare un format sans le recevoir : ses formats sont grisés, sans sélecteur.
+// La sonde P (labo/sondes/p-importer/) fait ce que fait Publipostage+ : le labo seul la range dans la ligne provisoire `ACCEPTS_OPEN` (`importer: true`) et elle LIT le fichier reçu.
 //   1. Rien n'est installé : le sous-menu liste les cinq formats (Publipostage+, puis la sonde), tous grisés, un clic ouvre la fenêtre des apps sur la ligne de l'app, sans sélecteur.
 //   2. Publipostage+ installée : Excel et Markdown restent grisés (« Pas encore », la phrase au clic), PowerPoint attend l'extension « Diapositives » (le clic ouvre la fenêtre des apps).
 //   3. La sonde P installée : Texte et Tableur se dégrisent, avec leur type et le nom de l'app en rappel.
@@ -12,7 +13,7 @@
 //   8. Échap deux fois, puis un clic à côté : le sous-menu, puis le menu se referment.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { startLab } from './lab-setup.mjs';
-import { say, check } from './lab-common.mjs';
+import { say, check, fileChooser, importMenu } from './lab-common.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -25,9 +26,15 @@ const ACCEPTS = {
   de: 'const ACCEPTS_OPEN = Object.freeze({',
   vers: "const ACCEPTS_OPEN = Object.freeze({ 'sonde-p': { fichier: true, nouveau: true, importer: true },",
 };
+// Publipostage+ reçoit le fichier depuis sa consigne 035 (run-importer-pp.mjs) : le labo la remet à « pas encore » pour mesurer le grisé d'une app qui déclare un format sans le recevoir.
+const NOT_YET = {
+  fichier: 'controller.js',
+  de: 'publipostage: { fichier: true, nouveau: true, importer: true }',
+  vers: 'publipostage: { fichier: true, nouveau: true, importer: false }',
+};
 const PROBE = /p-importer\//;
 
-const lab = await startLab({ lang, colorScheme: scheme, probes: true, patches: [ACCEPTS] });
+const lab = await startLab({ lang, colorScheme: scheme, probes: true, patches: [ACCEPTS, NOT_YET] });
 const { page } = lab;
 const warnings = [];
 const errors = [];
@@ -41,41 +48,10 @@ await lab.fitPanel(undefined, 700, 400);
 const frame = lab.frame;
 const toast = async () => ((await frame.locator('#toast').isVisible()) ? (await frame.locator('#toast').innerText()).replace(/\s+/g, ' ') : '');
 const explorerHidden = () => frame.locator('.ex').isHidden();
-const sub = () => frame.locator('.menu-sub');
-const subItem = name => frame.locator('.menu-sub .menu-item', { has: frame.locator('.menu-label', { hasText: new RegExp(`^${name}$`) }) });
-const newButton = () => frame.locator('.btn.primary');
-const parent = () => frame.locator('.menu > .menu-item', { hasText: new RegExp(`^${WORDS.import}`) });
-const openNew = async () => { await newButton().click(); await frame.locator('.menu').first().waitFor(); };
-const openImport = async () => { await openNew(); await parent().click(); await sub().waitFor(); };
-// Playwright refuse de cliquer un contrôle grisé (`aria-disabled`) : la vraie souris va à son centre.
-const mouseOn = async locator => { const box = await locator.boundingBox(); await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2); };
+const { sub, subItem, newButton, parent, openNew, openImport, mouseOn } = importMenu(page, () => frame, WORDS.import);
 const inPanel = locator => locator.evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.top >= 0 && r.right <= window.innerWidth && r.bottom <= window.innerHeight; });
-// Le clic qui ouvre le sélecteur de fichier : on attend l'événement du navigateur et on lui donne un fichier, comme la personne le ferait dans la fenêtre du système. L'écoute est posée
-// dès le départ (le navigateur n'intercepte le sélecteur qu'une fois l'écoute en place : une touche pressée aussitôt irait plus vite que l'attente d'un seul événement).
-const choosers = [];
-page.on('filechooser', chooser => choosers.push(chooser));
-const nextChooser = async () => {
-  for (let i = 0; i < 80; i++) {
-    if (choosers.length) return choosers.shift();
-    await page.waitForTimeout(100);
-  }
-  throw new Error('aucun sélecteur de fichier ne s\'est ouvert');
-};
-const pickWith = async (click, file) => {
-  choosers.length = 0;
-  await click();
-  const chooser = await nextChooser();
-  const accept = await chooser.element().getAttribute('accept');
-  const multiple = chooser.isMultiple();
-  await chooser.setFiles(file);
-  return { accept, multiple };
-};
-const noChooser = async click => {
-  choosers.length = 0;
-  await click();
-  await page.waitForTimeout(900);
-  return choosers.length === 0;
-};
+// Le clic qui ouvre le sélecteur de fichier : on attend l'événement du navigateur et on lui donne un fichier, comme la personne le ferait dans la fenêtre du système.
+const { pickWith, noChooser } = fileChooser(page);
 const probe = () => lab.appFrame(PROBE).then(app => app.evaluate(() => JSON.parse(document.body.dataset.sonde || '{}')));
 const waitFor = async (label, test, ms = 10000) => {
   for (let i = 0; i < ms / 100; i++) {

@@ -45,6 +45,11 @@ mémoire ni contre un faux Grist écrit par nous. Les numéros de ligne bougent 
   GFS, dans le geste de la personne (un champ `file` caché cliqué dans le clic ou la touche Entrée) : un sous-cadre isolé n'a pas ce
   geste dans GFS, et GFS peut ainsi refuser une autre terminaison avant d'ouvrir l'app. **Non mesuré** : Firefox et WebKit (seul Chromium
   est installé dans le labo du cloud).
+- Mesuré le 23/10 (Chromium, `labo/run-importer-pp.mjs`, la vraie Publipostage+ à `0c37c4b`, consigne 035 faite) : **les trois lecteurs de l'app lisent
+  le `File` que GFS donne à un sous-cadre isolé** : le lecteur de Markdown (un document), ExcelJS (une grille de trois lignes et deux colonnes) et JSZip
+  (une présentation de deux diapositives), au démarrage comme l'app déjà ouverte (sa question d'enregistrement, « Annuler » ne change rien, « Ne pas
+  enregistrer » ouvre le fichier). Un fichier illisible est dit par l'app, qui garde son document ; rien n'est écrit dans le document. Les deux
+  bibliothèques viennent du miroir du labo, aux octets exacts des CDN (même empreinte que celle que l'app épingle). **Non mesuré** : Firefox et WebKit.
 
 **Conséquence** : une app dans un sous-cadre de GFS envoie ses messages à GFS, qui peut les relayer à Grist et rendre les
 réponses, sans que l'app change.

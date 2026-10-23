@@ -7,7 +7,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `3ea26b9` | 23/10/2026 | GPL 3.0 |
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `0c37c4b` | 23/10/2026 | GPL 3.0 |
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `cc21a27` | 22/10/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `f3ab8d6` | 22/10/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `586c7c4` | 22/10/2026 | GPL 3.0 |
@@ -458,6 +458,19 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   de `1643edd` à `3ea26b9` : rien pour le contrat, hors la colonne `TableSource` déjà notée à `c13e697`) ; `run-echap-entete` rejoué avec la vraie app, à 700 × 400 et au vrai clavier : il passe de deux
   `CONSTAT` à six vérifications réussies (la touche arrive dans le cadre isolé, l'en-tête et le pied de page se quittent) ; l'`INDEX.md` (033 et 034 faites). Restent ouverts chez Publipostage+ : le
   titre d'impression (011), l'adresse du CDN (016, en attente de la bascule) et la 035.
+- Publipostage+ à `0c37c4b` (23/10, en fin d'après-midi) : six commits de plus depuis `3ea26b9` (`14e1654`, `d76430c`, `b2805a7`, `aeeeacd`, `342521a`, `0c37c4b`). Son `GFS-ETAT.md` (`0c37c4b`, qui décrit
+  `342521a`) dit la 035 **faite** (`d76430c` : « Nouveau > Importer » importe le fichier que GFS donne, par les mêmes lecteurs que son menu « + » ; `normalizeOpening` de son `gfs-link.js` garde `importation`
+  quand la raison vaut `importer`, `gfs-open.js` ne la prend pas pour un « Nouveau », la réponse à `ouvrir` dit si le modèle importé est ouvert) et deux ajouts qui touchent GFS sans lui demander quoi que ce soit :
+  l'export en lot et la Boucle qui suivent la vue liée par « Sélectionner par » (`14e1654`, `342521a` : `js/view-source.js` lit cinq tables internes par `fetchTableRows`, `_grist_Tables`,
+  `_grist_Tables_column`, `_grist_Views_section`, `_grist_Views_section_field` et `_grist_Filters`, toutes déjà au manifeste et lues par le graphique, sans écriture ; le moteur sort de l'extension `graphique`,
+  qui passe de 64 à 54 Ko) et la transparence du fond et du trait d'un cadre, d'une forme ou d'une ligne, que l'import PowerPoint reprend (`aeeeacd`, sans table ni clé). Question posée à GFS : le titre
+  de l'impression (011), toujours ouverte. « Demandes à GFS » : le plein écran du diaporama (`allow="fullscreen"`), qui attend le « demande de Publipostage+ » du porteur. Traité le 23/10 : l'`INDEX.md` (035 faite) ; la
+  référence avancée à `0c37c4b` (commit à part, relu sur les 52 fichiers : la CSP d'`index.html`, la carte d'importation et la liste de bibliothèques ne changent pas ; dans les lignes ajoutées, ni adresse, ni
+  `import()` dynamique, ni `fetch`, ni stockage du navigateur, ni écriture dans le document) et, avec elle, le poids de `graphique` du manifeste (54, le test des poids l'exige) ; le texte de permission du groupe
+  `_grist_Views…` complété (« … et pour que l'export en lot et la Boucle suivent la vue liée par « Sélectionner par » », en français et en anglais) ; `run-importer-pp` écrit et rejoué avec la vraie app (33 vérifications
+  dans chacune des quatre combinaisons langue × thème : Markdown, Excel et PowerPoint au démarrage et l'app déjà ouverte, sa question d'enregistrement, un fichier illisible, aucune écriture dans le
+  document) ; `ACCEPTS_OPEN.publipostage.importer` passé à `true` : Excel et Markdown se dégrisent, PowerPoint attend l'extension « Diapositives » ; `run-importer` (la sonde) remet Publipostage+ à « pas encore » le temps de
+  sa passe, pour mesurer le grisé d'une app qui ne reçoit pas encore. Reste : le kit (`normalizeOpening` doit garder `importation`, promis dans la 035) à sa prochaine version.
 - Form+ à `cc21a27` (22/10, le porteur : « check ce qui est remonté des projets ») : trois commits de plus depuis `16701fe`. Son
   `GFS-ETAT.md` (`0614f73`, qui décrit `c249c4a`) dit les consignes 008 à 011 **faites** : le formulaire natif s'enregistre dans
   `FormPlus_Formulaires` (avec la fenêtre d'accord de l'app, une ligne par formulaire par `Definition.vsId`), les répondants, le lien

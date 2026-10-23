@@ -57,6 +57,56 @@ export function mirrored(url) {
   return null;
 }
 
+// Le sélecteur de fichier du navigateur (« Nouveau > Importer » : run-importer, run-importer-pp). L'écoute est posée dès le départ (le navigateur n'intercepte le sélecteur qu'une fois l'écoute en
+// place : une touche pressée aussitôt irait plus vite que l'attente d'un seul événement). `pickWith` : le clic, puis le fichier donné comme la personne le ferait dans la fenêtre du système (les
+// terminaisons que le champ propose et s'il en accepte plusieurs sont rendues) ; `noChooser` : le clic, puis vrai si aucun sélecteur ne s'est ouvert ; `strays` : combien de sélecteurs personne
+// n'a demandés (une app qui en ouvrirait un de plus au lieu de prendre le fichier que GFS lui donne).
+export function fileChooser(page) {
+  const choosers = [];
+  let stray = 0;
+  const forget = () => { stray += choosers.length; choosers.length = 0; };
+  page.on('filechooser', chooser => choosers.push(chooser));
+  const next = async () => {
+    for (let i = 0; i < 80; i++) {
+      if (choosers.length) return choosers.shift();
+      await page.waitForTimeout(100);
+    }
+    throw new Error('aucun sélecteur de fichier ne s\'est ouvert');
+  };
+  return {
+    async pickWith(click, file) {
+      forget();
+      await click();
+      const chooser = await next();
+      const accept = await chooser.element().getAttribute('accept');
+      const multiple = chooser.isMultiple();
+      await chooser.setFiles(file);
+      return { accept, multiple };
+    },
+    async noChooser(click) {
+      forget();
+      await click();
+      await page.waitForTimeout(900);
+      return choosers.length === 0;
+    },
+    strays() { forget(); return stray; },
+  };
+}
+
+// Le menu « Nouveau » de l'explorateur de GFS et son sous-menu « Importer » (run-importer, run-importer-pp) : `frameOf()` rend le cadre de GFS du moment (il change quand GFS repart),
+// `word` le nom du sous-menu dans la langue du labo.
+export function importMenu(page, frameOf, word) {
+  const sub = () => frameOf().locator('.menu-sub');
+  const subItem = name => frameOf().locator('.menu-sub .menu-item', { has: frameOf().locator('.menu-label', { hasText: new RegExp(`^${name}$`) }) });
+  const newButton = () => frameOf().locator('.btn.primary');
+  const parent = () => frameOf().locator('.menu > .menu-item', { hasText: new RegExp(`^${word}`) });
+  const openNew = async () => { await newButton().click(); await frameOf().locator('.menu').first().waitFor(); };
+  const openImport = async () => { await openNew(); await parent().click(); await sub().waitFor(); };
+  // Playwright refuse de cliquer un contrôle grisé (`aria-disabled`) : la vraie souris va à son centre.
+  const mouseOn = async locator => { const box = await locator.boundingBox(); await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2); };
+  return { sub, subItem, newButton, parent, openNew, openImport, mouseOn };
+}
+
 // Les sondes du labo (labo/sondes/) : des apps d'essai que GFS ne connaît pas. Elles entrent dans le catalogue SEULEMENT pour la page du labo qui le demande
 // (le fichier publié n'est pas modifié, les autres essais ne les voient pas) : la page reçoit un catalogue.js complété, après les apps du catalogue.
 const PROBE_FOLDERS = { a: 'a-self', b: 'b-host', c: 'c-hash', d: 'd-texte', e: 'e-blob', f: 'f-texte-ferme', g: 'g-capacites', h: 'h-courtier', i: 'i-lecture', l: 'l-langue', o: 'o-ouvrir', p: 'p-importer', r: 'r-barre', s: 's-stockage', t: 's-stockage' };

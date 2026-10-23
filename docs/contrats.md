@@ -430,8 +430,8 @@ nomme une seule table et porte aussi `lit: true` (3.3, point 5). Depuis le 21/10
 la langue et la devise du document (demande de l'app, `32822d6`) ; elle ne s'écrit jamais (3.3, point 6). Depuis le 22/10,
 `actions.importer` déclare les imports que l'app fait par son menu « + » (`js/main.js` : `onImportXlsx`, `onImportMd`,
 `onImportPptx`) : Excel (une grille), Markdown (un document) et PowerPoint (une présentation, le type de l'extension
-« Diapositives », absent de cet exemple, qui n'en montre que les deux premiers). GFS les grise, avec « Pas encore », jusqu'à ce que l'app
-sache recevoir le fichier de lui (consigne 035 ; 5.4, point 1).
+« Diapositives », absent de cet exemple, qui n'en montre que les deux premiers). GFS grise les formats d'une app qui ne sait pas encore recevoir
+le fichier de lui, avec « Pas encore » (5.4, point 1) ; Publipostage+ le sait depuis sa consigne 035 (`d76430c`, 23/10).
 
 ```json
 {
@@ -1187,9 +1187,9 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
    le menu de l'app (`ACCEPTS_OPEN.<app>.importer`, la ligne provisoire de `fichier` et `nouveau` : elle passe à `true` quand le
    `GFS-ETAT.md` de l'app dit la consigne faite et que GFS l'a rejouée). La précaution compte : l'app d'aujourd'hui lit
    « `fichier: null` et un `type` » comme un « Nouveau » ; elle ouvrirait un modèle vierge, dirait `{ ouvert: true }`, et le fichier
-   de la personne serait perdu sans un mot. Le kit (`gfs-link.js`, `normalizeOpening`) comme le `gfs-link.js` de Publipostage+ ne
-   gardent que `fichier`, `type`, `dossier` et `raison` : ils laissent tomber `importation`. Publipostage+ la garde chez lui
-   (consigne 035) ; le kit la gardera dans sa prochaine version. [M] **Mesuré le 22/10** dans un vrai Grist, à 700 × 400, à la vraie
+   de la personne serait perdu sans un mot. Le kit (`gfs-link.js`, `normalizeOpening`) comme le `gfs-link.js` de Publipostage+ d'avant
+   la consigne 035 ne gardent que `fichier`, `type`, `dossier` et `raison` : ils laissent tomber `importation`. Publipostage+ la garde
+   depuis `d76430c` (consigne 035 faite le 23/10) ; le kit la gardera dans sa prochaine version. [M] **Mesuré le 22/10** dans un vrai Grist, à 700 × 400, à la vraie
    souris et au vrai clavier, en français et en anglais, en clair et en sombre (`run-importer.mjs`, avec la sonde P : une app
    d'essai qui fait ce que fera Publipostage+ et qui lit ce qu'elle reçoit ; le labo seul la range dans `ACCEPTS_OPEN`) : « Nouveau »
    gagne « Importer » après un séparateur, avec la flèche des sous-menus ; le sous-menu s'ouvre au clic, à Entrée et à la flèche
@@ -1203,6 +1203,16 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
    non rechargé : un vrai `File` (`instanceof File`, nom, taille, type, texte accents compris) dans un cadre sans
    `allow-same-origin`** ; un fichier d'une autre terminaison est dit (nom, format, terminaisons) sans rien envoyer ; GFS n'écrit
    aucun avertissement.
+   [M] **Mesuré le 23/10 avec la vraie Publipostage+** (`0c37c4b`, `run-importer-pp.mjs`, 33 vérifications dans chacune des quatre
+   combinaisons langue × thème, à 700 × 400, à la vraie souris et au vrai clavier) : Excel et Markdown ne sont plus grisés (le type de
+   chacun en mention, sa couleur), PowerPoint attend l'extension « Diapositives » puis se dégrise ; **au démarrage**, l'app ouvre le ★ puis
+   le fichier le remplace (un document, une grille de trois lignes et deux colonnes, une présentation de deux diapositives et leur bande),
+   sans nom ni modèle courant, avec la phrase « … importé. Nommez le modèle puis enregistrez-le. » ; **déjà ouverte** (appel `ouvrir`),
+   elle pose sa question « Modifications non enregistrées » dans le panneau (sans « Enregistrer » : le modèle importé n'a pas de nom),
+   « Annuler » ne change rien, « Ne pas enregistrer » ouvre le fichier, dans le même cadre non rechargé ; un fichier illisible
+   (`faux.xlsx`) est dit par l'app, qui garde son document, sans question ni phrase de GFS ; l'explorateur se ferme et GFS ne dit rien
+   à chaque fois, l'app n'ouvre aucun sélecteur de plus de toute la passe, et les imports n'écrivent rien dans le document (les modèles, les
+   réglages de la vue).
 2. [T] **choisir** : l'explorateur s'ouvre en mode choix, filtré par `types` (et `apps` si elle est donnée), parmi les types que
    les manifestes déclarent dans `actions.choisir`. Un fichier d'une app non installée est grisé, avec « Installer ». `titre`
    est un texte déjà traduit, montré par GFS.

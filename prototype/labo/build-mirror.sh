@@ -7,13 +7,14 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 SRC="$HERE/../apps/publipostage/dev-tests/.offline-cache"
 mkdir -p "$HERE/mirror"
 cp "$SRC/build.mjs" "$HERE/mirror/build.mjs"
-# Seulement ce que l'ouverture d'un document demande : l'éditeur (TipTap, ProseMirror), marked, esbuild. Plotly n'est plus à l'app (le graphique est une
-# extension, sa bibliothèque est à GFS) : lab-common.mjs sert la copie de GFS à l'adresse du CDN du catalogue.
+# Seulement ce que l'ouverture d'un document demande : l'éditeur (TipTap, ProseMirror), marked, esbuild, plus JSZip et ExcelJS (les importations Excel et PowerPoint
+# de « Nouveau > Importer », run-importer-pp.mjs). Plotly n'est plus à l'app (le graphique est une extension, sa bibliothèque est à GFS) : lab-common.mjs sert la
+# copie de GFS à l'adresse du CDN du catalogue.
 python3 - "$SRC/package.json" "$HERE/mirror/package.json" <<'PY'
 import json, sys
 src = json.load(open(sys.argv[1]))
 keep = lambda n: n.startswith(('prosemirror', '@tiptap', '@floating-ui', '@handlewithcare')) or n in (
-    'orderedmap', 'rope-sequence', 'w3c-keyname', 'esbuild', 'marked')
+    'orderedmap', 'rope-sequence', 'w3c-keyname', 'esbuild', 'marked', 'jszip', 'exceljs')
 src['dependencies'] = {n: v for n, v in src['dependencies'].items() if keep(n)}
 json.dump(src, open(sys.argv[2], 'w'), indent=2)
 PY

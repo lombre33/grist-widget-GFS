@@ -615,5 +615,16 @@ dessus, qui l'enregistre ; t6, le geste de `downloadBlob` 7 secondes après le c
 - **À confirmer par le porteur** : l'export Word et PowerPoint de Publipostage+ dans GFS sous Firefox, correctif en ligne. À mesurer
   ensuite, avec la page d'essai refaite sous une règle qui nomme `blob:` : un cadre isolé enregistre-t-il directement (t1 à t3 et
   t6 en B et E), ou faut-il que GFS enregistre pour lui (t4 et t5) ?
-- Hors de ce que cette page peut dire : Safari ; le cadre isolé à origine réelle (un domaine par app) pour LanguageTool, le contrôle C
-  ne donnant que la même origine que GFS.
+- Lu, pas mesuré par nous : pourquoi LanguageTool s'arrête. Firefox et Chromium choisissent les pages où une extension entre d'après
+  l'**adresse** du document pour les adresses http(s), non d'après son origine : dans Firefox, [`MatchPattern.cpp`](https://searchfox.org/mozilla-central/source/toolkit/components/extensions/MatchPattern.cpp)
+  regarde pour ces adresses l'URL du document, jamais le principal (son commentaire sur les schémas non opaques), et [`ExtensionContent.sys.mjs`](https://searchfox.org/mozilla-central/source/toolkit/components/extensions/ExtensionContent.sys.mjs)
+  n'écarte aucun document à principal nul ; dans Chromium, [`content_script_injection_url_getter.cc`](https://chromium.googlesource.com/chromium/src/+/main/extensions/common/content_script_injection_url_getter.cc)
+  rend l'adresse du document tant que le schéma n'est pas `about`, `data`, `blob` ou `filesystem`. Rien ne dit donc qu'une extension
+  n'entre pas dans un cadre isolé : elle y entre probablement et **s'y arrête d'elle-même** (cause inconnue : le code de l'extension
+  n'est pas public). Une sonde d'extension de notre fabrication le dirait (non faite). Dans tous les cas l'app ne peut rien y changer.
+- **À mesurer par le porteur** avec la page `labo/essais-navigateur/croise.html` (23/10 ; sa mécanique, `run-essai-croise.mjs`, est
+  vérifiée dans Chromium) : le cadre isolé qui **garde sa vraie origine**, posé par une page d'**une autre origine**, c'est-à-dire la
+  voie « un domaine par app » (le contrôle C ne donnait que la même origine que GFS). Ouverte depuis le disque, la page pose trois
+  cadres venus du site de GFS (X, simple ; Y, isolé avec `allow-same-origin` ; Z, isolé comme GFS) ; le rapport dit si LanguageTool
+  travaille dans Y.
+- Hors de ce que ces pages peuvent dire : Safari.

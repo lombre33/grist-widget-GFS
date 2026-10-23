@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Pas de règle de sécurité sur cette page : ouverte depuis le disque, elle ne sert qu'à porter trois cadres et à recopier leurs réponses (ni Grist, ni document, ni donnée).
+     Tout est dans ce fichier, pour que sa copie enregistrée marche telle quelle ; les cadres sont ceux de la page d'essai du dossier (cadre.html), à leur adresse en ligne. -->
+<title>Essai croisé : un cadre isolé qui garde sa vraie origine</title>
+<style>
+  body { font: 15px/1.5 system-ui, sans-serif; margin: 16px; max-width: 880px; }
+  iframe { width: 100%; height: 190px; border: 1px solid #888; margin-bottom: 14px; }
+  .cadre-titre { font-weight: 600; margin: 14px 0 4px; }
+  textarea { width: 100%; box-sizing: border-box; font: 13px/1.4 ui-monospace, monospace; }
+  #avertissement { border: 2px solid #b00020; padding: 8px 12px; }
+</style>
+</head>
+<body>
+<h1>Essai croisé : un cadre isolé qui garde sa vraie origine</h1>
+<p>Une seule question : si une app de GFS avait une adresse à elle (un domaine), LanguageTool travaillerait-il dans son cadre isolé ? Trois cadres, posés par cette page, qui doit être d'une autre origine que les cadres.</p>
+<p id="avertissement" hidden><strong>Cette page est sur le même site que ses cadres : l'essai ne vaudrait rien.</strong> Enregistre-la sur ton disque (clic droit sur son lien, « Enregistrer la cible du lien sous… »), puis ouvre le fichier enregistré dans Firefox.</p>
+<ol>
+  <li>Dans chaque cadre, clique dans les deux zones de texte (elles contiennent des fautes), attends deux secondes, puis réponds à « LanguageTool corrige ici ? » : <b>oui</b> s'il souligne ou propose une correction, <b>non</b> si seul Firefox souligne.</li>
+  <li>Le rapport tout en bas se remplit seul. Copie-le avec le bouton et colle-le dans la conversation.</li>
+</ol>
+<div id="cadres"></div>
+<h2>Rapport</h2>
+<textarea id="rapport" rows="16" readonly spellcheck="false" aria-label="Rapport à copier"></textarea>
+<p><button id="copier" type="button">Copier le rapport</button> <span id="copie"></span></p>
+<script>
+'use strict';
+// Là où sont les cadres : le dossier de la page d'essai, sur le site de GFS.
+const BASE = 'https://lombre33.github.io/grist-widget-GFS/prototype/labo/essais-navigateur/';
+// Les attributs du cadre d'une app dans GFS (prototype/js/frames.js : SANDBOX et `allow`).
+const SANDBOX = 'allow-scripts allow-forms allow-popups allow-modals allow-downloads';
+const CADRES = [
+  { id: 'X', titre: "X · cadre simple d'une autre origine, comme Publipostage+ seule dans Grist" },
+  { id: 'Y', titre: 'Y · cadre isolé qui garde sa vraie origine (allow-same-origin), posé par une page d\'une autre origine : la voie « un domaine par app »', sandbox: `${SANDBOX} allow-same-origin` },
+  { id: 'Z', titre: 'Z · cadre isolé comme celui de GFS aujourd\'hui (origine vide)', sandbox: SANDBOX },
+];
+
+const etats = {};
+const cadres = document.getElementById('cadres');
+const rapport = document.getElementById('rapport');
+const frames = [];
+
+document.getElementById('avertissement').hidden = location.origin !== new URL(BASE).origin;
+for (const { id, titre, sandbox } of CADRES) {
+  const frame = document.createElement('iframe');
+  frame.src = `${BASE}cadre.html?c=${id}&t=`;
+  frame.title = titre;
+  if (sandbox) frame.setAttribute('sandbox', sandbox);
+  frame.setAttribute('allow', 'clipboard-write');
+  const p = document.createElement('p');
+  p.className = 'cadre-titre';
+  p.textContent = titre;
+  cadres.append(p, frame);
+  frames.push(frame);
+}
+
+const lignes = ({ id, titre }) => {
+  const e = etats[id];
+  return e ? [`Cadre ${titre}`, ...e.faits.map(l => `  ${l}`), `  LanguageTool corrige ici : ${e.lt}`] : [`Cadre ${titre}`, "  (aucun rapport : le cadre ne s'est pas chargé ou a été bloqué)"];
+};
+const refaire = () => {
+  const quand = new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris' });
+  rapport.value = [`Essai croisé, ${quand} (heure de Paris)`, navigator.userAgent,
+    `page qui porte les cadres : ${location.protocol}//${location.host} ; origine de cette page : ${self.origin}`, `les cadres viennent de : ${new URL(BASE).origin}`, '',
+    ...CADRES.flatMap(lignes)].join('\n');
+};
+addEventListener('message', event => {
+  const d = event.data;
+  if (!d || d.essai !== 'etat' || !frames.some(f => f.contentWindow === event.source)) return;
+  etats[d.cadre] = d;
+  refaire();
+});
+refaire();
+document.getElementById('copier').addEventListener('click', async () => {
+  rapport.select();
+  const dit = texte => { document.getElementById('copie').textContent = texte; };
+  try { await navigator.clipboard.writeText(rapport.value); dit('Copié.'); } catch { dit('Copie refusée : le texte est sélectionné, copie-le à la main (Ctrl+C).'); }
+});
+</script>
+</body>
+</html>

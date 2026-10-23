@@ -638,8 +638,12 @@ dessus, qui l'enregistre ; t6, le geste de `downloadBlob` 7 secondes après le c
   `run-essai-croise.mjs`, partie `?point`, avec `localhost` contre `localhost.` : une adresse IP ne peut pas porter de point final) :
   deux origines (`http://localhost:PORT` et `http://localhost.:PORT`), aucune lecture dans un sens ni dans l'autre (`SecurityError`),
   stockage permis dans le cadre isolé qui garde son origine, en-tête `Host` envoyé avec le point, `frame-src 'self'` bloque le cadre au
-  nom avec le point et un `frame-src` qui le nomme l'accepte. **Pas mesuré** : si GitHub Pages répond à `Host: lombre33.github.io.` avec
-  un certificat valable ; si Firefox lit l'adresse avec le point dans `frame-src` ; si Firefox applique une règle posée par `<meta>` après
-  le chargement ; si LanguageTool travaille dans Y à cette adresse, sous une page de vraie origine. La page `croise.html?point`, ouverte
-  par le porteur sur le site en ligne (et non enregistrée), mesure ces quatre points.
+  nom avec le point et un `frame-src` qui le nomme l'accepte. **Mesuré par le porteur** (Firefox 140, Windows, 23/10, 17 h 33 heure de
+  Paris) : `cadre.html` s'ouvre à `https://lombre33.github.io./…` ; GitHub Pages répond donc au nom avec le point et Firefox accepte le
+  certificat. **Lu, pas mesuré** : l'analyseur de règles de Firefox ([`nsCSPParser.cpp`](https://searchfox.org/mozilla-central/source/dom/security/nsCSPParser.cpp),
+  fonction `subHost`, d'après deux résumés concordants de la page, non relue ligne à ligne) refuse un nom qui finit par un point et
+  ignore la source ; une règle `frame-src` ne pourrait alors pas nommer l'app. **Pas mesuré** : ce que Firefox fait d'une règle
+  `<meta>` qui nomme l'adresse avec le point, ou sans le point, devant un cadre à l'adresse avec le point ; si LanguageTool travaille
+  dans Y à cette adresse, sous une page de vraie origine. La page `croise.html?point`, ouverte par le porteur sur le site en ligne (et
+  non enregistrée), mesure ces deux points.
 - Hors de ce que ces pages peuvent dire : Safari.

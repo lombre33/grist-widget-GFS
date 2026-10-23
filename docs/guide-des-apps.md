@@ -39,7 +39,9 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
    l'app le fait, facile à remplacer par le kit (cahier 5.6).
 6. **Stockage du navigateur** : chaque accès dans un `try/catch`, et l'app marche sans lui. Dans GFS, l'app tourne dans une
    origine opaque où `localStorage` lève une erreur (cahier 5.7) : GFS garde ses choix à sa place, par `contexte.stockage` à
-   la lecture et `stockage.ecrire` à l'écriture (contrats 5.3), un espace de 1 Mo par app.
+   la lecture et `stockage.ecrire` à l'écriture (contrats 5.3), un espace de 1 Mo par app. Même cause : une extension du
+   navigateur qui travaille dans la page (LanguageTool sous Firefox) n'entre pas dans ce cadre (faits vérifiés 11) ; l'app ne
+   peut pas compter sur elle.
 7. **Messages** : `addEventListener('message')` en vérifiant `event.source`, jamais `window.onmessage =`. Cette affectation
    remplacerait l'écoute du script d'API de Grist (`grist-plugin-api.ts`, ligne 520) et couperait l'app de Grist.
 8. **Tables internes de Grist** (`_grist_*`) : aucune écriture sans une raison écrite. Elle devra être déclarée dans le
@@ -150,7 +152,8 @@ servir.
   rappel « Enregistrer » (`js/save-reminder.js`).
 - Tables créées avec l'accord de la personne (`js/table-consent.js`).
 - Stockage du navigateur (`pp_*`) toujours dans des `try/catch` : l'app marche sans.
-- Téléchargements par un `<a download>` (`js/export-common.js`, `downloadBlob`, ligne 92).
+- Téléchargements par un `<a download>` (`js/export-common.js`, `downloadBlob`, ligne 92). Sous Firefox, cela demande `blob:` dans le
+  `frame-src` de GFS : c'est fait (faits vérifiés 11), l'app n'a rien à changer.
 - Moteurs d'export chargés au premier usage (`<script type="text/x-lazy-engine">` dans `index.html`,
   `ExportEngines.ensure`) : c'est déjà le patron des extensions.
 - Charte : Publipostage+ en est la source.

@@ -137,11 +137,11 @@ export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', 
       const response = await route.fetch();
       await route.fulfill({ response, body: withFrameAttributes(await response.text(), frameAttributes) });
     });
-    // `frameSrc` : la source de `frame-src` dans la politique de sécurité de la page de GFS (les adresses où un sous-cadre peut aller), pour la mesurer.
+    // `frameSrc` : la source de `frame-src` dans la politique de sécurité de la page de GFS (les adresses où un sous-cadre peut aller), pour la mesurer ; elle remplace la ligne entière.
     if (frameAttributes.frameSrc) {
       await page.route(/\/prototype\/index\.html(\?|$)/, async route => {
         const response = await route.fetch();
-        await route.fulfill({ response, body: (await response.text()).replace("frame-src 'self';", `frame-src ${frameAttributes.frameSrc};`) });
+        await route.fulfill({ response, body: (await response.text()).replace(/frame-src [^;"]*;/, `frame-src ${frameAttributes.frameSrc};`) });
       });
     }
   }

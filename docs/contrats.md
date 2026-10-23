@@ -165,7 +165,14 @@ L'app (sous-cadre sans allow-same-origin)
    où il le fait, c'est un mot de plus dans `allow`. [M] Avec l'interrupteur « Plein écran » du menu ▾ de « Présenter » de Publipostage+
    (`4dfcd0c`, mesuré le 22/10 avec `865afa3` : `run-barre-ecartee`, partie `presenter`) : dans GFS le cadre de l'app dit que le plein
    écran n'est pas permis (`document.fullscreenEnabled` faux), la ligne est grisée avec sa raison, un clic dessus ne change rien
-   et le diaporama prend le panneau. [M] Firefox et Safari : la page de mesure du porteur.
+   et le diaporama prend le panneau. [M] **Firefox 140 (Windows), la page d'essai du porteur, 23/10** (`labo/essais-navigateur/`,
+   faits vérifiés 11) : (a) un fichier fabriqué dans un cadre (adresse `blob:` ou `data:`, ancre `download`) n'est pas enregistré
+   tant que `frame-src` de la page qui porte le cadre ne le nomme pas, cadre isolé ou non ; Chromium ne regarde pas `frame-src`
+   pour un téléchargement. **GFS ajoute `blob:` à son `frame-src`**, pour cette seule raison (les exports de Publipostage+,
+   `downloadBlob`) : `index.html`, contrôlé par `test/csp.test.mjs` ; l'export Word dans GFS sous Firefox reste à confirmer par le
+   porteur. (b) **LanguageTool ne travaille pas dans un cadre à origine opaque** : aucune trace de lui dans un cadre isolé comme
+   celui de GFS, toutes dans le même cadre avec `allow-same-origin` en plus. C'est la contrepartie de l'isolement ci-dessus ; la
+   question est posée au porteur (carte du 23/10). [M] Safari : la page de mesure du porteur (`labo/navigateur/`).
 2. [T] **L'adresse du sous-cadre est calculée par GFS**, d'après le catalogue et le manifeste livrés avec lui ; elle n'est jamais lue
    dans un réglage, une table ou un message (cahier 3.2, point 3). Deux formes, selon `live` dans l'adresse du widget :
    - **le site en ligne de l'app** (le défaut des essais, décision du porteur du 22/10 : « servir les dépôts live, pas une copie

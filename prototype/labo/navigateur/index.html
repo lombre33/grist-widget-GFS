@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <title>Mesures du navigateur</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- La politique de GFS pour ses sous-cadres, à l'identique : frame-src 'self' (le cadre de la sonde est de ce site), rien d'autre. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-src 'self'">
+<!-- La politique de GFS pour ses sous-cadres, à l'identique : frame-src 'self' blob: (le cadre de la sonde est de ce site ; blob: laisse Firefox enregistrer un fichier fabriqué dans le cadre), rien d'autre. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-src 'self' blob:">
 <link rel="stylesheet" href="../../css/gfs.css">
 <link rel="stylesheet" href="../mesures.css?v=1">
 </head>

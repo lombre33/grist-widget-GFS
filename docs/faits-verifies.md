@@ -576,3 +576,44 @@ de 10.10) :
    un lien les dépasse (lecture seule pour tous ?).
 6. un widget en accès complet, ouvert par un propriétaire, lit-il `_grist_Shares` (les identifiants et les options des liens), et
    ouvert par un éditeur, n'en reçoit-il rien ?
+
+## 11. Firefox : ce que la page d'essai du porteur a mesuré (23/10)
+
+Mesuré par le porteur dans **Firefox 140 (Windows), LanguageTool installé**, sur la page `labo/essais-navigateur/` (commit `ff2834f`,
+servie par Pages ; son rapport est dans le fil du 23/10, 14 h 35 heure de Paris). Cinq cadres posés par la page : A, un cadre
+ordinaire ; B, isolé comme celui de GFS (`allow-scripts allow-forms allow-popups allow-modals allow-downloads`, origine nulle) ; C,
+B avec `allow-same-origin` en plus ; D, deux niveaux de cadres ordinaires ; E, deux niveaux, le dernier isolé comme dans GFS. Dans
+chaque cadre, des zones de texte avec des fautes et des boutons de téléchargement : t1, le geste de `downloadBlob` (adresse libérée
+aussitôt) ; t2, adresse libérée au bout de 10 s ; t3, adresse `data:` ; t4 et t5, le fichier puis ses octets envoyés à la page du
+dessus, qui l'enregistre ; t6, le geste de `downloadBlob` 7 secondes après le clic.
+
+| Cadre | Origine vue du cadre | LanguageTool | t1 | t2 | t3 | t4 | t5 | t6 |
+|---|---|---|---|---|---|---|---|---|
+| A, ordinaire | le site | oui | rien | – | – | – | – | – |
+| B, isolé (comme GFS) | nulle | **non** | rien | rien | rien | arrivé | arrivé | rien |
+| C, B + `allow-same-origin` | le site | oui | rien | – | – | – | – | – |
+| D, deux niveaux ordinaires | le site | oui | rien | – | – | – | – | – |
+| E, deux niveaux, le dernier isolé | nulle | **non** | rien | rien | rien | rien | rien | rien |
+
+- Mesuré, **LanguageTool** : B et C ne diffèrent que par `allow-same-origin`. Avec lui, LanguageTool laisse ses traces
+  (`data-lt-installed`, éléments `lt-*`, attributs `data-lt-*` et `data-gramm`) et le porteur dit qu'il corrige ; sans lui, aucune
+  trace, `spellcheck` reste absent des zones et seul le correcteur de Firefox souligne. L'imbrication n'y change rien (D). La cause
+  est l'origine opaque du cadre, donc l'isolement choisi le 16/10 (contrats 1.3, point 1).
+- Mesuré, **téléchargements** : tout enregistrement lancé depuis un cadre a échoué, isolé ou non (t1 en A, C, D ; tous en B et E).
+  Ceux que la page du dessus a lancés ont réussi quand elle était la page de plus haut niveau (t4 et t5 en B) et échoué quand elle
+  était elle-même un cadre (t4 et t5 en E).
+- Lu, pas mesuré par nous : la page d'essai portait elle-même `frame-src 'self'`, comme GFS avant le correctif. **Firefox applique
+  le `frame-src` de la page qui porte le cadre au téléchargement lancé dans ce cadre** ; Chromium ne le regarde pas pour un
+  téléchargement. Un hôte qui n'y nomme pas `blob:` bloque donc ces fichiers sous Firefox. Cas décrits par d'autres :
+  [AWS re:Post, tableaux de bord intégrés dans Firefox](https://www.repost.aws/articles/ARKhfT7erBRa2v195DR8x9Hg/resolving-csv-excel-download-failures-in-firefox-for-embedded-amazon-quicksight-dashboards-by-allowing-blob-in-csp),
+  [support Mozilla, question 1287204](https://support.mozilla.org/en-US/questions/1287204) (un visionneur intégré, `default-src` sans
+  `blob:`), [communauté Dynatrace](https://community.dynatrace.com/t5/Developer-Q-A-Forum/Downloading-blocked-by-CSP/m-p/262134)
+  (même erreur, `frame-src` et `blob:` ; navigateur non nommé). Cela rend compte de tous les résultats ci-dessus : le contrôle A était
+  faussé par la page elle-même ; Word marche dans Publipostage+ seule dans Grist (le cadre de Grist est ordinaire, et la page de
+  Grist n'a pas de règle de ce genre : déduit, non lu) et pas dans GFS (sa règle ne nommait pas `blob:`).
+- Fait : `blob:` ajouté au seul `frame-src` de GFS (`index.html`, contrôlé par `test/csp.test.mjs`).
+- **À confirmer par le porteur** : l'export Word et PowerPoint de Publipostage+ dans GFS sous Firefox, correctif en ligne. À mesurer
+  ensuite, avec la page d'essai refaite sous une règle qui nomme `blob:` : un cadre isolé enregistre-t-il directement (t1 à t3 et
+  t6 en B et E), ou faut-il que GFS enregistre pour lui (t4 et t5) ?
+- Hors de ce que cette page peut dire : Safari ; le cadre isolé à origine réelle (un domaine par app) pour LanguageTool, le contrôle C
+  ne donnant que la même origine que GFS.

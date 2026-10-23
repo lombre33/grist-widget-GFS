@@ -6,11 +6,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- Politique de sécurité du contenu de GFS. Chaque ligne a son motif :
      script-src : le code de GFS ('self'), la carte d'importation en ligne (par son empreinte, voir plus bas), le script d'API de Grist (adresse entière) ; 'unsafe-eval' faute de mieux, le fichier que Grist sert est un bundle de développement qui s'évalue par eval() (même raison que dans les apps) ;
-     frame-src 'self' : les apps tournent dans des sous-cadres du site de GFS, jamais d'une autre adresse ;
+     frame-src 'self' blob: : les apps tournent dans des sous-cadres du site de GFS, jamais d'une autre adresse ; blob: pour une seule raison : Firefox applique cette ligne à l'enregistrement d'un fichier que l'app fabrique (export Word, PowerPoint), là où Chromium ne la regarde pas (faits vérifiés 11) ;
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-FcaKCjkFumtkDe9sgAKh361cZHdC5l2ExwmW1tGie7s='; style-src 'self'; img-src 'self' data:; frame-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-FcaKCjkFumtkDe9sgAKh361cZHdC5l2ExwmW1tGie7s='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=fce5d2ff06">
 <link rel="stylesheet" href="css/explorer.css?v=4dde950ef6">
 <link rel="stylesheet" href="css/modules.css?v=20d7c83c04">

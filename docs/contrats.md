@@ -171,8 +171,11 @@ L'app (sous-cadre sans allow-same-origin)
    pour un téléchargement. **GFS ajoute `blob:` à son `frame-src`**, pour cette seule raison (les exports de Publipostage+,
    `downloadBlob`) : `index.html`, contrôlé par `test/csp.test.mjs` ; l'export Word dans GFS sous Firefox reste à confirmer par le
    porteur. (b) **LanguageTool ne travaille pas dans un cadre à origine opaque** : aucune trace de lui dans un cadre isolé comme
-   celui de GFS, toutes dans le même cadre avec `allow-same-origin` en plus. C'est la contrepartie de l'isolement ci-dessus ; la
-   question est posée au porteur (carte du 23/10). [M] Safari : la page de mesure du porteur (`labo/navigateur/`).
+   celui de GFS, toutes dans le même cadre avec `allow-same-origin` en plus. C'est la contrepartie de l'isolement ci-dessus. [M] Mais
+   il travaille dans un cadre isolé qui garde sa vraie origine (`allow-same-origin`) quand elle n'est pas celle de la page qui le
+   porte (essai croisé, Firefox 140, 23/10, faits vérifiés 11) : la voie « une adresse propre à l'app » est ouverte côté navigateur ;
+   GFS ne la prend que sur décision du porteur (carte du 23/10), et l'adresse manque tant que GFS et les apps sont sur un seul site.
+   [M] Safari : la page de mesure du porteur (`labo/navigateur/`).
 2. [T] **L'adresse du sous-cadre est calculée par GFS**, d'après le catalogue et le manifeste livrés avec lui ; elle n'est jamais lue
    dans un réglage, une table ou un message (cahier 3.2, point 3). Deux formes, selon `live` dans l'adresse du widget :
    - **le site en ligne de l'app** (le défaut des essais, décision du porteur du 22/10 : « servir les dépôts live, pas une copie

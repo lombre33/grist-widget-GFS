@@ -622,9 +622,24 @@ dessus, qui l'enregistre ; t6, le geste de `downloadBlob` 7 secondes après le c
   rend l'adresse du document tant que le schéma n'est pas `about`, `data`, `blob` ou `filesystem`. Rien ne dit donc qu'une extension
   n'entre pas dans un cadre isolé : elle y entre probablement et **s'y arrête d'elle-même** (cause inconnue : le code de l'extension
   n'est pas public). Une sonde d'extension de notre fabrication le dirait (non faite). Dans tous les cas l'app ne peut rien y changer.
-- **À mesurer par le porteur** avec la page `labo/essais-navigateur/croise.html` (23/10 ; sa mécanique, `run-essai-croise.mjs`, est
-  vérifiée dans Chromium) : le cadre isolé qui **garde sa vraie origine**, posé par une page d'**une autre origine**, c'est-à-dire la
-  voie « un domaine par app » (le contrôle C ne donnait que la même origine que GFS). Ouverte depuis le disque, la page pose trois
-  cadres venus du site de GFS (X, simple ; Y, isolé avec `allow-same-origin` ; Z, isolé comme GFS) ; le rapport dit si LanguageTool
-  travaille dans Y.
+- **Mesuré par le porteur** avec la page `labo/essais-navigateur/croise.html` (Firefox 140, Windows, 23/10, 15 h 47 heure de Paris ; sa
+  mécanique, `run-essai-croise.mjs`, est vérifiée dans Chromium) : le cadre isolé qui **garde sa vraie origine**, posé par une page
+  d'**une autre origine** (le contrôle C ne donnait que la même origine que GFS). La page, enregistrée puis ouverte depuis le disque
+  (son rapport lui donne l'origine `null`), pose trois cadres venus du site de GFS : X, cadre simple (origine `https://lombre33.github.io`,
+  stockage permis, LanguageTool **oui**) ; Y, isolé comme GFS **plus `allow-same-origin`** (même origine, stockage permis,
+  `data-lt-installed` présent, LanguageTool **oui**) ; Z, isolé comme GFS (origine nulle, stockage refusé, aucune trace, LanguageTool
+  **non**). Ce n'est donc ni le sandbox ni le sous-cadre qui arrête LanguageTool, c'est l'origine opaque : une vraie origine
+  **différente de celle de la page qui le porte** suffit. Pas encore mesuré : la même chose sous une page elle-même de vraie origine
+  (celle de GFS) ; Chrome, Edge et Safari.
+- **Une origine de plus sans domaine ni second compte : le nom du site écrit avec un point à la fin** (`https://lombre33.github.io.`).
+  Le nom complet d'un site finit par un point qu'on n'écrit pas d'ordinaire ; le navigateur le garde dans l'origine, donc
+  `lombre33.github.io` et `lombre33.github.io.` sont deux origines pour une même machine. Une origine, c'est le schéma, le nom et le port :
+  GitHub Pages fixe le schéma (https) et le port, le dossier et les paramètres n'en font pas partie. Mesuré dans Chromium par nous (labo,
+  `run-essai-croise.mjs`, partie `?point`, avec `localhost` contre `localhost.` : une adresse IP ne peut pas porter de point final) :
+  deux origines (`http://localhost:PORT` et `http://localhost.:PORT`), aucune lecture dans un sens ni dans l'autre (`SecurityError`),
+  stockage permis dans le cadre isolé qui garde son origine, en-tête `Host` envoyé avec le point, `frame-src 'self'` bloque le cadre au
+  nom avec le point et un `frame-src` qui le nomme l'accepte. **Pas mesuré** : si GitHub Pages répond à `Host: lombre33.github.io.` avec
+  un certificat valable ; si Firefox lit l'adresse avec le point dans `frame-src` ; si Firefox applique une règle posée par `<meta>` après
+  le chargement ; si LanguageTool travaille dans Y à cette adresse, sous une page de vraie origine. La page `croise.html?point`, ouverte
+  par le porteur sur le site en ligne (et non enregistrée), mesure ces quatre points.
 - Hors de ce que ces pages peuvent dire : Safari.

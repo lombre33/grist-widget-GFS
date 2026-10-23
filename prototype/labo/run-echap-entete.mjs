@@ -2,11 +2,11 @@
 // au vrai clavier et à la vraie souris. Ce que la passe mesure :
 //   1. la touche arrive jusqu'à l'app : GFS n'avale pas Échap dans le sous-cadre isolé (un écouteur en capture compte l'appui) ;
 //   2. le mode en-tête s'ouvre, puis « Terminer » le quitte (la fonction que « Échap » doit appeler) ;
-//   3. dans le mode, Échap quitte comme « Terminer », pied de page compris (CONSTAT tant que l'app ne le fait pas : elle n'a aucun gestionnaire de touche pour ce mode).
+//   3. dans le mode, Échap quitte comme « Terminer », pied de page compris (l'app à `406c740` ou après, consigne 034 faite).
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
-import { say, check } from './lab-common.mjs';
+import { check } from './lab-common.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -15,7 +15,6 @@ const lab = await startLab({ lang, colorScheme: scheme });
 const { page } = lab;
 const errors = [];
 page.on('pageerror', error => errors.push(String(error && error.message).slice(0, 160)));
-const constat = (label, ok, detail) => (ok ? say('OK    ', label) : say('CONSTAT', label, detail));
 await lab.fitPanel(undefined, 700, 400);
 await seedFiles(lab.frame);
 const app = await lab.openApp('publipostage', /apps\/publipostage\/|publipostageGrist\//);
@@ -45,7 +44,7 @@ for (const zone of ['header', 'footer']) {
   await app.locator('.ProseMirror').first().click();
   await page.keyboard.press('Escape');
   await page.waitForTimeout(400);
-  constat(`dans le mode « ${zone === 'header' ? 'en-tête' : 'pied de page'} », Échap quitte comme « Terminer »`, await editing() === false, 'le mode reste ouvert : aucun gestionnaire de touche dans js/header-footer-preview.js');
+  check(`dans le mode « ${zone === 'header' ? 'en-tête' : 'pied de page'} », Échap quitte comme « Terminer »`, await editing() === false);
   if (await editing()) await app.locator('#v2-hf-btn-done').click();
   await page.waitForTimeout(300);
 }

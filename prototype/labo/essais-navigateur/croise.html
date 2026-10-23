@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- Pas de règle de sécurité sur cette page : ouverte depuis le disque, elle ne sert qu'à porter trois cadres et à recopier leurs réponses (ni Grist, ni document, ni donnée).
-     Avec ?point, elle en pose une à la fin, par le script, pour voir si le navigateur accepte l'adresse avec le point dans `frame-src`, comme le ferait GFS.
+     Avec ?point, elle ajoute deux petites pages de contrôle, chacune avec sa propre règle `frame-src` (balise <meta>), pour voir si le navigateur laisse GFS ouvrir l'adresse avec le point.
      Tout est dans ce fichier, pour que sa copie enregistrée marche telle quelle ; les cadres sont ceux de la page d'essai du dossier (cadre.html), à leur adresse en ligne. -->
 <title>Essai croisé : un cadre isolé qui garde sa vraie origine</title>
 <style>
   body { font: 15px/1.5 system-ui, sans-serif; margin: 16px; max-width: 880px; }
   iframe { width: 100%; height: 190px; border: 1px solid #888; margin-bottom: 14px; }
-  iframe.regle { height: 60px; }
+  iframe.regle { height: 110px; }
   .cadre-titre { font-weight: 600; margin: 14px 0 4px; }
   textarea { width: 100%; box-sizing: border-box; font: 13px/1.4 ui-monospace, monospace; }
   #avertissement { border: 2px solid #b00020; padding: 8px 12px; }
@@ -27,10 +27,10 @@
 </ol>
 <div id="cadres"></div>
 <div id="regle" hidden>
-  <p class="cadre-titre">Essai de la règle de sécurité : deux petits cadres de contrôle, rien à faire</p>
+  <p class="cadre-titre">Essai des règles de sécurité de GFS : deux petites pages de contrôle, rien à faire</p>
 </div>
 <h2>Rapport</h2>
-<textarea id="rapport" rows="16" readonly spellcheck="false" aria-label="Rapport à copier"></textarea>
+<textarea id="rapport" rows="22" readonly spellcheck="false" aria-label="Rapport à copier"></textarea>
 <p><button id="copier" type="button">Copier le rapport</button> <span id="copie"></span></p>
 <script>
 'use strict';
@@ -40,6 +40,7 @@ const BASE = 'https://lombre33.github.io/grist-widget-GFS/prototype/labo/essais-
 const POINT = new URLSearchParams(location.search).has('point');
 const CADRES_BASE = (() => { if (!POINT) return BASE; const url = new URL(BASE); url.hostname += '.'; return url.href; })();
 const ORIGINE_CADRES = new URL(CADRES_BASE).origin;
+const ORIGINE_SANS_POINT = new URL(BASE).origin;
 // Les attributs du cadre d'une app dans GFS (prototype/js/frames.js : SANDBOX et `allow`).
 const SANDBOX = 'allow-scripts allow-forms allow-popups allow-modals allow-downloads';
 const CADRES = [
@@ -52,13 +53,12 @@ const etats = {};
 const cadres = document.getElementById('cadres');
 const rapport = document.getElementById('rapport');
 const frames = [];
-let regle = null;
+let bilan = false;
 
-const poser = (conteneur, { id, titre, sandbox, base = CADRES_BASE, classe }) => {
+const poser = (conteneur, { id, titre, sandbox }) => {
   const frame = document.createElement('iframe');
-  frame.src = `${base}cadre.html?c=${id}&t=`;
+  frame.src = `${CADRES_BASE}cadre.html?c=${id}&t=`;
   frame.title = titre;
-  if (classe) frame.className = classe;
   if (sandbox) frame.setAttribute('sandbox', sandbox);
   frame.setAttribute('allow', 'clipboard-write');
   const p = document.createElement('p');
@@ -78,18 +78,69 @@ avertissement.innerHTML = POINT
   : "<strong>Cette page est sur le même site que ses cadres : l'essai ne vaudrait rien.</strong> Enregistre-la sur ton disque, en « Page web, HTML seulement » (Ctrl+S, puis le type de fichier ; la version « complète » changerait les cadres), ou par le lien de la conversation (clic droit, « Enregistrer la cible du lien sous… »), puis ouvre le fichier enregistré dans Firefox.";
 for (const cadre of CADRES) poser(cadres, cadre);
 
+// Les règles `frame-src` essayées. Chacune est posée par une petite page (`srcdoc`) qui porte sa balise <meta>, comme GFS la porte, et deux cadres de contrôle :
+// W à l'adresse avec le point, V au même site sans le point. Un cadre qui se charge le dit ; un cadre que la règle bloque est signalé par la petite page ; ni l'un ni l'autre : le site ne répond pas.
+const REGLES = [
+  { id: 'point', source: ORIGINE_CADRES, titre: "règle qui nomme l'adresse avec le point" },
+  { id: 'sans', source: ORIGINE_SANS_POINT, titre: "règle qui nomme l'adresse sans le point" },
+];
+const harnais = [];
+const reglesEtats = {};
+const reglesSignaux = {};
+const quelCadre = uri => { try { return new URL(uri).hostname.endsWith('.') ? 'W' : 'V'; } catch { return '?'; } };
+const pageRegle = ({ id, source }) => {
+  const cadre = (c, base) => `<iframe title="${c}" src="${base}cadre.html?c=${c}&amp;t="></iframe>`;
+  const relais = `addEventListener('message',e=>{const d=e.data;if(d&&d.essai==='etat'&&[...document.querySelectorAll('iframe')].some(f=>f.contentWindow===e.source))parent.postMessage({...d,regle:'${id}'},'*')});`
+    + `document.addEventListener('securitypolicyviolation',e=>parent.postMessage({essai:'signal',regle:'${id}',directive:e.effectiveDirective,bloque:e.blockedURI},'*'));`;
+  return `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="frame-src ${source}"><style>iframe{width:48%;height:70px;border:1px solid #888}</style>${cadre('W', CADRES_BASE)}${cadre('V', BASE)}<script>${relais}<\/script>`;
+};
+const poserRegle = (conteneur, regle) => {
+  const frame = document.createElement('iframe');
+  frame.className = 'regle';
+  frame.title = `Contrôle : ${regle.titre}`;
+  frame.srcdoc = pageRegle(regle);
+  const p = document.createElement('p');
+  p.className = 'cadre-titre';
+  p.textContent = `Contrôle : ${regle.titre}`;
+  conteneur.append(p, frame);
+  harnais.push({ id: regle.id, frame });
+};
+const statutCadre = (id, cadre) => {
+  if (reglesEtats[`${id}:${cadre}`]) return 'chargé';
+  return (reglesSignaux[id] || []).some(s => s.cadre === cadre) ? 'bloqué par la règle' : 'sans réponse';
+};
+const NE_REPOND_PAS = "le cadre à l'adresse avec le point ne s'est pas chargé et la règle ne l'a pas signalé : soit le site ne répond pas à cette adresse, soit ce navigateur ne signale pas ce qu'il bloque";
+const conclusionPoint = ({ W, V }) => {
+  if (V === 'chargé') return "essai non concluant : la règle n'a pas bloqué le cadre qu'elle ne nomme pas";
+  if (W === 'chargé') return "la règle est appliquée et accepte l'adresse avec le point";
+  return W === 'bloqué par la règle' ? "la règle est appliquée mais refuse l'adresse avec le point" : NE_REPOND_PAS;
+};
+const conclusionSans = ({ W, V }) => {
+  if (V !== 'chargé') return "essai non concluant : la règle n'a pas laissé passer le cadre qu'elle nomme";
+  if (W === 'chargé') return 'une règle sans le point laisse passer aussi l\'adresse avec le point (le navigateur ignore le point final)';
+  return W === 'bloqué par la règle' ? "une règle sans le point ne laisse pas passer l'adresse avec le point" : NE_REPOND_PAS;
+};
+const quoiEcrire = (point, sans) => {
+  if (point.W === 'sans réponse' && sans.W === 'sans réponse') return "indéterminé : le cadre à l'adresse avec le point ne s'est chargé sous aucune des deux règles";
+  if (point.W === 'chargé' && point.V !== 'chargé') return "l'adresse avec le point (le navigateur l'accepte)";
+  if (sans.V === 'chargé' && sans.W === 'chargé') return "l'adresse sans le point (le navigateur ignore le point final)";
+  return "ni l'une ni l'autre : la règle des cadres devrait s'ouvrir à tout https, ou passer par une page-relais de GFS";
+};
+const lignesRegle = () => {
+  if (!POINT) return [];
+  if (!bilan) return ['', 'Règles frame-src : essai en cours (quelques secondes).'];
+  const point = { W: statutCadre('point', 'W'), V: statutCadre('point', 'V') };
+  const sans = { W: statutCadre('sans', 'W'), V: statutCadre('sans', 'V') };
+  const detail = (regle, statuts, conclusion) => [`  ${regle.titre} (${regle.source}) : cadre W, avec le point : ${statuts.W} ; cadre V, sans le point : ${statuts.V}`, `    conclusion : ${conclusion}`,
+    `    signalements du navigateur : ${(reglesSignaux[regle.id] || []).map(s => s.texte).join(' ; ') || 'aucun'}`];
+  return ['', 'Règles de sécurité, posées chacune par une petite page avec deux cadres de contrôle :', ...detail(REGLES[0], point, conclusionPoint(point)), ...detail(REGLES[1], sans, conclusionSans(sans)),
+    `  ce que GFS peut écrire dans sa règle de cadres : ${quoiEcrire(point, sans)}`];
+};
+
 const lecture = frame => { try { void frame.contentWindow.document.title; return 'oui'; } catch (e) { return `non (${e.name})`; } };
 const lignes = ({ id, titre }, i) => {
   const e = etats[id];
   return e ? [`Cadre ${titre}`, ...e.faits.map(l => `  ${l}`), `  la page lit le cadre : ${lecture(frames[i])}`, `  LanguageTool corrige ici : ${e.lt}`] : [`Cadre ${titre}`, "  (aucun rapport : le cadre ne s'est pas chargé ou a été bloqué)"];
-};
-const lignesRegle = () => {
-  if (!POINT) return [];
-  if (!regle) return ['', "Règle frame-src qui nomme l'adresse avec le point : essai en cours (quelques secondes)."];
-  const conclusion = regle.V ? "la règle n'a pas été appliquée : essai non concluant" : regle.W ? "la règle est appliquée et accepte l'adresse avec le point" : "la règle est appliquée mais refuse l'adresse avec le point";
-  return ['', `Règle frame-src qui ne nomme que ${ORIGINE_CADRES}, posée par la page une fois les trois cadres chargés :`,
-    `  cadre W, à l'adresse nommée : ${regle.W ? 'chargé' : 'bloqué'}`, `  cadre V, au même site sans le point, non nommé : ${regle.V ? 'chargé' : 'bloqué'}`,
-    `  conclusion : ${conclusion}`, `  signalements du navigateur : ${regle.signalements.join(' ; ') || 'aucun'}`];
 };
 const refaire = () => {
   const quand = new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris' });
@@ -98,28 +149,27 @@ const refaire = () => {
     ...CADRES.flatMap(lignes), ...lignesRegle()].join('\n');
 };
 
-// Une fois les trois cadres chargés, la page pose une règle `frame-src` qui ne nomme que l'adresse des cadres, puis deux cadres : W à l'adresse nommée, V au même site sans le point.
-// V sert de témoin : s'il se charge, la règle n'est pas appliquée et l'essai ne dit rien.
+// Une fois les trois cadres chargés, la page pose les deux petites pages de contrôle, puis laisse 8 secondes aux cadres de contrôle pour se charger ou être bloqués.
 let regleLancee = false;
 function essaiRegle() {
   if (regleLancee) return;
   regleLancee = true;
-  const signalements = [];
-  document.addEventListener('securitypolicyviolation', event => signalements.push(`${event.effectiveDirective} a bloqué ${event.blockedURI}`));
-  const meta = document.createElement('meta');
-  meta.httpEquiv = 'Content-Security-Policy';
-  meta.content = `frame-src ${ORIGINE_CADRES}`;
-  document.head.append(meta);
   const conteneur = document.getElementById('regle');
   conteneur.hidden = false;
-  poser(conteneur, { id: 'W', titre: "W · à l'adresse que la règle nomme", classe: 'regle' });
-  poser(conteneur, { id: 'V', titre: "V · au même site sans le point, que la règle ne nomme pas", classe: 'regle', base: BASE });
-  setTimeout(() => { regle = { W: !!etats.W, V: !!etats.V, signalements }; refaire(); }, 6000);
+  for (const regle of REGLES) poserRegle(conteneur, regle);
+  setTimeout(() => { bilan = true; refaire(); }, 8000);
 }
 
+function surRegle(d, id) {
+  if (d.essai === 'etat' && d.regle === id) reglesEtats[`${id}:${d.cadre}`] = true;
+  else if (d.essai === 'signal' && d.regle === id) (reglesSignaux[id] = reglesSignaux[id] || []).push({ cadre: quelCadre(d.bloque), texte: `${d.directive} a bloqué ${d.bloque}` });
+}
 addEventListener('message', event => {
   const d = event.data;
-  if (!d || d.essai !== 'etat' || !frames.some(f => f.contentWindow === event.source)) return;
+  if (!d) return;
+  const regle = harnais.find(h => h.frame.contentWindow === event.source);
+  if (regle) return surRegle(d, regle.id);
+  if (d.essai !== 'etat' || !frames.some(f => f.contentWindow === event.source)) return;
   etats[d.cadre] = d;
   refaire();
   if (POINT && CADRES.every(c => etats[c.id])) setTimeout(essaiRegle, 1500);

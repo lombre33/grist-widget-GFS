@@ -1,8 +1,9 @@
 // La page d'essai croisé (labo/essais-navigateur/croise.html), jouée à la vraie souris : trois cadres posés par une page d'une AUTRE origine que la leur, dont un cadre isolé qui garde
-// sa vraie origine (`allow-same-origin`, la voie « une adresse propre à l'app »), et avec `?point` les mêmes cadres au même site écrit avec un point à la fin du nom (`localhost.` contre `localhost`)
-// et la règle `frame-src` qui le nomme. Sert à vérifier que la page marche (origines, lectures croisées refusées, stockage, rapport, règle, avertissement) ; la réponse qui compte,
-// « LanguageTool corrige-t-il dans le cadre Y ? », est celle de la personne, dans son Firefox. La page se sert elle-même (aucun Grist, aucun GFS) : deux petits serveurs, l'un pour les cadres,
-// l'autre pour la page qui les porte, sur deux ports libres, donc deux origines.
+// sa vraie origine (`allow-same-origin`, la voie « une adresse propre à l'app »). Avec `?point`, les mêmes cadres viennent du même site écrit avec un point à la fin du nom (`localhost.` contre
+// `localhost`) et deux règles `frame-src` sont essayées, chacune posée par une petite page de contrôle comme GFS pose la sienne : l'une nomme l'adresse avec le point, l'autre sans.
+// Sert à vérifier que la page marche (origines, lectures croisées refusées, stockage, rapport, règles, avertissement) ; la réponse qui compte, « LanguageTool corrige-t-il dans le cadre Y ? »,
+// est celle de la personne, dans son Firefox. La page se sert elle-même (aucun Grist, aucun GFS) : deux petits serveurs, l'un pour les cadres, l'autre pour la page qui les porte, sur deux ports
+// libres, donc deux origines.
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -91,7 +92,7 @@ for (let i = 0; i < 3; i += 1) {
   await frame.locator('#edition').click();
   await frame.locator(`#lt input[value="${answers[i]}"]`).check();
 }
-await pointPage.waitForFunction(() => /conclusion :/.test(document.getElementById('rapport').value), null, { timeout: 30000 });
+await pointPage.waitForFunction(() => /ce que GFS peut écrire dans sa règle de cadres/.test(document.getElementById('rapport').value), null, { timeout: 30000 });
 await pointPage.waitForTimeout(2200);
 const pointReport = await pointPage.locator('#rapport').inputValue();
 const pointPart = id => pointReport.split(/\nCadre /).find(text => text.startsWith(`${id} ·`)) || '';
@@ -100,7 +101,10 @@ check('?point : la page est à `localhost`, les cadres à `localhost.`', pointRe
 check('?point, X : l\'origine à point final, stockage permis, ni lecture de la page ni lecture du cadre', realOrigin(pointPart('X'), pointOrigin));
 check('?point, Y : l\'origine à point final, stockage permis, ni lecture de la page ni lecture du cadre', realOrigin(pointPart('Y'), pointOrigin));
 check('?point, Z : origine vide, stockage refusé, aucune lecture', pointPart('Z').includes("origine du cadre : null ; niveau d'imbrication : 1 ; stockage du navigateur : non") && pointPart('Z').includes('lit la page qui le porte : non (SecurityError)') && pointPart('Z').includes('la page lit le cadre : non (SecurityError)'));
-check('?point, la règle `frame-src` qui nomme l\'adresse avec le point est appliquée et l\'accepte (W chargé, V bloqué)', /cadre W, à l'adresse nommée : chargé/.test(pointReport) && /cadre V, au même site sans le point, non nommé : bloqué/.test(pointReport) && /conclusion : la règle est appliquée et accepte l'adresse avec le point/.test(pointReport), pointReport.split('\n').filter(l => /Règle|cadre [WV]|conclusion|signalements/.test(l)));
+const regleLines = pointReport.split('\n').filter(l => /règle|cadre W|conclusion|signalements|ce que GFS/.test(l));
+check('?point, la règle qui nomme l\'adresse avec le point est appliquée et l\'accepte (W chargé, V bloqué par la règle)', new RegExp(`règle qui nomme l'adresse avec le point \\(${pointOrigin.replace(/\./g, '\\.')}\\) : cadre W, avec le point : chargé ; cadre V, sans le point : bloqué par la règle`).test(pointReport) && /conclusion : la règle est appliquée et accepte l'adresse avec le point/.test(pointReport), regleLines);
+check('?point, la règle qui nomme l\'adresse sans le point ne laisse pas passer l\'adresse avec le point (V chargé, W bloqué par la règle)', new RegExp(`règle qui nomme l'adresse sans le point \\(${solo.origin.replace(/\./g, '\\.')}\\) : cadre W, avec le point : bloqué par la règle ; cadre V, sans le point : chargé`).test(pointReport) && /conclusion : une règle sans le point ne laisse pas passer l'adresse avec le point/.test(pointReport), regleLines);
+check('?point, le rapport dit ce que GFS peut écrire dans sa règle de cadres', /ce que GFS peut écrire dans sa règle de cadres : l'adresse avec le point \(le navigateur l'accepte\)/.test(pointReport) && /signalements du navigateur : frame-src a bloqué/.test(pointReport), regleLines);
 check('?point, les réponses de la personne remontent dans le rapport', /corrige ici : oui/.test(pointPart('X')) && /corrige ici : oui/.test(pointPart('Y')) && /corrige ici : non/.test(pointPart('Z')));
 check('?point, aucune erreur de script', pointErrors.length === 0, pointErrors);
 say('--- rapport ?point ---');

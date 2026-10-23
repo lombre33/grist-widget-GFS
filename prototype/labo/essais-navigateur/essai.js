@@ -119,8 +119,10 @@ function cadre() {
   const envoyer = () => parent.postMessage(etat, '*');
   const profondeur = () => { let n = 0; for (let w = window; w !== w.parent; w = w.parent) n += 1; return n; };
   const stockage = () => { try { return `oui (${localStorage.length} clés)`; } catch (e) { return `non (${e.name})`; } };
+  const lecture = () => { try { void parent.document.title; return 'oui'; } catch (e) { return `non (${e.name})`; } };
   const faits = () => {
-    etat.faits = [`origine du cadre : ${self.origin} ; niveau d'imbrication : ${profondeur()} ; stockage du navigateur : ${stockage()}`, traces(champs)];
+    etat.origine = self.origin;
+    etat.faits = [`origine du cadre : ${self.origin} ; niveau d'imbrication : ${profondeur()} ; stockage du navigateur : ${stockage()} ; lit la page qui le porte : ${lecture()}`, traces(champs)];
     envoyer();
   };
   document.getElementById('titre').textContent = `Cadre ${id}`;

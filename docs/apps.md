@@ -7,7 +7,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `0c37c4b` | 23/10/2026 | GPL 3.0 |
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `5dd503b` | 23/10/2026 | GPL 3.0 |
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `cc21a27` | 22/10/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `f3ab8d6` | 22/10/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `586c7c4` | 22/10/2026 | GPL 3.0 |
@@ -471,6 +471,13 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   dans chacune des quatre combinaisons langue × thème : Markdown, Excel et PowerPoint au démarrage et l'app déjà ouverte, sa question d'enregistrement, un fichier illisible, aucune écriture dans le
   document) ; `ACCEPTS_OPEN.publipostage.importer` passé à `true` : Excel et Markdown se dégrisent, PowerPoint attend l'extension « Diapositives » ; `run-importer` (la sonde) remet Publipostage+ à « pas encore » le temps de
   sa passe, pour mesurer le grisé d'une app qui ne reçoit pas encore. Reste : le kit (`normalizeOpening` doit garder `importation`, promis dans la 035) à sa prochaine version.
+- Publipostage+ à `5dd503b` (23/10, en soirée) : six commits de plus depuis `0c37c4b` (`90e3cee`, `419cae7`, `e56a3a8`, `9b83321`, `3addebd`, `5dd503b`) : le style du trait d'un cadre, d'une forme ou d'une ligne
+  (tirets, pointillés, bouts), le trait composé (double, triple, fin puis épais, épais puis fin) et les pointes de flèche (cinq formes, trois largeurs, trois longueurs), que l'import PowerPoint reprend, et trois
+  mises à jour de sa page d'état (`GFS-ETAT.md` à `5dd503b`, qui décrit `3addebd` et dit lire GFS à `8cf1cbc`, donc l'importation faite). Elle le dit elle-même : « Rien à changer côté GFS : aucune table, colonne,
+  clé, adresse, contrat, bibliothèque, permission ni CSP de plus ; aucun appel nouveau à GFS ». Traité le 23/10 : la référence avancée à `5dd503b` (commit à part, relu sur les 27 fichiers dont 10 d'essais :
+  `index.html` ne change que des numéros de version ; la CSP, la carte d'importation, la liste de bibliothèques, `js/gfs-link.js`, `js/gfs-open.js`, `js/templates.js` et `js/grist-api.js` ne changent pas, ni
+  aucun fichier des extensions ; le seul code qui touche à la sécurité, `js/html-sanitize.js`, ajoute une liste blanche exacte pour le dessin du trait en tirets) ; `run-importer-pp` rejoué avec la nouvelle référence
+  (33 sur 33, français, clair) ; aucune consigne à écrire.
 - Form+ à `cc21a27` (22/10, le porteur : « check ce qui est remonté des projets ») : trois commits de plus depuis `16701fe`. Son
   `GFS-ETAT.md` (`0614f73`, qui décrit `c249c4a`) dit les consignes 008 à 011 **faites** : le formulaire natif s'enregistre dans
   `FormPlus_Formulaires` (avec la fenêtre d'accord de l'app, une ligne par formulaire par `Definition.vsId`), les répondants, le lien

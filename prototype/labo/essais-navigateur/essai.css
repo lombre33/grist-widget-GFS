@@ -1,0 +1,14 @@
+/* Page d'essai du navigateur (LISEZ-MOI.md du dossier) : les couleurs du système, rien d'autre. */
+:root { color-scheme: light dark; font: 15px/1.45 system-ui, sans-serif; }
+body { margin: 0; padding: 16px; background: Canvas; color: CanvasText; }
+body[data-role="cadre"], body[data-role="milieu"] { padding: 8px; }
+h1 { font-size: 20px; margin: 0 0 8px; }
+h2 { font-size: 15px; margin: 4px 0; }
+iframe { width: 100%; height: 400px; border: 1px solid GrayText; border-radius: 6px; background: Canvas; }
+iframe.milieu { height: 460px; }
+.cadre-titre { margin: 18px 0 4px; font-weight: 600; }
+.faits { font: 12px/1.4 ui-monospace, monospace; margin: 2px 0; }
+textarea, [contenteditable] { display: block; width: 100%; box-sizing: border-box; min-height: 48px; margin: 4px 0 8px; padding: 6px; border: 1px solid GrayText; border-radius: 4px; font: inherit; background: Field; color: FieldText; }
+#rapport { font: 12px/1.4 ui-monospace, monospace; min-height: 280px; }
+.essai { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin: 4px 0; }
+.choix { display: inline-flex; gap: 10px; }

@@ -63,7 +63,8 @@ export const centerOf = (app, selector) => app.evaluate(sel => {
 }, selector);
 
 // Les gestes d'une passe : la souris dans le cadre de l'app. `park` la range hors du cadre, sur la page de Grist à côté de lui : là aucun menu de l'app ne s'ouvre au survol (un coin du cadre en ouvrait un, qui recouvrait
-// le bouton suivant) et ceux qui l'étaient se referment. `pressOutside` : un appui de la vraie souris dans le cadre, sur un endroit inerte (le coin d'état, à défaut le texte), qui referme un menu ouvert au clic.
+// le bouton suivant) et ceux qui l'étaient se referment. `pressOutside` : un appui de la vraie souris dans le cadre, sur un endroit inerte (le coin d'état, à défaut le texte, à défaut un point quelconque
+// sans contrôle, cherché sur une grille : dans un cadre bas, un menu ouvert peut couvrir le coin d'état et le texte être sous le cadre), qui referme un menu ouvert au clic.
 export function hands({ page, frame, app, size, zone }) {
   const hand = {
     async move(x, y, steps = 1) { const at = await pagePoint(app, x, y); await page.mouse.move(at.x, at.y, { steps }); },
@@ -84,6 +85,18 @@ export function hands({ page, frame, app, size, zone }) {
         if (!onTop) continue;
         await hand.click(at.x, at.y);
         return true;
+      }
+      for (let y = 8; y < size[1]; y += 24) {
+        for (let x = 8; x < size[0]; x += 40) {
+          if ((await whereIs(frame, app, x, y)) !== 'libre') continue;
+          const inert = await app.evaluate(([px, py]) => {
+            const top = document.elementFromPoint(px, py);
+            return Boolean(top) && !top.closest('button, a, input, select, textarea, label, summary, [contenteditable], [role="menu"], [role="menuitem"], [role="button"], [role="option"], [tabindex], .pp-show-menu');
+          }, [x, y]);
+          if (!inert) continue;
+          await hand.click(x, y);
+          return true;
+        }
       }
       return false;
     },

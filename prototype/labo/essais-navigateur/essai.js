@@ -9,10 +9,10 @@ const SANDBOX = 'allow-scripts allow-forms allow-popups allow-modals allow-downl
 const ALLOW = 'clipboard-write';
 const TOUS = 't1,t2,t3,t4,t5,t6';
 const CADRES = [
-  { id: 'A', titre: 'A · cadre simple, comme Publipostage+ seule dans Grist', page: 'cadre.html', tests: 't1' },
+  { id: 'A', titre: 'A · cadre simple, comme Publipostage+ seule dans Grist', page: 'cadre.html', tests: 't1,t2' },
   { id: 'B', titre: 'B · cadre isolé comme celui de GFS, au premier niveau', page: 'cadre.html', sandbox: SANDBOX, tests: TOUS },
   { id: 'C', titre: 'C · cadre isolé avec la même origine (essai de contrôle)', page: 'cadre.html', sandbox: `${SANDBOX} allow-same-origin`, tests: 't1' },
-  { id: 'D', titre: 'D · deux niveaux, sans isolement', page: 'milieu.html', tests: 't1' },
+  { id: 'D', titre: 'D · deux niveaux, sans isolement', page: 'milieu.html', tests: 't1,t2' },
   { id: 'E', titre: 'E · deux niveaux, le dernier isolé : comme GFS dans Grist', page: 'milieu.html', isole: true, tests: TOUS },
 ];
 const ETATS = { t0: 'pas essayé', ok: 'arrivé', ko: 'rien' };
@@ -70,7 +70,7 @@ function haut() {
     : [`Cadre ${cadre.titre}`, '  (aucun rapport : le cadre ne s\'est pas chargé ou a été bloqué)']);
   const refaire = () => {
     const quand = new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris' });
-    rapport.value = [`Essai du navigateur, ${quand} (heure de Paris)`, navigator.userAgent, '', ...CADRES.flatMap(c => lignes(c, etats[c.id]))].join('\n');
+    rapport.value = [`Essai du navigateur, version 2 (la page laisse passer blob: et data:), ${quand} (heure de Paris)`, navigator.userAgent, '', ...CADRES.flatMap(c => lignes(c, etats[c.id]))].join('\n');
   };
   ecouter(e => { etats[e.cadre] = e; refaire(); });
   for (const cadre of CADRES) poserCadre(document.getElementById('cadres'), cadre);

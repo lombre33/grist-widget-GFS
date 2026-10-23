@@ -3,22 +3,23 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; frame-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; frame-src 'self' blob: data:; base-uri 'none'; form-action 'none'">
 <title>Essai du navigateur : cadres, téléchargements, LanguageTool</title>
 <link rel="stylesheet" href="essai.css?v=1">
 </head>
 <body data-role="haut">
 <h1>Essai du navigateur : cadres, téléchargements, LanguageTool</h1>
 <p>À ouvrir dans Firefox, avec LanguageTool activé. Cinq cadres, du plus simple (A, comme Publipostage+ seule dans Grist) au plus proche de GFS (E). La page ne touche à aucun document Grist.</p>
+<p><b>Version 2.</b> La règle de sécurité de cette page laisse maintenant passer les fichiers fabriqués dans un cadre (adresses <code>blob:</code> et <code>data:</code>). La première version la refusait, ce qui faussait les téléchargements, même ceux du cadre A.</p>
 <ol>
   <li>Dans chaque cadre, clique dans les deux zones de texte (elles contiennent des fautes), attends deux secondes, puis réponds à « LanguageTool corrige ici ? » : <b>oui</b> s'il souligne ou propose une correction, <b>non</b> si seul Firefox souligne.</li>
-  <li>Dans les cadres B et E, clique chacun des six boutons « Télécharger » (A, C et D n'en ont qu'un). Pour chacun, dis si un fichier est arrivé dans les téléchargements de Firefox : le nom du fichier est écrit à côté du bouton.</li>
+  <li>Dans les cadres B et E, clique chacun des six boutons « Télécharger » (A et D en ont deux, C un seul). Pour chacun, dis si un fichier est arrivé dans les téléchargements de Firefox : le nom du fichier est écrit à côté du bouton.</li>
   <li>Le rapport tout en bas se remplit seul. Copie-le avec le bouton et colle-le dans la conversation.</li>
 </ol>
 <div id="cadres"></div>
 <h2>Rapport</h2>
 <textarea id="rapport" rows="16" readonly spellcheck="false" aria-label="Rapport à copier"></textarea>
 <p><button id="copier" type="button">Copier le rapport</button> <span id="copie"></span></p>
-<script src="essai.js?v=1"></script>
+<script src="essai.js?v=2"></script>
 </body>
 </html>

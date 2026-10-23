@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- `frame-src 'self' https:` : la règle qu'il faudrait à GFS pour poser une app au nom du site écrit avec un point à la fin ; Firefox refuse d'y nommer ce nom (croise.html?point). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; frame-src 'self' https: blob: data:; base-uri 'none'; form-action 'none'">
+<title>Essai à trois pages : LanguageTool dans le cadre d'une app</title>
+<link rel="stylesheet" href="essai.css?v=2">
+</head>
+<body data-role="haut" data-jeu="profond">
+<h1>Essai à trois pages : LanguageTool dans le cadre d'une app</h1>
+<p>Une seule question : LanguageTool travaille-t-il dans le cadre d'une app posé comme GFS le pose dans Grist (la page de Grist, GFS dedans, l'app dedans : trois pages l'une dans l'autre) ? Cinq cadres : le premier est le réglage d'aujourd'hui, les suivants changent le nom du site de l'app, écrit avec un point à la fin (<code>lombre33.github.io.</code>, ce que le navigateur prend pour une autre adresse), ou la façon dont le cadre est isolé. La page ne touche à aucun document Grist.</p>
+<p id="avertissement" hidden><strong>Cette page est déjà à l'adresse avec le point : l'essai ne vaudrait rien.</strong> Ouvre-la par l'adresse du site, sans le point à la fin du nom.</p>
+<ol>
+  <li>Ouvre la page par son adresse, dans Firefox avec LanguageTool activé (sans l'enregistrer). Dans chaque cadre, clique dans les deux zones de texte (elles contiennent des fautes), attends deux secondes, puis réponds à « LanguageTool corrige ici ? » : <b>oui</b> s'il souligne ou propose une correction, <b>non</b> si seul Firefox souligne.</li>
+  <li>Le rapport tout en bas se remplit seul. Copie-le avec le bouton et colle-le dans la conversation.</li>
+</ol>
+<div id="cadres"></div>
+<h2>Rapport</h2>
+<textarea id="rapport" rows="22" readonly spellcheck="false" aria-label="Rapport à copier"></textarea>
+<p><button id="copier" type="button">Copier le rapport</button> <span id="copie"></span></p>
+<script src="essai.js?v=4"></script>
+</body>
+</html>

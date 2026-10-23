@@ -40,8 +40,8 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
 6. **Stockage du navigateur** : chaque accès dans un `try/catch`, et l'app marche sans lui. Dans GFS, l'app tourne dans une
    origine opaque où `localStorage` lève une erreur (cahier 5.7) : GFS garde ses choix à sa place, par `contexte.stockage` à
    la lecture et `stockage.ecrire` à l'écriture (contrats 5.3), un espace de 1 Mo par app. Même cause : une extension du
-   navigateur qui travaille dans la page (LanguageTool sous Firefox) n'entre pas dans ce cadre (faits vérifiés 11) ; l'app ne
-   peut pas compter sur elle.
+   navigateur qui travaille dans la page (LanguageTool sous Firefox 140) n'entre pas dans ce cadre (sous Firefox 158 elle y
+   travaille, sans que nous sachions pourquoi : faits vérifiés 11) ; l'app ne peut pas compter sur elle.
 7. **Messages** : `addEventListener('message')` en vérifiant `event.source`, jamais `window.onmessage =`. Cette affectation
    remplacerait l'écoute du script d'API de Grist (`grist-plugin-api.ts`, ligne 520) et couperait l'app de Grist.
 8. **Tables internes de Grist** (`_grist_*`) : aucune écriture sans une raison écrite. Elle devra être déclarée dans le

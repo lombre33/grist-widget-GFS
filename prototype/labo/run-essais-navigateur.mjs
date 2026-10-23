@@ -1,22 +1,12 @@
 // La page d'essai du navigateur (labo/essais-navigateur/), jouée à la vraie souris dans le navigateur du labo : ce que la personne fait dans son Firefox, et le rapport qu'elle copie.
 // Sert à vérifier que la page marche et à garder la réponse de Chromium pour la comparer à celle de Firefox (LAB_BROWSER=firefox|webkit sur une machine qui les a).
 // La page se sert elle-même (aucun Grist, aucun GFS) : un petit serveur sur un port libre.
-import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { engine, engineName, say, check, LAB } from './lab-common.mjs';
+import { engine, engineName, say, check, LAB, serveFolder } from './lab-common.mjs';
 
 const DOSSIER = join(LAB, 'essais-navigateur');
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' };
-const server = createServer(async (req, res) => {
-  const name = new URL(req.url, 'http://x').pathname.replace(/^\/+/, '') || 'index.html';
-  try {
-    const body = await readFile(join(DOSSIER, name.replace(/\.\./g, '')));
-    res.writeHead(200, { 'content-type': TYPES[name.slice(name.lastIndexOf('.'))] || 'application/octet-stream' }).end(body);
-  } catch { res.writeHead(404).end(); }
-});
-await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-const origin = `http://127.0.0.1:${server.address().port}`;
+const { server, port } = await serveFolder(DOSSIER, 'index.html');
+const origin = `http://127.0.0.1:${port}`;
 
 const browser = await engine.launch(engineName === 'chromium' ? { args: ['--no-sandbox'] } : {});
 const context = await browser.newContext({ viewport: { width: 1000, height: 1200 }, colorScheme: 'light', locale: 'fr-FR' });

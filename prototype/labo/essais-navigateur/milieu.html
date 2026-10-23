@@ -2,11 +2,12 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; frame-src 'self' blob: data:; base-uri 'none'; form-action 'none'">
+<!-- `frame-src 'self' https:` : la règle qu'il faudrait à GFS pour poser une app au nom du site écrit avec un point à la fin (profond.html) ; Firefox refuse d'y nommer ce nom (croise.html?point). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; frame-src 'self' https: blob: data:; base-uri 'none'; form-action 'none'">
 <title>Cadre intermédiaire d'essai</title>
-<link rel="stylesheet" href="essai.css?v=1">
+<link rel="stylesheet" href="essai.css?v=2">
 </head>
 <body data-role="milieu">
-<script src="essai.js?v=3"></script>
+<script src="essai.js?v=4"></script>
 </body>
 </html>

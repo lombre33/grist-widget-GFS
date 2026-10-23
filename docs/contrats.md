@@ -170,10 +170,13 @@ L'app (sous-cadre sans allow-same-origin)
    tant que `frame-src` de la page qui porte le cadre ne le nomme pas, cadre isolé ou non ; Chromium ne regarde pas `frame-src`
    pour un téléchargement. **GFS ajoute `blob:` à son `frame-src`**, pour cette seule raison (les exports de Publipostage+,
    `downloadBlob`) : `index.html`, contrôlé par `test/csp.test.mjs` ; l'export Word dans GFS sous Firefox reste à confirmer par le
-   porteur. (b) **LanguageTool ne travaille pas dans un cadre à origine opaque** : aucune trace de lui dans un cadre isolé comme
-   celui de GFS, toutes dans le même cadre avec `allow-same-origin` en plus. C'est la contrepartie de l'isolement ci-dessus. [M] Mais
-   il travaille dans un cadre isolé qui garde sa vraie origine (`allow-same-origin`) quand elle n'est pas celle de la page qui le
-   porte (essai croisé, Firefox 140, 23/10, faits vérifiés 11) : la voie « une adresse propre à l'app » est ouverte côté navigateur ;
+   porteur. (b) **Dans Firefox 140, LanguageTool ne travaille pas dans un cadre à origine opaque** : aucune trace de lui dans un cadre
+   isolé comme celui de GFS, toutes dans le même cadre avec `allow-same-origin` en plus. C'est la contrepartie de l'isolement
+   ci-dessus. [M] **Dans Firefox 158 (23/10, 21 h 17) il travaille dans un cadre isolé comme celui de GFS** quand l'app vient du
+   site écrit avec un point à la fin ; ce qui change entre les deux n'est pas expliqué (version, page porteuse ou nom du site :
+   faits vérifiés 11). [M] Il travaille aussi dans un cadre isolé qui garde sa vraie origine (`allow-same-origin`) quand elle n'est
+   pas celle de la page qui le porte (essai croisé, Firefox 140 puis 158, 23/10, faits vérifiés 11) : la voie « une adresse propre
+   à l'app » est ouverte côté navigateur ;
    GFS ne la prend que sur décision du porteur (carte du 23/10), et l'adresse manque tant que GFS et les apps sont sur un seul site.
    [M] Safari : la page de mesure du porteur (`labo/navigateur/`).
 2. [T] **L'adresse du sous-cadre est calculée par GFS**, d'après le catalogue et le manifeste livrés avec lui ; elle n'est jamais lue

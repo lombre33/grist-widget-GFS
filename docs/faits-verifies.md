@@ -603,7 +603,8 @@ dessus, qui l'enregistre ; t6, le geste de `downloadBlob` 7 secondes après le c
 - Mesuré, **LanguageTool** : B et C ne diffèrent que par `allow-same-origin`. Avec lui, LanguageTool laisse ses traces
   (`data-lt-installed`, éléments `lt-*`, attributs `data-lt-*` et `data-gramm`) et le porteur dit qu'il corrige ; sans lui, aucune
   trace, `spellcheck` reste absent des zones et seul le correcteur de Firefox souligne. L'imbrication n'y change rien (D). La cause
-  est l'origine opaque du cadre, donc l'isolement choisi le 16/10 (contrats 1.3, point 1).
+  est, dans ce Firefox 140, l'origine opaque du cadre, donc l'isolement choisi le 16/10 (contrats 1.3, point 1) ; le Firefox 158 du
+  soir dit autre chose du cadre isolé (Z, plus bas).
 - Mesuré, **téléchargements** : tout enregistrement lancé depuis un cadre a échoué, isolé ou non (t1 en A, C, D ; tous en B et E).
   Ceux que la page du dessus a lancés ont réussi quand elle était la page de plus haut niveau (t4 et t5 en B) et échoué quand elle
   était elle-même un cadre (t4 et t5 en E).
@@ -633,9 +634,9 @@ dessus, qui l'enregistre ; t6, le geste de `downloadBlob` 7 secondes après le c
   (son rapport lui donne l'origine `null`), pose trois cadres venus du site de GFS : X, cadre simple (origine `https://lombre33.github.io`,
   stockage permis, LanguageTool **oui**) ; Y, isolé comme GFS **plus `allow-same-origin`** (même origine, stockage permis,
   `data-lt-installed` présent, LanguageTool **oui**) ; Z, isolé comme GFS (origine nulle, stockage refusé, aucune trace, LanguageTool
-  **non**). Ce n'est donc ni le sandbox ni le sous-cadre qui arrête LanguageTool, c'est l'origine opaque : une vraie origine
-  **différente de celle de la page qui le porte** suffit. Pas encore mesuré : la même chose sous une page elle-même de vraie origine
-  (celle de GFS) ; Chrome, Edge et Safari.
+  **non**). Dans ce Firefox 140, ce n'est donc ni le sandbox ni le sous-cadre qui arrête LanguageTool, c'est l'origine opaque : une
+  vraie origine **différente de celle de la page qui le porte** suffit. Cette page, ouverte depuis le disque, n'était pas elle-même
+  de vraie origine : la même mesure sous une page de vraie origine est celle de 21 h 17, plus bas. Pas mesuré : Chrome, Edge et Safari.
 - **Une origine de plus sans domaine ni second compte : le nom du site écrit avec un point à la fin** (`https://lombre33.github.io.`).
   Le nom complet d'un site finit par un point qu'on n'écrit pas d'ordinaire ; le navigateur le garde dans l'origine, donc
   `lombre33.github.io` et `lombre33.github.io.` sont deux origines pour une même machine. Une origine, c'est le schéma, le nom et le port :
@@ -645,10 +646,25 @@ dessus, qui l'enregistre ; t6, le geste de `downloadBlob` 7 secondes après le c
   stockage permis dans le cadre isolé qui garde son origine, en-tête `Host` envoyé avec le point, `frame-src 'self'` bloque le cadre au
   nom avec le point et un `frame-src` qui le nomme l'accepte. **Mesuré par le porteur** (Firefox 140, Windows, 23/10, 17 h 33 heure de
   Paris) : `cadre.html` s'ouvre à `https://lombre33.github.io./…` ; GitHub Pages répond donc au nom avec le point et Firefox accepte le
-  certificat. **Lu, pas mesuré** : l'analyseur de règles de Firefox ([`nsCSPParser.cpp`](https://searchfox.org/mozilla-central/source/dom/security/nsCSPParser.cpp),
+  certificat. **Lu** : l'analyseur de règles de Firefox ([`nsCSPParser.cpp`](https://searchfox.org/mozilla-central/source/dom/security/nsCSPParser.cpp),
   fonction `subHost`, d'après deux résumés concordants de la page, non relue ligne à ligne) refuse un nom qui finit par un point et
-  ignore la source ; une règle `frame-src` ne pourrait alors pas nommer l'app. **Pas mesuré** : ce que Firefox fait d'une règle
-  `<meta>` qui nomme l'adresse avec le point, ou sans le point, devant un cadre à l'adresse avec le point ; si LanguageTool travaille
-  dans Y à cette adresse, sous une page de vraie origine. La page `croise.html?point`, ouverte par le porteur sur le site en ligne (et
-  non enregistrée), mesure ces deux points.
+  ignore la source. **Mesuré par le porteur** (Firefox 158, Windows, 23/10, 21 h 17 heure de Paris), avec `croise.html?point` ouverte
+  sur le site en ligne, donc sous une page de vraie origine (`https://lombre33.github.io`) dont les trois cadres viennent de
+  `https://lombre33.github.io.` (« LanguageTool corrige ici » est la réponse de la personne ; les traces ne sont qu'un indice) :
+  - **La règle `frame-src` de Firefox refuse le nom avec le point.** Deux petites pages, chacune avec sa balise `<meta>` et deux
+    cadres de contrôle, W à l'adresse avec le point et V au même site sans le point : la règle qui nomme l'adresse avec le point
+    bloque **les deux** (« frame-src a bloqué https://lombre33.github.io. » et « … https://lombre33.github.io ») ; la règle qui
+    nomme l'adresse sans le point laisse passer V et bloque W. Aucune ne laisse passer un cadre à l'adresse avec le point : pour
+    que GFS en pose un, sa règle devrait s'ouvrir à tout `https:` ou passer par une page-relais. Cela confirme la lecture de
+    `subHost` pour Firefox 158 ; Firefox 140 n'a pas été mesuré sur ce point.
+  - X, cadre simple : origine `https://lombre33.github.io.`, stockage permis, aucune lecture dans un sens ni dans l'autre
+    (`SecurityError`), LanguageTool **oui**. Y, isolé comme GFS plus `allow-same-origin` : même origine, mêmes lectures refusées,
+    stockage permis, LanguageTool **oui** (traces `lt-highlighter`, `lt-div`, `lt-toolbar`, `lt-span`, les deux zones marquées).
+  - **Z, isolé comme GFS (origine nulle, stockage refusé) : LanguageTool oui** (traces `lt-toolbar`, `lt-div`, `lt-span` et
+    `data-lt-installed`, pas de `lt-highlighter`, une seule des deux zones marquée, comme en X). Le même Z avait donné **non** à
+    15 h 47 (Firefox 140, page ouverte depuis le disque, cadres au nom sans point). Trois choses ont changé à la fois : la version
+    du navigateur (140, puis 158), la page qui porte les cadres (le disque, puis le site en ligne) et le nom du site des cadres
+    (sans, puis avec le point). **L'écart n'est pas expliqué.** La page `profond.html` les sépare, avec un niveau de plus comme
+    dans Grist : P1 (le réglage d'aujourd'hui) contre P2 (nom avec le point), P3 (de plus `allow-same-origin`), P4 et P5 (un niveau
+    de moins).
 - Hors de ce que ces pages peuvent dire : Safari.

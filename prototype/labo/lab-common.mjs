@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module';
+import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -55,6 +56,21 @@ export function mirrored(url) {
     return hit ? join(MIRROR, 'umd', hit[1]) : null;
   }
   return null;
+}
+
+// Un petit serveur pour les pages d'essai du navigateur (`essais-navigateur/`, run-essai-croise, run-essai-profond, run-essais-navigateur) : le dossier tel quel, sur un port libre. `defaut` : la page rendue pour « / » ;
+// `transformer(nom, octets, port)` change un fichier au passage (l'adresse des cadres, la règle de sécurité).
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' };
+export async function serveFolder(dossier, defaut, transformer = (nom, octets) => octets) {
+  const server = createServer(async (req, res) => {
+    const nom = new URL(req.url, 'http://x').pathname.replace(/^\/+/, '') || defaut;
+    try {
+      const octets = transformer(nom, await readFile(join(dossier, nom.replace(/\.\./g, ''))), server.address().port);
+      res.writeHead(200, { 'content-type': TYPES[nom.slice(nom.lastIndexOf('.'))] || 'application/octet-stream' }).end(octets);
+    } catch { res.writeHead(404).end(); }
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  return { server, port: server.address().port };
 }
 
 // Le sélecteur de fichier du navigateur (« Nouveau > Importer » : run-importer, run-importer-pp). L'écoute est posée dès le départ (le navigateur n'intercepte le sélecteur qu'une fois l'écoute en

@@ -12,3 +12,7 @@ textarea, [contenteditable] { display: block; width: 100%; box-sizing: border-bo
 #rapport { font: 12px/1.4 ui-monospace, monospace; min-height: 280px; }
 .essai { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin: 4px 0; }
 .choix { display: inline-flex; gap: 10px; }
+#avertissement { border: 2px solid; border-radius: 6px; padding: 8px 12px; }
+/* Le jeu à trois pages (profond.html) : peu de contenu par cadre, donc des cadres plus bas. */
+body[data-jeu="profond"] iframe { height: 240px; }
+body[data-jeu="profond"] iframe.milieu { height: 320px; }

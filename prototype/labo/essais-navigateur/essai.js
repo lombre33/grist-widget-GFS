@@ -2,6 +2,7 @@
 //   `haut`   la page qu'on ouvre : elle pose les cadres, reçoit leurs rapports et fait celui qu'on copie ;
 //   `milieu` un cadre qui en pose un autre, comme GFS dans Grist ;
 //   `cadre`  là où l'on essaie : des fautes à corriger (LanguageTool) et six façons de télécharger un fichier.
+// Deux jeux de cadres pour `haut`, selon `data-jeu` du corps : `complet` (index.html, cadres A à E) et `profond` (profond.html, cadres P1 à P5).
 'use strict';
 
 // Les attributs du cadre d'une app dans GFS (prototype/js/frames.js : SANDBOX et `allow`).
@@ -15,6 +16,19 @@ const CADRES = [
   { id: 'D', titre: 'D · deux niveaux, sans isolement', page: 'milieu.html', tests: 't1,t2' },
   { id: 'E', titre: 'E · deux niveaux, le dernier isolé : comme GFS dans Grist', page: 'milieu.html', isole: true, tests: TOUS },
 ];
+// Le jeu `profond` : « LanguageTool travaille-t-il dans le cadre d'une app posé comme GFS le pose dans Grist ? », sans téléchargement. `point` : l'app vient du même site écrit avec un point à la fin du nom
+// (https://lombre33.github.io./…), que le navigateur compte comme une autre origine ; `garde` : le cadre de l'app, isolé, garde sa vraie origine (allow-same-origin).
+const PROFOND = [
+  { id: 'P1', titre: "P1 · comme GFS aujourd'hui : trois pages l'une dans l'autre, l'app isolée, au nom du site", page: 'milieu.html', isole: true, tests: '' },
+  { id: 'P2', titre: "P2 · trois pages l'une dans l'autre, l'app isolée, au nom du site écrit avec un point à la fin", page: 'milieu.html', isole: true, point: true, tests: '' },
+  { id: 'P3', titre: "P3 · trois pages l'une dans l'autre, l'app isolée mais gardant sa vraie origine (allow-same-origin), au nom avec le point", page: 'milieu.html', isole: true, garde: true, point: true, tests: '' },
+  { id: 'P4', titre: "P4 · deux pages l'une dans l'autre, l'app isolée, au nom du site (comme B de la première page d'essai)", page: 'cadre.html', sandbox: SANDBOX, tests: '' },
+  { id: 'P5', titre: "P5 · deux pages l'une dans l'autre, l'app isolée, au nom avec le point (comme Z de l'essai de tout à l'heure)", page: 'cadre.html', sandbox: SANDBOX, point: true, tests: '' },
+];
+const JEUX = {
+  complet: { cadres: CADRES, titre: 'Essai du navigateur, version 2 (la page laisse passer blob: et data:)' },
+  profond: { cadres: PROFOND, titre: 'Essai à trois pages l\'une dans l\'autre (nom du site avec ou sans point à la fin)' },
+};
 const ETATS = { t0: 'pas essayé', ok: 'arrivé', ko: 'rien' };
 
 const dom = (tag, props = {}, ...enfants) => {
@@ -55,25 +69,39 @@ function choix(nom, options, surChoix) {
   return bloc;
 }
 
-function poserCadre(conteneur, { id, titre, page, sandbox, isole, tests }) {
-  const frame = dom('iframe', { src: `${page}?c=${id}&t=${tests}${isole ? '&i=1' : ''}`, title: titre, className: page === 'milieu.html' ? 'milieu' : '' });
+// L'adresse d'une page du dossier ; avec `point`, le nom du site est écrit avec un point à la fin (https://lombre33.github.io./…).
+const adresse = (page, point, recherche) => {
+  const url = new URL(page, location.href);
+  if (point) url.hostname += '.';
+  url.search = recherche;
+  return url.href;
+};
+
+function poserCadre(conteneur, { id, titre, page, sandbox, isole, garde, point, tests }) {
+  // milieu.html pose lui-même le cadre intérieur : isolé (i=1), qui garde sa vraie origine (s=garde), au nom avec le point (b=point) ; il reçoit j=profond pour des cadres plus bas.
+  const imbrique = page === 'milieu.html';
+  const recherche = `?c=${id}&t=${tests}${isole ? '&i=1' : ''}${garde ? '&s=garde' : ''}${imbrique && point ? '&b=point' : ''}${imbrique && document.body.dataset.jeu === 'profond' ? '&j=profond' : ''}`;
+  const frame = dom('iframe', { src: adresse(page, point && !imbrique, recherche), title: titre, className: imbrique ? 'milieu' : '' });
   if (sandbox) frame.setAttribute('sandbox', sandbox);
   frame.setAttribute('allow', ALLOW);
   conteneur.append(dom('p', { className: 'cadre-titre' }, titre), frame);
 }
 
 function haut() {
+  const jeu = JEUX[document.body.dataset.jeu || 'complet'];
   const etats = {};
   const rapport = document.getElementById('rapport');
+  const avertissement = document.getElementById('avertissement');
+  if (avertissement) avertissement.hidden = !location.hostname.endsWith('.');
   const lignes = (cadre, e) => (e
     ? [`Cadre ${cadre.titre}`, ...e.faits.map(l => `  ${l}`), ...Object.values(e.tests).map(([nom, etat]) => `  ${nom} : ${etat}`), `  LanguageTool corrige ici : ${e.lt}`]
     : [`Cadre ${cadre.titre}`, '  (aucun rapport : le cadre ne s\'est pas chargé ou a été bloqué)']);
   const refaire = () => {
     const quand = new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris' });
-    rapport.value = [`Essai du navigateur, version 2 (la page laisse passer blob: et data:), ${quand} (heure de Paris)`, navigator.userAgent, '', ...CADRES.flatMap(c => lignes(c, etats[c.id]))].join('\n');
+    rapport.value = [`${jeu.titre}, ${quand} (heure de Paris)`, navigator.userAgent, `page qui porte les cadres : ${location.protocol}//${location.host}`, '', ...jeu.cadres.flatMap(c => lignes(c, etats[c.id]))].join('\n');
   };
   ecouter(e => { etats[e.cadre] = e; refaire(); });
-  for (const cadre of CADRES) poserCadre(document.getElementById('cadres'), cadre);
+  for (const cadre of jeu.cadres) poserCadre(document.getElementById('cadres'), cadre);
   refaire();
   document.getElementById('copier').addEventListener('click', async () => {
     rapport.select();
@@ -84,9 +112,10 @@ function haut() {
 
 function milieu() {
   const params = new URLSearchParams(location.search);
+  if (params.get('j')) document.body.dataset.jeu = params.get('j');
   ecouter(d => parent.postMessage(d, '*'));
-  const frame = dom('iframe', { src: `cadre.html?c=${params.get('c')}&t=${params.get('t')}`, title: 'cadre intérieur' });
-  if (params.get('i') === '1') frame.setAttribute('sandbox', SANDBOX);
+  const frame = dom('iframe', { src: adresse('cadre.html', params.get('b') === 'point', `?c=${params.get('c')}&t=${params.get('t')}`), title: 'cadre intérieur' });
+  if (params.get('i') === '1') frame.setAttribute('sandbox', params.get('s') === 'garde' ? `${SANDBOX} allow-same-origin` : SANDBOX);
   frame.setAttribute('allow', ALLOW);
   document.body.append(dom('p', { className: 'faits' }, 'Cette page joue GFS : elle n\'est pas isolée et pose le cadre ci-dessous.'), frame);
 }

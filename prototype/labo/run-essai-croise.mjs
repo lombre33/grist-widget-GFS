@@ -4,31 +4,21 @@
 // Sert à vérifier que la page marche (origines, lectures croisées refusées, stockage, rapport, règles, avertissement) ; la réponse qui compte, « LanguageTool corrige-t-il dans le cadre Y ? »,
 // est celle de la personne, dans son Firefox. La page se sert elle-même (aucun Grist, aucun GFS) : deux petits serveurs, l'un pour les cadres, l'autre pour la page qui les porte, sur deux ports
 // libres, donc deux origines.
-import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { engine, engineName, say, check, LAB } from './lab-common.mjs';
+import { engine, engineName, say, check, LAB, serveFolder } from './lab-common.mjs';
 
 const DOSSIER = join(LAB, 'essais-navigateur');
 // Ce que le rapport doit dire d'un cadre à origine réelle venu d'un autre nom d'hôte que sa page : son origine, le stockage permis, et aucune lecture dans un sens ni dans l'autre.
 const realOrigin = (text, origin) => text.includes(`origine du cadre : ${origin} ; niveau d'imbrication : 1 ; stockage du navigateur : oui`) && text.includes('lit la page qui le porte : non (SecurityError)') && text.includes('la page lit le cadre : non (SecurityError)');
 const ADRESSE_EN_LIGNE = 'https://lombre33.github.io/grist-widget-GFS/prototype/labo/essais-navigateur/';
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' };
 // `target` : l'adresse que la page croise.html doit croire être celle de ses cadres ; 'self' : celle du serveur lui-même (la page du même site que ses cadres).
 const serve = async (target, host = '127.0.0.1') => {
-  const server = createServer(async (req, res) => {
-    const name = new URL(req.url, 'http://x').pathname.replace(/^\/+/, '') || 'croise.html';
-    try {
-      let body = await readFile(join(DOSSIER, name.replace(/\.\./g, '')));
-      if (target && name === 'croise.html') {
-        const base = target === 'self' ? `http://${host}:${server.address().port}/` : target;
-        body = Buffer.from(body.toString('utf8').replace(ADRESSE_EN_LIGNE, base));
-      }
-      res.writeHead(200, { 'content-type': TYPES[name.slice(name.lastIndexOf('.'))] || 'application/octet-stream' }).end(body);
-    } catch { res.writeHead(404).end(); }
+  const { server, port } = await serveFolder(DOSSIER, 'croise.html', (name, body, port) => {
+    if (!target || name !== 'croise.html') return body;
+    const base = target === 'self' ? `http://${host}:${port}/` : target;
+    return Buffer.from(body.toString('utf8').replace(ADRESSE_EN_LIGNE, base));
   });
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  return { server, origin: `http://${host}:${server.address().port}`, port: server.address().port };
+  return { server, origin: `http://${host}:${port}`, port };
 };
 
 // Les cadres (cadre.html, essai.js) d'un côté, qui servent aussi la page croise.html à elle-même (pour l'avertissement) ; la page qui les porte de l'autre, avec l'adresse des cadres changée pour celle du premier.

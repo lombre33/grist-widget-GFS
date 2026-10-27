@@ -8,6 +8,7 @@
 //                                                        cadre que Grist donne à GFS seul, ou aux deux (labo seulement : Grist n'a que `clipboard-write`) ; CAP_ONLY=plein
 //   CAP_ALONE=1                                          la sonde seule dans une page ordinaire (« comme seule ») : la référence
 //   CAP_ONLY=essai1,essai2                               seulement ces essais
+//   CAP_ORDINAIRE=1                                      le cadre de Grist sans le `credentialless` de grist-static (lab-setup.mjs) : sans lui, `window.open` rend la fenêtre et elle garde son ouvreur
 //   CAP_SET=main|nav                                     les essais d'une page (main) ou les navigations du cadre (nav, un lancement de Grist par essai)
 import { startLab } from './lab-setup.mjs';
 import { say, chromium } from './lab-common.mjs';
@@ -89,7 +90,7 @@ async function openProbe() {
     await lab.fitPanel(undefined, 700, 400);
     return { browser: lab.browser, page: lab.page, context: lab.context, app: lab.frame };
   }
-  const lab = await startLab({ lang: 'fr', probes: true, frameAttributes: CONFIGS[config], patches: PATCHES[config] || [] });
+  const lab = await startLab({ lang: 'fr', probes: true, frameAttributes: CONFIGS[config], patches: PATCHES[config] || [], ordinaryFrame: process.env.CAP_ORDINAIRE === '1' });
   // Sans cette permission au niveau du navigateur, un navigateur sans écran refuse le presse-papiers même à la page de plus haut niveau : on mesure ce que les cadres laissent passer.
   await lab.context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await lab.fitPanel(undefined, 700, 400);

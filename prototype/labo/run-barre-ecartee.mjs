@@ -8,6 +8,7 @@
 // échec. LAB_LANG=fr|en, LAB_SCHEME=light|dark ;
 // SIZES=700x400,560x300 EDGES=gauche,haut ONLY=menus,infobulles pour une mise au point (les parties ne tournent alors que pour ce qu'on nomme) :
 // repos, menus, infobulles, listes, fenetres, flottantes, variables, lecture, puis presentation (toutes ses parties) ou l'une d'elles : diapos-repos, diapos-menus, diapos-fenetres, diapos-volet, presenter.
+// Le cadre de Grist est « ordinaire » (sans le `credentialless` de grist-static, lab-setup.mjs) : « Présenter » ouvre une fenêtre à part, dont le `window.opener` est coupé par cet attribut sous Chromium.
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check } from './lab-common.mjs';
@@ -25,7 +26,7 @@ const onlyParts = list('ONLY');
 const wanted = name => !onlyParts || onlyParts.includes(name);
 const OPEN = 'Contrat de prestation';
 
-const lab = await startLab({ lang, colorScheme: scheme });
+const lab = await startLab({ lang, colorScheme: scheme, ordinaryFrame: true });
 const { page } = lab;
 const errors = [];
 page.on('pageerror', error => errors.push(String(error && error.message).slice(0, 160)));

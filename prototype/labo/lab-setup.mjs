@@ -45,10 +45,16 @@ async function chooseFullAccess(page) {
 // Le site en ligne de chaque app (js/catalogue.js, `site`) et le dossier de sa copie dans le dépôt : GFS ouvre l'app sur son site, le labo rend les fichiers de la copie à cette adresse.
 const SITES = { publipostageGrist: 'publipostage', GRIST_automation: 'automation', FormPlus: 'form' };
 
+// grist-static donne `credentialless` au cadre que Grist ouvre pour un widget (`iframeAttributes` de ses réglages, `main.bundle.js`) ; le Grist ordinaire n'ajoute rien à ce cadre (`WidgetFrame`
+// ne lit ce réglage que s'il existe). Sous Chromium, cet attribut coupe `window.opener` et le nom des fenêtres ouvertes depuis le cadre (`window.open` rend `null`), ce que le Grist de la personne ne fait pas :
+// `ordinaryFrame: true` le retire, pour toute mesure qui dépend d'une fenêtre ouverte par une app. Firefox ne connaît pas l'attribut (faits-verifies.md, section 1).
+const ORDINARY_FRAME = { chemin: '/dist/main.bundle.js', de: 'iframeAttributes:{credentialless:!0}', vers: 'iframeAttributes:{}' };
+
 // `widget` : l'adresse de la page que Grist reçoit comme widget personnalisé (GFS par défaut ; une sonde, pour la mesurer SANS GFS, dans le cadre même de Grist).
 // `live` : GFS sert les apps sur leur site en ligne (le défaut de GFS depuis le 22/10) ; le labo mesure la copie figée du sous-module (`live=0`) sauf `LAB_LIVE=1` ou `live: true`.
 // `liveAbsent` : les sites (`FormPlus`…) qui ne répondent pas, pour mesurer le repli sur la copie.
-const DEFAULTS = { lang: 'fr', colorScheme: 'light', width: 1280, height: 800, query: '', fullAccess: true, probes: false, frameAttributes: null, patches: [], widget: WIDGET, newsSeen: true, user: null, live: process.env.LAB_LIVE === '1', liveAbsent: [] };
+// `ordinaryFrame` : le cadre de Grist sans le `credentialless` de grist-static (voir ORDINARY_FRAME) ; faux par défaut, pour ne pas changer les passes déjà mesurées.
+const DEFAULTS = { lang: 'fr', colorScheme: 'light', width: 1280, height: 800, query: '', fullAccess: true, probes: false, frameAttributes: null, patches: [], ordinaryFrame: false, widget: WIDGET, newsSeen: true, user: null, live: process.env.LAB_LIVE === '1', liveAbsent: [] };
 
 // Les sites en ligne des apps, vus du labo : `/<site>/…` rend le fichier de la copie de l'app (même serveur, même origine que GFS), ou 404 pour un site « hors ligne ».
 async function routeLiveSites(page, absent) {
@@ -62,10 +68,10 @@ async function routeLiveSites(page, absent) {
 }
 
 export async function startLab(options = {}) {
-  const { lang, colorScheme, width, height, query, fullAccess, probes, frameAttributes, patches, widget, newsSeen, user, live, liveAbsent } = { ...DEFAULTS, ...options };
+  const { lang, colorScheme, width, height, query, fullAccess, probes, frameAttributes, patches, ordinaryFrame, widget, newsSeen, user, live, liveAbsent } = { ...DEFAULTS, ...options };
   await mkdir(SHOTS, { recursive: true });
   const browser = await engine.launch(engineName === 'chromium' ? { args: ['--no-sandbox', '--font-render-hinting=none'] } : {});
-  const { page, context } = await newLabPage(browser, { lang, colorScheme, width, height, probes, frameAttributes, patches, newsSeen, user });
+  const { page, context } = await newLabPage(browser, { lang, colorScheme, width, height, probes, frameAttributes, patches: ordinaryFrame ? [...patches, ORDINARY_FRAME] : patches, newsSeen, user });
   if (live) await routeLiveSites(page, liveAbsent);
   const gfsFrame = async (re = /./) => {
     for (let i = 0; i < 80; i++) {

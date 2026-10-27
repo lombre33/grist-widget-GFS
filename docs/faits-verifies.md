@@ -12,6 +12,18 @@ mémoire ni contre un faux Grist écrit par nous. Les numéros de ligne bougent 
   réponses partent par `postMessage(msg, "*")` (ligne 129) ; l'accès et la lecture seule sont ajoutés à l'adresse du cadre
   (`_urlWithAccess`, ligne 236) ; `configure` (ligne 842) applique à la section l'accès voulu et les colonnes à mapper
   déclarés par `grist.ready()` ; les réglages ne passent pas d'un widget à l'autre, « by design » (ligne 563).
+- Lu et mesuré le 27/10 (grist-static 0.1.6 ; ses sources sont dans les fichiers `.map` de `dist/`) : **le cadre que le labo donne à GFS porte un attribut de plus que
+  celui d'un Grist ordinaire, `credentialless`**. `WidgetFrame.ts` (`buildDom`, lignes 224 à 227) pose l'adresse, `{ allow: "clipboard-write" }`, puis
+  `hooks.iframeAttributes`. Les réglages par défaut de Grist (`app/client/DefaultHooks.ts`, lignes 5 à 23) n'ont pas de `iframeAttributes` ; ceux de grist-static
+  (`ext/app/client/HookStub.ts`, lignes 25 à 29) y mettent `credentialless: true`. Mesuré dans Chromium 141 (`labo/run-capacites.mjs`, essais `fenetre` : la sonde, ouverte comme
+  une app dans le sous-cadre de GFS) : **avec l'attribut** (le labo tel quel), `window.open` rend `null` et la fenêtre s'ouvre sans `window.opener` et sans nom ; **sans lui**
+  (`CAP_ORDINAIRE=1`, ou `ordinaryFrame` dans `labo/lab-setup.mjs`), `window.open` rend la fenêtre, qui garde `window.opener` et le nom demandé, avec l'origine nulle et le
+  stockage refusé (le bac à sable du sous-cadre est hérité : `allow-popups` sans `allow-popups-to-escape-sandbox`) ; avec `noopener` demandé, `null` et pas d'ouvreur dans les deux
+  cas. La vraie Publipostage+ (à `b9184cf`, `labo/run-barre-ecartee.mjs`, partie `presenter`) donne la même chose : sa fenêtre « Présenter » perd son ouvreur et son nom
+  `pp-slide-show` avec l'attribut (premier essai du labo), les garde sans lui. Lu dans la table de compatibilité de MDN (`mdn/browser-compat-data`, `api/HTMLIFrameElement.json`,
+  relue le 27/10) : `credentialless` existe depuis Chrome 110 (Edge de même) ; **Firefox et Safari ne l'ont pas**. **Non mesuré** : si l'instance du porteur (grist.numerique.gouv.fr)
+  ou `docs.getgrist.com` ajoute un attribut à ce cadre (le proxy du cloud refuse ces adresses : ni leurs en-têtes ni leur page ne sont lus) ; Firefox. **Pour le labo** : une mesure qui
+  dépend d'une fenêtre ouverte par une app se fait avec `ordinaryFrame` ; les autres passes n'ont pas été refaites sans l'attribut.
 - `app/plugin/grist-plugin-api.ts` : le widget envoie à `window.parent` avec `"*"` (ligne 519) et écoute par
   `window.onmessage = (e) => rpc.receiveMessage(e.data)` (ligne 520), sans vérifier l'expéditeur, par une **affectation** :
   un autre `window.onmessage =` dans la page la remplacerait. `print` est enregistré et appelle `window.print()`

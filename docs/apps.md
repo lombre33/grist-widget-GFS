@@ -7,7 +7,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `5dd503b` | 23/10/2026 | GPL 3.0 |
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `b9184cf` | 27/10/2026 | GPL 3.0 |
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `cc21a27` | 22/10/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `f3ab8d6` | 22/10/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `586c7c4` | 22/10/2026 | GPL 3.0 |
@@ -478,6 +478,15 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   `index.html` ne change que des numéros de version ; la CSP, la carte d'importation, la liste de bibliothèques, `js/gfs-link.js`, `js/gfs-open.js`, `js/templates.js` et `js/grist-api.js` ne changent pas, ni
   aucun fichier des extensions ; le seul code qui touche à la sécurité, `js/html-sanitize.js`, ajoute une liste blanche exacte pour le dessin du trait en tirets) ; `run-importer-pp` rejoué avec la nouvelle référence
   (33 sur 33, français, clair) ; aucune consigne à écrire.
+- Publipostage+ à `b9184cf` (27/10) : soixante commits de plus depuis `5dd503b` (du 23/10 à 20 h 20 au 27/10 à 9 h 14) : l'import PowerPoint (les 187 formes, les formes libres, les connecteurs, les images, les animations
+  d'objets, les puces, l'espacement des caractères, le texte de droite à gauche, les liens vers une autre diapositive, les commentaires), cinq transitions de plus, l'animation d'un objet, une diapositive qui se masque et
+  « Présenter » dans une fenêtre à part (`2561d6c`, extension `diapositives` à 0.41). Sa page d'état (`GFS-ETAT.md`, à jour au commit `519b3ff`, lit GFS à `82597b9`) demande à GFS : le poids de `diapositives` (elle compte
+  330 Ko sans `present.html` ni `slide-present.js`, servis seuls ; GFS compte le dossier entier : 337, `manifest.test.mjs`) et la confirmation de la fenêtre à part (`allow-popups` gardé, `window.opener` non coupé). Traité le
+  27/10 : la référence avancée à `b9184cf` (`7a3f173`, commit à part, relu sur les 102 fichiers dont 44 d'essais : `index.html` ne change que des numéros de version et des lignes de menu ; la CSP, la carte d'importation,
+  la liste de bibliothèques, `js/gfs-link.js`, `js/gfs-open.js`, `js/templates.js` et `js/grist-api.js` ne changent pas ; dans l'extension, quatre fichiers de plus à charger et deux servis seuls) avec le poids 337 ;
+  `run-importer-pp` 33 sur 33, `run-diapositives` 60 sur 60 ; **la fenêtre à part mesurée** (`run-barre-ecartee`, partie `presenter`, 20 sur 20 en français / clair et en anglais / sombre) : elle s'ouvre depuis le
+  sous-cadre isolé de GFS, garde son ouvreur et son nom, hérite du bac à sable, donne le plein écran au premier clic et se ferme par ✕, sans rien couvrir. **Trouvé en route** : le labo (grist-static) donne `credentialless`
+  au cadre du widget, ce qui coupe l'ouvreur sous Chromium ; un Grist ordinaire n'a pas cet attribut (faits vérifiés 1) ; l'option `ordinaryFrame` du labo le retire. Consigne 036 écrite.
 - Form+ à `cc21a27` (22/10, le porteur : « check ce qui est remonté des projets ») : trois commits de plus depuis `16701fe`. Son
   `GFS-ETAT.md` (`0614f73`, qui décrit `c249c4a`) dit les consignes 008 à 011 **faites** : le formulaire natif s'enregistre dans
   `FormPlus_Formulaires` (avec la fenêtre d'accord de l'app, une ligne par formulaire par `Definition.vsId`), les répondants, le lien

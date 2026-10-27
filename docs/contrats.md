@@ -162,10 +162,17 @@ L'app (sous-cadre sans allow-same-origin)
    policy »), pas plus que dans le seul cadre de Grist ; le navigateur le veut dans chaque cadre au-dessus de l'app, celui que
    Grist donne à GFS compris, qui n'a que `clipboard-write`. Avec les deux ajoutés (labo seulement, `run-capacites.mjs`,
    `CAP_CONFIG=pleinDeux`), la demande aboutit. GFS n'ajoute donc rien tant que Grist ne laisse pas passer le plein écran ; le jour
-   où il le fait, c'est un mot de plus dans `allow`. [M] Avec l'interrupteur « Plein écran » du menu ▾ de « Présenter » de Publipostage+
+   où il le fait, c'est un mot de plus dans `allow`. [Rapporté] (Publipostage+, 24/10, un banc à trois sites, Firefox 128 ESR, 140 ESR et 158 et Chromium 153 ;
+   non remesuré par GFS) : sous Firefox, `fullscreen` seul ne suffit pas pour un sous-cadre d'origine nulle ; le mot à poser serait `fullscreen *` (ou
+   `allowfullscreen`) dans le `allow` du sous-cadre de GFS, avec `fullscreen` toujours sur le cadre de Grist. [M] Avec l'interrupteur « Plein écran » du menu ▾ de « Présenter » de Publipostage+
    (`4dfcd0c`, mesuré le 22/10 avec `865afa3` : `run-barre-ecartee`, partie `presenter`) : dans GFS le cadre de l'app dit que le plein
    écran n'est pas permis (`document.fullscreenEnabled` faux), la ligne est grisée avec sa raison, un clic dessus ne change rien
-   et le diaporama prend le panneau. [M] **Firefox 140 (Windows), la page d'essai du porteur, 23/10** (`labo/essais-navigateur/`,
+   et le diaporama prend le panneau. [M] **Fenêtre à part** (Publipostage+ à `b9184cf`, mesuré le 27/10 : `run-barre-ecartee`, partie `presenter`, et `run-capacites`, essais
+   `fenetre`) : `window.open`, appelé dans le geste depuis le sous-cadre, ouvre la fenêtre (`allow-popups`) ; elle **hérite du bac à sable** (origine nulle, stockage refusé),
+   **garde `window.opener` et le nom demandé**, donne le plein écran au premier clic et se ferme par un bouton de sa page. GFS n'ajoute ni `allow-popups-to-escape-sandbox` ni
+   `noopener`. Cela vaut pour un Grist ordinaire : celui du labo (grist-static) ajoute `credentialless` à son cadre, ce qui, sous Chromium, coupe l'ouvreur et le nom (faits vérifiés 1) ;
+   Firefox ne connaît pas cet attribut. Une instance qui l'ajouterait ôterait l'ouvreur à toute fenêtre d'une app : une app qui ouvre une fenêtre garde donc un repli pour
+   `window.open` qui rend `null`. [M] **Firefox 140 (Windows), la page d'essai du porteur, 23/10** (`labo/essais-navigateur/`,
    faits vérifiés 11) : (a) un fichier fabriqué dans un cadre (adresse `blob:` ou `data:`, ancre `download`) n'est pas enregistré
    tant que `frame-src` de la page qui porte le cadre ne le nomme pas, cadre isolé ou non ; Chromium ne regarde pas `frame-src`
    pour un téléchargement. **GFS ajoute `blob:` à son `frame-src`**, pour cette seule raison (les exports de Publipostage+,

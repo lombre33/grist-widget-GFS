@@ -6,7 +6,7 @@
 import { check, say } from './lab-common.mjs';
 import { stands, judge, asked, none, label, wait, hits, inFrame, rectOf, shownRect, clickOpener, unopened } from './barre-ecartee-lab.mjs';
 import { atRest, windows, menus as toolbarMenus } from './barre-ecartee-scenarios.mjs';
-import { TOURS, tour, showMenu } from './barre-ecartee-diaporama.mjs';
+import { TOURS, tour, showMenu, setFullscreen, windowTour } from './barre-ecartee-diaporama.mjs';
 
 const FK = 'ext:publipostage/diapositives';
 export const DECK = 'Trois diapositives';
@@ -197,11 +197,16 @@ export async function runPresentation(ctx) {
     if (want('diapos-volet')) judge(tag, 'le volet « Importer »', await importPanel(r, () => lab.shotPanel(run, name('volet'), frame)), asked(r.size, 'diapos-volet'));
     if (want('presenter')) {
       judge(tag, 'le menu ▾ de « Présenter »', await showMenu(r, tag), asked(r.size, 'presenter'));
+      // « Plein écran » coché, le cadre le refuse : le ▶ ouvre la fenêtre à part ; décoché, le diaporama se joue dans le panneau (les quatre tours). Il repart coché, comme au départ.
+      await setFullscreen(r, true);
+      await windowTour(r, tag);
+      await setFullscreen(r, false);
       let first = true;
       for (const pair of TOURS) {
         await tour(r, tag, pair, first ? () => lab.shotPanel(run, name('diaporama'), frame) : null);
         first = false;
       }
+      await setFullscreen(r, true);
     }
   }
   say('présentation : fin du rejeu');

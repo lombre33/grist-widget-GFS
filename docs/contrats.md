@@ -170,15 +170,16 @@ L'app (sous-cadre sans allow-same-origin)
    tant que `frame-src` de la page qui porte le cadre ne le nomme pas, cadre isolé ou non ; Chromium ne regarde pas `frame-src`
    pour un téléchargement. **GFS ajoute `blob:` à son `frame-src`**, pour cette seule raison (les exports de Publipostage+,
    `downloadBlob`) : `index.html`, contrôlé par `test/csp.test.mjs` ; l'export Word dans GFS sous Firefox reste à confirmer par le
-   porteur. (b) **Sur le PC du travail du porteur (Firefox 140), LanguageTool ne travaille pas dans un cadre à origine opaque** : aucune trace
-   de lui dans un cadre isolé comme celui de GFS, toutes dans le même cadre avec `allow-same-origin` en plus. [M] **Sur son PC de la
-   maison (Firefox 158, 23/10, 21 h 17 et 21 h 50) il travaille dans tous les cadres essayés, le réglage actuel de GFS compris** (l'app
-   isolée, origine nulle, trois pages l'une dans l'autre, au nom du site comme au nom avec le point final) : GFS n'a rien à changer
-   pour lui. Ce qui change entre les deux postes n'est pas expliqué (version de Firefox, version ou réglages de l'extension) ; l'essai
-   sur le PC du travail est prévu le 24/10 (faits vérifiés 11). [M] Sur le PC du travail il travaille aussi dans un cadre isolé qui
-   garde sa vraie origine (`allow-same-origin`) quand elle n'est pas celle de la page qui le porte (essai croisé, 23/10, faits
-   vérifiés 11) : la voie « une adresse propre à l'app » est ouverte côté navigateur ;
-   GFS ne la prend que sur décision du porteur (carte du 23/10), et l'adresse manque tant que GFS et les apps sont sur un seul site.
+   porteur. (b) **Sur le PC du travail du porteur (Firefox 140), LanguageTool ne travaille dans aucun cadre à origine opaque** (23/10 et
+   27/10 : le cadre isolé comme celui de GFS, à un ou deux niveaux, au nom du site comme au nom avec le point final) **et travaille dans
+   un cadre isolé qui garde sa vraie origine** (`allow-same-origin`) quand elle n'est pas celle de la page qui le porte (cadre P3 du
+   27/10 : origine `https://lombre33.github.io.`, aucune lecture de la page porteuse ; faits vérifiés 11). [M] **Sur son PC de la maison
+   (Firefox 158, 23/10, 21 h 17 et 21 h 50) il travaille dans tous les cadres essayés, le réglage actuel de GFS compris** : GFS n'a rien
+   à changer pour lui. L'écart entre les deux postes tient à la version de Firefox ou à la version ou aux réglages de l'extension (non
+   communiqués). Le nom avec le point final ne rend donc pas LanguageTool à lui seul : il donne au cadre une origine qui n'est ni celle de
+   GFS ni celle de Grist, et c'est la vraie origine qui compte au travail. La voie « une adresse propre à l'app » est ouverte côté
+   navigateur ; GFS ne la prend que sur décision du porteur (carte du 27/10), et l'adresse manque tant que GFS et les apps sont sur un
+   seul site. Avec le nom à point final, Firefox 158 refuse de le nommer dans `frame-src` : GFS devrait ouvrir cette règle à tout `https:`.
    [M] Safari : la page de mesure du porteur (`labo/navigateur/`).
 2. [T] **L'adresse du sous-cadre est calculée par GFS**, d'après le catalogue et le manifeste livrés avec lui ; elle n'est jamais lue
    dans un réglage, une table ou un message (cahier 3.2, point 3). Deux formes, selon `live` dans l'adresse du widget :

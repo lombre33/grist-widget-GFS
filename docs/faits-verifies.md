@@ -587,7 +587,8 @@ de 10.10) :
 **Deux postes.** Le porteur a deux PC (dit le 23/10, 21 h 50 heure de Paris) : celui du travail, sous **Firefox 140**, où il a fait tous
 les essais jusqu'à 17 h 33, et celui de la maison, sous **Firefox 158**, où il a fait ceux de 21 h 17 et de 21 h 50. Le rapport d'une page
 d'essai porte la version de Firefox dans sa deuxième ligne. Un écart entre deux rapports peut venir du poste (la version de Firefox, la
-version ou les réglages de LanguageTool), non de GFS.
+version ou les réglages de LanguageTool), non de GFS. L'essai à trois pages (`profond.html`) a été fait sur les deux : à la maison le 23/10
+à 21 h 50, au travail le 27/10 à 9 h 43 (plus bas).
 
 Mesuré par le porteur dans **Firefox 140 (Windows), LanguageTool installé**, sur la page `labo/essais-navigateur/` (commit `ff2834f`,
 servie par Pages ; son rapport est dans le fil du 23/10, 14 h 35 heure de Paris). Cinq cadres posés par la page : A, un cadre
@@ -678,6 +679,18 @@ dessus, qui l'enregistre ; t6, le geste de `downloadBlob` 7 secondes après le c
   `https://lombre33.github.io.`, stockage permis) ; P4 et P5, un niveau de moins, au nom du site puis au nom avec le point. Le porteur
   dit aussi que l'extension marche dans GFS lui-même sur ce PC. Donc, sur ce poste, **ni l'origine opaque, ni le nombre de niveaux, ni
   le nom du site n'arrêtent LanguageTool, et GFS n'a rien à changer pour lui** ; ce qui l'arrêtait au travail (Firefox 140) tient au
-  poste : la version de Firefox, ou la version ou les réglages de l'extension. **Pas mesuré** : P1 à P5 sur le PC du travail (essai
-  prévu le 24/10, avec la version de l'extension sur chaque PC) ; Chrome et Edge.
+  poste : la version de Firefox, ou la version ou les réglages de l'extension.
+- **Mesuré par le porteur** (PC du travail, Firefox 140, 27/10, 9 h 43 heure de Paris), avec la même `profond.html` ouverte sur le site
+  en ligne : **LanguageTool ne corrige que dans P3** (traces `lt-highlighter`, `lt-div`, `lt-toolbar`, `lt-span`, les deux zones marquées,
+  stockage permis, aucune lecture de la page porteuse : `SecurityError`), l'app isolée qui garde sa vraie origine (`allow-same-origin`)
+  au nom avec le point final, donc d'origine `https://lombre33.github.io.`, autre que celle de la page qui la porte. **Non** dans P1
+  (le réglage d'aujourd'hui de GFS : origine nulle, trois pages, nom du site), P2 (de même au nom avec le point), P4 et P5 (un niveau
+  de moins, au nom du site puis avec le point) : ni `data-lt-installed`, ni `lt-*`, ni attribut posé sur les zones. Donc, sur ce poste,
+  **l'origine opaque arrête LanguageTool** (le nombre de niveaux, un ou deux, et le nom du site, avec ou sans point, n'y changent rien) et
+  **le nom avec le point ne sert que s'il s'accompagne de `allow-same-origin`** : il donne au cadre une origine propre, il n'ouvre pas
+  LanguageTool à lui seul (P2 et P5 contre P3). P3 est le cadre qu'une « adresse propre à l'app » donnerait. Les deux postes diffèrent
+  sur P1, P2, P4 et P5 (non au travail, oui à la maison) : version de Firefox (140, 158) ou version ou réglages de l'extension, non
+  communiquées. Cherché sans résultat net (27/10) : un bogue de Mozilla qui expliquerait cet écart. **Pas mesuré** : la version de
+  l'extension sur chaque PC ; une version de Firefox entre la 140 et la 158 ; Chrome et Edge ; la règle `frame-src` de Firefox 140
+  devant le nom avec le point (la page d'essai ouvre `frame-src` à `https:`, et le cadre P3 s'y est posé).
 - Hors de ce que ces pages peuvent dire : Safari.

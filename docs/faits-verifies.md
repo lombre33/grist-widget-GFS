@@ -703,6 +703,11 @@ dessus, qui l'enregistre ; t6, le geste de `downloadBlob` 7 secondes après le c
   LanguageTool à lui seul (P2 et P5 contre P3). P3 est le cadre qu'une « adresse propre à l'app » donnerait. Les deux postes diffèrent
   sur P1, P2, P4 et P5 (non au travail, oui à la maison) : version de Firefox (140, 158) ou version ou réglages de l'extension, non
   communiquées. Cherché sans résultat net (27/10) : un bogue de Mozilla qui expliquerait cet écart. **Pas mesuré** : la version de
-  l'extension sur chaque PC ; une version de Firefox entre la 140 et la 158 ; Chrome et Edge ; la règle `frame-src` de Firefox 140
+  l'extension à la maison (au travail : 11.3.1, 28/10) ; une version de Firefox entre la 140 et la 158 ; Chrome et Edge ; la règle `frame-src` de Firefox 140
   devant le nom avec le point (la page d'essai ouvre `frame-src` à `https:`, et le cadre P3 s'y est posé).
+- **Rapporté par le porteur** (PC du travail, 28/10, 19 h 13 heure de Paris) : **LanguageTool 11.3.1**. C'est la version courante du module sur
+  addons.mozilla.org (mise à jour du 14/08/2026, page lue le 28/10) : mettre l'extension à jour au travail ne changerait rien. Pour l'écart entre
+  les deux postes il reste la version de Firefox (140 au travail, 158 à la maison), un réglage ou une règle de l'entreprise, ou la version de
+  l'extension à la maison (non communiquée). **Décision du porteur le 28/10, 19 h 11 : l'isolement reste tel quel, GFS ne donne d'adresse
+  propre à aucune app** (cahier, section 2) ; l'écart se cherche sur les postes, sans code.
 - Hors de ce que ces pages peuvent dire : Safari.

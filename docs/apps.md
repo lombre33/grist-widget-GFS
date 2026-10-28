@@ -7,7 +7,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `b9184cf` | 27/10/2026 | GPL 3.0 |
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `f5d6376` | 28/10/2026 | GPL 3.0 |
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `cc21a27` | 22/10/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `f3ab8d6` | 22/10/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `586c7c4` | 22/10/2026 | GPL 3.0 |
@@ -487,6 +487,14 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   `run-importer-pp` 33 sur 33, `run-diapositives` 60 sur 60 ; **la fenêtre à part mesurée** (`run-barre-ecartee`, partie `presenter`, 20 sur 20 en français / clair et en anglais / sombre) : elle s'ouvre depuis le
   sous-cadre isolé de GFS, garde son ouvreur et son nom, hérite du bac à sable, donne le plein écran au premier clic et se ferme par ✕, sans rien couvrir. **Trouvé en route** : le labo (grist-static) donne `credentialless`
   au cadre du widget, ce qui coupe l'ouvreur sous Chromium ; un Grist ordinaire n'a pas cet attribut (faits vérifiés 1) ; l'option `ordinaryFrame` du labo le retire. Consigne 036 écrite.
+- Publipostage+ à `f5d6376` (28/10, le porteur : « y a-t-il des messages à envoyer aux apps ou est-ce que tout est à jour ? ») : quatre commits de plus depuis `b9184cf`
+  (`42391f7` : dans le PDF de l'impression par le navigateur, les liens internes mènent à leur cible ; `9a08f05` : sa page d'état ; `f3d2774` : des textes ; `f5d6376` :
+  l'import PowerPoint garde les commentaires qui se citent en rond). Sa page d'état (`GFS-ETAT.md`, à jour au commit `42391f7`, lit GFS à `2267acb`) passe la **036 à faite**
+  (lue, aucun code) et ne demande rien de plus à GFS : « Demandes à GFS » dit seulement que le poids 337 et la fenêtre à part sont faits ; « Questions pour GFS » est
+  inchangée (le titre de l'impression, à mesurer par le porteur dans un vrai Grist). Traité le 28/10 : la référence avancée à `f5d6376` (`ee958e9`, commit à part, relu sur
+  les 14 fichiers : `index.html` ne change que des numéros de version, `js/extensions.js` donne la version 0.42 à `diapositives`, `js/print-export.js`, `js/pptx-import.js` et
+  `js/main.js` sont du code de l'app seule ; la CSP, la carte d'importation, la liste de bibliothèques, `js/gfs-link.js`, `js/gfs-open.js`, `js/templates.js` et
+  `js/grist-api.js` ne changent pas ; le poids de `diapositives` reste 337, soit 337 117 octets) ; 58 vérifications ciblées sans échec ; aucune consigne à écrire.
 - Form+ à `cc21a27` (22/10, le porteur : « check ce qui est remonté des projets ») : trois commits de plus depuis `16701fe`. Son
   `GFS-ETAT.md` (`0614f73`, qui décrit `c249c4a`) dit les consignes 008 à 011 **faites** : le formulaire natif s'enregistre dans
   `FormPlus_Formulaires` (avec la fenêtre d'accord de l'app, une ligne par formulaire par `Definition.vsId`), les répondants, le lien

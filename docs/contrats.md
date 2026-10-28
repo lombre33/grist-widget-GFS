@@ -182,15 +182,15 @@ L'app (sous-cadre sans allow-same-origin)
    un cadre isolé qui garde sa vraie origine** (`allow-same-origin`) quand elle n'est pas celle de la page qui le porte (cadre P3 du
    27/10 : origine `https://lombre33.github.io.`, aucune lecture de la page porteuse ; faits vérifiés 11). [M] **Sur son PC de la maison
    (Firefox 158, 23/10, 21 h 17 et 21 h 50) il travaille dans tous les cadres essayés, le réglage actuel de GFS compris** : GFS n'a rien
-   à changer pour lui. L'écart entre les deux postes tient à la version de Firefox ou à la version ou aux réglages de l'extension (non
-   communiqués). Le nom avec le point final ne rend donc pas LanguageTool à lui seul : il donne au cadre une origine qui n'est ni celle de
-   GFS ni celle de Grist, et c'est la vraie origine qui compte au travail. **Le porteur a tranché le 28/10 de ne donner d'adresse propre à
-   aucune app** (carte du 28/10) : l'isolement reste tel quel, sans `allow-same-origin`. Une app à part serait un cas particulier (sur
-   GitHub Pages, le nom à point final ne donne qu'une adresse de plus, et la copie figée livrée à un client resterait isolée) ; Firefox 158
-   refuse de nommer ce nom dans `frame-src`, donc GFS devrait ouvrir cette règle à tout `https:` ; et la séparation entre GFS et l'app
-   tiendrait à l'écriture du nom du site, non plus au bac à sable. Une extension du navigateur peut donc manquer dans le cadre d'une app,
-   selon le poste (LanguageTool 11.3.1 au travail, la dernière version publiée, 28/10) ; l'écart entre les deux postes se cherche sur les
-   postes (faits vérifiés 11).
+   à changer pour lui. L'écart entre les deux postes tenait à la version de Firefox : au travail, LanguageTool fonctionne dans GFS tel quel
+   depuis la mise à jour de Firefox (28/10, rapporté par le porteur, version d'arrivée non donnée). Le nom avec le point final ne rend donc
+   pas LanguageTool à lui seul : il donne au cadre une origine qui n'est ni celle de GFS ni celle de Grist, et c'est la vraie origine qui
+   compte au travail. **Le porteur a tranché le 28/10 de ne donner d'adresse propre à aucune app** (carte du 28/10) : l'isolement reste tel
+   quel, sans `allow-same-origin`. Une app à part serait un cas particulier (sur GitHub Pages, le nom à point final ne donne qu'une adresse
+   de plus, et la copie figée livrée à un client resterait isolée) ; Firefox 158 refuse de nommer ce nom dans `frame-src`, donc GFS devrait
+   ouvrir cette règle à tout `https:` ; et la séparation entre GFS et l'app tiendrait à l'écriture du nom du site, non plus au bac à sable.
+   Une extension du navigateur peut donc manquer dans le cadre d'une app, selon la version du navigateur (LanguageTool 11.3.1 au travail,
+   la dernière version publiée : absent sous Firefox 140, présent après la mise à jour de Firefox, 28/10 ; faits vérifiés 11).
    [M] Safari : la page de mesure du porteur (`labo/navigateur/`).
 2. [T] **L'adresse du sous-cadre est calculée par GFS**, d'après le catalogue et le manifeste livrés avec lui ; elle n'est jamais lue
    dans un réglage, une table ou un message (cahier 3.2, point 3). Deux formes, selon `live` dans l'adresse du widget :

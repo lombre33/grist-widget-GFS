@@ -710,4 +710,8 @@ dessus, qui l'enregistre ; t6, le geste de `downloadBlob` 7 secondes après le c
   les deux postes il reste la version de Firefox (140 au travail, 158 à la maison), un réglage ou une règle de l'entreprise, ou la version de
   l'extension à la maison (non communiquée). **Décision du porteur le 28/10, 19 h 11 : l'isolement reste tel quel, GFS ne donne d'adresse
   propre à aucune app** (cahier, section 2) ; l'écart se cherche sur les postes, sans code.
+- **Rapporté par le porteur** (PC du travail, 28/10, 19 h 21 heure de Paris) : « j'ai mis à jour Firefox et du coup cela fonctionne ». **LanguageTool
+  11.3.1 fonctionne donc dans GFS tel quel depuis la mise à jour de Firefox** (version d'arrivée non donnée ; `profond.html` n'a pas été refaite).
+  **La cause de l'écart entre les deux postes était la version de Firefox (140)**, non l'extension ni GFS : dans un Firefox à jour, le cadre
+  isolé de GFS n'empêche pas LanguageTool. Le porteur : « on ne touche plus à rien » ; l'isolement et la décision du 28/10 restent.
 - Hors de ce que ces pages peuvent dire : Safari.

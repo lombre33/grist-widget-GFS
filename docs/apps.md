@@ -7,10 +7,10 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `f5d6376` | 28/10/2026 | GPL 3.0 |
-| Form+ | `lombre33/FormPlus` | `consignes/form/` | `cc21a27` | 22/10/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `134d043` | 02/11/2026 | GPL 3.0 |
+| Form+ | `lombre33/FormPlus` | `consignes/form/` | `fd5384a` | 02/11/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `746a564` | 02/11/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
-| Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `586c7c4` | 22/10/2026 | GPL 3.0 |
+| Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `b2772db` | 02/11/2026 | GPL 3.0 |
 
 ## Lus pour référence (pas des apps de GFS)
 
@@ -508,6 +508,14 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   les 14 fichiers : `index.html` ne change que des numéros de version, `js/extensions.js` donne la version 0.42 à `diapositives`, `js/print-export.js`, `js/pptx-import.js` et
   `js/main.js` sont du code de l'app seule ; la CSP, la carte d'importation, la liste de bibliothèques, `js/gfs-link.js`, `js/gfs-open.js`, `js/templates.js` et
   `js/grist-api.js` ne changent pas ; le poids de `diapositives` reste 337, soit 337 117 octets) ; 58 vérifications ciblées sans échec ; aucune consigne à écrire.
+- Publipostage+ à `134d043` (02/11, le porteur : « ils ont tout traité les consignes ») : trente-sept commits de plus depuis `f5d6376` (111 fichiers, dont 50 sont ses
+  propres essais) : un Ctrl+Z qui défait presque tout, les tableaux de PowerPoint posés dans un cadre, « Tableau » dans un cadre de diapositive, des textes, un `.nojekyll`.
+  Sa page d'état passe la **037 à faite** (`92d8575`) ; « Questions pour GFS » (le titre du PDF à l'impression, que le porteur mesure) et « Demandes à GFS » (le plein écran
+  du diaporama, `allow="fullscreen"`) n'ont rien de nouveau. Traité le 02/11 : la référence avancée à `134d043` (`e1c93cb`, commit à part, relu) ; mesuré sur le code servi,
+  avant et après : les mêmes 12 verbes d'actions de Grist, les mêmes 8 tables internes lues, les mêmes 46 adresses, les mêmes 19 appels de l'API grist, les mêmes noms de
+  tables, un seul accès au stockage du navigateur, pas un import dynamique, une fenêtre ou un message de plus ; le poids de `diapositives` reste 337 (337 341 octets au lieu
+  de 337 117) ; un compte Lecteur de Grist n'essaie plus d'ajouter la colonne « Modifié par » à la table des modèles (`307cdd0`) : une écriture de moins ; 50 vérifications
+  ciblées sans échec, 109 avec le courtier et la publication ; l'`INDEX.md` (037 faite) ; aucune consigne à écrire.
 - Form+ à `cc21a27` (22/10, le porteur : « check ce qui est remonté des projets ») : trois commits de plus depuis `16701fe`. Son
   `GFS-ETAT.md` (`0614f73`, qui décrit `c249c4a`) dit les consignes 008 à 011 **faites** : le formulaire natif s'enregistre dans
   `FormPlus_Formulaires` (avec la fenêtre d'accord de l'app, une ligne par formulaire par `Definition.vsId`), les répondants, le lien
@@ -527,11 +535,34 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   les colonnes lues (contrats 3.3, point 9 ; `run-publication`, 30 vérifications, quatre combinaisons langue et thème ; `run-form` : deux
   fenêtres au premier enregistrement, aucune au second) ; GFS refuse sans demander une table de GFS, d'une autre app ou de l'app à
   l'ajout. L'`INDEX.md` : 012 et 013 à faire.
+- Form+ à `fd5384a` (02/11, le porteur : « ils ont tout traité les consignes ») : six commits de plus depuis `cc21a27`. Sa page d'état (`GFS-ETAT.md`, à jour au
+  commit `f9dcb81`) passe les consignes **013** (`df2dc1e`), **012** (`16cf6b1`, points 2 à 7 ; 1 et 8 sans objet) et **014** (`f9dcb81`) **à faites**. Ce que
+  l'app fait maintenant : chaque formulaire publié a sa petite table d'une ligne `FormPlus_Pub_<vsId>` et sa colonne Référence cachée `FormPlusDef_<vsId>` dans la
+  table du formulaire (la colonne partagée `FormPlusDef` n'est plus posée : un lien ne lit que la définition de son formulaire, là où il rendait celles de tous, clés de
+  partage comprises ; mesuré par l'app sur un Grist Docker avec une vraie clé de partage) ; « Partir de zéro » pose le formulaire natif sur une page neuve ; coller le lien
+  d'un formulaire posé sur la page du widget est refusé avant toute copie, avec la raison ; une fenêtre de Form+ dit, avant de publier la copie, la table qui reçoit des
+  lignes (et une autre, `FormPlus_Repondants`, pour le mode interne) ; l'ancienne porte (une section de formulaire publiée sur `FormPlus_Formulaires`) est dépubliée par
+  `UpdateRecord` de `shareOptions`, avec l'accord de la personne, jamais supprimée (`RemoveViewSection` n'est pas un verbe que le courtier laisse passer) ; « Changer de
+  formulaire source » reste dans la page ; « Nouveau » ne rouvre plus l'ancien formulaire. **Deux limites que l'app dit elle-même** : (1) coller le lien d'un formulaire
+  natif déjà publié pose la copie sur la même page que lui, avec la même clé : ce lien natif ouvre donc aussi l'ajout dans la table de la copie (la corriger fermerait le
+  lien natif de la personne : question posée au porteur, dans le projet de l'app, sans réponse à la date de sa page) ; (2) la fenêtre d'accord n'existe pas encore pour la
+  question « Choix depuis une table », qui écrit dans une autre table (`ensureTableGate`). Traité le 02/11 : la référence avancée à `fd5384a` (`ac5ee7d`, commit à part,
+  relu : 13 fichiers, 1 411 lignes de plus dont 640 de ses essais ; les mêmes adresses, les mêmes 7 verbes d'actions de Grist, un seul appel de plus à l'API de Grist, le
+  jeton en lecture seule pour télécharger une pièce jointe choisie comme image, autorisé le 22/10 ; le manifeste de l'app ne change pas) ; les essais du labo refaits pour
+  la nouvelle app (`f02a03a` : `run-form` 48 vérifications et `run-form-seul` 12, toutes vertes ; les faits sont dans `faits-verifies.md`, 2) ; 43 vérifications ciblées sans
+  échec, 89 avec le courtier, la publication et le filtre ; l'`INDEX.md` (012, 013 et 014 faites, les deux limites dites sur la 013). Une question reste ouverte pour le
+  porteur (carte du 02/11) : un lien doit-il pouvoir lire la petite table de son formulaire (contrats 11.9, point 4c, qui prévoyait de refuser cette lecture) ? « Questions
+  pour GFS » : aucune. « Demandes à GFS » : Leaflet 1.9.4 (le type de question « Lieu sur carte »), qui attend « demande de Form+ ».
 - Grist-BI à `586c7c4` (22/10) : deux commits de plus depuis `23647eb`, qui ne touchent que son `GFS-ETAT.md` (le code reste celui de
   `23647eb`). Il dit la 001 faite (écarts à la règle 4 : ses trois tables internes, `BI_Dashboard_Config`, `BI_Dashboard_Comments` et
   `BI_Dashboard_UserProbe`, se créent au démarrage sans l'accord de la personne ; à la règle 11 : pas de CSP, déjà au guide) et la 002
   lue. « Demandes à GFS » : aucune. Le guide omettait `BI_Dashboard_Comments` (créée depuis le 30/09) : ajoutée. Traité le 22/10 :
   l'`INDEX.md` (001 faite, 002 lue). GFS ne référence pas encore Grist-BI.
+- Grist-BI à `b2772db` (02/11, le porteur : « ils ont tout traité les consignes ») : quatre commits de plus depuis `586c7c4` (`907e084`, `21b012b`,
+  `e3c835a`, `b2772db` : deux demandes de fusion, la 30 pour le `.nojekyll` et la 31 pour sa page d'état), deux fichiers : un `.nojekyll` vide à la racine et son `GFS-ETAT.md`. Il passe la
+  **003 à faite** (`21b012b`) : aucun fichier caché sensible n'est exposé en plus (seuls `.nojekyll` et `.gitignore`, aucun fichier `_*`) et le run « pages build and
+  deployment » est passé en succès sur ce commit. « Changements qui touchent GFS », « Questions pour GFS » et « Demandes à GFS » : aucun. Traité le 02/11 :
+  l'`INDEX.md` (003 faite). GFS ne référence toujours pas Grist-BI : aucune référence à avancer.
 
 - « Nouveau > Importer » (22/10, le porteur : « les imports possibles par Publipostage+ (Excel, docx, pptx…) il faudrait qu'ils soient aussi
   disponibles dans le menu Nouveau, sous-menu Import ? », puis sa réponse « Sous-menu Importer ») : GFS livre le sous-menu. Le

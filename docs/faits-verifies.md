@@ -172,6 +172,20 @@ réponses, sans que l'app change.
   son lien ouvre deux fenêtres (la table `Clients` à l'ajout, puis la lecture de `FormPlus_Formulaires.Definition`, que tout lien pourra
   lire), le second formulaire aucune. **Non mesuré** : ce que Grist ouvre vraiment à qui a le lien (10.11), grist-static n'a pas de
   partages.
+- Mesuré le 02/11 (`labo/run-form.mjs`, 48 vérifications, et `run-form-seul.mjs`, 12 ; grist-static 0.1.6, Chromium) avec Form+ à `fd5384a` (consignes 012, 013
+  et 014 faites) : **« Partir de zéro » pose le formulaire natif sur une page neuve et Grist ne recharge aucun cadre**, ni celui de GFS ni celui de Form+, avec ou
+  sans GFS : l'enregistrement va jusqu'au bout. **Un formulaire natif posé sur la page du widget** (Grist y reconstruit le cadre) **est refusé par l'app, avec sa
+  raison, avant toute copie** : aucune fenêtre, rien d'écrit. **Une ligne par formulaire**, et pour chacun une petite table d'une ligne `FormPlus_Pub_<vsId>` qui
+  porte sa `Definition` et une colonne cachée `FormPlusDef_<vsId>` dans la table du formulaire (une Référence qui affiche `Definition`, champ caché dans la
+  copie) : aucune ne porte la définition d'un autre, et la colonne partagée d'avant n'est plus posée. **Fenêtres** : au premier enregistrement, deux de Form+ (sa
+  table `FormPlus_Formulaires`, puis « Avant de publier cette copie », qui dit la table recevant des lignes) et deux de GFS (la table des réponses ouverte à
+  l'ajout, puis la lecture de la colonne `Definition` de la petite table de CE formulaire) ; pour un second formulaire, une de Form+ et deux de GFS (sa table à
+  l'ajout, puis sa petite table à la lecture) ; le même lien une seconde fois, aucune ; le mode interne, une de Form+ (la table `FormPlus_Repondants`, dont la
+  colonne `Email` est une formule déclenchée `user.Email`) et aucune de GFS. **L'ancienne porte** (une section de formulaire publiée sur `FormPlus_Formulaires`,
+  posée par `038dd1b`) est proposée à la fermeture par une fenêtre de Form+, avant tout le reste ; elle est dépubliée par `UpdateRecord` de `shareOptions`, jamais
+  supprimée, et GFS ne demande ni ne refuse rien. Le courtier ne refuse rien de tout cela et l'app ne lève aucune erreur de script. **Non mesuré par GFS** : ce
+  qu'un vrai lien lit de la petite table. Form+ l'a mesuré sur un Grist Docker avec une vraie clé de partage (`GFS-ETAT.md` de l'app, 013 point 1) : le lien ne
+  rend plus que la ligne de CE formulaire, là où la colonne partagée d'avant rendait les définitions de tous, clés de partage comprises.
 
 ## 3. Grist : données
 
@@ -562,7 +576,7 @@ Complète le § 3 (« une session de partage ne lit ni n'écrit aucune table de 
   (`GranularAccess.ts` 3348–3356). Ce qu'une app range dans les réglages d'un widget (la colonne `options` de sa section) peut donc
   se lire dans la session d'un visiteur dont la page porte ce widget. Rapporté (Form+, mesuré dans un vrai Grist, relu le 22/10) :
   le lien d'un formulaire donne la définition de tous les formulaires du document, clés de partage comprises ; il ne modifie,
-  ne supprime et ne relit aucune ligne existante.
+  ne supprime et ne relit aucune ligne existante. Form+ l'a corrigé (consigne 013, faite le 02/11) : une petite table et une colonne cachée par formulaire, § 2.
 - Lu : toute action sur une table `_grist_*` demande le droit de structure, que le partage refuse (`GranularAccess.ts` 2786–2805).
   Rapporté pourtant (Form+, 16/09, 10.9) : une session de partage a écrit les réglages d'un widget sur l'instance de la DINUM.
   **C'est la première chose à remesurer chez le porteur** (mesure 1).

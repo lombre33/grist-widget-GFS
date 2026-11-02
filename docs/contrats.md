@@ -658,7 +658,8 @@ ne lit pas).
    - **avant même de demander**, le courtier refuse (`GFS_REFUSE`, avec la raison, sans fenêtre) d'ouvrir à l'ajout une table de GFS,
      d'une autre app ou de l'app qui publie, d'ouvrir à la lecture une table de GFS ou d'une autre app, et ce que le manifeste de
      l'app ne lui laisserait pas écrire (ou lire) elle-même (11.9, point 4c). La lecture d'une table de l'app qui publie passe encore par
-     l'accord : le formulaire de Form+ y lit sa définition (consigne 013, qui la lui fait retirer, après quoi GFS la refusera aussi). Les
+     l'accord : le formulaire de Form+ y lit sa définition (consigne 013, qui la lui fait retirer, après quoi GFS la refusera aussi : **ouvert**
+     depuis le 02/11, la 013 faite garde cette lecture dans une petite table par formulaire, voir 11.9, point 4c). Les
      classes protégées de 11.2 et le propriétaire seul (11.9, points 4c et 7) viendront avec la section 11 : GFS ne connaît pas encore
      le rôle de la personne ;
    - s'il y a une différence, la personne en décide dans une fenêtre de GFS qui dit, dans cet ordre (11.9, point 6) : que le lien est
@@ -1986,6 +1987,12 @@ labo n'a pas de partages, 10.11).
       l'accord. [T] Codé le 22/10 (3.3, point 9) : une table de GFS, d'une autre app ou de l'app qui publie, à l'ajout ; une table de
       GFS ou d'une autre app, à la lecture (celle de l'app qui publie passe encore par l'accord, jusqu'à la consigne 013). Les
       classes de 11.2 viendront avec cette section.
+      [M] **Ouvert, 02/11.** La 013 est faite (Form+ à `fd5384a`) et elle a pris la piste « une petite table par formulaire publié, que sa seule
+      Référence vise » (sa propre liste, point 1) : le lien lit donc `FormPlus_Pub_<vsId>`, une ligne, la définition de CE formulaire, et le formulaire
+      public ne s'afficherait pas sans cette lecture. Refuser « la lecture d'une table de l'app qui publie », comme ce point le prévoyait après la 013,
+      casserait tout formulaire public de Form+ ; elle passe donc encore par l'accord (mesuré, `run-form` : la fenêtre dit la colonne `Definition` de la
+      petite table). La table qui garde toutes les définitions, `FormPlus_Formulaires` (clés de partage comprises), est la seule qu'un lien ne doit
+      jamais lire : pas encore refusée sans demander, le porteur tranche (carte du 02/11).
    d. [D] Une **Référence** rend lisible, pour toute personne qui a le lien, la colonne entière qu'elle montre (lu) : l'accord la
       liste, et refuse une table protégée (c). Un formulaire de Form+ peut garder la liste des choix dans sa propre définition au
       moment de la publication, et le lien ne lit alors aucune autre table (à mesurer) ; pour un formulaire natif de Grist, ce n'est

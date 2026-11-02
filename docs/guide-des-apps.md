@@ -115,6 +115,10 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     envoi, dans ton `GFS-ETAT.md` (« Changements qui touchent GFS » : ce que GFS doit rejouer). La référence du sous-module ne
     sert plus qu'aux mesures de GFS et de repli : la ligne « à avancer à … » de ta page n'a plus lieu d'être, celle de ton en-tête
     (le dernier commit de code que la page décrit) dit où GFS rejoue ses essais.
+    **Garde ce site publié** (décision du porteur du 02/11) : un fichier vide `.nojekyll` à la racine du dépôt (sans lui,
+    Pages passe les `.md` dans Jekyll, et une accolade double non fermée fait échouer la publication : le site reste sur
+    l'ancienne version sans rien montrer, comme celui d'Automation+ du 21/10 au 02/11) ; à chaque lot, le run « pages build
+    and deployment » vert et un changement du lot vu en ligne (faits vérifiés, section 5).
 12. Recevoir le fichier d'un « Nouveau > Importer » (décision du porteur du 22/10 ; contrats 2.7, point 4, et 5.4, point 1). Une app qui
     sait lire un fichier d'un autre logiciel (un classeur, un Markdown, un PowerPoint) le déclare dans `actions.importer` (une
     `valeur`, un `nom` en français et en anglais, le `type` du modèle qu'il crée, les `extensions`) : GFS en fait le sous-menu

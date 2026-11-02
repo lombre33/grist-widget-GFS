@@ -1,19 +1,20 @@
-// Form+ (non modifiée, référencée à c249c4a) dans GFS, dans un vrai Grist (consignes 007 et 008) : à la vraie souris et au vrai clavier, à 700 × 400.
+// Form+ (référencée à fd5384a) dans GFS, dans un vrai Grist (consignes 007, 008, 012 et 013 de GFS à Form+) : à la vraie souris et au vrai clavier, à 700 × 400.
 //   1. L'app s'ouvre dans le sous-cadre isolé, sans refus du courtier ni erreur de script.
 //   2. Ce que le courtier refuse aux deux écritures de définition d'avant la 007 (`options` de la section, lecture de `_grist_Shares`) et ce que devient `setOptions` : mesuré
 //      depuis le cadre de l'app, avec les appels de `39e0740` (Form+ ne les fait plus) ; rien n'est écrit (le courtier refuse avant Grist).
 //      Puis les pièces jointes (cc21a27) : la liste se lit, le jeton passe, l'écriture reste refusée (accord du porteur, 22/10).
-//   3. « Partir de zéro » passe avec le manifeste de Form+ (table, section de formulaire) ; Grist recharge alors le cadre de GFS, et le retrait du champ automatique est perdu.
-//   4. Enregistrer un formulaire par son lien (007 et 008). D'abord le formulaire natif sur la page du WIDGET (celui de « Partir de zéro », posé en 3) : l'accord de la personne, la table
-//      `FormPlus_Formulaires`, puis Grist reconstruit le cadre de GFS avant que la ligne soit écrite (la personne recommence : une copie de plus). Même geste sans GFS : `run-form-seul`.
-//      Ensuite le formulaire natif sur SA page : aucune section de garde, aucun cadre reconstruit, une ligne qui gère la copie, le champ caché `FormPlusDef` ; le même lien deux fois ne copie
-//      rien de plus ; un second formulaire a sa ligne. Puis le mode interne (la colonne d'essai qui lit `user.Email` : la capacité `formules` du manifeste).
+//   3. « Partir de zéro » (013, point 2) : la table et le formulaire natif sur une page NEUVE ; Grist ne recharge ni le cadre de GFS ni celui de Form+, et le champ qu'il ajoute tout seul est retiré.
+//   4. Enregistrer un formulaire par son lien. 4a. Celui de « Partir de zéro » : les deux fenêtres de Form+ (sa table, puis « Avant de publier cette copie »), les deux de GFS (la table des
+//      réponses ouverte à l'ajout, puis la lecture de `Definition` dans la petite table de CE formulaire), la copie publiée avec son champ caché ; le même lien deux fois ne copie rien de plus.
+//      4b. Un formulaire natif sur la page du WIDGET : refusé avant toute copie (012, point 2). 4c. Un second formulaire sur sa page : sa petite table et son champ, jamais ceux du premier
+//      (013, point 1). 4d. Le mode interne : la fenêtre d'accord avant de créer `FormPlus_Repondants` (012, point 6), puis la colonne d'essai qui lit `user.Email` (la capacité `formules`).
+//      4e. L'ancien portillon publié : fermé avec l'accord de la personne, dépublié sans rien supprimer (012, point 7).
 //   5. Le type « Formulaire » dans l'explorateur, quand `FormPlus_Formulaires` a des lignes.
 // Un CONSTAT dit ce que l'app fait en deçà de sa consigne, sans faire échouer l'essai (consigne 012 de GFS à Form+).
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark ; LAB_LIVE=1 pour jouer le site en ligne de l'app au lieu de sa copie.
 import { startLab } from './lab-setup.mjs';
 import { seedForms } from './seed.mjs';
-import { savedForms, saveByLink, pasteLink, ownPageForm, allowPublications } from './form-lab.mjs';
+import { savedForms, saveByLink, acceptWindows, linkMessage, ownPageForm, formOnWidgetPage, oldGate } from './form-lab.mjs';
 import { say, check } from './lab-common.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
@@ -31,7 +32,8 @@ page.on('console', message => {
   if (message.type() === 'error' && FORM_URL.test(message.location().url || '') && !labOnly(message.text())) errors.push(message.text());
 });
 const constat = (label, ok, detail) => (ok ? say('OK    ', label) : say('CONSTAT', label, detail));
-page.on('pageerror', error => errors.push(error.message));
+// grist-static n'a pas de serveur d'accueil : dès qu'une section de formulaire est publiée, Grist lit son partage (`getShare`) et échoue (« HomeDbManager not available »). Propre au labo, pas à l'app.
+page.on('pageerror', error => { if (!/HomeDbManager not available/.test(error.message)) errors.push(error.message); });
 
 // Ce que le document contient : les tables, les sections (type, page) et les champs de la section de formulaire.
 const documentState = target => target.evaluate(async () => {
@@ -97,119 +99,116 @@ const afterRefusals = await documentState(lab.frame);
 check('rien n\'a été écrit dans les sections du document par ces essais', JSON.stringify(afterRefusals.sections) === JSON.stringify(before.sections), 'les lignes de _grist_Views_section sont les mêmes');
 refusals.length = 0;
 
-// ----- 3. « Partir de zéro » : la table et la section de formulaire.
+// ----- 3. « Partir de zéro » : la table et le formulaire natif, sur une page neuve (013, point 2).
 await app.locator('[data-startgo="scratch"]').click();
 await page.waitForTimeout(500);
 await lab.shotPanel(run, '2-partir-de-zero');
 await app.locator('#scratchCreate').click();
 await page.waitForTimeout(6000);
 check('« Partir de zéro » : le courtier ne refuse rien (AddTable, CreateViewSection)', refusals.length === 0, refusals);
-const frames = page.frames().filter(frame => /\/prototype\//.test(frame.url()) && !/\/labo\//.test(frame.url()));
-check('Grist a rechargé le cadre de GFS (une section de plus sur la page) : plus de cadre d\'app', frames.every(frame => !FORM_URL.test(frame.url())), frames.map(frame => frame.url().replace(/^http:\/\/127\.0\.0\.1:\d+/, '')));
-const reloaded = await lab.gfsFrame(/access=full/);
-await lab.gfsReady(reloaded);
+check('Grist ne recharge rien : le cadre de GFS et celui de Form+ restent', !lab.frame.isDetached() && !app.isDetached(), { gfs: lab.frame.isDetached(), app: app.isDetached() });
 await lab.shot(run, '3-apres-creer-page');
-const created = await documentState(reloaded);
+const created = await documentState(lab.frame);
 const formSection = created.sections.find(section => section.kind === 'form');
-say('document après :', JSON.stringify({ tables: created.tables, formSection: formSection && { id: formSection.id, page: formSection.page }, gfsSection: gfsSection.id }));
+say('document après :', JSON.stringify({ tables: created.tables, formSection: formSection && { id: formSection.id, page: formSection.page }, pageDuWidget: gfsSection.page }));
 check('la table des réponses est créée (« Reponses » / « Responses », Grist en retire l\'accent)', created.tables.filter(name => !before.tables.includes(name)).length === 1, created.tables);
-check('une section de formulaire est posée sur la page de GFS', Boolean(formSection) && formSection.page === gfsSection.page, formSection);
-// Grist recharge le cadre dès que la section est posée : le retrait du champ que Grist ajoute tout seul, que Form+ fait ensuite, ne passe pas. Même résultat sans GFS (`run-form-seul`).
-say('champs restés dans la section de formulaire :', created.fields.filter(field => formSection && field.section === formSection.id).length);
-check('GFS repart de zéro : l\'explorateur, plus d\'app', await reloaded.locator('.ex-title-row').count() > 0);
+check('le formulaire natif est seul sur une page neuve, jamais celle du widget', Boolean(formSection) && formSection.page !== gfsSection.page && created.sections.filter(section => section.page === formSection.page).length === 1, formSection);
+// Le cadre n'étant plus rechargé, le retrait du champ que Grist ajoute tout seul, que Form+ fait ensuite, passe (avant la 013 il était perdu : un champ restait dans le formulaire « vide »).
+check('le champ que Grist ajoute tout seul est retiré : le formulaire est vide', created.fields.filter(field => formSection && field.section === formSection.id).length === 0, created.fields);
 
-// ----- 4. Enregistrer un formulaire (consignes 007 et 008).
-// 4a. Le formulaire natif sur la page du WIDGET : celui de « Partir de zéro » (posé en 3 sur la page de GFS), ou celui d'une personne qui met le widget à côté. Form+ demande l'accord de la
-// personne et crée la table, puis pose la copie sur cette même page : Grist reconstruit aussitôt le cadre de GFS, avant que la ligne soit écrite.
+// ----- 4. Enregistrer un formulaire par son lien (consignes 007, 008, 012 et 013).
+// 4a. Le formulaire natif de « Partir de zéro », sur sa page. Form+ demande l'accord de la personne avant de créer sa table, puis dit ce que le lien ouvrira avant de publier la copie (013, points 3 et 4) ;
+// GFS demande à son tour l'accord de la personne pour chaque chose que le lien public ouvre (contrats 3.3, point 9).
 refusals.length = 0;
-const formsBefore = (await savedForms(reloaded)).forms;
-const formOne = await lab.openApp('form', FORM_URL, reloaded);
-const asked = await saveByLink(page, formOne, formSection.id, () => lab.shotPanel(run, '4-accord', reloaded));
-await page.waitForTimeout(7000);
-const rebuilt = await lab.gfsFrame(/access=full/);
-await lab.gfsReady(rebuilt);
-const sameOnce = await savedForms(rebuilt);
-say('même page que le widget, premier essai :', JSON.stringify({ asked, gfsReconstruit: reloaded.isDetached(), appPartie: formOne.isDetached(), ...sameOnce, formulairesAvant: formsBefore }));
-check('Form+ demande l\'accord de la personne avant de créer sa table (fenêtre du kit)', /FormPlus_Formulaires/.test(asked || ''), asked);
-check('« Créer la table » : `FormPlus_Formulaires` est créée, sans section de garde (008, point 3 : retirée)', sameOnce.table && sameOnce.gates.length === 0, sameOnce);
-check('Grist reconstruit aussitôt le cadre de GFS : le cadre de Form+ disparaît avant la suite', reloaded.isDetached() && formOne.isDetached(), { gfs: reloaded.isDetached(), app: formOne.isDetached() });
-check('la suite est perdue : la copie est posée sur la page du widget, aucune ligne n\'est écrite pour ce formulaire', sameOnce.rows.length === 0 && sameOnce.forms === formsBefore + 1, { lignes: sameOnce.rows.length, formulaires: sameOnce.forms });
-check('aucun refus du courtier pendant cet essai : rien de cela ne vient de GFS', refusals.length === 0, refusals);
-// La personne recommence (rien n'est enregistré, Form+ repart de son écran de départ) : encore une copie de plus, sans accord à redonner, toujours pas de ligne.
-const formTwo = await lab.openApp('form', FORM_URL, rebuilt);
-const askedAgain = await saveByLink(page, formTwo, formSection.id);
-await page.waitForTimeout(7000);
-const afterSame = await lab.gfsFrame(/access=full/);
-await lab.gfsReady(afterSame);
-const sameTwice = await savedForms(afterSame);
-say('même page que le widget, second essai :', JSON.stringify({ asked: askedAgain, ...sameTwice }));
-check('au second essai : la table existe, aucune question ; encore une copie de plus sur la page du widget, toujours aucune ligne', !askedAgain && sameTwice.rows.length === 0 && sameTwice.forms === sameOnce.forms + 1, { question: askedAgain, lignes: sameTwice.rows.length, formulaires: sameTwice.forms });
-check('aucun refus du courtier pendant ces essais', refusals.length === 0, refusals);
-
-// 4b. Le formulaire natif sur SA page (une page à part, que n'occupe aucun widget) : le cas des personnes qui le posent dans leur document. Tout passe.
-refusals.length = 0;
-const own = await ownPageForm(afterSame);
-const ownApp = await lab.openApp('form', FORM_URL, afterSame);
-await saveByLink(page, ownApp, own.sectionRef);
-// GFS demande l'accord de la personne à chaque fois que le lien ouvre quelque chose de plus : d'abord la publication de la copie (la table des réponses, ouverte à l'ajout), puis le champ
-// caché `FormPlusDef` (la colonne `Definition` de `FormPlus_Formulaires`, que tout lien pourra lire : consigne 013).
-const windows = await allowPublications(afterSame);
-say('fenêtres d\'accord de GFS :', JSON.stringify(windows));
-await page.waitForTimeout(6000);
-const first = await savedForms(afterSame);
-check('GFS demande l\'accord deux fois : la table `Clients` ouverte à l\'ajout, puis la lecture de `Definition`', windows.length === 2 && /Clients/.test(windows[0].items.join()) && /Definition/.test(windows[1].items.join()) && /FormPlus_Formulaires/.test(windows[1].items.join()), windows);
-say('premier enregistrement, page propre :', JSON.stringify(first));
-await lab.shotPanel(run, '4-apres-enregistrer', afterSame);
-check('aucune section de garde n\'est posée pour cette table', first.gates.length === 0, first.gates);
-check('le cadre de GFS et celui de Form+ restent : le formulaire est sur sa page, pas sur celle du widget', !afterSame.isDetached() && !ownApp.isDetached(), { gfs: afterSame.isDetached(), app: ownApp.isDetached() });
-check('une seule ligne, celle de ce formulaire : sa copie gérée (`Definition.vsId`), pas le formulaire d\'origine', first.rows.length === 1 && Number.isInteger(first.rows[0].vsId) && first.rows[0].vsId !== own.sectionRef, first.rows);
-check('la copie porte le champ caché `FormPlusDef` : une Référence vers `FormPlus_Formulaires` qui affiche `Definition` (008, point 3)', Boolean(first.def) && first.def.type === 'Ref:FormPlus_Formulaires' && first.def.affiche === 'Definition' && first.rows[0].cache, { def: first.def, ligne: first.rows[0] });
+const windows = await saveByLink(page, app, formSection.id, lab.frame);
+say('fenêtres d\'accord :', JSON.stringify(windows));
+const ownWindows = windows.filter(window => window.cote === 'Form+');
+const gfsWindows = windows.filter(window => window.cote === 'GFS');
+await page.waitForTimeout(3000);
+await lab.shotPanel(run, '4-apres-enregistrer');
+const first = await savedForms(lab.frame);
+say('premier enregistrement :', JSON.stringify(first));
+const copy = first.rows[0];
+check('Form+ demande deux fois l\'accord avant d\'écrire : sa table `FormPlus_Formulaires`, puis la publication de la copie, qui dit la table recevant des lignes', ownWindows.length === 2 && /FormPlus_Formulaires/.test(ownWindows[0].texte) && /Reponses|Responses/.test(ownWindows[1].texte), ownWindows);
+check('GFS demande l\'accord deux fois : la table des réponses ouverte à l\'ajout, puis la lecture de `Definition` dans la petite table de CE formulaire seul', gfsWindows.length === 2 && Boolean(copy) && /Reponses|Responses/.test(gfsWindows[0].lignes.join()) && gfsWindows[1].lignes.join().includes('Definition') && gfsWindows[1].lignes.join().includes(`FormPlus_Pub_${copy.vsId}`), gfsWindows);
+check('`FormPlus_Formulaires` est créée, sans section de garde (008, point 3)', first.table && first.gates.length === 0, first.gates);
+check('une seule ligne, celle de la copie gérée (`Definition.vsId`), pas du formulaire d\'origine', first.rows.length === 1 && Number.isInteger(copy.vsId) && copy.vsId !== formSection.id, first.rows);
+check('la copie a SA petite table d\'une ligne `FormPlus_Pub_<vsId>`, qui porte sa définition (013, point 1)', Boolean(copy.pub) && copy.pub.lignes === 1 && copy.pub.sienne, copy);
+check('et SA colonne cachée `FormPlusDef_<vsId>` : une Référence vers cette petite table qui affiche `Definition`, cachée dans la copie, sans le champ d\'un autre formulaire, ni la colonne partagée d\'avant', Boolean(copy.def) && copy.def.type === `Ref:FormPlus_Pub_${copy.vsId}` && copy.def.affiche === 'Definition' && copy.cache && copy.autres.length === 0 && !first.ancienne, copy);
+check('le cadre de GFS et celui de Form+ restent pendant l\'enregistrement', !lab.frame.isDetached() && !app.isDetached(), { gfs: lab.frame.isDetached(), app: app.isDetached() });
 check('aucun refus du courtier pendant l\'enregistrement', refusals.length === 0, refusals);
+const again = await saveByLink(page, app, formSection.id, lab.frame, { quiet: 4000 });
+await page.waitForTimeout(2000);
+const same = await savedForms(lab.frame);
+check('le même lien une seconde fois : aucune fenêtre, aucune copie de plus, aucune ligne de plus', again.length === 0 && same.forms === first.forms && same.rows.length === 1, { fenetres: again, formulaires: same.forms, lignes: same.rows.length });
 
-// Le même lien une seconde fois, puis un second formulaire sur sa propre page.
-await ownApp.locator('#generate').click();
-await page.waitForTimeout(4000);
-const again = await savedForms(afterSame);
-check('le même lien une seconde fois : aucune copie de plus, aucune ligne de plus', again.forms === first.forms && again.rows.length === 1, { formulaires: again.forms, lignes: again.rows.length });
-const own2 = await ownPageForm(afterSame);
-await pasteLink(page, ownApp, own2.sectionRef);
-const openedAgain = await allowPublications(afterSame, 4000);
-await page.waitForTimeout(5000);
-const second = await savedForms(afterSame);
-check('le second formulaire n\'ouvre rien de plus (même table, même colonne lue) : GFS ne demande rien', openedAgain.length === 0, openedAgain);
-check('un second formulaire a sa propre ligne et sa propre copie', second.rows.length === 2 && second.rows[0].vsId !== second.rows[1].vsId, second.rows);
-// Le second formulaire natif est posé APRÈS la colonne `FormPlusDef` : Grist en fait un champ du formulaire d'origine, donc de la copie, et Form+ ne cache que le champ qu'elle ajoute.
-constat('la copie du second formulaire cache aussi son champ `FormPlusDef` (008, point 3)', second.rows.every(row => row.cache), second.rows.map(row => row.champ));
+// 4b. Un formulaire natif posé sur la page du WIDGET (la personne met son widget à côté de son formulaire) : poser une section sur cette page fait recharger le cadre du widget avant que la
+// ligne soit écrite (comportement de Grist). Form+ le refuse AVANT toute copie et dit pourquoi (012, point 2). Grist reconstruit le cadre de GFS dès que la section est posée.
+refusals.length = 0;
+const onWidget = await formOnWidgetPage(lab, lab.frame);
+const host = onWidget.host;
+const formApp = await lab.openApp('form', FORM_URL, host);
+const beforeWidget = await savedForms(host);
+const refusedWindows = await saveByLink(page, formApp, onWidget.section, host, { quiet: 4000 });
+const message = await linkMessage(formApp);
+const afterWidget = await savedForms(host);
+say('formulaire sur la page du widget :', JSON.stringify({ fenetres: refusedWindows, message: message.slice(0, 120), avant: beforeWidget.forms, apres: afterWidget.forms }));
+check('un formulaire natif sur la page du widget : Form+ le refuse et dit pourquoi, sans ouvrir aucune fenêtre', refusedWindows.length === 0 && /même page que ce formulaire|same page as this native form/.test(message), { fenetres: refusedWindows, message });
+check('rien n\'est copié ni écrit : mêmes formulaires, même ligne', afterWidget.forms === beforeWidget.forms && afterWidget.rows.length === 1, { formulaires: afterWidget.forms, lignes: afterWidget.rows.length });
+check('aucun refus du courtier', refusals.length === 0, refusals);
+
+// 4c. Un second formulaire, sur sa page : sa petite table et son champ caché, jamais ceux du premier (013, point 1). GFS demande de nouveau l'accord pour la lecture de SA petite table.
+refusals.length = 0;
+const second = await ownPageForm(host);
+const secondWindows = await saveByLink(page, formApp, second.sectionRef, host);
+await page.waitForTimeout(3000);
+const both = await savedForms(host);
+say('second formulaire :', JSON.stringify({ fenetres: secondWindows, ...both }));
+const mine = both.rows.find(row => row.vsId !== copy.vsId);
+check('un second formulaire a sa propre ligne, sa petite table d\'une ligne et son champ caché', both.rows.length === 2 && Boolean(mine) && Boolean(mine.pub) && mine.pub.lignes === 1 && mine.cache, both.rows);
+check('chaque formulaire a SA petite table et SA colonne : aucune ne porte la définition d\'un autre, aucune copie ne garde le champ d\'un autre (un lien ne lit que la sienne)', both.rows.every(row => row.pub && row.pub.sienne && row.autres.length === 0 && row.def && row.def.type === `Ref:FormPlus_Pub_${row.vsId}`), both.rows.map(row => ({ vsId: row.vsId, def: row.def, autres: row.autres })));
+check('GFS demande de nouveau l\'accord de lecture, pour la petite table de ce second formulaire (une table de plus à lire)', Boolean(mine) && secondWindows.some(window => window.cote === 'GFS' && window.lignes.join().includes(`FormPlus_Pub_${mine.vsId}`)), secondWindows);
 check('aucun refus du courtier pour le second formulaire', refusals.length === 0, refusals);
 
-// 4c. Le mode interne (Form+ à 02be13c) : la table `FormPlus_Repondants` et sa colonne d'essai, dont la formule lit `user.Email`. Sans la capacité `formules` du manifeste, le courtier refuse
-// la colonne (« Une colonne à formule demande la capacité « formules » », mesuré à c249c4a avant la déclaration).
-await ownApp.locator('[data-etab="settings"]').click();
+// 4d. Le mode interne (012, point 6) : la fenêtre d'accord avant de créer `FormPlus_Repondants`, puis sa colonne d'essai, dont la formule lit `user.Email`. Sans la capacité `formules` du
+// manifeste, le courtier refuse la colonne (« Une colonne à formule demande la capacité « formules » », mesuré à c249c4a avant la déclaration).
+await formApp.locator('[data-etab="settings"]').click();
 await page.waitForTimeout(500);
 refusals.length = 0;
-const consent = ownApp.locator('#pp-dialog-message').waitFor({ state: 'visible', timeout: 4000 }).then(() => true, () => false);
-await ownApp.locator('label:has(#opt-internal-mode) .toggle-track').click();
-const askedInternal = await consent;
-if (askedInternal) await ownApp.getByRole('button', { name: /Créer|Create/ }).first().click();
-await page.waitForTimeout(3000);
-const internal = await ownApp.evaluate(() => ({ coche: document.getElementById('opt-internal-mode').checked, message: document.getElementById('internal-mode-msg').textContent.replace(/\s+/g, ' ').trim() }));
-const probe = await afterSame.evaluate(async () => {
+await formApp.locator('label:has(#opt-internal-mode) .toggle-track').click();
+const internalWindows = await acceptWindows(page, formApp, host, { quiet: 4000 });
+await page.waitForTimeout(2000);
+const internal = await formApp.evaluate(() => ({ coche: document.getElementById('opt-internal-mode').checked, message: document.getElementById('internal-mode-msg').textContent.replace(/\s+/g, ' ').trim() }));
+const probe = await host.evaluate(async () => {
   const tables = await grist.docApi.fetchTable('_grist_Tables');
   const columns = await grist.docApi.fetchTable('_grist_Tables_column');
   const ref = tables.id[tables.tableId.indexOf('FormPlus_Repondants')];
   const at = ref ? columns.parentId.findIndex((parent, i) => parent === ref && columns.colId[i] === 'Email') : -1;
   return { table: Boolean(ref), colonne: at < 0 ? null : { type: columns.type[at], formule: columns.formula[at], declenchee: !columns.isFormula[at], recalcWhen: columns.recalcWhen[at] } };
 });
-say('mode interne :', JSON.stringify({ ...internal, ...probe, accord: askedInternal }));
+say('mode interne :', JSON.stringify({ ...internal, ...probe, fenetres: internalWindows }));
+check('Form+ demande l\'accord avant de créer `FormPlus_Repondants` (012, point 6) : une fenêtre du kit, et GFS n\'a rien à demander', internalWindows.length === 1 && internalWindows[0].cote === 'Form+' && /FormPlus_Repondants/.test(internalWindows[0].texte), internalWindows);
 check('le mode interne s\'active : la case reste cochée, sans message d\'erreur', internal.coche && !/Impossible|refus/i.test(internal.message), internal);
 check('`FormPlus_Repondants` est créée avec sa colonne `Email` à formule déclenchée `user.Email` (la capacité `formules` du manifeste)', probe.table && probe.colonne && probe.colonne.formule === 'user.Email' && probe.colonne.declenchee, probe);
 check('le courtier ne refuse rien au mode interne', refusals.length === 0, refusals);
-// L'accord de la personne avant de créer une table (guide, règle 4) : l'activation du mode interne la crée sans fenêtre.
-constat('Form+ demande l\'accord avant de créer `FormPlus_Repondants` (guide, règle 4)', askedInternal, 'la table se crée à l\'activation, sans fenêtre');
+
+// 4e. L'ancien portillon (Form+ à 038dd1b) : une section de formulaire publiée sur `FormPlus_Formulaires`. À l'enregistrement suivant, Form+ propose de la fermer ; avec l'accord de la personne
+// elle la DÉPUBLIE (`UpdateRecord` de `shareOptions`) et ne la supprime jamais (`RemoveViewSection` n'est pas un verbe que le courtier laisse passer, contrats 3.3, point 2).
+refusals.length = 0;
+const gateId = await oldGate(host);
+const third = await ownPageForm(host);
+const gateWindows = await saveByLink(page, formApp, third.sectionRef, host);
+await page.waitForTimeout(3000);
+const closed = await savedForms(host);
+say('ancien portillon :', JSON.stringify({ fenetres: gateWindows.map(window => `${window.cote} : ${window.titre}`), portes: closed.gates }));
+check('Form+ propose de fermer l\'ancienne porte avant tout le reste (fenêtre du kit)', gateWindows.length > 0 && gateWindows[0].cote === 'Form+' && /FormPlus_Formulaires/.test(gateWindows[0].texte), gateWindows[0]);
+check('la section est dépubliée, jamais supprimée', closed.gates.length === 1 && closed.gates[0].id === gateId && !closed.gates[0].publiee, closed.gates);
+check('le courtier ne refuse rien à la fermeture, et GFS n\'ouvre aucune fenêtre pour elle (rien de plus n\'est ouvert)', refusals.length === 0 && !gateWindows.slice(0, 1).some(window => window.cote === 'GFS'), refusals);
+check('le troisième formulaire est enregistré à la suite : trois lignes, chacune avec sa petite table', closed.rows.length === 3 && closed.rows.every(row => row.pub && row.pub.sienne), closed.rows.length);
 
 // ----- 5. Le type « Formulaire » dans l'explorateur.
-say('semis des formulaires :', JSON.stringify(await seedForms(afterSame)));
-await afterSame.evaluate(() => location.reload());
+say('semis des formulaires :', JSON.stringify(await seedForms(host)));
+await host.evaluate(() => location.reload());
 await page.waitForTimeout(1000);
 const explorer = await lab.gfsFrame(/access=full/);
 await lab.gfsReady(explorer);
@@ -221,7 +220,7 @@ const rows = await explorer.locator('.ls-row').evaluateAll(list => list.map(row 
 say('lignes de l\'explorateur :', JSON.stringify(rows));
 await lab.shotPanel(run, '4-explorateur', explorer);
 const forms = rows.filter(row => row.icone === '#i-form');
-check('les formulaires de Form+ sont dans l\'explorateur, avec l\'icône « formulaire » : les deux qu\'elle a enregistrés et les trois semés', forms.length === 5, forms);
+check('les formulaires de Form+ sont dans l\'explorateur, avec l\'icône « formulaire » : les trois qu\'elle a enregistrés et les trois semés', forms.length === 6, forms);
 check('leur type s\'écrit « Formulaire » / « Form » dans la langue de la personne', forms.every(row => row.type === (lang === 'fr' ? 'Formulaire' : 'Form')), forms.map(row => row.type));
 check('sans couleur de famille (la couleur est réservée au document, à la grille et à la présentation)', forms.every(row => !row.famille), forms.map(row => row.famille));
 await explorer.locator('.ls-row', { hasText: forms[0] && forms[0].nom }).first().click();
@@ -230,10 +229,14 @@ await explorer.locator('.ls-row', { hasText: forms[0] && forms[0].nom }).first()
 await page.waitForTimeout(800);
 say('après le double-clic :', JSON.stringify({ cadres: page.frames().filter(frame => FORM_URL.test(frame.url())).length, panneau: (await explorer.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ').slice(0, 220) }));
 await lab.shotPanel(run, '5-double-clic', explorer);
-// Le bouton « Changer de formulaire source » est dans un paragraphe traduit (`data-i18n`) : `translateDom` du kit remplace tout son contenu par du texte, le bouton disparaît.
+// Le bouton « Changer de formulaire source » est dans son propre paragraphe depuis la 012 (point 3) : `translateDom` du kit ne le remplace plus par du texte.
 const opened = await lab.appFrame(FORM_URL);
 await opened.locator('#editor:not(.hidden)').waitFor({ timeout: 20000 }).catch(() => {});
 await page.waitForTimeout(1500);
-constat('« Changer de formulaire source » reste dans la page de Form+ une fois la traduction appliquée', await opened.locator('#change-source-btn').count() > 0, 'le bouton est absent : il est dans un <p data-i18n>, que translateDom remplace par du texte');
+await opened.locator('[data-etab="settings"]').click().catch(() => {});
+await page.waitForTimeout(500);
+const sourceButtons = await opened.locator('#change-source-btn').count();
+check('« Changer de formulaire source » reste dans la page de Form+ une fois la traduction appliquée (012, point 3)', sourceButtons > 0, { boutons: sourceButtons });
 check('aucun refus du courtier depuis l\'explorateur', refusals.length === 0, refusals);
+check('aucune erreur de script dans l\'app pendant tout l\'essai', errors.length === 0, errors);
 await lab.browser.close();

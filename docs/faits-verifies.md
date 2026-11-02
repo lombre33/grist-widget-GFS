@@ -237,6 +237,15 @@ réponses, sans que l'app change.
   `lombre33/lombre33.github.io` (2020) ; de même pour `grist-factory.github.io`.
 - Pages (Jekyll, par défaut) ne sert **aucun fichier ni dossier dont le nom commence par « _ » ou « . »** (vu le 09/10 :
   un dossier `_tables/` répondait 404 en ligne, alors qu'il marchait en local).
+- **Une publication qui échoue laisse le site sur l'ancienne version, sans rien montrer** (vu le 02/11 chez Automation+, d'après sa page
+  d'état à `746a564`) : Pages passe aussi les fichiers `.md` dans Jekyll, et une accolade double non fermée (`{{` sans `}}`) fait échouer
+  la construction ; `lombre33.github.io/GRIST_automation/` est resté à la 0.9.0 du 21/10 au 02/11, alors que le dépôt était à la 0.11.1. Le
+  découpage de Liquid, rejoué sur ses fichiers `.md` à `f3ab8d6`, ne trouve qu'une accolade non fermée (`docs/TESTS_GRIST_REEL.md`, ligne
+  134) ; un `.nojekyll` à la racine (ajouté à `941eafd`) règle le cas. GFS ouvre les apps sur leur site depuis le 22/10 (`4394fb0`) : tant
+  que le site répond, le repli sur la copie ne joue pas (il ne joue qu'au bout de 15 secondes sans réponse), donc rien ne signale une
+  version ancienne. Au 02/11, aucun des quatre autres dépôts (Publipostage+, Form+, Grist-BI, SlidesPlus) n'a de `.nojekyll` ni d'accolade
+  non fermée dans ses `.md`. **Pas mesuré** : la version réellement servie par chaque site (github.io est injoignable depuis le cloud) ;
+  Jekyll lui-même (le découpage est celui de Liquid, rejoué par un script).
 - Documentation de GitHub (dépôt `github/docs`, lu le 14/10 par jsDelivr ; docs.github.com est bloqué depuis le cloud) :
   Pages récupère les sous-modules à la construction, dépôts publics et adresses `https://` seulement, sous-modules imbriqués
   compris (`content/pages/getting-started-with-github-pages/using-submodules-with-github-pages.md`) ; Dependabot :

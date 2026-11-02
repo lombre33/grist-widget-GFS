@@ -9,7 +9,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 |---|---|---|---|---|---|
 | Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `f5d6376` | 28/10/2026 | GPL 3.0 |
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `cc21a27` | 22/10/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
-| Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `f3ab8d6` | 22/10/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
+| Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `746a564` | 02/11/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `586c7c4` | 22/10/2026 | GPL 3.0 |
 
 ## Lus pour référence (pas des apps de GFS)
@@ -407,6 +407,19 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   se caleront sur la zone libre, jamais écrite en dur. Questions et demandes : aucune. Traité le 22/10 : l'`INDEX.md` (003
   « lue · `f3ab8d6` », le code attend le lot du lien du kit) et la référence avancée à `f3ab8d6` (commit à part, relu : un seul
   fichier de plus que `4110eaf`, `GFS-ETAT.md`). Le rejeu de la barre chez elle, avec `run-barre-apps.mjs`, attend ce lot.
+- Automation+ à `746a564` (02/11, le porteur : « retour automation + ») : deux commits de plus depuis `f3ab8d6`, tous deux du 02/11.
+  `941eafd` : le site en ligne sert de nouveau la dernière version (0.11.1) ; la publication de GitHub Pages échouait depuis le 21/10
+  (Jekyll refusait une accolade double non fermée dans un document), le site était resté à la 0.9.0 ; un `.nojekyll` à la racine le fait
+  publier les fichiers tels quels, un test (HYG-12) le garde, un scénario (START-05) compare la version en ligne à celle de `package.json`.
+  `746a564` : sa page d'état dit les consignes 004 et 005 **faites** (lues, aucun code ; la clé `workflow` n'est écrite que sur un geste de
+  la personne ; le site est à `https://lombre33.github.io/GRIST_automation/index.html`, adresse inchangée). Questions et demandes : aucune.
+  Le code, les styles, la page d'entrée et la licence ne changent pas (ceux de `6eb0165`, 0.11.1). **Trouvé en route** : GFS ouvre chaque
+  app sur son site depuis le 22/10 (`4394fb0`), donc ce qu'il ouvrait d'Automation+ du 22/10 au 02/11 était la 0.9.0, sans les règles 3, 4
+  et 12 corrigées, et rien ne le signalait (le repli sur la copie ne joue que si le site ne répond pas en 15 secondes). Le découpage de
+  Liquid, rejoué sur les fichiers `.md` des quatre autres dépôts (Publipostage+, Form+, Grist-BI, SlidesPlus), ne trouve aucune accolade
+  non fermée ; aucun n'a de `.nojekyll` (faits vérifiés 5). Traité le 02/11 : l'`INDEX.md` (004 et 005 faites) et la référence avancée à
+  `746a564` (`5b44451`, commit à part, relu : quatre fichiers, 12 lignes, aucun n'est du code servi) ; 58 vérifications ciblées sans échec
+  ; aucune consigne à écrire ; la question d'une consigne commune sur le site en ligne est posée au porteur sur une carte.
 - Publipostage+ à `011c74c` (22/10, le porteur : « La 025 est faite côté Publipostage+ … avance la référence … rejoue la barre ») :
   vingt-six commits de plus depuis `dc95ebe`, dont dix-huit de code. Son `GFS-ETAT.md` (`011c74c`, qui décrit `2d9d4ed` ;
   consignes lues jusqu'à la 027) dit la 025 **faite** (`9d3c52d`, `f81bd8a`, `2ebd68d`, `2f6440a`, `d590d7c`, `40b156f`, `2928d03`,

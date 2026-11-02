@@ -217,7 +217,9 @@ L'app (sous-cadre sans allow-same-origin)
 
 1. [D] Un seul sous-cadre est relié à Grist. L'explorateur le masque sans le débrancher. Ouvrir un fichier d'une autre app
    le détruit après « fermer » (5.4), puis en crée un neuf. L'action « insérer » (étape 7) en gardera deux, dont un suspendu :
-   le contrat se complète alors.
+   le contrat se complète alors. **Décidé le 02/11 (porteur, par le projet de Tuesday)** : Automation+ pourra tourner caché derrière
+   l'app active, dès que le document a au moins une automatisation (cahier, section 2 et section 12, ligne 4) ; ce sera un second
+   sous-cadre, relié à Grist lui aussi, que le courtier devra servir en même temps que l'app active. Le contrat se complète à l'étape 6.
 2. [D] Un sous-cadre qui n'a pas dit `ready` au bout de 15 secondes est signalé à la personne (« l'app ne répond pas »), avec
    « Recharger ». Durée à confirmer à l'étape 6. Pour un site en ligne (1.3, point 2), la première échéance ouvre d'abord la copie
    figée ; « ne répond pas » vient si elle tarde aussi.
@@ -1259,6 +1261,13 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
 6. [T] Une app qui reçoit un rendu ne charge jamais le code de l'app qui l'a produit, et **traite `donnees` comme une donnée
    non fiable** : un SVG s'affiche par `<img src="data:image/svg+xml…">` (ou un canevas), jamais en l'insérant dans la page,
    car un SVG inséré exécute ses scripts.
+7. [D] **Lier un fichier d'une autre app** (demande de Tuesday, 02/11 ; **écrit, non construit** : ni le courtier ni le kit 0.2.0
+   n'ont `choisir` ni `ouvrir` côté app, et un appel de ce genre reçoit `GFS_INCONNU`). L'app qui lie garde la clé `{ app, id, type }`
+   que rend `choisir` ; le nom reçu n'est qu'une étiquette, celle du moment du choix. Un fichier renommé garde son `id` : `ouvrir`
+   l'ouvre sous son nom du jour. Un fichier disparu, ou une app non installée, n'efface jamais le lien : l'app le montre grisé, avec la
+   raison, et la personne le retire ou le refait. `ouvrir` d'un fichier que la table de l'app visée ne contient plus : GFS n'ouvre rien
+   et le dit à la personne ; le code que reçoit l'app s'écrira avec le lot. Relire le nom à l'ouverture serait un champ de plus dans la
+   réponse de `ouvrir` (additif) : seulement si une app le demande. Consigne 002 à Tuesday.
 
 ### 5.5 La table d'un direct : être prévenu quand une autre table change
 

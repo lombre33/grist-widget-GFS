@@ -11,6 +11,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `fd5384a` | 02/11/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `746a564` | 02/11/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `b2772db` | 02/11/2026 | GPL 3.0 |
+| Tuesday (nom de travail ; « Thusday » dans les anciens documents) | `lombre33/grist-wisget-tuesday` | `consignes/tuesday/` | `99b80e2` | 02/11/2026 | GPL 3.0 |
 
 ## Lus pour référence (pas des apps de GFS)
 
@@ -563,6 +564,13 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   **003 à faite** (`21b012b`) : aucun fichier caché sensible n'est exposé en plus (seuls `.nojekyll` et `.gitignore`, aucun fichier `_*`) et le run « pages build and
   deployment » est passé en succès sur ce commit. « Changements qui touchent GFS », « Questions pour GFS » et « Demandes à GFS » : aucun. Traité le 02/11 :
   l'`INDEX.md` (003 faite). GFS ne référence toujours pas Grist-BI : aucune référence à avancer.
+- Tuesday à `99b80e2` (02/11, le porteur colle le message du projet de Tuesday) : app de gestion de projets (tableau, kanban, chronologie,
+  calendrier), dépôt `lombre33/grist-wisget-tuesday`, nom de travail (les documents de GFS écrivent « Thusday »). Trois commits en tout
+  (`76eab24` le cahier 0.3, `c6a1ba3` le cœur sans interface, `99b80e2` l'interface, 187 essais) ; née sur le kit 0.2.0 (sous-module à
+  `c0c8660`), GPL 3.0, `.nojekyll`, `gfs.json` à la racine, que l'outil de validation de GFS passe sans erreur. Pas encore de `GFS-ETAT.md`
+  (la consigne 001 le demande). Sept demandes dans son cahier (`docs/demandes-a-gfs.md`). Traité le 02/11 : `consignes/tuesday/` (001 à 004),
+  la décision d'Automation+ en fond au cahier (section 2 et section 12, ligne 4), deux cartes au porteur (construire les liens entre apps,
+  le calendrier). GFS ne référence pas encore Tuesday : aucune référence à avancer.
 
 - « Nouveau > Importer » (22/10, le porteur : « les imports possibles par Publipostage+ (Excel, docx, pptx…) il faudrait qu'ils soient aussi
   disponibles dans le menu Nouveau, sous-menu Import ? », puis sa réponse « Sous-menu Importer ») : GFS livre le sous-menu. Le

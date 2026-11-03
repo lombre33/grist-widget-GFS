@@ -3,48 +3,10 @@
 // avec une vraie souris (labo/run-pdf.mjs) ; ici le magasin de données, le sélecteur et le rangement sont des doublures.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { KeptFiles, saveBlob } from '../js/kept-files.js';
+import { saveBlob } from '../js/kept-files.js';
+import { FR, EN, PDF_BYTES, entryOf, fakeDoc, setup, pdf } from './kept-setup.mjs';
 import { TransferError } from '../js/transfer.js';
 import { TableDeclined } from '../js/own-table.js';
-import { createI18n } from '../js/i18n.js';
-
-const FR = createI18n('fr');
-const EN = createI18n('en');
-const PDF_BYTES = '%PDF-1.4\n1 0 obj\n';
-const entryOf = (kept, over = {}) => ({ ...kept.importEntries()[0], ...over });
-
-// Un document de faux : le champ « file » caché que `pickFile` pose, qu'on remplit ensuite comme le ferait la personne.
-function fakeDoc() {
-  const doc = { appended: [], body: { append: node => doc.appended.push(node) } };
-  doc.createElement = tag => {
-    const element = Object.assign(new EventTarget(), { tag, files: null, removed: false, clicks: 0, hidden: false });
-    element.remove = () => { element.removed = true; };
-    element.click = () => { element.clicks += 1; };
-    return element;
-  };
-  return doc;
-}
-
-function setup({ fullAccess = true, readonly = false, folder = '', add = async () => ({ status: 'added', id: 'aa', name: 'Facture.pdf', row: 1 }), download = async () => ({ blob: new Blob(['x']), name: 'Facture.pdf' }), i18n = FR, setFiling = async () => {}, reader } = {}) {
-  const log = { notices: [], adds: [], refreshes: 0, filings: [], doc: fakeDoc() };
-  const store = { add: async options => { log.adds.push(options); return add(options); }, download, remove: async () => true };
-  const kept = new KeptFiles({
-    store, doc: log.doc, container: null, inertTargets: () => [], t: i18n.t, lang: () => i18n.lang, locale: () => 'fr-FR', now: () => 1762000000000,
-    fullAccess: () => fullAccess, readonly: () => readonly, notice: text => log.notices.push(text), refresh: async () => { log.refreshes += 1; },
-    folder: () => folder, rangement: { setFiling: async entries => { log.filings.push(entries); return setFiling(entries); } }, ...(reader ? { reader } : {}),
-  });
-  // La personne choisit `file` dans le sélecteur ouvert par `importFile`.
-  const importing = (file, entry = entryOf(kept)) => {
-    const running = kept.importFile(entry);
-    const input = log.doc.appended.at(-1);
-    input.files = file ? [file] : [];
-    input.dispatchEvent(new Event('change'));
-    return running;
-  };
-  return { kept, log, importing };
-}
-
-const pdf = (name = 'Facture.pdf', content = PDF_BYTES) => new File([content], name, { type: 'application/pdf' });
 
 test('l\'article « PDF » de « Importer » : l\'icône et le mot du type ensemble, sans couleur de famille, avec ce que GFS en fait', () => {
   const { kept } = setup();

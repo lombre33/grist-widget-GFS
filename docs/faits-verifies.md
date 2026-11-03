@@ -1015,3 +1015,35 @@ avec la « Copie de GFS », en anglais sombre avec le CDN et en anglais sombre a
 
 **Pas mesuré.** Le vrai jsDelivr (`node outils/bibliotheques.mjs --verifier-cdn`, sur une machine qui y accède : le labo y met une copie aux mêmes octets), Firefox (le cloud n'a que Chromium), le Grist en ligne du porteur (celui de la
 DINUM) et le dessin d'un graphique sur un très gros tableau. La fenêtre écrit « Echarts » (l'identifiant du catalogue avec une capitale) et non « ECharts » : un détail d'affichage de GFS, pas de l'app.
+
+## 21. Ranger un export d'une app dans GFS : ce que le vrai serveur a mesuré (03/11)
+
+Le lot 3 de l'étude PDF (contrats 2.7 point 6, 5.4 point 9, 6.6). Une app fabrique un PDF **dans son cadre isolé** et demande à GFS de le ranger. Joué par `labo/run-ranger-pdf.mjs` dans un **vrai serveur Grist 1.7.19**
+(Docker) : GFS ajouté comme widget à un document neuf, panneau à 700 × 400, souris et clavier réels, en français clair puis en anglais sombre, avec la sonde Z (`labo/sondes/z-ranger-pdf/`), qui fait ce que fera
+Publipostage+ ; puis la même mesure avec le **vrai client du kit 0.7.0** (`LAB_KIT=1`, `GfsLink.deposit`, la sonde Z kit). Ce que GFS écrit (tables, lignes, pièces jointes, rangement) est relu par l'API REST. Chromium seulement.
+
+- **Un `File` fabriqué dans le cadre isolé** (`sandbox="allow-scripts"`, origine opaque) **traverse le message de l'app à GFS avec ses octets** : la pièce jointe que Grist garde a la même empreinte SHA-256 que le PDF fabriqué,
+  et le type `application/pdf`. Le message ne porte que `{ fichier, nom, … }` : l'app ne reçoit ni ne donne de jeton, et son niveau d'accès (`none` pour la sonde) n'y change rien.
+- **La ligne écrite** : l'`Identifiant` rendu à l'app (12 caractères hexadécimaux), le nom, `pdf`, la taille en octets, la date du jour, **`Origine` = l'`id` de l'app**, pris à la session et non au message. Un fichier remplacé garde
+  son `Identifiant`, sa ligne, son dossier et son `Origine` ; la date change. L'explorateur montre le PDF rangé dès le dépôt fini.
+- **GFS ne dit rien par-dessus l'app** : après un dépôt réussi, ni phrase ni notice (le bandeau de GFS reste caché), l'app est toujours là ; c'est la réponse `{ statut, id, nom }` qui parle.
+- **La table `GFS_Fichiers` absente** : GFS demande l'accord avant tout envoi, et sa fenêtre dit que les apps y rangent aussi. Refusée, **ni table ni pièce jointe** ne naissent et l'app reçoit `GFS_ANNULE` avec la phrase de
+  GFS ; un lot de trois fichiers est refusé d'un bloc, **sans seconde question**. **La table du rangement (`GFS_Rangement`) existe dès qu'une app est installée** (elle porte la ligne réservée du registre des apps) : la
+  question de sa création n'est donc jamais posée à un dépôt (essais sous Node seulement pour son refus).
+- **Le dossier** : ` Factures // 2026/ ` devient « Factures/2026 » ; un fichier nouveau y entre, sans favori ; l'explorateur montre le dossier et garde le fichier dedans.
+- **Un nom pris** : la fenêtre commune nomme l'app (« Sonde Z range un fichier dans GFS, mais GFS garde déjà un fichier « Facture.pdf ». Que faire du nouveau ? »), décrit le fichier gardé (date, auteur), offre trois
+  issues (Garder les deux avec le nom de la copie, Remplacer, Annuler : « le nouveau n'est pas rangé dans GFS »), tient dans 700 × 400 sans défiler et ses textes atteignent 4,5:1 ; le clavier est sur « Garder les deux » ;
+  rien n'est écrit tant que la personne n'a pas répondu. Remplacer : `remplace`, même ligne, même `Identifiant`, aucune ligne de plus, le contenu du nouveau. Garder les deux : `copie`, « Facture (1).pdf », l'ancien
+  garde son contenu. Annuler, Échap et un appui à côté de la fenêtre : `ignore`, `id` et `nom` nuls, rien d'envoyé ni d'écrit.
+- **Un lot** : la case « Faire pareil pour les suivants » n'est offerte que dans un lot dont il reste des fichiers ; au vrai clavier (Tab, Espace, Tab, Tab, Entrée) une seule fenêtre règle les trois noms pris d'un lot de cinq
+  fichiers ; « Annuler » avec la case passe les noms pris et range les autres ; un nouveau lot ne reprend pas la réponse de l'ancien ; sans la case cochée la fenêtre revient ; le dernier fichier n'a pas de case.
+- **Des dépôts lancés ensemble passent l'un après l'autre** : une seule fenêtre à la fois (deux fichiers de même nom : `[ajoute, copie « Rapport (1).pdf »]` dans l'ordre des demandes).
+- **Les refus** : un contenu qui n'est pas un PDF, un fichier vide, un type que l'app n'a pas déclaré, un texte à la place du fichier, aucun fichier, un nom vide (« .pdf »), un lot vide : `GFS_REFUSE` avec la raison en mots,
+  rien d'écrit, aucune fenêtre. **Les échecs** : le serveur qui refuse le fichier (413) et le réseau coupé rendent `GFS_ECHEC` avec la raison en mots (« trop gros pour lui », « le serveur n'a pas répondu ») ; aucune ligne ni pièce
+  jointe de plus ; le dépôt suivant réussit (la file n'est pas bloquée).
+- **La console** : aucune erreur ni avertissement de GFS ou de la sonde, aucune violation de politique ; les échecs joués exprès n'ajoutent que la phrase « le fichier n'a pas pu être traité ». 62 vérifications dans chacune
+  des deux passes, et 62 dans chacune avec le client du kit : mêmes réponses, mêmes codes. Les labos « importer un PDF » (64 vérifications) et « lire un PDF » (43) passent toujours après les changements de la fenêtre du nom pris.
+- **Le kit** (0.7.0, `grist-factory-kit`) : `GfsLink.deposit` rend `{ statut, id, nom }` ou rejette avec le code de GFS ; il n'a pas de délai ; chaque appel est un fichier de plus. **`structuredClone` d'un `File` hors d'un
+  navigateur perd son nom** (sous Node, il rend un `Blob`) : l'ouverture du kit rend le même `File` à chaque lecture. Dans Chromium, un cadre isolé reçoit bien un vrai `File` (nom, taille, type, octets) par `importation` et
+  `lecture`, que le kit jusqu'à la version 0.6.0 laissait tomber.
+- **Pas mesuré** : Firefox, l'instance de la DINUM (la taille maximale d'une pièce jointe et la passerelle), la vraie Publipostage+ (consigne 043), un PDF de plus de 12 Mo, une personne qui refuse de créer `GFS_Rangement`.

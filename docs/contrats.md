@@ -42,7 +42,7 @@ connaît pas.
 3. **Listes fermées, tenues par GFS** : les verbes d'écriture que le courtier laisse passer ; sept tables internes
    (règles d'accès, partages, rappels, réglages du document) qu'aucune app n'écrit, quoi qu'elle déclare ; la colonne
    `options` de `_grist_Views_section`, qui porte l'adresse et l'accès de chaque widget, GFS compris (section 3).
-4. **Messages propres à GFS** (contexte, stockage, barre, ambiance, actions « ouvrir », « choisir », « insérer », « installer », « fermer ») :
+4. **Messages propres à GFS** (contexte, stockage, barre, ambiance, actions « ouvrir », « choisir », « ranger », « insérer », « installer », « fermer ») :
    une enveloppe à part, sans `mtype`, que le script d'API de Grist ignore (sections 4 et 5).
 5. **Installer ne télécharge rien** : le code de toutes les apps livrées est déjà dans le site de GFS ; installer inscrit
    l'identifiant de l'app dans une table du document (sections 6.4 et 7.4). La bibliothèque d'une extension n'est pas dans
@@ -439,6 +439,7 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
       { "valeur": "excel", "type": "grille", "nom": { "fr": "Excel", "en": "Excel" }, "extensions": [".xlsx", ".xlsm"] }
     ],
     "lire": [ { "type": "pdf", "extension": "lecture-pdf" } ],
+    "ranger": ["pdf"],
     "inserer": { "produit": [], "recoit": [] }
   }
 }
@@ -463,6 +464,11 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
    « Télécharger », qui reste dans le menu de la ligne ; quand aucune app du catalogue ne lit le type, le fichier se télécharge comme
    avant (6.6, point 7). Plusieurs apps peuvent lire un même type : la première qui est prête sert, sinon la première déclarée dit
    ce qui manque. Le déroulement est en 5.4, point 8. L'app ne reçoit jamais le droit d'écrire ce que GFS garde.
+6. [D] `ranger` (facultatif ; demande du porteur du 03/11, « les exports en PDF de Publipostage+ vont se ranger parmi les fichiers ») :
+   les types de fichiers **que GFS garde** (6.6 ; aujourd'hui `pdf`) que l'app sait lui donner à ranger après les avoir fabriqués.
+   Une liste de mots en minuscules (comme le `type` de `lire`), `["pdf"]`. Sans cette déclaration, l'appel `ranger` de l'app est
+   refusé (`GFS_REFUSE`, 5.4, point 9) : GFS ne range que pour une app qui l'a dit. L'app ne reçoit jamais le droit d'écrire ce que
+   GFS garde : elle donne le fichier et son nom, GFS seul l'écrit. Le déroulement est en 5.4, point 9.
 
 ### 2.8 Validation
 
@@ -485,6 +491,8 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
    - dans `actions.lire` (2.7, point 5) : une entrée qui n'est pas un objet ou dont le `type` n'est pas un mot en minuscules (une
      lettre, puis des lettres, des chiffres ou des tirets, 24 signes au plus), un `type` déclaré deux fois, une `extension` qui n'est
      pas déclarée dans `extensions` ;
+   - dans `actions.ranger` (2.7, point 6) : une valeur qui n'est pas une liste, une entrée qui n'est pas un mot en minuscules (la règle
+     du `type` de `lire`), un type déclaré deux fois ;
    - dans `classes` (11.2) : une table hors du préfixe de l'app, une classe inconnue, un champ de la classe absent (`personne`
      pour `personnel`, les quatre rôles de `etiquette` pour `reserve`, `de` et `lien` pour `derivee`), une table `derivee` dont
      `de` n'est pas une table `reserve`, un `secrets` qui n'est pas une liste de noms de colonnes.
@@ -784,15 +792,16 @@ Le courtier répond à l'app par une erreur du protocole (`mtype` 3, avec `mesg`
 
 | Code | Quand |
 |---|---|
-| `GFS_REFUSE` | table, verbe, colonne, clé ou capacité non déclarée dans `gfs.json`, ou dans une liste fermée |
+| `GFS_REFUSE` | table, verbe, colonne, clé ou capacité non déclarée dans `gfs.json`, ou dans une liste fermée ; une demande d'action hors règle, ou un type que le manifeste ne déclare pas (`ranger`, 5.4, point 9) ; un fichier vide ou qui n'est pas du type annoncé |
 | `GFS_ACCES` | niveau de l'app insuffisant ; `mesg` reprend le texte de Grist (« Access not granted. Current access level … ») |
 | `GFS_LECTURE_SEULE` | écriture dans un document en lecture seule |
 | `GFS_CLE_NON_DECLAREE` | écriture d'une clé de réglage hors de la tranche |
 | `GFS_INCONNU` | interface, méthode, action ou événement que GFS ne connaît pas |
 | `GFS_INACTIF` | appel venu d'un sous-cadre qui n'est pas l'app active |
-| `GFS_ANNULE` | la personne a annulé ou refusé : elle n'a pas débloqué l'app que visait `ouvrir` (5.4, point 7), elle a refusé d'ouvrir un formulaire au public… Un `choisir` annulé ne rend pas d'erreur : il rend `null` |
+| `GFS_ANNULE` | la personne a annulé ou refusé : elle n'a pas débloqué l'app que visait `ouvrir` (5.4, point 7), elle a refusé d'ouvrir un formulaire au public, ou de créer la table où GFS garde ses fichiers (`ranger`, 5.4, point 9)… Un `choisir` annulé ne rend pas d'erreur : il rend `null` ; un `ranger` dont la personne ne veut pas non plus (`statut: ignore`) |
 | `GFS_INTROUVABLE` | ce que l'appel désigne n'existe pas : une app que GFS ne connaît pas, ou un fichier que la table de l'app visée ne contient plus (`ouvrir`, 5.4, point 7) |
 | `GFS_QUOTA` | espace de stockage plein |
+| `GFS_ECHEC` | ce que GFS devait faire pour l'app n'a pas pu se faire, sans que ce soit un refus : Grist ou le cadre d'envoi n'a pas répondu, le serveur refuse le fichier (trop gros…) (`ranger`, 5.4, point 9) ; `message` dit la raison en mots |
 
 ### 3.7 Ce que le filtre ne garantit pas
 
@@ -1002,6 +1011,7 @@ Les noms de la v0 :
 | `barre.masquer` | app → GFS | `{ masquee }`, vrai ou faux (5.2, point 7) | aucune sans `id` ; avec un `id`, `{ masquee }`, l'état qui vaut (5.2, point 7) |
 | `ouvrir` | app → GFS, puis GFS → app active | 5.4 | 5.4 |
 | `choisir` | app → GFS | 5.4 | 5.4 |
+| `ranger` | app → GFS | 5.4 | 5.4 |
 | `inserer` | app → GFS, puis GFS → app qui fournit | 5.4 | 5.4 |
 | `installer` | app → GFS | 5.4 | 5.4 |
 | `fermer` | GFS → app active | 5.4 | 5.4 |
@@ -1017,7 +1027,7 @@ Les noms de la v0 :
    pas de réponse (comme un appel sans `reqId` chez `grain-rpc`).
 3. [D] Un appel de `nom` inconnu reçoit `GFS_INCONNU` ; un événement inconnu est ignoré. Les erreurs de 3.6 valent ici aussi.
 4. [D] Délais : l'app attend `contexte` 5 secondes au plus ; les appels qui attendent une personne (`ouvrir`, `choisir`,
-   `installer`, `inserer`) n'ont pas de délai ; `stockage.ecrire` et `barre.masquer` n'attendent pas de réponse pour continuer.
+   `ranger`, `installer`, `inserer`) n'ont pas de délai ; `stockage.ecrire` et `barre.masquer` n'attendent pas de réponse pour continuer.
 5. [T] Le courtier attribue chaque message à une app par la fenêtre qui l'a envoyé (1.2), jamais par un champ du message.
 
 ### 5.2 Le contexte
@@ -1364,6 +1374,7 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
 |---|---|---|---|
 | **ouvrir** | app → GFS : `{ app, fichier: { id, type }, raison? }` ; GFS → app active : `{ fichier, type, dossier, raison, importation?, lecture? }` | `{ ouvert: true \| false }` (`false` si la personne annule la question de l'app) | l'app ouvre ses propres fichiers ; ceux d'une autre app sont grisés, texte commun |
 | **choisir** | app → GFS : `{ types, apps?, titre? }` | `{ app, id, nom, type }`, ou `null` si la personne annule | la liste avec recherche de l'app, sur ses propres fichiers |
+| **ranger** | app → GFS : `{ fichier, nom, type?, lot?, suivants?, dossier? }` | `{ statut, id, nom }` : `statut` vaut `ajoute`, `remplace`, `copie` ou `ignore` | l'app donne le fichier à télécharger, comme avant |
 | **inserer** | app qui reçoit → GFS : `{ formats, types? }` ; GFS → app qui fournit : même corps | `{ rendu }` (ci-dessous) | grisé, texte commun |
 | **installer** | app → GFS : `{ extension, fonction? }` | `{ actives: [ … ] }` : les extensions actives après le choix de la personne | la fenêtre du grisé (guide des apps, section 5) |
 | **fermer** | GFS → app active : `{ raison }` | `{ ferme: true \| false }` | sans objet |
@@ -1423,7 +1434,7 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
    « `fichier: null` et un `type` » comme un « Nouveau » ; elle ouvrirait un modèle vierge, dirait `{ ouvert: true }`, et le fichier
    de la personne serait perdu sans un mot. Le kit (`gfs-link.js`, `normalizeOpening`) comme le `gfs-link.js` de Publipostage+ d'avant
    la consigne 035 ne gardent que `fichier`, `type`, `dossier` et `raison` : ils laissent tomber `importation`. Publipostage+ la garde
-   depuis `d76430c` (consigne 035 faite le 23/10) ; le kit la gardera dans sa prochaine version. [M] **Mesuré le 22/10** dans un vrai Grist, à 700 × 400, à la vraie
+   depuis `d76430c` (consigne 035 faite le 23/10) ; le kit la garde, avec `lecture`, depuis sa version 0.7.0 (03/11). [M] **Mesuré le 22/10** dans un vrai Grist, à 700 × 400, à la vraie
    souris et au vrai clavier, en français et en anglais, en clair et en sombre (`run-importer.mjs`, avec la sonde P : une app
    d'essai qui fait ce que fera Publipostage+ et qui lit ce qu'elle reçoit ; le labo seul la range dans `ACCEPTS_OPEN`) : « Nouveau »
    gagne « Importer » après un séparateur, avec la flèche des sous-menus ; le sous-menu s'ouvre au clic, à Entrée et à la flèche
@@ -1542,8 +1553,8 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
    - **Ce que l'app fait** : elle lit `lecture.fichier` comme tout fichier choisi (`arrayBuffer()`), charge pdf.js par la bibliothèque
      `pdfjs` que GFS lui donne (2.6, point 12 ; extension « Lecture de PDF »), le montre dans son mode Lecture, et répond `{ ouvert: true }`
      quand le PDF est ouvert, `{ ouvert: false }` quand la personne annule ou que le fichier est refusé. **Elle garde `lecture` dans son
-     `normalizeOpening`** : le kit 0.4.0 et le `gfs-link.js` de Publipostage+ ne gardent que `fichier`, `type`, `dossier`, `raison` (et
-     `importation` pour le second) et laisseraient tomber le fichier. Elle ne renvoie jamais les octets à GFS.
+     `normalizeOpening`** : le kit jusqu'à sa version 0.6.0 et le `gfs-link.js` de Publipostage+ ne gardent que `fichier`, `type`, `dossier`, `raison` (et
+     `importation` pour le second) et laisseraient tomber le fichier ; le kit garde `lecture` depuis sa version 0.7.0. Elle ne renvoie jamais les octets à GFS.
    - [M] **Mesuré le 03/11** dans un vrai serveur Grist 1.7.19 (Docker), à 700 × 400, à la vraie souris et au vrai clavier, en français
      clair et en anglais sombre (`prototype/labo/run-lire.mjs`, 43 vérifications dans chacune, aucune en échec), avec la sonde Y
      (`labo/sondes/y-lire-pdf/`), qui fait ce que fera Publipostage+ : le labo seul la range dans `ACCEPTS_OPEN`. Avant l'app, « Lire »
@@ -1560,6 +1571,68 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
      et de la barre tiennent la charte (4,5:1) ; aucune erreur ni avertissement en console. **Non mesuré** : Firefox, l'instance de la
      DINUM, un PDF protégé par un mot de passe, un PDF de centaines de pages, la vraie Publipostage+ (son extension n'existe pas encore :
      consigne à Publipostage+, `consignes/publipostage/`).
+
+9. [T] **Ranger un fichier que l'app a fabriqué** (demande du porteur du 03/11, lot 3 de l'étude PDF : « que des exports de Publipostage+ en
+   PDF aillent directement se ranger parmi les fichiers, avec le choix d'écraser l'existant ou d'avoir une copie avec un (1) derrière le
+   nom » ; **construit et mesuré le 03/11**). `actions.ranger` (2.7, point 6) dit quels types l'app donne à GFS. Elle ne reçoit aucun
+   jeton et n'écrit jamais ce que GFS garde (6.6) : elle donne les octets et un nom, GFS les écrit. Le niveau d'accès de l'app, même
+   `none`, n'y change rien.
+   - **L'appel** : `ranger { fichier, nom, type?, lot?, suivants?, dossier? }`. `fichier` : un `File` ou un `Blob` fabriqué dans le cadre
+     de l'app (les octets passent par la copie du message) ; `nom` : le nom pour GFS, de 1 à 200 signes (un « .pdf » manquant est
+     ajouté, un retour à la ligne devient une espace) ; `type` : `pdf`, le seul que GFS garde et celui qu'il prend sans mention ; `lot` : un
+     texte de 1 à 64 signes qui nomme un export en lot ; `suivants` : un entier de 0 ou plus, combien de fichiers l'app rangera encore après
+     celui-ci ; `dossier` : un chemin de 200 signes au plus (normalisé comme celui de l'explorateur : « Factures/2026 »), le dossier de la
+     personne où va un fichier **nouveau** (un fichier remplacé garde sa place). Une demande hors de ces formes, un type que
+     `actions.ranger` ne déclare pas, un fichier vide ou qui ne commence pas comme un PDF (6.6, point 4) : `GFS_REFUSE`, avec la raison en
+     mots, avant que rien ne s'écrive.
+   - **La réponse** : `{ statut, id, nom }`. `ajoute` : le fichier est nouveau ; `remplace` : le fichier de ce nom a pris le contenu (même
+     `id`, même nom, même place) ; `copie` : le nom était pris et la personne a gardé les deux, `nom` est celui de la copie
+     (« Facture (1).pdf ») ; `ignore` : la personne n'en veut pas, `id` et `nom` sont `null` et rien n'est écrit (ce n'est pas une
+     erreur). `id` est l'`Identifiant` du fichier (6.6) : la clé où l'app peut accrocher ce qu'elle garde.
+   - **Ce que la personne voit** : la fenêtre « Ce nom est déjà pris » de 6.6, point 3, et rien d'autre. Elle **nomme l'app** (« <app>
+     range un fichier dans GFS, mais GFS garde déjà un fichier « Facture.pdf ». Que faire du nouveau ? » ; le nom est celui du manifeste
+     dans la langue de la personne, jamais un texte du message), décrit le fichier gardé, et propose Garder les deux (le clavier y est),
+     Remplacer et Annuler (« le nouveau n'est pas rangé dans GFS »). Échap et un clic à côté valent Annuler. **GFS ne dit rien par-dessus
+     l'app**, ni phrase ni notice : c'est l'app qui rend compte, dans son coin d'état, de ce que dit la réponse ou l'erreur.
+   - **Un export en lot** : les fichiers d'un même export portent le même `lot` et chacun son `suivants` (11, 10… 0). Tant qu'il en reste,
+     la fenêtre offre la case « Faire pareil pour les suivants » : cochée, la réponse (Remplacer, Garder les deux ou Annuler) vaut pour
+     les noms pris suivants du lot, sans nouvelle fenêtre. Le dernier fichier (`suivants: 0`) n'offre pas la case, et un fichier sans
+     `lot` est seul. GFS ne retient que le dernier lot de l'app active : un autre nom de lot, ou une autre app, repart de zéro. Ce qui vaut
+     pour tout le lot : la réponse cochée, la table refusée, le rangement refusé.
+   - **Une fenêtre à la fois** : les dépôts passent l'un après l'autre, dans l'ordre des appels, même lancés ensemble ; un second fichier
+     du même nom attend le premier et voit son résultat (copie « (1) »). Une app qui n'est plus l'app active quand son tour vient reçoit
+     `GFS_INACTIF`, sans rien écrire. Pas de délai (5.1, point 4) : la personne répond quand elle veut.
+   - **Les accords et les échecs** : la table `GFS_Fichiers` n'existe pas encore : GFS demande l'accord de la personne (6.6, point 1 ; la
+     fenêtre dit que les apps y rangent aussi). Refusée, rien n'est créé : l'app reçoit `GFS_ANNULE`, et les fichiers suivants du même
+     lot aussi, sans nouvelle question. Un document en lecture seule : `GFS_LECTURE_SEULE` ; ouvert sans l'accès complet : `GFS_ACCES` ;
+     rien ne s'écrit. Le serveur Grist qui refuse le fichier (413) ou ne répond pas : `GFS_ECHEC`, avec la raison en mots, rien n'est
+     écrit, et le dépôt suivant n'est pas bloqué. Un rangement dans un dossier qui échoue ne perd pas le fichier : il est gardé, à la racine.
+   - **`Origine`** (6.6) : la ligne dit l'`id` de l'app qui l'a rangée, pris à la session de l'app et jamais à un champ du message (5.1,
+     point 5) ; un fichier remplacé garde son `Origine`.
+   - **Dans l'app seule** : l'app télécharge son fichier comme avant, et grise « Ranger dans GFS » avec le texte commun (guide des apps,
+     section 5). Une impression par le navigateur ne fabrique pas de fichier : elle ne se range pas. Un GFS plus ancien répond
+     `GFS_INCONNU` : l'app le dit et télécharge.
+   - [M] **Mesuré le 03/11** dans un vrai serveur Grist 1.7.19 (Docker), à 700 × 400, à la vraie souris et au vrai clavier, en français
+     clair et en anglais sombre (`prototype/labo/run-ranger-pdf.mjs`, 62 vérifications dans chacune, aucune en échec), avec la sonde Z
+     (`labo/sondes/z-ranger-pdf/`), qui fait ce que fera Publipostage+ : le labo seul la range dans `ACCEPTS_OPEN`. **La même mesure avec le
+     vrai client du kit 0.7.0** (`LAB_KIT=1`, la sonde Z kit, `GfsLink.deposit` du sous-module `prototype/kit` : 62 vérifications dans
+     chacune, aucune en échec) rend les mêmes réponses et les mêmes codes. Sans la table, GFS
+     demande l'accord avant tout et refuse proprement (rien n'est créé, `GFS_ANNULE`, trois fichiers d'un lot refusés sans seconde
+     question). Accordée, **le `File` fabriqué dans le cadre isolé de l'app** (sans `allow-same-origin`) **est celui que Grist garde,
+     octet pour octet** (même empreinte SHA-256, type `application/pdf`) ; la ligne dit l'identifiant rendu, le nom, la taille, l'app
+     dans `Origine` et la date du jour ; l'app reçoit `{ statut: ajoute, id, nom }` et GFS ne dit rien par-dessus elle ; la liste de
+     l'explorateur montre le PDF. Le dossier donné (` Factures // 2026/ `) devient « Factures/2026 », sans favori. Un nom pris : la
+     fenêtre nomme l'app, décrit le fichier gardé, tient dans le panneau, ses textes tiennent la charte (4,5:1), le clavier est sur « Garder
+     les deux », rien n'est écrit avant la réponse ; **Remplacer** garde l'identifiant, la ligne et le dossier et prend le contenu
+     (`remplace`), **Garder les deux** crée « Facture (1).pdf » (`copie`) sans toucher à l'ancien, **Annuler**, Échap et un appui à côté
+     rendent `ignore` sans rien écrire. Un lot de cinq fichiers dont trois noms sont pris : une seule fenêtre quand la case est cochée
+     (au clavier : Tab, Espace, Tab, Tab, Entrée), « Annuler » avec la case passe les noms pris et range les autres, un nouveau lot ne
+     reprend pas la réponse de l'ancien, le dernier fichier n'a pas de case. Deux dépôts lancés ensemble : une seule fenêtre, `[ajoute,
+     copie]` dans l'ordre. Des demandes hors règle (un contenu qui n'est pas un PDF, un fichier vide, un type non déclaré, un texte à la
+     place du fichier, pas de fichier, un nom vide, un lot vide) : `GFS_REFUSE` avec la raison, rien d'écrit, aucune fenêtre. Un envoi qui
+     échoue (413, réseau coupé) : `GFS_ECHEC` avec la raison en mots, puis le dépôt suivant réussit. Aucune erreur ni avertissement en
+     console. **Non mesuré** : Firefox, l'instance de la DINUM, la vraie Publipostage+ (consigne 043 : `consignes/publipostage/`), un
+     PDF de plus de 12 Mo, le refus de créer la table du rangement (essais sous Node seulement : elle existe dès qu'une app est installée).
 
 ### 5.5 La table d'un direct : être prévenu quand une autre table change
 
@@ -1721,7 +1794,7 @@ rangée d'un fichier, selon ce qui vient d'abord.
 
 ### 6.6 `GFS_Fichiers`, les fichiers que GFS garde lui-même
 
-Les PDF : ceux que la personne importe (« Nouveau > Importer > PDF ») et, plus tard, ceux qu'une app range (5.4). Choix du
+Les PDF : ceux que la personne importe (« Nouveau > Importer > PDF ») et ceux qu'une app range (5.4, point 9). Choix du
 porteur, le 03/11 : **GFS garde les PDF**, dans le document, et aucune app n'écrit jamais ce que GFS garde. Une seule table, le
 fichier lui-même en pièce jointe de Grist.
 
@@ -1734,7 +1807,7 @@ fichier lui-même en pièce jointe de Grist.
 | `Auteur` | Text | L'adresse de la personne qui l'a déposé, telle que GFS la connaît (6.4, point 9) ; vide tant qu'elle ne l'est pas |
 | `Contenu` | Attachments | Le PDF : une pièce jointe de Grist (`['L', numéro]`) |
 | `Taille` | Int | En octets |
-| `Origine` | Text | `import` ; plus tard l'`id` de l'app qui l'a rangé |
+| `Origine` | Text | `import`, ou l'`id` de l'app qui l'a rangé (5.4, point 9) ; un fichier remplacé garde la sienne |
 
 1. [T] La table naît avec l'accord de la personne (6.2), au premier PDF gardé, **avant tout envoi** : la fenêtre « Créer la table
    GFS_Fichiers ? » dit ce qu'elle garde ; un refus ne laisse rien derrière lui (ni table ni pièce jointe). Après l'`AddTable`,
@@ -1750,7 +1823,7 @@ fichier lui-même en pièce jointe de Grist.
    « Remplacer » (la ligne garde son identifiant, son nom, sa place et ses favoris ; le contenu et la date changent), « Garder
    les deux » (le nouveau prend le premier nom libre, « Nom (1).pdf » ; un « (n) » déjà en fin de nom est remplacé, pas empilé ;
    la casse du nouveau nom est gardée) ou rien (Annuler, Échap, un clic à côté). Le clavier est sur « Garder les deux » : un Entrée
-   distrait n'écrase rien. Le nom libre et le nom pris sont recalculés sur la table **relue au moment d'écrire** : un fichier
+   distrait n'écrase rien. Un fichier qu'une app range sous un nom pris ouvre la même fenêtre, qui nomme l'app (5.4, point 9). Le nom libre et le nom pris sont recalculés sur la table **relue au moment d'écrire** : un fichier
    déposé ou retiré par une autre personne pendant que celle-ci décidait est pris en compte, jamais écrasé. L'ancienne pièce
    jointe d'un fichier remplacé n'est plus citée : Grist l'efface seul au bout de 7 jours (faits vérifiés, 14).
 4. [T] **Ce que GFS vérifie avant d'envoyer** : l'extension « .pdf » (le nom saisi est mis en forme : un « .pdf » manquant est
@@ -1762,7 +1835,7 @@ fichier lui-même en pièce jointe de Grist.
    (`default-src 'none'; script-src 'self'; connect-src https:` : l'adresse du serveur n'est connue qu'à l'exécution). Il parle à
    GFS par un canal privé (`MessageChannel`, remis par le premier message, le routeur n'écoute aucune autre fenêtre) ; GFS
    lui donne chaque adresse, avec le jeton d'accès que Grist lui remet (`getAccessToken`, par sa propre connexion : la capacité
-   de 3.4 ne concerne que les apps), en `?auth=`. Une app qui veut ranger un PDF le demande à GFS (5.4) : elle ne reçoit aucun
+   de 3.4 ne concerne que les apps), en `?auth=`. Une app qui veut ranger un PDF le demande à GFS (5.4, point 9) : elle ne reçoit aucun
    jeton pour cela et n'a aucun accès à ce cadre.
 6. [T] **L'en-tête `X-Requested-With: XMLHttpRequest` à l'envoi.** Sans lui, Grist 1.7.19 répond 401 **sans en-têtes CORS** à toute
    écriture d'une page d'une autre origine : le navigateur ne rapporte que « NetworkError » (c'est ce que la sonde du 03/11 a vu
@@ -1774,7 +1847,8 @@ fichier lui-même en pièce jointe de Grist.
    grisé et dit pourquoi ; supprimer demande confirmation (le clavier sur « Annuler »), retire la ligne pour toutes les personnes du
    document, et GFS le fait lui-même (6.3, point 2, ne vaut que pour les tables d'une app).
 8. [T] Un document en lecture seule, ou ouvert sans l'accès complet, grise « PDF » dans « Importer » avec sa raison : rien ne
-   s'écrit sans un geste de la personne, rien ne s'envoie sans la table.
+   s'écrit sans un geste de la personne, rien ne s'envoie sans la table. Le dépôt d'une app y est refusé de même
+   (`GFS_LECTURE_SEULE`, `GFS_ACCES`, 5.4, point 9).
 9. [M] **Restent à mesurer chez le porteur** : la passerelle et la taille maximale d'une pièce jointe de l'instance de la DINUM
    (le serveur local accepte 12 Mo ; un refus 413 est dit en mots, sans écrire de ligne), et le Firefox des deux postes (le
    cadre en bac à sable, le téléchargement par lien) : le labo n'a que Chromium.

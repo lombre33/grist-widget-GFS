@@ -2,7 +2,7 @@
 // la vraie souris et au vrai clavier, et ce que le serveur retient (les tables, les lignes, les pièces jointes) lu par l'API REST avec la session de la personne.
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
-import { SHOTS, withProbes, routePatches } from './lab-common.mjs';
+import { SHOTS, withProbes, routePatches, say } from './lab-common.mjs';
 import { createDocument, addWidget, docIdOf } from './lab-serveur.mjs';
 
 export const PAGE_PORT = 8917;
@@ -87,6 +87,28 @@ function rest(page, docId) {
     attachments: async () => (await get('/attachments')).records.map(record => ({ id: record.id, name: record.fields.fileName })),
   };
 }
+
+// ---------- les gestes que les essais des PDF se partagent ----------
+
+// Attend qu'une condition vienne (`test()` rend vrai ; une erreur compte pour faux) ; le dit quand elle ne vient pas.
+export const waitFor = async (page, label, test, ms = 20000) => {
+  for (let waited = 0; waited < ms; waited += 150) {
+    if (await test().catch(() => false)) return true;
+    await page.waitForTimeout(150);
+  }
+  say(`(pas arrivé : ${label})`);
+  return false;
+};
+
+// La fenêtre « Apps et extensions » : la case de l'app ou de l'extension, à la vraie souris, puis l'accord éventuel de la personne pour la table du document.
+export async function settle(page, frame) {
+  for (let i = 0; i < 100; i++) {
+    if (await frame.locator('.ask').count()) await frame.locator('[data-fk="ask-yes"]').click();
+    else if (await frame.evaluate(() => document.body.dataset.registry !== 'busy')) return;
+    await page.waitForTimeout(100);
+  }
+}
+export const closeModules = async (page, frame) => { await page.keyboard.press('Escape'); await frame.locator('.mod').waitFor({ state: 'hidden' }); };
 
 // ---------- l'explorateur ----------
 

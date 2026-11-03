@@ -157,7 +157,7 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     tant que l'app ou l'extension manque ou que `ACCEPTS_OPEN` n'a pas la consigne faite. GFS **télécharge lui-même** le PDF et le donne à l'app avec
     l'ouverture (`raison: lire`, `lecture: { id, fichier }`) ou, quand elle est déjà ouverte, avec l'appel `ouvrir` : l'app ne reçoit aucun jeton, ne
     demande rien à l'API de Grist, ne renvoie jamais les octets. Elle **garde `lecture` dans sa lecture de l'ouverture** (le `normalizeOpening` du kit
-    et le `gfs-link.js` de Publipostage+ ne gardent aujourd'hui que `fichier`, `type`, `dossier`, `raison`, `importation`), lit `lecture.fichier` comme
+    la garde depuis sa version 0.7.0 ; celui de Publipostage+ ne garde aujourd'hui que `fichier`, `type`, `dossier`, `raison`, `importation`), lit `lecture.fichier` comme
     tout fichier choisi (`arrayBuffer()`), charge pdf.js par la source de `contexte.bibliotheques.pdfjs` (un `<script type="module" src integrity
     crossorigin="anonymous">`, puis `GfsPaquets.pdfjs.modules['pdfjs-dist/build/pdf.min.mjs']` : jamais `import()`, jamais le CDN d'un autre site ; la
     copie de GFS passe avec `'self'`, rien à ajouter à la CSP de l'app), ouvre le document avec `verbosity: 0` et `isEvalSupported: false`, ferme le
@@ -204,6 +204,20 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     ni son rappel « Enregistrer » ni la phrase qui l'annonce ; **faux** (GFS s'est replié sur le brouillon de Grist : un brouillon était
     déjà posé, ou la structure du document est réservée), elle garde son rappel, qui n'est vrai que là. Avant le premier événement,
     et seule, elle le garde aussi. Elle n'écrit toujours aucun réglage sans geste de la personne (section 2.4).
+17. Ranger dans GFS un fichier que l'app vient de fabriquer, un export en PDF (demande du porteur du 03/11 ; contrats 2.7, point 6, et 5.4,
+    point 9). Une app qui sait donner ses exports à GFS le **déclare** dans `actions.ranger` (`["pdf"]`) ; sans cela GFS refuse l'appel
+    (`GFS_REFUSE`). L'app n'écrit rien chez GFS : elle appelle `ranger { fichier, nom, lot?, suivants?, dossier? }` avec le `File` qu'elle vient
+    de fabriquer, **un fichier par appel**, et GFS le garde (`GFS_Fichiers`, 6.6) ; elle n'a ni jeton ni droit d'écriture pour cela. C'est GFS qui
+    pose à la personne la question « Ce nom est déjà pris » (Remplacer, Garder les deux, Annuler) : l'app ne refait pas cette fenêtre et ne
+    devine pas le nom libre (sa propre numérotation reste à elle, pour ses téléchargements). Pour un export de plusieurs fichiers, elle donne le
+    même `lot` à tous et, à chacun, le nombre de `suivants` à ranger encore (0 pour le dernier) : la personne peut alors répondre une fois pour
+    tous. L'app laisse la personne choisir la destination de son export, **télécharger**, **ranger dans GFS** ou les deux, et garde ce choix
+    (`GfsLink.storageSet`) ; seule, « Ranger dans GFS » est grisé, jamais masqué, avec le texte commun (section 5). Elle lit la réponse
+    `{ statut, id, nom }` (`ajoute`, `remplace`, `copie`, `ignore` : la personne n'en veut pas) et **dit elle-même ce qui s'est passé** dans son
+    coin d'état, car GFS ne dit rien par-dessus l'app ; une erreur arrive avec son code et sa phrase (`GFS_ANNULE` : la personne a refusé de
+    créer la table des fichiers ; `GFS_ECHEC` : le serveur n'a pas pris le fichier ; `GFS_LECTURE_SEULE`, `GFS_ACCES`, `GFS_REFUSE`, `GFS_INACTIF` ;
+    `GFS_INCONNU` : un GFS qui ne sait pas encore ranger) et ne fait jamais échouer l'export. Une impression par le navigateur ne fabrique pas de
+    fichier : elle ne se range pas. Le kit 0.7.0 offre `GfsLink.deposit(...)` ; une app qui a son propre lien (Publipostage+) écrit le même appel.
 
 ### 1.3 Licence : GPL 3.0 dans tous les dépôts (décision du porteur, 21/10)
 

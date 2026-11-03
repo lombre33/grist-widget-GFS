@@ -275,7 +275,7 @@ export class GfsController {
       store: new FilesStore({ port: this.port, transfer, consent, identity: () => this.identity }), doc: this.doc, container: this.$('stage'),
       inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')], t: this.t, lang: () => this.lang, locale: () => this.locale, now: () => Date.now(),
       fullAccess: () => this.fullAccess, readonly: () => this.readonly, notice: text => this.notice(text), refresh: () => this.refreshFiles(),
-      folder: () => (this.explorer.state.view === 'folder' ? this.explorer.state.path : ''), rangement: this.rangement, reader: file => this.readerOf(file),
+      folder: () => (this.explorer.state.view === 'folder' ? this.explorer.state.path : ''), rangement: this.rangement, reader: file => this.readerOf(file), session: () => this.session,
     });
   }
 
@@ -607,6 +607,7 @@ export class GfsController {
       ...storageHandlers(this.appStorage, session.id),
       ...this.dock.handlers(session.id),
       ...this.links.handlers(session),
+      ...this.kept.handlers(session),
     };
   }
 

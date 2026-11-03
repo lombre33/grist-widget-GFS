@@ -298,3 +298,22 @@ test('contrats 2.7 et 2.8 : un type lu mal formé invalide le manifeste', () => 
   assert.match(bad(m => { m.actions.lire = [{ type: 'pdf', extension: 'lecture-pdf' }]; }), /actions\.lire pdf : l'extension lecture-pdf n'est pas déclarée dans extensions/);
   assert.match(bad(m => { m.actions.lire = [{ type: 'pdf', extension: 'diapositives' }]; delete m.extensions[2]; m.extensions.length = 2; }), /l'extension diapositives n'est pas déclarée/);
 });
+
+// Ranger chez GFS (contrats 2.7, point 6) : les types de fichiers (le PDF) qu'une app demande à GFS de garder pour elle.
+test('contrats 2.7, point 6 : une app déclare les types de fichiers qu\'elle demande à GFS de ranger', () => {
+  const m = publipostage();
+  m.actions.ranger = ['pdf'];
+  assert.deepEqual(validateManifest(m), { ok: true, errors: [] });
+  m.actions.ranger = [];
+  assert.deepEqual(validateManifest(m), { ok: true, errors: [] }, 'une liste vide ne déclare rien');
+  assert.deepEqual(validateManifest(publipostage()), { ok: true, errors: [] }, 'une app qui ne range rien n\'a pas à le dire');
+});
+
+test('contrats 2.7 et 2.8 : un type rangé mal formé invalide le manifeste', () => {
+  assert.match(bad(m => { m.actions.ranger = 'pdf'; }), /actions\.ranger : liste attendue/);
+  assert.match(bad(m => { m.actions.ranger = [{ type: 'pdf' }]; }), /actions\.ranger\[\] : un type de fichier attendu/);
+  assert.match(bad(m => { m.actions.ranger = [3]; }), /un type de fichier attendu/);
+  assert.match(bad(m => { m.actions.ranger = ['PDF']; }), /un type de fichier attendu/);
+  assert.match(bad(m => { m.actions.ranger = ['']; }), /un type de fichier attendu/);
+  assert.match(bad(m => { m.actions.ranger = ['pdf', 'pdf']; }), /actions\.ranger pdf : type déjà déclaré/);
+});

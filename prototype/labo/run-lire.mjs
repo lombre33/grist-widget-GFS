@@ -16,7 +16,7 @@ import { chromium, say, check } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { createI18n } from '../js/i18n.js';
 import { makePdf, pageTitle, ACCENTED_LINE } from './pdf-fixture.mjs';
-import { PAGE_PORT, sha256, openGfs, waitForNames, waitForToast, importPdf, shot, rowOf, openRowMenu, pressGreyed, contrastProblems } from './lab-pdf.mjs';
+import { PAGE_PORT, sha256, openGfs, waitForNames, waitForToast, importPdf, shot, rowOf, openRowMenu, pressGreyed, contrastProblems, waitFor, settle, closeModules } from './lab-pdf.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -35,25 +35,8 @@ const pdfFile = (name, pages, title) => {
 // Ce que dit la sonde (body[data-sonde]) et son cadre : l'app est dans un sous-cadre isolé (sandbox sans allow-same-origin) du site de GFS.
 const probeFrame = page => page.frames().find(frame => frame.url().startsWith(PROBE_URL) && !frame.isDetached());
 const probeSays = page => { const frame = probeFrame(page); return frame ? frame.evaluate(() => JSON.parse(document.body.dataset.sonde || '{}')) : Promise.resolve(null); };
-const waitFor = async (page, label, test, ms = 20000) => {
-  for (let waited = 0; waited < ms; waited += 150) {
-    if (await test().catch(() => false)) return true;
-    await page.waitForTimeout(150);
-  }
-  say(`(pas arrivé : ${label})`);
-  return false;
-};
 const showsPage = (page, number) => waitFor(page, `page ${number}`, async () => (await probeSays(page)).pdf.page === number);
 
-// La fenêtre « Apps et extensions » : la case de l'app ou de l'extension, à la vraie souris, puis l'accord éventuel de la personne pour la table du document.
-async function settle(page, frame) {
-  for (let i = 0; i < 100; i++) {
-    if (await frame.locator('.ask').count()) await frame.locator('[data-fk="ask-yes"]').click();
-    else if (await frame.evaluate(() => document.body.dataset.registry !== 'busy')) return;
-    await page.waitForTimeout(100);
-  }
-}
-const closeModules = async (page, frame) => { await page.keyboard.press('Escape'); await frame.locator('.mod').waitFor({ state: 'hidden' }); };
 const focusedRow = frame => frame.evaluate(() => (document.activeElement && document.activeElement.dataset.fk) || null);
 const openButton = frame => frame.locator('.ex-foot .btn').first();
 const buttonState = async frame => ({ label: (await openButton(frame).textContent()).trim(), greyed: (await openButton(frame).getAttribute('aria-disabled')) === 'true' });

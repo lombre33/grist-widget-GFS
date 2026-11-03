@@ -1,0 +1,54 @@
+{
+  "contrat": 0,
+  "id": "sonde-zk",
+  "nom": {
+    "fr": "Sonde Z kit",
+    "en": "Probe Z kit"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Une app écrite avec le kit commun (GfsLink.deposit) qui range ses exports PDF dans GFS, comme Publipostage+",
+    "en": "An app written with the common kit (GfsLink.deposit) that files its PDF exports in GFS, like Publipostage+"
+  },
+  "icone": "doc",
+  "entree": "kit.html",
+  "tables": {
+    "prefixe": "SondeZk_"
+  },
+  "fichiers": [
+    {
+      "table": "SondeZk_Fichiers",
+      "colonnes": {
+        "id": "id",
+        "nom": "Nom",
+        "type": "Type",
+        "date": "DateModif"
+      },
+      "typeParDefaut": "document",
+      "types": [
+        {
+          "valeur": "document",
+          "nom": {
+            "fr": "Document",
+            "en": "Document"
+          },
+          "icone": "doc",
+          "couleur": "document"
+        }
+      ]
+    }
+  ],
+  "reglages": [],
+  "permissions": {
+    "acces": "none"
+  },
+  "actions": {
+    "ouvrir": [
+      "document"
+    ],
+    "choisir": [],
+    "ranger": [
+      "pdf"
+    ]
+  }
+}

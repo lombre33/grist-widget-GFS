@@ -1,0 +1,54 @@
+{
+  "contrat": 0,
+  "id": "sonde-z",
+  "nom": {
+    "fr": "Sonde Z",
+    "en": "Probe Z"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Une app qui range ses exports PDF dans GFS, comme Publipostage+",
+    "en": "An app that files its PDF exports in GFS, like Publipostage+"
+  },
+  "icone": "doc",
+  "entree": "index.html",
+  "tables": {
+    "prefixe": "SondeZ_"
+  },
+  "fichiers": [
+    {
+      "table": "SondeZ_Fichiers",
+      "colonnes": {
+        "id": "id",
+        "nom": "Nom",
+        "type": "Type",
+        "date": "DateModif"
+      },
+      "typeParDefaut": "document",
+      "types": [
+        {
+          "valeur": "document",
+          "nom": {
+            "fr": "Document",
+            "en": "Document"
+          },
+          "icone": "doc",
+          "couleur": "document"
+        }
+      ]
+    }
+  ],
+  "reglages": [],
+  "permissions": {
+    "acces": "none"
+  },
+  "actions": {
+    "ouvrir": [
+      "document"
+    ],
+    "choisir": [],
+    "ranger": [
+      "pdf"
+    ]
+  }
+}

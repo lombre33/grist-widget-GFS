@@ -1535,6 +1535,64 @@ rangée d'un fichier, selon ce qui vient d'abord.
 4. [T] GFS préserve aussi ses propres champs inconnus : quand il réécrit la ligne `apps` ou une autre ligne de `GFS_Rangement`,
    il garde ce qu'une version plus récente de GFS y a ajouté.
 
+### 6.6 `GFS_Fichiers`, les fichiers que GFS garde lui-même
+
+Les PDF : ceux que la personne importe (« Nouveau > Importer > PDF ») et, plus tard, ceux qu'une app range (5.4). Choix du
+porteur, le 03/11 : **GFS garde les PDF**, dans le document, et aucune app n'écrit jamais ce que GFS garde. Une seule table, le
+fichier lui-même en pièce jointe de Grist.
+
+| Colonne | Type Grist | Contenu |
+|---|---|---|
+| `Identifiant` | Text | 12 caractères hexadécimaux tirés au hasard, jamais changés : il nomme le fichier dans `GFS_Rangement` (`App = gfs-fichiers`) |
+| `Nom` | Text | Le nom, avec son « .pdf » ; unique, casse et espaces autour ignorés (la règle de 6.3, point 2) |
+| `Type` | Text | `pdf` |
+| `Date` | DateTime:UTC | Le dernier dépôt, en secondes comme Grist les rend |
+| `Auteur` | Text | L'adresse de la personne qui l'a déposé, telle que GFS la connaît (6.4, point 9) ; vide tant qu'elle ne l'est pas |
+| `Contenu` | Attachments | Le PDF : une pièce jointe de Grist (`['L', numéro]`) |
+| `Taille` | Int | En octets |
+| `Origine` | Text | `import` ; plus tard l'`id` de l'app qui l'a rangé |
+
+1. [T] La table naît avec l'accord de la personne (6.2), au premier PDF gardé, **avant tout envoi** : la fenêtre « Créer la table
+   GFS_Fichiers ? » dit ce qu'elle garde ; un refus ne laisse rien derrière lui (ni table ni pièce jointe). Après l'`AddTable`,
+   GFS relit l'identifiant réel (6.2, point 2) ; Grist ajoute une page pour elle. Une table d'avant à qui il manque une colonne la
+   reçoit (6.1, point 3) ; une colonne absente n'est jamais écrite. [M] Mesuré le 03/11 sur un vrai serveur Grist 1.7.19
+   (`prototype/labo/run-pdf.mjs`) : les huit colonnes et leurs types, la page.
+2. [T] **Le manifeste de ces fichiers est dans GFS** (`js/gfs-files.js`, `id` `gfs-fichiers`, `integre`) : il n'est pas un
+   sous-module, il ne passe ni par le catalogue ni par l'installation, aucune app n'y est liée. L'explorateur le lit comme celui
+   d'une app (2.4) : `colonnes` `{ id: Identifiant, nom: Nom, type: Type, date: Date, par: Auteur }`, un seul type (`pdf`, neutre,
+   un mot et une icône). Le rangement de ces fichiers (favoris, dossiers) est celui de GFS (6.4) sous `App = gfs-fichiers`, à
+   la personne ; renommer écrit `Nom` seulement (6.3, point 2) en gardant le « .pdf ».
+3. [T] **Un nom pris.** Importer un fichier dont le nom est déjà gardé ouvre une seule fenêtre, sur la base commune des fenêtres :
+   « Remplacer » (la ligne garde son identifiant, son nom, sa place et ses favoris ; le contenu et la date changent), « Garder
+   les deux » (le nouveau prend le premier nom libre, « Nom (1).pdf » ; un « (n) » déjà en fin de nom est remplacé, pas empilé ;
+   la casse du nouveau nom est gardée) ou rien (Annuler, Échap, un clic à côté). Le clavier est sur « Garder les deux » : un Entrée
+   distrait n'écrase rien. Le nom libre et le nom pris sont recalculés sur la table **relue au moment d'écrire** : un fichier
+   déposé ou retiré par une autre personne pendant que celle-ci décidait est pris en compte, jamais écrasé. L'ancienne pièce
+   jointe d'un fichier remplacé n'est plus citée : Grist l'efface seul au bout de 7 jours (faits vérifiés, 14).
+4. [T] **Ce que GFS vérifie avant d'envoyer** : l'extension « .pdf » (le nom saisi est mis en forme : un « .pdf » manquant est
+   ajouté), un fichier non vide, `%PDF-` dans ses 1024 premiers octets. Un fichier qui ne passe pas est dit à la personne et
+   n'est ni envoyé ni écrit.
+5. [T] **Le cadre d'envoi.** La page de GFS ne peut atteindre que sa propre origine (`connect-src 'self'`) : l'envoi et le
+   téléchargement des pièces jointes passent par un sous-cadre caché, `transfer/index.html`, de GFS (`js/transfer.js`),
+   `sandbox="allow-scripts"` seul (origine opaque, comme un cadre d'app, 1.3), sous sa propre politique de sécurité du contenu
+   (`default-src 'none'; script-src 'self'; connect-src https:` : l'adresse du serveur n'est connue qu'à l'exécution). Il parle à
+   GFS par un canal privé (`MessageChannel`, remis par le premier message, le routeur n'écoute aucune autre fenêtre) ; GFS
+   lui donne chaque adresse, avec le jeton d'accès que Grist lui remet (`getAccessToken`, par sa propre connexion : la capacité
+   de 3.4 ne concerne que les apps), en `?auth=`. Une app qui veut ranger un PDF le demande à GFS (5.4) : elle ne reçoit aucun
+   jeton pour cela et n'a aucun accès à ce cadre.
+6. [T] **L'en-tête `X-Requested-With: XMLHttpRequest` à l'envoi.** Sans lui, Grist 1.7.19 répond 401 **sans en-têtes CORS** à toute
+   écriture d'une page d'une autre origine : le navigateur ne rapporte que « NetworkError » (c'est ce que la sonde du 03/11 a vu
+   chez le porteur). Le cadre l'ajoute à l'envoi ; le téléchargement, une lecture simple, n'en a pas besoin. [M] Mesuré le
+   03/11 (faits vérifiés, 14).
+7. [T] **Ouvrir un PDF, c'est le télécharger** sous son nom (un lien invisible cliqué, le bouton du pied et le menu disent
+   « Télécharger »). Dupliquer est grisé et dit pourquoi ; supprimer demande confirmation (le clavier sur « Annuler »), retire la
+   ligne pour toutes les personnes du document, et GFS le fait lui-même (6.3, point 2, ne vaut que pour les tables d'une app).
+8. [T] Un document en lecture seule, ou ouvert sans l'accès complet, grise « PDF » dans « Importer » avec sa raison : rien ne
+   s'écrit sans un geste de la personne, rien ne s'envoie sans la table.
+9. [M] **Restent à mesurer chez le porteur** : la passerelle et la taille maximale d'une pièce jointe de l'instance de la DINUM
+   (le serveur local accepte 12 Mo ; un refus 413 est dit en mots, sans écrire de ligne), et le Firefox des deux postes (le
+   cadre en bac à sable, le téléchargement par lien) : le labo n'a que Chromium.
+
 ---
 
 ## 7. Les réglages de la vue

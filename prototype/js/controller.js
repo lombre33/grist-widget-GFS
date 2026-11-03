@@ -23,6 +23,10 @@ import { activeExtensionIds, extensionsOf } from './extensions.js';
 import { AppsState } from './apps-state.js';
 import { arrivalApp } from './arrival.js';
 import { Rangement, TableDeclined } from './rangement.js';
+import { FILES_APP, FILES_MANIFEST, FILES_ENTRY, cleanName } from './gfs-files.js';
+import { Transfer, buildTransferFrame } from './transfer.js';
+import { FilesStore } from './files-store.js';
+import { KeptFiles } from './kept-files.js';
 import { ask } from './ask-window.js';
 import { importFormats, acceptsFile, importOpening, openingKind, pickFile } from './import-file.js';
 import { publicationQuestion } from './publication-window.js';
@@ -106,7 +110,9 @@ export class GfsController {
   get fullAccess() { return levelOf(this.state.grantedAccess) >= levelOf('full'); }
 
   appById(id) { return this.apps.find(item => item.app.id === id && item.ok) || null; }
-  appName = id => { const app = this.appById(id); return app ? label(app.manifest.nom, this.lang) : id; };
+  // Le manifeste d'une app installable, ou celui des fichiers que GFS garde lui-même (js/gfs-files.js) : null quand l'id n'est ni l'un ni l'autre.
+  manifestOf = id => (id === FILES_APP ? FILES_MANIFEST : (this.appById(id) || { manifest: null }).manifest);
+  appName = id => { const manifest = this.manifestOf(id); return manifest ? label(manifest.nom, this.lang) : id; };
   validApps() { return this.apps.filter(item => item.ok); }
   typeLabel = file => (file.typeInfo ? label(file.typeInfo.nom, this.lang) : (file.type || '—'));
 
@@ -114,6 +120,7 @@ export class GfsController {
   // avec la raison (contrats 5.4, point 1, et 6.5, point 3). `focus` : la ligne de la fenêtre « Apps et extensions » qui le débloque, s'il y en a une.
   lockOf = file => {
     if (!this.fullAccess) return { text: this.t('gfs.needsFullAccess'), hint: this.t('gfs.needsFullAccessHint') };
+    if (file.app === FILES_APP) return null; // un fichier que GFS garde : aucune app à installer
     if (!this.registry.has(file.app)) return { text: this.t('ex.lockedApp', { app: this.appName(file.app) }), focus: rowKey(file.app) };
     if (!file.known) return { text: this.t('ex.lockedType', { app: this.appName(file.app) }) };
     const extension = file.typeInfo.extension;
@@ -158,7 +165,7 @@ export class GfsController {
   // Le sous-menu « Importer » : un article par format que le manifeste d'une app déclare (`actions.importer`, contrats 2.7, point 4), au nom du format ; le type qu'il crée le suit (l'icône et le mot du type vont ensemble).
   importTypes = () => {
     const several = this.registry.installedIds().length > 1;
-    return this.validApps().flatMap(({ manifest }) => importFormats(manifest).map(format => this.#importEntry(manifest, format, several)));
+    return [...this.validApps().flatMap(({ manifest }) => importFormats(manifest).map(format => this.#importEntry(manifest, format, several))), ...this.kept.importEntries()];
   };
 
   #importEntry(manifest, { item, type }, several) {
@@ -231,13 +238,27 @@ export class GfsController {
     this.grist.rpc.registerFunc('print', () => (this.session && this.session.isReady ? this.session.callApp('print', [], 10000) : window.print()));
   }
 
+  // Les fichiers que GFS garde lui-même, les PDF (js/kept-files.js) : le cadre d'envoi, la table `GFS_Fichiers` (créée avec l'accord de la personne), et ce qu'il faut pour importer,
+  // télécharger et supprimer. Le cadre d'envoi ne s'ouvre qu'au premier transfert.
+  #buildKept() {
+    const transfer = new Transfer({ doc: this.port.doc, base: this.doc.baseURI, createFrame: url => buildTransferFrame(this.doc, url) });
+    const consent = () => this.#ask({ title: this.t('files.table.title'), message: this.t('files.table.text'), confirmLabel: this.t('table.create'), cancelLabel: this.t('table.cancel') });
+    return new KeptFiles({
+      store: new FilesStore({ port: this.port, transfer, consent, identity: () => this.identity }), doc: this.doc, container: this.$('stage'),
+      inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')], t: this.t, lang: () => this.lang, locale: () => this.locale, now: () => Date.now(),
+      fullAccess: () => this.fullAccess, readonly: () => this.readonly, notice: text => this.notice(text), refresh: () => this.refreshFiles(),
+      folder: () => (this.explorer.state.view === 'folder' ? this.explorer.state.path : ''), rangement: this.rangement,
+    });
+  }
+
   #buildExplorer() {
+    this.kept = this.#buildKept();
     this.explorer = new Explorer({
       container: this.$('stage'), i18n: this.i18n, locale: this.locale, now: () => new Date(), appName: this.appName, typeLabel: this.typeLabel, lockOf: this.lockOf,
       newTypes: this.newTypes, importTypes: this.importTypes, canClose: () => Boolean(this.session), notice: text => this.notice(text),
       language: () => ({ choice: this.language.choice, grist: this.language.grist }), onLanguage: choice => this.#chooseLanguage(choice),
       onOpen: file => this.#openFile(file), onNew: entry => this.#openNew(entry), onImport: entry => void this.#importFile(entry), onClose: () => this.hideExplorer(), onApps: () => void this.openModules(),
-      personal: () => Boolean(this.identity), filing: this.#buildFiling(), onDemo: this.devMode ? () => void this.#runDemo() : null,
+      personal: () => Boolean(this.identity), filing: this.#buildFiling(), kept: this.kept, onDemo: this.devMode ? () => void this.#runDemo() : null,
     });
   }
 
@@ -257,7 +278,8 @@ export class GfsController {
     return new Filing({
       port: this.port, rangement: this.rangement, t: this.t, locale: () => this.locale, files: () => this.explorer.files, appName: this.appName,
       here: () => (this.explorer.state.view === 'folder' ? this.explorer.state.path : ''), writeBlock: () => this.#writeBlock(), notice: text => this.notice(text),
-      specOf: file => ((this.appById(file.app) || { manifest: {} }).manifest.fichiers || []).find(spec => spec.table === file.table) || null,
+      specOf: file => ((this.manifestOf(file.app) || {}).fichiers || []).find(spec => spec.table === file.table) || null,
+      cleanName: file => (file.app === FILES_APP ? cleanName : undefined),
       refresh: () => this.refreshFiles(), windows: { name: opts => askName(layer(opts)), folder: opts => chooseFolder(layer(opts)) },
     });
   }
@@ -344,7 +366,7 @@ export class GfsController {
     this.#fileStatus = { loading: true, restricted: false, problems: [] };
     this.#showFileStatus();
     try {
-      const { files, problems, stats } = await loadFiles(this.port, this.validApps(), this.identity);
+      const { files, problems, stats } = await loadFiles(this.port, [...this.validApps(), FILES_ENTRY], this.identity);
       this.explorer.setFiles(files);
       this.#fileStatus = { loading: false, restricted: false, problems: problems.map(item => ({ key: 'ex.readFailed', app: item.app, reason: item.reason })) };
       this.#showFileStatus();
@@ -588,6 +610,7 @@ export class GfsController {
   #openFile(file) {
     const lock = this.lockOf(file);
     if (lock) { void this.#unlock(lock); return; }
+    if (this.kept.has(file)) { void this.kept.open(file); return; } // un fichier que GFS garde se télécharge
     if (!this.appById(file.app)) { this.notice(this.t('ex.notice.noApp')); return; }
     void this.#openIn(file.app, { fichier: { id: file.id, type: file.type }, type: file.type, dossier: this.explorer.state.path, raison: 'explorateur' }, 'ex.notice.open');
   }
@@ -600,6 +623,7 @@ export class GfsController {
   // « Importer » (contrats 5.4, point 1) : la personne choisit le fichier dans le sélecteur de GFS (ouvert ici, dans son geste), puis l'app le reçoit avec l'ouverture et en fait un modèle vierge.
   // Annuler le sélecteur ne change rien ; un fichier qui n'est pas du format est dit sans ouvrir l'app.
   async #importFile(entry) {
+    if (entry.app === FILES_APP) { await this.kept.importFile(entry); return; } // GFS garde ce format lui-même : aucune app n'est ouverte
     if (entry.greyed) { void this.#unlock({ text: entry.reason || entry.hint, focus: entry.focus }); return; }
     const file = await pickFile(this.doc, entry.extensions.join(','));
     if (!file) return;

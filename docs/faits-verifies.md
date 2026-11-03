@@ -839,3 +839,32 @@ manifeste déclare `permissions.identite` (contrats 3.4, point 6, et 5.2, point 
   celle dont Publipostage+ se sert depuis longtemps pour ses préférences), Firefox et Safari (le labo n'a que Chromium).
 - **L'outil de liste** : `node outils/capacites.mjs --identite` dit quelles apps du catalogue reçoivent l'adresse et pourquoi (`--en` pour l'anglais, `--json` pour un programme) ; sans filtre,
   toutes les capacités déclarées. Aujourd'hui aucune app du catalogue ne la déclare.
+
+## 16. GFS garde les PDF : ce que le vrai serveur a mesuré (03/11)
+
+Le lot 1 de l'étude PDF (GFS garde les PDF, contrats 6.6), joué par `labo/run-pdf.mjs` dans un **vrai serveur Grist 1.7.19** (l'image officielle, `labo/vrai-serveur.sh`), Chromium, GFS ajouté comme widget à un
+document neuf, panneau à 700 × 400, souris et clavier réels, en français et en clair puis en anglais et en sombre. Ce que le serveur retient est relu par l'API REST avec la session de la personne d'essai.
+
+- **La table** : l'accord est demandé avant tout envoi ; refusé, ni la table, ni la ligne, ni la pièce jointe n'existent. Accordé, `AddTable` crée `GFS_Fichiers` avec ses huit colonnes aux types attendus
+  (`Text`, `DateTime:UTC`, `Attachments`, `Int`) et **Grist ajoute une page pour elle** (relue dans `_grist_Pages`).
+- **Le cadre d'envoi tient sous le bac à sable** : `sandbox="allow-scripts"` seul, `window.origin` vaut `null`, le cadre est caché ; le canal privé (`MessageChannel`, remis après le `load` du cadre) passe les
+  demandes, le routeur ne reçoit rien de lui. L'envoi (`POST /attachments?auth=…`, champ `upload`, avec `X-Requested-With`) et le téléchargement (`GET`, sans) y marchent, le nom du fichier arrive intact. **Le labo
+  ajoute l'adresse du serveur d'essai à la source `connect-src` de la page du cadre** (le serveur local est en `http`, que `https:` ne couvre pas) : `connect-src https:` seul n'a pas été mesuré face à un serveur
+  en https.
+- **Le contenu est celui qui a été choisi** : la ligne porte le nom, `pdf`, la taille, `import`, la date du jour et la cellule `['L', numéro]` ; le fichier relu du serveur a la même empreinte (sha-256) et
+  le type `application/pdf` ; la pièce jointe garde le nom du fichier. Un fichier de **12 Mo** (12 582 944 octets) part et revient identique en **4 à 10 s** en local.
+- **Un nom pris** : la fenêtre propose « Garder les deux » (le clavier y est), « Remplacer », « Annuler » ; Échap n'écrit rien. « Garder les deux » donne « Nom (1).pdf », ou « (2) » si « (1) » est pris, en gardant la
+  casse du nouveau nom (« facture (2).PDF »). « Remplacer » garde la ligne (même `Identifiant`, même nom), met le nouveau contenu (nouvelle pièce jointe) et laisse l'ancienne listée, que Grist efface seul au
+  bout de 7 jours (section 14). Tab tourne dans la fenêtre sans en sortir ; Entrée sur « Garder les deux » garde les deux.
+- **Télécharger** : le double clic et le bouton du pied donnent le fichier sous son nom, octet pour octet.
+- **Renommer, épingler, déplacer** : le « .pdf » manquant est remis ; un nom pris est refusé dans la fenêtre ; épingler crée `GFS_Rangement` (accord demandé) et une ligne `App = gfs-fichiers`,
+  `Fichier = <Identifiant>`, à la personne ; un PDF importé dans un dossier ouvert y est rangé. **`Auteur` reste vide tant que GFS ne connaît pas l'adresse de la personne** (elle vient de la sonde de
+  `GFS_Rangement`, contrats 6.4, point 9) : le premier PDF d'un document neuf n'a pas d'auteur, ceux d'après oui.
+- **Supprimer** : la confirmation donne le clavier à « Annuler » ; Échap ne supprime rien ; « Supprimer » retire la ligne.
+- **Ce qui ne va pas** : un fichier qui n'est pas un PDF (le contenu d'un classeur sous un nom en `.pdf`), un fichier vide, un autre format sont dits avant tout envoi, sans ligne ni pièce jointe. Un refus du
+  serveur (413, simulé par le labo) est dit en mots (« trop gros pour lui »), un serveur muet aussi, sans ligne ni pièce jointe de plus.
+- **Contrastes et tenue** : tous les textes des fenêtres de ce lot atteignent 4,5:1 en clair et en sombre ; chaque fenêtre tient dans 700 × 400 sans rien qui déborde.
+- **La console** : aucune erreur ni avertissement de GFS dans une session normale (les échecs joués exprès en écrivent un seul, « le fichier n'a pas pu être traité »). Deux messages, qui ne sont pas des défauts
+  de ce lot et que le labo connaît : le script d'API de Grist pose sa feuille de thème en ligne (`<style id="grist-theme">`), que la politique de GFS (`style-src 'self'`) refuse, et le premier cadre, ouvert sans
+  accès, ne peut pas lire le nom du document.
+- **Pas mesuré** : l'instance du porteur (DINUM : passerelle, taille maximale d'une pièce jointe), Firefox (le cadre en bac à sable, le téléchargement par lien) : le labo n'a que Chromium.

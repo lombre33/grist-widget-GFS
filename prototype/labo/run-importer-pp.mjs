@@ -173,7 +173,7 @@ baseline = before;
 // 1. Au départ : « Excel » et « Markdown » ne sont plus grisés, « PowerPoint » attend « Diapositives ».
 await openImport();
 const labels = await frame.locator('.menu-sub .menu-item .menu-label').allInnerTexts();
-check('le sous-menu « Importer » liste les trois formats de Publipostage+', JSON.stringify(labels) === JSON.stringify([WORDS.excel, WORDS.markdown, WORDS.pptx]), labels);
+check('le sous-menu « Importer » liste les trois formats de Publipostage+, puis le PDF que GFS garde lui-même', JSON.stringify(labels) === JSON.stringify([WORDS.excel, WORDS.markdown, WORDS.pptx, 'PDF']), labels);
 const disabled = await Promise.all([WORDS.excel, WORDS.markdown, WORDS.pptx].map(async name => (await subItem(name).getAttribute('aria-disabled')) === 'true'));
 check('« Excel » et « Markdown » ne sont plus grisés ; « PowerPoint » l\'est (l\'extension « Diapositives » manque)', JSON.stringify(disabled) === JSON.stringify([false, false, true]), disabled);
 const hints = await Promise.all([WORDS.excel, WORDS.markdown, WORDS.pptx].map(name => subItem(name).locator('.menu-hint').innerText()));

@@ -84,7 +84,7 @@ check('« Importer » est la dernière ligne du menu', (await frame.locator('.me
 await importRow.click();
 await sub().waitFor();
 const labels = () => frame.locator('.menu-sub .menu-item .menu-label').allInnerTexts();
-check('le clic ouvre le sous-menu : un article par format déclaré (Publipostage+, puis la sonde P)', JSON.stringify(await labels()) === JSON.stringify([WORDS.excel, WORDS.markdown, WORDS.pptx, WORDS.text, WORDS.sheet]), await labels());
+check('le clic ouvre le sous-menu : un article par format déclaré (Publipostage+, puis la sonde P), puis le PDF que GFS garde lui-même', JSON.stringify(await labels()) === JSON.stringify([WORDS.excel, WORDS.markdown, WORDS.pptx, WORDS.text, WORDS.sheet, 'PDF']), await labels());
 check('« Importer » se dit déplié (aria-expanded) et le sous-menu est nommé', (await importRow.getAttribute('aria-expanded')) === 'true' && (await sub().getAttribute('aria-label')) === WORDS.import, await sub().getAttribute('aria-label'));
 // Le menu « Nouveau » est large (ses mentions de grisé) : le sous-menu se rétrécit au lieu de recouvrir « Importer ».
 const geometry = () => frame.evaluate(() => {

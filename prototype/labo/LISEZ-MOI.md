@@ -83,6 +83,7 @@ dirait « l'ouvreur est coupé » là où le Grist de la personne le garde. Fire
 | `run-navigateur` | la page `navigateur/` jouée à la souris (voir plus bas) |
 | `run-reel` | la sonde `reel/` (lecture, écriture, pièces jointes, taille maximale), avec un répondeur REST de remplacement pour la tuyauterie (`rest-standin.mjs` : il reçoit un envoi multipart, rend les octets, refuse au-delà de 6 Mo, et copie ce que Grist répond : la demande préalable, et le 401 sans en-tête CORS d'une écriture sans `X-Requested-With`) ; la cellule d'une colonne Attachments, elle, est celle du vrai Grist |
 | `run-reel-serveur` | la même sonde contre un **vrai serveur Grist** (`vrai-serveur.sh`, Docker ; voir plus bas) : le jeton, la lecture REST depuis une autre origine et depuis un cadre isolé, l'envoi d'un PDF avec et sans l'en-tête `X-Requested-With`, la cellule Attachments, le remplacement, les paliers jusqu'à 50 Mo ; 15 vérifications |
+| `run-pdf` | **GFS garde les PDF** (contrats 6.6), jouée dans un **vrai serveur Grist** (`vrai-serveur.sh`, voir plus bas), à 700 × 400 et à la vraie souris : « Nouveau > Importer > PDF », l'accord de la table `GFS_Fichiers` (refusé puis donné), le cadre d'envoi isolé, la ligne et la pièce jointe relues par l'API REST (même empreinte, octet pour octet), le nom pris (« Remplacer », « Garder les deux », Échap, la casse), le téléchargement (double clic et bouton), renommer, épingler, déplacer, importer dans un dossier ouvert, supprimer (confirmation), les fichiers qui n'en sont pas, les refus du serveur (413, pas de réponse), un fichier de 12 Mo, le clavier (Tab, Entrée), les contrastes de 4,5:1, puis une seconde session en anglais et en sombre ; la console de GFS reste muette |
 | `run-direct` | comment un widget apprend qu'une autre table que celle de sa section a changé (contrats 5.5) : la prévenance de Grist, un relais par `BroadcastChannel`, la relecture `fetchTable` à 100, 250, 500 et 1 000 ms, un réseau simulé, la taille de la table. Trois widgets de `sondes/direct/` posés directement dans Grist (ce ne sont pas des apps de GFS), une seule page donc une seule horloge ; le réseau réel n'y est pas |
 
 Les sondes (`sondes/`) sont des apps d'essai que GFS ne connaît pas : elles n'entrent dans le catalogue que pour la page du labo qui le demande. `sondes/direct/` fait exception : un widget que Grist reçoit tel quel, pour `run-direct`.
@@ -97,7 +98,11 @@ d'abord sur un **vrai serveur** :
 cd prototype/labo
 bash vrai-serveur.sh                                     # Docker : l'image officielle gristlabs/grist (1.7.19 par défaut, la version du porteur), sur 127.0.0.1:8484
 REPO_DIR="$(realpath ../..)" node run-reel-serveur.mjs   # la sonde reel/ ajoutée à un document créé pour l'essai, jouée à la vraie souris ; « OK » ou « ÉCHEC »
+REPO_DIR="$(realpath ../..)" node run-pdf.mjs            # GFS lui-même dans un document neuf : les PDF qu'il garde (contrats 6.6)
 ```
+
+`lab-serveur.mjs` (le serveur, la session de la personne d'essai, un document neuf, un widget ajouté à la vraie souris) et `lab-pdf.mjs` (GFS à 700 × 400, ce que le serveur retient lu par l'API REST,
+les gestes de l'explorateur, le contraste de chaque texte) sont communs aux essais du vrai serveur : un nouvel essai s'écrit en quelques lignes de scénario.
 
 Dans le conteneur du cloud, le script lance lui-même le démon Docker (sans réseau de pont) ; l'image se tire seule, la première fois. Le serveur n'a qu'une personne d'essai
 (`essai@example.com`), ses documents sont dans `/tmp/grist-persist`. `GRIST_VERSION`, `GRIST_PORT` (script) et `GRIST_URL` (essai) changent la version, le port et l'adresse. Chromium seul :

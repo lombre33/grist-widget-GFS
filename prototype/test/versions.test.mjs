@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { version, cspHash, importMapText, applyVersions, staleItems, readFiles, ROOT } from '../outils/versions.mjs';
+import { version, cspHash, importMapText, applyVersions, staleItems, readFiles, readSideFiles, applySideVersions, staleSideItems, ROOT } from '../outils/versions.mjs';
 
 const PAGE = `<head>
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-ancienne'; style-src 'self'">
@@ -89,4 +89,28 @@ test('importMapText : stable, trié, deux espaces d\'indentation, un retour à l
 test('index.html du prototype est à jour : ?v=, carte d\'importation et empreinte (sinon : node outils/versions.mjs)', () => {
   const html = readFileSync(join(ROOT, 'index.html'), 'utf8');
   assert.deepEqual(staleItems(html, readFiles()), []);
+});
+
+const SIDE = '<script src="transfer.js"></script>\n<script src="https://exemple.fr/x.js"></script>';
+
+test('applySideVersions : le script voisin d\'une page porte son empreinte, relancée la page ne change plus ; un script absent est refusé', () => {
+  const side = { 'transfer.js': Buffer.from('envoi') };
+  const html = applySideVersions(SIDE, side);
+  assert.ok(html.includes(`src="transfer.js?v=${version(Buffer.from('envoi'))}"`));
+  assert.ok(html.includes('src="https://exemple.fr/x.js"'), 'une adresse externe n\'est pas touchée');
+  assert.equal(applySideVersions(html, side), html);
+  assert.throws(() => applySideVersions(SIDE, {}), /transfer\.js, qui n'existe pas/);
+});
+
+test('staleSideItems : un script modifié ou une balise sans ?v= sont nommés ; à jour, la liste est vide', () => {
+  const side = { 'transfer.js': Buffer.from('envoi') };
+  const current = applySideVersions(SIDE, side);
+  assert.deepEqual(staleSideItems(current, side), []);
+  assert.match(staleSideItems(current, { 'transfer.js': Buffer.from('autre') }).join('|'), /transfer\.js : \?v=[0-9a-f]{10} au lieu de \?v=[0-9a-f]{10}/);
+  assert.match(staleSideItems(SIDE, side).join('|'), /\(absente\)/);
+});
+
+test('transfer/index.html est à jour : le ?v= de transfer.js (sinon : node outils/versions.mjs)', () => {
+  const html = readFileSync(join(ROOT, 'transfer/index.html'), 'utf8');
+  assert.deepEqual(staleSideItems(html, readSideFiles('transfer')), []);
 });

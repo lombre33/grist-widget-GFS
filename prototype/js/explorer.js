@@ -11,8 +11,12 @@ import { buildShell, relabel, crumbs, tree, listHead, fileRow, folderRow, tile, 
 import { LANGUAGE_NAMES } from './language.js';
 import { openMenu, closeMenu } from './menu.js';
 
+// Sans fichiers que GFS garde lui-même (les essais de l'explorateur seul) : aucun fichier n'est de ceux-là.
+const NO_KEPT = Object.freeze({ has: () => false });
+
 export class Explorer {
   #opts;
+  #kept;
   #refs;
   #files = [];
   #rows = [];
@@ -26,9 +30,11 @@ export class Explorer {
 
   // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), importTypes(), onOpen(file), onNew(entry), onImport(entry), onClose(), onApps(), canClose(), notice(text),
   //          language() → { choice, grist }, onLanguage(choice), personal() → le rangement est-il à la personne seule ?,
-  //          filing: { togglePin(file), rename(file), moveFile(file), renameFolder(path), moveFolder(path) }, onDemo()? (le bouton « Démo », en mode développement seulement) }
+  //          filing: { togglePin(file), rename(file), moveFile(file), renameFolder(path), moveFolder(path) }, onDemo()? (le bouton « Démo », en mode développement seulement),
+  //          kept?: les fichiers que GFS garde lui-même (js/kept-files.js) : { has(file), openAs(file) -> { label, icon }, opensIn(file), copyNotice(), remove(file) } }
   constructor(opts) {
     this.#opts = opts;
+    this.#kept = opts.kept || NO_KEPT;
     const { root, refs } = buildShell(opts.i18n);
     this.root = root;
     this.#refs = refs;
@@ -135,7 +141,7 @@ export class Explorer {
     const row = sel ? this.#rows.find(r => (r.kind === 'folder' ? `dir:${r.path}` : r.file.key) === sel) : null;
     return {
       t: this.#opts.i18n.t, state, locale: this.#opts.locale, now: this.#opts.now(), appName: this.#opts.appName, typeLabel: this.#opts.typeLabel,
-      lockOf: this.#opts.lockOf, sort: this.#sort(), filtering: this.#filtering, favCount: this.#pool.filter(file => file.pinned).length, totalFiles: this.#pool.length,
+      lockOf: this.#opts.lockOf, opensIn: file => this.#opensIn(file), sort: this.#sort(), filtering: this.#filtering, favCount: this.#pool.filter(file => file.pinned).length, totalFiles: this.#pool.length,
       selected: row, personal: this.#opts.personal(), choosing: this.#choice !== null, ...extra,
     };
   }
@@ -206,11 +212,18 @@ export class Explorer {
     if (row) row.focus({ preventScroll: true });
   }
 
+  // Où s'ouvre le fichier : dans son app, ou, pour un fichier que GFS garde, sur l'ordinateur de la personne.
+  #opensIn(file) {
+    return this.#kept.has(file) ? this.#kept.opensIn(file) : this.#opts.i18n.t('ex.opensIn', { app: this.#opts.appName(file.app) });
+  }
+
   #renderInfo() {
     const ctx = this.#ctx();
     this.#refs.info.replaceChildren(infoBar(ctx));
     const off = !ctx.selected;
     this.#refs.openBtn.setAttribute('aria-disabled', String(off));
+    // « Ouvrir » devient « Télécharger » devant un fichier que GFS garde ; en mode choix, le bouton garde son mot (« Choisir »).
+    if (!this.#choice) this.#refs.openBtn.textContent = ctx.selected && ctx.selected.file && this.#kept.has(ctx.selected.file) ? this.#kept.openAs(ctx.selected.file).label : this.#opts.i18n.t('ex.open');
   }
 
   // Une seule ligne dans l'ordre de tabulation : la ligne choisie, sinon la première.
@@ -396,7 +409,7 @@ export class Explorer {
     openMenu(this.#refs.newBtn, items, { host: this.root, align: 'right', label: t('ex.new') });
   }
 
-  // Le menu d'une ligne. Dupliquer et supprimer touchent au fichier lui-même : grisés, ils disent que l'app le fait.
+  // Le menu d'une ligne. Dupliquer et supprimer touchent au fichier lui-même : grisés, ils disent que l'app le fait ; un fichier que GFS garde se supprime ici.
   #rowMenu(key, anchor) {
     const { t } = this.#opts.i18n;
     const { filing } = this.#opts;
@@ -410,12 +423,21 @@ export class Explorer {
     } else {
       const file = this.#files.find(entry => entry.key === key);
       if (!file) return;
-      const appOnly = () => this.#opts.notice(t('ex.notice.appOnly', { app: this.#opts.appName(file.app) }));
-      const grey = (label, glyph) => ({ label, icon: glyph, greyed: true, run: appOnly });
-      items = [item(this.#choice ? t('ex.choose.pick') : t('ex.open'), 'open', () => this.#activate(key)), item(file.pinned ? t('ex.unpin') : t('ex.pin'), 'pin', () => void filing.togglePin(file)),
-        item(t('ex.rename'), 'edit', () => void filing.rename(file)), grey(t('ex.duplicate'), 'copy'), item(t('ex.move'), 'move', () => void filing.moveFile(file)),
-        '-', grey(t('ex.delete'), 'trash')];
+      items = this.#fileMenu(file);
     }
     openMenu(anchor, items, { host: this.root, align: 'right', label: t('ex.more') });
+  }
+
+  #fileMenu(file) {
+    const { t } = this.#opts.i18n;
+    const { filing } = this.#opts;
+    const kept = this.#kept.has(file);
+    const item = (label, glyph, run) => ({ label, icon: glyph, run });
+    const grey = (label, glyph, notice) => ({ label, icon: glyph, greyed: true, run: () => this.#opts.notice(notice) });
+    const appOnly = t('ex.notice.appOnly', { app: this.#opts.appName(file.app) });
+    const open = kept && !this.#choice ? this.#kept.openAs(file) : { label: this.#choice ? t('ex.choose.pick') : t('ex.open'), icon: 'open' };
+    return [item(open.label, open.icon, () => this.#activate(file.key)), item(file.pinned ? t('ex.unpin') : t('ex.pin'), 'pin', () => void filing.togglePin(file)),
+      item(t('ex.rename'), 'edit', () => void filing.rename(file)), grey(t('ex.duplicate'), 'copy', kept ? this.#kept.copyNotice() : appOnly), item(t('ex.move'), 'move', () => void filing.moveFile(file)),
+      '-', kept ? item(t('ex.delete'), 'trash', () => void this.#kept.remove(file)) : grey(t('ex.delete'), 'trash', appOnly)];
   }
 }

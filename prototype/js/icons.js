@@ -7,6 +7,8 @@ const NS = 'http://www.w3.org/2000/svg';
 
 const ICONS = {
   doc: '<path d="M7 2h7l4 4v16H7z"/><path d="M14 2v4h4"/>',
+  // Un PDF gardé par GFS : la page, et les lignes de ce qu'elle porte (le mot « PDF » l'accompagne toujours).
+  pdf: '<path d="M7 2h7l4 4v16H7z"/><path d="M14 2v4h4"/><path d="M10 12h5M10 15.5h5M10 19h3"/>',
   mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M3 6l9 7 9-7"/>',
   macro: '<rect x="2" y="6" width="14" height="16" rx="1.5"/><path d="M7 2h11a1.5 1.5 0 0 1 1.5 1.5V18"/>',
   grid: '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 9.3h18M3 14.6h18M9 4v16M15 4v16"/>',

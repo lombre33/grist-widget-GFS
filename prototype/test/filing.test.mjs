@@ -16,7 +16,7 @@ const META = {
 };
 
 // Une doublure de tout ce que le contrôleur donne : `stored` est ce que la table de GFS retient, et la liste relue après chaque geste en part.
-function harness({ files = [file(1), file(2, 'A/B'), file(3, 'A/B/C'), file(4, 'X')], block = null, answers = [], setFiling = null, meta = META } = {}) {
+function harness({ files = [file(1), file(2, 'A/B'), file(3, 'A/B/C'), file(4, 'X')], block = null, answers = [], setFiling = null, meta = META, cleanName = undefined } = {}) {
   const log = { writes: [], actions: [], notices: [], windows: [], refreshes: 0 };
   let list = files;
   const rangement = { setFiling: setFiling || (async entries => {
@@ -26,7 +26,7 @@ function harness({ files = [file(1), file(2, 'A/B'), file(3, 'A/B/C'), file(4, '
   const ask = kind => async opts => { log.windows.push({ kind, ...opts }); return answers.shift() ?? null; };
   const port = { doc: { fetchTable: async name => meta[name], applyUserActions: async actions => { log.actions.push(...actions); } } };
   const filing = new Filing({
-    port, rangement, t, locale: () => 'fr', files: () => list, here: () => 'X', specOf: () => SPEC, appName: () => 'Publipostage+',
+    port, rangement, t, locale: () => 'fr', files: () => list, here: () => 'X', specOf: () => SPEC, appName: () => 'Publipostage+', cleanName,
     writeBlock: () => block, notice: text => log.notices.push(text), refresh: async () => { log.refreshes += 1; }, windows: { name: ask('name'), folder: ask('folder') },
   });
   return { filing, log, current: () => list };
@@ -156,4 +156,13 @@ test('renommer un dossier : le nom d\'un dossier voisin est refusé (accents et 
   assert.equal(refuse('À'), t('ex.folderTaken'), '« A » est à côté de « X »');
   assert.equal(refuse('B'), null, '« B » est dans « A », pas à côté');
   assert.equal(refuse(''), t('ex.nameEmpty'));
+});
+
+test('renommer : la mise en forme du nom saisi vient de l\'appelant (un PDF garde son « .pdf »), et la fenêtre la reçoit ; sans elle, le nom est seulement rogné', async () => {
+  const withPdf = harness({ answers: [null], cleanName: now => (now.id === '1' ? text => `${text.trim()}.pdf` : undefined) });
+  await withPdf.filing.rename(file(1));
+  assert.equal(withPdf.log.windows[0].clean(' Facture '), 'Facture.pdf');
+  const plain = harness({ answers: [null], cleanName: now => (now.id === '1' ? text => `${text.trim()}.pdf` : undefined) });
+  await plain.filing.rename(file(2));
+  assert.equal(plain.log.windows[0].clean, undefined, 'la fenêtre prend alors sa mise en forme habituelle');
 });

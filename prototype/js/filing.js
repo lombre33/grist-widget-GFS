@@ -27,7 +27,7 @@ export class Filing {
   #queue = Promise.resolve();
 
   // opts : { port, rangement, t, locale(), files() -> [fichier], here() -> le dossier ouvert, specOf(file) -> son entrée `fichiers` du manifeste,
-  //          appName(id), writeBlock() -> texte | null, notice(texte), refresh() -> Promise,
+  //          cleanName?(file) -> la fonction qui met en forme le nom saisi (un PDF garde son « .pdf »), appName(id), writeBlock() -> texte | null, notice(texte), refresh() -> Promise,
   //          windows: { name(opts) -> Promise<texte | null>, folder(opts) -> Promise<chemin | null> } }
   constructor(opts) { this.#opts = opts; }
 
@@ -79,7 +79,8 @@ export class Filing {
       const column = spec && spec.colonnes ? spec.colonnes.nom : null;
       const taken = name => this.#opts.files().some(other => other.key !== now.key && other.app === now.app && other.table === now.table && sameName(other.name, name));
       const refuse = name => (!name ? t('ex.nameEmpty') : (taken(name) ? t('ex.nameTaken', { app: appName(now.app) }) : null));
-      const name = await windows.name({ title: t('ex.renameTitle', { name: this.#title(now) }), label: t('ex.nameLabel'), value: now.name, confirmLabel: t('ex.rename'), refuse });
+      const clean = this.#opts.cleanName ? this.#opts.cleanName(now) : undefined;
+      const name = await windows.name({ title: t('ex.renameTitle', { name: this.#title(now) }), label: t('ex.nameLabel'), value: now.name, confirmLabel: t('ex.rename'), clean, refuse });
       if (name === null || name === now.name) return;
       try {
         const found = column ? await columnsOf(port.doc, spec.table) : null;

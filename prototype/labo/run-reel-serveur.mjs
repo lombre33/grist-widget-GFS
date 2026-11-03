@@ -6,42 +6,14 @@
 import { createServer } from 'node:http';
 import { serve } from './lab-server.mjs';
 import { chromium, say, check } from './lab-common.mjs';
-import { addCustomWidget, chooseFullAccess } from './lab-setup.mjs';
+import { GRIST, openConnectIn, requireServer, newContext, createDocument, addWidget } from './lab-serveur.mjs';
 
-const GRIST = process.env.GRIST_URL || 'http://127.0.0.1:8484';
 const PAGE_PORT = 8916;
 const REEL = `http://127.0.0.1:${PAGE_PORT}/prototype/labo/reel/index.html`;
 
-const openConnect = (file, bytes) => (/labo[/\\]reel[/\\][^/\\]*\.html$/.test(file)
-  ? Buffer.from(bytes.toString('utf8').replace(/(content="[^"]*connect-src https:)/, `$1 ${GRIST}`)) : bytes);
-
-// La personne d'essai crée un document avec une table « Clients » (une ligne) ; rend son adresse.
-async function createDocument(page) {
-  await page.goto(`${GRIST}/`, { waitUntil: 'load' });
-  await page.waitForTimeout(2500);
-  return page.evaluate(async () => {
-    const call = async (path, method = 'GET', body) => (await fetch(path, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })).json();
-    const [org] = await call('/api/orgs');
-    const spaces = await call(`/api/orgs/${org.id}/workspaces`);
-    const space = spaces.length ? spaces[0].id : await call(`/api/orgs/${org.id}/workspaces`, 'POST', { name: 'Essais' });
-    const id = await call(`/api/workspaces/${space}/docs`, 'POST', { name: `Sonde ${new Date().toISOString()}` });
-    await call(`/api/docs/${id}/apply`, 'POST', [['AddTable', 'Clients', [{ id: 'Nom', type: 'Text' }]], ['AddRecord', 'Clients', null, { Nom: 'Dupont' }]]);
-    return `/o/${org.domain}/${id}/Essai`;
-  });
-}
-
-// Le document s'ouvre (la visite guidée de Grist cache les pages : Échap la ferme), la personne ajoute la sonde à la page « Clients » et lui donne l'accès complet.
+// Le document est prêt : la sonde y est ajoutée avec l'accès complet, et rend son cadre une fois l'accès accordé.
 async function addProbe(page, path) {
-  await page.goto(`${GRIST}${path}`, { waitUntil: 'load' });
-  await page.locator('.test-onboarding-popup').first().waitFor({ timeout: 15000 }).catch(() => {});
-  await page.keyboard.press('Escape');
-  await page.waitForTimeout(500);
-  await page.getByText('Clients', { exact: true }).first().click();
-  await page.waitForSelector('text=Dupont', { timeout: 60000 });
-  await addCustomWidget(page, REEL);
-  await page.waitForTimeout(2500);
-  await chooseFullAccess(page);
-  await page.waitForTimeout(1500);
+  await addWidget(page, path, REEL);
   const frame = page.frames().find(each => each.url().includes('/labo/reel/index.html'));
   await frame.waitForFunction(() => document.getElementById('rapport').value.includes('Accès accordé à la sonde'), null, { timeout: 30000 });
   return frame;
@@ -98,14 +70,11 @@ async function playSizes(frame) {
   check('un serveur sans limite d\'envoi accepte tous les paliers (jusqu\'à 50 Mo), téléchargés à l\'identique jusqu\'à 20 Mo', line(text, 'plus grand envoi accepté') === '50 Mo' && /^aucun/.test(line(text, 'premier envoi refusé')) && /"identique":true/.test(line(text, '20 Mo')), [line(text, 'plus grand envoi accepté'), line(text, 'premier envoi refusé')]);
 }
 
-const response = await fetch(`${GRIST}/status`).catch(() => null);
-if (!response || !response.ok) { say(`Le serveur Grist ne répond pas sur ${GRIST} : lance « bash vrai-serveur.sh » (voir LISEZ-MOI.md).`); process.exit(2); }
-const pluginApi = await (await fetch(`${GRIST}/grist-plugin-api.js`)).text();
-const pages = createServer(serve(process.env.REPO_DIR, undefined, openConnect)).listen(PAGE_PORT, '127.0.0.1');
+const pluginApi = await requireServer();
+const pages = createServer(serve(process.env.REPO_DIR, undefined, openConnectIn(/labo[/\\]reel[/\\][^/\\]*\.html$/))).listen(PAGE_PORT, '127.0.0.1');
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
 try {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-  await context.route('https://docs.getgrist.com/grist-plugin-api.js', route => route.fulfill({ status: 200, contentType: 'application/javascript', body: pluginApi }));
+  const context = await newContext(browser, pluginApi);
   const page = await context.newPage();
   const frame = await addProbe(page, await createDocument(page));
   say((await report(frame)).split('\n').slice(0, 4).join('\n'));

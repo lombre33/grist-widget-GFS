@@ -207,7 +207,7 @@ export function infoBar(ctx) {
   const lock = ctx.lockOf(file);
   const who = person(file.by);
   const when = file.ts === null ? '' : t('ex.modifiedOn', { date: formatDate(file.ts, ctx.now, ctx.locale, t) });
-  const second = lock ? lock.text : [t('ex.opensIn', { app: ctx.appName(file.app) }), when, who.name ? t('ex.modifiedBy', { by: who.name }) : ''].filter(Boolean).join(' · ');
+  const second = lock ? lock.text : [ctx.opensIn(file), when, who.name ? t('ex.modifiedBy', { by: who.name }) : ''].filter(Boolean).join(' · ');
   return h('div', { class: 'inf', 'data-fam': lock ? null : family(file) },
     infoLine1(icon(lock ? 'lock' : file.icon), h('b', null, file.name || t('ex.untitled')), h('span', { class: 'mu' }, `· ${ctx.typeLabel(file)}`)),
     h('div', { class: 'l2' }, h('span', { class: 'lt' }, second)));

@@ -4,9 +4,10 @@
 //   - la `?v=` de chaque feuille de style et de chaque script cité par une balise ;
 //   - la carte d'importation : chaque module de js/ importé par un autre y est associé à son adresse versionnée ;
 //   - dans la politique de sécurité du contenu, l'empreinte (sha256) du script en ligne qui porte cette carte.
+// Les pages qui n'ont qu'un script à côté d'elles (le cadre d'envoi, `transfer/`) portent aussi la `?v=` de ce script.
 // Le résultat est commité : aucune étape de construction pour servir.
 //
-//   node outils/versions.mjs             met index.html à jour
+//   node outils/versions.mjs             met index.html (et les pages à script voisin) à jour
 //   node outils/versions.mjs --verifier  dit ce qui est périmé, sans rien écrire (code de sortie 1)
 
 import { createHash } from 'node:crypto';
@@ -17,6 +18,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PAGE = 'index.html';
 const FOLDERS = ['css', 'js'];
+// Les pages qui citent un script de leur propre dossier : { page, dossier }.
+const SIDE_PAGES = [{ page: 'transfer/index.html', folder: 'transfer' }];
+const SIDE_TAG_RE = /(<script\b[^>]*?\bsrc=")([^"?:/]+\.js)(?:\?v=([^"]*))?(")/g;
 
 // Les balises locales de la page : <link ... href="css/x.css?v=…"> et <script ... src="js/x.js?v=…">.
 const TAG_RE = /(<(?:link|script)\b[^>]*?\b(?:href|src)=")((?:css|js)\/[^"?]+)(?:\?v=([^"]*))?(")/g;
@@ -36,6 +40,27 @@ export function readFiles(root = ROOT) {
     }
   }
   return files;
+}
+
+// { 'transfer.js': octets } : les scripts du dossier d'une page à script voisin.
+export function readSideFiles(folder, root = ROOT) {
+  const files = {};
+  for (const name of readdirSync(join(root, folder)).sort()) if (name.endsWith('.js')) files[name] = readFileSync(join(root, folder, name));
+  return files;
+}
+
+// Une page à script voisin telle qu'elle doit être pour ces fichiers : chaque balise <script src="x.js"> porte l'empreinte de x.js.
+export function applySideVersions(html, files) {
+  return html.replace(SIDE_TAG_RE, (all, open, name, had, close) => {
+    if (!files[name]) throw new Error(`la page cite ${name}, qui n'existe pas`);
+    return `${open}${name}?v=${version(files[name])}${close}`;
+  });
+}
+
+// Ce qui est périmé dans une page à script voisin (liste vide : tout est à jour).
+export function staleSideItems(html, files) {
+  return [...html.matchAll(SIDE_TAG_RE)].filter(match => files[match[2]] && match[3] !== version(files[match[2]]))
+    .map(match => `${match[2]} : ?v=${match[3] === undefined ? '(absente)' : match[3]} au lieu de ?v=${version(files[match[2]])}`);
 }
 
 const versionOf = (files, path) => {
@@ -97,8 +122,9 @@ function main(argv) {
   const path = join(ROOT, PAGE);
   const html = readFileSync(path, 'utf8');
   const files = readFiles();
+  const sides = SIDE_PAGES.map(side => ({ ...side, path: join(ROOT, side.page), files: readSideFiles(side.folder) }));
   if (argv.includes('--verifier')) {
-    const stale = staleItems(html, files);
+    const stale = [...staleItems(html, files), ...sides.flatMap(side => staleSideItems(readFileSync(side.path, 'utf8'), side.files).map(item => `${side.page} : ${item}`))];
     stale.forEach(item => process.stderr.write(`périmé : ${item}\n`));
     process.stdout.write(stale.length ? `${stale.length} écart(s) : lancer node outils/versions.mjs\n` : 'index.html est à jour\n');
     process.exitCode = stale.length ? 1 : 0;
@@ -107,6 +133,12 @@ function main(argv) {
   const next = applyVersions(html, files);
   if (next !== html) writeFileSync(path, next);
   process.stdout.write(next === html ? 'index.html était déjà à jour\n' : 'index.html mis à jour\n');
+  for (const side of sides) {
+    const current = readFileSync(side.path, 'utf8');
+    const updated = applySideVersions(current, side.files);
+    if (updated !== current) writeFileSync(side.path, updated);
+    process.stdout.write(updated === current ? `${side.page} était déjà à jour\n` : `${side.page} mis à jour\n`);
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main(process.argv.slice(2));

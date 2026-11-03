@@ -327,7 +327,7 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
    `{ "id": "plotly", "version": "2.13.2" }` (la version de Grist, celle pour laquelle le dessin du graphique est écrit).
    Ni adresse, ni empreinte, ni mode : elles sont à GFS. Une extension peut en exiger plusieurs : `graphique` exige depuis le
    03/11 `plotly` 2.13.2 (l'import des graphiques de Grist) **et** `echarts` 6.1.0 (Apache-2.0, le moteur des graphiques que l'app
-   crée, « Créer un graphique… » ; demande de Publipostage+ du 02/11). Les deux suivent le même mode, CDN ou copie de GFS, et
+   crée, « Créer un graphique… » ; demande de Publipostage+ du 02/11, réponse : consigne 042). Les deux suivent le même mode, CDN ou copie de GFS, et
    l'extension n'est servie que si le catalogue les a toutes : sans ECharts, « graphique » reste grisée avec ce qui manque, jamais
    servie à moitié.
 6. [D] GFS tient un catalogue des bibliothèques d'extensions : pour chacune, `id`, `version`, l'adresse du CDN avec son

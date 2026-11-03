@@ -1308,7 +1308,9 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
    - **Une app non installée** (ou un type d'une extension éteinte) : la fenêtre des apps s'ouvre sur sa ligne, l'appel attend ; la personne
      coche puis ferme la fenêtre, et le fichier s'ouvre ; elle ferme sans cocher, et l'app reçoit `GFS_ANNULE`, rien ne s'ouvre.
    - **L'app visée** devient l'app active et reçoit l'ouverture (`ouverture.raison: "lien"`) à son premier `contexte`, celle qui
-     appelait s'en va (une seule app à la fois, 1.4) : sa promesse ne se règle donc pas, son cadre n'existe plus. Si l'app visée est
+     appelait s'en va (une seule app à la fois, 1.4) : sa promesse ne se règle donc pas, son cadre n'existe plus. **GFS n'envoie pas
+     encore « fermer » à l'app qui s'en va** (1.4, point 1 ; comme pour le double-clic d'un fichier d'une autre app, et à ajouter à
+     l'étape 6) : l'app qui appelle `openFile` vers une autre app a donc fini ses écritures avant l'appel. Si l'app visée est
      celle qui appelle, elle reçoit l'appel `ouvrir` de GFS (point 1) et sa réponse `{ ouvert }` revient à l'appelante, après sa
      question d'enregistrement s'il y en a une. Une app qui ne connaît pas encore l'ouverture d'un fichier précis
      (`ACCEPTS_OPEN`, provisoire) s'ouvre sur son modèle habituel avec la phrase provisoire de GFS.

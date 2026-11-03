@@ -583,7 +583,8 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   `c0c8660`), GPL 3.0, `.nojekyll`, `gfs.json` à la racine, que l'outil de validation de GFS passe sans erreur. Pas encore de `GFS-ETAT.md`
   (la consigne 001 le demande). Sept demandes dans son cahier (`docs/demandes-a-gfs.md`). Traité le 02/11 : `consignes/tuesday/` (001 à 004),
   la décision d'Automation+ en fond au cahier (section 2 et section 12, ligne 4), deux cartes au porteur (construire les liens entre apps,
-  le calendrier). GFS ne référence pas encore Tuesday : aucune référence à avancer.
+  le calendrier). Traité le 03/11 : la **005** (les liens entre apps sont construits ; elle remplace le point 2 de la 002), prochaine consigne 006.
+  GFS ne référence pas encore Tuesday : aucune référence à avancer.
 
 - Les liens entre apps (03/11, le porteur : « Construire maintenant ») : GFS livre `choisir` et `ouvrir` côté app (contrats 3.6 et 5.4, points 2 et 7 ;
   `js/links.js`, l'explorateur en mode choix) et le kit passe à 0.3.0 (`GfsLink.choose` et `GfsLink.openFile`, `lombre33/grist-factory-kit` à `9d17844`, sans

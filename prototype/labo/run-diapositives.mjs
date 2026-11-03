@@ -198,15 +198,19 @@ check('une présentation vierge s\'ouvre à la page 16:9 en paysage', pageNow.sl
 const filesAfter = await filesNow();
 const newScripts = filesAfter.scripts.filter(src => !filesBefore.scripts.includes(src));
 const newStyles = filesAfter.styles.filter(href => !filesBefore.styles.includes(href));
-// Les douze scripts de l'extension (la bande, une page de document en diapositives, le volet « Importer », les diapositives liées, les transitions et leur fenêtre, le fond, les notes,
-// l'animation d'un cadre, le lecteur, la fenêtre à part et « Présenter ») et ses sept feuilles de style (version 0.40, app à 5524252), tous du dossier de l'app, chargés ensemble. La page
-// de la fenêtre à part (present.html) et son script (slide-present.js) sont servis seuls : le widget ne les charge jamais, ils ne comptent donc pas ici. Le menu « Objets » est passé
-// dans le cœur de l'app (js/objects-menu.js).
-const SCRIPTS = ['slide-strip', 'page-slides', 'slide-import', 'slide-links-ui', 'slide-transitions', 'slide-transitions-ui', 'slide-background-ui', 'slide-notes-ui', 'frame-anim-ui', 'slide-player', 'slide-window', 'slide-show'];
-const STYLES = ['slide-strip', 'slide-import', 'slide-transitions', 'slide-background', 'slide-notes', 'frame-anim', 'slide-show'];
-const fromFolder = (list, names, kind) => list.length === names.length
+// Les fichiers de l'extension, tels que l'app les déclare (`js/extensions.js` : `scripts` et `styles` de `diapositives`), tous du dossier de l'app, chargés ensemble : la liste est celle de
+// l'app, jamais une copie ici (elle grossit à chaque lot de l'app, et une copie se périmait à chaque avance de la référence). La page de la fenêtre à part (present.html) et son script
+// (slide-present.js) sont servis seuls : le widget ne les charge jamais, ils ne comptent donc pas ici (`standalone`).
+const REGISTRY = readFileSync(new URL('../apps/publipostage/js/extensions.js', import.meta.url), 'utf8');
+const declared = (id, kind) => {
+  const block = new RegExp(`\\n    ${id}: \\{[\\s\\S]*?${kind}: \\[([^\\]]*)\\]`).exec(REGISTRY);
+  return block ? [...block[1].matchAll(/'([^']+)\.(?:js|css)'/g)].map(found => found[1]) : [];
+};
+const SCRIPTS = declared('diapositives', 'scripts');
+const STYLES = declared('diapositives', 'styles');
+const fromFolder = (list, names, kind) => names.length > 0 && list.length === names.length
   && names.every(name => list.filter(url => new RegExp(`/apps/publipostage/extensions/diapositives/${name}\\.${kind}\\?`).test(url)).length === 1);
-check('l\'extension charge ses dix-neuf fichiers (douze scripts, sept feuilles de style), depuis le dossier de l\'app, rien d\'une autre adresse, aucun refus de la politique de sécurité',
+check(`l'extension charge ses ${SCRIPTS.length + STYLES.length} fichiers déclarés (${SCRIPTS.length} scripts, ${STYLES.length} feuilles de style), depuis le dossier de l'app, rien d'une autre adresse, aucun refus de la politique de sécurité`,
   fromFolder(newScripts, SCRIPTS, 'js') && fromFolder(newStyles, STYLES, 'css')
     && (await app.evaluate(() => window.__csp)).length === 0, { newScripts, newStyles, csp: await app.evaluate(() => window.__csp) });
 await leaveMenu();

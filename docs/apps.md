@@ -7,7 +7,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `134d043` | 02/11/2026 | GPL 3.0 |
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `b2ae9aa` | 03/11/2026 | GPL 3.0 |
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `fd5384a` | 02/11/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `746a564` | 02/11/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `b2772db` | 02/11/2026 | GPL 3.0 |
@@ -517,6 +517,18 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   tables, un seul accès au stockage du navigateur, pas un import dynamique, une fenêtre ou un message de plus ; le poids de `diapositives` reste 337 (337 341 octets au lieu
   de 337 117) ; un compte Lecteur de Grist n'essaie plus d'ajouter la colonne « Modifié par » à la table des modèles (`307cdd0`) : une écriture de moins ; 50 vérifications
   ciblées sans échec, 109 avec le courtier et la publication ; l'`INDEX.md` (037 faite) ; aucune consigne à écrire.
+- Publipostage+ à `b2ae9aa` (03/11, le porteur : « Consignes de Publipostage+ ») : trente-deux commits de plus depuis `134d043` (169 fichiers, 22 298 lignes de plus, presque
+  tout du code de l'app seule et ses essais) : « Créer un graphique… » (six lots : un graphique tracé d'après une table de Grist, puis un vrai graphique que l'on modifie dans le
+  Word, le PowerPoint et l'Excel ; entonnoir, cascade, jauge), le thème de présentation (deux lots), le lien d'un objet de diapositive, la vue intervenant du diaporama, « Sinon
+  afficher ». Sa page d'état (`GFS-ETAT.md`, à jour au commit `78c73e2`, lit GFS à `9bf8db4`) ne change aucune consigne (001 à 037 faites, la 016 attend la bascule de GFS) ;
+  « Questions pour GFS » : toujours le titre du PDF à l'impression (le porteur le mesure) ; « Demandes à GFS » : une demande de plus, **ECharts 6.1.0** (Apache-2.0, forme `script`)
+  pour l'extension « graphique », voulue par le porteur (module « Créer un graphique », radar compris, bibliothèques stables et entretenues) : elle attend « demande de Publipostage+ »
+  (une demande ne se traite pas à la lecture : ni la liste de bibliothèques, ni les empreintes, ni la référence, ni les poids). Les sept commits de plus après sa page (`0dae81a`
+  à `b2ae9aa`) ne changent ni `GFS-ETAT.md`, ni `js/gfs-link.js`, ni `js/grist-api.js`, ni `js/settings.js`, ni `js/template-pack.js` : pas de table, de clé de réglages ni de
+  contrat de plus ; la CSP de l'app (`index.html`) nomme `docx@9.15.1` (au lieu de 9.7.1) et une adresse de plus (`charts.iife.js`, du même paquet), une bibliothèque native de
+  l'app, que GFS ne suit pas ; `js/extensions.js` ne change que des versions et des fichiers listés : `graphique` passe à 0.7 (8 fichiers, 161 838 octets) et `diapositives` à 0.52
+  (28 fichiers, 460 780 octets), des poids que le manifeste de GFS reportera avec la demande (la page dit 417 et 137 au dernier relevé). La référence de GFS reste à `134d043` :
+  l'app est servie en direct, elle ne sert qu'aux mesures et au repli.
 - Form+ à `cc21a27` (22/10, le porteur : « check ce qui est remonté des projets ») : trois commits de plus depuis `16701fe`. Son
   `GFS-ETAT.md` (`0614f73`, qui décrit `c249c4a`) dit les consignes 008 à 011 **faites** : le formulaire natif s'enregistre dans
   `FormPlus_Formulaires` (avec la fenêtre d'accord de l'app, une ligne par formulaire par `Definition.vsId`), les répondants, le lien

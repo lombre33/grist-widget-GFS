@@ -7,7 +7,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `24f361e` | 03/11/2026 | GPL 3.0 |
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `067c931` | 03/11/2026 | GPL 3.0 |
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `b54414a` | 03/11/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `746a564` | 03/11/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `521a8ac` | 03/11/2026 | GPL 3.0 |
@@ -543,6 +543,23 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   n'appelle l'API de Grist, `fetch`, le stockage du navigateur, un message ni un `import()` ; la seule adresse de plus est l'espace de noms XML d'un fichier Office ; la CSP de
   `index.html` ne change pas (que des `?v=` et le bloc de menu des titres). Le poids de `graphique` bougera (deux fichiers d'extension plus lourds) : il se recalcule avec la demande
   d'ECharts. Référence de GFS inchangée (`134d043`). Rien à écrire.
+- Publipostage+ à `067c931` (03/11, le porteur : « le volet graphique ajouté dans Slides+ via Publipostage+ semble manquer d'une librairie, as-tu bien traité toutes les consignes ? ») :
+  vingt commits de plus depuis `24f361e`, soixante depuis `134d043`, la référence de GFS (220 fichiers, dont 107 de code servi, de style et d'extensions). **Non : la demande d'ECharts 6.1.0
+  n'avait pas été traitée.** Elle attendait « demande de Publipostage+ » alors que « Créer un graphique… » ne dessine qu'avec cette bibliothèque (`extensions/graphique/chart-make.js`,
+  `Extensions.library('echarts')`) : GFS ne la donnait pas à l'app, et la fenêtre disait « Aperçu indisponible : le module qui dessine les graphiques n'a pas pu se charger ». Traité le 03/11 :
+  `echarts` 6.1.0 à la liste et au catalogue (l'adresse jsDelivr que la CSP de l'app nomme déjà, la même empreinte que sa page donne ; la copie de GFS avec sa licence et son NOTICE, que
+  l'Apache 2.0 impose à une copie redistribuée) ; `graphique` exige `plotly` et `echarts` (`2b0e184`) ; référence avancée à `067c931` (commit à part, relu) ; poids reportés : `diapositives` 471, `graphique` 168,
+  `edition` 102 (GFS compte le dossier entier, `present.html` et `slide-present.js` compris) ; mesuré dans un vrai Grist (`run-graphique.mjs`, section 20 de `docs/faits-verifies.md`) ;
+  réponse : consigne 042. Sa page d'état (`GFS-ETAT.md`, au commit `b368ab2`, lit GFS à `c77cb24`, « consignes lues jusqu'à la 039 ») ne dit pas encore « faites » les consignes 038 et 039 :
+  ses deux derniers commits le sont (`22157a8` : une règle « Tables liées » dont la colonne source manque est passée et la colonne Référence relie ; `067c931` : le rappel « Enregistrer » se
+  tait quand GFS a enregistré le réglage) ; GFS ne les a pas encore rejoués dans un vrai Grist avec les six règles du porteur (le « Fait quand » de la 038). Le reste des vingt commits est du code
+  de l'app seule et ses essais : l'écriture en direct s'ouvre aux présentations et la page du modèle se partage (`7608755`, `a923cdb`, `8d148f9`), le diaporama ne rame plus (`f70aa23`), un graphique
+  déjà dessiné n'est plus redessiné (`ce3dd43`), la pagination ne dépend plus du défilement (`c41a51d`, `c5231d0`, `892c42a`), les tableaux de Word (docx 9.15.1, `265a440`), les touches de
+  « Commenter la sélection » (`f321522`, `b368ab2`). Mesuré sur le code servi (`index.html`, `js/`, `css/`, `extensions/`), avant (`134d043`) et après (`067c931`) : les mêmes 14 verbes d'actions
+  de Grist, les mêmes 8 tables internes `_grist_*` lues, les mêmes 15 appels `grist.*` (122 occurrences), les mêmes 9 noms de tables `Publipostage_*`, un seul accès au stockage du navigateur
+  (9 occurrences) ; adresses : 97 au lieu de 92 (`docx@9.15.1` à la place de 9.7.1 et son `charts.iife.js`, `echarts@6.1.0`, trois espaces de noms XML de fichiers Office) ; `import(` : deux
+  occurrences de plus (une phrase de commentaire ; `import('prosemirror-view')`, une bibliothèque native de l'app, par son nom, jamais par une adresse) ; trois `postMessage` dans la fenêtre à part du
+  diaporama (`slide-present.js`) au lieu d'un : de cette fenêtre vers l'app qui l'a ouverte (`STATE`, `BYE`, `READY`), jamais vers GFS ; aucun `fetch`, aucune fenêtre de plus.
 - Form+ à `cc21a27` (22/10, le porteur : « check ce qui est remonté des projets ») : trois commits de plus depuis `16701fe`. Son
   `GFS-ETAT.md` (`0614f73`, qui décrit `c249c4a`) dit les consignes 008 à 011 **faites** : le formulaire natif s'enregistre dans
   `FormPlus_Formulaires` (avec la fenêtre d'accord de l'app, une ligne par formulaire par `Definition.vsId`), les répondants, le lien

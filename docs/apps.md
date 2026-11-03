@@ -631,6 +631,12 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   étiquette : le porteur la pose). Publipostage+ offre aussi ses présentations à choisir (`actions.choisir`, `prototype/manifestes/publipostage.json`). Mesuré dans
   un vrai Grist avec une sonde, avec la vraie Publipostage+ à `134d043` et avec le vrai client du kit (`run-liens.mjs`, `run-liens-publipostage.mjs`,
   `run-liens-kit.mjs`). Tuesday le reprend par la consigne 005.
+- L'ambiance de GFS (03/11, le porteur : « Oui, ces quatre + la mienne ») : GFS livre le thème, cinq ambiances (Grist Factory, Pop, Papier, Brut, Néon) et la couleur libre (contrats 5.2, point 10 ; guide des apps,
+  règle 15). Le kit passe à 0.5.0 (le sélecteur de couleur, `4d7f556`) puis à 0.6.0 (`lombre33/grist-factory-kit` à `8afa569` : `Ambiance.start()`, ou `createAmbiance({ link, isDark })` pour une app qui garde
+  son propre lien), sans étiquette : le porteur les pose. Mesuré dans un vrai Grist avec une app écrite avec le kit (`run-ambiance-kit.mjs`). Les consignes : Publipostage+ **041** (elle garde son lien, donc
+  `createAmbiance`, et sa charte UI/UX gagne la section « Ambiances de GFS »), Form+ **016** (`kit/` de `c0c8660` à `8afa569`), Automation+ **006** et Grist-BI **004** (au lot où elles prennent le kit, la 003
+  d'Automation+ et le guide 1.2), Tuesday **010** (avec la 008 : un seul commit de kit ; le calendrier lit les jetons). Aucune app ne change d'ici là : seule, elle garde ses couleurs. Les graphiques de Grist-BI
+  gardent la palette du tableau de bord (choix prudent, dit dans la 004 ; la couleur libre pour eux serait une autre décision).
 - « Nouveau > Importer » (22/10, le porteur : « les imports possibles par Publipostage+ (Excel, docx, pptx…) il faudrait qu'ils soient aussi
   disponibles dans le menu Nouveau, sous-menu Import ? », puis sa réponse « Sous-menu Importer ») : GFS livre le sous-menu. Le
   manifeste déclare les formats (`actions.importer`, contrats 2.7, point 4), GFS ouvre le sélecteur de fichier et rend le `File` à l'app

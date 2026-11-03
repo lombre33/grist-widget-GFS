@@ -251,6 +251,8 @@ réponses, sans que l'app change.
   refusée, 403).
 - **Conséquence** (à confirmer au prototype) : un sous-cadre à origine opaque appelle l'API REST comme un widget servi par
   `github.io` aujourd'hui, avec le jeton de `getAccessToken` dans l'adresse.
+- **Un envoi** (POST, PUT, PATCH, DELETE) **avec un jeton exige en plus `X-Requested-With: XMLHttpRequest`**, sinon le navigateur ne rend que
+  « NetworkError » : mesuré le 03/11, section 14.
 
 ## 5. GitHub Pages et GitHub
 
@@ -783,3 +785,27 @@ La question de Tuesday (son `GFS-ETAT.md`) : son kanban et son calendrier font g
   (bug 568313, « Impossible to make <button>s draggable », corrigé dans la 147 ; le bug 1967645, ouvert contre la 138, a été fermé comme doublon de celui-là).
   Le Firefox du porteur au travail était en 140 avant sa mise à jour du 28/10 (version d'arrivée non donnée), celui de la maison en 158 : une puce de calendrier faite
   d'un `<button>` peut ne pas glisser chez lui. Une carte faite d'un `<article>` n'est pas touchée.
+
+## 14. L'envoi d'une pièce jointe par l'API REST (mesuré le 03/11)
+
+La question de l'étude PDF (lot 1 : GFS garde les PDF dans le document) : GFS peut-il envoyer un fichier, avec le jeton de `getAccessToken`, depuis sa page ? La sonde du
+vrai Grist (`labo/reel/`, section 3) a d'abord échoué chez le porteur (DINUM, Grist 1.7.19, Firefox 140, 03/11 12:03 UTC : « NetworkError when attempting to fetch resource »,
+même pour 0,1 Mo). Reproduit puis expliqué sur un **vrai serveur Grist 1.7.19** (l'image officielle `gristlabs/grist:1.7.19`, `labo/vrai-serveur.sh`), la page de la sonde sur
+une autre origine, Chromium (`labo/run-reel-serveur.mjs`, 15 vérifications).
+
+- **La cause** (`/grist/_build/app/server/lib/Authorizer.js` de l'image 1.7.19, lignes 238-245 et 474-482 ; source `app/server/lib/Authorizer.ts`, `resolveIdentity` et `addRequestUser`) :
+  un jeton `?auth=` ne donne pas d'identité explicite (`explicitAuth: false`, « Access tokens don't set a userId, so CSRF protection still applies »). Une requête qui n'est ni
+  GET, ni HEAD, ni OPTIONS doit alors porter `X-Requested-With: XMLHttpRequest` (ou `Content-Type: application/json`), sinon Grist répond **401** « Unauthenticated requests
+  require one of the headers… ».
+- **Pourquoi le navigateur ne dit rien** (`FlexServer.js`, `addApiMiddleware`, lignes 952-953) : `_userIdMiddleware` (où se trouve la garde) passe AVANT `_trustOriginsMiddleware`
+  (qui pose `Access-Control-Allow-Origin`). Le 401 part donc sans en-tête CORS, et le navigateur ne rend pas la réponse : Firefox dit « NetworkError when attempting to fetch
+  resource », Chromium « Failed to fetch » (sa console : « No 'Access-Control-Allow-Origin' header is present »). Rien n'est reçu ni gardé.
+- **Avec l'en-tête** : le navigateur envoie d'abord OPTIONS ; `trustOriginHandler` (`FlexServer.js`, ligne 2802) y répond 200 avec `Access-Control-Allow-Origin: *`,
+  `Allow-Methods: GET, PATCH, PUT, POST, DELETE, OPTIONS` et `Allow-Headers: Content-Type, X-Requested-With` (pas `Authorization`, comme pour toute origine non reconnue). L'envoi passe.
+  Mesuré avec l'en-tête, depuis la page d'une autre origine (celle de GFS) : `POST /attachments?auth=…`, champ `upload` → 200 et `[numéro]` ; le nom « Facture été (1).pdf » arrive intact
+  (accents, espaces, parenthèses) ; la fiche (`fileName`, `fileSize`) est dans la liste ; le téléchargement (`GET /attachments/:numéro/download?auth=…`) rend les mêmes octets avant comme après le
+  rattachement, en `application/pdf` ; la cellule d'une colonne `Attachments` s'écrit `['L', numéro]` et se relit pareil, brute et décodée ; remplacer, c'est un second envoi puis
+  `UpdateRecord` (l'ancienne pièce jointe reste listée, Grist l'efface seul au bout de 7 jours) ; **50 Mo acceptés** (aucune limite par défaut, 5 s en local). Le jeton d'écriture dure 900 000 ms.
+- **Les GET** (liste, téléchargement) n'ont pas besoin de l'en-tête. L'en-tête `Authorization` reste refusé par le navigateur (absent de `Allow-Headers`).
+- **Conséquence pour GFS** : tout envoi (et toute écriture REST) depuis une page du navigateur porte `X-Requested-With: XMLHttpRequest`. Les apps n'envoient rien : elles confient les octets à GFS.
+- **Pas mesuré** : le serveur du porteur avec l'en-tête (passerelle, taille maximale réelle : la sonde relancée le dira), Firefox (le labo n'a que Chromium).

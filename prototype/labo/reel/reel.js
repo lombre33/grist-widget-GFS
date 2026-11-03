@@ -7,7 +7,7 @@
 //   4. la taille maximale d'un envoi, seulement si la personne le demande (pj.js) : des fichiers d'essai de plus en plus gros, jusqu'au premier refus.
 // Le résultat est un texte à coller. Le jeton n'y figure jamais ; l'identifiant du document non plus.
 import { SANDBOX } from '../../js/frames.js';
-import { playAttachments, playSizes } from './pj.js?v=1';
+import { playAttachments, playSizes } from './pj.js?v=2';
 
 /* global grist */
 const rest = window.GFSRest;

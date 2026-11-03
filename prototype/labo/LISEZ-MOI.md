@@ -79,10 +79,27 @@ dirait « l'ouvreur est coupé » là où le Grist de la personne le garde. Fire
 | `run-cout-cadre`, `run-heavy` | le coût d'un cadre de plus ; la lecture des fichiers dans un document lourd |
 | `run-sondes` | la bibliothèque d'une extension (CDN et copie de GFS) sous six politiques d'app ; la matrice du rapport (mesure 4) est vérifiée, ligne par ligne |
 | `run-navigateur` | la page `navigateur/` jouée à la souris (voir plus bas) |
-| `run-reel` | la sonde `reel/` (lecture, écriture, pièces jointes, taille maximale), avec un répondeur REST de remplacement pour la tuyauterie (`rest-standin.mjs` : il reçoit un envoi multipart, rend les octets et refuse au-delà de 6 Mo) ; la cellule d'une colonne Attachments, elle, est celle du vrai Grist |
+| `run-reel` | la sonde `reel/` (lecture, écriture, pièces jointes, taille maximale), avec un répondeur REST de remplacement pour la tuyauterie (`rest-standin.mjs` : il reçoit un envoi multipart, rend les octets, refuse au-delà de 6 Mo, et copie ce que Grist répond : la demande préalable, et le 401 sans en-tête CORS d'une écriture sans `X-Requested-With`) ; la cellule d'une colonne Attachments, elle, est celle du vrai Grist |
+| `run-reel-serveur` | la même sonde contre un **vrai serveur Grist** (`vrai-serveur.sh`, Docker ; voir plus bas) : le jeton, la lecture REST depuis une autre origine et depuis un cadre isolé, l'envoi d'un PDF avec et sans l'en-tête `X-Requested-With`, la cellule Attachments, le remplacement, les paliers jusqu'à 50 Mo ; 15 vérifications |
 | `run-direct` | comment un widget apprend qu'une autre table que celle de sa section a changé (contrats 5.5) : la prévenance de Grist, un relais par `BroadcastChannel`, la relecture `fetchTable` à 100, 250, 500 et 1 000 ms, un réseau simulé, la taille de la table. Trois widgets de `sondes/direct/` posés directement dans Grist (ce ne sont pas des apps de GFS), une seule page donc une seule horloge ; le réseau réel n'y est pas |
 
 Les sondes (`sondes/`) sont des apps d'essai que GFS ne connaît pas : elles n'entrent dans le catalogue que pour la page du labo qui le demande. `sondes/direct/` fait exception : un widget que Grist reçoit tel quel, pour `run-direct`.
+
+## Un vrai serveur Grist, pour ce que grist-static n'a pas
+
+grist-static n'a ni API REST ni jeton, et le répondeur de `run-reel` est un faux écrit par nous : il avait caché la garde de Grist contre les formulaires d'un autre site (le 03/11, la sonde
+échouait chez le porteur, pas dans le labo ; `docs/faits-verifies.md`, section 14). Toute mesure qui dépend du serveur (REST, jetons, CORS, pièces jointes, taille d'un envoi) se joue donc
+d'abord sur un **vrai serveur** :
+
+```bash
+cd prototype/labo
+bash vrai-serveur.sh                                     # Docker : l'image officielle gristlabs/grist (1.7.19 par défaut, la version du porteur), sur 127.0.0.1:8484
+REPO_DIR="$(realpath ../..)" node run-reel-serveur.mjs   # la sonde reel/ ajoutée à un document créé pour l'essai, jouée à la vraie souris ; « OK » ou « ÉCHEC »
+```
+
+Dans le conteneur du cloud, le script lance lui-même le démon Docker (sans réseau de pont) ; l'image se tire seule, la première fois. Le serveur n'a qu'une personne d'essai
+(`essai@example.com`), ses documents sont dans `/tmp/grist-persist`. `GRIST_VERSION`, `GRIST_PORT` (script) et `GRIST_URL` (essai) changent la version, le port et l'adresse. Chromium seul :
+ce que le Firefox du porteur dit, seul le porteur le mesure (la sonde publiée, ci-dessous).
 
 ## Ce que seul ton navigateur ou ton Grist peut dire
 
@@ -95,7 +112,7 @@ Deux pages se publient avec le reste du dépôt (GitHub Pages) et se lancent d'u
    `https://lombre33.github.io/grist-widget-GFS/prototype/labo/reel/index.html`, accorde-lui l'accès complet (panneau de droite), note la version de Grist
    (menu Aide, « À propos de Grist »), lance la **lecture** (elle ne modifie rien), puis, si tu le veux, l'**écriture** (une confirmation te sera demandée : elle
    crée une table d'essai, joue dessus une vingtaine d'actions de Grist et la supprime), les **pièces jointes** (une confirmation aussi : elle envoie deux petits
-   PDF d'essai avec un jeton qui écrit, les range dans la cellule d'une table d'essai, les relit, les télécharge, puis supprime la table ; les deux fichiers restent
+   PDF d'essai avec un jeton qui écrit (et, pour comparer, un envoi sans l'en-tête `X-Requested-With`, que Grist doit refuser), les range dans la cellule d'une table d'essai, les relit, les télécharge, puis supprime la table ; les deux fichiers restent
    7 jours dans le document avant que Grist les efface) et la **taille maximale** (une confirmation aussi : des fichiers d'essai de 0,1 à 50 Mo, jusqu'au premier
    refus, 77 Mo au plus), puis « Copier le résultat ». Le texte ne contient ni le jeton ni l'identifiant du document.
 

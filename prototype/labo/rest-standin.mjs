@@ -1,8 +1,10 @@
 // Un répondeur REST de remplacement, POUR LA TUYAUTERIE seulement : il sert à vérifier que la sonde du vrai Grist (labo/reel/) envoie ses requêtes, lit les réponses, les
 // range et ne laisse pas passer le jeton. Il ne mesure rien de Grist : grist-static ne délivre pas de jeton (« no access tokens ») et n'a pas d'API REST, d'où la
-// nécessité de la vraie instance du porteur. Il suit ce que le code de Grist dit (docs/faits-verifies.md, section 4) : à une origine non reconnue, `Access-Control-Allow-Origin: *`
-// sans identifiants, et une requête qui porte un en-tête `Authorization` n'est pas admise ; un envoi est un formulaire multipart dont le champ `upload` porte le fichier,
-// la réponse est la liste des numéros de pièces jointes créées (DocApi.ts). Un second serveur sert les fichiers du dépôt sur un autre port,
+// nécessité d'un vrai serveur (`run-reel-serveur.mjs`) ou de la vraie instance du porteur. Il copie ce que le vrai serveur 1.7.19 a répondu (faits-verifies.md, section 4) :
+// à une origine non reconnue, `Access-Control-Allow-Origin: *` sans identifiants, et une requête qui porte un en-tête `Authorization` n'est pas admise ;
+// une requête qui écrit avec un jeton doit porter `X-Requested-With: XMLHttpRequest`, sinon un 401 SANS en-tête CORS (le navigateur ne rend que l'échec) ;
+// un envoi est un formulaire multipart dont le champ `upload` porte le fichier, la réponse est la liste des numéros de pièces jointes créées (DocApi.ts).
+// Un second serveur sert les fichiers du dépôt sur un autre port,
 // car la sonde interroge une AUTRE origine que la sienne (sur la même origine, Chromium n'envoie pas la demande préalable d'un cadre isolé : l'essai ne montrerait rien) ;
 // les deux pages de la sonde y reçoivent, pour CET essai, l'adresse du répondeur dans leur `connect-src` (les fichiers du dépôt ne sont pas touchés).
 import { createServer } from 'node:http';
@@ -12,6 +14,7 @@ const TOKEN = 'JETON-DE-TUYAUTERIE';
 const uploaded = new Map(); // numéro -> { name, bytes } : les fichiers reçus
 let nextId = 8;
 let maxUploadBytes = Infinity;
+let refusedByGuard = 0; // les requêtes qui écrivent, refusées faute de l'en-tête X-Requested-With
 const ROUTES = {
   '/tables': () => ({ tables: [{ id: 'Clients' }, { id: 'Commandes' }] }),
   '/tables/Clients/records': () => ({ records: [{ id: 1, fields: {} }] }),
@@ -52,12 +55,25 @@ async function receive(request, response, cors) {
   nextId += 1;
 }
 
+// La garde de Grist contre les formulaires d'un autre site (Authorizer.ts, addRequestUser) : un jeton ne tient pas lieu d'identité (« CSRF protection still applies »), une requête qui écrit
+// doit porter `X-Requested-With: XMLHttpRequest` ou un contenu JSON. Le refus part AVANT l'intergiciel CORS : aucun en-tête CORS, le navigateur ne rend pas la réponse.
+const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS'];
+const guardRefuses = request => !SAFE_METHODS.includes(request.method)
+  && request.headers['x-requested-with'] !== 'XMLHttpRequest' && request.headers['content-type'] !== 'application/json';
+const PREFLIGHT = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, PATCH, PUT, POST, DELETE, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, X-Requested-With' };
+
 async function answer(request, response) {
   const url = new URL(request.url, 'http://127.0.0.1');
   const cors = { 'Access-Control-Allow-Origin': '*' };
   if (process.env.STANDIN_LOG) process.stdout.write(`[répondeur] ${request.method} ${url.pathname.replace(/^.*\/docs\/[^/]+/, '')} origine=${request.headers.origin} authorization=${Boolean(request.headers.authorization)} demande=${request.headers['access-control-request-headers']}\n`);
-  // La demande préalable (l'en-tête Authorization en provoque une) : admise sans l'en-tête demandé, donc refusée par le navigateur.
-  if (request.method === 'OPTIONS') { response.writeHead(204, cors).end(); return; }
+  // La demande préalable, comme Grist pour une origine inconnue : seuls Content-Type et X-Requested-With sont admis, donc l'en-tête Authorization est refusé par le navigateur.
+  if (request.method === 'OPTIONS') { response.writeHead(200, PREFLIGHT).end('OK'); return; }
+  if (guardRefuses(request)) {
+    await readBody(request);
+    refusedByGuard += 1;
+    response.writeHead(401, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: "Unauthenticated requests require one of the headers 'Content-Type: application/json' or 'X-Requested-With: XMLHttpRequest'" }));
+    return;
+  }
   const path = url.pathname.replace(/^\/o\/docs\/api\/docs\/[^/]+/, '');
   if (request.headers.authorization || url.searchParams.get('auth') !== TOKEN) { response.writeHead(403, cors).end('refusé'); return; }
   if (request.method === 'POST' && path === '/attachments') { await receive(request, response, cors); return; }
@@ -69,15 +85,17 @@ async function answer(request, response) {
   response.writeHead(200, { ...cors, 'Content-Type': 'application/json' }).end(JSON.stringify(route()));
 }
 
-// Le répondeur sur `restPort`, les pages du dépôt sur `pagePort` ; `maxUploadBytes` : au-delà, un envoi reçoit 413 ; `uploads()` : les fichiers reçus ; `close()` arrête les deux serveurs.
+// Le répondeur sur `restPort`, les pages du dépôt sur `pagePort` ; `maxUploadBytes` : au-delà, un envoi reçoit 413 ; `uploads()` : les fichiers reçus ; `refused()` : les requêtes qui écrivent
+// refusées faute de l'en-tête ; `close()` arrête les deux serveurs.
 export async function startStandIn({ restPort, pagePort, repoDir, maxUploadBytes: limit = Infinity }) {
   maxUploadBytes = limit;
   uploaded.clear();
   nextId = 8;
+  refusedByGuard = 0;
   const rest = createServer(answer);
   const pages = createServer(serve(repoDir, undefined, openConnect(`http://127.0.0.1:${restPort}`)));
   await Promise.all([rest, pages].map((server, index) => new Promise(resolve => server.listen([restPort, pagePort][index], '127.0.0.1', resolve))));
-  return { close: () => { rest.close(); pages.close(); }, uploads: () => [...uploaded].map(([id, file]) => ({ id, name: file.name, size: file.bytes.length })) };
+  return { close: () => { rest.close(); pages.close(); }, refused: () => refusedByGuard, uploads: () => [...uploaded].map(([id, file]) => ({ id, name: file.name, size: file.bytes.length })) };
 }
 
 export const STANDIN_TOKEN = TOKEN;

@@ -13,12 +13,12 @@ async function openDocument(page) {
 }
 
 // La personne ajoute un widget personnalisé à la page par son adresse et accepte l'avertissement de Grist.
-async function addCustomWidget(page, address) {
+export async function addCustomWidget(page, address) {
   await page.locator('.test-dp-add-new').first().click();
   await page.locator('.test-dp-add-widget-to-page').click();
   await page.waitForTimeout(500);
   await page.locator('.test-wselect-type').filter({ hasText: /^Custom$/ }).click();
-  await page.locator('.test-wselect-table-label').filter({ hasText: /^clients$/ }).first().click().catch(() => {});
+  await page.locator('.test-wselect-table-label').filter({ hasText: /^clients$/i }).first().click().catch(() => {});
   await page.getByText('Add to page', { exact: true }).click();
   await page.waitForTimeout(1500);
   await page.locator('.test-custom-widget-gallery-widget-name').filter({ hasText: 'Custom URL' }).click();
@@ -31,7 +31,7 @@ async function addCustomWidget(page, address) {
 }
 
 // La personne règle la section sur « Full document access » dans le panneau de droite.
-async function chooseFullAccess(page) {
+export async function chooseFullAccess(page) {
   await page.mouse.click(1263, 24);
   await page.waitForTimeout(800);
   await page.getByText('CLIENTS Custom', { exact: false }).first().click({ position: { x: 20, y: 5 } }).catch(() => {});

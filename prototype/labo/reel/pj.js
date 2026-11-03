@@ -82,11 +82,15 @@ function parseIds(text) {
 }
 
 // Un envoi comme GFS le fera : un formulaire multipart dont le champ `upload` porte le fichier. Rend { statut, ids, ms } ou { statut, message, ms }.
-async function upload(env, token, name, bytes) {
+// Grist exige, pour toute requête qui écrit avec un jeton, l'en-tête `X-Requested-With: XMLHttpRequest` (garde contre les formulaires d'un autre site : Authorizer.ts, « Access
+// tokens don't set a userId, so CSRF protection still applies »). Sans lui, la réponse est un 401 que le serveur n'accompagne d'aucun en-tête CORS : le navigateur ne la rend pas
+// et ne dit que « NetworkError ». Avec lui, la requête est précédée d'une demande préalable (OPTIONS) que Grist accepte pour une origine inconnue.
+async function upload(env, token, name, bytes, { header = true } = {}) {
   const form = new FormData();
   form.append('upload', new Blob([bytes], { type: 'application/pdf' }), name);
   const started = performance.now();
-  const answer = await request(url(token, '/attachments'), { method: 'POST', body: form }, 'text');
+  const options = { method: 'POST', body: form, ...(header ? { headers: { 'X-Requested-With': 'XMLHttpRequest' } } : {}) };
+  const answer = await request(url(token, '/attachments'), options, 'text');
   const ms = Math.round(performance.now() - started);
   const ids = answer.ok ? parseIds(answer.body) : null;
   return ids ? { statut: answer.statut, ids, ms } : { statut: answer.statut, message: env.cut(answer.body || 'réponse vide', 80), ms };
@@ -118,6 +122,11 @@ async function applyActions(env, actions) {
   return Array.isArray(result) ? result : (result && result.retValues) || [];
 }
 const rawDoc = env => env.grist.rpc.getStub('GristDocAPI@grist');
+
+// Pour comparer : le même envoi sans l'en-tête. Un refus attendu (le navigateur ne rend que « NetworkError ») ; un envoi qui passe laisse une pièce jointe que Grist efface seul.
+async function sendWithoutHeader(env, ctx) {
+  return upload(env, ctx.token, NAME, miniPdf('Essai GFS 0'), { header: false });
+}
 
 async function sendFirst(env, ctx) {
   ctx.first = { bytes: miniPdf('Essai GFS 1') };
@@ -164,7 +173,8 @@ async function oldOneStillListed(env, ctx) {
 
 // [nom de la ligne, étape, critique ?] : une étape critique qui échoue arrête l'essai.
 const STEPS = [
-  ['envoi d\'un PDF d\'une page (nom « Facture été (1).pdf »)', sendFirst, true],
+  ['envoi sans l\'en-tête X-Requested-With (pour comparer)', sendWithoutHeader, false],
+  ['envoi d\'un PDF d\'une page (nom « Facture été (1).pdf », avec l\'en-tête X-Requested-With)', sendFirst, true],
   ['fiche dans la liste des pièces jointes', readCard, false],
   ['téléchargement avant le rattachement à une cellule', (env, ctx) => download(env, ctx.token, ctx.first.id, ctx.first.bytes), false],
   ['table d\'essai avec une colonne de type Attachments', createTable, true],

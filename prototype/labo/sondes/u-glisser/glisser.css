@@ -1,0 +1,12 @@
+  html, body { height: 100%; margin: 0; }
+  body { font: 13px/1.4 system-ui, sans-serif; background: #ffffff; color: #1b2430; padding: 8px 12px; box-sizing: border-box; }
+  @media (prefers-color-scheme: dark) { body { background: #1e2430; color: #e7ecf5; } }
+  h1 { font-size: 14px; margin: 0 0 6px; }
+  .colonnes, .semaine { display: flex; gap: 6px; }
+  .colonnes { margin-bottom: 8px; }
+  .colonnes > section { flex: 1; min-height: 120px; border: 1px solid #8a94a6; border-radius: 6px; padding: 4px; }
+  .semaine > div { flex: 1; min-height: 70px; border: 1px solid #8a94a6; border-radius: 4px; padding: 2px; font-size: 11px; }
+  h2 { font-size: 12px; margin: 0 0 4px; }
+  .carte { display: block; border: 1px solid #5f6b7e; border-radius: 4px; padding: 4px 6px; margin-bottom: 4px; background: #e8f0fe; color: #1b2430; cursor: grab; }
+  .puce { display: block; width: 100%; border: 1px solid #5f6b7e; border-radius: 3px; padding: 2px 4px; background: #dff3e4; color: #1b2430; font: inherit; cursor: grab; }
+  .cible { outline: 2px solid #1a73e8; }

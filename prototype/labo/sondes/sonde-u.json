@@ -1,0 +1,27 @@
+{
+  "contrat": 0,
+  "id": "sonde-u",
+  "nom": {
+    "fr": "Sonde U",
+    "en": "Probe U"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Une app qui fait glisser et déposer (API HTML5 : dragstart, dragover, drop), comme le kanban et le calendrier de Tuesday",
+    "en": "An app that drags and drops (HTML5 API: dragstart, dragover, drop), like the Tuesday kanban and calendar"
+  },
+  "icone": "doc",
+  "entree": "index.html",
+  "tables": {
+    "prefixe": "SondeU_"
+  },
+  "reglages": [],
+  "permissions": {
+    "acces": "none"
+  },
+  "extensions": [],
+  "actions": {
+    "ouvrir": [],
+    "choisir": []
+  }
+}

@@ -768,3 +768,18 @@ Safari ne sont pas mesurés (le labo n'a que Chromium).
 - **Publipostage+ offre à choisir** ses documents, ses grilles et ses présentations (`actions.choisir`) ; un e-mail, une macro, un
   type que le manifeste ne connaît pas (`diaporama` dans le document d'essai) ne se listent pas en mode choix. Une présentation est
   grisée tant que l'extension « Diapositives » est éteinte ; le double-clic ouvre la fenêtre des apps sur la ligne de l'extension.
+
+## 13. Le glisser-déposer HTML5 dans le cadre d'une app (03/11)
+
+La question de Tuesday (son `GFS-ETAT.md`) : son kanban et son calendrier font glisser des tâches avec l'API HTML5 ; marche-t-elle dans le sous-cadre de GFS ?
+
+- **Mesuré** dans un vrai Grist (grist-static 0.1.6, Chromium), à 700 × 400, avec la souris de Playwright (`labo/run-glisser.mjs`, la sonde U de `labo/sondes/u-glisser/`,
+  13 vérifications en français et clair, 13 en anglais et sombre) : dans le sous-cadre que GFS pose (`sandbox="allow-scripts allow-forms allow-popups allow-modals
+  allow-downloads"`, sans `allow-same-origin`), sous une politique sans style en ligne comme celle de Tuesday, l'app reçoit `dragstart`, `dragover`, `drop` et
+  `dragend` ; `dataTransfer` garde son texte d'un événement à l'autre ; l'effet retenu est `move` sur une cible et `none` hors de toute cible ; le cadre n'est pas
+  rechargé et GFS n'avertit de rien. Vrai d'un `<article draggable>` (la carte du kanban) comme d'un `<button draggable>` (la puce du calendrier de Tuesday).
+- **Pas mesuré** : Firefox (le labo n'a que Chromium ; `LAB_BROWSER=firefox` sur une machine qui l'a), le tactile, le clavier.
+- **Lu ailleurs, pas mesuré ici** (fiches de Mozilla lues le 03/11) : un `<button draggable="true">` ne démarre pas de glissement dans Firefox avant la 147
+  (bug 568313, « Impossible to make <button>s draggable », corrigé dans la 147 ; le bug 1967645, ouvert contre la 138, a été fermé comme doublon de celui-là).
+  Le Firefox du porteur au travail était en 140 avant sa mise à jour du 28/10 (version d'arrivée non donnée), celui de la maison en 158 : une puce de calendrier faite
+  d'un `<button>` peut ne pas glisser chez lui. Une carte faite d'un `<article>` n'est pas touchée.

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Sonde U</title>
+<!-- Politique de l'app sonde U : celle de Tuesday, sans style en ligne (default-src 'none', script-src 'self', style-src 'self', frame-src 'none', form-action 'none'). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'">
+<link rel="stylesheet" href="glisser.css">
+</head>
+<body>
+<h1>Sonde U : glisser-déposer HTML5</h1>
+<div class="colonnes">
+  <section data-zone="afaire" id="col-afaire"><h2>À faire</h2><article class="carte" id="carte-1" draggable="true" tabindex="0">Carte 1</article><article class="carte" id="carte-2" draggable="true" tabindex="0">Carte 2</article></section>
+  <section data-zone="encours" id="col-encours"><h2>En cours</h2></section>
+  <section data-zone="fait" id="col-fait"><h2>Fait</h2></section>
+</div>
+<div class="semaine">
+  <div data-zone="lundi" id="jour-lundi">L<button type="button" class="puce" id="puce-1" draggable="true">Tâche (bouton)</button></div>
+  <div data-zone="mardi" id="jour-mardi">M</div>
+  <div data-zone="mercredi" id="jour-mercredi">M</div>
+  <div data-zone="jeudi" id="jour-jeudi">J</div>
+</div>
+<script src="glisser.js"></script>
+</body>
+</html>

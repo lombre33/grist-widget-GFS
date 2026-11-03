@@ -57,6 +57,7 @@ export function makePolicy(manifest, catalogue = []) {
     jeton: perm.jeton || null,
     formules: Boolean(perm.formules),
     structure: Boolean(perm.structure),
+    lienPublic: perm.lienPublic && Array.isArray(perm.lienPublic.lit) ? perm.lienPublic.lit : [],
     reglages: new Set(manifest.reglages || []),
   };
 }
@@ -86,7 +87,7 @@ export function classify(policy, tableId) {
 }
 
 // Un motif est un nom, un préfixe suivi de « * » ou « * » seul ; « * » ne désigne que les tables de la personne (3.2, point 2).
-function covers(patterns, tableId, cls) {
+export function covers(patterns, tableId, cls) {
   const n = norm(tableId);
   return patterns.some(pattern => {
     if (pattern === '*') return cls === 'personne';
@@ -94,6 +95,10 @@ function covers(patterns, tableId, cls) {
     return norm(pattern) === n;
   });
 }
+
+// Une table de l'app que son manifeste déclare lisible par un lien public (`permissions.lienPublic.lit`, contrats 3.3 point 9 et 11.9 point 4c) : la seule que GFS propose
+// encore à la personne, pour un lien public, parmi les tables de l'app qui publie.
+export const publiclyReadable = (policy, tableId) => classify(policy, tableId) === 'propre' && covers(policy.lienPublic, tableId, 'propre');
 
 export function readRefusal(policy, tableId) {
   const cls = classify(policy, tableId);

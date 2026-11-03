@@ -551,9 +551,10 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   relu : 13 fichiers, 1 411 lignes de plus dont 640 de ses essais ; les mêmes adresses, les mêmes 7 verbes d'actions de Grist, un seul appel de plus à l'API de Grist, le
   jeton en lecture seule pour télécharger une pièce jointe choisie comme image, autorisé le 22/10 ; le manifeste de l'app ne change pas) ; les essais du labo refaits pour
   la nouvelle app (`f02a03a` : `run-form` 48 vérifications et `run-form-seul` 12, toutes vertes ; les faits sont dans `faits-verifies.md`, 2) ; 43 vérifications ciblées sans
-  échec, 89 avec le courtier, la publication et le filtre ; l'`INDEX.md` (012, 013 et 014 faites, les deux limites dites sur la 013). Une question reste ouverte pour le
-  porteur (carte du 02/11) : un lien doit-il pouvoir lire la petite table de son formulaire (contrats 11.9, point 4c, qui prévoyait de refuser cette lecture) ? « Questions
-  pour GFS » : aucune. « Demandes à GFS » : Leaflet 1.9.4 (le type de question « Lieu sur carte »), qui attend « demande de Form+ ».
+  échec, 89 avec le courtier, la publication et le filtre ; l'`INDEX.md` (012, 013 et 014 faites, les deux limites dites sur la 013). La question de la carte du 02/11 (un lien
+  doit-il pouvoir lire la petite table de son formulaire ?) est **tranchée le 03/11, « Petites tables déclarées seulement »** : un lien ne lit que les petites tables que le
+  manifeste déclare (`permissions.lienPublic` : `FormPlus_Pub_*`), toute autre table de l'app est refusée sans fenêtre, `FormPlus_Formulaires` en tête ; codé et mesuré (contrats 3.4,
+  point 5, et 11.9, point 4c) ; consigne **015**. « Questions pour GFS » : aucune. « Demandes à GFS » : Leaflet 1.9.4 (le type de question « Lieu sur carte »), qui attend « demande de Form+ ».
 - Grist-BI à `586c7c4` (22/10) : deux commits de plus depuis `23647eb`, qui ne touchent que son `GFS-ETAT.md` (le code reste celui de
   `23647eb`). Il dit la 001 faite (écarts à la règle 4 : ses trois tables internes, `BI_Dashboard_Config`, `BI_Dashboard_Comments` et
   `BI_Dashboard_UserProbe`, se créent au démarrage sans l'accord de la personne ; à la règle 11 : pas de CSP, déjà au guide) et la 002

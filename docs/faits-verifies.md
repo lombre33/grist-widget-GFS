@@ -186,6 +186,15 @@ réponses, sans que l'app change.
   supprimée, et GFS ne demande ni ne refuse rien. Le courtier ne refuse rien de tout cela et l'app ne lève aucune erreur de script. **Non mesuré par GFS** : ce
   qu'un vrai lien lit de la petite table. Form+ l'a mesuré sur un Grist Docker avec une vraie clé de partage (`GFS-ETAT.md` de l'app, 013 point 1) : le lien ne
   rend plus que la ligne de CE formulaire, là où la colonne partagée d'avant rendait les définitions de tous, clés de partage comprises.
+- Mesuré le 03/11 (`labo/run-publication.mjs`, 36 vérifications, en français / clair, anglais / sombre, français / sombre et anglais / clair ; `labo/run-form.mjs`, 48,
+  en français / clair et anglais / sombre ; grist-static 0.1.6, Chromium, à 700 × 400, à la vraie souris et au vrai clavier) avec Form+ à `fd5384a` : **parmi les tables de
+  l'app qui publie, un lien public ne lit que les petites tables que le manifeste déclare** (`permissions.lienPublic`, Form+ : `FormPlus_Pub_*` ; décision du porteur du
+  03/11). Un formulaire dont la Référence lit `FormPlus_Formulaires.Definition` (la table qui garde la définition et la clé de partage de tous les formulaires) est
+  **refusé sans fenêtre** (`GFS_REFUSE`, « … FormPlus_Formulaires à la lecture … son manifeste ne déclare pas lisible par un lien public ») et la section n'est pas publiée ;
+  celui dont la Référence lit la petite table `FormPlus_Pub_9` ouvre la fenêtre de GFS (« ajouter des lignes à la table « Courriers » », puis « lire toutes les valeurs de la
+  colonne « Definition » de la table « FormPlus_Pub_9 » »), qui tient dans le panneau sans défilement, en clair et en sombre, en français et en anglais, et le lot passe avec
+  l'accord. Avec la vraie Form+, rien de ce qu'elle fait n'est refusé et aucune fenêtre ne s'ajoute (les mêmes deux de GFS à l'enregistrement par le lien). **Non mesuré** :
+  ce que Grist ouvre vraiment à qui a le lien (10.11), grist-static n'a pas de partages.
 
 ## 3. Grist : données
 

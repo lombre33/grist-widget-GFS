@@ -9,6 +9,9 @@
 //   4. Publier une deuxième section sur la même table (tous ses champs, la Référence comprise) : rien de plus n'est ouvert, aucune fenêtre ; publier une autre table : la fenêtre la nomme,
 //      sans colonne cachée à dire.
 //   4 ter. Une table de GFS, d'une autre app, ou de l'app qui publie : refus sans fenêtre (rien n'est proposé à la personne), rien d'écrit.
+//   4 quater. Parmi les tables de l'app qui publie, un lien public ne lit que les petites tables que son manifeste déclare (`permissions.lienPublic`, décision du porteur du 03/11) :
+//      un formulaire dont la Référence lit `FormPlus_Formulaires` (la définition et la clé de partage de tous les formulaires) est refusé sans fenêtre ; celui dont la Référence lit
+//      `FormPlus_Pub_9` (la petite table d'UN formulaire) ouvre la fenêtre, qui dit la colonne lue, et passe avec l'accord.
 //   5. Ce que le courtier ne juge pas est refusé sans fenêtre (« ajouter ou mettre à jour » sur les champs d'une section), et rien de tout cela n'a été écrit par un refus.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { startLab } from './lab-setup.mjs';
@@ -20,9 +23,11 @@ const run = `publication-${lang}-${scheme}`;
 const FORM_URL = /(apps\/form|FormPlus)\//;
 const WORDS = lang === 'fr'
   ? { title: /Ouvrir au public ?/, app: /Form\+ veut ouvrir/, write: /ajouter des lignes à la table « Reponses »/, hidden: /ces colonnes que le formulaire ne montre pas : Statut, Repas/, read: /lire toutes les valeurs de la colonne « Nom » de la table « Menus »/,
-    plain: /ajouter des lignes à la table « Notes »/, note: /Rien ne limite le nombre de lignes.*Dépublier/s, yes: 'Autoriser', no: 'Refuser' }
+    plain: /ajouter des lignes à la table « Notes »/, note: /Rien ne limite le nombre de lignes.*Dépublier/s, yes: 'Autoriser', no: 'Refuser',
+    mail: /ajouter des lignes à la table « Courriers »/, small: /lire toutes les valeurs de la colonne « Definition » de la table « FormPlus_Pub_9 »/ }
   : { title: /Open to the public\?/, app: /Form\+ wants to open/, write: /add rows to the table “Reponses”/, hidden: /these columns the form does not show: Statut, Repas/, read: /read every value of the column “Nom” of the table “Menus”/,
-    plain: /add rows to the table “Notes”/, note: /Nothing limits how many rows.*Unpublish/s, yes: 'Allow', no: 'Refuse' };
+    plain: /add rows to the table “Notes”/, note: /Nothing limits how many rows.*Unpublish/s, yes: 'Allow', no: 'Refuse',
+    mail: /add rows to the table “Courriers”/, small: /read every value of the column “Definition” of the table “FormPlus_Pub_9”/ };
 
 const lab = await startLab({ lang, colorScheme: scheme });
 const { page } = lab;
@@ -45,17 +50,31 @@ await act([['AddTable', 'Notes', [{ id: 'Texte', type: 'Text' }]]]);
 await act([['AddColumn', 'Reponses', 'Repas', { type: 'Ref:Menus' }]]);
 // Trois tables qu'un lien public n'ouvre jamais : celle de GFS, celle d'une autre app (Publipostage+), celle de l'app qui publie (Form+).
 for (const name of ['GFS_Zone', 'Publipostage_Zone', 'FormPlus_Zone']) await act([['AddTable', name, [{ id: 'Nom', type: 'Text' }]]]);
+// Parmi les tables de l'app qui publie : `FormPlus_Formulaires` (la définition et la clé de partage de tous ses formulaires), que le manifeste ne déclare pas lisible par un lien public,
+// et `FormPlus_Pub_9`, la petite table d'UN formulaire, qu'il déclare (`FormPlus_Pub_*`). `Dossiers` et `Courriers` (tables de la personne) les lisent chacune par une Référence.
+for (const name of ['FormPlus_Formulaires', 'FormPlus_Pub_9']) await act([['AddTable', name, [{ id: 'Definition', type: 'Text' }]]]);
+for (const [name, ref] of [['Dossiers', 'FormPlus_Formulaires'], ['Courriers', 'FormPlus_Pub_9']]) {
+  await act([['AddTable', name, [{ id: 'Nom', type: 'Text' }]]]);
+  await act([['AddColumn', name, 'Definition', { type: `Ref:${ref}` }]]);
+}
 const tables = await table('_grist_Tables');
 const tableRef = tableId => tables.id[tables.tableId.indexOf(tableId)];
 const columns = await table('_grist_Tables_column');
 const columnRef = (tableId, colId) => columns.id.find((id, i) => columns.parentId[i] === tableRef(tableId) && columns.colId[i] === colId);
 await act([['UpdateRecord', '_grist_Tables_column', columnRef('Reponses', 'Repas'), { visibleCol: columnRef('Menus', 'Nom') }]]);
+for (const [name, target] of [['Dossiers', 'FormPlus_Formulaires'], ['Courriers', 'FormPlus_Pub_9']]) {
+  await act([['UpdateRecord', '_grist_Tables_column', columnRef(name, 'Definition'), { visibleCol: columnRef(target, 'Definition') }]]);
+}
 const createdA = await act([['CreateViewSection', tableRef('Reponses'), 0, 'form', null, null]]);
 const createdB = await act([['CreateViewSection', tableRef('Reponses'), 0, 'form', null, null]]);
 const createdC = await act([['CreateViewSection', tableRef('Notes'), 0, 'form', null, null]]);
 const protectedSections = [];
 for (const name of ['GFS_Zone', 'Publipostage_Zone', 'FormPlus_Zone']) protectedSections.push([name, (await act([['CreateViewSection', tableRef(name), 0, 'form', null, null]])).retValues[0].sectionRef]);
 const [sectionA, sectionB, sectionC] = [createdA, createdB, createdC].map(made => made.retValues[0].sectionRef);
+// Un formulaire sur chacune des deux tables qui lisent une table de l'app : leur champ Référence est déjà dans la section, la publication ouvre donc d'un coup l'ajout et la lecture.
+const lateSections = [];
+for (const name of ['Dossiers', 'Courriers']) lateSections.push((await act([['CreateViewSection', tableRef(name), 0, 'form', null, null]])).retValues[0].sectionRef);
+const [sectionD, sectionE] = lateSections;
 host = await lab.gfsFrame(/access=full/);
 await lab.gfsReady(host);
 // Les champs de la section A : Nom et Email seulement (Statut et Repas ne sont pas dans le formulaire).
@@ -65,9 +84,12 @@ const drop = fields.id.filter((id, i) => fields.parentId[i] === sectionA && [col
 await act(drop.map(id => ['RemoveRecord', '_grist_Views_section_field', id]));
 const sections = () => table('_grist_Views_section');
 const optionsOf = async id => { const data = await sections(); return data.shareOptions[data.id.indexOf(id)]; };
-say('document :', JSON.stringify({ sections: [sectionA, sectionB, sectionC], retirés: drop.length }));
+say('document :', JSON.stringify({ sections: [sectionA, sectionB, sectionC, sectionD, sectionE], retirés: drop.length }));
 check('le document de départ : aucune section publiée, un formulaire montre Nom et Email seulement',
-  !(await optionsOf(sectionA)) && !(await optionsOf(sectionB)) && !(await optionsOf(sectionC)) && drop.length === 2, { drop });
+  !(await optionsOf(sectionA)) && !(await optionsOf(sectionB)) && !(await optionsOf(sectionC)) && !(await optionsOf(sectionD)) && !(await optionsOf(sectionE)) && drop.length === 2, { drop });
+const fieldsOfLate = await fieldsNow();
+check('les formulaires D et E portent chacun son champ Référence (vers FormPlus_Formulaires, vers FormPlus_Pub_9), posé par Grist à la création',
+  [[sectionD, 'Dossiers'], [sectionE, 'Courriers']].every(([section, name]) => fieldsOfLate.parentId.some((parent, i) => parent === section && fieldsOfLate.colRef[i] === columnRef(name, 'Definition'))), { sectionD, sectionE });
 
 // ----- L'app : Form+, dans son sous-cadre isolé.
 const app = await lab.openApp('form', FORM_URL, host);
@@ -186,6 +208,22 @@ for (const [name, section] of protectedSections) {
   check(`la table ${name} n'est jamais ouverte au public : refus sans fenêtre, rien d'écrit`,
     !result.ok && result.code === 'GFS_REFUSE' && result.message.includes(name) && /à l'ajout/.test(result.message) && await noAsk() && !(await optionsOf(section)), result);
 }
+
+// ----- 4 quater. Parmi les tables de l'app qui publie, un lien public ne lit que les petites tables que le manifeste déclare (contrats 3.3 point 9 et 11.9 point 4c, décision du porteur, 03/11).
+await launch(publish(sectionD));
+result = await outcome();
+check('la table qui garde la définition et la clé de partage de tous les formulaires (FormPlus_Formulaires) n\'est jamais lisible par un lien public : refus sans fenêtre, rien d\'écrit',
+  !result.ok && result.code === 'GFS_REFUSE' && result.message.includes('FormPlus_Formulaires à la lecture') && /permissions\.lienPublic/.test(result.message) && await noAsk() && !(await optionsOf(sectionD)), result);
+await launch(publish(sectionE));
+check('la petite table d\'UN formulaire, que le manifeste déclare (FormPlus_Pub_9) : la fenêtre s\'ouvre', await askSeen());
+facts = await questionFacts();
+say('la fenêtre :', JSON.stringify(facts));
+check('elle dit la table qui reçoit les lignes, puis la colonne lue dans la petite table', facts.items.length === 2 && WORDS.mail.test(facts.items[0]) && WORDS.small.test(facts.items[1]), facts.items);
+check('elle tient dans le panneau de 700 × 400, sans défilement', facts.inPanel && facts.whole && facts.size[0] === 700 && facts.size[1] === 400, facts);
+await lab.shotPanel(run, '4-petite-table', host);
+await host.locator('[data-fk="ask-yes"]').click();
+result = await outcome();
+check('« Autoriser » : le lot passe, le formulaire est publié', result.ok && /"publish":\s*true/.test(await optionsOf(sectionE)), result);
 
 // ----- 5. Ce que le courtier ne sait pas juger est refusé sans fenêtre.
 await launch([['AddOrUpdateRecord', '_grist_Views_section_field', { parentId: sectionA }, { widgetOptions: '{}' }]]);

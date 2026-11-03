@@ -12,11 +12,12 @@ const NAMES = { _grist_Tables: 'tables', _grist_Tables_column: 'columns', _grist
 // Un document en lignes ; `fetchTable` les rend par colonnes comme Grist, `applyUserActions` les rejoue (c'est ce que Grist ferait pour de bon).
 function fakeDocument() {
   const document = {
-    tables: [{ id: 1, tableId: 'Reponses' }, { id: 3, tableId: 'FormPlus_Formulaires' }],
+    // `FormPlus_Pub_7` : la petite table d'une ligne d'UN formulaire de Form+ (consigne 013), que la Référence cachée `FormPlusDef` vise.
+    tables: [{ id: 1, tableId: 'Reponses' }, { id: 3, tableId: 'FormPlus_Pub_7' }],
     columns: [
       { id: 10, parentId: 1, colId: 'Nom', type: 'Text', isFormula: false, formula: '', visibleCol: 0 },
       { id: 12, parentId: 1, colId: 'Statut', type: 'Text', isFormula: false, formula: '', visibleCol: 0 },
-      { id: 13, parentId: 1, colId: 'FormPlusDef', type: 'Ref:FormPlus_Formulaires', isFormula: false, formula: '', visibleCol: 31 },
+      { id: 13, parentId: 1, colId: 'FormPlusDef', type: 'Ref:FormPlus_Pub_7', isFormula: false, formula: '', visibleCol: 31 },
       { id: 31, parentId: 3, colId: 'Definition', type: 'Text', isFormula: false, formula: '', visibleCol: 0 },
     ],
     sections: [{ id: 100, tableRef: 1, shareOptions: '' }],
@@ -34,12 +35,15 @@ function fakeDocument() {
 }
 
 // Des tables que jamais un lien public n'ouvre : celle de GFS, celle d'une autre app, celle de l'app qui publie ; et `Dossiers`, qui a une Référence vers chacune d'elles et vers
-// `Menus`, une table de la personne. Une section de formulaire non publiée sur chacune.
+// `Menus`, une table de la personne. Une section de formulaire non publiée sur chacune. Parmi les tables de l'app qui publie : `FormPlus_Formulaires` (la définition et la clé de
+// partage de tous les formulaires) et `FormPlus_Repondants` ne sont pas déclarées lisibles par un lien public, la petite table `FormPlus_Pub_7` (table 3) l'est.
 function addProtectedTables(document) {
   const column = (id, parentId, colId, type = 'Text', visibleCol = 0) => ({ id, parentId, colId, type, isFormula: false, formula: '', visibleCol });
-  document.tables.push({ id: 5, tableId: 'GFS_Espaces' }, { id: 6, tableId: 'Publipostage_Modeles' }, { id: 7, tableId: 'Dossiers' }, { id: 8, tableId: 'Menus' });
-  document.columns.push(column(51, 5, 'Nom'), column(61, 6, 'Nom'), column(81, 8, 'Nom'), column(71, 7, 'Espace', 'Ref:GFS_Espaces', 51),
-    column(72, 7, 'Modele', 'Ref:Publipostage_Modeles', 61), column(73, 7, 'Menu', 'Ref:Menus', 81));
+  document.tables.push({ id: 5, tableId: 'GFS_Espaces' }, { id: 6, tableId: 'Publipostage_Modeles' }, { id: 7, tableId: 'Dossiers' }, { id: 8, tableId: 'Menus' },
+    { id: 9, tableId: 'FormPlus_Formulaires' }, { id: 10, tableId: 'FormPlus_Repondants' });
+  document.columns.push(column(51, 5, 'Nom'), column(61, 6, 'Nom'), column(81, 8, 'Nom'), column(91, 9, 'Definition'), column(101, 10, 'Email'),
+    column(71, 7, 'Espace', 'Ref:GFS_Espaces', 51), column(72, 7, 'Modele', 'Ref:Publipostage_Modeles', 61), column(73, 7, 'Menu', 'Ref:Menus', 81),
+    column(74, 7, 'Tous', 'Ref:FormPlus_Formulaires', 91), column(75, 7, 'Qui', 'Ref:FormPlus_Repondants', 101), column(76, 7, 'Sien', 'Ref:FormPlus_Pub_7', 31));
   document.sections.push({ id: 101, tableRef: 5, shareOptions: '' }, { id: 102, tableRef: 6, shareOptions: '' }, { id: 103, tableRef: 3, shareOptions: '' }, { id: 104, tableRef: 7, shareOptions: '' });
 }
 
@@ -77,7 +81,7 @@ test('une ouverture déjà accordée ne se redemande pas ; une ouverture de plus
   assert.equal(asked.length, 1, 'le même lot rejoué n\'ouvre rien de plus');
   await apply(addDefinitionField());
   assert.equal(asked.length, 2);
-  assert.deepEqual(asked[1].reads, [{ tableId: 'FormPlus_Formulaires', colId: 'Definition' }], 'le champ Référence ouvre la lecture de la colonne affichée');
+  assert.deepEqual(asked[1].reads, [{ tableId: 'FormPlus_Pub_7', colId: 'Definition' }], 'le champ Référence ouvre la lecture de la colonne affichée, ici celle de la petite table de CE formulaire');
   assert.deepEqual(asked[1].tables, []);
 });
 
@@ -159,10 +163,50 @@ test('l\'app ne peut pas ouvrir au public ce qu\'elle ne pourrait pas écrire, n
   assert.equal(noRead.asked.length, 0);
 });
 
-test('la lecture d\'une table de l\'app qui publie passe par l\'accord (la définition des formulaires de Form+, consigne 013)', async () => {
-  const { apply, asked } = setup();
-  await apply(publish());
-  await apply(addDefinitionField());
-  assert.deepEqual(asked[1].reads, [{ tableId: 'FormPlus_Formulaires', colId: 'Definition' }]);
+// Décision du porteur, 03/11 (contrats 3.3 point 9 et 11.9 point 4c) : parmi les tables de l'app qui publie, un lien public ne lit que les petites tables que son manifeste
+// déclare (`permissions.lienPublic`, pour Form+ : `FormPlus_Pub_*`, la définition d'UN formulaire). Toute autre est refusée sans demander à la personne.
+const addField = (colRef, section = 104) => [['AddRecord', '_grist_Views_section_field', null, { parentId: section, colRef, widgetOptions: '' }]];
+
+test('la table qui garde la définition et la clé de partage de tous les formulaires de Form+, ou toute autre table de l\'app non déclarée, n\'est jamais lisible par un lien public : refus, sans demander l\'accord', async () => {
+  for (const [colRef, name] of [[74, 'FormPlus_Formulaires'], [75, 'FormPlus_Repondants']]) {
+    const { apply, asked, calls } = setup({}, true);
+    await apply(addField(colRef));
+    const before = calls.applied.length;
+    await assert.rejects(() => apply(publish(104)), error => error.code === 'GFS_REFUSE' && error.message.includes(name) && /à la lecture/.test(error.message) && /permissions\.lienPublic/.test(error.message), name);
+    assert.equal(asked.length, 0, 'la personne n\'est pas sollicitée');
+    assert.equal(calls.applied.length, before, 'la publication n\'est pas envoyée');
+  }
+});
+
+test('le même champ Référence ajouté à une section déjà publiée est refusé de même : la lecture de FormPlus_Formulaires ne passe plus par l\'accord', async () => {
+  const { apply, asked, calls, document } = setup({}, true);
+  await apply(publish(104));
+  assert.equal(asked.length, 1, 'la publication demande l\'accord : la table Dossiers reçoit des lignes');
+  const applied = calls.applied.length;
+  await assert.rejects(() => apply(addField(74)), error => error.code === 'GFS_REFUSE' && /FormPlus_Formulaires/.test(error.message) && /à la lecture/.test(error.message));
+  assert.equal(asked.length, 1, 'aucune seconde demande');
+  assert.equal(calls.applied.length, applied, 'le champ n\'est pas posé');
+  assert.equal(document.fields.some(field => field.colRef === 74), false);
+});
+
+test('la petite table d\'UN formulaire, que le manifeste déclare (FormPlus_Pub_*), passe encore par l\'accord de la personne, et elle seule', async () => {
+  const { apply, asked, document } = setup({}, true);
+  await apply(addField(76));
+  await apply(publish(104));
+  assert.equal(asked.length, 1);
+  assert.deepEqual(asked[0].reads, [{ tableId: 'FormPlus_Pub_7', colId: 'Definition' }], 'la fenêtre dit la colonne de la petite table');
+  assert.deepEqual(asked[0].tables.map(table => table.tableId), ['Dossiers']);
+  assert.match(document.sections.find(section => section.id === 104).shareOptions, /publish/);
+});
+
+test('sans `lienPublic` dans son manifeste, aucune table de l\'app qui publie n\'est lisible par un lien public', async () => {
+  const bare = { ...form(), permissions: { ...form().permissions } };
+  delete bare.permissions.lienPublic;
+  const { apply, asked, calls } = setup({ policy: policyOf(bare) }, true);
+  await apply(addField(76));
+  const before = calls.applied.length;
+  await assert.rejects(() => apply(publish(104)), error => error.code === 'GFS_REFUSE' && /FormPlus_Pub_7/.test(error.message) && /à la lecture/.test(error.message));
+  assert.equal(asked.length, 0);
+  assert.equal(calls.applied.length, before);
 });
 

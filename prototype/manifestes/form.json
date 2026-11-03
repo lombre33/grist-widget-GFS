@@ -86,6 +86,13 @@
         "fr": "Poser dans une page la section du formulaire natif de Grist, quand la personne part de zéro ou duplique un formulaire.",
         "en": "Place Grist's native form section in a page, when the person starts from scratch or duplicates a form."
       }
+    },
+    "lienPublic": {
+      "lit": ["FormPlus_Pub_*"],
+      "pourquoi": {
+        "fr": "Le lien d'un formulaire publié lit la définition de CE formulaire seul, dans sa petite table d'une ligne (FormPlus_Pub_ suivi du numéro de la copie), pour afficher les questions. GFS demande l'accord de la personne à chaque publication. La table qui garde la définition et la clé de partage de tous les formulaires (FormPlus_Formulaires) n'est jamais ouverte au public.",
+        "en": "A published form's link reads the definition of THIS form only, in its small one-row table (FormPlus_Pub_ followed by the copy's number), to display the questions. GFS asks the person's agreement at each publication. The table that holds the definition and the share key of every form (FormPlus_Formulaires) is never opened to the public."
+      }
     }
   },
   "actions": { "ouvrir": ["formulaire"], "choisir": [] }

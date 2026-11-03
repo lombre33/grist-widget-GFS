@@ -1,6 +1,8 @@
 // Le manifeste `gfs.json` d'une app : validation (contrats 2.8) et chargement. Un manifeste invalide ne fait pas échouer GFS : l'app est
 // listée grisée, avec le motif (2.1, point 3).
 
+import { covers } from './filter.js';
+
 export const CONTRACT = 0;
 
 export const ID_RE = /^[a-z][a-z0-9-]{1,23}$/;
@@ -111,15 +113,44 @@ function checkCapabilities(perm, errors) {
   }
 }
 
+// Les tables qui gardent la liste des fichiers de l'app (2.4) : `fichiers[].table` et `fichiers[].rangement.table`.
+const filesTables = m => (Array.isArray(m.fichiers) ? m.fichiers : [])
+  .flatMap(file => [file && file.table, file && isObject(file.rangement) ? file.rangement.table : null]).filter(isText);
+
+// Un nom de table, ou un préfixe suivi de « * » : jamais « * » seul, qui ne désigne que les tables de la personne (3.2, point 2).
+const PUBLIC_PATTERN_RE = /^[A-Za-z0-9_]+\*?$/;
+
+function checkPublicPattern(pattern, m, errors) {
+  const where = `permissions.lienPublic.lit : le motif ${pattern}`;
+  const prefix = String((m.tables && m.tables.prefixe) || '').toLowerCase();
+  const stem = pattern.replace(/\*$/, '').toLowerCase();
+  if (!PUBLIC_PATTERN_RE.test(pattern)) errors.push(`${where} doit être un nom de table, ou un préfixe suivi de « * », sans accent`);
+  else if (!stem.startsWith(prefix)) errors.push(`${where} est hors du préfixe de l'app`);
+  else if (stem === prefix) errors.push(`${where} couvre toutes les tables de l'app : il faut nommer les petites tables`);
+  else for (const table of filesTables(m)) if (covers([pattern], table, 'propre')) errors.push(`${where} couvre ${table}, la table des fichiers de l'app : un lien public ne la lit jamais`);
+}
+
+// Les tables de l'app qu'un lien public peut lire, si la personne y consent à la publication (contrats 3.3, point 9 ; 11.9, point 4c) : des petites tables nommées une à une
+// ou par un préfixe plus précis que celui de l'app, jamais celle des fichiers (Form+ : `FormPlus_Formulaires` garde la définition et la clé de partage de tous ses formulaires).
+function checkPublicLink(m, errors) {
+  const link = m.permissions.lienPublic;
+  if (link === undefined) return;
+  if (!isObject(link) || !isBilingual(link.pourquoi)) errors.push('permissions.lienPublic : pourquoi doit porter fr et en');
+  const patterns = isObject(link) ? link.lit : null;
+  if (!Array.isArray(patterns) || !patterns.length || !patterns.every(isText)) { errors.push('permissions.lienPublic.lit : liste de motifs attendue'); return; }
+  for (const pattern of patterns) checkPublicPattern(pattern, m, errors);
+}
+
 function checkPermissions(m, errors) {
   const perm = m.permissions;
   if (!isObject(perm) || !ACCESS.includes(perm.acces)) { errors.push('permissions.acces : none, read table ou full'); return; }
-  const declares = ['lit', 'ecrit', 'gristInterne', 'jeton', 'formules', 'structure'].some(key => perm[key] !== undefined);
+  const declares = ['lit', 'ecrit', 'gristInterne', 'jeton', 'formules', 'structure', 'lienPublic'].some(key => perm[key] !== undefined);
   if (perm.acces !== 'full' && declares) errors.push('lit, ecrit, gristInterne et capacités demandent l\'accès full');
   checkPatterns(perm, errors);
   if (perm.gristInterne !== undefined && !Array.isArray(perm.gristInterne)) errors.push('permissions.gristInterne : liste attendue');
   for (const entry of Array.isArray(perm.gristInterne) ? perm.gristInterne : []) checkInternalEntry(entry, errors);
   checkCapabilities(perm, errors);
+  checkPublicLink(m, errors);
 }
 
 export const LIBRARY_ID_RE = /^[a-z][a-z0-9-]*$/;

@@ -10,7 +10,7 @@
 // Le courtier calcule ce qui est ouvert avant le lot et après, et demande l'accord de la personne pour la différence. Le partage (la page) ne compte pas : un drapeau
 // posé aujourd'hui ouvre dès qu'une page est partagée, et la personne peut la partager sans passer par GFS.
 
-import { ERR, Refus, ROW_VERBS, PUBLISHING_TABLES, classify, readRefusal, writeRefusal } from './filter.js';
+import { ERR, Refus, ROW_VERBS, PUBLISHING_TABLES, classify, publiclyReadable, readRefusal, writeRefusal } from './filter.js';
 
 // Les quatre tables internes que ce calcul lit, et sous quel nom il les tient (une écriture dans les trois dernières peut changer ce qui est ouvert : PUBLISHING_TABLES).
 const NAMES = { _grist_tables: 'tables', _grist_tables_column: 'columns', _grist_views_section: 'sections', _grist_views_section_field: 'fields' };
@@ -125,13 +125,14 @@ export function newExposure(before, after) {
 }
 
 // Pourquoi un lien public n'ouvrira jamais cette table, ou null (contrats 11.9, point 4c) : celle de GFS, celle d'une autre app, celle de l'app qui publie (à l'ajout : un lien n'y
-// écrit jamais), ou ce que l'app ne pourrait pas écrire, ni lire, elle-même. La lecture d'une table de l'app qui publie passe par l'accord : le formulaire de Form+ y lit sa
-// définition (consigne 013, qui la lui fait retirer).
+// écrit jamais ; à la lecture : seulement les petites tables que son manifeste déclare, `permissions.lienPublic`, comme la définition d'UN formulaire de Form+, décision du porteur
+// du 03/11), ou ce que l'app ne pourrait pas écrire, ni lire, elle-même.
 function whyNot(policy, tableId, writing) {
   const kind = classify(policy, tableId);
   if (kind === 'gfs') return 'elle est réservée à GFS';
   if (kind === 'autre-app') return 'elle appartient à une autre app';
   if (kind === 'propre' && writing) return 'c\'est une table de l\'app : un lien public n\'y écrit jamais';
+  if (kind === 'propre') return publiclyReadable(policy, tableId) ? null : 'c\'est une table de l\'app que son manifeste ne déclare pas lisible par un lien public (permissions.lienPublic)';
   return String((writing ? writeRefusal : readRefusal)(policy, tableId) || '').replace(/\.$/, '') || null;
 }
 

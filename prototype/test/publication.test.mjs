@@ -2,7 +2,8 @@
 // (app/common/ACLRulesReader.ts) : l'ajout de lignes dans toutes les colonnes de la table de la section publiée, la lecture de la colonne affichée des Références.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { touchesPublication, rowsOf, simulate, exposureOf, newExposure, publicationOpens } from '../js/publication.js';
+import { touchesPublication, rowsOf, simulate, exposureOf, newExposure, publicationOpens, protectedRefusal } from '../js/publication.js';
+import { policyOf, form } from './helpers.mjs';
 
 // Un document : « Reponses » (Nom, Email, Statut, une Référence cachée vers la Définition), « Menus » (Nom), « FormPlus_Formulaires » (Definition), une section de formulaire.
 const PUBLISHED = '{"publish":true,"form":true}';
@@ -150,4 +151,24 @@ test('publicationOpens : aucune lecture pour un lot qui ne publie rien, et la di
 test('publicationOpens : une structure illisible refuse le lot, elle ne le laisse pas passer', async () => {
   const port = { doc: { fetchTable: async () => { throw new Error('Access denied'); } } };
   await assert.rejects(() => publicationOpens(port, [publish(100)]), error => error.code === 'GFS_REFUSE' && /illisible/.test(error.message));
+});
+
+// Décision du porteur, 03/11 (contrats 3.3 point 9 et 11.9 point 4c) : ce que GFS refuse sans demander, parmi les tables de l'app qui publie.
+test('protectedRefusal : un lien public ne lit, parmi les tables de l\'app qui publie, que celles que son manifeste déclare', () => {
+  const policy = policyOf(form());
+  const reading = tableId => protectedRefusal(policy, { tables: [], reads: [{ tableId, colId: 'Definition' }] });
+  assert.equal(reading('FormPlus_Pub_12'), null, 'la petite table d\'un formulaire est proposée à la personne, qui décide');
+  for (const tableId of ['FormPlus_Formulaires', 'FormPlus_Repondants', 'FormPlus_Zone']) {
+    const refusal = reading(tableId);
+    assert.equal(refusal.code, 'GFS_REFUSE', tableId);
+    assert.ok(refusal.message.includes(`${tableId} à la lecture`), refusal.message);
+    assert.match(refusal.message, /manifeste ne déclare pas lisible par un lien public \(permissions\.lienPublic\)/);
+    assert.match(refusal.message, /GFS ne le propose pas à la personne/);
+  }
+  const writing = protectedRefusal(policy, { tables: [{ tableId: 'FormPlus_Pub_12', shown: [], unshown: [] }], reads: [] });
+  assert.match(writing.message, /FormPlus_Pub_12 à l'ajout/);
+  assert.match(writing.message, /un lien public n'y écrit jamais/, 'à l\'ajout, aucune table de l\'app n\'est ouverte, déclarée lisible ou non');
+  assert.match(reading('GFS_Espaces').message, /réservée à GFS/);
+  assert.match(reading('Publipostage_Modeles').message, /autre app/);
+  assert.equal(reading('Clients'), null, 'une table de la personne : la règle est celle de `lit`');
 });

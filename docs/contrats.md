@@ -429,7 +429,9 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
    - dans `permissions` : une règle de la section 3 non tenue (un motif `ecrit` que `lit` ne couvre pas, un `pourquoi` absent,
      une table ou une colonne de la liste fermée 3.3, une entrée `gristInterne` qui lit `_grist_Shares` ou `_grist_Triggers`,
      qui écrit sans `lit: true` ou qui écrit plus d'une table, `lit`/`ecrit`/`gristInterne`/capacités avec un accès autre que
-     `full`) ;
+     `full`) ; dans `permissions.lienPublic` (3.4, point 5) : un `pourquoi` sans français ou sans anglais, une liste de motifs absente
+     ou vide, un motif hors du préfixe de l'app, qui couvre toutes ses tables (`FormPlus_*`) ou la table de ses fichiers ou de son
+     rangement ;
    - une extension dont le `dossier` sort de l'app, ou dont une entrée de `bibliotheques` n'a pas d'`id` ou n'a pas une
      `version` exacte (un intervalle, `latest`) ;
    - dans `actions.importer` (2.7, point 4) : une entrée sans `valeur` ou sans `nom` en français et en anglais, une `valeur` déjà
@@ -659,11 +661,12 @@ ne lit pas).
      une table de plus ouverte à l'ajout (avec ses colonnes que le formulaire ne montre pas), une colonne de plus lue ;
    - **avant même de demander**, le courtier refuse (`GFS_REFUSE`, avec la raison, sans fenêtre) d'ouvrir à l'ajout une table de GFS,
      d'une autre app ou de l'app qui publie, d'ouvrir à la lecture une table de GFS ou d'une autre app, et ce que le manifeste de
-     l'app ne lui laisserait pas écrire (ou lire) elle-même (11.9, point 4c). La lecture d'une table de l'app qui publie passe encore par
-     l'accord : le formulaire de Form+ y lit sa définition (consigne 013, qui la lui fait retirer, après quoi GFS la refusera aussi : **ouvert**
-     depuis le 02/11, la 013 faite garde cette lecture dans une petite table par formulaire, voir 11.9, point 4c). Les
-     classes protégées de 11.2 et le propriétaire seul (11.9, points 4c et 7) viendront avec la section 11 : GFS ne connaît pas encore
-     le rôle de la personne ;
+     l'app ne lui laisserait pas écrire (ou lire) elle-même (11.9, point 4c). **Parmi les tables de l'app qui publie, un lien public ne lit
+     que les petites tables que son manifeste déclare** (`permissions.lienPublic`, 3.4 point 5 ; choix du porteur du 03/11) : la lecture de
+     toute autre table de l'app est refusée sans fenêtre, la table qui garde la définition et la clé de partage de tous les formulaires
+     (Form+ : `FormPlus_Formulaires`) en tête ; celle d'une petite table déclarée (Form+ : `FormPlus_Pub_<vsId>`, la définition d'UN
+     formulaire) passe par l'accord. Les classes protégées de 11.2 et le propriétaire seul (11.9, points 4c et 7) viendront avec la
+     section 11 : GFS ne connaît pas encore le rôle de la personne ;
    - s'il y a une différence, la personne en décide dans une fenêtre de GFS qui dit, dans cet ordre (11.9, point 6) : que le lien est
      public (toute personne qui l'a, sans compte), les tables qu'il remplit (avec les colonnes que le formulaire ne montre pas mais que
      le lien pourra remplir), les colonnes qu'il rend lisibles, que rien ne limite le nombre de lignes ni ne contrôle ce qu'elles
@@ -702,6 +705,16 @@ Trois capacités contournent un filtre de tables. L'app les déclare, avec une r
    "pourquoi": { "fr": "…", "en": "…" } }`. `tables` et `pourquoi` sont obligatoires ; `lit`, `ecrit` et `retire` sont
    facultatifs, au moins un des trois. Une entrée qui écrit (`ecrit` ou `retire`) nomme une seule table et porte aussi
    `lit: true` (3.3, point 5). Le `pourquoi` est montré à la personne comme celui des capacités.
+5. [T] **`lienPublic`** : `{ "lit": [ "FormPlus_Pub_*" ], "pourquoi": { "fr": "…", "en": "…" } }`. Pas une capacité qui contourne un filtre :
+   une déclaration qui en **resserre** un. Elle nomme les tables **de l'app** qu'un lien public, celui d'un formulaire que l'app publie,
+   peut lire si la personne y consent (3.3, point 9 ; 11.9, point 4c) ; **sans elle, aucune table de l'app n'est lisible par un lien
+   public**. Chaque motif est un nom de table ou un préfixe suivi de « * » (comme 3.2), écrit sans accent, **dans le préfixe de l'app** et
+   plus précis que lui (`FormPlus_*` couvre toutes ses tables : refusé), et il ne couvre **jamais** la table de ses fichiers
+   (`fichiers[].table`) ni celle de son rangement (`rangement.table`) : le validateur de manifeste (2.8) le contrôle, un manifeste qui s'y
+   refuse est invalide (2.1, point 3). « * » seul ne désigne pas les tables de l'app. Elle demande `acces: full` comme le reste. Le `pourquoi`
+   est montré à la personne comme celui des capacités. Form+ : `["FormPlus_Pub_*"]`, la petite table d'une ligne de CHAQUE formulaire (la
+   définition de ce formulaire seul, consigne 013). Codé le 03/11 (`js/filter.js` : `publiclyReadable` ; `js/publication.js` : `whyNot` ;
+   `js/manifest.js` : `checkPublicLink`).
 
 ### 3.5 Les clés de réglages
 
@@ -1961,8 +1974,8 @@ Un lien public (un formulaire publié, natif de Grist ou de Form+) laisse n'impo
 compte. Le porteur, le 22/10 : un formulaire est « une porte d'entrée pour venir écrire des bêtises dans un document », et il faut
 « segmenter et limiter les droits d'écriture d'un formulaire », avec une vigilance de tous les instants. Les preuves sont dans
 `faits-verifies.md`, 10.11. L'accord demandé à chaque publication est codé dans le courtier depuis le 22/10 (3.3, point 9 : la
-fenêtre, les refus sans demander, l'échec fermé) et la consigne 013 est écrite pour Form+ ; cette sous-section en donne le cadre et
-dit ce qui reste. Un formulaire qu'on remplit dans le document, connecté, n'est pas un lien public : il passe par les règles des
+fenêtre, les refus sans demander, l'échec fermé) ; la consigne 013 est faite (Form+ à `fd5384a`) et, depuis le 03/11, un lien ne lit que
+les petites tables que le manifeste de l'app déclare (point 4c) ; cette sous-section en donne le cadre et dit ce qui reste. Un formulaire qu'on remplit dans le document, connecté, n'est pas un lien public : il passe par les règles des
 personnes (11.4). **Pas encore codé** : le propriétaire seul (point 7), les classes protégées de 11.2 (point 4c), le panneau de
 toutes les portes (point 8), la boîte aux lettres (11.7, point 9). **Pas mesuré** : ce que Grist ouvre vraiment à qui a le lien (le
 labo n'a pas de partages, 10.11).
@@ -1994,14 +2007,19 @@ labo n'a pas de partages, 10.11).
       `reserve`, `derivee` ou `proprietaires` (11.2), une table qui porte les colonnes de l'étiquette (11.2, point 4), une table de
       l'app qui publie (`FormPlus_…`). [D] GFS **refuse** la publication d'un formulaire qui en remplirait une, sans la proposer à
       l'accord. [T] Codé le 22/10 (3.3, point 9) : une table de GFS, d'une autre app ou de l'app qui publie, à l'ajout ; une table de
-      GFS ou d'une autre app, à la lecture (celle de l'app qui publie passe encore par l'accord, jusqu'à la consigne 013). Les
-      classes de 11.2 viendront avec cette section.
-      [M] **Ouvert, 02/11.** La 013 est faite (Form+ à `fd5384a`) et elle a pris la piste « une petite table par formulaire publié, que sa seule
-      Référence vise » (sa propre liste, point 1) : le lien lit donc `FormPlus_Pub_<vsId>`, une ligne, la définition de CE formulaire, et le formulaire
-      public ne s'afficherait pas sans cette lecture. Refuser « la lecture d'une table de l'app qui publie », comme ce point le prévoyait après la 013,
-      casserait tout formulaire public de Form+ ; elle passe donc encore par l'accord (mesuré, `run-form` : la fenêtre dit la colonne `Definition` de la
-      petite table). La table qui garde toutes les définitions, `FormPlus_Formulaires` (clés de partage comprises), est la seule qu'un lien ne doit
-      jamais lire : pas encore refusée sans demander, le porteur tranche (carte du 02/11).
+      GFS ou d'une autre app, à la lecture. Les classes de 11.2 viendront avec cette section.
+      [T] **Tranché le 03/11 (le porteur, carte « Petites tables déclarées seulement »).** La 013 est faite (Form+ à `fd5384a`) et elle a pris la piste
+      « une petite table par formulaire publié, que sa seule Référence vise » (sa propre liste, point 1) : le lien lit donc `FormPlus_Pub_<vsId>`, une
+      ligne, la définition de CE formulaire, et le formulaire public ne s'afficherait pas sans cette lecture. Refuser toute lecture d'une table de l'app
+      qui publie casserait donc tout formulaire public de Form+ ; GFS fait autrement : **parmi les tables de l'app qui publie, un lien public ne lit
+      que les petites tables que le manifeste de l'app déclare** (`permissions.lienPublic`, 3.4 point 5 ; Form+ : `FormPlus_Pub_*`). La lecture d'une
+      petite table déclarée passe par l'accord (la fenêtre dit la colonne `Definition` de la petite table) ; **toute autre table de l'app est refusée
+      sans fenêtre** (`GFS_REFUSE` : « c'est une table de l'app que son manifeste ne déclare pas lisible par un lien public »), à commencer par celle qui
+      garde toutes les définitions, `FormPlus_Formulaires` (clés de partage comprises), qu'un lien ne doit jamais lire : un manifeste dont un motif la
+      couvrirait, ou couvrirait la table de rangement de l'app, est invalide (2.8). Un manifeste sans `lienPublic` n'ouvre aucune table de l'app à un
+      lien. Codé et mesuré le 03/11 dans un vrai Grist : `run-publication.mjs` (36 vérifications, dont le refus de `FormPlus_Formulaires` sans
+      fenêtre et la fenêtre de `FormPlus_Pub_9`) et `run-form.mjs` avec Form+ à `fd5384a` (48 : l'enregistrement par le lien ouvre les mêmes deux
+      fenêtres, rien n'est refusé de ce que l'app fait).
    d. [D] Une **Référence** rend lisible, pour toute personne qui a le lien, la colonne entière qu'elle montre (lu) : l'accord la
       liste, et refuse une table protégée (c). Un formulaire de Form+ peut garder la liste des choix dans sa propre définition au
       moment de la publication, et le lien ne lit alors aucune autre table (à mesurer) ; pour un formulaire natif de Grist, ce n'est

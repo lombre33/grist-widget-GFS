@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { checkBatch, readRefusal, writeRefusal, visibleTables, cleanApplyOptions, realNameRefusal, tokenOptions, classify,
-  lowestAccess, batchTouchesTables } from '../js/filter.js';
+  lowestAccess, batchTouchesTables, publiclyReadable, makePolicy } from '../js/filter.js';
 import { policyOf, publipostage, automation, form } from './helpers.mjs';
 
 const pp = policyOf(publipostage());
@@ -190,4 +190,29 @@ test('les lectures et écritures déclarées de Publipostage+ passent toutes (ma
   allowed(pp, [['AddVisibleColumn', 'Publipostage_Modeles', 'Jeton', { type: 'Text', isFormula: false, label: 'x' }]]);
   allowed(pp, [['AddTable', 'Publipostage_UserProbe', [{ id: 'Email', type: 'Text', isFormula: false, formula: 'user.Email', recalcWhen: 0, recalcDeps: null }]]]);
   allowed(pp, [['AddRecord', 'Publipostage_UserProbe', null, {}], ['RemoveRecord', 'Publipostage_UserProbe', 3]]);
+});
+
+// Contrats 3.3 point 9 et 11.9 point 4c (décision du porteur, 03/11) : parmi les tables de l'app qui publie, un lien public ne lit que celles que son manifeste déclare.
+test('contrats 11.9 point 4c : `publiclyReadable` ne vaut que pour les petites tables de l\'app que `lienPublic` nomme', () => {
+  const fp = policyOf(form());
+  assert.deepEqual(fp.lienPublic, ['FormPlus_Pub_*']);
+  assert.equal(publiclyReadable(fp, 'FormPlus_Pub_12'), true);
+  assert.equal(publiclyReadable(fp, 'formplus_pub_12'), true, 'la casse ne compte pas');
+  assert.equal(publiclyReadable(fp, '_FormPlus_Pub_12'), true, 'ni les « _ » de tête (contrats 3.3, point 4)');
+  assert.equal(publiclyReadable(fp, 'FormPlus_Formulaires'), false, 'la table qui garde la définition et la clé de partage de tous les formulaires');
+  assert.equal(publiclyReadable(fp, 'FormPlus_Repondants'), false);
+  assert.equal(publiclyReadable(fp, 'FormPlus_Zone'), false);
+  assert.equal(publiclyReadable(fp, 'FormPlus_Pub'), false, 'le préfixe seul, sans « _ » ni numéro, n\'est pas une petite table');
+  assert.equal(publiclyReadable(fp, 'Clients'), false, 'une table de la personne : la règle des tables de la personne reste celle de `lit`');
+  assert.equal(publiclyReadable(fp, 'GFS_Pub_1'), false);
+  assert.equal(publiclyReadable(fp, 'Publipostage_Pub_1'), false);
+  assert.equal(publiclyReadable(fp, '_grist_Tables'), false);
+  // Sans déclaration, aucune table de l'app n'est lisible par un lien public ; un « * » mal placé dans le manifeste ne désigne jamais les tables de l'app.
+  const bare = { ...form(), permissions: { ...form().permissions } };
+  delete bare.permissions.lienPublic;
+  assert.deepEqual(policyOf(bare).lienPublic, []);
+  assert.equal(publiclyReadable(policyOf(bare), 'FormPlus_Pub_12'), false);
+  const star = policyOf({ ...form(), permissions: { ...form().permissions, lienPublic: { lit: ['*'], pourquoi: { fr: 'a', en: 'a' } } } });
+  assert.equal(publiclyReadable(star, 'FormPlus_Formulaires'), false);
+  assert.deepEqual(makePolicy({ ...form(), permissions: { ...form().permissions, lienPublic: { pourquoi: {} } } }).lienPublic, [], 'une déclaration sans liste ne couvre rien');
 });

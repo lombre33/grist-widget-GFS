@@ -80,6 +80,36 @@ test('contrats 2.8 : règles des permissions', () => {
   assert.match(bad(m => { m.permissions.formules = true; }), /formules/);
 });
 
+// Contrats 3.3 point 9 et 11.9 point 4c (décision du porteur, 03/11) : un lien public ne lit, parmi les tables de l'app qui publie, que les petites tables que son manifeste nomme.
+test('contrats 3.3 point 9 : `lienPublic` nomme des petites tables du préfixe de l\'app, jamais toutes, jamais celle de ses fichiers', () => {
+  const withLink = (patterns, mutate = () => {}) => { const m = form(); m.permissions.lienPublic = { lit: patterns, pourquoi: { fr: 'a', en: 'a' } }; mutate(m); return validateManifest(m, [publipostage(), automation()]); };
+  assert.deepEqual(form().permissions.lienPublic.lit, ['FormPlus_Pub_*'], 'Form+ déclare ses petites tables, et elles seules');
+  assert.equal(withLink(['FormPlus_Pub_*']).ok, true);
+  assert.equal(withLink(['FormPlus_Pub_12']).ok, true, 'un nom de table suffit');
+  assert.equal(withLink(['formplus_pub_*']).ok, true, 'la casse ne compte pas (contrats 2.3)');
+  const errorsOf = (patterns, mutate) => { const r = withLink(patterns, mutate); assert.equal(r.ok, false, JSON.stringify(patterns)); return r.errors.join(' | '); };
+  assert.match(errorsOf(['*']), /doit être un nom de table, ou un préfixe suivi de « \* »/, '« * » seul désigne les tables de la personne : jamais celles de l\'app');
+  assert.match(errorsOf(['Clients']), /hors du préfixe de l'app/);
+  assert.match(errorsOf(['Publipostage_*']), /hors du préfixe de l'app/);
+  assert.match(errorsOf(['FormPlus_*']), /couvre toutes les tables de l'app/);
+  assert.match(errorsOf(['FormPlus_']), /couvre toutes les tables de l'app/);
+  assert.match(errorsOf(['FormPlus_F*']), /couvre FormPlus_Formulaires, la table des fichiers de l'app/);
+  assert.match(errorsOf(['FormPlus_Formulaires']), /couvre FormPlus_Formulaires, la table des fichiers de l'app/);
+  assert.match(errorsOf(['FormPlus_Pub_*'], m => { m.fichiers[0].rangement = { table: 'FormPlus_Pub_Rangement', utilisateur: 'U', fichier: 'F', dossier: 'D', epingle: 'E' }; }), /couvre FormPlus_Pub_Rangement/, 'ni celle de son rangement');
+  assert.match(errorsOf(['Form*Plus_Pub_*']), /doit être un nom de table/);
+  assert.match(errorsOf(['Formplus_Pub_é*']), /doit être un nom de table/);
+  assert.match(errorsOf([]), /liste de motifs attendue/);
+  assert.match(errorsOf('FormPlus_Pub_*'), /liste de motifs attendue/);
+  assert.match(errorsOf([3]), /liste de motifs attendue/);
+  const noReason = form(); noReason.permissions.lienPublic = { lit: ['FormPlus_Pub_*'] };
+  assert.match(validateManifest(noReason).errors.join(' | '), /lienPublic : pourquoi doit porter fr et en/);
+  const notObject = form(); notObject.permissions.lienPublic = ['FormPlus_Pub_*'];
+  assert.match(validateManifest(notObject).errors.join(' | '), /lienPublic/);
+  const readOnly = publipostage();
+  readOnly.permissions = { acces: 'read table', lienPublic: { lit: ['Publipostage_Pub_*'], pourquoi: { fr: 'a', en: 'a' } } };
+  assert.match(validateManifest(readOnly).errors.join(' | '), /accès full/, 'déclarer une lecture publique demande l\'accès full comme tout le reste');
+});
+
 test('contrats 2.8 : le dossier d\'une extension reste dans l\'app', () => {
   assert.match(bad(m => { m.extensions[0].dossier = '../autre/'; }), /dossier/);
   assert.equal(isSafePath('extensions/graphique'), true);

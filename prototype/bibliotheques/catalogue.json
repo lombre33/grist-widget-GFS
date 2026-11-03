@@ -15,6 +15,19 @@
       }
     },
     {
+      "id": "echarts",
+      "version": "6.1.0",
+      "poids": 1121883,
+      "cdn": {
+        "src": "https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js",
+        "integrite": "sha384-C2iskrW/uPW46KzOjrvJIQo4YkV8lkD+QS0CrDN18IIPIpT/g2USu8bTP3nvmIAD"
+      },
+      "vendorise": {
+        "chemin": "vendor/echarts/6.1.0/dist/echarts.min.js",
+        "integrite": "sha384-C2iskrW/uPW46KzOjrvJIQo4YkV8lkD+QS0CrDN18IIPIpT/g2USu8bTP3nvmIAD"
+      }
+    },
+    {
       "id": "edition-live",
       "version": "1.0.0",
       "forme": "module",

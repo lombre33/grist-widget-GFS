@@ -11,6 +11,10 @@ const catalogue = readCatalogue({ bibliotheques: [{
   id: 'plotly', version: '2.13.2', poids: 1000,
   cdn: { src: 'https://cdn.jsdelivr.net/npm/plotly.js-basic-dist-min@2.13.2/plotly-basic.min.js', integrite: SRI },
   vendorise: { chemin: 'vendor/plotly/2.13.2/plotly-basic.min.js', integrite: SRI },
+}, {
+  id: 'echarts', version: '6.1.0', poids: 1000,
+  cdn: { src: 'https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js', integrite: SRI },
+  vendorise: { chemin: 'vendor/echarts/6.1.0/dist/echarts.min.js', integrite: SRI },
 }] });
 const pub = publipostage();
 const automation = { id: 'automation', nom: { fr: 'A', en: 'A' }, extensions: [] };
@@ -128,6 +132,16 @@ test('setExtension et setMode : par extension, bornés par le manifeste', async 
   const given = state.extensionsFor('publipostage', 'https://exemple.test/gfs/');
   assert.deepEqual(given.extensions, ['graphique']);
   assert.match(given.bibliotheques.plotly.src, /^https:\/\/exemple\.test\/gfs\/vendor\/plotly\/2\.13\.2\//);
+  assert.match(given.bibliotheques.echarts.src, /^https:\/\/exemple\.test\/gfs\/vendor\/echarts\/6\.1\.0\/dist\/echarts\.min\.js$/, 'le graphique créé dans l\'app a la bibliothèque qui le dessine');
+});
+
+test('une extension dont une bibliothèque manque au catalogue ne s\'allume pas à moitié : sans ECharts, « graphique » n\'est pas donnée à l\'app', async () => {
+  const { state } = await setup({ value: { publipostage: { extensions: ['graphique'] } } });
+  assert.deepEqual(state.extensionsFor('publipostage', 'https://exemple.test/gfs/').extensions, ['graphique']);
+  state.setCatalogue(readCatalogue({ bibliotheques: [catalogue.entries.get('plotly@2.13.2')] }));
+  const given = state.extensionsFor('publipostage', 'https://exemple.test/gfs/');
+  assert.deepEqual(given.extensions, []);
+  assert.deepEqual(given.bibliotheques, {});
 });
 
 test('une écriture refusée : l\'état revient à ce que la table a dit, l\'erreur remonte', async () => {

@@ -133,19 +133,27 @@ function assembledProblems(item, entry, read, { publication = null, readAtCommit
   if (!sameSet(contient, item.paquets.map(({ paquet, version }) => `${paquet}@${version}`))) found.push(`${item.id} : « contient » du catalogue n'est pas celui de la liste`);
   if (!sameSet(entry.modules || [], item.modules)) found.push(`${item.id} : « modules » du catalogue n'est pas celui de la liste`);
   if (!sameSet(entry.externes || [], item.externes)) found.push(`${item.id} : « externes » du catalogue n'est pas celui de la liste`);
-  try {
-    const licences = read(licencesPath(item)).toString('utf8');
-    for (const { paquet, version } of item.paquets) if (!licences.includes(`${paquet}@${version}`)) found.push(`${item.id} : ${licencesPath(item)} ne porte pas la licence de ${paquet}@${version}`);
-  } catch (error) { found.push(`${item.id} : licences illisibles (${licencesPath(item)})`); }
+  found.push(...licenceProblems(item, item.paquets, read));
   return found;
 }
 
-function scriptProblems(item, entry) {
+// La licence posée avec une copie (LICENCES.txt) : lisible, et elle nomme chaque paquet que la copie contient. La licence Apache 2.0 (ECharts) veut que la copie redistribuée porte
+// la licence et le NOTICE du paquet : l'outil les écrit là, ce contrôle garde qu'ils y restent.
+function licenceProblems(item, paquets, read) {
+  const path = licencesPath(item);
+  try {
+    const licences = read(path).toString('utf8');
+    return paquets.filter(({ paquet, version }) => !licences.includes(`${paquet}@${version}`)).map(({ paquet, version }) => `${item.id} : ${path} ne porte pas la licence de ${paquet}@${version}`);
+  } catch (error) { return [`${item.id} : licences illisibles (${path})`]; }
+}
+
+function scriptProblems(item, entry, read) {
   if (entry.forme === 'module') return [`${item.id} : le catalogue dit « module », la liste donne le fichier d'un paquet`];
   if (!entry.cdn) return [`${item.id} : adresse du CDN absente`];
   const found = [];
   if (entry.cdn.src !== `${CDN_BASE}/${item.paquet}@${item.version}/${item.fichier}`) found.push(`${item.id} : adresse du CDN inattendue`);
   if (entry.cdn.integrite !== entry.vendorise.integrite) found.push(`${item.id} : le CDN et la copie vendorisée doivent porter la même empreinte`);
+  found.push(...licenceProblems(item, [{ paquet: item.paquet, version: item.version }], read));
   return found;
 }
 
@@ -170,7 +178,7 @@ export function checkFiles(catalogue, list, read, pin = {}) {
     const entry = entries.find(e => e.id === item.id && e.version === item.version);
     if (!entry) problems.push(`${item.id}@${item.version} : absent du catalogue`);
     else if (!entry.vendorise || typeof entry.vendorise.chemin !== 'string') problems.push(`${item.id} : copie vendorisée absente du catalogue`);
-    else problems.push(...(item.forme === 'module' ? assembledProblems(item, entry, read, pin) : scriptProblems(item, entry)), ...copyProblems(item, entry, read));
+    else problems.push(...(item.forme === 'module' ? assembledProblems(item, entry, read, pin) : scriptProblems(item, entry, read)), ...copyProblems(item, entry, read));
   }
   for (const entry of entries) {
     if (!list.some(item => item.id === entry.id && item.version === entry.version)) problems.push(`${entry.id}@${entry.version} : dans le catalogue mais plus dans la liste`);
@@ -253,10 +261,26 @@ async function generateAssembled(root, item, packagesDir, work, log, pin) {
   return entry;
 }
 
+// La licence d'une bibliothèque qui est le fichier d'un paquet : le même LICENCES.txt que celui d'un fichier assemblé (la licence du paquet et, s'il en livre un, son NOTICE).
+// Seuls ces fichiers et le package.json du paquet sont tirés de l'archive.
+function packLicences(item, packagesDir, work) {
+  const archive = archiveOf(item.paquet, item.version, packagesDir, work);
+  const names = execFileSync('tar', ['-tzf', archive], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 }).split('\n');
+  const wanted = ['package/package.json', ...names.filter(name => /^package\/(licen[cs]e|notice)(\.(md|txt))?$/i.test(name))];
+  const dir = join(work, `${item.id}-licences`);
+  const target = join(dir, 'node_modules', ...item.paquet.split('/'));
+  mkdirSync(target, { recursive: true });
+  execFileSync('tar', ['-xzf', archive, '-C', target, '--strip-components=1', ...wanted]);
+  return licencesText({ id: item.id, version: item.version, paquets: [{ paquet: item.paquet, version: item.version }] }, dir);
+}
+
 function generateScript(root, item, packagesDir, work, log) {
   const bytes = packBytes(item, packagesDir, work);
+  const licences = packLicences(item, packagesDir, work);
+  if (licences.problems.length) throw new Error(`${item.id} : pas de licence à poser avec la copie :\n  - ${licences.problems.join('\n  - ')}`);
   const entry = buildEntry(item, bytes);
   writeVendored(root, entry.vendorise.chemin, bytes);
+  writeVendored(root, licencesPath(item), licences.text);
   log(`${item.id}@${item.version} : ${bytes.length} octets, ${entry.cdn.integrite}\n`);
   return entry;
 }

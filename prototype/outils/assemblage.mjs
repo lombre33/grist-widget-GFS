@@ -142,12 +142,16 @@ export function licencesText(item, workDir) {
   const problems = [];
   const blocks = item.paquets.map(({ paquet, version }) => {
     const dir = join(workDir, 'node_modules', paquet);
-    const file = existsSync(dir) ? readdirSync(dir).find(name => /^licen[cs]e(\.(md|txt))?$/i.test(name)) : null;
+    const names = existsSync(dir) ? readdirSync(dir) : [];
+    const file = names.find(name => /^licen[cs]e(\.(md|txt))?$/i.test(name));
+    const notice = names.find(name => /^notice(\.(md|txt))?$/i.test(name));
     const declared = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).license;
     if (!file) problems.push(`${paquet} : pas de fichier de licence dans le paquet`);
     if (!declared) problems.push(`${paquet} : licence non déclarée dans le paquet`);
     const bar = '='.repeat(72);
-    return `${bar}\n${paquet}@${version} · ${declared || '?'}\n${bar}\n\n${file ? readFileSync(join(dir, file), 'utf8').trim() : ''}\n`;
+    const text = name => readFileSync(join(dir, name), 'utf8').trim();
+    // Apache 2.0 (article 4, d) : la copie redistribuée porte aussi le texte du fichier NOTICE du paquet, quand il en livre un (ECharts).
+    return `${bar}\n${paquet}@${version} · ${declared || '?'}\n${bar}\n\n${file ? text(file) : ''}\n${notice ? `\nNOTICE\n\n${text(notice)}\n` : ''}`;
   });
   const head = `Licences des paquets contenus dans ${item.id}@${item.version} (liste de GFS : bibliotheques/package.json).\nChaque texte est celui du fichier de licence livré avec le paquet, recopié par outils/bibliotheques.mjs.\n\n`;
   return { text: head + blocks.join('\n'), problems };

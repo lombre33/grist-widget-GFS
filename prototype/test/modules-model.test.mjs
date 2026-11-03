@@ -10,6 +10,10 @@ const catalogue = readCatalogue({ bibliotheques: [{
   id: 'plotly', version: '2.13.2', poids: 1000,
   cdn: { src: 'https://cdn.jsdelivr.net/npm/plotly.js-basic-dist-min@2.13.2/plotly-basic.min.js', integrite: SRI },
   vendorise: { chemin: 'vendor/plotly/2.13.2/plotly-basic.min.js', integrite: SRI },
+}, {
+  id: 'echarts', version: '6.1.0', poids: 1000,
+  cdn: { src: 'https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js', integrite: SRI },
+  vendorise: { chemin: 'vendor/echarts/6.1.0/dist/echarts.min.js', integrite: SRI },
 }] });
 const loaded = (bad = false) => [
   { app: { id: 'publipostage' }, manifest: publipostage(), ok: true, errors: [] },

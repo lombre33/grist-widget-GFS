@@ -50,7 +50,7 @@ test('contrats 2.4 : le rangement propre à une app est une table du préfixe, a
 });
 
 test('contrats 2.6 et 2.8 : la bibliothèque d\'une extension est un id et une version exacte', () => {
-  assert.deepEqual(publipostage().extensions[0].bibliotheques, [{ id: 'plotly', version: '2.13.2' }]);
+  assert.deepEqual(publipostage().extensions[0].bibliotheques, [{ id: 'plotly', version: '2.13.2' }, { id: 'echarts', version: '6.1.0' }]);
   assert.match(bad(m => { m.extensions[0].bibliotheques[0].version = 'latest'; }), /version de plotly doit être exacte/);
   assert.match(bad(m => { m.extensions[0].bibliotheques[0].version = '^2.13.2'; }), /exacte/);
   assert.match(bad(m => { m.extensions[0].bibliotheques[0].version = '>=2'; }), /exacte/);

@@ -325,7 +325,11 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
    natifs, avec leurs bibliothèques dans la liste de l'app.
 5. [D] `bibliotheques` liste ce que le code de l'extension exige : `{ id, version }`, par exemple
    `{ "id": "plotly", "version": "2.13.2" }` (la version de Grist, celle pour laquelle le dessin du graphique est écrit).
-   Ni adresse, ni empreinte, ni mode : elles sont à GFS.
+   Ni adresse, ni empreinte, ni mode : elles sont à GFS. Une extension peut en exiger plusieurs : `graphique` exige depuis le
+   03/11 `plotly` 2.13.2 (l'import des graphiques de Grist) **et** `echarts` 6.1.0 (Apache-2.0, le moteur des graphiques que l'app
+   crée, « Créer un graphique… » ; demande de Publipostage+ du 02/11). Les deux suivent le même mode, CDN ou copie de GFS, et
+   l'extension n'est servie que si le catalogue les a toutes : sans ECharts, « graphique » reste grisée avec ce qui manque, jamais
+   servie à moitié.
 6. [D] GFS tient un catalogue des bibliothèques d'extensions : pour chacune, `id`, `version`, l'adresse du CDN avec son
    empreinte (`cdn: { src, integrite }`, ou `cdn: null` au point 11) et le fichier de la version vendorisée avec la sienne
    (`vendorise: { chemin, integrite }`), tirés par son outil d'une liste de son dépôt (`package.json`). Le catalogue est publié
@@ -418,6 +422,11 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     paquet ne met pas dans le fichier assemblé : un PDF qui en dépend s'affiche avec les polices de repli, ou sans l'image ; un PDF
     scanné, sans texte, n'a pas de couche de texte ; la lecture se fait dans la page, donc une page très lourde fige l'interface
     quelques dixièmes de seconde (mesuré à 0,16 s au plus, faits vérifiés, 19).
+13. [D] **La licence suit chaque copie vendorisée** (03/11, avec ECharts). L'outil pose `vendor/<id>/<version>/LICENCES.txt` à côté de toute
+    copie : le texte de la licence de chaque paquet contenu et, quand le paquet livre un fichier `NOTICE`, son texte à la suite (la
+    licence Apache 2.0, article 4 d, veut que la copie redistribuée porte les deux ; ECharts en livre un). Un paquet sans fichier de
+    licence, ou sans licence déclarée, ne se vendorise pas : l'outil s'arrête en le disant. `--verifier` contrôle que ce fichier est
+    là et nomme chaque paquet de la copie (Plotly en a un depuis cette date).
 
 ### 2.7 Les actions acceptées
 

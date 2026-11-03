@@ -968,3 +968,18 @@ en français clair puis en anglais sombre, avec la sonde Y (`labo/sondes/y-lire-
 - **Pas mesuré** : Firefox (le cadre en bac à sable, la lecture par un module à empreinte), l'instance de la DINUM, un PDF protégé par un mot de passe (pdf.js le demande par `onPassword`, l'app doit
   le gérer : Publipostage+ le fait déjà pour ses exports), un PDF de centaines de pages, un PDF qui exige les polices standard, les CMap ou le décodeur JPEG 2000 (non fournis, contrats 2.6, point 12), un
   PDF sans texte (un scan : pas de couche de texte), la vraie Publipostage+ (son extension n'existe pas encore).
+
+## 20. ECharts 6.1.0 : l'archive de npm est le fichier que le CDN sert (lu le 03/11)
+
+La demande de Publipostage+ (graphiques créés dans l'app, « Créer un graphique… ») donne l'empreinte du fichier que jsDelivr sert pour `echarts@6.1.0`. jsDelivr n'est pas joignable du cloud ; le registre de npm l'est,
+et c'est de là que l'outil des bibliothèques tire la copie (`npm pack`, avec l'intégrité que donne le registre). Lu et mesuré le 03/11 :
+
+- **`dist/echarts.min.js` de l'archive** pèse 1 121 883 octets et porte l'empreinte `sha384-C2iskrW/uPW46KzOjrvJIQo4YkV8lkD+QS0CrDN18IIPIpT/g2USu8bTP3nvmIAD`, **exactement celles que Publipostage+ a relevées sur le CDN** : une seule empreinte vaut
+  pour le CDN et pour la copie de GFS, comme pour Plotly. Le registre dit `6.1.0`, licence `Apache-2.0`.
+- **Le fichier garde l'en-tête de la fondation Apache** (« Licensed to the Apache Software Foundation (ASF) under one or more contributor license agreements »). L'archive livre à sa racine un `LICENSE` (Apache 2.0, 11 990 octets)
+  et un `NOTICE` (168 octets : « Apache ECharts / Copyright 2017-2026 The Apache Software Foundation »). L'article 4 d de la licence veut que la copie redistribuée porte le texte du `NOTICE` : l'outil le recopie, après la licence, dans
+  `vendor/echarts/6.1.0/LICENCES.txt` (contrats 2.6, point 13).
+- **La copie de GFS** est à `vendor/echarts/6.1.0/dist/echarts.min.js` (la disposition de l'outil : le chemin du fichier dans le paquet est gardé).
+
+**Pas mesuré.** Le vrai jsDelivr (`node outils/bibliotheques.mjs --verifier-cdn`, sur une machine qui y accède), et le dessin d'un graphique par ECharts dans le sous-cadre de GFS (la section « Mesuré dans un vrai Grist » qui suit
+quand l'app est rejouée).

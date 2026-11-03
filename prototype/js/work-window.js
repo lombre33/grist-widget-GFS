@@ -1,6 +1,6 @@
 // La fenêtre « Table de travail » (contrats 4.5, point 1) : un clic sur une table la choisit ; son bouton « Ligne » mène, pour qui le veut, à la liste de ses lignes.
-// Chaque liste a sa recherche (mots dans n'importe quel ordre, accents, casse et ponctuation ignorés). Le premier article rend la main à la page. Une table que l'app
-// ouverte ne lit pas est grisée avec sa raison, jamais masquée.
+// Chaque liste a sa recherche (mots dans n'importe quel ordre, accents, casse et ponctuation ignorés). Le premier article rend la main à la page : son bouton « Ligne » choisit
+// pourtant une ligne de la table de la page (4.5, point 7). Une table que l'app ouverte ne lit pas est grisée avec sa raison, jamais masquée.
 // Une fenêtre sur une seule base : le titre, la recherche et le pied restent en place, seule la liste défile. Elle ne décide rien : le choix est rendu au contrôleur.
 
 import { h } from './dom.js';
@@ -22,8 +22,9 @@ export class WorkWindow {
   #inert = [];
   #onKey = null;
 
-  // opts : { container, i18n, inertTargets() -> [élément], source, onPick({ tableId, rowId, label } | null), onClose() } ; une table choisie seule a `rowId` null.
-  // source : { pageTable, current, tables() -> [{ id, locked: texte | null }], rows(id) -> Promise<[{ id, label, search }]> } ; la recherche d'une ligne porte sur `search`.
+  // opts : { container, i18n, inertTargets() -> [élément], source, onPick({ tableId, rowId, label, page } | null), onClose() } ; une table choisie seule a `rowId` null ; `page` : la
+  // ligne est celle de la table de la page.
+  // source : { pageTable, pageRow (la ligne que la personne a choisie sur la page, ou null), current, tables() -> [{ id, locked: texte | null }], rows(id) -> Promise<[{ id, label, search }]> } ; la recherche d'une ligne porte sur `search`.
   constructor(opts) { this.#opts = opts; }
 
   get isOpen() { return this.#root !== null; }
@@ -85,7 +86,7 @@ export class WorkWindow {
     const { t } = this.#opts.i18n;
     const { source } = this.#opts;
     const current = source.current;
-    const page = { id: null, label: t('work.page', { table: source.pageTable || '—' }), glyph: 'link', checked: !current };
+    const page = { id: null, name: source.pageTable, label: t('work.page', { table: source.pageTable || '—' }), glyph: 'link', checked: !current, more: Boolean(source.pageTable) };
     const tables = source.tables().map(table => ({ id: table.id, label: table.id, glyph: 'table', locked: table.locked, checked: Boolean(current) && current.tableId === table.id, more: true }));
     this.#step = { kind: 'tables', items: [page, ...tables] };
     this.#heading(t('work.title'), t('work.textTables'), false);
@@ -94,10 +95,11 @@ export class WorkWindow {
     this.#search.focus({ preventScroll: true });
   }
 
-  async #showRows(tableId) {
+  async #showRows(tableId, page = false) {
     const { t } = this.#opts.i18n;
     this.#heading(tableId, t('work.textRows', { table: tableId }), true);
-    this.#step = { kind: 'rows', tableId, items: [] };
+    const step = { kind: 'rows', tableId, page, items: [] };
+    this.#step = step;
     this.#search.value = '';
     this.#list.replaceChildren();
     this.#note.textContent = t('work.loading', { table: tableId });
@@ -105,12 +107,13 @@ export class WorkWindow {
     try {
       rows = await this.#opts.source.rows(tableId);
     } catch (error) {
-      if (this.#step.tableId === tableId) this.#note.textContent = t('work.failed', { table: tableId, reason: String((error && error.message) || '').slice(0, 120) });
+      if (this.#step === step) this.#note.textContent = t('work.failed', { table: tableId, reason: String((error && error.message) || '').slice(0, 120) });
       return;
     }
-    if (!this.#root || this.#step.tableId !== tableId) return; // la fenêtre a été fermée, ou la personne est revenue aux tables
-    const current = this.#opts.source.current;
-    this.#step.items = rows.map(row => ({ id: row.id, label: row.label, search: normalize(`${row.label} ${row.search || ''}`), glyph: null, checked: Boolean(current) && current.tableId === tableId && current.rowId === row.id }));
+    if (!this.#root || this.#step !== step) return; // la fenêtre a été fermée, ou la personne est revenue aux tables
+    const { current, pageRow } = this.#opts.source;
+    const isChecked = rowId => (page ? pageRow === rowId : Boolean(current) && current.tableId === tableId && current.rowId === rowId);
+    step.items = rows.map(row => ({ id: row.id, label: row.label, search: normalize(`${row.label} ${row.search || ''}`), glyph: null, checked: isChecked(row.id) }));
     this.#render();
     this.#search.focus({ preventScroll: true });
   }
@@ -143,8 +146,8 @@ export class WorkWindow {
     const locked = item.locked ? ' is-locked' : '';
     const disabled = item.locked ? 'true' : null;
     // Le bouton « Ligne » d'une table : facultatif, il mène à la liste de ses lignes ; grisé comme sa table.
-    const rows = item.more ? h('button', { type: 'button', class: `btn sm wk-rows${locked}`, dataset: { index: String(index), fk: `work-rows-${item.id}` }, 'aria-disabled': disabled,
-      'aria-label': t('work.rowOf', { table: item.label }) }, t('work.row'), icon('chev-right')) : null;
+    const rows = item.more ? h('button', { type: 'button', class: `btn sm wk-rows${locked}`, dataset: { index: String(index), fk: `work-rows-${item.id ?? 'page'}` }, 'aria-disabled': disabled,
+      'aria-label': t('work.rowOf', { table: item.name || item.label }) }, t('work.row'), icon('chev-right')) : null;
     return h('li', { class: 'wk-row' },
       h('button', { type: 'button', class: `wk-item${locked}`, dataset: { index: String(index), fk: `work-item-${item.id ?? 'page'}` }, 'aria-disabled': disabled,
         'aria-current': item.checked ? 'true' : null },
@@ -158,10 +161,11 @@ export class WorkWindow {
     const item = this.#found()[Number(button.dataset.index)];
     if (!item) return;
     if (item.locked) { this.#note.textContent = item.locked; return; }
-    if (this.#step.kind === 'tables' && item.id === null) { this.#pick(null); return; }
-    if (this.#step.kind === 'tables' && event.target.closest('.wk-rows')) { void this.#showRows(item.id); return; }
+    const toRows = Boolean(event.target.closest('.wk-rows'));
+    if (this.#step.kind === 'tables' && item.id === null) { if (toRows) void this.#showRows(item.name, true); else this.#pick(null); return; }
+    if (this.#step.kind === 'tables' && toRows) { void this.#showRows(item.id); return; }
     if (this.#step.kind === 'tables') { this.#pick({ tableId: item.id, rowId: null, label: null }); return; }
-    this.#pick({ tableId: this.#step.tableId, rowId: item.id, label: item.label });
+    this.#pick({ tableId: this.#step.tableId, rowId: item.id, label: item.label, page: this.#step.page });
   }
 
   #pick(choice) {

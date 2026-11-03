@@ -105,6 +105,14 @@ réponses, sans que l'app change.
   l'app lisait le mauvais client ; le lien retiré ou posé après l'ouverture n'arrivait pas à l'app (le message de réglages ne
   différait du précédent que par `linking`, et GFS ne comparait que la tranche de l'app). Les lignes choisies **après**
   l'ouverture arrivaient correctement (messages de ligne relayés).
+- Lu et mesuré le 03/11 (mêmes sources ; `labo/run-page-ligne.mjs`, grist-static 0.1.6, Chromium, la vraie Publipostage+) : **un widget peut n'avoir aucune
+  ligne sans être relié.** `TableNotifier` et `RecordNotifier` envoient `rowId: cursor.getCursorPos().rowId || undefined` (lignes 653 et 768) : quand le
+  curseur de la section n'a plus de ligne, le message dit `rowId` `undefined`, et le script d'API n'appelle pas `onRecord` (`grist-plugin-api.ts`,
+  ligne 382 : `!msg.tableId || !msg.rowId || msg.rowId === "new"`). Un **filtre enregistré** qui écarte toutes les lignes (`_grist_Filters`, `filter`
+  `{"included":[]}`) a ce résultat : section non reliée (`asTarget` nul), `fetchSelectedTable` sans ligne, et Publipostage+, ouverte ensuite en Lecture, montrait
+  « Reliez ce widget à votre tableau » : l'écran que le porteur a vu le 03/11 (table non vide, widget non relié). Ce qui a vidé le curseur chez lui n'est pas
+  établi. `GristViewImpl.fetchSelectedRecord` (ligne 469) lit `tableData.getValue(rowId, …)` pour **n'importe quelle** ligne de la table, filtrée ou non : une
+  ligne que GFS dit à l'app (contrats 4.5, point 7) se relit donc par la vue de Grist.
 - Lu le 21/10 (mêmes sources, `WidgetFrame.ts`, lignes 266 à 268) : **chaque** message `ready` du cadre redéclenche « ready »
   (`this.trigger('ready', this)`), donc le rejeu de chaque source d'événements (réglages, thème, table), et pas seulement le
   premier. Un widget qui recharge sa page dans le même cadre retrouve ainsi son état. Mesuré le même jour (`labo/run-recharge.mjs`,

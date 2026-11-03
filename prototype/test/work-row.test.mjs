@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { WorkRow, encode, pollDelay, rowLabel, viewColumns, workTables } from '../js/work-row.js';
+import { GristState } from '../js/state.js';
 
 // Un document : Participants (une Référence affichée par le numéro de la session, une date) et Sessions ; les métadonnées comme Grist les rend.
 const META = {
@@ -206,4 +207,151 @@ test('revenir à la page : les messages de la section passent de nouveau, l\'app
 test('les lignes d\'une table pour la liste : dans l\'ordre du tableau, avec leur texte', async () => {
   const work = new WorkRow({ doc: fakeDoc(), timers: fakeTimers() });
   assert.deepEqual((await work.rows('Participants')).map(row => [row.id, row.label]), [[2, 'Durand · S-1'], [3, 'Ben Saïd · S-2 · 1970-01-01'], [1, 'Martin · S-2 · 1970-01-02']]);
+});
+
+// ---------- la table de la page (contrats 4.5, point 7) : l'état de Grist est le vrai GristState, nourri des messages que Grist envoie ----------
+
+const settle = () => new Promise(resolve => setImmediate(resolve));
+// La table de la page est Participants ; `rowId` : la ligne que Grist dit au `ready` de GFS (rien : `undefined`, comme `rowId || undefined` de WidgetFrame.ts) ; `asTarget` : le lien « Select by ».
+function pageState({ rowId, asTarget = null } = {}) {
+  const base = new GristState();
+  base.feed({ options: null, settings: { accessLevel: 'full', linking: { asTarget, asSource: false } }, fromReady: true });
+  base.feed({ tableId: 'Participants', rowId, dataChange: true, mappingsChange: true });
+  return base;
+}
+const watch = state => {
+  const seen = [];
+  state.subscribe((kind, message) => seen.push([kind, message.tableId, message.rowId, message.dataChange]));
+  return seen;
+};
+
+test('la table de la page, Grist ne dit aucune ligne et la section n\'est pas reliée : l\'app reçoit la première ligne du tableau', async () => {
+  const base = pageState({ rowId: undefined });
+  const work = new WorkRow({ doc: fakeDoc(), timers: fakeTimers() });
+  const state = work.state(base);
+  const seen = watch(state);
+  await settle();
+  assert.deepEqual(seen, [['record', 'Participants', 2, false]], 'la première du tableau (manualSort) est la ligne 2');
+  assert.deepEqual(state.tableNow(), { tableId: 'Participants', rowId: 2, dataChange: true, mappingsChange: true }, 'une app qui s\'ouvre ensuite la reçoit dès son démarrage');
+  base.feed({ tableId: 'Participants', rowId: undefined, dataChange: true, mappingsChange: false });
+  assert.deepEqual(seen.at(-1), ['table', 'Participants', 2, true], 'un changement de données que Grist annonce sans ligne la porte aussi');
+  await settle();
+  assert.equal(work.choice, null, 'la page décide toujours');
+});
+
+test('la section est reliée par « Select by » : Grist ne dit aucune ligne, GFS n\'en invente pas et ne lit rien', async () => {
+  const base = pageState({ rowId: undefined, asTarget: 'Row to Row' });
+  const doc = fakeDoc();
+  const work = new WorkRow({ doc, timers: fakeTimers() });
+  const state = work.state(base);
+  const seen = watch(state);
+  assert.equal(state.tableNow().rowId, undefined);
+  base.feed({ tableId: 'Participants', rowId: undefined, dataChange: false });
+  await settle();
+  assert.deepEqual(seen, [['record', 'Participants', undefined, false]], 'le message de Grist passe tel quel');
+  assert.equal(state.tableNow().rowId, undefined);
+  assert.deepEqual(doc.reads, []);
+});
+
+test('Grist dit une ligne : c\'est la sienne et GFS ne lit rien ; une ligne que Grist dit ensuite remplace celle que GFS avait donnée', async () => {
+  const healthy = pageState({ rowId: 3 });
+  const doc = fakeDoc();
+  const state = new WorkRow({ doc, timers: fakeTimers() }).state(healthy);
+  assert.equal(state.tableNow().rowId, 3);
+  await settle();
+  assert.deepEqual(doc.reads, [], 'rien à lire quand Grist a une ligne');
+
+  const base = pageState({ rowId: undefined });
+  const work = new WorkRow({ doc: fakeDoc(), timers: fakeTimers() });
+  const given = work.state(base);
+  const seen = watch(given);
+  await settle();
+  assert.equal(given.tableNow().rowId, 2);
+  base.feed({ tableId: 'Participants', rowId: 3, dataChange: false });
+  assert.deepEqual(seen.at(-1), ['record', 'Participants', 3, false]);
+  assert.equal(given.tableNow().rowId, 3);
+  assert.equal(work.pageRow, null, 'la ligne de GFS est oubliée');
+});
+
+test('« Ligne » sur la table de la page : la ligne choisie vaut au démarrage et à chaque changement de données, jusqu\'à ce que Grist change de ligne', async () => {
+  const base = pageState({ rowId: 1 });
+  const work = new WorkRow({ doc: fakeDoc(), timers: fakeTimers() });
+  const state = work.state(base);
+  const seen = watch(state);
+  work.pickPage(base, 'Participants', 3);
+  assert.deepEqual(seen, [['record', 'Participants', 3, false]]);
+  assert.deepEqual(work.pageRow, { tableId: 'Participants', rowId: 3, picked: true });
+  assert.equal(state.tableNow().rowId, 3);
+  base.feed({ tableId: 'Participants', rowId: 1, dataChange: true, mappingsChange: false }); // une cellule change : Grist redit sa ligne, la même
+  assert.deepEqual(seen.at(-1), ['table', 'Participants', 3, true]);
+  base.feed({ tableId: 'Participants', rowId: 1, dataChange: false }); // le curseur de Grist n'a pas changé de ligne
+  assert.equal(state.tableNow().rowId, 3);
+  base.feed({ tableId: 'Participants', rowId: 2, dataChange: false }); // Grist change de ligne : la sienne passe avant
+  assert.deepEqual(seen.at(-1), ['record', 'Participants', 2, false]);
+  assert.equal(state.tableNow().rowId, 2);
+  assert.equal(work.pageRow, null);
+});
+
+test('table de la page vide : GFS ne donne aucune ligne (la ligne d\'ajout reste à Grist)', async () => {
+  const base = pageState({ rowId: 'new' });
+  const empty = { id: [], manualSort: [], Nom: [], Session: [], gristHelper_Display: [], DateInscription: [] };
+  const work = new WorkRow({ doc: fakeDoc({ Participants: empty }), timers: fakeTimers() });
+  const state = work.state(base);
+  const seen = watch(state);
+  await settle();
+  assert.deepEqual(seen, []);
+  assert.equal(state.tableNow().rowId, 'new');
+});
+
+test('la table de la section change (panneau de Grist) : la ligne donnée par GFS suit la nouvelle table', async () => {
+  const base = pageState({ rowId: undefined });
+  const work = new WorkRow({ doc: fakeDoc(), timers: fakeTimers() });
+  const state = work.state(base);
+  const seen = watch(state);
+  await settle();
+  base.feed({ tableId: 'Sessions', rowId: undefined, dataChange: true, mappingsChange: true });
+  await settle();
+  assert.deepEqual(seen.map(entry => entry.slice(0, 3)), [['record', 'Participants', 2], ['table', 'Sessions', undefined], ['record', 'Sessions', 1]]);
+  assert.deepEqual(work.pageRow, { tableId: 'Sessions', rowId: 1, picked: false });
+});
+
+test('la première ligne est retirée : la suivante est donnée à l\'app', async () => {
+  const base = pageState({ rowId: undefined });
+  const doc = fakeDoc();
+  const work = new WorkRow({ doc, timers: fakeTimers() });
+  const state = work.state(base);
+  const seen = watch(state);
+  await settle();
+  doc.data.Participants.id.splice(1, 1);
+  doc.data.Participants.manualSort.splice(1, 1);
+  base.feed({ tableId: 'Participants', rowId: undefined, dataChange: true, mappingsChange: false });
+  await settle();
+  assert.deepEqual(seen.at(-1), ['record', 'Participants', 3, false]);
+  assert.equal(state.tableNow().rowId, 3);
+});
+
+test('une autre table de travail, ou le retour à la page, oublie la ligne choisie sur la page', async () => {
+  const base = pageState({ rowId: 1 });
+  const work = new WorkRow({ doc: fakeDoc(), timers: fakeTimers() });
+  work.state(base);
+  work.pickPage(base, 'Participants', 3);
+  await work.choose('Sessions', 1);
+  assert.equal(work.pageRow, null);
+  work.pickPage(base, 'Participants', 3);
+  work.clear();
+  assert.equal(work.pageRow, null);
+  assert.equal(work.state(base).tableNow().rowId, 1);
+});
+
+test('une ligne choisie sur la page sans app ouverte : le jour où Grist change de ligne, la sienne la remplace, et la barre est prévenue', () => {
+  const base = pageState({ rowId: 1 });
+  const calls = [];
+  const work = new WorkRow({ doc: fakeDoc(), timers: fakeTimers(), onPageChange: () => calls.push('changé') });
+  work.pickPage(base, 'Participants', 3);
+  base.feed({ tableId: 'Participants', rowId: 1, dataChange: false });
+  assert.deepEqual(calls, [], 'la même ligne qu\'avant : rien n\'a bougé');
+  base.feed({ tableId: 'Participants', rowId: 2, dataChange: false });
+  assert.equal(work.pageRow, null);
+  assert.deepEqual(calls, ['changé']);
+  assert.equal(work.state(base).tableNow().rowId, 2);
 });

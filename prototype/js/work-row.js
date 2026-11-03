@@ -30,6 +30,16 @@ export function viewColumns(tables, columns, tableId) {
     .map(({ colId, type, shown }) => ({ colId, type, shown }));
 }
 
+// Une ligne que Grist dit à l'app : un numéro. Le script d'API de Grist ignore le reste (rien, ou « new ») : `onRecord` n'est alors pas appelé (4.5, point 7).
+export const hasRow = message => Boolean(message) && Number.isInteger(message.rowId) && message.rowId > 0;
+
+// La section est reliée par « Select by » : Grist le dit dans les réglages (`settings.linking.asTarget`, une chaîne). Sans lien, ou sans cette information (un Grist plus
+// ancien), elle ne l'est pas.
+export function isLinked(options) {
+  const linking = options && options.settings && options.settings.linking;
+  return Boolean(linking) && typeof linking.asTarget === 'string' && linking.asTarget !== '';
+}
+
 // Une table appartient à une app quand elle porte son préfixe (2.3), ce préfixe sans son « _ » final, ou qu'elle est la table de ses fichiers (2.4).
 const ownedBy = (manifest, id) => {
   const prefix = manifest.tables && manifest.tables.prefixe;
@@ -65,9 +75,16 @@ export class WorkRow {
   #timer = null;
   #reading = null;
   #listeners = new Set();
+  #page = null; // { tableId, rowId, picked } : la ligne que GFS donne pour la table de la page, première du tableau ou choisie ici (4.5, point 7)
+  #seen = null; // la dernière ligne que Grist a dite pour la table de la page
+  #following = null; // l'état de Grist dont les changements de ligne remplacent la ligne choisie sur la page
+  #onPage;
+  #filling = false;
 
-  // doc : `GristDocAPI` de GFS (port.doc) ; timers : { setTimeout, clearTimeout } ; hidden() : la page est cachée (la relecture attend).
-  constructor({ doc, timers = globalThis, hidden = () => false }) {
+  // doc : `GristDocAPI` de GFS (port.doc) ; timers : { setTimeout, clearTimeout } ; hidden() : la page est cachée (la relecture attend) ; onPageChange() : Grist a remplacé la
+  // ligne que la personne avait choisie sur la page.
+  constructor({ doc, timers = globalThis, hidden = () => false, onPageChange = () => {} }) {
+    this.#onPage = onPageChange;
     this.#doc = doc;
     this.#timers = timers;
     this.#hidden = hidden;
@@ -75,6 +92,9 @@ export class WorkRow {
 
   // { tableId, rowId } ou null : la page décide.
   get choice() { return this.#choice && { ...this.#choice }; }
+
+  // { tableId, rowId, picked } ou null : la ligne que GFS donne pour la table de la page. `picked` : la personne l'a choisie ; sinon c'est la première du tableau.
+  get pageRow() { return this.#page && { ...this.#page }; }
 
   // L'état que reçoit une session (session.js) : celui de Grist, sauf la table et la ligne quand une ligne de travail est choisie.
   state(base) {
@@ -84,7 +104,7 @@ export class WorkRow {
       get theme() { return base.theme; },
       get table() { return work.#choice ? work.#message(true) : base.table; },
       get grantedAccess() { return base.grantedAccess; },
-      tableNow: () => (this.#choice ? this.#message(true) : base.tableNow()),
+      tableNow: () => (this.#choice ? this.#message(true) : this.#viaPage(base, base.tableNow(), 'table')),
       subscribe: listener => this.#subscribe(base, listener),
     };
   }
@@ -118,6 +138,7 @@ export class WorkRow {
     }
     const [columns, data] = await Promise.all([this.#readColumns(tableId), this.#read(tableId)]);
     this.#stop();
+    this.#page = null;
     this.#choice = { tableId, rowId: rowId ?? firstRow(data) };
     this.#columns = columns;
     this.#remember(data);
@@ -131,7 +152,18 @@ export class WorkRow {
     this.#stop();
     this.#choice = null;
     this.#columns = [];
+    this.#page = null;
     return { tableChanged: had };
+  }
+
+  // La personne choisit une ligne de la table de la page (« Ligne » du premier article) : l'app la reçoit tout de suite, et elle vaut tant que Grist ne change pas de ligne
+  // (4.5, point 7). Sans table de travail choisie : la page décide toujours.
+  pickPage(base, tableId, rowId) {
+    const now = base.tableNow();
+    this.#seen = now && now.tableId === tableId && hasRow(now) ? now.rowId : null;
+    this.#page = { tableId, rowId, picked: true };
+    this.#follow(base);
+    this.#emitPage();
   }
 
   // Les lignes d'une table pour la liste de la fenêtre : { id, label, search }, dans l'ordre du tableau.
@@ -147,8 +179,12 @@ export class WorkRow {
   #subscribe(base, listener) {
     this.#listeners.add(listener);
     if (this.#choice && this.#listeners.size === 1) this.#schedule(0);
-    // Les messages de table et de ligne de Grist parlent de la section : ils ne passent pas tant qu'une ligne de travail est choisie.
-    const off = base.subscribe((kind, message) => { if (!(this.#choice && (kind === 'table' || kind === 'record'))) listener(kind, message); });
+    // Les messages de table et de ligne de Grist parlent de la section : ils ne passent pas tant qu'une ligne de travail est choisie ; sans elle, la page décide (`#viaPage`).
+    const off = base.subscribe((kind, message) => {
+      if (kind !== 'table' && kind !== 'record') listener(kind, message);
+      else if (!this.#choice) { this.#noticeGrist(kind, message); listener(kind, this.#viaPage(base, message, kind)); }
+    });
+    if (!this.#choice) this.#viaPage(base, base.tableNow(), 'table');
     return () => {
       off();
       this.#listeners.delete(listener);
@@ -159,6 +195,63 @@ export class WorkRow {
   #emit(kind) {
     const message = this.#message(kind === 'table');
     for (const listener of [...this.#listeners]) listener(kind, message);
+  }
+
+  // Ce que l'app reçoit quand la page décide (4.5, point 7) : la ligne de Grist, sauf celle que la personne a choisie ici, qui vaut tant que Grist ne change pas de ligne ; et
+  // quand Grist n'en dit aucune pour une section non reliée (cursor sans ligne, filtre qui les écarte toutes, ligne d'ajout), la première du tableau.
+  #viaPage(base, message, kind) {
+    if (!message || !message.tableId) return message;
+    if (this.#page && this.#page.tableId !== message.tableId) this.#page = null;
+    const page = this.#page;
+    if (page && page.picked) return { ...message, rowId: page.rowId };
+    if (hasRow(message) || isLinked(base.options)) { this.#page = null; return message; }
+    if (!page || kind === 'table') void this.#fillPage(base, message.tableId);
+    return page ? { ...message, rowId: page.rowId } : message;
+  }
+
+  // Grist change de ligne (un message de ligne d'un autre numéro que celui qu'il a dit en dernier) : la sienne passe avant celle que la personne avait choisie sur la page.
+  #noticeGrist(kind, message) {
+    if (!hasRow(message) || (kind !== 'table' && kind !== 'record')) return;
+    const moved = kind === 'record' && message.rowId !== this.#seen;
+    this.#seen = message.rowId;
+    if (moved && this.#page && this.#page.picked) { this.#page = null; this.#onPage(); }
+  }
+
+  // Tant que la personne a choisi une ligne sur la page, GFS écoute Grist même sans app ouverte : le jour où Grist change de ligne, la sienne a remplacé la choisie.
+  #follow(base) {
+    if (this.#following === base) return;
+    this.#following = base;
+    base.subscribe((kind, message) => { if (!this.#choice) this.#noticeGrist(kind, message); });
+  }
+
+  // La première ligne se donne quand la page décide, que Grist n'en dit aucune pour cette table, que la section n'est pas reliée et que la personne n'en a pas choisi.
+  #wantsFirst(base, tableId) {
+    const now = this.#choice ? null : base.tableNow();
+    return Boolean(now) && now.tableId === tableId && !hasRow(now) && !isLinked(base.options) && !(this.#page && this.#page.picked);
+  }
+
+  // Lit la table de la page et donne sa première ligne aux apps ; une table vide n'en donne aucune (la ligne d'ajout reste à Grist). Une première ligne qui a changé (retirée,
+  // déplacée) est redonnée.
+  async #fillPage(base, tableId) {
+    if (this.#filling) return;
+    this.#filling = true;
+    try {
+      const data = await this.#read(tableId);
+      const [at] = orderOf(data);
+      if (at === undefined || !this.#wantsFirst(base, tableId)) return;
+      if (this.#page && this.#page.rowId === data.id[at]) return;
+      this.#page = { tableId, rowId: data.id[at], picked: false };
+      this.#emitPage();
+    } catch (error) {
+      console.warn('GFS : la table de la page est illisible', error);
+    } finally {
+      this.#filling = false;
+    }
+  }
+
+  #emitPage() {
+    const message = { tableId: this.#page.tableId, rowId: this.#page.rowId, dataChange: false };
+    for (const listener of [...this.#listeners]) listener('record', message);
   }
 
   async #moveTo(rowId) {

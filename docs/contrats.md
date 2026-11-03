@@ -879,7 +879,7 @@ table, réglé dans le panneau de Grist.
    table ») ; sa ligne est alors celle d'une section qui s'ouvre : la première du tableau, ou la ligne d'ajout (`new`) d'une table
    vide. Le bouton « Ligne » d'une table (ou la flèche droite) mène, pour qui le veut, à la liste de ses lignes, avec recherche.
    Choisir de nouveau la même table, sans ligne, ne change rien. Le premier article, « La table de la page », rend la main à la
-   section : c'est l'état de départ, celui d'avant 4.5. La liste des tables ne montre ni les tables internes de Grist
+   section : c'est l'état de départ, celui d'avant 4.5 ; sa ligne se complète ou se choisit (point 7). La liste des tables ne montre ni les tables internes de Grist
    (`_grist_*`), ni celles de GFS (`GFS_*`), ni celles des apps (leur préfixe, 2.3, le préfixe sans son « _ » final, et les
    tables de leurs fichiers, 2.4). Une table que l'app ouverte ne peut pas lire (3.2) est grisée, avec la raison.
 2. [T] **Ce que l'app reçoit.** Tant qu'une table de travail est choisie, le courtier présente à l'app la table et la ligne
@@ -905,6 +905,22 @@ table, réglé dans le panneau de Grist.
 6. [D] **Ce qui est retenu.** Rien, dans le document comme dans le navigateur : la table de travail vaut pour le cadre de GFS
    ouvert, et se perd quand Grist le recharge (changement de page, d'accès). La plus prudente des réponses, en attendant
    l'usage.
+7. [T] **La table de la page, sa ligne.** Décidé par le porteur le 03/11 (« j'aimerais que GFS prenne la main là-dessus » : le widget
+   n'est pas relié par « Select by », et Publipostage+, ouverte en Lecture sur « La table de la page », n'avait aucune ligne). La
+   table reste celle de la section, la ligne reste celle de Grist, avec deux compléments. (a) Quand Grist ne dit **aucune ligne**
+   (le curseur de la section n'en a plus : filtre qui les écarte toutes, ou ligne d'ajout `new`) et que la section **n'est pas
+   reliée** (`settings.linking.asTarget`, faits vérifiés 1 : une chaîne quand elle l'est ; sans cette information, elle est tenue
+   pour non reliée), GFS donne **la première ligne du tableau** (lue par `fetchTable`, dans l'ordre du tableau, redonnée si elle a
+   été retirée) : le message de table et le message de ligne que reçoit l'app la portent, au `ready` comme ensuite. Une table vide
+   n'en donne aucune : la ligne d'ajout reste à Grist. Une section reliée n'a jamais d'autre ligne que celle de Grist. (b) Le bouton
+   « Ligne » du premier article choisit une ligne de la table de la page : l'app la reçoit tout de suite (sans être rouverte, sauf
+   si une autre table de travail était choisie), au `ready` comme à chaque message de table (un changement de données), jusqu'à ce
+   que **Grist dise une autre ligne** (un message de ligne d'un autre numéro que le dernier qu'il a dit : la sienne passe toujours
+   avant), que la personne revienne à la page ou choisisse une autre table de travail, ou que Grist recharge GFS (point 6). La
+   barre le dit : bouton enfoncé, info-bulle « celle de la page (Table), ligne … ». Mesuré dans un vrai Grist (labo,
+   `run-page-ligne.mjs`, faits vérifiés 1) : un filtre enregistré qui écarte toutes les lignes laissait Publipostage+ sur « Reliez ce
+   widget » ; elle reçoit la première ligne, la ligne choisie résiste à un changement de données, `setCursorPos` dans la section la
+   remplace.
 7. [M] **À mesurer sur un Grist en ligne** : le coût d'une relecture par le réseau, et un repère léger « le document a changé »
    (l'historique du document par l'API REST) qui éviterait de relire une table qui n'a pas changé.
 

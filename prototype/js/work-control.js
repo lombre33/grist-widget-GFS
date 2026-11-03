@@ -14,7 +14,7 @@ export class WorkControl {
   //   reopen(appId), hidden() }
   constructor(env) {
     this.#env = env;
-    this.work = new WorkRow({ doc: env.port.doc, hidden: env.hidden });
+    this.work = new WorkRow({ doc: env.port.doc, hidden: env.hidden, onPageChange: () => this.relabel() });
     // La table de la section peut changer (panneau de Grist) : l'info-bulle de la page la suit.
     env.state.subscribe(kind => { if (kind === 'table' && !this.work.choice) this.relabel(); });
   }
@@ -31,15 +31,22 @@ export class WorkControl {
     return { state: this.work.state(state), port: this.work.port(port) };
   }
 
-  // L'info-bulle du bouton dit ce qui vaut : la table choisie, avec sa ligne quand elle a été choisie aussi, ou celle de la page.
+  // L'info-bulle du bouton dit ce qui vaut : la table choisie, avec sa ligne quand elle a été choisie aussi, ou celle de la page (avec sa ligne, si la personne en a choisi une).
   relabel() {
     const { t, dock, state } = this.#env;
     const choice = this.work.choice;
-    const row = choice && this.#row && this.#row.id === choice.rowId ? this.#row.label : '';
-    let text = t('work.tipPage', { table: (state.table && state.table.tableId) || '—' });
+    const page = this.work.pageRow;
+    const picked = Boolean(page && page.picked);
+    const row = this.#rowName(choice || (picked ? page : null));
+    const table = (state.table && state.table.tableId) || '—';
+    let text = t('work.tipPage', { table });
     if (choice) text = row ? t('work.tipChosen', { table: choice.tableId, row }) : t('work.tipTable', { table: choice.tableId });
-    dock.setWork(text, Boolean(choice));
+    else if (picked && row) text = t('work.tipPageRow', { table, row });
+    dock.setWork(text, Boolean(choice) || picked);
   }
+
+  // Le nom de la ligne que la personne a choisie dans la fenêtre (`at` : { rowId }), ou '' quand la ligne n'est pas celle-là.
+  #rowName(at) { return at && this.#row && this.#row.id === at.rowId ? this.#row.label : ''; }
 
   async open() {
     if (this.#window) return;
@@ -56,15 +63,32 @@ export class WorkControl {
     const { state } = this.#env;
     this.#window = new WorkWindow({
       container, i18n: { t }, inertTargets: this.#env.inertTargets,
-      source: { pageTable: state.table && state.table.tableId, current: this.work.choice, tables: () => tables, rows: id => this.work.rows(id) },
+      source: { pageTable: state.table && state.table.tableId, pageRow: this.#pickedPageRow(), current: this.work.choice, tables: () => tables, rows: id => this.work.rows(id) },
       onPick: choice => void this.#pick(choice), onClose: () => { this.#window = null; },
     });
     this.#window.open();
   }
 
+  #pickedPageRow() {
+    const page = this.work.pageRow;
+    return page && page.picked ? page.rowId : null;
+  }
+
+  // Une ligne de la table de la page (4.5, point 7) : la page décide toujours de la table ; l'app reçoit la ligne choisie tout de suite, rouverte seulement si une autre table
+  // de travail était choisie.
+  #pickPageRow(choice) {
+    const { tableChanged } = this.work.clear();
+    this.work.pickPage(this.#env.state, choice.tableId, choice.rowId);
+    this.#row = { id: choice.rowId, label: choice.label };
+    this.relabel();
+    const session = this.#env.session();
+    if (tableChanged && session) this.#env.reopen(session.id);
+  }
+
   // Une autre table (ou la page) : l'app active est rouverte (4.5, point 3) ; une autre ligne de la même table : un message de ligne, sans rouvrir. Une table
   // choisie seule (`rowId` null) garde la ligne qu'elle avait, ou prend la première.
   async #pick(choice) {
+    if (choice && choice.page) { this.#pickPageRow(choice); return; }
     let result;
     try {
       result = choice ? await this.work.choose(choice.tableId, choice.rowId) : this.work.clear();

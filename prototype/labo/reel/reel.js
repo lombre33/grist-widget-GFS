@@ -2,9 +2,12 @@
 // document de test, en accès complet :
 //   1. la lecture (rien n'est modifié) : le jeton de `getAccessToken` et l'API REST, depuis la page puis depuis un sous-cadre isolé (origine opaque), les tables internes du
 //      document, le niveau de schéma ;
-//   2. l'écriture, seulement si la personne la demande : une table d'essai, les actions que GFS laisse passer, puis la table est supprimée.
+//   2. l'écriture, seulement si la personne la demande : une table d'essai, les actions que GFS laisse passer, puis la table est supprimée ;
+//   3. les pièces jointes, seulement si la personne le demande (pj.js) : un PDF d'essai envoyé avec le jeton, rangé dans la cellule d'une table d'essai, relu, remplacé ;
+//   4. la taille maximale d'un envoi, seulement si la personne le demande (pj.js) : des fichiers d'essai de plus en plus gros, jusqu'au premier refus.
 // Le résultat est un texte à coller. Le jeton n'y figure jamais ; l'identifiant du document non plus.
 import { SANDBOX } from '../../js/frames.js';
+import { playAttachments, playSizes } from './pj.js?v=1';
 
 /* global grist */
 const rest = window.GFSRest;
@@ -12,7 +15,7 @@ const TABLE = 'Sonde_GFS_essai';
 const RENAMED = 'Sonde_GFS_essai_bis';
 const FRAME_TIMEOUT_MS = 20000;
 const $ = id => document.getElementById(id);
-const state = { acces: null, tables: null, lecture: [], ecriture: [], version: '' };
+const state = { acces: null, tables: null, lecture: [], ecriture: [], pj: [], tailles: [], version: '' };
 
 const json = value => JSON.stringify(value);
 const redact = url => String(url).replace(/(\/api\/docs\/)[^/?#]+/, '$1<id du document>');
@@ -59,6 +62,10 @@ function report() {
     '1. Lecture', ...lines(state.lecture, '(pas lancée)'),
     '',
     '2. Écriture dans une table d\'essai', ...lines(state.ecriture, '(pas lancée)'),
+    '',
+    '3. Pièces jointes (un PDF d\'essai)', ...lines(state.pj, '(pas lancée)'),
+    '',
+    '4. Taille maximale d\'un envoi', ...lines(state.tailles, '(pas lancée)'),
   ].join('\n');
 }
 function renderReport() { $('rapport').value = report(); }
@@ -97,7 +104,7 @@ async function runRead() {
   if (!token.ok) {
     add('lecture', 'getAccessToken', outcome(token));
   } else {
-    add('lecture', 'jeton', { adresse: redact(token.value.baseUrl), dureeMs: token.value.ttlMs });
+    add('lecture', 'jeton', { adresse: redact(token.value.baseUrl), dureeMs: token.value.ttlMsecs });
     addBattery(`depuis la page de la sonde (origine ${window.origin})`, { resultats: await rest.battery(token.value) });
     const framed = await inFrame(token.value);
     addBattery(`depuis un cadre isolé (origine ${framed.origine || 'inconnue'})`, framed);
@@ -184,11 +191,25 @@ async function runWrite() {
   }
 }
 
-// ----- La fenêtre de confirmation : rien n'est écrit sans elle.
-function askConsent() {
-  const dialog = $('consent');
-  dialog.showModal();
-  $('consent-oui').focus();
+// ----- 3 et 4. Les pièces jointes et la taille maximale : ce que joue pj.js, avec ce que la sonde lui prête.
+const playEnv = { grist, cut, redact, attempt, outcome, progress: text => { $('tailles-etat').textContent = text; } };
+
+async function runPlay(button, section, play) {
+  $(button).disabled = true;
+  state[section] = [];
+  render(section);
+  try { await play(playEnv, (nom, valeur) => add(section, nom, valeur)); } finally { $(button).disabled = false; }
+}
+
+// ----- Les fenêtres de confirmation : rien n'est écrit ni envoyé sans elles.
+function askConsent(dialogId) {
+  $(dialogId).showModal();
+  $(`${dialogId}-oui`).focus();
+}
+
+function wireConsent(dialogId, run) {
+  $(`${dialogId}-oui`).addEventListener('click', () => { $(dialogId).close(); void run(); });
+  $(`${dialogId}-non`).addEventListener('click', () => $(dialogId).close());
 }
 
 async function copy() {
@@ -218,9 +239,12 @@ function start() {
   });
   $('instance').textContent = origin();
   $('lecture-lancer').addEventListener('click', runRead);
-  $('ecriture-lancer').addEventListener('click', askConsent);
-  $('consent-oui').addEventListener('click', () => { $('consent').close(); void runWrite(); });
-  $('consent-non').addEventListener('click', () => $('consent').close());
+  $('ecriture-lancer').addEventListener('click', () => askConsent('consent'));
+  wireConsent('consent', runWrite);
+  $('pj-lancer').addEventListener('click', () => askConsent('consent-pj'));
+  wireConsent('consent-pj', () => runPlay('pj-lancer', 'pj', playAttachments));
+  $('tailles-lancer').addEventListener('click', () => askConsent('consent-tailles'));
+  wireConsent('consent-tailles', () => runPlay('tailles-lancer', 'tailles', playSizes));
   $('version').addEventListener('input', event => { state.version = event.target.value; renderReport(); });
   $('copier').addEventListener('click', copy);
   renderReport();

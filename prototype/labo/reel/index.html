@@ -16,7 +16,7 @@
 <body>
 <main>
   <h1>Sonde GFS pour un vrai Grist</h1>
-  <p>Cette sonde mesure ce que seul ton Grist peut dire à Grist Factory Suite : la lecture par jeton depuis un cadre isolé, les tables internes du document et les actions de Grist que GFS laisse passer. <strong>Utilise un document de test.</strong> Demande l'accès complet au document : accepte-le dans le panneau de droite de Grist.</p>
+  <p>Cette sonde mesure ce que seul ton Grist peut dire à Grist Factory Suite : la lecture par jeton depuis un cadre isolé, les tables internes du document, les actions de Grist que GFS laisse passer, et l'envoi d'un fichier en pièce jointe. <strong>Utilise un document de test.</strong> Demande l'accès complet au document : accepte-le dans le panneau de droite de Grist.</p>
   <p class="note">Instance : <span id="instance"></span></p>
   <div class="row"><label for="version">Version de Grist (menu Aide, « À propos de Grist ») :</label> <input type="text" id="version" size="14" autocomplete="off"></div>
 
@@ -29,7 +29,17 @@
   <div class="row"><button type="button" class="btn" id="ecriture-lancer">Écrire dans une table d'essai…</button></div>
   <table id="ecriture"><thead><tr><th>Action</th><th>Réponse</th></tr></thead><tbody></tbody></table>
 
-  <h2>3. Envoyer le résultat</h2>
+  <h2>3. Pièces jointes (un PDF d'essai)</h2>
+  <p>Ce que GFS fera pour garder un PDF dans le document : envoyer un petit PDF d'essai avec le jeton, le ranger dans la cellule d'une table d'essai, le relire et le télécharger, le remplacer par un second, puis supprimer la table. Une confirmation te sera demandée.</p>
+  <div class="row"><button type="button" class="btn" id="pj-lancer">Envoyer un PDF d'essai…</button></div>
+  <table id="pj"><thead><tr><th>Étape</th><th>Réponse</th></tr></thead><tbody></tbody></table>
+
+  <h2>4. Taille maximale d'un envoi</h2>
+  <p>Envoie des fichiers d'essai de plus en plus gros, de 0,1 à 50 Mo, et s'arrête au premier refus. Une confirmation te sera demandée.</p>
+  <div class="row"><button type="button" class="btn" id="tailles-lancer">Chercher la taille maximale…</button><span class="note" id="tailles-etat" role="status"></span></div>
+  <table id="tailles"><thead><tr><th>Palier</th><th>Réponse</th></tr></thead><tbody></tbody></table>
+
+  <h2>5. Envoyer le résultat</h2>
   <p>Le texte ne contient ni le jeton ni l'identifiant du document.</p>
   <div class="row"><button type="button" class="btn primary" id="copier">Copier le résultat</button><span class="note" id="copie-etat" role="status"></span></div>
   <textarea class="rapport" id="rapport" readonly aria-label="Résultat à copier"></textarea>
@@ -41,6 +51,18 @@
   <p>Ne le fais que dans un document de test.</p>
   <div class="row"><button type="button" class="btn" id="consent-non">Annuler</button><button type="button" class="btn primary" id="consent-oui">Créer la table d'essai et lancer</button></div>
 </dialog>
-<script type="module" src="reel.js?v=1"></script>
+<dialog id="consent-pj" aria-labelledby="consent-pj-titre">
+  <h2 id="consent-pj-titre">Envoyer un PDF d'essai dans ce document ?</h2>
+  <p>La sonde va envoyer deux petits PDF d'essai (environ 1 Ko chacun) dans ce document, les ranger dans une table d'essai (« Sonde_GFS_pj », avec une colonne de type Attachments), les relire, puis supprimer la table. Les deux fichiers ne tiennent alors plus à aucune cellule : Grist les efface seul au bout de 7 jours. Les autres tables ne sont pas touchées.</p>
+  <p>Ne le fais que dans un document de test.</p>
+  <div class="row"><button type="button" class="btn" id="consent-pj-non">Annuler</button><button type="button" class="btn primary" id="consent-pj-oui">Envoyer et lancer</button></div>
+</dialog>
+<dialog id="consent-tailles" aria-labelledby="consent-tailles-titre">
+  <h2 id="consent-tailles-titre">Chercher la taille maximale ?</h2>
+  <p>La sonde va envoyer des fichiers d'essai de 0,1, 0,5, 1, 5, 20 puis 50 Mo, du plus petit au plus grand, et s'arrêter au premier refus. Au plus 77 Mo partent : selon ta connexion, cela peut durer quelques minutes. Aucun ne tient à une cellule : Grist les efface seul au bout de 7 jours.</p>
+  <p>Ne le fais que dans un document de test.</p>
+  <div class="row"><button type="button" class="btn" id="consent-tailles-non">Annuler</button><button type="button" class="btn primary" id="consent-tailles-oui">Envoyer et lancer</button></div>
+</dialog>
+<script type="module" src="reel.js?v=2"></script>
 </body>
 </html>

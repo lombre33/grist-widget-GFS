@@ -12,7 +12,7 @@ import { LANGUAGE_NAMES } from './language.js';
 import { openMenu, closeMenu } from './menu.js';
 
 // Sans fichiers que GFS garde lui-même (les essais de l'explorateur seul) : aucun fichier n'est de ceux-là.
-const NO_KEPT = Object.freeze({ has: () => false });
+const NO_KEPT = Object.freeze({ has: () => false, extras: () => [] });
 
 export class Explorer {
   #opts;
@@ -31,7 +31,7 @@ export class Explorer {
   // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), importTypes(), onOpen(file), onNew(entry), onImport(entry), onClose(), onApps(), canClose(), notice(text),
   //          language() → { choice, grist }, onLanguage(choice), onTheme() (le bouton « Thème » ouvre sa fenêtre), personal() → le rangement est-il à la personne seule ?,
   //          filing: { togglePin(file), rename(file), moveFile(file), renameFolder(path), moveFolder(path) }, onDemo()? (le bouton « Démo », en mode développement seulement),
-  //          kept?: les fichiers que GFS garde lui-même (js/kept-files.js) : { has(file), openAs(file) -> { label, icon }, opensIn(file), copyNotice(), remove(file) } }
+  //          kept?: les fichiers que GFS garde lui-même (js/kept-files.js) : { has(file), openAs(file) -> { label, icon, greyed }, opensIn(file), extras(file) -> [article de menu], copyNotice(), remove(file) } }
   constructor(opts) {
     this.#opts = opts;
     this.#kept = opts.kept || NO_KEPT;
@@ -220,10 +220,17 @@ export class Explorer {
   #renderInfo() {
     const ctx = this.#ctx();
     this.#refs.info.replaceChildren(infoBar(ctx));
-    const off = !ctx.selected;
-    this.#refs.openBtn.setAttribute('aria-disabled', String(off));
-    // « Ouvrir » devient « Télécharger » devant un fichier que GFS garde ; en mode choix, le bouton garde son mot (« Choisir »).
-    if (!this.#choice) this.#refs.openBtn.textContent = ctx.selected && ctx.selected.file && this.#kept.has(ctx.selected.file) ? this.#kept.openAs(ctx.selected.file).label : this.#opts.i18n.t('ex.open');
+    const open = this.#openAs(ctx.selected && ctx.selected.file);
+    // Grisé mais cliquable : sans fichier choisi le clic ne fait rien, devant un PDF dont l'app n'est pas prête il dit ce qui la débloque.
+    this.#refs.openBtn.setAttribute('aria-disabled', String(!ctx.selected || open.greyed));
+    // « Ouvrir » devient « Lire » ou « Télécharger » devant un fichier que GFS garde ; en mode choix, le bouton garde son mot (« Choisir »).
+    if (!this.#choice) this.#refs.openBtn.textContent = open.label;
+  }
+
+  // Le geste principal d'un fichier : « Ouvrir », ou celui d'un fichier que GFS garde (js/kept-files.js).
+  #openAs(file) {
+    if (!this.#choice && file && this.#kept.has(file)) return this.#kept.openAs(file);
+    return { label: this.#opts.i18n.t('ex.open'), icon: 'open', greyed: false };
   }
 
   // Une seule ligne dans l'ordre de tabulation : la ligne choisie, sinon la première.
@@ -436,8 +443,9 @@ export class Explorer {
     const item = (label, glyph, run) => ({ label, icon: glyph, run });
     const grey = (label, glyph, notice) => ({ label, icon: glyph, greyed: true, run: () => this.#opts.notice(notice) });
     const appOnly = t('ex.notice.appOnly', { app: this.#opts.appName(file.app) });
-    const open = kept && !this.#choice ? this.#kept.openAs(file) : { label: this.#choice ? t('ex.choose.pick') : t('ex.open'), icon: 'open' };
-    return [item(open.label, open.icon, () => this.#activate(file.key)), item(file.pinned ? t('ex.unpin') : t('ex.pin'), 'pin', () => void filing.togglePin(file)),
+    const open = this.#choice ? { label: t('ex.choose.pick'), icon: 'open', greyed: false } : this.#openAs(file);
+    const extras = kept && !this.#choice ? this.#kept.extras(file) : [];
+    return [{ ...item(open.label, open.icon, () => this.#activate(file.key)), greyed: open.greyed }, ...extras, item(file.pinned ? t('ex.unpin') : t('ex.pin'), 'pin', () => void filing.togglePin(file)),
       item(t('ex.rename'), 'edit', () => void filing.rename(file)), grey(t('ex.duplicate'), 'copy', kept ? this.#kept.copyNotice() : appOnly), item(t('ex.move'), 'move', () => void filing.moveFile(file)),
       '-', kept ? item(t('ex.delete'), 'trash', () => void this.#kept.remove(file)) : grey(t('ex.delete'), 'trash', appOnly)];
   }

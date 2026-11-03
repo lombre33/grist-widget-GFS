@@ -1,0 +1,83 @@
+{
+  "contrat": 0,
+  "id": "sonde-y",
+  "nom": {
+    "fr": "Sonde Y",
+    "en": "Probe Y"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Une app qui lit les PDF que GFS garde, comme Publipostage+ avec son extension « Lecture de PDF »",
+    "en": "An app that reads the PDFs GFS keeps, like Publipostage+ with its “PDF reading” extension"
+  },
+  "icone": "doc",
+  "entree": "index.html",
+  "tables": {
+    "prefixe": "SondeY_"
+  },
+  "fichiers": [
+    {
+      "table": "SondeY_Fichiers",
+      "colonnes": {
+        "id": "id",
+        "nom": "Nom",
+        "type": "Type",
+        "date": "DateModif"
+      },
+      "typeParDefaut": "document",
+      "types": [
+        {
+          "valeur": "document",
+          "nom": {
+            "fr": "Document",
+            "en": "Document"
+          },
+          "icone": "doc",
+          "couleur": "document"
+        }
+      ]
+    }
+  ],
+  "reglages": [],
+  "permissions": {
+    "acces": "none"
+  },
+  "extensions": [
+    {
+      "id": "lecture-pdf",
+      "nom": {
+        "fr": "Lecture de PDF",
+        "en": "PDF reading"
+      },
+      "texte": {
+        "fr": "Lit les PDF que GFS garde (pdf.js, reçu de GFS)",
+        "en": "Reads the PDFs GFS keeps (pdf.js, received from GFS)"
+      },
+      "icone": "read",
+      "poids": 1600,
+      "dossier": "extensions/lecture-pdf/",
+      "pointsEntree": [
+        {
+          "genre": "bouton",
+          "id": "lecture-pdf"
+        }
+      ],
+      "bibliotheques": [
+        {
+          "id": "pdfjs",
+          "version": "1.0.0"
+        }
+      ]
+    }
+  ],
+  "actions": {
+    "ouvrir": [],
+    "choisir": [],
+    "lire": [
+      {
+        "type": "pdf",
+        "extension": "lecture-pdf"
+      }
+    ]
+  }
+}

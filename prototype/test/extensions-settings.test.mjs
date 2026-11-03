@@ -11,6 +11,10 @@ const catalogue = readCatalogue({ bibliotheques: [{
   id: 'plotly', version: '2.13.2', poids: 1000,
   cdn: { src: 'https://cdn.jsdelivr.net/npm/plotly.js-basic-dist-min@2.13.2/plotly-basic.min.js', integrite: SRI },
   vendorise: { chemin: 'vendor/plotly/2.13.2/plotly-basic.min.js', integrite: SRI },
+}, {
+  id: 'echarts', version: '6.1.0', poids: 1000,
+  cdn: { src: 'https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js', integrite: SRI },
+  vendorise: { chemin: 'vendor/echarts/6.1.0/dist/echarts.min.js', integrite: SRI },
 }] });
 const empty = readCatalogue({ bibliotheques: [] });
 const pub = publipostage();
@@ -22,13 +26,17 @@ test('activeExtensionIds : cochée ET servable ; une bibliothèque absente du ca
   assert.deepEqual(activeExtensionIds(pub, setting, catalogue), ['graphique']);
   assert.deepEqual(activeExtensionIds(pub, setting, empty), []);
   assert.deepEqual(activeExtensionIds(pub, undefined, catalogue), []);
-  assert.deepEqual(missingLibraries(pub.extensions[0], empty), [{ id: 'plotly', version: '2.13.2' }]);
+  assert.deepEqual(missingLibraries(pub.extensions[0], empty), [{ id: 'plotly', version: '2.13.2' }, { id: 'echarts', version: '6.1.0' }]);
+  const withoutCharts = readCatalogue({ bibliotheques: [...catalogue.entries.values()].filter(entry => entry.id !== 'echarts') });
+  assert.deepEqual(missingLibraries(pub.extensions[0], withoutCharts), [{ id: 'echarts', version: '6.1.0' }], 'sans ECharts, le graphique créé dans l\'app n\'a pas son moteur : l\'extension reste grisée');
+  assert.deepEqual(activeExtensionIds(pub, setting, withoutCharts), []);
 });
 
 test('libraryNeeds : les bibliothèques des extensions actives, sans doublon', () => {
-  assert.deepEqual(libraryNeeds(pub, ['graphique']), [{ id: 'plotly', version: '2.13.2' }]);
+  const both = [{ id: 'plotly', version: '2.13.2' }, { id: 'echarts', version: '6.1.0' }];
+  assert.deepEqual(libraryNeeds(pub, ['graphique']), both);
   assert.deepEqual(libraryNeeds(pub, []), []);
-  assert.deepEqual(libraryNeeds(pub, ['graphique', 'graphique']), [{ id: 'plotly', version: '2.13.2' }]);
+  assert.deepEqual(libraryNeeds(pub, ['graphique', 'graphique']), both);
 });
 
 test('extensionRows : coché, grisé avec ce qui manque, mode, poids de la bibliothèque', () => {
@@ -36,7 +44,7 @@ test('extensionRows : coché, grisé avec ce qui manque, mode, poids de la bibli
   assert.equal(row.checked, true);
   assert.equal(row.greyed, false);
   assert.equal(row.mode, 'vendorise');
-  assert.deepEqual(row.libraries, [{ id: 'plotly', version: '2.13.2', poids: 1000 }]);
+  assert.deepEqual(row.libraries, [{ id: 'plotly', version: '2.13.2', poids: 1000 }, { id: 'echarts', version: '6.1.0', poids: 1000 }]);
   const [grey] = extensionRows(pub, { extensions: ['graphique'], modes: {} }, empty);
   assert.equal(grey.greyed, true);
   assert.equal(grey.checked, false, 'une extension qu\'on ne peut pas servir n\'est pas cochée, même retenue');
@@ -123,11 +131,19 @@ test('extensionsState : ce que l\'app reçoit (adresse, empreinte et forme seule
   assert.deepEqual(off, { extensions: [], bibliotheques: {}, details: {} });
   const cdn = extensionsState(pub, { extensions: ['graphique'], modes: {} }, catalogue, base);
   assert.deepEqual(cdn.extensions, ['graphique']);
-  assert.deepEqual(cdn.bibliotheques, { plotly: { src: 'https://cdn.jsdelivr.net/npm/plotly.js-basic-dist-min@2.13.2/plotly-basic.min.js', integrite: SRI, forme: 'script' } });
+  assert.deepEqual(cdn.bibliotheques, {
+    plotly: { src: 'https://cdn.jsdelivr.net/npm/plotly.js-basic-dist-min@2.13.2/plotly-basic.min.js', integrite: SRI, forme: 'script' },
+    echarts: { src: 'https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js', integrite: SRI, forme: 'script' },
+  });
   assert.equal(cdn.details.plotly.mode, 'cdn');
+  assert.equal(cdn.details.echarts.mode, 'cdn');
   const local = extensionsState(pub, { extensions: ['graphique'], modes: { graphique: 'vendorise' } }, catalogue, base);
-  assert.deepEqual(local.bibliotheques, { plotly: { src: 'https://exemple.test/gfs/vendor/plotly/2.13.2/plotly-basic.min.js', integrite: SRI, forme: 'script' } });
+  assert.deepEqual(local.bibliotheques, {
+    plotly: { src: 'https://exemple.test/gfs/vendor/plotly/2.13.2/plotly-basic.min.js', integrite: SRI, forme: 'script' },
+    echarts: { src: 'https://exemple.test/gfs/vendor/echarts/6.1.0/dist/echarts.min.js', integrite: SRI, forme: 'script' },
+  });
   assert.equal(local.details.plotly.mode, 'vendorise');
+  assert.equal(local.details.echarts.mode, 'vendorise', 'les deux bibliothèques d\'une extension suivent le même mode');
   assert.deepEqual(extensionsState(pub, { extensions: ['graphique'], modes: {} }, empty, base).extensions, [], 'une bibliothèque absente du catalogue : l\'extension n\'est pas servie');
 });
 

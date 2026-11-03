@@ -99,7 +99,7 @@
       "poids": 54,
       "dossier": "extensions/graphique/",
       "pointsEntree": [{ "genre": "bouton", "id": "graphique" }],
-      "bibliotheques": [{ "id": "plotly", "version": "2.13.2" }]
+      "bibliotheques": [{ "id": "plotly", "version": "2.13.2" }, { "id": "echarts", "version": "6.1.0" }]
     },
     {
       "id": "edition",

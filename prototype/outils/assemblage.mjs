@@ -57,13 +57,15 @@ function externalProblems(spec) {
   return found;
 }
 
-// L'entrée de la liste de GFS (`gfs.bibliotheques.<id>.assemble`) lue et vérifiée : { id, forme: 'module', version, paquets, modules, externes, alias }.
+// L'entrée de la liste de GFS (`gfs.bibliotheques.<id>.assemble`) lue et vérifiée : { id, forme: 'module', version, paquets, modules, externes, alias, sansCdn? }.
 // `dependencies` donne la version exacte de chaque paquet ; `version` est celle de GFS pour ce fichier, pas celle d'un paquet (2.6, point 10).
+// `sansCdn: true` (2.6, point 12) : GFS ne l'offre que par sa propre copie, quel que soit le commit que la liste épingle pour les autres fichiers.
 export function readAssembly(id, spec, dependencies) {
   const assemble = spec.assemble;
   const problems = [
     ...(LIBRARY_ID_RE.test(id) ? [] : ['identifiant hors format']),
     ...(EXACT_VERSION_RE.test(assemble.version || '') ? [] : [`la version du fichier de GFS doit être exacte (reçu : ${assemble.version})`]),
+    ...(assemble.sansCdn === undefined || typeof assemble.sansCdn === 'boolean' ? [] : ['sansCdn : vrai ou faux attendu']),
     ...packageProblems(assemble, dependencies), ...moduleProblems(assemble), ...externalProblems(assemble),
   ];
   if (problems.length) throw new Error(`${id} : ${problems.join(' ; ')}`);
@@ -71,6 +73,7 @@ export function readAssembly(id, spec, dependencies) {
     id, forme: 'module', version: assemble.version,
     paquets: assemble.paquets.map(paquet => ({ paquet, version: dependencies[paquet] })),
     modules: [...assemble.modules], externes: [...(assemble.externes || [])], alias: { ...(assemble.alias || {}) },
+    ...(assemble.sansCdn === true ? { sansCdn: true } : {}),
   };
 }
 
@@ -139,16 +142,23 @@ export function licencesText(item, workDir) {
   const problems = [];
   const blocks = item.paquets.map(({ paquet, version }) => {
     const dir = join(workDir, 'node_modules', paquet);
-    const file = existsSync(dir) ? readdirSync(dir).find(name => /^licen[cs]e(\.(md|txt))?$/i.test(name)) : null;
+    const names = existsSync(dir) ? readdirSync(dir) : [];
+    const file = names.find(name => /^licen[cs]e(\.(md|txt))?$/i.test(name));
+    const notice = names.find(name => /^notice(\.(md|txt))?$/i.test(name));
     const declared = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).license;
     if (!file) problems.push(`${paquet} : pas de fichier de licence dans le paquet`);
     if (!declared) problems.push(`${paquet} : licence non déclarée dans le paquet`);
     const bar = '='.repeat(72);
-    return `${bar}\n${paquet}@${version} · ${declared || '?'}\n${bar}\n\n${file ? readFileSync(join(dir, file), 'utf8').trim() : ''}\n`;
+    const text = name => readFileSync(join(dir, name), 'utf8').trim();
+    // Apache 2.0 (article 4, d) : la copie redistribuée porte aussi le texte du fichier NOTICE du paquet, quand il en livre un (ECharts).
+    return `${bar}\n${paquet}@${version} · ${declared || '?'}\n${bar}\n\n${file ? text(file) : ''}\n${notice ? `\nNOTICE\n\n${text(notice)}\n` : ''}`;
   });
   const head = `Licences des paquets contenus dans ${item.id}@${item.version} (liste de GFS : bibliotheques/package.json).\nChaque texte est celui du fichier de licence livré avec le paquet, recopié par outils/bibliotheques.mjs.\n\n`;
   return { text: head + blocks.join('\n'), problems };
 }
+
+// L'identifiant sert de clé à `GfsPaquets` : `["edition-live"]`, ou `.pdfjs=` quand c'est un nom que esbuild écrit sans crochets (un identifiant JavaScript, sans trait d'union).
+const keyedById = (text, id) => text.includes(`[${JSON.stringify(id)}]`) || (/^[A-Za-z_$][\w$]*$/.test(id) && text.includes(`.${id}=`));
 
 // Relit un fichier assemblé commité : il range bien ses modules sous la clé de GFS, avec la version de GFS (contrôle de bon sens, sans réseau).
 // esbuild écrit une clé d'objet sans guillemets quand c'est un identifiant (`yjs:`) et avec guillemets sinon (`"y-protocols/awareness":`).
@@ -156,7 +166,7 @@ export function registeredProblems(item, bytes) {
   const text = bytes.toString('utf8');
   const found = [];
   if (!text.includes('GfsPaquets')) found.push(`${item.id} : le fichier ne range rien dans GfsPaquets`);
-  if (!text.includes(`[${JSON.stringify(item.id)}]`) || !text.includes(`version:${JSON.stringify(item.version)}`)) found.push(`${item.id} : le fichier ne porte pas son identifiant et la version ${item.version}`);
+  if (!keyedById(text, item.id) || !text.includes(`version:${JSON.stringify(item.version)}`)) found.push(`${item.id} : le fichier ne porte pas son identifiant et la version ${item.version}`);
   for (const name of item.modules) {
     if (![`{${name}:`, `,${name}:`, `${JSON.stringify(name)}:`].some(key => text.includes(key))) found.push(`${item.id} : le module ${name} n'est pas rangé dans le fichier`);
   }

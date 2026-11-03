@@ -15,7 +15,7 @@ import { ColorPicking } from './theme-color.js';
 // La petite scène d'une vignette : le titre et un bouton plein, puis une carte à deux lignes (un avatar, un trait de texte, une pastille de type) ; elle prend les jetons de couleur et de forme de son ambiance.
 function scene() {
   const row = (family, short) => h('div', { class: 'mn-r' }, h('i', { class: 'mn-av' }), h('span', { class: short ? 'mn-l s' : 'mn-l' }), h('i', { class: 'mn-p', 'data-fam': family }));
-  return h('div', { class: 'mn amb-mini', 'aria-hidden': 'true' },
+  return h('div', { class: 'amb-mini', 'aria-hidden': 'true' },
     h('div', { class: 'mn-head' }, h('b', { class: 'mn-t' }), h('i', { class: 'mn-btn' })),
     h('div', { class: 'mn-card' }, h('i', { class: 'mn-st' }), row('doc', false), row('grid', true)));
 }
@@ -49,7 +49,7 @@ function buildWindow() {
   const line = (cls, glyph, text) => ({ text, node: h('p', { class: cls }, icon(glyph), text) });
   const refs = {
     tiles, color: colorBox(), title: h('h2', { id: 'th-title' }), text: h('p', { class: 'mod-count' }), note: h('p', { class: 'mod-note', 'aria-live': 'polite' }),
-    grid: h('div', { class: 'th-grid', role: 'radiogroup' }, ...tiles.map(item => item.node)),
+    grid: h('div', { class: 'amb-grid', role: 'radiogroup' }, ...tiles.map(item => item.node)),
     check: line('th-check', 'check', h('span')), adjusted: line('th-adj', 'info', h('span')), later: line('th-adj', 'info', h('span')),
     reset: h('button', { type: 'button', class: 'btn', dataset: { fk: 'reset' } }), close: h('button', { type: 'button', class: 'btn primary', dataset: { fk: 'close' } }),
   };

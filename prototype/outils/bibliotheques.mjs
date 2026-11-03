@@ -12,7 +12,7 @@
 //
 // Le CDN est jsDelivr, qui sert le fichier du paquet octet pour octet : une seule empreinte vaut pour le CDN et pour la copie vendorisée.
 // Un fichier assemblé est servi par jsDelivr depuis le dépôt public de GFS, épinglé à un commit complet qui porte la copie vendorisée (`gfs.publication` de la liste ;
-// choix du porteur, 19/10). Sans `gfs.publication`, il n'a pas de CDN (`cdn: null`) : la copie de GFS est son seul mode.
+// choix du porteur, 19/10). Sans `gfs.publication`, ou déclaré `sansCdn: true` dans la liste (2.6, point 12), il n'a pas de CDN (`cdn: null`) : la copie de GFS est son seul mode.
 
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -95,13 +95,14 @@ export function buildAssembledEntry(item, bytes, publication = null) {
     contient: item.paquets.map(({ paquet, version }) => ({ paquet, version })),
     modules: [...item.modules],
     externes: [...item.externes],
-    cdn: publication ? { src: githubAddress(publication, assembledPath(item)), integrite: sri } : null,
+    cdn: publication && !item.sansCdn ? { src: githubAddress(publication, assembledPath(item)), integrite: sri } : null,
     vendorise: { chemin: assembledPath(item), integrite: sri },
   };
 }
 
 // L'adresse du CDN d'un fichier assemblé : celle du commit épinglé par la liste (avec l'empreinte de la copie), ou aucune quand la liste n'en épingle pas.
 function assembledCdnProblems(item, entry, publication) {
+  if (item.sansCdn) return entry.cdn === null ? [] : [`${item.id} : la liste le déclare sansCdn, le catalogue ne doit porter aucune adresse de CDN (cdn: null)`];
   if (!publication) return entry.cdn === null ? [] : [`${item.id} : sans gfs.publication dans la liste, un fichier assemblé n'a pas de CDN (cdn: null)`];
   if (!entry.cdn) return [`${item.id} : la liste épingle le commit ${publication.commit.slice(0, 7)}, le catalogue n'a pas d'adresse de CDN : relancer l'outil (--catalogue)`];
   const expected = githubAddress(publication, entry.vendorise.chemin);
@@ -113,7 +114,7 @@ function assembledCdnProblems(item, entry, publication) {
 
 // Le commit épinglé porte-t-il la copie vendorisée, octet pour octet ? Sans lecteur, ou quand le commit n'est pas dans ce clone, le contrôle est laissé à --verifier-cdn.
 function pinProblems(item, entry, publication, readAtCommit) {
-  if (!publication || !readAtCommit) return [];
+  if (!publication || !readAtCommit || item.sansCdn) return [];
   const path = `${publication.racine}${entry.vendorise.chemin}`;
   const short = publication.commit.slice(0, 7);
   let held;
@@ -132,19 +133,27 @@ function assembledProblems(item, entry, read, { publication = null, readAtCommit
   if (!sameSet(contient, item.paquets.map(({ paquet, version }) => `${paquet}@${version}`))) found.push(`${item.id} : « contient » du catalogue n'est pas celui de la liste`);
   if (!sameSet(entry.modules || [], item.modules)) found.push(`${item.id} : « modules » du catalogue n'est pas celui de la liste`);
   if (!sameSet(entry.externes || [], item.externes)) found.push(`${item.id} : « externes » du catalogue n'est pas celui de la liste`);
-  try {
-    const licences = read(licencesPath(item)).toString('utf8');
-    for (const { paquet, version } of item.paquets) if (!licences.includes(`${paquet}@${version}`)) found.push(`${item.id} : ${licencesPath(item)} ne porte pas la licence de ${paquet}@${version}`);
-  } catch (error) { found.push(`${item.id} : licences illisibles (${licencesPath(item)})`); }
+  found.push(...licenceProblems(item, item.paquets, read));
   return found;
 }
 
-function scriptProblems(item, entry) {
+// La licence posée avec une copie (LICENCES.txt) : lisible, et elle nomme chaque paquet que la copie contient. La licence Apache 2.0 (ECharts) veut que la copie redistribuée porte
+// la licence et le NOTICE du paquet : l'outil les écrit là, ce contrôle garde qu'ils y restent.
+function licenceProblems(item, paquets, read) {
+  const path = licencesPath(item);
+  try {
+    const licences = read(path).toString('utf8');
+    return paquets.filter(({ paquet, version }) => !licences.includes(`${paquet}@${version}`)).map(({ paquet, version }) => `${item.id} : ${path} ne porte pas la licence de ${paquet}@${version}`);
+  } catch (error) { return [`${item.id} : licences illisibles (${path})`]; }
+}
+
+function scriptProblems(item, entry, read) {
   if (entry.forme === 'module') return [`${item.id} : le catalogue dit « module », la liste donne le fichier d'un paquet`];
   if (!entry.cdn) return [`${item.id} : adresse du CDN absente`];
   const found = [];
   if (entry.cdn.src !== `${CDN_BASE}/${item.paquet}@${item.version}/${item.fichier}`) found.push(`${item.id} : adresse du CDN inattendue`);
   if (entry.cdn.integrite !== entry.vendorise.integrite) found.push(`${item.id} : le CDN et la copie vendorisée doivent porter la même empreinte`);
+  found.push(...licenceProblems(item, [{ paquet: item.paquet, version: item.version }], read));
   return found;
 }
 
@@ -169,7 +178,7 @@ export function checkFiles(catalogue, list, read, pin = {}) {
     const entry = entries.find(e => e.id === item.id && e.version === item.version);
     if (!entry) problems.push(`${item.id}@${item.version} : absent du catalogue`);
     else if (!entry.vendorise || typeof entry.vendorise.chemin !== 'string') problems.push(`${item.id} : copie vendorisée absente du catalogue`);
-    else problems.push(...(item.forme === 'module' ? assembledProblems(item, entry, read, pin) : scriptProblems(item, entry)), ...copyProblems(item, entry, read));
+    else problems.push(...(item.forme === 'module' ? assembledProblems(item, entry, read, pin) : scriptProblems(item, entry, read)), ...copyProblems(item, entry, read));
   }
   for (const entry of entries) {
     if (!list.some(item => item.id === entry.id && item.version === entry.version)) problems.push(`${entry.id}@${entry.version} : dans le catalogue mais plus dans la liste`);
@@ -252,10 +261,26 @@ async function generateAssembled(root, item, packagesDir, work, log, pin) {
   return entry;
 }
 
+// La licence d'une bibliothèque qui est le fichier d'un paquet : le même LICENCES.txt que celui d'un fichier assemblé (la licence du paquet et, s'il en livre un, son NOTICE).
+// Seuls ces fichiers et le package.json du paquet sont tirés de l'archive.
+function packLicences(item, packagesDir, work) {
+  const archive = archiveOf(item.paquet, item.version, packagesDir, work);
+  const names = execFileSync('tar', ['-tzf', archive], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 }).split('\n');
+  const wanted = ['package/package.json', ...names.filter(name => /^package\/(licen[cs]e|notice)(\.(md|txt))?$/i.test(name))];
+  const dir = join(work, `${item.id}-licences`);
+  const target = join(dir, 'node_modules', ...item.paquet.split('/'));
+  mkdirSync(target, { recursive: true });
+  execFileSync('tar', ['-xzf', archive, '-C', target, '--strip-components=1', ...wanted]);
+  return licencesText({ id: item.id, version: item.version, paquets: [{ paquet: item.paquet, version: item.version }] }, dir);
+}
+
 function generateScript(root, item, packagesDir, work, log) {
   const bytes = packBytes(item, packagesDir, work);
+  const licences = packLicences(item, packagesDir, work);
+  if (licences.problems.length) throw new Error(`${item.id} : pas de licence à poser avec la copie :\n  - ${licences.problems.join('\n  - ')}`);
   const entry = buildEntry(item, bytes);
   writeVendored(root, entry.vendorise.chemin, bytes);
+  writeVendored(root, licencesPath(item), licences.text);
   log(`${item.id}@${item.version} : ${bytes.length} octets, ${entry.cdn.integrite}\n`);
   return entry;
 }
@@ -271,7 +296,7 @@ function pinOf(root, packageJson) {
 
 // La publication qui vaut pour ces octets : celle de la liste quand son commit épinglé porte exactement ce fichier ; sinon aucune (cdn: null), et l'outil dit quoi faire.
 function publicationFor(item, bytes, { publication, readAtCommit } = {}, log) {
-  if (!publication) return null;
+  if (!publication || item.sansCdn) return null; // un fichier déclaré sansCdn n'a pas d'adresse à écrire : la liste le dit, l'outil n'a rien à lire dans git
   const short = publication.commit.slice(0, 7);
   let held;
   try { held = readAtCommit(publication.commit, `${publication.racine}${assembledPath(item)}`); } catch (error) { held = undefined; }

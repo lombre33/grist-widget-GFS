@@ -2,7 +2,7 @@
 // la vraie souris et au vrai clavier, et ce que le serveur retient (les tables, les lignes, les pièces jointes) lu par l'API REST avec la session de la personne.
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
-import { SHOTS } from './lab-common.mjs';
+import { SHOTS, withProbes, routePatches } from './lab-common.mjs';
 import { createDocument, addWidget, docIdOf } from './lab-serveur.mjs';
 
 export const PAGE_PORT = 8917;
@@ -15,8 +15,16 @@ export const KNOWN_MESSAGES = [/grist-plugin-api\.js:\d+ Applying inline style v
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 
 // La personne a ajouté GFS à la page « Clients » avec l'accès complet : le cadre de GFS prêt, sa première fenêtre (le choix des apps) refermée, le panneau à 700 × 400.
-export async function openGfs(context, { lang = 'fr' } = {}) {
+// `probes` : les lettres des sondes (labo/sondes/) que cet essai ajoute au catalogue, `patches` : des fichiers de GFS remplacés pour cet essai seulement (lab-common.mjs, routePatches).
+export async function openGfs(context, { lang = 'fr', probes = null, patches = [] } = {}) {
   const page = await context.newPage();
+  if (probes) {
+    await page.route(/\/prototype\/js\/catalogue\.js(\?|$)/, async route => {
+      const response = await route.fetch();
+      await route.fulfill({ response, body: withProbes(await response.text(), probes) });
+    });
+  }
+  await routePatches(context.browser(), page, patches);
   // Ce que GFS dit dans la console (avertissements et erreurs), et toute violation de politique de sécurité ; les messages de Grist lui-même ne comptent pas.
   const problems = [];
   const mine = message => message.location().url.startsWith(new URL(GFS).origin) || /Content Security Policy|Refused to/.test(message.text());

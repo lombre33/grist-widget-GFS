@@ -61,6 +61,13 @@ test('readList : un fichier assemblé se lit avec les versions exactes de ses pa
   assert.deepEqual(readList(mixed).map(entry => [entry.id, entry.forme || 'script']), [['essai-live', 'module'], ['plotly', 'script']]);
 });
 
+test('readList : sansCdn est facultatif et booléen ; il passe dans l\'entrée lue seulement quand il est vrai', () => {
+  assert.equal(readList(LIST())[0].sansCdn, undefined);
+  assert.equal(readList(withAssemble(a => { a.sansCdn = false; }))[0].sansCdn, undefined, 'faux : comme s\'il était absent');
+  assert.equal(readList(withAssemble(a => { a.sansCdn = true; }))[0].sansCdn, true);
+  for (const value of ['oui', 1, null, []]) assert.throws(() => readList(withAssemble(a => { a.sansCdn = value; })), /sansCdn : vrai ou faux attendu/, String(value));
+});
+
 test('readList : un fichier assemblé mal déclaré est refusé, avec la raison', () => {
   const refused = (change, pattern) => assert.throws(() => readList(withAssemble(change)), pattern);
   refused((a, list) => { list.dependencies['lib-aux'] = '^2.0.0'; }, /la version de lib-aux doit être exacte/);
@@ -109,6 +116,17 @@ test('assembleFile : un seul module, les paquets dedans, le nom nu de l\'app lai
   assert.deepEqual(Object.keys(registry.modules), ['lib-core', '@fx/lien']);
   assert.equal(registry.modules['lib-core'].core(), 'aux-S');
   assert.equal(registry.modules['lib-core'].coreState(), registry.modules['@fx/lien'].lien(), 'une seule instance de la bibliothèque de l\'app, partagée');
+});
+
+test('registeredProblems : l\'identifiant est la clé de GfsPaquets, entre crochets ou, pour un identifiant JavaScript, après un point (esbuild écrit `.pdfjs=`)', () => {
+  const pdf = { id: 'pdfjs', version: '1.0.0', modules: ['pdf/build.mjs'] };
+  assert.deepEqual(registeredProblems(pdf, Buffer.from('(globalThis.GfsPaquets||={}).pdfjs={version:"1.0.0",modules:{"pdf/build.mjs":x}};')), []);
+  assert.deepEqual(registeredProblems(pdf, Buffer.from('(globalThis.GfsPaquets||={})["pdfjs"]={version:"1.0.0",modules:{"pdf/build.mjs":x}};')), []);
+  assert.match(registeredProblems(pdf, Buffer.from('(globalThis.GfsPaquets||={}).autre={version:"1.0.0",modules:{"pdf/build.mjs":x}};')).join('\n'), /ne porte pas son identifiant et la version 1\.0\.0/);
+  assert.match(registeredProblems(pdf, Buffer.from('(globalThis.GfsPaquets||={}).pdfjs={version:"2.0.0",modules:{"pdf/build.mjs":x}};')).join('\n'), /ne porte pas son identifiant et la version 1\.0\.0/);
+  // Un identifiant à trait d'union ne s'écrit jamais après un point : seule la forme à crochets compte.
+  const live = { id: 'edition-live', version: '1.0.0', modules: ['pdf/build.mjs'] };
+  assert.match(registeredProblems(live, Buffer.from('(globalThis.GfsPaquets||={}).edition-live={version:"1.0.0",modules:{"pdf/build.mjs":x}};')).join('\n'), /ne porte pas son identifiant/);
 });
 
 test('assembleFile : la même liste donne les mêmes octets', async () => {
@@ -209,6 +227,14 @@ test('buildAssembledEntry avec la publication de la liste : le CDN est l\'adress
   assert.equal(entry.cdn.integrite, entry.vendorise.integrite);
   assert.equal(githubAddress(PUBLICATION, 'vendor/x.js'), `https://cdn.jsdelivr.net/gh/essai/gfs@${COMMIT}/prototype/vendor/x.js`);
   assert.equal(githubAddress({ ...PUBLICATION, racine: '' }, 'vendor/x.js'), `https://cdn.jsdelivr.net/gh/essai/gfs@${COMMIT}/vendor/x.js`);
+});
+
+test('buildAssembledEntry : un fichier déclaré sansCdn n\'a pas de CDN, même quand la liste épingle un commit', () => {
+  const bytes = Buffer.from('export const x = 1;');
+  const entry = buildAssembledEntry({ ...item(), sansCdn: true }, bytes, PUBLICATION);
+  assert.equal(entry.cdn, null);
+  assert.equal(entry.vendorise.chemin, 'vendor/essai-live/1.0.0/essai-live.js', 'la copie de GFS reste servie');
+  assert.equal('sansCdn' in entry, false, 'le catalogue ne garde que ce qui sert au navigateur : cdn: null');
 });
 
 test('checkCdn : une entrée sans CDN n\'a rien à comparer', async () => {
@@ -330,6 +356,22 @@ test('checkFiles avec gfs.publication : l\'adresse du CDN est celle du commit é
   assert.equal(check(entry, null), '', 'sans lecteur de commit, de même');
 });
 
+test('checkFiles avec gfs.publication : un fichier sansCdn n\'a pas d\'adresse à justifier ni de commit à lire, et une adresse que rien ne justifie est signalée', async () => {
+  const root = rootWithList(withAssemble(a => { a.sansCdn = true; }));
+  await generate(root, archives(), () => {});
+  const list = readList(JSON.parse(readFileSync(join(root, 'bibliotheques/package.json'), 'utf8')));
+  const [entry] = JSON.parse(readFileSync(join(root, 'bibliotheques/catalogue.json'), 'utf8')).bibliotheques;
+  assert.equal(entry.cdn, null);
+  const read = path => readFileSync(join(root, path));
+  const check = (candidate, readAtCommit = () => { throw new Error('le commit n\'a pas la copie'); }) => checkFiles({ bibliotheques: [candidate] }, list, read, { publication: PUBLICATION, readAtCommit }).join('\n');
+  assert.equal(check(entry), '', 'le commit épinglé ne porte pas la copie : sans importance, le fichier n\'a pas de CDN');
+  const withAddress = { ...entry, cdn: { src: `https://cdn.jsdelivr.net/gh/essai/gfs@${COMMIT}/prototype/${entry.vendorise.chemin}`, integrite: entry.vendorise.integrite } };
+  assert.match(check(withAddress), /la liste le déclare sansCdn, le catalogue ne doit porter aucune adresse de CDN/);
+  // Sans la déclaration, le même catalogue est refusé : la liste épingle un commit et le fichier n'a pas d'adresse.
+  const undeclared = readList(LIST());
+  assert.match(checkFiles({ bibliotheques: [entry] }, undeclared, read, { publication: PUBLICATION, readAtCommit: () => null }).join('\n'), /la liste épingle le commit aaaaaaa, le catalogue n'a pas d'adresse de CDN/);
+});
+
 // ----- Avec un vrai dépôt git : le commit épinglé se lit sans réseau (git cat-file), comme l'outil le fait dans le dépôt de GFS (dossier « prototype/ »).
 const git = (dir, ...args) => execFileSync('git', ['-C', dir, '-c', 'user.name=essai', '-c', 'user.email=essai@exemple.invalid', '-c', 'commit.gpgsign=false', ...args], { encoding: 'utf8' }).trim();
 const COPY = 'prototype/vendor/essai-live/1.0.0/essai-live.js';
@@ -406,6 +448,19 @@ test('gfs.publication avec git : un commit qui ne porte pas la copie, ou que ce 
   // Le bon commit remet tout en ordre.
   pinList(root, { depot: 'essai/gfs', commit: after, racine: 'prototype/' });
   rewriteCatalogue(root, () => {});
+  assert.deepEqual(verify(root).problems, []);
+});
+
+test('gfs.publication avec git : un fichier sansCdn s\'écrit sans lire le commit épinglé, même absent de ce clone, et sans rien dire', async () => {
+  const paquets = archives();
+  const root = rootWithList(withAssemble(a => { a.sansCdn = true; }));
+  pinList(root, { depot: 'essai/gfs', commit: 'f'.repeat(40), racine: 'prototype/' });
+  const said = [];
+  await generate(root, paquets, text => said.push(text));
+  assert.doesNotMatch(said.join(''), /CDN|commit/, 'aucun commit à récupérer, aucune consigne à donner');
+  assert.deepEqual(verify(root).problems, []);
+  assert.equal(JSON.parse(readFileSync(join(root, 'bibliotheques/catalogue.json'), 'utf8')).bibliotheques[0].cdn, null);
+  rewriteCatalogue(root, text => said.push(text));
   assert.deepEqual(verify(root).problems, []);
 });
 

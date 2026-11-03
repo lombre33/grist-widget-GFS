@@ -125,9 +125,10 @@ export function importMenu(page, frameOf, word) {
 
 // Les sondes du labo (labo/sondes/) : des apps d'essai que GFS ne connaît pas. Elles entrent dans le catalogue SEULEMENT pour la page du labo qui le demande
 // (le fichier publié n'est pas modifié, les autres essais ne les voient pas) : la page reçoit un catalogue.js complété, après les apps du catalogue.
-const PROBE_FOLDERS = { a: 'a-self', b: 'b-host', c: 'c-hash', d: 'd-texte', e: 'e-blob', f: 'f-texte-ferme', g: 'g-capacites', h: 'h-courtier', i: 'i-lecture', k: 'q-liens', l: 'l-langue', o: 'o-ouvrir', p: 'p-importer', q: 'q-liens', r: 'r-barre', s: 's-stockage', t: 's-stockage', u: 'u-glisser', v: 'v-personne', w: 'v-personne', x: 'v-personne', m: 'm-ambiance', n: 'n-ambiance-kit' };
-export function withProbes(text) {
-  const entries = Object.entries(PROBE_FOLDERS).map(([key, folder]) => `  Object.freeze({ id: 'sonde-${key}', dossier: 'labo/sondes/${folder}/', manifeste: 'labo/sondes/sonde-${key}.json' }),`);
+const PROBE_FOLDERS = { a: 'a-self', b: 'b-host', c: 'c-hash', d: 'd-texte', e: 'e-blob', f: 'f-texte-ferme', g: 'g-capacites', h: 'h-courtier', i: 'i-lecture', k: 'q-liens', l: 'l-langue', o: 'o-ouvrir', p: 'p-importer', q: 'q-liens', r: 'r-barre', s: 's-stockage', t: 's-stockage', u: 'u-glisser', v: 'v-personne', w: 'v-personne', x: 'v-personne', m: 'm-ambiance', n: 'n-ambiance-kit', y: 'y-lire-pdf' };
+// `keys` : seulement ces sondes (leurs lettres), quand l'essai ne veut pas des autres dans la fenêtre des apps ; toutes par défaut.
+export function withProbes(text, keys = Object.keys(PROBE_FOLDERS)) {
+  const entries = Object.entries(PROBE_FOLDERS).filter(([key]) => keys.includes(key)).map(([key, folder]) => `  Object.freeze({ id: 'sonde-${key}', dossier: 'labo/sondes/${folder}/', manifeste: 'labo/sondes/sonde-${key}.json' }),`);
   return text.replace('\n]);', `\n${entries.join('\n')}\n]);`);
 }
 
@@ -164,7 +165,7 @@ function servePages(browser) {
 // fichiers que son sous-cadre, à origine opaque, demande ensuite à 127.0.0.1. Elle arrive donc par le réseau, que le serveur du labo sert (même origine, sans quoi la politique
 // de GFS refuse le sous-cadre), sous l'adresse d'origine (le navigateur ne voit pas le détour).
 // Plusieurs remplacements d'un même fichier s'appliquent l'un après l'autre (une seule route par fichier : la dernière posée cacherait les autres).
-async function routePatches(browser, page, patches) {
+export async function routePatches(browser, page, patches) {
   let pagesServer = null;
   const byPath = new Map();
   for (const patch of patches) {
@@ -195,7 +196,7 @@ export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', 
   if (probes) {
     await page.route(/\/prototype\/js\/catalogue\.js(\?|$)/, async route => {
       const response = await route.fetch();
-      await route.fulfill({ response, body: withProbes(await response.text()) });
+      await route.fulfill({ response, body: withProbes(await response.text(), Array.isArray(probes) ? probes : undefined) });
     });
   }
   if (frameAttributes) {

@@ -325,7 +325,11 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
    natifs, avec leurs bibliothèques dans la liste de l'app.
 5. [D] `bibliotheques` liste ce que le code de l'extension exige : `{ id, version }`, par exemple
    `{ "id": "plotly", "version": "2.13.2" }` (la version de Grist, celle pour laquelle le dessin du graphique est écrit).
-   Ni adresse, ni empreinte, ni mode : elles sont à GFS.
+   Ni adresse, ni empreinte, ni mode : elles sont à GFS. Une extension peut en exiger plusieurs : `graphique` exige depuis le
+   03/11 `plotly` 2.13.2 (l'import des graphiques de Grist) **et** `echarts` 6.1.0 (Apache-2.0, le moteur des graphiques que l'app
+   crée, « Créer un graphique… » ; demande de Publipostage+ du 02/11). Les deux suivent le même mode, CDN ou copie de GFS, et
+   l'extension n'est servie que si le catalogue les a toutes : sans ECharts, « graphique » reste grisée avec ce qui manque, jamais
+   servie à moitié.
 6. [D] GFS tient un catalogue des bibliothèques d'extensions : pour chacune, `id`, `version`, l'adresse du CDN avec son
    empreinte (`cdn: { src, integrite }`, ou `cdn: null` au point 11) et le fichier de la version vendorisée avec la sienne
    (`vendorise: { chemin, integrite }`), tirés par son outil d'une liste de son dépôt (`package.json`). Le catalogue est publié
@@ -359,7 +363,8 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
    les `externes`, qui sont ses bibliothèques natives. Une entrée sans `forme` est un script classique (Plotly).
 9. [D] **Le fichier se range sous une clé de GFS.** Chargé, il pose `globalThis.GfsPaquets[id] = { version, modules }`, où
    `modules` associe à chaque paquet npm de `modules` son espace de noms (`modules['yjs']` vaut `import * as … from 'yjs'`) :
-   l'extension prend ce qu'elle veut sous les noms qu'elle connaît déjà. Le fichier ne pose rien d'autre sur la fenêtre.
+   l'extension prend ce qu'elle veut sous les noms qu'elle connaît déjà. Le fichier ne pose rien d'autre sur la fenêtre, à une exception
+   près, quand un paquet ne tourne pas sans : celui de pdf.js pose aussi `globalThis.pdfjsWorker` (point 12).
 10. [D] **Construit par l'outil de GFS, jamais à la main.** La liste de GFS (`bibliotheques/package.json`) donne les versions
     exactes des paquets et, sous `gfs.bibliotheques.<id>.assemble`, ce que le fichier est : `version` (celle de GFS), `paquets`,
     `modules`, `externes` et `alias` (les `@tiptap/pm/<x>` renvoyés à `prosemirror-<x>`). L'outil tire les paquets (`npm pack`,
@@ -398,6 +403,30 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     direct née puis vidée à l'arrêt) ; **avec une fausse empreinte du CDN**, la CSP laisse passer et le navigateur refuse le fichier.
     Le labo n'atteint pas jsDelivr : à l'adresse du CDN, son miroir rend les octets exacts de la copie de GFS, avec l'en-tête CORS et
     le type JavaScript que `--verifier-cdn` contrôle sur le vrai CDN. [M]
+12. [D] **Une bibliothèque sans CDN, même quand GFS a un dépôt public** (`sansCdn: true` dans `gfs.bibliotheques.<id>.assemble`, 03/11 ;
+    la première est pdf.js). L'outil ne calcule alors aucune adresse pour elle : l'entrée porte `cdn: null` (point 11, dernière
+    phrase), la copie de GFS est son seul mode, et la fenêtre « Apps et extensions » grise l'option CDN avec sa raison. **Pourquoi** :
+    l'adresse d'un fichier assemblé dépend du commit épinglé (`gfs.publication.commit`), le même pour tous les fichiers assemblés ;
+    le déplacer changerait l'adresse d'`edition-live` que la CSP de Publipostage+ nomme déjà (consignes 016 et 021 : elle ne bouge
+    pas jusqu'à la bascule vers le dépôt public définitif). Une bibliothèque de plus ne doit pas obliger une app à changer sa CSP :
+    en copie, `'self'` suffit (5.2, point 5). À la bascule, une seule consigne donnera toutes les adresses et retirera `sansCdn`.
+    L'outil et ses tests le contrôlent (`--verifier` : l'entrée n'a pas de CDN, le catalogue publié est celui que la liste donne).
+    **pdf.js** (`pdfjs` 1.0.0, demande de lecture des PDF, 03/11) contient `pdfjs-dist` 6.5.438 (Apache-2.0, sa licence est recopiée
+    dans `vendor/pdfjs/1.0.0/LICENCES.txt`), `modules` `pdfjs-dist/build/pdf.min.mjs` (`getDocument`, `TextLayer`) et
+    `pdfjs-dist/build/pdf.worker.min.mjs`, `externes` vide, 1,64 Mo. Un sous-cadre à origine opaque ne peut pas créer de vrai `Worker`
+    (`SecurityError`, faits vérifiés, 19) : pdf.js retombe sur son « faux Worker », qui exécute le moteur dans la page et le cherche dans
+    `globalThis.pdfjsWorker` avant tout `import()`. Le fichier assemblé contient le moteur et le pose lui-même en se chargeant : aucune
+    adresse de plus, aucun `import()`, rien à nommer dans la CSP de l'app. **L'extension passe `verbosity: 0`** (sans quoi pdf.js
+    écrit « Setting up fake worker. » en console à chaque document) **et `isEvalSupported: false`** (aucune CSP d'app n'accepte
+    `unsafe-eval`). **Limites** : les polices standard, les CMap et le décodeur JPEG 2000 (wasm) sont des fichiers à part que le
+    paquet ne met pas dans le fichier assemblé : un PDF qui en dépend s'affiche avec les polices de repli, ou sans l'image ; un PDF
+    scanné, sans texte, n'a pas de couche de texte ; la lecture se fait dans la page, donc une page très lourde fige l'interface
+    quelques dixièmes de seconde (mesuré à 0,16 s au plus, faits vérifiés, 19).
+13. [D] **La licence suit chaque copie vendorisée** (03/11, avec ECharts). L'outil pose `vendor/<id>/<version>/LICENCES.txt` à côté de toute
+    copie : le texte de la licence de chaque paquet contenu et, quand le paquet livre un fichier `NOTICE`, son texte à la suite (la
+    licence Apache 2.0, article 4 d, veut que la copie redistribuée porte les deux ; ECharts en livre un). Un paquet sans fichier de
+    licence, ou sans licence déclarée, ne se vendorise pas : l'outil s'arrête en le disant. `--verifier` contrôle que ce fichier est
+    là et nomme chaque paquet de la copie (Plotly en a un depuis cette date).
 
 ### 2.7 Les actions acceptées
 
@@ -409,6 +438,7 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     "importer": [
       { "valeur": "excel", "type": "grille", "nom": { "fr": "Excel", "en": "Excel" }, "extensions": [".xlsx", ".xlsm"] }
     ],
+    "lire": [ { "type": "pdf", "extension": "lecture-pdf" } ],
     "inserer": { "produit": [], "recoit": [] }
   }
 }
@@ -426,6 +456,13 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
    (`type`, un type de `actions.ouvrir`) et l'app quand il y en a plusieurs. `valeur` nomme le format auprès de l'app (une chaîne
    qui ne se répète pas dans la liste) ; `extensions` sont les terminaisons que le sélecteur de fichier propose et que GFS contrôle
    avant d'ouvrir l'app. Sans `importer`, l'app n'a pas d'article. Le déroulement est en 5.4, point 1.
+5. [D] `lire` (facultatif ; demande du porteur du 03/11, « lire un PDF dans le mode Lecture de Publipostage+ ») : les types de fichiers
+   **que GFS garde** (6.6 ; aujourd'hui `pdf`) que l'app sait lire. Une entrée `{ type, extension? }` : `type` est le type du fichier
+   (un mot en minuscules, comme `pdf`) ; `extension` est l'identifiant d'une extension de l'app (déclarée dans `extensions`) qui apporte
+   la lecture : sans elle, c'est le socle de l'app qui lit. GFS en fait le geste principal d'un fichier gardé : « Lire » à la place de
+   « Télécharger », qui reste dans le menu de la ligne ; quand aucune app du catalogue ne lit le type, le fichier se télécharge comme
+   avant (6.6, point 7). Plusieurs apps peuvent lire un même type : la première qui est prête sert, sinon la première déclarée dit
+   ce qui manque. Le déroulement est en 5.4, point 8. L'app ne reçoit jamais le droit d'écrire ce que GFS garde.
 
 ### 2.8 Validation
 
@@ -445,6 +482,9 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
    - dans `actions.importer` (2.7, point 4) : une entrée sans `valeur` ou sans `nom` en français et en anglais, une `valeur` déjà
      prise, un `type` qui n'est pas dans `actions.ouvrir`, des `extensions` qui ne sont pas une liste non vide de terminaisons (un
      point, puis un à huit caractères ou chiffres : `.xlsx`) ;
+   - dans `actions.lire` (2.7, point 5) : une entrée qui n'est pas un objet ou dont le `type` n'est pas un mot en minuscules (une
+     lettre, puis des lettres, des chiffres ou des tirets, 24 signes au plus), un `type` déclaré deux fois, une `extension` qui n'est
+     pas déclarée dans `extensions` ;
    - dans `classes` (11.2) : une table hors du préfixe de l'app, une classe inconnue, un champ de la classe absent (`personne`
      pour `personnel`, les quatre rôles de `etiquette` pour `reserve`, `de` et `lien` pour `derivee`), une table `derivee` dont
      `de` n'est pas une table `reserve`, un `secrets` qui n'est pas une liste de noms de colonnes.
@@ -1022,10 +1062,14 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    le cas du bouton « Ouvrir » de la fenêtre « Apps et extensions » et de l'arrivée sur une vue qui porte ses réglages, 7.4, point 7) ;
    sinon `{ fichier, type, dossier, raison }` où `fichier` est `{ id, type }` (ou `null` pour « Nouveau »), `type` le type
    demandé quand `fichier` est `null`, `dossier` le dossier courant de l'explorateur (une indication), `raison` l'un de
-   `explorateur`, `nouveau`, `lien`, `importer`. Avec `importer`, l'ouverture porte de plus `importation: { valeur, fichier }` :
+   `explorateur`, `nouveau`, `lien`, `importer`, `lire`. Avec `importer`, l'ouverture porte de plus `importation: { valeur, fichier }` :
    `valeur` est celle d'un format de `actions.importer` (2.7, point 4) et `fichier` l'objet `File` que la personne a choisi dans le
    sélecteur de GFS (le `fichier` de l'ouverture reste `null`, `type` est celui du format) ; le sous-cadre le lit comme tout fichier
-   choisi (`name`, `size`, `type`, `text()`, `arrayBuffer()`), GFS ne le lit ni ne le garde (5.4, point 1). L'app affiche elle-même
+   choisi (`name`, `size`, `type`, `text()`, `arrayBuffer()`), GFS ne le lit ni ne le garde (5.4, point 1). Avec `lire`, l'ouverture porte
+   `lecture: { id, fichier }` : `id` est l'identifiant du fichier chez GFS (`Identifiant` de `GFS_Fichiers`, 6.6 : il ne change ni au
+   renommage ni au remplacement, c'est la clé où l'app peut accrocher ce qu'elle garde, des commentaires par exemple), `fichier`
+   l'objet `File` des octets, que GFS a téléchargés lui-même ; le `fichier` de l'ouverture reste `null` et `type` est celui du fichier
+   lu (5.4, point 8). L'app affiche elle-même
    la raison dans son coin d'état (« par la ligne… », « depuis l'explorateur »). **GFS ne la rend qu'une fois**, au premier `contexte` de l'app qu'il vient d'activer : un cadre rechargé sur
    place (Publipostage+ le fait au changement de langue, de caractère de déclenchement et au premier contact) redemande son
    contexte et reçoit `null`, donc reprend son ordre d'arrivée habituel, au lieu de refaire un « Nouveau » déjà fait (le modèle
@@ -1318,7 +1362,7 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
 
 | Action | Appel | Réponse | Dans l'app seule |
 |---|---|---|---|
-| **ouvrir** | app → GFS : `{ app, fichier: { id, type }, raison? }` ; GFS → app active : `{ fichier, type, dossier, raison, importation? }` | `{ ouvert: true \| false }` (`false` si la personne annule la question de l'app) | l'app ouvre ses propres fichiers ; ceux d'une autre app sont grisés, texte commun |
+| **ouvrir** | app → GFS : `{ app, fichier: { id, type }, raison? }` ; GFS → app active : `{ fichier, type, dossier, raison, importation?, lecture? }` | `{ ouvert: true \| false }` (`false` si la personne annule la question de l'app) | l'app ouvre ses propres fichiers ; ceux d'une autre app sont grisés, texte commun |
 | **choisir** | app → GFS : `{ types, apps?, titre? }` | `{ app, id, nom, type }`, ou `null` si la personne annule | la liste avec recherche de l'app, sur ses propres fichiers |
 | **inserer** | app qui reçoit → GFS : `{ formats, types? }` ; GFS → app qui fournit : même corps | `{ rendu }` (ci-dessous) | grisé, texte commun |
 | **installer** | app → GFS : `{ extension, fonction? }` | `{ actives: [ … ] }` : les extensions actives après le choix de la personne | la fenêtre du grisé (guide des apps, section 5) |
@@ -1477,6 +1521,45 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
      l'app, qui ne dit pas « Ouvert depuis l'explorateur » (la raison est `lien`) ; avec **le vrai client du kit**
      (`run-liens-kit.mjs`, 12 vérifications dans chacune) : `GfsLink.choose` rend la clé, `null` à l'annulation, `GFS_REFUSE` sans type ou pendant
      un autre choix, `GfsLink.openFile` rejette un fichier disparu par `GFS_INTROUVABLE` et ouvre l'app visée.
+
+8. [T] **Lire un fichier que GFS garde** (demande du porteur du 03/11, lot 2 de l'étude PDF ; **construit et mesuré le 03/11**).
+   `actions.lire` (2.7, point 5) dit quelles apps lisent quel type. Devant un fichier gardé (6.6), GFS prend la première app prête
+   qui le lit :
+   - **Le geste** : « Lire » est le geste principal (le bouton du pied, Entrée, le double-clic, le premier article du menu de la
+     ligne) ; « Télécharger » passe dans le menu ; la barre d'information dit « S'ouvre dans <app> ». Quand aucune app ne lit le
+     type, rien ne change (6.6, point 7).
+   - **Grisé, jamais masqué** : l'app n'est pas installée, l'extension qui lit est éteinte, ou l'app ne reçoit pas encore le fichier
+     (`ACCEPTS_OPEN.<app>.lire`, la ligne provisoire de `fichier`, `nouveau` et `importer`, qui passe à `true` quand le `GFS-ETAT.md` de
+     l'app dit la consigne faite et que GFS l'a rejouée). « Lire » reste là, grisé, et la barre dit ce qui manque ; au clic, la
+     fenêtre « Apps et extensions » s'ouvre sur la ligne qui le débloque (l'app, puis l'extension), ou la phrase « <app> ne lit pas
+     encore les PDF de GFS : télécharge-le pour l'ouvrir » est dite, sans fenêtre. GFS n'ouvre jamais une app qui ne sait pas le
+     recevoir : elle prendrait `fichier: null` pour un « Nouveau », ouvrirait un modèle vierge, et le PDF serait perdu sans un mot.
+   - **L'ouverture** : GFS télécharge **lui-même** le PDF par le cadre d'envoi (6.6, point 5), en fait un `File` à son nom, et ouvre
+     l'app avec `{ fichier: null, type: "pdf", dossier, raison: "lire", lecture: { id, fichier } }` (5.2, point 3), dans la réponse à
+     `contexte` ou, quand l'app est déjà ouverte, par l'appel `ouvrir` (point 1). L'app ne reçoit aucun jeton et n'appelle jamais
+     l'API de Grist pour cela. Le fichier part une seule fois. Si le transfert échoue, la phrase le dit (« « Facture.pdf » n'a pas pu
+     être ouvert : le serveur Grist n'a pas répondu… »), l'explorateur reste ouvert et l'app n'est pas touchée.
+   - **Ce que l'app fait** : elle lit `lecture.fichier` comme tout fichier choisi (`arrayBuffer()`), charge pdf.js par la bibliothèque
+     `pdfjs` que GFS lui donne (2.6, point 12 ; extension « Lecture de PDF »), le montre dans son mode Lecture, et répond `{ ouvert: true }`
+     quand le PDF est ouvert, `{ ouvert: false }` quand la personne annule ou que le fichier est refusé. **Elle garde `lecture` dans son
+     `normalizeOpening`** : le kit 0.4.0 et le `gfs-link.js` de Publipostage+ ne gardent que `fichier`, `type`, `dossier`, `raison` (et
+     `importation` pour le second) et laisseraient tomber le fichier. Elle ne renvoie jamais les octets à GFS.
+   - [M] **Mesuré le 03/11** dans un vrai serveur Grist 1.7.19 (Docker), à 700 × 400, à la vraie souris et au vrai clavier, en français
+     clair et en anglais sombre (`prototype/labo/run-lire.mjs`, 43 vérifications dans chacune, aucune en échec), avec la sonde Y
+     (`labo/sondes/y-lire-pdf/`), qui fait ce que fera Publipostage+ : le labo seul la range dans `ACCEPTS_OPEN`. Avant l'app, « Lire »
+     est grisé, la barre demande l'app, un clic ouvre la fenêtre sur sa ligne, puis sur celle de l'extension (la copie de GFS est le
+     seul mode de pdf.js, le CDN est grisé avec sa raison). L'app prête, « Lire » ferme l'explorateur et l'app reçoit **un vrai `File`**
+     (`instanceof File`, nom, taille, type `application/pdf`, mêmes octets : même empreinte SHA-256 que le PDF choisi) **dans un cadre sans
+     `allow-same-origin`** ; pdf.js 6.5.438 se charge par la source que GFS donne (la copie de GFS, empreinte `sha384`, un
+     `<script type="module">` sous `script-src 'self'`, aucune violation de politique) ; le PDF de trois pages s'ouvre, son texte
+     (accents compris) et son encre sont là, la couche de texte porte le même texte et un double-clic y sélectionne un mot ; la page suivante
+     se tourne à la souris et à la flèche droite ; **l'app déjà ouverte reçoit l'appel `ouvrir`** (raison `lire`, même cadre non rechargé)
+     et lit le second PDF ; Entrée et le double-clic lisent ; « Télécharger » du menu rend le PDF octet pour octet ; **lire n'écrit rien dans
+     le document** (mêmes lignes, mêmes pièces jointes, mêmes tables) ; un transfert refusé est dit en mots et n'ouvre rien ; avec
+     `lire: false`, « Lire » reste grisé, la phrase « ne lit pas encore » est dite au clic, sans fenêtre ni app ouverte ; les textes du pied
+     et de la barre tiennent la charte (4,5:1) ; aucune erreur ni avertissement en console. **Non mesuré** : Firefox, l'instance de la
+     DINUM, un PDF protégé par un mot de passe, un PDF de centaines de pages, la vraie Publipostage+ (son extension n'existe pas encore :
+     consigne à Publipostage+, `consignes/publipostage/`).
 
 ### 5.5 La table d'un direct : être prévenu quand une autre table change
 
@@ -1685,9 +1768,11 @@ fichier lui-même en pièce jointe de Grist.
    écriture d'une page d'une autre origine : le navigateur ne rapporte que « NetworkError » (c'est ce que la sonde du 03/11 a vu
    chez le porteur). Le cadre l'ajoute à l'envoi ; le téléchargement, une lecture simple, n'en a pas besoin. [M] Mesuré le
    03/11 (faits vérifiés, 14).
-7. [T] **Ouvrir un PDF, c'est le télécharger** sous son nom (un lien invisible cliqué, le bouton du pied et le menu disent
-   « Télécharger »). Dupliquer est grisé et dit pourquoi ; supprimer demande confirmation (le clavier sur « Annuler »), retire la
-   ligne pour toutes les personnes du document, et GFS le fait lui-même (6.3, point 2, ne vaut que pour les tables d'une app).
+7. [T] **Ouvrir un PDF**, c'est le **lire** dans l'app dont le manifeste le déclare (`actions.lire`, 2.7, point 5 ; 5.4, point 8) :
+   « Lire » est alors le geste principal et « Télécharger » reste dans le menu de la ligne. Quand aucune app du catalogue ne le lit,
+   c'est le télécharger sous son nom (un lien invisible cliqué ; le bouton du pied et le menu disent « Télécharger »). Dupliquer est
+   grisé et dit pourquoi ; supprimer demande confirmation (le clavier sur « Annuler »), retire la ligne pour toutes les personnes du
+   document, et GFS le fait lui-même (6.3, point 2, ne vaut que pour les tables d'une app).
 8. [T] Un document en lecture seule, ou ouvert sans l'accès complet, grise « PDF » dans « Importer » avec sa raison : rien ne
    s'écrit sans un geste de la personne, rien ne s'envoie sans la table.
 9. [M] **Restent à mesurer chez le porteur** : la passerelle et la taille maximale d'une pièce jointe de l'instance de la DINUM

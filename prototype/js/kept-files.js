@@ -2,7 +2,7 @@
 // lie les gestes de l'explorateur, les fenêtres du widget (js/conflict-window.js, js/ask-window.js) et les données (js/files-store.js) ; le contrôleur lui prête ce qu'il sait faire
 // (l'accord de la personne, une phrase, la relecture de la liste) et l'explorateur l'interroge pour ne rien savoir lui-même d'un PDF.
 
-import { FILES_APP, FILES_MANIFEST, PDF_EXTENSION, cleanName, looksLikePdf } from './gfs-files.js';
+import { FILES_APP, FILES_MANIFEST, PDF_EXTENSION, PDF_MIME, cleanName, looksLikePdf } from './gfs-files.js';
 import { importFormats, acceptsFile, pickFile } from './import-file.js';
 import { TransferError } from './transfer.js';
 import { TableDeclined } from './own-table.js';
@@ -26,9 +26,10 @@ export class KeptFiles {
   #store;
 
   // opts : { store (js/files-store.js), doc (le document de la page), container, inertTargets(), t(clé, vars), lang(), locale(), now(), fullAccess(), readonly(), notice(texte), refresh() -> Promise,
-  //          folder() -> le dossier ouvert dans l'explorateur, rangement (js/rangement.js : pour ranger un fichier dans ce dossier) }
+  //          folder() -> le dossier ouvert dans l'explorateur, rangement (js/rangement.js : pour ranger un fichier dans ce dossier),
+  //          reader?(fichier) -> { name, lock } | null : l'app qui lit ce fichier (js/reading.js), son nom et son grisé (null : prête) ; null quand aucune app ne le lit }
   constructor(opts) {
-    this.#opts = opts;
+    this.#opts = { reader: () => null, ...opts };
     this.#store = opts.store;
   }
 
@@ -36,10 +37,21 @@ export class KeptFiles {
 
   has = file => file.app === FILES_APP;
 
-  // Pour un fichier que GFS garde, « ouvrir » est « télécharger » : le bouton, l'article du menu et la phrase de la barre d'information le disent.
-  openAs = () => ({ label: this.#opts.t('files.download'), icon: 'download' });
+  // Le geste principal d'un fichier que GFS garde : « Lire » quand une app le lit (grisé tant qu'elle n'est pas prête : le clic dit ce qui la débloque), sinon « Télécharger ». Le bouton, l'article
+  // du menu et la phrase de la barre d'information le disent.
+  openAs = file => {
+    const reader = this.#opts.reader(file);
+    return reader ? { label: this.#opts.t('files.read'), icon: 'read', greyed: Boolean(reader.lock) } : { label: this.#opts.t('files.download'), icon: 'download', greyed: false };
+  };
 
-  opensIn = () => this.#opts.t('files.opensIn');
+  opensIn = file => {
+    const reader = this.#opts.reader(file);
+    if (!reader) return this.#opts.t('files.opensIn');
+    return reader.lock ? reader.lock.text : this.#opts.t('ex.opensIn', { app: reader.name });
+  };
+
+  // Ce que le menu d'une ligne offre en plus du geste principal : télécharger, quand le geste principal est de lire.
+  extras = file => (this.#opts.reader(file) ? [{ label: this.#opts.t('files.download'), icon: 'download', run: () => void this.open(file) }] : []);
 
   copyNotice = () => this.#opts.t('files.noCopy');
 
@@ -140,6 +152,19 @@ export class KeptFiles {
       notice(t('files.downloaded', { name }));
     } catch (error) {
       notice(this.#failure(error, 'files.downloadFailed', { name: file.name }));
+    }
+  }
+
+  // Lire : les octets du fichier, prêts à être remis à l'app qui le lit, en objet `File` au nom du fichier (contrats 5.4, point 8). Rend `null` quand le transfert a échoué : la phrase est dite.
+  async load(file) {
+    const { t, notice } = this.#opts;
+    notice(t('files.reading', { name: file.name }));
+    try {
+      const { blob, name } = await this.#store.download(file);
+      return new File([blob], name, { type: PDF_MIME });
+    } catch (error) {
+      notice(this.#failure(error, 'files.readFailed', { name: file.name }));
+      return null;
     }
   }
 

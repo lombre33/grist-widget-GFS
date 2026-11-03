@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Sonde Q</title>
+<!-- Politique de l'app sonde Q : celle de Publipostage+ (script-src 'self', frame-src 'none', form-action 'none', pas de default-src). -->
+<meta http-equiv="Content-Security-Policy" content="script-src 'self'; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'">
+<style>
+  body { font: 13px system-ui, sans-serif; margin: 12px; }
+  h1 { font-size: 15px; margin: 0 0 8px; }
+  button { font: inherit; padding: 6px 10px; margin-right: 8px; }
+  pre { margin: 8px 0 0; white-space: pre-wrap; }
+</style>
+</head>
+<body data-reponse="oui">
+<h1>Sonde Q : une app qui lie des fichiers d'autres apps</h1>
+<p>Elle demande <code>choisir</code> et <code>ouvrir</code> à GFS quand on clique ses deux boutons, avec les demandes que le labo pose dans <code>body[data-choisir]</code> et <code>body[data-ouvrir]</code> (du JSON) ; ce qu'elle a reçu est écrit dans <code>body[data-sonde]</code>, que le labo lit. Elle répond aussi à l'appel <code>ouvrir</code> de GFS (<code>body[data-reponse]</code> : <code>oui</code>, <code>non</code>).</p>
+<button id="choisir" type="button">Lier un fichier</button>
+<button id="ouvrir" type="button">Ouvrir le lien</button>
+<script src="liens.js"></script>
+</body>
+</html>

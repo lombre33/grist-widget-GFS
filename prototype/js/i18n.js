@@ -193,6 +193,13 @@ const STRINGS = {
     'ex.notice.openFailed': '{app} n’a pas pu ouvrir ce fichier : {reason}',
     'ex.notice.appOnly': 'Dupliquer et supprimer se font dans {app} : ouvre le fichier.',
     'ex.notice.noApp': 'Aucune app installée ne sait ouvrir ce type de fichier.',
+    'ex.choose.title': 'Choisir un fichier',
+    'ex.choose.pick': 'Choisir',
+    'ex.choose.cancel': 'Annuler',
+    'ex.choose.newOff': 'Indisponible pendant le choix d’un fichier.',
+    'ex.choose.hint': 'Double-clique un fichier, ou sélectionne-le puis « Choisir ».',
+    'ex.choose.empty': 'Aucun fichier de ce genre à choisir.',
+    'link.gone': '{app} n’a plus ce fichier : le lien ne peut pas s’ouvrir.',
   },
   en: {
     'gfs.title': 'Grist Factory Suite',
@@ -385,6 +392,13 @@ const STRINGS = {
     'ex.notice.openFailed': '{app} could not open this file: {reason}',
     'ex.notice.appOnly': 'Duplicating and deleting are done in {app}: open the file.',
     'ex.notice.noApp': 'No installed app can open this type of file.',
+    'ex.choose.title': 'Choose a file',
+    'ex.choose.pick': 'Choose',
+    'ex.choose.cancel': 'Cancel',
+    'ex.choose.newOff': 'Not available while choosing a file.',
+    'ex.choose.hint': 'Double-click a file, or select it then “Choose”.',
+    'ex.choose.empty': 'No file of this kind to choose.',
+    'link.gone': '{app} no longer has this file: the link cannot be opened.',
   },
 };
 

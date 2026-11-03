@@ -7,8 +7,8 @@
   },
   "version": "0.0.1",
   "texte": {
-    "fr": "Une app qui répond à l'appel « ouvrir » de GFS, comme Publipostage+ après la consigne 010",
-    "en": "An app that answers GFS's “open” call, like Publipostage+ after instruction 010"
+    "fr": "Une app qui répond à l'appel « ouvrir » de GFS, comme Publipostage+ après la consigne 010 ; ses documents se choisissent, ses macros non (liens entre apps)",
+    "en": "An app that answers GFS's “open” call, like Publipostage+ after instruction 010; its documents can be chosen, its macros cannot (links between apps)"
   },
   "icone": "doc",
   "entree": "index.html",
@@ -34,6 +34,15 @@
           },
           "icone": "doc",
           "couleur": "document"
+        },
+        {
+          "valeur": "macro",
+          "nom": {
+            "fr": "Macro",
+            "en": "Macro"
+          },
+          "icone": "doc",
+          "couleur": "document"
         }
       ]
     }
@@ -45,8 +54,11 @@
   "extensions": [],
   "actions": {
     "ouvrir": [
-      "document"
+      "document",
+      "macro"
     ],
-    "choisir": []
+    "choisir": [
+      "document"
+    ]
   }
 }

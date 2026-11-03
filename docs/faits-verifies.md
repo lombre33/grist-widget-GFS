@@ -747,3 +747,24 @@ dessus, qui l'enregistre ; t6, le geste de `downloadBlob` 7 secondes après le c
   **La cause de l'écart entre les deux postes était la version de Firefox (140)**, non l'extension ni GFS : dans un Firefox à jour, le cadre
   isolé de GFS n'empêche pas LanguageTool. Le porteur : « on ne touche plus à rien » ; l'isolement et la décision du 28/10 restent.
 - Hors de ce que ces pages peuvent dire : Safari.
+
+## 12. Les liens entre apps : ce que le labo a mesuré (03/11)
+
+Mesuré dans un vrai Grist (grist-static 0.1.6, Chromium), à 700 × 400, à la vraie souris et au vrai clavier, en français et en anglais, en
+clair et en sombre : `run-liens.mjs` (sondes Q et O), `run-liens-publipostage.mjs` (la vraie Publipostage+, celle que GFS référence) et
+`run-liens-kit.mjs` (le vrai client du kit 0.3.0). Les sondes, leurs tables et leurs mots sont décrits dans `labo/LISEZ-MOI.md`. Firefox et
+Safari ne sont pas mesurés (le labo n'a que Chromium).
+
+- **Un cadre d'app qui ne dit pas qu'il est prêt reste caché** : GFS ne montre le cadre qu'à l'arrivée de `themeInitialized` (ou après
+  `REVEAL_TIMEOUT_MS` à partir de `ready`), comme Grist pour ses widgets (`js/session.js`, `#reveal`) ; un cadre caché (`visibility:
+  hidden`) ne reçoit aucun clic. Une app d'essai écrite pour cliquer dedans envoie `{ mtype: 5 }` puis `{ mtype: 4, data: { message:
+  'themeInitialized' } }`.
+- **Le kit se charge dans un cadre isolé** : `import '/kit/js/gfs-link.js'` depuis une page d'origine opaque (`sandbox="allow-scripts"`, sans
+  `allow-same-origin`), sous `script-src 'self'`, marche si le serveur du module pose l'en-tête CORS ouvert (`Access-Control-Allow-Origin: *`),
+  comme GitHub Pages ; sans lui, le module ne se charge pas.
+- **Publipostage+ à `134d043` ne dit rien d'une ouverture par un lien** : sa table de phrases (`js/gfs-open.js`, `REASON_TEXT`) ne connaît que
+  `explorateur` ; une raison inconnue (`lien`) n'affiche rien, l'app ouvre le fichier désigné (une grille : son éditeur ; une
+  présentation : l'extension « Diapositives » active) et son coin d'état garde « Widget prêt. ».
+- **Publipostage+ offre à choisir** ses documents, ses grilles et ses présentations (`actions.choisir`) ; un e-mail, une macro, un
+  type que le manifeste ne connaît pas (`diaporama` dans le document d'essai) ne se listent pas en mode choix. Une présentation est
+  grisée tant que l'extension « Diapositives » est éteinte ; le double-clic ouvre la fenêtre des apps sur la ligne de l'extension.

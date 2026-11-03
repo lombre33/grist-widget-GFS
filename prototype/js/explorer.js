@@ -19,6 +19,8 @@ export class Explorer {
   #loading = false;
   #problems = [];
   #restricted = false;
+  #choice = null; // le mode choix (enterChoice) : { title, accept(file), onPick(file), onCancel() }, ou null
+  #beforeChoice = null; // où la personne en était avant le mode choix
   // Deux tris : celui des dossiers et des favoris (par nom), celui de Récents (par date, le plus récent d'abord).
   state = { view: 'folder', path: '', open: new Set(), display: 'list', sort: { key: 'name', dir: 1 }, recentSort: { key: 'mod', dir: -1 }, type: 'all', q: '', sel: null };
 
@@ -38,6 +40,9 @@ export class Explorer {
   get isOpen() { return !this.root.hidden; }
 
   get files() { return this.#files; }
+
+  // Les fichiers que la liste peut montrer : tous, ou, en mode choix, ceux que la demande de l'app laisse passer.
+  get #pool() { return this.#choice ? this.#files.filter(this.#choice.accept) : this.#files; }
 
   setFiles(files) {
     this.#files = files;
@@ -66,11 +71,55 @@ export class Explorer {
     this.root.hidden = true;
   }
 
+  // Le mode choix (contrats 5.4, point 2) : une app a demandé à la personne de désigner un fichier. L'explorateur ne montre que ceux que `accept` laisse passer, « Ouvrir » devient « Choisir », « Fermer »
+  // « Annuler » et « Nouveau » est grisé ; `onPick(file)` reçoit le fichier désigné (double-clic, Entrée, « Choisir »), `onCancel()` l'abandon (Annuler, Échap). `exitChoice` rend l'explorateur
+  // comme la personne l'avait laissé.
+  enterChoice(choice) {
+    if (!this.#choice) this.#beforeChoice = this.#place();
+    this.#choice = choice;
+    Object.assign(this.state, { view: 'folder', path: '', q: '', type: 'all', sel: null });
+    this.#refs.search.value = '';
+    this.root.classList.add('ex--choose');
+    this.#labelChoice();
+    if (this.isOpen) this.render();
+  }
+
+  exitChoice() {
+    if (!this.#choice) return;
+    this.#choice = null;
+    Object.assign(this.state, this.#beforeChoice);
+    this.#refs.search.value = this.state.q;
+    this.root.classList.remove('ex--choose');
+    const { openBtn, newBtn } = this.#refs;
+    openBtn.classList.remove('primary');
+    newBtn.removeAttribute('aria-disabled');
+    newBtn.removeAttribute('title');
+    relabel(this.#refs, this.#opts.i18n);
+    if (this.isOpen) this.render();
+  }
+
+  #place() {
+    const { view, path, q, type, sel } = this.state;
+    return { view, path, q, type, sel };
+  }
+
+  #labelChoice() {
+    const { t } = this.#opts.i18n;
+    const { title, openBtn, closeBtn, newBtn } = this.#refs;
+    title.replaceChildren(icon('link'), this.#choice.title || t('ex.choose.title'));
+    openBtn.textContent = t('ex.choose.pick');
+    openBtn.classList.add('primary');
+    closeBtn.textContent = t('ex.choose.cancel');
+    newBtn.setAttribute('aria-disabled', 'true');
+    newBtn.title = t('ex.choose.newOff');
+  }
+
   // La langue de GFS a changé : les textes du cadre fixe se réécrivent, et tout le reste se redessine dans la nouvelle langue (dates comprises).
   relocalize({ i18n, locale }) {
     this.#opts = { ...this.#opts, i18n, locale };
     closeMenu();
     relabel(this.#refs, i18n);
+    if (this.#choice) this.#labelChoice();
     if (this.isOpen) this.render();
   }
 
@@ -86,8 +135,8 @@ export class Explorer {
     const row = sel ? this.#rows.find(r => (r.kind === 'folder' ? `dir:${r.path}` : r.file.key) === sel) : null;
     return {
       t: this.#opts.i18n.t, state, locale: this.#opts.locale, now: this.#opts.now(), appName: this.#opts.appName, typeLabel: this.#opts.typeLabel,
-      lockOf: this.#opts.lockOf, sort: this.#sort(), filtering: this.#filtering, favCount: this.#files.filter(file => file.pinned).length, totalFiles: this.#files.length,
-      selected: row, personal: this.#opts.personal(), ...extra,
+      lockOf: this.#opts.lockOf, sort: this.#sort(), filtering: this.#filtering, favCount: this.#pool.filter(file => file.pinned).length, totalFiles: this.#pool.length,
+      selected: row, personal: this.#opts.personal(), choosing: this.#choice !== null, ...extra,
     };
   }
 
@@ -111,14 +160,14 @@ export class Explorer {
     }
     const choice = state.type === 'all' ? null : this.#types().find(item => item.value === state.type);
     typeBtn.replaceChildren(...(choice ? [h('span', { class: 'tyi', 'data-fam': choice.known ? choice.family : null }, icon(choice.icon))] : []), choice ? choice.label : t('ex.allTypes'), icon('chev-down'));
-    closeBtn.setAttribute('aria-disabled', String(!this.#opts.canClose()));
+    closeBtn.setAttribute('aria-disabled', String(!this.#choice && !this.#opts.canClose()));
   }
 
   #renderCrumbs() { this.#refs.crumbs.replaceChildren(...crumbs(this.#ctx())); }
 
   #renderTree() {
     const top = this.#refs.tree.scrollTop;
-    this.#refs.tree.replaceChildren(...tree(this.#ctx({ treeRows: treeRows(this.#files, this.state.open, this.#opts.locale) })));
+    this.#refs.tree.replaceChildren(...tree(this.#ctx({ treeRows: treeRows(this.#pool, this.state.open, this.#opts.locale) })));
     this.#refs.tree.scrollTop = top;
   }
 
@@ -126,7 +175,7 @@ export class Explorer {
     const { list, scroll, empty, notices } = this.#refs;
     const top = scroll.scrollTop;
     const focused = this.#focusedKey();
-    const result = listItems(this.#files, { ...this.state, sort: this.#sort() }, { locale: this.#opts.locale, typeLabel: this.#opts.typeLabel });
+    const result = listItems(this.#pool, { ...this.state, sort: this.#sort() }, { locale: this.#opts.locale, typeLabel: this.#opts.typeLabel });
     this.#rows = result.rows;
     const keys = this.#rows.map(r => (r.kind === 'folder' ? `dir:${r.path}` : r.file.key));
     if (this.state.sel && !keys.includes(this.state.sel)) this.state.sel = null;
@@ -171,7 +220,7 @@ export class Explorer {
     for (const row of rows) row.tabIndex = row === chosen ? 0 : -1;
   }
 
-  #types() { return typeChoices(this.#files, this.#opts.typeLabel); }
+  #types() { return typeChoices(this.#pool, this.#opts.typeLabel); }
 
   // ---------- gestes ----------
 
@@ -293,16 +342,19 @@ export class Explorer {
   }
 
   #requestClose() {
-    if (this.#opts.canClose()) this.#opts.onClose();
+    if (this.#choice) this.#choice.onCancel();
+    else if (this.#opts.canClose()) this.#opts.onClose();
     else this.#opts.notice(this.#opts.i18n.t('ex.closeNone'));
   }
 
   #openSelected() { if (this.state.sel) this.#activate(this.state.sel); }
 
+  // Un fichier s'ouvre dans son app, ou, en mode choix, est désigné à l'app qui le demandait.
   #activate(key) {
     if (key.startsWith('dir:')) { this.#goFolder(key.slice(4)); return; }
     const file = this.#files.find(item => item.key === key);
-    if (file) this.#opts.onOpen(file);
+    if (!file) return;
+    if (this.#choice) this.#choice.onPick(file); else this.#opts.onOpen(file);
   }
 
   #togglePin(key) {
@@ -335,6 +387,7 @@ export class Explorer {
   // Le menu « Nouveau » : un article par type de fichier à créer, et « Importer » (un sous-menu : un article par format qu'une app reçoit d'un autre logiciel, contrats 2.7, point 4).
   #newMenu() {
     const { t } = this.#opts.i18n;
+    if (this.#choice) { this.#opts.notice(t('ex.choose.newOff')); return; }
     const article = (entry, run) => ({ label: entry.label, icon: entry.icon, family: entry.family, greyed: entry.greyed, hint: entry.hint, run });
     const items = this.#opts.newTypes().map(entry => article(entry, () => this.#opts.onNew(entry)));
     // Un format grisé garde sa mention courte, coupée si le panneau est étroit : l'infobulle dit la raison en entier (le clic aussi).
@@ -359,7 +412,7 @@ export class Explorer {
       if (!file) return;
       const appOnly = () => this.#opts.notice(t('ex.notice.appOnly', { app: this.#opts.appName(file.app) }));
       const grey = (label, glyph) => ({ label, icon: glyph, greyed: true, run: appOnly });
-      items = [item(t('ex.open'), 'open', () => this.#activate(key)), item(file.pinned ? t('ex.unpin') : t('ex.pin'), 'pin', () => void filing.togglePin(file)),
+      items = [item(this.#choice ? t('ex.choose.pick') : t('ex.open'), 'open', () => this.#activate(key)), item(file.pinned ? t('ex.unpin') : t('ex.pin'), 'pin', () => void filing.togglePin(file)),
         item(t('ex.rename'), 'edit', () => void filing.rename(file)), grey(t('ex.duplicate'), 'copy'), item(t('ex.move'), 'move', () => void filing.moveFile(file)),
         '-', grey(t('ex.delete'), 'trash')];
     }

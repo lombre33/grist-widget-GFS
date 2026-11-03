@@ -132,6 +132,7 @@ Slides+ (`lombre33/SlidesPlus`) n'est pas une app de GFS : les diapositives devi
 | **Chaque app garde son site en ligne publié et en vérifie la version à chaque lot.** Le site d'Automation+ est resté à la 0.9.0 du 21/10 au 02/11 (publication en échec, une accolade double dans un document) et GFS l'ouvrait ainsi depuis le 22/10 ; un fichier vide `.nojekyll` coupe la panne, et le numéro vu en ligne se compare à celui du dépôt | 02/11, 21 h 15 | Aucun code de GFS. Guide des apps, 1.2 point 11 ; faits vérifiés, section 5 ; consignes 037 à Publipostage+, 014 à Form+ et 003 à Grist-BI |
 | **Automation+ tourne en fond, caché derrière l'app active, mais seulement quand le document a au moins une automatisation** : sans automatisation, GFS ne crée aucun second sous-cadre. Raison : Automation+ ne tourne que vue ouverte et GFS n'active qu'une app par section, alors qu'une automatisation doit pouvoir faire évoluer le kanban de Tuesday ou ajouter des tâches à l'agenda | 02/11 (décision du porteur, relayée par le projet de Tuesday ; collée chez GFS à 22 h 14) | Section 12, ligne 4 ; contrats 1.4, point 1 (deux sous-cadres reliés à Grist, à écrire à l'étape 6) ; consigne 004 à Tuesday. Aucun code avant l'étape 6 |
 | **Un lien public ne lit, parmi les tables de l'app qui publie, que les petites tables que le manifeste de cette app déclare** (Form+ : `FormPlus_Pub_*`, la définition d'UN formulaire) ; toute autre table de l'app est refusée sans demander à la personne, en tête celle qui garde la définition et la clé de partage de tous les formulaires (`FormPlus_Formulaires`). Raison : un lien lit la colonne entière que montre une Référence de ses formulaires, sans passer par GFS ni par ses règles | 03/11 (carte « Petites tables déclarées seulement ») | Contrats 3.3 (point 9), 3.4 (point 5) et 11.9 (point 4c) ; consigne 015 à Form+ ; mesuré dans un vrai Grist (`labo/run-publication.mjs`, `labo/run-form.mjs`) |
+| **Les liens entre apps sont construits** : une app demande à GFS de lui faire désigner un fichier d'une autre app (`choisir`, l'explorateur en mode choix) puis de l'ouvrir (`ouvrir`) ; elle garde la clé `{ app, id, type }`, le nom n'est qu'une étiquette, et un lien n'est jamais supprimé par GFS ni par l'app. Les types offerts à choisir sont ceux que chaque app déclare (Publipostage+ : documents, grilles et présentations, jamais un e-mail ni une macro) | 03/11 (carte « Construire maintenant ») | Contrats 3.6 (`GFS_INTROUVABLE`) et 5.4 (points 2 et 7) ; kit 0.3.0 (`GfsLink.choose`, `openFile`) ; guide des apps, 1.2 point 13 ; mesuré dans un vrai Grist (`labo/run-liens.mjs`, `run-liens-publipostage.mjs`, `run-liens-kit.mjs`) ; consigne 005 à Tuesday |
 
 Si un fait nouveau remet en cause une de ces lignes, le dire au porteur avec ce fait, sur une carte de décision. Ne jamais
 proposer l'inverse de son propre chef.
@@ -367,6 +368,12 @@ commencer, ou un sous-cadre gardé ouvert et caché (question 4, section 12).
   Mesuré : 56 essais sous Node, dont 18 pour le lien, et 209 vérifications dans Chromium, dont le cadre d'une app isolé comme
   chez GFS face à une page qui joue GFS. Form+ le reprend par la consigne 010 ; GFS ouvre alors sa porte « ouvrir ». Restent
   hors du lien : l'identité, « choisir » et « insérer ». L'étiquette `v0.2.0`, comme la `v0.1.0`, est à poser par le porteur.
+- **V0.3 (03/11) : les liens entre apps** (carte du porteur, « Construire maintenant ») : `GfsLink.choose` (faire désigner un fichier d'une
+  autre app dans l'explorateur de GFS) et `GfsLink.openFile` (l'ouvrir plus tard), commit `9d17844`, pour Tuesday d'abord. L'app garde la clé
+  `{ app, id, type }` ; un fichier disparu, une app non débloquée ou une demande mal formée rejettent avec leur code (`GFS_INTROUVABLE`,
+  `GFS_ANNULE`, `GFS_REFUSE`). Mesuré : 60 essais sous Node, dont 22 pour le lien, 212 vérifications dans Chromium, et, dans un vrai Grist avec
+  GFS, `run-liens-kit.mjs` (12 vérifications par combinaison). Restent hors du lien : l'identité et « insérer ». L'étiquette `v0.3.0` est à
+  poser par le porteur, avec la `v0.1.0` et la `v0.2.0`.
 
 ### 4.6 Les extensions
 

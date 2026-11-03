@@ -585,6 +585,11 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   la décision d'Automation+ en fond au cahier (section 2 et section 12, ligne 4), deux cartes au porteur (construire les liens entre apps,
   le calendrier). GFS ne référence pas encore Tuesday : aucune référence à avancer.
 
+- Les liens entre apps (03/11, le porteur : « Construire maintenant ») : GFS livre `choisir` et `ouvrir` côté app (contrats 3.6 et 5.4, points 2 et 7 ;
+  `js/links.js`, l'explorateur en mode choix) et le kit passe à 0.3.0 (`GfsLink.choose` et `GfsLink.openFile`, `lombre33/grist-factory-kit` à `9d17844`, sans
+  étiquette : le porteur la pose). Publipostage+ offre aussi ses présentations à choisir (`actions.choisir`, `prototype/manifestes/publipostage.json`). Mesuré dans
+  un vrai Grist avec une sonde, avec la vraie Publipostage+ à `134d043` et avec le vrai client du kit (`run-liens.mjs`, `run-liens-publipostage.mjs`,
+  `run-liens-kit.mjs`). Tuesday le reprend par la consigne 005.
 - « Nouveau > Importer » (22/10, le porteur : « les imports possibles par Publipostage+ (Excel, docx, pptx…) il faudrait qu'ils soient aussi
   disponibles dans le menu Nouveau, sous-menu Import ? », puis sa réponse « Sous-menu Importer ») : GFS livre le sous-menu. Le
   manifeste déclare les formats (`actions.importer`, contrats 2.7, point 4), GFS ouvre le sélecteur de fichier et rend le `File` à l'app

@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Sonde K</title>
+<!-- Politique de l'app sonde K : celle des apps hébergées (script-src 'self', rien d'en ligne, frame-src 'none', form-action 'none'). Le kit est servi par le labo sous /kit/, même origine que la page. -->
+<meta http-equiv="Content-Security-Policy" content="script-src 'self'; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'">
+</head>
+<body>
+<h1>Sonde K : une app écrite avec le kit</h1>
+<p>Elle n'a pas de bouton : le labo appelle <code>window.sondeK.GfsLink.choose</code> et <code>openFile</code>, ceux du kit (<code>js/gfs-link.js</code>).</p>
+<script type="module" src="kit.js"></script>
+</body>
+</html>

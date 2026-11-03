@@ -102,7 +102,7 @@ check('une erreur de l\'app : GFS dit qu\'elle n\'a pas pu ouvrir, avec le texte
 await app.evaluate(() => { document.body.dataset.reponse = 'oui'; });
 await showFiles();
 await frame.locator('.btn.primary').click();
-await frame.locator('.menu-item', { hasText: new RegExp(NAME) }).click();
+await frame.locator('.menu-item', { hasText: new RegExp(NAME) }).first().click(); // la sonde offre aussi des macros (liens entre apps) : le premier article est son document
 await waitFor('l\'appel « nouveau »', async () => (await probe()).appels.length === 4);
 seen = await probe();
 say('appel « nouveau » :', seen.appels[3]);

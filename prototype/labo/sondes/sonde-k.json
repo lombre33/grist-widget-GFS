@@ -1,0 +1,23 @@
+{
+  "contrat": 0,
+  "id": "sonde-k",
+  "nom": {
+    "fr": "Sonde K",
+    "en": "Probe K"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Une app écrite avec le kit commun (GfsLink.choose et openFile), comme Tuesday",
+    "en": "An app written with the common kit (GfsLink.choose and openFile), like Tuesday"
+  },
+  "icone": "doc",
+  "entree": "kit.html",
+  "tables": {
+    "prefixe": "SondeK_"
+  },
+  "reglages": [],
+  "permissions": {
+    "acces": "none"
+  },
+  "extensions": []
+}

@@ -15,6 +15,7 @@ import { Dock } from './dock.js';
 import { WorkControl } from './work-control.js';
 import { Explorer } from './explorer.js';
 import { loadFiles } from './explorer-data.js';
+import { AppLinks } from './links.js';
 import { Filing } from './filing.js';
 import { askName, chooseFolder } from './filing-window.js';
 import { readCatalogue } from './libraries.js';
@@ -63,6 +64,7 @@ export class GfsController {
   #contextServed = false; // l'app active a demandé son contexte : elle a lu l'ouverture qui s'y trouvait, et ne la relira pas
   #consented = false; // la démo a déjà l'accord de la personne pour les tables qu'elle crée, dont GFS_Rangement : pas de seconde question
   #modulesWaiters = [];
+  #idleWaiters = []; // ceux qui attendent la fin des écritures des apps installées (#unlock)
   #fileStatus = { loading: false, restricted: false, problems: [] }; // ce que l'explorateur dit sous la liste, gardé pour être redit dans la langue qui vaut
 
   // env : { grist, router, search, doc }
@@ -88,6 +90,7 @@ export class GfsController {
     // de la personne, et la table seulement avec son accord. Cette table apprend aussi à GFS l'adresse de la personne (6.4, point 6) : sans écriture possible, elle reste inconnue.
     this.rangement = new Rangement({ port: this.port, consent: () => this.#askTableConsent(), canWrite: () => !this.#writeBlock(), onIdentity: () => this.#onIdentity() });
     this.registry = new AppsState({ always: ALWAYS_ON, store: this.rangement, onChange: () => this.#onRegistryChange() });
+    this.links = this.#buildLinks();
   }
 
   $ = id => this.doc.getElementById(id);
@@ -237,6 +240,16 @@ export class GfsController {
     });
   }
 
+  // Les liens entre apps (js/links.js, contrats 5.4) : ce que le contrôleur prête à `choisir` et `ouvrir`, appelés par une app.
+  #buildLinks() {
+    return new AppLinks({
+      explorer: () => this.explorer, session: () => this.session, manifests: () => this.validApps().map(item => item.manifest), appById: id => this.appById(id), appName: this.appName,
+      fullAccess: () => this.fullAccess, t: this.t, notice: text => this.notice(text), lockOf: this.lockOf, unlock: lock => this.#unlock(lock),
+      showExplorer: () => this.showExplorer(), hideExplorer: () => this.hideExplorer(), loadFiles: apps => loadFiles(this.port, apps, this.identity),
+      openIn: (appId, opening) => this.#openIn(appId, opening, 'ex.notice.open'),
+    });
+  }
+
   // Épingler, renommer, déplacer depuis l'explorateur (js/filing.js) : les fenêtres du widget par-dessus l'explorateur, et la liste relue après chaque geste.
   #buildFiling() {
     const layer = opts => ({ ...opts, t: this.t, container: this.$('stage'), inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')] });
@@ -310,6 +323,7 @@ export class GfsController {
   }
 
   hideExplorer() {
+    this.links.cancel(false); // un choix de fichier en cours finit sans choix (contrats 5.4, point 2)
     this.explorer.close();
     this.$('frames').inert = false;
     this.dock.setPresent(Boolean(this.session));
@@ -457,6 +471,7 @@ export class GfsController {
   // `data-registry` dit si une écriture est en cours : les essais du labo l'attendent.
   #onRegistryChange() {
     this.doc.body.dataset.registry = this.registry.busy ? 'busy' : 'idle';
+    if (!this.registry.busy) this.#idleWaiters.splice(0).forEach(resolve => resolve());
     if (!this.explorer) return;
     if (this.modulesWindow) this.modulesWindow.refresh();
     if (this.explorer.isOpen) this.explorer.render();
@@ -469,6 +484,7 @@ export class GfsController {
   }
 
   #closeSession() {
+    this.links.drop(); // l'app qui demandait un choix n'est plus là
     this.dock.mask(false);
     this.session.close();
     this.session = null;
@@ -511,6 +527,7 @@ export class GfsController {
       installer: args => this.#install(session, args),
       ...storageHandlers(this.appStorage, session.id),
       ...this.dock.handlers(session.id),
+      ...this.links.handlers(session),
     };
   }
 
@@ -545,56 +562,62 @@ export class GfsController {
 
   // ---------- ouvrir ----------
 
-  // Un clic sur du grisé : la fenêtre qui le débloque s'ouvre sur sa ligne, ou, quand il n'y a rien à débloquer ici, la raison est dite.
-  #greyedClick(lock) {
-    if (lock.focus) void this.openModules({ focus: lock.focus });
-    else this.notice(lock.text);
+  // Un clic sur du grisé : la fenêtre qui le débloque s'ouvre sur sa ligne, ou, quand il n'y a rien à débloquer ici, la raison est dite. La promesse se tient jusqu'à la fermeture de la fenêtre et à
+  // la fin des écritures qu'elle a lancées : l'appel `ouvrir` d'une app attend que la personne ait fini (contrats 5.4, point 7).
+  async #unlock(lock) {
+    if (!lock.focus) { this.notice(lock.text); return; }
+    await this.openModules({ focus: lock.focus });
+    if (this.registry.busy) await new Promise(resolve => this.#idleWaiters.push(resolve));
   }
 
   #openFile(file) {
     const lock = this.lockOf(file);
-    if (lock) { this.#greyedClick(lock); return; }
+    if (lock) { void this.#unlock(lock); return; }
     if (!this.appById(file.app)) { this.notice(this.t('ex.notice.noApp')); return; }
-    this.#openIn(file.app, { fichier: { id: file.id, type: file.type }, type: file.type, dossier: this.explorer.state.path, raison: 'explorateur' }, 'ex.notice.open');
+    void this.#openIn(file.app, { fichier: { id: file.id, type: file.type }, type: file.type, dossier: this.explorer.state.path, raison: 'explorateur' }, 'ex.notice.open');
   }
 
   #openNew(entry) {
-    if (entry.greyed) { this.#greyedClick({ text: entry.reason || entry.hint, focus: entry.focus }); return; }
-    this.#openIn(entry.app, { fichier: null, type: entry.type, dossier: this.explorer.state.path, raison: 'nouveau' }, 'ex.notice.new');
+    if (entry.greyed) { void this.#unlock({ text: entry.reason || entry.hint, focus: entry.focus }); return; }
+    void this.#openIn(entry.app, { fichier: null, type: entry.type, dossier: this.explorer.state.path, raison: 'nouveau' }, 'ex.notice.new');
   }
 
   // « Importer » (contrats 5.4, point 1) : la personne choisit le fichier dans le sélecteur de GFS (ouvert ici, dans son geste), puis l'app le reçoit avec l'ouverture et en fait un modèle vierge.
   // Annuler le sélecteur ne change rien ; un fichier qui n'est pas du format est dit sans ouvrir l'app.
   async #importFile(entry) {
-    if (entry.greyed) { this.#greyedClick({ text: entry.reason || entry.hint, focus: entry.focus }); return; }
+    if (entry.greyed) { void this.#unlock({ text: entry.reason || entry.hint, focus: entry.focus }); return; }
     const file = await pickFile(this.doc, entry.extensions.join(','));
     if (!file) return;
     if (!acceptsFile(file.name, entry.extensions)) { this.notice(this.t('ex.import.wrong', { name: file.name, format: entry.label, extensions: entry.extensions.join(', ') })); return; }
-    this.#openIn(entry.app, importOpening(entry, file, this.explorer.state.path), 'ex.notice.import');
+    void this.#openIn(entry.app, importOpening(entry, file, this.explorer.state.path), 'ex.notice.import');
   }
 
+  // Rend `true` quand l'ouverture est partie vers l'app (ou qu'elle l'a faite), `false` quand l'app n'a pu être activée ou que la personne a annulé dans l'app (l'appel `ouvrir` d'une app attend ce résultat).
   #openIn(appId, opening, noticeKey) {
     // L'app déjà ouverte a lu son contexte : elle n'y relira pas l'ouverture, GFS la lui dit par l'appel `ouvrir` (contrats 5.4, point 1).
     // Sinon (une autre app, ou celle-ci qui démarre) l'ouverture part dans le contexte qu'elle va demander.
     const running = Boolean(this.session) && this.session.id === appId && this.#contextServed;
-    if (!this.#activate(appId, opening)) return;
+    if (!this.#activate(appId, opening)) return Promise.resolve(false);
     this.hideExplorer();
     const knows = ACCEPTS_OPEN[appId] && ACCEPTS_OPEN[appId][openingKind(opening)]; // ouvrir un fichier précis, en créer un vierge (« Nouveau »), ou en créer un d'après un fichier (« Importer »)
     if (!knows) this.notice(this.t(noticeKey, { app: this.appName(appId) }));
-    else if (running) void this.#askToOpen(this.session, opening, noticeKey);
+    const asked = running && knows ? this.#askToOpen(this.session, opening, noticeKey) : Promise.resolve(true);
     if (running && opening.importation) this.opening = null; // le fichier part une seule fois, avec l'appel : une réouverture de l'app (#activate avec l'ouverture gardée) ne le reprend pas
+    return asked;
   }
 
   // L'app ouvre le fichier elle-même, après sa propre question d'enregistrement : `{ ouvert: false }` veut dire que la personne a annulé, GFS n'ajoute rien.
   // Une app qui ne connaît pas l'appel (GFS_INCONNU) reçoit la phrase provisoire ; une autre erreur est dite avec son texte.
   async #askToOpen(session, opening, noticeKey) {
     try {
-      await session.openFile(opening);
+      const answer = await session.openFile(opening);
+      return Boolean(answer && answer.ouvert);
     } catch (error) {
-      if (session !== this.session) return; // l'app a été fermée ou remplacée pendant l'attente : plus rien à dire
+      if (session !== this.session) return false; // l'app a été fermée ou remplacée pendant l'attente : plus rien à dire
       const app = this.appName(session.id);
       if (error && error.code === ERR.INCONNU) this.notice(this.t(noticeKey, { app }));
       else this.notice(this.t('ex.notice.openFailed', { app, reason: String((error && error.message) || '').slice(0, 120) }));
+      return false;
     }
   }
 

@@ -10,6 +10,7 @@ export const ERR = Object.freeze({
   INACTIF: 'GFS_INACTIF',
   ANNULE: 'GFS_ANNULE',
   QUOTA: 'GFS_QUOTA',
+  INTROUVABLE: 'GFS_INTROUVABLE',
 });
 
 export class Refus extends Error {

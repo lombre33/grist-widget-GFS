@@ -182,6 +182,7 @@ export function tile(ctx, row) {
 export function emptyMessage(ctx) {
   const { t, state } = ctx;
   if (ctx.filtering) return t('ex.emptySearch');
+  if (ctx.choosing && ctx.totalFiles === 0) return t('ex.choose.empty');
   if (state.view === 'fav') return t('ex.emptyFav');
   if (state.view === 'recent' || ctx.totalFiles === 0) return t('ex.emptyAll');
   return t('ex.emptyFolder');
@@ -195,7 +196,7 @@ export function infoBar(ctx) {
   const { t, selected } = ctx;
   const filingHint = ctx.personal ? t('ex.hintPersonal') : t('ex.hintShared');
   if (!selected) {
-    return h('div', { class: 'inf' }, infoLine1(icon('info'), h('span', { class: 'mu' }, ctx.state.view === 'folder' ? filingHint : t('ex.hintSelect'))),
+    return h('div', { class: 'inf' }, infoLine1(icon('info'), h('span', { class: 'mu' }, ctx.choosing ? t('ex.choose.hint') : (ctx.state.view === 'folder' ? filingHint : t('ex.hintSelect')))),
       h('div', { class: 'l2' }, icon('pin'), h('span', { class: 'lt' }, ctx.personal ? t('ex.hintFav') : t('ex.hintFavShared'))));
   }
   if (selected.kind === 'folder') {

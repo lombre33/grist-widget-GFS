@@ -409,7 +409,9 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
 ```
 
 1. [T] `ouvrir` : les types de fichiers que l'app sait ouvrir.
-2. [T] `choisir` : les types de **ses** fichiers qu'une autre app peut faire choisir (l'explorateur en mode choix les montre).
+2. [T] `choisir` : les types de **ses** fichiers qu'une autre app peut faire choisir (l'explorateur en mode choix les montre). Un type qui n'a
+   pas de sens hors de l'app n'y figure pas (Publipostage+ : document, grille et présentation, ni l'e-mail ni la macro). [D] Un type
+   offert à choisir figure aussi dans `ouvrir` : un lien vers un type que l'app ne sait pas ouvrir est refusé (`GFS_REFUSE`, 5.4, point 7).
 3. [D] `inserer` : `produit` liste les rendus portables que l'app sait fournir, `recoit` ceux qu'elle sait accepter ; vides tant
    que l'étape 7 n'a pas écrit le déroulement (5.4).
 4. [D] `importer` (facultatif ; décision du porteur du 22/10, « Nouveau > Importer ») : les formats de fichier d'un autre logiciel
@@ -732,7 +734,8 @@ Le courtier répond à l'app par une erreur du protocole (`mtype` 3, avec `mesg`
 | `GFS_CLE_NON_DECLAREE` | écriture d'une clé de réglage hors de la tranche |
 | `GFS_INCONNU` | interface, méthode, action ou événement que GFS ne connaît pas |
 | `GFS_INACTIF` | appel venu d'un sous-cadre qui n'est pas l'app active |
-| `GFS_ANNULE` | la personne a annulé ou refusé (choisir, installer, ouvrir un formulaire au public…) |
+| `GFS_ANNULE` | la personne a annulé ou refusé : elle n'a pas débloqué l'app que visait `ouvrir` (5.4, point 7), elle a refusé d'ouvrir un formulaire au public… Un `choisir` annulé ne rend pas d'erreur : il rend `null` |
+| `GFS_INTROUVABLE` | ce que l'appel désigne n'existe pas : une app que GFS ne connaît pas, ou un fichier que la table de l'app visée ne contient plus (`ouvrir`, 5.4, point 7) |
 | `GFS_QUOTA` | espace de stockage plein |
 
 ### 3.7 Ce que le filtre ne garantit pas
@@ -1247,7 +1250,22 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
    réglages de la vue).
 2. [T] **choisir** : l'explorateur s'ouvre en mode choix, filtré par `types` (et `apps` si elle est donnée), parmi les types que
    les manifestes déclarent dans `actions.choisir`. Un fichier d'une app non installée est grisé, avec « Installer ». `titre`
-   est un texte déjà traduit, montré par GFS.
+   est un texte déjà traduit, montré par GFS. [T] **Construit et mesuré le 03/11** (point 7, `run-liens.mjs`) :
+   - **La demande** : `types` est une liste de 1 à 16 noms, `apps` (facultative) de même, `titre` un texte, qu'une seule ligne montre,
+     de 120 signes au plus. Une forme hors règle est refusée (`GFS_REFUSE`) avant que rien ne s'ouvre ; sous le niveau complet,
+     `GFS_ACCES` ; un second `choisir` pendant le premier, `GFS_REFUSE` (le premier continue). L'explorateur ne montre que les
+     fichiers dont le type est demandé **et** offert par leur app (`actions.choisir`) : dans Publipostage+, un e-mail ou une macro
+     ne se désigne pas, une présentation, oui (`actions.choisir` : document, grille, présentation).
+   - **L'explorateur en mode choix** : le titre est celui de l'app (sinon « Choisir un fichier »), précédé de l'icône du lien ;
+     « Ouvrir » devient « Choisir » (le bouton principal), « Fermer » devient « Annuler », « Nouveau » est grisé et dit
+     pourquoi ; la barre d'information explique le geste tant que rien n'est sélectionné ; la personne se déplace comme
+     d'habitude (dossiers, recherche, filtre de type, vues). Un fichier d'une app non installée, ou d'une extension éteinte, est
+     grisé comme partout, jamais caché : un double-clic ouvre la fenêtre des apps sur la bonne ligne, et le choix continue
+     une fois la fenêtre fermée.
+   - **La réponse** : `{ app, id, nom, type }` par le double-clic, Entrée sur le fichier sélectionné ou « Choisir » ; `id` est un
+     texte et `nom` le nom du jour (« (sans nom) » à défaut). Annuler (« Annuler », Échap) rend `null`. L'explorateur se
+     referme sur l'app, sauf s'il était déjà ouvert avant la demande. Si l'app qui demandait est retirée ou remplacée pendant le
+     choix, il s'arrête sans rien rendre et l'explorateur redevient celui de toujours.
 3. [T] **fermer** : l'app répond `oui` quand elle peut fermer, après sa question (Enregistrer, Abandonner, Annuler), et `non`
    si la personne annule : tout reste en place. [D] Sans réponse, GFS ne ferme rien tout seul ; il propose « Fermer quand
    même » au bout de 10 secondes (les modifications non enregistrées seraient perdues). À confirmer à l'étape 6.
@@ -1274,13 +1292,34 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
 6. [T] Une app qui reçoit un rendu ne charge jamais le code de l'app qui l'a produit, et **traite `donnees` comme une donnée
    non fiable** : un SVG s'affiche par `<img src="data:image/svg+xml…">` (ou un canevas), jamais en l'insérant dans la page,
    car un SVG inséré exécute ses scripts.
-7. [D] **Lier un fichier d'une autre app** (demande de Tuesday, 02/11 ; **écrit, non construit** : ni le courtier ni le kit 0.2.0
-   n'ont `choisir` ni `ouvrir` côté app, et un appel de ce genre reçoit `GFS_INCONNU`). L'app qui lie garde la clé `{ app, id, type }`
+7. [T] **Lier un fichier d'une autre app** (demande de Tuesday, 02/11 ; **construit le 03/11** : le courtier a `choisir` et `ouvrir`
+   côté app, le kit 0.3.0 les offre par `GfsLink.choose` et `GfsLink.openFile`). L'app qui lie garde la clé `{ app, id, type }`
    que rend `choisir` ; le nom reçu n'est qu'une étiquette, celle du moment du choix. Un fichier renommé garde son `id` : `ouvrir`
    l'ouvre sous son nom du jour. Un fichier disparu, ou une app non installée, n'efface jamais le lien : l'app le montre grisé, avec la
-   raison, et la personne le retire ou le refait. `ouvrir` d'un fichier que la table de l'app visée ne contient plus : GFS n'ouvre rien
-   et le dit à la personne ; le code que reçoit l'app s'écrira avec le lot. Relire le nom à l'ouverture serait un champ de plus dans la
-   réponse de `ouvrir` (additif) : seulement si une app le demande. Consigne 002 à Tuesday.
+   raison, et la personne le retire ou le refait. Relire le nom à l'ouverture serait un champ de plus dans la réponse de `ouvrir`
+   (additif) : seulement si une app le demande. Consignes 002 et 005 à Tuesday.
+   - **`ouvrir` depuis une app** : `{ app, fichier: { id, type }, raison? }` ; `id` est un texte (un nombre est pris comme tel), `raison`
+     ne peut valoir que `lien` (GFS donne lui-même la raison à l'app visée : `lien`, 5.2 point 3). Les refus ont leur code (3.6) :
+     `GFS_REFUSE` (forme, ou type absent de `actions.ouvrir` de l'app visée), `GFS_ACCES`, `GFS_INTROUVABLE` (app inconnue, ou fichier
+     que la table de l'app visée ne contient plus : GFS le dit à la personne, « Sonde O n'a plus ce fichier : le lien ne peut pas
+     s'ouvrir », l'app qui appelait reste ouverte et garde son lien), `GFS_ANNULE`, `GFS_INACTIF` (l'app qui appelait n'est plus l'app active).
+   - **La ligne est relue** dans la table de l'app visée à chaque appel (pas la liste de l'explorateur, qui peut dater) : un fichier
+     ajouté depuis s'ouvre, un fichier retiré dit son absence.
+   - **Une app non installée** (ou un type d'une extension éteinte) : la fenêtre des apps s'ouvre sur sa ligne, l'appel attend ; la personne
+     coche puis ferme la fenêtre, et le fichier s'ouvre ; elle ferme sans cocher, et l'app reçoit `GFS_ANNULE`, rien ne s'ouvre.
+   - **L'app visée** devient l'app active et reçoit l'ouverture (`ouverture.raison: "lien"`) à son premier `contexte`, celle qui
+     appelait s'en va (une seule app à la fois, 1.4) : sa promesse ne se règle donc pas, son cadre n'existe plus. Si l'app visée est
+     celle qui appelle, elle reçoit l'appel `ouvrir` de GFS (point 1) et sa réponse `{ ouvert }` revient à l'appelante, après sa
+     question d'enregistrement s'il y en a une. Une app qui ne connaît pas encore l'ouverture d'un fichier précis
+     (`ACCEPTS_OPEN`, provisoire) s'ouvre sur son modèle habituel avec la phrase provisoire de GFS.
+   - [M] **Mesuré le 03/11** dans un vrai Grist, à 700 × 400, à la vraie souris et au vrai clavier, en français et en anglais, en clair
+     et en sombre : avec les sondes Q (qui appelle) et O (dont les fichiers se lient), 33 vérifications dans chacune des quatre
+     combinaisons (`run-liens.mjs`) ; avec **la vraie Publipostage+** (`run-liens-publipostage.mjs`, 12 vérifications dans chacune) :
+     seuls les documents, les grilles et la présentation se listent, la présentation grisée jusqu'à ce que la personne coche
+     « Diapositives » dans la fenêtre que le double-clic ouvre sur sa ligne, la grille et la présentation désignées s'ouvrent dans
+     l'app, qui ne dit pas « Ouvert depuis l'explorateur » (la raison est `lien`) ; avec **le vrai client du kit**
+     (`run-liens-kit.mjs`, 12 vérifications dans chacune) : `GfsLink.choose` rend la clé, `null` à l'annulation, `GFS_REFUSE` sans type ou pendant
+     un autre choix, `GfsLink.openFile` rejette un fichier disparu par `GFS_INTROUVABLE` et ouvre l'app visée.
 
 ### 5.5 La table d'un direct : être prévenu quand une autre table change
 

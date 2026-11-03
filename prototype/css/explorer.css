@@ -31,7 +31,9 @@ button { cursor: pointer; }
   font-family: var(--font-ui); font-size: 13px; line-height: 1.35; }
 .ex-head { flex: none; display: flex; flex-direction: column; gap: 6px; padding: 10px 16px 8px; background: var(--surface); }
 .ex-title-row, .ex-nav-row { display: flex; align-items: center; gap: 8px; }
-.ex-title { margin: 0; font-size: 15px; font-weight: 700; }
+.ex-title { margin: 0; font-size: 15px; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Le mode choix (contrats 5.4, point 2) : le titre de l'app qui demande, avec l'icône du lien. */
+.ex-title .ic { width: 15px; height: 15px; margin-right: 6px; vertical-align: -2px; color: var(--text-muted); }
 .crumbs { flex: 1; min-width: 0; display: flex; align-items: center; gap: 1px; overflow: hidden; white-space: nowrap; }
 .crumbs button { border: 0; background: transparent; padding: 3px 6px; border-radius: var(--radius-sm); font-size: 12.5px; font-weight: 600; color: var(--text-muted); }
 .crumbs button:hover { background: var(--surface-sunken); color: var(--text); }

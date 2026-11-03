@@ -1,0 +1,54 @@
+{
+  "contrat": 0,
+  "id": "sonde-q",
+  "nom": {
+    "fr": "Sonde Q",
+    "en": "Probe Q"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Une app qui lie des fichiers d'autres apps (choisir, ouvrir), comme Tuesday",
+    "en": "An app that links files of other apps (choose, open), like Tuesday"
+  },
+  "icone": "doc",
+  "entree": "index.html",
+  "tables": {
+    "prefixe": "SondeQ_"
+  },
+  "fichiers": [
+    {
+      "table": "SondeQ_Fichiers",
+      "colonnes": {
+        "id": "id",
+        "nom": "Nom",
+        "type": "Type",
+        "date": "DateModif"
+      },
+      "typeParDefaut": "projet",
+      "types": [
+        {
+          "valeur": "projet",
+          "nom": {
+            "fr": "Projet",
+            "en": "Project"
+          },
+          "icone": "doc",
+          "couleur": "document"
+        }
+      ]
+    }
+  ],
+  "reglages": [],
+  "permissions": {
+    "acces": "none"
+  },
+  "extensions": [],
+  "actions": {
+    "ouvrir": [
+      "projet"
+    ],
+    "choisir": [
+      "projet"
+    ]
+  }
+}

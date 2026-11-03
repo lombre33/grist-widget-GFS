@@ -7,6 +7,7 @@
 // consigne 007, sans la définition, que Form+ seule écrit). Ce code peut disparaître, ou devenir les « parcours prêts à installer » de l'étape 7.
 
 import { TABLE as RANGEMENT } from './rangement.js';
+import { customViewOf as customViewParts } from './view-options.js';
 
 export const DEMO_PACK = 'demo/inscriptions.json';
 const DAY = 86400;
@@ -302,7 +303,7 @@ async function addWorkflow(doc, schema, pack) {
 
 // ---------- les pages prêtes ----------
 
-const customViewOf = options => { try { return JSON.parse(JSON.parse(options).customView); } catch (error) { return null; } };
+const customViewOf = options => { const view = customViewParts(options); return view && view.custom; };
 
 // L'adresse de GFS telle que la personne l'a posée (celle d'une section de GFS du document), sinon l'adresse de cette page avec `?dev`.
 export function ownAddress(sections, address) {

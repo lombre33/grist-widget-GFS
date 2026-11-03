@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Sonde M</title>
+<!-- Politique de l'app sonde M : celle de Publipostage+ (script-src 'self', frame-src 'none', form-action 'none', pas de default-src). -->
+<meta http-equiv="Content-Security-Policy" content="script-src 'self'; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'">
+</head>
+<body>
+<h1>Sonde M : une app qui suit l'ambiance de GFS</h1>
+<p>Ce que la sonde a reçu est écrit dans <code>body[data-sonde]</code>, que le labo lit : l'ambiance de son contexte, puis celle de chaque événement <code>ambiance</code>.</p>
+<script src="ambiance.js"></script>
+</body>
+</html>

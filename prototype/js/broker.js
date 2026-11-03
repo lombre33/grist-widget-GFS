@@ -129,22 +129,30 @@ function viewHandlers(env) {
 // Écrire une clé, ou la retirer : Grist garde l'objet en JSON, une valeur indéfinie y disparaît.
 const writeKey = (env, key, value) => env.port.widget.setOption(key, value);
 
+// Écrire des clés `[[clé, valeur]]` : dans la vue quand GFS sait y écrire (view-options.js ; aucun « Enregistrer », contrats 7.3, point 4), sinon en brouillon, clé par
+// clé (7.3, point 1). L'app est prévenue de ce qui s'est passé (`onSaved`) : une app qui rappelle « Enregistrer » le tait quand c'est fait.
+async function writeKeys(env, changes) {
+  if (!changes.length) return;
+  const saved = Boolean(env.viewOptions) && await env.viewOptions.write(changes);
+  if (!saved) for (const [key, value] of changes) await writeKey(env, key, value);
+  if (env.onSaved) env.onSaved(saved);
+}
+
 function widgetHandlers(env) {
   const { port, declared } = env;
   return {
     getOptions: async () => sliceOf(await port.widget.getOptions(), declared),
     getOption: async ([key]) => optionOf(await port.widget.getOptions(), declared, key),
-    setOption: async ([key, value]) => { guardWrite(env); checkKey(declared, key); await writeKey(env, key, value); },
+    setOption: async ([key, value]) => { guardWrite(env); checkKey(declared, key); await writeKeys(env, [[key, value]]); },
     setOptions: async ([incoming]) => {
       guardWrite(env);
       const plan = planSetOptions(declared, await port.widget.getOptions(), incoming);
-      for (const [key, value] of plan.writes) await writeKey(env, key, value);
-      for (const key of plan.removes) await writeKey(env, key, undefined);
+      await writeKeys(env, [...plan.writes, ...plan.removes.map(key => [key, undefined])]);
       if (plan.ignored.length) console.warn(`GFS : setOptions ignore les clés non déclarées : ${plan.ignored.join(', ')}`);
     },
     clearOptions: async () => {
       guardWrite(env);
-      for (const key of planClear(declared, await port.widget.getOptions())) await writeKey(env, key, undefined);
+      await writeKeys(env, planClear(declared, await port.widget.getOptions()).map(key => [key, undefined]));
     },
   };
 }

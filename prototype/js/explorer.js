@@ -29,7 +29,7 @@ export class Explorer {
   state = { view: 'folder', path: '', open: new Set(), display: 'list', sort: { key: 'name', dir: 1 }, recentSort: { key: 'mod', dir: -1 }, type: 'all', q: '', sel: null };
 
   // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), importTypes(), onOpen(file), onNew(entry), onImport(entry), onClose(), onApps(), canClose(), notice(text),
-  //          language() → { choice, grist }, onLanguage(choice), personal() → le rangement est-il à la personne seule ?,
+  //          language() → { choice, grist }, onLanguage(choice), onTheme() (le bouton « Thème » ouvre sa fenêtre), personal() → le rangement est-il à la personne seule ?,
   //          filing: { togglePin(file), rename(file), moveFile(file), renameFolder(path), moveFolder(path) }, onDemo()? (le bouton « Démo », en mode développement seulement),
   //          kept?: les fichiers que GFS garde lui-même (js/kept-files.js) : { has(file), openAs(file) -> { label, icon, greyed }, opensIn(file), extras(file) -> [article de menu], copyNotice(), remove(file) } }
   constructor(opts) {
@@ -245,7 +245,7 @@ export class Explorer {
   // ---------- gestes ----------
 
   #bind() {
-    const { search, viewList, viewTiles, typeBtn, newBtn, openBtn, closeBtn, appsBtn, langBtn, demoBtn, crumbs: crumbsNav, tree: treeNav, list } = this.#refs;
+    const { search, viewList, viewTiles, typeBtn, newBtn, openBtn, closeBtn, appsBtn, langBtn, themeBtn, demoBtn, crumbs: crumbsNav, tree: treeNav, list } = this.#refs;
     if (this.#opts.onDemo) {
       demoBtn.hidden = false;
       demoBtn.addEventListener('click', () => this.#opts.onDemo());
@@ -253,6 +253,7 @@ export class Explorer {
     search.addEventListener('input', () => { this.state.q = search.value; this.state.sel = null; this.#renderCrumbs(); this.#renderList(); });
     appsBtn.addEventListener('click', () => this.#opts.onApps());
     langBtn.addEventListener('click', () => this.#languageMenu());
+    themeBtn.addEventListener('click', () => this.#opts.onTheme());
     viewList.addEventListener('click', () => this.#setDisplay('list'));
     viewTiles.addEventListener('click', () => this.#setDisplay('tiles'));
     typeBtn.addEventListener('click', () => this.#typeMenu());

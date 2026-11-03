@@ -14,7 +14,7 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
   type de modèle dans sa table (section 2.2).
 - **Quand GFS arrive** : le kit en sous-module, le manifeste `gfs.json`, la liste unique des bibliothèques natives, le
   contexte et le stockage par le kit, les extensions, dont la bibliothèque n'est plus dans le dépôt de l'app mais portée par
-  GFS, la langue de GFS, la zone de sa barre à laisser libre et, si elle la déclare, l'adresse e-mail de la personne (section 1.2).
+  GFS, la langue de GFS, la zone de sa barre à laisser libre, l'adresse e-mail de la personne si elle la déclare et l'ambiance choisie (section 1.2).
 
 ---
 
@@ -166,6 +166,23 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     accrocher ce que l'app garde sur ce PDF (des commentaires). Le texte d'un PDF scanné manque, un PDF protégé demande son mot de passe (`onPassword`) ;
     l'app le dit, elle ne plante pas. Le moteur tourne dans la page (faux Worker) : lire page par page, jamais tout le document d'un coup.
 
+15. Suivre l'ambiance de GFS (décision du porteur du 02/11 et du 03/11 ; contrats 5.2, point 10). Dans GFS, `contexte.ambiance` dit
+    l'ambiance et la couleur que la personne a choisies pour GFS et ses apps (`null` : rien n'est choisi, l'app garde ses couleurs) ;
+    l'événement `ambiance` les change en cours de vie, sans recharger le cadre. L'app pose les jetons de couleur du mode qu'elle
+    affiche (`clair` ou `sombre`) par le CSSOM, ne pose que ceux qu'elle connaît (nom `--[a-z0-9-]+`, valeur `#rrggbb`), retire tout
+    ce qu'elle avait posé quand elle reçoit `null`, et lit les jetons de forme (arrondis, traits, ombres, polices) pour ce qu'elle veut
+    en reprendre : sans eux elle garde sa forme et prend les couleurs. Elle écrit ses couleurs par les jetons de la charte, jamais en
+    dur (sinon l'ambiance ne la change pas), et ne pose l'ambiance que sur ce qu'elle affiche à la personne, jamais sur ce qu'elle
+    produit (un e-mail, un PDF, un document, un formulaire public). Le contraste de 4,5:1 est tenu par GFS pour tout ce qu'il envoie ;
+    ce que l'app ajoute à la charte garde le sien. Seule, l'app garde ses couleurs.
+16. Taire le rappel « Enregistrer » quand GFS a enregistré le réglage (décision du porteur du 03/11 ; contrats 7.3, points 4 à 6). Dans
+    GFS, les réglages que l'app écrit avec `setOption`, `setOptions` ou `clearOptions` (les clés de son manifeste, rien d'autre) sont écrits
+    dans la vue par GFS : la personne n'a rien à enregistrer dans Grist, et l'app relit ses réglages par l'écho de Grist (`onOptions`),
+    comme avant. Après chaque écriture, GFS envoie l'événement `reglages` `{ enregistres }` (contrats 5.1) : **vrai**, l'app n'affiche
+    ni son rappel « Enregistrer » ni la phrase qui l'annonce ; **faux** (GFS s'est replié sur le brouillon de Grist : un brouillon était
+    déjà posé, ou la structure du document est réservée), elle garde son rappel, qui n'est vrai que là. Avant le premier événement,
+    et seule, elle le garde aussi. Elle n'écrit toujours aucun réglage sans geste de la personne (section 2.4).
+
 ### 1.3 Licence : GPL 3.0 dans tous les dépôts (décision du porteur, 21/10)
 
 1. **Le texte officiel de la GNU General Public License version 3** est le fichier `LICENSE`, à la racine du dépôt : 674
@@ -190,7 +207,7 @@ servir.
 - Modèles et données dans des tables préfixées `Publipostage_` (`Modeles`, `Commentaires`, `LiensTables`, `Abreviations`,
   `PreferencesModeles`, `FormatsPage`, `UserProbe`).
 - Réglages de la vue d'un clic seulement : `modeleDeLaVue`, `modeleSelonLigne`, `droitsAcces`, `dateDernierExport`, avec le
-  rappel « Enregistrer » (`js/save-reminder.js`).
+  rappel « Enregistrer » (`js/save-reminder.js`), faux dans GFS depuis le 03/11 : à taire quand GFS dit `enregistres: true` (règle 16 de 1.2).
 - Tables créées avec l'accord de la personne (`js/table-consent.js`).
 - Stockage du navigateur (`pp_*`) toujours dans des `try/catch` : l'app marche sans.
 - Téléchargements par un `<a download>` (`js/export-common.js`, `downloadBlob`, ligne 92). Sous Firefox, cela demande `blob:` dans le
@@ -256,7 +273,8 @@ ligne 330 ; seul `macro` a sa branche, ligne 270) et peut devenir le modèle de 
 - Pas « tout vendoriser » ; pas de lien CDN non figé.
 - Pas de bouton de plus dans la barre d'outils (gelée) : l'explorateur s'ouvre par « Organiser ».
 - Pas de calcul dans le widget.
-- Pas d'écriture de réglage sans geste de la personne : Grist afficherait « Enregistrer » pour rien.
+- Pas d'écriture de réglage sans geste de la personne : seule, l'app ferait afficher « Enregistrer » à Grist pour rien ; dans GFS,
+  la vue changerait sans que la personne l'ait voulu.
 
 ---
 

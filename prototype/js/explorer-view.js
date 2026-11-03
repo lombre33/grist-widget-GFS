@@ -23,6 +23,7 @@ export function buildShell(i18n) {
         keep('demoBtn', h('button', { type: 'button', class: 'tb', 'aria-haspopup': 'dialog', hidden: true })),
         keep('appsBtn', h('button', { type: 'button', class: 'tb', 'aria-haspopup': 'dialog' })),
         keep('langBtn', h('button', { type: 'button', class: 'tb tb-lang', 'aria-haspopup': 'menu', 'aria-expanded': 'false' })),
+        keep('themeBtn', h('button', { type: 'button', class: 'tb tb-theme', 'aria-haspopup': 'dialog' })),
         keep('display', h('div', { class: 'tb-group', role: 'group' }, toggle('viewList', 'list'), toggle('viewTiles', 'tiles')))),
       h('div', { class: 'ex-nav-row' },
         keep('crumbs', h('nav', { class: 'crumbs' })),
@@ -57,6 +58,9 @@ export function relabel(refs, i18n) {
   refs.langBtn.title = t('lang.tip');
   refs.langBtn.setAttribute('aria-label', t('lang.btn', { name }));
   refs.langBtn.replaceChildren(icon('globe'), h('span', { class: 'lbl' }, name));
+  refs.themeBtn.title = t('theme.tip');
+  refs.themeBtn.setAttribute('aria-label', t('theme.tip'));
+  refs.themeBtn.replaceChildren(icon('palette'), h('span', { class: 'lbl' }, t('theme.btn')));
   refs.display.setAttribute('aria-label', t('ex.display'));
   describe(refs.viewList, t('ex.list'));
   describe(refs.viewTiles, t('ex.tiles'));

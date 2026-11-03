@@ -20,7 +20,7 @@ export class AppSession {
   #lastContent;
   #pinnedUrl = null; // la copie figée de l'app, tant que le site vivant n'a pas répondu : c'est là qu'on se replie
 
-  // ctx : { entry, manifest, catalogue, state, port, router, container, readonly, preferences, base, live, lang, onStatus, envelopeHandlers(session), authorize(manifest, opens) }
+  // ctx : { entry, manifest, catalogue, state, port, router, container, readonly, preferences, base, live, lang, onStatus, envelopeHandlers(session), authorize(manifest, opens), viewOptions }
   constructor(ctx) {
     this.ctx = ctx;
     this.manifest = ctx.manifest;
@@ -53,6 +53,7 @@ export class AppSession {
       policy: this.policy, port: ctx.port, level: this.access, readonly: ctx.readonly,
       declared: this.policy.reglages, onConfigure: settings => { this.hasCustomOptions = Boolean(settings.hasCustomOptions); },
       authorize: ctx.authorize ? opens => ctx.authorize(this.manifest, opens) : undefined,
+      viewOptions: ctx.viewOptions, onSaved: saved => this.sendSaved(saved),
     };
     this.#peer = new AppPeer({
       send: msg => this.frameWindow.postMessage(msg, '*'),
@@ -105,6 +106,11 @@ export class AppSession {
     if (this.#envelope) this.#envelope.event('barre', { barre });
   }
 
+  // L'événement `reglages` (contrats 7.3, point 5) : un réglage de l'app vient d'être écrit. `enregistres` vrai : il est dans la vue, rien à enregistrer dans Grist ; faux : brouillon.
+  sendSaved(saved) {
+    if (this.#envelope) this.#envelope.event('reglages', { enregistres: Boolean(saved) });
+  }
+
   // L'événement `identite` (contrats 5.2, points 2 et 9) : GFS vient d'apprendre l'adresse e-mail de la personne après le `contexte` de l'app, qui l'avait déclarée ; `null` quand elle ne vaut plus.
   sendIdentity(identite) {
     if (this.#envelope) this.#envelope.event('identite', { identite });
@@ -116,6 +122,12 @@ export class AppSession {
     this.ctx.lang = language;
     if (this.#frame) this.#frame.title = label(this.manifest.nom, language);
     if (this.#envelope) this.#envelope.event('langue', { langue: language });
+  }
+
+  // L'événement `ambiance` (contrats 5.2, points 2 et 9) : la personne a changé l'ambiance ou la couleur de GFS, ou le mode (clair, sombre) a changé ; l'app le reçoit sans l'avoir demandé et décide
+  // comment suivre. `null` : rien n'est choisi, l'app reprend ses propres couleurs. (Le `theme` de Grist, lui, est celui du clair et du sombre de Grist : `#sendTheme`.)
+  sendAmbiance(ambiance) {
+    if (this.#envelope) this.#envelope.event('ambiance', { ambiance });
   }
 
   // L'app n'a pas dit `themeInitialized` : on la montre quand même après un délai (Grist fait de même avec un cadre qui tarde).

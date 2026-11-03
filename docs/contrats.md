@@ -42,14 +42,15 @@ connaît pas.
 3. **Listes fermées, tenues par GFS** : les verbes d'écriture que le courtier laisse passer ; sept tables internes
    (règles d'accès, partages, rappels, réglages du document) qu'aucune app n'écrit, quoi qu'elle déclare ; la colonne
    `options` de `_grist_Views_section`, qui porte l'adresse et l'accès de chaque widget, GFS compris (section 3).
-4. **Messages propres à GFS** (contexte, stockage, barre, actions « ouvrir », « choisir », « insérer », « installer », « fermer ») :
+4. **Messages propres à GFS** (contexte, stockage, barre, ambiance, actions « ouvrir », « choisir », « insérer », « installer », « fermer ») :
    une enveloppe à part, sans `mtype`, que le script d'API de Grist ignore (sections 4 et 5).
 5. **Installer ne télécharge rien** : le code de toutes les apps livrées est déjà dans le site de GFS ; installer inscrit
    l'identifiant de l'app dans une table du document (sections 6.4 et 7.4). La bibliothèque d'une extension n'est pas dans
    l'app : GFS la porte et donne sa source (2.6, 5.2).
 6. **Réglages de la vue** : une tranche par app, mêmes clés seule ou dans GFS ; les clés de GFS commencent par `gfs.`.
    **Question 9, tranchée le 16/10** : les apps installées se retiennent dans une table du document, `GFS_Rangement`
-   (section 7.4) ; l'installation s'enregistre tout de suite, sans « Enregistrer ».
+   (section 7.4) ; l'installation s'enregistre tout de suite, sans « Enregistrer ». **Décision du porteur, 03/11** : dans GFS, les
+   réglages d'une app s'écrivent aussi dans la vue sans « Enregistrer » : GFS les écrit lui-même et le dit à l'app (7.3, points 4 à 6).
 7. **Ce qu'un filtre de tables ne peut pas garantir** est écrit en toutes lettres (section 3.7).
 8. **À mesurer à l'étape 2** : liste en section 9.
 9. **Les permissions des personnes** (section 11, version 0 du 22/10) : seul Grist arrête une personne, par les règles d'accès
@@ -92,7 +93,7 @@ connaît pas.
     rien nommer (2.6, point 4).
 13. **Les apps installées se retiennent dans `GFS_Rangement`** (décision du porteur, 16/10, question 9) : une ligne réservée
     et une colonne `Valeur` de plus (6.4, 7.4). Le conseil du cahier était les réglages de la section, qui restent un brouillon
-    jusqu'à « Enregistrer ».
+    jusqu'à « Enregistrer » (sauf dans GFS depuis le 03/11 : point 18).
 14. **Une bibliothèque d'extension peut être un fichier assemblé par GFS** (décision du porteur, 16/10, sur la demande d'écriture
     en direct de Publipostage+) : plusieurs paquets npm dans un seul module, qui laisse en noms nus les bibliothèques natives de
     l'app (2.6, points 8 à 11 ; 5.2, points 4 et 5). Sans lui, le curseur des autres disparaît sans erreur.
@@ -105,6 +106,10 @@ connaît pas.
     « Nouveau » (point 8), aucune action de plus. Le manifeste gagne `actions.importer` (2.7, point 4), l'ouverture gagne `importation`
     (5.2, point 3) et GFS ouvre lui-même le sélecteur de fichier (5.4, point 1). Mesuré avec une app d'essai : le `File` arrive lisible
     dans le cadre isolé.
+18. **Les réglages d'une app s'écrivent dans la vue, sans « Enregistrer »** (décision du porteur, 03/11, « GFS l'écrit dans la vue ») :
+    le courtier écrit lui-même les réglages de la section au lieu du brouillon de Grist, retrouve sa section par son adresse et sa
+    table, dit à l'app que c'est fait (événement `reglages`, 5.1) et se replie sur le brouillon quand il ne peut pas (7.3, points 4 à 6).
+    Le contexte ne donne pas la page : sur une instance ordinaire `page` vaut `null` (5.2 ; faits vérifiés, 18).
 
 ---
 
@@ -405,14 +410,14 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     **pdf.js** (`pdfjs` 1.0.0, demande de lecture des PDF, 03/11) contient `pdfjs-dist` 6.5.438 (Apache-2.0, sa licence est recopiée
     dans `vendor/pdfjs/1.0.0/LICENCES.txt`), `modules` `pdfjs-dist/build/pdf.min.mjs` (`getDocument`, `TextLayer`) et
     `pdfjs-dist/build/pdf.worker.min.mjs`, `externes` vide, 1,64 Mo. Un sous-cadre à origine opaque ne peut pas créer de vrai `Worker`
-    (`SecurityError`, faits vérifiés, 17) : pdf.js retombe sur son « faux Worker », qui exécute le moteur dans la page et le cherche dans
+    (`SecurityError`, faits vérifiés, 19) : pdf.js retombe sur son « faux Worker », qui exécute le moteur dans la page et le cherche dans
     `globalThis.pdfjsWorker` avant tout `import()`. Le fichier assemblé contient le moteur et le pose lui-même en se chargeant : aucune
     adresse de plus, aucun `import()`, rien à nommer dans la CSP de l'app. **L'extension passe `verbosity: 0`** (sans quoi pdf.js
     écrit « Setting up fake worker. » en console à chaque document) **et `isEvalSupported: false`** (aucune CSP d'app n'accepte
     `unsafe-eval`). **Limites** : les polices standard, les CMap et le décodeur JPEG 2000 (wasm) sont des fichiers à part que le
     paquet ne met pas dans le fichier assemblé : un PDF qui en dépend s'affiche avec les polices de repli, ou sans l'image ; un PDF
     scanné, sans texte, n'a pas de couche de texte ; la lecture se fait dans la page, donc une page très lourde fige l'interface
-    quelques dixièmes de seconde (mesuré à 0,16 s au plus, faits vérifiés, 17).
+    quelques dixièmes de seconde (mesuré à 0,16 s au plus, faits vérifiés, 19).
 
 ### 2.7 Les actions acceptées
 
@@ -994,6 +999,8 @@ Les noms de la v0 :
 | `extensions` (événement) | GFS → app | `{ extensions: [ … ], bibliotheques: { … } }` (5.2) | aucune |
 | `langue` (événement) | GFS → app | `{ langue }` (5.2, point 6) | aucune |
 | `barre` (événement) | GFS → app | `{ barre }` : `{ bord, epaisseur, zone }` ou `null` (5.2, point 7) | aucune |
+| `ambiance` (événement) | GFS → app | `{ ambiance }` : le message d'ambiance, ou `null` (5.2, point 10) | aucune |
+| `reglages` (événement) | GFS → app | `{ enregistres }` : vrai quand le réglage que l'app vient d'écrire est dans la vue, faux quand il reste un brouillon (7.3, point 5) | aucune |
 
 1. [D] `gfs` est le numéro de contrat de l'émetteur (pour l'app, celui de son manifeste). Un message sans `gfs` entier, ou d'un
    numéro que le destinataire ne connaît pas, est ignoré.
@@ -1016,8 +1023,8 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 | `hote` | `{ nom, version }` de GFS | oui | `null` |
 | `instance` | adresse de l'instance de Grist (origine) | calculée par le code du kit (la correction `fixBaseUrl` de Publipostage+), une fois, par GFS | calculée par le kit |
 | `document` | identifiant du document (`getDocName`) | oui | lu dans Grist |
-| `page` | numéro de la page, ou `null` | au mieux, d'après le référent de GFS | au mieux |
-| `section` | numéro de la section, ou `null` | au mieux : Grist ne le dit pas au widget | au mieux |
+| `page` | numéro de la page, ou `null` | au mieux, d'après le référent de GFS : **`null` sur une instance ordinaire**, le référent d'un cadre d'une autre origine ne porte que l'origine de Grist (faits vérifiés, 18) | au mieux |
+| `section` | numéro de la section, ou `null` | `null` : Grist ne le dit pas au widget (GFS retrouve sa section pour écrire ses réglages, 7.3, point 4, sans la donner aux apps) | au mieux |
 | `adresseWidget` | adresse du widget dans Grist, sans requête | celle de GFS | celle de l'app |
 | `langue` | `fr` ou `en` | le choix de la personne dans GFS, sinon la langue de Grist (point 6) | le choix de l'app, sinon l'adresse |
 | `culture`, `fuseau`, `devise` | paramètres `culture`, `timeZone`, `currency` de l'adresse | ceux de GFS | ceux de l'adresse |
@@ -1028,17 +1035,20 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 | `ouverture` | pourquoi et sur quoi l'app s'ouvre, ou `null` (5.4) | oui | `null` |
 | `stockage` | copie de l'espace de cette app, `{ clé: valeur }` (5.3) | oui, relue à chaque appel | contenu du navigateur |
 | `barre` | la barre de GFS qui recouvre le cadre de l'app, `{ bord, epaisseur, zone }`, ou `null` quand rien ne le recouvre (point 7) | oui, mesurée à chaque appel | `null` |
+| `ambiance` | l'ambiance et la couleur que la personne a choisies pour GFS et ses apps, ou `null` quand rien n'est choisi (point 10) | oui, relue à chaque appel | `null` |
 | `role` | ce que GFS sait de la personne, `{ proprietaire, responsableDe }` (point 8) | oui, relu à chaque appel | `{ proprietaire: null, responsableDe: [] }` |
 | `identite` | l'adresse e-mail de la personne, `{ email }`, ou `null` (point 9) | seulement pour une app qui déclare `identite` (3.4, point 6), `null` pour toute autre ; relue à chaque appel | `null` (l'app garde sa propre sonde, 11.6, point 5) |
 
 1. [T] Les six paramètres de l'adresse (1.3) et le contexte disent la même chose : l'adresse existe pour le code des apps
    qui la lit déjà, le contexte pour le kit. Une seule différence dans le temps : la langue de l'adresse est celle du cadre
    quand il a été créé, et le contexte dit la langue qui vaut maintenant (point 6).
-2. [D] Quatre événements en cours de vie. `extensions` (`{ "extensions": [ … ], "bibliotheques": { … } }`), quand la personne
+2. [D] Six événements en cours de vie. `extensions` (`{ "extensions": [ … ], "bibliotheques": { … } }`), quand la personne
    active ou désactive une extension dans GFS : l'app charge alors l'extension au premier usage, comme ses moteurs d'export.
    `langue` (`{ "langue": "fr" | "en" }`), quand la personne change la langue de GFS (point 6). `barre` (`{ "barre": { … } | null }`),
    quand la barre de GFS change de bord, de taille, ou disparaît et revient (point 7). `identite` (`{ "identite": { "email": … } | null }`),
-   quand GFS apprend l'adresse de la personne pendant que l'app qui la déclare est ouverte (point 9).
+   quand GFS apprend l'adresse de la personne pendant que l'app qui la déclare est ouverte (point 9). `ambiance` (`{ "ambiance": { … } | null }`),
+   quand la personne change l'ambiance ou la couleur de GFS (point 10). `reglages` (`{ "enregistres": true | false }`), après chaque écriture
+   d'un réglage de l'app : vrai si GFS l'a écrit dans la vue (rien à enregistrer dans Grist), faux s'il est resté un brouillon (7.3, point 5).
 3. [D] `ouverture` : `null` quand l'app s'ouvre sans consigne (elle applique son propre ordre d'arrivée, cahier 6.2, point 4 : c'est
    le cas du bouton « Ouvrir » de la fenêtre « Apps et extensions » et de l'arrivée sur une vue qui porte ses réglages, 7.4, point 7) ;
    sinon `{ fichier, type, dossier, raison }` où `fichier` est `{ id, type }` (ou `null` pour « Nouveau »), `type` le type
@@ -1193,6 +1203,66 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    lit l'adresse par `GfsLink.identity()` et son abonné est rappelé une fois ; une autre personne reçoit la sienne, jamais celle
    de la précédente ; l'anonyme de Grist, une personne sans adresse et un document en lecture seule donnent `null`. Même limite
    que 6.4, point 9 : grist-static n'a pas de compte, le labo donne la personne au moteur de données.
+
+10. [D] `ambiance` : **un seul choix d'ambiance et de couleur par personne, pour GFS et pour toutes ses apps** (décision du porteur,
+   02/11 et 03/11). Le bouton « Thème » de l'explorateur ouvre une fenêtre : cinq ambiances (Grist Factory, celle d'origine, bleu et
+   gris ; Pop ; Papier ; Brut ; Néon), chacune avec sa propre direction artistique (couleurs, arrondis, traits, ombres, polices,
+   fond, filet), et, au choix, **la couleur de la personne**, qui remplace celle de l'ambiance sans toucher à sa forme (le sélecteur
+   de couleur des documents de Publipostage+, qui passe au kit ; tant qu'il n'est pas dans GFS, « La mienne » est grisée avec sa
+   raison). Le clair et le sombre restent ceux de Grist (le message `theme`, 4.2) : une ambiance a ses deux modes. Le choix est
+   retenu dans le `localStorage` de GFS (clés `gfs.theme` : l'identifiant de l'ambiance, absente pour Grist Factory ; `gfs.couleur` :
+   `#rrggbb`, absente tant que la personne n'a pas choisi la sienne), jamais dans le document ni dans une table, et n'écrit rien
+   sans un geste de sa part ; toutes les sections de GFS d'une même page le suivent (événement `storage`) ; un navigateur qui refuse
+   de le retenir n'empêche rien : le choix vaut pour la page, et GFS le dit (même mécanisme que la langue, point 6).
+   `contexte.ambiance` et l'événement `ambiance` (`{ "ambiance": { … } | null }`) portent le même message. Il vaut **`null` quand
+   rien n'est choisi** (Grist Factory sans couleur) : l'app garde alors ses propres couleurs, celles de la charte, et retire celles
+   qu'elle avait posées. Sinon :
+   ```json
+   { "id": "pop", "couleur": "#6d4fd6", "ajustee": false,
+     "clair":  { "--bg": "#f0ecff", "--surface": "#ffffff", "…": "…" },
+     "sombre": { "--bg": "#1c1830", "…": "…" },
+     "forme":  { "--radius-md": "14px", "--shadow-panel": "0 1px 2px color-mix(…)", "…": "…" } }
+   ```
+   `id` : `defaut`, `pop`, `papier`, `brut` ou `neon` ; `couleur` : la couleur libre (`#rrggbb`), ou `null` ; `ajustee` : la couleur
+   libre a dû être éclaircie ou assombrie pour que le texte reste lisible ; `clair` et `sombre` : **dix-neuf jetons de couleur
+   chacun**, tous des `#rrggbb` en minuscules, les quinze de la charte (`--bg`, `--surface`, `--surface-sunken`, `--border`,
+   `--border-strong`, `--text`, `--text-muted`, `--accent`, `--accent-hover`, `--accent-solid`, `--accent-solid-hover`, `--on-accent`,
+   `--accent-ink`, `--accent-soft`, `--accent-soft-border`) et quatre de décor (`--accent-2`, `--accent-3`, `--accent-end`, le bout du
+   dégradé du bouton plein, et `--hard`, l'ombre dure) ; `forme` : les jetons de forme que l'ambiance redit (arrondis `--radius-*`,
+   traits `--bw`, `--divider*`, `--bar-w`, ombres `--shadow-*`, polices `--font-*`, `--fw-head`, `--fs-head`, `--tt-*`, `--ls-*`,
+   fonds `--ex-bg`, `--main-bg`, `--wash`, `--wash-size`, `--stripe*`, `--avatar-*`, bouton plein `--fill*`), des textes de CSS écrits **en
+   termes des jetons de couleur** (`var(--accent)`, `color-mix(…)`), si bien qu'une seule forme sert au clair comme au sombre ; ceux
+   qu'une ambiance ne redit pas n'y sont pas : l'app garde alors sa valeur d'origine. Les couleurs d'état (`--danger*`, `--good*`, `--warn*`) et
+   de type (`--t-*`) ne changent jamais d'une ambiance à l'autre.
+   **Le contraste est tenu par GFS** : pour chaque ambiance et pour toute couleur libre, les textes (`--text`, `--text-muted`,
+   `--accent-ink`, `--on-accent` sur son bouton) gardent **4,5:1 au moins** sur les fonds où l'app les pose, en clair comme en sombre,
+   et le bouton plein se distingue de sa carte ; GFS éclaircit ou assombrit la couleur libre pour y arriver (`ajustee`) et la fenêtre
+   le dit. L'app n'a donc rien à recalculer.
+   **Ce que fait l'app** : elle lit `contexte.ambiance` à son démarrage et l'événement `ambiance` ensuite, sans recharger son cadre. Elle
+   pose les jetons **par le CSSOM** (`document.documentElement.style.setProperty`, jamais un attribut `style` ni une feuille de style écrits
+   à partir du message : sa politique de sécurité du contenu les refuse), ceux du mode qu'elle affiche (`clair` ou `sombre`, d'après le message `theme` de
+   Grist, 4.2), et **ne pose que les jetons qu'elle connaît** (sa liste, celle du kit), après avoir vérifié que chaque nom est de la forme
+   `--[a-z0-9-]+` et chaque couleur un `#rrggbb` ; une valeur de forme qui contient `;`, `{`, `}`, `url(` ou `@import` est ignorée. Elle retire tout ce
+   qu'elle avait posé quand elle reçoit `null` (ou une autre ambiance), au lieu de laisser des restes. Une app qui ne lit pas un jeton de
+   forme **garde sa forme et prend les couleurs** : rien ne casse, et l'ambiance d'une app peut être plus sobre que celle de GFS. L'ambiance
+   ne vaut que pour ce que l'app affiche à la personne : **jamais pour ce qu'elle produit** (un e-mail, un document, un PDF, un
+   formulaire public), qui garde la charte de l'app ou du modèle (comme le thème sombre, cahier 3.4).
+   GFS envoie l'événement **une seule fois par geste** (un geste qui change l'ambiance et la couleur à la fois n'en envoie qu'un), rien
+   quand le choix redit ce qui vaut déjà ; un changement de mode (clair, sombre) n'en envoie aucun, puisque le message porte les deux.
+   Le nom est `ambiance` et non `theme` pour ne pas se confondre avec le message `theme` de Grist, que GFS relaie tel quel.
+   Une app seule n'a pas d'ambiance de GFS : `null`, elle garde ses couleurs (ou son propre choix de couleur, s'il en est).
+   [M] **Mesuré le 03/11** dans un vrai Grist, à la vraie souris et au vrai clavier, en français et en anglais, en clair et en sombre :
+   `run-theme.mjs` et la sonde M (une app minimale qui fait ce que feront les apps avec leur consigne) passent leurs 38 vérifications
+   dans chacune des quatre combinaisons à 700 × 400, et dans une cinquième à 420 de large. Sans choix, la page ne porte aucun jeton de GFS
+   (le seul réglage en ligne est le `color-scheme` que le script d'API de Grist pose lui-même, faits vérifiés 17) et garde son aspect
+   d'origine ; chaque choix se pose tout de suite sur la page (de 36 à 47 jetons selon l'ambiance : dix-neuf de couleur, le reste de forme), se retient dans les deux
+   clés, repart dans la même ambiance au rechargement, et « Revenir à Grist Factory » les retire toutes. La fenêtre tient dans le panneau
+   (349 à 358 de haut, sans défilement) dans les cinq ambiances ; le clavier y entre sur la vignette choisie, les flèches choisissent,
+   Tab la traverse sans s'arrêter sur chaque vignette, Échap rend le clavier au bouton « Thème ». Chaque texte de l'explorateur et de la
+   fenêtre garde 4,5:1 au moins, mesuré sur les couleurs affichées (fonds superposés mélangés, arrêts pleins d'un dégradé compris), dans les cinq ambiances. L'app ouverte reçoit
+   l'ambiance dans son `contexte` (dix-neuf jetons par mode et la forme), puis un seul événement `ambiance` par geste, `null` au
+   retour à l'origine, rien quand le choix redit ce qui vaut déjà, et son cadre n'est jamais reconstruit. Un navigateur qui refuse
+   le stockage garde le choix pour la page, et la fenêtre le dit.
 
 ### 5.3 Le stockage du navigateur
 
@@ -1690,20 +1760,64 @@ fichier lui-même en pièce jointe de Grist.
    l'objet sont retirées, les clés non déclarées sont ignorées (Form+ appelle `setOptions` avec tout son objet) ; GFS
    avertit dans la console. Les clés de GFS et des autres apps ne bougent pas.
 4. [T] `clearOptions()` retire les clés déclarées de l'app, rien d'autre.
-5. [T] Le courtier fait ces écritures par `setOption` (clé par clé), jamais par `setOptions`, qui remplacerait tout l'objet.
-6. [T] Les appels de l'app et ceux de GFS passent par la même connexion à Grist : ils s'enchaînent, aucune écriture ne
-   s'en perd.
+5. [T] Le courtier écrit les clés de l'app **dans la vue**, en une seule écriture de la section (7.3, point 4), jamais par le
+   `setOptions` de Grist, qui remplacerait tout l'objet. Quand il ne peut pas (7.3, point 6), il se replie sur le `setOption` de
+   Grist, clé par clé : un brouillon, comme avant.
+6. [T] Les appels de l'app et ceux de GFS passent par la même connexion à Grist, et les écritures d'une même GFS s'enchaînent dans
+   une file : aucune écriture ne s'en perd. Deux GFS d'un même document écrivent chacune dans sa vue ; une écriture relit le texte
+   de la section juste avant de le réécrire (7.3, point 8 pour ce que cela ne couvre pas).
 
-### 7.3 Brouillon, « Enregistrer » et installation
+### 7.3 Brouillon, « Enregistrer », écriture dans la vue et installation
 
-1. [T] Un réglage écrit par le widget n'est qu'un **brouillon** tant que la personne n'a pas cliqué « Enregistrer » dans Grist ;
-   Grist ne prévient pas le widget de cet enregistrement (mesuré le 09/10). D'où le rappel « Enregistrer » du kit.
-2. [T] Un widget n'écrit jamais un réglage sans geste de la personne : Grist afficherait « Enregistrer » pour rien. Cela vaut
-   pour GFS et ses clés `gfs.`.
+1. [T] **Le brouillon de Grist.** Un réglage qu'un widget écrit avec le `setOption` de Grist n'est qu'un **brouillon** tant que la
+   personne n'a pas cliqué « Enregistrer » dans Grist ; Grist ne prévient pas le widget de cet enregistrement (mesuré le 09/10).
+   D'où le rappel « Enregistrer » du kit : c'est le cas d'une app **seule** (point 9) et, dans GFS, du repli du point 6.
+2. [T] Un widget n'écrit jamais un réglage sans geste de la personne : en brouillon, Grist afficherait « Enregistrer » pour rien ;
+   écrit dans la vue (point 4), le réglage changerait le document sans qu'elle l'ait voulu. Cela vaut pour GFS et ses clés `gfs.`.
 3. [T] **Installer ne télécharge rien** : le code de toutes les apps livrées est déjà dans le site de GFS (sous-modules). Installer
    une app, c'est inscrire son `id` dans la liste du document (7.4) ; activer une extension, l'inscrire à la ligne de l'app ;
    désinstaller, retirer l'inscription. Désinstaller ne supprime aucune donnée (cahier 3.1, point 1) : réinstaller retrouve
    tout.
+4. [T] **GFS écrit les réglages des apps dans la vue, sans « Enregistrer »** (décision du porteur, 03/11, « GFS l'écrit dans la
+   vue » ; construit le même jour, `js/view-options.js`). Quand une app écrit un réglage de sa tranche (`setOption`, `setOptions`,
+   `clearOptions`, 7.2), le courtier :
+   - **écrit la section.** Il met à jour le texte JSON de la colonne `options` de la section de GFS (`_grist_Views_section`,
+     `UpdateRecord`) : seules les clés de `customView.widgetOptions` changent ; l'adresse, l'accès et le reste sont relus juste avant
+     et gardés tels quels, et un objet vide redevient `null`, sa forme d'origine. C'est GFS qui écrit, jamais l'app : la colonne
+     `options` reste interdite aux apps (3.3), et l'app n'écrit que les clés que son manifeste déclare (7.2). Une écriture qui ne
+     change rien n'écrit rien ;
+   - **n'affiche rien.** Aucune barre « Enregistrer / Retour », le cadre n'est pas reconstruit, et Grist redit les réglages au widget
+     (`onOptions`, 4.3) : l'app les relit comme avant ;
+   - **retrouve sa section.** Un widget ne sait ni sa page ni sa section (5.2 ; faits vérifiés, 18). GFS cherche les sections de même
+     adresse (origine et chemin, sans la requête, sans `index.html` ni barre finale) et de même table que la sienne ; ses
+     **candidates** sont celles dont les réglages enregistrés disent ce que Grist lui dit (`getOptions`, hors marques de recherche).
+     Une seule : c'est la sienne. Plusieurs (deux GFS sur la même table dont les vues disent la même chose, par exemple sans
+     aucun réglage) : une **marque** aléatoire
+     est posée dans chaque candidate, en une seule écriture (clé `gfs.sonde`), et le cadre reconnaît la sienne en relisant ses
+     réglages ; une marque d'un autre le fait recommencer après une attente aléatoire, jamais prendre la section d'un autre ; sans
+     marque au bout de 1,5 s il renonce ; les marques sont toujours retirées, en relisant les textes avant, sans rien écraser. La
+     réponse est gardée pour la vie du cadre. Les marques et les clés de GFS ne sont pas transmises aux apps (4.2, point 3) ;
+   - **vérifie.** GFS attend que Grist redise les réglages écrits (3 secondes au plus). Sans cet écho il défait son écriture
+     (seulement si le texte est toujours celui qu'il a écrit), écarte cette section et se replie (point 6).
+5. [T] **L'app en est prévenue.** Après chaque écriture de ses réglages, GFS lui envoie l'événement `reglages` `{ enregistres }`
+   (5.1) : vrai si le réglage est dans la vue, faux s'il est resté un brouillon. Une app qui rappelle « Enregistrer » à la personne
+   (Publipostage+) tait son rappel quand `enregistres` est vrai ; une app qui ignore l'événement, ou qui est seule, n'a rien à changer.
+6. [T] **Le repli sur le brouillon.** GFS écrit alors un brouillon, clé par clé (point 1, comme avant), dit `enregistres: false`, et
+   avertit une fois par raison dans la console, quand : l'accès de GFS n'est pas `full` ou le document est en lecture seule ; aucune
+   section n'est retrouvée (aucune candidate, ou recherche sans réponse) ; le texte de la section est illisible ; **un brouillon est
+   déjà posé dans la section** (écrire dans la vue le cacherait, Grist rendant le brouillon avant le réglage enregistré : GFS le
+   rejoint plutôt que de le masquer, et « Enregistrer » ou « Retour » le libère) ; Grist refuse l'écriture (une règle d'accès
+   réserve la structure du document) ; l'écho manque.
+7. [M] **Mesuré le 03/11** dans un vrai Grist (grist-static 0.1.6, Chromium, 700 × 400, souris et clavier réels) avec Publipostage+ :
+   le geste « Utiliser le modèle ouvert pour cette vue » et « Retirer » ne montrent aucune barre ; l'arrivée rouvre la vue sur le modèle
+   retenu ; deux GFS sur la même table gardent chacune son modèle, sans marque qui reste ; un brouillon déjà posé reste un brouillon
+   et se libère par « Retour » (faits vérifiés, 18). Non mesuré : un vrai serveur et une règle d'accès qui refuse (le repli est couvert
+   par les tests, contre un faux port), Firefox, ce que « Annuler » (Ctrl+Z) de Grist fait d'une écriture de la vue.
+8. [T] **Ce que cela ne garantit pas.** Une écriture réécrit tout le texte de la section (accès et adresse compris) : un autre
+   changement de la même section dans les quelques millisecondes qui suivent la relecture serait perdu. Elle demande le droit de
+   modifier la structure du document, sinon c'est le repli du point 6. Et elle ne règle rien pour une app **seule** (point 9).
+9. [D] **L'app seule** écrit toujours un brouillon, avec le rappel « Enregistrer » (point 1) : le même geste côté kit (retrouver sa
+   section, écrire) viendra plus tard, sur le go du porteur.
 
 ### 7.4 Question 9, tranchée le 16/10 : les apps installées se retiennent dans une table du document
 
@@ -1714,7 +1828,8 @@ le document, pour que l'installation s'enregistre tout de suite.
    et dans `Valeur` un texte JSON `{ "<id>": { "extensions": [ "…" ], "modes": { "<extension>": "cdn" | "vendorise" } } }`
    (`modes` est facultatif, le défaut est le CDN : question 11). La ligne n'existe qu'après la première installation.
 2. [T] **Immédiat.** Installer, désinstaller, activer une extension, choisir son mode : l'écriture de la ligne suffit, sans
-   « Enregistrer ». Ce rappel reste pour les réglages que chaque app garde dans sa tranche (7.3), pas pour ceux de GFS.
+   « Enregistrer ». Le rappel ne vaut plus que pour les réglages d'une app **seule**, ou quand GFS se replie sur le brouillon (7.3,
+   points 6 et 9), pas pour ceux de GFS.
 3. [T] **Pour tout le document.** Les sections GFS d'un document partagent la liste des apps. GFS la relit au chargement de
    la section et juste avant d'écrire. [D] Un widget ne reçoit pas les changements d'une table qui n'est pas la sienne : une
    autre section ne voit un changement qu'à son prochain chargement. [M]
@@ -1755,8 +1870,8 @@ le document, pour que l'installation s'enregistre tout de suite.
    sécurité (hors le style en ligne que le script d'API de Grist pose chez GFS, accepté : rapport du prototype). En lecture seule,
    l'app s'ouvre aussi ; ses écritures de migration sont refusées par le courtier (`GFS_LECTURE_SEULE`), l'arrivée n'en fait
    aucune. L'essai échoue sur l'ancien contrôleur : l'explorateur s'ouvre, avec la fenêtre du premier lancement.
-8. [D] **L'app de départ** (`gfs.depart`) reste un réglage de la section : un brouillon jusqu'à « Enregistrer », écrit
-   seulement sur un geste de la personne.
+8. [D] **L'app de départ** (`gfs.depart`) reste un réglage de la section, écrit seulement sur un geste de la personne ; personne
+   ne l'écrit encore. Quand GFS l'écrira, ce sera comme les réglages des apps (7.3, point 4), sans « Enregistrer ».
 9. [D] **L'ancienne clé `gfs.apps`** du prototype V0.2 n'est plus ni lue ni écrite ; une section qui la porte n'est pas modifiée.
 10. [T] **Mesuré le 16/10** dans un vrai Grist (labo grist-static 0.1.6, Chromium, panneau 700 × 400, V0.3 du prototype ;
     `run-modules.mjs` et `run-reconstruit.mjs`). Lire ne crée rien : sans geste, ni table ni page de plus. Le premier geste

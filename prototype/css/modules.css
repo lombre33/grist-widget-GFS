@@ -4,10 +4,10 @@
 
 .mod-scrim { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 12px; background: var(--scrim); }
 .mod { display: flex; flex-direction: column; width: min(640px, 100%); max-height: 100%; overflow: hidden; background: var(--surface); color: var(--text);
-  border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: var(--shadow-float); font-family: var(--font-ui); font-size: 13px; line-height: 1.35; }
+  border: var(--bw) solid var(--border-strong); border-radius: var(--radius-lg); box-shadow: var(--shadow-float); font-family: var(--font-ui); font-size: 13px; line-height: 1.35; }
 
 .mod-head { flex: none; padding: 12px 16px 8px; border-bottom: 1px solid var(--border); }
-.mod-head h2 { margin: 0; font-size: 15px; font-weight: 700; }
+.mod-head h2 { margin: 0; font-family: var(--font-head); font-size: var(--fs-head); font-weight: var(--fw-head); text-transform: var(--tt-head); letter-spacing: var(--ls-head); }
 .mod-count { margin: 2px 0 0; font-size: 12px; color: var(--text-muted); }
 .mod-count strong { color: var(--text); font-weight: 700; }
 
@@ -55,7 +55,7 @@
 .btn.sm { height: 26px; padding: 0 8px; font-size: 12px; }
 
 /* L'état en un mot et une icône : la couleur ne le porte jamais seule. */
-.badge { display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 7px; border: 1px solid var(--border-strong); border-radius: 9px;
+.badge { display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 7px; border: 1px solid var(--border-strong); border-radius: calc(var(--radius-pill) - 1px);
   background: var(--surface); font-size: 10.5px; font-weight: 700; letter-spacing: .02em; color: var(--text-muted); white-space: nowrap; }
 .badge .ic { width: 10px; height: 10px; stroke-width: 2.4; color: inherit; }
 .badge.on { border-color: var(--good-soft-border); background: var(--good-soft); color: var(--good); }
@@ -97,6 +97,50 @@
 /* Déplacer (filing-window.js) : le nouveau dossier que dit la recherche porte le « + » de l'accent. */
 .wk-item.is-fresh .ic { color: var(--accent-ink); }
 
+/* ---------- la fenêtre « Thème » (décision du 03/11) : cinq vignettes, la couleur d'accent, la mesure du contraste ---------- */
+.mod.th-win { width: min(640px, 100%); }
+.th-body { display: flex; flex-direction: column; gap: 6px; padding: 8px 14px; }
+.th-set { margin: 0; padding: 0; border: 0; min-width: 0; }
+.th-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+/* Une vignette = un bouton radio (invisible, étendu sur toute la vignette) : les flèches changent d'ambiance, comme dans une liste de boutons radio du navigateur. */
+.amb { position: relative; display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 5px 5px 6px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); cursor: pointer; }
+.amb:hover { background: var(--surface-sunken); }
+.amb input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.amb:has(input:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); }
+.amb:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.amb .chk { position: absolute; top: -7px; right: -7px; z-index: 2; width: 18px; height: 18px; padding: 3px; border: 2px solid var(--surface); border-radius: 50%;
+  background: var(--accent-solid); color: var(--on-accent); stroke-width: 3.2; visibility: hidden; }
+.amb:has(input:checked) .chk { visibility: visible; }
+.amb-name { overflow: hidden; font-size: 12px; font-weight: 700; line-height: 1.2; white-space: nowrap; text-overflow: ellipsis; }
+.amb-sub { overflow: hidden; font-size: 11px; line-height: 1.2; color: var(--text-muted); white-space: nowrap; text-overflow: ellipsis; }
+/* La petite scène d'une ambiance : les vrais jetons de couleur et de forme de l'ambiance, posés sur la vignette même (js/theme-apply.js, `paint`), à l'échelle d'une vignette. */
+.mn { position: relative; display: flex; flex-direction: column; gap: 4px; height: 58px; padding: 5px; overflow: hidden; border: 1px solid var(--border); border-radius: 6px;
+  background-color: var(--ex-bg); background-image: var(--wash); background-size: var(--wash-size); color: var(--text); font-family: var(--font-ui); }
+.mn-head { flex: none; display: flex; align-items: center; gap: 4px; }
+.mn-t { overflow: hidden; font: var(--fw-head) 9.5px/1 var(--font-head); text-transform: var(--tt-head); letter-spacing: var(--ls-head); white-space: nowrap; text-overflow: ellipsis; }
+.mn-btn { flex: none; margin-left: auto; width: 26px; height: 11px; background: var(--fill); border: var(--bw) solid var(--fill-line); border-radius: min(var(--radius-btn), 6px); box-shadow: var(--shadow-ctl); }
+.mn-card { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--main-bg); border: 1px solid var(--border);
+  border-radius: min(calc(var(--radius-md) * .6), 7px); box-shadow: var(--shadow-panel); }
+.mn-st { flex: none; height: var(--stripe-h); background: var(--stripe); }
+.mn-r { display: flex; align-items: center; gap: 4px; padding: 3px 5px; }
+.mn-r + .mn-r { border-top: 1px solid var(--border); }
+.mn-av { flex: none; width: 9px; height: 9px; border: 1px solid var(--avatar-line); border-radius: min(var(--radius-pill), 5px); background: var(--avatar-bg); }
+.mn-l { flex: 1; height: 3px; border-radius: 2px; background: var(--text-muted); opacity: .55; }
+.mn-l.s { flex: 0 1 38%; }
+.mn-p { flex: none; width: 17px; height: 8px; border: 1px solid var(--pill-line, var(--tc-line)); border-radius: min(var(--radius-pill), 4px); background: var(--pill-bg, var(--tc-soft)); }
+/* La couleur d'accent : celle de l'ambiance, ou la sienne. Grisé, jamais masqué : le bouton « Choisir ma couleur » garde son texte lisible et dit pourquoi au clic. */
+.th-col { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; min-width: 0; margin: 0; padding: 4px 12px 6px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-sunken); }
+.th-col legend { padding: 0 4px; font-size: 11px; font-weight: 600; color: var(--text-muted); }
+.th-col .rd { flex: none; align-items: center; }
+.th-col .rd input:disabled + .rd-text .rd-label { color: var(--text-muted); }
+.th-col .dot { display: inline-block; width: 12px; height: 12px; margin-left: 4px; border: 1px solid var(--border-strong); border-radius: 50%; vertical-align: -2px; }
+.th-pick { gap: 6px; }
+.th-pick .sw { width: 14px; height: 14px; border: 1px solid var(--border-strong); border-radius: 4px; }
+.th-pick[aria-disabled="true"], .th-win .mod-foot .btn[aria-disabled="true"] { border-style: dashed; color: var(--text-muted); cursor: not-allowed; }
+.th-check, .th-adj { display: flex; gap: 6px; align-items: flex-start; margin: 0 2px; font-size: 12px; line-height: 1.35; }
+.th-check .ic, .th-adj .ic { flex: none; margin-top: 1px; width: 14px; height: 14px; color: var(--accent-ink); }
+.th-adj { color: var(--text-muted); }
+
 /* ---------- étroit : l'état et le geste passent sous le texte ---------- */
 @media (max-width: 519px) {
   .mod-scrim { padding: 6px; }
@@ -105,4 +149,5 @@
   .mr { grid-template-columns: 22px minmax(0, 1fr); }
   .mr-side { grid-column: 2; flex-direction: row; align-items: center; justify-content: flex-start; padding-top: 4px; }
   .mr--ext { margin-left: 10px; padding-left: 8px; }
+  .th-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }

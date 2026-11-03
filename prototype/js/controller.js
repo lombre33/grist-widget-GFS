@@ -5,10 +5,14 @@ import { CATALOGUE } from './catalogue.js';
 import { loadAll, label } from './manifest.js';
 import { GristState } from './state.js';
 import { createPort } from './broker.js';
+import { ViewOptions, addressOf } from './view-options.js';
 import { AppSession } from './session.js';
 import { readPreferences, liveSwitch } from './frames.js';
 import { createI18n } from './i18n.js';
 import { LanguageSetting, browserStore, languageOfGrist, localeFor, watchStorage } from './language.js';
+import { ThemeSetting, browserStores } from './theme.js';
+import { ThemeHost } from './theme-apply.js';
+import { ThemeWindow } from './theme-window.js';
 import { AppStorage, browserBackend, storageHandlers } from './app-storage.js';
 import { installSprite } from './icons.js';
 import { Dock } from './dock.js';
@@ -64,6 +68,7 @@ export class GfsController {
   session = null;
   explorer = null;
   modulesWindow = null;
+  themeWindow = null;
   #noticeTimer = null;
   #facts = null;
   #sentExtensions = null;
@@ -84,11 +89,20 @@ export class GfsController {
     // La langue de GFS et de ses apps : le choix de la personne, retenu sur ce navigateur ; à défaut celle de Grist, ou du navigateur (contrats 5.2).
     this.language = new LanguageSetting({ grist: languageOfGrist(this.params.get('language'), navigator.language), store: browserStore(window) });
     this.#useLanguage();
+    // Le thème de GFS et de ses apps : l'ambiance et la couleur que la personne a choisies, retenues sur ce navigateur comme la langue (js/theme.js) ; posées sur la page tout de suite, dites à l'app ouverte.
+    this.theme = new ThemeSetting(browserStores(window));
+    this.themeHost = new ThemeHost({ win: window, setting: this.theme, onMessage: message => { if (this.session) this.session.sendAmbiance(message); } });
+    this.themeHost.start();
     this.state = new GristState();
     // Les choix de chaque app (contrats 5.3) : un espace par app dans le navigateur de GFS, jamais dans le document.
     this.appStorage = new AppStorage({ backend: browserBackend(window) });
     this.port = createPort(grist);
     this.readonly = this.params.get('readonly') === 'true';
+    // Les réglages des apps s'écrivent dans la vue, sans « Enregistrer » (contrats 7.3) : GFS retrouve sa section par son adresse et sa table.
+    this.viewOptions = new ViewOptions({
+      doc: this.port.doc, widget: this.port.widget, address: addressOf(location.href), tableId: () => (this.state.table ? this.state.table.tableId : null),
+      enabled: () => this.fullAccess && !this.readonly,
+    });
     // Les apps sont servies par leur site en ligne (le porteur, 22/10) ; `?live=0` : la copie figée du sous-module, celle des mesures de GFS.
     this.live = liveSwitch(search);
     // Le mode développement (`?dev` dans l'adresse du widget, comme la galerie de développement de Publipostage+) : le bouton « Démo » de l'explorateur.
@@ -270,7 +284,7 @@ export class GfsController {
     this.explorer = new Explorer({
       container: this.$('stage'), i18n: this.i18n, locale: this.locale, now: () => new Date(), appName: this.appName, typeLabel: this.typeLabel, lockOf: this.lockOf,
       newTypes: this.newTypes, importTypes: this.importTypes, canClose: () => Boolean(this.session), notice: text => this.notice(text),
-      language: () => ({ choice: this.language.choice, grist: this.language.grist }), onLanguage: choice => this.#chooseLanguage(choice),
+      language: () => ({ choice: this.language.choice, grist: this.language.grist }), onLanguage: choice => this.#chooseLanguage(choice), onTheme: () => this.openTheme(),
       onOpen: file => this.#openFile(file), onNew: entry => this.#openNew(entry), onImport: entry => void this.#importFile(entry), onClose: () => this.hideExplorer(), onApps: () => void this.openModules(),
       personal: () => Boolean(this.identity), filing: this.#buildFiling(), kept: this.kept, onDemo: this.devMode ? () => void this.#runDemo() : null,
     });
@@ -343,6 +357,7 @@ export class GfsController {
     const live = { i18n: this.i18n, locale: this.locale };
     this.explorer.relocalize(live);
     if (this.modulesWindow) this.modulesWindow.relocalize(live);
+    if (this.themeWindow) this.themeWindow.relocalize(live);
     this.dock.relabel(this.t);
     this.workControl.relabel();
     this.#showFileStatus();
@@ -397,10 +412,25 @@ export class GfsController {
     this.explorer.setStatus({ loading, restricted, problems: problems.map(({ key, app, reason }) => this.t(key, { app: app ? this.appName(app) : '', reason })) });
   }
 
+  // ---------- la fenêtre « Thème » ----------
+
+  // Le bouton « Thème » de l'explorateur : l'ambiance et la couleur de GFS et de ses apps (js/theme-window.js). La fenêtre suit le mode de la page : ses vignettes se repeignent quand Grist passe du clair au sombre.
+  openTheme() {
+    if (!this.themeWindow) {
+      this.themeWindow = new ThemeWindow({
+        container: this.$('stage'), i18n: this.i18n, locale: this.locale, setting: this.theme, mode: () => this.themeHost.mode,
+        inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')],
+      });
+      this.themeHost.onMode(() => this.themeWindow.refresh());
+    }
+    this.themeWindow.open();
+  }
+
   // ---------- la fenêtre « Apps et extensions » ----------
 
   // La fenêtre s'ouvre ; la promesse se tient jusqu'à sa fermeture (l'appel `installer` de l'app attend le choix de la personne, 5.4).
   openModules({ focus = null } = {}) {
+    if (this.themeWindow) this.themeWindow.close(); // une seule fenêtre à la fois : celle des apps passe devant
     if (!this.modulesWindow) this.modulesWindow = this.#buildModules();
     this.modulesWindow.open({ focus });
     return new Promise(resolve => this.#modulesWaiters.push(resolve));
@@ -589,7 +619,7 @@ export class GfsController {
     const storage = this.appStorage.read(session.id);
     const identity = identityFor(session.policy, this.identity);
     if (session === this.session) this.#sentIdentity = JSON.stringify(identity);
-    return buildContext(facts, { access: session.access, extensions: given.extensions, libraries: given.bibliotheques, opening, storage, bar: this.dock.barre(), identity }, { preferences: this.#appPreferences(), readonly: this.readonly });
+    return buildContext(facts, { access: session.access, extensions: given.extensions, libraries: given.bibliotheques, opening, storage, bar: this.dock.barre(), identity, ambiance: this.theme.message() }, { preferences: this.#appPreferences(), readonly: this.readonly });
   }
 
   // L'ouverture n'est rendue qu'au premier `contexte` de l'app qui vient d'être activée (contrats 5.2, point 3) : une app dont le cadre est rechargé sur place (sa langue, un
@@ -700,7 +730,7 @@ export class GfsController {
     return {
       entry: app.app, manifest: app.manifest, catalogue: this.apps.filter(item => item.ok).map(item => item.manifest), state, port, router: this.router,
       container: this.$('frames'), readonly: this.readonly, preferences: this.#appPreferences(), base: this.doc.baseURI, live: this.live, lang: this.lang, onStatus: (kind, current) => this.#onStatus(kind, current),
-      envelopeHandlers: session => this.#envelopeHandlers(session), authorize: (manifest, opens) => this.#askPublication(manifest, opens),
+      envelopeHandlers: session => this.#envelopeHandlers(session), authorize: (manifest, opens) => this.#askPublication(manifest, opens), viewOptions: this.viewOptions,
     };
   }
 

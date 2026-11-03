@@ -983,7 +983,7 @@ en français clair puis en anglais sombre, avec la sonde Y (`labo/sondes/y-lire-
   le gérer : Publipostage+ le fait déjà pour ses exports), un PDF de centaines de pages, un PDF qui exige les polices standard, les CMap ou le décodeur JPEG 2000 (non fournis, contrats 2.6, point 12), un
   PDF sans texte (un scan : pas de couche de texte), la vraie Publipostage+ (son extension n'existe pas encore).
 
-## 20. ECharts 6.1.0 : l'archive de npm est le fichier que le CDN sert (lu le 03/11)
+## 20. ECharts 6.1.0 : l'archive de npm est le fichier que le CDN sert, et « Créer un graphique… » dessine dans un vrai Grist (lu et mesuré le 03/11)
 
 La demande de Publipostage+ (graphiques créés dans l'app, « Créer un graphique… ») donne l'empreinte du fichier que jsDelivr sert pour `echarts@6.1.0`. jsDelivr n'est pas joignable du cloud ; le registre de npm l'est,
 et c'est de là que l'outil des bibliothèques tire la copie (`npm pack`, avec l'intégrité que donne le registre). Lu et mesuré le 03/11 :
@@ -995,5 +995,23 @@ et c'est de là que l'outil des bibliothèques tire la copie (`npm pack`, avec l
   `vendor/echarts/6.1.0/LICENCES.txt` (contrats 2.6, point 13).
 - **La copie de GFS** est à `vendor/echarts/6.1.0/dist/echarts.min.js` (la disposition de l'outil : le chemin du fichier dans le paquet est gardé).
 
-**Pas mesuré.** Le vrai jsDelivr (`node outils/bibliotheques.mjs --verifier-cdn`, sur une machine qui y accède), et le dessin d'un graphique par ECharts dans le sous-cadre de GFS (la section « Mesuré dans un vrai Grist » qui suit
-quand l'app est rejouée).
+**Le symptôme, et sa cause (03/11).** Le porteur a vu le volet graphique de Slides+ « manquer d'une librairie ». L'app (`extensions/graphique/chart-make.js`) demande `echarts` à GFS (`Extensions.library('echarts')`) ; le manifeste de GFS ne
+l'exigeait pas et le catalogue ne l'avait pas, GFS ne donnait donc rien, et la fenêtre « Créer un graphique… » disait « Aperçu indisponible : le module qui dessine les graphiques n'a pas pu se charger ». « Insérer » restait allumé (une
+bibliothèque qui n'a pas pu se charger n'empêche rien) : la personne posait un cadre qui ne se dessinait jamais. Rejoué au labo avec le manifeste d'avant (`LAB_SANS_ECHARTS=1`) : 12 des 20 vérifications de `run-graphique.mjs` échouent (GFS
+ne donne pas `echarts`, aucune demande du fichier ne part, aperçu indisponible, radar, entonnoir et jauge non dessinés, cadre non dessiné), 8 passent (Plotly est donné comme avant, la fenêtre s'ouvre, la politique de l'app ne refuse rien,
+le modèle ne garde que la définition).
+
+**Mesuré dans un vrai Grist** (grist-static 0.1.6, Chromium, 700 × 400, vraie souris et vrai clavier, la vraie Publipostage+ à `067c931` : `labo/run-graphique.mjs`, 20 vérifications, **vertes** en français clair avec le CDN, en français clair
+avec la « Copie de GFS », en anglais sombre avec le CDN et en anglais sombre avec la copie) :
+
+- La ligne « Graphique » de la fenêtre « Apps et extensions » nomme ses deux bibliothèques (Plotly ≈ 998 Ko, ECharts ≈ 1,1 Mo au premier usage) et dit son propre poids du manifeste (≈ 168 Ko). Le mode choisi est le seul coché.
+- GFS donne à l'app `echarts` et `plotly` avec l'adresse, l'empreinte et la forme du catalogue : l'adresse jsDelivr en mode CDN, `vendor/echarts/6.1.0/dist/echarts.min.js` de GFS en mode copie. Rien n'est demandé du fichier tant que la
+  personne ne dessine pas ; puis **une seule demande** part, à l'adresse donnée, jamais redemandée (radar, entonnoir et jauge réutilisent la bibliothèque chargée).
+- La balise `<script>` de l'app porte l'empreinte du catalogue et `crossorigin="anonymous"` ; le navigateur la **contrôle pour de bon** (le labo rend à l'adresse jsDelivr les octets exacts de la copie de GFS, voir `LISEZ-MOI.md` du
+  labo) ; la politique de sécurité de l'app laisse passer l'adresse (CDN) comme la copie (`'self'`) : aucune violation.
+- L'aperçu est une **image PNG de 1 440 × 900 réellement peinte** (24 % de pixels non blancs pour des barres, 4,6 % pour un radar, 43 % pour un entonnoir, 6,8 % pour une jauge) ; « Insérer » pose le graphique dessiné dans le cadre
+  de l'éditeur, et le modèle ne garde que sa définition (`data-chart-spec`), jamais l'image.
+- Rejoués sur la même référence, sans échec : `run-ouvrir-publipostage` (28), `run-diapositives` (60, en français clair et en anglais sombre), `run-edition` (60), `run-modules` (46) et `run-sans-cdn` (15).
+
+**Pas mesuré.** Le vrai jsDelivr (`node outils/bibliotheques.mjs --verifier-cdn`, sur une machine qui y accède : le labo y met une copie aux mêmes octets), Firefox (le cloud n'a que Chromium), le Grist en ligne du porteur (celui de la
+DINUM) et le dessin d'un graphique sur un très gros tableau. La fenêtre écrit « Echarts » (l'identifiant du catalogue avec une capitale) et non « ECharts » : un détail d'affichage de GFS, pas de l'app.

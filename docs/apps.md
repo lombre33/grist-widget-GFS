@@ -7,10 +7,10 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `b2ae9aa` | 03/11/2026 | GPL 3.0 |
-| Form+ | `lombre33/FormPlus` | `consignes/form/` | `fd5384a` | 02/11/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
-| Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `746a564` | 02/11/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
-| Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `b2772db` | 02/11/2026 | GPL 3.0 |
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `24f361e` | 03/11/2026 | GPL 3.0 |
+| Form+ | `lombre33/FormPlus` | `consignes/form/` | `b54414a` | 03/11/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
+| Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `746a564` | 03/11/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
+| Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `521a8ac` | 03/11/2026 | GPL 3.0 |
 | Tuesday (nom de travail ; « Thusday » dans les anciens documents) | `lombre33/grist-wisget-tuesday` | `consignes/tuesday/` | `09ed14c` | 03/11/2026 | GPL 3.0 |
 | Calendar+ (id GFS `calendrier`, pas encore au catalogue ; le même projet que Tuesday, un fil de plus) | `lombre33/grist-widget-calendar-plus` | aucun dossier : la 006 de `consignes/tuesday/` lui parle | `b96b04d` | 03/11/2026 | GPL 3.0 (`LICENSE` au socle) |
 
@@ -530,6 +530,19 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   l'app, que GFS ne suit pas ; `js/extensions.js` ne change que des versions et des fichiers listés : `graphique` passe à 0.7 (8 fichiers, 161 838 octets) et `diapositives` à 0.52
   (28 fichiers, 460 780 octets), des poids que le manifeste de GFS reportera avec la demande (la page dit 417 et 137 au dernier relevé). La référence de GFS reste à `134d043` :
   l'app est servie en direct, elle ne sert qu'aux mesures et au repli.
+- Publipostage+ à `24f361e` (03/11, relève de fond : « rester à jour ») : huit commits de plus depuis `b2ae9aa` (54 fichiers, dont 19 de code, de style et la page de l'app ; le reste est la
+  galerie, ses essais et sa documentation). Sa page d'état n'a pas bougé (`GFS-ETAT.md` reste à `78c73e2` : 001 à 037, rien de neuf aux « Questions » ni aux « Demandes » ; ECharts attend toujours
+  « demande de Publipostage+ »). Ce que les huit commits changent, lu contre ce que GFS suit : (1) les **styles de titres partagés** (`3d298f7`, `9163002` : un style de titres
+  commun à tout le document Grist, à côté de celui du modèle) vivent dans la ligne réservée aux réglages du document de `Publipostage_Modeles`, une clé `headingStyles` de plus dans
+  le même JSON (`Templates.getDocumentSetting`, `updateDocumentSettings`) : ni table, ni colonne, ni clé de réglages de la vue de plus ; (2) la galerie « Présentation commerciale »
+  (`6f91b4d` : 39 diapositives, 12 graphiques lus dans 12 tables, thème avec décor) fait voyager `template.page.theme` et `textFormats` dans les clés de même nom de la colonne
+  `Margins` du modèle (colonne et clés déjà là) et un champ `requires` dans ses fichiers de pack (l'extension `graphique`) : tant que Grist Factory Suite ne l'a pas allumée, la
+  galerie grise ses deux boutons avec la raison et leur clic l'explique (`Extensions.explain`, le mécanisme qui existait) : « grisé, jamais caché » tenu ; (3) `graphique` passe à
+  0.8 (`2d49f82`, « Créer un graphique… » lot 7 : la cascade se modifie dans Word, PowerPoint et Excel ; `chart-office.js`, `docx-export.js`, `xlsx-export.js`) ; (4) Slides+ : des
+  repères au glissé et des groupes d'objets (`71c3046`, Ctrl+G), à la souris, sans le glisser-déposer HTML5. Mesuré sur le diff (hors essais et galerie) : aucune ligne ajoutée
+  n'appelle l'API de Grist, `fetch`, le stockage du navigateur, un message ni un `import()` ; la seule adresse de plus est l'espace de noms XML d'un fichier Office ; la CSP de
+  `index.html` ne change pas (que des `?v=` et le bloc de menu des titres). Le poids de `graphique` bougera (deux fichiers d'extension plus lourds) : il se recalcule avec la demande
+  d'ECharts. Référence de GFS inchangée (`134d043`). Rien à écrire.
 - Form+ à `cc21a27` (22/10, le porteur : « check ce qui est remonté des projets ») : trois commits de plus depuis `16701fe`. Son
   `GFS-ETAT.md` (`0614f73`, qui décrit `c249c4a`) dit les consignes 008 à 011 **faites** : le formulaire natif s'enregistre dans
   `FormPlus_Formulaires` (avec la fenêtre d'accord de l'app, une ligne par formulaire par `Definition.vsId`), les répondants, le lien
@@ -568,6 +581,15 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   doit-il pouvoir lire la petite table de son formulaire ?) est **tranchée le 03/11, « Petites tables déclarées seulement »** : un lien ne lit que les petites tables que le
   manifeste déclare (`permissions.lienPublic` : `FormPlus_Pub_*`), toute autre table de l'app est refusée sans fenêtre, `FormPlus_Formulaires` en tête ; codé et mesuré (contrats 3.4,
   point 5, et 11.9, point 4c) ; consigne **015**. « Questions pour GFS » : aucune. « Demandes à GFS » : Leaflet 1.9.4 (le type de question « Lieu sur carte »), qui attend « demande de Form+ ».
+- Form+ à `b54414a` (03/11, relève de fond : « rester à jour ») : un commit de plus depuis `fd5384a` (`b54414a`, 02/11 soir), **de la documentation seulement** (`docs/01-etude-comparative.md`,
+  `docs/03-roadmap-priorites.md` : aucune ligne de code, `GFS-ETAT.md` inchangé, au commit `f9dcb81`). Il y place les six idées du forum Grist relevées par le porteur le 02/11, avec leur
+  priorité : « dire où atterrit chaque question » (partiellement fait ; petit chantier de clarté), un lien public qui échoue si la table cible a une colonne Référence à double sens
+  (vigilance avant de publier), la cascade à plusieurs niveaux (V2, besoin confirmé par un sujet du forum de 21 messages), « un seul envoi par personne » (V2, **seulement en mode interne** : il étend la
+  résolution d'identité de l'app, `probeRespondentIdentity` et la table `FormPlus_Repondants`, `docs/09-mode-interne.md`), un formulaire pré-rempli sur une ligne existante (V2), deux langues pour le
+  répondant (V2) et le texte riche (V3) ; et, face à Intra Form, un atout : les pièces jointes. La page dit en toutes lettres : « aucune ne touche Grist Factory Suite, qui n'a rien demandé ici ».
+  Un fait pour GFS, lu au passage : Form+ (`FormPlus_Repondants`), Grist-BI (`BI_Dashboard_UserProbe`) et Tuesday (sa table d'administration) lisent chacun l'adresse e-mail de la personne par
+  leur propre table-sonde : trois tables pour un même besoin, ce que la carte « Donner aux apps l'adresse e-mail de la personne connectée ? » (03/11) mettrait en un seul endroit. La consigne
+  **015** (petites tables déclarées seulement) n'est pas encore lue de l'app à cette date (sa page est antérieure). Référence de GFS inchangée (`fd5384a`) : rien à avancer, rien à écrire.
 - Grist-BI à `586c7c4` (22/10) : deux commits de plus depuis `23647eb`, qui ne touchent que son `GFS-ETAT.md` (le code reste celui de
   `23647eb`). Il dit la 001 faite (écarts à la règle 4 : ses trois tables internes, `BI_Dashboard_Config`, `BI_Dashboard_Comments` et
   `BI_Dashboard_UserProbe`, se créent au démarrage sans l'accord de la personne ; à la règle 11 : pas de CSP, déjà au guide) et la 002
@@ -578,6 +600,13 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   **003 à faite** (`21b012b`) : aucun fichier caché sensible n'est exposé en plus (seuls `.nojekyll` et `.gitignore`, aucun fichier `_*`) et le run « pages build and
   deployment » est passé en succès sur ce commit. « Changements qui touchent GFS », « Questions pour GFS » et « Demandes à GFS » : aucun. Traité le 02/11 :
   l'`INDEX.md` (003 faite). GFS ne référence toujours pas Grist-BI : aucune référence à avancer.
+- Grist-BI à `521a8ac` (03/11, relève de fond : « rester à jour ») : quatre commits de plus depuis `b2772db`, deux demandes de fusion du 02/11 (32 : `c7b58e5`, 33 : `adfda62`), tous de
+  l'app seule : le **radar** gagne un mode « plusieurs colonnes numériques » (des compétences en colonnes, les axes sont les colonnes choisies ; demande du forum Grist) et la
+  comparaison d'un élève à la moyenne du groupe filtré (`js/charts.js`, `js/data.js`, `js/main.js`, `js/i18n.js`, `index.html`, plus `HYPOTHESES.md` et `TEST_PROTOCOL.md`). Lu contre ce
+  que GFS suit : la tuile garde des champs de plus (`radarAxisMode`, `'columns'` ou `'dimension'`, `radarAxes`, `radarEntityColumn`, `radarEntityValue`) dans le blob JSON de
+  `BI_Dashboard_Config` (la table et la colonne existent) ; mesuré sur le diff, aucune ligne ajoutée n'appelle l'API de Grist autrement qu'avant, ni `fetch`, ni stockage du navigateur, ni message, ni adresse de plus. Sa page
+  d'état n'a pas bougé (`GFS-ETAT.md` à `21b012b` : 001 faite, 002 lue, 003 faite ; « Changements », « Questions » et « Demandes » : aucun). GFS ne référence toujours pas Grist-BI :
+  aucune référence à avancer, rien à écrire.
 - Tuesday à `99b80e2` (02/11, le porteur colle le message du projet de Tuesday) : app de gestion de projets (tableau, kanban, chronologie,
   calendrier), dépôt `lombre33/grist-wisget-tuesday`, nom de travail (les documents de GFS écrivent « Thusday »). Trois commits en tout
   (`76eab24` le cahier 0.3, `c6a1ba3` le cœur sans interface, `99b80e2` l'interface, 187 essais) ; née sur le kit 0.2.0 (sous-module à

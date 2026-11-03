@@ -10,10 +10,11 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-NLd3DLY5LEl6x6NwZC8eIV83pBNwX6GIiuKvMqd/iFc='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-rBKQlNexsXBYLploZ48Pgz5CmMg+FdRSjPk5OVLp2d8='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=02775ac48c">
-<link rel="stylesheet" href="css/explorer.css?v=a436d6add2">
-<link rel="stylesheet" href="css/modules.css?v=d42ac21a84">
+<link rel="stylesheet" href="css/explorer.css?v=68e5c449d3">
+<link rel="stylesheet" href="css/modules.css?v=0564c83ab4">
+<link rel="stylesheet" href="kit/css/color-picker.css?v=c5a41d6681">
 <!-- Le routeur d'abord : il doit être enregistré avant que le script d'API de Grist n'affecte window.onmessage (contrats 1.2). -->
 <script src="js/router.js?v=20d0f9a823"></script>
 <!-- La carte d'importation, écrite par outils/versions.mjs (ne pas la modifier à la main) : chaque module se charge à son adresse versionnée, si bien que le cache de Pages
@@ -48,7 +49,7 @@
     "./js/filter.js": "./js/filter.js?v=2bc2328d12",
     "./js/frames.js": "./js/frames.js?v=554a438e75",
     "./js/gfs-files.js": "./js/gfs-files.js?v=faef71d816",
-    "./js/i18n.js": "./js/i18n.js?v=2c7dbcede6",
+    "./js/i18n.js": "./js/i18n.js?v=01ba797391",
     "./js/icons.js": "./js/icons.js?v=8247b55f71",
     "./js/import-file.js": "./js/import-file.js?v=591efc4dc9",
     "./js/kept-files.js": "./js/kept-files.js?v=256628c2ae",
@@ -57,8 +58,8 @@
     "./js/libraries.js": "./js/libraries.js?v=f8e30c6112",
     "./js/links.js": "./js/links.js?v=c4e4a9d7bc",
     "./js/manifest.js": "./js/manifest.js?v=a9675a8a95",
-    "./js/menu.js": "./js/menu.js?v=7d2c2f50bf",
-    "./js/modal.js": "./js/modal.js?v=06110f5b03",
+    "./js/menu.js": "./js/menu.js?v=2a1692bf7f",
+    "./js/modal.js": "./js/modal.js?v=d75684dfd9",
     "./js/modules-model.js": "./js/modules-model.js?v=f215489de1",
     "./js/modules-window.js": "./js/modules-window.js?v=c9dc57794d",
     "./js/oklch.js": "./js/oklch.js?v=b8905a34c8",
@@ -74,13 +75,27 @@
     "./js/state.js": "./js/state.js?v=289f010ea6",
     "./js/stored-choice.js": "./js/stored-choice.js?v=2f8b5015a1",
     "./js/theme-apply.js": "./js/theme-apply.js?v=46e6c3d199",
-    "./js/theme-window.js": "./js/theme-window.js?v=5fb24feb18",
+    "./js/theme-color.js": "./js/theme-color.js?v=3bc624594f",
+    "./js/theme-window.js": "./js/theme-window.js?v=548d867bb4",
     "./js/theme.js": "./js/theme.js?v=7cd9417fb6",
     "./js/transfer.js": "./js/transfer.js?v=5064996e86",
     "./js/view-options.js": "./js/view-options.js?v=f776be2727",
     "./js/work-control.js": "./js/work-control.js?v=7efc5aae9e",
     "./js/work-row.js": "./js/work-row.js?v=4003614ac1",
-    "./js/work-window.js": "./js/work-window.js?v=96926694af"
+    "./js/work-window.js": "./js/work-window.js?v=96926694af",
+    "./kit/js/color-dialog.js": "./kit/js/color-dialog.js?v=f02386594d",
+    "./kit/js/color-math.js": "./kit/js/color-math.js?v=e9650179cf",
+    "./kit/js/color-palette.js": "./kit/js/color-palette.js?v=963db900e8",
+    "./kit/js/color-strings.js": "./kit/js/color-strings.js?v=1bae4317a5",
+    "./kit/js/dialogs.js": "./kit/js/dialogs.js?v=e2e71809c1",
+    "./kit/js/dom.js": "./kit/js/dom.js?v=bb61d5ebe7",
+    "./kit/js/gfs-link.js": "./kit/js/gfs-link.js?v=4c2ecb59ef",
+    "./kit/js/host.js": "./kit/js/host.js?v=aca4fbd09b",
+    "./kit/js/i18n.js": "./kit/js/i18n.js?v=34aa7f2b67",
+    "./kit/js/layers.js": "./kit/js/layers.js?v=0a7ababe40",
+    "./kit/js/modal-base.js": "./kit/js/modal-base.js?v=6153d38e20",
+    "./kit/js/once.js": "./kit/js/once.js?v=11c957f00b",
+    "./kit/js/theme.js": "./kit/js/theme.js?v=55b9ccfb58"
   }
 }
 </script>

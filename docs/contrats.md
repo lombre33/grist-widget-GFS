@@ -1173,8 +1173,9 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    02/11 et 03/11). Le bouton « Thème » de l'explorateur ouvre une fenêtre : cinq ambiances (Grist Factory, celle d'origine, bleu et
    gris ; Pop ; Papier ; Brut ; Néon), chacune avec sa propre direction artistique (couleurs, arrondis, traits, ombres, polices,
    fond, filet), et, au choix, **la couleur de la personne**, qui remplace celle de l'ambiance sans toucher à sa forme (le sélecteur
-   de couleur des documents de Publipostage+, qui passe au kit ; tant qu'il n'est pas dans GFS, « La mienne » est grisée avec sa
-   raison). Le clair et le sombre restent ceux de Grist (le message `theme`, 4.2) : une ambiance a ses deux modes. Le choix est
+   de couleur des documents de Publipostage+, passé au kit en 0.5.0 : la palette sous le bouton « Choisir ma couleur », « Personnalisé… »
+   pour la fenêtre du carré, de la teinte et du code, « Celle de l'ambiance » pour rendre la couleur à l'ambiance ; si le kit de GFS ne se
+   charge pas, « La mienne » est grisée avec sa raison, jamais cachée). Le clair et le sombre restent ceux de Grist (le message `theme`, 4.2) : une ambiance a ses deux modes. Le choix est
    retenu dans le `localStorage` de GFS (clés `gfs.theme` : l'identifiant de l'ambiance, absente pour Grist Factory ; `gfs.couleur` :
    `#rrggbb`, absente tant que la personne n'a pas choisi la sienne), jamais dans le document ni dans une table, et n'écrit rien
    sans un geste de sa part ; toutes les sections de GFS d'une même page le suivent (événement `storage`) ; un navigateur qui refuse
@@ -1217,8 +1218,8 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    Le nom est `ambiance` et non `theme` pour ne pas se confondre avec le message `theme` de Grist, que GFS relaie tel quel.
    Une app seule n'a pas d'ambiance de GFS : `null`, elle garde ses couleurs (ou son propre choix de couleur, s'il en est).
    [M] **Mesuré le 03/11** dans un vrai Grist, à la vraie souris et au vrai clavier, en français et en anglais, en clair et en sombre :
-   `run-theme.mjs` et la sonde M (une app minimale qui fait ce que feront les apps avec leur consigne) passent leurs 38 vérifications
-   dans chacune des quatre combinaisons à 700 × 400, et dans une cinquième à 420 de large. Sans choix, la page ne porte aucun jeton de GFS
+   `run-theme.mjs` et la sonde M (une app minimale qui fait ce que feront les apps avec leur consigne) passent leurs 86 vérifications
+   (38 pour les ambiances, 42 pour la couleur libre et 6 pour un kit introuvable, plus bas) dans chacune des quatre combinaisons à 700 × 400, et dans une cinquième à 420 de large. Sans choix, la page ne porte aucun jeton de GFS
    (le seul réglage en ligne est le `color-scheme` que le script d'API de Grist pose lui-même, faits vérifiés 17) et garde son aspect
    d'origine ; chaque choix se pose tout de suite sur la page (de 36 à 47 jetons selon l'ambiance : dix-neuf de couleur, le reste de forme), se retient dans les deux
    clés, repart dans la même ambiance au rechargement, et « Revenir à Grist Factory » les retire toutes. La fenêtre tient dans le panneau
@@ -1228,6 +1229,21 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    l'ambiance dans son `contexte` (dix-neuf jetons par mode et la forme), puis un seul événement `ambiance` par geste, `null` au
    retour à l'origine, rien quand le choix redit ce qui vaut déjà, et son cadre n'est jamais reconstruit. Un navigateur qui refuse
    le stockage garde le choix pour la page, et la fenêtre le dit.
+   [M] **Mesuré le 03/11, la couleur libre** (même essai, mêmes combinaisons, sélecteur de couleur du kit 0.5.0, `4d7f556`, chargé à la
+   première ouverture de la fenêtre « Thème » depuis `prototype/kit/`) : « Choisir ma couleur » ouvre la palette (50 pastilles, 419 × 171 à
+   700 × 400) au-dessus du bouton, dans le panneau, sans défilement, sans cacher son bouton ; une pastille pose la couleur tout de suite (les
+   dix-neuf jetons de couleur de chaque mode et rien d'autre : la `forme` de Grist Factory est vide), la retient (`gfs.couleur`, en minuscules,
+   absente au retrait) et la fait suivre à l'app ouverte par **un seul** événement `ambiance` (`couleur` : la couleur choisie, `null` à son
+   retrait avec l'ambiance d'origine). Les flèches, Début et Fin (sans bouclage), Tab (qui sort de la palette en la refermant), Entrée, Échap
+   (qui ne ferme que la palette, ou que la fenêtre « Couleur personnalisée », jamais celle du dessous), le clic ailleurs et le clic sur le voile
+   se comportent comme ceux d'un menu. « Personnalisé… » ouvre « Couleur personnalisée » (480 × 290, sans défilement) par-dessus la fenêtre
+   « Thème », qui devient inerte ; Tab y tourne sans en sortir ; un code faux marque le champ et grise « Appliquer » ; « Annuler » et Échap
+   n'appliquent rien ; Entrée dans le code applique. « Celle de l'ambiance » rend la couleur, « La mienne » reprend la dernière couleur à soi
+   de la fenêtre ouverte (faute de l'avoir, elle ouvre la palette ; refermée sans choix, la fenêtre redit la vérité). Une couleur qui ne tient pas
+   le contraste est éclaircie ou assombrie (`ajustee`) et la fenêtre le dit ; sans stockage, la couleur vaut pour la page seulement. Chaque texte
+   de la palette et de la fenêtre garde 4,5:1 au moins. Un kit qui ne se charge pas (le sous-module n'est pas servi) grise « La mienne » et son
+   bouton, dit la raison dans la fenêtre et une seule fois dans la console, et les ambiances marchent : le navigateur garde l'échec d'un `import()`
+   jusqu'au rechargement de la page, la fenêtre le dit (« Recharge la page pour réessayer ») et, rechargée, la palette s'ouvre.
 
 ### 5.3 Le stockage du navigateur
 

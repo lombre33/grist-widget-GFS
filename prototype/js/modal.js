@@ -1,11 +1,14 @@
 // La base commune des fenêtres du widget (charte : une seule base, le titre et les boutons fixes) : la fenêtre passe au-dessus de ce qui est ouvert
 // (Layers), rend le fond inerte, garde Tab en elle, se ferme sur Échap ou sur un clic hors d'elle, et rend le clavier à l'élément qui l'avait,
 // retrouvé par sa clé `data-fk` quand il a été redessiné entre-temps. Les fenêtres à liste y prennent aussi leur clavier (`listKeys`).
+// Une fenêtre posée par-dessus une autre (la fenêtre « Couleur personnalisée » sur la fenêtre « Thème ») est seule à tenir le clavier : Échap ne ferme que celle du dessus. Un panneau flottant que la
+// fenêtre a ouvert (`data-popover`, js/menu.js `openPanel`) garde Échap et Tab quand le clavier est dedans.
 
 import { h } from './dom.js';
 import { Layers } from './layers.js';
 
-const FOCUSABLE = 'input:not([disabled]), button:not([disabled])';
+const FOCUSABLE = 'input:not([disabled]), button:not([disabled]), [tabindex="0"]';
+const stack = []; // les fenêtres ouvertes, la dernière est au-dessus
 
 // Les arrêts de Tab d'une fenêtre, d'après ses éléments au clavier : un groupe de boutons radio n'en a qu'un, le coché (sinon le premier), comme dans le navigateur ; les flèches font le reste.
 export function tabStops(nodes) {
@@ -48,18 +51,23 @@ export function openModal({ container, section, inertTargets, first, cancel = nu
   let resolve;
   const result = new Promise(settle => { resolve = settle; });
   let open = true;
+  const token = {};
+  stack.push(token);
   // Tab et Maj+Tab tournent dans la fenêtre ; un clavier tombé hors d'elle revient sur `first`.
   const onKey = event => {
+    if (stack[stack.length - 1] !== token) return;
+    if (doc.activeElement && doc.activeElement.closest('[data-popover]')) return;
     if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); done(cancel); return; }
     if (event.key !== 'Tab') return;
     event.preventDefault();
-    const nodes = tabStops([...section.querySelectorAll(FOCUSABLE)].filter(node => !node.closest('[hidden]')));
+    const nodes = tabStops([...section.querySelectorAll(FOCUSABLE)].filter(node => !node.closest('[hidden]') && node.tabIndex >= 0));
     const at = nodes.indexOf(doc.activeElement);
     (at < 0 ? first : nodes[(at + (event.shiftKey ? -1 : 1) + nodes.length) % nodes.length]).focus();
   };
   const done = value => {
     if (!open) return;
     open = false;
+    stack.splice(stack.indexOf(token), 1);
     doc.removeEventListener('keydown', onKey, true);
     root.remove();
     for (const [target, was] of inert) target.inert = was;

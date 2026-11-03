@@ -881,6 +881,13 @@ GFS pose l'ambiance choisie (js/theme-apply.js) sur `<html>` et lit le mode (cla
 Aucun nom ne ressemble à ceux de GFS : les jetons de la charte (`--bg`, `--accent`…) et de forme (`--radius-md`…) ne sont jamais écrits par Grist, et GFS ne touche ni à `color-scheme` ni aux attributs `data-grist-*`. Le mode que GFS suit est le
 `color-scheme` calculé de `<html>`, que `css/gfs.css` tire de `data-grist-appearance` ou, à défaut, du système (`prefers-color-scheme`). Mesuré dans un vrai Grist (`labo/run-theme.mjs`) : les deux modes se suivent.
 
+**Le sélecteur de couleur de « La mienne » (mesuré le 03/11, `labo/run-theme.mjs`, Chromium).** Le menu de couleur du kit (`createColorPalette`, 50 pastilles) mesure 419 × 171 à 700 × 400 et 289 × 171 à 420 de large ;
+sous le bouton « Choisir ma couleur », il ne resterait pas 171 px dans un panneau de 400 : le menu se pose au-dessus (la même règle que les autres menus de GFS, `place` de `js/menu.js`), dans le panneau, sans défilement.
+La fenêtre « Couleur personnalisée » (`ColorEditor`) mesure 480 × 290 à 700 × 400 et 408 × 282 à 420, sans défilement. Les fenêtres de GFS (`js/modal.js`) se posent maintenant l'une sur l'autre : la dernière ouverte est seule à
+tenir le clavier (Échap ne ferme que celle du dessus), le menu de couleur garde Échap et Tab quand le clavier est dedans (`data-popover`), et Tab depuis sa dernière étape, ou Maj+Tab depuis la première, le referme en rendant la
+touche au bouton : le navigateur la fait alors avancer d'un arrêt depuis le bouton. Le kit n'est chargé qu'à la première ouverture de la fenêtre « Thème » (`import()` de `kit/js/color-palette.js`, `color-dialog.js` et `i18n.js`) :
+s'il ne se charge pas, « La mienne » est grisée avec sa raison et le reste marche ; mesuré, le navigateur garde l'échec d'un `import()` jusqu'au rechargement de la page (GFS ne réessaie donc pas et ne le dit qu'une fois : la fenêtre dit de recharger). **Pas mesuré** : Firefox (le labo n'a que Chromium), et le service de GitHub Pages pour `prototype/kit/` (sous-module, comme `prototype/apps/`).
+
 ## 18. Les réglages de la vue : ce que le widget ne sait pas, et l'écriture directe (lu et mesuré le 03/11)
 
 Le choix du porteur du 03/11 (« GFS l'écrit dans la vue ») : le courtier écrit lui-même les réglages des apps dans la section de GFS, au lieu du brouillon de Grist (contrats 7.3, points 4 à 6).

@@ -139,3 +139,43 @@ export function openMenu(anchor, items, { host, align = 'left', label = '', side
   current = { menu, close };
   return current;
 }
+
+// Un panneau flottant sous un bouton : du contenu que l'appelant fournit (la palette de couleur du kit) au lieu d'une liste d'articles. Il se pose et passe au-dessus comme un menu, et se ferme comme lui :
+// un clic dehors (sur le voile de la fenêtre qui le porte, le clic ne ferme que le panneau, pas la fenêtre), Échap (le clavier revient au bouton) ; Tab parcourt ses arrêts, et sort du dernier (Maj+Tab du
+// premier) en refermant le panneau : la touche suit alors son cours depuis le bouton. Un seul menu ou panneau ouvert à la fois. `data-popover` dit à la fenêtre qui le porte (js/modal.js) de lui laisser
+// Échap et Tab.
+// opts : { host, align, side, label, onClose }. Rend { close, element }.
+export function openPanel(anchor, content, { host, align = 'left', side = 'below', label = '', onClose } = {}) {
+  closeMenu();
+  const container = host || document.body;
+  const panel = h('div', { class: 'menu menu-panel', role: 'dialog', 'aria-label': label || null, 'data-popover': '' }, content);
+  let closed = false;
+  const close = () => {
+    if (closed) return;
+    closed = true;
+    document.removeEventListener('pointerdown', outside, true);
+    panel.remove();
+    anchor.setAttribute('aria-expanded', 'false');
+    if (current && current.menu === panel) current = null;
+    if (onClose) onClose();
+  };
+  const outside = event => {
+    if (panel.contains(event.target) || anchor.contains(event.target)) return;
+    if (event.target === container) event.stopPropagation();
+    close();
+  };
+  panel.addEventListener('keydown', event => {
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(); anchor.focus({ preventScroll: true }); return; }
+    if (event.key !== 'Tab') return;
+    const stops = [...panel.querySelectorAll('button:not([disabled]), input:not([disabled]), [tabindex="0"]')].filter(node => node.tabIndex >= 0 && !node.closest('[hidden]'));
+    const at = stops.indexOf(document.activeElement);
+    if (event.shiftKey ? at <= 0 : at === stops.length - 1) { close(); anchor.focus({ preventScroll: true }); }
+  });
+  container.append(panel);
+  Layers.raise(panel, '--z-menu');
+  place(panel, anchor, container, align, side);
+  anchor.setAttribute('aria-expanded', 'true');
+  document.addEventListener('pointerdown', outside, true);
+  current = { menu: panel, close };
+  return { close, element: panel };
+}

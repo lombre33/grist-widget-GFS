@@ -9,7 +9,12 @@
 //   7. les apps suivent : la sonde M (labo/sondes/m-ambiance/) reçoit l'ambiance dans son contexte, puis l'événement `ambiance` à chaque changement (`null` au retour à l'origine), sans que son cadre
 //      soit rechargé ;
 //   8. « Revenir à Grist Factory » : la page retrouve l'aspect d'origine, les deux clés disparaissent ;
-//   9. un navigateur qui refuse de retenir : le choix vaut pour la page, la fenêtre le dit.
+//   9. la couleur libre, avec le sélecteur de couleur des documents (celui du kit, sous-module `kit/`) : « Choisir ma couleur » ouvre la palette sous le bouton (souris et clavier : flèches, Début, Fin,
+//      Tab, Entrée, Échap, clic dehors, clic sur le voile), une pastille pose la couleur tout de suite (page, clé `gfs.couleur`, bouton, apps), « Personnalisé… » ouvre la fenêtre « Couleur personnalisée »
+//      par-dessus la fenêtre « Thème » (Échap ne ferme que celle du dessus, un code faux grise « Appliquer », « Appliquer » pose la couleur), « Celle de l'ambiance » rend la couleur à l'ambiance,
+//      « La mienne » reprend la dernière couleur à soi (ou ouvre la palette faute d'en avoir), tout dans 700 × 400, contraste de 4,5:1 compris ;
+//   10. un navigateur qui refuse de retenir : le choix (l'ambiance et la couleur) vaut pour la page, la fenêtre le dit ;
+//   11. un kit qui ne se charge pas (le sous-module n'est pas servi) : « La mienne » et son bouton sont grisés, la raison est dite dans la fenêtre, un seul avertissement de GFS, les ambiances marchent.
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check } from './lab-common.mjs';
@@ -20,9 +25,13 @@ const panelWidth = Number(process.env.LAB_W || 700);
 const run = `theme-${lang}-${scheme}${panelWidth === 700 ? '' : `-${panelWidth}`}`;
 const WORDS = {
   fr: { button: 'Thème', title: 'Thème', reset: 'Revenir à Grist Factory', close: 'Fermer', names: ['Grist Factory', 'Pop', 'Papier', 'Brut', 'Néon'], saved: 'S’applique tout de suite, reste sur ce navigateur.',
-    notKept: 'Ce choix vaut pour cette page seulement : ton navigateur refuse de le garder.', check: /^Couleurs calculées : contraste de \d,\d:1 au moins/, origin: /^Ambiance d’origine : contraste de \d,\d:1 au moins/ },
+    notKept: 'Ce choix vaut pour cette page seulement : ton navigateur refuse de le garder.', check: /^Couleurs calculées : contraste de \d,\d:1 au moins/, origin: /^Ambiance d’origine : contraste de \d,\d:1 au moins/,
+    own: 'La mienne', none: 'Celle de l’ambiance', pick: 'Choisir ma couleur', customBtn: 'Personnalisé…', custom: 'Couleur personnalisée', apply: 'Appliquer', cancel: 'Annuler', palette: 'Palette de couleurs',
+    missing: 'Le sélecteur de couleur ne s’est pas chargé : GFS garde la couleur de l’ambiance. Recharge la page pour réessayer.' },
   en: { button: 'Theme', title: 'Theme', reset: 'Back to Grist Factory', close: 'Close', names: ['Grist Factory', 'Pop', 'Paper', 'Raw', 'Neon'], saved: 'Applies right away, stays on this browser.',
-    notKept: 'This choice only holds for this page: your browser refuses to keep it.', check: /^Computed colors: contrast of at least \d\.\d:1/, origin: /^Original look: contrast of at least \d\.\d:1/ },
+    notKept: 'This choice only holds for this page: your browser refuses to keep it.', check: /^Computed colors: contrast of at least \d\.\d:1/, origin: /^Original look: contrast of at least \d\.\d:1/,
+    own: 'My own', none: 'The look’s color', pick: 'Choose my color', customBtn: 'Custom…', custom: 'Custom color', apply: 'Apply', cancel: 'Cancel', palette: 'Color palette',
+    missing: 'The color picker did not load: GFS keeps the look’s color. Reload the page to try again.' },
 };
 const words = WORDS[lang];
 const IDS = ['defaut', 'pop', 'papier', 'brut', 'neon'];
@@ -82,6 +91,62 @@ const windowState = () => frame.evaluate(() => {
 const openWindow = async () => { await button().click(); await frame.locator('.th-win').waitFor(); };
 const closeWindow = async () => { await frame.locator('.th-win [data-fk="close"]').click(); await frame.locator('.th-win').waitFor({ state: 'detached' }); };
 const tile = id => frame.locator('.amb', { has: frame.locator(`input[value="${id}"]`) });
+const pickButton = () => frame.locator('.th-win [data-fk="col:pick"]');
+const colorLabel = text => frame.locator('.th-win label.rd', { hasText: text });
+const openPalette = async () => { await pickButton().click(); await frame.locator('.menu-panel').waitFor(); };
+const rgb = hex => { const n = parseInt(hex.slice(1), 16); return `rgb(${n >> 16}, ${(n >> 8) & 255}, ${n & 255})`; };
+const inside = (box, view) => box.x >= 0 && box.y >= 0 && box.x + box.w <= view.w && box.y + box.h <= view.h;
+// Le groupe « Couleur » de la fenêtre « Thème » : quel choix est coché, ce que montre le bouton, où est le clavier.
+const colorBox = () => frame.evaluate(() => {
+  const win = document.querySelector('.th-win');
+  if (!win) return null;
+  const pick = win.querySelector('[data-fk="col:pick"]');
+  const active = document.activeElement;
+  return {
+    own: win.querySelector('input[name="col"][value="own"]').checked, amb: win.querySelector('input[name="col"][value="amb"]').checked, pick: pick.textContent.trim(), expanded: pick.getAttribute('aria-expanded'),
+    swatch: getComputedStyle(win.querySelector('.sw')).backgroundColor, focus: active ? (active.dataset.fk || active.className || active.tagName) : null, panel: Boolean(document.querySelector('.menu-panel')),
+    why: [...win.querySelectorAll('.th-adj')].filter(node => !node.hidden).map(node => node.textContent.trim()),
+  };
+});
+// La palette de couleur (le panneau sous le bouton), telle qu'on la voit : sa place, ses pastilles, où est le clavier.
+const panelState = () => frame.evaluate(() => {
+  const panel = document.querySelector('.menu-panel');
+  if (!panel) return null;
+  const box = panel.getBoundingClientRect();
+  const pick = document.querySelector('.th-win [data-fk="col:pick"]').getBoundingClientRect();
+  const active = document.activeElement;
+  const mid = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+  const where = node => {
+    if (!node) return null;
+    if (node.classList.contains('cp-swatch')) return `pastille ${node.dataset.color}`;
+    return node.classList.contains('cp-custom') ? 'perso' : (node.classList.contains('cp-none') ? 'ambiance' : (node.dataset.fk || node.className || node.tagName));
+  };
+  const round = rect => ({ x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height) });
+  return {
+    box: round(box), anchor: round(pick), viewport: { w: innerWidth, h: innerHeight }, scrolls: panel.scrollHeight > panel.clientHeight + 1, onTop: Boolean(mid && panel.contains(mid)),
+    swatches: panel.querySelectorAll('.cp-grid .cp-swatch').length, expanded: document.querySelector('.th-win [data-fk="col:pick"]').getAttribute('aria-expanded'), in: panel.contains(active), focus: where(active),
+    marked: [...panel.querySelectorAll('.cp-swatch.is-active')].map(node => node.dataset.color), custom: panel.querySelector('.cp-custom').classList.contains('is-active'), none: panel.querySelector('.cp-none').classList.contains('is-active'),
+    words: { custom: panel.querySelector('.cp-custom').textContent.trim(), none: panel.querySelector('.cp-none').textContent.trim(), group: panel.querySelector('.cp-grid').getAttribute('aria-label') },
+    winOpen: Boolean(document.querySelector('.th-win')),
+  };
+});
+// La fenêtre « Couleur personnalisée » (posée par-dessus la fenêtre « Thème »).
+const editorState = () => frame.evaluate(() => {
+  const win = document.querySelector('.th-edit');
+  if (!win) return null;
+  const box = win.getBoundingClientRect();
+  const body = win.querySelector('.mod-body');
+  const active = document.activeElement;
+  const hex = win.querySelector('.cp-hex');
+  const apply = win.querySelector('[data-fk="tc-apply"]');
+  const theme = document.querySelector('.th-win');
+  const mid = document.elementFromPoint(box.x + box.width / 2, box.y + 14);
+  return {
+    box: { x: Math.round(box.x), y: Math.round(box.y), w: Math.round(box.width), h: Math.round(box.height) }, viewport: { w: innerWidth, h: innerHeight }, scrolls: body.scrollHeight > body.clientHeight + 1, onTop: Boolean(mid && win.contains(mid)),
+    in: win.contains(active), onHex: active === hex, title: win.querySelector('h2').textContent, hex: hex.value, invalid: hex.getAttribute('aria-invalid'), apply: apply.textContent.trim(), applyOff: apply.disabled,
+    cancel: win.querySelector('[data-fk="tc-cancel"]').textContent.trim(), themeOpen: Boolean(theme), themeInert: theme ? theme.parentNode.inert : null, explorerInert: document.querySelector('.ex').inert,
+  };
+});
 
 // Le contraste de chaque texte à l'écran, mesuré sur les couleurs AFFICHÉES : la couleur du texte, posée sur la pile des fonds de ses ancêtres (le canvas fait le mélange, y compris pour les `color-mix`).
 const audit = scope => frame.evaluate(selector => {
@@ -156,8 +221,8 @@ check('le clavier est dans la fenêtre, sur la vignette choisie', win.inside && 
 check('le fond est inerte', win.inertExplorer === true && win.inertFrames === true);
 check('la fenêtre tient dans le panneau' + (panelWidth >= 520 ? ', sans défilement du corps' : ' (étroit : le corps défile, titre et pied restent en place)'), win.box.x >= 0 && win.box.y >= 0 && win.box.x + win.box.w <= win.viewport.w && win.box.y + win.box.h <= win.viewport.h && (panelWidth < 520 || !win.scrolls), { box: win.box, viewport: win.viewport, scrolls: win.scrolls });
 check('« Revenir à Grist Factory » est grisé quand rien n\'est choisi, la note le dit', await frame.locator('.th-win [data-fk="reset"]').getAttribute('aria-disabled') === 'true' && win.note === words.saved, win.note);
-const later = await frame.evaluate(() => ({ own: document.querySelector('input[value="own"]').disabled, pick: document.querySelector('[data-fk="col:pick"]').getAttribute('aria-disabled'), why: [...document.querySelectorAll('.th-adj')].map(p => p.textContent.trim()).filter(Boolean) }));
-check('« La mienne » est grisée, avec sa raison dite dans la fenêtre', later.own === true && later.pick === 'true' && later.why.length === 1, later);
+const offered = await frame.evaluate(() => ({ own: document.querySelector('input[name="col"][value="own"]').disabled, pick: document.querySelector('[data-fk="col:pick"]').getAttribute('aria-disabled'), why: [...document.querySelectorAll('.th-adj')].filter(p => !p.hidden).map(p => p.textContent.trim()).filter(Boolean) }));
+check('« La mienne » est offerte (le sélecteur de couleur du kit est là), son bouton aussi, aucune raison n\'est dite dans la fenêtre', offered.own === false && offered.pick === 'false' && offered.why.length === 0, offered);
 await shot('2-fenetre-origine');
 
 // ---------- 3. un choix à la souris ----------
@@ -274,9 +339,228 @@ await closeWindow();
 await frame.locator('.ex-foot .btn', { hasText: new RegExp(`^${words.close}$`) }).click();
 await frame.locator('#floaters').waitFor({ state: 'visible' });
 
-// ---------- 9. un navigateur qui refuse de retenir ----------
+// ---------- 9. la couleur libre : le sélecteur de couleur des documents (celui du kit) ----------
 await frame.locator('#floater-files').click();
 await frame.locator('.ex').waitFor({ state: 'visible' });
+await openWindow();
+const OWN = '#7a2fb5';
+const accentBefore = (await page_()).accent;
+const eventsBefore = (await probe(app)).evenements.length;
+const lastEvent = async () => { const list = (await probe(app)).evenements; return list[list.length - 1]; };
+
+// la palette, à la souris
+await pickButton().click();
+await frame.locator('.menu-panel').waitFor();
+let pal = await panelState();
+say('la palette :', pal);
+const colors = await frame.evaluate(() => [...document.querySelectorAll('.menu-panel .cp-grid .cp-swatch')].map(node => node.dataset.color));
+check('« Choisir ma couleur » ouvre la palette des documents sous le bouton : cinquante pastilles, le bouton annonce « ouvert », le clavier est sur la première pastille', pal.swatches === 50 && colors.length === 50 && pal.expanded === 'true' && pal.in && pal.focus === `pastille ${colors[0]}`, { pal, colors: colors.length });
+check('elle est dans le panneau, sans défilement, par-dessus la fenêtre, et ne cache pas son bouton ; la fenêtre « Thème » reste ouverte', inside(pal.box, pal.viewport) && !pal.scrolls && pal.onTop && (pal.box.y >= pal.anchor.y + pal.anchor.h - 1 || pal.box.y + pal.box.h <= pal.anchor.y + 1) && pal.winOpen, pal);
+check('elle parle la langue de GFS, et « Celle de l\'ambiance » y est marquée (aucune couleur à soi)', pal.words.custom === words.customBtn && pal.words.none === words.none && pal.words.group === words.palette && pal.none && !pal.custom && pal.marked.length === 0, pal);
+const paletteAudit = await audit('.menu-panel');
+check('les textes de la palette gardent 4,5:1 au moins', paletteAudit.seen >= 2 && paletteAudit.failures.length === 0, paletteAudit);
+await shot('9-palette');
+
+// une pastille, à la souris
+const picked = colors[17];
+await frame.locator('.menu-panel .cp-swatch').nth(17).click();
+await page.waitForTimeout(300);
+now = await page_();
+win = await windowState();
+let box = await colorBox();
+say('après la pastille :', { picked, now, box });
+check('un clic sur une pastille pose la couleur : la palette se ferme, le clavier revient au bouton, « La mienne » est cochée, le bouton montre le code et la couleur', box.own && !box.amb && !box.panel && box.expanded === 'false' && box.focus === 'col:pick' && box.pick === picked.toUpperCase() && box.swatch === rgb(picked), box);
+check('elle est posée sur la page tout de suite (les dix-neuf jetons de couleur, aucun de forme) et retenue (`gfs.couleur`) ; l\'ambiance reste celle d\'origine', now.inline === 19 && now.accent !== accentBefore && (await stored()).couleur === picked && (await stored()).theme === null, { now, stored: await stored(), accentBefore });
+check('la fenêtre dit la mesure du contraste de ces couleurs-là', words.check.test(win.check), win.check);
+let event = await lastEvent();
+check('l\'app ouverte reçoit la couleur par l\'événement `ambiance` (`couleur`), une seule fois, dans son cadre d\'avant', (await probe(app)).evenements.length === eventsBefore + 1 && event && event.id === 'defaut' && event.couleur === picked && !app.isDetached(), event);
+await shot('9-couleur-choisie');
+
+// se rouvrir, se refermer
+await openPalette();
+pal = await panelState();
+check('rouverte, la couleur choisie est marquée et le clavier est sur elle', pal.marked.join() === picked && pal.focus === `pastille ${picked}` && !pal.none && !pal.custom, pal);
+await pickButton().click();
+await frame.locator('.menu-panel').waitFor({ state: 'detached' });
+box = await colorBox();
+check('un second clic sur le bouton referme la palette (la fenêtre reste, la couleur aussi)', box && !box.panel && box.expanded === 'false' && box.pick === picked.toUpperCase(), box);
+await pickButton().focus();
+await page.keyboard.press('Enter');
+await frame.locator('.menu-panel').waitFor();
+const at = async () => (await panelState()).focus;
+check('Entrée sur le bouton ouvre la palette, le clavier est sur la pastille marquée', (await at()) === `pastille ${picked}`, await at());
+await page.keyboard.press('ArrowRight');
+const right = await at();
+await page.keyboard.press('ArrowDown');
+const down = await at();
+await page.keyboard.press('Home');
+const home = await at();
+await page.keyboard.press('End');
+const end = await at();
+await page.keyboard.press('ArrowRight');
+const noWrap = await at();
+check('les flèches vont d\'une pastille à l\'autre (droite : la suivante, bas : la ligne d\'après), Début et Fin vont aux bouts, sans bouclage', right === `pastille ${colors[18]}` && down === `pastille ${colors[28]}` && home === `pastille ${colors[0]}` && end === `pastille ${colors[49]}` && noWrap === end, { right, down, home, end, noWrap });
+await page.keyboard.press('Tab');
+const tab1 = await at();
+await page.keyboard.press('Tab');
+const tab2 = await at();
+await page.keyboard.press('Tab');
+await frame.locator('.menu-panel').waitFor({ state: 'detached' });
+const tab3 = (await windowState()).focus;
+check('Tab passe par « Personnalisé… » puis « Celle de l\'ambiance », puis sort de la palette en la refermant : le clavier va au bouton suivant de la fenêtre', tab1 === 'perso' && tab2 === 'ambiance' && tab3 === 'reset', { tab1, tab2, tab3 });
+await openPalette();
+await page.keyboard.press('Shift+Tab');
+await frame.locator('.menu-panel').waitFor({ state: 'detached' });
+const back = (await windowState()).focus;
+check('Maj+Tab depuis la première pastille sort aussi de la palette, vers le choix de couleur qui précède le bouton', back === 'col:own', back);
+await openPalette();
+await page.keyboard.press('Escape');
+await frame.locator('.menu-panel').waitFor({ state: 'detached' });
+box = await colorBox();
+check('Échap ne ferme que la palette : la fenêtre « Thème » reste ouverte, le clavier revient au bouton, la couleur n\'a pas changé', box && box.focus === 'col:pick' && box.pick === picked.toUpperCase() && (await stored()).couleur === picked, box);
+await openPalette();
+await frame.locator('.th-win .mod-head h2').click();
+await frame.locator('.menu-panel').waitFor({ state: 'detached' });
+check('un clic ailleurs dans la fenêtre referme la palette seule', Boolean(await windowState()));
+win = await windowState();
+const frameBox = await (await frame.frameElement()).boundingBox();
+const aside = win.box.x >= 4 ? { x: 2, y: Math.round(win.viewport.h / 2) } : (win.box.y >= 4 ? { x: Math.round(win.viewport.w / 2), y: 2 } : null);
+if (aside) {
+  await openPalette();
+  await page.mouse.click(frameBox.x + aside.x, frameBox.y + aside.y);
+  await frame.locator('.menu-panel').waitFor({ state: 'detached' });
+  check('un clic sur le voile, hors de la fenêtre, referme la palette seule : la fenêtre « Thème » reste ouverte', Boolean(await windowState()));
+} else say('(la fenêtre occupe tout le panneau : pas de voile à cliquer)');
+
+// « Personnalisé… » : la fenêtre du carré, de la teinte et du code
+await openPalette();
+await frame.locator('.menu-panel .cp-custom').click();
+await frame.locator('.th-edit').waitFor();
+let ed = await editorState();
+say('la fenêtre de la couleur :', ed);
+check('« Personnalisé… » ouvre « Couleur personnalisée » par-dessus la fenêtre « Thème » (titre et boutons dans la langue) et ferme la palette', ed.title === words.custom && ed.apply === words.apply && ed.cancel === words.cancel && ed.onTop && !(await panelState()), ed);
+check('le clavier est dans le champ du code, qui porte la couleur choisie ; la fenêtre « Thème » est inerte derrière', ed.in && ed.onHex && ed.hex.toLowerCase() === picked && ed.themeOpen && ed.themeInert === true && ed.explorerInert === true, ed);
+check('elle tient dans le panneau' + (panelWidth >= 520 ? ', sans défilement du corps' : ' (étroit : le corps défile)'), inside(ed.box, ed.viewport) && (panelWidth < 520 || !ed.scrolls), ed);
+const editAudit = await audit('.th-edit');
+check('ses textes gardent 4,5:1 au moins', editAudit.seen > 6 && editAudit.failures.length === 0, editAudit);
+await shot('9-couleur-perso');
+const cycle = [];
+for (let i = 0; i < 14; i++) { await page.keyboard.press('Tab'); cycle.push((await editorState()).in); }
+for (let i = 0; i < 4; i++) { await page.keyboard.press('Shift+Tab'); cycle.push((await editorState()).in); }
+check('Tab et Maj+Tab tournent dans la fenêtre de la couleur, sans jamais en sortir', cycle.every(Boolean), cycle);
+await frame.locator('.th-edit .cp-hex').click();
+await page.keyboard.press('Control+A');
+await page.keyboard.type('#12');
+ed = await editorState();
+check('un code faux est refusé : le champ est marqué, « Appliquer » est grisé', ed.invalid === 'true' && ed.applyOff, ed);
+await page.keyboard.press('Control+A');
+await page.keyboard.type(OWN);
+ed = await editorState();
+check('un code valable dégrise « Appliquer »', ed.invalid === null && !ed.applyOff, ed);
+await page.keyboard.press('Escape');
+await frame.locator('.th-edit').waitFor({ state: 'detached' });
+box = await colorBox();
+check('Échap ne ferme que la fenêtre de la couleur et n\'applique rien : la fenêtre « Thème » reste ouverte et libre, la couleur n\'a pas changé, le clavier revient au bouton', box && box.focus === 'col:pick' && box.pick === picked.toUpperCase() && (await stored()).couleur === picked && await frame.evaluate(() => !document.querySelector('.th-win').parentNode.inert), box);
+await openPalette();
+await frame.locator('.menu-panel .cp-custom').click();
+await frame.locator('.th-edit').waitFor();
+await frame.locator('.th-edit .cp-hex').click();
+await page.keyboard.press('Control+A');
+await page.keyboard.type(OWN);
+await frame.locator('.th-edit [data-fk="tc-apply"]').click();
+await frame.locator('.th-edit').waitFor({ state: 'detached' });
+await page.waitForTimeout(300);
+box = await colorBox();
+now = await page_();
+check('« Appliquer » pose la couleur composée à la main : retenue, posée, montrée sur le bouton, le clavier revient au bouton', box.own && box.pick === OWN.toUpperCase() && box.swatch === rgb(OWN) && box.focus === 'col:pick' && (await stored()).couleur === OWN && now.accent !== accentBefore, { box, stored: await stored(), now });
+event = await lastEvent();
+check('l\'app reçoit cette couleur aussi', event && event.couleur === OWN && (await probe(app)).evenements.length === eventsBefore + 2, event);
+
+// « Celle de l'ambiance » rend la couleur ; « La mienne » la reprend
+await openPalette();
+pal = await panelState();
+check('une couleur composée à la main n\'est dans aucune pastille : « Personnalisé… » est marqué', pal.custom && pal.marked.length === 0 && !pal.none, pal);
+await frame.locator('.menu-panel .cp-none').click();
+await page.waitForTimeout(300);
+box = await colorBox();
+now = await page_();
+check('« Celle de l\'ambiance » rend la couleur : la palette se ferme, la page n\'a plus rien de posé, la clé a disparu, le bouton redit son nom', box.amb && !box.own && !box.panel && box.pick === words.pick && now.ambiance === null && now.inline === 0 && (await stored()).couleur === null, { box, now, stored: await stored() });
+event = await lastEvent();
+check('l\'app reçoit `null` (ni ambiance ni couleur)', event === null && (await probe(app)).evenements.length === eventsBefore + 3, event);
+await colorLabel(words.own).click();
+await page.waitForTimeout(300);
+box = await colorBox();
+check('« La mienne » reprend la dernière couleur à soi, sans rouvrir la palette', box.own && box.pick === OWN.toUpperCase() && !box.panel && (await stored()).couleur === OWN, { box, stored: await stored() });
+event = await lastEvent();
+check('l\'app la reçoit de nouveau', event && event.couleur === OWN, event);
+await colorLabel(words.none).click();
+await page.waitForTimeout(250);
+check('« Celle de l\'ambiance », choisie à la souris sur son choix, rend aussi la couleur', (await colorBox()).amb && (await stored()).couleur === null);
+
+// sans couleur gardée, « La mienne » ouvre la palette ; refermée sans rien choisir, la fenêtre redit la vérité
+await closeWindow();
+await openWindow();
+await colorLabel(words.own).click();
+await frame.locator('.menu-panel').waitFor();
+box = await colorBox();
+pal = await panelState();
+check('faute de couleur à soi gardée, « La mienne » ouvre la palette (la case est cochée le temps du choix)', box.own && box.panel && pal.in && pal.none, { box, pal });
+await page.keyboard.press('Escape');
+await frame.locator('.menu-panel').waitFor({ state: 'detached' });
+box = await colorBox();
+check('refermée sans rien choisir, la fenêtre redit la vérité : « Celle de l\'ambiance » est cochée, rien n\'est retenu', box.amb && !box.own && box.focus === 'col:pick' && (await stored()).couleur === null, { box, stored: await stored() });
+
+// tout au clavier : une pastille, puis une couleur composée, puis « Celle de l'ambiance »
+await page.keyboard.press('Enter');
+await frame.locator('.menu-panel').waitFor();
+await page.keyboard.press('ArrowRight');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(300);
+box = await colorBox();
+check('au clavier : Entrée ouvre la palette, une flèche et Entrée posent la pastille voisine ; le clavier revient au bouton', box.own && !box.panel && box.focus === 'col:pick' && (await stored()).couleur === colors[1], { box, stored: await stored() });
+await page.keyboard.press('Enter');
+await frame.locator('.menu-panel').waitFor();
+await page.keyboard.press('Tab');
+await page.keyboard.press('Enter');
+await frame.locator('.th-edit').waitFor();
+await page.keyboard.press('Control+A');
+await page.keyboard.type('#0a7d5c');
+await page.keyboard.press('Enter');
+await frame.locator('.th-edit').waitFor({ state: 'detached' });
+await page.waitForTimeout(250);
+box = await colorBox();
+check('au clavier : « Personnalisé… » puis un code et Entrée posent la couleur composée', box.own && box.pick === '#0A7D5C' && box.focus === 'col:pick' && (await stored()).couleur === '#0a7d5c', { box, stored: await stored() });
+await page.keyboard.press('Enter');
+await frame.locator('.menu-panel').waitFor();
+await page.keyboard.press('Tab');
+await page.keyboard.press('Tab');
+await page.keyboard.press('Enter');
+await page.waitForTimeout(250);
+box = await colorBox();
+check('au clavier : « Celle de l\'ambiance » rend la couleur', box.amb && !box.panel && (await stored()).couleur === null, { box, stored: await stored() });
+
+// retenue sur le navigateur
+await openPalette();
+await frame.locator('.menu-panel .cp-swatch').nth(40).click();
+await page.waitForTimeout(250);
+await closeWindow();
+await reload();
+now = await page_();
+check('GFS rechargé repart avec la couleur choisie, posée dès le départ', now.inline === 19 && now.accent !== accentBefore && (await stored()).couleur === colors[40], { now, stored: await stored() });
+await openWindow();
+box = await colorBox();
+check('la fenêtre rouverte montre la couleur retenue', box.own && box.pick === colors[40].toUpperCase() && box.swatch === rgb(colors[40]), box);
+await frame.locator('.th-win [data-fk="reset"]').click();
+await page.waitForTimeout(300);
+now = await page_();
+check('« Revenir à Grist Factory » rend aussi la couleur : rien n\'est posé, les deux clés ont disparu', now.ambiance === null && now.inline === 0 && JSON.stringify(await stored()) === JSON.stringify({ theme: null, couleur: null }), { now, stored: await stored() });
+await closeWindow();
+
+// ---------- 10. un navigateur qui refuse de retenir ----------
+if (!(await frame.locator('.ex').isVisible())) { // GFS rechargé s'ouvre sur l'explorateur
+  await frame.locator('#floater-files').click();
+  await frame.locator('.ex').waitFor({ state: 'visible' });
+}
 await frame.evaluate(() => { Storage.prototype.setItem = function () { throw new DOMException('quota', 'QuotaExceededError'); }; });
 await openWindow();
 await tile('papier').click();
@@ -284,7 +568,53 @@ await page.waitForTimeout(300);
 win = await windowState();
 now = await page_();
 check('sans stockage : le choix vaut pour la page, la fenêtre le dit', now.ambiance === 'papier' && win.note === words.notKept, { ambiance: now.ambiance, note: win.note });
-await shot('9-sans-stockage');
+await openPalette();
+await frame.locator('.menu-panel .cp-swatch').nth(5).click();
+await page.waitForTimeout(300);
+win = await windowState();
+now = await page_();
+check('sans stockage, la couleur vaut aussi pour la page (rien n\'est retenu), et la fenêtre le dit', (await colorBox()).own && now.ambiance === 'papier' && now.inline > 20 && (await stored()).couleur === null && win.note === words.notKept, { now, stored: await stored(), note: win.note });
+await shot('10-sans-stockage');
+
+// ---------- 11. un kit qui ne se charge pas ----------
+const expected = warnings.length;
+await page.route(/\/prototype\/kit\/js\/color-palette\.js/, route => route.fulfill({ status: 404, body: 'absent' }));
+await reload();
+if (!(await frame.locator('.ex').isVisible())) {
+  await frame.locator('#floater-files').click();
+  await frame.locator('.ex').waitFor({ state: 'visible' });
+}
+await openWindow();
+await page.waitForTimeout(800);
+box = await colorBox();
+const off = await frame.evaluate(() => ({ own: document.querySelector('input[name="col"][value="own"]').disabled, pick: document.querySelector('[data-fk="col:pick"]').getAttribute('aria-disabled') }));
+check('le kit ne se charge pas : « La mienne » et son bouton sont grisés, la raison est dite dans la fenêtre', off.own === true && off.pick === 'true' && box.why.length === 1 && box.why[0] === words.missing, { off, why: box.why });
+await pickButton().click({ force: true }); // grisé n'est pas désactivé : un clic arrive jusqu'à GFS, qui n'ouvre rien
+await page.waitForTimeout(300);
+check('un clic sur le bouton grisé n\'ouvre rien', !(await colorBox()).panel);
+await tile('pop').click();
+await page.waitForTimeout(300);
+check('le reste marche : les ambiances se choisissent et se posent', (await page_()).ambiance === 'pop' && (await windowState()).checked === 'pop');
+await shot('11-kit-absent');
+const told = warnings.slice(expected);
+check('GFS le dit par un seul avertissement', told.length === 1 && /sélecteur de couleur du kit/.test(told[0]), told);
+warnings.length = expected;
+await closeWindow();
+await openWindow();
+await page.waitForTimeout(800);
+box = await colorBox();
+check('réouverte, la fenêtre le dit encore (le navigateur garde l\'échec jusqu\'au rechargement) et GFS ne le redit pas', box.why.length === 1 && box.why[0] === words.missing && warnings.length === expected, { why: box.why, warnings: warnings.slice(expected) });
+await page.unroute(/\/prototype\/kit\/js\/color-palette\.js/);
+await reload();
+if (!(await frame.locator('.ex').isVisible())) {
+  await frame.locator('#floater-files').click();
+  await frame.locator('.ex').waitFor({ state: 'visible' });
+}
+await openWindow();
+await pickButton().click();
+await frame.locator('.menu-panel').waitFor();
+box = await colorBox();
+check('après le rechargement, le kit est servi de nouveau : « La mienne » est offerte et la palette s\'ouvre', box.panel && box.why.length === 0, box);
 await lab.browser.close();
 say('avertissements GFS :', warnings);
 check('aucun avertissement ni erreur de GFS', warnings.length === 0, warnings);

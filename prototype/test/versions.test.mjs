@@ -2,13 +2,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { version, cspHash, importMapText, applyVersions, staleItems, readFiles, readSideFiles, applySideVersions, staleSideItems, ROOT } from '../outils/versions.mjs';
 
 const PAGE = `<head>
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-ancienne'; style-src 'self'">
 <link rel="stylesheet" href="css/a.css?v=2">
+<link rel="stylesheet" href="kit/css/k.css?v=2">
 <script src="js/router.js"></script>
 <script type="importmap"></script>
 <script type="module" src="js/main.js?v=3"></script>
@@ -16,6 +18,8 @@ const PAGE = `<head>
 
 const files = () => ({
   'css/a.css': Buffer.from('a{}'),
+  'kit/css/k.css': Buffer.from('k{}'),
+  'kit/js/k.js': Buffer.from('kit'),
   'js/router.js': Buffer.from('router'),
   'js/main.js': Buffer.from('main'),
   'js/dom.js': Buffer.from('dom'),
@@ -39,8 +43,27 @@ test('applyVersions : chaque balise locale porte l\'empreinte de son fichier', (
 
 test('applyVersions : la carte versionne les modules importés, pas ceux que la page cite elle-même', () => {
   const map = JSON.parse(inlineText(applyVersions(PAGE, files())));
-  assert.deepEqual(Object.keys(map.imports), ['./js/b.js', './js/dom.js']);
+  assert.deepEqual(Object.keys(map.imports), ['./js/b.js', './js/dom.js', './kit/js/k.js']);
   assert.equal(map.imports['./js/dom.js'], `./js/dom.js?v=${version(Buffer.from('dom'))}`);
+});
+
+test('applyVersions : le kit (sous-module) est versionné comme le reste : sa feuille dans sa balise, ses modules dans la carte', () => {
+  const html = applyVersions(PAGE, files());
+  assert.ok(html.includes(`href="kit/css/k.css?v=${version(Buffer.from('k{}'))}"`));
+  const map = JSON.parse(inlineText(html));
+  assert.equal(map.imports['./kit/js/k.js'], `./kit/js/k.js?v=${version(Buffer.from('kit'))}`);
+  assert.throws(() => applyVersions(PAGE, { ...files(), 'kit/css/k.css': undefined }), /kit\/css\/k\.css, qui n'existe pas/);
+  const advanced = { ...files(), 'kit/js/k.js': Buffer.from('kit avancé') };
+  assert.match(staleItems(html, advanced).join('|'), /carte d'importation/);
+});
+
+test('readFiles : les dossiers du kit sont lus avec leur préfixe ; sans le sous-module, l\'erreur dit la commande à lancer', () => {
+  const root = mkdtempSync(join(tmpdir(), 'gfs-versions-'));
+  for (const folder of ['css', 'js']) mkdirSync(join(root, folder));
+  assert.throws(() => readFiles(root), /git submodule update --init prototype\/kit/);
+  const real = readFiles();
+  assert.ok(Object.keys(real).some(path => /^kit\/js\/[a-z-]+\.js$/.test(path)) && Object.keys(real).some(path => /^kit\/css\/[a-z-]+\.css$/.test(path)));
+  assert.ok(Object.keys(real).every(path => /^(?:kit\/)?(?:css|js)\/[^/]+\.(?:css|js)$/.test(path)), 'premier niveau de chaque dossier seulement');
 });
 
 test('applyVersions : l\'empreinte de la politique est celle du texte exact de la carte, et remplace l\'ancienne', () => {

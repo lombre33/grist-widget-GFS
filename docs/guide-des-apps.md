@@ -174,7 +174,11 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     en reprendre : sans eux elle garde sa forme et prend les couleurs. Elle écrit ses couleurs par les jetons de la charte, jamais en
     dur (sinon l'ambiance ne la change pas), et ne pose l'ambiance que sur ce qu'elle affiche à la personne, jamais sur ce qu'elle
     produit (un e-mail, un PDF, un document, un formulaire public). Le contraste de 4,5:1 est tenu par GFS pour tout ce qu'il envoie ;
-    ce que l'app ajoute à la charte garde le sien. Seule, l'app garde ses couleurs.
+    ce que l'app ajoute à la charte garde le sien. Seule, l'app garde ses couleurs. Quand l'app propose elle-même un choix de couleur (une
+    couleur de modèle, de document, de thème de présentation), elle prend **le sélecteur de couleur du kit** (`createColorPalette`,
+    `ColorEditor` et `ColorDialog`, kit 0.5.0, tiré de celui de Publipostage+) et n'en garde pas de copie : c'est le même que GFS ouvre pour
+    « La mienne », avec ses rangées de couleurs gardées par l'app (en lecture seule quand elles viennent d'ailleurs), ses textes français et
+    anglais, et ses couleurs posées par le CSSOM, jamais par un attribut `style` (la politique de sécurité du contenu d'une app le refuse).
 16. Taire le rappel « Enregistrer » quand GFS a enregistré le réglage (décision du porteur du 03/11 ; contrats 7.3, points 4 à 6). Dans
     GFS, les réglages que l'app écrit avec `setOption`, `setOptions` ou `clearOptions` (les clés de son manifeste, rien d'autre) sont écrits
     dans la vue par GFS : la personne n'a rien à enregistrer dans Grist, et l'app relit ses réglages par l'écho de Grist (`onOptions`),

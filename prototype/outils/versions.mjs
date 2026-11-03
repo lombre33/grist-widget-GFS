@@ -5,25 +5,28 @@
 //   - la carte d'importation : chaque module de js/ importé par un autre y est associé à son adresse versionnée ;
 //   - dans la politique de sécurité du contenu, l'empreinte (sha256) du script en ligne qui porte cette carte.
 // Les pages qui n'ont qu'un script à côté d'elles (le cadre d'envoi, `transfer/`) portent aussi la `?v=` de ce script.
+// Le kit (sous-module `kit/`, dépôt lombre33/grist-factory-kit) est versionné comme le reste : ses feuilles (`kit/css/`) et ses modules (`kit/js/`) sont dans la carte et les balises. Son dossier vient
+// avec `git submodule update --init kit` ; l'outil le récupère lui-même quand il manque.
 // Le résultat est commité : aucune étape de construction pour servir.
 //
 //   node outils/versions.mjs             met index.html (et les pages à script voisin) à jour
 //   node outils/versions.mjs --verifier  dit ce qui est périmé, sans rien écrire (code de sortie 1)
 
 import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PAGE = 'index.html';
-const FOLDERS = ['css', 'js'];
+const FOLDERS = ['css', 'js', 'kit/css', 'kit/js'];
 // Les pages qui citent un script de leur propre dossier : { page, dossier }.
 const SIDE_PAGES = [{ page: 'transfer/index.html', folder: 'transfer' }];
 const SIDE_TAG_RE = /(<script\b[^>]*?\bsrc=")([^"?:/]+\.js)(?:\?v=([^"]*))?(")/g;
 
 // Les balises locales de la page : <link ... href="css/x.css?v=…"> et <script ... src="js/x.js?v=…">.
-const TAG_RE = /(<(?:link|script)\b[^>]*?\b(?:href|src)=")((?:css|js)\/[^"?]+)(?:\?v=([^"]*))?(")/g;
+const TAG_RE = /(<(?:link|script)\b[^>]*?\b(?:href|src)=")((?:kit\/)?(?:css|js)\/[^"?]+)(?:\?v=([^"]*))?(")/g;
 const MAP_RE = /(<script type="importmap">)([\s\S]*?)(<\/script>)/;
 const CSP_RE = /(<meta http-equiv="Content-Security-Policy" content=")([^"]*)(")/;
 const HASH_RE = /'sha256-[A-Za-z0-9+/=]+'/g;
@@ -31,12 +34,14 @@ const HASH_RE = /'sha256-[A-Za-z0-9+/=]+'/g;
 export const version = bytes => createHash('sha256').update(bytes).digest('hex').slice(0, 10);
 export const cspHash = text => `'sha256-${createHash('sha256').update(text, 'utf8').digest('base64')}'`;
 
-// { 'css/gfs.css': octets, 'js/gfs.js': octets, … } : les fichiers du premier niveau de css/ et de js/.
+// { 'css/gfs.css': octets, 'js/gfs.js': octets, 'kit/js/i18n.js': octets, … } : les fichiers du premier niveau de css/ et de js/, et de ceux du kit.
 export function readFiles(root = ROOT) {
   const files = {};
   for (const folder of FOLDERS) {
+    if (folder.startsWith('kit/') && !existsSync(join(root, folder))) throw new Error(`le sous-module du kit n'est pas là (${folder} manque) : git submodule update --init prototype/kit`);
+    const extension = folder.slice(folder.lastIndexOf('/') + 1);
     for (const name of readdirSync(join(root, folder)).sort()) {
-      if (name.endsWith(`.${folder}`)) files[`${folder}/${name}`] = readFileSync(join(root, folder, name));
+      if (name.endsWith(`.${extension}`)) files[`${folder}/${name}`] = readFileSync(join(root, folder, name));
     }
   }
   return files;
@@ -75,7 +80,7 @@ const directPaths = html => [...html.matchAll(TAG_RE)].map(match => match[2]);
 // ce texte à l'octet près, retours à la ligne compris.)
 export function importMapText(files, direct) {
   const imports = {};
-  for (const path of Object.keys(files).filter(p => p.startsWith('js/') && !direct.includes(p)).sort()) {
+  for (const path of Object.keys(files).filter(p => /^(?:kit\/)?js\//.test(p) && !direct.includes(p)).sort()) {
     imports[`./${path}`] = `./${path}?v=${version(files[path])}`;
   }
   return `\n${JSON.stringify({ imports }, null, 2)}\n`;
@@ -113,12 +118,20 @@ export function staleItems(html, files) {
     const want = versionOf(files, match[2]);
     if (had !== want) stale.push(`${match[2]} : ?v=${had === undefined ? '(absente)' : had} au lieu de ?v=${want}`);
   }
-  if (importMapText(files, directPaths(html)) !== html.match(MAP_RE)[2]) stale.push('la carte d\'importation n\'est plus celle des modules de js/');
+  if (importMapText(files, directPaths(html)) !== html.match(MAP_RE)[2]) stale.push('la carte d\'importation n\'est plus celle des modules de js/ et de kit/js/');
   if (!stale.length) stale.push('l\'empreinte de la carte dans la politique de sécurité du contenu n\'est plus la bonne');
   return stale;
 }
 
+// Un clone sans `--recurse-submodules` n'a pas le dossier du kit : l'outil le récupère, sans quoi il ne pourrait pas versionner ses modules.
+function ensureKit() {
+  if (existsSync(join(ROOT, 'kit/js'))) return;
+  process.stdout.write('le sous-module du kit n\'est pas là : git submodule update --init kit\n');
+  execFileSync('git', ['submodule', 'update', '--init', '--', 'kit'], { cwd: ROOT, stdio: 'inherit' });
+}
+
 function main(argv) {
+  ensureKit();
   const path = join(ROOT, PAGE);
   const html = readFileSync(path, 'utf8');
   const files = readFiles();

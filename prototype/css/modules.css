@@ -142,6 +142,10 @@
 .th-check .ic, .th-adj .ic { flex: none; margin-top: 1px; width: 14px; height: 14px; color: var(--accent-ink); }
 .th-adj { color: var(--text-muted); }
 
+/* La fenêtre « Couleur personnalisée » (js/theme-color.js), posée par-dessus la fenêtre « Thème » : le carré, la teinte, l'aperçu et les champs sont ceux du kit (kit/css/color-picker.css), qui demandent 440 px. */
+.mod.th-edit { width: min(480px, 100%); }
+.th-edit-body { padding: 10px 14px; }
+
 /* ---------- étroit : l'état et le geste passent sous le texte ---------- */
 @media (max-width: 519px) {
   .mod-scrim { padding: 6px; }

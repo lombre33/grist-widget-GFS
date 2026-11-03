@@ -120,7 +120,7 @@ la mise en page sous Firefox se mesure à part (« L'interface sous Firefox », 
 ## L'interface sous Firefox (`test/interfaces-firefox.test.mjs`)
 
 Le porteur ne teste que sous Firefox, et le labo ci-dessus n'a que Chromium : le 03/11, le trait qui sépare les lignes de l'explorateur passait dans le texte (la fenêtre « Thème » avait pris deux noms de classe à la liste), et
-seul son Firefox le montrait. Sa demande : vérifier aussi les interfaces dans les tests. Un fichier de la suite Node ouvre donc le vrai explorateur et la vraie fenêtre « Thème » dans un **vrai Firefox sans écran**
+seul son Firefox le montrait. Sa demande : vérifier aussi les interfaces dans les tests. Un fichier de la suite Node ouvre donc le vrai explorateur et les vraies fenêtres « Thème » et « Ce nom est déjà pris » dans un **vrai Firefox sans écran**
 (`test/pages/explorateur.js` : les feuilles de style et la carte d'importation de `index.html`, des fichiers que le vrai modèle lit dans des tables de la forme de celles de Grist, aucun Grist) et mesure, en français et en anglais,
 en clair et en sombre, à 700, 640, 520, 500 et 400 px de large, à 100 % et à 150 % :
 
@@ -128,6 +128,9 @@ en clair et en sombre, à 700, 640, 520, 500 et 400 px de large, à 100 % et à 
 - « Épingler » et « Plus d'actions » mesurent 24 × 24 ; la souris sur la ligne les montre dans la ligne ; un clic sur « ⋯ » ouvre le menu de **cette** ligne, et « Ouvrir » ouvre son fichier ;
 - la vue en vignettes garde des vignettes de 112 px au moins et autant de colonnes que la place en donne ;
 - la fenêtre « Thème » garde ses vignettes (cinq, ou trois en vue étroite) et le remplissage de sa grille ;
+- la fenêtre « Ce nom est déjà pris » (`js/conflict-window.js`), ouverte comme une app qui range un lot la fait ouvrir (elle nomme l'app, offre « Annuler » et la case « Faire pareil pour les suivants ») puis comme « Nouveau > Importer »
+  la fait ouvrir : elle tient dans la page sans défiler (420 × 310 px, ou 388 × 318 px à 400 px de large, à 100 % et à 150 %), son titre et ses trois boutons sont à leur place et sur une ligne, le clavier est sur « Garder les deux », Tab tourne (case, ou « Annuler »),
+  la case mesure 16 × 16 px et est centrée sur sa ligne, et les issues répondent à la vraie souris et au vrai clavier : case cochée par son texte puis « Garder les deux », « Annuler », « Remplacer », Échap ;
 - la page n'écrit aucune erreur de script ni aucun avertissement de GFS (un texte inconnu, par exemple).
 
 ```bash
@@ -143,6 +146,9 @@ cd prototype && node --test test/interfaces-firefox.test.mjs      # ~15 s ; fait
 - **Pour mesurer autre chose** : écrire une fonction qui s'exécute dans la page (`page.run(fn, …args)`, son résultat revient en JSON) et agir avec `page.click(x, y)` et `page.press('Escape')` ; la page d'essai se complète dans
   `test/pages/explorateur.js`. Chaque écart est un `{ kind, text }` : le rapport les groupe par nature. Les mesures de la liste et des vignettes (`labo/mesures-liste.mjs`) sont écrites une fois, pour cet essai et pour `run-liste`
   (Chromium, dans un vrai Grist) : une nouvelle mesure de la liste s'y ajoute, pas dans l'un des deux.
+- **Entrée et Espace sur un bouton ne se jouent pas ici** : dans ce Firefox sans écran, `document.hasFocus()` reste faux et les touches arrivent (keydown, keypress, keyup sur le bon bouton) sans qu'aucun clic ne parte, même pour un
+  `<button>` seul dans une page vide (mesuré le 03/11, Firefox 159, avec et sans `browsingContext.activate`) ; la souris clique, et Tab et Échap (écoutés par le script de la page) marchent. Ces deux touches restent à la mesure
+  du labo, sous Chromium (`run-ranger-pdf` : Tab va à la case, Espace la coche, Entrée choisit « Remplacer »).
 - **Ce que cet essai ne dit pas** : tout ce qui dépend de ce que Grist envoie (accès, messages, réglages, cadre reconstruit) reste au labo (vrai Grist, Chromium) ; ce que Firefox fait des cadres isolés, des téléchargements et des
   extensions (LanguageTool) reste à la sonde du porteur (ci-dessous).
 

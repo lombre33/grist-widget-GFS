@@ -1,9 +1,12 @@
 // L'interface de GFS sous Firefox, le navigateur du porteur (demande du 03/11 : vérifier aussi les interfaces dans les tests). Le 03/11, le trait qui sépare les lignes de l'explorateur passait dans le
-// texte : la fenêtre « Thème » avait pris deux noms de classe à la liste, et ni Node ni le labo (Chromium seul) ne le voyaient. Ce fichier ouvre le vrai explorateur et la vraie fenêtre « Thème »
+// texte : la fenêtre « Thème » avait pris deux noms de classe à la liste, et ni Node ni le labo (Chromium seul) ne le voyaient. Ce fichier ouvre le vrai explorateur et les vraies fenêtres « Thème » et « Ce nom est déjà pris »
 // (test/pages/explorateur.js, avec les feuilles de style de index.html) dans un vrai Firefox sans écran (test/firefox.mjs), puis mesure, en français et en anglais, en clair et en sombre, à 700, 640, 520, 500
 // et 400 px de large, à 100 % et à 150 % : chaque ligne mesure 28 px, son contenu y est centré et n'en sort pas (le trait passe sous le texte), « Épingler » et « Plus d'actions » mesurent 24 × 24, la souris sur
 // la ligne les montre dans la ligne, et un clic sur « Plus d'actions » ouvre le menu de CETTE ligne ; la vue en vignettes garde des vignettes de 112 px au moins et le nombre de colonnes que la place donne ;
-// la fenêtre « Thème » garde ses vignettes (cinq, ou trois en vue étroite). Le labo (labo/run-liste.mjs) fait les mêmes mesures dans un vrai Grist, sous Chromium.
+// la fenêtre « Thème » garde ses vignettes (cinq, ou trois en vue étroite) ; la fenêtre « Ce nom est déjà pris » (js/conflict-window.js, telle qu'une app qui range un lot la fait ouvrir, puis telle que
+// « Nouveau > Importer » la fait ouvrir) tient dans la page sans défiler, garde son titre et ses trois boutons sur une ligne, met le clavier sur « Garder les deux », tourne avec Tab, et ses issues répondent à
+// la vraie souris et au vrai clavier (la case « Faire pareil pour les suivants » se coche en cliquant son texte). Entrée et Espace sur un bouton ne se jouent pas ici (voir conflictProblems). Le labo
+// (labo/run-liste.mjs) fait les mêmes mesures de la liste dans un vrai Grist, sous Chromium.
 // Firefox absent : l'essai est SAUTÉ, et le dit (`labo/installer-firefox.sh` le pose dans le cloud ; `GFS_FIREFOX=<fichier exécutable>` désigne celui de la machine).
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -74,6 +77,31 @@ function measureThemeWindow() {
   return { tiles: tiles.length, columns: new Set(tiles.map(tile => Math.round(tile.getBoundingClientRect().left))).size, padding: getComputedStyle(grid).paddingTop };
 }
 
+// La fenêtre « Ce nom est déjà pris » : sa place dans la page, ses boutons (au pied, sur une ligne, dans la fenêtre), ce qui prend le clavier, la case des suivants et les points où cliquer. Null sans fenêtre.
+function measureConflictWindow() {
+  const win = document.querySelector('.mod.ask');
+  if (!win) return null;
+  const box = element => element.getBoundingClientRect();
+  const center = rect => [rect.left + rect.width / 2, rect.top + rect.height / 2];
+  const frame = box(win);
+  const body = win.querySelector('.ask-body');
+  const label = win.querySelector('.ask-again');
+  const check = label && label.querySelector('input');
+  let wording = null;
+  if (label) { const range = document.createRange(); range.selectNodeContents(label.lastChild); wording = box(range); }
+  const buttons = Object.fromEntries([...win.querySelectorAll('.ask-foot button')].map(button => [button.dataset.fk, box(button)]));
+  const keys = Object.keys(buttons);
+  const tops = keys.map(key => buttons[key].top);
+  return {
+    view: [document.documentElement.clientWidth, document.documentElement.clientHeight], frame: [frame.left, frame.top, frame.right, frame.bottom],
+    head: box(win.querySelector('.mod-head')).top, foot: box(win.querySelector('.ask-foot')).bottom,
+    keys, sameLine: Math.max(...tops) - Math.min(...tops), insideLeft: Math.min(...keys.map(key => buttons[key].left)), insideRight: Math.max(...keys.map(key => buttons[key].right)),
+    wide: body.scrollWidth - body.clientWidth, active: document.activeElement ? document.activeElement.dataset.fk || null : null,
+    items: win.querySelectorAll('.ask-items li').length, again: check ? { size: [box(check).width, box(check).height], off: Math.abs(center(box(check))[1] - center(box(label))[1]), checked: check.checked } : null,
+    wording: wording && center(wording), centers: Object.fromEntries(keys.map(key => [key, center(buttons[key])])),
+  };
+}
+
 // ---------- ce que l'essai constate : des écarts { kind, text }, un par constat ----------
 
 async function listProblems(page, tag) {
@@ -137,6 +165,57 @@ async function themeProblems(page, width, tag) {
   return found;
 }
 
+// Ce que la fenêtre mesure : elle tient dans la page, son titre et ses boutons sont à leur place (le texte défile, eux non), les trois boutons sont sur une ligne dans la fenêtre, le clavier est sur « Garder les deux ».
+function conflictLayout(win, from, note) {
+  const [left, top, right, bottom] = win.frame;
+  const [width, height] = win.view;
+  if (left < -0.5 || top < -0.5 || right > width + 0.5 || bottom > height + 0.5) note('hors de la page', `la fenêtre (${Math.round(left)}, ${Math.round(top)}, ${Math.round(right)}, ${Math.round(bottom)}) sort de la page de ${width} × ${height} px`);
+  if (win.head < -0.5 || win.foot > height + 0.5) note('titre ou boutons qui défilent', `le titre (haut à ${Math.round(win.head)} px) ou le pied (bas à ${Math.round(win.foot)} px) sort de la page de ${height} px`);
+  if (win.keys.join() !== 'conflict-cancel,conflict-replace,conflict-both') note('les trois boutons', `les boutons du pied sont ${win.keys.join(', ')}`);
+  if (win.sameLine > 1) note('boutons sur deux lignes', `les boutons du pied ne sont pas sur une ligne (écart de ${win.sameLine.toFixed(1)} px)`);
+  if (win.insideLeft < left - 0.5 || win.insideRight > right + 0.5) note('boutons hors de la fenêtre', 'un bouton du pied sort de la fenêtre');
+  if (win.wide > 1) note('texte coupé', `le texte déborde de ${win.wide} px`);
+  if (win.active !== 'conflict-both') note('clavier mal placé', `le clavier est sur « ${win.active} » au lieu de « Garder les deux »`);
+  if (win.items !== (from.app ? 3 : 2)) note('les issues décrites', `la fenêtre décrit ${win.items} issues au lieu de ${from.app ? 3 : 2}`);
+  if (Boolean(win.again) !== from.repeat) note('la case des suivants', from.repeat ? 'la case « Faire pareil pour les suivants » manque' : 'la case des suivants est offerte alors qu\'il n\'y a pas de lot');
+  if (win.again && (win.again.size[0] !== 16 || win.again.size[1] !== 16 || win.again.off > 1)) note('la case des suivants', `la case mesure ${win.again.size.join(' × ')} px et a son centre à ${win.again.off.toFixed(1)} px de celui de sa ligne`);
+}
+
+// La fenêtre « Ce nom est déjà pris », ouverte comme une app qui range un lot la fait ouvrir (elle nomme l'app, offre « Annuler » et la case des suivants) puis comme « Nouveau > Importer » (sans l'un ni l'autre) ;
+// chaque issue à la vraie souris ou au vrai clavier : la case cochée par son texte puis « Garder les deux », « Annuler », Échap, « Remplacer ». La touche Tab tourne dans la fenêtre (le clavier est posé sur « Garder les deux »,
+// le dernier bouton : Tab revient à la case quand elle existe, à « Annuler » sinon). Entrée et Espace sur un bouton ne sont PAS pilotables ici : ce Firefox sans écran n'active pas même un `<button>` seul à ces touches
+// (les événements arrivent, aucun clic ne part) ; elles restent à la mesure du labo, sous Chromium.
+async function conflictProblems(page, tag) {
+  const found = [];
+  const lot = { app: 'Publipostage+', repeat: true };
+  const press = key => page.press(key);
+  const click = key => win => page.click(...win.centers[key]);
+  const rounds = [
+    { from: lot, name: 'rangée par une app, case cochée', act: async win => { await page.click(...win.wording); await click('conflict-both')(win); }, expect: { choice: 'both', again: true } },
+    { from: lot, name: 'rangée par une app, Tab puis Échap', act: async () => { await press('Tab'); await expectFocus(page, 'conflict-again', found, tag); await press('Escape'); }, expect: { choice: 'skip', again: false } },
+    { from: lot, name: 'rangée par une app, Annuler', act: click('conflict-cancel'), expect: { choice: 'skip', again: false } },
+    { from: { app: '', repeat: false }, name: 'importée, Tab puis Remplacer', act: async win => { await press('Tab'); await expectFocus(page, 'conflict-cancel', found, tag); await click('conflict-replace')(win); }, expect: { choice: 'replace', again: false } },
+  ];
+  for (const { from, name, act, expect } of rounds) {
+    const note = (kind, text) => found.push({ kind: `fenêtre « Ce nom est déjà pris » : ${kind}`, text: `${tag}, ${name} : ${text}` });
+    await page.run(options => window.__askConflict(options), from);
+    const win = await page.until(measureConflictWindow);
+    conflictLayout(win, from, note);
+    try { await act(win); } catch (error) { note('geste impossible', `${String(error.message).slice(0, 150)}`); await page.press('Escape'); continue; }
+    const answer = await page.until(() => window.__conflict, [], 2000).catch(() => null);
+    if (!answer) note('pas de réponse', 'la fenêtre ne rend aucune réponse');
+    else if (answer.choice !== expect.choice || answer.again !== expect.again) note('mauvaise réponse', `la réponse est ${JSON.stringify(answer)} au lieu de ${JSON.stringify(expect)}`);
+    if (await page.run(() => Boolean(document.querySelector('.mod.ask')))) { note('fenêtre restée ouverte', 'la fenêtre reste ouverte après la réponse'); await page.press('Escape'); }
+  }
+  return found;
+}
+
+// Après un Tab : le clavier est sur l'élément de clé `wanted` (`conflict-again` : la case des suivants).
+async function expectFocus(page, wanted, found, tag) {
+  const active = await page.run(() => (document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.fk || null : null));
+  if (active !== wanted) found.push({ kind: 'fenêtre « Ce nom est déjà pris » : Tab', text: `${tag} : après Tab le clavier est sur « ${active} » au lieu de « ${wanted} »` });
+}
+
 const caption = (language, width, scale, mode) => `${language}, ${width} px, ${scale === 1 ? '100 %' : `${scale * 100} %`}, ${mode === 'dark' ? 'sombre' : 'clair'}`;
 
 // Le constat, par nature d'écart : combien, et les premiers exemples (sans cela, quelques centaines de lignes semblables cachent les autres natures).
@@ -166,7 +245,7 @@ describe('l\'interface sous Firefox', () => {
   });
 
   for (const language of LANGUAGES) {
-    test(`l'explorateur et la fenêtre « Thème » en ${language === 'fr' ? 'français' : 'anglais'}`, { skip: SKIP, timeout: 240000 }, async () => {
+    test(`l'explorateur et les fenêtres « Thème » et « Ce nom est déjà pris » en ${language === 'fr' ? 'français' : 'anglais'}`, { skip: SKIP, timeout: 240000 }, async () => {
       const { page } = browser;
       await page.goto(`${site.url}${PAGE}?lang=${language}`);
       await page.run(() => window.__ready);
@@ -176,7 +255,7 @@ describe('l\'interface sous Firefox', () => {
           for (const mode of MODES) {
             await page.view({ width, scale, mode });
             const tag = caption(language, width, scale, mode);
-            problems.push(...await listProblems(page, tag), ...await mouseProblems(page, tag), ...await tilesProblems(page, tag), ...await themeProblems(page, width, tag));
+            problems.push(...await listProblems(page, tag), ...await mouseProblems(page, tag), ...await tilesProblems(page, tag), ...await themeProblems(page, width, tag), ...await conflictProblems(page, tag));
           }
         }
       }

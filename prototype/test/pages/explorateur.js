@@ -1,6 +1,8 @@
-// La page d'essai de l'interface sous Firefox (test/interfaces-firefox.test.mjs) : le vrai explorateur (js/explorer.js) et la vraie fenêtre « Thème » (js/theme-window.js), sur des fichiers que le vrai
-// modèle (js/explorer-model.js) lit dans des tables de la forme de celles de Grist, avec les feuilles de style et la carte d'importation de index.html (le test les recopie de la page, dans l'ordre).
-// Aucun Grist : ce que l'essai mesure est la mise en page et la souris. La langue vient de `?lang=fr|en` ; `window.__opened` garde le nom du dernier fichier que l'explorateur a ouvert.
+// La page d'essai de l'interface sous Firefox (test/interfaces-firefox.test.mjs) : le vrai explorateur (js/explorer.js), la vraie fenêtre « Thème » (js/theme-window.js) et la vraie fenêtre « Ce nom est
+// déjà pris » (js/conflict-window.js), sur des fichiers que le vrai modèle (js/explorer-model.js) lit dans des tables de la forme de celles de Grist, avec les feuilles de style et la carte d'importation de
+// index.html (le test les recopie de la page, dans l'ordre). Aucun Grist : ce que l'essai mesure est la mise en page et la souris. La langue vient de `?lang=fr|en` ; `window.__opened` garde le nom du
+// dernier fichier que l'explorateur a ouvert ; `window.__askConflict({ app, repeat })` ouvre la fenêtre du nom pris et `window.__conflict` garde la réponse de la personne quand elle se ferme.
+import { askConflict } from '/js/conflict-window.js';
 import { Explorer } from '/js/explorer.js';
 import { applyFiling, readFiles, readFiling } from '/js/explorer-model.js';
 import { createI18n } from '/js/i18n.js';
@@ -58,6 +60,13 @@ async function mount() {
   });
   const themeWindow = new ThemeWindow({ container: stage, i18n, locale, setting: new ThemeSetting({ ambianceStore: memory(), colorStore: memory() }), mode, inertTargets: () => [explorer.root] });
   theme.open = () => themeWindow.open();
+  // Le fichier gardé qui porte déjà le nom, tel que GFS le décrit (date et auteur) ; la copie prendrait « (1) ».
+  const detail = `${i18n.t('ex.modifiedOn', { date: '12/10/2026' })} · ${i18n.t('ex.modifiedBy', { by: 'Service RH' })}`;
+  window.__askConflict = ({ app, repeat }) => {
+    window.__conflict = null;
+    askConflict({ container: stage, inertTargets: () => [explorer.root], t: (key, params) => i18n.t(key, params), name: 'Facture Martin.pdf', detail, copy: 'Facture Martin (1).pdf', app, repeat })
+      .then(answer => { window.__conflict = answer; });
+  };
   explorer.setFiles(files);
   explorer.open();
 }

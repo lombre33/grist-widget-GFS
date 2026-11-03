@@ -125,7 +125,7 @@ export function importMenu(page, frameOf, word) {
 
 // Les sondes du labo (labo/sondes/) : des apps d'essai que GFS ne connaît pas. Elles entrent dans le catalogue SEULEMENT pour la page du labo qui le demande
 // (le fichier publié n'est pas modifié, les autres essais ne les voient pas) : la page reçoit un catalogue.js complété, après les apps du catalogue.
-const PROBE_FOLDERS = { a: 'a-self', b: 'b-host', c: 'c-hash', d: 'd-texte', e: 'e-blob', f: 'f-texte-ferme', g: 'g-capacites', h: 'h-courtier', i: 'i-lecture', k: 'q-liens', l: 'l-langue', o: 'o-ouvrir', p: 'p-importer', q: 'q-liens', r: 'r-barre', s: 's-stockage', t: 's-stockage', u: 'u-glisser', v: 'v-personne', w: 'v-personne', x: 'v-personne', m: 'm-ambiance' };
+const PROBE_FOLDERS = { a: 'a-self', b: 'b-host', c: 'c-hash', d: 'd-texte', e: 'e-blob', f: 'f-texte-ferme', g: 'g-capacites', h: 'h-courtier', i: 'i-lecture', k: 'q-liens', l: 'l-langue', o: 'o-ouvrir', p: 'p-importer', q: 'q-liens', r: 'r-barre', s: 's-stockage', t: 's-stockage', u: 'u-glisser', v: 'v-personne', w: 'v-personne', x: 'v-personne', m: 'm-ambiance', n: 'n-ambiance-kit' };
 export function withProbes(text) {
   const entries = Object.entries(PROBE_FOLDERS).map(([key, folder]) => `  Object.freeze({ id: 'sonde-${key}', dossier: 'labo/sondes/${folder}/', manifeste: 'labo/sondes/sonde-${key}.json' }),`);
   return text.replace('\n]);', `\n${entries.join('\n')}\n]);`);
@@ -314,3 +314,53 @@ export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', 
   }, lang);
   return { context, page };
 }
+
+// Le contraste de chaque texte d'un cadre (celui de GFS, ou celui d'une app), mesuré sur les couleurs AFFICHÉES : la couleur du texte, posée sur la pile des fonds de ses ancêtres (le canvas fait le mélange, y compris
+// pour les `color-mix`). `scope` : le sélecteur des zones à mesurer. Rend { seen (textes mesurés), gradients, failures (4,5:1, 3:1 pour un grand texte) }.
+export const contrastAudit = (target, scope) => target.evaluate(selector => {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 1;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const pixel = layers => {
+    ctx.clearRect(0, 0, 1, 1);
+    for (const color of layers) { ctx.fillStyle = '#000'; ctx.fillStyle = color; ctx.fillRect(0, 0, 1, 1); }
+    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+    return [r, g, b];
+  };
+  const lum = ([r, g, b]) => { const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+  const ratio = (a, b) => { const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
+  const failures = [];
+  let seen = 0;
+  let gradients = 0;
+  for (const root of document.querySelectorAll(selector)) {
+    for (const el of [root, ...root.querySelectorAll('*')]) {
+      const own = [...el.childNodes].some(node => node.nodeType === 3 && node.textContent.trim());
+      const style = getComputedStyle(el);
+      if (!own || style.visibility === 'hidden' || style.display === 'none' || el.closest('[hidden], .sr-only, [aria-hidden="true"]')) continue;
+      const box = el.getBoundingClientRect();
+      if (box.width < 2 || box.height < 2) continue;
+      let layers = [];
+      let stops = null; // les arrêts pleins d'un dégradé qui porte le texte (le bouton plein de Pop) : le texte doit se lire sur chacun
+      let behind = false;
+      for (let node = el; node; node = node.parentElement) {
+        const s = getComputedStyle(node);
+        const solid = (s.backgroundImage.match(/rgba?\([^)]*\)/g) || []).filter(color => !/rgba\(/.test(color) || /,\s*1\)$/.test(color));
+        if (s.backgroundImage !== 'none') { if (solid.length && !stops) stops = solid; else behind = true; }
+        layers.unshift(s.backgroundColor);
+        if (stops || /^rgb\(/.test(s.backgroundColor)) break; // opaque : plus rien derrière
+      }
+      if (stops) layers = [layers[0]];
+      if (behind) gradients += 1;
+      const candidates = stops || [null];
+      const style_ = style.color;
+      const worst = candidates.map(stop => { const stack = ['#fff', ...(stop ? [stop] : layers)]; return ratio(pixel([...stack, style_]), pixel(stack)); }).reduce((a, b) => Math.min(a, b));
+      const size = parseFloat(style.fontSize);
+      const large = size >= 24 || (size >= 18.66 && Number(style.fontWeight) >= 700);
+      const need = large ? 3 : 4.5;
+      const value = worst;
+      seen += 1;
+      if (value < need) failures.push(`${el.tagName.toLowerCase()}.${String(el.className).split(' ')[0]} « ${el.textContent.trim().slice(0, 24)} » ${value.toFixed(2)}:1`);
+    }
+  }
+  return { seen, gradients, failures };
+}, scope);

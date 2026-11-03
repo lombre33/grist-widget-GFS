@@ -1,0 +1,27 @@
+{
+  "contrat": 0,
+  "id": "sonde-n",
+  "nom": {
+    "fr": "Sonde N",
+    "en": "Probe N"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Une app écrite avec le kit commun (Ambiance.start) qui pose l’ambiance de GFS, comme le feront les apps (contrats 5.2, point 10)",
+    "en": "An app written with the common kit (Ambiance.start) that applies GFS’s look, as the apps will (contracts 5.2, point 10)"
+  },
+  "icone": "doc",
+  "entree": "index.html",
+  "tables": {
+    "prefixe": "SondeN_"
+  },
+  "reglages": [],
+  "permissions": {
+    "acces": "none"
+  },
+  "extensions": [],
+  "actions": {
+    "ouvrir": [],
+    "choisir": []
+  }
+}

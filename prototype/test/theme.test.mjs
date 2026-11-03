@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { AMBIANCE_KEY, COLOR_KEY, ThemeSetting, ambianceMessage, browserStores, previewMessage } from '../js/theme.js';
 import { ThemeHost, modeOf, paint, watchAppearance } from '../js/theme-apply.js';
-import { COLOR_TOKENS, ORIGIN } from '../js/ambiance.js';
+import { AMBIANCES, COLOR_TOKENS, ORIGIN } from '../js/ambiance.js';
 import { FORME_TOKENS } from '../js/ambiance-forme.js';
 
 function fakeStore(initial = null, { accepts = true } = {}) {
@@ -140,6 +140,20 @@ test('le message aux apps : null à l\'origine ; sinon l\'ambiance, la couleur, 
   assert.deepEqual(own.forme, {});
   assert.doesNotThrow(() => JSON.stringify(own), 'le message passe par postMessage : des données seules');
   assert.deepEqual(JSON.parse(JSON.stringify(own)), own);
+});
+
+// Le kit (sous-module `kit/`) pose l'ambiance dans les apps (js/ambiance.js) et lit le message de GFS avec sa propre liste de jetons : elle reste celle du moteur de GFS, et rien de ce que GFS écrit n'est refusé.
+test('le kit lit le message de GFS tel quel : mêmes jetons de couleur et de forme, aucune valeur perdue, pour chaque ambiance et pour une couleur libre', async () => {
+  const kit = await import('../kit/js/ambiance-message.js').catch(() => null);
+  assert.ok(kit, 'le sous-module du kit n\'est pas là : git submodule update --init prototype/kit');
+  assert.deepEqual([...kit.COLOR_TOKENS].sort(), [...COLOR_TOKENS].sort(), 'jetons de couleur : le kit et GFS ne disent plus la même liste');
+  assert.deepEqual([...kit.SHAPE_TOKENS].sort(), [...FORME_TOKENS].sort(), 'jetons de forme : le kit et GFS ne disent plus la même liste');
+  for (const id of AMBIANCES) {
+    for (const color of [null, '#d6336c', '#0f766e', '#ffe066', '#000000', '#ffffff']) {
+      const sent = JSON.parse(JSON.stringify(ambianceMessage(id, color) || { id, couleur: null, ajustee: false, clair: ORIGIN.clair, sombre: ORIGIN.sombre, forme: {} }));
+      assert.deepEqual(kit.normalizeAmbiance(sent), sent, `${id} ${color}`);
+    }
+  }
 });
 
 // Un élément de pied : l'attribut `style` du CSSOM et les attributs.

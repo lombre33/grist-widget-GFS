@@ -17,7 +17,8 @@
 //   11. un kit qui ne se charge pas (le sous-module n'est pas servi) : « La mienne » et son bouton sont grisés, la raison est dite dans la fenêtre, un seul avertissement de GFS, les ambiances marchent.
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
-import { say, check } from './lab-common.mjs';
+import { say, check, contrastAudit } from './lab-common.mjs';
+import { themeGestures } from './theme-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -63,7 +64,6 @@ const waitFor = async (label, test) => {
   say(`(pas arrivé : ${label})`);
   return false;
 };
-const button = () => frame.locator('.tb-theme');
 const stored = () => frame.evaluate(() => { try { return { theme: localStorage.getItem('gfs.theme'), couleur: localStorage.getItem('gfs.couleur') }; } catch (error) { return 'REFUSÉ'; } });
 // Ce que la page porte : l'ambiance, le nombre de jetons posés en ligne sur <html>, quelques valeurs calculées qui disent la forme et la couleur.
 const page_ = () => frame.evaluate(() => {
@@ -88,10 +88,7 @@ const windowState = () => frame.evaluate(() => {
     adjusted: !win.querySelector('.th-adj').hidden && win.querySelector('.th-adj').textContent.trim() !== '',
   };
 });
-const openWindow = async () => { await button().click(); await frame.locator('.th-win').waitFor(); };
-const closeWindow = async () => { await frame.locator('.th-win [data-fk="close"]').click(); await frame.locator('.th-win').waitFor({ state: 'detached' }); };
-const tile = id => frame.locator('.amb', { has: frame.locator(`input[value="${id}"]`) });
-const pickButton = () => frame.locator('.th-win [data-fk="col:pick"]');
+const { button, open: openWindow, close: closeWindow, tile, pickButton, resetButton } = themeGestures(() => frame);
 const colorLabel = text => frame.locator('.th-win label.rd', { hasText: text });
 const openPalette = async () => { await pickButton().click(); await frame.locator('.menu-panel').waitFor(); };
 const rgb = hex => { const n = parseInt(hex.slice(1), 16); return `rgb(${n >> 16}, ${(n >> 8) & 255}, ${n & 255})`; };
@@ -148,54 +145,8 @@ const editorState = () => frame.evaluate(() => {
   };
 });
 
-// Le contraste de chaque texte à l'écran, mesuré sur les couleurs AFFICHÉES : la couleur du texte, posée sur la pile des fonds de ses ancêtres (le canvas fait le mélange, y compris pour les `color-mix`).
-const audit = scope => frame.evaluate(selector => {
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = 1;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  const pixel = layers => {
-    ctx.clearRect(0, 0, 1, 1);
-    for (const color of layers) { ctx.fillStyle = '#000'; ctx.fillStyle = color; ctx.fillRect(0, 0, 1, 1); }
-    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
-    return [r, g, b];
-  };
-  const lum = ([r, g, b]) => { const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
-  const ratio = (a, b) => { const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
-  const failures = [];
-  let seen = 0;
-  let gradients = 0;
-  for (const root of document.querySelectorAll(selector)) {
-    for (const el of [root, ...root.querySelectorAll('*')]) {
-      const own = [...el.childNodes].some(node => node.nodeType === 3 && node.textContent.trim());
-      const style = getComputedStyle(el);
-      if (!own || style.visibility === 'hidden' || style.display === 'none' || el.closest('[hidden], .sr-only, [aria-hidden="true"]')) continue;
-      const box = el.getBoundingClientRect();
-      if (box.width < 2 || box.height < 2) continue;
-      let layers = [];
-      let stops = null; // les arrêts pleins d'un dégradé qui porte le texte (le bouton plein de Pop) : le texte doit se lire sur chacun
-      let behind = false;
-      for (let node = el; node; node = node.parentElement) {
-        const s = getComputedStyle(node);
-        const solid = (s.backgroundImage.match(/rgba?\([^)]*\)/g) || []).filter(color => !/rgba\(/.test(color) || /,\s*1\)$/.test(color));
-        if (s.backgroundImage !== 'none') { if (solid.length && !stops) stops = solid; else behind = true; }
-        layers.unshift(s.backgroundColor);
-        if (stops || /^rgb\(/.test(s.backgroundColor)) break; // opaque : plus rien derrière
-      }
-      if (stops) layers = [layers[0]];
-      if (behind) gradients += 1;
-      const candidates = stops || [null];
-      const style_ = style.color;
-      const worst = candidates.map(stop => { const stack = ['#fff', ...(stop ? [stop] : layers)]; return ratio(pixel([...stack, style_]), pixel(stack)); }).reduce((a, b) => Math.min(a, b));
-      const size = parseFloat(style.fontSize);
-      const large = size >= 24 || (size >= 18.66 && Number(style.fontWeight) >= 700);
-      const need = large ? 3 : 4.5;
-      const value = worst;
-      seen += 1;
-      if (value < need) failures.push(`${el.tagName.toLowerCase()}.${String(el.className).split(' ')[0]} « ${el.textContent.trim().slice(0, 24)} » ${value.toFixed(2)}:1`);
-    }
-  }
-  return { seen, gradients, failures };
-}, scope);
+// Le contraste de chaque texte à l'écran (lab-common.mjs), mesuré sur les couleurs affichées.
+const audit = scope => contrastAudit(frame, scope);
 
 say('panneau :', await (await frame.frameElement()).boundingBox());
 say('apparence posée par Grist :', await frame.evaluate(() => document.documentElement.getAttribute('data-grist-appearance')));
@@ -220,7 +171,7 @@ check('la charte d\'origine est choisie, dite avec « Ambiance d\'origine »', w
 check('le clavier est dans la fenêtre, sur la vignette choisie', win.inside && win.focus === 'amb:defaut', win.focus);
 check('le fond est inerte', win.inertExplorer === true && win.inertFrames === true);
 check('la fenêtre tient dans le panneau' + (panelWidth >= 520 ? ', sans défilement du corps' : ' (étroit : le corps défile, titre et pied restent en place)'), win.box.x >= 0 && win.box.y >= 0 && win.box.x + win.box.w <= win.viewport.w && win.box.y + win.box.h <= win.viewport.h && (panelWidth < 520 || !win.scrolls), { box: win.box, viewport: win.viewport, scrolls: win.scrolls });
-check('« Revenir à Grist Factory » est grisé quand rien n\'est choisi, la note le dit', await frame.locator('.th-win [data-fk="reset"]').getAttribute('aria-disabled') === 'true' && win.note === words.saved, win.note);
+check('« Revenir à Grist Factory » est grisé quand rien n\'est choisi, la note le dit', await resetButton().getAttribute('aria-disabled') === 'true' && win.note === words.saved, win.note);
 const offered = await frame.evaluate(() => ({ own: document.querySelector('input[name="col"][value="own"]').disabled, pick: document.querySelector('[data-fk="col:pick"]').getAttribute('aria-disabled'), why: [...document.querySelectorAll('.th-adj')].filter(p => !p.hidden).map(p => p.textContent.trim()).filter(Boolean) }));
 check('« La mienne » est offerte (le sélecteur de couleur du kit est là), son bouton aussi, aucune raison n\'est dite dans la fenêtre', offered.own === false && offered.pick === 'false' && offered.why.length === 0, offered);
 await shot('2-fenetre-origine');
@@ -328,7 +279,7 @@ await tile('brut').click(); // le même choix : rien de nouveau
 await page.waitForTimeout(300);
 check('choisir ce qui vaut déjà n\'envoie rien', (await probe(app)).evenements.length === 1);
 // 8. « Revenir à Grist Factory » : la page et l'app retrouvent l'aspect d'origine.
-await frame.locator('.th-win [data-fk="reset"]').click();
+await resetButton().click();
 await waitFor('l\'événement null', async () => (await probe(app)).evenements.length === 2);
 seen = await probe(app);
 now = await page_();
@@ -550,7 +501,7 @@ check('GFS rechargé repart avec la couleur choisie, posée dès le départ', no
 await openWindow();
 box = await colorBox();
 check('la fenêtre rouverte montre la couleur retenue', box.own && box.pick === colors[40].toUpperCase() && box.swatch === rgb(colors[40]), box);
-await frame.locator('.th-win [data-fk="reset"]').click();
+await resetButton().click();
 await page.waitForTimeout(300);
 now = await page_();
 check('« Revenir à Grist Factory » rend aussi la couleur : rien n\'est posé, les deux clés ont disparu', now.ambiance === null && now.inline === 0 && JSON.stringify(await stored()) === JSON.stringify({ theme: null, couleur: null }), { now, stored: await stored() });

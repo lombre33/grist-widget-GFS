@@ -152,19 +152,37 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     personne choisit et que `GfsLink.storageSet` retient). L'adresse sert à montrer, filtrer et griser, jamais à décider d'un droit :
     seul Grist refuse (contrats 11.1) ; quand elle sert de clé, elle se compare en minuscules (contrats 11.1, point 7).
 
-15. Suivre l'ambiance de GFS (décision du porteur du 02/11 et du 03/11 ; contrats 5.2, point 10). Dans GFS, `contexte.ambiance` dit
+15. Suivre l'ambiance de GFS (décision du porteur du 02/11 et du 03/11 ; contrats 5.2, point 10 ; kit 0.6.0). Dans GFS, `contexte.ambiance` dit
     l'ambiance et la couleur que la personne a choisies pour GFS et ses apps (`null` : rien n'est choisi, l'app garde ses couleurs) ;
-    l'événement `ambiance` les change en cours de vie, sans recharger le cadre. L'app pose les jetons de couleur du mode qu'elle
-    affiche (`clair` ou `sombre`) par le CSSOM, ne pose que ceux qu'elle connaît (nom `--[a-z0-9-]+`, valeur `#rrggbb`), retire tout
-    ce qu'elle avait posé quand elle reçoit `null`, et lit les jetons de forme (arrondis, traits, ombres, polices) pour ce qu'elle veut
-    en reprendre : sans eux elle garde sa forme et prend les couleurs. Elle écrit ses couleurs par les jetons de la charte, jamais en
-    dur (sinon l'ambiance ne la change pas), et ne pose l'ambiance que sur ce qu'elle affiche à la personne, jamais sur ce qu'elle
-    produit (un e-mail, un PDF, un document, un formulaire public). Le contraste de 4,5:1 est tenu par GFS pour tout ce qu'il envoie ;
-    ce que l'app ajoute à la charte garde le sien. Seule, l'app garde ses couleurs. Quand l'app propose elle-même un choix de couleur (une
-    couleur de modèle, de document, de thème de présentation), elle prend **le sélecteur de couleur du kit** (`createColorPalette`,
-    `ColorEditor` et `ColorDialog`, kit 0.5.0, tiré de celui de Publipostage+) et n'en garde pas de copie : c'est le même que GFS ouvre pour
-    « La mienne », avec ses rangées de couleurs gardées par l'app (en lecture seule quand elles viennent d'ailleurs), ses textes français et
-    anglais, et ses couleurs posées par le CSSOM, jamais par un attribut `style` (la politique de sécurité du contenu d'une app le refuse).
+    l'événement `ambiance` les change en cours de vie, sans recharger le cadre. **Le kit fait la pose, l'app ne l'écrit pas** : elle appelle
+    `Ambiance.start()` (`js/ambiance.js`) une fois, dans son module d'entrée, avant d'afficher. Le kit lit le message avec méfiance
+    (`js/ambiance-message.js` : les jetons qu'il connaît, des `#rrggbb`, rien qui sorte de sa déclaration), pose par le CSSOM les dix-neuf jetons
+    de couleur du mode que l'app affiche (son thème, puis celui de Grist, puis le système : il suit le mode sans événement de GFS) et les jetons de
+    forme, et retire tout ce qu'il avait posé, et rien d'autre, quand GFS dit `null`. Une app qui n'a pas encore le kit le prend (1.2, points 1 et 4 : le
+    sous-module et le lien avec GFS du kit) au lieu de recopier la pose. **Une app qui garde son propre lien avec GFS** (Publipostage+ : `reglages`) n'appelle
+    pas `Ambiance.start()`, qui démarrerait le lien du kit à côté du sien : deux liens dans un même cadre numéroteraient chacun leurs appels depuis 1 et
+    prendraient les réponses l'un de l'autre (lu dans `js/gfs-link.js` du kit, non mesuré). Elle prend la même pose sans le lien du kit : `createAmbiance({ link, isDark })`
+    de `js/ambiance-pose.js`, où `link` est le sien (il donne `ambiance()`, `onAmbiance(fn)` et sa promesse `ready`, par `normalizeAmbiance` de `js/ambiance-message.js`) et
+    `isDark()` dit le mode qu'elle affiche. Ce que l'app écrit, c'est ses feuilles :
+    - **Les couleurs par les jetons de la charte, jamais en dur** : sinon l'ambiance ne les change pas. GFS tient le contraste de 4,5:1 de ces paires, dans les
+      deux modes : `--text` et `--text-muted` sur `--bg`, `--surface`, `--surface-sunken` et `--accent-soft` ; `--accent-ink` sur `--surface`, `--accent-soft` et
+      `--bg` ; `--on-accent` sur `--accent-solid`, `--accent-solid-hover` et `--accent-end` ; `--accent` seul (une icône, un trait, un lien) sur `--surface` et `--bg`.
+      Une paire que l'app invente garde son propre contraste.
+    - **Le fond de la page est `--bg`**, sur un élément qui couvre la page (`min-height: 100vh`), jamais `--main-bg` (le fond de la carte de GFS : il
+      vaut `transparent` chez Néon, un titre clair y tombait à 1,10:1, mesuré). Le décor `--wash` se pose en `background-image` de ce même fond, avec
+      `--wash-size` ; sur un élément plus court que la page, il se répète à chaque hauteur de contenu (vu).
+    - **Les jetons de forme que l'app a en équivalent** : `--radius-xs`, `-sm`, `-md`, `-lg`, `-pill`, `-btn`, `-input`, `-panel` (arrondis des étiquettes, contrôles,
+      cartes, fenêtres, pastilles, boutons, saisies, grands panneaux) ; `--bw` (trait des contrôles et des cartes) ; `--shadow-ctl`, `--shadow-panel`, `--shadow-float`
+      (un contrôle, une carte, une fenêtre ou un menu flottant) ; `--font-ui`, `--font-head` (avec `--fs-head`, `--fw-head`, `--ls-head`, `--tt-head`), `--font-label`
+      (avec `--ls-label`) ; `--stripe` et `--stripe-h` (le filet en haut d'une carte ou d'une fenêtre) ; `--fill`, `--fill-hover`, `--fill-line` (le bouton plein, un
+      dégradé chez Pop : `--accent-solid` sinon) ; `--avatar-*` ; `--bar-w` (la barre de la ligne choisie). Chacun avec sa valeur d'origine en repli
+      (`var(--radius-md, 10px)`) : sans ambiance, la page est celle de l'app. **À ne pas lire** : `--ex-bg`, `--main-bg`, `--main-overflow`, `--gap`,
+      `--divider`, `--divider-w`, la mise en page de GFS. Une app qui ne lit pas un jeton garde sa forme et prend les couleurs : rien ne casse.
+    - **Seulement ce qu'elle affiche à la personne**, jamais ce qu'elle produit (un e-mail, un PDF, un document, un formulaire public).
+    Seule, l'app garde ses couleurs. Quand l'app propose elle-même un choix de couleur (une couleur de modèle, de document, de thème de présentation), elle prend
+    **le sélecteur de couleur du kit** (`createColorPalette`, `ColorEditor` et `ColorDialog`, kit 0.5.0, tiré de celui de Publipostage+) et n'en garde pas de copie :
+    c'est le même que GFS ouvre pour « La mienne », avec ses rangées de couleurs gardées par l'app (en lecture seule quand elles viennent d'ailleurs), ses textes
+    français et anglais, et ses couleurs posées par le CSSOM, jamais par un attribut `style` (la politique de sécurité du contenu d'une app le refuse).
 16. Taire le rappel « Enregistrer » quand GFS a enregistré le réglage (décision du porteur du 03/11 ; contrats 7.3, points 4 à 6). Dans
     GFS, les réglages que l'app écrit avec `setOption`, `setOptions` ou `clearOptions` (les clés de son manifeste, rien d'autre) sont écrits
     dans la vue par GFS : la personne n'a rien à enregistrer dans Grist, et l'app relit ses réglages par l'écho de Grist (`onOptions`),

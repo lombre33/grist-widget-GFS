@@ -1204,7 +1204,10 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    `--accent-ink`, `--on-accent` sur son bouton) gardent **4,5:1 au moins** sur les fonds où l'app les pose, en clair comme en sombre,
    et le bouton plein se distingue de sa carte ; GFS éclaircit ou assombrit la couleur libre pour y arriver (`ajustee`) et la fenêtre
    le dit. L'app n'a donc rien à recalculer.
-   **Ce que fait l'app** : elle lit `contexte.ambiance` à son démarrage et l'événement `ambiance` ensuite, sans recharger son cadre. Elle
+   **Ce que fait l'app** : le kit en fait la pose (kit 0.6.0) : l'app qui a le lien du kit appelle `Ambiance.start()` (`js/ambiance.js`) une fois à son démarrage ; celle qui
+   garde son propre lien appelle `createAmbiance({ link, isDark })` (`js/ambiance-pose.js`, qui ne connaît aucun lien : deux liens dans un même cadre se prendraient les réponses) ;
+   aucune n'écrit la sienne. Ce qui suit est ce que le kit fait pour elle (et ce qu'une app sans le kit devrait refaire : elle prend le kit, guide des apps 1.2, points 1 et 4, et règle 15).
+   Elle lit `contexte.ambiance` à son démarrage et l'événement `ambiance` ensuite, sans recharger son cadre. Elle
    pose les jetons **par le CSSOM** (`document.documentElement.style.setProperty`, jamais un attribut `style` ni une feuille de style écrits
    à partir du message : sa politique de sécurité du contenu les refuse), ceux du mode qu'elle affiche (`clair` ou `sombre`, d'après le message `theme` de
    Grist, 4.2), et **ne pose que les jetons qu'elle connaît** (sa liste, celle du kit), après avoir vérifié que chaque nom est de la forme
@@ -1244,6 +1247,18 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    de la palette et de la fenêtre garde 4,5:1 au moins. Un kit qui ne se charge pas (le sous-module n'est pas servi) grise « La mienne » et son
    bouton, dit la raison dans la fenêtre et une seule fois dans la console, et les ambiances marchent : le navigateur garde l'échec d'un `import()`
    jusqu'au rechargement de la page, la fenêtre le dit (« Recharge la page pour réessayer ») et, rechargée, la palette s'ouvre.
+   [M] **Mesuré le 03/11, une app écrite avec le kit** (`run-ambiance-kit.mjs` et la sonde N, `labo/sondes/n-ambiance-kit/` : une app qui démarre `Ambiance.start()` du
+   kit 0.6.0 (`8afa569`), dont la feuille lit les jetons de la charte et de forme ; sous la politique d'une app hébergée, `default-src 'none'; script-src 'self'; style-src 'self';
+   base-uri 'none'; form-action 'none'`, dans le cadre isolé de GFS ; 18 vérifications dans chacune des quatre combinaisons à 700 × 400, aucune en échec). Sans choix, le kit
+   n'a rien posé (seule reste la propriété de page que l'app s'est donnée) et `ready` s'est réglé sans repeindre. Pop arrive par un seul événement ; le kit pose les dix-neuf jetons
+   de couleur du mode de l'app et les 28 de forme (48 propriétés avec celle de l'app), et les valeurs calculées de la page sont celles du message (l'accent, la carte, le bouton plein,
+   l'arrondi, la police du titre). Le mode de l'app change (la préférence du système) : les jetons suivent sans événement de GFS, la forme reste, rien de plus n'est posé. Chaque texte
+   de l'app (sept mesurés : le titre, les textes, le lien, les deux boutons) garde 4,5:1 au moins dans les quatre ambiances, en clair et en sombre. Une pastille de la palette du kit
+   change l'accent de l'app par un seul événement, avec la forme de Pop ; « Revenir à Grist Factory » : l'app reçoit `null`, le kit retire tout ce qu'il avait posé et rien d'autre, la
+   page retrouve les couleurs de la charte ; une app ouverte après le choix (Néon) reçoit l'ambiance dans son contexte et la pose avant que `ready` se règle (46 propriétés). Le cadre de
+   l'app n'est jamais reconstruit et elle ne voit aucun refus de la politique de sécurité du contenu (le CSSOM passe sous `style-src 'self'`). Deux pièges vus : un fond de page écrit
+   `--main-bg` (le fond de la carte de GFS, `transparent` chez Néon) laisse un titre clair à 1,10:1 en sombre (le guide dit `--bg`), et le décor `--wash` sur un élément plus court que la
+   page se répète à chaque hauteur de contenu (`min-height: 100vh`).
 
 ### 5.3 Le stockage du navigateur
 

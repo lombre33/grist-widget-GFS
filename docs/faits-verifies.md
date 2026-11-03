@@ -888,6 +888,20 @@ tenir le clavier (Échap ne ferme que celle du dessus), le menu de couleur garde
 touche au bouton : le navigateur la fait alors avancer d'un arrêt depuis le bouton. Le kit n'est chargé qu'à la première ouverture de la fenêtre « Thème » (`import()` de `kit/js/color-palette.js`, `color-dialog.js` et `i18n.js`) :
 s'il ne se charge pas, « La mienne » est grisée avec sa raison et le reste marche ; mesuré, le navigateur garde l'échec d'un `import()` jusqu'au rechargement de la page (GFS ne réessaie donc pas et ne le dit qu'une fois : la fenêtre dit de recharger). **Pas mesuré** : Firefox (le labo n'a que Chromium), et le service de GitHub Pages pour `prototype/kit/` (sous-module, comme `prototype/apps/`).
 
+**Une app qui pose l'ambiance avec le kit (mesuré le 03/11, `labo/run-ambiance-kit.mjs`, Chromium, sonde N).** La sonde est une app écrite avec le kit 0.6.0 (`8afa569`, `Ambiance.start()`) sous la politique d'une
+app hébergée (`default-src 'none'; script-src 'self'; style-src 'self'`), dans le cadre isolé de GFS (`sandbox="allow-scripts"`, origine opaque) ; 18 vérifications dans chacune des quatre combinaisons à 700 × 400.
+- Le CSSOM passe sous `style-src 'self'` : l'app n'a vu aucun refus (`securitypolicyviolation`), à la pose, au changement de mode et au retrait ; la console ne porte que des messages du script d'API de Grist
+  (`grist-plugin-api.js` : sa feuille `grist-theme` en ligne, refusée, déjà connue) et de grist-static (`dist/main.bundle.js`), jamais un de l'app ni du kit.
+- Un cadre isolé n'a pas le script d'API de Grist : le mode que le kit suit y est la préférence du système (`matchMedia`), que `page.emulateMedia` fait basculer dans le sous-cadre comme dans la page. Le mode par
+  `data-grist-appearance` est couvert par les essais du kit (Node), pas par le labo.
+- Pop pose 48 propriétés en ligne sur `<html>` de l'app (les dix-neuf jetons de couleur du mode, 28 de forme, plus la propriété que l'app s'est donnée) ; Néon 46 ; le retrait les enlève toutes sauf celle de l'app.
+  Avant `ready`, l'ambiance connue au contexte est déjà posée : l'app s'affiche sans repeindre.
+- **Piège du fond** : `--main-bg` n'est pas le fond d'une page d'app, c'est celui de la carte de GFS, et il vaut `transparent` chez Néon : un `body { background: var(--main-bg, var(--bg)) }` laissait le titre clair
+  d'un Néon sombre à 1,10:1 sur le blanc du cadre. Le fond d'une app est `--bg`. **Piège du décor** : `--wash` est fait de dégradés dimensionnés sur la boîte de l'élément ; sur un `body` plus court que la page, il se répète
+  à chaque hauteur de contenu (des coutures visibles) : `min-height: 100vh` sur l'élément qui le porte.
+- Un même cadre qui aurait deux liens avec GFS (le sien et celui du kit) : `nextId` part de 1 dans chacun (`js/gfs-link.js`, `link.nextId++`) et une réponse se retrouve par son seul `id` (`link.pending.get(message.id)`) ;
+  deux liens se prendraient donc les réponses. **Lu dans le code du kit, non mesuré.**
+
 ## 18. Les réglages de la vue : ce que le widget ne sait pas, et l'écriture directe (lu et mesuré le 03/11)
 
 Le choix du porteur du 03/11 (« GFS l'écrit dans la vue ») : le courtier écrit lui-même les réglages des apps dans la section de GFS, au lieu du brouillon de Grist (contrats 7.3, points 4 à 6).

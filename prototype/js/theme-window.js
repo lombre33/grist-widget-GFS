@@ -49,7 +49,7 @@ function buildWindow() {
   const line = (cls, glyph, text) => ({ text, node: h('p', { class: cls }, icon(glyph), text) });
   const refs = {
     tiles, color: colorBox(), title: h('h2', { id: 'th-title' }), text: h('p', { class: 'mod-count' }), note: h('p', { class: 'mod-note', 'aria-live': 'polite' }),
-    grid: h('div', { class: 'th-grid', role: 'radiogroup' }, ...tiles.map(item => item.node)),
+    grid: h('div', { class: 'amb-grid', role: 'radiogroup' }, ...tiles.map(item => item.node)),
     check: line('th-check', 'check', h('span')), adjusted: line('th-adj', 'info', h('span')), later: line('th-adj', 'info', h('span')),
     reset: h('button', { type: 'button', class: 'btn', dataset: { fk: 'reset' } }), close: h('button', { type: 'button', class: 'btn primary', dataset: { fk: 'close' } }),
   };

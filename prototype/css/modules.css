@@ -101,7 +101,9 @@
 .mod.th-win { width: min(640px, 100%); }
 .th-body { display: flex; flex-direction: column; gap: 6px; padding: 8px 14px; }
 .th-set { margin: 0; padding: 0; border: 0; min-width: 0; }
-.th-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+/* La grille des vignettes de la fenêtre a son propre nom (`amb-grid`) : `th-grid` est la grille de la vue en vignettes de l'explorateur, et cette feuille, chargée après celle de la liste, lui imposait cinq
+   colonnes (test/css-classes.test.mjs : une classe a un seul propriétaire). Le remplissage de 8 px, que la fenêtre recevait de cette grille-là, est écrit ici. */
+.amb-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; padding: 8px; }
 /* Une vignette = un bouton radio (invisible, étendu sur toute la vignette) : les flèches changent d'ambiance, comme dans une liste de boutons radio du navigateur. */
 .amb { position: relative; display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 5px 5px 6px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); cursor: pointer; }
 .amb:hover { background: var(--surface-sunken); }
@@ -154,5 +156,5 @@
   .mr { grid-template-columns: 22px minmax(0, 1fr); }
   .mr-side { grid-column: 2; flex-direction: row; align-items: center; justify-content: flex-start; padding-top: 4px; }
   .mr--ext { margin-left: 10px; padding-left: 8px; }
-  .th-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .amb-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }

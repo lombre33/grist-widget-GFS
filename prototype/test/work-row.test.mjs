@@ -355,3 +355,16 @@ test('une ligne choisie sur la page sans app ouverte : le jour où Grist change 
   assert.deepEqual(calls, ['changé']);
   assert.equal(work.state(base).tableNow().rowId, 2);
 });
+
+test('Grist dit la nouvelle ligne par un message de table avant son message de ligne : la sienne remplace déjà la ligne choisie sur la page', () => {
+  const base = pageState({ rowId: 1 });
+  const work = new WorkRow({ doc: fakeDoc(), timers: fakeTimers() });
+  const state = work.state(base);
+  const seen = watch(state);
+  work.pickPage(base, 'Participants', 3);
+  base.feed({ tableId: 'Participants', rowId: 2, dataChange: true, mappingsChange: false }); // le curseur a changé, et le message de table passe le premier
+  assert.deepEqual(seen.at(-1), ['table', 'Participants', 2, true]);
+  assert.equal(work.pageRow, null);
+  base.feed({ tableId: 'Participants', rowId: 2, dataChange: false });
+  assert.equal(state.tableNow().rowId, 2);
+});

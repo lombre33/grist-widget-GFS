@@ -10,7 +10,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-T7+FNmpqpsbuPr/HAxvapHIZGegaup4npjnVnuF7g9w='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-1SN+SvJ5mQrSaKh8FpWIlk/F+IGzY15Qz1OBUNl745g='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=fce5d2ff06">
 <link rel="stylesheet" href="css/explorer.css?v=f45c38f822">
 <link rel="stylesheet" href="css/modules.css?v=20d7c83c04">
@@ -66,7 +66,7 @@
     "./js/state.js": "./js/state.js?v=289f010ea6",
     "./js/stored-choice.js": "./js/stored-choice.js?v=e1e93b893c",
     "./js/work-control.js": "./js/work-control.js?v=7efc5aae9e",
-    "./js/work-row.js": "./js/work-row.js?v=f9731e4d7f",
+    "./js/work-row.js": "./js/work-row.js?v=4003614ac1",
     "./js/work-window.js": "./js/work-window.js?v=96926694af"
   }
 }

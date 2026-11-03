@@ -209,10 +209,11 @@ export class WorkRow {
     return page ? { ...message, rowId: page.rowId } : message;
   }
 
-  // Grist change de ligne (un message de ligne d'un autre numéro que celui qu'il a dit en dernier) : la sienne passe avant celle que la personne avait choisie sur la page.
+  // Grist change de ligne (un message, de ligne ou de table, qui dit un autre numéro que celui qu'il a dit en dernier) : la sienne passe avant celle que la personne avait
+  // choisie sur la page. Un message de table qui redit la même ligne (un changement de données) ne change rien.
   #noticeGrist(kind, message) {
     if (!hasRow(message) || (kind !== 'table' && kind !== 'record')) return;
-    const moved = kind === 'record' && message.rowId !== this.#seen;
+    const moved = message.rowId !== this.#seen;
     this.#seen = message.rowId;
     if (moved && this.#page && this.#page.picked) { this.#page = null; this.#onPage(); }
   }

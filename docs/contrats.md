@@ -915,8 +915,8 @@ table, réglé dans le panneau de Grist.
    n'en donne aucune : la ligne d'ajout reste à Grist. Une section reliée n'a jamais d'autre ligne que celle de Grist. (b) Le bouton
    « Ligne » du premier article choisit une ligne de la table de la page : l'app la reçoit tout de suite (sans être rouverte, sauf
    si une autre table de travail était choisie), au `ready` comme à chaque message de table (un changement de données), jusqu'à ce
-   que **Grist dise une autre ligne** (un message de ligne d'un autre numéro que le dernier qu'il a dit : la sienne passe toujours
-   avant), que la personne revienne à la page ou choisisse une autre table de travail, ou que Grist recharge GFS (point 6). La
+   que **Grist dise une autre ligne** (un message de ligne ou de table qui porte un autre numéro que le dernier qu'il a dit : la sienne
+   passe toujours avant), que la personne revienne à la page ou choisisse une autre table de travail, ou que Grist recharge GFS (point 6). La
    barre le dit : bouton enfoncé, info-bulle « celle de la page (Table), ligne … ». Mesuré dans un vrai Grist (labo,
    `run-page-ligne.mjs`, faits vérifiés 1) : un filtre enregistré qui écarte toutes les lignes laissait Publipostage+ sur « Reliez ce
    widget » ; elle reçoit la première ligne, la ligne choisie résiste à un changement de données, `setCursorPos` dans la section la

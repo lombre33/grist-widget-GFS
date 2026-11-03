@@ -37,6 +37,8 @@ const ICONS = {
   import: '<path d="M12 3v12M7.5 10.5L12 15l4.5-4.5"/><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/>',
   bolt: '<path d="M13 3L5 14h6l-1 7 8-11h-6z"/>',
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.6 2.7 3.9 5.7 3.9 9s-1.3 6.3-3.9 9c-2.6-2.7-3.9-5.7-3.9-9s1.3-6.3 3.9-9z"/>',
+  // Le thème (l'ambiance et la couleur de GFS et de ses apps) : une palette de peintre et ses trois pastilles.
+  palette: '<path d="M12 3C7 3 3 6.9 3 11.7S7 21 12 21c1.2 0 2-.9 2-1.9 0-.5-.2-.9-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1 .8-1.8 1.8-1.8H18a3 3 0 0 0 3-3C21 6.7 17 3 12 3Z"/><circle cx="7.6" cy="11.2" r="1"/><circle cx="10.2" cy="7.4" r="1"/><circle cx="14.8" cy="7.4" r="1"/>',
   // Les gestes sur un fichier (menu d'une ligne) : un tracé chacun.
   open: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
   edit: '<path d="M4 20h4L19 9a2.1 2.1 0 0 0-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',

@@ -5,7 +5,16 @@
 import { h } from './dom.js';
 import { Layers } from './layers.js';
 
-const FOCUSABLE = 'input, button:not([disabled])';
+const FOCUSABLE = 'input:not([disabled]), button:not([disabled])';
+
+// Les arrêts de Tab d'une fenêtre, d'après ses éléments au clavier : un groupe de boutons radio n'en a qu'un, le coché (sinon le premier), comme dans le navigateur ; les flèches font le reste.
+export function tabStops(nodes) {
+  return nodes.filter(node => {
+    if (node.type !== 'radio' || !node.name) return true;
+    const group = nodes.filter(other => other.type === 'radio' && other.name === node.name && other.form === node.form);
+    return node === (group.find(other => other.checked) || group[0]);
+  });
+}
 
 // Au-delà, une liste demande d'affiner la recherche : vingt mille boutons ralentiraient la fenêtre sans aider personne.
 export const LIST_SHOWN = 200;
@@ -44,7 +53,7 @@ export function openModal({ container, section, inertTargets, first, cancel = nu
     if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); done(cancel); return; }
     if (event.key !== 'Tab') return;
     event.preventDefault();
-    const nodes = [...section.querySelectorAll(FOCUSABLE)].filter(node => !node.closest('[hidden]'));
+    const nodes = tabStops([...section.querySelectorAll(FOCUSABLE)].filter(node => !node.closest('[hidden]')));
     const at = nodes.indexOf(doc.activeElement);
     (at < 0 ? first : nodes[(at + (event.shiftKey ? -1 : 1) + nodes.length) % nodes.length]).focus();
   };

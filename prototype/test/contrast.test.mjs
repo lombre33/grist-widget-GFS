@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { ratio } from './helpers.mjs';
 
 const css = readFileSync(new URL('../css/gfs.css', import.meta.url), 'utf8');
 
@@ -27,15 +28,11 @@ const light = tokens(blockAfter(':root {'));
 const dark = { ...light, ...tokens(blockAfter(':root[data-grist-appearance="dark"] {')) };
 const darkSystem = { ...light, ...tokens(blockAfter('@media (prefers-color-scheme: dark)')) };
 
-const channel = value => { const v = value / 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
-const luminance = hex => { const n = parseInt(hex.slice(1), 16); return 0.2126 * channel((n >> 16) & 255) + 0.7152 * channel((n >> 8) & 255) + 0.0722 * channel(n & 255); };
-export const ratio = (a, b) => { const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
-
 // [texte, fond] : ce que explorer.css, modules.css et gfs.css posent l'un sur l'autre.
 const PAIRS = [
   ['--text', '--surface'], ['--text', '--bg'], ['--text', '--surface-sunken'], ['--text', '--accent-soft'],
   ['--text-muted', '--surface'], ['--text-muted', '--surface-sunken'], ['--text-muted', '--bg'], ['--text-muted', '--accent-soft'],
-  ['--accent-ink', '--surface'], ['--accent-ink', '--accent-soft'], ['--on-accent', '--accent-solid'], ['--on-accent', '--solid-neutral'],
+  ['--accent-ink', '--surface'], ['--accent-ink', '--accent-soft'], ['--on-accent', '--accent-solid'], ['--on-neutral', '--solid-neutral'],
   ['--good', '--good-soft'], ['--good', '--surface'],
   ['--warn-ink', '--warn-soft'], ['--warn-ink', '--surface'],
   ['--danger-ink', '--surface'], ['--danger-ink', '--danger-soft'],

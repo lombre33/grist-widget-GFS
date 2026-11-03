@@ -118,6 +118,12 @@ export class AppSession {
     if (this.#envelope) this.#envelope.event('langue', { langue: language });
   }
 
+  // L'événement `ambiance` (contrats 5.2, points 2 et 9) : la personne a changé l'ambiance ou la couleur de GFS, ou le mode (clair, sombre) a changé ; l'app le reçoit sans l'avoir demandé et décide
+  // comment suivre. `null` : rien n'est choisi, l'app reprend ses propres couleurs. (Le `theme` de Grist, lui, est celui du clair et du sombre de Grist : `#sendTheme`.)
+  sendAmbiance(ambiance) {
+    if (this.#envelope) this.#envelope.event('ambiance', { ambiance });
+  }
+
   // L'app n'a pas dit `themeInitialized` : on la montre quand même après un délai (Grist fait de même avec un cadre qui tarde).
   #reveal() {
     if (this.visible || !this.#frame) return;

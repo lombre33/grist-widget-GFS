@@ -14,7 +14,7 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
   type de modèle dans sa table (section 2.2).
 - **Quand GFS arrive** : le kit en sous-module, le manifeste `gfs.json`, la liste unique des bibliothèques natives, le
   contexte et le stockage par le kit, les extensions, dont la bibliothèque n'est plus dans le dépôt de l'app mais portée par
-  GFS, la langue de GFS, la zone de sa barre à laisser libre et, si elle la déclare, l'adresse e-mail de la personne (section 1.2).
+  GFS, la langue de GFS, la zone de sa barre à laisser libre, l'adresse e-mail de la personne si elle la déclare et l'ambiance choisie (section 1.2).
 
 ---
 
@@ -151,6 +151,16 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     distinguer ; elle fait alors comme seule (sa propre table d'essai, créée avec l'accord de la personne, ou un « Je suis… » que la
     personne choisit et que `GfsLink.storageSet` retient). L'adresse sert à montrer, filtrer et griser, jamais à décider d'un droit :
     seul Grist refuse (contrats 11.1) ; quand elle sert de clé, elle se compare en minuscules (contrats 11.1, point 7).
+
+15. Suivre l'ambiance de GFS (décision du porteur du 02/11 et du 03/11 ; contrats 5.2, point 10). Dans GFS, `contexte.ambiance` dit
+    l'ambiance et la couleur que la personne a choisies pour GFS et ses apps (`null` : rien n'est choisi, l'app garde ses couleurs) ;
+    l'événement `ambiance` les change en cours de vie, sans recharger le cadre. L'app pose les jetons de couleur du mode qu'elle
+    affiche (`clair` ou `sombre`) par le CSSOM, ne pose que ceux qu'elle connaît (nom `--[a-z0-9-]+`, valeur `#rrggbb`), retire tout
+    ce qu'elle avait posé quand elle reçoit `null`, et lit les jetons de forme (arrondis, traits, ombres, polices) pour ce qu'elle veut
+    en reprendre : sans eux elle garde sa forme et prend les couleurs. Elle écrit ses couleurs par les jetons de la charte, jamais en
+    dur (sinon l'ambiance ne la change pas), et ne pose l'ambiance que sur ce qu'elle affiche à la personne, jamais sur ce qu'elle
+    produit (un e-mail, un PDF, un document, un formulaire public). Le contraste de 4,5:1 est tenu par GFS pour tout ce qu'il envoie ;
+    ce que l'app ajoute à la charte garde le sien. Seule, l'app garde ses couleurs.
 
 ### 1.3 Licence : GPL 3.0 dans tous les dépôts (décision du porteur, 21/10)
 

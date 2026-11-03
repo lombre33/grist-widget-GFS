@@ -12,16 +12,31 @@
   --danger: #d84343; --danger-soft: #fbe9e9; --danger-ink: #c53030;
   --warn-ink: #8a5300; --warn-soft: #fff4e0;
   --solid-neutral: #1b2430;
+  /* Le texte d'une phrase d'état, sur le fond neutre : blanc dans les deux thèmes, quel que soit le texte du bouton plein de l'ambiance (noir sur un jaune). */
+  --on-neutral: #ffffff;
   --t-doc: #2f6fed; --t-doc-ink: #2558c4; --t-doc-soft: #e8f0fe; --t-doc-line: #c7dbfd;
   --t-grid: #2e7d32; --t-grid-ink: #1f6a24; --t-grid-soft: #e7f4e8; --t-grid-line: #bfe0c2;
   --t-slides: #c7600a; --t-slides-ink: #9a4a05; --t-slides-soft: #fff0e0; --t-slides-line: #f6cc9d;
   --scrim: rgba(15, 23, 42, .45);
-  --radius-sm: 7px;
   --shadow-float: 0 14px 32px -8px rgba(9, 16, 35, .35), 0 2px 8px rgba(9, 16, 35, .12);
   --shadow-card: 0 1px 2px rgba(20, 28, 46, .05);
-  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   /* Les couches : l'écart de 100 laisse la place au rang que Layers.raise ajoute à chaque jeton. */
   --z-frames: 1; --z-float: 100; --z-window: 200; --z-menu: 300; --z-toast: 400;
+}
+/* La forme (police, arrondis, traits, ombres, fond, filet) se dit par des jetons, comme les couleurs. Leurs valeurs ici sont celles d'avant les ambiances : sans ambiance choisie, rien
+   ne change d'un pixel. Une ambiance les redit sur <html>, par le CSSOM (js/theme-apply.js) ; la vignette de la fenêtre « Thème » les redit sur la sienne (`.amb-mini`) : d'où le
+   même bloc pour les deux, afin que la vignette parte des valeurs d'origine (et non de celles de la page) et que chaque `var()` se résolve là où elle pose ses propres couleurs. Une app
+   qui ne lit pas ces jetons garde sa forme et prend les couleurs (contrats 5.2, point 10). */
+:root, .amb-mini {
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --radius-xs: 5px; --radius-sm: 7px; --radius-md: 8px; --radius-lg: 10px; --radius-pill: 10px; --radius-btn: var(--radius-sm); --radius-input: var(--radius-sm); --radius-panel: 0px;
+  --bw: 1px; --divider-w: 1px; --divider: var(--border-strong); --bar-w: 3px;
+  --shadow-ctl: none; --shadow-panel: none;
+  --font-head: var(--font-ui); --fw-head: 700; --fs-head: 15px; --tt-head: none; --ls-head: normal;
+  --font-label: var(--font-ui); --tt-label: uppercase; --ls-label: .04em;
+  --gap: 0px; --ex-bg: var(--surface); --main-bg: var(--surface); --main-overflow: visible; --wash: none; --wash-size: auto; --stripe: none; --stripe-h: 0px;
+  --avatar-bg: var(--surface-sunken); --avatar-fg: var(--text-muted); --avatar-line: var(--border);
+  --fill: var(--accent-solid); --fill-hover: var(--accent-solid-hover); --fill-line: var(--accent-solid);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-grist-appearance="light"]) {
@@ -85,7 +100,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 var(
 .floaters[data-edge="droite"] { right: 4px; }
 .floaters[data-edge="haut"] { top: 4px; }
 .floaters[data-edge="bas"] { bottom: 4px; }
-.floater { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--text); cursor: pointer; }
+.floater { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: var(--radius-xs); background: transparent; color: var(--text); cursor: pointer; }
 .floater:hover { background: var(--surface-sunken); }
 .floater:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .floater .ic { width: 16px; height: 16px; }
@@ -94,13 +109,13 @@ body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 var(
 
 /* Une phrase d'état : l'app se charge, ne répond pas, une consigne provisoire. */
 .status { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: var(--z-toast); max-width: calc(100% - 32px); margin: 0; padding: 7px 12px;
-  background: var(--solid-neutral); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); box-shadow: var(--shadow-float); color: var(--on-accent); font-size: 12.5px; }
+  background: var(--solid-neutral); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); box-shadow: var(--shadow-float); color: var(--on-neutral); font-size: 12.5px; }
 .status--bad { background: var(--danger-soft); border-color: var(--danger); color: var(--danger-ink); }
 .toast { bottom: 64px; }
 /* Barre en bas : les phrases d'état se posent au-dessus d'elle. */
 .floaters[data-edge="bas"] ~ .status { bottom: 46px; }
 .floaters[data-edge="bas"] ~ .toast { bottom: 98px; }
 
-.btn { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border-strong); cursor: pointer; }
+.btn { font: inherit; color: var(--text); background: var(--surface); border: var(--bw) solid var(--border-strong); cursor: pointer; }
 .btn:hover { background: var(--surface-sunken); }
 .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

@@ -136,6 +136,7 @@ Slides+ (`lombre33/SlidesPlus`) n'est pas une app de GFS : les diapositives devi
 | **Le calendrier de Tuesday est un module du kit, monté par Tuesday et par Calendar+ (voie A)** : écrit dans le dépôt de Calendar+ (`calendrier/`, qui n'importe que le kit et ne parle jamais à Grist), déplacé par GFS dans une version du kit (`js/calendrier/`, `css/calendrier.css`) que les deux apps référencent ; aucune app n'importe le code de l'autre. Raison : le porteur veut le calendrier dans l'écran de Tuesday, et un calendrier qui marche seul ; la voie B (Calendar+ ouvert par GFS) aurait changé d'app à chaque passage du kanban au calendrier | 03/11 (carte « Kit commun ») | Section 4.5 ; consigne 006 à Tuesday (et à son fil Calendar+). Rien n'est construit : le dépôt de Calendar+ n'a encore que son plan. Qui écrit dans le kit après le premier déplacement reste à trancher |
 | **GFS donne l'adresse e-mail de la personne connectée aux seules apps qui le déclarent** : chaque app dit dans son manifeste pourquoi elle la veut (`permissions.identite`, une raison en français et en anglais) ; GFS la lit comme il le fait déjà pour son rangement (la ligne-sonde de `GFS_Rangement`) et la donne dans le contexte, puis par un événement si elle n'arrive qu'en cours de session ; la fenêtre d'installation montrera la raison, et un client peut lister les apps qui la reçoivent (`outils/capacites.mjs --identite`). Raison : Tuesday veut « Mes tâches » et savoir qui peut modifier quoi, et trois apps lisent déjà l'e-mail chacune par une table d'essai à elle. Seul Grist refuse un droit à quelqu'un : l'adresse sert à montrer, filtrer et griser, jamais à décider | 03/11 (carte « Donner aux apps l'adresse e-mail de la personne connectée ? », choix « Aux apps qui le déclarent ») | Contrats 3.4 (point 6), 5.2 (point 9) ; kit 0.4.0 (`GfsLink.identity`, `onIdentity`) ; guide des apps, 1.2 point 14 ; mesuré dans un vrai Grist (`labo/run-personne.mjs`) ; consigne 008 à Tuesday. Les apps qui lisent l'e-mail par leur table d'essai (Form+, Grist-BI) la gardent : leur en proposer une autre voie attend une carte |
 | **GFS garde les PDF** : une table de GFS (`GFS_Fichiers`, créée avec l'accord de la personne), le PDF en pièce jointe de Grist, listé dans l'explorateur comme un fichier d'app (le manifeste de ces fichiers est dans GFS) ; une seule fenêtre « Remplacer » / « Garder les deux » quand le nom est pris ; aucune app n'écrit ce que GFS garde ni ne reçoit de jeton pour cela : elle demande à GFS de ranger (action commune, dans le kit). Raison : un seul endroit pour tous les PDF, une seule règle pour le nom pris, et aucune app n'a besoin d'un droit d'écriture sur le document pour cela | 03/11 (carte « PDF dans GFS », option A ; « gère tout seul dans ton Grist », 12 h 59) | Contrats 6.6 ; faits vérifiés 14 et 16 ; lot 1 construit et mesuré dans un vrai serveur Grist (`labo/run-pdf.mjs`) ; lots 2 à 4 (lecture dans Publipostage+, « ranger », commentaires) à suivre, un à la fois |
+| **Un seul thème pour GFS et toutes ses apps** : cinq ambiances (Grist Factory, l'aspect d'origine, bleu et gris ; Pop ; Papier ; Brut ; Néon), chacune avec sa direction artistique (couleurs, arrondis, traits, ombres, polices, fond), et au choix la couleur de la personne ; retenu sur le navigateur, suivi par les apps ouvertes ; le contraste de 4,5:1 est tenu par GFS | 03/11 | Contrats 5.2 (point 10) ; sections 3.4 et 5.7 ; consignes aux apps (Publipostage+ en premier) |
 
 Si un fait nouveau remet en cause une de ces lignes, le dire au porteur avec ce fait, sur une carte de décision. Ne jamais
 proposer l'inverse de son propre chef.
@@ -209,6 +210,10 @@ avant toute interface. L'essentiel :
 
 - Base de gris et **un seul bleu d'accent** ; rouge et ambre seulement pour un sens (erreur, attention). Toute couleur passe
   par les jetons de la charte (`--bg`, `--surface`, `--text`, `--accent`…), jamais en dur.
+- **Une ambiance à la fois** (décision du 03/11) : le bleu et le gris d'origine sont l'ambiance par défaut (« Grist Factory ») ; la personne
+  en choisit une autre, ou sa propre couleur, dans le bouton « Thème » de l'explorateur, et GFS comme ses apps suivent (contrats 5.2,
+  point 10). Une ambiance redit les jetons de la charte (couleurs, mais aussi arrondis, traits, ombres, polices) : le code ne change
+  pas, il lit toujours des jetons. GFS tient le contraste de 4,5:1 pour toute ambiance et toute couleur choisie.
 - **Contraste de 4,5:1 au moins**, en clair comme en sombre : texte rouge en `--danger-ink` (jamais `--danger`), bouton
   plein à texte blanc en `--accent-solid`, texte d'accent sur fond teinté en `--accent-ink`.
 - **Police du système** (`--font-ui`, qui commence par `system-ui`) ; jamais une police chargée depuis un autre site. Le
@@ -587,6 +592,9 @@ enregistrée par l'autre app.
   navigateur ou d'un ordinateur à l'autre, et les onglets déjà ouverts ne sont pas prévenus (contrats 5.3). Cela ne
   touche pas au document : cela marche en lecture seule.
 - Un choix gardé par navigateur (thème, zoom, raccourcis) reste un confort : l'app marche sans lui.
+- **Le thème non plus** (décision du 03/11) : l'ambiance et la couleur choisies sont un seul choix par personne, gardé par GFS dans son
+  propre stockage (clés `gfs.theme` et `gfs.couleur`), que les apps lisent dans le contexte et suivent par l'événement `ambiance`
+  (contrats 5.2, point 10). L'app seule garde ses couleurs.
 - **La langue n'en fait plus partie** (décision du 20/10) : un seul choix par personne, gardé par GFS dans son propre
   stockage, que les apps lisent dans le contexte et suivent par un événement (contrats 5.2, point 6). L'app seule garde le
   sien.

@@ -868,3 +868,15 @@ document neuf, panneau à 700 × 400, souris et clavier réels, en français et 
   de ce lot et que le labo connaît : le script d'API de Grist pose sa feuille de thème en ligne (`<style id="grist-theme">`), que la politique de GFS (`style-src 'self'`) refuse, et le premier cadre, ouvert sans
   accès, ne peut pas lire le nom du document.
 - **Pas mesuré** : l'instance du porteur (DINUM : passerelle, taille maximale d'une pièce jointe), Firefox (le cadre en bac à sable, le téléchargement par lien) : le labo n'a que Chromium.
+
+## 17. Le thème de la page : ce que le script d'API de Grist y pose (lu le 03/11)
+
+GFS pose l'ambiance choisie (js/theme-apply.js) sur `<html>` et lit le mode (clair, sombre) que Grist y a posé. Ce que le script d'API de Grist y écrit, lu dans `grist-plugin-api.js`
+(grist-static 0.1.6 ; `attachCssThemeVars`, ligne 27021 de ce fichier), à chaque message `theme` de Grist :
+
+- une feuille `<style id="grist-theme">` (`@layer grist-theme { :root { --grist-theme-… } }`, plus quatre variables `--scroll-bar-*`), que la politique `style-src 'self'` de GFS refuse (rien ne s'applique) ;
+- `document.documentElement.style.setProperty('color-scheme', appearance)` : un style **en ligne** sur `<html>` (c'est pourquoi une page que GFS n'a pas touchée porte déjà une propriété en ligne, `color-scheme`) ;
+- les attributs `data-grist-theme` (le nom du thème) et `data-grist-appearance` (`light` ou `dark`).
+
+Aucun nom ne ressemble à ceux de GFS : les jetons de la charte (`--bg`, `--accent`…) et de forme (`--radius-md`…) ne sont jamais écrits par Grist, et GFS ne touche ni à `color-scheme` ni aux attributs `data-grist-*`. Le mode que GFS suit est le
+`color-scheme` calculé de `<html>`, que `css/gfs.css` tire de `data-grist-appearance` ou, à défaut, du système (`prefers-color-scheme`). Mesuré dans un vrai Grist (`labo/run-theme.mjs`) : les deux modes se suivent.

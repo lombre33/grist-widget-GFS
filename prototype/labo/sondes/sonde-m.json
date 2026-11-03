@@ -1,0 +1,27 @@
+{
+  "contrat": 0,
+  "id": "sonde-m",
+  "nom": {
+    "fr": "Sonde M",
+    "en": "Probe M"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Une app qui lit l’ambiance de GFS et suit ses changements (contrats 5.2, point 10)",
+    "en": "An app that reads GFS’s look and follows its changes (contracts 5.2, point 10)"
+  },
+  "icone": "doc",
+  "entree": "index.html",
+  "tables": {
+    "prefixe": "SondeM_"
+  },
+  "reglages": [],
+  "permissions": {
+    "acces": "none"
+  },
+  "extensions": [],
+  "actions": {
+    "ouvrir": [],
+    "choisir": []
+  }
+}

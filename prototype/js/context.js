@@ -26,7 +26,7 @@ export function identityFor(policy, address) {
   return policy && policy.identite && email ? { email } : null;
 }
 
-// `facts` : ce que le contrôleur a lu (instance, page, document, adresse du widget), `session` : { access, extensions, libraries, opening, storage, bar, identity }.
+// `facts` : ce que le contrôleur a lu (instance, page, document, adresse du widget), `session` : { access, extensions, libraries, opening, storage, bar, identity, ambiance }.
 export function buildContext(facts, session, params) {
   const { preferences, readonly } = params;
   return {
@@ -49,5 +49,6 @@ export function buildContext(facts, session, params) {
     stockage: session.storage || {}, // la copie de l'espace de CETTE app dans le navigateur de GFS (5.3)
     barre: session.bar || null, // la barre de GFS qui recouvre le cadre : { bord, epaisseur, zone }, ou `null` quand rien ne le recouvre (5.2, point 7)
     identite: session.identity || null, // l'adresse e-mail de la personne, `{ email }`, pour l'app qui l'a déclarée et quand GFS la connaît (5.2, point 9)
+    ambiance: session.ambiance || null, // l'ambiance et la couleur que la personne a choisies pour GFS et ses apps (js/theme.js), ou `null` : l'app garde ses couleurs (5.2, point 10)
   };
 }

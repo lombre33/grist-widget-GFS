@@ -110,3 +110,18 @@ test('watchKey : suit la clé donnée (ou un effacement général), rien d\'autr
   stop();
   assert.equal(listeners.has('storage'), false);
 });
+
+test('choices peut être une fonction : une couleur `#rrggbb` ne tient pas dans une liste', () => {
+  const isColor = value => value === null || /^#[0-9a-f]{6}$/.test(value);
+  const store = fakeStore('#d6336c');
+  const color = new StoredChoice({ choices: isColor, fallback: null, store });
+  assert.equal(color.value, '#d6336c');
+  assert.equal(new StoredChoice({ choices: isColor, fallback: null, store: fakeStore('rose') }).value, null, 'une valeur que la fonction refuse est tenue pour absente');
+  const heard = [];
+  color.onChange((value, before) => heard.push([value, before]));
+  color.choose('#0f766e');
+  color.choose('vert');
+  color.choose(null);
+  assert.deepEqual(store.writes, ['#0f766e', null], 'null retire la clé ; « vert » est ignoré sans rien écrire');
+  assert.deepEqual(heard, [['#0f766e', '#d6336c'], [null, '#0f766e']]);
+});

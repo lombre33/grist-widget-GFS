@@ -42,7 +42,7 @@ connaît pas.
 3. **Listes fermées, tenues par GFS** : les verbes d'écriture que le courtier laisse passer ; sept tables internes
    (règles d'accès, partages, rappels, réglages du document) qu'aucune app n'écrit, quoi qu'elle déclare ; la colonne
    `options` de `_grist_Views_section`, qui porte l'adresse et l'accès de chaque widget, GFS compris (section 3).
-4. **Messages propres à GFS** (contexte, stockage, barre, actions « ouvrir », « choisir », « insérer », « installer », « fermer ») :
+4. **Messages propres à GFS** (contexte, stockage, barre, ambiance, actions « ouvrir », « choisir », « insérer », « installer », « fermer ») :
    une enveloppe à part, sans `mtype`, que le script d'API de Grist ignore (sections 4 et 5).
 5. **Installer ne télécharge rien** : le code de toutes les apps livrées est déjà dans le site de GFS ; installer inscrit
    l'identifiant de l'app dans une table du document (sections 6.4 et 7.4). La bibliothèque d'une extension n'est pas dans
@@ -963,6 +963,7 @@ Les noms de la v0 :
 | `extensions` (événement) | GFS → app | `{ extensions: [ … ], bibliotheques: { … } }` (5.2) | aucune |
 | `langue` (événement) | GFS → app | `{ langue }` (5.2, point 6) | aucune |
 | `barre` (événement) | GFS → app | `{ barre }` : `{ bord, epaisseur, zone }` ou `null` (5.2, point 7) | aucune |
+| `ambiance` (événement) | GFS → app | `{ ambiance }` : le message d'ambiance, ou `null` (5.2, point 10) | aucune |
 
 1. [D] `gfs` est le numéro de contrat de l'émetteur (pour l'app, celui de son manifeste). Un message sans `gfs` entier, ou d'un
    numéro que le destinataire ne connaît pas, est ignoré.
@@ -997,17 +998,19 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 | `ouverture` | pourquoi et sur quoi l'app s'ouvre, ou `null` (5.4) | oui | `null` |
 | `stockage` | copie de l'espace de cette app, `{ clé: valeur }` (5.3) | oui, relue à chaque appel | contenu du navigateur |
 | `barre` | la barre de GFS qui recouvre le cadre de l'app, `{ bord, epaisseur, zone }`, ou `null` quand rien ne le recouvre (point 7) | oui, mesurée à chaque appel | `null` |
+| `ambiance` | l'ambiance et la couleur que la personne a choisies pour GFS et ses apps, ou `null` quand rien n'est choisi (point 10) | oui, relue à chaque appel | `null` |
 | `role` | ce que GFS sait de la personne, `{ proprietaire, responsableDe }` (point 8) | oui, relu à chaque appel | `{ proprietaire: null, responsableDe: [] }` |
 | `identite` | l'adresse e-mail de la personne, `{ email }`, ou `null` (point 9) | seulement pour une app qui déclare `identite` (3.4, point 6), `null` pour toute autre ; relue à chaque appel | `null` (l'app garde sa propre sonde, 11.6, point 5) |
 
 1. [T] Les six paramètres de l'adresse (1.3) et le contexte disent la même chose : l'adresse existe pour le code des apps
    qui la lit déjà, le contexte pour le kit. Une seule différence dans le temps : la langue de l'adresse est celle du cadre
    quand il a été créé, et le contexte dit la langue qui vaut maintenant (point 6).
-2. [D] Quatre événements en cours de vie. `extensions` (`{ "extensions": [ … ], "bibliotheques": { … } }`), quand la personne
+2. [D] Cinq événements en cours de vie. `extensions` (`{ "extensions": [ … ], "bibliotheques": { … } }`), quand la personne
    active ou désactive une extension dans GFS : l'app charge alors l'extension au premier usage, comme ses moteurs d'export.
    `langue` (`{ "langue": "fr" | "en" }`), quand la personne change la langue de GFS (point 6). `barre` (`{ "barre": { … } | null }`),
    quand la barre de GFS change de bord, de taille, ou disparaît et revient (point 7). `identite` (`{ "identite": { "email": … } | null }`),
-   quand GFS apprend l'adresse de la personne pendant que l'app qui la déclare est ouverte (point 9).
+   quand GFS apprend l'adresse de la personne pendant que l'app qui la déclare est ouverte (point 9). `ambiance` (`{ "ambiance": { … } | null }`),
+   quand la personne change l'ambiance ou la couleur de GFS (point 10).
 3. [D] `ouverture` : `null` quand l'app s'ouvre sans consigne (elle applique son propre ordre d'arrivée, cahier 6.2, point 4 : c'est
    le cas du bouton « Ouvrir » de la fenêtre « Apps et extensions » et de l'arrivée sur une vue qui porte ses réglages, 7.4, point 7) ;
    sinon `{ fichier, type, dossier, raison }` où `fichier` est `{ id, type }` (ou `null` pour « Nouveau »), `type` le type
@@ -1158,6 +1161,66 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    lit l'adresse par `GfsLink.identity()` et son abonné est rappelé une fois ; une autre personne reçoit la sienne, jamais celle
    de la précédente ; l'anonyme de Grist, une personne sans adresse et un document en lecture seule donnent `null`. Même limite
    que 6.4, point 9 : grist-static n'a pas de compte, le labo donne la personne au moteur de données.
+
+10. [D] `ambiance` : **un seul choix d'ambiance et de couleur par personne, pour GFS et pour toutes ses apps** (décision du porteur,
+   02/11 et 03/11). Le bouton « Thème » de l'explorateur ouvre une fenêtre : cinq ambiances (Grist Factory, celle d'origine, bleu et
+   gris ; Pop ; Papier ; Brut ; Néon), chacune avec sa propre direction artistique (couleurs, arrondis, traits, ombres, polices,
+   fond, filet), et, au choix, **la couleur de la personne**, qui remplace celle de l'ambiance sans toucher à sa forme (le sélecteur
+   de couleur des documents de Publipostage+, qui passe au kit ; tant qu'il n'est pas dans GFS, « La mienne » est grisée avec sa
+   raison). Le clair et le sombre restent ceux de Grist (le message `theme`, 4.2) : une ambiance a ses deux modes. Le choix est
+   retenu dans le `localStorage` de GFS (clés `gfs.theme` : l'identifiant de l'ambiance, absente pour Grist Factory ; `gfs.couleur` :
+   `#rrggbb`, absente tant que la personne n'a pas choisi la sienne), jamais dans le document ni dans une table, et n'écrit rien
+   sans un geste de sa part ; toutes les sections de GFS d'une même page le suivent (événement `storage`) ; un navigateur qui refuse
+   de le retenir n'empêche rien : le choix vaut pour la page, et GFS le dit (même mécanisme que la langue, point 6).
+   `contexte.ambiance` et l'événement `ambiance` (`{ "ambiance": { … } | null }`) portent le même message. Il vaut **`null` quand
+   rien n'est choisi** (Grist Factory sans couleur) : l'app garde alors ses propres couleurs, celles de la charte, et retire celles
+   qu'elle avait posées. Sinon :
+   ```json
+   { "id": "pop", "couleur": "#6d4fd6", "ajustee": false,
+     "clair":  { "--bg": "#f0ecff", "--surface": "#ffffff", "…": "…" },
+     "sombre": { "--bg": "#1c1830", "…": "…" },
+     "forme":  { "--radius-md": "14px", "--shadow-panel": "0 1px 2px color-mix(…)", "…": "…" } }
+   ```
+   `id` : `defaut`, `pop`, `papier`, `brut` ou `neon` ; `couleur` : la couleur libre (`#rrggbb`), ou `null` ; `ajustee` : la couleur
+   libre a dû être éclaircie ou assombrie pour que le texte reste lisible ; `clair` et `sombre` : **dix-neuf jetons de couleur
+   chacun**, tous des `#rrggbb` en minuscules, les quinze de la charte (`--bg`, `--surface`, `--surface-sunken`, `--border`,
+   `--border-strong`, `--text`, `--text-muted`, `--accent`, `--accent-hover`, `--accent-solid`, `--accent-solid-hover`, `--on-accent`,
+   `--accent-ink`, `--accent-soft`, `--accent-soft-border`) et quatre de décor (`--accent-2`, `--accent-3`, `--accent-end`, le bout du
+   dégradé du bouton plein, et `--hard`, l'ombre dure) ; `forme` : les jetons de forme que l'ambiance redit (arrondis `--radius-*`,
+   traits `--bw`, `--divider*`, `--bar-w`, ombres `--shadow-*`, polices `--font-*`, `--fw-head`, `--fs-head`, `--tt-*`, `--ls-*`,
+   fonds `--ex-bg`, `--main-bg`, `--wash`, `--wash-size`, `--stripe*`, `--avatar-*`, bouton plein `--fill*`), des textes de CSS écrits **en
+   termes des jetons de couleur** (`var(--accent)`, `color-mix(…)`), si bien qu'une seule forme sert au clair comme au sombre ; ceux
+   qu'une ambiance ne redit pas n'y sont pas : l'app garde alors sa valeur d'origine. Les couleurs d'état (`--danger*`, `--good*`, `--warn*`) et
+   de type (`--t-*`) ne changent jamais d'une ambiance à l'autre.
+   **Le contraste est tenu par GFS** : pour chaque ambiance et pour toute couleur libre, les textes (`--text`, `--text-muted`,
+   `--accent-ink`, `--on-accent` sur son bouton) gardent **4,5:1 au moins** sur les fonds où l'app les pose, en clair comme en sombre,
+   et le bouton plein se distingue de sa carte ; GFS éclaircit ou assombrit la couleur libre pour y arriver (`ajustee`) et la fenêtre
+   le dit. L'app n'a donc rien à recalculer.
+   **Ce que fait l'app** : elle lit `contexte.ambiance` à son démarrage et l'événement `ambiance` ensuite, sans recharger son cadre. Elle
+   pose les jetons **par le CSSOM** (`document.documentElement.style.setProperty`, jamais un attribut `style` ni une feuille de style écrits
+   à partir du message : sa politique de sécurité du contenu les refuse), ceux du mode qu'elle affiche (`clair` ou `sombre`, d'après le message `theme` de
+   Grist, 4.2), et **ne pose que les jetons qu'elle connaît** (sa liste, celle du kit), après avoir vérifié que chaque nom est de la forme
+   `--[a-z0-9-]+` et chaque couleur un `#rrggbb` ; une valeur de forme qui contient `;`, `{`, `}`, `url(` ou `@import` est ignorée. Elle retire tout ce
+   qu'elle avait posé quand elle reçoit `null` (ou une autre ambiance), au lieu de laisser des restes. Une app qui ne lit pas un jeton de
+   forme **garde sa forme et prend les couleurs** : rien ne casse, et l'ambiance d'une app peut être plus sobre que celle de GFS. L'ambiance
+   ne vaut que pour ce que l'app affiche à la personne : **jamais pour ce qu'elle produit** (un e-mail, un document, un PDF, un
+   formulaire public), qui garde la charte de l'app ou du modèle (comme le thème sombre, cahier 3.4).
+   GFS envoie l'événement **une seule fois par geste** (un geste qui change l'ambiance et la couleur à la fois n'en envoie qu'un), rien
+   quand le choix redit ce qui vaut déjà ; un changement de mode (clair, sombre) n'en envoie aucun, puisque le message porte les deux.
+   Le nom est `ambiance` et non `theme` pour ne pas se confondre avec le message `theme` de Grist, que GFS relaie tel quel.
+   Une app seule n'a pas d'ambiance de GFS : `null`, elle garde ses couleurs (ou son propre choix de couleur, s'il en est).
+   [M] **Mesuré le 03/11** dans un vrai Grist, à la vraie souris et au vrai clavier, en français et en anglais, en clair et en sombre :
+   `run-theme.mjs` et la sonde M (une app minimale qui fait ce que feront les apps avec leur consigne) passent leurs 38 vérifications
+   dans chacune des quatre combinaisons à 700 × 400, et dans une cinquième à 420 de large. Sans choix, la page ne porte aucun jeton de GFS
+   (le seul réglage en ligne est le `color-scheme` que le script d'API de Grist pose lui-même, faits vérifiés 17) et garde son aspect
+   d'origine ; chaque choix se pose tout de suite sur la page (de 36 à 47 jetons selon l'ambiance : dix-neuf de couleur, le reste de forme), se retient dans les deux
+   clés, repart dans la même ambiance au rechargement, et « Revenir à Grist Factory » les retire toutes. La fenêtre tient dans le panneau
+   (349 à 358 de haut, sans défilement) dans les cinq ambiances ; le clavier y entre sur la vignette choisie, les flèches choisissent,
+   Tab la traverse sans s'arrêter sur chaque vignette, Échap rend le clavier au bouton « Thème ». Chaque texte de l'explorateur et de la
+   fenêtre garde 4,5:1 au moins, mesuré sur les couleurs affichées (fonds superposés mélangés, arrêts pleins d'un dégradé compris), dans les cinq ambiances. L'app ouverte reçoit
+   l'ambiance dans son `contexte` (dix-neuf jetons par mode et la forme), puis un seul événement `ambiance` par geste, `null` au
+   retour à l'origine, rien quand le choix redit ce qui vaut déjà, et son cadre n'est jamais reconstruit. Un navigateur qui refuse
+   le stockage garde le choix pour la page, et la fenêtre le dit.
 
 ### 5.3 Le stockage du navigateur
 

@@ -49,19 +49,20 @@ export function planClear(declaredKeys, current) {
   return [...declaredKeys].filter(key => isObject(current) && present(current[key]));
 }
 
-function same(a, b) {
+// Deux valeurs de réglage égales (objets et listes comparés dans la profondeur) ; `undefined` ne vaut ni `null` ni une clé écrite.
+export function sameValue(a, b) {
   if (a === b) return true;
   if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
   const keysA = Object.keys(a);
   if (keysA.length !== Object.keys(b).length) return false;
-  return keysA.every(key => Object.prototype.hasOwnProperty.call(b, key) && same(a[key], b[key]));
+  return keysA.every(key => Object.prototype.hasOwnProperty.call(b, key) && sameValue(a[key], b[key]));
 }
 
 // Ce que l'app lit dans un événement de réglages (4.3) : sa tranche, et le lien « Select by » de la section (`settings.linking`, que Grist redit à chaque changement du lien).
 export const optionsFor = (message, declaredKeys) => ({ options: sliceOf(message.options, declaredKeys), linking: message.settings && message.settings.linking });
 
 // Un événement de réglages dont ce contenu n'a pas changé (une clé de GFS ou d'une autre app dans les réglages) n'est pas transmis à l'app (4.2, point 3).
-export const contentChanged = (previous, next) => !same(previous, next);
+export const contentChanged = (previous, next) => !sameValue(previous, next);
 
 // Les clés de GFS : tout ce qui commence par « gfs. » (7.1, point 3).
 export function gfsPart(allOptions) {

@@ -880,3 +880,45 @@ GFS pose l'ambiance choisie (js/theme-apply.js) sur `<html>` et lit le mode (cla
 
 Aucun nom ne ressemble à ceux de GFS : les jetons de la charte (`--bg`, `--accent`…) et de forme (`--radius-md`…) ne sont jamais écrits par Grist, et GFS ne touche ni à `color-scheme` ni aux attributs `data-grist-*`. Le mode que GFS suit est le
 `color-scheme` calculé de `<html>`, que `css/gfs.css` tire de `data-grist-appearance` ou, à défaut, du système (`prefers-color-scheme`). Mesuré dans un vrai Grist (`labo/run-theme.mjs`) : les deux modes se suivent.
+
+## 18. Les réglages de la vue : ce que le widget ne sait pas, et l'écriture directe (lu et mesuré le 03/11)
+
+Le choix du porteur du 03/11 (« GFS l'écrit dans la vue ») : le courtier écrit lui-même les réglages des apps dans la section de GFS, au lieu du brouillon de Grist (contrats 7.3, points 4 à 6).
+
+**Ce que le widget ne sait pas (lu).**
+
+- Grist 1.7.19 (`WidgetFrame.ts`, lignes 248 à 252 ; tag v1.7.19 de grist-core, lu sur raw.githubusercontent.com) n'ajoute à l'adresse d'un widget que `access`, `readonly` et les paramètres de langue.
+  `onOptions` ne porte que `options` et `settings: { accessLevel, linking }`. **Ni numéro de page, ni numéro de section, ni identifiant de document.**
+- Aucun `Referrer-Policy` n'est posé (`FlexServer.ts`, `sendAppPage.ts`, `static/app.html`, `WidgetFrame.ts`) : la politique par défaut des navigateurs (`strict-origin-when-cross-origin`) ne laisse
+  au cadre d'une autre origine que l'origine de Grist. Mesuré au labo (deux ports, donc deux origines) : le `document.referrer` de GFS est `http://127.0.0.1:8910/`, `contexte.page` vaut `null`.
+  `pageOf(referrer)` ne trouve `/p/N` que pour un widget de la même origine que Grist ; Form+ (`myPageFromReferrer`) est dans le même cas. **Non mesuré** sur grist.numerique.gouv.fr ni sous Firefox
+  (un proxy peut seulement en dire moins).
+
+**Pourquoi « Enregistrer » apparaissait (lu).** `WidgetAPIImpl.setOption` écrit `section.activeCustomOptions`, un brouillon (`ViewSectionRec.ts`, ligne 444) ; la barre « Enregistrer / Retour »
+(`ViewSectionMenu.ts`, `displaySaveObs`) reste tant qu'il n'est pas enregistré, et un widget ne peut pas le vider. `getOptions()` rend le brouillon avant les réglages enregistrés : écrire dans la vue
+pendant qu'un brouillon est posé n'en change pas ce que le widget lit.
+
+**Écrire la section (mesuré, labo grist-static 0.1.6, Chromium).**
+
+- `UpdateRecord` de `_grist_Views_section.options` (un texte JSON dont `customView` est lui-même un texte JSON : `url`, `access`, `widgetOptions`…) : **aucune barre**, le cadre n'est pas reconstruit,
+  et Grist redit les réglages au widget (`getOptions`, `onOptions`). Un « vide » doit être remis tel qu'il était : `widgetOptions: null` n'est pas `{}` (les `options` ne reviennent pas identiques sinon).
+- **Retrouver sa section** : deux sections de GFS de même adresse et de même table, chacune avec sa propre Publipostage+ (la seconde reliée par « Sélectionner par », seul canal indépendant de la vérité) :
+  chaque cadre retrouve la sienne par une marque (nombre aléatoire par candidate, une seule `applyUserActions`, relue par son propre `getOptions`), même quand les trois essais tournent en parallèle ;
+  un nombre inconnu fait recommencer après une attente aléatoire, jamais prendre la section d'un autre. Une seule candidate : aucune marque, aucune écriture de plus.
+
+**Publipostage+ à la vraie souris** (`labo/run-reglages-directs.mjs`, vrai Grist, panneau 700 × 400, 33 vérifications par combinaison, aucune en échec, en français / clair et en anglais / sombre ;
+Publipostage+ `134d043`, servie par la copie de GFS) :
+
+- **Le geste** « Utiliser le modèle ouvert pour cette vue » : aucune barre ; `widgetOptions.modeleDeLaVue` est dans la section de GFS, et rien d'autre n'a bougé (accès, adresse, autres options de la section) ;
+  l'app relit son réglage par l'écho de Grist ; elle reçoit un seul événement `reglages` `{ enregistres: true }` ; ni le cadre de GFS ni celui de l'app ne sont reconstruits ; GFS ne dit rien en console.
+- **« Retirer »** : la clé passe à `null`, toujours sans barre, un second événement arrive ; choisir de nouveau la remet.
+- **GFS rechargé** : la vue s'ouvre d'elle-même sur Publipostage+ et sur le modèle retenu, sans rien demander (7.4, point 7).
+- **Deux GFS sur la même table** : chacune écrit dans SA vue, l'autre ne bouge pas. Quand les deux vues disent la même chose, la recherche pose ses marques, les retire et écrit (5 écritures de la section) ;
+  quand elles ne se ressemblent plus, une seule écriture. Aucune marque ne reste, aucun cadre n'est reconstruit, aucune barre.
+- **Un brouillon déjà posé** (une clé `gfs.essai` écrite par `grist.setOption` : la barre apparaît) : GFS n'écrit rien dans la vue, ni réglage ni marque ; le réglage de l'app rejoint le brouillon,
+  l'app reçoit `enregistres: false`, la barre reste, « Retour » la libère et la vue est comme avant ; GFS le dit une fois en console.
+- **Le texte de Publipostage+ n'a pas suivi** : son rappel (« Pour partager vos changements, cliquez sur « Enregistrer » en haut du widget, dans Grist. », `js/save-reminder.js`) et deux phrases des
+  Réglages (`settings.view.intro`, `settings.access.saveHint`) disent encore d'enregistrer dans Grist : faux sous GFS quand l'événement `reglages` dit `enregistres: true` (consigne à Publipostage+).
+
+**Pas mesuré.** Un vrai serveur Grist et une règle d'accès qui refuse l'écriture (grist-static n'en a pas : le repli est couvert par les tests contre un faux port, pas contre Grist), Firefox (le labo n'a que
+Chromium), Safari, ce que « Annuler » (Ctrl+Z) de Grist fait d'une écriture de la vue, et l'instance du porteur.

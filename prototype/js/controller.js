@@ -5,6 +5,7 @@ import { CATALOGUE } from './catalogue.js';
 import { loadAll, label } from './manifest.js';
 import { GristState } from './state.js';
 import { createPort } from './broker.js';
+import { ViewOptions, addressOf } from './view-options.js';
 import { AppSession } from './session.js';
 import { readPreferences, liveSwitch } from './frames.js';
 import { createI18n } from './i18n.js';
@@ -95,6 +96,11 @@ export class GfsController {
     this.appStorage = new AppStorage({ backend: browserBackend(window) });
     this.port = createPort(grist);
     this.readonly = this.params.get('readonly') === 'true';
+    // Les réglages des apps s'écrivent dans la vue, sans « Enregistrer » (contrats 7.3) : GFS retrouve sa section par son adresse et sa table.
+    this.viewOptions = new ViewOptions({
+      doc: this.port.doc, widget: this.port.widget, address: addressOf(location.href), tableId: () => (this.state.table ? this.state.table.tableId : null),
+      enabled: () => this.fullAccess && !this.readonly,
+    });
     // Les apps sont servies par leur site en ligne (le porteur, 22/10) ; `?live=0` : la copie figée du sous-module, celle des mesures de GFS.
     this.live = liveSwitch(search);
     // Le mode développement (`?dev` dans l'adresse du widget, comme la galerie de développement de Publipostage+) : le bouton « Démo » de l'explorateur.
@@ -701,7 +707,7 @@ export class GfsController {
     return {
       entry: app.app, manifest: app.manifest, catalogue: this.apps.filter(item => item.ok).map(item => item.manifest), state, port, router: this.router,
       container: this.$('frames'), readonly: this.readonly, preferences: this.#appPreferences(), base: this.doc.baseURI, live: this.live, lang: this.lang, onStatus: (kind, current) => this.#onStatus(kind, current),
-      envelopeHandlers: session => this.#envelopeHandlers(session), authorize: (manifest, opens) => this.#askPublication(manifest, opens),
+      envelopeHandlers: session => this.#envelopeHandlers(session), authorize: (manifest, opens) => this.#askPublication(manifest, opens), viewOptions: this.viewOptions,
     };
   }
 

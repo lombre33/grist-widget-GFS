@@ -14,7 +14,7 @@ import { paint } from './theme-apply.js';
 // La petite scène d'une vignette : le titre et un bouton plein, puis une carte à deux lignes (un avatar, un trait de texte, une pastille de type) ; elle prend les jetons de couleur et de forme de son ambiance.
 function scene() {
   const row = (family, short) => h('div', { class: 'mn-r' }, h('i', { class: 'mn-av' }), h('span', { class: short ? 'mn-l s' : 'mn-l' }), h('i', { class: 'mn-p', 'data-fam': family }));
-  return h('div', { class: 'mn amb-mini', 'aria-hidden': 'true' },
+  return h('div', { class: 'amb-mini', 'aria-hidden': 'true' },
     h('div', { class: 'mn-head' }, h('b', { class: 'mn-t' }), h('i', { class: 'mn-btn' })),
     h('div', { class: 'mn-card' }, h('i', { class: 'mn-st' }), row('doc', false), row('grid', true)));
 }

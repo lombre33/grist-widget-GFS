@@ -113,8 +113,9 @@
 .amb:has(input:checked) .chk { visibility: visible; }
 .amb-name { overflow: hidden; font-size: 12px; font-weight: 700; line-height: 1.2; white-space: nowrap; text-overflow: ellipsis; }
 .amb-sub { overflow: hidden; font-size: 11px; line-height: 1.2; color: var(--text-muted); white-space: nowrap; text-overflow: ellipsis; }
-/* La petite scène d'une ambiance : les vrais jetons de couleur et de forme de l'ambiance, posés sur la vignette même (js/theme-apply.js, `paint`), à l'échelle d'une vignette. */
-.mn { position: relative; display: flex; flex-direction: column; gap: 4px; height: 58px; padding: 5px; overflow: hidden; border: 1px solid var(--border); border-radius: 6px;
+/* La petite scène d'une ambiance : les vrais jetons de couleur et de forme de l'ambiance, posés sur la vignette même (js/theme-apply.js, `paint`), à l'échelle d'une vignette.
+   Sa classe est `amb-mini` et non `mn` : `.rb.mn` est le bouton « ⋯ » d'une ligne de l'explorateur, qu'une règle sur `.mn` seule rendait haut de 58 px et bordé. */
+.amb-mini { position: relative; display: flex; flex-direction: column; gap: 4px; height: 58px; padding: 5px; overflow: hidden; border: 1px solid var(--border); border-radius: 6px;
   background-color: var(--ex-bg); background-image: var(--wash); background-size: var(--wash-size); color: var(--text); font-family: var(--font-ui); }
 .mn-head { flex: none; display: flex; align-items: center; gap: 4px; }
 .mn-t { overflow: hidden; font: var(--fw-head) 9.5px/1 var(--font-head); text-transform: var(--tt-head); letter-spacing: var(--ls-head); white-space: nowrap; text-overflow: ellipsis; }

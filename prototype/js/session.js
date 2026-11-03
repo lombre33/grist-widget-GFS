@@ -105,6 +105,11 @@ export class AppSession {
     if (this.#envelope) this.#envelope.event('barre', { barre });
   }
 
+  // L'événement `identite` (contrats 5.2, points 2 et 9) : GFS vient d'apprendre l'adresse e-mail de la personne après le `contexte` de l'app, qui l'avait déclarée ; `null` quand elle ne vaut plus.
+  sendIdentity(identite) {
+    if (this.#envelope) this.#envelope.event('identite', { identite });
+  }
+
   // L'événement `langue` (contrats 5.2, points 2 et 6) : la personne a changé la langue de GFS ; l'app le reçoit sans l'avoir demandé et décide comment suivre. Le titre du
   // cadre (ce que lit un lecteur d'écran) suit tout de suite ; le cadre lui-même n'est jamais rechargé par GFS.
   sendLanguage(language) {

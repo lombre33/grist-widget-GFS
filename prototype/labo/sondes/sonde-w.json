@@ -1,0 +1,27 @@
+{
+  "contrat": 0,
+  "id": "sonde-w",
+  "nom": {
+    "fr": "Sonde W",
+    "en": "Probe W"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Une app qui ne déclare pas l'identité : elle ne doit jamais la recevoir",
+    "en": "An app that does not declare the identity: it must never receive it"
+  },
+  "icone": "doc",
+  "entree": "index.html",
+  "tables": {
+    "prefixe": "SondeW_"
+  },
+  "reglages": [],
+  "permissions": {
+    "acces": "none"
+  },
+  "extensions": [],
+  "actions": {
+    "ouvrir": [],
+    "choisir": []
+  }
+}

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { validateManifest, isSafePath, loadAll, label } from '../js/manifest.js';
+import { validateManifest, isSafePath, loadAll, label, listCapabilities } from '../js/manifest.js';
 import { CATALOGUE } from '../js/catalogue.js';
 import { iconNames } from '../js/icons.js';
 import { publipostage, automation, form, readJson, ROOT } from './helpers.mjs';
@@ -108,6 +108,40 @@ test('contrats 3.3 point 9 : `lienPublic` nomme des petites tables du préfixe d
   const readOnly = publipostage();
   readOnly.permissions = { acces: 'read table', lienPublic: { lit: ['Publipostage_Pub_*'], pourquoi: { fr: 'a', en: 'a' } } };
   assert.match(validateManifest(readOnly).errors.join(' | '), /accès full/, 'déclarer une lecture publique demande l\'accès full comme tout le reste');
+});
+
+test('contrats 3.4, point 6 : `identite` se déclare avec sa raison en français et en anglais, sans demander l\'accès full', () => {
+  const why = { fr: 'Pour « Mes tâches » : afficher les tâches de la personne', en: 'For “My tasks”: show the person\'s own tasks' };
+  const declaring = (access = 'full') => { const m = publipostage(); m.permissions.acces = access; m.permissions.identite = { pourquoi: why }; return m; };
+  assert.equal(validateManifest(declaring()).ok, true);
+  const noReason = publipostage(); noReason.permissions.identite = {};
+  assert.match(validateManifest(noReason).errors.join(' | '), /permissions\.identite : pourquoi doit porter fr et en/);
+  const noEnglish = publipostage(); noEnglish.permissions.identite = { pourquoi: { fr: 'a' } };
+  assert.match(validateManifest(noEnglish).errors.join(' | '), /permissions\.identite : pourquoi doit porter fr et en/);
+  const notObject = publipostage(); notObject.permissions.identite = true;
+  assert.match(validateManifest(notObject).errors.join(' | '), /permissions\.identite/);
+  // Elle ne contourne aucun filtre de tables : une app qui ne lit rien du document peut vouloir savoir qui est là.
+  const bare = { ...publipostage(), permissions: { acces: 'none', identite: { pourquoi: why } } };
+  assert.equal(validateManifest(bare).ok, true, 'ni lit, ni ecrit, ni accès full : valable');
+  const readOnly = { ...publipostage(), permissions: { acces: 'read table', identite: { pourquoi: why } } };
+  assert.equal(validateManifest(readOnly).ok, true);
+  // Les manifestes du prototype n\'en déclarent aucune tant qu\'une app ne l\'a pas demandée à GFS.
+  for (const m of [publipostage(), automation(), form()]) assert.equal(m.permissions.identite, undefined, m.id);
+});
+
+test('contrats 3.4 : listCapabilities dit, pour chaque app, les capacités déclarées et leur raison (ce que lit un client)', () => {
+  const why = { fr: 'Pour « Mes tâches »', en: 'For “My tasks”' };
+  const withIdentity = publipostage(); withIdentity.permissions.identite = { pourquoi: why };
+  const rows = listCapabilities([withIdentity, automation(), form()]);
+  const identity = rows.filter(row => row.capacite === 'identite');
+  assert.deepEqual(identity, [{ app: 'publipostage', nom: withIdentity.nom, capacite: 'identite', detail: '', pourquoi: why }], 'une seule app, avec sa raison');
+  const formKinds = new Set(rows.filter(row => row.app === 'form').map(row => row.capacite));
+  for (const kind of ['formules', 'jeton', 'lienPublic', 'structure', 'gristInterne']) assert.ok(formKinds.has(kind), `Form+ déclare ${kind}`);
+  const link = rows.find(row => row.capacite === 'lienPublic');
+  assert.equal(link.detail, form().permissions.lienPublic.lit.join(', '), 'les motifs que le lien public lit');
+  assert.ok(rows.every(row => row.pourquoi && row.pourquoi.fr && row.pourquoi.en), 'chaque ligne porte sa raison dans les deux langues');
+  assert.deepEqual(listCapabilities([{ id: 'vide', nom: { fr: 'a', en: 'a' } }]), [], 'une app sans permissions ne déclare rien');
+  assert.deepEqual(listCapabilities([]), []);
 });
 
 test('contrats 2.8 : le dossier d\'une extension reste dans l\'app', () => {

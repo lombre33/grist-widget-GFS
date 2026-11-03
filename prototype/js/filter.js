@@ -58,6 +58,7 @@ export function makePolicy(manifest, catalogue = []) {
     jeton: perm.jeton || null,
     formules: Boolean(perm.formules),
     structure: Boolean(perm.structure),
+    identite: Boolean(perm.identite), // l'app reçoit l'adresse e-mail de la personne dans son contexte (contrats 3.4, point 6 ; 5.2, point 9)
     lienPublic: perm.lienPublic && Array.isArray(perm.lienPublic.lit) ? perm.lienPublic.lit : [],
     reglages: new Set(manifest.reglages || []),
   };

@@ -107,10 +107,27 @@ function checkInternalEntry(entry, errors) {
   if (writes && entry.tables.length !== 1) errors.push('gristInterne : une entrée qui écrit nomme une seule table');
 }
 
+// `identite` (3.4, point 6) donne à l'app l'adresse e-mail de la personne : elle ne contourne aucun filtre de tables, donc elle ne demande pas l'accès `full` (voir checkPermissions).
 function checkCapabilities(perm, errors) {
-  for (const key of ['jeton', 'formules', 'structure']) {
+  for (const key of ['jeton', 'formules', 'structure', 'identite']) {
     if (perm[key] !== undefined && (!isObject(perm[key]) || !isBilingual(perm[key].pourquoi))) errors.push(`permissions.${key} : pourquoi doit porter fr et en`);
   }
+}
+
+// Les capacités et les raisons que les apps déclarent (3.4), pour qui doit les relire (un client, son responsable de la sécurité) : une ligne par capacité déclarée,
+// { app, nom, capacite, detail, pourquoi }. `detail` dit sur quoi elle porte quand c'est utile (les tables d'une entrée de `gristInterne`, les motifs de `lienPublic`).
+const CAPABILITIES = ['jeton', 'formules', 'structure', 'identite', 'lienPublic'];
+const reasonOf = entry => (isObject(entry) && isBilingual(entry.pourquoi) ? entry.pourquoi : null);
+const namesOf = list => (Array.isArray(list) ? list.join(', ') : '');
+export function listCapabilities(manifests) {
+  const rows = [];
+  for (const m of manifests) {
+    const perm = isObject(m && m.permissions) ? m.permissions : {};
+    const add = (capacite, entry, names) => rows.push({ app: m.id, nom: m.nom, capacite, detail: namesOf(names), pourquoi: reasonOf(entry) });
+    for (const key of CAPABILITIES) if (perm[key] !== undefined) add(key, perm[key], key === 'lienPublic' && isObject(perm[key]) ? perm[key].lit : null);
+    for (const entry of Array.isArray(perm.gristInterne) ? perm.gristInterne : []) add('gristInterne', entry, isObject(entry) ? entry.tables : null);
+  }
+  return rows;
 }
 
 // Les tables qui gardent la liste des fichiers de l'app (2.4) : `fichiers[].table` et `fichiers[].rangement.table`.

@@ -1,0 +1,33 @@
+{
+  "contrat": 0,
+  "id": "sonde-v",
+  "nom": {
+    "fr": "Sonde V",
+    "en": "Probe V"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Une app qui déclare l'identité (l'adresse e-mail de la personne), comme Tuesday pour « Mes tâches »",
+    "en": "An app that declares the identity (the person's e-mail address), like Tuesday for “My tasks”"
+  },
+  "icone": "doc",
+  "entree": "index.html",
+  "tables": {
+    "prefixe": "SondeV_"
+  },
+  "reglages": [],
+  "permissions": {
+    "acces": "none",
+    "identite": {
+      "pourquoi": {
+        "fr": "Pour « Mes tâches » : montrer les tâches de la personne qui est là",
+        "en": "For “My tasks”: show the tasks of the person who is here"
+      }
+    }
+  },
+  "extensions": [],
+  "actions": {
+    "ouvrir": [],
+    "choisir": []
+  }
+}

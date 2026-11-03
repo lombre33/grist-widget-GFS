@@ -14,7 +14,7 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
   type de modèle dans sa table (section 2.2).
 - **Quand GFS arrive** : le kit en sous-module, le manifeste `gfs.json`, la liste unique des bibliothèques natives, le
   contexte et le stockage par le kit, les extensions, dont la bibliothèque n'est plus dans le dépôt de l'app mais portée par
-  GFS, la langue de GFS et la zone de sa barre à laisser libre (section 1.2).
+  GFS, la langue de GFS, la zone de sa barre à laisser libre et, si elle la déclare, l'adresse e-mail de la personne (section 1.2).
 
 ---
 
@@ -141,6 +141,16 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     `actions.choisir` les types que l'on peut désigner (pas ceux qui n'ont pas de sens hors de l'app : un e-mail, une macro) et dans
     `actions.ouvrir` ceux que tu sais ouvrir ; réponds à l'appel `ouvrir` comme au double-clic de l'explorateur (une raison que tu ne
     connais pas, `lien` par exemple, ne change rien à ce que tu ouvres).
+14. Connaître la personne qui est là (décision du porteur du 03/11 ; contrats 3.4, point 6, et 5.2, point 9). Une app qui a besoin de
+    l'adresse e-mail de la personne (« Mes tâches », « qui peut modifier quoi ») la **déclare** dans son manifeste :
+    `"permissions": { "identite": { "pourquoi": { "fr": "…", "en": "…" } } }`, avec une raison que la personne comprend (la fenêtre
+    d'installation la montrera, et un client pourra lister les apps qui la reçoivent). GFS ne la donne qu'à celles-là : elle arrive dans
+    `contexte.identite` (`{ email }`), puis par l'événement `identite` quand GFS ne l'apprend qu'après le contexte (la table du
+    rangement naît pendant la session). Dans le kit : `GfsLink.identity()` et `GfsLink.onIdentity(fn)` (kit 0.4.0). **Le repli est
+    obligatoire** : `null` veut dire « pas déclarée », « GFS ne la connaît pas encore » ou « app seule », sans que l'app puisse le
+    distinguer ; elle fait alors comme seule (sa propre table d'essai, créée avec l'accord de la personne, ou un « Je suis… » que la
+    personne choisit et que `GfsLink.storageSet` retient). L'adresse sert à montrer, filtrer et griser, jamais à décider d'un droit :
+    seul Grist refuse (contrats 11.1) ; quand elle sert de clé, elle se compare en minuscules (contrats 11.1, point 7).
 
 ### 1.3 Licence : GPL 3.0 dans tous les dépôts (décision du porteur, 21/10)
 

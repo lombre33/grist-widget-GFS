@@ -37,7 +37,8 @@ connaît pas.
    contrôle, fait son propre appel à Grist et rend sa propre réponse (section 1).
 2. **Ce qui n'est pas déclaré dans `gfs.json` est refusé** : tables lues et écrites, clés de réglages, tables internes de
    Grist (par table et par colonne). Trois capacités contournent un filtre de tables, donc se déclarent avec une raison : le
-   jeton d'accès, les formules, la structure des pages (sections 2 et 3).
+   jeton d'accès, les formules, la structure des pages (sections 2 et 3). Une déclaration de plus ne contourne rien : `identite`
+   donne l'adresse e-mail de la personne aux seules apps qui la demandent (3.4, point 6 ; 5.2, point 9).
 3. **Listes fermées, tenues par GFS** : les verbes d'écriture que le courtier laisse passer ; sept tables internes
    (règles d'accès, partages, rappels, réglages du document) qu'aucune app n'écrit, quoi qu'elle déclare ; la colonne
    `options` de `_grist_Views_section`, qui porte l'adresse et l'accès de chaque widget, GFS compris (section 3).
@@ -433,7 +434,7 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
      qui écrit sans `lit: true` ou qui écrit plus d'une table, `lit`/`ecrit`/`gristInterne`/capacités avec un accès autre que
      `full`) ; dans `permissions.lienPublic` (3.4, point 5) : un `pourquoi` sans français ou sans anglais, une liste de motifs absente
      ou vide, un motif hors du préfixe de l'app, qui couvre toutes ses tables (`FormPlus_*`) ou la table de ses fichiers ou de son
-     rangement ;
+     rangement ; dans `permissions.identite` (3.4, point 6) : un `pourquoi` absent, sans français ou sans anglais ;
    - une extension dont le `dossier` sort de l'app, ou dont une entrée de `bibliotheques` n'a pas d'`id` ou n'a pas une
      `version` exacte (un intervalle, `latest`) ;
    - dans `actions.importer` (2.7, point 4) : une entrée sans `valeur` ou sans `nom` en français et en anglais, une `valeur` déjà
@@ -690,7 +691,8 @@ ne lit pas).
 ### 3.4 Les capacités à déclarer
 
 Trois capacités contournent un filtre de tables. L'app les déclare, avec une raison en français et en anglais ; GFS les montre
-à la personne dans la fenêtre d'installation, en mots simples.
+à la personne dans la fenêtre d'installation, en mots simples. Deux déclarations de plus se font de la même façon sans rien
+contourner : `lienPublic` resserre un filtre (point 5), `identite` donne une donnée que GFS seul sait (point 6).
 
 1. [D] **`jeton`** : `{ "lectureSeule": true, "pourquoi": { … } }`. Sans elle, `getAccessToken` est refusé. Avec elle, le
    courtier force `readOnly: true` sauf `lectureSeule: false`, et transmet `route` tel quel. Un jeton ouvre l'API REST sur
@@ -717,6 +719,15 @@ Trois capacités contournent un filtre de tables. L'app les déclare, avec une r
    est montré à la personne comme celui des capacités. Form+ : `["FormPlus_Pub_*"]`, la petite table d'une ligne de CHAQUE formulaire (la
    définition de ce formulaire seul, consigne 013). Codé le 03/11 (`js/filter.js` : `publiclyReadable` ; `js/publication.js` : `whyNot` ;
    `js/manifest.js` : `checkPublicLink`).
+6. [T] **`identite`** : `{ "pourquoi": { "fr": "…", "en": "…" } }`. Pas une capacité qui contourne un filtre : elle ouvre une
+   donnée que GFS seul sait, l'adresse e-mail de la personne qui a le document ouvert (5.2, point 9). Choix du porteur du 03/11
+   (« Aux apps qui le déclarent ») : GFS ne la donne **qu'aux apps qui la déclarent**, chacune disant pourquoi en français et en
+   anglais ; la fenêtre d'installation montre cette raison comme celle des autres capacités, et un client peut lister les apps
+   qui reçoivent l'adresse (`node outils/capacites.mjs --identite` ; sans filtre, toutes les capacités déclarées, avec leur
+   raison). Sans la déclaration, `contexte.identite` vaut `null` et aucun événement n'est envoyé : l'app ne peut pas savoir si
+   GFS connaît la personne. Elle ne demande pas `acces: full` : l'adresse ne passe par aucune table de l'app. Le validateur
+   (2.8) exige le `pourquoi` en deux langues. Codé le 03/11 (`js/manifest.js` : `checkCapabilities`, `listCapabilities` ;
+   `js/filter.js` : `makePolicy` ; `js/context.js` : `identityFor`).
 
 ### 3.5 Les clés de réglages
 
@@ -987,14 +998,16 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 | `stockage` | copie de l'espace de cette app, `{ clé: valeur }` (5.3) | oui, relue à chaque appel | contenu du navigateur |
 | `barre` | la barre de GFS qui recouvre le cadre de l'app, `{ bord, epaisseur, zone }`, ou `null` quand rien ne le recouvre (point 7) | oui, mesurée à chaque appel | `null` |
 | `role` | ce que GFS sait de la personne, `{ proprietaire, responsableDe }` (point 8) | oui, relu à chaque appel | `{ proprietaire: null, responsableDe: [] }` |
+| `identite` | l'adresse e-mail de la personne, `{ email }`, ou `null` (point 9) | seulement pour une app qui déclare `identite` (3.4, point 6), `null` pour toute autre ; relue à chaque appel | `null` (l'app garde sa propre sonde, 11.6, point 5) |
 
 1. [T] Les six paramètres de l'adresse (1.3) et le contexte disent la même chose : l'adresse existe pour le code des apps
    qui la lit déjà, le contexte pour le kit. Une seule différence dans le temps : la langue de l'adresse est celle du cadre
    quand il a été créé, et le contexte dit la langue qui vaut maintenant (point 6).
-2. [D] Trois événements en cours de vie. `extensions` (`{ "extensions": [ … ], "bibliotheques": { … } }`), quand la personne
+2. [D] Quatre événements en cours de vie. `extensions` (`{ "extensions": [ … ], "bibliotheques": { … } }`), quand la personne
    active ou désactive une extension dans GFS : l'app charge alors l'extension au premier usage, comme ses moteurs d'export.
    `langue` (`{ "langue": "fr" | "en" }`), quand la personne change la langue de GFS (point 6). `barre` (`{ "barre": { … } | null }`),
-   quand la barre de GFS change de bord, de taille, ou disparaît et revient (point 7).
+   quand la barre de GFS change de bord, de taille, ou disparaît et revient (point 7). `identite` (`{ "identite": { "email": … } | null }`),
+   quand GFS apprend l'adresse de la personne pendant que l'app qui la déclare est ouverte (point 9).
 3. [D] `ouverture` : `null` quand l'app s'ouvre sans consigne (elle applique son propre ordre d'arrivée, cahier 6.2, point 4 : c'est
    le cas du bouton « Ouvrir » de la fenêtre « Apps et extensions » et de l'arrivée sur une vue qui porte ses réglages, 7.4, point 7) ;
    sinon `{ fichier, type, dossier, raison }` où `fichier` est `{ id, type }` (ou `null` pour « Nouveau »), `type` le type
@@ -1120,6 +1133,31 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    vide sans adresse résolue, sans espace, ou pour une app seule. L'app s'en sert pour **griser, jamais pour décider** : elle ne
    grise que si `proprietaire` est `false`, et c'est Grist qui accepte ou refuse. Le champ est relu à chaque appel `contexte`,
    sans événement : seule une règle posée recharge la page (11.5, point 3), et qui voit quoi est une donnée.
+9. [T] `identite` (03/11, choix du porteur « Aux apps qui le déclarent ») : `{ "email": "<adresse>" }`, ou `null`. **Qui la reçoit** :
+   seule l'app dont le manifeste déclare `permissions.identite` (3.4, point 6). Pour toute autre, le champ est là et vaut `null`, et
+   l'événement n'est jamais envoyé : elle ne peut pas distinguer « pas déclarée » de « GFS ne connaît pas la personne ». **D'où
+   elle vient** : de la lecture que GFS fait déjà pour son rangement, la ligne-sonde (6.4, point 9) ; GFS ne lit rien de plus et ne
+   crée aucune table pour cela. Elle vaut donc `null` tant que GFS ne l'a pas : la table `GFS_Rangement` n'existe pas encore (elle
+   naît d'un geste de la personne, avec son accord, 6.4), le document est en lecture seule, ou Grist ne donne pas d'adresse de
+   personne (les cas de 6.4, point 9 : l'anonyme de Grist, une valeur vide, une erreur, une valeur qui n'a pas la forme
+   `nom@domaine`). **Comment elle arrive** : dans chaque `contexte` ; quand GFS l'apprend ensuite (la table naît pendant que l'app
+   est ouverte), par l'événement `identite`, **une seule fois**, à l'app active qui la déclare et qui a déjà son contexte. Une
+   valeur déjà donnée n'est jamais renvoyée ; un cadre qui se recharge redemande son contexte et la retrouve. L'adresse est celle
+   de Grist, à la lettre près (casse comprise) ; l'app qui s'en sert comme clé la compare en minuscules (11.1, point 7). GFS ne la
+   met dans l'adresse d'aucun cadre et n'en garde rien dans le navigateur (6.4, point 9). **Ce que l'app en fait** : elle montre
+   (« Mes tâches »), filtre ou grise pour la raison qu'elle a déclarée, et ne décide jamais d'un droit : seul Grist refuse (11.1).
+   Elle vit sans quand le champ vaut `null` : son repli est son propre mécanisme, ou demander à la personne qui elle est et le
+   retenir dans son espace de stockage (5.3). Seule, l'app n'a pas cette valeur : le kit la rend `null` hors de GFS. Dans le kit :
+   `GfsLink.identity()` et `GfsLink.onIdentity(rappel)` (version 0.4.0, `a793837`). [M] **Mesuré le 03/11** dans un vrai Grist
+   (`prototype/labo/run-personne.mjs`, 34 vérifications, aucune en échec, en français clair, anglais clair, français sombre et
+   anglais sombre, à 700 × 400 et à la vraie souris) avec trois sondes (`labo/sondes/v-personne/`) : V déclare l'identité, W non,
+   X est écrite avec le vrai client du kit. Sans la table, V reçoit `null` et aucun événement ; l'étoile d'un fichier fait naître
+   la table et V reçoit UN événement avec l'adresse de Grist (casse gardée), sans autre écriture de GFS que la table, la sonde, son
+   retrait et la ligne de la personne, et un geste de plus ne le répète pas ; à la réouverture le contexte porte l'adresse (la
+   sonde seule est écrite, l'adresse n'est dans l'adresse d'aucun cadre) ; W reçoit `null` dans tous les cas, sans événement ; X
+   lit l'adresse par `GfsLink.identity()` et son abonné est rappelé une fois ; une autre personne reçoit la sienne, jamais celle
+   de la précédente ; l'anonyme de Grist, une personne sans adresse et un document en lecture seule donnent `null`. Même limite
+   que 6.4, point 9 : grist-static n'a pas de compte, le labo donne la personne au moteur de données.
 
 ### 5.3 Le stockage du navigateur
 
@@ -1451,7 +1489,8 @@ rangée d'un fichier, selon ce qui vient d'abord.
    non commun à tout le document. Sans identité (anonyme, adresse illisible, document en lecture seule, table pas encore
    créée), repli vide, jamais bloquant : le rangement est alors commun au document, et l'explorateur le dit (« Rangement
    commun au document »). Les lignes écrites sans identité (`Utilisateur` vide) restent dans la table, intactes ; une personne
-   identifiée ne les voit plus, quiconque n'est pas identifié les voit toujours.
+   identifiée ne les voit plus, quiconque n'est pas identifié les voit toujours. Cette même adresse est donnée aux apps qui
+   déclarent `identite` (3.4, point 6 ; 5.2, point 9), et à elles seules.
 5. [T] Le rangement propre à une app (les dossiers personnels de Publipostage+) reste valable dans l'app ; l'explorateur de GFS
    le lit (champ `fichiers[].rangement`, 2.4) et n'y écrit jamais (point 8).
 6. [T] Une ligne dont `Utilisateur` commence par `@` est une ligne réservée de GFS : l'état du document, jamais le rangement
@@ -1656,12 +1695,13 @@ document en petits commits, les points 8 (cadre qui navigue, politique imposable
 
 ## 10. Laissé aux étapes suivantes
 
-- **Étape 3 (kit)** : où vit la table-sonde de l'identité quand le kit la partage ; liste des icônes (`icone`) ; le texte commun
+- **Étape 3 (kit)** : où vit la table-sonde de l'identité quand le kit la partage (dans GFS, l'adresse vient de GFS : 5.2, point 9 ;
+  reste l'app seule) ; liste des icônes (`icone`) ; le texte commun
   du grisé et la fenêtre d'installation.
 - **Étape 5 (apps)** : où vivent les instantanés `pp_schema_…` (le quota de 1 Mo de 5.3 est fixé) ; le contenu de chaque `gfs.json` ; la sortie de `_grist_*` pour
   Form+ ; les classes de tables et les colonnes de l'étiquette (11.2, 11.6), après les mesures de 11.8.
 - **Étape 6 (GFS v0)** : le rangement propre à une app dans l'explorateur ; « Fermer quand même » ; « Recharger » ; la
-  fenêtre d'installation qui montre `pourquoi` ; le panneau « Permissions » en lecture, le pied honnête et `contexte.role`
+  fenêtre d'installation qui montre `pourquoi` (celui d'`identite` compris, 3.4, point 6) ; le panneau « Permissions » en lecture, le pied honnête et `contexte.role`
   (11.4, point 7 ; 5.2, point 8).
 - **Étape 7 (extensions et nouvelles apps)** : poser et retirer un niveau de règles, les espaces et leurs responsables, le
   contrôle d'ensemble des règles (11.5, 11.7) ; le déroulement d'« insérer » (deux sous-cadres), la taille du rendu ; le
@@ -1949,7 +1989,8 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
    fonction utilisable.
 5. [T] **Ne rien croire sur l'identité.** L'adresse de la personne vient de Grist, par la table-sonde (6.4, point 9 pour GFS ; la
    sienne pour l'app, puis celle du kit), jamais d'un champ qu'un éditeur peut changer. La ligne d'une sonde se relit par
-   l'identifiant que rend l'ajout, jamais en cherchant « la ligne-sonde ».
+   l'identifiant que rend l'ajout, jamais en cherchant « la ligne-sonde ». Depuis le 03/11, GFS donne l'adresse aux apps qui déclarent `identite` (5.2, point 9) : c'est la
+   même lecture de Grist, non un champ que la personne a tapé.
 6. [D] **L'app tient les colonnes de l'étiquette** (`visibilite`, `personnes`, `auteur`, `espace`) : additives (6.1), tolérées
    absentes. **Les colonnes d'aide `GFS_…` ne sont pas à l'app** : elle les tolère (6.1, points 3 et 4), les ignore et ne les écrit
    jamais. Les noms de l'étiquette viennent dans une consigne à part, après les mesures : aucune app n'ajoute de colonne avant.
@@ -1961,7 +2002,7 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
    | Publipostage+ | Déclarer `classes` : ses modèles (`reserve`), ses versions, commentaires et écriture en direct (`derivee`), ses préférences par personne (`personnel`) ; ajouter l'étiquette (quatre colonnes) ; vivre sans la colonne du mot de passe commun d'un PDF protégé (la saisir à chaque export, ce que l'app propose déjà) ; dire « seul un propriétaire enregistre ce réglage » pour les quatre réglages de sa vue quand la structure est fermée ; présenter son tableau de droits comme un confort : il masque des boutons, il ne protège rien |
    | Form+ | Dire que concevoir ou republier un formulaire est un geste de propriétaire dès que la structure est fermée : il écrit dans la structure ; pour un lien public (11.9 ; consigne 013) : un partage et une table de réception par formulaire, aucune colonne de gestion écrite dans cette table, la définition de son seul formulaire dans ce que le lien peut lire, des réponses traitées comme non fiables ; sa page des répondants écrit avec la session anonyme du partage : sa tenue structure fermée est à mesurer (11.8) |
    | Automation+ | Déclarer `proprietaires` pour ses lignes `Workflow` (le type de ligne est déjà là) : un workflow s'exécute avec les droits de la personne qui a l'onglet ouvert, donc un workflow qu'un éditeur pourrait changer s'exécuterait chez un propriétaire, avec ses droits |
-   | Grist-BI | Vivre sans sa table-sonde si un éditeur ne peut plus la créer (l'identité viendra du kit) ; dire que les chiffres sont ceux que la personne a le droit de lire, pour que deux personnes qui voient deux totaux sachent pourquoi |
+   | Grist-BI | Vivre sans sa table-sonde si un éditeur ne peut plus la créer (dans GFS, l'identité vient de GFS par le kit : 5.2, point 9 ; seule, l'app garde la sienne) ; dire que les chiffres sont ceux que la personne a le droit de lire, pour que deux personnes qui voient deux totaux sachent pourquoi |
 
 9. [D] **Les liens publics** (11.9) : toute app traite une valeur de donnée comme du texte non fiable (elle l'échappe, ne la prend
    jamais pour du code), et ne déclenche rien d'elle-même sur les lignes d'une table qu'un lien public remplit. Publipostage+,

@@ -1,7 +1,8 @@
 // Le contexte que GFS rend à une app (contrats 5.2).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildContext, instanceOf, pageOf, HOST } from '../js/context.js';
+import { buildContext, identityFor, instanceOf, pageOf, HOST } from '../js/context.js';
+import { policyOf, publipostage } from './helpers.mjs';
 
 test('instanceOf : l\'origine de la page de Grist, ou rien', () => {
   assert.equal(instanceOf('https://docs.getgrist.com/o/docs/abc123/Mon-doc/p/4'), 'https://docs.getgrist.com');
@@ -22,7 +23,7 @@ test('buildContext : tous les champs du contrat, les paramètres de l\'adresse d
   const facts = { instance: 'https://docs.getgrist.com', document: 'abc123', page: 4, widgetAddress: 'https://exemple.test/gfs/index.html' };
   const session = { access: 'read table', extensions: ['graphique'], libraries: { plotly: { src: 'https://x/p.js', integrite: 'sha384-X' } }, opening: { fichier: null, type: 'modele', dossier: '', raison: 'nouveau' } };
   const context = buildContext(facts, session, { preferences: { language: 'fr', timeZone: 'Europe/Paris' }, readonly: false });
-  assert.deepEqual(Object.keys(context), ['contrat', 'hote', 'instance', 'document', 'page', 'section', 'adresseWidget', 'langue', 'culture', 'fuseau', 'devise', 'lectureSeule', 'acces', 'extensions', 'bibliotheques', 'ouverture', 'stockage', 'barre']);
+  assert.deepEqual(Object.keys(context), ['contrat', 'hote', 'instance', 'document', 'page', 'section', 'adresseWidget', 'langue', 'culture', 'fuseau', 'devise', 'lectureSeule', 'acces', 'extensions', 'bibliotheques', 'ouverture', 'stockage', 'barre', 'identite']);
   assert.equal(context.contrat, 0);
   assert.deepEqual(context.hote, HOST);
   assert.equal(context.acces, 'read table');
@@ -36,8 +37,29 @@ test('buildContext : tous les champs du contrat, les paramètres de l\'adresse d
   const kept = buildContext(facts, { ...session, storage: { pp_theme: 'dark', pp_page_zoom: '{"m1":120}' } }, { preferences: {}, readonly: false });
   assert.deepEqual(kept.stockage, { pp_theme: 'dark', pp_page_zoom: '{"m1":120}' }, 'la copie de l\'espace de l\'app, telle que le courtier la lit');
   assert.equal(context.barre, null, 'sans barre qui la recouvre : null');
+  assert.equal(context.identite, null, 'sans identité donnée : null');
+  assert.deepEqual(buildContext(facts, { ...session, identity: { email: 'ana@exemple.org' } }, { preferences: {}, readonly: false }).identite, { email: 'ana@exemple.org' }, 'l\'identité que le contrôleur a donnée, telle quelle');
   const bar = { bord: 'gauche', epaisseur: 42, zone: { x: 0, y: 149, largeur: 42, hauteur: 102 } };
   assert.deepEqual(buildContext(facts, { ...session, bar }, { preferences: {}, readonly: false }).barre, bar, 'la barre que le contrôleur a mesurée, telle quelle');
   assert.equal(buildContext(facts, { ...session, opening: null }, { preferences: {}, readonly: true }).ouverture, null);
   assert.equal(buildContext(facts, session, { preferences: {}, readonly: true }).lectureSeule, true);
+});
+
+// L'adresse e-mail de la personne n'est donnée qu'à l'app qui l'a déclarée (contrats 3.4, point 6 ; 5.2, point 9).
+const declaring = () => policyOf({ ...publipostage(), permissions: { ...publipostage().permissions, identite: { pourquoi: { fr: 'Pour « Mes tâches »', en: 'For “My tasks”' } } } });
+
+test('identityFor : seulement à l\'app qui a déclaré l\'identité, et quand GFS connaît l\'adresse', () => {
+  assert.deepEqual(identityFor(declaring(), 'ana@exemple.org'), { email: 'ana@exemple.org' });
+  assert.deepEqual(identityFor(declaring(), '  Ana@Exemple.org '), { email: 'Ana@Exemple.org' }, 'la casse de Grist est gardée, les blancs de bord partent');
+  assert.equal(identityFor(policyOf(publipostage()), 'ana@exemple.org'), null, 'une app qui ne l\'a pas déclarée n\'en reçoit rien');
+  assert.equal(identityFor(declaring(), ''), null, 'GFS ne la connaît pas : null');
+  assert.equal(identityFor(declaring(), undefined), null);
+  assert.equal(identityFor(declaring(), 42), null, 'ce qui n\'est pas un texte n\'est pas une adresse');
+  assert.equal(identityFor(null, 'ana@exemple.org'), null);
+});
+
+test('identityFor : l\'app ne distingue pas « pas déclarée » de « GFS ne la connaît pas »', () => {
+  const undeclared = identityFor(policyOf(publipostage()), 'ana@exemple.org');
+  const unknown = identityFor(declaring(), '');
+  assert.deepEqual(undeclared, unknown);
 });

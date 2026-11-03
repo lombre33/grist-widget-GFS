@@ -27,7 +27,7 @@ import { ask } from './ask-window.js';
 import { importFormats, acceptsFile, importOpening, openingKind, pickFile } from './import-file.js';
 import { publicationQuestion } from './publication-window.js';
 import { ModulesWindow, rowKey } from './modules-window.js';
-import { buildContext, instanceOf, pageOf } from './context.js';
+import { buildContext, identityFor, instanceOf, pageOf } from './context.js';
 import { Refus, ERR, levelOf } from './filter.js';
 import { loadDemo, readSchema, planDemo, runDemo, demoSummary, demoReport, DemoError } from './demo.js';
 
@@ -61,6 +61,7 @@ export class GfsController {
   #noticeTimer = null;
   #facts = null;
   #sentExtensions = null;
+  #sentIdentity = null; // l'identité donnée à l'app active (JSON), ou null tant qu'elle n'a pas demandé son contexte
   #contextServed = false; // l'app active a demandé son contexte : elle a lu l'ouverture qui s'y trouvait, et ne la relira pas
   #consented = false; // la démo a déjà l'accord de la personne pour les tables qu'elle crée, dont GFS_Rangement : pas de seconde question
   #modulesWaiters = [];
@@ -465,6 +466,17 @@ export class GfsController {
   // GFS vient d'apprendre l'adresse de la personne (la table est née pendant la session) : sa liste de fichiers se relit avec son propre rangement.
   #onIdentity() {
     if (this.explorer && this.explorer.isOpen) void this.refreshFiles();
+    this.#pushIdentity();
+  }
+
+  // L'événement `identite` (contrats 5.2, points 2 et 9) : seulement à l'app qui a déjà son contexte et que l'adresse vient de changer (une app qui ne l'a pas déclarée n'en reçoit rien).
+  #pushIdentity() {
+    if (!this.session || this.#sentIdentity === null) return;
+    const identity = identityFor(this.session.policy, this.identity);
+    const sent = JSON.stringify(identity);
+    if (sent === this.#sentIdentity) return;
+    this.#sentIdentity = sent;
+    this.session.sendIdentity(identity);
   }
 
   // Un changement des apps installées (un geste, ou le retour à ce que la table dit) : tout ce qui en dépend se met à jour.
@@ -489,6 +501,7 @@ export class GfsController {
     this.session.close();
     this.session = null;
     this.#sentExtensions = null;
+    this.#sentIdentity = null;
     this.#contextServed = false;
   }
 
@@ -538,7 +551,9 @@ export class GfsController {
     this.#sentExtensions = JSON.stringify([given.extensions, given.bibliotheques]);
     const facts = await this.#readFacts();
     const storage = this.appStorage.read(session.id);
-    return buildContext(facts, { access: session.access, extensions: given.extensions, libraries: given.bibliotheques, opening, storage, bar: this.dock.barre() }, { preferences: this.#appPreferences(), readonly: this.readonly });
+    const identity = identityFor(session.policy, this.identity);
+    if (session === this.session) this.#sentIdentity = JSON.stringify(identity);
+    return buildContext(facts, { access: session.access, extensions: given.extensions, libraries: given.bibliotheques, opening, storage, bar: this.dock.barre(), identity }, { preferences: this.#appPreferences(), readonly: this.readonly });
   }
 
   // L'ouverture n'est rendue qu'au premier `contexte` de l'app qui vient d'être activée (contrats 5.2, point 3) : une app dont le cadre est rechargé sur place (sa langue, un

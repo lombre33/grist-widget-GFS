@@ -1,0 +1,33 @@
+{
+  "contrat": 0,
+  "id": "sonde-x",
+  "nom": {
+    "fr": "Sonde X",
+    "en": "Probe X"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Une app écrite avec le kit commun (GfsLink.identity et onIdentity) qui déclare l'identité, comme Tuesday",
+    "en": "An app written with the common kit (GfsLink.identity and onIdentity) that declares the identity, like Tuesday"
+  },
+  "icone": "doc",
+  "entree": "kit.html",
+  "tables": {
+    "prefixe": "SondeX_"
+  },
+  "reglages": [],
+  "permissions": {
+    "acces": "none",
+    "identite": {
+      "pourquoi": {
+        "fr": "Pour « Mes tâches » : montrer les tâches de la personne qui est là",
+        "en": "For “My tasks”: show the tasks of the person who is here"
+      }
+    }
+  },
+  "extensions": [],
+  "actions": {
+    "ouvrir": [],
+    "choisir": []
+  }
+}

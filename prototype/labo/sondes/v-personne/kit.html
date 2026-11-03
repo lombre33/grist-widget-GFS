@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Sonde X</title>
+<!-- Politique de l'app sonde X : celle des apps hébergées (script-src 'self', frame-src 'none', form-action 'none'). Le kit est servi par le labo sous /kit/, même origine que la page. -->
+<meta http-equiv="Content-Security-Policy" content="script-src 'self'; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'">
+</head>
+<body>
+<h1>Sonde X : l'identité par le kit</h1>
+<p>Une app écrite avec le kit commun : elle lit <code>GfsLink.identity()</code> et s'abonne par <code>GfsLink.onIdentity</code>.</p>
+<script type="module" src="kit.js"></script>
+</body>
+</html>

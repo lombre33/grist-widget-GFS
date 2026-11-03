@@ -817,3 +817,25 @@ une autre origine, Chromium (`labo/run-reel-serveur.mjs`, 15 vérifications).
 - **Les GET** (liste, téléchargement) n'ont pas besoin de l'en-tête. L'en-tête `Authorization` reste refusé par le navigateur (absent de `Allow-Headers`).
 - **Conséquence pour GFS** : tout envoi (et toute écriture REST) depuis une page du navigateur porte `X-Requested-With: XMLHttpRequest`. Les apps n'envoient rien : elles confient les octets à GFS.
 - **Pas mesuré** : le serveur du porteur avec l'en-tête (passerelle, taille maximale réelle : la sonde relancée le dira), Firefox (le labo n'a que Chromium).
+
+## 15. L'adresse e-mail de la personne donnée aux apps qui la déclarent (mesuré le 03/11)
+
+Le choix du porteur du 03/11 (« Aux apps qui le déclarent ») : GFS lit déjà l'adresse pour son rangement (section 3, la ligne-sonde) ; il la donne, et à elles seules, aux apps dont le
+manifeste déclare `permissions.identite` (contrats 3.4, point 6, et 5.2, point 9).
+
+- **Mesuré** dans un vrai Grist (grist-static 0.1.6, Chromium), à 700 × 400, à la vraie souris, en français et en anglais, en clair et en sombre : `labo/run-personne.mjs`, 34 vérifications
+  par combinaison, aucune en échec, avec trois sondes (`labo/sondes/v-personne/`) : V déclare l'identité, W ne la déclare pas, X est écrite avec le vrai client du kit 0.4.0
+  (`GfsLink.identity`, `onIdentity`).
+- **Avant que GFS connaisse la personne** (la table `GFS_Rangement` n'existe pas) : le contexte de V porte `identite: null` et aucun événement n'arrive. **Quand la table naît** (la
+  personne épingle un fichier et accepte) : V reçoit un seul événement `identite` avec `{ email }`, l'adresse que le moteur de Grist a rendue (la casse est gardée :
+  `Ana@Exemple.org` reste ainsi) ; un geste de plus ne le répète pas ; le moteur ne reçoit que les écritures de la section 3 (la table, la ligne-sonde, son retrait, la ligne de la personne).
+- **À la réouverture** (la table existe) : le contexte de V porte l'adresse dès le départ, sans événement, et GFS n'écrit que la sonde (ajoutée puis retirée) ; l'adresse n'est dans l'adresse
+  d'aucun cadre (ni celui de GFS, ni celui de l'app). Le contexte garde tous ses autres champs.
+- **W, qui ne l'a pas déclarée**, reçoit `null` dans tous les cas, la même valeur que V sans la table : elle ne peut pas savoir si GFS connaît la personne, et l'adresse n'est nulle part dans ce
+  qu'elle reçoit (contexte et événements). **X** lit `GfsLink.identity()` après `ready` et son abonné est rappelé une fois, avec la même valeur.
+- **Une autre personne** qui ouvre le même document reçoit la sienne, jamais celle de la précédente (GFS ne garde rien dans le navigateur). L'anonyme de Grist, une personne sans adresse et un
+  document en lecture seule donnent `null`.
+- **Pas mesuré** : le serveur de Grist (grist-static n'a pas de compte : le labo donne la personne au moteur de données, comme pour la section 3 ; l'adresse que rend un vrai serveur est
+  celle dont Publipostage+ se sert depuis longtemps pour ses préférences), Firefox et Safari (le labo n'a que Chromium).
+- **L'outil de liste** : `node outils/capacites.mjs --identite` dit quelles apps du catalogue reçoivent l'adresse et pourquoi (`--en` pour l'anglais, `--json` pour un programme) ; sans filtre,
+  toutes les capacités déclarées. Aujourd'hui aucune app du catalogue ne la déclare.

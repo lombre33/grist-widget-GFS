@@ -19,7 +19,14 @@ export function pageOf(referrer) {
   } catch (error) { return null; }
 }
 
-// `facts` : ce que le contrôleur a lu (instance, page, document, adresse du widget), `session` : { access, extensions, libraries, opening, storage, bar }.
+// L'identité que GFS donne à une app (contrats 5.2, point 9) : l'adresse e-mail de la personne, `{ email }`, seulement à l'app qui l'a déclarée (`permissions.identite`, 3.4, point 6) et quand GFS la
+// connaît (6.4, point 6) ; `null` dans tous les autres cas, sans que l'app puisse distinguer « pas déclarée » de « GFS ne la connaît pas ». `address` : celle que GFS a apprise, '' tant qu'il l'ignore.
+export function identityFor(policy, address) {
+  const email = typeof address === 'string' ? address.trim() : '';
+  return policy && policy.identite && email ? { email } : null;
+}
+
+// `facts` : ce que le contrôleur a lu (instance, page, document, adresse du widget), `session` : { access, extensions, libraries, opening, storage, bar, identity }.
 export function buildContext(facts, session, params) {
   const { preferences, readonly } = params;
   return {
@@ -41,5 +48,6 @@ export function buildContext(facts, session, params) {
     ouverture: session.opening || null,
     stockage: session.storage || {}, // la copie de l'espace de CETTE app dans le navigateur de GFS (5.3)
     barre: session.bar || null, // la barre de GFS qui recouvre le cadre : { bord, epaisseur, zone }, ou `null` quand rien ne le recouvre (5.2, point 7)
+    identite: session.identity || null, // l'adresse e-mail de la personne, `{ email }`, pour l'app qui l'a déclarée et quand GFS la connaît (5.2, point 9)
   };
 }

@@ -7,3 +7,6 @@
 [submodule "prototype/apps/form"]
 	path = prototype/apps/form
 	url = https://github.com/lombre33/FormPlus.git
+[submodule "prototype/kit"]
+	path = prototype/kit
+	url = https://github.com/lombre33/grist-factory-kit.git

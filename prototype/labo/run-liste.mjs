@@ -9,15 +9,13 @@
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check } from './lab-common.mjs';
+import { ROW_BUTTON, ROW_HEIGHT, TILE_MIN, expectedTileColumns, measureRows, measureTiles } from './mesures-liste.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
 const run = `liste-${lang}-${scheme}`;
 // 700 : le panneau de référence ; 640 : le portable du porteur (961 px à 150 %) ; 520 : la dernière largeur de la vue large ; 500 et 400 : la vue étroite (la liste perd « Modifié » et « Par »).
 const WIDTHS = [700, 640, 520, 500, 400];
-const TILE_MIN = 112;
-const TILE_GAP = 8;
-const TILE_PAD = 8;
 
 const lab = await startLab({ lang, colorScheme: scheme });
 const { page } = lab;
@@ -32,30 +30,9 @@ await lab.gfsReady(frame);
 await page.waitForTimeout(800);
 const shot = name => lab.shotPanel(run, name, frame);
 
-// Ce que mesure une ligne : sa hauteur, l'écart du centre de chaque cellule au centre de son contenu (le filet de 1 px du bas n'en fait pas partie), ce qui en sort par le bas, les boutons.
-const listGeometry = () => frame.evaluate(() => {
-  const shown = el => el.getClientRects().length > 0;
-  return [...document.querySelectorAll('.ls-row')].map(row => {
-    const box = row.getBoundingClientRect();
-    const bottom = box.bottom - 1;
-    const middle = (box.top + bottom) / 2;
-    const cells = [...row.children].filter(shown);
-    const inside = [...row.querySelectorAll('.t, .pill, .md, .who, .rb, .nm .ic')].filter(shown);
-    return {
-      name: (row.querySelector('.t') || {}).textContent, height: box.height,
-      off: Math.max(...cells.map(cell => { const b = cell.getBoundingClientRect(); return Math.abs((b.top + b.bottom) / 2 - middle); })),
-      out: Math.max(...inside.map(el => el.getBoundingClientRect().bottom)) - bottom,
-      buttons: [...row.querySelectorAll('.rb')].map(el => { const b = el.getBoundingClientRect(); return [Math.round(b.width * 10) / 10, Math.round(b.height * 10) / 10]; }),
-    };
-  });
-});
-
-// Ce que mesure la vue en vignettes : la largeur de chaque vignette et le nombre de colonnes que la grille a posées.
-const tilesGeometry = () => frame.evaluate(() => {
-  const grid = document.querySelector('.th-grid');
-  const tiles = [...document.querySelectorAll('.th')];
-  return { grid: grid.clientWidth, tiles: tiles.length, columns: new Set(tiles.map(tile => Math.round(tile.getBoundingClientRect().left))).size, narrowest: Math.min(...tiles.map(tile => tile.getBoundingClientRect().width)) };
-});
+// Les mesures de la liste et des vignettes sont celles de labo/mesures-liste.mjs, que le test sous Firefox (test/interfaces-firefox.test.mjs) reprend.
+const listGeometry = () => frame.evaluate(measureRows);
+const tilesGeometry = () => frame.evaluate(measureTiles);
 
 const display = glyph => frame.locator('button[aria-label]', { has: frame.locator(`use[href="#i-${glyph}"]`) }).click();
 
@@ -69,10 +46,10 @@ for (const width of WIDTHS) {
   const rows = await listGeometry();
   const folders = await frame.locator('.ls-row.folder').count();
   check(`${tag} : la liste a des fichiers et un dossier`, rows.length >= 5 && folders >= 1, { lignes: rows.length, dossiers: folders });
-  check(`${tag} : chaque ligne mesure 28 px`, rows.every(item => item.height === 28), rows.map(item => item.height));
+  check(`${tag} : chaque ligne mesure ${ROW_HEIGHT} px`, rows.every(item => item.height === ROW_HEIGHT), rows.map(item => item.height));
   check(`${tag} : le contenu de chaque ligne est centré dedans (à 1 px)`, rows.every(item => item.off <= 1), rows.map(item => [item.name, item.off]));
   check(`${tag} : rien ne sort d'une ligne par le bas : le filet passe sous le texte`, rows.every(item => item.out <= 0.5), rows.map(item => [item.name, item.out]));
-  check(`${tag} : les boutons de chaque ligne mesurent 24 × 24`, rows.every(item => item.buttons.length >= 1 && item.buttons.every(([w, h]) => w === 24 && h === 24)), rows.map(item => item.buttons));
+  check(`${tag} : les boutons de chaque ligne mesurent ${ROW_BUTTON} × ${ROW_BUTTON}`, rows.every(item => item.buttons.length >= 1 && item.buttons.every(([w, h]) => w === ROW_BUTTON && h === ROW_BUTTON)), rows.map(item => item.buttons));
   const target = frame.locator('.ls-row:not(.folder)').first();
   await target.hover();
   const rowBox = await target.boundingBox();
@@ -89,7 +66,7 @@ for (const width of WIDTHS) {
   await display('tiles');
   await page.waitForTimeout(200);
   const tiles = await tilesGeometry();
-  const expected = Math.max(1, Math.floor((tiles.grid - 2 * TILE_PAD + TILE_GAP) / (TILE_MIN + TILE_GAP)));
+  const expected = expectedTileColumns(tiles.grid);
   check(`${tag} : des vignettes d'au moins ${TILE_MIN} px`, tiles.tiles >= 5 && tiles.narrowest >= TILE_MIN - 0.5, tiles);
   check(`${tag} : autant de colonnes que la place en donne (${expected})`, tiles.columns === expected, { colonnes: tiles.columns, attendu: expected });
   if (width === 700) await shot('2-vignettes');

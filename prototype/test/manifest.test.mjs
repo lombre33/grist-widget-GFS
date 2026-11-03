@@ -277,3 +277,24 @@ test('contrats 2.7 et 2.8 : un format importé mal formé invalide le manifeste'
   delete without.actions.importer;
   assert.deepEqual(validateManifest(without), { ok: true, errors: [] }, 'une app qui n\'importe rien n\'a pas à le dire');
 });
+
+// Lire ce que GFS garde (contrats 2.7, point 5) : les types de fichiers (le PDF) qu'une app sait lire, et l'extension de l'app qui les lit.
+test('contrats 2.7, point 5 : une app déclare le type de fichier que GFS garde et qu\'elle lit, avec l\'extension qui le lit', () => {
+  const m = publipostage();
+  m.extensions.push({ id: 'lecture-pdf', nom: { fr: 'Lecture de PDF', en: 'PDF reading' }, dossier: 'extensions/lecture-pdf/', bibliotheques: [{ id: 'pdfjs', version: '1.0.0' }] });
+  m.actions.lire = [{ type: 'pdf', extension: 'lecture-pdf' }];
+  assert.deepEqual(validateManifest(m), { ok: true, errors: [] });
+  delete m.actions.lire[0].extension;
+  assert.deepEqual(validateManifest(m), { ok: true, errors: [] }, 'sans extension, c\'est le socle de l\'app qui lit');
+  assert.deepEqual(validateManifest(publipostage()), { ok: true, errors: [] }, 'une app qui ne lit rien n\'a pas à le dire');
+});
+
+test('contrats 2.7 et 2.8 : un type lu mal formé invalide le manifeste', () => {
+  assert.match(bad(m => { m.actions.lire = 'pdf'; }), /actions\.lire : liste attendue/);
+  assert.match(bad(m => { m.actions.lire = [{}]; }), /actions\.lire\[\] : un type de fichier attendu/);
+  assert.match(bad(m => { m.actions.lire = ['pdf']; }), /un type de fichier attendu/);
+  assert.match(bad(m => { m.actions.lire = [{ type: 'PDF' }]; }), /un type de fichier attendu/);
+  assert.match(bad(m => { m.actions.lire = [{ type: 'pdf' }, { type: 'pdf' }]; }), /actions\.lire pdf : type déjà déclaré/);
+  assert.match(bad(m => { m.actions.lire = [{ type: 'pdf', extension: 'lecture-pdf' }]; }), /actions\.lire pdf : l'extension lecture-pdf n'est pas déclarée dans extensions/);
+  assert.match(bad(m => { m.actions.lire = [{ type: 'pdf', extension: 'diapositives' }]; delete m.extensions[2]; m.extensions.length = 2; }), /l'extension diapositives n'est pas déclarée/);
+});

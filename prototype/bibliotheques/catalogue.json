@@ -67,6 +67,28 @@
         "chemin": "vendor/edition-live/1.0.0/edition-live.js",
         "integrite": "sha384-FVwm2wpVR0CpCNfOg5gpvarCdXlhtI52aCc1Ea/a4wvcy0UUw0/vP4NTBn7KMSU4"
       }
+    },
+    {
+      "id": "pdfjs",
+      "version": "1.0.0",
+      "forme": "module",
+      "poids": 1639821,
+      "contient": [
+        {
+          "paquet": "pdfjs-dist",
+          "version": "6.5.438"
+        }
+      ],
+      "modules": [
+        "pdfjs-dist/build/pdf.min.mjs",
+        "pdfjs-dist/build/pdf.worker.min.mjs"
+      ],
+      "externes": [],
+      "cdn": null,
+      "vendorise": {
+        "chemin": "vendor/pdfjs/1.0.0/pdfjs.js",
+        "integrite": "sha384-c85h+cJ0v9hcBB/KCAKi9ks9OT6CpuFYABNu80MwnzkXHFq5rfH2sWL9CAMzFJ1L"
+      }
     }
   ]
 }

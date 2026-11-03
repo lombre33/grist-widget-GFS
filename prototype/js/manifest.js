@@ -212,6 +212,26 @@ function checkImports(m, errors) {
   for (const item of actions.importer) checkImport(item, opens, seen, errors);
 }
 
+const FILE_TYPE_RE = /^[a-z][a-z0-9-]{0,23}$/;
+
+// Ce que l'app lit de ce que GFS garde (`actions.lire`, 2.7 point 5) : le type du fichier (un mot, comme `pdf`) et, quand c'est une extension de l'app qui le lit, son identifiant, déclaré dans `extensions`.
+function checkRead(item, extensions, seen, errors) {
+  if (!isObject(item) || !FILE_TYPE_RE.test(item.type || '')) { errors.push('actions.lire[] : un type de fichier attendu (un mot, comme pdf)'); return; }
+  const where = `actions.lire ${item.type}`;
+  if (seen.has(item.type)) errors.push(`${where} : type déjà déclaré`);
+  seen.add(item.type);
+  if (item.extension !== undefined && !extensions.has(item.extension)) errors.push(`${where} : l'extension ${item.extension} n'est pas déclarée dans extensions`);
+}
+
+function checkReads(m, errors) {
+  const actions = isObject(m.actions) ? m.actions : {};
+  if (actions.lire === undefined) return;
+  if (!Array.isArray(actions.lire)) { errors.push('actions.lire : liste attendue'); return; }
+  const extensions = new Set((Array.isArray(m.extensions) ? m.extensions : []).map(ext => ext && ext.id));
+  const seen = new Set();
+  for (const item of actions.lire) checkRead(item, extensions, seen, errors);
+}
+
 function checkExtensions(m, errors) {
   for (const ext of m.extensions || []) {
     if (!isText(ext.id) || !isBilingual(ext.nom)) errors.push('extensions[] : id et nom (fr, en) attendus');
@@ -232,6 +252,7 @@ export function validateManifest(m, others = []) {
   checkSettings(m, errors);
   checkPermissions(m, errors);
   checkImports(m, errors);
+  checkReads(m, errors);
   checkExtensions(m, errors);
   return { ok: errors.length === 0, errors };
 }

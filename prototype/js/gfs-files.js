@@ -7,6 +7,7 @@ export const FILES_APP = 'gfs-fichiers';
 export const FILES_TABLE = 'GFS_Fichiers';
 export const PDF_TYPE = 'pdf';
 export const PDF_EXTENSION = '.pdf';
+export const PDF_MIME = 'application/pdf';
 
 // Les colonnes de la table. `Identifiant` est le nom du fichier pour GFS (rangement, liens) : il ne change jamais, ni au renommage ni au remplacement, et n'est pas le numéro de ligne,
 // que Grist réutilise après une suppression. `Contenu` : la pièce jointe. `Origine` : d'où vient le fichier (« import » ; plus tard le nom de l'app qui l'a rangé).

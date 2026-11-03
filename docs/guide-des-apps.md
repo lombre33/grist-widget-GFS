@@ -151,6 +151,20 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     distinguer ; elle fait alors comme seule (sa propre table d'essai, créée avec l'accord de la personne, ou un « Je suis… » que la
     personne choisit et que `GfsLink.storageSet` retient). L'adresse sert à montrer, filtrer et griser, jamais à décider d'un droit :
     seul Grist refuse (contrats 11.1) ; quand elle sert de clé, elle se compare en minuscules (contrats 11.1, point 7).
+15. Lire un fichier que GFS garde, un PDF (demande du porteur du 03/11 ; contrats 2.7, point 5, et 5.4, point 8). Une app qui sait lire le type
+    le **déclare** dans `actions.lire` (`[{ "type": "pdf", "extension": "lecture-pdf" }]`, l'`extension` étant celle de l'app qui apporte
+    la lecture, déclarée dans `extensions` avec sa bibliothèque `{ id: "pdfjs", version: "1.0.0" }`) : GFS fait de « Lire » le geste du PDF, grisé
+    tant que l'app ou l'extension manque ou que `ACCEPTS_OPEN` n'a pas la consigne faite. GFS **télécharge lui-même** le PDF et le donne à l'app avec
+    l'ouverture (`raison: lire`, `lecture: { id, fichier }`) ou, quand elle est déjà ouverte, avec l'appel `ouvrir` : l'app ne reçoit aucun jeton, ne
+    demande rien à l'API de Grist, ne renvoie jamais les octets. Elle **garde `lecture` dans sa lecture de l'ouverture** (le `normalizeOpening` du kit
+    et le `gfs-link.js` de Publipostage+ ne gardent aujourd'hui que `fichier`, `type`, `dossier`, `raison`, `importation`), lit `lecture.fichier` comme
+    tout fichier choisi (`arrayBuffer()`), charge pdf.js par la source de `contexte.bibliotheques.pdfjs` (un `<script type="module" src integrity
+    crossorigin="anonymous">`, puis `GfsPaquets.pdfjs.modules['pdfjs-dist/build/pdf.min.mjs']` : jamais `import()`, jamais le CDN d'un autre site ; la
+    copie de GFS passe avec `'self'`, rien à ajouter à la CSP de l'app), ouvre le document avec `verbosity: 0` et `isEvalSupported: false`, ferme le
+    précédent par sa tâche de chargement (`destroy()`), et répond `{ ouvert: true }` quand le PDF est ouvert, `{ ouvert: false }` si la personne annule ou
+    si le fichier est refusé. `lecture.id` est l'identifiant du fichier chez GFS, qui ne change ni au renommage ni au remplacement : c'est la clé où
+    accrocher ce que l'app garde sur ce PDF (des commentaires). Le texte d'un PDF scanné manque, un PDF protégé demande son mot de passe (`onPassword`) ;
+    l'app le dit, elle ne plante pas. Le moteur tourne dans la page (faux Worker) : lire page par page, jamais tout le document d'un coup.
 
 ### 1.3 Licence : GPL 3.0 dans tous les dépôts (décision du porteur, 21/10)
 

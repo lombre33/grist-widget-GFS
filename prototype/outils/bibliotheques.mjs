@@ -12,7 +12,7 @@
 //
 // Le CDN est jsDelivr, qui sert le fichier du paquet octet pour octet : une seule empreinte vaut pour le CDN et pour la copie vendorisée.
 // Un fichier assemblé est servi par jsDelivr depuis le dépôt public de GFS, épinglé à un commit complet qui porte la copie vendorisée (`gfs.publication` de la liste ;
-// choix du porteur, 19/10). Sans `gfs.publication`, il n'a pas de CDN (`cdn: null`) : la copie de GFS est son seul mode.
+// choix du porteur, 19/10). Sans `gfs.publication`, ou déclaré `sansCdn: true` dans la liste (2.6, point 12), il n'a pas de CDN (`cdn: null`) : la copie de GFS est son seul mode.
 
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -95,13 +95,14 @@ export function buildAssembledEntry(item, bytes, publication = null) {
     contient: item.paquets.map(({ paquet, version }) => ({ paquet, version })),
     modules: [...item.modules],
     externes: [...item.externes],
-    cdn: publication ? { src: githubAddress(publication, assembledPath(item)), integrite: sri } : null,
+    cdn: publication && !item.sansCdn ? { src: githubAddress(publication, assembledPath(item)), integrite: sri } : null,
     vendorise: { chemin: assembledPath(item), integrite: sri },
   };
 }
 
 // L'adresse du CDN d'un fichier assemblé : celle du commit épinglé par la liste (avec l'empreinte de la copie), ou aucune quand la liste n'en épingle pas.
 function assembledCdnProblems(item, entry, publication) {
+  if (item.sansCdn) return entry.cdn === null ? [] : [`${item.id} : la liste le déclare sansCdn, le catalogue ne doit porter aucune adresse de CDN (cdn: null)`];
   if (!publication) return entry.cdn === null ? [] : [`${item.id} : sans gfs.publication dans la liste, un fichier assemblé n'a pas de CDN (cdn: null)`];
   if (!entry.cdn) return [`${item.id} : la liste épingle le commit ${publication.commit.slice(0, 7)}, le catalogue n'a pas d'adresse de CDN : relancer l'outil (--catalogue)`];
   const expected = githubAddress(publication, entry.vendorise.chemin);
@@ -113,7 +114,7 @@ function assembledCdnProblems(item, entry, publication) {
 
 // Le commit épinglé porte-t-il la copie vendorisée, octet pour octet ? Sans lecteur, ou quand le commit n'est pas dans ce clone, le contrôle est laissé à --verifier-cdn.
 function pinProblems(item, entry, publication, readAtCommit) {
-  if (!publication || !readAtCommit) return [];
+  if (!publication || !readAtCommit || item.sansCdn) return [];
   const path = `${publication.racine}${entry.vendorise.chemin}`;
   const short = publication.commit.slice(0, 7);
   let held;
@@ -271,7 +272,7 @@ function pinOf(root, packageJson) {
 
 // La publication qui vaut pour ces octets : celle de la liste quand son commit épinglé porte exactement ce fichier ; sinon aucune (cdn: null), et l'outil dit quoi faire.
 function publicationFor(item, bytes, { publication, readAtCommit } = {}, log) {
-  if (!publication) return null;
+  if (!publication || item.sansCdn) return null; // un fichier déclaré sansCdn n'a pas d'adresse à écrire : la liste le dit, l'outil n'a rien à lire dans git
   const short = publication.commit.slice(0, 7);
   let held;
   try { held = readAtCommit(publication.commit, `${publication.racine}${assembledPath(item)}`); } catch (error) { held = undefined; }

@@ -57,13 +57,15 @@ function externalProblems(spec) {
   return found;
 }
 
-// L'entrée de la liste de GFS (`gfs.bibliotheques.<id>.assemble`) lue et vérifiée : { id, forme: 'module', version, paquets, modules, externes, alias }.
+// L'entrée de la liste de GFS (`gfs.bibliotheques.<id>.assemble`) lue et vérifiée : { id, forme: 'module', version, paquets, modules, externes, alias, sansCdn? }.
 // `dependencies` donne la version exacte de chaque paquet ; `version` est celle de GFS pour ce fichier, pas celle d'un paquet (2.6, point 10).
+// `sansCdn: true` (2.6, point 12) : GFS ne l'offre que par sa propre copie, quel que soit le commit que la liste épingle pour les autres fichiers.
 export function readAssembly(id, spec, dependencies) {
   const assemble = spec.assemble;
   const problems = [
     ...(LIBRARY_ID_RE.test(id) ? [] : ['identifiant hors format']),
     ...(EXACT_VERSION_RE.test(assemble.version || '') ? [] : [`la version du fichier de GFS doit être exacte (reçu : ${assemble.version})`]),
+    ...(assemble.sansCdn === undefined || typeof assemble.sansCdn === 'boolean' ? [] : ['sansCdn : vrai ou faux attendu']),
     ...packageProblems(assemble, dependencies), ...moduleProblems(assemble), ...externalProblems(assemble),
   ];
   if (problems.length) throw new Error(`${id} : ${problems.join(' ; ')}`);
@@ -71,6 +73,7 @@ export function readAssembly(id, spec, dependencies) {
     id, forme: 'module', version: assemble.version,
     paquets: assemble.paquets.map(paquet => ({ paquet, version: dependencies[paquet] })),
     modules: [...assemble.modules], externes: [...(assemble.externes || [])], alias: { ...(assemble.alias || {}) },
+    ...(assemble.sansCdn === true ? { sansCdn: true } : {}),
   };
 }
 
@@ -150,13 +153,16 @@ export function licencesText(item, workDir) {
   return { text: head + blocks.join('\n'), problems };
 }
 
+// L'identifiant sert de clé à `GfsPaquets` : `["edition-live"]`, ou `.pdfjs=` quand c'est un nom que esbuild écrit sans crochets (un identifiant JavaScript, sans trait d'union).
+const keyedById = (text, id) => text.includes(`[${JSON.stringify(id)}]`) || (/^[A-Za-z_$][\w$]*$/.test(id) && text.includes(`.${id}=`));
+
 // Relit un fichier assemblé commité : il range bien ses modules sous la clé de GFS, avec la version de GFS (contrôle de bon sens, sans réseau).
 // esbuild écrit une clé d'objet sans guillemets quand c'est un identifiant (`yjs:`) et avec guillemets sinon (`"y-protocols/awareness":`).
 export function registeredProblems(item, bytes) {
   const text = bytes.toString('utf8');
   const found = [];
   if (!text.includes('GfsPaquets')) found.push(`${item.id} : le fichier ne range rien dans GfsPaquets`);
-  if (!text.includes(`[${JSON.stringify(item.id)}]`) || !text.includes(`version:${JSON.stringify(item.version)}`)) found.push(`${item.id} : le fichier ne porte pas son identifiant et la version ${item.version}`);
+  if (!keyedById(text, item.id) || !text.includes(`version:${JSON.stringify(item.version)}`)) found.push(`${item.id} : le fichier ne porte pas son identifiant et la version ${item.version}`);
   for (const name of item.modules) {
     if (![`{${name}:`, `,${name}:`, `${JSON.stringify(name)}:`].some(key => text.includes(key))) found.push(`${item.id} : le module ${name} n'est pas rangé dans le fichier`);
   }

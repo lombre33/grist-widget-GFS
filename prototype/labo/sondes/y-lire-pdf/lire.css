@@ -1,0 +1,16 @@
+/* Sonde Y : une page de PDF et sa couche de texte, sans autre prétention que de se lire à 700 × 400. */
+:root { color-scheme: light dark; --fond: #fff; --encre: #1f2328; --trait: #c8ccd1; --bouton: #eef0f2; --accent: #1f5fbf; }
+@media (prefers-color-scheme: dark) { :root { --fond: #1b1d20; --encre: #e6e8ea; --trait: #444a50; --bouton: #2a2d31; --accent: #8ab4f8; } }
+html, body { height: 100%; margin: 0; background: var(--fond); color: var(--encre); font: 13px/1.4 system-ui, sans-serif; }
+body { display: flex; flex-direction: column; }
+.bar { display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 46px; border-bottom: 1px solid var(--trait); min-height: 32px; box-sizing: border-box; }
+.bar button { min-width: 28px; height: 24px; border: 1px solid var(--trait); border-radius: 4px; background: var(--bouton); color: inherit; font: inherit; cursor: pointer; }
+.bar button:disabled { opacity: .5; cursor: default; }
+.name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+.state { margin-left: auto; color: var(--accent); }
+.stage { flex: 1; min-height: 0; overflow: auto; display: flex; justify-content: center; align-items: flex-start; padding: 6px; box-sizing: border-box; }
+.page { position: relative; box-shadow: 0 0 0 1px var(--trait); background: #fff; }
+.page canvas { display: block; }
+.textLayer { position: absolute; inset: 0; overflow: clip; line-height: 1; text-size-adjust: none; transform-origin: 0 0; --scale-round-x: 1px; --scale-round-y: 1px; }
+.textLayer span, .textLayer br { color: transparent; position: absolute; white-space: pre; cursor: text; transform-origin: 0 0; }
+.textLayer ::selection { background: rgba(31, 95, 191, .35); }

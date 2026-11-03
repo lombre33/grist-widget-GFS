@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sonde Y</title>
+<!-- Politique de l'app sonde Y : celle de Publipostage+ (script-src 'self', frame-src 'none', form-action 'none', pas de default-src). La copie de pdf.js que GFS donne est du même site : 'self' suffit. -->
+<meta http-equiv="Content-Security-Policy" content="script-src 'self'; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'">
+<link rel="stylesheet" href="lire.css">
+</head>
+<body data-reponse="oui">
+<header class="bar">
+  <button type="button" id="prev" aria-label="Page précédente" disabled>&lsaquo;</button>
+  <span id="where" aria-live="polite">—</span>
+  <button type="button" id="next" aria-label="Page suivante" disabled>&rsaquo;</button>
+  <span id="name" class="name"></span>
+  <span id="state" class="state" role="status">En attente d'un PDF</span>
+</header>
+<main id="stage" class="stage">
+  <div id="page" class="page" hidden><canvas id="canvas"></canvas><div id="text" class="textLayer"></div></div>
+</main>
+<script src="lire.js"></script>
+</body>
+</html>

@@ -25,13 +25,13 @@ function fakeDoc() {
   return doc;
 }
 
-function setup({ fullAccess = true, readonly = false, folder = '', add = async () => ({ status: 'added', id: 'aa', name: 'Facture.pdf', row: 1 }), download = async () => ({ blob: new Blob(['x']), name: 'Facture.pdf' }), i18n = FR, setFiling = async () => {} } = {}) {
+function setup({ fullAccess = true, readonly = false, folder = '', add = async () => ({ status: 'added', id: 'aa', name: 'Facture.pdf', row: 1 }), download = async () => ({ blob: new Blob(['x']), name: 'Facture.pdf' }), i18n = FR, setFiling = async () => {}, reader } = {}) {
   const log = { notices: [], adds: [], refreshes: 0, filings: [], doc: fakeDoc() };
   const store = { add: async options => { log.adds.push(options); return add(options); }, download, remove: async () => true };
   const kept = new KeptFiles({
     store, doc: log.doc, container: null, inertTargets: () => [], t: i18n.t, lang: () => i18n.lang, locale: () => 'fr-FR', now: () => 1762000000000,
     fullAccess: () => fullAccess, readonly: () => readonly, notice: text => log.notices.push(text), refresh: async () => { log.refreshes += 1; },
-    folder: () => folder, rangement: { setFiling: async entries => { log.filings.push(entries); return setFiling(entries); } },
+    folder: () => folder, rangement: { setFiling: async entries => { log.filings.push(entries); return setFiling(entries); } }, ...(reader ? { reader } : {}),
   });
   // La personne choisit `file` dans le sélecteur ouvert par `importFile`.
   const importing = (file, entry = entryOf(kept)) => {
@@ -158,7 +158,8 @@ test('la table refusée : la phrase le dit ; un envoi qui échoue : le code du s
   } finally { console.warn = warn; }
 });
 
-test('télécharger : le fichier est offert au navigateur sous son nom ; un échec est dit avec sa raison', async () => {
+test('télécharger : le fichier est offert au navigateur sous son nom ; un échec est dit avec sa raison', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
   const ok = setup();
   await ok.kept.open({ id: 'aa', name: 'Facture.pdf' });
   assert.deepEqual(ok.log.notices, [FR.t('files.downloading', { name: 'Facture.pdf' }), FR.t('files.downloaded', { name: 'Facture.pdf' })]);
@@ -185,9 +186,65 @@ test('ce que dit l\'explorateur d\'un fichier gardé : se télécharge, ne se co
   const { kept } = setup();
   assert.equal(kept.has({ app: 'gfs-fichiers' }), true);
   assert.equal(kept.has({ app: 'publipostage' }), false);
-  assert.deepEqual(kept.openAs({ app: 'gfs-fichiers' }), { label: FR.t('files.download'), icon: 'download' });
+  assert.deepEqual(kept.openAs({ app: 'gfs-fichiers' }), { label: FR.t('files.download'), icon: 'download', greyed: false });
   assert.equal(kept.opensIn({ app: 'gfs-fichiers' }), FR.t('files.opensIn'));
+  assert.deepEqual(kept.extras({ app: 'gfs-fichiers' }), [], 'rien de plus : télécharger est déjà le geste principal');
   assert.equal(kept.copyNotice(), FR.t('files.noCopy'));
+});
+
+// Lire (js/reading.js, contrats 5.4 point 8) : quand une app du catalogue lit le PDF, « Lire » devient le geste principal, « Télécharger » passe dans le menu de la ligne.
+const FILE = { app: 'gfs-fichiers', id: 'aa', name: 'Facture.pdf' };
+
+test('une app lit le PDF et elle est prête : « Lire » est le geste, la barre dit où il s\'ouvre, « Télécharger » reste dans le menu', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const { kept, log } = setup({ reader: () => ({ name: 'Publipostage+', lock: null }) });
+  assert.deepEqual(kept.openAs(FILE), { label: FR.t('files.read'), icon: 'read', greyed: false });
+  assert.equal(kept.opensIn(FILE), FR.t('ex.opensIn', { app: 'Publipostage+' }));
+  const [extra, ...others] = kept.extras(FILE);
+  assert.deepEqual([extra.label, extra.icon, others.length], [FR.t('files.download'), 'download', 0]);
+  extra.run();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(log.notices, [FR.t('files.downloading', { name: 'Facture.pdf' }), FR.t('files.downloaded', { name: 'Facture.pdf' })], 'le menu télécharge vraiment');
+});
+
+test('grisé, jamais masqué : l\'app qui lit n\'est pas prête, « Lire » est là, grisé, et la barre dit pourquoi (au clic, ce qui la débloque)', () => {
+  const lock = { text: 'Publipostage+ n’est pas installée : installe-la pour lire ce PDF.', focus: 'app:publipostage' };
+  const { kept } = setup({ reader: () => ({ name: 'Publipostage+', lock }) });
+  assert.deepEqual(kept.openAs(FILE), { label: FR.t('files.read'), icon: 'read', greyed: true });
+  assert.equal(kept.opensIn(FILE), lock.text);
+  assert.equal(kept.extras(FILE).length, 1, 'on peut toujours télécharger');
+});
+
+test('« Lire » et « Télécharger » se disent dans les deux langues', () => {
+  const { kept } = setup({ i18n: EN, reader: () => ({ name: 'Publipostage+', lock: null }) });
+  assert.deepEqual([kept.openAs(FILE).label, kept.extras(FILE)[0].label, kept.opensIn(FILE)], [EN.t('files.read'), EN.t('files.download'), EN.t('ex.opensIn', { app: 'Publipostage+' })]);
+  assert.notEqual(EN.t('files.read'), FR.t('files.read'));
+});
+
+test('lire : GFS va chercher les octets, les rend en objet File au nom du fichier, et le dit', async () => {
+  const bytes = new Blob([PDF_BYTES], { type: 'application/octet-stream' });
+  const { kept, log } = setup({ download: async () => ({ blob: bytes, name: 'Facture.pdf' }) });
+  const file = await kept.load(FILE);
+  assert.ok(file instanceof File);
+  assert.deepEqual([file.name, file.type, file.size], ['Facture.pdf', 'application/pdf', PDF_BYTES.length]);
+  assert.equal(await file.text(), PDF_BYTES);
+  assert.deepEqual(log.notices, [FR.t('files.reading', { name: 'Facture.pdf' })]);
+  assert.deepEqual(log.doc.appended, [], 'lire n\'offre rien au navigateur : pas de téléchargement');
+});
+
+test('lire, le transfert échoue : rien n\'est ouvert (null), la raison est dite en mots, dans les deux langues', async () => {
+  const warn = console.warn; console.warn = () => {};
+  try {
+    const gone = setup({ download: async () => { throw new TransferError('http', 'Not found', 404); } });
+    assert.equal(await gone.kept.load(FILE), null);
+    assert.equal(gone.log.notices.at(-1), FR.t('files.readFailed', { name: 'Facture.pdf', reason: FR.t('files.err.gone') }));
+    const down = setup({ download: async () => { throw new TransferError('network', 'Failed to fetch'); }, i18n: EN });
+    assert.equal(await down.kept.load(FILE), null);
+    assert.equal(down.log.notices.at(-1), EN.t('files.readFailed', { name: 'Facture.pdf', reason: EN.t('files.err.network') }));
+    const unknown = setup({ download: async () => { throw new Error('Ce fichier n’est plus dans le document.'); } });
+    assert.equal(await unknown.kept.load(FILE), null);
+    assert.match(unknown.log.notices.at(-1), /n’est plus dans le document/);
+  } finally { console.warn = warn; }
 });
 
 test('saveBlob : un lien invisible, cliqué et retiré ; le nom garde son .pdf', t => {

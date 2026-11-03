@@ -16,8 +16,12 @@ export const acceptsFile = (name, extensions) => extensions.some(extension => St
 // (le sous-cadre le lit comme n'importe quel fichier choisi ; GFS ne le lit pas).
 export const importOpening = (entry, file, folder) => ({ fichier: null, type: entry.type, dossier: folder, raison: 'importer', importation: { valeur: entry.valeur, fichier: file } });
 
-// Le genre d'ouverture, tel que `ACCEPTS_OPEN` le range : ouvrir un fichier précis, en créer un vierge (« Nouveau »), ou en créer un d'après un fichier (« Importer »).
-export const openingKind = opening => (opening.importation ? 'importer' : (opening.fichier ? 'fichier' : 'nouveau'));
+// Le genre d'ouverture, tel que `ACCEPTS_OPEN` le range : ouvrir un fichier précis, en créer un vierge (« Nouveau »), en créer un d'après un fichier (« Importer »), ou lire un fichier que GFS
+// garde (js/reading.js).
+export const openingKind = opening => (opening.lecture ? 'lire' : (opening.importation ? 'importer' : (opening.fichier ? 'fichier' : 'nouveau')));
+
+// L'ouverture porte-t-elle un fichier du navigateur (`importation`, `lecture`) ? Il part une seule fois, avec l'ouverture ou avec l'appel `ouvrir` : une réouverture de l'app ne le reprend pas.
+export const carriesFile = opening => Boolean(opening && (opening.importation || opening.lecture));
 
 // Le sélecteur de fichier de GFS : un champ « file » caché, cliqué ici même, donc DANS le geste de la personne (le navigateur refuse sinon). Rend le fichier choisi, ou `null` si la
 // personne annule (un navigateur qui ne dit pas l'annulation laisse la promesse en suspens, sans rien casser).

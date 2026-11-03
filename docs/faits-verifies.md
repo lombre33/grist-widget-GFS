@@ -868,3 +868,42 @@ document neuf, panneau à 700 × 400, souris et clavier réels, en français et 
   de ce lot et que le labo connaît : le script d'API de Grist pose sa feuille de thème en ligne (`<style id="grist-theme">`), que la politique de GFS (`style-src 'self'`) refuse, et le premier cadre, ouvert sans
   accès, ne peut pas lire le nom du document.
 - **Pas mesuré** : l'instance du porteur (DINUM : passerelle, taille maximale d'une pièce jointe), Firefox (le cadre en bac à sable, le téléchargement par lien) : le labo n'a que Chromium.
+
+## 17. Lire un PDF que GFS garde : pdf.js dans un cadre isolé, joué dans un vrai serveur (03/11)
+
+Le lot 2 de l'étude PDF (lire un PDF dans une app, contrats 2.6 point 12, 2.7 point 5, 5.4 point 8). Deux mesures : le fichier de pdf.js que l'outil de GFS assemble contre le paquet d'origine
+(Chromium, une page quelconque), puis le geste entier, `labo/run-lire.mjs`, dans un **vrai serveur Grist 1.7.19** : GFS ajouté comme widget à un document neuf, panneau à 700 × 400, souris et clavier réels,
+en français clair puis en anglais sombre, avec la sonde Y (`labo/sondes/y-lire-pdf/`) qui fait ce que fera Publipostage+. Chromium seulement.
+
+- **Le fichier assemblé est le pdf.js d'origine** : même version (6.5.438), mêmes exports (`getDocument`, `TextLayer`, `GlobalWorkerOptions`, `PasswordResponses`, `version`), même PDF de trois pages, même texte
+  (page 2 : « Facture numero 2 », la ligne accentuée, « Page 2 sur 3 »), même encre (19 324 pixels non blancs). **Une différence voulue** : avec le paquet d'origine, pdf.js crée un vrai `Worker` ; avec le
+  fichier assemblé, il n'en crée aucun, car le moteur est déjà dans `globalThis.pdfjsWorker` (le fichier le pose en se chargeant) et pdf.js l'exécute dans la page. Sans `verbosity: 0`, pdf.js écrit alors
+  « Warning: Setting up fake worker. » en console, à chaque document.
+- **Un cadre à origine opaque ne peut pas créer de Worker** (mesuré le 03/11 au matin, étude : `SecurityError`) : le faux Worker n'est donc pas un repli de confort mais le seul chemin dans un cadre d'app. Il
+  tourne dans la page de l'app : une page lourde fige l'interface (étude : jusqu'à 155 ms pour la plus longue tâche, pages de 30 à 180 ms) ; la sonde, avec trois petites pages, n'a rien vu de tel.
+- **Un `File` envoyé par GFS se lit dans le cadre isolé** (`sandbox="allow-scripts"`, sans `allow-same-origin`), comme celui d'« Importer » (5.4, point 1) : `instanceof File`, le nom, la taille, le type
+  `application/pdf`, `arrayBuffer()` rend tous les octets, et leur empreinte SHA-256 est celle du PDF que la personne a choisi (1 633 octets, commencent par `%PDF-1.4`). Une ouverture « lire » porte
+  `lecture: { id, fichier }`, `raison: lire`, `fichier: null` ; l'`id` est l'`Identifiant` de la ligne de `GFS_Fichiers`.
+- **La bibliothèque arrive par la source que GFS donne** : `contexte.bibliotheques.pdfjs` = `{ src: …/prototype/vendor/pdfjs/1.0.0/pdfjs.js, integrite: sha384-c85h+cJ0…, forme: "module" }` ; l'app la charge par
+  un `<script type="module" src integrity crossorigin="anonymous">` sous `script-src 'self'` (la politique de Publipostage+ recopiée) : aucune violation de politique, aucune erreur ; `GfsPaquets.pdfjs`
+  est posé, avec les deux modules. **Elle est copie seulement** (`sansCdn`) : la fenêtre « Apps et extensions » grise l'option CDN avec « GFS n'a pas encore d'adresse publique pour servir cette bibliothèque »
+  et coche la copie de GFS (1,6 Mo « au premier usage »).
+- **Ce que l'app fait du document** : trois pages, le texte de la page (accents compris), la page dessinée sur un canevas (de l'encre, du texte noir), la couche de texte (`TextLayer`) qui porte le même texte
+  et où un double-clic à la vraie souris sélectionne un mot ; la page suivante se tourne à la souris (bouton) et au clavier (flèche droite, flèche gauche pour revenir). **Fermer le document précédent se fait par la
+  tâche de chargement** (`getDocument(…).destroy()`) : le `PDFDocumentProxy` de la 6.5.438 n'a plus de `destroy()` (« doc.destroy is not a function », vu par la sonde à sa première passe).
+- **Avant l'app, « Lire » est grisé, jamais masqué** : le bouton du pied et le premier article du menu de la ligne ; la barre dit « Demande l'app Sonde Y (Grist Factory Suite) » ; un clic ouvre « Apps et extensions »
+  sur la ligne de l'app, puis (l'app cochée, qui demande l'accord de la table du rangement) sur celle de l'extension « Lecture de PDF » ; aucune app n'est ouverte pour rien. L'app et l'extension prêtes, « Lire »
+  se dégrise et la barre dit « S'ouvre dans Sonde Y ».
+- **L'app déjà ouverte reçoit l'appel `ouvrir`** (raison `lire`, `lecture` présent) dans le même cadre, non rechargé : le premier PDF est encore dans l'historique de la sonde, le second est lu (une page, son
+  titre, de l'encre, la bibliothèque déjà là, rien de rechargé). Entrée sur la ligne choisie et le double-clic lisent (ils ne téléchargent pas) ; « Télécharger » du menu rend le PDF octet pour octet.
+- **Lire n'écrit rien** : mêmes lignes de `GFS_Fichiers`, mêmes pièces jointes, mêmes tables avant et après. Le transfert coupé (la route de téléchargement abandonnée par le labo) est dit en mots : « « Facture.pdf » n'a
+  pas pu être ouvert : le serveur Grist n'a pas répondu… », l'explorateur reste ouvert, la sonde ne reçoit rien.
+- **Une app qui ne reçoit pas encore le fichier** (`ACCEPTS_OPEN.<app>.lire` à `false`, l'état de toute app avant sa consigne) : « Lire » reste grisé, la barre et le clic disent « <app> ne lit pas encore les PDF de GFS :
+  télécharge-le pour l'ouvrir », sans fenêtre ni app ouverte ; « Télécharger » du menu marche.
+- **Un cadre d'app reste caché tant que l'app ne dit pas qu'elle est prête** : la sonde n'était pas visible (`visibility: hidden` sur son `<iframe>`, donc aucun clic ne l'atteignait) avant d'envoyer `ready` puis
+  `themeInitialized`, comme le fait le script d'API de Grist. Une vraie app le fait déjà ; une sonde de labo doit l'écrire.
+- **Contrastes et tenue** : le pied et la barre d'information avec « Lire » prêt atteignent 4,5:1 (clair et sombre) et tiennent dans 700 × 400 ; la page dessinée tient dans le panneau sans défilement.
+- **La console** : aucune erreur ni avertissement de GFS, de la sonde ou de pdf.js (avec `verbosity: 0`), aucune violation de politique ; les échecs joués exprès n'ajoutent que la phrase « le fichier n'a pas pu être traité ».
+- **Pas mesuré** : Firefox (le cadre en bac à sable, la lecture par un module à empreinte), l'instance de la DINUM, un PDF protégé par un mot de passe (pdf.js le demande par `onPassword`, l'app doit
+  le gérer : Publipostage+ le fait déjà pour ses exports), un PDF de centaines de pages, un PDF qui exige les polices standard, les CMap ou le décodeur JPEG 2000 (non fournis, contrats 2.6, point 12), un
+  PDF sans texte (un scan : pas de couche de texte), la vraie Publipostage+ (son extension n'existe pas encore).

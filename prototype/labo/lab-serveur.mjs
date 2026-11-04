@@ -2,6 +2,7 @@
 // une table « Clients », un widget personnalisé ajouté à la main (comme la personne le fait) avec l'accès complet. Ce que ni grist-static (pas d'API REST, pas de jeton) ni le répondeur de
 // remplacement (écrit par nous) ne peuvent dire. Le cloud n'atteint pas docs.getgrist.com : le script de l'API des widgets vient du serveur local. Chromium seulement.
 import { say } from './lab-common.mjs';
+import { servedPluginApi } from './api-evaluee.mjs';
 import { addCustomWidget, chooseFullAccess } from './lab-setup.mjs';
 
 export const GRIST = process.env.GRIST_URL || 'http://127.0.0.1:8484';
@@ -20,7 +21,8 @@ export async function requireServer() {
 // Un contexte de navigateur dont la page de Grist reçoit le script de l'API des widgets du serveur local à la place de celui de docs.getgrist.com.
 export async function newContext(browser, pluginApi, options = {}) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, ...options });
-  await context.route('https://docs.getgrist.com/grist-plugin-api.js', route => route.fulfill({ status: 200, contentType: 'application/javascript', body: pluginApi }));
+  const served = servedPluginApi(pluginApi);
+  await context.route('https://docs.getgrist.com/grist-plugin-api.js', route => route.fulfill({ status: 200, contentType: 'application/javascript', body: served }));
   return context;
 }
 

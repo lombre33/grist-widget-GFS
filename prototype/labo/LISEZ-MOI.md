@@ -22,7 +22,12 @@ L'attribut `integrity` des scripts est neutralisé (le miroir ne rend pas toujou
 lui-même (`vendor/…`) : là, le navigateur contrôle l'empreinte pour de bon, y compris pour un module dans un sous-cadre à origine opaque.
 
 Variables utiles : `LAB_LANG=fr|en`, `LAB_SCHEME=light|dark`, `LAB_BROWSER=chromium|firefox|webkit` (les deux derniers : sur une machine qui les a),
-`LAB_CONSOLE=error|all` (la console du navigateur), `LAB_BYPASS_CSP=1` (diagnostic seulement, jamais une mesure).
+`LAB_CONSOLE=error|all` (la console du navigateur), `LAB_BYPASS_CSP=1` (diagnostic seulement, jamais une mesure), `LAB_API_EVAL=1` (le script de l'API des widgets servi dans un `eval(…)` : voir juste en dessous).
+
+**Le script de l'API des widgets que le labo sert n'est pas celui de `docs.getgrist.com`.** Le cloud n'atteint pas cet hôte : le labo sert à sa place le fichier de grist-static (`dist/grist-plugin-api.js`) et, dans un vrai serveur, celui du Docker (`labo/lab-serveur.mjs`). Ni l'un ni l'autre
+n'évalue de texte ; le fichier de `docs.getgrist.com` le fait (`eval()`, console du porteur le 04/11 ; faits vérifiés 27), et une page dont la politique de sécurité n'a pas `'unsafe-eval'` n'y démarre pas. Form+ est restée muette chez le porteur sans que le labo le voie, jusqu'à la consigne 018.
+**`LAB_API_EVAL=1`** sert le fichier du labo enveloppé dans un `eval(…)` (`api-evaluee.mjs`, gardé par `test/api-evaluee.test.mjs`) : toute passe qui ouvre une app se rejoue ainsi (`LAB_API_EVAL=1 REPO_DIR="$(realpath ../..)" node run-ouvrir-form.mjs`), et une app qui refuse l'évaluation y échoue comme chez
+le porteur (`EvalError`, puis `grist` vide, l'app reste sur « Connexion à Grist… »). Ce n'est **pas le défaut** : tant qu'une app de la suite n'a pas `'unsafe-eval'` pour ce fichier (guide des apps, règle 11), ses passes échoueraient sans que GFS y puisse rien ; il le deviendra quand Form+ aura appliqué la 018.
 
 **Le cadre que Grist donne à GFS n'est pas tout à fait celui d'un Grist ordinaire.** grist-static lui ajoute l'attribut `credentialless` (`ext/app/client/HookStub.ts` : `iframeAttributes`) ;
 un Grist ordinaire n'ajoute rien (`DefaultHooks.ts`). Sous Chromium, un cadre anonyme coupe `window.opener` et le nom de toute fenêtre ouverte depuis lui, et `window.open` y rend `null` : le labo

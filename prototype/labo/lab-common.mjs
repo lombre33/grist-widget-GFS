@@ -5,6 +5,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { join, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readCatalogue } from '../js/libraries.js';
+import { servedPluginApi } from './api-evaluee.mjs';
 const require = createRequire(import.meta.url);
 // Playwright : celui du dossier du labo si on l'y a installé, sinon celui du conteneur du cloud.
 const playwright = (() => { try { return require('playwright'); } catch (error) { return require('/opt/node22/lib/node_modules/playwright'); } })();
@@ -211,7 +212,7 @@ export async function mirrorCdns(page, { lang = 'fr', port = 8911, pluginApi = t
     try {
       if (/docs\.getgrist\.com\/grist-plugin-api\.js/.test(url)) {
         if (!pluginApi) return route.fallback();
-        return route.fulfill({ status: 200, contentType: 'text/javascript; charset=utf-8', headers: { 'Access-Control-Allow-Origin': '*' }, body: await readFile(join(LAB, 'node_modules/grist-static/dist/grist-plugin-api.js'), 'utf8') });
+        return route.fulfill({ status: 200, contentType: 'text/javascript; charset=utf-8', headers: { 'Access-Control-Allow-Origin': '*' }, body: servedPluginApi(await readFile(join(LAB, 'node_modules/grist-static/dist/grist-plugin-api.js'), 'utf8')) });
       }
       // La galerie de widgets de Grist (gristlabs.github.io) n'est pas joignable d'ici : une galerie vide évite la bannière d'erreur de Grist sur les
       // captures. Cela ne touche en rien le protocole entre Grist et le widget.

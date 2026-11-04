@@ -7,7 +7,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `3064a29` | 04/11/2026 | GPL 3.0 |
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `6a22dee` | 04/11/2026 | GPL 3.0 |
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `0de37ac` | 04/11/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `597fe02` | 04/11/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `521a8ac` | 03/11/2026 | GPL 3.0 |
@@ -579,6 +579,20 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   deux méthodes (lue dans le paquet de npm, pas jouée). (2) **Un défaut de GFS** que la mesure a montré : sa notice « Ouverture de « Devis.pdf »… » reste affichée 6 secondes par-dessus l'app, alors que le PDF est
   dessiné au bout d'une demi-seconde (`kept-files.js`, `load` : la notice n'est jamais retirée quand le transfert réussit ; seul `#runDemo` appelle `#hideNotice`) ; **corrigé le 04/11 (`f64bfe3`)** : la notice s'efface dès que le transfert est fini. Pas mesuré : Firefox, le Grist en ligne du porteur
   (l'instance de la DINUM), un PDF protégé par un mot de passe, un PDF de centaines de pages.
+- Publipostage+ à `6a22dee` (04/11, après la pause : le porteur a dit « tu peux relancer les chantiers à l'arrêt » ; sa 043 est faite) : douze commits de plus depuis `3064a29`, onze du 04/11 et `70590da` du 03/11 (92 fichiers,
+  dont 55 de code servi, de style et d'extensions, et 925 lignes de plus pour 313 de moins). Son `GFS-ETAT.md` (`6a22dee`, qui décrit `47e56ce`, « consignes lues jusqu'à la 045 », GFS lu à `56d4ba9`) dit **la 041 faite par
+  `fe8e82a`** (l'ambiance : le kit 0.6.0 en sous-module de l'app, `kit/` à `8afa569`, `js/gfs-ambiance.js`, des feuilles qui lisent les jetons), **la 043 faite par `47e56ce`** (`cfabee2` le code, `690b50c` les essais, `47e56ce` les
+  documents), la 044 « lue, aucun code » et la 045 lue, pas commencée. **Traité le 04/11** : la référence avancée à `6a22dee` (commit à part, relu) avec le poids d'`edition` (102 → 103 Ko : `live.css`, 102 512 octets ; le test
+  des poids compare le manifeste à l'app référencée) ; `actions.ranger: ["pdf"]` dans le manifeste (commit à part, relu : c'est la seule ligne qui fait ranger, sans elle GFS répond `GFS_REFUSE` et l'app télécharge en le
+  disant) ; mesuré avec la vraie app dans un vrai serveur Grist 1.7.19 (`run-ranger-publipostage.mjs`, 38 vérifications dans chacune de quatre passes ; contrats 5.4, point 9 ; faits vérifiés, section 33) et rejoué sur sa version
+  sans échec : `run-lire-publipostage`, `run-ouvrir-publipostage`, `run-importer-pp`, `run-graphique`, `run-edition`, `run-diapositives`, `run-copie`, `run-corbeille-apps` ; réponse : consigne 048.
+  Mesuré sur le code servi (`index.html`, `js/`, `css/`, `extensions/`), avant (`3064a29`) et après (`6a22dee`) : les mêmes 12 verbes d'actions de Grist, les mêmes 8 tables internes `_grist_*` lues, les mêmes 13 appels `grist.*`
+  (165 occurrences), les mêmes 9 noms de tables `Publipostage_*`, les mêmes 82 adresses (237 occurrences, aucune de plus ni de moins), un seul accès au stockage du navigateur (9 occurrences), le même réseau et les mêmes fenêtres
+  (17 occurrences) - un relevé fait avec d'autres expressions que ceux des lignes plus haut : seuls comptent l'avant et l'après ; `import(` : deux occurrences de plus, `import('kit/ambiance-message')` et
+  `import('kit/ambiance-pose')`, des modules du kit lus par leur nom dans la carte d'importation, depuis le dossier `kit/` de l'app (même origine). La carte d'importation gagne ces deux entrées et la politique de sécurité de
+  `index.html` l'empreinte de sa nouvelle carte, sans origine de plus. **La publication de GFS prend les sous-modules en entier** : le journal de la dernière construction de Pages (`pages build and deployment`) entre dans
+  `prototype/apps/automation/kit` et `prototype/apps/form/kit`, les sous-modules de leurs apps ; le `kit/` de Publipostage+ s'y ajoute avec cette référence. Le reste des commits est du code de l'app seule : l'interface cachée des cadres de
+  Slides+ (`4f23104`), le champ à variables de « Si aucune ligne » d'une boucle (`70590da`). **Pas rejoué ici** : l'ambiance (041) avec la vraie Publipostage+, qui revient au chantier du thème ; Firefox ; l'instance de la DINUM.
 - Form+ à `cc21a27` (22/10, le porteur : « check ce qui est remonté des projets ») : trois commits de plus depuis `16701fe`. Son
   `GFS-ETAT.md` (`0614f73`, qui décrit `c249c4a`) dit les consignes 008 à 011 **faites** : le formulaire natif s'enregistre dans
   `FormPlus_Formulaires` (avec la fenêtre d'accord de l'app, une ligne par formulaire par `Definition.vsId`), les répondants, le lien

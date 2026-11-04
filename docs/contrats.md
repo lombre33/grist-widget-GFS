@@ -1677,8 +1677,13 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
      copie]` dans l'ordre. Des demandes hors règle (un contenu qui n'est pas un PDF, un fichier vide, un type non déclaré, un texte à la
      place du fichier, pas de fichier, un nom vide, un lot vide) : `GFS_REFUSE` avec la raison, rien d'écrit, aucune fenêtre. Un envoi qui
      échoue (413, réseau coupé) : `GFS_ECHEC` avec la raison en mots, puis le dépôt suivant réussit. Aucune erreur ni avertissement en
-     console. **Non mesuré** : Firefox, l'instance de la DINUM, la vraie Publipostage+ (consigne 043 : `consignes/publipostage/`), un
-     PDF de plus de 12 Mo, le refus de créer la table du rangement (essais sous Node seulement : elle existe dès qu'une app est installée).
+     console. **La vraie Publipostage+** (`6a22dee`, sa consigne 043 faite) **est mesurée le 04/11** : son manifeste dans GFS déclare
+     `actions.ranger: ["pdf"]` (sans cette ligne GFS répond `GFS_REFUSE` et l'app télécharge en le disant), et son menu « Destination du
+     PDF » range un PDF seul (la table naît avec l'accord de la personne), une copie « (1) », un remplacement, un refus, le PDF téléchargé
+     et rangé avec les mêmes octets, et une archive de trois PDF (un `ranger` par PDF sous le nom de son entrée de l'archive, une seule
+     fenêtre pour trois noms pris) : `labo/run-ranger-publipostage.mjs`, 38 vérifications dans chacune de quatre passes (faits vérifiés,
+     section 33). **Non mesuré** : Firefox avec la vraie app, l'instance de la DINUM, un PDF de plus de 12 Mo, le refus de créer la table
+     du rangement (essais sous Node seulement : elle existe dès qu'une app est installée).
 
 ### 5.5 La table d'un direct : être prévenu quand une autre table change
 

@@ -1055,7 +1055,7 @@ Publipostage+ ; puis la même mesure avec le **vrai client du kit 0.7.0** (`LAB_
 - **Le kit** (0.7.0, `grist-factory-kit`) : `GfsLink.deposit` rend `{ statut, id, nom }` ou rejette avec le code de GFS ; il n'a pas de délai ; chaque appel est un fichier de plus. **`structuredClone` d'un `File` hors d'un
   navigateur perd son nom** (sous Node, il rend un `Blob`) : l'ouverture du kit rend le même `File` à chaque lecture. Dans Chromium, un cadre isolé reçoit bien un vrai `File` (nom, taille, type, octets) par `importation` et
   `lecture`, que le kit jusqu'à la version 0.6.0 laissait tomber.
-- **Pas mesuré** : Firefox, l'instance de la DINUM (la taille maximale d'une pièce jointe et la passerelle), la vraie Publipostage+ (consigne 043), un PDF de plus de 12 Mo, une personne qui refuse de créer `GFS_Rangement`.
+- **Pas mesuré** : Firefox, l'instance de la DINUM (la taille maximale d'une pièce jointe et la passerelle), un PDF de plus de 12 Mo, une personne qui refuse de créer `GFS_Rangement`. **La vraie Publipostage+ (consigne 043) est mesurée depuis le 04/11 : section 33.**
 
 ## 22. Lire un PDF avec la vraie Publipostage+ : ce que le vrai serveur a mesuré (04/11)
 
@@ -1338,3 +1338,38 @@ les dix-huit modèles de Publipostage+ (leur ligne de réglages, trois modèles 
   deux Firefox lancés l'un après l'autre par le même processus se partagent ces 4 096 trames. Le fichier d'essai en envoyait 3 096 pour ses deux langues avant ce lot, 2 290 pour le français seul avec la colonne : la seconde langue s'arrêtait vers la 30e seconde. `test/websocket-client.mjs` (un client RFC 6455 d'une centaine de lignes, une clé neuve par trame) lève la limite : 6 000 scripts d'affilée passent, et `test/websocket-client.test.mjs` en envoie 5 000 à un vrai serveur.
 - **Pas mesuré** : l'instance de la DINUM ; **ce que compte la limite de 15 Go** (le total du site n'est pas lisible depuis un widget : l'étude l'a lu dans le code, `GET /api/orgs/:id/usage` demande le propriétaire) ; le Firefox du porteur (un Firefox 159 sans écran) et un vrai Grist sous Firefox (le labo ne joue qu'en Chromium) ; les tables liées des apps (versions de Publipostage+, réponses de Form+ : lot 3) ; la case « + pièces jointes » (lot 2) et la fenêtre « Poids du document » (lot 4) ;
   un document de plusieurs centaines de milliers de lignes (la lecture de la table, déjà faite par l'explorateur, coûte plus que la somme).
+
+## 33. Ranger les exports PDF de la vraie Publipostage+ dans GFS : ce que le vrai serveur a mesuré (04/11)
+
+Suite de la section 21 (la sonde Z) : la **vraie** Publipostage+ (`6a22dee`, sa consigne 043 faite par `cfabee2`, `690b50c` et `47e56ce`), servie par GFS, range ses exports PDF parmi les fichiers de GFS (contrats 2.7 point 6,
+5.4 point 9). Joué par `labo/run-ranger-publipostage.mjs` dans un **vrai serveur Grist 1.7.19** (Docker, `labo/vrai-serveur.sh`) : un modèle de l'app ouvert dans son éditeur depuis l'explorateur de GFS, panneau à 700 × 400, souris et
+clavier réels (le menu « Exporter » de l'app s'ouvre au survol), en français et en anglais, en clair et en sombre (38 vérifications dans chacune des quatre passes, et dans une cinquième sur le `main` du jour). Chromium 141 seulement. Les
+bibliothèques natives de l'app, `pdfmake` et ses polices compris, viennent de copies aux mêmes adresses que leurs CDN (`labo/mirror`, `bash build-mirror.sh`).
+
+- **La déclaration est ce qui fait ranger** : sans `actions.ranger: ["pdf"]` dans le manifeste de GFS, le premier export échoue comme prévu : GFS répond `GFS_REFUSE` (« ranger : le type « pdf » ne figure pas dans actions.ranger du
+  manifeste de l'app « publipostage » ») et l'app télécharge le PDF en le disant (« GFS n'a pas gardé 1 PDF (…) »). Avec la déclaration, l'essai passe. Il n'y a aucun interrupteur de plus dans le code de GFS (`ACCEPTS_OPEN` n'a pas
+  d'entrée `ranger`).
+- **Le menu** : « Destination du PDF » dans « Exporter » porte ses trois lignes (Télécharger, Ranger dans GFS, Télécharger et ranger dans GFS), vivantes (ni grisées ni retirées), « Télécharger » cochée au départ ; un vrai clic coche
+  « Ranger dans GFS » et GFS garde le choix par app et par personne (`stockage.ecrire`, clé `pp_export_destination`, rangée sous `gfs.stockage.publipostage.`).
+- **Un premier export** : sur un document sans `GFS_Fichiers`, **c'est GFS qui demande l'accord pour sa table** (l'app n'en pose aucune), devant le panneau ; accordée, la table naît avec le PDF : une ligne, au nom que le modèle donne
+  (« Contrat de prestation 2026.pdf »), `Origine` `publipostage`, une pièce jointe qui est un vrai PDF (`%PDF-`, quelques ko) ; rien n'est téléchargé ; le coin d'état de l'app dit « PDF rangé dans GFS. » ; l'explorateur montre le PDF.
+- **Un nom pris** : la fenêtre « Ce nom est déjà pris » nomme l'app, le clavier est sur « Garder les deux », elle tient dans le panneau, ses textes ont le contraste voulu (4,5:1), rien n'est écrit avant la réponse. **Garder les deux** :
+  « … (1).pdf », l'ancien PDF garde son contenu (même empreinte), l'app dit « PDF rangé dans GFS sous le nom « … (1).pdf ». » ; **Remplacer** : la même ligne (même identifiant) prend le nouveau contenu, la copie n'a pas bougé, « PDF rangé
+  dans GFS, à la place de l'ancien. » ; **Annuler** : rien n'est rangé ni téléchargé, « PDF non rangé : annulé dans GFS. »
+- **Télécharger et ranger dans GFS** : le fichier téléchargé (au nom de l'export) et la pièce jointe de GFS ont les mêmes octets (même empreinte SHA-256) ; le coin d'état dit le rangement puis « PDF généré. » ; « Télécharger » seul ne
+  range rien.
+- **Une archive ZIP de trois lignes** : l'app envoie les PDF un à un sous le nom de leur entrée de l'archive (`uniqueZipFilename` numérote à partir de (2) : « Lot de contrats.pdf », « Lot de contrats (2).pdf », « Lot de contrats (3).pdf »), tous
+  du même lot, avec `suivants` 2, 1, 0. Sur des noms libres : aucune fenêtre, trois lignes, « 3 PDF rangés dans GFS. ». Le même export une seconde fois : trois noms pris, **une seule fenêtre** avec la case « Faire pareil pour les
+  suivants » ; « Garder les deux » vaut pour les trois (trois copies de plus, « (1) », « (4) » et « (5) » : GFS prend le premier numéro libre, les trois premiers PDF n'ont pas bougé, « 3 PDF rangés dans GFS (3 gardés en double). ») ;
+  une troisième fois, « Remplacer » pour les suivants : les trois mêmes lignes (mêmes identifiants) prennent un nouveau contenu, aucune de plus (« … (3 remplacés). ») ; l'archive n'est jamais téléchargée. **Une fausse alerte levée** :
+  dans la première version de l'essai, trois PDF rangés sur des noms déjà pris ressortaient « (3) », « (4) » et « (5) », ce qui ressemblait à un même nom reçu trois fois ; l'app envoie bien trois noms distincts, ce sont les premiers
+  numéros libres de GFS (l'essai le montre maintenant sur des noms libres, puis pris).
+- **La console** : aucune erreur ni avertissement (GFS, Publipostage+), ni violation de politique.
+- **Le contrat de l'app n'a pas bougé** entre `3064a29` et `6a22dee` (mesuré sur son code servi, avant et après) : mêmes verbes d'actions de Grist, mêmes tables internes, mêmes appels `grist.*`, mêmes adresses, même accès au
+  stockage, même réseau ; deux `import(` de plus, les modules d'ambiance du kit lus par leur nom dans la carte d'importation, depuis le dossier `kit/` de l'app. **Seul le poids d'`edition` change** : 102 512 octets, soit 103 Ko au lieu de 102
+  (`live.css`) ; `graphique` 183, `diapositives` 471 et `lecture-pdf` 17 n'ont pas bougé. **La publication de GFS prend les sous-modules en entier** (le journal de `pages build and deployment` entre dans `prototype/apps/automation/kit` et
+  `prototype/apps/form/kit`) : le `kit/` de l'app, sous-module de son dépôt, est servi avec la copie de repli.
+- **Rejoués sur `6a22dee`, sans échec** (français clair, une passe chacun) : `run-lire-publipostage` (33 vérifications), `run-ouvrir-publipostage` (28), `run-importer-pp` (33), `run-graphique` (20), `run-edition` (60),
+  `run-diapositives` (60), `run-copie` (41) et `run-corbeille-apps` (40).
+- **Pas mesuré** : Firefox avec la vraie app dans un vrai Grist (la fenêtre du nom pris, elle, est mesurée sous Firefox par `test/interfaces-firefox.test.mjs`), l'instance de la DINUM, un PDF de plus de 12 Mo, un nom de fichier à
+  variables (l'essai tape un nom sans variable), le « PDF protégé » et le PDF réuni (le même chemin `deliver`, non joués), une personne qui refuse de créer la table avec la vraie app.

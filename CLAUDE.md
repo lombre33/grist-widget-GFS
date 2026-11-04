@@ -131,7 +131,9 @@ Les dépôts servent de boîte aux lettres ; chaque côté ne lit qu'une page (m
 - **Traiter une demande d'app** (le porteur dit « demande de Publipostage+ », ou d'une autre app) : lire la section
   « Demandes à GFS » de son `GFS-ETAT.md` ; ajouter la bibliothèque à la liste de GFS et lancer l'outil (catalogue,
   empreintes, copie vendorisée) ; déclarer l'extension dans le manifeste ; avancer la référence de l'app (commit à part,
-  relu) ; pousser ; répondre par une consigne.
+  relu) ; pousser ; répondre par une consigne. **Décidé le 04/11 (« Dès la lecture »)** : quand la demande porte sur une fonction que GFS
+  propose déjà (le geste existe dans GFS, grisé jusque-là : « Lire » un PDF, par exemple), la bibliothèque ou l'extension s'ajoute dès que GFS lit
+  la demande, sans attendre le « demande de… » du porteur ; une fonction nouvelle attend encore son mot.
 - On ne pousse jamais dans le dépôt d'une app.
 
 ## Travailler avec le porteur

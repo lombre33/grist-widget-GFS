@@ -1575,8 +1575,21 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
      le document** (mêmes lignes, mêmes pièces jointes, mêmes tables) ; un transfert refusé est dit en mots et n'ouvre rien ; avec
      `lire: false`, « Lire » reste grisé, la phrase « ne lit pas encore » est dite au clic, sans fenêtre ni app ouverte ; les textes du pied
      et de la barre tiennent la charte (4,5:1) ; aucune erreur ni avertissement en console. **Non mesuré** : Firefox, l'instance de la
-     DINUM, un PDF protégé par un mot de passe, un PDF de centaines de pages, la vraie Publipostage+ (son extension n'existe pas encore :
-     consigne à Publipostage+, `consignes/publipostage/`).
+     DINUM, un PDF protégé par un mot de passe, un PDF de centaines de pages, la vraie Publipostage+ (mesurée le 04/11, ci-dessous).
+   - [M] **Mesuré le 04/11 avec la vraie Publipostage+** (`3064a29`, extension `lecture-pdf` déclarée dans le manifeste de GFS, `ACCEPTS_OPEN.publipostage.lire`
+     à `true` : consigne 044), dans un vrai serveur Grist 1.7.19 (Docker), à 700 × 400, à la vraie souris et au vrai clavier, en français et en
+     anglais, en clair et en sombre (`prototype/labo/run-lire-publipostage.mjs`, 33 vérifications dans chacune des quatre passes, aucune en échec).
+     Avant l'extension, « Lire » est grisé (« Demande l'extension Lecture de PDF »), un clic ouvre la fenêtre sur la ligne de l'extension, la copie de GFS
+     est le seul mode de pdf.js. Cochée, « Lire » ouvre l'app : **au premier démarrage d'un document neuf, la question « Créer les tables du widget dans
+     ce document ? » est celle de l'app** (une fois, GFS n'en pose aucune) et ses quatre tables naissent ; l'app tient `lecture.id` (l'identifiant que GFS
+     a donné au PDF), montre le PDF dans son mode Lecture (coin d'état « PDF « Facture.pdf » : 3 pages. »), première page dessinée (de l'encre, du texte
+     noir), couche de texte avec les accents, pdf.js 6.5.438 de la copie de GFS (source, empreinte `sha384`, forme `module`, chargé sans refus) ; la
+     molette et le clavier font défiler, la page 3 se dessine en approchant, un double-clic y sélectionne un mot ; **l'appel `ouvrir`** : même cadre non
+     rechargé, le second PDF remplace le premier ; Entrée et le double-clic lisent ; « Télécharger » rend le PDF octet pour octet ; lire n'écrit rien dans
+     les PDF de GFS ; aucune erreur ni avertissement en console, hors deux messages connus du labo (`KNOWN_MESSAGES` de `prototype/labo/lab-pdf.mjs`). **Un navigateur ancien** : pdf.js 6 attend `getOrInsertComputed` de Map et de WeakMap
+     (Chrome et Edge 145, Firefox 144, Safari 26.2 ; le Chromium du cloud, 141, ne les a pas : le labo les pose, `LAB_NAVIGATEUR_ANCIEN=1` ne les pose pas) ;
+     sans elles l'app dit « Ce navigateur est trop ancien pour lire un PDF : mettez-le à jour. », reste sur son modèle et GFS n'a rien de cassé (13
+     vérifications). **Non mesuré** : Firefox, l'instance de la DINUM, un PDF protégé par un mot de passe, un PDF de centaines de pages.
 
 9. [T] **Ranger un fichier que l'app a fabriqué** (demande du porteur du 03/11, lot 3 de l'étude PDF : « que des exports de Publipostage+ en
    PDF aillent directement se ranger parmi les fichiers, avec le choix d'écraser l'existant ou d'avoir une copie avec un (1) derrière le

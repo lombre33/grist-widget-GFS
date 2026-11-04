@@ -981,7 +981,7 @@ en français clair puis en anglais sombre, avec la sonde Y (`labo/sondes/y-lire-
 - **La console** : aucune erreur ni avertissement de GFS, de la sonde ou de pdf.js (avec `verbosity: 0`), aucune violation de politique ; les échecs joués exprès n'ajoutent que la phrase « le fichier n'a pas pu être traité ».
 - **Pas mesuré** : Firefox (le cadre en bac à sable, la lecture par un module à empreinte), l'instance de la DINUM, un PDF protégé par un mot de passe (pdf.js le demande par `onPassword`, l'app doit
   le gérer : Publipostage+ le fait déjà pour ses exports), un PDF de centaines de pages, un PDF qui exige les polices standard, les CMap ou le décodeur JPEG 2000 (non fournis, contrats 2.6, point 12), un
-  PDF sans texte (un scan : pas de couche de texte), la vraie Publipostage+ (son extension n'existe pas encore).
+  PDF sans texte (un scan : pas de couche de texte), la vraie Publipostage+ (mesurée le 04/11 : section 22).
 
 ## 20. ECharts 6.1.0 : l'archive de npm est le fichier que le CDN sert, et « Créer un graphique… » dessine dans un vrai Grist (lu et mesuré le 03/11)
 
@@ -1047,3 +1047,37 @@ Publipostage+ ; puis la même mesure avec le **vrai client du kit 0.7.0** (`LAB_
   navigateur perd son nom** (sous Node, il rend un `Blob`) : l'ouverture du kit rend le même `File` à chaque lecture. Dans Chromium, un cadre isolé reçoit bien un vrai `File` (nom, taille, type, octets) par `importation` et
   `lecture`, que le kit jusqu'à la version 0.6.0 laissait tomber.
 - **Pas mesuré** : Firefox, l'instance de la DINUM (la taille maximale d'une pièce jointe et la passerelle), la vraie Publipostage+ (consigne 043), un PDF de plus de 12 Mo, une personne qui refuse de créer `GFS_Rangement`.
+
+## 22. Lire un PDF avec la vraie Publipostage+ : ce que le vrai serveur a mesuré (04/11)
+
+Suite de la section 19 (la sonde Y) : la **vraie** Publipostage+ (`3064a29`, sa consigne 040 faite par `2082d41`), servie par GFS, lit le PDF que GFS garde (contrats 2.7 point 5, 5.4 point 8). Joué par
+`labo/run-lire-publipostage.mjs` dans un **vrai serveur Grist 1.7.19** (Docker, `labo/vrai-serveur.sh`) : GFS ajouté comme widget à un document neuf, panneau à 700 × 400, souris et clavier réels, en français et en
+anglais, en clair et en sombre (33 vérifications dans chacune des quatre passes), plus la passe « navigateur ancien » (13 vérifications, en français clair et en anglais sombre). Chromium 141 seulement. Les bibliothèques
+natives de l'app viennent de copies aux mêmes adresses que leurs CDN (`labo/mirror`) ; pdf.js est la copie de GFS.
+
+- **Le geste** : avant l'extension, « Lire » est grisé (« Demande l'extension Lecture de PDF »), jamais masqué ; un clic ouvre « Apps et extensions » sur la ligne de l'extension, sans ouvrir aucune app ; pdf.js ne
+  s'offre que par la copie de GFS (le CDN est grisé avec sa raison) ; l'extension cochée, « Lire » se dégrise et la barre dit où le PDF s'ouvre.
+- **La question des tables est celle de l'app** : sur un document neuf, la première lecture fait démarrer l'app, qui pose sa propre question (« Créer les tables du widget dans ce document ? ») ; GFS n'en pose aucune ; quatre
+  tables naissent (`Publipostage_LiensTables`, `Publipostage_Modeles`, `Publipostage_PreferencesModeles`, `Publipostage_UserProbe`) ; les lignes et les pièces jointes de `GFS_Fichiers` ne changent pas.
+- **Ce que l'app fait du PDF** : elle reçoit `lecture.id` (l'`Identifiant` que GFS a donné, 12 caractères), le nom et les 3 pages ; son coin d'état dit « PDF « Facture.pdf » : 3 pages. » (« PDF “Facture.pdf”: 3 pages. » en
+  anglais) ; la première page est dessinée sur un canevas (de l'encre, du texte noir), sa couche de texte porte la ligne accentuée ; pdf.js est celui de la copie de GFS : source `…/prototype/vendor/pdfjs/1.0.0/pdfjs.js`,
+  empreinte `sha384-c85h+cJ0…`, forme `module`, version 6.5.438, aucune violation de politique.
+- **Dans l'app** : la molette fait défiler et la page 3 se dessine en approchant (les pages se dessinent à la demande) ; au clavier, « Début » remonte et « Page suivante » fait défiler ; un double-clic dans le texte sélectionne un mot.
+- **L'appel `ouvrir`** : l'app déjà ouverte lit le second PDF dans le même cadre, non rechargé (un marqueur posé dans sa page y est encore) ; son coin d'état dit « PDF « Devis.pdf » : 1 page. » ; l'explorateur s'est refermé.
+- **Les autres gestes** : « Télécharger » du menu rend le PDF octet pour octet (1 633 octets) ; Entrée et le double-clic lisent ; lire n'écrit rien dans les PDF de GFS.
+- **La console** : aucune erreur ni avertissement (GFS, Publipostage+, pdf.js) ni violation de politique, hors deux messages connus du labo (`KNOWN_MESSAGES`, `labo/lab-pdf.mjs`).
+- **Le Chromium du cloud est trop vieux pour pdf.js 6** : pdf.js 6.5.438 appelle `getOrInsertComputed` de `Map` et de `WeakMap` (et `getOrInsert`, pour les destinations nommées) ; Chromium 141 ne les a pas (Chrome et Edge 145,
+  Firefox 144, Safari 26.2 d'après caniuse, lu le 04/11 et pas mesuré dans ces navigateurs). Sans elles, pdf.js dit « getOrInsertComputed is not a function » : le labo les pose avant tout script (`addModernMethods`,
+  `labo/lab-pdf.mjs`), et `LAB_NAVIGATEUR_ANCIEN=1` les laisse absentes. **Ce que voit la personne d'un navigateur ancien** : la garde de l'app (`modernEnough()`) refuse avant de charger la bibliothèque ; le coin d'état dit
+  « Ce navigateur est trop ancien pour lire un PDF : mettez-le à jour. » (« This browser is too old to read a PDF: please update it. ») ; l'app reste sur son modèle (aucune feuille, aucun PDF tenu) ; l'explorateur revient
+  et « Lire » reste prêt ; GFS n'a rien de cassé. **Dans le paquet de npm** (lu, pas joué) : la version « legacy » de pdfjs-dist 6.5.438 (`legacy/build/pdf.min.mjs`, 538 Ko, et son moteur de 1,33 Mo) définit ces méthodes
+  elle-même (core-js : `getOrInsert` et `getOrInsertComputed`, de `Map` et de `WeakMap`) ; la version moderne (474 Ko et 1,27 Mo) ne fait que les appeler.
+- **Les poids** : `lecture-pdf` : trois fichiers, 17 343 octets (`pdf-engine.js` 5 798, `pdf-view.js` 8 451, `pdf-view.css` 3 094), soit 17 Ko dans le manifeste ; `graphique` 183 (`d9b78a4`, 182 559 octets) ; `diapositives`
+  471 et `edition` 102 n'ont pas bougé.
+- **Un défaut de GFS vu en mesurant** : la notice « Ouverture de « Devis.pdf »… » (`files.reading`, `kept-files.js`, `load`) reste affichée **6 secondes** (34 px de haut, dans le bas du panneau de 700 × 400), par-dessus
+  l'app, alors que le PDF est dessiné au bout de 0,6 s dans l'app déjà ouverte : seul son délai (`NOTICE_MS`, `controller.js`) la retire, et seul le bouton « Démo » appelle `#hideNotice`. Mesuré par une passe jetable
+  (français clair, une demi-seconde entre deux relevés). À corriger : retirer la notice quand le transfert est fini.
+- **Rejoués sur `3064a29`, sans échec** : `run-modules` (46 vérifications en français clair, 46 en anglais sombre), `run-ouvrir-publipostage` (28), `run-importer-pp` (33), `run-diapositives` (60), `run-graphique` (20),
+  `run-edition` (60), `run-barre-publipostage` (7), `run-langue-publipostage` (25), `run-sans-cdn` (15), et la sonde `run-lire` (43).
+- **Pas mesuré** : Firefox (le cadre en bac à sable, le module à empreinte, et `getOrInsertComputed` dans la version de Firefox de la personne), l'instance de la DINUM, un PDF protégé par un mot de passe (l'app le demande dans
+  une fenêtre à elle), un PDF de centaines de pages, le vrai CDN des bibliothèques natives de l'app.

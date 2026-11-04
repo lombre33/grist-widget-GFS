@@ -7,7 +7,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `067c931` | 03/11/2026 | GPL 3.0 |
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `3064a29` | 04/11/2026 | GPL 3.0 |
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `b54414a` | 03/11/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `746a564` | 03/11/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `521a8ac` | 03/11/2026 | GPL 3.0 |
@@ -560,6 +560,25 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   (9 occurrences) ; adresses : 97 au lieu de 92 (`docx@9.15.1` à la place de 9.7.1 et son `charts.iife.js`, `echarts@6.1.0`, trois espaces de noms XML de fichiers Office) ; `import(` : deux
   occurrences de plus (une phrase de commentaire ; `import('prosemirror-view')`, une bibliothèque native de l'app, par son nom, jamais par une adresse) ; trois `postMessage` dans la fenêtre à part du
   diaporama (`slide-present.js`) au lieu d'un : de cette fenêtre vers l'app qui l'a ouverte (`STATE`, `BYE`, `READY`), jamais vers GFS ; aucun `fetch`, aucune fenêtre de plus.
+- Publipostage+ à `3064a29` (04/11 ; le porteur a tapé « Dès la lecture » à la carte « Ajouter la bibliothèque d'une app dès que je lis sa demande ? ») : quinze commits de plus depuis `067c931`, tous du 03/11
+  (48 fichiers, dont 26 de code servi, de style et d'extensions, et 3 347 lignes de plus). Son `GFS-ETAT.md` (`3064a29`, qui décrit `2082d41`, « consignes lues jusqu'à la 043 », GFS lu à `f615cfd`) dit la 038 et la
+  039 faites (`22157a8`, `067c931`), **la 040 faite par `2082d41`** (elle lit le PDF que GFS garde, dans son mode Lecture, par l'extension `lecture-pdf` et la bibliothèque `pdfjs` que GFS porte), la 042 « faite · lue,
+  aucun code » ; la 041 (l'ambiance) et la 043 (ranger les exports) sont lues, pas commencées ; la 045 (posée après sa lecture de GFS) n'est pas encore lue. **Sa demande de l'extension « Lecture de PDF » (« Demandes à
+  GFS ») est traitée le 04/11, le jour même** : c'est la règle que le porteur vient de donner (une fonction que GFS offre déjà : la bibliothèque ou l'extension s'ajoute dès la lecture de la demande ; une fonction
+  nouvelle attend encore son mot). Fait : `lecture-pdf` dans le manifeste de GFS (ses noms, son texte, `poids` 17, `pdfjs` 1.0.0) et `actions.lire: [{ "type": "pdf", "extension": "lecture-pdf" }]` ;
+  `ACCEPTS_OPEN.publipostage.lire` à `true` (« Lire » se dégrise) ; le poids de `graphique` à 183 (`d9b78a4`, huit fichiers, 182 559 octets ; `diapositives` 471 et `edition` 102 n'ont pas bougé) ; la référence avancée à
+  `3064a29` (commit à part, relu) ; mesuré avec la vraie app dans un vrai serveur Grist 1.7.19 (`run-lire-publipostage.mjs`, 33 vérifications dans chacune de quatre passes, 13 pour un navigateur ancien ; contrats 5.4,
+  point 8 ; faits vérifiés, section 22) et rejoué sur sa version sans échec : `run-modules` (français clair, anglais sombre), `run-ouvrir-publipostage`, `run-importer-pp`, `run-diapositives`, `run-graphique`, `run-edition`,
+  `run-barre-publipostage`, `run-langue-publipostage`, `run-sans-cdn` ; réponse : consigne 044. Mesuré sur le code servi (`index.html`, `js/`, `css/`, `extensions/`), avant (`067c931`) et après (`3064a29`) : les mêmes 14 verbes
+  d'actions de Grist, les mêmes 8 tables internes `_grist_*` lues (une occurrence de moins, `chart-source.js`, qui lit ses tables ensemble), les mêmes 15 appels `grist.*` (122 occurrences), les mêmes 9 noms de tables
+  `Publipostage_*`, un seul accès au stockage du navigateur (9 occurrences), les mêmes 97 adresses (235 occurrences), le même réseau et les mêmes fenêtres (17 occurrences) ; `import(` : une occurrence de plus, une phrase
+  de commentaire de `extensions/lecture-pdf/pdf-engine.js`, aucun appel de plus. Le reste des quinze commits est du code de l'app seule : la vitesse de la Lecture, de l'ouverture et de l'enregistrement automatique
+  (`7322e6f`, `57adfe6`, `c0280fc`, `33ac331`, `533ecf5`, `2bddfae`, `4eab713`, `d9b78a4`, `92da58c`), des commits d'essais seuls (`216bd75`) et ses pages d'état. **Deux faits nouveaux.** (1) **Le navigateur** : pdf.js
+  6.5.438 appelle `getOrInsertComputed` de `Map` et de `WeakMap` (Chrome et Edge 145, Firefox 144, Safari 26.2) ; le Chromium du cloud (141) ne les a pas, le labo les pose (`LAB_NAVIGATEUR_ANCIEN=1` les laisse absentes) ;
+  dans un navigateur plus ancien l'app dit « Ce navigateur est trop ancien pour lire un PDF : mettez-le à jour. » et GFS n'a rien de cassé (13 vérifications) ; la version « legacy » de pdfjs-dist 6.5.438 embarque ces
+  deux méthodes (lue dans le paquet de npm, pas jouée). (2) **Un défaut de GFS** que la mesure a montré : sa notice « Ouverture de « Devis.pdf »… » reste affichée 6 secondes par-dessus l'app, alors que le PDF est
+  dessiné au bout d'une demi-seconde (`kept-files.js`, `load` : la notice n'est jamais retirée quand le transfert réussit ; seul `#runDemo` appelle `#hideNotice`). Pas mesuré : Firefox, le Grist en ligne du porteur
+  (l'instance de la DINUM), un PDF protégé par un mot de passe, un PDF de centaines de pages.
 - Form+ à `cc21a27` (22/10, le porteur : « check ce qui est remonté des projets ») : trois commits de plus depuis `16701fe`. Son
   `GFS-ETAT.md` (`0614f73`, qui décrit `c249c4a`) dit les consignes 008 à 011 **faites** : le formulaire natif s'enregistre dans
   `FormPlus_Formulaires` (avec la fenêtre d'accord de l'app, une ligne par formulaire par `Definition.vsId`), les répondants, le lien

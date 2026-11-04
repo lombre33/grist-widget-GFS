@@ -40,7 +40,7 @@ export class Explorer {
 
   // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), importTypes(), onOpen(file), onNew(entry), onImport(entry), onClose(), onApps(), canClose(), notice(text),
   //          language() → { choice, grist }, onLanguage(choice), onTheme() (le bouton « Thème » ouvre sa fenêtre), personal() → le rangement est-il à la personne seule ?,
-  //          filing: { togglePin(file), rename(file), moveFile(file), renameFolder(path), moveFolder(path) }, onDemo()? (le bouton « Démo », en mode développement seulement),
+  //          filing: { togglePin(file), rename(file), moveFile(file), renameFolder(path), moveFolder(path) },
   //          kept?: les fichiers que GFS garde lui-même (js/kept-files.js) : { has(file), openAs(file) -> { label, icon, greyed }, opensIn(file), extras(file) -> [article de menu], copyNotice() },
   //          trash?: la corbeille (js/trash.js) : { handles(file), move(file), restore(file), purge(file), empty(files) } (chaque geste rend une promesse, vraie quand il a abouti) }
   constructor(opts) {
@@ -263,11 +263,7 @@ export class Explorer {
   // ---------- gestes ----------
 
   #bind() {
-    const { search, viewList, viewTiles, typeBtn, newBtn, openBtn, closeBtn, appsBtn, langBtn, themeBtn, demoBtn, crumbs: crumbsNav, tree: treeNav, list, notices } = this.#refs;
-    if (this.#opts.onDemo) {
-      demoBtn.hidden = false;
-      demoBtn.addEventListener('click', () => this.#opts.onDemo());
-    }
+    const { search, viewList, viewTiles, typeBtn, newBtn, openBtn, closeBtn, appsBtn, langBtn, themeBtn, crumbs: crumbsNav, tree: treeNav, list, notices } = this.#refs;
     search.addEventListener('input', () => { this.state.q = search.value; this.state.sel = null; this.#renderCrumbs(); this.#renderList(); });
     appsBtn.addEventListener('click', () => this.#opts.onApps());
     langBtn.addEventListener('click', () => this.#languageMenu());

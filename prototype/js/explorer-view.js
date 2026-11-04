@@ -20,7 +20,6 @@ export function buildShell(i18n) {
       h('div', { class: 'ex-title-row' },
         keep('title', h('h2', { class: 'ex-title', id: 'ex-title' })),
         h('span', { class: 'grow' }),
-        keep('demoBtn', h('button', { type: 'button', class: 'tb', 'aria-haspopup': 'dialog', hidden: true })),
         keep('appsBtn', h('button', { type: 'button', class: 'tb', 'aria-haspopup': 'dialog' })),
         keep('langBtn', h('button', { type: 'button', class: 'tb tb-lang', 'aria-haspopup': 'menu', 'aria-expanded': 'false' })),
         keep('themeBtn', h('button', { type: 'button', class: 'tb tb-theme', 'aria-haspopup': 'dialog' })),
@@ -51,8 +50,6 @@ export function relabel(refs, i18n) {
   const name = LANGUAGE_NAMES[lang];
   const describe = (node, text) => { node.setAttribute('title', text); node.setAttribute('aria-label', text); };
   refs.title.textContent = t('ex.title');
-  refs.demoBtn.title = t('demo.tip');
-  refs.demoBtn.replaceChildren(icon('flask'), t('demo.btn'));
   refs.appsBtn.title = t('gfs.appsTip');
   refs.appsBtn.replaceChildren(icon('modules'), t('gfs.apps'));
   refs.langBtn.title = t('lang.tip');

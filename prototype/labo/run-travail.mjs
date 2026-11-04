@@ -1,24 +1,25 @@
 // La table de travail choisie dans GFS (contrats 4.5), dans un vrai Grist, à 700 × 400, à la vraie souris et au vrai clavier. GFS reste sur la page Clients : sa section
-// suit Clients, et rien n'est réglé dans Grist. La démo pose ses tables ; la personne ouvre la convocation, puis, par le bouton « Table de travail » de la barre de GFS,
+// suit Clients, et rien n'est réglé dans Grist. Le jeu de la formation (jeu-formation.mjs) pose ses tables ; la personne ouvre la convocation, puis, par le bouton « Table de travail » de la barre de GFS,
 // va au clavier de la table Participants à ses lignes et choisit une inscription (mots dans le désordre) : l'app est rouverte sur elle, la convocation lue est la sienne.
 // Une autre ligne de la même table, par le bouton « Ligne » : la lecture suit, sans rouvrir. « La table de la page » rend la main à la section. Un clic sur Participants
 // la choisit seule : la convocation de sa première ligne. Automation+, ouverte sur elle, traite une inscription créée ailleurs (relue par GFS). LAB_LANG=fr|en, LAB_SCHEME=light|dark. LAB_COUT=1 ajoute le coût de la relecture de tables de 1 000 à 20 000 lignes
 // (LAB_SIZES) et le retard qu'elle donne au fil de la page de Grist.
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';
+import { poserFormation } from './jeu-formation.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
 const run = `travail-${lang}-${scheme}`;
 const WORDS = lang === 'fr'
-  ? { button: 'Démo', page: 'La table de la page : Clients', tip: /^Table de travail : Participants, ligne /, tipTable: /^Table de travail : Participants$/, tipPage: /celle de la page \(Clients\)/ }
-  : { button: 'Demo', page: 'The page’s table: Clients', tip: /^Working table: Participants, row /, tipTable: /^Working table: Participants$/, tipPage: /the page’s \(Clients\)/ };
-const lab = await startLab({ lang, colorScheme: scheme, query: 'dev' });
+  ? { page: 'La table de la page : Clients', tip: /^Table de travail : Participants, ligne /, tipTable: /^Table de travail : Participants$/, tipPage: /celle de la page \(Clients\)/ }
+  : { page: 'The page’s table: Clients', tip: /^Working table: Participants, row /, tipTable: /^Working table: Participants$/, tipPage: /the page’s \(Clients\)/ };
+const lab = await startLab({ lang, colorScheme: scheme });
 const { page } = lab;
 const errors = [];
 page.on('console', m => { if ((m.type() === 'warning' || m.type() === 'error') && /^GFS/.test(m.text())) errors.push(m.text()); });
 await lab.fitPanel(undefined, 700, 400);
-const frame = lab.frame;
+let frame = lab.frame;
 await frame.waitForFunction(() => document.body.dataset.gfsFirstRun === 'done', null, { timeout: 30000 }).catch(() => {});
 if (await frame.locator('.mod').count()) await page.keyboard.press('Escape');
 await page.waitForTimeout(400);
@@ -40,16 +41,16 @@ const readingApp = async () => {
   return app;
 };
 
-// 0. La démo posée d'un geste ; GFS reste sur la page Clients.
-await frame.locator('.ex-title-row .tb', { hasText: WORDS.button }).click();
-await frame.locator('.ask').waitFor();
-await frame.locator('[data-fk="ask-yes"]').click();
-await frame.waitForFunction(() => ['done', 'failed'].includes(document.body.dataset.demo), null, { timeout: 60000 });
-check('la démo est posée', await frame.evaluate(() => document.body.dataset.demo) === 'done');
-await frame.locator('[data-fk="ask-yes"]').click();
+// 0. Le jeu de la formation posé par le labo, puis GFS rechargé pour qu'il relise le document ; GFS reste sur la page Clients.
+await poserFormation(frame);
+await frame.evaluate(() => location.reload());
+await page.waitForTimeout(1000);
+frame = await lab.gfsFrame(/access=full/);
+await lab.gfsReady(frame);
 await page.waitForTimeout(800);
 const sessions = await rows('Sessions');
 const people = await rows('Participants');
+check('le jeu de la formation est posé : deux sessions et vingt inscriptions', sessions.length === 2 && people.length === 20, { sessions: sessions.length, participants: people.length });
 const first = people.find(row => row.Session === sessions[1].id);
 const top = [...people].sort((a, b) => a.manualSort - b.manualSort)[0];
 const second = people.find(row => row.Session === sessions[0].id);
@@ -139,10 +140,8 @@ check('le bouton est enfoncé et ne nomme que la table', await workButton().getA
   await workButton().getAttribute('title'));
 await lab.shotPanel(run, '5-table-seule', frame);
 
-// 7. Automation+ sur la table choisie ; une inscription créée ailleurs reçoit son statut.
-await lab.openModules(frame);
-await frame.locator('[data-open="automation"]').click();
-const flow = await lab.appFrame(/automation/);
+// 7. Automation+ (installée par la fenêtre « Apps », comme le fait une personne) sur la table choisie ; une inscription créée ailleurs reçoit son statut.
+const flow = await lab.openApp('automation', /automation/);
 await flow.locator('#toggle-active').waitFor({ timeout: 20000 });
 await page.waitForTimeout(1500);
 const drawn = await flow.evaluate(() => ({ else: document.querySelectorAll('.wire-else').length, active: document.getElementById('toggle-active')?.getAttribute('aria-pressed') }));

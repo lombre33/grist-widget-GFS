@@ -40,7 +40,6 @@ import { publicationQuestion } from './publication-window.js';
 import { ModulesWindow, rowKey } from './modules-window.js';
 import { buildContext, identityFor, instanceOf, pageOf } from './context.js';
 import { Refus, ERR, levelOf } from './filter.js';
-import { demoGesture } from './demo-gesture.js';
 
 const NOTICE_MS = 6000;
 
@@ -63,7 +62,6 @@ const readFile = async path => {
   return response;
 };
 const readJson = async path => (await readFile(path)).json();
-const readText = async path => (await readFile(path)).text();
 
 export class GfsController {
   apps = [];
@@ -76,7 +74,6 @@ export class GfsController {
   #sentExtensions = null;
   #sentIdentity = null; // l'identité donnée à l'app active (JSON), ou null tant qu'elle n'a pas demandé son contexte
   #contextServed = false; // l'app active a demandé son contexte : elle a lu l'ouverture qui s'y trouvait, et ne la relira pas
-  #consented = false; // la démo a déjà l'accord de la personne pour les tables qu'elle crée, dont GFS_Rangement : pas de seconde question
   #modulesWaiters = [];
   #idleWaiters = []; // ceux qui attendent la fin des écritures des apps installées (#unlock)
   #fileStatus = { loading: false, restricted: false, problems: [] }; // ce que l'explorateur dit sous la liste, gardé pour être redit dans la langue qui vaut
@@ -107,8 +104,6 @@ export class GfsController {
     });
     // Les apps sont servies par leur site en ligne (le porteur, 22/10) ; `?live=0` : la copie figée du sous-module, celle des mesures de GFS.
     this.live = liveSwitch(search);
-    // Le mode développement (`?dev` dans l'adresse du widget, comme la galerie de développement de Publipostage+) : le bouton « Démo » de l'explorateur.
-    this.devMode = this.params.has('dev');
     // Les apps installées et leurs extensions : ce que le document retient dans la table `GFS_Rangement` (contrats 7.4), écrit seulement sur un geste
     // de la personne, et la table seulement avec son accord. Cette table apprend aussi à GFS l'adresse de la personne (6.4, point 6) : sans écriture possible, elle reste inconnue.
     this.rangement = new Rangement({ port: this.port, consent: () => this.#askTableConsent(), canWrite: () => !this.#writeBlock(), onIdentity: () => this.#onIdentity() });
@@ -294,7 +289,7 @@ export class GfsController {
       newTypes: this.newTypes, importTypes: this.importTypes, canClose: () => Boolean(this.session), notice: text => this.notice(text),
       language: () => ({ choice: this.language.choice, grist: this.language.grist }), onLanguage: choice => this.#chooseLanguage(choice), onTheme: () => this.openTheme(),
       onOpen: file => this.#openFile(file), onNew: entry => this.#openNew(entry), onImport: entry => void this.#importFile(entry), onClose: () => this.hideExplorer(), onApps: () => void this.openModules(),
-      personal: () => Boolean(this.identity), filing: this.#buildFiling(), kept: this.kept, onDemo: this.devMode ? () => void this.#runDemo() : null,
+      personal: () => Boolean(this.identity), filing: this.#buildFiling(), kept: this.kept,
       trash: new Trash({ managers: [this.kept, this.#buildAppTrash()], ask: opts => this.#ask(opts), t: this.t, notice: text => this.notice(text), refresh: () => this.refreshFiles() }),
     });
   }
@@ -473,7 +468,6 @@ export class GfsController {
 
   // La table n'existe pas encore : la personne décide de la créer (contrats 6.2, point 1). Une fenêtre du widget, au-dessus de celle des apps.
   #askTableConsent() {
-    if (this.#consented) return Promise.resolve(true);
     return this.#ask({ title: this.t('table.title'), message: this.t('table.text'), confirmLabel: this.t('table.create'), cancelLabel: this.t('table.cancel') });
   }
 
@@ -486,20 +480,6 @@ export class GfsController {
   #ask(opts) {
     const above = this.modulesWindow && this.modulesWindow.element ? [this.modulesWindow.element] : [];
     return ask({ ...opts, container: this.$('stage'), inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters'), ...above] });
-  }
-
-  // ---------- la démo (mode développement) ----------
-
-  // Le bouton « Démo » : le geste est dans js/demo-gesture.js ; le contrôleur lui prête ce qu'il sait faire.
-  #runDemo() {
-    return demoGesture({
-      port: this.port, doc: this.doc, t: this.t, loader: { json: readJson, text: readText }, blocked: () => this.#writeBlock(), ask: opts => this.#ask(opts), notice: text => this.notice(text),
-      hideNotice: () => this.#hideNotice(), installAll: ids => this.#installAll(ids), refresh: () => this.refreshFiles(), address: () => `${location.origin}${location.pathname}`, consent: on => { this.#consented = on; },
-    });
-  }
-
-  async #installAll(ids) {
-    for (const id of ids) await this.registry.setApp(id, true);
   }
 
   // La troisième porte : une section qui n'a encore rien retenu ouvre la fenêtre une fois, pour qu'on y choisisse ses apps (maquette du 12/10).

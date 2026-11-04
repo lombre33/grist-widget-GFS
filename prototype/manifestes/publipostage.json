@@ -111,7 +111,7 @@
         "en": "Several people write the text of the same template at the same time."
       },
       "icone": "edit",
-      "poids": 102,
+      "poids": 103,
       "dossier": "extensions/edition/",
       "pointsEntree": [{ "genre": "menu", "id": "edition" }],
       "bibliotheques": [{ "id": "edition-live", "version": "1.0.0" }]

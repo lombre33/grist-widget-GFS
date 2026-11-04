@@ -32,7 +32,8 @@ import { Transfer, buildTransferFrame } from './transfer.js';
 import { FilesStore } from './files-store.js';
 import { KeptFiles } from './kept-files.js';
 import { Trash } from './trash.js';
-import { AppTrash } from './app-trash.js';
+import { AppFiles } from './app-files.js';
+import { Copying } from './copying.js';
 import { ask } from './ask-window.js';
 import { importFormats, acceptsFile, importOpening, openingKind, carriesFile, pickFile } from './import-file.js';
 import { readersOf, chooseReader, readOpening } from './reading.js';
@@ -276,21 +277,24 @@ export class GfsController {
     });
   }
 
-  // Les fichiers des apps à la corbeille (js/app-trash.js) : le gardien des tables que les manifestes disent savoir retirer et remettre (`suppression`) ; `GFS_Corbeille` naît avec l'accord de la personne.
-  #buildAppTrash() {
+  // Les fichiers des apps à la corbeille (js/app-files.js) : le gardien des tables que les manifestes disent savoir retirer et remettre (`suppression`) ; `GFS_Corbeille` naît avec l'accord de la personne.
+  #buildAppFiles() {
     const consent = () => this.#ask({ title: this.t('trash.table.title'), message: this.t('trash.table.text'), confirmLabel: this.t('table.create'), cancelLabel: this.t('table.cancel') });
-    return new AppTrash({ port: this.port, apps: () => this.validApps(), consent, identity: () => this.identity, now: () => Date.now(), readonly: () => this.readonly, fullAccess: () => this.fullAccess, t: this.t });
+    return new AppFiles({ port: this.port, apps: () => this.validApps(), consent, identity: () => this.identity, now: () => Date.now(), readonly: () => this.readonly, fullAccess: () => this.fullAccess, t: this.t });
   }
 
   #buildExplorer() {
     this.kept = this.#buildKept();
+    const managers = [this.kept, this.#buildAppFiles()]; // les gardiens des fichiers : les PDF de GFS, les fichiers des apps (la corbeille et la copie les interrogent)
+    const gestures = { t: this.t, notice: text => this.notice(text), refresh: () => this.refreshFiles() };
     this.explorer = new Explorer({
       container: this.$('stage'), i18n: this.i18n, locale: this.locale, now: () => new Date(), appName: this.appName, typeLabel: this.typeLabel, lockOf: this.lockOf,
       newTypes: this.newTypes, importTypes: this.importTypes, canClose: () => Boolean(this.session), notice: text => this.notice(text),
       language: () => ({ choice: this.language.choice, grist: this.language.grist }), onLanguage: choice => this.#chooseLanguage(choice), onTheme: () => this.openTheme(),
       onOpen: file => this.#openFile(file), onNew: entry => this.#openNew(entry), onImport: entry => void this.#importFile(entry), onClose: () => this.hideExplorer(), onApps: () => void this.openModules(),
       personal: () => Boolean(this.identity), filing: this.#buildFiling(), kept: this.kept,
-      trash: new Trash({ managers: [this.kept, this.#buildAppTrash()], ask: opts => this.#ask(opts), t: this.t, notice: text => this.notice(text), refresh: () => this.refreshFiles() }),
+      trash: new Trash({ managers, ask: opts => this.#ask(opts), ...gestures }),
+      copying: new Copying({ managers, file: (app, id, folder) => this.rangement.setFiling([{ app, file: id, pinned: false, folder }]), ...gestures }),
     });
   }
 

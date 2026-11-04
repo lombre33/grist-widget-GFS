@@ -9,6 +9,9 @@
 // La corbeille (contrats 6.6, point 7) : mettre un fichier à la corbeille marque sa ligne (`SupprimeLe`, `SupprimePar`), rien ne s'efface et la pièce jointe reste citée ; le restaurer vide le marqueur ;
 // seul « supprimer définitivement » retire la ligne. Un fichier à la corbeille ne compte plus pour les noms : un nouveau fichier peut reprendre son nom, et c'est le restauré qui prend alors un numéro.
 // Ces gestes agissent sur des lignes qui existent déjà : ils ne créent jamais la table, donc ne demandent jamais son accord.
+//
+// La copie (« Dupliquer », Ctrl+C puis Ctrl+V) : une nouvelle ligne, un nouvel identifiant, le premier nom libre (« Nom (1).pdf »), et la même pièce jointe : la cellule de la copie cite le numéro de celle de
+// l'original, Grist ne la duplique pas et la garde tant qu'une cellule la cite (mettre l'original à la corbeille, puis le supprimer pour de bon, n'ôte rien à la copie).
 
 import { OwnTable } from './own-table.js';
 import { FILES_TABLE, FILES_COLUMNS, FILES_COLUMN_IDS, TRASH_COLUMN_IDS, sameName, freeName, newId, newRecord, replacementRecord, trashRecord, restoreRecord } from './gfs-files.js';
@@ -21,7 +24,7 @@ function attachmentOf(value) {
   return Array.isArray(value) && value[0] === 'L' && Number.isInteger(value[1]) ? value[1] : null;
 }
 
-// Les fichiers d'une table lue : [{ row, id, name, ts, by, attachment, trashed }]. Une ligne sans identifiant est ignorée (GFS ne sait pas la désigner). `trashed` : { ts, by } (la date du geste,
+// Les fichiers d'une table lue : [{ row, id, name, ts, by, size, origin, attachment, trashed }]. Une ligne sans identifiant est ignorée (GFS ne sait pas la désigner). `trashed` : { ts, by } (la date du geste,
 // son auteur) quand le fichier est à la corbeille, sinon null ; une table plus ancienne n'a pas ces colonnes : aucun fichier n'y est à la corbeille.
 export function filesOf(data) {
   const files = [];
@@ -30,7 +33,8 @@ export function filesOf(data) {
     const id = text(cell(data, 'Identifiant', i));
     const deleted = cell(data, 'SupprimeLe', i);
     const trashed = typeof deleted === 'number' && deleted > 0 ? { ts: deleted, by: text(cell(data, 'SupprimePar', i)) } : null;
-    if (id) files.push({ row, id, name: text(cell(data, 'Nom', i)), ts: cell(data, 'Date', i), by: text(cell(data, 'Auteur', i)), attachment: attachmentOf(cell(data, 'Contenu', i)), trashed });
+    const size = cell(data, 'Taille', i);
+    if (id) files.push({ row, id, name: text(cell(data, 'Nom', i)), ts: cell(data, 'Date', i), by: text(cell(data, 'Auteur', i)), size: Number.isFinite(size) ? size : 0, origin: text(cell(data, 'Origine', i)), attachment: attachmentOf(cell(data, 'Contenu', i)), trashed });
   });
   return files;
 }
@@ -96,6 +100,23 @@ export class FilesStore {
     const result = await this.#port.doc.applyUserActions([['AddRecord', tableId, null, newRecord({ ...values, id, name: kept })]]);
     const row = result && Array.isArray(result.retValues) ? result.retValues[0] : null;
     return { status: 'added', id, name: kept, row };
+  }
+
+  // Copie un fichier : une ligne de plus, sous un nouvel identifiant et le premier nom libre, qui cite la même pièce jointe (aucun envoi : l'octet n'est pas dupliqué). La copie est de la personne qui la fait,
+  // d'aujourd'hui ; son origine est celle de l'original. Rend { id, name, row }, ou null quand le fichier n'est plus là ou est à la corbeille. Lève quand il n'a pas de contenu.
+  copy(file) {
+    return this.#exclusive(async () => {
+      const state = await this.#table.existing(FILES_COLUMN_IDS);
+      const all = state ? filesOf(state.data) : [];
+      const found = all.find(other => other.id === file.id && !other.trashed);
+      if (!found) return null;
+      if (found.attachment === null) throw new Error('Ce fichier n’a pas de contenu.');
+      const name = freeName(found.name, all.filter(alive).map(other => other.name));
+      const id = newId();
+      const record = newRecord({ id, name, attachment: found.attachment, size: found.size, author: this.#identity(), now: this.#now(), origin: found.origin });
+      const result = await this.#port.doc.applyUserActions([['AddRecord', this.#table.id, null, record]]);
+      return { id, name, row: result && Array.isArray(result.retValues) ? result.retValues[0] : null };
+    });
   }
 
   // Met un fichier à la corbeille : sa ligne reste, marquée de la date et de l'auteur du geste (les deux colonnes sont ajoutées à une table plus ancienne) ; rien ne s'efface. Rend false quand

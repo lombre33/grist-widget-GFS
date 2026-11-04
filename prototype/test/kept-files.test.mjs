@@ -155,14 +155,23 @@ test('la corbeille : les gestes passent au magasin tels quels (les questions et 
   assert.deepEqual(log.notices, [], 'aucune phrase, aucune fenêtre : le module de la corbeille parle');
 });
 
-test('ce que dit l\'explorateur d\'un fichier gardé : se télécharge, ne se copie pas encore', () => {
+test('ce que dit l\'explorateur d\'un fichier gardé : se télécharge, se copie', () => {
   const { kept } = setup();
   assert.equal(kept.has({ app: 'gfs-fichiers' }), true);
   assert.equal(kept.has({ app: 'publipostage' }), false);
   assert.deepEqual(kept.openAs({ app: 'gfs-fichiers' }), { label: FR.t('files.download'), icon: 'download', greyed: false });
   assert.equal(kept.opensIn({ app: 'gfs-fichiers' }), FR.t('files.opensIn'));
   assert.deepEqual(kept.extras({ app: 'gfs-fichiers' }), [], 'rien de plus : télécharger est déjà le geste principal');
-  assert.equal(kept.copyNotice(), FR.t('files.noCopy'));
+  assert.equal(kept.copies({ app: 'gfs-fichiers' }), true, 'un PDF que GFS garde se copie');
+  assert.equal(kept.copies({ app: 'publipostage' }), false, 'les fichiers d\'une app ne sont pas les siens');
+});
+
+test('la copie : le geste passe au magasin tel quel (la phrase et la liste relue sont à js/copying.js)', async () => {
+  const { kept, log } = setup();
+  const file = { id: 'aa', name: 'Facture.pdf' };
+  assert.deepEqual(await kept.copy(file), { id: 'bb', name: 'Facture (1).pdf', row: 2 });
+  assert.deepEqual(log.trashed, [['copy', file]]);
+  assert.deepEqual(log.notices, [], 'aucune phrase : le module de la copie parle');
 });
 
 // Lire (js/reading.js, contrats 5.4 point 8) : quand une app du catalogue lit le PDF, « Lire » devient le geste principal, « Télécharger » passe dans le menu de la ligne.

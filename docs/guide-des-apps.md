@@ -110,7 +110,10 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     fichier et quand la personne l'a changé chez elle ; sinon il reste hors du lot (le relire avant chaque enregistrement
     coûterait la table entière, qui peut peser des mégaoctets). À la prochaine ouverture, l'app lit le nom de la table. Une app
     qui n'écrit pas de nom n'a rien à faire. Les favoris et les dossiers que la personne pose dans GFS sont à GFS
-    (`GFS_Rangement`) : l'app garde les siens.
+    (`GFS_Rangement`) : l'app garde les siens. **Depuis le 04/11**, GFS peut aussi retirer la ligne d'un fichier (la corbeille) et en ajouter une
+    (la copie) quand le manifeste en déclare la recette (`suppression`, `copie`, contrats 2.4) : l'app accepte une ligne qu'elle n'a pas écrite,
+    sans jeton (elle en donne un au premier besoin, sans écraser celui d'une ligne qui en a un), et retrouve une ligne restaurée à son numéro d'avant.
+    Une app seule, sans GFS, garde sa propre gestion de ses fichiers.
 11. Rester en ligne là où GFS l'ouvre (décision du porteur du 22/10 : « servir les dépôts live, pas une copie figée »). Dans GFS,
     la personne ouvre ton app sur son site GitHub Pages, tel qu'il est en ligne (contrats 1.3, point 2) : garde l'adresse du site et
     l'entrée de ton manifeste, et ne pousse pas un changement de contrat (ce que GFS lit ou te donne, les tables, colonnes, clés

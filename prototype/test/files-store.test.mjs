@@ -227,6 +227,53 @@ test('les gestes de la corbeille se font l\'un après l\'autre, sur la table rel
   assert.deepEqual(rowsOf(grist).map(row => [row.Nom, row.SupprimeLe]), [['A.pdf', null]]);
 });
 
+// La copie (contrats 6.6, point 13) : une ligne de plus, la même pièce jointe, aucun envoi.
+test('copier : une ligne de plus sous un nouvel identifiant et le premier nom libre, qui cite la même pièce jointe sans rien envoyer', async () => {
+  const grist = setup({ tables: tableWith([present('Facture.pdf', 'aa', 1, { Contenu: ['L', 42], Taille: 777, Origine: 'publipostage', Auteur: 'ana@exemple.org', Date: 50 }), present('Devis.pdf', 'dd', 2)]) });
+  const result = await grist.store.copy({ id: 'aa' });
+  assert.deepEqual([result.name, result.row], ['Facture (1).pdf', 3]);
+  assert.match(result.id, /^[0-9a-f]{12}$/);
+  assert.notEqual(result.id, 'aa');
+  const [original, , copy] = rowsOf(grist);
+  assert.deepEqual([copy.Identifiant, copy.Nom, copy.Type, copy.Contenu, copy.Taille, copy.Origine], [result.id, 'Facture (1).pdf', 'pdf', ['L', 42], 777, 'publipostage'], 'la même pièce jointe, la même taille, la même origine');
+  assert.deepEqual([copy.Auteur, copy.Date], ['marie@exemple.fr', 1762000123], 'la copie est de la personne qui la fait, d\'aujourd\'hui');
+  assert.deepEqual([original.Nom, original.Contenu, original.Auteur, original.Date], ['Facture.pdf', ['L', 42], 'ana@exemple.org', 50], 'l\'original n\'est pas touché');
+  assert.deepEqual(grist.transfer.calls.uploads, [], 'aucun envoi : la pièce jointe n\'est pas dupliquée');
+  assert.equal(actionsOf(grist, 'AddRecord').length, 1, 'une seule écriture');
+});
+
+test('copier : le numéro est le premier libre (les noms à la corbeille ne comptent pas), et un numéro déjà au bout du nom est remplacé', async () => {
+  const grist = setup({ tables: tableWith([present('Facture.pdf', 'aa', 1), present('Facture (1).pdf', 'bb', 2), trashedRow('Facture (2).pdf', 'cc', 3)]) });
+  assert.equal((await grist.store.copy({ id: 'aa' })).name, 'Facture (2).pdf', 'le nom du fichier à la corbeille est libre');
+  assert.equal((await grist.store.copy({ id: 'bb' })).name, 'Facture (3).pdf', '« Facture (1).pdf » ne devient pas « Facture (1) (1).pdf »');
+});
+
+test('copier : un fichier qui n\'est plus là, ou qui est à la corbeille, ne se copie pas ; une table sans fichier ne se crée pas', async () => {
+  const grist = setup({ tables: tableWith([trashedRow('Facture.pdf', 'aa', 1), present('Devis.pdf', 'dd', 2)]), consent: () => assert.fail('la copie ne crée jamais la table') });
+  assert.equal(await grist.store.copy({ id: 'aa' }), null, 'à la corbeille');
+  assert.equal(await grist.store.copy({ id: 'zz' }), null, 'absent');
+  assert.equal(actionsOf(grist, 'AddRecord').length, 0);
+  const none = setup({ consent: () => assert.fail() });
+  assert.equal(await none.store.copy({ id: 'aa' }), null);
+  assert.deepEqual(none.actions, []);
+});
+
+test('copier : un fichier sans contenu ne se copie pas (rien n\'est écrit) ; une table plus ancienne reçoit les colonnes qui lui manquent avant l\'écriture', async () => {
+  const empty = setup({ tables: tableWith([present('Vide.pdf', 'vv', 1, { Contenu: null })]) });
+  await assert.rejects(empty.store.copy({ id: 'vv' }), /pas de contenu/);
+  assert.equal(actionsOf(empty, 'AddRecord').length, 0);
+  const old = setup({ tables: { [FILES_TABLE]: { columns: ['id', 'Identifiant', 'Nom', 'Type', 'Date', 'Auteur', 'Contenu', 'Taille'], rows: [{ id: 1, Identifiant: 'aa', Nom: 'A.pdf', Type: 'pdf', Date: 1, Auteur: '', Contenu: ['L', 5], Taille: 3 }] } } });
+  assert.equal((await old.store.copy({ id: 'aa' })).name, 'A (1).pdf');
+  assert.deepEqual(actionsOf(old, 'AddColumn').map(action => action[2]), ['Origine', 'SupprimeLe', 'SupprimePar'], 'les colonnes qui manquent sont ajoutées avant l\'écriture (comme à un ajout), jamais écrites absentes');
+  assert.ok(old.actions.findIndex(action => action[0] === 'AddColumn') < old.actions.findIndex(action => action[0] === 'AddRecord'));
+});
+
+test('copier se fait à la suite des autres gestes, sur la table relue', async () => {
+  const grist = setup({ tables: tableWith([present('A.pdf', 'aa', 1)]) });
+  const results = await Promise.all([grist.store.copy({ id: 'aa' }), grist.store.copy({ id: 'aa' }), grist.store.trash({ id: 'aa' })]);
+  assert.deepEqual([results[0].name, results[1].name, results[2]], ['A (1).pdf', 'A (2).pdf', true], 'deux copies de suite : deux numéros');
+});
+
 test('download : la pièce jointe de la ligne relue, sous le nom actuel du fichier', async () => {
   const grist = setup({ tables: tableWith([present('Facture.pdf', 'aa', 1, { Contenu: ['L', 42, 43] })]) });
   const { blob, name } = await grist.store.download({ id: 'aa' });

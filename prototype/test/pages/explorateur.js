@@ -4,11 +4,13 @@
 // dernier fichier que l'explorateur a ouvert ; `window.__askConflict({ app, repeat })` ouvre la fenêtre du nom pris et `window.__conflict` garde la réponse de la personne quand elle se ferme.
 // La corbeille et le clavier (test/corbeille-firefox.mjs) : le vrai `Trash` (js/trash.js) et la vraie fenêtre d'accord (js/ask-window.js) sur un gardien de doublure qui déplace les fichiers entre deux
 // listes ; `window.__filing` note ce que l'explorateur demande au rangement (renommer, déplacer, épingler), `window.__notices` les phrases qu'il dit, `window.__explorer` est l'explorateur, et
-// `window.__reset()` remet les fichiers, la vue et la recherche comme au départ.
+// `window.__reset()` remet les fichiers, la vue et la recherche comme au départ. La copie et le presse-papiers (test/copier-firefox.mjs) : le vrai `Copying` (js/copying.js) sur un gardien de doublure qui
+// ajoute une copie à la liste (premier nom libre), et un rangement de doublure qui déplace vraiment les fichiers et les dossiers ; `window.__copies` note [identifiant, dossier] de chaque copie rangée.
 import { ask } from '/js/ask-window.js';
 import { askConflict } from '/js/conflict-window.js';
 import { Explorer } from '/js/explorer.js';
-import { applyFiling, readFiles, readFiling } from '/js/explorer-model.js';
+import { applyFiling, folderMoves, inside, normalizePath, readFiles, readFiling } from '/js/explorer-model.js';
+import { Copying } from '/js/copying.js';
 import { createI18n } from '/js/i18n.js';
 import { installSprite } from '/js/icons.js';
 import { ThemeSetting } from '/js/theme.js';
@@ -60,6 +62,7 @@ async function mount() {
   // Les fichiers vivants et ceux de la corbeille ; le gardien de doublure les déplace de l'une à l'autre, comme le ferait la table de GFS.
   let live = [...files];
   let trashed = [];
+  const folders = new Map(files.map(file => [file.key, file.folder])); // où chaque fichier est au départ : couper puis coller en déplace, `__reset` les remet
   const pick = (list, wanted) => list.findIndex(file => file.key === wanted.key);
   const move = (from, to, wanted) => { const at = pick(from, wanted); if (at < 0) return null; const [file] = from.splice(at, 1); to.push(file); return file; };
   window.__filing = [];
@@ -72,6 +75,50 @@ async function mount() {
     restore: async file => { const back = move(trashed, live, file); if (back) back.trashed = null; return back ? { name: back.name, renamed: false } : null; },
     empty: async list => list.filter(file => move(trashed, [], file)).length,
   };
+  // La copie : un gardien de doublure ajoute à la liste un fichier de plus, sous le premier nom libre « Nom (1) » ; un fichier de type « macro » ne se copie pas (grisé, comme une app sans recette).
+  window.__copies = [];
+  let copied = 100;
+  const copier = {
+    copies: file => file.type !== 'macro',
+    lock: () => null,
+    copy: async file => {
+      const original = live.find(item => item.key === file.key);
+      if (!original) return null;
+      const id = String(++copied);
+      const names = live.map(item => item.name);
+      let n = 1;
+      while (names.includes(`${original.name} (${n})`)) n += 1;
+      const made = { ...original, key: `${original.app}:${id}`, id, row: copied, name: `${original.name} (${n})`, folder: '', pinned: false, search: '' };
+      live.push(made);
+      return { id, name: made.name };
+    },
+  };
+  const copying = new Copying({
+    managers: [copier], t: i18n.t, notice: text => window.__notices.push(text), refresh: async () => explorer.setFiles(live, trashed),
+    file: async (app, id, folder) => { live.find(item => item.id === id).folder = folder; window.__copies.push([id, folder]); },
+  });
+  // Le rangement de doublure d'un fichier ou d'un dossier collé après Ctrl+X : il déplace vraiment, et rend ce que rend js/filing.js.
+  const settle = result => { explorer.setFiles(live, trashed); return result; };
+  const moving = {
+    moveFileTo: async (file, folder) => {
+      const at = live.find(item => item.key === file.key);
+      if (!at) return undefined;
+      window.__filing.push(['moveTo', at.name, folder]);
+      if (at.folder === folder) return 'same';
+      at.folder = folder;
+      return settle('moved');
+    },
+    moveFolderTo: async (path, folder) => {
+      const target = normalizePath(`${folder}/${path.split('/').pop()}`);
+      window.__filing.push(['moveFolderTo', path, folder]);
+      if (target === path) return 'same';
+      if (inside(target, path)) return 'inside';
+      const moves = folderMoves(live, path, target);
+      if (!moves.length) return 'gone';
+      for (const move of moves) live.find(item => item.id === move.file).folder = move.folder;
+      return settle('moved');
+    },
+  };
   const bin = new Trash({
     managers: [guardian], ask: opts => ask({ ...opts, container: stage, inertTargets: () => [explorer.root] }), t: i18n.t, notice: text => window.__notices.push(text), refresh: async () => explorer.setFiles(live, trashed),
   });
@@ -79,15 +126,17 @@ async function mount() {
     container: stage, i18n, locale, now: () => new Date(), appName: () => 'Publipostage+', typeLabel: file => (file.typeInfo ? file.typeInfo.nom[language] || file.typeInfo.nom.fr : file.type),
     lockOf: file => (file.type === 'macro' ? { text: i18n.t('ex.lockedExtension', { name: 'Macro-modèles' }) } : null), newTypes: () => [], importTypes: () => [], canClose: () => true,
     notice: text => window.__notices.push(text), language: () => ({ choice: language, grist: language }), onLanguage: () => {}, onTheme: () => theme.open(), onOpen: file => { window.__opened = file.name; }, onNew: () => {},
-    onImport: () => {}, onClose: () => {}, onApps: () => {}, personal: () => true, kept: null, trash: bin,
-    filing: { togglePin: noted('pin', 'name'), rename: noted('rename', 'name'), moveFile: noted('move', 'name'), renameFolder: async path => { window.__filing.push(['renameFolder', path]); }, moveFolder: async path => { window.__filing.push(['moveFolder', path]); } },
+    onImport: () => {}, onClose: () => {}, onApps: () => {}, personal: () => true, kept: null, trash: bin, copying,
+    filing: { togglePin: noted('pin', 'name'), rename: noted('rename', 'name'), moveFile: noted('move', 'name'), renameFolder: async path => { window.__filing.push(['renameFolder', path]); }, moveFolder: async path => { window.__filing.push(['moveFolder', path]); }, ...moving },
   });
   window.__explorer = explorer;
   window.__reset = () => {
+    explorer.close(); // la fermeture vide le presse-papiers : chaque mesure part de rien
     live = [...files];
-    for (const file of live) file.trashed = null;
+    for (const file of live) { file.trashed = null; file.folder = folders.get(file.key); }
     trashed = [];
     window.__filing.length = 0;
+    window.__copies.length = 0;
     window.__notices.length = 0;
     window.__opened = null;
     Object.assign(explorer.state, { view: 'folder', path: '', display: 'list', type: 'all', q: '', sel: null });

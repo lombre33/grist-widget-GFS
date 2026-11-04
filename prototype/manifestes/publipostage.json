@@ -23,7 +23,8 @@
     ],
     "exclure": { "TypeModele": ["reglages"] },
     "rangement": { "table": "Publipostage_PreferencesModeles", "utilisateur": "Utilisateur", "fichier": "ModeleId", "dossier": "Dossier", "epingle": "Epingle" },
-    "suppression": { "ligne": true, "uniques": ["Jeton"], "exclusives": ["EstParDefaut"] }
+    "suppression": { "ligne": true, "uniques": ["Jeton"], "exclusives": ["EstParDefaut"] },
+    "copie": { "ligne": true, "uniques": ["Jeton"], "exclusives": ["EstParDefaut"] }
   }],
   "reglages": ["modeleDeLaVue", "modeleSelonLigne", "droitsAcces", "dateDernierExport"],
   "permissions": {

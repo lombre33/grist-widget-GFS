@@ -291,6 +291,7 @@ Une entrée de `fichiers` par table de fichiers :
 | `rangement` | Le rangement propre à l'app (3.1 point 7 du cahier), s'il y en a un : `{ table, utilisateur, fichier, dossier, epingle }`, des noms de colonnes. L'explorateur le lit comme point de départ et n'y écrit jamais (6.4, point 8). |
 | `corbeille` | `{ date, par }` : les deux colonnes où GFS marque un fichier mis à la corbeille (la date en secondes comme Grist la rend, la personne), facultatif (décision du porteur du 04/11). Une ligne dont `date` est positive n'est plus listée dans l'explorateur mais dans sa vue « Corbeille », avec son dossier et son rangement. **Seule la table que GFS écrit lui-même en a** (`GFS_Fichiers`, 6.6, point 10) : aucune app ne déclare ces colonnes, GFS n'en ajoute à aucune table d'app. |
 | `suppression` | `{ ligne: true, uniques, exclusives, remettre }` : comment GFS retire et remet un fichier de cette table depuis l'explorateur (la corbeille des fichiers d'une app, décision du porteur du 04/11), facultatif. `ligne: true` (le seul mode) : un fichier est une ligne de la table, la retirer le supprime et la remettre le restaure. `uniques` : colonnes dont la valeur désigne un fichier (un jeton) : si une ligne de la table la porte déjà, il n'y a rien à restaurer. `exclusives` : colonnes booléennes qu'une seule ligne peut porter (« le modèle par défaut ») : le fichier restauré ne la reprend pas si une autre ligne l'a. `remettre` : `{ colonne: valeur }` posées à la restauration à la place des valeurs gardées. Sans recette, « Mettre à la corbeille » est grisé pour les fichiers de cette table et un clic dit pourquoi. **Une app seule, sans GFS, garde sa propre gestion de ses fichiers** : seul GFS lit cette recette (6.7). |
+| `copie` | `{ ligne: true, uniques, exclusives, valeurs }` : comment GFS copie un fichier de cette table depuis l'explorateur (« Dupliquer », Ctrl+C puis Ctrl+V ; décision du porteur du 04/11), facultatif. `ligne: true` (le seul mode) : un fichier est une ligne de la table, le copier, c'est ajouter une ligne qui a les mêmes valeurs. `uniques` : colonnes dont la valeur désigne un fichier (un jeton) : la copie les a vides (l'app lui en donne un quand elle en a besoin). `exclusives` : colonnes booléennes qu'une seule ligne peut porter (« le modèle par défaut ») : la copie ne la porte pas. `valeurs` : `{ colonne: valeur }` posées à la place de celles de l'original (elles passent en dernier : l'app décide). Le nom de la copie est le premier nom libre (« Contrat (1) ») ; la date et l'auteur restent ceux de l'original (le contenu est le même : l'app les met à jour quand elle enregistre) ; les pièces jointes restent **citées** par les deux lignes (rien n'est envoyé : Grist garde une pièce tant qu'une cellule la cite). Sans recette, « Dupliquer » est grisé pour les fichiers de cette table et un clic dit où le faire. **Une app seule, sans GFS, garde sa propre gestion de ses fichiers** : seul GFS lit cette recette. |
 
 1. [T] L'identifiant d'un fichier est la valeur de `colonnes.id`, prise comme texte (pour Publipostage+, le numéro de ligne).
 2. [T] GFS lit la table entière (l'API de Grist n'a pas de projection par colonne), ne garde que les colonnes déclarées, et n'y
@@ -300,7 +301,7 @@ Une entrée de `fichiers` par table de fichiers :
    démarrage (première lecture 2,9 s), puis 0,2 à 1,6 s ; Grist ne sait pas lire une partie d'une table, donc la lecture prend
    toute la table.
 3. [T] Un fichier dont le type n'est pas dans `types` est listé grisé, jamais ouvert (section 6.5).
-4. [T] **`suppression` est ce que l'app dit, pas ce que GFS devine.** GFS ne retire jamais la ligne d'un fichier d'une app sans recette déclarée, et ne retire que la ligne du fichier : ce que l'app garde ailleurs (les fils de commentaires, le rangement propre, les choix d'export, souvent accrochés au numéro de ligne) reste en place, et GFS restaure la ligne **au même numéro** quand il est libre, pour que tout se raccroche. Ce qui est accroché au fichier par une autre clé (l'historique des versions de Publipostage+, rangé par `Jeton`) n'est pas suivi par la recette `ligne` : l'app qui le purge comme orphelin le perd (6.7, point 6). Un appel que l'app doit faire elle-même (supprimer un formulaire et ses tables, comme Form+) n'est pas une recette : il passe par un contrat d'appel, à écrire avec l'app.
+4. [T] **`suppression` est ce que l'app dit, pas ce que GFS devine.** GFS ne retire jamais la ligne d'un fichier d'une app sans recette déclarée, et ne retire que la ligne du fichier : ce que l'app garde ailleurs (les fils de commentaires, le rangement propre, les choix d'export, souvent accrochés au numéro de ligne) reste en place, et GFS restaure la ligne **au même numéro** quand il est libre, pour que tout se raccroche. Ce qui est accroché au fichier par une autre clé (l'historique des versions de Publipostage+, rangé par `Jeton`) n'est pas suivi par la recette `ligne` : l'app qui le purge comme orphelin le perd (6.7, point 6). Un appel que l'app doit faire elle-même (supprimer un formulaire et ses tables, comme Form+) n'est pas une recette : il passe par un contrat d'appel, à écrire avec l'app. **La même règle vaut pour `copie`** : GFS n'ajoute jamais la ligne d'un fichier d'une app sans recette déclarée, n'écrit que les colonnes de données que Grist rend (jamais une formule, jamais une colonne absente : une seule action en échec annule tout le lot), et ce que l'app accroche à l'original par une autre clé (l'historique des versions de Publipostage+, rangé par `Jeton`) n'est pas copié : la copie a un jeton vide, donc son propre historique, à venir. Ce qui renvoie à la même ligne source (les règles « Tables liées » d'un modèle) est repris tel quel.
 
 ### 2.5 Les réglages
 
@@ -1745,8 +1746,8 @@ paquet de frappes, une par personne pour la présence) doit savoir quand cette t
    des apps). **Réécrit le 04/11** (le porteur : « tout doit pouvoir se faire depuis l'explorateur, pour tous les fichiers de toutes les
    apps, avec une corbeille », la ligne du 21/10 « dupliquer et supprimer restent à l'app » est rouverte) : supprimer et dupliquer
    viennent aux fichiers des apps par une **recette que le manifeste déclare** (`suppression`, 2.4), jamais par un geste que GFS invente :
-   **la corbeille d'une table d'app est livrée le 04/11** (lot 2 : `GFS_Corbeille` garde une copie de la ligne, 6.7) ; la copie (« Dupliquer »)
-   reste à venir (lot 3). **Une app seule, sans GFS, garde sa propre gestion de ses fichiers** : GFS n'agit que d'après le manifeste, et
+   **la corbeille d'une table d'app est livrée le 04/11** (lot 2 : `GFS_Corbeille` garde une copie de la ligne, 6.7) ; **la copie (« Dupliquer », Ctrl+C puis Ctrl+V)
+   l'est aussi** (lot 3 : recette `copie`, 2.4 ; elle ajoute une ligne, comme l'app le ferait, et range la copie dans le dossier ouvert, 6.4, point 10). **Une app seule, sans GFS, garde sa propre gestion de ses fichiers** : GFS n'agit que d'après le manifeste, et
    seulement quand l'app est servie par lui. « Mettre à la corbeille » et « Dupliquer » sont grisés pour une app qui n'a pas de recette,
    et un clic dit pourquoi (`trash.appOnly`, `ex.notice.appOnly`) ; pour les PDF que GFS garde, la corbeille existe aussi (6.6, point 10). Une exception de plus est proposée, non tranchée :
    les colonnes d'aide `GFS_…` des tables classées, additives (11.7, point 6).
@@ -1811,6 +1812,21 @@ rangée d'un fichier, selon ce qui vient d'abord.
    et en/sombre) : voir `faits-verifies.md`, section 3. Sous le niveau « Partagé » (11.4, point 2), une règle laisse chaque
    personne ajouter, lire et retirer sa seule ligne-sonde ; sans elle, la sonde est refusée à tout non-propriétaire. [M] Mesuré
    le 22/10 : faits vérifiés, 10.8.
+10. [T] **Copier, couper, coller** (décision du porteur, 04/11). Le presse-papiers de l'explorateur est **à lui** (une seule chose à
+    la fois, en mémoire de la page : ni le presse-papiers du système, ni le navigateur ; il se vide à la fermeture de l'explorateur,
+    parce que ce qui y attendait a pu changer pendant que la personne était dans une app). **Ctrl/⌘+C** copie un fichier (un dossier
+    ne se copie pas : la phrase dit de le couper), **Ctrl/⌘+X** coupe un fichier ou un dossier, **Ctrl/⌘+V** colle dans le dossier
+    ouvert : la vue « Moi » et ses dossiers, jamais « Récents », « Favoris » ni la corbeille (la phrase le dit). Une copie se colle
+    autant de fois que la personne veut ; ce qui est coupé, une fois (**couper puis coller déplace** : c'est le rangement du point
+    7, une ligne par fichier, le favori garde sa place, rien n'est dupliqué ; un dossier suit avec tout ce qu'il contient, et ne va
+    ni en lui-même ni chez lui). Le fichier collé (ou copié) est rangé par une ligne de cette table pour la personne : la copie d'un
+    fichier d'une app a sa propre ligne (`App`, `Fichier` = l'identifiant de la copie, `Dossier`), sans favori ; à la racine, aucune
+    ligne n'est écrite. Un fichier copié qui a disparu entre-temps (supprimé ou mis à la corbeille par une autre personne) n'est pas
+    collé : la phrase le dit. Le geste est refusé, avec sa raison, dans un document en lecture seule, pendant le choix d'un fichier
+    pour une app (les gestes d'écriture y sont grisés), et dans un champ de saisie (la touche reste au texte, qui se copie comme
+    avant) ; quand du texte est sélectionné, Ctrl+C copie ce texte. **Ctrl+D n'est lié à rien** : c'est le marque-page de Firefox,
+    le navigateur du porteur ; « Dupliquer » est dans le menu de la ligne (clic droit, Maj+F10, « Plus d'actions »), qui dit les
+    raccourcis (« Ctrl+C, V »).
 
 ### 6.5 Préserver l'inconnu
 
@@ -1879,8 +1895,8 @@ fichier lui-même en pièce jointe de Grist.
    03/11 (faits vérifiés, 14).
 7. [T] **Ouvrir un PDF**, c'est le **lire** dans l'app dont le manifeste le déclare (`actions.lire`, 2.7, point 5 ; 5.4, point 8) :
    « Lire » est alors le geste principal et « Télécharger » reste dans le menu de la ligne. Quand aucune app du catalogue ne le lit,
-   c'est le télécharger sous son nom (un lien invisible cliqué ; le bouton du pied et le menu disent « Télécharger »). Dupliquer est
-   grisé et dit pourquoi ; supprimer passe par la corbeille (point 10), et GFS le fait lui-même (6.3, point 2, ne vaut que pour les
+   c'est le télécharger sous son nom (un lien invisible cliqué ; le bouton du pied et le menu disent « Télécharger »). Dupliquer copie la
+   ligne (point 13) ; supprimer passe par la corbeille (point 10), et GFS le fait lui-même (6.3, point 2, ne vaut que pour les
    tables d'une app). **Jusqu'au 04/11**, supprimer retirait la ligne tout de suite, après une question : c'est devenu « Supprimer
    définitivement », qui ne se fait que depuis la corbeille.
 8. [T] Un document en lecture seule, ou ouvert sans l'accès complet, grise « PDF » dans « Importer » avec sa raison : rien ne
@@ -1907,7 +1923,7 @@ fichier lui-même en pièce jointe de Grist.
     vide à la main. Le geste d'un document en lecture seule est refusé avec sa raison (`trash.readonly`), avant toute question.
 11. [T] **Les gardiens.** `js/trash.js` ne sait pas où vit un fichier : il le demande à un « gardien » (`manages`, `lock`, `trash`,
     `restore`, `empty`), le seul qui sache l'écrire. `js/kept-files.js` est celui de `GFS_Fichiers`. Un fichier qu'aucun gardien ne
-    connaît n'a pas de corbeille depuis GFS : l'article est grisé et un clic dit pourquoi. `js/app-trash.js` est le gardien des
+    connaît n'a pas de corbeille depuis GFS : l'article est grisé et un clic dit pourquoi. `js/app-files.js` est le gardien des
     fichiers des apps (recette déclarée dans le manifeste, 2.4 ; table `GFS_Corbeille`, 6.7), branché le 04/11 sans toucher au reste.
     Une erreur d'un gardien qui porte `expected: true` est un refus voulu (la personne a refusé une table, une ligne ne se garde pas) :
     la phrase l'explique, la console reste muette.
@@ -1918,6 +1934,15 @@ fichier lui-même en pièce jointe de Grist.
     `null` pour l'API REST, et `UpdateRecord` avec `null` la vide ; la date écrite revient en secondes ; **plusieurs `RemoveRecord`
     dans un seul `applyUserActions` passent** (vider) ; la pièce jointe d'un fichier supprimé pour de bon reste sur le serveur ;
     le clavier arrive au panneau dans le cadre de Grist dès qu'un clic l'y a posé (↓ ↑ Suppr Entrée F2 Maj+F10, clic droit).
+13. [T] **Dupliquer et copier-coller un PDF** (décision du porteur, 04/11). « Dupliquer » (menu de la ligne) et Ctrl+C puis Ctrl+V
+    ajoutent une ligne à `GFS_Fichiers` : un nouvel `Identifiant`, le premier nom libre (« Facture (1).pdf »), la **même pièce
+    jointe** (`['L', n]` : aucun octet n'est envoyé ni copié ; Grist garde une pièce tant qu'une cellule la cite, donc l'original
+    peut être supprimé pour de bon sans abîmer la copie), la même taille et la même origine ; la copie est de la personne,
+    d'aujourd'hui (l'auteur de l'original ne passe pas à la copie). Un fichier à la corbeille ne se copie pas (il se restaure
+    d'abord) ; un fichier sans contenu non plus (la phrase le dit). La copie va dans le dossier ouvert (Ctrl+V) ou à côté de
+    l'original (« Dupliquer ») : une ligne de `GFS_Rangement` (6.4, point 10), sans favori. [M] Mesuré le 04/11 dans un vrai Grist
+    1.7.19 (faits vérifiés, 28) : même pièce jointe citée deux fois, le nombre de pièces du document ne bouge pas, la copie se
+    télécharge octet pour octet après la suppression définitive de l'original.
 
 ### 6.7 `GFS_Corbeille`, la corbeille des fichiers des apps
 

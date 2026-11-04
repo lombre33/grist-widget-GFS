@@ -65,8 +65,6 @@ export class KeptFiles {
   // Ce que le menu d'une ligne offre en plus du geste principal : télécharger, quand le geste principal est de lire.
   extras = file => (this.#opts.reader(file) ? [{ label: this.#opts.t('files.download'), icon: 'download', run: () => void this.open(file) }] : []);
 
-  copyNotice = () => this.#opts.t('files.noCopy');
-
   // Les articles du sous-menu « Importer » : un par format que GFS garde (le PDF), grisé avec sa raison quand rien ne peut s'écrire.
   importEntries() {
     const { t, lang } = this.#opts;
@@ -246,6 +244,11 @@ export class KeptFiles {
   restore = file => this.#store.restore(file);
 
   empty = files => this.#store.empty(files);
+
+  // La copie (js/copying.js) : un PDF que GFS garde se copie ; le geste seul, comme les précédents (rendu : voir `copy` de js/files-store.js).
+  copies = file => this.has(file);
+
+  copy = file => this.#store.copy(file);
 }
 
 // Le fichier téléchargé est offert au navigateur sous son nom : un lien invisible, cliqué ici même.

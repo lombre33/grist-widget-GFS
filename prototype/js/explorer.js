@@ -1,15 +1,16 @@
 // L'explorateur de fichiers (cahier 4.4, 6.3) : le cadre qu'ouvre GFS pour choisir un fichier de n'importe quelle app. Il n'écrit rien lui-même.
 // Il remplace le cadre (défaut 6.7, point 1) ; « Fermer » ou Échap ramène à l'app, restée vivante et cachée. Il ne connaît pas les apps :
 // le contrôleur lui donne les fichiers, les noms, le grisé et ce qu'on peut créer, et reçoit « ouvrir », « nouveau » et « fermer ». Épingler, renommer
-// et déplacer passent à `filing` (js/filing.js) ; supprimer, restaurer et vider la corbeille à `trash` (js/trash.js) ; dupliquer reste grisé : il se fait dans l'app. Les touches sont décrites
-// dans js/explorer-keys.js.
+// et déplacer passent à `filing` (js/filing.js) ; supprimer, restaurer et vider la corbeille à `trash` (js/trash.js) ; dupliquer à `copying` (js/copying.js), grisé pour un fichier qu'aucun gardien ne copie.
+// Les touches sont décrites dans js/explorer-keys.js, le presse-papiers (Ctrl+C, Ctrl+X, Ctrl+V) dans js/explorer-clipboard.js.
 
 import { h } from './dom.js';
 import { icon } from './icons.js';
 import { listItems, treeRows, typeChoices } from './explorer-model.js';
 import { words } from './search.js';
 import { buildShell, relabel, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar, trashBar } from './explorer-view.js';
-import { listAction, isSearchKey, parentPath, stepRow } from './explorer-keys.js';
+import { listAction, isSearchKey, clipboardAction, parentPath, stepRow } from './explorer-keys.js';
+import { Clipboard } from './explorer-clipboard.js';
 import { LANGUAGE_NAMES } from './language.js';
 import { openMenu, closeMenu, menuIsOpen } from './menu.js';
 
@@ -17,6 +18,8 @@ import { openMenu, closeMenu, menuIsOpen } from './menu.js';
 const NO_KEPT = Object.freeze({ has: () => false, extras: () => [] });
 // Sans corbeille (les essais de l'explorateur seul) : aucun fichier ne peut y aller.
 const NO_TRASH = Object.freeze({ handles: () => false });
+// Sans copie (les essais de l'explorateur seul) : aucun fichier ne peut se copier.
+const NO_COPYING = Object.freeze({ handles: () => false, copy: async () => null });
 // Les gestes d'une ligne qu'un clavier posé sur ☆ ou ⋯ (ou ailleurs dans la ligne) fait aussi ; les flèches et Entrée restent aux boutons.
 const FROM_BUTTONS = new Set(['rename', 'delete', 'menu', 'parent']);
 
@@ -24,6 +27,8 @@ export class Explorer {
   #opts;
   #kept;
   #bin;
+  #copying;
+  #clipboard;
   #refs;
   #files = [];
   #trashed = []; // les fichiers à la corbeille (la vue « Corbeille »)
@@ -40,13 +45,19 @@ export class Explorer {
 
   // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), importTypes(), onOpen(file), onNew(entry), onImport(entry), onClose(), onApps(), canClose(), notice(text),
   //          language() → { choice, grist }, onLanguage(choice), onTheme() (le bouton « Thème » ouvre sa fenêtre), personal() → le rangement est-il à la personne seule ?,
-  //          filing: { togglePin(file), rename(file), moveFile(file), renameFolder(path), moveFolder(path) },
-  //          kept?: les fichiers que GFS garde lui-même (js/kept-files.js) : { has(file), openAs(file) -> { label, icon, greyed }, opensIn(file), extras(file) -> [article de menu], copyNotice() },
-  //          trash?: la corbeille (js/trash.js) : { handles(file), move(file), restore(file), purge(file), empty(files) } (chaque geste rend une promesse, vraie quand il a abouti) }
+  //          filing: { togglePin(file), rename(file), moveFile(file), renameFolder(path), moveFolder(path), moveFileTo(file, dossier), moveFolderTo(path, dossier) },
+  //          kept?: les fichiers que GFS garde lui-même (js/kept-files.js) : { has(file), openAs(file) -> { label, icon, greyed }, opensIn(file), extras(file) -> [article de menu] },
+  //          trash?: la corbeille (js/trash.js) : { handles(file), move(file), restore(file), purge(file), empty(files) } (chaque geste rend une promesse, vraie quand il a abouti),
+  //          copying?: la copie (js/copying.js) : { handles(file), copy(file, dossier) -> Promise<{ key, name } | null> } }
   constructor(opts) {
     this.#opts = opts;
     this.#kept = opts.kept || NO_KEPT;
     this.#bin = opts.trash || NO_TRASH;
+    this.#copying = opts.copying || NO_COPYING;
+    this.#clipboard = new Clipboard({
+      t: opts.i18n.t, notice: text => opts.notice(text), appName: id => opts.appName(id), file: key => this.#files.find(item => item.key === key), where: () => ({ view: this.state.view, path: this.state.path }),
+      reveal: key => this.#reveal(key), copying: this.#copying, filing: opts.filing,
+    });
     const { root, refs } = buildShell(opts.i18n);
     this.root = root;
     this.#refs = refs;
@@ -91,6 +102,7 @@ export class Explorer {
 
   close() {
     closeMenu();
+    this.#clipboard.clear();
     this.root.hidden = true;
   }
 
@@ -403,6 +415,8 @@ export class Explorer {
       this.#refs.search.select();
       return;
     }
+    const clip = clipboardAction(event);
+    if (clip && this.#keysAreOurs(event.target) && !menuIsOpen() && !(clip !== 'paste' && this.#hasTextSelected())) { event.preventDefault(); this.#onClipboard(clip, event); return; }
     if (event.key !== 'Escape') return;
     if (event.target === this.#refs.search && this.#refs.search.value) {
       this.#refs.search.value = '';
@@ -413,6 +427,47 @@ export class Explorer {
       this.#requestClose();
     }
     event.preventDefault();
+  }
+
+  // Les touches du presse-papiers sont à l'explorateur quand le clavier est chez lui, ou nulle part (le corps de la page : la liste vient d'être redessinée, la ligne qui l'avait n'existe plus) ; pas
+  // quand une fenêtre, un menu ou un autre panneau l'a.
+  #keysAreOurs(target) {
+    const doc = this.root.ownerDocument;
+    return this.root.contains(target) || target === doc.body || target === doc.documentElement;
+  }
+
+  // Du texte est choisi dans la page (la personne en a surligné) : Ctrl+C et Ctrl+X le copient, comme partout.
+  #hasTextSelected() {
+    const selection = this.root.ownerDocument.getSelection();
+    return Boolean(selection && !selection.isCollapsed && String(selection).trim());
+  }
+
+  // Le presse-papiers (js/explorer-clipboard.js). Copier et couper visent la ligne choisie, sinon celle où est le clavier ; coller n'a besoin d'aucune ligne (un dossier vide se colle). Pendant un choix de
+  // fichier pour une app, rien de tout cela : comme « Nouveau » et la corbeille, il est grisé.
+  #onClipboard(action, event) {
+    if (this.#choice) { this.#opts.notice(this.#opts.i18n.t('ex.choose.newOff')); return; }
+    if (action === 'paste') { void this.#clipboard.paste(); return; }
+    const rows = [...this.#refs.list.querySelectorAll('[data-key]')];
+    const key = this.#keyOf(event, rows);
+    if (key) this.#clipboard.take(key, action);
+  }
+
+  // La clé de la ligne que vise un geste : la ligne choisie, sinon celle où est le clavier (à l'ouverture, le clavier est sur la première ligne sans qu'aucune soit choisie).
+  #keyOf(event, rows) {
+    const chosen = rows.find(row => row.dataset.key === this.state.sel);
+    const here = chosen || rows.find(row => row.contains(event.target));
+    return here ? here.dataset.key : null;
+  }
+
+  // La ligne `key` prend le clavier, quand la liste la montre (le fichier qu'on vient de copier ou de déplacer).
+  #reveal(key) {
+    if (this.isOpen && [...this.#refs.list.querySelectorAll('[data-key]')].some(row => row.dataset.key === key)) this.#select(key, true);
+  }
+
+  // « Dupliquer » : une copie du fichier, rangée dans le même dossier que lui ; elle prend le clavier.
+  async #duplicate(file) {
+    const done = await this.#copying.copy(file, file.folder);
+    if (done) this.#reveal(done.key);
   }
 
   #requestClose() {
@@ -471,7 +526,7 @@ export class Explorer {
     openMenu(this.#refs.newBtn, items, { host: this.root, align: 'right', label: t('ex.new') });
   }
 
-  // Le menu d'une ligne. Dupliquer touche au fichier lui-même : grisé, il dit que l'app le fait. Supprimer passe par la corbeille : un fichier qu'aucun gardien ne connaît (js/trash.js) grise l'article
+  // Le menu d'une ligne. Dupliquer copie le fichier quand un gardien sait le copier (js/copying.js) ; sinon il est grisé et dit où le faire. Supprimer passe par la corbeille : un fichier qu'aucun gardien ne connaît (js/trash.js) grise l'article
   // et dit pourquoi ; un dossier n'existe que par ses fichiers, son article dit comment le faire disparaître. À la corbeille : « Restaurer » et « Supprimer définitivement… ».
   #rowMenu(key, anchor) {
     const { t } = this.#opts.i18n;
@@ -482,7 +537,7 @@ export class Explorer {
     if (key.startsWith('dir:')) {
       const path = key.slice(4);
       items = [item(t('ex.openFolder'), 'open', () => this.#activate(key), t('key.enter')), item(t('ex.rename'), 'edit', () => void filing.renameFolder(path), 'F2'),
-        item(t('ex.move'), 'move', () => void filing.moveFolder(path)), '-', { ...item(t('trash.move'), 'trash', () => this.#opts.notice(t('trash.folder'))), greyed: true }];
+        item(t('ex.move'), 'move', () => void filing.moveFolder(path), this.#choice ? undefined : 'Ctrl+X, V'), '-', { ...item(t('trash.move'), 'trash', () => this.#opts.notice(t('trash.folder'))), greyed: true }];
     } else {
       const file = (this.state.view === 'trash' ? this.#trashed : this.#files).find(entry => entry.key === key);
       if (!file) return;
@@ -510,8 +565,12 @@ export class Explorer {
     const remove = this.#choice || !this.#bin.handles(file)
       ? grey(t('trash.move'), 'trash', this.#choice ? t('ex.choose.newOff') : t('trash.appOnly', { app: this.#opts.appName(file.app) }))
       : item(t('trash.move'), 'trash', () => void this.#trashKey(file.key), t('key.delete'));
+    // Dupliquer : grisé pendant un choix, et pour un fichier qu'aucun gardien ne copie ; le clic dit pourquoi. Le presse-papiers (Ctrl+C puis Ctrl+V, Ctrl+X puis Ctrl+V) n'est pas offert pendant un choix.
+    const duplicate = this.#choice || !this.#copying.handles(file)
+      ? grey(t('ex.duplicate'), 'copy', this.#choice ? t('ex.choose.newOff') : appOnly)
+      : item(t('ex.duplicate'), 'copy', () => void this.#duplicate(file), 'Ctrl+C, V');
     return [{ ...item(open.label, open.icon, () => this.#activate(file.key), t('key.enter')), greyed: open.greyed }, ...extras, item(file.pinned ? t('ex.unpin') : t('ex.pin'), 'pin', () => void filing.togglePin(file)),
-      item(t('ex.rename'), 'edit', () => void filing.rename(file), 'F2'), grey(t('ex.duplicate'), 'copy', kept ? this.#kept.copyNotice() : appOnly), item(t('ex.move'), 'move', () => void filing.moveFile(file)),
+      item(t('ex.rename'), 'edit', () => void filing.rename(file), 'F2'), duplicate, item(t('ex.move'), 'move', () => void filing.moveFile(file), this.#choice ? undefined : 'Ctrl+X, V'),
       '-', remove];
   }
 

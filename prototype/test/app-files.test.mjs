@@ -1,8 +1,8 @@
-// Le gardien des fichiers des apps (js/app-trash.js, contrats 6.7) : mettre à la corbeille, restaurer, supprimer pour de bon, avec un faux Grist (test/fake-grist.mjs : un lot est atomique, un numéro
+// Le gardien des fichiers des apps (js/app-files.js, contrats 6.7) : mettre à la corbeille, restaurer, supprimer pour de bon, avec un faux Grist (test/fake-grist.mjs : un lot est atomique, un numéro
 // de ligne pris est refusé). Ce que le vrai Grist en fait (les tables internes, les dates, la fenêtre de l'accord, le lot atomique) se mesure dans le labo : labo/run-corbeille-apps.mjs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { AppTrash, dataColumnsOf } from '../js/app-trash.js';
+import { AppFiles, dataColumnsOf } from '../js/app-files.js';
 import { loadFiles } from '../js/explorer-data.js';
 import { BIN_TABLE, parseSnapshot } from '../js/gfs-trash.js';
 import { createI18n } from '../js/i18n.js';
@@ -20,7 +20,7 @@ const models = () => [row(1, { Nom: 'Convocation', EstParDefaut: true }), row(2,
 function setup({ rows = models(), consent = async () => true, grist = {}, over = {} } = {}) {
   const fake = fakeGrist({ Publipostage_Modeles: { columns: ['id', ...DATA_COLUMNS.map(column => column.id)], rows } }, grist);
   const asked = [];
-  const trash = new AppTrash({
+  const trash = new AppFiles({
     port: fake.port, apps: () => [{ manifest }], consent: async () => { asked.push('consent'); return consent(); }, identity: () => 'paul@exemple.fr', now: () => NOW,
     readonly: () => false, fullAccess: () => true, t: FR.t, columnsOf: async () => DATA_COLUMNS, ...over,
   });
@@ -261,6 +261,82 @@ test('supprimer pour de bon sans table de corbeille : rien à retirer', async ()
   const { files } = await run.load();
   assert.equal(await run.trash.empty([{ ...files[0], trashed: { ts: 1, by: '' } }]), 0);
   assert.equal(BIN_TABLE in run.tables, false);
+});
+
+// ---------- la copie (contrats 2.4 `copie`, 6.3 point 2) ----------
+
+// Copie le fichier `id` de la liste lue ; rend { copy, files } : ce que le gardien dit, et la liste relue ensuite.
+async function copied(run, id) {
+  const { files } = await run.load();
+  const copy = await run.trash.copy(files.find(file => file.id === String(id)));
+  return { copy, files: (await run.load()).files };
+}
+
+test('copier : une ligne de plus, sous le premier nom libre, sans le jeton ni l\'étoile de l\'original, qui garde tout le reste ; la copie est un fichier comme les autres pour l\'explorateur', async () => {
+  const run = setup({ rows: [row(1, { Nom: 'Convocation', EstParDefaut: true, Pieces: ['L', 9] }), row(2, { Nom: 'Convocation (1)' }), row(4, { Nom: '@reglages', TypeModele: 'reglages', Jeton: '' })] });
+  const { copy, files } = await copied(run, 1);
+  assert.deepEqual(copy, { id: '5', name: 'Convocation (2)' });
+  const made = run.live().find(each => each.id === 5);
+  assert.deepEqual([made.Nom, made.Contenu, made.TypeModele, made.DateModif, made.EstParDefaut, made.Jeton, made.Pieces], ['Convocation (2)', '<p></p>', 'document', 100, false, '', ['L', 9]]);
+  const original = run.live().find(each => each.id === 1);
+  assert.deepEqual([original.Nom, original.EstParDefaut, original.Jeton], ['Convocation', true, 'j1'], 'l\'original n\'est pas touché');
+  assert.deepEqual(run.verbs(), [['AddRecord']], 'un seul lot, une seule écriture');
+  assert.deepEqual(files.map(file => file.key).sort(), ['publipostage:1', 'publipostage:2', 'publipostage:5'], 'l\'explorateur la lit sous la clé que le gardien a rendue');
+  assert.equal(BIN_TABLE in run.tables, false, 'copier ne crée aucune table : aucun accord à demander');
+  assert.deepEqual(run.asked, []);
+});
+
+test('copier : le gardien ne copie que ce que le manifeste dit, et l\'un ne va pas sans l\'autre (une recette de suppression ne dit rien de la copie)', async () => {
+  const run = setup();
+  const { files } = await run.load();
+  assert.deepEqual(files.map(file => run.trash.copies(file)), [true, true, true]);
+  assert.equal(run.trash.copies({ ...files[0], table: 'Autre' }), false);
+  assert.equal(run.trash.copies({ ...files[0], app: 'automation' }), false);
+  assert.equal(setup({ over: { apps: () => [{ manifest: form() }] } }).trash.copies({ app: 'form', table: 'FormPlus_Formulaires' }), false, 'Form+ est composite');
+  const trashOnly = publipostage();
+  delete trashOnly.fichiers[0].copie;
+  const half = setup({ over: { apps: () => [{ manifest: trashOnly }] } });
+  assert.deepEqual([half.trash.manages(files[0]), half.trash.copies(files[0])], [true, false], 'à la corbeille oui, à copier non : « Dupliquer » est grisé, le clic dit pourquoi');
+  assert.equal(await half.trash.copy(files[0]), null, 'rien n\'est écrit sans recette');
+  assert.deepEqual(half.verbs(), []);
+});
+
+test('copier : la ligne est relue (celle que la personne voyait a pu disparaître) ; une ligne qui n\'est plus là ne se copie pas', async () => {
+  const run = setup();
+  const { files } = await run.load();
+  const first = files.find(file => file.id === '1');
+  run.live().splice(0, 1);
+  assert.equal(await run.trash.copy(first), null);
+  assert.deepEqual(run.verbs(), []);
+});
+
+test('copier se fait à la suite des autres gestes : deux copies de suite donnent deux numéros, et une copie faite pendant une mise à la corbeille part de la table que celle-ci a laissée', async () => {
+  const run = setup();
+  const { files } = await run.load();
+  const relance = files.find(file => file.id === '3');
+  const results = await Promise.all([run.trash.copy(relance), run.trash.copy(relance), run.trash.trash(relance)]);
+  assert.deepEqual([results[0].name, results[1].name, results[2]], ['Relance (1)', 'Relance (2)', true]);
+  assert.deepEqual(run.live().map(each => each.Nom), ['Convocation', 'Attestation', '@reglages', 'Relance (1)', 'Relance (2)']);
+});
+
+test('copier : sans colonne du nom dans la table, rien n\'est écrit et la raison est dite ; le verrou est celui de la corbeille', async () => {
+  const noName = setup({ over: { columnsOf: async () => DATA_COLUMNS.filter(column => column.id !== 'Nom') } });
+  const { files } = await noName.load();
+  await assert.rejects(noName.trash.copy(files[0]), error => error.message === FR.t('copy.noName'));
+  assert.deepEqual(noName.verbs(), []);
+  assert.deepEqual(setup({ over: { readonly: () => true } }).trash.lock(), { text: FR.t('trash.readonly') });
+});
+
+test('copier : l\'identifiant d\'une copie est celui que l\'explorateur lira (la colonne `id` du manifeste), même quand ce n\'est pas le numéro de ligne', async () => {
+  const other = publipostage();
+  other.fichiers[0].colonnes.id = 'Jeton';
+  other.fichiers[0].copie = { ligne: true, valeurs: { Jeton: 'neuf' } };
+  const run = setup({ over: { apps: () => [{ manifest: other }] } });
+  const { files } = await loadFiles(run.port, [{ manifest: other }], '');
+  assert.equal(files.find(file => file.name === 'Attestation').id, 'j2', 'l\'explorateur désigne le fichier par son jeton');
+  const copy = await run.trash.copy(files.find(file => file.name === 'Attestation'));
+  assert.deepEqual(copy, { id: 'neuf', name: 'Attestation (1)' });
+  assert.equal(run.live().find(each => each.Nom === 'Attestation (1)').Jeton, 'neuf');
 });
 
 // Les colonnes de données d'une table, lues dans les tables internes de Grist (`_grist_Tables`, `_grist_Tables_column`).

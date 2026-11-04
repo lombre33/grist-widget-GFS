@@ -166,3 +166,41 @@ test('renommer : la mise en forme du nom saisi vient de l\'appelant (un PDF gard
   await plain.filing.rename(file(2));
   assert.equal(plain.log.windows[0].clean, undefined, 'la fenêtre prend alors sa mise en forme habituelle');
 });
+
+// Couper puis coller (Ctrl+X, Ctrl+V) : le fichier ou le dossier va dans le dossier ouvert, sans fenêtre.
+test('coller un fichier coupé : il va dans le dossier ouvert, sans fenêtre, avec son étoile, et la liste est relue', async () => {
+  const { filing, log } = harness({ files: [file(1, 'A/B', { pinned: true }), file(2, 'A/B')] });
+  assert.equal(await filing.moveFileTo(file(1, 'A/B', { pinned: true }), 'X/Neuf'), 'moved');
+  assert.deepEqual(log.writes, [{ entries: [{ app: 'publipostage', file: '1', pinned: true, folder: 'X/Neuf' }] }]);
+  assert.deepEqual([log.windows, log.refreshes], [[], 1]);
+  assert.equal(await filing.moveFileTo(file(2, 'A/B'), ''), 'moved', 'la racine est un dossier d\'arrivée comme un autre');
+  assert.equal(log.writes[1].entries[0].folder, '');
+});
+
+test('coller un fichier coupé dans le dossier où il est déjà : rien n\'est écrit, la liste n\'est pas relue ; le fichier est cherché dans la liste relue, pas dans celle que la personne avait', async () => {
+  const { filing, log } = harness({ files: [file(1, 'A'), file(2, 'B')] });
+  assert.equal(await filing.moveFileTo(file(1, 'ancien dossier'), 'A'), 'same', 'la liste relue dit que le fichier est déjà dans A');
+  assert.deepEqual([log.writes, log.refreshes], [[], 0]);
+});
+
+test('coller : un document qui ne s\'enregistre pas, ou un rangement refusé, ne déplace rien ; la phrase le dit', async () => {
+  const blocked = harness({ block: t('mod.readonly') });
+  assert.equal(await blocked.filing.moveFileTo(file(1), 'A'), undefined);
+  assert.equal(await blocked.filing.moveFolderTo('A/B', 'X'), undefined);
+  assert.deepEqual([blocked.log.notices, blocked.log.writes], [[t('mod.readonly'), t('mod.readonly')], []]);
+  const declined = harness({ setFiling: async () => { throw new TableDeclined('GFS_Rangement'); } });
+  assert.equal(await declined.filing.moveFileTo(file(1), 'A'), undefined);
+  assert.deepEqual(declined.log.notices, [t('ex.filingDeclined')]);
+  assert.equal(declined.log.refreshes, 0, 'rien n\'a changé : la liste n\'est pas relue');
+});
+
+test('coller un dossier coupé : il va dans le dossier ouvert avec ses sous-dossiers, sous son nom ; chez lui, dans lui-même ou sans fichier, rien ne s\'écrit', async () => {
+  const { filing, log } = harness();
+  assert.equal(await filing.moveFolderTo('A/B', 'X'), 'moved');
+  assert.deepEqual(log.writes[0].entries, [{ app: 'publipostage', file: '2', pinned: false, folder: 'X/B' }, { app: 'publipostage', file: '3', pinned: false, folder: 'X/B/C' }]);
+  assert.equal(await filing.moveFolderTo('A/B', 'A'), 'same', 'il est déjà là');
+  assert.equal(await filing.moveFolderTo('A', 'A/B'), 'inside', 'un dossier ne va pas dans un de ses sous-dossiers');
+  assert.equal(await filing.moveFolderTo('A', 'A'), 'inside');
+  assert.equal(await filing.moveFolderTo('Z', 'X'), 'gone', 'plus aucun fichier ne le nomme');
+  assert.equal(log.writes.length, 1);
+});

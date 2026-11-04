@@ -2,9 +2,10 @@
 // (js/explorer.js) qui sait ce que chaque geste fait de la ligne choisie.
 //
 // Les touches : ↑ ↓ (← → en vignettes ; ↑ ↓ y changent de rangée), Début, Fin, Entrée (ouvrir ; à la corbeille : restaurer), F2 (renommer), Suppr (mettre à la corbeille ; à la corbeille : supprimer
-// pour de bon), Retour arrière (le dossier parent), Maj+F10 ou la touche Menu (le menu de la ligne, comme le clic droit), « / » (la recherche), Échap (js/explorer.js). Une touche tapée avec Ctrl, Alt ou
-// Méta n'est pas une des nôtres : Ctrl+D (marque-page), Ctrl+F (recherche dans la page), Alt+← (page précédente), Ctrl+N, Ctrl+T et Ctrl+W sont au navigateur, qui ne les laisse pas tous à une page ;
-// aucun geste de GFS n'est lié à une touche qu'on ne peut pas avoir partout.
+// pour de bon), Retour arrière (le dossier parent), Maj+F10 ou la touche Menu (le menu de la ligne, comme le clic droit), « / » (la recherche), Échap (js/explorer.js), et le presse-papiers : Ctrl+C
+// (copier), Ctrl+X (couper), Ctrl+V (coller), Ctrl ou ⌘ (`clipboardAction`). Toute autre touche tapée avec Ctrl, Alt ou Méta n'est pas une des nôtres : Ctrl+D (marque-page), Ctrl+F (recherche dans
+// la page), Alt+← (page précédente), Ctrl+N, Ctrl+T et Ctrl+W sont au navigateur, qui ne les laisse pas tous à une page ; aucun geste de GFS n'est lié à une touche qu'on ne peut pas avoir partout.
+// Ctrl+D (dupliquer, dans d'autres explorateurs) n'est donc pas liée : « Dupliquer » est dans le menu de la ligne, et Ctrl+C puis Ctrl+V colle la copie.
 
 // `view` : { display: 'list'|'tiles', filtering } -> 'next' | 'prev' | 'down' | 'up' | 'first' | 'last' | 'activate' | 'rename' | 'delete' | 'parent' | 'menu' | null.
 // 'down' et 'up' ne valent qu'en vignettes (une rangée plus bas, plus haut) ; en liste, ↓ et ↑ sont 'next' et 'prev'. Retour arrière ne remonte pas pendant une recherche : c'est alors le champ de
@@ -30,11 +31,21 @@ export function listAction(event, { display, filtering }) {
   }
 }
 
+// La personne tape-t-elle dans un champ (la recherche, une fenêtre) ? Ses touches y gardent leur sens.
+const typingIn = target => Boolean(target && typeof target.closest === 'function' && target.closest('input, textarea, select, [contenteditable]'));
+
 // « / » met le clavier dans la recherche, sauf quand la personne tape déjà dans un champ (où « / » est un signe comme un autre).
 export function isSearchKey(event) {
   if (event.key !== '/' || event.ctrlKey || event.altKey || event.metaKey) return false;
-  const target = event.target;
-  return !(target && typeof target.closest === 'function' && target.closest('input, textarea, select, [contenteditable]'));
+  return !typingIn(event.target);
+}
+
+// Le presse-papiers : Ctrl+C -> 'copy', Ctrl+X -> 'cut', Ctrl+V -> 'paste' (⌘ pour Ctrl sur Mac), ou null. Ni Alt (AltGr se tape avec Ctrl et Alt sur certains claviers) ni Maj (Ctrl+Maj+V colle sans mise
+// en forme) ; la majuscule d'un verrouillage des capitales compte. Dans un champ de saisie (la recherche), ces touches copient, coupent et collent le texte : elles ne sont pas à l'explorateur.
+export function clipboardAction(event) {
+  const { key, ctrlKey, metaKey, altKey, shiftKey, target } = event;
+  if (!(ctrlKey || metaKey) || altKey || shiftKey || typeof key !== 'string' || typingIn(target)) return null;
+  return { c: 'copy', x: 'cut', v: 'paste' }[key.toLowerCase()] || null;
 }
 
 // Le chemin du dossier parent : « Factures/2024 » -> « Factures » ; la racine reste la racine.

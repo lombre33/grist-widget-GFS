@@ -36,6 +36,9 @@ export function isExcluded(spec, data, i) {
   return Object.entries(spec.exclure || {}).some(([column, values]) => Array.isArray(values) && values.includes(text(cell(data, column, i))));
 }
 
+// La clé d'un fichier dans l'explorateur et dans le rangement de GFS : « app:identifiant ».
+export const fileKey = (app, id) => `${app}:${id}`;
+
 // Les fichiers d'une table : { key, app, id, table, row, name, type, typeInfo, known, family, icon, ts, by, folder, pinned, trashed, search } ; `table` et `row` : la table
 // du manifeste et la ligne de Grist (renommer) ; `trashed` : { ts, by } quand le fichier est à la corbeille (le manifeste déclare alors `corbeille`), sinon null. La liste des fichiers vivants
 // et celle de la corbeille se séparent après la lecture (js/explorer-data.js) : ce modèle rend tout, le fichier à la corbeille a gardé son nom, son dossier et son type.
@@ -51,7 +54,7 @@ export function readFiles(manifest, spec, data) {
     const typeInfo = (spec.types || []).find(item => item.valeur === type) || null;
     const name = text(cell(data, cols.nom, i));
     files.push({
-      key: `${manifest.id}:${rawId}`, app: manifest.id, id: String(rawId), table: spec.table, row: data.id[i], name, type, typeInfo, known: Boolean(typeInfo),
+      key: fileKey(manifest.id, rawId), app: manifest.id, id: String(rawId), table: spec.table, row: data.id[i], name, type, typeInfo, known: Boolean(typeInfo),
       family: (typeInfo && FAMILIES[typeInfo.couleur]) || '', icon: (typeInfo && typeInfo.icone) || 'doc',
       ts: seconds(cell(data, cols.date, i)), by: text(cell(data, cols.par, i)), folder: normalizePath(cell(data, cols.dossier, i)), pinned: false,
       trashed: trashOf(spec.corbeille, data, i), search: '',
@@ -85,8 +88,8 @@ export function readGfsFiling(data, identity = '') {
     const user = text(cell(data, 'Utilisateur', i));
     const app = text(cell(data, 'App', i));
     const file = text(cell(data, 'Fichier', i));
-    if (user !== identity || user.startsWith('@') || !app || !file || byFile.has(`${app}:${file}`)) continue;
-    byFile.set(`${app}:${file}`, { folder: normalizePath(cell(data, 'Dossier', i)), pinned: cell(data, 'Favori', i) === true });
+    if (user !== identity || user.startsWith('@') || !app || !file || byFile.has(fileKey(app, file))) continue;
+    byFile.set(fileKey(app, file), { folder: normalizePath(cell(data, 'Dossier', i)), pinned: cell(data, 'Favori', i) === true });
   }
   return byFile;
 }

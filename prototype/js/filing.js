@@ -1,5 +1,5 @@
 // Épingler, ranger et renommer depuis l'explorateur, avant d'ouvrir aucune app (le porteur, 21/10) : favoris et dossiers dans la table de GFS
-// (`GFS_Rangement`, contrats 6.4), le nom dans la table de l'app, sa seule colonne du nom (6.3, point 2). Dupliquer et supprimer restent à l'app.
+// (`GFS_Rangement`, contrats 6.4), le nom dans la table de l'app, sa seule colonne du nom (6.3, point 2). Copier et supprimer ne sont pas d'ici : js/copying.js et js/trash.js (le porteur, 04/11).
 // Un geste à la fois, et chacun part de la liste relue après le précédent ; il relit la table avant d'écrire, en un seul lot. Les fenêtres et
 // l'accord de la personne viennent du contrôleur.
 
@@ -44,6 +44,29 @@ export class Filing {
       const now = this.#now(file);
       const target = await this.#chooseFolder({ title: this.#opts.t('ex.moveTitle', { name: this.#title(now) }), folders: this.#folders(), current: now.folder, base: this.#opts.here() });
       if (target !== null && target !== now.folder) await this.#write([{ app: now.app, file: now.id, pinned: now.pinned, folder: target }]);
+    });
+  }
+
+  // Couper puis coller (Ctrl+X, Ctrl+V) : le fichier va dans le dossier `folder` (le dossier ouvert), sans fenêtre. Rend 'moved', 'same' (il y est déjà : rien n'est écrit), ou rien quand le document ne
+  // peut rien enregistrer ou que l'écriture a échoué (la phrase est dite).
+  moveFileTo(file, folder) {
+    return this.#gesture(async () => {
+      const now = this.#now(file);
+      if (now.folder === folder) return 'same';
+      return (await this.#write([{ app: now.app, file: now.id, pinned: now.pinned, folder }])) ? 'moved' : undefined;
+    });
+  }
+
+  // Le même geste pour un dossier : il va dans `folder`, sous-dossiers compris. Rend 'moved', 'same' (il y est déjà), 'inside' (un dossier ne va pas dans lui-même ni dans un de ses sous-dossiers),
+  // 'gone' (plus aucun fichier ne le nomme), ou rien quand rien ne s'écrit.
+  moveFolderTo(path, folder) {
+    return this.#gesture(async () => {
+      const target = normalizePath(`${folder}/${lastPart(path)}`);
+      if (target === path) return 'same';
+      if (inside(target, path)) return 'inside';
+      const moves = folderMoves(this.#opts.files(), path, target);
+      if (!moves.length) return 'gone';
+      return (await this.#write(moves)) ? 'moved' : undefined;
     });
   }
 
@@ -117,18 +140,19 @@ export class Filing {
     return target === null ? null : normalizePath(target);
   }
 
-  // Rien quand la liste est vide (un dossier qui ne change pas) ; l'explorateur se relit après.
+  // Rien quand la liste est vide (un dossier qui ne change pas) ; l'explorateur se relit après. Rend true quand le rangement est écrit, false sinon (la personne a refusé la table, Grist a refusé le lot : la phrase est dite).
   async #write(entries) {
     const { rangement, notice, t } = this.#opts;
-    if (!entries.length) return;
+    if (!entries.length) return false;
     try {
       await rangement.setFiling(entries);
     } catch (error) {
-      if (error instanceof TableDeclined) { notice(t('ex.filingDeclined')); return; }
+      if (error instanceof TableDeclined) { notice(t('ex.filingDeclined')); return false; }
       console.warn('GFS : le rangement n’a pas pu être enregistré', error);
       notice(t('ex.filingFailed', { reason: reasonOf(error) }));
-      return;
+      return false;
     }
     await this.#opts.refresh();
+    return true;
   }
 }

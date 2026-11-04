@@ -11,8 +11,9 @@
 const REASON_MAX = 120;
 const NAMES_SHOWN = 5;
 
-const nameOf = (file, t) => file.name || t('ex.untitled');
-const reasonOf = error => String((error && error.message) || error).slice(0, REASON_MAX);
+// Le nom que les phrases donnent à un fichier, et la raison d'un échec, en une ligne : js/copying.js les reprend.
+export const nameOf = (file, t) => file.name || t('ex.untitled');
+export const reasonOf = error => String((error && error.message) || error).slice(0, REASON_MAX);
 
 export class Trash {
   #opts;

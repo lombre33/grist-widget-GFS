@@ -55,19 +55,20 @@ function checkFiles(m, errors) {
     for (const [key, value] of Object.entries(cols)) if (!isText(value)) errors.push(`fichiers[].colonnes.${key} : chaîne attendue`);
     if (!Array.isArray(file.types) || file.types.some(t => !isText(t.valeur) || !isBilingual(t.nom))) errors.push('fichiers[].types mal formé');
     checkFiling(file.rangement, prefix, errors);
-    checkRecipe(file.suppression, errors);
+    checkRecipe(file.suppression, 'suppression', 'remettre', errors);
+    checkRecipe(file.copie, 'copie', 'valeurs', errors);
   }
 }
 
-// La recette de suppression (2.4, `suppression` ; contrats 6.7) : comment GFS retire et remet un fichier de cette table. `ligne: true` est le seul mode (un fichier est une ligne) ; `uniques` et
-// `exclusives` : des noms de colonnes ; `remettre` : { colonne: valeur }.
-function checkRecipe(recipe, errors) {
+// Une recette (2.4 ; contrats 6.7) : comment GFS retire et remet un fichier de cette table (`suppression`), ou le copie (`copie`). `ligne: true` est le seul mode (un fichier est une ligne) ; `uniques` et
+// `exclusives` : des noms de colonnes ; `values` (`remettre` pour la suppression, `valeurs` pour la copie) : { colonne: valeur }.
+function checkRecipe(recipe, name, values, errors) {
   if (recipe === undefined) return;
-  if (!isObject(recipe) || recipe.ligne !== true) { errors.push('fichiers[].suppression.ligne : true attendu'); return; }
+  if (!isObject(recipe) || recipe.ligne !== true) { errors.push(`fichiers[].${name}.ligne : true attendu`); return; }
   for (const key of ['uniques', 'exclusives']) {
-    if (recipe[key] !== undefined && !(Array.isArray(recipe[key]) && recipe[key].every(isText))) errors.push(`fichiers[].suppression.${key} : liste de noms de colonnes attendue`);
+    if (recipe[key] !== undefined && !(Array.isArray(recipe[key]) && recipe[key].every(isText))) errors.push(`fichiers[].${name}.${key} : liste de noms de colonnes attendue`);
   }
-  if (recipe.remettre !== undefined && !isObject(recipe.remettre)) errors.push('fichiers[].suppression.remettre : objet attendu');
+  if (recipe[values] !== undefined && !isObject(recipe[values])) errors.push(`fichiers[].${name}.${values} : objet attendu`);
 }
 
 // Le rangement propre à une app (2.4, `rangement`) : proposé par le prototype, à fixer à l'étape 6. Une table du préfixe et des noms de colonnes.

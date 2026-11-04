@@ -5,12 +5,12 @@
 // écran (voir test/interfaces-firefox.test.mjs) : la fenêtre se confirme à la souris. Ce que fait chaque touche sans DOM est dans test/explorer-keys.test.mjs.
 import { createI18n } from '../js/i18n.js';
 
-const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+export const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 // ---------- ce qui s'exécute dans la page (rien du module n'y est visible) ----------
 
 // Ce que la personne voit : les lignes, la ligne choisie, où est le clavier, les phrases dites, la liste du menu ouvert, la fenêtre ouverte, la barre de la corbeille.
-function snapshot() {
+export function snapshot() {
   const text = node => (node ? node.textContent.replace(/\s+/g, ' ').trim() : null);
   const active = document.activeElement;
   const own = active && active.closest ? active.closest('.ls-row, .th') : null;
@@ -38,6 +38,7 @@ function snapshot() {
     search: document.querySelector('.inp-search input').value,
     notices: window.__notices.slice(),
     filing: window.__filing.map(entry => entry.join(':')),
+    copies: window.__copies.map(entry => entry.join(':')),
     opened: window.__opened,
     crumbs: text(document.querySelector('.crumbs')),
     head: [...document.querySelectorAll('.ls-head .hd')].map(text),
@@ -57,7 +58,7 @@ function snapshot() {
 }
 
 // Le centre, à l'écran, de la ligne (ou de la vignette) qui porte ce nom, amenée dans la page.
-function centerOfName(name) {
+export function centerOfName(name) {
   const node = [...document.querySelectorAll('.ls-row, .th')].find(item => (item.querySelector('.t, .tn') || {}).textContent === name);
   if (!node) return null;
   node.scrollIntoView({ block: 'nearest' });
@@ -65,7 +66,7 @@ function centerOfName(name) {
   return [box.left + Math.min(60, box.width / 2), box.top + box.height / 2];
 }
 
-function centerOfSelector(selector) {
+export function centerOfSelector(selector) {
   const node = document.querySelector(selector);
   if (!node) return null;
   const box = node.getBoundingClientRect();
@@ -74,14 +75,16 @@ function centerOfSelector(selector) {
 
 // ---------- la conduite ----------
 
-class Run {
+export class Run {
   #page;
   #tag;
   #found;
+  #family;
 
-  constructor(page, tag, found) { this.#page = page; this.#tag = tag; this.#found = found; }
+  // `family` : le nom de la famille de mesures, en tête de chaque écart (« corbeille et clavier », « copier et coller »).
+  constructor(page, tag, found, family = 'corbeille et clavier') { this.#page = page; this.#tag = tag; this.#found = found; this.#family = family; }
 
-  note(kind, text) { this.#found.push({ kind: `corbeille et clavier : ${kind}`, text: `${this.#tag} : ${text}` }); }
+  note(kind, text) { this.#found.push({ kind: `${this.#family} : ${kind}`, text: `${this.#tag} : ${text}` }); }
 
   get page() { return this.#page; }
 
@@ -113,7 +116,7 @@ class Run {
   reset() { return this.#page.run(() => window.__reset()); }
 }
 
-const names = state => state.rows.map(row => row.name);
+export const names = state => state.rows.map(row => row.name);
 
 // Entrée dès l'ouverture (la première ligne a le clavier sans être choisie), puis Retour arrière : le dossier parent.
 async function opening(run) {

@@ -1,13 +1,16 @@
 // Le gardien des fichiers des apps (décision du porteur, 04/11 ; contrats 6.7) : il met à la corbeille un fichier dont le manifeste de l'app dit comment le retirer et le remettre (`suppression`,
-// js/gfs-trash.js), le restaure, le supprime pour de bon. C'est un « gardien » de js/trash.js : celui-là demande la confirmation, dit la phrase et relit la liste ; celui-ci écrit.
+// js/gfs-trash.js), le restaure, le supprime pour de bon ; il le copie quand le manifeste dit comment (`copie`, js/gfs-copy.js). C'est un « gardien » de js/trash.js et de js/copying.js : ceux-là demandent
+// la confirmation, disent la phrase et relisent la liste ; celui-ci écrit.
 //
 // Mettre à la corbeille : la ligne du fichier est relue (c'est elle qui compte, pas la liste que la personne avait sous les yeux), copiée en JSON dans `GFS_Corbeille` (la table naît avec l'accord de la
 // personne, au premier fichier mis à la corbeille) et retirée de la table de l'app, dans UN SEUL lot : Grist applique tout ou rien, un fichier n'est jamais ni perdu ni en double. Restaurer : la ligne est
 // remise, au même numéro quand il est libre (les commentaires, le rangement et les choix d'export d'une app le désignent), et l'entrée de la corbeille part dans le même lot. Supprimer pour de bon :
-// l'entrée seule est retirée. Seules les colonnes de données (sans formule) sont gardées : Grist refuse d'écrire une formule. Les écritures se font l'une après l'autre.
+// l'entrée seule est retirée. Seules les colonnes de données (sans formule) sont gardées : Grist refuse d'écrire une formule. Copier : la ligne relue est ajoutée à la table de l'app (un seul `AddRecord`),
+// sous le premier nom libre, sans ce qui désigne l'original (son jeton, son étoile). Les écritures se font l'une après l'autre.
 
 import { OwnTable, TableDeclined } from './own-table.js';
 import { newId, sameName } from './gfs-files.js';
+import { copyRecipeOf, copyPlan } from './gfs-copy.js';
 import { isExcluded } from './explorer-model.js';
 import { BIN_TABLE, BIN_COLUMNS, BIN_COLUMN_IDS, recipeOf, writable, snapshotOf, parseSnapshot, entryRecord, restorePlan } from './gfs-trash.js';
 
@@ -35,7 +38,7 @@ export async function dataColumnsOf(doc, tableId) {
   return found;
 }
 
-export class AppTrash {
+export class AppFiles {
   #opts;
   #bin;
   #queue = Promise.resolve();
@@ -47,16 +50,18 @@ export class AppTrash {
     this.#bin = new OwnTable({ port: opts.port, name: BIN_TABLE, columns: BIN_COLUMNS, consent: opts.consent });
   }
 
-  // L'entrée `fichiers[]` du manifeste qui a la recette de ce fichier, ou null : GFS ne sait pas le supprimer.
-  #specOf(file) {
+  // L'entrée `fichiers[]` du manifeste qui a la recette de ce fichier (`recipe` : celle de la corbeille par défaut, ou `copyRecipeOf`), ou null : GFS ne sait pas le supprimer, ou le copier.
+  #specOf(file, recipe = recipeOf) {
     for (const { manifest } of this.#opts.apps()) {
-      const spec = manifest.id === file.app ? (manifest.fichiers || []).find(entry => entry.table === file.table && recipeOf(entry)) : null;
+      const spec = manifest.id === file.app ? (manifest.fichiers || []).find(entry => entry.table === file.table && recipe(entry)) : null;
       if (spec) return spec;
     }
     return null;
   }
 
   manages = file => this.#specOf(file) !== null;
+
+  copies = file => this.#specOf(file, copyRecipeOf) !== null;
 
   // Ce qui empêche d'écrire : pas l'accès complet (les tables internes de Grist ne se lisent pas sans lui), ou un document en lecture seule.
   lock() {
@@ -137,6 +142,33 @@ export class AppTrash {
       await port.doc.applyUserActions([['AddRecord', this.#bin.id, null, record], ['RemoveRecord', table.id, table.data.id[at]]]);
       return true;
     });
+  }
+
+  // Copie le fichier : sa ligne, relue, est ajoutée à la table de l'app sous le premier nom libre, avec les valeurs de la recette (jeton vidé, étoile éteinte : js/gfs-copy.js). Rend { id, name } (l'identifiant
+  // que l'explorateur donnera à la copie), ou null quand la ligne n'est plus dans la table de l'app. Lève quand la table n'a pas la colonne du nom.
+  copy(file) {
+    return this.#exclusive(async () => {
+      const { t, port } = this.#opts;
+      const spec = this.#specOf(file, copyRecipeOf);
+      const found = spec ? await this.#found(spec, file) : null;
+      if (!found) return null;
+      const plan = copyPlan({ spec, data: found.table.data, at: found.at, columns: await this.#columns(spec) });
+      if (!plan) throw new Error(t('copy.noName'));
+      const result = await port.doc.applyUserActions([['AddRecord', found.table.id, null, plan.values]]);
+      const row = result && Array.isArray(result.retValues) ? result.retValues[0] : null;
+      if (row === null || row === undefined) throw new Error(t('copy.noRow'));
+      return { id: await this.#idOf(spec, found.table.id, row), name: plan.name };
+    });
+  }
+
+  // L'identifiant que l'explorateur lira pour la ligne `row` : le numéro de ligne quand la colonne `id` du manifeste est `id`, sinon la valeur de cette colonne, relue.
+  async #idOf(spec, tableId, row) {
+    const column = spec.colonnes.id;
+    if (column === 'id') return String(row);
+    const table = await this.#read(spec);
+    const at = table ? table.data.id.indexOf(row) : -1;
+    if (at < 0) throw new Error(this.#opts.t('copy.noRow'));
+    return String(cell(table.data, column, at));
   }
 
   // Remet le fichier dans la table de l'app. Rend { name, renamed }, ou null quand il n'est plus à la corbeille. Lève quand la copie est illisible ou que la table de l'app n'existe plus.

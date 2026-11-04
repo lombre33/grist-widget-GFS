@@ -1368,7 +1368,7 @@ bibliothèques natives de l'app, `pdfmake` et ses polices compris, viennent de c
 - **Le contrat de l'app n'a pas bougé** entre `3064a29` et `6a22dee` (mesuré sur son code servi, avant et après) : mêmes verbes d'actions de Grist, mêmes tables internes, mêmes appels `grist.*`, mêmes adresses, même accès au
   stockage, même réseau ; deux `import(` de plus, les modules d'ambiance du kit lus par leur nom dans la carte d'importation, depuis le dossier `kit/` de l'app. **Seul le poids d'`edition` change** : 102 512 octets, soit 103 Ko au lieu de 102
   (`live.css`) ; `graphique` 183, `diapositives` 471 et `lecture-pdf` 17 n'ont pas bougé. **La publication de GFS prend les sous-modules en entier** (le journal de `pages build and deployment` entre dans `prototype/apps/automation/kit` et
-  `prototype/apps/form/kit`) : le `kit/` de l'app, sous-module de son dépôt, est servi avec la copie de repli.
+  `prototype/apps/form/kit`) : le `kit/` de l'app, sous-module de son dépôt, est servi avec la copie de repli (**vérifié sur la construction de `7269e64`, qui entre dans `prototype/apps/publipostage/kit`**).
 - **Rejoués sur `6a22dee`, sans échec** (français clair, une passe chacun) : `run-lire-publipostage` (33 vérifications), `run-ouvrir-publipostage` (28), `run-importer-pp` (33), `run-graphique` (20), `run-edition` (60),
   `run-diapositives` (60), `run-copie` (41) et `run-corbeille-apps` (40).
 - **Pas mesuré** : Firefox avec la vraie app dans un vrai Grist (la fenêtre du nom pris, elle, est mesurée sous Firefox par `test/interfaces-firefox.test.mjs`), l'instance de la DINUM, un PDF de plus de 12 Mo, un nom de fichier à

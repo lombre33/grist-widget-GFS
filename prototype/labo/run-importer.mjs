@@ -14,6 +14,7 @@
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { startLab } from './lab-setup.mjs';
 import { say, check, fileChooser, importMenu } from './lab-common.mjs';
+import { isGfsWarning } from './sondes-muettes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -39,7 +40,7 @@ const { page } = lab;
 const warnings = [];
 const errors = [];
 page.on('console', message => {
-  if (message.type() === 'warning' && message.text().startsWith('GFS')) warnings.push(message.text());
+  if (message.type() === 'warning' && isGfsWarning(message.text())) warnings.push(message.text());
   if (message.type() === 'error') errors.push(message.text());
 });
 page.on('pageerror', error => errors.push(error.message));

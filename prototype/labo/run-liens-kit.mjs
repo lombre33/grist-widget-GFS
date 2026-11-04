@@ -5,6 +5,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { startLab } from './lab-setup.mjs';
 import { say, check, serveKit } from './lab-common.mjs';
+import { isGfsWarning } from './sondes-muettes.mjs';
 
 const KIT = process.env.KIT_DIR || '/home/claude/grist-factory-kit';
 if (!existsSync(join(KIT, 'js/gfs-link.js'))) {
@@ -26,7 +27,7 @@ const lab = await startLab({ lang, colorScheme: scheme, probes: true, patches: [
 await lab.fitPanel(undefined, 700, 400);
 const { page } = lab;
 const warnings = [];
-page.on('console', m => { if (m.type() === 'warning' && m.text().startsWith('GFS')) warnings.push(m.text()); });
+page.on('console', m => { if (m.type() === 'warning' && isGfsWarning(m.text())) warnings.push(m.text()); });
 // Le kit, servi sous /kit/ à l'adresse de GFS (lab-common.mjs : même origine que la page de la sonde, l'en-tête CORS ouvert comme celui de GitHub Pages).
 await serveKit(page, KIT);
 

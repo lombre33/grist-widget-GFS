@@ -9,6 +9,7 @@
 //   6. un navigateur qui refuse de garder : `{ retenu: false }`, la valeur vaut pour la page (contexte compris), et rien n'est gardé au rechargement de GFS.
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';
+import { isGfsWarning } from './sondes-muettes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -18,7 +19,7 @@ const QUOTA = 1048576;
 const lab = await startLab({ lang, colorScheme: scheme, probes: true, newsSeen: false });
 const { page } = lab;
 const warnings = [];
-page.on('console', m => { if (m.type() === 'warning' && m.text().startsWith('GFS')) warnings.push(m.text()); });
+page.on('console', m => { if (m.type() === 'warning' && isGfsWarning(m.text())) warnings.push(m.text()); });
 await lab.fitPanel(undefined, 700, 400);
 let frame = await lab.gfsFrame(/access=full/);
 await lab.gfsReady(frame);

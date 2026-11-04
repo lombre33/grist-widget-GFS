@@ -4,6 +4,7 @@
 // l'explorateur : c'est le courtier qu'on mesure, pas une interface). LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';
+import { isGfsWarning } from './sondes-muettes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -21,7 +22,7 @@ const lab = await startLab({ lang, colorScheme: scheme, probes: true, patches: [
 await lab.fitPanel(undefined, 700, 400);
 const { page } = lab;
 const warnings = [];
-page.on('console', m => { if (m.type() === 'warning' && m.text().startsWith('GFS')) warnings.push(m.text()); });
+page.on('console', m => { if (m.type() === 'warning' && isGfsWarning(m.text())) warnings.push(m.text()); });
 
 // Les fichiers des deux sondes : une table du préfixe de chaque app, remplie par GFS (accès complet) ; GFS les relit en repartant. La sonde O a trois documents et une macro (que son app n'offre pas à choisir).
 const now = Math.floor(Date.now() / 1000);

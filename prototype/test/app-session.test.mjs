@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { AppSession } from '../js/session.js';
 import { CATALOGUE } from '../js/catalogue.js';
 import { form, catalogue } from './helpers.mjs';
+import { isGfsWarning, isSilentProbeWarning } from '../labo/sondes-muettes.mjs';
 
 const DELAY = 15000;
 const MSG_READY = { mtype: 5 };
@@ -22,7 +23,7 @@ function fakeFrame() {
   };
 }
 
-function setup(t, { live = true } = {}) {
+function setup(t, { live = true, probe = false } = {}) {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const warnings = [];
   t.mock.method(console, 'warn', (...args) => { warnings.push(args.join(' ')); });
@@ -32,7 +33,8 @@ function setup(t, { live = true } = {}) {
   const events = [];
   const route = { handler: null, setActive(win, handler) { this.handler = handler; }, clearActive() {} };
   const session = new AppSession({
-    entry: CATALOGUE.find(item => item.id === 'form'), manifest: form(), catalogue: catalogue(),
+    entry: probe ? { id: 'sonde-o', dossier: 'labo/sondes/o-ouvrir/', manifeste: 'labo/sondes/sonde-o.json' } : CATALOGUE.find(item => item.id === 'form'),
+    manifest: probe ? { ...form(), id: 'sonde-o' } : form(), catalogue: catalogue(),
     state: { grantedAccess: 'full', subscribe: () => () => {} }, port: {}, router: route, container: { append() {} },
     readonly: false, preferences: {}, base: 'https://exemple.github.io/grist-widget-GFS/prototype/index.html', live, lang: 'fr',
     onStatus: kind => events.push(kind), envelopeHandlers: () => ({}),
@@ -96,4 +98,24 @@ test('GFS dit dans la console où il a attendu, sans l\'adresse de recherche : l
   assert.equal(warnings.length, 2);
   assert.match(warnings[0], /^GFS : form : pas de « prête » en 15 s sur le site en ligne \(https:\/\/exemple\.github\.io\/FormPlus\/poc\/widget\.html\)$/);
   assert.match(warnings[1], /^GFS : form : pas de « prête » en 15 s sur la copie figée \(https:\/\/exemple\.github\.io\/grist-widget-GFS\/prototype\/apps\/form\/poc\/widget\.html\)$/);
+});
+
+// Les passes du labo comptent les avertissements de GFS (« aucun avertissement de GFS »). Une sonde qui se tait par construction (labo/sondes/) provoque celui-là sans que GFS y soit pour rien : il ne
+// compte pas (labo/sondes-muettes.mjs). Celui d'une vraie app, et tout autre avertissement, comptent toujours.
+test('l\'attente d\'une sonde muette du labo n\'est pas comptée par les passes du labo (l\'avertissement est celui que GFS écrit)', t => {
+  const { warnings } = setup(t, { probe: true });
+  waitBoth(t);
+  assert.equal(warnings.length, 1, 'une sonde n\'a pas de site en ligne : un seul délai');
+  assert.match(warnings[0], /^GFS : sonde-o : pas de « prête » en 15 s sur la copie figée \(/);
+  assert.equal(isSilentProbeWarning(warnings[0]), true);
+  assert.equal(isGfsWarning(warnings[0]), false);
+});
+
+test('l\'attente d\'une vraie app, et tout autre avertissement de GFS, sont toujours comptés par les passes du labo', t => {
+  const { warnings } = setup(t);
+  waitBoth(t);
+  assert.equal(warnings.length, 2);
+  for (const text of warnings) assert.equal(isGfsWarning(text), true, text);
+  assert.equal(isGfsWarning('GFS : sonde-o : contexte.lire refusé (GFS_REFUSE) : accès'), true, 'un autre avertissement d\'une sonde compte');
+  assert.equal(isGfsWarning('Failed to load resource'), false, 'ce qui ne vient pas de GFS ne compte pas');
 });

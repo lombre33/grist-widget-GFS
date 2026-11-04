@@ -12,6 +12,7 @@
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check } from './lab-common.mjs';
+import { isGfsWarning } from './sondes-muettes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -32,7 +33,7 @@ const wordsOther = WORDS[other];
 const lab = await startLab({ lang, colorScheme: scheme, probes: true });
 const { page } = lab;
 const warnings = [];
-page.on('console', m => { if (m.type() === 'warning' && m.text().startsWith('GFS')) warnings.push(m.text()); });
+page.on('console', m => { if (m.type() === 'warning' && isGfsWarning(m.text())) warnings.push(m.text()); });
 await lab.fitPanel(undefined, panelWidth, 400);
 say('semis :', await seedFiles(lab.frame));
 await lab.frame.evaluate(() => location.reload());

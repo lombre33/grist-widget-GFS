@@ -4,6 +4,7 @@
 // (le labo seul ajoute la sonde à la ligne provisoire `ACCEPTS_OPEN`, pour un fichier comme pour « Nouveau »). LAB_LANG=fr|en.
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';
+import { isGfsWarning } from './sondes-muettes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const NAME = lang === 'fr' ? 'Sonde O' : 'Probe O'; // le nom de la sonde dans la langue de GFS
@@ -16,7 +17,7 @@ const lab = await startLab({ lang, probes: true, patches: [ACCEPTS] });
 await lab.fitPanel(undefined, 700, 400);
 const { page } = lab;
 const warnings = [];
-page.on('console', m => { if (m.type() === 'warning' && m.text().startsWith('GFS')) warnings.push(m.text()); });
+page.on('console', m => { if (m.type() === 'warning' && isGfsWarning(m.text())) warnings.push(m.text()); });
 
 // Les fichiers de la sonde : une table du préfixe de l'app, remplie par GFS (accès complet) comme le fait le labo pour Publipostage+ ; GFS la relit en repartant.
 const now = Math.floor(Date.now() / 1000);

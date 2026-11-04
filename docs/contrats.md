@@ -2487,7 +2487,7 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
 
 9. [D] **Les liens publics** (11.9) : toute app traite une valeur de donnée comme du texte non fiable (elle l'échappe, ne la prend
    jamais pour du code), et ne déclenche rien d'elle-même sur les lignes d'une table qu'un lien public remplit. Publipostage+,
-   Automation+ et Grist-BI le disent dans leur état ; aucune consigne avant la réponse du porteur (11.7, point 9).
+   Automation+ et Grist-BI le disent dans leur état ; la réponse du porteur est tombée le 04/11 (11.7, point 9) : la consigne peut partir.
 
 ### 11.7 Ce qui n'est pas décidé
 
@@ -2521,18 +2521,30 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
 8. **Le jeu complet** (rangement, contenus, espaces, workflows) n'a pas été mesuré d'un seul bloc : les règles des espaces et du
    responsable l'ont été sur les contenus, les personnes nommées et les tables dérivées avant les espaces. Un contrôle d'ensemble
    fait partie de l'étape 7.
-9. [Q] **Que reçoit un lien public : la table du formulaire, ou une boîte aux lettres ?** Carte au porteur le 22/10. (a) *Boîte aux
-   lettres* : le lien ne dépose qu'un message dans une table de réception à **une seule colonne** (la réponse, en texte), qu'une
-   personne valide avant que les réponses rejoignent les vraies tables, l'app les y répartissant d'après la définition du
-   formulaire ; aucune de ses tables n'est ouverte, aucune colonne ne se lit, aucune colonne de gestion ne se forge, et la liste des
-   choix d'une Référence se copie dans la définition à la publication (11.9, point 4d). (b) *La table du formulaire*, une par
-   formulaire, colonnes de gestion écartées (11.9, point 4b) et accord à la publication : l'accord est codé (3.3, point 9) et
-   la consigne 013 est écrite pour Form+. (c) *Rien de plus que l'accord*. Défaut en attendant : (b).
+9. [T] **Que reçoit un lien public : la table du formulaire, cloisonnée.** **Tranché le 04/11** (le porteur, carte « Choisir où
+   arrivent les réponses d'un formulaire public », posée le 22/10) : (b) *la table du formulaire*, une par formulaire, colonnes de
+   gestion écartées (11.9, point 4b) et accord à la publication (3.3, point 9, codé), que le panneau de GFS montre en entier, lien
+   par lien (11.9, point 8). La consigne 013 la demande à Form+. (a) *La boîte aux lettres* (une table à **une seule colonne**, qu'une
+   personne valide avant que l'app répartisse les réponses ; aucune table ouverte, aucune colonne lue ni forgée) n'est pas retenue
+   pour l'instant : Form+ ne répartit rien après coup, il écrit chaque table directement à l'envoi (lu à `cc21a27`, `respond.js`), ce
+   serait un ajout. (c) *Rien de plus que l'accord* : écartée.
 10. [Q] **Fermer ou renouveler un lien depuis GFS** (une écriture, étape 7) : dépublier (`publish` à faux), ou renouveler (retirer le
     partage et en créer un autre, donc une autre clé, ce qui rend inutile un lien qui a circulé : à vérifier). À décider avec les
     autres écritures de GFS dans la structure.
 11. [Q] **Dire aux apps quelles tables un lien remplit**, dans le contexte (5.2), pour que Publipostage+ et Automation+ ne
     déclenchent rien d'elles-mêmes sur ces lignes (11.9, point 5). À fixer avec le panneau des liens (11.9, point 8).
+12. [Q] **Qui voit un PDF que GFS garde, et une entrée de la corbeille ?** (trou vu le 04/11) `GFS_Fichiers` (6.6) et `GFS_Corbeille`
+    (6.7) sont deux tables de GFS que 11.2 ne classe pas : sous Encadré, aucune règle ne les couvre, donc tout éditeur y lit tous les
+    PDF (les exports d'une app compris, faits avec ce que la personne avait le droit de lire) et l'instantané complet de tout fichier
+    d'app mis à la corbeille, qui est la ligne entière de l'app (`Instantane`, 6.7) : un modèle réservé (`reserve`, 11.2) qu'on
+    supprime devient lisible de tous, ce que son étiquette interdisait. Le pied de GFS ne doit pas dire « Protégé » tant que ce trou
+    est ouvert (11.4, point 7). Défaut proposé, à confirmer par une carte à l'étape qui pose les règles : (a) classer `GFS_Fichiers`
+    en `reserve` (colonnes d'étiquette **additives**, 6.1 : `Visibilite`, `Espace`, `Personnes`, avec `Auteur`, déjà là) : un nouveau
+    fichier n'est lu que de son auteur, du responsable de son espace et des propriétaires, et les fichiers d'avant gardent `tous` (comme
+    11.2, point 3) ; (b) la corbeille recopie l'étiquette de la ligne qu'elle reçoit dans des colonnes à elle (une règle ne lit pas du
+    JSON), et, quand la table d'origine n'a pas d'étiquette, n'est lue que de qui l'a supprimée et des propriétaires ; (c) « Restaurer »,
+    « Supprimer pour de bon » et « Vider la corbeille » ne touchent que ce que la personne peut lire (6.7, point 4 : « celles qu'elle a
+    sous les yeux »). Rien n'est écrit avant la carte, et rien ne fuit aujourd'hui de plus qu'au niveau Ouvert : aucune règle n'est posée.
 
 ### 11.8 À mesurer sur le Grist du porteur
 
@@ -2558,7 +2570,8 @@ compte. Le porteur, le 22/10 : un formulaire est « une porte d'entrée pour ven
 fenêtre, les refus sans demander, l'échec fermé) ; la consigne 013 est faite (Form+ à `fd5384a`) et, depuis le 03/11, un lien ne lit que
 les petites tables que le manifeste de l'app déclare (point 4c) ; cette sous-section en donne le cadre et dit ce qui reste. Un formulaire qu'on remplit dans le document, connecté, n'est pas un lien public : il passe par les règles des
 personnes (11.4). **Pas encore codé** : le propriétaire seul (point 7), les classes protégées de 11.2 (point 4c), le panneau de
-toutes les portes (point 8), la boîte aux lettres (11.7, point 9). **Pas mesuré** : ce que Grist ouvre vraiment à qui a le lien (le
+toutes les portes (point 8). **Tranché le 04/11** : un lien reçoit la table du formulaire, cloisonnée, et non une boîte aux lettres
+(11.7, point 9 ; points 4a et 4b ci-dessous). **Pas mesuré** : ce que Grist ouvre vraiment à qui a le lien (le
 labo n'a pas de partages, 10.11).
 
 1. [T] **Un lien ne passe ni par le courtier ni par les règles de GFS.** Le visiteur parle à Grist, dans une session de partage
@@ -2576,13 +2589,14 @@ labo n'a pas de partages, 10.11).
    de nombre, de taille ni de débit propre à un lien n'est connue (mesure 5). **Toute ligne venue d'un lien est une entrée non
    fiable**, même dans une colonne que l'app croit remplir elle-même.
 4. **Segmenter : une porte, sa table de réception.**
-   a. [D] Un formulaire publié a **son partage** (sa page) et n'ouvre que **les tables qu'il remplit**, dites une à une dans
+   a. [T] Un formulaire publié a **son partage** (sa page) et n'ouvre que **les tables qu'il remplit**, dites une à une dans
       l'accord (point 6) : jamais deux formulaires sur le même partage, jamais un lien qui écrit dans la table d'un autre formulaire.
-   b. [D] La table qu'un lien remplit est une **table de réception** : elle reçoit, et ce qu'on en tire (valider, publipostage,
+   b. [T] La table qu'un lien remplit est une **table de réception** : elle reçoit, et ce qu'on en tire (valider, publipostage,
       workflow) se fait après le geste d'une personne (point 5). Ce que le formulaire ne montre pas (statut, note, état de
       traitement) n'y est pas une colonne de donnée : c'est une colonne-formule pure, ou une colonne d'une autre table liée à la
       ligne reçue. Tant que ce n'est pas le cas, l'accord liste ces colonnes (« le lien pourrait les remplir ») et le propriétaire
-      accepte ou annule.
+      accepte ou annule. **Tranché le 04/11** (le porteur) : une table de réception par formulaire, jamais une boîte aux lettres
+      (11.7, point 9).
    c. [T] **Une table protégée n'est jamais ouverte à un lien**, parce que ses règles seraient muettes pour la création : une
       table de GFS (`GFS_Espaces` : un visiteur y écrirait la liste des responsables d'un espace), une table de classe `personnel`,
       `reserve`, `derivee` ou `proprietaires` (11.2), une table qui porte les colonnes de l'étiquette (11.2, point 4), une table de

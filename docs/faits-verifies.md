@@ -606,6 +606,15 @@ Complète le § 3 (« une session de partage ne lit ni n'écrit aucune table de 
   éditeur a ce droit. **Non lu** : si le serveur d'accueil rend alors le lien utilisable (mesure 4).
 - Lu : le formulaire natif de Grist écarte les colonnes-formules (« Formulas are currently unsupported », `DocApi.ts` 1452–1458),
   mais le partage ne le fait pas pour la création : toutes les colonnes de la table l'acceptent.
+- Lu dans Form+ (`poc/js/respond.js`, `grist-meta.js`, `config-editor.js`, à `cc21a27` le 23/10 ; `ensureTableGate` relue à `6059fb9`
+  le 04/11) : **la page des répondants écrit chaque table directement, table par table**, sans table d'arrivée ni déplacement après
+  coup. `onSubmit` (`respond.js` 826–1030) range les réponses par table, envoie les pièces jointes, écrit la table principale (celle du
+  formulaire natif) par l'API REST du partage, puis chaque autre table par `grist.docApi.applyUserActions([['AddRecord', …]])` ; aucune
+  atomicité (une table qui échoue laisse les autres écrites : l'avertissement « envoi partiel », `failedTables`), et si la principale
+  échoue rien d'autre n'est écrit. Chaque table secondaire est ouverte au lien par `ensureTableGate` (`grist-meta.js` 129 ; toujours
+  appelée à `6059fb9`) : une section de formulaire **vide** publiée sur la page, donc la création dans toutes ses colonnes (ci-dessus).
+  La page de secours hors Grist (`public-form.js`) n'écrit que la table principale. C'est pourquoi la boîte aux lettres (contrats 11.7,
+  point 9) serait un ajout de Form+, et pourquoi la consigne 013 limite les tables secondaires à des tables de réception à elles.
 - Mesuré (22/10, `mesure-formulaire-public.mjs`, grist-static 0.1.6). **Le labo ne simule pas un visiteur de lien** (ni `ShareRef`,
   ni anonyme) : il mesure ce qui n'en dépend pas. (A) *Le moteur de données*, un éditeur sans règle : une valeur fournie pour une
   colonne de gestion que le formulaire ne montre pas est gardée ; pour une colonne à formule déclenchée (comme `Adresse`, 10.8)

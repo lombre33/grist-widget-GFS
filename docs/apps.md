@@ -9,7 +9,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 |---|---|---|---|---|---|
 | Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `3064a29` | 04/11/2026 | GPL 3.0 |
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `0de37ac` | 04/11/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
-| Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `bb8a8dd` | 04/11/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
+| Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `6019846` | 04/11/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `521a8ac` | 03/11/2026 | GPL 3.0 |
 | Tuesday (nom de travail ; « Thusday » dans les anciens documents) | `lombre33/grist-wisget-tuesday` | `consignes/tuesday/` | `09ed14c` | 03/11/2026 | GPL 3.0 |
 | Calendar+ (id GFS `calendrier`, pas encore au catalogue ; le même projet que Tuesday, un fil de plus) | `lombre33/grist-widget-calendar-plus` | aucun dossier : les 006, 007, 009, 010 et 012 de `consignes/tuesday/` lui parlent | `531e0cd` | 04/11/2026 | GPL 3.0 (`LICENSE` au socle) |
@@ -701,6 +701,12 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   geste à partir des lignes d'une table, sans coder. Form+ n'en reçoit pas (sa 013 est faite et dit déjà qu'une ligne reçue est un texte non fiable). Tuesday et Calendar+ ne sont pas nommés au point 9 : à relire à l'entrée de Tuesday au catalogue ;
   le calendrier du kit n'insère aucun HTML (aucun `innerHTML` dans `kit/js`, relu le 04/11). Une carte au porteur sera posée à la première réponse qui dit qu'un workflow se lance sur une ligne reçue (Automation+). **Form+ 018** (posée par le fil qui répare
   la création de formulaire) : la politique de sa page bloque l'`eval` du script de Grist, d'où « Form+ ne répond pas » dans le Grist du porteur ; elle passe en premier.
+- Automation+ : la référence de GFS avance à `6019846` (04/11, commit à part). Quatre commits depuis `bb8a8dd`, tous relus : `7350a5c` (0.13.0, l'app seule dans Grist : lit `access` et `readonly` dans son adresse ; `sessionStorage`, clé
+  `ab_executor_<table>`), `b691014` (sa page), `e27e89c` (0.14.0, la prise en main de six écrans : CSP `img-src 'self' data:`, `localStorage`, clé `ab_tuto`) et `6019846` (sa page). Rien qui change le contrat : ni table, ni colonne, ni clé de réglages, ni bibliothèque,
+  ni action, ni appel réseau de plus. Rejoué dans un vrai Grist (`faits-verifies.md`, section 23) : `run-automation` et `run-ambiance-apps` (quatre passes, 32 mesures chacune), aucune en échec. Form+ : sommet `2ac5769`, sept commits après sa page `6c79b62`
+  (de `7e6db89` à `2ac5769`, le 04/11 de 10:19 à 10:23), dont `7e6db89` qui change l'adresse à diffuser d'un formulaire publié (la page statique de Form+ avec `#form=`, au lieu de la page Grist `/s/<clé>/p/<n>`) : sa page ne les décrit pas encore, GFS n'a lu que
+  `poc/js/links.js` et en a prévenu le fil des permissions. Sa référence reste à `0de37ac` : elle avancera avec la 018 (au sommet, sa politique de sécurité n'a pas encore `'unsafe-eval'`). Publipostage+ (sommet `490fc62`, page `47e56ce`) et Tuesday (sommet `24d25be`, page `0b8bca7`)
+  ont aussi avancé depuis leur page : pas lus au-delà.
 - « Nouveau > Importer » (22/10, le porteur : « les imports possibles par Publipostage+ (Excel, docx, pptx…) il faudrait qu'ils soient aussi
   disponibles dans le menu Nouveau, sous-menu Import ? », puis sa réponse « Sous-menu Importer ») : GFS livre le sous-menu. Le
   manifeste déclare les formats (`actions.importer`, contrats 2.7, point 4), GFS ouvre le sélecteur de fichier et rend le `File` à l'app

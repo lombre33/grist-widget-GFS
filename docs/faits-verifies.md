@@ -1119,6 +1119,11 @@ ni clé de réglages, ni bibliothèque, ni permission, ni adresse de la politiqu
   d'un formulaire (ce que ne fait pas un Grist en `https`), et l'essai ne retient pas ces messages-là.
 - **Deux pièges de mesure** : le contraste d'un texte mesuré pendant une transition de l'app (Form+ en a sur ses tuiles et ses boutons : `transition: background .12s`) donne de faux échecs (un `.start-tile-desc` à 2,62:1) : l'essai
   attend que `document.getAnimations()` soit vide ; et une capture prise la fenêtre « Thème » ouverte cache une part de l'app derrière elle : elle se prend fenêtre et explorateur refermés.
+- **Rejoué le 04/11 avec Automation+ à `6019846`** (son code à `e27e89c`, 0.14.0 ; `kit/` toujours à `db14544`). Quatre commits depuis `bb8a8dd`, relus (49 fichiers) : `7350a5c` (0.13.0 : l'app lit `access` et `readonly` dans l'adresse de son cadre, contrats 1.3, point 3 ;
+  `sessionStorage`, clé `ab_executor_<table>`), `e27e89c` (0.14.0 : une prise en main de six écrans, avec des captures `img/tuto/*.webp` du même site) et leurs deux pages. La politique de sécurité ne change que par `img-src 'self' data:` à la place de
+  `data:` ; le stockage du navigateur gagne `localStorage` (`ab_tuto`) et `sessionStorage`, dans des `try/catch` ; aucune table, colonne, clé de réglages, bibliothèque, action ni adresse de plus, aucun appel réseau ajouté. `run-automation` : trois vérifications ;
+  `run-ambiance-apps` : quatre passes (français et anglais, clair et sombre), 32 mesures chacune, **aucune en échec**, le plus petit écart déclencheur/action toujours 0,145 (1,23:1). La prise en main n'est ouverte dans aucun des quatre écrans mesurés : dans le sous-cadre
+  isolé le stockage est refusé (`SecurityError`), et l'app ne l'ouvre alors jamais d'elle-même (son E2E-55).
 - **Pas mesuré** : Firefox, l'instance de la DINUM, l'écran du répondant et l'aperçu de Form+ (`#fill`, `.pv-*`, que l'app garde à l'aspect dessiné par la personne : consigne 016), les états du test à blanc des nœuds d'Automation+
   (`trace-*`, dont le rouge d'échec et l'ambre d'avertissement sont à l'app), Grist-BI et Tuesday (pas encore au catalogue de GFS : ni manifeste ni sous-module).
 

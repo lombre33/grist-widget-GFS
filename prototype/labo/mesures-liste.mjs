@@ -40,7 +40,8 @@ export function measureTiles() {
 
 // Les colonnes de la liste et le pied de fenêtre (le poids, demande du porteur du 04/11) : où est chaque en-tête (ils ne doivent pas se recouvrir), ce que chaque cellule de type, de poids et de
 // date coupe de son texte (rien : une cellule dont le texte dépasse est coupée par « … » ou déborde), l'écart du poids au bord droit de sa colonne (collé), et le total du pied de fenêtre (entier,
-// entre la barre d'information et les boutons, sans les recouvrir). Null quand la vue n'est pas la liste.
+// entre la barre d'information et les boutons, sans les recouvrir) avec la case « + pièces jointes » (demande du 04/11, lot 2) : entière, sans recouvrir ni le total ni les boutons, sa case assez grande pour la souris.
+// Null quand la vue n'est pas la liste.
 export function measureColumns() {
   const head = document.querySelector('.ls-head');
   if (!head) return null;
@@ -57,11 +58,29 @@ export function measureColumns() {
   const total = foot && foot.querySelector('.ex-total');
   const info = foot && foot.querySelector('.ex-info');
   const open = foot && foot.querySelector('.ex-foot > button');
+  const close = foot && foot.querySelector('.ex-foot > button:last-child');
+  const pj = foot && foot.querySelector('.ex-pj');
+  const pjInput = pj && pj.querySelector('input');
+  const number = total && total.querySelector('.tot-n');
+  // Les éléments du pied qui se recouvrent (deux rectangles qui se croisent : le total et la case s'empilent sous 520 px sans se recouvrir).
+  const crossings = named => {
+    const found = [];
+    const items = Object.entries(named).filter(([, element]) => element);
+    items.forEach(([nameA, a], i) => items.slice(i + 1).forEach(([nameB, b]) => {
+      const [ra, rb] = [box(a), box(b)];
+      if (ra.left < rb.right - 0.5 && rb.left < ra.right - 0.5 && ra.top < rb.bottom - 0.5 && rb.top < ra.bottom - 0.5) found.push(`${nameA}/${nameB}`);
+    }));
+    return found;
+  };
   return {
     headers, cut, gaps: { max: gaps.length ? Math.max(...gaps) : null, min: gaps.length ? Math.min(...gaps) : null },
     foot: total ? {
-      text: total.textContent, shown: shown(total), cut: tenth(total.scrollWidth - total.clientWidth), toInfo: tenth(box(total).left - box(info).right), toButton: tenth(box(open).left - box(total).right),
+      text: total.textContent, number: number ? number.textContent : '', shown: shown(total), cut: tenth(total.scrollWidth - total.clientWidth), crossings: crossings({ info, total, pj, open, close }),
       inside: box(total).left >= box(foot).left - 0.5 && box(total).right <= box(foot).right + 0.5, info: tenth(box(info).width), title: total.title,
+      pj: pj ? {
+        shown: shown(pj), text: pj.textContent.trim(), cut: tenth(pj.scrollWidth - pj.clientWidth),
+        inside: box(pj).left >= box(foot).left - 0.5 && box(pj).right <= box(foot).right + 0.5, input: [Math.round(box(pjInput).width), Math.round(box(pjInput).height)], title: pj.title,
+      } : null,
     } : null,
   };
 }
@@ -79,14 +98,21 @@ function bodyFaults(columns, narrow, note) {
   if (columns.gaps.max !== null && columns.gaps.max > 1) note('poids décollé du bord', `un poids est à ${columns.gaps.max} px du bord droit de sa colonne`);
 }
 
-// Le total du pied de fenêtre : affiché, égal à `total` (le texte attendu, quand l'essai le connaît), entier, dans le pied, entre la barre d'information et les boutons, avec son infobulle.
+// Le total du pied de fenêtre : affiché, égal à `total` (le texte attendu, quand l'essai le connaît), entier, dans le pied, entre la barre d'information et les boutons, avec son infobulle ; et la case
+// « + pièces jointes » : là, entière (« + pièces jointes » se lit en entier), dans le pied, entre le total et les boutons, avec une case d'au moins 13 px et une infobulle.
 function footFaults(foot, total, note) {
   if (!foot || !foot.shown || !foot.text.trim()) { note('total du pied', 'le total n\'est pas affiché'); return; }
-  if (total !== null && !foot.text.trim().endsWith(total)) note('total du pied', `le total est « ${foot.text.trim()} » au lieu de « … ${total} »`);
+  if (total !== null && foot.number !== total) note('total du pied', `le total est « ${foot.number} » au lieu de « ${total} »`);
   if (foot.cut > 1) note('total du pied', `le total « ${foot.text} » est coupé de ${foot.cut} px`);
   if (!foot.inside) note('total du pied', `le total « ${foot.text} » sort du pied de fenêtre`);
-  if (foot.toInfo < -0.5 || foot.toButton < -0.5) note('total du pied', `le total recouvre la barre d'information (${foot.toInfo} px) ou les boutons (${foot.toButton} px)`);
+  if (foot.crossings.length) note('pied de fenêtre', `ces éléments du pied se recouvrent : ${foot.crossings.join(', ')}`);
   if (!foot.title) note('total du pied', 'le total n\'a pas d\'infobulle');
+  const { pj } = foot;
+  if (!pj || !pj.shown || !pj.text) { note('case « + pièces jointes »', 'la case n\'est pas affichée'); return; }
+  if (pj.cut > 1) note('case « + pièces jointes »', `« ${pj.text} » est coupé de ${pj.cut} px`);
+  if (!pj.inside) note('case « + pièces jointes »', `« ${pj.text} » sort du pied de fenêtre`);
+  if (pj.input[0] < 13 || pj.input[1] < 13) note('case « + pièces jointes »', `la case à cocher mesure ${pj.input.join(' × ')} px (au moins 13 × 13)`);
+  if (!pj.title) note('case « + pièces jointes »', 'la case n\'a pas d\'infobulle');
 }
 
 // Ce que `measureColumns` dit d'anormal (côté Node : un écart est { kind, text }), colonnes et pied de fenêtre. `tag` : où l'on mesure (largeur, langue, mode).

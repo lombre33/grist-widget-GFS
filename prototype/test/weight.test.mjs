@@ -1,8 +1,9 @@
 // Le poids dans l'explorateur (js/weight.js ; demande du porteur du 04/11) : les octets d'une cellule et d'une ligne comme Grist les range, la pièce jointe qu'un fichier EST, les sommes (une
-// pièce citée deux fois n'est comptée qu'une fois) et l'écriture du poids, en français et en anglais. Ce que Grist range vraiment se mesure dans le labo (labo/run-poids.mjs).
+// pièce citée deux fois n'est comptée qu'une fois), les pièces jointes du document que la case « + pièces jointes » ajoute et l'écriture du poids, en français et en anglais. Ce que Grist range vraiment
+// se mesure dans le labo (labo/run-poids.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { utf8Length, cellBytes, rowWeigher, attachmentIds, piecesOf, newSum, addWeight, sumWeights, formatBytes } from '../js/weight.js';
+import { utf8Length, cellBytes, rowWeigher, attachmentIds, piecesOf, newSum, addWeight, sumWeights, pieceKeys, otherAttachments, formatBytes } from '../js/weight.js';
 import { createI18n } from '../js/i18n.js';
 
 test('utf8Length : les octets d\'un texte en UTF-8, comme Buffer.byteLength, sans copier le texte', () => {
@@ -91,4 +92,44 @@ test('formatBytes : une valeur à la frontière passe à l\'unité du dessus (99
   assert.equal(formatBytes(999.5, 'fr-FR', fr), '1 Ko');
   assert.equal(formatBytes(999 * 1024, 'fr-FR', fr), '999 Ko');
   assert.equal(formatBytes(999.5 * 1024, 'fr-FR', fr), '1,0 Mo');
+});
+
+// La table `_grist_Attachments` du document d'essai de l'étude, telle que Grist 1.7.19 l'a rendue (mesuré le 04/11, docs/faits-verifies.md section 39) : cinq PDF, la copie du deuxième (même `fileIdent`),
+// deux PDF supprimés (`timeDeleted`), un PDF de plus et vingt photos. Le compte de Grist sur ce document (`SUM(MAX(fileSize)) … WHERE timeDeleted IS NULL GROUP BY fileIdent`) : 27 499 315 octets.
+const STUDY = [
+  [1, 'a.pdf', 20480, null], [2, 'b.pdf', 153600, null], [3, 'c.pdf', 1258291, null], [4, 'd.pdf', 5242880, null], [5, 'e.pdf', 12582912, null], [6, 'b.pdf', 153600, null],
+  [7, 'old.pdf', 3145728, 1793784337.01], [8, 'new.pdf', 2097152, null], [9, 'orphan.pdf', 4194304, 1793784337.01],
+  ...Array.from({ length: 20 }, (_, i) => [10 + i, `photo${i}.jpg`, 307200, null]),
+];
+const attachmentsTable = rows => ({ id: rows.map(row => row[0]), fileIdent: rows.map(row => row[1]), fileSize: rows.map(row => row[2]), timeDeleted: rows.map(row => row[3]) });
+const set = (...ids) => new Set(ids.map(String));
+
+test('pieceKeys : les numéros des pièces que citent des fichiers, vivants ou à la corbeille ; un fichier sans pièce (ou sans `pieces`) n\'en cite aucune', () => {
+  const live = [{ pieces: [['3', 100]] }, { pieces: [] }, { pieces: [['4', 5]] }, {}];
+  const bin = [{ pieces: [['3', 100]] }, { pieces: [['9', 1]] }];
+  assert.deepEqual([...pieceKeys(live, bin)].sort(), ['3', '4', '9']);
+  assert.equal(pieceKeys([]).size, 0);
+});
+
+test('otherAttachments : le compte de Grist sur le document de l\'étude (27 499 315 octets) : une pièce par `fileIdent`, sans les supprimées', () => {
+  assert.deepEqual(otherAttachments(attachmentsTable(STUDY), set()), { bytes: 27499315, count: 26 });
+});
+
+test('otherAttachments : les pièces que citent les fichiers de l\'explorateur ne sont pas recomptées : il reste les photos ; citer la copie d\'un PDF retire aussi l\'original (même `fileIdent`)', () => {
+  const table = attachmentsTable(STUDY);
+  assert.deepEqual(otherAttachments(table, set(1, 2, 3, 4, 5, 6, 8)), { bytes: 20 * 307200, count: 20 });
+  assert.deepEqual(otherAttachments(table, set(6)), { bytes: 27499315 - 153600, count: 25 });
+  assert.deepEqual(otherAttachments(table, set(7, 9)), { bytes: 27499315, count: 26 }, 'une pièce supprimée que citerait un fichier ne change rien : elle n\'est pas comptée');
+});
+
+test('otherAttachments : la plus grande taille d\'un même `fileIdent` ; une taille absente, négative ou illisible compte zéro mais la pièce compte ; sans `fileIdent`, chaque ligne est une pièce', () => {
+  const table = { id: [1, 2, 3, 4], fileIdent: ['x', 'x', 'y', 'z'], fileSize: [10, 40, 'pas un nombre', -5], timeDeleted: [null, null, null, null] };
+  assert.deepEqual(otherAttachments(table, set()), { bytes: 40, count: 3 });
+  assert.deepEqual(otherAttachments({ id: [1, 2, 3], fileSize: [5, 6, 7] }, set()), { bytes: 18, count: 3 }, 'sans `fileIdent` ni `timeDeleted` : toutes vivantes, une par ligne');
+  assert.deepEqual(otherAttachments({ id: [1, 2], fileIdent: ['', 'q'], fileSize: [5, 6], timeDeleted: [undefined, null] }, set(1)), { bytes: 6, count: 1 }, 'un `fileIdent` vide se lit par le numéro de la ligne, qu\'un fichier peut citer');
+});
+
+test('otherAttachments : une table absente, vide ou qui n\'est pas celle de Grist n\'ajoute rien', () => {
+  const nothing = { bytes: 0, count: 0 };
+  for (const table of [null, undefined, {}, { id: [] }, { id: 'pas une colonne' }, 'texte', 42]) assert.deepEqual(otherAttachments(table, set()), nothing, JSON.stringify(table));
 });

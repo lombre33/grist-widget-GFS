@@ -76,6 +76,35 @@ export function addWeight(sum, file) {
 
 export const sumWeights = files => files.reduce(addWeight, newSum()).bytes;
 
+// Les numéros des pièces jointes que citent des fichiers (leurs `pieces`) : ce que la case « + pièces jointes » ne recompte pas, leur poids étant déjà dans la liste.
+export function pieceKeys(...lists) {
+  const keys = new Set();
+  for (const list of lists) for (const file of list) for (const [key] of file.pieces || []) keys.add(key);
+  return keys;
+}
+
+// Les pièces jointes du document qui ne sont pas des fichiers de l'explorateur : ce que la case « + pièces jointes » ajoute au total (faits vérifiés, section 39). `table` est `_grist_Attachments` telle que
+// `fetchTable` la rend ({ id, fileIdent, fileSize, timeDeleted, … }), `own` les numéros que citent les fichiers de l'explorateur (`pieceKeys`). Grist compte une pièce par `fileIdent` (un fichier envoyé
+// deux fois n'est stocké qu'une fois, que ses lignes soient dans la même colonne ou dans deux), sans celles dont `timeDeleted` n'est pas vide, à la plus grande des tailles de ses lignes (ActiveDoc :
+// `MAX(meta.fileSize) … WHERE meta.timeDeleted IS NULL GROUP BY meta.fileIdent`). Un `fileIdent` que cite un fichier de l'explorateur n'est pas recompté, même quand une autre ligne le cite aussi. Rend { bytes, count }.
+export function otherAttachments(table, own) {
+  const column = name => (table && Array.isArray(table[name]) ? table[name] : []);
+  const [ids, idents, sizes, deleted] = ['id', 'fileIdent', 'fileSize', 'timeDeleted'].map(column);
+  const mine = new Set();
+  const live = new Map();
+  ids.forEach((id, i) => {
+    const ident = typeof idents[i] === 'string' && idents[i] ? idents[i] : `#${id}`;
+    if (own.has(String(id))) mine.add(ident);
+    if (deleted[i] !== null && deleted[i] !== undefined) return;
+    const size = Number(sizes[i]);
+    live.set(ident, Math.max(live.get(ident) || 0, Number.isFinite(size) && size > 0 ? size : 0));
+  });
+  let bytes = 0;
+  let count = 0;
+  for (const [ident, size] of live) if (!mine.has(ident)) { bytes += size; count += 1; }
+  return { bytes, count };
+}
+
 const formats = new Map();
 const numberFormat = (locale, digits) => {
   const key = `${locale}|${digits}`;

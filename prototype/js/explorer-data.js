@@ -19,6 +19,12 @@ async function readTable(port, tables, tableId) {
   try { return { data: await port.doc.fetchTable(found) }; } catch (error) { return { error }; }
 }
 
+// La case « + pièces jointes » de l'explorateur (faits vérifiés, section 39) : la table des pièces jointes de Grist, telle que l'API des widgets la rend avec l'accès complet que GFS a déjà.
+// Lue seulement quand la personne coche la case. Rend { data } ou { error } : une lecture qui échoue n'arrête rien, la case se grise avec la raison.
+export async function loadAttachments(port) {
+  try { return { data: await port.doc.fetchTable('_grist_Attachments') }; } catch (error) { return { error }; }
+}
+
 // `apps` : les apps installées dont le manifeste est valide, { manifest }. `identity` : l'adresse de la personne, '' tant que GFS ne la connaît pas.
 // Rend { files, trash, folders, problems: [{ app, reason }], stats: { ms, tables, rows } } : `files` les fichiers vivants, `trash` ceux qui sont à la corbeille (js/explorer-model.js, `trashed`) : ils
 // ne sont jamais mêlés, pour que rien de ce qui lit `files` (choisir, ouvrir, lire) ne voie un fichier supprimé ; `folders` les dossiers que la personne garde sans fichier (6.4, point 11). Un rangement

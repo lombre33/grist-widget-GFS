@@ -9,6 +9,9 @@
 //   3. Un PDF dupliqué cite la même pièce : sa ligne seule s'ajoute au total, jamais la pièce une deuxième fois.
 //   4. Le tri par poids (le plus lourd d'abord, puis le plus léger), dossiers compris.
 //   5. La corbeille : l'entrée d'un modèle lourd dit le poids de sa ligne de `GFS_Corbeille` (le modèle entier y est copié), le total de la vue aussi.
+//   6. La case « + pièces jointes » (lot 2 ; faits vérifiés, section 39) : de vraies pièces jointes envoyées à Grist (un doublon, le contenu d'un PDF de GFS, une pièce que plus aucune cellule ne cite, que Grist
+//      retire de son compte), le total de la case face au calcul exact de SQL (la formule de Grist), les gestes à la vraie souris et au vrai clavier (Tab, Espace, anneau de focus), le pied de fenêtre à 700 × 400,
+//      une table de 3 000 pièces de plus.
 import { createServer } from 'node:http';
 import { serve } from './lab-server.mjs';
 import { chromium, say, check } from './lab-common.mjs';
@@ -16,7 +19,7 @@ import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { createI18n } from '../js/i18n.js';
 import { attachmentIds, cellBytes, formatBytes, sumWeights } from '../js/weight.js';
 import { seedFiles } from './seed.mjs';
-import { PAGE_PORT, importPdf, importSamples, openGfs, openRowMenu, pdfFile, rowOf, shot, waitFor, waitForNames, goTo } from './lab-pdf.mjs';
+import { PAGE_PORT, contrastProblems, importPdf, importSamples, openGfs, openRowMenu, pdfFile, rowOf, shot, waitFor, waitForNames, goTo } from './lab-pdf.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -184,6 +187,215 @@ async function playTrash(run) {
   check('revenu à la racine, le modèle dit le poids de sa ligne restaurée', again && again.weight === show(rowBytes(restored)), { vu: again, attendu: show(rowBytes(restored)) });
 }
 
+// ----- 6. La case « + pièces jointes » : de vraies pièces jointes, le calcul exact de SQL, la souris et le clavier.
+const PHOTOS = 'Photos';
+// Des octets sans répétition (deux contenus de graines différentes ne partagent aucune empreinte), de la taille demandée.
+const noise = (size, seed) => {
+  const buffer = Buffer.alloc(size);
+  let x = seed >>> 0;
+  for (let i = 0; i < size; i++) { x = (Math.imul(x, 1103515245) + 12345) >>> 0; buffer[i] = (x >>> 16) & 255; }
+  return buffer;
+};
+// Les pièces d'un envoi, comme un navigateur les envoie à Grist (POST multipart) : rend leurs numéros, dans l'ordre.
+const upload = (run, files) => run.page.evaluate(async ([docId, list]) => {
+  const form = new FormData();
+  for (const { name, type, base64 } of list) form.append('upload', new Blob([Uint8Array.from(atob(base64), character => character.charCodeAt(0))], { type }), name);
+  const response = await fetch(`/api/docs/${docId}/attachments`, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: form });
+  return response.json();
+}, [run.docId, files.map(({ name, type, buffer }) => ({ name, type, base64: buffer.toString('base64') }))]);
+const apply = (run, actions) => run.page.evaluate(async ([docId, list]) => (await fetch(`/api/docs/${docId}/apply`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(list) })).json(), [run.docId, actions]);
+
+// Ce que Grist compte des pièces jointes que nul fichier de l'explorateur ne cite : SQL, la formule de Grist (`fileIdent` distincts, `timeDeleted` vide, la plus grande taille), sans les `fileIdent` des
+// pièces que citent les fichiers de GFS, vivants ou à la corbeille (leurs numéros viennent de `GFS_Fichiers`, toutes lignes).
+async function exactOthers(run) {
+  const own = (await run.rest.rows(FILES)).flatMap(row => attachmentIds(row.Contenu));
+  const [row] = await sql(run, `SELECT COUNT(*) AS n, COALESCE(SUM(len), 0) AS octets FROM (SELECT MAX(meta.fileSize) AS len FROM _grist_Attachments AS meta WHERE meta.timeDeleted IS NULL AND meta.fileIdent NOT IN (SELECT fileIdent FROM _grist_Attachments WHERE id IN (${own.length ? own.join(',') : '0'})) GROUP BY meta.fileIdent)`);
+  return { bytes: row.octets, count: row.n };
+}
+const listBytes = async run => total(await expectedFiles(run));
+const footNumber = frame => frame.locator('.ex-total .tot-n').textContent().then(text => text.trim());
+const footTip = frame => frame.locator('.ex-total').getAttribute('title');
+
+// Attend que le total du pied dise `text`, puis rend les millisecondes que cela a pris depuis `started`.
+async function waitForTotal(frame, text, started = Date.now(), timeout = 30000) {
+  await frame.waitForFunction(wanted => (document.querySelector('.ex-total .tot-n') || {}).textContent === wanted && document.querySelector('.ex-total').getAttribute('aria-busy') !== 'true', text, { timeout }).catch(() => {});
+  return Date.now() - started;
+}
+
+// Les pièces d'essai : une photo de 200 000 octets envoyée deux fois (le même contenu, deux noms : une pièce pour Grist), une de 350 000, une de 90 000, le contenu d'un PDF de GFS (même empreinte : la pièce
+// du PDF, jamais recomptée), et une de 120 000 qu'une cellule cite puis ne cite plus (Grist la retire de son compte au bout d'une minute environ).
+async function addPhotos(run) {
+  const { rapport } = run;
+  const pieces = await upload(run, [
+    { name: 'chantier-1.jpg', type: 'image/jpeg', buffer: noise(200000, 1) },
+    { name: 'chantier-1-copie.jpg', type: 'image/jpeg', buffer: noise(200000, 1) },
+    { name: 'chantier-2.jpg', type: 'image/jpeg', buffer: noise(350000, 2) },
+    { name: 'plan.jpg', type: 'image/jpeg', buffer: noise(90000, 3) },
+    { name: 'Rapport-reçu.pdf', type: 'application/pdf', buffer: rapport.file.buffer },
+    { name: 'brouillon.jpg', type: 'image/jpeg', buffer: noise(120000, 4) },
+  ]);
+  const [one, copy, two, plan, pdfCopy, draft] = pieces;
+  await apply(run, [
+    ['AddTable', PHOTOS, [{ id: 'Nom', type: 'Text' }, { id: 'Pieces', type: 'Attachments' }]],
+    ['AddRecord', PHOTOS, null, { Nom: 'Chantier', Pieces: ['L', one, copy, two] }],
+    ['AddRecord', PHOTOS, null, { Nom: 'Plan et rapport', Pieces: ['L', plan, pdfCopy] }],
+    ['AddRecord', PHOTOS, null, { Nom: 'Brouillon', Pieces: ['L', draft] }],
+  ]);
+  await apply(run, [['UpdateRecord', PHOTOS, 3, { Pieces: null }]]);
+  return { pieces, draft };
+}
+
+// Le départ : la liste de « Moi », les six pièces envoyées à Grist, la case décochée ; rend ce que les passes suivantes se partagent.
+async function attachmentsStart(run) {
+  const { frame } = run;
+  await goHome(frame);
+  await waitForWeights(frame, 8);
+  const box = frame.locator('.ex-pj input');
+  const base = await listBytes(run);
+  const { pieces, draft } = await addPhotos(run);
+  const ids = await sql(run, 'SELECT id, fileIdent, fileSize, timeDeleted FROM _grist_Attachments');
+  check('Grist range les six pièces : le contenu envoyé deux fois partage son empreinte, celui du PDF de GFS aussi', ids.length === 9 && new Set(ids.map(row => row.fileIdent)).size === 7 && ids.find(row => row.id === pieces[0]).fileIdent === ids.find(row => row.id === pieces[1]).fileIdent
+    && ids.find(row => row.id === pieces[4]).fileIdent === ids.find(row => row.fileSize === run.rapport.size && row.id !== pieces[4]).fileIdent, ids);
+  await frame.locator('input[type="search"]').fill('Rapport');
+  await frame.locator('input[type="search"]').fill('');
+  await waitForWeights(frame, 8);
+
+  // Avant de cocher : la case est là, décochée, et le total est celui de la liste.
+  check('la case « + pièces jointes » est dans le pied de fenêtre, décochée, et le total est celui de la liste', await box.count() === 1 && !(await box.isChecked()) && (await footNumber(frame)) === show(base), { vu: await footNumber(frame), attendu: show(base) });
+  const footBefore = await frame.locator('.ex-foot').boundingBox();
+  say(`  contraste des boutons du pied avant la case cochée (sonde) : ${JSON.stringify(await contrastProblems(frame, '.ex-foot button'))}`);
+  return { box, base, draft, footBefore };
+}
+
+// À la souris : cocher, le total prend les pièces que nul fichier de l'explorateur ne cite, comme SQL les compte ; décocher par le texte de la case, sans rien écrire dans le document. Rend la somme de SQL.
+async function attachmentsMouse(run, { box, base, footBefore }) {
+  const { frame } = run;
+  // 1. La souris : cocher, le total prend les pièces que nul fichier de l'explorateur ne cite, comme SQL les compte.
+  const first = await exactOthers(run);
+  say(`  SQL (formule de Grist) : ${first.count} pièces, ${first.bytes} o à ajouter à la liste (${base} o)`);
+  const started = Date.now();
+  await box.click();
+  const lasted = await waitForTotal(frame, show(base + first.bytes), started);
+  say(`  total passé de ${show(base)} à ${await footNumber(frame)} en ${lasted} ms (lecture de _grist_Attachments, 9 lignes)`);
+  check('le clic coche la case et le total est la liste plus les pièces jointes que SQL compte (le doublon une fois, la pièce du PDF de GFS jamais recomptée)', await box.isChecked() && (await footNumber(frame)) === show(base + first.bytes) && first.bytes >= 640000, { vu: await footNumber(frame), attendu: show(base + first.bytes), sql: first });
+  const tip = await footTip(frame);
+  const split = t('weight.totalSplit', { list: show(base), pj: show(first.bytes), n: first.count });
+  check('l\'infobulle du total dit d\'où il vient : la liste, les pièces jointes et leur nombre', tip.includes(split), { infobulle: tip, attendu: split });
+  const footAfter = await frame.locator('.ex-foot').boundingBox();
+  check('le pied de fenêtre garde sa hauteur et le total, la case et les boutons ne se recouvrent pas ni ne se coupent (700 × 400)', Math.abs(footAfter.height - footBefore.height) <= 1 && await frame.evaluate(() => {
+    const foot = document.querySelector('.ex-foot').getBoundingClientRect();
+    const parts = [...document.querySelectorAll('.ex-foot > *')].filter(node => node.getBoundingClientRect().width > 0);
+    const boxes = parts.map(node => node.getBoundingClientRect());
+    const crossing = boxes.some((a, i) => boxes.some((b, j) => j > i && a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5));
+    const cut = parts.some(node => node.scrollWidth > node.clientWidth + 1);
+    return !crossing && !cut && boxes.every(rect => rect.left >= foot.left - 0.5 && rect.right <= foot.right + 0.5);
+  }), { avant: footBefore.height, apres: footAfter.height });
+  check('le texte du total et de la case atteint 4,5:1 contre son fond, case cochée', (await contrastProblems(frame, '.ex-total, .ex-pj')).length === 0, await contrastProblems(frame, '.ex-total, .ex-pj'));
+  check('le total se lit en entier pour un lecteur d\'écran : « Total : », la somme, puis la part de la liste et des pièces jointes (aucun « null » ni texte perdu)', (await frame.locator('.ex-total').textContent()).trim() === `${t('weight.total')} : ${show(base + first.bytes)}, ${split}`, await frame.locator('.ex-total').textContent());
+  await shot(frame, `${TAG}-5-pieces-jointes`);
+
+  // 2. La souris encore : le texte de la case décoche, rien ne reste ajouté ; la case n'écrit rien dans le document.
+  const tablesBefore = (await run.rest.tables()).join();
+  await frame.locator('.ex-pj span').click();
+  await waitForTotal(frame, show(base));
+  check('un clic sur le texte de la case la décoche et le total revient à celui de la liste', !(await box.isChecked()) && (await footNumber(frame)) === show(base), { vu: await footNumber(frame) });
+  check('la case n\'a rien écrit dans le document (aucune table de plus, la table des pièces jointes inchangée)', (await run.rest.tables()).join() === tablesBefore && (await sql(run, 'SELECT COUNT(*) AS n FROM _grist_Attachments'))[0].n === 9);
+  return first;
+}
+
+// Au clavier : la case est juste avant « Ouvrir », son anneau de focus se voit, Espace la coche et elle garde le focus.
+async function attachmentsKeyboard(run, { box, base, first }) {
+  const { page, frame } = run;
+  // 3. Le clavier : de la case, Maj+Tab vient de la liste et Tab va à « Ouvrir » puis « Fermer » ; Espace coche sans que la case perde le focus ; l'anneau de focus se voit.
+  await frame.locator('.ex-foot button').first().focus();
+  await page.keyboard.press('Shift+Tab');
+  const onBox = await frame.evaluate(() => document.activeElement && document.activeElement.matches('.ex-pj input'));
+  await page.keyboard.press('Tab');
+  const next = await frame.evaluate(() => document.activeElement.textContent.trim());
+  await page.keyboard.press('Tab');
+  const afterNext = await frame.evaluate(() => document.activeElement.textContent.trim());
+  check('au clavier, la case est juste avant « Ouvrir » (Tab : Ouvrir puis Fermer)', onBox && next === t('ex.open') && afterNext === t('ex.close'), { onBox, next, afterNext });
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Shift+Tab');
+  const ring = await box.evaluate(input => { const style = getComputedStyle(input); return { focused: document.activeElement === input, visible: input.matches(':focus-visible'), style: style.outlineStyle, width: style.outlineWidth }; });
+  check('la case prise au clavier montre son anneau de focus (2 px)', ring.focused && ring.visible && ring.style === 'solid' && parseFloat(ring.width) >= 2, ring);
+  const keyStart = Date.now();
+  await page.keyboard.press('Space');
+  await waitForTotal(frame, show(base + first.bytes), keyStart);
+  const kept = await box.evaluate(input => document.activeElement === input);
+  check('Espace coche la case, le total dit la même somme, et la case garde le focus (rien ne reconstruit le pied)', await box.isChecked() && (await footNumber(frame)) === show(base + first.bytes) && kept, { vu: await footNumber(frame), focus: kept });
+  await shot(frame, `${TAG}-5-pieces-jointes-clavier`);
+}
+
+// Un PDF à la corbeille, la case cochée : sa pièce reste la sienne.
+async function attachmentsTrash(run, { base, first }) {
+  const { page, frame } = run;
+  // 4. Un PDF mis à la corbeille, la case cochée : sa pièce reste à lui (la corbeille la garde), elle ne devient pas « autre » ; remis, il revient.
+  const devisPiece = (await expectedFiles(run)).find(file => file.name === 'Devis.pdf');
+  await rowOf(frame, 'Devis.pdf').click();
+  await page.keyboard.press('Delete');
+  await frame.locator('.mod.ask').waitFor({ timeout: 3000 }).then(() => frame.locator('[data-fk="ask-yes"]').click()).catch(() => {});
+  await waitFor(page, 'le PDF est à la corbeille', async () => (await run.rest.rows(FILES)).some(row => row.Nom === 'Devis.pdf' && row.SupprimeLe));
+  const trashed = await exactOthers(run);
+  const listNow = await listBytes(run);
+  await waitForTotal(frame, show(listNow + trashed.bytes));
+  check('avec le PDF à la corbeille, la case ne compte pas sa pièce jointe comme « autre » (SQL dit la même somme)', trashed.bytes === first.bytes && (await footNumber(frame)) === show(listNow + trashed.bytes) && listNow < base, { sql: trashed, avant: first, liste: listNow, vu: await footNumber(frame), piece: devisPiece.size });
+  await goTo(frame, new RegExp(`^\\s*${t('trash.view')}`));
+  await rowOf(frame, 'Devis.pdf').click();
+  await page.keyboard.press('Enter');
+  await waitFor(page, 'le PDF est revenu', async () => (await run.rest.rows(FILES)).some(row => row.Nom === 'Devis.pdf' && !row.SupprimeLe));
+  await goHome(frame);
+  await waitForWeights(frame, 8);
+  await waitForTotal(frame, show(base + first.bytes));
+  check('le PDF remis, le total est de nouveau la liste d\'avant plus les pièces jointes', (await footNumber(frame)) === show(base + first.bytes), { vu: await footNumber(frame), attendu: show(base + first.bytes) });
+}
+
+// Le passage de Grist : la pièce que plus aucune cellule ne cite sort du compte.
+async function attachmentsRemoval(run, { box, base, draft, first }) {
+  const { page, frame } = run;
+  // 5. Grist retire de son compte la pièce que plus aucune cellule ne cite : il le fait toutes les heures (REMOVE_UNUSED_ATTACHMENTS_DELAY, 60 min ± 30 s), ou quand le propriétaire le demande
+  // (POST …/attachments/removeUnused?expiredonly=true : il marque `timeDeleted` des pièces sans référence et n'efface que celles marquées depuis plus de 7 jours). Tant qu'il ne l'a pas fait, elle compte.
+  const stillThere = (await sql(run, `SELECT timeDeleted FROM _grist_Attachments WHERE id = ${draft}`))[0].timeDeleted === null;
+  const marked = await page.evaluate(async docId => (await fetch(`/api/docs/${docId}/attachments/removeUnused?expiredonly=true`, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' } })).status, run.docId);
+  const gone = await waitFor(page, 'Grist retire la pièce sans référence de son compte', async () => (await sql(run, `SELECT timeDeleted FROM _grist_Attachments WHERE id = ${draft}`))[0].timeDeleted !== null, 30000);
+  const second = await exactOthers(run);
+  say(`  avant le passage de Grist : la pièce comptait (${stillThere}) ; après (${marked}) : SQL dit ${second.count} pièces, ${second.bytes} o (avant : ${first.count}, ${first.bytes} o)`);
+  await box.click();
+  await waitForTotal(frame, show(base));
+  await box.click();
+  await waitForTotal(frame, show(base + second.bytes));
+  check('tant que Grist n\'a pas fait son passage, la pièce de 120 000 octets que plus aucune cellule ne cite compte (SQL la compte aussi) ; après, la case recochée relit et ne la compte plus', stillThere && marked === 200 && gone && second.bytes === first.bytes - 120000 && second.count === first.count - 1 && (await footNumber(frame)) === show(base + second.bytes), { avant: stillThere, statut: marked, retiree: gone, sql: second, vu: await footNumber(frame) });
+  await box.click();
+  await waitForTotal(frame, show(base));
+  await shot(frame, `${TAG}-5-pieces-jointes-fin`);
+}
+
+async function playAttachments(run) {
+  say('--- 6. la case « + pièces jointes » ---');
+  const state = await attachmentsStart(run);
+  const first = await attachmentsMouse(run, state);
+  await attachmentsKeyboard(run, { ...state, first });
+  await attachmentsTrash(run, { ...state, first });
+  await attachmentsRemoval(run, { ...state, first });
+  await scaleAttachments(run, state.base);
+}
+
+// 6. Une table de pièces jointes de 3 000 lignes de plus : la case rend toujours le total de SQL, la lecture se compte en millisecondes.
+async function scaleAttachments(run, base) {
+  const { frame } = run;
+  const box = frame.locator('.ex-pj input');
+  for (let batch = 0; batch < 6; batch++) await upload(run, Array.from({ length: 500 }, (_, i) => ({ name: `mille-${batch * 500 + i}.bin`, type: 'application/octet-stream', buffer: noise(64, 1000 + batch * 500 + i) })));
+  const rows = (await sql(run, 'SELECT COUNT(*) AS n FROM _grist_Attachments'))[0].n;
+  const expected = await exactOthers(run);
+  const started = Date.now();
+  await box.click();
+  const lasted = await waitForTotal(frame, show(base + expected.bytes), started);
+  say(`  ${rows} pièces dans le document : lecture et total en ${lasted} ms ; SQL : ${expected.count} pièces, ${expected.bytes} o`);
+  check(`avec ${rows} lignes dans la table des pièces jointes, le total reste celui de SQL et vient en moins de 5 s`, (await footNumber(frame)) === show(base + expected.bytes) && lasted < 5000, { vu: await footNumber(frame), attendu: show(base + expected.bytes), ms: lasted, sql: expected });
+  await box.click();
+  await waitForTotal(frame, show(base));
+}
+
 const server = await requireServer();
 const pages = createServer(serve(process.env.REPO_DIR, undefined, openConnectIn(/prototype[/\\]transfer[/\\]index\.html$/))).listen(PAGE_PORT, '127.0.0.1');
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
@@ -197,6 +409,7 @@ try {
   await playDuplicate(run);
   await playSort(run);
   await playTrash(run);
+  await playAttachments(run);
   const unexpected = run.problems.filter(problem => !run.allow.some(known => known.test(problem)));
   check('aucune erreur ni avertissement de GFS dans la console', unexpected.length === 0, unexpected);
 } finally {

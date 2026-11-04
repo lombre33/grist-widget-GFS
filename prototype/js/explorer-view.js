@@ -35,7 +35,8 @@ export function buildShell(i18n) {
         keep('empty', h('div', { class: 'empty', hidden: true })))))),
     h('footer', { class: 'ex-foot' },
       keep('info', h('div', { class: 'ex-info', 'aria-live': 'polite' })),
-      keep('total', h('div', { class: 'ex-total' })),
+      keep('total', h('div', { class: 'ex-total', id: 'ex-total' })),
+      keep('pj', h('label', { class: 'ex-pj' }, keep('pjInput', h('input', { type: 'checkbox', 'aria-describedby': 'ex-total' })), keep('pjText', h('span')))),
       keep('openBtn', h('button', { type: 'button', class: 'btn' })),
       keep('closeBtn', h('button', { type: 'button', class: 'btn' }))));
   relabel(refs, i18n);
@@ -63,6 +64,8 @@ export function relabel(refs, i18n) {
   refs.tree.setAttribute('aria-label', t('ex.folders'));
   refs.list.setAttribute('aria-label', t('ex.title'));
   refs.total.title = t('weight.totalTip');
+  refs.pjText.textContent = t('weight.pj');
+  refs.pj.title = t('weight.pjTip');
   refs.openBtn.textContent = t('ex.open');
   refs.closeBtn.textContent = t('ex.close');
 }
@@ -239,8 +242,32 @@ export function trashBar(ctx) {
     h('button', { type: 'button', class: 'btn', dataset: { emptyTrash: '' } }, t('trash.empty')));
 }
 
-// Le total du pied de fenêtre : ce que pèse ce que la liste montre, dossiers compris (`ctx.total`, en octets). Le mot « Total » est dit aux lecteurs d'écran ; l'infobulle dit ce qui est compté.
+// Le total du pied de fenêtre : ce que pèse ce que la liste montre, dossiers compris (`ctx.total`, en octets), et, case « + pièces jointes » cochée et lue (`ctx.pj`), les pièces jointes du document qui ne sont
+// pas des fichiers de l'explorateur (js/weight.js, `otherAttachments`). Le mot « Total » est dit aux lecteurs d'écran, avec la part de chacun ; l'infobulle dit ce qui est compté.
+const pjCounted = ctx => ctx.pj.on && ctx.pj.ready;
+const totalSplit = ctx => ctx.t('weight.totalSplit', { list: weightText(ctx, ctx.total), pj: weightText(ctx, ctx.pj.bytes), n: ctx.pj.count });
+
 export function totalBar(ctx) {
-  const { t } = ctx;
-  return [h('span', { class: 'sr-only' }, `${t('weight.total')} : `), h('b', { class: 'tot-n' }, weightText(ctx, ctx.total))];
+  const counted = pjCounted(ctx);
+  const parts = [h('span', { class: 'sr-only' }, `${ctx.t('weight.total')} : `), h('b', { class: 'tot-n' }, weightText(ctx, ctx.total + (counted ? ctx.pj.bytes : 0)))];
+  if (counted) parts.push(h('span', { class: 'sr-only' }, `, ${totalSplit(ctx)}`));
+  return parts;
+}
+
+// L'infobulle du total, et l'état du pied de fenêtre : occupé tant que les pièces jointes se lisent.
+export function totalTip(ctx) {
+  const { t, pj } = ctx;
+  return [t('weight.totalTip'), pjCounted(ctx) ? totalSplit(ctx) : null, pj.on && pj.busy ? t('weight.pjLoading') : null].filter(Boolean).join(' ');
+}
+
+// La case « + pièces jointes » : cochée quand la personne l'a demandée ; grisée, jamais masquée, quand GFS ne peut pas lire les pièces jointes (`ctx.pj.grey` dit pourquoi : au survol, et au clic
+// par le geste de js/explorer.js). `aria-disabled` et non `disabled` : une case désactivée ne répond pas au clic, et le clic est ce qui explique.
+export function pjBox(refs, ctx) {
+  const { pj, t } = ctx;
+  refs.pj.classList.toggle('is-grey', Boolean(pj.grey));
+  refs.pj.title = pj.grey || t('weight.pjTip');
+  refs.pjInput.checked = pj.on;
+  refs.pjInput.setAttribute('aria-disabled', String(Boolean(pj.grey)));
+  refs.total.setAttribute('aria-busy', String(pj.on && pj.busy));
+  refs.total.title = totalTip(ctx);
 }

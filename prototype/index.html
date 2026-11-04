@@ -10,9 +10,9 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-Au4BF6lOLYNCie2MDKrqsa0HyuQRToFV6aGiG2Agtoc='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-BBJuHtm9pILkA0Gt6VA1S3v6cveD7+UY6/qjb/EKiUs='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=07195fafa9">
-<link rel="stylesheet" href="css/explorer.css?v=78e5458cec">
+<link rel="stylesheet" href="css/explorer.css?v=4b694af836">
 <link rel="stylesheet" href="css/modules.css?v=1109fc818b">
 <link rel="stylesheet" href="kit/css/color-picker.css?v=c5a41d6681">
 <!-- Le routeur d'abord : il doit être enregistré avant que le script d'API de Grist n'affecte window.onmessage (contrats 1.2). -->
@@ -38,7 +38,7 @@
     "./js/catalogue.js": "./js/catalogue.js?v=9821dc95fc",
     "./js/conflict-window.js": "./js/conflict-window.js?v=e3c9c8e8d3",
     "./js/context.js": "./js/context.js?v=78e41a0736",
-    "./js/controller.js": "./js/controller.js?v=dc2fc14657",
+    "./js/controller.js": "./js/controller.js?v=892ca9ee40",
     "./js/copying.js": "./js/copying.js?v=8da0986c98",
     "./js/deposit.js": "./js/deposit.js?v=e11841b099",
     "./js/dock-state.js": "./js/dock-state.js?v=8eec913fd1",
@@ -46,12 +46,12 @@
     "./js/dom.js": "./js/dom.js?v=6093a9f23f",
     "./js/envelope.js": "./js/envelope.js?v=8586bc1508",
     "./js/explorer-clipboard.js": "./js/explorer-clipboard.js?v=fe178bf8ba",
-    "./js/explorer-data.js": "./js/explorer-data.js?v=df275f8067",
+    "./js/explorer-data.js": "./js/explorer-data.js?v=a7e7135591",
     "./js/explorer-drag.js": "./js/explorer-drag.js?v=6fd7796b51",
     "./js/explorer-keys.js": "./js/explorer-keys.js?v=6a6f23c6ed",
     "./js/explorer-model.js": "./js/explorer-model.js?v=b67379f13d",
-    "./js/explorer-view.js": "./js/explorer-view.js?v=e948b1f974",
-    "./js/explorer.js": "./js/explorer.js?v=bb47c25a98",
+    "./js/explorer-view.js": "./js/explorer-view.js?v=a6ca512e22",
+    "./js/explorer.js": "./js/explorer.js?v=0331fc475b",
     "./js/extensions.js": "./js/extensions.js?v=a6b2033702",
     "./js/files-store.js": "./js/files-store.js?v=98d9eb3e5c",
     "./js/filing-window.js": "./js/filing-window.js?v=ffaa75bf79",
@@ -63,7 +63,7 @@
     "./js/gfs-trash.js": "./js/gfs-trash.js?v=3f31b757cd",
     "./js/i18n-folders.js": "./js/i18n-folders.js?v=fdfa7f4ccb",
     "./js/i18n-trash.js": "./js/i18n-trash.js?v=d21f4807fc",
-    "./js/i18n-weight.js": "./js/i18n-weight.js?v=1768a24dcf",
+    "./js/i18n-weight.js": "./js/i18n-weight.js?v=b51f240366",
     "./js/i18n.js": "./js/i18n.js?v=942c47f4a5",
     "./js/icons.js": "./js/icons.js?v=7ce27504e5",
     "./js/import-file.js": "./js/import-file.js?v=709ec6b26b",
@@ -99,7 +99,7 @@
     "./js/transfer.js": "./js/transfer.js?v=5064996e86",
     "./js/trash.js": "./js/trash.js?v=6744b756e1",
     "./js/view-options.js": "./js/view-options.js?v=f776be2727",
-    "./js/weight.js": "./js/weight.js?v=54c505e5ce",
+    "./js/weight.js": "./js/weight.js?v=51bceb46a7",
     "./js/work-control.js": "./js/work-control.js?v=7efc5aae9e",
     "./js/work-row.js": "./js/work-row.js?v=4003614ac1",
     "./js/work-window.js": "./js/work-window.js?v=96926694af",
@@ -112,7 +112,7 @@
     "./kit/js/color-strings.js": "./kit/js/color-strings.js?v=1bae4317a5",
     "./kit/js/dialogs.js": "./kit/js/dialogs.js?v=e2e71809c1",
     "./kit/js/dom.js": "./kit/js/dom.js?v=bb61d5ebe7",
-    "./kit/js/gfs-link.js": "./kit/js/gfs-link.js?v=17c52e1e28",
+    "./kit/js/gfs-link.js": "./kit/js/gfs-link.js?v=5ac53afb7b",
     "./kit/js/host.js": "./kit/js/host.js?v=aca4fbd09b",
     "./kit/js/i18n.js": "./kit/js/i18n.js?v=34aa7f2b67",
     "./kit/js/layers.js": "./kit/js/layers.js?v=0a7ababe40",

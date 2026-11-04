@@ -8,8 +8,8 @@ import { h } from './dom.js';
 import { icon } from './icons.js';
 import { listItems, treeRows, typeChoices } from './explorer-model.js';
 import { words } from './search.js';
-import { buildShell, relabel, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar, trashBar, totalBar } from './explorer-view.js';
-import { sumWeights } from './weight.js';
+import { buildShell, relabel, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar, trashBar, totalBar, pjBox } from './explorer-view.js';
+import { sumWeights, pieceKeys, otherAttachments } from './weight.js';
 import { listAction, isSearchKey, clipboardAction, parentPath, stepRow } from './explorer-keys.js';
 import { Clipboard } from './explorer-clipboard.js';
 import { Dragging } from './explorer-drag.js';
@@ -21,6 +21,8 @@ const NO_KEPT = Object.freeze({ has: () => false, extras: () => [] });
 const NO_TRASH = Object.freeze({ handles: () => false });
 // Sans copie (les essais de l'explorateur seul) : aucun fichier ne peut se copier.
 const NO_COPYING = Object.freeze({ handles: () => false, copy: async () => null });
+// Ce que la case « + pièces jointes » ajoute tant que rien n'est lu.
+const NO_OTHER = Object.freeze({ bytes: 0, count: 0 });
 // Les gestes d'une ligne qu'un clavier posé sur ☆ ou ⋯ (ou ailleurs dans la ligne) fait aussi ; les flèches et Entrée restent aux boutons.
 const FROM_BUTTONS = new Set(['rename', 'delete', 'menu', 'parent']);
 
@@ -37,6 +39,9 @@ export class Explorer {
   #folders = []; // les dossiers que la personne garde sans fichier (js/explorer-data.js)
   #rows = [];
   #total = 0; // ce que pèse ce que la liste couvre, en octets (le total du pied de fenêtre)
+  // La case « + pièces jointes » : cochée (`on`), la table de Grist lue (`table`), ce qu'elle ajoute au total (`other`), une lecture en cours (`busy`), ou en échec (`failed`, `reason`).
+  #pj = { on: false, table: null, other: NO_OTHER, busy: false, failed: false, reason: '' };
+  #pjRun = 0; // le numéro de la dernière lecture des pièces jointes : une réponse plus ancienne est ignorée
   #loading = false;
   #problems = [];
   #restricted = false;
@@ -52,7 +57,8 @@ export class Explorer {
   //          filing: { togglePin(file), rename(file), moveFile(file), renameFolder(path), moveFolder(path), moveFileTo(file, dossier), moveFolderTo(path, dossier) },
   //          kept?: les fichiers que GFS garde lui-même (js/kept-files.js) : { has(file), openAs(file) -> { label, icon, greyed }, opensIn(file), extras(file) -> [article de menu] },
   //          trash?: la corbeille (js/trash.js) : { handles(file), appLockOf?(file) -> { text } | null (l'app doit être ouverte), move(file), restore(file), purge(file), empty(files) } (chaque geste rend une promesse, vraie quand il a abouti),
-  //          copying?: la copie (js/copying.js) : { handles(file), appLockOf?(file) -> { text } | null, copy(file, dossier) -> Promise<{ key, name } | null> } }
+  //          copying?: la copie (js/copying.js) : { handles(file), appLockOf?(file) -> { text } | null, copy(file, dossier) -> Promise<{ key, name } | null> } },
+  //          attachments?() -> Promise<{ data } | { error }> : la table des pièces jointes de Grist (js/explorer-data.js, `loadAttachments`), lue quand la case « + pièces jointes » est cochée ; sans elle, la case est grisée }
   constructor(opts) {
     this.#opts = opts;
     this.#kept = opts.kept || NO_KEPT;
@@ -94,7 +100,10 @@ export class Explorer {
     this.#folders = folders;
     const keys = new Set([...files, ...trashed].map(file => file.key));
     if (this.state.sel && !this.state.sel.startsWith('dir:') && !keys.has(this.state.sel)) this.state.sel = null;
+    this.#pj.failed = false; // une lecture qui avait échoué se retente au prochain clic sur la case
+    this.#countOthers();
     if (this.isOpen) this.render();
+    if (this.#pj.on && this.#opts.attachments) void this.#readAttachments(); // un PDF ajouté ou retiré change les pièces jointes
   }
 
   // `restricted` : GFS n'a pas l'accès complet, la liste est vide pour cette raison et non parce qu'il n'y a aucun fichier.
@@ -184,7 +193,7 @@ export class Explorer {
     return {
       t: this.#opts.i18n.t, state, locale: this.#opts.locale, now: this.#opts.now(), appName: this.#opts.appName, typeLabel: this.#opts.typeLabel,
       lockOf: this.#opts.lockOf, opensIn: file => this.#opensIn(file), sort: this.#sort(), filtering: this.#filtering, favCount: this.#pool.filter(file => file.pinned).length, totalFiles: this.#pool.length,
-      trashCount: this.#trashed.length, selected: row, personal: this.#opts.personal(), choosing: this.#choice !== null, total: this.#total, ...extra,
+      trashCount: this.#trashed.length, selected: row, personal: this.#opts.personal(), choosing: this.#choice !== null, total: this.#total, pj: this.#pjFacts(), ...extra,
     };
   }
 
@@ -241,7 +250,7 @@ export class Explorer {
     scroll.scrollTop = top;
     this.#roving();
     this.#renderInfo();
-    this.#refs.total.replaceChildren(...totalBar(this.#ctx()));
+    this.#renderTotal();
     if (focused) this.#focusKey(focused);
   }
 
@@ -289,13 +298,64 @@ export class Explorer {
 
   #types() { return typeChoices(this.#shown, this.#opts.typeLabel); }
 
+  // ---------- la case « + pièces jointes » ----------
+
+  // La case, ce qu'elle ajoute au total, et, quand GFS ne peut pas lire les pièces jointes, la raison : grisée, jamais masquée (charte).
+  #pjFacts() {
+    const { t } = this.#opts.i18n;
+    const { on, table, other, busy, failed, reason } = this.#pj;
+    let grey = '';
+    if (!this.#opts.attachments) grey = t('weight.pjNone');
+    else if (this.#restricted) grey = t('gfs.needsFullAccess');
+    else if (failed) grey = t('weight.pjFailed', { reason });
+    return { on: on && !grey, ready: table !== null, busy, bytes: other.bytes, count: other.count, grey };
+  }
+
+  #renderTotal() {
+    const ctx = this.#ctx();
+    this.#refs.total.replaceChildren(...totalBar(ctx));
+    pjBox(this.#refs, ctx);
+  }
+
+  // Un clic sur la case : grisée, il dit pourquoi ; sinon il coche ou décoche, et les pièces jointes ne se lisent que cochée.
+  #onPj(event) {
+    const { grey } = this.#pjFacts();
+    if (grey) { event.preventDefault(); this.#opts.notice(grey); return; }
+    this.#pj.on = this.#refs.pjInput.checked;
+    if (this.#pj.on) { void this.#readAttachments(); return; }
+    this.#pjRun += 1;
+    Object.assign(this.#pj, { table: null, other: NO_OTHER, busy: false });
+    this.#renderTotal();
+  }
+
+  // Lit la table des pièces jointes de Grist. Pendant une relecture, le total garde ce qu'il disait ; un échec décoche la case et la grise avec sa raison.
+  async #readAttachments() {
+    const run = ++this.#pjRun;
+    this.#pj.busy = true;
+    this.#renderTotal();
+    let result;
+    try { result = await this.#opts.attachments(); } catch (error) { result = { error }; }
+    if (run !== this.#pjRun) return;
+    this.#pj.busy = false;
+    if (result.error) Object.assign(this.#pj, { on: false, failed: true, table: null, reason: String(result.error.message || result.error) });
+    else this.#pj.table = result.data;
+    this.#countOthers();
+    this.#renderTotal();
+  }
+
+  // Ce que la case ajoute : les pièces jointes de la table qu'aucun fichier de l'explorateur, vivant ou à la corbeille, ne cite (js/weight.js).
+  #countOthers() {
+    this.#pj.other = this.#pj.table ? otherAttachments(this.#pj.table, pieceKeys(this.#files, this.#trashed)) : NO_OTHER;
+  }
+
   // ---------- gestes ----------
 
   #bind() {
-    const { search, viewList, viewTiles, typeBtn, newBtn, openBtn, closeBtn, appsBtn, settingsBtn, crumbs: crumbsNav, tree: treeNav, list, notices } = this.#refs;
+    const { search, viewList, viewTiles, typeBtn, newBtn, openBtn, closeBtn, appsBtn, settingsBtn, pjInput, crumbs: crumbsNav, tree: treeNav, list, notices } = this.#refs;
     search.addEventListener('input', () => { this.state.q = search.value; this.state.sel = null; this.#renderCrumbs(); this.#renderList(); });
     appsBtn.addEventListener('click', () => this.#opts.onApps());
     settingsBtn.addEventListener('click', () => this.#settingsMenu());
+    pjInput.addEventListener('click', event => this.#onPj(event));
     viewList.addEventListener('click', () => this.#setDisplay('list'));
     viewTiles.addEventListener('click', () => this.#setDisplay('tiles'));
     typeBtn.addEventListener('click', () => this.#typeMenu());

@@ -14,6 +14,8 @@
 // (`window.__keep(...chemins)` en pose, `window.__filing` note chaque lot « setFiling:+gardé:-retiré »), et la corbeille y garde le dossier du dernier fichier qui part, comme le contrôleur.
 // Un fichier que seule l'app ouverte sait fermer ou copier (test/composite-firefox.mjs) : la « Grille de suivi » en fait office ; `window.__appOpen = false` : l'app n'est pas ouverte, le geste est grisé et dit
 // d'ouvrir l'app ; ouverte, l'app ajoute sa phrase (`window.__appSaid`) à celle de GFS.
+// La case « + pièces jointes » : la table `_grist_Attachments` que l'explorateur lirait dans Grist est une doublure, de la forme que `fetchTable` la rend (voir `ATTACHMENTS`) ; `window.__attachments` compte ses lectures
+// et `window.__attachmentsFail = 'texte'` les fait échouer. Ce que Grist rend vraiment se mesure dans un vrai Grist (labo/run-poids.mjs).
 import { ask } from '/js/ask-window.js';
 import { askConflict } from '/js/conflict-window.js';
 import { Explorer } from '/js/explorer.js';
@@ -41,6 +43,14 @@ const MODELS = [
   ['source', 'presentation', 12, 'Service RH', '', 1240000], ['test1', 'document', 0.3, 'Service RH', '', 1800], ['Grille de suivi', 'grille', 20, 'Équipe formation', '', 310000],
   ['Contrat de prestation', 'document', 5, 'Équipe formation', 'Formation', 1950000], ['Support de session', 'presentation', 6, 'Équipe formation', 'Formation', 3320000], ['Autre format', 'macro', 7, 'Service RH', '', 640],
 ];
+
+// Les pièces jointes du document, [numéro, `fileIdent`, taille, `timeDeleted`] : celle du PDF de `__withPdf` (le numéro 900, citée par son fichier), trois photos qu'aucun fichier ne cite (2 000 000, 1 500 000 et 3 000 000
+// octets), la copie de la deuxième (un autre numéro, le même `fileIdent` : Grist ne la compte pas deux fois) et une pièce supprimée (5 000 000 octets). La case « + pièces jointes » doit donc ajouter 6 500 000 octets.
+const ATTACHMENTS = [
+  [900, 'pdf-attestation.pdf', 640000, null], [901, 'photo-1.jpg', 2000000, null], [902, 'photo-2.jpg', 1500000, null], [903, 'photo-3.jpg', 3000000, null],
+  [904, 'photo-2.jpg', 1500000, null], [905, 'photo-supprimee.jpg', 5000000, 1793784337.01],
+];
+const attachmentsTable = () => ({ id: ATTACHMENTS.map(row => row[0]), fileIdent: ATTACHMENTS.map(row => row[1]), fileSize: ATTACHMENTS.map(row => row[2]), timeDeleted: ATTACHMENTS.map(row => row[3]) });
 
 // Les tables de Grist, en colonnes : les modèles, puis leur rangement (le dossier de chacun) ; `weights` : ce que pèse chaque modèle (le vrai calcul des octets est celui de test/weight.test.mjs).
 function tables(now) {
@@ -86,6 +96,8 @@ async function mount() {
   const move = (from, to, wanted) => { const at = pick(from, wanted); if (at < 0) return null; const [file] = from.splice(at, 1); to.push(file); return file; };
   window.__filing = [];
   window.__notices = [];
+  window.__attachments = 0;
+  window.__attachmentsFail = '';
   const noted = (name, ...args) => async file => { window.__filing.push([name, ...args.map(arg => (arg === 'name' ? file.name : file))]); };
   // Un fichier que seule l'app ouverte sait fermer ou copier (contrats 2.4 `appel`, test/composite-firefox.mjs) : les fichiers de type `grille` en font office ; `window.__appOpen = false` : l'app n'est pas ouverte, le geste
   // attend (les phrases de js/i18n-trash.js, comme dans js/app-files.js) ; ouverte, l'app ajoute sa phrase (`window.__appSaid`) à celle de GFS.
@@ -181,6 +193,7 @@ async function mount() {
     notice: text => window.__notices.push(text), settings: () => settingsItems({ t: i18n.t, language: () => ({ choice: window.__language, grist: language }), onLanguage: value => { window.__language = value; }, onTheme: () => theme.open(), place, onAbout: () => window.__about() }),
     onOpen: file => { window.__opened = file.name; }, onNew: () => {},
     onImport: () => {}, onClose: () => {}, onApps: () => {}, personal: () => true, kept: null, trash: bin, copying,
+    attachments: async () => { window.__attachments += 1; if (window.__attachmentsFail) return { error: new Error(window.__attachmentsFail) }; return { data: attachmentsTable() }; },
     filing: { togglePin: noted('pin', 'name'), rename: noted('rename', 'name'), moveFile: noted('move', 'name'), renameFolder: async path => { window.__filing.push(['renameFolder', path]); }, moveFolder: async path => { window.__filing.push(['moveFolder', path]); }, ...moving,
       newFolder: () => filing.newFolder(), deleteFolder: path => filing.deleteFolder(path) },
   });
@@ -194,6 +207,8 @@ async function mount() {
     window.__filing.length = 0;
     window.__copies.length = 0;
     window.__notices.length = 0;
+    window.__attachments = 0;
+    window.__attachmentsFail = '';
     window.__opened = null;
     window.__appOpen = true;
     setting.reset(); // l'ambiance d'origine, comme au départ ; « Revenir à Grist Factory » laisse l'accessibilité renforcée (un besoin, pas un goût) : on l'éteint aussi
@@ -214,7 +229,7 @@ async function mount() {
   theme.open = () => themeWindow.open();
   // Un PDF gardé par GFS, lu comme l'explorateur le lit : les colonnes de `GFS_Fichiers` et le manifeste de GFS. `__reset` remet `live` aux fichiers de départ : le PDF disparaît.
   window.__withPdf = () => {
-    const [pdf] = readFiles(FILES_MANIFEST, FILES_MANIFEST.fichiers[0], { id: [900], Identifiant: ['essai-pdf'], Nom: ['Attestation.pdf'], Type: ['pdf'], Date: [Math.floor(Date.now() / 1000) - 3600], Auteur: ['Service RH'] });
+    const [pdf] = readFiles(FILES_MANIFEST, FILES_MANIFEST.fichiers[0], { id: [900], Identifiant: ['essai-pdf'], Nom: ['Attestation.pdf'], Type: ['pdf'], Date: [Math.floor(Date.now() / 1000) - 3600], Auteur: ['Service RH'], Contenu: [['L', 900]], Taille: [640000] });
     live.push(pdf);
     show();
   };

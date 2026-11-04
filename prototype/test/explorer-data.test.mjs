@@ -2,7 +2,7 @@
 // illisible ne cache aucun fichier. Le port est une doublure ; ce que Grist rend vraiment se mesure dans le labo (run-explorer.mjs, run-ranger.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadFiles } from '../js/explorer-data.js';
+import { loadFiles, loadAttachments } from '../js/explorer-data.js';
 import { FILES_ENTRY } from '../js/gfs-files.js';
 import { sumWeights } from '../js/weight.js';
 import { publipostage } from './helpers.mjs';
@@ -151,4 +151,16 @@ test('le poids : un fichier d\'une app pèse les octets de sa ligne, et une entr
   const entry = bytes('aabbccddeeff') + bytes('publipostage') + bytes(spec.table) + 1 + 7 + 5 + 2 + 0 + 4 + bytes('paul@exemple.fr') + bytes(snapshot);
   assert.equal(found.trash[0].weight, entry);
   assert.ok(found.trash[0].weight > 6000, 'la copie JSON compte : c\'est elle que la corbeille garde dans le document');
+});
+
+test('la case « + pièces jointes » : la table `_grist_Attachments` est lue telle que l\'API des widgets la rend, et seulement quand on la demande ; un refus de Grist est rendu, sans arrêter personne', async () => {
+  const table = { id: [1, 2], fileIdent: ['a.pdf', 'b.jpg'], fileSize: [10, 20], timeDeleted: [null, null] };
+  const asked = [];
+  const reading = { doc: { fetchTable: async name => { asked.push(name); return table; } } };
+  assert.deepEqual(asked, [], 'rien n\'est lu tant qu\'on ne le demande pas');
+  assert.deepEqual(await loadAttachments(reading), { data: table });
+  assert.deepEqual(asked, ['_grist_Attachments']);
+  const refused = await loadAttachments({ doc: { fetchTable: async () => { throw new Error('accès refusé'); } } });
+  assert.equal(refused.data, undefined);
+  assert.equal(refused.error.message, 'accès refusé');
 });

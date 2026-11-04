@@ -21,7 +21,7 @@ import { settingsItems } from './settings-menu.js';
 import { aboutItems } from './about.js';
 import { WorkControl } from './work-control.js';
 import { Explorer } from './explorer.js';
-import { loadFiles } from './explorer-data.js';
+import { loadFiles, loadAttachments } from './explorer-data.js';
 import { familyOf } from './explorer-model.js';
 import { AppLinks } from './links.js';
 import { Filing } from './filing.js';
@@ -312,7 +312,7 @@ export class GfsController {
         place: () => this.dock.placeRow(), onAbout: () => this.#openAbout(),
       }),
       onOpen: file => this.#openFile(file), onNew: entry => this.#openNew(entry), onImport: entry => void this.#importFile(entry), onClose: () => this.hideExplorer(), onApps: () => void this.openModules(),
-      personal: () => Boolean(this.identity), filing, kept: this.kept,
+      personal: () => Boolean(this.identity), filing, kept: this.kept, attachments: () => loadAttachments(this.port),
       trash: new Trash({ managers, ask: opts => this.#ask(opts), keepFolders: file => filing.keepFoldersOf(file), ...gestures }),
       copying: new Copying({ managers, file: (app, id, folder) => this.rangement.setFiling([{ app, file: id, pinned: false, folder }]), ...gestures }),
     });

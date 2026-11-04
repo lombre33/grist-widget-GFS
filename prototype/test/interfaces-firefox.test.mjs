@@ -9,7 +9,8 @@
 // par l'accessibilité renforcée et par Enseigne (décision du 04/11) garde ses lignes à 28 px, leur contenu dans la ligne, ses traits de 2 px et son absence de décor ; la fenêtre « Ce nom est déjà pris » (js/conflict-window.js, telle qu'une app qui range un lot la fait ouvrir, puis telle que
 // « Nouveau > Importer » la fait ouvrir) tient dans la page sans défiler, garde son titre et ses trois boutons sur une ligne, met le clavier sur « Garder les deux », tourne avec Tab, et ses issues répondent à
 // la vraie souris et au vrai clavier (la case « Faire pareil pour les suivants » se coche en cliquant son texte). Entrée et Espace sur un bouton ne se jouent pas ici (voir conflictProblems). La colonne « Poids » (demande du 04/11) : son titre et ses cases ne sont coupés nulle part, son tri
-// va dans les deux sens sur le poids de chaque fichier, et le total du pied dit la somme de ce que la liste montre. Les icônes des types
+// va dans les deux sens sur le poids de chaque fichier, et le total du pied dit la somme de ce que la liste montre ; la case « + pièces jointes » du pied (test/pieces-jointes-firefox.mjs : à la souris et au clavier, le total qui
+// prend les pièces jointes que nul fichier de l'explorateur ne cite, le grisé avec sa raison, le pied qui ne se recouvre pas). Les icônes des types
 // de fichier suivent l'ambiance (test/icones-firefox.mjs : la couleur et le trait que Firefox calcule, par ambiance, en clair et en sombre ; le 04/11, Firefox a refusé le premier trait écrit, un nombre calculé). Le labo
 // (labo/run-liste.mjs) fait les mêmes mesures de la liste dans un vrai Grist, sous Chromium.
 // Firefox absent : l'essai est SAUTÉ, et le dit (`labo/installer-firefox.sh` le pose dans le cloud ; `GFS_FIREFOX=<fichier exécutable>` désigne celui de la machine).
@@ -27,6 +28,7 @@ import { iconProblems } from './icones-firefox.mjs';
 import { dossiersProblems } from './dossiers-firefox.mjs';
 import { compositeProblems } from './composite-firefox.mjs';
 import { glisserProblems } from './glisser-firefox.mjs';
+import { piecesJointesProblems } from './pieces-jointes-firefox.mjs';
 import { ROW_BUTTON, ROW_HEIGHT, TILE_MIN, columnFaults, expectedTileColumns, measureColumns, measureRows, measureTiles } from '../labo/mesures-liste.mjs';
 import { calendarLogs, calendarProblems } from './mesures-calendrier.mjs';
 
@@ -548,7 +550,7 @@ describe('l\'interface sous Firefox', () => {
           for (const mode of MODES) {
             await page.view({ width, scale, mode });
             const tag = caption(language, width, scale, mode);
-            problems.push(...await listProblems(page, tag), ...await columnProblems(page, width, language, tag), ...await mouseProblems(page, tag), ...await tilesProblems(page, tag), ...await settingsProblems(page, language, width, scale, tag), ...await themeProblems(page, width, tag), ...await conflictProblems(page, tag));
+            problems.push(...await listProblems(page, tag), ...await columnProblems(page, width, language, tag), ...await piecesJointesProblems(page, width, language, tag), ...await mouseProblems(page, tag), ...await tilesProblems(page, tag), ...await settingsProblems(page, language, width, scale, tag), ...await themeProblems(page, width, tag), ...await conflictProblems(page, tag));
           }
         }
       }

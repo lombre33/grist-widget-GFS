@@ -2719,8 +2719,9 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
 
 ### 11.7 Ce qui n'est pas décidé
 
-1. [Q] **Ce que GFS fait de la structure du document** (la case de Grist) : la montrer sans la poser (conseillé), n'en rien dire,
-   ou la proposer d'un clic avec son prix. Carte ouverte du porteur. En attendant : [T] GFS ne la ferme jamais de lui-même ; il
+1. [D] **Ce que GFS fait de la structure du document** (la case de Grist) : **le porteur a choisi le 04/11 (15 h 57) de la proposer d'un clic**
+   (avec son prix, dit avant le clic : import et copie perdus pour les éditeurs, pages, tables et colonnes fermées ; le bouton rouvre de même). Rien n'est codé : le bouton
+   est de l'étape 7, avec l'accord d'un propriétaire à chaque pose. Jusque-là : [T] GFS ne la ferme jamais de lui-même ; il
    dit, dans le pied, si elle est ouverte ou fermée et ce que cela change. Seul « Protégé » (11.4, point 7) et le caractère
    *secret* des contenus réservés (11.1, point 8) en dépendent. Grist décoche la case de lui-même quand un propriétaire active les
    Permissions avancées (lu), et le porteur a confirmé qu'elle se décoche sur son instance (21/10). Elle pèse aussi sur les liens publics : structure ouverte,

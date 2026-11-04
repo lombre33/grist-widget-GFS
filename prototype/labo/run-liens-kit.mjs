@@ -101,6 +101,17 @@ check('un fichier disparu : le client rejette avec GFS_INTROUVABLE, GFS le dit, 
 const invalid = await app.evaluate(() => window.sondeK.GfsLink.openFile({ app: 'sonde-o' }).then(() => 'ouvert', error => error.code));
 check('une clé incomplète : le client refuse sans rien envoyer (GFS_REFUSE)', invalid === 'GFS_REFUSE', invalid);
 
+say('=== fermer : l\'app écrite avec le kit répond par GfsLink.onClose avant d\'être remplacée ===');
+await app.evaluate(() => {
+  window.__fermer = { demandes: [], reponse: false };
+  window.sondeK.GfsLink.onClose(({ raison }) => { window.__fermer.demandes.push(raison); return window.__fermer.reponse; });
+});
+await toast.waitFor({ state: 'hidden', timeout: 15000 });   // le message du fichier disparu, plus haut, ne doit pas passer pour une réponse de GFS à ce refus
+const refused = await app.evaluate(link => window.sondeK.GfsLink.openFile(link), key);
+const asked = await app.evaluate(() => window.__fermer.demandes);
+check('l\'abonné du kit reçoit la raison « lien » ; faux : l\'app reste (cadre gardé, jamais détruit), openFile rend false et GFS ne dit rien par-dessus',
+  refused === false && JSON.stringify(asked) === '["lien"]' && framesOf(/kit\.html/) === 1 && framesOf(/o-ouvrir\//) === 0 && await toast.isHidden(), { refused, asked });
+await app.evaluate(() => { window.__fermer.reponse = true; });
 await app.evaluate(link => { window.__ouvrir = window.sondeK.GfsLink.openFile(link); }, key);
 await waitFor('la sonde O ouverte', async () => framesOf(/o-ouvrir\//) === 1 && framesOf(/kit\.html/) === 0);
 const o = await lab.appFrame(/o-ouvrir\//);

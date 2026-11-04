@@ -1517,8 +1517,9 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
    que 5.1, point 3, demande à tout appel inconnu) part comme avant, sans question ; une app qui ne répond à rien, pas même `GFS_INCONNU`, fait
    attendre les 10 secondes puis la question de GFS ; une app qui n'a pas encore demandé son contexte n'a rien à enregistrer, GFS ne lui demande rien. Si
    la personne repart dans l'explorateur avant la réponse, la réponse tardive n'ouvre rien. **Pas encore gardés** : le changement de
-   la table de travail (4.5, point 7) et le retrait de l'app active du registre recréent le cadre sans « fermer ». [M] Mesuré le
-   04/11 dans un vrai Grist (faits vérifiés, section 29).
+   la table de travail (4.5, point 7) et le retrait de l'app active du registre recréent le cadre sans « fermer ». **Le kit répond pour
+   les apps qui s'en servent** : `GfsLink.onClose(fn)` (kit 0.9.0) rappelle `fn({ raison })` et rend l'`oui` ou le `non` de l'app ; sans abonné, le
+   kit répond `GFS_INCONNU` comme avant. [M] Mesuré le 04/11 dans un vrai Grist (faits vérifiés, section 29).
 4. [T] **installer** : GFS ouvre sa fenêtre d'installation à la ligne de l'extension ; rien ne se télécharge (7.3). L'app
    charge l'extension quand elle reçoit l'événement `extensions`.
 5. [D] **inserer** : seule la forme du rendu et ses règles sont arrêtées ici ; le déroulement (GFS active l'app qui fournit au

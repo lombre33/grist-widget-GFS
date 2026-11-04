@@ -253,7 +253,7 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     « Rester ») ; une app qui pose sa question et dont la personne tarde à répondre n'a rien à faire de plus que de répondre quand elle le
     peut. Une app qui ne connaît pas l'appel répond `GFS_INCONNU` (contrats 5.1, point 3 ; le comportement d'avant : elle part sans rien enregistrer, d'où cette
     règle) ; celle qui ne répond à rien, pas même cela, fait attendre dix secondes avant que GFS pose sa question à la personne. Même règle, déjà, quand GFS appelle `ouvrir` sur l'app active pour un autre fichier de la même app : sa question d'enregistrement
-    vient avant `{ ouvert }`. Seule, hors de GFS, l'app garde sa propre sortie (`beforeunload`, « Enregistrer » du kit).
+    vient avant `{ ouvert }`. Une app écrite avec le kit répond par `GfsLink.onClose(async ({ raison }) => …)` (kit 0.9.0 : vrai laisse partir, faux garde l'app, une erreur remonte à la personne) ; sans cet abonné, le kit répond `GFS_INCONNU`. Seule, hors de GFS, l'app garde sa propre sortie (`beforeunload`, « Enregistrer » du kit).
 
 20. Répondre à `supprimer` et à `dupliquer` quand un fichier de l'app tient à plus qu'une ligne (demande du porteur du 04/11 : « tout se
     fait depuis l'explorateur, pour toutes les apps » ; contrats 2.4, `suppression.appel` et `copie.appel`, et 5.4, points 10 et 11 ; **seulement

@@ -203,6 +203,12 @@ await page.addInitScript(() => {
   if (!/\/prototype\/apps\//.test(location.pathname)) return;
   const samples = (window.__peinture = []);
   const start = performance.now();
+  const held = (window.__attente = {});
+  new MutationObserver(() => {
+    const now = Math.round(performance.now() - start);
+    if (document.documentElement.hasAttribute('data-gfs-pending')) held.posee = held.posee ?? now;
+    else if (held.posee !== undefined) held.levee = held.levee ?? now;
+  }).observe(document, { attributes: true, subtree: true, attributeFilter: ['data-gfs-pending'] });
   const tick = () => {
     const root = document.documentElement;
     if (document.body) {
@@ -224,8 +230,9 @@ const painting = await app.evaluate(() => window.__peinture || []);
 const first = painting.find(sample => sample.visible);
 const arrived = painting.find(sample => sample.inline >= 19);
 const enseigne = expected('enseigne', scheme);
-say('premier affichage :', { first, ambianceArrivee: arrived ? arrived.t : null, samples: painting.length });
-constat('à son premier affichage, l\'app porte déjà l\'ambiance choisie (Enseigne) : pas de repeinture', Boolean(first) && first.inline >= 19 && first.bg === rgb(enseigne.colors['--bg']), first);
+const held = await app.evaluate(() => window.__attente || {});
+say('premier affichage :', { first, ambianceArrivee: arrived ? arrived.t : null, attente: held, samples: painting.length });
+constat('à son premier affichage, l\'app porte déjà l\'ambiance choisie (Enseigne) : pas de repeinture', Boolean(first) && first.inline >= 19 && first.bg === rgb(enseigne.colors['--bg']), { first, attente: held });
 await shot('reouverte-enseigne');
 const reopened = await inline();
 check('l\'app ouverte après le choix porte Enseigne, au mode de l\'app', COLOR_TOKENS.every(token => (reopened[token] || '').toLowerCase() === enseigne.colors[token].toLowerCase()), reopened);

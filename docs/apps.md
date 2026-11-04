@@ -577,7 +577,7 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   6.5.438 appelle `getOrInsertComputed` de `Map` et de `WeakMap` (Chrome et Edge 145, Firefox 144, Safari 26.2) ; le Chromium du cloud (141) ne les a pas, le labo les pose (`LAB_NAVIGATEUR_ANCIEN=1` les laisse absentes) ;
   dans un navigateur plus ancien l'app dit « Ce navigateur est trop ancien pour lire un PDF : mettez-le à jour. » et GFS n'a rien de cassé (13 vérifications) ; la version « legacy » de pdfjs-dist 6.5.438 embarque ces
   deux méthodes (lue dans le paquet de npm, pas jouée). (2) **Un défaut de GFS** que la mesure a montré : sa notice « Ouverture de « Devis.pdf »… » reste affichée 6 secondes par-dessus l'app, alors que le PDF est
-  dessiné au bout d'une demi-seconde (`kept-files.js`, `load` : la notice n'est jamais retirée quand le transfert réussit ; seul `#runDemo` appelle `#hideNotice`). Pas mesuré : Firefox, le Grist en ligne du porteur
+  dessiné au bout d'une demi-seconde (`kept-files.js`, `load` : la notice n'est jamais retirée quand le transfert réussit ; seul `#runDemo` appelle `#hideNotice`) ; **corrigé le 04/11 (`f64bfe3`)** : la notice s'efface dès que le transfert est fini. Pas mesuré : Firefox, le Grist en ligne du porteur
   (l'instance de la DINUM), un PDF protégé par un mot de passe, un PDF de centaines de pages.
 - Form+ à `cc21a27` (22/10, le porteur : « check ce qui est remonté des projets ») : trois commits de plus depuis `16701fe`. Son
   `GFS-ETAT.md` (`0614f73`, qui décrit `c249c4a`) dit les consignes 008 à 011 **faites** : le formulaire natif s'enregistre dans

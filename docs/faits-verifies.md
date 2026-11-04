@@ -1076,7 +1076,9 @@ natives de l'app viennent de copies aux mêmes adresses que leurs CDN (`labo/mir
   471 et `edition` 102 n'ont pas bougé.
 - **Un défaut de GFS vu en mesurant** : la notice « Ouverture de « Devis.pdf »… » (`files.reading`, `kept-files.js`, `load`) reste affichée **6 secondes** (34 px de haut, dans le bas du panneau de 700 × 400), par-dessus
   l'app, alors que le PDF est dessiné au bout de 0,6 s dans l'app déjà ouverte : seul son délai (`NOTICE_MS`, `controller.js`) la retire, et seul le bouton « Démo » appelle `#hideNotice`. Mesuré par une passe jetable
-  (français clair, une demi-seconde entre deux relevés). À corriger : retirer la notice quand le transfert est fini.
+  (français clair, une demi-seconde entre deux relevés). **Corrigé le 04/11 (`f64bfe3`)** : `KeptFiles.load` retire la notice dès que les octets sont arrivés (`hideNotice` ; le contrôleur ne retire que cette phrase-là, pas une autre
+  qui l'aurait remplacée), et un transfert qui échoue garde sa phrase d'erreur. Mesuré dans un vrai Grist (`run-lire`, deux vérifications de plus : l'app qui démarre, l'app déjà ouverte) : elles échouent sur l'ancien code,
+  passent avec la correction, en français clair et en anglais sombre.
 - **Rejoués sur `3064a29`, sans échec** : `run-modules` (46 vérifications en français clair, 46 en anglais sombre), `run-ouvrir-publipostage` (28), `run-importer-pp` (33), `run-diapositives` (60), `run-graphique` (20),
   `run-edition` (60), `run-barre-publipostage` (7), `run-langue-publipostage` (25), `run-sans-cdn` (15), et la sonde `run-lire` (43).
 - **Pas mesuré** : Firefox (le cadre en bac à sable, le module à empreinte, et `getOrInsertComputed` dans la version de Firefox de la personne), l'instance de la DINUM, un PDF protégé par un mot de passe (l'app le demande dans

@@ -507,7 +507,7 @@ export class Explorer {
       return;
     }
     const clip = clipboardAction(event);
-    if (clip && this.#keysAreOurs(event.target) && !menuIsOpen() && !(clip !== 'paste' && clip !== 'undo' && this.#hasTextSelected())) { event.preventDefault(); this.#onClipboard(clip, event); return; }
+    if (clip && this.#keysAreOurs(event.target) && !menuIsOpen() && !(['copy', 'cut'].includes(clip) && this.#hasTextSelected())) { event.preventDefault(); this.#onClipboard(clip, event); return; }
     if (event.key !== 'Escape') return;
     if (event.target === this.#refs.search && this.#refs.search.value) {
       this.#refs.search.value = '';
@@ -533,11 +533,11 @@ export class Explorer {
     return Boolean(selection && !selection.isCollapsed && String(selection).trim());
   }
 
-  // Le presse-papiers (js/explorer-clipboard.js) et l'annulation (Ctrl+Z : le dernier geste revient, js/undo-stack.js). Copier et couper visent la ligne choisie, sinon celle où est le clavier ; coller n'a besoin d'aucune ligne (un dossier vide se colle). Pendant un choix de
+  // Le presse-papiers (js/explorer-clipboard.js), l'annulation (Ctrl+Z : le dernier geste revient) et le rétablissement (Ctrl+Y ou Ctrl+Maj+Z : on le refait ; js/undo-stack.js). Copier et couper visent la ligne choisie, sinon celle où est le clavier ; coller n'a besoin d'aucune ligne (un dossier vide se colle). Pendant un choix de
   // fichier pour une app, rien de tout cela : comme « Nouveau » et la corbeille, il est grisé.
   #onClipboard(action, event) {
     if (this.#choice) { this.#opts.notice(this.#opts.i18n.t('ex.choose.newOff')); return; }
-    if (action === 'undo') { void this.#undo.undo(); return; }
+    if (action === 'undo' || action === 'redo') { void this.#undo[action](); return; }
     if (action === 'paste') { void this.#clipboard.paste(); return; }
     const rows = [...this.#refs.list.querySelectorAll('[data-key]')];
     const key = this.#keyOf(event, rows);

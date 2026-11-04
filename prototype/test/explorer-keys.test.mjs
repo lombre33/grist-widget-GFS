@@ -67,27 +67,33 @@ test('Ctrl+C copie, Ctrl+X coupe, Ctrl+V colle ; ⌘ vaut Ctrl ; la majuscule d\
   assert.deepEqual(['C', 'X', 'V'].map(key => clipboardAction(press(key, { ctrlKey: true }))), ['copy', 'cut', 'paste']);
 });
 
-test('Ctrl+Z (⌘+Z sur Mac) est l\'annulation ; Ctrl+Maj+Z (rétablir) et Ctrl+Alt+Z ne sont pas liées', () => {
+test('Ctrl+Z (⌘+Z sur Mac) est l\'annulation ; Ctrl+Y et Ctrl+Maj+Z (⌘+Maj+Z) le rétablissement ; avec Alt, rien', () => {
   assert.equal(clipboardAction(press('z', { ctrlKey: true })), 'undo');
   assert.equal(clipboardAction(press('Z', { ctrlKey: true })), 'undo', 'les capitales verrouillées');
   assert.equal(clipboardAction(press('z', { metaKey: true })), 'undo');
-  assert.equal(clipboardAction(press('z', { ctrlKey: true, shiftKey: true })), null, 'pas de « rétablir »');
+  assert.equal(clipboardAction(press('y', { ctrlKey: true })), 'redo');
+  assert.equal(clipboardAction(press('Z', { ctrlKey: true, shiftKey: true })), 'redo', 'Ctrl+Maj+Z : la touche rend « Z »');
+  assert.equal(clipboardAction(press('z', { metaKey: true, shiftKey: true })), 'redo', '⌘+Maj+Z sur Mac');
   assert.equal(clipboardAction(press('z', { ctrlKey: true, altKey: true })), null);
+  assert.equal(clipboardAction(press('y', { ctrlKey: true, altKey: true })), null);
   assert.equal(clipboardAction(press('z')), null, 'sans Ctrl, c\'est une lettre');
+  assert.equal(clipboardAction(press('y', { ctrlKey: true, shiftKey: true })), null, 'Ctrl+Maj+Y n\'est pas liée');
 });
 
 test('sans Ctrl ou ⌘, une lettre n\'est pas le presse-papiers ; avec Alt (AltGr) ou Maj (Ctrl+Maj+V : coller sans mise en forme), non plus ; ni les autres lettres', () => {
   assert.deepEqual(['c', 'x', 'v', 'z'].map(key => clipboardAction(press(key))), [null, null, null, null]);
   assert.deepEqual(['c', 'x', 'v', 'z'].map(key => clipboardAction(press(key, { ctrlKey: true, altKey: true }))), Array(4).fill(null));
-  assert.deepEqual(['c', 'x', 'v', 'z'].map(key => clipboardAction(press(key, { ctrlKey: true, shiftKey: true }))), Array(4).fill(null));
-  assert.deepEqual(['d', 'a', 'f', 'y', 'F2', 'Delete', 'Control'].map(key => clipboardAction(press(key, { ctrlKey: true }))), Array(7).fill(null), 'Ctrl+D (marque-page) n\'est jamais liée');
+  assert.deepEqual(['c', 'x', 'v'].map(key => clipboardAction(press(key, { ctrlKey: true, shiftKey: true }))), Array(3).fill(null));
+  assert.deepEqual(['d', 'a', 'f', 'w', 'F2', 'Delete', 'Control'].map(key => clipboardAction(press(key, { ctrlKey: true }))), Array(7).fill(null), 'Ctrl+D (marque-page) n\'est jamais liée');
   assert.equal(clipboardAction({ ctrlKey: true }), null, 'un événement sans touche');
 });
 
-test('dans un champ de saisie (la recherche, une fenêtre), Ctrl+C, X, V et Z gardent leur sens : copier, couper, coller et annuler le texte', () => {
+test('dans un champ de saisie (la recherche, une fenêtre), Ctrl+C, X, V, Z et Y gardent leur sens : copier, couper, coller, annuler et rétablir le texte', () => {
   const field = tag => ({ closest: selector => (selector.split(',').map(part => part.trim()).includes(tag) ? {} : null) });
   for (const tag of ['input', 'textarea', 'select', '[contenteditable]']) assert.equal(clipboardAction({ ...press('v', { ctrlKey: true }), target: field(tag) }), null, tag);
   assert.equal(clipboardAction({ ...press('v', { ctrlKey: true }), target: field('li') }), 'paste', 'une ligne de la liste n\'est pas un champ');
   assert.equal(clipboardAction({ ...press('v', { ctrlKey: true }), target: {} }), 'paste', 'une cible sans `closest`');
   assert.equal(clipboardAction({ ...press('z', { ctrlKey: true }), target: field('input') }), null, 'Ctrl+Z défait la frappe dans la recherche');
+  assert.equal(clipboardAction({ ...press('y', { ctrlKey: true }), target: field('input') }), null, 'Ctrl+Y la refait');
+  assert.equal(clipboardAction({ ...press('Z', { ctrlKey: true, shiftKey: true }), target: field('input') }), null, 'Ctrl+Maj+Z aussi');
 });

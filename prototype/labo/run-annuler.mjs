@@ -1,5 +1,5 @@
-// Ctrl+Z dans l'explorateur (demande du porteur, 04/11 : « Ctrl+Z doit aussi faire revenir un fichier supprimé, et plus globalement toutes les modifications : renommage, déplacement, etc. » ; js/undo-stack.js,
-// js/explorer-undo.js, js/filing.js), dans un VRAI Grist (grist-static), sous Chromium, à 700 × 400, au vrai clavier. La sonde ZF (labo/sondes/zf-composite/) apporte trois formulaires et répond aux appels
+// Ctrl+Z et Ctrl+Y dans l'explorateur (demande du porteur, 04/11 : « Ctrl+Z doit aussi faire revenir un fichier supprimé, et plus globalement toutes les modifications : renommage, déplacement, etc. », puis le
+// rétablissement « au clavier seulement » ; js/undo-stack.js, js/explorer-undo.js, js/filing.js), dans un VRAI Grist (grist-static), sous Chromium, à 700 × 400, au vrai clavier. La sonde ZF (labo/sondes/zf-composite/) apporte trois formulaires et répond aux appels
 // `supprimer` et `dupliquer` de GFS comme le fera Form+ ; les dossiers naissent par « Nouveau dossier », donc avec l'accord de la personne pour la table du rangement. LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 //   1. Rien à annuler au départ.
 //   2. Suppr puis Ctrl+Z : la ligne revient À SON NUMÉRO, valeurs identiques, la corbeille est vide ; un second Ctrl+Z n'a plus rien à défaire.
@@ -7,6 +7,7 @@
 //   4. Trois gestes, trois Ctrl+Z, dans l'ordre inverse, puis « Rien à annuler ».
 //   5. Copier-coller puis Ctrl+Z : la copie part à la corbeille (l'app est appelée, sa phrase s'ajoute) ; supprimer pour de bon puis Ctrl+Z : « n'est plus là », rien n'est écrit.
 //   6. Dans la recherche, Ctrl+Z reste celui du texte ; l'app qui n'est pas ouverte : remettre à la corbeille attend l'app (restaurer non), et le geste reste à défaire.
+//   7. Ctrl+Y et Ctrl+Maj+Z rétablissent ce que Ctrl+Z vient de défaire : la corbeille (même ligne), le nom, le déplacement ; un cran par appui, jamais en rond ; un geste neuf vide le rétablissement.
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';
 import { createI18n } from '../js/i18n.js';
@@ -75,6 +76,8 @@ const placeOf = async id => { const found = (await filing()).find(each => each.A
 const pinned = async id => { const found = (await filing()).find(each => each.App === 'sonde-zf' && each.Fichier === String(id)); return Boolean(found && found.Favori); };
 const keptFolders = async () => (await filing()).filter(each => !each.App && !each.Fichier).map(each => each.Dossier).sort();
 const undo = () => page.keyboard.press('Control+z');
+const redo = () => page.keyboard.press('Control+y');
+const redoShift = () => page.keyboard.press('Control+Shift+z');
 const sameList = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 // Une question d'accord de table (GFS_Corbeille, GFS_Rangement) : la première fois seulement.
 const agree = async () => {
@@ -291,5 +294,68 @@ await undo();
 const again = `${t('trash.moved', { name: 'Bilan' })} ${SAID.trash}`;
 check('l\'app est rouverte : le même Ctrl+Z remet « Bilan » à la corbeille', await said(again) === again && sameList(await bin(), ['Bilan']), { corbeille: await bin() });
 await shot('6-fin');
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+say('=== 7. rétablir : Ctrl+Y et Ctrl+Maj+Z refont ce que Ctrl+Z vient de défaire ===');
+// Le dernier Ctrl+Z (6) a remis « Bilan » à la corbeille en défaisant une restauration : Ctrl+Y refait la restauration.
+await quiet();
+await redo();
+check('Ctrl+Y refait la restauration défaite : « Bilan » revient, la phrase de la restauration, mot pour mot', await said(t('trash.restored', { name: 'Bilan' })) === t('trash.restored', { name: 'Bilan' }) && (await bin()).length === 0 && (await files()).includes('Bilan'), { corbeille: await bin(), fichiers: await files() });
+const rowBack = ((await table('SondeZf_Fichiers')) || []).find(each => each.Nom === 'Bilan');
+check('à son numéro (3), valeurs identiques', Boolean(rowBack) && rowBack.id === 3 && rowBack.Type === 'formulaire' && rowBack.DateModif === now - 180, rowBack);
+await quiet();
+await undo();
+const binAgain = `${t('trash.moved', { name: 'Bilan' })} ${SAID.trash}`;
+check('Ctrl+Z puis Ctrl+Y ne tournent pas en rond : Ctrl+Z remet « Bilan » à la corbeille (l\'app est appelée)', await said(binAgain) === binAgain && sameList(await bin(), ['Bilan']));
+await quiet();
+await redo();
+check('Ctrl+Y le ressort de la corbeille', await said(t('trash.restored', { name: 'Bilan' })) === t('trash.restored', { name: 'Bilan' }) && (await bin()).length === 0);
+await quiet();
+await redo();
+check('Ctrl+Y de plus : « Rien à rétablir », rien n\'est écrit', await said(t('redo.nothing')) === t('redo.nothing') && (await bin()).length === 0);
+await quiet();
+// Un renommage défait se refait.
+await rename('Enquête', 'Sondage');
+await undo();
+await said(t('undo.renamed', { name: 'Enquête' }));
+await quiet();
+await redo();
+check('Ctrl+Y refait le renommage : « Sondage » dans le document, la phrase le dit', await said(t('redo.renamed', { name: 'Sondage' })) === t('redo.renamed', { name: 'Sondage' }) && sameList(await files(), ['Bilan', 'Inscription atelier', 'Sondage']), await files());
+await quiet();
+await undo();
+await said(t('undo.renamed', { name: 'Enquête' }));
+check('Ctrl+Z défait ce que Ctrl+Y vient de refaire', sameList(await files(), ['Bilan', 'Enquête', 'Inscription atelier']), await files());
+await quiet();
+// Un geste neuf vide le rétablissement : le renommage défait ne se refait plus.
+await row('Bilan').hover();
+await row('Bilan').locator('.rb.pin').click();
+await agree();
+await waitFor('l\'étoile écrite', async () => pinned(3));
+await quiet();
+await redo();
+check('un geste neuf (une étoile) a vidé le rétablissement : Ctrl+Y dit « Rien à rétablir » et « Enquête » garde son nom', await said(t('redo.nothing')) === t('redo.nothing') && sameList(await files(), ['Bilan', 'Enquête', 'Inscription atelier']), await files());
+await quiet();
+await undo();
+await said(t('undo.unpinned', { name: 'Bilan' }));
+await quiet();
+// Un déplacement défait se refait ; Ctrl+Maj+Z fait comme Ctrl+Y.
+await makeFolder('Contrats');
+await row('Bilan').click();
+await page.keyboard.press('Control+x');
+await row('Contrats').dblclick();
+await frame.locator('.crumbs .here', { hasText: exact('Contrats') }).waitFor();
+await page.keyboard.press('Control+v');
+await said(t('clip.moved', { name: 'Bilan', folder: 'Contrats' }));
+await quiet();
+await undo();
+await said(t('undo.moved', { name: 'Bilan', folder: t('ex.me') }));
+check('Ctrl+Z : « Bilan » est à la racine', (await placeOf(3)) === '', { place: await placeOf(3) });
+await quiet();
+await redoShift();
+check('Ctrl+Maj+Z refait le déplacement : « Bilan » retourne dans « Contrats », la phrase le dit', await said(t('redo.moved', { name: 'Bilan', folder: 'Contrats' })) === t('redo.moved', { name: 'Bilan', folder: 'Contrats' }) && (await placeOf(3)) === 'Contrats', { place: await placeOf(3) });
+await quiet();
+await undo();
+check('Ctrl+Z le ramène à la racine encore', await said(t('undo.moved', { name: 'Bilan', folder: t('ex.me') })) === t('undo.moved', { name: 'Bilan', folder: t('ex.me') }) && (await placeOf(3)) === '', { place: await placeOf(3) });
+await shot('7-retabli');
 check('aucun avertissement inattendu dans la console', warnings.every(each => /le geste sur la corbeille a échoué|la copie a échoué/.test(each)), warnings);
 await lab.browser.close();

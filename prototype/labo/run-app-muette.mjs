@@ -5,7 +5,7 @@
 //   2. L'explorateur recouvre l'app : la phrase se tait (rien de visible, rien à lire) ; l'explorateur fermé, elle revient, la même.
 //   3. Form+ répond de nouveau : « Nouveau > Formulaire » relance l'app (un nouveau cadre, sur le site en ligne), elle est prête, la phrase a disparu et son écran est là.
 // L'essai porte sur GFS, pas sur Form+ : l'app muette comme l'app qui répond sont des pages d'essai (l'autre dit « prête » par le vrai script d'API de Grist, comme toute app), servies à l'adresse de Form+ ;
-// il ne lit rien du sous-module de Form+ (l'app elle-même s'ouvre dans run-ouvrir-form), et le script d'API enveloppé d'`eval` (`LAB_API_EVAL=1`) ne le change pas.
+// il ne lit rien du sous-module de Form+ (l'app elle-même s'ouvre dans run-ouvrir-form), et le script d'API enveloppé d'`eval` (le défaut du labo, `LAB_API_EVAL=0` pour l'ôter) ne le change pas.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark. Un peu plus d'une minute : deux délais de 15 secondes sont attendus pour de bon.
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';

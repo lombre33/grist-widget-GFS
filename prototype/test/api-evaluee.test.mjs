@@ -1,4 +1,4 @@
-// Le script de l'API des widgets que le labo sert en `LAB_API_EVAL=1` (labo/api-evaluee.mjs). Le fichier de docs.getgrist.com s'évalue par eval() ; celui que le labo servait n'évaluait rien, et Form+, dont la
+// Le script de l'API des widgets que le labo sert par défaut (labo/api-evaluee.mjs). Le fichier de docs.getgrist.com s'évalue par eval() ; celui que le labo servait n'évaluait rien, et Form+, dont la
 // politique de page refusait l'évaluation, y démarrait quand même (vu par le porteur le 04/11 ; faits vérifiés 27). Ici, un contexte `vm` qui refuse l'évaluation de texte joue la politique sans `'unsafe-eval'`.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -36,9 +36,10 @@ test('le texte du fichier passe tel quel dans l\'enveloppe, guillemets, retours 
   assert.equal(vm.runInContext('grist.texte', page), 'a"b\'c`d${e} f g');
 });
 
-test('le labo sert le fichier tel quel par défaut, et enveloppé avec LAB_API_EVAL=1 (aucune autre valeur)', () => {
-  assert.equal(servedPluginApi(API, {}), API);
-  assert.equal(servedPluginApi(API, { LAB_API_EVAL: '0' }), API);
-  assert.equal(servedPluginApi(API, { LAB_API_EVAL: 'oui' }), API);
+test('le labo sert le fichier enveloppé par défaut, et tel quel avec LAB_API_EVAL=0 (aucune autre valeur ne le coupe)', () => {
+  assert.equal(servedPluginApi(API, {}), evalWrapped(API));
   assert.equal(servedPluginApi(API, { LAB_API_EVAL: '1' }), evalWrapped(API));
+  assert.equal(servedPluginApi(API, { LAB_API_EVAL: 'oui' }), evalWrapped(API));
+  assert.equal(servedPluginApi(API, { LAB_API_EVAL: '' }), evalWrapped(API));
+  assert.equal(servedPluginApi(API, { LAB_API_EVAL: '0' }), API);
 });

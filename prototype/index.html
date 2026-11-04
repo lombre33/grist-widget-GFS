@@ -10,7 +10,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-4Akr1K5AN7B7jLhRThxSk81uqSsFK4Sl0Yyiz6HmWy8='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-X+1/QGdfWSyRiqCVY6HHee/523I8rHD8x530twoxuYY='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=02775ac48c">
 <link rel="stylesheet" href="css/explorer.css?v=31c5f1877c">
 <link rel="stylesheet" href="css/modules.css?v=904497d37d">
@@ -25,6 +25,7 @@
     "./js/ambiance-forme.js": "./js/ambiance-forme.js?v=77825f5447",
     "./js/ambiance.js": "./js/ambiance.js?v=cc5c51bedc",
     "./js/app-files.js": "./js/app-files.js?v=00fd422db3",
+    "./js/app-status.js": "./js/app-status.js?v=803f91c70f",
     "./js/app-storage.js": "./js/app-storage.js?v=634cc35a22",
     "./js/apps-state.js": "./js/apps-state.js?v=f3ce6fe3d9",
     "./js/arrival.js": "./js/arrival.js?v=7824138f62",
@@ -33,7 +34,7 @@
     "./js/catalogue.js": "./js/catalogue.js?v=13543d1715",
     "./js/conflict-window.js": "./js/conflict-window.js?v=e3c9c8e8d3",
     "./js/context.js": "./js/context.js?v=78e41a0736",
-    "./js/controller.js": "./js/controller.js?v=8938891aa8",
+    "./js/controller.js": "./js/controller.js?v=d3cd723f4d",
     "./js/copying.js": "./js/copying.js?v=f53487059f",
     "./js/deposit.js": "./js/deposit.js?v=e11841b099",
     "./js/dock-state.js": "./js/dock-state.js?v=8eec913fd1",
@@ -78,7 +79,7 @@
     "./js/reading.js": "./js/reading.js?v=6b29ec0768",
     "./js/rpc.js": "./js/rpc.js?v=2133dc4192",
     "./js/search.js": "./js/search.js?v=0921c92eb3",
-    "./js/session.js": "./js/session.js?v=a7bce2e66d",
+    "./js/session.js": "./js/session.js?v=422106a940",
     "./js/settings.js": "./js/settings.js?v=a425d4248c",
     "./js/state.js": "./js/state.js?v=289f010ea6",
     "./js/stored-choice.js": "./js/stored-choice.js?v=2f8b5015a1",

@@ -7,6 +7,7 @@ import { GristState } from './state.js';
 import { createPort } from './broker.js';
 import { ViewOptions, addressOf } from './view-options.js';
 import { AppSession } from './session.js';
+import { AppStatus } from './app-status.js';
 import { readPreferences, liveSwitch } from './frames.js';
 import { createI18n } from './i18n.js';
 import { LanguageSetting, browserStore, languageOfGrist, localeFor, watchStorage } from './language.js';
@@ -84,6 +85,7 @@ export class GfsController {
     this.grist = grist;
     this.router = router;
     this.doc = doc;
+    this.status = new AppStatus(this.$('status')); // la phrase d'état de l'app active : l'explorateur la cache tant qu'il recouvre l'app
     this.params = new URLSearchParams(search);
     this.preferences = readPreferences(search);
     // La langue de GFS et de ses apps : le choix de la personne, retenu sur ce navigateur ; à défaut celle de Grist, ou du navigateur (contrats 5.2).
@@ -209,7 +211,7 @@ export class GfsController {
 
   async start() {
     const { doc } = this;
-    if (window.parent === window) { this.#setStatus(this.t('gfs.noGrist'), true); doc.body.dataset.gfs = 'standalone'; return; }
+    if (window.parent === window) { this.status.say(this.t('gfs.noGrist'), true); doc.body.dataset.gfs = 'standalone'; return; }
     installSprite(doc);
     doc.documentElement.lang = this.lang;
     this.language.onChange(event => this.#onLanguage(event));
@@ -375,6 +377,7 @@ export class GfsController {
   // ---------- les deux lieux ----------
 
   showExplorer() {
+    this.status.cover(true);
     this.$('frames').inert = true;
     this.dock.setPresent(false);
     if (this.session) this.session.show(false);
@@ -385,6 +388,7 @@ export class GfsController {
   hideExplorer() {
     this.links.cancel(false); // un choix de fichier en cours finit sans choix (contrats 5.4, point 2)
     this.explorer.close();
+    this.status.cover(false);
     this.$('frames').inert = false;
     this.dock.setPresent(Boolean(this.session));
     if (this.session) {
@@ -533,6 +537,7 @@ export class GfsController {
   }
 
   #closeSession() {
+    this.status.say('');
     this.links.drop(); // l'app qui demandait un choix n'est plus là
     this.dock.mask(false);
     this.session.close();
@@ -660,7 +665,7 @@ export class GfsController {
   #openIn(appId, opening, noticeKey) {
     // L'app déjà ouverte a lu son contexte : elle n'y relira pas l'ouverture, GFS la lui dit par l'appel `ouvrir` (contrats 5.4, point 1).
     // Sinon (une autre app, ou celle-ci qui démarre) l'ouverture part dans le contexte qu'elle va demander.
-    const running = Boolean(this.session) && this.session.id === appId && this.#contextServed;
+    const running = this.#isOpen(appId) && this.#contextServed;
     if (!this.#activate(appId, opening)) return Promise.resolve(false);
     this.hideExplorer();
     const knows = ACCEPTS_OPEN[appId] && ACCEPTS_OPEN[appId][openingKind(opening)]; // ouvrir un fichier précis, en créer un vierge (« Nouveau »), en créer un d'après un fichier (« Importer »), ou le lire
@@ -690,12 +695,15 @@ export class GfsController {
     const app = this.appById(id);
     if (!app || !this.registry.has(id)) return false;
     this.opening = opening;
-    if (this.session && this.session.id === id) return true;
+    if (this.#isOpen(id)) return true;
     if (this.session) this.#closeSession();
     this.session = new AppSession(this.#sessionContext(app));
     this.session.open();
     return true;
   }
+
+  // L'app est déjà ouverte et vivante : une app qui a renoncé (« ne répond pas ») ne l'est plus, la rouvrir la relance au lieu de rendre le cadre muet.
+  #isOpen(id) { return Boolean(this.session) && this.session.id === id && !this.session.gaveUp; }
 
   #sessionContext(app) {
     const { state, port } = this.workControl.sourceFor(app.manifest);
@@ -712,17 +720,10 @@ export class GfsController {
     const app = label(current.manifest.nom, this.lang);
     this.doc.body.dataset.appStatus = kind;
     this.doc.body.dataset.appSource = current.source;
-    if (kind === 'loading') this.#setStatus(this.t('gfs.loading', { app }));
-    else if (kind === 'fallback') { this.#setStatus(this.t('gfs.loading', { app })); this.notice(this.t('gfs.fallback', { app })); }
-    else if (kind === 'timeout') this.#setStatus(this.t('gfs.timeout', { app }), true);
-    else this.#setStatus('');
-  }
-
-  #setStatus(text, bad = false) {
-    const el = this.$('status');
-    el.hidden = !text;
-    el.textContent = text || '';
-    el.classList.toggle('status--bad', Boolean(bad));
+    if (kind === 'loading') this.status.say(this.t('gfs.loading', { app }));
+    else if (kind === 'fallback') { this.status.say(this.t('gfs.loading', { app })); this.notice(this.t('gfs.fallback', { app })); }
+    else if (kind === 'timeout') this.status.say(this.t('gfs.timeout', { app }), true);
+    else this.status.say('');
   }
 
   // Une phrase qui disparaît seule : ce que GFS ne sait pas encore faire, dit une fois.

@@ -19,6 +19,7 @@ export class AppSession {
   #timers = [];
   #lastContent;
   #pinnedUrl = null; // la copie figée de l'app, tant que le site vivant n'a pas répondu : c'est là qu'on se replie
+  #gaveUp = false; // l'app n'a rien dit après le délai, copie figée comprise : « ne répond pas »
 
   // ctx : { entry, manifest, catalogue, state, port, router, container, readonly, preferences, base, live, lang, onStatus, envelopeHandlers(session), authorize(manifest, opens), viewOptions }
   constructor(ctx) {
@@ -46,6 +47,8 @@ export class AppSession {
 
   get frameWindow() { return this.#frame && this.#frame.contentWindow; }
   get isReady() { return Boolean(this.#peer && this.#peer.isReady); }
+  // Vrai tant qu'une app muette n'a pas fini par répondre : la rouvrir la relance (le cadre muet ne se réutilise pas), au lieu de laisser la personne devant « ne répond pas ».
+  get gaveUp() { return this.#gaveUp && !this.isReady; }
 
   open() {
     const { ctx } = this;
@@ -81,7 +84,9 @@ export class AppSession {
   // copie tarde aussi, c'est le « ne répond pas » de toujours (contrats 1.4, point 2).
   #onSlow() {
     if (this.isReady || !this.#frame) return;
-    if (!this.#pinnedUrl) { this.ctx.onStatus('timeout', this); return; }
+    // La cause est dans la console du cadre de l'app (une politique de sécurité qui refuse le script de Grist, un fichier qui manque) : GFS dit seulement où il a attendu.
+    console.warn(`GFS : ${this.id} : pas de « prête » en ${READY_TIMEOUT_MS / 1000} s sur ${this.source === 'live' ? 'le site en ligne' : 'la copie figée'} (${this.#frame.src.replace(/\?.*/, '')})`);
+    if (!this.#pinnedUrl) { this.#gaveUp = true; this.ctx.onStatus('timeout', this); return; }
     const url = this.#pinnedUrl;
     this.#pinnedUrl = null;
     this.source = 'pinned';

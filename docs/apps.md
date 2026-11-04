@@ -8,7 +8,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|---|
 | Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `6a22dee` | 04/11/2026 | GPL 3.0 |
-| Form+ | `lombre33/FormPlus` | `consignes/form/` | `0de37ac` | 04/11/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
+| Form+ | `lombre33/FormPlus` | `consignes/form/` | `17cfce9` | 04/11/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `597fe02` | 04/11/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `474d67f` | 04/11/2026 | GPL 3.0 |
 | Tuesday (nom de travail ; « Thusday » dans les anciens documents) | `lombre33/grist-wisget-tuesday` | `consignes/tuesday/` | `09ed14c` | 03/11/2026 | GPL 3.0 |
@@ -731,6 +731,14 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   `ACCEPTS_OPEN.bi` à faux : GFS dit « Provisoire » à l'ouverture. **Mesuré dans un vrai Grist, l'app non modifiée (`labo/run-bi.mjs`) : elle ne démarre pas dans le sous-cadre isolé** (quatre lectures de `localStorage` hors
   d'un `try` : `js/i18n.js:332` et `:389`, `js/main.js:886` et `:890` ; faits vérifiés 36) ; avec ces quatre lignes gardées, tout passe. Consigne **007** posée (le stockage d'abord, puis un rapport = une ligne nommée,
   puis le lien du kit pour l'ouverture). Les demandes `d3-cloud` 2.0.0 et `pdfjs-dist` 6.5.438 attendent toujours le « demande de Grist-BI » du porteur.
+- Form+ : la référence de GFS avance à `17cfce9` (04/11, commit à part ; `0de37ac` avant, la 018 faite). Onze commits depuis `0de37ac`, dont neuf de code, relus (onze fichiers, le diff de `poc/js`, `poc/css` et `poc/widget.html` en entier) :
+  `6c79b62` (017 : l'app cache sa page jusqu'à l'ambiance posée, dans GFS seulement) et sa page `6059fb9` ; `7e6db89` (**l'adresse à diffuser d'un formulaire publié est la page statique de Form+ avec le lien natif dans `#form=`, au lieu de la page Grist `/s/<clé>/p/<n>`** ;
+  sa page `17cfce9` ne le décrit toujours pas ; le fil des permissions en est prévenu et relit à la relance : contrats 11.9) ; des retouches de l'éditeur et du répondant (`20dcd43`, `4aeb5e0`, `a1c9185`, `0e9fa2c`, `a01591e`, `2ac5769` : écran de démarrage masqué
+  une fois l'éditeur affiché, référence vide, condition enregistrée en quittant la carte, pastilles plus nettes en sombre, Suivant/Envoyer recalculé, champs natifs non répétés) ; `6c79698` (**018** : `'unsafe-eval'` et l'adresse entière du script de Grist
+  dans la politique de sa page ; `isPluginApiReady` voit un script chargé mais planté et le dit dans son diagnostic, `pluginApiBroken`). Rien qui change le contrat : ni table, ni colonne, ni clé de réglages, ni bibliothèque, ni permission, ni action, ni stockage du
+  navigateur, ni appel réseau de plus (recherche dans le diff de `poc/js`) ; la politique de sécurité ne change que par la 018 (`'unsafe-eval'`, l'adresse entière de `grist-plugin-api.js`) ; `kit/` reste à `8afa569`. Rejoué dans un vrai Grist (`faits-verifies.md`, section 23) :
+  `run-ambiance-apps`, quatre passes, 56 mesures chacune, aucune en échec. **Constat** : sa 017 ne tient pas avant la première image (l'attribut est posé par le module `main.js`, après elle) : consigne 023. Pas de question à GFS ; la demande Leaflet 1.9.4 attend
+  toujours le mot du porteur. Les consignes 019 à 022 de Form+ existent déjà : le prochain numéro libre est le 024.
 - « Nouveau > Importer » (22/10, le porteur : « les imports possibles par Publipostage+ (Excel, docx, pptx…) il faudrait qu'ils soient aussi
   disponibles dans le menu Nouveau, sous-menu Import ? », puis sa réponse « Sous-menu Importer ») : GFS livre le sous-menu. Le
   manifeste déclare les formats (`actions.importer`, contrats 2.7, point 4), GFS ouvre le sélecteur de fichier et rend le `File` à l'app

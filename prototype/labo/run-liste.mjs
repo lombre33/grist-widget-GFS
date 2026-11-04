@@ -91,7 +91,7 @@ const windowGrid = await frame.evaluate(() => {
   const lefts = new Set(minis.map(mini => Math.round(mini.getBoundingClientRect().left)));
   return { columns: lefts.size, vignettes: minis.length, height: [...new Set(minis.map(mini => Math.round(mini.getBoundingClientRect().height)))], pad: getComputedStyle(grid).paddingTop };
 });
-check('la fenêtre « Thème » : cinq vignettes en une rangée, de 58 px de haut, dans sa grille (`amb-grid`) et son remplissage de 8 px', windowGrid.columns === 5 && windowGrid.vignettes === 5 && windowGrid.height.join() === '58' && windowGrid.pad === '8px', windowGrid);
+check('la fenêtre « Thème » : cinq vignettes en une rangée, de 58 px de haut, dans sa grille (`amb-grid`) et son remplissage de 4 px en haut (8 px sur les côtés : la ligne de l\'interrupteur « Accessibilité renforcée » tient dessous sans faire défiler la fenêtre à 400 px)', windowGrid.columns === 5 && windowGrid.vignettes === 5 && windowGrid.height.join() === '58' && windowGrid.pad === '4px', windowGrid);
 await shot('3-fenetre-theme');
 await page.keyboard.press('Escape');
 await lab.browser.close();

@@ -1083,3 +1083,32 @@ natives de l'app viennent de copies aux mêmes adresses que leurs CDN (`labo/mir
   `run-edition` (60), `run-barre-publipostage` (7), `run-langue-publipostage` (25), `run-sans-cdn` (15), et la sonde `run-lire` (43).
 - **Pas mesuré** : Firefox (le cadre en bac à sable, le module à empreinte, et `getOrInsertComputed` dans la version de Firefox de la personne), l'instance de la DINUM, un PDF protégé par un mot de passe (l'app le demande dans
   une fenêtre à elle), un PDF de centaines de pages, le vrai CDN des bibliothèques natives de l'app.
+
+## 23. L'ambiance de GFS avec les vraies Form+ et Automation+ : ce que le vrai Grist a mesuré (04/11)
+
+Suite de la section 17 (la sonde N, une app écrite avec le kit) : les **vraies** apps, servies par GFS depuis leur référence, prennent l'ambiance choisie dans GFS (consignes 016 de Form+ et 006 d'Automation+ ; contrats
+5.2, point 10 ; guide des apps, règle 15). Joué par `labo/run-ambiance-apps.mjs` (les écrans où passe une personne sont dans `labo/ecrans-apps.mjs`, que partage `run-barre-apps.mjs`) dans un **vrai Grist** (grist-static), panneau à
+700 × 400, souris réelle, en français et en anglais, en clair et en sombre : une passe par combinaison, huit passes en tout, Chromium 141 seulement. Form+ à `0de37ac` (son code à `954483a`, `kit/` à `8afa569`),
+Automation+ à `bb8a8dd` (son code à `3f7d45a`, 0.12.0, `kit/` à `db14544`) : le code servi de chaque référence (pages, scripts, feuilles, politique de sécurité) est relu en entier et ses essais parcourus : rien qui change le contrat (ni table, ni colonne,
+ni clé de réglages, ni bibliothèque, ni permission, ni adresse de la politique de sécurité du contenu).
+
+- **Ce que mesure chaque passe**, dans chaque écran, avec chacune des quatre ambiances (Pop, Papier, Brut, Néon), dans les deux modes : le kit a posé les dix-neuf jetons de couleur du mode que l'app affiche, tels que GFS les
+  calcule (`ambiancePalette`), et aucun jeton de forme qui diffère de celui de GFS ; le fond de la page est `--bg` ; **chaque texte garde 4,5:1 au moins** (3:1 pour un grand texte), mesuré sur les couleurs affichées (les fonds
+  des ancêtres posés l'un sur l'autre), une fois les transitions de l'app finies. Automation+ : quatre écrans (l'accord de création de la table, le graphe avec un déclencheur et une action posés à la souris, le journal, les
+  réglages), 32 mesures par passe ; Form+ : sept écrans (les départs, le concepteur d'un formulaire semé, en haut puis en bas, les réponses, les paramètres, de même), 56 mesures par passe. **Aucune en échec, dans les huit passes.**
+- **La couleur libre** (une pastille de la palette du kit) : l'accent de l'app est celui de la personne, éclairci ou assombri au besoin (`#6d28d9` reste tel quel en clair, devient `#9e7dff` en sombre), la forme de Pop reste.
+  **« Revenir à Grist Factory »** : l'app retire tout ce que le kit avait posé et retrouve ses couleurs d'origine, dans le même cadre (un seul, non reconstruit). Les jetons que l'app tient pour elle (la zone que la barre
+  de GFS lui fait écarter : `--gfs-zone-*` chez Automation+, `--gfs-bar-*` chez Form+) ne sont pas ceux de GFS : ils bougent quand la barre disparaît (l'explorateur ouvert), et l'essai ne compare que les jetons de l'ambiance.
+- **Une app ouverte après le choix (Néon)** : Automation+ attend l'ambiance avant de s'afficher (`html[data-gfs-pending]`, levé par `ready`, au plus 2 s) : son premier affichage vient de 153 à 188 ms dans le labo, avec les
+  47 propriétés déjà posées : pas de repeinture, dans les quatre passes. **Form+ s'affiche d'abord dans ses couleurs d'origine, puis prend l'ambiance** : premier affichage de 10 à 25 ms, ambiance de 78 à 110 ms, soit **66 à 100 ms
+  de couleurs d'origine** avant le changement (Chromium, Grist local ; plus long sur un Grist distant). Le guide dit d'appeler `Ambiance.start()` « avant d'afficher » : Form+ le fait dans son module d'entrée, mais rien ne retient
+  l'affichage jusqu'au message de GFS. Ce n'est pas une règle du guide et GFS n'y peut rien : constat, dit à l'app par sa consigne 017.
+- **Le déclencheur et l'action d'Automation+** (la 007, point 3, l'a promis) : l'en-tête d'un déclencheur (`--accent-soft`) et celui d'une action (`--accent-solid`) restent distincts dans les huit combinaisons : le plus petit écart
+  de couleur en OKLab est **0,145** (Papier, en sombre), le plus faible rapport de luminance **1,23:1** (Brut, en clair : un bleu pâle `#dfeaff` contre un jaune vif `#f9d100` : la teinte les sépare). L'app seule : 0,420 et 3,97:1 en clair
+  (`#e8f0fe` et `#2f6fed`), 0,299 et 2,83:1 en sombre (`#24324b` et `#2f6fed`). Seuil de cette mesure : 0,10 (cinq fois ce qui se voit à peine, 0,02) : un choix de GFS pour ce rejeu, pas une règle de la charte.
+- **La console** : aucune erreur de page, aucun refus de la politique de sécurité du contenu, aucun avertissement de GFS. Le Grist du labo est en `http` : le `connect-src 'self' https:` de Form+ refuse ses appels à l'adresse publique
+  d'un formulaire (ce que ne fait pas un Grist en `https`), et l'essai ne retient pas ces messages-là.
+- **Deux pièges de mesure** : le contraste d'un texte mesuré pendant une transition de l'app (Form+ en a sur ses tuiles et ses boutons : `transition: background .12s`) donne de faux échecs (un `.start-tile-desc` à 2,62:1) : l'essai
+  attend que `document.getAnimations()` soit vide ; et une capture prise la fenêtre « Thème » ouverte cache une part de l'app derrière elle : elle se prend fenêtre et explorateur refermés.
+- **Pas mesuré** : Firefox, l'instance de la DINUM, l'écran du répondant et l'aperçu de Form+ (`#fill`, `.pv-*`, que l'app garde à l'aspect dessiné par la personne : consigne 016), les états du test à blanc des nœuds d'Automation+
+  (`trace-*`, dont le rouge d'échec et l'ambre d'avertissement sont à l'app), Grist-BI et Tuesday (pas encore au catalogue de GFS : ni manifeste ni sous-module).

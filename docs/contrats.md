@@ -1313,6 +1313,11 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    l'app n'est jamais reconstruit et elle ne voit aucun refus de la politique de sécurité du contenu (le CSSOM passe sous `style-src 'self'`). Deux pièges vus : un fond de page écrit
    `--main-bg` (le fond de la carte de GFS, `transparent` chez Néon) laisse un titre clair à 1,10:1 en sombre (le guide dit `--bg`), et le décor `--wash` sur un élément plus court que la
    page se répète à chaque hauteur de contenu (`min-height: 100vh`).
+   [M] **Mesuré le 04/11, les vraies apps** (`run-ambiance-apps.mjs`, faits vérifiés 23 : Form+ à `0de37ac` et Automation+ à `bb8a8dd`, servies par GFS dans un vrai Grist, 700 × 400, huit passes en français et en anglais, en clair et en sombre).
+   Dans chaque écran où passe une personne (quatre chez Automation+, sept chez Form+) et chacune des quatre ambiances, le kit pose les dix-neuf jetons de couleur du mode tels que GFS les calcule, le fond de la page est `--bg` et chaque texte garde
+   4,5:1 au moins (32 mesures par passe chez Automation+, 56 chez Form+, aucune en échec) ; la couleur libre, « Revenir à Grist Factory » (l'app retrouve ses couleurs, dans le même cadre) et l'app ouverte après le choix passent. Une app qui attend
+   l'ambiance avant de s'afficher (Automation+ : `html[data-gfs-pending]`, levé par `ready`, 2 s au plus) porte déjà Néon à son premier affichage ; une qui ne l'attend pas (Form+) se montre de 66 à 100 ms dans ses couleurs d'origine avant de les
+   changer : un constat, pas un manquement (le guide dit d'appeler `Ambiance.start()` avant d'afficher, il ne dit pas de retenir l'affichage). L'en-tête d'un déclencheur et celui d'une action d'Automation+ restent distincts dans les quatre ambiances, en clair et en sombre (écart de couleur OKLab de 0,145 au plus bas, Papier en sombre ; l'app seule : 0,299 en sombre).
 
 ### 5.3 Le stockage du navigateur
 

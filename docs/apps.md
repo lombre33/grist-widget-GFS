@@ -8,8 +8,8 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|---|
 | Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `3064a29` | 04/11/2026 | GPL 3.0 |
-| Form+ | `lombre33/FormPlus` | `consignes/form/` | `b54414a` | 03/11/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
-| Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `746a564` | 03/11/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
+| Form+ | `lombre33/FormPlus` | `consignes/form/` | `0de37ac` | 04/11/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
+| Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `bb8a8dd` | 04/11/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `521a8ac` | 03/11/2026 | GPL 3.0 |
 | Tuesday (nom de travail ; « Thusday » dans les anciens documents) | `lombre33/grist-wisget-tuesday` | `consignes/tuesday/` | `09ed14c` | 03/11/2026 | GPL 3.0 |
 | Calendar+ (id GFS `calendrier`, pas encore au catalogue ; le même projet que Tuesday, un fil de plus) | `lombre33/grist-widget-calendar-plus` | aucun dossier : la 006 de `consignes/tuesday/` lui parle | `b96b04d` | 03/11/2026 | GPL 3.0 (`LICENSE` au socle) |
@@ -675,10 +675,10 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   gardent la palette du tableau de bord (choix prudent, dit dans la 004 ; la couleur libre pour eux serait une autre décision).
 - Pages d'état relues sur GitHub sans cloner (04/11 matin, la mission « rester à jour » ; méthode du 03/11 : `raw.githubusercontent.com` et `git ls-remote`, ni clone ni `fetch`). Sommets de `main`
   et commit que chaque page dit décrire : Publipostage+ `4f23104` (page inchangée depuis le 03/11, `2082d41`), Form+ `0de37ac` (page `954483a`), Automation+ `bb8a8dd` (page `3f7d45a`), Grist-BI `474d67f`
-  (page `fef9af8`), Tuesday `87720d5` (page `0b8bca7`), Calendar+ `2f69651` (page `531e0cd`). Les six dépôts ont avancé depuis leur page : ces commits ne sont pas lus, donc « Dernier commit lu » ne bouge
-  pas dans le tableau. **Les quatre consignes sur l'ambiance sont faites** (kit `8afa569` ou plus récent, `Ambiance.start()`, feuilles sur les jetons ; essais des apps sur le message d'exemple du kit, jamais dans
+  (page `fef9af8`), Tuesday `87720d5` (page `0b8bca7`), Calendar+ `2f69651` (page `531e0cd`). Les six dépôts ont avancé depuis leur page. Pour Form+ (`0de37ac`) et Automation+ (`bb8a8dd`), ce commit de plus est leur page elle-même : rien d'autre n'a changé depuis `954483a` et `3f7d45a`, ce que
+  GFS a relu en entier (de `fd5384a` à `0de37ac`, de `746a564` à `bb8a8dd`), donc leur « Dernier commit lu » avance et la référence de GFS les rejoint (commits à part). Pour les quatre autres, ces commits ne sont pas lus : le tableau ne bouge pas. **Les quatre consignes sur l'ambiance sont faites** (kit `8afa569` ou plus récent, `Ambiance.start()`, feuilles sur les jetons ; essais des apps sur le message d'exemple du kit, jamais dans
   un GFS) : Form+ 016 (`954483a`, 829 vérifications hors ligne), Automation+ 006 (`3f7d45a`, par `createAmbiance` : l'app garde sa clé `ab_theme`), Grist-BI 004 (`fef9af8`, `Ambiance.start()` par un `import()`
-  dynamique), Tuesday 010 (`0b8bca7`) ; le rejeu de `labo/run-ambiance-kit.mjs` avec chaque vraie app, que le « Fait quand » de ces consignes promet, reste à faire. Autres consignes passées à « faite » dans les
+  dynamique), Tuesday 010 (`0b8bca7`) ; le rejeu avec la vraie app que le « Fait quand » de ces consignes promet est fait pour Form+ et Automation+ (entrée suivante) ; Grist-BI et Tuesday ne sont pas encore au catalogue de GFS : rien à rejouer d'ici là. Autres consignes passées à « faite » dans les
   `INDEX.md` : Form+ 015 (`01ddd10`, un lien public ne lit que les petites tables `FormPlus_Pub_*`), Automation+ 003 (`3f7d45a`, la barre lue par le lien du kit : `kit/` pris en sous-module à `db14544`, 0.7.0 ; elle
   ne dit à GFS que la demande `contexte`, aucune action `ouvrir`, `choisir`, `insérer` ni `ranger`, CSP inchangée), Tuesday 005 et 007 (`1bc3a17`), 008 (`0b8bca7`, `permissions.identite` déclarée), 009 lue, Grist-BI
   004. **Questions pour GFS** : Automation+ en pose deux (l'étiquette `v0.7.0` du kit, que le porteur pose ; les couleurs de type et d'état de ses nœuds, qui suivent l'accent), réponse par sa consigne 007.

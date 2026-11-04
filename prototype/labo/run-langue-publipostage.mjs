@@ -12,6 +12,7 @@
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check } from './lab-common.mjs';
+import { chooseLanguage } from './reglages-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -88,8 +89,8 @@ const contentOf = name => frame.evaluate(async n => {
 // La langue de GFS (celle de son explorateur) et son choix retenu.
 const gfsLang = () => frame.evaluate(() => document.documentElement.lang);
 const stored = () => frame.evaluate(() => { try { return localStorage.getItem('gfs.langue'); } catch (error) { return 'REFUSÉ'; } });
-const chooseIn = async name => { await frame.locator('.tb-lang').click(); await frame.locator('.menu').waitFor(); await frame.locator('.menu-item', { hasText: new RegExp(`^${name}$`) }).click(); };
-const chooseAuto = async () => { await frame.locator('.tb-lang').click(); await frame.locator('.menu').waitFor(); await frame.locator('.menu-item').first().click(); };
+const chooseIn = name => chooseLanguage(frame, name);
+const chooseAuto = () => chooseLanguage(frame, null);
 const flip = async () => { const now = await gfsLang(); await chooseIn(NAMES[now === 'fr' ? 'en' : 'fr']); };
 // La langue de l'app, relevée dans la page : sa langue, une chaîne de l'interface, ce que GFS lui a dit, l'adresse de son cadre.
 const appLang = () => app.evaluate(() => ({

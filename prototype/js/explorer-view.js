@@ -4,12 +4,11 @@
 import { h } from './dom.js';
 import { icon } from './icons.js';
 import { person, formatDate, pathParts, stampOf, authorOf, FAMILY_NAMES } from './explorer-model.js';
-import { LANGUAGE_NAMES } from './language.js';
 import { formatBytes } from './weight.js';
 
 export const SORT_HEADERS = [['name', 'ex.name'], ['type', 'ex.type'], ['poids', 'ex.weight'], ['mod', 'ex.modified'], ['by', 'ex.by']];
 
-// Le cadre fixe : titre, bascule liste/vignettes, fil d'Ariane, recherche, filtre de type, « Nouveau », volet, liste, barre d'information.
+// Le cadre fixe : titre, « Apps », bascule liste/vignettes, « Réglages », fil d'Ariane, recherche, filtre de type, « Nouveau », volet, liste, barre d'information.
 // Ses textes sont posés par `relabel` : la même fonction les réécrit quand la personne change la langue de GFS.
 export function buildShell(i18n) {
   const refs = {};
@@ -21,9 +20,8 @@ export function buildShell(i18n) {
         keep('title', h('h2', { class: 'ex-title', id: 'ex-title' })),
         h('span', { class: 'grow' }),
         keep('appsBtn', h('button', { type: 'button', class: 'tb', 'aria-haspopup': 'dialog' })),
-        keep('langBtn', h('button', { type: 'button', class: 'tb tb-lang', 'aria-haspopup': 'menu', 'aria-expanded': 'false' })),
-        keep('themeBtn', h('button', { type: 'button', class: 'tb tb-theme', 'aria-haspopup': 'dialog' })),
-        keep('display', h('div', { class: 'tb-group', role: 'group' }, toggle('viewList', 'list'), toggle('viewTiles', 'tiles')))),
+        keep('display', h('div', { class: 'tb-group', role: 'group' }, toggle('viewList', 'list'), toggle('viewTiles', 'tiles'))),
+        keep('settingsBtn', h('button', { type: 'button', class: 'tb', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, icon('sliders')))),
       h('div', { class: 'ex-nav-row' },
         keep('crumbs', h('nav', { class: 'crumbs' })),
         h('label', { class: 'inp-search' }, icon('search'), keep('search', h('input', { type: 'search', autocomplete: 'off' }))),
@@ -45,20 +43,15 @@ export function buildShell(i18n) {
 }
 
 // Les textes du cadre fixe, dans la langue de `i18n` : à la construction, puis à chaque changement de langue. Le contenu qui change au fil de l'usage (fil d'Ariane, volet,
-// liste, bouton du filtre de type) est redessiné par l'explorateur ; le bouton de langue dit celle qui vaut, dans sa propre langue.
+// liste, bouton du filtre de type) est redessiné par l'explorateur. Le bouton « Réglages » n'a que son icône, posée à la construction : `relabel` ne touche qu'à ses noms, et le clavier y reste quand on vient
+// de choisir une langue dans son menu.
 export function relabel(refs, i18n) {
-  const { t, lang } = i18n;
-  const name = LANGUAGE_NAMES[lang];
+  const { t } = i18n;
   const describe = (node, text) => { node.setAttribute('title', text); node.setAttribute('aria-label', text); };
   refs.title.textContent = t('ex.title');
   refs.appsBtn.title = t('gfs.appsTip');
   refs.appsBtn.replaceChildren(icon('modules'), t('gfs.apps'));
-  refs.langBtn.title = t('lang.tip');
-  refs.langBtn.setAttribute('aria-label', t('lang.btn', { name }));
-  refs.langBtn.replaceChildren(icon('globe'), h('span', { class: 'lbl' }, name));
-  refs.themeBtn.title = t('theme.tip');
-  refs.themeBtn.setAttribute('aria-label', t('theme.tip'));
-  refs.themeBtn.replaceChildren(icon('palette'), h('span', { class: 'lbl' }, t('theme.btn')));
+  describe(refs.settingsBtn, t('set.tip'));
   refs.display.setAttribute('aria-label', t('ex.display'));
   describe(refs.viewList, t('ex.list'));
   describe(refs.viewTiles, t('ex.tiles'));

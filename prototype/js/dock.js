@@ -95,9 +95,19 @@ export class Dock {
     return { rect: { x: box.left - stage.left, y: box.top - stage.top, largeur: box.width, hauteur: box.height }, frame: { largeur: stage.width, hauteur: stage.height } };
   }
 
+  // Les quatre bords, un article chacun : celui qui vaut est coché.
+  #edgeItems() {
+    return EDGES.map(edge => ({ label: this.#t(`dock.${edge}`), icon: EDGE_ICONS[edge], check: edge === this.edge, run: () => this.#choose(edge) }));
+  }
+
   #openPlaceMenu() {
-    const items = EDGES.map(edge => ({ label: this.#t(`dock.${edge}`), icon: EDGE_ICONS[edge], check: edge === this.edge, run: () => this.#choose(edge) }));
-    openMenu(this.#place, items, { host: this.#stage, side: MENU_SIDE[this.edge], label: this.#t('dock.place') });
+    openMenu(this.#place, this.#edgeItems(), { host: this.#stage, side: MENU_SIDE[this.edge], label: this.#t('dock.place') });
+  }
+
+  // La ligne « Position de la barre » du menu « Réglages » de l'explorateur (js/settings-menu.js) : le même choix que le dernier bouton de la barre, ses quatre bords en sous-menu. La barre
+  // elle-même ne change pas : ses quatre boutons restent ceux de la décision du 21/10.
+  placeRow() {
+    return { label: this.#t('dock.place'), icon: EDGE_ICONS[this.edge], submenu: this.#edgeItems() };
   }
 
   #choose(edge) {

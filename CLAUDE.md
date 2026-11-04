@@ -98,7 +98,7 @@ Si un fait nouveau remet en cause une de ces lignes : le dire au porteur, avec l
   grist-static), jamais contre un faux Grist écrit par nous.
 - Une interface se mesure à 700 × 400 à la vraie souris (pas de `dispatchEvent`), en clair et en sombre.
 - Une interface se mesure aussi sous Firefox, le navigateur du porteur (décidé le 03/11, après le trait qui barrait le
-  texte de la liste) : `prototype/test/interfaces-firefox.test.mjs` ouvre l'explorateur et la fenêtre « Thème » dans un
+  texte de la liste) : `prototype/test/interfaces-firefox.test.mjs` ouvre l'explorateur, son menu « Réglages » et la fenêtre « Thème » dans un
   vrai Firefox sans écran ; toute nouvelle interface y ajoute ses mesures (mode d'emploi : `prototype/labo/LISEZ-MOI.md`,
   « L'interface sous Firefox »). Dans le cloud, d'abord `bash prototype/labo/installer-firefox.sh` (deux minutes) : sans
   Firefox, l'essai est sauté et ne mesure rien.

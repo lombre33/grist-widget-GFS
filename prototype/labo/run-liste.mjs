@@ -12,6 +12,7 @@ import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check } from './lab-common.mjs';
 import { ROW_BUTTON, ROW_HEIGHT, TILE_MIN, columnFaults, expectedTileColumns, measureColumns, measureRows, measureTiles } from './mesures-liste.mjs';
+import { openThemeWindow } from './reglages-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -83,8 +84,7 @@ for (const width of WIDTHS) {
 
 // ---------- la fenêtre « Thème » garde sa grille ----------
 await lab.fitPanel(undefined, 700, 400);
-await frame.locator('.tb-theme').click();
-await frame.locator('.th-win').waitFor();
+await openThemeWindow(frame);
 const windowGrid = await frame.evaluate(() => {
   const grid = document.querySelector('.th-win [role="radiogroup"]');
   const minis = [...document.querySelectorAll('.th-win .amb-mini')];

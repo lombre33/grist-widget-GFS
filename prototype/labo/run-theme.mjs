@@ -1,9 +1,9 @@
 // Le thème de GFS (décision du porteur, 03/11 ; contrats 5.2, point 10), dans un vrai Grist (grist-static), à 700 × 400, à la vraie souris et au vrai clavier (Playwright : événements du pointeur et
-// du clavier du navigateur, jamais dispatchEvent). LAB_LANG=fr|en, LAB_SCHEME=light|dark, LAB_W (largeur du panneau, 700 ; sous 520 le bouton ne garde que son icône). Ce que la passe mesure :
-//   1. le départ : rien n'est posé sur la page (aspect d'origine), le bouton « Thème » est à côté de « Langue » ;
+// du clavier du navigateur, jamais dispatchEvent). LAB_LANG=fr|en, LAB_SCHEME=light|dark, LAB_W (largeur du panneau, 700). Ce que la passe mesure :
+//   1. le départ : rien n'est posé sur la page (aspect d'origine) ; depuis le 04/11 « Thème… » est une ligne du menu « Réglages » (le dernier bouton de la ligne du titre), plus un bouton à part ;
 //   2. la fenêtre, à la souris : cinq vignettes, la charte d'origine choisie, le fond inerte, le clavier dedans, tout dans 700 × 400 ;
 //   3. un choix : l'ambiance est posée sur la page tout de suite (`data-ambiance`, jetons de couleur et de forme), retenue (`gfs.theme`), les vignettes montrent la couleur choisie ;
-//   4. le clavier : Entrée ouvre, les flèches choisissent, Tab traverse la fenêtre sans s'arrêter sur chaque vignette, Échap ferme et rend le clavier au bouton ;
+//   4. le clavier : Entrée sur « Réglages », Bas puis Entrée sur « Thème… » ouvrent la fenêtre, les flèches choisissent, Tab traverse la fenêtre sans s'arrêter sur chaque vignette, Échap ferme et rend le clavier au bouton « Réglages » ;
 //   5. chaque ambiance, dans le mode de Grist : la page est lisible (contraste de 4,5:1 au moins pour chaque texte de l'explorateur et de la fenêtre, mesuré sur les couleurs affichées) ;
 //      les icônes de type de la liste ont la couleur du tableau de js/ambiance-types.js et le trait de l'ambiance (décision du 04/11) ;
 //   6. retenu sur le navigateur : GFS rechargé repart dans l'ambiance choisie ;
@@ -22,17 +22,18 @@ import { say, check, contrastAudit } from './lab-common.mjs';
 import { themeGestures } from './theme-gestes.mjs';
 import { TYPE_TOKENS } from '../js/ambiance-types.js';
 import { readIcons, rowProblems } from './mesures-icones.mjs';
+import { openSettings } from './reglages-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
 const panelWidth = Number(process.env.LAB_W || 700);
 const run = `theme-${lang}-${scheme}${panelWidth === 700 ? '' : `-${panelWidth}`}`;
 const WORDS = {
-  fr: { button: 'Thème', title: 'Thème', reset: 'Revenir à Grist Factory', close: 'Fermer', names: ['Grist Factory', 'Pop', 'Papier', 'Brut', 'Néon'], saved: 'S’applique tout de suite, reste sur ce navigateur.',
+  fr: { themeRow: 'Thème…', title: 'Thème', reset: 'Revenir à Grist Factory', close: 'Fermer', names: ['Grist Factory', 'Pop', 'Papier', 'Brut', 'Néon'], saved: 'S’applique tout de suite, reste sur ce navigateur.',
     notKept: 'Ce choix vaut pour cette page seulement : ton navigateur refuse de le garder.', check: /^Couleurs calculées : contraste de \d,\d:1 au moins/, origin: /^Ambiance d’origine : contraste de \d,\d:1 au moins/,
     own: 'La mienne', none: 'Celle de l’ambiance', pick: 'Choisir ma couleur', customBtn: 'Personnalisé…', custom: 'Couleur personnalisée', apply: 'Appliquer', cancel: 'Annuler', palette: 'Palette de couleurs',
     missing: 'Le sélecteur de couleur ne s’est pas chargé : GFS garde la couleur de l’ambiance. Recharge la page pour réessayer.' },
-  en: { button: 'Theme', title: 'Theme', reset: 'Back to Grist Factory', close: 'Close', names: ['Grist Factory', 'Pop', 'Paper', 'Raw', 'Neon'], saved: 'Applies right away, stays on this browser.',
+  en: { themeRow: 'Theme…', title: 'Theme', reset: 'Back to Grist Factory', close: 'Close', names: ['Grist Factory', 'Pop', 'Paper', 'Raw', 'Neon'], saved: 'Applies right away, stays on this browser.',
     notKept: 'This choice only holds for this page: your browser refuses to keep it.', check: /^Computed colors: contrast of at least \d\.\d:1/, origin: /^Original look: contrast of at least \d\.\d:1/,
     own: 'My own', none: 'The look’s color', pick: 'Choose my color', customBtn: 'Custom…', custom: 'Custom color', apply: 'Apply', cancel: 'Cancel', palette: 'Color palette',
     missing: 'The color picker did not load: GFS keeps the look’s color. Reload the page to try again.' },
@@ -160,9 +161,13 @@ check('rien n\'est posé sur la page : l\'aspect d\'origine', now.ambiance === n
 check('rien n\'est retenu', JSON.stringify(await stored()) === JSON.stringify({ theme: null, couleur: null }), await stored());
 const toolbar = await frame.evaluate(() => [...document.querySelectorAll('.ex-title-row > button')].map(node => ({ cls: node.className, text: node.innerText.trim(), label: node.getAttribute('aria-label'), tip: node.title, haspopup: node.getAttribute('aria-haspopup') })));
 say('barre d\'outils :', toolbar);
-const order = toolbar.map(item => item.cls);
-check('le bouton « Thème » est juste après « Langue »', order.indexOf('tb tb-theme') === order.indexOf('tb tb-lang') + 1 && order.indexOf('tb tb-lang') >= 0, order);
-check('son nom, son info-bulle, sa fenêtre', toolbar.some(item => item.cls === 'tb tb-theme' && (panelWidth < 520 ? item.text === '' : item.text === words.button) && item.haspopup === 'dialog' && /Grist Factory Suite/.test(item.label) && item.label === item.tip), toolbar);
+const settings = toolbar.at(-1);
+check('« Langue » et « Thème » ne sont plus des boutons de la ligne du titre : le dernier est « Réglages », à icône seule', !toolbar.some(item => /tb-lang|tb-theme/.test(item.cls)) && settings.text === '' && settings.haspopup === 'menu', toolbar);
+check('« Réglages » : son nom et son info-bulle disent Grist Factory Suite', /Grist Factory Suite/.test(settings.label) && settings.label === settings.tip, settings);
+await openSettings(frame);
+const themeRow = await frame.evaluate(() => { const row = document.querySelectorAll('.menu:not(.menu-sub) .menu-item')[1]; return { text: row.querySelector('.menu-label').textContent.trim(), tip: row.title, popup: row.getAttribute('aria-haspopup') }; });
+check('la ligne « Thème… » du menu ouvre une fenêtre (pas un sous-menu), son info-bulle dit pour qui elle vaut', themeRow.text === words.themeRow && themeRow.popup === null && /Grist Factory Suite/.test(themeRow.tip), themeRow);
+await page.keyboard.press('Escape');
 await shot('1-depart');
 
 // ---------- 2. la fenêtre ----------
@@ -195,15 +200,18 @@ check('les vignettes sont différentes (fond, forme)', new Set(minis.map(item =>
 await shot('3-pop-fenetre');
 await page.keyboard.press('Escape');
 await frame.locator('.th-win').waitFor({ state: 'detached' });
-check('Échap ferme la fenêtre et rend le clavier au bouton « Thème »', await frame.evaluate(() => document.activeElement && document.activeElement.classList.contains('tb-theme')));
+check('Échap ferme la fenêtre et rend le clavier au bouton « Réglages » (celui d\'où la fenêtre a été ouverte)', await frame.evaluate(() => document.activeElement === document.querySelector('.ex-title-row .tb[aria-haspopup="menu"]')));
 check('l\'explorateur n\'est plus inerte', await frame.evaluate(() => !document.querySelector('.ex').inert));
 await shot('4-pop-explorateur');
 
 // ---------- 4. le clavier ----------
+await page.keyboard.press('Enter'); // sur « Réglages » : le menu s'ouvre, le clavier sur « Langue »
+await frame.locator('.menu:not(.menu-sub)').waitFor();
+await page.keyboard.press('ArrowDown'); // « Thème… »
 await page.keyboard.press('Enter');
 await frame.locator('.th-win').waitFor();
 win = await windowState();
-check('Entrée ouvre la fenêtre, le clavier est sur la vignette choisie', win.inside && win.focus === 'amb:pop', win.focus);
+check('au clavier, Entrée sur « Réglages », Bas, Entrée sur « Thème… » ouvrent la fenêtre, le clavier est sur la vignette choisie', win.inside && win.focus === 'amb:pop', win.focus);
 await page.keyboard.press('ArrowRight');
 await page.waitForTimeout(200);
 win = await windowState();

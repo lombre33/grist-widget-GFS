@@ -1120,7 +1120,8 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    Pour un fichier de forme `module`, mesuré le 16/10 dans un cadre isolé (origine nulle, `sandbox` de GFS) sous
    `script-src 'self'` : une bonne empreinte charge le fichier, une mauvaise le refuse et rien n'est posé (faits vérifiés, 9).
 6. [D] `langue` : **un seul choix de langue par personne, pour GFS et pour toutes ses apps** (décision du porteur, 20/10).
-   Le bouton « Langue » de l'explorateur offre « Comme Grist » (par défaut : le paramètre `language` de Grist, sinon la
+   La ligne « Langue » du menu « Réglages » de l'explorateur (le dernier bouton de la ligne du titre, à icône seule ; décision du
+   porteur, 04/11) offre « Comme Grist » (par défaut : le paramètre `language` de Grist, sinon la
    langue du navigateur), « Français » et « English ». Le choix est retenu dans le `localStorage` de GFS (clé `gfs.langue`),
    jamais dans le document ni dans une table, et toutes les sections de GFS d'une même page le suivent (événement `storage`
    du navigateur) ; un navigateur qui refuse de le retenir n'empêche rien : le choix vaut pour la page, et GFS le dit.
@@ -1232,7 +1233,7 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    que 6.4, point 9 : grist-static n'a pas de compte, le labo donne la personne au moteur de données.
 
 10. [D] `ambiance` : **un seul choix d'ambiance et de couleur par personne, pour GFS et pour toutes ses apps** (décision du porteur,
-   02/11 et 03/11). Le bouton « Thème » de l'explorateur ouvre une fenêtre : cinq ambiances (Grist Factory, celle d'origine, bleu et
+   02/11 et 03/11). La ligne « Thème… » du menu « Réglages » de l'explorateur ouvre une fenêtre : cinq ambiances (Grist Factory, celle d'origine, bleu et
    gris ; Pop ; Papier ; Brut ; Néon), chacune avec sa propre direction artistique (couleurs, arrondis, traits, ombres, polices,
    fond, filet), et, au choix, **la couleur de la personne**, qui remplace celle de l'ambiance sans toucher à sa forme (le sélecteur
    de couleur des documents de Publipostage+, passé au kit en 0.5.0 : la palette sous le bouton « Choisir ma couleur », « Personnalisé… »
@@ -1290,7 +1291,7 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    d'origine ; chaque choix se pose tout de suite sur la page (de 36 à 47 jetons selon l'ambiance : dix-neuf de couleur, le reste de forme), se retient dans les deux
    clés, repart dans la même ambiance au rechargement, et « Revenir à Grist Factory » les retire toutes. La fenêtre tient dans le panneau
    (349 à 358 de haut, sans défilement) dans les cinq ambiances ; le clavier y entre sur la vignette choisie, les flèches choisissent,
-   Tab la traverse sans s'arrêter sur chaque vignette, Échap rend le clavier au bouton « Thème ». Chaque texte de l'explorateur et de la
+   Tab la traverse sans s'arrêter sur chaque vignette, Échap rend le clavier au bouton « Réglages ». Chaque texte de l'explorateur et de la
    fenêtre garde 4,5:1 au moins, mesuré sur les couleurs affichées (fonds superposés mélangés, arrêts pleins d'un dégradé compris), dans les cinq ambiances. L'app ouverte reçoit
    l'ambiance dans son `contexte` (dix-neuf jetons par mode et la forme), puis un seul événement `ambiance` par geste, `null` au
    retour à l'origine, rien quand le choix redit ce qui vaut déjà, et son cadre n'est jamais reconstruit. Un navigateur qui refuse

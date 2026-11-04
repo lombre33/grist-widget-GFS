@@ -3,7 +3,9 @@
 // (test/pages/explorateur.js, avec les feuilles de style de index.html) dans un vrai Firefox sans écran (test/firefox.mjs), puis mesure, en français et en anglais, en clair et en sombre, à 700, 640, 600, 520,
 // 500 et 400 px de large, à 100 % et à 150 % : chaque ligne mesure 28 px, son contenu y est centré et n'en sort pas (le trait passe sous le texte), « Épingler » et « Plus d'actions » mesurent 24 × 24, la souris sur
 // la ligne les montre dans la ligne, et un clic sur « Plus d'actions » ouvre le menu de CETTE ligne ; la vue en vignettes garde des vignettes de 112 px au moins et le nombre de colonnes que la place donne ;
-// la fenêtre « Thème » garde ses vignettes (cinq, ou trois en vue étroite) ; la fenêtre « Ce nom est déjà pris » (js/conflict-window.js, telle qu'une app qui range un lot la fait ouvrir, puis telle que
+// le menu « Réglages » (le bouton de l'en-tête, depuis le 04/11 : langue, thème, position de la barre, « À propos ») s'ouvre sous le bouton, garde ses quatre lignes de 28 px sans nom coupé, et ouvre sa langue et sa
+// position en sous-menu à côté de la ligne, sans la recouvrir ; à 700 px, à la vraie souris et au vrai clavier, choisir une langue ou un bord le rend à la page et rend le clavier au bouton, Échap referme le sous-menu puis le menu ; « À propos » tient dans
+// la page avec ses quatre lignes et son seul bouton ; la fenêtre « Thème » garde ses vignettes (cinq, ou trois en vue étroite), ouverte par la ligne « Thème… » de ce menu ; la fenêtre « Ce nom est déjà pris » (js/conflict-window.js, telle qu'une app qui range un lot la fait ouvrir, puis telle que
 // « Nouveau > Importer » la fait ouvrir) tient dans la page sans défiler, garde son titre et ses trois boutons sur une ligne, met le clavier sur « Garder les deux », tourne avec Tab, et ses issues répondent à
 // la vraie souris et au vrai clavier (la case « Faire pareil pour les suivants » se coche en cliquant son texte). Entrée et Espace sur un bouton ne se jouent pas ici (voir conflictProblems). La colonne « Poids » (demande du 04/11) : son titre et ses cases ne sont coupés nulle part, son tri
 // va dans les deux sens sur le poids de chaque fichier, et le total du pied dit la somme de ce que la liste montre. Les icônes des types
@@ -84,6 +86,49 @@ function weightOrder() {
   const sort = document.querySelector('.ls-head .hd[data-sort="poids"]').getAttribute('aria-sort');
   const wanted = [...seen].sort((a, b) => (sort === 'descending' ? b - a : a - b));
   return { sort, seen, ok: seen.length > 5 && seen.every((value, i) => value === wanted[i]) };
+}
+
+// Le menu « Réglages » ouvert, et son sous-menu : leurs articles (nom, sous-menu ?, coché, hauteur, nom coupé ?, rectangle, centre), leur place dans la page, leurs séparateurs, le bouton qui les porte.
+// Avec `needSub`, rien tant que le sous-menu n'est pas là.
+function measureSettingsMenu(needSub = false) {
+  const menu = document.querySelector('.menu:not(.menu-sub)');
+  const sub = document.querySelector('.menu-sub');
+  if (!menu || (needSub && !sub)) return null;
+  const box = element => element.getBoundingClientRect();
+  const describe = node => {
+    const frame = box(node);
+    const items = [...node.querySelectorAll('.menu-item')].map(item => {
+      const rect = box(item);
+      const label = item.querySelector('.menu-label');
+      return { label: label.textContent, popup: item.getAttribute('aria-haspopup') === 'menu', checked: item.getAttribute('aria-checked'), height: rect.height, cut: label.scrollWidth > label.clientWidth + 0.5, rect: [rect.left, rect.top, rect.right, rect.bottom], center: [rect.left + rect.width / 2, rect.top + rect.height / 2] };
+    });
+    return { frame: [frame.left, frame.top, frame.right, frame.bottom], items, separators: node.querySelectorAll('hr').length };
+  };
+  const button = document.querySelector('button use[href="#i-sliders"]').closest('button');
+  const rect = box(button);
+  return { view: [document.documentElement.clientWidth, document.documentElement.clientHeight], menu: describe(menu), sub: sub ? describe(sub) : null, button: [rect.left, rect.top, rect.right, rect.bottom], expanded: button.getAttribute('aria-expanded') };
+}
+
+// Ce que la page sait après un geste : combien de menus restent ouverts, le dernier choix du menu, et si le clavier est sur le bouton « Réglages ».
+const afterSettingsGesture = () => ({
+  menus: document.querySelectorAll('.menu').length, language: window.__language, place: window.__place,
+  onButton: Boolean(document.activeElement && document.activeElement.querySelector && document.activeElement.querySelector('use[href="#i-sliders"]')),
+});
+
+// La fenêtre « À propos » : son titre, ses lignes, ses boutons, sa place dans la page, ce qui prend le clavier, le centre de son bouton. Null sans fenêtre.
+function measureAboutWindow() {
+  const win = document.querySelector('.mod.ask');
+  if (!win) return null;
+  const box = element => element.getBoundingClientRect();
+  const frame = box(win);
+  const body = win.querySelector('.ask-body');
+  const buttons = [...win.querySelectorAll('.ask-foot button')];
+  const first = box(buttons[0]);
+  return {
+    view: [document.documentElement.clientWidth, document.documentElement.clientHeight], frame: [frame.left, frame.top, frame.right, frame.bottom], title: win.querySelector('h2').textContent,
+    items: [...win.querySelectorAll('.ask-items li')].map(item => item.textContent), buttons: buttons.map(button => button.dataset.fk), wide: body.scrollWidth - body.clientWidth,
+    active: document.activeElement ? document.activeElement.dataset.fk || null : null, close: [first.left + first.width / 2, first.top + first.height / 2],
+  };
 }
 
 // La grille de la fenêtre « Thème » : ses vignettes, ses colonnes, son remplissage.
@@ -199,8 +244,121 @@ async function columnProblems(page, width, language, tag) {
   return found;
 }
 
+// Le bouton « Réglages » à la vraie souris, puis la ligne `row` du menu (0 : Langue, 1 : Thème, 2 : Position de la barre, 3 : À propos) ; rend ce que le menu montrait avant ce clic.
+async function openSettings(page, row) {
+  await page.click(...await page.run(centerOfGlyph, 'sliders'));
+  const shown = await page.until(measureSettingsMenu, [], 1500);
+  await page.click(...shown.menu.items[row].center);
+  return shown;
+}
+
+const SETTINGS_ROWS = { fr: ['Langue', 'Thème…', 'Position de la barre', 'À propos…'], en: ['Language', 'Theme…', 'Bar position', 'About…'] };
+const LANGUAGE_ROWS = { fr: ['Comme Grist (Français)', 'Français', 'English'], en: ['Same as Grist (English)', 'Français', 'English'] };
+const EDGE_ROWS = { fr: ['À gauche', 'En haut', 'À droite', 'En bas'], en: ['Left', 'Top', 'Right', 'Bottom'] };
+const ABOUT_TITLE = { fr: 'À propos de Grist Factory Suite', en: 'About Grist Factory Suite' };
+const ABOUT_LINES = { fr: ['Version : ', 'Auteur : Grist Factory', 'Site : grist-factory.fr', 'Licence : GNU GPL v3.0'], en: ['Version: ', 'Author: Grist Factory', 'Site: grist-factory.fr', 'License: GNU GPL v3.0'] };
+const inside = (frame, [width, height]) => frame[0] >= -0.5 && frame[1] >= -0.5 && frame[2] <= width + 0.5 && frame[3] <= height + 0.5;
+const overlaps = (a, b) => a[0] < b[2] - 0.5 && a[2] > b[0] + 0.5 && a[1] < b[3] - 0.5 && a[3] > b[1] + 0.5;
+
+// Le menu qu'on vient d'ouvrir : ses quatre lignes dans l'ordre, une seule coupure, 28 px chacune, aucun nom coupé, dans la page, sous (ou sur) le bouton sans le recouvrir.
+function settingsLayout(shown, language, note) {
+  const { menu } = shown;
+  const names = menu.items.map(item => item.label);
+  if (names.join('|') !== SETTINGS_ROWS[language].join('|')) note('les lignes', `les lignes sont « ${names.join(' | ')} » au lieu de « ${SETTINGS_ROWS[language].join(' | ')} »`);
+  if (menu.items.map(item => item.popup).join() !== 'true,false,true,false') note('les sous-menus', 'seules « Langue » et « Position de la barre » ouvrent un sous-menu');
+  if (menu.separators !== 1) note('le séparateur', `le menu a ${menu.separators} séparateur(s) au lieu d'un, avant « À propos »`);
+  for (const item of menu.items) {
+    if (Math.abs(item.height - 28) > 0.5) note('hauteur d\'une ligne', `« ${item.label} » mesure ${item.height} px au lieu de 28`);
+    if (item.cut) note('nom coupé', `le nom de « ${item.label} » est coupé`);
+  }
+  if (!inside(menu.frame, shown.view)) note('hors de la page', `le menu (${menu.frame.map(Math.round).join(', ')}) sort de la page de ${shown.view.join(' × ')} px`);
+  if (overlaps(menu.frame, shown.button)) note('recouvre le bouton', 'le menu recouvre le bouton « Réglages »');
+  if (shown.expanded !== 'true') note('état du bouton', `le bouton « Réglages » dit aria-expanded=${shown.expanded} menu ouvert`);
+}
+
+// Un sous-menu ouvert : ses lignes, son séparateur, la coche (une seule), sa place à côté de la ligne qui l'ouvre sans la recouvrir, dans la page.
+function subLayout(shown, from, wanted, checkedAt, label, note) {
+  const { sub } = shown;
+  const names = sub.items.map(item => item.label);
+  if (names.join('|') !== wanted.join('|')) note(`${label} : les lignes`, `le sous-menu « ${label} » a « ${names.join(' | ')} » au lieu de « ${wanted.join(' | ')} »`);
+  const checked = sub.items.map((item, index) => (item.checked === 'true' ? index : -1)).filter(index => index >= 0);
+  if (checked.join() !== String(checkedAt)) note(`${label} : la coche`, `le sous-menu « ${label} » coche la ligne ${checked.join(', ') || 'aucune'} au lieu de la ${checkedAt}`);
+  if (label === 'Langue' && sub.separators !== 1) note('Langue : le séparateur', `le sous-menu de la langue a ${sub.separators} séparateur(s) au lieu d'un, après « Comme Grist »`);
+  if (overlaps(sub.frame, from.rect)) note(`${label} : recouvre sa ligne`, `le sous-menu « ${label} » recouvre la ligne qui l'ouvre`);
+  if (!inside(sub.frame, shown.view)) note(`${label} : hors de la page`, `le sous-menu « ${label} » (${sub.frame.map(Math.round).join(', ')}) sort de la page de ${shown.view.join(' × ')} px`);
+}
+
+// La fenêtre « À propos », ouverte par la ligne du menu : son titre, ses quatre lignes, son seul bouton « Fermer », dans la page, le clavier sur le bouton ; le clic sur le bouton la ferme et rend le clavier à « Réglages ».
+async function aboutProblems(page, language, note) {
+  await openSettings(page, 3);
+  const win = await page.until(measureAboutWindow, [], 1500).catch(() => null);
+  if (!win) { note('« À propos » sans fenêtre', 'la ligne « À propos » n\'ouvre aucune fenêtre'); return; }
+  if (win.title !== ABOUT_TITLE[language]) note('« À propos » : le titre', `le titre est « ${win.title} » au lieu de « ${ABOUT_TITLE[language]} »`);
+  const wanted = ABOUT_LINES[language];
+  if (win.items.length !== 4 || !win.items.every((item, index) => item.startsWith(wanted[index]))) note('« À propos » : les lignes', `les lignes sont « ${win.items.join(' | ')} » au lieu de « ${wanted.join(' | ')}… »`);
+  if (!/^Version ?: ?\d+\.\d+\.\d+/.test(win.items[0] || '')) note('« À propos » : la version', `la première ligne ne dit pas une version : « ${win.items[0]} »`);
+  if (win.buttons.join() !== 'ask-yes') note('« À propos » : les boutons', `les boutons sont « ${win.buttons.join(', ')} » au lieu du seul « Fermer »`);
+  if (win.active !== 'ask-yes') note('« À propos » : le clavier', `le clavier est sur « ${win.active} » au lieu du bouton « Fermer »`);
+  if (!inside(win.frame, win.view)) note('« À propos » : hors de la page', `la fenêtre (${win.frame.map(Math.round).join(', ')}) sort de la page de ${win.view.join(' × ')} px`);
+  if (win.wide > 1) note('« À propos » : texte coupé', `le texte déborde de ${win.wide} px`);
+  await page.click(...win.close);
+  await page.until(() => !document.querySelector('.mod.ask'), [], 1500).catch(() => note('« À propos » : se ferme', 'le bouton « Fermer » ne ferme pas la fenêtre'));
+  if (!(await page.run(afterSettingsGesture)).onButton) note('« À propos » : le clavier revient', 'après « Fermer », le clavier n\'est pas revenu sur le bouton « Réglages »');
+}
+
+// Les gestes du menu à la vraie souris et au vrai clavier (à 700 px) : choisir l'autre langue, choisir un bord, Échap qui referme le sous-menu puis le menu.
+async function settingsGestures(page, language, note) {
+  const other = language === 'fr' ? { index: 2, value: 'en' } : { index: 1, value: 'fr' };
+  const after = () => page.run(afterSettingsGesture);
+  const from = await openSettings(page, 0);
+  const lang = await page.until(measureSettingsMenu, [true], 1500).catch(() => null);
+  if (!lang) { note('Langue : sans sous-menu', 'la ligne « Langue » n\'ouvre aucun sous-menu'); return; }
+  await page.click(...lang.sub.items[other.index].center);
+  let now = await after();
+  if (now.language !== other.value) note('Langue : le choix', `choisir « ${LANGUAGE_ROWS[language][other.index]} » rend « ${now.language} » à la page au lieu de « ${other.value} »`);
+  if (now.menus !== 0) note('Langue : le menu reste', `${now.menus} menu(s) restent ouverts après le choix d'une langue`);
+  if (!now.onButton) note('Langue : le clavier', 'après le choix d\'une langue, le clavier n\'est pas revenu sur le bouton « Réglages »');
+  await openSettings(page, 2);
+  const edges = await page.until(measureSettingsMenu, [true], 1500).catch(() => null);
+  if (!edges) { note('Position : sans sous-menu', 'la ligne « Position de la barre » n\'ouvre aucun sous-menu'); return; }
+  subLayout(edges, from.menu.items[2], EDGE_ROWS[language], 0, from.menu.items[2].label, note);
+  await page.click(...edges.sub.items[1].center);
+  now = await after();
+  if (now.place !== 'haut') note('Position : le choix', `choisir « ${EDGE_ROWS[language][1]} » rend « ${now.place} » à la page au lieu de « haut »`);
+  await openSettings(page, 2);
+  const again = await page.until(measureSettingsMenu, [true], 1500).catch(() => null);
+  if (again && again.sub.items.findIndex(item => item.checked === 'true') !== 1) note('Position : la coche suit', 'la coche n\'est pas passée sur le bord choisi');
+  await page.press('Escape');
+  now = await page.run(() => ({ main: document.querySelectorAll('.menu:not(.menu-sub)').length, sub: document.querySelectorAll('.menu-sub').length }));
+  if (now.sub !== 0 || now.main !== 1) note('Échap : le sous-menu d\'abord', `un premier Échap laisse ${now.main} menu et ${now.sub} sous-menu au lieu d'un menu seul`);
+  await page.press('Escape');
+  now = await after();
+  if (now.menus !== 0 || !now.onButton) note('Échap : puis le menu', `un second Échap laisse ${now.menus} menu(s) ouverts, le clavier ${now.onButton ? 'sur' : 'hors de'} « Réglages »`);
+}
+
+// Le menu « Réglages » : sa mise en page à chaque largeur, le sous-menu de la langue, la fenêtre « À propos » ; à 700 px, 100 % seulement, les gestes à la souris et au clavier.
+async function settingsProblems(page, language, width, scale, tag) {
+  const found = [];
+  const note = (kind, text) => found.push({ kind: `menu « Réglages » : ${kind}`, text: `${tag} : ${text}` });
+  await page.run(() => window.__resetSettings());
+  const shown = await page.click(...await page.run(centerOfGlyph, 'sliders')).then(() => page.until(measureSettingsMenu, [], 1500)).catch(() => null);
+  if (!shown) { note('sans menu', 'le clic sur « Réglages » n\'ouvre aucun menu'); return found; }
+  settingsLayout(shown, language, note);
+  await page.click(...shown.menu.items[0].center);
+  const lang = await page.until(measureSettingsMenu, [true], 1500).catch(() => null);
+  if (!lang) note('Langue : sans sous-menu', 'la ligne « Langue » n\'ouvre aucun sous-menu');
+  else subLayout(lang, shown.menu.items[0], LANGUAGE_ROWS[language], language === 'fr' ? 1 : 2, 'Langue', note);
+  await page.press('Escape');
+  await page.press('Escape');
+  if (await page.run(() => Boolean(document.querySelector('.menu')))) { note('Échap ne ferme pas', 'des menus restent ouverts après deux Échap'); await page.run(() => { for (const menu of document.querySelectorAll('.menu')) menu.remove(); }); }
+  if (width === 700 && scale === 1) await settingsGestures(page, language, note);
+  await aboutProblems(page, language, note);
+  await page.run(() => window.__resetSettings());
+  return found;
+}
+
 async function themeProblems(page, width, tag) {
-  await page.click(...await page.run(centerOfSelector, '.tb-theme'));
+  await openSettings(page, 1);
   const theme = await page.until(measureThemeWindow);
   const columns = width >= 520 ? 5 : 3;
   const found = [];
@@ -292,7 +450,7 @@ describe('l\'interface sous Firefox', () => {
   });
 
   for (const language of LANGUAGES) {
-    test(`l'explorateur et les fenêtres « Thème » et « Ce nom est déjà pris » en ${language === 'fr' ? 'français' : 'anglais'}`, { skip: SKIP, timeout: 240000 }, async () => {
+    test(`l'explorateur, son menu « Réglages » et les fenêtres « Thème » et « Ce nom est déjà pris » en ${language === 'fr' ? 'français' : 'anglais'}`, { skip: SKIP, timeout: 240000 }, async () => {
       const { page } = browser;
       await page.goto(`${site.url}${PAGE}?lang=${language}`);
       await page.run(() => window.__ready);
@@ -302,7 +460,7 @@ describe('l\'interface sous Firefox', () => {
           for (const mode of MODES) {
             await page.view({ width, scale, mode });
             const tag = caption(language, width, scale, mode);
-            problems.push(...await listProblems(page, tag), ...await columnProblems(page, width, language, tag), ...await mouseProblems(page, tag), ...await tilesProblems(page, tag), ...await themeProblems(page, width, tag), ...await conflictProblems(page, tag));
+            problems.push(...await listProblems(page, tag), ...await columnProblems(page, width, language, tag), ...await mouseProblems(page, tag), ...await tilesProblems(page, tag), ...await settingsProblems(page, language, width, scale, tag), ...await themeProblems(page, width, tag), ...await conflictProblems(page, tag));
           }
         }
       }

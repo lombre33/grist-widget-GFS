@@ -1,10 +1,11 @@
-// La page d'essai de l'interface sous Firefox (test/interfaces-firefox.test.mjs) : le vrai explorateur (js/explorer.js), la vraie fenêtre « Thème » (js/theme-window.js) et la vraie fenêtre « Ce nom est
+// La page d'essai de l'interface sous Firefox (test/interfaces-firefox.test.mjs) : le vrai explorateur (js/explorer.js) et son vrai menu « Réglages » (js/settings-menu.js, avec la vraie fenêtre « À propos »), la vraie fenêtre « Thème » (js/theme-window.js) et la vraie fenêtre « Ce nom est
 // déjà pris » (js/conflict-window.js), sur des fichiers que le vrai modèle (js/explorer-model.js) lit dans des tables de la forme de celles de Grist, avec les feuilles de style et la carte d'importation de
 // index.html (le test les recopie de la page, dans l'ordre). Aucun Grist : ce que l'essai mesure est la mise en page et la souris. La langue vient de `?lang=fr|en` ; `window.__opened` garde le nom du
 // dernier fichier que l'explorateur a ouvert ; `window.__askConflict({ app, repeat })` ouvre la fenêtre du nom pris et `window.__conflict` garde la réponse de la personne quand elle se ferme.
 // La corbeille et le clavier (test/corbeille-firefox.mjs) : le vrai `Trash` (js/trash.js) et la vraie fenêtre d'accord (js/ask-window.js) sur un gardien de doublure qui déplace les fichiers entre deux
 // listes ; `window.__filing` note ce que l'explorateur demande au rangement (renommer, déplacer, épingler), `window.__notices` les phrases qu'il dit, `window.__explorer` est l'explorateur, et
-// `window.__reset()` remet les fichiers, la vue et la recherche comme au départ. La copie et le presse-papiers (test/copier-firefox.mjs) : le vrai `Copying` (js/copying.js) sur un gardien de doublure qui
+// `window.__reset()` remet les fichiers, la vue et la recherche comme au départ ; `window.__language` et `window.__place` gardent le dernier choix du menu « Réglages » (la langue, le bord de la barre : la ligne de la barre est ici une doublure,
+// celle du vrai Dock se mesure dans le labo) et `window.__resetSettings()` les remet au départ. La copie et le presse-papiers (test/copier-firefox.mjs) : le vrai `Copying` (js/copying.js) sur un gardien de doublure qui
 // ajoute une copie à la liste (premier nom libre), et un rangement de doublure qui déplace vraiment les fichiers et les dossiers ; `window.__copies` note [identifiant, dossier] de chaque copie rangée.
 // Les icônes des types (test/icones-firefox.mjs) : l'ambiance se pose comme dans GFS, par le vrai `ThemeSetting` et le vrai `ThemeHost` (`window.__ambiance(id)`, le mode vient de `data-grist-appearance`), et
 // `window.__withPdf()` ajoute à la liste un PDF gardé par GFS, lu par le vrai modèle avec le vrai manifeste de GFS (la famille « pdf », rouge) ; `window.__reset()` le retire et rend l'ambiance d'origine.
@@ -22,6 +23,8 @@ import { createI18n } from '/js/i18n.js';
 import { installSprite } from '/js/icons.js';
 import { leaveQuestion } from '/js/leave.js';
 import { ThemeHost } from '/js/theme-apply.js';
+import { settingsItems } from '/js/settings-menu.js';
+import { aboutItems } from '/js/about.js';
 import { ThemeSetting } from '/js/theme.js';
 import { ThemeWindow } from '/js/theme-window.js';
 import { Trash } from '/js/trash.js';
@@ -151,10 +154,19 @@ async function mount() {
     writeBlock: () => null, notice: text => window.__notices.push(text), specOf: () => null, refresh: async () => show(), windows: { name: opts => askName(layer(opts)), folder: opts => chooseFolder(layer(opts)) },
   });
   window.__keep = (...paths) => { kept = [...new Set([...kept, ...paths])]; show(); };
+  // Le menu « Réglages » : la langue et le bord de la barre que la personne a choisis en dernier (la ligne de la barre est une doublure : le vrai Dock se mesure dans le labo), et la vraie fenêtre « À propos ».
+  const EDGES = [['gauche', 'dock-left'], ['haut', 'dock-top'], ['droite', 'dock-right'], ['bas', 'dock-bottom']];
+  window.__resetSettings = () => { window.__language = language; window.__place = 'gauche'; };
+  window.__resetSettings();
+  const place = () => ({
+    label: i18n.t('dock.place'), icon: 'dock-left', submenu: EDGES.map(([edge, glyph]) => ({ label: i18n.t(`dock.${edge}`), icon: glyph, check: window.__place === edge, run: () => { window.__place = edge; } })),
+  });
+  window.__about = () => void ask({ title: i18n.t('about.title'), message: i18n.t('about.text'), items: aboutItems(i18n.t), confirmLabel: i18n.t('about.close'), container: stage, inertTargets: () => [explorer.root] });
   const explorer = new Explorer({
     container: stage, i18n, locale, now: () => new Date(), appName: () => 'Publipostage+', typeLabel: file => (file.typeInfo ? file.typeInfo.nom[language] || file.typeInfo.nom.fr : file.type),
     lockOf: file => (file.type === 'macro' ? { text: i18n.t('ex.lockedExtension', { name: 'Macro-modèles' }) } : null), newTypes: () => [], importTypes: () => [], canClose: () => true,
-    notice: text => window.__notices.push(text), language: () => ({ choice: language, grist: language }), onLanguage: () => {}, onTheme: () => theme.open(), onOpen: file => { window.__opened = file.name; }, onNew: () => {},
+    notice: text => window.__notices.push(text), settings: () => settingsItems({ t: i18n.t, language: () => ({ choice: window.__language, grist: language }), onLanguage: value => { window.__language = value; }, onTheme: () => theme.open(), place, onAbout: () => window.__about() }),
+    onOpen: file => { window.__opened = file.name; }, onNew: () => {},
     onImport: () => {}, onClose: () => {}, onApps: () => {}, personal: () => true, kept: null, trash: bin, copying,
     filing: { togglePin: noted('pin', 'name'), rename: noted('rename', 'name'), moveFile: noted('move', 'name'), renameFolder: async path => { window.__filing.push(['renameFolder', path]); }, moveFolder: async path => { window.__filing.push(['moveFolder', path]); }, ...moving,
       newFolder: () => filing.newFolder(), deleteFolder: path => filing.deleteFolder(path) },
@@ -171,6 +183,7 @@ async function mount() {
     window.__notices.length = 0;
     window.__opened = null;
     setting.reset(); // l'ambiance d'origine, comme au départ
+    window.__resetSettings();
     Object.assign(explorer.state, { view: 'folder', path: '', display: 'list', type: 'all', q: '', sel: null });
     explorer.root.querySelector('input[type="search"]').value = '';
     show();

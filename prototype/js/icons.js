@@ -43,6 +43,8 @@ const ICONS = {
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.6 2.7 3.9 5.7 3.9 9s-1.3 6.3-3.9 9c-2.6-2.7-3.9-5.7-3.9-9s1.3-6.3 3.9-9z"/>',
   // Le thème (l'ambiance et la couleur de GFS et de ses apps) : une palette de peintre et ses trois pastilles.
   palette: '<path d="M12 3C7 3 3 6.9 3 11.7S7 21 12 21c1.2 0 2-.9 2-1.9 0-.5-.2-.9-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1 .8-1.8 1.8-1.8H18a3 3 0 0 0 3-3C21 6.7 17 3 12 3Z"/><circle cx="7.6" cy="11.2" r="1"/><circle cx="10.2" cy="7.4" r="1"/><circle cx="14.8" cy="7.4" r="1"/>',
+  // Les réglages de GFS (langue, thème, position de la barre, « À propos ») : deux curseurs. Ce n'est pas une roue : Publipostage+ a la sienne, en haut à droite, pour ses propres réglages (une icône = une fonction).
+  sliders: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
   // Les gestes sur un fichier (menu d'une ligne) : un tracé chacun.
   open: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
   edit: '<path d="M4 20h4L19 9a2.1 2.1 0 0 0-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',

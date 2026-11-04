@@ -12,7 +12,6 @@ import { buildShell, relabel, crumbs, tree, listHead, fileRow, folderRow, tile, 
 import { sumWeights } from './weight.js';
 import { listAction, isSearchKey, clipboardAction, parentPath, stepRow } from './explorer-keys.js';
 import { Clipboard } from './explorer-clipboard.js';
-import { LANGUAGE_NAMES } from './language.js';
 import { openMenu, closeMenu, menuIsOpen } from './menu.js';
 
 // Sans fichiers que GFS garde lui-même (les essais de l'explorateur seul) : aucun fichier n'est de ceux-là.
@@ -47,7 +46,7 @@ export class Explorer {
   };
 
   // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), importTypes(), onOpen(file), onNew(entry), onImport(entry), onClose(), onApps(), canClose(), notice(text),
-  //          language() → { choice, grist }, onLanguage(choice), onTheme() (le bouton « Thème » ouvre sa fenêtre), personal() → le rangement est-il à la personne seule ?,
+  //          settings() → les articles du menu « Réglages » (js/settings-menu.js : langue, thème, position de la barre, « À propos »), personal() → le rangement est-il à la personne seule ?,
   //          filing: { togglePin(file), rename(file), moveFile(file), renameFolder(path), moveFolder(path), moveFileTo(file, dossier), moveFolderTo(path, dossier) },
   //          kept?: les fichiers que GFS garde lui-même (js/kept-files.js) : { has(file), openAs(file) -> { label, icon, greyed }, opensIn(file), extras(file) -> [article de menu] },
   //          trash?: la corbeille (js/trash.js) : { handles(file), move(file), restore(file), purge(file), empty(files) } (chaque geste rend une promesse, vraie quand il a abouti),
@@ -287,11 +286,10 @@ export class Explorer {
   // ---------- gestes ----------
 
   #bind() {
-    const { search, viewList, viewTiles, typeBtn, newBtn, openBtn, closeBtn, appsBtn, langBtn, themeBtn, crumbs: crumbsNav, tree: treeNav, list, notices } = this.#refs;
+    const { search, viewList, viewTiles, typeBtn, newBtn, openBtn, closeBtn, appsBtn, settingsBtn, crumbs: crumbsNav, tree: treeNav, list, notices } = this.#refs;
     search.addEventListener('input', () => { this.state.q = search.value; this.state.sel = null; this.#renderCrumbs(); this.#renderList(); });
     appsBtn.addEventListener('click', () => this.#opts.onApps());
-    langBtn.addEventListener('click', () => this.#languageMenu());
-    themeBtn.addEventListener('click', () => this.#opts.onTheme());
+    settingsBtn.addEventListener('click', () => this.#settingsMenu());
     viewList.addEventListener('click', () => this.#setDisplay('list'));
     viewTiles.addEventListener('click', () => this.#setDisplay('tiles'));
     typeBtn.addEventListener('click', () => this.#typeMenu());
@@ -517,13 +515,11 @@ export class Explorer {
 
   #setType(value) { this.state.type = value; this.state.sel = null; this.render(); }
 
-  // Le menu de langue : « comme Grist », le français, l'anglais. Le choix est rendu au contrôleur, qui le retient et le fait suivre aux apps.
-  #languageMenu() {
+  // Le menu « Réglages » : ses articles sont ceux du contrôleur (js/settings-menu.js : la langue, le thème, la position de la barre, « À propos »). Le choix d'une langue est rendu au contrôleur, qui le
+  // retient et le fait suivre aux apps.
+  #settingsMenu() {
     const { t } = this.#opts.i18n;
-    const { choice, grist } = this.#opts.language();
-    const item = (value, label) => ({ label, check: choice === value, run: () => this.#opts.onLanguage(value) });
-    const items = [item('auto', t('lang.auto', { name: LANGUAGE_NAMES[grist] })), '-', item('fr', LANGUAGE_NAMES.fr), item('en', LANGUAGE_NAMES.en)];
-    openMenu(this.#refs.langBtn, items, { host: this.root, align: 'right', label: t('lang.menu') });
+    openMenu(this.#refs.settingsBtn, this.#opts.settings(), { host: this.root, align: 'right', label: t('set.menu') });
   }
 
   // Le menu « Nouveau » : « Nouveau dossier » d'abord, puis un article par type de fichier à créer, et « Importer » (un sous-menu : un article par format qu'une app reçoit d'un autre logiciel, contrats 2.7, point 4).

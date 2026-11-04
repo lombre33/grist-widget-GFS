@@ -1,6 +1,6 @@
 // Un menu déroulant : un seul ouvert à la fois, au clavier comme à la souris (flèches, Entrée, Échap), le dernier ouvert au-dessus.
 // Un article « grisé » reste dans le menu et reste cliquable : son `run` dit pourquoi il ne fait rien (« grisé, jamais masqué »).
-// Un article qui porte `submenu` (une liste d'articles) ouvre un sous-menu à côté de lui : par un clic, Entrée ou la flèche droite ; Échap ou la flèche gauche le referme.
+// Un article qui porte `submenu` (une liste d'articles, et `'-'` pour un séparateur) ouvre un sous-menu à côté de lui : par un clic, Entrée ou la flèche droite ; Échap ou la flèche gauche le referme.
 
 import { h } from './dom.js';
 import { icon } from './icons.js';
@@ -111,7 +111,7 @@ export function openMenu(anchor, items, { host, align = 'left', label = '', side
   const openSub = (parent, entries) => {
     closeSub();
     const element = h('div', { class: 'menu menu-sub', role: 'menu', 'aria-label': parent.querySelector('.menu-label').textContent });
-    for (const entry of entries) element.append(itemNode(entry, done));
+    for (const entry of entries) element.append(entry === '-' ? h('hr') : itemNode(entry, done));
     container.append(element);
     Layers.raise(element, '--z-menu');
     place(element, parent, container, 'left', 'right', true);

@@ -15,6 +15,7 @@
 import { startLab } from './lab-setup.mjs';
 import { seedFormDesigner } from './seed.mjs';
 import { say, check, constat } from './lab-common.mjs';
+import { chooseLanguage } from './reglages-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -184,9 +185,7 @@ await showFiles();
 await row(FIRST.title).dblclick();
 await waitShown(view => view.editor && view.title === FIRST.title);
 await showFiles();
-await frame.locator('.tb-lang').click();
-await frame.locator('.menu').waitFor();
-await frame.locator('.menu-item', { hasText: new RegExp(`^${WORDS.other}$`) }).click();
+await chooseLanguage(frame, WORDS.other);
 await app.waitForFunction(() => !window.__marque, null, { timeout: 30000 }).catch(() => {});
 seen = await waitShown(view => view.editor && view.title === FIRST.title, 30000);
 say('après le changement de langue :', seen, 'langue de l\'app :', await app.evaluate(() => document.documentElement.lang).catch(() => '?'));

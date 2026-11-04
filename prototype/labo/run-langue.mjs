@@ -1,9 +1,10 @@
 // Le choix de langue de GFS (décision du porteur, 20/10 ; contrats 1.3, 5.2 et 5.3), dans un vrai Grist (grist-static), à 700 × 400, à la vraie souris et au vrai clavier (Playwright :
 // événements du pointeur et du clavier du navigateur, jamais dispatchEvent). LAB_LANG=fr|en est la langue de Grist (le paramètre `language` de l'adresse du widget), LAB_SCHEME=light|dark,
-// LAB_W la largeur du panneau (700 ; sous 520 le bouton ne garde que son icône). Ce que la passe mesure :
-//   1. le départ : GFS parle la langue de Grist, le bouton « Langue » la dit dans sa propre langue, rien n'est retenu, le menu offre « comme Grist », Français, English ;
-//   2. un choix à la souris : tout ce que l'explorateur écrit (textes, dates, types, volet, liste) passe dans l'autre langue, la clé `gfs.langue` est retenue, le focus reste sur le bouton ;
-//   3. le clavier : Entrée ouvre le menu, Début va à « comme Grist », Entrée choisit, la clé disparaît ;
+// LAB_W la largeur du panneau (700). Depuis le 04/11 la langue se choisit dans le menu « Réglages » (le dernier bouton de la ligne du titre, à icône seule) : sa ligne « Langue » ouvre un sous-menu.
+// Ce que la passe mesure :
+//   1. le départ : GFS parle la langue de Grist, le bouton « Réglages » est le dernier de la ligne du titre, rien n'est retenu, le sous-menu « Langue » offre « comme Grist », Français, English ;
+//   2. un choix à la souris : tout ce que l'explorateur écrit (textes, dates, types, volet, liste) passe dans l'autre langue, la clé `gfs.langue` est retenue, le focus reste sur le bouton « Réglages » ;
+//   3. le clavier : Entrée ouvre le menu puis le sous-menu, Début va à « comme Grist », Entrée choisit, la clé disparaît ;
 //   4. « retenu sur le navigateur » : GFS rechargé repart dans la langue choisie, non dans celle de Grist ;
 //   5. les apps suivent : la sonde L (labo/sondes/l-langue/) reçoit sa langue dans l'adresse et le contexte, puis l'événement `langue` à chaque changement de langue qui vaut (pas quand le choix
 //      redit la langue de Grist), sans que son cadre soit rechargé ; une app ouverte après le choix la reçoit dès le départ ;
@@ -13,6 +14,7 @@ import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check } from './lab-common.mjs';
 import { isGfsWarning } from './sondes-muettes.mjs';
+import { settingsButton, openSettings, openLanguageMenu, chooseLanguage, subRows } from './reglages-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -23,9 +25,9 @@ const NAMES = { fr: 'Français', en: 'English' };
 // Ce que le labo cherche à l'écran, dans chaque langue (les textes de js/i18n.js).
 const WORDS = {
   fr: { title: 'Mes fichiers', add: 'Nouveau', open: 'Ouvrir', close: 'Fermer', search: 'Rechercher…', allTypes: 'Tous les types', recent: 'Récents', today: 'Auj.', locked: 'Créé avec une version plus récente', filesTip: 'Ouvrir l’explorateur de fichiers',
-    appsTitle: 'Apps et extensions', button: n => `Langue : ${n}`, menu: 'Langue', auto: n => `Comme Grist (${n})`, notKept: 'Ce choix ne sera pas gardé : ton navigateur refuse l’enregistrement.' },
+    appsTitle: 'Apps et extensions', settingsTip: 'Réglages de Grist Factory Suite', settingsMenu: 'Réglages', menu: 'Langue', auto: n => `Comme Grist (${n})`, notKept: 'Ce choix ne sera pas gardé : ton navigateur refuse l’enregistrement.' },
   en: { title: 'My files', add: 'New', open: 'Open', close: 'Close', search: 'Search…', allTypes: 'All types', recent: 'Recent', today: 'Today', locked: 'Created with a newer version', filesTip: 'Open the file explorer',
-    appsTitle: 'Apps and extensions', button: n => `Language: ${n}`, menu: 'Language', auto: n => `Same as Grist (${n})`, notKept: 'This choice will not be kept: your browser refuses to store it.' },
+    appsTitle: 'Apps and extensions', settingsTip: 'Grist Factory Suite settings', settingsMenu: 'Settings', menu: 'Language', auto: n => `Same as Grist (${n})`, notKept: 'This choice will not be kept: your browser refuses to store it.' },
 };
 const words = WORDS[lang];
 const wordsOther = WORDS[other];
@@ -65,51 +67,59 @@ const screen = () => frame.evaluate(() => {
   const rowText = re => { const row = [...document.querySelectorAll('.ls-row')].find(item => re.test(item.textContent)); return row ? row.textContent.replace(/\s+/g, ' ').trim() : null; };
   const foot = [...document.querySelectorAll('.ex-foot .btn')].map(node => node.textContent.trim());
   return {
-    html: document.documentElement.lang, title: text('.ex-title'), button: text('.tb-lang'), buttonLabel: attr('.tb-lang', 'aria-label'), buttonTip: attr('.tb-lang', 'title'),
+    html: document.documentElement.lang, title: text('.ex-title'), settingsLabel: attr('.ex-title-row .tb[aria-haspopup="menu"]', 'aria-label'), settingsTip: attr('.ex-title-row .tb[aria-haspopup="menu"]', 'title'),
     add: text('.btn.primary'), open: foot[0], close: foot[1], search: attr('.inp-search input', 'placeholder'), allTypes: text('.ex-nav-row .btn[aria-haspopup="menu"]'),
     recent: text('.tr-pin .tr-row'), head: text('.ls-head'), contract: rowText(/Contrat de prestation/), slides: rowText(/Support de session/),
-    focused: document.activeElement ? document.activeElement.className : null,
+    onSettings: document.activeElement === document.querySelector('.ex-title-row .tb[aria-haspopup="menu"]'),
   };
 });
 const stored = () => frame.evaluate(() => { try { return localStorage.getItem('gfs.langue'); } catch (error) { return 'REFUSÉ'; } });
-const button = () => frame.locator('.tb-lang');
-const openMenu = async () => { await button().click(); await frame.locator('.menu').waitFor(); };
-const menuItems = () => frame.locator('.menu .menu-item').evaluateAll(nodes => nodes.map(node => ({ text: node.textContent.trim(), checked: node.getAttribute('aria-checked'), role: node.getAttribute('role') })));
-// L'article du menu qui porte exactement ce texte (« English » est aussi dans « Same as Grist (English) »).
-const choose = async name => { await openMenu(); await frame.locator('.menu-item', { hasText: new RegExp(`^${name}$`) }).click(); };
-const chooseAuto = async () => { await openMenu(); await frame.locator('.menu-item').first().click(); };
+const button = () => settingsButton(frame);
+// Le sous-menu « Langue » ouvert (menu « Réglages », puis sa ligne « Langue ») et ses articles.
+const openMenu = () => openLanguageMenu(frame);
+const menuItems = () => subRows(frame).evaluateAll(nodes => nodes.map(node => ({ text: node.textContent.trim(), checked: node.getAttribute('aria-checked'), role: node.getAttribute('role') })));
+// L'article du sous-menu qui porte exactement ce texte (« English » est aussi dans « Same as Grist (English) »).
+const choose = name => chooseLanguage(frame, name);
+const chooseAuto = () => chooseLanguage(frame, null);
 
 // ---------- 1. le départ ----------
 say('panneau :', await (await frame.frameElement()).boundingBox());
 let now = await screen();
 say('écran au départ :', now);
 check('GFS parle la langue de Grist', now.html === lang && now.title === words.title && now.add === words.add && now.search === words.search, now);
-check('le bouton « Langue » dit la langue qui vaut, dans sa propre langue, avec son nom accessible', now.buttonLabel === words.button(NAMES[lang]) && now.button === NAMES[lang], { button: now.button, label: now.buttonLabel, tip: now.buttonTip });
+check('le bouton « Réglages » porte son nom accessible et son info-bulle (il n\'a pas d\'autre texte : l\'icône seule)', now.settingsLabel === words.settingsTip && now.settingsTip === words.settingsTip, { label: now.settingsLabel, tip: now.settingsTip });
 check('rien n\'est retenu tant que la personne n\'a rien choisi', (await stored()) === null, await stored());
 const layout = await frame.evaluate(() => {
   const rect = selector => { const node = document.querySelector(selector); const r = node.getBoundingClientRect(); return { left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top), bottom: Math.round(r.bottom), width: Math.round(r.width) }; };
-  const label = document.querySelector('.tb-lang .lbl');
-  return { apps: rect('.ex-title-row .tb[aria-haspopup="dialog"]:not([hidden])'), lang: rect('.tb-lang'), group: rect('.tb-group'), view: window.innerWidth, scroll: document.documentElement.scrollWidth, labelShown: getComputedStyle(label).display !== 'none' };
+  const settings = '.ex-title-row .tb[aria-haspopup="menu"]';
+  return { apps: rect('.ex-title-row .tb[aria-haspopup="dialog"]:not([hidden])'), group: rect('.tb-group'), settings: rect(settings), view: window.innerWidth, scroll: document.documentElement.scrollWidth, text: document.querySelector(settings).textContent.trim() };
 });
 say('mise en page de la ligne du titre :', layout);
-check('la ligne du titre tient dans le panneau sans défilement horizontal, les boutons ne se chevauchent pas', layout.scroll <= layout.view && layout.apps.right <= layout.lang.left && layout.lang.right <= layout.group.left && layout.group.right <= layout.view, layout);
-check(panelWidth < 520 ? 'en vue étroite le bouton ne garde que son icône' : 'en vue large le bouton montre le nom de la langue', layout.labelShown === (panelWidth >= 520), layout);
+check('la ligne du titre tient dans le panneau sans défilement horizontal, les boutons ne se chevauchent pas, « Réglages » est le dernier à droite', layout.scroll <= layout.view && layout.apps.right <= layout.group.left && layout.group.right <= layout.settings.left && layout.settings.right <= layout.view, layout);
+check('« Réglages » n\'a que son icône, à toute largeur', layout.text === '', layout);
 await shot('1-depart');
 
+await openSettings(frame);
+const main = await frame.evaluate(() => [...document.querySelectorAll('.menu:not(.menu-sub) .menu-item')].map(node => ({ text: node.querySelector('.menu-label').textContent.trim(), popup: node.getAttribute('aria-haspopup') })));
+check('le menu « Réglages » a ses quatre lignes : Langue (sous-menu), Thème, Position de la barre (sous-menu), À propos', main.length === 4 && main[0].text === words.menu && main[0].popup === 'menu' && main[1].popup === null && main[2].popup === 'menu' && main[3].popup === null, main);
+await page.keyboard.press('Escape');
 await openMenu();
 let items = await menuItems();
-say('menu :', items);
-check('le menu offre « comme Grist », Français, English ; « comme Grist » est coché', items.length === 3 && items[0].text === words.auto(NAMES[lang]) && items[1].text === 'Français' && items[2].text === 'English' && items[0].checked === 'true' && items[1].checked === 'false' && items[2].checked === 'false' && items.every(item => item.role === 'menuitemradio'), items);
+say('sous-menu :', items);
+check('le sous-menu « Langue » offre « comme Grist », Français, English ; « comme Grist » est coché', items.length === 3 && items[0].text === words.auto(NAMES[lang]) && items[1].text === 'Français' && items[2].text === 'English' && items[0].checked === 'true' && items[1].checked === 'false' && items[2].checked === 'false' && items.every(item => item.role === 'menuitemradio'), items);
 const menu = await frame.evaluate(() => {
-  const box = document.querySelector('.menu').getBoundingClientRect();
-  const item = document.querySelector('.menu .menu-item').getBoundingClientRect();
+  const box = document.querySelector('.menu-sub').getBoundingClientRect();
+  const row = document.querySelector('.menu:not(.menu-sub) .menu-item').getBoundingClientRect();
+  const item = document.querySelector('.menu-sub .menu-item').getBoundingClientRect();
   const hit = document.elementFromPoint(item.left + item.width / 2, item.top + item.height / 2);
-  return { left: Math.round(box.left), right: Math.round(box.right), bottom: Math.round(box.bottom), view: [window.innerWidth, window.innerHeight], onTop: Boolean(hit && hit.closest('.menu')), named: document.querySelector('.menu').getAttribute('aria-label'), focus: document.activeElement.textContent.trim() };
+  return { left: Math.round(box.left), right: Math.round(box.right), bottom: Math.round(box.bottom), view: [window.innerWidth, window.innerHeight], onTop: Boolean(hit && hit.closest('.menu-sub')), named: document.querySelector('.menu-sub').getAttribute('aria-label'), mainNamed: document.querySelector('.menu:not(.menu-sub)').getAttribute('aria-label'), focus: document.activeElement.textContent.trim(), covers: box.left < row.right - 0.5 && box.right > row.left + 0.5 };
 });
-check('le menu tient dans le panneau, passe au-dessus de la liste, porte le nom « Langue » et met le clavier sur l\'article coché', menu.left >= 0 && menu.right <= menu.view[0] && menu.bottom <= menu.view[1] && menu.onTop && menu.named === words.menu && menu.focus === words.auto(NAMES[lang]), menu);
+check('le sous-menu tient dans le panneau, passe au-dessus de la liste, ne recouvre pas la ligne « Langue » qui l\'ouvre, porte le nom « Langue » (le menu, « Réglages ») et met le clavier sur l\'article coché', menu.left >= 0 && menu.right <= menu.view[0] && menu.bottom <= menu.view[1] && menu.onTop && !menu.covers && menu.named === words.menu && menu.mainNamed === words.settingsMenu && menu.focus === words.auto(NAMES[lang]), menu);
 await shot('2-menu');
 await page.keyboard.press('Escape');
-check('Échap ferme le menu', (await frame.locator('.menu').count()) === 0);
+check('Échap ferme d\'abord le sous-menu : le menu « Réglages » reste', (await frame.locator('.menu-sub').count()) === 0 && (await frame.locator('.menu').count()) === 1);
+await page.keyboard.press('Escape');
+check('un second Échap ferme le menu, le clavier revient au bouton « Réglages »', (await frame.locator('.menu').count()) === 0 && (await screen()).onSettings);
 
 // ---------- 2. un choix à la souris ----------
 await choose(NAMES[other]);
@@ -119,25 +129,28 @@ check('tout ce que l\'explorateur écrit passe dans l\'autre langue : page, titr
   now.html === other && now.title === wordsOther.title && now.add === wordsOther.add && now.open === wordsOther.open && now.search === wordsOther.search && now.allTypes === wordsOther.allTypes
   && now.recent === wordsOther.recent && (other === 'en' ? /Name.*Modified/.test(now.head) : /Nom.*Modifié/.test(now.head)), now);
 check('les dates et les raisons de grisé de la liste aussi (Auj. / Today, Créé avec une version plus récente / Created with a newer version)', Boolean(now.contract && now.contract.includes(wordsOther.today)) && Boolean(now.slides && now.slides.includes(wordsOther.locked)), { contract: now.contract, slides: now.slides });
-check('le bouton dit la nouvelle langue, dans la sienne', now.buttonLabel === wordsOther.button(NAMES[other]) && now.button === NAMES[other], { button: now.button, label: now.buttonLabel });
-check('le clavier reste sur le bouton « Langue » (on ne perd pas sa place)', /tb-lang/.test(now.focused), now.focused);
+check('le bouton « Réglages » dit son nom dans la nouvelle langue', now.settingsLabel === wordsOther.settingsTip && now.settingsTip === wordsOther.settingsTip, { label: now.settingsLabel, tip: now.settingsTip });
+check('le clavier reste sur le bouton « Réglages » (on ne perd pas sa place)', now.onSettings, now.onSettings);
 check('le choix est retenu sur le navigateur, dans la clé de GFS', (await stored()) === other, await stored());
 await openMenu();
 items = await menuItems();
 check('le menu coche le choix, et dit « comme Grist » avec la langue de Grist, écrite dans la sienne', items[0].text === wordsOther.auto(NAMES[lang]) && items[0].checked === 'false' && items[other === 'fr' ? 1 : 2].checked === 'true', items);
 await shot('3-autre-langue');
 await page.keyboard.press('Escape');
+await page.keyboard.press('Escape');
 
 // ---------- 3. le clavier ----------
 await button().focus();
 await page.keyboard.press('Enter');
-await frame.locator('.menu').waitFor();
+await frame.locator('.menu:not(.menu-sub)').waitFor();
+await page.keyboard.press('Enter'); // le clavier est sur « Langue » : le sous-menu s'ouvre
+await frame.locator('.menu-sub').waitFor();
 await page.keyboard.press('Home');
 const homeFocus = await frame.evaluate(() => document.activeElement.textContent.trim());
-check('au clavier : Entrée ouvre le menu, Début va à « comme Grist »', homeFocus === wordsOther.auto(NAMES[lang]), homeFocus);
+check('au clavier : Entrée ouvre le menu puis le sous-menu « Langue », Début va à « comme Grist »', homeFocus === wordsOther.auto(NAMES[lang]), homeFocus);
 await page.keyboard.press('Enter');
 now = await screen();
-check('au clavier : Entrée choisit « comme Grist » ; GFS revient à la langue de Grist, la clé disparaît, le clavier reste sur le bouton', now.html === lang && now.title === words.title && (await stored()) === null && /tb-lang/.test(now.focused), { html: now.html, title: now.title, stored: await stored(), focused: now.focused });
+check('au clavier : Entrée choisit « comme Grist » ; GFS revient à la langue de Grist, la clé disparaît, le clavier reste sur le bouton « Réglages »', now.html === lang && now.title === words.title && (await stored()) === null && now.onSettings, { html: now.html, title: now.title, stored: await stored(), onSettings: now.onSettings });
 
 // ---------- 4. retenu sur le navigateur ----------
 await choose(NAMES[other]);
@@ -223,19 +236,17 @@ const sibling = sections.find(f => f !== mine);
 frame = mine;
 const shape = await Promise.all(sections.map(async f => ({ access: /access=(\w+)/.exec(f.url())[1], box: await (await f.frameElement()).boundingBox(), lang: await f.evaluate(() => document.documentElement.lang) })));
 say('les deux sections :', shape);
-await sibling.locator('.tb-lang').click();
-await sibling.locator('.menu-item', { hasText: new RegExp(`^${NAMES[other]}$`) }).click();
+await chooseLanguage(sibling, NAMES[other]);
 const followed = await waitFor('GFS suit l\'autre section', async () => (await screen()).html === other);
 now = await screen();
-check('une autre section change le choix : GFS suit sans rechargement (événement `storage` du navigateur)', followed && now.title === wordsOther.title && now.buttonLabel === wordsOther.button(NAMES[other]), { html: now.html, title: now.title });
+check('une autre section change le choix : GFS suit sans rechargement (événement `storage` du navigateur)', followed && now.title === wordsOther.title && now.settingsLabel === wordsOther.settingsTip, { html: now.html, title: now.title });
 check('l\'autre section est passée dans la langue choisie elle aussi', (await sibling.evaluate(() => document.documentElement.lang)) === other);
 await shot('6-section-suivie');
 await frame.locator('.ex-title-row .tb[aria-haspopup="dialog"]:not([hidden])').click();
 await frame.locator('.mod').waitFor();
 check('la fenêtre « Apps et extensions » s\'ouvre dans la langue qui vaut', (await frame.locator('#mod-title').textContent()) === wordsOther.appsTitle);
 await shot('7-fenetre-apps');
-await sibling.locator('.tb-lang').click();
-await sibling.locator('.menu-item').first().click();
+await chooseLanguage(sibling, null);
 await waitFor('la fenêtre ouverte suit', async () => (await frame.locator('#mod-title').textContent()) === words.appsTitle);
 check('la fenêtre ouverte suit aussi, sans se fermer, quand l\'autre section revient à « comme Grist »', (await frame.locator('#mod-title').textContent()) === words.appsTitle && (await frame.locator('.mod').count()) === 1 && (await screen()).html === lang && (await stored()) === null);
 

@@ -29,8 +29,9 @@ const rowCenter = name => {
   return [box.left + Math.min(box.width / 2, 40), box.top + box.height / 2];
 };
 
-// Le centre du bouton « Thème » de l'explorateur.
-const themeButtonCenter = () => { const box = document.querySelector('.tb-theme').getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; };
+// Le centre du bouton « Réglages » de l'explorateur (depuis le 04/11 la fenêtre « Thème » s'ouvre par sa ligne), puis celui de la ligne « Thème… » du menu, la deuxième.
+const settingsButtonCenter = () => { const box = document.querySelector('.ex-title-row .tb[aria-haspopup="menu"]').getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; };
+const themeRowCenter = () => { const row = document.querySelectorAll('.menu:not(.menu-sub) .menu-item')[1]; if (!row) return null; const box = row.getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; };
 
 // L'ambiance posée sur la page, comme la lit la feuille de style : `data-ambiance`, ou null pour l'ambiance d'origine.
 const posed = id => { window.__ambiance(id); return document.documentElement.getAttribute('data-ambiance'); };
@@ -95,7 +96,8 @@ async function themeWindowProblems(page) {
   for (const [appearance, mode] of MODES) {
     await page.view({ width: 700, scale: 1, mode: appearance });
     await page.run(posed, 'pop');
-    await page.click(...await page.run(themeButtonCenter));
+    await page.click(...await page.run(settingsButtonCenter));
+    await page.click(...await page.until(themeRowCenter));
     const tiles = await page.until(readThemeWindow);
     for (const tile of tiles.filter(item => ['defaut', 'papier', 'brut'].includes(item.id))) {
       const wanted = rgbOf(typeTokens(tile.id, mode)['--t-doc-soft']);

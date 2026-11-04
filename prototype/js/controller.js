@@ -17,6 +17,8 @@ import { ThemeWindow } from './theme-window.js';
 import { AppStorage, browserBackend, storageHandlers } from './app-storage.js';
 import { installSprite } from './icons.js';
 import { Dock } from './dock.js';
+import { settingsItems } from './settings-menu.js';
+import { aboutItems } from './about.js';
 import { WorkControl } from './work-control.js';
 import { Explorer } from './explorer.js';
 import { loadFiles } from './explorer-data.js';
@@ -296,7 +298,10 @@ export class GfsController {
     this.explorer = new Explorer({
       container: this.$('stage'), i18n: this.i18n, locale: this.locale, now: () => new Date(), appName: this.appName, typeLabel: this.typeLabel, lockOf: this.lockOf,
       newTypes: this.newTypes, importTypes: this.importTypes, canClose: () => Boolean(this.session), notice: text => this.notice(text),
-      language: () => ({ choice: this.language.choice, grist: this.language.grist }), onLanguage: choice => this.#chooseLanguage(choice), onTheme: () => this.openTheme(),
+      settings: () => settingsItems({
+        t: this.t, language: () => ({ choice: this.language.choice, grist: this.language.grist }), onLanguage: choice => this.#chooseLanguage(choice), onTheme: () => this.openTheme(),
+        place: () => this.dock.placeRow(), onAbout: () => this.#openAbout(),
+      }),
       onOpen: file => this.#openFile(file), onNew: entry => this.#openNew(entry), onImport: entry => void this.#importFile(entry), onClose: () => this.hideExplorer(), onApps: () => void this.openModules(),
       personal: () => Boolean(this.identity), filing, kept: this.kept,
       trash: new Trash({ managers, ask: opts => this.#ask(opts), keepFolders: file => filing.keepFoldersOf(file), ...gestures }),
@@ -431,7 +436,8 @@ export class GfsController {
 
   // ---------- la fenêtre « Thème » ----------
 
-  // Le bouton « Thème » de l'explorateur : l'ambiance et la couleur de GFS et de ses apps (js/theme-window.js). La fenêtre suit le mode de la page : ses vignettes se repeignent quand Grist passe du clair au sombre.
+  // La ligne « Thème » du menu « Réglages » de l'explorateur : l'ambiance et la couleur de GFS et de ses apps (js/theme-window.js). La fenêtre suit le mode de la page : ses vignettes se repeignent quand
+  // Grist passe du clair au sombre.
   openTheme() {
     if (!this.themeWindow) {
       this.themeWindow = new ThemeWindow({
@@ -441,6 +447,11 @@ export class GfsController {
       this.themeHost.onMode(() => this.themeWindow.refresh());
     }
     this.themeWindow.open();
+  }
+
+  // La ligne « À propos » du menu « Réglages » (js/about.js) : la version, l'auteur, le site et la licence, dans une fenêtre du widget qui n'a que son bouton « Fermer ».
+  #openAbout() {
+    void this.#ask({ title: this.t('about.title'), message: this.t('about.text'), items: aboutItems(this.t), confirmLabel: this.t('about.close') });
   }
 
   // ---------- la fenêtre « Apps et extensions » ----------

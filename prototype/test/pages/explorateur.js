@@ -33,6 +33,7 @@ import { aboutItems } from '/js/about.js';
 import { ThemeSetting } from '/js/theme.js';
 import { ThemeWindow } from '/js/theme-window.js';
 import { Trash } from '/js/trash.js';
+import { openRights } from '/js/rights-window.js';
 
 const DAY = 86400;
 // Nom, type (une valeur du manifeste ; `macro` est grisé, son extension étant éteinte), ancienneté en jours, auteur, dossier, poids en octets (de quelques octets à plusieurs Mo : toutes les unités
@@ -192,7 +193,7 @@ async function mount() {
     lockOf: file => (file.type === 'macro' ? { text: i18n.t('ex.lockedExtension', { name: 'Macro-modèles' }) } : null), newTypes: () => [], importTypes: () => [], canClose: () => true,
     notice: text => window.__notices.push(text), settings: () => settingsItems({ t: i18n.t, language: () => ({ choice: window.__language, grist: language }), onLanguage: value => { window.__language = value; }, onTheme: () => theme.open(), place, onAbout: () => window.__about() }),
     onOpen: file => { window.__opened = file.name; }, onNew: () => {},
-    onImport: () => {}, onClose: () => {}, onApps: () => {}, personal: () => true, kept: null, trash: bin, copying,
+    onImport: () => {}, onClose: () => {}, onApps: () => {}, onRights: () => window.__rights(window.__rightsKind || 'protege'), personal: () => true, kept: null, trash: bin, copying,
     attachments: async () => { window.__attachments += 1; if (window.__attachmentsFail) return { error: new Error(window.__attachmentsFail) }; return { data: attachmentsTable() }; },
     filing: { togglePin: noted('pin', 'name'), rename: noted('rename', 'name'), moveFile: noted('move', 'name'), renameFolder: async path => { window.__filing.push(['renameFolder', path]); }, moveFolder: async path => { window.__filing.push(['moveFolder', path]); }, ...moving,
       newFolder: () => filing.newFolder(), deleteFolder: path => filing.deleteFolder(path) },
@@ -251,6 +252,23 @@ async function mount() {
     ask({ ...leaveQuestion({ t: i18n.t, app: 'Publipostage+', fault: reason === null ? null : new Error(reason) }), container: stage, inertTargets: () => [explorer.root] })
       .then(answer => { window.__leave = answer ? 'force' : 'stay'; });
   };
+  // Le panneau « Permissions » (js/rights-window.js, test/droits-firefox.mjs) : la vraie fenêtre sur un état que le lecteur aurait rendu ; `kind` : 'pas' (rien posé, un lien public qui ouvre une table protégée),
+  // 'protege' (Encadré partout, structure fermée, deux liens), 'autre' (des règles à la main), 'proprietaire-seul' (une personne qui n'est pas propriétaire). `window.__rightsKind` désigne celui que le mot du pied ouvre.
+  const LONG = 'Publipostage_Modeles_Attestations_De_Formation_Fin_De_Session';
+  const states = {
+    pas: { rules: { readable: true, word: 'pas', closed: false, tables: [{ tableId: 'GFS_Rangement', level: 'ouvert' }, { tableId: LONG, level: 'ouvert' }] }, owner: true,
+      links: { status: 'ok', links: [{ id: 1, published: true, pages: ['Inscription à la session de formation de septembre'], filled: [{ tableId: 'FormPlus_Pub_3', shown: ['Nom'], unshown: ['Statut', 'Note interne', 'Montant', 'Reçu le'], rows: 1204 }], readable: [{ tableId: 'Villes', colId: 'Nom' }], protectedOpen: ['FormPlus_Pub_3'] }] } },
+    protege: { rules: { readable: true, word: 'protege', closed: true, tables: [{ tableId: 'GFS_Rangement', level: 'encadre' }, { tableId: LONG, level: 'encadre' }] }, owner: true,
+      links: { status: 'ok', links: [{ id: 1, published: true, pages: ['Inscription'], filled: [{ tableId: 'Inscrits', shown: ['Nom', 'Ville'], unshown: [], rows: 12 }], readable: [], protectedOpen: [] }, { id: 2, published: false, pages: [], filled: [], readable: [], protectedOpen: [] }] } },
+    autre: { rules: { readable: true, word: 'autre', closed: false, tables: [{ tableId: 'GFS_Rangement', level: 'autre' }] }, owner: true, links: { status: 'ok', links: [] } },
+    'proprietaire-seul': { rules: { readable: false, reason: 'owner-only', tables: [], closed: false, word: null }, owner: false, links: { status: 'owner-only', links: [] } },
+  };
+  window.__rights = kind => {
+    const state = states[kind];
+    explorer.setRights(state.rules);
+    return openRights({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], load: async () => state });
+  };
+  window.__rightsState = kind => explorer.setRights(states[kind].rules);
   show();
   explorer.open();
 }

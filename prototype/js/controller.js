@@ -32,6 +32,7 @@ import { AppsState } from './apps-state.js';
 import { arrivalApp, arrivalProbes } from './arrival.js';
 import { arrivalTableApp } from './arrival-table.js';
 import { Rangement, TableDeclined } from './rangement.js';
+import { RightsControl } from './rights-control.js';
 import { FILES_APP, FILES_MANIFEST, FILES_ENTRY, cleanName } from './gfs-files.js';
 import { Transfer, buildTransferFrame } from './transfer.js';
 import { FilesStore } from './files-store.js';
@@ -119,6 +120,12 @@ export class GfsController {
     this.rangement = new Rangement({ port: this.port, consent: () => this.#askTableConsent(), canWrite: () => !this.#writeBlock(), onIdentity: () => this.#onIdentity() });
     this.registry = new AppsState({ always: ALWAYS_ON, store: this.rangement, onChange: () => this.#onRegistryChange() });
     this.links = this.#buildLinks();
+    // Le cadre d'envoi (js/transfer.js) ne s'ouvre qu'à la première requête : les pièces jointes, et la preuve que la personne est propriétaire (js/rights-reader.js).
+    this.transfer = new Transfer({ doc: this.port.doc, base: this.doc.baseURI, createFrame: url => buildTransferFrame(this.doc, url) });
+    this.rights = new RightsControl({
+      port: this.port, transfer: this.transfer, prefixes: () => this.validApps().map(item => item.manifest.tables.prefixe), now: () => Date.now(), container: this.$('stage'),
+      inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')], t: this.t, fullAccess: () => this.fullAccess,
+    });
   }
 
   $ = id => this.doc.getElementById(id);
@@ -283,7 +290,7 @@ export class GfsController {
   // Les fichiers que GFS garde lui-même, les PDF (js/kept-files.js) : le cadre d'envoi, la table `GFS_Fichiers` (créée avec l'accord de la personne), et ce qu'il faut pour importer,
   // télécharger et supprimer. Le cadre d'envoi ne s'ouvre qu'au premier transfert.
   #buildKept() {
-    const transfer = new Transfer({ doc: this.port.doc, base: this.doc.baseURI, createFrame: url => buildTransferFrame(this.doc, url) });
+    const { transfer } = this;
     const consent = () => this.#ask({ title: this.t('files.table.title'), message: this.t('files.table.text'), confirmLabel: this.t('table.create'), cancelLabel: this.t('table.cancel') });
     return new KeptFiles({
       store: new FilesStore({ port: this.port, transfer, consent, identity: () => this.identity }), doc: this.doc, container: this.$('stage'),
@@ -311,6 +318,7 @@ export class GfsController {
         t: this.t, language: () => ({ choice: this.language.choice, grist: this.language.grist }), onLanguage: choice => this.#chooseLanguage(choice), onTheme: () => this.openTheme(),
         place: () => this.dock.placeRow(), onAbout: () => this.#openAbout(),
       }),
+      onRights: () => void this.rights.open(this.explorer),
       onOpen: file => this.#openFile(file), onNew: entry => this.#openNew(entry), onImport: entry => void this.#importFile(entry), onClose: () => this.hideExplorer(), onApps: () => void this.openModules(),
       personal: () => Boolean(this.identity), filing, kept: this.kept, attachments: () => loadAttachments(this.port),
       trash: new Trash({ managers, ask: opts => this.#ask(opts), keepFolders: file => filing.keepFoldersOf(file), ...gestures }),
@@ -402,6 +410,7 @@ export class GfsController {
     if (this.session) this.session.show(false);
     this.explorer.open();
     void this.refreshFiles();
+    void this.rights.refresh(this.explorer);
   }
 
   hideExplorer() {
@@ -622,7 +631,8 @@ export class GfsController {
     const storage = this.appStorage.read(session.id);
     const identity = identityFor(session.policy, this.identity);
     if (session === this.session) this.#sentIdentity = JSON.stringify(identity);
-    return buildContext(facts, { access: session.access, extensions: given.extensions, libraries: given.bibliotheques, opening, storage, bar: this.dock.barre(), identity, ambiance: this.theme.message() }, { preferences: this.#appPreferences(), readonly: this.readonly });
+    const role = await this.rights.reader.role(); // ce que GFS a prouvé : propriétaire ou non, `null` sinon (contrats 5.2, point 8)
+    return buildContext(facts, { access: session.access, extensions: given.extensions, libraries: given.bibliotheques, opening, storage, bar: this.dock.barre(), identity, ambiance: this.theme.message(), role }, { preferences: this.#appPreferences(), readonly: this.readonly });
   }
 
   // L'ouverture n'est rendue qu'au premier `contexte` de l'app qui vient d'être activée (contrats 5.2, point 3) : une app dont le cadre est rechargé sur place (sa langue, un

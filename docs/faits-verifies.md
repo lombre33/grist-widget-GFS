@@ -562,7 +562,7 @@ responsable ne recharge rien et fait apparaître les modèles chez la personne ;
 propriétaire écrit-il les règles ?) ; qui est vraiment propriétaire, héritage de l'espace de travail compris ; le
 téléchargement et la copie refusés à un éditeur ; l'historique des actions ; la version de Grist et le libellé exact de la
 case ; le jeton du widget et la liste des utilisateurs du document ; l'adresse que voient les règles par l'interface et par
-l'API, et la ligne-sonde sous « Partagé » (10.8). Les contrats 11 (version 0) ne deviennent définitifs qu'après elles. Les liens publics ont leurs
+l'API, et la ligne-sonde sous « Partagé » (10.8). **Trois sont faits depuis le 04/11 sur Grist 1.7.19 (section 40)** : qui est vraiment propriétaire, le jeton du widget et la liste des utilisateurs, la version. Les contrats 11 (version 0) ne deviennent définitifs qu'après elles. Les liens publics ont leurs
 propres mesures : 10.11.
 
 ### 10.11 Les liens publics et les formulaires publiés (22/10)
@@ -1469,3 +1469,32 @@ Lot 2 du poids (section 32 pour le lot 1) : le total du pied de fenêtre peut pr
 - **Le clavier (Chromium, vrai clavier)** : la case est un arrêt de Tab **juste avant « Ouvrir »** (Maj+Tab depuis « Ouvrir » y arrive, Tab va à « Ouvrir » puis « Fermer »), son anneau de focus est le trait de 2 px de la charte, **Espace la coche et elle garde le focus** (le pied n'est pas reconstruit). Le Firefox sans écran n'active pas une case à Espace et n'a pas le focus du système (`document.hasFocus()` est faux : `:focus-visible` ne s'applique jamais) : sous Firefox, la souris et l'ordre des arrêts de Tab se mesurent, pas l'anneau ni Espace (comme `conflictProblems`).
 - **Un défaut trouvé par l'essai et corrigé avant le push** : le total du pied se lisait « Total : 1,7 Monull » — la liste d'éléments du pied contenait un `null`, que `replaceChildren` écrit en toutes lettres — c'est le texte que lit un lecteur d'écran ; le chiffre affiché, lui, était juste. Les mesures sous Firefox lisaient le seul chiffre. **Les deux essais lisent maintenant tout le texte du total** (`Total : 1,7 Mo` décochée, `Total : 2,5 Mo, 1,7 Mo pour la liste + 742 Ko pour 4 pièces jointes du document.` cochée), et l'ancien code échoue (`Total : 18,1 Monull` sous Firefox).
 - **Pas mesuré** : une seconde personne sur un document à règles d'accès (la lecture de `_grist_Attachments` peut être refusée : le grisé existe, il n'a pas été vu dans un vrai Grist) ; l'instance de la DINUM ; un document de dizaines de milliers de pièces ; le Firefox du porteur (un Firefox 159 sans écran, sans l'anneau de focus ni Espace) ; les pièces jointes que **cite une ligne d'app** (une pièce citée par une table d'app et non déclarée au manifeste compte comme « autre », c'est voulu : le manifeste ne dit pas qu'elle appartient à un fichier).
+
+## 40. Les droits lus par GFS : qui est propriétaire, et qui lit les règles (mesuré le 04/11)
+
+Étape 6 du plan (contrats 5.2 point 8, 11.4 point 7, 11.9 point 8). Joué dans un **vrai serveur Grist 1.7.19** (Docker, `labo/vrai-serveur.sh`) avec trois comptes : le serveur d'essai ne connaît qu'une personne à la fois
+(`GRIST_DEFAULT_EMAIL`), on le relance entre les temps (propriétaire `essai@`, éditeur `editor@`, lecteur `viewer@`, tous trois dans le même document). Sonde brute : `labo/droits/` (`labo/run-droits-reel.mjs`) ; GFS entier :
+`labo/run-droits.mjs` (`PHASE=proprietaire`, `editeur`, `lecteur`), panneau à 700 × 400, souris et clavier réels.
+
+- **Une preuve de propriétaire qui marche** : `GET /api/docs/<id>/webhooks?auth=<jeton>` avec le jeton du widget **qui peut écrire** (`getAccessToken({ readOnly: false })`) rend **200** au propriétaire et **403 « No owner access »** à un
+  éditeur comme à un lecteur, document sans règle comme document avec règles. Avec le jeton **en lecture seule**, le même appel est refusé à tous (403, propriétaire compris) : il faut celui qui peut écrire. `GET /timing` se
+  comporte pareil. GFS ne lit que le code de la réponse (le corps liste les webhooks du document) : c'est une opération de plus du cadre d'envoi (`status`, `transfer/transfer.js`).
+- **Ce qui ne prouve rien** : `GET /api/docs/<id>` et `/access` avec le jeton du widget : **403 « access denied »** pour tous, propriétaire compris (la liste des utilisateurs du document n'est donc pas à la portée d'un widget) ; `/sql` :
+  200 pour tout le monde dans un document sans règle, 403 pour un éditeur dès qu'une règle existe ; `/usersForViewAs` : 403 pour tous avec ce jeton.
+- **Un document neuf a déjà une règle** : `_grist_ACLRules` porte une ligne (ressource 1, `permissions` 63, `principals` `[1]`, aucune condition) et `_grist_ACLResources` une ligne (`tableId` et `colIds` vides) : « tout le monde peut
+  tout ». Ce n'est pas une règle de la personne (`js/rights.js`, `userRules`). Une règle ajoutée par action (`AddRecord` dans les deux tables, dans un seul lot) est prise telle quelle ; son texte de droits va dans `permissionsText`.
+- **Qui lit les tables de règles** (trois documents, un éditeur ; puis un lecteur dont le widget a l'accès complet) : tant qu'**aucune règle ne refuse la lecture d'une table** (une règle `-C`, `-U` ou `-S` seule), l'éditeur et le lecteur
+  lisent `_grist_ACLRules`, `_grist_ACLResources` et `_grist_Shares`, **la clé de chaque lien (`linkId`) comprise**, comme le propriétaire. Dès qu'une règle refuse la **lecture** d'une table à une personne (`-R`, ou `-CRUD` comme
+  l'Encadré de 11.4), les deux tables de règles lui arrivent **vides**, la table disparaît de sa liste de tables (REST) et sa ligne de `_grist_Tables` n'a plus de nom ; `/sql` lui est refusé. C'est le cas du niveau Encadré : un
+  éditeur n'y lit rien, et une lecture vide ne veut pas dire « aucune règle » (`contrats` 11.4, point 7 : le mot du pied ne se dit qu'à un propriétaire prouvé).
+- **Ce que GFS en fait** (codé, `js/rights.js`, `js/rights-reader.js`, `js/rights-control.js`, `js/rights-window.js`) : un propriétaire prouvé voit le mot du pied (« Pas protégé » sans règle, « Protégé » avec l'Encadré partout et la structure
+  fermée, posés ici par action comme le fera l'étape 7), le panneau (tables de GFS et d'app avec leur niveau, la structure, les liens publics) et le rôle `proprietaire: true` donné à une app (la sonde V de `labo/sondes/`) ; un éditeur et un lecteur
+  voient « Permissions » au pied, le panneau dit « seul un propriétaire peut vérifier les règles », cache les tables et les liens, et l'app reçoit `proprietaire: false`. **La clé d'un lien n'apparaît nulle part dans la page de GFS** (vérifié sur le
+  texte de la page entière). Un partage posé par action (une page partagée, une section `publish` et `form`, un champ caché) est listé avec sa page, sa table, son nombre de lignes et la colonne qu'il remplit sans la montrer.
+- **Joué** : `labo/run-droits.mjs`, français en clair puis anglais en sombre, propriétaire (13 vérifications), éditeur (6), lecteur (6), sans échec ; le panneau tient dans le 700 × 400, ses textes ont le contraste voulu (4,5:1), la
+  console de GFS est muette. Sous **Firefox 159** (`test/interfaces-firefox.test.mjs`, `test/droits-firefox.mjs`) : le mot du pied et le panneau, quatre états, en français et en anglais, en clair et en sombre à 700 px : le mot tient dans le pied, le
+  panneau tient dans la page, son titre et son bouton restent en place, le clavier est sur « Fermer », Tab reste dedans, Échap le ferme, la souris l'ouvre et le ferme. Un premier essai a cassé la mesure de la corbeille (elle lit le premier bouton
+  du pied) : le mot a sa propre boîte.
+- **Pas mesuré** : l'instance de la DINUM (version de Grist inconnue : si elle cachait déjà les règles dans un cas de plus, le mot du pied dirait « Permissions », jamais un faux « Protégé »), Firefox avec un vrai Grist, un formulaire
+  publié par l'interface de Grist (le partage de l'essai est posé par action : GFS lit bien les tables de Grist, mais ce n'est pas l'interface de Grist qui les a remplies), les adresses statiques de Form+ (`#form=`), un éditeur qui **ajoute lui-même** un widget en accès complet
+  (il lirait alors les clés des liens tant qu'aucune règle ne lui ferme une table : à mesurer avant la carte sur la structure fermée), les espaces (étape 7).

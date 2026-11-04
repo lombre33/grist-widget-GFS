@@ -1,0 +1,40 @@
+/* Le panneau « Permissions » (js/rights-window.js) et son mot dans le pied de l'explorateur : tout par les jetons de gfs.css, jamais une couleur en dur. L'état se dit par un mot et une icône, jamais par
+   la couleur seule. La même base que les autres fenêtres (modules.css) : le titre et le pied restent en place, seul le contenu défile. */
+
+.mod.rt { width: min(620px, 100%); }
+.rt-body { padding: 10px 16px 12px; }
+.rt-content > * + * { margin-top: 12px; }
+.rt-lead { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-sunken); }
+.rt-lead .ic { flex: none; width: 16px; height: 16px; margin-top: 1px; color: var(--text-muted); }
+.rt-lead[data-word="protege"] { background: var(--good-soft); border-color: var(--good-soft-border); }
+.rt-lead[data-word="protege"] .ic { color: var(--good); }
+.rt-lead[data-word="pas"] { background: var(--warn-soft); border-color: var(--warn-ink); }
+.rt-lead[data-word="pas"] .ic { color: var(--warn-ink); }
+.rt-role, .rt-struct { margin: 0; color: var(--text-muted); }
+.rt-sec h3 { margin: 0 0 4px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
+.rt-list { list-style: none; margin: 0; padding: 0; }
+.rt-row { display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 2px 4px; border-bottom: 1px solid var(--border); }
+.rt-row .ic { flex: none; width: 14px; height: 14px; color: var(--text-muted); }
+.rt-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rt-level { flex: none; padding: 1px 8px; border: 1px solid var(--border-strong); border-radius: 999px; font-size: 12px; font-weight: 600; }
+.rt-level[data-level="encadre"] { background: var(--good-soft); border-color: var(--good-soft-border); color: var(--good); }
+.rt-level[data-level="ouvert"] { background: var(--warn-soft); border-color: var(--warn-ink); color: var(--warn-ink); }
+.rt-none { margin: 0; color: var(--text-muted); }
+.rt-struct { margin-top: 6px; }
+.rt-link { padding: 6px 4px; border-bottom: 1px solid var(--border); }
+.rt-link-head { display: flex; align-items: center; gap: 6px; }
+.rt-link-head .ic { flex: none; width: 14px; height: 14px; color: var(--text-muted); }
+.rt-link-lines { list-style: none; margin: 4px 0 0 20px; padding: 0; }
+.rt-link-lines li { display: flex; align-items: flex-start; gap: 6px; }
+.rt-link-lines li + li { margin-top: 2px; }
+.rt-link-lines .ic { flex: none; width: 13px; height: 13px; margin-top: 2px; }
+.rt-warn { color: var(--warn-ink); }
+.rt-bad { color: var(--danger-ink); font-weight: 600; }
+
+/* Le mot dans le pied de l'explorateur : un bouton comme ceux du pied, qui ouvre le panneau, dans sa propre boîte (les boutons du pied sont les enfants directs du pied : « Ouvrir » et « Fermer »). Le mot et l'icône vont toujours ensemble. */
+.ex-rights { flex: none; display: flex; align-items: center; }
+.rights-chip { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: var(--radius-sm); white-space: nowrap; }
+.rights-chip .ic { width: 14px; height: 14px; color: var(--text-muted); }
+.rights-chip[data-word="protege"] .ic { color: var(--good); }
+.rights-chip[data-word="pas"] .ic { color: var(--warn-ink); }
+@media (max-width: 519px) { .rights-chip .lbl { display: none; } }

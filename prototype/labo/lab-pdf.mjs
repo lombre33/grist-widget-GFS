@@ -3,7 +3,7 @@
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { SHOTS, withProbes, routePatches, mirrorCdns, say, check } from './lab-common.mjs';
-import { createDocument, addWidget, docIdOf } from './lab-serveur.mjs';
+import { GRIST, createDocument, addWidget, docIdOf } from './lab-serveur.mjs';
 import { makePdf } from './pdf-fixture.mjs';
 
 export const PAGE_PORT = 8917;
@@ -30,7 +30,7 @@ export const oldBrowser = process.env.LAB_NAVIGATEUR_ANCIEN === '1';
 // `probes` : les lettres des sondes (labo/sondes/) que cet essai ajoute au catalogue, `patches` : des fichiers de GFS remplacés pour cet essai seulement (lab-common.mjs, routePatches).
 // `mirrors` : l'essai ouvre une VRAIE app (Publipostage+), qui demande ses bibliothèques à des CDN que le cloud n'atteint pas : le miroir local les rend (lab-common.mjs, mirrorCdns), le script de l'API
 // des widgets restant celui du serveur.
-export async function openGfs(context, { lang = 'fr', probes = null, patches = [], mirrors = false } = {}) {
+export async function openGfs(context, { lang = 'fr', probes = null, patches = [], mirrors = false, path: existing = null } = {}) {
   const page = await context.newPage();
   if (!oldBrowser) await page.addInitScript(addModernMethods);
   if (probes) {
@@ -47,8 +47,10 @@ export async function openGfs(context, { lang = 'fr', probes = null, patches = [
   page.on('console', message => { if (['error', 'warning'].includes(message.type()) && mine(message)) problems.push(`${message.location().url.slice(0, 120)}:${message.location().lineNumber} ${message.text().slice(0, 400)}`); });
   // Une erreur non rattrapée : celle de GFS seulement (sa pile cite son adresse) ; celles de Grist lui-même (sa galerie de widgets, qui cherche GitHub) ne comptent pas.
   page.on('pageerror', error => { if (String(error.stack || '').includes(new URL(GFS).origin)) problems.push(`pageerror : ${String(error.message).slice(0, 400)}`); });
-  const path = await createDocument(page);
-  await addWidget(page, path, `${GFS}?language=${lang}&culture=${lang === 'en' ? 'en-GB' : 'fr-FR'}&live=0`);
+  // `path` : un document qui a déjà GFS (ouvert par une autre personne) ; sinon le document est créé et GFS y est ajouté comme le fait la personne.
+  const path = existing || await createDocument(page);
+  if (existing) await openExisting(page, existing);
+  else await addWidget(page, path, `${GFS}?language=${lang}&culture=${lang === 'en' ? 'en-GB' : 'fr-FR'}&live=0`);
   const find = async () => {
     for (let i = 0; i < 80; i++) {
       const frame = page.frames().find(each => each.url().startsWith(GFS) && /access=full/.test(each.url()));
@@ -62,11 +64,20 @@ export async function openGfs(context, { lang = 'fr', probes = null, patches = [
   await page.waitForTimeout(600);
   if (await frame.locator('.mod-scrim').count()) { await page.keyboard.press('Escape'); await frame.locator('.mod-scrim').waitFor({ state: 'detached' }); }
   const box = await fitPanel(page, frame);
-  return { page, frame, docId: docIdOf(path), box, problems, allow: [...KNOWN_MESSAGES], rest: rest(page, docIdOf(path)) };
+  return { page, frame, path, docId: docIdOf(path), box, problems, allow: [...KNOWN_MESSAGES], rest: rest(page, docIdOf(path)) };
+}
+
+// Un document déjà préparé : la personne l'ouvre (la visite guidée de Grist cache les pages : Échap la ferme) et va sur la page « Clients », qui porte GFS.
+async function openExisting(page, path) {
+  await page.goto(`${GRIST}${path}`, { waitUntil: 'load' });
+  await page.locator('.test-onboarding-popup').first().waitFor({ timeout: 8000 }).catch(() => {});
+  await page.keyboard.press('Escape');
+  await page.getByText('Clients', { exact: true }).first().click();
+  await page.waitForTimeout(2500);
 }
 
 // Le widget partage la page avec une autre section : la largeur ne suit qu'à moitié la fenêtre (gain de 2), la hauteur suit 1 pour 1 (comme lab-setup.mjs).
-async function fitPanel(page, frame, width = 700, height = 400) {
+export async function fitPanel(page, frame, width = 700, height = 400) {
   const element = await frame.frameElement();
   for (let i = 0; i < 12; i++) {
     const box = await element.boundingBox();

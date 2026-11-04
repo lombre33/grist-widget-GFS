@@ -24,6 +24,7 @@ import { findFirefox, serveSite, startFirefox } from './firefox.mjs';
 import { corbeilleProblems } from './corbeille-firefox.mjs';
 import { copierProblems } from './copier-firefox.mjs';
 import { fermerProblems } from './fermer-firefox.mjs';
+import { droitsProblems } from './droits-firefox.mjs';
 import { iconProblems } from './icones-firefox.mjs';
 import { dossiersProblems } from './dossiers-firefox.mjs';
 import { compositeProblems } from './composite-firefox.mjs';
@@ -562,6 +563,7 @@ describe('l\'interface sous Firefox', () => {
         problems.push(...await corbeilleProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await copierProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await fermerProblems(page, language, caption(language, 700, 1, mode)));
+        problems.push(...await droitsProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await dossiersProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await compositeProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await lookProblems(page, caption(language, 700, 1, mode)));

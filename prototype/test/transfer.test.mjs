@@ -145,3 +145,30 @@ test('un transfert trop long : « timeout » ; close() fait échouer ce qui atte
   assert.equal(run.frames.removed, 1);
   finish(run);
 });
+
+// La preuve de propriétaire (contrats 5.2, point 8) : `GET /webhooks` avec un jeton qui peut écrire. Mesuré dans un vrai Grist 1.7.19 (labo/run-droits-reel.mjs) : 200 pour un propriétaire,
+// 403 « No owner access » pour un éditeur et un lecteur. Tout autre cas reste « on ne sait pas ».
+test('isOwner : 200 → vrai ; 403 « No owner access » → faux ; tout le reste → null ; jeton qui peut écrire, adresse /webhooks', async () => {
+  const owner = setup({ frame: { answer: request => ({ id: request.id, ok: true, value: 200 }) } });
+  assert.equal(await owner.transfer.isOwner(), true);
+  assert.deepEqual(owner.asked, [{ readOnly: false }], 'le jeton en lecture seule est refusé à tous : il faut celui qui peut écrire');
+  assert.equal(owner.frames.requests[0].op, 'status');
+  assert.equal(owner.frames.requests[0].url, 'https://grist.exemple.fr/o/docs/api/docs/DOC123/webhooks?auth=jeton%2Bsecret%2F%3D');
+  finish(owner);
+  const editor = setup({ frame: { answer: request => ({ id: request.id, ok: false, network: false, status: 403, message: 'No owner access' }) } });
+  assert.equal(await editor.transfer.isOwner(), false);
+  finish(editor);
+  const other403 = setup({ frame: { answer: request => ({ id: request.id, ok: false, network: false, status: 403, message: 'access denied' }) } });
+  assert.equal(await other403.transfer.isOwner(), null, 'un 403 qui ne parle pas des propriétaires ne prouve rien');
+  finish(other403);
+  const absent = setup({ frame: { answer: request => ({ id: request.id, ok: false, network: false, status: 404, message: 'not found' }) } });
+  assert.equal(await absent.transfer.isOwner(), null, 'une version de Grist sans cette route : on ne sait pas');
+  finish(absent);
+  const offline = setup({ frame: { answer: request => ({ id: request.id, ok: false, network: true, status: 0, message: 'Failed to fetch' }) } });
+  assert.equal(await offline.transfer.isOwner(), null);
+  finish(offline);
+  const noToken = setup({ tokenError: new Error('pas de jeton') });
+  assert.equal(await noToken.transfer.isOwner(), null);
+  assert.equal(noToken.frames.created.length, 0, 'sans jeton, le cadre ne s\'ouvre même pas');
+  finish(noToken);
+});

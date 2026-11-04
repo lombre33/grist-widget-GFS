@@ -1074,7 +1074,7 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 | `stockage` | copie de l'espace de cette app, `{ clé: valeur }` (5.3) | oui, relue à chaque appel | contenu du navigateur |
 | `barre` | la barre de GFS qui recouvre le cadre de l'app, `{ bord, epaisseur, zone }`, ou `null` quand rien ne le recouvre (point 7) | oui, mesurée à chaque appel | `null` |
 | `ambiance` | l'ambiance et la couleur que la personne a choisies pour GFS et ses apps, ou `null` quand rien n'est choisi (point 10) | oui, relue à chaque appel | `null` |
-| `role` | ce que GFS sait de la personne, `{ proprietaire, responsableDe }` (point 8) | oui, relu à chaque appel | `{ proprietaire: null, responsableDe: [] }` |
+| `role` | ce que GFS sait de la personne, `{ proprietaire, responsableDe }` (point 8) | oui, à chaque appel ; la preuve se garde pour la vie de la page, 1,5 s d'attente au plus | `{ proprietaire: null, responsableDe: [] }` |
 | `identite` | l'adresse e-mail de la personne, `{ email }`, ou `null` (point 9) | seulement pour une app qui déclare `identite` (3.4, point 6), `null` pour toute autre ; relue à chaque appel | `null` (l'app garde sa propre sonde, 11.6, point 5) |
 
 1. [T] Les six paramètres de l'adresse (1.3) et le contexte disent la même chose : l'adresse existe pour le code des apps
@@ -1210,13 +1210,19 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    souris ; la barre, à gauche par défaut, recouvre le début de la bande des diapositives, ce que l'app écarte (consigne 025).
    **Non mesuré** : un second onglet de Grist (même mécanisme du navigateur que deux sections), Firefox, Safari, l'adaptation de
    Publipostage+ elle-même (elle n'a pas encore le code).
-8. [D] `role` (22/10, permissions, 11.6 point 4) : `{ "proprietaire": true | false | null, "responsableDe": [ "<clé d'espace>", … ] }`.
-   `proprietaire` vaut `true` ou `false` quand GFS l'a prouvé (la lecture des règles d'accès, que Grist ne rend qu'aux
-   propriétaires, ou la liste des utilisateurs du document : à mesurer, 11.8) et `null` sinon, ce qui est le cas de départ.
-   `responsableDe` liste les clés des espaces dont l'adresse de la personne est dans `Responsables` de `GFS_Espaces` (11.3) ;
-   vide sans adresse résolue, sans espace, ou pour une app seule. L'app s'en sert pour **griser, jamais pour décider** : elle ne
+8. `role` (22/10, permissions, 11.6 point 4) : `{ "proprietaire": true | false | null, "responsableDe": [ "<clé d'espace>", … ] }`.
+   [T] **Codé et mesuré le 04/11** (faits vérifiés, 40). `proprietaire` vaut `true` ou `false` quand GFS l'a prouvé et `null` sinon, ce
+   qui est le cas de départ. **La preuve** : `GET /webhooks` de l'API REST, avec le jeton du widget qui peut écrire (`getAccessToken({ readOnly: false })`),
+   par le cadre d'envoi de GFS (6.6) ; Grist le rend aux propriétaires seuls : **200** pour un propriétaire, **403 « No owner access »** pour un
+   éditeur et pour un lecteur, avec ou sans règle dans le document (Grist 1.7.19). GFS ne lit que le code de la réponse, jamais le corps (la liste des
+   webhooks du document). Tout autre cas (pas de jeton, pas de réponse, un 404 d'une autre version de Grist, un 403 qui ne parle pas des propriétaires)
+   donne `null`. Ce que GFS **ne prend pas** pour une preuve : la lecture des tables de règles (un éditeur les lit tant qu'aucune règle ne lui refuse la
+   lecture d'une table) et la liste des utilisateurs du document (le jeton du widget n'ouvre ni `/access` ni le document : 403 pour tous, propriétaire compris).
+   Une preuve sûre se garde pour la vie de la page (une règle posée la recharge) ; un `null` se redemande au bout de 30 secondes.
+   [D] `responsableDe` liste les clés des espaces dont l'adresse de la personne est dans `Responsables` de `GFS_Espaces` (11.3) ;
+   **vide** sans adresse résolue, sans espace, ou pour une app seule, donc toujours tant que les espaces ne sont pas construits (étape 7). L'app s'en sert pour **griser, jamais pour décider** : elle ne
    grise que si `proprietaire` est `false`, et c'est Grist qui accepte ou refuse. Le champ est relu à chaque appel `contexte`,
-   sans événement : seule une règle posée recharge la page (11.5, point 3), et qui voit quoi est une donnée.
+sans événement : seule une règle posée recharge la page (11.5, point 3), et qui voit quoi est une donnée.
 9. [T] `identite` (03/11, choix du porteur « Aux apps qui le déclarent ») : `{ "email": "<adresse>" }`, ou `null`. **Qui la reçoit** :
    seule l'app dont le manifeste déclare `permissions.identite` (3.4, point 6). Pour toute autre, le champ est là et vaut `null`, et
    l'événement n'est jamais envoyé : elle ne peut pas distinguer « pas déclarée » de « GFS ne connaît pas la personne ». **D'où
@@ -2365,7 +2371,7 @@ document en petits commits, les points 8 (cadre qui navigue, politique imposable
   Form+ ; les classes de tables et les colonnes de l'étiquette (11.2, 11.6), après les mesures de 11.8.
 - **Étape 6 (GFS v0)** : le rangement propre à une app dans l'explorateur ; « Fermer quand même » ; « Recharger » ; la
   fenêtre d'installation qui montre `pourquoi` (celui d'`identite` compris, 3.4, point 6) ; le panneau « Permissions » en lecture, le pied honnête et `contexte.role`
-  (11.4, point 7 ; 5.2, point 8).
+  (11.4, point 7 ; 5.2, point 8) : **codés et mesurés dans un vrai Grist le 04/11** (faits vérifiés, 40).
 - **Étape 7 (extensions et nouvelles apps)** : poser et retirer un niveau de règles, les espaces et leurs responsables, le
   contrôle d'ensemble des règles (11.5, 11.7) ; le déroulement d'« insérer » (deux sous-cadres), la taille du rendu ; le
   mappage de colonnes pour une app qui en demanderait ; qui fait suivre un renommage de colonne aux modèles d'un type
@@ -2599,9 +2605,12 @@ soit la dernière de sa ressource. Les droits s'écrivent comme Grist les range 
 
    La dernière ligne vient de n'importe quelle règle du document, même une seule : la première règle posée coûte l'import et la
    copie aux éditeurs, et le niveau choisi n'y change rien. Les propriétaires ne perdent ni l'un ni l'autre.
-7. [T] **Le pied de GFS** ne parle que des tables de GFS et des apps, jamais des tables de données. Trois mots : *Pas protégé*
-   (Ouvert), *Protégé en partie* (Partagé, ou Encadré avec la structure ouverte), *Protégé* (Encadré, structure fermée), et ce
-   dernier **seulement quand un propriétaire a prouvé la lecture des règles** : un éditeur ne lit pas les règles, donc ne prouve rien.
+7. [T] **Le pied de GFS** ne parle que des tables de GFS et des apps (celles qui commencent par `GFS_` ou par le préfixe d'une app), jamais des
+   tables de données. Quatre mots, **codés le 04/11** (faits vérifiés, 40) : *Pas protégé* (au moins une de ces tables sans aucune règle), *Protégé en partie*
+   (Partagé, ou Encadré avec la structure ouverte), *Protégé* (Encadré partout ET structure fermée) et *Règles de Grist* (des règles que GFS n'a pas posées : il ne dit pas si elles
+   protègent) ; « Permissions » tant qu'il n'a rien lu ou qu'il n'a rien à juger. Le niveau d'une table se lit à la note de ses règles (« GFS : Encadré »), jamais à leur contenu. **Seulement quand
+   un propriétaire a lu les règles** (la preuve est celle de `contexte.role`, 5.2, point 8) : mesuré, dès qu'une règle refuse la lecture d'une table à une personne, les tables de règles
+   lui arrivent **vides**, et vides elles ne disent pas « aucune règle » ; à toute autre personne le pied dit « Permissions », et le panneau en donne la raison.
 
 ### 11.5 Poser et retirer
 
@@ -2669,7 +2678,7 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
 
 9. [D] **Les liens publics** (11.9) : toute app traite une valeur de donnée comme du texte non fiable (elle l'échappe, ne la prend
    jamais pour du code), et ne déclenche rien d'elle-même sur les lignes d'une table qu'un lien public remplit. Publipostage+,
-   Automation+ et Grist-BI le disent dans leur état ; la réponse du porteur est tombée le 04/11 (11.7, point 9) : la consigne peut partir.
+   Automation+ et Grist-BI le disent dans leur état ; la réponse du porteur est tombée le 04/11 (11.7, point 9) : consignes posées le 04/11 (Publipostage+ 046, Automation+ 009, Grist-BI 005).
 
 ### 11.7 Ce qui n'est pas décidé
 
@@ -2737,7 +2746,8 @@ vue ; note d'une règle dans le refus ; rechargements à deux comptes ; qui est 
 refusés ; historique des actions ; version de Grist et libellé de la case ; jeton du widget et liste des utilisateurs du
 document ; adresse que voient les règles par l'interface et par l'API, ligne-sonde comprise. Chacun peut changer une règle de
 11.4, un champ de `contexte.role` (5.2, point 8) ou la preuve du pied (11.4, point 7). Cette section sort de la version 0 quand
-ils sont faits.
+ils sont faits. **Faits le 04/11 sur un vrai Grist 1.7.19 (Docker, trois comptes, faits vérifiés 40)** : qui est vraiment propriétaire (la preuve `GET /webhooks`) ; le jeton du widget et la liste
+des utilisateurs du document (le jeton n'ouvre pas `/access` : 403 pour tous) ; la version (1.7.19 seule : celle de la DINUM reste à relever). **Pas faits** : le reste, sur l'instance du porteur.
 
 S'y ajoutent les six mesures des liens publics (faits vérifiés, 10.11), à faire dans la même séance avec un vrai lien de formulaire
 publié. La première, une session de partage écrit-elle une table interne ou un réglage de widget ?, passe avant toutes : elle dit
@@ -2751,8 +2761,7 @@ compte. Le porteur, le 22/10 : un formulaire est « une porte d'entrée pour ven
 `faits-verifies.md`, 10.11. L'accord demandé à chaque publication est codé dans le courtier depuis le 22/10 (3.3, point 9 : la
 fenêtre, les refus sans demander, l'échec fermé) ; la consigne 013 est faite (Form+ à `fd5384a`) et, depuis le 03/11, un lien ne lit que
 les petites tables que le manifeste de l'app déclare (point 4c) ; cette sous-section en donne le cadre et dit ce qui reste. Un formulaire qu'on remplit dans le document, connecté, n'est pas un lien public : il passe par les règles des
-personnes (11.4). **Pas encore codé** : le propriétaire seul (point 7), les classes protégées de 11.2 (point 4c), le panneau de
-toutes les portes (point 8). **Tranché le 04/11** : un lien reçoit la table du formulaire, cloisonnée, et non une boîte aux lettres
+personnes (11.4). **Codé le 04/11** : le panneau de toutes les portes (point 8, étape 6). **Pas encore codé** : le propriétaire seul (point 7), les classes protégées de 11.2 (point 4c). **Tranché le 04/11** : un lien reçoit la table du formulaire, cloisonnée, et non une boîte aux lettres
 (11.7, point 9 ; points 4a et 4b ci-dessous). **Pas mesuré** : ce que Grist ouvre vraiment à qui a le lien (le
 labo n'a pas de partages, 10.11).
 
@@ -2817,12 +2826,13 @@ labo n'a pas de partages, 10.11).
    peut écrire ces tables, même si son interface ne lui montre pas « Publier »), jamais une permission de plus : l'exception à 11.6,
    point 4 tient parce que c'est le courtier, non l'app, qui décide. Pas encore codé : GFS ne connaît pas le rôle de la personne
    (5.2, point 8).
-8. [D] **Voir toutes les portes, d'où qu'elles viennent.** Un propriétaire peut publier par l'interface de Grist, sans GFS, donc
-   sans accord. Le panneau « Permissions » (étape 6, en lecture) liste **tous** les partages du document, publiés ou non (lecture de
-   `_grist_Shares`, `_grist_Pages` et `_grist_Views_section`) : la table de chacun et son nombre de lignes, les colonnes que le lien
-   peut remplir (montrées ou non), celles qu'il rend lisibles, et si une table protégée est ouverte (point 4c). Seul un propriétaire
-   le voit (ces tables ne vont qu'à eux) ; une autre personne lit « seul un propriétaire voit les liens publics ». Il rattrape
-   ce que l'accord (3.3, point 9) ne voit pas : un formulaire publié depuis l'interface de Grist, ou avant le 22/10 (3.7, point 8).
+8. [T] **Voir toutes les portes, d'où qu'elles viennent** (codé le 04/11, étape 6). Un propriétaire peut publier par l'interface de Grist, sans GFS, donc
+   sans accord. Le panneau « Permissions » (en lecture) liste **tous** les partages du document, publiés ou non (lecture de
+   `_grist_Shares`, `_grist_Pages`, `_grist_Views`, `_grist_Views_section` et ses champs) : la page qui porte chacun, la table qu'il remplit et son nombre de lignes, les colonnes qu'il peut
+   remplir **sans les montrer**, celles qu'il rend lisibles, et, en rouge, une table de GFS ou d'une app qu'il ouvrirait (point 4c). **La clé du lien n'est jamais lue ni montrée** (mesuré : un lecteur dont le
+   widget a l'accès complet la lit dans `_grist_Shares`, faits vérifiés, 40). Seul un propriétaire **prouvé** (5.2, point 8) les voit ; toute autre personne lit « seul un propriétaire voit les liens publics », et
+   GFS ne lit alors aucune de ces tables. Il rattrape ce que l'accord (3.3, point 9) ne voit pas : un formulaire publié depuis l'interface de Grist, ou avant le 22/10 (3.7, point 8). [M] Joué dans un vrai Grist avec un partage posé
+   par action (une page partagée, une section marquée `publish` et `form`) ; **pas mesuré** avec un formulaire que l'interface de Grist a publié ni avec les adresses statiques de Form+ (`#form=`, point 2 de l'état de Form+).
    Fermer ou renouveler un lien depuis GFS est une écriture : étape 7 (11.7, point 10).
 9. [T] **Ce que GFS ne sait pas faire** : limiter le nombre ou le débit des lignes d'un lien, valider une valeur, reconnaître un
    robot. Grist n'offre rien de tel pour un partage et GFS n'est pas là quand son widget est fermé. La seule parade immédiate est

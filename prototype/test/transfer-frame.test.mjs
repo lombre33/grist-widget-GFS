@@ -109,3 +109,14 @@ test('une opération inconnue est refusée, sans requête', async () => {
   assert.deepEqual([answer.id, answer.ok], [5, false]);
   assert.equal(calls, 0);
 });
+
+test('status : un GET dont seul le code revient ; le corps n\'est pas lu pour un 200, et un refus rend son texte', async () => {
+  let bodyRead = false;
+  const ok = load(async () => ({ ok: true, status: 200, statusText: 'OK', text: async () => { bodyRead = true; return '{"webhooks":[]}'; }, blob: async () => new Blob([]) }));
+  ok.connect();
+  assert.deepEqual(await ok.ask({ id: 8, op: 'status', url: 'https://grist.exemple.fr/api/docs/D/webhooks?auth=t' }), { id: 8, ok: true, value: 200 });
+  assert.equal(bodyRead, false, 'les webhooks du document ne sont jamais lus');
+  const refused = load(async () => reply(403, { error: 'No owner access' }));
+  refused.connect();
+  assert.deepEqual(await refused.ask({ id: 9, op: 'status', url: 'https://grist.exemple.fr/api/docs/D/webhooks?auth=t' }), { id: 9, ok: false, network: false, status: 403, message: 'No owner access' });
+});

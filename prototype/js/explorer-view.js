@@ -5,6 +5,7 @@ import { h } from './dom.js';
 import { icon } from './icons.js';
 import { person, formatDate, pathParts, stampOf, authorOf, FAMILY_NAMES } from './explorer-model.js';
 import { formatBytes } from './weight.js';
+import { chipKey } from './rights.js';
 
 export const SORT_HEADERS = [['name', 'ex.name'], ['type', 'ex.type'], ['poids', 'ex.weight'], ['mod', 'ex.modified'], ['by', 'ex.by']];
 
@@ -37,6 +38,7 @@ export function buildShell(i18n) {
       keep('info', h('div', { class: 'ex-info', 'aria-live': 'polite' })),
       keep('total', h('div', { class: 'ex-total', id: 'ex-total' })),
       keep('pj', h('label', { class: 'ex-pj' }, keep('pjInput', h('input', { type: 'checkbox', 'aria-describedby': 'ex-total' })), keep('pjText', h('span')))),
+      h('div', { class: 'ex-rights' }, keep('rightsBtn', h('button', { type: 'button', class: 'rights-chip', 'aria-haspopup': 'dialog' }))),
       keep('openBtn', h('button', { type: 'button', class: 'btn' })),
       keep('closeBtn', h('button', { type: 'button', class: 'btn' }))));
   relabel(refs, i18n);
@@ -68,6 +70,17 @@ export function relabel(refs, i18n) {
   refs.pj.title = t('weight.pjTip');
   refs.openBtn.textContent = t('ex.open');
   refs.closeBtn.textContent = t('ex.close');
+  rightsChip(refs, i18n, refs.rights || null);
+}
+
+// Le mot du pied (contrats 11.4, point 7) : « Pas protégé », « Protégé en partie », « Protégé », ou « Permissions » tant que GFS n'a rien lu ; il ouvre le panneau des permissions. `rules` : ce que
+// `RightsReader.rules()` a rendu, ou null avant la lecture. Le mot et l'icône vont ensemble.
+export function rightsChip(refs, i18n, rules) {
+  const { t } = i18n;
+  const word = rules && rules.readable && rules.word ? rules.word : 'none';
+  refs.rightsBtn.dataset.word = word;
+  refs.rightsBtn.title = t('rights.chip.tip');
+  refs.rightsBtn.replaceChildren(icon('shield'), h('span', { class: 'lbl' }, t(chipKey(rules))));
 }
 
 const family = file => (FAMILY_NAMES.includes(file.family) ? file.family : null);

@@ -9,6 +9,7 @@ const FRAME_PAGE = 'transfer/index.html';
 const READY_TIMEOUT_MS = 8000;
 const UPLOAD_TIMEOUT_MS = 10 * 60 * 1000;
 const DOWNLOAD_TIMEOUT_MS = 3 * 60 * 1000;
+const STATUS_TIMEOUT_MS = 10 * 1000;
 
 // Pourquoi un transfert a échoué : `kind` vaut 'frame' (le cadre ne répond pas), 'token' (Grist n'a pas donné de jeton), 'network' (le serveur n'a pas répondu, ou le navigateur a refusé la
 // requête), 'http' (le serveur a répondu un refus : `status`), 'timeout' (trop long) ou 'answer' (la réponse n'est pas celle qu'on attend).
@@ -59,6 +60,19 @@ export class Transfer {
     const { token, baseUrl } = await this.#token(true);
     const reply = await this.#call('download', { url: this.#url(baseUrl, `/attachments/${encodeURIComponent(attachment)}/download`, token) }, DOWNLOAD_TIMEOUT_MS);
     return reply.value;
+  }
+
+  // Le propriétaire du document ? `GET /webhooks` n'est rendu qu'aux propriétaires, et avec un jeton qui peut écrire (mesuré le 04/11 sur Grist 1.7.19 : 200 pour un propriétaire, 403 « No owner access »
+  // pour un éditeur et un lecteur, avec ou sans règle dans le document ; le jeton en lecture seule est refusé à tous). Rend true (200), false (le refus des propriétaires seuls) ou null (tout le reste :
+  // pas de jeton, pas de réponse, une autre version de Grist qui répondrait autrement). Seul le code compte : le cadre ne lit jamais le corps, qui liste les webhooks du document.
+  async isOwner() {
+    try {
+      const { token, baseUrl } = await this.#token(false);
+      await this.#call('status', { url: this.#url(baseUrl, '/webhooks', token) }, STATUS_TIMEOUT_MS);
+      return true;
+    } catch (error) {
+      return error instanceof TransferError && error.kind === 'http' && error.status === 403 && /owner/i.test(error.message) ? false : null;
+    }
   }
 
   // Referme le cadre ; le suivant se rouvrira au prochain transfert.

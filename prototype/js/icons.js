@@ -64,6 +64,7 @@ const ICONS = {
   'work-row': '<rect x="5" y="4" width="16" height="16" rx="1.5"/><path d="M5 9.3h16M5 14.6h16"/><path d="M1.5 10.2l2.5 1.8-2.5 1.8"/>',
   table: '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 9h18M9 9v11"/>',
   link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  shield: '<path d="M12 3l7.5 3v5.6c0 4.3-3 8-7.5 9.4-4.5-1.4-7.5-5.1-7.5-9.4V6z"/>',
   'chev-left': '<path d="M15 6l-6 6 6 6"/>',
 };
 

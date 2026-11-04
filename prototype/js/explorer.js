@@ -8,7 +8,7 @@ import { h } from './dom.js';
 import { icon } from './icons.js';
 import { listItems, treeRows, typeChoices } from './explorer-model.js';
 import { words } from './search.js';
-import { buildShell, relabel, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar, trashBar, totalBar, pjBox } from './explorer-view.js';
+import { buildShell, relabel, rightsChip, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar, trashBar, totalBar, pjBox } from './explorer-view.js';
 import { sumWeights, pieceKeys, otherAttachments } from './weight.js';
 import { listAction, isSearchKey, clipboardAction, parentPath, stepRow } from './explorer-keys.js';
 import { Clipboard } from './explorer-clipboard.js';
@@ -53,7 +53,7 @@ export class Explorer {
   };
 
   // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), importTypes(), onOpen(file), onNew(entry), onImport(entry), onClose(), onApps(), canClose(), notice(text),
-  //          settings() → les articles du menu « Réglages » (js/settings-menu.js : langue, thème, position de la barre, « À propos »), personal() → le rangement est-il à la personne seule ?,
+  //          settings() → les articles du menu « Réglages » (js/settings-menu.js : langue, thème, position de la barre, « À propos »), onRights() (le mot du pied ouvre le panneau des permissions), personal() → le rangement est-il à la personne seule ?,
   //          filing: { togglePin(file), rename(file), moveFile(file), renameFolder(path), moveFolder(path), moveFileTo(file, dossier), moveFolderTo(path, dossier) },
   //          kept?: les fichiers que GFS garde lui-même (js/kept-files.js) : { has(file), openAs(file) -> { label, icon, greyed }, opensIn(file), extras(file) -> [article de menu] },
   //          trash?: la corbeille (js/trash.js) : { handles(file), appLockOf?(file) -> { text } | null (l'app doit être ouverte), move(file), restore(file), purge(file), empty(files) } (chaque geste rend une promesse, vraie quand il a abouti),
@@ -169,6 +169,12 @@ export class Explorer {
     closeBtn.textContent = t('ex.choose.cancel');
     newBtn.setAttribute('aria-disabled', 'true');
     newBtn.title = t('ex.choose.newOff');
+  }
+
+  // Le mot du pied (contrats 11.4, point 7) d'après ce que le lecteur des droits a lu (`RightsReader.rules()`), ou null avant la lecture.
+  setRights(rules) {
+    this.#refs.rights = rules;
+    rightsChip(this.#refs, this.#opts.i18n, rules);
   }
 
   // La langue de GFS a changé : les textes du cadre fixe se réécrivent, et tout le reste se redessine dans la nouvelle langue (dates comprises).
@@ -351,10 +357,11 @@ export class Explorer {
   // ---------- gestes ----------
 
   #bind() {
-    const { search, viewList, viewTiles, typeBtn, newBtn, openBtn, closeBtn, appsBtn, settingsBtn, pjInput, crumbs: crumbsNav, tree: treeNav, list, notices } = this.#refs;
+    const { search, viewList, viewTiles, typeBtn, newBtn, openBtn, closeBtn, appsBtn, settingsBtn, rightsBtn, pjInput, crumbs: crumbsNav, tree: treeNav, list, notices } = this.#refs;
     search.addEventListener('input', () => { this.state.q = search.value; this.state.sel = null; this.#renderCrumbs(); this.#renderList(); });
     appsBtn.addEventListener('click', () => this.#opts.onApps());
     settingsBtn.addEventListener('click', () => this.#settingsMenu());
+    rightsBtn.addEventListener('click', () => this.#opts.onRights());
     pjInput.addEventListener('click', event => this.#onPj(event));
     viewList.addEventListener('click', () => this.#setDisplay('list'));
     viewTiles.addEventListener('click', () => this.#setDisplay('tiles'));

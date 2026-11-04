@@ -1207,3 +1207,30 @@ ajoutés, panneau à 700 × 400, souris et clavier réels, en français clair, f
   et le miroir local des bibliothèques se construit par `labo/build-mirror.sh` (le cloud n'atteint que le registre npm).
 - **Pas mesuré** : l'instance de la DINUM ; le Firefox du porteur (l'interface de la corbeille y est mesurée par `test/corbeille-firefox.mjs` pour les PDF ; les fichiers des apps y passent par la même vue) ; un document en lecture seule joué dans le vrai serveur (`trash.readonly`, essais Node) ; la perte de l'historique des versions d'un
   modèle restauré (contrats 6.7, point 6) ; Form+ et Automation+ (pas de recette : leurs fichiers sont grisés, avec la raison).
+
+## 27. Le script d'API de `docs.getgrist.com` s'évalue : une page sans `'unsafe-eval'` ne démarre pas (vu par le porteur et reproduit le 04/11)
+
+**Vu par le porteur** (Firefox, le Grist de la DINUM, « Nouveau > Formulaire » depuis GFS) : Form+ ne dit jamais « prête ». GFS attend 15 s le site en ligne, ouvre la copie figée, attend 15 s de plus, puis écrit « Form+ ne répond pas ». Sa console :
+
+```text
+Uncaught EvalError: call to eval() blocked by CSP        (https://docs.getgrist.com/grist-plugin-api.js:251)
+Content-Security-Policy : … « script-src 'self' https://unpkg.com https://docs.getgrist.com » (la valeur 'unsafe-eval' est manquante)
+Uncaught (in promise) TypeError: can't access property "ready", grist is undefined        (lombre33.github.io/FormPlus/poc/js/main.js:133)
+```
+
+La ligne 133 est celle de `grist.ready()` à la tête de Form+ (`6059fb9`) ; la copie figée (`0de37ac`) la porte à la ligne 119 et a la même politique : elle échoue de même.
+
+**Lu** (les politiques de page, le 04/11) : GFS (`prototype/index.html`, `'unsafe-eval'` et l'adresse entière du script, avec la raison : « le fichier que Grist sert est un bundle de développement qui s'évalue par eval() »), Publipostage+ (`dd19c76` :
+`script-src 'self' 'unsafe-eval' https://esm.sh https://docs.getgrist.com/grist-plugin-api.js`), Automation+ (`6019846` : `'self' 'unsafe-eval'` et l'adresse entière), Tuesday (consigne 007, point 1), **Form+ seule sans `'unsafe-eval'`** (`default-src 'self'; script-src 'self' https://unpkg.com https://docs.getgrist.com`, depuis `85ac56d` du 21/10, qui avait ajouté `docs.getgrist.com` après un essai contre un Grist auto-hébergé).
+
+**Pourquoi ni Form+ ni le labo ne l'avaient vu.** Le script que sert un Grist Docker (1.7.19 : `/grist-plugin-api.js`, 27 015 lignes) ne contient aucun `eval(` ; le labo (`labo/lab-serveur.mjs`) le sert à la place de celui de `docs.getgrist.com`, comme le banc d'essai de Form+
+(`tests/grist-env/README.md`, point 2 : `ctx.route('https://docs.getgrist.com/grist-plugin-api.js', …)` vers le fichier du Docker). Seul le fichier de `docs.getgrist.com` s'évalue, et il est injoignable du cloud (le proxy refuse l'hôte) : sa forme est lue dans la console du porteur, pas dans le fichier.
+
+**Reproduit** (Firefox 159, vrai Grist Docker 1.7.19, « Nouveau > Formulaire ») en servant le script du Docker enveloppé dans `eval(` + `JSON.stringify(fichier)` + `);` : Form+ en tête (`6059fb9`) et sa copie (`0de37ac`) donnent `EvalError: call to eval() blocked by CSP`, puis `ReferenceError: grist is not defined`
+(le dernier mot diffère de la console du porteur, `TypeError … grist is undefined` : dans l'enveloppe du labo `grist` n'est pas déclaré du tout ; la cause, l'`EvalError` qui précède, est la même) ; la page reste sur sa carte « Connexion à Grist… » ; GFS n'a jamais le `ready`. La même mesure avec une copie de Form+ dont la politique est `script-src 'self' 'unsafe-eval' https://unpkg.com
+https://docs.getgrist.com/grist-plugin-api.js` : **prête en 0,2 s**, sur le site comme sur la copie. Sans l'enveloppe `eval`, la tête de Form+ comme la copie sont prêtes en moins d'une demi-seconde (Chromium, Firefox 140 et 159) : le défaut ne se voit qu'avec le script qui s'évalue.
+
+**Le piège de l'app** : `loadPluginApi()` (`plugin-loader.js`) résout `true` sur l'événement `load` du script, qui vient même quand le script a échoué dans son `eval` ; l'app tombe alors sur un `TypeError` que rien n'affiche. Dit à Form+ en option (consigne 018, point 3).
+
+**Ce que GFS fait** : consigne 018 à Form+ (la politique de sa page : `'unsafe-eval'` et l'adresse entière du script), règle 11 du guide des apps complétée, et le défaut propre à GFS que le porteur a vu en chemin (le message rouge restait sur l'explorateur, et rouvrir l'app ne la relançait pas).
+**Pas mesuré** : l'app seule dans le Grist du porteur (le chargeur est le même : lu, non mesuré) ; le fichier réel de `docs.getgrist.com`.

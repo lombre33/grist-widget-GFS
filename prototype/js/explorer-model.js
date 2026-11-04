@@ -6,8 +6,11 @@
 
 import { normalize, words, matchesWords } from './search.js';
 
-// Le champ `couleur` du manifeste -> la famille de couleur de la charte (cahier 6.5) ; tout autre mot : neutre.
-const FAMILIES = Object.freeze({ document: 'doc', grille: 'grid', presentation: 'slides' });
+// Le champ `couleur` du manifeste -> la famille de couleur de la charte (cahier 6.5) ; tout autre mot : neutre. Le rouge du PDF est la quatrième famille (décision du porteur, 04/11).
+const FAMILIES = Object.freeze({ document: 'doc', grille: 'grid', presentation: 'slides', pdf: 'pdf' });
+// Les familles que l'explorateur colore (attribut `data-fam`, jetons `--t-*` de css/gfs.css) ; `familyOf` : la famille d'un mot du manifeste, ou '' (neutre : jamais un mot de la chaîne de prototypes).
+export const FAMILY_NAMES = Object.freeze(Object.values(FAMILIES));
+export const familyOf = couleur => (Object.hasOwn(FAMILIES, couleur) ? FAMILIES[couleur] : '');
 const RECENT_LIMIT = 8;
 
 const text = value => (typeof value === 'string' ? value : '');
@@ -55,7 +58,7 @@ export function readFiles(manifest, spec, data) {
     const name = text(cell(data, cols.nom, i));
     files.push({
       key: fileKey(manifest.id, rawId), app: manifest.id, id: String(rawId), table: spec.table, row: data.id[i], name, type, typeInfo, known: Boolean(typeInfo),
-      family: (typeInfo && FAMILIES[typeInfo.couleur]) || '', icon: (typeInfo && typeInfo.icone) || 'doc',
+      family: typeInfo ? familyOf(typeInfo.couleur) : '', icon: (typeInfo && typeInfo.icone) || 'doc',
       ts: seconds(cell(data, cols.date, i)), by: text(cell(data, cols.par, i)), folder: normalizePath(cell(data, cols.dossier, i)), pinned: false,
       trashed: trashOf(spec.corbeille, data, i), search: '',
     });

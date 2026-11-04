@@ -110,7 +110,7 @@ Slides+ (`lombre33/SlidesPlus`) n'est pas une app de GFS : les diapositives devi
 | Limiter le nombre de tables créées dans le document | 08/10 | Une ligne réservée d'une table existante avant une table de plus |
 | Reprendre le code, ne pas dupliquer ; une refonte est acceptée si elle évite des copies | 08/10 et 12/10 | Kit commun |
 | Charte Grist Factory : monochrome, un seul bleu d'accent, police du système, grisé jamais masqué, panneau de 700 × 400, français et anglais dans le même lot | 18/09 au 12/10 | Section 3.4 et `contexte/charte-ui-ux-grist-factory.md` |
-| Couleurs par type, dans l'explorateur seulement : document bleu, grille vert, présentation orange | 12/10 | Section 6.5 |
+| Couleurs par type, dans l'explorateur seulement : document bleu, grille vert, présentation orange ; **le PDF est rouge, et ces quatre couleurs comme le trait des icônes de type suivent l'ambiance** (la règle « elles ne changent jamais d'une ambiance à l'autre » est levée) | 12/10, 04/11 | Section 6.5 |
 | Notes = un document ; diapositives d'abord ; PowerPoint précis et OnlyOffice libre « très importants » | 12/10 | Extensions de Publipostage+ ; cadres libres avant PowerPoint |
 | Barre d'outils de Publipostage+ gelée : aucun bouton de plus | 12/10 | Dans Publipostage+, l'entrée de l'explorateur est « Organiser » |
 | **Isolement : chaque app dans un sous-cadre sans `allow-same-origin`** ; un domaine par app seulement si un audit l'exige. Critères du porteur : interopérabilité par GFS, bonne performance, code clair et modulaire, sécurité maximale | 16/10 | Rapport de l'étape 2, section 3 ; trois prix, chacun à un seul endroit : stockage par le kit, impression de Publipostage+ par sa propre page, lien e-mail dans un nouvel onglet |
@@ -218,7 +218,8 @@ avant toute interface. L'essentiel :
 - **Une ambiance à la fois** (décision du 03/11) : le bleu et le gris d'origine sont l'ambiance par défaut (« Grist Factory ») ; la personne
   en choisit une autre, ou sa propre couleur, dans le bouton « Thème » de l'explorateur, et GFS comme ses apps suivent (contrats 5.2,
   point 10). Une ambiance redit les jetons de la charte (couleurs, mais aussi arrondis, traits, ombres, polices) : le code ne change
-  pas, il lit toujours des jetons. GFS tient le contraste de 4,5:1 pour toute ambiance et toute couleur choisie.
+  pas, il lit toujours des jetons. GFS tient le contraste de 4,5:1 pour toute ambiance et toute couleur choisie. Dans l'explorateur de
+  GFS, les couleurs des types de fichier et le trait de leurs icônes suivent aussi l'ambiance (décision du 04/11 ; section 6.5).
 - **Contraste de 4,5:1 au moins**, en clair comme en sombre : texte rouge en `--danger-ink` (jamais `--danger`), bouton
   plein à texte blanc en `--accent-solid`, texte d'accent sur fond teinté en `--accent-ink`.
 - **Police du système** (`--font-ui`, qui commence par `system-ui`) ; jamais une police chargée depuis un autre site. Le
@@ -659,11 +660,14 @@ enregistrée par l'autre app.
 
 ### 6.5 Couleurs par type (explorateur seulement)
 
+Le tableau donne l'ambiance d'origine (Grist Factory) ; chaque autre ambiance accorde ces quatre couleurs à son fond (plus bas).
+
 | Type | Clair : icône · texte · fond de pastille · trait | Sombre : icône · texte · fond de pastille · trait |
 |---|---|---|
 | Document (le bleu d'accent) | `#2f6fed` · `#2558c4` · `#e8f0fe` · `#c7dbfd` | `#5b91f5` · `#74a3f7` · `#24324b` · `#35507d` |
 | Grille | `#2e7d32` · `#1f6a24` · `#e7f4e8` · `#bfe0c2` | `#6cc57a` · `#8fd694` · `#16301a` · `#2c5a31` |
 | Présentation | `#c7600a` · `#9a4a05` · `#fff0e0` · `#f6cc9d` | `#f0933e` · `#ffb06b` · `#3a2412` · `#6b4420` |
+| PDF (gardé par GFS ; rouge carmin, décision du 04/11) | `#d32c4d` · `#af1a3c` · `#ffebeb` · `#f9cacb` | `#f37984` · `#ff989f` · `#422426` · `#733e42` |
 | E-mail, macro-modèle, et les types des autres apps | neutres | neutres |
 
 - Seulement dans l'explorateur : icône de la ligne, pastille du type, vignettes, barre d'information, menu « Nouveau »,
@@ -672,6 +676,14 @@ enregistrée par l'autre app.
 - Texte coloré à 4,5:1 au moins sur son fond, icône à 3:1, en clair et en sombre. Le vert ne désigne que la grille, jamais un
   état (« enregistré », « actif »).
 - Type dont l'app ou l'extension manque : cadenas, pastille grise, aucune couleur.
+- **Le PDF est rouge** (décision du porteur, 04/11) : un carmin (teinte OKLCH 16°), à l'écart du rouge d'alerte (25°) pour qu'un PDF ne se lise jamais comme une erreur. Son dessin ne change pas (une page et des lignes) ; le mot « PDF »
+  reste dans la pastille et le filtre de type.
+- **Les quatre couleurs et le trait des icônes suivent l'ambiance** (décision du porteur, 04/11, après « ne faudrait-il pas adapter les icônes des types de fichier aussi au thème ? » ; elle lève la règle du 12/10, « les couleurs de type
+  ne changent jamais d'une ambiance à l'autre »). Chaque ambiance (Pop, Papier, Brut, Néon) a ses quatre couleurs, en clair et en sombre, dans un tableau de GFS (`js/ambiance-types.js`, calculé avec le moteur OKLCH : le bleu, le vert,
+  l'orange et le rouge se reconnaissent partout, seule leur nuance suit l'ambiance) ; la couleur libre (« La mienne ») ne les change pas. Le trait des icônes de type suit l'ambiance : Pop un peu plus rond, avec un remplissage doux ;
+  Papier fin, à angles vifs ; Brut épais et carré ; Néon avec un halo (`css/explorer.css`). Un fichier grisé n'a ni remplissage ni halo, un dossier garde son dessin. **Rien n'en va aux apps** : le message d'ambiance ne porte pas ces jetons
+  (contrats 5.2, point 10), et la règle d'une couleur qui ne porte jamais seule le type tient pour chaque ambiance.
+- Contrastes mesurés pour les cinq ambiances et pour toute couleur libre : texte de type à 4,57:1 au moins, icône à 3,18:1 au moins (`test/ambiance.test.mjs`), et dans un vrai Grist, texte par texte (`labo/run-theme.mjs`).
 - Couleur des types des autres apps (formulaire, automatisme, tableau de bord, projet) : neutre tant que le porteur n'en
   demande pas (question 8, section 12). Les jetons se déclarent dans le kit, jamais en dur.
 

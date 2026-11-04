@@ -34,7 +34,7 @@ export const FILES_MANIFEST = Object.freeze({
     // `corbeille` : les deux colonnes qui disent qu'un fichier est à la corbeille (la date du geste, son auteur). Sans cette clé, le manifeste d'une app n'a pas de corbeille de cette forme.
     corbeille: Object.freeze({ date: 'SupprimeLe', par: 'SupprimePar' }),
     typeParDefaut: PDF_TYPE,
-    types: Object.freeze([Object.freeze({ valeur: PDF_TYPE, nom: bilingual('PDF', 'PDF'), icone: 'pdf', couleur: 'neutre' })]),
+    types: Object.freeze([Object.freeze({ valeur: PDF_TYPE, nom: bilingual('PDF', 'PDF'), icone: 'pdf', couleur: 'pdf' })]),
   })]),
   actions: Object.freeze({
     importer: Object.freeze([Object.freeze({ valeur: PDF_TYPE, type: PDF_TYPE, nom: bilingual('PDF', 'PDF'), extensions: Object.freeze([PDF_EXTENSION]) })]),

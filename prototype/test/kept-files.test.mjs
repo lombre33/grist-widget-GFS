@@ -8,10 +8,10 @@ import { FR, EN, PDF_BYTES, entryOf, fakeDoc, setup, pdf } from './kept-setup.mj
 import { TransferError } from '../js/transfer.js';
 import { TableDeclined } from '../js/own-table.js';
 
-test('l\'article « PDF » de « Importer » : l\'icône et le mot du type ensemble, sans couleur de famille, avec ce que GFS en fait', () => {
+test('l\'article « PDF » de « Importer » : l\'icône et le mot du type ensemble, dans la famille rouge du PDF, avec ce que GFS en fait', () => {
   const { kept } = setup();
   const [entry] = kept.importEntries();
-  assert.deepEqual([entry.app, entry.label, entry.icon, entry.family, entry.greyed, entry.extensions, entry.valeur], ['gfs-fichiers', 'PDF', 'pdf', null, false, ['.pdf'], 'pdf']);
+  assert.deepEqual([entry.app, entry.label, entry.icon, entry.family, entry.greyed, entry.extensions, entry.valeur], ['gfs-fichiers', 'PDF', 'pdf', 'pdf', false, ['.pdf'], 'pdf']);
   assert.equal(entry.hint, FR.t('files.import.hint'));
   assert.equal(setup({ i18n: EN }).kept.importEntries()[0].hint, EN.t('files.import.hint'));
 });

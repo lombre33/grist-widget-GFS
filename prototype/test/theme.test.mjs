@@ -6,6 +6,7 @@ import { AMBIANCE_KEY, COLOR_KEY, ThemeSetting, ambianceMessage, browserStores, 
 import { ThemeHost, modeOf, paint, watchAppearance } from '../js/theme-apply.js';
 import { AMBIANCES, COLOR_TOKENS, ORIGIN } from '../js/ambiance.js';
 import { FORME_TOKENS } from '../js/ambiance-forme.js';
+import { TYPE_TOKENS, typeTokens } from '../js/ambiance-types.js';
 
 function fakeStore(initial = null, { accepts = true } = {}) {
   const store = { value: initial, writes: [], read: () => store.value, write(value) { store.writes.push(value); if (!accepts) return false; store.value = value; return true; } };
@@ -167,23 +168,50 @@ function fakeElement() {
   };
 }
 
-test('paint : pose les jetons du mode et la forme par le CSSOM, retire tout ce qu\'il avait posé', () => {
+test('paint : pose les jetons du mode, la forme et les couleurs de type par le CSSOM, retire tout ce qu\'il avait posé', () => {
   const el = fakeElement();
   const brut = ambianceMessage('brut', null);
   paint(el, brut, 'clair');
   assert.equal(el.attributes.get('data-ambiance'), 'brut');
   assert.equal(el.props.get('--accent-solid'), brut.clair['--accent-solid']);
   assert.equal(el.props.get('--bw'), '2px');
-  assert.equal(el.props.size, COLOR_TOKENS.length + Object.keys(brut.forme).length);
+  assert.equal(el.props.size, COLOR_TOKENS.length + Object.keys(brut.forme).length + TYPE_TOKENS.length);
   paint(el, brut, 'sombre');
   assert.equal(el.props.get('--accent-solid'), brut.sombre['--accent-solid']);
   paint(el, ambianceMessage('defaut', '#d6336c'), 'clair');
   assert.equal(el.props.has('--bw'), false, 'la forme de Brut est retirée');
-  assert.equal(el.props.size, COLOR_TOKENS.length);
+  assert.equal(el.props.size, COLOR_TOKENS.length + TYPE_TOKENS.length, 'la couleur libre sur l\'origine : les couleurs et les types d\'origine, aucune forme');
   el.props.set('--font-ui', 'autre');
   paint(el, null, 'clair');
   assert.equal(el.props.size, 0, 'retiré : les feuilles de style disent l\'aspect d\'origine');
   assert.equal(el.attributes.has('data-ambiance'), false);
+});
+
+test('paint : les couleurs de type sont celles de l\'ambiance et du mode de la page, et changent avec eux', () => {
+  const el = fakeElement();
+  for (const id of AMBIANCES.slice(1)) {
+    const message = ambianceMessage(id, null);
+    for (const mode of ['clair', 'sombre']) {
+      paint(el, message, mode);
+      for (const [name, value] of Object.entries(typeTokens(id, mode))) assert.equal(el.props.get(name), value, `${id} ${mode} ${name}`);
+    }
+  }
+  paint(el, ambianceMessage('pop', null), 'clair');
+  const pop = el.props.get('--t-pdf');
+  paint(el, ambianceMessage('papier', null), 'clair');
+  assert.notEqual(el.props.get('--t-pdf'), pop, 'le rouge du PDF suit l\'ambiance');
+  paint(el, ambianceMessage('papier', '#0f766e'), 'clair');
+  assert.equal(el.props.get('--t-pdf'), typeTokens('papier', 'clair')['--t-pdf'], 'la couleur libre ne change que l\'accent : les types gardent ceux de l\'ambiance');
+});
+
+test('paint : la vignette de l\'ambiance d\'origine pose les couleurs de type d\'origine (la page peut porter celles d\'une autre ambiance)', () => {
+  const page = fakeElement();
+  const mini = fakeElement();
+  paint(page, ambianceMessage('neon', null), 'sombre');
+  paint(mini, previewMessage('defaut', null), 'sombre');
+  assert.equal(mini.attributes.get('data-ambiance'), 'defaut');
+  for (const [name, value] of Object.entries(typeTokens('defaut', 'sombre'))) assert.equal(mini.props.get(name), value, name);
+  assert.notEqual(mini.props.get('--t-doc'), page.props.get('--t-doc'), 'la vignette ne reprend pas les types de la page');
 });
 
 test('paint : ne touche pas à ce qui n\'est pas un jeton d\'ambiance', () => {

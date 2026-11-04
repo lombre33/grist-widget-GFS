@@ -20,6 +20,7 @@ import { Dock } from './dock.js';
 import { WorkControl } from './work-control.js';
 import { Explorer } from './explorer.js';
 import { loadFiles } from './explorer-data.js';
+import { familyOf } from './explorer-model.js';
 import { AppLinks } from './links.js';
 import { Filing } from './filing.js';
 import { askName, chooseFolder } from './filing-window.js';
@@ -169,7 +170,7 @@ export class GfsController {
   // Ce que les articles de « Nouveau » et de son sous-menu « Importer » ont en commun : l'app, le type créé, son icône et sa famille de couleur, et le grisé avec sa raison (`reason`, dite au clic).
   #entry(manifest, type, lock) {
     return {
-      app: manifest.id, type: type.valeur, icon: type.icone || 'doc', family: lock ? null : ({ document: 'doc', grille: 'grid', presentation: 'slides' })[type.couleur] || null,
+      app: manifest.id, type: type.valeur, icon: type.icone || 'doc', family: lock ? null : familyOf(type.couleur) || null,
       greyed: Boolean(lock), focus: lock ? lock.focus : null, reason: lock ? lock.text : '',
     };
   }

@@ -6,14 +6,18 @@
 // listes ; `window.__filing` note ce que l'explorateur demande au rangement (renommer, déplacer, épingler), `window.__notices` les phrases qu'il dit, `window.__explorer` est l'explorateur, et
 // `window.__reset()` remet les fichiers, la vue et la recherche comme au départ. La copie et le presse-papiers (test/copier-firefox.mjs) : le vrai `Copying` (js/copying.js) sur un gardien de doublure qui
 // ajoute une copie à la liste (premier nom libre), et un rangement de doublure qui déplace vraiment les fichiers et les dossiers ; `window.__copies` note [identifiant, dossier] de chaque copie rangée.
+// Les icônes des types (test/icones-firefox.mjs) : l'ambiance se pose comme dans GFS, par le vrai `ThemeSetting` et le vrai `ThemeHost` (`window.__ambiance(id)`, le mode vient de `data-grist-appearance`), et
+// `window.__withPdf()` ajoute à la liste un PDF gardé par GFS, lu par le vrai modèle avec le vrai manifeste de GFS (la famille « pdf », rouge) ; `window.__reset()` le retire et rend l'ambiance d'origine.
 import { ask } from '/js/ask-window.js';
 import { askConflict } from '/js/conflict-window.js';
 import { Explorer } from '/js/explorer.js';
 import { applyFiling, folderMoves, inside, normalizePath, readFiles, readFiling } from '/js/explorer-model.js';
 import { Copying } from '/js/copying.js';
+import { FILES_MANIFEST } from '/js/gfs-files.js';
 import { createI18n } from '/js/i18n.js';
 import { installSprite } from '/js/icons.js';
 import { leaveQuestion } from '/js/leave.js';
+import { ThemeHost } from '/js/theme-apply.js';
 import { ThemeSetting } from '/js/theme.js';
 import { ThemeWindow } from '/js/theme-window.js';
 import { Trash } from '/js/trash.js';
@@ -140,13 +144,24 @@ async function mount() {
     window.__copies.length = 0;
     window.__notices.length = 0;
     window.__opened = null;
+    setting.reset(); // l'ambiance d'origine, comme au départ
     Object.assign(explorer.state, { view: 'folder', path: '', display: 'list', type: 'all', q: '', sel: null });
     explorer.root.querySelector('input[type="search"]').value = '';
     explorer.setFiles(live, trashed);
     explorer.open();
   };
-  const themeWindow = new ThemeWindow({ container: stage, i18n, locale, setting: new ThemeSetting({ ambianceStore: memory(), colorStore: memory() }), mode, inertTargets: () => [explorer.root] });
+  // Le thème comme dans GFS : un seul réglage, que la fenêtre « Thème » écrit et que l'hôte pose sur la page (l'ambiance et le mode de Grist, `data-grist-appearance`).
+  const setting = new ThemeSetting({ ambianceStore: memory(), colorStore: memory() });
+  new ThemeHost({ setting }).start();
+  window.__ambiance = id => setting.choose(id);
+  const themeWindow = new ThemeWindow({ container: stage, i18n, locale, setting, mode, inertTargets: () => [explorer.root] });
   theme.open = () => themeWindow.open();
+  // Un PDF gardé par GFS, lu comme l'explorateur le lit : les colonnes de `GFS_Fichiers` et le manifeste de GFS. `__reset` remet `live` aux fichiers de départ : le PDF disparaît.
+  window.__withPdf = () => {
+    const [pdf] = readFiles(FILES_MANIFEST, FILES_MANIFEST.fichiers[0], { id: [900], Identifiant: ['essai-pdf'], Nom: ['Attestation.pdf'], Type: ['pdf'], Date: [Math.floor(Date.now() / 1000) - 3600], Auteur: ['Service RH'] });
+    live.push(pdf);
+    explorer.setFiles(live, trashed);
+  };
   // Le fichier gardé qui porte déjà le nom, tel que GFS le décrit (date et auteur) ; la copie prendrait « (1) ».
   const detail = `${i18n.t('ex.modifiedOn', { date: '12/10/2026' })} · ${i18n.t('ex.modifiedBy', { by: 'Service RH' })}`;
   window.__askConflict = ({ app, repeat }) => {

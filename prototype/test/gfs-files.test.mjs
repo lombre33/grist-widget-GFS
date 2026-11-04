@@ -15,10 +15,16 @@ test('le manifeste intégré se lit comme celui d\'une app : l\'explorateur y tr
   const data = { id: [4, 9], Identifiant: ['aa', 'bb'], Nom: ['Facture.pdf', 'Devis.pdf'], Type: ['pdf', 'pdf'], Date: [1762000000, 1762100000], Auteur: ['marie@exemple.fr', ''], Contenu: [['L', 1], ['L', 2]] };
   const files = readFiles(FILES_MANIFEST, spec, data);
   assert.deepEqual(files.map(file => [file.key, file.id, file.name, file.type, file.known, file.icon, file.family, file.ts, file.by, file.row]), [
-    ['gfs-fichiers:aa', 'aa', 'Facture.pdf', 'pdf', true, 'pdf', '', 1762000000, 'marie@exemple.fr', 4],
-    ['gfs-fichiers:bb', 'bb', 'Devis.pdf', 'pdf', true, 'pdf', '', 1762100000, '', 9],
+    ['gfs-fichiers:aa', 'aa', 'Facture.pdf', 'pdf', true, 'pdf', 'pdf', 1762000000, 'marie@exemple.fr', 4],
+    ['gfs-fichiers:bb', 'bb', 'Devis.pdf', 'pdf', true, 'pdf', 'pdf', 1762100000, '', 9],
   ]);
   assert.equal(files[0].table, FILES_TABLE);
+});
+
+test('le type PDF a sa famille de couleur, le rouge (décision du porteur, 04/11) : l\'icône et le mot du type vont toujours ensemble', () => {
+  const [type] = FILES_MANIFEST.fichiers[0].types;
+  assert.deepEqual([type.valeur, type.icone, type.couleur], ['pdf', 'pdf', 'pdf']);
+  assert.ok(type.nom.fr && type.nom.en, 'le mot du type, dans les deux langues : la couleur ne porte jamais seule le type');
 });
 
 test('le PDF est un format que « Importer » propose, avec le type qu\'il crée', () => {

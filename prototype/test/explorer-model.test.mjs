@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFiles, readFiling, readGfsFiling, applyFiling, folderPaths, folderName, folderMoves, subfolders, treeRows, pathParts, listItems, typeChoices, person,
-  formatDate, normalizePath, inside, stampOf, authorOf } from '../js/explorer-model.js';
+  formatDate, normalizePath, inside, stampOf, authorOf, familyOf, FAMILY_NAMES } from '../js/explorer-model.js';
 import { FILES_MANIFEST } from '../js/gfs-files.js';
 import { createI18n } from '../js/i18n.js';
 import { publipostage } from './helpers.mjs';
@@ -45,6 +45,20 @@ test('readFiles : la ligne réservée est exclue, le type vide devient le type p
   assert.equal(noName.name, '');
   assert.equal(grid.family, 'grid');
   assert.equal(first.key, 'publipostage:1');
+});
+
+test('familyOf : le champ `couleur` du manifeste dit la famille de la charte (cahier 6.5) ; tout autre mot, et jamais un mot de la chaîne de prototypes, est neutre', () => {
+  assert.deepEqual(['document', 'grille', 'presentation', 'pdf'].map(familyOf), ['doc', 'grid', 'slides', 'pdf']);
+  assert.deepEqual(FAMILY_NAMES, ['doc', 'grid', 'slides', 'pdf']);
+  for (const odd of ['neutre', '', 'rouge', 'DOCUMENT', undefined, null, 3, 'constructor', 'toString', '__proto__', 'hasOwnProperty']) assert.equal(familyOf(odd), '', String(odd));
+});
+
+test('readFiles : un type qui déclare la couleur « pdf » est de la famille rouge ; un mot inconnu reste neutre', () => {
+  const custom = { ...spec, types: [{ valeur: 'pdf', nom: { fr: 'PDF', en: 'PDF' }, icone: 'pdf', couleur: 'pdf' }, { valeur: 'autre', nom: { fr: 'Autre', en: 'Other' }, icone: 'doc', couleur: 'toString' }] };
+  const data = { id: [1, 2], Nom: ['a.pdf', 'b'], TypeModele: ['pdf', 'autre'], DateModif: [T0, T0], ModifiePar: ['', ''], Contenu: ['x', 'y'] };
+  const [pdf, other] = readFiles(manifest, custom, data);
+  assert.equal(pdf.family, 'pdf');
+  assert.equal(other.family, '', 'une couleur qui n\'en est pas une : neutre, et non une fonction de l\'objet');
 });
 
 test('readFiles : une présentation est un type connu, de la famille orange, possédé par l\'extension des diapositives', () => {

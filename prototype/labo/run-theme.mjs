@@ -5,6 +5,7 @@
 //   3. un choix : l'ambiance est posée sur la page tout de suite (`data-ambiance`, jetons de couleur et de forme), retenue (`gfs.theme`), les vignettes montrent la couleur choisie ;
 //   4. le clavier : Entrée ouvre, les flèches choisissent, Tab traverse la fenêtre sans s'arrêter sur chaque vignette, Échap ferme et rend le clavier au bouton ;
 //   5. chaque ambiance, dans le mode de Grist : la page est lisible (contraste de 4,5:1 au moins pour chaque texte de l'explorateur et de la fenêtre, mesuré sur les couleurs affichées) ;
+//      les icônes de type de la liste ont la couleur du tableau de js/ambiance-types.js et le trait de l'ambiance (décision du 04/11) ;
 //   6. retenu sur le navigateur : GFS rechargé repart dans l'ambiance choisie ;
 //   7. les apps suivent : la sonde M (labo/sondes/m-ambiance/) reçoit l'ambiance dans son contexte, puis l'événement `ambiance` à chaque changement (`null` au retour à l'origine), sans que son cadre
 //      soit rechargé ;
@@ -19,6 +20,8 @@ import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check, contrastAudit } from './lab-common.mjs';
 import { themeGestures } from './theme-gestes.mjs';
+import { TYPE_TOKENS } from '../js/ambiance-types.js';
+import { readIcons, rowProblems } from './mesures-icones.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -227,6 +230,8 @@ await frame.locator('.th-win').waitFor({ state: 'detached' });
 
 // ---------- 5. chaque ambiance est lisible ----------
 const failures = [];
+const iconFailures = [];
+const families = new Set();
 const fits = [];
 for (const id of IDS) {
   await openWindow();
@@ -240,6 +245,10 @@ for (const id of IDS) {
   const total = { seen: inWindow.seen + inExplorer.seen, gradients: inWindow.gradients + inExplorer.gradients, failures: [...inWindow.failures, ...inExplorer.failures] };
   say(`contraste affiché, ${id} :`, { textes: total.seen, surFondDégradé: total.gradients, sous4_5: total.failures });
   failures.push(...total.failures.map(item => `${id} : ${item}`));
+  // Les icônes de type de la liste (décision du 04/11) : la couleur du tableau de js/ambiance-types.js et le trait de l'ambiance, tels que ce Grist les fait calculer (labo/mesures-icones.mjs).
+  const icons = await frame.evaluate(readIcons, { display: 'list' });
+  icons.rows.forEach(row => { if (row.fam) families.add(row.fam); });
+  iconFailures.push(...icons.rows.flatMap(row => rowProblems(row, { id, mode: scheme === 'dark' ? 'sombre' : 'clair', display: 'list', tag: `${scheme}, ${id}` })).map(item => `${item.kind} : ${item.text}`));
   await shot(`5-${id}-explorateur`);
   await openWindow();
   await shot(`5-${id}-fenetre`);
@@ -247,6 +256,8 @@ for (const id of IDS) {
 }
 check('la fenêtre tient dans 700 × 400 sans défilement du corps, dans chaque ambiance', fits.every(([, , scrolls]) => panelWidth < 520 || !scrolls), fits);
 check('chaque texte de l\'explorateur et de la fenêtre garde 4,5:1 au moins, dans les cinq ambiances', failures.length === 0, failures.slice(0, 12));
+// Les modèles du labo sont tous des documents : le PDF rouge et les autres familles se mesurent sous Firefox, sur la page d'essai (test/icones-firefox.mjs).
+check('les icônes de type de l\'explorateur ont la couleur et le trait de chaque ambiance (famille « document » vue dans les cinq ambiances)', iconFailures.length === 0 && families.has('doc'), { familles: [...families], ecarts: iconFailures.slice(0, 8) });
 
 // ---------- 6. retenu sur le navigateur ----------
 await openWindow();
@@ -321,7 +332,7 @@ win = await windowState();
 let box = await colorBox();
 say('après la pastille :', { picked, now, box });
 check('un clic sur une pastille pose la couleur : la palette se ferme, le clavier revient au bouton, « La mienne » est cochée, le bouton montre le code et la couleur', box.own && !box.amb && !box.panel && box.expanded === 'false' && box.focus === 'col:pick' && box.pick === picked.toUpperCase() && box.swatch === rgb(picked), box);
-check('elle est posée sur la page tout de suite (les dix-neuf jetons de couleur, aucun de forme) et retenue (`gfs.couleur`) ; l\'ambiance reste celle d\'origine', now.inline === 19 && now.accent !== accentBefore && (await stored()).couleur === picked && (await stored()).theme === null, { now, stored: await stored(), accentBefore });
+check('elle est posée sur la page tout de suite (les dix-neuf jetons de couleur et les seize de type, aucun de forme) et retenue (`gfs.couleur`) ; l\'ambiance reste celle d\'origine', now.inline === 19 + TYPE_TOKENS.length && now.accent !== accentBefore && (await stored()).couleur === picked && (await stored()).theme === null, { now, stored: await stored(), accentBefore });
 check('la fenêtre dit la mesure du contraste de ces couleurs-là', words.check.test(win.check), win.check);
 let event = await lastEvent();
 check('l\'app ouverte reçoit la couleur par l\'événement `ambiance` (`couleur`), une seule fois, dans son cadre d\'avant', (await probe(app)).evenements.length === eventsBefore + 1 && event && event.id === 'defaut' && event.couleur === picked && !app.isDetached(), event);
@@ -497,7 +508,7 @@ await page.waitForTimeout(250);
 await closeWindow();
 await reload();
 now = await page_();
-check('GFS rechargé repart avec la couleur choisie, posée dès le départ', now.inline === 19 && now.accent !== accentBefore && (await stored()).couleur === colors[40], { now, stored: await stored() });
+check('GFS rechargé repart avec la couleur choisie, posée dès le départ', now.inline === 19 + TYPE_TOKENS.length && now.accent !== accentBefore && (await stored()).couleur === colors[40], { now, stored: await stored() });
 await openWindow();
 box = await colorBox();
 check('la fenêtre rouverte montre la couleur retenue', box.own && box.pick === colors[40].toUpperCase() && box.swatch === rgb(colors[40]), box);

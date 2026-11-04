@@ -126,11 +126,12 @@ button { cursor: pointer; }
 [data-fam="doc"] { --tc: var(--t-doc); --tc-ink: var(--t-doc-ink); --tc-soft: var(--t-doc-soft); --tc-line: var(--t-doc-line); }
 [data-fam="grid"] { --tc: var(--t-grid); --tc-ink: var(--t-grid-ink); --tc-soft: var(--t-grid-soft); --tc-line: var(--t-grid-line); }
 [data-fam="slides"] { --tc: var(--t-slides); --tc-ink: var(--t-slides-ink); --tc-soft: var(--t-slides-soft); --tc-line: var(--t-slides-line); }
+[data-fam="pdf"] { --tc: var(--t-pdf); --tc-ink: var(--t-pdf-ink); --tc-soft: var(--t-pdf-soft); --tc-line: var(--t-pdf-line); }
 .ls-row[data-fam] .nm .ic { color: var(--tc); }
 .ls-row[data-fam] .pill { border-color: var(--pill-line, var(--tc-line)); background: var(--pill-bg, var(--tc-soft)); color: var(--pill-fg, var(--tc-ink)); }
 .ls-row[data-fam][aria-selected="true"] .pill { background: var(--pill-bg, var(--surface)); }
-/* Comment l'ambiance choisie remplit une pastille de type (jetons --pill-*, posés ici et non par l'ambiance : les couleurs par type ne vivent que dans l'explorateur) : pleine (Pop),
-   cernée (Brut), évidée (Néon). Sans ambiance, ou pour Papier, la pastille garde sa teinte douce d'origine. */
+/* Les couleurs des types sont celles de l'ambiance (jetons --t-*, posés avec elle : js/ambiance-types.js). Comment l'ambiance choisie remplit une pastille de type (jetons --pill-*, posés ici et non par
+   l'ambiance : la forme d'une pastille ne vit que dans l'explorateur) : pleine (Pop), cernée (Brut), évidée (Néon). Sans ambiance, ou pour Papier, la pastille garde sa teinte douce d'origine. */
 [data-ambiance="pop"] [data-fam], .amb-mini[data-ambiance="pop"] .mn-p[data-fam] { --pill-bg: var(--tc-ink); --pill-line: var(--tc-ink); --pill-fg: var(--surface); }
 [data-ambiance="brut"] [data-fam], .amb-mini[data-ambiance="brut"] .mn-p[data-fam] { --pill-line: var(--border-strong); }
 [data-ambiance="neon"] [data-fam], .amb-mini[data-ambiance="neon"] .mn-p[data-fam] { --pill-bg: transparent; --pill-line: var(--tc); --pill-fg: var(--tc-ink); }
@@ -149,11 +150,26 @@ button { cursor: pointer; }
 .th { display: flex; flex-direction: column; gap: 5px; padding: 6px; border: var(--bw) solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-ctl); background: var(--surface); text-align: left; position: relative; min-width: 0; }
 .th[aria-selected="true"] { border-color: var(--accent); background: var(--accent-soft); }
 .th-pv { aspect-ratio: 16 / 10; border-radius: var(--radius-xs); background: var(--surface-sunken); border: 1px solid var(--border-strong); display: flex; align-items: center; justify-content: center; overflow: hidden; color: var(--accent-ink); }
-.th-pv .ic { width: 34px; height: 34px; stroke-width: 1.4; }
+.th-pv .ic { width: 34px; height: 34px; }
 .th.folder .th-pv .ic { fill: var(--accent-soft-border); color: var(--accent-ink); }
 .th .tn { font-size: 12px; font-weight: 600; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .th .tt { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); }
 .th .tt .ic { width: 12px; height: 12px; }
+
+/* ---------- le trait des icônes de type, selon l'ambiance ---------- */
+/* Les icônes des types de fichier (ligne de la liste, vignette, barre d'information) prennent le trait de l'ambiance (décision du porteur, 04/11) : l'épaisseur d'origine (1,8 en liste, 1,4 en vignette) multipliée
+   par `--ic-k`, les angles et les bouts (`--ic-join`, `--ic-cap`), un remplissage doux (`--ic-fill`, Pop) et un halo (`--ic-glow`, Néon). Ces jetons se posent ci-dessous, ambiance par ambiance, et non par le
+   moteur : ils ne vont pas aux apps. Sans ambiance, aucun n'est posé et le trait est celui d'avant. La loupe, les flèches et les boutons gardent leur dessin ; un dossier garde son remplissage et un fichier
+   grisé son cadenas, sans remplissage ni halo (grisé : jamais allumé). Le trait se calcule en LONGUEUR (`1.8px`, qui vaut `1.8` dans le dessin) : Firefox refuse un nombre calculé pour
+   `stroke-width` (`calc(1.8 * var(--ic-k))` y retombe à 1 px sans le dire ; mesuré le 04/11, docs/faits-verifies.md). */
+.ls-row .nm .ic, .inf .l1 > .ic:first-child { stroke-width: calc(1.8px * var(--ic-k, 1)); stroke-linejoin: var(--ic-join, round); stroke-linecap: var(--ic-cap, round); }
+.th-pv .ic { stroke-width: calc(1.4px * var(--ic-k, 1)); stroke-linejoin: var(--ic-join, round); stroke-linecap: var(--ic-cap, round); }
+.ls-row:not(.lk):not(.folder) .nm .ic, .th:not(.lk):not(.folder) .th-pv .ic { fill: var(--ic-fill, none); }
+.ls-row:not(.lk) .nm .ic, .th:not(.lk) .th-pv .ic { filter: var(--ic-glow, none); }
+[data-ambiance="pop"] { --ic-k: 1.1; --ic-fill: color-mix(in srgb, currentColor 17%, transparent); }
+[data-ambiance="papier"] { --ic-k: .88; --ic-join: miter; --ic-cap: butt; }
+[data-ambiance="brut"] { --ic-k: 1.18; --ic-join: miter; --ic-cap: square; }
+[data-ambiance="neon"] { --ic-k: .92; --ic-glow: drop-shadow(0 0 2.2px color-mix(in srgb, currentColor 80%, transparent)); }
 
 /* ---------- barre d'information et pied ---------- */
 .ex-foot { flex: none; display: flex; align-items: center; gap: 8px; margin: 0 var(--gap) var(--gap); padding: 7px 16px 9px; border-top: var(--divider-w) solid var(--divider); border-radius: var(--radius-panel); box-shadow: var(--shadow-panel); background: var(--surface-sunken); }

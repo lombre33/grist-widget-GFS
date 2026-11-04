@@ -10,7 +10,7 @@ import { askConflict } from './conflict-window.js';
 import { label } from './manifest.js';
 import { ERR, Refus } from './filter.js';
 import { Deposit } from './deposit.js';
-import { formatDate, person } from './explorer-model.js';
+import { formatDate, person, familyOf } from './explorer-model.js';
 
 const REASON_MAX = 120;
 
@@ -70,7 +70,7 @@ export class KeptFiles {
     const { t, lang } = this.#opts;
     const lock = this.#lock();
     return importFormats(FILES_MANIFEST).map(({ item, type }) => ({
-      app: FILES_APP, type: type.valeur, icon: type.icone, family: null, greyed: Boolean(lock), focus: null, reason: lock ? lock.text : '',
+      app: FILES_APP, type: type.valeur, icon: type.icone, family: familyOf(type.couleur) || null, greyed: Boolean(lock), focus: null, reason: lock ? lock.text : '',
       valeur: item.valeur, extensions: item.extensions, label: label(item.nom, lang()), hint: lock ? (lock.hint || lock.text) : t('files.import.hint'),
     }));
   }

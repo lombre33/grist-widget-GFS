@@ -286,7 +286,7 @@ Une entrée de `fichiers` par table de fichiers :
 | `table` | Une table possédée (elle commence par le préfixe de l'app). |
 | `colonnes` | `{ id, nom, type, dossier, date }` : noms de colonnes. `id` et `nom` obligatoires ; `type`, `dossier` (chemin séparé par « / »), `date` (colonne Date ou DateTime, en secondes comme Grist la rend) facultatifs. |
 | `typeParDefaut` | Le type d'un fichier dont la cellule de type est vide (Publipostage+ : `document`). |
-| `types` | Liste de `{ valeur, nom: { fr, en }, icone, couleur, extension }`. `couleur` : `document`, `grille` ou `presentation` (les trois du cahier 6.5), sinon neutre. `icone` : identifiant d'une icône du kit [D]. `extension` : l'extension qui possède ce type (absente : le socle). |
+| `types` | Liste de `{ valeur, nom: { fr, en }, icone, couleur, extension }`. `couleur` : `document`, `grille`, `presentation` ou `pdf` (les quatre du cahier 6.5), sinon neutre. `icone` : identifiant d'une icône du kit [D]. `extension` : l'extension qui possède ce type (absente : le socle). |
 | `exclure` | `{ "<colonne>": [valeurs] }` : lignes que l'explorateur ignore (les lignes réservées, comme `reglages`). |
 | `rangement` | Le rangement propre à l'app (3.1 point 7 du cahier), s'il y en a un : `{ table, utilisateur, fichier, dossier, epingle }`, des noms de colonnes. L'explorateur le lit comme point de départ et n'y écrit jamais (6.4, point 8). |
 | `corbeille` | `{ date, par }` : les deux colonnes où GFS marque un fichier mis à la corbeille (la date en secondes comme Grist la rend, la personne), facultatif (décision du porteur du 04/11). Une ligne dont `date` est positive n'est plus listée dans l'explorateur mais dans sa vue « Corbeille », avec son dossier et son rangement. **Seule la table que GFS écrit lui-même en a** (`GFS_Fichiers`, 6.6, point 10) : aucune app ne déclare ces colonnes, GFS n'en ajoute à aucune table d'app. |
@@ -1256,8 +1256,9 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    traits `--bw`, `--divider*`, `--bar-w`, ombres `--shadow-*`, polices `--font-*`, `--fw-head`, `--fs-head`, `--tt-*`, `--ls-*`,
    fonds `--ex-bg`, `--main-bg`, `--wash`, `--wash-size`, `--stripe*`, `--avatar-*`, bouton plein `--fill*`), des textes de CSS écrits **en
    termes des jetons de couleur** (`var(--accent)`, `color-mix(…)`), si bien qu'une seule forme sert au clair comme au sombre ; ceux
-   qu'une ambiance ne redit pas n'y sont pas : l'app garde alors sa valeur d'origine. Les couleurs d'état (`--danger*`, `--good*`, `--warn*`) et
-   de type (`--t-*`) ne changent jamais d'une ambiance à l'autre.
+   qu'une ambiance ne redit pas n'y sont pas : l'app garde alors sa valeur d'origine. Les couleurs d'état (`--danger*`, `--good*`, `--warn*`) ne
+   changent jamais d'une ambiance à l'autre. Les couleurs de type (`--t-*`) sont celles de l'explorateur de GFS : elles suivent l'ambiance sur la page de GFS (décision du porteur, 04/11 ;
+   table `js/ambiance-types.js`, posée par le CSSOM avec l'ambiance), mais **elles ne sont pas dans le message** : une app n'en reçoit aucune et garde celles de la charte (cahier 6.5).
    **Le contraste est tenu par GFS** : pour chaque ambiance et pour toute couleur libre, les textes (`--text`, `--text-muted`,
    `--accent-ink`, `--on-accent` sur son bouton) gardent **4,5:1 au moins** sur les fonds où l'app les pose, en clair comme en sombre,
    et le bouton plein se distingue de sa carte ; GFS éclaircit ou assombrit la couleur libre pour y arriver (`ajustee`) et la fenêtre
@@ -1880,7 +1881,7 @@ fichier lui-même en pièce jointe de Grist.
    table d'avant au premier geste (mesuré le 04/11, `run-corbeille.mjs`).
 2. [T] **Le manifeste de ces fichiers est dans GFS** (`js/gfs-files.js`, `id` `gfs-fichiers`, `integre`) : il n'est pas un
    sous-module, il ne passe ni par le catalogue ni par l'installation, aucune app n'y est liée. L'explorateur le lit comme celui
-   d'une app (2.4) : `colonnes` `{ id: Identifiant, nom: Nom, type: Type, date: Date, par: Auteur }`, un seul type (`pdf`, neutre,
+   d'une app (2.4) : `colonnes` `{ id: Identifiant, nom: Nom, type: Type, date: Date, par: Auteur }`, un seul type (`pdf`, de couleur `pdf` (le rouge, 04/11),
    un mot et une icône). Le rangement de ces fichiers (favoris, dossiers) est celui de GFS (6.4) sous `App = gfs-fichiers`, à
    la personne ; renommer écrit `Nom` seulement (6.3, point 2) en gardant le « .pdf ».
 3. [T] **Un nom pris.** Importer un fichier dont le nom est déjà gardé ouvre une seule fenêtre, sur la base commune des fenêtres :

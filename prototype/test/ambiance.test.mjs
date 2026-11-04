@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import { ratio } from './helpers.mjs';
 import { AMBIANCES, COLOR_TOKENS, ORIGIN, ORIGIN_SEED, ACCENT_PAIRS, TEXT_PAIRS, ambiancePalette, seedOf, weakestContrast } from '../js/ambiance.js';
 import { FORME, FORME_TOKENS } from '../js/ambiance-forme.js';
+import { TYPES, typeTokens } from '../js/ambiance-types.js';
 import { oklchToHex, hexToOklch, parseHex, isHex, contrast } from '../js/oklch.js';
 
 const read = name => readFileSync(new URL(`../css/${name}`, import.meta.url), 'utf8');
@@ -27,8 +28,8 @@ const charter = { clair: hexTokens(blockOf(':root {')), sombre: { ...hexTokens(b
 
 const PAIRS = [...TEXT_PAIRS, ...ACCENT_PAIRS];
 
-// Ce qui ne change jamais d'une ambiance à l'autre (l'état, les types) se pose sur ses fonds.
-const FIXED = ['--danger-ink', '--good', '--warn-ink', '--t-doc-ink', '--t-grid-ink', '--t-slides-ink'];
+// Ce qui ne change jamais d'une ambiance à l'autre (l'état) se pose sur ses fonds. Les couleurs de type, elles, sont celles de l'ambiance (js/ambiance-types.js, décision du 04/11) : `weakestType`, plus bas.
+const FIXED = ['--danger-ink', '--good', '--warn-ink'];
 const BACKGROUNDS = ['--surface', '--bg', '--surface-sunken'];
 
 function weakest(palette) {
@@ -88,6 +89,48 @@ test('contraste de 4,5:1 au moins pour toute couleur libre, sur chaque ambiance'
     if (low.value < 4.5) failures.push(`${id} ${hex} : ${low.where} ${low.value.toFixed(2)}:1`);
   }
   assert.deepEqual(failures, []);
+});
+
+// Les couleurs de type de chaque ambiance (décision du porteur, 04/11 : les icônes des types de fichier suivent l'ambiance). Les fonds d'une ambiance, pour une couleur libre ou non ; l'ambiance d'origine, sans
+// couleur, n'écrit rien : ses fonds sont ceux de la charte.
+const groundsOf = (id, hex, mode) => (ambiancePalette(id, hex) || { clair: ORIGIN.clair, sombre: ORIGIN.sombre })[mode];
+
+// Le plus faible contraste des couleurs de type d'une ambiance : le texte de la pastille sur la carte, le fond, le fond creusé et son propre fond doux ; l'icône sur ces trois fonds et sur la ligne choisie.
+function weakestType(id, hex) {
+  const found = { ink: { value: Infinity, where: '' }, icon: { value: Infinity, where: '' } };
+  const note = (kind, value, where) => { if (value < found[kind].value) found[kind] = { value, where }; };
+  for (const mode of MODES) {
+    const set = groundsOf(id, hex, mode);
+    const tokens = typeTokens(id, mode);
+    for (const type of TYPES) {
+      const [icon, ink, soft] = ['', '-ink', '-soft'].map(part => tokens[`--t-${type}${part}`]);
+      for (const back of BACKGROUNDS) {
+        note('ink', ratio(ink, set[back]), `${mode} ${type} texte sur ${back}`);
+        note('icon', ratio(icon, set[back]), `${mode} ${type} icône sur ${back}`);
+      }
+      note('ink', ratio(ink, soft), `${mode} ${type} texte sur son fond doux`);
+      note('icon', ratio(icon, set['--accent-soft']), `${mode} ${type} icône sur la ligne choisie`);
+    }
+  }
+  return found;
+}
+
+test('couleurs de type : le texte tient 4,5:1 et l\'icône 3:1 sur les fonds de chaque ambiance, avec toute couleur libre', () => {
+  const failures = [];
+  for (const id of AMBIANCES) for (const hex of [null, ...FREE]) {
+    const low = weakestType(id, hex);
+    if (low.ink.value < 4.5) failures.push(`${id} ${hex} : ${low.ink.where} ${low.ink.value.toFixed(2)}:1`);
+    if (low.icon.value < 3) failures.push(`${id} ${hex} : ${low.icon.where} ${low.icon.value.toFixed(2)}:1`);
+  }
+  assert.deepEqual(failures, []);
+});
+
+test('couleurs de type : l\'ambiance d\'origine dit ce que css/gfs.css dit (le PDF compris), clair et sombre', () => {
+  for (const mode of MODES) {
+    const tokens = typeTokens('defaut', mode);
+    assert.equal(Object.keys(tokens).length, 16, mode);
+    for (const [name, value] of Object.entries(tokens)) assert.equal(charter[mode][name], value, `${mode} ${name}`);
+  }
 });
 
 test('le bouton plein : la couleur libre telle quelle, son texte noir ou blanc, toujours lisible et toujours visible sur la carte', () => {

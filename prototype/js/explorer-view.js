@@ -3,11 +3,10 @@
 
 import { h } from './dom.js';
 import { icon } from './icons.js';
-import { person, formatDate, pathParts, stampOf, authorOf } from './explorer-model.js';
+import { person, formatDate, pathParts, stampOf, authorOf, FAMILY_NAMES } from './explorer-model.js';
 import { LANGUAGE_NAMES } from './language.js';
 
 export const SORT_HEADERS = [['name', 'ex.name'], ['type', 'ex.type'], ['mod', 'ex.modified'], ['by', 'ex.by']];
-const FAMILIES = new Set(['doc', 'grid', 'slides']);
 
 // Le cadre fixe : titre, bascule liste/vignettes, fil d'Ariane, recherche, filtre de type, « Nouveau », volet, liste, barre d'information.
 // Ses textes sont posés par `relabel` : la même fonction les réécrit quand la personne change la langue de GFS.
@@ -72,7 +71,7 @@ export function relabel(refs, i18n) {
   refs.closeBtn.textContent = t('ex.close');
 }
 
-const family = file => (FAMILIES.has(file.family) ? file.family : null);
+const family = file => (FAMILY_NAMES.includes(file.family) ? file.family : null);
 
 // Le fil d'Ariane : la racine (« Moi »), puis les dossiers ; « Résultats » quand une recherche ou un filtre est en cours.
 export function crumbs(ctx) {

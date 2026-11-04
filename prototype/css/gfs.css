@@ -1,6 +1,6 @@
 /* GFS : couleurs par les jetons de la charte Grist Factory (section 1) : gris bleutés, un seul bleu d'accent, rouge et vert pour l'état seulement.
    Thème : celui de Grist (le script d'API pose data-grist-appearance sur <html>) ; sans Grist, celui du système.
-   Les couleurs par type (document, grille, présentation) ne servent que dans l'explorateur (explorer.css). */
+   Les couleurs par type (document, grille, présentation, PDF) ne servent que dans l'explorateur (explorer.css) ; une ambiance les redit (js/ambiance-types.js, comme pour les autres jetons : ce sont ici celles d'origine). */
 :root {
   color-scheme: light;
   --bg: #f4f6fa; --surface: #ffffff; --surface-sunken: #eef1f6;
@@ -17,6 +17,7 @@
   --t-doc: #2f6fed; --t-doc-ink: #2558c4; --t-doc-soft: #e8f0fe; --t-doc-line: #c7dbfd;
   --t-grid: #2e7d32; --t-grid-ink: #1f6a24; --t-grid-soft: #e7f4e8; --t-grid-line: #bfe0c2;
   --t-slides: #c7600a; --t-slides-ink: #9a4a05; --t-slides-soft: #fff0e0; --t-slides-line: #f6cc9d;
+  --t-pdf: #d32c4d; --t-pdf-ink: #af1a3c; --t-pdf-soft: #ffebeb; --t-pdf-line: #f9cacb;
   --scrim: rgba(15, 23, 42, .45);
   --shadow-float: 0 14px 32px -8px rgba(9, 16, 35, .35), 0 2px 8px rgba(9, 16, 35, .12);
   --shadow-card: 0 1px 2px rgba(20, 28, 46, .05);
@@ -53,6 +54,7 @@
     --t-doc: #5b91f5; --t-doc-ink: #74a3f7; --t-doc-soft: #24324b; --t-doc-line: #35507d;
     --t-grid: #6cc57a; --t-grid-ink: #8fd694; --t-grid-soft: #16301a; --t-grid-line: #2c5a31;
     --t-slides: #f0933e; --t-slides-ink: #ffb06b; --t-slides-soft: #3a2412; --t-slides-line: #6b4420;
+    --t-pdf: #f37984; --t-pdf-ink: #ff989f; --t-pdf-soft: #422426; --t-pdf-line: #733e42;
     --scrim: rgba(3, 6, 12, .62);
     --shadow-float: 0 14px 32px -8px rgba(0, 0, 0, .65), 0 2px 8px rgba(0, 0, 0, .45);
     --shadow-card: 0 1px 2px rgba(0, 0, 0, .45);
@@ -72,6 +74,7 @@
   --t-doc: #5b91f5; --t-doc-ink: #74a3f7; --t-doc-soft: #24324b; --t-doc-line: #35507d;
   --t-grid: #6cc57a; --t-grid-ink: #8fd694; --t-grid-soft: #16301a; --t-grid-line: #2c5a31;
   --t-slides: #f0933e; --t-slides-ink: #ffb06b; --t-slides-soft: #3a2412; --t-slides-line: #6b4420;
+  --t-pdf: #f37984; --t-pdf-ink: #ff989f; --t-pdf-soft: #422426; --t-pdf-line: #733e42;
   --scrim: rgba(3, 6, 12, .62);
   --shadow-float: 0 14px 32px -8px rgba(0, 0, 0, .65), 0 2px 8px rgba(0, 0, 0, .45);
   --shadow-card: 0 1px 2px rgba(0, 0, 0, .45);

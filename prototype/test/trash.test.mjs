@@ -56,6 +56,22 @@ test('un échec est dit avec sa raison, en mots, et la liste est relue (une autr
   assert.equal(log.refreshes, 1);
 });
 
+test('un refus voulu (`expected`) est dit à la personne avec sa raison, mais la console reste muette : seul un vrai échec y laisse un avertissement', async () => {
+  const warned = [];
+  const warn = console.warn;
+  console.warn = (...args) => warned.push(args[0]);
+  try {
+    const refuse = Object.assign(new Error('la table n’a pas été créée'), { expected: true });
+    const { bin, log } = setup({ managers: [guardian({ trash: async () => { throw refuse; } })] });
+    assert.equal(await bin.move(file()), false);
+    assert.deepEqual(log.notices, [FR.t('trash.failed', { name: 'Facture.pdf', reason: 'la table n’a pas été créée' })]);
+    assert.deepEqual(warned, []);
+    const broken = setup({ managers: [guardian({ trash: async () => { throw new Error('Grist refuse'); } })] });
+    await broken.bin.move(file());
+    assert.deepEqual(warned, ['GFS : le geste sur la corbeille a échoué']);
+  } finally { console.warn = warn; }
+});
+
 test('rien ne peut s\'écrire (lecture seule, accès partiel) : la phrase dit pourquoi, le gardien n\'est pas sollicité, aucune question', async () => {
   const lock = { text: FR.t('trash.readonly') };
   const { bin, log, managers } = setup({ managers: [guardian({ lock })] });

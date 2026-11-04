@@ -63,3 +63,31 @@ test('sans fichier à la corbeille, ou avec des apps seulement : `trash` est vid
   const found = await loadFiles(port(tables()), [{ manifest }], '');
   assert.deepEqual([found.files.length, found.trash], [2, []]);
 });
+
+test('les fichiers d\'une app mis à la corbeille ne sont plus dans sa table : ils se lisent dans GFS_Corbeille, gardent leur dossier (celui du rangement de l\'app), et ne se mêlent jamais aux vivants', async () => {
+  const data = tables();
+  data.GFS_Corbeille = {
+    id: [5, 6], App: ['publipostage', 'form'], Table: [spec.table, spec.table], FichierId: ['9', '9'], Nom: ['Relance', 'D\'une autre app'], Type: ['email', ''], Date: [300, null], Auteur: ['', ''],
+    SupprimeLe: [1762000000, 1762000000], SupprimePar: ['paul@exemple.fr', ''],
+  };
+  data[spec.rangement.table] = { id: [1, 2, 3], Utilisateur: ['', '', ''], ModeleId: [1, 2, 9], Dossier: ['Formation', 'Formation', 'Relances'], Epingle: [true, false, true] };
+  const found = await loadFiles(port(data), [{ manifest }], '');
+  assert.deepEqual(found.files.map(file => file.id), ['1', '2']);
+  assert.deepEqual(found.trash.map(file => [file.key, file.row, file.name, file.type, file.folder, file.pinned, file.trashed]), [['publipostage:9', 5, 'Relance', 'email', 'Relances', true, { ts: 1762000000, by: 'paul@exemple.fr' }]]);
+  assert.deepEqual(found.problems, []);
+  assert.equal(found.stats.rows, 2, 'les statistiques comptent les fichiers de la table de l\'app, pas ceux de la corbeille');
+});
+
+test('une corbeille des apps illisible ne cache aucun fichier vivant, et la console le dit ; sans la table, la corbeille des apps est vide', async () => {
+  const warn = console.warn;
+  const warned = [];
+  console.warn = (...args) => warned.push(args[0]);
+  try {
+    const data = { ...tables(), GFS_Corbeille: { id: [] } };
+    const found = await loadFiles(port(data, { broken: 'GFS_Corbeille' }), [{ manifest }], '');
+    assert.deepEqual(found.files.map(file => file.id), ['1', '2']);
+    assert.deepEqual(found.trash, []);
+    assert.deepEqual(warned, ['GFS : la corbeille des apps est illisible']);
+  } finally { console.warn = warn; }
+  assert.deepEqual((await loadFiles(port(tables()), [{ manifest }], '')).trash, []);
+});

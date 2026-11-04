@@ -19,6 +19,16 @@ function snapshot() {
   const open = document.querySelector('.ex-foot > button');
   const trashRow = document.querySelector('.tr-row[data-view="trash"]');
   const modal = document.querySelector('.mod.ask');
+  // La fenêtre tient dans la page et rien n'y déborde (ses boutons, son texte) : la liste de ce qui sort, vide quand tout va bien (la fonction vit dans la page : rien du module n'y est visible).
+  const fits = () => {
+    const box = modal.getBoundingClientRect();
+    const outside = [...modal.querySelectorAll('*')].filter(node => {
+      const at = node.getBoundingClientRect();
+      return at.width > 0 && (at.right > box.right + 1 || at.left < box.left - 1 || at.bottom > box.bottom + 1 || at.top < box.top - 1);
+    }).map(node => node.className || node.tagName).slice(0, 5);
+    const inPage = box.left >= 0 && box.top >= 0 && box.right <= window.innerWidth && box.bottom <= window.innerHeight;
+    return inPage && outside.length === 0 ? [] : [inPage ? 'dans la page' : 'hors de la page', ...outside];
+  };
   return {
     rows: [...document.querySelectorAll('.ls-row')].map(row => ({ name: text(row.querySelector('.t')), folder: row.classList.contains('folder') })),
     tiles: tiles.map(tile => text(tile.querySelector('.tn'))),
@@ -40,7 +50,7 @@ function snapshot() {
     openDisabled: open ? open.getAttribute('aria-disabled') : null,
     info: text(info),
     menu: [...document.querySelectorAll('.menu .menu-item')].map(item => ({ label: text(item.querySelector('.menu-label')), hint: text(item.querySelector('.menu-hint')), greyed: item.getAttribute('aria-disabled') === 'true' })),
-    modal: modal ? { title: text(modal.querySelector('.mod-head h2')), items: modal.querySelectorAll('.ask-items li').length, focus: active && active.dataset ? active.dataset.fk || null : null } : null,
+    modal: modal ? { title: text(modal.querySelector('.mod-head h2')), items: modal.querySelectorAll('.ask-items li').length, focus: active && active.dataset ? active.dataset.fk || null : null, fits: fits() } : null,
     restoreButtons: document.querySelectorAll('.ls-row .rb.rs').length,
     pinButtons: document.querySelectorAll('.ls-row .rb.pin').length,
   };
@@ -187,6 +197,15 @@ async function purgeAndEmpty(run, t) {
   await run.expect('vider la corbeille', 'confirmée, la corbeille devait se vider et le dire', state => state.rows.length === 0 && state.empty === t('trash.emptyList') && state.notices.at(-1) === t('trash.emptied', { n: 1 }));
 }
 
+// La question de la table de la corbeille des apps (contrats 6.7) : un texte long dans une fenêtre du widget ; elle tient dans la page avec ses deux boutons, « Annuler » la ferme sans rien faire.
+async function tableWindow(run, t) {
+  await run.reset();
+  await run.page.run(() => window.__askTable());
+  await run.expect('la table de la corbeille', 'la fenêtre devait s\'ouvrir avec son titre et tenir dans la page (état : fits)', state => state.modal && state.modal.title === t('trash.table.title') && state.modal.fits.length === 0);
+  await run.clickSelector('[data-fk="ask-no"]');
+  await run.expect('la table de la corbeille', '« Annuler » devait fermer la fenêtre', state => state.modal === null);
+}
+
 // Le clic droit et Maj+F10 : le menu de CETTE ligne, avec les touches dans les articles ; la corbeille y est un article comme un autre.
 async function menus(run, t) {
   await run.reset();
@@ -259,7 +278,7 @@ export async function corbeilleProblems(page, language, tag) {
   const found = [];
   const t = createI18n(language).t;
   const run = new Run(page, tag, found);
-  const steps = [opening, renameAndTrash, trashView, purgeAndEmpty, menus, searching, tiles, leavingTrash];
+  const steps = [opening, renameAndTrash, trashView, purgeAndEmpty, tableWindow, menus, searching, tiles, leavingTrash];
   for (const step of steps) {
     try {
       await step(run, t);

@@ -32,7 +32,7 @@ function trashOf(marker, data, i) {
   return ts !== null && ts > 0 ? { ts, by: text(cell(data, marker.par, i)) } : null;
 }
 
-function isExcluded(spec, data, i) {
+export function isExcluded(spec, data, i) {
   return Object.entries(spec.exclure || {}).some(([column, values]) => Array.isArray(values) && values.includes(text(cell(data, column, i))));
 }
 

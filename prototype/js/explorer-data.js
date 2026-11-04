@@ -4,6 +4,7 @@
 
 import { readFiles, readFiling, readGfsFiling, applyFiling } from './explorer-model.js';
 import { TABLE } from './rangement.js';
+import { BIN_TABLE, recipeOf, binFiles } from './gfs-trash.js';
 
 const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 
@@ -31,14 +32,24 @@ export async function loadFiles(port, apps, identity = '') {
   const gfs = await readTable(port, tables, TABLE);
   if (gfs.error) console.warn('GFS : le rangement de GFS est illisible', gfs.error);
   const gfsFiling = gfs.data ? readGfsFiling(gfs.data, identity) : null;
+  const bin = await readTable(port, tables, BIN_TABLE);
+  if (bin.error) console.warn('GFS : la corbeille des apps est illisible', bin.error);
   for (const { manifest } of apps) {
     for (const spec of manifest.fichiers || []) {
       const main = await readTable(port, tables, spec.table);
       if (main.error) { problems.push({ app: manifest.id, reason: String(main.error.message || main.error) }); continue; }
       const filingTable = spec.rangement ? await readTable(port, tables, spec.rangement.table) : { data: null };
+      const filing = filingTable.data ? readFiling(spec.rangement, filingTable.data, identity) : null;
       const found = readFiles(manifest, spec, main.data);
-      applyFiling(found, filingTable.data ? readFiling(spec.rangement, filingTable.data, identity) : null, gfsFiling);
+      applyFiling(found, filing, gfsFiling);
       for (const file of found) (file.trashed ? trash : files).push(file);
+      // Les fichiers de l'app que la personne a mis à la corbeille ne sont plus dans sa table : ils sont dans `GFS_Corbeille` (js/gfs-trash.js), et gardent leur dossier, que le rangement n'a pas quitté.
+      if (recipeOf(spec) && bin.data) {
+        const gone = binFiles(spec, bin.data, manifest.id);
+        const entries = readFiles(manifest, gone.spec, gone.data);
+        applyFiling(entries, filing, gfsFiling);
+        trash.push(...entries);
+      }
       stats.tables += 1;
       stats.rows += found.length;
     }

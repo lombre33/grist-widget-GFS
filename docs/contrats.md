@@ -290,6 +290,7 @@ Une entrée de `fichiers` par table de fichiers :
 | `exclure` | `{ "<colonne>": [valeurs] }` : lignes que l'explorateur ignore (les lignes réservées, comme `reglages`). |
 | `rangement` | Le rangement propre à l'app (3.1 point 7 du cahier), s'il y en a un : `{ table, utilisateur, fichier, dossier, epingle }`, des noms de colonnes. L'explorateur le lit comme point de départ et n'y écrit jamais (6.4, point 8). |
 | `corbeille` | `{ date, par }` : les deux colonnes où GFS marque un fichier mis à la corbeille (la date en secondes comme Grist la rend, la personne), facultatif (décision du porteur du 04/11). Une ligne dont `date` est positive n'est plus listée dans l'explorateur mais dans sa vue « Corbeille », avec son dossier et son rangement. **Seule la table que GFS écrit lui-même en a** (`GFS_Fichiers`, 6.6, point 10) : aucune app ne déclare ces colonnes, GFS n'en ajoute à aucune table d'app. |
+| `suppression` | `{ ligne: true, uniques, exclusives, remettre }` : comment GFS retire et remet un fichier de cette table depuis l'explorateur (la corbeille des fichiers d'une app, décision du porteur du 04/11), facultatif. `ligne: true` (le seul mode) : un fichier est une ligne de la table, la retirer le supprime et la remettre le restaure. `uniques` : colonnes dont la valeur désigne un fichier (un jeton) : si une ligne de la table la porte déjà, il n'y a rien à restaurer. `exclusives` : colonnes booléennes qu'une seule ligne peut porter (« le modèle par défaut ») : le fichier restauré ne la reprend pas si une autre ligne l'a. `remettre` : `{ colonne: valeur }` posées à la restauration à la place des valeurs gardées. Sans recette, « Mettre à la corbeille » est grisé pour les fichiers de cette table et un clic dit pourquoi. **Une app seule, sans GFS, garde sa propre gestion de ses fichiers** : seul GFS lit cette recette (6.7). |
 
 1. [T] L'identifiant d'un fichier est la valeur de `colonnes.id`, prise comme texte (pour Publipostage+, le numéro de ligne).
 2. [T] GFS lit la table entière (l'API de Grist n'a pas de projection par colonne), ne garde que les colonnes déclarées, et n'y
@@ -299,6 +300,7 @@ Une entrée de `fichiers` par table de fichiers :
    démarrage (première lecture 2,9 s), puis 0,2 à 1,6 s ; Grist ne sait pas lire une partie d'une table, donc la lecture prend
    toute la table.
 3. [T] Un fichier dont le type n'est pas dans `types` est listé grisé, jamais ouvert (section 6.5).
+4. [T] **`suppression` est ce que l'app dit, pas ce que GFS devine.** GFS ne retire jamais la ligne d'un fichier d'une app sans recette déclarée, et ne retire que la ligne du fichier : ce que l'app garde ailleurs (les fils de commentaires, le rangement propre, les choix d'export, souvent accrochés au numéro de ligne) reste en place, et GFS restaure la ligne **au même numéro** quand il est libre, pour que tout se raccroche. Ce qui est accroché au fichier par une autre clé (l'historique des versions de Publipostage+, rangé par `Jeton`) n'est pas suivi par la recette `ligne` : l'app qui le purge comme orphelin le perd (6.7, point 6). Un appel que l'app doit faire elle-même (supprimer un formulaire et ses tables, comme Form+) n'est pas une recette : il passe par un contrat d'appel, à écrire avec l'app.
 
 ### 2.5 Les réglages
 
@@ -1742,11 +1744,11 @@ paquet de frappes, une par personne pour la présence) doit savoir quand cette t
    elle ne met le nom dans la ligne qu'elle écrit qu'à la création du fichier et quand la personne l'a changé chez elle (guide
    des apps). **Réécrit le 04/11** (le porteur : « tout doit pouvoir se faire depuis l'explorateur, pour tous les fichiers de toutes les
    apps, avec une corbeille », la ligne du 21/10 « dupliquer et supprimer restent à l'app » est rouverte) : supprimer et dupliquer
-   viendront aux fichiers des apps par une **recette que le manifeste déclare**, jamais par un geste que GFS invente (lots 2 et 3 :
-   la corbeille d'une table d'app, qui garde une copie de la ligne, et la copie). **Une app seule, sans GFS, garde sa propre gestion de ses
-   fichiers** : GFS n'agit que d'après le manifeste, et seulement quand l'app est servie par lui. En attendant, « Mettre à la corbeille »
-   et « Dupliquer » sont grisés pour une app qui n'a pas de recette, et un clic dit pourquoi (`trash.appOnly`, `ex.notice.appOnly`) ;
-   pour les PDF que GFS garde, la corbeille existe déjà (6.6, point 10). Une exception de plus est proposée, non tranchée :
+   viennent aux fichiers des apps par une **recette que le manifeste déclare** (`suppression`, 2.4), jamais par un geste que GFS invente :
+   **la corbeille d'une table d'app est livrée le 04/11** (lot 2 : `GFS_Corbeille` garde une copie de la ligne, 6.7) ; la copie (« Dupliquer »)
+   reste à venir (lot 3). **Une app seule, sans GFS, garde sa propre gestion de ses fichiers** : GFS n'agit que d'après le manifeste, et
+   seulement quand l'app est servie par lui. « Mettre à la corbeille » et « Dupliquer » sont grisés pour une app qui n'a pas de recette,
+   et un clic dit pourquoi (`trash.appOnly`, `ex.notice.appOnly`) ; pour les PDF que GFS garde, la corbeille existe aussi (6.6, point 10). Une exception de plus est proposée, non tranchée :
    les colonnes d'aide `GFS_…` des tables classées, additives (11.7, point 6).
 
 ### 6.4 `GFS_Rangement`, le rangement commun
@@ -1905,8 +1907,10 @@ fichier lui-même en pièce jointe de Grist.
     vide à la main. Le geste d'un document en lecture seule est refusé avec sa raison (`trash.readonly`), avant toute question.
 11. [T] **Les gardiens.** `js/trash.js` ne sait pas où vit un fichier : il le demande à un « gardien » (`manages`, `lock`, `trash`,
     `restore`, `empty`), le seul qui sache l'écrire. `js/kept-files.js` est celui de `GFS_Fichiers`. Un fichier qu'aucun gardien ne
-    connaît n'a pas de corbeille depuis GFS : l'article est grisé et un clic dit pourquoi. Le lot 2 branche un gardien pour les
-    fichiers des apps (recette déclarée dans le manifeste, 6.3 point 2) sans toucher au reste.
+    connaît n'a pas de corbeille depuis GFS : l'article est grisé et un clic dit pourquoi. `js/app-trash.js` est le gardien des
+    fichiers des apps (recette déclarée dans le manifeste, 2.4 ; table `GFS_Corbeille`, 6.7), branché le 04/11 sans toucher au reste.
+    Une erreur d'un gardien qui porte `expected: true` est un refus voulu (la personne a refusé une table, une ligne ne se garde pas) :
+    la phrase l'explique, la console reste muette.
 12. [M] **Mesuré le 04/11** dans un vrai serveur Grist 1.7.19 (Docker), à 700 × 400, à la vraie souris et au vrai clavier, en français
     clair et en anglais sombre (`prototype/labo/run-corbeille.mjs`, 46 vérifications dans chacune, aucune en échec), et dans un vrai Firefox 159
     sans écran (`prototype/test/corbeille-firefox.mjs`) : une table d'une version plus ancienne reçoit les deux colonnes au premier
@@ -1914,6 +1918,58 @@ fichier lui-même en pièce jointe de Grist.
     `null` pour l'API REST, et `UpdateRecord` avec `null` la vide ; la date écrite revient en secondes ; **plusieurs `RemoveRecord`
     dans un seul `applyUserActions` passent** (vider) ; la pièce jointe d'un fichier supprimé pour de bon reste sur le serveur ;
     le clavier arrive au panneau dans le cadre de Grist dès qu'un clic l'y a posé (↓ ↑ Suppr Entrée F2 Maj+F10, clic droit).
+
+### 6.7 `GFS_Corbeille`, la corbeille des fichiers des apps
+
+La corbeille des fichiers que GFS ne garde pas lui-même : ceux des tables d'apps dont le manifeste déclare une recette `suppression` (2.4).
+Une app n'ajoute aucune colonne à ses tables pour cela, et n'écrit jamais cette table. Créée avec l'accord de la personne, au premier fichier
+d'app mis à la corbeille (6.2), jamais avant.
+
+| Colonne | Type Grist | Contenu |
+|---|---|---|
+| `Identifiant` | Text | Le nom de l'entrée : douze signes hexadécimaux tirés au hasard |
+| `App` | Text | L'identifiant de l'app (`publipostage`) |
+| `Table` | Text | La table de l'app d'où la ligne vient (`fichiers[].table`) |
+| `FichierId` | Text | L'identifiant du fichier tel que l'app le désigne (`colonnes.id`, pris comme texte : le numéro de ligne) |
+| `Nom`, `Type`, `Date`, `Auteur` | Text, Text, DateTime:UTC, Text | Ce que l'explorateur montre, tel que c'était (`colonnes.nom`, `type`, `date`, `par`) |
+| `SupprimeLe` | DateTime:UTC | Le moment où la personne a mis le fichier à la corbeille, en secondes |
+| `SupprimePar` | Text | L'adresse de la personne (vide tant que GFS ne la connaît pas, 6.4) |
+| `Instantane` | Text | La ligne de l'app en JSON : `{ format: 1, id, valeurs }` |
+
+1. [T] **Mettre à la corbeille** relit la ligne (c'est elle qui compte, pas la liste que la personne avait sous les yeux), la copie dans
+   `GFS_Corbeille` et la retire de la table de l'app en **un seul `applyUserActions`** : `AddRecord` puis `RemoveRecord`. Grist applique
+   le lot en entier ou pas du tout (mesuré : un lot dont une action échoue est défait en entier) : un fichier n'est jamais à la fois dans
+   l'app et à la corbeille, ni perdu. Si la table n'existe pas, la personne est d'abord interrogée (une fenêtre du widget qui dit ce que
+   GFS y garde) ; un refus ne supprime rien, et la phrase le dit. La ligne est relue **après** la réponse : la personne a pu être longue, et
+   une autre a pu modifier ou supprimer la ligne (la copie garde l'état d'après, jamais celui d'avant). Un document en lecture seule, ou
+   sans l'accès complet (les tables internes de Grist ne se lisent pas sans lui), est refusé avec sa raison avant toute question.
+2. [T] **L'instantané** ne garde que les colonnes de **données** : celles que `_grist_Tables_column` ne donne pas pour des formules,
+   hors `manualSort` et les colonnes `gristHelper_…` de Grist (Grist refuse d'écrire une formule). Une ligne dont une colonne
+   `Attachments` n'est pas vide **n'est pas mise à la corbeille** : la copie en JSON ne citerait plus la pièce jointe, et Grist
+   l'effacerait au bout de sept jours (faits vérifiés, 14) ; la phrase le dit (`trash.attachments`). Les lignes que le manifeste exclut
+   (`exclure`) ne sont pas des fichiers : jamais copiées.
+3. [T] **Restaurer** remet la ligne (`AddRecord`) **au même numéro** quand il est libre — les commentaires, le rangement et les choix
+   d'export d'une app le désignent —, sinon sous un numéro neuf ; l'entrée part dans le même lot. Mesuré : Grist **refuse** un
+   `AddRecord` à un numéro déjà pris (`AssertionError … existing record`), rien n'est écrasé. Le nom pris par un autre fichier pendant
+   ce temps donne le premier nom libre (« Nom (1) ») sans traiter un point comme une extension, et la phrase le dit. Une colonne
+   `uniques` (un jeton) déjà portée par une ligne de la table dit que l'app a déjà remis le fichier : rien n'est écrit, l'entrée part.
+   Une colonne `exclusives` (le modèle par défaut) n'est pas reprise si une autre ligne l'a. L'entrée visée est celle dont le numéro,
+   l'app, le fichier **et la date du geste** sont ceux que la personne avait sous les yeux : un fichier remis puis re-supprimé entre-temps
+   n'est pas touché.
+4. [T] **Supprimer pour de bon** et **Vider la corbeille** retirent l'entrée (`RemoveRecord`), jamais une ligne de l'app, et seulement
+   celles que la personne a sous les yeux (6.6, point 10). Les écritures de GFS se font l'une après l'autre : deux gestes à la fois sur
+   le même fichier s'enchaînent, le second voit qu'il n'est plus là.
+5. [T] **La lecture** : l'explorateur lit `GFS_Corbeille` une fois par relecture (`js/explorer-data.js`) et range chaque entrée avec le
+   dossier et le favori que le rangement avait gardés (le rangement n'a pas bougé : celui de l'app par numéro de fichier, celui de GFS
+   par « app:fichier »). Une table illisible ne cache aucun fichier vivant, et la console le dit.
+6. [M] **Ce que la corbeille d'une ligne ne suit pas** : tout ce qui n'est pas dans la ligne. Publipostage+ range l'historique des
+   versions d'un modèle dans `Publipostage_Versions`, par `Jeton` : une version dont le modèle est absent est purgée comme orpheline à la
+   prochaine ouverture d'un historique (après une grâce pour les récentes) ; un modèle restauré après cela a perdu son historique. La suite
+   possible est une clé `liees` de la recette (les lignes d'une autre table qui suivent le fichier par une colonne) ; elle n'est pas décidée.
+   Un fichier composite (Form+ : la ligne, la section de formulaire, les colonnes et la table du formulaire, le lien public) n'a pas
+   de recette `ligne` : il demande un appel de l'app (2.4, point 4).
+7. [M] **Mesuré le 04/11** dans un vrai serveur Grist 1.7.19 avec les modèles et la vraie Publipostage+, à 700 × 400, souris et clavier réels
+   (`prototype/labo/run-corbeille-apps.mjs`, 40 vérifications dans chacune des quatre passes, aucune en échec) : voir faits vérifiés, 26.
 
 ---
 

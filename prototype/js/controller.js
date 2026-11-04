@@ -32,6 +32,7 @@ import { Transfer, buildTransferFrame } from './transfer.js';
 import { FilesStore } from './files-store.js';
 import { KeptFiles } from './kept-files.js';
 import { Trash } from './trash.js';
+import { AppTrash } from './app-trash.js';
 import { ask } from './ask-window.js';
 import { importFormats, acceptsFile, importOpening, openingKind, carriesFile, pickFile } from './import-file.js';
 import { readersOf, chooseReader, readOpening } from './reading.js';
@@ -39,7 +40,7 @@ import { publicationQuestion } from './publication-window.js';
 import { ModulesWindow, rowKey } from './modules-window.js';
 import { buildContext, identityFor, instanceOf, pageOf } from './context.js';
 import { Refus, ERR, levelOf } from './filter.js';
-import { loadDemo, readSchema, planDemo, runDemo, demoSummary, demoReport, DemoError } from './demo.js';
+import { demoGesture } from './demo-gesture.js';
 
 const NOTICE_MS = 6000;
 
@@ -280,6 +281,12 @@ export class GfsController {
     });
   }
 
+  // Les fichiers des apps à la corbeille (js/app-trash.js) : le gardien des tables que les manifestes disent savoir retirer et remettre (`suppression`) ; `GFS_Corbeille` naît avec l'accord de la personne.
+  #buildAppTrash() {
+    const consent = () => this.#ask({ title: this.t('trash.table.title'), message: this.t('trash.table.text'), confirmLabel: this.t('table.create'), cancelLabel: this.t('table.cancel') });
+    return new AppTrash({ port: this.port, apps: () => this.validApps(), consent, identity: () => this.identity, now: () => Date.now(), readonly: () => this.readonly, fullAccess: () => this.fullAccess, t: this.t });
+  }
+
   #buildExplorer() {
     this.kept = this.#buildKept();
     this.explorer = new Explorer({
@@ -288,7 +295,7 @@ export class GfsController {
       language: () => ({ choice: this.language.choice, grist: this.language.grist }), onLanguage: choice => this.#chooseLanguage(choice), onTheme: () => this.openTheme(),
       onOpen: file => this.#openFile(file), onNew: entry => this.#openNew(entry), onImport: entry => void this.#importFile(entry), onClose: () => this.hideExplorer(), onApps: () => void this.openModules(),
       personal: () => Boolean(this.identity), filing: this.#buildFiling(), kept: this.kept, onDemo: this.devMode ? () => void this.#runDemo() : null,
-      trash: new Trash({ managers: [this.kept], ask: opts => this.#ask(opts), t: this.t, notice: text => this.notice(text), refresh: () => this.refreshFiles() }),
+      trash: new Trash({ managers: [this.kept, this.#buildAppTrash()], ask: opts => this.#ask(opts), t: this.t, notice: text => this.notice(text), refresh: () => this.refreshFiles() }),
     });
   }
 
@@ -483,34 +490,12 @@ export class GfsController {
 
   // ---------- la démo (mode développement) ----------
 
-  // Le bouton « Démo » : le parcours des inscriptions posé en un geste, après l'accord de la personne (js/demo.js). `data-demo` dit où il en est : les essais du labo l'attendent.
-  async #runDemo() {
-    const blocked = this.#writeBlock();
-    if (blocked) { this.notice(blocked); return; }
-    const say = state => { this.doc.body.dataset.demo = state; };
-    try {
-      const pack = await loadDemo({ json: readJson, text: readText });
-      const plan = planDemo(pack, await readSchema(this.port.doc));
-      if (plan.taken.length) { this.notice(this.t('demo.taken', { tables: plan.taken.join(', ') })); return; }
-      const items = demoSummary(pack, plan, this.t);
-      if (!(await this.#ask({ title: this.t('demo.title'), message: this.t('demo.text'), items, confirmLabel: this.t('demo.create'), cancelLabel: this.t('table.cancel') }))) return;
-      say('busy');
-      this.notice(this.t('demo.busy'));
-      this.#consented = true;
-      const address = `${location.origin}${location.pathname}`;
-      const report = await runDemo({ doc: this.port.doc, pack, now: new Date(), install: ids => this.#installAll(ids), address });
-      say('done');
-      this.#hideNotice();
-      void this.refreshFiles();
-      await this.#ask({ title: this.t('demo.doneTitle'), message: this.t('demo.doneText'), items: demoReport(report, this.t), confirmLabel: this.t('demo.close') });
-    } catch (error) {
-      say('failed');
-      if (error instanceof DemoError && error.code === 'taken') { this.notice(this.t('demo.taken', { tables: error.detail })); return; }
-      console.error('GFS : la démo n’a pas pu être posée', error);
-      this.notice(this.t('demo.failed', { reason: String(error && error.message) }));
-    } finally {
-      this.#consented = false;
-    }
+  // Le bouton « Démo » : le geste est dans js/demo-gesture.js ; le contrôleur lui prête ce qu'il sait faire.
+  #runDemo() {
+    return demoGesture({
+      port: this.port, doc: this.doc, t: this.t, loader: { json: readJson, text: readText }, blocked: () => this.#writeBlock(), ask: opts => this.#ask(opts), notice: text => this.notice(text),
+      hideNotice: () => this.#hideNotice(), installAll: ids => this.#installAll(ids), refresh: () => this.refreshFiles(), address: () => `${location.origin}${location.pathname}`, consent: on => { this.#consented = on; },
+    });
   }
 
   async #installAll(ids) {

@@ -22,7 +22,8 @@
       { "valeur": "macro", "nom": { "fr": "Macro-modèle", "en": "Macro template" }, "icone": "macro" }
     ],
     "exclure": { "TypeModele": ["reglages"] },
-    "rangement": { "table": "Publipostage_PreferencesModeles", "utilisateur": "Utilisateur", "fichier": "ModeleId", "dossier": "Dossier", "epingle": "Epingle" }
+    "rangement": { "table": "Publipostage_PreferencesModeles", "utilisateur": "Utilisateur", "fichier": "ModeleId", "dossier": "Dossier", "epingle": "Epingle" },
+    "suppression": { "ligne": true, "uniques": ["Jeton"], "exclusives": ["EstParDefaut"] }
   }],
   "reglages": ["modeleDeLaVue", "modeleSelonLigne", "droitsAcces", "dateDernierExport"],
   "permissions": {

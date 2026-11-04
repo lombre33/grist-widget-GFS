@@ -1137,7 +1137,7 @@ sombre (46 vérifications dans chacune, aucune en échec), Chromium 141 ; puis d
   l'essai n'en dépend pas, il passe par les lignes. Les codes WebDriver des touches de fonction : F2 ``, F10 `` (F11 est `` : une erreur de code avait ouvert autre chose), Suppr ``, Retour arrière ``.
 - **Ctrl, Alt et Méta** : aucune combinaison n'est liée (`js/explorer-keys.js`, essai Node) : Ctrl+D est le marque-page de Firefox, Ctrl+F sa recherche dans la page, Alt+← la page précédente ; Ctrl+C, Ctrl+X et Ctrl+V sont réservés à dupliquer et déplacer (lot 3).
 - **Pas mesuré** : le clavier **avant** tout clic dans le panneau (Grist garde alors le clavier pour sa grille : à vérifier chez le porteur) ; l'instance de la DINUM ; le Firefox du porteur et son clavier (touche « Menu », Maj+F10 sous Windows) ; un document en
-  lecture seule joué dans le vrai serveur (le refus `trash.readonly` est mesuré dans les essais Node) ; la corbeille des fichiers **des apps** (lot 2).
+  lecture seule joué dans le vrai serveur (le refus `trash.readonly` est mesuré dans les essais Node) ; la corbeille des fichiers **des apps** (lot 2, mesurée dans la section 26).
 
 ## 25. Le calendrier du kit : ce que le vrai Grist et Firefox ont mesuré (04/11)
 
@@ -1169,3 +1169,32 @@ un constat par passe, aucune en échec** ; le même cadre du début à la fin (j
   (`accepterDepots`), pas la grille horaire, et un dépôt dont l'effet est « none » n'a pas lieu (spécification HTML). Kit `336baf4` : les deux grilles passent par `accepterLeDepot`, un essai Chromium (en échec sur l'ancien code : effet « none ») et la mesure Firefox
   le gardent. **Non su** : si un Firefox sur un vrai système, qui suggère l'effet, acceptait déjà le dépôt sur la grille horaire.
 - **Pas mesuré** : le dépôt sous Firefox, l'instance de la DINUM, Tuesday et Calendar+ avec le module du kit (la première n'est pas au catalogue, la seconde garde sa copie jusqu'à la consigne 012), un calendrier de milliers de lignes.
+
+## 26. La corbeille des fichiers des apps (Publipostage+) : ce que le vrai serveur a mesuré (04/11)
+
+Décision du porteur le 04/11 (« tout doit pouvoir se faire depuis l'explorateur, pour toutes les apps, avec une corbeille » ; cahier, section 2 ; contrats 2.4 `suppression`, 6.7). Mesuré avec `labo/run-corbeille-apps.mjs` dans un
+**vrai serveur Grist 1.7.19** (Docker) : GFS ajouté comme widget à un document neuf, les modèles de Publipostage+ semés (dix-huit modèles, les réglages de l'app, leur rangement), une colonne à formule, une colonne de pièces jointes et un jeton
+ajoutés, panneau à 700 × 400, souris et clavier réels, en français clair, français sombre, anglais clair et anglais sombre (40 vérifications dans chacune, aucune en échec), Chromium 141, avec **la vraie Publipostage+** (celle que GFS référence).
+
+- **Un numéro de ligne voulu** : `AddRecord` à un numéro **déjà pris** est refusé par Grist (HTTP 500, `AssertionError docactions.[Bulk]AddRecord for existing record #2`), rien n'est écrasé ; à un numéro **libre**, la ligne revient à ce numéro. La restauration vérifie
+  d'abord que le numéro est libre (sinon : un numéro neuf) ; si une autre personne le prend entre la lecture et l'écriture, Grist refuse et le lot entier est défait.
+- **Un lot est tout ou rien** : un lot dont une action échoue (colonne inconnue : `KeyError`) est défait en entier, y compris l'`AddRecord` qui le précédait. C'est ce qui permet à « mettre à la corbeille » d'écrire la copie et de retirer la ligne dans UN lot sans jamais laisser un fichier
+  à la fois dans l'app et à la corbeille.
+- **Retirer une ligne qui n'est plus là n'échoue pas** : `RemoveRecord` d'un numéro absent rend `null`, et le lot continue (l'`AddRecord` qui le précédait est gardé). Conséquence : si une autre personne supprime la ligne entre la lecture de GFS et son écriture, la copie est quand même gardée à la
+  corbeille (restaurable) ; GFS relit la ligne juste avant d'écrire, et **après** la réponse à la question de la table (une personne peut être longue à répondre). Deux personnes qui mettent le même fichier à la corbeille au même instant peuvent en laisser deux copies : le jeton (`uniques`) évite alors un doublon à la restauration.
+- **Les colonnes de données** : GFS lit `_grist_Tables` et `_grist_Tables_column` (accès complet) pour savoir lesquelles copier : la colonne à formule (`Resume`) et `manualSort` n'y sont pas, `Pieces` (`Attachments`) y est avec son type. La copie contient `Nom`, `Contenu`, `NomFichierPDF`, `DateModif`,
+  `TypeModele`, `ModifiePar`, `EstParDefaut`, `Jeton`, `Pieces` ; **restaurée, la ligne est identique** (mêmes valeurs, mêmes dates en secondes, même jeton) et la formule recalcule.
+- **Une pièce jointe** : la cellule rend `['L', n]` ; un fichier qui en a n'est pas mis à la corbeille (la copie en JSON ne la citerait plus : Grist l'effacerait au bout de 7 jours), la phrase le dit, aucune table n'est créée. **Un envoi de fichier par l'API REST demande l'en-tête `X-Requested-With: XMLHttpRequest`**
+  (sans lui : 401 « Unauthenticated requests require one of the headers… », contre les envois d'une autre page).
+- **La table naît avec l'accord** : sans table, « Suppr » ouvre une fenêtre du widget (« Créer la table GFS_Corbeille ? », lisible à 4,5:1, dans le panneau) ; « Annuler » ne supprime rien (phrase : « … n'a pas pu être mis à la corbeille : la table GFS_Corbeille n'a pas été créée (rien n'est supprimé). »), la table n'est pas créée ;
+  « Créer la table » crée `GFS_Corbeille` avec ses onze colonnes aux types voulus (`DateTime:UTC` pour les deux dates), puis met le modèle à la corbeille. Les deux refus voulus (la table refusée, la pièce jointe) ne laissent aucun avertissement dans la console de GFS.
+- **L'adresse de la personne** : comme pour les PDF (section 24), `SupprimePar` n'est connue qu'une fois la table de rangement lue (6.4, point 9) ; le labo pose un premier favori avant la corbeille. **Le rangement de la personne** (l'app range par `Utilisateur`) ne s'applique qu'une fois la personne connue : avant,
+  c'est le rangement commun (`Utilisateur` vide) ; le labo sème donc le rangement avec l'adresse de la personne d'essai.
+- **Restaurer** : au **même numéro** quand il est libre (mesuré : 16 → 16, valeurs identiques) ; **le modèle par défaut** ne reprend pas son étoile quand un autre l'est devenu (il n'y a qu'une étoile) et la reprend sinon ; **le même jeton déjà présent** (l'app a remis le modèle) : rien n'est écrit dans la table
+  de l'app, l'entrée quitte la corbeille, pas de doublon ; **un nom devenu pris** : le premier nom libre (« Dossier de formation (1) »), la phrase le dit, le numéro est celui d'avant ; **un numéro pris** par une autre ligne (ajoutée à ce numéro) : un numéro neuf, la ligne de l'autre n'est pas touchée.
+  Dossier et favori du fichier n'ont pas bougé (le rangement de l'app est par numéro) : la corbeille dit « revient dans Formation » et le fichier retrouve son dossier et son épingle.
+- **Supprimer pour de bon** et **Vider** : une fenêtre qui nomme le modèle (ou les modèles) et donne le clavier à « Annuler » ; Échap ne supprime rien ; seule l'entrée de la corbeille part, la table de l'app et les pièces jointes d'un autre modèle ne bougent pas.
+- **La vraie Publipostage+ ouvre le modèle restauré** : Entrée (double-clic) sur la ligne du modèle restauré : l'app démarre, `Templates.getCurrentId()` rend `16`, le nom et le texte sont ceux d'avant la corbeille (« Ouvert depuis l'explorateur. »). Le sous-module `apps/publipostage` s'initialise dans le cloud (`git submodule update --init`)
+  et le miroir local des bibliothèques se construit par `labo/build-mirror.sh` (le cloud n'atteint que le registre npm).
+- **Pas mesuré** : l'instance de la DINUM ; le Firefox du porteur (l'interface de la corbeille y est mesurée par `test/corbeille-firefox.mjs` pour les PDF ; les fichiers des apps y passent par la même vue) ; un document en lecture seule joué dans le vrai serveur (`trash.readonly`, essais Node) ; la perte de l'historique des versions d'un
+  modèle restauré (contrats 6.7, point 6) ; Form+ et Automation+ (pas de recette : leurs fichiers sont grisés, avec la raison).

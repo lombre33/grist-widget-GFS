@@ -58,9 +58,9 @@ export function cleanName(text) {
 }
 
 // Le nom d'une copie : « Facture.pdf » devient « Facture (1).pdf », ou (2), (3)… au premier numéro libre parmi les noms `taken`. Un numéro déjà au bout du nom est remplacé, jamais empilé
-// (« Facture (1).pdf » devient « Facture (2).pdf », pas « Facture (1) (1).pdf »).
-export function freeName(name, taken) {
-  const dot = name.lastIndexOf('.');
+// (« Facture (1).pdf » devient « Facture (2).pdf », pas « Facture (1) (1).pdf »). `extension: false` : le nom n'a pas d'extension (le nom d'un modèle d'une app : « Modèle 2.1 » reste « Modèle 2.1 (1) »).
+export function freeName(name, taken, { extension: hasExtension = true } = {}) {
+  const dot = hasExtension ? name.lastIndexOf('.') : -1;
   const extension = dot > 0 ? name.slice(dot) : '';
   const stem = (dot > 0 ? name.slice(0, dot) : name).replace(/\s*\(\d+\)$/, '').trim();
   for (let n = 1; ; n++) {

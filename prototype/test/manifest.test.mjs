@@ -49,6 +49,23 @@ test('contrats 2.4 : le rangement propre à une app est une table du préfixe, a
   assert.match(bad(m => { m.fichiers[0].rangement.dossier = 3; }), /rangement\.dossier/);
 });
 
+// La recette de suppression (contrats 2.4) : ce que le manifeste dit pour que GFS retire et remette un fichier de l'app depuis l'explorateur (la corbeille).
+test('contrats 2.4 : la recette de suppression est `ligne: true`, avec des listes de colonnes et un objet `remettre` au besoin ; une app sans recette reste valide (ses fichiers sont grisés)', () => {
+  assert.match(bad(m => { m.fichiers[0].suppression = {}; }), /suppression\.ligne : true attendu/);
+  assert.match(bad(m => { m.fichiers[0].suppression = { ligne: 'oui' }; }), /suppression\.ligne : true attendu/);
+  assert.match(bad(m => { m.fichiers[0].suppression = 'x'; }), /suppression\.ligne : true attendu/);
+  assert.match(bad(m => { m.fichiers[0].suppression = { ligne: true, uniques: 'Jeton' }; }), /suppression\.uniques : liste de noms de colonnes attendue/);
+  assert.match(bad(m => { m.fichiers[0].suppression = { ligne: true, exclusives: [1] }; }), /suppression\.exclusives : liste de noms de colonnes attendue/);
+  assert.match(bad(m => { m.fichiers[0].suppression = { ligne: true, remettre: [] }; }), /suppression\.remettre : objet attendu/);
+  const full = publipostage();
+  full.fichiers[0].suppression = { ligne: true, uniques: ['Jeton'], exclusives: ['EstParDefaut'], remettre: { ModifiePar: '' } };
+  assert.deepEqual(validateManifest(full), { ok: true, errors: [] });
+  const none = publipostage();
+  delete none.fichiers[0].suppression;
+  assert.deepEqual(validateManifest(none), { ok: true, errors: [] });
+  assert.deepEqual(publipostage().fichiers[0].suppression, { ligne: true, uniques: ['Jeton'], exclusives: ['EstParDefaut'] }, 'Publipostage+ : un modèle est une ligne, son jeton le désigne, un seul est par défaut');
+});
+
 test('contrats 2.6 et 2.8 : la bibliothèque d\'une extension est un id et une version exacte', () => {
   assert.deepEqual(publipostage().extensions[0].bibliotheques, [{ id: 'plotly', version: '2.13.2' }, { id: 'echarts', version: '6.1.0' }]);
   assert.match(bad(m => { m.extensions[0].bibliotheques[0].version = 'latest'; }), /version de plotly doit être exacte/);

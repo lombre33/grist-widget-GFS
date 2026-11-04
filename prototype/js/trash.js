@@ -5,7 +5,8 @@
 //
 // Un gardien est : { manages(fichier) -> bool, lock() -> { text } | null (rien ne peut s'écrire), trash(fichier) -> Promise<bool>, restore(fichier) -> Promise<{ name, renamed } | null>,
 // empty(fichiers) -> Promise<nombre de fichiers supprimés pour de bon> }. Les gardiens écrivent seulement quand la personne l'a demandé (un geste de l'explorateur) ; aucun n'efface sans passer par
-// la corbeille, sauf `empty`, qui ne touche que des fichiers déjà à la corbeille.
+// la corbeille, sauf `empty`, qui ne touche que des fichiers déjà à la corbeille. Une erreur d'un gardien qui porte `expected: true` est un refus voulu (la personne a refusé de créer une table, une
+// ligne ne se garde pas) : la phrase de l'explorateur l'explique, la console reste muette.
 
 const REASON_MAX = 120;
 const NAMES_SHOWN = 5;
@@ -104,7 +105,7 @@ export class Trash {
       notice(said.text);
       ok = said.ok;
     } catch (error) {
-      console.warn('GFS : le geste sur la corbeille a échoué', error);
+      if (!(error && error.expected)) console.warn('GFS : le geste sur la corbeille a échoué', error); // un refus voulu (`expected`) est dit à la personne, pas à la console
       notice(t(failKey, { name: nameOf(file, t), reason: reasonOf(error) }));
     }
     await refresh();

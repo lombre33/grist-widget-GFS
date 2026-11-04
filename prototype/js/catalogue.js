@@ -11,6 +11,7 @@ export const CATALOGUE = Object.freeze([
   Object.freeze({ id: 'publipostage', dossier: 'apps/publipostage/', site: 'publipostageGrist/', manifeste: 'manifestes/publipostage.json' }),
   Object.freeze({ id: 'automation', dossier: 'apps/automation/', site: 'GRIST_automation/', manifeste: 'manifestes/automation.json' }),
   Object.freeze({ id: 'form', dossier: 'apps/form/', site: 'FormPlus/', manifeste: 'manifestes/form.json' }),
+  Object.freeze({ id: 'bi', dossier: 'apps/bi/', site: 'Grist-BI/', manifeste: 'manifestes/bi.json' }),
 ]);
 
 export const catalogueEntry = id => CATALOGUE.find(entry => entry.id === id) || null;

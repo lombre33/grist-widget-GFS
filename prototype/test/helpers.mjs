@@ -9,7 +9,8 @@ export const readJson = path => JSON.parse(readFileSync(join(ROOT, path), 'utf8'
 export const publipostage = () => readJson('manifestes/publipostage.json');
 export const automation = () => readJson('manifestes/automation.json');
 export const form = () => readJson('manifestes/form.json');
-export const catalogue = () => [publipostage(), automation(), form()];
+export const bi = () => readJson('manifestes/bi.json');
+export const catalogue = () => [publipostage(), automation(), form(), bi()];
 export const policyOf = manifest => makePolicy(manifest, catalogue());
 
 // Le contraste de deux couleurs `#rrggbb` (WCAG 2, de 1 à 21), écrit à part du code qui le calcule (js/oklch.js) : c'est l'étalon des essais de contraste.

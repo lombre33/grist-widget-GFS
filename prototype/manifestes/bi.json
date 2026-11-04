@@ -1,0 +1,43 @@
+{
+  "contrat": 0,
+  "id": "bi",
+  "nom": { "fr": "Grist-BI", "en": "Grist-BI" },
+  "version": "0.1.0",
+  "texte": {
+    "fr": "Des rapports BI sur les tables du document : pages, graphiques, jointures et commentaires (preuve de concept).",
+    "en": "BI reports on the document’s tables: pages, charts, joins and comments (proof of concept)."
+  },
+  "icone": "chart",
+  "entree": "index.html",
+  "tables": { "prefixe": "BI_" },
+  "fichiers": [{
+    "table": "BI_Dashboard_Config",
+    "colonnes": { "id": "id", "nom": "Nom", "type": "TypeRapport", "date": "DateModif", "par": "ModifiePar" },
+    "typeParDefaut": "rapport",
+    "types": [
+      { "valeur": "rapport", "nom": { "fr": "Rapport BI", "en": "BI report" }, "icone": "chart" }
+    ]
+  }],
+  "permissions": {
+    "acces": "full",
+    "lit": ["*"],
+    "ecrit": ["*"],
+    "formules": {
+      "pourquoi": {
+        "fr": "Pour connaître l'adresse de la personne qui commente un rapport, l'app pose une table-sonde (BI_Dashboard_UserProbe) dont une colonne lit user.Email par une formule.",
+        "en": "To know the address of the person who comments on a report, the app places a probe table (BI_Dashboard_UserProbe) whose column reads user.Email through a formula."
+      }
+    },
+    "gristInterne": [
+      {
+        "tables": ["_grist_Tables", "_grist_Tables_column"],
+        "lit": true,
+        "pourquoi": {
+          "fr": "Connaître les tables du document et leurs colonnes avec leurs types, pour proposer les tables de travail d'un rapport et ses jointures.",
+          "en": "Know the document's tables and their columns with their types, to offer a report's working tables and its joins."
+        }
+      }
+    ]
+  },
+  "actions": { "ouvrir": ["rapport"], "choisir": [] }
+}

@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { validateManifest, isSafePath, loadAll, label, listCapabilities } from '../js/manifest.js';
 import { CATALOGUE } from '../js/catalogue.js';
 import { iconNames } from '../js/icons.js';
-import { publipostage, automation, form, readJson, ROOT } from './helpers.mjs';
+import { publipostage, automation, form, bi, readJson, ROOT } from './helpers.mjs';
 
 const bad = (mutate, others) => { const m = publipostage(); mutate(m); const r = validateManifest(m, others); assert.equal(r.ok, false); return r.errors.join(' | '); };
 
@@ -14,6 +14,7 @@ test('les manifestes provisoires du prototype sont valides, ensemble', () => {
   assert.deepEqual(validateManifest(publipostage()), { ok: true, errors: [] });
   assert.deepEqual(validateManifest(automation(), [publipostage()]), { ok: true, errors: [] });
   assert.deepEqual(validateManifest(form(), [publipostage(), automation()]), { ok: true, errors: [] });
+  assert.deepEqual(validateManifest(bi(), [publipostage(), automation(), form()]), { ok: true, errors: [] });
 });
 
 test('contrats 2.2 : champs obligatoires et formats', () => {
@@ -255,6 +256,28 @@ test('contrats 2.4, 3.3 et 8 : le manifeste de Form+ range ses formulaires dans 
   const attachments = internal.find(entry => entry.tables.includes('_grist_Attachments'));
   assert.ok(attachments && attachments.lit === true && attachments.ecrit === undefined && attachments.retire === undefined, '_grist_Attachments se lit, ne s\'écrit jamais');
   assert.deepEqual(attachments.tables, ['_grist_Attachments']);
+  const names = iconNames();
+  for (const name of [m.icone, ...files.types.map(item => item.icone)]) assert.ok(names.includes(name), `l'icône ${name} est dans la feuille de symboles`);
+});
+
+// Grist-BI (consigne 006, choix du porteur du 04/11 : « Rapport BI ») : l'app est dans le catalogue, un rapport est une ligne de `BI_Dashboard_Config`, et « Nouveau » le propose.
+// Les colonnes du nom, du type, de la date et de l'auteur sont celles que la consigne demande à l'app d'ajouter ; GFS n'écrit jamais une colonne absente.
+test('contrats 2.4, 3.2 et 3.4 : le manifeste de Grist-BI range ses rapports dans la table de configuration du préfixe', () => {
+  const m = bi();
+  const [files] = m.fichiers;
+  assert.ok(CATALOGUE.some(entry => entry.id === 'bi' && entry.dossier === 'apps/bi/' && entry.site === 'Grist-BI/'));
+  assert.equal(files.table, 'BI_Dashboard_Config');
+  assert.deepEqual(files.colonnes, { id: 'id', nom: 'Nom', type: 'TypeRapport', date: 'DateModif', par: 'ModifiePar' });
+  assert.equal(files.typeParDefaut, 'rapport', 'une ligne d\'avant les colonnes ajoutées est un rapport');
+  assert.deepEqual(files.types.map(item => [item.valeur, item.nom.fr, item.nom.en, item.icone]), [['rapport', 'Rapport BI', 'BI report', 'chart']]);
+  assert.ok(files.types.every(item => item.couleur === undefined), 'la couleur est réservée au document, à la grille et à la présentation (charte)');
+  assert.deepEqual(m.actions.ouvrir, ['rapport'], '« Nouveau > Rapport BI » existe dès l\'inscription ; l\'app ne connaît pas encore l\'ouverture (ACCEPTS_OPEN)');
+  assert.ok(m.permissions.formules.pourquoi.fr && m.permissions.formules.pourquoi.en, 'la table-sonde de l\'adresse e-mail lit user.Email par une formule : elle se déclare, avec son pourquoi');
+  const internal = m.permissions.gristInterne;
+  assert.ok(internal.every(entry => entry.lit === true && entry.ecrit === undefined && entry.retire === undefined), 'les tables internes ne se lisent que');
+  assert.deepEqual(internal.flatMap(entry => entry.tables), ['_grist_Tables', '_grist_Tables_column']);
+  assert.equal(m.permissions.lienPublic, undefined, 'aucun lien public : rien de Grist-BI n\'est ouvert à qui n\'a pas le document');
+  assert.deepEqual(m.extensions || [], [], 'ECharts, DuckDB et le reste sont dans le dépôt de l\'app : aucune extension');
   const names = iconNames();
   for (const name of [m.icone, ...files.types.map(item => item.icone)]) assert.ok(names.includes(name), `l'icône ${name} est dans la feuille de symboles`);
 });

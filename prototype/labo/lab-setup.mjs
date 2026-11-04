@@ -43,7 +43,7 @@ export async function chooseFullAccess(page) {
 }
 
 // Le site en ligne de chaque app (js/catalogue.js, `site`) et le dossier de sa copie dans le dépôt : GFS ouvre l'app sur son site, le labo rend les fichiers de la copie à cette adresse.
-const SITES = { publipostageGrist: 'publipostage', GRIST_automation: 'automation', FormPlus: 'form' };
+const SITES = { publipostageGrist: 'publipostage', GRIST_automation: 'automation', FormPlus: 'form', 'Grist-BI': 'bi' };
 
 // grist-static donne `credentialless` au cadre que Grist ouvre pour un widget (`iframeAttributes` de ses réglages, `main.bundle.js`) ; le Grist ordinaire n'ajoute rien à ce cadre (`WidgetFrame`
 // ne lit ce réglage que s'il existe). Sous Chromium, cet attribut coupe `window.opener` et le nom des fenêtres ouvertes depuis le cadre (`window.open` rend `null`), ce que le Grist de la personne ne fait pas :
@@ -83,7 +83,7 @@ export async function startLab(options = {}) {
   };
   const appFrame = async (re = /./) => {
     for (let i = 0; i < 120; i++) {
-      const f = page.frames().find(f => /^http:\/\/127\.0\.0\.1:8911\/(prototype\/(apps|labo\/sondes)|publipostageGrist|GRIST_automation|FormPlus)\//.test(f.url()) && re.test(f.url()));
+      const f = page.frames().find(f => /^http:\/\/127\.0\.0\.1:8911\/(prototype\/(apps|labo\/sondes)|publipostageGrist|GRIST_automation|FormPlus|Grist-BI)\//.test(f.url()) && re.test(f.url()));
       if (f) return f;
       await page.waitForTimeout(500);
     }

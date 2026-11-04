@@ -5,7 +5,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { main, describe, readManifests, ROOT } from '../outils/capacites.mjs';
-import { publipostage, automation, form } from './helpers.mjs';
+import { publipostage, automation, form, bi } from './helpers.mjs';
 
 const WHY = { fr: 'Pour « Mes tâches » : montrer les tâches de la personne', en: 'For “My tasks”: show the person\'s own tasks' };
 
@@ -15,7 +15,7 @@ function withIdentity() {
   mkdirSync(join(root, 'manifestes'));
   const declared = publipostage();
   declared.permissions.identite = { pourquoi: WHY };
-  for (const m of [declared, automation(), form()]) writeFileSync(join(root, 'manifestes', `${m.id}.json`), JSON.stringify(m));
+  for (const m of [declared, automation(), form(), bi()]) writeFileSync(join(root, 'manifestes', `${m.id}.json`), JSON.stringify(m));
   return root;
 }
 const collect = () => { const lines = []; return { lines, write: text => lines.push(text) }; };
@@ -49,6 +49,7 @@ test('sans filtre : toutes les capacités déclarées, ou « aucune » pour une 
     const rows = main([], root, all.write);
     assert.ok(rows.some(row => row.capacite === 'identite'));
     assert.ok(rows.some(row => row.app === 'form' && row.capacite === 'jeton'));
+    assert.ok(rows.some(row => row.app === 'bi' && row.capacite === 'formules'), 'Grist-BI déclare la sonde de l\'adresse e-mail (une formule)');
     assert.equal(all.lines.length, rows.length, 'une ligne par capacité');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

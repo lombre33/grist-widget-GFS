@@ -6,7 +6,9 @@
 //   { ligne: true }                    un fichier est une ligne de cette table : la retirer le supprime, la remettre le restaure ;
 //   uniques: [colonne, …]              colonnes dont la valeur désigne un fichier (un jeton) : si une ligne qui est déjà dans la table la porte, il n'y a rien à restaurer ;
 //   exclusives: [colonne, …]           colonnes booléennes qu'une seule ligne peut avoir (« le modèle par défaut ») : restauré, le fichier ne la reprend pas si une autre ligne l'a ;
-//   remettre: { colonne: valeur }      valeurs que la restauration pose à la place de celles qui étaient gardées.
+//   remettre: { colonne: valeur }      valeurs que la restauration pose à la place de celles qui étaient gardées ;
+//   appel: true                        un fichier tient à plus qu'une ligne (un formulaire et son lien public, par exemple) : avant de retirer la ligne, GFS demande à l'app ouverte de fermer ce qui est lié
+//                                      au fichier (l'appel `supprimer`, contrats 5.4, point 10) ; restaurer remet la ligne, sans rien demander à l'app.
 // Une app seule, sans GFS, garde sa propre gestion de ses fichiers : GFS n'agit que sur ce que le manifeste déclare, et seulement quand l'app est servie par lui.
 
 import { isExcluded } from './explorer-model.js';
@@ -31,6 +33,9 @@ const filled = value => value !== undefined && value !== null && value !== '' &&
 
 // La recette d'une entrée `fichiers[]` du manifeste, ou null : l'app n'a pas dit comment supprimer ses fichiers.
 export const recipeOf = spec => (spec && spec.suppression && spec.suppression.ligne === true ? spec.suppression : null);
+
+// Le fichier tient à plus qu'une ligne : l'app ouverte est appelée (`supprimer`) avant que la ligne parte.
+export const asksApp = spec => Boolean(recipeOf(spec) && spec.suppression.appel === true);
 
 // Les colonnes de la table de l'app qu'on peut écrire à la restauration : celles que Grist rend et qui ne sont pas des formules (`dataColumns`, relues dans les tables internes de Grist).
 export const writable = (data, dataColumns) => dataColumns.filter(column => column !== 'id' && Array.isArray(data && data[column]));

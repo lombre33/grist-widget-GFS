@@ -49,8 +49,8 @@ export class Explorer {
   //          settings() → les articles du menu « Réglages » (js/settings-menu.js : langue, thème, position de la barre, « À propos »), personal() → le rangement est-il à la personne seule ?,
   //          filing: { togglePin(file), rename(file), moveFile(file), renameFolder(path), moveFolder(path), moveFileTo(file, dossier), moveFolderTo(path, dossier) },
   //          kept?: les fichiers que GFS garde lui-même (js/kept-files.js) : { has(file), openAs(file) -> { label, icon, greyed }, opensIn(file), extras(file) -> [article de menu] },
-  //          trash?: la corbeille (js/trash.js) : { handles(file), move(file), restore(file), purge(file), empty(files) } (chaque geste rend une promesse, vraie quand il a abouti),
-  //          copying?: la copie (js/copying.js) : { handles(file), copy(file, dossier) -> Promise<{ key, name } | null> } }
+  //          trash?: la corbeille (js/trash.js) : { handles(file), appLockOf?(file) -> { text } | null (l'app doit être ouverte), move(file), restore(file), purge(file), empty(files) } (chaque geste rend une promesse, vraie quand il a abouti),
+  //          copying?: la copie (js/copying.js) : { handles(file), appLockOf?(file) -> { text } | null, copy(file, dossier) -> Promise<{ key, name } | null> } }
   constructor(opts) {
     this.#opts = opts;
     this.#kept = opts.kept || NO_KEPT;
@@ -569,6 +569,14 @@ export class Explorer {
       { label: t('trash.purge'), icon: 'trash', hint: t('key.delete'), run: () => void this.#purge(file.key) }];
   }
 
+  // Pourquoi un geste (la corbeille ou la copie) est grisé pour ce fichier, en une phrase, ou null : pendant un choix ; pour un fichier qu'aucun gardien ne connaît (`unknown`) ; quand l'app doit être ouverte et ne l'est pas.
+  #whyGreyed(file, gesture, unknown) {
+    if (this.#choice) return this.#opts.i18n.t('ex.choose.newOff');
+    if (!gesture.handles(file)) return unknown;
+    const wait = typeof gesture.appLockOf === 'function' ? gesture.appLockOf(file) : null;
+    return wait ? wait.text : null;
+  }
+
   #fileMenu(file) {
     const { t } = this.#opts.i18n;
     const { filing } = this.#opts;
@@ -578,14 +586,12 @@ export class Explorer {
     const appOnly = t('ex.notice.appOnly', { app: this.#opts.appName(file.app) });
     const open = this.#choice ? { label: t('ex.choose.pick'), icon: 'open', greyed: false } : this.#openAs(file);
     const extras = kept && !this.#choice ? this.#kept.extras(file) : [];
-    // Mettre à la corbeille : grisé pendant un choix, et pour un fichier qu'aucun gardien ne connaît ; le clic dit pourquoi.
-    const remove = this.#choice || !this.#bin.handles(file)
-      ? grey(t('trash.move'), 'trash', this.#choice ? t('ex.choose.newOff') : t('trash.appOnly', { app: this.#opts.appName(file.app) }))
-      : item(t('trash.move'), 'trash', () => void this.#trashKey(file.key), t('key.delete'));
-    // Dupliquer : grisé pendant un choix, et pour un fichier qu'aucun gardien ne copie ; le clic dit pourquoi. Le presse-papiers (Ctrl+C puis Ctrl+V, Ctrl+X puis Ctrl+V) n'est pas offert pendant un choix.
-    const duplicate = this.#choice || !this.#copying.handles(file)
-      ? grey(t('ex.duplicate'), 'copy', this.#choice ? t('ex.choose.newOff') : appOnly)
-      : item(t('ex.duplicate'), 'copy', () => void this.#duplicate(file), 'Ctrl+C, V');
+    // Mettre à la corbeille et dupliquer : grisés pendant un choix, pour un fichier qu'aucun gardien ne connaît, et pour un fichier que seule l'app ouverte sait fermer ou copier (contrats 2.4 `appel`) ; le clic dit pourquoi.
+    // Le presse-papiers (Ctrl+C puis Ctrl+V, Ctrl+X puis Ctrl+V) n'est pas offert pendant un choix.
+    const whyRemove = this.#whyGreyed(file, this.#bin, t('trash.appOnly', { app: this.#opts.appName(file.app) }));
+    const remove = whyRemove ? grey(t('trash.move'), 'trash', whyRemove) : item(t('trash.move'), 'trash', () => void this.#trashKey(file.key), t('key.delete'));
+    const whyDuplicate = this.#whyGreyed(file, this.#copying, appOnly);
+    const duplicate = whyDuplicate ? grey(t('ex.duplicate'), 'copy', whyDuplicate) : item(t('ex.duplicate'), 'copy', () => void this.#duplicate(file), 'Ctrl+C, V');
     return [{ ...item(open.label, open.icon, () => this.#activate(file.key), t('key.enter')), greyed: open.greyed }, ...extras, item(file.pinned ? t('ex.unpin') : t('ex.pin'), 'pin', () => void filing.togglePin(file)),
       item(t('ex.rename'), 'edit', () => void filing.rename(file), 'F2'), duplicate, item(t('ex.move'), 'move', () => void filing.moveFile(file), this.#choice ? undefined : 'Ctrl+X, V'),
       '-', remove];

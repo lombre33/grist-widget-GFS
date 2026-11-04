@@ -7,10 +7,11 @@ import { Trash } from '../js/trash.js';
 import { FR, EN } from './kept-setup.mjs';
 
 // Un gardien de doublure : il garde la trace de ce qu'on lui demande et rend ce qu'on lui a dit de rendre.
-function guardian({ app = 'gfs-fichiers', lock = null, trash = async () => true, restore = async () => ({ name: 'Facture.pdf', renamed: false }), empty = async files => files.length } = {}) {
+function guardian({ app = 'gfs-fichiers', lock = null, waits = null, trash = async () => true, restore = async () => ({ name: 'Facture.pdf', renamed: false }), empty = async files => files.length } = {}) {
   const calls = [];
+  const locked = [];
   return {
-    calls, manages: file => file.app === app, lock: () => lock,
+    calls, locked, manages: file => file.app === app, lock: (file, gesture) => { locked.push([file && file.id, gesture]); return lock; }, waitsForApp: (file, gesture) => (waits && gesture === 'trash' ? waits : null),
     trash: async file => { calls.push(['trash', file.id]); return trash(file); },
     restore: async file => { calls.push(['restore', file.id]); return restore(file); },
     empty: async files => { calls.push(['empty', files.map(file => file.id)]); return empty(files); },
@@ -186,4 +187,43 @@ test('le dossier n\'est gardé que si le fichier est vraiment à la corbeille ; 
   assert.deepEqual(kept, []);
   assert.equal(await bin.move(file('dd')), true);
   assert.deepEqual(kept, ['dd']);
+});
+
+// Un fichier qui tient à plus qu'une ligne (contrats 2.4 `appel`) : l'app ouverte a son mot. Le gardien le dit (`waitsForApp`), l'app peut ajouter sa phrase, ou ne pas fermer le fichier.
+test('un geste qui attend l\'app ouverte : le gardien dit pourquoi (pour griser l\'article), et le geste lui demande de verrouiller POUR « mettre à la corbeille » seulement', async () => {
+  const wait = { text: 'Ouvre Form+ pour mettre ce fichier à la corbeille.' };
+  const { bin, log, managers } = setup({ managers: [guardian({ waits: wait, lock: wait })] });
+  assert.deepEqual(bin.appLockOf(file()), wait);
+  assert.equal(bin.appLockOf(file('x', 'Autre', 'publipostage')), null, 'aucun gardien : rien à dire');
+  assert.equal(await bin.move(file()), false);
+  assert.deepEqual(log.notices, [wait.text], 'la phrase du gardien, sans rien d\'autre');
+  assert.deepEqual(managers[0].calls, [], 'le gardien n\'est pas sollicité');
+  assert.deepEqual(managers[0].locked, [['aa', 'trash']], 'le geste dit son nom au verrou');
+  assert.equal(bin.appLockOf({ app: 'gfs-fichiers', id: 'bb' }) !== null, true);
+  const free = setup({ managers: [guardian()] });
+  assert.equal(free.bin.appLockOf(file()), null, 'un gardien qui n\'attend pas l\'app');
+  assert.equal(setup({ managers: [{ manages: () => true, lock: () => null, trash: async () => true }] }).bin.appLockOf(file()), null, 'un gardien sans `waitsForApp` (les PDF)');
+});
+
+test('restaurer et supprimer pour de bon n\'attendent pas l\'app : le verrou ne leur demande pas d\'app, la phrase de l\'app (`said`) n\'est dite qu\'à la mise à la corbeille', async () => {
+  const wait = { text: 'Ouvre Form+.' };
+  const { bin, log, managers } = setup({ managers: [guardian({ waits: wait, lock: null })] });
+  assert.equal(await bin.restore(file()), true);
+  assert.deepEqual(managers[0].locked.at(-1), ['aa', undefined]);
+  const said = setup({ managers: [guardian({ trash: async () => ({ said: 'Son lien public est fermé.' }) })] });
+  assert.equal(await said.bin.move(file()), true);
+  assert.deepEqual(said.log.notices, [`${FR.t('trash.moved', { name: 'Facture.pdf' })} Son lien public est fermé.`], 'la phrase de GFS puis celle de l\'app');
+  assert.equal(log.notices.length, 1);
+});
+
+test('l\'app ne ferme pas le fichier (`declined`) : rien n\'est à la corbeille, sa phrase est dite (aucune quand elle n\'en a pas), le dossier n\'est pas gardé, la liste est relue', async () => {
+  const kept = [];
+  const some = setup({ managers: [guardian({ trash: async () => ({ declined: 'Ce formulaire est en cours de publication.' }) })], keepFolders: async f => kept.push(f.id) });
+  assert.equal(await some.bin.move(file()), false);
+  assert.deepEqual(some.log.notices, ['Ce formulaire est en cours de publication.']);
+  assert.deepEqual([kept, some.log.refreshes], [[], 1]);
+  const none = setup({ managers: [guardian({ trash: async () => ({ declined: '' }) })] });
+  assert.equal(await none.bin.move(file()), false);
+  assert.deepEqual(none.log.notices, [], 'une app qui ne dit rien : GFS ne dit rien non plus');
+  assert.equal(none.log.refreshes, 1);
 });

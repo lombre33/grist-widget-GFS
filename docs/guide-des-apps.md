@@ -255,6 +255,20 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     règle) ; celle qui ne répond à rien, pas même cela, fait attendre dix secondes avant que GFS pose sa question à la personne. Même règle, déjà, quand GFS appelle `ouvrir` sur l'app active pour un autre fichier de la même app : sa question d'enregistrement
     vient avant `{ ouvert }`. Seule, hors de GFS, l'app garde sa propre sortie (`beforeunload`, « Enregistrer » du kit).
 
+20. Répondre à `supprimer` et à `dupliquer` quand un fichier de l'app tient à plus qu'une ligne (demande du porteur du 04/11 : « tout se
+    fait depuis l'explorateur, pour toutes les apps » ; contrats 2.4, `suppression.appel` et `copie.appel`, et 5.4, points 10 et 11 ; **seulement
+    une app dont les fichiers sont plus qu'une ligne** : Form+ (un formulaire, sa section, sa table de réponses, son lien public) ; Publipostage+,
+    dont un modèle est une ligne, n'a rien à répondre). Dans GFS, la personne met ce fichier à la corbeille (Suppr, le menu de la ligne) ou le
+    duplique (Ctrl+C puis Ctrl+V) depuis l'explorateur : GFS appelle l'app **ouverte** (jamais une autre), qui seule sait le faire en entier ;
+    tant qu'elle ne l'est pas, l'article est grisé et dit « Ouvre <app> ». **`supprimer { fichier: { id, type }, raison }`** : ferme ce qui est
+    public (le lien d'un formulaire) et réponds `{ fait: true, dit? }` après avoir fini d'écrire, `{ fait: false, dit }` si tu ne peux pas ; **ne retire pas**
+    la ligne du fichier (GFS la garde pour la restaurer), ni ses tables ni ses sections, et ne demande rien à la personne : rien ne s'efface, la
+    corbeille se vide à la main. **`dupliquer { fichier: { id, type }, nom }`** : copie le fichier en entier sous `nom` (le premier nom libre,
+    que GFS a calculé), **sans le publier**, et réponds `{ id, nom?, dit? }` (`id` : l'identifiant de la copie) ; sans `id` (`{ dit }`), tu n'as rien
+    copié. `dit` est une phrase d'une ligne (200 signes au plus) que GFS ajoute à la sienne. Aucun délai à tenir à ta charge, mais sans réponse
+    au bout de 20 secondes GFS ne t'attend plus et le dit ; `GFS_INCONNU` pour un appel que tu ne connais pas. Tu n'écris ni dans `GFS_Corbeille`
+    ni dans `GFS_Rangement`. Seule, hors de GFS, l'app garde sa propre gestion de ses fichiers (ses boutons de suppression et de copie).
+
 ### 1.3 Licence : GPL 3.0 dans tous les dépôts (décision du porteur, 21/10)
 
 1. **Le texte officiel de la GNU General Public License version 3** est le fichier `LICENSE`, à la racine du dépôt : 674

@@ -66,6 +66,18 @@ test('contrats 2.4 : la recette de suppression est `ligne: true`, avec des liste
   assert.deepEqual(publipostage().fichiers[0].suppression, { ligne: true, uniques: ['Jeton'], exclusives: ['EstParDefaut'] }, 'Publipostage+ : un modèle est une ligne, son jeton le désigne, un seul est par défaut');
 });
 
+// L'appel à l'app (contrats 2.4, `appel` ; 5.4, points 10 et 11) : un fichier qui tient à plus qu'une ligne (un formulaire et son lien public) est supprimé et copié avec l'aide de l'app ouverte.
+test('contrats 2.4 : `appel` est un booléen ; la suppression garde `ligne` (GFS retire la ligne), la copie par l\'app peut s\'en passer', () => {
+  assert.match(bad(m => { m.fichiers[0].suppression = { ligne: true, appel: 'oui' }; }), /suppression\.appel : true ou false attendu/);
+  assert.match(bad(m => { m.fichiers[0].copie = { ligne: true, appel: 1 }; }), /copie\.appel : true ou false attendu/);
+  assert.match(bad(m => { m.fichiers[0].suppression = { appel: true }; }), /suppression\.ligne : true attendu/, 'GFS retire la ligne : `ligne` reste obligatoire');
+  assert.match(bad(m => { m.fichiers[0].copie = { appel: false }; }), /copie\.ligne : true attendu/, 'ni `ligne`, ni `appel` : pas de recette');
+  const composite = form();
+  composite.fichiers[0].suppression = { ligne: true, appel: true };
+  composite.fichiers[0].copie = { appel: true };
+  assert.deepEqual(validateManifest(composite, [publipostage(), automation()]), { ok: true, errors: [] });
+});
+
 // La recette de copie (contrats 2.4) : ce que le manifeste dit pour que GFS copie un fichier de l'app depuis l'explorateur (« Dupliquer », Ctrl+C puis Ctrl+V).
 test('contrats 2.4 : la recette de copie est `ligne: true`, avec des listes de colonnes et un objet `valeurs` au besoin ; une app sans recette reste valide (« Dupliquer » est grisé)', () => {
   assert.match(bad(m => { m.fichiers[0].copie = {}; }), /copie\.ligne : true attendu/);

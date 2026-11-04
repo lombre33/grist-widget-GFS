@@ -1,7 +1,7 @@
 // La copie d'un fichier d'une app (js/gfs-copy.js, contrats 2.4 `copie`) : la recette du manifeste, le nom de la copie, ce qu'on écrit dans la table de l'app. Du code sans effet de bord : des tables en mémoire.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { copyPlan, copyRecipeOf } from '../js/gfs-copy.js';
+import { copyPlan, copyRecipeOf, copiesByApp, copyNameOf } from '../js/gfs-copy.js';
 import { publipostage, form } from './helpers.mjs';
 
 const spec = publipostage().fichiers[0];
@@ -26,6 +26,23 @@ test('la recette est `copie.ligne: true` ; sans elle, ou sans `ligne`, l\'app n\
   assert.equal(copyRecipeOf({ copie: {} }), null);
   assert.equal(copyRecipeOf({ copie: { ligne: false } }), null);
   assert.equal(copyRecipeOf(null), null);
+});
+
+test('une recette `copie.appel: true` dit que c\'est l\'app ouverte qui copie le fichier (un fichier qui tient à plus qu\'une ligne) : GFS ne copie alors pas la ligne', () => {
+  assert.deepEqual(copyRecipeOf({ copie: { appel: true } }), { appel: true }, '`ligne` n\'est pas nécessaire');
+  assert.equal(copiesByApp({ copie: { appel: true } }), true);
+  assert.equal(copiesByApp({ copie: { ligne: true, appel: true } }), true, 'les deux : l\'app copie');
+  assert.equal(copiesByApp({ copie: { ligne: true } }), false);
+  assert.equal(copiesByApp({ copie: { appel: false } }), false);
+  assert.equal(copiesByApp(spec), false, 'Publipostage+ : GFS copie la ligne');
+  assert.equal(copiesByApp(null), false);
+  assert.equal(copyRecipeOf({ copie: { appel: false } }), null);
+});
+
+test('le nom de la copie est le premier nom libre de la table, comme pour la copie de la ligne : c\'est celui que GFS donne à l\'app qui copie', () => {
+  assert.equal(copyNameOf({ spec, data: table(), at: 0 }), 'Convocation (2)', '« Convocation (1) » est pris');
+  assert.equal(copyNameOf({ spec, data: table(), at: 1 }), 'Attestation (1)');
+  assert.equal(copyNameOf({ spec, data: table(), at: 2 }), 'Convocation (2)', 'la copie d\'une copie reprend le nom de départ : « (1) » est pris, c\'est « (2) »');
 });
 
 test('la copie a les valeurs de l\'original, sauf le nom (le premier libre), le jeton (vide) et l\'étoile du modèle par défaut (éteinte)', () => {

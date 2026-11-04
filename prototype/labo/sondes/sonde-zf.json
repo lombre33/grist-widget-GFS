@@ -1,0 +1,63 @@
+{
+  "contrat": 0,
+  "id": "sonde-zf",
+  "nom": {
+    "fr": "Sonde ZF",
+    "en": "Probe ZF"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Une app dont les fichiers tiennent à plus qu'une ligne : elle répond aux appels « supprimer » et « dupliquer » de GFS, comme Form+ après les consignes 020 et 021",
+    "en": "An app whose files take more than one row: it answers GFS's “delete” and “duplicate” calls, like Form+ after instructions 020 and 021"
+  },
+  "icone": "doc",
+  "entree": "index.html",
+  "tables": {
+    "prefixe": "SondeZf_"
+  },
+  "fichiers": [
+    {
+      "table": "SondeZf_Fichiers",
+      "colonnes": {
+        "id": "id",
+        "nom": "Nom",
+        "type": "Type",
+        "date": "DateModif"
+      },
+      "typeParDefaut": "formulaire",
+      "types": [
+        {
+          "valeur": "formulaire",
+          "nom": {
+            "fr": "Formulaire",
+            "en": "Form"
+          },
+          "icone": "doc",
+          "couleur": "document"
+        }
+      ],
+      "suppression": {
+        "ligne": true,
+        "appel": true
+      },
+      "copie": {
+        "appel": true
+      }
+    }
+  ],
+  "reglages": [],
+  "permissions": {
+    "acces": "full",
+    "lit": [
+      "SondeZf_Fichiers"
+    ],
+    "ecrit": [
+      "SondeZf_Fichiers"
+    ]
+  },
+  "extensions": [],
+  "actions": {
+    "ouvrir": [],
+    "choisir": []
+  }
+}

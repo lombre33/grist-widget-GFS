@@ -11,6 +11,8 @@
 // `window.__withPdf()` ajoute à la liste un PDF gardé par GFS, lu par le vrai modèle avec le vrai manifeste de GFS (la famille « pdf », rouge) ; `window.__reset()` le retire et rend l'ambiance d'origine.
 // Les dossiers sans fichier (test/dossiers-firefox.mjs) : le vrai `Filing` (js/filing.js) et les vraies fenêtres du rangement (js/filing-window.js) sur un rangement de doublure qui tient les dossiers gardés
 // (`window.__keep(...chemins)` en pose, `window.__filing` note chaque lot « setFiling:+gardé:-retiré »), et la corbeille y garde le dossier du dernier fichier qui part, comme le contrôleur.
+// Un fichier que seule l'app ouverte sait fermer ou copier (test/composite-firefox.mjs) : la « Grille de suivi » en fait office ; `window.__appOpen = false` : l'app n'est pas ouverte, le geste est grisé et dit
+// d'ouvrir l'app ; ouverte, l'app ajoute sa phrase (`window.__appSaid`) à celle de GFS.
 import { ask } from '/js/ask-window.js';
 import { askConflict } from '/js/conflict-window.js';
 import { Explorer } from '/js/explorer.js';
@@ -84,10 +86,19 @@ async function mount() {
   window.__filing = [];
   window.__notices = [];
   const noted = (name, ...args) => async file => { window.__filing.push([name, ...args.map(arg => (arg === 'name' ? file.name : file))]); };
+  // Un fichier que seule l'app ouverte sait fermer ou copier (contrats 2.4 `appel`, test/composite-firefox.mjs) : les fichiers de type `grille` en font office ; `window.__appOpen = false` : l'app n'est pas ouverte, le geste
+  // attend (les phrases de js/i18n-trash.js, comme dans js/app-files.js) ; ouverte, l'app ajoute sa phrase (`window.__appSaid`) à celle de GFS.
+  window.__appOpen = true;
+  window.__appSaid = { trash: 'Son lien public est fermé.', copy: 'Elle n\u2019est pas publiée.' };
+  const waits = (file, gesture) => (file && file.type === 'grille' && window.__appOpen === false && gesture ? { text: i18n.t(gesture === 'copy' ? 'copy.openApp' : 'trash.openApp', { app: 'Publipostage+' }) } : null);
   const guardian = {
     manages: () => true,
-    lock: () => null,
-    trash: async file => Boolean(move(live, trashed, file) && Object.assign(file, { trashed: { ts: Math.floor(Date.now() / 1000), by: 'Service RH' } })),
+    lock: waits,
+    waitsForApp: waits,
+    trash: async file => {
+      const done = Boolean(move(live, trashed, file) && Object.assign(file, { trashed: { ts: Math.floor(Date.now() / 1000), by: 'Service RH' } }));
+      return done && file.type === 'grille' ? { said: window.__appSaid.trash } : done;
+    },
     restore: async file => { const back = move(trashed, live, file); if (back) back.trashed = null; return back ? { name: back.name, renamed: false } : null; },
     empty: async list => list.filter(file => move(trashed, [], file)).length,
   };
@@ -96,7 +107,8 @@ async function mount() {
   let copied = 100;
   const copier = {
     copies: file => file.type !== 'macro',
-    lock: () => null,
+    lock: waits,
+    waitsForApp: waits,
     copy: async file => {
       const original = live.find(item => item.key === file.key);
       if (!original) return null;
@@ -106,7 +118,7 @@ async function mount() {
       while (names.includes(`${original.name} (${n})`)) n += 1;
       const made = { ...original, key: `${original.app}:${id}`, id, row: copied, name: `${original.name} (${n})`, folder: '', pinned: false, search: '' };
       live.push(made);
-      return { id, name: made.name };
+      return file.type === 'grille' ? { id, name: made.name, said: window.__appSaid.copy } : { id, name: made.name };
     },
   };
   const copying = new Copying({
@@ -182,6 +194,7 @@ async function mount() {
     window.__copies.length = 0;
     window.__notices.length = 0;
     window.__opened = null;
+    window.__appOpen = true;
     setting.reset(); // l'ambiance d'origine, comme au départ
     window.__resetSettings();
     Object.assign(explorer.state, { view: 'folder', path: '', display: 'list', type: 'all', q: '', sel: null });

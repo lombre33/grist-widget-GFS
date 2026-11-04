@@ -2,7 +2,7 @@
 // pour l'explorateur et ce que la restauration remet. Ce que Grist fait de ces écritures se mesure dans le labo (labo/run-corbeille-apps.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { BIN_COLUMN_IDS, recipeOf, writable, snapshotOf, parseSnapshot, entryRecord, binFiles, restorePlan } from '../js/gfs-trash.js';
+import { BIN_COLUMN_IDS, recipeOf, asksApp, writable, snapshotOf, parseSnapshot, entryRecord, binFiles, restorePlan } from '../js/gfs-trash.js';
 import { readFiles } from '../js/explorer-model.js';
 import { publipostage } from './helpers.mjs';
 
@@ -22,6 +22,14 @@ test('la recette : `suppression.ligne: true` dit comment GFS retire et remet un 
   assert.equal(recipeOf({ ...spec, suppression: { ligne: false } }), null);
   assert.equal(recipeOf({ ...spec, suppression: {} }), null);
   assert.equal(recipeOf(null), null);
+});
+
+test('`suppression.appel: true` : l\'app ouverte est appelée avant que la ligne parte ; sans `ligne`, ou sans `appel`, GFS ne demande rien à l\'app', () => {
+  assert.equal(asksApp({ ...spec, suppression: { ligne: true, appel: true } }), true);
+  assert.equal(asksApp(spec), false, 'Publipostage+ : une ligne suffit');
+  assert.equal(asksApp({ ...spec, suppression: { ligne: true, appel: false } }), false);
+  assert.equal(asksApp({ ...spec, suppression: { appel: true } }), false, 'sans `ligne`, GFS ne retire rien : pas de recette');
+  assert.equal(asksApp(null), false);
 });
 
 test('les colonnes qu\'on peut écrire : celles de données que Grist rend, jamais `id`, jamais une colonne absente', () => {

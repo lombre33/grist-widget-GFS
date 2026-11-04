@@ -3,8 +3,9 @@
 // est commun à tous : la vérification qu'on peut écrire, la question avant ce qui ne s'annule pas (une fenêtre du widget), la phrase qui dit ce qui s'est passé, la liste relue. Un fichier
 // qu'aucun gardien ne connaît n'a pas de corbeille depuis GFS : l'explorateur le grise et dit pourquoi.
 //
-// Un gardien est : { manages(fichier) -> bool, lock() -> { text } | null (rien ne peut s'écrire), trash(fichier) -> Promise<bool>, restore(fichier) -> Promise<{ name, renamed } | null>,
-// empty(fichiers) -> Promise<nombre de fichiers supprimés pour de bon> }. Les gardiens écrivent seulement quand la personne l'a demandé (un geste de l'explorateur) ; aucun n'efface sans passer par
+// Un gardien est : { manages(fichier) -> bool, lock(fichier?, geste?) -> { text } | null (rien ne peut s'écrire), trash(fichier) -> Promise<bool | { said } | { declined }>, restore(fichier) -> Promise<{ name,
+// renamed } | null>, empty(fichiers) -> Promise<nombre de fichiers supprimés pour de bon> }. `said` : une phrase que l'app ajoute à celle de GFS ; `declined` : l'app n'a pas fermé le fichier, rien n'est écrit,
+// et sa phrase (peut-être vide) est dite ; un gardien dont le geste attend l'app ouverte a aussi `waitsForApp(fichier, geste) -> { text } | null` (js/app-files.js). Les gardiens écrivent seulement quand la personne l'a demandé (un geste de l'explorateur) ; aucun n'efface sans passer par
 // la corbeille, sauf `empty`, qui ne touche que des fichiers déjà à la corbeille. Une erreur d'un gardien qui porte `expected: true` est un refus voulu (la personne a refusé de créer une table, une
 // ligne ne se garde pas) : la phrase de l'explorateur l'explique, la console reste muette.
 
@@ -29,6 +30,12 @@ export class Trash {
 
   handles(file) { return this.managerOf(file) !== null; }
 
+  // Mettre ce fichier à la corbeille attend l'app ouverte (un fichier qui tient à plus qu'une ligne, contrats 2.4 `appel`) et elle ne l'est pas : { text } pour griser l'article et dire d'ouvrir l'app. Sinon null.
+  appLockOf(file) {
+    const manager = this.managerOf(file);
+    return manager && typeof manager.waitsForApp === 'function' ? manager.waitsForApp(file, 'trash') : null;
+  }
+
   // ---------- les gestes ----------
 
   // Met le fichier à la corbeille. Pas de question : la corbeille se vide à la main, et rien n'est perdu. Rend true quand le fichier y est.
@@ -36,10 +43,12 @@ export class Trash {
     const { t } = this.#opts;
     const name = nameOf(file, t);
     return this.#act(file, 'trash.failed', async manager => {
-      if (!(await manager.trash(file))) return { ok: false, text: t('trash.gone', { name }) };
+      const done = await manager.trash(file);
+      if (done && done.declined !== undefined) return { ok: false, text: done.declined };
+      if (!done) return { ok: false, text: t('trash.gone', { name }) };
       await this.#keepFolders(file);
-      return { ok: true, text: t('trash.moved', { name }) };
-    });
+      return { ok: true, text: [t('trash.moved', { name }), done.said].filter(Boolean).join(' ') };
+    }, null, 'trash');
   }
 
   // Sort le fichier de la corbeille. Le gardien dit s'il a fallu changer son nom (un autre fichier avait pris le sien).
@@ -105,17 +114,17 @@ export class Trash {
 
   // Un geste sur un fichier : le gardien doit pouvoir écrire (sinon la phrase dit pourquoi, rien n'est demandé) ; `confirm` (une fenêtre) est posée avant ce qui ne s'annule pas ; la phrase du
   // résultat est dite et la liste relue, même après un échec (une autre personne a pu changer les fichiers). Rend true quand le geste a abouti.
-  async #act(file, failKey, task, confirm = null) {
+  async #act(file, failKey, task, confirm = null, gesture = undefined) {
     const { t, notice, refresh, ask } = this.#opts;
     const manager = this.managerOf(file);
     if (!manager) return false;
-    const lock = manager.lock();
+    const lock = manager.lock(file, gesture);
     if (lock) { notice(lock.text); return false; }
     if (confirm && !(await ask({ ...confirm, cancelLabel: t('table.cancel'), safeFirst: true }))) return false;
     let ok = false;
     try {
       const said = await task(manager);
-      notice(said.text);
+      if (said.text) notice(said.text);
       ok = said.ok;
     } catch (error) {
       if (!(error && error.expected)) console.warn('GFS : le geste sur la corbeille a échoué', error); // un refus voulu (`expected`) est dit à la personne, pas à la console

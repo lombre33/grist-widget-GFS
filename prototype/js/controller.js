@@ -37,6 +37,7 @@ import { FilesStore } from './files-store.js';
 import { KeptFiles } from './kept-files.js';
 import { Trash } from './trash.js';
 import { AppFiles } from './app-files.js';
+import { activeAppCalls } from './app-calls.js';
 import { Copying } from './copying.js';
 import { ask } from './ask-window.js';
 import { askToClose, leaveQuestion } from './leave.js';
@@ -284,10 +285,10 @@ export class GfsController {
     });
   }
 
-  // Les fichiers des apps à la corbeille (js/app-files.js) : le gardien des tables que les manifestes disent savoir retirer et remettre (`suppression`) ; `GFS_Corbeille` naît avec l'accord de la personne.
+  // Les fichiers des apps à la corbeille et à la copie (js/app-files.js) : le gardien des tables que les manifestes disent savoir retirer, remettre et copier (`suppression`, `copie`) ; `GFS_Corbeille` naît avec l'accord de la personne.
   #buildAppFiles() {
     const consent = () => this.#ask({ title: this.t('trash.table.title'), message: this.t('trash.table.text'), confirmLabel: this.t('table.create'), cancelLabel: this.t('table.cancel') });
-    return new AppFiles({ port: this.port, apps: () => this.validApps(), consent, identity: () => this.identity, now: () => Date.now(), readonly: () => this.readonly, fullAccess: () => this.fullAccess, t: this.t });
+    return new AppFiles({ port: this.port, apps: () => this.validApps(), consent, identity: () => this.identity, now: () => Date.now(), readonly: () => this.readonly, fullAccess: () => this.fullAccess, t: this.t, appName: this.appName, ...activeAppCalls(() => this.session) }); // un fichier qui tient à plus qu'une ligne (contrats 2.4 `appel`) : l'app ouverte seule sait le fermer ou le copier
   }
 
   #buildExplorer() {

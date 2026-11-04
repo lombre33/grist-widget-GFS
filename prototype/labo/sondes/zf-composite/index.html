@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Sonde ZF</title>
+<!-- Politique de l'app sonde ZF : celle d'une app qui écrit dans sa table par le script d'API de Grist (adresse entière, 'unsafe-eval'), rien d'autre. -->
+<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'">
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+</head>
+<body>
+<h1>Sonde ZF : un fichier qui tient à plus qu'une ligne</h1>
+<p>Une app qui répond aux appels `supprimer` et `dupliquer` de GFS, comme Form+ après les consignes 020 et 021. Ce qu'elle a reçu est écrit dans <code>body[data-sonde]</code>, que le labo lit ; <code>body[data-supprimer]</code> et <code>body[data-dupliquer]</code> choisissent sa réponse.</p>
+<script src="composite.js"></script>
+</body>
+</html>

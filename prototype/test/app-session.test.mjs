@@ -119,3 +119,19 @@ test('l\'attente d\'une vraie app, et tout autre avertissement de GFS, sont touj
   assert.equal(isGfsWarning('GFS : sonde-o : contexte.lire refusé (GFS_REFUSE) : accès'), true, 'un autre avertissement d\'une sonde compte');
   assert.equal(isGfsWarning('Failed to load resource'), false, 'ce qui ne vient pas de GFS ne compte pas');
 });
+
+// Un fichier qui tient à plus qu'une ligne (contrats 5.4, points 10 et 11) : GFS demande à l'app ouverte de le fermer ou de le copier ; l'appel part par l'enveloppe, la réponse revient par elle.
+test('`supprimer` et `dupliquer` partent dans l\'enveloppe de GFS vers l\'app, et la réponse (ou l\'erreur) de l\'app revient à l\'appelant', async t => {
+  const { session, frames, route } = setup(t);
+  const sent = [];
+  frames[0].contentWindow.postMessage = message => sent.push(message);
+  const body = { fichier: { id: '7', type: 'formulaire' }, raison: 'corbeille' };
+  const deleting = session.deleteFile(body);
+  assert.deepEqual(sent[0], { gfs: 0, type: 'appel', id: 1, nom: 'supprimer', args: body });
+  route.handler({ gfs: 0, type: 'reponse', id: 1, data: { fait: true } });
+  assert.deepEqual(await deleting, { fait: true });
+  const copying = session.copyFile({ fichier: { id: '7', type: 'formulaire' }, nom: 'Inscription (1)' });
+  assert.deepEqual(sent[1], { gfs: 0, type: 'appel', id: 2, nom: 'dupliquer', args: { fichier: { id: '7', type: 'formulaire' }, nom: 'Inscription (1)' } });
+  route.handler({ gfs: 0, type: 'erreur', id: 2, code: 'GFS_INCONNU', message: 'inconnu' });
+  await assert.rejects(copying, { code: 'GFS_INCONNU', message: 'inconnu' });
+});

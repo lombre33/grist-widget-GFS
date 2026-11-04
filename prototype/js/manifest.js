@@ -60,11 +60,14 @@ function checkFiles(m, errors) {
   }
 }
 
-// Une recette (2.4 ; contrats 6.7) : comment GFS retire et remet un fichier de cette table (`suppression`), ou le copie (`copie`). `ligne: true` est le seul mode (un fichier est une ligne) ; `uniques` et
-// `exclusives` : des noms de colonnes ; `values` (`remettre` pour la suppression, `valeurs` pour la copie) : { colonne: valeur }.
+// Une recette (2.4 ; contrats 6.7) : comment GFS retire et remet un fichier de cette table (`suppression`), ou le copie (`copie`). `ligne: true` (un fichier est une ligne) est le mode de base ; `appel: true` dit que
+// l'app ouverte a aussi son mot (un fichier qui tient à plus qu'une ligne : `supprimer` avant de retirer la ligne, `dupliquer` à la place de la copie de la ligne, qui n'a alors pas besoin de `ligne`) ;
+// `uniques` et `exclusives` : des noms de colonnes ; `values` (`remettre` pour la suppression, `valeurs` pour la copie) : { colonne: valeur }.
 function checkRecipe(recipe, name, values, errors) {
   if (recipe === undefined) return;
-  if (!isObject(recipe) || recipe.ligne !== true) { errors.push(`fichiers[].${name}.ligne : true attendu`); return; }
+  const alone = name === 'copie' && isObject(recipe) && recipe.appel === true; // la copie par l'app n'a pas besoin de la ligne
+  if (!isObject(recipe) || (recipe.ligne !== true && !alone)) { errors.push(`fichiers[].${name}.ligne : true attendu`); return; }
+  if (recipe.appel !== undefined && typeof recipe.appel !== 'boolean') errors.push(`fichiers[].${name}.appel : true ou false attendu`);
   for (const key of ['uniques', 'exclusives']) {
     if (recipe[key] !== undefined && !(Array.isArray(recipe[key]) && recipe[key].every(isText))) errors.push(`fichiers[].${name}.${key} : liste de noms de colonnes attendue`);
   }

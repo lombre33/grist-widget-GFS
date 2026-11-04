@@ -1,4 +1,4 @@
-// Ctrl+Z pour la corbeille et la copie (js/explorer-undo.js) : la corbeille et la copie entourées déposent dans la pile le geste qui les défait ; supprimer pour de bon ne dépose rien.
+// Ctrl+Z et Ctrl+Y pour la corbeille et la copie (js/explorer-undo.js) : la corbeille et la copie entourées déposent dans la pile le geste qui les défait, et ce geste dépose le contraire (le rétablissement) ; supprimer pour de bon ne dépose rien.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { UndoStack } from '../js/undo-stack.js';
@@ -163,4 +163,66 @@ test('une copie dont l\'app ne sait pas supprimer les fichiers : Ctrl+Z dit de p
 test('la corbeille entourée garde la forme de l\'autre : handles, appLockOf', () => {
   const h = harness({ lock: { text: 'x' } });
   assert.deepEqual([h.bin.handles({}), h.bin.appLockOf({}), h.copying.handles({}), h.copying.appLockOf({})], [true, { text: 'x' }, true, null]);
+});
+
+test('Ctrl+Z d\'une suppression puis Ctrl+Y : le fichier retourne à la corbeille, puis Ctrl+Z le ramène encore', async () => {
+  const h = harness();
+  await h.bin.move(h.live[0]);
+  await h.stack.undo();
+  assert.deepEqual([h.live.map(item => item.name).sort(), h.trashed.length, h.stack.redoSize], [['Deux', 'Un'], 0, 1]);
+  await h.stack.redo();
+  assert.deepEqual([h.live.map(item => item.name), h.trashed.map(item => item.name), h.said.at(-1)], [['Deux'], ['Un'], 'à la corbeille Un']);
+  await h.stack.undo();
+  assert.deepEqual([h.live.map(item => item.name).sort(), h.trashed.length], [['Deux', 'Un'], 0]);
+});
+
+test('Ctrl+Z d\'une restauration puis Ctrl+Y : le fichier est de nouveau restauré, même sous une autre clé', async () => {
+  const h = harness({ restoreAs: 77 });
+  await h.bin.move(h.live[0]);
+  await h.bin.restore(h.trashed[0]); // restauré sous zf:77
+  await h.stack.undo(); // retourne à la corbeille
+  assert.deepEqual([h.live.some(item => item.key === 'zf:77'), h.trashed.length], [false, 1]);
+  await h.stack.redo();
+  assert.deepEqual([h.live.some(item => item.key === 'zf:77'), h.trashed.length, h.said.at(-1)], [true, 0, 'restauré Un']);
+});
+
+test('Ctrl+Z d\'une copie puis Ctrl+Y : la même copie sort de la corbeille ; un nouveau Ctrl+Z la remet', async () => {
+  const h = harness();
+  await h.copying.copy(h.live[0], '');
+  await h.stack.undo();
+  assert.deepEqual(h.live.map(item => item.name), ['Un', 'Deux']);
+  await h.stack.redo();
+  assert.deepEqual([h.live.map(item => item.name), h.trashed.length], [['Un', 'Deux', 'Copie de Un'], 0]);
+  await h.stack.undo();
+  assert.deepEqual([h.live.map(item => item.name), h.trashed.map(item => item.name)], [['Un', 'Deux'], ['Copie de Un']]);
+});
+
+test('un nouveau geste après Ctrl+Z vide le rétablissement : Ctrl+Y dit « Rien à rétablir »', async () => {
+  const h = harness();
+  await h.bin.move(h.live[0]);
+  await h.stack.undo();
+  await h.bin.move(h.live.find(item => item.name === 'Deux'));
+  await h.stack.redo();
+  assert.equal(h.said.at(-1), 'redo.nothing');
+  assert.deepEqual(h.live.map(item => item.name), ['Un'], 'rien n\'est refait');
+});
+
+test('Ctrl+Y d\'une suppression que la personne a refaite à la main (le fichier n\'est plus vivant) : « n\'est plus là », rien n\'est écrit', async () => {
+  const h = harness();
+  await h.bin.move(h.live[0]);
+  await h.stack.undo(); // revenu
+  h.live.splice(h.live.findIndex(item => item.name === 'Un'), 1); // disparu depuis
+  h.calls.length = 0;
+  await h.stack.redo();
+  assert.deepEqual([h.said.at(-1), h.calls], ['redo.gone[Un]', []]);
+});
+
+test('remettre à la corbeille (Ctrl+Y d\'une suppression) attend l\'app ouverte : la phrase le dit, rien n\'est écrit, et le geste reste à refaire ; restaurer (Ctrl+Z) n\'en a pas besoin', async () => {
+  const lock = { text: 'Ouvre Form+ pour continuer.' };
+  const h = harness({ lock });
+  await h.bin.move(h.live[0]);
+  await h.stack.undo(); // restaurer : pas besoin de l'app
+  h.calls.length = 0;
+  await h.stack.redo();
+  assert.deepEqual([h.said.at(-1), h.calls, h.stack.redoSize], [lock.text, [], 1]);
 });

@@ -513,3 +513,124 @@ test('Ctrl+Z dans un document qui ne s\'enregistre plus : rien n\'est écrit, la
   await filing.undoStack.undo();
   assert.deepEqual([log.notices, log.writes], [[t('mod.readonly')], []]);
 });
+
+// ---------- Ctrl+Y : ce que Ctrl+Z a défait se refait, avec sa phrase « Rétabli » ----------
+
+test('Ctrl+Y après Ctrl+Z d\'une étoile : l\'étoile revient, la phrase le dit ; Ctrl+Z puis Ctrl+Y ne tournent pas en rond, un cran par appui', async () => {
+  const { filing, log, current } = harness();
+  await filing.togglePin(file(1));
+  assert.equal(current()[0].pinned, true);
+  await filing.undoStack.undo();
+  assert.equal(current()[0].pinned, false);
+  await filing.undoStack.redo();
+  assert.equal(current()[0].pinned, true);
+  assert.equal(log.notices.at(-1), t('redo.pinned', { name: 'Modèle 1' }));
+  await filing.undoStack.redo();
+  assert.equal(log.notices.at(-1), t('redo.nothing'));
+  await filing.undoStack.undo();
+  assert.equal(current()[0].pinned, false, 'le rétablissement a déposé de quoi se défaire de nouveau');
+  assert.equal(log.notices.at(-1), t('undo.unpinned', { name: 'Modèle 1' }));
+});
+
+test('Ctrl+Y après avoir retiré une étoile : « n\'est plus épinglé »', async () => {
+  const { filing, log, current } = harness({ files: [{ ...file(1), pinned: true }] });
+  await filing.togglePin(file(1));
+  await filing.undoStack.undo();
+  assert.equal(current()[0].pinned, true);
+  await filing.undoStack.redo();
+  assert.equal([current()[0].pinned, log.notices.at(-1)].join('|'), `false|${t('redo.unpinned', { name: 'Modèle 1' })}`);
+});
+
+test('Ctrl+Y après un déplacement : le fichier retourne dans le dossier où il était allé, « Moi » dit la racine', async () => {
+  const { filing, log, current } = harness({ answers: ['Z'] });
+  await filing.moveFile(file(2, 'A/B'));
+  await filing.undoStack.undo();
+  assert.equal(current()[1].folder, 'A/B');
+  await filing.undoStack.redo();
+  assert.equal(current()[1].folder, 'Z');
+  assert.equal(log.notices.at(-1), t('redo.moved', { name: 'Modèle 2', folder: 'Z' }));
+  await filing.moveFileTo(file(4, 'X'), '');
+  await filing.undoStack.undo();
+  await filing.undoStack.redo();
+  assert.equal(current()[3].folder, '');
+  assert.equal(log.notices.at(-1), t('redo.moved', { name: 'Modèle 4', folder: t('ex.me') }));
+});
+
+test('Ctrl+Y après un déplacement qui laissait un dossier vide : le dossier gardé revient aussi', async () => {
+  const { filing, current, kept } = harness();
+  await filing.moveFileTo(file(4, 'X'), 'Y');
+  await filing.undoStack.undo();
+  assert.deepEqual(kept(), []);
+  await filing.undoStack.redo();
+  assert.deepEqual([current()[3].folder, kept()], ['Y', ['X']]);
+});
+
+test('Ctrl+Y après un dossier créé, supprimé, déplacé ou renommé : chacun se refait, avec sa phrase', async () => {
+  const created = harness({ answers: ['Neuf'] });
+  await created.filing.newFolder('');
+  await created.filing.undoStack.undo();
+  assert.deepEqual(created.kept(), []);
+  await created.filing.undoStack.redo();
+  assert.deepEqual(created.kept(), ['Neuf']);
+  assert.equal(created.log.notices.at(-1), t('redo.folderCreated', { name: 'Neuf' }));
+  const deleted = harness({ spare: ['Vide'] });
+  await deleted.filing.deleteFolder('Vide');
+  await deleted.filing.undoStack.undo();
+  assert.deepEqual(deleted.kept(), ['Vide']);
+  await deleted.filing.undoStack.redo();
+  assert.deepEqual(deleted.kept(), []);
+  assert.equal(deleted.log.notices.at(-1), t('redo.folderDeleted', { name: 'Vide' }));
+  const moved = harness();
+  await moved.filing.moveFolderTo('A/B', 'Q');
+  const after = moved.current().map(each => each.folder);
+  await moved.filing.undoStack.undo();
+  await moved.filing.undoStack.redo();
+  assert.deepEqual(moved.current().map(each => each.folder), after);
+  assert.equal(moved.log.notices.at(-1), t('redo.folder', { name: 'B' }));
+});
+
+test('Ctrl+Y après un renommage : le nom d\'après revient, la phrase le dit ; Ctrl+Z puis Ctrl+Y puis Ctrl+Z défait encore', async () => {
+  const { filing, log, current } = harness({ answers: ['Neuf'] });
+  await filing.rename(file(2));
+  await filing.undoStack.undo();
+  assert.equal(current()[1].name, 'Modèle 2');
+  await filing.undoStack.redo();
+  assert.equal(current()[1].name, 'Neuf');
+  assert.equal(log.notices.at(-1), t('redo.renamed', { name: 'Neuf' }));
+  await filing.undoStack.undo();
+  assert.equal(current()[1].name, 'Modèle 2');
+});
+
+test('Ctrl+Y d\'un renommage : un fichier qui a changé depuis, ou qui n\'est plus là, n\'est pas touché, et la phrase dit « rétabli » (pas « annulé »)', async () => {
+  const drifted = harness({ answers: ['Neuf'] });
+  await drifted.filing.rename(file(2));
+  await drifted.filing.undoStack.undo();
+  drifted.current()[1].name = 'Par une autre personne';
+  await drifted.filing.undoStack.redo();
+  assert.equal(drifted.log.notices.at(-1), t('redo.changed', { name: 'Modèle 2' }));
+  const gone = harness({ answers: ['Neuf'] });
+  await gone.filing.rename(file(2));
+  await gone.filing.undoStack.undo();
+  gone.current().splice(1, 1);
+  await gone.filing.undoStack.redo();
+  assert.equal(gone.log.notices.at(-1), t('redo.gone', { name: 'Modèle 2' }));
+});
+
+test('un geste neuf après Ctrl+Z vide le rétablissement : Ctrl+Y n\'écrit rien', async () => {
+  const { filing, log, current } = harness();
+  await filing.togglePin(file(1));
+  await filing.undoStack.undo();
+  await filing.togglePin(file(2));
+  const writes = log.writes.length;
+  await filing.undoStack.redo();
+  assert.equal(log.notices.at(-1), t('redo.nothing'));
+  assert.deepEqual([log.writes.length, current()[0].pinned, current()[1].pinned], [writes, false, true]);
+});
+
+test('Ctrl+Y dans un document qui ne s\'enregistre plus : rien n\'est écrit, la personne lit pourquoi', async () => {
+  const lock = harness({ block: t('mod.readonly') });
+  lock.filing.undoStack.push({ run: () => { lock.filing.undoStack.push({ run: () => lock.filing.togglePin(file(1)) }); return 'défait'; } });
+  await lock.filing.undoStack.undo();
+  await lock.filing.undoStack.redo();
+  assert.deepEqual([lock.log.notices.at(-1), lock.log.writes], [t('mod.readonly'), []]);
+});

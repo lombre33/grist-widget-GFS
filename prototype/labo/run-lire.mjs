@@ -15,8 +15,8 @@ import { serve } from './lab-server.mjs';
 import { chromium, say, check } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { createI18n } from '../js/i18n.js';
-import { makePdf, pageTitle, ACCENTED_LINE } from './pdf-fixture.mjs';
-import { PAGE_PORT, sha256, openGfs, waitForNames, waitForToast, importPdf, shot, rowOf, openRowMenu, pressGreyed, contrastProblems, waitFor, settle, closeModules } from './lab-pdf.mjs';
+import { pageTitle, ACCENTED_LINE } from './pdf-fixture.mjs';
+import { PAGE_PORT, sha256, openGfs, importSamples, waitForToast, shot, rowOf, openRowMenu, pressGreyed, contrastProblems, waitFor, settle, closeModules } from './lab-pdf.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -26,11 +26,9 @@ const EXTENSION = lang === 'fr' ? 'Lecture de PDF' : 'PDF reading';
 const APP = lang === 'fr' ? 'Sonde Y' : 'Probe Y';
 const PROBE_URL = `http://127.0.0.1:${PAGE_PORT}/prototype/labo/sondes/y-lire-pdf/`;
 const ACCEPTS = { fichier: 'controller.js', de: 'const ACCEPTS_OPEN = Object.freeze({', vers: `const ACCEPTS_OPEN = Object.freeze({ 'sonde-y': { lire: ${ready} },` };
-
-const pdfFile = (name, pages, title) => {
-  const buffer = makePdf({ pages, title });
-  return { file: { name, mimeType: 'application/pdf', buffer }, hash: sha256(buffer), size: buffer.length, pages, title };
-};
+// Publipostage+ lit elle aussi les PDF de GFS (`actions.lire` de son manifeste, consigne 044) et passe avant la sonde dans le catalogue : GFS la choisirait, faute d'un lecteur prêt, comme « la première
+// déclarée ». Pour mesurer la sonde SEULE, le labo retire cette ligne au manifeste de Publipostage+ (la vraie Publipostage+ est mesurée par run-lire-publipostage.mjs).
+const NO_PUBLIPOSTAGE = { chemin: '/prototype/manifestes/publipostage.json', de: '"lire": [{ "type": "pdf", "extension": "lecture-pdf" }],', vers: '' };
 
 // Ce que dit la sonde (body[data-sonde]) et son cadre : l'app est dans un sous-cadre isolé (sandbox sans allow-same-origin) du site de GFS.
 const probeFrame = page => page.frames().find(frame => frame.url().startsWith(PROBE_URL) && !frame.isDetached());
@@ -41,22 +39,6 @@ const focusedRow = frame => frame.evaluate(() => (document.activeElement && docu
 const openButton = frame => frame.locator('.ex-foot .btn').first();
 const buttonState = async frame => ({ label: (await openButton(frame).textContent()).trim(), greyed: (await openButton(frame).getAttribute('aria-disabled')) === 'true' });
 const menuItems = frame => frame.locator('.menu .menu-item').evaluateAll(nodes => nodes.map(node => ({ label: node.querySelector('.menu-label').textContent, greyed: node.getAttribute('aria-disabled') === 'true' })));
-
-// ----- 0. Un PDF dans GFS (lot 1).
-async function importFirst(run) {
-  const { page, frame } = run;
-  say('--- 0. un PDF dans GFS ---');
-  run.facture = pdfFile('Facture.pdf', 3, 'Facture');
-  await importPdf(page, frame, run.facture.file);
-  await frame.locator('.mod.ask').waitFor();
-  await frame.locator('[data-fk="ask-yes"]').click();
-  check('le PDF de 3 pages est dans l\'explorateur', JSON.stringify(await waitForNames(frame, ['Facture.pdf'])) === '["Facture.pdf"]');
-  await waitForToast(frame, /GFS/);
-  run.id = (await run.rest.rows('GFS_Fichiers')).find(row => row.Nom === 'Facture.pdf').Identifiant;
-  run.devis = pdfFile('Devis.pdf', 1, 'Devis');
-  await importPdf(page, frame, run.devis.file);
-  await waitForNames(frame, ['Devis.pdf', 'Facture.pdf']);
-}
 
 // ----- 1. Avant l'app : « Lire » grisé, la raison, ce qui débloque.
 async function playBeforeApp(run) {
@@ -98,8 +80,8 @@ async function installReader(run) {
   check('le clic ouvre la fenêtre sur la ligne de l\'extension', await focusedRow(frame) === 'ext:sonde-y/lecture-pdf', await focusedRow(frame));
   await frame.locator('[data-fk="ext:sonde-y/lecture-pdf"]').check();
   await settle(page, frame);
-  const hint = (await frame.locator('.mr', { has: frame.locator('[data-ext="lecture-pdf"]') }).locator('.rd', { has: frame.locator('input[value="cdn"]') }).locator('.rd-hint').innerText()).trim();
-  check('la copie de GFS est le seul mode de pdf.js (le CDN est grisé avec sa raison)', await frame.locator('[data-ext="lecture-pdf"]').isChecked() && hint.length > 0, hint);
+  const hint = (await frame.locator('.mr', { has: frame.locator('[data-parent="sonde-y"][data-ext="lecture-pdf"]') }).locator('.rd', { has: frame.locator('input[value="cdn"]') }).locator('.rd-hint').innerText()).trim();
+  check('la copie de GFS est le seul mode de pdf.js (le CDN est grisé avec sa raison)', await frame.locator('[data-parent="sonde-y"][data-ext="lecture-pdf"]').isChecked() && hint.length > 0, hint);
   await shot(frame, 'lire-4-extension');
   await closeModules(page, frame);
 }
@@ -254,9 +236,9 @@ const pages = createServer(serve(process.env.REPO_DIR, undefined, openConnectIn(
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
 try {
   const context = await newContext(browser, server, { colorScheme: scheme });
-  const run = await openGfs(context, { lang, probes: ['y'], patches: [ACCEPTS] });
+  const run = await openGfs(context, { lang, probes: ['y'], patches: [ACCEPTS, NO_PUBLIPOSTAGE] });
   check(`GFS est à 700 × 400 dans le vrai Grist (${lang}, ${scheme})`, Math.abs(run.box.width - 700) <= 1 && Math.abs(run.box.height - 400) <= 1, run.box);
-  await importFirst(run);
+  await importSamples(run);
   if (!ready) await playNotYet(run);
   else {
     await playBeforeApp(run);

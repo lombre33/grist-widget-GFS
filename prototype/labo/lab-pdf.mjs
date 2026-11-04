@@ -2,22 +2,37 @@
 // la vraie souris et au vrai clavier, et ce que le serveur retient (les tables, les lignes, les pièces jointes) lu par l'API REST avec la session de la personne.
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
-import { SHOTS, withProbes, routePatches, say } from './lab-common.mjs';
+import { SHOTS, withProbes, routePatches, mirrorCdns, say, check } from './lab-common.mjs';
 import { createDocument, addWidget, docIdOf } from './lab-serveur.mjs';
+import { makePdf } from './pdf-fixture.mjs';
 
 export const PAGE_PORT = 8917;
 export const GFS = `http://127.0.0.1:${PAGE_PORT}/prototype/index.html`;
 
 // Deux messages de la console qui ne viennent pas d'un défaut de GFS, présents depuis toujours et attendus : le script d'API de Grist pose sa feuille de thème en ligne et la politique de
-// GFS (`style-src 'self'`) la refuse, et le premier cadre, ouvert sans accès, ne peut pas lire le nom du document (la personne donne l'accès complet ensuite).
-export const KNOWN_MESSAGES = [/grist-plugin-api\.js:\d+ Applying inline style violates/, /GFS : le nom du document est illisible ErrorWithCode: Access not granted/];
+// GFS (`style-src 'self'`) la refuse (Chromium le dit « Applying inline style violates… » ou « Refused to apply inline style because it violates… » selon sa version), et le premier cadre, ouvert sans accès, ne peut pas lire le nom du document (la personne donne l'accès complet ensuite).
+export const KNOWN_MESSAGES = [/grist-plugin-api\.js:\d+ (Applying inline style violates|Refused to apply inline style because it violates)/, /GFS : le nom du document est illisible ErrorWithCode: Access not granted/];
 
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 
+// Le Chromium du cloud (141) n'a pas encore `getOrInsert` ni `getOrInsertComputed` de Map et de WeakMap (Chrome 145, Firefox 144, Safari 26.2 : caniuse), que pdf.js 6 attend : sans elles, la
+// première page ne se dessine pas et Publipostage+ dit « Ce navigateur est trop ancien pour lire un PDF ». Le labo les pose (la même fonction que l'essai de Publipostage+) pour mesurer tout le reste ;
+// `LAB_NAVIGATEUR_ANCIEN=1` ne les pose pas : c'est alors ce que voit la personne d'un navigateur ancien (un Firefox 140) qui est mesuré.
+const addModernMethods = () => {
+  for (const type of [Map, WeakMap]) {
+    if (!type.prototype.getOrInsert) Object.defineProperty(type.prototype, 'getOrInsert', { configurable: true, writable: true, value(key, value) { if (!this.has(key)) this.set(key, value); return this.get(key); } });
+    if (!type.prototype.getOrInsertComputed) Object.defineProperty(type.prototype, 'getOrInsertComputed', { configurable: true, writable: true, value(key, compute) { if (!this.has(key)) this.set(key, compute(key)); return this.get(key); } });
+  }
+};
+export const oldBrowser = process.env.LAB_NAVIGATEUR_ANCIEN === '1';
+
 // La personne a ajouté GFS à la page « Clients » avec l'accès complet : le cadre de GFS prêt, sa première fenêtre (le choix des apps) refermée, le panneau à 700 × 400.
 // `probes` : les lettres des sondes (labo/sondes/) que cet essai ajoute au catalogue, `patches` : des fichiers de GFS remplacés pour cet essai seulement (lab-common.mjs, routePatches).
-export async function openGfs(context, { lang = 'fr', probes = null, patches = [] } = {}) {
+// `mirrors` : l'essai ouvre une VRAIE app (Publipostage+), qui demande ses bibliothèques à des CDN que le cloud n'atteint pas : le miroir local les rend (lab-common.mjs, mirrorCdns), le script de l'API
+// des widgets restant celui du serveur.
+export async function openGfs(context, { lang = 'fr', probes = null, patches = [], mirrors = false } = {}) {
   const page = await context.newPage();
+  if (!oldBrowser) await page.addInitScript(addModernMethods);
   if (probes) {
     await page.route(/\/prototype\/js\/catalogue\.js(\?|$)/, async route => {
       const response = await route.fetch();
@@ -25,6 +40,7 @@ export async function openGfs(context, { lang = 'fr', probes = null, patches = [
     });
   }
   await routePatches(context.browser(), page, patches);
+  if (mirrors) await mirrorCdns(page, { lang, port: PAGE_PORT, pluginApi: false });
   // Ce que GFS dit dans la console (avertissements et erreurs), et toute violation de politique de sécurité ; les messages de Grist lui-même ne comptent pas.
   const problems = [];
   const mine = message => message.location().url.startsWith(new URL(GFS).origin) || /Content Security Policy|Refused to/.test(message.text());
@@ -109,6 +125,31 @@ export async function settle(page, frame) {
   }
 }
 export const closeModules = async (page, frame) => { await page.keyboard.press('Escape'); await frame.locator('.mod').waitFor({ state: 'hidden' }); };
+
+// ---------- les PDF d'essai ----------
+
+// Un PDF d'essai de `pages` pages dont chaque page porte `title` : son fichier (pour le sélecteur), l'empreinte de ses octets et sa taille.
+export const pdfFile = (name, pages, title) => {
+  const buffer = makePdf({ pages, title });
+  return { file: { name, mimeType: 'application/pdf', buffer }, hash: sha256(buffer), size: buffer.length, pages, title };
+};
+
+// Deux PDF dans GFS (lot 1) : « Facture.pdf » (3 pages), puis « Devis.pdf » (1 page). Le premier fait naître la table de GFS, avec l'accord de la personne. `run` reçoit `facture`, `devis` et `id`
+// (l'identifiant que GFS a donné à la facture).
+export async function importSamples(run) {
+  const { page, frame } = run;
+  say('--- 0. un PDF dans GFS ---');
+  run.facture = pdfFile('Facture.pdf', 3, 'Facture');
+  await importPdf(page, frame, run.facture.file);
+  await frame.locator('.mod.ask').waitFor();
+  await frame.locator('[data-fk="ask-yes"]').click();
+  check('le PDF de 3 pages est dans l\'explorateur', JSON.stringify(await waitForNames(frame, ['Facture.pdf'])) === '["Facture.pdf"]');
+  await waitForToast(frame, /GFS/);
+  run.id = (await run.rest.rows('GFS_Fichiers')).find(row => row.Nom === 'Facture.pdf').Identifiant;
+  run.devis = pdfFile('Devis.pdf', 1, 'Devis');
+  await importPdf(page, frame, run.devis.file);
+  await waitForNames(frame, ['Devis.pdf', 'Facture.pdf']);
+}
 
 // ---------- l'explorateur ----------
 

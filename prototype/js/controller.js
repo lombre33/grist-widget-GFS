@@ -47,7 +47,7 @@ const NOTICE_MS = 6000;
 // de l'ouverture, consigne 035 de Publipostage+) ; `lire` : lire le PDF que GFS lui passe (`lecture` de l'ouverture, contrats 5.4, point 8). Ce qu'une app ne sait pas, GFS ouvre l'app sur son
 // modèle habituel et le dit ; un format qu'elle ne reçoit pas encore est grisé dans « Importer » (un PDF qu'elle ne lit pas encore, dans « Lire »), et le sélecteur de fichier ne s'ouvre pas pour
 // rien. Une app qui le sait passe à `true` ici (puis la ligne disparaît avec le catalogue provisoire).
-const ACCEPTS_OPEN = Object.freeze({ publipostage: { fichier: true, nouveau: true, importer: true }, form: { fichier: true, nouveau: true }, automation: { fichier: false, nouveau: false } });
+const ACCEPTS_OPEN = Object.freeze({ publipostage: { fichier: true, nouveau: true, importer: true, lire: true }, form: { fichier: true, nouveau: true }, automation: { fichier: false, nouveau: false } });
 
 // Provisoire (étape 2) : les apps qui ne se retirent pas, comme dans la maquette (Publipostage+ ne se décoche pas).
 export const ALWAYS_ON = Object.freeze(['publipostage']);

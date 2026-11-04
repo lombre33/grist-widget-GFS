@@ -125,6 +125,18 @@
       "poids": 471,
       "dossier": "extensions/diapositives/",
       "pointsEntree": [{ "genre": "type", "id": "presentation" }, { "genre": "menu", "id": "nouveau" }]
+    },
+    {
+      "id": "lecture-pdf",
+      "nom": { "fr": "Lecture de PDF", "en": "PDF reading" },
+      "texte": {
+        "fr": "Lit un PDF dans le mode Lecture de l'app, avec sa barre d'outils et ses réglages d'affichage.",
+        "en": "Reads a PDF in the app's Reading mode, with its toolbar and display settings."
+      },
+      "icone": "read",
+      "poids": 17,
+      "dossier": "extensions/lecture-pdf/",
+      "bibliotheques": [{ "id": "pdfjs", "version": "1.0.0" }]
     }
   ],
   "actions": {
@@ -135,6 +147,7 @@
       { "valeur": "markdown", "type": "document", "nom": { "fr": "Markdown", "en": "Markdown" }, "extensions": [".md", ".markdown", ".mdown", ".mkd", ".txt"] },
       { "valeur": "powerpoint", "type": "presentation", "nom": { "fr": "PowerPoint", "en": "PowerPoint" }, "extensions": [".pptx", ".ppsx", ".potx"] }
     ],
+    "lire": [{ "type": "pdf", "extension": "lecture-pdf" }],
     "inserer": { "produit": [], "recoit": [] }
   }
 }

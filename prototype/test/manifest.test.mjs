@@ -247,8 +247,8 @@ test('le poids annoncé de chaque extension est la taille de son dossier dans l\
       compared++;
     }
   }
-  // Sous-module non récupéré : rien à comparer. Récupéré, les trois extensions de Publipostage+ le sont.
-  assert.ok(compared === 0 || compared >= 3, `${compared} extension(s) comparée(s)`);
+  // Sous-module non récupéré : rien à comparer. Récupéré, les quatre extensions de Publipostage+ le sont.
+  assert.ok(compared === 0 || compared >= 4, `${compared} extension(s) comparée(s)`);
 });
 
 // « Nouveau > Importer » (contrats 2.7, point 4) : les formats qu'une app reçoit d'un autre logiciel, chacun avec le type qu'il crée.
@@ -281,12 +281,14 @@ test('contrats 2.7 et 2.8 : un format importé mal formé invalide le manifeste'
 // Lire ce que GFS garde (contrats 2.7, point 5) : les types de fichiers (le PDF) qu'une app sait lire, et l'extension de l'app qui les lit.
 test('contrats 2.7, point 5 : une app déclare le type de fichier que GFS garde et qu\'elle lit, avec l\'extension qui le lit', () => {
   const m = publipostage();
-  m.extensions.push({ id: 'lecture-pdf', nom: { fr: 'Lecture de PDF', en: 'PDF reading' }, dossier: 'extensions/lecture-pdf/', bibliotheques: [{ id: 'pdfjs', version: '1.0.0' }] });
-  m.actions.lire = [{ type: 'pdf', extension: 'lecture-pdf' }];
+  assert.deepEqual(m.actions.lire, [{ type: 'pdf', extension: 'lecture-pdf' }], 'Publipostage+ lit le PDF par son extension « Lecture de PDF » (sa demande de la consigne 040)');
+  assert.ok(m.extensions.some(extension => extension.id === 'lecture-pdf' && extension.bibliotheques.some(lib => lib.id === 'pdfjs')));
   assert.deepEqual(validateManifest(m), { ok: true, errors: [] });
   delete m.actions.lire[0].extension;
   assert.deepEqual(validateManifest(m), { ok: true, errors: [] }, 'sans extension, c\'est le socle de l\'app qui lit');
-  assert.deepEqual(validateManifest(publipostage()), { ok: true, errors: [] }, 'une app qui ne lit rien n\'a pas à le dire');
+  const none = publipostage();
+  delete none.actions.lire;
+  assert.deepEqual(validateManifest(none), { ok: true, errors: [] }, 'une app qui ne lit rien n\'a pas à le dire');
 });
 
 test('contrats 2.7 et 2.8 : un type lu mal formé invalide le manifeste', () => {
@@ -295,7 +297,7 @@ test('contrats 2.7 et 2.8 : un type lu mal formé invalide le manifeste', () => 
   assert.match(bad(m => { m.actions.lire = ['pdf']; }), /un type de fichier attendu/);
   assert.match(bad(m => { m.actions.lire = [{ type: 'PDF' }]; }), /un type de fichier attendu/);
   assert.match(bad(m => { m.actions.lire = [{ type: 'pdf' }, { type: 'pdf' }]; }), /actions\.lire pdf : type déjà déclaré/);
-  assert.match(bad(m => { m.actions.lire = [{ type: 'pdf', extension: 'lecture-pdf' }]; }), /actions\.lire pdf : l'extension lecture-pdf n'est pas déclarée dans extensions/);
+  assert.match(bad(m => { m.extensions = m.extensions.filter(extension => extension.id !== 'lecture-pdf'); }), /actions\.lire pdf : l'extension lecture-pdf n'est pas déclarée dans extensions/);
   assert.match(bad(m => { m.actions.lire = [{ type: 'pdf', extension: 'diapositives' }]; delete m.extensions[2]; m.extensions.length = 2; }), /l'extension diapositives n'est pas déclarée/);
 });
 

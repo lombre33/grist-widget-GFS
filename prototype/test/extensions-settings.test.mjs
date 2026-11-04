@@ -170,7 +170,7 @@ test('une extension dont la bibliothèque n\'a pas de CDN : la copie de GFS est 
 
 test('le manifeste et le catalogue réels s\'accordent : chaque extension a ses bibliothèques, l\'édition collaborative a ses deux modes, le CDN par défaut', () => {
   const real = readCatalogue(readJson('bibliotheques/catalogue.json'));
-  assert.deepEqual(pub.extensions.map(extension => extension.id), ['graphique', 'edition', 'diapositives']);
+  assert.deepEqual(pub.extensions.map(extension => extension.id), ['graphique', 'edition', 'diapositives', 'lecture-pdf']);
   assert.deepEqual(pub.extensions.flatMap(extension => missingLibraries(extension, real)), [], 'aucune extension déclarée n\'est grisée par le catalogue');
   const rows = extensionRows(pub, { extensions: ['graphique', 'edition'], modes: {} }, real);
   const edition = rows.find(row => row.extension.id === 'edition');
@@ -191,6 +191,24 @@ test('le manifeste et le catalogue réels s\'accordent : chaque extension a ses 
   assert.equal(local.src, 'https://exemple.test/gfs/vendor/edition-live/1.0.0/edition-live.js');
   assert.equal(local.integrite, given.integrite, 'les deux modes portent la même empreinte : un seul fichier, deux adresses');
   assert.equal(local.forme, 'module');
+});
+
+// « Lecture de PDF » de Publipostage+ (sa demande de la consigne 040, déclarée le 04/11) : pdf.js vient de la copie de GFS seule, en un fichier de forme « module ».
+test('Publipostage+ : « Lecture de PDF » reçoit pdf.js de la copie de GFS seule, jamais d\'un CDN, et n\'est pas grisée', () => {
+  const real = readCatalogue(readJson('bibliotheques/catalogue.json'));
+  const reading = pub.extensions.find(extension => extension.id === 'lecture-pdf');
+  assert.deepEqual(reading.bibliotheques, [{ id: 'pdfjs', version: '1.0.0' }]);
+  assert.deepEqual(missingLibraries(reading, real), [], 'le catalogue a pdf.js');
+  const row = extensionRows(pub, { extensions: ['lecture-pdf'], modes: {} }, real).find(item => item.extension.id === 'lecture-pdf');
+  assert.equal(row.greyed, false);
+  assert.equal(row.noCdn, true, 'pdf.js n\'a pas d\'adresse de CDN');
+  assert.equal(row.mode, 'vendorise', 'sans CDN, la copie de GFS sert');
+  const state = extensionsState(pub, { extensions: ['lecture-pdf'], modes: {} }, real, 'https://exemple.test/gfs/');
+  assert.deepEqual(state.extensions, ['lecture-pdf']);
+  assert.deepEqual(Object.keys(state.bibliotheques), ['pdfjs']);
+  assert.equal(state.bibliotheques.pdfjs.forme, 'module');
+  assert.equal(state.bibliotheques.pdfjs.src, 'https://exemple.test/gfs/vendor/pdfjs/1.0.0/pdfjs.js');
+  assert.match(state.bibliotheques.pdfjs.integrite, /^sha384-[A-Za-z0-9+/]{64}$/);
 });
 
 // Une extension sans bibliothèque (les diapositives de Publipostage+ : un type de fichier et une ligne de menu, du code qui reste dans l'app).

@@ -187,38 +187,17 @@ export async function routePatches(browser, page, patches) {
   }
 }
 
-// `newsSeen` : le labo dit la fenêtre des nouveautés de Publipostage+ déjà vue (plus bas) ; faux pour la passe qui la mesure et pour celle qui relit tout le stockage de GFS.
-export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', width = 1280, height = 800, probes = false, frameAttributes = null, patches = [], newsSeen = true, user = null } = {}) {
-  // L'interface de Grist reste en anglais (les gestes du labo cherchent ses libellés) ; la langue de GFS passe par l'adresse du widget (lab-setup.mjs).
-  // La politique de sécurité du contenu de GFS et des apps est ENFORCÉE (LAB_BYPASS_CSP=1 pour la suspendre : un diagnostic, jamais une mesure).
-  const context = await browser.newContext({ viewport: { width, height }, colorScheme, bypassCSP: process.env.LAB_BYPASS_CSP === '1', locale: 'en-US' });
-  const page = await context.newPage();
-  if (probes) {
-    await page.route(/\/prototype\/js\/catalogue\.js(\?|$)/, async route => {
-      const response = await route.fetch();
-      await route.fulfill({ response, body: withProbes(await response.text(), Array.isArray(probes) ? probes : undefined) });
-    });
-  }
-  if (frameAttributes) {
-    await page.route(/\/prototype\/js\/frames\.js(\?|$)/, async route => {
-      const response = await route.fetch();
-      await route.fulfill({ response, body: withFrameAttributes(await response.text(), frameAttributes) });
-    });
-    // `frameSrc` : la source de `frame-src` dans la politique de sécurité de la page de GFS (les adresses où un sous-cadre peut aller), pour la mesurer ; elle remplace la ligne entière.
-    if (frameAttributes.frameSrc) {
-      await page.route(/\/prototype\/index\.html(\?|$)/, async route => {
-        const response = await route.fetch();
-        await route.fulfill({ response, body: (await response.text()).replace(/frame-src [^;"]*;/, `frame-src ${frameAttributes.frameSrc};`) });
-      });
-    }
-  }
-  await routePatches(browser, page, patches);
-  page.on('pageerror', e => { if (process.env.LAB_CONSOLE) say('[pageerror]', e.message.slice(0, 200)); });
-  page.on('console', m => { if (process.env.LAB_CONSOLE && (m.type() === 'error' || process.env.LAB_CONSOLE === 'all')) say('[console.' + m.type() + ']', `(${m.location().url.replace(/^http:\/\/127\.0\.0\.1:\d+/, '')}:${m.location().lineNumber})`, m.text().slice(0, 240)); });
+// Ce que la vraie Publipostage+ demande au monde extérieur, rendu sans réseau (le cloud n'atteint ni esm.sh, ni cdnjs, ni jsDelivr) : le miroir local des CDN et de la copie de GFS de chaque
+// bibliothèque d'extension, le script de l'API des widgets, une galerie de widgets vide ; puis, pour les pages du site de GFS, les réglages de départ que l'app ne peut pas se donner seule.
+// `port` : celui du site de GFS que l'essai mesure (8911 : grist-static ; PAGE_PORT de lab-pdf.mjs : le vrai serveur). `pluginApi` : faux quand le serveur mesuré donne lui-même son script
+// de l'API des widgets (lab-serveur.mjs, `newContext`) : la route du contexte le rend alors. `newsSeen` : voir `newLabPage`.
+export async function mirrorCdns(page, { lang = 'fr', port = 8911, pluginApi = true, newsSeen = true } = {}) {
+  const origin = `http://127.0.0.1:${port}`;
   await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, async route => {
     const url = route.request().url();
     try {
       if (/docs\.getgrist\.com\/grist-plugin-api\.js/.test(url)) {
+        if (!pluginApi) return route.fallback();
         return route.fulfill({ status: 200, contentType: 'text/javascript; charset=utf-8', headers: { 'Access-Control-Allow-Origin': '*' }, body: await readFile(join(LAB, 'node_modules/grist-static/dist/grist-plugin-api.js'), 'utf8') });
       }
       // La galerie de widgets de Grist (gristlabs.github.io) n'est pas joignable d'ici : une galerie vide évite la bannière d'erreur de Grist sur les
@@ -250,7 +229,7 @@ export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', 
   // script que GFS sert lui-même (`vendor/`, la copie de GFS d'une bibliothèque d'extension) : ses octets sont ceux que le catalogue empreint, le navigateur
   // contrôle donc l'empreinte pour de bon, y compris pour un module dans un sous-cadre à origine opaque, et sauf à une adresse de CDN du catalogue de GFS
   // (`EXACT_ADDRESSES`), dont le miroir rend les octets exacts.
-  await page.addInitScript((exact) => {
+  await page.addInitScript(({ exact, gfs }) => {
     try {
       if (location.pathname.includes('/labo/sondes/')) return;
       const real = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'integrity');
@@ -258,7 +237,7 @@ export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', 
         const src = script.getAttribute('src');
         try {
           const url = new URL(src, location.href);
-          return Boolean(src) && (url.origin === 'http://127.0.0.1:8911' || exact.includes(url.origin + url.pathname));
+          return Boolean(src) && (url.origin === gfs || exact.includes(url.origin + url.pathname));
         } catch (e) { return false; }
       };
       Object.defineProperty(HTMLScriptElement.prototype, 'integrity', {
@@ -267,8 +246,58 @@ export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', 
         set(value) { if (fromGfs(this)) real.set.call(this, value); },
       });
     } catch (e) { /* déjà posé */ }
-  }, EXACT_ADDRESSES);
-  await page.addInitScript((l) => { try { if (location.port === '8911') localStorage.setItem('pp_lang', l); } catch (e) { /* stockage indisponible */ } }, lang);
+  }, { exact: EXACT_ADDRESSES, gfs: origin });
+  await page.addInitScript(({ l, p }) => { try { if (location.port === p) localStorage.setItem('pp_lang', l); } catch (e) { /* stockage indisponible */ } }, { l: lang, p: String(port) });
+  // La fenêtre des nouveautés de Publipostage+ s'ouvre toute seule, une fois par personne (`1f336ac`, la clé `pp_news_seen`) : chaque passe part d'un navigateur neuf, elle s'ouvrirait donc
+  // par-dessus ce que la passe mesure. Le labo la dit vue, chez GFS (`gfs.stockage.publipostage.`) et pour l'app seule, avec une version plus récente que toute version de l'app.
+  if (newsSeen) {
+    await page.addInitScript((p) => {
+      try {
+        if (location.port !== p) return;
+        for (const key of ['gfs.stockage.publipostage.pp_news_seen', 'pp_news_seen']) if (localStorage.getItem(key) === null) localStorage.setItem(key, '9999');
+      } catch (e) { /* stockage indisponible : le cadre d'une app chez GFS */ }
+    }, String(port));
+  }
+  // Une app dans son sous-cadre n'a pas de stockage (sans allow-same-origin) : elle suit la langue du navigateur. Le labo la donne à ces cadres seulement.
+  await page.addInitScript(({ l, p }) => {
+    try {
+      if (location.port !== p || !location.pathname.includes('/apps/')) return;
+      const languages = l === 'en' ? ['en-GB', 'en'] : ['fr-FR', 'fr'];
+      Object.defineProperty(Navigator.prototype, 'languages', { configurable: true, get: () => languages });
+      Object.defineProperty(Navigator.prototype, 'language', { configurable: true, get: () => languages[0] });
+    } catch (e) { /* déjà posé */ }
+  }, { l: lang, p: String(port) });
+}
+
+// `newsSeen` : le labo dit la fenêtre des nouveautés de Publipostage+ déjà vue (plus bas) ; faux pour la passe qui la mesure et pour celle qui relit tout le stockage de GFS.
+export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', width = 1280, height = 800, probes = false, frameAttributes = null, patches = [], newsSeen = true, user = null } = {}) {
+  // L'interface de Grist reste en anglais (les gestes du labo cherchent ses libellés) ; la langue de GFS passe par l'adresse du widget (lab-setup.mjs).
+  // La politique de sécurité du contenu de GFS et des apps est ENFORCÉE (LAB_BYPASS_CSP=1 pour la suspendre : un diagnostic, jamais une mesure).
+  const context = await browser.newContext({ viewport: { width, height }, colorScheme, bypassCSP: process.env.LAB_BYPASS_CSP === '1', locale: 'en-US' });
+  const page = await context.newPage();
+  if (probes) {
+    await page.route(/\/prototype\/js\/catalogue\.js(\?|$)/, async route => {
+      const response = await route.fetch();
+      await route.fulfill({ response, body: withProbes(await response.text(), Array.isArray(probes) ? probes : undefined) });
+    });
+  }
+  if (frameAttributes) {
+    await page.route(/\/prototype\/js\/frames\.js(\?|$)/, async route => {
+      const response = await route.fetch();
+      await route.fulfill({ response, body: withFrameAttributes(await response.text(), frameAttributes) });
+    });
+    // `frameSrc` : la source de `frame-src` dans la politique de sécurité de la page de GFS (les adresses où un sous-cadre peut aller), pour la mesurer ; elle remplace la ligne entière.
+    if (frameAttributes.frameSrc) {
+      await page.route(/\/prototype\/index\.html(\?|$)/, async route => {
+        const response = await route.fetch();
+        await route.fulfill({ response, body: (await response.text()).replace(/frame-src [^;"]*;/, `frame-src ${frameAttributes.frameSrc};`) });
+      });
+    }
+  }
+  await routePatches(browser, page, patches);
+  page.on('pageerror', e => { if (process.env.LAB_CONSOLE) say('[pageerror]', e.message.slice(0, 200)); });
+  page.on('console', m => { if (process.env.LAB_CONSOLE && (m.type() === 'error' || process.env.LAB_CONSOLE === 'all')) say('[console.' + m.type() + ']', `(${m.location().url.replace(/^http:\/\/127\.0\.0\.1:\d+/, '')}:${m.location().lineNumber})`, m.text().slice(0, 240)); });
+  await mirrorCdns(page, { lang, newsSeen });
   // La personne que Grist donne au moteur de données. grist-static (0.1.6) ouvre le document sans compte : la formule `user.Email` y rend None. Le labo ne change que cela : l'argument `user` de
   // `apply_user_actions` (l'objet que les formules lisent), à la frontière du moteur, de la page de Grist à son bac à sable Python. La formule, le moteur et les actions sont ceux de Grist :
   // une colonne à formule déclenchée `user.Email` se remplit pour de bon, avec l'adresse de la personne du moment (`window.__labUser`, changée par `lab.setUser`).
@@ -294,25 +323,6 @@ export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', 
       };
     } catch (e) { /* déjà posé */ }
   }, user);
-  // La fenêtre des nouveautés de Publipostage+ s'ouvre toute seule, une fois par personne (`1f336ac`, la clé `pp_news_seen`) : chaque passe part d'un navigateur neuf, elle s'ouvrirait donc
-  // par-dessus ce que la passe mesure. Le labo la dit vue, chez GFS (`gfs.stockage.publipostage.`) et pour l'app seule, avec une version plus récente que toute version de l'app.
-  if (newsSeen) {
-    await page.addInitScript(() => {
-      try {
-        if (location.port !== '8911') return;
-        for (const key of ['gfs.stockage.publipostage.pp_news_seen', 'pp_news_seen']) if (localStorage.getItem(key) === null) localStorage.setItem(key, '9999');
-      } catch (e) { /* stockage indisponible : le cadre d'une app chez GFS */ }
-    });
-  }
-  // Une app dans son sous-cadre n'a pas de stockage (sans allow-same-origin) : elle suit la langue du navigateur. Le labo la donne à ces cadres seulement.
-  await page.addInitScript((l) => {
-    try {
-      if (location.port !== '8911' || !location.pathname.includes('/apps/')) return;
-      const languages = l === 'en' ? ['en-GB', 'en'] : ['fr-FR', 'fr'];
-      Object.defineProperty(Navigator.prototype, 'languages', { configurable: true, get: () => languages });
-      Object.defineProperty(Navigator.prototype, 'language', { configurable: true, get: () => languages[0] });
-    } catch (e) { /* déjà posé */ }
-  }, lang);
   return { context, page };
 }
 

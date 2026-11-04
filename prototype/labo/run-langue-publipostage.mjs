@@ -11,7 +11,7 @@
 //      d'avant, « Ne pas enregistrer » recharge sans garder ce qui a été tapé, « Enregistrer » enregistre d'abord ; un changement qui redit la langue de l'app ne pose aucune question.
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
-import { say, check } from './lab-common.mjs';
+import { say, check, constat } from './lab-common.mjs';
 import { chooseLanguage } from './reglages-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
@@ -20,8 +20,8 @@ const other = lang === 'fr' ? 'en' : 'fr';
 const run = `langue-publipostage-${lang}-${scheme}`;
 const NAMES = { fr: 'Français', en: 'English' };
 const WORDS = {
-  fr: { buttons: ['Annuler', 'Ne pas enregistrer', 'Enregistrer'], note: 'La langue se choisit dans Grist Factory Suite (bouton Langue de l’explorateur).', theme: 'Thème', unsaved: 'Modifications non enregistrées' },
-  en: { buttons: ['Cancel', 'Don’t save', 'Save'], note: 'The language is chosen in Grist Factory Suite (Language button in the explorer).', theme: 'Theme', unsaved: 'Unsaved changes' },
+  fr: { buttons: ['Annuler', 'Ne pas enregistrer', 'Enregistrer'], noteStart: 'La langue se choisit dans Grist Factory Suite', place: 'Réglages', gone: 'bouton Langue', theme: 'Thème', unsaved: 'Modifications non enregistrées' },
+  en: { buttons: ['Cancel', 'Don’t save', 'Save'], noteStart: 'The language is chosen in Grist Factory Suite', place: 'Settings', gone: 'Language button', theme: 'Theme', unsaved: 'Unsaved changes' },
 };
 const USUAL = 'Feuille d’émargement'; // le modèle ★ du document d'essai : celui que l'app ouvre d'elle-même
 const OPEN = 'Contrat de prestation'; // celui que la personne ouvre : la page doit le retrouver après chaque rechargement voulu
@@ -172,7 +172,9 @@ let settings = await settingsState();
 say('Réglages, onglet Langue :', settings);
 check('Réglages > Langue : les deux cases sont grisées (jamais masquées), celle de la langue de GFS est cochée, les cases ne répondent pas à la souris',
   settings.radios.length === 2 && settings.radios.every(r => r.disabled && r.greyed && r.described === 'settings-language-gfs-note') && settings.radios.find(r => r.checked).value === lang && settings.labelsShown, settings);
-check('et la phrase dit où choisir (« bouton Langue de l\'explorateur »), dans la langue de l\'app, tenue dans le panneau', settings.note === WORDS[lang].note && settings.noteShown, settings);
+check('et la phrase dit que la langue se choisit dans GFS, dans la langue de l\'app, tenue dans le panneau', Boolean(settings.note) && settings.note.startsWith(WORDS[lang].noteStart) && settings.noteShown, settings);
+// Depuis le 04/11 l'explorateur n'a plus de bouton « Langue » : la ligne « Langue » est dans le menu « Réglages ». Tant que l'app nomme l'ancien bouton, c'est à dire par une consigne (049), pas un échec de GFS.
+constat('et elle nomme le menu « Réglages » de GFS, non un bouton « Langue » de l\'explorateur qui n\'existe plus (consigne 049)', Boolean(settings.note) && settings.note.includes(WORDS[lang].place) && !settings.note.includes(WORDS[lang].gone), settings.note);
 await lab.shotPanel(run, '1-reglages-gries', frame);
 // La vraie souris sur la case grisée (Playwright refuse de cliquer un contrôle grisé : on pose le pointeur nous-mêmes).
 const greyedBox = await app.locator('label:has(input[name="settings-lang"][value="' + other + '"])').boundingBox();
@@ -198,7 +200,7 @@ check('rien n\'est écrit dans le document par ce changement de langue (ni modè
 await closeExplorer();
 settings = await settingsState();
 check('l\'app rechargée grise toujours ses cases et dit où choisir, dans la nouvelle langue',
-  settings.radios.every(r => r.disabled && r.greyed) && settings.radios.find(r => r.checked).value === other && settings.note === WORDS[other].note && settings.noteShown, settings);
+  settings.radios.every(r => r.disabled && r.greyed) && settings.radios.find(r => r.checked).value === other && Boolean(settings.note) && settings.note.startsWith(WORDS[other].noteStart) && settings.noteShown, settings);
 await lab.shotPanel(run, '2-reglages-autre-langue', frame);
 await closeSettings();
 

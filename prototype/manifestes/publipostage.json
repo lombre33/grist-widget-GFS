@@ -150,6 +150,7 @@
       { "valeur": "powerpoint", "type": "presentation", "nom": { "fr": "PowerPoint", "en": "PowerPoint" }, "extensions": [".pptx", ".ppsx", ".potx"] }
     ],
     "lire": [{ "type": "pdf", "extension": "lecture-pdf" }],
+    "ranger": ["pdf"],
     "inserer": { "produit": [], "recoit": [] }
   }
 }

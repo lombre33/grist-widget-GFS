@@ -338,11 +338,12 @@ test('contrats 2.7 et 2.8 : un type lu mal formé invalide le manifeste', () => 
 // Ranger chez GFS (contrats 2.7, point 6) : les types de fichiers (le PDF) qu'une app demande à GFS de garder pour elle.
 test('contrats 2.7, point 6 : une app déclare les types de fichiers qu\'elle demande à GFS de ranger', () => {
   const m = publipostage();
-  m.actions.ranger = ['pdf'];
+  assert.deepEqual(m.actions.ranger, ['pdf'], 'Publipostage+ range ses PDF chez GFS : sa consigne 043 est faite (sans cette ligne, GFS répond GFS_REFUSE et l\'app télécharge le PDF en le disant)');
   assert.deepEqual(validateManifest(m), { ok: true, errors: [] });
   m.actions.ranger = [];
   assert.deepEqual(validateManifest(m), { ok: true, errors: [] }, 'une liste vide ne déclare rien');
-  assert.deepEqual(validateManifest(publipostage()), { ok: true, errors: [] }, 'une app qui ne range rien n\'a pas à le dire');
+  delete m.actions.ranger;
+  assert.deepEqual(validateManifest(m), { ok: true, errors: [] }, 'une app qui ne range rien n\'a pas à le dire');
 });
 
 test('contrats 2.7 et 2.8 : un type rangé mal formé invalide le manifeste', () => {

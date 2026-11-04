@@ -10,13 +10,12 @@
 //   7. une app ouverte après le choix (GFS rechargé, Néon retenu) : le contexte porte l'ambiance, posée avant que `ready` se règle ; aucun événement ;
 //   8. aucun refus de la politique de sécurité du contenu, aucune erreur de page, aucun avertissement de GFS.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark, KIT_DIR=<dossier du kit> (par défaut le sous-module prototype/kit : ce que GFS référence).
-import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
-import { say, check, contrastAudit } from './lab-common.mjs';
+import { say, check, contrastAudit, serveKit } from './lab-common.mjs';
 import { themeGestures } from './theme-gestes.mjs';
 
 const KIT = process.env.KIT_DIR || fileURLToPath(new URL('../kit', import.meta.url));
@@ -35,14 +34,8 @@ const { page } = lab;
 const noted = [];
 page.on('console', m => { if (m.type() === 'warning' || m.type() === 'error') noted.push({ text: m.text().slice(0, 160), url: m.location().url || '' }); });
 page.on('pageerror', error => noted.push({ text: error.message, url: 'pageerror' }));
-// Le kit, servi sous /kit/ à l'adresse de GFS (même origine que la page de la sonde ; l'en-tête CORS ouvert comme celui de GitHub Pages, que demande un cadre d'origine opaque).
-await page.route('http://127.0.0.1:8911/kit/**', async route => {
-  const path = new URL(route.request().url()).pathname.replace(/^\/kit\//, '');
-  try {
-    const body = await readFile(join(KIT, path));
-    await route.fulfill({ status: 200, contentType: path.endsWith('.js') ? 'text/javascript; charset=utf-8' : 'text/css; charset=utf-8', headers: { 'access-control-allow-origin': '*', 'cache-control': 'no-store' }, body });
-  } catch { await route.fulfill({ status: 404, body: 'not found' }); }
-});
+// Le kit, servi sous /kit/ à l'adresse de GFS (lab-common.mjs : même origine que la page de la sonde, l'en-tête CORS ouvert comme celui de GitHub Pages).
+await serveKit(page, KIT);
 await lab.fitPanel(undefined, 700, 400);
 say('semis :', await seedFiles(lab.frame));
 await lab.frame.evaluate(() => location.reload());

@@ -12,7 +12,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `bb8a8dd` | 04/11/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `521a8ac` | 03/11/2026 | GPL 3.0 |
 | Tuesday (nom de travail ; « Thusday » dans les anciens documents) | `lombre33/grist-wisget-tuesday` | `consignes/tuesday/` | `09ed14c` | 03/11/2026 | GPL 3.0 |
-| Calendar+ (id GFS `calendrier`, pas encore au catalogue ; le même projet que Tuesday, un fil de plus) | `lombre33/grist-widget-calendar-plus` | aucun dossier : la 006 de `consignes/tuesday/` lui parle | `b96b04d` | 03/11/2026 | GPL 3.0 (`LICENSE` au socle) |
+| Calendar+ (id GFS `calendrier`, pas encore au catalogue ; le même projet que Tuesday, un fil de plus) | `lombre33/grist-widget-calendar-plus` | aucun dossier : les 006, 007, 009, 010 et 012 de `consignes/tuesday/` lui parlent | `531e0cd` | 04/11/2026 | GPL 3.0 (`LICENSE` au socle) |
 
 ## Lus pour référence (pas des apps de GFS)
 
@@ -686,6 +686,10 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   **nouvelle : Calendar+ dit son module prêt, « version 2, avec les heures »** (`531e0cd`, après la première version `5043986` ; vues Semaine et Jour, blocs horaires au quart d'heure ; 81 essais Node et 31 sous
   Chromium), le déplacement dans le kit que la 006 de Tuesday promettait (voie A) ; Tuesday garde la demande d'entrée au catalogue « à demander quand l'app sera prête ». Publipostage+ n'a pas encore lu la 044
   ni la 045.
+- Calendar+ et le calendrier du kit (04/11, après le « Oui, maintenant » du porteur à 07:50 UTC sur la carte « Ranger le calendrier de Calendar+ dans le kit maintenant ? »). Lu à `531e0cd` : le module (version 2 avec les heures) et la page
+  `GFS-ETAT.md`, mise à jour le 04/11 à ce commit (006, 007, 009 et 010 « lues » ; « Module prêt » dans « Demandes à GFS » ; aucune question). Le sommet du dépôt, `2f69651`, n'est pas lu : « Dernier commit lu » est `531e0cd`. **Fait** : le module est rangé dans le
+  kit 0.8.0 (commits `e442f11` à `336baf4` ; le porteur pose l'étiquette `v0.8.0`), mesuré dans un vrai Grist et sous Firefox (`faits-verifies.md`, section 25), `prototype/kit` avance à `336baf4` (commit à part). **Consignes posées** : 011 à Tuesday (monter le module du kit,
+  retirer la grille provisoire) et 012 à Calendar+ (retirer sa copie, monter celle du kit ; changer le module = une demande à GFS), toutes deux dans `consignes/tuesday/`. Tuesday : inchangée (`87720d5`, page `0b8bca7`). Calendar+ n'a pas encore lu la 012.
 - « Nouveau > Importer » (22/10, le porteur : « les imports possibles par Publipostage+ (Excel, docx, pptx…) il faudrait qu'ils soient aussi
   disponibles dans le menu Nouveau, sous-menu Import ? », puis sa réponse « Sous-menu Importer ») : GFS livre le sous-menu. Le
   manifeste déclare les formats (`actions.importer`, contrats 2.7, point 4), GFS ouvre le sélecteur de fichier et rend le `File` à l'app

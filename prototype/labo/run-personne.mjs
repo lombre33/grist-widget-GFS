@@ -10,12 +10,11 @@
 //   5. X (kit) : `GfsLink.identity()` rend l'adresse, `onIdentity` est rappelé une fois à l'arrivée du contexte.
 //   6. Une autre personne (Ben) ouvre le même document : V reçoit l'adresse de Ben, jamais celle d'Ana ; l'anonyme de Grist, une personne sans adresse et un document en lecture seule : `null`.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark, KIT_DIR=<dossier du dépôt du kit>.
-import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
-import { say, check } from './lab-common.mjs';
+import { say, check, serveKit } from './lab-common.mjs';
 
 const KIT = process.env.KIT_DIR || '/home/claude/grist-factory-kit';
 if (!existsSync(join(KIT, 'js/gfs-link.js'))) {
@@ -39,14 +38,8 @@ const { page } = lab;
 const warnings = [];
 page.on('console', m => { if ((m.type() === 'warning' || m.type() === 'error') && m.text().startsWith('GFS')) warnings.push(m.text()); });
 page.on('pageerror', error => warnings.push(error.message));
-// Le kit, servi sous /kit/ à l'adresse de GFS (même origine que la page de la sonde ; l'en-tête CORS ouvert comme celui de GitHub Pages, que demande un cadre d'origine opaque).
-await page.route('http://127.0.0.1:8911/kit/**', async route => {
-  const path = new URL(route.request().url()).pathname.replace(/^\/kit\//, '');
-  try {
-    const body = await readFile(join(KIT, path));
-    await route.fulfill({ status: 200, contentType: path.endsWith('.js') ? 'text/javascript; charset=utf-8' : 'text/plain', headers: { 'access-control-allow-origin': '*', 'cache-control': 'no-store' }, body });
-  } catch { await route.fulfill({ status: 404, body: 'not found' }); }
-});
+// Le kit, servi sous /kit/ à l'adresse de GFS (lab-common.mjs : même origine que la page de la sonde, l'en-tête CORS ouvert comme celui de GitHub Pages).
+await serveKit(page, KIT);
 await lab.fitPanel(undefined, 700, 400);
 say('semis :', await seedFiles(lab.frame));
 

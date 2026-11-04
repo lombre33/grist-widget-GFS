@@ -14,7 +14,7 @@
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark ; LAB_LIVE=1 pour jouer le site en ligne de l'app au lieu de sa copie.
 import { startLab } from './lab-setup.mjs';
 import { seedFormDesigner } from './seed.mjs';
-import { say, check } from './lab-common.mjs';
+import { say, check, constat } from './lab-common.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -50,7 +50,6 @@ const restart = async () => {
   await page.waitForTimeout(800);
 };
 // Ce que Form+ n'a pas encore corrigé : dit, sans faire échouer le rejeu (consigne 012) ; « OK » dès qu'elle l'aura fait, et le moment de le passer en `check`.
-const constat = (label, ok, detail) => (ok ? say('OK    ', label) : say('CONSTAT', label, detail));
 const toast = async () => ((await frame.locator('#toast').isVisible()) ? (await frame.locator('#toast').innerText()).replace(/\s+/g, ' ') : '');
 const explorerHidden = () => frame.locator('.ex').isHidden();
 // La table n'existe qu'à partir du premier formulaire : « absente » le dit.

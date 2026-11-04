@@ -1138,3 +1138,34 @@ sombre (46 vérifications dans chacune, aucune en échec), Chromium 141 ; puis d
 - **Ctrl, Alt et Méta** : aucune combinaison n'est liée (`js/explorer-keys.js`, essai Node) : Ctrl+D est le marque-page de Firefox, Ctrl+F sa recherche dans la page, Alt+← la page précédente ; Ctrl+C, Ctrl+X et Ctrl+V sont réservés à dupliquer et déplacer (lot 3).
 - **Pas mesuré** : le clavier **avant** tout clic dans le panneau (Grist garde alors le clavier pour sa grille : à vérifier chez le porteur) ; l'instance de la DINUM ; le Firefox du porteur et son clavier (touche « Menu », Maj+F10 sous Windows) ; un document en
   lecture seule joué dans le vrai serveur (le refus `trash.readonly` est mesuré dans les essais Node) ; la corbeille des fichiers **des apps** (lot 2).
+
+## 25. Le calendrier du kit : ce que le vrai Grist et Firefox ont mesuré (04/11)
+
+Le module de calendrier de Calendar+ (version 2 avec les heures, `531e0cd`) est rangé dans le kit 0.8.0 (`336baf4` ; consignes 006, 011 et 012). Joué par `labo/run-calendrier-kit.mjs` dans un **vrai Grist** (grist-static), panneau à 700 × 400, souris
+réelle, en français et en anglais, en clair et en sombre (une passe par combinaison, quatre passes), Chromium 141 seulement. La sonde ZC (`labo/sondes/z-calendrier/`, `sonde-zc.json`) est une app écrite avec le kit : `creerCalendrier`, `GfsLink`,
+`Ambiance` ; elle tourne dans le sous-cadre isolé de GFS (sans `allow-same-origin`) sous la politique de sécurité d'une app hébergée (ni style ni image en ligne), et le kit lui est servi depuis `prototype/kit` (ou `KIT_DIR`). **41 vérifications et
+un constat par passe, aucune en échec** ; le même cadre du début à la fin (jamais reconstruit), aucune requête hors du labo, aucune erreur de page, aucun refus de la politique de sécurité du contenu.
+
+- **Le glisser-déposer HTML5 marche à la vraie souris dans le sous-cadre isolé** (la crainte de la consigne 007 : mesuré, plus seulement lu dans le code). Un événement du lundi 9 au mercredi 11 : l'hôte reçoit `{ id, debut, fin }` et l'événement est
+  affiché au 11. Une barre du mardi 3 au jeudi 5, saisie par son premier jour et déposée un mardi : du 10 au 12, l'écart est gardé. Une puce du plateau « Sans date » déposée sur le vendredi 20 : l'événement est là, la puce a quitté le plateau.
+  Un bloc horaire du jeudi 12:00 déposé sur le vendredi : 12:15 à 14:15 (au quart d'heure, la durée gardée). L'hôte qui répond `false`, ou qui rejette (une erreur), ramène l'événement au jour exact où il était (le 9, pas seulement la même
+  semaine : l'essai regarde la cellule qui porte la barre). En lecture seule, rien ne glisse (aucun `draggable`), la raison est dite, un glissement à la souris n'envoie rien.
+- **Les couleurs de Grist passent par le CSSOM** sous `style-src 'self'` : fond `#dff5e8` et texte `#146c48` lus sur l'événement coloré. **La barre de GFS** (34 × 124 px au bord gauche, zone `{ x: 0, y: 134, largeur: 42, hauteur: 132 }` à 700 × 400) :
+  l'hôte la réserve en gardant le bord libre, le calendrier fait 658 px de large et commence à droite d'elle, sans rien de recouvert.
+- **L'ambiance** (les quatre : Pop, Papier, Brut, Néon, dans les deux modes) : la page, le calendrier et le repère d'aujourd'hui prennent `--bg`, `--surface` et `--accent-solid` ; **chaque texte garde 4,5:1 au moins** (mois et plateau 77 textes mesurés,
+  liste d'un jour 5, saisie rapide 1, semaine 24, jour 13, par combinaison : aucun en échec) ; une couleur libre (`#6d28d9`) est suivie ; « Revenir à Grist Factory » rend les couleurs de la charte. Les couleurs que Grist donne à un événement
+  sont une donnée de la personne : elles ne sont pas mesurées.
+- **Un piège de mesure** : l'audit de contraste des autres rejeux cherche le fond d'un texte dans ses ancêtres. Dans le calendrier, le numéro d'un jour est posé sur une cellule sœur (`.cal-fond`) : l'audit lisait le fond de la page, et un contraste
+  de 1,11:1 passait. Le mode « par point » de `contrastAudit` (`document.elementsFromPoint` au centre du texte) lit le fond que la personne voit ; contrôle négatif fait : il attrape 1,11:1 là où l'audit par ancêtres se tait.
+- **Deux constats, rien n'est changé** (le module est celui de Calendar+) : à 658 px, la barre d'outils tient sur une ligne en Mois et en Semaine (45 px) et passe sur deux en vue Jour (81 px : « Sans date » descend et les boutons de vue se déplacent) ;
+  et la sixième semaine du mois (30 novembre au 6 décembre) est coupée par le bas du panneau (428 px pour 400 de fenêtre), elle se rejoint à la molette, jusqu'au bout. Un `:hover` qui semblait resté sur un bouton de vue n'est pas un défaut : la barre
+  se remet en page sous un pointeur qui ne bouge pas.
+- **Firefox 159 sans écran** (`test/firefox.mjs`, `test/mesures-calendrier.mjs` joué par `interfaces-firefox.test.mjs`, sur la page d'essai du kit), français et anglais, clair et sombre : le mois (titre, 42 jours, six semaines, barre d'outils sur une
+  ligne, aucun événement hors de la grille, « +2 »), un clic sur un événement qui le dit à l'hôte, la liste d'un jour et Échap, la saisie rapide (`ajouter`), la semaine (blocs de 9 h 30 et de 10 h à leur place, côte à côte, ouverture vers 7 h). Le glisser-déposer :
+  **le départ** (`dragstart`, effet « move », un texte) **et l'accueil de la cible** (`dragover` annulé, effet « move ») pour un événement du mois, une puce du plateau et un bloc horaire. **Le dépôt lui-même n'est pas mesuré** : ni le Firefox sans écran
+  ni le même sous Xvfb n'achèvent un glissement lancé par des actions de pointeur BiDi (`dragstart`, `dragenter`, `dragover` partent ; ni `drop`, ni `dragend`, ni `mouseup` après le lâcher), **même sur une page de deux éléments** (contrôle) : limite du banc,
+  pas du module. À essayer dans le vrai Firefox du porteur.
+- **Ce que Firefox a montré dans le module, corrigé** : sur ce banc, un gestionnaire de `dragover` qui ne fait qu'annuler l'événement lit l'effet « none » (contrôle sur deux éléments), un gestionnaire qui pose `dropEffect = 'move'` lit « move » ; le mois le posait
+  (`accepterDepots`), pas la grille horaire, et un dépôt dont l'effet est « none » n'a pas lieu (spécification HTML). Kit `336baf4` : les deux grilles passent par `accepterLeDepot`, un essai Chromium (en échec sur l'ancien code : effet « none ») et la mesure Firefox
+  le gardent. **Non su** : si un Firefox sur un vrai système, qui suggère l'effet, acceptait déjà le dépôt sur la grille horaire.
+- **Pas mesuré** : le dépôt sous Firefox, l'instance de la DINUM, Tuesday et Calendar+ avec le module du kit (la première n'est pas au catalogue, la seconde garde sa copie jusqu'à la consigne 012), un calendrier de milliers de lignes.

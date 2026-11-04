@@ -1,0 +1,27 @@
+{
+  "contrat": 0,
+  "id": "sonde-zc",
+  "nom": {
+    "fr": "Sonde ZC",
+    "en": "Probe ZC"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Une app écrite avec le kit commun (le calendrier, kit 0.8.0) qui monte le module comme le fera Tuesday, sous la politique d'une app hébergée",
+    "en": "An app written with the common kit (the calendar, kit 0.8.0) that mounts the module as Tuesday will, under the policy of a hosted app"
+  },
+  "icone": "doc",
+  "entree": "index.html",
+  "tables": {
+    "prefixe": "SondeZc_"
+  },
+  "reglages": [],
+  "permissions": {
+    "acces": "none"
+  },
+  "extensions": [],
+  "actions": {
+    "ouvrir": [],
+    "choisir": []
+  }
+}

@@ -2,7 +2,7 @@ import { createRequire } from 'node:module';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readCatalogue } from '../js/libraries.js';
 const require = createRequire(import.meta.url);
@@ -18,6 +18,8 @@ export const SHOTS = join(LAB, 'shots');
 export const say = (...parts) => process.stdout.write(parts.map(x => (typeof x === 'string' ? x : JSON.stringify(x))).join(' ') + '\n');
 // Une vérification : une ligne « OK » ou « ÉCHEC », et le code de sortie du script suit.
 export const check = (label, ok, detail = '') => { say(ok ? 'OK    ' : 'ÉCHEC ', label, detail === '' ? '' : (typeof detail === 'string' ? detail : JSON.stringify(detail))); if (!ok) process.exitCode = 1; };
+// Un CONSTAT dit ce que l'app (ou le module du kit) fait en deçà de ce qu'on attend sans que GFS y puisse rien (à dire par une consigne) : il ne fait pas échouer la passe.
+export const constat = (label, ok, detail) => (ok ? say('OK    ', label) : say('CONSTAT', label, detail));
 
 // Le miroir local des CDN (build-mirror.sh) : le conteneur du cloud n'atteint pas esm.sh, cdnjs ni jsDelivr. Absent, rien ne change.
 const MIRROR = join(LAB, 'mirror');
@@ -123,9 +125,20 @@ export function importMenu(page, frameOf, word) {
   return { sub, subItem, newButton, parent, openNew, openImport, mouseOn };
 }
 
+// Le kit commun (le sous-module prototype/kit, ou le dossier que désigne `KIT_DIR`) servi sous /kit/ à l'adresse de GFS : même origine que la page d'une sonde, et l'en-tête CORS ouvert comme celui de
+// GitHub Pages, que demande un cadre d'origine opaque. Une feuille de style est servie `text/css` : une page en mode standard refuse celle qui ne l'est pas.
+const KIT_TYPES = { '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' };
+export const serveKit = (page, kit) => page.route('http://127.0.0.1:8911/kit/**', async route => {
+  const path = new URL(route.request().url()).pathname.replace(/^\/kit\//, '');
+  try {
+    const body = await readFile(join(kit, path));
+    await route.fulfill({ status: 200, contentType: KIT_TYPES[extname(path)] || 'text/plain', headers: { 'access-control-allow-origin': '*', 'cache-control': 'no-store' }, body });
+  } catch { await route.fulfill({ status: 404, body: 'not found' }); }
+});
+
 // Les sondes du labo (labo/sondes/) : des apps d'essai que GFS ne connaît pas. Elles entrent dans le catalogue SEULEMENT pour la page du labo qui le demande
 // (le fichier publié n'est pas modifié, les autres essais ne les voient pas) : la page reçoit un catalogue.js complété, après les apps du catalogue.
-const PROBE_FOLDERS = { a: 'a-self', b: 'b-host', c: 'c-hash', d: 'd-texte', e: 'e-blob', f: 'f-texte-ferme', g: 'g-capacites', h: 'h-courtier', i: 'i-lecture', k: 'q-liens', l: 'l-langue', o: 'o-ouvrir', p: 'p-importer', q: 'q-liens', r: 'r-barre', s: 's-stockage', t: 's-stockage', u: 'u-glisser', v: 'v-personne', w: 'v-personne', x: 'v-personne', m: 'm-ambiance', n: 'n-ambiance-kit', y: 'y-lire-pdf', z: 'z-ranger-pdf', zk: 'z-ranger-pdf' };
+const PROBE_FOLDERS = { a: 'a-self', b: 'b-host', c: 'c-hash', d: 'd-texte', e: 'e-blob', f: 'f-texte-ferme', g: 'g-capacites', h: 'h-courtier', i: 'i-lecture', k: 'q-liens', l: 'l-langue', o: 'o-ouvrir', p: 'p-importer', q: 'q-liens', r: 'r-barre', s: 's-stockage', t: 's-stockage', u: 'u-glisser', v: 'v-personne', w: 'v-personne', x: 'v-personne', m: 'm-ambiance', n: 'n-ambiance-kit', y: 'y-lire-pdf', z: 'z-ranger-pdf', zk: 'z-ranger-pdf', zc: 'z-calendrier' };
 // `keys` : seulement ces sondes (leurs lettres), quand l'essai ne veut pas des autres dans la fenêtre des apps ; toutes par défaut.
 export function withProbes(text, keys = Object.keys(PROBE_FOLDERS)) {
   const entries = Object.entries(PROBE_FOLDERS).filter(([key]) => keys.includes(key)).map(([key, folder]) => `  Object.freeze({ id: 'sonde-${key}', dossier: 'labo/sondes/${folder}/', manifeste: 'labo/sondes/sonde-${key}.json' }),`);
@@ -327,8 +340,10 @@ export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', 
 }
 
 // Le contraste de chaque texte d'un cadre (celui de GFS, ou celui d'une app), mesuré sur les couleurs AFFICHÉES : la couleur du texte, posée sur la pile des fonds de ses ancêtres (le canvas fait le mélange, y compris
-// pour les `color-mix`). `scope` : le sélecteur des zones à mesurer. Rend { seen (textes mesurés), gradients, failures (4,5:1, 3:1 pour un grand texte) }.
-export const contrastAudit = (target, scope) => target.evaluate(selector => {
+// pour les `color-mix`). `scope` : le sélecteur des zones à mesurer. Rend { seen (textes mesurés), skipped, gradients, failures (4,5:1, 3:1 pour un grand texte) }.
+// `byPoint` : la pile des fonds est celle de tout ce qui est empilé au centre du texte (`elementsFromPoint`), pas celle de ses seuls ancêtres : le fond d'un texte peut être celui d'un autre élément (la cellule d'un
+// jour sous son numéro, dans le calendrier). Un texte qu'on ne voit pas à cet endroit (hors du cadre, coupé par un défilement) n'est pas mesuré : `skipped` les compte.
+export const contrastAudit = (target, scope, { byPoint = false } = {}) => target.evaluate(([selector, byPoint]) => {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 1;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -342,10 +357,11 @@ export const contrastAudit = (target, scope) => target.evaluate(selector => {
   const ratio = (a, b) => { const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
   const failures = [];
   let seen = 0;
+  let skipped = 0;
   let gradients = 0;
   for (const root of document.querySelectorAll(selector)) {
     for (const el of [root, ...root.querySelectorAll('*')]) {
-      const own = [...el.childNodes].some(node => node.nodeType === 3 && node.textContent.trim());
+      const own = [...el.childNodes].some(node => node.nodeType === 3 && node.textContent.trim()) || (byPoint && el.matches('input, textarea') && el.value.trim() !== '');   // `byPoint` : la valeur d'un champ est un texte aussi
       const style = getComputedStyle(el);
       if (!own || style.visibility === 'hidden' || style.display === 'none' || el.closest('[hidden], .sr-only, [aria-hidden="true"]')) continue;
       const box = el.getBoundingClientRect();
@@ -353,12 +369,23 @@ export const contrastAudit = (target, scope) => target.evaluate(selector => {
       let layers = [];
       let stops = null; // les arrêts pleins d'un dégradé qui porte le texte (le bouton plein de Pop) : le texte doit se lire sur chacun
       let behind = false;
-      for (let node = el; node; node = node.parentElement) {
-        const s = getComputedStyle(node);
-        const solid = (s.backgroundImage.match(/rgba?\([^)]*\)/g) || []).filter(color => !/rgba\(/.test(color) || /,\s*1\)$/.test(color));
-        if (s.backgroundImage !== 'none') { if (solid.length && !stops) stops = solid; else behind = true; }
-        layers.unshift(s.backgroundColor);
-        if (stops || /^rgb\(/.test(s.backgroundColor)) break; // opaque : plus rien derrière
+      if (byPoint) {
+        const stack = document.elementsFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        const at = stack.findIndex(node => el.contains(node));
+        if (at === -1) { skipped += 1; continue; }
+        for (const node of stack.slice(at).reverse()) {
+          const s = getComputedStyle(node);
+          if (s.backgroundImage !== 'none') behind = true;
+          layers.push(s.backgroundColor);
+        }
+      } else {
+        for (let node = el; node; node = node.parentElement) {
+          const s = getComputedStyle(node);
+          const solid = (s.backgroundImage.match(/rgba?\([^)]*\)/g) || []).filter(color => !/rgba\(/.test(color) || /,\s*1\)$/.test(color));
+          if (s.backgroundImage !== 'none') { if (solid.length && !stops) stops = solid; else behind = true; }
+          layers.unshift(s.backgroundColor);
+          if (stops || /^rgb\(/.test(s.backgroundColor)) break; // opaque : plus rien derrière
+        }
       }
       if (stops) layers = [layers[0]];
       if (behind) gradients += 1;
@@ -370,8 +397,8 @@ export const contrastAudit = (target, scope) => target.evaluate(selector => {
       const need = large ? 3 : 4.5;
       const value = worst;
       seen += 1;
-      if (value < need) failures.push(`${el.tagName.toLowerCase()}.${String(el.className).split(' ')[0]} « ${el.textContent.trim().slice(0, 24)} » ${value.toFixed(2)}:1`);
+      if (value < need) failures.push(`${el.tagName.toLowerCase()}.${String(el.className).split(' ')[0]} « ${(el.value || el.textContent).trim().slice(0, 24)} » ${value.toFixed(2)}:1`);
     }
   }
-  return { seen, gradients, failures };
-}, scope);
+  return { seen, skipped, gradients, failures };
+}, [scope, byPoint]);

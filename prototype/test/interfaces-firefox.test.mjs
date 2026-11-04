@@ -10,13 +10,14 @@
 // Firefox absent : l'essai est SAUTÉ, et le dit (`labo/installer-firefox.sh` le pose dans le cloud ; `GFS_FIREFOX=<fichier exécutable>` désigne celui de la machine).
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { request } from 'node:http';
 import { join } from 'node:path';
 import { ROOT } from './helpers.mjs';
 import { findFirefox, serveSite, startFirefox } from './firefox.mjs';
 import { corbeilleProblems } from './corbeille-firefox.mjs';
 import { ROW_BUTTON, ROW_HEIGHT, TILE_MIN, expectedTileColumns, measureRows, measureTiles } from '../labo/mesures-liste.mjs';
+import { calendarLogs, calendarProblems } from './mesures-calendrier.mjs';
 
 const WIDTHS = [700, 640, 520, 500, 400]; // 700 : le panneau de référence ; 640 : le portable du porteur ; 520 : la dernière largeur de la vue large ; 500 et 400 : la vue étroite
 const SCALES = [1, 1.5];
@@ -269,6 +270,39 @@ describe('l\'interface sous Firefox', () => {
       // Les erreurs de script de la page et les avertissements de GFS (un texte inconnu, par exemple) ; sans le kit (sous-module non récupéré), le sélecteur de couleur dit qu'il ne se charge pas : ce n'est pas l'interface.
       const logged = page.logs.filter(entry => ((entry.level === 'error' && entry.type === 'javascript') || /GFS/.test(entry.text || '')) && !/sélecteur de couleur du kit/.test(entry.text || ''));
       for (const entry of logged) problems.push({ kind: 'la page écrit dans la console', text: `la page a écrit « ${String(entry.text).slice(0, 120)} »` });
+      assert.equal(problems.length, 0, report(problems));
+    });
+  }
+});
+
+// Le calendrier du kit (kit 0.8.0 : cahier 4.5, « le calendrier »), servi par GFS à Tuesday et à Calendar+ : sa page d'essai est celle du kit (`prototype/kit/navigateur/calendrier.html`), un vrai Firefox sans écran la joue
+// à 700 × 400, en français et en anglais, en clair et en sombre (test/mesures-calendrier.mjs) : la mise en page du mois et de la semaine, la souris et le clavier, et le glisser-déposer du navigateur du porteur.
+const KIT_CALENDAR = existsSync(join(ROOT, 'kit', 'js', 'calendrier', 'index.js'));
+if (firefox && !KIT_CALENDAR) process.stderr.write('Le kit 0.8.0 est absent (git submodule update --init prototype/kit) : le calendrier n\'est PAS mesuré sous Firefox.\n');
+const SKIP_CALENDAR = !firefox ? SKIP : (KIT_CALENDAR ? false : 'le kit 0.8.0 est absent (git submodule update --init prototype/kit)');
+
+describe('le calendrier du kit sous Firefox', () => {
+  let site;
+  let browser;
+
+  before(async () => {
+    if (SKIP_CALENDAR) return;
+    site = await serveSite(ROOT);
+    browser = await startFirefox(firefox);
+  });
+
+  after(async () => {
+    if (browser) await browser.close();
+    if (site) await site.close();
+  });
+
+  for (const language of LANGUAGES) {
+    test(`le calendrier en ${language === 'fr' ? 'français' : 'anglais'}, en clair et en sombre : mise en page, souris, clavier, glisser-déposer`, { skip: SKIP_CALENDAR, timeout: 240000 }, async () => {
+      const { page } = browser;
+      const logged = page.logs.length;
+      const problems = [];
+      for (const mode of MODES) problems.push(...await calendarProblems(page, site, language, mode));
+      problems.push(...calendarLogs(page, logged));
       assert.equal(problems.length, 0, report(problems));
     });
   }

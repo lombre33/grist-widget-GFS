@@ -31,7 +31,6 @@ page.on('console', message => {
   if (message.type() === 'warning' && message.text().startsWith('GFS')) refusals.push(message.text());
   if (message.type() === 'error' && FORM_URL.test(message.location().url || '') && !labOnly(message.text())) errors.push(message.text());
 });
-const constat = (label, ok, detail) => (ok ? say('OK    ', label) : say('CONSTAT', label, detail));
 // grist-static n'a pas de serveur d'accueil : dès qu'une section de formulaire est publiée, Grist lit son partage (`getShare`) et échoue (« HomeDbManager not available »). Propre au labo, pas à l'app.
 page.on('pageerror', error => { if (!/HomeDbManager not available/.test(error.message)) errors.push(error.message); });
 

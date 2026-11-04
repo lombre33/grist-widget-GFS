@@ -1,11 +1,10 @@
 // Les liens entre apps avec le VRAI client du kit (`GfsLink.choose` et `GfsLink.openFile`, js/gfs-link.js du dépôt du kit, version 0.3.0), dans un vrai Grist, à 700 × 400, à la vraie souris : la sonde K
 // (labo/sondes/q-liens/kit.html) est une app écrite avec le kit, comme le sera Tuesday ; le labo sert le kit sous /kit/ (KIT_DIR, par défaut le clone voisin) et appelle ses deux fonctions. Ce que fait
 // GFS de la demande, et la forme exacte de ses réponses, se mesure ici avec le client réel plutôt qu'avec une enveloppe écrite à la main (run-liens.mjs). LAB_LANG=fr|en, LAB_SCHEME=light|dark.
-import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { startLab } from './lab-setup.mjs';
-import { say, check } from './lab-common.mjs';
+import { say, check, serveKit } from './lab-common.mjs';
 
 const KIT = process.env.KIT_DIR || '/home/claude/grist-factory-kit';
 if (!existsSync(join(KIT, 'js/gfs-link.js'))) {
@@ -28,14 +27,8 @@ await lab.fitPanel(undefined, 700, 400);
 const { page } = lab;
 const warnings = [];
 page.on('console', m => { if (m.type() === 'warning' && m.text().startsWith('GFS')) warnings.push(m.text()); });
-// Le kit, servi sous /kit/ à l'adresse de GFS (même origine que la page de la sonde ; l'en-tête CORS ouvert comme celui de GitHub Pages, que demande un cadre d'origine opaque).
-await page.route('http://127.0.0.1:8911/kit/**', async route => {
-  const path = new URL(route.request().url()).pathname.replace(/^\/kit\//, '');
-  try {
-    const body = await readFile(join(KIT, path));
-    await route.fulfill({ status: 200, contentType: path.endsWith('.js') ? 'text/javascript; charset=utf-8' : 'text/plain', headers: { 'access-control-allow-origin': '*', 'cache-control': 'no-store' }, body });
-  } catch { await route.fulfill({ status: 404, body: 'not found' }); }
-});
+// Le kit, servi sous /kit/ à l'adresse de GFS (lab-common.mjs : même origine que la page de la sonde, l'en-tête CORS ouvert comme celui de GitHub Pages).
+await serveKit(page, KIT);
 
 const now = Math.floor(Date.now() / 1000);
 await lab.frame.evaluate(async ([stamp, names]) => {

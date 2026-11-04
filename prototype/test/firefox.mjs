@@ -138,6 +138,17 @@ export class Page {
 
   click(x, y) { return this.#pointer([{ type: 'pointerMove', x: Math.round(x), y: Math.round(y) }, { type: 'pointerDown', button: 0 }, { type: 'pointerUp', button: 0 }]); }
 
+  // Un glissement, au vrai pointeur du navigateur : appuyer en `from`, tirer de dix pixels (le navigateur ne lance le glissement qu'alors), traverser jusqu'à `to` par `steps` pas, attendre un instant, lâcher.
+  // Les points sont en pixels CSS de la page. Firefox sans écran (et sous Xvfb) lance le glissement HTML5 (`dragstart`, `dragenter`, `dragover` arrivent) mais ne l'achève pas : ni `drop` ni `dragend` ni
+  // `mouseup` ne viennent après le lâcher, le glissement reste en cours jusqu'au prochain chargement de la page. Mesuré le 04/11 sur une page de deux éléments et Firefox 159 ; le dépôt se mesure sous Chromium.
+  drag([fromX, fromY], [toX, toY], steps = 10) {
+    const along = Array.from({ length: steps }, (unused, step) => ({
+      type: 'pointerMove', x: Math.round(fromX + 10 + ((toX - fromX - 10) * (step + 1)) / steps), y: Math.round(fromY + 10 + ((toY - fromY - 10) * (step + 1)) / steps), duration: 25,
+    }));
+    return this.#pointer([{ type: 'pointerMove', x: Math.round(fromX), y: Math.round(fromY) }, { type: 'pointerDown', button: 0 }, { type: 'pointerMove', x: Math.round(fromX) + 10, y: Math.round(fromY) + 10, duration: 50 },
+      ...along, { type: 'pause', duration: 150 }, { type: 'pointerUp', button: 0 }]);
+  }
+
   press(...keys) {
     const actions = keys.flatMap(key => [{ type: 'keyDown', value: KEYS[key] || key }, { type: 'keyUp', value: KEYS[key] || key }]);
     return this.#bidi.send('input.performActions', { context: this.#context, actions: [{ type: 'key', id: 'clavier', actions }] });

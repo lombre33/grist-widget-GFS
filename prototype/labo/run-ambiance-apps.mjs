@@ -12,7 +12,7 @@
 // Un CONSTAT dit ce que l'app fait de travers sans que GFS y puisse rien (à dire à l'app par une consigne) ; il ne fait pas échouer la passe.
 // APP=form|automation, LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { startLab } from './lab-setup.mjs';
-import { say, check, contrastAudit } from './lab-common.mjs';
+import { say, check, contrastAudit, constat } from './lab-common.mjs';
 import { themeGestures } from './theme-gestes.mjs';
 import { screensOf } from './ecrans-apps.mjs';
 import { ambiancePalette, COLOR_TOKENS } from '../js/ambiance.js';
@@ -46,7 +46,6 @@ const until = async (probe, timeout = 8000) => {
   return value;
 };
 const rgb = hex => { const n = parseInt(hex.slice(1), 16); return `rgb(${n >> 16}, ${(n >> 8) & 255}, ${n & 255})`; };
-const constat = (label, ok, detail) => (ok ? say('OK    ', label) : say('CONSTAT', label, detail));
 const showExplorer = async () => { await frame.locator('#floater-files').click(); await frame.locator('.ex').waitFor({ state: 'visible' }); };
 const hideExplorer = async () => { await frame.locator('.ex-foot .btn', { hasText: /^(Fermer|Close)$/ }).click(); await frame.locator('#floaters').waitFor({ state: 'visible' }); };
 // Les jetons que GFS donne (les couleurs et la forme de chaque ambiance) : les autres jetons de <html> sont à l'app (par exemple la zone que la barre de GFS lui fait écarter).

@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Sonde ZC</title>
+<!-- Politique de l'app sonde ZC : celle d'une app hébergée, sans rien d'en ligne ni d'extérieur, et sans `img-src` (le calendrier n'a aucune image). Les couleurs que Grist donne aux
+     événements se posent par le CSSOM : si l'une passait par un attribut style, `style-src 'self'` la refuserait. Le kit est servi par le labo sous /kit/, même origine que la page. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; base-uri 'none'; form-action 'none'">
+<link rel="stylesheet" href="/kit/css/tokens.css">
+<link rel="stylesheet" href="/kit/css/calendrier.css">
+<link rel="stylesheet" href="app.css">
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<div id="hote"><div id="cadre"></div></div>
+</body>
+</html>

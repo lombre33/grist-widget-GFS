@@ -1,0 +1,6 @@
+/* Sonde ZC : la page d'une app qui n'a que le calendrier du kit. Le fond de la page est `--bg` (jamais `--main-bg`, qui est celui de la carte de GFS et vaut `transparent` chez Néon), sur un
+   élément qui couvre la page : le décor `--wash` se répète sinon à chaque hauteur de contenu. L'hôte réserve le bord de la barre de GFS par un remplissage que le script pose (CSSOM). */
+html { height: 100%; }
+body { margin: 0; height: 100%; background-color: var(--bg); background-image: var(--wash, none); background-size: var(--wash-size, auto); color: var(--text); font: 13px/1.45 var(--font-ui); }
+#hote { box-sizing: border-box; height: 100%; }
+#cadre { height: 100%; }

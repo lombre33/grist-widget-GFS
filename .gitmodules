@@ -10,3 +10,6 @@
 [submodule "prototype/kit"]
 	path = prototype/kit
 	url = https://github.com/lombre33/grist-factory-kit.git
+[submodule "prototype/apps/bi"]
+	path = prototype/apps/bi
+	url = https://github.com/lombre33/Grist-BI.git

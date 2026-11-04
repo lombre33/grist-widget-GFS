@@ -180,3 +180,28 @@ test('l\'explorateur qui se ferme vide le presse-papiers : ce qui était à coll
   assert.equal(log.notices.at(-1), FR.t('clip.empty'));
   assert.deepEqual(log.moves, []);
 });
+
+test('déposer une ligne sur un dossier (glisser-déposer) : le fichier ou le dossier est déplacé comme après un couper-coller, la phrase dit où, et ce qui est coupé reste coupé', async () => {
+  const { clipboard, log } = setup();
+  clipboard.take('gfs-fichiers:aa', 'cut');
+  await clipboard.moveTo('publipostage:cc', 'Autre/Dossier');
+  assert.deepEqual(log.moves, [['file', 'publipostage:cc', 'Autre/Dossier']]);
+  assert.equal(log.notices.at(-1), FR.t('clip.moved', { name: 'Convocation', folder: 'Autre/Dossier' }));
+  assert.equal(clipboard.held.key, 'gfs-fichiers:aa', 'le fichier coupé n\'a pas bougé : il est toujours à coller');
+  await clipboard.moveTo('dir:Factures/2026', '');
+  assert.deepEqual(log.moves.at(-1), ['folder', 'Factures/2026', '']);
+  assert.equal(log.notices.at(-1), FR.t('clip.moved', { name: '2026', folder: FR.t('ex.me') }));
+  assert.deepEqual(log.revealed, ['publipostage:cc', 'dir:2026'], 'la ligne déplacée prend le clavier quand la liste la montre');
+});
+
+test('déposer le fichier qui était coupé : il n\'est plus à coller ; un fichier qui n\'est plus dans la liste n\'est pas déplacé ; un dossier qui n\'existe plus le dit', async () => {
+  const { clipboard, log } = setup({ filing: { moveFolderTo: async () => 'gone' } });
+  clipboard.take('gfs-fichiers:aa', 'cut');
+  await clipboard.moveTo('gfs-fichiers:aa', 'Autre');
+  assert.equal(clipboard.held, null);
+  const before = log.moves.length;
+  await clipboard.moveTo('gfs-fichiers:parti', 'Autre');
+  assert.equal(log.moves.length, before, 'rien n\'est écrit pour un fichier qu\'on ne trouve plus');
+  await clipboard.moveTo('dir:Fantôme', 'Autre');
+  assert.equal(log.notices.at(-1), FR.t('drag.gone', { name: 'Fantôme' }));
+});

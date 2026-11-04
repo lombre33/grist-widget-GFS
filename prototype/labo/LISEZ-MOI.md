@@ -156,7 +156,7 @@ GRIST_EMAIL=viewer@example.com bash vrai-serveur.sh                       && PHA
 PHASE=proprietaire node run-droits-reel.mjs                               # la sonde brute (labo/droits/) : ce que voit un widget en accès complet, sans GFS (`PARTAGE=1` ajoute un partage)
 ```
 
-`LAB_LANG=en LAB_SCHEME=dark` jouent la passe en anglais, en sombre. La suite joue aussi l'essai sous Firefox : `test/droits-firefox.mjs` (voir plus bas). Résultats : `docs/faits-verifies.md`, section 39.
+`LAB_LANG=en LAB_SCHEME=dark` jouent la passe en anglais, en sombre. La suite joue aussi l'essai sous Firefox : `test/droits-firefox.mjs` (voir plus bas). Résultats : `docs/faits-verifies.md`, section 40.
 
 ## L'interface sous Firefox (`test/interfaces-firefox.test.mjs`)
 

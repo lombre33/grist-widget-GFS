@@ -673,6 +673,19 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   `createAmbiance`, et sa charte UI/UX gagne la section « Ambiances de GFS »), Form+ **016** (`kit/` de `c0c8660` à `8afa569`), Automation+ **006** et Grist-BI **004** (au lot où elles prennent le kit, la 003
   d'Automation+ et le guide 1.2), Tuesday **010** (avec la 008 : un seul commit de kit ; le calendrier lit les jetons). Aucune app ne change d'ici là : seule, elle garde ses couleurs. Les graphiques de Grist-BI
   gardent la palette du tableau de bord (choix prudent, dit dans la 004 ; la couleur libre pour eux serait une autre décision).
+- Pages d'état relues sur GitHub sans cloner (04/11 matin, la mission « rester à jour » ; méthode du 03/11 : `raw.githubusercontent.com` et `git ls-remote`, ni clone ni `fetch`). Sommets de `main`
+  et commit que chaque page dit décrire : Publipostage+ `4f23104` (page inchangée depuis le 03/11, `2082d41`), Form+ `0de37ac` (page `954483a`), Automation+ `bb8a8dd` (page `3f7d45a`), Grist-BI `474d67f`
+  (page `fef9af8`), Tuesday `87720d5` (page `0b8bca7`), Calendar+ `2f69651` (page `531e0cd`). Les six dépôts ont avancé depuis leur page : ces commits ne sont pas lus, donc « Dernier commit lu » ne bouge
+  pas dans le tableau. **Les quatre consignes sur l'ambiance sont faites** (kit `8afa569` ou plus récent, `Ambiance.start()`, feuilles sur les jetons ; essais des apps sur le message d'exemple du kit, jamais dans
+  un GFS) : Form+ 016 (`954483a`, 829 vérifications hors ligne), Automation+ 006 (`3f7d45a`, par `createAmbiance` : l'app garde sa clé `ab_theme`), Grist-BI 004 (`fef9af8`, `Ambiance.start()` par un `import()`
+  dynamique), Tuesday 010 (`0b8bca7`) ; le rejeu de `labo/run-ambiance-kit.mjs` avec chaque vraie app, que le « Fait quand » de ces consignes promet, reste à faire. Autres consignes passées à « faite » dans les
+  `INDEX.md` : Form+ 015 (`01ddd10`, un lien public ne lit que les petites tables `FormPlus_Pub_*`), Automation+ 003 (`3f7d45a`, la barre lue par le lien du kit : `kit/` pris en sous-module à `db14544`, 0.7.0 ; elle
+  ne dit à GFS que la demande `contexte`, aucune action `ouvrir`, `choisir`, `insérer` ni `ranger`, CSP inchangée), Tuesday 005 et 007 (`1bc3a17`), 008 (`0b8bca7`, `permissions.identite` déclarée), 009 lue, Grist-BI
+  004. **Questions pour GFS** : Automation+ en pose deux (l'étiquette `v0.7.0` du kit, que le porteur pose ; les couleurs de type et d'état de ses nœuds, qui suivent l'accent), réponse par sa consigne 007.
+  **Demandes à GFS** : inchangées pour Form+ (Leaflet 1.9.4) et Grist-BI (`d3-cloud` 2.0.0, `pdfjs-dist` 6.5.438), qui concernent des fonctions que GFS ne propose pas encore et attendent le mot du porteur ;
+  **nouvelle : Calendar+ dit son module prêt, « version 2, avec les heures »** (`531e0cd`, après la première version `5043986` ; vues Semaine et Jour, blocs horaires au quart d'heure ; 81 essais Node et 31 sous
+  Chromium), le déplacement dans le kit que la 006 de Tuesday promettait (voie A) ; Tuesday garde la demande d'entrée au catalogue « à demander quand l'app sera prête ». Publipostage+ n'a pas encore lu la 044
+  ni la 045.
 - « Nouveau > Importer » (22/10, le porteur : « les imports possibles par Publipostage+ (Excel, docx, pptx…) il faudrait qu'ils soient aussi
   disponibles dans le menu Nouveau, sous-menu Import ? », puis sa réponse « Sous-menu Importer ») : GFS livre le sous-menu. Le
   manifeste déclare les formats (`actions.importer`, contrats 2.7, point 4), GFS ouvre le sélecteur de fichier et rend le `File` à l'app

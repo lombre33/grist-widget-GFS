@@ -5,6 +5,7 @@
 //   { id, op: 'upload', url, file, name }  POST multipart (champ `upload`) vers la liste des pièces jointes -> { id, ok: true, value: <numéro de la pièce jointe> }
 //   { id, op: 'download', url }            GET d'une pièce jointe -> { id, ok: true, value: <Blob> }
 //   { id, op: 'status', url }              GET dont seul le code compte (la preuve de propriétaire, contrats 5.2 point 8) -> { id, ok: true, value: <code> } ; le corps de la réponse n'est jamais lu
+//   { id, op: 'json', url }                GET d'une lecture SQL du document (`/sql`, le poids exact, contrats 6.6 point 14) -> { id, ok: true, value: <le JSON de la réponse> }
 // Un échec rend { id, ok: false, network, status, message } : `network` quand le serveur n'a pas répondu (ou que le navigateur a refusé la requête), `status` quand il a répondu un refus.
 //
 // Sur l'en-tête X-Requested-With : sans lui, Grist refuse toute écriture faite avec un jeton par un 401 sans en-têtes CORS, et le navigateur ne dit que « NetworkError » (faits vérifiés 14).
@@ -51,7 +52,13 @@
     return answer(response, request.id, function (reply) { return reply.status; });
   }
 
-  var OPERATIONS = { upload: upload, download: download, status: status };
+  // Une lecture SQL (`GET /sql?q=…`) : la réponse est du JSON ({ statement, records: [{ fields }] }), rendue telle quelle ; une réponse qui n'en est pas est un échec (« answer »).
+  async function json(request) {
+    var response = await fetch(request.url);
+    return answer(response, request.id, async function (reply) { return JSON.parse(await reply.text()); });
+  }
+
+  var OPERATIONS = { upload: upload, download: download, status: status, json: json };
 
   async function handle(request, port) {
     var operation = request && Object.prototype.hasOwnProperty.call(OPERATIONS, request.op) ? OPERATIONS[request.op] : null;

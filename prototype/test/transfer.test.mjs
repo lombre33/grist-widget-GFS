@@ -172,3 +172,35 @@ test('isOwner : 200 → vrai ; 403 « No owner access » → faux ; tout le rest
   assert.equal(noToken.frames.created.length, 0, 'sans jeton, le cadre ne s\'ouvre même pas');
   finish(noToken);
 });
+
+test('sql : un jeton en lecture seule, l\'adresse /sql porte le jeton et la lecture encodée, les lignes reviennent sans leur enveloppe', async () => {
+  const records = [{ fields: { octets: 1048576 } }];
+  const run = setup({ frame: { answer: request => ({ id: request.id, ok: true, value: { statement: 'x', records } }) } });
+  assert.deepEqual(await run.transfer.sql('SELECT 1 AS octets'), [{ octets: 1048576 }]);
+  assert.deepEqual(run.asked, [{ readOnly: true }], 'une lecture : le jeton ne peut pas écrire');
+  const [request] = run.frames.requests;
+  assert.equal(request.op, 'json');
+  assert.equal(request.url, 'https://grist.exemple.fr/o/docs/api/docs/DOC123/sql?auth=jeton%2Bsecret%2F%3D&q=SELECT%201%20AS%20octets');
+  finish(run);
+});
+
+test('sql : `writable` demande le jeton qui peut écrire (un propriétaire d\'un document à règles d\'accès), et seulement lui', async () => {
+  const run = setup({ frame: { answer: request => ({ id: request.id, ok: true, value: { records: [{ fields: { octets: 1 } }] } }) } });
+  await run.transfer.sql('SELECT 1 AS octets');
+  await run.transfer.sql('SELECT 1 AS octets', { writable: true });
+  await run.transfer.sql('SELECT 1 AS octets', {});
+  assert.deepEqual(run.asked, [{ readOnly: true }, { readOnly: false }, { readOnly: true }]);
+  finish(run);
+});
+
+test('sql : un refus du serveur (403 : pas le droit de tout copier ; 400 : lecture coupée) revient en « http » avec son code ; une réponse sans lignes est « answer »', async () => {
+  const denied = setup({ frame: { answer: request => ({ id: request.id, ok: false, network: false, status: 403, message: 'Insufficient access' }) } });
+  await assert.rejects(denied.transfer.sql('SELECT 1'), error => error instanceof TransferError && error.kind === 'http' && error.status === 403);
+  finish(denied);
+  const cut = setup({ frame: { answer: request => ({ id: request.id, ok: false, network: false, status: 400, message: 'a slow statement resulted in a database interrupt' }) } });
+  await assert.rejects(cut.transfer.sql('SELECT 1'), error => error.kind === 'http' && error.status === 400);
+  finish(cut);
+  const odd = setup({ frame: { answer: request => ({ id: request.id, ok: true, value: { not: 'records' } }) } });
+  await assert.rejects(odd.transfer.sql('SELECT 1'), error => error.kind === 'answer');
+  finish(odd);
+});

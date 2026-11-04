@@ -21,6 +21,7 @@ import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { createI18n } from '../js/i18n.js';
 import { attachmentIds, cellBytes, formatBytes, sumWeights } from '../js/weight.js';
 import { seedFiles } from './seed.mjs';
+import { apply, noise, sql, upload } from './lab-poids.mjs';
 import { PAGE_PORT, contrastProblems, importPdf, importSamples, openGfs, openRowMenu, pdfFile, rowOf, shot, waitFor, waitForNames, goTo } from './lab-pdf.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
@@ -36,7 +37,6 @@ const VERSIONS = 'Publipostage_Versions';
 const show = bytes => formatBytes(bytes, locale, t);
 const byName = (a, b) => a.name.localeCompare(b.name, locale, { numeric: true, sensitivity: 'base' });
 
-const sql = (run, query) => run.page.evaluate(async ([docId, q]) => (await (await fetch(`/api/docs/${docId}/sql?q=${encodeURIComponent(q)}`)).json()).records.map(record => record.fields), [run.docId, query]);
 // Les octets d'une ligne lue par l'API REST : la somme de ses cellules, comme js/weight.js la fait pour ce que GFS lit.
 const rowBytes = ({ id, ...fields }) => Object.values(fields).reduce((sum, value) => sum + cellBytes(value), 0);
 
@@ -106,7 +106,7 @@ async function playWeights(run) {
   check('la liste porte les cinq colonnes à 700 px, le total tient entre la barre d\'information et les boutons', await frame.evaluate(() => {
     const keys = [...document.querySelectorAll('.ls-head .hd')].map(node => node.dataset.sort).join();
     const totalBox = document.querySelector('.ex-total').getBoundingClientRect();
-    const open = document.querySelector('.ex-foot > button').getBoundingClientRect();
+    const open = document.querySelector('.ex-foot > .btn').getBoundingClientRect();
     return keys === 'name,type,poids,mod,by' && totalBox.right <= open.left + 0.5 && document.querySelector('.ex-total').scrollWidth <= document.querySelector('.ex-total').clientWidth + 1;
   }));
   await shot(frame, `${TAG}-1-poids`);
@@ -198,21 +198,6 @@ async function playTrash(run) {
 
 // ----- 6. La case « + pièces jointes » : de vraies pièces jointes, le calcul exact de SQL, la souris et le clavier.
 const PHOTOS = 'Photos';
-// Des octets sans répétition (deux contenus de graines différentes ne partagent aucune empreinte), de la taille demandée.
-const noise = (size, seed) => {
-  const buffer = Buffer.alloc(size);
-  let x = seed >>> 0;
-  for (let i = 0; i < size; i++) { x = (Math.imul(x, 1103515245) + 12345) >>> 0; buffer[i] = (x >>> 16) & 255; }
-  return buffer;
-};
-// Les pièces d'un envoi, comme un navigateur les envoie à Grist (POST multipart) : rend leurs numéros, dans l'ordre.
-const upload = (run, files) => run.page.evaluate(async ([docId, list]) => {
-  const form = new FormData();
-  for (const { name, type, base64 } of list) form.append('upload', new Blob([Uint8Array.from(atob(base64), character => character.charCodeAt(0))], { type }), name);
-  const response = await fetch(`/api/docs/${docId}/attachments`, { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: form });
-  return response.json();
-}, [run.docId, files.map(({ name, type, buffer }) => ({ name, type, base64: buffer.toString('base64') }))]);
-const apply = (run, actions) => run.page.evaluate(async ([docId, list]) => (await fetch(`/api/docs/${docId}/apply`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(list) })).json(), [run.docId, actions]);
 
 // Ce que Grist compte des pièces jointes que nul fichier de l'explorateur ne cite : SQL, la formule de Grist (`fileIdent` distincts, `timeDeleted` vide, la plus grande taille), sans les `fileIdent` des
 // pièces que citent les fichiers de GFS, vivants ou à la corbeille (leurs numéros viennent de `GFS_Fichiers`, toutes lignes).

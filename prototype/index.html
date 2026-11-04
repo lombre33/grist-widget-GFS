@@ -10,11 +10,12 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-qOOeZO/I2ldBWY80uXyRRNM2wj1mt5f+mYQMOhNAEJs='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-LSwQJjZPXaOmGGJlzCNfMjmHGUTnZZCP3mTHX18WpAg='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=07195fafa9">
-<link rel="stylesheet" href="css/explorer.css?v=4b694af836">
+<link rel="stylesheet" href="css/explorer.css?v=418da9c54e">
 <link rel="stylesheet" href="css/modules.css?v=1109fc818b">
 <link rel="stylesheet" href="css/rights.css?v=49ef27de1e">
+<link rel="stylesheet" href="css/weight.css?v=5b796c798e">
 <link rel="stylesheet" href="kit/css/color-picker.css?v=c5a41d6681">
 <!-- Le routeur d'abord : il doit être enregistré avant que le script d'API de Grist n'affecte window.onmessage (contrats 1.2). -->
 <script src="js/router.js?v=20d0f9a823"></script>
@@ -39,7 +40,7 @@
     "./js/catalogue.js": "./js/catalogue.js?v=9821dc95fc",
     "./js/conflict-window.js": "./js/conflict-window.js?v=e3c9c8e8d3",
     "./js/context.js": "./js/context.js?v=483dec58d1",
-    "./js/controller.js": "./js/controller.js?v=24e8a88d00",
+    "./js/controller.js": "./js/controller.js?v=f3dac9bc11",
     "./js/copying.js": "./js/copying.js?v=8da0986c98",
     "./js/deposit.js": "./js/deposit.js?v=e11841b099",
     "./js/dock-state.js": "./js/dock-state.js?v=8eec913fd1",
@@ -52,9 +53,10 @@
     "./js/explorer-keys.js": "./js/explorer-keys.js?v=7accc237a9",
     "./js/explorer-model.js": "./js/explorer-model.js?v=df0ad6b831",
     "./js/explorer-undo.js": "./js/explorer-undo.js?v=f1dd46f5c4",
-    "./js/explorer-view.js": "./js/explorer-view.js?v=059176030c",
-    "./js/explorer.js": "./js/explorer.js?v=a2eb787f1f",
+    "./js/explorer-view.js": "./js/explorer-view.js?v=27a3fab4f3",
+    "./js/explorer.js": "./js/explorer.js?v=4643f6bc6f",
     "./js/extensions.js": "./js/extensions.js?v=a6b2033702",
+    "./js/file-managers.js": "./js/file-managers.js?v=2fc98bc29a",
     "./js/files-store.js": "./js/files-store.js?v=98d9eb3e5c",
     "./js/filing-window.js": "./js/filing-window.js?v=ffaa75bf79",
     "./js/filing.js": "./js/filing.js?v=e00991b20a",
@@ -66,7 +68,7 @@
     "./js/i18n-folders.js": "./js/i18n-folders.js?v=fdfa7f4ccb",
     "./js/i18n-rights.js": "./js/i18n-rights.js?v=88555d3f3b",
     "./js/i18n-trash.js": "./js/i18n-trash.js?v=a1934883d2",
-    "./js/i18n-weight.js": "./js/i18n-weight.js?v=820599934c",
+    "./js/i18n-weight.js": "./js/i18n-weight.js?v=70f193afa2",
     "./js/i18n.js": "./js/i18n.js?v=9f842a6cb3",
     "./js/icons.js": "./js/icons.js?v=a0a955c1b4",
     "./js/import-file.js": "./js/import-file.js?v=709ec6b26b",
@@ -103,10 +105,13 @@
     "./js/theme-color.js": "./js/theme-color.js?v=3bc624594f",
     "./js/theme-window.js": "./js/theme-window.js?v=e98f2de3e7",
     "./js/theme.js": "./js/theme.js?v=6632aa171f",
-    "./js/transfer.js": "./js/transfer.js?v=7b29a2134e",
+    "./js/transfer.js": "./js/transfer.js?v=314107f0cb",
     "./js/trash.js": "./js/trash.js?v=6744b756e1",
     "./js/undo-stack.js": "./js/undo-stack.js?v=4e123cb751",
     "./js/view-options.js": "./js/view-options.js?v=f776be2727",
+    "./js/weight-control.js": "./js/weight-control.js?v=e720b51a0b",
+    "./js/weight-reader.js": "./js/weight-reader.js?v=d2d2a3ce41",
+    "./js/weight-window.js": "./js/weight-window.js?v=e575ae7558",
     "./js/weight.js": "./js/weight.js?v=4da7caa3ae",
     "./js/work-control.js": "./js/work-control.js?v=7efc5aae9e",
     "./js/work-row.js": "./js/work-row.js?v=4003614ac1",

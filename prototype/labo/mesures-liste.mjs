@@ -57,8 +57,8 @@ export function measureColumns() {
   const foot = document.querySelector('.ex-foot');
   const total = foot && foot.querySelector('.ex-total');
   const info = foot && foot.querySelector('.ex-info');
-  const open = foot && foot.querySelector('.ex-foot > button');
-  const close = foot && foot.querySelector('.ex-foot > button:last-child');
+  const open = foot && foot.querySelector('.ex-foot > .btn');
+  const close = foot && foot.querySelector('.ex-foot > .btn:last-child');
   const pj = foot && foot.querySelector('.ex-pj');
   const pjInput = pj && pj.querySelector('input');
   const number = total && total.querySelector('.tot-n');

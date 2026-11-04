@@ -36,7 +36,7 @@ export function buildShell(i18n) {
         keep('empty', h('div', { class: 'empty', hidden: true })))))),
     h('footer', { class: 'ex-foot' },
       keep('info', h('div', { class: 'ex-info', 'aria-live': 'polite' })),
-      keep('total', h('div', { class: 'ex-total', id: 'ex-total' })),
+      keep('total', h('button', { type: 'button', class: 'ex-total', id: 'ex-total', 'aria-haspopup': 'dialog' })),
       keep('pj', h('label', { class: 'ex-pj' }, keep('pjInput', h('input', { type: 'checkbox', 'aria-describedby': 'ex-total' })), keep('pjText', h('span')))),
       h('div', { class: 'ex-rights' }, keep('rightsBtn', h('button', { type: 'button', class: 'rights-chip', 'aria-haspopup': 'dialog' }))),
       keep('openBtn', h('button', { type: 'button', class: 'btn' })),
@@ -65,7 +65,7 @@ export function relabel(refs, i18n) {
   refs.newBtn.replaceChildren(icon('plus'), t('ex.new'));
   refs.tree.setAttribute('aria-label', t('ex.folders'));
   refs.list.setAttribute('aria-label', t('ex.title'));
-  refs.total.title = t('weight.totalTip');
+  refs.total.title = `${t('weight.totalTip')} ${t('weight.detailTip')}`;
   refs.pjText.textContent = t('weight.pj');
   refs.pj.title = t('weight.pjTip');
   refs.openBtn.textContent = t('ex.open');
@@ -270,7 +270,7 @@ export function totalBar(ctx) {
 // L'infobulle du total, et l'état du pied de fenêtre : occupé tant que les pièces jointes se lisent.
 export function totalTip(ctx) {
   const { t, pj } = ctx;
-  return [t('weight.totalTip'), pjCounted(ctx) ? totalSplit(ctx) : null, pj.on && pj.busy ? t('weight.pjLoading') : null].filter(Boolean).join(' ');
+  return [t('weight.totalTip'), pjCounted(ctx) ? totalSplit(ctx) : null, pj.on && pj.busy ? t('weight.pjLoading') : null, t('weight.detailTip')].filter(Boolean).join(' ');
 }
 
 // La case « + pièces jointes » : cochée quand la personne l'a demandée ; grisée, jamais masquée, quand GFS ne peut pas lire les pièces jointes (`ctx.pj.grey` dit pourquoi : au survol, et au clic

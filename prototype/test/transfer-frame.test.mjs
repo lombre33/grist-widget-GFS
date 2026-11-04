@@ -120,3 +120,18 @@ test('status : un GET dont seul le code revient ; le corps n\'est pas lu pour un
   refused.connect();
   assert.deepEqual(await refused.ask({ id: 9, op: 'status', url: 'https://grist.exemple.fr/api/docs/D/webhooks?auth=t' }), { id: 9, ok: false, network: false, status: 403, message: 'No owner access' });
 });
+
+test('json : un GET dont le JSON revient tel quel (une lecture SQL) ; une réponse qui n\'en est pas est un échec, un refus rend son texte', async () => {
+  const sql = { statement: 'SELECT 1 AS octets', records: [{ fields: { octets: 7 } }] };
+  const ok = load(async () => reply(200, sql));
+  ok.connect();
+  const answer = await ok.ask({ id: 3, op: 'json', url: 'https://grist.exemple.fr/api/docs/D/sql?auth=t&q=SELECT%201' });
+  assert.deepEqual([answer.id, answer.ok, JSON.stringify(answer.value)], [3, true, JSON.stringify(sql)]);
+  const html = load(async () => reply(200, '<html>', { json: false }));
+  html.connect();
+  const bad = await html.ask({ id: 4, op: 'json', url: 'https://grist.exemple.fr/api/docs/D/sql?auth=t' });
+  assert.deepEqual([bad.ok, bad.network, bad.status], [false, false, 0], 'du texte qui n\'est pas du JSON : un échec « answer », pas un faux succès');
+  const cut = load(async () => reply(400, { error: 'a slow statement resulted in a database interrupt' }));
+  cut.connect();
+  assert.deepEqual(await cut.ask({ id: 5, op: 'json', url: 'https://grist.exemple.fr/api/docs/D/sql?auth=t' }), { id: 5, ok: false, network: false, status: 400, message: 'a slow statement resulted in a database interrupt' });
+});

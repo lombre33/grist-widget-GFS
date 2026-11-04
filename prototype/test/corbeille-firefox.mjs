@@ -16,7 +16,7 @@ export function snapshot() {
   const own = active && active.closest ? active.closest('.ls-row, .th') : null;
   const tiles = [...document.querySelectorAll('.th')];
   const info = document.querySelector('.ex-info');
-  const open = document.querySelector('.ex-foot > button');
+  const open = document.querySelector('.ex-foot > .btn');
   const trashRow = document.querySelector('.tr-row[data-view="trash"]');
   const modal = document.querySelector('.mod.ask');
   // La fenêtre tient dans la page et rien n'y déborde (ses boutons, son texte) : la liste de ce qui sort, vide quand tout va bien (la fonction vit dans la page : rien du module n'y est visible).

@@ -1,0 +1,27 @@
+/* La fenêtre « Poids du document » (js/weight-window.js ; lot 4 du poids). Sur la base commune des fenêtres (css/modules.css) : le titre et le bouton restent en place, le contenu défile. */
+.mod.wd { width: min(560px, 100%); }
+.wd-body { padding: 10px 16px 12px; }
+.wd-content > * + * { margin-top: 12px; }
+.wd-lead { margin: 0; }
+.wd-lead + .wd-lead { margin-top: 2px; color: var(--text-muted); }
+.wd-sec h3 { margin: 0 0 4px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
+.wd-progress { font-weight: 400; text-transform: none; letter-spacing: 0; }
+.wd-state { margin: 0 0 6px; color: var(--text-muted); }
+.wd-state[hidden] { display: none; }
+.wd-lines { margin: 0; }
+.wd-line { display: flex; align-items: baseline; gap: 8px; min-height: 26px; padding: 3px 4px; border-bottom: 1px solid var(--border); }
+.wd-line dt { flex: 1; min-width: 0; }
+.wd-line dd { flex: none; margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.wd-file dt, .wd-file dd { font-weight: 700; }
+.wd-tables { list-style: none; margin: 0; padding: 0; }
+.wd-row { display: grid; grid-template-columns: minmax(0, 1fr) 96px 84px; align-items: center; gap: 8px; min-height: 26px; padding: 2px 4px; border-bottom: 1px solid var(--border); }
+.wd-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wd-bar { display: block; height: 6px; border-radius: 3px; background: var(--surface-sunken); overflow: hidden; }
+.wd-bar i { display: block; height: 100%; width: var(--w, 0%); background: var(--accent-solid); }
+.wd-num { text-align: right; font-variant-numeric: tabular-nums; }
+.wd-row[data-state="wait"] .wd-num, .wd-row[data-state="slow"] .wd-num, .wd-row[data-state="failed"] .wd-num { color: var(--text-muted); }
+/* Sans le droit de tout copier, ou quand Grist ne répond pas : le bloc reste, grisé (jamais masqué), et le message dit pourquoi. */
+.wd-sec[data-state="denied"] .wd-lines, .wd-sec[data-state="slow"] .wd-lines, .wd-sec[data-state="failed"] .wd-lines,
+.wd-tablesec[data-state="denied"] .wd-tables, .wd-tablesec[data-state="slow"] .wd-tables, .wd-tablesec[data-state="failed"] .wd-tables { color: var(--text-muted); }
+.wd-sec[data-state="denied"] .wd-state, .wd-sec[data-state="slow"] .wd-state, .wd-sec[data-state="failed"] .wd-state { color: var(--text); }
+@media (max-width: 519px) { .wd-row { grid-template-columns: minmax(0, 1fr) 48px 72px; } }

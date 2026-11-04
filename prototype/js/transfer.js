@@ -10,6 +10,7 @@ const READY_TIMEOUT_MS = 8000;
 const UPLOAD_TIMEOUT_MS = 10 * 60 * 1000;
 const DOWNLOAD_TIMEOUT_MS = 3 * 60 * 1000;
 const STATUS_TIMEOUT_MS = 10 * 1000;
+const SQL_TIMEOUT_MS = 30 * 1000; // Grist coupe lui-même une lecture au bout d'une seconde (400) ; le reste est le cadre qui ne répond pas
 
 // Pourquoi un transfert a échoué : `kind` vaut 'frame' (le cadre ne répond pas), 'token' (Grist n'a pas donné de jeton), 'network' (le serveur n'a pas répondu, ou le navigateur a refusé la
 // requête), 'http' (le serveur a répondu un refus : `status`), 'timeout' (trop long) ou 'answer' (la réponse n'est pas celle qu'on attend).
@@ -75,6 +76,18 @@ export class Transfer {
     }
   }
 
+  // Une lecture SQL du document (`GET /sql`, le poids exact, contrats 6.6 point 14). Grist ne rend `/sql` qu'à qui peut tout copier (un document sans règles d'accès, ou un propriétaire) et coupe une lecture de
+  // plus d'une seconde (400, « a slow statement resulted in a database interrupt »). Le jeton est **en lecture seule**, sauf `writable` : dans un document à règles d'accès, Grist refuse `/sql` à un jeton en
+  // lecture seule même au propriétaire, et ne le rend qu'au jeton qui peut écrire (mesuré, faits vérifiés 43) ; `js/weight-reader.js` (`escalating`) ne le demande qu'après ce refus. Rend les lignes,
+  // `{ colonne: valeur }` ; un refus lève une TransferError 'http' (`status` 403 ou 400). `statement` : un seul `SELECT`, que le code de GFS écrit (jamais un texte lu d'ailleurs).
+  async sql(statement, { writable = false } = {}) {
+    const { token, baseUrl } = await this.#token(!writable);
+    const reply = await this.#call('json', { url: this.#url(baseUrl, '/sql', token, { q: statement }) }, SQL_TIMEOUT_MS);
+    const records = reply.value && reply.value.records;
+    if (!Array.isArray(records)) throw new TransferError('answer', 'Grist n’a pas rendu de lignes pour cette lecture.');
+    return records.map(record => (record && record.fields) || {});
+  }
+
   // Referme le cadre ; le suivant se rouvrira au prochain transfert.
   close() {
     if (this.#port) this.#port.close();
@@ -96,7 +109,10 @@ export class Transfer {
     return given;
   }
 
-  #url(baseUrl, path, token) { return `${baseUrl.replace(/\/+$/, '')}${path}?auth=${encodeURIComponent(token)}`; }
+  #url(baseUrl, path, token, params = {}) {
+    const extra = Object.entries(params).map(([key, value]) => `&${key}=${encodeURIComponent(value)}`).join('');
+    return `${baseUrl.replace(/\/+$/, '')}${path}?auth=${encodeURIComponent(token)}${extra}`;
+  }
 
   // Une requête au cadre, et sa réponse (ou son échec). `file` passe tel quel : un objet File se copie d'un cadre à l'autre sans être relu en mémoire.
   async #call(op, fields, timeoutMs) {

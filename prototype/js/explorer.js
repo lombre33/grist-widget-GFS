@@ -56,7 +56,7 @@ export class Explorer {
   };
 
   // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), importTypes(), onOpen(file), onNew(entry), onImport(entry), onClose(), onApps(), canClose(), notice(text),
-  //          settings() → les articles du menu « Réglages » (js/settings-menu.js : langue, thème, position de la barre, « À propos »), onRights() (le mot du pied ouvre le panneau des permissions), personal() → le rangement est-il à la personne seule ?,
+  //          settings() → les articles du menu « Réglages » (js/settings-menu.js : langue, thème, position de la barre, « À propos »), onRights() (le mot du pied ouvre le panneau des permissions), onWeight({ list, pj }) (le total du pied ouvre la fenêtre « Poids du document » : la liste en octets et, case cochée et lue, les pièces jointes), personal() → le rangement est-il à la personne seule ?,
   //          filing: { togglePin(file), rename(file), moveFile(file), renameFolder(path), moveFolder(path), moveFileTo(file, dossier), moveFolderTo(path, dossier) },
   //          kept?: les fichiers que GFS garde lui-même (js/kept-files.js) : { has(file), openAs(file) -> { label, icon, greyed }, opensIn(file), extras(file) -> [article de menu] },
   //          trash?: la corbeille (js/trash.js) : { handles(file), appLockOf?(file) -> { text } | null (l'app doit être ouverte), move(file), restore(file), purge(file), empty(files) } (chaque geste rend une promesse, vraie quand il a abouti),
@@ -325,6 +325,12 @@ export class Explorer {
     return { on: on && !grey, ready: table !== null, busy, bytes: other.bytes, count: other.count, grey };
   }
 
+  // Un clic sur le total : la fenêtre « Poids du document » (js/weight-window.js), avec ce que le total montre à cet instant.
+  #openWeight() {
+    const pj = this.#pjFacts();
+    if (this.#opts.onWeight) this.#opts.onWeight({ list: this.#total, pj: pj.on && pj.ready ? { bytes: pj.bytes, count: pj.count } : null });
+  }
+
   #renderTotal() {
     const ctx = this.#ctx();
     this.#refs.total.replaceChildren(...totalBar(ctx));
@@ -370,6 +376,7 @@ export class Explorer {
     appsBtn.addEventListener('click', () => this.#opts.onApps());
     settingsBtn.addEventListener('click', () => this.#settingsMenu());
     rightsBtn.addEventListener('click', () => this.#opts.onRights());
+    this.#refs.total.addEventListener('click', () => this.#openWeight());
     pjInput.addEventListener('click', event => this.#onPj(event));
     viewList.addEventListener('click', () => this.#setDisplay('list'));
     viewTiles.addEventListener('click', () => this.#setDisplay('tiles'));

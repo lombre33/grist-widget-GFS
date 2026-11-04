@@ -33,13 +33,11 @@ import { arrivalApp, arrivalProbes } from './arrival.js';
 import { arrivalTableApp } from './arrival-table.js';
 import { Rangement, TableDeclined } from './rangement.js';
 import { RightsControl } from './rights-control.js';
+import { WeightControl } from './weight-control.js';
 import { FILES_APP, FILES_MANIFEST, FILES_ENTRY, cleanName } from './gfs-files.js';
 import { Transfer, buildTransferFrame } from './transfer.js';
-import { FilesStore } from './files-store.js';
-import { KeptFiles } from './kept-files.js';
+import { buildAppFiles, buildKept } from './file-managers.js';
 import { Trash } from './trash.js';
-import { AppFiles } from './app-files.js';
-import { activeAppCalls } from './app-calls.js';
 import { Copying } from './copying.js';
 import { ask } from './ask-window.js';
 import { askToClose, leaveQuestion } from './leave.js';
@@ -126,6 +124,7 @@ export class GfsController {
       port: this.port, transfer: this.transfer, prefixes: () => this.validApps().map(item => item.manifest.tables.prefixe), now: () => Date.now(), container: this.$('stage'),
       inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')], t: this.t, fullAccess: () => this.fullAccess,
     });
+    this.weight = new WeightControl({ transfer: this.transfer, container: this.$('stage'), inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')], t: this.t, locale: () => this.locale });
   }
 
   $ = id => this.doc.getElementById(id);
@@ -287,28 +286,10 @@ export class GfsController {
     this.grist.rpc.registerFunc('print', () => (this.session && this.session.isReady ? this.session.callApp('print', [], 10000) : window.print()));
   }
 
-  // Les fichiers que GFS garde lui-même, les PDF (js/kept-files.js) : le cadre d'envoi, la table `GFS_Fichiers` (créée avec l'accord de la personne), et ce qu'il faut pour importer,
-  // télécharger et supprimer. Le cadre d'envoi ne s'ouvre qu'au premier transfert.
-  #buildKept() {
-    const { transfer } = this;
-    const consent = () => this.#ask({ title: this.t('files.table.title'), message: this.t('files.table.text'), confirmLabel: this.t('table.create'), cancelLabel: this.t('table.cancel') });
-    return new KeptFiles({
-      store: new FilesStore({ port: this.port, transfer, consent, identity: () => this.identity }), doc: this.doc, container: this.$('stage'),
-      inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')], t: this.t, lang: () => this.lang, locale: () => this.locale, now: () => Date.now(),
-      fullAccess: () => this.fullAccess, readonly: () => this.readonly, notice: text => this.notice(text), refresh: () => this.refreshFiles(),
-      hideNotice: said => { if (this.$('toast').textContent === said) this.#hideNotice(); }, folder: () => (this.explorer.state.view === 'folder' ? this.explorer.state.path : ''), rangement: this.rangement, reader: file => this.readerOf(file), session: () => this.session,
-    });
-  }
-
-  // Les fichiers des apps à la corbeille et à la copie (js/app-files.js) : le gardien des tables que les manifestes disent savoir retirer, remettre et copier (`suppression`, `copie`) ; `GFS_Corbeille` naît avec l'accord de la personne.
-  #buildAppFiles() {
-    const consent = () => this.#ask({ title: this.t('trash.table.title'), message: this.t('trash.table.text'), confirmLabel: this.t('table.create'), cancelLabel: this.t('table.cancel') });
-    return new AppFiles({ port: this.port, apps: () => this.validApps(), consent, identity: () => this.identity, now: () => Date.now(), readonly: () => this.readonly, fullAccess: () => this.fullAccess, t: this.t, appName: this.appName, ...activeAppCalls(() => this.session) }); // un fichier qui tient à plus qu'une ligne (contrats 2.4 `appel`) : l'app ouverte seule sait le fermer ou le copier
-  }
-
   #buildExplorer() {
-    this.kept = this.#buildKept();
-    const managers = [this.kept, this.#buildAppFiles()]; // les gardiens des fichiers : les PDF de GFS, les fichiers des apps (la corbeille et la copie les interrogent)
+    const askFor = opts => this.#ask(opts);
+    this.kept = buildKept(this, { ask: askFor, hideNotice: () => this.#hideNotice() });
+    const managers = [this.kept, buildAppFiles(this, { ask: askFor })]; // les gardiens des fichiers : les PDF de GFS, les fichiers des apps (la corbeille et la copie les interrogent)
     const gestures = { t: this.t, notice: text => this.notice(text), refresh: () => this.refreshFiles() };
     const filing = this.#buildFiling();
     this.explorer = new Explorer({
@@ -318,7 +299,7 @@ export class GfsController {
         t: this.t, language: () => ({ choice: this.language.choice, grist: this.language.grist }), onLanguage: choice => this.#chooseLanguage(choice), onTheme: () => this.openTheme(),
         place: () => this.dock.placeRow(), onAbout: () => this.#openAbout(),
       }),
-      onRights: () => void this.rights.open(this.explorer),
+      onRights: () => void this.rights.open(this.explorer), onWeight: estimate => void this.weight.open(estimate),
       onOpen: file => this.#openFile(file), onNew: entry => this.#openNew(entry), onImport: entry => void this.#importFile(entry), onClose: () => this.hideExplorer(), onApps: () => void this.openModules(),
       personal: () => Boolean(this.identity), filing, kept: this.kept, attachments: () => loadAttachments(this.port),
       trash: new Trash({ managers, ask: opts => this.#ask(opts), keepFolders: file => filing.keepFoldersOf(file), ...gestures }),

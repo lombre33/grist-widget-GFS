@@ -35,6 +35,9 @@ import { ThemeSetting } from '/js/theme.js';
 import { ThemeWindow } from '/js/theme-window.js';
 import { Trash } from '/js/trash.js';
 import { openRights } from '/js/rights-window.js';
+import { openWeight } from '/js/weight-window.js';
+import { SQL, readWeight } from '/js/weight-reader.js';
+import { TransferError } from '/js/transfer.js';
 
 const DAY = 86400;
 // Nom, type (une valeur du manifeste ; `macro` est grisé, son extension étant éteinte), ancienneté en jours, auteur, dossier, poids en octets (de quelques octets à plusieurs Mo : toutes les unités
@@ -194,7 +197,7 @@ async function mount() {
     lockOf: file => (file.type === 'macro' ? { text: i18n.t('ex.lockedExtension', { name: 'Macro-modèles' }) } : null), newTypes: () => [], importTypes: () => [], canClose: () => true,
     notice: text => window.__notices.push(text), settings: () => settingsItems({ t: i18n.t, language: () => ({ choice: window.__language, grist: language }), onLanguage: value => { window.__language = value; }, onTheme: () => theme.open(), place, onAbout: () => window.__about() }),
     onOpen: file => { window.__opened = file.name; }, onNew: () => {},
-    onImport: () => {}, onClose: () => {}, onApps: () => {}, onRights: () => window.__rights(window.__rightsKind || 'protege'), personal: () => true, kept: null, trash: bin, copying,
+    onImport: () => {}, onClose: () => {}, onApps: () => {}, onRights: () => window.__rights(window.__rightsKind || 'protege'), onWeight: estimate => window.__weight(estimate), personal: () => true, kept: null, trash: bin, copying,
     attachments: async () => { window.__attachments += 1; if (window.__attachmentsFail) return { error: new Error(window.__attachmentsFail) }; return { data: attachmentsTable() }; },
     filing: { togglePin: noted('pin', 'name'), rename: noted('rename', 'name'), moveFile: noted('move', 'name'), renameFolder: async path => { window.__filing.push(['renameFolder', path]); }, moveFolder: async path => { window.__filing.push(['moveFolder', path]); }, ...moving,
       newFolder: () => filing.newFolder(), deleteFolder: path => filing.deleteFolder(path), undoStack: filing.undoStack },
@@ -271,6 +274,29 @@ async function mount() {
     return openRights({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], load: async () => state });
   };
   window.__rightsState = kind => explorer.setRights(states[kind].rules);
+  // La fenêtre « Poids du document » (js/weight-window.js, test/poids-fenetre-firefox.mjs) : la vraie fenêtre et le vrai lecteur (js/weight-reader.js) sur une doublure de `Transfer.sql`. `window.__weightKind` choisit ce
+  // que le serveur répond : 'ok' (un document de dix-huit tables dont une au nom très long et une trop longue à lire), 'refuse' (pas le droit de tout copier : 403), 'muet' (le serveur ne répond pas).
+  // `window.__weightEstimate` garde ce que le total a donné à l'ouverture.
+  const TABLE_BYTES = { [LONG]: 9437184, Clients: 2621440, Inscrits: 524288, Factures: 1310720, Stock: 40960, Notes: 4096 };
+  const BIG = Array.from({ length: 12 }, (unused, i) => `Table_${String(i + 1).padStart(2, '0')}`);
+  const fakeSql = kind => async statement => {
+    await new Promise(resolve => setTimeout(resolve, 20));
+    if (kind === 'refuse') throw new TransferError('http', 'Insufficient access', 403);
+    if (kind === 'muet') throw new TransferError('network', 'NetworkError when attempting to fetch resource.');
+    if (statement === SQL.file) return [{ octets: 67108864 }];
+    if (statement === SQL.history) return [{ octets: 18874368 }];
+    if (statement === SQL.stored) return [{ octets: 9437184 }];
+    if (statement === SQL.counted) return [{ octets: 7340032 }];
+    if (statement === SQL.tables) return [...Object.keys(TABLE_BYTES), ...BIG].map(tableId => ({ tableId }));
+    const name = /name = '(\w+)'$/.exec(statement)[1];
+    if (name === 'Table_03') throw new TransferError('http', 'a slow statement resulted in a database interrupt', 400);
+    return [{ octets: TABLE_BYTES[name] || 8192 * (BIG.indexOf(name) + 1) }];
+  };
+  window.__weightKind = 'ok';
+  window.__weight = estimate => {
+    window.__weightEstimate = estimate;
+    return openWeight({ container: stage, t: i18n.t, locale, inertTargets: () => [explorer.root], estimate, load: (update, cancelled) => readWeight(fakeSql(window.__weightKind), update, cancelled) });
+  };
   show();
   explorer.open();
 }

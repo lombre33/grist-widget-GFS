@@ -1,21 +1,22 @@
-// Le choix de thème de GFS (décision du porteur, 03/11) : retenu sur le navigateur (deux clés), un seul geste pour revenir à l'origine, suivi d'un autre onglet ; le message que les apps reçoivent ;
-// l'ambiance posée sur la page par le CSSOM, au mode de la page, et reposée quand il change.
+// Le choix de thème de GFS (décision du porteur, 03/11) : retenu sur le navigateur (trois clés : l'ambiance, la couleur, l'accessibilité renforcée du 04/11), un seul geste pour revenir à l'origine (qui
+// laisse l'accessibilité), suivi d'un autre onglet ; le message que les apps reçoivent ; l'ambiance posée sur la page par le CSSOM, au mode de la page, et reposée quand il change.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { AMBIANCE_KEY, COLOR_KEY, ThemeSetting, ambianceMessage, browserStores, previewMessage } from '../js/theme.js';
+import { ACCESS_KEY, AMBIANCE_KEY, COLOR_KEY, ThemeSetting, ambianceMessage, browserStores, previewMessage } from '../js/theme.js';
 import { ThemeHost, modeOf, paint, watchAppearance } from '../js/theme-apply.js';
 import { AMBIANCES, COLOR_TOKENS, ORIGIN } from '../js/ambiance.js';
-import { FORME_TOKENS } from '../js/ambiance-forme.js';
+import { FORME, FORME_TOKENS } from '../js/ambiance-forme.js';
 import { TYPE_TOKENS, typeTokens } from '../js/ambiance-types.js';
 
 function fakeStore(initial = null, { accepts = true } = {}) {
   const store = { value: initial, writes: [], read: () => store.value, write(value) { store.writes.push(value); if (!accepts) return false; store.value = value; return true; } };
   return store;
 }
-const setting = (ambiance = null, color = null, options) => {
+const setting = (ambiance = null, color = null, options, access = null) => {
   const ambianceStore = fakeStore(ambiance, options);
   const colorStore = fakeStore(color, options);
-  return { setting: new ThemeSetting({ ambianceStore, colorStore }), ambianceStore, colorStore };
+  const accessStore = fakeStore(access, options);
+  return { setting: new ThemeSetting({ ambianceStore, colorStore, accessStore }), ambianceStore, colorStore, accessStore };
 };
 
 test('rien de retenu : l\'ambiance d\'origine, sans couleur ; une valeur étrangère est tenue pour absente', () => {
@@ -35,10 +36,10 @@ test('choose : retient l\'ambiance (l\'ambiance d\'origine est la clé absente),
   const { setting: theme, ambianceStore } = setting();
   const heard = [];
   theme.onChange(event => heard.push(event));
-  assert.equal(theme.choose('neon'), true);
-  assert.deepEqual(ambianceStore.writes, ['neon']);
-  assert.deepEqual(heard, [{ ambiance: 'neon', color: null }]);
-  theme.choose('neon');
+  assert.equal(theme.choose('enseigne'), true);
+  assert.deepEqual(ambianceStore.writes, ['enseigne']);
+  assert.deepEqual(heard, [{ ambiance: 'enseigne', color: null, access: false }]);
+  theme.choose('enseigne');
   for (const odd of ['rose', '', null, undefined, {}, 'POP']) assert.equal(theme.choose(odd), true);
   assert.equal(heard.length, 1);
   assert.equal(theme.isOrigin, false);
@@ -65,12 +66,12 @@ test('chooseColor : une couleur `#rrggbb` (le texte d\'une personne est remis en
   assert.equal(heard.length, 3);
 });
 
-test('reset : ambiance d\'origine et pas de couleur, en un seul avertissement', () => {
+test('reset : ambiance d\'origine et pas de couleur, en un seul avertissement (l\'accessibilité n\'est pas touchée : voir plus bas)', () => {
   const { setting: theme, ambianceStore, colorStore } = setting('brut', '#d6336c');
   const heard = [];
   theme.onChange(event => heard.push(event));
   assert.equal(theme.reset(), true);
-  assert.deepEqual(heard, [{ ambiance: 'defaut', color: null }]);
+  assert.deepEqual(heard, [{ ambiance: 'defaut', color: null, access: false }]);
   assert.equal(theme.isOrigin, true);
   assert.deepEqual([ambianceStore.writes, colorStore.writes], [[null], [null]]);
   theme.reset();
@@ -85,22 +86,24 @@ test('un navigateur qui refuse de retenir : le choix vaut pour la page, et `choo
   assert.equal(theme.color, '#d6336c');
   assert.equal(theme.reset(), false);
   assert.equal(theme.isOrigin, true);
-  const broken = new ThemeSetting({ ambianceStore: { read() { throw new Error('SecurityError'); }, write: () => false }, colorStore: { read() { throw new Error('SecurityError'); }, write: () => false } });
+  const denied = () => ({ read() { throw new Error('SecurityError'); }, write: () => false });
+  const broken = new ThemeSetting({ ambianceStore: denied(), colorStore: denied(), accessStore: denied() });
   assert.equal(broken.isOrigin, true, 'une lecture qui échoue : l\'aspect d\'origine, sans erreur');
 });
 
 test('un autre onglet change une clé (événement `storage`) : on relit, une seule fois, et on s\'arrête quand on le demande', () => {
-  const { setting: theme, ambianceStore, colorStore } = setting();
+  const { setting: theme, ambianceStore, colorStore, accessStore } = setting();
   const heard = [];
   theme.onChange(event => heard.push(event));
   const handlers = [];
   const win = { addEventListener: (type, handler) => handlers.push([type, handler]), removeEventListener: (type, handler) => handlers.splice(handlers.findIndex(entry => entry[1] === handler), 1) };
   const stop = theme.watch(win);
-  assert.deepEqual(handlers.map(([type]) => type), ['storage', 'storage']);
+  assert.deepEqual(handlers.map(([type]) => type), ['storage', 'storage', 'storage']);
   ambianceStore.value = 'papier';
   colorStore.value = '#1d4ed8';
+  accessStore.value = 'renforcee';
   for (const [, handler] of handlers) handler({ key: AMBIANCE_KEY });
-  assert.deepEqual(heard, [{ ambiance: 'papier', color: '#1d4ed8' }], 'les deux relus d\'un coup, un seul avertissement');
+  assert.deepEqual(heard, [{ ambiance: 'papier', color: '#1d4ed8', access: true }], 'les trois relus d\'un coup, un seul avertissement');
   for (const [, handler] of handlers) handler({ key: 'gfs.langue' });
   for (const [, handler] of handlers) handler({ key: COLOR_KEY });
   assert.equal(heard.length, 1, 'une autre clé, ou rien de changé : rien à dire');
@@ -111,18 +114,21 @@ test('un autre onglet change une clé (événement `storage`) : on relit, une se
   assert.equal(handlers.length, 0);
 });
 
-test('browserStores : les deux clés du localStorage de GFS, et un navigateur qui refuse n\'arrête rien', () => {
+test('browserStores : les trois clés du localStorage de GFS, et un navigateur qui refuse n\'arrête rien', () => {
   const kept = new Map();
   const win = { localStorage: { getItem: key => kept.get(key) ?? null, setItem: (key, value) => kept.set(key, value), removeItem: key => kept.delete(key) } };
-  const { ambianceStore, colorStore } = browserStores(win);
+  const { ambianceStore, colorStore, accessStore } = browserStores(win);
   assert.equal(ambianceStore.write('pop'), true);
   assert.equal(colorStore.write('#d6336c'), true);
-  assert.deepEqual([...kept], [['gfs.theme', 'pop'], ['gfs.couleur', '#d6336c']]);
+  assert.equal(accessStore.write('renforcee'), true);
+  assert.deepEqual([...kept], [['gfs.theme', 'pop'], ['gfs.couleur', '#d6336c'], ['gfs.acces', 'renforcee']]);
   assert.equal(colorStore.write(null), true);
-  assert.deepEqual([...kept.keys()], ['gfs.theme']);
+  assert.deepEqual([...kept.keys()], ['gfs.theme', 'gfs.acces']);
   const refusing = browserStores({ get localStorage() { throw new Error('SecurityError'); } });
   assert.equal(refusing.ambianceStore.read(), null);
+  assert.equal(refusing.accessStore.read(), null);
   assert.equal(refusing.colorStore.write('#d6336c'), false);
+  assert.equal(refusing.accessStore.write('renforcee'), false);
 });
 
 test('le message aux apps : null à l\'origine ; sinon l\'ambiance, la couleur, les deux modes et la forme', () => {
@@ -153,6 +159,10 @@ test('le kit lit le message de GFS tel quel : mêmes jetons de couleur et de for
     for (const color of [null, '#d6336c', '#0f766e', '#ffe066', '#000000', '#ffffff']) {
       const sent = JSON.parse(JSON.stringify(ambianceMessage(id, color) || { id, couleur: null, ajustee: false, clair: ORIGIN.clair, sombre: ORIGIN.sombre, forme: {} }));
       assert.deepEqual(kit.normalizeAmbiance(sent), sent, `${id} ${color}`);
+      // L'accessibilité renforcée (04/11) : même jetons, un autre `id`, une autre forme ; le kit la lit sans rien perdre, sans qu'il ait eu à changer.
+      const strict = JSON.parse(JSON.stringify(ambianceMessage(id, color, true)));
+      assert.equal(strict.id, 'renforcee');
+      assert.deepEqual(kit.normalizeAmbiance(strict), strict, `${id} ${color} renforcée`);
     }
   }
 });
@@ -207,7 +217,7 @@ test('paint : les couleurs de type sont celles de l\'ambiance et du mode de la p
 test('paint : la vignette de l\'ambiance d\'origine pose les couleurs de type d\'origine (la page peut porter celles d\'une autre ambiance)', () => {
   const page = fakeElement();
   const mini = fakeElement();
-  paint(page, ambianceMessage('neon', null), 'sombre');
+  paint(page, ambianceMessage('enseigne', null), 'sombre');
   paint(mini, previewMessage('defaut', null), 'sombre');
   assert.equal(mini.attributes.get('data-ambiance'), 'defaut');
   for (const [name, value] of Object.entries(typeTokens('defaut', 'sombre'))) assert.equal(mini.props.get(name), value, name);
@@ -282,7 +292,7 @@ test('ThemeHost : pose l\'ambiance au démarrage, la repose quand le choix ou le
   assert.equal(told.length, 2);
   assert.equal(told[1], null);
   stop();
-  theme.choose('neon');
+  theme.choose('enseigne');
   assert.equal(root.props.size, 0, 'arrêté : plus rien ne se pose');
 });
 
@@ -298,4 +308,147 @@ test('la vignette : le message de l\'ambiance pour la couleur choisie ; l\'origi
   assert.equal(previewMessage('defaut', '#d6336c').id, 'defaut');
   assert.notDeepEqual(previewMessage('defaut', '#d6336c').clair, ORIGIN.clair);
   assert.equal(previewMessage('inconnue', null).id, 'defaut', 'une ambiance inconnue : la vignette montre l\'origine');
+});
+
+test('chooseAccess : l\'accessibilité renforcée se retient dans sa clé (absente quand elle est éteinte), prévient une fois, et se combine avec l\'ambiance et la couleur', () => {
+  const { setting: theme, accessStore } = setting('pop', '#0f766e');
+  const heard = [];
+  theme.onChange(event => heard.push(event));
+  assert.equal(theme.access, false);
+  assert.equal(theme.chooseAccess(true), true);
+  assert.deepEqual(accessStore.writes, ['renforcee']);
+  assert.equal(theme.access, true);
+  assert.deepEqual(heard, [{ ambiance: 'pop', color: '#0f766e', access: true }]);
+  theme.chooseAccess(true);
+  assert.equal(heard.length, 1, 'déjà allumée : rien à dire');
+  assert.equal(theme.isOrigin, false);
+  assert.equal(theme.hasOwnLook, true);
+  assert.equal(theme.ambiance, 'pop', 'elle se pose sur l\'ambiance, elle ne la remplace pas');
+  assert.equal(theme.color, '#0f766e');
+  assert.equal(theme.message().id, 'renforcee');
+  assert.equal(theme.message().couleur, '#0f766e');
+  assert.deepEqual(theme.palette.forme, FORME.renforcee);
+  assert.equal(theme.chooseAccess(false), true);
+  assert.equal(accessStore.writes.at(-1), null, 'éteinte : la clé est retirée');
+  assert.equal(accessStore.value, null);
+  assert.equal(theme.access, false);
+  assert.equal(heard.length, 2);
+  assert.equal(theme.message().id, 'pop');
+});
+
+test('l\'accessibilité renforcée seule, sur l\'aspect d\'origine : un message pour les apps (les couleurs d\'origine à 7:1), et l\'origine n\'est plus « rien n\'est choisi »', () => {
+  const { setting: theme } = setting(null, null, undefined, 'renforcee');
+  assert.equal(theme.ambiance, 'defaut');
+  assert.equal(theme.access, true);
+  assert.equal(theme.isOrigin, false);
+  assert.equal(theme.hasOwnLook, false);
+  const message = theme.message();
+  assert.equal(message.id, 'renforcee');
+  assert.equal(message.couleur, null);
+  assert.deepEqual(message.forme, FORME.renforcee);
+  assert.notDeepEqual(message.clair, ORIGIN.clair);
+});
+
+test('reset ne touche pas à l\'accessibilité renforcée : c\'est un besoin et non un goût, elle s\'éteint par son interrupteur', () => {
+  const { setting: theme, ambianceStore, colorStore, accessStore } = setting('brut', '#d6336c', undefined, 'renforcee');
+  const heard = [];
+  theme.onChange(event => heard.push(event));
+  assert.equal(theme.hasOwnLook, true);
+  assert.equal(theme.reset(), true);
+  assert.deepEqual(heard, [{ ambiance: 'defaut', color: null, access: true }]);
+  assert.equal(theme.access, true);
+  assert.equal(theme.hasOwnLook, false, 'rien à défaire : le bouton « Revenir à Grist Factory » est grisé');
+  assert.equal(theme.isOrigin, false, 'mais l\'aspect n\'est pas celui d\'origine : les apps reçoivent un message');
+  assert.deepEqual([ambianceStore.writes, colorStore.writes, accessStore.writes], [[null], [null], []]);
+  theme.reset();
+  assert.equal(heard.length, 1);
+});
+
+test('une valeur étrangère dans la clé de l\'accessibilité est tenue pour absente ; un navigateur qui refuse : elle vaut pour la page, et `chooseAccess` le dit', () => {
+  for (const odd of ['', 'oui', '1', 'true', 'RENFORCEE', '{"acces":1}', '<b>']) assert.equal(setting(null, null, undefined, odd).setting.access, false, odd);
+  assert.equal(setting(null, null, undefined, 'renforcee').setting.access, true);
+  const { setting: theme } = setting(null, null, { accepts: false });
+  assert.equal(theme.chooseAccess(true), false);
+  assert.equal(theme.access, true);
+  assert.equal(theme.chooseAccess(false), false);
+  assert.equal(theme.access, false);
+});
+
+test('Néon, retiré le 04/11, se lit comme Enseigne (la clé n\'est pas réécrite avant le prochain choix) ; une clé qui n\'a jamais existé reste absente', () => {
+  const { setting: theme, ambianceStore } = setting('neon');
+  assert.equal(theme.ambiance, 'enseigne');
+  assert.deepEqual(ambianceStore.writes, [], 'lire ne réécrit rien');
+  assert.equal(theme.message().id, 'enseigne');
+  assert.equal(theme.choose('pop'), true);
+  assert.deepEqual(ambianceStore.writes, ['pop']);
+  // Un autre onglet qui écrit encore « neon » (une page ouverte avant la mise à jour) : relu comme Enseigne.
+  const other = setting();
+  other.ambianceStore.value = 'neon';
+  other.setting.reload();
+  assert.equal(other.setting.ambiance, 'enseigne');
+  assert.equal(setting('Néon').setting.ambiance, 'defaut');
+  assert.equal(setting('neon ').setting.ambiance, 'defaut');
+});
+
+test('le message aux apps en accessibilité renforcée : l\'`id` est `renforcee`, la forme est la sienne, les jetons gardent la couleur de l\'ambiance ; sans le réglage, rien ne change', () => {
+  assert.deepEqual(ambianceMessage('pop', null, false), ambianceMessage('pop', null));
+  assert.equal(ambianceMessage('defaut', null, false), null);
+  const strict = ambianceMessage('pop', null, true);
+  assert.equal(strict.id, 'renforcee');
+  assert.deepEqual(strict.forme, FORME.renforcee);
+  assert.deepEqual(Object.keys(strict).sort(), ['ajustee', 'clair', 'couleur', 'forme', 'id', 'sombre']);
+  assert.deepEqual(Object.keys(strict.clair).sort(), [...COLOR_TOKENS].sort());
+  assert.notDeepEqual(strict.clair, ambianceMessage('pop', null).clair);
+  const origin = ambianceMessage('defaut', null, true);
+  assert.equal(origin.id, 'renforcee');
+  assert.equal(origin.couleur, null, 'le bleu d\'origine n\'est pas une couleur choisie');
+  assert.equal(ambianceMessage('defaut', '#d6336c', true).couleur, '#d6336c');
+  assert.equal(ambianceMessage('inconnue', null, true), null);
+  assert.deepEqual(JSON.parse(JSON.stringify(strict)), strict);
+});
+
+test('la vignette en accessibilité renforcée : ce que le choix donnerait avec l\'interrupteur, y compris pour l\'origine', () => {
+  assert.deepEqual(previewMessage('pop', null, true), ambianceMessage('pop', null, true));
+  assert.deepEqual(previewMessage('papier', '#0f766e', true), ambianceMessage('papier', '#0f766e', true));
+  assert.equal(previewMessage('defaut', null, true).id, 'renforcee', 'l\'origine renforcée s\'écrit : sa vignette la montre');
+  assert.deepEqual(previewMessage('defaut', null, false).clair, ORIGIN.clair);
+  assert.equal(previewMessage('defaut', null).id, 'defaut');
+});
+
+test('paint en accessibilité renforcée : `data-ambiance` vaut `renforcee`, la forme de l\'ambiance d\'avant est retirée', () => {
+  const el = fakeElement();
+  paint(el, ambianceMessage('enseigne', null), 'sombre');
+  assert.equal(el.props.has('--shadow-float'), true);
+  assert.equal(el.props.get('--tt-head'), 'uppercase');
+  paint(el, ambianceMessage('enseigne', null, true), 'sombre');
+  assert.equal(el.attributes.get('data-ambiance'), 'renforcee');
+  assert.equal(el.props.get('--bw'), '2px');
+  assert.equal(el.props.get('--bar-w'), '6px');
+  assert.equal(el.props.get('--tt-head'), 'none', 'plus de capitales');
+  assert.equal(el.props.get('--shadow-float'), 'none');
+  assert.equal(el.props.size, COLOR_TOKENS.length + Object.keys(FORME.renforcee).length);
+});
+
+test('ThemeHost : l\'interrupteur repose la page et prévient les apps une fois ; « Revenir à l\'origine » laisse l\'accessibilité', () => {
+  const win = fakeWindow('light');
+  const { setting: theme } = setting('brut');
+  const told = [];
+  const host = new ThemeHost({ win, setting: theme, onMessage: message => told.push(message) });
+  const root = win.document.documentElement;
+  const stop = host.start();
+  assert.equal(root.attributes.get('data-ambiance'), 'brut');
+  theme.chooseAccess(true);
+  assert.equal(root.attributes.get('data-ambiance'), 'renforcee');
+  assert.equal(told.length, 1);
+  assert.equal(told[0].id, 'renforcee');
+  theme.reset();
+  assert.equal(root.attributes.get('data-ambiance'), 'renforcee', 'plus d\'ambiance, mais l\'accessibilité reste');
+  assert.equal(root.props.get('--bw'), '2px');
+  assert.equal(told.length, 2);
+  assert.equal(told[1].id, 'renforcee');
+  assert.equal(told[1].couleur, null);
+  theme.chooseAccess(false);
+  assert.equal(root.props.size, 0);
+  assert.equal(told.at(-1), null, 'tout est éteint : les apps reprennent leurs couleurs');
+  stop();
 });

@@ -79,6 +79,10 @@
   --shadow-float: 0 14px 32px -8px rgba(0, 0, 0, .65), 0 2px 8px rgba(0, 0, 0, .45);
   --shadow-card: 0 1px 2px rgba(0, 0, 0, .45);
 }
+/* L'accessibilité renforcée (décision du 04/11, js/theme.js) tient le texte à 7:1 sur les fonds de l'ambiance ; les couleurs d'état de la charte, qui ne changent pas d'une ambiance à l'autre, et celles de type
+   (le message de l'accessibilité renforcée a l'`id` `renforcee` et pas de couleur de type propre : ce sont celles d'origine, ci-dessus) ne le tiennent pas toutes. Leur texte prend donc celui de la page, après les deux
+   blocs sombres ci-dessus (même poids, le dernier gagne) ; l'icône, le contour et le fond doux gardent la couleur : l'état ou le type se lit aussi par le mot et par l'icône. */
+:root[data-ambiance="renforcee"] { --danger-ink: var(--text); --warn-ink: var(--text); --good: var(--text); --t-doc-ink: var(--text); --t-grid-ink: var(--text); --t-slides-ink: var(--text); --t-pdf-ink: var(--text); }
 
 * { box-sizing: border-box; }
 html, body { height: 100%; }

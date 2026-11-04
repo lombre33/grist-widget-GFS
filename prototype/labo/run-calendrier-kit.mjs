@@ -334,7 +334,7 @@ const follows = async (message, mode) => {
   return now.cal === rgb(tokens(message, mode)['--surface']) && now.page === rgb(tokens(message, mode)['--bg']) && now.today === rgb(tokens(message, mode)['--accent-solid']) ? true : now;
 };
 const summary = [];
-for (const id of ['papier', 'brut', 'neon', 'pop']) {
+for (const id of ['papier', 'brut', 'enseigne', 'pop']) {
   const message = await choose(id);
   for (const mode of [scheme, other]) {
     await page.emulateMedia({ colorScheme: mode });

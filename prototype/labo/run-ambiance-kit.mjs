@@ -7,7 +7,7 @@
 //   4. chaque texte de l'app garde 4,5:1 au moins dans les quatre ambiances, en clair et en sombre : l'app n'a rien à recalculer ;
 //   5. la couleur libre (une pastille de la palette du kit) : l'accent de l'app suit, la forme de l'ambiance reste ;
 //   6. « Revenir à Grist Factory » : l'app retire tout ce que le kit avait posé, jamais sa propre propriété, et retrouve les couleurs de la charte ;
-//   7. une app ouverte après le choix (GFS rechargé, Néon retenu) : le contexte porte l'ambiance, posée avant que `ready` se règle ; aucun événement ;
+//   7. une app ouverte après le choix (GFS rechargé, Enseigne retenue) : le contexte porte l'ambiance, posée avant que `ready` se règle ; aucun événement ;
 //   8. aucun refus de la politique de sécurité du contenu, aucune erreur de page, aucun avertissement de GFS.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark, KIT_DIR=<dossier du kit> (par défaut le sous-module prototype/kit : ce que GFS référence).
 import { existsSync } from 'node:fs';
@@ -108,7 +108,7 @@ check('et revient', (await painted()).accent === tokens(pop, scheme)['--accent']
 
 // ---------- 4. chaque texte de l'app se lit, dans chaque ambiance et chaque mode ----------
 const audits = [];
-for (const id of ['papier', 'brut', 'neon', 'pop']) {
+for (const id of ['papier', 'brut', 'enseigne', 'pop']) {
   const before = (await state()).abonne.length;
   await tile(id).click();
   await until(async () => (await state()).abonne.length === before + 1);
@@ -151,7 +151,7 @@ check('le kit retire tout ce qu\'il avait posé et rien d\'autre : la propriét�
 check('GFS n\'a pas touché au cadre de l\'app : le même cadre, un seul', !app.isDetached() && page.frames().filter(f => /n-ambiance-kit\//.test(f.url())).length === 1);
 
 // ---------- 7. une app ouverte après le choix ----------
-await tile('neon').click();
+await tile('enseigne').click();
 await page.waitForTimeout(300);
 await closeWindow();
 await hideExplorer();
@@ -164,15 +164,15 @@ app = await lab.openApp('sonde-n', /n-ambiance-kit\//, frame);
 await until(async () => (await state()).pret === true, 15000);
 seen = await state();
 now = await painted();
-const neon = seen.abonne[0];
-say('Néon, app ouverte après le choix :', { neon, auDepart: seen.auDepart, now });
-check('l\'app ouverte après le choix reçoit Néon dans son contexte : un seul rappel de l\'abonné (à l\'arrivée), les dix-neuf jetons par mode et la forme', seen.abonne.length === 1 && neon.id === 'neon' && neon.n.clair === 19 && neon.n.sombre === 19 && neon.n.forme > 10, seen.abonne);
-check('l\'ambiance est posée avant que `ready` se règle : l\'app s\'affiche sans repeindre', seen.auDepart.inline === 1 + 19 + neon.n.forme && seen.auDepart.accent === tokens(neon, scheme)['--accent'] && seen.auDepart.propre === 'garde', seen.auDepart);
-check('la page porte l\'accent de Néon, au mode de l\'app', now.accent === tokens(neon, scheme)['--accent'] && now.inline === 1 + 19 + neon.n.forme, now);
-await shot('7-neon-app');
+const enseigne = seen.abonne[0];
+say('Enseigne, app ouverte après le choix :', { enseigne, auDepart: seen.auDepart, now });
+check('l\'app ouverte après le choix reçoit Enseigne dans son contexte : un seul rappel de l\'abonné (à l\'arrivée), les dix-neuf jetons par mode et la forme', seen.abonne.length === 1 && enseigne.id === 'enseigne' && enseigne.n.clair === 19 && enseigne.n.sombre === 19 && enseigne.n.forme > 10, seen.abonne);
+check('l\'ambiance est posée avant que `ready` se règle : l\'app s\'affiche sans repeindre', seen.auDepart.inline === 1 + 19 + enseigne.n.forme && seen.auDepart.accent === tokens(enseigne, scheme)['--accent'] && seen.auDepart.propre === 'garde', seen.auDepart);
+check('la page porte l\'accent d\'Enseigne, au mode de l\'app', now.accent === tokens(enseigne, scheme)['--accent'] && now.inline === 1 + 19 + enseigne.n.forme, now);
+await shot('7-enseigne-app');
 await page.emulateMedia({ colorScheme: other });
-await until(async () => (await painted()).accent === tokens(neon, other)['--accent']);
-await shot('7-neon-app-mode-autre');
+await until(async () => (await painted()).accent === tokens(enseigne, other)['--accent']);
+await shot('7-enseigne-app-mode-autre');
 await page.emulateMedia({ colorScheme: scheme });
 
 // ---------- 8. la politique de sécurité du contenu ----------

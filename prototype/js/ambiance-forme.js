@@ -38,16 +38,31 @@ export const FORME = Object.freeze({
     '--font-label': MONO, '--ls-label': '.02em',
     '--avatar-bg': 'var(--accent-solid)', '--avatar-fg': 'var(--on-accent)', '--avatar-line': 'var(--border-strong)',
   }),
-  // Néon : un fond nuit où la liste se pose sur une trame de points, des traits qui brillent, un filet lumineux, des titres à chasse fixe.
-  neon: Object.freeze({
-    '--radius-xs': '3px', '--radius-sm': '5px', '--radius-md': '7px', '--radius-lg': '9px', '--radius-pill': '4px', '--radius-btn': '5px', '--radius-input': '5px',
-    '--divider': mix('var(--accent)', 38, 'var(--border)'), '--ex-bg': 'var(--bg)', '--main-bg': 'transparent',
-    '--wash': `radial-gradient(circle at 1px 1px, ${mix('var(--accent)', 22)} 1px, transparent 0)`, '--wash-size': '15px 15px',
-    '--shadow-ctl': `0 0 0 1px ${mix('var(--accent)', 26)}, 0 0 12px -3px ${mix('var(--accent)', 45)}`,
-    '--shadow-float': `0 0 0 1px ${mix('var(--accent)', 60)}, 0 22px 50px -14px ${mix('var(--accent)', 55)}, 0 0 34px -6px ${mix('var(--accent-2)', 40)}`,
-    '--stripe': 'linear-gradient(90deg, var(--accent), var(--accent-2))', '--stripe-h': '2px',
-    '--font-head': MONO, '--fw-head': '700', '--fs-head': '14px', '--tt-head': 'uppercase', '--ls-head': '.09em', '--font-label': MONO, '--ls-label': '.06em',
+  // Enseigne (04/11, à la place de Néon) : une enseigne lumineuse. Du noir chaud, des tubes roses qui brillent autour des cadres (la lueur vient de `--hard` : l'accent en sombre, rien en clair, où l'enseigne est
+  // « de jour »), des titres en capitales très espacées, un filet rose, ambre et cyan, des pastilles et des avatars évidés, un bouton en dégradé. La lueur du titre est une règle de css/explorer.css.
+  enseigne: Object.freeze({
+    '--radius-xs': '5px', '--radius-sm': '8px', '--radius-md': '10px', '--radius-lg': '14px', '--radius-pill': '999px', '--radius-btn': '10px', '--radius-input': '10px', '--radius-panel': '12px',
+    '--bw': '1.5px', '--gap': '8px', '--divider-w': '0px', '--bar-w': '3px',
+    '--ex-bg': 'var(--bg)', '--main-bg': mix('var(--surface)', 90),
+    '--wash': `radial-gradient(520px 260px at 100% -8%, ${mix('var(--hard)', 16)}, transparent 72%), radial-gradient(560px 300px at 0% 112%, ${mix('var(--hard)', 22)}, transparent 72%)`,
+    '--shadow-ctl': `0 0 0 1px ${mix('var(--accent)', 45)}, 0 0 10px -2px ${mix('var(--hard)', 55)}`,
+    '--shadow-panel': `0 0 0 1.5px ${mix('var(--accent)', 55, 'var(--border)')}, 0 0 20px -6px ${mix('var(--hard)', 55)}`,
+    '--shadow-float': `0 0 0 1.5px var(--accent), 0 0 34px -4px ${mix('var(--hard)', 60)}, 0 0 70px -10px ${mix('var(--accent-2)', 40)}, 0 18px 40px -12px rgba(0, 0, 0, .35)`,
+    '--stripe': 'linear-gradient(90deg, var(--accent), var(--accent-3), var(--accent-2))', '--stripe-h': '2px',
+    '--fw-head': '700', '--fs-head': '15px', '--tt-head': 'uppercase', '--ls-head': '.18em', '--ls-label': '.1em',
     '--avatar-bg': 'transparent', '--avatar-fg': 'var(--accent-ink)', '--avatar-line': 'var(--accent)',
+    '--fill': 'linear-gradient(135deg, var(--accent-solid), var(--accent-end))', '--fill-hover': 'linear-gradient(135deg, var(--accent-solid-hover), var(--accent-end))', '--fill-line': 'transparent',
+  }),
+  // L'accessibilité renforcée (04/11) : la forme que prend la page quand la personne l'allume, quelle que soit l'ambiance (la couleur, elle, reste celle de l'ambiance). Des traits de 2 px, une barre de 6 px
+  // pour la ligne choisie, aucun décor derrière le texte (pas de trame, de filet, de dégradé, d'ombre ni de halo), un bouton plein uni, des titres sans capitales ni lettres espacées.
+  renforcee: Object.freeze({
+    '--radius-xs': '3px', '--radius-sm': '5px', '--radius-md': '6px', '--radius-lg': '8px', '--radius-pill': '6px', '--radius-btn': '5px', '--radius-input': '5px', '--radius-panel': '0px',
+    '--bw': '2px', '--divider-w': '2px', '--divider': 'var(--border-strong)', '--bar-w': '6px', '--gap': '0px',
+    '--ex-bg': 'var(--surface)', '--main-bg': 'var(--surface)', '--wash': 'none', '--wash-size': 'auto', '--stripe': 'none', '--stripe-h': '0px',
+    '--shadow-ctl': 'none', '--shadow-panel': 'none', '--shadow-float': 'none',
+    '--fw-head': '700', '--fs-head': '16px', '--tt-head': 'none', '--ls-head': 'normal', '--ls-label': 'normal',
+    '--avatar-bg': 'var(--surface-sunken)', '--avatar-fg': 'var(--text)', '--avatar-line': 'var(--border-strong)',
+    '--fill': 'var(--accent-solid)', '--fill-hover': 'var(--accent-solid-hover)', '--fill-line': 'var(--border-strong)',
   }),
 });
 

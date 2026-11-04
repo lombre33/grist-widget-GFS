@@ -101,11 +101,11 @@
 
 /* ---------- la fenêtre « Thème » (décision du 03/11) : cinq vignettes, la couleur d'accent, la mesure du contraste ---------- */
 .mod.th-win { width: min(640px, 100%); }
-.th-body { display: flex; flex-direction: column; gap: 6px; padding: 8px 14px; }
+.th-body { display: flex; flex-direction: column; gap: 6px; padding: 6px 14px; }
 .th-set { margin: 0; padding: 0; border: 0; min-width: 0; }
 /* La grille des vignettes de la fenêtre a son propre nom (`amb-grid`) : `th-grid` est la grille de la vue en vignettes de l'explorateur, et cette feuille, chargée après celle de la liste, lui imposait cinq
-   colonnes (test/css-classes.test.mjs : une classe a un seul propriétaire). Le remplissage de 8 px, que la fenêtre recevait de cette grille-là, est écrit ici. */
-.amb-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; padding: 8px; }
+   colonnes (test/css-classes.test.mjs : une classe a un seul propriétaire). Le remplissage que la fenêtre recevait de cette grille-là (8 px) est écrit ici, resserré en hauteur (4 px) : la ligne de l'accessibilité renforcée a pris sa place, et la fenêtre doit tenir dans 520 × 400. */
+.amb-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; padding: 4px 8px; }
 /* Une vignette = un bouton radio (invisible, étendu sur toute la vignette) : les flèches changent d'ambiance, comme dans une liste de boutons radio du navigateur. */
 .amb { position: relative; display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 5px 5px 6px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--surface); cursor: pointer; }
 .amb:hover { background: var(--surface-sunken); }
@@ -142,6 +142,21 @@
 .th-pick { gap: 6px; }
 .th-pick .sw { width: 14px; height: 14px; border: 1px solid var(--border-strong); border-radius: 4px; }
 .th-pick[aria-disabled="true"], .th-win .mod-foot .btn[aria-disabled="true"] { border-style: dashed; color: var(--text-muted); cursor: not-allowed; }
+/* Le réglage « Accessibilité renforcée » (décision du 04/11) : un interrupteur à part des ambiances, qui se pose sur celle qu'on a choisie, avec ou sans couleur à soi. Une case à cocher au rôle « switch »,
+   étendue sur toute la ligne comme une vignette (clic, Espace) ; l'interrupteur dessiné a un contour de 2 px, de la couleur du texte (3:1 sur tout fond), et la poignée change de côté : la position dit
+   l'état, pas seulement la couleur. Son nom et sa phrase tiennent sur une seule ligne, à toute largeur (la fenêtre doit rester dans 700 × 400, et dans 520 × 400, sans défiler) : la phrase se coupe par
+   « … » quand la place manque, et son texte entier est l'info-bulle de la ligne. */
+.th-acc { position: relative; display: flex; align-items: center; gap: 10px; min-width: 0; padding: 4px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); cursor: pointer; }
+.th-acc:hover { background: var(--surface-sunken); }
+.th-acc input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.th-acc-sw { flex: none; position: relative; width: 34px; height: 20px; border: 2px solid var(--text); border-radius: 999px; background: var(--surface); }
+.th-acc-sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--text); }
+.th-acc:has(input:checked) .th-acc-sw { border-color: var(--accent-solid); background: var(--accent-solid); }
+.th-acc:has(input:checked) .th-acc-sw::after { left: 16px; background: var(--on-accent); }
+.th-acc:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.th-acc-txt { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.th-acc-t { font-size: 12.5px; font-weight: 700; line-height: 1.25; }
+.th-acc-d { margin-left: 6px; font-size: 11.5px; line-height: 1.3; color: var(--text-muted); }
 .th-check, .th-adj { display: flex; gap: 6px; align-items: flex-start; margin: 0 2px; font-size: 12px; line-height: 1.35; }
 .th-check .ic, .th-adj .ic { flex: none; margin-top: 1px; width: 14px; height: 14px; color: var(--accent-ink); }
 .th-adj { color: var(--text-muted); }

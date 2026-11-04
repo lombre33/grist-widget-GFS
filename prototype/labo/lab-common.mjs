@@ -344,7 +344,7 @@ export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', 
 // pour les `color-mix`). `scope` : le sélecteur des zones à mesurer. Rend { seen (textes mesurés), skipped, gradients, failures (4,5:1, 3:1 pour un grand texte) }.
 // `byPoint` : la pile des fonds est celle de tout ce qui est empilé au centre du texte (`elementsFromPoint`), pas celle de ses seuls ancêtres : le fond d'un texte peut être celui d'un autre élément (la cellule d'un
 // jour sous son numéro, dans le calendrier). Un texte qu'on ne voit pas à cet endroit (hors du cadre, coupé par un défilement) n'est pas mesuré : `skipped` les compte.
-export const contrastAudit = (target, scope, { byPoint = false } = {}) => target.evaluate(([selector, byPoint]) => {
+export const contrastAudit = (target, scope, { byPoint = false, strict = false } = {}) => target.evaluate(([selector, byPoint, strict]) => {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 1;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -395,11 +395,52 @@ export const contrastAudit = (target, scope, { byPoint = false } = {}) => target
       const worst = candidates.map(stop => { const stack = ['#fff', ...(stop ? [stop] : layers)]; return ratio(pixel([...stack, style_]), pixel(stack)); }).reduce((a, b) => Math.min(a, b));
       const size = parseFloat(style.fontSize);
       const large = size >= 24 || (size >= 18.66 && Number(style.fontWeight) >= 700);
-      const need = large ? 3 : 4.5;
+      const need = strict ? (large ? 4.5 : 7) : (large ? 3 : 4.5); // `strict` : l'accessibilité renforcée (WCAG 1.4.6, niveau AAA : 7:1, et 4,5:1 pour un grand texte)
       const value = worst;
       seen += 1;
       if (value < need) failures.push(`${el.tagName.toLowerCase()}.${String(el.className).split(' ')[0]} « ${(el.value || el.textContent).trim().slice(0, 24)} » ${value.toFixed(2)}:1`);
     }
   }
   return { seen, skipped, gradients, failures };
-}, [scope, byPoint]);
+}, [scope, byPoint, strict]);
+
+// Le contraste du trait de chaque commande (WCAG 1.4.11, contenu non textuel : 3:1) : pour chaque élément de `controls` dans `scope` qui a un trait visible, la couleur du trait contre ce qu'il y a derrière
+// l'élément (les fonds de ses parents, jusqu'au premier opaque), mesuré sur les couleurs affichées. Rend { seen, failures }.
+export const edgeAudit = (target, scope, controls, minimum = 3) => target.evaluate(([scope, controls, minimum]) => {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 1;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const pixel = layers => {
+    ctx.clearRect(0, 0, 1, 1);
+    for (const color of layers) { ctx.fillStyle = '#000'; ctx.fillStyle = color; ctx.fillRect(0, 0, 1, 1); }
+    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+    return [r, g, b];
+  };
+  const lum = ([r, g, b]) => { const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+  const ratio = (a, b) => { const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
+  const behind = el => {
+    const layers = [];
+    for (let node = el.parentElement; node; node = node.parentElement) {
+      const color = getComputedStyle(node).backgroundColor;
+      layers.unshift(color);
+      if (/^rgb\(/.test(color)) break;
+    }
+    return ['#fff', ...layers];
+  };
+  const failures = [];
+  let seen = 0;
+  for (const root of document.querySelectorAll(scope)) {
+    for (const el of root.querySelectorAll(controls)) {
+      const style = getComputedStyle(el);
+      const box = el.getBoundingClientRect();
+      if (style.visibility === 'hidden' || style.display === 'none' || box.width < 2 || box.height < 2 || el.closest('[hidden], [aria-hidden="true"]')) continue;
+      const lines = ['Top', 'Right', 'Bottom', 'Left'].filter(side => parseFloat(style[`border${side}Width`]) >= 1 && style[`border${side}Style`] !== 'none' && !/rgba\(.*,\s*0\)$/.test(style[`border${side}Color`]));
+      if (!lines.length) continue;
+      const back = behind(el);
+      const worst = Math.min(...lines.map(side => ratio(pixel([...back, style[`border${side}Color`]]), pixel(back))));
+      seen += 1;
+      if (worst < minimum) failures.push(`${el.tagName.toLowerCase()}.${String(el.className).split(' ')[0]} « ${(el.value || el.textContent || '').trim().slice(0, 20)} » ${worst.toFixed(2)}:1`);
+    }
+  }
+  return { seen, failures };
+}, [scope, controls, minimum]);

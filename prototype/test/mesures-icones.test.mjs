@@ -53,19 +53,19 @@ describe('mesures-icones : une ligne juste ne dit rien, une ligne fausse est vue
     assert.ok(kinds(docRow('papier', 'sombre', 'list', { fill: 'color(srgb 0.1 0.1 0.1 / 0.17)' }), ctx('papier')).includes('remplissage'));
   });
 
-  test('Néon a un halo de 2,2 px ; ailleurs, aucun filtre', () => {
-    assert.ok(kinds(docRow('neon', 'sombre', 'list', { filter: 'none' }), ctx('neon')).includes('halo'));
-    assert.ok(kinds(docRow('neon', 'sombre', 'list', { filter: 'drop-shadow(rgb(0, 0, 0) 0px 0px 4px)' }), ctx('neon')).includes('halo'));
+  test('Enseigne a un halo de 2,2 px ; ailleurs, aucun filtre', () => {
+    assert.ok(kinds(docRow('enseigne', 'sombre', 'list', { filter: 'none' }), ctx('enseigne')).includes('halo'));
+    assert.ok(kinds(docRow('enseigne', 'sombre', 'list', { filter: 'drop-shadow(rgb(0, 0, 0) 0px 0px 4px)' }), ctx('enseigne')).includes('halo'));
     assert.ok(kinds(docRow('brut', 'sombre', 'list', { filter: 'drop-shadow(rgb(0, 0, 0) 0px 0px 2.2px)' }), ctx('brut')).includes('halo'));
   });
 
   test('un fichier grisé n\'a ni couleur de type, ni remplissage, ni halo ; un dossier garde son remplissage', () => {
-    const grey = { name: 'Autre format', fam: null, locked: true, folder: false, color: 'rgb(163, 183, 218)', width: BASE.list * STROKE.neon.k, join: 'round', cap: 'round', fill: 'none', filter: 'none', ink: null };
-    assert.deepEqual(rowProblems(grey, ctx('neon')), []);
-    assert.ok(kinds({ ...grey, filter: 'drop-shadow(rgb(0, 0, 0) 0px 0px 2.2px)' }, ctx('neon')).includes('halo'), 'un fichier grisé ne s\'allume pas');
-    assert.ok(kinds({ ...grey, color: rgbOf(typeTokens('neon', 'sombre')['--t-doc']) }, ctx('neon')).includes('couleur d\'un fichier sans famille'));
+    const grey = { name: 'Autre format', fam: null, locked: true, folder: false, color: 'rgb(163, 183, 218)', width: BASE.list * STROKE.enseigne.k, join: 'round', cap: 'round', fill: 'none', filter: 'none', ink: null };
+    assert.deepEqual(rowProblems(grey, ctx('enseigne')), []);
+    assert.ok(kinds({ ...grey, filter: 'drop-shadow(rgb(0, 0, 0) 0px 0px 2.2px)' }, ctx('enseigne')).includes('halo'), 'un fichier grisé ne s\'allume pas');
+    assert.ok(kinds({ ...grey, color: rgbOf(typeTokens('enseigne', 'sombre')['--t-doc']) }, ctx('enseigne')).includes('couleur d\'un fichier sans famille'));
     const folder = { ...grey, name: 'Formation', locked: false, folder: true, fill: 'rgb(199, 219, 253)' };
-    assert.deepEqual(rowProblems(folder, ctx('neon', 'sombre')).filter(item => /remplissage/.test(item.kind)), [], 'le remplissage d\'un dossier n\'est pas jugé');
+    assert.deepEqual(rowProblems(folder, ctx('enseigne', 'sombre')).filter(item => /remplissage/.test(item.kind)), [], 'le remplissage d\'un dossier n\'est pas jugé');
   });
 
   test('la barre d\'information : la famille, la couleur et le trait', () => {

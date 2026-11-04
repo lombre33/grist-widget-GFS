@@ -1,13 +1,14 @@
 // La fenêtre « Thème » (décision du porteur, 03/11) : les cinq ambiances en vignettes (chacune est le vrai décor de GFS à l'échelle d'une vignette, dans la couleur et le mode qui valent), la couleur
-// d'accent (celle de l'ambiance, ou la sienne), le contraste mesuré, le retour à l'origine. Un choix s'applique tout de suite : la fenêtre le rend au réglage (js/theme.js), qui le retient ; la page
-// et les apps le reçoivent par js/theme-apply.js. Une fenêtre sur la base commune (js/modal.js) : le titre et le pied restent en place, seul le corps défile.
+// d'accent (celle de l'ambiance, ou la sienne), l'interrupteur « Accessibilité renforcée » (décision du 04/11, à part des ambiances), le contraste mesuré, le retour à l'origine. Un choix s'applique tout
+// de suite : la fenêtre le rend au réglage (js/theme.js), qui le retient ; la page et les apps le reçoivent par js/theme-apply.js. Une fenêtre sur la base commune (js/modal.js) : le titre et le pied
+// restent en place, seul le corps défile.
 // Les vignettes sont des boutons radio : Tab y entre une fois, les flèches choisissent. « La mienne » ouvre le sélecteur de couleur des documents, celui du kit (js/theme-color.js) ; si le kit ne se charge
 // pas, elle est grisée, avec sa raison dite sous elle : grisé, jamais masqué.
 
 import { h } from './dom.js';
 import { icon } from './icons.js';
 import { openModal } from './modal.js';
-import { AMBIANCES, seedOf, weakestContrast } from './ambiance.js';
+import { AMBIANCES, seedOf, weakestContrast, weakestEdge } from './ambiance.js';
 import { previewMessage } from './theme.js';
 import { paint } from './theme-apply.js';
 import { ColorPicking } from './theme-color.js';
@@ -43,19 +44,27 @@ function colorBox() {
   return refs;
 }
 
+// L'accessibilité renforcée : un interrupteur (une case à cocher au rôle « switch » sur toute la ligne, comme une vignette), son nom et ce qu'il change. Il ne fait pas partie des ambiances : il se pose
+// sur celle qu'on a choisie, avec ou sans couleur à soi.
+function accessBox() {
+  const refs = { input: h('input', { type: 'checkbox', role: 'switch', dataset: { fk: 'acces' } }), title: h('span', { class: 'th-acc-t' }), text: h('span', { class: 'th-acc-d' }) };
+  refs.node = h('label', { class: 'th-acc' }, refs.input, h('span', { class: 'th-acc-sw', 'aria-hidden': 'true' }), h('span', { class: 'th-acc-txt' }, refs.title, refs.text));
+  return refs;
+}
+
 // La fenêtre entière, sans texte ni état : `#label` et `refresh` les posent.
 function buildWindow() {
   const tiles = AMBIANCES.map(tile);
   const line = (cls, glyph, text) => ({ text, node: h('p', { class: cls }, icon(glyph), text) });
   const refs = {
-    tiles, color: colorBox(), title: h('h2', { id: 'th-title' }), text: h('p', { class: 'mod-count' }), note: h('p', { class: 'mod-note', 'aria-live': 'polite' }),
+    tiles, color: colorBox(), access: accessBox(), title: h('h2', { id: 'th-title' }), text: h('p', { class: 'mod-count' }), note: h('p', { class: 'mod-note', 'aria-live': 'polite' }),
     grid: h('div', { class: 'amb-grid', role: 'radiogroup' }, ...tiles.map(item => item.node)),
     check: line('th-check', 'check', h('span')), adjusted: line('th-adj', 'info', h('span')), later: line('th-adj', 'info', h('span')),
     reset: h('button', { type: 'button', class: 'btn', dataset: { fk: 'reset' } }), close: h('button', { type: 'button', class: 'btn primary', dataset: { fk: 'close' } }),
   };
   refs.section = h('section', { class: 'mod th-win', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'th-title' },
     h('header', { class: 'mod-head' }, refs.title, refs.text),
-    h('div', { class: 'mod-body th-body' }, refs.grid, refs.color.node, refs.check.node, refs.adjusted.node, refs.later.node),
+    h('div', { class: 'mod-body th-body' }, refs.grid, refs.color.node, refs.access.node, refs.check.node, refs.adjusted.node, refs.later.node),
     h('footer', { class: 'mod-foot' }, refs.note, refs.reset, refs.close));
   return refs;
 }
@@ -127,6 +136,7 @@ export class ThemeWindow {
     const { setting } = this.#opts;
     refs.section.addEventListener('change', ({ target }) => {
       if (target.name === 'col') { if (target.value === 'amb') this.#picking.release(); else this.#picking.own(); return; }
+      if (target === refs.access.input) this.#kept = setting.chooseAccess(target.checked);
       if (target.name === 'amb') this.#kept = setting.choose(target.value);
       this.refresh();
     });
@@ -140,6 +150,9 @@ export class ThemeWindow {
     const { t } = this.#opts.i18n;
     const { tiles, color } = this.#refs;
     const refs = this.#refs;
+    refs.access.title.textContent = t('theme.acces');
+    refs.access.text.textContent = t('theme.acces.d');
+    refs.access.node.title = t('theme.acces.tip');
     refs.title.textContent = t('theme.title');
     refs.text.textContent = t('theme.text');
     refs.grid.setAttribute('aria-label', t('theme.ambiances'));
@@ -157,7 +170,8 @@ export class ThemeWindow {
     refs.close.textContent = t('theme.close');
   }
 
-  // L'état d'après le réglage : la vignette choisie, la couleur, les vignettes repeintes (dans la couleur choisie et le mode de la page), la mesure du contraste.
+  // L'état d'après le réglage : la vignette choisie, la couleur, l'interrupteur, les vignettes repeintes (dans la couleur choisie, avec l'accessibilité renforcée si elle est allumée, et dans le mode de la
+  // page), la mesure du contraste.
   refresh() {
     const refs = this.#refs;
     if (!refs) return;
@@ -165,15 +179,24 @@ export class ThemeWindow {
     const mode = this.#opts.mode();
     for (const item of refs.tiles) {
       item.input.checked = item.id === setting.ambiance;
-      paint(item.mini, previewMessage(item.id, setting.color), mode);
+      paint(item.mini, previewMessage(item.id, setting.color, setting.access), mode);
     }
     this.#refreshColor(refs.color, setting);
+    refs.access.input.checked = setting.access;
     const message = setting.message() || previewMessage('defaut', null);
-    refs.check.text.textContent = i18n.t(setting.isOrigin ? 'theme.check.origin' : 'theme.check', { ratio: this.#ratio(weakestContrast(message)) });
+    refs.check.text.textContent = this.#checkText(setting, message);
     refs.adjusted.node.hidden = !(setting.color && message.ajustee);
     if (!refs.adjusted.node.hidden) refs.adjusted.text.textContent = i18n.t('theme.adjusted', { hex: message.clair['--accent-solid'].toUpperCase() });
     refs.note.textContent = i18n.t(this.#kept ? 'theme.saved' : 'theme.notKept');
-    refs.reset.setAttribute('aria-disabled', String(setting.isOrigin));
+    refs.reset.setAttribute('aria-disabled', String(!setting.hasOwnLook));
+  }
+
+  // La mesure sous les choix : le plus faible contraste du texte, et des traits quand l'accessibilité renforcée est allumée (la norme y demande 7:1 et 3:1).
+  #checkText(setting, message) {
+    const { t } = this.#opts.i18n;
+    const ratio = this.#ratio(weakestContrast(message));
+    if (setting.access) return t('theme.check.strict', { ratio, edge: this.#ratio(weakestEdge(message)) });
+    return t(setting.isOrigin ? 'theme.check.origin' : 'theme.check', { ratio });
   }
 
   // « 4,63 » → « 4,6 » : le contraste annoncé est celui qu'on tient, arrondi vers le bas (jamais plus beau que la mesure).

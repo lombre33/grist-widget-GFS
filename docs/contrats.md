@@ -1244,13 +1244,14 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 
 10. [D] `ambiance` : **un seul choix d'ambiance et de couleur par personne, pour GFS et pour toutes ses apps** (décision du porteur,
    02/11 et 03/11). La ligne « Thème… » du menu « Réglages » de l'explorateur ouvre une fenêtre : cinq ambiances (Grist Factory, celle d'origine, bleu et
-   gris ; Pop ; Papier ; Brut ; Néon), chacune avec sa propre direction artistique (couleurs, arrondis, traits, ombres, polices,
+   gris ; Pop ; Papier ; Brut ; Enseigne, qui remplace Néon depuis le 04/11), chacune avec sa propre direction artistique (couleurs, arrondis, traits, ombres, polices,
    fond, filet), et, au choix, **la couleur de la personne**, qui remplace celle de l'ambiance sans toucher à sa forme (le sélecteur
    de couleur des documents de Publipostage+, passé au kit en 0.5.0 : la palette sous le bouton « Choisir ma couleur », « Personnalisé… »
    pour la fenêtre du carré, de la teinte et du code, « Celle de l'ambiance » pour rendre la couleur à l'ambiance ; si le kit de GFS ne se
    charge pas, « La mienne » est grisée avec sa raison, jamais cachée). Le clair et le sombre restent ceux de Grist (le message `theme`, 4.2) : une ambiance a ses deux modes. Le choix est
    retenu dans le `localStorage` de GFS (clés `gfs.theme` : l'identifiant de l'ambiance, absente pour Grist Factory ; `gfs.couleur` :
-   `#rrggbb`, absente tant que la personne n'a pas choisi la sienne), jamais dans le document ni dans une table, et n'écrit rien
+   `#rrggbb`, absente tant que la personne n'a pas choisi la sienne ; `gfs.acces` : `renforcee`, absente quand l'accessibilité renforcée est éteinte ;
+   une ancienne clé `gfs.theme` à `neon` se lit `enseigne`), jamais dans le document ni dans une table, et n'écrit rien
    sans un geste de sa part ; toutes les sections de GFS d'une même page le suivent (événement `storage`) ; un navigateur qui refuse
    de le retenir n'empêche rien : le choix vaut pour la page, et GFS le dit (même mécanisme que la langue, point 6).
    `contexte.ambiance` et l'événement `ambiance` (`{ "ambiance": { … } | null }`) portent le même message. Il vaut **`null` quand
@@ -1262,7 +1263,7 @@ l'appel `contexte` dès son démarrage ; GFS rend :
      "sombre": { "--bg": "#1c1830", "…": "…" },
      "forme":  { "--radius-md": "14px", "--shadow-panel": "0 1px 2px color-mix(…)", "…": "…" } }
    ```
-   `id` : `defaut`, `pop`, `papier`, `brut` ou `neon` ; `couleur` : la couleur libre (`#rrggbb`), ou `null` ; `ajustee` : la couleur
+   `id` : `defaut`, `pop`, `papier`, `brut` ou `enseigne`, et `renforcee` quand l'accessibilité renforcée est allumée (voir plus bas : l'ambiance choisie dessous ne s'y lit plus) ; `couleur` : la couleur libre (`#rrggbb`), ou `null` ; `ajustee` : la couleur
    libre a dû être éclaircie ou assombrie pour que le texte reste lisible ; `clair` et `sombre` : **dix-neuf jetons de couleur
    chacun**, tous des `#rrggbb` en minuscules, les quinze de la charte (`--bg`, `--surface`, `--surface-sunken`, `--border`,
    `--border-strong`, `--text`, `--text-muted`, `--accent`, `--accent-hover`, `--accent-solid`, `--accent-solid-hover`, `--on-accent`,
@@ -1278,6 +1279,14 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    `--accent-ink`, `--on-accent` sur son bouton) gardent **4,5:1 au moins** sur les fonds où l'app les pose, en clair comme en sombre,
    et le bouton plein se distingue de sa carte ; GFS éclaircit ou assombrit la couleur libre pour y arriver (`ajustee`) et la fenêtre
    le dit. L'app n'a donc rien à recalculer.
+   **L'accessibilité renforcée** (décision du porteur, 04/11, « un réglage à part » ; premier temps) est un interrupteur de la fenêtre « Thème », combinable avec toute ambiance et avec la couleur libre : elle ne
+   change ni les jetons ni le message, seulement leurs valeurs. Quand elle est allumée, le message a l'`id` **`renforcee`** (jamais l'ambiance choisie dessous : une règle écrite pour une ambiance, par GFS ou par une app, ne s'y accroche pas), `ajustee` dit, comme plus haut,
+   si une couleur a dû bouger pour y arriver et `couleur` est la couleur libre ou `null`. Les mêmes dix-neuf jetons de couleur y tiennent **7:1 au moins** pour tout texte (WCAG 1.4.6) sur les mêmes fonds (`--text`, `--text-muted`, `--accent-ink`, `--on-accent` sur son bouton),
+   et **3:1 au moins** pour le trait de chaque commande (champ, bouton, case, vignette : `--border-strong` sur `--surface`, `--bg` et `--surface-sunken`, le bouton plein contre sa carte, WCAG 1.4.11), pour chaque ambiance et toute couleur libre. La `forme` est celle du
+   mode renforcé : arrondis courts, `--bw` à 2 px, `--bar-w` à 6 px, `--divider-w` à 2 px, ni ombre, ni trame, ni filet (`--shadow-*`, `--wash`, `--stripe` à `none`), ni capitales ni lettres espacées (`--tt-head` à `none`, `--ls-head` et `--ls-label` à `normal`), le bouton plein uni
+   (`--fill` : `var(--accent-solid)`, `--fill-line` : `var(--border-strong)`), et rien d'autre que les jetons de forme du kit (aucune clé nouvelle : le kit 0.6.0 pose le message tel quel). **Ce que fait GFS pour ses propres états**, que l'app peut faire de même : le texte
+   d'erreur, d'avertissement, de « bon » et de type, dont les couleurs fixes ne sont pas dans les dix-neuf jetons, prend la couleur du texte (`--text`), et la couleur reste à l'icône ; le mot dit toujours l'état ou le type. « Revenir à Grist Factory » laisse l'accessibilité
+   allumée (un besoin, pas un goût). Le second temps (cibles de 36 px, texte de 14 px, anneau de focus de 3 px à deux couleurs, mouvement réduit, contraste forcé, barre de sélection en vrai trait) est un lot à part qui attend le feu vert du porteur.
    **Ce que fait l'app** : le kit en fait la pose (kit 0.6.0) : l'app qui a le lien du kit appelle `Ambiance.start()` (`js/ambiance.js`) une fois à son démarrage ; celle qui
    garde son propre lien appelle `createAmbiance({ link, isDark })` (`js/ambiance-pose.js`, qui ne connaît aucun lien : deux liens dans un même cadre se prendraient les réponses) ;
    aucune n'écrit la sienne. Ce qui suit est ce que le kit fait pour elle (et ce qu'une app sans le kit devrait refaire : elle prend le kit, guide des apps 1.2, points 1 et 4, et règle 15).
@@ -1294,7 +1303,7 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    quand le choix redit ce qui vaut déjà ; un changement de mode (clair, sombre) n'en envoie aucun, puisque le message porte les deux.
    Le nom est `ambiance` et non `theme` pour ne pas se confondre avec le message `theme` de Grist, que GFS relaie tel quel.
    Une app seule n'a pas d'ambiance de GFS : `null`, elle garde ses couleurs (ou son propre choix de couleur, s'il en est).
-   [M] **Mesuré le 03/11** dans un vrai Grist, à la vraie souris et au vrai clavier, en français et en anglais, en clair et en sombre :
+   [M] **Mesuré le 03/11** (avec Néon, remplacé par Enseigne le 04/11 : les mesures qui le nomment sont celles de l'ancienne ambiance, refaites pour Enseigne dans le dernier paragraphe de ce point) dans un vrai Grist, à la vraie souris et au vrai clavier, en français et en anglais, en clair et en sombre :
    `run-theme.mjs` et la sonde M (une app minimale qui fait ce que feront les apps avec leur consigne) passent leurs 86 vérifications
    (38 pour les ambiances, 42 pour la couleur libre et 6 pour un kit introuvable, plus bas) dans chacune des quatre combinaisons à 700 × 400, et dans une cinquième à 420 de large. Sans choix, la page ne porte aucun jeton de GFS
    (le seul réglage en ligne est le `color-scheme` que le script d'API de Grist pose lui-même, faits vérifiés 17) et garde son aspect
@@ -1338,6 +1347,12 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    4,5:1 au moins (32 mesures par passe chez Automation+, 56 chez Form+, aucune en échec) ; la couleur libre, « Revenir à Grist Factory » (l'app retrouve ses couleurs, dans le même cadre) et l'app ouverte après le choix passent. Une app qui attend
    l'ambiance avant de s'afficher (Automation+ : `html[data-gfs-pending]`, levé par `ready`, 2 s au plus) porte déjà Néon à son premier affichage ; une qui ne l'attend pas (Form+) se montre de 66 à 100 ms dans ses couleurs d'origine avant de les
    changer : un constat, pas un manquement (le guide dit d'appeler `Ambiance.start()` avant d'afficher, il ne dit pas de retenir l'affichage). L'en-tête d'un déclencheur et celui d'une action d'Automation+ restent distincts dans les quatre ambiances, en clair et en sombre (écart de couleur OKLab de 0,145 au plus bas, Papier en sombre ; l'app seule : 0,299 en sombre).
+   [M] **Mesuré le 04/11, Enseigne et l'accessibilité renforcée** (faits vérifiés 37 : `run-theme.mjs` dans un vrai Grist, quatre passes à 700 × 400, 110 vérifications chacune, aucune en échec ; `test/interfaces-firefox.test.mjs` dans un vrai Firefox 159 ; `test/ambiance.test.mjs` et `test/theme.test.mjs`).
+   **Enseigne** pose 50 jetons en ligne (dix-neuf de couleur, 31 de forme ; 66 avec les couleurs de type de GFS, qui ne vont pas aux apps), l'app ouverte la reçoit dans son contexte (31 jetons de forme), chaque texte y garde 4,5:1 (67 textes). **L'accessibilité renforcée** : l'interrupteur
+   tient sur une ligne de 30 px dans la fenêtre « Thème », qui reste dans 700 × 400 sans défilement du corps (354 px de haut sur chacune des cinq ambiances) ; allumé, la page porte `data-ambiance="renforcee"` et 52 jetons (dix-neuf de couleur, 33 de forme), `gfs.acces` est écrite et rien d'autre ; chaque texte de
+   l'explorateur et de la fenêtre y garde 7:1 au moins (4,5:1 pour un grand texte) et chaque commande un trait à 3:1 au moins, sur chacune des cinq ambiances (67 textes et 23 traits par ambiance). L'app ouverte reçoit un message d'`id` `renforcee` (dix-neuf jetons par mode, 33 de forme, sans couleur
+   libre), un seul événement par geste ; éteint, elle reçoit l'ambiance choisie ; « Revenir à Grist Factory » défait l'ambiance et laisse l'accessibilité ; le cadre de l'app n'est jamais reconstruit. Le kit 0.6.0 prend le message tel quel (`normalizeAmbiance`). Le moteur le tient pour toute couleur libre :
+   7,050:1 au plus bas pour le texte et 3,050:1 pour le trait, sur les cinq ambiances et 169 couleurs. **Non mesuré** : les vraies apps (Form+, Automation+, Publipostage+) en accessibilité renforcée ; le clavier sous le Firefox du porteur.
 
 ### 5.3 Le stockage du navigateur
 

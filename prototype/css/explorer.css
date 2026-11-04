@@ -138,13 +138,25 @@ button { cursor: pointer; }
 .ls-row[data-fam] .pill { border-color: var(--pill-line, var(--tc-line)); background: var(--pill-bg, var(--tc-soft)); color: var(--pill-fg, var(--tc-ink)); }
 .ls-row[data-fam][aria-selected="true"] .pill { background: var(--pill-bg, var(--surface)); }
 /* Les couleurs des types sont celles de l'ambiance (jetons --t-*, posés avec elle : js/ambiance-types.js). Comment l'ambiance choisie remplit une pastille de type (jetons --pill-*, posés ici et non par
-   l'ambiance : la forme d'une pastille ne vit que dans l'explorateur) : pleine (Pop), cernée (Brut), évidée (Néon). Sans ambiance, ou pour Papier, la pastille garde sa teinte douce d'origine. */
+   l'ambiance : la forme d'une pastille ne vit que dans l'explorateur) : pleine (Pop), cernée (Brut), évidée (Enseigne). Sans ambiance, ou pour Papier, la pastille garde sa teinte douce d'origine. L'accessibilité
+   renforcée (décision du 04/11) la veut unie, quelle que soit l'ambiance dessous : le texte est celui de la page (7:1) et le contour est le trait fort (3:1) ; le type se dit par l'icône et par le mot, comme toujours. */
 [data-ambiance="pop"] [data-fam], .amb-mini[data-ambiance="pop"] .mn-p[data-fam] { --pill-bg: var(--tc-ink); --pill-line: var(--tc-ink); --pill-fg: var(--surface); }
 [data-ambiance="brut"] [data-fam], .amb-mini[data-ambiance="brut"] .mn-p[data-fam] { --pill-line: var(--border-strong); }
-[data-ambiance="neon"] [data-fam], .amb-mini[data-ambiance="neon"] .mn-p[data-fam] { --pill-bg: transparent; --pill-line: var(--tc); --pill-fg: var(--tc-ink); }
+[data-ambiance="enseigne"] [data-fam], .amb-mini[data-ambiance="enseigne"] .mn-p[data-fam] { --pill-bg: transparent; --pill-line: var(--tc); --pill-fg: var(--tc-ink); }
+[data-ambiance="renforcee"] [data-fam], .amb-mini[data-ambiance="renforcee"] .mn-p[data-fam] { --pill-bg: var(--surface); --pill-line: var(--border-strong); --pill-fg: var(--text); }
 /* La vignette d'une ambiance (fenêtre « Thème ») est sous la page : si la page porte une ambiance, ses règles ci-dessus atteignent aussi la vignette. Celle-ci repart donc des pastilles d'origine,
    puis dit les siennes (règles à sélecteur plus fort, ci-dessus). */
 .amb-mini .mn-p[data-fam] { --pill-bg: initial; --pill-line: initial; --pill-fg: initial; }
+/* Le décor que seul GFS pose (les apps ne reçoivent que les jetons de couleur et de forme, contrats 5.2, point 10). Enseigne : la lueur des titres et du bouton plein vient de `--hard`, l'accent en
+   sombre et la couleur du fond en clair, où elle ne se voit pas (l'enseigne de jour). */
+[data-ambiance="enseigne"] .ex-title, [data-ambiance="enseigne"] .mod-head h2 { text-shadow: 0 0 12px var(--hard), 0 0 2px var(--hard); }
+[data-ambiance="enseigne"] .btn.primary { box-shadow: 0 0 16px -2px color-mix(in srgb, var(--hard) 75%, transparent); }
+/* L'accessibilité renforcée : ce que les jetons de forme ne disent pas. Les étiquettes de colonne ne sont plus en capitales (`--tt-label` est un jeton de GFS, pas un jeton de forme des apps) ; un trait de
+   2 px sous l'en-tête ; des pastilles bordées de 2 px ; la ligne choisie en gras, pour qu'elle ne se lise pas qu'à sa couleur. */
+[data-ambiance="renforcee"] { --tt-label: none; }
+[data-ambiance="renforcee"] .pill { border-width: 2px; }
+[data-ambiance="renforcee"] .ls-head { border-bottom: 2px solid var(--border-strong); }
+[data-ambiance="renforcee"] .ls-row[aria-selected="true"] .t { font-weight: 700; }
 .th[data-fam] .th-pv { background: var(--tc-soft); border-color: var(--tc-line); }
 .th[data-fam] .tt { color: var(--tc-ink); }
 .th[data-fam] .tt .ic, .th[data-fam] .th-pv .ic { color: var(--tc); }
@@ -166,7 +178,7 @@ button { cursor: pointer; }
 
 /* ---------- le trait des icônes de type, selon l'ambiance ---------- */
 /* Les icônes des types de fichier (ligne de la liste, vignette, barre d'information) prennent le trait de l'ambiance (décision du porteur, 04/11) : l'épaisseur d'origine (1,8 en liste, 1,4 en vignette) multipliée
-   par `--ic-k`, les angles et les bouts (`--ic-join`, `--ic-cap`), un remplissage doux (`--ic-fill`, Pop) et un halo (`--ic-glow`, Néon). Ces jetons se posent ci-dessous, ambiance par ambiance, et non par le
+   par `--ic-k`, les angles et les bouts (`--ic-join`, `--ic-cap`), un remplissage doux (`--ic-fill`, Pop) et un halo (`--ic-glow`, Enseigne). Ces jetons se posent ci-dessous, ambiance par ambiance, et non par le
    moteur : ils ne vont pas aux apps. Sans ambiance, aucun n'est posé et le trait est celui d'avant. La loupe, les flèches et les boutons gardent leur dessin ; un dossier garde son remplissage et un fichier
    grisé son cadenas, sans remplissage ni halo (grisé : jamais allumé). Le trait se calcule en LONGUEUR (`1.8px`, qui vaut `1.8` dans le dessin) : Firefox refuse un nombre calculé pour
    `stroke-width` (`calc(1.8 * var(--ic-k))` y retombe à 1 px sans le dire ; mesuré le 04/11, docs/faits-verifies.md). */
@@ -177,7 +189,7 @@ button { cursor: pointer; }
 [data-ambiance="pop"] { --ic-k: 1.1; --ic-fill: color-mix(in srgb, currentColor 17%, transparent); }
 [data-ambiance="papier"] { --ic-k: .88; --ic-join: miter; --ic-cap: butt; }
 [data-ambiance="brut"] { --ic-k: 1.18; --ic-join: miter; --ic-cap: square; }
-[data-ambiance="neon"] { --ic-k: .92; --ic-glow: drop-shadow(0 0 2.2px color-mix(in srgb, currentColor 80%, transparent)); }
+[data-ambiance="enseigne"] { --ic-k: .92; --ic-glow: drop-shadow(0 0 2.2px color-mix(in srgb, currentColor 80%, transparent)); }
 
 /* ---------- barre d'information et pied ---------- */
 .ex-foot { flex: none; display: flex; align-items: center; gap: 8px; margin: 0 var(--gap) var(--gap); padding: 7px 16px 9px; border-top: var(--divider-w) solid var(--divider); border-radius: var(--radius-panel); box-shadow: var(--shadow-panel); background: var(--surface-sunken); }

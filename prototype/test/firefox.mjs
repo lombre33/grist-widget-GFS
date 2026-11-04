@@ -88,7 +88,7 @@ class Bidi {
 
 // Les touches du clavier, au code que WebDriver leur donne.
 export const KEYS = {
-  Tab: '\uE004', Enter: '\uE007', Escape: '\uE00C', ArrowDown: '\uE015', ArrowUp: '\uE013', ArrowLeft: '\uE012', ArrowRight: '\uE014', Home: '\uE011', End: '\uE010', Backspace: '\uE003',
+  Tab: '\uE004', Enter: '\uE007', Escape: '\uE00C', Space: '\uE00D', ArrowDown: '\uE015', ArrowUp: '\uE013', ArrowLeft: '\uE012', ArrowRight: '\uE014', Home: '\uE011', End: '\uE010', Backspace: '\uE003',
   Delete: '\uE017', F2: '\uE032', F10: '\uE03A', Shift: '\uE008', Control: '\uE009', Alt: '\uE00A',
 };
 

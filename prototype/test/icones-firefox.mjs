@@ -1,7 +1,7 @@
 // Les icônes des types de fichier sous Firefox (décision du porteur, 04/11 : elles suivent l'ambiance, et le PDF a sa couleur rouge ; règle du 03/11 : toute nouvelle interface ajoute ses mesures à
 // test/interfaces-firefox.test.mjs). La page d'essai (test/pages/explorateur.js) pose l'ambiance comme GFS le fait (le vrai `ThemeSetting` et le vrai `ThemeHost`, le mode vient de `data-grist-appearance`) ; pour
 // chacune des ambiances, en clair et en sombre, ce qui est LU est ce que Firefox calcule pour l'icône de chaque fichier, dans la liste, dans les vignettes et dans la barre d'information : sa couleur (celle du tableau
-// de js/ambiance-types.js), l'épaisseur de son trait, ses angles et ses bouts, son remplissage doux (Pop) et son halo (Néon) ; la lecture et le jugement sont ceux du labo (labo/mesures-icones.mjs, joués aussi dans
+// de js/ambiance-types.js), l'épaisseur de son trait, ses angles et ses bouts, son remplissage doux (Pop) et son halo (Enseigne) ; la lecture et le jugement sont ceux du labo (labo/mesures-icones.mjs, joués aussi dans
 // un vrai Grist par labo/run-theme.mjs). Puis la fenêtre « Thème », ouverte quand la page porte Pop : chaque vignette garde les couleurs de type de SON ambiance (une vignette sous la page ne reprend pas celles
 // de la page). Rien de cela ne dépend de la langue : la mesure ne passe qu'en français. Le 04/11, cette mesure a trouvé ce que Node et Chromium ne voyaient pas : Firefox refuse un NOMBRE calculé pour
 // `stroke-width` (`calc(1.8 * var(--ic-k))` y tombe à 1 px sans rien dire) ; le trait s'écrit donc en longueur (`calc(1.8px * var(--ic-k))`).

@@ -73,8 +73,8 @@ const COLORS = Object.freeze({
       pdf: ['#ff7074', '#ff9a99', '#452222', '#793a3b'],
     },
   },
-  // Néon : des fluos ; en sombre ils brillent, en clair ils s'approfondissent pour rester lisibles.
-  neon: {
+  // Enseigne (à la place de Néon, 04/11) : des tubes allumés ; en sombre ils brillent, en clair (l'enseigne de jour) ils s'approfondissent pour rester lisibles.
+  enseigne: {
     clair: {
       doc: ['#005dca', '#0048a1', '#e8f1fe', '#c4d9f9'],
       grid: ['#007f38', '#00652b', '#e9f3eb', '#c6dfca'],

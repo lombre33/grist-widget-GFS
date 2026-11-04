@@ -5,7 +5,8 @@
 // la ligne les montre dans la ligne, et un clic sur « Plus d'actions » ouvre le menu de CETTE ligne ; la vue en vignettes garde des vignettes de 112 px au moins et le nombre de colonnes que la place donne ;
 // le menu « Réglages » (le bouton de l'en-tête, depuis le 04/11 : langue, thème, position de la barre, « À propos ») s'ouvre sous le bouton, garde ses quatre lignes de 28 px sans nom coupé, et ouvre sa langue et sa
 // position en sous-menu à côté de la ligne, sans la recouvrir ; à 700 px, à la vraie souris et au vrai clavier, choisir une langue ou un bord le rend à la page et rend le clavier au bouton, Échap referme le sous-menu puis le menu ; « À propos » tient dans
-// la page avec ses quatre lignes et son seul bouton ; la fenêtre « Thème » garde ses vignettes (cinq, ou trois en vue étroite), ouverte par la ligne « Thème… » de ce menu ; la fenêtre « Ce nom est déjà pris » (js/conflict-window.js, telle qu'une app qui range un lot la fait ouvrir, puis telle que
+// la page avec ses quatre lignes et son seul bouton ; la fenêtre « Thème » garde ses vignettes (cinq, ou trois en vue étroite), ouverte par la ligne « Thème… » de ce menu, sa ligne « Accessibilité renforcée » sur une seule ligne, sans que le corps défile à 520 px et au-delà, et son interrupteur répond à la vraie souris (Tab y arrive ; Espace et l'anneau de focus restent au labo, voir accessProblems) ; la page peinte
+// par l'accessibilité renforcée et par Enseigne (décision du 04/11) garde ses lignes à 28 px, leur contenu dans la ligne, ses traits de 2 px et son absence de décor ; la fenêtre « Ce nom est déjà pris » (js/conflict-window.js, telle qu'une app qui range un lot la fait ouvrir, puis telle que
 // « Nouveau > Importer » la fait ouvrir) tient dans la page sans défiler, garde son titre et ses trois boutons sur une ligne, met le clavier sur « Garder les deux », tourne avec Tab, et ses issues répondent à
 // la vraie souris et au vrai clavier (la case « Faire pareil pour les suivants » se coche en cliquant son texte). Entrée et Espace sur un bouton ne se jouent pas ici (voir conflictProblems). La colonne « Poids » (demande du 04/11) : son titre et ses cases ne sont coupés nulle part, son tri
 // va dans les deux sens sur le poids de chaque fichier, et le total du pied dit la somme de ce que la liste montre. Les icônes des types
@@ -132,13 +133,37 @@ function measureAboutWindow() {
   };
 }
 
-// La grille de la fenêtre « Thème » : ses vignettes, ses colonnes, son remplissage.
+
+// La fenêtre « Thème » : sa grille (ses vignettes, ses colonnes, son remplissage), sa place dans la page, le défilement de son corps, et la ligne de l'interrupteur « Accessibilité renforcée » (son rôle, sa hauteur, son état, son centre).
 function measureThemeWindow() {
   const grid = document.querySelector('.th-win [role="radiogroup"]');
   if (!grid) return null;
   const tiles = [...grid.querySelectorAll('label.amb')];
-  return { tiles: tiles.length, columns: new Set(tiles.map(tile => Math.round(tile.getBoundingClientRect().left))).size, padding: getComputedStyle(grid).paddingTop };
+  const win = document.querySelector('.th-win').getBoundingClientRect();
+  const body = document.querySelector('.th-win .mod-body');
+  const row = document.querySelector('.th-win .th-acc');
+  const input = row && row.querySelector('input');
+  const box = row && row.getBoundingClientRect();
+  return {
+    tiles: tiles.length, columns: new Set(tiles.map(tile => Math.round(tile.getBoundingClientRect().left))).size, padding: getComputedStyle(grid).paddingTop,
+    scrolls: body.scrollHeight > body.clientHeight + 1, fits: win.top >= -0.5 && win.left >= -0.5 && win.bottom <= innerHeight + 0.5 && win.right <= innerWidth + 0.5,
+    access: row ? { role: input.getAttribute('role'), height: box.height, checked: input.checked, center: [box.left + box.width / 2, box.top + box.height / 2], ring: getComputedStyle(row).outlineStyle } : null,
+  };
 }
+
+// Ce que la page porte quand une ambiance ou l'accessibilité renforcée est posée (js/theme-apply.js) : l'attribut, les traits, les capitales, la lueur, les ombres, la trame, le filet, la bordure d'une pastille.
+function measureLook() {
+  const css = (selector, property, pseudo = null) => { const node = document.querySelector(selector); return node ? getComputedStyle(node, pseudo)[property] : null; };
+  return {
+    ambiance: document.documentElement.getAttribute('data-ambiance'), bw: getComputedStyle(document.documentElement).getPropertyValue('--bw').trim(), titleCase: css('.ex-title', 'textTransform'), headCase: css('.ls-head .hd', 'textTransform'),
+    titleGlow: css('.ex-title', 'textShadow'), mainShadow: css('.ex-main', 'boxShadow'), wash: css('.ex', 'backgroundImage'), stripe: css('.ex-main', 'height', '::before'), pillBorder: css('.ls-row .pill', 'borderTopWidth'),
+  };
+}
+
+// Le centre de la ligne de l'interrupteur (amenée à l'écran), et l'état de l'interrupteur : allumé (la case cochée, le réglage pris) ou éteint ; la page prend alors `renforcee`, ou rend l'ambiance choisie.
+const centerOfAccessRow = () => { const row = document.querySelector('.th-win .th-acc'); row.scrollIntoView({ block: 'nearest' }); const box = row.getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; };
+const accessIsOn = () => { const input = document.querySelector('.th-win input[role="switch"]'); return input && input.checked && window.__theme.access ? { ambiance: document.documentElement.getAttribute('data-ambiance') } : null; };
+const accessIsOff = () => { const input = document.querySelector('.th-win input[role="switch"]'); return input && !input.checked && !window.__theme.access ? { ambiance: document.documentElement.getAttribute('data-ambiance') } : null; };
 
 // La fenêtre « Ce nom est déjà pris » : sa place dans la page, ses boutons (au pied, sur une ligne, dans la fenêtre), ce qui prend le clavier, la case des suivants et les points où cliquer. Null sans fenêtre.
 function measureConflictWindow() {
@@ -365,9 +390,70 @@ async function themeProblems(page, width, tag) {
   const found = [];
   if (theme.tiles !== 5) found.push({ kind: 'fenêtre « Thème » : vignettes', text: `${tag} : la fenêtre « Thème » a ${theme.tiles} vignettes au lieu de 5` });
   if (theme.columns !== columns) found.push({ kind: 'fenêtre « Thème » : colonnes', text: `${tag} : la fenêtre « Thème » pose ses vignettes sur ${theme.columns} colonnes au lieu de ${columns}` });
-  if (theme.padding !== '8px') found.push({ kind: 'fenêtre « Thème » : remplissage', text: `${tag} : la grille de la fenêtre « Thème » a un remplissage de ${theme.padding} au lieu de 8px` });
+  if (theme.padding !== '4px') found.push({ kind: 'fenêtre « Thème » : remplissage', text: `${tag} : la grille de la fenêtre « Thème » a un remplissage de ${theme.padding} au lieu de 4px` });
+  found.push(...await accessProblems(page, width, tag, theme));
   await page.press('Escape');
   await page.until(() => !document.querySelector('.th-win'));
+  return found;
+}
+
+// L'interrupteur « Accessibilité renforcée » de la fenêtre « Thème » (décision du 04/11) : sur une seule ligne à toute largeur, dans la page, sans défilement du corps à 520 px et au-delà (même peinte par l'accessibilité
+// renforcée) ; au vrai clavier, trois Tab depuis la vignette choisie (la couleur, son bouton, l'interrupteur) y arrivent ; à la vraie souris, un clic sur la ligne l'allume (la page prend `renforcee`) et un second l'éteint.
+// Son anneau de focus et la touche Espace NE sont PAS pilotables ici : dans ce Firefox sans écran `document.hasFocus()` reste faux, donc ni `:focus-visible` ne s'applique ni Espace n'active une case (mesuré le 04/11,
+// comme pour les boutons ci-dessous) ; ils restent à la mesure du labo, sous Chromium (`run-theme`, section 10). L'essai le rend éteint : les essais suivants repartent de là.
+async function accessProblems(page, width, tag, theme) {
+  const found = [];
+  const note = (kind, text) => found.push({ kind: `fenêtre « Thème » : ${kind}`, text: `${tag} : ${text}` });
+  await page.run(() => window.__theme.chooseAccess(false));
+  if (!theme.access) { note('interrupteur absent', 'la ligne « Accessibilité renforcée » n\'est pas dans la fenêtre « Thème »'); return found; }
+  if (theme.access.role !== 'switch') note('rôle de l\'interrupteur', `l'interrupteur a le rôle « ${theme.access.role} » au lieu de « switch »`);
+  if (theme.access.height > 34) note('ligne de l\'interrupteur', `la ligne de l'interrupteur mesure ${theme.access.height.toFixed(1)} px : elle passe sur plusieurs lignes (34 px au plus)`);
+  if (!theme.fits) note('fenêtre hors de la page', 'la fenêtre « Thème » sort de la page');
+  if (width >= 520 && theme.scrolls) note('le corps défile', `le corps de la fenêtre « Thème » défile à ${width} px de large (la ligne de l'accessibilité y a pris sa place)`);
+  for (let i = 0; i < 3; i++) await page.press('Tab');
+  if (!await page.run(() => document.activeElement === document.querySelector('.th-win input[role="switch"]'))) note('Tab n\'atteint pas l\'interrupteur', 'trois fois Tab depuis la vignette choisie n\'arrivent pas sur l\'interrupteur');
+  await page.click(...await page.run(centerOfAccessRow));
+  const on = await page.until(accessIsOn, [], 2000).catch(() => null);
+  if (!on) { note('clic sans effet', 'un clic à la souris sur la ligne n\'allume pas l\'interrupteur'); return found; }
+  if (on.ambiance !== 'renforcee') note('page non peinte', `la page porte « ${on.ambiance} » au lieu de « renforcee » quand l'interrupteur est allumé`);
+  const painted = await page.run(measureThemeWindow);
+  if (width >= 520 && painted.scrolls) note('le corps défile, accessibilité allumée', `le corps de la fenêtre « Thème » défile à ${width} px de large une fois l'accessibilité renforcée allumée`);
+  if (!painted.fits) note('fenêtre hors de la page, accessibilité allumée', 'la fenêtre « Thème » sort de la page une fois l\'accessibilité renforcée allumée');
+  await page.click(...await page.run(centerOfAccessRow));
+  const off = await page.until(accessIsOff, [], 2000).catch(() => null);
+  if (!off) note('second clic sans effet', 'un second clic à la souris sur la ligne n\'éteint pas l\'interrupteur');
+  await page.run(() => window.__theme.chooseAccess(false));
+  return found;
+}
+
+// La page peinte par l'ambiance et l'accessibilité renforcée (js/theme-apply.js, décision du 04/11) : ce que chaque feuille de style fait des jetons. Les lignes de la liste gardent leur hauteur et leur contenu (le 03/11, un trait
+// passait dans le texte), le mode renforcé tient ses promesses (traits de 2 px, ni capitales, ni ombre, ni trame, ni filet, ni lueur, une bordure de 2 px aux pastilles) et Enseigne garde ses capitales et sa lueur ; la fenêtre « Thème »,
+// peinte elle aussi, reste dans la page sans défiler. Le réglage se fait par `window.__theme` ; la page est rendue à l'origine à la fin.
+async function lookProblems(page, tag) {
+  const found = [];
+  await page.run(() => window.__reset());
+  const set = (ambiance, access) => page.run((choice, on) => { window.__theme.choose(choice); window.__theme.chooseAccess(on); }, ambiance, access);
+  for (const [ambiance, access] of [['defaut', true], ['enseigne', false], ['enseigne', true], ['brut', true]]) {
+    await set(ambiance, access);
+    const label = `${tag}, ${ambiance}${access ? ' avec l\'accessibilité renforcée' : ''}`;
+    const note = (kind, text) => found.push({ kind, text: `${label} : ${text}` });
+    const look = await page.run(measureLook);
+    const expected = access ? 'renforcee' : ambiance;
+    if (look.ambiance !== expected) note('page non peinte', `la page porte « ${look.ambiance} » au lieu de « ${expected} »`);
+    if (access) {
+      if (look.bw !== '2px' || look.titleCase !== 'none' || look.headCase !== 'none' || look.mainShadow !== 'none' || look.wash !== 'none' || look.stripe !== '0px' || look.titleGlow !== 'none' || look.pillBorder !== '2px') {
+        note('décor en accessibilité renforcée', `le mode renforcé a gardé du décor ou des traits fins : ${JSON.stringify(look)}`);
+      }
+    } else if (look.titleCase !== 'uppercase' || look.titleGlow === 'none') note('Enseigne sans son décor', `Enseigne a perdu ses capitales ou la lueur de son titre : ${JSON.stringify(look)}`);
+    found.push(...await listProblems(page, label));
+    await openSettings(page, 1);
+    const theme = await page.until(measureThemeWindow);
+    if (theme.scrolls) note('le corps de la fenêtre défile', 'la fenêtre « Thème », peinte par ce choix, défile dans 700 px');
+    if (!theme.fits) note('fenêtre hors de la page', 'la fenêtre « Thème », peinte par ce choix, sort de la page');
+    await page.press('Escape');
+    await page.until(() => !document.querySelector('.th-win'));
+  }
+  await set('defaut', false);
   return found;
 }
 
@@ -475,6 +561,7 @@ describe('l\'interface sous Firefox', () => {
         problems.push(...await fermerProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await dossiersProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await compositeProblems(page, language, caption(language, 700, 1, mode)));
+        problems.push(...await lookProblems(page, caption(language, 700, 1, mode)));
       }
       // Les icônes des types (test/icones-firefox.mjs) : une fois, en français (la couleur et le trait ne dépendent pas de la langue).
       if (language === 'fr') problems.push(...await iconProblems(page));

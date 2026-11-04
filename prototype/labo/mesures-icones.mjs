@@ -9,7 +9,7 @@ export const STROKE = {
   pop: { k: 1.1, join: 'round', cap: 'round', fill: true, glow: false },
   papier: { k: 0.88, join: 'miter', cap: 'butt', fill: false, glow: false },
   brut: { k: 1.18, join: 'miter', cap: 'square', fill: false, glow: false },
-  neon: { k: 0.92, join: 'round', cap: 'round', fill: false, glow: true },
+  enseigne: { k: 0.92, join: 'round', cap: 'round', fill: false, glow: true },
 };
 export const BASE = { list: 1.8, tiles: 1.4, info: 1.8 }; // l'épaisseur d'origine du trait : en liste et dans la barre d'information 1,8, en vignette 1,4
 export const FILL_ALPHA = 0.17; // le remplissage doux de Pop : 17 % de la couleur de l'icône
@@ -86,7 +86,7 @@ function fillProblems(row, { stroke }, note) {
   if (!fill || !color || Math.abs(fill.alpha - FILL_ALPHA) > 0.02 || !near(fill.rgb, color.rgb)) note('remplissage doux', `« ${row.fill} » au lieu de ${FILL_ALPHA * 100} % de ${row.color}`);
 }
 
-// Le halo de Néon (2,2 px) ; ailleurs, et sur un fichier grisé, « none ».
+// Le halo d'Enseigne (2,2 px) ; ailleurs, et sur un fichier grisé, « none ».
 function glowProblems(row, { stroke }, note) {
   if (!stroke.glow || row.locked) {
     if (row.filter !== 'none') note('halo', `le filtre est « ${row.filter} » au lieu de « none »`);

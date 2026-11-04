@@ -64,7 +64,7 @@ test('les quatre types se distinguent l\'un de l\'autre dans chaque ambiance et 
   assert.deepEqual(close, []);
 });
 
-test('chaque ambiance a ses propres couleurs de type (l\'origine, Pop, Papier, Brut, Néon ne se ressemblent pas)', () => {
+test('chaque ambiance a ses propres couleurs de type (l\'origine, Pop, Papier, Brut, Enseigne ne se ressemblent pas)', () => {
   for (const mode of MODES) {
     const seen = new Map();
     for (const id of AMBIANCES) {

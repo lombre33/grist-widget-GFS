@@ -14,12 +14,15 @@
 //      Tab, Entrée, Échap, clic dehors, clic sur le voile), une pastille pose la couleur tout de suite (page, clé `gfs.couleur`, bouton, apps), « Personnalisé… » ouvre la fenêtre « Couleur personnalisée »
 //      par-dessus la fenêtre « Thème » (Échap ne ferme que celle du dessus, un code faux grise « Appliquer », « Appliquer » pose la couleur), « Celle de l'ambiance » rend la couleur à l'ambiance,
 //      « La mienne » reprend la dernière couleur à soi (ou ouvre la palette faute d'en avoir), tout dans 700 × 400, contraste de 4,5:1 compris ;
-//   10. un navigateur qui refuse de retenir : le choix (l'ambiance et la couleur) vaut pour la page, la fenêtre le dit ;
-//   11. un kit qui ne se charge pas (le sous-module n'est pas servi) : « La mienne » et son bouton sont grisés, la raison est dite dans la fenêtre, un seul avertissement de GFS, les ambiances marchent.
+//   10. l'accessibilité renforcée (décision du 04/11) : l'interrupteur de la fenêtre « Thème » (souris, clavier, 700 × 400 sans défilement), la page et les vignettes qui la prennent sur chaque ambiance,
+//      chaque texte à 7:1 et chaque trait de commande à 3:1 (mesurés sur les couleurs affichées), les apps qui la reçoivent (`id` `renforcee`), « Revenir à Grist Factory » qui la laisse, la clé `gfs.acces` ;
+//   11. un navigateur qui refuse de retenir : le choix (l'ambiance et la couleur) vaut pour la page, la fenêtre le dit ;
+//   12. un kit qui ne se charge pas (le sous-module n'est pas servi) : « La mienne » et son bouton sont grisés, la raison est dite dans la fenêtre, un seul avertissement de GFS, les ambiances marchent.
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
-import { say, check, contrastAudit } from './lab-common.mjs';
+import { say, check, contrastAudit, edgeAudit } from './lab-common.mjs';
 import { themeGestures } from './theme-gestes.mjs';
+import { FORME } from '../js/ambiance-forme.js';
 import { TYPE_TOKENS } from '../js/ambiance-types.js';
 import { readIcons, rowProblems } from './mesures-icones.mjs';
 import { openSettings } from './reglages-gestes.mjs';
@@ -29,17 +32,19 @@ const scheme = process.env.LAB_SCHEME || 'light';
 const panelWidth = Number(process.env.LAB_W || 700);
 const run = `theme-${lang}-${scheme}${panelWidth === 700 ? '' : `-${panelWidth}`}`;
 const WORDS = {
-  fr: { themeRow: 'Thème…', title: 'Thème', reset: 'Revenir à Grist Factory', close: 'Fermer', names: ['Grist Factory', 'Pop', 'Papier', 'Brut', 'Néon'], saved: 'S’applique tout de suite, reste sur ce navigateur.',
+  fr: { themeRow: 'Thème…', title: 'Thème', reset: 'Revenir à Grist Factory', close: 'Fermer', names: ['Grist Factory', 'Pop', 'Papier', 'Brut', 'Enseigne'], saved: 'S’applique tout de suite, reste sur ce navigateur.',
     notKept: 'Ce choix vaut pour cette page seulement : ton navigateur refuse de le garder.', check: /^Couleurs calculées : contraste de \d,\d:1 au moins/, origin: /^Ambiance d’origine : contraste de \d,\d:1 au moins/,
+    access: 'Accessibilité renforcée', strict: /^Texte à (\d,\d):1 et traits à (\d,\d):1 au moins/,
     own: 'La mienne', none: 'Celle de l’ambiance', pick: 'Choisir ma couleur', customBtn: 'Personnalisé…', custom: 'Couleur personnalisée', apply: 'Appliquer', cancel: 'Annuler', palette: 'Palette de couleurs',
     missing: 'Le sélecteur de couleur ne s’est pas chargé : GFS garde la couleur de l’ambiance. Recharge la page pour réessayer.' },
-  en: { themeRow: 'Theme…', title: 'Theme', reset: 'Back to Grist Factory', close: 'Close', names: ['Grist Factory', 'Pop', 'Paper', 'Raw', 'Neon'], saved: 'Applies right away, stays on this browser.',
+  en: { themeRow: 'Theme…', title: 'Theme', reset: 'Back to Grist Factory', close: 'Close', names: ['Grist Factory', 'Pop', 'Paper', 'Raw', 'Neon sign'], saved: 'Applies right away, stays on this browser.',
     notKept: 'This choice only holds for this page: your browser refuses to keep it.', check: /^Computed colors: contrast of at least \d\.\d:1/, origin: /^Original look: contrast of at least \d\.\d:1/,
+    access: 'Enhanced accessibility', strict: /^Text at (\d\.\d):1 and lines at (\d\.\d):1 or more/,
     own: 'My own', none: 'The look’s color', pick: 'Choose my color', customBtn: 'Custom…', custom: 'Custom color', apply: 'Apply', cancel: 'Cancel', palette: 'Color palette',
     missing: 'The color picker did not load: GFS keeps the look’s color. Reload the page to try again.' },
 };
 const words = WORDS[lang];
-const IDS = ['defaut', 'pop', 'papier', 'brut', 'neon'];
+const IDS = ['defaut', 'pop', 'papier', 'brut', 'enseigne'];
 
 const lab = await startLab({ lang, colorScheme: scheme, probes: true });
 const { page } = lab;
@@ -220,17 +225,17 @@ check('flèche droite : la vignette suivante est choisie et posée', win.checked
 await page.keyboard.press('ArrowRight');
 await page.keyboard.press('ArrowRight');
 await page.waitForTimeout(200);
-check('puis Brut, Néon', (await windowState()).checked === 'neon' && (await page_()).ambiance === 'neon');
+check('puis Brut, Enseigne', (await windowState()).checked === 'enseigne' && (await page_()).ambiance === 'enseigne');
 await page.keyboard.press('ArrowRight');
 await page.waitForTimeout(100);
 check('la dernière vignette boucle sur la première (Grist Factory) : la page retrouve l\'aspect d\'origine', (await windowState()).checked === 'defaut' && (await page_()).ambiance === null && (await page_()).inline === 0, await page_());
 await page.keyboard.press('ArrowLeft');
 await page.waitForTimeout(100);
-check('flèche gauche : Néon', (await windowState()).checked === 'neon');
+check('flèche gauche : Enseigne', (await windowState()).checked === 'enseigne');
 const tabs = [];
-for (let i = 0; i < 7; i++) { await page.keyboard.press('Tab'); tabs.push((await windowState()).focus); }
+for (let i = 0; i < 8; i++) { await page.keyboard.press('Tab'); tabs.push((await windowState()).focus); }
 say('Tab depuis la vignette choisie :', tabs);
-check('Tab traverse la fenêtre sans s\'arrêter sur chaque vignette, et reboucle', tabs.slice(0, 5).join() === ['col:amb', 'col:pick', 'reset', 'close', 'amb:neon'].join() && tabs[5] === 'col:amb', tabs);
+check('Tab traverse la fenêtre sans s\'arrêter sur chaque vignette (la couleur, l\'interrupteur d\'accessibilité, le retour, la fermeture), et reboucle', tabs.slice(0, 6).join() === ['col:amb', 'col:pick', 'acces', 'reset', 'close', 'amb:enseigne'].join() && tabs[6] === 'col:amb', tabs);
 await page.keyboard.press('Shift+Tab');
 check('Maj+Tab revient en arrière (de « Choisir ma couleur » à la couleur de l\'ambiance)', (await windowState()).focus === 'col:amb', (await windowState()).focus);
 await page.keyboard.press('Escape');
@@ -269,12 +274,12 @@ check('les icônes de type de l\'explorateur ont la couleur et le trait de chaqu
 
 // ---------- 6. retenu sur le navigateur ----------
 await openWindow();
-await tile('neon').click();
+await tile('enseigne').click();
 await closeWindow();
 await reload();
 now = await page_();
-check('GFS rechargé repart dans l\'ambiance choisie (Néon), posée dès le départ', now.ambiance === 'neon' && now.inline > 20 && (await stored()).theme === 'neon', now);
-await shot('6-neon-apres-rechargement');
+check('GFS rechargé repart dans l\'ambiance choisie (Enseigne), posée dès le départ', now.ambiance === 'enseigne' && now.inline > 20 && (await stored()).theme === 'enseigne', now);
+await shot('6-enseigne-apres-rechargement');
 
 // ---------- 7. les apps suivent ----------
 const probe = app => app.evaluate(() => ({ contextes: [], evenements: [], ...JSON.parse((document.body && document.body.dataset.sonde) || '{}') }));
@@ -282,8 +287,8 @@ const appLook = app => app.evaluate(() => ({ accent: getComputedStyle(document.d
 const app = await lab.openApp('sonde-m', /m-ambiance\//, frame);
 await waitFor('le contexte de la sonde', async () => (await probe(app)).contextes.length >= 1);
 let seen = await probe(app);
-check('l\'app ouverte après le choix reçoit l\'ambiance dans son contexte (Néon, dix-neuf jetons par mode, la forme), sans événement', seen.contextes[0] && seen.contextes[0].id === 'neon' && seen.contextes[0].clair === 19 && seen.contextes[0].sombre === 19 && seen.contextes[0].forme > 10 && seen.contextes[0].couleur === null && seen.evenements.length === 0, seen);
-const neonAccent = seen.contextes[0].accentClair;
+check('l\'app ouverte après le choix reçoit l\'ambiance dans son contexte (Enseigne, dix-neuf jetons par mode, la forme), sans événement', seen.contextes[0] && seen.contextes[0].id === 'enseigne' && seen.contextes[0].clair === 19 && seen.contextes[0].sombre === 19 && seen.contextes[0].forme > 10 && seen.contextes[0].couleur === null && seen.evenements.length === 0, seen);
+const enseigneAccent = seen.contextes[0].accentClair;
 check('la sonde a posé les couleurs reçues sur sa page (CSSOM)', (await appLook(app)).inline > 10, await appLook(app));
 await frame.locator('#floater-files').click();
 await frame.locator('.ex').waitFor({ state: 'visible' });
@@ -292,7 +297,7 @@ await tile('brut').click();
 await waitFor('l\'événement ambiance', async () => (await probe(app)).evenements.length === 1);
 seen = await probe(app);
 say('ce que la sonde a reçu :', seen);
-check('le changement arrive à l\'app ouverte par l\'événement `ambiance`, une seule fois (Brut)', seen.evenements.length === 1 && seen.evenements[0].id === 'brut' && seen.evenements[0].accentClair !== neonAccent, seen.evenements);
+check('le changement arrive à l\'app ouverte par l\'événement `ambiance`, une seule fois (Brut)', seen.evenements.length === 1 && seen.evenements[0].id === 'brut' && seen.evenements[0].accentClair !== enseigneAccent, seen.evenements);
 check('GFS n\'a pas touché au cadre de l\'app : le même cadre, un seul', !app.isDetached() && page.frames().filter(f => /m-ambiance\//.test(f.url())).length === 1);
 await tile('brut').click(); // le même choix : rien de nouveau
 await page.waitForTimeout(300);
@@ -377,7 +382,7 @@ const tab2 = await at();
 await page.keyboard.press('Tab');
 await frame.locator('.menu-panel').waitFor({ state: 'detached' });
 const tab3 = (await windowState()).focus;
-check('Tab passe par « Personnalisé… » puis « Celle de l\'ambiance », puis sort de la palette en la refermant : le clavier va au bouton suivant de la fenêtre', tab1 === 'perso' && tab2 === 'ambiance' && tab3 === 'reset', { tab1, tab2, tab3 });
+check('Tab passe par « Personnalisé… » puis « Celle de l\'ambiance », puis sort de la palette en la refermant : le clavier va à l\'élément suivant de la fenêtre (l\'interrupteur d\'accessibilité)', tab1 === 'perso' && tab2 === 'ambiance' && tab3 === 'acces', { tab1, tab2, tab3 });
 await openPalette();
 await page.keyboard.press('Shift+Tab');
 await frame.locator('.menu-panel').waitFor({ state: 'detached' });
@@ -526,7 +531,150 @@ now = await page_();
 check('« Revenir à Grist Factory » rend aussi la couleur : rien n\'est posé, les deux clés ont disparu', now.ambiance === null && now.inline === 0 && JSON.stringify(await stored()) === JSON.stringify({ theme: null, couleur: null }), { now, stored: await stored() });
 await closeWindow();
 
-// ---------- 10. un navigateur qui refuse de retenir ----------
+// ---------- 10. l'accessibilité renforcée (décision du 04/11) : un interrupteur, à part des ambiances ----------
+if (!(await frame.locator('.ex').isVisible())) { // GFS rechargé s'ouvre sur l'explorateur
+  await frame.locator('#floater-files').click();
+  await frame.locator('.ex').waitFor({ state: 'visible' });
+}
+const storedAccess = () => frame.evaluate(() => { try { return localStorage.getItem('gfs.acces'); } catch (error) { return 'REFUSÉ'; } });
+const switchRow = () => frame.locator('.th-win .th-acc');
+const switchState = () => frame.evaluate(() => {
+  const input = document.querySelector('.th-win input[role="switch"]');
+  if (!input) return null;
+  const row = input.closest('.th-acc');
+  const style = getComputedStyle(row);
+  return { checked: input.checked, role: input.getAttribute('role'), label: row.querySelector('.th-acc-t').textContent.trim(), text: row.querySelector('.th-acc-d').textContent.trim(), knob: getComputedStyle(row.querySelector('.th-acc-sw'), '::after').left,
+    outline: style.outlineStyle, outlineWidth: style.outlineWidth, focus: document.activeElement === input, h: Math.round(row.getBoundingClientRect().height) };
+});
+// Ce que la page porte en accessibilité renforcée : les traits, la barre, les capitales, les ombres, la trame, le filet, la lueur, le bouton plein.
+const strictLook = () => frame.evaluate(() => {
+  const css = (selector, property, pseudo = null) => { const node = document.querySelector(selector); return node ? getComputedStyle(node, pseudo)[property] : null; };
+  const root = getComputedStyle(document.documentElement);
+  return { bw: root.getPropertyValue('--bw').trim(), bar: root.getPropertyValue('--bar-w').trim(), titleCase: css('.ex-title', 'textTransform'), titleSpacing: css('.ex-title', 'letterSpacing'), titleGlow: css('.ex-title', 'textShadow'),
+    headCase: css('.ls-head .hd', 'textTransform'), cardShadow: css('.ex-main', 'boxShadow'), wash: css('.ex', 'backgroundImage'), stripe: css('.ex-main', 'height', '::before'), fill: css('.th-win .btn.primary', 'backgroundImage'), fillShadow: css('.th-win .btn.primary', 'boxShadow') };
+});
+const strictAudit = scope => contrastAudit(frame, scope, { strict: true });
+const CONTROLS = '.btn, .tb, input:not([type="radio"]):not([type="checkbox"]), .inp-search, .amb, .th-acc, .th-acc-sw, .pill, .menu, .th-col, .mod';
+const edges = scope => edgeAudit(frame, scope, CONTROLS);
+const forme = Object.keys(FORME.renforcee).length;
+
+await openWindow();
+let acc = await switchState();
+win = await windowState();
+say('l\'interrupteur, éteint :', { acc, box: win.box });
+check(`l'interrupteur « ${words.access} » est dans la fenêtre, éteint, avec son nom et sa phrase ; la fenêtre tient dans 700 × 400` + (panelWidth >= 520 ? ' sans défilement du corps' : ''),
+  acc && acc.role === 'switch' && !acc.checked && acc.label === words.access && acc.text.length > 40 && inside(win.box, win.viewport) && (panelWidth < 520 || !win.scrolls), { acc, win: win.box });
+await shot('10-interrupteur-eteint');
+
+// à la souris : un clic sur la ligne
+await switchRow().click();
+await page.waitForTimeout(300);
+now = await page_();
+acc = await switchState();
+win = await windowState();
+let look = await strictLook();
+say('renforcée, sur l\'aspect d\'origine :', { now, acc, look, acces: await storedAccess() });
+check('un clic sur la ligne allume l\'interrupteur (la poignée change de côté) : la page porte l\'accessibilité renforcée (dix-neuf jetons de couleur et la forme du mode renforcé), la clé `gfs.acces` est écrite',
+  acc.checked && acc.knob === '16px' && now.ambiance === 'renforcee' && now.inline === 19 + forme && (await storedAccess()) === 'renforcee', { acc, now });
+check('l\'accessibilité est à part : ni l\'ambiance ni la couleur n\'ont été écrites, « Revenir à Grist Factory » reste grisé, l\'ambiance cochée est celle d\'origine',
+  JSON.stringify(await stored()) === JSON.stringify({ theme: null, couleur: null }) && win.checked === 'defaut' && (await resetButton().getAttribute('aria-disabled')) === 'true', { stored: await stored(), checked: win.checked });
+check('la page n\'a plus de décor : traits de 2 px, barre de 6 px, ni capitales ni lettres espacées, ni ombre, ni trame, ni filet, ni lueur, un bouton plein uni',
+  look.bw === '2px' && look.bar === '6px' && look.titleCase === 'none' && look.titleSpacing === 'normal' && look.headCase === 'none' && look.cardShadow === 'none' && look.wash === 'none' && look.stripe === '0px' && look.titleGlow === 'none' && look.fill === 'none' && look.fillShadow === 'none', look);
+const measure = words.strict.exec(win.check);
+check('la fenêtre dit la mesure : le texte à 7:1 au moins et les traits à 3:1 au moins', Boolean(measure) && Number(measure[1].replace(',', '.')) >= 7 && Number(measure[2].replace(',', '.')) >= 3, win.check);
+const strictMinis = await frame.evaluate(() => [...document.querySelectorAll('.amb-mini')].map(node => ({ ambiance: node.dataset.ambiance, bg: getComputedStyle(node).backgroundColor, radius: getComputedStyle(node.querySelector('.mn-btn')).borderTopLeftRadius, accent: getComputedStyle(node.querySelector('.mn-btn')).backgroundColor })));
+say('vignettes renforcées :', strictMinis);
+check('les cinq vignettes montrent ce que le choix donnerait avec l\'interrupteur : toutes en accessibilité renforcée (même forme), aux couleurs de leur ambiance', strictMinis.length === 5 && strictMinis.every(item => item.ambiance === 'renforcee') && new Set(strictMinis.map(item => item.radius)).size === 1 && new Set(strictMinis.map(item => item.accent)).size >= 4, strictMinis);
+await shot('10-interrupteur-allume');
+
+// sur chacune des cinq ambiances : chaque texte à 7:1, chaque trait de commande à 3:1, la fenêtre dans 700 × 400
+const accessFailures = [];
+const accessEdges = [];
+const accessFits = [];
+for (const id of IDS) {
+  await tile(id).click();
+  await page.waitForTimeout(250);
+  const fit = await windowState();
+  accessFits.push([id, fit.box.h, fit.scrolls]);
+  const winText = await strictAudit('.th-win');
+  const winEdges = await edges('.th-win');
+  await closeWindow();
+  const exText = await strictAudit('.ex');
+  const exEdges = await edges('.ex');
+  say(`renforcée sur ${id} :`, { textes: winText.seen + exText.seen, sous7: [...winText.failures, ...exText.failures], traits: winEdges.seen + exEdges.seen, sous3: [...winEdges.failures, ...exEdges.failures] });
+  accessFailures.push(...[...winText.failures, ...exText.failures].map(item => `${id} : ${item}`));
+  accessEdges.push(...[...winEdges.failures, ...exEdges.failures].map(item => `${id} : ${item}`));
+  await shot(`10-renforcee-${id}-explorateur`);
+  await openWindow();
+  await shot(`10-renforcee-${id}-fenetre`);
+}
+check('la fenêtre tient dans 700 × 400 sans défilement du corps, sur chacune des cinq ambiances renforcées', accessFits.every(([, , scrolls]) => panelWidth < 520 || !scrolls), accessFits);
+check('chaque texte de l\'explorateur et de la fenêtre garde 7:1 au moins (4,5:1 pour un grand texte) en accessibilité renforcée, sur les cinq ambiances', accessFailures.length === 0, accessFailures.slice(0, 12));
+check('chaque commande garde un trait à 3:1 au moins (champs, boutons, vignettes, interrupteur, pastilles, menus), sur les cinq ambiances', accessEdges.length === 0, accessEdges.slice(0, 12));
+
+// au clavier : Tab jusqu'à l'interrupteur, Espace l'éteint puis l'allume
+await page.keyboard.press('Tab');
+await page.keyboard.press('Tab');
+await page.keyboard.press('Tab');
+acc = await switchState();
+check('Tab arrive sur l\'interrupteur, qui montre son anneau de focus (2 px)', acc.focus && acc.outline === 'solid' && acc.outlineWidth === '2px', acc);
+await page.keyboard.press('Space');
+await page.waitForTimeout(250);
+acc = await switchState();
+now = await page_();
+check('Espace l\'éteint : la page reprend l\'ambiance choisie (Enseigne) avec son décor, la clé `gfs.acces` disparaît, le clavier reste sur l\'interrupteur', !acc.checked && acc.knob === '2px' && acc.focus && now.ambiance === 'enseigne' && (await storedAccess()) === null, { acc, now, acces: await storedAccess() });
+look = await strictLook();
+check('Enseigne sans l\'accessibilité renforcée a son décor : capitales espacées, lueur du titre', look.titleCase === 'uppercase' && look.titleSpacing !== 'normal' && /rgb/.test(look.titleGlow || ''), look);
+await page.keyboard.press('Space');
+await page.waitForTimeout(250);
+acc = await switchState();
+check('Espace le rallume', acc.checked && acc.focus && (await page_()).ambiance === 'renforcee' && (await storedAccess()) === 'renforcee', { acc, acces: await storedAccess() });
+
+// les apps la reçoivent : l'`id` est `renforcee`, la forme est celle du mode renforcé, la couleur reste celle de l'ambiance
+await closeWindow();
+const strictApp = await lab.openApp('sonde-m', /m-ambiance\//, frame);
+await waitFor('le contexte de la sonde', async () => (await probe(strictApp)).contextes.length >= 1);
+seen = await probe(strictApp);
+check('l\'app ouverte reçoit l\'accessibilité renforcée dans son contexte : `id` `renforcee`, dix-neuf jetons par mode, la forme du mode renforcé, aucune couleur choisie, sans événement',
+  seen.contextes[0] && seen.contextes[0].id === 'renforcee' && seen.contextes[0].clair === 19 && seen.contextes[0].sombre === 19 && seen.contextes[0].forme === forme && seen.contextes[0].couleur === null && seen.evenements.length === 0, seen.contextes);
+await frame.locator('#floater-files').click();
+await frame.locator('.ex').waitFor({ state: 'visible' });
+await openWindow();
+await switchRow().click();
+await waitFor('l\'événement de l\'interrupteur éteint', async () => (await probe(strictApp)).evenements.length === 1);
+seen = await probe(strictApp);
+check('l\'interrupteur éteint arrive à l\'app ouverte par l\'événement `ambiance`, avec l\'ambiance choisie (Enseigne), une seule fois', seen.evenements.length === 1 && seen.evenements[0].id === 'enseigne', seen.evenements);
+await switchRow().click();
+await waitFor('l\'événement de l\'interrupteur allumé', async () => (await probe(strictApp)).evenements.length === 2);
+seen = await probe(strictApp);
+check('allumé de nouveau, l\'app reçoit `renforcee`, et GFS n\'a pas touché à son cadre', seen.evenements.length === 2 && seen.evenements[1].id === 'renforcee' && seen.evenements[1].forme === forme && !strictApp.isDetached(), seen.evenements);
+// « Revenir à Grist Factory » défait l'ambiance et laisse l'accessibilité
+check('avec Enseigne choisie, « Revenir à Grist Factory » est offert', (await resetButton().getAttribute('aria-disabled')) === 'false');
+await resetButton().click();
+await waitFor('l\'événement du retour', async () => (await probe(strictApp)).evenements.length === 3);
+seen = await probe(strictApp);
+acc = await switchState();
+now = await page_();
+check('« Revenir à Grist Factory » défait l\'ambiance et laisse l\'accessibilité : l\'interrupteur reste allumé, la page reste en accessibilité renforcée, `gfs.acces` reste écrite, `gfs.theme` disparaît, le bouton se grise',
+  acc.checked && now.ambiance === 'renforcee' && (await storedAccess()) === 'renforcee' && (await stored()).theme === null && (await resetButton().getAttribute('aria-disabled')) === 'true' && (await windowState()).checked === 'defaut', { acc, now, stored: await stored() });
+check('l\'app reste en accessibilité renforcée, sans couleur choisie', seen.evenements.length === 3 && seen.evenements[2].id === 'renforcee' && seen.evenements[2].couleur === null, seen.evenements);
+
+// retenue sur le navigateur
+await closeWindow();
+await reload();
+now = await page_();
+check('GFS rechargé repart en accessibilité renforcée, posée dès le départ', now.ambiance === 'renforcee' && now.inline === 19 + forme && (await storedAccess()) === 'renforcee', now);
+await openWindow();
+acc = await switchState();
+check('la fenêtre rouverte montre l\'interrupteur allumé', acc.checked && acc.knob === '16px', acc);
+await shot('10-apres-rechargement');
+await switchRow().click();
+await page.waitForTimeout(300);
+now = await page_();
+check('éteint à la souris : la page n\'a plus rien de posé, les trois clés ont disparu', now.ambiance === null && now.inline === 0 && (await storedAccess()) === null && JSON.stringify(await stored()) === JSON.stringify({ theme: null, couleur: null }), { now, acces: await storedAccess() });
+await closeWindow();
+
+// ---------- 11. un navigateur qui refuse de retenir ----------
 if (!(await frame.locator('.ex').isVisible())) { // GFS rechargé s'ouvre sur l'explorateur
   await frame.locator('#floater-files').click();
   await frame.locator('.ex').waitFor({ state: 'visible' });
@@ -546,7 +694,7 @@ now = await page_();
 check('sans stockage, la couleur vaut aussi pour la page (rien n\'est retenu), et la fenêtre le dit', (await colorBox()).own && now.ambiance === 'papier' && now.inline > 20 && (await stored()).couleur === null && win.note === words.notKept, { now, stored: await stored(), note: win.note });
 await shot('10-sans-stockage');
 
-// ---------- 11. un kit qui ne se charge pas ----------
+// ---------- 12. un kit qui ne se charge pas ----------
 const expected = warnings.length;
 await page.route(/\/prototype\/kit\/js\/color-palette\.js/, route => route.fulfill({ status: 404, body: 'absent' }));
 await reload();

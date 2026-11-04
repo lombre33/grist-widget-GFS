@@ -189,7 +189,7 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
       `--bg` ; `--on-accent` sur `--accent-solid`, `--accent-solid-hover` et `--accent-end` ; `--accent` seul (une icône, un trait, un lien) sur `--surface` et `--bg`.
       Une paire que l'app invente garde son propre contraste.
     - **Le fond de la page est `--bg`**, sur un élément qui couvre la page (`min-height: 100vh`), jamais `--main-bg` (le fond de la carte de GFS : il
-      vaut `transparent` chez Néon, un titre clair y tombait à 1,10:1, mesuré). Le décor `--wash` se pose en `background-image` de ce même fond, avec
+      vaut `transparent` chez Néon, ambiance remplacée par Enseigne le 04/11 (un mélange à 90 % de `--surface` chez elle) : un titre clair y tombait à 1,10:1, mesuré). Le décor `--wash` se pose en `background-image` de ce même fond, avec
       `--wash-size` ; sur un élément plus court que la page, il se répète à chaque hauteur de contenu (vu).
     - **Les jetons de forme que l'app a en équivalent** : `--radius-xs`, `-sm`, `-md`, `-lg`, `-pill`, `-btn`, `-input`, `-panel` (arrondis des étiquettes, contrôles,
       cartes, fenêtres, pastilles, boutons, saisies, grands panneaux) ; `--bw` (trait des contrôles et des cartes) ; `--shadow-ctl`, `--shadow-panel`, `--shadow-float`
@@ -198,6 +198,9 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
       dégradé chez Pop : `--accent-solid` sinon) ; `--avatar-*` ; `--bar-w` (la barre de la ligne choisie). Chacun avec sa valeur d'origine en repli
       (`var(--radius-md, 10px)`) : sans ambiance, la page est celle de l'app. **À ne pas lire** : `--ex-bg`, `--main-bg`, `--main-overflow`, `--gap`,
       `--divider`, `--divider-w`, la mise en page de GFS. Une app qui ne lit pas un jeton garde sa forme et prend les couleurs : rien ne casse.
+    - **L'accessibilité renforcée arrive par le même message** (décision du 04/11, premier temps ; contrats 5.2, point 10) : quand la personne allume l'interrupteur de la fenêtre « Thème », `contexte.ambiance.id` vaut `renforcee`, avec les mêmes
+      dix-neuf jetons de couleur (le texte à 7:1 sur les mêmes paires, le trait des commandes à 3:1 : `--border-strong` sur `--surface`, `--bg` et `--surface-sunken`) et les mêmes jetons de forme (`--bw` à 2 px, `--bar-w` à 6 px, ni ombre, ni trame, ni filet, ni capitales). L'app ne fait rien
+      de plus : elle lit des jetons, **jamais l'`id`** (une règle écrite pour une ambiance ne s'applique pas à `renforcee`). Ce que GFS fait de ses propres couleurs d'état et de type, qui ne sont pas dans les dix-neuf jetons : le texte (erreur, avertissement, « bon », type) prend `--text`, la couleur reste à l'icône.
     - **Seulement ce qu'elle affiche à la personne**, jamais ce qu'elle produit (un e-mail, un PDF, un document, un formulaire public).
     Seule, l'app garde ses couleurs. Quand l'app propose elle-même un choix de couleur (une couleur de modèle, de document, de thème de présentation), elle prend
     **le sélecteur de couleur du kit** (`createColorPalette`, `ColorEditor` et `ColorDialog`, kit 0.5.0, tiré de celui de Publipostage+) et n'en garde pas de copie :

@@ -6,7 +6,7 @@
 //      une fois les transitions de l'app finies) ;
 //   3. la couleur libre (une pastille de la palette du kit) : l'accent de l'app suit, la forme de l'ambiance reste ;
 //   4. « Revenir à Grist Factory » : l'app retire tout ce que le kit avait posé, retrouve ses couleurs, dans le même cadre ;
-//   5. une app ouverte après le choix (Néon, GFS rechargé) : à son premier affichage, l'ambiance est déjà posée (pas de repeinture) ;
+//   5. une app ouverte après le choix (Enseigne, GFS rechargé) : à son premier affichage, l'ambiance est déjà posée (pas de repeinture) ;
 //   6. aucune erreur de page, aucun refus de la politique de sécurité du contenu, aucun avertissement de GFS ;
 //   7. Automation+ seulement (consigne 007, point 3) : dans son écran « graphe », l'en-tête d'un déclencheur et celui d'une action restent distincts dans chaque ambiance, en clair et en sombre.
 // Un CONSTAT dit ce que l'app fait de travers sans que GFS y puisse rien (à dire à l'app par une consigne) ; il ne fait pas échouer la passe.
@@ -112,7 +112,7 @@ for (const [name, prepare] of screens) {
   await showExplorer();
   await openWindow();
   if (nodes) {
-    // L'app seule, pour comparer : « Revenir à Grist Factory » (l'écran d'avant a laissé Néon), puis les en-têtes avec les couleurs d'origine de l'app.
+    // L'app seule, pour comparer : « Revenir à Grist Factory » (l'écran d'avant a laissé Enseigne), puis les en-têtes avec les couleurs d'origine de l'app.
     await resetButton().click();
     await until(async () => Object.keys(ambient(await inline())).length === 0);
     await closeWindow();
@@ -122,7 +122,7 @@ for (const [name, prepare] of screens) {
     await showExplorer();
     await openWindow();
   }
-  for (const id of ['pop', 'papier', 'brut', 'neon']) {
+  for (const id of ['pop', 'papier', 'brut', 'enseigne']) {
     await tile(id).click();
     for (const mode of [scheme, other]) {
       await page.emulateMedia({ colorScheme: mode });
@@ -141,8 +141,8 @@ for (const [name, prepare] of screens) {
   await page.emulateMedia({ colorScheme: scheme });
   await closeWindow();
   await hideExplorer();
-  await adopted('neon', scheme);
-  await shot(`${name}-neon`);
+  await adopted('enseigne', scheme);
+  await shot(`${name}-enseigne`);
   if (nodes) {
     // Les autres ambiances, dans le mode de la passe, pour les voir (la fenêtre « Thème » cache l'app pendant les mesures).
     for (const id of ['pop', 'papier', 'brut']) {
@@ -195,7 +195,7 @@ check('« Revenir à Grist Factory » : l\'app retire tout ce que le kit avait p
   && !app.isDetached() && page.frames().filter(f => APP_URL.test(f.url())).length === 1, { back, origin });
 
 // ---------- 5. une app ouverte après le choix ----------
-await tile('neon').click();
+await tile('enseigne').click();
 await page.waitForTimeout(300);
 await closeWindow();
 await hideExplorer();
@@ -223,12 +223,12 @@ await page.waitForTimeout(4000);
 const painting = await app.evaluate(() => window.__peinture || []);
 const first = painting.find(sample => sample.visible);
 const arrived = painting.find(sample => sample.inline >= 19);
-const neon = expected('neon', scheme);
+const enseigne = expected('enseigne', scheme);
 say('premier affichage :', { first, ambianceArrivee: arrived ? arrived.t : null, samples: painting.length });
-constat('à son premier affichage, l\'app porte déjà l\'ambiance choisie (Néon) : pas de repeinture', Boolean(first) && first.inline >= 19 && first.bg === rgb(neon.colors['--bg']), first);
-await shot('reouverte-neon');
+constat('à son premier affichage, l\'app porte déjà l\'ambiance choisie (Enseigne) : pas de repeinture', Boolean(first) && first.inline >= 19 && first.bg === rgb(enseigne.colors['--bg']), first);
+await shot('reouverte-enseigne');
 const reopened = await inline();
-check('l\'app ouverte après le choix porte Néon, au mode de l\'app', COLOR_TOKENS.every(token => (reopened[token] || '').toLowerCase() === neon.colors[token].toLowerCase()), reopened);
+check('l\'app ouverte après le choix porte Enseigne, au mode de l\'app', COLOR_TOKENS.every(token => (reopened[token] || '').toLowerCase() === enseigne.colors[token].toLowerCase()), reopened);
 
 // ---------- 6. la politique de sécurité du contenu, les erreurs ----------
 // Le Grist du labo est en http (127.0.0.1:8910) : le `connect-src 'self' https:` de Form+ refuse ses appels à l'adresse publique d'un formulaire, ce que le Grist de la personne (https) ne fait pas.

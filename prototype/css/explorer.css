@@ -242,3 +242,6 @@ button { cursor: pointer; }
   .tr-pin .tr-row { width: auto; }
   .ex-foot { padding: 6px 10px 8px; }
 }
+/* Glisser-déposer (js/explorer-drag.js) : la ligne tenue s'efface un peu ; le dossier qui l'accueillerait prend le bleu de la sélection, cerné d'un trait plein. */
+.is-dragging { opacity: .5; }
+.ls-row.is-drop, .th.is-drop, .tr-row.is-drop, .crumbs button.is-drop { background: var(--accent-soft); color: var(--accent-ink); box-shadow: inset 0 0 0 2px var(--accent); }

@@ -25,6 +25,7 @@ import { fermerProblems } from './fermer-firefox.mjs';
 import { iconProblems } from './icones-firefox.mjs';
 import { dossiersProblems } from './dossiers-firefox.mjs';
 import { compositeProblems } from './composite-firefox.mjs';
+import { glisserProblems } from './glisser-firefox.mjs';
 import { ROW_BUTTON, ROW_HEIGHT, TILE_MIN, columnFaults, expectedTileColumns, measureColumns, measureRows, measureTiles } from '../labo/mesures-liste.mjs';
 import { calendarLogs, calendarProblems } from './mesures-calendrier.mjs';
 
@@ -481,6 +482,19 @@ describe('l\'interface sous Firefox', () => {
       // Les erreurs de script de la page et les avertissements de GFS (un texte inconnu, par exemple) ; sans le kit (sous-module non récupéré), le sélecteur de couleur dit qu'il ne se charge pas : ce n'est pas l'interface.
       const logged = page.logs.filter(entry => ((entry.level === 'error' && entry.type === 'javascript') || /GFS/.test(entry.text || '')) && !/sélecteur de couleur du kit/.test(entry.text || ''));
       for (const entry of logged) problems.push({ kind: 'la page écrit dans la console', text: `la page a écrit « ${String(entry.text).slice(0, 120)} »` });
+      assert.equal(problems.length, 0, report(problems));
+    });
+
+    // Le glisser-déposer (test/glisser-firefox.mjs) : seul, sur une page rechargée, car Firefox sans écran laisse le glissement en cours après le lâcher (il ne mesure que les lignes qui se tiennent, le départ et le survol).
+    test(`le glisser-déposer de l'explorateur en ${language === 'fr' ? 'français' : 'anglais'}, en clair et en sombre : lignes tenues, départ, cibles qui acceptent ou refusent`, { skip: SKIP, timeout: 120000 }, async () => {
+      const { page } = browser;
+      const problems = [];
+      for (const mode of MODES) {
+        await page.goto(`${site.url}${PAGE}?lang=${language}`);
+        await page.run(() => window.__ready);
+        await page.view({ width: 700, scale: 1, mode });
+        problems.push(...await glisserProblems(page, language, caption(language, 700, 1, mode)));
+      }
       assert.equal(problems.length, 0, report(problems));
     });
   }

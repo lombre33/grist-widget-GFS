@@ -12,6 +12,7 @@ import { buildShell, relabel, crumbs, tree, listHead, fileRow, folderRow, tile, 
 import { sumWeights } from './weight.js';
 import { listAction, isSearchKey, clipboardAction, parentPath, stepRow } from './explorer-keys.js';
 import { Clipboard } from './explorer-clipboard.js';
+import { Dragging } from './explorer-drag.js';
 import { openMenu, closeMenu, menuIsOpen } from './menu.js';
 
 // Sans fichiers que GFS garde lui-même (les essais de l'explorateur seul) : aucun fichier n'est de ceux-là.
@@ -29,6 +30,7 @@ export class Explorer {
   #bin;
   #copying;
   #clipboard;
+  #drag;
   #refs;
   #files = [];
   #trashed = []; // les fichiers à la corbeille (la vue « Corbeille »)
@@ -64,6 +66,8 @@ export class Explorer {
     this.root = root;
     this.#refs = refs;
     opts.container.append(root);
+    // Le glisser-déposer (js/explorer-drag.js) : une ligne se dépose sur un dossier du volet, du fil d'Ariane ou de la liste ; hors corbeille et hors choix.
+    this.#drag = new Dragging({ root, may: () => !this.#choice && this.state.view !== 'trash', file: key => this.#files.find(item => item.key === key), moveTo: (key, path) => this.#clipboard.moveTo(key, path), expand: path => { this.state.open.add(path); this.#renderTree(); } });
     this.#bind();
     this.render();
   }
@@ -111,6 +115,7 @@ export class Explorer {
   close() {
     closeMenu();
     this.#clipboard.clear();
+    this.#drag.reset();
     this.root.hidden = true;
   }
 
@@ -228,6 +233,7 @@ export class Explorer {
     const cards = this.#rows.map(r => (tiles ? tile(ctx, r) : (r.kind === 'folder' ? folderRow(ctx, r) : fileRow(ctx, r.file, result.flat))));
     list.replaceChildren(...(tiles ? [h('div', { class: 'th-grid' }, ...cards)] : [listHead(ctx), ...cards]));
     list.classList.toggle('is-tiles', tiles);
+    this.#drag.mark(list);
     notices.replaceChildren(...this.#problems.map(text => h('div', { class: 'banner', role: 'alert' }, icon('warning'), text)), ...(this.state.view === 'trash' && this.#trashed.length ? [trashBar(ctx)] : []));
     const message = this.#loading ? this.#opts.i18n.t('ex.loading') : (this.#rows.length ? '' : (this.#restricted ? this.#opts.i18n.t('ex.emptyNoAccess') : emptyMessage(ctx)));
     empty.textContent = message;

@@ -1910,6 +1910,25 @@ rangée d'un fichier, selon ce qui vient d'abord.
       rangement propre de l'app (point 5) n'est jamais écrit.
     [M] Mesuré le 04/11 dans un vrai serveur Grist 1.7.19 avec les modèles de Publipostage+ (`labo/run-dossiers.mjs`, 44 vérifications dans
     chacune des quatre combinaisons, aucune en échec) et dans un vrai Firefox 159 (`test/dossiers-firefox.mjs`) : faits vérifiés, section 31.
+12. [T] **Glisser-déposer un fichier ou un dossier sur un dossier** (demande du porteur, 04/11 : « drag & drop des fichiers dans des dossiers,
+    en amont, en aval »). C'est une autre façon de demander **le déplacement du point 10** (couper puis coller) : le même rangement,
+    les mêmes lignes écrites, les mêmes phrases (« Contrat est déplacé dans Facturation »), rien de plus. La ligne tenue est un fichier ou un
+    dossier de la liste (ligne ou vignette) ; elle se dépose sur **un dossier de la liste** (en aval), **une ligne du volet des dossiers**
+    (« Moi » comprise) ou **un lien du fil d'Ariane** (en amont : la racine, un ancêtre). Un dossier fermé du volet qu'on survole 700 ms
+    s'ouvre, pour que son sous-dossier devienne une cible. La cible qui accepterait la ligne s'éclaire (le bleu de la sélection, cerné d'un
+    trait plein) et le curseur dit « déplacer » ; **une cible qui ne changerait rien n'est pas acceptée** (le curseur dit « interdit », rien
+    ne s'éclaire) : le dossier où est déjà le fichier ou le dossier, un dossier sur lui-même ou dans un de ses sous-dossiers, son dossier
+    parent. Le glissement part des fichiers de « Récents » et de « Favoris » comme de ceux d'un dossier ; **il ne part pas de la corbeille**
+    ni pendant le choix d'un fichier pour une app, et ce qu'un autre programme glisse sur l'explorateur (un fichier de l'ordinateur) n'est
+    pas accepté. Rien ne se dépose sur « Corbeille » : mettre à la corbeille reste le geste de la corbeille (6.6, point 10 ; 6.7). La ligne tenue n'est gardée que
+    dans la page, jamais dans le presse-papiers du système ; un fichier coupé (Ctrl+X) reste coupé après un dépôt. Les mêmes refus que le
+    point 10 : lecture seule, accès incomplet (la phrase le dit). Au clavier, le même déplacement est Ctrl+X puis Ctrl+V, ou « Déplacer »
+    dans le menu de la ligne ; le glisser est un raccourci pour la souris, jamais le seul chemin. [M] **Mesuré le 04/11** sous Chromium,
+    dans un vrai Grist (grist-static), à 700 × 400, à la vraie souris (le bouton appuyé, la souris tirée, le bouton relâché ; le
+    navigateur lance lui-même le glissement), en français clair et en anglais sombre (`labo/run-glisser-explorateur.mjs`, 30
+    vérifications dans chacune, aucune en échec) : faits vérifiés, section 35. **Sous Firefox sans écran le dépôt n'aboutit pas au banc**
+    (ni `drop` ni `dragend`, faits vérifiés 25) : `test/glisser-firefox.mjs` mesure ce qui s'y mesure (les lignes se tiennent, le départ, la
+    cible qui accepte ou refuse) ; le dépôt à la vraie souris sous Firefox est à essayer chez le porteur.
 
 ### 6.5 Préserver l'inconnu
 

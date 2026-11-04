@@ -57,6 +57,22 @@ function checkFiles(m, errors) {
     checkFiling(file.rangement, prefix, errors);
     checkRecipe(file.suppression, 'suppression', 'remettre', errors);
     checkRecipe(file.copie, 'copie', 'valeurs', errors);
+    checkWeight(file.poids, prefix, errors);
+  }
+}
+
+// Le poids d'un fichier (2.4, point 5) : `pieces` { colonne, taille } (le fichier EST une pièce jointe), `liees` [{ table, colonne, fichier }] (les lignes d'une table de l'app, du préfixe, qui suivent le fichier :
+// `colonne` de cette table porte la clé que `fichier`, une colonne de la table du fichier, porte aussi). Facultatif.
+function checkWeight(weight, prefix, errors) {
+  if (weight === undefined) return;
+  if (!isObject(weight)) { errors.push('fichiers[].poids : objet attendu'); return; }
+  const pieces = weight.pieces;
+  if (pieces !== undefined && !(isObject(pieces) && isText(pieces.colonne) && isText(pieces.taille))) errors.push('fichiers[].poids.pieces : { colonne, taille } attendu');
+  if (weight.liees === undefined) return;
+  if (!Array.isArray(weight.liees)) { errors.push('fichiers[].poids.liees : liste attendue'); return; }
+  for (const link of weight.liees) {
+    if (!isObject(link) || !isText(link.table) || !isText(link.colonne) || !isText(link.fichier)) errors.push('fichiers[].poids.liees : { table, colonne, fichier } attendu');
+    else if (!link.table.toLowerCase().startsWith(prefix.toLowerCase())) errors.push('fichiers[].poids.liees[].table hors du préfixe');
   }
 }
 

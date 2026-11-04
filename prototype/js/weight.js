@@ -61,6 +61,35 @@ export function piecesOf(rule, data, i) {
   return id === undefined ? [] : [[String(id), Number.isFinite(size) && size > 0 ? size : 0]];
 }
 
+// Les tables liées à un fichier (contrats 2.4, `poids.liees` : { table, colonne, fichier }) : les lignes d'une autre table du document qui suivent le fichier par une clé (les versions d'un modèle de
+// Publipostage+, rangées par son `Jeton`). `linkedWeights` rend, pour la colonne `column` de la table liée (`data`, telle que `fetchTable` la rend), les octets de toutes les lignes qui portent chaque clé
+// (la clé vide ne désigne personne) : clé (texte) -> octets, comptés comme ceux d'un fichier (`rowWeigher`).
+export const LINKED = 'liee:';
+
+export function linkedWeights(data, column) {
+  const bytes = new Map();
+  if (!data || !Array.isArray(data[column])) return bytes;
+  const weigh = rowWeigher(data);
+  data[column].forEach((raw, i) => {
+    const key = raw === null || raw === undefined ? '' : String(raw);
+    if (key !== '') bytes.set(key, (bytes.get(key) || 0) + weigh(i));
+  });
+  return bytes;
+}
+
+// Ce que les tables liées ajoutent au fichier de la ligne `i` de `data` : `links` = [{ table, fichier, bytes }] (`fichier` : la colonne du fichier qui porte la clé, `bytes` : `linkedWeights`). Rend
+// [[clé, octets]] au même format que `piecesOf`, la clé préfixée de `LINKED` et de la table : deux fichiers de même clé (une anomalie) ne comptent les lignes liées qu'une fois dans une somme.
+export function linkedOf(links, data, i) {
+  const found = [];
+  for (const link of links || []) {
+    const raw = cellOf(data, link.fichier, i);
+    const key = raw === null || raw === undefined ? '' : String(raw);
+    const size = key === '' ? 0 : link.bytes.get(key) || 0;
+    if (size > 0) found.push([`${LINKED}${link.table}:${key}`, size]);
+  }
+  return found;
+}
+
 // Les sommes : une pièce jointe citée par plusieurs fichiers n'est comptée qu'une fois. `file` : { weight, pieces } (js/explorer-model.js). Le total d'un dossier se construit fichier par fichier,
 // sans refaire la somme de tous (la liste d'un dossier le demande à chaque ouverture).
 export const newSum = () => ({ bytes: 0, seen: null });
@@ -76,10 +105,11 @@ export function addWeight(sum, file) {
 
 export const sumWeights = files => files.reduce(addWeight, newSum()).bytes;
 
-// Les numéros des pièces jointes que citent des fichiers (leurs `pieces`) : ce que la case « + pièces jointes » ne recompte pas, leur poids étant déjà dans la liste.
+// Les numéros des pièces jointes que citent des fichiers (leurs `pieces`) : ce que la case « + pièces jointes » ne recompte pas, leur poids étant déjà dans la liste. Les lignes de tables liées
+// (`LINKED`) ne sont pas des pièces jointes : elles n'y sont pas.
 export function pieceKeys(...lists) {
   const keys = new Set();
-  for (const list of lists) for (const file of list) for (const [key] of file.pieces || []) keys.add(key);
+  for (const list of lists) for (const file of list) for (const [key] of file.pieces || []) if (!key.startsWith(LINKED)) keys.add(key);
   return keys;
 }
 

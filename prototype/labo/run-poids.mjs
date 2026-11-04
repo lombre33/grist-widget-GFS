@@ -12,6 +12,8 @@
 //   6. La case « + pièces jointes » (lot 2 ; faits vérifiés, section 39) : de vraies pièces jointes envoyées à Grist (un doublon, le contenu d'un PDF de GFS, une pièce que plus aucune cellule ne cite, que Grist
 //      retire de son compte), le total de la case face au calcul exact de SQL (la formule de Grist), les gestes à la vraie souris et au vrai clavier (Tab, Espace, anneau de focus), le pied de fenêtre à 700 × 400,
 //      une table de 3 000 pièces de plus.
+//   7. Les versions d'un modèle (lot 3 ; contrats 2.4, `poids.liees` ; faits vérifiés, section 41) : la table `Publipostage_Versions` de la vraie Publipostage+ (colonnes de son magasin), rangée par `Jeton` : un modèle compte ses
+//      versions, un modèle sans jeton ou une copie non, des versions orphelines ou sans jeton à personne ; le dossier, le total, la corbeille ; ce que la lecture de la table de plus coûte à l'ouverture (3 Mo de versions).
 import { createServer } from 'node:http';
 import { serve } from './lab-server.mjs';
 import { chromium, say, check } from './lab-common.mjs';
@@ -30,6 +32,7 @@ const MODELS = 'Publipostage_Modeles';
 const PREFS = 'Publipostage_PreferencesModeles';
 const FILES = 'GFS_Fichiers';
 const BIN = 'GFS_Corbeille';
+const VERSIONS = 'Publipostage_Versions';
 const show = bytes => formatBytes(bytes, locale, t);
 const byName = (a, b) => a.name.localeCompare(b.name, locale, { numeric: true, sensitivity: 'base' });
 
@@ -42,11 +45,17 @@ const rowBytes = ({ id, ...fields }) => Object.values(fields).reduce((sum, value
 async function expectedFiles(run) {
   const sizes = new Map((await sql(run, 'SELECT id, fileSize FROM _grist_Attachments')).map(row => [row.id, row.fileSize]));
   const folderOf = new Map((await run.rest.rows(PREFS)).filter(row => row.Utilisateur === '' && row.ModeleId > 0).map(row => [row.ModeleId, row.Dossier || '']));
-  const list = (await run.rest.rows(MODELS)).filter(row => row.TypeModele !== 'reglages').map(row => ({ name: row.Nom, folder: folderOf.get(row.id) ?? '', bytes: rowBytes(row), pieces: [] }));
+  // Les versions d'un modèle (`Publipostage_Versions`, par `Jeton`) : leurs octets s'ajoutent à ceux du modèle, une fois par jeton (comme js/weight.js, `linkedOf`).
+  const byToken = new Map();
+  if ((await run.rest.tables()).includes(VERSIONS)) for (const row of await run.rest.rows(VERSIONS)) if (row.Jeton) byToken.set(row.Jeton, (byToken.get(row.Jeton) || 0) + rowBytes(row));
+  const list = (await run.rest.rows(MODELS)).filter(row => row.TypeModele !== 'reglages').map(row => {
+    const linked = row.Jeton ? byToken.get(row.Jeton) || 0 : 0;
+    return { name: row.Nom, folder: folderOf.get(row.id) ?? '', bytes: rowBytes(row) + linked, linked, pieces: linked ? [[`liee:${VERSIONS}:${row.Jeton}`, linked]] : [] };
+  });
   for (const row of (await run.rest.rows(FILES)).filter(each => !each.SupprimeLe)) {
     const [id] = attachmentIds(row.Contenu);
     const size = sizes.get(id) ?? 0;
-    list.push({ name: row.Nom, folder: '', bytes: rowBytes(row) + size, pieces: [[String(id), size]], taille: row.Taille, size });
+    list.push({ name: row.Nom, folder: '', bytes: rowBytes(row) + size, pieces: [[String(id), size]], linked: 0, taille: row.Taille, size });
   }
   return list;
 }
@@ -303,20 +312,21 @@ async function attachmentsMouse(run, { box, base, footBefore }) {
   return first;
 }
 
-// Au clavier : la case est juste avant « Ouvrir », son anneau de focus se voit, Espace la coche et elle garde le focus.
+// Au clavier : la case est un arrêt de Tab avant la pastille des droits et « Ouvrir », son anneau de focus se voit, Espace la coche et elle garde le focus.
 async function attachmentsKeyboard(run, { box, base, first }) {
   const { page, frame } = run;
-  // 3. Le clavier : de la case, Maj+Tab vient de la liste et Tab va à « Ouvrir » puis « Fermer » ; Espace coche sans que la case perde le focus ; l'anneau de focus se voit.
-  await frame.locator('.ex-foot button').first().focus();
+  // 3. Le clavier : de la case, Maj+Tab vient de la liste et Tab va à la pastille des droits, « Ouvrir » puis « Fermer » ; Espace coche sans que la case perde le focus ; l'anneau de focus se voit.
+  await frame.locator('.ex-foot button', { hasText: t('ex.open') }).first().focus();
+  await page.keyboard.press('Shift+Tab');
   await page.keyboard.press('Shift+Tab');
   const onBox = await frame.evaluate(() => document.activeElement && document.activeElement.matches('.ex-pj input'));
-  await page.keyboard.press('Tab');
-  const next = await frame.evaluate(() => document.activeElement.textContent.trim());
-  await page.keyboard.press('Tab');
-  const afterNext = await frame.evaluate(() => document.activeElement.textContent.trim());
-  check('au clavier, la case est juste avant « Ouvrir » (Tab : Ouvrir puis Fermer)', onBox && next === t('ex.open') && afterNext === t('ex.close'), { onBox, next, afterNext });
-  await page.keyboard.press('Shift+Tab');
-  await page.keyboard.press('Shift+Tab');
+  const stops = [];
+  for (let i = 0; i < 3; i++) {
+    await page.keyboard.press('Tab');
+    stops.push(await frame.evaluate(() => (document.activeElement.matches('.rights-chip') ? 'droits' : document.activeElement.textContent.trim())));
+  }
+  check('au clavier, la case est juste avant la pastille des droits, « Ouvrir » et « Fermer » (Tab : droits, Ouvrir, Fermer)', onBox && stops.join('|') === ['droits', t('ex.open'), t('ex.close')].join('|'), { onBox, stops });
+  for (let i = 0; i < 3; i++) await page.keyboard.press('Shift+Tab');
   const ring = await box.evaluate(input => { const style = getComputedStyle(input); return { focused: document.activeElement === input, visible: input.matches(':focus-visible'), style: style.outlineStyle, width: style.outlineWidth }; });
   check('la case prise au clavier montre son anneau de focus (2 px)', ring.focused && ring.visible && ring.style === 'solid' && parseFloat(ring.width) >= 2, ring);
   const keyStart = Date.now();
@@ -396,6 +406,115 @@ async function scaleAttachments(run, base) {
   await waitForTotal(frame, show(base));
 }
 
+// ----- 7. Les versions d'un modèle : leurs octets s'ajoutent à ceux du modèle, par le jeton.
+// La table de la vraie Publipostage+ (js/versions-store.js du dépôt de l'app : Jeton, Date, Auteur, Nom, Genre, Donnees), de gros textes comme ses états compressés (base64).
+const text = (size, seed) => noise(Math.ceil(size * 3 / 4), seed).toString('base64').slice(0, size);
+const versionRow = (token, size, seed) => ({ Jeton: token, Date: 1762000000 + seed, Auteur: 'paul@exemple.fr', Nom: '', Genre: '', Donnees: text(size, seed) });
+const addVersions = (run, rows) => apply(run, [['BulkAddRecord', VERSIONS, rows.map(() => null), Object.fromEntries(Object.keys(rows[0]).map(key => [key, rows.map(row => row[key])]))]]);
+const timeLoad = async frame => {
+  const started = Date.now();
+  await frame.evaluate(() => location.reload());
+  await frame.waitForFunction(() => document.body.dataset.gfs === 'ready', null, { timeout: 60000 });
+  await goHome(frame);
+  await waitForWeights(frame, 8);
+  return Date.now() - started;
+};
+const weightOf = async (frame, name) => (await listed(frame)).find(row => row.name === name);
+
+// Les jetons des modèles et la table des versions, comme Publipostage+ les écrit ; rend ce que les passes suivantes se partagent.
+async function versionsStart(run) {
+  const { frame } = run;
+  say('--- 7. les versions d\'un modèle ---');
+  await goHome(frame);
+  await waitForWeights(frame, 8);
+  const ids = (await run.rest.rows(MODELS)).filter(row => row.TypeModele !== 'reglages').map(row => row.id);
+  await apply(run, [['AddColumn', MODELS, 'Jeton', { type: 'Text' }]]);
+  await apply(run, [['BulkUpdateRecord', MODELS, ids, { Jeton: ids.map(id => `j${id}`) }]]);
+  await apply(run, [['AddTable', VERSIONS, ['Jeton', 'Auteur', 'Nom', 'Genre', 'Donnees'].map(id => ({ id, type: 'Text' })).concat([{ id: 'Date', type: 'DateTime' }])]]);
+  const models = await run.rest.rows(MODELS);
+  const token = name => models.find(row => row.Nom === name).Jeton;
+  const baseline = [await timeLoad(frame), await timeLoad(frame)];
+  await addVersions(run, [1, 2, 3, 4].map(n => versionRow(token('Modèle lourd 1'), 120000, n)));
+  await addVersions(run, [5, 6, 7].map(n => versionRow(token('Contrat de prestation'), 2000, n)));
+  await addVersions(run, [8, 9].map(n => versionRow('orphelin', 50000, n)).concat([versionRow('', 10000, 10)]));
+  return { baseline, token };
+}
+
+// Chaque ligne dit le poids de son modèle plus celui de ses versions ; un dossier, la somme ; le total ; la table face à SQLite.
+async function versionsWeights(run, { token }) {
+  const { frame } = run;
+  await timeLoad(frame);
+  const files = await expectedFiles(run);
+  const rows = await listed(frame);
+  const heavy = files.find(file => file.name === 'Modèle lourd 1');
+  const small = files.find(file => file.name === 'Contrat de prestation');
+  const all = (await run.rest.rows(VERSIONS)).reduce((sum, row) => sum + rowBytes(row), 0);
+  const attributed = files.reduce((sum, file) => sum + file.linked, 0);
+  say(`  les versions : ${all} o dans la table, ${attributed} o rattachés à un modèle (le reste : jeton inconnu ou vide)`);
+  check('« Modèle lourd 1 » dit le poids de sa ligne plus ses quatre versions (le jeton rattache), « Contrat de prestation » le sien plus ses trois', heavy.linked > 480000 && small.linked > 6000
+    && (await weightOf(frame, 'Modèle lourd 1')).weight === show(heavy.bytes) && (await weightOf(frame, 'Contrat de prestation')).weight === show(small.bytes), { vu: rows.filter(row => /Modèle lourd 1|Contrat/.test(row.name)), attendu: [show(heavy.bytes), show(small.bytes)] });
+  check('les versions orphelines (jeton inconnu) et sans jeton ne sont à aucun modèle : elles ne sont pas comptées', attributed === heavy.linked + small.linked && attributed < all && all - attributed > 100000, { toutes: all, rattachees: attributed });
+  const wrong = rows.filter(row => row.weight !== show(row.folder ? total(files.filter(file => inFolder(file, row.name))) : files.find(file => file.name === row.name).bytes)).map(row => [row.name, row.weight]);
+  check('les autres lignes et les dossiers disent toujours le poids de leurs fichiers (un dossier somme les modèles et leurs versions)', wrong.length === 0, wrong);
+  check('le total du pied est la somme de ce que la liste montre, versions comprises', (await footNumber(frame)) === show(total(files)), { vu: await footNumber(frame), attendu: show(total(files)) });
+  const exact = (await sql(run, `SELECT SUM(pgsize - unused) AS octets FROM dbstat WHERE name = '${VERSIONS}'`))[0].octets;
+  say(`  ${VERSIONS} : estimé ${all} o, SQLite ${exact} o, ${(100 * (all - exact) / exact).toFixed(1)} %`);
+  check('la table des versions : l\'estimation est sous l\'octet exact de SQLite et à moins de 2 % de lui', all <= exact && all >= exact * 0.98, { estimé: all, sqlite: exact });
+  await shot(frame, `${TAG}-6-versions`);
+}
+
+// La copie d'un modèle n'a pas de jeton (la recette `copie` le vide) : pas de versions ; à la corbeille, l'entrée ne garde que sa ligne ; remis, le modèle retrouve ses versions.
+async function versionsCopyAndTrash(run) {
+  const { page, frame } = run;
+  const before = await expectedFiles(run);
+  const heavy = before.find(file => file.name === 'Modèle lourd 1');
+  const token = (await run.rest.rows(MODELS)).find(row => row.Nom === 'Modèle lourd 1').Jeton;
+  await openRowMenu(frame, 'Modèle lourd 1');
+  await frame.getByRole('menuitem', { name: new RegExp(`^${t('ex.duplicate')}`) }).click();
+  await rowOf(frame, 'Modèle lourd 1 (1)').waitFor();
+  await waitForWeights(frame, 8);
+  const copy = (await run.rest.rows(MODELS)).find(row => row.Nom === 'Modèle lourd 1 (1)');
+  check('la copie d\'un modèle n\'a pas de jeton et ne compte aucune version : elle pèse sa ligne, ses 600 000 caractères', !copy.Jeton && (await weightOf(frame, 'Modèle lourd 1 (1)')).weight === show(rowBytes(copy)) && rowBytes(copy) > 590000, { copie: copy.Jeton, vu: await weightOf(frame, 'Modèle lourd 1 (1)'), attendu: show(rowBytes(copy)) });
+  await rowOf(frame, 'Modèle lourd 1').click();
+  await page.keyboard.press('Delete');
+  await frame.locator('.mod.ask').waitFor({ timeout: 3000 }).then(() => frame.locator('[data-fk="ask-yes"]').click()).catch(() => {});
+  await waitFor(page, 'le modèle est à la corbeille', async () => (await run.rest.rows(BIN)).length === 1);
+  const [entry] = await run.rest.rows(BIN);
+  const still = (await run.rest.rows(VERSIONS)).filter(row => row.Jeton === token).length;
+  await goTo(frame, new RegExp(`^\\s*${t('trash.view')}`));
+  await waitForWeights(frame, 1);
+  check('à la corbeille, l\'entrée pèse sa ligne de GFS_Corbeille et rien de plus, et les quatre versions restent dans leur table', still === 4 && (await listed(frame))[0].weight === show(rowBytes(entry)), { versions: still, vu: await listed(frame), attendu: show(rowBytes(entry)) });
+  await rowOf(frame, 'Modèle lourd 1').click();
+  await page.keyboard.press('Enter');
+  await waitFor(page, 'le modèle est revenu', async () => (await run.rest.rows(BIN)).length === 0);
+  await goHome(frame);
+  await waitForWeights(frame, 8);
+  const again = (await expectedFiles(run)).find(file => file.name === 'Modèle lourd 1');
+  check('remis, le modèle dit de nouveau sa ligne plus ses versions', (await weightOf(frame, 'Modèle lourd 1')).weight === show(again.bytes) && again.linked === heavy.linked, { vu: await weightOf(frame, 'Modèle lourd 1'), attendu: show(again.bytes) });
+}
+
+// Ce que la table de plus coûte à l'ouverture : 3 Mo de versions (le plafond de Publipostage+ : 3 000 000 caractères pour tout le document) ; le poids garde son exactitude.
+async function versionsCost(run, { baseline }) {
+  const { frame } = run;
+  const models = await run.rest.rows(MODELS);
+  const token = name => models.find(row => row.Nom === name).Jeton;
+  for (let batch = 0; batch < 5; batch++) await addVersions(run, [0, 1, 2, 3, 4].map(n => versionRow(token(n % 2 ? 'Modèle lourd 2' : 'Modèle lourd 3'), 100000, 100 + batch * 5 + n)));
+  const rows = (await run.rest.rows(VERSIONS)).length;
+  const bytes = (await run.rest.rows(VERSIONS)).reduce((sum, row) => sum + rowBytes(row), 0);
+  const loads = [await timeLoad(frame), await timeLoad(frame)];
+  const files = await expectedFiles(run);
+  const slower = Math.round(loads.reduce((a, b) => a + b) / 2 - baseline.reduce((a, b) => a + b) / 2);
+  say(`  ouverture de l'explorateur : ${baseline.join(' et ')} ms sans la table, ${loads.join(' et ')} ms avec ${rows} versions (${(bytes / 1048576).toFixed(1)} Mo) : ${slower >= 0 ? '+' : ''}${slower} ms`);
+  check(`avec ${rows} versions (${(bytes / 1048576).toFixed(1)} Mo), le poids reste celui des octets de Grist et l'ouverture ne prend pas plus de 3 s de plus`, slower < 3000 && (await weightOf(frame, 'Modèle lourd 2')).weight === show(files.find(file => file.name === 'Modèle lourd 2').bytes) && (await footNumber(frame)) === show(total(files)), { lenteur: slower, vu: await footNumber(frame), attendu: show(total(files)) });
+}
+
+async function playVersions(run) {
+  const state = await versionsStart(run);
+  await versionsWeights(run, state);
+  await versionsCopyAndTrash(run);
+  await versionsCost(run, state);
+}
+
 const server = await requireServer();
 const pages = createServer(serve(process.env.REPO_DIR, undefined, openConnectIn(/prototype[/\\]transfer[/\\]index\.html$/))).listen(PAGE_PORT, '127.0.0.1');
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
@@ -410,6 +529,7 @@ try {
   await playSort(run);
   await playTrash(run);
   await playAttachments(run);
+  await playVersions(run);
   const unexpected = run.problems.filter(problem => !run.allow.some(known => known.test(problem)));
   check('aucune erreur ni avertissement de GFS dans la console', unexpected.length === 0, unexpected);
 } finally {

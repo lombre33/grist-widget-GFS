@@ -5,6 +5,7 @@
 import { readFiles, readFiling, readGfsFiling, readGfsFolders, applyFiling } from './explorer-model.js';
 import { TABLE } from './rangement.js';
 import { BIN_TABLE, recipeOf, binFiles } from './gfs-trash.js';
+import { linkedWeights } from './weight.js';
 
 const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 
@@ -17,6 +18,18 @@ async function readTable(port, tables, tableId) {
   if (tables && !tables.some(name => sameName(name, tableId))) return { data: null };
   const found = (tables && tables.find(name => sameName(name, tableId))) || tableId;
   try { return { data: await port.doc.fetchTable(found) }; } catch (error) { return { error }; }
+}
+
+// Les tables liées aux fichiers d'une table (`poids.liees`, contrats 2.4, point 5) : [{ table, fichier, bytes }], `bytes` les octets des lignes de la table liée par clé (js/weight.js, `linkedWeights`).
+// Une table que l'app n'a pas encore créée ne pèse rien ; une table illisible est dite et ne cache aucun fichier : le poids est une estimation, il perd ces lignes.
+async function readLinked(port, tables, spec) {
+  const links = [];
+  for (const rule of (spec.poids && spec.poids.liees) || []) {
+    const linked = await readTable(port, tables, rule.table);
+    if (linked.error) console.warn(`GFS : la table liée ${rule.table} est illisible`, linked.error);
+    else if (linked.data) links.push({ table: rule.table, fichier: rule.fichier, bytes: linkedWeights(linked.data, rule.colonne) });
+  }
+  return links;
 }
 
 // La case « + pièces jointes » de l'explorateur (faits vérifiés, section 39) : la table des pièces jointes de Grist, telle que l'API des widgets la rend avec l'accès complet que GFS a déjà.
@@ -48,7 +61,7 @@ export async function loadFiles(port, apps, identity = '') {
       if (main.error) { problems.push({ app: manifest.id, reason: String(main.error.message || main.error) }); continue; }
       const filingTable = spec.rangement ? await readTable(port, tables, spec.rangement.table) : { data: null };
       const filing = filingTable.data ? readFiling(spec.rangement, filingTable.data, identity) : null;
-      const found = readFiles(manifest, spec, main.data);
+      const found = readFiles(manifest, spec, main.data, null, await readLinked(port, tables, spec));
       applyFiling(found, filing, gfsFiling);
       for (const file of found) (file.trashed ? trash : files).push(file);
       // Les fichiers de l'app que la personne a mis à la corbeille ne sont plus dans sa table : ils sont dans `GFS_Corbeille` (js/gfs-trash.js), et gardent leur dossier, que le rangement n'a pas quitté.

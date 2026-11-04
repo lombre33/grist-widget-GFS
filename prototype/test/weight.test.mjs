@@ -3,7 +3,7 @@
 // se mesure dans le labo (labo/run-poids.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { utf8Length, cellBytes, rowWeigher, attachmentIds, piecesOf, newSum, addWeight, sumWeights, pieceKeys, otherAttachments, formatBytes } from '../js/weight.js';
+import { utf8Length, cellBytes, rowWeigher, attachmentIds, piecesOf, linkedWeights, linkedOf, LINKED, newSum, addWeight, sumWeights, pieceKeys, otherAttachments, formatBytes } from '../js/weight.js';
 import { createI18n } from '../js/i18n.js';
 
 test('utf8Length : les octets d\'un texte en UTF-8, comme Buffer.byteLength, sans copier le texte', () => {
@@ -109,6 +109,40 @@ test('pieceKeys : les numéros des pièces que citent des fichiers, vivants ou �
   const bin = [{ pieces: [['3', 100]] }, { pieces: [['9', 1]] }];
   assert.deepEqual([...pieceKeys(live, bin)].sort(), ['3', '4', '9']);
   assert.equal(pieceKeys([]).size, 0);
+});
+
+// Les versions d'un modèle de Publipostage+ (`Publipostage_Versions`, rangées par `Jeton`) : la forme que `fetchTable` rend, une ligne par version.
+const VERSIONS = { id: [1, 2, 3, 4], Jeton: ['a', 'a', '', 'b'], Date: [10, 11, 12, 13], Donnees: ['x'.repeat(100), 'é'.repeat(50), 'z'.repeat(40), null] };
+
+test('linkedWeights : les octets de toutes les lignes qui portent la même clé, comptés comme ceux d\'un fichier ; la clé vide, absente ou illisible ne désigne personne', () => {
+  const bytes = linkedWeights(VERSIONS, 'Jeton');
+  // « a » : (1 + 100) + (1 + 2 × 50) ; « b » : 1 + rien ; la date 10 et 11 : 1 octet chacune, 13 : 1 octet.
+  assert.equal(bytes.get('a'), (1 + 1 + 100) + (1 + 1 + 100));
+  assert.equal(bytes.get('b'), 1 + 1);
+  assert.equal(bytes.has(''), false, 'la clé vide ne désigne personne : ses lignes ne sont à aucun fichier');
+  assert.equal(linkedWeights(VERSIONS, 'Absente').size, 0);
+  assert.equal(linkedWeights(null, 'Jeton').size, 0);
+  assert.equal(linkedWeights({ id: [1], Jeton: [7], Donnees: ['ab'] }, 'Jeton').get('7'), 1 + 2, 'une clé numérique se compare comme du texte');
+});
+
+test('linkedOf : ce que les tables liées ajoutent au fichier d\'une ligne, au format de piecesOf ; sans clé, sans lignes liées ou sans règle, rien', () => {
+  const links = [{ table: 'Publipostage_Versions', fichier: 'Jeton', bytes: linkedWeights(VERSIONS, 'Jeton') }];
+  const models = { id: [1, 2, 3, 4], Jeton: ['a', 'b', '', 'inconnu'] };
+  assert.deepEqual(linkedOf(links, models, 0), [[`${LINKED}Publipostage_Versions:a`, 204]]);
+  assert.deepEqual(linkedOf(links, models, 1), [[`${LINKED}Publipostage_Versions:b`, 2]]);
+  assert.deepEqual(linkedOf(links, models, 2), [], 'un modèle sans jeton n\'a pas de versions (une copie, par exemple)');
+  assert.deepEqual(linkedOf(links, models, 3), [], 'un jeton qu\'aucune version ne porte');
+  assert.deepEqual(linkedOf(null, models, 0), []);
+  assert.deepEqual(linkedOf(links, { id: [1] }, 0), [], 'une colonne que la table du fichier n\'a pas');
+});
+
+test('les lignes liées se somment avec les pièces : deux fichiers de même clé ne les comptent qu\'une fois, et `pieceKeys` n\'en fait pas des pièces jointes', () => {
+  const link = [[`${LINKED}Publipostage_Versions:a`, 204]];
+  const first = { weight: 50 + 204, pieces: link };
+  const second = { weight: 70 + 204, pieces: link };
+  assert.equal(sumWeights([first, second]), 50 + 70 + 204, 'les versions d\'une même clé comptent une fois');
+  assert.equal(pieceKeys([first, { pieces: [['3', 9]] }]).size, 1, 'seule la pièce jointe est un numéro de pièce');
+  assert.deepEqual([...pieceKeys([first, { pieces: [['3', 9]] }])], ['3']);
 });
 
 test('otherAttachments : le compte de Grist sur le document de l\'étude (27 499 315 octets) : une pièce par `fileIdent`, sans les supprimées', () => {

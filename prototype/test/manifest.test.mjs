@@ -316,6 +316,19 @@ test('texte, icone et poids (fenêtre des apps et extensions) : facultatifs, mai
   assert.match(errors, /extension graphique : texte doit porter fr et en/);
 });
 
+test('`poids` d\'une table de fichiers : les tables liées déclarées par Publipostage+ sont bien formées, et une règle mal formée ou hors du préfixe est refusée', () => {
+  const manifest = publipostage();
+  assert.deepEqual(manifest.fichiers[0].poids, { liees: [{ table: 'Publipostage_Versions', colonne: 'Jeton', fichier: 'Jeton' }] }, 'les versions d\'un modèle suivent leur modèle par le jeton');
+  assert.ok(validateManifest(manifest, [automation()]).ok);
+  const errorsOf = poids => { const m = publipostage(); m.fichiers[0].poids = poids; return validateManifest(m, [automation()]).errors.join(' | '); };
+  assert.match(errorsOf('lourd'), /poids : objet attendu/);
+  assert.match(errorsOf({ liees: 'Publipostage_Versions' }), /poids\.liees : liste attendue/);
+  assert.match(errorsOf({ liees: [{ table: 'Publipostage_Versions', colonne: 'Jeton' }] }), /poids\.liees : \{ table, colonne, fichier \} attendu/);
+  assert.match(errorsOf({ liees: [{ table: 'Clients', colonne: 'Jeton', fichier: 'Jeton' }] }), /poids\.liees\[\]\.table hors du préfixe/);
+  assert.match(errorsOf({ pieces: { colonne: 'Contenu' } }), /poids\.pieces : \{ colonne, taille \} attendu/);
+  assert.equal(errorsOf({ pieces: { colonne: 'Contenu', taille: 'Taille' }, liees: [] }), '', 'une règle sans table liée ou avec ses pièces seules est valide');
+});
+
 const folderBytes = dir => readdirSync(dir, { withFileTypes: true })
   .reduce((total, item) => total + (item.isDirectory() ? folderBytes(join(dir, item.name)) : statSync(join(dir, item.name)).size), 0);
 

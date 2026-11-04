@@ -11,7 +11,8 @@ export const GFS = `http://127.0.0.1:${PAGE_PORT}/prototype/index.html`;
 
 // Deux messages de la console qui ne viennent pas d'un défaut de GFS, présents depuis toujours et attendus : le script d'API de Grist pose sa feuille de thème en ligne et la politique de
 // GFS (`style-src 'self'`) la refuse (Chromium le dit « Applying inline style violates… » ou « Refused to apply inline style because it violates… » selon sa version), et le premier cadre, ouvert sans accès, ne peut pas lire le nom du document (la personne donne l'accès complet ensuite).
-export const KNOWN_MESSAGES = [/grist-plugin-api\.js:\d+ (Applying inline style violates|Refused to apply inline style because it violates)/, /GFS : le nom du document est illisible ErrorWithCode: Access not granted/];
+// Quand le cadre de GFS se recharge (`location.reload()`), Chromium dit la même chose sans l'adresse du script (« :27006 Applying inline style… » : les lignes 26980 et 27006 de grist-plugin-api.js 1.7.19, mesuré le 04/11).
+export const KNOWN_MESSAGES = [/(^|grist-plugin-api\.js):\d+ (Applying inline style violates|Refused to apply inline style because it violates)/, /GFS : le nom du document est illisible ErrorWithCode: Access not granted/];
 
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 

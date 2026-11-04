@@ -5,7 +5,7 @@
 // un document ancien n'a pas toutes les colonnes (2.4, point 2).
 
 import { normalize, words, matchesWords } from './search.js';
-import { rowWeigher, piecesOf, newSum, addWeight } from './weight.js';
+import { rowWeigher, piecesOf, linkedOf, newSum, addWeight } from './weight.js';
 
 // Le champ `couleur` du manifeste -> la famille de couleur de la charte (cahier 6.5) ; tout autre mot : neutre. Le rouge du PDF est la quatrième famille (décision du porteur, 04/11).
 const FAMILIES = Object.freeze({ document: 'doc', grille: 'grid', presentation: 'slides', pdf: 'pdf' });
@@ -48,8 +48,9 @@ export const fileKey = (app, id) => `${app}:${id}`;
 // et celle de la corbeille se séparent après la lecture (js/explorer-data.js) : ce modèle rend tout, le fichier à la corbeille a gardé son nom, son dossier et son type.
 // `typeInfo` est l'entrée de `types` qui porte le type, ou null : un type que le manifeste ne connaît pas est listé grisé (6.5, point 3).
 // `weight` : le poids estimé en octets (js/weight.js), les cellules de la ligne (ou `weights[i]` quand l'appelant les a comptées lui-même : une entrée de la corbeille pèse ce qu'elle garde) plus la pièce
-// jointe que le fichier EST (`spec.poids.pieces`) ; `pieces` : [[clé, taille]] de ces pièces, pour qu'une somme compte une fois celle que deux fichiers citent.
-export function readFiles(manifest, spec, data, weights = null) {
+// jointe que le fichier EST (`spec.poids.pieces`) et les lignes des tables liées qui le suivent (`spec.poids.liees`, lues par l'appelant : `linked`, js/weight.js `linkedOf`) ; `pieces` : [[clé, taille]]
+// de ces pièces et de ces lignes liées, pour qu'une somme compte une fois celle que deux fichiers citent.
+export function readFiles(manifest, spec, data, weights = null, linked = null) {
   const cols = spec.colonnes || {};
   const weigh = rowWeigher(data);
   const files = [];
@@ -60,7 +61,7 @@ export function readFiles(manifest, spec, data, weights = null) {
     const type = text(cell(data, cols.type, i)) || spec.typeParDefaut || '';
     const typeInfo = (spec.types || []).find(item => item.valeur === type) || null;
     const name = text(cell(data, cols.nom, i));
-    const pieces = piecesOf(spec.poids, data, i);
+    const pieces = [...piecesOf(spec.poids, data, i), ...linkedOf(linked, data, i)];
     files.push({
       key: fileKey(manifest.id, rawId), app: manifest.id, id: String(rawId), table: spec.table, row: data.id[i], name, type, typeInfo, known: Boolean(typeInfo),
       family: typeInfo ? familyOf(typeInfo.couleur) : '', icon: (typeInfo && typeInfo.icone) || 'doc',

@@ -153,6 +153,61 @@ test('le poids : un fichier d\'une app pèse les octets de sa ligne, et une entr
   assert.ok(found.trash[0].weight > 6000, 'la copie JSON compte : c\'est elle que la corbeille garde dans le document');
 });
 
+// Les versions d'un modèle (contrats 2.4, `poids.liees`) : la table `Publipostage_Versions`, rangée par `Jeton`, que le manifeste de GFS déclare liée aux modèles.
+const withVersions = () => {
+  const data = tables();
+  data[spec.table].Jeton = ['jeton-1', ''];
+  data.Publipostage_Versions = { id: [1, 2, 3], Jeton: ['jeton-1', 'jeton-1', 'orphelin'], Donnees: ['v'.repeat(400), 'w'.repeat(600), 'o'.repeat(900)] };
+  return data;
+};
+
+test('le poids : un modèle compte ses versions (les lignes de Publipostage_Versions qui portent son jeton) ; un modèle sans jeton, ou dont aucune version ne porte le jeton, ne compte que sa ligne', async () => {
+  const alone = await loadFiles(port(tables()), [{ manifest }], '');
+  const found = await loadFiles(port(withVersions()), [{ manifest }], '');
+  // « jeton-1 » : sa colonne Jeton 7 octets dans la ligne du modèle ; les deux versions : jeton 7 + id absent + 400 ou 600 octets.
+  const versions = (7 + 400) + (7 + 600);
+  assert.equal(found.files[0].weight, alone.files[0].weight + 7 + versions, 'la ligne (avec sa colonne Jeton de plus) et ses deux versions');
+  assert.equal(found.files[1].weight, alone.files[1].weight, 'le modèle sans jeton n\'a pas de versions');
+  assert.ok(found.files[0].pieces.every(([key]) => key.startsWith('liee:')), 'les versions ne sont pas des pièces jointes');
+});
+
+test('le poids : les versions d\'un même jeton ne comptent qu\'une fois dans une somme (deux modèles au même jeton, une anomalie) ; un dossier somme les modèles et leurs versions', async () => {
+  const data = withVersions();
+  data[spec.table].Jeton = ['jeton-1', 'jeton-1'];
+  const { files } = await loadFiles(port(data), [{ manifest }], '');
+  const versions = (7 + 400) + (7 + 600);
+  assert.equal(sumWeights(files), files[0].weight + files[1].weight - versions);
+});
+
+test('le poids : sans la table des versions (l\'app ne l\'a pas encore créée), le modèle ne pèse que sa ligne ; une table illisible est dite, ne cache aucun fichier et ne compte rien', async () => {
+  const data = withVersions();
+  delete data.Publipostage_Versions;
+  const bare = await loadFiles(port(data), [{ manifest }], '');
+  assert.equal(bare.files.length, 2);
+  assert.deepEqual(bare.files.map(file => file.pieces), [[], []]);
+  const warnings = [];
+  const realWarn = console.warn;
+  console.warn = (...args) => warnings.push(args.join(' '));
+  try {
+    const broken = await loadFiles(port(withVersions(), { broken: 'Publipostage_Versions' }), [{ manifest }], '');
+    assert.equal(broken.files.length, 2, 'les fichiers sont tous là');
+    assert.equal(broken.files[0].weight, bare.files[0].weight, 'sans les versions : la ligne seule');
+    assert.equal(broken.problems.length, 0, 'une estimation qui perd une table n\'est pas un problème de l\'app');
+  } finally { console.warn = realWarn; }
+  assert.ok(warnings.some(line => /Publipostage_Versions.*illisible/.test(line)), 'la console le dit');
+});
+
+test('le poids : à la corbeille, une entrée ne compte que ce que GFS_Corbeille garde ; les versions restent dans leur table (l\'app les purge comme orphelines) et ne la suivent pas', async () => {
+  const data = withVersions();
+  data.GFS_Corbeille = {
+    id: [5], Identifiant: ['aabbccddeeff'], App: ['publipostage'], Table: [spec.table], FichierId: ['9'], Nom: ['Relance'], Type: ['email'], Date: [300], Auteur: [''],
+    SupprimeLe: [1762000000], SupprimePar: [''], Instantane: [JSON.stringify({ format: 1, id: 9, valeurs: { Nom: 'Relance', Jeton: 'jeton-1' } })],
+  };
+  const { trash } = await loadFiles(port(data), [{ manifest }], '');
+  assert.equal(trash.length, 1);
+  assert.deepEqual(trash[0].pieces, []);
+});
+
 test('la case « + pièces jointes » : la table `_grist_Attachments` est lue telle que l\'API des widgets la rend, et seulement quand on la demande ; un refus de Grist est rendu, sans arrêter personne', async () => {
   const table = { id: [1, 2], fileIdent: ['a.pdf', 'b.jpg'], fileSize: [10, 20], timeDeleted: [null, null] };
   const asked = [];

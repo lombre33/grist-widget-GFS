@@ -352,7 +352,8 @@ commencer, ou un sous-cadre gardé ouvert et caché (question 4, section 12).
   sous 520 px de large environ, le volet se replie et il reste le fil d'Ariane ; Récents et Favoris toujours visibles ;
   vignettes plus tard (d'abord icône du type et deux lignes de début de texte).
 - Le **poids** (demande du porteur du 04/11 : une instance de Grist limite l'ensemble des documents à 15 Go) : chaque fichier, chaque dossier (la somme de ses fichiers) et le pied de fenêtre (la somme de ce que la liste montre) disent leur poids estimé en o, Ko, Mo ou Go (1 Ko = 1 024 o) ; la colonne se trie dans les deux sens. C'est une estimation faite avec ce que GFS lit déjà (contrats 2.4, point 5), jamais ce que Grist compte pour sa limite. La case « + pièces jointes » du pied de fenêtre (livrée le 04/11) ajoute au total les pièces jointes du document que nul fichier de l'explorateur ne cite (comptées comme Grist les compte, lues seulement quand la personne coche ; grisée avec sa raison quand GFS ne peut pas les lire ; faits vérifiés, 39).
-  À suivre, un lot chacun : le poids des tables liées des apps (les versions de Publipostage+, les réponses de Form+), la fenêtre « Poids du document ».
+  Les **tables liées** (lot 3, livré le 04/11) : un fichier compte aussi les lignes d'une autre table de l'app qui le suivent par une clé, déclarées dans le manifeste (`poids.liees`, contrats 2.4) ; Publipostage+ en a une, les versions d'un modèle (`Publipostage_Versions`, par `Jeton`), lue avec les fichiers à chaque ouverture (moins de 0,4 s de plus pour 3 Mo, le plafond de l'app ; faits vérifiés, 41). Form+ : les réponses vont dans les tables que la personne choisit, il n'y a pas de lien fixe à compter (carte de décision posée au porteur).
+  À suivre : la fenêtre « Poids du document ».
 
 ### 4.5 Le kit commun
 

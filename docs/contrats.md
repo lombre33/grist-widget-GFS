@@ -289,6 +289,7 @@ Une entrée de `fichiers` par table de fichiers :
 | `types` | Liste de `{ valeur, nom: { fr, en }, icone, couleur, extension }`. `couleur` : `document`, `grille` ou `presentation` (les trois du cahier 6.5), sinon neutre. `icone` : identifiant d'une icône du kit [D]. `extension` : l'extension qui possède ce type (absente : le socle). |
 | `exclure` | `{ "<colonne>": [valeurs] }` : lignes que l'explorateur ignore (les lignes réservées, comme `reglages`). |
 | `rangement` | Le rangement propre à l'app (3.1 point 7 du cahier), s'il y en a un : `{ table, utilisateur, fichier, dossier, epingle }`, des noms de colonnes. L'explorateur le lit comme point de départ et n'y écrit jamais (6.4, point 8). |
+| `corbeille` | `{ date, par }` : les deux colonnes où GFS marque un fichier mis à la corbeille (la date en secondes comme Grist la rend, la personne), facultatif (décision du porteur du 04/11). Une ligne dont `date` est positive n'est plus listée dans l'explorateur mais dans sa vue « Corbeille », avec son dossier et son rangement. **Seule la table que GFS écrit lui-même en a** (`GFS_Fichiers`, 6.6, point 10) : aucune app ne déclare ces colonnes, GFS n'en ajoute à aucune table d'app. |
 
 1. [T] L'identifiant d'un fichier est la valeur de `colonnes.id`, prise comme texte (pour Publipostage+, le numéro de ligne).
 2. [T] GFS lit la table entière (l'API de Grist n'a pas de projection par colonne), ne garde que les colonnes déclarées, et n'y
@@ -1563,9 +1564,9 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
    - **Ce que l'app garde sur ce PDF** (demande du porteur du 03/11, lot 4 de l'étude PDF : des commentaires dans le mode Lecture de
      Publipostage+ ; consigne 045 ; **rien n'est construit chez GFS**). C'est à l'app : ses fils vivent dans ses tables (6.1), accrochés à
      `lecture.id`, et GFS n'en garde aucun, n'écrit jamais la table d'une app (3.3, point 3) et ne les voit pas. La clé ne change ni au
-     renommage ni au remplacement (6.6, point 3) ; « Garder les deux » donne un autre fichier, donc une autre clé. Quand GFS supprime un
-     fichier (6.6, point 7), il ne le dit à aucune app : ses fils restent dans la table de l'app, que personne ne rouvre, et l'app ne les efface
-     pas d'elle-même. Les règles d'accès de ces lignes (sans `ModeleId`) attendent l'étape 5 (11.7, point 3). Le guide dit le reste (point 18).
+     renommage ni au remplacement (6.6, point 3) ; « Garder les deux » donne un autre fichier, donc une autre clé. Quand GFS met un fichier à la
+     corbeille ou le supprime pour de bon (6.6, points 7 et 10), il ne le dit à aucune app : ses fils restent dans la table de l'app, et l'app ne
+     les efface pas d'elle-même ; restauré, le fichier garde son identifiant, donc sa clé, et ses fils reviennent avec lui. Les règles d'accès de ces lignes (sans `ModeleId`) attendent l'étape 5 (11.7, point 3). Le guide dit le reste (point 18).
    - [M] **Mesuré le 03/11** dans un vrai serveur Grist 1.7.19 (Docker), à 700 × 400, à la vraie souris et au vrai clavier, en français
      clair et en anglais sombre (`prototype/labo/run-lire.mjs`, 43 vérifications dans chacune, aucune en échec), avec la sonde Y
      (`labo/sondes/y-lire-pdf/`), qui fait ce que fera Publipostage+ : le labo seul la range dans `ACCEPTS_OPEN`. Avant l'app, « Lire »
@@ -1739,7 +1740,13 @@ paquet de frappes, une par personne pour la présence) doit savoir quand cette t
    avoir vérifié que la colonne existe ; ni date ni auteur. Un nom qu'un autre fichier de la même table porte déjà (casse et
    espaces autour ignorés, la règle de Publipostage+) est refusé dans la fenêtre. Une app ne réécrit donc jamais un nom périmé :
    elle ne met le nom dans la ligne qu'elle écrit qu'à la création du fichier et quand la personne l'a changé chez elle (guide
-   des apps). Dupliquer et supprimer restent à l'app : l'explorateur les grise. Une exception de plus est proposée, non tranchée :
+   des apps). **Réécrit le 04/11** (le porteur : « tout doit pouvoir se faire depuis l'explorateur, pour tous les fichiers de toutes les
+   apps, avec une corbeille », la ligne du 21/10 « dupliquer et supprimer restent à l'app » est rouverte) : supprimer et dupliquer
+   viendront aux fichiers des apps par une **recette que le manifeste déclare**, jamais par un geste que GFS invente (lots 2 et 3 :
+   la corbeille d'une table d'app, qui garde une copie de la ligne, et la copie). **Une app seule, sans GFS, garde sa propre gestion de ses
+   fichiers** : GFS n'agit que d'après le manifeste, et seulement quand l'app est servie par lui. En attendant, « Mettre à la corbeille »
+   et « Dupliquer » sont grisés pour une app qui n'a pas de recette, et un clic dit pourquoi (`trash.appOnly`, `ex.notice.appOnly`) ;
+   pour les PDF que GFS garde, la corbeille existe déjà (6.6, point 10). Une exception de plus est proposée, non tranchée :
    les colonnes d'aide `GFS_…` des tables classées, additives (11.7, point 6).
 
 ### 6.4 `GFS_Rangement`, le rangement commun
@@ -1832,12 +1839,15 @@ fichier lui-même en pièce jointe de Grist.
 | `Contenu` | Attachments | Le PDF : une pièce jointe de Grist (`['L', numéro]`) |
 | `Taille` | Int | En octets |
 | `Origine` | Text | `import`, ou l'`id` de l'app qui l'a rangé (5.4, point 9) ; un fichier remplacé garde la sienne |
+| `SupprimeLe` | DateTime:UTC | Vide tant que le fichier est là ; sinon le moment où la personne l'a mis à la corbeille, en secondes (point 10) |
+| `SupprimePar` | Text | L'adresse de la personne qui l'y a mis, telle que GFS la connaît (comme `Auteur`) ; vide tant qu'elle ne l'est pas |
 
 1. [T] La table naît avec l'accord de la personne (6.2), au premier PDF gardé, **avant tout envoi** : la fenêtre « Créer la table
    GFS_Fichiers ? » dit ce qu'elle garde ; un refus ne laisse rien derrière lui (ni table ni pièce jointe). Après l'`AddTable`,
    GFS relit l'identifiant réel (6.2, point 2) ; Grist ajoute une page pour elle. Une table d'avant à qui il manque une colonne la
    reçoit (6.1, point 3) ; une colonne absente n'est jamais écrite. [M] Mesuré le 03/11 sur un vrai serveur Grist 1.7.19
-   (`prototype/labo/run-pdf.mjs`) : les huit colonnes et leurs types, la page.
+   (`prototype/labo/run-pdf.mjs`) : les huit colonnes et leurs types, la page. Les deux colonnes de la corbeille (point 10) s'ajoutent à une
+   table d'avant au premier geste (mesuré le 04/11, `run-corbeille.mjs`).
 2. [T] **Le manifeste de ces fichiers est dans GFS** (`js/gfs-files.js`, `id` `gfs-fichiers`, `integre`) : il n'est pas un
    sous-module, il ne passe ni par le catalogue ni par l'installation, aucune app n'y est liée. L'explorateur le lit comme celui
    d'une app (2.4) : `colonnes` `{ id: Identifiant, nom: Nom, type: Type, date: Date, par: Auteur }`, un seul type (`pdf`, neutre,
@@ -1868,14 +1878,42 @@ fichier lui-même en pièce jointe de Grist.
 7. [T] **Ouvrir un PDF**, c'est le **lire** dans l'app dont le manifeste le déclare (`actions.lire`, 2.7, point 5 ; 5.4, point 8) :
    « Lire » est alors le geste principal et « Télécharger » reste dans le menu de la ligne. Quand aucune app du catalogue ne le lit,
    c'est le télécharger sous son nom (un lien invisible cliqué ; le bouton du pied et le menu disent « Télécharger »). Dupliquer est
-   grisé et dit pourquoi ; supprimer demande confirmation (le clavier sur « Annuler »), retire la ligne pour toutes les personnes du
-   document, et GFS le fait lui-même (6.3, point 2, ne vaut que pour les tables d'une app).
+   grisé et dit pourquoi ; supprimer passe par la corbeille (point 10), et GFS le fait lui-même (6.3, point 2, ne vaut que pour les
+   tables d'une app). **Jusqu'au 04/11**, supprimer retirait la ligne tout de suite, après une question : c'est devenu « Supprimer
+   définitivement », qui ne se fait que depuis la corbeille.
 8. [T] Un document en lecture seule, ou ouvert sans l'accès complet, grise « PDF » dans « Importer » avec sa raison : rien ne
    s'écrit sans un geste de la personne, rien ne s'envoie sans la table. Le dépôt d'une app y est refusé de même
    (`GFS_LECTURE_SEULE`, `GFS_ACCES`, 5.4, point 9).
 9. [M] **Restent à mesurer chez le porteur** : la passerelle et la taille maximale d'une pièce jointe de l'instance de la DINUM
    (le serveur local accepte 12 Mo ; un refus 413 est dit en mots, sans écrire de ligne), et le Firefox des deux postes (le
    cadre en bac à sable, le téléchargement par lien) : le labo n'a que Chromium.
+10. [T] **La corbeille** (décision du porteur, 04/11 : « prévoir une corbeille pour les éléments supprimés »). **Mettre à la corbeille**
+    (menu de la ligne, ou Suppr) écrit `SupprimeLe` (maintenant, en secondes) et `SupprimePar` sur la ligne, et rien d'autre : la
+    ligne, son `Identifiant`, son `Nom`, son contenu, ses favoris et son dossier restent ; la pièce jointe reste **citée**, donc Grist
+    ne l'efface pas (il efface seul, au bout de 7 jours, ce qui n'est plus cité : faits vérifiés, 14). Pas de question : rien ne s'efface.
+    Un fichier à la corbeille n'est plus listé ailleurs, ne se télécharge pas, ne compte pas dans le nom pris (un nouveau fichier peut
+    reprendre son nom) et ne peut ni être renommé ni déplacé ; GFS ne dit rien aux apps (leurs fils, accrochés à l'`Identifiant`,
+    restent dans leurs tables, 5.4, point 8). **La vue « Corbeille »**, à côté de « Récents » et « Favoris », est commune au
+    document : elle liste les fichiers de toutes les personnes, avec la date et la personne (colonne « Supprimé », « Par »), le
+    dossier où le fichier reviendra et un bouton « Restaurer » ; elle est grisée quand l'explorateur sert à choisir un fichier pour
+    une app (un fichier supprimé ne se choisit pas). **Restaurer** (bouton, Entrée, menu) efface les deux colonnes (`SupprimeLe` redevient
+    vide, mesuré `null` chez Grist) : la ligne et son identifiant sont ceux d'avant ; si un autre fichier a pris le nom entre-temps,
+    le fichier revient sous le premier nom libre (« Nom (1).pdf ») et la phrase le dit. **Supprimer définitivement** (menu, ou Suppr
+    dans la corbeille) et **Vider la corbeille** passent par une fenêtre du widget, le clavier sur « Annuler » ; seul `RemoveRecord`
+    retire une ligne, et seulement une ligne déjà à la corbeille : « Vider » ne retire que les fichiers que la personne a sous les yeux
+    (un autre fichier mis à la corbeille pendant la fenêtre reste), en **un seul lot**. Aucune purge automatique : la corbeille se
+    vide à la main. Le geste d'un document en lecture seule est refusé avec sa raison (`trash.readonly`), avant toute question.
+11. [T] **Les gardiens.** `js/trash.js` ne sait pas où vit un fichier : il le demande à un « gardien » (`manages`, `lock`, `trash`,
+    `restore`, `empty`), le seul qui sache l'écrire. `js/kept-files.js` est celui de `GFS_Fichiers`. Un fichier qu'aucun gardien ne
+    connaît n'a pas de corbeille depuis GFS : l'article est grisé et un clic dit pourquoi. Le lot 2 branche un gardien pour les
+    fichiers des apps (recette déclarée dans le manifeste, 6.3 point 2) sans toucher au reste.
+12. [M] **Mesuré le 04/11** dans un vrai serveur Grist 1.7.19 (Docker), à 700 × 400, à la vraie souris et au vrai clavier, en français
+    clair et en anglais sombre (`prototype/labo/run-corbeille.mjs`, 46 vérifications dans chacune, aucune en échec), et dans un vrai Firefox 159
+    sans écran (`prototype/test/corbeille-firefox.mjs`) : une table d'une version plus ancienne reçoit les deux colonnes au premier
+    geste (`AddColumn` sur une table qui a déjà des lignes, sans demande, sans nouvelle table) ; une cellule de date jamais écrite est
+    `null` pour l'API REST, et `UpdateRecord` avec `null` la vide ; la date écrite revient en secondes ; **plusieurs `RemoveRecord`
+    dans un seul `applyUserActions` passent** (vider) ; la pièce jointe d'un fichier supprimé pour de bon reste sur le serveur ;
+    le clavier arrive au panneau dans le cadre de Grist dès qu'un clic l'y a posé (↓ ↑ Suppr Entrée F2 Maj+F10, clic droit).
 
 ---
 

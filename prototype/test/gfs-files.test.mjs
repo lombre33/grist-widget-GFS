@@ -6,7 +6,7 @@ import { readFiles } from '../js/explorer-model.js';
 import { importFormats } from '../js/import-file.js';
 import { loadFiles } from '../js/explorer-data.js';
 import {
-  FILES_APP, FILES_TABLE, FILES_COLUMNS, FILES_MANIFEST, FILES_ENTRY, sameName, cleanName, freeName, newId, looksLikePdf, newRecord, replacementRecord,
+  FILES_APP, FILES_TABLE, FILES_COLUMNS, FILES_MANIFEST, FILES_ENTRY, TRASH_COLUMN_IDS, sameName, cleanName, freeName, newId, looksLikePdf, newRecord, replacementRecord, trashRecord, restoreRecord,
 } from '../js/gfs-files.js';
 
 test('le manifeste intégré se lit comme celui d\'une app : l\'explorateur y trouve la table, les colonnes déclarées, le type PDF et l\'icône du type', () => {
@@ -27,7 +27,7 @@ test('le PDF est un format que « Importer » propose, avec le type qu\'il crée
 });
 
 test('les colonnes déclarées par le manifeste existent toutes dans la table', () => {
-  const declared = Object.values(FILES_MANIFEST.fichiers[0].colonnes);
+  const declared = [...Object.values(FILES_MANIFEST.fichiers[0].colonnes), ...Object.values(FILES_MANIFEST.fichiers[0].corbeille)];
   const ids = FILES_COLUMNS.map(column => column.id);
   for (const column of declared) assert.ok(ids.includes(column), column);
   assert.equal(FILES_COLUMNS.find(column => column.id === 'Contenu').type, 'Attachments');
@@ -105,4 +105,14 @@ test('replacementRecord : le contenu change, ni l\'identifiant ni le nom ne sont
 test('le manifeste intégré n\'est pas un manifeste d\'app : il garde un préfixe réservé et n\'est jamais accepté par la validation des apps', () => {
   assert.equal(validateManifest(JSON.parse(JSON.stringify(FILES_MANIFEST))).ok, false);
   assert.equal(FILES_MANIFEST.integre, true);
+});
+
+test('la corbeille : le manifeste dit les deux colonnes du marqueur, la table les a (une date en secondes, un auteur), et trashRecord / restoreRecord les écrivent', () => {
+  assert.deepEqual(FILES_MANIFEST.fichiers[0].corbeille, { date: 'SupprimeLe', par: 'SupprimePar' });
+  assert.deepEqual(TRASH_COLUMN_IDS, ['SupprimeLe', 'SupprimePar']);
+  assert.deepEqual(FILES_COLUMNS.filter(column => TRASH_COLUMN_IDS.includes(column.id)).map(column => [column.id, column.type]), [['SupprimeLe', 'DateTime:UTC'], ['SupprimePar', 'Text']]);
+  assert.deepEqual(trashRecord({ now: 1762000123456, author: 'marie@exemple.fr' }), { SupprimeLe: 1762000123, SupprimePar: 'marie@exemple.fr' });
+  assert.deepEqual(trashRecord({ now: 1762000123456, author: '' }), { SupprimeLe: 1762000123, SupprimePar: '' }, 'sans adresse connue, l\'auteur est vide');
+  assert.deepEqual(restoreRecord(), { SupprimeLe: null, SupprimePar: '' });
+  assert.equal(Object.isFrozen(FILES_MANIFEST.fichiers[0].corbeille), true);
 });

@@ -55,6 +55,15 @@ export class OwnTable {
     return state;
   }
 
+  // La table seulement si elle existe, relue juste avant, avec les colonnes `needed` ajoutées au besoin ; null sans table. Pour un geste sur une ligne qui y est déjà (mettre un fichier à la
+  // corbeille, le restaurer) : un geste de ce genre ne crée jamais la table, et ne demande donc jamais son accord.
+  async existing(needed = []) {
+    const state = await this.load();
+    if (!state.exists) return null;
+    for (const column of needed.filter(name => !state.columns.includes(name))) await this.addColumn(column);
+    return state;
+  }
+
   // Ajoute une colonne que la table n'a pas encore, avec le type et la formule que `columns` lui donne.
   async addColumn(id) {
     const info = Object.fromEntries(Object.entries(this.#columns.find(column => column.id === id)).filter(([key]) => key !== 'id'));

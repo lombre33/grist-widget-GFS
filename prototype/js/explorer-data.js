@@ -19,11 +19,13 @@ async function readTable(port, tables, tableId) {
 }
 
 // `apps` : les apps installées dont le manifeste est valide, { manifest }. `identity` : l'adresse de la personne, '' tant que GFS ne la connaît pas.
-// Rend { files, problems: [{ app, reason }], stats: { ms, tables, rows } }. Un rangement de GFS illisible ne cache aucun fichier : ils restent à leur place d'avant.
+// Rend { files, trash, problems: [{ app, reason }], stats: { ms, tables, rows } } : `files` les fichiers vivants, `trash` ceux qui sont à la corbeille (js/explorer-model.js, `trashed`) : ils
+// ne sont jamais mêlés, pour que rien de ce qui lit `files` (choisir, ouvrir, lire) ne voie un fichier supprimé. Un rangement de GFS illisible ne cache aucun fichier : ils restent à leur place d'avant.
 export async function loadFiles(port, apps, identity = '') {
   const started = performance.now();
   const tables = await existingTables(port);
   const files = [];
+  const trash = [];
   const problems = [];
   const stats = { ms: 0, tables: 0, rows: 0 };
   const gfs = await readTable(port, tables, TABLE);
@@ -36,11 +38,11 @@ export async function loadFiles(port, apps, identity = '') {
       const filingTable = spec.rangement ? await readTable(port, tables, spec.rangement.table) : { data: null };
       const found = readFiles(manifest, spec, main.data);
       applyFiling(found, filingTable.data ? readFiling(spec.rangement, filingTable.data, identity) : null, gfsFiling);
-      files.push(...found);
+      for (const file of found) (file.trashed ? trash : files).push(file);
       stats.tables += 1;
       stats.rows += found.length;
     }
   }
   stats.ms = Math.round(performance.now() - started);
-  return { files, problems, stats };
+  return { files, trash, problems, stats };
 }

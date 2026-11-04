@@ -47,6 +47,8 @@ const ICONS = {
   copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>',
   move: '<path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/><path d="M9 14h6M13 11l3 3-3 3"/>',
   trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5"/>',
+  // Restaurer : la flèche qui revient en arrière (le fichier sort de la corbeille et reprend sa place).
+  restore: '<path d="M3 4v5.5h5.5"/><path d="M3.8 15a8.5 8.5 0 1 0 2.2-8.2L3 9.5"/>',
   flask: '<path d="M9 3h6M10 3v6l-5.5 9.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3"/><path d="M7.5 15h9"/>',
   // Un formulaire : des questions à cocher (type « Formulaire » de Form+, et l'app elle-même).
   form: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M7.5 8.2l1.2 1.2 2-2.4M13 8.5h4"/><path d="M7.5 14.2l1.2 1.2 2-2.4M13 14.5h4"/>',

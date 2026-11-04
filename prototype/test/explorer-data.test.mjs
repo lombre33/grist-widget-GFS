@@ -3,6 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadFiles } from '../js/explorer-data.js';
+import { FILES_ENTRY } from '../js/gfs-files.js';
 import { publipostage } from './helpers.mjs';
 
 const manifest = publipostage();
@@ -44,4 +45,21 @@ test('un rangement de GFS illisible ne cache aucun fichier : ils restent à leur
     assert.deepEqual(problems, []);
     assert.deepEqual(warned, ['GFS : le rangement de GFS est illisible']);
   } finally { console.warn = warn; }
+});
+
+test('les fichiers à la corbeille sont rendus à part : `files` ne montre que les vivants (ce que lisent « choisir » et « ouvrir »), `trash` les supprimés, avec leur dossier de retour', async () => {
+  const data = {
+    GFS_Fichiers: { id: [1, 2, 3], Identifiant: ['aa', 'bb', 'cc'], Nom: ['A.pdf', 'B.pdf', 'C.pdf'], Type: ['pdf', 'pdf', 'pdf'], Date: [10, 20, 30], Auteur: ['', '', ''], SupprimeLe: [null, 1762000000, null], SupprimePar: ['', 'paul@exemple.fr', ''] },
+    gfs_rangement: { id: [1], Utilisateur: [''], App: ['gfs-fichiers'], Fichier: ['bb'], Favori: [true], Dossier: ['Factures'] },
+  };
+  const found = await loadFiles(port(data), [FILES_ENTRY], '');
+  assert.deepEqual(found.files.map(file => file.key), ['gfs-fichiers:aa', 'gfs-fichiers:cc']);
+  assert.deepEqual(found.trash.map(file => [file.key, file.trashed, file.folder]), [['gfs-fichiers:bb', { ts: 1762000000, by: 'paul@exemple.fr' }, 'Factures']]);
+  assert.deepEqual(found.problems, []);
+  assert.equal(found.stats.rows, 3);
+});
+
+test('sans fichier à la corbeille, ou avec des apps seulement : `trash` est vide', async () => {
+  const found = await loadFiles(port(tables()), [{ manifest }], '');
+  assert.deepEqual([found.files.length, found.trash], [2, []]);
 });

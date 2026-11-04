@@ -1,4 +1,4 @@
-// Les fichiers que GFS garde lui-même (contrats 6.6), côté personne : « Nouveau > Importer > PDF », le téléchargement, la suppression, les phrases qui disent ce qui s'est passé, et le dépôt
+// Les fichiers que GFS garde lui-même (contrats 6.6), côté personne : « Nouveau > Importer > PDF », le téléchargement, les gestes de la corbeille, les phrases qui disent ce qui s'est passé, et le dépôt
 // d'une app qui range un fichier (js/deposit.js). Ce module lie les gestes de l'explorateur, les fenêtres du widget (js/conflict-window.js, js/ask-window.js) et les données (js/files-store.js) ;
 // le contrôleur lui prête ce qu'il sait faire (l'accord de la personne, une phrase, la relecture de la liste) et l'explorateur l'interroge pour ne rien savoir lui-même d'un PDF.
 
@@ -7,7 +7,6 @@ import { importFormats, acceptsFile, pickFile } from './import-file.js';
 import { TransferError } from './transfer.js';
 import { TableDeclined } from './own-table.js';
 import { askConflict } from './conflict-window.js';
-import { ask } from './ask-window.js';
 import { label } from './manifest.js';
 import { ERR, Refus } from './filter.js';
 import { Deposit } from './deposit.js';
@@ -45,6 +44,11 @@ export class KeptFiles {
 
   has = file => file.app === FILES_APP;
 
+  // La corbeille (js/trash.js) : GFS garde ces fichiers, il sait donc les mettre à la corbeille, les restaurer et les supprimer pour de bon. `lock()` : { text } quand rien ne peut s'écrire.
+  manages = file => this.has(file);
+
+  lock = () => this.#lock('trash.readonly');
+
   // Le geste principal d'un fichier que GFS garde : « Lire » quand une app le lit (grisé tant qu'elle n'est pas prête : le clic dit ce qui la débloque), sinon « Télécharger ». Le bouton, l'article
   // du menu et la phrase de la barre d'information le disent.
   openAs = file => {
@@ -73,11 +77,11 @@ export class KeptFiles {
     }));
   }
 
-  // Ce qui empêche d'écrire : pas l'accès complet, ou un document en lecture seule.
-  #lock() {
+  // Ce qui empêche d'écrire : pas l'accès complet, ou un document en lecture seule (`readonlyKey` : le texte de ce que la personne voulait faire).
+  #lock(readonlyKey = 'files.readonly') {
     const { t } = this.#opts;
     if (!this.#opts.fullAccess()) return { text: t('gfs.needsFullAccess'), hint: t('gfs.needsFullAccessHint') };
-    return this.#opts.readonly() ? { text: t('files.readonly'), hint: t('files.readonlyHint') } : null;
+    return this.#opts.readonly() ? { text: t(readonlyKey), hint: t('files.readonlyHint') } : null;
   }
 
   // ---------- importer ----------
@@ -204,7 +208,7 @@ export class KeptFiles {
     else if (failed) console.warn('GFS : le fichier rangé par une app n’a pas pu être mis dans son dossier', failed);
   }
 
-  // ---------- télécharger, supprimer ----------
+  // ---------- télécharger, lire ----------
 
   async open(file) {
     const { t, notice, doc } = this.#opts;
@@ -234,25 +238,14 @@ export class KeptFiles {
     }
   }
 
-  // La suppression demande confirmation (une fenêtre du widget) : le fichier disparaît du document, pour tout le monde.
-  async remove(file) {
-    const { t, notice } = this.#opts;
-    const blocked = this.#lock();
-    if (blocked) { notice(blocked.text); return; }
-    const name = file.name || t('ex.untitled');
-    const yes = await ask({
-      container: this.#opts.container, inertTargets: this.#opts.inertTargets, title: t('files.remove.title', { name }), message: t('files.remove.text'),
-      confirmLabel: t('files.remove.confirm'), cancelLabel: t('table.cancel'), safeFirst: true,
-    });
-    if (!yes) return;
-    try {
-      await this.#store.remove(file);
-      notice(t('files.removed', { name }));
-    } catch (error) {
-      notice(this.#failure(error, 'files.removeFailed', { name }));
-    }
-    await this.#opts.refresh();
-  }
+  // ---------- la corbeille ----------
+
+  // Contrats 6.6, point 7. Les gestes seuls, sans question ni phrase : js/trash.js les demande à la personne, les dit et relit la liste. Rendus : voir js/files-store.js.
+  trash = file => this.#store.trash(file);
+
+  restore = file => this.#store.restore(file);
+
+  empty = files => this.#store.empty(files);
 }
 
 // Le fichier téléchargé est offert au navigateur sous son nom : un lien invisible, cliqué ici même.

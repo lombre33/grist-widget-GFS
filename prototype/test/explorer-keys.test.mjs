@@ -1,0 +1,61 @@
+// Les touches de l'explorateur (js/explorer-keys.js) : la touche tapée -> le geste. Ce que le geste fait de la ligne choisie se mesure dans l'interface (test/interfaces-firefox.test.mjs, avec un vrai
+// clavier) ; ici, la table des touches, sans DOM.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { listAction, isSearchKey, parentPath, stepRow } from '../js/explorer-keys.js';
+
+const press = (key, mods = {}) => ({ key, ctrlKey: false, altKey: false, metaKey: false, shiftKey: false, ...mods });
+const LIST = { display: 'list', filtering: false };
+const TILES = { display: 'tiles', filtering: false };
+
+test('en liste : ↑ ↓, Début, Fin, Entrée, F2, Suppr, Retour arrière, la touche Menu et Maj+F10 ont chacun leur geste ; ← → n\'en ont pas', () => {
+  const gestures = Object.fromEntries(['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'Enter', 'F2', 'Delete', 'Backspace', 'ContextMenu', 'a', ' ', 'Tab', 'Escape'].map(key => [key, listAction(press(key), LIST)]));
+  assert.deepEqual(gestures, {
+    ArrowDown: 'next', ArrowUp: 'prev', ArrowLeft: null, ArrowRight: null, Home: 'first', End: 'last', Enter: 'activate', F2: 'rename', Delete: 'delete', Backspace: 'parent', ContextMenu: 'menu',
+    a: null, ' ': null, Tab: null, Escape: null,
+  });
+  assert.equal(listAction(press('F10', { shiftKey: true }), LIST), 'menu');
+  assert.equal(listAction(press('F10'), LIST), null, 'F10 seul n\'est pas le menu');
+});
+
+test('en vignettes : ← → changent de vignette, ↑ ↓ de rangée ; le reste ne change pas', () => {
+  assert.deepEqual(['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Enter', 'Delete'].map(key => listAction(press(key), TILES)), ['next', 'prev', 'down', 'up', 'activate', 'delete']);
+});
+
+test('une touche tapée avec Ctrl, Alt ou Méta n\'est pas à GFS (Ctrl+D, Ctrl+F, Alt+←, Alt+↑ sont au navigateur) ; Maj seul ne change que F10', () => {
+  for (const mods of [{ ctrlKey: true }, { altKey: true }, { metaKey: true }]) {
+    for (const key of ['ArrowDown', 'ArrowUp', 'Home', 'Enter', 'F2', 'Delete', 'Backspace', 'd', 'f', 'ArrowLeft']) assert.equal(listAction(press(key, mods), LIST), null, `${key} avec ${Object.keys(mods)[0]}`);
+  }
+  assert.equal(listAction(press('F10', { shiftKey: true, ctrlKey: true }), LIST), null);
+  for (const key of ['ArrowDown', 'Delete', 'Enter', 'F2']) assert.equal(listAction(press(key, { shiftKey: true }), LIST), null, `Maj+${key}`);
+});
+
+test('Retour arrière ne remonte pas pendant une recherche : la liste ne montre pas un dossier', () => {
+  assert.equal(listAction(press('Backspace'), { display: 'list', filtering: true }), null);
+  assert.equal(listAction(press('Backspace'), LIST), 'parent');
+});
+
+test('« / » va à la recherche, sauf dans un champ de saisie et avec Ctrl, Alt ou Méta', () => {
+  const field = tag => ({ closest: selector => (selector.split(',').map(part => part.trim()).includes(tag) ? {} : null) });
+  const slash = (mods = {}, target = null) => ({ ...press('/', mods), target });
+  assert.equal(isSearchKey(slash()), true);
+  assert.equal(isSearchKey(slash({}, field('div'))), true);
+  for (const tag of ['input', 'textarea', 'select']) assert.equal(isSearchKey(slash({}, field(tag))), false, tag);
+  assert.equal(isSearchKey(slash({}, { closest: () => ({}) })), false, 'un champ modifiable');
+  assert.equal(isSearchKey(slash({ ctrlKey: true })), false);
+  assert.equal(isSearchKey({ ...press('a'), target: null }), false);
+});
+
+test('parentPath : un dossier monte d\'un niveau, la racine reste la racine', () => {
+  assert.deepEqual(['Factures/2024/Mars', 'Factures/2024', 'Factures', ''].map(parentPath), ['Factures/2024', 'Factures', '', '']);
+});
+
+test('stepRow : une rangée plus bas ou plus haut, sans sortir de la grille ; de l\'avant-dernière rangée, ↓ va à la dernière vignette', () => {
+  // 7 vignettes sur 3 colonnes : [0 1 2] [3 4 5] [6]
+  assert.deepEqual([[1, 1], [4, 1], [5, 1], [6, 1], [0, -1], [4, -1], [6, -1], [2, -1]].map(([at, dir]) => stepRow(at, 3, 7, dir)), [4, 6, 6, 6, 0, 1, 3, 2]);
+  assert.equal(stepRow(-1, 3, 7, 1), 0, 'rien n\'est choisi : la première');
+  assert.equal(stepRow(-1, 3, 7, -1), 0);
+  assert.equal(stepRow(0, 3, 0, 1), -1, 'aucune vignette');
+  assert.equal(stepRow(2, 0, 5, 1), 3, 'une largeur inconnue vaut une colonne');
+  assert.equal(stepRow(3, 1, 4, 1), 3, 'une colonne, dernière ligne : on reste');
+});

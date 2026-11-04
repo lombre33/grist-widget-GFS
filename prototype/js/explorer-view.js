@@ -3,7 +3,7 @@
 
 import { h } from './dom.js';
 import { icon } from './icons.js';
-import { person, formatDate, pathParts } from './explorer-model.js';
+import { person, formatDate, pathParts, stampOf, authorOf } from './explorer-model.js';
 import { LANGUAGE_NAMES } from './language.js';
 
 export const SORT_HEADERS = [['name', 'ex.name'], ['type', 'ex.type'], ['mod', 'ex.modified'], ['by', 'ex.by']];
@@ -85,6 +85,7 @@ export function crumbs(ctx) {
   // Récents et Favoris gardent le chemin du retour à « Moi » : en vue étroite, le volet des dossiers est replié.
   if (state.view === 'recent') return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, icon('clock'), t('ex.recent'))];
   if (state.view === 'fav') return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, icon('pin'), t('ex.fav'))];
+  if (state.view === 'trash') return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, icon('trash'), t('trash.view'))];
   if (ctx.filtering) return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, t('ex.results'))];
   const parts = pathParts(state.path);
   if (!parts.length) return [h('span', { class: 'here' }, icon('user'), t('ex.me'))];
@@ -92,8 +93,8 @@ export function crumbs(ctx) {
   return [link('', t('ex.me')), ...parts.flatMap((part, i) => [sep(), i === last ? h('span', { class: 'here' }, part.name) : link(part.path, part.name)])];
 }
 
-function treeRow({ label, glyph, data, current, depth = 0, caret = null, toggle = null, count = null }) {
-  return h('button', { type: 'button', class: 'tr-row', dataset: data, 'aria-current': String(Boolean(current)), vars: { '--d': depth } },
+function treeRow({ label, glyph, data, current, depth = 0, caret = null, toggle = null, count = null, grey = false }) {
+  return h('button', { type: 'button', class: 'tr-row', dataset: data, 'aria-current': String(Boolean(current)), 'aria-disabled': grey ? 'true' : null, vars: { '--d': depth } },
     h('span', { class: 'car-slot', dataset: toggle === null ? null : { toggle } }, caret ? icon('chev-right', caret === 'open' ? 'open' : '') : null),
     icon(glyph, glyph === 'folder' ? 'fld' : ''), h('span', { class: 'lbl' }, label), count === null ? null : h('span', { class: 'cnt' }, String(count)));
 }
@@ -105,6 +106,8 @@ export function tree(ctx) {
   const pinned = h('div', { class: 'tr-pin' },
     treeRow({ label: t('ex.recent'), glyph: 'clock', data: { view: 'recent' }, current: state.view === 'recent' }),
     treeRow({ label: t('ex.fav'), glyph: 'pin', data: { view: 'fav' }, current: state.view === 'fav', count: ctx.favCount }),
+    // La corbeille garde son rang pendant le choix d'un fichier, grisée : un fichier supprimé ne se choisit pas.
+    treeRow({ label: t('trash.view'), glyph: 'trash', data: { view: 'trash' }, current: state.view === 'trash', count: ctx.trashCount || null, grey: ctx.choosing }),
     h('hr', { class: 'tr-sep' }));
   const rows = ctx.treeRows.map(row => h('div', { class: 'tr-folder' }, treeRow({
     label: row.name, glyph: 'folder', data: { path: row.path }, current: inFolders && state.path === row.path, depth: row.depth + 1,
@@ -113,17 +116,19 @@ export function tree(ctx) {
   return [pinned, h('div', { class: 'tr-folder' }, treeRow({ label: t('ex.me'), glyph: 'user', data: { path: '' }, current: inFolders && state.path === '' })), ...rows];
 }
 
+// À la corbeille, la colonne de date dit la date de la suppression, non celle de la dernière modification.
 export function listHead(ctx) {
   const { t, sort } = ctx;
+  const trash = ctx.state.view === 'trash';
   return h('div', { class: 'ls-head', role: 'row' }, ...SORT_HEADERS.map(([key, text]) => h('button', {
     type: 'button', class: 'hd', role: 'columnheader', dataset: { sort: key }, 'aria-sort': sort.key === key ? (sort.dir > 0 ? 'ascending' : 'descending') : null,
-  }, t(text))), h('span'));
+  }, t(trash && key === 'mod' ? 'trash.deleted' : text))), h('span'));
 }
 
 function fileCells(ctx, file, flat) {
   const { t } = ctx;
   const lock = ctx.lockOf(file);
-  const who = person(file.by);
+  const who = person(authorOf(file));
   const name = file.name || t('ex.untitled');
   const pinTitle = file.pinned ? t('ex.unpin') : t('ex.pin');
   return [
@@ -131,13 +136,16 @@ function fileCells(ctx, file, flat) {
       flat && file.folder ? h('span', { class: 'hint' }, file.folder.split('/').pop()) : null,
       lock ? h('span', { class: 'sr-only' }, `, ${lock.text}`) : null),
     h('div', { class: 'ty', role: 'gridcell' }, h('span', { class: 'pill' }, ctx.typeLabel(file))),
-    h('div', { class: 'md', role: 'gridcell' }, formatDate(file.ts, ctx.now, ctx.locale, t)),
+    h('div', { class: 'md', role: 'gridcell' }, formatDate(stampOf(file), ctx.now, ctx.locale, t)),
     h('div', { class: 'by', role: 'gridcell' }, who.initials ? h('span', { class: 'who', title: who.name }, who.initials) : null),
-    h('div', { class: 'acts', role: 'gridcell' },
-      h('button', { type: 'button', class: `rb pin${file.pinned ? ' on' : ''}`, dataset: { pin: file.key }, title: pinTitle, 'aria-label': pinTitle, 'aria-pressed': String(file.pinned) }, icon('pin')),
-      moreButton(t, file.key)),
+    h('div', { class: 'acts', role: 'gridcell' }, ctx.state.view === 'trash' ? restoreButton(t, file.key)
+      : h('button', { type: 'button', class: `rb pin${file.pinned ? ' on' : ''}`, dataset: { pin: file.key }, title: pinTitle, 'aria-label': pinTitle, 'aria-pressed': String(file.pinned) }, icon('pin')),
+    moreButton(t, file.key)),
   ];
 }
+
+// « Restaurer » d'une ligne de la corbeille : il prend la place de l'étoile (un fichier à la corbeille ne s'épingle pas).
+const restoreButton = (t, key) => h('button', { type: 'button', class: 'rb rs', dataset: { restore: key }, title: t('trash.restore'), 'aria-label': t('trash.restore') }, icon('restore'));
 
 // « Plus d'actions » d'une ligne (fichier ou dossier) : le menu de js/explorer.js.
 const moreButton = (t, key) => h('button', { type: 'button', class: 'rb mn', dataset: { menu: key }, title: t('ex.more'), 'aria-label': t('ex.more'), 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, icon('more'));
@@ -187,6 +195,7 @@ export function emptyMessage(ctx) {
   const { t, state } = ctx;
   if (ctx.filtering) return t('ex.emptySearch');
   if (ctx.choosing && ctx.totalFiles === 0) return t('ex.choose.empty');
+  if (state.view === 'trash') return t('trash.emptyList');
   if (state.view === 'fav') return t('ex.emptyFav');
   if (state.view === 'recent' || ctx.totalFiles === 0) return t('ex.emptyAll');
   return t('ex.emptyFolder');
@@ -200,7 +209,8 @@ export function infoBar(ctx) {
   const { t, selected } = ctx;
   const filingHint = ctx.personal ? t('ex.hintPersonal') : t('ex.hintShared');
   if (!selected) {
-    return h('div', { class: 'inf' }, infoLine1(icon('info'), h('span', { class: 'mu' }, ctx.choosing ? t('ex.choose.hint') : (ctx.state.view === 'folder' ? filingHint : t('ex.hintSelect')))),
+    const hint = ctx.state.view === 'trash' ? t('trash.hint') : (ctx.state.view === 'folder' ? filingHint : t('ex.hintSelect'));
+    return h('div', { class: 'inf' }, infoLine1(icon('info'), h('span', { class: 'mu' }, ctx.choosing ? t('ex.choose.hint') : hint)),
       h('div', { class: 'l2' }, icon('pin'), h('span', { class: 'lt' }, ctx.personal ? t('ex.hintFav') : t('ex.hintFavShared'))));
   }
   if (selected.kind === 'folder') {
@@ -209,10 +219,21 @@ export function infoBar(ctx) {
   }
   const { file } = selected;
   const lock = ctx.lockOf(file);
-  const who = person(file.by);
-  const when = file.ts === null ? '' : t('ex.modifiedOn', { date: formatDate(file.ts, ctx.now, ctx.locale, t) });
-  const second = lock ? lock.text : [ctx.opensIn(file), when, who.name ? t('ex.modifiedBy', { by: who.name }) : ''].filter(Boolean).join(' · ');
+  const who = person(authorOf(file));
+  const date = formatDate(stampOf(file), ctx.now, ctx.locale, t);
+  // À la corbeille : quand et par qui le fichier y est allé, et où il revient ; sinon : l'app qui l'ouvre, sa dernière modification et son auteur.
+  const facts = file.trashed
+    ? [t('trash.deletedOn', { date }), who.name ? t('ex.modifiedBy', { by: who.name }) : '', file.folder ? t('trash.backTo', { folder: file.folder }) : '']
+    : [ctx.opensIn(file), file.ts === null ? '' : t('ex.modifiedOn', { date }), who.name ? t('ex.modifiedBy', { by: who.name }) : ''];
+  const second = lock ? lock.text : facts.filter(Boolean).join(' · ');
   return h('div', { class: 'inf', 'data-fam': lock ? null : family(file) },
     infoLine1(icon(lock ? 'lock' : file.icon), h('b', null, file.name || t('ex.untitled')), h('span', { class: 'mu' }, `· ${ctx.typeLabel(file)}`)),
     h('div', { class: 'l2' }, h('span', { class: 'lt' }, second)));
+}
+
+// La barre de la corbeille, au-dessus de la liste : la règle (rien ne part seul) et « Vider la corbeille… ». Rien tant que la corbeille est vide.
+export function trashBar(ctx) {
+  const { t } = ctx;
+  return h('div', { class: 'trash-bar' }, icon('trash'), h('span', { class: 'tb-text' }, t('trash.bar')),
+    h('button', { type: 'button', class: 'btn', dataset: { emptyTrash: '' } }, t('trash.empty')));
 }

@@ -15,6 +15,7 @@ import { request } from 'node:http';
 import { join } from 'node:path';
 import { ROOT } from './helpers.mjs';
 import { findFirefox, serveSite, startFirefox } from './firefox.mjs';
+import { corbeilleProblems } from './corbeille-firefox.mjs';
 import { ROW_BUTTON, ROW_HEIGHT, TILE_MIN, expectedTileColumns, measureRows, measureTiles } from '../labo/mesures-liste.mjs';
 
 const WIDTHS = [700, 640, 520, 500, 400]; // 700 : le panneau de référence ; 640 : le portable du porteur ; 520 : la dernière largeur de la vue large ; 500 et 400 : la vue étroite
@@ -258,6 +259,12 @@ describe('l\'interface sous Firefox', () => {
             problems.push(...await listProblems(page, tag), ...await mouseProblems(page, tag), ...await tilesProblems(page, tag), ...await themeProblems(page, width, tag), ...await conflictProblems(page, tag));
           }
         }
+      }
+      // La corbeille et le clavier (test/corbeille-firefox.mjs) : à 700 px, la largeur du panneau de référence, en clair et en sombre.
+      await page.view({ width: 700, scale: 1, mode: 'light' });
+      for (const mode of MODES) {
+        await page.view({ width: 700, scale: 1, mode });
+        problems.push(...await corbeilleProblems(page, language, caption(language, 700, 1, mode)));
       }
       // Les erreurs de script de la page et les avertissements de GFS (un texte inconnu, par exemple) ; sans le kit (sous-module non récupéré), le sélecteur de couleur dit qu'il ne se charge pas : ce n'est pas l'interface.
       const logged = page.logs.filter(entry => ((entry.level === 'error' && entry.type === 'javascript') || /GFS/.test(entry.text || '')) && !/sélecteur de couleur du kit/.test(entry.text || ''));

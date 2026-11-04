@@ -138,10 +138,21 @@ test('télécharger : le fichier est offert au navigateur sous son nom ; un éch
   } finally { console.warn = warn; }
 });
 
-test('supprimer sans pouvoir écrire : la raison est dite, aucune fenêtre', async () => {
-  const { kept, log } = setup({ readonly: true });
-  await kept.remove({ id: 'aa', name: 'Facture.pdf' });
-  assert.deepEqual(log.notices, [FR.t('files.readonly')]);
+test('la corbeille : GFS gère les fichiers qu\'il garde, et dit ce qui l\'empêche d\'écrire (lecture seule, accès partiel)', () => {
+  const free = setup();
+  assert.deepEqual([free.kept.manages({ app: 'gfs-fichiers' }), free.kept.manages({ app: 'publipostage' })], [true, false]);
+  assert.equal(free.kept.lock(), null);
+  assert.equal(setup({ readonly: true }).kept.lock().text, FR.t('trash.readonly'));
+  assert.equal(setup({ fullAccess: false }).kept.lock().text, FR.t('gfs.needsFullAccess'));
+  assert.equal(setup({ readonly: true, i18n: EN }).kept.lock().text, EN.t('trash.readonly'));
+});
+
+test('la corbeille : les gestes passent au magasin tels quels (les questions et les phrases sont à js/trash.js)', async () => {
+  const { kept, log } = setup();
+  const file = { id: 'aa', name: 'Facture.pdf' };
+  assert.deepEqual([await kept.trash(file), await kept.restore(file), await kept.empty([file])], [true, { name: 'Facture.pdf', renamed: false }, 1]);
+  assert.deepEqual(log.trashed, [['trash', file], ['restore', file], ['empty', [file]]]);
+  assert.deepEqual(log.notices, [], 'aucune phrase, aucune fenêtre : le module de la corbeille parle');
 });
 
 test('ce que dit l\'explorateur d\'un fichier gardé : se télécharge, ne se copie pas encore', () => {

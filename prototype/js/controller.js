@@ -31,6 +31,7 @@ import { FILES_APP, FILES_MANIFEST, FILES_ENTRY, cleanName } from './gfs-files.j
 import { Transfer, buildTransferFrame } from './transfer.js';
 import { FilesStore } from './files-store.js';
 import { KeptFiles } from './kept-files.js';
+import { Trash } from './trash.js';
 import { ask } from './ask-window.js';
 import { importFormats, acceptsFile, importOpening, openingKind, carriesFile, pickFile } from './import-file.js';
 import { readersOf, chooseReader, readOpening } from './reading.js';
@@ -287,6 +288,7 @@ export class GfsController {
       language: () => ({ choice: this.language.choice, grist: this.language.grist }), onLanguage: choice => this.#chooseLanguage(choice), onTheme: () => this.openTheme(),
       onOpen: file => this.#openFile(file), onNew: entry => this.#openNew(entry), onImport: entry => void this.#importFile(entry), onClose: () => this.hideExplorer(), onApps: () => void this.openModules(),
       personal: () => Boolean(this.identity), filing: this.#buildFiling(), kept: this.kept, onDemo: this.devMode ? () => void this.#runDemo() : null,
+      trash: new Trash({ managers: [this.kept], ask: opts => this.#ask(opts), t: this.t, notice: text => this.notice(text), refresh: () => this.refreshFiles() }),
     });
   }
 
@@ -395,8 +397,8 @@ export class GfsController {
     this.#fileStatus = { loading: true, restricted: false, problems: [] };
     this.#showFileStatus();
     try {
-      const { files, problems, stats } = await loadFiles(this.port, [...this.validApps(), FILES_ENTRY], this.identity);
-      this.explorer.setFiles(files);
+      const { files, trash, problems, stats } = await loadFiles(this.port, [...this.validApps(), FILES_ENTRY], this.identity);
+      this.explorer.setFiles(files, trash);
       this.#fileStatus = { loading: false, restricted: false, problems: problems.map(item => ({ key: 'ex.readFailed', app: item.app, reason: item.reason })) };
       this.#showFileStatus();
       this.doc.body.dataset.explorerStats = JSON.stringify(stats);

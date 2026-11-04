@@ -48,7 +48,7 @@ async function checkFirstStored(run) {
   const { rest } = run;
   const columns = await rest.columns('GFS_Fichiers');
   check('Grist ajoute une page pour la table (le texte de l\'accord le promet)', (await rest.pages()).includes('GFS_Fichiers'), await rest.pages());
-  check('la table naît avec ses colonnes et leurs types', JSON.stringify(columns.map(column => [column.id, column.type])) === JSON.stringify([['Identifiant', 'Text'], ['Nom', 'Text'], ['Type', 'Text'], ['Date', 'DateTime:UTC'], ['Auteur', 'Text'], ['Contenu', 'Attachments'], ['Taille', 'Int'], ['Origine', 'Text']]), columns);
+  check('la table naît avec ses colonnes et leurs types', JSON.stringify(columns.map(column => [column.id, column.type])) === JSON.stringify([['Identifiant', 'Text'], ['Nom', 'Text'], ['Type', 'Text'], ['Date', 'DateTime:UTC'], ['Auteur', 'Text'], ['Contenu', 'Attachments'], ['Taille', 'Int'], ['Origine', 'Text'], ['SupprimeLe', 'DateTime:UTC'], ['SupprimePar', 'Text']]), columns);
   const rows = await rest.rows('GFS_Fichiers');
   const [row] = rows;
   check('une ligne : nom, type, taille, origine, date du jour, pièce jointe citée', rows.length === 1 && row.Nom === 'Facture.pdf' && row.Type === 'pdf' && row.Taille === run.first.size && row.Origine === 'import' && Math.abs(row.Date - Date.now() / 1000) < 600 && Array.isArray(row.Contenu) && row.Contenu[0] === 'L', row);
@@ -107,21 +107,20 @@ async function playReplace(run) {
   run.third = third;
 }
 
-// ----- 3. Télécharger.
+// ----- 3. Télécharger : depuis le lot « Lire » (6c04c02), le geste principal d'un PDF est « Lire », grisé tant que rien ne le lit ; le téléchargement est dans le menu de la ligne.
 async function playDownload(run) {
   const { page, frame } = run;
   say('--- 3. télécharger ---');
   const row = rowOf(frame, 'Facture.pdf');
   await row.click();
-  const label = (await frame.locator('.ex-foot .btn').first().textContent()).trim();
-  check('devant un PDF, « Ouvrir » devient « Télécharger », la barre dit où il va', label === 'Télécharger' && /Se télécharge sur ton ordinateur/.test(await frame.locator('.ex-info').textContent()), [label, await frame.locator('.ex-info').textContent()]);
+  const button = frame.locator('.ex-foot .btn').first();
+  check('devant un PDF que rien ne lit encore, « Lire » est grisé (jamais masqué) et la barre dit ce qui manque', (await button.textContent()).trim() === 'Lire' && await button.getAttribute('aria-disabled') === 'true' && /Demande l’extension Lecture de PDF/.test(await frame.locator('.ex-info').textContent()), [await button.textContent(), await frame.locator('.ex-info').textContent()]);
   await shot(frame, '5-selection');
-  const [download] = await Promise.all([page.waitForEvent('download'), row.dblclick()]);
+  await openRowMenu(frame, 'Facture.pdf');
+  const [download] = await Promise.all([page.waitForEvent('download'), frame.getByRole('menuitem', { name: 'Télécharger' }).click()]);
   const bytes = Buffer.from(await (await import('node:fs/promises')).readFile(await download.path()));
-  check('le double-clic télécharge le PDF sous son nom, octet pour octet', download.suggestedFilename() === 'Facture.pdf' && sha256(bytes) === run.third.hash, [download.suggestedFilename(), bytes.length]);
+  check('« Télécharger », dans le menu de la ligne, rend le PDF sous son nom, octet pour octet', download.suggestedFilename() === 'Facture.pdf' && sha256(bytes) === run.third.hash, [download.suggestedFilename(), bytes.length]);
   await waitForToast(frame, /est téléchargé/);
-  const [byButton] = await Promise.all([page.waitForEvent('download'), frame.locator('.ex-foot .btn').first().click()]);
-  check('le bouton « Télécharger » du pied le fait aussi', byButton.suggestedFilename() === 'Facture.pdf');
 }
 
 // ----- 4. Le menu d'une ligne, renommer, épingler, déplacer.
@@ -132,9 +131,9 @@ async function playMenuAndRename(run) {
   say('--- 4. le menu d\'une ligne, renommer ---');
   await openRowMenu(frame, 'Facture.pdf');
   const items = await menuItems(frame);
-  check('le menu : Télécharger, Épingler, Renommer, Dupliquer (grisé), Déplacer, Supprimer (permis, GFS le fait lui-même)', JSON.stringify(items) === JSON.stringify([
-    { label: 'Télécharger', greyed: false }, { label: 'Épingler en favori', greyed: false }, { label: 'Renommer', greyed: false }, { label: 'Dupliquer', greyed: true },
-    { label: 'Déplacer vers…', greyed: false }, { label: 'Supprimer…', greyed: false }]), items);
+  check('le menu : Lire (grisé), Télécharger, Épingler, Renommer, Dupliquer (grisé), Déplacer, Mettre à la corbeille (permis, GFS le fait lui-même)', JSON.stringify(items) === JSON.stringify([
+    { label: 'Lire', greyed: true }, { label: 'Télécharger', greyed: false }, { label: 'Épingler en favori', greyed: false }, { label: 'Renommer', greyed: false }, { label: 'Dupliquer', greyed: true },
+    { label: 'Déplacer vers…', greyed: false }, { label: 'Mettre à la corbeille', greyed: false }]), items);
   await shot(frame, '6-menu-ligne');
   await pressGreyed(page, frame.getByRole('menuitem', { name: 'Dupliquer' }));
   check('« Dupliquer » grisé dit pourquoi, sans rien faire', /GFS ne copie pas encore les PDF/.test(await waitForToast(frame, /ne copie pas/)) && (await rest.rows('GFS_Fichiers')).length === 2);
@@ -195,20 +194,15 @@ async function playFolderAndDelete(run) {
   check('l\'explorateur montre les initiales de l\'auteur', await rowOf(frame, 'Contrat.pdf').locator('.who').count() === 1);
   await shot(frame, '9-dossier');
 
-  say('--- 7. supprimer ---');
+  // La corbeille a son essai (run-corbeille.mjs : restaurer, supprimer pour de bon, vider, au clavier) ; ici, le premier geste et ce qu'il laisse dans la table.
+  say('--- 7. mettre à la corbeille ---');
   await openRowMenu(frame, 'Contrat.pdf');
-  await frame.getByRole('menuitem', { name: 'Supprimer…' }).click();
-  await frame.locator('.mod.ask').waitFor();
-  const focused = await frame.evaluate(() => document.activeElement.dataset.fk);
-  check('la confirmation donne le clavier à « Annuler » (un Entrée distrait ne supprime rien)', focused === 'ask-no' && /Supprimer « Contrat\.pdf » \?/.test(await frame.locator('#ask-title').textContent()), focused);
-  await shot(frame, '10-supprimer');
-  await page.keyboard.press('Escape');
-  check('Échap : rien n\'est supprimé', (await rest.rows('GFS_Fichiers')).some(row => row.Nom === 'Contrat.pdf'));
-  await openRowMenu(frame, 'Contrat.pdf');
-  await frame.getByRole('menuitem', { name: 'Supprimer…' }).click();
-  await frame.locator('[data-fk="ask-yes"]').click();
-  check('« Supprimer » retire la ligne et la liste', JSON.stringify(await waitForNames(frame, ['Facture (1).pdf'])) === '["Facture (1).pdf"]' && !(await rest.rows('GFS_Fichiers')).some(row => row.Nom === 'Contrat.pdf'));
-  check('la phrase le dit', /« Contrat\.pdf » est supprimé/.test(await waitForToast(frame, /est supprimé/)));
+  await frame.getByRole('menuitem', { name: 'Mettre à la corbeille' }).click();
+  check('« Mettre à la corbeille » retire le fichier de la liste, sans question', JSON.stringify(await waitForNames(frame, ['Facture (1).pdf'])) === '["Facture (1).pdf"]' && await frame.locator('.mod.ask').count() === 0);
+  check('la phrase le dit', /« Contrat\.pdf » est à la corbeille/.test(await waitForToast(frame, /est à la corbeille/)));
+  const binned = (await rest.rows('GFS_Fichiers')).find(row => row.Nom === 'Contrat.pdf');
+  check('la ligne reste dans la table, marquée (date, personne), sa pièce jointe toujours citée', Boolean(binned) && binned.SupprimeLe > 0 && binned.SupprimePar === 'essai@example.com' && binned.Contenu.length === 2, binned);
+  await shot(frame, '10-corbeille');
   await goTo(frame, /^\s*(Moi|Me)\s*$/);
 }
 
@@ -313,13 +307,18 @@ async function playEnglishDark(browser, server) {
     await frame.locator('.mod.ask').waitFor({ state: 'detached' });
 
     await openRowMenu(frame, 'Invoice.pdf');
-    check('le menu d\'une ligne en anglais', JSON.stringify((await menuItems(frame)).map(entry => entry.label)) === JSON.stringify([t('files.download'), t('ex.pin'), t('ex.rename'), t('ex.duplicate'), t('ex.move'), t('ex.delete')]), await menuItems(frame));
+    check('le menu d\'une ligne en anglais', JSON.stringify((await menuItems(frame)).map(entry => entry.label)) === JSON.stringify([t('files.read'), t('files.download'), t('ex.pin'), t('ex.rename'), t('ex.duplicate'), t('ex.move'), t('trash.move')]), await menuItems(frame));
     await shot(frame, 'en-4-menu');
-    await frame.getByRole('menuitem', { name: new RegExp(`^${t('ex.delete')}`) }).click();
+    await frame.getByRole('menuitem', { name: new RegExp(`^${t('trash.move')}`) }).click();
+    check('« Move to trash » le dit en anglais, sans question', (await waitForToast(frame, /is in the trash/)) === t('trash.moved', { name: 'Invoice.pdf' }) && await frame.locator('.mod.ask').count() === 0, await toast(frame));
+    await goTo(frame, new RegExp(`^\\s*${t('trash.view')}`));
+    await frame.locator('[data-empty-trash]').click();
     await frame.locator('.mod.ask').waitFor();
-    check('la confirmation de suppression est anglaise, lisible, et tient dans le panneau', (await frame.locator('#ask-title').textContent()) === t('files.remove.title', { name: 'Invoice.pdf' }) && (await contrastProblems(frame, '.mod')).length === 0 && JSON.stringify(await windowFits(frame)) === '{"shown":true,"inPanel":true,"overflowing":[]}', [await frame.locator('#ask-title').textContent(), await contrastProblems(frame, '.mod')]);
-    await shot(frame, 'en-5-supprimer');
+    check('la question « Empty the trash? » est anglaise, lisible, et tient dans le panneau', (await frame.locator('#ask-title').textContent()) === t('trash.emptyAll.title') && (await contrastProblems(frame, '.mod')).length === 0 && JSON.stringify(await windowFits(frame)) === '{"shown":true,"inPanel":true,"overflowing":[]}', [await frame.locator('#ask-title').textContent(), await contrastProblems(frame, '.mod')]);
+    await shot(frame, 'en-5-vider');
     await page.keyboard.press('Escape');
+    await frame.locator('.mod.ask').waitFor({ state: 'detached' });
+    await goTo(frame, /^\s*(Moi|Me)\s*$/);
 
     await page.context().route(/\/attachments\?auth=/, route => (route.request().method() === 'POST' ? route.fulfill({ status: 413, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '{"error":"Payload Too Large"}' }) : route.continue()));
     await importPdf(page, frame, pdfFile('Big.pdf', 'big').file);

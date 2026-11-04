@@ -1,8 +1,11 @@
 // Les textes de GFS, en français et en anglais dans le même lot (charte : « modèle », jamais « template » en français ; pluriels par
 // {n|singulier|pluriel}, comme le kit ; le vide d'une liste s'écrit « — Choisir … — »). À passer au kit (étape 3) avec la traduction des apps.
 
+import { TRASH_STRINGS } from './i18n-trash.js';
+
 const STRINGS = {
   fr: {
+    ...TRASH_STRINGS.fr,
     'gfs.title': 'Grist Factory Suite',
     'gfs.noGrist': 'GFS doit être ajouté comme widget personnalisé dans Grist.',
     'gfs.loading': '{app} se charge…',
@@ -188,7 +191,6 @@ const STRINGS = {
     'ex.rename': 'Renommer',
     'ex.duplicate': 'Dupliquer',
     'ex.move': 'Déplacer vers…',
-    'ex.delete': 'Supprimer…',
     'ex.openFolder': 'Ouvrir le dossier',
     'ex.renameTitle': 'Renommer « {name} »',
     'ex.nameLabel': 'Nouveau nom',
@@ -222,7 +224,7 @@ const STRINGS = {
     'ex.notice.import': '{app} s’ouvre, mais ne sait pas encore recevoir ce fichier de GFS : importe-le depuis son menu.',
     'ex.notice.read': '{app} s’ouvre, mais ne sait pas encore lire ce PDF de GFS : télécharge-le pour l’ouvrir.',
     'ex.notice.openFailed': '{app} n’a pas pu ouvrir ce fichier : {reason}',
-    'ex.notice.appOnly': 'Dupliquer et supprimer se font dans {app} : ouvre le fichier.',
+    'ex.notice.appOnly': 'Dupliquer se fait dans {app} : ouvre le fichier.',
     'ex.notice.noApp': 'Aucune app installée ne sait ouvrir ce type de fichier.',
     'files.table.title': 'Créer la table GFS_Fichiers ?',
     'files.table.text': 'GFS y garde les PDF que tu importes et ceux qu’une app lui demande de ranger : une ligne par fichier, avec son nom, sa date et son auteur, et le PDF lui-même en pièce jointe de Grist. La table est ajoutée au document, avec une page pour elle ; les apps ne l’écrivent jamais, elles demandent à GFS. Sans elle, aucun PDF ne se garde.',
@@ -247,11 +249,6 @@ const STRINGS = {
     'files.downloading': 'Téléchargement de « {name} »…',
     'files.downloaded': '« {name} » est téléchargé.',
     'files.downloadFailed': '« {name} » n’a pas pu être téléchargé : {reason}',
-    'files.remove.title': 'Supprimer « {name} » ?',
-    'files.remove.text': 'Le fichier disparaît de ce document, pour toutes les personnes qui y ont accès.',
-    'files.remove.confirm': 'Supprimer',
-    'files.removed': '« {name} » est supprimé.',
-    'files.removeFailed': '« {name} » n’a pas pu être supprimé : {reason}',
     'files.conflict.title': 'Ce nom est déjà pris',
     'files.conflict.text': 'GFS garde déjà un fichier « {name} ». Que faire du nouveau ?',
     'files.conflict.sep': ' : ',
@@ -279,6 +276,7 @@ const STRINGS = {
     'link.gone': '{app} n’a plus ce fichier : le lien ne peut pas s’ouvrir.',
   },
   en: {
+    ...TRASH_STRINGS.en,
     'gfs.title': 'Grist Factory Suite',
     'gfs.noGrist': 'GFS must be added to Grist as a custom widget.',
     'gfs.loading': '{app} is loading…',
@@ -464,7 +462,6 @@ const STRINGS = {
     'ex.rename': 'Rename',
     'ex.duplicate': 'Duplicate',
     'ex.move': 'Move to…',
-    'ex.delete': 'Delete…',
     'ex.openFolder': 'Open folder',
     'ex.renameTitle': 'Rename “{name}”',
     'ex.nameLabel': 'New name',
@@ -498,7 +495,7 @@ const STRINGS = {
     'ex.notice.import': '{app} opens, but cannot receive this file from GFS yet: import it from its own menu.',
     'ex.notice.read': '{app} opens, but cannot read this GFS PDF yet: download it to open it.',
     'ex.notice.openFailed': '{app} could not open this file: {reason}',
-    'ex.notice.appOnly': 'Duplicating and deleting are done in {app}: open the file.',
+    'ex.notice.appOnly': 'Duplicating is done in {app}: open the file.',
     'ex.notice.noApp': 'No installed app can open this type of file.',
     'files.table.title': 'Create the GFS_Fichiers table?',
     'files.table.text': 'GFS keeps the PDFs you import there, and those an app asks it to file: one row per file, with its name, date and author, and the PDF itself as a Grist attachment. The table is added to the document, with a page for it; apps never write to it, they ask GFS. Without it, no PDF can be kept.',
@@ -523,11 +520,6 @@ const STRINGS = {
     'files.downloading': 'Downloading “{name}”…',
     'files.downloaded': '“{name}” is downloaded.',
     'files.downloadFailed': '“{name}” could not be downloaded: {reason}',
-    'files.remove.title': 'Delete “{name}”?',
-    'files.remove.text': 'The file disappears from this document, for everyone who has access to it.',
-    'files.remove.confirm': 'Delete',
-    'files.removed': '“{name}” is deleted.',
-    'files.removeFailed': '“{name}” could not be deleted: {reason}',
     'files.conflict.title': 'This name is already taken',
     'files.conflict.text': 'GFS already keeps a file called “{name}”. What should happen to the new one?',
     'files.conflict.sep': ': ',

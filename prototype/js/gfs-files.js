@@ -11,11 +11,14 @@ export const PDF_MIME = 'application/pdf';
 
 // Les colonnes de la table. `Identifiant` est le nom du fichier pour GFS (rangement, liens) : il ne change jamais, ni au renommage ni au remplacement, et n'est pas le numéro de ligne,
 // que Grist réutilise après une suppression. `Contenu` : la pièce jointe. `Origine` : d'où vient le fichier (« import » ; plus tard le nom de l'app qui l'a rangé).
+// `SupprimeLe` et `SupprimePar` : la corbeille (contrats 6.6, point 7). Un fichier à la corbeille garde sa ligne, marquée de la date et de l'auteur du geste ; la pièce jointe reste citée,
+// Grist ne l'efface pas. Un document dont la table est plus ancienne reçoit ces deux colonnes au premier fichier mis à la corbeille.
 export const FILES_COLUMNS = Object.freeze([
   { id: 'Identifiant', type: 'Text' }, { id: 'Nom', type: 'Text' }, { id: 'Type', type: 'Text' }, { id: 'Date', type: 'DateTime:UTC' }, { id: 'Auteur', type: 'Text' },
-  { id: 'Contenu', type: 'Attachments' }, { id: 'Taille', type: 'Int' }, { id: 'Origine', type: 'Text' },
+  { id: 'Contenu', type: 'Attachments' }, { id: 'Taille', type: 'Int' }, { id: 'Origine', type: 'Text' }, { id: 'SupprimeLe', type: 'DateTime:UTC' }, { id: 'SupprimePar', type: 'Text' },
 ].map(column => Object.freeze(column)));
 export const FILES_COLUMN_IDS = Object.freeze(FILES_COLUMNS.map(column => column.id));
+export const TRASH_COLUMN_IDS = Object.freeze(['SupprimeLe', 'SupprimePar']);
 
 const bilingual = (fr, en) => Object.freeze({ fr, en });
 
@@ -28,6 +31,8 @@ export const FILES_MANIFEST = Object.freeze({
   fichiers: Object.freeze([Object.freeze({
     table: FILES_TABLE,
     colonnes: Object.freeze({ id: 'Identifiant', nom: 'Nom', type: 'Type', date: 'Date', par: 'Auteur' }),
+    // `corbeille` : les deux colonnes qui disent qu'un fichier est à la corbeille (la date du geste, son auteur). Sans cette clé, le manifeste d'une app n'a pas de corbeille de cette forme.
+    corbeille: Object.freeze({ date: 'SupprimeLe', par: 'SupprimePar' }),
     typeParDefaut: PDF_TYPE,
     types: Object.freeze([Object.freeze({ valeur: PDF_TYPE, nom: bilingual('PDF', 'PDF'), icone: 'pdf', couleur: 'neutre' })]),
   })]),
@@ -86,3 +91,7 @@ export const newRecord = ({ id, name, attachment, size, author, now, origin }) =
 
 // Un fichier remplacé : le même fichier (même identifiant, même nom, donc même place et mêmes favoris), un autre contenu.
 export const replacementRecord = ({ attachment, size, author, now, origin }) => ({ Contenu: ['L', attachment], Origine: origin, ...stamp({ now, author, size }) });
+
+// Mettre un fichier à la corbeille : la date du geste (en secondes) et son auteur. Sortir de la corbeille : les deux colonnes se vident, le fichier est tel qu'il était.
+export const trashRecord = ({ now, author }) => ({ SupprimeLe: Math.floor(now / 1000), SupprimePar: author || '' });
+export const restoreRecord = () => ({ SupprimeLe: null, SupprimePar: '' });

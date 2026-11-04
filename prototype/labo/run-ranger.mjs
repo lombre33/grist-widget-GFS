@@ -202,7 +202,7 @@ await menuItem(/Dupliquer|Duplicate/).click({ force: true });
 await page.waitForTimeout(200);
 const appOnly = await toast();
 await shot('8-grise');
-check('« Dupliquer » reste grisé et dit que l\'app le fait', /se font dans Publipostage\+|are done in Publipostage\+/.test(appOnly), appOnly);
+check('« Dupliquer » reste grisé et dit que l\'app le fait', /se fait dans Publipostage\+|is done in Publipostage\+/.test(appOnly), appOnly);
 const lines = JSON.stringify(await gfsLines());
 await openRowMenu(row(newName));
 await menuItem(/Renommer|Rename/).click();

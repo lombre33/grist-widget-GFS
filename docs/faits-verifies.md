@@ -1112,3 +1112,29 @@ ni clé de réglages, ni bibliothèque, ni permission, ni adresse de la politiqu
   attend que `document.getAnimations()` soit vide ; et une capture prise la fenêtre « Thème » ouverte cache une part de l'app derrière elle : elle se prend fenêtre et explorateur refermés.
 - **Pas mesuré** : Firefox, l'instance de la DINUM, l'écran du répondant et l'aperçu de Form+ (`#fill`, `.pv-*`, que l'app garde à l'aspect dessiné par la personne : consigne 016), les états du test à blanc des nœuds d'Automation+
   (`trace-*`, dont le rouge d'échec et l'ambre d'avertissement sont à l'app), Grist-BI et Tuesday (pas encore au catalogue de GFS : ni manifeste ni sous-module).
+
+## 24. La corbeille des PDF de GFS et le clavier de l'explorateur : ce que le vrai serveur a mesuré (04/11)
+
+Décision du porteur le 04/11 : « tout doit pouvoir se faire depuis l'explorateur, avec une corbeille » (cahier, section 2 ; contrats 6.6, points 10 à 12). Mesuré avec
+`labo/run-corbeille.mjs` dans un **vrai serveur Grist 1.7.19** (Docker, `labo/vrai-serveur.sh`) : GFS ajouté comme widget à un document neuf, panneau à 700 × 400, souris et clavier réels, en français clair et en anglais
+sombre (46 vérifications dans chacune, aucune en échec), Chromium 141 ; puis dans un **vrai Firefox 159 sans écran** (`test/corbeille-firefox.mjs`, à 700 px, clair et sombre, français et anglais).
+
+- **Une table d'une version plus ancienne** : on retire `SupprimeLe` et `SupprimePar` de `GFS_Fichiers` par l'API REST (`RemoveColumn`), puis « Suppr » sur un fichier : GFS ajoute les deux colonnes (`AddColumn`, `DateTime:UTC` et `Text`) à une table qui a
+  déjà des lignes, sans poser de question (la table existe : aucun accord à demander) et sans créer d'autre table, puis marque la ligne. Les types relus par l'API REST sont ceux voulus.
+- **Ce que Grist rend d'une date jamais écrite** : `null` (pas `0`, pas une chaîne). Écrite, la date revient **en secondes** (un entier, à une seconde près de l'horloge du labo). `UpdateRecord` avec `null` sur la colonne de date et `''` sur la colonne de texte les
+  vide : l'API REST rend `null` et `""`. C'est pourquoi la lecture (`trashOf`, `js/explorer-model.js`) ne tient pour « à la corbeille » qu'une date strictement positive.
+- **La ligne marquée garde tout** : même `Identifiant`, même `Nom`, `Contenu` toujours `['L', n]`, et la liste des pièces jointes du serveur n'a pas changé (la pièce reste citée : Grist ne l'efface pas). Les autres lignes ne sont pas marquées.
+- **L'adresse de la personne** : `SupprimePar` porte l'adresse que Grist donne (`essai@example.com`) **quand GFS la connaît**, c'est-à-dire une fois sa table de rangement lue (6.4, point 9) ; avant un premier favori, `SupprimePar` (comme `Auteur`)
+  est vide, et la vue ne montre pas d'initiales. Le labo pose donc un premier favori avant la corbeille.
+- **Restaurer** : la date redevient `null`, la personne `""`, la ligne et son identifiant sont ceux d'avant ; sa pièce jointe est la même. **Un nom devenu pris** (un nouveau « Devis.pdf » est entré pendant que l'ancien était à la corbeille, sans fenêtre « nom
+  pris » : un fichier à la corbeille ne prend pas son nom) : le fichier restauré revient sous « Devis (1).pdf », la phrase le dit, les deux lignes sont dans la table, aucune n'est marquée.
+- **Supprimer pour de bon** : la fenêtre nomme le fichier et donne le clavier à « Annuler » ; Échap ne supprime rien ; la ligne disparaît de la table ; **la pièce jointe reste sur le serveur** (Grist ne l'efface qu'au bout de 7 jours, faits vérifiés, 14).
+- **Vider la corbeille** : une seule fenêtre, qui nomme les fichiers ; **plusieurs `RemoveRecord` dans un seul `applyUserActions` passent** (les deux lignes vues partent en un lot) ; une ligne qu'une autre personne met à la corbeille **pendant que la fenêtre est
+  ouverte** (écrite par l'API REST) n'est pas retirée : elle reste, marquée, et la vue relue la montre avec le nom de l'autre personne.
+- **Le clavier dans le cadre de Grist** : un clic à la vraie souris sur une ligne donne le clavier au panneau (la ligne est l'élément actif et choisie) ; ↓ ↑ passent d'une ligne à l'autre, Suppr met à la corbeille (et le clavier passe à la ligne qui reste),
+  Entrée restaure à la corbeille, F2 ouvre « Renommer » sur la ligne choisie, Maj+F10 et le clic droit ouvrent le menu de la ligne (où chaque geste dit sa touche : « Suppr », « F2 », « Entrée »), Échap ferme le menu et laisse la ligne choisie.
+- **Dans Firefox 159 sans écran** : ↑ ↓ ← → Début Fin Entrée F2 Suppr Retour arrière « / » Maj+F10 arrivent au script de la page (écouteur de `keydown` sur la liste) ; **Entrée et Espace sur un `<button>` ne cliquent pas** (déjà noté, `labo/LISEZ-MOI.md`) :
+  l'essai n'en dépend pas, il passe par les lignes. Les codes WebDriver des touches de fonction : F2 ``, F10 `` (F11 est `` : une erreur de code avait ouvert autre chose), Suppr ``, Retour arrière ``.
+- **Ctrl, Alt et Méta** : aucune combinaison n'est liée (`js/explorer-keys.js`, essai Node) : Ctrl+D est le marque-page de Firefox, Ctrl+F sa recherche dans la page, Alt+← la page précédente ; Ctrl+C, Ctrl+X et Ctrl+V sont réservés à dupliquer et déplacer (lot 3).
+- **Pas mesuré** : le clavier **avant** tout clic dans le panneau (Grist garde alors le clavier pour sa grille : à vérifier chez le porteur) ; l'instance de la DINUM ; le Firefox du porteur et son clavier (touche « Menu », Maj+F10 sous Windows) ; un document en
+  lecture seule joué dans le vrai serveur (le refus `trash.readonly` est mesuré dans les essais Node) ; la corbeille des fichiers **des apps** (lot 2).

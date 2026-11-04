@@ -87,7 +87,10 @@ class Bidi {
 }
 
 // Les touches du clavier, au code que WebDriver leur donne.
-export const KEYS = { Tab: '\uE004', Enter: '\uE007', Escape: '\uE00C', ArrowDown: '\uE015', ArrowUp: '\uE013' };
+export const KEYS = {
+  Tab: '\uE004', Enter: '\uE007', Escape: '\uE00C', ArrowDown: '\uE015', ArrowUp: '\uE013', ArrowLeft: '\uE012', ArrowRight: '\uE014', Home: '\uE011', End: '\uE010', Backspace: '\uE003',
+  Delete: '\uE017', F2: '\uE032', F10: '\uE03A', Shift: '\uE008', Control: '\uE009', Alt: '\uE00A',
+};
 
 // Un onglet : on y charge une page, on y règle la vue, on y exécute des fonctions (leur résultat revient en JSON), on y agit à la souris et au clavier.
 export class Page {
@@ -139,6 +142,15 @@ export class Page {
     const actions = keys.flatMap(key => [{ type: 'keyDown', value: KEYS[key] || key }, { type: 'keyUp', value: KEYS[key] || key }]);
     return this.#bidi.send('input.performActions', { context: this.#context, actions: [{ type: 'key', id: 'clavier', actions }] });
   }
+
+  // Des touches tenues ensemble (Maj+F10) : appuyées dans l'ordre, relâchées dans l'ordre inverse.
+  chord(...keys) {
+    const actions = [...keys.map(key => ({ type: 'keyDown', value: KEYS[key] || key })), ...[...keys].reverse().map(key => ({ type: 'keyUp', value: KEYS[key] || key }))];
+    return this.#bidi.send('input.performActions', { context: this.#context, actions: [{ type: 'key', id: 'clavier', actions }] });
+  }
+
+  // Le clic droit : l'événement `contextmenu` que la page attend pour son menu.
+  rightClick(x, y) { return this.#pointer([{ type: 'pointerMove', x: Math.round(x), y: Math.round(y) }, { type: 'pointerDown', button: 2 }, { type: 'pointerUp', button: 2 }]); }
 }
 
 // Lance Firefox sans écran, avec un profil neuf, et rend { page, close() }. Le lanceur de Firefox est parfois un script qui lance le vrai programme sans le remplacer (celui de conda) : Firefox a donc son propre

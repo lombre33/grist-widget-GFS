@@ -41,7 +41,7 @@ test('un premier PDF : la table naît avec ses colonnes (accord donné), le fich
   assert.deepEqual(grist.transfer.calls.uploads, [{ name: 'Facture.pdf', size: 1234 }]);
   const create = grist.actions.find(action => action[0] === 'AddTable');
   assert.equal(create[1], FILES_TABLE);
-  assert.deepEqual(create[2].map(column => [column.id, column.type]), [['Identifiant', 'Text'], ['Nom', 'Text'], ['Type', 'Text'], ['Date', 'DateTime:UTC'], ['Auteur', 'Text'], ['Contenu', 'Attachments'], ['Taille', 'Int'], ['Origine', 'Text']]);
+  assert.deepEqual(create[2].map(column => [column.id, column.type]), [['Identifiant', 'Text'], ['Nom', 'Text'], ['Type', 'Text'], ['Date', 'DateTime:UTC'], ['Auteur', 'Text'], ['Contenu', 'Attachments'], ['Taille', 'Int'], ['Origine', 'Text'], ['SupprimeLe', 'DateTime:UTC'], ['SupprimePar', 'Text']]);
   const [row] = rowsOf(grist);
   assert.deepEqual([row.Identifiant, row.Nom, row.Type, row.Contenu, row.Date, row.Auteur, row.Taille, row.Origine], [result.id, 'Facture.pdf', 'pdf', ['L', 1], 1762000123, 'marie@exemple.fr', 1234, 'import']);
   assert.equal(result.row, row.id);
@@ -103,7 +103,7 @@ test('une table d\'une version plus ancienne reçoit d\'abord ses colonnes absen
   const grist = setup({ tables: { [FILES_TABLE]: { columns: ['id', 'Identifiant', 'Nom'], rows: [] } } });
   await grist.store.add({ file: file(), name: 'Facture.pdf', decide: () => assert.fail() });
   const added = grist.actions.filter(action => action[0] === 'AddColumn').map(action => [action[2], action[3].type]);
-  assert.deepEqual(added, [['Type', 'Text'], ['Date', 'DateTime:UTC'], ['Auteur', 'Text'], ['Contenu', 'Attachments'], ['Taille', 'Int'], ['Origine', 'Text']]);
+  assert.deepEqual(added, [['Type', 'Text'], ['Date', 'DateTime:UTC'], ['Auteur', 'Text'], ['Contenu', 'Attachments'], ['Taille', 'Int'], ['Origine', 'Text'], ['SupprimeLe', 'DateTime:UTC'], ['SupprimePar', 'Text']]);
   assert.ok(grist.actions.findIndex(action => action[0] === 'AddRecord') > grist.actions.findLastIndex(action => action[0] === 'AddColumn'));
   assert.equal(rowsOf(grist)[0].Nom, 'Facture.pdf');
 });
@@ -149,12 +149,82 @@ test('onUpload est appelé juste avant l\'envoi, pas avant la décision', async 
   assert.deepEqual(order, ['décision', 'envoi']);
 });
 
-test('remove : la ligne est retirée (relue d\'abord) ; un fichier déjà parti rend false', async () => {
+// ---------- la corbeille (contrats 6.6, point 7) ----------
+
+const trashedRow = (name, id, row, extra = {}) => present(name, id, row, { SupprimeLe: 1762000000, SupprimePar: 'paul@exemple.fr', ...extra });
+const actionsOf = (grist, verb) => grist.actions.filter(action => action[0] === verb);
+
+test('mettre à la corbeille : la ligne reste, marquée de la date et de l\'auteur du geste ; rien n\'est effacé, la pièce jointe reste citée', async () => {
   const grist = setup({ tables: tableWith([present('Facture.pdf', 'aa', 1), present('Devis.pdf', 'dd', 2)]) });
-  assert.equal(await grist.store.remove({ id: 'aa' }), true);
-  assert.deepEqual(rowsOf(grist).map(row => row.Nom), ['Devis.pdf']);
-  assert.equal(await grist.store.remove({ id: 'aa' }), false);
-  assert.equal(grist.actions.filter(action => action[0] === 'RemoveRecord').length, 1);
+  assert.equal(await grist.store.trash({ id: 'aa' }), true);
+  const [row, other] = rowsOf(grist);
+  assert.deepEqual([row.Nom, row.SupprimeLe, row.SupprimePar, row.Contenu], ['Facture.pdf', 1762000123, 'marie@exemple.fr', ['L', 1]]);
+  assert.equal(other.SupprimeLe, undefined, 'l\'autre fichier n\'est pas touché');
+  assert.equal(actionsOf(grist, 'RemoveRecord').length, 0);
+  assert.equal(await grist.store.trash({ id: 'aa' }), false, 'déjà à la corbeille');
+  assert.equal(await grist.store.trash({ id: 'zz' }), false, 'un fichier parti entre-temps');
+});
+
+test('mettre à la corbeille ne crée jamais la table, et ne demande donc jamais son accord', async () => {
+  const grist = setup({ consent: () => assert.fail('aucun accord à demander') });
+  assert.equal(await grist.store.trash({ id: 'aa' }), false);
+  assert.deepEqual(grist.actions, []);
+});
+
+test('une table d\'une version plus ancienne reçoit ses deux colonnes de corbeille avant la première mise à la corbeille', async () => {
+  const old = { columns: ['id', 'Identifiant', 'Nom', 'Type', 'Date', 'Auteur', 'Contenu', 'Taille', 'Origine'], rows: [present('Facture.pdf', 'aa', 1)] };
+  const grist = setup({ tables: { [FILES_TABLE]: old } });
+  assert.equal(await grist.store.trash({ id: 'aa' }), true);
+  assert.deepEqual(actionsOf(grist, 'AddColumn').map(action => [action[2], action[3].type]), [['SupprimeLe', 'DateTime:UTC'], ['SupprimePar', 'Text']]);
+  assert.ok(grist.actions.findIndex(action => action[0] === 'UpdateRecord') > grist.actions.findLastIndex(action => action[0] === 'AddColumn'));
+  assert.equal(rowsOf(grist)[0].SupprimeLe, 1762000123);
+});
+
+test('un fichier à la corbeille ne compte plus pour les noms : un nouveau fichier reprend son nom sans que rien soit demandé', async () => {
+  const grist = setup({ tables: tableWith([trashedRow('Facture.pdf', 'aa', 1)]) });
+  const result = await grist.store.add({ file: file(), name: 'Facture.pdf', decide: () => assert.fail('le nom est libre : l\'ancien est à la corbeille') });
+  assert.deepEqual([result.status, result.name], ['added', 'Facture.pdf']);
+  assert.deepEqual(rowsOf(grist).map(row => [row.Identifiant === 'aa', row.Nom, Boolean(row.SupprimeLe)]), [[true, 'Facture.pdf', true], [false, 'Facture.pdf', false]]);
+});
+
+test('restaurer : le marqueur se vide, le fichier est tel qu\'il était ; un fichier qui n\'est pas à la corbeille ne se restaure pas', async () => {
+  const grist = setup({ tables: tableWith([trashedRow('Facture.pdf', 'aa', 1), present('Devis.pdf', 'dd', 2)]) });
+  assert.deepEqual(await grist.store.restore({ id: 'aa' }), { name: 'Facture.pdf', renamed: false });
+  const [row] = rowsOf(grist);
+  assert.deepEqual([row.SupprimeLe, row.SupprimePar, row.Nom, row.Contenu, row.Identifiant], [null, '', 'Facture.pdf', ['L', 1], 'aa']);
+  assert.equal(await grist.store.restore({ id: 'aa' }), null, 'il est déjà revenu');
+  assert.equal(await grist.store.restore({ id: 'dd' }), null);
+  assert.equal(await grist.store.restore({ id: 'zz' }), null);
+});
+
+test('restaurer quand un autre fichier a pris le nom : rien n\'est écrasé, le restauré prend le premier nom libre', async () => {
+  const grist = setup({ tables: tableWith([trashedRow('Facture.pdf', 'aa', 1), present('Facture.pdf', 'bb', 2), present('Facture (1).pdf', 'cc', 3), trashedRow('Facture (2).pdf', 'dd', 4)]) });
+  assert.deepEqual(await grist.store.restore({ id: 'aa' }), { name: 'Facture (2).pdf', renamed: true });
+  assert.deepEqual(rowsOf(grist).map(row => row.Nom), ['Facture (2).pdf', 'Facture.pdf', 'Facture (1).pdf', 'Facture (2).pdf']);
+  assert.equal(rowsOf(grist)[0].SupprimeLe, null);
+});
+
+test('supprimer pour de bon : seules les lignes à la corbeille qu\'on désigne partent ; un fichier restauré entre-temps ou jamais supprimé n\'est pas touché', async () => {
+  const grist = setup({ tables: tableWith([trashedRow('A.pdf', 'aa', 1), trashedRow('B.pdf', 'bb', 2), present('C.pdf', 'cc', 3), trashedRow('D.pdf', 'dd', 4)]) });
+  assert.equal(await grist.store.empty([{ id: 'aa' }, { id: 'cc' }, { id: 'zz' }]), 1);
+  assert.deepEqual(rowsOf(grist).map(row => row.Nom), ['B.pdf', 'C.pdf', 'D.pdf']);
+  assert.equal(await grist.store.empty([{ id: 'bb' }, { id: 'dd' }]), 2);
+  assert.deepEqual(rowsOf(grist).map(row => row.Nom), ['C.pdf']);
+  assert.equal(await grist.store.empty([{ id: 'bb' }]), 0);
+  assert.equal(actionsOf(grist, 'RemoveRecord').length, 3);
+});
+
+test('supprimer pour de bon sans table : rien à faire, rien n\'est créé', async () => {
+  const grist = setup({ consent: () => assert.fail() });
+  assert.equal(await grist.store.empty([{ id: 'aa' }]), 0);
+  assert.deepEqual(grist.actions, []);
+});
+
+test('les gestes de la corbeille se font l\'un après l\'autre, sur la table relue', async () => {
+  const grist = setup({ tables: tableWith([present('A.pdf', 'aa', 1), present('B.pdf', 'bb', 2)]) });
+  const results = await Promise.all([grist.store.trash({ id: 'aa' }), grist.store.trash({ id: 'bb' }), grist.store.restore({ id: 'aa' }), grist.store.empty([{ id: 'bb' }])]);
+  assert.deepEqual(results, [true, true, { name: 'A.pdf', renamed: false }, 1]);
+  assert.deepEqual(rowsOf(grist).map(row => [row.Nom, row.SupprimeLe]), [['A.pdf', null]]);
 });
 
 test('download : la pièce jointe de la ligne relue, sous le nom actuel du fichier', async () => {
@@ -163,6 +233,12 @@ test('download : la pièce jointe de la ligne relue, sous le nom actuel du fichi
   assert.equal(name, 'Facture.pdf');
   assert.equal(await blob.text(), '%PDF-1.4');
   assert.deepEqual(grist.transfer.calls.downloads, [42]);
+});
+
+test('download : un fichier à la corbeille ne se télécharge pas', async () => {
+  const grist = setup({ tables: tableWith([trashedRow('Facture.pdf', 'aa', 1)]) });
+  await assert.rejects(grist.store.download({ id: 'aa' }), /à la corbeille/);
+  assert.deepEqual(grist.transfer.calls.downloads, []);
 });
 
 test('download : un fichier retiré par une autre personne, ou sans contenu, est dit', async () => {
@@ -176,4 +252,10 @@ test('filesOf : une ligne sans identifiant est ignorée, la pièce jointe est le
   const data = { id: [1, 2, 3], Identifiant: ['aa', '', 'cc'], Nom: ['A.pdf', 'B.pdf', 'C.pdf'], Date: [1, 2, 3], Auteur: ['x', 'y', 'z'], Contenu: [['L', 9, 10], ['L', 1], null] };
   assert.deepEqual(filesOf(data).map(entry => [entry.id, entry.attachment, entry.row]), [['aa', 9, 1], ['cc', null, 3]]);
   assert.deepEqual(filesOf(null), []);
+});
+
+test('filesOf : un fichier est à la corbeille quand sa colonne de date porte une date ; une table sans ces colonnes, ou une date vide, n\'en met aucun', () => {
+  const data = { id: [1, 2, 3, 4], Identifiant: ['aa', 'bb', 'cc', 'dd'], Nom: ['A.pdf', 'B.pdf', 'C.pdf', 'D.pdf'], SupprimeLe: [1762000000, null, 0, 5], SupprimePar: ['paul@exemple.fr', 'x', 'y', null] };
+  assert.deepEqual(filesOf(data).map(entry => entry.trashed), [{ ts: 1762000000, by: 'paul@exemple.fr' }, null, null, { ts: 5, by: '' }]);
+  assert.deepEqual(filesOf({ id: [1], Identifiant: ['aa'] }).map(entry => entry.trashed), [null]);
 });

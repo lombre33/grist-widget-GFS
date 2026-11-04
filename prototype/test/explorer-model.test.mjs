@@ -2,7 +2,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFiles, readFiling, readGfsFiling, applyFiling, folderPaths, folderName, folderMoves, subfolders, treeRows, pathParts, listItems, typeChoices, person,
-  formatDate, normalizePath, inside } from '../js/explorer-model.js';
+  formatDate, normalizePath, inside, stampOf, authorOf } from '../js/explorer-model.js';
+import { FILES_MANIFEST } from '../js/gfs-files.js';
 import { createI18n } from '../js/i18n.js';
 import { publipostage } from './helpers.mjs';
 
@@ -246,4 +247,44 @@ test('formatDate : aujourd\'hui, hier, jour et mois, avec l\'année quand elle c
   assert.equal(formatDate(null, now, 'fr-FR', t), '—');
   const en = createI18n('en').t;
   assert.match(formatDate(at(2026, 9, 12, 10, 15), now, 'en-GB', en), /^Today 10:15$/);
+});
+
+// ---------- la corbeille ----------
+
+const gfsSpec = FILES_MANIFEST.fichiers[0];
+const pdfs = () => ({
+  id: [1, 2, 3, 4], Identifiant: ['aa', 'bb', 'cc', 'dd'], Nom: ['Facture.pdf', 'Devis.pdf', 'Contrat été.pdf', 'Bon.pdf'], Type: ['pdf', 'pdf', 'pdf', 'pdf'], Date: [T0 - 9 * DAY, T0 - 8 * DAY, T0 - 7 * DAY, T0 - 6 * DAY],
+  Auteur: ['marie@exemple.fr', 'marie@exemple.fr', 'marie@exemple.fr', 'marie@exemple.fr'],
+  SupprimeLe: [null, T0 - 2 * DAY, ['D', T0 - DAY, 'UTC'], 0], SupprimePar: ['', 'paul@exemple.fr', 'Léa <lea@exemple.fr>', 'x'],
+});
+
+test('readFiles : un fichier dont la date de corbeille est remplie est à la corbeille, avec la date et l\'auteur du geste ; vide ou zéro : il est vivant', () => {
+  const list = readFiles(FILES_MANIFEST, gfsSpec, pdfs());
+  assert.deepEqual(list.map(file => file.trashed), [null, { ts: T0 - 2 * DAY, by: 'paul@exemple.fr' }, { ts: T0 - DAY, by: 'Léa <lea@exemple.fr>' }, null]);
+  assert.deepEqual(list.map(file => [file.name, file.ts]), [['Facture.pdf', T0 - 9 * DAY], ['Devis.pdf', T0 - 8 * DAY], ['Contrat été.pdf', T0 - 7 * DAY], ['Bon.pdf', T0 - 6 * DAY]], 'la dernière modification reste lue');
+});
+
+test('readFiles : sans la clé `corbeille` du manifeste (une app), ou sans les colonnes dans la table (un document plus ancien), aucun fichier n\'est à la corbeille', () => {
+  assert.deepEqual(readFiles(FILES_MANIFEST, { ...gfsSpec, corbeille: undefined }, pdfs()).map(file => file.trashed), [null, null, null, null]);
+  const old = { id: [1], Identifiant: ['aa'], Nom: ['Facture.pdf'], Type: ['pdf'], Date: [T0] };
+  assert.deepEqual(readFiles(FILES_MANIFEST, gfsSpec, old).map(file => file.trashed), [null]);
+  assert.ok(files().every(file => file.trashed === null), 'les modèles d\'une app n\'ont jamais de corbeille de cette forme');
+});
+
+test('stampOf et authorOf : la date et l\'auteur de la dernière modification, ou, à la corbeille, ceux du geste qui l\'y a mis', () => {
+  const [live, trashed] = readFiles(FILES_MANIFEST, gfsSpec, pdfs());
+  assert.deepEqual([stampOf(live), authorOf(live)], [T0 - 9 * DAY, 'marie@exemple.fr']);
+  assert.deepEqual([stampOf(trashed), authorOf(trashed)], [T0 - 2 * DAY, 'paul@exemple.fr']);
+});
+
+test('listItems : la corbeille est une liste à plat, la suppression la plus récente en haut ; le tri, le filtre de type et la recherche y valent', () => {
+  const trashed = applyFiling(readFiles(FILES_MANIFEST, gfsSpec, pdfs()), null).filter(file => file.trashed);
+  const view = extra => state({ view: 'trash', sort: { key: 'mod', dir: -1 }, ...extra });
+  const result = listItems(trashed, view(), OPTIONS);
+  assert.equal(result.flat, true);
+  assert.deepEqual(result.rows.map(row => [row.kind, row.file.name]), [['file', 'Contrat été.pdf'], ['file', 'Devis.pdf']]);
+  assert.deepEqual(listItems(trashed, view({ sort: { key: 'mod', dir: 1 } }), OPTIONS).rows.map(row => row.file.name), ['Devis.pdf', 'Contrat été.pdf']);
+  assert.deepEqual(listItems(trashed, view({ sort: { key: 'by', dir: 1 } }), OPTIONS).rows.map(row => row.file.name), ['Contrat été.pdf', 'Devis.pdf'], 'par l\'auteur du geste : Léa avant Paul');
+  assert.deepEqual(listItems(trashed, view({ q: 'ete' }), OPTIONS).rows.map(row => row.file.name), ['Contrat été.pdf'], 'accents ignorés');
+  assert.deepEqual(listItems(trashed, view({ type: 'docx' }), OPTIONS).rows, []);
 });

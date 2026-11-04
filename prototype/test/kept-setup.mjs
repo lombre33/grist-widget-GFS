@@ -22,8 +22,9 @@ export function fakeDoc() {
 }
 
 export function setup({ fullAccess = true, readonly = false, folder = '', add = async () => ({ status: 'added', id: 'aa', name: 'Facture.pdf', row: 1 }), download = async () => ({ blob: new Blob(['x']), name: 'Facture.pdf' }), i18n = FR, setFiling = async () => {}, reader, conflict, session } = {}) {
-  const log = { notices: [], hidden: [], adds: [], refreshes: 0, filings: [], doc: fakeDoc() };
-  const store = { add: async options => { log.adds.push(options); return add(options); }, download, remove: async () => true };
+  const log = { notices: [], hidden: [], adds: [], refreshes: 0, filings: [], trashed: [], doc: fakeDoc() };
+  const gesture = (name, result) => async argument => { log.trashed.push([name, argument]); return result; };
+  const store = { add: async options => { log.adds.push(options); return add(options); }, download, trash: gesture('trash', true), restore: gesture('restore', { name: 'Facture.pdf', renamed: false }), empty: gesture('empty', 1) };
   const kept = new KeptFiles({
     store, doc: log.doc, container: null, inertTargets: () => [], t: i18n.t, lang: () => i18n.lang, locale: () => 'fr-FR', now: () => 1762000000000,
     fullAccess: () => fullAccess, readonly: () => readonly, notice: text => log.notices.push(text), hideNotice: said => log.hidden.push(said), refresh: async () => { log.refreshes += 1; },

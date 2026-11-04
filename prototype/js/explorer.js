@@ -1,40 +1,52 @@
 // L'explorateur de fichiers (cahier 4.4, 6.3) : le cadre qu'ouvre GFS pour choisir un fichier de n'importe quelle app. Il n'écrit rien lui-même.
 // Il remplace le cadre (défaut 6.7, point 1) ; « Fermer » ou Échap ramène à l'app, restée vivante et cachée. Il ne connaît pas les apps :
 // le contrôleur lui donne les fichiers, les noms, le grisé et ce qu'on peut créer, et reçoit « ouvrir », « nouveau » et « fermer ». Épingler, renommer
-// et déplacer passent à `filing` (js/filing.js) ; dupliquer et supprimer restent grisés : ils se font dans l'app (contrats 6.4).
+// et déplacer passent à `filing` (js/filing.js) ; supprimer, restaurer et vider la corbeille à `trash` (js/trash.js) ; dupliquer reste grisé : il se fait dans l'app. Les touches sont décrites
+// dans js/explorer-keys.js.
 
 import { h } from './dom.js';
 import { icon } from './icons.js';
 import { listItems, treeRows, typeChoices } from './explorer-model.js';
 import { words } from './search.js';
-import { buildShell, relabel, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar } from './explorer-view.js';
+import { buildShell, relabel, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar, trashBar } from './explorer-view.js';
+import { listAction, isSearchKey, parentPath, stepRow } from './explorer-keys.js';
 import { LANGUAGE_NAMES } from './language.js';
-import { openMenu, closeMenu } from './menu.js';
+import { openMenu, closeMenu, menuIsOpen } from './menu.js';
 
 // Sans fichiers que GFS garde lui-même (les essais de l'explorateur seul) : aucun fichier n'est de ceux-là.
 const NO_KEPT = Object.freeze({ has: () => false, extras: () => [] });
+// Sans corbeille (les essais de l'explorateur seul) : aucun fichier ne peut y aller.
+const NO_TRASH = Object.freeze({ handles: () => false });
+// Les gestes d'une ligne qu'un clavier posé sur ☆ ou ⋯ (ou ailleurs dans la ligne) fait aussi ; les flèches et Entrée restent aux boutons.
+const FROM_BUTTONS = new Set(['rename', 'delete', 'menu', 'parent']);
 
 export class Explorer {
   #opts;
   #kept;
+  #bin;
   #refs;
   #files = [];
+  #trashed = []; // les fichiers à la corbeille (la vue « Corbeille »)
   #rows = [];
   #loading = false;
   #problems = [];
   #restricted = false;
   #choice = null; // le mode choix (enterChoice) : { title, accept(file), onPick(file), onCancel() }, ou null
   #beforeChoice = null; // où la personne en était avant le mode choix
-  // Deux tris : celui des dossiers et des favoris (par nom), celui de Récents (par date, le plus récent d'abord).
-  state = { view: 'folder', path: '', open: new Set(), display: 'list', sort: { key: 'name', dir: 1 }, recentSort: { key: 'mod', dir: -1 }, type: 'all', q: '', sel: null };
+  // Trois tris : celui des dossiers et des favoris (par nom), ceux de Récents et de la corbeille (par date, la plus récente d'abord : le fichier qu'on vient de supprimer est en haut).
+  state = {
+    view: 'folder', path: '', open: new Set(), display: 'list', sort: { key: 'name', dir: 1 }, recentSort: { key: 'mod', dir: -1 }, trashSort: { key: 'mod', dir: -1 }, type: 'all', q: '', sel: null,
+  };
 
   // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), importTypes(), onOpen(file), onNew(entry), onImport(entry), onClose(), onApps(), canClose(), notice(text),
   //          language() → { choice, grist }, onLanguage(choice), onTheme() (le bouton « Thème » ouvre sa fenêtre), personal() → le rangement est-il à la personne seule ?,
   //          filing: { togglePin(file), rename(file), moveFile(file), renameFolder(path), moveFolder(path) }, onDemo()? (le bouton « Démo », en mode développement seulement),
-  //          kept?: les fichiers que GFS garde lui-même (js/kept-files.js) : { has(file), openAs(file) -> { label, icon, greyed }, opensIn(file), extras(file) -> [article de menu], copyNotice(), remove(file) } }
+  //          kept?: les fichiers que GFS garde lui-même (js/kept-files.js) : { has(file), openAs(file) -> { label, icon, greyed }, opensIn(file), extras(file) -> [article de menu], copyNotice() },
+  //          trash?: la corbeille (js/trash.js) : { handles(file), move(file), restore(file), purge(file), empty(files) } (chaque geste rend une promesse, vraie quand il a abouti) }
   constructor(opts) {
     this.#opts = opts;
     this.#kept = opts.kept || NO_KEPT;
+    this.#bin = opts.trash || NO_TRASH;
     const { root, refs } = buildShell(opts.i18n);
     this.root = root;
     this.#refs = refs;
@@ -50,9 +62,14 @@ export class Explorer {
   // Les fichiers que la liste peut montrer : tous, ou, en mode choix, ceux que la demande de l'app laisse passer.
   get #pool() { return this.#choice ? this.#files.filter(this.#choice.accept) : this.#files; }
 
-  setFiles(files) {
+  // Ce que la vue montre : les fichiers de la corbeille dans la corbeille, sinon les fichiers vivants.
+  get #shown() { return this.state.view === 'trash' ? this.#trashed : this.#pool; }
+
+  // `files` : les fichiers vivants ; `trashed` : ceux qui sont à la corbeille (js/explorer-data.js).
+  setFiles(files, trashed = []) {
     this.#files = files;
-    const keys = new Set(files.map(file => file.key));
+    this.#trashed = trashed;
+    const keys = new Set([...files, ...trashed].map(file => file.key));
     if (this.state.sel && !this.state.sel.startsWith('dir:') && !keys.has(this.state.sel)) this.state.sel = null;
     if (this.isOpen) this.render();
   }
@@ -131,7 +148,7 @@ export class Explorer {
 
   // ---------- état ----------
 
-  #sort() { return this.state.view === 'recent' ? this.state.recentSort : this.state.sort; }
+  #sort() { return ({ recent: this.state.recentSort, trash: this.state.trashSort })[this.state.view] || this.state.sort; }
 
   get #filtering() { return words(this.state.q).length > 0 || this.state.type !== 'all'; }
 
@@ -142,7 +159,7 @@ export class Explorer {
     return {
       t: this.#opts.i18n.t, state, locale: this.#opts.locale, now: this.#opts.now(), appName: this.#opts.appName, typeLabel: this.#opts.typeLabel,
       lockOf: this.#opts.lockOf, opensIn: file => this.#opensIn(file), sort: this.#sort(), filtering: this.#filtering, favCount: this.#pool.filter(file => file.pinned).length, totalFiles: this.#pool.length,
-      selected: row, personal: this.#opts.personal(), choosing: this.#choice !== null, ...extra,
+      trashCount: this.#trashed.length, selected: row, personal: this.#opts.personal(), choosing: this.#choice !== null, ...extra,
     };
   }
 
@@ -181,7 +198,7 @@ export class Explorer {
     const { list, scroll, empty, notices } = this.#refs;
     const top = scroll.scrollTop;
     const focused = this.#focusedKey();
-    const result = listItems(this.#pool, { ...this.state, sort: this.#sort() }, { locale: this.#opts.locale, typeLabel: this.#opts.typeLabel });
+    const result = listItems(this.#shown, { ...this.state, sort: this.#sort() }, { locale: this.#opts.locale, typeLabel: this.#opts.typeLabel });
     this.#rows = result.rows;
     const keys = this.#rows.map(r => (r.kind === 'folder' ? `dir:${r.path}` : r.file.key));
     if (this.state.sel && !keys.includes(this.state.sel)) this.state.sel = null;
@@ -190,7 +207,7 @@ export class Explorer {
     const cards = this.#rows.map(r => (tiles ? tile(ctx, r) : (r.kind === 'folder' ? folderRow(ctx, r) : fileRow(ctx, r.file, result.flat))));
     list.replaceChildren(...(tiles ? [h('div', { class: 'th-grid' }, ...cards)] : [listHead(ctx), ...cards]));
     list.classList.toggle('is-tiles', tiles);
-    notices.replaceChildren(...this.#problems.map(text => h('div', { class: 'banner', role: 'alert' }, icon('warning'), text)));
+    notices.replaceChildren(...this.#problems.map(text => h('div', { class: 'banner', role: 'alert' }, icon('warning'), text)), ...(this.state.view === 'trash' && this.#trashed.length ? [trashBar(ctx)] : []));
     const message = this.#loading ? this.#opts.i18n.t('ex.loading') : (this.#rows.length ? '' : (this.#restricted ? this.#opts.i18n.t('ex.emptyNoAccess') : emptyMessage(ctx)));
     empty.textContent = message;
     empty.hidden = !message;
@@ -227,8 +244,9 @@ export class Explorer {
     if (!this.#choice) this.#refs.openBtn.textContent = open.label;
   }
 
-  // Le geste principal d'un fichier : « Ouvrir », ou celui d'un fichier que GFS garde (js/kept-files.js).
+  // Le geste principal d'un fichier : « Ouvrir », ou celui d'un fichier que GFS garde (js/kept-files.js) ; à la corbeille : « Restaurer ».
   #openAs(file) {
+    if (this.state.view === 'trash') return { label: this.#opts.i18n.t('trash.restore'), icon: 'restore', greyed: false };
     if (!this.#choice && file && this.#kept.has(file)) return this.#kept.openAs(file);
     return { label: this.#opts.i18n.t('ex.open'), icon: 'open', greyed: false };
   }
@@ -240,12 +258,12 @@ export class Explorer {
     for (const row of rows) row.tabIndex = row === chosen ? 0 : -1;
   }
 
-  #types() { return typeChoices(this.#pool, this.#opts.typeLabel); }
+  #types() { return typeChoices(this.#shown, this.#opts.typeLabel); }
 
   // ---------- gestes ----------
 
   #bind() {
-    const { search, viewList, viewTiles, typeBtn, newBtn, openBtn, closeBtn, appsBtn, langBtn, themeBtn, demoBtn, crumbs: crumbsNav, tree: treeNav, list } = this.#refs;
+    const { search, viewList, viewTiles, typeBtn, newBtn, openBtn, closeBtn, appsBtn, langBtn, themeBtn, demoBtn, crumbs: crumbsNav, tree: treeNav, list, notices } = this.#refs;
     if (this.#opts.onDemo) {
       demoBtn.hidden = false;
       demoBtn.addEventListener('click', () => this.#opts.onDemo());
@@ -265,6 +283,8 @@ export class Explorer {
     list.addEventListener('click', event => this.#onList(event));
     list.addEventListener('dblclick', event => { const row = event.target.closest('[data-key]'); if (row && !event.target.closest('button')) this.#activate(row.dataset.key); });
     list.addEventListener('keydown', event => this.#onListKey(event));
+    list.addEventListener('contextmenu', event => this.#onContext(event));
+    notices.addEventListener('click', event => { if (event.target.closest('[data-empty-trash]')) void this.#emptyTrash(); });
     // Échap sur le document : il ferme aussi quand le focus est tombé sur le fond (clic dans une zone vide, liste redessinée). Un menu ou une
     // fenêtre qui l'a pris pour lui (preventDefault, stopPropagation) passe avant.
     this.root.ownerDocument.addEventListener('keydown', event => { if (this.isOpen) this.#onKey(event); });
@@ -285,6 +305,7 @@ export class Explorer {
   }
 
   #goView(view) {
+    if (view === 'trash' && this.#choice) { this.#opts.notice(this.#opts.i18n.t('ex.choose.newOff')); return; }
     Object.assign(this.state, { view, q: '', type: 'all', sel: null });
     this.#refs.search.value = '';
     this.render();
@@ -307,10 +328,12 @@ export class Explorer {
   #onList(event) {
     const sort = event.target.closest('[data-sort]');
     const pin = event.target.closest('[data-pin]');
+    const restore = event.target.closest('[data-restore]');
     const more = event.target.closest('[data-menu]');
     const row = event.target.closest('[data-key]');
     if (sort) this.#setSort(sort.dataset.sort);
     else if (pin) this.#togglePin(pin.dataset.pin);
+    else if (restore) void this.#restore(restore.dataset.restore);
     else if (more) this.#rowMenu(more.dataset.menu, more);
     else if (row) this.#select(row.dataset.key, false);
   }
@@ -334,23 +357,57 @@ export class Explorer {
     this.#renderInfo();
   }
 
+  // Les touches de la liste (js/explorer-keys.js). La ligne visée par un geste est la ligne choisie, sinon celle où est le clavier : à l'ouverture, le clavier est sur la première ligne sans qu'aucune
+  // soit choisie, et Entrée, F2 ou Suppr doivent y répondre.
   #onListKey(event) {
+    const action = listAction(event, { display: this.state.display, filtering: this.#filtering });
+    if (!action || (event.target.closest('button') && !FROM_BUTTONS.has(action))) return;
     const rows = [...this.#refs.list.querySelectorAll('[data-key]')];
-    if (!rows.length || event.target.closest('button')) return;
+    if (!rows.length) return;
     const at = rows.findIndex(row => row.dataset.key === this.state.sel);
+    const here = rows[at >= 0 ? at : rows.findIndex(row => row.contains(event.target))] || null;
     const go = index => { event.preventDefault(); this.#select(rows[Math.min(Math.max(index, 0), rows.length - 1)].dataset.key, true); };
-    const tiles = this.state.display === 'tiles';
-    const forward = tiles ? 'ArrowRight' : 'ArrowDown';
-    const back = tiles ? 'ArrowLeft' : 'ArrowUp';
-    if (event.key === forward) go(at + 1);
-    else if (event.key === back) go(at < 0 ? 0 : at - 1);
-    else if (event.key === 'Home') go(0);
-    else if (event.key === 'End') go(rows.length - 1);
-    else if (event.key === 'Enter' && at >= 0) { event.preventDefault(); this.#activate(rows[at].dataset.key); }
+    const onRow = run => { if (here) { event.preventDefault(); run(here.dataset.key, here); } };
+    if (action === 'next') go(at + 1);
+    else if (action === 'prev') go(at < 0 ? 0 : at - 1);
+    else if (action === 'down' || action === 'up') go(stepRow(at, this.#columns(rows), rows.length, action === 'down' ? 1 : -1));
+    else if (action === 'first') go(0);
+    else if (action === 'last') go(rows.length - 1);
+    else if (action === 'parent') this.#goParent(event);
+    else if (action === 'activate') onRow(key => this.#activate(key));
+    else if (action === 'rename') onRow(key => this.#renameKey(key));
+    else if (action === 'delete') onRow(key => { this.#select(key, false); void this.#trashKey(key); });
+    else if (action === 'menu') onRow((key, row) => this.#rowMenu(key, row.querySelector('[data-menu]') || row));
+  }
+
+  // Le nombre de vignettes par rangée : celles qui sont à la hauteur de la première.
+  #columns(rows) { return rows.filter(row => row.offsetTop === rows[0].offsetTop).length; }
+
+  // Retour arrière : le dossier parent ; depuis Récents, Favoris ou la corbeille, la racine ; à la racine, rien.
+  #goParent(event) {
+    const { view, path } = this.state;
+    if (view === 'folder' && path === '') return;
+    event.preventDefault();
+    this.#goFolder(view === 'folder' ? parentPath(path) : '');
+  }
+
+  // Le clic droit : le menu de la ligne, comme « ⋯ » (le clavier le demande par Maj+F10 ou la touche Menu, dans #onListKey).
+  #onContext(event) {
+    const row = event.target.closest('[data-key]');
+    if (!row) return;
+    event.preventDefault();
+    this.#rowMenu(row.dataset.key, row.querySelector('[data-menu]') || row);
   }
 
   #onKey(event) {
-    if (event.key !== 'Escape' || event.defaultPrevented) return;
+    if (event.defaultPrevented) return;
+    if (isSearchKey(event) && this.root.contains(event.target) && !menuIsOpen()) {
+      event.preventDefault();
+      this.#refs.search.focus();
+      this.#refs.search.select();
+      return;
+    }
+    if (event.key !== 'Escape') return;
     if (event.target === this.#refs.search && this.#refs.search.value) {
       this.#refs.search.value = '';
       this.state.q = '';
@@ -373,6 +430,7 @@ export class Explorer {
   // Un fichier s'ouvre dans son app, ou, en mode choix, est désigné à l'app qui le demandait.
   #activate(key) {
     if (key.startsWith('dir:')) { this.#goFolder(key.slice(4)); return; }
+    if (this.state.view === 'trash') { void this.#restore(key); return; }
     const file = this.#files.find(item => item.key === key);
     if (!file) return;
     if (this.#choice) this.#choice.onPick(file); else this.#opts.onOpen(file);
@@ -417,36 +475,92 @@ export class Explorer {
     openMenu(this.#refs.newBtn, items, { host: this.root, align: 'right', label: t('ex.new') });
   }
 
-  // Le menu d'une ligne. Dupliquer et supprimer touchent au fichier lui-même : grisés, ils disent que l'app le fait ; un fichier que GFS garde se supprime ici.
+  // Le menu d'une ligne. Dupliquer touche au fichier lui-même : grisé, il dit que l'app le fait. Supprimer passe par la corbeille : un fichier qu'aucun gardien ne connaît (js/trash.js) grise l'article
+  // et dit pourquoi ; un dossier n'existe que par ses fichiers, son article dit comment le faire disparaître. À la corbeille : « Restaurer » et « Supprimer définitivement… ».
   #rowMenu(key, anchor) {
     const { t } = this.#opts.i18n;
     const { filing } = this.#opts;
     this.#select(key, false);
-    const item = (label, glyph, run) => ({ label, icon: glyph, run });
+    const item = (label, glyph, run, hint) => ({ label, icon: glyph, run, hint });
     let items;
     if (key.startsWith('dir:')) {
       const path = key.slice(4);
-      items = [item(t('ex.openFolder'), 'open', () => this.#activate(key)), item(t('ex.rename'), 'edit', () => void filing.renameFolder(path)),
-        item(t('ex.move'), 'move', () => void filing.moveFolder(path))];
+      items = [item(t('ex.openFolder'), 'open', () => this.#activate(key), t('key.enter')), item(t('ex.rename'), 'edit', () => void filing.renameFolder(path), 'F2'),
+        item(t('ex.move'), 'move', () => void filing.moveFolder(path)), '-', { ...item(t('trash.move'), 'trash', () => this.#opts.notice(t('trash.folder'))), greyed: true }];
     } else {
-      const file = this.#files.find(entry => entry.key === key);
+      const file = (this.state.view === 'trash' ? this.#trashed : this.#files).find(entry => entry.key === key);
       if (!file) return;
-      items = this.#fileMenu(file);
+      items = this.state.view === 'trash' ? this.#trashMenu(file) : this.#fileMenu(file);
     }
     openMenu(anchor, items, { host: this.root, align: 'right', label: t('ex.more') });
+  }
+
+  #trashMenu(file) {
+    const { t } = this.#opts.i18n;
+    return [{ label: t('trash.restore'), icon: 'restore', hint: t('key.enter'), run: () => void this.#restore(file.key) }, '-',
+      { label: t('trash.purge'), icon: 'trash', hint: t('key.delete'), run: () => void this.#purge(file.key) }];
   }
 
   #fileMenu(file) {
     const { t } = this.#opts.i18n;
     const { filing } = this.#opts;
     const kept = this.#kept.has(file);
-    const item = (label, glyph, run) => ({ label, icon: glyph, run });
+    const item = (label, glyph, run, hint) => ({ label, icon: glyph, run, hint });
     const grey = (label, glyph, notice) => ({ label, icon: glyph, greyed: true, run: () => this.#opts.notice(notice) });
     const appOnly = t('ex.notice.appOnly', { app: this.#opts.appName(file.app) });
     const open = this.#choice ? { label: t('ex.choose.pick'), icon: 'open', greyed: false } : this.#openAs(file);
     const extras = kept && !this.#choice ? this.#kept.extras(file) : [];
-    return [{ ...item(open.label, open.icon, () => this.#activate(file.key)), greyed: open.greyed }, ...extras, item(file.pinned ? t('ex.unpin') : t('ex.pin'), 'pin', () => void filing.togglePin(file)),
-      item(t('ex.rename'), 'edit', () => void filing.rename(file)), grey(t('ex.duplicate'), 'copy', kept ? this.#kept.copyNotice() : appOnly), item(t('ex.move'), 'move', () => void filing.moveFile(file)),
-      '-', kept ? item(t('ex.delete'), 'trash', () => void this.#kept.remove(file)) : grey(t('ex.delete'), 'trash', appOnly)];
+    // Mettre à la corbeille : grisé pendant un choix, et pour un fichier qu'aucun gardien ne connaît ; le clic dit pourquoi.
+    const remove = this.#choice || !this.#bin.handles(file)
+      ? grey(t('trash.move'), 'trash', this.#choice ? t('ex.choose.newOff') : t('trash.appOnly', { app: this.#opts.appName(file.app) }))
+      : item(t('trash.move'), 'trash', () => void this.#trashKey(file.key), t('key.delete'));
+    return [{ ...item(open.label, open.icon, () => this.#activate(file.key), t('key.enter')), greyed: open.greyed }, ...extras, item(file.pinned ? t('ex.unpin') : t('ex.pin'), 'pin', () => void filing.togglePin(file)),
+      item(t('ex.rename'), 'edit', () => void filing.rename(file), 'F2'), grey(t('ex.duplicate'), 'copy', kept ? this.#kept.copyNotice() : appOnly), item(t('ex.move'), 'move', () => void filing.moveFile(file)),
+      '-', remove];
+  }
+
+  // ---------- la corbeille ----------
+
+  // Suppr, ou « Mettre à la corbeille » : le fichier part à la corbeille (pas de question : rien ne s'efface) et la ligne suivante prend le clavier. À la corbeille, Suppr supprime pour de bon.
+  async #trashKey(key) {
+    const { t } = this.#opts.i18n;
+    if (this.#choice) { this.#opts.notice(t('ex.choose.newOff')); return; }
+    if (this.state.view === 'trash') { await this.#purge(key); return; }
+    if (key.startsWith('dir:')) { this.#opts.notice(t('trash.folder')); return; }
+    const file = this.#files.find(item => item.key === key);
+    if (!file) return;
+    if (!this.#bin.handles(file)) { this.#opts.notice(t('trash.appOnly', { app: this.#opts.appName(file.app) })); return; }
+    await this.#leaving(key, () => this.#bin.move(file));
+  }
+
+  #restore(key) {
+    const file = this.#trashed.find(item => item.key === key);
+    return file ? this.#leaving(key, () => this.#bin.restore(file)) : Promise.resolve();
+  }
+
+  #purge(key) {
+    const file = this.#trashed.find(item => item.key === key);
+    return file ? this.#leaving(key, () => this.#bin.purge(file)) : Promise.resolve();
+  }
+
+  async #emptyTrash() {
+    if (!this.#choice && this.#trashed.length) await this.#bin.empty([...this.#trashed]);
+  }
+
+  // Un geste qui fait partir la ligne `key` de la liste : quand il a abouti, le clavier passe à la ligne qui la suivait (ou la précédait), comme dans un explorateur de fichiers.
+  async #leaving(key, run) {
+    const keys = this.#rows.map(row => (row.kind === 'folder' ? `dir:${row.path}` : row.file.key));
+    const at = keys.indexOf(key);
+    const next = keys[at + 1] || keys[at - 1] || null;
+    if (await run() && next && this.isOpen && [...this.#refs.list.querySelectorAll('[data-key]')].some(row => row.dataset.key === next)) this.#select(next, true);
+  }
+
+  // F2 : renommer le dossier ou le fichier. À la corbeille, un fichier se restaure d'abord.
+  #renameKey(key) {
+    if (this.state.view === 'trash') return;
+    const { filing } = this.#opts;
+    if (key.startsWith('dir:')) { void filing.renameFolder(key.slice(4)); return; }
+    const file = this.#files.find(item => item.key === key);
+    if (file) void filing.rename(file);
   }
 }

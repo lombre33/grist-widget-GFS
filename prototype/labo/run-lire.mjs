@@ -52,9 +52,9 @@ async function playBeforeApp(run) {
   await shot(frame, 'lire-1-grise');
   await openRowMenu(frame, 'Facture.pdf');
   const items = await menuItems(frame);
-  check('le menu de la ligne : Lire (grisé), puis Télécharger, Épingler, Renommer, Dupliquer (grisé), Déplacer, Supprimer',
+  check('le menu de la ligne : Lire (grisé), puis Télécharger, Épingler, Renommer, Dupliquer (grisé), Déplacer, Mettre à la corbeille',
     JSON.stringify(items) === JSON.stringify([{ label: t('files.read'), greyed: true }, { label: t('files.download'), greyed: false }, { label: t('ex.pin'), greyed: false }, { label: t('ex.rename'), greyed: false },
-      { label: t('ex.duplicate'), greyed: true }, { label: t('ex.move'), greyed: false }, { label: t('ex.delete'), greyed: false }]), items);
+      { label: t('ex.duplicate'), greyed: true }, { label: t('ex.move'), greyed: false }, { label: t('trash.move'), greyed: false }]), items);
   await shot(frame, 'lire-2-menu');
   await page.keyboard.press('Escape');
   await frame.locator('.menu').waitFor({ state: 'detached' });

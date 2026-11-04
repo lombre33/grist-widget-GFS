@@ -25,12 +25,20 @@ export const normalizePath = path => text(path).split('/').map(part => part.trim
 
 const rowCount = data => (data && Array.isArray(data.id) ? data.id.length : 0);
 
+// À la corbeille ? `marker` = `corbeille` du manifeste ({ date, par }) : le fichier y est quand sa colonne de date porte une date. Rend { ts, by } (la date du geste, son auteur) ou null.
+function trashOf(marker, data, i) {
+  if (!marker) return null;
+  const ts = seconds(cell(data, marker.date, i));
+  return ts !== null && ts > 0 ? { ts, by: text(cell(data, marker.par, i)) } : null;
+}
+
 function isExcluded(spec, data, i) {
   return Object.entries(spec.exclure || {}).some(([column, values]) => Array.isArray(values) && values.includes(text(cell(data, column, i))));
 }
 
-// Les fichiers d'une table : { key, app, id, table, row, name, type, typeInfo, known, family, icon, ts, by, folder, pinned, search } ; `table` et `row` : la table
-// du manifeste et la ligne de Grist (renommer).
+// Les fichiers d'une table : { key, app, id, table, row, name, type, typeInfo, known, family, icon, ts, by, folder, pinned, trashed, search } ; `table` et `row` : la table
+// du manifeste et la ligne de Grist (renommer) ; `trashed` : { ts, by } quand le fichier est à la corbeille (le manifeste déclare alors `corbeille`), sinon null. La liste des fichiers vivants
+// et celle de la corbeille se séparent après la lecture (js/explorer-data.js) : ce modèle rend tout, le fichier à la corbeille a gardé son nom, son dossier et son type.
 // `typeInfo` est l'entrée de `types` qui porte le type, ou null : un type que le manifeste ne connaît pas est listé grisé (6.5, point 3).
 export function readFiles(manifest, spec, data) {
   const cols = spec.colonnes || {};
@@ -46,7 +54,7 @@ export function readFiles(manifest, spec, data) {
       key: `${manifest.id}:${rawId}`, app: manifest.id, id: String(rawId), table: spec.table, row: data.id[i], name, type, typeInfo, known: Boolean(typeInfo),
       family: (typeInfo && FAMILIES[typeInfo.couleur]) || '', icon: (typeInfo && typeInfo.icone) || 'doc',
       ts: seconds(cell(data, cols.date, i)), by: text(cell(data, cols.par, i)), folder: normalizePath(cell(data, cols.dossier, i)), pinned: false,
-      search: '',
+      trashed: trashOf(spec.corbeille, data, i), search: '',
     });
   }
   return files;
@@ -156,16 +164,21 @@ export function pathParts(path) {
   return parts;
 }
 
+// Ce que les colonnes « Modifié » et « Par » disent d'un fichier : sa dernière modification et son auteur, ou, à la corbeille, la date du geste qui l'y a mis et son auteur.
+export const stampOf = file => (file.trashed ? file.trashed.ts : file.ts);
+export const authorOf = file => (file.trashed ? file.trashed.by : file.by);
+
 const SORTERS = {
   name: (a, b, c) => c.name(a, b),
   type: (a, b, c) => (a.typeInfo ? c.label(a) : a.type).localeCompare(b.typeInfo ? c.label(b) : b.type, c.locale, { sensitivity: 'base' }),
-  mod: (a, b) => (a.ts ?? -Infinity) - (b.ts ?? -Infinity),
-  by: (a, b, c) => a.by.localeCompare(b.by, c.locale, { sensitivity: 'base' }),
+  mod: (a, b) => (stampOf(a) ?? -Infinity) - (stampOf(b) ?? -Infinity),
+  by: (a, b, c) => authorOf(a).localeCompare(authorOf(b), c.locale, { sensitivity: 'base' }),
 };
 
 // Les lignes affichées : { rows: [{ kind: 'folder', ... } | { kind: 'file', file }], flat }.
-// `state` : { view: 'folder'|'recent'|'fav', path, q, type, sort: { key, dir } } ; `locale` : pour le tri ; `typeLabel(file)` : le nom du type dans la langue.
-// Récents garde d'abord les huit plus récents, puis les trie comme demandé (l'explorateur y commence par « modifié, le plus récent d'abord »).
+// `state` : { view: 'folder'|'recent'|'fav'|'trash', path, q, type, sort: { key, dir } } ; `locale` : pour le tri ; `typeLabel(file)` : le nom du type dans la langue.
+// Récents garde d'abord les huit plus récents, puis les trie comme demandé (l'explorateur y commence par « modifié, le plus récent d'abord »). La corbeille est une liste à plat : `files` est alors
+// celle des fichiers qui y sont, tous montrés, sans dossier.
 export function listItems(files, state, { locale, typeLabel }) {
   const needles = words(state.q);
   const filtering = needles.length > 0 || state.type !== 'all';
@@ -174,7 +187,7 @@ export function listItems(files, state, { locale, typeLabel }) {
   let flat = true;
   if (state.view === 'recent') pool = [...files].sort((a, b) => (b.ts ?? -Infinity) - (a.ts ?? -Infinity)).slice(0, RECENT_LIMIT);
   else if (state.view === 'fav') pool = files.filter(file => file.pinned);
-  else if (filtering) pool = files;
+  else if (filtering || state.view === 'trash') pool = files;
   else { pool = files.filter(file => file.folder === state.path); flat = false; }
   pool = pool.filter(file => (state.type === 'all' || file.type === state.type) && matchesWords(needles, file.search));
   const sorter = SORTERS[state.sort.key] || SORTERS.name;

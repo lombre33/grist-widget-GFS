@@ -73,3 +73,16 @@ test('feed rend la sorte du message et prévient les abonnés', () => {
   state.feed(record(3));
   assert.deepEqual(seen, [['table', 1], ['record', 2]]);
 });
+
+test('whenTable : rend le message de table déjà reçu, attend le premier sinon, et lâche passé le délai (une section sans table)', async () => {
+  const early = new GristState();
+  early.feed(table(1));
+  assert.equal((await early.whenTable(10)).tableId, 'Clients', 'déjà reçu');
+  const late = new GristState();
+  const waiting = late.whenTable(2000);
+  late.feed(record(2)); // un message de ligne n'est pas le message de table
+  late.feed(table(1));
+  assert.equal((await waiting).tableId, 'Clients', 'le premier message de table réveille');
+  const none = new GristState();
+  assert.equal(await none.whenTable(20), null, 'sans table, rend null au lieu de bloquer le démarrage');
+});

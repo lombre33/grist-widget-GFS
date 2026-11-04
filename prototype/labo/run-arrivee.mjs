@@ -5,6 +5,9 @@
 //      un modèle disparu (le ★). Rien n'est écrit : ni modèle, ni table, ni réglage ; la barre de GFS est là, « Fichiers » ouvre l'explorateur et Échap ramène à la même app, intacte.
 //   3. La fenêtre « Apps et extensions » du premier lancement ne passe pas par-dessus une app qui s'ouvre toute seule ; sans app, elle s'ouvre comme avant.
 //   4. Automation+ pour son graphe (`workflow`) : installée, elle s'ouvre ; non installée, l'explorateur ; Publipostage+ et Automation+ servies toutes deux, GFS ne devine pas : l'explorateur.
+//   5. Automation+ pour sa table (contrats 2.5, point 4) : 0.15.0 garde son graphe dans la table `Automation` et n'écrit plus la clé `workflow`. Une vue sans aucun réglage, dont la table a une ligne
+//      `Workflow` dans `Automation`, s'ouvre sur Automation+ (la ligne est écrite par la vraie app, à la souris) ; la ligne d'une autre table, ou d'un autre type, ne désigne pas la vue ; un réglage de la
+//      vue (le modèle de Publipostage+) parle avant la table. Rien n'est écrit par l'arrivée.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark, LAB_READONLY=1 (la section est en lecture seule : l'app s'ouvre aussi, et la fenêtre du premier lancement ne vient pas).
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
@@ -30,6 +33,10 @@ page.on('console', message => {
   if (message.type() === 'error' && /127\.0\.0\.1:8911/.test(message.location().url || '')) errors.push(message.text());
 });
 page.on('pageerror', error => errors.push(error.message));
+// L'instant (depuis le chargement du cadre de GFS) où il se déclare prêt : ce que coûte l'arrivée, lecture de la table comprise.
+await page.addInitScript(() => {
+  new MutationObserver((records, observer) => { if (document.body && document.body.dataset.gfs === 'ready') { window.__gfsReadyAt = Math.round(performance.now()); observer.disconnect(); } }).observe(document, { attributes: true, subtree: true, attributeFilter: ['data-gfs'] });
+});
 await page.addInitScript(() => { window.__csp = []; document.addEventListener('securitypolicyviolation', event => window.__csp.push(`${event.violatedDirective} ${event.blockedURI}`)); });
 await lab.fitPanel(undefined, 700, 400);
 await seedFiles(lab.frame);
@@ -202,10 +209,87 @@ if (!readonly) {
   await arrivesOnPublipostage(DOCUMENT, 'le modèle de la vue seul, Automation+ installée : Publipostage+ s\'ouvre sur le modèle');
 }
 
+// ===== 6. Automation+ pour sa table : le graphe est dans `Automation`, la vue n'a aucun réglage.
+if (!readonly) {
+  say('--- 6. Automation+ pour sa table');
+  const automationRows = () => frame.evaluate(async () => {
+    if (!(await grist.docApi.listTables()).includes('Automation')) return null;
+    const data = await grist.docApi.fetchTable('Automation');
+    return data.id.map((id, i) => ({ id, Type: data.Type[i], Table: data.Table[i] }));
+  });
+  const readyAt = () => frame.evaluate(() => window.__gfsReadyAt ?? null);
+  const visibleText = text => app.locator(`text="${text}" >> visible=true`);
+  const arrivesOnAutomation = async label => {
+    const ok = !(await explorerShown()) && appIds().join() === 'automation' && (await barShown());
+    check(label, ok, { explorateur: await explorerShown(), apps: appIds(), barre: await barShown() });
+  };
+
+  await setOptions({});
+  await restart();
+  await showsExplorer('Automation+ installée, sa table pas encore créée, aucun réglage : l\'explorateur (GFS ne crée rien pour la chercher)');
+  check('la table `Automation` n\'existe toujours pas', (await automationRows()) === null, await automationRows());
+  const waited = { sansTable: await readyAt() };
+
+  // La vraie app, à la souris : elle demande l'accord, crée sa table, et range le graphe dans une ligne `Workflow`.
+  app = await lab.openApp('automation', /\/apps\/automation\//, frame);
+  await app.getByRole('button', { name: /Créer la table|Create the table/ }).click();
+  for (const kind of lang === 'fr' ? ['Déclencheur', 'Action'] : ['Trigger', 'Action']) {
+    await app.locator('#add-node').click();
+    await visibleText(kind).last().click();
+    await page.waitForTimeout(500);
+  }
+  let rows = null;
+  for (let i = 0; i < 40 && !(rows && rows.some(row => row.Type === 'Workflow')); i++) { await page.waitForTimeout(500); rows = await automationRows(); }
+  const workflow = rows && rows.find(row => row.Type === 'Workflow');
+  check('l\'app a rangé son graphe dans une ligne `Workflow` de la table `Automation`', Boolean(workflow), rows);
+  check('et n\'a rien écrit dans les réglages de la vue (pas de clé `workflow`)', ((await options()) || {}).workflow === undefined, await options());
+  const viewTable = workflow ? workflow.Table : null;
+
+  // L'arrivée : la vue n'a aucun réglage, la table dit qu'elle est celle d'Automation+.
+  const beforeTable = JSON.stringify({ options: await options(), tables: await frame.evaluate(() => grist.docApi.listTables()) });
+  await lab.forgetActions();
+  await restart();
+  await page.waitForTimeout(1500);
+  await arrivesOnAutomation('la ligne `Workflow` de la table de la vue, aucun réglage : Automation+ s\'ouvre, l\'explorateur reste fermé, la barre de GFS est là');
+  waited.parTable = await readyAt();
+  const written = await lab.actions();
+  say('ce que le moteur a reçu pendant l\'arrivée :', JSON.stringify([...new Set(written)]));
+  // La table du rangement existe depuis la partie 4 : GFS y pose, au démarrage, sa ligne de sonde (pour apprendre l'adresse de la personne, contrats 6.4, point 6), puis la retire. Ce n'est pas l'arrivée.
+  const probeOnly = action => /^AddRecord GFS_Rangement \[@sonde\]$|^RemoveRecord GFS_Rangement$/.test(action);
+  check('l\'arrivée n\'écrit ni table, ni réglage de la vue, ni rangement (hors la sonde d\'identité de GFS)', !written.some(action => !probeOnly(action) && /^AddTable|^RemoveTable|^RenameTable|GFS_Rangement|_grist_Views_section/.test(action)) && !written.some(action => /Automation/.test(action) && !/^AddRecord Automation|^UpdateRecord Automation/.test(action)), written);
+  check('les réglages de la section et la liste des tables sont intacts', JSON.stringify({ options: await options(), tables: await frame.evaluate(() => grist.docApi.listTables()) }) === beforeTable);
+  await lab.shotPanel(run, '6-automation-par-sa-table', frame);
+
+  // Un réglage de la vue parle avant la table : le modèle de Publipostage+.
+  await setOptions({ modeleDeLaVue: DOCUMENT.id });
+  await restart();
+  await arrivesOnPublipostage(DOCUMENT, 'le modèle de la vue de Publipostage+ parle avant la table : Publipostage+ s\'ouvre, même avec la ligne `Workflow` d\'Automation+');
+
+  // La ligne ne désigne pas la vue : une autre table, ou un autre type de ligne.
+  const rowId = workflow ? workflow.id : 0;
+  const setRow = values => frame.evaluate(({ rowId, values }) => grist.docApi.applyUserActions([['UpdateRecord', 'Automation', rowId, values]]), { rowId, values });
+  await setOptions({});
+  await setRow({ Table: 'Une_autre_table' });
+  await restart();
+  await showsExplorer('la ligne `Workflow` est celle d\'une autre table : l\'explorateur');
+  waited.autreTable = await readyAt();
+  await setRow({ Table: viewTable, Type: 'Log' });
+  await restart();
+  await showsExplorer('une ligne `Log` de cette table n\'est pas un graphe : l\'explorateur');
+  await setRow({ Type: 'Workflow' });
+  await restart();
+  await page.waitForTimeout(1500);
+  await arrivesOnAutomation('la ligne rétablie : Automation+ s\'ouvre de nouveau (le refus d\'avant n\'était pas un hasard de délai)');
+  say('instant où GFS se déclare prêt (ms depuis le chargement du cadre) :', JSON.stringify({ ...waited, parTableRetablie: await readyAt() }));
+}
+
 // En lecture seule, le courtier refuse (GFS_LECTURE_SEULE) les écritures que l'app tente à son premier départ (la migration de ses colonnes, dans un document que la lecture seule n'a pas laissé la migrer d'abord) :
 // ce sont ces refus-là, et eux seuls, que l'essai n'écarte pas ; ils ne viennent pas de l'arrivée.
-const expected = text => readonly && /GFS_LECTURE_SEULE|Document ouvert en lecture seule/.test(text);
-say('refus attendus en lecture seule (migration des colonnes de l\'app) :', warnings.filter(expected).length + errors.filter(expected).length);
+// Ni l'un ni l'autre ne vient de l'arrivée. 1) En lecture seule : les refus du courtier (ci-dessus). 2) À la création de sa table, Automation+ demande une colonne « Auteur » à formule déclenchée (`user.Email`) ; sans la capacité
+// « formules » (contrats 3.4, point 2), le courtier refuse, et l'app recrée la table sans formule (sa colonne Auteur reste vide, store.js, `ensureTables`) : un constat de la 0.15.0 dans GFS, dit plus bas, pas une erreur de l'arrivée.
+const formulaRefusal = text => /automation : GristDocAPI\.applyUserActions refusé \(GFS_REFUSE\) : Action 1 refusée : Une colonne à formule demande la capacité « formules »/.test(text);
+const expected = text => (readonly && /GFS_LECTURE_SEULE|Document ouvert en lecture seule/.test(text)) || formulaRefusal(text);
+say('refus attendus (lecture seule : migration des colonnes de l\'app ; Automation+ : la colonne Auteur à formule) :', warnings.filter(expected).length + errors.filter(expected).length, '— dont la colonne Auteur d\'Automation+ :', warnings.filter(formulaRefusal).length);
 check('aucune phrase d\'avertissement de GFS (courtier, refus) pendant tout l\'essai', warnings.filter(text => !expected(text)).length === 0, warnings.filter(text => !expected(text)));
 check('aucune erreur de script', errors.filter(text => !expected(text)).length === 0, errors.filter(text => !expected(text)));
 // Le seul refus connu et accepté (rapport.md, « Accepté ») : le style en ligne que pose le script d'API de Grist dans le cadre de GFS ; il vient à chaque chargement de GFS, sans effet visible.

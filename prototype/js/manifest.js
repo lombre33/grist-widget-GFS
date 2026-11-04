@@ -93,6 +93,18 @@ function checkSettings(m, errors) {
 
 const covered = (lit, pattern) => lit.includes('*') || lit.includes(pattern) || lit.some(p => p.endsWith('*') && pattern.startsWith(p.slice(0, -1)));
 
+// `arrivee` (facultatif, contrats 2.5, point 4) : où GFS lit, sans réglage de la vue, que la section est celle de l'app. { table, colonne, lignes } : la table de l'app, la colonne qui dit la table
+// de la vue, et les valeurs que doit porter la ligne (des textes, comparés tels quels). La table doit être de celles que l'app lit.
+function checkArrival(m, errors) {
+  if (m.arrivee === undefined) return;
+  const a = m.arrivee;
+  if (!isObject(a)) { errors.push('arrivee : objet attendu'); return; }
+  if (!isText(a.table)) errors.push('arrivee.table : chaîne attendue');
+  else if (isObject(m.permissions) && Array.isArray(m.permissions.lit) && !covered(m.permissions.lit, a.table)) errors.push(`arrivee.table ${a.table} : une table que l'app ne lit pas`);
+  if (!isText(a.colonne)) errors.push('arrivee.colonne : chaîne attendue');
+  if (a.lignes !== undefined && (!isObject(a.lignes) || !Object.values(a.lignes).every(isText))) errors.push('arrivee.lignes : un objet de chaînes attendu');
+}
+
 function checkPatterns(perm, errors) {
   for (const key of ['lit', 'ecrit']) {
     if (perm[key] !== undefined && (!Array.isArray(perm[key]) || !perm[key].every(isText))) errors.push(`permissions.${key} : liste de motifs attendue`);
@@ -280,6 +292,7 @@ export function validateManifest(m, others = []) {
   checkFiles(m, errors);
   checkSettings(m, errors);
   checkPermissions(m, errors);
+  checkArrival(m, errors);
   checkImports(m, errors);
   checkReads(m, errors);
   checkFiled(m, errors);

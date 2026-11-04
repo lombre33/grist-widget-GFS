@@ -37,6 +37,19 @@ test('contrats 2.3 et 2.5 : préfixes qui ne se chevauchent pas, clés de régla
   assert.match(bad(m => { m.id = 'automation'; }, [other]), /déjà pris/);
 });
 
+test('contrats 2.5 point 4 : `arrivee` dit la table, la colonne et les lignes qui repèrent la vue ; facultative, bien formée quand elle est là', () => {
+  const ok = (arrivee, mutate = () => {}) => { const m = automation(); m.arrivee = arrivee; mutate(m); return validateManifest(m, [publipostage()]); };
+  assert.deepEqual(ok({ table: 'Automation', colonne: 'Table', lignes: { Type: 'Workflow' } }), { ok: true, errors: [] });
+  assert.deepEqual(ok({ table: 'Automation', colonne: 'Table' }), { ok: true, errors: [] }, 'les lignes sont facultatives');
+  assert.deepEqual(ok(undefined), { ok: true, errors: [] }, 'sans `arrivee`, rien ne change');
+  assert.match(ok('Automation').errors.join(' | '), /arrivee : objet/);
+  assert.match(ok({ colonne: 'Table' }).errors.join(' | '), /arrivee\.table/);
+  assert.match(ok({ table: 'Automation' }).errors.join(' | '), /arrivee\.colonne/);
+  assert.match(ok({ table: 'Automation', colonne: 'Table', lignes: ['Workflow'] }).errors.join(' | '), /arrivee\.lignes/);
+  assert.match(ok({ table: 'Automation', colonne: 'Table', lignes: { Type: 3 } }).errors.join(' | '), /arrivee\.lignes/);
+  assert.match(ok({ table: 'Automation', colonne: 'Table' }, m => { m.permissions.lit = ['Clients']; m.permissions.ecrit = []; }).errors.join(' | '), /ne lit pas/, 'une table que l\'app ne lit pas');
+});
+
 test('contrats 2.4 : les tables de fichiers sont dans le préfixe, avec id et nom', () => {
   assert.match(bad(m => { m.fichiers[0].table = 'Clients'; }), /hors du préfixe/);
   assert.match(bad(m => { delete m.fichiers[0].colonnes.id; }), /id et nom/);

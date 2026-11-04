@@ -259,6 +259,7 @@ L'app (sous-cadre sans allow-same-origin)
 | `tables` | objet | oui | `{ "prefixe": "Publipostage_" }` : le préfixe des tables possédées (2.3). |
 | `fichiers` | liste | non | Les tables de fichiers que l'explorateur lit (2.4). |
 | `reglages` | liste | non | Les clés de réglages de la vue que l'app lit et écrit (2.5). |
+| `arrivee` | objet | non | Où GFS lit, dans une table du document, que la section est celle de l'app quand la vue n'a aucun réglage : `{ table, colonne, lignes }` (2.5, point 4). |
 | `permissions` | objet | oui | Accès, tables, tables internes, capacités (section 3). |
 | `extensions` | liste | non | Les extensions de l'app (2.6). |
 | `dependances` | chaîne | non | Chemin de la liste des bibliothèques **natives** de l'app (`package.json`) : celles d'une extension n'y figurent pas (2.6, point 4). |
@@ -314,6 +315,13 @@ Une entrée de `fichiers` par table de fichiers :
 2. [T] Une clé n'est pas déclarée par deux apps du catalogue (l'outil d'envoi le vérifie) et ne commence pas par `gfs.`. Si deux
    apps existantes portaient la même clé, le cas se décide avec le porteur.
 3. [T] Les clés existantes sont gardées telles quelles ; toute clé nouvelle porte le préfixe de son app (Publipostage+ : `pp_`).
+4. [T] **`arrivee`** (facultatif) : une app qui range de quoi rouvrir sa vue dans une table du document, et non dans les réglages de la
+   vue (Automation+ 0.15.0 : son graphe est la ligne `Workflow` de la table `Automation`, et elle n'écrit plus la clé `workflow` quand
+   la table existe), le dit ainsi : `{ "table": "Automation", "colonne": "Table", "lignes": { "Type": "Workflow" } }`. `table` est une
+   table que l'app lit (`permissions.lit`) ; `colonne`, celle de ses colonnes qui dit la table de la vue ; `lignes` (facultatif), les
+   valeurs que doit porter la ligne (des textes, comparés tels quels, `Type` = `Workflow` : un `Log` ou un `Lock` ne désigne pas la
+   vue). GFS ne s'en sert qu'à l'arrivée, aux conditions de 7.4, point 7 ; il ne fait que comparer, il ne lit jamais une valeur comme
+   du code ni comme une adresse. L'app qui garde aussi une clé de réglage (`reglages`) reste reconnue par elle d'abord.
 
 ### 2.6 Les extensions
 
@@ -485,6 +493,8 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
    - un champ obligatoire absent ou d'un autre type ; un `id` ou un préfixe hors format, déjà pris, ou égal à `GFS_` ;
    - `fichiers[].table` hors du préfixe ; une colonne de `colonnes` qui n'est pas une chaîne ;
    - une clé de `reglages` qui commence par `gfs.` ou que le catalogue donne à une autre app ;
+   - dans `arrivee` (2.5, point 4) : autre chose qu'un objet, une `table` ou une `colonne` qui n'est pas une chaîne, une `table` que
+     `permissions.lit` ne couvre pas, des `lignes` qui ne sont pas un objet de chaînes ;
    - dans `permissions` : une règle de la section 3 non tenue (un motif `ecrit` que `lit` ne couvre pas, un `pourquoi` absent,
      une table ou une colonne de la liste fermée 3.3, une entrée `gristInterne` qui lit `_grist_Shares` ou `_grist_Triggers`,
      qui écrit sans `lit: true` ou qui écrit plus d'une table, `lit`/`ecrit`/`gristInterne`/capacités avec un accès autre que
@@ -2211,6 +2221,33 @@ le document, pour que l'installation s'enregistre tout de suite.
    sécurité (hors le style en ligne que le script d'API de Grist pose chez GFS, accepté : rapport du prototype). En lecture seule,
    l'app s'ouvre aussi ; ses écritures de migration sont refusées par le courtier (`GFS_LECTURE_SEULE`), l'arrivée n'en fait
    aucune. L'essai échoue sur l'ancien contrôleur : l'explorateur s'ouvre, avec la fenêtre du premier lancement.
+
+   **Complété le 04/11 : une app qui garde sa vue dans une table** (choix du porteur, « GFS lit sa table » ; `arrivee` du manifeste,
+   2.5, point 4 ; `js/arrival.js`, `js/arrival-table.js`). Automation+ 0.15.0 range son graphe dans la ligne `Workflow` de sa table
+   `Automation` et n'écrit plus la clé `workflow` (ses réglages de vue ne servent plus qu'à défaut de table). La règle :
+   - **un réglage de la section parle avant la table** : si une app qu'on peut ouvrir ici est servie par un réglage (la règle
+     ci-dessus), la table n'est pas lue ; la vue d'un modèle de Publipostage+ reste à Publipostage+, même sur la table de Grist
+     dont Automation+ a un graphe ;
+   - sans réglage qui désigne une app, GFS lit la table que déclare `arrivee`, pour chaque app qu'on peut ouvrir et qui la
+     déclare, par sa propre connexion à Grist (`listTables`, puis `fetchTable` de cette seule table) ; une table absente, vide ou
+     illisible ne dit rien (un avertissement pour l'illisible) ; GFS ne crée jamais la table pour la chercher ;
+   - la section est celle de l'app quand une ligne porte, dans `colonne`, l'identifiant de la table de la section (comparé sans la
+     casse) et, dans chaque colonne de `lignes`, la valeur exacte demandée (`Type` = `Workflow` : une ligne `Log` ou `Lock` ne
+     désigne rien) ; une seule app reconnue s'ouvre, sans consigne ; deux, GFS ne devine pas : l'explorateur ;
+   - la table de la section est celle du dernier message de table de Grist (`GristState.whenTable`, 1,5 s au plus ; une section sans
+     table n'a pas de message : l'explorateur) ; rien n'est écrit ; une valeur lue n'est comparée qu'à un texte, jamais lue comme
+     du code ni comme une adresse.
+   [M] **Mesuré le 04/11** (labo grist-static 0.1.6, Chromium, 700 × 400, à la vraie souris ; `run-arrivee.mjs`, partie 6, avec la
+   vraie Automation+ 0.15.0 à `597fe02` et la vraie Publipostage+ à `6a22dee` ; français / clair et anglais / sombre, 36 vérifications
+   sur 36 chacune) : sans la table, l'explorateur et aucune table créée ; l'app, à la souris, demande l'accord, crée `Automation` et
+   range le graphe dans une ligne `Workflow` (`Table` = `Clients`) **sans écrire la clé `workflow`** (les réglages de la section
+   restent vides) ; le cadre de GFS rechargé s'ouvre sur Automation+ (explorateur fermé, barre là) ; l'arrivée n'écrit ni table, ni
+   réglage de la vue, ni rangement (le moteur ne reçoit que la ligne-sonde d'identité de GFS, 6.4 point 6, comme à chaque
+   démarrage) ; le modèle de la vue de Publipostage+ ajouté, c'est Publipostage+ qui s'ouvre ; la ligne passée à une autre table, ou
+   à `Log` : l'explorateur ; rétablie : Automation+. Coût : GFS se déclare prêt 229 à 310 ms après le chargement de son cadre, avec
+   ou sans la lecture de la table (la table n'a qu'une ligne : le journal n'est pas élagué par l'app, la lecture grandira avec lui,
+   11 à 14 ms pour 1 000 lignes mesurés le 21/10). Pas mesuré : Firefox (aucune interface de plus ; la comparaison est la même),
+   une table `Automation` de plusieurs milliers de lignes.
 8. [D] **L'app de départ** (`gfs.depart`) reste un réglage de la section, écrit seulement sur un geste de la personne ; personne
    ne l'écrit encore. Quand GFS l'écrira, ce sera comme les réglages des apps (7.3, point 4), sans « Enregistrer ».
 9. [D] **L'ancienne clé `gfs.apps`** du prototype V0.2 n'est plus ni lue ni écrite ; une section qui la porte n'est pas modifiée.

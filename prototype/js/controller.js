@@ -29,7 +29,8 @@ import { askName, chooseFolder } from './filing-window.js';
 import { readCatalogue } from './libraries.js';
 import { activeExtensionIds, extensionsOf } from './extensions.js';
 import { AppsState } from './apps-state.js';
-import { arrivalApp } from './arrival.js';
+import { arrivalApp, arrivalProbes } from './arrival.js';
+import { arrivalTableApp } from './arrival-table.js';
 import { Rangement, TableDeclined } from './rangement.js';
 import { FILES_APP, FILES_MANIFEST, FILES_ENTRY, cleanName } from './gfs-files.js';
 import { Transfer, buildTransferFrame } from './transfer.js';
@@ -232,16 +233,23 @@ export class GfsController {
     if (this.fullAccess) await Promise.all([this.registry.load(), this.rangement.identify()]);
     this.#buildExplorer();
     this.#buildDock();
-    const arrived = this.#arrive();
+    const arrived = await this.#arrive();
     doc.body.dataset.gfs = 'ready';
     if (!arrived) await this.#firstRun(); // une section qui s'ouvre sur son app n'est pas neuve : la fenêtre des apps ne passe pas par-dessus
     doc.body.dataset.gfsFirstRun = 'done';
   }
 
-  // L'arrivée (cahier 6.2, point 2 ; js/arrival.js) : une section qui servait à une app s'ouvre sur elle, sans consigne et sans rien écrire ; sinon l'explorateur. Rend `true` si une app s'est ouverte.
-  #arrive() {
+  // L'arrivée (cahier 6.2, point 2 ; js/arrival.js) : une section qui servait à une app s'ouvre sur elle, sans consigne et sans rien écrire ; sinon l'explorateur. Les réglages de la section parlent d'abord ;
+  // sans eux, la table d'une app qui garde sa vue dans le document (`arrivee` du manifeste) dit si la section est la sienne (js/arrival-table.js). Rend `true` si une app s'est ouverte.
+  async #arrive() {
     const manifests = this.validApps().map(item => item.manifest);
-    const id = arrivalApp(this.state.allOptions, manifests, { installed: appId => this.registry.has(appId), granted: this.state.grantedAccess });
+    const rules = { installed: appId => this.registry.has(appId), granted: this.state.grantedAccess };
+    let id = arrivalApp(this.state.allOptions, manifests, rules);
+    const probes = id ? [] : arrivalProbes(this.state.allOptions, manifests, rules);
+    if (probes.length) {
+      const table = await this.state.whenTable();
+      if (table) id = await arrivalTableApp(this.port.doc, probes, table.tableId);
+    }
     if (id && this.#activate(id, null)) {
       this.hideExplorer();
       return true;

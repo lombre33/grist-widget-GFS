@@ -11,6 +11,7 @@
   "entree": "index.html",
   "tables": { "prefixe": "Automation_" },
   "reglages": ["workflow"],
+  "arrivee": { "table": "Automation", "colonne": "Table", "lignes": { "Type": "Workflow" } },
   "permissions": {
     "acces": "full",
     "lit": ["*"],

@@ -636,6 +636,10 @@ enregistrée par l'autre app.
    à l'arrivée, comme dans l'app seule) : une clé compte quand elle a une valeur (`null` et le texte vide, par lesquels une
    app retire un choix, ne comptent pas) ; l'app doit être installée et l'accès que Grist a donné à GFS lui suffire ; avec
    deux apps servies par la section, GFS ne devine pas : l'explorateur. Contrats 7.4, point 7.
+   **Complété le 04/11** (choix du porteur, « GFS lit sa table ») : une app qui garde sa vue dans une table du document, non
+   dans les réglages (Automation+ 0.15.0 : la ligne `Workflow` de `Automation`), se déclare par `arrivee` dans son manifeste
+   (contrats 2.5, point 4) ; quand aucun réglage de la section ne désigne une app, GFS lit cette table et ouvre l'app dont une
+   ligne porte la table de la section. Un réglage de la vue parle toujours avant la table. Contrats 7.4, point 7.
 3. Sinon, une seule app installée : elle s'ouvre. Sinon : l'explorateur. *Pas codé au prototype : « une seule app
    installée : elle s'ouvre » (sans clé d'une app, l'explorateur, le plus prudent), ni le point 1 (rien n'écrit encore
    `gfs.depart`).*

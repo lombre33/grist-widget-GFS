@@ -19,6 +19,7 @@ export class GristState {
   cursor = null; // { tableId, rowId } : la ligne courante, d'après le plus récent des messages de ligne et de table
   #listeners = new Set();
   #waiters = [];
+  #tableWaiters = [];
 
   // Garde le message et prévient les abonnés : fn(kind, message).
   feed(message) {
@@ -27,6 +28,7 @@ export class GristState {
     this[kind] = message;
     if (kind === 'table' || kind === 'record') this.cursor = { tableId: message.tableId, rowId: message.rowId };
     if (kind === 'options') this.#waiters.splice(0).forEach(resolve => resolve(message));
+    if (kind === 'table') this.#tableWaiters.splice(0).forEach(resolve => resolve(message));
     for (const listener of this.#listeners) listener(kind, message);
     return kind;
   }
@@ -53,6 +55,15 @@ export class GristState {
     return new Promise(resolve => {
       this.#waiters.push(resolve);
       setTimeout(() => resolve(this.options), ms);
+    });
+  }
+
+  // Attend le premier message de table (celui qui dit la table de la section) ; passé `ms`, rend ce qu'on a (ou null). Ne sert qu'à l'arrivée par la table (js/arrival-table.js).
+  whenTable(ms = 1500) {
+    if (this.table) return Promise.resolve(this.table);
+    return new Promise(resolve => {
+      this.#tableWaiters.push(resolve);
+      setTimeout(() => resolve(this.table), ms);
     });
   }
 }

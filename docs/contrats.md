@@ -1496,8 +1496,9 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
    (l'explorateur est refermé pour que sa question se voie). **GFS ne ferme jamais tout seul** : sans réponse au bout de 10 secondes,
    ou si l'app répond par une erreur (une réponse qui n'est ni `oui` ni `non` en est une), une fenêtre de GFS nomme l'app et demande à
    la personne « Fermer quand même » (les modifications non enregistrées sont perdues) ou « Attendre » (sans réponse) / « Rester »
-   (sur une erreur) ; « Attendre » suit la réponse de l'app quand elle vient. Une app qui ne connaît pas l'appel (`GFS_INCONNU`) part
-   comme avant, sans question ; une app qui n'a pas encore demandé son contexte n'a rien à enregistrer, GFS ne lui demande rien. Si
+   (sur une erreur) ; « Attendre » suit la réponse de l'app quand elle vient. Une app qui ne connaît pas l'appel (`GFS_INCONNU`, la réponse
+   que 5.1, point 3, demande à tout appel inconnu) part comme avant, sans question ; une app qui ne répond à rien, pas même `GFS_INCONNU`, fait
+   attendre les 10 secondes puis la question de GFS ; une app qui n'a pas encore demandé son contexte n'a rien à enregistrer, GFS ne lui demande rien. Si
    la personne repart dans l'explorateur avant la réponse, la réponse tardive n'ouvre rien. **Pas encore gardés** : le changement de
    la table de travail (4.5, point 7) et le retrait de l'app active du registre recréent le cadre sans « fermer ». [M] Mesuré le
    04/11 dans un vrai Grist (faits vérifiés, section 29).

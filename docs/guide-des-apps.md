@@ -251,8 +251,8 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     reste en place. Elle ne se ferme pas d'elle-même : GFS détruit le cadre après le `oui`. Aucun délai à tenir : sans réponse au bout de
     10 secondes, ou sur une erreur, GFS demande à la personne (« Fermer quand même », qui perd ce qui n'est pas enregistré, ou « Attendre » /
     « Rester ») ; une app qui pose sa question et dont la personne tarde à répondre n'a rien à faire de plus que de répondre quand elle le
-    peut. Une app qui ne connaît pas l'appel répond `GFS_INCONNU` (le comportement d'avant : elle part sans rien enregistrer, d'où cette
-    règle). Même règle, déjà, quand GFS appelle `ouvrir` sur l'app active pour un autre fichier de la même app : sa question d'enregistrement
+    peut. Une app qui ne connaît pas l'appel répond `GFS_INCONNU` (contrats 5.1, point 3 ; le comportement d'avant : elle part sans rien enregistrer, d'où cette
+    règle) ; celle qui ne répond à rien, pas même cela, fait attendre dix secondes avant que GFS pose sa question à la personne. Même règle, déjà, quand GFS appelle `ouvrir` sur l'app active pour un autre fichier de la même app : sa question d'enregistrement
     vient avant `{ ouvert }`. Seule, hors de GFS, l'app garde sa propre sortie (`beforeunload`, « Enregistrer » du kit).
 
 ### 1.3 Licence : GPL 3.0 dans tous les dépôts (décision du porteur, 21/10)

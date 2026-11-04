@@ -64,6 +64,8 @@ provisoire et son type « Formulaire » sont posés et mesurés dans un vrai Gri
 table (consigne 007, faite), mais un formulaire ne s'y enregistre pas encore, avec ou sans GFS (consigne 008). Publipostage+ est mûr ; Form+, Automation+ et Grist-BI sont des preuves de concept (Automation+
 a corrigé trois écarts au guide le 21/10). Tous les dépôts passent sous GPL 3.0 (décision du 21/10) : fait pour GFS,
 Publipostage+, Grist-BI, Automation+ et Form+ ; reste l'outil d'audit.
+Grist-BI entre à son tour dans GFS (04/11) : référencée, son type « Rapport BI » est dans « Nouveau » ; mais son code ne démarre pas encore dans le sous-cadre isolé de GFS (des lectures du stockage du navigateur
+hors d'un `try`), ce que sa consigne 007 lui demande de corriger d'abord.
 
 ## Pour la suite
 

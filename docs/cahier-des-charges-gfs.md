@@ -53,8 +53,8 @@ Il sert à deux équipes :
 | Publipostage+ | `lombre33/publipostageGrist` | mûre ; bêta 1.0.0-beta.1 publiée le 05/10 (`grist-factory/Publipostage-Plus`) | modèles : document, e-mail, macro-modèle, grille ; présentation à venir | app native (documents, grilles) ; extensions : diapositives, écriture en temps réel, graphique |
 | Form+ | `lombre33/FormPlus` | preuve de concept | formulaires | app ; sa définition doit passer des réglages de la vue à une table |
 | Automation+ | `lombre33/GRIST_automation` | preuve de concept | automatismes | app ; son graphe doit passer en table ; ne tourne que vue ouverte |
-| Grist-BI | `lombre33/Grist-BI` | preuve de concept | tableaux de bord | app, sans fusion de code avec les autres |
-| Dashboard | à créer | — | tableaux de bord | à préciser par rapport à Grist-BI (question 6, section 12) |
+| Grist-BI | `lombre33/Grist-BI` | preuve de concept ; au catalogue de GFS depuis le 04/11 | rapports BI (type « Rapport BI », une ligne nommée de `BI_Dashboard_Config`) | app, sans fusion de code avec les autres |
+| Dashboard | à créer | — | tableaux de bord | app à part de Grist-BI (question 6, tranchée le 04/11) |
 | Thusday | à créer | — | projets (gestion de projet à la Monday ou ClickUp) | naîtra sur le kit, prête pour GFS |
 
 Slides+ (`lombre33/SlidesPlus`) n'est pas une app de GFS : les diapositives deviennent une extension de Publipostage+
@@ -698,7 +698,7 @@ Le tableau donne l'ambiance d'origine (Grist Factory) ; chaque autre ambiance ac
   Papier fin, à angles vifs ; Brut épais et carré ; Néon avec un halo (`css/explorer.css`). Un fichier grisé n'a ni remplissage ni halo, un dossier garde son dessin. **Rien n'en va aux apps** : le message d'ambiance ne porte pas ces jetons
   (contrats 5.2, point 10), et la règle d'une couleur qui ne porte jamais seule le type tient pour chaque ambiance.
 - Contrastes mesurés pour les cinq ambiances et pour toute couleur libre : texte de type à 4,57:1 au moins, icône à 3,18:1 au moins (`test/ambiance.test.mjs`), et dans un vrai Grist, texte par texte (`labo/run-theme.mjs`).
-- Couleur des types des autres apps (formulaire, automatisme, tableau de bord, projet) : neutre tant que le porteur n'en
+- Couleur des types des autres apps (formulaire, automatisme, rapport BI, tableau de bord, projet) : neutre tant que le porteur n'en
   demande pas (question 8, section 12). Les jetons se déclarent dans le kit, jamais en dur.
 
 ### 6.6 Les maquettes : ce qu'elles montrent, ce qui a changé depuis
@@ -834,7 +834,7 @@ fait passer par le porteur.
 | 3 | Isolement : sous-cadres sans `allow-same-origin`, ou un domaine par app ? | Fin de l'étape 2 | Sous-cadres ; des domaines seulement si un audit l'exige. **Tranché le 16/10 : sous-cadres** (rapport, section 3). **Rouvert par LanguageTool (carte du 27/10), re-tranché le 28/10 : sous-cadres, aucune adresse propre à une app** (section 2) |
 | 4 | Automation+ dans GFS : section à part, ou sous-cadre gardé en fond ? | Étape 6 | Section à part pour commencer. **Tranché le 02/11 (porteur, par le projet de Tuesday) : sous-cadre gardé en fond, caché, seulement dès qu'au moins une automatisation existe** (section 2). À écrire à l'étape 6, avec Automation+ : comment GFS lit « il existe une automatisation active » (Automation+ n'a pas de table de fichiers : sa table `Automation`, au moins une ligne `Workflow` à `Actif` vrai ; un automatisme désactivé ne compte pas, proposé par Tuesday), le coût en mémoire d'un second sous-cadre, la reprise après un rechargement, et l'absence de double exécution quand Automation+ passe au premier plan (son verrou d'exécution existe déjà : à mesurer avec deux sous-cadres) ; contrats 1.4, point 1 |
 | 5 | Où publier GFS et les apps ? | Avant la première publication | Organisation `grist-factory`, un dépôt public par app, un pour GFS, un pour le kit ; aucune page de test sur cette origine. Le 19/10, le CDN du fichier assemblé de l'écriture en direct pointe provisoirement le dépôt de développement ; il suivra le dépôt définitif. Le 21/10, le porteur garde les dépôts de `lombre33` tant que le code de GFS y est (les liens vers les apps et l'adresse du CDN comprises) et adaptera les liens à la bascule de GFS sous `grist-factory`, par une consigne à chaque app, sans date ; dépôt public de Publipostage+ : `grist-factory/Publipostage-Plus` |
-| 6 | Dashboard et Grist-BI : deux apps, ou une ? | Au lancement de Dashboard | À préciser avec le porteur |
+| 6 | Dashboard et Grist-BI : deux apps, ou une ? | Au lancement de Dashboard | À préciser avec le porteur. **Tranché le 04/11 : deux apps** (le porteur : « une app tableau de bord dédiée verra le jour bientôt »). Les fichiers de Grist-BI sont des « rapports BI » dans l'explorateur, « tableau de bord » est gardé pour l'app dédiée |
 | 7 | Entrée de l'explorateur dans chaque app, ou un repère de GFS au-dessus des apps ? | Étape 6 | Dans chaque app (« Organiser » pour Publipostage+), sans barre de plus. **Reprise et tranchée le 21/10 : les deux.** L'entrée de chaque app reste, et GFS pose une barre de trois boutons à icône seule, que la personne place à gauche, en haut, à droite ou en bas ; elle recouvre un espace que les apps laissent libre, sans bande en plus (6.3, contrats 5.2, point 7) |
 | 8 | Couleurs des types des autres apps | Étape 6 | Neutres tant qu'il ne les demande pas |
 | 9 | Où retenir les apps installées : réglages de la section, ou une table pour tout le document ? | Étape 1 | Réglages de la section, avec le rappel « Enregistrer » ; une table seulement si le réglage doit valoir pour tout le document. **Tranché le 16/10 : une table pour tout le document** (`GFS_Rangement`, contrats 7.4) |

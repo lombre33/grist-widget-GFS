@@ -36,6 +36,7 @@ import { Trash } from './trash.js';
 import { AppFiles } from './app-files.js';
 import { Copying } from './copying.js';
 import { ask } from './ask-window.js';
+import { askToClose } from './leave.js';
 import { importFormats, acceptsFile, importOpening, openingKind, carriesFile, pickFile } from './import-file.js';
 import { readersOf, chooseReader, readOpening } from './reading.js';
 import { publicationQuestion } from './publication-window.js';
@@ -76,6 +77,7 @@ export class GfsController {
   #sentExtensions = null;
   #sentIdentity = null; // l'identité donnée à l'app active (JSON), ou null tant qu'elle n'a pas demandé son contexte
   #contextServed = false; // l'app active a demandé son contexte : elle a lu l'ouverture qui s'y trouvait, et ne la relira pas
+  #leaveRun = 0; // le numéro de la dernière demande « fermer » : une réponse qui arrive après un autre geste de la personne n'ouvre plus rien
   #modulesWaiters = [];
   #idleWaiters = []; // ceux qui attendent la fin des écritures des apps installées (#unlock)
   #fileStatus = { loading: false, restricted: false, problems: [] }; // ce que l'explorateur dit sous la liste, gardé pour être redit dans la langue qui vaut
@@ -378,6 +380,7 @@ export class GfsController {
 
   showExplorer() {
     this.status.cover(true);
+    this.#leaveRun++; // la personne repart explorer : une app qui répondrait « fermer » plus tard ne change plus rien
     this.$('frames').inert = true;
     this.dock.setPresent(false);
     if (this.session) this.session.show(false);
@@ -557,9 +560,10 @@ export class GfsController {
   }
 
   // « Ouvrir » sur une ligne de la fenêtre : l'app s'ouvre sans consigne (elle applique son propre ordre d'arrivée, contrats 5.2, point 3).
-  #openApp(id) {
+  async #openApp(id) {
     const app = this.appById(id);
     if (app && levelOf(app.manifest.permissions.acces) > levelOf(this.state.grantedAccess)) { this.notice(this.t('gfs.needsFullAccess')); return; }
+    if (this.session && this.session.id !== id && !(await this.#leave('app'))) return;
     if (!this.#activate(id, null)) return;
     this.hideExplorer();
   }
@@ -662,7 +666,8 @@ export class GfsController {
   }
 
   // Rend `true` quand l'ouverture est partie vers l'app (ou qu'elle l'a faite), `false` quand l'app n'a pu être activée ou que la personne a annulé dans l'app (l'appel `ouvrir` d'une app attend ce résultat).
-  #openIn(appId, opening, noticeKey) {
+  async #openIn(appId, opening, noticeKey) {
+    if (this.session && this.session.id !== appId && !(await this.#leave((opening && opening.raison) || 'ouvrir'))) return false; // une autre app : la première s'enregistre ou pose sa question avant de partir
     // L'app déjà ouverte a lu son contexte : elle n'y relira pas l'ouverture, GFS la lui dit par l'appel `ouvrir` (contrats 5.4, point 1).
     // Sinon (une autre app, ou celle-ci qui démarre) l'ouverture part dans le contexte qu'elle va demander.
     const running = this.#isOpen(appId) && this.#contextServed;
@@ -688,6 +693,23 @@ export class GfsController {
       else this.notice(this.t('ex.notice.openFailed', { app, reason: String((error && error.message) || '').slice(0, 120) }));
       return false;
     }
+  }
+
+  // Quitter l'app active pour une autre (contrats 5.4, point 3) : GFS lui demande de se fermer ; elle enregistre ou pose sa question, derrière l'explorateur qu'on referme pour qu'elle se voie.
+  // `false` : la personne reste (elle a annulé dans l'app, ou n'a pas voulu fermer) ou a fait autre chose entre-temps. Une app qui n'a pas demandé son contexte n'a encore rien à enregistrer.
+  async #leave(reason) {
+    const session = this.session;
+    if (!session || !this.#contextServed) return true;
+    const run = ++this.#leaveRun;
+    this.hideExplorer();
+    const app = this.appName(session.id);
+    const offer = fault => this.#ask({
+      title: this.t(fault ? 'gfs.leave.faultTitle' : 'gfs.leave.silentTitle', { app }),
+      message: fault ? this.t('gfs.leave.faultText', { app, reason: String(fault.message || '').slice(0, 120) || this.t('gfs.leave.unexpected') }) : this.t('gfs.leave.silentText', { app }),
+      confirmLabel: this.t('gfs.leave.force'), cancelLabel: this.t(fault ? 'gfs.leave.stay' : 'gfs.leave.wait'), safeFirst: true,
+    });
+    const leave = await askToClose(session, reason, { offer });
+    return leave && run === this.#leaveRun && session === this.session;
   }
 
   // Active l'app : la même reste en place, une autre remplace l'app active (une seule à la fois, contrats 1.4).

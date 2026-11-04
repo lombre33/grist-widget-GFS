@@ -190,6 +190,9 @@ export class AppSession {
   // `{ ouvert: true | false }` vient quand la personne a répondu, sans délai. Rejetée avec le code de l'app si elle ne connaît pas l'appel.
   openFile(opening) { return this.#envelope.call('ouvrir', opening); }
 
+  // GFS va quitter l'app pour une autre : elle enregistre ou pose sa question, puis répond `{ ferme: true | false }` (contrats 5.4, point 3). Rejetée avec `GFS_INCONNU` si l'app ne connaît pas l'appel.
+  closeApp(reason) { return this.#envelope.call('fermer', { raison: reason }); }
+
   show(visible) { if (this.#frame) this.#frame.classList.toggle('app-frame--behind', !visible); }
 
   // Rend le clavier à l'app (au retour de l'explorateur) : `focus()` est permis sur une fenêtre d'une autre origine.

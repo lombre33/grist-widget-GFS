@@ -1,9 +1,10 @@
 // Sonde Q du labo (contrats 5.4, points 2 et 7) : une app minimale qui lie des fichiers d'autres apps, comme le fera Tuesday. Elle demande `contexte`, garde l'`ouverture` qu'on lui rend, répond
 // à l'appel `ouvrir` de GFS quand elle est déjà ouverte, et, à un clic sur ses deux boutons, appelle `choisir` et `ouvrir` chez GFS avec la demande que le labo a posée dans `body[data-choisir]`
 // et `body[data-ouvrir]`. Ce qu'elle a reçu est écrit dans `document.body.dataset.sonde`, que le labo lit : `resultats` garde, dans l'ordre, la réponse de GFS à chacun de ses appels.
+// Elle répond aussi à `fermer` (contrats 5.4, point 3) quand `body[data-fermer]` vaut `oui` ou `non` ; sans lui, comme avant : GFS_INCONNU. Les appels reçus sont dans `fermer`.
 (function () {
   'use strict';
-  var received = { contexte: false, ouverture: null, appels: [], resultats: [] };
+  var received = { contexte: false, ouverture: null, appels: [], resultats: [], fermer: [] };
   var waiting = {};
   var next = 10;
   var publish = function () { document.body.dataset.sonde = JSON.stringify(received); };
@@ -26,6 +27,12 @@
     } else if (msg.type === 'reponse' || msg.type === 'erreur') {
       answered(msg);
     } else if (msg.type === 'appel') {
+      if (msg.nom === 'fermer' && /^(oui|non)$/.test(document.body.dataset.fermer || '')) {
+        received.fermer.push(msg.args);
+        publish();
+        post({ gfs: 0, type: 'reponse', id: msg.id, data: { ferme: document.body.dataset.fermer === 'oui' } });
+        return;
+      }
       if (msg.nom !== 'ouvrir') {
         post({ gfs: 0, type: 'erreur', id: msg.id, code: 'GFS_INCONNU', message: 'L\'appel « ' + msg.nom + ' » est inconnu de cette app.' });
         return;

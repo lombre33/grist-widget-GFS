@@ -131,12 +131,30 @@ async function playMenuAndRename(run) {
   say('--- 4. le menu d\'une ligne, renommer ---');
   await openRowMenu(frame, 'Facture.pdf');
   const items = await menuItems(frame);
-  check('le menu : Lire (grisé), Télécharger, Épingler, Renommer, Dupliquer (grisé), Déplacer, Mettre à la corbeille (permis, GFS le fait lui-même)', JSON.stringify(items) === JSON.stringify([
-    { label: 'Lire', greyed: true }, { label: 'Télécharger', greyed: false }, { label: 'Épingler en favori', greyed: false }, { label: 'Renommer', greyed: false }, { label: 'Dupliquer', greyed: true },
+  check('le menu : Lire (grisé), Télécharger, Épingler, Renommer, Dupliquer (permis : GFS copie le PDF lui-même, lot 3 du 04/11), Déplacer, Mettre à la corbeille (permis, GFS le fait lui-même)', JSON.stringify(items) === JSON.stringify([
+    { label: 'Lire', greyed: true }, { label: 'Télécharger', greyed: false }, { label: 'Épingler en favori', greyed: false }, { label: 'Renommer', greyed: false }, { label: 'Dupliquer', greyed: false },
     { label: 'Déplacer vers…', greyed: false }, { label: 'Mettre à la corbeille', greyed: false }]), items);
   await shot(frame, '6-menu-ligne');
-  await pressGreyed(page, frame.getByRole('menuitem', { name: 'Dupliquer' }));
-  check('« Dupliquer » grisé dit pourquoi, sans rien faire', /GFS ne copie pas encore les PDF/.test(await waitForToast(frame, /ne copie pas/)) && (await rest.rows('GFS_Fichiers')).length === 2);
+  // « Dupliquer » copie le PDF sous un nouvel identifiant, avec la même pièce jointe (rien n'est envoyé) ; la copie est ensuite supprimée pour de bon, pour que la suite de l'essai parte de deux fichiers.
+  await frame.getByRole('menuitem', { name: 'Dupliquer' }).click();
+  const copies = await waitForNames(frame, ['Facture (1).pdf', 'Facture (2).pdf', 'Facture.pdf']);
+  const both = await rest.rows('GFS_Fichiers');
+  const source = both.find(row => row.Nom === 'Facture.pdf');
+  const made = both.find(row => row.Nom === 'Facture (2).pdf');
+  check('« Dupliquer » ajoute « Facture (2).pdf » (le premier nom libre) : un autre identifiant, la même pièce jointe, la même taille et la même origine', JSON.stringify([...copies].sort()) === JSON.stringify(['Facture (1).pdf', 'Facture (2).pdf', 'Facture.pdf'])
+    && Boolean(made) && made.Identifiant !== source.Identifiant && JSON.stringify(made.Contenu) === JSON.stringify(source.Contenu) && made.Taille === source.Taille && made.Origine === source.Origine && both.length === 3, [made, source]);
+  check('la phrase le dit', /Facture \(2\)\.pdf/.test(await waitForToast(frame, /Facture \(2\)\.pdf/)));
+  await rowOf(frame, 'Facture (2).pdf').click();
+  await page.keyboard.press('Delete');
+  await waitForNames(frame, ['Facture (1).pdf', 'Facture.pdf']);
+  await frame.locator('.tr-row[data-view="trash"]').click();
+  await rowOf(frame, 'Facture (2).pdf').click();
+  await page.keyboard.press('Delete');
+  await frame.locator('.mod.ask').waitFor({ state: 'visible', timeout: 8000 });
+  await frame.locator('[data-fk="ask-yes"]').click();
+  await frame.locator('.mod.ask').waitFor({ state: 'detached', timeout: 8000 }).catch(() => {});
+  await goTo(frame, /^\s*(Moi|Me)\s*$/);
+  check('la copie est supprimée pour de bon : deux fichiers, deux lignes', (await rest.rows('GFS_Fichiers')).length === 2 && JSON.stringify(await waitForNames(frame, ['Facture (1).pdf', 'Facture.pdf'])) === '["Facture (1).pdf","Facture.pdf"]');
 
   await openRowMenu(frame, 'Facture.pdf');
   await frame.getByRole('menuitem', { name: 'Renommer' }).click();

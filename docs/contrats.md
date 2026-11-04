@@ -1963,6 +1963,25 @@ rangée d'un fichier, selon ce qui vient d'abord.
     vérifications dans chacune, aucune en échec) : faits vérifiés, section 38. **Sous Firefox sans écran le dépôt n'aboutit pas au banc**
     (ni `drop` ni `dragend`, faits vérifiés 25) : `test/glisser-firefox.mjs` mesure ce qui s'y mesure (les lignes se tiennent, le départ, la
     cible qui accepte ou refuse) ; le dépôt à la vraie souris sous Firefox est à essayer chez le porteur.
+13. [T] **Ctrl+Z (⌘+Z) défait le dernier geste de l'explorateur** (demande du porteur, 04/11 : « Ctrl+Z doit aussi faire revenir un fichier
+    supprimé, et plus globalement toutes les modifications : renommage, déplacement, etc. »). L'explorateur garde une **pile des gestes qui ont
+    abouti** (les 50 derniers, js/undo-stack.js) ; chaque appui défait **un seul geste, le plus récent**, dans l'ordre inverse, et dit ce qui
+    est revenu (« Annulé : le nom « Contrat » est revenu », ou la phrase de la corbeille). Ce qui se défait : **mettre à la corbeille** (le
+    fichier est restauré, à son numéro), **restaurer** (il retourne à la corbeille), **renommer** un fichier, **épingler ou désépingler**,
+    **déplacer** un fichier ou un dossier (par le menu, couper-coller ou glisser-déposer, point 12), **renommer un dossier**, **créer un
+    dossier** (il est supprimé), **supprimer un dossier** (il revient, avec sa ligne d'état), **copier ou dupliquer** (la copie va à la corbeille).
+    **Défaire écrit comme le geste d'origine** (le rangement, le nom, la corbeille : mêmes lignes, mêmes refus : lecture seule, accès incomplet,
+    table refusée) et **ne dépose rien dans la pile** : il n'y a pas de « rétablir » (Ctrl+Y et Ctrl+Maj+Z ne sont pas liés ; la pile ne va
+    pas et vient). **Ce qui ne se défait pas** : « Supprimer définitivement » et « Vider la corbeille » (la fenêtre le dit avant) ; Ctrl+Z
+    d'un geste qui portait sur un fichier supprimé pour de bon depuis dit « n'est plus là » et n'écrit rien. **Une annulation relit les
+    fichiers d'aujourd'hui avant d'écrire** : un fichier qui n'est plus là (supprimé pour de bon depuis), dont le nom a changé depuis (par une autre
+    personne ou une app), ou dont l'ancien nom est pris n'est pas touché, la phrase dit pourquoi ; **le rangement (dossier, étoile) est remis tel qu'il
+    était avant le geste**, sans chercher si une autre personne l'a changé depuis ; un second appui pendant l'écriture est ignoré. **Remettre à la corbeille** un fichier qui tient à plus
+    qu'une ligne (point 2.4, `appel` : un formulaire de Form+) attend l'app ouverte, comme le geste d'origine : la phrase dit d'ouvrir l'app, rien n'est
+    écrit et **le geste reste à défaire** ; restaurer n'a pas besoin de l'app. La pile vit autant que la page (elle survit à la fermeture de
+    l'explorateur et au passage d'une app à l'autre). **Dans un champ de saisie** (la recherche, une fenêtre), Ctrl+Z reste celui du texte ;
+    pendant le choix d'un fichier pour une app, il est grisé comme le reste (la phrase le dit). [M] **Mesuré le 04/11** dans un vrai Grist
+    (`labo/run-annuler.mjs`) et sous Firefox (`test/annuler-firefox.mjs`) : faits vérifiés, section 42.
 
 ### 6.5 Préserver l'inconnu
 

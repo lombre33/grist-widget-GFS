@@ -2,8 +2,8 @@
 // (js/explorer.js) qui sait ce que chaque geste fait de la ligne choisie.
 //
 // Les touches : ↑ ↓ (← → en vignettes ; ↑ ↓ y changent de rangée), Début, Fin, Entrée (ouvrir ; à la corbeille : restaurer), F2 (renommer), Suppr (mettre à la corbeille ; à la corbeille : supprimer
-// pour de bon), Retour arrière (le dossier parent), Maj+F10 ou la touche Menu (le menu de la ligne, comme le clic droit), « / » (la recherche), Échap (js/explorer.js), et le presse-papiers : Ctrl+C
-// (copier), Ctrl+X (couper), Ctrl+V (coller), Ctrl ou ⌘ (`clipboardAction`). Toute autre touche tapée avec Ctrl, Alt ou Méta n'est pas une des nôtres : Ctrl+D (marque-page), Ctrl+F (recherche dans
+// pour de bon), Retour arrière (le dossier parent), Maj+F10 ou la touche Menu (le menu de la ligne, comme le clic droit), « / » (la recherche), Échap (js/explorer.js), et, avec Ctrl ou ⌘ (`clipboardAction`), le presse-papiers
+// Ctrl+C (copier), Ctrl+X (couper), Ctrl+V (coller) et Ctrl+Z (annuler le dernier geste, un par appui : js/undo-stack.js). Toute autre touche tapée avec Ctrl, Alt ou Méta n'est pas une des nôtres : Ctrl+D (marque-page), Ctrl+F (recherche dans
 // la page), Alt+← (page précédente), Ctrl+N, Ctrl+T et Ctrl+W sont au navigateur, qui ne les laisse pas tous à une page ; aucun geste de GFS n'est lié à une touche qu'on ne peut pas avoir partout.
 // Ctrl+D (dupliquer, dans d'autres explorateurs) n'est donc pas liée : « Dupliquer » est dans le menu de la ligne, et Ctrl+C puis Ctrl+V colle la copie.
 
@@ -40,12 +40,12 @@ export function isSearchKey(event) {
   return !typingIn(event.target);
 }
 
-// Le presse-papiers : Ctrl+C -> 'copy', Ctrl+X -> 'cut', Ctrl+V -> 'paste' (⌘ pour Ctrl sur Mac), ou null. Ni Alt (AltGr se tape avec Ctrl et Alt sur certains claviers) ni Maj (Ctrl+Maj+V colle sans mise
-// en forme) ; la majuscule d'un verrouillage des capitales compte. Dans un champ de saisie (la recherche), ces touches copient, coupent et collent le texte : elles ne sont pas à l'explorateur.
+// Le presse-papiers et l'annulation : Ctrl+C -> 'copy', Ctrl+X -> 'cut', Ctrl+V -> 'paste', Ctrl+Z -> 'undo' (⌘ pour Ctrl sur Mac), ou null. Ni Alt (AltGr se tape avec Ctrl et Alt sur certains claviers) ni Maj (Ctrl+Maj+V colle sans mise
+// en forme) ; la majuscule d'un verrouillage des capitales compte. Dans un champ de saisie (la recherche), ces touches copient, coupent, collent et annulent le texte : elles ne sont pas à l'explorateur. Ctrl+Maj+Z (rétablir, ailleurs) n'est pas liée : il n'y a pas de « rétablir ».
 export function clipboardAction(event) {
   const { key, ctrlKey, metaKey, altKey, shiftKey, target } = event;
   if (!(ctrlKey || metaKey) || altKey || shiftKey || typeof key !== 'string' || typingIn(target)) return null;
-  return { c: 'copy', x: 'cut', v: 'paste' }[key.toLowerCase()] || null;
+  return { c: 'copy', x: 'cut', v: 'paste', z: 'undo' }[key.toLowerCase()] || null;
 }
 
 // Le chemin du dossier parent : « Factures/2024 » -> « Factures » ; la racine reste la racine.

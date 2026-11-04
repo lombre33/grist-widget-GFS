@@ -16,6 +16,7 @@
 // d'ouvrir l'app ; ouverte, l'app ajoute sa phrase (`window.__appSaid`) à celle de GFS.
 // La case « + pièces jointes » : la table `_grist_Attachments` que l'explorateur lirait dans Grist est une doublure, de la forme que `fetchTable` la rend (voir `ATTACHMENTS`) ; `window.__attachments` compte ses lectures
 // et `window.__attachmentsFail = 'texte'` les fait échouer. Ce que Grist rend vraiment se mesure dans un vrai Grist (labo/run-poids.mjs).
+// Ctrl+Z (test/annuler-firefox.mjs) : l'explorateur prend la pile d'annulation du vrai `Filing` (`filing.undoStack`) ; la corbeille et la copie y déposent leur geste, `window.__reset()` la vide.
 import { ask } from '/js/ask-window.js';
 import { askConflict } from '/js/conflict-window.js';
 import { Explorer } from '/js/explorer.js';
@@ -196,11 +197,12 @@ async function mount() {
     onImport: () => {}, onClose: () => {}, onApps: () => {}, onRights: () => window.__rights(window.__rightsKind || 'protege'), personal: () => true, kept: null, trash: bin, copying,
     attachments: async () => { window.__attachments += 1; if (window.__attachmentsFail) return { error: new Error(window.__attachmentsFail) }; return { data: attachmentsTable() }; },
     filing: { togglePin: noted('pin', 'name'), rename: noted('rename', 'name'), moveFile: noted('move', 'name'), renameFolder: async path => { window.__filing.push(['renameFolder', path]); }, moveFolder: async path => { window.__filing.push(['moveFolder', path]); }, ...moving,
-      newFolder: () => filing.newFolder(), deleteFolder: path => filing.deleteFolder(path) },
+      newFolder: () => filing.newFolder(), deleteFolder: path => filing.deleteFolder(path), undoStack: filing.undoStack },
   });
   window.__explorer = explorer;
   window.__reset = () => {
     explorer.close(); // la fermeture vide le presse-papiers : chaque mesure part de rien
+    filing.undoStack.clear(); // et la pile de Ctrl+Z
     live = [...files];
     for (const file of live) { file.trashed = null; file.folder = folders.get(file.key); }
     trashed = [];

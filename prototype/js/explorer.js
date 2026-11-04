@@ -11,6 +11,8 @@ import { words } from './search.js';
 import { buildShell, relabel, rightsChip, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar, trashBar, totalBar, pjBox } from './explorer-view.js';
 import { sumWeights, pieceKeys, otherAttachments } from './weight.js';
 import { listAction, isSearchKey, clipboardAction, parentPath, stepRow } from './explorer-keys.js';
+import { UndoStack } from './undo-stack.js';
+import { undoable } from './explorer-undo.js';
 import { Clipboard } from './explorer-clipboard.js';
 import { Dragging } from './explorer-drag.js';
 import { openMenu, closeMenu, menuIsOpen } from './menu.js';
@@ -32,6 +34,7 @@ export class Explorer {
   #bin;
   #copying;
   #clipboard;
+  #undo;
   #drag;
   #refs;
   #files = [];
@@ -62,8 +65,13 @@ export class Explorer {
   constructor(opts) {
     this.#opts = opts;
     this.#kept = opts.kept || NO_KEPT;
-    this.#bin = opts.trash || NO_TRASH;
-    this.#copying = opts.copying || NO_COPYING;
+    // Ctrl+Z (js/undo-stack.js) : la pile du rangement (js/filing.js), ou la sienne ; la corbeille et la copie y déposent de quoi se défaire (js/explorer-undo.js).
+    this.#undo = (opts.filing && opts.filing.undoStack) || new UndoStack({ t: opts.i18n.t, notice: text => opts.notice(text) });
+    const guarded = undoable({
+      stack: this.#undo, bin: opts.trash || NO_TRASH, copying: opts.copying || NO_COPYING, trashed: () => this.#trashed, live: () => this.#files, t: opts.i18n.t, appName: id => opts.appName(id),
+    });
+    this.#bin = opts.trash ? guarded.bin : NO_TRASH;
+    this.#copying = opts.copying ? guarded.copying : NO_COPYING;
     this.#clipboard = new Clipboard({
       t: opts.i18n.t, notice: text => opts.notice(text), appName: id => opts.appName(id), file: key => this.#files.find(item => item.key === key), where: () => ({ view: this.state.view, path: this.state.path }),
       reveal: key => this.#reveal(key), copying: this.#copying, filing: opts.filing,
@@ -499,7 +507,7 @@ export class Explorer {
       return;
     }
     const clip = clipboardAction(event);
-    if (clip && this.#keysAreOurs(event.target) && !menuIsOpen() && !(clip !== 'paste' && this.#hasTextSelected())) { event.preventDefault(); this.#onClipboard(clip, event); return; }
+    if (clip && this.#keysAreOurs(event.target) && !menuIsOpen() && !(clip !== 'paste' && clip !== 'undo' && this.#hasTextSelected())) { event.preventDefault(); this.#onClipboard(clip, event); return; }
     if (event.key !== 'Escape') return;
     if (event.target === this.#refs.search && this.#refs.search.value) {
       this.#refs.search.value = '';
@@ -525,10 +533,11 @@ export class Explorer {
     return Boolean(selection && !selection.isCollapsed && String(selection).trim());
   }
 
-  // Le presse-papiers (js/explorer-clipboard.js). Copier et couper visent la ligne choisie, sinon celle où est le clavier ; coller n'a besoin d'aucune ligne (un dossier vide se colle). Pendant un choix de
+  // Le presse-papiers (js/explorer-clipboard.js) et l'annulation (Ctrl+Z : le dernier geste revient, js/undo-stack.js). Copier et couper visent la ligne choisie, sinon celle où est le clavier ; coller n'a besoin d'aucune ligne (un dossier vide se colle). Pendant un choix de
   // fichier pour une app, rien de tout cela : comme « Nouveau » et la corbeille, il est grisé.
   #onClipboard(action, event) {
     if (this.#choice) { this.#opts.notice(this.#opts.i18n.t('ex.choose.newOff')); return; }
+    if (action === 'undo') { void this.#undo.undo(); return; }
     if (action === 'paste') { void this.#clipboard.paste(); return; }
     const rows = [...this.#refs.list.querySelectorAll('[data-key]')];
     const key = this.#keyOf(event, rows);

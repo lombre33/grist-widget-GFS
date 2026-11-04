@@ -29,7 +29,7 @@ function harness({ files = [file(1), file(2, 'A/B'), file(3, 'A/B/C'), file(4, '
     kept = [...kept.filter(path => !drop.includes(path)), ...add.filter(path => !kept.includes(path))];
   }) };
   const ask = kind => async opts => { log.windows.push({ kind, ...opts }); return answers.shift() ?? null; };
-  const port = { doc: { fetchTable: async name => meta[name], applyUserActions: async actions => { log.actions.push(...actions); } } };
+  const port = { doc: { fetchTable: async name => meta[name], applyUserActions: async actions => { log.actions.push(...actions); for (const action of actions) if (action[0] === 'UpdateRecord') list = list.map(item => (item.row === action[2] ? { ...item, name: Object.values(action[3])[0] } : item)); } } };
   const filing = new Filing({
     port, rangement, t, locale: () => 'fr', files: () => list, folders: () => kept, here: () => 'X', specOf: () => SPEC, appName: () => 'Publipostage+', cleanName,
     writeBlock: () => block, notice: text => log.notices.push(text), refresh: async () => { log.refreshes += 1; }, windows: { name: ask('name'), folder: ask('folder') },
@@ -361,4 +361,155 @@ test('mettre à la corbeille un fichier dont le dossier a un autre fichier, ou e
   const { filing } = harness({ files: [file(1, 'P'), file(2, 'P')], spare: ['E'], setFiling: async (entries, folders) => { calls.push({ entries, folders }); } });
   await filing.keepFoldersOf(file(1, 'P'));
   assert.deepEqual(calls, []);
+});
+
+// ---------- Ctrl+Z : chaque geste qui a abouti dépose de quoi se défaire (js/undo-stack.js) ----------
+
+const placesOf = list => list.map(item => [item.id, item.folder, item.pinned]);
+
+test('Ctrl+Z après l\'étoile : le fichier retrouve son état d\'avant, et la phrase le dit ; défaire ne se défait pas', async () => {
+  const { filing, log, current } = harness();
+  const first = placesOf(current());
+  await filing.togglePin(file(1));
+  assert.equal(current()[0].pinned, true);
+  assert.equal(filing.undoStack.size, 1);
+  await filing.undoStack.undo();
+  assert.deepEqual(placesOf(current()), first);
+  assert.equal(log.notices.at(-1), t('undo.unpinned', { name: 'Modèle 1' }));
+  assert.equal(filing.undoStack.size, 0, 'l\'annulation n\'a rien déposé');
+  await filing.undoStack.undo();
+  assert.equal(log.notices.at(-1), t('undo.nothing'));
+});
+
+test('Ctrl+Z après avoir épinglé puis retiré l\'épingle : les deux se défont dans l\'ordre inverse', async () => {
+  const { filing, current, log } = harness();
+  await filing.togglePin(file(1));
+  await filing.togglePin(file(1));
+  assert.equal(current()[0].pinned, false);
+  await filing.undoStack.undo();
+  assert.equal(current()[0].pinned, true);
+  assert.equal(log.notices.at(-1), t('undo.pinned', { name: 'Modèle 1' }));
+  await filing.undoStack.undo();
+  assert.equal(current()[0].pinned, false);
+});
+
+test('Ctrl+Z après un déplacement (fenêtre, couper-coller, glisser-déposer) : le fichier revient dans son dossier ; « Moi » dit la racine', async () => {
+  const { filing, log, current } = harness({ answers: ['Z'] });
+  await filing.moveFile(file(2, 'A/B'));
+  assert.equal(current()[1].folder, 'Z');
+  await filing.undoStack.undo();
+  assert.equal(current()[1].folder, 'A/B');
+  assert.equal(log.notices.at(-1), t('undo.moved', { name: 'Modèle 2', folder: 'A/B' }));
+  await filing.moveFileTo(file(4, 'X'), '');
+  await filing.undoStack.undo();
+  assert.equal(current()[3].folder, 'X');
+  await filing.moveFileTo(file(1), 'Q');
+  await filing.undoStack.undo();
+  assert.equal(current()[0].folder, '');
+  assert.equal(log.notices.at(-1), t('undo.moved', { name: 'Modèle 1', folder: t('ex.me') }));
+});
+
+test('Ctrl+Z après un déplacement qui laissait un dossier vide : le dossier gardé par le déplacement n\'est plus gardé, le fichier est de retour', async () => {
+  const { filing, current, kept } = harness();
+  await filing.moveFileTo(file(4, 'X'), 'Y');
+  assert.deepEqual(kept(), ['X'], 'le déplacement garde le dossier que le fichier laisse vide');
+  await filing.undoStack.undo();
+  assert.equal(current()[3].folder, 'X');
+  assert.deepEqual(kept(), [], 'le fichier est revenu dans « X » : plus rien à y garder');
+});
+
+test('Ctrl+Z après avoir déplacé ou renommé un dossier : ses fichiers et les dossiers qu\'on y gardait sans fichier reviennent', async () => {
+  const { filing, current, kept } = harness({ spare: ['A/B/Vide'], answers: ['X', 'Bis'] });
+  const first = placesOf(current());
+  await filing.moveFolder('A/B');
+  assert.deepEqual(current().map(item => item.folder), ['', 'X/B', 'X/B/C', 'X']);
+  assert.deepEqual(kept(), ['X/B/Vide', 'A'], 'le dossier vidé (A) est gardé avec le dossier qu\'on y gardait');
+  await filing.undoStack.undo();
+  assert.deepEqual(placesOf(current()), first);
+  assert.deepEqual(kept(), ['A/B/Vide']);
+  await filing.renameFolder('A/B');
+  await filing.undoStack.undo();
+  assert.deepEqual(placesOf(current()), first);
+  assert.deepEqual(kept(), ['A/B/Vide']);
+  const { filing: other, log, current: list } = harness();
+  await other.moveFolderTo('A/B', 'X');
+  await other.undoStack.undo();
+  assert.deepEqual(list().map(item => item.folder), ['', 'A/B', 'A/B/C', 'X']);
+  assert.equal(log.notices.at(-1), t('undo.folder', { name: 'B' }));
+});
+
+test('Ctrl+Z après « Nouveau dossier » : le dossier est supprimé ; après « Supprimer le dossier » : il revient', async () => {
+  const { filing, kept, log } = harness({ answers: ['Neuf'] });
+  assert.equal(await filing.newFolder('X'), 'X/Neuf');
+  assert.deepEqual(kept(), ['X/Neuf']);
+  await filing.undoStack.undo();
+  assert.deepEqual(kept(), []);
+  assert.equal(log.notices.at(-1), t('undo.folderCreated', { name: 'Neuf' }));
+  const empty = harness({ spare: ['Vide', 'Vide/Sous'] });
+  assert.equal(await empty.filing.deleteFolder('Vide'), true);
+  assert.deepEqual(empty.kept(), []);
+  await empty.filing.undoStack.undo();
+  assert.deepEqual(empty.kept(), ['Vide', 'Vide/Sous']);
+  assert.equal(empty.log.notices.at(-1), t('undo.folder', { name: 'Vide' }));
+});
+
+test('Ctrl+Z après un renommage : l\'ancien nom est réécrit dans la colonne du nom, la liste est relue', async () => {
+  const { filing, log, current } = harness({ answers: ['Convocation 2026'] });
+  await filing.rename(file(2));
+  assert.equal(current()[1].name, 'Convocation 2026');
+  await filing.undoStack.undo();
+  assert.deepEqual(log.actions.at(-1), ['UpdateRecord', 'Publipostage_modeles', 20, { Nom: 'Modèle 2' }]);
+  assert.equal(current()[1].name, 'Modèle 2');
+  assert.equal(log.notices.at(-1), t('undo.renamed', { name: 'Modèle 2' }));
+  assert.equal(log.refreshes, 2);
+  assert.equal(filing.undoStack.size, 0);
+});
+
+test('Ctrl+Z après deux renommages : le second est défait en premier, puis le premier', async () => {
+  const { filing, current } = harness({ answers: ['Neuf', 'Encore'] });
+  await filing.rename(file(2));
+  await filing.rename(file(2));
+  await filing.undoStack.undo();
+  assert.equal(current()[1].name, 'Neuf');
+  await filing.undoStack.undo();
+  assert.equal(current()[1].name, 'Modèle 2');
+});
+
+test('Ctrl+Z après un renommage : un fichier qui a changé depuis, qui n\'est plus là, ou dont l\'ancien nom est pris n\'est pas touché, et la phrase le dit', async () => {
+  const drifted = harness({ answers: ['Neuf'] });
+  await drifted.filing.rename(file(2));
+  drifted.current()[1].name = 'Par une autre personne';
+  await drifted.filing.undoStack.undo();
+  assert.equal(drifted.log.notices.at(-1), t('undo.changed', { name: 'Neuf' }));
+  assert.equal(drifted.log.actions.length, 1, 'rien n\'est écrit');
+  const gone = harness({ answers: ['Neuf'] });
+  await gone.filing.rename(file(2));
+  gone.current().splice(1, 1);
+  await gone.filing.undoStack.undo();
+  assert.equal(gone.log.notices.at(-1), t('undo.gone', { name: 'Neuf' }));
+  const taken = harness({ answers: ['Neuf'] });
+  await taken.filing.rename(file(2));
+  taken.current()[0].name = 'Modèle 2';
+  await taken.filing.undoStack.undo();
+  assert.equal(taken.log.notices.at(-1), t('ex.nameTaken', { app: 'Publipostage+' }));
+  assert.equal(taken.log.actions.length, 1);
+});
+
+test('un geste qui n\'aboutit pas ne dépose rien à défaire (table refusée, écriture refusée, même nom, même dossier)', async () => {
+  const declined = harness({ setFiling: async () => { throw new TableDeclined(); } });
+  await declined.filing.togglePin(file(1));
+  assert.equal(declined.filing.undoStack.size, 0);
+  const same = harness({ answers: ['Modèle 1', null, 'A/B'] });
+  await same.filing.rename(file(1));
+  await same.filing.rename(file(1));
+  await same.filing.moveFile(file(2, 'A/B'));
+  await same.filing.moveFileTo(file(2, 'A/B'), 'A/B');
+  assert.equal(same.filing.undoStack.size, 0);
+});
+
+test('Ctrl+Z dans un document qui ne s\'enregistre plus : rien n\'est écrit, la personne lit pourquoi', async () => {
+  const { filing, log } = harness({ block: t('mod.readonly') });
+  filing.undoStack.push({ run: () => filing.togglePin(file(1)) });
+  await filing.undoStack.undo();
+  assert.deepEqual([log.notices, log.writes], [[t('mod.readonly')], []]);
 });

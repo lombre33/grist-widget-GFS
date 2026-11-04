@@ -2,11 +2,13 @@
 // (`GFS_Rangement`, contrats 6.4), le nom dans la table de l'app, sa seule colonne du nom (6.3, point 2). Créer et supprimer un dossier sont d'ici, même vide : il tient alors à une ligne d'état de
 // `GFS_Rangement` (6.4, point 11), et un dossier que la personne vide ne disparaît pas. Copier et supprimer un fichier ne sont pas d'ici : js/copying.js et js/trash.js (le porteur, 04/11).
 // Un geste à la fois, et chacun part de la liste relue après le précédent ; il relit la table avant d'écrire, en un seul lot. Les fenêtres et
-// l'accord de la personne viennent du contrôleur.
+// l'accord de la personne viennent du contrôleur. Chaque geste qui a abouti dépose dans la pile d'annulation (`undoStack`, js/undo-stack.js) de quoi se défaire : Ctrl+Z remet le rangement ou le nom
+// comme ils étaient (l'état d'avant est relu juste avant d'écrire).
 
 import { folderMoves, folderName, folderPaths, inside, normalizePath, spareMoves, vacatedFolders } from './explorer-model.js';
 import { TableDeclined } from './rangement.js';
 import { normalize } from './search.js';
+import { UndoStack } from './undo-stack.js';
 
 // Un nom de fichier pris : casse et espaces autour ignorés, la règle de Publipostage+ (`Templates.sameName`) ; un nom de table de même.
 const sameName = (a, b) => String(a ?? '').trim().toLowerCase() === String(b ?? '').trim().toLowerCase();
@@ -30,13 +32,16 @@ export class Filing {
   // opts : { port, rangement, t, locale(), files() -> [fichier], folders?() -> les dossiers gardés sans fichier, here() -> le dossier ouvert, specOf(file) -> son entrée `fichiers` du manifeste,
   //          cleanName?(file) -> la fonction qui met en forme le nom saisi (un PDF garde son « .pdf »), appName(id), writeBlock() -> texte | null, notice(texte), refresh() -> Promise,
   //          windows: { name(opts) -> Promise<texte | null>, folder(opts) -> Promise<chemin | null> } }
-  constructor(opts) { this.#opts = opts; }
+  constructor(opts) {
+    this.#opts = opts;
+    this.undoStack = new UndoStack({ t: opts.t, notice: opts.notice });
+  }
 
   // Deux clics rapides sur l'étoile l'allument puis l'éteignent : le second part de la liste relue après le premier.
   togglePin(file) {
     return this.#gesture(() => {
       const now = this.#now(file);
-      return this.#write([{ app: now.app, file: now.id, pinned: !now.pinned, folder: now.folder }]);
+      return this.#write([{ app: now.app, file: now.id, pinned: !now.pinned, folder: now.folder }], {}, { key: now.pinned ? 'undo.pinned' : 'undo.unpinned', params: { name: this.#title(now) } });
     });
   }
 
@@ -44,7 +49,7 @@ export class Filing {
     return this.#gesture(async () => {
       const now = this.#now(file);
       const target = await this.#chooseFolder({ title: this.#opts.t('ex.moveTitle', { name: this.#title(now) }), folders: this.#folders(), current: now.folder, base: this.#opts.here() });
-      if (target !== null && target !== now.folder) await this.#writeMoves([{ app: now.app, file: now.id, pinned: now.pinned, folder: target }]);
+      if (target !== null && target !== now.folder) await this.#writeMoves([{ app: now.app, file: now.id, pinned: now.pinned, folder: target }], null, {}, this.#movedBack(now));
     });
   }
 
@@ -54,7 +59,7 @@ export class Filing {
     return this.#gesture(async () => {
       const now = this.#now(file);
       if (now.folder === folder) return 'same';
-      return (await this.#writeMoves([{ app: now.app, file: now.id, pinned: now.pinned, folder }])) ? 'moved' : undefined;
+      return (await this.#writeMoves([{ app: now.app, file: now.id, pinned: now.pinned, folder }], null, {}, this.#movedBack(now))) ? 'moved' : undefined;
     });
   }
 
@@ -102,7 +107,7 @@ export class Filing {
       const name = await windows.name({ title: t('ex.newFolderTitle', { folder: parent ? parent.split('/').join(' / ') : t('ex.me') }), label: t('ex.folderNameLabel'), value: '', confirmLabel: t('ex.newFolderConfirm'), clean: folderName, refuse });
       if (name === null) return undefined;
       const path = normalizePath(`${parent}/${name}`);
-      return (await this.#write([], { add: [path] })) ? path : undefined;
+      return (await this.#write([], { add: [path] }, { key: 'undo.folderCreated', params: { name: lastPart(path) } })) ? path : undefined;
     });
   }
 
@@ -114,7 +119,7 @@ export class Filing {
       if (this.#opts.files().some(file => inside(file.folder, path))) { notice(t('ex.folderNotEmpty')); return false; }
       const kept = this.#spare().filter(each => inside(each, path));
       if (!kept.length) { notice(t('ex.folderGone')); return false; }
-      if (!(await this.#write([], { drop: kept }))) return false;
+      if (!(await this.#write([], { drop: kept }, { key: 'undo.folder', params: { name: lastPart(path) } }))) return false;
       notice(t('ex.folderDeleted', { name: lastPart(path) }));
       return true;
     });
@@ -132,25 +137,44 @@ export class Filing {
   // un nom qu'un autre fichier de la même table porte déjà est refusé.
   rename(file) {
     return this.#gesture(async () => {
-      const { t, windows, port, notice, appName } = this.#opts;
+      const { t, windows, appName } = this.#opts;
       const now = this.#now(file);
-      const spec = this.#opts.specOf(now);
-      const column = spec && spec.colonnes ? spec.colonnes.nom : null;
       const taken = name => this.#opts.files().some(other => other.key !== now.key && other.app === now.app && other.table === now.table && sameName(other.name, name));
       const refuse = name => (!name ? t('ex.nameEmpty') : (taken(name) ? t('ex.nameTaken', { app: appName(now.app) }) : null));
       const clean = this.#opts.cleanName ? this.#opts.cleanName(now) : undefined;
       const name = await windows.name({ title: t('ex.renameTitle', { name: this.#title(now) }), label: t('ex.nameLabel'), value: now.name, confirmLabel: t('ex.rename'), clean, refuse });
       if (name === null || name === now.name) return;
-      try {
-        const found = column ? await columnsOf(port.doc, spec.table) : null;
-        if (!found || !found.columns.includes(column)) { notice(t('ex.renameNoColumn', { app: appName(now.app) })); return; }
-        await port.doc.applyUserActions([['UpdateRecord', found.tableId, now.row, { [column]: name }]]);
-      } catch (error) {
-        console.warn('GFS : le fichier n’a pas pu être renommé', error);
-        notice(t('ex.renameFailed', { reason: reasonOf(error) }));
-        return;
-      }
-      await this.#opts.refresh();
+      if (await this.#setName(now, name)) this.undoStack.push({ run: () => this.#restoreName(now, now.name, name) });
+    });
+  }
+
+  // Écrit le nom `name` du fichier `now` dans la colonne que le manifeste désigne, puis relit la liste. Rend true quand c'est écrit ; sinon la phrase dit pourquoi (colonne absente, Grist refuse).
+  async #setName(now, name) {
+    const { t, port, notice, appName } = this.#opts;
+    const spec = this.#opts.specOf(now);
+    const column = spec && spec.colonnes ? spec.colonnes.nom : null;
+    try {
+      const found = column ? await columnsOf(port.doc, spec.table) : null;
+      if (!found || !found.columns.includes(column)) { notice(t('ex.renameNoColumn', { app: appName(now.app) })); return false; }
+      await port.doc.applyUserActions([['UpdateRecord', found.tableId, now.row, { [column]: name }]]);
+    } catch (error) {
+      console.warn('GFS : le fichier n’a pas pu être renommé', error);
+      notice(t('ex.renameFailed', { reason: reasonOf(error) }));
+      return false;
+    }
+    await this.#opts.refresh();
+    return true;
+  }
+
+  // Défait un renommage : le fichier reprend son ancien nom `was`, s'il porte encore celui que le renommage lui avait donné (`renamed`) et qu'aucun autre fichier de l'app n'a pris l'ancien entre-temps.
+  #restoreName(file, was, renamed) {
+    return this.#gesture(async () => {
+      const { t, appName } = this.#opts;
+      const now = this.#opts.files().find(item => item.key === file.key);
+      if (!now) return t('undo.gone', { name: renamed });
+      if (now.name !== renamed) return t('undo.changed', { name: renamed });
+      if (this.#opts.files().some(other => other.key !== now.key && other.app === now.app && other.table === now.table && sameName(other.name, was))) return t('ex.nameTaken', { app: appName(now.app) });
+      return (await this.#setName(now, was)) ? t('undo.renamed', { name: was }) : null;
     });
   }
 
@@ -181,10 +205,13 @@ export class Filing {
 
   // Un rangement de fichiers : les dossiers qu'il laisse sans fichier sont gardés dans le même lot (6.4, point 11). `moving` : le dossier qui part avec tout ce qu'il contient (il ne reste pas derrière lui) ;
   // `kept` : { drop, add }, ce que les dossiers gardés sans fichier ont à suivre (js/explorer-model.js, `spareMoves`).
-  #writeMoves(entries, moving = null, kept = {}) {
+  #writeMoves(entries, moving = null, kept = {}, undo = null) {
     const vacated = vacatedFolders(this.#opts.files(), entries, this.#spare(), kept).filter(path => moving === null || !inside(path, moving));
-    return this.#write(entries, { add: [...(kept.add || []), ...vacated], drop: kept.drop });
+    return this.#write(entries, { add: [...(kept.add || []), ...vacated], drop: kept.drop }, undo);
   }
+
+  // Ce que dit l'annulation d'un fichier déplacé : il revient dans le dossier d'où il vient (« Moi » pour la racine).
+  #movedBack(now) { return { key: 'undo.moved', params: { name: this.#title(now), folder: now.folder || this.#opts.t('ex.me') } }; }
 
   // Le dossier `path` devient `target`, sous-dossiers compris : ses fichiers changent de dossier et les dossiers qu'on garde dedans sans fichier le suivent, dans le même lot. Rend true quand c'est écrit,
   // 'gone' quand plus rien ne le nomme (ni fichier, ni ligne d'état), false quand rien ne s'écrit (la phrase est dite).
@@ -192,7 +219,7 @@ export class Filing {
     const moves = folderMoves(this.#opts.files(), path, target);
     const kept = spareMoves(this.#spare(), path, target);
     if (!moves.length && !kept.add.length) return 'gone';
-    return this.#writeMoves(moves, path, kept);
+    return this.#writeMoves(moves, path, kept, { key: 'undo.folder', params: { name: lastPart(path) } });
   }
 
   async #relocateOrSay(path, target) {
@@ -201,9 +228,11 @@ export class Filing {
 
   // Rien quand il n'y a rien à écrire ; l'explorateur se relit après. `folders` : { add, drop }, les dossiers gardés sans fichier. Rend true quand le rangement est écrit, false sinon (la personne a refusé la table,
   // Grist a refusé le lot : la phrase est dite).
-  async #write(entries, folders = {}) {
+  // `undo` : { key, params }, la phrase de l'annulation ; l'état d'avant est relu ici, avant d'écrire, et sert à remettre le rangement comme il était.
+  async #write(entries, folders = {}, undo = null) {
     const { rangement, notice, t } = this.#opts;
     if (!entries.length && !(folders.add || []).length && !(folders.drop || []).length) return false;
+    const before = undo ? this.#before(entries, folders) : null;
     try {
       await rangement.setFiling(entries, folders);
     } catch (error) {
@@ -212,7 +241,28 @@ export class Filing {
       notice(t('ex.filingFailed', { reason: reasonOf(error) }));
       return false;
     }
+    if (before) this.undoStack.push({ run: () => this.#undoWrite(before, undo) });
     await this.#opts.refresh();
     return true;
+  }
+
+  // L'état d'avant un lot de rangement : ce que chaque fichier touché avait (favori, dossier), les dossiers gardés que le lot retire (à remettre) et ceux qu'il crée (à retirer).
+  #before(entries, folders) {
+    const live = this.#opts.files();
+    const spare = this.#spare();
+    const dropped = folders.drop || [];
+    return {
+      entries: entries.map(entry => {
+        const was = live.find(item => item.app === entry.app && item.id === String(entry.file));
+        return { app: entry.app, file: entry.file, pinned: Boolean(was && was.pinned), folder: was ? was.folder || '' : '' };
+      }),
+      add: dropped.filter(path => spare.includes(path)),
+      drop: (folders.add || []).filter(path => !spare.includes(path) && !dropped.includes(path)),
+    };
+  }
+
+  // Défait un lot : le rangement d'avant est réécrit, au rang des autres gestes (lecture seule : refusé et dit). Rend la phrase de l'annulation.
+  #undoWrite(before, undo) {
+    return this.#gesture(async () => ((await this.#write(before.entries, { add: before.add, drop: before.drop })) ? this.#opts.t(undo.key, undo.params) : null));
   }
 }

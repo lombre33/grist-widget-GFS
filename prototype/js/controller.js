@@ -292,13 +292,14 @@ export class GfsController {
     this.kept = this.#buildKept();
     const managers = [this.kept, this.#buildAppFiles()]; // les gardiens des fichiers : les PDF de GFS, les fichiers des apps (la corbeille et la copie les interrogent)
     const gestures = { t: this.t, notice: text => this.notice(text), refresh: () => this.refreshFiles() };
+    const filing = this.#buildFiling();
     this.explorer = new Explorer({
       container: this.$('stage'), i18n: this.i18n, locale: this.locale, now: () => new Date(), appName: this.appName, typeLabel: this.typeLabel, lockOf: this.lockOf,
       newTypes: this.newTypes, importTypes: this.importTypes, canClose: () => Boolean(this.session), notice: text => this.notice(text),
       language: () => ({ choice: this.language.choice, grist: this.language.grist }), onLanguage: choice => this.#chooseLanguage(choice), onTheme: () => this.openTheme(),
       onOpen: file => this.#openFile(file), onNew: entry => this.#openNew(entry), onImport: entry => void this.#importFile(entry), onClose: () => this.hideExplorer(), onApps: () => void this.openModules(),
-      personal: () => Boolean(this.identity), filing: this.#buildFiling(), kept: this.kept,
-      trash: new Trash({ managers, ask: opts => this.#ask(opts), ...gestures }),
+      personal: () => Boolean(this.identity), filing, kept: this.kept,
+      trash: new Trash({ managers, ask: opts => this.#ask(opts), keepFolders: file => filing.keepFoldersOf(file), ...gestures }),
       copying: new Copying({ managers, file: (app, id, folder) => this.rangement.setFiling([{ app, file: id, pinned: false, folder }]), ...gestures }),
     });
   }
@@ -317,7 +318,7 @@ export class GfsController {
   #buildFiling() {
     const layer = opts => ({ ...opts, t: this.t, container: this.$('stage'), inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')] });
     return new Filing({
-      port: this.port, rangement: this.rangement, t: this.t, locale: () => this.locale, files: () => this.explorer.files, appName: this.appName,
+      port: this.port, rangement: this.rangement, t: this.t, locale: () => this.locale, files: () => this.explorer.files, folders: () => this.explorer.folders, appName: this.appName,
       here: () => (this.explorer.state.view === 'folder' ? this.explorer.state.path : ''), writeBlock: () => this.#writeBlock(), notice: text => this.notice(text),
       specOf: file => ((this.manifestOf(file.app) || {}).fichiers || []).find(spec => spec.table === file.table) || null,
       cleanName: file => (file.app === FILES_APP ? cleanName : undefined),
@@ -411,8 +412,8 @@ export class GfsController {
     this.#fileStatus = { loading: true, restricted: false, problems: [] };
     this.#showFileStatus();
     try {
-      const { files, trash, problems, stats } = await loadFiles(this.port, [...this.validApps(), FILES_ENTRY], this.identity);
-      this.explorer.setFiles(files, trash);
+      const { files, trash, folders, problems, stats } = await loadFiles(this.port, [...this.validApps(), FILES_ENTRY], this.identity);
+      this.explorer.setFiles(files, trash, folders);
       this.#fileStatus = { loading: false, restricted: false, problems: problems.map(item => ({ key: 'ex.readFailed', app: item.app, reason: item.reason })) };
       this.#showFileStatus();
       this.doc.body.dataset.explorerStats = JSON.stringify(stats);

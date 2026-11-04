@@ -8,9 +8,13 @@
 // ajoute une copie à la liste (premier nom libre), et un rangement de doublure qui déplace vraiment les fichiers et les dossiers ; `window.__copies` note [identifiant, dossier] de chaque copie rangée.
 // Les icônes des types (test/icones-firefox.mjs) : l'ambiance se pose comme dans GFS, par le vrai `ThemeSetting` et le vrai `ThemeHost` (`window.__ambiance(id)`, le mode vient de `data-grist-appearance`), et
 // `window.__withPdf()` ajoute à la liste un PDF gardé par GFS, lu par le vrai modèle avec le vrai manifeste de GFS (la famille « pdf », rouge) ; `window.__reset()` le retire et rend l'ambiance d'origine.
+// Les dossiers sans fichier (test/dossiers-firefox.mjs) : le vrai `Filing` (js/filing.js) et les vraies fenêtres du rangement (js/filing-window.js) sur un rangement de doublure qui tient les dossiers gardés
+// (`window.__keep(...chemins)` en pose, `window.__filing` note chaque lot « setFiling:+gardé:-retiré »), et la corbeille y garde le dossier du dernier fichier qui part, comme le contrôleur.
 import { ask } from '/js/ask-window.js';
 import { askConflict } from '/js/conflict-window.js';
 import { Explorer } from '/js/explorer.js';
+import { Filing } from '/js/filing.js';
+import { askName, chooseFolder } from '/js/filing-window.js';
 import { applyFiling, folderMoves, inside, normalizePath, readFiles, readFiling } from '/js/explorer-model.js';
 import { Copying } from '/js/copying.js';
 import { FILES_MANIFEST } from '/js/gfs-files.js';
@@ -67,6 +71,8 @@ async function mount() {
   // Les fichiers vivants et ceux de la corbeille ; le gardien de doublure les déplace de l'une à l'autre, comme le ferait la table de GFS.
   let live = [...files];
   let trashed = [];
+  let kept = []; // les dossiers que la personne garde sans fichier
+  const show = () => explorer.setFiles(live, trashed, kept);
   const folders = new Map(files.map(file => [file.key, file.folder])); // où chaque fichier est au départ : couper puis coller en déplace, `__reset` les remet
   const pick = (list, wanted) => list.findIndex(file => file.key === wanted.key);
   const move = (from, to, wanted) => { const at = pick(from, wanted); if (at < 0) return null; const [file] = from.splice(at, 1); to.push(file); return file; };
@@ -99,11 +105,11 @@ async function mount() {
     },
   };
   const copying = new Copying({
-    managers: [copier], t: i18n.t, notice: text => window.__notices.push(text), refresh: async () => explorer.setFiles(live, trashed),
+    managers: [copier], t: i18n.t, notice: text => window.__notices.push(text), refresh: async () => show(),
     file: async (app, id, folder) => { live.find(item => item.id === id).folder = folder; window.__copies.push([id, folder]); },
   });
   // Le rangement de doublure d'un fichier ou d'un dossier collé après Ctrl+X : il déplace vraiment, et rend ce que rend js/filing.js.
-  const settle = result => { explorer.setFiles(live, trashed); return result; };
+  const settle = result => { show(); return result; };
   const moving = {
     moveFileTo: async (file, folder) => {
       const at = live.find(item => item.key === file.key);
@@ -125,14 +131,31 @@ async function mount() {
     },
   };
   const bin = new Trash({
-    managers: [guardian], ask: opts => ask({ ...opts, container: stage, inertTargets: () => [explorer.root] }), t: i18n.t, notice: text => window.__notices.push(text), refresh: async () => explorer.setFiles(live, trashed),
+    managers: [guardian], ask: opts => ask({ ...opts, container: stage, inertTargets: () => [explorer.root] }), t: i18n.t, notice: text => window.__notices.push(text), refresh: async () => show(), keepFolders: file => filing.keepFoldersOf(file),
   });
+  // Les dossiers sans fichier : le vrai `Filing` sur un rangement de doublure qui range les fichiers et tient les dossiers gardés, comme `GFS_Rangement` (un lot noté « setFiling:+gardé:-retiré »).
+  const layer = opts => ({ ...opts, t: i18n.t, container: stage, inertTargets: () => [explorer.root] });
+  const rangement = {
+    setFiling: async (entries, folders = {}) => {
+      const add = folders.add || [];
+      const drop = folders.drop || [];
+      window.__filing.push(['setFiling', ...add.map(path => `+${path}`), ...drop.map(path => `-${path}`)]);
+      for (const entry of entries) { const file = live.find(item => item.id === entry.file); if (file) file.folder = entry.folder; }
+      kept = [...kept.filter(path => !drop.includes(path)), ...add.filter(path => !kept.includes(path))];
+    },
+  };
+  const filing = new Filing({
+    port: null, rangement, t: i18n.t, locale: () => locale, files: () => live, folders: () => kept, appName: () => 'Publipostage+', here: () => (explorer.state.view === 'folder' ? explorer.state.path : ''),
+    writeBlock: () => null, notice: text => window.__notices.push(text), specOf: () => null, refresh: async () => show(), windows: { name: opts => askName(layer(opts)), folder: opts => chooseFolder(layer(opts)) },
+  });
+  window.__keep = (...paths) => { kept = [...new Set([...kept, ...paths])]; show(); };
   const explorer = new Explorer({
     container: stage, i18n, locale, now: () => new Date(), appName: () => 'Publipostage+', typeLabel: file => (file.typeInfo ? file.typeInfo.nom[language] || file.typeInfo.nom.fr : file.type),
     lockOf: file => (file.type === 'macro' ? { text: i18n.t('ex.lockedExtension', { name: 'Macro-modèles' }) } : null), newTypes: () => [], importTypes: () => [], canClose: () => true,
     notice: text => window.__notices.push(text), language: () => ({ choice: language, grist: language }), onLanguage: () => {}, onTheme: () => theme.open(), onOpen: file => { window.__opened = file.name; }, onNew: () => {},
     onImport: () => {}, onClose: () => {}, onApps: () => {}, personal: () => true, kept: null, trash: bin, copying,
-    filing: { togglePin: noted('pin', 'name'), rename: noted('rename', 'name'), moveFile: noted('move', 'name'), renameFolder: async path => { window.__filing.push(['renameFolder', path]); }, moveFolder: async path => { window.__filing.push(['moveFolder', path]); }, ...moving },
+    filing: { togglePin: noted('pin', 'name'), rename: noted('rename', 'name'), moveFile: noted('move', 'name'), renameFolder: async path => { window.__filing.push(['renameFolder', path]); }, moveFolder: async path => { window.__filing.push(['moveFolder', path]); }, ...moving,
+      newFolder: () => filing.newFolder(), deleteFolder: path => filing.deleteFolder(path) },
   });
   window.__explorer = explorer;
   window.__reset = () => {
@@ -140,6 +163,7 @@ async function mount() {
     live = [...files];
     for (const file of live) { file.trashed = null; file.folder = folders.get(file.key); }
     trashed = [];
+    kept = [];
     window.__filing.length = 0;
     window.__copies.length = 0;
     window.__notices.length = 0;
@@ -147,7 +171,7 @@ async function mount() {
     setting.reset(); // l'ambiance d'origine, comme au départ
     Object.assign(explorer.state, { view: 'folder', path: '', display: 'list', type: 'all', q: '', sel: null });
     explorer.root.querySelector('input[type="search"]').value = '';
-    explorer.setFiles(live, trashed);
+    show();
     explorer.open();
   };
   // Le thème comme dans GFS : un seul réglage, que la fenêtre « Thème » écrit et que l'hôte pose sur la page (l'ambiance et le mode de Grist, `data-grist-appearance`).
@@ -160,7 +184,7 @@ async function mount() {
   window.__withPdf = () => {
     const [pdf] = readFiles(FILES_MANIFEST, FILES_MANIFEST.fichiers[0], { id: [900], Identifiant: ['essai-pdf'], Nom: ['Attestation.pdf'], Type: ['pdf'], Date: [Math.floor(Date.now() / 1000) - 3600], Auteur: ['Service RH'] });
     live.push(pdf);
-    explorer.setFiles(live, trashed);
+    show();
   };
   // Le fichier gardé qui porte déjà le nom, tel que GFS le décrit (date et auteur) ; la copie prendrait « (1) ».
   const detail = `${i18n.t('ex.modifiedOn', { date: '12/10/2026' })} · ${i18n.t('ex.modifiedBy', { by: 'Service RH' })}`;
@@ -180,7 +204,7 @@ async function mount() {
     ask({ ...leaveQuestion({ t: i18n.t, app: 'Publipostage+', fault: reason === null ? null : new Error(reason) }), container: stage, inertTargets: () => [explorer.root] })
       .then(answer => { window.__leave = answer ? 'force' : 'stay'; });
   };
-  explorer.setFiles(live, trashed);
+  show();
   explorer.open();
 }
 

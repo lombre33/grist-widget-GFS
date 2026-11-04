@@ -18,9 +18,10 @@ export const reasonOf = error => String((error && error.message) || error).slice
 export class Trash {
   #opts;
 
-  // opts : { managers: [gardien], ask(fenêtre) -> Promise<bool> (la fenêtre du widget : js/ask-window.js), t, notice(texte), refresh() -> Promise (relire les fichiers) }
+  // opts : { managers: [gardien], ask(fenêtre) -> Promise<bool> (la fenêtre du widget : js/ask-window.js), t, notice(texte), refresh() -> Promise (relire les fichiers),
+  //          keepFolders?(fichier) -> Promise (appelé quand le fichier est à la corbeille, avant que la liste soit relue : le dossier qu'il laisse sans fichier est gardé, js/filing.js) }
   constructor(opts) {
-    this.#opts = opts;
+    this.#opts = { keepFolders: async () => {}, ...opts };
   }
 
   // Le gardien d'un fichier, ou null : GFS sait-il le supprimer ?
@@ -34,9 +35,11 @@ export class Trash {
   move(file) {
     const { t } = this.#opts;
     const name = nameOf(file, t);
-    return this.#act(file, 'trash.failed', async manager => (await manager.trash(file)
-      ? { ok: true, text: t('trash.moved', { name }) }
-      : { ok: false, text: t('trash.gone', { name }) }));
+    return this.#act(file, 'trash.failed', async manager => {
+      if (!(await manager.trash(file))) return { ok: false, text: t('trash.gone', { name }) };
+      await this.#keepFolders(file);
+      return { ok: true, text: t('trash.moved', { name }) };
+    });
   }
 
   // Sort le fichier de la corbeille. Le gardien dit s'il a fallu changer son nom (un autre fichier avait pris le sien).
@@ -89,6 +92,15 @@ export class Trash {
     }
     await refresh();
     return ok;
+  }
+
+  // Le dossier d'un fichier qui part à la corbeille reste, comme après un déplacement. Si cela ne s'écrit pas, le fichier est quand même à la corbeille : la console le sait, la personne n'a rien à en lire.
+  async #keepFolders(file) {
+    try {
+      await this.#opts.keepFolders(file);
+    } catch (error) {
+      console.warn('GFS : le dossier du fichier n’a pas pu être gardé', error);
+    }
   }
 
   // Un geste sur un fichier : le gardien doit pouvoir écrire (sinon la phrase dit pourquoi, rien n'est demandé) ; `confirm` (une fenêtre) est posée avant ce qui ne s'annule pas ; la phrase du

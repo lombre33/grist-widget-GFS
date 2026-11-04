@@ -13,6 +13,8 @@ const ICONS = {
   macro: '<rect x="2" y="6" width="14" height="16" rx="1.5"/><path d="M7 2h11a1.5 1.5 0 0 1 1.5 1.5V18"/>',
   grid: '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 9.3h18M3 14.6h18M9 4v16M15 4v16"/>',
   folder: '<path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/>',
+  // Créer un dossier : le dossier et un « + » (l'article « Nouveau dossier » du menu « Nouveau »).
+  'folder-plus': '<path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/><path d="M12 10.5v6M9 13.5h6"/>',
   slides: '<rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M12 16v4M8 20h8"/>',
   dash: '<rect x="3" y="3" width="8" height="10" rx="1.2"/><rect x="13" y="3" width="8" height="6" rx="1.2"/><rect x="3" y="15" width="8" height="6" rx="1.2"/><rect x="13" y="11" width="8" height="10" rx="1.2"/>',
   search: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',

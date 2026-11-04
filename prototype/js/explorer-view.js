@@ -32,7 +32,7 @@ export function buildShell(i18n) {
     h('div', { class: 'ex-body' },
       keep('tree', h('nav', { class: 'ex-tree' })),
       h('div', { class: 'ex-main' }, keep('scroll', h('div', { class: 'ex-scroll' },
-        keep('list', h('div', { class: 'ex-list', role: 'grid' })),
+        keep('list', h('div', { class: 'ex-list', role: 'grid', tabindex: '-1' })),
         keep('empty', h('div', { class: 'empty', hidden: true })))))),
     h('footer', { class: 'ex-foot' },
       keep('info', h('div', { class: 'ex-info', 'aria-live': 'polite' })),
@@ -193,7 +193,8 @@ export function emptyMessage(ctx) {
   if (ctx.choosing && ctx.totalFiles === 0) return t('ex.choose.empty');
   if (state.view === 'trash') return t('trash.emptyList');
   if (state.view === 'fav') return t('ex.emptyFav');
-  if (state.view === 'recent' || ctx.totalFiles === 0) return t('ex.emptyAll');
+  // « Aucun fichier » ne vaut qu'à la racine : un dossier (créé vide, ou vidé) est « vide » même quand le document n'a aucun fichier.
+  if (state.view === 'recent' || (ctx.totalFiles === 0 && state.path === '')) return t('ex.emptyAll');
   return t('ex.emptyFolder');
 }
 

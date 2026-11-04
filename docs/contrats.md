@@ -1782,8 +1782,9 @@ rangée d'un fichier, selon ce qui vient d'abord.
 | `Valeur` | Text | Lignes réservées de GFS seulement (point 6) : un texte JSON |
 | `Adresse` | Text | Colonne à formule déclenchée (point 9) : Grist y écrit l'adresse de la personne pour la ligne-sonde, rien pour les autres |
 
-1. [D] Une ligne par (personne, app, fichier) qui a un dossier ou un favori ; une ligne d'état par (personne, dossier). Un
-   dossier existe tant qu'une ligne le nomme.
+1. [D] Une ligne par (personne, app, fichier) qui a un dossier ou un favori ; une ligne d'état par (personne, dossier) que la
+   personne garde sans fichier (point 11). Un dossier existe tant qu'une ligne le nomme, celle d'un fichier ou celle d'un état ;
+   les dossiers parents d'un chemin existent d'office.
 2. [D] Modèle : `Publipostage_PreferencesModeles` (`js/template-preferences.js`), qui range déjà, par personne, l'épingle, le
    dossier (chemin avec « / ») et l'état replié.
 3. [T] Changements additifs seulement, colonnes inconnues gardées ; désinstaller une app n'efface aucune ligne ; une ligne dont
@@ -1802,9 +1803,10 @@ rangée d'un fichier, selon ce qui vient d'abord.
    (point 9), qui n'existe que le temps d'une lecture. Le rangement ignore toute ligne en « @ ». Une app n'écrit jamais cette
    table (6.1, point 1).
 7. [D] GFS écrit ces lignes sur un geste de la personne dans l'explorateur, avant qu'aucune app ne soit ouverte (le porteur,
-   21/10) : épingler un fichier, le déplacer, renommer ou déplacer un dossier. Chaque geste relit la table puis écrit en un
-   seul lot ; un dossier renommé ou déplacé réécrit la ligne de chaque fichier qu'il contient, sous-dossiers compris ; un
-   dossier ne va ni en lui-même ni dans un de ses sous-dossiers. Deux dossiers voisins ne portent pas le même nom (comparé
+   21/10) : épingler un fichier, le déplacer, créer, renommer, déplacer ou supprimer un dossier (créer et supprimer : point 11).
+   Chaque geste relit la table puis écrit en un seul lot ; un dossier renommé ou déplacé réécrit la ligne de chaque fichier qu'il
+   contient et celle de chaque dossier gardé sans fichier, sous-dossiers compris ; un dossier ne va ni en lui-même ni dans un de
+   ses sous-dossiers. Deux dossiers voisins ne portent pas le même nom (comparé
    comme la recherche) : renommer vers le nom d'un voisin est refusé, déplacer dans un dossier qui a déjà ce nom les réunit.
 8. [D] Dans l'explorateur, la ligne de GFS d'un fichier passe devant le rangement propre de l'app (point 5) ; sans ligne de
    GFS, celui de l'app reste le point de départ. L'app garde le sien, que GFS ne réécrit pas : un fichier rangé dans GFS
@@ -1840,6 +1842,29 @@ rangée d'un fichier, selon ce qui vient d'abord.
     avant) ; quand du texte est sélectionné, Ctrl+C copie ce texte. **Ctrl+D n'est lié à rien** : c'est le marque-page de Firefox,
     le navigateur du porteur ; « Dupliquer » est dans le menu de la ligne (clic droit, Maj+F10, « Plus d'actions »), qui dit les
     raccourcis (« Ctrl+C, V »).
+11. [D] **Créer, garder et supprimer un dossier, même vide** (décision du porteur, 04/11 : « créer des dossiers et sous-dossiers », tout
+    se fait depuis l'explorateur). Un dossier sans fichier tient à une **ligne d'état** : `App` et `Fichier` vides, `Dossier` = son chemin,
+    `Utilisateur` = la personne (point 1). Un sous-dossier n'a que sa propre ligne : ses parents existent d'office. Une ligne d'une autre
+    personne, une ligne réservée (point 6) ou un chemin vide n'est pas un dossier de la personne.
+    - **Créer.** « Nouveau dossier » est le premier article du menu « Nouveau » de l'explorateur : le dossier naît dans le dossier ouvert (à la
+      racine quand la vue n'est pas un dossier : « Récents », « Favoris », la corbeille), et la personne y est conduite. Une fenêtre du widget
+      demande le nom et dit où il naît ; un nom vide, ou celui d'un voisin (comparé comme la recherche, point 7), y est refusé. La table
+      `GFS_Rangement` est créée avec l'accord de la personne s'il n'y en a pas encore (6.2) ; le geste n'écrit que la ligne d'état. Pendant le
+      choix d'un fichier pour une app, « Nouveau dossier » est refusé comme les autres gestes d'écriture, et les dossiers sans fichier ne sont
+      pas montrés.
+    - **Rester.** Un dossier que la personne vide ne disparaît pas. Le geste qui le laisse sans fichier (déplacer, couper-coller, renommer ou
+      déplacer un dossier) écrit sa ligne d'état **dans le même lot** ; **mettre à la corbeille** son dernier fichier l'écrit dans un lot à
+      part, **silencieux** : sans la table `GFS_Rangement` (ou sans une de ses colonnes), GFS ne la crée pas et ne pose aucune question pour
+      garder un dossier. La limite est dite : le dossier qu'un fichier tenait seul (un modèle que l'app range elle-même) disparaît alors avec
+      lui, et revient avec le fichier restauré ; le lot échoue sans bruit (un avertissement) si Grist le refuse, le fichier est à la corbeille.
+    - **Supprimer.** Un dossier **sans fichier**, sous-dossiers compris, se supprime (menu de la ligne, Suppr) : sa ligne d'état et celles de ses
+      sous-dossiers sont retirées en un lot, **sans question** (rien n'est perdu : la corbeille est pour les fichiers) ; la phrase dit qu'il est
+      supprimé. Un dossier qui a un fichier ne se supprime pas : l'article du menu est grisé (un clic redit pourquoi, comme Suppr) ; la personne
+      vide le dossier d'abord. Un dossier que plus rien ne nomme (une autre personne l'a supprimé entre-temps) reçoit la phrase « Ce dossier n'existe plus ».
+    - **Par personne.** Chacun voit ses dossiers sans fichier, jamais ceux d'un autre ; en supprimer un ne touche pas ceux d'un autre. Le
+      rangement propre de l'app (point 5) n'est jamais écrit.
+    [M] Mesuré le 04/11 dans un vrai serveur Grist 1.7.19 avec les modèles de Publipostage+ (`labo/run-dossiers.mjs`, 44 vérifications dans
+    chacune des quatre combinaisons, aucune en échec) et dans un vrai Firefox 159 (`test/dossiers-firefox.mjs`) : faits vérifiés, section 31.
 
 ### 6.5 Préserver l'inconnu
 

@@ -10,6 +10,8 @@
 button, input { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* La liste sans ligne (un dossier vide) a le clavier : son contour reste dans sa zone, qui défile. */
+.ex-list:focus-visible { outline-offset: -2px; }
 
 .tb { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 28px; min-width: 28px; padding: 0 5px;
   border: 1px solid transparent; border-radius: var(--radius-btn); background: transparent; color: var(--text); font-size: 12.5px; font-weight: 600; white-space: nowrap; }

@@ -10,9 +10,9 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-RHQzn165o481hZyBIG5NytCuLm5gsLYZdVAA+3eOHQ0='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-cD7vSbzdue95/sMLBv7C/CPm1Eyv4lvo4DyDvca5gMk='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=989ca1d27d">
-<link rel="stylesheet" href="css/explorer.css?v=710742387c">
+<link rel="stylesheet" href="css/explorer.css?v=d7cc7d4867">
 <link rel="stylesheet" href="css/modules.css?v=904497d37d">
 <link rel="stylesheet" href="kit/css/color-picker.css?v=c5a41d6681">
 <!-- Le routeur d'abord : il doit être enregistré avant que le script d'API de Grist n'affecte window.onmessage (contrats 1.2). -->
@@ -35,7 +35,7 @@
     "./js/catalogue.js": "./js/catalogue.js?v=13543d1715",
     "./js/conflict-window.js": "./js/conflict-window.js?v=e3c9c8e8d3",
     "./js/context.js": "./js/context.js?v=78e41a0736",
-    "./js/controller.js": "./js/controller.js?v=9412e5ba0e",
+    "./js/controller.js": "./js/controller.js?v=302a93d10f",
     "./js/copying.js": "./js/copying.js?v=f53487059f",
     "./js/deposit.js": "./js/deposit.js?v=e11841b099",
     "./js/dock-state.js": "./js/dock-state.js?v=8eec913fd1",
@@ -43,23 +43,24 @@
     "./js/dom.js": "./js/dom.js?v=6093a9f23f",
     "./js/envelope.js": "./js/envelope.js?v=8586bc1508",
     "./js/explorer-clipboard.js": "./js/explorer-clipboard.js?v=2d7ae0d059",
-    "./js/explorer-data.js": "./js/explorer-data.js?v=a1a8ba28a6",
+    "./js/explorer-data.js": "./js/explorer-data.js?v=4bf024a37c",
     "./js/explorer-keys.js": "./js/explorer-keys.js?v=6a6f23c6ed",
-    "./js/explorer-model.js": "./js/explorer-model.js?v=b0ea51c045",
-    "./js/explorer-view.js": "./js/explorer-view.js?v=1156e34c2f",
-    "./js/explorer.js": "./js/explorer.js?v=0c5b8f42b9",
+    "./js/explorer-model.js": "./js/explorer-model.js?v=4004796053",
+    "./js/explorer-view.js": "./js/explorer-view.js?v=67298be505",
+    "./js/explorer.js": "./js/explorer.js?v=ba01d99ea3",
     "./js/extensions.js": "./js/extensions.js?v=a6b2033702",
     "./js/files-store.js": "./js/files-store.js?v=98d9eb3e5c",
     "./js/filing-window.js": "./js/filing-window.js?v=ffaa75bf79",
-    "./js/filing.js": "./js/filing.js?v=6ceddc47e8",
+    "./js/filing.js": "./js/filing.js?v=692ec8d19f",
     "./js/filter.js": "./js/filter.js?v=6079469f9b",
     "./js/frames.js": "./js/frames.js?v=554a438e75",
     "./js/gfs-copy.js": "./js/gfs-copy.js?v=de86265414",
     "./js/gfs-files.js": "./js/gfs-files.js?v=4e36f82639",
     "./js/gfs-trash.js": "./js/gfs-trash.js?v=dbe3068dc0",
-    "./js/i18n-trash.js": "./js/i18n-trash.js?v=4430ba16cb",
-    "./js/i18n.js": "./js/i18n.js?v=5f7dfe553f",
-    "./js/icons.js": "./js/icons.js?v=23c67a560a",
+    "./js/i18n-folders.js": "./js/i18n-folders.js?v=fdfa7f4ccb",
+    "./js/i18n-trash.js": "./js/i18n-trash.js?v=ef324812f7",
+    "./js/i18n.js": "./js/i18n.js?v=f7312afc39",
+    "./js/icons.js": "./js/icons.js?v=b6b7965224",
     "./js/import-file.js": "./js/import-file.js?v=709ec6b26b",
     "./js/kept-files.js": "./js/kept-files.js?v=f04eeea3fa",
     "./js/language.js": "./js/language.js?v=b287c81a20",
@@ -77,7 +78,7 @@
     "./js/own-table.js": "./js/own-table.js?v=b7e0d83652",
     "./js/publication-window.js": "./js/publication-window.js?v=dbe050782a",
     "./js/publication.js": "./js/publication.js?v=93f6686b33",
-    "./js/rangement.js": "./js/rangement.js?v=ede2810a22",
+    "./js/rangement.js": "./js/rangement.js?v=cd749ccb5b",
     "./js/reading.js": "./js/reading.js?v=6b29ec0768",
     "./js/rpc.js": "./js/rpc.js?v=2133dc4192",
     "./js/search.js": "./js/search.js?v=0921c92eb3",
@@ -90,7 +91,7 @@
     "./js/theme-window.js": "./js/theme-window.js?v=c3a44e6146",
     "./js/theme.js": "./js/theme.js?v=7cd9417fb6",
     "./js/transfer.js": "./js/transfer.js?v=5064996e86",
-    "./js/trash.js": "./js/trash.js?v=38d67c0d94",
+    "./js/trash.js": "./js/trash.js?v=3a3a2f1798",
     "./js/view-options.js": "./js/view-options.js?v=f776be2727",
     "./js/work-control.js": "./js/work-control.js?v=7efc5aae9e",
     "./js/work-row.js": "./js/work-row.js?v=4003614ac1",

@@ -97,6 +97,19 @@ export function readGfsFiling(data, identity = '') {
   return byFile;
 }
 
+// Les dossiers que la personne `identity` garde même sans fichier (`GFS_Rangement`, les lignes d'état de dossier : ni app ni fichier, contrats 6.4, point 11) : des chemins normalisés, sans doublon.
+// Ceux qu'elle a créés, et ceux qu'un rangement a vidés de leur dernier fichier ; un dossier qui a des fichiers existe de toute façon par eux.
+export function readGfsFolders(data, identity = '') {
+  const found = new Set();
+  for (let i = 0; i < rowCount(data); i++) {
+    const user = text(cell(data, 'Utilisateur', i));
+    if (user !== identity || user.startsWith('@') || text(cell(data, 'App', i)) || text(cell(data, 'Fichier', i))) continue;
+    const path = normalizePath(cell(data, 'Dossier', i));
+    if (path) found.add(path);
+  }
+  return [...found];
+}
+
 // Pose dossier et favori sur les fichiers, et le texte de recherche (nom et dossier, normalisés une fois). Le rangement propre de l'app (`filing`, par
 // identifiant) sert de point de départ ; celui de GFS (`gfsFiling`, par clé « app:fichier ») passe devant : l'app seule garde le sien (6.4, point 5).
 export function applyFiling(files, filing, gfsFiling = null) {
@@ -108,10 +121,10 @@ export function applyFiling(files, filing, gfsFiling = null) {
   return files;
 }
 
-// Tous les dossiers que nomment les fichiers, leurs parents compris, triés : la liste où choisir où ranger.
-export function folderPaths(files, locale) {
+// Tous les dossiers que nomment les fichiers, ou que la personne garde sans fichier (`spare`, `readGfsFolders`), leurs parents compris, triés : la liste où choisir où ranger.
+export function folderPaths(files, locale, spare = []) {
   const found = new Set();
-  for (const file of files) for (const part of pathParts(file.folder)) found.add(part.path);
+  for (const folder of [...files.map(file => file.folder), ...spare]) for (const part of pathParts(folder)) found.add(part.path);
   return [...found].sort((a, b) => a.localeCompare(b, locale, { sensitivity: 'base', numeric: true }));
 }
 
@@ -127,30 +140,61 @@ export function folderMoves(files, from, to) {
     .map(file => ({ app: file.app, file: file.id, pinned: file.pinned, folder: normalizePath(`${to}/${file.folder.slice(from.length)}`) }));
 }
 
+// Ce que le dossier `from` qui devient `to` change aux dossiers gardés sans fichier (`spare`) : ceux qu'il est ou contient changent de chemin. Rend { drop, add } : les chemins à ne plus garder et ceux à garder.
+export function spareMoves(spare, from, to) {
+  if (!from || to === from || inside(to, from)) return { drop: [], add: [] };
+  const moved = spare.filter(path => inside(path, from));
+  return { drop: moved, add: moved.map(path => normalizePath(`${to}/${path.slice(from.length)}`)) };
+}
+
+// Les dossiers que nomment ces chemins, leurs parents compris, du plus haut au plus bas.
+const withParents = folders => {
+  const found = new Set();
+  for (const folder of folders) for (const part of pathParts(folder)) found.add(part.path);
+  return found;
+};
+
+// Les dossiers qui n'existeraient plus après ces rangements (`entries` : [{ app, file, folder }] ; `folder: null` : le fichier quitte la liste, il part à la corbeille) : ceux que plus aucun fichier ni aucune
+// ligne d'état ne nomme. Un dossier que la personne vide ne disparaît pas, il est gardé (contrats 6.4, point 11) : l'appelant écrit une ligne d'état pour chacun. `spare` : les dossiers déjà gardés ;
+// `moved` : { drop, add }, ce que le même lot change à ces lignes (`spareMoves`, un dossier qu'on déplace). Un dossier qui part avec tout son contenu n'est pas gardé derrière lui : l'appelant l'ôte du résultat.
+export function vacatedFolders(files, entries, spare = [], moved = {}) {
+  const target = new Map(entries.map(entry => [fileKey(entry.app, entry.file), entry.folder === null ? null : normalizePath(entry.folder)]));
+  const kept = [...spare.filter(path => !(moved.drop || []).includes(path)), ...(moved.add || [])];
+  const after = withParents([...files.map(file => (target.has(file.key) ? target.get(file.key) : file.folder)).filter(folder => folder !== null), ...kept]);
+  return [...withParents([...files.map(file => file.folder), ...spare])].filter(path => !after.has(path));
+}
+
 // Le fichier est-il dans le dossier `path` (ou dans un de ses sous-dossiers) ? La racine '' contient tout.
 export const inside = (folder, path) => path === '' || folder === path || folder.startsWith(`${path}/`);
 
-// Les sous-dossiers directs de `path` : [{ path, name, count, ts }] triés par nom. Un dossier existe tant qu'un fichier le nomme.
-export function subfolders(files, path, locale) {
+// Le sous-dossier direct de `path` qui contient `folder` (ou qui l'est), ou null : `folder` n'est pas dans `path`.
+function childOf(folder, path) {
+  if (folder === path || !inside(folder, path)) return null;
+  const name = (path ? folder.slice(path.length + 1) : folder).split('/')[0];
+  return { name, path: path ? `${path}/${name}` : name };
+}
+
+// Les sous-dossiers directs de `path` : [{ path, name, count, ts }] triés par nom. Un dossier existe tant qu'un fichier le nomme, ou que la personne le garde sans fichier (`spare`, compte 0).
+export function subfolders(files, path, locale, spare = []) {
   const found = new Map();
+  const entryOf = child => found.get(child.name) || found.set(child.name, { ...child, count: 0, ts: null }).get(child.name);
   for (const file of files) {
-    if (file.folder === path || !inside(file.folder, path)) continue;
-    const rest = path ? file.folder.slice(path.length + 1) : file.folder;
-    const name = rest.split('/')[0];
-    const entry = found.get(name) || { path: path ? `${path}/${name}` : name, name, count: 0, ts: null };
+    const child = childOf(file.folder, path);
+    if (!child) continue;
+    const entry = entryOf(child);
     entry.count += 1;
     if (file.ts !== null && (entry.ts === null || file.ts > entry.ts)) entry.ts = file.ts;
-    found.set(name, entry);
   }
+  for (const folder of spare) { const child = childOf(folder, path); if (child) entryOf(child); }
   return [...found.values()].sort((a, b) => a.name.localeCompare(b.name, locale, { sensitivity: 'base', numeric: true }));
 }
 
 // L'arbre des dossiers pour le volet : [{ path, name, depth, count, hasChildren }] dans l'ordre d'affichage, selon les dossiers ouverts.
-export function treeRows(files, openPaths, locale) {
+export function treeRows(files, openPaths, locale, spare = []) {
   const rows = [];
   const walk = (path, depth) => {
-    for (const folder of subfolders(files, path, locale)) {
-      const children = subfolders(files, folder.path, locale).length > 0;
+    for (const folder of subfolders(files, path, locale, spare)) {
+      const children = subfolders(files, folder.path, locale, spare).length > 0;
       rows.push({ path: folder.path, name: folder.name, depth, count: folder.count, hasChildren: children, open: openPaths.has(folder.path) });
       if (children && openPaths.has(folder.path)) walk(folder.path, depth + 1);
     }
@@ -182,10 +226,10 @@ const SORTERS = {
 };
 
 // Les lignes affichées : { rows: [{ kind: 'folder', ... } | { kind: 'file', file }], flat }.
-// `state` : { view: 'folder'|'recent'|'fav'|'trash', path, q, type, sort: { key, dir } } ; `locale` : pour le tri ; `typeLabel(file)` : le nom du type dans la langue.
+// `state` : { view: 'folder'|'recent'|'fav'|'trash', path, q, type, sort: { key, dir } } ; `locale` : pour le tri ; `typeLabel(file)` : le nom du type dans la langue ; `spare` : les dossiers gardés sans fichier.
 // Récents garde d'abord les huit plus récents, puis les trie comme demandé (l'explorateur y commence par « modifié, le plus récent d'abord »). La corbeille est une liste à plat : `files` est alors
 // celle des fichiers qui y sont, tous montrés, sans dossier.
-export function listItems(files, state, { locale, typeLabel }) {
+export function listItems(files, state, { locale, typeLabel, spare = [] }) {
   const needles = words(state.q);
   const filtering = needles.length > 0 || state.type !== 'all';
   const ctx = { locale, label: typeLabel, name: (a, b) => (a.name || '').localeCompare(b.name || '', locale, { sensitivity: 'base', numeric: true }) };
@@ -202,7 +246,7 @@ export function listItems(files, state, { locale, typeLabel }) {
   const rows = pool.map(file => ({ kind: 'file', file }));
   if (!flat) {
     const dir = state.sort.key === 'name' ? state.sort.dir : 1;
-    const folders = subfolders(files, state.path, locale).map(folder => ({ kind: 'folder', ...folder }));
+    const folders = subfolders(files, state.path, locale, spare).map(folder => ({ kind: 'folder', ...folder }));
     if (dir < 0) folders.reverse();
     rows.unshift(...folders);
   }

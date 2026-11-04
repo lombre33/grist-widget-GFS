@@ -1,7 +1,7 @@
 // Le modèle de l'explorateur : lecture des tables d'après le manifeste (contrats 2.4), rangement (6.4), dossiers, recherche, tri.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFiles, readFiling, readGfsFiling, applyFiling, folderPaths, folderName, folderMoves, subfolders, treeRows, pathParts, listItems, typeChoices, person,
+import { readFiles, readFiling, readGfsFiling, readGfsFolders, applyFiling, folderPaths, folderName, folderMoves, spareMoves, vacatedFolders, subfolders, treeRows, pathParts, listItems, typeChoices, person,
   formatDate, normalizePath, inside, stampOf, authorOf, familyOf, FAMILY_NAMES } from '../js/explorer-model.js';
 import { FILES_MANIFEST } from '../js/gfs-files.js';
 import { createI18n } from '../js/i18n.js';
@@ -301,4 +301,88 @@ test('listItems : la corbeille est une liste à plat, la suppression la plus ré
   assert.deepEqual(listItems(trashed, view({ sort: { key: 'by', dir: 1 } }), OPTIONS).rows.map(row => row.file.name), ['Contrat été.pdf', 'Devis.pdf'], 'par l\'auteur du geste : Léa avant Paul');
   assert.deepEqual(listItems(trashed, view({ q: 'ete' }), OPTIONS).rows.map(row => row.file.name), ['Contrat été.pdf'], 'accents ignorés');
   assert.deepEqual(listItems(trashed, view({ type: 'docx' }), OPTIONS).rows, []);
+});
+
+// ----- les dossiers gardés sans fichier (contrats 6.4, point 11)
+
+const folderTable = () => ({
+  id: [1, 2, 3, 4, 5, 6, 7, 8],
+  Utilisateur: ['moi@exemple.org', 'moi@exemple.org', 'autre@exemple.org', '@document', 'moi@exemple.org', 'moi@exemple.org', '', 'moi@exemple.org'],
+  App: ['', '', '', 'gfs', 'publipostage', '', '', ''],
+  Fichier: ['', '', '', 'apps', '12', '', '', ''],
+  Dossier: ['Contrats', ' Factures // 2024/ ', 'Prive', '', 'Contrats', '', 'Commun', 'Contrats'],
+});
+
+test('readGfsFolders : les lignes d\'état de la personne (ni app ni fichier), normalisées, sans doublon ; ni les lignes de fichiers, ni les réservées, ni les autres personnes, ni un chemin vide', () => {
+  assert.deepEqual(readGfsFolders(folderTable(), 'moi@exemple.org'), ['Contrats', 'Factures/2024']);
+  assert.deepEqual(readGfsFolders(folderTable(), 'autre@exemple.org'), ['Prive']);
+  assert.deepEqual(readGfsFolders(folderTable(), ''), ['Commun'], 'sans identité : le rangement commun au document');
+  assert.deepEqual(readGfsFolders(null, 'moi@exemple.org'), []);
+  assert.deepEqual(readGfsFolders({ id: [1], Utilisateur: ['moi@exemple.org'] }, 'moi@exemple.org'), [], 'une table sans les autres colonnes ne nomme aucun dossier');
+});
+
+test('un dossier gardé sans fichier existe : dans la liste des dossiers, avec ses parents, et dans l\'arbre, avec zéro fichier', () => {
+  const list = files();
+  const spare = ['Archives/2023', 'Formation/Vide'];
+  assert.deepEqual(folderPaths(list, 'fr', spare), ['Archives', 'Archives/2023', 'Formation', 'Formation/Sessions', 'Formation/Vide']);
+  assert.deepEqual(subfolders(list, '', 'fr', spare).map(f => [f.path, f.count, f.ts]), [['Archives', 0, null], ['Formation', 2, T0 - 3 * DAY]]);
+  assert.deepEqual(subfolders(list, 'Archives', 'fr', spare).map(f => [f.path, f.name, f.count]), [['Archives/2023', '2023', 0]]);
+  assert.deepEqual(subfolders(list, 'Formation', 'fr', spare).map(f => [f.path, f.count]), [['Formation/Sessions', 1], ['Formation/Vide', 0]], 'à côté de ceux que les fichiers nomment');
+  assert.deepEqual(subfolders(list, 'Archives/2023', 'fr', spare), [], 'un dossier gardé n\'est pas son propre sous-dossier');
+  assert.deepEqual(subfolders(list, 'Formation', 'fr', ['Formation/Sessions']).map(f => [f.path, f.count]), [['Formation/Sessions', 1]], 'gardé et nommé par un fichier : une seule fois, avec ses fichiers');
+  const tree = treeRows(list, new Set(['Archives']), 'fr', spare);
+  assert.deepEqual(tree.map(r => [r.path, r.depth, r.hasChildren, r.open]), [['Archives', 0, true, true], ['Archives/2023', 1, false, false], ['Formation', 0, true, false]]);
+  assert.deepEqual(treeRows(list, new Set(), 'fr').map(r => r.path), ['Formation'], 'sans eux, rien ne change');
+});
+
+test('listItems : un dossier gardé est une ligne de la vue des dossiers, avant les fichiers ; une recherche, Récents et Favoris ne les montrent pas', () => {
+  const options = { ...OPTIONS, spare: ['Archives', 'Formation/Vide'] };
+  const root = listItems(files(), state(), options);
+  assert.deepEqual(root.rows.map(r => (r.kind === 'folder' ? `dossier:${r.name}:${r.count}` : r.file.id)), ['dossier:Archives:0', 'dossier:Formation:2', '5', '6', '4']);
+  const sub = listItems(files(), state({ path: 'Formation' }), options);
+  assert.deepEqual(sub.rows.map(r => (r.kind === 'folder' ? `dossier:${r.name}` : r.file.id)), ['dossier:Sessions', 'dossier:Vide', '1']);
+  const empty = listItems(files(), state({ path: 'Archives' }), options);
+  assert.deepEqual(empty.rows, [], 'ouvert, il est vide');
+  assert.equal(listItems(files(), state({ q: 'support' }), options).rows.every(r => r.kind === 'file'), true, 'une recherche liste des fichiers');
+  assert.equal(listItems(files(), state({ view: 'recent' }), options).rows.every(r => r.kind === 'file'), true);
+  assert.equal(listItems(files(), state({ view: 'fav' }), options).rows.every(r => r.kind === 'file'), true);
+});
+
+test('spareMoves : un dossier renommé ou déplacé emporte les dossiers gardés qu\'il est ou contient ; jamais en lui-même', () => {
+  const spare = ['A/B', 'A/B/C', 'A/Bis', 'A', 'Z'];
+  assert.deepEqual(spareMoves(spare, 'A/B', 'A/Q'), { drop: ['A/B', 'A/B/C'], add: ['A/Q', 'A/Q/C'] }, '« A/Bis » n\'est pas dans « A/B »');
+  assert.deepEqual(spareMoves(spare, 'A/B', 'X/B'), { drop: ['A/B', 'A/B/C'], add: ['X/B', 'X/B/C'] });
+  assert.deepEqual(spareMoves(spare, 'A/B', 'B'), { drop: ['A/B', 'A/B/C'], add: ['B', 'B/C'] }, 'vers la racine');
+  assert.deepEqual(spareMoves(spare, 'A', 'M'), { drop: ['A/B', 'A/B/C', 'A/Bis', 'A'], add: ['M/B', 'M/B/C', 'M/Bis', 'M'] }, 'le dossier lui-même aussi');
+  assert.deepEqual(spareMoves(spare, 'A', 'A/B/A'), { drop: [], add: [] }, 'dans un de ses sous-dossiers : rien');
+  assert.deepEqual(spareMoves(spare, 'A/B', 'A/B'), { drop: [], add: [] });
+  assert.deepEqual(spareMoves(spare, '', 'X'), { drop: [], add: [] }, 'la racine ne se déplace pas');
+  assert.deepEqual(spareMoves([], 'A', 'B'), { drop: [], add: [] });
+});
+
+test('vacatedFolders : le dossier que le dernier fichier quitte est gardé, avec ses parents que plus rien ne nomme ; pas un dossier qui a encore un fichier, ni déjà gardé', () => {
+  const list = [
+    { key: 'p:1', app: 'p', id: '1', folder: 'A/B/C' }, { key: 'p:2', app: 'p', id: '2', folder: 'A/B' }, { key: 'p:3', app: 'p', id: '3', folder: 'A/D' }, { key: 'p:4', app: 'p', id: '4', folder: '' },
+  ];
+  const move = (id, folder) => ({ app: 'p', file: id, pinned: false, folder });
+  assert.deepEqual(vacatedFolders(list, [move('1', 'X')]), ['A/B/C'], '« A/B » a encore le fichier 2, « A » le 3');
+  assert.deepEqual(vacatedFolders(list, [move('3', '')]), ['A/D'], '« A » a encore les fichiers qui sont dans « A/B »');
+  assert.deepEqual(vacatedFolders(list, [move('1', 'X'), move('2', 'X'), move('3', 'X')]), ['A', 'A/B', 'A/B/C', 'A/D'], 'tout un dossier part : lui et ses sous-dossiers, du plus haut au plus bas');
+  assert.deepEqual(vacatedFolders(list, [move('1', 'X')], ['A/B/C']), [], 'déjà gardé');
+  assert.deepEqual(vacatedFolders(list, [move('1', 'A/B/C/Z')]), [], 'le fichier va dans un sous-dossier : le dossier a toujours un fichier');
+  assert.deepEqual(vacatedFolders(list, [move('1', 'A/B/C')]), [], 'rangé où il est déjà : rien ne part');
+  assert.deepEqual(vacatedFolders(list, [move('4', 'X')]), [], 'la racine existe toujours');
+  assert.deepEqual(vacatedFolders(list, []), []);
+  assert.deepEqual(vacatedFolders(list, [move('1', 'X'), move('2', 'A/B/C')]), [], 'un fichier prend la place d\'un autre : « A/B/C » a toujours un fichier, « A/B » et « A » l\'ont en dessous');
+});
+
+test('vacatedFolders : un fichier qui part à la corbeille (`folder: null`) laisse son dossier ; un dossier gardé nomme ses parents ; un dossier gardé qui part laisse le sien', () => {
+  const list = [{ key: 'p:1', app: 'p', id: '1', folder: 'A/B' }, { key: 'p:2', app: 'p', id: '2', folder: 'A' }];
+  const trash = id => ({ app: 'p', file: id, folder: null });
+  assert.deepEqual(vacatedFolders(list, [trash('1')]), ['A/B'], '« A » a encore le fichier 2');
+  assert.deepEqual(vacatedFolders(list, [trash('2')]), [], '« A » a encore le fichier 1 dessous');
+  assert.deepEqual(vacatedFolders(list, [trash('1'), trash('2')]), ['A', 'A/B'], 'le dernier fichier de chaque dossier part');
+  assert.deepEqual(vacatedFolders(list, [trash('1')], ['A/B/C']), [], '« A/B » nomme le dossier gardé « A/B/C » : il n\'a pas besoin d\'une ligne de plus');
+  assert.deepEqual(vacatedFolders([], [], ['P/E'], { drop: ['P/E'], add: ['Z/E'] }), ['P', 'P/E'], 'un dossier gardé qui change de place laisse son parent (l\'appelant ôte celui qui part) ; « Z » est nommé par la nouvelle ligne');
+  assert.deepEqual(vacatedFolders([], [], ['P/E', 'P/F'], { drop: ['P/E'], add: ['Z/E'] }), ['P/E'], 'son parent reste nommé par un autre dossier gardé');
 });

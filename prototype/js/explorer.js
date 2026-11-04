@@ -32,6 +32,7 @@ export class Explorer {
   #refs;
   #files = [];
   #trashed = []; // les fichiers à la corbeille (la vue « Corbeille »)
+  #folders = []; // les dossiers que la personne garde sans fichier (js/explorer-data.js)
   #rows = [];
   #loading = false;
   #problems = [];
@@ -70,16 +71,22 @@ export class Explorer {
 
   get files() { return this.#files; }
 
+  get folders() { return this.#folders; }
+
   // Les fichiers que la liste peut montrer : tous, ou, en mode choix, ceux que la demande de l'app laisse passer.
   get #pool() { return this.#choice ? this.#files.filter(this.#choice.accept) : this.#files; }
+
+  // Les dossiers sans fichier que la liste montre : tous, sauf en mode choix (il n'y a rien à y choisir).
+  get #spare() { return this.#choice ? [] : this.#folders; }
 
   // Ce que la vue montre : les fichiers de la corbeille dans la corbeille, sinon les fichiers vivants.
   get #shown() { return this.state.view === 'trash' ? this.#trashed : this.#pool; }
 
-  // `files` : les fichiers vivants ; `trashed` : ceux qui sont à la corbeille (js/explorer-data.js).
-  setFiles(files, trashed = []) {
+  // `files` : les fichiers vivants ; `trashed` : ceux qui sont à la corbeille ; `folders` : les dossiers gardés sans fichier (js/explorer-data.js).
+  setFiles(files, trashed = [], folders = []) {
     this.#files = files;
     this.#trashed = trashed;
+    this.#folders = folders;
     const keys = new Set([...files, ...trashed].map(file => file.key));
     if (this.state.sel && !this.state.sel.startsWith('dir:') && !keys.has(this.state.sel)) this.state.sel = null;
     if (this.isOpen) this.render();
@@ -202,7 +209,7 @@ export class Explorer {
 
   #renderTree() {
     const top = this.#refs.tree.scrollTop;
-    this.#refs.tree.replaceChildren(...tree(this.#ctx({ treeRows: treeRows(this.#pool, this.state.open, this.#opts.locale) })));
+    this.#refs.tree.replaceChildren(...tree(this.#ctx({ treeRows: treeRows(this.#pool, this.state.open, this.#opts.locale, this.#spare) })));
     this.#refs.tree.scrollTop = top;
   }
 
@@ -210,7 +217,7 @@ export class Explorer {
     const { list, scroll, empty, notices } = this.#refs;
     const top = scroll.scrollTop;
     const focused = this.#focusedKey();
-    const result = listItems(this.#shown, { ...this.state, sort: this.#sort() }, { locale: this.#opts.locale, typeLabel: this.#opts.typeLabel });
+    const result = listItems(this.#shown, { ...this.state, sort: this.#sort() }, { locale: this.#opts.locale, typeLabel: this.#opts.typeLabel, spare: this.#spare });
     this.#rows = result.rows;
     const keys = this.#rows.map(r => (r.kind === 'folder' ? `dir:${r.path}` : r.file.key));
     if (this.state.sel && !keys.includes(this.state.sel)) this.state.sel = null;
@@ -238,7 +245,8 @@ export class Explorer {
 
   #focusKey(key) {
     const row = [...this.#refs.list.querySelectorAll('[data-key]')].find(item => item.dataset.key === key) || this.#refs.list.querySelector('[tabindex="0"]');
-    if (row) row.focus({ preventScroll: true });
+    // Une liste sans ligne (un dossier vide) garde le clavier : Retour arrière y ramène au dossier parent.
+    (row || this.#refs.list).focus({ preventScroll: true });
   }
 
   // Où s'ouvre le fichier : dans son app, ou, pour un fichier que GFS garde, sur l'ordinateur de la personne.
@@ -371,7 +379,7 @@ export class Explorer {
     const action = listAction(event, { display: this.state.display, filtering: this.#filtering });
     if (!action || (event.target.closest('button') && !FROM_BUTTONS.has(action))) return;
     const rows = [...this.#refs.list.querySelectorAll('[data-key]')];
-    if (!rows.length) return;
+    if (!rows.length) { if (action === 'parent') this.#goParent(event); return; }
     const at = rows.findIndex(row => row.dataset.key === this.state.sel);
     const here = rows[at >= 0 ? at : rows.findIndex(row => row.contains(event.target))] || null;
     const go = index => { event.preventDefault(); this.#select(rows[Math.min(Math.max(index, 0), rows.length - 1)].dataset.key, true); };
@@ -514,12 +522,13 @@ export class Explorer {
     openMenu(this.#refs.langBtn, items, { host: this.root, align: 'right', label: t('lang.menu') });
   }
 
-  // Le menu « Nouveau » : un article par type de fichier à créer, et « Importer » (un sous-menu : un article par format qu'une app reçoit d'un autre logiciel, contrats 2.7, point 4).
+  // Le menu « Nouveau » : « Nouveau dossier » d'abord, puis un article par type de fichier à créer, et « Importer » (un sous-menu : un article par format qu'une app reçoit d'un autre logiciel, contrats 2.7, point 4).
   #newMenu() {
     const { t } = this.#opts.i18n;
     if (this.#choice) { this.#opts.notice(t('ex.choose.newOff')); return; }
     const article = (entry, run) => ({ label: entry.label, icon: entry.icon, family: entry.family, greyed: entry.greyed, hint: entry.hint, run });
-    const items = this.#opts.newTypes().map(entry => article(entry, () => this.#opts.onNew(entry)));
+    const types = this.#opts.newTypes().map(entry => article(entry, () => this.#opts.onNew(entry)));
+    const items = [{ label: t('ex.newFolder'), icon: 'folder-plus', run: () => void this.#newFolder() }, ...(types.length ? ['-', ...types] : [])];
     // Un format grisé garde sa mention courte, coupée si le panneau est étroit : l'infobulle dit la raison en entier (le clic aussi).
     const imports = this.#opts.importTypes().map(entry => ({ ...article(entry, () => this.#opts.onImport(entry)), title: entry.greyed ? entry.reason : null }));
     if (imports.length) items.push('-', { label: t('ex.import'), icon: 'import', submenu: imports });
@@ -527,7 +536,7 @@ export class Explorer {
   }
 
   // Le menu d'une ligne. Dupliquer copie le fichier quand un gardien sait le copier (js/copying.js) ; sinon il est grisé et dit où le faire. Supprimer passe par la corbeille : un fichier qu'aucun gardien ne connaît (js/trash.js) grise l'article
-  // et dit pourquoi ; un dossier n'existe que par ses fichiers, son article dit comment le faire disparaître. À la corbeille : « Restaurer » et « Supprimer définitivement… ».
+  // et dit pourquoi ; un dossier se supprime quand plus aucun fichier n'est dedans, sinon son article est grisé et le dit. À la corbeille : « Restaurer » et « Supprimer définitivement… ».
   #rowMenu(key, anchor) {
     const { t } = this.#opts.i18n;
     const { filing } = this.#opts;
@@ -537,13 +546,21 @@ export class Explorer {
     if (key.startsWith('dir:')) {
       const path = key.slice(4);
       items = [item(t('ex.openFolder'), 'open', () => this.#activate(key), t('key.enter')), item(t('ex.rename'), 'edit', () => void filing.renameFolder(path), 'F2'),
-        item(t('ex.move'), 'move', () => void filing.moveFolder(path), this.#choice ? undefined : 'Ctrl+X, V'), '-', { ...item(t('trash.move'), 'trash', () => this.#opts.notice(t('trash.folder'))), greyed: true }];
+        item(t('ex.move'), 'move', () => void filing.moveFolder(path), this.#choice ? undefined : 'Ctrl+X, V'), '-', this.#deleteFolderItem(key)];
     } else {
       const file = (this.state.view === 'trash' ? this.#trashed : this.#files).find(entry => entry.key === key);
       if (!file) return;
       items = this.state.view === 'trash' ? this.#trashMenu(file) : this.#fileMenu(file);
     }
     openMenu(anchor, items, { host: this.root, align: 'right', label: t('ex.more') });
+  }
+
+  // L'article « Supprimer le dossier » : grisé tant qu'un fichier est dans le dossier (ou un de ses sous-dossiers) et pendant un choix ; le clic dit pourquoi.
+  #deleteFolderItem(key) {
+    const { t } = this.#opts.i18n;
+    const row = this.#rows.find(item => item.kind === 'folder' && `dir:${item.path}` === key);
+    const why = this.#choice ? t('ex.choose.newOff') : (row && row.count > 0 ? t('ex.folderNotEmpty') : null);
+    return { label: t('ex.deleteFolder'), icon: 'trash', hint: t('key.delete'), greyed: why !== null, run: () => (why ? this.#opts.notice(why) : void this.#deleteFolder(key)) };
   }
 
   #trashMenu(file) {
@@ -581,11 +598,24 @@ export class Explorer {
     const { t } = this.#opts.i18n;
     if (this.#choice) { this.#opts.notice(t('ex.choose.newOff')); return; }
     if (this.state.view === 'trash') { await this.#purge(key); return; }
-    if (key.startsWith('dir:')) { this.#opts.notice(t('trash.folder')); return; }
+    if (key.startsWith('dir:')) { await this.#deleteFolder(key); return; }
     const file = this.#files.find(item => item.key === key);
     if (!file) return;
     if (!this.#bin.handles(file)) { this.#opts.notice(t('trash.appOnly', { app: this.#opts.appName(file.app) })); return; }
     await this.#leaving(key, () => this.#bin.move(file));
+  }
+
+  // Supprimer un dossier : possible quand plus aucun fichier n'est dedans (rien ne s'efface, il ne reste qu'une ligne d'état, js/filing.js) ; sinon la phrase dit quoi faire. La ligne suivante prend le clavier.
+  async #deleteFolder(key) {
+    await this.#leaving(key, () => this.#opts.filing.deleteFolder(key.slice(4)));
+  }
+
+  // « Nouveau dossier » : dans le dossier ouvert (à la racine quand la vue n'en est pas un). La personne y est conduite et le dossier créé prend le clavier, prêt à être renommé (F2) ou ouvert (Entrée).
+  async #newFolder() {
+    const path = await this.#opts.filing.newFolder();
+    if (!path) return;
+    this.#goFolder(parentPath(path));
+    this.#reveal(`dir:${path}`);
   }
 
   #restore(key) {

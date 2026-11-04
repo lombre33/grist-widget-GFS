@@ -20,6 +20,7 @@ import { corbeilleProblems } from './corbeille-firefox.mjs';
 import { copierProblems } from './copier-firefox.mjs';
 import { fermerProblems } from './fermer-firefox.mjs';
 import { iconProblems } from './icones-firefox.mjs';
+import { dossiersProblems } from './dossiers-firefox.mjs';
 import { ROW_BUTTON, ROW_HEIGHT, TILE_MIN, expectedTileColumns, measureRows, measureTiles } from '../labo/mesures-liste.mjs';
 import { calendarLogs, calendarProblems } from './mesures-calendrier.mjs';
 
@@ -265,13 +266,15 @@ describe('l\'interface sous Firefox', () => {
           }
         }
       }
-      // La corbeille et le clavier (test/corbeille-firefox.mjs), la copie et le presse-papiers (test/copier-firefox.mjs), la question de « fermer » (test/fermer-firefox.mjs) : à 700 px, la largeur du panneau de référence, en clair et en sombre.
+      // La corbeille et le clavier (test/corbeille-firefox.mjs), la copie et le presse-papiers (test/copier-firefox.mjs), la question de « fermer » (test/fermer-firefox.mjs), les dossiers sans fichier
+      // (test/dossiers-firefox.mjs) : à 700 px, la largeur du panneau de référence, en clair et en sombre.
       await page.view({ width: 700, scale: 1, mode: 'light' });
       for (const mode of MODES) {
         await page.view({ width: 700, scale: 1, mode });
         problems.push(...await corbeilleProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await copierProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await fermerProblems(page, language, caption(language, 700, 1, mode)));
+        problems.push(...await dossiersProblems(page, language, caption(language, 700, 1, mode)));
       }
       // Les icônes des types (test/icones-firefox.mjs) : une fois, en français (la couleur et le trait ne dépendent pas de la langue).
       if (language === 'fr') problems.push(...await iconProblems(page));

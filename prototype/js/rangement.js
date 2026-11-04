@@ -42,6 +42,12 @@ function findRow(data, values) {
   return rows.findIndex((rowId, i) => Object.keys(values).every(column => data[column] && data[column][i] === values[column]));
 }
 
+// Les numéros de toutes les lignes de `data` dont les colonnes valent `values`.
+const rowsOf = (data, values) => ((data && data.id) || []).filter((rowId, i) => Object.keys(values).every(column => data[column] && data[column][i] === values[column]));
+
+// La ligne d'état d'un dossier que la personne garde sans fichier : ni app ni fichier (6.4, point 11).
+const folderKey = (identity, path) => ({ Utilisateur: identity, App: '', Fichier: '', Dossier: path });
+
 export class Rangement {
   #port;
   #table;
@@ -132,12 +138,27 @@ export class Rangement {
     return next;
   }
 
+  // La table du rangement telle qu'elle est, sans la créer ni poser de question : null quand elle manque ou qu'une colonne du rangement lui manque (aucune n'est ajoutée ici). Pour ce qui ne vaut pas
+  // qu'on dérange la personne.
+  async #loaded() {
+    const state = await this.#table.load();
+    if (!state.exists || FILING.some(column => !state.columns.includes(column))) return null;
+    await this.identify();
+    return state;
+  }
+
   // Range des fichiers pour la personne que Grist connaît (`identity`, ou '' quand son adresse n'est pas lue : le rangement est alors commun au document, 6.4 point 4) :
   // la ligne de chaque (personne, app, fichier) est mise à jour si elle existe, ajoutée sinon. `entries` : [{ app, file, pinned, folder }], le dossier en chemin normalisé.
-  // Relit d'abord ; tout part en un seul lot, que Grist rejoue en entier ou pas du tout.
-  async setFiling(entries) {
-    if (!entries.length) return;
-    const { data } = await this.#ready(FILING);
+  // `folders` : { add, drop, quiet }, les dossiers que la personne garde sans fichier (6.4, point 11) : `add` les chemins à garder (une ligne chacun, s'il n'y en a pas déjà), `drop` ceux à ne plus garder
+  // (toutes leurs lignes) ; `quiet` : sans la table, rien n'est écrit et rien n'est demandé. Relit d'abord ; fichiers et dossiers partent dans un seul lot, que Grist rejoue en entier ou pas du tout :
+  // un dossier déplacé n'est jamais rangé à moitié. Rend true quand le lot est parti.
+  async setFiling(entries, folders = {}) {
+    const add = [...new Set(folders.add || [])];
+    const drop = [...new Set(folders.drop || [])];
+    if (!entries.length && !add.length && !drop.length) return false;
+    const state = folders.quiet === true ? await this.#loaded() : await this.#ready(FILING);
+    if (!state) return false;
+    const { data } = state;
     const identity = this.identity;
     const tableId = this.#table.id;
     const actions = entries.map(({ app, file, pinned, folder }) => {
@@ -146,6 +167,10 @@ export class Rangement {
       const record = { Favori: pinned === true, Dossier: folder || '' };
       return at >= 0 ? ['UpdateRecord', tableId, data.id[at], record] : ['AddRecord', tableId, null, { ...key, ...record }];
     });
+    for (const path of drop) actions.push(...rowsOf(data, folderKey(identity, path)).map(rowId => ['RemoveRecord', tableId, rowId]));
+    for (const path of add.filter(each => !drop.includes(each) && findRow(data, folderKey(identity, each)) < 0)) actions.push(['AddRecord', tableId, null, { ...folderKey(identity, path), Favori: false }]);
+    if (!actions.length) return false;
     await this.#port.doc.applyUserActions(actions);
+    return true;
   }
 }

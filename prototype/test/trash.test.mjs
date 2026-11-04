@@ -17,9 +17,12 @@ function guardian({ app = 'gfs-fichiers', lock = null, trash = async () => true,
   };
 }
 
-function setup({ managers = [guardian()], answer = true, i18n = FR } = {}) {
-  const log = { notices: [], asked: [], refreshes: 0 };
-  const bin = new Trash({ managers, ask: async window => { log.asked.push(window); return answer; }, t: i18n.t, notice: text => log.notices.push(text), refresh: async () => { log.refreshes += 1; } });
+function setup({ managers = [guardian()], answer = true, i18n = FR, keepFolders = undefined } = {}) {
+  const log = { notices: [], asked: [], refreshes: 0, order: [] };
+  const bin = new Trash({
+    managers, ask: async window => { log.asked.push(window); return answer; }, t: i18n.t, notice: text => log.notices.push(text), refresh: async () => { log.order.push('refresh'); log.refreshes += 1; },
+    ...(keepFolders ? { keepFolders: async file => { log.order.push(`garder ${file.id}`); return keepFolders(file); } } : {}),
+  });
   return { bin, log, managers };
 }
 
@@ -152,4 +155,35 @@ test('un fichier sans nom est dit « (sans nom) » ; les phrases se disent aussi
   await bin.move(file('aa', ''));
   assert.deepEqual(log.notices, [EN.t('trash.moved', { name: '(untitled)' })]);
   assert.equal(EN.t('trash.moved', { name: 'Invoice.pdf' }), '“Invoice.pdf” is in the trash.');
+});
+
+test('mettre à la corbeille : le dossier du fichier est gardé une fois le fichier à la corbeille, avant que la liste soit relue ; la phrase dit seulement que le fichier y est', async () => {
+  const { bin, log } = setup({ keepFolders: async () => {} });
+  assert.equal(await bin.move(file()), true);
+  assert.deepEqual(log.order, ['garder aa', 'refresh']);
+  assert.deepEqual(log.notices, [FR.t('trash.moved', { name: 'Facture.pdf' })]);
+});
+
+test('un dossier qu\'on ne sait pas garder ne défait pas la corbeille : le fichier y est, la phrase le dit, seule la console le sait', async () => {
+  const { bin, log } = setup({ keepFolders: async () => { throw new Error('Grist refuse le lot'); } });
+  const warnings = [];
+  const warn = console.warn;
+  console.warn = (...args) => warnings.push(args);
+  let moved;
+  try { moved = await bin.move(file()); } finally { console.warn = warn; }
+  assert.equal(moved, true);
+  assert.deepEqual(log.notices, [FR.t('trash.moved', { name: 'Facture.pdf' })]);
+  assert.equal(warnings.length, 1);
+});
+
+test('le dossier n\'est gardé que si le fichier est vraiment à la corbeille ; restaurer ou supprimer pour de bon n\'y touche pas', async () => {
+  const kept = [];
+  const { bin } = setup({ keepFolders: async item => { kept.push(item.id); }, managers: [guardian({ trash: async item => item.id !== 'absent' })] });
+  assert.equal(await bin.move(file('absent')), false);
+  await bin.restore(file('aa'));
+  await bin.purge(file('bb'));
+  await bin.empty([file('cc')]);
+  assert.deepEqual(kept, []);
+  assert.equal(await bin.move(file('dd')), true);
+  assert.deepEqual(kept, ['dd']);
 });

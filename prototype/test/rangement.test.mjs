@@ -161,6 +161,62 @@ test('setFiling : une liste vide n\'écrit rien, pas même la sonde', async () =
   assert.deepEqual(actions, []);
 });
 
+test('setFiling : les dossiers gardés sans fichier (6.4, point 11) — une ligne d\'état ajoutée si elle manque, toutes celles de la personne retirées, dans le même lot que les fichiers ; ni les autres personnes ni les lignes de fichiers ne bougent', async () => {
+  const tables = { [TABLE]: { columns: full, rows: [
+    row(1, { Dossier: 'Contrats' }),
+    row(2, { Dossier: 'Vieux' }), row(3, { Dossier: 'Vieux' }),
+    row(4, { Utilisateur: 'a@b.fr', Dossier: 'Vieux' }),
+    row(5, { App: 'publipostage', Fichier: '3', Dossier: 'Vieux' }),
+  ] } };
+  const { port, actions } = fakeGrist(tables);
+  const lots = countLots(port);
+  await new Rangement({ port, consent: () => assert.fail('la table existe : pas de question'), ...noProbe }).setFiling(
+    [{ app: 'publipostage', file: 3, pinned: false, folder: 'Neuf' }],
+    { add: ['Contrats', 'Neuf', 'Neuf', 'Vieux'], drop: ['Vieux', 'Absent'] },
+  );
+  assert.deepEqual(lots, [4], 'un seul lot : le fichier, deux retraits, un ajout');
+  assert.deepEqual(actions, [
+    ['UpdateRecord', TABLE, 5, { Favori: false, Dossier: 'Neuf' }],
+    ['RemoveRecord', TABLE, 2, undefined], ['RemoveRecord', TABLE, 3, undefined],
+    ['AddRecord', TABLE, null, { Utilisateur: '', App: '', Fichier: '', Dossier: 'Neuf', Favori: false }],
+  ], '« Contrats » est déjà gardé ; « Neuf » une seule fois ; « Vieux » est retiré, pas rajouté ; « Absent » n\'a aucune ligne');
+  assert.deepEqual(withoutIds(tables[TABLE].rows).map(line => [line.Utilisateur, line.App, line.Fichier, line.Dossier]),
+    [['', '', '', 'Contrats'], ['a@b.fr', '', '', 'Vieux'], ['', 'publipostage', '3', 'Neuf'], ['', '', '', 'Neuf']]);
+});
+
+test('setFiling : des dossiers seuls s\'écrivent sans fichier ; un lot qui n\'a rien à dire n\'écrit rien ; les lignes d\'état sont celles de la personne que Grist connaît', async () => {
+  const tables = { [TABLE]: { columns: full, rows: [] } };
+  const { port, actions } = fakeGrist(tables, { email: 'ana@exemple.org' });
+  const rangement = new Rangement({ port, consent: accept() });
+  await rangement.setFiling([], { add: [], drop: [] });
+  assert.deepEqual(actions, []);
+  await rangement.setFiling([], { add: ['Contrats/2026'] });
+  const written = tables[TABLE].rows.filter(line => line.Dossier === 'Contrats/2026');
+  assert.equal(written.length, 1);
+  assert.deepEqual([written[0].Utilisateur, written[0].App, written[0].Fichier, written[0].Favori], ['ana@exemple.org', '', '', false], 'à elle seule, sans app ni fichier');
+  await rangement.setFiling([], { drop: ['Contrats/2026'] });
+  assert.equal(tables[TABLE].rows.filter(line => line.Dossier === 'Contrats/2026').length, 0);
+});
+
+test('setFiling en sourdine : sans la table rien n\'est écrit et rien n\'est demandé, avec elle le lot part, une colonne de rangement absente n\'est jamais ajoutée ; rend true seulement quand un lot est parti', async () => {
+  const none = fakeGrist({ Clients: { columns: ['id', 'Nom'], rows: [] } });
+  assert.equal(await new Rangement({ port: none.port, consent: () => assert.fail('aucune question'), ...noProbe }).setFiling([], { add: ['A'], quiet: true }), false);
+  assert.deepEqual(none.actions, [], 'la table n\'est pas créée');
+  const tables = { [TABLE]: { columns: full, rows: [] } };
+  const here = fakeGrist(tables);
+  assert.equal(await new Rangement({ port: here.port, consent: () => assert.fail('aucune question'), ...noProbe }).setFiling([], { add: ['A'], quiet: true }), true);
+  assert.deepEqual(here.actions, [['AddRecord', TABLE, null, { Utilisateur: '', App: '', Fichier: '', Dossier: 'A', Favori: false }]]);
+  const old = fakeGrist({ [TABLE]: { columns: ['id', 'Utilisateur', 'App', 'Fichier', 'Valeur'], rows: [] } });
+  assert.equal(await new Rangement({ port: old.port, consent: () => assert.fail('aucune question'), ...noProbe }).setFiling([], { add: ['A'], quiet: true }), false);
+  assert.deepEqual(old.actions, [], 'ni colonne ajoutée, ni ligne écrite');
+});
+
+test('setFiling : un dossier déjà gardé et rien d\'autre à écrire n\'envoie aucun lot', async () => {
+  const { port, actions } = fakeGrist({ [TABLE]: { columns: full, rows: [row(1, { Dossier: 'A' })] } });
+  assert.equal(await new Rangement({ port, consent: accept(), ...noProbe }).setFiling([], { add: ['A'] }), false);
+  assert.deepEqual(actions, []);
+});
+
 test('setFiling sans la table : la personne décide ; refus, rien n\'est écrit ; accord, la table naît puis la ligne', async () => {
   const refused = fakeGrist();
   await assert.rejects(new Rangement({ port: refused.port, consent: async () => false }).setFiling([{ app: 'x', file: '1', pinned: true, folder: '' }]),

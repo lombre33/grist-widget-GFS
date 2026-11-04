@@ -91,3 +91,29 @@ test('une corbeille des apps illisible ne cache aucun fichier vivant, et la cons
   } finally { console.warn = warn; }
   assert.deepEqual((await loadFiles(port(tables()), [{ manifest }], '')).trash, []);
 });
+
+test('les dossiers que la personne garde sans fichier (lignes d\'état de GFS_Rangement : ni app ni fichier) sont rendus à part, pour elle seule ; ils ne sont jamais des fichiers ni des favoris', async () => {
+  const data = tables();
+  data.gfs_rangement = {
+    id: [1, 2, 3, 4, 5, 6],
+    Utilisateur: ['@document', 'ana@exemple.org', 'ana@exemple.org', 'ben@exemple.org', 'ana@exemple.org', 'ana@exemple.org'],
+    App: ['gfs', '', '', '', 'publipostage', ''],
+    Fichier: ['apps', '', '', '', '2', ''],
+    Favori: [false, false, false, false, true, false],
+    Dossier: ['', 'Contrats/2026', ' Contrats // 2026/ ', 'De Ben', 'Archives', ''],
+  };
+  const ana = await loadFiles(port(data), [{ manifest }], 'ana@exemple.org');
+  assert.deepEqual(ana.folders, ['Contrats/2026'], 'une seule fois, normalisé ; le dossier d\'un autre, la ligne réservée, la ligne d\'un fichier et une ligne sans dossier n\'en sont pas');
+  assert.deepEqual(ana.files.map(file => [file.id, file.folder, file.pinned]), [['1', '', false], ['2', 'Archives', true]], 'les lignes d\'état ne rangent aucun fichier ; la ligne du fichier 2 est la sienne');
+  assert.deepEqual((await loadFiles(port(data), [{ manifest }], 'ben@exemple.org')).folders, ['De Ben']);
+  assert.deepEqual((await loadFiles(port(data), [{ manifest }], '')).folders, [], 'sans adresse connue, le rangement est celui des lignes sans personne : aucune ici');
+});
+
+test('sans la table de GFS, ou avec une table illisible, aucun dossier n\'est gardé', async () => {
+  const data = tables();
+  delete data.gfs_rangement;
+  assert.deepEqual((await loadFiles(port(data), [{ manifest }], '')).folders, []);
+  const warn = console.warn;
+  console.warn = () => {};
+  try { assert.deepEqual((await loadFiles(port(tables(), { broken: 'gfs_rangement' }), [{ manifest }], '')).folders, []); } finally { console.warn = warn; }
+});

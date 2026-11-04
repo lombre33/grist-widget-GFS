@@ -51,7 +51,7 @@ export function snapshot() {
     openDisabled: open ? open.getAttribute('aria-disabled') : null,
     info: text(info),
     menu: [...document.querySelectorAll('.menu .menu-item')].map(item => ({ label: text(item.querySelector('.menu-label')), hint: text(item.querySelector('.menu-hint')), greyed: item.getAttribute('aria-disabled') === 'true' })),
-    modal: modal ? { title: text(modal.querySelector('.mod-head h2')), items: modal.querySelectorAll('.ask-items li').length, focus: active && active.dataset ? active.dataset.fk || null : null, fits: fits() } : null,
+    modal: modal ? { title: text(modal.querySelector('.mod-head h2')), items: modal.querySelectorAll('.ask-items li').length, focus: active && active.dataset ? active.dataset.fk || null : null, fits: fits(), note: text(modal.querySelector('.mod-note')) } : null,
     restoreButtons: document.querySelectorAll('.ls-row .rb.rs').length,
     pinButtons: document.querySelectorAll('.ls-row .rb.pin').length,
   };
@@ -229,7 +229,7 @@ async function menus(run, t) {
   await run.expect('Échap dans le menu', 'Échap devait fermer le menu', state => state.menu.length === 0);
   await run.click('Formation');
   await run.page.press('Delete');
-  await run.expect('Suppr sur un dossier', 'Suppr sur un dossier devait dire comment le faire disparaître, sans rien supprimer', state => state.notices.at(-1) === t('trash.folder') && state.rows.length > 5 && state.trashCount === null);
+  await run.expect('Suppr sur un dossier', 'Suppr sur un dossier qui a des fichiers devait dire qu\'il ne se supprime pas ainsi, sans rien supprimer (les dossiers : test/dossiers-firefox.mjs)', state => state.notices.at(-1) === t('ex.folderNotEmpty') && state.rows.length > 5 && state.trashCount === null);
 }
 
 // « / » met le clavier dans la recherche sans s'y écrire ; ce qu'on tape ensuite filtre ; Échap vide la recherche.

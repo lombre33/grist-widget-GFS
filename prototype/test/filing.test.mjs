@@ -16,20 +16,25 @@ const META = {
 };
 
 // Une doublure de tout ce que le contrôleur donne : `stored` est ce que la table de GFS retient, et la liste relue après chaque geste en part.
-function harness({ files = [file(1), file(2, 'A/B'), file(3, 'A/B/C'), file(4, 'X')], block = null, answers = [], setFiling = null, meta = META, cleanName = undefined } = {}) {
+// `spare` : les dossiers que la personne garde sans fichier (les lignes d'état de `GFS_Rangement`) ; la doublure les suit quand un lot en ajoute ou en retire. Un lot de dossiers n'est noté que s'il y en a.
+function harness({ files = [file(1), file(2, 'A/B'), file(3, 'A/B/C'), file(4, 'X')], spare = [], block = null, answers = [], setFiling = null, meta = META, cleanName = undefined } = {}) {
   const log = { writes: [], actions: [], notices: [], windows: [], refreshes: 0 };
   let list = files;
-  const rangement = { setFiling: setFiling || (async entries => {
-    log.writes.push({ entries });
+  let kept = [...spare];
+  const rangement = { setFiling: setFiling || (async (entries, folders = {}) => {
+    const add = folders.add || [];
+    const drop = folders.drop || [];
+    log.writes.push(add.length || drop.length ? { entries, folders } : { entries });
     list = list.map(item => { const entry = entries.find(e => e.app === item.app && e.file === item.id); return entry ? { ...item, pinned: entry.pinned, folder: entry.folder } : item; });
+    kept = [...kept.filter(path => !drop.includes(path)), ...add.filter(path => !kept.includes(path))];
   }) };
   const ask = kind => async opts => { log.windows.push({ kind, ...opts }); return answers.shift() ?? null; };
   const port = { doc: { fetchTable: async name => meta[name], applyUserActions: async actions => { log.actions.push(...actions); } } };
   const filing = new Filing({
-    port, rangement, t, locale: () => 'fr', files: () => list, here: () => 'X', specOf: () => SPEC, appName: () => 'Publipostage+', cleanName,
+    port, rangement, t, locale: () => 'fr', files: () => list, folders: () => kept, here: () => 'X', specOf: () => SPEC, appName: () => 'Publipostage+', cleanName,
     writeBlock: () => block, notice: text => log.notices.push(text), refresh: async () => { log.refreshes += 1; }, windows: { name: ask('name'), folder: ask('folder') },
   });
-  return { filing, log, current: () => list };
+  return { filing, log, current: () => list, kept: () => kept };
 }
 
 test('épingler : une ligne pour ce fichier, son dossier gardé, puis la liste est relue', async () => {
@@ -203,4 +208,157 @@ test('coller un dossier coupé : il va dans le dossier ouvert avec ses sous-doss
   assert.equal(await filing.moveFolderTo('A', 'A'), 'inside');
   assert.equal(await filing.moveFolderTo('Z', 'X'), 'gone', 'plus aucun fichier ne le nomme');
   assert.equal(log.writes.length, 1);
+});
+
+// ---------- les dossiers sans fichier (le porteur, 04/11 : « créer des dossiers et sous-dossiers », contrats 6.4, point 11) ----------
+
+test('nouveau dossier : la fenêtre dit où il naît, le dossier est une ligne d\'état, la liste est relue, le chemin est rendu', async () => {
+  const { filing, log, kept } = harness({ answers: ['Neuf'] });
+  assert.equal(await filing.newFolder(), 'X/Neuf', 'il naît dans le dossier ouvert');
+  assert.deepEqual(log.writes, [{ entries: [], folders: { add: ['X/Neuf'] } }]);
+  assert.deepEqual(kept(), ['X/Neuf']);
+  assert.equal(log.refreshes, 1);
+  assert.equal(log.windows[0].title, t('ex.newFolderTitle', { folder: 'X' }));
+  assert.equal(log.windows[0].confirmLabel, t('ex.newFolderConfirm'));
+  assert.equal(log.windows[0].value, '', 'le champ est vide');
+});
+
+test('nouveau dossier : à la racine la fenêtre dit « Moi », un chemin se lit avec « / », dans un dossier donné il naît dedans ; renoncer n\'écrit rien', async () => {
+  const { filing, log } = harness({ answers: ['Un', null, 'Deux'] });
+  assert.equal(await filing.newFolder(''), 'Un');
+  assert.equal(log.windows[0].title, t('ex.newFolderTitle', { folder: t('ex.me') }));
+  assert.equal(await filing.newFolder('A/B'), undefined, 'la personne renonce');
+  assert.equal(log.windows[1].title, t('ex.newFolderTitle', { folder: 'A / B' }));
+  assert.equal(await filing.newFolder('A/B'), 'A/B/Deux');
+  assert.deepEqual(log.writes.map(write => write.folders.add), [['Un'], ['A/B/Deux']]);
+});
+
+test('nouveau dossier : un nom vide, ou celui d\'un voisin (dossier de fichiers ou dossier gardé ; accents et casse ignorés), est refusé dans la fenêtre ; ailleurs le même nom va', async () => {
+  const { filing, log } = harness({ spare: ['X/Vide'], answers: ['ok'] });
+  await filing.newFolder('');
+  const refuse = log.windows[0].refuse;
+  assert.equal(refuse(''), t('ex.nameEmpty'));
+  assert.equal(refuse('x'), t('ex.folderTaken'), 'X existe à la racine (un fichier y est)');
+  assert.equal(refuse('a'), t('ex.folderTaken'), 'A existe à la racine (ses fichiers sont dessous)');
+  assert.equal(refuse('Nouveau'), null);
+  await filing.newFolder('X');
+  assert.equal(log.windows[1].refuse('vidé'), t('ex.folderTaken'), 'un dossier gardé sans fichier est un voisin comme un autre, accents ignorés');
+  assert.equal(log.windows[1].refuse('Vide 2'), null);
+  assert.equal(log.windows[1].refuse('B'), null, '« B » existe sous A, pas sous X');
+});
+
+test('nouveau dossier : un document qui ne s\'enregistre pas, une table refusée ou un lot que Grist refuse ne créent rien ; la phrase le dit', async () => {
+  const blocked = harness({ block: t('mod.readonly'), answers: ['Neuf'] });
+  assert.equal(await blocked.filing.newFolder(), undefined);
+  assert.deepEqual([blocked.log.notices, blocked.log.windows, blocked.log.writes], [[t('mod.readonly')], [], []]);
+  const declined = harness({ answers: ['Neuf'], setFiling: async () => { throw new TableDeclined('GFS_Rangement'); } });
+  assert.equal(await declined.filing.newFolder(), undefined);
+  assert.deepEqual(declined.log.notices, [t('ex.filingDeclined')]);
+  assert.equal(declined.log.refreshes, 0);
+});
+
+test('supprimer un dossier : possible sans fichier dedans, ses lignes d\'état et celles de ses sous-dossiers partent, sans fenêtre ; la phrase le dit', async () => {
+  const { filing, log, kept } = harness({ spare: ['E', 'E/F', 'EE', 'G'] });
+  assert.equal(await filing.deleteFolder('E'), true);
+  assert.deepEqual(log.writes, [{ entries: [], folders: { drop: ['E', 'E/F'] } }], '« EE » n\'est pas dans « E »');
+  assert.deepEqual(kept(), ['EE', 'G']);
+  assert.deepEqual([log.windows, log.refreshes, log.notices], [[], 1, [t('ex.folderDeleted', { name: 'E' })]]);
+});
+
+test('supprimer un dossier : un fichier dedans (ou dans un de ses sous-dossiers) le refuse, un dossier qui n\'existe plus aussi ; rien ne s\'écrit', async () => {
+  const { filing, log } = harness({ spare: ['A/Vide'] });
+  assert.equal(await filing.deleteFolder('A'), false, 'des fichiers sont dans A/B');
+  assert.equal(await filing.deleteFolder('A/B/C'), false);
+  assert.equal(await filing.deleteFolder('Z'), false, 'plus rien ne le nomme');
+  assert.deepEqual(log.notices, [t('ex.folderNotEmpty'), t('ex.folderNotEmpty'), t('ex.folderGone')]);
+  assert.deepEqual([log.writes, log.refreshes], [[], 0]);
+});
+
+test('supprimer un dossier : un document qui ne s\'enregistre pas ne supprime rien', async () => {
+  const { filing, log } = harness({ spare: ['E'], block: t('mod.readonly') });
+  assert.equal(await filing.deleteFolder('E'), undefined);
+  assert.deepEqual([log.notices, log.writes], [[t('mod.readonly')], []]);
+});
+
+test('déplacer un fichier hors de son dernier dossier : le dossier reste, dans le même lot que le fichier ; pas un dossier qui a encore un fichier', async () => {
+  const { filing, log, kept } = harness({ files: [file(1, 'P/Q'), file(2, 'P/R'), file(3, 'X')] });
+  await filing.moveFileTo(file(1, 'P/Q'), 'X');
+  assert.deepEqual(log.writes[0], { entries: [{ app: 'publipostage', file: '1', pinned: false, folder: 'X' }], folders: { add: ['P/Q'], drop: undefined } }, '« P » a encore le fichier 2');
+  assert.deepEqual(kept(), ['P/Q']);
+  await filing.moveFileTo(file(2, 'P/R'), 'X');
+  assert.deepEqual(log.writes[1].folders.add, ['P/R'], 'le dernier fichier de « P » part : « P/R » reste, et « P » est nommé par « P/Q » (gardé)');
+  assert.deepEqual(kept(), ['P/Q', 'P/R']);
+});
+
+test('déplacer un fichier par la fenêtre, comme le couper-coller : le dossier qu\'il laisse vide reste ; l\'étoile n\'en change aucun', async () => {
+  const { filing, log } = harness({ files: [file(1, 'P'), file(2, 'X')], answers: ['X'] });
+  await filing.moveFile(file(1, 'P'));
+  assert.deepEqual(log.writes[0].folders.add, ['P']);
+  await filing.togglePin(file(2, 'X'));
+  assert.equal('folders' in log.writes[1], false, 'épingler ne change aucun dossier');
+});
+
+test('renommer un dossier gardé sans fichier : sa ligne d\'état est réécrite, rien d\'autre ; son nom passe les mêmes règles', async () => {
+  const { filing, log, kept } = harness({ spare: ['E', 'E/F'], answers: ['Neuf'] });
+  await filing.renameFolder('E');
+  assert.deepEqual(log.writes, [{ entries: [], folders: { drop: ['E', 'E/F'], add: ['Neuf', 'Neuf/F'] } }]);
+  assert.deepEqual(kept(), ['Neuf', 'Neuf/F']);
+  assert.equal(log.refreshes, 1);
+});
+
+test('renommer un dossier : ses fichiers et ses sous-dossiers vides le suivent dans le même lot ; ses parents ne restent pas derrière quand un fichier les nomme encore', async () => {
+  const { filing, log } = harness({ spare: ['A/B/Vide', 'A/Autre'], answers: ['Neuf'] });
+  await filing.renameFolder('A/B');
+  assert.deepEqual(log.writes[0].entries.map(entry => entry.folder), ['A/Neuf', 'A/Neuf/C']);
+  assert.deepEqual(log.writes[0].folders, { drop: ['A/B/Vide'], add: ['A/Neuf/Vide'] }, '« A » a encore ses fichiers : rien ne reste derrière');
+});
+
+test('déplacer un dossier hors de son parent : le parent qui n\'a plus rien reste, comme après un déplacement de fichier ; le dossier lui-même ne reste pas derrière', async () => {
+  const { filing, log } = harness({ files: [file(1, 'P/Q'), file(2, 'X')] });
+  assert.equal(await filing.moveFolderTo('P/Q', 'X'), 'moved');
+  assert.deepEqual(log.writes[0], { entries: [{ app: 'publipostage', file: '1', pinned: false, folder: 'X/Q' }], folders: { add: ['P'], drop: [] } });
+});
+
+test('déplacer un dossier gardé sans fichier : il va dans le dossier d\'arrivée avec ses sous-dossiers ; « gone » seulement quand plus rien ne le nomme', async () => {
+  const { filing, log, kept } = harness({ spare: ['E', 'E/F'] });
+  assert.equal(await filing.moveFolderTo('E', 'X'), 'moved');
+  assert.deepEqual(log.writes[0], { entries: [], folders: { drop: ['E', 'E/F'], add: ['X/E', 'X/E/F'] } });
+  assert.deepEqual(kept(), ['X/E', 'X/E/F']);
+  assert.equal(await filing.moveFolderTo('Z', 'X'), 'gone');
+  assert.equal(log.writes.length, 1);
+});
+
+test('déplacer ou renommer un dossier que plus rien ne nomme : la phrase dit qu\'il n\'existe plus, rien ne s\'écrit', async () => {
+  const { filing, log } = harness({ answers: ['Neuf', 'X'] });
+  await filing.renameFolder('Z');
+  await filing.moveFolder('Z');
+  assert.deepEqual(log.notices, [t('ex.folderGone'), t('ex.folderGone')]);
+  assert.deepEqual([log.writes, log.refreshes], [[], 0]);
+});
+
+test('la fenêtre du déplacement propose aussi les dossiers gardés sans fichier (on y range ce qu\'on veut)', async () => {
+  const { filing, log } = harness({ spare: ['E', 'E/F'], answers: [null] });
+  await filing.moveFile(file(1));
+  assert.deepEqual(log.windows[0].folders, ['A', 'A/B', 'A/B/C', 'E', 'E/F', 'X']);
+});
+
+test('mettre un fichier à la corbeille : son dossier, resté sans fichier, est gardé, en sourdine (sans la table, rien ne s\'écrit et rien n\'est demandé) ; la liste peut déjà l\'avoir perdu', async () => {
+  const calls = [];
+  const { filing } = harness({ files: [file(1, 'P/Q'), file(2, 'P/R'), file(3, 'X')], setFiling: async (entries, folders) => { calls.push({ entries, folders }); } });
+  await filing.keepFoldersOf(file(1, 'P/Q'));
+  assert.deepEqual(calls, [{ entries: [], folders: { add: ['P/Q'], quiet: true } }], '« P » a encore le fichier 2');
+  calls.length = 0;
+  await filing.keepFoldersOf(file(2, 'P/R'));
+  await filing.keepFoldersOf(file(3, 'X'));
+  assert.deepEqual(calls.map(call => call.folders.add), [['P/R'], ['X']], 'le fichier 2 était le dernier de « P/R », le 3 le seul de « X » ; « P » a toujours le fichier 1');
+  calls.length = 0;
+  await filing.keepFoldersOf(file(9, 'Z/Z'));
+  assert.deepEqual(calls.map(call => call.folders.add), [['Z', 'Z/Z']], 'un fichier que la liste ne connaît plus (relue avant) garde son dossier aussi');
+});
+
+test('mettre à la corbeille un fichier dont le dossier a un autre fichier, ou est déjà gardé : rien ne s\'écrit', async () => {
+  const calls = [];
+  const { filing } = harness({ files: [file(1, 'P'), file(2, 'P')], spare: ['E'], setFiling: async (entries, folders) => { calls.push({ entries, folders }); } });
+  await filing.keepFoldersOf(file(1, 'P'));
+  assert.deepEqual(calls, []);
 });

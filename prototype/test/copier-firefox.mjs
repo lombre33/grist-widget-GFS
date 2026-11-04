@@ -9,7 +9,7 @@ import { Run, centerOfName, centerOfSelector, delay, names } from './corbeille-f
 // ---------- ce qui s'exécute dans la page (rien du module n'y est visible) ----------
 
 // Le centre, à l'écran, de l'article du menu ouvert qui porte ce nom.
-function centerOfMenuItem(label) {
+export function centerOfMenuItem(label) {
   const item = [...document.querySelectorAll('.menu .menu-item')].find(node => ((node.querySelector('.menu-label') || {}).textContent || '').trim() === label);
   if (!item) return null;
   const box = item.getBoundingClientRect();
@@ -17,7 +17,7 @@ function centerOfMenuItem(label) {
 }
 
 // Le menu tient dans la page, et dans chaque article le nom ne touche pas la touche : la liste des écarts.
-function menuFits() {
+export function menuFits() {
   const menu = document.querySelector('.menu');
   if (!menu) return ['pas de menu'];
   const box = menu.getBoundingClientRect();

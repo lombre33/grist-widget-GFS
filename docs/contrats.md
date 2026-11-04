@@ -1555,6 +1555,12 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
      quand le PDF est ouvert, `{ ouvert: false }` quand la personne annule ou que le fichier est refusé. **Elle garde `lecture` dans son
      `normalizeOpening`** : le kit jusqu'à sa version 0.6.0 et le `gfs-link.js` de Publipostage+ ne gardent que `fichier`, `type`, `dossier`, `raison` (et
      `importation` pour le second) et laisseraient tomber le fichier ; le kit garde `lecture` depuis sa version 0.7.0. Elle ne renvoie jamais les octets à GFS.
+   - **Ce que l'app garde sur ce PDF** (demande du porteur du 03/11, lot 4 de l'étude PDF : des commentaires dans le mode Lecture de
+     Publipostage+ ; consigne 045 ; **rien n'est construit chez GFS**). C'est à l'app : ses fils vivent dans ses tables (6.1), accrochés à
+     `lecture.id`, et GFS n'en garde aucun, n'écrit jamais la table d'une app (3.3, point 3) et ne les voit pas. La clé ne change ni au
+     renommage ni au remplacement (6.6, point 3) ; « Garder les deux » donne un autre fichier, donc une autre clé. Quand GFS supprime un
+     fichier (6.6, point 7), il ne le dit à aucune app : ses fils restent dans la table de l'app, que personne ne rouvre, et l'app ne les efface
+     pas d'elle-même. Les règles d'accès de ces lignes (sans `ModeleId`) attendent l'étape 5 (11.7, point 3). Le guide dit le reste (point 18).
    - [M] **Mesuré le 03/11** dans un vrai serveur Grist 1.7.19 (Docker), à 700 × 400, à la vraie souris et au vrai clavier, en français
      clair et en anglais sombre (`prototype/labo/run-lire.mjs`, 43 vérifications dans chacune, aucune en échec), avec la sonde Y
      (`labo/sondes/y-lire-pdf/`), qui fait ce que fera Publipostage+ : le labo seul la range dans `ACCEPTS_OPEN`. Avant l'app, « Lire »
@@ -2384,7 +2390,9 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
    écrit `auteur` à la création et `tous` en visibilité, et aucune interface ne change la visibilité d'un contenu.
 3. [Q] **Les tables dérivées** : ce que l'auteur d'un contenu lit et écrit de ses versions et de ses commentaires (versions à
    l'auteur et aux propriétaires, commentaires à ceux qui lisent le contenu, d'après le document de stratégie) n'est pas mesuré.
-   À fixer avec Publipostage+ à l'étape 5 et à mesurer.
+   À fixer avec Publipostage+ à l'étape 5 et à mesurer. S'y ajoutent les fils d'un PDF (5.4, point 8 ; consigne 045) : leurs lignes
+   portent la clé du fichier et pas de `ModeleId`, la colonne par laquelle la classe `derivee` suit son modèle ; aucune table `reserve`
+   ne se trouve derrière elles (le PDF est une ligne de `GFS_Fichiers`, sans étiquette), donc qui les lit et qui les écrit reste à dire.
 4. [Q] **Les lignes réservées d'une table `reserve`** (la ligne `reglages` de Publipostage+, 6.3) : visibles de tous, écrites par
    qui ? Sous Encadré, seuls son auteur, le responsable de son espace et les propriétaires écrivent une ligne. À fixer avec
    Publipostage+.

@@ -219,6 +219,21 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     `GFS_INCONNU` : un GFS qui ne sait pas encore ranger) et ne fait jamais échouer l'export. Une impression par le navigateur ne fabrique pas de
     fichier : elle ne se range pas. Le kit 0.7.0 offre `GfsLink.deposit(...)` ; une app qui a son propre lien (Publipostage+) écrit le même appel.
 
+18. Commenter un PDF que GFS garde (demande du porteur du 03/11 : lire les PDF « via le mode lecture de Publipostage+ comme ça on a aussi les
+    commentaires et l'UI qui reste la même » ; contrats 5.4, point 8, et 6.6). Les fils d'un PDF sont **à l'app** : GFS ne garde que le fichier,
+    n'écrit jamais la table d'une app et ne reçoit aucun commentaire. Ils s'accrochent à `lecture.id`, l'`Identifiant` du fichier, que ni un
+    renommage ni un remplacement ne changent (« Garder les deux » en donne un autre : c'est un autre fichier), dans une table que l'app a déjà
+    (pas de table de plus), par des colonnes de plus ajoutées **au premier fil publié** : par `AddColumn` seulement (le courtier refuse
+    `ModifyColumn` et `RenameColumn`), après avoir relu les colonnes présentes (un `AddColumn` sur un identifiant pris le renomme), sans jamais
+    écrire une colonne absente ; un refus de Grist (structure fermée) est dit avec sa raison, jamais perdu en silence. **Ouvrir un PDF n'écrit
+    rien** : ni table, ni colonne, ni ligne, et aucune question à la personne. L'ancre d'un fil est du **texte, jamais des pixels** : la page,
+    les positions et la citation dans le texte que donne pdf.js (réduit aux mêmes espaces), avec un peu de texte autour. Elle se calcule sans la
+    couche de texte, qu'une page hors de l'écran n'a pas ; la marque se redessine chaque fois que la page se dessine (défilement, zoom) ; elle se
+    retrouve dans une version remplacée du PDF, page par page. Un passage qui ne se retrouve plus est dit « introuvable » : le fil reste lisible,
+    résoluble et supprimable, et **l'app ne l'efface jamais de son propre chef**, pas plus que les fils d'un PDF que GFS a supprimé (l'app ne
+    le sait pas). Un PDF sans texte (un scan) ne se commente pas : « Commenter » est grisé avec sa raison, jamais masqué. Les règles d'accès de
+    ces fils (leurs lignes n'ont pas de `ModeleId`) attendent l'étape 5 (contrats 11.7, point 3) : l'app n'en écrit aucune d'ici là.
+
 ### 1.3 Licence : GPL 3.0 dans tous les dépôts (décision du porteur, 21/10)
 
 1. **Le texte officiel de la GNU General Public License version 3** est le fichier `LICENSE`, à la racine du dépôt : 674

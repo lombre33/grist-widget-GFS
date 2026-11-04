@@ -8,7 +8,8 @@ import { h } from './dom.js';
 import { icon } from './icons.js';
 import { listItems, treeRows, typeChoices } from './explorer-model.js';
 import { words } from './search.js';
-import { buildShell, relabel, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar, trashBar } from './explorer-view.js';
+import { buildShell, relabel, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar, trashBar, totalBar } from './explorer-view.js';
+import { sumWeights } from './weight.js';
 import { listAction, isSearchKey, clipboardAction, parentPath, stepRow } from './explorer-keys.js';
 import { Clipboard } from './explorer-clipboard.js';
 import { LANGUAGE_NAMES } from './language.js';
@@ -34,6 +35,7 @@ export class Explorer {
   #trashed = []; // les fichiers à la corbeille (la vue « Corbeille »)
   #folders = []; // les dossiers que la personne garde sans fichier (js/explorer-data.js)
   #rows = [];
+  #total = 0; // ce que pèse ce que la liste couvre, en octets (le total du pied de fenêtre)
   #loading = false;
   #problems = [];
   #restricted = false;
@@ -178,7 +180,7 @@ export class Explorer {
     return {
       t: this.#opts.i18n.t, state, locale: this.#opts.locale, now: this.#opts.now(), appName: this.#opts.appName, typeLabel: this.#opts.typeLabel,
       lockOf: this.#opts.lockOf, opensIn: file => this.#opensIn(file), sort: this.#sort(), filtering: this.#filtering, favCount: this.#pool.filter(file => file.pinned).length, totalFiles: this.#pool.length,
-      trashCount: this.#trashed.length, selected: row, personal: this.#opts.personal(), choosing: this.#choice !== null, ...extra,
+      trashCount: this.#trashed.length, selected: row, personal: this.#opts.personal(), choosing: this.#choice !== null, total: this.#total, ...extra,
     };
   }
 
@@ -219,6 +221,7 @@ export class Explorer {
     const focused = this.#focusedKey();
     const result = listItems(this.#shown, { ...this.state, sort: this.#sort() }, { locale: this.#opts.locale, typeLabel: this.#opts.typeLabel, spare: this.#spare });
     this.#rows = result.rows;
+    this.#total = sumWeights(result.covered);
     const keys = this.#rows.map(r => (r.kind === 'folder' ? `dir:${r.path}` : r.file.key));
     if (this.state.sel && !keys.includes(this.state.sel)) this.state.sel = null;
     const ctx = this.#ctx();
@@ -233,6 +236,7 @@ export class Explorer {
     scroll.scrollTop = top;
     this.#roving();
     this.#renderInfo();
+    this.#refs.total.replaceChildren(...totalBar(this.#ctx()));
     if (focused) this.#focusKey(focused);
   }
 
@@ -357,7 +361,7 @@ export class Explorer {
   #setSort(key) {
     const sort = this.#sort();
     if (sort.key === key) sort.dir = -sort.dir;
-    else { sort.key = key; sort.dir = key === 'mod' ? -1 : 1; }
+    else { sort.key = key; sort.dir = key === 'mod' || key === 'poids' ? -1 : 1; } // la date et le poids : le plus récent, le plus lourd d'abord
     this.#renderList();
   }
 

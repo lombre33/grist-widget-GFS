@@ -1,0 +1,94 @@
+// Le poids dans l'explorateur (js/weight.js ; demande du porteur du 04/11) : les octets d'une cellule et d'une ligne comme Grist les range, la pièce jointe qu'un fichier EST, les sommes (une
+// pièce citée deux fois n'est comptée qu'une fois) et l'écriture du poids, en français et en anglais. Ce que Grist range vraiment se mesure dans le labo (labo/run-poids.mjs).
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { utf8Length, cellBytes, rowWeigher, attachmentIds, piecesOf, newSum, addWeight, sumWeights, formatBytes } from '../js/weight.js';
+import { createI18n } from '../js/i18n.js';
+
+test('utf8Length : les octets d\'un texte en UTF-8, comme Buffer.byteLength, sans copier le texte', () => {
+  const samples = ['', 'abc', 'é', 'Émargement (grille)', '€', '日本語のテキスト', 'a😀b', '😀😀', '\u0000', 'x'.repeat(10000) + 'é'.repeat(1000) + '😀'.repeat(100)];
+  for (const sample of samples) assert.equal(utf8Length(sample), Buffer.byteLength(sample), JSON.stringify(sample.slice(0, 20)));
+});
+
+test('cellBytes : un texte en UTF-8, un entier de 1 à 8 octets, un flottant 8, un booléen 1, rien 0, une liste sans son « L »', () => {
+  assert.deepEqual([null, undefined, '', 'é', true, false].map(cellBytes), [0, 0, 0, 2, 1, 1]);
+  assert.deepEqual([0, 127, 128, 32767, 32768, 2 ** 23, 2 ** 31, 2 ** 47, -5].map(cellBytes), [1, 1, 2, 2, 3, 4, 6, 8, 1]);
+  assert.equal(cellBytes(1.5), 8);
+  assert.equal(cellBytes(['L', 3, 5]), '[3,5]'.length, 'Grist range [3,5], pas ["L",3,5]');
+  assert.equal(cellBytes(['L']), '[]'.length);
+  assert.equal(cellBytes(['E', 'ZeroDivisionError']), Buffer.byteLength('["E","ZeroDivisionError"]'));
+  assert.equal(cellBytes({ a: 'é' }), Buffer.byteLength('{"a":"é"}'));
+});
+
+test('rowWeigher : la somme des cellules de la ligne, sans `id` ni `manualSort` ; une colonne qui n\'est pas une liste est ignorée', () => {
+  const data = { id: [1, 2], manualSort: [1, 2], Nom: ['Convocation', 'Émargement'], Contenu: ['x'.repeat(100), ''], Epingle: [true, false], Note: [null, 'é'], Bizarre: 'pas une colonne' };
+  const weigh = rowWeigher(data);
+  assert.equal(weigh(0), 11 + 100 + 1 + 0);
+  assert.equal(weigh(1), 11 + 0 + 1 + 2, '« Émargement » : 10 caractères, 11 octets');
+  assert.equal(rowWeigher(null)(0), 0);
+  assert.equal(rowWeigher({ id: [1] })(0), 0);
+});
+
+test('attachmentIds : les numéros d\'une cellule `[\'L\', …]`, rien d\'autre', () => {
+  assert.deepEqual(attachmentIds(['L', 3, 5]), [3, 5]);
+  assert.deepEqual(attachmentIds(['L', 3, 'x', 5.5]), [3]);
+  assert.deepEqual(attachmentIds(['D', 3, 'UTC']), []);
+  assert.deepEqual([attachmentIds(null), attachmentIds('L'), attachmentIds(7)], [[], [], []]);
+});
+
+test('piecesOf : la pièce jointe qu\'un fichier EST (la colonne de la pièce et celle de sa taille, d\'après le manifeste) ; sans règle, sans pièce ou sans taille : rien ou zéro', () => {
+  const rule = { pieces: { colonne: 'Contenu', taille: 'Taille' } };
+  const data = { id: [1, 2, 3, 4], Contenu: [['L', 7], null, ['L', 8, 9], ['L', 10]], Taille: [2048, 5, 512, null] };
+  assert.deepEqual(piecesOf(rule, data, 0), [['7', 2048]]);
+  assert.deepEqual(piecesOf(rule, data, 1), [], 'une ligne sans pièce jointe');
+  assert.deepEqual(piecesOf(rule, data, 2), [['8', 512]], 'la première pièce : le fichier n\'en est qu\'une');
+  assert.deepEqual(piecesOf(rule, data, 3), [['10', 0]], 'taille inconnue : zéro, jamais NaN');
+  assert.deepEqual(piecesOf(undefined, data, 0), []);
+  assert.deepEqual(piecesOf({}, data, 0), []);
+  assert.deepEqual(piecesOf(rule, null, 0), []);
+  assert.deepEqual(piecesOf({ pieces: { colonne: 'Absente', taille: 'Taille' } }, data, 0), []);
+});
+
+test('sumWeights : une pièce jointe que deux fichiers citent n\'est comptée qu\'une fois ; la somme se construit fichier par fichier', () => {
+  const file = (weight, ...pieces) => ({ weight, pieces });
+  const original = file(2100, ['7', 2048]);
+  const copy = file(2100, ['7', 2048]);
+  const other = file(600, ['8', 512]);
+  const plain = file(50);
+  assert.equal(sumWeights([]), 0);
+  assert.equal(sumWeights([plain, original]), 2150);
+  assert.equal(sumWeights([original, copy]), 2100 + 52, 'la copie ne coûte que sa ligne : 4200 − 2048');
+  assert.equal(sumWeights([original, copy, other, plain]), 2100 + 52 + 600 + 50);
+  const sum = newSum();
+  assert.equal(sum.seen, null, 'rien n\'est alloué pour un fichier sans pièce');
+  addWeight(sum, plain);
+  assert.equal(sum.seen, null);
+  addWeight(sum, original);
+  addWeight(sum, copy);
+  assert.equal(sum.bytes, 50 + 2100 + 52);
+});
+
+test('formatBytes : o, Ko, Mo, Go (1 Ko = 1 024 o), jamais plus de trois chiffres avant la virgule, en français et en anglais', () => {
+  const fr = createI18n('fr').t;
+  const en = createI18n('en').t;
+  const cases = [
+    [0, '0 o', '0 B'], [999, '999 o', '999 B'], [1024, '1 Ko', '1 KB'], [6400, '6 Ko', '6 KB'], [48200, '47 Ko', '47 KB'], [1022 * 1024, '1,0 Mo', '1.0 MB'],
+    [2310000, '2,2 Mo', '2.2 MB'], [5270000, '5,0 Mo', '5.0 MB'], [18.1 * 1048576, '18,1 Mo', '18.1 MB'], [1020 * 1048576, '1,00 Go', '1.00 GB'],
+    [1.87 * 1073741824, '1,87 Go', '1.87 GB'], [15 * 1073741824, '15,00 Go', '15.00 GB'],
+  ];
+  for (const [bytes, french, english] of cases) {
+    assert.equal(formatBytes(bytes, 'fr-FR', fr), french, `${bytes} octets`);
+    assert.equal(formatBytes(bytes, 'en-GB', en), english, `${bytes} octets`);
+  }
+  assert.equal(formatBytes(-5, 'fr-FR', fr), '0 o');
+  assert.equal(formatBytes(undefined, 'fr-FR', fr), '0 o');
+  assert.match(formatBytes(1536 * 1024 * 1024 * 1024, 'fr-FR', fr), /^1.536,00 Go$/, 'au-delà du Go : l\'unité ne change plus (le séparateur de milliers dépend du navigateur)');
+});
+
+test('formatBytes : une valeur à la frontière passe à l\'unité du dessus (999,5 Ko est « 1,0 Mo », pas « 1 000 Ko »)', () => {
+  const fr = createI18n('fr').t;
+  assert.equal(formatBytes(999.4, 'fr-FR', fr), '999 o');
+  assert.equal(formatBytes(999.5, 'fr-FR', fr), '1 Ko');
+  assert.equal(formatBytes(999 * 1024, 'fr-FR', fr), '999 Ko');
+  assert.equal(formatBytes(999.5 * 1024, 'fr-FR', fr), '1,0 Mo');
+});

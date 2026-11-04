@@ -48,7 +48,7 @@ export async function loadFiles(port, apps, identity = '') {
       // Les fichiers de l'app que la personne a mis à la corbeille ne sont plus dans sa table : ils sont dans `GFS_Corbeille` (js/gfs-trash.js), et gardent leur dossier, que le rangement n'a pas quitté.
       if (recipeOf(spec) && bin.data) {
         const gone = binFiles(spec, bin.data, manifest.id);
-        const entries = readFiles(manifest, gone.spec, gone.data);
+        const entries = readFiles(manifest, gone.spec, gone.data, gone.weights);
         applyFiling(entries, filing, gfsFiling);
         trash.push(...entries);
       }

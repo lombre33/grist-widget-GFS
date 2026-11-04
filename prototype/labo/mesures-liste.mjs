@@ -29,10 +29,72 @@ export function measureRows() {
   });
 }
 
-// La vue en vignettes : la largeur de la grille, le nombre de vignettes, de colonnes posées, et la largeur de la plus étroite. Null quand la vue n'est pas celle des vignettes.
+// La vue en vignettes : la largeur de la grille, le nombre de vignettes, de colonnes posées, la largeur de la plus étroite, et combien disent leur poids (toutes doivent). Null quand la vue n'est pas celle des vignettes.
 export function measureTiles() {
   const grid = document.querySelector('.th-grid');
   if (!grid) return null;
   const tiles = [...document.querySelectorAll('.th')];
-  return { grid: grid.clientWidth, tiles: tiles.length, columns: new Set(tiles.map(tile => Math.round(tile.getBoundingClientRect().left))).size, narrowest: Math.min(...tiles.map(tile => tile.getBoundingClientRect().width)) };
+  const weighed = tiles.filter(tile => tile.querySelector('.tw') && tile.querySelector('.tw').textContent.trim() !== '').length;
+  return { grid: grid.clientWidth, tiles: tiles.length, columns: new Set(tiles.map(tile => Math.round(tile.getBoundingClientRect().left))).size, narrowest: Math.min(...tiles.map(tile => tile.getBoundingClientRect().width)), weighed };
+}
+
+// Les colonnes de la liste et le pied de fenêtre (le poids, demande du porteur du 04/11) : où est chaque en-tête (ils ne doivent pas se recouvrir), ce que chaque cellule de type, de poids et de
+// date coupe de son texte (rien : une cellule dont le texte dépasse est coupée par « … » ou déborde), l'écart du poids au bord droit de sa colonne (collé), et le total du pied de fenêtre (entier,
+// entre la barre d'information et les boutons, sans les recouvrir). Null quand la vue n'est pas la liste.
+export function measureColumns() {
+  const head = document.querySelector('.ls-head');
+  if (!head) return null;
+  const shown = element => element.getClientRects().length > 0;
+  const box = element => element.getBoundingClientRect();
+  const tenth = value => Math.round(value * 10) / 10;
+  const headers = [...head.querySelectorAll('.hd')].filter(shown).map(element => ({ key: element.dataset.sort, left: box(element).left, right: box(element).right, sort: element.getAttribute('aria-sort'), text: element.textContent }));
+  const cut = [...document.querySelectorAll('.ls-row .wt, .ls-row .md, .ls-row .pill')].filter(shown)
+    .filter(element => element.scrollWidth - element.clientWidth > 1)
+    .map(element => ({ cell: element.classList.contains('wt') ? 'poids' : (element.classList.contains('md') ? 'date' : 'type'), text: element.textContent, by: tenth(element.scrollWidth - element.clientWidth) }));
+  const textBox = element => { const range = document.createRange(); range.selectNodeContents(element); return range.getBoundingClientRect(); };
+  const gaps = [...document.querySelectorAll('.ls-row .wt')].filter(shown).map(element => tenth(box(element).right - textBox(element).right));
+  const foot = document.querySelector('.ex-foot');
+  const total = foot && foot.querySelector('.ex-total');
+  const info = foot && foot.querySelector('.ex-info');
+  const open = foot && foot.querySelector('.ex-foot > button');
+  return {
+    headers, cut, gaps: { max: gaps.length ? Math.max(...gaps) : null, min: gaps.length ? Math.min(...gaps) : null },
+    foot: total ? {
+      text: total.textContent, shown: shown(total), cut: tenth(total.scrollWidth - total.clientWidth), toInfo: tenth(box(total).left - box(info).right), toButton: tenth(box(open).left - box(total).right),
+      inside: box(total).left >= box(foot).left - 0.5 && box(total).right <= box(foot).right + 0.5, info: tenth(box(info).width), title: total.title,
+    } : null,
+  };
+}
+
+// Les en-têtes et les cellules de `measureColumns` : les en-têtes de la vue (la liste sous 600 px perd « Modifié » et « Par »), qui ne se recouvrent pas ; aucune cellule coupée ; le poids collé au bord droit de sa colonne.
+function bodyFaults(columns, narrow, note) {
+  const expected = narrow ? ['name', 'type', 'poids'] : ['name', 'type', 'poids', 'mod', 'by'];
+  const keys = columns.headers.map(header => header.key);
+  if (keys.join() !== expected.join()) note('en-têtes de colonne', `les en-têtes sont ${keys.join(', ')} au lieu de ${expected.join(', ')}`);
+  columns.headers.slice(1).forEach((header, i) => {
+    const before = columns.headers[i];
+    if (before.right > header.left + 0.5) note('en-têtes qui se recouvrent', `« ${before.text} » (jusqu'à ${before.right.toFixed(1)}) recouvre « ${header.text} » (dès ${header.left.toFixed(1)})`);
+  });
+  for (const cut of columns.cut) note(`cellule coupée (${cut.cell})`, `« ${cut.text} » est coupé de ${cut.by} px`);
+  if (columns.gaps.max !== null && columns.gaps.max > 1) note('poids décollé du bord', `un poids est à ${columns.gaps.max} px du bord droit de sa colonne`);
+}
+
+// Le total du pied de fenêtre : affiché, égal à `total` (le texte attendu, quand l'essai le connaît), entier, dans le pied, entre la barre d'information et les boutons, avec son infobulle.
+function footFaults(foot, total, note) {
+  if (!foot || !foot.shown || !foot.text.trim()) { note('total du pied', 'le total n\'est pas affiché'); return; }
+  if (total !== null && !foot.text.trim().endsWith(total)) note('total du pied', `le total est « ${foot.text.trim()} » au lieu de « … ${total} »`);
+  if (foot.cut > 1) note('total du pied', `le total « ${foot.text} » est coupé de ${foot.cut} px`);
+  if (!foot.inside) note('total du pied', `le total « ${foot.text} » sort du pied de fenêtre`);
+  if (foot.toInfo < -0.5 || foot.toButton < -0.5) note('total du pied', `le total recouvre la barre d'information (${foot.toInfo} px) ou les boutons (${foot.toButton} px)`);
+  if (!foot.title) note('total du pied', 'le total n\'a pas d\'infobulle');
+}
+
+// Ce que `measureColumns` dit d'anormal (côté Node : un écart est { kind, text }), colonnes et pied de fenêtre. `tag` : où l'on mesure (largeur, langue, mode).
+export function columnFaults(columns, narrow, tag, total = null) {
+  if (!columns) return [{ kind: 'la liste', text: `${tag} : la liste n'a pas d'en-tête` }];
+  const faults = [];
+  const note = (kind, text) => faults.push({ kind, text: `${tag} : ${text}` });
+  bodyFaults(columns, narrow, note);
+  footFaults(columns.foot, total, note);
+  return faults;
 }

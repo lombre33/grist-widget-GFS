@@ -338,9 +338,11 @@ commencer, ou un sous-cadre gardé ouvert et caché (question 4, section 12).
 - Le rangement commun (dossiers, favoris) tient dans **une seule table de GFS** (nom proposé : `GFS_Rangement`), créée
   seulement avec l'accord de la personne (la question « Créer les tables du widget dans ce document ? » de Publipostage+,
   reprise par le kit). Sa forme s'écrit avec les contrats.
-- Interface : la maquette et la page « Parcours » (`maquettes/`). Volet des dossiers à gauche (172 px), liste à droite ;
+- Interface : la maquette et la page « Parcours » (`maquettes/`). Volet des dossiers à gauche (172 px ; 132 px de 520 à 699 px de large), liste à droite (Nom, Type, Poids, Modifié, Par ; sous 600 px de large, sans Modifié ni Par) ;
   sous 520 px de large environ, le volet se replie et il reste le fil d'Ariane ; Récents et Favoris toujours visibles ;
   vignettes plus tard (d'abord icône du type et deux lignes de début de texte).
+- Le **poids** (demande du porteur du 04/11 : une instance de Grist limite l'ensemble des documents à 15 Go) : chaque fichier, chaque dossier (la somme de ses fichiers) et le pied de fenêtre (la somme de ce que la liste montre) disent leur poids estimé en o, Ko, Mo ou Go (1 Ko = 1 024 o) ; la colonne se trie dans les deux sens. C'est une estimation faite avec ce que GFS lit déjà (contrats 2.4, point 5), jamais ce que Grist compte pour sa limite. À suivre, un lot chacun : la case
+  « + pièces jointes », le poids des tables liées des apps (les versions de Publipostage+, les réponses de Form+), la fenêtre « Poids du document ».
 
 ### 4.5 Le kit commun
 

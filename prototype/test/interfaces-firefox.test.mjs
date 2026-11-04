@@ -1,11 +1,12 @@
 // L'interface de GFS sous Firefox, le navigateur du porteur (demande du 03/11 : vérifier aussi les interfaces dans les tests). Le 03/11, le trait qui sépare les lignes de l'explorateur passait dans le
 // texte : la fenêtre « Thème » avait pris deux noms de classe à la liste, et ni Node ni le labo (Chromium seul) ne le voyaient. Ce fichier ouvre le vrai explorateur et les vraies fenêtres « Thème » et « Ce nom est déjà pris »
-// (test/pages/explorateur.js, avec les feuilles de style de index.html) dans un vrai Firefox sans écran (test/firefox.mjs), puis mesure, en français et en anglais, en clair et en sombre, à 700, 640, 520, 500
-// et 400 px de large, à 100 % et à 150 % : chaque ligne mesure 28 px, son contenu y est centré et n'en sort pas (le trait passe sous le texte), « Épingler » et « Plus d'actions » mesurent 24 × 24, la souris sur
+// (test/pages/explorateur.js, avec les feuilles de style de index.html) dans un vrai Firefox sans écran (test/firefox.mjs), puis mesure, en français et en anglais, en clair et en sombre, à 700, 640, 600, 520,
+// 500 et 400 px de large, à 100 % et à 150 % : chaque ligne mesure 28 px, son contenu y est centré et n'en sort pas (le trait passe sous le texte), « Épingler » et « Plus d'actions » mesurent 24 × 24, la souris sur
 // la ligne les montre dans la ligne, et un clic sur « Plus d'actions » ouvre le menu de CETTE ligne ; la vue en vignettes garde des vignettes de 112 px au moins et le nombre de colonnes que la place donne ;
 // la fenêtre « Thème » garde ses vignettes (cinq, ou trois en vue étroite) ; la fenêtre « Ce nom est déjà pris » (js/conflict-window.js, telle qu'une app qui range un lot la fait ouvrir, puis telle que
 // « Nouveau > Importer » la fait ouvrir) tient dans la page sans défiler, garde son titre et ses trois boutons sur une ligne, met le clavier sur « Garder les deux », tourne avec Tab, et ses issues répondent à
-// la vraie souris et au vrai clavier (la case « Faire pareil pour les suivants » se coche en cliquant son texte). Entrée et Espace sur un bouton ne se jouent pas ici (voir conflictProblems). Les icônes des types
+// la vraie souris et au vrai clavier (la case « Faire pareil pour les suivants » se coche en cliquant son texte). Entrée et Espace sur un bouton ne se jouent pas ici (voir conflictProblems). La colonne « Poids » (demande du 04/11) : son titre et ses cases ne sont coupés nulle part, son tri
+// va dans les deux sens sur le poids de chaque fichier, et le total du pied dit la somme de ce que la liste montre. Les icônes des types
 // de fichier suivent l'ambiance (test/icones-firefox.mjs : la couleur et le trait que Firefox calcule, par ambiance, en clair et en sombre ; le 04/11, Firefox a refusé le premier trait écrit, un nombre calculé). Le labo
 // (labo/run-liste.mjs) fait les mêmes mesures de la liste dans un vrai Grist, sous Chromium.
 // Firefox absent : l'essai est SAUTÉ, et le dit (`labo/installer-firefox.sh` le pose dans le cloud ; `GFS_FIREFOX=<fichier exécutable>` désigne celui de la machine).
@@ -21,10 +22,10 @@ import { copierProblems } from './copier-firefox.mjs';
 import { fermerProblems } from './fermer-firefox.mjs';
 import { iconProblems } from './icones-firefox.mjs';
 import { dossiersProblems } from './dossiers-firefox.mjs';
-import { ROW_BUTTON, ROW_HEIGHT, TILE_MIN, expectedTileColumns, measureRows, measureTiles } from '../labo/mesures-liste.mjs';
+import { ROW_BUTTON, ROW_HEIGHT, TILE_MIN, columnFaults, expectedTileColumns, measureColumns, measureRows, measureTiles } from '../labo/mesures-liste.mjs';
 import { calendarLogs, calendarProblems } from './mesures-calendrier.mjs';
 
-const WIDTHS = [700, 640, 520, 500, 400]; // 700 : le panneau de référence ; 640 : le portable du porteur ; 520 : la dernière largeur de la vue large ; 500 et 400 : la vue étroite
+const WIDTHS = [700, 640, 600, 520, 500, 400]; // 700 : le panneau de référence ; 640 : le portable du porteur ; 600 : la plus étroite où la liste a toutes ses colonnes ; 520 : la dernière où le volet reste (liste sans « Modifié » ni « Par ») ; 500 et 400 : la vue étroite
 const SCALES = [1, 1.5];
 const MODES = ['light', 'dark'];
 const LANGUAGES = ['fr', 'en'];
@@ -75,6 +76,15 @@ function openMenu() {
 // Le centre du bouton de la page qui porte l'icône `glyph` (le choix de la liste ou des vignettes), ou celui de l'élément `selector`.
 const centerOfGlyph = glyph => { const button = document.querySelector(`button use[href="#i-${glyph}"]`).closest('button'); const box = button.getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; };
 const centerOfSelector = selector => { const box = document.querySelector(selector).getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; };
+
+// Les fichiers du premier niveau, dans l'ordre où la liste les montre : leur poids, et le sens du tri de la colonne « Poids » (le tri se juge sur ce que l'explorateur sait de chaque fichier, non sur le texte).
+function weightOrder() {
+  const weights = new Map(window.__explorer.files.map(file => [file.key, file.weight]));
+  const seen = [...document.querySelectorAll('.ls-row:not(.folder)')].map(row => weights.get(row.dataset.key));
+  const sort = document.querySelector('.ls-head .hd[data-sort="poids"]').getAttribute('aria-sort');
+  const wanted = [...seen].sort((a, b) => (sort === 'descending' ? b - a : a - b));
+  return { sort, seen, ok: seen.length > 5 && seen.every((value, i) => value === wanted[i]) };
+}
 
 // La grille de la fenêtre « Thème » : ses vignettes, ses colonnes, son remplissage.
 function measureThemeWindow() {
@@ -152,10 +162,40 @@ async function tilesProblems(page, tag) {
   const tiles = await page.until(measureTiles);
   const expected = expectedTileColumns(tiles.grid);
   const found = [];
+  if (tiles.weighed !== tiles.tiles) found.push({ kind: 'vignette sans poids', text: `${tag} : ${tiles.tiles - tiles.weighed} vignette(s) sur ${tiles.tiles} ne disent pas leur poids` });
   if (tiles.tiles < 5 || tiles.narrowest < TILE_MIN - 0.5) found.push({ kind: 'vignettes trop étroites', text: `${tag} : la vue en vignettes a des vignettes de ${tiles.narrowest.toFixed(1)} px (au moins ${TILE_MIN})` });
   if (tiles.columns !== expected) found.push({ kind: 'colonnes des vignettes', text: `${tag} : la vue en vignettes pose ${tiles.columns} colonnes dans ${tiles.grid} px, la place en donne ${expected}` });
   await page.click(...await page.run(centerOfGlyph, 'list'));
   await page.until(() => !document.querySelector('.th-grid'));
+  return found;
+}
+
+// Le texte du total du pied de fenêtre à la racine : les douze modèles de la page d'essai (test/pages/explorateur.js) pèsent 18 971 940 octets, soit 18,09 Mo.
+const TOTAL = { fr: '18,1 Mo', en: '18.1 MB' };
+
+// Les colonnes de la liste (le poids, demande du porteur du 04/11) et le total du pied : en-têtes qui ne se recouvrent pas, aucune cellule coupée, le poids collé à droite, le total entier et juste ;
+// mesurés avec le tri de chaque colonne (sa flèche élargit l'en-tête), un clic puis deux ; la colonne « Poids » trie le plus lourd d'abord, puis le plus léger ; le tri par nom est rétabli à la fin.
+async function columnProblems(page, width, language, tag) {
+  const narrow = width < 600; // la liste perd « Modifié » et « Par » sous 600 px
+  const found = [];
+  const measure = async what => found.push(...columnFaults(await page.run(measureColumns), narrow, `${tag}, ${what}`, TOTAL[language]));
+  const header = key => page.run(centerOfSelector, `.ls-head .hd[data-sort="${key}"]`);
+  await measure('tri par nom');
+  for (const key of narrow ? ['type', 'poids'] : ['type', 'poids', 'mod', 'by']) {
+    await page.click(...await header(key));
+    await measure(`tri par « ${key} », un clic`);
+    if (key === 'poids') {
+      const order = await page.run(weightOrder);
+      if (order.sort !== 'descending' || !order.ok) found.push({ kind: 'tri par poids', text: `${tag} : un clic sur « Poids » doit montrer le plus lourd d'abord : ${order.sort} ${JSON.stringify(order.seen)}` });
+    }
+    await page.click(...await header(key));
+    await measure(`tri par « ${key} », deux clics`);
+    if (key === 'poids') {
+      const order = await page.run(weightOrder);
+      if (order.sort !== 'ascending' || !order.ok) found.push({ kind: 'tri par poids', text: `${tag} : un deuxième clic sur « Poids » doit montrer le plus léger d'abord : ${order.sort} ${JSON.stringify(order.seen)}` });
+    }
+  }
+  await page.click(...await header('name'));
   return found;
 }
 
@@ -262,7 +302,7 @@ describe('l\'interface sous Firefox', () => {
           for (const mode of MODES) {
             await page.view({ width, scale, mode });
             const tag = caption(language, width, scale, mode);
-            problems.push(...await listProblems(page, tag), ...await mouseProblems(page, tag), ...await tilesProblems(page, tag), ...await themeProblems(page, width, tag), ...await conflictProblems(page, tag));
+            problems.push(...await listProblems(page, tag), ...await columnProblems(page, width, language, tag), ...await mouseProblems(page, tag), ...await tilesProblems(page, tag), ...await themeProblems(page, width, tag), ...await conflictProblems(page, tag));
           }
         }
       }

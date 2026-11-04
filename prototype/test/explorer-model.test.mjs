@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFiles, readFiling, readGfsFiling, readGfsFolders, applyFiling, folderPaths, folderName, folderMoves, spareMoves, vacatedFolders, subfolders, treeRows, pathParts, listItems, typeChoices, person,
   formatDate, normalizePath, inside, stampOf, authorOf, familyOf, FAMILY_NAMES } from '../js/explorer-model.js';
 import { FILES_MANIFEST } from '../js/gfs-files.js';
+import { sumWeights } from '../js/weight.js';
 import { createI18n } from '../js/i18n.js';
 import { publipostage } from './helpers.mjs';
 
@@ -385,4 +386,69 @@ test('vacatedFolders : un fichier qui part à la corbeille (`folder: null`) lais
   assert.deepEqual(vacatedFolders(list, [trash('1')], ['A/B/C']), [], '« A/B » nomme le dossier gardé « A/B/C » : il n\'a pas besoin d\'une ligne de plus');
   assert.deepEqual(vacatedFolders([], [], ['P/E'], { drop: ['P/E'], add: ['Z/E'] }), ['P', 'P/E'], 'un dossier gardé qui change de place laisse son parent (l\'appelant ôte celui qui part) ; « Z » est nommé par la nouvelle ligne');
   assert.deepEqual(vacatedFolders([], [], ['P/E', 'P/F'], { drop: ['P/E'], add: ['Z/E'] }), ['P/E'], 'son parent reste nommé par un autre dossier gardé');
+});
+
+// ---------- le poids ----------
+
+const weighted = () => ({
+  id: [1, 2, 3], manualSort: [1, 2, 3], Nom: ['Convocation', 'Émargement', 'Support'], TypeModele: ['email', '', 'diaporama'], DateModif: [T0, null, T0 - DAY], ModifiePar: ['', 'Service RH', ''],
+  Contenu: ['x'.repeat(1000), 'é'.repeat(500), 'y'.repeat(200)],
+});
+
+test('readFiles : le poids d\'un fichier est celui des octets de sa ligne, comme Grist les range (l\'identifiant et le rang n\'en sont pas)', () => {
+  const list = readFiles(manifest, spec, weighted());
+  // « Convocation » 11 + « email » 5 + date 4 + 1000 ; « Émargement » 11 + « Service RH » 10 + 1000 (500 « é » de 2 octets) ; « Support » 7 + « diaporama » 9 + date 4 + 200.
+  assert.deepEqual(list.map(file => file.weight), [1020, 1021, 220]);
+  assert.deepEqual(list.map(file => file.pieces), [[], [], []], 'un modèle n\'est pas une pièce jointe');
+  assert.deepEqual(readFiles(manifest, spec, weighted(), [7, 8, 9]).map(file => file.weight), [7, 8, 9], 'l\'appelant qui a compté lui-même (la corbeille) donne les octets');
+  assert.deepEqual(readFiles(manifest, spec, { id: [1], Nom: ['Seul'] }).map(file => file.weight), [4], 'des colonnes absentes ne pèsent rien');
+});
+
+test('readFiles : un PDF de GFS pèse sa ligne et sa pièce jointe (la colonne `Taille`) ; une copie qui cite la même pièce a le même poids, la somme la compte une fois', () => {
+  const data = {
+    id: [1, 2, 3], Identifiant: ['aa', 'bb', 'cc'], Nom: ['Facture.pdf', 'Facture (1).pdf', 'Vide.pdf'], Type: ['pdf', 'pdf', 'pdf'], Date: [T0, T0, T0], Auteur: ['', '', ''],
+    Contenu: [['L', 7], ['L', 7], null], Taille: [3000000, 3000000, null],
+  };
+  const list = readFiles(FILES_MANIFEST, gfsSpec, data);
+  // Ses cellules : « aa » 2, « Facture.pdf » 11, « pdf » 3, la date 4, l'auteur vide 0, `[7]` 3, la taille (3 000 000 : 3 octets) ; puis la pièce jointe elle-même.
+  assert.equal(list[0].weight, 2 + 11 + 3 + 4 + 0 + 3 + 3 + 3000000);
+  assert.equal(list[1].weight, 2 + 15 + 3 + 4 + 0 + 3 + 3 + 3000000, 'la copie : « Facture (1).pdf » fait 15 octets, la pièce est la même');
+  assert.deepEqual(list.map(file => file.pieces), [[['7', 3000000]], [['7', 3000000]], []]);
+  assert.equal(sumWeights(list.slice(0, 2)), list[0].weight + list[1].weight - 3000000, 'la somme compte la pièce une fois');
+  assert.ok(list[2].weight < 100, 'sans pièce jointe : sa ligne seule');
+});
+
+test('subfolders : le poids d\'un dossier est celui de tous ses fichiers, sous-dossiers compris, une pièce jointe citée deux fois comptée une fois', () => {
+  const file = (folder, weight, ...pieces) => ({ folder, weight, pieces, ts: null });
+  const list = [file('A', 100), file('A/B', 50), file('A/B/C', 25, ['7', 20]), file('A/D', 30, ['7', 20]), file('E', 1000), file('', 5)];
+  assert.deepEqual(subfolders(list, '', 'fr').map(f => [f.path, f.weight]), [['A', 100 + 50 + 25 + 30 - 20], ['E', 1000]]);
+  assert.deepEqual(subfolders(list, 'A', 'fr').map(f => [f.path, f.weight]), [['A/B', 75], ['A/D', 30]]);
+  assert.deepEqual(subfolders(list, 'A/B', 'fr').map(f => [f.path, f.weight]), [['A/B/C', 25]]);
+  assert.ok(subfolders(list, '', 'fr').every(folder => !('sum' in folder)), 'le cumul de travail ne sort pas du modèle');
+});
+
+test('listItems : tri par poids, le plus lourd d\'abord ; les dossiers suivent le même ordre (par leur poids) ; à poids égal, l\'ordre des noms', () => {
+  const list = applyFiling(readFiles(manifest, spec, weighted()), null);
+  const folder = (name, ids) => ids.forEach(id => { list.find(file => file.id === id).folder = name; });
+  folder('Petits', ['3']);
+  folder('Gros', ['1', '2']);
+  const names = result => result.rows.map(row => (row.kind === 'folder' ? `dossier:${row.name}` : row.file.id));
+  assert.deepEqual(names(listItems(list, state({ sort: { key: 'poids', dir: -1 } }), OPTIONS)), ['dossier:Gros', 'dossier:Petits'], 'le plus lourd d\'abord');
+  assert.deepEqual(names(listItems(list, state({ sort: { key: 'poids', dir: 1 } }), OPTIONS)), ['dossier:Petits', 'dossier:Gros']);
+  assert.deepEqual(names(listItems(list, state({ sort: { key: 'name', dir: -1 } }), OPTIONS)), ['dossier:Petits', 'dossier:Gros'], 'par nom, descendant : l\'ordre d\'avant ne change pas');
+  const flat = listItems(list, state({ q: 'e', sort: { key: 'poids', dir: -1 } }), OPTIONS);
+  assert.deepEqual(flat.rows.map(row => row.file.weight), [1021, 1020, 220].filter(weight => flat.rows.some(row => row.file.weight === weight)), 'à plat : du plus lourd au plus léger');
+  const same = applyFiling(readFiles(manifest, spec, { id: [1, 2, 3], Nom: ['Cc', 'Aa', 'Bb'] }), null);
+  assert.deepEqual(listItems(same, state({ sort: { key: 'poids', dir: -1 } }), OPTIONS).rows.map(row => row.file.name), ['Aa', 'Bb', 'Cc'], 'même poids : l\'ordre des noms');
+});
+
+test('listItems : `covered` est ce que la liste couvre : les fichiers du dossier et de ses sous-dossiers, ou, à plat, ceux que la recherche garde', () => {
+  const list = files();
+  const root = listItems(list, state(), OPTIONS);
+  assert.deepEqual(root.covered.map(file => file.id).sort(), ['1', '2', '4', '5', '6'], 'à la racine : tout, dossiers compris');
+  assert.deepEqual(listItems(list, state({ path: 'Formation' }), OPTIONS).covered.map(file => file.id).sort(), ['1', '2'], 'un dossier : lui et ses sous-dossiers');
+  assert.deepEqual(listItems(list, state({ path: 'Formation/Sessions' }), OPTIONS).covered.map(file => file.id), ['2']);
+  assert.deepEqual(listItems(list, state({ q: 'convocation' }), OPTIONS).covered.map(file => file.id), ['2'], 'une recherche : ses résultats');
+  assert.deepEqual(listItems(list, state({ view: 'fav' }), OPTIONS).covered.map(file => file.id), ['1']);
+  assert.deepEqual(listItems(list, state({ type: 'grille' }), OPTIONS).covered.map(file => file.id), ['6']);
 });

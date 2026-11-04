@@ -10,9 +10,9 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-cD7vSbzdue95/sMLBv7C/CPm1Eyv4lvo4DyDvca5gMk='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-OWPtCoc4Mvs8t6m/bGEMvYubPMSCJJYIRL2xVyjjgeo='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=989ca1d27d">
-<link rel="stylesheet" href="css/explorer.css?v=d7cc7d4867">
+<link rel="stylesheet" href="css/explorer.css?v=77b658a0a7">
 <link rel="stylesheet" href="css/modules.css?v=904497d37d">
 <link rel="stylesheet" href="kit/css/color-picker.css?v=c5a41d6681">
 <!-- Le routeur d'abord : il doit être enregistré avant que le script d'API de Grist n'affecte window.onmessage (contrats 1.2). -->
@@ -43,11 +43,11 @@
     "./js/dom.js": "./js/dom.js?v=6093a9f23f",
     "./js/envelope.js": "./js/envelope.js?v=8586bc1508",
     "./js/explorer-clipboard.js": "./js/explorer-clipboard.js?v=2d7ae0d059",
-    "./js/explorer-data.js": "./js/explorer-data.js?v=4bf024a37c",
+    "./js/explorer-data.js": "./js/explorer-data.js?v=df275f8067",
     "./js/explorer-keys.js": "./js/explorer-keys.js?v=6a6f23c6ed",
-    "./js/explorer-model.js": "./js/explorer-model.js?v=4004796053",
-    "./js/explorer-view.js": "./js/explorer-view.js?v=67298be505",
-    "./js/explorer.js": "./js/explorer.js?v=ba01d99ea3",
+    "./js/explorer-model.js": "./js/explorer-model.js?v=b67379f13d",
+    "./js/explorer-view.js": "./js/explorer-view.js?v=15c6dc9e34",
+    "./js/explorer.js": "./js/explorer.js?v=0fbae41f51",
     "./js/extensions.js": "./js/extensions.js?v=a6b2033702",
     "./js/files-store.js": "./js/files-store.js?v=98d9eb3e5c",
     "./js/filing-window.js": "./js/filing-window.js?v=ffaa75bf79",
@@ -55,11 +55,12 @@
     "./js/filter.js": "./js/filter.js?v=6079469f9b",
     "./js/frames.js": "./js/frames.js?v=554a438e75",
     "./js/gfs-copy.js": "./js/gfs-copy.js?v=de86265414",
-    "./js/gfs-files.js": "./js/gfs-files.js?v=4e36f82639",
-    "./js/gfs-trash.js": "./js/gfs-trash.js?v=dbe3068dc0",
+    "./js/gfs-files.js": "./js/gfs-files.js?v=136137d0cb",
+    "./js/gfs-trash.js": "./js/gfs-trash.js?v=0d4ceb233c",
     "./js/i18n-folders.js": "./js/i18n-folders.js?v=fdfa7f4ccb",
     "./js/i18n-trash.js": "./js/i18n-trash.js?v=ef324812f7",
-    "./js/i18n.js": "./js/i18n.js?v=f7312afc39",
+    "./js/i18n-weight.js": "./js/i18n-weight.js?v=1768a24dcf",
+    "./js/i18n.js": "./js/i18n.js?v=5a9eacc7a5",
     "./js/icons.js": "./js/icons.js?v=b6b7965224",
     "./js/import-file.js": "./js/import-file.js?v=709ec6b26b",
     "./js/kept-files.js": "./js/kept-files.js?v=f04eeea3fa",
@@ -93,6 +94,7 @@
     "./js/transfer.js": "./js/transfer.js?v=5064996e86",
     "./js/trash.js": "./js/trash.js?v=3a3a2f1798",
     "./js/view-options.js": "./js/view-options.js?v=f776be2727",
+    "./js/weight.js": "./js/weight.js?v=54c505e5ce",
     "./js/work-control.js": "./js/work-control.js?v=7efc5aae9e",
     "./js/work-row.js": "./js/work-row.js?v=4003614ac1",
     "./js/work-window.js": "./js/work-window.js?v=96926694af",

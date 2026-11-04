@@ -5,6 +5,7 @@
 // un document ancien n'a pas toutes les colonnes (2.4, point 2).
 
 import { normalize, words, matchesWords } from './search.js';
+import { rowWeigher, piecesOf, newSum, addWeight } from './weight.js';
 
 // Le champ `couleur` du manifeste -> la famille de couleur de la charte (cahier 6.5) ; tout autre mot : neutre. Le rouge du PDF est la quatrième famille (décision du porteur, 04/11).
 const FAMILIES = Object.freeze({ document: 'doc', grille: 'grid', presentation: 'slides', pdf: 'pdf' });
@@ -42,12 +43,15 @@ export function isExcluded(spec, data, i) {
 // La clé d'un fichier dans l'explorateur et dans le rangement de GFS : « app:identifiant ».
 export const fileKey = (app, id) => `${app}:${id}`;
 
-// Les fichiers d'une table : { key, app, id, table, row, name, type, typeInfo, known, family, icon, ts, by, folder, pinned, trashed, search } ; `table` et `row` : la table
+// Les fichiers d'une table : { key, app, id, table, row, name, type, typeInfo, known, family, icon, ts, by, folder, pinned, trashed, weight, pieces, search } ; `table` et `row` : la table
 // du manifeste et la ligne de Grist (renommer) ; `trashed` : { ts, by } quand le fichier est à la corbeille (le manifeste déclare alors `corbeille`), sinon null. La liste des fichiers vivants
 // et celle de la corbeille se séparent après la lecture (js/explorer-data.js) : ce modèle rend tout, le fichier à la corbeille a gardé son nom, son dossier et son type.
 // `typeInfo` est l'entrée de `types` qui porte le type, ou null : un type que le manifeste ne connaît pas est listé grisé (6.5, point 3).
-export function readFiles(manifest, spec, data) {
+// `weight` : le poids estimé en octets (js/weight.js), les cellules de la ligne (ou `weights[i]` quand l'appelant les a comptées lui-même : une entrée de la corbeille pèse ce qu'elle garde) plus la pièce
+// jointe que le fichier EST (`spec.poids.pieces`) ; `pieces` : [[clé, taille]] de ces pièces, pour qu'une somme compte une fois celle que deux fichiers citent.
+export function readFiles(manifest, spec, data, weights = null) {
   const cols = spec.colonnes || {};
+  const weigh = rowWeigher(data);
   const files = [];
   for (let i = 0; i < rowCount(data); i++) {
     if (isExcluded(spec, data, i)) continue;
@@ -56,11 +60,12 @@ export function readFiles(manifest, spec, data) {
     const type = text(cell(data, cols.type, i)) || spec.typeParDefaut || '';
     const typeInfo = (spec.types || []).find(item => item.valeur === type) || null;
     const name = text(cell(data, cols.nom, i));
+    const pieces = piecesOf(spec.poids, data, i);
     files.push({
       key: fileKey(manifest.id, rawId), app: manifest.id, id: String(rawId), table: spec.table, row: data.id[i], name, type, typeInfo, known: Boolean(typeInfo),
       family: typeInfo ? familyOf(typeInfo.couleur) : '', icon: (typeInfo && typeInfo.icone) || 'doc',
       ts: seconds(cell(data, cols.date, i)), by: text(cell(data, cols.par, i)), folder: normalizePath(cell(data, cols.dossier, i)), pinned: false,
-      trashed: trashOf(spec.corbeille, data, i), search: '',
+      trashed: trashOf(spec.corbeille, data, i), weight: (weights ? weights[i] : weigh(i)) + pieces.reduce((sum, [, size]) => sum + size, 0), pieces, search: '',
     });
   }
   return files;
@@ -174,19 +179,22 @@ function childOf(folder, path) {
   return { name, path: path ? `${path}/${name}` : name };
 }
 
-// Les sous-dossiers directs de `path` : [{ path, name, count, ts }] triés par nom. Un dossier existe tant qu'un fichier le nomme, ou que la personne le garde sans fichier (`spare`, compte 0).
+// Les sous-dossiers directs de `path` : [{ path, name, count, ts, weight }] triés par nom. Un dossier existe tant qu'un fichier le nomme, ou que la personne le garde sans fichier (`spare`, compte 0, poids 0). Son
+// poids est celui de tous ses fichiers, sous-dossiers compris, une pièce jointe citée par deux d'entre eux comptée une fois.
 export function subfolders(files, path, locale, spare = []) {
   const found = new Map();
-  const entryOf = child => found.get(child.name) || found.set(child.name, { ...child, count: 0, ts: null }).get(child.name);
+  const entryOf = child => found.get(child.name) || found.set(child.name, { ...child, count: 0, ts: null, sum: newSum() }).get(child.name);
   for (const file of files) {
     const child = childOf(file.folder, path);
     if (!child) continue;
     const entry = entryOf(child);
     entry.count += 1;
+    addWeight(entry.sum, file);
     if (file.ts !== null && (entry.ts === null || file.ts > entry.ts)) entry.ts = file.ts;
   }
   for (const folder of spare) { const child = childOf(folder, path); if (child) entryOf(child); }
-  return [...found.values()].sort((a, b) => a.name.localeCompare(b.name, locale, { sensitivity: 'base', numeric: true }));
+  return [...found.values()].map(({ sum, ...folder }) => ({ ...folder, weight: sum.bytes }))
+    .sort((a, b) => a.name.localeCompare(b.name, locale, { sensitivity: 'base', numeric: true }));
 }
 
 // L'arbre des dossiers pour le volet : [{ path, name, depth, count, hasChildren }] dans l'ordre d'affichage, selon les dossiers ouverts.
@@ -221,11 +229,13 @@ export const authorOf = file => (file.trashed ? file.trashed.by : file.by);
 const SORTERS = {
   name: (a, b, c) => c.name(a, b),
   type: (a, b, c) => (a.typeInfo ? c.label(a) : a.type).localeCompare(b.typeInfo ? c.label(b) : b.type, c.locale, { sensitivity: 'base' }),
+  poids: (a, b) => a.weight - b.weight,
   mod: (a, b) => (stampOf(a) ?? -Infinity) - (stampOf(b) ?? -Infinity),
   by: (a, b, c) => authorOf(a).localeCompare(authorOf(b), c.locale, { sensitivity: 'base' }),
 };
 
-// Les lignes affichées : { rows: [{ kind: 'folder', ... } | { kind: 'file', file }], flat }.
+// Les lignes affichées : { rows: [{ kind: 'folder', ... } | { kind: 'file', file }], flat, covered }. `covered` : les fichiers que la liste couvre, ceux des dossiers montrés compris (le total du pied
+// de fenêtre en fait la somme : une pièce jointe que deux d'entre eux citent n'y est comptée qu'une fois).
 // `state` : { view: 'folder'|'recent'|'fav'|'trash', path, q, type, sort: { key, dir } } ; `locale` : pour le tri ; `typeLabel(file)` : le nom du type dans la langue ; `spare` : les dossiers gardés sans fichier.
 // Récents garde d'abord les huit plus récents, puis les trie comme demandé (l'explorateur y commence par « modifié, le plus récent d'abord »). La corbeille est une liste à plat : `files` est alors
 // celle des fichiers qui y sont, tous montrés, sans dossier.
@@ -245,12 +255,13 @@ export function listItems(files, state, { locale, typeLabel, spare = [] }) {
   pool.sort(compare);
   const rows = pool.map(file => ({ kind: 'file', file }));
   if (!flat) {
-    const dir = state.sort.key === 'name' ? state.sort.dir : 1;
     const folders = subfolders(files, state.path, locale, spare).map(folder => ({ kind: 'folder', ...folder }));
-    if (dir < 0) folders.reverse();
+    // Les dossiers vont par nom (renversés quand le tri par nom l'est), sauf quand la liste est triée par poids : ils suivent alors le même ordre que les fichiers (le tri est stable : à poids égal, l'ordre des noms).
+    if (state.sort.key === 'poids') folders.sort((a, b) => (a.weight - b.weight) * state.sort.dir);
+    else if (state.sort.key === 'name' && state.sort.dir < 0) folders.reverse();
     rows.unshift(...folders);
   }
-  return { rows, flat };
+  return { rows, flat, covered: flat ? pool : files.filter(file => inside(file.folder, state.path)) };
 }
 
 // Les types présents dans les fichiers, pour le filtre : [{ value, label, icon, family, count }] (types connus d'abord, puis inconnus).

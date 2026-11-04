@@ -83,11 +83,14 @@ button { cursor: pointer; }
 /* Le filet de couleur en tête de la liste et des fenêtres (une ambiance le pose ; sans elle sa hauteur est nulle). */
 .ex-main::before, .mod::before { content: ''; flex: none; height: var(--stripe-h); background: var(--stripe); }
 .ex-scroll { flex: 1; min-height: 0; overflow-y: auto; }
-.ls-head, .ls-row { display: grid; grid-template-columns: minmax(0, 1fr) 116px 84px 40px 52px; align-items: center; column-gap: 8px; padding: 0 8px; }
+/* Nom, type, poids, modifié, par, gestes. Largeurs mesurées sur le texte le plus large de chaque colonne, en français et en anglais (type : « Presentation », 101 px ; poids : l'en-tête et sa flèche ;
+   modifié : « Today 07:59 »). Le poids est aligné à droite (chiffres de même largeur : les unités s'alignent en colonne). */
+.ls-head, .ls-row { display: grid; grid-template-columns: minmax(0, 1fr) 102px 56px 74px 32px 52px; align-items: center; column-gap: 8px; padding: 0 8px; }
 .ls-head { position: sticky; top: 0; z-index: 2; height: 26px; background: var(--surface-sunken); border-bottom: 1px solid var(--border-strong); }
 .ls-head .hd { justify-self: start; border: 0; background: transparent; padding: 2px 4px; margin-left: -4px; border-radius: var(--radius-xs); font-family: var(--font-label); font-size: 11px; font-weight: 700;
   letter-spacing: var(--ls-label); text-transform: var(--tt-label); color: var(--text-muted); }
 .ls-head .hd:hover { color: var(--text); background: var(--surface); }
+.ls-head .hd[data-sort="poids"] { justify-self: end; margin-left: 0; margin-right: -4px; }
 .ls-head .hd[aria-sort] { color: var(--text); }
 .ls-head .hd[aria-sort="ascending"]::after { content: " ↑"; }
 .ls-head .hd[aria-sort="descending"]::after { content: " ↓"; }
@@ -103,6 +106,8 @@ button { cursor: pointer; }
 .ls-row .hint { flex: none; max-width: 38%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--text-muted); }
 .ls-row .ty, .ls-row .md { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ls-row .ty { overflow: visible; }
+.ls-row .wt { text-align: right; font-size: 12px; color: var(--text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ls-row.folder .wt { font-weight: 700; }
 .pill { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; padding: 0 8px; border: 1px solid var(--border-strong);
   border-radius: var(--radius-pill); background: var(--surface); font-size: 11px; font-weight: 600; line-height: 17px; color: var(--text-muted); }
 .ls-row.folder .pill { border-style: dashed; }
@@ -157,6 +162,7 @@ button { cursor: pointer; }
 .th .tn { font-size: 12px; font-weight: 600; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .th .tt { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); }
 .th .tt .ic { width: 12px; height: 12px; }
+.th .tw { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
 /* ---------- le trait des icônes de type, selon l'ambiance ---------- */
 /* Les icônes des types de fichier (ligne de la liste, vignette, barre d'information) prennent le trait de l'ambiance (décision du porteur, 04/11) : l'épaisseur d'origine (1,8 en liste, 1,4 en vignette) multipliée
@@ -176,6 +182,10 @@ button { cursor: pointer; }
 /* ---------- barre d'information et pied ---------- */
 .ex-foot { flex: none; display: flex; align-items: center; gap: 8px; margin: 0 var(--gap) var(--gap); padding: 7px 16px 9px; border-top: var(--divider-w) solid var(--divider); border-radius: var(--radius-panel); box-shadow: var(--shadow-panel); background: var(--surface-sunken); }
 .ex-info { flex: 1; min-width: 0; display: flex; align-items: center; height: 40px; font-size: 12px; }
+/* Le total de ce que la liste montre (js/weight.js) : à droite de la barre d'information, avant les boutons. */
+.ex-total { flex: none; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+.ex-total:empty { display: none; }
+.ex-total .tot-n { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
 .inf { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
 .inf .l1 { display: flex; align-items: center; gap: 6px; min-width: 0; height: 19px; }
 .inf .l1 b { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -206,6 +216,19 @@ button { cursor: pointer; }
 .menu .ic-sp { width: 14px; height: 14px; flex: none; }
 .menu hr { border: 0; border-top: 1px solid var(--border); margin: 4px 0; }
 
+/* ---------- liste réduite sous 600 px : la colonne du poids prend 66 px à la liste, et avec elle le nom d'un fichier n'a plus la place de son propre en-tête sous 565 px environ (mesuré). La liste perd alors
+   « Modifié » et « Par » (l'auteur et la date restent dans la barre du bas quand on choisit un fichier), comme elle le faisait déjà sous 520 px ; le volet des dossiers reste jusqu'à 520 px (cahier 4.4). ---------- */
+@media (max-width: 599px) {
+  .ls-head, .ls-row { grid-template-columns: minmax(0, 1fr) 102px 56px 52px; }
+  .ls-head .hd[data-sort="mod"], .ls-head .hd[data-sort="by"], .ls-row .md, .ls-row .by { display: none; }
+}
+
+/* ---------- entre le panneau étroit et le panneau de référence (700 px) : le volet des dossiers rend à la liste les 66 px que prend la colonne du poids, pour que le nom d'un fichier garde au moins la largeur
+   qu'il avait avant (à 640 px : 136 px au lieu de 128). ---------- */
+@media (min-width: 520px) and (max-width: 699px) {
+  .ex-tree { width: 132px; }
+}
+
 /* ---------- étroit : le volet se replie, il reste le fil d'Ariane, Récents et Favoris (cahier 4.4) ---------- */
 @media (max-width: 519px) {
   .ex-head { padding: 8px 10px 6px; }
@@ -218,7 +241,5 @@ button { cursor: pointer; }
   .ex-tree .tr-folder, .tr-sep { display: none; }
   .tr-pin { position: static; display: flex; gap: 6px; padding: 0; background: transparent; }
   .tr-pin .tr-row { width: auto; }
-  .ls-head, .ls-row { grid-template-columns: minmax(0, 1fr) 96px 52px; }
-  .ls-head .hd[data-sort="mod"], .ls-head .hd[data-sort="by"], .ls-row .md, .ls-row .by { display: none; }
   .ex-foot { padding: 6px 10px 8px; }
 }

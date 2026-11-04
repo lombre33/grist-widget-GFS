@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadFiles } from '../js/explorer-data.js';
 import { FILES_ENTRY } from '../js/gfs-files.js';
+import { sumWeights } from '../js/weight.js';
 import { publipostage } from './helpers.mjs';
 
 const manifest = publipostage();
@@ -116,4 +117,38 @@ test('sans la table de GFS, ou avec une table illisible, aucun dossier n\'est ga
   const warn = console.warn;
   console.warn = () => {};
   try { assert.deepEqual((await loadFiles(port(tables(), { broken: 'gfs_rangement' }), [{ manifest }], '')).folders, []); } finally { console.warn = warn; }
+});
+
+// ---------- le poids ----------
+
+test('le poids : un PDF de GFS pèse sa ligne et sa pièce jointe (`Taille`), une copie qui cite la même pièce ne la compte pas deux fois dans une somme', async () => {
+  const data = {
+    GFS_Fichiers: {
+      id: [1, 2, 3], Identifiant: ['aa', 'bb', 'cc'], Nom: ['Facture.pdf', 'Facture (1).pdf', 'Devis.pdf'], Type: ['pdf', 'pdf', 'pdf'], Date: [10, 10, 30], Auteur: ['', '', ''],
+      Contenu: [['L', 7], ['L', 7], ['L', 8]], Taille: [3000000, 3000000, 500000], SupprimeLe: [null, null, 1762000000], SupprimePar: ['', '', 'paul@exemple.fr'],
+    },
+  };
+  const { files, trash } = await loadFiles(port(data), [FILES_ENTRY], '');
+  assert.deepEqual(files.map(file => file.pieces), [[['7', 3000000]], [['7', 3000000]]]);
+  assert.ok(files[0].weight > 3000000 && files[0].weight < 3000100, 'la pièce et quelques octets de ligne');
+  assert.equal(sumWeights(files), files[0].weight + files[1].weight - 3000000, 'la pièce citée deux fois est comptée une fois');
+  assert.ok(trash[0].weight > 500000 && trash[0].weight < 500100, 'à la corbeille, le fichier pèse encore (sa pièce jointe est gardée)');
+});
+
+test('le poids : un fichier d\'une app pèse les octets de sa ligne, et une entrée de GFS_Corbeille tout ce que la corbeille garde (la copie JSON de la ligne y est pour presque tout)', async () => {
+  const data = tables();
+  data[spec.table].Contenu = ['x'.repeat(1000), 'é'.repeat(500)];
+  const snapshot = JSON.stringify({ format: 1, id: 9, valeurs: { Nom: 'Relance', Contenu: 'é'.repeat(3000) } });
+  data.GFS_Corbeille = {
+    id: [5], Identifiant: ['aabbccddeeff'], App: ['publipostage'], Table: [spec.table], FichierId: ['9'], Nom: ['Relance'], Type: ['email'], Date: [300], Auteur: [''],
+    SupprimeLe: [1762000000], SupprimePar: ['paul@exemple.fr'], Instantane: [snapshot],
+  };
+  const found = await loadFiles(port(data), [{ manifest }], '');
+  const bytes = text => Buffer.byteLength(text);
+  // Convocation : « Convocation » 11, type vide 0, date 0 (1 octet), par vide 0, contenu 1000 ; Attestation : « Attestation » 11, 1, 0, 500 × 2.
+  assert.deepEqual(found.files.map(file => file.weight), [11 + 0 + 1 + 0 + 1000, 11 + 0 + 1 + 0 + 1000]);
+  // La ligne de la corbeille : ses onze colonnes (la date 300 : 2 octets, celle du geste : 4) et le JSON.
+  const entry = bytes('aabbccddeeff') + bytes('publipostage') + bytes(spec.table) + 1 + 7 + 5 + 2 + 0 + 4 + bytes('paul@exemple.fr') + bytes(snapshot);
+  assert.equal(found.trash[0].weight, entry);
+  assert.ok(found.trash[0].weight > 6000, 'la copie JSON compte : c\'est elle que la corbeille garde dans le document');
 });

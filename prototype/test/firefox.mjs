@@ -1,5 +1,5 @@
 // Firefox pour les essais d'interface (demande du porteur, 03/11 : vérifier aussi les interfaces, sous Firefox, le navigateur qu'il emploie). Aucune bibliothèque : Firefox lui-même (dans le cloud,
-// `labo/installer-firefox.sh` ; ailleurs, celui de la machine) et le WebSocket de Node 22. Firefox se pilote par WebDriver BiDi, le protocole qu'il parle de lui-même (`--remote-debugging-port`) :
+// `labo/installer-firefox.sh` ; ailleurs, celui de la machine) et un petit client WebSocket (test/websocket-client.mjs : celui de Node 22 s'arrête à la 4 097e trame). Firefox se pilote par WebDriver BiDi, le protocole qu'il parle de lui-même (`--remote-debugging-port`) :
 // ni geckodriver, ni Selenium, et pas Playwright, qui ne pilote qu'un Firefox modifié par lui (ses hôtes de téléchargement sont refusés dans le cloud).
 // Un seul Firefox pour tout un fichier d'essais ; la page se règle à une largeur, un zoom (`devicePixelRatio`) et un mode (clair ou sombre) par `page.view`. La souris et le clavier sont ceux
 // du navigateur (`input.performActions`) : jamais `dispatchEvent`.
@@ -9,6 +9,7 @@ import { createServer as createSocketServer } from 'node:net';
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { extname, join, normalize, sep } from 'node:path';
+import { openSocket } from './websocket-client.mjs';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -51,7 +52,6 @@ const PREFS = {
 };
 
 const freePort = () => new Promise(resolve => { const probe = createSocketServer(); probe.listen(0, '127.0.0.1', () => { const { port } = probe.address(); probe.close(() => resolve(port)); }); });
-const openSocket = url => new Promise((resolve, reject) => { const socket = new WebSocket(url); socket.onopen = () => resolve(socket); socket.onerror = () => reject(new Error('connexion refusée')); });
 
 // La conversation avec Firefox : une commande, sa réponse ; les messages du journal de la page (`log.entryAdded`) sont gardés.
 class Bidi {

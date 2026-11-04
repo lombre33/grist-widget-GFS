@@ -5,8 +5,9 @@ import { h } from './dom.js';
 import { icon } from './icons.js';
 import { person, formatDate, pathParts, stampOf, authorOf, FAMILY_NAMES } from './explorer-model.js';
 import { LANGUAGE_NAMES } from './language.js';
+import { formatBytes } from './weight.js';
 
-export const SORT_HEADERS = [['name', 'ex.name'], ['type', 'ex.type'], ['mod', 'ex.modified'], ['by', 'ex.by']];
+export const SORT_HEADERS = [['name', 'ex.name'], ['type', 'ex.type'], ['poids', 'ex.weight'], ['mod', 'ex.modified'], ['by', 'ex.by']];
 
 // Le cadre fixe : titre, bascule liste/vignettes, fil d'Ariane, recherche, filtre de type, « Nouveau », volet, liste, barre d'information.
 // Ses textes sont posés par `relabel` : la même fonction les réécrit quand la personne change la langue de GFS.
@@ -36,6 +37,7 @@ export function buildShell(i18n) {
         keep('empty', h('div', { class: 'empty', hidden: true })))))),
     h('footer', { class: 'ex-foot' },
       keep('info', h('div', { class: 'ex-info', 'aria-live': 'polite' })),
+      keep('total', h('div', { class: 'ex-total' })),
       keep('openBtn', h('button', { type: 'button', class: 'btn' })),
       keep('closeBtn', h('button', { type: 'button', class: 'btn' }))));
   relabel(refs, i18n);
@@ -67,11 +69,15 @@ export function relabel(refs, i18n) {
   refs.newBtn.replaceChildren(icon('plus'), t('ex.new'));
   refs.tree.setAttribute('aria-label', t('ex.folders'));
   refs.list.setAttribute('aria-label', t('ex.title'));
+  refs.total.title = t('weight.totalTip');
   refs.openBtn.textContent = t('ex.open');
   refs.closeBtn.textContent = t('ex.close');
 }
 
 const family = file => (FAMILY_NAMES.includes(file.family) ? file.family : null);
+
+// Le poids d'une ligne, dans la langue de la personne (js/weight.js).
+const weightText = (ctx, bytes) => formatBytes(bytes, ctx.locale, ctx.t);
 
 // Le fil d'Ariane : la racine (« Moi »), puis les dossiers ; « Résultats » quand une recherche ou un filtre est en cours.
 export function crumbs(ctx) {
@@ -132,6 +138,7 @@ function fileCells(ctx, file, flat) {
       flat && file.folder ? h('span', { class: 'hint' }, file.folder.split('/').pop()) : null,
       lock ? h('span', { class: 'sr-only' }, `, ${lock.text}`) : null),
     h('div', { class: 'ty', role: 'gridcell' }, h('span', { class: 'pill' }, ctx.typeLabel(file))),
+    h('div', { class: 'wt', role: 'gridcell' }, weightText(ctx, file.weight)),
     h('div', { class: 'md', role: 'gridcell' }, formatDate(stampOf(file), ctx.now, ctx.locale, t)),
     h('div', { class: 'by', role: 'gridcell' }, who.initials ? h('span', { class: 'who', title: who.name }, who.initials) : null),
     h('div', { class: 'acts', role: 'gridcell' }, ctx.state.view === 'trash' ? restoreButton(t, file.key)
@@ -160,6 +167,7 @@ export function folderRow(ctx, folder) {
   return h('div', { class: 'ls-row folder', role: 'row', tabindex: ctx.state.sel === key ? '0' : '-1', dataset: { key }, 'aria-selected': String(ctx.state.sel === key) },
     h('div', { class: 'nm', role: 'gridcell' }, icon('folder', 'fld'), h('span', { class: 't' }, folder.name)),
     h('div', { class: 'ty', role: 'gridcell' }, h('span', { class: 'pill' }, t('ex.fileCount', { n: folder.count }))),
+    h('div', { class: 'wt', role: 'gridcell' }, weightText(ctx, folder.weight)),
     h('div', { class: 'md', role: 'gridcell' }, formatDate(folder.ts, ctx.now, ctx.locale, t)),
     h('div', { class: 'by', role: 'gridcell' }),
     h('div', { class: 'acts', role: 'gridcell' }, moreButton(t, key)));
@@ -168,14 +176,16 @@ export function folderRow(ctx, folder) {
 // Ce qu'une vignette montre : un dossier ou un fichier (grisé ou non).
 function tileFacts(ctx, row) {
   const { t } = ctx;
-  if (row.kind === 'folder') return { folder: true, key: `dir:${row.path}`, lock: null, glyph: 'folder', name: row.name, caption: t('ex.fileCount', { n: row.count }), fam: null };
+  if (row.kind === 'folder') {
+    return { folder: true, key: `dir:${row.path}`, lock: null, glyph: 'folder', name: row.name, caption: t('ex.fileCount', { n: row.count }), weight: weightText(ctx, row.weight), fam: null };
+  }
   const file = row.file;
   const lock = ctx.lockOf(file);
-  return { folder: false, key: file.key, lock, glyph: lock ? 'lock' : file.icon, name: file.name || t('ex.untitled'), caption: ctx.typeLabel(file), fam: lock ? null : family(file) };
+  return { folder: false, key: file.key, lock, glyph: lock ? 'lock' : file.icon, name: file.name || t('ex.untitled'), caption: ctx.typeLabel(file), weight: weightText(ctx, file.weight), fam: lock ? null : family(file) };
 }
 
 export function tile(ctx, row) {
-  const { folder, key, lock, glyph, name, caption, fam } = tileFacts(ctx, row);
+  const { folder, key, lock, glyph, name, caption, weight, fam } = tileFacts(ctx, row);
   const selected = ctx.state.sel === key;
   return h('div', {
     class: `th${folder ? ' folder' : ''}${lock ? ' lk' : ''}`, role: 'row', tabindex: selected ? '0' : '-1', dataset: { key },
@@ -183,7 +193,8 @@ export function tile(ctx, row) {
   },
   h('div', { class: 'th-pv' }, icon(glyph, folder ? 'fld' : '')),
   h('span', { class: 'tn' }, name),
-  h('div', { class: 'tt' }, icon(glyph), caption));
+  h('div', { class: 'tt' }, icon(glyph), caption),
+  h('div', { class: 'tw' }, weight));
 }
 
 // Le message d'une liste vide : jamais une page blanche.
@@ -211,7 +222,7 @@ export function infoBar(ctx) {
       h('div', { class: 'l2' }, icon('pin'), h('span', { class: 'lt' }, ctx.personal ? t('ex.hintFav') : t('ex.hintFavShared'))));
   }
   if (selected.kind === 'folder') {
-    return h('div', { class: 'inf' }, infoLine1(icon('folder'), h('b', null, selected.name), h('span', { class: 'mu' }, `· ${t('ex.fileCount', { n: selected.count })}`)),
+    return h('div', { class: 'inf' }, infoLine1(icon('folder'), h('b', null, selected.name), h('span', { class: 'mu' }, `· ${t('ex.fileCount', { n: selected.count })} · ${weightText(ctx, selected.weight)}`)),
       h('div', { class: 'l2' }, h('span', { class: 'lt' }, filingHint)));
   }
   const { file } = selected;
@@ -224,7 +235,7 @@ export function infoBar(ctx) {
     : [ctx.opensIn(file), file.ts === null ? '' : t('ex.modifiedOn', { date }), who.name ? t('ex.modifiedBy', { by: who.name }) : ''];
   const second = lock ? lock.text : facts.filter(Boolean).join(' · ');
   return h('div', { class: 'inf', 'data-fam': lock ? null : family(file) },
-    infoLine1(icon(lock ? 'lock' : file.icon), h('b', null, file.name || t('ex.untitled')), h('span', { class: 'mu' }, `· ${ctx.typeLabel(file)}`)),
+    infoLine1(icon(lock ? 'lock' : file.icon), h('b', null, file.name || t('ex.untitled')), h('span', { class: 'mu' }, `· ${ctx.typeLabel(file)} · ${weightText(ctx, file.weight)}`)),
     h('div', { class: 'l2' }, h('span', { class: 'lt' }, second)));
 }
 
@@ -233,4 +244,10 @@ export function trashBar(ctx) {
   const { t } = ctx;
   return h('div', { class: 'trash-bar' }, icon('trash'), h('span', { class: 'tb-text' }, t('trash.bar')),
     h('button', { type: 'button', class: 'btn', dataset: { emptyTrash: '' } }, t('trash.empty')));
+}
+
+// Le total du pied de fenêtre : ce que pèse ce que la liste montre, dossiers compris (`ctx.total`, en octets). Le mot « Total » est dit aux lecteurs d'écran ; l'infobulle dit ce qui est compté.
+export function totalBar(ctx) {
+  const { t } = ctx;
+  return [h('span', { class: 'sr-only' }, `${t('weight.total')} : `), h('b', { class: 'tot-n' }, weightText(ctx, ctx.total))];
 }

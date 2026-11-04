@@ -34,6 +34,8 @@ export const FILES_MANIFEST = Object.freeze({
     // `corbeille` : les deux colonnes qui disent qu'un fichier est à la corbeille (la date du geste, son auteur). Sans cette clé, le manifeste d'une app n'a pas de corbeille de cette forme.
     corbeille: Object.freeze({ date: 'SupprimeLe', par: 'SupprimePar' }),
     typeParDefaut: PDF_TYPE,
+    // `poids.pieces` : le fichier EST une pièce jointe (contrats 2.4) ; son poids est celui de la pièce, que dit la colonne `Taille`.
+    poids: Object.freeze({ pieces: Object.freeze({ colonne: 'Contenu', taille: 'Taille' }) }),
     types: Object.freeze([Object.freeze({ valeur: PDF_TYPE, nom: bilingual('PDF', 'PDF'), icone: 'pdf', couleur: 'pdf' })]),
   })]),
   actions: Object.freeze({

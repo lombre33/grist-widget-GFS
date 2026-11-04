@@ -27,18 +27,20 @@ import { ThemeWindow } from '/js/theme-window.js';
 import { Trash } from '/js/trash.js';
 
 const DAY = 86400;
-// Nom, type (une valeur du manifeste ; `macro` est grisé, son extension étant éteinte), ancienneté en jours, auteur, dossier. Assez de lignes pour remplir un panneau de 400 px.
+// Nom, type (une valeur du manifeste ; `macro` est grisé, son extension étant éteinte), ancienneté en jours, auteur, dossier, poids en octets (de quelques octets à plusieurs Mo : toutes les unités
+// de la colonne « Poids »). Assez de lignes pour remplir un panneau de 400 px.
 const MODELS = [
-  ['Attestation de formation de fin de session', 'document', 13, 'Grist Factory', ''], ['Convocation', 'document', 13, 'Grist Factory', ''], ['Émargement', 'document', 13, 'Grist Factory', ''],
-  ['Main', 'presentation', 1, 'Service RH', ''], ['Présentation commerciale', 'presentation', 12, 'Service RH', ''], ['Présentation commerciale (2)', 'presentation', 0.1, 'Service RH', ''],
-  ['source', 'presentation', 12, 'Service RH', ''], ['test1', 'document', 0.3, 'Service RH', ''], ['Grille de suivi', 'grille', 20, 'Équipe formation', ''],
-  ['Contrat de prestation', 'document', 5, 'Équipe formation', 'Formation'], ['Support de session', 'presentation', 6, 'Équipe formation', 'Formation'], ['Autre format', 'macro', 7, 'Service RH', ''],
+  ['Attestation de formation de fin de session', 'document', 13, 'Grist Factory', '', 48200], ['Convocation', 'document', 13, 'Grist Factory', '', 21500], ['Émargement', 'document', 13, 'Grist Factory', '', 9800],
+  ['Main', 'presentation', 1, 'Service RH', '', 2310000], ['Présentation commerciale', 'presentation', 12, 'Service RH', '', 4870000], ['Présentation commerciale (2)', 'presentation', 0.1, 'Service RH', '', 4890000],
+  ['source', 'presentation', 12, 'Service RH', '', 1240000], ['test1', 'document', 0.3, 'Service RH', '', 1800], ['Grille de suivi', 'grille', 20, 'Équipe formation', '', 310000],
+  ['Contrat de prestation', 'document', 5, 'Équipe formation', 'Formation', 1950000], ['Support de session', 'presentation', 6, 'Équipe formation', 'Formation', 3320000], ['Autre format', 'macro', 7, 'Service RH', '', 640],
 ];
 
-// Les tables de Grist, en colonnes : les modèles, puis leur rangement (le dossier de chacun).
+// Les tables de Grist, en colonnes : les modèles, puis leur rangement (le dossier de chacun) ; `weights` : ce que pèse chaque modèle (le vrai calcul des octets est celui de test/weight.test.mjs).
 function tables(now) {
   const models = { id: [], Nom: [], TypeModele: [], DateModif: [], ModifiePar: [] };
   const prefs = { id: [], Utilisateur: [], ModeleId: [], Dossier: [], Epingle: [] };
+  const weights = MODELS.map(model => model[5]);
   MODELS.forEach(([name, type, days, by, folder], index) => {
     models.id.push(index + 1);
     models.Nom.push(name);
@@ -51,7 +53,7 @@ function tables(now) {
     prefs.Dossier.push(folder);
     prefs.Epingle.push(false);
   });
-  return { models, prefs };
+  return { models, prefs, weights };
 }
 
 const memory = () => { const store = { value: null, read: () => store.value, write: value => { store.value = value; return true; } }; return store; };
@@ -61,8 +63,8 @@ async function mount() {
   const i18n = createI18n(language);
   const manifest = await (await fetch('/manifestes/publipostage.json')).json();
   const spec = manifest.fichiers[0];
-  const { models, prefs } = tables(Math.floor(Date.now() / 1000));
-  const files = applyFiling(readFiles(manifest, spec, models), readFiling(spec.rangement, prefs, ''));
+  const { models, prefs, weights } = tables(Math.floor(Date.now() / 1000));
+  const files = applyFiling(readFiles(manifest, spec, models, weights), readFiling(spec.rangement, prefs, ''));
   const stage = document.getElementById('stage');
   installSprite(document);
   const mode = () => (document.documentElement.getAttribute('data-grist-appearance') === 'dark' ? 'sombre' : 'clair');

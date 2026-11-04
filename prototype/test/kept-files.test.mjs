@@ -191,6 +191,7 @@ test('lire : GFS va chercher les octets, les rend en objet File au nom du fichie
   assert.deepEqual([file.name, file.type, file.size], ['Facture.pdf', 'application/pdf', PDF_BYTES.length]);
   assert.equal(await file.text(), PDF_BYTES);
   assert.deepEqual(log.notices, [FR.t('files.reading', { name: 'Facture.pdf' })]);
+  assert.deepEqual(log.hidden, [FR.t('files.reading', { name: 'Facture.pdf' })], 'le transfert fini, « Ouverture de… » s\'efface : elle ne reste pas six secondes sur l\'app (la phrase retirée est la sienne)');
   assert.deepEqual(log.doc.appended, [], 'lire n\'offre rien au navigateur : pas de téléchargement');
 });
 
@@ -200,6 +201,7 @@ test('lire, le transfert échoue : rien n\'est ouvert (null), la raison est dite
     const gone = setup({ download: async () => { throw new TransferError('http', 'Not found', 404); } });
     assert.equal(await gone.kept.load(FILE), null);
     assert.equal(gone.log.notices.at(-1), FR.t('files.readFailed', { name: 'Facture.pdf', reason: FR.t('files.err.gone') }));
+    assert.deepEqual(gone.log.hidden, [], 'un transfert qui échoue garde sa phrase : rien n\'est effacé');
     const down = setup({ download: async () => { throw new TransferError('network', 'Failed to fetch'); }, i18n: EN });
     assert.equal(await down.kept.load(FILE), null);
     assert.equal(down.log.notices.at(-1), EN.t('files.readFailed', { name: 'Facture.pdf', reason: EN.t('files.err.network') }));

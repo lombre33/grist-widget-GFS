@@ -117,6 +117,7 @@ async function playRead(run) {
   await waitFor(page, 'la sonde a dessiné', async () => (await probeSays(page)).pdf);
   const said = await probeSays(page);
   check('l\'explorateur se ferme, l\'app est montrée', await frame.locator('.ex').isHidden() && Boolean(probeFrame(page)));
+  check('la phrase « Ouverture de… » s\'est effacée dès que le transfert a fini : elle ne reste pas six secondes sur l\'app', await frame.locator('#toast').isHidden(), await frame.locator('#toast').textContent());
   const reading = said.lectures[0] || {};
   check('l\'app reçoit un vrai File dans son cadre isolé : nom, taille, type, octets lus, même empreinte que le PDF choisi',
     reading.estFichier === true && reading.nom === 'Facture.pdf' && reading.taille === run.facture.size && reading.type === 'application/pdf' && reading.lus === run.facture.size && reading.entete === '%PDF-1.4' && reading.empreinte === run.facture.hash, reading);
@@ -177,6 +178,7 @@ async function playAlreadyRunning(run) {
   check('le second PDF est lu : 1 page, son titre, de l\'encre', said.pdf.pages === 1 && said.pdf.texte.includes(pageTitle('Devis', 1)) && said.pdf.encre > 50 && said.lectures[1].empreinte === run.devis.hash, said.pdf);
   check('la bibliothèque n\'est pas rechargée : la même source', said.bibliotheque.chargee === true && said.violations.length === 0 && said.erreurs.length === 0, [said.bibliotheque, said.violations, said.erreurs]);
   check('l\'explorateur s\'est refermé', await frame.locator('.ex').isHidden());
+  check('la phrase « Ouverture de… » s\'est effacée aussi pour l\'app déjà ouverte', await frame.locator('#toast').isHidden(), await frame.locator('#toast').textContent());
 }
 
 // ----- 5. « Télécharger » reste là ; le double-clic et Entrée lisent.

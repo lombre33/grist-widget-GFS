@@ -10,7 +10,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-6TLXPBQoRRLNUB3CECK0ty1K0lUFwcC7FMwIUDAD1W0='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-BUEI+gOBrtKtr7jGjrm1wCW7ZK57FKmPI3NEPkDmbOI='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=02775ac48c">
 <link rel="stylesheet" href="css/explorer.css?v=68e5c449d3">
 <link rel="stylesheet" href="css/modules.css?v=904497d37d">
@@ -32,7 +32,7 @@
     "./js/catalogue.js": "./js/catalogue.js?v=13543d1715",
     "./js/conflict-window.js": "./js/conflict-window.js?v=e3c9c8e8d3",
     "./js/context.js": "./js/context.js?v=78e41a0736",
-    "./js/controller.js": "./js/controller.js?v=77849c1f16",
+    "./js/controller.js": "./js/controller.js?v=bb5556e68c",
     "./js/demo.js": "./js/demo.js?v=d2d1b2e240",
     "./js/deposit.js": "./js/deposit.js?v=e11841b099",
     "./js/dock-state.js": "./js/dock-state.js?v=8eec913fd1",
@@ -53,7 +53,7 @@
     "./js/i18n.js": "./js/i18n.js?v=dbdb3b0cda",
     "./js/icons.js": "./js/icons.js?v=575448ccf8",
     "./js/import-file.js": "./js/import-file.js?v=709ec6b26b",
-    "./js/kept-files.js": "./js/kept-files.js?v=93e15f27ee",
+    "./js/kept-files.js": "./js/kept-files.js?v=a9eddea87e",
     "./js/language.js": "./js/language.js?v=b287c81a20",
     "./js/layers.js": "./js/layers.js?v=2d0c225b72",
     "./js/libraries.js": "./js/libraries.js?v=f8e30c6112",

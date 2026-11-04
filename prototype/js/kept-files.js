@@ -219,11 +219,14 @@ export class KeptFiles {
   }
 
   // Lire : les octets du fichier, prêts à être remis à l'app qui le lit, en objet `File` au nom du fichier (contrats 5.4, point 8). Rend `null` quand le transfert a échoué : la phrase est dite.
+  // « Ouverture de… » ne dure que le transfert : une fois fini, l'app prend le relais et la phrase s'efface (`hideNotice`, qui ne retire que cette phrase-là), au lieu de rester six secondes sur le PDF.
   async load(file) {
-    const { t, notice } = this.#opts;
-    notice(t('files.reading', { name: file.name }));
+    const { t, notice, hideNotice = () => {} } = this.#opts;
+    const reading = t('files.reading', { name: file.name });
+    notice(reading);
     try {
       const { blob, name } = await this.#store.download(file);
+      hideNotice(reading);
       return new File([blob], name, { type: PDF_MIME });
     } catch (error) {
       notice(this.#failure(error, 'files.readFailed', { name: file.name }));

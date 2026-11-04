@@ -2,7 +2,7 @@
 // Les gestes se font à la vraie souris et au vrai clavier de Firefox, sur la page d'essai (test/pages/explorateur.js : le vrai explorateur et le vrai calcul des pièces jointes, sur une table `_grist_Attachments` de
 // doublure, de la forme que `fetchTable` la rend : un PDF, trois photos dont l'une est là deux fois, une pièce supprimée). Ce que Grist rend vraiment se mesure dans un vrai Grist (labo/run-poids.mjs).
 // À chaque largeur, en clair et en sombre, à 100 % et à 150 % : rien ne se lit tant que la case n'est pas cochée ; à la souris, elle se coche et se décoche, le total prend les pièces jointes qui ne sont pas des
-// fichiers de l'explorateur (la copie d'un même fichier comptée une fois, la pièce supprimée non comptée) et son infobulle dit d'où vient chaque part ; au clavier, elle est un arrêt de Tab juste avant « Ouvrir » ;
+// fichiers de l'explorateur (la copie d'un même fichier comptée une fois, la pièce supprimée non comptée) et son infobulle dit d'où vient chaque part ; au clavier, elle est un arrêt de Tab avant la pastille des droits et « Ouvrir » ;
 // avec le PDF dans la liste, sa pièce n'est pas recomptée ; un refus de Grist décoche la case et la grise avec la raison, que son clic redit sans relire ; le pied (total, case,
 // boutons) ne se recouvre ni ne se coupe. Ce Firefox sans écran n'a pas le focus du système (`document.hasFocus()` est faux, `:focus` et `:focus-visible` ne s'appliquent jamais), n'active ni un bouton ni
 // une case à Entrée ou Espace (les événements arrivent, aucun clic ne part : voir test/interfaces-firefox.test.mjs, conflictProblems) et sa touche Tab tourne en rond entre deux éléments après une réouverture de
@@ -20,10 +20,10 @@ const TEXTS = {
 const REASON = 'accès refusé';
 const BOX = '.ex-pj input';
 
-// Les arrêts de Tab du pied de fenêtre, dans l'ordre du document : la case, puis « Ouvrir » et « Fermer » (un élément qu'un tabindex négatif ou `disabled` retire de la tabulation n'y est pas).
+// Les arrêts de Tab du pied de fenêtre, dans l'ordre du document : la case, la pastille des droits (« droits »), puis « Ouvrir » et « Fermer » (un élément qu'un tabindex négatif ou `disabled` retire de la tabulation n'y est pas).
 function tabStops() {
   return [...document.querySelectorAll('.ex-foot button, .ex-foot input')].filter(element => element.tabIndex >= 0 && !element.disabled && !element.closest('[inert], [hidden]'))
-    .map(element => (element.matches('.ex-pj input') ? 'case' : element.textContent.trim()));
+    .map(element => (element.matches('.ex-pj input') ? 'case' : (element.matches('.rights-chip') ? 'droits' : element.textContent.trim())));
 }
 
 // Ce que la page montre de la case et du total, et ce que l'explorateur a lu (`window.__attachments` compte les lectures de la table des pièces jointes).
@@ -74,9 +74,9 @@ export async function piecesJointesProblems(page, width, language, tag) {
   await clickBox();
   await expect('recocher', `un clic de plus devait la recocher, relire une fois de plus et dire ${x.all}`, state => state.checked && state.reads === 2 && state.total === x.all);
 
-  // 3. Le clavier : la case est un arrêt de Tab, juste avant « Ouvrir » et « Fermer ».
+  // 3. Le clavier : la case est un arrêt de Tab, avant la pastille des droits, « Ouvrir » et « Fermer ».
   const stops = await page.run(tabStops);
-  const wanted = ['case', t('ex.open'), t('ex.close')];
+  const wanted = ['case', 'droits', t('ex.open'), t('ex.close')];
   if (stops.join('|') !== wanted.join('|')) note('arrêts de Tab', `les arrêts de Tab du pied devaient être ${wanted.join(', ')} : ${stops.join(', ')}`);
 
   // 4. Le PDF dans la liste, la case cochée : sa pièce n'est pas recomptée (le total reste à 24,9 Mo ; recomptée, il dirait 25,5 Mo) ; la liste est relue, donc les pièces aussi.

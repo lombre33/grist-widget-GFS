@@ -36,7 +36,7 @@ import { Trash } from './trash.js';
 import { AppFiles } from './app-files.js';
 import { Copying } from './copying.js';
 import { ask } from './ask-window.js';
-import { askToClose } from './leave.js';
+import { askToClose, leaveQuestion } from './leave.js';
 import { importFormats, acceptsFile, importOpening, openingKind, carriesFile, pickFile } from './import-file.js';
 import { readersOf, chooseReader, readOpening } from './reading.js';
 import { publicationQuestion } from './publication-window.js';
@@ -703,11 +703,7 @@ export class GfsController {
     const run = ++this.#leaveRun;
     this.hideExplorer();
     const app = this.appName(session.id);
-    const offer = fault => this.#ask({
-      title: this.t(fault ? 'gfs.leave.faultTitle' : 'gfs.leave.silentTitle', { app }),
-      message: fault ? this.t('gfs.leave.faultText', { app, reason: String(fault.message || '').slice(0, 120) || this.t('gfs.leave.unexpected') }) : this.t('gfs.leave.silentText', { app }),
-      confirmLabel: this.t('gfs.leave.force'), cancelLabel: this.t(fault ? 'gfs.leave.stay' : 'gfs.leave.wait'), safeFirst: true,
-    });
+    const offer = fault => this.#ask(leaveQuestion({ t: this.t, app, fault }));
     const leave = await askToClose(session, reason, { offer });
     return leave && run === this.#leaveRun && session === this.session;
   }

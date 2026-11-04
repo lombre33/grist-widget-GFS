@@ -17,6 +17,7 @@ import { ROOT } from './helpers.mjs';
 import { findFirefox, serveSite, startFirefox } from './firefox.mjs';
 import { corbeilleProblems } from './corbeille-firefox.mjs';
 import { copierProblems } from './copier-firefox.mjs';
+import { fermerProblems } from './fermer-firefox.mjs';
 import { ROW_BUTTON, ROW_HEIGHT, TILE_MIN, expectedTileColumns, measureRows, measureTiles } from '../labo/mesures-liste.mjs';
 import { calendarLogs, calendarProblems } from './mesures-calendrier.mjs';
 
@@ -262,12 +263,13 @@ describe('l\'interface sous Firefox', () => {
           }
         }
       }
-      // La corbeille et le clavier (test/corbeille-firefox.mjs), la copie et le presse-papiers (test/copier-firefox.mjs) : à 700 px, la largeur du panneau de référence, en clair et en sombre.
+      // La corbeille et le clavier (test/corbeille-firefox.mjs), la copie et le presse-papiers (test/copier-firefox.mjs), la question de « fermer » (test/fermer-firefox.mjs) : à 700 px, la largeur du panneau de référence, en clair et en sombre.
       await page.view({ width: 700, scale: 1, mode: 'light' });
       for (const mode of MODES) {
         await page.view({ width: 700, scale: 1, mode });
         problems.push(...await corbeilleProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await copierProblems(page, language, caption(language, 700, 1, mode)));
+        problems.push(...await fermerProblems(page, language, caption(language, 700, 1, mode)));
       }
       // Les erreurs de script de la page et les avertissements de GFS (un texte inconnu, par exemple) ; sans le kit (sous-module non récupéré), le sélecteur de couleur dit qu'il ne se charge pas : ce n'est pas l'interface.
       const logged = page.logs.filter(entry => ((entry.level === 'error' && entry.type === 'javascript') || /GFS/.test(entry.text || '')) && !/sélecteur de couleur du kit/.test(entry.text || ''));

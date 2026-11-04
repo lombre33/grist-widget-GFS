@@ -13,6 +13,7 @@ import { applyFiling, folderMoves, inside, normalizePath, readFiles, readFiling 
 import { Copying } from '/js/copying.js';
 import { createI18n } from '/js/i18n.js';
 import { installSprite } from '/js/icons.js';
+import { leaveQuestion } from '/js/leave.js';
 import { ThemeSetting } from '/js/theme.js';
 import { ThemeWindow } from '/js/theme-window.js';
 import { Trash } from '/js/trash.js';
@@ -157,6 +158,13 @@ async function mount() {
   window.__askTable = () => void ask({
     title: i18n.t('trash.table.title'), message: i18n.t('trash.table.text'), confirmLabel: i18n.t('table.create'), cancelLabel: i18n.t('table.cancel'), container: stage, inertTargets: () => [explorer.root],
   });
+  // La question de « fermer » (contrats 5.4, point 3) quand l'app se tait ou répond par une erreur : la fenêtre d'accord et les vrais textes de js/leave.js, avec le plus long nom d'app ; `window.__leave` garde
+  // la réponse de la personne (`force` : « Fermer quand même », `stay` : « Attendre » ou « Rester »).
+  window.__askLeave = reason => {
+    window.__leave = null;
+    ask({ ...leaveQuestion({ t: i18n.t, app: 'Publipostage+', fault: reason === null ? null : new Error(reason) }), container: stage, inertTargets: () => [explorer.root] })
+      .then(answer => { window.__leave = answer ? 'force' : 'stay'; });
+  };
   explorer.setFiles(live, trashed);
   explorer.open();
 }

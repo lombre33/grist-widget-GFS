@@ -1485,9 +1485,21 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
      texte et `nom` le nom du jour (« (sans nom) » à défaut). Annuler (« Annuler », Échap) rend `null`. L'explorateur se
      referme sur l'app, sauf s'il était déjà ouvert avant la demande. Si l'app qui demandait est retirée ou remplacée pendant le
      choix, il s'arrête sans rien rendre et l'explorateur redevient celui de toujours.
-3. [T] **fermer** : l'app répond `oui` quand elle peut fermer, après sa question (Enregistrer, Abandonner, Annuler), et `non`
-   si la personne annule : tout reste en place. [D] Sans réponse, GFS ne ferme rien tout seul ; il propose « Fermer quand
-   même » au bout de 10 secondes (les modifications non enregistrées seraient perdues). À confirmer à l'étape 6.
+3. [D] **fermer** : GFS l'envoie à l'app active, avec `{ raison }`, avant qu'une autre app prenne sa place : `app` (la fenêtre des
+   apps), `explorateur`, `nouveau`, `importer` ou `lire` (un fichier d'une autre app, depuis l'explorateur) et `lien` (un lien entre
+   apps, point 7) ; il ne détruit son cadre qu'après `{ ferme: true }`. L'app **enregistre avant de répondre** (demande du porteur
+   le 04/11 : « gérer les enregistrements automatiques en cas de swap d'app ou de fichier » ; la règle qui suit en est la lecture de GFS) : rien en attente, ou enregistrement
+   automatique allumé, elle enregistre ce qui attend (et laisse finir une écriture en cours) puis répond `oui` sans question ; si
+   l'écriture échoue, ou si l'enregistrement automatique est coupé et que des modifications attendent, elle pose sa propre question
+   (Enregistrer, Abandonner, Annuler) : Enregistrer et Abandonner répondent `oui`, Annuler répond `non` et tout reste en place
+   (l'explorateur est refermé pour que sa question se voie). **GFS ne ferme jamais tout seul** : sans réponse au bout de 10 secondes,
+   ou si l'app répond par une erreur (une réponse qui n'est ni `oui` ni `non` en est une), une fenêtre de GFS nomme l'app et demande à
+   la personne « Fermer quand même » (les modifications non enregistrées sont perdues) ou « Attendre » (sans réponse) / « Rester »
+   (sur une erreur) ; « Attendre » suit la réponse de l'app quand elle vient. Une app qui ne connaît pas l'appel (`GFS_INCONNU`) part
+   comme avant, sans question ; une app qui n'a pas encore demandé son contexte n'a rien à enregistrer, GFS ne lui demande rien. Si
+   la personne repart dans l'explorateur avant la réponse, la réponse tardive n'ouvre rien. **Pas encore gardés** : le changement de
+   la table de travail (4.5, point 7) et le retrait de l'app active du registre recréent le cadre sans « fermer ». [M] Mesuré le
+   04/11 dans un vrai Grist (faits vérifiés, section 29).
 4. [T] **installer** : GFS ouvre sa fenêtre d'installation à la ligne de l'extension ; rien ne se télécharge (7.3). L'app
    charge l'extension quand elle reçoit l'événement `extensions`.
 5. [D] **inserer** : seule la forme du rendu et ses règles sont arrêtées ici ; le déroulement (GFS active l'app qui fournit au
@@ -1527,9 +1539,9 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
    - **Une app non installée** (ou un type d'une extension éteinte) : la fenêtre des apps s'ouvre sur sa ligne, l'appel attend ; la personne
      coche puis ferme la fenêtre, et le fichier s'ouvre ; elle ferme sans cocher, et l'app reçoit `GFS_ANNULE`, rien ne s'ouvre.
    - **L'app visée** devient l'app active et reçoit l'ouverture (`ouverture.raison: "lien"`) à son premier `contexte`, celle qui
-     appelait s'en va (une seule app à la fois, 1.4) : sa promesse ne se règle donc pas, son cadre n'existe plus. **GFS n'envoie pas
-     encore « fermer » à l'app qui s'en va** (1.4, point 1 ; comme pour le double-clic d'un fichier d'une autre app, et à ajouter à
-     l'étape 6) : l'app qui appelle `openFile` vers une autre app a donc fini ses écritures avant l'appel. Si l'app visée est
+     appelait s'en va (une seule app à la fois, 1.4) : sa promesse ne se règle donc pas, son cadre n'existe plus. **GFS lui envoie
+     « fermer » d'abord** (point 3, `raison: "lien"`) : elle enregistre ou pose sa question avant de partir ; si elle répond `non`
+     (ou si la personne reste), rien ne s'ouvre et l'appel `openFile` rend `{ ouvert: false }`. Si l'app visée est
      celle qui appelle, elle reçoit l'appel `ouvrir` de GFS (point 1) et sa réponse `{ ouvert }` revient à l'appelante, après sa
      question d'enregistrement s'il y en a une. Une app qui ne connaît pas encore l'ouverture d'un fichier précis
      (`ACCEPTS_OPEN`, provisoire) s'ouvre sur son modèle habituel avec la phrase provisoire de GFS.

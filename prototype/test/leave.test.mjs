@@ -1,7 +1,8 @@
 // Quitter l'app active pour une autre (contrats 5.4, point 3, appel `fermer`) : la réponse de l'app, ce que GFS ne ferme jamais tout seul, et la décision de la personne quand l'app se tait ou échoue.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { askToClose, PATIENCE_MS } from '../js/leave.js';
+import { askToClose, leaveQuestion, PATIENCE_MS } from '../js/leave.js';
+import { createI18n } from '../js/i18n.js';
 import { ERR } from '../js/filter.js';
 
 const coded = (code, message = 'non') => Object.assign(new Error(message), { code });
@@ -115,4 +116,36 @@ test('un appel qui échoue avant de partir (pas de messagerie) est une erreur de
   const you = person(false);
   assert.equal(await askToClose(session, 'ouvrir', { offer: you.fn, patience: FAST }), false);
   assert.equal(you.shown[0].message, 'pas d\'enveloppe');
+});
+
+// ---------- ce que la personne lit quand l'app se tait ou échoue (la fenêtre d'accord du widget, en français et en anglais) ----------
+
+const WORDS = {
+  fr: { silent: 'Publipostage+ ne répond pas', fault: 'Publipostage+ n’a pas pu se fermer', force: 'Fermer quand même', wait: 'Attendre', stay: 'Rester', unexpected: 'réponse inattendue' },
+  en: { silent: 'Publipostage+ is not responding', fault: 'Publipostage+ could not close', force: 'Close anyway', wait: 'Wait', stay: 'Stay', unexpected: 'unexpected answer' },
+};
+
+test('l\'app se tait : le titre nomme l\'app, « Fermer quand même » contre « Attendre », et le clavier va au choix sûr', () => {
+  for (const [lang, words] of Object.entries(WORDS)) {
+    const question = leaveQuestion({ t: createI18n(lang).t, app: 'Publipostage+', fault: null });
+    assert.equal(question.title, words.silent, lang);
+    assert.equal(question.confirmLabel, words.force, lang);
+    assert.equal(question.cancelLabel, words.wait, lang);
+    assert.equal(question.safeFirst, true, `${lang} : Entrée ne ferme pas une app dont les modifications ne sont pas enregistrées`);
+    assert.ok(question.message.includes('Publipostage+'), lang);
+  }
+});
+
+test('l\'app répond par une erreur : sa phrase est dite (cent vingt signes au plus), « Rester » remplace « Attendre »', () => {
+  for (const [lang, words] of Object.entries(WORDS)) {
+    const t = createI18n(lang).t;
+    const refused = leaveQuestion({ t, app: 'Publipostage+', fault: new Error('Enregistrement refusé par Grist.') });
+    assert.equal(refused.title, words.fault, lang);
+    assert.equal(refused.cancelLabel, words.stay, lang);
+    assert.ok(refused.message.includes('Enregistrement refusé par Grist.'), lang);
+    const long = leaveQuestion({ t, app: 'Publipostage+', fault: new Error('x'.repeat(500)) });
+    assert.ok(long.message.includes('x'.repeat(120)) && !long.message.includes('x'.repeat(121)), `${lang} : la phrase de l'app est coupée à 120 signes`);
+    const blank = leaveQuestion({ t, app: 'Publipostage+', fault: new Error('') });
+    assert.ok(blank.message.includes(words.unexpected), `${lang} : sans phrase, GFS dit « ${words.unexpected} »`);
+  }
 });

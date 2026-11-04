@@ -6,6 +6,19 @@ import { ERR } from './filter.js';
 
 export const PATIENCE_MS = 10000;
 
+// La question posée à la personne quand l'app se tait (`fault` nul) ou répond par une erreur : les options de la fenêtre d'accord (js/ask-window.js), « Fermer quand même » contre « Attendre » ou « Rester ».
+// Le clavier est sur le choix sûr (`safeFirst`) : un Entrée distrait ne ferme pas une app dont les modifications ne sont pas enregistrées.
+export function leaveQuestion({ t, app, fault }) {
+  const reason = fault ? String(fault.message || '').slice(0, 120) || t('gfs.leave.unexpected') : '';
+  return {
+    title: t(fault ? 'gfs.leave.faultTitle' : 'gfs.leave.silentTitle', { app }),
+    message: fault ? t('gfs.leave.faultText', { app, reason }) : t('gfs.leave.silentText', { app }),
+    confirmLabel: t('gfs.leave.force'),
+    cancelLabel: t(fault ? 'gfs.leave.stay' : 'gfs.leave.wait'),
+    safeFirst: true,
+  };
+}
+
 // `offer(erreur | null)` demande à la personne : `true` pour fermer quand même, `false` pour attendre (`null` : l'app n'a pas répondu) ou rester (l'app a répondu par une erreur).
 // Rend `true` quand l'app peut partir, `false` quand elle reste.
 export async function askToClose(session, reason, { offer, patience = PATIENCE_MS }) {

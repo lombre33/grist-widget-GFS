@@ -240,6 +240,21 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     le sait pas). Un PDF sans texte (un scan) ne se commente pas : « Commenter » est grisé avec sa raison, jamais masqué. Les règles d'accès de
     ces fils (leurs lignes n'ont pas de `ModeleId`) attendent l'étape 5 (contrats 11.7, point 3) : l'app n'en écrit aucune d'ici là.
 
+19. Répondre à `fermer` avant de laisser la place (demande du porteur du 04/11 : « gérer les enregistrements automatiques en cas de swap
+    d'app ou de fichier », que GFS lit ainsi ; contrats 5.4, points 3 et 7). Dans GFS, quand la personne ouvre une autre app (la fenêtre des apps), le fichier
+    d'une autre app (l'explorateur) ou suit un lien vers une autre app, GFS appelle `fermer { raison }` sur l'app active (`raison` : `app`,
+    `explorateur`, `nouveau`, `importer`, `lire` ou `lien`) et ne détruit son cadre qu'après sa réponse `{ ferme: true }`. L'app répond
+    selon l'état de ses données : **rien en attente** : `{ ferme: true }` tout de suite ; **enregistrement automatique allumé** : elle
+    enregistre ce qui attend (et laisse finir une écriture en cours), puis répond `{ ferme: true }` **sans poser de question** ;
+    **l'écriture échoue, ou l'enregistrement automatique est coupé et des modifications attendent** : elle pose sa propre question
+    (Enregistrer, Abandonner, Annuler) : Enregistrer ou Abandonner répondent `{ ferme: true }`, Annuler répond `{ ferme: false }` et tout
+    reste en place. Elle ne se ferme pas d'elle-même : GFS détruit le cadre après le `oui`. Aucun délai à tenir : sans réponse au bout de
+    10 secondes, ou sur une erreur, GFS demande à la personne (« Fermer quand même », qui perd ce qui n'est pas enregistré, ou « Attendre » /
+    « Rester ») ; une app qui pose sa question et dont la personne tarde à répondre n'a rien à faire de plus que de répondre quand elle le
+    peut. Une app qui ne connaît pas l'appel répond `GFS_INCONNU` (le comportement d'avant : elle part sans rien enregistrer, d'où cette
+    règle). Même règle, déjà, quand GFS appelle `ouvrir` sur l'app active pour un autre fichier de la même app : sa question d'enregistrement
+    vient avant `{ ouvert }`. Seule, hors de GFS, l'app garde sa propre sortie (`beforeunload`, « Enregistrer » du kit).
+
 ### 1.3 Licence : GPL 3.0 dans tous les dépôts (décision du porteur, 21/10)
 
 1. **Le texte officiel de la GNU General Public License version 3** est le fichier `LICENSE`, à la racine du dépôt : 674

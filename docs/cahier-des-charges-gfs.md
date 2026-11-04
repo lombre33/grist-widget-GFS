@@ -158,8 +158,11 @@ Numérotées pour que les tests les citent (« 3.1, point 4 »).
 3. Ouvrir un fichier active son app sur ce fichier. Un fichier dont l'app n'est pas installée est listé grisé, avec
    « Installer ».
 4. On passe d'un fichier ouvert à l'explorateur et on revient au même fichier, tel qu'on l'a laissé (« Retour », Échap).
-5. Ouvrir le fichier d'une autre app ferme d'abord l'app active par l'action « fermer » : si elle a des modifications en
-   attente, elle pose sa question (Enregistrer, Abandonner, Annuler) et « Annuler » laisse tout en place.
+5. Ouvrir le fichier d'une autre app ferme d'abord l'app active par l'action « fermer » : si son enregistrement automatique est
+   allumé, elle enregistre d'abord, sans question ; sinon, avec des modifications en attente, elle pose sa question (Enregistrer,
+   Abandonner, Annuler) et « Annuler » laisse tout en place. Une app qui se tait, GFS ne la ferme pas seul : la personne choisit
+   (contrats 5.4, point 3). « Enregistre d'abord, sans question » est la lecture par GFS de la demande du porteur du 04/11
+   (« gérer les enregistrements automatiques en cas de swap d'app ou de fichier »).
 6. « Nouveau » crée un fichier de n'importe quel type des apps installées ; il se range dans le dossier courant.
 7. Ranger : dossiers et favoris communs à toutes les apps, dans une seule table de GFS. Le rangement propre à une app (les
    dossiers personnels de Publipostage+) reste valable.

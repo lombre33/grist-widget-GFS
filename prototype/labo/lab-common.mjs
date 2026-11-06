@@ -167,7 +167,7 @@ function servePages(browser) {
       const name = `${process.pid}-${files.length}.html`;
       files.push(join(dir, name));
       writeFileSync(files.at(-1), body);
-      return `http://127.0.0.1:8911/prototype/labo/shots/pages-modifiees/${name}`;
+      return `http://127.0.0.1:${process.env.LAB_PAGES_PORT || 8911}/prototype/labo/shots/pages-modifiees/${name}`;
     },
   };
 }
@@ -178,6 +178,7 @@ function servePages(browser) {
 // Une page HTML modifiée n'est pas rendue par `fulfill` : le navigateur la prendrait pour un document d'adresse inconnue et refuserait (accès au réseau local) tous les
 // fichiers que son sous-cadre, à origine opaque, demande ensuite à 127.0.0.1. Elle arrive donc par le réseau, que le serveur du labo sert (même origine, sans quoi la politique
 // de GFS refuse le sous-cadre), sous l'adresse d'origine (le navigateur ne voit pas le détour).
+// `LAB_PAGES_PORT` : le port du serveur du site de GFS quand ce n'est pas celui de grist-static (8911), par exemple PAGE_PORT avec le vrai serveur.
 // Plusieurs remplacements d'un même fichier s'appliquent l'un après l'autre (une seule route par fichier : la dernière posée cacherait les autres).
 export async function routePatches(browser, page, patches) {
   let pagesServer = null;

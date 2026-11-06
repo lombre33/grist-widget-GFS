@@ -107,7 +107,7 @@
         "en": "A chart configured in Grist, placed in a document."
       },
       "icone": "chart",
-      "poids": 183,
+      "poids": 189,
       "dossier": "extensions/graphique/",
       "pointsEntree": [{ "genre": "bouton", "id": "graphique" }],
       "bibliotheques": [{ "id": "plotly", "version": "2.13.2" }, { "id": "echarts", "version": "6.1.0" }]
@@ -133,7 +133,7 @@
         "en": "16:9 presentations, written with the same editor as documents."
       },
       "icone": "slides",
-      "poids": 471,
+      "poids": 582,
       "dossier": "extensions/diapositives/",
       "pointsEntree": [{ "genre": "type", "id": "presentation" }, { "genre": "menu", "id": "nouveau" }]
     },
@@ -145,7 +145,7 @@
         "en": "Reads a PDF in the app's Reading mode, with its toolbar and display settings."
       },
       "icone": "read",
-      "poids": 17,
+      "poids": 88,
       "dossier": "extensions/lecture-pdf/",
       "bibliotheques": [{ "id": "pdfjs", "version": "1.0.0" }]
     }

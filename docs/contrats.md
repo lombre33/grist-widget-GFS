@@ -1081,6 +1081,7 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 | `barre` | la barre de GFS qui recouvre le cadre de l'app, `{ bord, epaisseur, zone }`, ou `null` quand rien ne le recouvre (point 7) | oui, mesurée à chaque appel | `null` |
 | `ambiance` | l'ambiance et la couleur que la personne a choisies pour GFS et ses apps, ou `null` quand rien n'est choisi (point 10) | oui, relue à chaque appel | `null` |
 | `role` | ce que GFS sait de la personne, `{ proprietaire, responsableDe }` (point 8) | oui, à chaque appel ; la preuve se garde pour la vie de la page, 1,5 s d'attente au plus | `{ proprietaire: null, responsableDe: [] }` |
+| `liensPublics` | **pas encore rendu** (décidé le 06/11, 11.7, point 11) : `{ connu, tables }`, les tables qu'un lien public remplit ; `connu` faux (ni propriétaire prouvé, ni lecture possible) = l'app attend un geste sur toute ligne reçue | oui, une fois codé | `{ connu: false, tables: [] }` |
 | `identite` | l'adresse e-mail de la personne, `{ email }`, ou `null` (point 9) | seulement pour une app qui déclare `identite` (3.4, point 6), `null` pour toute autre ; relue à chaque appel | `null` (l'app garde sa propre sonde, 11.6, point 5) |
 
 1. [T] Les six paramètres de l'adresse (1.3) et le contexte disent la même chose : l'adresse existe pour le code des apps
@@ -2767,8 +2768,26 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
 10. [Q] **Fermer ou renouveler un lien depuis GFS** (une écriture, étape 7) : dépublier (`publish` à faux), ou renouveler (retirer le
     partage et en créer un autre, donc une autre clé, ce qui rend inutile un lien qui a circulé : à vérifier). À décider avec les
     autres écritures de GFS dans la structure.
-11. [Q] **Dire aux apps quelles tables un lien remplit**, dans le contexte (5.2), pour que Publipostage+ et Automation+ ne
-    déclenchent rien d'elles-mêmes sur ces lignes (11.9, point 5). À fixer avec le panneau des liens (11.9, point 8).
+11. [D] **GFS dit aux apps quelles tables un lien public remplit** (**le porteur a répondu « oui, GFS donne la liste » le 06/11, 21 h 10**, à la
+    carte posée après la réponse d'Automation+ à sa 009 : un workflow actif lance ses actions sans geste sur toute ligne que sa vue reçoit, lien
+    public compris, tant que l'onglet est ouvert et tient son verrou). Rien n'est codé ; le champ s'ajoute au contexte (5.2) avec le panneau des liens
+    (11.9, point 8), à l'étape 7. Le contrat :
+    a. [D] Le champ `liensPublics` du contexte vaut `{ connu, tables }`. `tables` est la liste des identifiants de table que **au moins un lien
+       public** remplit (une table de réception, 11.9, point 4b, plus toute table qu'un partage publié cible), lue par GFS dans les partages du
+       document avec la lecture du panneau (11.9, point 8) ; `connu` est vrai quand GFS l'a lue.
+    b. [D] **Seul un propriétaire prouvé lit les partages** (11.9, point 8) : pour toute autre personne, ou quand les tables sont illisibles
+       (structure fermée, règles posées), `connu` est faux et `tables` vide. **Une app qui reçoit `connu: false` fait comme si toute ligne reçue
+       venait d'un lien** : elle attend le geste d'une personne avant d'agir sur une ligne qu'elle n'a pas écrite elle-même. Jamais l'inverse : un
+       champ absent ou illisible ne vaut pas « aucun lien ».
+    c. [D] **Ce que l'app en fait** : sur une ligne d'une table de `tables` (ou de toute table si `connu` est faux), elle n'agit pas sans geste
+       (11.9, point 5, et 11.6, point 9) ; sur toute autre table, elle garde son comportement. La liste ne dit jamais qui a écrit une ligne (la
+       colonne d'auteur n'est pas fiable, 11.9, point 3) : elle dit seulement quelles tables **peuvent** recevoir des lignes d'un lien.
+    d. [T] GFS relit les partages à chaque `contexte` (au plus une fois toutes les 30 s) et n'envoie pas d'événement de plus au départ : une app
+       qui agit sur une ligne reçue redemande le contexte avant de lancer. Aucune clé de lien n'est jamais dans le champ (11.9, point 8).
+    e. [M] **À mesurer à l'étape 7** : qu'un propriétaire garde `connu: vrai` quand les règles de Partagé et la structure fermée sont posées
+       (ses tables de partages lui restent lisibles) ; ce qu'un éditeur dont le widget a l'accès complet lirait de lui-même (point 8 : la clé
+       de partage l'est, d'où la structure fermée) ; un formulaire publié par l'interface de Grist plutôt que par GFS.
+    La consigne à Automation+ (013 et suivantes) et à Publipostage+ se rédige quand le champ est livré, avec ce qui l'est.
 12. [D] **Qui voit un PDF que GFS garde, et une entrée de la corbeille ?** (trou vu le 04/11) **Le porteur a choisi le 06/11 « privé par défaut » (a, b et c ci-dessous) ; rien n'est codé, les règles de ces deux tables se posent avec Encadré.** `GFS_Fichiers` (6.6) et `GFS_Corbeille`
     (6.7) sont deux tables de GFS que 11.2 ne classe pas : sous Encadré, aucune règle ne les couvre, donc tout éditeur y lit tous les
     PDF (les exports d'une app compris, faits avec ce que la personne avait le droit de lire) et l'instantané complet de tout fichier

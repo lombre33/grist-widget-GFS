@@ -832,7 +832,7 @@ Le courtier répond à l'app par une erreur du protocole (`mtype` 3, avec `mesg`
 | `GFS_ANNULE` | la personne a annulé ou refusé : elle n'a pas débloqué l'app que visait `ouvrir` (5.4, point 7), elle a refusé d'ouvrir un formulaire au public, ou de créer la table où GFS garde ses fichiers (`ranger`, 5.4, point 9)… Un `choisir` annulé ne rend pas d'erreur : il rend `null` ; un `ranger` dont la personne ne veut pas non plus (`statut: ignore`) |
 | `GFS_INTROUVABLE` | ce que l'appel désigne n'existe pas : une app que GFS ne connaît pas, ou un fichier que la table de l'app visée ne contient plus (`ouvrir`, 5.4, point 7) |
 | `GFS_QUOTA` | espace de stockage plein |
-| `GFS_ECHEC` | ce que GFS devait faire pour l'app n'a pas pu se faire, sans que ce soit un refus : Grist ou le cadre d'envoi n'a pas répondu, le serveur refuse le fichier (trop gros…) (`ranger`, 5.4, point 9 ; `joindre`, point 12) ; `message` dit la raison en mots |
+| `GFS_ECHEC` | ce que GFS devait faire pour l'app n'a pas pu se faire, sans que ce soit un refus : Grist ou le cadre d'envoi n'a pas répondu, le serveur refuse le fichier (trop gros…) (`ranger`, 5.4, point 9 ; `joindre` ne s'en sert pas : il le dit dans `probleme`, point 12) ; `message` dit la raison en mots |
 
 ### 3.7 Ce que le filtre ne garantit pas
 
@@ -1770,7 +1770,8 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
 12. [D] **Joindre un fichier à la cellule « Pièces jointes » d'une ligne : `joindre`** (demande du porteur du 06/11 : « enregistrer le PDF généré
    en pièce jointe dans la ligne Grist » ; **le porteur a choisi « GFS joint lui-même » le 06/11**, à la carte « Laisser Publipostage+ joindre
    le PDF d'une ligne à sa cellule ? » : l'app n'a ni jeton d'écriture, ni clé `pp_attach_*` chez GFS, et lui confie les octets comme pour
-   `ranger`). **Rien n'est codé quand ce point s'écrit** ; les points [T] sont le déroulement que GFS construit, les [Q] attendent le porteur.
+   `ranger`). **Livré côté GFS le 06/11** (`prototype/js/attach.js`, mesuré dans un vrai Grist, [M] ci-dessous) ; **GFS ne déclare pas encore
+   `actions.joindre` dans `manifestes/publipostage.json`** : la déclaration vient quand la page de l'app dit sa consigne faite. Les [Q] attendent le porteur.
    - [D] **Déclaration** : `actions.joindre` (2.7, point 7), la liste des types de fichier que l'app joint (`["pdf"]`). Sans elle, ou pour un
      autre type : `GFS_REFUSE`, rien d'envoyé.
    - [T] **L'appel** (app → GFS, sans délai) : `joindre { table, colonne, mode?, fichiers: [{ ligne, fichier, nom }] }`. `table` et `colonne` :
@@ -1781,20 +1782,25 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
      Publipostage+). Au plus 200 entrées par appel [Q 1].
    - [T] **Ce que GFS vérifie avant d'envoyer quoi que ce soit** : la forme ; que le type est déclaré et que les octets sont ceux d'un PDF (comme
      `ranger`, point 9) ; que `table` est une table que le manifeste de l'app laisse **lire et écrire** (3.2 et 3.3 : ni `GFS_`, ni une table d'une
-     autre app, ni `_grist_*`) ; que `colonne` existe, est de type `Attachments` et n'est ni une formule ni une colonne déclenchée ; que le document
-     n'est pas en lecture seule (`GFS_LECTURE_SEULE`). Un seul échec de ces contrôles refuse tout l'appel (`GFS_REFUSE`) avec sa raison.
+     autre app, ni `_grist_*`) ; que le document n'est pas en lecture seule ; que l'app est toujours l'app active. Un seul échec de ces contrôles
+     refuse tout l'appel, avec son code : `GFS_REFUSE` (forme, type non déclaré, table, fichier qui n'est pas un PDF), `GFS_LECTURE_SEULE`,
+     `GFS_INACTIF`. **La colonne** (elle existe, est de type `Attachments`, n'est ni une formule ni une colonne déclenchée) est vérifiée ensuite, **sans
+     rien envoyer** : un défaut n'est pas une erreur de l'appel, c'est `probleme` (`absente` ou `inutilisable`) dans la réponse, chaque fichier est
+     un échec du même mot.
    - [T] **Ce que GFS fait** : chaque fichier est envoyé à Grist par le cadre d'envoi de GFS (6.6, un jeton jeté aussitôt) ; puis **un seul lot**
      `BulkUpdateRecord` sur la table, écrit après tous les envois sur une **relecture de la colonne juste avant** (une pièce jointe que la personne
      a ajoutée entre-temps dans Grist n'est pas perdue) : la cellule vaut `['L', …numéros]`. GFS écrit comme la personne : les règles d'accès de
-     Grist s'appliquent (`GFS_ACCES` si elles refusent). Une pièce jointe remplacée **n'est pas supprimée du document** : elle reste dans la liste
+     Grist s'appliquent ; si elles refusent, la réponse porte `probleme: 'refus'` (jamais une erreur de l'appel). Les envois se font un fichier après
+     l'autre : un envoi que Grist refuse arrête le lot, les fichiers pas encore envoyés sont des échecs du même mot, et **rien n'est écrit** si aucun
+     fichier n'est parti. Deux appels `joindre` de la même app se suivent l'un après l'autre (une file), un échec n'arrête pas la file. Une pièce jointe remplacée **n'est pas supprimée du document** : elle reste dans la liste
      des pièces jointes de Grist (mesuré le 03/11 pour un remplacement), la cellule ne la cite plus.
    - [T] **La réponse** : `{ colonne, probleme, joints, echecs }`. `probleme` vaut `null`, ou ce qui a arrêté tout le lot : `absente`
      (la colonne n'existe plus), `inutilisable` (elle n'est plus de type Pièces jointes), `refus` (Grist refuse : droits, règles d'accès), `trop-gros`
      (Grist refuse la taille d'un fichier), `injoignable` (le serveur ne répond pas), `echec` (autre). `joints` : `[{ index, remplace }]`, une entrée par
      fichier joint (`index` : sa place dans `fichiers`, `remplace` vrai quand il a pris la place d'un fichier de même nom). `echecs` : `[{ index, raison }]`
      pour les fichiers que GFS n'a pas pu joindre (`raison` : `ligne` quand la ligne n'existe plus, ou l'un des mots de `probleme`). GFS ne dit rien par-dessus
-     l'app : elle écrit ces phrases dans son coin d'état. Les vérifications qui échouent d'avance rendent plutôt un refus (`GFS_REFUSE`, `GFS_LECTURE_SEULE`)
-     avec sa phrase.
+     l'app : elle écrit ces phrases dans son coin d'état. Les vérifications qui échouent d'avance rendent plutôt un refus (`GFS_REFUSE`, `GFS_LECTURE_SEULE`,
+     `GFS_INACTIF`) avec sa phrase.
    - [T] **Ce que la personne voit de GFS** : rien, pas de question. Le geste est celui qu'elle a fait dans l'app (la case « Joindre à la ligne » du menu
      Exporter, puis l'export) ; GFS n'ajoute pas de fenêtre à un geste qu'elle vient de faire [Q 2].
    - [T] **Dans l'app seule** : l'app joint par ses propres moyens (le jeton d'écriture que Grist lui donne, jeté après l'export) ou grise la case ;
@@ -1802,9 +1808,17 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
    - [Q] **1. Combien de fichiers par appel ?** 200 (le lot d'un export de ZIP) est proposé ; `ranger` en prend 64 par lot, un par appel.
      **2. Une question avant la première jointure d'un document ?** Défaut : non (le geste de la personne suffit, comme l'export lui-même) ; l'autre
      voie : la fenêtre « Joindre à la colonne … ? » une fois par document et par app, comme la publication d'un formulaire (3.3, point 9).
-   - [M] **À mesurer** dans un vrai Grist (labo, sonde qui fait ce que fera Publipostage+, puis la vraie app) : la cellule après un envoi, un
-     remplacement, un ajout, deux fichiers dans une cellule, une ligne supprimée entre l'envoi et l'écriture ; le refus d'une colonne d'un autre
-     type ; une règle d'accès qui refuse ; un fichier que Grist refuse (taille) ; Firefox ; l'instance de la DINUM.
+   - [M] **Mesuré le 06/11** dans un vrai serveur Grist 1.7.19 (image officielle, Chromium, fr clair et en sombre ; `prototype/labo/run-joindre.mjs`, 35
+     vérifications, avec une sonde qui fabrique ses PDF dans son cadre isolé, comme le fera Publipostage+) : les octets que Grist garde sont ceux de
+     l'app (même empreinte SHA-256, type PDF, le nom donné) ; `remplacer` retire de la cellule le fichier de même nom (casse ignorée), garde les autres et
+     met le nouveau à la fin, **l'ancien reste dans la liste des pièces jointes du document** ; `ajouter` garde tout ; trois fichiers sur deux lignes
+     dans un appel : l'ordre reçu est gardé dans chaque cellule ; une ligne supprimée : échec `ligne`, les autres sont jointes ; colonne absente, de type
+     Texte ou à formule : rien n'est envoyé ni écrit ; table de GFS, table interne, contenu qui n'est pas un PDF, ligne qui n'est pas un numéro :
+     `GFS_REFUSE` ; le serveur répond 413 : `trop-gros`, le réseau tombe : `injoignable`, rien n'est écrit, l'appel suivant réussit ; une pièce jointe
+     ajoutée dans Grist **pendant** l'envoi reste dans la cellule, avant la nôtre ; une règle d'accès qui refuse d'écrire la colonne : Grist répond
+     « Blocked by column update access rules », la réponse porte `refus`, aucune cellule ne change, et **Grist reconstruit le cadre de GFS** quand une règle
+     d'accès change (l'app est alors à rouvrir). **Pas mesuré** : Firefox (aucune interface dans ce geste), l'instance de la DINUM, la vraie app de
+     Publipostage+ (elle n'appelle pas encore `joindre`).
 
 ### 5.5 La table d'un direct : être prévenu quand une autre table change
 

@@ -276,16 +276,19 @@ function checkReads(m, errors) {
   for (const item of actions.lire) checkRead(item, extensions, seen, errors);
 }
 
-// Ce que l'app range chez GFS (`actions.ranger`, 2.7 point 6) : les types de fichiers que GFS garde (aujourd'hui `pdf`) qu'elle lui demande de ranger. L'appel `ranger` d'un type qui n'y est pas est refusé (5.4, point 9).
+// Ce que l'app range chez GFS (`actions.ranger`, 2.7 point 6) et ce qu'elle lui donne à joindre à une cellule (`actions.joindre`, point 7) : les types de fichiers que GFS garde ou joint (aujourd'hui `pdf`).
+// L'appel d'un type qui n'y est pas est refusé (5.4, points 9 et 12).
 function checkFiled(m, errors) {
   const actions = isObject(m.actions) ? m.actions : {};
-  if (actions.ranger === undefined) return;
-  if (!Array.isArray(actions.ranger)) { errors.push('actions.ranger : liste attendue'); return; }
-  const seen = new Set();
-  for (const type of actions.ranger) {
-    if (typeof type !== 'string' || !FILE_TYPE_RE.test(type)) errors.push('actions.ranger[] : un type de fichier attendu (un mot, comme pdf)');
-    else if (seen.has(type)) errors.push(`actions.ranger ${type} : type déjà déclaré`);
-    seen.add(type);
+  for (const name of ['ranger', 'joindre']) {
+    if (actions[name] === undefined) continue;
+    if (!Array.isArray(actions[name])) { errors.push(`actions.${name} : liste attendue`); continue; }
+    const seen = new Set();
+    for (const type of actions[name]) {
+      if (typeof type !== 'string' || !FILE_TYPE_RE.test(type)) errors.push(`actions.${name}[] : un type de fichier attendu (un mot, comme pdf)`);
+      else if (seen.has(type)) errors.push(`actions.${name} ${type} : type déjà déclaré`);
+      seen.add(type);
+    }
   }
 }
 

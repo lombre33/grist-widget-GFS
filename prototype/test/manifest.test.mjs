@@ -407,6 +407,20 @@ test('contrats 2.7, point 6 : une app déclare les types de fichiers qu\'elle de
   assert.deepEqual(validateManifest(m), { ok: true, errors: [] }, 'une app qui ne range rien n\'a pas à le dire');
 });
 
+// Joindre à une cellule (contrats 2.7, point 7) : les types de fichiers qu'une app donne à GFS pour qu'il les joigne à une cellule « Pièces jointes ».
+test('contrats 2.7, point 7 : une app déclare les types de fichiers qu\'elle donne à GFS à joindre ; mêmes règles que « ranger »', () => {
+  const m = publipostage();
+  m.actions.joindre = ['pdf'];
+  assert.deepEqual(validateManifest(m), { ok: true, errors: [] });
+  m.actions.joindre = [];
+  assert.deepEqual(validateManifest(m), { ok: true, errors: [] }, 'une liste vide ne déclare rien');
+  assert.match(bad(m => { m.actions.joindre = 'pdf'; }), /actions\.joindre : liste attendue/);
+  assert.match(bad(m => { m.actions.joindre = [{ type: 'pdf' }]; }), /actions\.joindre\[\] : un type de fichier attendu/);
+  assert.match(bad(m => { m.actions.joindre = ['PDF']; }), /actions\.joindre\[\] : un type de fichier attendu/);
+  assert.match(bad(m => { m.actions.joindre = ['pdf', 'pdf']; }), /actions\.joindre pdf : type déjà déclaré/);
+  assert.equal(publipostage().actions.joindre, undefined, 'GFS ne déclare `joindre` chez Publipostage+ que quand sa page dit « faite » (consigne à venir)');
+});
+
 test('contrats 2.7 et 2.8 : un type rangé mal formé invalide le manifeste', () => {
   assert.match(bad(m => { m.actions.ranger = 'pdf'; }), /actions\.ranger : liste attendue/);
   assert.match(bad(m => { m.actions.ranger = [{ type: 'pdf' }]; }), /actions\.ranger\[\] : un type de fichier attendu/);

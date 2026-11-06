@@ -1,0 +1,31 @@
+{
+  "contrat": 0,
+  "id": "sonde-j",
+  "nom": {
+    "fr": "Sonde J",
+    "en": "Probe J"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Une app qui donne ses PDF à GFS pour qu'il les joigne à la cellule Pièces jointes d'une ligne, comme Publipostage+",
+    "en": "An app that hands its PDFs to GFS to attach them to a row's Attachments cell, like Publipostage+"
+  },
+  "icone": "doc",
+  "entree": "index.html",
+  "tables": {
+    "prefixe": "SondeJ_"
+  },
+  "reglages": [],
+  "permissions": {
+    "acces": "full",
+    "lit": ["*"],
+    "ecrit": ["*"]
+  },
+  "actions": {
+    "ouvrir": [],
+    "choisir": [],
+    "joindre": [
+      "pdf"
+    ]
+  }
+}

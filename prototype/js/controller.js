@@ -36,6 +36,7 @@ import { RightsControl } from './rights-control.js';
 import { WeightControl } from './weight-control.js';
 import { FILES_APP, FILES_MANIFEST, FILES_ENTRY, cleanName } from './gfs-files.js';
 import { Transfer, buildTransferFrame } from './transfer.js';
+import { Attach } from './attach.js';
 import { buildAppFiles, buildKept } from './file-managers.js';
 import { Trash } from './trash.js';
 import { Copying } from './copying.js';
@@ -120,6 +121,7 @@ export class GfsController {
     this.links = this.#buildLinks();
     // Le cadre d'envoi (js/transfer.js) ne s'ouvre qu'à la première requête : les pièces jointes, et la preuve que la personne est propriétaire (js/rights-reader.js).
     this.transfer = new Transfer({ doc: this.port.doc, base: this.doc.baseURI, createFrame: url => buildTransferFrame(this.doc, url) });
+    this.attach = new Attach({ doc: this.port.doc, transfer: this.transfer, session: () => this.session, readonly: () => this.readonly }); // `joindre` (contrats 5.4, point 12)
     this.rights = new RightsControl({
       port: this.port, transfer: this.transfer, prefixes: () => this.validApps().map(item => item.manifest.tables.prefixe), now: () => Date.now(), container: this.$('stage'),
       inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')], t: this.t, fullAccess: () => this.fullAccess,
@@ -600,6 +602,7 @@ export class GfsController {
       ...this.dock.handlers(session.id),
       ...this.links.handlers(session),
       ...this.kept.handlers(session),
+      ...this.attach.handlers(session),
     };
   }
 

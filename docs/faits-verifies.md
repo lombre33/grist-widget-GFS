@@ -1605,3 +1605,11 @@ Conclusion : **aucune liste des invités n'est à la portée d'un widget, propri
 - **Le serveur qui refuse la taille (413)** donne `trop-gros` pour tous les fichiers du lot, **le réseau qui tombe** donne `injoignable` ; dans les deux cas rien n'est écrit et l'appel suivant réussit.
 - **Une demande interceptée puis rejouée (`route.fetch` puis `fulfill`)** rendait un envoi en échec dans le labo : l'interception du labo changeait la réponse, pas GFS ; l'essai de l'ajout concurrent laisse partir la demande telle quelle (`route.continue`).
 - **Pas mesuré** : Firefox (le geste n'a pas d'interface), l'instance de la DINUM, la vraie app de Publipostage+.
+
+## 49. Joindre par le vrai client du kit : mêmes mesures, même résultat (mesuré le 06/11)
+
+`LAB_KIT=1 node labo/run-joindre.mjs` : la sonde J « kit » (`labo/sondes/j-joindre/kit.html`) parle à GFS par `GfsLink.attach` du kit 0.11.0 (`70c3f67`, le sous-module `prototype/kit`) au lieu d'une enveloppe écrite à la main. Vrai Grist 1.7.19, Chromium, fr clair et en sombre : **les 35 vérifications de la section 48 passent à l'identique**, console propre.
+
+- Un `File` fabriqué dans le cadre isolé et rangé dans la liste `fichiers` traverse le message de GFS avec ses octets (même empreinte SHA-256 que le fichier de l'app).
+- Une ligne qui n'est pas un numéro est refusée **par le kit** (`GFS_REFUSE`, avant tout message) ; le contenu qui n'est pas un PDF, la table de GFS et la table interne le sont par GFS : le code est le même, la phrase vient de celui qui refuse.
+- Le rapport rendu par le kit est celui de GFS, normalisé (`colonne`, `probleme`, `joints`, `echecs`), sans clé de plus.

@@ -2,6 +2,7 @@
 // `labo/sondes/j-joindre/`, qui fait ce que fera Publipostage+) fabrique ses PDF DANS SON CADRE ISOLÉ et les donne à GFS, qui les envoie à Grist et écrit la cellule. Ce que le serveur retient (cellules,
 // pièces jointes, octets) est lu par l'API REST. Chromium seulement.
 //   bash vrai-serveur.sh && REPO_DIR="$(realpath ../..)" node run-joindre.mjs        (LAB_LANG=fr|en, LAB_SCHEME=light|dark)
+//   LAB_KIT=1 : la même mesure avec la sonde J kit (`kit.html`), qui parle à GFS par le VRAI client du kit (`GfsLink.attach`, le sous-module `prototype/kit`) au lieu d'une enveloppe écrite à la main.
 //   1. Un PDF à une ligne : la cellule le cite, ses octets sont ceux de l'app (même empreinte), le nom est gardé, le rapport est sans problème.
 //   2. Le mode « remplacer » (par défaut) retire de la cellule le fichier de même nom (il reste dans la liste des pièces jointes du document), « ajouter » garde tout.
 //   3. Plusieurs fichiers dans une cellule, plusieurs lignes dans un appel : l'ordre est gardé.
@@ -22,7 +23,8 @@ import { PAGE_PORT, sha256, openGfs, settle, closeModules } from './lab-pdf.mjs'
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
 const { t } = createI18n(lang);
-const ID = 'sonde-j';
+const KIT = process.env.LAB_KIT === '1';
+const ID = KIT ? 'sonde-jk' : 'sonde-j';
 const GFS_URL = `http://127.0.0.1:${PAGE_PORT}/prototype/index.html`;
 const PROBE_URL = `http://127.0.0.1:${PAGE_PORT}/prototype/labo/sondes/j-joindre/`;
 const ALWAYS = { fichier: 'controller.js', de: "export const ALWAYS_ON = Object.freeze(['publipostage']);", vers: `export const ALWAYS_ON = Object.freeze(['publipostage', '${ID}']);` };
@@ -227,7 +229,7 @@ const pages = createServer(serve(process.env.REPO_DIR, undefined, openConnectIn(
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
 try {
   const context = await newContext(browser, server, { colorScheme: scheme });
-  const run = await openGfs(context, { lang, probes: ['j'], patches: [ALWAYS] });
+  const run = await openGfs(context, { lang, probes: [KIT ? 'jk' : 'j'], patches: [ALWAYS] });
   check(`GFS est à 700 × 400 dans le vrai Grist (${lang}, ${scheme})`, Math.abs(run.box.width - 700) <= 1 && Math.abs(run.box.height - 400) <= 1, run.box);
   await setup(run);
   await closeModules(run.page, run.frame).catch(() => {});

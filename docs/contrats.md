@@ -2800,6 +2800,23 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
     JSON), et, quand la table d'origine n'a pas d'étiquette, n'est lue que de qui l'a supprimée et des propriétaires ; (c) « Restaurer »,
     « Supprimer pour de bon » et « Vider la corbeille » ne touchent que ce que la personne peut lire (6.7, point 4 : « celles qu'elle a
     sous les yeux »). Rien n'est écrit avant la carte, et rien ne fuit aujourd'hui de plus qu'au niveau Ouvert : aucune règle n'est posée.
+13. [D] **Partager sans être propriétaire** (cahier d'Antoine du 06/11 : « Partager » depuis « ⋯ », quatre droits par fichier ou dossier, héritage vers le bas par
+    défaut, groupes, catégories, e-mails ; maquettes validées le 06/11 : `maquette-partager.html`). Grist n'autorise que les propriétaires à écrire les règles et à inviter dans le
+    document (11.4). **Le porteur a choisi le 06/11 (21 h 23) « partage libre, invitation demandée »** : les règles, posées une fois par un propriétaire, lisent une table de
+    partages de GFS (fichier ou dossier, personne ou groupe ou catégorie, droit, date de fin) ; un administrateur de fichier, propriétaire ou non, partage avec les personnes
+    **déjà dans le document** en y ajoutant une ligne, sans propriétaire. Pour une adresse **pas encore dans le document**, GFS envoie une demande d'invitation à un propriétaire ;
+    la ligne de partage prend effet dès que la personne est invitée dans Grist. Les lignes de partage ne sont lisibles que de l'administrateur du fichier, de la personne
+    concernée et des propriétaires (un nom de dossier peut être confidentiel). Rien n'est codé.
+    a. [D] **Droits** : lecture seule, lecture + commentaires (ceux des apps : une règle sur leur table de commentaires liée au fichier, 11.7, point 3, pas le rôle de commentateur de
+       Grist), dépôt seul (ajouter sans voir ni modifier l'existant), écriture, administration (changer qui a accès). Cases : « peut télécharger » ; « accès jusqu'au » (date de fin).
+    b. [D] **Fin d'accès** : GFS dit à l'ajout que l'accès **ne se retire pas tout seul** si personne n'ouvre GFS après la date (la ligne passe en « échu » à l'ouverture suivante).
+       [M] À mesurer : une règle de Grist peut-elle lire la date du jour ? Si oui, la fin sera automatique.
+    c. [D] **Un fichier ou un dossier sans droit est invisible** dans l'explorateur, non grisé (décision du porteur, 06/11 : les noms peuvent être confidentiels ; la règle « grisé, jamais
+       masqué » vaut pour les gestes, non pour les données). Limite à dire : les noms de tables et de pages de Grist restent visibles de qui a accès au document.
+    d. [D] **Héritage** : un dossier partagé donne ses droits à ce qu'il contient, vers le bas, par défaut ; les droits s'additionnent, sans refus explicite ; « ne plus hériter »
+       restreint un fichier.
+    e. [T] **La liste des invités n'est pas lisible par un widget** (faits vérifiés, 45) : GFS propose les adresses qu'il connaît (le rangement, les tables d'équipes désignées) et
+       l'adresse tapée ; le reste passe par « Demander l'invitation ». « Voir en tant que » existe déjà dans Grist et les widgets en tiennent compte : GFS n'en refait rien.
 
 ### 11.8 À mesurer sur le Grist du porteur
 

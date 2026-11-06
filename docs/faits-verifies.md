@@ -1557,3 +1557,14 @@ Lot 4 du poids (sections 32, 39 et 41 pour les lots 1 à 3) : un clic sur le tot
 - **Retirer** : « Rouvrir » retire la règle de structure (et sa ressource `*` / `*` si elle n'en garde plus), « Retirer les règles de GFS » les six règles de Partagé ; une règle écrite à la main sur une autre table reste, et le pied redit « Pas protégé ».
 - **Ce que le panneau montre à qui n'est pas propriétaire** : « Permissions », « seul un propriétaire peut vérifier », aucun geste (le bloc « Poser des règles » n'est pas rendu).
 - **Pas mesuré** : Encadré, les espaces, les colonnes d'aide (lots suivants) ; l'instance de la DINUM ; un éditeur qui lit le panneau pendant que le propriétaire pose (la page se recharge pour tous, 10.6).
+
+## 45. La liste des personnes invitées au document n'est pas lisible par un widget (mesuré le 06/11)
+
+Question d'Antoine (06/11) : l'autocomplétion de « Partager » peut-elle lire les personnes déjà invitées au document ? `labo/run-invites.mjs`, vrai Grist 1.7.19, compte propriétaire, jeton de `getAccessToken` (relayé par le courtier) :
+
+| Point d'accès | Jeton en écriture | Jeton en lecture seule |
+|---|---|---|
+| `/access` | 403 « access denied » | 403 « access denied » |
+| `/usersForViewAs` (la liste de « Voir en tant que ») | 403 « access denied » | 403 « No owner access » |
+
+Conclusion : **aucune liste des invités n'est à la portée d'un widget, propriétaire compris.** Les personnes que GFS peut proposer sont celles qu'il voit déjà : les adresses des lignes de `GFS_Rangement` (qui a ouvert GFS dans ce document), celles des tables d'équipes que le propriétaire désigne (« Lire les groupes d'une table »), et l'adresse tapée. Une adresse tapée dont GFS ne peut pas savoir si elle est dans le document passe par « Demander l'invitation » (contrats 11.7, point 13).

@@ -1653,7 +1653,7 @@ Question de Publipostage+ à sa consigne 053 (« un `trop-gros` pourrait-il ne r
 
 - **Essai unitaire** (`test/attach.test.mjs`) : trois fichiers, le deuxième refusé (413) : le premier et le troisième sont joints (un seul lot), les trois sont essayés ; un fichier seul trop gros : rien envoyé, rien écrit ; les refus `refus`, `echec` et `injoignable` arrêtent toujours le lot. Le nouvel essai échoue avec l'ancien code.
 - **Vrai Grist 1.7.19** (`labo/run-joindre.mjs`, fr clair, en sombre, et avec le client du kit : **37 vérifications chacune, aucun échec**) : deux fichiers refusés (413) : deux échecs `trop-gros`, aucun joint, `probleme` null, rien d'écrit ; trois fichiers dont le deuxième reçoit 413 : les lignes 1 et 3 gagnent chacune une pièce jointe, la ligne 2 n'a pas bougé, `joints` = [0, 2], `echecs` = [{ 1, `trop-gros` }].
-- **Le kit 0.11.0** laisse passer le rapport tel quel ; sa documentation (README et commentaire de `attach`) range encore `trop-gros` parmi les mots de `probleme` : à corriger à son prochain lot.
+- **Le kit 0.11.0** laisse passer le rapport tel quel ; sa documentation (README et commentaire de `attach`) rangeait `trop-gros` parmi les mots de `probleme` : corrigée au kit `b9525e8` (commentaire et README seulement, aucun code), référence de GFS avancée.
 
 ## 54. La vraie Publipostage+ à `c850c89` joint ses PDF par GFS, dans un vrai Grist (mesuré le 06/11, nuit)
 

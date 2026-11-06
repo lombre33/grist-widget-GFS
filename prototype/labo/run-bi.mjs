@@ -8,10 +8,11 @@
 //      défaut, sans couleur de famille ; F2 écrit le nom dans la colonne `Nom`, elle seule.
 //   5. Le double-clic d'un rapport : app fermée, elle démarre sur ce rapport (`ouverture` du contexte) ; app ouverte, elle l'ouvre (appel `ouvrir`) ; dans les deux cas sur la table du rapport
 //      (Commandes, pas la première table), sans phrase provisoire, sans rien écrire dans le document.
+//   6. CONSTAT : chaque « Nouveau », même sans rien faire dans le rapport, laisse un fichier de plus (l'app écrit la ligne d'elle-même).
 // Un CONSTAT dit ce que l'app fait en deçà de ce que GFS attend sans que GFS y puisse rien (à dire par une consigne) ; il ne fait pas échouer l'essai.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark ; LAB_LIVE=1 pour jouer le site en ligne de l'app au lieu de sa copie.
 import { startLab } from './lab-setup.mjs';
-import { say, check } from './lab-common.mjs';
+import { say, check, constat } from './lab-common.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -190,5 +191,13 @@ say(`après le double-clic sur « ${FIRST} » (app déjà ouverte sur Commandes)
 check('app déjà ouverte : le double-clic d\'un autre rapport l\'ouvre (appel `ouvrir` : la table de ce rapport s\'affiche), sans phrase provisoire', shownRunning === 'Clients' && !saidRunning.some(text => WORDS.provisional.test(text)), { table: shownRunning, phrases: saidRunning });
 check('cette ouverture n\'écrit rien non plus', await rowsKept(), await configState());
 await lab.shotPanel(run, '4-ouvert', frame);
+// « Nouveau » une deuxième fois, sans rien faire dans le rapport : l'app écrit la ligne de ce rapport vierge d'elle-même (section 2), chaque « Nouveau » laisse donc un fichier de plus.
+await showFiles();
+await frame.locator('.btn.primary').click();
+await frame.locator('.menu').waitFor();
+await frame.locator('.menu-item', { hasText: WORDS.report }).first().click();
+await watch(4000);
+const afterSecond = await configState();
+constat('« Nouveau > Rapport BI » sans rien faire dans le rapport ne laisse aucun fichier de plus dans le document (l\'app l\'écrit d\'elle-même : un fichier « Rapport BI N » par « Nouveau »)', afterSecond.rows.length === renamed.rows.length, afterSecond.rows.map(row => [row.TableId, row.Nom]));
 check('aucun avertissement de GFS' + (started ? ', aucune erreur de script dans l\'app' : ''), warnings.length === 0 && (!started || errors.length === 0), { avertissements: warnings, erreurs: errors });
 await lab.browser.close();

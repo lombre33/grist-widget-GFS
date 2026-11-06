@@ -69,8 +69,14 @@ const until = async (probe, timeout = 8000) => {
 // Une sonde ouverte par la fenêtre « Apps » (elles sont « toujours là » : pas de case à cocher, seulement « Ouvrir »), à la vraie souris.
 const openProbe = async (id, pattern) => {
   await lab.openModules(frame);
+  // V et W partagent la même page : la sonde qu'on remplace (GFS lui demande de se fermer, contrats 5.4 point 3) est encore là au premier regard. On attend le cadre de la nouvelle.
+  const before = new Set(page.frames().filter(each => pattern.test(each.url()) && !each.isDetached()));
   await frame.locator(`[data-open="${id}"]`).click();
-  const target = await lab.appFrame(pattern);
+  let target = null;
+  for (let i = 0; i < 60 && !target; i++) {
+    target = await lab.appFrame(pattern);
+    if (target && before.has(target)) { target = null; await page.waitForTimeout(250); }
+  }
   // La page publie un état vide dès son chargement : on attend que le contexte soit arrivé (V, W) ou que le client du kit ait dit `ready` (X : `arrivee` est alors écrit, même à null).
   const arrived = await until(() => target.evaluate(() => {
     const state = JSON.parse(document.body.dataset.sonde || '{}');

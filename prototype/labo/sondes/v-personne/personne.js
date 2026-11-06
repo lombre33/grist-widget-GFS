@@ -8,7 +8,11 @@
   window.addEventListener('message', function (event) {
     var msg = event.data;
     if (event.source !== window.parent || !msg || msg.gfs !== 0 || msg.mtype !== undefined) return;
-    if (msg.type === 'reponse' && msg.id === 1) { seen.contexte = msg.data; publish(); }
+    if (msg.type === 'appel') {
+      // Comme toute app (contrats 5.1, point 3) : un appel qu'elle ne connaît pas reçoit `GFS_INCONNU`. Sans cela, `fermer` reste sans réponse, GFS attend dix secondes et demande à la personne : la sonde
+      // qu'on remplace restait à l'écran et le labo croyait lire la suivante.
+      if (typeof msg.id === 'number') post({ gfs: 0, type: 'erreur', id: msg.id, code: 'GFS_INCONNU', message: 'Appel inconnu' });
+    } else if (msg.type === 'reponse' && msg.id === 1) { seen.contexte = msg.data; publish(); }
     else if (msg.type === 'evenement') { seen.evenements.push({ nom: msg.nom, data: msg.data }); publish(); }
   });
   post({ gfs: 0, type: 'appel', id: 1, nom: 'contexte', args: {} });

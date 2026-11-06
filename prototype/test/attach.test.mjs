@@ -98,8 +98,8 @@ test('une colonne absente, d\'un autre type ou à formule : rien n\'est envoyé,
   assert.equal(report.probleme, 'absente', 'une table qui n\'existe plus : la colonne est absente');
 });
 
-test('ce que Grist refuse à l\'envoi arrête le lot : les fichiers déjà envoyés sont joints, les autres sont des échecs du même mot', async () => {
-  const cases = [[new TransferError('http', 'trop gros', 413), 'trop-gros'], [new TransferError('http', 'refus', 403), 'refus'], [new TransferError('http', 'refus', 401), 'refus'],
+test('ce que Grist refuse à l\'envoi arrête le lot (sauf la taille) : les fichiers déjà envoyés sont joints, les autres sont des échecs du même mot', async () => {
+  const cases = [[new TransferError('http', 'refus', 403), 'refus'], [new TransferError('http', 'refus', 401), 'refus'],
     [new TransferError('http', 'erreur', 500), 'echec'], [new TransferError('network', 'coupé'), 'injoignable'], [new TransferError('timeout', 'long'), 'injoignable'],
     [new TransferError('answer', 'bizarre'), 'echec'], [new Error('autre'), 'echec']];
   for (const [error, problem] of cases) {
@@ -111,9 +111,21 @@ test('ce que Grist refuse à l\'envoi arrête le lot : les fichiers déjà envoy
     assert.deepEqual(state.uploads, ['A.pdf'], 'plus rien ne part après le refus');
     assert.equal(state.writes.length, 1);
   }
+});
+
+test('un fichier que Grist trouve trop gros (413) est un échec à lui seul : les autres partent et sont joints, `probleme` reste null', async () => {
+  let calls = 0;
+  const { state, call } = setup({ upload: async () => { if (++calls === 2) throw new TransferError('http', 'trop gros', 413); } });
+  const report = await call(session(), args([entry(1, 'A.pdf'), entry(2, 'B.pdf'), entry(3, 'C.pdf')]));
+  assert.equal(report.probleme, null, 'la taille n\'arrête pas le lot');
+  assert.deepEqual(report.joints, [{ index: 0, remplace: false }, { index: 2, remplace: false }], 'le premier et le dernier fichiers sont joints');
+  assert.deepEqual(report.echecs, [{ index: 1, raison: 'trop-gros' }]);
+  assert.equal(calls, 3, 'chaque fichier est essayé, celui d\'après le trop gros aussi');
+  assert.deepEqual(state.uploads, ['A.pdf', 'C.pdf']);
+  assert.equal(state.writes.length, 1, 'un seul lot, pour ceux qui sont partis');
   const alone = setup({ upload: async () => { throw new TransferError('http', 'trop gros', 413); } });
-  const report = await alone.call(session(), args([entry(1, 'A.pdf')]));
-  assert.deepEqual([report.probleme, report.joints, alone.state.writes], ['trop-gros', [], []], 'rien d\'envoyé : rien d\'écrit');
+  const lone = await alone.call(session(), args([entry(1, 'A.pdf')]));
+  assert.deepEqual([lone.probleme, lone.joints, lone.echecs, alone.state.writes], [null, [], [{ index: 0, raison: 'trop-gros' }], []], 'rien d\'envoyé : rien d\'écrit');
 });
 
 test('une écriture que Grist refuse (règles d\'accès) : `refus`, aucun fichier n\'est dit joint ; une autre erreur est `echec`', async () => {

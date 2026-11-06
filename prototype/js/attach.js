@@ -12,7 +12,7 @@ const ATTACHMENTS = 'Attachments';
 
 const refuse = message => new Refus(ERR.REFUSE, message);
 
-// Ce qui peut arrêter un lot, dans les mots du contrat : `absente`, `inutilisable` (avant tout envoi), puis `refus`, `trop-gros`, `injoignable`, `echec` (pendant l'envoi ou l'écriture).
+// Ce qui peut arrêter un lot, dans les mots du contrat : `absente`, `inutilisable` (avant tout envoi), puis `refus`, `injoignable`, `echec` (pendant l'envoi ou l'écriture). `trop-gros` n'arrête rien : c'est l'échec d'un seul fichier (`echecs`).
 export const PROBLEM = Object.freeze({ missing: 'absente', unusable: 'inutilisable', denied: 'refus', tooLarge: 'trop-gros', unreachable: 'injoignable', failed: 'echec' });
 
 // `joindre { table, colonne, mode?, fichiers: [{ ligne, fichier, nom }] }` (5.4, point 12) -> { table, column, mode, items: [{ index, row, file, name }] }. Une forme hors règle est refusée
@@ -108,7 +108,8 @@ export class Attach {
     return columns.type[found] === ATTACHMENTS && !formula && !columns.isFormula[found] ? null : PROBLEM.unusable;
   }
 
-  // L'envoi, un fichier après l'autre : ce que Grist refuse arrête le lot (`probleme`), les fichiers pas encore envoyés sont des échecs. Rend les fichiers envoyés avec leur numéro de pièce jointe.
+  // L'envoi, un fichier après l'autre : ce que Grist refuse arrête le lot (`probleme`), les fichiers pas encore envoyés sont des échecs. Seule la taille n'arrête rien : un fichier que Grist trouve trop gros
+  // est un échec à lui seul (`trop-gros`, 06/11, question de Publipostage+ à sa 053), les suivants partent. Rend les fichiers envoyés avec leur numéro de pièce jointe.
   async #send(items, report) {
     const sent = [];
     for (const item of items) {
@@ -116,8 +117,9 @@ export class Attach {
       try {
         sent.push({ ...item, attachment: await this.#host.transfer.upload(item.file, item.name) });
       } catch (error) {
-        report.probleme = problemOfTransfer(error);
-        report.echecs.push({ index: item.index, raison: report.probleme });
+        const problem = problemOfTransfer(error);
+        if (problem !== PROBLEM.tooLarge) report.probleme = problem;
+        report.echecs.push({ index: item.index, raison: problem });
       }
     }
     return sent;

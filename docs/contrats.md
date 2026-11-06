@@ -1792,13 +1792,13 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
      a ajoutée entre-temps dans Grist n'est pas perdue) : la cellule vaut `['L', …numéros]`. GFS écrit comme la personne : les règles d'accès de
      Grist s'appliquent ; si elles refusent, la réponse porte `probleme: 'refus'` (jamais une erreur de l'appel). Les envois se font un fichier après
      l'autre : un envoi que Grist refuse arrête le lot, les fichiers pas encore envoyés sont des échecs du même mot, et **rien n'est écrit** si aucun
-     fichier n'est parti. Deux appels `joindre` de la même app se suivent l'un après l'autre (une file), un échec n'arrête pas la file. Une pièce jointe remplacée **n'est pas supprimée du document** : elle reste dans la liste
+     fichier n'est parti. **Sauf la taille** (décidé le 06/11, question de Publipostage+ à sa 053) : un fichier que Grist trouve trop gros (413) est un échec à lui seul
+     (`trop-gros`), les suivants partent et sont joints. Deux appels `joindre` de la même app se suivent l'un après l'autre (une file), un échec n'arrête pas la file. Une pièce jointe remplacée **n'est pas supprimée du document** : elle reste dans la liste
      des pièces jointes de Grist (mesuré le 03/11 pour un remplacement), la cellule ne la cite plus.
    - [T] **La réponse** : `{ colonne, probleme, joints, echecs }`. `probleme` vaut `null`, ou ce qui a arrêté tout le lot : `absente`
-     (la colonne n'existe plus), `inutilisable` (elle n'est plus de type Pièces jointes), `refus` (Grist refuse : droits, règles d'accès), `trop-gros`
-     (Grist refuse la taille d'un fichier), `injoignable` (le serveur ne répond pas), `echec` (autre). `joints` : `[{ index, remplace }]`, une entrée par
+     (la colonne n'existe plus), `inutilisable` (elle n'est plus de type Pièces jointes), `refus` (Grist refuse : droits, règles d'accès), `injoignable` (le serveur ne répond pas), `echec` (autre). `joints` : `[{ index, remplace }]`, une entrée par
      fichier joint (`index` : sa place dans `fichiers`, `remplace` vrai quand il a pris la place d'un fichier de même nom). `echecs` : `[{ index, raison }]`
-     pour les fichiers que GFS n'a pas pu joindre (`raison` : `ligne` quand la ligne n'existe plus, ou l'un des mots de `probleme`). GFS ne dit rien par-dessus
+     pour les fichiers que GFS n'a pas pu joindre (`raison` : `ligne` quand la ligne n'existe plus, `trop-gros` quand Grist refuse la taille de ce fichier, ou l'un des mots de `probleme`). GFS ne dit rien par-dessus
      l'app : elle écrit ces phrases dans son coin d'état. Les vérifications qui échouent d'avance rendent plutôt un refus (`GFS_REFUSE`, `GFS_LECTURE_SEULE`,
      `GFS_INACTIF`) avec sa phrase.
    - [T] **Ce que la personne voit de GFS** : rien, pas de question. Le geste est celui qu'elle a fait dans l'app (la case « Joindre à la ligne » du menu
@@ -1814,7 +1814,7 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
      met le nouveau à la fin, **l'ancien reste dans la liste des pièces jointes du document** ; `ajouter` garde tout ; trois fichiers sur deux lignes
      dans un appel : l'ordre reçu est gardé dans chaque cellule ; une ligne supprimée : échec `ligne`, les autres sont jointes ; colonne absente, de type
      Texte ou à formule : rien n'est envoyé ni écrit ; table de GFS, table interne, contenu qui n'est pas un PDF, ligne qui n'est pas un numéro :
-     `GFS_REFUSE` ; le serveur répond 413 : `trop-gros`, le réseau tombe : `injoignable`, rien n'est écrit, l'appel suivant réussit ; une pièce jointe
+     `GFS_REFUSE` ; le réseau tombe : `injoignable`, rien n'est écrit, l'appel suivant réussit ; le serveur répond 413 : `trop-gros` pour ce fichier, `probleme` reste null (mesuré le 06/11 dans la nuit : les autres fichiers du lot, avant et après lui, sont joints, `run-joindre.mjs`, 37 vérifications) ; une pièce jointe
      ajoutée dans Grist **pendant** l'envoi reste dans la cellule, avant la nôtre ; une règle d'accès qui refuse d'écrire la colonne : Grist répond
      « Blocked by column update access rules », la réponse porte `refus`, aucune cellule ne change, et **Grist reconstruit le cadre de GFS** quand une règle
      d'accès change (l'app est alors à rouvrir). **Pas mesuré** : Firefox (aucune interface dans ce geste), l'instance de la DINUM, la vraie app de

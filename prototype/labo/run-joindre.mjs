@@ -161,7 +161,7 @@ async function playFailures(run) {
   await page.context().route(/\/attachments\?auth=/, answer(413, '{"error":"Payload Too Large"}'));
   const tooBig = await joindre(page, ask('Clients', 'Pdf', [pdfItem(1, 'Gros.pdf', 'Gros'), pdfItem(2, 'Gros2.pdf', 'Gros 2')]));
   await page.context().unroute(/\/attachments\?auth=/);
-  check('le serveur refuse (413) : « trop-gros », les deux fichiers sont des échecs du même mot, aucun n\'est joint', tooBig.ok && tooBig.data.probleme === 'trop-gros' && tooBig.data.joints.length === 0 && sameJson(tooBig.data.echecs, [{ index: 0, raison: 'trop-gros' }, { index: 1, raison: 'trop-gros' }]), tooBig);
+  check('le serveur refuse la taille (413) de chaque fichier : deux échecs « trop-gros », aucun joint, `probleme` reste null (la taille n\'arrête pas le lot)', tooBig.ok && tooBig.data.probleme === null && tooBig.data.joints.length === 0 && sameJson(tooBig.data.echecs, [{ index: 0, raison: 'trop-gros' }, { index: 1, raison: 'trop-gros' }]), tooBig);
   await page.context().route(/\/attachments\?auth=/, route => (route.request().method() === 'POST' ? route.abort('failed') : route.continue()));
   const down = await joindre(page, ask('Clients', 'Pdf', [pdfItem(1, 'Panne.pdf', 'Panne')]));
   await page.context().unroute(/\/attachments\?auth=/);
@@ -169,6 +169,16 @@ async function playFailures(run) {
   check('rien n\'est écrit', sameJson(await snapshot(rest), before));
   const next = await joindre(page, ask('Clients', 'Pdf', [pdfItem(1, 'Reprise.pdf', 'Reprise')]));
   check('la panne passée, l\'appel suivant réussit (la file n\'est pas bloquée)', next.ok && next.data.probleme === null && next.data.joints.length === 1, next);
+  // Un seul fichier trop gros au milieu d'un lot (question de Publipostage+ à sa 053) : le deuxième envoi reçoit 413, le premier et le troisième sont joints.
+  const beforeMiddle = await snapshot(rest);
+  let posts = 0;
+  await page.context().route(/\/attachments\?auth=/, route => (route.request().method() === 'POST' && ++posts === 2 ? route.fulfill({ status: 413, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '{"error":"Payload Too Large"}' }) : route.continue()));
+  const middle = await joindre(page, ask('Clients', 'Pdf', [pdfItem(1, 'Avant.pdf', 'Avant'), pdfItem(2, 'Gros-au-milieu.pdf', 'Trop gros'), pdfItem(3, 'Apres.pdf', 'Après')]));
+  await page.context().unroute(/\/attachments\?auth=/);
+  check('un seul fichier trop gros au milieu : lui seul est un échec « trop-gros », le premier et le troisième sont joints, `probleme` reste null', middle.ok && middle.data.probleme === null && sameJson(middle.data.joints.map(joint => joint.index), [0, 2]) && sameJson(middle.data.echecs, [{ index: 1, raison: 'trop-gros' }]), middle);
+  const count = cell => (Array.isArray(cell) ? cell.length - 1 : 0);
+  const afterMiddle = await snapshot(rest);
+  check('les lignes 1 et 3 gagnent chacune une pièce jointe, la ligne 2 (le fichier trop gros) n\'a pas bougé', count(afterMiddle.cells[0]) === count(beforeMiddle.cells[0]) + 1 && count(afterMiddle.cells[2]) === count(beforeMiddle.cells[2]) + 1 && sameJson(afterMiddle.cells[1], beforeMiddle.cells[1]), { avant: beforeMiddle.cells.slice(0, 3), apres: afterMiddle.cells.slice(0, 3) });
 }
 
 async function playConcurrent(run) {

@@ -1,16 +1,17 @@
-// Grist-BI (référencée à fef9af8) dans GFS, dans un vrai Grist (consigne 006 de GFS à Grist-BI) : à la vraie souris et au vrai clavier, à 700 × 400, l'app telle qu'elle est.
+// Grist-BI (référencée à b6f9490, kit 0.9.0) dans GFS, dans un vrai Grist (consignes 006 et 007 de GFS à Grist-BI) : à la vraie souris et au vrai clavier, à 700 × 400, l'app telle qu'elle est.
 //   1. Le menu « Nouveau » propose « Rapport BI » (type du manifeste `bi.json`), grisé tant que Grist-BI n'est pas installée, dégrisé ensuite.
-//   2. « Nouveau > Rapport BI » : l'app s'ouvre dans le sous-cadre isolé (origine « null », sans stockage). CONSTAT : son script de langue lit `localStorage` hors d'un `try`, ce que
-//      le sous-cadre refuse : tant que ce n'est pas gardé, l'app ne démarre pas (`GristBI.i18n` n'existe pas, « Grist-BI se charge… » reste affiché).
-//   3. Si elle a démarré : le choix de la table de travail crée ses trois tables (`BI_Dashboard_Config`, `_Comments`, `_UserProbe`) et UNE ligne de configuration ; le courtier ne refuse rien,
-//      aucune erreur de script ; la table de configuration n'a que `TableId` et `ConfigJSON` (ni nom, ni type, ni date, ni auteur).
-//   4. L'explorateur lit `BI_Dashboard_Config` (deux lignes semées, comme une version d'avant) : un fichier « Rapport BI » par ligne, icône en barres, type par défaut, sans couleur de famille ;
-//      CONSTAT : sans colonne `Nom`, tous s'appellent « (sans nom) » et se renomment dans l'app (F2 : la phrase de GFS, rien n'est écrit).
-//   5. Le double-clic d'un rapport et « Nouveau » : l'app ne connaît pas encore l'ouverture, GFS le dit (phrase provisoire) et rien n'est écrit dans le document.
+//   2. « Nouveau > Rapport BI » : l'app s'ouvre dans le sous-cadre isolé (origine « null », sans stockage), démarre (ses lectures de `localStorage` sont gardées par un `try`) sur un rapport vierge
+//      de la première table, sans phrase provisoire de GFS ; l'app écrit alors elle-même la ligne de ce rapport, nommée « Rapport BI 1 » (« BI report 1 »).
+//   3. Le choix de la table de travail : ses trois tables (`BI_Dashboard_Config`, `_Comments`, `_UserProbe`) et une seule ligne de configuration, avec les colonnes `Nom`, `TypeRapport`,
+//      `DateModif` et `ModifiePar` ; le courtier ne refuse rien, aucune erreur de script.
+//   4. L'explorateur lit `BI_Dashboard_Config` (une ligne de l'app et une ligne semée sans nom, comme une version d'avant) : un fichier « Rapport BI » par ligne, icône en barres, type par
+//      défaut, sans couleur de famille ; F2 écrit le nom dans la colonne `Nom`, elle seule.
+//   5. Le double-clic d'un rapport : app fermée, elle démarre sur ce rapport (`ouverture` du contexte) ; app ouverte, elle l'ouvre (appel `ouvrir`) ; dans les deux cas sur la table du rapport
+//      (Commandes, pas la première table), sans phrase provisoire, sans rien écrire dans le document.
 // Un CONSTAT dit ce que l'app fait en deçà de ce que GFS attend sans que GFS y puisse rien (à dire par une consigne) ; il ne fait pas échouer l'essai.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark ; LAB_LIVE=1 pour jouer le site en ligne de l'app au lieu de sa copie.
 import { startLab } from './lab-setup.mjs';
-import { say, check, constat } from './lab-common.mjs';
+import { say, check } from './lab-common.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -41,12 +42,14 @@ const restart = async () => {
   await page.waitForTimeout(800);
 };
 const toast = async () => ((await frame.locator('#toast').isVisible()) ? (await frame.locator('#toast').innerText()).replace(/\s+/g, ' ') : '');
+// Les phrases de GFS ne restent que quelques secondes : elles se relèvent tout au long de l'attente.
+const watch = async ms => { const said = new Set(); for (let i = 0; i < ms / 150; i++) { const now = await toast(); if (now) said.add(now); await page.waitForTimeout(150); } return [...said]; };
 // La table de configuration relue : { table: false } quand elle n'existe pas, sinon ses colonnes (sans `id` ni `manualSort`) et ses lignes.
 const configState = () => frame.evaluate(async name => {
   if (!(await grist.docApi.listTables()).map(String).includes(name)) return { table: false };
   const data = await grist.docApi.fetchTable(name);
   const columns = Object.keys(data).filter(key => key !== 'id' && key !== 'manualSort');
-  return { table: true, columns, rows: data.id.map((id, i) => ({ id, TableId: data.TableId[i] })) };
+  return { table: true, columns, rows: data.id.map((id, i) => ({ id, TableId: data.TableId[i], Nom: data.Nom ? data.Nom[i] : undefined })) };
 }, CONFIG);
 const listTables = () => frame.evaluate(async () => (await grist.docApi.listTables()).map(String));
 const showFiles = async () => {
@@ -80,31 +83,29 @@ await restart();
 const before = await configState();
 const tablesBefore = await listTables();
 
-// ----- 2. « Nouveau > Rapport BI » : l'app s'ouvre sur son modèle habituel.
+// ----- 2. « Nouveau > Rapport BI » : l'app s'ouvre sur un rapport vierge (consigne 007, point 3) ; GFS ne dit rien de provisoire.
 item = await newMenuItem();
 check('Grist-BI installée, la ligne « Rapport BI » n\'est plus grisée', (await item.getAttribute('aria-disabled')) !== 'true', await item.getAttribute('aria-disabled'));
 await item.click();
 const app = await lab.appFrame(BI_URL);
 check('l\'app a un cadre', Boolean(app));
-// La phrase de GFS ne reste que quelques secondes : elle se lit tout de suite.
-let phrase = '';
-for (let i = 0; i < 30 && !phrase; i++) { phrase = await toast(); if (!phrase) await page.waitForTimeout(100); }
-await page.waitForTimeout(6000);
+const phrases = new Set(await watch(6000));
 const seen = await app.evaluate(() => ({
   origine: window.origin,
   langue: typeof GristBI !== 'undefined' && Boolean(GristBI.i18n),
-  texte: document.body.innerText.replace(/\s+/g, ' ').slice(0, 90),
+  table: (document.querySelector('#table-select') || {}).value || '',
   stockage: (() => { try { localStorage.setItem('x', '1'); return 'ok'; } catch (error) { return error.name; } })(),
 }));
-say('ce que l\'app voit :', JSON.stringify(seen), 'phrase de GFS :', phrase);
+const afterNew = await configState();
+const tablesAfterNew = (await listTables()).filter(name => !tablesBefore.includes(name));
+say('ce que l\'app voit :', JSON.stringify(seen), 'phrases de GFS :', JSON.stringify([...phrases]), 'document :', JSON.stringify({ tables: tablesAfterNew, config: afterNew }));
 check('l\'app est ouverte dans le sous-cadre isolé (origine null, pas de stockage)', seen.origine === 'null' && seen.stockage === 'SecurityError', seen);
-check('GFS dit que l\'app ne sait pas encore créer un fichier de ce type (phrase provisoire) et n\'écrit rien', WORDS.provisional.test(phrase) && JSON.stringify(await configState()) === JSON.stringify(before), phrase);
-constat('l\'app démarre dans le sous-cadre : son script de langue (js/i18n.js, lignes 332 et 389) et ses lectures de `localStorage` (js/main.js, lignes 886 et 890) sont gardées par un `try`',
-  seen.langue, { erreurs: errors.slice(0, 3), stockage: seen.stockage });
+check('l\'app démarre dans le sous-cadre : son script de langue et ses lectures de `localStorage` sont gardés par un `try` (consigne 007, point 1)', seen.langue, { erreurs: errors.slice(0, 3), stockage: seen.stockage });
+check('GFS ne dit plus que l\'app ne sait pas créer un fichier de ce type : elle l\'ouvre vierge, par `GfsLink.opening()`', ![...phrases].some(text => WORDS.provisional.test(text)), [...phrases]);
 await lab.shotPanel(run, '1-nouveau', frame);
 const started = seen.langue;
 
-// ----- 3. Si l'app a démarré : le choix de sa table de travail.
+// ----- 3. Le choix de sa table de travail : la ligne de configuration naît au premier enregistrement, avec le nom « Rapport BI 1 ».
 if (started) {
   await app.locator('#table-select').click();
   await app.locator('#table-select').fill('Clients');
@@ -117,7 +118,8 @@ if (started) {
   say('tables créées par l\'app :', JSON.stringify(created), 'configuration :', JSON.stringify(config));
   check('l\'app crée ses trois tables (configuration, commentaires, sonde de l\'adresse), toutes du préfixe BI_', ['BI_Dashboard_Config', 'BI_Dashboard_Comments', 'BI_Dashboard_UserProbe'].every(name => created.includes(name)) && created.every(name => name.startsWith('BI_')), created);
   check('une ligne de configuration par table de travail : une ligne, pour Clients', config.rows.length === 1 && config.rows[0].TableId === 'Clients', config);
-  constat('la table de configuration porte le nom, le type, la date et l\'auteur d\'un rapport (colonnes Nom, TypeRapport, DateModif, ModifiePar)', ['Nom', 'TypeRapport', 'DateModif', 'ModifiePar'].every(name => config.columns.includes(name)), config.columns);
+  check('la table de configuration porte le nom, le type, la date et l\'auteur d\'un rapport (colonnes Nom, TypeRapport, DateModif, ModifiePar)', ['Nom', 'TypeRapport', 'DateModif', 'ModifiePar'].every(name => config.columns.includes(name)), config.columns);
+  check('le rapport neuf reçoit son nom, dans la langue de la personne', config.rows.length === 1 && WORDS.report.test(config.rows[0].Nom || ''), config.rows.map(row => row.Nom));
   check('le courtier ne refuse rien à l\'app (accès full, tables BI_, tables internes déclarées, capacité `formules`)', warnings.length === 0, warnings);
   check('aucune erreur de script dans l\'app', errors.length === 0, errors);
   await lab.shotPanel(run, '2-table-choisie', frame);
@@ -152,24 +154,41 @@ const reports = rows.filter(row => row.icone === '#i-chart');
 check('l\'explorateur montre un fichier par ligne de configuration, avec l\'icône en barres', reports.length === seeded.rows.length && reports.length === 2, reports);
 check('leur type s\'écrit « Rapport BI » / « BI report » dans la langue de la personne (le type par défaut du manifeste)', reports.every(row => row.type === WORDS.label), reports.map(row => row.type));
 check('sans couleur de famille (réservée au document, à la grille et à la présentation)', reports.every(row => !row.famille), reports.map(row => row.famille));
-constat('chaque rapport a son nom dans la liste (la table n\'a pas de colonne `Nom` : « (sans nom) » partout)', reports.every(row => row.nom !== WORDS.untitled), reports.map(row => row.nom));
+check('le rapport que l\'app a créé porte son nom ; la ligne d\'avant (semée sans nom) s\'affiche « (sans nom) » jusqu\'à son prochain enregistrement par l\'app (consigne 007, point 2)', JSON.stringify(reports.map(row => row.nom).sort()) === JSON.stringify([WORDS.untitled, `${WORDS.report.source.slice(1)} 1`].sort()), reports.map(row => row.nom));
 
-// Renommer depuis l'explorateur : la colonne `Nom` est absente, GFS ne l'écrit jamais et le dit.
-await frame.locator('.ls-row').filter({ has: frame.locator('use[href="#i-chart"]') }).first().click();
+// Renommer depuis l'explorateur : la colonne `Nom` existe maintenant (l'app l'a posée), GFS l'écrit, elle seule, sur la ligne choisie.
+await frame.locator('.ls-row').filter({ has: frame.locator('use[href="#i-chart"]') }).filter({ hasText: WORDS.untitled }).first().click();
 await page.keyboard.press('F2');
 await frame.locator('#nw-title').waitFor();
 await page.keyboard.type('Ventes 2026');
 await page.keyboard.press('Enter');
 await page.waitForTimeout(800);
-say('F2 sur un rapport sans colonne Nom :', await toast());
-check('F2 : GFS dit que l\'app ne dit pas où est le nom de ses fichiers, et n\'écrit aucune colonne absente', /Grist-BI/.test(await toast()) && JSON.stringify(await configState()) === JSON.stringify(seeded), await toast());
+const renamed = await configState();
+say('après F2 :', JSON.stringify(renamed), 'phrase :', await toast());
+check('F2 sur un rapport sans nom : GFS écrit le nom dans la colonne `Nom` de sa ligne, et nulle part ailleurs',
+  JSON.stringify(renamed.rows.map(({ id, TableId, Nom }) => [id, TableId, Nom])) === JSON.stringify(seeded.rows.map(({ id, TableId, Nom }) => [id, TableId, id === 2 ? 'Ventes 2026' : Nom])) && renamed.columns.join() === seeded.columns.join(), renamed);
 
-// ----- 5. Le double-clic d'un rapport : l'app ne connaît pas encore l'ouverture d'un fichier précis.
+// ----- 5. Le double-clic d'un rapport : l'app l'ouvre elle-même (appel `ouvrir`, puis `ouverture` au démarrage), sans écrire.
+const tableOf = target => target.evaluate(() => (document.querySelector('#table-select') || {}).value || '');
+const reportRow = name => frame.locator('.ls-row').filter({ has: frame.locator('use[href="#i-chart"]') }).filter({ hasText: name }).first();
+const rowsKept = async () => JSON.stringify((await configState()).rows) === JSON.stringify(renamed.rows);
+const FIRST = `${WORDS.report.source.slice(1)} 1`; // le rapport de Clients, la première table : ce que l'app montrerait de toute façon ; « Ventes 2026 » (Commandes) ne se montre que si elle a lu la demande
 await showFiles();
-await frame.locator('.ls-row').filter({ has: frame.locator('use[href="#i-chart"]') }).first().dblclick();
-await page.waitForTimeout(1200);
-say('après le double-clic :', await toast());
-check('le double-clic ouvre Grist-BI sur son modèle habituel et GFS le dit (phrase provisoire)', WORDS.provisional.test(await toast()), await toast());
-check('l\'ouverture n\'écrit rien dans le document', JSON.stringify(await configState()) === JSON.stringify(seeded), await configState());
+await reportRow('Ventes 2026').dblclick();
+const appStarting = await lab.appFrame(BI_URL);
+const saidStarting = await watch(6000);
+const shownStarting = await tableOf(appStarting);
+say('après le double-clic sur « Ventes 2026 » (app fermée, elle démarre) :', shownStarting, 'phrases :', JSON.stringify(saidStarting));
+check('app fermée : le double-clic d\'un rapport la démarre sur ce rapport (`ouverture` du contexte : Commandes, pas la première table), sans phrase provisoire', shownStarting === 'Commandes' && !saidStarting.some(text => WORDS.provisional.test(text)), { table: shownStarting, phrases: saidStarting });
+check('ce démarrage n\'écrit rien dans le document (mêmes lignes, mêmes noms)', await rowsKept(), await configState());
+await showFiles();
+await reportRow(FIRST).dblclick();
+const saidRunning = await watch(3000);
+const appRunning = await lab.appFrame(BI_URL);
+const shownRunning = await tableOf(appRunning);
+say(`après le double-clic sur « ${FIRST} » (app déjà ouverte sur Commandes) :`, shownRunning, 'phrases :', JSON.stringify(saidRunning));
+check('app déjà ouverte : le double-clic d\'un autre rapport l\'ouvre (appel `ouvrir` : la table de ce rapport s\'affiche), sans phrase provisoire', shownRunning === 'Clients' && !saidRunning.some(text => WORDS.provisional.test(text)), { table: shownRunning, phrases: saidRunning });
+check('cette ouverture n\'écrit rien non plus', await rowsKept(), await configState());
+await lab.shotPanel(run, '4-ouvert', frame);
 check('aucun avertissement de GFS' + (started ? ', aucune erreur de script dans l\'app' : ''), warnings.length === 0 && (!started || errors.length === 0), { avertissements: warnings, erreurs: errors });
 await lab.browser.close();

@@ -271,7 +271,7 @@ test('contrats 2.4, 3.2 et 3.4 : le manifeste de Grist-BI range ses rapports dan
   assert.equal(files.typeParDefaut, 'rapport', 'une ligne d\'avant les colonnes ajoutées est un rapport');
   assert.deepEqual(files.types.map(item => [item.valeur, item.nom.fr, item.nom.en, item.icone]), [['rapport', 'Rapport BI', 'BI report', 'chart']]);
   assert.ok(files.types.every(item => item.couleur === undefined), 'la couleur est réservée au document, à la grille et à la présentation (charte)');
-  assert.deepEqual(m.actions.ouvrir, ['rapport'], '« Nouveau > Rapport BI » existe dès l\'inscription ; l\'app ne connaît pas encore l\'ouverture (ACCEPTS_OPEN)');
+  assert.deepEqual(m.actions.ouvrir, ['rapport'], '« Nouveau > Rapport BI » existe dès l\'inscription ; l\'app le sait depuis la 007 (ACCEPTS_OPEN.bi, mesuré dans un vrai Grist : faits vérifiés 51)');
   assert.ok(m.permissions.formules.pourquoi.fr && m.permissions.formules.pourquoi.en, 'la table-sonde de l\'adresse e-mail lit user.Email par une formule : elle se déclare, avec son pourquoi');
   const internal = m.permissions.gristInterne;
   assert.ok(internal.every(entry => entry.lit === true && entry.ecrit === undefined && entry.retire === undefined), 'les tables internes ne se lisent que');

@@ -2747,7 +2747,7 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
 5. [D] **`GFS_Espaces` à part** plutôt que des lignes réservées du rangement : le cahier préfère limiter les tables, mais les deux
    n'ont pas les mêmes règles (une personne lit ses lignes de rangement, un responsable lit sa ligne d'espace). Se tranche à
    l'étape 7, avant que la table existe.
-6. [Q] **GFS ajoute les colonnes d'aide dans la table d'une app**, ce que 6.3, point 2 ne permet pas aujourd'hui (le porteur n'a
+6. [D] **GFS ajoute les colonnes d'aide dans la table d'une app** (**le porteur a choisi « oui, avec ton accord à chaque pose » le 06/11** ; rien n'est codé, c'est le lot b : l'exception à 6.3, point 2 est accordée, additive, jamais une donnée) —, ce que 6.3, point 2 ne permet pas aujourd'hui (le porteur n'a
    donné que le nom d'un fichier, 21/10). Les deux autres voies tiennent mal : l'app les crée (mesuré : une colonne créée avant
    `GFS_Espaces` garde l'erreur ; et l'app n'est pas ouverte quand le propriétaire pose Encadré), ou les règles lisent autre
    chose (une table « attribut de personne » recharge la page, 11.3, point 5). Défaut pris : GFS les crée, avec l'accord du

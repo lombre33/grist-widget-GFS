@@ -7,7 +7,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 
 | App | Dépôt de développement | Consignes | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|---|
-| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `6a22dee` | 04/11/2026 | GPL 3.0 |
+| Publipostage+ | `lombre33/publipostageGrist` | `consignes/publipostage/` | `47fbd21` (sa page : « consignes lues jusqu'à la 052 », au commit `43d2da3`) | 06/11/2026 | GPL 3.0 |
 | Form+ | `lombre33/FormPlus` | `consignes/form/` | `17cfce9` | 04/11/2026 | GPL 3.0 (`196734d`, consigne 004 faite) |
 | Automation+ | `lombre33/GRIST_automation` | `consignes/automation/` | `597fe02` | 04/11/2026 | GPL 3.0 (`LICENSE` ajouté à `e356021`, consigne 002 faite) |
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `474d67f` | 04/11/2026 | GPL 3.0 |
@@ -25,6 +25,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 « Dernier commit lu » est le sommet de `main` à la dernière lecture : le journal a été parcouru jusque-là, et le diff ouvert
 seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
 
+- Publipostage+ au 06/11 (soir) : référence de GFS avancée de `6a22dee` à `47fbd21` (sommet de `main`, 1.1.x), journal parcouru, et mesuré sur le code servi (index.html, js/, css/, extensions/) : la CSP (empreinte identique), la carte d'importation et les bibliothèques ne changent pas ; mêmes 11 verbes d'écriture et 9 tables `Publipostage_*` ; **une seule table interne de plus** (`_grist_Attachments`, déclarée par la 052) ; trois choses nouvelles qui ne servent à rien dans GFS tant qu'il ne les offre pas : le PDF joint à la ligne par un jeton d'écriture (`js/row-attachment.js`, un `fetch` de plus, les clés `pp_attach_column` et `pp_attach_mode` que GFS ne déclare pas), les appels `lecteur.*` (`js/gfs-link.js`, muets sans la clé de contexte `lecteurs`) et `pp_layer_checks` (stockage de la personne) ; cinq `grist.*` de plus sont de fausses alertes (classes CSS et variables nommées `grist`). Poids reportés au manifeste dans le même lot (diapositives 582, lecture-pdf 88, graphique 189, edition 103 inchangé ; mêmes chiffres que la page de l'app). Le dossier de l'app référencée se refait par `git archive <commit> | tar -x -C prototype/apps/publipostage`, **plus son sous-module `kit/` à la version que l'app épingle** (`8afa569`, depuis le kit : `git -C <kit> archive 8afa569 | tar -x -C prototype/apps/publipostage/kit`), puis `git update-index --cacheinfo 160000,<commit entier>,prototype/apps/publipostage`. Rejoué : `run-pieces-jointes-publipostage.mjs` (7 vérifications) ; **le rangement d'un export (`run-ranger-publipostage.mjs`) n'a pas pu être rejoué dans ce conteneur** : son miroir local des CDN n'a ni pdfmake, ni ses polices (`labo/mirror/umd/` : exceljs, jszip, marked seulement), l'export s'arrête sur « Échec de chargement du script » avant d'atteindre GFS ; le même arrêt vaudrait pour l'ancienne référence.
 - Publipostage+ : lu jusqu'à `0880ba0` le 14/10 au soir (17 commits depuis `e4a239c`, et son `GFS-ETAT.md` au commit `b044cab`).
   Rien n'y change ce que GFS suit, hors la garde « type inconnu » (consigne 002, faite) : ni table, ni colonne, ni clé de
   réglages, ni table `_grist_*`, ni action, ni adresse de la CSP (la colonne `Nom` de `Publipostage_Versions`, écrite par

@@ -74,6 +74,14 @@
           "fr": "Connaître la langue et la devise du document pour écrire un nombre ou une date comme sa colonne dans Grist.",
           "en": "Know the document's language and currency to write a number or a date as its column does in Grist."
         }
+      },
+      {
+        "tables": ["_grist_Attachments"],
+        "lit": true,
+        "pourquoi": {
+          "fr": "Savoir si une pièce jointe est une image : un PDF ou un Word s'écrit par son nom au lieu de se dessiner.",
+          "en": "Know whether an attachment is an image: a PDF or Word file is written by its name instead of being drawn."
+        }
       }
     ],
     "formules": {

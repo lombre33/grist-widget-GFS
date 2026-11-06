@@ -162,6 +162,21 @@ test('contrats 3.4 point 1 : Form+ télécharge une pièce jointe par un jeton e
   assert.notEqual(readRefusal(without, '_grist_Attachments'), null, 'sans la déclaration, la lecture de _grist_Attachments est refusée');
 });
 
+// Publipostage+ 1.1 lit `_grist_Attachments` (nom, type, extension, largeur de chaque pièce jointe) pour savoir si une pièce jointe est une image (consigne 051, demande du 06/11 ; le porteur a déclaré la lecture seule le 06/11).
+test('contrats 3.2 point 4 : Publipostage+ lit _grist_Attachments (lecture seule) ; sans la déclaration du manifeste, le courtier la refuse', () => {
+  assert.equal(readRefusal(pp, '_grist_Attachments'), null);
+  assert.notEqual(writeRefusal(pp, '_grist_Attachments'), null, 'jamais écrite');
+  refused(pp, [['AddRecord', '_grist_Attachments', null, { fileName: 'x.pdf' }]]);
+  refused(pp, [['UpdateRecord', '_grist_Attachments', 1, { fileName: 'x.pdf' }]]);
+  refused(pp, [['RemoveRecord', '_grist_Attachments', 1]]);
+  const bare = publipostage();
+  bare.permissions.gristInterne = bare.permissions.gristInterne.filter(entry => !entry.tables.includes('_grist_Attachments'));
+  assert.match(readRefusal(policyOf(bare), '_grist_Attachments'), /non déclarée/, 'sans la déclaration : « Lecture de _grist_Attachments non déclarée »');
+  const entry = publipostage().permissions.gristInterne.find(item => item.tables.includes('_grist_Attachments'));
+  assert.ok(entry.pourquoi.fr && entry.pourquoi.en, 'la fenêtre d\'installation dit pourquoi, en français et en anglais');
+  assert.equal(entry.ecrit, undefined, 'aucune écriture déclarée');
+});
+
 test('contrats 3.3, points 6 et 9 : le rattachement d\'une page à un partage ne s\'écrit jamais, et les lots « ajouter ou mettre à jour » sur les tables qui décident d\'une publication sont refusés', () => {
   const fp = policyOf(form());
   const declaring = entries => policyOf({ ...form(), permissions: { ...form().permissions, gristInterne: [...form().permissions.gristInterne, ...entries] } });

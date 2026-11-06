@@ -13,6 +13,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `474d67f` | 04/11/2026 | GPL 3.0 |
 | Tuesday (nom de travail ; « Thusday » dans les anciens documents) | `lombre33/grist-wisget-tuesday` | `consignes/tuesday/` | `09ed14c` | 03/11/2026 | GPL 3.0 |
 | Calendar+ (id GFS `calendrier`, pas encore au catalogue ; le même projet que Tuesday, un fil de plus) | `lombre33/grist-widget-calendar-plus` | aucun dossier : les 006, 007, 009, 010 et 012 de `consignes/tuesday/` lui parlent | `531e0cd` | 04/11/2026 | GPL 3.0 (`LICENSE` au socle) |
+| Sync+ (« Synchro Grist » ; pas une app du catalogue : seul son moteur ira dans le kit, choix du porteur du 06/11) | `lombre33/grist-widget-one-way-sync` | `consignes/sync/` | `73f261b` (`main`, version 0.12.2) | 06/11/2026 | GPL 3.0 (déjà : `GPL-3.0-only`) |
 
 ## Lus pour référence (pas des apps de GFS)
 

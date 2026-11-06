@@ -8,7 +8,7 @@ dépôt est celle des apps vers GFS. Chaque côté ne lit qu'une page : l'app li
 besoin de quelque chose dans GFS le **demande** (section « Demandes à GFS », plus bas) et teste dans une copie à elle
 (`TESTER-AVEC-GFS.md`) : elle ne pousse jamais chez GFS.
 
-Dossiers : `publipostage` (Publipostage+), `form` (Form+), `automation` (Automation+), `bi` (Grist-BI), `tuesday` (Tuesday).
+Dossiers : `publipostage` (Publipostage+), `form` (Form+), `automation` (Automation+), `bi` (Grist-BI), `tuesday` (Tuesday), `sync` (Sync+, dont seul le moteur ira dans le kit).
 
 ## Lire ses consignes (projet d'une app)
 

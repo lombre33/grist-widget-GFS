@@ -2855,12 +2855,16 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
     concernée et des propriétaires (un nom de dossier peut être confidentiel). Rien n'est codé.
     a. [D] **Droits** : lecture seule, lecture + commentaires (ceux des apps : une règle sur leur table de commentaires liée au fichier, 11.7, point 3, pas le rôle de commentateur de
        Grist), dépôt seul (ajouter sans voir ni modifier l'existant), écriture, administration (changer qui a accès). Cases : « peut télécharger » ; « accès jusqu'au » (date de fin).
-    b. [D] **Fin d'accès** : GFS dit à l'ajout que l'accès **ne se retire pas tout seul** si personne n'ouvre GFS après la date (la ligne passe en « échu » à l'ouverture suivante).
-       [M] À mesurer : une règle de Grist peut-elle lire la date du jour ? Si oui, la fin sera automatique.
+    b. [D] **Fin d'accès** : une règle de Grist ne lit pas l'heure, une colonne-formule sur `TODAY()` si (faits vérifiés, 46) : l'accès s'arrête à la date **dès que Grist recharge le
+       document** ; la fenêtre le dit à l'ajout (un document ouvert sans interruption peut aller un peu au-delà) et la ligne passe en « échu » sans que GFS retire rien. [M] À mesurer : le
+       rechargement d'un document ouvert au-delà de minuit.
     c. [D] **Un fichier ou un dossier sans droit est invisible** dans l'explorateur, non grisé (décision du porteur, 06/11 : les noms peuvent être confidentiels ; la règle « grisé, jamais
        masqué » vaut pour les gestes, non pour les données). Limite à dire : les noms de tables et de pages de Grist restent visibles de qui a accès au document.
     d. [D] **Héritage** : un dossier partagé donne ses droits à ce qu'il contient, vers le bas, par défaut ; les droits s'additionnent, sans refus explicite ; « ne plus hériter »
        restreint un fichier.
+    f. [T] **Mesuré le 06/11 (faits vérifiés, 46)** : des règles posées une seule fois, qui ne lisent que la ligne (`rec`), suffisent : tout le reste passe par des colonnes-formules (`Lecteurs`,
+       `Valide`, `AdminsCible`) ; un administrateur de dossier partage sans propriétaire ; un partage hors de son dossier est écrit mais ne vaut rien ; l'héritage vers le bas se calcule dans la formule ;
+       deux niveaux de validité seulement (un administrateur désigné par un propriétaire nomme, la délégation ne descend pas plus bas).
     e. [T] **La liste des invités n'est pas lisible par un widget** (faits vérifiés, 45) : GFS propose les adresses qu'il connaît (le rangement, les tables d'équipes désignées) et
        l'adresse tapée ; le reste passe par « Demander l'invitation ». « Voir en tant que » existe déjà dans Grist et les widgets en tiennent compte : GFS n'en refait rien.
 

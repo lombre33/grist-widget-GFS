@@ -3,15 +3,21 @@
 
 import { RightsReader } from './rights-reader.js';
 import { openRights } from './rights-window.js';
+import { RightsWriter, RESUME_KEY } from './rights-writer.js';
+import { runAction } from './rights-actions.js';
+import { ask } from './ask-window.js';
+import { keyStore } from './stored-choice.js';
 
 export class RightsControl {
   #opts;
   reader;
+  writer;
 
   // opts : { port, transfer, prefixes() → les préfixes de table des apps, now(), container, inertTargets(), t(clé, variables), fullAccess() }
   constructor(opts) {
     this.#opts = opts;
     this.reader = new RightsReader({ port: opts.port, transfer: opts.transfer, prefixes: opts.prefixes, now: opts.now });
+    this.writer = new RightsWriter({ port: opts.port, reader: this.reader, store: opts.container ? keyStore(opts.container.ownerDocument.defaultView, RESUME_KEY) : { read: () => null, write: () => false } });
   }
 
   // Les règles ne se lisent qu'avec l'accès complet (les tables internes de Grist), et ne se rendent qu'à un propriétaire prouvé : mesuré (Grist 1.7.19), les règles arrivent vides à qui n'a pas le droit de lire
@@ -25,18 +31,27 @@ export class RightsControl {
   }
 
   // Redonne à l'explorateur le mot du pied d'après les règles du moment.
-  async refresh(explorer) { explorer.setRights(await this.rules()); }
+  async refresh(explorer) {
+    explorer.setRights(await this.rules());
+    this.resume(explorer);
+  }
 
-  // Le panneau : tout se relit à l'ouverture (une règle posée dans Grist recharge la page, mais un partage publié ne la recharge pas).
+  // Le panneau : tout se relit à l'ouverture (une règle posée dans Grist recharge la page, mais un partage publié ne la recharge pas). Un propriétaire y trouve aussi les gestes « poser » et « retirer ».
   open(explorer) {
-    const { container, inertTargets, t } = this.#opts;
+    const { container, inertTargets, t, fullAccess } = this.#opts;
+    const asking = options => ask({ container, inertTargets, ...options });
     return openRights({
       container, inertTargets, t,
       load: async () => {
-        const [rules, owner, links] = await Promise.all([this.rules(), this.reader.owner(), this.#opts.fullAccess() ? this.reader.links() : { status: 'unreadable', links: [] }]);
+        const [rules, owner, links] = await Promise.all([this.rules(), this.reader.owner(), fullAccess() ? this.reader.links() : { status: 'unreadable', links: [] }]);
+        const plans = rules.readable ? await this.writer.plans() : null;
         explorer.setRights(rules);
-        return { rules, owner, links };
+        return { rules, owner, links, plans };
       },
+      act: async kind => { await runAction({ kind, plans: await this.writer.plans(), t, ask: asking, writer: this.writer }); },
     });
   }
+
+  // Au retour du rechargement que Grist impose après une pose : rouvre le panneau, une fois (contrats 11.5, point 3).
+  resume(explorer) { if (this.writer.resume()) void this.open(explorer); }
 }

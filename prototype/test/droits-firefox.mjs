@@ -45,8 +45,8 @@ export async function droitsProblems(page, language, tag) {
     return now;
   };
   try {
-    for (const [kind, word, needs] of [['pas', 'pas', [t('rights.lead.pas'), t('rights.level.ouvert'), t('rights.link.protected', { n: 1, tables: 'FormPlus_Pub_3' })]],
-      ['protege', 'protege', [t('rights.lead.protege'), t('rights.level.encadre'), t('rights.structure.closed')]], ['autre', 'autre', [t('rights.lead.autre'), t('rights.level.autre')]],
+    for (const [kind, word, needs] of [['pas', 'pas', [t('rights.lead.pas'), t('rights.level.ouvert'), t('rights.link.protected', { n: 1, tables: 'FormPlus_Pub_3' }), t('rights.act.title'), t('rights.act.shared'), t('rights.act.close')]],
+      ['protege', 'protege', [t('rights.lead.protege'), t('rights.level.encadre'), t('rights.structure.closed'), t('rights.act.remove'), t('rights.act.open')]], ['autre', 'autre', [t('rights.lead.autre'), t('rights.level.autre'), t('rights.act.why.foreign'), t('rights.act.why.already')]],
       ['proprietaire-seul', 'none', [t('rights.lead.ownerOnly'), t('rights.role.false'), t('rights.links.owner-only')]]]) {
       await run.reset();
       await page.run(name => { window.__rightsKind = name; window.__rightsState(name); }, kind);
@@ -61,6 +61,22 @@ export async function droitsProblems(page, language, tag) {
         if (!open.modal.sticky) run.note(kind, 'le titre et le bouton devaient rester en place (le titre au-dessus du contenu, le pied sous lui)');
         if (open.modal.outside.length) run.note(kind, `rien ne devait sortir du panneau (sort : ${open.modal.outside.join(', ')})`);
         if (kind === 'protege' && open.modal.level.some(level => level !== t('rights.level.encadre'))) run.note(kind, 'chaque table devait dire « Encadré »');
+      }
+      if (kind === 'proprietaire-seul' && body.includes(t('rights.act.title'))) run.note(kind, 'une personne qui n\'est pas propriétaire ne devait pas voir le bloc « Poser des règles »');
+      if (kind === 'pas' || kind === 'autre') {
+        const disabled = await page.run(() => [...document.querySelectorAll('.rt-act .btn')].map(node => [node.dataset.fk, node.getAttribute('aria-disabled')]));
+        const wanted = kind === 'pas' ? [['rights-act-shared', null], ['rights-act-close', null]] : [['rights-act-off', 'true'], ['rights-act-off', 'true']];
+        if (JSON.stringify(disabled) !== JSON.stringify(wanted)) run.note(kind, `les deux gestes devaient être ${kind === 'pas' ? 'possibles' : 'grisés'} (ils sont : ${JSON.stringify(disabled)})`);
+      }
+      if (kind === 'pas') {
+        // La vraie souris sur « Poser » : la question s'ouvre par-dessus le panneau, Échap la ferme sans fermer le panneau, et le geste a bien été demandé.
+        await run.clickSelector('[data-fk="rights-act-shared"]');
+        await expect(kind, 'la question devait s\'ouvrir par-dessus le panneau', s => s.modal !== null);
+        const asked = await page.run(() => ({ acts: window.__rightsActs, ask: Boolean(document.querySelector('.mod.ask')) }));
+        if (!asked.ask || JSON.stringify(asked.acts) !== '["shared"]') run.note(kind, `« Poser » devait ouvrir une question (reçu : ${JSON.stringify(asked)})`);
+        await page.press('Escape');
+        const after = await page.run(() => ({ ask: Boolean(document.querySelector('.mod.ask')), panel: Boolean(document.querySelector('.mod.rt')) }));
+        if (after.ask || !after.panel) run.note(kind, `Échap devait fermer la question et laisser le panneau (état : ${JSON.stringify(after)})`);
       }
       // Tab reste dans le panneau ; Échap le ferme et rend le clavier au mot du pied ; la souris le rouvre, « Fermer » le ferme.
       for (let i = 0; i < 3; i += 1) { await page.press('Tab'); const inside = await snap(); if (!inside.modal || !inside.modal.inside) run.note(kind, 'Tab devait rester dans le panneau'); }

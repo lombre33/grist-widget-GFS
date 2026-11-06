@@ -38,15 +38,19 @@ export function userRules(resources, rules) {
 }
 
 // La structure est fermée aux éditeurs (11.4, point 5) : une règle sur la ressource par défaut, qui retire `S` à qui n'est pas propriétaire.
+// Mesuré (Grist 1.7.19) : la ressource que l'interface de Grist écrit pour « toutes les tables » est `*` / `*` ; celle que Grist crée avec un document neuf (vide / vide) n'est qu'un reste, et une règle
+// posée dessus ne ferme rien. GFS écrit sur `*` / `*` et lit les deux (une règle écrite à la main peut être sur l'une ou l'autre).
+const isAllTables = rule => rule.tableId === '' || (rule.tableId === '*' && (rule.colIds === '*' || rule.colIds === ''));
+const structureOnly = rights => /^[-+]S$/.test(String(rights).trim());
 export function structureClosed(rules) {
-  return rules.some(rule => rule.tableId === '' && /-[A-Z]*S/.test(rule.rights) && /^user\.Access\s*(!=\s*OWNER|not\s+in\s*\[\s*OWNER\s*\])$/.test(rule.formula.trim()));
+  return rules.some(rule => isAllTables(rule) && /-[A-Z]*S/.test(rule.rights) && /^user\.Access\s*(!=\s*OWNER|not\s+in\s*\[\s*OWNER\s*\])$/.test(rule.formula.trim()));
 }
 
 // Le niveau de chaque table donnée : le plus fermé des niveaux que GFS a noté sur ses règles ; `autre` quand elle porte des règles que GFS n'a pas posées (ou que la note ne décrit pas) ;
 // `ouvert` sans règle. Une règle sur « toutes les tables » (`*`) compte pour chacune.
 export function tableLevels(rules, tableIds) {
   return new Map(tableIds.map(tableId => {
-    const mine = rules.filter(rule => rule.tableId === tableId || rule.tableId === '*');
+    const mine = rules.filter(rule => (rule.tableId === tableId || rule.tableId === '*') && !structureOnly(rule.rights));
     const noted = mine.map(rule => rule.level).filter(level => level && level !== 'ouvert');
     if (noted.length) return [tableId, noted.includes('encadre') ? 'encadre' : 'partage'];
     return [tableId, mine.length ? 'autre' : 'ouvert'];

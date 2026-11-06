@@ -6,6 +6,7 @@ import { h } from './dom.js';
 import { icon } from './icons.js';
 import { openModal } from './modal.js';
 import { chipKey, leadKey } from './rights.js';
+import { actionsOf } from './rights-plan.js';
 
 const section = (title, ...children) => h('section', { class: 'rt-sec' }, h('h3', null, title), ...children);
 
@@ -36,17 +37,31 @@ function linksBlock(t, result) {
   return section(t('rights.links'), result.links.length ? h('ul', { class: 'rt-list' }, ...result.links.map(link => linkBlock(t, link))) : h('p', { class: 'rt-none' }, t('rights.links.none')));
 }
 
-// Le contenu du panneau d'après ce que le lecteur a rendu : { rules, owner, links }. Une fonction de nœuds, sans état.
-export function rightsBody(t, { rules, owner, links }) {
+// Le bloc « Poser des règles » (étape 7) : seulement pour un propriétaire prouvé qui lit les règles ; un geste impossible est grisé avec sa raison, jamais masqué (charte).
+function actionsBlock(t, state, act) {
+  if (!state.rules.readable) return null;
+  const rows = actionsOf(state.plans).map(({ kind, label, hint, why }) => {
+    const button = h('button', { type: 'button', class: 'btn', 'aria-disabled': kind ? null : 'true', dataset: { fk: `rights-act-${kind || 'off'}` } }, t(label));
+    if (kind) button.addEventListener('click', () => act(kind));
+    else button.addEventListener('click', event => event.preventDefault());
+    return h('li', { class: 'rt-act' }, button, h('p', { class: kind ? 'rt-hint' : 'rt-none' }, t(kind ? hint : why)));
+  });
+  return section(t('rights.act.title'), h('p', { class: 'rt-hint' }, t('rights.act.lead')), h('ul', { class: 'rt-list' }, ...rows));
+}
+
+// Le contenu du panneau d'après ce que le lecteur a rendu : { rules, owner, links, plans }. Une fonction de nœuds, sans état ; `act(kind)` répond au clic d'un geste possible.
+export function rightsBody(t, state, act = () => {}) {
+  const { rules, owner, links } = state;
   return h('div', { class: 'rt-content' },
     h('p', { class: 'rt-lead', dataset: { word: rules.readable && rules.word ? rules.word : 'none' } }, icon('shield'), h('span', null, h('b', null, t(chipKey(rules))), ' · ', t(leadKey(rules)))),
     h('p', { class: 'rt-role' }, t(`rights.role.${owner === true || owner === false ? owner : 'null'}`)),
     tablesBlock(t, rules),
+    actionsBlock(t, state, act),
     linksBlock(t, links));
 }
 
-// opts : { container, t, inertTargets() -> [élément], load() -> Promise<{ rules, owner, links }> }. Rend la promesse de la fermeture.
-export function openRights({ container, t, inertTargets, load }) {
+// opts : { container, t, inertTargets() -> [élément], load() -> Promise<{ rules, owner, links, plans }>, act(kind) -> Promise (le geste, question comprise) }. Rend la promesse de la fermeture.
+export function openRights({ container, t, inertTargets, load, act = async () => {} }) {
   const body = h('div', { class: 'ask-body rt-body' }, h('p', { class: 'rt-none', 'aria-live': 'polite' }, t('rights.loading')));
   const close = h('button', { type: 'button', class: 'btn primary', dataset: { fk: 'rights-close' } }, t('rights.close'));
   const dialog = h('section', { class: 'mod rt', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'rights-title' },
@@ -55,6 +70,8 @@ export function openRights({ container, t, inertTargets, load }) {
     h('footer', { class: 'mod-foot' }, h('p', { class: 'mod-note' }, t('rights.foot')), close));
   const { done, result } = openModal({ container, section: dialog, inertTargets, first: close, cancel: null });
   close.addEventListener('click', () => done(null));
-  void load().then(state => { if (dialog.isConnected) body.replaceChildren(rightsBody(t, state)); }).catch(() => { if (dialog.isConnected) body.replaceChildren(h('p', { class: 'rt-none' }, t('rights.lead.unreadable'))); });
+  const show = () => load().then(state => { if (dialog.isConnected) body.replaceChildren(rightsBody(t, state, kind => void act(kind).then(show))); })
+    .catch(() => { if (dialog.isConnected) body.replaceChildren(h('p', { class: 'rt-none' }, t('rights.lead.unreadable'))); });
+  void show();
   return result;
 }

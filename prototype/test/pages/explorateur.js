@@ -260,18 +260,23 @@ async function mount() {
   // Le panneau « Permissions » (js/rights-window.js, test/droits-firefox.mjs) : la vraie fenêtre sur un état que le lecteur aurait rendu ; `kind` : 'pas' (rien posé, un lien public qui ouvre une table protégée),
   // 'protege' (Encadré partout, structure fermée, deux liens), 'autre' (des règles à la main), 'proprietaire-seul' (une personne qui n'est pas propriétaire). `window.__rightsKind` désigne celui que le mot du pied ouvre.
   const LONG = 'Publipostage_Modeles_Attestations_De_Formation_Fin_De_Session';
+  const FRESH = { shared: { ok: true, firstRule: true }, 'remove-level': { ok: false, reason: 'none' }, close: { ok: true, firstRule: true }, open: { ok: false, reason: 'none' } };
+  const DONE = { shared: { ok: false, reason: 'already' }, 'remove-level': { ok: true }, close: { ok: false, reason: 'already' }, open: { ok: true } };
+  const BYHAND = { shared: { ok: false, reason: 'foreign' }, 'remove-level': { ok: false, reason: 'none' }, close: { ok: false, reason: 'already' }, open: { ok: false, reason: 'none' } };
   const states = {
-    pas: { rules: { readable: true, word: 'pas', closed: false, tables: [{ tableId: 'GFS_Rangement', level: 'ouvert' }, { tableId: LONG, level: 'ouvert' }] }, owner: true,
+    pas: { rules: { readable: true, word: 'pas', closed: false, tables: [{ tableId: 'GFS_Rangement', level: 'ouvert' }, { tableId: LONG, level: 'ouvert' }] }, owner: true, plans: FRESH,
       links: { status: 'ok', links: [{ id: 1, published: true, pages: ['Inscription à la session de formation de septembre'], filled: [{ tableId: 'FormPlus_Pub_3', shown: ['Nom'], unshown: ['Statut', 'Note interne', 'Montant', 'Reçu le'], rows: 1204 }], readable: [{ tableId: 'Villes', colId: 'Nom' }], protectedOpen: ['FormPlus_Pub_3'] }] } },
-    protege: { rules: { readable: true, word: 'protege', closed: true, tables: [{ tableId: 'GFS_Rangement', level: 'encadre' }, { tableId: LONG, level: 'encadre' }] }, owner: true,
+    protege: { rules: { readable: true, word: 'protege', closed: true, tables: [{ tableId: 'GFS_Rangement', level: 'encadre' }, { tableId: LONG, level: 'encadre' }] }, owner: true, plans: DONE,
       links: { status: 'ok', links: [{ id: 1, published: true, pages: ['Inscription'], filled: [{ tableId: 'Inscrits', shown: ['Nom', 'Ville'], unshown: [], rows: 12 }], readable: [], protectedOpen: [] }, { id: 2, published: false, pages: [], filled: [], readable: [], protectedOpen: [] }] } },
-    autre: { rules: { readable: true, word: 'autre', closed: false, tables: [{ tableId: 'GFS_Rangement', level: 'autre' }] }, owner: true, links: { status: 'ok', links: [] } },
+    autre: { rules: { readable: true, word: 'autre', closed: false, tables: [{ tableId: 'GFS_Rangement', level: 'autre' }] }, owner: true, plans: BYHAND, links: { status: 'ok', links: [] } },
     'proprietaire-seul': { rules: { readable: false, reason: 'owner-only', tables: [], closed: false, word: null }, owner: false, links: { status: 'owner-only', links: [] } },
   };
   window.__rights = kind => {
     const state = states[kind];
     explorer.setRights(state.rules);
-    return openRights({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], load: async () => state });
+    window.__rightsActs = [];
+    return openRights({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], load: async () => state,
+      act: async act => { window.__rightsActs.push(act); await ask({ title: act, message: act, confirmLabel: 'OK', cancelLabel: 'Annuler', safeFirst: true, container: stage, inertTargets: () => [explorer.root] }); } });
   };
   window.__rightsState = kind => explorer.setRights(states[kind].rules);
   // La fenêtre « Poids du document » (js/weight-window.js, test/poids-fenetre-firefox.mjs) : la vraie fenêtre et le vrai lecteur (js/weight-reader.js) sur une doublure de `Transfer.sql`. `window.__weightKind` choisit ce

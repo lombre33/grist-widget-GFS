@@ -28,6 +28,13 @@
 .rt-link-lines li { display: flex; align-items: flex-start; gap: 6px; }
 .rt-link-lines li + li { margin-top: 2px; }
 .rt-link-lines .ic { flex: none; width: 13px; height: 13px; margin-top: 2px; }
+.rt-act { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 4px; border-bottom: 1px solid var(--border); }
+.rt-act .btn { flex: none; }
+/* Un geste grisé reste lisible (charte : 4,5:1) : le grisé se dit par la couleur de texte atténuée et le curseur, non par la transparence que la base des boutons applique. */
+.rt-act .btn[aria-disabled="true"] { opacity: 1; color: var(--text-muted); cursor: not-allowed; }
+.rt-act p { flex: 1; min-width: 0; margin: 0; }
+.rt-hint { margin: 0 0 4px; color: var(--text-muted); }
+.rt-act .rt-hint { margin: 0; }
 .rt-warn { color: var(--warn-ink); }
 .rt-bad { color: var(--danger-ink); font-weight: 600; }
 

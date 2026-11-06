@@ -162,6 +162,19 @@ PHASE=proprietaire node run-droits-reel.mjs                               # la s
 
 `LAB_LANG=en LAB_SCHEME=dark` jouent la passe en anglais, en sombre. La suite joue aussi l'essai sous Firefox : `test/droits-firefox.mjs` (voir plus bas). Résultats : `docs/faits-verifies.md`, section 40.
 
+### Poser des règles : trois temps, un seul document
+
+Même principe que les droits (un seul compte à la fois, le même document, l'état dans `/tmp/poser-gfs-etat.json`), pour les gestes du panneau « Permissions » (étape 7, lot a ; contrats 11.4, 11.5). Le rangement du document a le schéma réel de GFS (`COLUMNS` de `js/rangement.js`).
+
+```bash
+cd prototype/labo && export REPO_DIR="$(realpath ../..)"
+bash vrai-serveur.sh                                  && PHASE=proprietaire node run-poser.mjs   # Annuler n'écrit rien ; « Poser Partagé » (six règles) et « Fermer la structure » : Grist recharge, GFS rouvre le panneau
+GRIST_EMAIL=editor@example.com bash vrai-serveur.sh   && PHASE=editeur      node run-poser.mjs   # l'éditeur : son rangement seul, aucun geste de structure, ni copie ; GFS marche pour lui (la sonde d'adresse passe)
+bash vrai-serveur.sh                                  && PHASE=retrait      node run-poser.mjs   # « Rouvrir », « Retirer » : il ne reste que la règle écrite à la main
+```
+
+`LAB_LANG=en LAB_SCHEME=dark` jouent la passe en anglais, en sombre. Les gestes communs aux essais de droits sont dans `lab-droits.mjs`.
+
 ### La fenêtre du poids : trois personnes, six temps
 
 Même principe que les droits (un seul compte à la fois, le même document dans `/tmp/grist-persist`), en six temps : le propriétaire crée le document et la fenêtre est lue sans règle d'accès (propriétaire, puis éditeur et lecteur : Grist leur rend `/sql`, la fenêtre

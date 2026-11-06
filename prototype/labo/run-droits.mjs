@@ -17,6 +17,7 @@ import { createI18n } from '../js/i18n.js';
 import { PAGE_PORT, openGfs, contrastProblems, windowFits } from './lab-pdf.mjs';
 import { SHOTS } from './lab-common.mjs';
 import { join } from 'node:path';
+import { gfsFrame, chip, chipWord, openPanel, closePanel, apply, shareWithEditorAndViewer, fits } from './lab-droits.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -29,33 +30,6 @@ const ALWAYS = { fichier: 'controller.js', de: "export const ALWAYS_ON = Object.
 
 const shot = async (frame, name) => (await frame.frameElement()).screenshot({ path: join(SHOTS, `droits-${lang}-${scheme}-${name}.png`) });
 const text = async frame => (await frame.locator('.mod.rt').innerText()).replace(/\s+/g, ' ');
-
-// Le cadre de GFS (accès complet) prêt, après une ouverture ou un rechargement de la page par Grist.
-async function gfsFrame(page) {
-  for (let i = 0; i < 120; i++) {
-    const frame = page.frames().find(each => /\/prototype\/index\.html/.test(each.url()) && /access=full/.test(each.url()));
-    if (frame) {
-      const ready = await frame.evaluate(() => document.body.dataset.gfs === 'ready' && document.body.dataset.gfsFirstRun === 'done').catch(() => false);
-      if (ready) { await page.waitForTimeout(600); if (await frame.locator('.mod-scrim').count()) await page.keyboard.press('Escape'); return frame; }
-    }
-    await page.waitForTimeout(500);
-  }
-  throw new Error('Le cadre de GFS ne s\'est pas rouvert.');
-}
-
-const chip = frame => frame.locator('.rights-chip');
-// Le mot du pied, une fois la lecture faite.
-async function chipWord(frame, word) {
-  await frame.waitForFunction(expected => document.querySelector('.rights-chip') && document.querySelector('.rights-chip').dataset.word === expected, word, { timeout: 20000 }).catch(() => {});
-  return chip(frame).innerText();
-}
-async function openPanel(page, frame) {
-  await chip(frame).click();
-  await frame.locator('.mod.rt .rt-content').waitFor({ timeout: 20000 });
-  await page.waitForTimeout(300);
-}
-const closePanel = async (page, frame) => { await page.keyboard.press('Escape'); await frame.locator('.mod.rt').waitFor({ state: 'detached' }); };
-const apply = (page, id, actions) => page.evaluate(async ([doc, list]) => (await fetch(`/api/docs/${doc}/apply`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(list) })).status, [id, actions]);
 
 // Le contexte qu'une app (la sonde V) a reçu de GFS : son champ `role`.
 async function roleSeenBy(page, frame) {
@@ -88,16 +62,16 @@ async function playOwner(run, id) {
   let panel = await text(frame);
   check('le panneau : le mot, la phrase, les deux tables « Ouvert », la structure ouverte, propriétaire, aucun lien', [t('rights.chip.pas'), t('rights.lead.pas'), 'GFS_Rangement', 'Publipostage_Modeles', t('rights.level.ouvert'), t('rights.structure.open'), t('rights.role.true'), t('rights.links.none')].every(part => panel.includes(part)), panel);
   check('la table de la personne (« Autres ») n\'y est pas : GFS ne parle pas des tables de données', !panel.includes('Autres') && !panel.includes('Clients'), panel);
-  check('il tient dans le panneau et ses textes tiennent la charte (4,5:1)', (await contrastProblems(frame, '.mod')).length === 0 && JSON.stringify(await windowFits(frame)) === '{"shown":true,"inPanel":true,"overflowing":[]}', [await contrastProblems(frame, '.mod'), await windowFits(frame)]);
+  check('il tient dans le panneau et ses textes tiennent la charte (4,5:1)', await fits(frame, '.mod.rt'), [await contrastProblems(frame, '.mod'), await windowFits(frame)]);
   await shot(frame, '1-pas-protege');
   await closePanel(page, frame);
 
   say('--- 2. les règles de GFS (Encadré) et la structure fermée ---');
   const resource = (n, tableId) => ['AddRecord', '_grist_ACLResources', -n, { tableId, colIds: '*' }];
   const rule = (n, resourceRef, formula, rights, memo) => ['AddRecord', '_grist_ACLRules', null, { resource: resourceRef, aclFormula: formula, permissionsText: rights, memo }];
-  const status = await apply(page, id, [resource(1, 'GFS_Rangement'), resource(2, 'Publipostage_Modeles'),
+  const status = await apply(page, id, [resource(1, 'GFS_Rangement'), resource(2, 'Publipostage_Modeles'), resource(3, '*'),
     rule(1, -1, 'user.Access != OWNER', '-CRUD', 'GFS : Encadré'), rule(2, -2, 'user.Access != OWNER', '-CRUD', 'GFS : Encadré'),
-    ['AddRecord', '_grist_ACLRules', null, { resource: 1, aclFormula: 'user.Access != OWNER', permissionsText: '-S', memo: 'GFS : Encadré' }]]);
+    ['AddRecord', '_grist_ACLRules', null, { resource: -3, aclFormula: 'user.Access != OWNER', permissionsText: '-S', memo: 'GFS : Encadré' }]]);
   check('les règles sont posées par une seule action', status === 200, status);
   frame = await gfsFrame(page);
   check('GFS relit les règles : « Protégé »', (await chipWord(frame, 'protege')) === t('rights.chip.protege'), await chip(frame).innerText());
@@ -124,7 +98,7 @@ async function playOwner(run, id) {
   panel = await text(frame);
   check('le panneau liste le partage : la page, la table qu\'il remplit, ses lignes, les colonnes qu\'aucun champ ne montre', panel.includes(t('rights.link.page', { page: 'Clients' })) && panel.includes(t('rights.link.fills', { table: 'Clients', n: 1 })) && panel.includes(t('rights.link.hidden', { columns: 'Nom' })), panel);
   check('la clé du lien n\'apparaît nulle part dans la page de GFS', !(await frame.evaluate(() => document.documentElement.outerHTML)).includes(SECRET));
-  check('il tient dans le panneau et reste lisible (4,5:1)', (await contrastProblems(frame, '.mod')).length === 0 && JSON.stringify(await windowFits(frame)) === '{"shown":true,"inPanel":true,"overflowing":[]}', [await contrastProblems(frame, '.mod'), await windowFits(frame)]);
+  check('il tient dans le panneau et reste lisible (4,5:1)', await fits(frame, '.mod.rt'), [await contrastProblems(frame, '.mod'), await windowFits(frame)]);
   await shot(frame, '3-lien-public');
   await closePanel(page, frame);
 
@@ -143,7 +117,7 @@ async function playOther(run, who) {
   const panel = await text(frame);
   check('le panneau dit pourquoi (propriétaire seul), qu\'on n\'est pas propriétaire, cache les tables et les liens publics', panel.includes(t('rights.lead.ownerOnly')) && panel.includes(t('rights.role.false')) && panel.includes(t('rights.links.owner-only')) && !panel.includes('GFS_Rangement') && !panel.includes('Clients') && !panel.includes(t('rights.chip.pas')), panel);
   check('la clé du lien n\'apparaît nulle part dans la page de GFS', !(await frame.evaluate(() => document.documentElement.outerHTML)).includes(SECRET));
-  check('il tient dans le panneau et reste lisible (4,5:1)', (await contrastProblems(frame, '.mod')).length === 0 && JSON.stringify(await windowFits(frame)) === '{"shown":true,"inPanel":true,"overflowing":[]}', [await contrastProblems(frame, '.mod'), await windowFits(frame)]);
+  check('il tient dans le panneau et reste lisible (4,5:1)', await fits(frame, '.mod.rt'), [await contrastProblems(frame, '.mod'), await windowFits(frame)]);
   await shot(frame, `${who}-panneau`);
   await closePanel(page, frame);
   const role = await roleSeenBy(page, frame);
@@ -157,7 +131,7 @@ try {
   const context = await newContext(browser, pluginApi, { colorScheme: scheme });
   if (phase === 'proprietaire') {
     const run = await openGfs(context, { lang, probes: ['v'], patches: [ALWAYS] });
-    await run.page.evaluate(async id => (await fetch(`/api/docs/${id}/access`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ delta: { users: { 'editor@example.com': 'editors', 'viewer@example.com': 'viewers' } } }) })).status, run.docId);
+    await shareWithEditorAndViewer(run.page, run.docId);
     writeFileSync(STATE, JSON.stringify({ docId: run.docId, path: run.path }));
     await playOwner(run, run.docId);
     const bad = unexpected(run);

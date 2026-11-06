@@ -2624,7 +2624,8 @@ soit la dernière de sa ressource. Les droits s'écrivent comme Grist les range 
    les règles ne comparent que ces copies. [M] **Mesuré le 22/10** avec ces noms : mêmes résultats que le jeu d'essai sans préfixe
    (faits vérifiés, 10.5), pour une table `reserve` ; la table `derivee` a été mesurée avant les espaces, avec des colonnes qui
    copient le contenu.
-5. [T] **Structure fermée** (la case de Grist, pas un niveau) : une seule règle, sur la règle par défaut (toutes les tables) :
+5. [T] **Structure fermée** (la case de Grist, pas un niveau) : une seule règle, sur la ressource « toutes les tables » (`*` / `*`, celle que l'interface de Grist écrit ; **mesuré le 06/11 sur
+   Grist 1.7.19** : la ressource vide que Grist crée avec un document neuf n'est qu'un reste, une règle posée dessus ne ferme rien) :
    `user.Access != OWNER` → `-S`. Posée sur une table ou une colonne, Grist l'écarte sans erreur. Un éditeur ne peut alors plus
    ajouter ni supprimer une table, une colonne ou une page, ni changer l'adresse d'un widget, ni poser une formule, ni enregistrer
    un réglage partagé de la vue ; ses lignes restent écrivables et les responsables d'espace continuent d'administrer leur espace
@@ -2680,6 +2681,12 @@ soit la dernière de sa ressource. Les droits s'écrivent comme Grist les range 
    fermer la structure de lui-même (11.7, point 1) ; laisser publier un formulaire qui remplit une table protégée (11.9, point 4).
 8. [D] Une nouvelle table de classe (une app installée plus tard) demande de poser ses règles : c'est une action sur les tables
    de règles, donc la même liasse, le même avertissement, le même rechargement.
+9. [T] **Codé le 06/11 (étape 7, lot a)** : dans le panneau « Permissions » (`js/rights-plan.js`, `rights-writer.js`, `rights-actions.js`), un propriétaire prouvé pose ou retire **Partagé sur le rangement** (les six règles de
+   11.4, point 2, en une liasse, note « GFS : Partagé · … ») et **ferme ou rouvre la structure** (11.7, point 1). Chaque geste passe par une fenêtre du widget qui dit son prix (la première règle du document, le rechargement,
+   ce que coûte la structure fermée), avec « Annuler » au clavier ; GFS relit les règles juste avant d'écrire (un plan périmé n'écrit rien), retient `gfs.reprise` dans le navigateur et rouvre le panneau après le rechargement.
+   Un geste impossible reste à l'écran, grisé, avec sa raison (rangement absent ou sans la colonne `Adresse`, règles écrites à la main sur le rangement, structure déjà fermée à la main). Pas encore codé : Encadré, les
+   espaces, les colonnes d'aide. Ce que GFS ne peut pas faire seul : lister, avant de fermer la structure, les tables dont les apps ont besoin (11.5, point 4) : le manifeste ne donne que le préfixe (2.3), la fenêtre le dit
+   donc en général. Mesuré dans un vrai Grist (faits vérifiés, 44).
 
 ### 11.6 Ce que le contrat demande à chaque app
 
@@ -2762,7 +2769,7 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
     autres écritures de GFS dans la structure.
 11. [Q] **Dire aux apps quelles tables un lien remplit**, dans le contexte (5.2), pour que Publipostage+ et Automation+ ne
     déclenchent rien d'elles-mêmes sur ces lignes (11.9, point 5). À fixer avec le panneau des liens (11.9, point 8).
-12. [Q] **Qui voit un PDF que GFS garde, et une entrée de la corbeille ?** (trou vu le 04/11) `GFS_Fichiers` (6.6) et `GFS_Corbeille`
+12. [D] **Qui voit un PDF que GFS garde, et une entrée de la corbeille ?** (trou vu le 04/11) **Le porteur a choisi le 06/11 « privé par défaut » (a, b et c ci-dessous) ; rien n'est codé, les règles de ces deux tables se posent avec Encadré.** `GFS_Fichiers` (6.6) et `GFS_Corbeille`
     (6.7) sont deux tables de GFS que 11.2 ne classe pas : sous Encadré, aucune règle ne les couvre, donc tout éditeur y lit tous les
     PDF (les exports d'une app compris, faits avec ce que la personne avait le droit de lire) et l'instantané complet de tout fichier
     d'app mis à la corbeille, qui est la ligne entière de l'app (`Instantane`, 6.7) : un modèle réservé (`reserve`, 11.2) qu'on

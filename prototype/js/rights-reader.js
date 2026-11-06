@@ -58,6 +58,17 @@ export class RightsReader {
     }
   }
 
+  // Les lignes dont les plans de pose ont besoin (js/rights-plan.js) : les règles et leurs ressources en entier, les tables et leurs colonnes. Seulement pour un propriétaire prouvé ; null sinon.
+  async raw() {
+    if ((await this.owner()) !== true) return null;
+    try {
+      const [resources, rules, tables, columns] = await Promise.all(['_grist_ACLResources', '_grist_ACLRules', '_grist_Tables', '_grist_Tables_column'].map(name => this.#rows(name)));
+      return { resources, rules, tables, columns };
+    } catch (error) {
+      return null;
+    }
+  }
+
   // Tous les partages du document, publiés par GFS ou par l'interface de Grist, avec le nombre de lignes de chaque table qu'un lien remplit. Seul un propriétaire les voit (contrats 11.9, point 8) :
   // `status` vaut 'ok', 'owner-only' (la personne n'est pas propriétaire), 'unknown' (GFS ne l'a pas prouvé) ou 'unreadable'.
   async links() {

@@ -14,6 +14,8 @@
     "table": "FormPlus_Formulaires",
     "colonnes": { "id": "id", "nom": "Nom", "type": "TypeFormulaire", "date": "DateModif", "par": "ModifiePar" },
     "typeParDefaut": "formulaire",
+    "suppression": { "ligne": true, "appel": true },
+    "copie": { "appel": true },
     "types": [
       { "valeur": "formulaire", "nom": { "fr": "Formulaire", "en": "Form" }, "icone": "form" }
     ]

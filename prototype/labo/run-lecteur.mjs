@@ -11,6 +11,7 @@
 //   5. Refus : une adresse à la place d'un identifiant, un site inconnu : rien ne change, l'avertissement se lit en console.
 //   6. La page change de taille : le lecteur suit le cadre de l'app. L'app est cachée (retour à l'explorateur) : le lecteur disparaît ; `fermer` le retire.
 //   7. La politique de sécurité : un cadre vers un troisième site est refusé par le navigateur (le témoin), et aucun refus ne frappe les deux sites.
+//   8. Le clavier dans le lecteur (question de l'app, 07/11) : après un clic dans le lecteur, la touche Échap tapée à la vraie touche arrive au cadre du fournisseur et à lui seul ; ni la page de GFS, ni l'app, ni la page de Grist ne la reçoivent.
 import { createServer } from 'node:http';
 import { serve } from './lab-server.mjs';
 import { chromium, say, check, SHOTS } from './lab-common.mjs';
@@ -35,7 +36,7 @@ const requested = [];
 async function stubPlayers(page) {
   await page.route(STUB_HOSTS, route => {
     requested.push(route.request().url());
-    return route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><meta charset="utf-8"><title>essai</title><body style="margin:0;background:#2a6;font:16px sans-serif;color:#fff">Lecteur d\'essai</body>' });
+    return route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><meta charset="utf-8"><title>essai</title><body style="margin:0;background:#2a6;font:16px sans-serif;color:#fff">Lecteur d\'essai<script>addEventListener(\'keydown\', e => { document.title = \'touche:\' + e.key; });</script></body>' });
   });
 }
 
@@ -187,6 +188,33 @@ async function playResizeAndLeave(run) {
   check('fermer retire le lecteur', await waitFor(run.page, 'fermé', async () => (await players(run).count()) === 0));
 }
 
+async function playKeyboard(run) {
+  say('--- 8. le clavier dans le lecteur ---');
+  await request(run, 'afficher', { id: 'v8', fournisseur: 'youtube', video: YOUTUBE, rect: rectOf(60, 50, 360, 200), zone: rectOf(0, 0, run.size.width, run.size.height) });
+  check('un lecteur est posé', await waitFor(run.page, 'le lecteur apparaît', async () => (await players(run).count()) === 1 && (await windowBox(run))));
+  const loaded = await waitFor(run.page, 'la page du lecteur', async () => run.page.frames().some(frame => frame.url().startsWith('https://www.youtube-nocookie.com/embed/') && !frame.isDetached()));
+  check('le cadre du fournisseur est chargé', loaded);
+  const keys = () => ({ gfs: run.frame.evaluate(() => window.__touches.slice()), app: run.app.evaluate(() => window.__touches.slice()), grist: run.page.evaluate(() => window.__touches.slice()) });
+  const listen = target => target.evaluate(() => { window.__touches = []; document.addEventListener('keydown', event => window.__touches.push(event.key), true); });
+  await Promise.all([listen(run.frame), listen(run.app), listen(run.page)]);
+  const box = await windowBox(run);
+  await run.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await run.page.waitForTimeout(300);
+  const focus = await run.frame.evaluate(() => { const active = document.activeElement; return { dansLeLecteur: Boolean(active && active.closest && active.closest('.player')), balise: active ? active.tagName : null }; });
+  check('après un clic dans le lecteur, le clavier est dans le cadre du fournisseur (l\'élément actif de la page de GFS est ce cadre)', focus.dansLeLecteur, focus);
+  await run.page.keyboard.press('Escape');
+  await run.page.waitForTimeout(400);
+  const provided = run.page.frames().find(frame => frame.url().startsWith('https://www.youtube-nocookie.com/embed/') && !frame.isDetached());
+  const received = await provided.evaluate(() => document.title);
+  const heard = keys();
+  const seen = { gfs: await heard.gfs, app: await heard.app, grist: await heard.grist };
+  check('Échap, tapée à la vraie touche, est arrivée au cadre du fournisseur', received === 'touche:Escape', received);
+  check('ni la page de GFS, ni l\'app, ni la page de Grist ne l\'ont reçue : un navigateur ne donne pas à un autre site les touches tapées dans un cadre', seen.gfs.length === 0 && seen.app.length === 0 && seen.grist.length === 0, seen);
+  check('le lecteur est resté (rien ne l\'a fermé)', (await players(run).count()) === 1);
+  await request(run, 'fermer', { id: 'v8' });
+  check('fermer par l\'app le retire', await waitFor(run.page, 'fermé', async () => (await players(run).count()) === 0));
+}
+
 async function playPolicy(run) {
   say('--- 7. la politique de sécurité ---');
   const mark = run.problems.length;
@@ -221,6 +249,7 @@ try {
   await playRefusals(run);
   await playResizeAndLeave(run);
   await playPolicy(run);
+  await playKeyboard(run);
   const unexpected = run.problems.filter(problem => !run.allow.some(known => known.test(problem)));
   check('aucune autre erreur ni avertissement de GFS dans la console', unexpected.length === 0, unexpected);
 } finally {

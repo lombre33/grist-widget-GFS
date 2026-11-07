@@ -1,9 +1,9 @@
 // Joindre les PDF d'une ligne à sa cellule « Pièces jointes » avec la VRAIE Publipostage+ (consigne 053 ; contrats 5.4 point 12), celle que GFS référence, dans un VRAI serveur Grist
 // (l'image officielle, `bash vrai-serveur.sh`) : un modèle de l'app est ouvert dans son éditeur, puis le code de l'app qui joint (`RowAttachment.attachAll`, branché sur `GfsLink.attach`) reçoit des
 // PDF qu'un générateur d'essai fabrique (le pdfmake de l'app n'est pas dans le miroir des bibliothèques) et les donne à GFS. Chromium seulement ; les bibliothèques de l'app viennent du miroir (`bash build-mirror.sh`).
-// Deux changements, rien que pour cet essai (`routePatches`, le fichier publié n'est pas touché) : la constante `GFS_ATTACH_WIRED` de l'app passe à vrai (le grisé que l'app ne lèvera qu'après l'essai chez le porteur)
-// et l'app reçoit la colonne choisie (la personne la choisit dans Réglages > Vue ; sous GFS l'option `pp_attach_column` n'est pas déclarée : où l'app la garde est une décision du porteur). Un troisième tant que le
-// manifeste de GFS ne déclare pas `actions.joindre: ["pdf"]` (GFS le déclare depuis la page de l'app qui dit la 053 faite, 07/11) : le manifeste est alors complété par l'essai, et la section 0 le dit.
+// Depuis `4eef1fb` (07/11) l'app lève elle-même son grisé (`GFS_ATTACH_WIRED = true`) : l'essai la rejoue TELLE QU'ELLE EST PUBLIÉE, sans remplacer cette constante ; sur une référence plus ancienne (constante à faux)
+// il la passe à vrai, comme avant. Un seul changement reste, rien que pour cet essai (`routePatches`, le fichier publié n'est pas touché) : l'app reçoit la colonne choisie (la personne la choisit dans
+// Réglages > Vue). Un autre tant que le manifeste de GFS ne déclare pas `actions.joindre: ["pdf"]` (GFS le déclare depuis le 07/11) : le manifeste est alors complété par l'essai, et la section 0 le dit.
 //   bash vrai-serveur.sh && REPO_DIR="$(realpath ../..)" node run-joindre-publipostage.mjs        (LAB_LANG=fr|en, LAB_SCHEME=light|dark)
 //   1. Le grisé : sans la levée, `attachAll` ne fait rien chez GFS (rend null) ; avec elle, la jointure vaut.
 //   2. Deux PDF sur deux lignes : l'app reçoit `attached` pour les deux, les cellules citent les pièces jointes, les octets sont ceux du PDF (même empreinte), un seul `BulkUpdateRecord`.
@@ -31,12 +31,14 @@ const CREATE_TABLES = lang === 'fr' ? /^Créer les tables$/ : /^Create the table
 const TABLE = 'Courriers';
 const COLUMN = 'Pieces';
 const APP_FILE = '/prototype/apps/publipostage/js/row-attachment.js';
-// LAB_SANS_LEVEE=1 : le témoin. L'app garde son grisé (`GFS_ATTACH_WIRED` reste faux) : `attachAll` ne fait rien chez GFS et rend null ; seule la section 1 est jouée.
+// LAB_SANS_LEVEE=1 : le témoin. L'app garde son grisé (`GFS_ATTACH_WIRED` à faux : l'essai la remet à faux, puisque l'app publiée l'a levée) : `attachAll` ne fait rien chez GFS et rend null ; seule la section 1 est jouée.
 const WITHOUT_LIFT = process.env.LAB_SANS_LEVEE === '1';
 const DECLARED = /"joindre"\s*:\s*\[\s*"pdf"\s*\]/.test(readFileSync(join(process.env.REPO_DIR, 'prototype/manifestes/publipostage.json'), 'utf8'));
+const LIFTED_BY_APP = /const GFS_ATTACH_WIRED = true;/.test(readFileSync(join(process.env.REPO_DIR, APP_FILE.slice(1)), 'utf8')); // l'app publiée a levé son grisé elle-même (`4eef1fb`)
 const PATCHES = [
   ...(DECLARED ? [] : [{ chemin: '/prototype/manifestes/publipostage.json', de: '"ranger": ["pdf"],', vers: '"ranger": ["pdf"],\n    "joindre": ["pdf"],' }]),
-  ...(WITHOUT_LIFT ? [] : [{ chemin: APP_FILE, de: 'const GFS_ATTACH_WIRED = false;', vers: 'const GFS_ATTACH_WIRED = true;' }]),
+  ...(WITHOUT_LIFT && LIFTED_BY_APP ? [{ chemin: APP_FILE, de: 'const GFS_ATTACH_WIRED = true;', vers: 'const GFS_ATTACH_WIRED = false;' }] : []),
+  ...(!WITHOUT_LIFT && !LIFTED_BY_APP ? [{ chemin: APP_FILE, de: 'const GFS_ATTACH_WIRED = false;', vers: 'const GFS_ATTACH_WIRED = true;' }] : []),
   { chemin: APP_FILE, de: 'return { init, getColumn,', vers: 'return { chooseForLab: value => { column = value; }, writeColumnForLab: writeColumn, writeModeForLab: writeMode, init, getColumn,' },
 ];
 const pdf = title => makePdf({ pages: 1, title });
@@ -93,7 +95,7 @@ async function playGrey(run) {
     check('témoin : `attachAll` ne fait rien chez GFS (rend null) et le document ne gagne aucune pièce jointe', nothing.report === null && (await run.rest.attachments()).length === 0, nothing);
     return;
   }
-  check('la levée faite (le labo pose `GFS_ATTACH_WIRED`), la jointure n\'est plus grisée par GFS', reason !== 'gfs', reason);
+  check(LIFTED_BY_APP ? 'l\'app publiée a levé son grisé elle-même (`GFS_ATTACH_WIRED = true`, `4eef1fb`), sans remplacement : la jointure n\'est plus grisée par GFS' : 'la levée faite (le labo pose `GFS_ATTACH_WIRED`), la jointure n\'est plus grisée par GFS', reason !== 'gfs', reason);
   void page;
 }
 

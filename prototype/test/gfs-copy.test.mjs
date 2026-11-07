@@ -22,7 +22,10 @@ const table = () => ({
 
 test('la recette est `copie.ligne: true` ; sans elle, ou sans `ligne`, l\'app n\'a pas dit comment copier ses fichiers', () => {
   assert.deepEqual(copyRecipeOf(spec), { ligne: true, uniques: ['Jeton'], exclusives: ['EstParDefaut'] });
-  assert.equal(copyRecipeOf(form().fichiers[0]), null, 'Form+ : composite, pas de recette');
+  assert.deepEqual(copyRecipeOf(form().fichiers[0]), { appel: true }, 'Form+ : composite, c\'est l\'app ouverte qui copie (sa consigne 021 faite à 7057309)');
+  const bare = form().fichiers[0];
+  delete bare.copie;
+  assert.equal(copyRecipeOf(bare), null, 'un composite sans `copie.appel` : pas de recette');
   assert.equal(copyRecipeOf({ copie: {} }), null);
   assert.equal(copyRecipeOf({ copie: { ligne: false } }), null);
   assert.equal(copyRecipeOf(null), null);

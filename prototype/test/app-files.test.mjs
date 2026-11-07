@@ -44,8 +44,12 @@ test('le gardien ne gère que les fichiers d\'une app installée dont le manifes
   assert.deepEqual(files.map(file => run.trash.manages(file)), [true, true, true]);
   assert.equal(run.trash.manages({ ...files[0], table: 'Autre' }), false, 'une autre table');
   assert.equal(run.trash.manages({ ...files[0], app: 'automation' }), false, 'une app sans recette');
-  const withoutRecipe = setup({ over: { apps: () => [{ manifest: form() }] } });
-  assert.equal(withoutRecipe.trash.manages({ app: 'form', table: 'FormPlus_Formulaires' }), false, 'Form+ n\'a pas de recette : grisé, avec l\'explication');
+  const bare = form();
+  delete bare.fichiers[0].suppression;
+  delete bare.fichiers[0].copie;
+  const withoutRecipe = setup({ over: { apps: () => [{ manifest: bare }] } });
+  assert.equal(withoutRecipe.trash.manages({ app: 'form', table: 'FormPlus_Formulaires' }), false, 'sans recette : grisé, avec l\'explication');
+  assert.equal(setup({ over: { apps: () => [{ manifest: form() }] } }).trash.manages({ app: 'form', table: 'FormPlus_Formulaires' }), true, 'Form+ déclare `suppression.appel` depuis ses consignes 020 et 021 faites (7057309)');
   assert.equal(setup({ over: { apps: () => [] } }).trash.manages(files[0]), false, 'l\'app n\'est pas installée');
 });
 
@@ -292,7 +296,10 @@ test('copier : le gardien ne copie que ce que le manifeste dit, et l\'un ne va p
   assert.deepEqual(files.map(file => run.trash.copies(file)), [true, true, true]);
   assert.equal(run.trash.copies({ ...files[0], table: 'Autre' }), false);
   assert.equal(run.trash.copies({ ...files[0], app: 'automation' }), false);
-  assert.equal(setup({ over: { apps: () => [{ manifest: form() }] } }).trash.copies({ app: 'form', table: 'FormPlus_Formulaires' }), false, 'Form+ est composite');
+  const bareForm = form();
+  delete bareForm.fichiers[0].copie;
+  assert.equal(setup({ over: { apps: () => [{ manifest: bareForm }] } }).trash.copies({ app: 'form', table: 'FormPlus_Formulaires' }), false, 'composite, sans `copie.appel` : pas de recette');
+  assert.equal(setup({ over: { apps: () => [{ manifest: form() }] } }).trash.copies({ app: 'form', table: 'FormPlus_Formulaires' }), true, 'Form+ déclare `copie.appel` depuis sa consigne 021 faite (7057309) : c\'est l\'app ouverte qui copie');
   const trashOnly = publipostage();
   delete trashOnly.fichiers[0].copie;
   const half = setup({ over: { apps: () => [{ manifest: trashOnly }] } });

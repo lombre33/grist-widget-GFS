@@ -107,7 +107,8 @@ test('contrats 2.4 : la recette de copie est `ligne: true`, avec des listes de c
   delete none.fichiers[0].copie;
   assert.deepEqual(validateManifest(none), { ok: true, errors: [] });
   assert.deepEqual(publipostage().fichiers[0].copie, { ligne: true, uniques: ['Jeton'], exclusives: ['EstParDefaut'] }, 'Publipostage+ : un modèle copié n\'a ni le jeton de l\'original ni l\'étoile du modèle par défaut');
-  assert.equal(form().fichiers[0].copie, undefined, 'Form+ est composite (ligne, section, colonne, table, lien public) : pas de recette, « Dupliquer » grisé');
+  assert.deepEqual(form().fichiers[0].copie, { appel: true }, 'Form+ est composite (ligne, section, colonne, table, lien public) : c\'est l\'app ouverte qui copie (`dupliquer`, sa consigne 021 faite à 7057309)');
+  assert.deepEqual(form().fichiers[0].suppression, { ligne: true, appel: true }, 'Form+ ferme son lien public avant la corbeille (`supprimer`, sa consigne 020 faite à 7057309) ; GFS retire la ligne');
 });
 
 test('contrats 2.6 et 2.8 : la bibliothèque d\'une extension est un id et une version exacte', () => {

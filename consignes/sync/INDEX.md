@@ -6,5 +6,6 @@ seulement les consignes « à faire ». Sync+ n'est pas une app du catalogue de 
 
 | N° | Consigne | Quand | État |
 |---|---|---|---|
-| 001 | [GFS existe, et son explorateur ira chercher ton moteur de synchronisation](001-gfs-existe-et-ira-chercher-ton-moteur.md) | à lire maintenant ; la page d'état à ton prochain lot ; décision du porteur du 06/11 ; aucun code, aucun effet dans l'app seule | à faire |
-| 002 | [Sépare ton moteur de tes écrans : un branchement vers Grist, un préfixe de tables réglable](002-separe-ton-moteur-de-tes-ecrans.md) | au prochain lot, sans urgence ; du code dans ton app, sans changement visible ; décision du porteur du 06/11 ; vaut aussi dans l'app seule | à faire |
+| 001 | [GFS existe, et son explorateur ira chercher ton moteur de synchronisation](001-gfs-existe-et-ira-chercher-ton-moteur.md) | à lire maintenant ; la page d'état à ton prochain lot ; décision du porteur du 06/11 ; aucun code, aucun effet dans l'app seule | faite (`f37cfd9`, relue le 07/11) |
+| 002 | [Sépare ton moteur de tes écrans : un branchement vers Grist, un préfixe de tables réglable](002-separe-ton-moteur-de-tes-ecrans.md) | au prochain lot, sans urgence ; du code dans ton app, sans changement visible ; décision du porteur du 06/11 ; vaut aussi dans l'app seule | faite (`f37cfd9`, relue le 07/11) |
+| 003 | [Tes cinq questions, et le second lot : l'orchestration des assistants, sans écran](003-reponses-et-second-lot-l-orchestration-sans-ecran.md) | au prochain lot, sans urgence ; du code dans ton app, sans changement visible ; décision du porteur du 06/11 | à faire |

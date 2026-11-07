@@ -13,7 +13,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 | Grist-BI | `lombre33/Grist-BI` | `consignes/bi/` | `8eb479b` (sa page : consignes 001 à 009 faites ou lues, 009 au commit `3144955`) | 07/11/2026 | GPL 3.0 |
 | Tuesday (nom de travail ; « Thusday » dans les anciens documents) | `lombre33/grist-wisget-tuesday` | `consignes/tuesday/` | `09ed14c` | 03/11/2026 | GPL 3.0 |
 | Calendar+ (id GFS `calendrier`, pas encore au catalogue ; le même projet que Tuesday, un fil de plus) | `lombre33/grist-widget-calendar-plus` | aucun dossier : les 006, 007, 009, 010 et 012 de `consignes/tuesday/` lui parlent | `531e0cd` | 04/11/2026 | GPL 3.0 (`LICENSE` au socle) |
-| Sync+ (« Synchro Grist » ; pas une app du catalogue : seul son moteur ira dans le kit, choix du porteur du 06/11) | `lombre33/grist-widget-one-way-sync` | `consignes/sync/` | lu sur la 0.12.2 (06/11, début d'après-midi, commit non noté) ; sommet `3cc217a` (0.13.2) non relu ; pas encore de `GFS-ETAT.md` | 06/11/2026 | GPL 3.0 (déjà : `GPL-3.0-only`) |
+| Sync+ (« Synchro Grist » ; pas une app du catalogue : seul son moteur ira dans le kit, choix du porteur du 06/11) | `lombre33/grist-widget-one-way-sync` | `consignes/sync/` | `GFS-ETAT.md` lu au commit `f37cfd9` (07/11) : 001 et 002 faites, moteur 1.0.0 dans `js/engine/` ; journal relu jusqu'au sommet `2ea1c9f` (trois commits : `7c052b6`, `f37cfd9`, `2ea1c9f`) ; ses cinq questions reçoivent la consigne 003 | 06/11/2026 | GPL 3.0 (déjà : `GPL-3.0-only`) |
 
 ## Lus pour référence (pas des apps de GFS)
 

@@ -160,6 +160,7 @@
     ],
     "lire": [{ "type": "pdf", "extension": "lecture-pdf" }],
     "ranger": ["pdf"],
+    "joindre": ["pdf"],
     "inserer": { "produit": [], "recoit": [] }
   }
 }

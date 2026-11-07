@@ -1,9 +1,9 @@
-// Joindre les PDF d'une ligne à sa cellule « Pièces jointes » avec la VRAIE Publipostage+ (consigne 053 ; contrats 5.4 point 12), celle que GFS référence (`c850c89`), dans un VRAI serveur Grist
-// (l'image officielle, `bash vrai-serveur.sh`) : un modèle de l'app est ouvert dans son éditeur, puis le code de l'app qui joint (`RowAttachment.attachAll`, branché sur `GfsLink.attach`) reçoit trois
-// PDF qu'il fabrique pas lui-même (un PDF d'essai) et les donne à GFS. Chromium seulement ; les bibliothèques de l'app viennent du miroir (`bash build-mirror.sh`).
-// Trois changements, rien que pour cet essai (`routePatches`, le fichier publié n'est pas touché) : le manifeste de GFS déclare `actions.joindre: ["pdf"]` (GFS ne le fait qu'à « 053 · faite » sur la
-// page de l'app), la constante `GFS_ATTACH_WIRED` de l'app passe à vrai (le grisé que l'app lève elle-même à sa 053) et l'app reçoit la colonne choisie (la personne la choisit dans Réglages > Vue ; sous GFS
-// l'option `pp_attach_column` n'est pas déclarée : sa garde chez GFS est une décision à part).
+// Joindre les PDF d'une ligne à sa cellule « Pièces jointes » avec la VRAIE Publipostage+ (consigne 053 ; contrats 5.4 point 12), celle que GFS référence, dans un VRAI serveur Grist
+// (l'image officielle, `bash vrai-serveur.sh`) : un modèle de l'app est ouvert dans son éditeur, puis le code de l'app qui joint (`RowAttachment.attachAll`, branché sur `GfsLink.attach`) reçoit des
+// PDF qu'un générateur d'essai fabrique (le pdfmake de l'app n'est pas dans le miroir des bibliothèques) et les donne à GFS. Chromium seulement ; les bibliothèques de l'app viennent du miroir (`bash build-mirror.sh`).
+// Deux changements, rien que pour cet essai (`routePatches`, le fichier publié n'est pas touché) : la constante `GFS_ATTACH_WIRED` de l'app passe à vrai (le grisé que l'app ne lèvera qu'après l'essai chez le porteur)
+// et l'app reçoit la colonne choisie (la personne la choisit dans Réglages > Vue ; sous GFS l'option `pp_attach_column` n'est pas déclarée : où l'app la garde est une décision du porteur). Un troisième tant que le
+// manifeste de GFS ne déclare pas `actions.joindre: ["pdf"]` (GFS le déclare depuis la page de l'app qui dit la 053 faite, 07/11) : le manifeste est alors complété par l'essai, et la section 0 le dit.
 //   bash vrai-serveur.sh && REPO_DIR="$(realpath ../..)" node run-joindre-publipostage.mjs        (LAB_LANG=fr|en, LAB_SCHEME=light|dark)
 //   1. Le grisé : sans la levée, `attachAll` ne fait rien chez GFS (rend null) ; avec elle, la jointure vaut.
 //   2. Deux PDF sur deux lignes : l'app reçoit `attached` pour les deux, les cellules citent les pièces jointes, les octets sont ceux du PDF (même empreinte), un seul `BulkUpdateRecord`.
@@ -13,6 +13,8 @@
 //   5b. Tous les PDF sont trop gros : l'app tire `problem: 'tooLarge'` de deux échecs du même mot, rien n'est écrit.
 //   6. Le réseau tombe : `unreachable` pour le lot, rien n'est écrit.
 import { createServer } from 'node:http';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { serve } from './lab-server.mjs';
 import { chromium, say, check } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
@@ -30,8 +32,9 @@ const COLUMN = 'Pieces';
 const APP_FILE = '/prototype/apps/publipostage/js/row-attachment.js';
 // LAB_SANS_LEVEE=1 : le témoin. L'app garde son grisé (`GFS_ATTACH_WIRED` reste faux) : `attachAll` ne fait rien chez GFS et rend null ; seule la section 1 est jouée.
 const WITHOUT_LIFT = process.env.LAB_SANS_LEVEE === '1';
+const DECLARED = /"joindre"\s*:\s*\[\s*"pdf"\s*\]/.test(readFileSync(join(process.env.REPO_DIR, 'prototype/manifestes/publipostage.json'), 'utf8'));
 const PATCHES = [
-  { chemin: '/prototype/manifestes/publipostage.json', de: '"ranger": ["pdf"],', vers: '"ranger": ["pdf"],\n    "joindre": ["pdf"],' },
+  ...(DECLARED ? [] : [{ chemin: '/prototype/manifestes/publipostage.json', de: '"ranger": ["pdf"],', vers: '"ranger": ["pdf"],\n    "joindre": ["pdf"],' }]),
   ...(WITHOUT_LIFT ? [] : [{ chemin: APP_FILE, de: 'const GFS_ATTACH_WIRED = false;', vers: 'const GFS_ATTACH_WIRED = true;' }]),
   { chemin: APP_FILE, de: 'return { init, getColumn,', vers: 'return { chooseForLab: value => { column = value; }, init, getColumn,' },
 ];
@@ -53,6 +56,7 @@ const cells = async rest => (await rest.rows(TABLE)).map(row => row[COLUMN]);
 async function openModel(run) {
   const { page, frame } = run;
   say('--- 0. un modèle de Publipostage+ ouvert, une table avec une colonne « Pièces jointes » ---');
+  check(DECLARED ? 'le manifeste de GFS déclare `actions.joindre: ["pdf"]` (aucun remplacement du manifeste)' : 'témoin : le manifeste de GFS ne déclare pas encore `actions.joindre` (l\'essai le complète)', true);
   await seedFiles(frame);
   await page.evaluate(async ([doc, table, column]) => (await fetch(`/api/docs/${doc}/apply`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },

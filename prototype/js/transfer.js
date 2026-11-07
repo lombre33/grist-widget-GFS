@@ -44,6 +44,7 @@ export class Transfer {
   #port = null;
   #connecting = null;
   #server = '';
+  #base = '';
   #calls = new Map();
   #next = 1;
 
@@ -91,23 +92,33 @@ export class Transfer {
   }
 
   // Une requête REST du document, avec un jeton (le moteur de partage : webhooks, `/compare`, pièces jointes…, contrats 6.6 point 15). `path` : ce qui suit l'adresse REST du document, que GFS écrit
-  // (jamais un texte lu d'ailleurs) ; `body` : un objet, envoyé en JSON ; `writable` : le jeton peut écrire (par défaut : un propriétaire seul lit la liste des webhooks, avec lui). Rend `{ status, body }` ;
+  // (jamais un texte lu d'ailleurs) ; `body` : un objet, envoyé en JSON ; `timeout` : le délai en millisecondes (60 s par défaut) ; `writable` : le jeton peut écrire (par défaut : un propriétaire seul lit la liste des webhooks, avec lui). Rend `{ status, body }` ;
   // un refus du serveur lève une TransferError 'http' (`status`), un serveur muet une 'network'.
-  async rest(method, path, { body, writable = true, params } = {}) {
+  async rest(method, path, { body, writable = true, params, timeout = REST_TIMEOUT_MS } = {}) {
     const { token, baseUrl } = await this.#token(!writable);
     this.#server = new URL(baseUrl).origin;
-    const reply = await this.#call('rest', { method, url: this.#url(baseUrl, path, token, params), json: body }, REST_TIMEOUT_MS);
+    const reply = await this.#call('rest', { method, url: this.#url(baseUrl, path, token, params), json: body }, timeout);
     return reply.value;
+  }
+
+  // L'adresse REST du document (`https://serveur[/o/équipe]/api/docs/<identifiant>`), sans jeton : Grist la donne avec tout jeton d'accès. Gardée une fois lue.
+  async baseUrl() {
+    if (!this.#base) {
+      const { baseUrl } = await this.#token(true);
+      this.#base = baseUrl.replace(/\/+$/, '');
+      this.#server = new URL(baseUrl).origin;
+    }
+    return this.#base;
   }
 
   // Une requête sans jeton vers le serveur du document : la lecture d'un document public, l'envoi de lignes à l'adresse d'un formulaire publié. `url` est celle qu'un document a donnée ; elle n'est
   // suivie que si elle est du même serveur que le document (le lien d'une autre instance ne reçoit rien). Même rendu que `rest`.
-  async anonymous(method, url, { body } = {}) {
+  async anonymous(method, url, { body, timeout = REST_TIMEOUT_MS } = {}) {
     if (!this.#server) this.#server = new URL((await this.#token(true)).baseUrl).origin;
     let target;
     try { target = new URL(url); } catch (error) { throw new TransferError('answer', 'Cette adresse n’est pas valable.'); }
     if (target.origin !== this.#server) throw new TransferError('answer', 'Cette adresse n’est pas celle du serveur de ce document.');
-    const reply = await this.#call('rest', { method, url: target.href, json: body }, REST_TIMEOUT_MS);
+    const reply = await this.#call('rest', { method, url: target.href, json: body }, timeout);
     return reply.value;
   }
 

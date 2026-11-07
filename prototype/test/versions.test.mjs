@@ -63,7 +63,10 @@ test('readFiles : les dossiers du kit sont lus avec leur préfixe ; sans le sous
   assert.throws(() => readFiles(root), /git submodule update --init prototype\/kit/);
   const real = readFiles();
   assert.ok(Object.keys(real).some(path => /^kit\/js\/[a-z-]+\.js$/.test(path)) && Object.keys(real).some(path => /^kit\/css\/[a-z-]+\.css$/.test(path)));
-  assert.ok(Object.keys(real).every(path => /^(?:kit\/)?(?:css|js)\/[^/]+\.(?:css|js)$/.test(path)), 'premier niveau de chaque dossier seulement');
+  const nested = Object.keys(real).filter(path => path.split('/').length > (path.startsWith('kit/') ? 3 : 2));
+  assert.ok(nested.length > 20 && nested.every(path => path.startsWith('kit/js/synchro/') && path.endsWith('.js')), `seul le moteur de partage descend dans ses sous-dossiers : ${nested.slice(0, 3)}`);
+  assert.ok(nested.includes('kit/js/synchro/logic/common.js') && real['kit/js/synchro/port.js'], 'le moteur de partage est lu avec ses sous-dossiers');
+  assert.ok(Object.keys(real).filter(path => !nested.includes(path)).every(path => /^(?:kit\/)?(?:css|js)\/[^/]+\.(?:css|js)$/.test(path)) && !Object.keys(real).some(path => path.startsWith('kit/js/calendrier/')), 'premier niveau de chaque autre dossier seulement');
 });
 
 test('applyVersions : l\'empreinte de la politique est celle du texte exact de la carte, et remplace l\'ancienne', () => {

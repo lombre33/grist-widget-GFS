@@ -15,12 +15,14 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PAGE = 'index.html';
 const FOLDERS = ['css', 'js', 'kit/css', 'kit/js'];
+// Les dossiers du kit que GFS charge avec tous leurs sous-dossiers (le moteur de partage : kit/js/synchro/, logic/, source/, target/). Les autres modules du kit (le calendrier…) ne sont pas ceux de GFS.
+const NESTED = ['kit/js/synchro'];
 // Les pages qui citent un script de leur propre dossier : { page, dossier }.
 const SIDE_PAGES = [{ page: 'transfer/index.html', folder: 'transfer' }];
 const SIDE_TAG_RE = /(<script\b[^>]*?\bsrc=")([^"?:/]+\.js)(?:\?v=([^"]*))?(")/g;
@@ -34,7 +36,7 @@ const HASH_RE = /'sha256-[A-Za-z0-9+/=]+'/g;
 export const version = bytes => createHash('sha256').update(bytes).digest('hex').slice(0, 10);
 export const cspHash = text => `'sha256-${createHash('sha256').update(text, 'utf8').digest('base64')}'`;
 
-// { 'css/gfs.css': octets, 'js/gfs.js': octets, 'kit/js/i18n.js': octets, … } : les fichiers du premier niveau de css/ et de js/, et de ceux du kit.
+// { 'css/gfs.css': octets, 'js/gfs.js': octets, 'kit/js/i18n.js': octets, 'kit/js/synchro/port.js': octets, … } : les fichiers du premier niveau de css/ et de js/, et de ceux du kit, plus tout le moteur de partage.
 export function readFiles(root = ROOT) {
   const files = {};
   for (const folder of FOLDERS) {
@@ -42,6 +44,11 @@ export function readFiles(root = ROOT) {
     const extension = folder.slice(folder.lastIndexOf('/') + 1);
     for (const name of readdirSync(join(root, folder)).sort()) {
       if (name.endsWith(`.${extension}`)) files[`${folder}/${name}`] = readFileSync(join(root, folder, name));
+    }
+  }
+  for (const folder of NESTED.filter(each => existsSync(join(root, each)))) {
+    for (const name of readdirSync(join(root, folder), { recursive: true }).sort()) {
+      if (name.endsWith('.js')) files[`${folder}/${name.split(sep).join('/')}`] = readFileSync(join(root, folder, name));
     }
   }
   return files;

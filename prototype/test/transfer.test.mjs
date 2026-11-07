@@ -238,3 +238,12 @@ test('anonymous : sans jeton dans l\'adresse, seulement vers le serveur du docum
   assert.equal(run.frames.requests.length, 1, 'rien d\'autre n\'est parti au cadre');
   finish(run);
 });
+
+test('baseUrl : l\'adresse REST du document sans barre finale ni jeton, demandée une fois (jeton en lecture seule)', async () => {
+  const run = setup();
+  assert.equal(await run.transfer.baseUrl(), 'https://grist.exemple.fr/o/docs/api/docs/DOC123');
+  assert.equal(await run.transfer.baseUrl(), 'https://grist.exemple.fr/o/docs/api/docs/DOC123');
+  assert.deepEqual(run.asked, [{ readOnly: true }], 'une seule demande de jeton');
+  assert.equal(run.frames.created.length, 0, 'le cadre ne s\'ouvre pas pour une adresse');
+  finish(run);
+});

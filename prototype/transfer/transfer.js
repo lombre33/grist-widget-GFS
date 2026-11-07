@@ -6,6 +6,8 @@
 //   { id, op: 'download', url }            GET d'une pièce jointe -> { id, ok: true, value: <Blob> }
 //   { id, op: 'status', url }              GET dont seul le code compte (la preuve de propriétaire, contrats 5.2 point 8) -> { id, ok: true, value: <code> } ; le corps de la réponse n'est jamais lu
 //   { id, op: 'json', url }                GET d'une lecture SQL du document (`/sql`, le poids exact, contrats 6.6 point 14) -> { id, ok: true, value: <le JSON de la réponse> }
+//   { id, op: 'rest', url, method, json? } GET, POST, PATCH ou DELETE d'une requête REST du serveur (le moteur de partage : webhooks, envois de lignes, lecture publique ; contrats 6.6 point 15), sans cookie ;
+//                                          avec `json`, le corps est ce JSON (Content-Type) -> { id, ok: true, value: { status, body } }, `body` : le JSON de la réponse, sinon son texte ('' si vide)
 // Un échec rend { id, ok: false, network, status, message } : `network` quand le serveur n'a pas répondu (ou que le navigateur a refusé la requête), `status` quand il a répondu un refus.
 //
 // Sur l'en-tête X-Requested-With : sans lui, Grist refuse toute écriture faite avec un jeton par un 401 sans en-têtes CORS, et le navigateur ne dit que « NetworkError » (faits vérifiés 14).
@@ -58,7 +60,26 @@
     return answer(response, request.id, async function (reply) { return JSON.parse(await reply.text()); });
   }
 
-  var OPERATIONS = { upload: upload, download: download, status: status, json: json };
+  // Une requête REST quelconque, dont l'adresse (jeton compris, ou sans jeton pour une lecture publique et un envoi anonyme) est celle que GFS a bâtie : jamais de cookie, et l'en-tête
+  // X-Requested-With sur tout ce qui n'est pas une lecture (sans lui Grist refuse en 401 sans en-têtes CORS : faits vérifiés 14).
+  var REST_METHODS = { GET: true, POST: true, PATCH: true, DELETE: true };
+  async function rest(request) {
+    var method = String(request.method || 'GET').toUpperCase();
+    if (!Object.prototype.hasOwnProperty.call(REST_METHODS, method)) return { id: request.id, ok: false, network: false, status: 0, message: 'Méthode refusée.' };
+    var headers = {};
+    var options = { method: method, credentials: 'omit', headers: headers };
+    if (method !== 'GET') headers['X-Requested-With'] = 'XMLHttpRequest';
+    if (request.json !== undefined) { headers['Content-Type'] = 'application/json'; options.body = JSON.stringify(request.json); }
+    var response = await fetch(request.url, options);
+    return answer(response, request.id, async function (reply) {
+      var text = await reply.text();
+      var body = text;
+      try { body = text ? JSON.parse(text) : ''; } catch (error) { body = text; }
+      return { status: reply.status, body: body };
+    });
+  }
+
+  var OPERATIONS = { upload: upload, download: download, status: status, json: json, rest: rest };
 
   async function handle(request, port) {
     var operation = request && Object.prototype.hasOwnProperty.call(OPERATIONS, request.op) ? OPERATIONS[request.op] : null;

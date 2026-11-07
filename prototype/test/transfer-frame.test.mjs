@@ -135,3 +135,36 @@ test('json : un GET dont le JSON revient tel quel (une lecture SQL) ; une répon
   cut.connect();
   assert.deepEqual(await cut.ask({ id: 5, op: 'json', url: 'https://grist.exemple.fr/api/docs/D/sql?auth=t' }), { id: 5, ok: false, network: false, status: 400, message: 'a slow statement resulted in a database interrupt' });
 });
+
+test('rest : GET, POST, PATCH et DELETE sans cookie ; X-Requested-With sur tout sauf une lecture ; Content-Type JSON seulement avec un corps ; { status, body } (JSON, sinon texte) revient', async () => {
+  const plain = value => JSON.parse(JSON.stringify(value));
+  const seen = [];
+  const bodies = { '/json': '{"webhooks":[1]}', '/vide': '', '/texte': 'ok' };
+  const frame = load(async (url, options) => { seen.push([url, options]); const path = new URL(url).pathname; return { ...reply(200, ''), text: async () => bodies[path] ?? '' }; });
+  frame.connect();
+  assert.deepEqual(plain(await frame.ask({ id: 1, op: 'rest', method: 'GET', url: 'https://g.exemple.fr/json?auth=t' })), { id: 1, ok: true, value: { status: 200, body: { webhooks: [1] } } });
+  assert.deepEqual(plain(seen[0][1].headers), {}, 'une lecture : aucun en-tête de plus');
+  assert.equal(seen[0][1].credentials, 'omit');
+  const posted = await frame.ask({ id: 2, op: 'rest', method: 'post', url: 'https://g.exemple.fr/vide', json: [{ A: 1 }] });
+  assert.deepEqual(plain(posted.value), { status: 200, body: '' });
+  assert.equal(seen[1][1].method, 'POST');
+  assert.equal(seen[1][1].body, '[{"A":1}]');
+  assert.deepEqual(plain(seen[1][1].headers), { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' });
+  await frame.ask({ id: 3, op: 'rest', method: 'DELETE', url: 'https://g.exemple.fr/texte' });
+  assert.deepEqual(plain(seen[2][1].headers), { 'X-Requested-With': 'XMLHttpRequest' }, 'sans corps : pas de Content-Type');
+  assert.equal(seen[2][1].body, undefined);
+  assert.equal((await frame.ask({ id: 4, op: 'rest', method: 'PATCH', url: 'https://g.exemple.fr/texte', json: { enabled: false } })).value.body, 'ok');
+});
+
+test('rest : une autre méthode est refusée sans rien envoyer ; un refus du serveur garde son code et son texte ; un serveur muet est « network »', async () => {
+  const seen = [];
+  const frame = load(async url => { seen.push(url); if (url.includes('muet')) throw new TypeError('Failed to fetch'); return reply(403, { error: 'No owner access' }); });
+  frame.connect();
+  const refused = await frame.ask({ id: 1, op: 'rest', method: 'PUT', url: 'https://g.exemple.fr/x' });
+  assert.deepEqual([refused.ok, refused.status], [false, 0]);
+  assert.deepEqual(seen, [], 'PUT n\'est pas une méthode du cadre');
+  const denied = await frame.ask({ id: 2, op: 'rest', method: 'GET', url: 'https://g.exemple.fr/webhooks' });
+  assert.deepEqual([denied.ok, denied.status, denied.message], [false, 403, 'No owner access']);
+  const down = await frame.ask({ id: 3, op: 'rest', method: 'GET', url: 'https://muet.exemple.fr/x' });
+  assert.deepEqual([down.ok, down.network], [false, true]);
+});

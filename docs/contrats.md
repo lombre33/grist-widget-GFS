@@ -2242,6 +2242,14 @@ fichier lui-même en pièce jointe de Grist.
     comme Grist les compte, et **chaque table, seule** (`dbstat`, `name = '<table>'`). [M] Mesuré dans un vrai Grist 1.7.19 (faits vérifiés, 43) : Grist coupe toute lecture de plus d'une seconde (400 : « a slow statement resulted in
     a database interrupt ») et le document ne répond plus à rien d'autre pendant ce temps, donc le poids de toutes les tables d'un coup est interdit ; `/sql` n'est rendu qu'à qui peut tout copier (un propriétaire, ou un
     éditeur ou un lecteur d'un document sans règle de lecture) : le refus (403) de la première lecture, avec les deux jetons, grise la fenêtre avec cette raison, et l'estimation reste.
+15. [T] **Le cadre d'envoi fait aussi les requêtes REST du moteur de partage** (partage d'un dossier ou d'un fichier entre deux documents qui ont GFS, décision du porteur du 06/11 ; consigne 003 à Sync+). Une opération de plus, `rest` : un `GET`,
+    `POST`, `PATCH` ou `DELETE` (rien d'autre) dont l'adresse est celle que GFS a bâtie, **sans cookie**, avec l'en-tête `X-Requested-With` sur tout ce qui n'est pas une lecture (sans lui Grist répond 401 sans en-têtes CORS) et un corps JSON
+    quand GFS en donne un ; la réponse revient en `{ status, body }` (le JSON de la réponse, sinon son texte). Deux entrées dans `Transfer` (js/transfer.js) : `rest(method, path, { body, writable, params })` (l'adresse REST du document + `path`, avec
+    un jeton de `getAccessToken`, en écriture par défaut : la liste des webhooks n'est rendue qu'à un propriétaire, avec un jeton qui peut écrire) et `anonymous(method, url, { body })` (sans jeton : la lecture d'un document public et l'envoi de lignes
+    à l'adresse d'un formulaire publié ; **seulement vers le serveur du document** : le lien d'une autre instance ne part pas, le cadre ne reçoit rien). Un refus du serveur revient en `TransferError` « http » avec son code, un serveur muet en « network ».
+    Aucune adresse de plus dans la politique de GFS : le cadre garde son `connect-src https:`. [M] Mesuré dans un vrai Grist 1.7.19 depuis le vrai cadre (faits vérifiés, 59) : le cycle d'un webhook (créer avec sa condition, lister, désactiver, vider sa file,
+    effacer) passe, Grist livre l'ajout d'une ligne à l'adresse du webhook, un refus garde son code (404), la lecture d'un document public et l'envoi de lignes à un document public en édition passent sans jeton avec `Origin: null` ; **Grist garde
+    quelques secondes le refus qu'il a donné à une personne anonyme** (lecture rendue à +5 s après avoir rendu le document public), donc le moteur réessaie au cycle suivant et ne conclut pas d'un premier refus.
 
 ### 6.7 `GFS_Corbeille`, la corbeille des fichiers des apps
 

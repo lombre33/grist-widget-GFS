@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-cHEEkwkSu1MI6+C6vBfP7t9QPnk1oH+cPKNQOUpj1bw='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-DvZFWienG1DnFEv4zk3XpCTdWaJWokLQW45ZGDOjKtw='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=6edbc41aa4">
 <link rel="stylesheet" href="css/explorer.css?v=418da9c54e">
 <link rel="stylesheet" href="css/modules.css?v=1109fc818b">
@@ -122,7 +122,7 @@
     "./js/theme-color.js": "./js/theme-color.js?v=3bc624594f",
     "./js/theme-window.js": "./js/theme-window.js?v=e98f2de3e7",
     "./js/theme.js": "./js/theme.js?v=6632aa171f",
-    "./js/transfer.js": "./js/transfer.js?v=314107f0cb",
+    "./js/transfer.js": "./js/transfer.js?v=451bb25e2d",
     "./js/trash.js": "./js/trash.js?v=6744b756e1",
     "./js/undo-stack.js": "./js/undo-stack.js?v=4e123cb751",
     "./js/view-options.js": "./js/view-options.js?v=f776be2727",

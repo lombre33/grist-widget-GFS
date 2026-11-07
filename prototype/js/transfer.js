@@ -10,6 +10,7 @@ const READY_TIMEOUT_MS = 8000;
 const UPLOAD_TIMEOUT_MS = 10 * 60 * 1000;
 const DOWNLOAD_TIMEOUT_MS = 3 * 60 * 1000;
 const STATUS_TIMEOUT_MS = 10 * 1000;
+const REST_TIMEOUT_MS = 60 * 1000; // un envoi de lignes (jusqu'à 250 ko) ou la liste des webhooks
 const SQL_TIMEOUT_MS = 30 * 1000; // Grist coupe lui-même une lecture au bout d'une seconde (400) ; le reste est le cadre qui ne répond pas
 
 // Pourquoi un transfert a échoué : `kind` vaut 'frame' (le cadre ne répond pas), 'token' (Grist n'a pas donné de jeton), 'network' (le serveur n'a pas répondu, ou le navigateur a refusé la
@@ -42,6 +43,7 @@ export class Transfer {
   #frame = null;
   #port = null;
   #connecting = null;
+  #server = '';
   #calls = new Map();
   #next = 1;
 
@@ -86,6 +88,27 @@ export class Transfer {
     const records = reply.value && reply.value.records;
     if (!Array.isArray(records)) throw new TransferError('answer', 'Grist n’a pas rendu de lignes pour cette lecture.');
     return records.map(record => (record && record.fields) || {});
+  }
+
+  // Une requête REST du document, avec un jeton (le moteur de partage : webhooks, `/compare`, pièces jointes…, contrats 6.6 point 15). `path` : ce qui suit l'adresse REST du document, que GFS écrit
+  // (jamais un texte lu d'ailleurs) ; `body` : un objet, envoyé en JSON ; `writable` : le jeton peut écrire (par défaut : un propriétaire seul lit la liste des webhooks, avec lui). Rend `{ status, body }` ;
+  // un refus du serveur lève une TransferError 'http' (`status`), un serveur muet une 'network'.
+  async rest(method, path, { body, writable = true, params } = {}) {
+    const { token, baseUrl } = await this.#token(!writable);
+    this.#server = new URL(baseUrl).origin;
+    const reply = await this.#call('rest', { method, url: this.#url(baseUrl, path, token, params), json: body }, REST_TIMEOUT_MS);
+    return reply.value;
+  }
+
+  // Une requête sans jeton vers le serveur du document : la lecture d'un document public, l'envoi de lignes à l'adresse d'un formulaire publié. `url` est celle qu'un document a donnée ; elle n'est
+  // suivie que si elle est du même serveur que le document (le lien d'une autre instance ne reçoit rien). Même rendu que `rest`.
+  async anonymous(method, url, { body } = {}) {
+    if (!this.#server) this.#server = new URL((await this.#token(true)).baseUrl).origin;
+    let target;
+    try { target = new URL(url); } catch (error) { throw new TransferError('answer', 'Cette adresse n’est pas valable.'); }
+    if (target.origin !== this.#server) throw new TransferError('answer', 'Cette adresse n’est pas celle du serveur de ce document.');
+    const reply = await this.#call('rest', { method, url: target.href, json: body }, REST_TIMEOUT_MS);
+    return reply.value;
   }
 
   // Referme le cadre ; le suivant se rouvrira au prochain transfert.

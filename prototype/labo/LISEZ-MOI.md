@@ -182,6 +182,20 @@ bash vrai-serveur.sh                                  && PHASE=retrait      node
 
 `LAB_LANG=en LAB_SCHEME=dark` jouent la passe en anglais, en sombre. Les gestes communs aux essais de droits sont dans `lab-droits.mjs`.
 
+### « Partager » : le modèle, puis la fenêtre dans GFS (contrats 11.7, point 13)
+
+Même principe que les droits (un seul compte à la fois, état dans `/tmp/partager-gfs-etat.json` et `/tmp/partager-fenetre-etat.json`). `run-partager.mjs` joue le **plan** de `js/sharing-model.js` dans un vrai Grist (phases `proprietaire`, `editeur`, `lecteur`, `retrait`) ;
+`run-partager-fenetre.mjs` joue **la fenêtre dans GFS** (`proprietaire` : deux PDF, « Partager… », activation avec sa question, rechargement et reprise, ajout, niveau, retrait ; `editeur` : son PDF, son partage sans propriétaire, la fenêtre en lecture ; `lecteur`).
+
+```bash
+cd prototype/labo && export REPO_DIR="$(realpath ../..)"
+for who in essai@example.com:proprietaire editor@example.com:editeur viewer@example.com:lecteur; do
+  GRIST_EMAIL=${who%%:*} bash vrai-serveur.sh > /tmp/vs.log 2>&1; PHASE=${who##*:} node run-partager-fenetre.mjs
+done
+```
+
+(Sortie du serveur redirigée vers un fichier : un `| tail` attend le Docker qui reste en fond.) `LAB_LANG` et `LAB_SCHEME` comme ailleurs.
+
 ### La fenêtre du poids : trois personnes, six temps
 
 Même principe que les droits (un seul compte à la fois, le même document dans `/tmp/grist-persist`), en six temps : le propriétaire crée le document et la fenêtre est lue sans règle d'accès (propriétaire, puis éditeur et lecteur : Grist leur rend `/sql`, la fenêtre

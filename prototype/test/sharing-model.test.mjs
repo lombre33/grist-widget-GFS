@@ -69,25 +69,32 @@ test('les règles de la table de partages : création à son nom ET avec son rô
   const create = shareRules().find(rule => rule.rights === '+C');
   assert.match(create.formula, /newRec\.Auteur\.lower\(\) == user\.Email\.lower\(\)/);
   assert.match(create.formula, /newRec\.AuteurAcces == user\.Access/);
-  assert.ok(shareRules().some(rule => rule.rights === '+R' && /PersonneL == user\.Email\.lower\(\)/.test(rule.formula)));
+  assert.ok(shareRules().some(rule => rule.rights === '+R' && /PersonneL == user\.Email\.lower\(\)/.test(rule.formula) && /"@tous"/.test(rule.formula)));
   assert.deepEqual(stampRules().map(rule => rule.rights), ['-U']);
 });
 
-test('aucune note de partage n\'est prise pour un niveau de GFS (Partagé, Encadré) : le panneau ne les confond pas', () => {
-  for (const rule of [...fileRules(), ...shareRules(), ...stampRules()]) assert.equal(levelOfNote(rule.memo), null, rule.memo);
+test('les notes du partage disent « Encadré » au panneau (les tables sont protégées par des règles de GFS), jamais « Partagé » (le niveau du rangement)', () => {
+  for (const rule of [...fileRules(), ...shareRules(), ...stampRules()]) assert.equal(levelOfNote(rule.memo), 'encadre', rule.memo);
 });
 
 test('activer le partage sur un document neuf : les deux tables, les règles, la première règle du document', () => {
   const plan = planSharing(base(), FILES_COLUMNS);
   assert.equal(plan.ok, true);
   assert.equal(plan.firstRule, true);
-  assert.deepEqual(plan.creates, [SHARES_TABLE, 'GFS_Fichiers']);
-  assert.deepEqual(plan.actions.filter(action => action[0] === 'AddTable').map(action => action[1]), ['GFS_Fichiers', SHARES_TABLE]);
+  assert.deepEqual(plan.creates, [SHARES_TABLE, 'GFS_Rangement', 'GFS_Fichiers']);
+  assert.deepEqual(plan.actions.filter(action => action[0] === 'AddTable').map(action => action[1]), ['GFS_Fichiers', 'GFS_Rangement', SHARES_TABLE]);
   const created = plan.actions.find(action => action[1] === 'GFS_Fichiers')[2];
   assert.deepEqual(created.map(column => column.id), [...FILES_COLUMNS.map(column => column.id), ...HELPERS]);
   const resources = plan.actions.filter(action => action[1] === '_grist_ACLResources').map(action => action[3]);
   assert.deepEqual(resources.map(resource => `${resource.tableId}/${resource.colIds}`), [`${SHARES_TABLE}/Auteur,AuteurAcces`, `${SHARES_TABLE}/*`, 'GFS_Fichiers/*']);
   assert.ok(plan.actions.findIndex(action => action[0] === 'AddTable') < plan.actions.findIndex(action => action[1] === '_grist_ACLResources'), 'les tables avant les règles');
+});
+
+test('le rangement naît avec le partage s\'il manque (sans lui, GFS ne connaît pas l\'adresse d\'un éditeur et son PDF serait refusé), et n\'est pas recréé s\'il est là', () => {
+  const without = planSharing(base(), FILES_COLUMNS);
+  assert.ok(without.actions.some(action => action[0] === 'AddTable' && action[1] === 'GFS_Rangement' && action[2].some(column => column.id === 'Adresse')));
+  const there = planSharing({ ...base(), tables: [{ id: 3, tableId: 'GFS_Rangement' }] }, FILES_COLUMNS);
+  assert.ok(!there.creates.includes('GFS_Rangement') && !there.actions.some(action => action[0] === 'AddTable' && action[1] === 'GFS_Rangement'));
 });
 
 test('les règles se posent aux numéros qui suivent ceux en place, dans l\'ordre, sur la bonne ressource', () => {
@@ -103,7 +110,7 @@ test('les règles se posent aux numéros qui suivent ceux en place, dans l\'ordr
 
 test('une table de fichiers déjà là : seules les colonnes d\'aide manquantes sont ajoutées, jamais la table recréée', () => {
   const plan = planSharing(withFiles(), FILES_COLUMNS);
-  assert.deepEqual(plan.creates, [SHARES_TABLE]);
+  assert.deepEqual(plan.creates, [SHARES_TABLE, 'GFS_Rangement']);
   assert.deepEqual(plan.actions.filter(action => action[0] === 'AddColumn').map(action => action[2]), [...HELPERS]);
   const some = planSharing(withFiles([{ parentId: 7, colId: 'GFS_Lecteurs' }]), FILES_COLUMNS);
   assert.ok(!some.actions.some(action => action[0] === 'AddColumn' && action[2] === 'GFS_Lecteurs'));

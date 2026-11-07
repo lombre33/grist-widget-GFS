@@ -52,8 +52,8 @@ test('resume : vrai une seule fois après une pose', async () => {
   assert.equal(writer.resume(), false);
 });
 
-test('plans : les quatre plans, ou null sans lecture', async () => {
-  assert.deepEqual(Object.keys(await setup().writer.plans()).sort(), ['close', 'open', 'remove-level', 'shared']);
+test('plans : les six plans, ou null sans lecture', async () => {
+  assert.deepEqual(Object.keys(await setup().writer.plans()).sort(), ['close', 'open', 'remove-level', 'shared', 'sharing', 'unsharing']);
   assert.equal(await setup({ raw: null }).writer.plans(), null);
 });
 
@@ -82,4 +82,35 @@ test('runAction : Annuler n’écrit rien ; accepter écrit ; un échec est dit'
   assert.equal(await runAction({ kind: 'shared', plans: await bad.writer.plans(), t, ask: async options => { asked.push(options); return true; }, writer: bad.writer }), false);
   assert.equal(asked.length, 2);
   assert.match(asked[1].message, /refus/);
+});
+
+test('activer le partage depuis la fenêtre « Partager » : la reprise retenue est celle du fichier (`share:<clé>`), pas celle du panneau', async () => {
+  const { writer, sent, store } = setup();
+  assert.deepEqual(await writer.apply('sharing', 'share:gfs-fichiers:f1'), { ok: true });
+  assert.equal(sent.length, 1);
+  assert.equal(store.read(), 'share:gfs-fichiers:f1');
+  assert.equal(writer.resume(), false, 'ce n’est pas la reprise du panneau');
+  assert.equal(store.read(), null, 'la reprise a été prise (une seule fois)');
+  await writer.apply('close');
+  assert.equal(writer.take(), 'rights');
+  assert.equal(writer.take(), null);
+});
+
+test('activer le partage : les PDF déjà rangés restent lisibles de tous (un partage « tout le document » par fichier), les nouveaux ne le sont pas', async () => {
+  const { writer, sent } = setup({ raw: { ...RAW(), fileIds: ['a1', 'b2'] } });
+  await writer.apply('sharing');
+  const bulk = sent[0].find(action => action[0] === 'BulkAddRecord' && action[1] === 'GFS_Partages');
+  assert.deepEqual(bulk[3].Cible, ['gfs-fichiers:a1', 'gfs-fichiers:b2']);
+  assert.deepEqual(bulk[3].Personne, ['@tous', '@tous']);
+  assert.deepEqual(bulk[3].Droit, ['lecture', 'lecture']);
+  const none = setup();
+  await none.writer.apply('sharing');
+  assert.ok(!none.sent[0].some(action => action[0] === 'BulkAddRecord'), 'aucun fichier : aucune ligne à écrire');
+});
+
+test('la question d’activation dit le prix : ce que deviennent les PDF d’avant, et la première règle', () => {
+  const options = askOptions(t, 'sharing', { firstRule: true });
+  assert.deepEqual(options.items, ['rights.ask.sharing.item1', 'rights.ask.sharing.item2', 'rights.ask.firstRule']);
+  assert.equal(options.title, 'rights.ask.sharing.title');
+  assert.equal(options.confirmLabel, 'rights.ask.sharing.confirm');
 });

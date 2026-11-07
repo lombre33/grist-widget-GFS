@@ -3,6 +3,8 @@
 // « GFS : » et ne retire jamais celle d'un autre auteur (11.5, points 4, 5 et 7). Ce lot pose le niveau Partagé du rangement de GFS et la fermeture de la structure ; Encadré et les espaces suivent.
 
 import { levelOfNote } from './rights.js';
+import { isSharingNote, planSharing, planUnsharing } from './sharing-model.js';
+import { FILES_COLUMNS } from './gfs-files.js';
 
 export const RANGEMENT = 'GFS_Rangement';
 export const NEEDED_COLUMNS = Object.freeze(['Utilisateur', 'Adresse']);
@@ -64,7 +66,7 @@ const isDefaultRule = (rule, byId) => isDefaultResource(byId.get(rule.resource))
 // Retirer ce que GFS a posé : toutes les règles dont la note est « GFS : Partagé » ou « GFS : Encadré » (pas celle de la structure : voir `planStructure`), et la ressource qui n'en garde plus aucune.
 // Rend { ok: true, actions } ou { ok: false, reason: 'none' }.
 export function planRemoveLevel(existing) {
-  const mine = existing.rules.filter(rule => levelOfNote(rule.memo) && levelOfNote(rule.memo) !== 'ouvert');
+  const mine = existing.rules.filter(rule => levelOfNote(rule.memo) && levelOfNote(rule.memo) !== 'ouvert' && !isSharingNote(rule.memo));
   if (!mine.length) return { ok: false, reason: 'none' };
   const dropped = new Set(mine.map(rule => rule.id));
   const resources = new Set(mine.map(rule => rule.resource));
@@ -103,12 +105,18 @@ export const structureClosedByGfs = rules => rules.some(rule => isStructureNote(
 
 // Les deux lignes du bloc « Poser des règles » du panneau d'après les plans (`RightsWriter.plans()`) : chacune rend { kind | null, label, hint, why }. `kind` est le geste possible (celui que le
 // bouton envoie) ; `null` veut dire grisé, avec `why` : la clé de la raison (jamais masqué, charte). Sans plans (règles illisibles), tout est grisé.
+// Le partage de fichiers (js/sharing-model.js) : activer, ou retirer ses règles.
+export const planSharingFor = existing => planSharing(existing, FILES_COLUMNS);
+export { planUnsharing };
+
 export function actionsOf(plans) {
   const none = reason => ({ kind: null, why: `rights.act.why.${reason}` });
-  if (!plans) return [{ label: 'rights.act.shared', ...none('unreadable') }, { label: 'rights.act.close', ...none('unreadable') }];
+  if (!plans) return ['shared', 'close', 'sharing'].map(key => ({ label: `rights.act.${key}`, ...none('unreadable') }));
   const level = plans.shared.ok ? { kind: 'shared', label: 'rights.act.shared', hint: 'rights.act.shared.hint' }
     : (plans.shared.reason === 'already' && plans['remove-level'].ok ? { kind: 'remove-level', label: 'rights.act.remove', hint: 'rights.act.remove.hint' } : { label: 'rights.act.shared', ...none(plans.shared.reason) });
   const structure = plans.close.ok ? { kind: 'close', label: 'rights.act.close', hint: 'rights.act.close.hint' }
     : (plans.close.reason === 'already' && plans.open.ok ? { kind: 'open', label: 'rights.act.open', hint: 'rights.act.open.hint' } : { label: 'rights.act.close', ...none(plans.close.reason) });
-  return [level, structure];
+  const sharing = plans.sharing.ok ? { kind: 'sharing', label: 'rights.act.sharing', hint: 'rights.act.sharing.hint' }
+    : (plans.sharing.reason === 'already' && plans.unsharing.ok ? { kind: 'unsharing', label: 'rights.act.unsharing', hint: 'rights.act.unsharing.hint' } : { label: 'rights.act.sharing', ...none(`sharing.${plans.sharing.reason}`) });
+  return [level, structure, sharing];
 }

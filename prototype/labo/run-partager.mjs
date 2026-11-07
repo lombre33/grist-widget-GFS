@@ -41,7 +41,7 @@ try {
     say('partage au document :', await shareWithEditorAndViewer(page, id));
     const existing = await existingOf(page, id);
     const plan = planSharing(existing, FILES_COLUMNS);
-    check('le plan est possible, sans règle d\'un autre auteur, pour un document neuf', plan.ok && plan.firstRule && plan.creates.join(',') === `${SHARES_TABLE},GFS_Fichiers`, plan);
+    check('le plan est possible, sans règle d\'un autre auteur, pour un document neuf', plan.ok && plan.firstRule && plan.creates.join(",") === `${SHARES_TABLE},GFS_Rangement,GFS_Fichiers`, plan);
     let answer = await apply(page, id, plan.actions);
     check('les deux tables, les colonnes d\'aide et les règles s\'écrivent en UNE liasse', answer.status === 200, answer.text);
     const again = planSharing(await existingOf(page, id), FILES_COLUMNS);
@@ -106,7 +106,7 @@ try {
       const seen = await records(page, id, 'GFS_Fichiers');
       check('il lit f1 (partagé par l\'éditeur) et f3 (« tous »), pas f2 ni f4 (éditeurs)', ids(seen) === 'f1,f3', ids(seen));
       const shares = await records(page, id, SHARES_TABLE);
-      check('il ne lit que les partages qui le concernent', Array.isArray(shares) && shares.every(row => String(row.PersonneL || row.Personne).toLowerCase() === VIEWER || row.Personne === '@tous'), shares);
+      check('il ne lit que les partages qui le concernent (les siens et ceux de « tous », pas ceux des éditeurs)', Array.isArray(shares) && shares.every(row => String(row.PersonneL || row.Personne).toLowerCase() === VIEWER || row.Personne === '@tous') && !shares.some(row => row.Personne === '@editeurs'), shares);
       const answer = await apply(page, id, [['UpdateRecord', 'GFS_Fichiers', 3, { Nom: 'x' }]]);
       check('lecteur du document : il n\'écrit rien', answer.status !== 200, answer.text);
     }

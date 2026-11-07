@@ -65,8 +65,8 @@ export async function droitsProblems(page, language, tag) {
       if (kind === 'proprietaire-seul' && body.includes(t('rights.act.title'))) run.note(kind, 'une personne qui n\'est pas propriétaire ne devait pas voir le bloc « Poser des règles »');
       if (kind === 'pas' || kind === 'autre') {
         const disabled = await page.run(() => [...document.querySelectorAll('.rt-act .btn')].map(node => [node.dataset.fk, node.getAttribute('aria-disabled')]));
-        const wanted = kind === 'pas' ? [['rights-act-shared', null], ['rights-act-close', null]] : [['rights-act-off', 'true'], ['rights-act-off', 'true']];
-        if (JSON.stringify(disabled) !== JSON.stringify(wanted)) run.note(kind, `les deux gestes devaient être ${kind === 'pas' ? 'possibles' : 'grisés'} (ils sont : ${JSON.stringify(disabled)})`);
+        const wanted = kind === 'pas' ? [['rights-act-shared', null], ['rights-act-close', null], ['rights-act-sharing', null]] : [['rights-act-off', 'true'], ['rights-act-off', 'true'], ['rights-act-off', 'true']];
+        if (JSON.stringify(disabled) !== JSON.stringify(wanted)) run.note(kind, `les trois gestes devaient être ${kind === 'pas' ? 'possibles' : 'grisés'} (ils sont : ${JSON.stringify(disabled)})`);
       }
       if (kind === 'pas') {
         // La vraie souris sur « Poser » : la question s'ouvre par-dessus le panneau, Échap la ferme sans fermer le panneau, et le geste a bien été demandé.

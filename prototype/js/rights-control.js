@@ -5,6 +5,7 @@ import { RightsReader } from './rights-reader.js';
 import { openRights } from './rights-window.js';
 import { RightsWriter, RESUME_KEY } from './rights-writer.js';
 import { runAction } from './rights-actions.js';
+import { ShareControl } from './share-control.js';
 import { ask } from './ask-window.js';
 import { keyStore } from './stored-choice.js';
 
@@ -12,12 +13,15 @@ export class RightsControl {
   #opts;
   reader;
   writer;
+  sharing;
 
-  // opts : { port, transfer, prefixes() → les préfixes de table des apps, now(), container, inertTargets(), t(clé, variables), fullAccess() }
+  // opts : { port, transfer, prefixes() → les préfixes de table des apps, now(), container, inertTargets(), t(clé, variables), fullAccess(), locale(), identity(), writeBlock(), appName(id), extraTargets() }
   constructor(opts) {
     this.#opts = opts;
     this.reader = new RightsReader({ port: opts.port, transfer: opts.transfer, prefixes: opts.prefixes, now: opts.now });
     this.writer = new RightsWriter({ port: opts.port, reader: this.reader, store: opts.container ? keyStore(opts.container.ownerDocument.defaultView, RESUME_KEY) : { read: () => null, write: () => false } });
+    // « Partager » : le même lecteur et le même écrivain, pour la fenêtre du fichier (js/share-control.js).
+    this.sharing = new ShareControl({ ...opts, reader: this.reader, writer: this.writer, extraTargets: opts.extraTargets || (() => []) });
   }
 
   // Les règles ne se lisent qu'avec l'accès complet (les tables internes de Grist), et ne se rendent qu'à un propriétaire prouvé : mesuré (Grist 1.7.19), les règles arrivent vides à qui n'a pas le droit de lire
@@ -53,5 +57,18 @@ export class RightsControl {
   }
 
   // Au retour du rechargement que Grist impose après une pose : rouvre le panneau, une fois (contrats 11.5, point 3).
-  resume(explorer) { if (this.writer.resume()) void this.open(explorer); }
+  // Ce que GFS avait retenu de rouvrir : le panneau, ou la fenêtre « Partager » d'un fichier (que l'explorateur a peut-être pas encore lu : on attend ses fichiers un instant).
+  resume(explorer) {
+    const wanted = this.writer.take();
+    if (wanted === 'rights') void this.open(explorer);
+    else if (wanted && wanted.startsWith('share:')) void this.#reopenShare(explorer, wanted.slice(6));
+  }
+
+  async #reopenShare(explorer, key) {
+    for (let tries = 0; tries < 40; tries++) {
+      const file = (explorer.files || []).find(item => item.key === key);
+      if (file) { await this.sharing.open(file); return; }
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+  }
 }

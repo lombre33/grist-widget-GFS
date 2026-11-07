@@ -16,6 +16,8 @@ export function levelOfNote(memo) {
   const found = GFS_NOTE.exec(String(memo ?? ''));
   if (!found) return null;
   const word = plain(found[1]).split(/[\s·,;:(]/)[0];
+  // « GFS : Partages · … » (les règles de « Partager », js/sharing-model.js) : les tables de fichiers et de partages sont encadrées, par la liste de ceux qui lisent chaque fichier.
+  if (word === 'partages') return 'encadre';
   return word === 'partage' || word === 'encadre' || word === 'ouvert' ? word : null;
 }
 

@@ -1,7 +1,7 @@
 // Les plans de pose (js/rights-plan.js, étape 7 lot a ; contrats 11.4, 11.5) : la liasse de Partagé, la structure fermée et rouverte, ce que GFS refuse de toucher, les gestes du panneau.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { planShared, planRemoveLevel, planCloseStructure, planOpenStructure, sharedRules, actionsOf, RANGEMENT } from '../js/rights-plan.js';
+import { planShared, planRemoveLevel, planCloseStructure, planOpenStructure, planSharingFor, planUnsharing, sharedRules, actionsOf, RANGEMENT } from '../js/rights-plan.js';
 import { userRules, structureClosed, tableLevels } from '../js/rights.js';
 
 const BUILT_IN = { id: 1, resource: 1, permissions: 63, principals: '[1]', aclFormula: '', aclColumn: 0, permissionsText: '', rulePos: null, memo: '' };
@@ -120,13 +120,27 @@ test('Structure : la règle -S ne rend aucune table « Règles de Grist » (elle
 });
 
 test('Panneau : le geste possible, ou le bouton grisé avec sa raison, jamais masqué', () => {
-  const plans = existing => ({ shared: planShared(existing), 'remove-level': planRemoveLevel(existing), close: planCloseStructure(existing), open: planOpenStructure(existing) });
-  assert.deepEqual(actionsOf(plans(base())).map(row => row.kind), ['shared', 'close']);
+  const plans = existing => ({ shared: planShared(existing), 'remove-level': planRemoveLevel(existing), close: planCloseStructure(existing), open: planOpenStructure(existing), sharing: planSharingFor(existing), unsharing: planUnsharing(existing) });
+  assert.deepEqual(actionsOf(plans(base())).map(row => row.kind), ['shared', 'close', 'sharing']);
   const shared = apply(base(), planShared(base()).actions);
   const done = apply(shared, planCloseStructure(shared).actions);
-  assert.deepEqual(actionsOf(plans(done)).map(row => row.kind), ['remove-level', 'open']);
+  assert.deepEqual(actionsOf(plans(done)).map(row => row.kind), ['remove-level', 'open', 'sharing']);
+  const withSharing = apply(done, planSharingFor(done).actions.filter(action => action[1] === '_grist_ACLResources' || action[1] === '_grist_ACLRules').concat([]));
+  assert.deepEqual(actionsOf({ ...plans(done), sharing: { ok: false, reason: 'already' }, unsharing: planUnsharing(withSharing) }).map(row => row.kind), ['remove-level', 'open', 'unsharing']);
+  assert.equal(actionsOf({ ...plans(done), sharing: { ok: false, reason: 'foreign' } })[2].why, 'rights.act.why.sharing.foreign');
   const empty = actionsOf(plans({ ...base(), tables: [] }));
   assert.equal(empty[0].kind, null);
   assert.equal(empty[0].why, 'rights.act.why.no-table');
+  assert.equal(actionsOf(null).length, 3);
   assert.ok(actionsOf(null).every(row => row.kind === null && row.why));
+});
+
+test('« Retirer » (remove-level) ne touche pas aux règles du partage de fichiers : ce sont celles d\u2019un autre geste', () => {
+  const shared = apply(base(), planShared(base()).actions);
+  const both = apply(shared, planSharingFor({ ...shared, tables: [...shared.tables] }).actions.filter(action => action[1] === '_grist_ACLResources' || action[1] === '_grist_ACLRules'));
+  const plan = planRemoveLevel(both);
+  assert.equal(plan.ok, true);
+  const left = apply(both, plan.actions);
+  assert.ok(left.rules.some(rule => /^GFS : Partages/.test(rule.memo || '')), 'les règles de partage restent');
+  assert.ok(!left.rules.some(rule => /^GFS : Partagé/.test(rule.memo || '')), 'les règles de Partagé sont retirées');
 });

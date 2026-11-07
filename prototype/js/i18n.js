@@ -5,6 +5,7 @@ import { TRASH_STRINGS } from './i18n-trash.js';
 import { FOLDER_STRINGS } from './i18n-folders.js';
 import { WEIGHT_STRINGS } from './i18n-weight.js';
 import { RIGHTS_STRINGS } from './i18n-rights.js';
+import { SHARE_STRINGS } from './i18n-share.js';
 
 const STRINGS = {
   fr: {
@@ -12,6 +13,7 @@ const STRINGS = {
     ...FOLDER_STRINGS.fr,
     ...WEIGHT_STRINGS.fr,
     ...RIGHTS_STRINGS.fr,
+    ...SHARE_STRINGS.fr,
     'gfs.title': 'Grist Factory Suite',
     'gfs.noGrist': 'GFS doit être ajouté comme widget personnalisé dans Grist.',
     'gfs.loading': '{app} se charge…',
@@ -282,6 +284,7 @@ const STRINGS = {
     ...FOLDER_STRINGS.en,
     ...WEIGHT_STRINGS.en,
     ...RIGHTS_STRINGS.en,
+    ...SHARE_STRINGS.en,
     'gfs.title': 'Grist Factory Suite',
     'gfs.noGrist': 'GFS must be added to Grist as a custom widget.',
     'gfs.loading': '{app} is loading…',

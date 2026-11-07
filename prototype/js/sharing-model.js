@@ -6,6 +6,7 @@
 // attendent leurs tables ; « peut télécharger » est un confort de GFS (le bouton), jamais une protection : qui lit la pièce jointe peut la copier (contrats 11.1, point 8).
 
 import { FILES_TABLE } from './gfs-files.js';
+import { TABLE as FILING_TABLE, COLUMNS as FILING_COLUMNS } from './rangement.js';
 
 export const SHARES_TABLE = 'GFS_Partages';
 export const ROOT = '*';
@@ -88,7 +89,7 @@ export function shareRules() {
     rule('user.Access in [OWNER]', '+CRUD', 'les propriétaires gardent la main'),
     rule(inList('AdminsCible'), '+RUD', 'les administrateurs d’un fichier gèrent ses partages'),
     rule(ownShare, '+RUD', 'chacun gère les partages qu’il a ajoutés'),
-    rule('user.Email and rec.PersonneL == user.Email.lower()', '+R', 'chacun lit les partages qui le concernent'),
+    rule('(user.Email and rec.PersonneL == user.Email.lower()) or (rec.PersonneL == "@tous" and user.Access in [EDITOR, VIEWER]) or (rec.PersonneL == "@editeurs" and user.Access in [EDITOR])', '+R', 'chacun lit les partages qui le concernent, catégories comprises'),
     // Mesuré (faits 55) : une colonne à formule déclenchée garde la valeur qu'on lui donne à la création, et `newRec` porte, à la création, celle que Grist écrit ou celle qu'on a donnée : la règle exige
     // que l'auteur et son rôle soient ceux de la personne.
     rule('user.Access in [EDITOR] and user.Email and newRec.Auteur and newRec.Auteur.lower() == user.Email.lower() and newRec.AuteurAcces == user.Access', '+C', 'tout éditeur peut ajouter une ligne, à son nom : elle ne vaut que si elle est valide'),
@@ -117,7 +118,7 @@ function rulesActions(existing, groups) {
 const isBuiltIn = (item, map) => { const res = map.get(item.resource); return (!res || ((!res.tableId || res.tableId === '*') && (!res.colIds || res.colIds === '*'))) && !String(item.aclFormula || '').trim() && (item.permissionsText ? !String(item.permissionsText).includes('-') : Number(item.permissions) === 63); };
 
 // Activer le partage : crée `GFS_Partages` (et `GFS_Fichiers` s'il manque, avec ses colonnes), ajoute les colonnes d'aide aux tables de fichiers, pose les règles. `existing` : { resources, rules, tables, columns }.
-// Rend { ok: true, actions, firstRule, creates: [tables créées], adds: [colonnes ajoutées] } ou { ok: false, reason } : 'already' (la table de partages est là), 'foreign' (une règle d'un autre auteur sur ces tables).
+// Rend { ok: true, actions, firstRule, creates: [tables créées], adds: [colonnes ajoutées], legacy: nombre de fichiers déjà là, laissés lisibles de tous } ou { ok: false, reason } : 'already' (la table de partages est là), 'foreign' (une règle d'un autre auteur sur ces tables).
 export function planSharing(existing, filesColumns) {
   const hasTable = name => existing.tables.some(row => row.tableId === name);
   if (hasTable(SHARES_TABLE)) return { ok: false, reason: 'already' };
@@ -125,18 +126,25 @@ export function planSharing(existing, filesColumns) {
   if (tables.some(name => onTable(existing, name).some(item => !isSharingNote(item.memo)))) return { ok: false, reason: 'foreign' };
   const actions = []; const creates = [SHARES_TABLE]; const adds = [];
   actions.push(['AddTable', SHARES_TABLE, shareColumns()]);
+  // Une fois le partage actif, un éditeur n'ajoute un fichier qu'à son nom : GFS doit connaître son adresse, qu'il ne lit que par la sonde de `GFS_Rangement` (js/rangement.js). Sans cette table, son PDF serait
+  // refusé (mesuré, labo/run-partager-fenetre.mjs) : le partage la crée avec le reste, et la question le dit.
+  if (!hasTable(FILING_TABLE)) { actions.unshift(['AddTable', FILING_TABLE, FILING_COLUMNS.map(column => ({ ...column }))]); creates.push(FILING_TABLE); }
   for (const target of TARGETS) {
     if (!hasTable(target.table)) { actions.unshift(['AddTable', target.table, [...filesColumns, ...helperColumns(target)]]); creates.push(target.table); continue; }
     const table = existing.tables.find(row => row.tableId === target.table);
     const have = new Set(existing.columns.filter(col => col.parentId === table.id).map(col => col.colId));
     for (const helper of helperColumns(target)) if (!have.has(helper.id)) { actions.push(['AddColumn', target.table, helper.id, { ...helper, id: undefined }]); adds.push(`${target.table}.${helper.id}`); }
   }
+  // Les fichiers déjà rangés restent lisibles de tous ceux qui ont accès au document, comme avant l'activation (contrats 11.7, point 12) : un partage « tout le document » par fichier ; les nouveaux fichiers
+  // ne sont lus que de leur auteur.
+  const legacy = (existing.fileIds || []).map(String);
+  if (legacy.length) actions.push(['BulkAddRecord', SHARES_TABLE, legacy.map(() => null), { Cible: legacy.map(one => `${TARGETS[0].prefix}${one}`), Personne: legacy.map(() => CATEGORIES.tous), Droit: legacy.map(() => 'lecture'), Telecharger: legacy.map(() => true) }]);
   const map = byResource(existing);
   const groups = [
     { tableId: SHARES_TABLE, colIds: 'Auteur,AuteurAcces', rules: stampRules() }, { tableId: SHARES_TABLE, colIds: '*', rules: shareRules() },
     ...TARGETS.map(target => ({ tableId: target.table, colIds: '*', rules: fileRules() })),
   ];
-  return { ok: true, actions: [...actions, ...rulesActions(existing, groups)], firstRule: existing.rules.every(item => isBuiltIn(item, map)), creates, adds };
+  return { ok: true, actions: [...actions, ...rulesActions(existing, groups)], firstRule: existing.rules.every(item => isBuiltIn(item, map)), creates, adds, legacy: legacy.length };
 }
 
 // Retirer le partage : les règles de GFS (note « GFS : Partages ») et leurs ressources. Les tables et les colonnes d'aide restent (rien d'une donnée ne s'efface) ; plus aucune règle ne les lit.

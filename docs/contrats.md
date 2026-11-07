@@ -2921,7 +2921,8 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
     partages de GFS (fichier ou dossier, personne ou groupe ou catégorie, droit, date de fin) ; un administrateur de fichier, propriétaire ou non, partage avec les personnes
     **déjà dans le document** en y ajoutant une ligne, sans propriétaire. Pour une adresse **pas encore dans le document**, GFS envoie une demande d'invitation à un propriétaire ;
     la ligne de partage prend effet dès que la personne est invitée dans Grist. Les lignes de partage ne sont lisibles que de l'administrateur du fichier, de la personne
-    concernée et des propriétaires (un nom de dossier peut être confidentiel). Rien n'est codé.
+    concernée et des propriétaires (un nom de dossier peut être confidentiel). **Premier lot codé le 07/11** (point g) ; le reste (dossiers, groupes, catégories de la table d'équipe,
+    demande d'invitation, menu « Gérer les partages ») n'est pas codé.
     a. [D] **Droits** : lecture seule, lecture + commentaires (ceux des apps : une règle sur leur table de commentaires liée au fichier, 11.7, point 3, pas le rôle de commentateur de
        Grist), dépôt seul (ajouter sans voir ni modifier l'existant), écriture, administration (changer qui a accès). Cases : « peut télécharger » ; « accès jusqu'au » (date de fin).
     b. [D] **Fin d'accès** : une règle de Grist ne lit pas l'heure, une colonne-formule sur `TODAY()` si (faits vérifiés, 46) : l'accès s'arrête à la date **dès que Grist recharge le
@@ -2936,6 +2937,15 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
        deux niveaux de validité seulement (un administrateur désigné par un propriétaire nomme, la délégation ne descend pas plus bas).
     e. [T] **La liste des invités n'est pas lisible par un widget** (faits vérifiés, 45) : GFS propose les adresses qu'il connaît (le rangement, les tables d'équipes désignées) et
        l'adresse tapée ; le reste passe par « Demander l'invitation ». « Voir en tant que » existe déjà dans Grist et les widgets en tiennent compte : GFS n'en refait rien.
+
+    g. [T] **Premier lot livré le 07/11** (`js/sharing-model.js`, `js/share-window.js`, `js/share-control.js`, `css/share.css`) : la ligne « Partager… » du menu d'un PDF que GFS garde
+       (`GFS_Fichiers` ; les fichiers d'une app attendent leurs colonnes d'aide) ; trois droits (lecture seule, écriture, administration ; « commentaires » et « dépôt seul » sont dans le
+       menu, grisés, avec leur raison) ; par adresse, par catégorie (« tous les éditeurs », « tout le document ») ; « peut télécharger » (confort) ; fin d'accès. **Activer** est un geste de
+       propriétaire (`rights.act.sharing`), avec la question qui dit le prix (tables, cinq colonnes d'aide, première règle, rechargement de la page de tous) ; GFS rouvre la fenêtre du même fichier après
+       le rechargement. L'activation crée aussi `GFS_Rangement` s'il manque : sans lui GFS ne connaît pas l'adresse d'un éditeur, et son PDF serait refusé (mesuré dans un vrai Grist,
+       `labo/run-partager-fenetre.mjs`) ; les PDF déjà rangés restent lisibles de tous (une ligne « tout le document » par PDF). Chacun lit les lignes qui le concernent, catégories
+       comprises. Mesuré : vrai Grist à trois comptes (`labo/run-partager.mjs` 25, `labo/run-partager-fenetre.mjs` 26), 700 × 400 à la vraie souris, clair et sombre, français et anglais ;
+       Firefox (`test/partager-firefox.mjs`).
 
 ### 11.8 À mesurer sur le Grist du porteur
 

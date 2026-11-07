@@ -14,7 +14,7 @@ App : Sync+ (« Synchro Grist ») · posée le 06/11/2026 · quand : à lire mai
    ton code. Sync+ n'est pas une « app de GFS » ; seul son moteur sera lu par GFS (la 002 dit ce qu'il faut séparer).
 4. Créer le `GFS-ETAT.md` à la racine de ton dépôt (format : `consignes/LISEZ-MOI.md`, « Répondre : `GFS-ETAT.md` »). GFS le lit
    avant chaque lot qui te concerne ; c'est ta seule façon de lui parler.
-5. Relire ce que GFS a retenu de toi (ci-dessous, lu à `main` `73f261b`, version 0.12.2) et écrire dans la page d'état ce qui est
+5. Relire ce que GFS a retenu de toi (ci-dessous, lu sur la version 0.12.2 du 06/11 en début d'après-midi ; `main` est à la 0.13.2 depuis, que GFS n'a pas relue) et écrire dans la page d'état ce qui est
    faux ou périmé : environ 8 800 lignes de JavaScript sans bibliothèque ; `js/logic/` (3 700 lignes) sans écran ; `js/grist.js`
    seule porte vers Grist ; écrans dans `js/source/`, `js/target/` et `js/ui.js` ; le moteur écrit une table technique
    `Synchro`, les colonnes `id_sync` et `MajLe`, un `Journal_…` par réception avec sa page et son formulaire, des règles

@@ -349,14 +349,15 @@ test('le poids annoncé de chaque extension est la taille de son dossier dans l\
 });
 
 // « Nouveau > Importer » (contrats 2.7, point 4) : les formats qu'une app reçoit d'un autre logiciel, chacun avec le type qu'il crée.
-test('contrats 2.7, point 4 : Publipostage+ déclare Excel, Markdown et PowerPoint, chacun vers un type qu\'il ouvre', () => {
+test('contrats 2.7, point 4 : Publipostage+ déclare Excel, Markdown, PowerPoint et Word, chacun vers un type qu\'il ouvre', () => {
   const { importer, ouvrir } = publipostage().actions;
-  assert.deepEqual(importer.map(item => [item.valeur, item.type]), [['excel', 'grille'], ['markdown', 'document'], ['powerpoint', 'presentation']]);
+  assert.deepEqual(importer.map(item => [item.valeur, item.type]), [['excel', 'grille'], ['markdown', 'document'], ['powerpoint', 'presentation'], ['word', 'document']]);
   for (const item of importer) {
     assert.ok(ouvrir.includes(item.type), `${item.valeur} : ${item.type} est un type que l'app ouvre`);
     assert.ok(item.extensions.every(extension => /^\.[a-z0-9]{1,8}$/i.test(extension)), `${item.valeur} : des extensions « .ext »`);
   }
   assert.deepEqual(importer[0].extensions, ['.xlsx', '.xlsm'], 'ce que le sélecteur de l\'app propose déjà pour un classeur');
+  assert.deepEqual(importer[3].extensions, ['.docx', '.docm', '.dotx', '.dotm'], 'les quatre extensions que la ligne « Importer un Word… » du menu « + » de l\'app propose déjà');
 });
 
 test('contrats 2.7 et 2.8 : un format importé mal formé invalide le manifeste', () => {

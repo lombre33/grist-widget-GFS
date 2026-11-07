@@ -8,6 +8,8 @@
 //   4. « Diapositives » cochée, « PowerPoint » (appel `ouvrir`) : la présentation du fichier, ses deux diapositives et leur bande.
 //   5. GFS repart (l'app est fermée), au démarrage : « Excel » à la souris, puis « PowerPoint » au clavier (Entrée, Fin, flèche droite, bas, Entrée).
 //   6. Un fichier illisible (`faux.xlsx`) : l'app le dit et garde son document, GFS ne dit rien.
+//   7. « Word » (déclaré à la demande de l'app, 187464a ; choix du porteur du 07/11) : le sélecteur propose les quatre extensions du manifeste ; l'app déjà ouverte (appel `ouvrir`) pose sa question, puis le document du fichier ;
+//      GFS repart, l'app fermée : le Word part avec l'ouverture du contexte et remplace le ★, sans nom ; rien n'est écrit dans le document.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { readFileSync } from 'node:fs';
 import { startLab } from './lab-setup.mjs';
@@ -19,22 +21,24 @@ const scheme = process.env.LAB_SCHEME || 'light';
 const run = `importer-pp-${lang}-${scheme}`;
 const WORDS = lang === 'fr'
   ? {
-    import: 'Importer', excel: 'Excel', markdown: 'Markdown', pptx: 'PowerPoint', type: { excel: 'Grille', markdown: 'Document', powerpoint: 'Présentation' }, slides: /extension Diapositives/,
+    import: 'Importer', excel: 'Excel', markdown: 'Markdown', pptx: 'PowerPoint', word: 'Word', type: { excel: 'Grille', markdown: 'Document', powerpoint: 'Présentation', word: 'Document' }, slides: /extension Diapositives/,
     buttons: ['Annuler', 'Ne pas enregistrer'], cancel: 'Annuler', discard: 'Ne pas enregistrer', unsaved: /^Modèle non enregistré/,
     imported: {
       markdown: 'Markdown importé. Nommez le modèle puis enregistrez-le.',
       excel: 'Excel importé : 3 lignes, 2 colonnes. Nommez le modèle puis enregistrez-le.',
       powerpoint: 'PowerPoint importé : 2 diapositives. Nommez le modèle puis enregistrez-le.',
+      word: 'Word importé. Nommez le modèle puis enregistrez-le.',
     },
     unreadable: 'Ce fichier n’est pas un classeur Excel (.xlsx) lisible.',
   }
   : {
-    import: 'Import', excel: 'Excel', markdown: 'Markdown', pptx: 'PowerPoint', type: { excel: 'Grid', markdown: 'Document', powerpoint: 'Presentation' }, slides: /Slides extension/,
+    import: 'Import', excel: 'Excel', markdown: 'Markdown', pptx: 'PowerPoint', word: 'Word', type: { excel: 'Grid', markdown: 'Document', powerpoint: 'Presentation', word: 'Document' }, slides: /Slides extension/,
     buttons: ['Cancel', 'Don’t save'], cancel: 'Cancel', discard: 'Don’t save', unsaved: /^Template not saved/,
     imported: {
       markdown: 'Markdown imported. Name the template, then save it.',
       excel: 'Excel imported: 3 rows, 2 columns. Name the template, then save it.',
       powerpoint: 'PowerPoint imported: 2 slides. Name the template, then save it.',
+      word: 'Word imported. Name the template, then save it.',
     },
     unreadable: 'This file is not a readable Excel (.xlsx) workbook.',
   };
@@ -44,7 +48,8 @@ const APP = /apps\/publipostage\/|publipostageGrist\//;
 const MARKDOWN = { name: 'note.md', mimeType: 'text/markdown', buffer: Buffer.from('# Titre importé\n\nTexte du fichier de GFS.', 'utf8') };
 const MARKDOWN_TEXT = 'Titre importéTexte du fichier de GFS.';
 const NOT_A_BOOK = { name: 'faux.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: Buffer.from('ceci n’est pas un classeur', 'utf8') };
-const MIME = { excel: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', powerpoint: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' };
+const MIME = { excel: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', powerpoint: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', word: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' };
+const WORD_TEXT = 'Titre du WordTexte du fichier Word de GFS.';
 const FK_SLIDES = 'ext:publipostage/diapositives';
 
 const lab = await startLab({ lang, colorScheme: scheme });
@@ -150,11 +155,20 @@ const buildFixtures = async () => {
     sheet.addRow(['Clou', 7]);
     const { pptx, textBox, para, run } = window.PptxFixtures;
     const slide = text => ({ shapes: textBox(60, 40, 840, 80, para(run(text, 'sz="4000"')), { id: 2 }) });
-    return { xlsx: base64(await book.xlsx.writeBuffer()), deck: base64(await pptx({ slides: [slide('Bilan GFS'), slide('Suite')] })) };
+    // Un .docx de deux paragraphes, écrit comme Word l'écrit en plus court (un paquet OPC : JSZip, que l'app charge pour PowerPoint).
+    await ExportCommon.ensureJsZipLoaded(); // JSZip, que le paquet OPC d'un .docx demande aussi
+    const zip = new JSZip();
+    const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+    const HEAD = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+    zip.file('[Content_Types].xml', `${HEAD}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`);
+    zip.file('_rels/.rels', `${HEAD}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`);
+    zip.file('word/document.xml', `${HEAD}<w:document xmlns:w="${W}"><w:body><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Titre du Word</w:t></w:r></w:p><w:p><w:r><w:t>Texte du fichier Word de GFS.</w:t></w:r></w:p><w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1417" w:right="1417" w:bottom="1417" w:left="1417" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr></w:body></w:document>`);
+    return { xlsx: base64(await book.xlsx.writeBuffer()), deck: base64(await pptx({ slides: [slide('Bilan GFS'), slide('Suite')] })), docx: base64(await zip.generateAsync({ type: 'uint8array' })) };
   });
   return {
     excel: { name: 'ventes.xlsx', mimeType: MIME.excel, buffer: Buffer.from(made.xlsx, 'base64') },
     powerpoint: { name: 'bilan.pptx', mimeType: MIME.powerpoint, buffer: Buffer.from(made.deck, 'base64') },
+    word: { name: 'compte-rendu.docx', mimeType: MIME.word, buffer: Buffer.from(made.docx, 'base64') },
   };
 };
 const isImported = (seen, format, phrase = WORDS.imported[format]) => Boolean(seen) && seen.status === phrase && seen.statusClass === '' && seen.current == null && seen.name === '' && seen.list === '';
@@ -173,12 +187,12 @@ baseline = before;
 // 1. Au départ : « Excel » et « Markdown » ne sont plus grisés, « PowerPoint » attend « Diapositives ».
 await openImport();
 const labels = await frame.locator('.menu-sub .menu-item .menu-label').allInnerTexts();
-check('le sous-menu « Importer » liste les trois formats de Publipostage+, puis le PDF que GFS garde lui-même', JSON.stringify(labels) === JSON.stringify([WORDS.excel, WORDS.markdown, WORDS.pptx, 'PDF']), labels);
-const disabled = await Promise.all([WORDS.excel, WORDS.markdown, WORDS.pptx].map(async name => (await subItem(name).getAttribute('aria-disabled')) === 'true'));
-check('« Excel » et « Markdown » ne sont plus grisés ; « PowerPoint » l\'est (l\'extension « Diapositives » manque)', JSON.stringify(disabled) === JSON.stringify([false, false, true]), disabled);
-const hints = await Promise.all([WORDS.excel, WORDS.markdown, WORDS.pptx].map(name => subItem(name).locator('.menu-hint').innerText()));
-check('chacun dit son type (Grille, Document) ; « PowerPoint » dit ce qui manque', hints[0] === WORDS.type.excel && hints[1] === WORDS.type.markdown && WORDS.slides.test(hints[2]), hints);
-check('ils portent la couleur de leur type (grille verte, document bleu), le grisé non', (await subItem(WORDS.excel).getAttribute('data-fam')) === 'grid' && (await subItem(WORDS.markdown).getAttribute('data-fam')) === 'doc' && (await subItem(WORDS.pptx).getAttribute('data-fam')) === null);
+check('le sous-menu « Importer » liste les quatre formats de Publipostage+ (Word est le quatrième), puis le PDF que GFS garde lui-même', JSON.stringify(labels) === JSON.stringify([WORDS.excel, WORDS.markdown, WORDS.pptx, WORDS.word, 'PDF']), labels);
+const disabled = await Promise.all([WORDS.excel, WORDS.markdown, WORDS.pptx, WORDS.word].map(async name => (await subItem(name).getAttribute('aria-disabled')) === 'true'));
+check('« Excel », « Markdown » et « Word » ne sont pas grisés ; « PowerPoint » l\'est (l\'extension « Diapositives » manque)', JSON.stringify(disabled) === JSON.stringify([false, false, true, false]), disabled);
+const hints = await Promise.all([WORDS.excel, WORDS.markdown, WORDS.pptx, WORDS.word].map(name => subItem(name).locator('.menu-hint').innerText()));
+check('chacun dit son type (Grille, Document, Document) ; « PowerPoint » dit ce qui manque', hints[0] === WORDS.type.excel && hints[1] === WORDS.type.markdown && WORDS.slides.test(hints[2]) && hints[3] === WORDS.type.word, hints);
+check('ils portent la couleur de leur type (grille verte, document bleu, Word compris), le grisé non', (await subItem(WORDS.excel).getAttribute('data-fam')) === 'grid' && (await subItem(WORDS.markdown).getAttribute('data-fam')) === 'doc' && (await subItem(WORDS.word).getAttribute('data-fam')) === 'doc' && (await subItem(WORDS.pptx).getAttribute('data-fam')) === null);
 await lab.shotPanel(run, '1-sous-menu', frame);
 const none = await noChooser(() => mouseOn(subItem(WORDS.pptx)));
 await frame.locator('.mod').waitFor();
@@ -248,12 +262,27 @@ check('GFS ne dit rien et l\'explorateur est fermé', (await toast()) === '' && 
 await lab.shotPanel(run, '5-powerpoint-par-ouvrir', frame);
 check('rien n\'est écrit dans le document par l\'import de PowerPoint', await untouched('PowerPoint par ouvrir'));
 
+// 7. « Word » par l'appel `ouvrir` (la présentation importée attend d'être enregistrée : la question se pose).
+await showFiles();
+await openImport();
+const word = await pickWith(() => subItem(WORDS.word).click(), fixtures.word);
+check('« Word » propose les quatre extensions du manifeste', word.accept === EXTENSIONS.word && word.multiple === false, { word, attendu: EXTENSIONS.word });
+asked = await waitDialog();
+check('la présentation importée attend d\'être enregistrée : la question se pose, dans le panneau', asked.open && asked.inPanel && JSON.stringify(asked.buttons) === JSON.stringify(WORDS.buttons), asked);
+await pressDialog(WORDS.discard);
+seen = await waitStatus(WORDS.imported.word);
+say('Word par ouvrir :', seen);
+check('le document du fichier est à l\'écran (ses deux paragraphes), sans nom ni modèle courant, avec la phrase « Word importé… »', isImported(seen, 'word') && seen.text === WORD_TEXT && !seen.grid && seen.slides === 0, seen);
+check('l\'app garde son cadre (non rechargée), GFS ne dit rien, l\'explorateur est fermé', (await lab.appFrame(APP)) === app && (await toast()) === '' && (await explorerHidden()));
+await lab.shotPanel(run, '5b-word-par-ouvrir', frame);
+check('rien n\'est écrit dans le document par l\'import de Word', await untouched('Word par ouvrir'));
+
 // 6. Un fichier illisible : l'app le dit, garde son document, GFS ne dit rien.
 await showFiles();
 await openImport();
 await pickWith(() => subItem(WORDS.excel).click(), NOT_A_BOOK);
 seen = await waitStatus(WORDS.unreadable);
-check('« faux.xlsx » : l\'app dit qu\'il n\'est pas lisible (état d\'erreur) et garde la présentation, sans question', seen.status === WORDS.unreadable && seen.statusClass !== '' && seen.slides === 2 && !(await dialogOf()).open, seen);
+check('« faux.xlsx » : l\'app dit qu\'il n\'est pas lisible (état d\'erreur) et garde le document Word, sans question', seen.status === WORDS.unreadable && seen.statusClass !== '' && seen.text === WORD_TEXT && seen.slides === 0 && !(await dialogOf()).open, seen);
 check('GFS ne dit rien, l\'explorateur est fermé', (await toast()) === '' && (await explorerHidden()), await toast());
 
 // 5. GFS repart : l'app est fermée, l'import part avec l'ouverture du contexte.
@@ -265,6 +294,17 @@ await waitStarted();
 seen = await waitStatus(WORDS.imported.excel);
 check('au démarrage, « Excel » : la grille du fichier remplace le ★, sans nom', isImported(seen, 'excel') && seen.grid && seen.cells.join('|') === 'Produit|Quantité|Vis|12|Clou|7', seen);
 check('GFS ne dit rien et l\'explorateur est fermé', (await toast()) === '' && (await explorerHidden()));
+
+// Word au démarrage : l'app est fermée, le fichier part avec l'ouverture du contexte et remplace le ★.
+await restart();
+await openImport();
+await pickWith(() => subItem(WORDS.word).click(), fixtures.word);
+app = await lab.appFrame(APP);
+await waitStarted();
+seen = await waitStatus(WORDS.imported.word);
+check('au démarrage, « Word » : le document du fichier remplace le ★, sans nom ni modèle courant', isImported(seen, 'word') && seen.text === WORD_TEXT && !seen.grid, seen);
+check('GFS ne dit rien et l\'explorateur est fermé', (await toast()) === '' && (await explorerHidden()), await toast());
+await lab.shotPanel(run, '5c-word-au-demarrage', frame);
 
 await restart();
 await newButton().focus();

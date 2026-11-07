@@ -347,7 +347,7 @@ ligne 330 ; seul `macro` a sa branche, ligne 270) et peut devenir le modèle de 
 - **Langue** : `initialLang()` lit `contexte.langue` dans GFS (avant `pp_lang` et la langue du navigateur), le gestionnaire
   de messages de `GfsLink` écoute l'événement `langue`, et son choix de langue (Réglages) est grisé dans GFS (consigne 019).
 - **Manifeste** : `gfs.json`, d'après l'exemple du cahier (5.1).
-- **Importer** : ses trois imports (Excel, Markdown, PowerPoint) sont déclarés dans `actions.importer` ; le fichier que GFS lui donne
+- **Importer** : ses quatre imports (Excel, Markdown, PowerPoint, Word) sont déclarés dans `actions.importer` ; le fichier que GFS lui donne
   prend le chemin de son menu « + » (`onImportXlsx`, `onImportMd`, `onImportPptx` de `js/main.js`), consigne 035 et règle 12 de 1.2.
 - **Extensions** : le graphique dans `extensions/graphique/` (pilote), puis diapositives, temps réel, formats Office. Leur
   code reste dans l'app ; leur bibliothèque est à GFS : l'entrée du manifeste dit l'identifiant et la version exacte qu'elles

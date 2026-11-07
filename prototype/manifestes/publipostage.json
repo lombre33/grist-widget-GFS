@@ -163,7 +163,8 @@
     "importer": [
       { "valeur": "excel", "type": "grille", "nom": { "fr": "Excel", "en": "Excel" }, "extensions": [".xlsx", ".xlsm"] },
       { "valeur": "markdown", "type": "document", "nom": { "fr": "Markdown", "en": "Markdown" }, "extensions": [".md", ".markdown", ".mdown", ".mkd", ".txt"] },
-      { "valeur": "powerpoint", "type": "presentation", "nom": { "fr": "PowerPoint", "en": "PowerPoint" }, "extensions": [".pptx", ".ppsx", ".potx"] }
+      { "valeur": "powerpoint", "type": "presentation", "nom": { "fr": "PowerPoint", "en": "PowerPoint" }, "extensions": [".pptx", ".ppsx", ".potx"] },
+      { "valeur": "word", "type": "document", "nom": { "fr": "Word", "en": "Word" }, "extensions": [".docx", ".docm", ".dotx", ".dotm"] }
     ],
     "lire": [{ "type": "pdf", "extension": "lecture-pdf" }],
     "ranger": ["pdf"],

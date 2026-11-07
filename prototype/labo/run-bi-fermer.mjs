@@ -1,4 +1,4 @@
-// Grist-BI (référencée à b6f9490) répond à `fermer` (consignes 006 et 008 de GFS à Grist-BI, contrats 5.4 point 3) : ce qu'elle a « en attente » est écrit avant que GFS détruise son cadre.
+// Grist-BI (référencée à 8eb479b) répond à `fermer` (consignes 006 et 008 de GFS à Grist-BI, contrats 5.4 point 3) : ce qu'elle a « en attente » est écrit avant que GFS détruise son cadre.
 // Dans un vrai Grist, à 700 × 400, à la vraie souris : la personne ajoute une page (le bouton « + Page » de l'app), puis, avant que l'app ait enregistré, ouvre « Nouveau > Document » de Publipostage+.
 // Le seul changement de l'app pour cet essai : son délai d'enregistrement (600 ms) devient très long, de sorte que **seule** la réponse à `fermer` peut écrire la page avant le départ ; sans lui,
 // l'app aurait enregistré d'elle-même pendant les clics de la personne et l'essai ne prouverait rien.

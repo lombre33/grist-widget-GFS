@@ -1,18 +1,17 @@
-// Grist-BI (référencée à b6f9490, kit 0.9.0) dans GFS, dans un vrai Grist (consignes 006 et 007 de GFS à Grist-BI) : à la vraie souris et au vrai clavier, à 700 × 400, l'app telle qu'elle est.
+// Grist-BI (référencée à 8eb479b, kit 0.9.0) dans GFS, dans un vrai Grist (consignes 006 et 007 de GFS à Grist-BI) : à la vraie souris et au vrai clavier, à 700 × 400, l'app telle qu'elle est.
 //   1. Le menu « Nouveau » propose « Rapport BI » (type du manifeste `bi.json`), grisé tant que Grist-BI n'est pas installée, dégrisé ensuite.
 //   2. « Nouveau > Rapport BI » : l'app s'ouvre dans le sous-cadre isolé (origine « null », sans stockage), démarre (ses lectures de `localStorage` sont gardées par un `try`) sur un rapport vierge
-//      de la première table, sans phrase provisoire de GFS ; l'app écrit alors elle-même la ligne de ce rapport, nommée « Rapport BI 1 » (« BI report 1 »).
-//   3. Le choix de la table de travail : ses trois tables (`BI_Dashboard_Config`, `_Comments`, `_UserProbe`) et une seule ligne de configuration, avec les colonnes `Nom`, `TypeRapport`,
-//      `DateModif` et `ModifiePar` ; le courtier ne refuse rien, aucune erreur de script.
+//      de la première table, sans phrase provisoire de GFS ; elle n'écrit rien dans le document (consigne 009, corrigée à 3144955).
+//   3. Le choix de la table de travail n'écrit toujours aucune ligne de configuration ; au premier geste (« + Page »), ses trois tables (`BI_Dashboard_Config`, `_Comments`, `_UserProbe`) et une
+//      seule ligne de configuration, nommée « Rapport BI 1 » (« BI report 1 »), avec les colonnes `Nom`, `TypeRapport`, `DateModif` et `ModifiePar` ; le courtier ne refuse rien, aucune erreur de script.
 //   4. L'explorateur lit `BI_Dashboard_Config` (une ligne de l'app et une ligne semée sans nom, comme une version d'avant) : un fichier « Rapport BI » par ligne, icône en barres, type par
 //      défaut, sans couleur de famille ; F2 écrit le nom dans la colonne `Nom`, elle seule.
 //   5. Le double-clic d'un rapport : app fermée, elle démarre sur ce rapport (`ouverture` du contexte) ; app ouverte, elle l'ouvre (appel `ouvrir`) ; dans les deux cas sur la table du rapport
 //      (Commandes, pas la première table), sans phrase provisoire, sans rien écrire dans le document.
-//   6. CONSTAT : chaque « Nouveau », même sans rien faire dans le rapport, laisse un fichier de plus (l'app écrit la ligne d'elle-même).
-// Un CONSTAT dit ce que l'app fait en deçà de ce que GFS attend sans que GFS y puisse rien (à dire par une consigne) ; il ne fait pas échouer l'essai.
+//   6. Chaque « Nouveau », sans rien faire dans le rapport, ne laisse aucun fichier de plus (c'était le CONSTAT de la consigne 009 de GFS, corrigé par l'app le 07/11).
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark ; LAB_LIVE=1 pour jouer le site en ligne de l'app au lieu de sa copie.
 import { startLab } from './lab-setup.mjs';
-import { say, check, constat } from './lab-common.mjs';
+import { say, check } from './lab-common.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -32,6 +31,8 @@ page.on('console', message => {
   if (message.type() === 'error' && BI_URL.test(message.location().url || '')) errors.push(message.text());
 });
 page.on('pageerror', error => errors.push(error.message));
+// Le bouton « + Page » de l'app demande le nom de la page par `prompt()` (le sous-cadre a `allow-modals`) : la personne tape « Pause » et valide.
+page.on('dialog', dialog => dialog.accept('Pause').catch(() => {}));
 await lab.fitPanel(undefined, 700, 400);
 
 let frame = lab.frame;
@@ -106,18 +107,24 @@ check('GFS ne dit plus que l\'app ne sait pas créer un fichier de ce type : ell
 await lab.shotPanel(run, '1-nouveau', frame);
 const started = seen.langue;
 
-// ----- 3. Le choix de sa table de travail : la ligne de configuration naît au premier enregistrement, avec le nom « Rapport BI 1 ».
+// ----- 3. Le choix de sa table de travail n'écrit pas de ligne ; la ligne de configuration naît au premier geste (« + Page »), avec le nom « Rapport BI 1 ».
 if (started) {
   await app.locator('#table-select').click();
   await app.locator('#table-select').fill('Clients');
   await page.waitForTimeout(500);
   await page.keyboard.press('Enter');
   await page.waitForTimeout(5000);
+  const beforeGesture = await configState();
+  const createdBefore = (await listTables()).filter(name => !tablesBefore.includes(name));
+  say('avant tout geste : tables créées par l\'app :', JSON.stringify(createdBefore), 'configuration :', JSON.stringify(beforeGesture));
+  check('choisir la table de travail sans rien faire de plus n\'écrit aucune ligne de configuration (la table de configuration n\'existe pas encore)', beforeGesture.table === false, beforeGesture);
+  await app.locator('#add-page').click();
+  await page.waitForTimeout(6000);
   const tables = await listTables();
   const created = tables.filter(name => !tablesBefore.includes(name));
   const config = await configState();
-  say('tables créées par l\'app :', JSON.stringify(created), 'configuration :', JSON.stringify(config));
-  check('l\'app crée ses trois tables (configuration, commentaires, sonde de l\'adresse), toutes du préfixe BI_', ['BI_Dashboard_Config', 'BI_Dashboard_Comments', 'BI_Dashboard_UserProbe'].every(name => created.includes(name)) && created.every(name => name.startsWith('BI_')), created);
+  say('après « + Page » : tables créées par l\'app :', JSON.stringify(created), 'configuration :', JSON.stringify(config));
+  check('au premier geste, l\'app a ses trois tables (configuration, commentaires, sonde de l\'adresse), toutes du préfixe BI_', ['BI_Dashboard_Config', 'BI_Dashboard_Comments', 'BI_Dashboard_UserProbe'].every(name => created.includes(name)) && created.every(name => name.startsWith('BI_')), created);
   check('une ligne de configuration par table de travail : une ligne, pour Clients', config.rows.length === 1 && config.rows[0].TableId === 'Clients', config);
   check('la table de configuration porte le nom, le type, la date et l\'auteur d\'un rapport (colonnes Nom, TypeRapport, DateModif, ModifiePar)', ['Nom', 'TypeRapport', 'DateModif', 'ModifiePar'].every(name => config.columns.includes(name)), config.columns);
   check('le rapport neuf reçoit son nom, dans la langue de la personne', config.rows.length === 1 && WORDS.report.test(config.rows[0].Nom || ''), config.rows.map(row => row.Nom));
@@ -191,13 +198,13 @@ say(`après le double-clic sur « ${FIRST} » (app déjà ouverte sur Commandes)
 check('app déjà ouverte : le double-clic d\'un autre rapport l\'ouvre (appel `ouvrir` : la table de ce rapport s\'affiche), sans phrase provisoire', shownRunning === 'Clients' && !saidRunning.some(text => WORDS.provisional.test(text)), { table: shownRunning, phrases: saidRunning });
 check('cette ouverture n\'écrit rien non plus', await rowsKept(), await configState());
 await lab.shotPanel(run, '4-ouvert', frame);
-// « Nouveau » une deuxième fois, sans rien faire dans le rapport : l'app écrit la ligne de ce rapport vierge d'elle-même (section 2), chaque « Nouveau » laisse donc un fichier de plus.
+// « Nouveau » une deuxième fois, sans rien faire dans le rapport : l'app n'écrit pas la ligne de ce rapport vierge (consigne 009 de GFS, corrigée à 3144955), « Nouveau » ne laisse donc aucun fichier de plus.
 await showFiles();
 await frame.locator('.btn.primary').click();
 await frame.locator('.menu').waitFor();
 await frame.locator('.menu-item', { hasText: WORDS.report }).first().click();
 await watch(4000);
 const afterSecond = await configState();
-constat('« Nouveau > Rapport BI » sans rien faire dans le rapport ne laisse aucun fichier de plus dans le document (l\'app l\'écrit d\'elle-même : un fichier « Rapport BI N » par « Nouveau »)', afterSecond.rows.length === renamed.rows.length, afterSecond.rows.map(row => [row.TableId, row.Nom]));
+check('« Nouveau > Rapport BI » sans rien faire dans le rapport ne laisse aucun fichier de plus dans le document (consigne 009 de GFS : la ligne ne naît qu\'au premier geste)', afterSecond.rows.length === renamed.rows.length, afterSecond.rows.map(row => [row.TableId, row.Nom]));
 check('aucun avertissement de GFS' + (started ? ', aucune erreur de script dans l\'app' : ''), warnings.length === 0 && (!started || errors.length === 0), { avertissements: warnings, erreurs: errors });
 await lab.browser.close();

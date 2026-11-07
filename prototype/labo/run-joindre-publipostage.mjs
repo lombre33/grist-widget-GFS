@@ -11,6 +11,7 @@
 //   4. Une ligne qui n'existe pas : un échec de raison `row`, les autres sont joints.
 //   5. Un PDF que Grist trouve trop gros, au milieu de trois : lui seul échoue (`tooLarge`), `problem` reste null, les deux autres sont joints (réponse de GFS à la question de l'app sur sa 053).
 //   5b. Tous les PDF sont trop gros : l'app tire `problem: 'tooLarge'` de deux échecs du même mot, rien n'est écrit.
+//   7. La colonne et le mode se gardent dans la vue (réglages `pp_attach_column` et `pp_attach_mode` déclarés, 07/11) : écrits sans la barre « Enregistrer », retrouvés GFS rechargé.
 //   6. Le réseau tombe : `unreachable` pour le lot, rien n'est écrit.
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
@@ -36,7 +37,7 @@ const DECLARED = /"joindre"\s*:\s*\[\s*"pdf"\s*\]/.test(readFileSync(join(proces
 const PATCHES = [
   ...(DECLARED ? [] : [{ chemin: '/prototype/manifestes/publipostage.json', de: '"ranger": ["pdf"],', vers: '"ranger": ["pdf"],\n    "joindre": ["pdf"],' }]),
   ...(WITHOUT_LIFT ? [] : [{ chemin: APP_FILE, de: 'const GFS_ATTACH_WIRED = false;', vers: 'const GFS_ATTACH_WIRED = true;' }]),
-  { chemin: APP_FILE, de: 'return { init, getColumn,', vers: 'return { chooseForLab: value => { column = value; }, init, getColumn,' },
+  { chemin: APP_FILE, de: 'return { init, getColumn,', vers: 'return { chooseForLab: value => { column = value; }, writeColumnForLab: writeColumn, writeModeForLab: writeMode, init, getColumn,' },
 ];
 const pdf = title => makePdf({ pages: 1, title });
 const b64 = bytes => Buffer.from(bytes).toString('base64');
@@ -173,6 +174,35 @@ async function playDown(run) {
   check('rien n\'est écrit', sameJson(await cells(rest), before));
 }
 
+// Le choix de la colonne et du mode se garde dans la vue (contrats 5.4, point 12 ; carte du porteur du 07/11, « Dans la vue ») : l'app écrit comme sa liste le fait après le geste de la personne (`writeColumn`, `writeMode`), GFS
+// l'écrit dans les réglages de la section, sans la barre « Enregistrer » de Grist ; GFS rechargé, l'app retrouve les deux. (Le clic dans la liste de l'app n'est pas rejoué ici : il appelle ces deux mêmes fonctions.)
+const sectionOptions = frame => frame.evaluate(async () => {
+  const data = await grist.docApi.fetchTable('_grist_Views_section');
+  // `options.customView` est lui-même un texte JSON (la définition du widget personnalisé) ; ses réglages sont dans `widgetOptions`.
+  return data.id.map((id, index) => { try { return JSON.parse(JSON.parse(data.options[index] || '{}').customView || 'null'); } catch (error) { return null; } }).filter(Boolean);
+});
+async function playKept(run) {
+  const { page, frame } = run;
+  say('--- 7. la colonne et le mode se gardent dans la vue ---');
+  await run.app.evaluate(async column => { await RowAttachment.writeColumnForLab(column); await RowAttachment.writeModeForLab('add'); }, COLUMN);
+  await page.waitForTimeout(2500);
+  const saved = (await sectionOptions(frame)).map(view => view.widgetOptions).filter(Boolean);
+  say('réglages de la section :', JSON.stringify(saved).slice(0, 300));
+  check('GFS a écrit les deux réglages dans la section de la vue', saved.some(entry => entry.pp_attach_column === COLUMN && entry.pp_attach_mode === 'add'), saved);
+  check('Grist ne montre aucune barre « Enregistrer »', (await page.locator('.test-section-menu-small-btn-save').count()) === 0);
+  await frame.evaluate(() => location.reload());
+  await frame.waitForFunction(() => document.body.dataset.gfs === 'ready', null, { timeout: 60000 });
+  await page.waitForTimeout(800);
+  if (!appFrame(page)) await rowOf(frame, MODEL).dblclick();
+  const back = await waitFor(page, 'Publipostage+ retrouve ses deux réglages', async () => {
+    const app = appFrame(page);
+    if (!app) return false;
+    const got = await app.evaluate(() => (typeof RowAttachment === 'undefined' ? null : [RowAttachment.getColumn(), RowAttachment.getMode()])).catch(() => null);
+    return got && got[0] === COLUMN && got[1] === 'add';
+  }, 60000);
+  check('GFS rechargé, l\'app rouverte retrouve la colonne et le mode', back);
+}
+
 const server = await requireServer();
 const pages = createServer(serve(process.env.REPO_DIR, undefined, openConnectIn(/prototype[/\\]transfer[/\\]index\.html$/))).listen(PAGE_PORT, '127.0.0.1');
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
@@ -188,6 +218,7 @@ try {
     await playTooLarge(run);
     await playAllTooLarge(run);
     await playDown(run);
+    await playKept(run);
   }
   const unexpected = run.problems.filter(problem => !run.allow.some(known => known.test(problem)));
   check('aucune erreur ni avertissement de GFS dans la console (hors ceux que le labo provoque)', unexpected.filter(text => !/attachments|413|ERR_FAILED|Failed to load resource/i.test(text)).length === 0, unexpected);

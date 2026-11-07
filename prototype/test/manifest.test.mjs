@@ -5,6 +5,7 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { validateManifest, isSafePath, loadAll, label, listCapabilities } from '../js/manifest.js';
 import { CATALOGUE } from '../js/catalogue.js';
+import { makePolicy } from '../js/filter.js';
 import { iconNames } from '../js/icons.js';
 import { publipostage, automation, form, bi, readJson, ROOT } from './helpers.mjs';
 
@@ -418,6 +419,15 @@ test('contrats 2.7, point 7 : une app déclare les types de fichiers qu\'elle do
   assert.match(bad(m => { m.actions.joindre = [{ type: 'pdf' }]; }), /actions\.joindre\[\] : un type de fichier attendu/);
   assert.match(bad(m => { m.actions.joindre = ['PDF']; }), /actions\.joindre\[\] : un type de fichier attendu/);
   assert.match(bad(m => { m.actions.joindre = ['pdf', 'pdf']; }), /actions\.joindre pdf : type déjà déclaré/);
+});
+
+// Le choix de la colonne « Pièces jointes » et du mode (remplacer ou ajouter) que Publipostage+ garde dans la vue (contrats 5.4, point 12 ; carte du porteur du 07/11, « Dans la vue »).
+test('contrats 5.4, point 12 : Publipostage+ garde la colonne et le mode de « Joindre à la ligne » dans les réglages de la vue', () => {
+  const m = publipostage();
+  assert.ok(m.reglages.includes('pp_attach_column') && m.reglages.includes('pp_attach_mode'), 'les deux clés sont déclarées (sans elles, `setOption` du choix est refusé et la personne le refait à chaque ouverture)');
+  assert.deepEqual(validateManifest(m), { ok: true, errors: [] });
+  assert.equal(makePolicy(m).reglages.has('pp_attach_column') && makePolicy(m).reglages.has('pp_attach_mode'), true, 'le courtier laisse passer les deux clés');
+  assert.equal(makePolicy({ ...m, reglages: m.reglages.filter(key => !key.startsWith('pp_attach_')) }).reglages.has('pp_attach_column'), false, 'sans la déclaration, le courtier les refuse');
 });
 
 test('contrats 2.7 et 2.8 : un type rangé mal formé invalide le manifeste', () => {

@@ -27,7 +27,7 @@
     "copie": { "ligne": true, "uniques": ["Jeton"], "exclusives": ["EstParDefaut"] },
     "poids": { "liees": [{ "table": "Publipostage_Versions", "colonne": "Jeton", "fichier": "Jeton" }] }
   }],
-  "reglages": ["modeleDeLaVue", "modeleSelonLigne", "droitsAcces", "dateDernierExport"],
+  "reglages": ["modeleDeLaVue", "modeleSelonLigne", "droitsAcces", "dateDernierExport", "pp_attach_column", "pp_attach_mode"],
   "permissions": {
     "acces": "full",
     "lit": ["*"],

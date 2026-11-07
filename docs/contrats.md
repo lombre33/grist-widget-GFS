@@ -1769,9 +1769,12 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
 
 12. [D] **Joindre un fichier à la cellule « Pièces jointes » d'une ligne : `joindre`** (demande du porteur du 06/11 : « enregistrer le PDF généré
    en pièce jointe dans la ligne Grist » ; **le porteur a choisi « GFS joint lui-même » le 06/11**, à la carte « Laisser Publipostage+ joindre
-   le PDF d'une ligne à sa cellule ? » : l'app n'a ni jeton d'écriture, ni clé `pp_attach_*` chez GFS, et lui confie les octets comme pour
-   `ranger`). **Livré côté GFS le 06/11** (`prototype/js/attach.js`, mesuré dans un vrai Grist, [M] ci-dessous) ; **GFS ne déclare pas encore
-   `actions.joindre` dans `manifestes/publipostage.json`** : la déclaration vient quand la page de l'app dit sa consigne faite. Les [Q] attendent le porteur.
+   le PDF d'une ligne à sa cellule ? » : l'app n'a pas de jeton d'écriture, et lui confie les octets comme pour
+   `ranger`). **Livré côté GFS le 06/11** (`prototype/js/attach.js`, mesuré dans un vrai Grist, [M] ci-dessous) ; **GFS déclare `actions.joindre: ["pdf"]`
+   dans `manifestes/publipostage.json` depuis le 07/11** (la page de l'app dit sa consigne 053 faite). **Où garder la colonne et le mode : « Dans la vue »**
+   (carte du porteur, 07/11) : `pp_attach_column` et `pp_attach_mode` sont deux clés de `reglages` du manifeste de l'app, écrites dans la vue au geste
+   de la personne comme toutes les clés de réglages (7.3), sans « Enregistrer » de Grist, partagées par tous ceux du document [M, faits vérifiés 54].
+   Les [Q] attendent le porteur.
    - [D] **Déclaration** : `actions.joindre` (2.7, point 7), la liste des types de fichier que l'app joint (`["pdf"]`). Sans elle, ou pour un
      autre type : `GFS_REFUSE`, rien d'envoyé.
    - [T] **L'appel** (app → GFS, sans délai) : `joindre { table, colonne, mode?, fichiers: [{ ligne, fichier, nom }] }`. `table` et `colonne` :

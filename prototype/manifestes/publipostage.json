@@ -96,6 +96,13 @@
         "fr": "Télécharger les pièces jointes du document et nommer le document par son adresse d'interface de programmation.",
         "en": "Download the document's attachments and name the document by its API address."
       }
+    },
+    "lecteurs": {
+      "fournisseurs": ["youtube", "vimeo"],
+      "pourquoi": {
+        "fr": "Jouer les vidéos YouTube et Vimeo d'une présentation : le site de la vidéo n'est contacté qu'au clic sur le bouton de lecture.",
+        "en": "Play the YouTube and Vimeo videos of a presentation: the video's site is only contacted when the play button is clicked."
+      }
     }
   },
   "extensions": [

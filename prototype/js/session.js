@@ -17,6 +17,8 @@ export class AppSession {
   #envelope = null;
   #unsubscribe = null;
   #timers = [];
+  #leavers = [];
+  #shown = true;
   #lastContent;
   #pinnedUrl = null; // la copie figée de l'app, tant que le site vivant n'a pas répondu : c'est là qu'on se replie
   #gaveUp = false; // l'app n'a rien dit après le délai, copie figée comprise : « ne répond pas »
@@ -46,6 +48,9 @@ export class AppSession {
   }
 
   get frameWindow() { return this.#frame && this.#frame.contentWindow; }
+  get frameElement() { return this.#frame; }
+  // Ce qui doit disparaître quand l'app se cache derrière l'explorateur ou se ferme (le lecteur de vidéos, contrats 5.2 point 11).
+  onLeave(listener) { this.#leavers.push(listener); }
   get isReady() { return Boolean(this.#peer && this.#peer.isReady); }
   // Vrai tant qu'une app muette n'a pas fini par répondre : la rouvrir la relance (le cadre muet ne se réutilise pas), au lieu de laisser la personne devant « ne répond pas ».
   get gaveUp() { return this.#gaveUp && !this.isReady; }
@@ -199,12 +204,20 @@ export class AppSession {
 
   copyFile(args) { return this.#envelope.call('dupliquer', args); }
 
-  show(visible) { if (this.#frame) this.#frame.classList.toggle('app-frame--behind', !visible); }
+  // L'app est-elle sous les yeux de la personne ? Faux tant que l'explorateur la cache (un appel du lecteur de vidéos qui arrive alors est ignoré).
+  get shown() { return this.#shown; }
+
+  show(visible) {
+    this.#shown = Boolean(visible);
+    if (this.#frame) this.#frame.classList.toggle('app-frame--behind', !visible);
+    if (!visible) this.#leavers.forEach(listener => listener());
+  }
 
   // Rend le clavier à l'app (au retour de l'explorateur) : `focus()` est permis sur une fenêtre d'une autre origine.
   focus() { try { this.frameWindow.focus(); } catch (e) { /* cadre disparu */ } }
 
   close() {
+    this.#leavers.forEach(listener => listener());
     this.#timers.forEach(clearTimeout);
     this.#timers = [];
     if (this.#unsubscribe) this.#unsubscribe();

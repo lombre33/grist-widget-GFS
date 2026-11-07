@@ -2,6 +2,7 @@
 // listée grisée, avec le motif (2.1, point 3).
 
 import { covers } from './filter.js';
+import { PROVIDERS } from './player-sites.js';
 
 export const CONTRACT = 0;
 
@@ -153,14 +154,28 @@ function checkInternalEntry(entry, errors) {
 
 // `identite` (3.4, point 6) donne à l'app l'adresse e-mail de la personne : elle ne contourne aucun filtre de tables, donc elle ne demande pas l'accès `full` (voir checkPermissions).
 function checkCapabilities(perm, errors) {
-  for (const key of ['jeton', 'formules', 'structure', 'identite']) {
+  for (const key of ['jeton', 'formules', 'structure', 'identite', 'lecteurs']) {
     if (perm[key] !== undefined && (!isObject(perm[key]) || !isBilingual(perm[key].pourquoi))) errors.push(`permissions.${key} : pourquoi doit porter fr et en`);
+  }
+  checkPlayers(perm.lecteurs, errors);
+}
+
+// `lecteurs` (3.4, point 7) : les sites de vidéos dont l'app demande à GFS de poser le lecteur, `{ fournisseurs: ["youtube", "vimeo"], pourquoi }`. Comme `identite`, elle ne contourne aucun filtre de tables : pas d'accès `full`.
+function checkPlayers(players, errors) {
+  if (players === undefined || !isObject(players)) return;
+  const list = players.fournisseurs;
+  if (!Array.isArray(list) || !list.length) { errors.push('permissions.lecteurs.fournisseurs : liste de sites attendue'); return; }
+  const seen = new Set();
+  for (const name of list) {
+    if (!PROVIDERS.includes(name)) errors.push(`permissions.lecteurs.fournisseurs : ${JSON.stringify(name)} n'est pas un site que GFS sait jouer (${PROVIDERS.join(', ')})`);
+    else if (seen.has(name)) errors.push(`permissions.lecteurs.fournisseurs ${name} : site déjà déclaré`);
+    seen.add(name);
   }
 }
 
 // Les capacités et les raisons que les apps déclarent (3.4), pour qui doit les relire (un client, son responsable de la sécurité) : une ligne par capacité déclarée,
 // { app, nom, capacite, detail, pourquoi }. `detail` dit sur quoi elle porte quand c'est utile (les tables d'une entrée de `gristInterne`, les motifs de `lienPublic`).
-const CAPABILITIES = ['jeton', 'formules', 'structure', 'identite', 'lienPublic'];
+const CAPABILITIES = ['jeton', 'formules', 'structure', 'identite', 'lecteurs', 'lienPublic'];
 const reasonOf = entry => (isObject(entry) && isBilingual(entry.pourquoi) ? entry.pourquoi : null);
 const namesOf = list => (Array.isArray(list) ? list.join(', ') : '');
 export function listCapabilities(manifests) {
@@ -168,7 +183,11 @@ export function listCapabilities(manifests) {
   for (const m of manifests) {
     const perm = isObject(m && m.permissions) ? m.permissions : {};
     const add = (capacite, entry, names) => rows.push({ app: m.id, nom: m.nom, capacite, detail: namesOf(names), pourquoi: reasonOf(entry) });
-    for (const key of CAPABILITIES) if (perm[key] !== undefined) add(key, perm[key], key === 'lienPublic' && isObject(perm[key]) ? perm[key].lit : null);
+    for (const key of CAPABILITIES) {
+      if (perm[key] === undefined) continue;
+      const entry = isObject(perm[key]) ? perm[key] : {};
+      add(key, perm[key], key === 'lienPublic' ? entry.lit : key === 'lecteurs' ? entry.fournisseurs : null);
+    }
     for (const entry of Array.isArray(perm.gristInterne) ? perm.gristInterne : []) add('gristInterne', entry, isObject(entry) ? entry.tables : null);
   }
   return rows;

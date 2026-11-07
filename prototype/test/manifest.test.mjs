@@ -430,6 +430,23 @@ test('contrats 5.4, point 12 : Publipostage+ garde la colonne et le mode de « J
   assert.equal(makePolicy({ ...m, reglages: m.reglages.filter(key => !key.startsWith('pp_attach_')) }).reglages.has('pp_attach_column'), false, 'sans la déclaration, le courtier les refuse');
 });
 
+// Le lecteur de vidéos (contrats 3.4, point 7 ; carte du porteur du 07/11, « Politique élargie »).
+test('contrats 3.4, point 7 : `lecteurs` se déclare avec ses sites et sa raison en français et en anglais, sans demander l\'accès full', () => {
+  const m = publipostage();
+  assert.deepEqual(m.permissions.lecteurs.fournisseurs, ['youtube', 'vimeo'], 'Publipostage+ demande le lecteur de Slides+ pour les deux sites');
+  assert.deepEqual(validateManifest(m), { ok: true, errors: [] });
+  const none = publipostage(); none.permissions.acces = 'none'; delete none.permissions.lit; delete none.permissions.ecrit; delete none.permissions.gristInterne; delete none.permissions.jeton; delete none.permissions.formules; delete none.permissions.structure; delete none.permissions.lienPublic;
+  assert.deepEqual(validateManifest(none), { ok: true, errors: [] }, 'elle ne demande pas l\'accès full : aucune table ne passe par le lecteur');
+  assert.match(bad(m => { delete m.permissions.lecteurs.pourquoi; }), /permissions\.lecteurs : pourquoi doit porter fr et en/);
+  assert.match(bad(m => { m.permissions.lecteurs.pourquoi = { fr: 'a' }; }), /permissions\.lecteurs : pourquoi doit porter fr et en/);
+  assert.match(bad(m => { m.permissions.lecteurs.fournisseurs = []; }), /fournisseurs : liste de sites attendue/);
+  assert.match(bad(m => { delete m.permissions.lecteurs.fournisseurs; }), /fournisseurs : liste de sites attendue/);
+  assert.match(bad(m => { m.permissions.lecteurs.fournisseurs = ['youtube', 'dailymotion']; }), /"dailymotion" n'est pas un site que GFS sait jouer/);
+  assert.match(bad(m => { m.permissions.lecteurs.fournisseurs = ['vimeo', 'vimeo']; }), /vimeo : site déjà déclaré/);
+  const row = listCapabilities([m]).find(item => item.capacite === 'lecteurs');
+  assert.deepEqual([row.app, row.detail], ['publipostage', 'youtube, vimeo'], 'un client peut lister les apps qui font jouer des vidéos, avec leurs sites');
+});
+
 test('contrats 2.7 et 2.8 : un type rangé mal formé invalide le manifeste', () => {
   assert.match(bad(m => { m.actions.ranger = 'pdf'; }), /actions\.ranger : liste attendue/);
   assert.match(bad(m => { m.actions.ranger = [{ type: 'pdf' }]; }), /actions\.ranger\[\] : un type de fichier attendu/);

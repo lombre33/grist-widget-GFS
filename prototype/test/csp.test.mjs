@@ -13,8 +13,8 @@ const directives = () => {
   return Object.fromEntries(parts.map(([name, ...sources]) => [name, sources]));
 };
 
-test('frame-src : le site de GFS et blob:, rien d\'autre (Firefox applique cette ligne à un fichier fabriqué dans un cadre et l\'enregistre ou non)', () => {
-  assert.deepEqual(directives()['frame-src'], ["'self'", 'blob:']);
+test('frame-src : le site de GFS, blob: (Firefox applique cette ligne à un fichier fabriqué dans un cadre et l\'enregistre ou non) et les deux sites du lecteur de vidéos, rien d\'autre', () => {
+  assert.deepEqual(directives()['frame-src'], ["'self'", 'blob:', 'https://www.youtube-nocookie.com', 'https://player.vimeo.com']);
 });
 
 test('blob: n\'est dans aucune autre ligne : il n\'ouvre ni script, ni image, ni connexion', () => {

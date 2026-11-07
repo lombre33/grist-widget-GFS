@@ -37,6 +37,7 @@ import { WeightControl } from './weight-control.js';
 import { FILES_APP, FILES_MANIFEST, FILES_ENTRY, cleanName } from './gfs-files.js';
 import { Transfer, buildTransferFrame } from './transfer.js';
 import { Attach } from './attach.js';
+import { Player } from './player.js';
 import { buildAppFiles, buildKept } from './file-managers.js';
 import { Trash } from './trash.js';
 import { Copying } from './copying.js';
@@ -121,6 +122,7 @@ export class GfsController {
     this.links = this.#buildLinks();
     // Le cadre d'envoi (js/transfer.js) ne s'ouvre qu'à la première requête : les pièces jointes, et la preuve que la personne est propriétaire (js/rights-reader.js).
     this.transfer = new Transfer({ doc: this.port.doc, base: this.doc.baseURI, createFrame: url => buildTransferFrame(this.doc, url) });
+    this.player = new Player({ container: this.$('frames') }); // le lecteur de vidéos posé par-dessus l'app (contrats 5.2, point 11)
     this.attach = new Attach({ doc: this.port.doc, transfer: this.transfer, session: () => this.session, readonly: () => this.readonly }); // `joindre` (contrats 5.4, point 12)
     this.rights = new RightsControl({
       port: this.port, transfer: this.transfer, prefixes: () => this.validApps().map(item => item.manifest.tables.prefixe), now: () => Date.now(), container: this.$('stage'),
@@ -603,6 +605,7 @@ export class GfsController {
       ...this.links.handlers(session),
       ...this.kept.handlers(session),
       ...this.attach.handlers(session),
+      ...this.player.handlers(session),
     };
   }
 
@@ -616,7 +619,7 @@ export class GfsController {
     const identity = identityFor(session.policy, this.identity);
     if (session === this.session) this.#sentIdentity = JSON.stringify(identity);
     const role = await this.rights.reader.role(); // ce que GFS a prouvé : propriétaire ou non, `null` sinon (contrats 5.2, point 8)
-    return buildContext(facts, { access: session.access, extensions: given.extensions, libraries: given.bibliotheques, opening, storage, bar: this.dock.barre(), identity, ambiance: this.theme.message(), role }, { preferences: this.#appPreferences(), readonly: this.readonly });
+    return buildContext(facts, { access: session.access, extensions: given.extensions, libraries: given.bibliotheques, opening, storage, bar: this.dock.barre(), identity, players: session.policy.lecteurs, ambiance: this.theme.message(), role }, { preferences: this.#appPreferences(), readonly: this.readonly });
   }
 
   // L'ouverture n'est rendue qu'au premier `contexte` de l'app qui vient d'être activée (contrats 5.2, point 3) : une app dont le cadre est rechargé sur place (sa langue, un
@@ -731,7 +734,9 @@ export class GfsController {
     this.opening = opening;
     if (this.#isOpen(id)) return true;
     if (this.session) this.#closeSession();
-    this.session = new AppSession(this.#sessionContext(app));
+    const opened = new AppSession(this.#sessionContext(app));
+    opened.onLeave(() => this.player.closeFor(opened));
+    this.session = opened;
     this.session.open();
     return true;
   }

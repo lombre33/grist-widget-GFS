@@ -23,7 +23,7 @@ test('buildContext : tous les champs du contrat, les paramètres de l\'adresse d
   const facts = { instance: 'https://docs.getgrist.com', document: 'abc123', page: 4, widgetAddress: 'https://exemple.test/gfs/index.html' };
   const session = { access: 'read table', extensions: ['graphique'], libraries: { plotly: { src: 'https://x/p.js', integrite: 'sha384-X' } }, opening: { fichier: null, type: 'modele', dossier: '', raison: 'nouveau' } };
   const context = buildContext(facts, session, { preferences: { language: 'fr', timeZone: 'Europe/Paris' }, readonly: false });
-  assert.deepEqual(Object.keys(context), ['contrat', 'hote', 'instance', 'document', 'page', 'section', 'adresseWidget', 'langue', 'culture', 'fuseau', 'devise', 'lectureSeule', 'acces', 'extensions', 'bibliotheques', 'ouverture', 'stockage', 'barre', 'identite', 'ambiance', 'role']);
+  assert.deepEqual(Object.keys(context), ['contrat', 'hote', 'instance', 'document', 'page', 'section', 'adresseWidget', 'langue', 'culture', 'fuseau', 'devise', 'lectureSeule', 'acces', 'extensions', 'bibliotheques', 'ouverture', 'stockage', 'barre', 'lecteurs', 'identite', 'ambiance', 'role']);
   assert.equal(context.contrat, 0);
   assert.deepEqual(context.hote, HOST);
   assert.equal(context.acces, 'read table');
@@ -67,4 +67,12 @@ test('identityFor : l\'app ne distingue pas « pas déclarée » de « GFS ne la
   const undeclared = identityFor(policyOf(publipostage()), 'ana@exemple.org');
   const unknown = identityFor(declaring(), '');
   assert.deepEqual(undeclared, unknown);
+});
+
+test('buildContext : `lecteurs` dit les sites de vidéos dont GFS pose le lecteur pour cette app, `[]` quand elle n\'en a pas déclaré (contrats 5.2, point 11)', () => {
+  const facts = { instance: null, document: null, page: null, widgetAddress: null };
+  const params = { preferences: {}, readonly: false };
+  assert.deepEqual(buildContext(facts, { access: 'full' }, params).lecteurs, []);
+  assert.deepEqual(buildContext(facts, { access: 'full', players: ['youtube', 'vimeo'] }, params).lecteurs, ['youtube', 'vimeo']);
+  assert.deepEqual(policyOf(publipostage()).lecteurs, ['youtube', 'vimeo'], 'Publipostage+ a déclaré les deux sites (le lecteur de Slides+)');
 });

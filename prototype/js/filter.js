@@ -1,6 +1,8 @@
 // Le filtre du courtier : ce qu'une app peut lire et écrire, d'après la politique tirée de son manifeste (contrats 3.2 à 3.4).
 // Du code sans effet de bord : il rend « permis » ou la raison du refus ; c'est le courtier qui répond à l'app et qui appelle Grist.
 
+import { knownProviders } from './player-sites.js';
+
 export const ERR = Object.freeze({
   REFUSE: 'GFS_REFUSE',
   ACCES: 'GFS_ACCES',
@@ -61,6 +63,7 @@ export function makePolicy(manifest, catalogue = []) {
     structure: Boolean(perm.structure),
     identite: Boolean(perm.identite), // l'app reçoit l'adresse e-mail de la personne dans son contexte (contrats 3.4, point 6 ; 5.2, point 9)
     lienPublic: perm.lienPublic && Array.isArray(perm.lienPublic.lit) ? perm.lienPublic.lit : [],
+    lecteurs: knownProviders(perm.lecteurs && perm.lecteurs.fournisseurs), // les sites de vidéos dont l'app demande à GFS de poser le lecteur (contrats 3.4, point 7 ; 5.2, point 11)
     reglages: new Set(manifest.reglages || []),
   };
 }

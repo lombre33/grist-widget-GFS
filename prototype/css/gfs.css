@@ -96,6 +96,9 @@ body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 var(
 .app-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--surface); }
 .app-frame--hidden { visibility: hidden; }
 .app-frame--behind { visibility: hidden; }
+.player { position: absolute; overflow: hidden; background: var(--surface); }
+.player[hidden] { display: none; }
+.player iframe { position: absolute; border: 0; }
 
 /* La barre de GFS au-dessus d'une app : trois boutons à icône seule, posés au bord que la personne choisit (`data-edge`, js/dock.js), centrés sur ce bord. Le cadre de l'app reste plein :
    la barre le recouvre à 4 px du bord, et l'app apprend la zone à laisser libre (contrats 5.2, point 7). Le mot de chaque bouton est son info-bulle. */

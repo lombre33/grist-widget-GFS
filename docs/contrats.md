@@ -512,7 +512,8 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
      qui écrit sans `lit: true` ou qui écrit plus d'une table, `lit`/`ecrit`/`gristInterne`/capacités avec un accès autre que
      `full`) ; dans `permissions.lienPublic` (3.4, point 5) : un `pourquoi` sans français ou sans anglais, une liste de motifs absente
      ou vide, un motif hors du préfixe de l'app, qui couvre toutes ses tables (`FormPlus_*`) ou la table de ses fichiers ou de son
-     rangement ; dans `permissions.identite` (3.4, point 6) : un `pourquoi` absent, sans français ou sans anglais ;
+     rangement ; dans `permissions.identite` (3.4, point 6) : un `pourquoi` absent, sans français ou sans anglais ; dans `permissions.lecteurs` (3.4, point 7) : un `pourquoi`
+     absent, sans français ou sans anglais, des `fournisseurs` absents, vides, hors de `youtube` et `vimeo` ou en double ;
    - une extension dont le `dossier` sort de l'app, ou dont une entrée de `bibliotheques` n'a pas d'`id` ou n'a pas une
      `version` exacte (un intervalle, `latest`) ;
    - dans `actions.importer` (2.7, point 4) : une entrée sans `valeur` ou sans `nom` en français et en anglais, une `valeur` déjà
@@ -775,8 +776,9 @@ ne lit pas).
 ### 3.4 Les capacités à déclarer
 
 Trois capacités contournent un filtre de tables. L'app les déclare, avec une raison en français et en anglais ; GFS les montre
-à la personne dans la fenêtre d'installation, en mots simples. Deux déclarations de plus se font de la même façon sans rien
-contourner : `lienPublic` resserre un filtre (point 5), `identite` donne une donnée que GFS seul sait (point 6).
+à la personne dans la fenêtre d'installation, en mots simples. Trois déclarations de plus se font de la même façon sans rien
+contourner : `lienPublic` resserre un filtre (point 5), `identite` donne une donnée que GFS seul sait (point 6), `lecteurs` fait poser par GFS un lecteur de vidéo
+par-dessus le cadre de l'app (point 7).
 
 1. [D] **`jeton`** : `{ "lectureSeule": true, "pourquoi": { … } }`. Sans elle, `getAccessToken` est refusé. Avec elle, le
    courtier force `readOnly: true` sauf `lectureSeule: false`, et transmet `route` tel quel. Un jeton ouvre l'API REST sur
@@ -812,6 +814,16 @@ contourner : `lienPublic` resserre un filtre (point 5), `identite` donne une don
    GFS connaît la personne. Elle ne demande pas `acces: full` : l'adresse ne passe par aucune table de l'app. Le validateur
    (2.8) exige le `pourquoi` en deux langues. Codé le 03/11 (`js/manifest.js` : `checkCapabilities`, `listCapabilities` ;
    `js/filter.js` : `makePolicy` ; `js/context.js` : `identityFor`).
+7. [T] **`lecteurs`** : `{ "fournisseurs": [ "youtube", "vimeo" ], "pourquoi": { "fr": "…", "en": "…" } }`. Pas une capacité qui contourne un filtre : elle
+   fait **poser par GFS, par-dessus le cadre de l'app, le lecteur d'une vidéo** que l'app ne peut pas jouer elle-même (le bac à sable d'une app donne
+   l'origine « null » à tout cadre qu'elle contient, et un lecteur de YouTube ou de Vimeo y échoue : faits vérifiés 50). Demande de Slides+ (Publipostage+, 06/11),
+   étude `docs/etude-lecteur-video.md`, **choix du porteur du 07/11, « Politique élargie »** : la politique de sécurité de GFS nomme les deux sites dans `frame-src`
+   (`https://www.youtube-nocookie.com` et `https://player.vimeo.com`, pas un de plus ; `blob:` s'y ajoutait déjà, 1.3) et le cadre du lecteur est posé directement dans
+   la page de GFS, sans page relais. `fournisseurs` est une liste non vide de sites que GFS sait jouer (`youtube`, `vimeo`), sans doublon ; un nom inconnu ou un doublon
+   invalide le manifeste (2.8). Le `pourquoi` est montré à la personne comme celui des capacités. Sans la déclaration, `contexte.lecteurs` vaut `[]` et les quatre appels
+   `lecteur.*` sont refusés (`GFS_REFUSE`) : l'app ouvre alors la vidéo sur son site, dans un onglet. Elle ne demande pas `acces: full` : aucune table de l'app n'est en jeu.
+   `node outils/capacites.mjs` la liste avec les sites. Les appels et leurs règles : 5.2, point 11. Codé le 07/11 (`js/player.js`, `js/player-sites.js`, `js/manifest.js` : `checkPlayers`,
+   `js/filter.js` : `makePolicy`, `js/context.js`).
 
 ### 3.5 Les clés de réglages
 
@@ -1040,6 +1052,10 @@ Les noms de la v0 :
 | `contexte` | app → GFS | aucun | le contexte (5.2) |
 | `stockage.ecrire` | app → GFS | `{ cle, valeur }` (5.3) | aucune sans `id` ; avec un `id`, `{ retenu }` (5.3, point 3) |
 | `barre.masquer` | app → GFS | `{ masquee }`, vrai ou faux (5.2, point 7) | aucune sans `id` ; avec un `id`, `{ masquee }`, l'état qui vaut (5.2, point 7) |
+| `lecteur.afficher` | app → GFS | `{ id, fournisseur, video, debut?, rect, zone }` (5.2, point 11) | aucune ; un refus se lit en console |
+| `lecteur.deplacer` | app → GFS | `{ id, rect, zone }` (5.2, point 11) | aucune ; un refus se lit en console |
+| `lecteur.masquer` | app → GFS | `{ id, masque }`, vrai ou faux (5.2, point 11) | aucune ; un refus se lit en console |
+| `lecteur.fermer` | app → GFS | `{ id }` (5.2, point 11) | aucune ; un refus se lit en console |
 | `ouvrir` | app → GFS, puis GFS → app active | 5.4 | 5.4 |
 | `choisir` | app → GFS | 5.4 | 5.4 |
 | `ranger` | app → GFS | 5.4 | 5.4 |
@@ -1059,7 +1075,7 @@ Les noms de la v0 :
    pas de réponse (comme un appel sans `reqId` chez `grain-rpc`).
 3. [D] Un appel de `nom` inconnu reçoit `GFS_INCONNU` ; un événement inconnu est ignoré. Les erreurs de 3.6 valent ici aussi.
 4. [D] Délais : l'app attend `contexte` 5 secondes au plus ; les appels qui attendent une personne (`ouvrir`, `choisir`,
-   `ranger`, `joindre`, `installer`, `inserer`) n'ont pas de délai ; `stockage.ecrire` et `barre.masquer` n'attendent pas de réponse pour continuer.
+   `ranger`, `joindre`, `installer`, `inserer`) n'ont pas de délai ; `stockage.ecrire`, `barre.masquer` et les quatre appels `lecteur.*` n'attendent pas de réponse pour continuer.
 5. [T] Le courtier attribue chaque message à une app par la fenêtre qui l'a envoyé (1.2), jamais par un champ du message.
 
 ### 5.2 Le contexte
@@ -1086,6 +1102,7 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 | `ouverture` | pourquoi et sur quoi l'app s'ouvre, ou `null` (5.4) | oui | `null` |
 | `stockage` | copie de l'espace de cette app, `{ clé: valeur }` (5.3) | oui, relue à chaque appel | contenu du navigateur |
 | `barre` | la barre de GFS qui recouvre le cadre de l'app, `{ bord, epaisseur, zone }`, ou `null` quand rien ne le recouvre (point 7) | oui, mesurée à chaque appel | `null` |
+| `lecteurs` | les sites dont GFS pose le lecteur de vidéo pour cette app, `["youtube", "vimeo"]` (point 11) | seulement pour une app qui déclare `lecteurs` (3.4, point 7), `[]` pour toute autre ; relue à chaque appel | `[]` |
 | `ambiance` | l'ambiance et la couleur que la personne a choisies pour GFS et ses apps, ou `null` quand rien n'est choisi (point 10) | oui, relue à chaque appel | `null` |
 | `role` | ce que GFS sait de la personne, `{ proprietaire, responsableDe }` (point 8) | oui, à chaque appel ; la preuve se garde pour la vie de la page, 1,5 s d'attente au plus | `{ proprietaire: null, responsableDe: [] }` |
 | `liensPublics` | **pas encore rendu** (décidé le 06/11, 11.7, point 11) : `{ connu, tables }`, les tables qu'un lien public remplit ; `connu` faux (ni propriétaire prouvé, ni lecture possible) = l'app attend un geste sur toute ligne reçue | oui, une fois codé | `{ connu: false, tables: [] }` |
@@ -1374,6 +1391,41 @@ sans événement : seule une règle posée recharge la page (11.5, point 3), et 
    l'explorateur et de la fenêtre y garde 7:1 au moins (4,5:1 pour un grand texte) et chaque commande un trait à 3:1 au moins, sur chacune des cinq ambiances (67 textes et 23 traits par ambiance). L'app ouverte reçoit un message d'`id` `renforcee` (dix-neuf jetons par mode, 33 de forme, sans couleur
    libre), un seul événement par geste ; éteint, elle reçoit l'ambiance choisie ; « Revenir à Grist Factory » défait l'ambiance et laisse l'accessibilité ; le cadre de l'app n'est jamais reconstruit. Le kit 0.6.0 prend le message tel quel (`normalizeAmbiance`). Le moteur le tient pour toute couleur libre :
    7,050:1 au plus bas pour le texte et 3,050:1 pour le trait, sur les cinq ambiances et 169 couleurs. **Non mesuré** : les vraies apps (Form+, Automation+, Publipostage+) en accessibilité renforcée ; le clavier sous le Firefox du porteur.
+
+11. [T] `lecteur.afficher`, `lecteur.deplacer`, `lecteur.masquer`, `lecteur.fermer` : **GFS pose le lecteur d'une vidéo par-dessus le cadre de l'app** (demande de Slides+, 06/11 ;
+   étude `docs/etude-lecteur-video.md` ; choix du porteur du 07/11, « Politique élargie » ; déclaration : 3.4, point 7). Le cadre isolé d'une app ne peut pas jouer une vidéo de
+   YouTube ou de Vimeo (faits vérifiés 50) ; l'app dit donc à GFS **quoi** jouer et **où** se trouve sa vignette, GFS monte l'adresse et pose le cadre. Les quatre appels n'ont pas
+   d'`id` d'appel (GFS ne répond rien) ; un refus (`GFS_REFUSE`) se lit en console (avertissement : l'app, l'appel, la raison). Chaque appel porte l'`id` de la lecture, un mot en
+   minuscules (`^[a-z][a-z0-9_-]{0,63}$`) que l'app choisit.
+   - `lecteur.afficher { id, fournisseur, video, debut?, rect, zone }` : `fournisseur` est l'un de ceux que l'app a déclarés ; `video` est **l'identifiant seul** de la vidéo
+     (YouTube : 11 signes, lettres, chiffres, `_` et `-` ; Vimeo : les chiffres, avec au besoin `/<clé>` pour une vidéo non listée), **jamais une adresse** : GFS monte lui-même
+     l'adresse (`https://www.youtube-nocookie.com/embed/<video>?rel=0&playsinline=1&autoplay=1[&start=<debut>]`, ou `https://player.vimeo.com/video/<numéro>[?h=<clé>]&autoplay=1[#t=<debut>s]`) ;
+     `debut` est un nombre entier de secondes (0 à 360 000) ; `rect` est le rectangle de la vignette et `zone` celui où elle peut se voir (la part visible de son défilement), tous deux
+     `{ x, y, largeur, hauteur }` en pixels du cadre de l'app (origine en haut à gauche), nombres finis, largeur et hauteur au moins 0. **Un seul lecteur à la fois** : un nouvel
+     `afficher` remplace le précédent.
+   - `lecteur.deplacer { id, rect, zone }` : la vignette a bougé (défilement, zoom, redimensionnement) ; `lecteur.masquer { id, masque }` : cache (`true`) ou remontre (`false`) le lecteur sans
+     l'arrêter, quand la vignette sort de la vue ou qu'un menu de l'app la recouvre ; `lecteur.fermer { id }` : le retire. Un `id` qui n'est pas celui du lecteur de cette app ne
+     change rien, sans refus : **une app ne touche qu'à son propre lecteur**.
+   - **Où GFS le pose** : dans la page de GFS, dans le repère des cadres, à `rect` rogné à `zone` et au cadre de l'app (la partie qui se voit ; le cadre du fournisseur garde sa taille
+     entière, décalé de la part coupée) ; rien à montrer, il est caché sans être arrêté. Il passe sous la barre, les fenêtres et les menus de GFS. Un cadre qui change de taille
+     (le panneau) le déplace du même écart. **Il disparaît quand l'app est cachée** (l'explorateur s'ouvre) **ou fermée** : une vidéo ne joue pas derrière lui, et
+     rien ne revient seul.
+   - **Le cadre du fournisseur** : `sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox"` (il garde l'origine de son site, dont il a
+     besoin pour son stockage ; il ne peut ni naviguer GFS, ni ouvrir de fenêtre modale, ni envoyer de formulaire), `allow="autoplay; encrypted-media; picture-in-picture; fullscreen"`,
+     `referrerpolicy="strict-origin-when-cross-origin"` (YouTube refuse un lecteur sans référent). Grist ne délègue à GFS que `clipboard-write` (faits vérifiés 50) : la liste d'`allow` ci-dessus
+     est ce que GFS demande, pas ce qu'il obtient. Mesuré avec un faux lecteur, `autoplay`, `encrypted-media` et `fullscreen` sont **refusés** au cadre du lecteur : attendre que la vidéo démarre
+     sans un second clic sur le ▶ du fournisseur, ou qu'elle passe en plein écran, serait promettre ce que personne ne peut tenir ; ce que les vrais sites font sans eux reste à mesurer (plus bas).
+   - **Pas encore construit** : l'événement `lecteur { id, etat }` (`lecture`, `pause`, `fin`, `erreur`), qui demanderait au routeur une troisième classe de source (le cadre du fournisseur,
+     ni app ni GFS) ; sans lui, l'app garde sa vignette ouverte à la fin de la vidéo et ne retombe pas sur l'onglet quand le fournisseur refuse (le lecteur affiche alors le message du site).
+     L'app qui l'écoute (`GfsLink.onPlayerEvent`) ne reçoit simplement rien. `Escape` et le clic ailleurs sont à l'app : elle appelle `lecteur.fermer`.
+   [M] **Mesuré le 07/11** (faits vérifiés 56) avec la vraie Publipostage+ à `987a338` dans un vrai Grist 1.7.19 (Chromium, 700 × 400, `prototype/labo/run-lecteur.mjs`, 36 vérifications, aucune en échec, en français clair et en
+   anglais sombre), les pages de YouTube et de Vimeo étant remplacées par une page d'essai (`page.route` ; le cloud n'atteint pas ces sites) : `GfsLink.players()` rend `["youtube", "vimeo"]` ; `afficher` pose un cadre
+   dont l'adresse et les attributs sont ceux ci-dessus, à l'endroit exact de la vignette dans la page (320 × 180 à 100, 80 du cadre de l'app) ; la politique de GFS le laisse passer (le navigateur demande la page
+   aux deux sites) et refuse un troisième (témoin, Dailymotion) ; `deplacer` rogne la fenêtre à la zone (110 × 140 pour une vignette de 320 × 180 coupée en haut et à droite, le cadre du fournisseur décalé de
+   −40 px) et la cache quand la zone ne touche pas la vignette ; `masquer` cache et remontre ; Vimeo remplace YouTube (un seul lecteur), avec la clé de la vidéo non listée ; une adresse à la place d'un identifiant,
+   un site inconnu et un rectangle mal formé sont refusés, dits en console, sans rien changer ; à la vraie souris, le milieu de la vignette trouve le lecteur et le reste du cadre trouve l'app ; le panneau passé de 700 × 400
+   à 760 × 440 déplace le lecteur avec le cadre de l'app ; le bouton « Fichiers » de la barre retire le lecteur, et l'app rouverte n'en retrouve aucun. **Non mesuré** : les vrais YouTube et Vimeo (démarrage, son, lecture
+   automatique, plein écran, clavier : le porteur, sous Firefox, avec une vraie vidéo), Firefox (le faux lecteur n'a été essayé que sous Chromium), le Grist de la DINUM, l'événement `lecteur` (pas construit).
 
 ### 5.3 Le stockage du navigateur
 

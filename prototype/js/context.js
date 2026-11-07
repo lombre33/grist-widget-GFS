@@ -26,7 +26,7 @@ export function identityFor(policy, address) {
   return policy && policy.identite && email ? { email } : null;
 }
 
-// `facts` : ce que le contrôleur a lu (instance, page, document, adresse du widget), `session` : { access, extensions, libraries, opening, storage, bar, identity, ambiance }.
+// `facts` : ce que le contrôleur a lu (instance, page, document, adresse du widget), `session` : { access, extensions, libraries, opening, storage, bar, identity, players, ambiance }.
 export function buildContext(facts, session, params) {
   const { preferences, readonly } = params;
   return {
@@ -48,6 +48,7 @@ export function buildContext(facts, session, params) {
     ouverture: session.opening || null,
     stockage: session.storage || {}, // la copie de l'espace de CETTE app dans le navigateur de GFS (5.3)
     barre: session.bar || null, // la barre de GFS qui recouvre le cadre : { bord, epaisseur, zone }, ou `null` quand rien ne le recouvre (5.2, point 7)
+    lecteurs: session.players || [], // les sites de vidéos dont GFS pose le lecteur pour cette app, ceux qu'elle a déclarés (`permissions.lecteurs`) : `[]` sinon, l'app ouvre alors la vidéo sur son site (5.2, point 11)
     identite: session.identity || null, // l'adresse e-mail de la personne, `{ email }`, pour l'app qui l'a déclarée et quand GFS la connaît (5.2, point 9)
     ambiance: session.ambiance || null, // l'ambiance et la couleur que la personne a choisies pour GFS et ses apps (js/theme.js), ou `null` : l'app garde ses couleurs (5.2, point 10)
     role: session.role || { proprietaire: null, responsableDe: [] }, // ce que GFS a prouvé de la personne : propriétaire (true/false/null) et espaces dont elle est responsable (5.2, point 8) ; pour griser, jamais pour décider

@@ -7,11 +7,12 @@
 <!-- Politique de sécurité du contenu de GFS. Chaque ligne a son motif :
      script-src : le code de GFS ('self'), la carte d'importation en ligne (par son empreinte, voir plus bas), le script d'API de Grist (adresse entière) ; 'unsafe-eval' faute de mieux, le fichier que Grist sert est un bundle de développement qui s'évalue par eval() (même raison que dans les apps) ;
      frame-src 'self' blob: : les apps tournent dans des sous-cadres du site de GFS, jamais d'une autre adresse ; blob: pour une seule raison : Firefox applique cette ligne à l'enregistrement d'un fichier que l'app fabrique (export Word, PowerPoint), là où Chromium ne la regarde pas (faits vérifiés 11) ;
+     frame-src, deux adresses de plus (carte du porteur du 07/11, « Politique élargie ») : https://www.youtube-nocookie.com et https://player.vimeo.com, pour une seule raison : le lecteur de vidéos que GFS pose pour une app qui l'a déclaré (`permissions.lecteurs`, contrats 3.4 point 7). Une vidéo ne se charge qu'au clic de la personne sur le bouton de lecture de l'app, jamais avant ; sans cette déclaration, GFS ne pose aucun lecteur ;
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-hIvbbJzTCHQRmHE3tVKe0Fa8GKAeROsb8qSe75Mhj7E='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
-<link rel="stylesheet" href="css/gfs.css?v=07195fafa9">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-8xZi3CAD0k53LtTvlXCrz6utB374YxucnyTaEV8+JlA='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<link rel="stylesheet" href="css/gfs.css?v=6edbc41aa4">
 <link rel="stylesheet" href="css/explorer.css?v=418da9c54e">
 <link rel="stylesheet" href="css/modules.css?v=1109fc818b">
 <link rel="stylesheet" href="css/rights.css?v=20ac6b7c9f">
@@ -36,11 +37,12 @@
     "./js/arrival-table.js": "./js/arrival-table.js?v=aacd272c57",
     "./js/arrival.js": "./js/arrival.js?v=6a226c188a",
     "./js/ask-window.js": "./js/ask-window.js?v=1a3e63add6",
+    "./js/attach.js": "./js/attach.js?v=1f308f71b9",
     "./js/broker.js": "./js/broker.js?v=79d6453688",
     "./js/catalogue.js": "./js/catalogue.js?v=9821dc95fc",
     "./js/conflict-window.js": "./js/conflict-window.js?v=e3c9c8e8d3",
-    "./js/context.js": "./js/context.js?v=483dec58d1",
-    "./js/controller.js": "./js/controller.js?v=f3dac9bc11",
+    "./js/context.js": "./js/context.js?v=02c3f955eb",
+    "./js/controller.js": "./js/controller.js?v=23823d2828",
     "./js/copying.js": "./js/copying.js?v=8da0986c98",
     "./js/deposit.js": "./js/deposit.js?v=e11841b099",
     "./js/dock-state.js": "./js/dock-state.js?v=8eec913fd1",
@@ -60,7 +62,7 @@
     "./js/files-store.js": "./js/files-store.js?v=98d9eb3e5c",
     "./js/filing-window.js": "./js/filing-window.js?v=ffaa75bf79",
     "./js/filing.js": "./js/filing.js?v=e00991b20a",
-    "./js/filter.js": "./js/filter.js?v=6079469f9b",
+    "./js/filter.js": "./js/filter.js?v=72e78ac0ad",
     "./js/frames.js": "./js/frames.js?v=554a438e75",
     "./js/gfs-copy.js": "./js/gfs-copy.js?v=204d80003f",
     "./js/gfs-files.js": "./js/gfs-files.js?v=136137d0cb",
@@ -78,7 +80,7 @@
     "./js/leave.js": "./js/leave.js?v=9128da01d8",
     "./js/libraries.js": "./js/libraries.js?v=f8e30c6112",
     "./js/links.js": "./js/links.js?v=c4e4a9d7bc",
-    "./js/manifest.js": "./js/manifest.js?v=cdb585fa5f",
+    "./js/manifest.js": "./js/manifest.js?v=0e9c47c6af",
     "./js/menu.js": "./js/menu.js?v=e317658e25",
     "./js/modal.js": "./js/modal.js?v=d75684dfd9",
     "./js/modules-model.js": "./js/modules-model.js?v=f215489de1",
@@ -86,6 +88,8 @@
     "./js/oklch.js": "./js/oklch.js?v=b8905a34c8",
     "./js/options-slice.js": "./js/options-slice.js?v=2d3825661c",
     "./js/own-table.js": "./js/own-table.js?v=b7e0d83652",
+    "./js/player-sites.js": "./js/player-sites.js?v=2c89846218",
+    "./js/player.js": "./js/player.js?v=32b6b9b638",
     "./js/publication-window.js": "./js/publication-window.js?v=dbe050782a",
     "./js/publication.js": "./js/publication.js?v=93f6686b33",
     "./js/rangement.js": "./js/rangement.js?v=f8570af12c",
@@ -99,7 +103,7 @@
     "./js/rights.js": "./js/rights.js?v=af3969da2a",
     "./js/rpc.js": "./js/rpc.js?v=2133dc4192",
     "./js/search.js": "./js/search.js?v=0921c92eb3",
-    "./js/session.js": "./js/session.js?v=97a0395060",
+    "./js/session.js": "./js/session.js?v=c578763aee",
     "./js/settings-menu.js": "./js/settings-menu.js?v=f9ce66c1f3",
     "./js/settings.js": "./js/settings.js?v=a425d4248c",
     "./js/state.js": "./js/state.js?v=ac1616eaf2",
@@ -128,7 +132,7 @@
     "./kit/js/color-strings.js": "./kit/js/color-strings.js?v=1bae4317a5",
     "./kit/js/dialogs.js": "./kit/js/dialogs.js?v=e2e71809c1",
     "./kit/js/dom.js": "./kit/js/dom.js?v=bb61d5ebe7",
-    "./kit/js/gfs-link.js": "./kit/js/gfs-link.js?v=17c52e1e28",
+    "./kit/js/gfs-link.js": "./kit/js/gfs-link.js?v=ca86a97448",
     "./kit/js/host.js": "./kit/js/host.js?v=aca4fbd09b",
     "./kit/js/i18n.js": "./kit/js/i18n.js?v=34aa7f2b67",
     "./kit/js/layers.js": "./kit/js/layers.js?v=0a7ababe40",

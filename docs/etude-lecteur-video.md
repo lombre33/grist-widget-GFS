@@ -59,3 +59,8 @@ Hors de cette étude, à décider à part si Slides+ le veut : la fenêtre à pa
 ## 7. Ce qui attend le porteur
 
 Une carte, posée avec cette étude : où poser le lecteur (page relais, politique élargie, ou rien). Rien n'est codé avant sa réponse ; Publipostage+ est au courant que l'étude est faite par la prochaine consigne qu'il recevra.
+
+## 8. Suite : décidé le 07/11, « Politique élargie »
+
+Le porteur a choisi la **politique élargie** (et non la page relais, que l'étude conseillait) : la politique de sécurité de GFS nomme `www.youtube-nocookie.com` et `player.vimeo.com` dans `frame-src`, le cadre du lecteur est posé directement dans la page de GFS. Construit le 07/11 (lots 1 et 2 de la section 6 : `afficher`, `fermer`, `deplacer`, `masquer`, le rognage, l'annonce `lecteurs`, la déclaration au manifeste), mesuré avec la vraie Publipostage+ dans un vrai Grist (faits vérifiés 56, contrats 3.4 point 7 et 5.2 point 11). **Reste** : le lot 3 (événement `lecteur`, qui demande au routeur une troisième classe de source : le cadre du fournisseur), et le lot 4 (la mesure du porteur sous Firefox avec un vrai YouTube et un vrai Vimeo : démarrage sans second clic ? plein écran ? son ?). Ce que l'étude disait de la page relais reste vrai si la politique doit un jour être resserrée à nouveau.
+

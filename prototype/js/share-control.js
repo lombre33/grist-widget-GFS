@@ -2,8 +2,8 @@
 // le partage (un geste de propriétaire, avec la question qui dit le prix : js/rights-actions.js). Le premier lot couvre les PDF que GFS garde ; les fichiers d'une app attendent leurs colonnes d'aide.
 
 import { rowsOf } from './rights.js';
-import { FILES_APP } from './gfs-files.js';
-import { SHARES_TABLE, sharesOf } from './sharing-model.js';
+import { FILES_TABLE } from './gfs-files.js';
+import { GROUPS_TABLE, SHARES_TABLE, STAMP, TARGETS, groupsOf, sharesOf } from './sharing-model.js';
 import { openShare } from './share-window.js';
 import { runAction } from './rights-actions.js';
 import { ask } from './ask-window.js';
@@ -16,10 +16,16 @@ export class ShareControl {
   // opts : { port, reader, writer, t, locale(), container, inertTargets(), identity() → l'adresse de la personne ou '', fullAccess(), writeBlock() → la raison d'un blocage ou null, appName(id), extraTargets() }
   constructor(opts) { this.#o = opts; }
 
+  // La table de fichiers que le partage couvre pour ce fichier (un PDF de GFS, ou le fichier d'une app qui déclare sa table), ou null.
+  #target(file) {
+    const targets = this.#o.targets ? this.#o.targets() : TARGETS;
+    return file ? targets.find(item => item.prefix === `${file.app}:` && item.table === (file.table || FILES_TABLE)) || null : null;
+  }
+
   // Pourquoi ce fichier ne se partage pas (une phrase), ou null quand il se partage.
   whyNot(file) {
     if (!this.#o.fullAccess()) return this.#o.t('share.noAccess');
-    return file && file.app === FILES_APP ? null : this.#o.t('share.unsupported');
+    return this.#target(file) ? null : this.#o.t('share.unsupported');
   }
 
   // L'état que la fenêtre dessine : la table des partages (absente : le partage n'est pas activé), la preuve de propriété, ce que la personne peut changer.
@@ -27,13 +33,24 @@ export class ShareControl {
     const owner = await this.#o.reader.owner();
     let rows = null;
     try { rows = rowsOf(await this.#o.port.doc.fetchTable(SHARES_TABLE)); } catch (error) { rows = null; }
-    if (!rows) return { active: false, owner, shares: [], people: [], me: '', author: '', canManage: false };
+    const none = extend => ({ active: false, extend, owner, shares: [], people: [], me: '', author: '', canManage: false });
+    if (!rows) return none(false);
+    const target = this.#target(file);
+    let author = lower(file.by);
+    if (target && target.stamped) {
+      // La table de l'app porte-t-elle les colonnes d'aide ? Sinon le partage n'y est pas étendu ; sinon l'auteur est la colonne que Grist écrit.
+      let table = null;
+      try { table = await this.#o.port.doc.fetchTable(target.table); } catch (error) { table = null; }
+      if (!table || !Object.prototype.hasOwnProperty.call(table, 'GFS_Lecteurs')) return none(true);
+      author = lower((table[STAMP] || [])[(table.id || []).indexOf(file.row)]);
+    }
     const me = lower(this.#o.identity());
-    const author = lower(file.by);
     const shares = sharesOf(rows, file.key);
     const admin = shares.some(share => share.valid && share.active && share.right === 'admin' && lower(share.who) === me);
-    const people = [...new Set(rows.map(row => lower(row.PersonneL || row.Personne)).filter(who => who && !who.startsWith('@')))].sort();
-    return { active: true, owner, shares, people, me, author, canManage: !this.#o.writeBlock() && (owner === true || (me !== '' && me === author) || admin) };
+    const people = [...new Set(rows.map(row => lower(row.PersonneL || row.Personne)).filter(who => who && !who.startsWith('@') && !who.startsWith('#')))].sort();
+    let groups = [];
+    try { groups = groupsOf(rowsOf(await this.#o.port.doc.fetchTable(GROUPS_TABLE))); } catch (error) { groups = []; }
+    return { active: true, owner, shares, people, groups, me, author, canManage: !this.#o.writeBlock() && (owner === true || (me !== '' && me === author) || admin) };
   }
 
   async #write(actions) {
@@ -47,7 +64,7 @@ export class ShareControl {
     const { t, container, inertTargets } = this.#o;
     return openShare({
       container, t, locale: this.#o.locale(), inertTargets, extraTargets: this.#o.extraTargets(), file: { key: file.key, name: file.name, app: this.#o.appName(file.app) },
-      load: () => this.load(file),
+      load: () => this.load(file), onManage: () => this.#o.manage.open(),
       onAdd: record => this.#write([['AddRecord', SHARES_TABLE, null, record]]),
       onChange: (id, patch) => this.#write([['UpdateRecord', SHARES_TABLE, id, patch]]),
       onRemove: id => this.#write([['RemoveRecord', SHARES_TABLE, id]]),

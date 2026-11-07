@@ -8,9 +8,10 @@ export function askOptions(t, kind, plan) {
   const key = KIND[kind];
   const items = [];
   if (kind === 'close') items.push(t('rights.ask.close.item1'), t('rights.ask.close.item2'));
-  if (kind === 'sharing') items.push(t('rights.ask.sharing.item1'), t('rights.ask.sharing.item2'));
+  if (kind === 'sharing') items.push(t('rights.ask.sharing.item1'), ...(plan.appTables && plan.appTables.length ? [t('rights.ask.sharing.apps', { tables: plan.appTables.join(', ') })] : []), t('rights.ask.sharing.item2'));
   if (plan.firstRule) items.push(t('rights.ask.firstRule'));
-  return { title: t(`rights.ask.${key}.title`), message: t(`rights.ask.${key}.message`), items, note: t('rights.ask.reload'), confirmLabel: t(`rights.ask.${key}.confirm`), cancelLabel: t('rights.ask.cancel'), safeFirst: true };
+  const word = kind === 'sharing' && plan.extends ? `${key}.extend` : key;
+  return { title: t(`rights.ask.${word}.title`), message: t(`rights.ask.${word}.message`), items, note: t('rights.ask.reload'), confirmLabel: t(`rights.ask.${word}.confirm`), cancelLabel: t('rights.ask.cancel'), safeFirst: true };
 }
 
 // Pose le geste `kind` : question, écriture, et compte rendu si Grist ou le plan refuse. Rend true quand Grist a accepté (la page va se recharger). `ask(options)` ouvre la fenêtre (js/ask-window.js).

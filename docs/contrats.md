@@ -2242,6 +2242,14 @@ fichier lui-même en pièce jointe de Grist.
     comme Grist les compte, et **chaque table, seule** (`dbstat`, `name = '<table>'`). [M] Mesuré dans un vrai Grist 1.7.19 (faits vérifiés, 43) : Grist coupe toute lecture de plus d'une seconde (400 : « a slow statement resulted in
     a database interrupt ») et le document ne répond plus à rien d'autre pendant ce temps, donc le poids de toutes les tables d'un coup est interdit ; `/sql` n'est rendu qu'à qui peut tout copier (un propriétaire, ou un
     éditeur ou un lecteur d'un document sans règle de lecture) : le refus (403) de la première lecture, avec les deux jetons, grise la fenêtre avec cette raison, et l'estimation reste.
+15. [T] **Le cadre d'envoi fait aussi les requêtes REST du moteur de partage** (partage d'un dossier ou d'un fichier entre deux documents qui ont GFS, décision du porteur du 06/11 ; consigne 003 à Sync+). Une opération de plus, `rest` : un `GET`,
+    `POST`, `PATCH` ou `DELETE` (rien d'autre) dont l'adresse est celle que GFS a bâtie, **sans cookie**, avec l'en-tête `X-Requested-With` sur tout ce qui n'est pas une lecture (sans lui Grist répond 401 sans en-têtes CORS) et un corps JSON
+    quand GFS en donne un ; la réponse revient en `{ status, body }` (le JSON de la réponse, sinon son texte). Deux entrées dans `Transfer` (js/transfer.js) : `rest(method, path, { body, writable, params })` (l'adresse REST du document + `path`, avec
+    un jeton de `getAccessToken`, en écriture par défaut : la liste des webhooks n'est rendue qu'à un propriétaire, avec un jeton qui peut écrire) et `anonymous(method, url, { body })` (sans jeton : la lecture d'un document public et l'envoi de lignes
+    à l'adresse d'un formulaire publié ; **seulement vers le serveur du document** : le lien d'une autre instance ne part pas, le cadre ne reçoit rien). Un refus du serveur revient en `TransferError` « http » avec son code, un serveur muet en « network ».
+    Aucune adresse de plus dans la politique de GFS : le cadre garde son `connect-src https:`. [M] Mesuré dans un vrai Grist 1.7.19 depuis le vrai cadre (faits vérifiés, 59) : le cycle d'un webhook (créer avec sa condition, lister, désactiver, vider sa file,
+    effacer) passe, Grist livre l'ajout d'une ligne à l'adresse du webhook, un refus garde son code (404), la lecture d'un document public et l'envoi de lignes à un document public en édition passent sans jeton avec `Origin: null` ; **Grist garde
+    quelques secondes le refus qu'il a donné à une personne anonyme** (lecture rendue à +5 s après avoir rendu le document public), donc le moteur réessaie au cycle suivant et ne conclut pas d'un premier refus.
 
 ### 6.7 `GFS_Corbeille`, la corbeille des fichiers des apps
 
@@ -2838,7 +2846,7 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
    absentes. **Les colonnes d'aide `GFS_…` ne sont pas à l'app** : elle les tolère (6.1, points 3 et 4), les ignore et ne les écrit
    jamais. Les noms de l'étiquette viennent dans une consigne à part, après les mesures : aucune app n'ajoute de colonne avant. **07/11 : cette consigne ne viendra pas pour
    `visibilite`, `personnes` ni `espace`** : le partage d'un contenu vit dans `GFS_Partages` (11.7, point 13) et GFS pose lui-même ses colonnes d'aide `GFS_…` avec l'accord du
-   propriétaire ; l'app garde `auteur` et un identifiant de fichier stable (consignes 058 Publipostage+, 025 Form+, 014 Automation+, 011 Grist-BI, 015 Tuesday).
+   propriétaire, dont `GFS_Auteur` que **Grist** écrit à la création (l'app n'écrit aucun auteur ; consignes 058, 025, 014, 011, 015 du 07/11, **remplacées** le même jour par 060 Publipostage+, 027 Form+, 015 Automation+, 012 Grist-BI, 016 Tuesday).
 7. [T] **Aucun secret rangé en clair par GFS ; une app qui en garde un le déclare** (`secrets`) et vit sans quand il est illisible.
 8. [D] **App par app** (relevé du 22/10) :
 
@@ -2863,7 +2871,7 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
    Permissions avancées (lu), et le porteur a confirmé qu'elle se décoche sur son instance (21/10). Elle pèse aussi sur les liens publics : structure ouverte,
    un éditeur peut écrire les tables qui publient un formulaire (11.9, point 7), ce qu'il reste à mesurer (10.11, mesure 4).
 2. [D] **Qui écrit l'étiquette d'un contenu : GFS, par « Partager »** (fenêtre du menu d'un fichier, point 13 ; décision du 06/11 : « partage libre, invitation demandée », colonnes d'aide
-   posées avec l'accord du propriétaire à chaque fois). L'app n'écrit ni visibilité, ni personnes, ni espace ; elle écrit `auteur` à la création (consignes du 07/11, 11.6 point 6). *(Question
+   posées avec l'accord du propriétaire à chaque fois). L'app n'écrit ni visibilité, ni personnes, ni espace, ni auteur : GFS pose `GFS_Auteur`, que Grist remplit (consignes du 07/11, 11.6 point 6). *(Question
    ouverte jusqu'au 06/11 : l'app dans son interface, ou GFS dans l'explorateur.)*
 3. [Q] **Les tables dérivées** : ce que l'auteur d'un contenu lit et écrit de ses versions et de ses commentaires (versions à
    l'auteur et aux propriétaires, commentaires à ceux qui lisent le contenu, d'après le document de stratégie) n'est pas mesuré.
@@ -2959,6 +2967,26 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
        `labo/run-partager-fenetre.mjs`) ; les PDF déjà rangés restent lisibles de tous (une ligne « tout le document » par PDF). Chacun lit les lignes qui le concernent, catégories
        comprises. Mesuré : vrai Grist à trois comptes (`labo/run-partager.mjs` 25, `labo/run-partager-fenetre.mjs` 26), 700 × 400 à la vraie souris, clair et sombre, français et anglais ;
        Firefox (`test/partager-firefox.mjs`).
+
+    h. [T] **Fichiers des apps livrés le 07/11** (lot 2 ; `appTargets` et `targetsOf` de `js/sharing-model.js`, d'après `fichiers[]` des manifestes). Pour chaque table de fichiers d'une app **présente dans le document** : GFS ajoute `GFS_Auteur`
+       (colonne déclenchée, `user.Email`, écrite par Grist ; jamais rétro-remplie : les lignes d'avant n'ont pas d'auteur) et les cinq colonnes d'aide, pose les règles (création à son nom d'après `newRec.GFS_Auteur`, `-U` sur
+       `GFS_Auteur`), laisse **ouvertes** les lignes que `exclure` écarte (les réglages) et rend les fichiers d'avant lisibles de tous (une ligne « tout le document » par ligne de la table). La clé d'un fichier est
+       `<id de l'app>:<identifiant>`, le numéro de ligne quand `colonnes.id` vaut `id`. Une table d'app qui porte déjà une règle d'un autre auteur est laissée. Une app ajoutée après l'activation : « Étendre le partage à
+       cette app… » (la question dit « compléter »). Mesuré dans un vrai Grist à trois comptes avec la table de Publipostage+ (`labo/run-partager-apps.mjs`, 34 vérifications ; Form+ ajouté ensuite) : l'éditeur ne lit pas
+       le modèle privé du propriétaire, crée le sien (Grist écrit son adresse), ne triche pas sur l'auteur, écrit un modèle ouvert en écriture et pas un modèle en lecture, garde la ligne de réglages ; le lecteur n'écrit
+       rien. **Pas mesuré** : avec les vraies apps sous règles (leur comportement devant un refus d'écriture) ; les tables liées (versions, commentaires) ne sont pas couvertes ; le numéro de ligne peut être réutilisé par Grist
+       après une suppression (les partages d'un fichier supprimé attendent un nettoyage) ; la corbeille (point 12).
+
+    i. [T] **Groupes et « Gérer les partages » livrés le 07/11** (lot 3 ; `GROUPS_TABLE`, `groupColumns`, `planGroupAdd`, `planGroupsRead` de `js/sharing-model.js` ; `js/manage-window.js`, `js/manage-control.js`, `js/pick-window.js`).
+       La table `GFS_Groupes` naît avec le partage (ou à la reprise d'un partage d'avant, qui relit alors les colonnes d'aide) : `Nom`, `NomL`, `PersonnesIci` (adresses tapées), `Source`, `SourceEmail`, `SourceGroupe`
+       (un groupe lu d'une table du document) et deux colonnes que Grist calcule, `Membres` et `Nb`. Un partage vise un groupe par `#nom` ; les colonnes d'aide de chaque fichier développent `#nom` par `Membres` (une règle de
+       Grist ne lit pas une autre table). Règles : les propriétaires font tout, un éditeur lit `Nom`, `NomL`, `Nb` et `Source` (pour proposer un groupe), jamais les adresses, le reste est refusé. L'administration d'un fichier ne se donne
+       pas à un groupe ni à une catégorie. « Gérer les partages… » (bouton de la fenêtre « Partager » et du panneau « Permissions », propriétaire seulement ; clé de reprise `manage`) : **Options** (fermer ou rouvrir la structure, avec la
+       question du panneau ; les liens publics se créent dans Grist), **Groupes** (créer un groupe tapé, le modifier, le supprimer, **lire les groupes d'une table** : trois listes avec recherche, un groupe par valeur distincte,
+       les identifiants vérifiés avant d'entrer dans une formule, les noms pris laissés), **Catégories** (un droit sur tout le document pour les éditeurs et pour tout le monde : une ligne de partage dont la cible est la racine `*`).
+       Mesuré dans un vrai Grist à trois comptes (`labo/run-partager-groupes.mjs`, 32 vérifications) et sous Firefox (`test/partager-firefox.mjs`, 700 × 400 à la vraie souris). Une formule de `Membres` qui contenait un saut de ligne
+       dans une chaîne (« \n » écrit en vrai saut) rendait `Membres` vide sans erreur visible : trouvé par le labo, gardé par un test. **Limites** : une colonne de groupes de type liste de choix n'est pas lue (la recherche
+       de Grist compare une valeur) ; un groupe supprimé laisse ses partages sans effet (ils ne donnent plus accès à personne) ; les membres d'un groupe lu d'une table suivent la table mais pas par les apps.
 
 ### 11.8 À mesurer sur le Grist du porteur
 

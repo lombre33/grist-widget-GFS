@@ -33,3 +33,16 @@
 .sh .sg-actions { display: flex; justify-content: flex-end; gap: 8px; margin: 10px 4px 0; }
 .sh .rt-lead { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-sunken); }
 .sh .rt-lead .ic { flex: none; width: 16px; height: 16px; margin-top: 1px; color: var(--text-muted); }
+
+/* « Gérer les partages » (js/manage-window.js) : trois onglets, un groupe tapé dans une zone, les boutons du pied ; mêmes jetons. */
+.mg-tabs { display: flex; gap: 4px; margin: 0 0 6px; border-bottom: 1px solid var(--border); }
+.mg-tab { padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 600; color: var(--text-muted); background: transparent; border: 0; border-bottom: 2px solid transparent; cursor: pointer; }
+.mg-tab:hover { color: var(--text); }
+.mg-tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
+.mg-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.mg .field.mg-area { height: auto; align-items: stretch; padding: 4px 6px; margin-top: 8px; }
+.mg .field textarea { flex: 1; min-width: 0; border: 0; background: transparent; outline: 0; resize: vertical; font: inherit; font-size: 13px; color: var(--text); }
+.mg .sg-new .field { margin-top: 8px; }
+.mg .rr .btn.sm { flex: none; }
+.sh .mod-foot .btn { flex: none; }
+.sh .mod-foot .btn .ic { width: 14px; height: 14px; margin-right: 4px; }

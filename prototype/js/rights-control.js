@@ -5,7 +5,9 @@ import { RightsReader } from './rights-reader.js';
 import { openRights } from './rights-window.js';
 import { RightsWriter, RESUME_KEY } from './rights-writer.js';
 import { runAction } from './rights-actions.js';
+import { targetsOf } from './sharing-model.js';
 import { ShareControl } from './share-control.js';
+import { ManageControl } from './manage-control.js';
 import { ask } from './ask-window.js';
 import { keyStore } from './stored-choice.js';
 
@@ -15,13 +17,16 @@ export class RightsControl {
   writer;
   sharing;
 
-  // opts : { port, transfer, prefixes() → les préfixes de table des apps, now(), container, inertTargets(), t(clé, variables), fullAccess(), locale(), identity(), writeBlock(), appName(id), extraTargets() }
+  // opts : { port, transfer, prefixes() → les préfixes de table des apps, manifests() → les manifestes des apps valides (leurs préfixes de table, leurs tables de fichiers : `targetsOf`, js/sharing-model.js), now(), container, inertTargets(), t(clé, variables), fullAccess(), locale(), identity(), writeBlock(), appName(id), extraTargets() }
   constructor(opts) {
     this.#opts = opts;
-    this.reader = new RightsReader({ port: opts.port, transfer: opts.transfer, prefixes: opts.prefixes, now: opts.now });
+    const manifests = opts.manifests || (() => []);
+    this.targets = () => targetsOf(manifests());
+    this.reader = new RightsReader({ port: opts.port, transfer: opts.transfer, prefixes: opts.prefixes || (() => manifests().map(item => item.tables.prefixe)), now: opts.now, targets: () => targetsOf(manifests()) });
     this.writer = new RightsWriter({ port: opts.port, reader: this.reader, store: opts.container ? keyStore(opts.container.ownerDocument.defaultView, RESUME_KEY) : { read: () => null, write: () => false } });
     // « Partager » : le même lecteur et le même écrivain, pour la fenêtre du fichier (js/share-control.js).
-    this.sharing = new ShareControl({ ...opts, reader: this.reader, writer: this.writer, extraTargets: opts.extraTargets || (() => []) });
+    this.manage = new ManageControl({ ...opts, reader: this.reader, writer: this.writer });
+    this.sharing = new ShareControl({ ...opts, targets: this.targets, reader: this.reader, writer: this.writer, extraTargets: opts.extraTargets || (() => []), manage: this.manage });
   }
 
   // Les règles ne se lisent qu'avec l'accès complet (les tables internes de Grist), et ne se rendent qu'à un propriétaire prouvé : mesuré (Grist 1.7.19), les règles arrivent vides à qui n'a pas le droit de lire
@@ -52,7 +57,7 @@ export class RightsControl {
         explorer.setRights(rules);
         return { rules, owner, links, plans };
       },
-      act: async kind => { await runAction({ kind, plans: await this.writer.plans(), t, ask: asking, writer: this.writer }); },
+      act: async kind => { if (kind === 'manage') { await this.manage.open(); return; } await runAction({ kind, plans: await this.writer.plans(), t, ask: asking, writer: this.writer }); },
     });
   }
 
@@ -61,6 +66,7 @@ export class RightsControl {
   resume(explorer) {
     const wanted = this.writer.take();
     if (wanted === 'rights') void this.open(explorer);
+    else if (wanted === 'manage') void this.manage.open();
     else if (wanted && wanted.startsWith('share:')) void this.#reopenShare(explorer, wanted.slice(6));
   }
 

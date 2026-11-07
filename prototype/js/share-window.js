@@ -7,7 +7,7 @@ import { icon } from './icons.js';
 import { openModal, listKeys } from './modal.js';
 import { openMenu } from './menu.js';
 import { words, normalize, matchesWords } from './search.js';
-import { CATEGORIES, shareRecord } from './sharing-model.js';
+import { CATEGORIES, GROUP_PREFIX, isGroup, shareRecord } from './sharing-model.js';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Les cinq droits de la maquette ; « commentaire » et « dépôt seul » attendent leurs tables (grisés, avec la raison), un droit d'administration ne se donne pas à une catégorie.
@@ -15,7 +15,10 @@ const LEVELS = Object.freeze([{ key: 'lecture', glyph: 'read' }, { key: 'comment
 const CATS = Object.freeze([{ who: CATEGORIES.editeurs, key: 'editeurs', glyph: 'edit' }, { who: CATEGORIES.tous, key: 'tous', glyph: 'globe' }]);
 const isCategory = who => String(who).startsWith('@');
 
-export const whoLabel = (t, who) => (isCategory(who) ? t(`share.cat.${String(who).slice(1)}`) : who);
+// Un droit d'administration ne se donne qu'à une personne : ni une catégorie ni un groupe.
+const notPerson = who => isCategory(who) || isGroup(who);
+
+export const whoLabel = (t, who) => (isCategory(who) ? t(`share.cat.${String(who).slice(1)}`) : (isGroup(who) ? t('share.group.label', { name: String(who).slice(1) }) : who));
 
 // Ce que la zone d'ajout propose pour `text` : { people, categories, invite, others }. Jamais une personne ni une catégorie déjà dans la liste, jamais la personne elle-même.
 export function suggestions(t, state, text, extraTargets = []) {
@@ -24,9 +27,10 @@ export function suggestions(t, state, text, extraTargets = []) {
   const skip = new Set([...have, state.me, state.author].filter(Boolean));
   const people = state.people.filter(email => !skip.has(email) && matchesWords(needles, normalize(email))).map(email => ({ who: email, label: email, glyph: 'user' }));
   const categories = CATS.filter(cat => !have.has(cat.who) && matchesWords(needles, normalize(t(`share.cat.${cat.key}`)))).map(cat => ({ who: cat.who, label: t(`share.cat.${cat.key}`), hint: t(`share.cat.${cat.key}.hint`), glyph: cat.glyph }));
+  const groups = (state.groups || []).filter(group => !have.has(`${GROUP_PREFIX}${group.name}`.toLowerCase()) && matchesWords(needles, normalize(group.name))).map(group => ({ who: `${GROUP_PREFIX}${group.name}`, label: group.name, hint: t('share.group.hint', { n: group.count }), glyph: 'users' }));
   const typed = String(text || '').trim().toLowerCase();
   const invite = EMAIL.test(typed) && !skip.has(typed) && !state.people.includes(typed) ? { who: typed, label: t('share.suggest.invite', { email: typed }), hint: t('share.suggest.inviteHint'), glyph: 'mail' } : null;
-  return { people, categories, invite, others: extraTargets };
+  return { people, categories, groups, invite, others: extraTargets };
 }
 
 // Les articles du menu des droits : celui d'aujourd'hui coché ; grisés avec leur raison ; « Retirer l'accès » en dernier (sauf pour un nouveau partage, pas encore écrit).
@@ -39,7 +43,7 @@ export function levelItems(t, { current, category, onPick, onRemove, onWhy }) {
 }
 
 const initials = text => String(text).replace(/@.*/, '').split(/[._\s-]+/).filter(Boolean).slice(0, 2).map(part => part[0].toUpperCase()).join('') || '?';
-const avatar = who => (isCategory(who) ? icon(CATS.find(cat => cat.who === who)?.glyph || 'user', 'big') : h('span', { class: 'who' }, initials(who)));
+const avatar = who => (isCategory(who) ? icon(CATS.find(cat => cat.who === who)?.glyph || 'user', 'big') : (isGroup(who) ? icon('users', 'big') : h('span', { class: 'who' }, initials(who))));
 
 function dateText(seconds, locale) {
   try { return new Date(seconds * 1000).toLocaleDateString(locale, { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }); } catch (error) { return ''; }
@@ -58,7 +62,7 @@ function row(ctx, share) {
   const locked = share.inherited || !state.canManage;
   const button = h('button', { type: 'button', class: 'lvl', 'aria-disabled': locked ? 'true' : null, 'aria-haspopup': locked ? null : 'menu', dataset: { fk: `share-level-${share.id}` } }, t(`share.right.${share.right}`), icon(locked ? 'lock' : 'chev-down'));
   if (!locked) button.addEventListener('click', () => openMenu(button, levelItems(t, {
-    current: share.right, category: isCategory(share.who), onPick: right => ctx.change(share, right), onRemove: () => ctx.remove(share), onWhy: why => ctx.say(why),
+    current: share.right, category: notPerson(share.who), onPick: right => ctx.change(share, right), onRemove: () => ctx.remove(share), onWhy: why => ctx.say(why),
   }), { host: ctx.container, align: 'right', label: t('share.sec.access') }));
   const tags = [!share.valid ? t('share.tag.invalid') : null, expired ? t('share.tag.expired') : null].filter(Boolean).map(text => h('span', { class: 'tag' }, text));
   return h('li', { class: 'rr', dataset: { share: String(share.id) } }, avatar(share.who), h('span', { class: 'nm' }, h('b', null, label), notes.length ? h('small', null, notes.join(' · ')) : null), ...tags, button);
@@ -82,14 +86,14 @@ function suggestion(item, run, why) {
 
 function suggestionList(ctx, found) {
   const { t } = ctx;
-  const groups = [[t('share.suggest.people'), [...found.people, ...(found.invite ? [found.invite] : [])]], [t('share.suggest.cats'), found.categories]];
+  const groups = [[t('share.suggest.people'), [...found.people, ...(found.invite ? [found.invite] : [])]], [t('share.suggest.cats'), found.categories], [t('share.suggest.groups'), found.groups]];
   const nodes = [];
   for (const [title, items] of groups) {
     if (!items.length) continue;
     nodes.push(h('div', { class: 'sec' }, title));
     for (const item of items) nodes.push(suggestion(item, () => ctx.choose(item.who)));
   }
-  if (!found.people.length && !found.invite && !found.categories.length) nodes.push(h('p', { class: 'fine' }, t('share.suggest.none')));
+  if (!found.people.length && !found.invite && !found.categories.length && !found.groups.length) nodes.push(h('p', { class: 'fine' }, t('share.suggest.none')));
   for (const other of found.others) nodes.push(suggestion({ who: '', label: other.label, hint: other.hint, glyph: other.icon }, why => (why ? ctx.say(why) : other.run()), other.greyed ? other.why : null));
   return h('div', { class: 'drop', role: 'listbox', 'aria-label': t('share.add.label') }, ...nodes);
 }
@@ -117,7 +121,7 @@ function pendingForm(ctx, who) {
   let right = 'lecture';
   const level = h('button', { type: 'button', class: 'lvl', 'aria-haspopup': 'menu', dataset: { fk: 'share-new-level' } }, t(`share.right.${right}`), icon('chev-down'));
   const setLevel = next => { right = next; level.replaceChildren(t(`share.right.${right}`), icon('chev-down')); };
-  level.addEventListener('click', () => openMenu(level, levelItems(t, { current: right, category: isCategory(who), onPick: setLevel, onWhy: why => ctx.say(why) }), { host: ctx.container, align: 'right', label: t('share.sec.add') }));
+  level.addEventListener('click', () => openMenu(level, levelItems(t, { current: right, category: notPerson(who), onPick: setLevel, onWhy: why => ctx.say(why) }), { host: ctx.container, align: 'right', label: t('share.sec.add') }));
   const download = h('input', { type: 'checkbox', dataset: { fk: 'share-download' } });
   const endOn = h('input', { type: 'checkbox', dataset: { fk: 'share-end-on' } });
   const date = h('input', { type: 'date', disabled: true, 'aria-label': t('share.end.date'), dataset: { fk: 'share-end' } });
@@ -139,12 +143,13 @@ function pendingForm(ctx, who) {
 // L'état « partage pas activé » : le propriétaire peut l'activer ; les autres lisent à qui le demander.
 function inactiveBlock(ctx) {
   const { t, state } = ctx;
+  const word = state.extend ? 'share.extend' : 'share.inactive';
   if (state.owner === true) {
-    const activate = h('button', { type: 'button', class: 'btn primary', dataset: { fk: 'share-activate' } }, t('share.inactive.activate'));
+    const activate = h('button', { type: 'button', class: 'btn primary', dataset: { fk: 'share-activate' } }, t(state.extend ? 'share.extend.activate' : 'share.inactive.activate'));
     activate.addEventListener('click', () => void ctx.activate());
-    return h('div', { class: 'rt-content' }, h('p', { class: 'fine' }, t('share.inactive.owner')), h('p', { class: 'sg-actions' }, activate));
+    return h('div', { class: 'rt-content' }, h('p', { class: 'fine' }, t(`${word}.owner`)), h('p', { class: 'sg-actions' }, activate));
   }
-  return h('div', { class: 'rt-content' }, h('p', { class: 'rt-lead' }, icon('lock'), h('span', null, t(state.owner === false ? 'share.inactive.other' : 'share.inactive.unknown'))));
+  return h('div', { class: 'rt-content' }, h('p', { class: 'rt-lead' }, icon('lock'), h('span', null, t(state.owner === false ? `${word}.other` : 'share.inactive.unknown'))));
 }
 
 // Le contenu d'après l'état : { active, owner, canManage, shares, me, author, people }. `ctx.pending` : la personne choisie, pas encore ajoutée.
@@ -159,15 +164,17 @@ export function shareBody(ctx) {
 }
 
 // opts : { container, t, locale, inertTargets, file: { key, name, app }, load() → état, onAdd(record), onChange(id, patch), onRemove(id) → { ok, message? }, onActivate() → true quand Grist va recharger,
-// extraTargets: [{ label, hint, icon, greyed, why, run }] (« Un autre document Grist… » : Sync+) }. Rend la promesse de la fermeture.
+// onManage() ouvre « Gérer les partages » (propriétaire), extraTargets: [{ label, hint, icon, greyed, why, run }] (« Un autre document Grist… » : Sync+) }. Rend la promesse de la fermeture.
 export function openShare(opts) {
   const { container, t, file } = opts;
   const body = h('div', { class: 'ask-body rt-body sh-body' }, h('p', { class: 'rt-none', 'aria-live': 'polite' }, t('share.loading')));
   const status = h('p', { class: 'mod-note', 'aria-live': 'polite' }, t('share.foot'));
   const close = h('button', { type: 'button', class: 'btn primary', dataset: { fk: 'share-close' } }, t('share.done'));
+  // « Gérer les partages… » : les groupes, les catégories et la structure (js/manage-window.js) ; grisé avec sa raison pour qui n'est pas propriétaire.
+  const manage = h('button', { type: 'button', class: 'btn', 'aria-disabled': opts.onManage ? null : 'true', dataset: { fk: 'share-manage' } }, icon('users'), t('manage.open'));
   const dialog = h('section', { class: 'mod pt sh', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'share-title' },
     h('header', { class: 'mod-head' }, h('h2', { id: 'share-title' }, t('share.title', { name: file.name })), h('p', { class: 'mod-count' }, t('share.sub', { app: file.app }))),
-    body, h('footer', { class: 'mod-foot' }, status, close));
+    body, h('footer', { class: 'mod-foot' }, status, manage, close));
   const { done, result } = openModal({ container, section: dialog, inertTargets: opts.inertTargets, first: close, cancel: null });
   close.addEventListener('click', () => done(null));
   const ctx = { t, container, locale: opts.locale, target: file.key, state: null, pending: null, extraTargets: opts.extraTargets || [], say: text => { status.textContent = text; } };
@@ -192,6 +199,12 @@ export function openShare(opts) {
   ctx.change = (share, right) => write(() => opts.onChange(share.id, { Droit: right }));
   ctx.remove = share => write(() => opts.onRemove(share.id));
   ctx.activate = async () => { if (!(await opts.onActivate())) await reload(); };
+  manage.addEventListener('click', async () => {
+    if (!opts.onManage) return;
+    if (!ctx.state || ctx.state.owner !== true) { ctx.say(t('manage.other')); return; }
+    await opts.onManage();
+    if (dialog.isConnected) await reload();
+  });
   void reload();
   return result;
 }

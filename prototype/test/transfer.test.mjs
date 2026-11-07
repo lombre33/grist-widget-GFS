@@ -204,3 +204,37 @@ test('sql : un refus du serveur (403 : pas le droit de tout copier ; 400 : lectu
   await assert.rejects(odd.transfer.sql('SELECT 1'), error => error.kind === 'answer');
   finish(odd);
 });
+
+test('rest : un jeton qui peut écrire (par défaut), l\'adresse du document + le chemin porte le jeton et les paramètres, le corps part en JSON, { status, body } revient', async () => {
+  const run = setup({ frame: { answer: request => ({ id: request.id, ok: true, value: { status: 200, body: { webhooks: [] } } }) } });
+  assert.deepEqual(await run.transfer.rest('POST', '/webhooks', { body: { webhooks: [{ fields: { name: 'x' } }] } }), { status: 200, body: { webhooks: [] } });
+  assert.deepEqual(run.asked, [{ readOnly: false }]);
+  const [request] = run.frames.requests;
+  assert.deepEqual([request.op, request.method, request.json], ['rest', 'POST', { webhooks: [{ fields: { name: 'x' } }] }]);
+  assert.equal(request.url, 'https://grist.exemple.fr/o/docs/api/docs/DOC123/webhooks?auth=jeton%2Bsecret%2F%3D');
+  await run.transfer.rest('GET', '/compare', { writable: false, params: { left: 'a b', right: 'HEAD' } });
+  assert.deepEqual(run.asked.at(-1), { readOnly: true }, 'une lecture : le jeton ne peut pas écrire');
+  assert.equal(run.frames.requests.at(-1).url, 'https://grist.exemple.fr/o/docs/api/docs/DOC123/compare?auth=jeton%2Bsecret%2F%3D&left=a%20b&right=HEAD');
+  finish(run);
+});
+
+test('rest : un refus du serveur (403 : propriétaires seuls) revient en « http » avec son code ; un serveur muet en « network »', async () => {
+  const denied = setup({ frame: { answer: request => ({ id: request.id, ok: false, network: false, status: 403, message: 'No owner access' }) } });
+  await assert.rejects(denied.transfer.rest('GET', '/webhooks'), error => error instanceof TransferError && error.kind === 'http' && error.status === 403 && /owner/.test(error.message));
+  finish(denied);
+  const mute = setup({ frame: { answer: request => ({ id: request.id, ok: false, network: true, status: 0, message: 'NetworkError' }) } });
+  await assert.rejects(mute.transfer.rest('DELETE', '/webhooks/1'), error => error.kind === 'network');
+  finish(mute);
+});
+
+test('anonymous : sans jeton dans l\'adresse, seulement vers le serveur du document ; le lien d\'une autre instance, ou qui n\'est pas une adresse, ne part pas', async () => {
+  const run = setup({ frame: { answer: request => ({ id: request.id, ok: true, value: { status: 200, body: '' } }) } });
+  await run.transfer.anonymous('POST', 'https://grist.exemple.fr/api/s/CLE123/tables/Journal_a/records?flat=1', { body: [{ A: 1 }] });
+  const [request] = run.frames.requests;
+  assert.deepEqual([request.op, request.method, request.json, request.url], ['rest', 'POST', [{ A: 1 }], 'https://grist.exemple.fr/api/s/CLE123/tables/Journal_a/records?flat=1']);
+  assert.ok(!request.url.includes('auth='), 'aucun jeton dans une requête anonyme');
+  await assert.rejects(run.transfer.anonymous('POST', 'https://autre-instance.example.org/api/s/CLE/tables/T/records', { body: [] }), error => error.kind === 'answer');
+  await assert.rejects(run.transfer.anonymous('GET', 'pas une adresse'), error => error.kind === 'answer');
+  assert.equal(run.frames.requests.length, 1, 'rien d\'autre n\'est parti au cadre');
+  finish(run);
+});

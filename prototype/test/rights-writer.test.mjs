@@ -114,3 +114,13 @@ test('la question d’activation dit le prix : ce que deviennent les PDF d’ava
   assert.equal(options.title, 'rights.ask.sharing.title');
   assert.equal(options.confirmLabel, 'rights.ask.sharing.confirm');
 });
+
+test('la question du partage cite les tables des apps touchées ; sur un partage déjà là, elle dit « compléter », pas « activer »', () => {
+  const fresh = askOptions(t, 'sharing', { ok: true, firstRule: true, appTables: ['Publipostage_Modeles', 'FormPlus_Formulaires'], extends: false });
+  assert.equal(fresh.title, t('rights.ask.sharing.title'));
+  assert.ok(fresh.items.some(item => item.startsWith('rights.ask.sharing.apps') && item.includes('Publipostage_Modeles, FormPlus_Formulaires')));
+  const later = askOptions(t, 'sharing', { ok: true, firstRule: false, appTables: ['FormPlus_Formulaires'], extends: true });
+  assert.equal(later.title, t('rights.ask.sharing.extend.title'));
+  assert.equal(later.confirmLabel, t('rights.ask.sharing.extend.confirm'));
+  assert.ok(!askOptions(t, 'sharing', { ok: true, appTables: [], extends: false }).items.some(item => item.startsWith('rights.ask.sharing.apps')));
+});

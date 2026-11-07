@@ -1,4 +1,4 @@
-// La corbeille et la copie d'un formulaire depuis l'explorateur avec la VRAIE Form+, celle que GFS référence (91e4ba8 : ses consignes 020 et 021 faites, kit 0.10.0), dans un VRAI Grist (grist-static),
+// La corbeille et la copie d'un formulaire depuis l'explorateur avec la VRAIE Form+, celle que GFS référence (c1f84a9 : ses consignes 020, 021 et 026 faites, kit 0.10.0), dans un VRAI Grist (grist-static),
 // à 700 × 400, à la vraie souris et au vrai clavier (contrats 2.4 `suppression.appel` et `copie.appel`, 5.4 points 10 et 11). `run-composite` joue les mêmes gestes avec une sonde (ZF) qui répond « comme
 // le fera Form+ » ; ici l'app répond elle-même : `GfsLink.onDelete` ferme le lien public (`closeManagedFormPublicLink`), `GfsLink.onDuplicate` copie le formulaire (`duplicateManagedForm`).
 //   bash prototype/labo/lab-server (grist-static, ports 8910 et 8911) puis : REPO_DIR="$(realpath ../..)" node run-composite-form.mjs        (LAB_LANG=fr|en, LAB_SCHEME=light|dark)
@@ -20,9 +20,11 @@ const APP = 'Form+';
 const FORM_URL = /(apps\/form|FormPlus)\//;
 const FIRST = { title: 'Inscription à une formation', question: 'Ville de départ' };
 const SECOND = { title: 'Demande de matériel', question: 'Matériel demandé' };
+// Depuis c1f84a9 (consigne 026, point 3), la phrase de la copie dit aussi le nom de la table née de la copie, sans fenêtre d'accord.
+const COPY_TABLE = 'Clients_copie';
 const SAID = lang === 'fr'
-  ? { closed: 'Son lien public est fermé.', notPublished: 'Elle n’est pas publiée.' }
-  : { closed: 'Its public link is closed.', notPublished: 'It isn’t published.' };
+  ? { closed: 'Son lien public est fermé.', notPublished: `Elle n’est pas publiée. Ses réponses iront dans une nouvelle table, « ${COPY_TABLE} », vide.` }
+  : { closed: 'Its public link is closed.', notPublished: `It isn’t published. Its answers will go to a new, empty table, “${COPY_TABLE}”.` };
 const PUBLISHED = JSON.stringify({ publish: true, form: true });
 // Le Grist du labo est en http : la politique de l'app (`connect-src 'self' https:`) refuse sa lecture de /forms/N, ce que Grist en ligne (https) laisse passer. Propre au labo.
 const LAB_ONLY = /Content Security Policy|Refused to connect/;
@@ -147,7 +149,7 @@ check('la copie est un formulaire de plus dans la liste et dans le document, sou
 check('la copie a sa propre section (pas celle de l\'original), sans clé de partage ni adresse publique, et son lien est fermé', copyDefinition.vsId != null && copyDefinition.vsId !== first.form && !copyDefinition.shareKey && !copyDefinition.publicUrl && closed(await sectionOptions(copyDefinition.vsId)), { copie: copyDefinition, options: await sectionOptions(copyDefinition.vsId) });
 const copyTable = copyDefinition.questions && copyDefinition.questions[0] ? copyDefinition.questions[0].writeTable : null;
 const copyRows = copyTable ? await table(copyTable) : null;
-check('la copie a SA table de réponses, vide (jamais celle de l\'original)', Boolean(copyTable) && copyTable !== 'Clients' && Array.isArray(copyRows) && copyRows.length === 0, { table: copyTable, lignes: copyRows });
+check('la copie a SA table de réponses, vide (jamais celle de l\'original), et la phrase de Form+ en dit le nom', Boolean(copyTable) && copyTable === COPY_TABLE && Array.isArray(copyRows) && copyRows.length === 0, { table: copyTable, lignes: copyRows });
 check('l\'original n\'a pas bougé : même ligne, même définition, son lien public reste ouvert, la table des réponses est intacte', JSON.stringify((await forms()).find(each => each.id === original.id)) === JSON.stringify(original) && !closed(await sectionOptions(first.form)) && JSON.stringify(await table('Clients')) === JSON.stringify(clientsBefore));
 const verbs = (await lab.actions()).filter(each => /FormPlus_Formulaires/.test(each));
 check('GFS n\'a rien écrit dans FormPlus_Formulaires : une seule ligne ajoutée, par Form+', verbs.length === 1 && /^AddRecord /.test(verbs[0]), verbs);

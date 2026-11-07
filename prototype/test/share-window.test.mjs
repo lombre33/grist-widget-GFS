@@ -77,3 +77,15 @@ test('la ligne « Un autre document Grist… » du contrôleur : grisée jamais 
   }
   assert.notEqual(otherDocumentTargets(createI18n('fr').t)[0].label, otherDocumentTargets(createI18n('en').t)[0].label);
 });
+
+test('les groupes : proposés par leur nom avec leur effectif, jamais ceux déjà dans la liste ; « #nom » se lit « Groupe · nom » ; pas d\'administration pour un groupe', () => {
+  const groups = [{ name: 'Achats', count: 3 }, { name: 'Compta', count: 1 }];
+  const found = suggestions(t, state({ groups, shares: [{ who: '#Compta', inherited: false }] }), '');
+  assert.deepEqual(found.groups.map(item => [item.who, item.glyph]), [['#Achats', 'users']]);
+  assert.match(found.groups[0].hint, /3/);
+  assert.deepEqual(suggestions(t, state({ groups }), 'compta').groups.map(item => item.who), ['#Compta']);
+  assert.match(whoLabel(t, '#Achats'), /Achats/);
+  assert.notEqual(whoLabel(t, '#Achats'), '#Achats');
+  const admin = levelItems(t, { current: 'lecture', category: true, onPick() {}, onWhy() {} }).find(item => item.label === t('share.right.admin'));
+  assert.equal(admin.greyed, true);
+});

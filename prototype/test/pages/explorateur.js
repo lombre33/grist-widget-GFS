@@ -36,6 +36,7 @@ import { ThemeWindow } from '/js/theme-window.js';
 import { Trash } from '/js/trash.js';
 import { openRights } from '/js/rights-window.js';
 import { openShare } from '/js/share-window.js';
+import { openManage } from '/js/manage-window.js';
 import { otherDocumentTargets } from '/js/share-other.js';
 import { openWeight } from '/js/weight-window.js';
 import { SQL, readWeight } from '/js/weight-reader.js';
@@ -290,14 +291,28 @@ async function mount() {
     inactif: { active: false, owner: true, shares: [], people: [], me: '', author: '', canManage: false },
     etendre: { active: false, extend: true, owner: true, shares: [], people: [], me: '', author: '', canManage: false },
     actif: { active: true, owner: true, me: 'essai@example.com', author: LONG_MAIL, canManage: true, people: ['ami@example.com', 'ancien@example.com', 'collegue@example.com', LONG_MAIL, 'essai@example.com'],
+      groups: [{ name: 'Achats', count: 3 }, { name: 'Comptabilité fournisseurs de la région Nord-Est', count: 12 }],
       shares: [share(1, '@tous', 'lecture', { download: true }), share(2, LONG_MAIL, 'ecriture', { end: 1893456000 }), share(3, 'ami@example.com', 'lecture', { end: 1577836800, active: false }), share(4, 'ancien@example.com', 'lecture', { valid: false })] },
     lecture: { active: true, owner: false, me: 'viewer@example.com', author: 'essai@example.com', canManage: false, people: [], shares: [share(1, 'viewer@example.com', 'lecture')] },
+  };
+  // La fenêtre « Gérer les partages » (js/manage-window.js, test/partager-firefox.mjs) sur un état que le contrôleur aurait lu ; `window.__manageActs` note ce que la fenêtre demande d'écrire.
+  const manageState = {
+    owner: true, active: true, rows: [], tables: [{ id: 'Contacts', emails: ['Mail'], groups: ['Equipe'] }], root: { '@editeurs': { id: 1, right: 'lecture' }, '@tous': null },
+    groups: [{ id: 1, name: 'Achats', count: 3, source: '', here: 'a@example.com\nb@example.com' }, { id: 2, name: 'Comptabilité fournisseurs de la région Nord-Est', count: 1, source: 'Contacts_de_toute_la_societe_internationale', here: '' }],
+    structure: { kind: 'close', label: 'rights.act.close', hint: 'rights.act.close.hint' },
+  };
+  window.__manage = () => {
+    window.__manageActs = [];
+    const record = act => { window.__manageActs.push(act); return Promise.resolve({ ok: true }); };
+    return openManage({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], load: async () => JSON.parse(JSON.stringify(manageState)),
+      onAddGroup: (state, group) => record(['addGroup', group.name, group.people]), onUpdateGroup: (id, people) => record(['updateGroup', id, people]), onRemoveGroup: id => record(['removeGroup', id]),
+      onReadTable: async () => { window.__manageActs.push(['readTable']); return null; }, onRoot: (state, who, right) => record(['root', who, right]), onStructure: async () => { window.__manageActs.push(['structure']); return true; }, onConfirmRemove: async name => { window.__manageActs.push(['confirmRemove', name]); return true; } });
   };
   window.__share = kind => {
     window.__shareActs = [];
     const record = act => { window.__shareActs.push(act); return Promise.resolve({ ok: true }); };
     return openShare({ container: stage, t: i18n.t, locale: language === 'en' ? 'en-GB' : 'fr-FR', inertTargets: () => [explorer.root], extraTargets: otherDocumentTargets(i18n.t), file: { key: 'gfs-fichiers:abc', name: 'Facture de la session de formation de septembre.pdf', app: 'GFS' },
-      load: async () => shareStates[kind], onAdd: row => record(['add', row.Personne, row.Droit]), onChange: (id, patch) => record(['change', id, patch.Droit]), onRemove: id => record(['remove', id]), onActivate: async () => { window.__shareActs.push(['activate']); return false; } });
+      load: async () => shareStates[kind], onAdd: row => record(['add', row.Personne, row.Droit]), onChange: (id, patch) => record(['change', id, patch.Droit]), onRemove: id => record(['remove', id]), onActivate: async () => { window.__shareActs.push(['activate']); return false; }, onManage: kind === 'actif' ? () => window.__manage() : null });
   };
   // La fenêtre « Poids du document » (js/weight-window.js, test/poids-fenetre-firefox.mjs) : la vraie fenêtre et le vrai lecteur (js/weight-reader.js) sur une doublure de `Transfer.sql`. `window.__weightKind` choisit ce
   // que le serveur répond : 'ok' (un document de dix-huit tables dont une au nom très long et une trop longue à lire), 'refuse' (pas le droit de tout copier : 403), 'muet' (le serveur ne répond pas).

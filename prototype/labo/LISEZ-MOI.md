@@ -199,6 +199,8 @@ done
 
 `run-partager-apps.mjs` joue la même chose pour **les modèles de Publipostage+** (`seed.mjs`, une table d'app) : `proprietaire` (activer, `GFS_Auteur` et colonnes d'aide posées, modèle créé après l'activation lu de son auteur seul, partage en écriture, puis **Form+ ajouté après coup** : « Étendre le partage… »), `editeur`, `lecteur` (même boucle, même état dans `/tmp/partager-apps-etat.json`).
 
+`run-partager-groupes.mjs` joue **les groupes et « Gérer les partages »** sur les modèles de Publipostage+ : `proprietaire` (active le partage : `GFS_Groupes` naît avec lui ; crée le groupe Achats dans la fenêtre, lit les groupes d'une table `Contacts` ; partage deux modèles privés à un groupe ; change les adresses : les colonnes d'aide suivent ; donne « Lecture » aux éditeurs sur tout le document), `editeur` (lit tout, ne lit pas les adresses des groupes, n'écrit pas les groupes, voit les groupes à partager, « Gérer… » lui dit de demander), `lecteur` (lit les modèles de ses groupes, pas ceux de la racine). Même boucle, état dans `/tmp/partager-groupes-etat.json` (32 vérifications).
+
 ### La fenêtre du poids : trois personnes, six temps
 
 Même principe que les droits (un seul compte à la fois, le même document dans `/tmp/grist-persist`), en six temps : le propriétaire crée le document et la fenêtre est lue sans règle d'accès (propriétaire, puis éditeur et lecteur : Grist leur rend `/sql`, la fenêtre

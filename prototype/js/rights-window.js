@@ -46,6 +46,9 @@ function actionsBlock(t, state, act) {
     else button.addEventListener('click', event => event.preventDefault());
     return h('li', { class: 'rt-act' }, button, h('p', { class: kind ? 'rt-hint' : 'rt-none' }, t(kind ? hint : why)));
   });
+  const manage = h('button', { type: 'button', class: 'btn', dataset: { fk: 'rights-act-manage' } }, icon('users'), t('manage.open'));
+  manage.addEventListener('click', () => act('manage'));
+  rows.push(h('li', { class: 'rt-act' }, manage, h('p', { class: 'rt-hint' }, t('manage.open.hint'))));
   return section(t('rights.act.title'), h('p', { class: 'rt-hint' }, t('rights.act.lead')), h('ul', { class: 'rt-list' }, ...rows));
 }
 

@@ -3,7 +3,7 @@
 
 import { rowsOf } from './rights.js';
 import { FILES_TABLE } from './gfs-files.js';
-import { SHARES_TABLE, STAMP, TARGETS, sharesOf } from './sharing-model.js';
+import { GROUPS_TABLE, SHARES_TABLE, STAMP, TARGETS, groupsOf, sharesOf } from './sharing-model.js';
 import { openShare } from './share-window.js';
 import { runAction } from './rights-actions.js';
 import { ask } from './ask-window.js';
@@ -47,8 +47,10 @@ export class ShareControl {
     const me = lower(this.#o.identity());
     const shares = sharesOf(rows, file.key);
     const admin = shares.some(share => share.valid && share.active && share.right === 'admin' && lower(share.who) === me);
-    const people = [...new Set(rows.map(row => lower(row.PersonneL || row.Personne)).filter(who => who && !who.startsWith('@')))].sort();
-    return { active: true, owner, shares, people, me, author, canManage: !this.#o.writeBlock() && (owner === true || (me !== '' && me === author) || admin) };
+    const people = [...new Set(rows.map(row => lower(row.PersonneL || row.Personne)).filter(who => who && !who.startsWith('@') && !who.startsWith('#')))].sort();
+    let groups = [];
+    try { groups = groupsOf(rowsOf(await this.#o.port.doc.fetchTable(GROUPS_TABLE))); } catch (error) { groups = []; }
+    return { active: true, owner, shares, people, groups, me, author, canManage: !this.#o.writeBlock() && (owner === true || (me !== '' && me === author) || admin) };
   }
 
   async #write(actions) {
@@ -62,7 +64,7 @@ export class ShareControl {
     const { t, container, inertTargets } = this.#o;
     return openShare({
       container, t, locale: this.#o.locale(), inertTargets, extraTargets: this.#o.extraTargets(), file: { key: file.key, name: file.name, app: this.#o.appName(file.app) },
-      load: () => this.load(file),
+      load: () => this.load(file), onManage: () => this.#o.manage.open(),
       onAdd: record => this.#write([['AddRecord', SHARES_TABLE, null, record]]),
       onChange: (id, patch) => this.#write([['UpdateRecord', SHARES_TABLE, id, patch]]),
       onRemove: id => this.#write([['RemoveRecord', SHARES_TABLE, id]]),

@@ -86,12 +86,12 @@ test('activer le partage sur un document neuf : les deux tables, les règles, la
   const plan = planSharing(base(), FILES_COLUMNS);
   assert.equal(plan.ok, true);
   assert.equal(plan.firstRule, true);
-  assert.deepEqual(plan.creates, [SHARES_TABLE, 'GFS_Rangement', 'GFS_Fichiers']);
-  assert.deepEqual(plan.actions.filter(action => action[0] === 'AddTable').map(action => action[1]), ['GFS_Fichiers', 'GFS_Rangement', SHARES_TABLE]);
+  assert.deepEqual(plan.creates, [SHARES_TABLE, 'GFS_Rangement', 'GFS_Fichiers', 'GFS_Groupes']);
+  assert.deepEqual(plan.actions.filter(action => action[0] === 'AddTable').map(action => action[1]), ['GFS_Groupes', 'GFS_Fichiers', 'GFS_Rangement', SHARES_TABLE], 'les groupes d\'abord : les colonnes d\'aide les lisent');
   const created = plan.actions.find(action => action[1] === 'GFS_Fichiers')[2];
   assert.deepEqual(created.map(column => column.id), [...FILES_COLUMNS.map(column => column.id), ...HELPERS]);
   const resources = plan.actions.filter(action => action[1] === '_grist_ACLResources').map(action => action[3]);
-  assert.deepEqual(resources.map(resource => `${resource.tableId}/${resource.colIds}`), [`${SHARES_TABLE}/Auteur,AuteurAcces`, `${SHARES_TABLE}/*`, 'GFS_Fichiers/*']);
+  assert.deepEqual(resources.map(resource => `${resource.tableId}/${resource.colIds}`), [`${SHARES_TABLE}/Auteur,AuteurAcces`, `${SHARES_TABLE}/*`, 'GFS_Groupes/Nom,NomL,Nb,Source', 'GFS_Groupes/*', 'GFS_Fichiers/*']);
   assert.ok(plan.actions.findIndex(action => action[0] === 'AddTable') < plan.actions.findIndex(action => action[1] === '_grist_ACLResources'), 'les tables avant les règles');
 });
 
@@ -115,7 +115,7 @@ test('les règles se posent aux numéros qui suivent ceux en place, dans l\'ordr
 
 test('une table de fichiers déjà là : seules les colonnes d\'aide manquantes sont ajoutées, jamais la table recréée', () => {
   const plan = planSharing(withFiles(), FILES_COLUMNS);
-  assert.deepEqual(plan.creates, [SHARES_TABLE, 'GFS_Rangement']);
+  assert.deepEqual(plan.creates, [SHARES_TABLE, 'GFS_Rangement', 'GFS_Groupes']);
   assert.deepEqual(plan.actions.filter(action => action[0] === 'AddColumn').map(action => action[2]), [...HELPERS]);
   const some = planSharing(withFiles([{ parentId: 7, colId: 'GFS_Lecteurs' }]), FILES_COLUMNS);
   assert.ok(!some.actions.some(action => action[0] === 'AddColumn' && action[2] === 'GFS_Lecteurs'));
@@ -200,7 +200,7 @@ test('activer avec une app : ses colonnes, ses règles (la colonne d\'auteur gar
   const legacy = plan.actions.find(action => action[0] === 'BulkAddRecord');
   assert.deepEqual(legacy[3].Cible, ['publipostage:3', 'publipostage:5']);
   const resources = plan.actions.filter(action => action[1] === '_grist_ACLResources').map(action => `${action[3].tableId}/${action[3].colIds}`);
-  assert.deepEqual(resources, [`${SHARES_TABLE}/Auteur,AuteurAcces`, `${SHARES_TABLE}/*`, 'GFS_Fichiers/*', 'Publipostage_Modeles/GFS_Auteur', 'Publipostage_Modeles/*']);
+  assert.deepEqual(resources, [`${SHARES_TABLE}/Auteur,AuteurAcces`, `${SHARES_TABLE}/*`, 'GFS_Groupes/Nom,NomL,Nb,Source', 'GFS_Groupes/*', 'GFS_Fichiers/*', 'Publipostage_Modeles/GFS_Auteur', 'Publipostage_Modeles/*']);
   assert.ok(!plan.actions.some(action => action[0] === 'AddTable' && action[1] === 'Autre_Fichiers'));
 });
 
@@ -230,4 +230,93 @@ test('après un retrait, activer de nouveau repose les règles sans recréer les
   assert.equal(again.ok, true);
   assert.deepEqual([again.creates, again.adds], [[], []]);
   assert.ok(again.actions.some(action => action[1] === '_grist_ACLResources' && action[3].tableId === SHARES_TABLE));
+});
+
+// Les groupes (lot 3) : un partage cible `#nom`, les colonnes d'aide développent les membres, la table des groupes naît avec le partage.
+import * as model from '../js/sharing-model.js';
+
+test('les colonnes d\'un groupe : nom, nom minuscule, adresses tapées, source, membres et nombre calculés par Grist', () => {
+  const ids = model.groupColumns().map(item => item.id);
+  assert.deepEqual(ids, ['Nom', 'NomL', 'PersonnesIci', 'Source', 'SourceEmail', 'SourceGroupe', 'Membres', 'Nb']);
+  const members = model.groupColumns().find(item => item.id === 'Membres');
+  assert.equal(members.isFormula, true);
+  assert.match(members.formula, /^out = set\(/);
+  assert.ok(!members.formula.startsWith(' '), 'aucune ligne de tête indentée');
+});
+
+test('un groupe lu d\'une table : la formule des membres relit la table et la colonne, jamais un identifiant douteux', () => {
+  const one = model.planGroupSources([{ table: 'Contacts', email: 'Mail', group: 'Equipe' }]).actions[0];
+  assert.deepEqual(one.slice(0, 3), ['ModifyColumn', 'GFS_Groupes', 'Membres']);
+  assert.match(one[3].formula, /Contacts\.lookupRecords\(Equipe=\$Nom\)/);
+  assert.match(one[3].formula, /r\.Mail/);
+  const bad = model.planGroupSources([{ table: 'Contacts"; import os', email: 'Mail', group: 'Equipe' }]).actions[0][3].formula;
+  assert.doesNotMatch(bad, /import os/);
+  assert.deepEqual(model.sourcesOf([{ Source: 'Contacts', SourceEmail: 'Mail', SourceGroupe: 'Equipe' }, { Source: 'Contacts', SourceEmail: 'Mail', SourceGroupe: 'Equipe' }, { Source: 'x y', SourceEmail: 'a', SourceGroupe: 'b' }, { Source: '' }]), [{ table: 'Contacts', email: 'Mail', group: 'Equipe' }]);
+});
+
+test('les colonnes d\'aide d\'un fichier développent un groupe par ses membres (une règle ne lit pas une autre table)', () => {
+  const readers = model.helperColumns(TARGETS[0]).find(item => item.id === 'GFS_Lecteurs');
+  assert.match(readers.formula, /GFS_Groupes\.lookupOne\(NomL=p\.PersonneL\[1:\]\)\.Membres/);
+  assert.match(readers.formula, /startswith\("#"\)/);
+});
+
+test('les règles de la table des groupes : les propriétaires font tout, un éditeur lit nom, nombre et source, le reste est refusé', () => {
+  assert.deepEqual(model.groupRules().map(item => [item.formula, item.rights]), [['user.Access in [OWNER]', '+CRUD'], ['', '-CRUD']]);
+  assert.deepEqual(model.groupPublicRules().map(item => [item.formula, item.rights]), [['user.Access in [EDITOR]', '+R']]);
+  assert.equal(model.GROUP_PUBLIC, 'Nom,NomL,Nb,Source');
+  assert.ok(!model.GROUP_PUBLIC.includes('Membres') && !model.GROUP_PUBLIC.includes('PersonnesIci'), 'jamais les adresses');
+});
+
+test('un document déjà partagé avant les groupes : la table naît, les colonnes d\'aide sont relues, les règles se posent', () => {
+  const first = planSharing(withFiles(), FILES_COLUMNS);
+  const old = applied(withFiles(), first.actions.filter(action => action[1] !== 'GFS_Groupes' && !(action[0] === 'AddRecord' && action[3] && action[3].tableId === 'GFS_Groupes')));
+  // on simule l'état d'avant : tout posé sauf la table des groupes et ses règles
+  const noGroups = { ...old, tables: old.tables.filter(row => row.tableId !== 'GFS_Groupes'), resources: old.resources.filter(row => row.tableId !== 'GFS_Groupes') };
+  noGroups.rules = noGroups.rules.filter(rule => noGroups.resources.some(res => res.id === rule.resource));
+  const plan = planSharing(noGroups, FILES_COLUMNS);
+  assert.equal(plan.ok, true);
+  assert.deepEqual(plan.creates, ['GFS_Groupes']);
+  assert.equal(plan.actions[0][0], 'AddTable');
+  assert.ok(plan.actions.some(action => action[0] === 'ModifyColumn' && action[2] === 'GFS_Lecteurs'), 'les colonnes d\'aide relisent les groupes');
+});
+
+test('le nom d\'un groupe : nettoyé, sans @ ni # au début, 60 signes au plus', () => {
+  assert.equal(model.groupName('  Équipe   des  achats '), 'Équipe des achats');
+  assert.equal(model.groupName('@editeurs'), null);
+  assert.equal(model.groupName('#x'), null);
+  assert.equal(model.groupName(''), null);
+  assert.equal(model.groupName('a'.repeat(61)), null);
+  assert.ok(model.isGroup('#achats') && !model.isGroup('@tous') && !model.isGroup('a@b.fr'));
+});
+
+test('la ligne d\'un groupe et son ajout : tapé dans GFS ou lu d\'une table ; un nom pris ou un identifiant douteux est refusé', () => {
+  assert.deepEqual(model.groupRecord({ name: 'Achats', people: ' a@x.fr\nb@x.fr ' }), { Nom: 'Achats', PersonnesIci: 'a@x.fr\nb@x.fr', Source: '', SourceEmail: '', SourceGroupe: '' });
+  assert.equal(model.groupRecord({ name: 'Achats', source: { table: 'C', email: 'M; x', group: 'G' } }), null);
+  const add = model.planGroupAdd([{ Nom: 'Compta' }], model.groupRecord({ name: 'Achats', people: 'a@x.fr' }));
+  assert.deepEqual(add.actions.map(action => action[0]), ['AddRecord']);
+  assert.equal(model.planGroupAdd([{ Nom: 'achats' }], model.groupRecord({ name: 'Achats' })).reason, 'exists');
+  const fromTable = model.planGroupAdd([{ Nom: 'Compta', Source: 'C', SourceEmail: 'M', SourceGroupe: 'G' }], model.groupRecord({ name: 'Achats', source: { table: 'D', email: 'E', group: 'F' } }));
+  assert.deepEqual(fromTable.actions.map(action => action[0]), ['ModifyColumn', 'AddRecord']);
+  assert.match(fromTable.actions[0][3].formula, /C\.lookupRecords[\s\S]*D\.lookupRecords/, 'les anciennes sources restent');
+  assert.deepEqual(model.groupsOf([{ id: 2, Nom: 'b', Nb: 3, Source: 'C' }, { id: 1, Nom: 'a', Nb: '2' }, { id: 3, Nom: '' }]).map(group => [group.name, group.count]), [['a', 2], ['b', 3]]);
+});
+
+test('lire les groupes d\'une table : un groupe par valeur distincte, les noms pris ou douteux laissés, une seule formule relue', () => {
+  const source = { table: 'Contacts', email: 'Mail', group: 'Equipe' };
+  const plan = model.planGroupsRead([{ Nom: 'Compta' }], source, ['Achats', 'achats', 'Compta', '@x', '', 'Ventes']);
+  assert.equal(plan.ok, true);
+  assert.equal(plan.added, 2);
+  assert.deepEqual(plan.actions.map(action => action[0]), ['ModifyColumn', 'BulkAddRecord']);
+  assert.deepEqual(plan.actions[1][3].Nom, ['Achats', 'Ventes']);
+  assert.deepEqual(plan.actions[1][3].Source, ['Contacts', 'Contacts']);
+  assert.equal(model.planGroupsRead([], source, ['', null]).reason, 'none');
+  assert.equal(model.planGroupsRead([], { ...source, table: 'a b' }, ['x']).reason, 'invalid');
+});
+
+test('la formule des membres est du Python : aucun saut de ligne dans une chaîne (le « \\n » du texte reste deux signes), ni dans la formule de groupes lus', () => {
+  const sources = [{ table: 'Contacts', email: 'Mail', group: 'Equipe' }];
+  for (const formula of [model.groupColumns().find(item => item.id === 'Membres').formula, model.planGroupSources(sources).actions[0][3].formula]) {
+    assert.match(formula, /split\("\\n"\)/);
+    for (const line of formula.split('\n')) assert.equal(line.split('"').length % 2, 1, `guillemets non fermés : ${line}`);
+  }
 });

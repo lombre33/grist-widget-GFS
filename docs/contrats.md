@@ -2969,6 +2969,17 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
        rien. **Pas mesuré** : avec les vraies apps sous règles (leur comportement devant un refus d'écriture) ; les tables liées (versions, commentaires) ne sont pas couvertes ; le numéro de ligne peut être réutilisé par Grist
        après une suppression (les partages d'un fichier supprimé attendent un nettoyage) ; la corbeille (point 12).
 
+    i. [T] **Groupes et « Gérer les partages » livrés le 07/11** (lot 3 ; `GROUPS_TABLE`, `groupColumns`, `planGroupAdd`, `planGroupsRead` de `js/sharing-model.js` ; `js/manage-window.js`, `js/manage-control.js`, `js/pick-window.js`).
+       La table `GFS_Groupes` naît avec le partage (ou à la reprise d'un partage d'avant, qui relit alors les colonnes d'aide) : `Nom`, `NomL`, `PersonnesIci` (adresses tapées), `Source`, `SourceEmail`, `SourceGroupe`
+       (un groupe lu d'une table du document) et deux colonnes que Grist calcule, `Membres` et `Nb`. Un partage vise un groupe par `#nom` ; les colonnes d'aide de chaque fichier développent `#nom` par `Membres` (une règle de
+       Grist ne lit pas une autre table). Règles : les propriétaires font tout, un éditeur lit `Nom`, `NomL`, `Nb` et `Source` (pour proposer un groupe), jamais les adresses, le reste est refusé. L'administration d'un fichier ne se donne
+       pas à un groupe ni à une catégorie. « Gérer les partages… » (bouton de la fenêtre « Partager » et du panneau « Permissions », propriétaire seulement ; clé de reprise `manage`) : **Options** (fermer ou rouvrir la structure, avec la
+       question du panneau ; les liens publics se créent dans Grist), **Groupes** (créer un groupe tapé, le modifier, le supprimer, **lire les groupes d'une table** : trois listes avec recherche, un groupe par valeur distincte,
+       les identifiants vérifiés avant d'entrer dans une formule, les noms pris laissés), **Catégories** (un droit sur tout le document pour les éditeurs et pour tout le monde : une ligne de partage dont la cible est la racine `*`).
+       Mesuré dans un vrai Grist à trois comptes (`labo/run-partager-groupes.mjs`, 32 vérifications) et sous Firefox (`test/partager-firefox.mjs`, 700 × 400 à la vraie souris). Une formule de `Membres` qui contenait un saut de ligne
+       dans une chaîne (« \n » écrit en vrai saut) rendait `Membres` vide sans erreur visible : trouvé par le labo, gardé par un test. **Limites** : une colonne de groupes de type liste de choix n'est pas lue (la recherche
+       de Grist compare une valeur) ; un groupe supprimé laisse ses partages sans effet (ils ne donnent plus accès à personne) ; les membres d'un groupe lu d'une table suivent la table mais pas par les apps.
+
 ### 11.8 À mesurer sur le Grist du porteur
 
 Le labo (grist-static 0.1.6) n'a ni lien public, ni téléchargement, ni historique d'actions, ni les messages d'erreur de la page

@@ -33,10 +33,70 @@ function state() {
   return out;
 }
 
+// Ce que la page montre de « Gérer les partages » (js/manage-window.js).
+function manageState() {
+  const modal = document.querySelector('.mod.mg');
+  const out = { modal: null, acts: window.__manageActs || [], menu: [...document.querySelectorAll('.menu .menu-item')].map(node => node.textContent.replace(/\s+/g, ' ').trim()) };
+  if (!modal) return out;
+  const box = modal.getBoundingClientRect();
+  const head = modal.querySelector('.mod-head').getBoundingClientRect();
+  const foot = modal.querySelector('.mod-foot').getBoundingClientRect();
+  const active = document.activeElement;
+  const outside = node => { const at = node.getBoundingClientRect(); return at.width > 0 && (at.right > box.right + 1 || at.left < box.left - 1); };
+  out.modal = {
+    body: modal.querySelector('.sh-body').textContent.replace(/\s+/g, ' ').trim(), focus: active && active.dataset ? active.dataset.fk || null : null, inside: modal.contains(active),
+    inPage: box.left >= 0 && box.top >= 0 && box.right <= window.innerWidth + 1 && box.bottom <= window.innerHeight + 1, sticky: head.bottom <= foot.top + 1 && foot.bottom <= box.bottom + 1 && head.top >= box.top - 1,
+    outside: [...modal.querySelectorAll('.sh-body *, .mod-foot *, .mod-head *')].filter(outside).map(node => node.className || node.tagName).slice(0, 5),
+    tabs: [...modal.querySelectorAll('.mg-tab')].map(node => [node.textContent, node.getAttribute('aria-selected')]), groups: [...modal.querySelectorAll('.rr[data-group]')].length, form: Boolean(modal.querySelector('.sg-new')),
+    greyed: [...modal.querySelectorAll('[aria-disabled="true"]')].map(node => node.dataset.fk || node.className),
+  };
+  return out;
+}
+
 // Le centre, à l'écran, d'un élément de la page par son sélecteur (le premier), ou d'un article de menu par son texte.
 const centerOf = selector => { const node = document.querySelector(selector); if (!node) return null; const box = node.getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; };
 const rowCenter = () => { const row = [...document.querySelectorAll('.ls-row:not(.folder):not(.lk)')][0]; row.scrollIntoView({ block: 'nearest' }); const box = row.getBoundingClientRect(); return [box.left + Math.min(60, box.width / 2), box.top + box.height / 2]; };
 const itemCenter = label => { const node = [...document.querySelectorAll('.menu .menu-item')].find(item => item.textContent.trim().startsWith(label)); if (!node) return null; const box = node.getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; };
+
+// « Gérer les partages… » depuis la fenêtre « Partager » : la vraie souris ouvre la fenêtre, passe d'un onglet à l'autre, crée un groupe, change le droit d'une catégorie ; Échap ne ferme que la fenêtre du dessus.
+async function manageFlow(page, run, t) {
+  const kind = 'gérer';
+  const seen = async (what, test) => {
+    let now = await page.run(manageState);
+    for (let i = 0; i < 40 && !test(now); i += 1) { await new Promise(resolve => setTimeout(resolve, 75)); now = await page.run(manageState); }
+    if (!test(now)) run.note(kind, `${what} (état : ${JSON.stringify({ ...now, modal: now.modal && { ...now.modal, body: String(now.modal.body).slice(0, 100) } }).slice(0, 600)})`);
+    return now;
+  };
+  if (!(await run.clickSelector('[data-fk="share-manage"]'))) return;
+  const open = await seen('« Gérer les partages… » devait ouvrir la fenêtre sur « Options », le clavier dedans', s => s.modal && s.modal.body.includes(t('manage.options.structure')) && s.modal.tabs.length === 3);
+  if (!open.modal) return;
+  if (!open.modal.inPage) run.note(kind, 'la fenêtre devait tenir dans la page');
+  if (!open.modal.sticky) run.note(kind, 'le titre et le bouton devaient rester en place');
+  if (open.modal.outside.length) run.note(kind, `rien ne devait sortir de la fenêtre (sort : ${open.modal.outside.join(', ')})`);
+  if (!open.modal.inside) run.note(kind, 'le clavier devait être dans la fenêtre');
+  await run.clickSelector('[data-fk="manage-structure"]');
+  await seen('le bouton de la structure devait demander le geste', s => JSON.stringify(s.acts) === '[["structure"]]');
+  await run.clickSelector('[data-fk="manage-tab-groups"]');
+  const groups = await seen('l\'onglet Groupes devait lister les deux groupes', s => s.modal && s.modal.groups === 2 && s.modal.body.includes('Achats'));
+  if (groups.modal && (groups.modal.outside.length || !groups.modal.inPage)) run.note(kind, `la liste des groupes (nom très long) devait tenir (sort : ${groups.modal.outside.join(', ')})`);
+  if (groups.modal && groups.modal.body.includes(t('manage.groups.edit') + ' ' + t('manage.groups.remove')) === false && !groups.modal.body.includes(t('manage.groups.remove'))) run.note(kind, 'chaque groupe devait avoir « Supprimer »');
+  await run.clickSelector('[data-fk="manage-group-new"]');
+  await seen('« Nouveau groupe » devait montrer le formulaire, le clavier sur le nom', s => s.modal && s.modal.form && s.modal.focus === 'manage-group-name');
+  await page.press(...'Ventes'.split(''));
+  await run.clickSelector('[data-fk="manage-group-save"]');
+  await seen('« Créer le groupe » devait demander d\'écrire le groupe', s => JSON.stringify(s.acts.slice(1)) === '[["addGroup","Ventes",""]]');
+  await run.clickSelector('[data-fk="manage-tab-cats"]');
+  await seen('l\'onglet Catégories devait montrer les deux catégories', s => s.modal && s.modal.body.includes(t('share.cat.editeurs')) && s.modal.body.includes(t('share.cat.tous')));
+  await run.clickSelector('[data-fk="manage-cat-tous"]');
+  const menu = await seen('le droit d\'une catégorie devait ouvrir son menu', s => s.menu.length >= 3);
+  if (menu.menu.length && !menu.menu.some(label => label.startsWith(t('share.right.lecture')))) run.note(kind, 'le menu devait proposer « Lecture seule »');
+  const at = await page.run(label => { const node = [...document.querySelectorAll('.menu .menu-item')].find(item => item.textContent.trim().startsWith(label)); if (!node) return null; const box = node.getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; }, t('share.right.lecture'));
+  if (at) { await page.click(...at); await seen('le choix devait demander d\'écrire le droit de la racine', s => s.acts.some(act => act[0] === 'root' && act[1] === '@tous' && act[2] === 'lecture')); }
+  await page.press('Escape');
+  await seen('Échap devait fermer « Gérer les partages » seul', s => s.modal === null);
+  const back = await page.run(() => Boolean(document.querySelector('.mod.sh:not(.mg)')));
+  if (!back) run.note(kind, 'la fenêtre « Partager » devait rester ouverte sous « Gérer les partages »');
+}
 
 export async function partagerProblems(page, language, tag) {
   const found = [];
@@ -80,12 +140,13 @@ export async function partagerProblems(page, language, tag) {
         else {
           if (!list.modal.other.text.includes(t('share.other')) || !list.modal.other.text.includes(t('share.other.hint'))) run.note(kind, `la ligne grisée devait dire « ${t('share.other')} » et son explication (elle dit « ${list.modal.other.text} »)`);
           if (!list.modal.other.icon || list.modal.other.initials) run.note(kind, 'la ligne grisée devait porter une icône, pas les initiales d\'une personne');
+          await page.run(() => document.querySelector('.sh .drop .opt[aria-disabled="true"]').scrollIntoView({ block: 'nearest' }));
           await run.clickSelector('.sh .drop .opt[aria-disabled="true"]');
           const said = await expect(kind, `un clic sur la ligne grisée devait dire « ${t('share.other.why')} »`, s => s.modal && s.modal.note === t('share.other.why'));
           if (said.modal && (said.modal.form || said.acts.length)) run.note(kind, 'la ligne grisée ne devait ni ouvrir de formulaire ni rien écrire');
           if (said.modal && !said.modal.options.some(label => label.includes(t('share.cat.editeurs')))) run.note(kind, 'la liste devait rester ouverte après le clic sur la ligne grisée');
         }
-        const pick = await page.run(selector => { const node = document.querySelector(selector); if (!node) return null; const box = node.getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; }, '[data-fk="share-pick-@editeurs"]');
+        const pick = await page.run(selector => { const node = document.querySelector(selector); if (!node) return null; node.scrollIntoView({ block: 'nearest' }); const box = node.getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; }, '[data-fk="share-pick-@editeurs"]');
         if (!pick) run.note(kind, 'la liste devait proposer « les éditeurs »');
         else {
           await page.click(...pick);
@@ -96,6 +157,7 @@ export async function partagerProblems(page, language, tag) {
           }
         }
       }
+      if (kind === 'actif') await manageFlow(page, run, t);
       for (let i = 0; i < 3; i += 1) { await page.press('Tab'); const inside = await snap(); if (!inside.modal || !inside.modal.inside) run.note(kind, 'Tab devait rester dans la fenêtre'); }
       await page.press('Escape');
       await expect(kind, 'Échap devait fermer la fenêtre', s => s.modal === null);

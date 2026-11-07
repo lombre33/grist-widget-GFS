@@ -2250,6 +2250,13 @@ fichier lui-même en pièce jointe de Grist.
     Aucune adresse de plus dans la politique de GFS : le cadre garde son `connect-src https:`. [M] Mesuré dans un vrai Grist 1.7.19 depuis le vrai cadre (faits vérifiés, 59) : le cycle d'un webhook (créer avec sa condition, lister, désactiver, vider sa file,
     effacer) passe, Grist livre l'ajout d'une ligne à l'adresse du webhook, un refus garde son code (404), la lecture d'un document public et l'envoi de lignes à un document public en édition passent sans jeton avec `Origin: null` ; **Grist garde
     quelques secondes le refus qu'il a donné à une personne anonyme** (lecture rendue à +5 s après avoir rendu le document public), donc le moteur réessaie au cycle suivant et ne conclut pas d'un premier refus.
+    `rest` et `anonymous` prennent aussi `timeout` (millisecondes, 60 s par défaut : l'avis de fin d'un webhook en veut dix), et `baseUrl()` rend l'adresse REST du document (sans jeton, demandée une fois).
+16. [T] **Le port de GFS pour le moteur de partage** (`prototype/js/sync-port.js`, `createSyncPort(deps)` et `startSyncEngine(deps)` ; le moteur est une copie de celui de Sync+ dans le kit, `kit/js/synchro/`, mise à jour par `outils/reprendre-synchro.mjs`).
+    Il remplit chaque fonction de `PORT_SHAPE` (`kit/js/synchro/port.js`) avec ce que GFS a déjà : lignes, actions et schéma par `grist.docApi` (valeurs décodées), tout le REST par le cadre d'envoi (point 15), `navigator.locks`,
+    la langue de GFS (`js/sync-port-text.js` : les textes du moteur, `error.*` et `recv.*`, plus six clés du port ; une clé inconnue est rendue telle quelle, sans avertissement, car le moteur s'en sert pour reconnaître une erreur
+    prévue), `gfs.synchro.` pour les deux préférences. Les tables du moteur portent le préfixe `GFS_`. **Un seul moteur par page** (le port est global) et il ne se charge qu'au premier partage : `sync-port.js` n'est importé qu'à ce moment,
+    et la carte d'importation de `index.html` nomme les modules de `kit/js/synchro/` (`outils/versions.mjs`). Une requête anonyme ne part jamais vers un autre serveur que celui du document (`otherInstance`). [M] 34 vérifications dans un vrai
+    Grist (faits vérifiés, 60), 13 essais du port sans Grist (`test/sync-port.test.mjs`).
 
 ### 6.7 `GFS_Corbeille`, la corbeille des fichiers des apps
 

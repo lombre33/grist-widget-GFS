@@ -3,6 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { suggestions, levelItems, whoLabel } from '../js/share-window.js';
+import { otherDocumentTargets } from '../js/share-other.js';
 import { createI18n } from '../js/i18n.js';
 
 const { t } = createI18n('fr');
@@ -39,7 +40,7 @@ test('ce qui est déjà dans la liste (personne ou catégorie) n\'est plus propo
 });
 
 test('« Un autre document Grist… » (Sync+) arrive par `extraTargets` et reste dans la liste, grisé, avec sa raison', () => {
-  const other = { label: t('share.other'), hint: t('share.other.hint'), icon: 'folder', greyed: true, why: t('share.other.why'), run: () => {} };
+  const [other] = otherDocumentTargets(t);
   assert.deepEqual(suggestions(t, state(), 'zzz', [other]).others, [other]);
 });
 
@@ -60,4 +61,19 @@ test('le nom d\'une catégorie se lit dans la langue de la personne ; une adress
   assert.equal(whoLabel(t, '@tous'), 'Tout le document');
   assert.equal(whoLabel(createI18n('en').t, '@editeurs'), 'All editors');
   assert.equal(whoLabel(t, 'a@b.fr'), 'a@b.fr');
+});
+
+test('la ligne « Un autre document Grist… » du contrôleur : grisée jamais masquée, avec son icône, sa raison et les mêmes mots en français et en anglais', () => {
+  for (const language of ['fr', 'en']) {
+    const { t: say } = createI18n(language);
+    const targets = otherDocumentTargets(say);
+    assert.equal(targets.length, 1);
+    const [other] = targets;
+    assert.equal(other.greyed, true);
+    assert.equal(other.icon, 'link');
+    assert.equal(other.label, say('share.other'));
+    assert.equal(other.why, say('share.other.why'));
+    assert.ok(other.label && other.hint && other.why && !other.label.startsWith('share.'));
+  }
+  assert.notEqual(otherDocumentTargets(createI18n('fr').t)[0].label, otherDocumentTargets(createI18n('en').t)[0].label);
 });

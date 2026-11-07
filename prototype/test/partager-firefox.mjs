@@ -27,6 +27,7 @@ function state() {
     outside: [...modal.querySelectorAll('.sh-body *, .mod-foot *, .mod-head *')].filter(outside).map(node => node.className || node.tagName).slice(0, 5),
     add: Boolean(modal.querySelector('[data-fk="share-add"]')), activate: Boolean(modal.querySelector('[data-fk="share-activate"]')), readonly: Boolean(modal.querySelector('[data-fk="share-readonly"]')),
     options: [...modal.querySelectorAll('.drop .opt')].map(node => text(node)), rows: [...modal.querySelectorAll('.rr[data-share]')].length, form: Boolean(modal.querySelector('.sg-new')),
+    note: text(modal.querySelector('.mod-note')), other: (() => { const node = modal.querySelector('.drop .opt[aria-disabled="true"]'); return node ? { text: text(node), icon: Boolean(node.querySelector('svg')), initials: Boolean(node.querySelector('.who')) } : null; })(),
     confirmShown: confirmBox ? confirmBox.top >= head.bottom - 1 && confirmBox.bottom <= foot.top + 1 : null, locked: [...modal.querySelectorAll('.rr[data-share] .lvl[aria-disabled="true"]')].length,
   };
   return out;
@@ -74,6 +75,16 @@ export async function partagerProblems(page, language, tag) {
         await run.clickSelector('[data-fk="share-add"]');
         const list = await expect(kind, 'le champ devait ouvrir la liste des personnes et des catégories', s => s.modal && s.modal.options.length >= 2);
         if (list.modal && !list.modal.options.some(label => label.includes(t('share.cat.editeurs')))) run.note(kind, `la liste devait proposer « ${t('share.cat.editeurs')} »`);
+        // « Un autre document Grist… » : dans la liste, grisée (jamais masquée), avec une icône (et non les initiales d'une personne) ; un clic à la vraie souris dit pourquoi, sans rien écrire ni ouvrir de formulaire.
+        if (!list.modal || !list.modal.other) run.note(kind, `la liste devait garder « ${t('share.other')} », grisée`);
+        else {
+          if (!list.modal.other.text.includes(t('share.other')) || !list.modal.other.text.includes(t('share.other.hint'))) run.note(kind, `la ligne grisée devait dire « ${t('share.other')} » et son explication (elle dit « ${list.modal.other.text} »)`);
+          if (!list.modal.other.icon || list.modal.other.initials) run.note(kind, 'la ligne grisée devait porter une icône, pas les initiales d\'une personne');
+          await run.clickSelector('.sh .drop .opt[aria-disabled="true"]');
+          const said = await expect(kind, `un clic sur la ligne grisée devait dire « ${t('share.other.why')} »`, s => s.modal && s.modal.note === t('share.other.why'));
+          if (said.modal && (said.modal.form || said.acts.length)) run.note(kind, 'la ligne grisée ne devait ni ouvrir de formulaire ni rien écrire');
+          if (said.modal && !said.modal.options.some(label => label.includes(t('share.cat.editeurs')))) run.note(kind, 'la liste devait rester ouverte après le clic sur la ligne grisée');
+        }
         const pick = await page.run(selector => { const node = document.querySelector(selector); if (!node) return null; const box = node.getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; }, '[data-fk="share-pick-@editeurs"]');
         if (!pick) run.note(kind, 'la liste devait proposer « les éditeurs »');
         else {

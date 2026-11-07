@@ -33,6 +33,7 @@ import { arrivalApp, arrivalProbes } from './arrival.js';
 import { arrivalTableApp } from './arrival-table.js';
 import { Rangement, TableDeclined } from './rangement.js';
 import { RightsControl } from './rights-control.js';
+import { otherDocumentTargets } from './share-other.js';
 import { WeightControl } from './weight-control.js';
 import { FILES_APP, FILES_MANIFEST, FILES_ENTRY, cleanName } from './gfs-files.js';
 import { Transfer, buildTransferFrame } from './transfer.js';
@@ -127,7 +128,7 @@ export class GfsController {
     this.rights = new RightsControl({
       port: this.port, transfer: this.transfer, prefixes: () => this.validApps().map(item => item.manifest.tables.prefixe), now: () => Date.now(), container: this.$('stage'),
       inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')], t: this.t, fullAccess: () => this.fullAccess,
-      locale: () => this.locale, identity: () => this.identity, writeBlock: () => this.#writeBlock(), appName: this.appName,
+      locale: () => this.locale, identity: () => this.identity, writeBlock: () => this.#writeBlock(), appName: this.appName, extraTargets: () => otherDocumentTargets(this.t),
     });
     this.weight = new WeightControl({ transfer: this.transfer, container: this.$('stage'), inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')], t: this.t, locale: () => this.locale });
   }

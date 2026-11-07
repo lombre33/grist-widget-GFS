@@ -75,7 +75,7 @@ function fixedRows(ctx) {
 
 // Une proposition de la liste : un bouton (grisé et cliquable pour dire pourquoi, jamais masqué).
 function suggestion(item, run, why) {
-  const button = h('button', { type: 'button', class: 'opt', role: 'option', 'aria-disabled': why ? 'true' : null, dataset: { fk: `share-pick-${String(item.who || item.label)}` } }, avatar(item.who || ''), h('span', null, h('b', null, item.label), item.hint ? h('small', null, item.hint) : null));
+  const button = h('button', { type: 'button', class: 'opt', role: 'option', 'aria-disabled': why ? 'true' : null, dataset: { fk: `share-pick-${String(item.who || item.label)}` } }, item.who ? avatar(item.who) : icon(item.glyph || 'user', 'big'), h('span', null, h('b', null, item.label), item.hint ? h('small', null, item.hint) : null));
   button.addEventListener('click', () => run(why));
   return button;
 }

@@ -36,6 +36,7 @@ import { ThemeWindow } from '/js/theme-window.js';
 import { Trash } from '/js/trash.js';
 import { openRights } from '/js/rights-window.js';
 import { openShare } from '/js/share-window.js';
+import { otherDocumentTargets } from '/js/share-other.js';
 import { openWeight } from '/js/weight-window.js';
 import { SQL, readWeight } from '/js/weight-reader.js';
 import { TransferError } from '/js/transfer.js';
@@ -294,7 +295,7 @@ async function mount() {
   window.__share = kind => {
     window.__shareActs = [];
     const record = act => { window.__shareActs.push(act); return Promise.resolve({ ok: true }); };
-    return openShare({ container: stage, t: i18n.t, locale: language === 'en' ? 'en-GB' : 'fr-FR', inertTargets: () => [explorer.root], file: { key: 'gfs-fichiers:abc', name: 'Facture de la session de formation de septembre.pdf', app: 'GFS' },
+    return openShare({ container: stage, t: i18n.t, locale: language === 'en' ? 'en-GB' : 'fr-FR', inertTargets: () => [explorer.root], extraTargets: otherDocumentTargets(i18n.t), file: { key: 'gfs-fichiers:abc', name: 'Facture de la session de formation de septembre.pdf', app: 'GFS' },
       load: async () => shareStates[kind], onAdd: row => record(['add', row.Personne, row.Droit]), onChange: (id, patch) => record(['change', id, patch.Droit]), onRemove: id => record(['remove', id]), onActivate: async () => { window.__shareActs.push(['activate']); return false; } });
   };
   // La fenêtre « Poids du document » (js/weight-window.js, test/poids-fenetre-firefox.mjs) : la vraie fenêtre et le vrai lecteur (js/weight-reader.js) sur une doublure de `Transfer.sql`. `window.__weightKind` choisit ce

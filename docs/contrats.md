@@ -1424,8 +1424,13 @@ sans événement : seule une règle posée recharge la page (11.5, point 3), et 
    aux deux sites) et refuse un troisième (témoin, Dailymotion) ; `deplacer` rogne la fenêtre à la zone (110 × 140 pour une vignette de 320 × 180 coupée en haut et à droite, le cadre du fournisseur décalé de
    −40 px) et la cache quand la zone ne touche pas la vignette ; `masquer` cache et remontre ; Vimeo remplace YouTube (un seul lecteur), avec la clé de la vidéo non listée ; une adresse à la place d'un identifiant,
    un site inconnu et un rectangle mal formé sont refusés, dits en console, sans rien changer ; à la vraie souris, le milieu de la vignette trouve le lecteur et le reste du cadre trouve l'app ; le panneau passé de 700 × 400
-   à 760 × 440 déplace le lecteur avec le cadre de l'app ; le bouton « Fichiers » de la barre retire le lecteur, et l'app rouverte n'en retrouve aucun. **Non mesuré** : les vrais YouTube et Vimeo (démarrage, son, lecture
-   automatique, plein écran, clavier : le porteur, sous Firefox, avec une vraie vidéo), Firefox (le faux lecteur n'a été essayé que sous Chromium), le Grist de la DINUM, l'événement `lecteur` (pas construit).
+   à 760 × 440 déplace le lecteur avec le cadre de l'app ; le bouton « Fichiers » de la barre retire le lecteur, et l'app rouverte n'en retrouve aucun. **Le clavier dans le lecteur (mesuré le 07/11, section 8 de `run-lecteur.mjs`, 43 vérifications au total, aucune
+   en échec)** : après un clic dans le lecteur, l'élément actif de la page de GFS est le cadre du fournisseur ; la touche Échap, tapée à la vraie touche, arrive à ce cadre
+   et à lui seul : ni la page de GFS, ni l'app, ni la page de Grist ne la reçoivent (trois écoutes en capture). **Aucune touche tapée dans le lecteur n'atteint donc GFS ni l'app,
+   et rien de leur côté ne peut la capter** ; ce qui ferme le lecteur est le clic ailleurs dans l'app (son écoute de la souris), le changement de diapositive, le bouton « Fichiers »
+   de la barre et `lecteur.fermer`. Un bouton « Fermer » posé par GFS, ou la fermeture quand le focus revient à la page de GFS, ne sont pas construits (interface de plus : le porteur
+   choisit après son essai avec une vraie vidéo, avec l'événement `lecteur`). **Non mesuré** : les vrais YouTube et Vimeo (démarrage, son, lecture
+   automatique, plein écran : le porteur, sous Firefox, avec une vraie vidéo), Firefox (le faux lecteur n'a été essayé que sous Chromium), le Grist de la DINUM, l'événement `lecteur` (pas construit).
 
 ### 5.3 Le stockage du navigateur
 
@@ -1816,8 +1821,14 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
    [M] **Mesuré le 04/11** (faits vérifiés, section 34) dans un vrai Grist, avec la sonde ZF (`labo/sondes/zf-composite/`) qui répond comme
    Form+ et le vrai manifeste : `labo/run-composite.mjs`, 38 vérifications en français clair et en anglais sombre, aucune en échec (la table
    accordée avant l'appel, un seul lot, la phrase de l'app, `{ fait: false }`, l'app muette, la restauration au même numéro, la copie qui prend
-   le clavier, la plus longue phrase dans le panneau de 700 × 400). **Non mesuré** : la vraie Form+ (elle n'a pas encore répondu aux
-   consignes 020 et 021 ; GFS ne déclare pas `appel` dans `manifestes/form.json` avant), Firefox avec la vraie app.
+   le clavier, la plus longue phrase dans le panneau de 700 × 400). **Avec la vraie Form+ (mesuré le 07/11,
+   faits vérifiés 58)** : ses consignes 020 et 021 faites (`7057309`, `GfsLink.onDelete` et `GfsLink.onDuplicate` du kit 0.10.0), GFS déclare `suppression: { ligne: true,
+   appel: true }` et `copie: { appel: true }` dans `manifestes/form.json` et rejoue les deux gestes avec elle (`labo/run-composite-form.mjs`, grist-static, 25 vérifications en
+   français clair et en anglais sombre, aucune en échec) : la copie est un formulaire de la liste, sa section à elle, son lien fermé, SA table de réponses vide
+   (`<table>_copie`) ; la corbeille ferme le lien avant que la ligne parte ; restaurer remet la même ligne, le lien reste fermé. **Non mesuré** : Firefox avec la
+   vraie app, le Grist de la DINUM, un formulaire publié par le geste « Publier » de l'app (l'essai pose `shareOptions` à la main), la copie d'un formulaire dont une
+   question écrit dans une autre table que la principale (limite connue de l'app : cette table reste partagée avec l'original). **La table de la copie est créée sans
+   fenêtre d'accord** (guide, règle 4) : question posée à l'app (consigne Form+ 026).
 
 12. [D] **Joindre un fichier à la cellule « Pièces jointes » d'une ligne : `joindre`** (demande du porteur du 06/11 : « enregistrer le PDF généré
    en pièce jointe dans la ligne Grist » ; **le porteur a choisi « GFS joint lui-même » le 06/11**, à la carte « Laisser Publipostage+ joindre

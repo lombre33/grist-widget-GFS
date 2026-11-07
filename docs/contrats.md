@@ -2825,7 +2825,9 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
    même lecture de Grist, non un champ que la personne a tapé.
 6. [D] **L'app tient les colonnes de l'étiquette** (`visibilite`, `personnes`, `auteur`, `espace`) : additives (6.1), tolérées
    absentes. **Les colonnes d'aide `GFS_…` ne sont pas à l'app** : elle les tolère (6.1, points 3 et 4), les ignore et ne les écrit
-   jamais. Les noms de l'étiquette viennent dans une consigne à part, après les mesures : aucune app n'ajoute de colonne avant.
+   jamais. Les noms de l'étiquette viennent dans une consigne à part, après les mesures : aucune app n'ajoute de colonne avant. **07/11 : cette consigne ne viendra pas pour
+   `visibilite`, `personnes` ni `espace`** : le partage d'un contenu vit dans `GFS_Partages` (11.7, point 13) et GFS pose lui-même ses colonnes d'aide `GFS_…` avec l'accord du
+   propriétaire ; l'app garde `auteur` et un identifiant de fichier stable (consignes 058 Publipostage+, 025 Form+, 014 Automation+, 011 Grist-BI, 015 Tuesday).
 7. [T] **Aucun secret rangé en clair par GFS ; une app qui en garde un le déclare** (`secrets`) et vit sans quand il est illisible.
 8. [D] **App par app** (relevé du 22/10) :
 
@@ -2849,9 +2851,9 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
    *secret* des contenus réservés (11.1, point 8) en dépendent. Grist décoche la case de lui-même quand un propriétaire active les
    Permissions avancées (lu), et le porteur a confirmé qu'elle se décoche sur son instance (21/10). Elle pèse aussi sur les liens publics : structure ouverte,
    un éditeur peut écrire les tables qui publient un formulaire (11.9, point 7), ce qu'il reste à mesurer (10.11, mesure 4).
-2. [Q] **Qui écrit l'étiquette d'un contenu** (visibilité, personnes, espace) : l'app dans son interface, ou GFS dans
-   l'explorateur, ce qui ajouterait une exception à 6.3, point 2. À fixer à l'étape 7 avec l'écran des espaces. D'ici là, l'app
-   écrit `auteur` à la création et `tous` en visibilité, et aucune interface ne change la visibilité d'un contenu.
+2. [D] **Qui écrit l'étiquette d'un contenu : GFS, par « Partager »** (fenêtre du menu d'un fichier, point 13 ; décision du 06/11 : « partage libre, invitation demandée », colonnes d'aide
+   posées avec l'accord du propriétaire à chaque fois). L'app n'écrit ni visibilité, ni personnes, ni espace ; elle écrit `auteur` à la création (consignes du 07/11, 11.6 point 6). *(Question
+   ouverte jusqu'au 06/11 : l'app dans son interface, ou GFS dans l'explorateur.)*
 3. [Q] **Les tables dérivées** : ce que l'auteur d'un contenu lit et écrit de ses versions et de ses commentaires (versions à
    l'auteur et aux propriétaires, commentaires à ceux qui lisent le contenu, d'après le document de stratégie) n'est pas mesuré.
    À fixer avec Publipostage+ à l'étape 5 et à mesurer. S'y ajoutent les fils d'un PDF (5.4, point 8 ; consigne 045) : leurs lignes

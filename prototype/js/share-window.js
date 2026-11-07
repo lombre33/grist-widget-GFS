@@ -139,12 +139,13 @@ function pendingForm(ctx, who) {
 // L'état « partage pas activé » : le propriétaire peut l'activer ; les autres lisent à qui le demander.
 function inactiveBlock(ctx) {
   const { t, state } = ctx;
+  const word = state.extend ? 'share.extend' : 'share.inactive';
   if (state.owner === true) {
-    const activate = h('button', { type: 'button', class: 'btn primary', dataset: { fk: 'share-activate' } }, t('share.inactive.activate'));
+    const activate = h('button', { type: 'button', class: 'btn primary', dataset: { fk: 'share-activate' } }, t(state.extend ? 'share.extend.activate' : 'share.inactive.activate'));
     activate.addEventListener('click', () => void ctx.activate());
-    return h('div', { class: 'rt-content' }, h('p', { class: 'fine' }, t('share.inactive.owner')), h('p', { class: 'sg-actions' }, activate));
+    return h('div', { class: 'rt-content' }, h('p', { class: 'fine' }, t(`${word}.owner`)), h('p', { class: 'sg-actions' }, activate));
   }
-  return h('div', { class: 'rt-content' }, h('p', { class: 'rt-lead' }, icon('lock'), h('span', null, t(state.owner === false ? 'share.inactive.other' : 'share.inactive.unknown'))));
+  return h('div', { class: 'rt-content' }, h('p', { class: 'rt-lead' }, icon('lock'), h('span', null, t(state.owner === false ? `${word}.other` : 'share.inactive.unknown'))));
 }
 
 // Le contenu d'après l'état : { active, owner, canManage, shares, me, author, people }. `ctx.pending` : la personne choisie, pas encore ajoutée.

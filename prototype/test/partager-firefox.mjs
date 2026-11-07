@@ -50,7 +50,7 @@ export async function partagerProblems(page, language, tag) {
     return now;
   };
   try {
-    for (const [kind, needs] of [['inactif', [t('share.inactive.owner'), t('share.inactive.activate')]], ['actif', [t('share.sec.access'), t('share.row.owners'), t('share.tag.expired'), t('share.tag.invalid'), t('share.row.download')]], ['lecture', [t('share.readonly'), t('share.row.owners')]]]) {
+    for (const [kind, needs] of [['inactif', [t('share.inactive.owner'), t('share.inactive.activate')]], ['etendre', [t('share.extend.owner'), t('share.extend.activate')]], ['actif', [t('share.sec.access'), t('share.row.owners'), t('share.tag.expired'), t('share.tag.invalid'), t('share.row.download')]], ['lecture', [t('share.readonly'), t('share.row.owners')]]]) {
       await run.reset();
       await page.run(name => { window.__shareKind = name; }, kind);
       const at = await page.run(rowCenter);
@@ -65,7 +65,7 @@ export async function partagerProblems(page, language, tag) {
         if (!open.modal.inPage) run.note(kind, 'la fenêtre devait tenir dans la page');
         if (!open.modal.sticky) run.note(kind, 'le titre et le bouton devaient rester en place');
         if (open.modal.outside.length) run.note(kind, `rien ne devait sortir de la fenêtre (sort : ${open.modal.outside.join(', ')})`);
-        if (kind === 'inactif' && !(open.modal.activate && !open.modal.add)) run.note(kind, 'le propriétaire devait voir « Activer le partage… » et pas le champ d\'ajout');
+        if ((kind === 'inactif' || kind === 'etendre') && !(open.modal.activate && !open.modal.add)) run.note(kind, 'le propriétaire devait voir le bouton d\'activation (« Activer… » ou « Étendre… ») et pas le champ d\'ajout');
         if (kind === 'lecture' && (open.modal.add || !open.modal.readonly)) run.note(kind, 'une personne qui ne peut rien changer ne devait voir ni le champ d\'ajout ni de geste');
         if (kind === 'actif' && (!open.modal.add || open.modal.rows !== 4)) run.note(kind, `le propriétaire devait voir le champ d'ajout et quatre lignes (il en voit ${open.modal.rows})`);
         if (kind === 'lecture' && open.modal.locked < 1) run.note(kind, 'les lignes devaient être grisées (cadenas) pour qui ne peut rien changer');

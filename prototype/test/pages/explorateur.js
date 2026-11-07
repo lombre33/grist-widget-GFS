@@ -288,6 +288,7 @@ async function mount() {
   const share = (id, who, right, extra = {}) => ({ id, who, right, download: false, end: null, valid: true, active: true, inherited: false, ...extra });
   const shareStates = {
     inactif: { active: false, owner: true, shares: [], people: [], me: '', author: '', canManage: false },
+    etendre: { active: false, extend: true, owner: true, shares: [], people: [], me: '', author: '', canManage: false },
     actif: { active: true, owner: true, me: 'essai@example.com', author: LONG_MAIL, canManage: true, people: ['ami@example.com', 'ancien@example.com', 'collegue@example.com', LONG_MAIL, 'essai@example.com'],
       shares: [share(1, '@tous', 'lecture', { download: true }), share(2, LONG_MAIL, 'ecriture', { end: 1893456000 }), share(3, 'ami@example.com', 'lecture', { end: 1577836800, active: false }), share(4, 'ancien@example.com', 'lecture', { valid: false })] },
     lecture: { active: true, owner: false, me: 'viewer@example.com', author: 'essai@example.com', canManage: false, people: [], shares: [share(1, 'viewer@example.com', 'lecture')] },

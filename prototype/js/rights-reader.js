@@ -4,6 +4,7 @@
 // elles leur arrivent vides) ; seul `GET /webhooks` les distingue (Transfer.isOwner). Ce lecteur lit ; c'est js/rights-control.js qui ne rend les règles qu'à un propriétaire prouvé.
 
 import { FILES_TABLE } from './gfs-files.js';
+import { TARGETS } from './sharing-model.js';
 import { rowsOf, userRules, structureClosed, tableLevels, wordOf, ownedTables, linksOf } from './rights.js';
 
 const RETRY_MS = 30 * 1000;
@@ -65,8 +66,13 @@ export class RightsReader {
     try {
       const [resources, rules, tables, columns] = await Promise.all(['_grist_ACLResources', '_grist_ACLRules', '_grist_Tables', '_grist_Tables_column'].map(name => this.#rows(name)));
       // Les identifiants des fichiers que GFS garde déjà : l'activation du partage les laisse lisibles de tous, comme avant (contrats 11.7, point 13).
-      const fileIds = tables.some(row => row.tableId === FILES_TABLE) ? rowsOf(await this.#opts.port.doc.fetchTable(FILES_TABLE)).map(row => String(row.Identifiant || '')).filter(Boolean) : [];
-      return { resources, rules, tables, columns, fileIds };
+      const targets = this.#opts.targets ? this.#opts.targets() : TARGETS;
+      const files = {};
+      for (const target of targets) {
+        if (!tables.some(row => row.tableId === target.table)) continue;
+        files[target.table] = rowsOf(await this.#opts.port.doc.fetchTable(target.table)).map(row => String(target.id ? row[target.id] || '' : row.id)).filter(Boolean);
+      }
+      return { resources, rules, tables, columns, fileIds: files[FILES_TABLE] || [], files, targets };
     } catch (error) {
       return null;
     }

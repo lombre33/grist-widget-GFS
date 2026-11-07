@@ -2,7 +2,7 @@
 // Ce que Grist en fait (l'auteur écrit par lui, les règles lisant les colonnes-formules, un administrateur qui partage sans propriétaire) se mesure dans un vrai Grist : labo/run-partager.mjs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { planSharing, planUnsharing, shareColumns, helperColumns, fileRules, shareRules, stampRules, shareRecord, sharesOf, isSharingNote, sharingActive, TARGETS, SHARES_TABLE, HELPERS } from '../js/sharing-model.js';
+import { planSharing, planUnsharing, shareColumns, helperColumns, fileRules, shareRules, stampRules, shareRecord, sharesOf, isSharingNote, sharingActive, TARGETS, SHARES_TABLE, HELPERS, targetsOf, appTargets } from '../js/sharing-model.js';
 import { FILES_COLUMNS } from '../js/gfs-files.js';
 import { levelOfNote } from '../js/rights.js';
 
@@ -10,9 +10,14 @@ const BUILT_IN = { id: 1, resource: 1, permissions: 63, principals: '[1]', aclFo
 const base = () => ({ resources: [{ id: 1, tableId: '', colIds: '' }], rules: [{ ...BUILT_IN }], tables: [], columns: [] });
 const withFiles = (extra = []) => ({ ...base(), tables: [{ id: 7, tableId: 'GFS_Fichiers' }], columns: [{ parentId: 7, colId: 'Identifiant' }, { parentId: 7, colId: 'Auteur' }, ...extra] });
 const applied = (existing, actions) => {
-  const next = { ...existing, resources: [...existing.resources], rules: [...existing.rules], tables: [...existing.tables] };
+  const next = { ...existing, resources: [...existing.resources], rules: [...existing.rules], tables: [...existing.tables], columns: [...existing.columns] };
   for (const [name, table, id, values] of actions) {
-    if (name === 'AddTable') next.tables.push({ id: 100 + next.tables.length, tableId: table });
+    if (name === 'AddTable') {
+      const added = { id: 100 + next.tables.length, tableId: table };
+      next.tables.push(added);
+      for (const column of values === undefined ? id : []) next.columns.push({ parentId: added.id, colId: column.id });
+    }
+    if (name === 'AddColumn') next.columns.push({ parentId: next.tables.find(row => row.tableId === table).id, colId: id });
     if (name === 'AddRecord' && table === '_grist_ACLResources') next.resources.push({ id, ...values });
     if (name === 'AddRecord' && table === '_grist_ACLRules') next.rules.push({ id, ...values });
     if (name === 'BulkRemoveRecord' && table === '_grist_ACLRules') next.rules = next.rules.filter(rule => !id.includes(rule.id));
@@ -152,4 +157,77 @@ test('ce que la fenêtre lit : les lignes de la cible et la racine (héritée), 
   const shares = sharesOf(rows, 'gfs-fichiers:f1');
   assert.deepEqual(shares.map(share => [share.who, share.inherited, share.valid]), [['ann@x.fr', false, false], ['zoe@x.fr', false, true], ['@tous', true, true]]);
   assert.equal(shares[0].end, 100);
+});
+
+// ---------- les fichiers des apps (contrats 11.7, point 13, lot 2) ----------
+const PP = { id: 'publipostage', fichiers: [{ table: 'Publipostage_Modeles', colonnes: { id: 'id', nom: 'Nom' }, exclure: { TypeModele: ['reglages'] } }] };
+const ids = { id: 'fichier', fichiers: [{ table: 'Autre_Fichiers', colonnes: { id: 'Jeton' } }] };
+const withApp = (extra = {}) => ({ ...base(), tables: [{ id: 7, tableId: 'Publipostage_Modeles' }], columns: [{ parentId: 7, colId: 'Nom' }], targets: targetsOf([PP]), files: { Publipostage_Modeles: [3, 5] }, ...extra });
+
+test('les cibles des apps : une par table de fichiers du manifeste, le numéro de ligne quand l\'identifiant est « id », les lignes exclues ouvertes', () => {
+  const [files, pp, other] = targetsOf([PP, ids]);
+  assert.equal(files.table, 'GFS_Fichiers');
+  assert.deepEqual([pp.table, pp.prefix, pp.id, pp.author, pp.stamped], ['Publipostage_Modeles', 'publipostage:', null, 'GFS_Auteur', true]);
+  assert.equal(pp.open, 'rec.TypeModele in ("reglages",)');
+  assert.deepEqual([other.id, other.open], ['Jeton', '']);
+  assert.deepEqual(appTargets([{ id: 'x' }, { id: 'y', fichiers: [{}] }]), []);
+});
+
+test('une table d\'app : GFS pose sa colonne d\'auteur (écrite par Grist) et les colonnes d\'aide, lit la ligne par son numéro, ouvre les lignes de réglages', () => {
+  const [, pp] = targetsOf([PP]);
+  const columns = helperColumns(pp);
+  assert.deepEqual(columns.map(column => column.id), ['GFS_Auteur', ...HELPERS]);
+  assert.equal(columns[0].isFormula, false);
+  assert.equal(columns[0].recalcWhen, 0);
+  assert.match(columns[1].formula, /Cible="publipostage:" \+ str\(\$id\)/);
+  assert.match(columns[1].formula, /\$GFS_Auteur/);
+  const share = shareColumns(targetsOf([PP])).find(column => column.id === 'AdminsBase').formula;
+  assert.match(share, /lookupOne\(id=int\(raw\)\) if raw\.isdigit\(\) else None/);
+  assert.match(share, /found\.GFS_Auteur/);
+  const rules = fileRules(pp);
+  assert.deepEqual(rules.map(rule => rule.rights), ['+CRUD', '+R', '+UD', '+CRUD', '+RU', '+R', '+C', '-CRUD']);
+  assert.match(rules[1].formula, /^rec\.TypeModele in \("reglages",\)$/);
+  assert.match(rules.find(rule => rule.rights === '+C').formula, /newRec\.GFS_Auteur\.lower\(\) == user\.Email\.lower\(\)/);
+  assert.equal(fileRules().length, 6, 'sans lignes exclues : les six règles d\'avant');
+});
+
+test('activer avec une app : ses colonnes, ses règles (la colonne d\'auteur gardée), ses modèles d\'avant lisibles de tous ; une table d\'app absente est laissée', () => {
+  const plan = planSharing({ ...withApp(), targets: targetsOf([PP, ids]) }, FILES_COLUMNS);
+  assert.equal(plan.ok, true);
+  assert.deepEqual(plan.appTables, ['Publipostage_Modeles']);
+  assert.deepEqual(plan.adds, ['Publipostage_Modeles.GFS_Auteur', ...HELPERS.map(id => `Publipostage_Modeles.${id}`)]);
+  assert.equal(plan.legacy, 2);
+  const legacy = plan.actions.find(action => action[0] === 'BulkAddRecord');
+  assert.deepEqual(legacy[3].Cible, ['publipostage:3', 'publipostage:5']);
+  const resources = plan.actions.filter(action => action[1] === '_grist_ACLResources').map(action => `${action[3].tableId}/${action[3].colIds}`);
+  assert.deepEqual(resources, [`${SHARES_TABLE}/Auteur,AuteurAcces`, `${SHARES_TABLE}/*`, 'GFS_Fichiers/*', 'Publipostage_Modeles/GFS_Auteur', 'Publipostage_Modeles/*']);
+  assert.ok(!plan.actions.some(action => action[0] === 'AddTable' && action[1] === 'Autre_Fichiers'));
+});
+
+test('une règle d\'un autre auteur sur la table d\'une app : cette table est laissée (dite), le reste s\'active ; ajouter une app plus tard complète sans refaire le reste', () => {
+  const hand = { id: 9, resource: 4, aclFormula: '', permissionsText: '-D', memo: 'écrite à la main' };
+  const foreign = withApp({ resources: [{ id: 1, tableId: '', colIds: '' }, { id: 4, tableId: 'Publipostage_Modeles', colIds: '*' }], rules: [{ ...BUILT_IN }, hand] });
+  const first = planSharing(foreign, FILES_COLUMNS);
+  assert.equal(first.ok, true);
+  assert.deepEqual([first.appTables, first.skipped], [[], ['Publipostage_Modeles']]);
+  const done = applied(base(), planSharing(base(), FILES_COLUMNS).actions);
+  assert.equal(planSharing(done, FILES_COLUMNS).reason, 'already');
+  const later = { ...done, tables: [...done.tables, { id: 7, tableId: 'Publipostage_Modeles' }], columns: [...done.columns, { parentId: 7, colId: 'Nom' }], targets: targetsOf([PP]), files: { Publipostage_Modeles: [1] } };
+  const extension = planSharing(later, FILES_COLUMNS);
+  assert.equal(extension.ok, true);
+  assert.equal(extension.extends, true);
+  assert.deepEqual(extension.appTables, ['Publipostage_Modeles']);
+  assert.ok(!extension.actions.some(action => action[0] === 'AddTable'));
+  assert.ok(extension.actions.some(action => action[0] === 'ModifyColumn' && action[2] === 'AdminsBase' && /publipostage:/.test(action[3].formula)), 'la formule des administrateurs apprend la table');
+  assert.ok(!extension.actions.some(action => action[1] === '_grist_ACLResources' && /^GFS_Partages/.test(action[3].tableId)), 'les règles des partages ne sont pas reposées');
+  assert.equal(planSharing(applied(later, extension.actions), FILES_COLUMNS).reason, 'already');
+});
+
+test('après un retrait, activer de nouveau repose les règles sans recréer les tables ni les colonnes', () => {
+  const done = applied(base(), planSharing(base(), FILES_COLUMNS).actions);
+  const removed = applied(done, planUnsharing(done).actions);
+  const again = planSharing(removed, FILES_COLUMNS);
+  assert.equal(again.ok, true);
+  assert.deepEqual([again.creates, again.adds], [[], []]);
+  assert.ok(again.actions.some(action => action[1] === '_grist_ACLResources' && action[3].tableId === SHARES_TABLE));
 });

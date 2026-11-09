@@ -7,7 +7,7 @@
 //   4. L'activation de la personne : un vrai clic dans le cadre de l'app arrive-t-il à la page de GFS, et au cadre du lecteur ?
 import { createServer } from 'node:http';
 import { serve } from './lab-server.mjs';
-import { chromium, say, check } from './lab-common.mjs';
+import { chromium, say, check, probeDeclares } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { createI18n } from '../js/i18n.js';
 import { PAGE_PORT, openGfs, settle, closeModules } from './lab-pdf.mjs';
@@ -18,7 +18,7 @@ const { t } = createI18n(lang);
 const ID = 'sonde-j';
 const PLAYER = `http://localhost:${PAGE_PORT}/prototype/labo/sondes/l-lecteur/policy.html`;
 const PROBE_URL = `http://127.0.0.1:${PAGE_PORT}/prototype/labo/sondes/j-joindre/`;
-const ALWAYS = { fichier: 'controller.js', de: "export const ALWAYS_ON = Object.freeze(['publipostage']);", vers: `export const ALWAYS_ON = Object.freeze(['publipostage', '${ID}']);` };
+const ALWAYS = probeDeclares(ID, { permanente: true });
 // Le seul changement de GFS pour cet essai : l'adresse du faux lecteur dans `frame-src` (la ligne de la politique, pas son commentaire).
 const RELAY = process.env.LAB_RELAIS === '1';
 const OPEN_CSP = { chemin: '/prototype/index.html', de: "frame-src 'self' blob:; connect-src", vers: `frame-src 'self' blob: http://localhost:${PAGE_PORT}; connect-src` };

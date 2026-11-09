@@ -1,9 +1,9 @@
 // Les liens entre apps (contrats 5.4, points 2 et 7), dans un vrai Grist, à 700 × 400, à la vraie souris et au vrai clavier : l'app (la sonde Q, labo/sondes/q-liens/) demande à GFS de lui faire
-// choisir un fichier d'une autre app (la sonde O, labo/sondes/o-ouvrir/), puis de l'ouvrir. GFS tient les deux sondes pour des apps qui acceptent « ouvrir » (le labo seul les ajoute à la ligne
-// provisoire `ACCEPTS_OPEN`). Les gestes de la personne sont de vrais gestes ; seul le second `choisir` pendant un choix est un clic de la sonde sur elle-même (le cadre de l'app est alors sous
+// choisir un fichier d'une autre app (la sonde O, labo/sondes/o-ouvrir/), puis de l'ouvrir. GFS tient les deux sondes pour des apps qui acceptent « ouvrir » (le labo seul leur fait déclarer
+// `ouverture` dans leur manifeste). Les gestes de la personne sont de vrais gestes ; seul le second `choisir` pendant un choix est un clic de la sonde sur elle-même (le cadre de l'app est alors sous
 // l'explorateur : c'est le courtier qu'on mesure, pas une interface). LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { startLab } from './lab-setup.mjs';
-import { say, check } from './lab-common.mjs';
+import { say, check, probeDeclares } from './lab-common.mjs';
 import { isGfsWarning } from './sondes-muettes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
@@ -13,12 +13,8 @@ const run = `liens-${lang}-${scheme}`;
 const WORD = fr
   ? { title: 'Lier un document', byDefault: 'Choisir un fichier', pick: 'Choisir', cancel: 'Annuler', open: 'Ouvrir', close: 'Fermer', newOff: /Indisponible pendant le choix/, hint: /Double-clique un fichier/, empty: /Aucun fichier de ce genre/, gone: /Sonde O n’a plus ce fichier/, probeO: 'Sonde O', rows: ['Premier', 'Deuxième', 'Troisième'], macro: 'Macro cachée' }
   : { title: 'Link a document', byDefault: 'Choose a file', pick: 'Choose', cancel: 'Cancel', open: 'Open', close: 'Close', newOff: /Not available while choosing/, hint: /Double-click a file/, empty: /No file of this kind/, gone: /Probe O no longer has this file/, probeO: 'Probe O', rows: ['First', 'Second', 'Third'], macro: 'Hidden macro' };
-const ACCEPTS = {
-  fichier: 'controller.js',
-  de: 'const ACCEPTS_OPEN = Object.freeze({',
-  vers: "const ACCEPTS_OPEN = Object.freeze({ 'sonde-o': { fichier: true, nouveau: true }, 'sonde-q': { fichier: true, nouveau: true },",
-};
-const lab = await startLab({ lang, colorScheme: scheme, probes: true, patches: [ACCEPTS] });
+const ACCEPTS = [probeDeclares('sonde-o', { ouverture: { fichier: true, nouveau: true } }), probeDeclares('sonde-q', { ouverture: { fichier: true, nouveau: true } })];
+const lab = await startLab({ lang, colorScheme: scheme, probes: true, patches: [...ACCEPTS] });
 await lab.fitPanel(undefined, 700, 400);
 const { page } = lab;
 const warnings = [];

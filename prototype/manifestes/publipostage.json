@@ -9,6 +9,8 @@
   },
   "icone": "doc",
   "entree": "index.html",
+  "ouverture": { "fichier": true, "nouveau": true, "importer": true, "lire": true },
+  "permanente": true,
   "tables": { "prefixe": "Publipostage_" },
   "fichiers": [{
     "table": "Publipostage_Modeles",

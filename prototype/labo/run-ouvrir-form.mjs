@@ -1,6 +1,6 @@
 // « Nouveau » et le double-clic d'un formulaire de Form+ depuis l'explorateur de GFS (consigne 010 de Form+ : `GfsLink.opening()` au démarrage, `GfsLink.onOpen` quand elle tourne ;
 // contrats 5.2 point 3 et 5.4 point 1), avec la vraie app, celle que GFS référence, dans un vrai Grist, à 700 × 400, à la vraie souris. Le manifeste ouvre le type « formulaire »
-// (`actions.ouvrir`) et `ACCEPTS_OPEN.form` dit que l'app connaît l'ouverture : GFS ne pose plus sa phrase provisoire.
+// (`actions.ouvrir`) et `ouverture` du manifeste de Form+ dit que l'app connaît l'ouverture : GFS ne pose plus sa phrase provisoire.
 //   1. Le menu « Nouveau » propose « Formulaire », grisé tant que Form+ n'est pas installée (un clic dit pourquoi), dégrisé ensuite.
 //   2. « Nouveau > Formulaire » dans un document sans formulaire : Form+ démarre sur son écran de départ, GFS ne dit rien, rien n'est écrit dans le document.
 //   3. Des formulaires sont enregistrés (une ligne chacun, sur la section partagée de GFS, comme Form+ les range) : « Nouveau » doit encore donner l'écran de départ.

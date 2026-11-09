@@ -14,7 +14,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
-import { say, check, serveKit } from './lab-common.mjs';
+import { say, check, serveKit, probeDeclares } from './lab-common.mjs';
 
 const KIT = process.env.KIT_DIR || '/home/claude/grist-factory-kit';
 if (!existsSync(join(KIT, 'js/gfs-link.js'))) {
@@ -27,13 +27,9 @@ const run = `personne-${lang}-${scheme}`;
 const ANA = { Email: 'Ana@Exemple.org', Name: 'Ana', IsLoggedIn: true, UserID: 101 }; // la casse de Grist est gardée
 const BEN = { Email: 'ben@exemple.org', Name: 'Ben', IsLoggedIn: true, UserID: 102 };
 const ANONYMOUS = { Email: 'anon@getgrist.com', Name: 'Anonymous', IsLoggedIn: false, UserID: null };
-const ALWAYS = {
-  fichier: 'controller.js',
-  de: "export const ALWAYS_ON = Object.freeze(['publipostage']);",
-  vers: "export const ALWAYS_ON = Object.freeze(['publipostage', 'sonde-v', 'sonde-w', 'sonde-x']);",
-};
+const ALWAYS = ['sonde-v', 'sonde-w', 'sonde-x'].map(id => probeDeclares(id, { permanente: true }));
 
-const lab = await startLab({ lang, colorScheme: scheme, probes: true, user: ANA, patches: [ALWAYS] });
+const lab = await startLab({ lang, colorScheme: scheme, probes: true, user: ANA, patches: [...ALWAYS] });
 const { page } = lab;
 const warnings = [];
 page.on('console', m => { if ((m.type() === 'warning' || m.type() === 'error') && m.text().startsWith('GFS')) warnings.push(m.text()); });

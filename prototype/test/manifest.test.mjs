@@ -470,3 +470,14 @@ test('contrats 2.7 et 2.8 : un type rangé mal formé invalide le manifeste', ()
   assert.match(bad(m => { m.actions.ranger = ['']; }), /un type de fichier attendu/);
   assert.match(bad(m => { m.actions.ranger = ['pdf', 'pdf']; }), /actions\.ranger pdf : type déjà déclaré/);
 });
+
+test('contrats 2.2 et 2.8 : `ouverture` et `permanente` — des booléens, facultatifs', () => {
+  const ok = patch => validateManifest({ ...publipostage(), ...patch });
+  assert.equal(ok({}).ok, true);
+  assert.equal(ok({ ouverture: { fichier: true, nouveau: false } }).ok, true);
+  assert.equal(ok({ ouverture: {} }).ok, true, 'un genre absent vaut faux');
+  assert.equal(ok({ ouverture: { lire: 'oui' } }).errors.join(), 'ouverture.lire : true ou false attendu');
+  assert.equal(ok({ ouverture: ['fichier'] }).errors.join(), 'ouverture : objet attendu');
+  assert.equal(ok({ permanente: 1 }).errors.join(), 'permanente : true ou false attendu');
+  assert.equal(ok({ ouverture: { sonde: 'x' } }).ok, true, 'un genre inconnu est ignoré (le contrat s\'étend par ajout)');
+});

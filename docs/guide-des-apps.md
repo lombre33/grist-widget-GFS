@@ -160,7 +160,7 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
 15. Lire un fichier que GFS garde, un PDF (demande du porteur du 03/11 ; contrats 2.7, point 5, et 5.4, point 8). Une app qui sait lire le type
     le **déclare** dans `actions.lire` (`[{ "type": "pdf", "extension": "lecture-pdf" }]`, l'`extension` étant celle de l'app qui apporte
     la lecture, déclarée dans `extensions` avec sa bibliothèque `{ id: "pdfjs", version: "1.0.0" }`) : GFS fait de « Lire » le geste du PDF, grisé
-    tant que l'app ou l'extension manque ou que `ACCEPTS_OPEN` n'a pas la consigne faite. GFS **télécharge lui-même** le PDF et le donne à l'app avec
+    tant que l'app ou l'extension manque ou que `ouverture.lire` n'est pas déclaré dans le manifeste (la consigne faite). GFS **télécharge lui-même** le PDF et le donne à l'app avec
     l'ouverture (`raison: lire`, `lecture: { id, fichier }`) ou, quand elle est déjà ouverte, avec l'appel `ouvrir` : l'app ne reçoit aucun jeton, ne
     demande rien à l'API de Grist, ne renvoie jamais les octets. Elle **garde `lecture` dans sa lecture de l'ouverture** (le `normalizeOpening` du kit
     la garde depuis sa version 0.7.0 ; celui de Publipostage+ ne garde aujourd'hui que `fichier`, `type`, `dossier`, `raison`, `importation`), lit `lecture.fichier` comme

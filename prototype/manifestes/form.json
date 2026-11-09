@@ -9,6 +9,7 @@
   },
   "icone": "form",
   "entree": "poc/widget.html",
+  "ouverture": { "fichier": true, "nouveau": true },
   "tables": { "prefixe": "FormPlus_" },
   "fichiers": [{
     "table": "FormPlus_Formulaires",

@@ -1,18 +1,14 @@
 // L'appel `ouvrir` de GFS à l'app déjà ouverte (contrats 5.1 et 5.4, point 1), dans un vrai Grist, à 700 × 400, à la vraie souris : la personne double-clique un fichier de
 // l'app qui est déjà au premier plan (l'explorateur revient par le repère « Fichiers »), ou choisit « Nouveau » ; GFS envoie l'appel à l'app, qui ouvre elle-même, après sa propre
 // question d'enregistrement. La sonde O fait ce que fait Publipostage+ depuis la consigne 010 (labo/sondes/o-ouvrir/ ; l'app elle-même : run-ouvrir-publipostage) ; GFS la tient pour une app qui accepte « ouvrir »
-// (le labo seul ajoute la sonde à la ligne provisoire `ACCEPTS_OPEN`, pour un fichier comme pour « Nouveau »). LAB_LANG=fr|en.
+// (le labo seul lui fait déclarer `ouverture` dans son manifeste, pour un fichier comme pour « Nouveau »). LAB_LANG=fr|en.
 import { startLab } from './lab-setup.mjs';
-import { say, check } from './lab-common.mjs';
+import { say, check, probeDeclares } from './lab-common.mjs';
 import { isGfsWarning } from './sondes-muettes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const NAME = lang === 'fr' ? 'Sonde O' : 'Probe O'; // le nom de la sonde dans la langue de GFS
-const ACCEPTS = {
-  fichier: 'controller.js',
-  de: 'const ACCEPTS_OPEN = Object.freeze({',
-  vers: "const ACCEPTS_OPEN = Object.freeze({ 'sonde-o': { fichier: true, nouveau: true },",
-};
+const ACCEPTS = probeDeclares('sonde-o', { ouverture: { fichier: true, nouveau: true } });
 const lab = await startLab({ lang, probes: true, patches: [ACCEPTS] });
 await lab.fitPanel(undefined, 700, 400);
 const { page } = lab;

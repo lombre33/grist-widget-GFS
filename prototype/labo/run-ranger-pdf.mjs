@@ -13,7 +13,7 @@
 //   7. Des demandes hors règle et des fichiers qui n'en sont pas : refusés (GFS_REFUSE) sans rien écrire ; un envoi qui échoue : GFS_ECHEC, avec la raison en mots.
 import { createServer } from 'node:http';
 import { serve } from './lab-server.mjs';
-import { chromium, say, check } from './lab-common.mjs';
+import { chromium, say, check, probeDeclares } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { createI18n } from '../js/i18n.js';
 import { makePdf } from './pdf-fixture.mjs';
@@ -27,7 +27,7 @@ const PROBE = KIT ? 'zk' : 'z';
 const ID = `sonde-${PROBE}`;
 const APP = `${lang === 'fr' ? 'Sonde' : 'Probe'} Z${KIT ? ' kit' : ''}`;
 const PROBE_URL = `http://127.0.0.1:${PAGE_PORT}/prototype/labo/sondes/z-ranger-pdf/`;
-const ACCEPTS = { fichier: 'controller.js', de: 'const ACCEPTS_OPEN = Object.freeze({', vers: `const ACCEPTS_OPEN = Object.freeze({ '${ID}': { nouveau: true },` };
+const ACCEPTS = probeDeclares(ID, { ouverture: { nouveau: true } });
 const FIVE_SECONDS = 5000;
 
 // Un PDF de l'app : son nom pour GFS, ses octets (base64, pour passer dans le cadre de l'app), l'empreinte qu'on doit retrouver chez Grist. `title` change le contenu, donc l'empreinte.

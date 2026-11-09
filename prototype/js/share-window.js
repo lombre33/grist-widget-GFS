@@ -143,9 +143,9 @@ function pendingForm(ctx, who) {
 // L'état « partage pas activé » : le propriétaire peut l'activer ; les autres lisent à qui le demander.
 function inactiveBlock(ctx) {
   const { t, state } = ctx;
-  const word = state.extend ? 'share.extend' : 'share.inactive';
+  const word = state.extend === 'upgrade' ? 'share.upgrade' : (state.extend ? 'share.extend' : 'share.inactive');
   if (state.owner === true) {
-    const activate = h('button', { type: 'button', class: 'btn primary', dataset: { fk: 'share-activate' } }, t(state.extend ? 'share.extend.activate' : 'share.inactive.activate'));
+    const activate = h('button', { type: 'button', class: 'btn primary', dataset: { fk: 'share-activate' } }, t(state.extend === 'upgrade' ? 'share.upgrade.activate' : (state.extend ? 'share.extend.activate' : 'share.inactive.activate')));
     activate.addEventListener('click', () => void ctx.activate());
     return h('div', { class: 'rt-content' }, h('p', { class: 'fine' }, t(`${word}.owner`)), h('p', { class: 'sg-actions' }, activate));
   }

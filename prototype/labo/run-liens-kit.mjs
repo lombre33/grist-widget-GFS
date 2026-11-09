@@ -4,7 +4,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { startLab } from './lab-setup.mjs';
-import { say, check, serveKit } from './lab-common.mjs';
+import { say, check, serveKit, probeDeclares } from './lab-common.mjs';
 import { isGfsWarning } from './sondes-muettes.mjs';
 
 const KIT = process.env.KIT_DIR || '/home/claude/grist-factory-kit';
@@ -18,11 +18,7 @@ const run = `liens-kit-${lang}-${scheme}`;
 const WORD = lang === 'fr'
   ? { title: 'Via le kit', cancel: 'Annuler', rows: ['Premier', 'Deuxième', 'Troisième'], gone: /Sonde O n’a plus ce fichier/ }
   : { title: 'Through the kit', cancel: 'Cancel', rows: ['First', 'Second', 'Third'], gone: /Probe O no longer has this file/ };
-const ACCEPTS = {
-  fichier: 'controller.js',
-  de: 'const ACCEPTS_OPEN = Object.freeze({',
-  vers: "const ACCEPTS_OPEN = Object.freeze({ 'sonde-o': { fichier: true, nouveau: true },",
-};
+const ACCEPTS = probeDeclares('sonde-o', { ouverture: { fichier: true, nouveau: true } });
 const lab = await startLab({ lang, colorScheme: scheme, probes: true, patches: [ACCEPTS] });
 await lab.fitPanel(undefined, 700, 400);
 const { page } = lab;

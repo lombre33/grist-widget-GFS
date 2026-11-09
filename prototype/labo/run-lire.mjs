@@ -2,7 +2,7 @@
 // « Nouveau > Importer > PDF », puis une app qui sait le lire (la sonde Y, `labo/sondes/y-lire-pdf/`, qui fait ce que fera Publipostage+ avec son extension « Lecture de PDF ») le reçoit
 // de GFS, charge pdf.js par la source que GFS lui donne, et dessine la page. Tout se joue à 700 × 400, à la vraie souris et au vrai clavier. Chromium seulement.
 //   bash vrai-serveur.sh && REPO_DIR="$(realpath ../..)" node run-lire.mjs        (LAB_LANG=fr|en, LAB_SCHEME=light|dark)
-// Le labo seul range la sonde dans la ligne provisoire `ACCEPTS_OPEN` (`lire: true`) ; `LAB_LIRE=non` la laisse à « pas encore » pour mesurer ce grisé.
+// Le labo seul fait déclarer à la sonde `ouverture.lire` dans son manifeste ; `LAB_LIRE=non` la laisse à « pas encore » pour mesurer ce grisé.
 //   1. Avant l'app : « Lire » est le geste du PDF, grisé, et dit pourquoi ; un clic ouvre « Apps et extensions » sur la ligne de l'app, puis sur celle de l'extension.
 //   2. L'app prête : « Lire » ouvre la sonde, qui reçoit un vrai `File` (empreinte identique), charge pdf.js (copie de GFS, empreinte, sans violation de politique), dessine la page et sa couche de texte.
 //   3. Dans l'app : page suivante à la souris et au clavier, un mot sélectionné à la souris dans la couche de texte.
@@ -12,7 +12,7 @@
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { serve } from './lab-server.mjs';
-import { chromium, say, check } from './lab-common.mjs';
+import { chromium, say, check, probeDeclares } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { createI18n } from '../js/i18n.js';
 import { pageTitle, ACCENTED_LINE } from './pdf-fixture.mjs';
@@ -25,7 +25,7 @@ const { t } = createI18n(lang);
 const EXTENSION = lang === 'fr' ? 'Lecture de PDF' : 'PDF reading';
 const APP = lang === 'fr' ? 'Sonde Y' : 'Probe Y';
 const PROBE_URL = `http://127.0.0.1:${PAGE_PORT}/prototype/labo/sondes/y-lire-pdf/`;
-const ACCEPTS = { fichier: 'controller.js', de: 'const ACCEPTS_OPEN = Object.freeze({', vers: `const ACCEPTS_OPEN = Object.freeze({ 'sonde-y': { lire: ${ready} },` };
+const ACCEPTS = probeDeclares('sonde-y', { ouverture: { lire: ready } });
 // Publipostage+ lit elle aussi les PDF de GFS (`actions.lire` de son manifeste, consigne 044) et passe avant la sonde dans le catalogue : GFS la choisirait, faute d'un lecteur prêt, comme « la première
 // déclarée ». Pour mesurer la sonde SEULE, le labo retire cette ligne au manifeste de Publipostage+ (la vraie Publipostage+ est mesurée par run-lire-publipostage.mjs).
 const NO_PUBLIPOSTAGE = { chemin: '/prototype/manifestes/publipostage.json', de: '"lire": [{ "type": "pdf", "extension": "lecture-pdf" }],', vers: '' };

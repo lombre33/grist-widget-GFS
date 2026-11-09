@@ -264,9 +264,13 @@ L'app (sous-cadre sans allow-same-origin)
 | `extensions` | liste | non | Les extensions de l'app (2.6). |
 | `dependances` | chaîne | non | Chemin de la liste des bibliothèques **natives** de l'app (`package.json`) : celles d'une extension n'y figurent pas (2.6, point 4). |
 | `actions` | objet | non | Ce que l'app accepte de la part des autres (2.7). |
+| `ouverture` | objet | non | Ce que l'app sait faire d'une ouverture que GFS lui passe : `{ "fichier": true, "nouveau": true, "importer": true, "lire": true }` (5.2, point 3 ; 5.4, points 1 et 8). Un genre absent vaut faux : GFS ouvre alors l'app sur son modèle habituel et le dit, et grise « Importer » ou « Lire ». |
+| `permanente` | booléen | non | `true` : l'app ne se retire pas de la fenêtre « Apps et extensions » (Publipostage+). |
 | `classes` | objet | non | La classe de chaque table de l'app pour les règles des personnes (11.2) ; une table non déclarée est du travail courant. |
 
 Un champ inconnu est ignoré (le contrat s'étend par ajout) ; un champ obligatoire absent ou mal formé invalide le manifeste.
+
+*Le 09/11, `ouverture` et `permanente` remplacent deux listes écrites par nom d'app dans le contrôleur de GFS (`ACCEPTS_OPEN` et `ALWAYS_ON`, provisoires depuis l'étape 2) : plus bas, `ACCEPTS_OPEN.<app>.<genre>` se lit `ouverture.<genre>` du manifeste de l'app. Les quatre manifestes sont encore tenus par GFS (`manifestes/`) ; quand une app publie son propre `gfs.json`, elle déclare ces deux champs elle-même.*
 
 ### 2.3 Le préfixe des tables
 
@@ -505,6 +509,7 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
    - un champ obligatoire absent ou d'un autre type ; un `id` ou un préfixe hors format, déjà pris, ou égal à `GFS_` ;
    - `fichiers[].table` hors du préfixe ; une colonne de `colonnes` qui n'est pas une chaîne ;
    - une clé de `reglages` qui commence par `gfs.` ou que le catalogue donne à une autre app ;
+   - dans `ouverture` : autre chose qu'un objet, un genre (`fichier`, `nouveau`, `importer`, `lire`) qui n'est pas un booléen ; `permanente` qui n'est pas un booléen ;
    - dans `arrivee` (2.5, point 4) : autre chose qu'un objet, une `table` ou une `colonne` qui n'est pas une chaîne, une `table` que
      `permissions.lit` ne couvre pas, des `lignes` qui ne sont pas un objet de chaînes ;
    - dans `permissions` : une règle de la section 3 non tenue (un motif `ecrit` que `lit` ne couvre pas, un `pourquoi` absent,

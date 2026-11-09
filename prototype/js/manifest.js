@@ -320,6 +320,18 @@ function checkExtensions(m, errors) {
   }
 }
 
+const OPENINGS = ['fichier', 'nouveau', 'importer', 'lire'];
+
+// `ouverture` (facultatif, contrats 2.2) : ce que l'app sait faire d'une ouverture que GFS lui passe, `{ fichier, nouveau, importer, lire }` en booléens ; un genre absent vaut faux (GFS ouvre alors l'app
+// sur son modèle habituel et le dit). `permanente` (facultatif) : l'app ne se retire pas de la fenêtre « Apps et extensions ».
+function checkOpening(m, errors) {
+  if (m.ouverture !== undefined) {
+    if (!isObject(m.ouverture)) errors.push('ouverture : objet attendu');
+    else for (const key of OPENINGS) if (m.ouverture[key] !== undefined && typeof m.ouverture[key] !== 'boolean') errors.push(`ouverture.${key} : true ou false attendu`);
+  }
+  if (m.permanente !== undefined && typeof m.permanente !== 'boolean') errors.push('permanente : true ou false attendu');
+}
+
 // Rend { ok, errors }. `others` : les manifestes déjà acceptés du catalogue (unicité des id, des préfixes et des clés de réglages).
 export function validateManifest(m, others = []) {
   const errors = [];
@@ -331,6 +343,7 @@ export function validateManifest(m, others = []) {
   checkSettings(m, errors);
   checkPermissions(m, errors);
   checkArrival(m, errors);
+  checkOpening(m, errors);
   checkImports(m, errors);
   checkReads(m, errors);
   checkFiled(m, errors);

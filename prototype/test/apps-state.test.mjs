@@ -16,7 +16,7 @@ const catalogue = readCatalogue({ bibliotheques: [{
   cdn: { src: 'https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js', integrite: SRI },
   vendorise: { chemin: 'vendor/echarts/6.1.0/dist/echarts.min.js', integrite: SRI },
 }] });
-const pub = publipostage();
+const pub = { ...publipostage(), permanente: true }; // l'app qui ne se retire pas le dit dans son manifeste (contrats 2.2)
 const automation = { id: 'automation', nom: { fr: 'A', en: 'A' }, extensions: [] };
 const loaded = [
   { app: { id: 'publipostage' }, manifest: pub, ok: true, errors: [] },
@@ -50,10 +50,18 @@ function fakeStore({ value = null, fail = null } = {}) {
   return store;
 }
 
+test('les apps qui ne se retirent pas : celles dont le manifeste dit `permanente`, rien avant le chargement', () => {
+  const state = new AppsState({ store: fakeStore(), onChange: () => {} });
+  assert.deepEqual(state.always, []);
+  state.setApps(loaded);
+  assert.deepEqual(state.always, ['publipostage']);
+  assert.deepEqual(state.model().items.filter(item => item.kind === 'app' && item.always).map(item => item.id), ['publipostage']);
+});
+
 async function setup(options) {
   const store = fakeStore(options);
   let changes = 0;
-  const state = new AppsState({ always: ['publipostage'], store, onChange: () => { changes += 1; } });
+  const state = new AppsState({ store, onChange: () => { changes += 1; } });
   state.setApps(loaded);
   state.setCatalogue(catalogue);
   await state.load();
@@ -80,7 +88,7 @@ test('load : une table illisible vaut une table absente, avec un avertissement',
   const warnings = [];
   console.warn = (...args) => warnings.push(args[0]);
   try {
-    const state = new AppsState({ always: ['publipostage'], store: { read: async () => { throw new Error('refusé'); } }, onChange: () => {} });
+    const state = new AppsState({ store: { read: async () => { throw new Error('refusé'); } }, onChange: () => {} });
     state.setApps(loaded);
     await state.load();
     assert.deepEqual(state.installedIds(), ['publipostage']);

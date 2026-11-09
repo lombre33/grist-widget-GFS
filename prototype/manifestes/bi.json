@@ -9,6 +9,7 @@
   },
   "icone": "chart",
   "entree": "index.html",
+  "ouverture": { "fichier": true, "nouveau": true },
   "tables": { "prefixe": "BI_" },
   "fichiers": [{
     "table": "BI_Dashboard_Config",

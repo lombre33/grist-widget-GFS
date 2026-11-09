@@ -16,9 +16,12 @@ export const acceptsFile = (name, extensions) => extensions.some(extension => St
 // (le sous-cadre le lit comme n'importe quel fichier choisi ; GFS ne le lit pas).
 export const importOpening = (entry, file, folder) => ({ fichier: null, type: entry.type, dossier: folder, raison: 'importer', importation: { valeur: entry.valeur, fichier: file } });
 
-// Le genre d'ouverture, tel que `ACCEPTS_OPEN` le range : ouvrir un fichier précis, en créer un vierge (« Nouveau »), en créer un d'après un fichier (« Importer »), ou lire un fichier que GFS
+// Le genre d'ouverture, tel que `ouverture` du manifeste le range : ouvrir un fichier précis, en créer un vierge (« Nouveau »), en créer un d'après un fichier (« Importer »), ou lire un fichier que GFS
 // garde (js/reading.js).
 export const openingKind = opening => (opening.lecture ? 'lire' : (opening.importation ? 'importer' : (opening.fichier ? 'fichier' : 'nouveau')));
+
+// L'app sait-elle ce genre d'ouverture (contrats 2.2, `ouverture`) ? Sans la déclaration, GFS ouvre l'app sur son modèle habituel et le dit ; `manifest` peut être null (une app absente ou invalide).
+export const acceptsOpening = (manifest, kind) => Boolean(manifest && manifest.ouverture && manifest.ouverture[kind] === true);
 
 // L'ouverture porte-t-elle un fichier du navigateur (`importation`, `lecture`) ? Il part une seule fois, avec l'ouverture ou avec l'appel `ouvrir` : une réouverture de l'app ne le reprend pas.
 export const carriesFile = opening => Boolean(opening && (opening.importation || opening.lecture));

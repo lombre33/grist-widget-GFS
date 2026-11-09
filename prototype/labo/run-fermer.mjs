@@ -1,11 +1,11 @@
 // L'appel `fermer` de GFS à l'app active, avant qu'une autre app prenne sa place (contrats 5.1 et 5.4, point 3), dans un vrai Grist, à 700 × 400, à la vraie souris : la personne double-clique le
 // fichier d'une autre app, ouvre une app dans la fenêtre des apps, ou suit un lien. L'app active (la sonde O, labo/sondes/o-ouvrir/, ou la sonde Q) enregistre ou pose sa question avant de partir,
 // comme le fera Publipostage+ après la consigne qui lui demande de répondre à `fermer` ; une app qui ne connaît pas l'appel part comme avant. Le sondage de la sonde : `body[data-fermer]`
-// (`oui`, `non`, `echec`, `muet`, `question`, ou rien : GFS_INCONNU). GFS tient les deux sondes pour des apps qui acceptent « ouvrir » (le labo seul les ajoute à `ACCEPTS_OPEN`).
+// (`oui`, `non`, `echec`, `muet`, `question`, ou rien : GFS_INCONNU). GFS tient les deux sondes pour des apps qui acceptent « ouvrir » (le labo seul leur fait déclarer `ouverture` dans leur manifeste).
 // « Tu restes » (contrats 5.4, point 3, appel `rester`) : l'app qui a répondu oui alors que la personne est revenue à l'explorateur reçoit `rester` (`body[data-rester]` de la sonde : `oui`, `non`, ou rien : GFS_INCONNU).
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { startLab } from './lab-setup.mjs';
-import { say, check } from './lab-common.mjs';
+import { say, check, probeDeclares } from './lab-common.mjs';
 import { isGfsWarning } from './sondes-muettes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
@@ -15,12 +15,8 @@ const run = `fermer-${lang}-${scheme}`;
 const WORD = fr
   ? { app: 'Sonde O', silent: 'Sonde O ne répond pas', fault: 'Sonde O n’a pas pu se fermer', wait: 'Attendre', force: 'Fermer quand même', stay: 'Rester', reason: /Enregistrement refusé par Grist\./, hint: /Si sa question d’enregistrement est à l’écran/, close: 'Fermer' }
   : { app: 'Probe O', silent: 'Probe O is not responding', fault: 'Probe O could not close', wait: 'Wait', force: 'Close anyway', stay: 'Stay', reason: /Enregistrement refusé par Grist\./, hint: /If its save question is on screen/, close: 'Close' };
-const ACCEPTS = {
-  fichier: 'controller.js',
-  de: 'const ACCEPTS_OPEN = Object.freeze({',
-  vers: "const ACCEPTS_OPEN = Object.freeze({ 'sonde-o': { fichier: true, nouveau: true }, 'sonde-q': { fichier: true, nouveau: true },",
-};
-const lab = await startLab({ lang, colorScheme: scheme, probes: true, patches: [ACCEPTS] });
+const ACCEPTS = [probeDeclares('sonde-o', { ouverture: { fichier: true, nouveau: true } }), probeDeclares('sonde-q', { ouverture: { fichier: true, nouveau: true } })];
+const lab = await startLab({ lang, colorScheme: scheme, probes: true, patches: [...ACCEPTS] });
 await lab.fitPanel(undefined, 700, 400);
 const { page } = lab;
 const warnings = [];

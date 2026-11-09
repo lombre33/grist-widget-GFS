@@ -2,7 +2,8 @@
 // est du navigateur : ce que GFS lui demande (un champ caché, cliqué dans le geste de la personne) se teste ici, ce que le navigateur en fait se mesure dans le labo (run-importer.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { importFormats, acceptsFile, importOpening, openingKind, pickFile } from '../js/import-file.js';
+import { readFileSync } from 'node:fs';
+import { importFormats, acceptsFile, importOpening, openingKind, acceptsOpening, pickFile } from '../js/import-file.js';
 import { publipostage, automation, form } from './helpers.mjs';
 
 test('les formats d\'une app : chacun avec le type qu\'il crée, dans l\'ordre du manifeste', () => {
@@ -86,4 +87,24 @@ test('annuler le sélecteur rend `null` (rien ne s\'ouvre), un changement sans f
   doc.appended[1].files = [];
   doc.appended[1].dispatchEvent(new Event('change'));
   assert.equal(await empty, null);
+});
+
+test('ce que l\'app sait d\'une ouverture : la déclaration `ouverture` du manifeste, faux sans elle (contrats 2.2)', () => {
+  const m = { ouverture: { fichier: true, nouveau: true, importer: false } };
+  assert.equal(acceptsOpening(m, 'fichier'), true);
+  assert.equal(acceptsOpening(m, 'importer'), false);
+  assert.equal(acceptsOpening(m, 'lire'), false, 'un genre absent vaut faux');
+  assert.equal(acceptsOpening({}, 'nouveau'), false, 'sans `ouverture`, GFS ouvre l\'app sur son modèle habituel et le dit');
+  assert.equal(acceptsOpening(null, 'nouveau'), false, 'une app absente ou invalide');
+  assert.equal(acceptsOpening({ ouverture: { nouveau: 'oui' } }, 'nouveau'), false, 'seul `true` vaut oui');
+});
+
+test('le catalogue de GFS : ce que chaque app sait d\'une ouverture, tel que le contrôleur le tenait avant le 09/11', () => {
+  const read = id => JSON.parse(readFileSync(new URL(`../manifestes/${id}.json`, import.meta.url), 'utf8'));
+  const known = id => ['fichier', 'nouveau', 'importer', 'lire'].filter(kind => acceptsOpening(read(id), kind));
+  assert.deepEqual(known('publipostage'), ['fichier', 'nouveau', 'importer', 'lire']);
+  assert.deepEqual(known('form'), ['fichier', 'nouveau']);
+  assert.deepEqual(known('bi'), ['fichier', 'nouveau']);
+  assert.deepEqual(known('automation'), []);
+  assert.deepEqual(['publipostage', 'form', 'bi', 'automation'].filter(id => read(id).permanente === true), ['publipostage'], 'seule Publipostage+ ne se retire pas');
 });

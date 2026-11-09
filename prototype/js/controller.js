@@ -45,7 +45,7 @@ import { Trash } from './trash.js';
 import { Copying } from './copying.js';
 import { ask } from './ask-window.js';
 import { leaveApp, leaveQuestion } from './leave.js';
-import { importFormats, acceptsFile, importOpening, openingKind, carriesFile, pickFile } from './import-file.js';
+import { importFormats, acceptsFile, importOpening, openingKind, acceptsOpening, carriesFile, pickFile } from './import-file.js';
 import { readersOf, chooseReader, readOpening } from './reading.js';
 import { publicationQuestion } from './publication-window.js';
 import { ModulesWindow, rowKey } from './modules-window.js';
@@ -53,16 +53,6 @@ import { buildContext, identityFor, instanceOf, pageOf } from './context.js';
 import { Refus, ERR, levelOf } from './filter.js';
 
 const NOTICE_MS = 6000;
-
-// Provisoire : ce que chaque app sait faire d'une ouverture. `fichier` : ouvrir le fichier désigné, au démarrage (`ouverture` du contexte) comme déjà ouverte (appel `ouvrir`), consigne 010 ;
-// `nouveau` : créer un fichier vierge du type demandé (contrats 5.4, point 1), consigne 014 (Publipostage+ depuis bfbe112) ; `importer` : créer un fichier d'après celui que GFS lui passe (`importation`
-// de l'ouverture, consigne 035 de Publipostage+) ; `lire` : lire le PDF que GFS lui passe (`lecture` de l'ouverture, contrats 5.4, point 8). Ce qu'une app ne sait pas, GFS ouvre l'app sur son
-// modèle habituel et le dit ; un format qu'elle ne reçoit pas encore est grisé dans « Importer » (un PDF qu'elle ne lit pas encore, dans « Lire »), et le sélecteur de fichier ne s'ouvre pas pour
-// rien. Une app qui le sait passe à `true` ici (puis la ligne disparaît avec le catalogue provisoire).
-const ACCEPTS_OPEN = Object.freeze({ publipostage: { fichier: true, nouveau: true, importer: true, lire: true }, form: { fichier: true, nouveau: true }, automation: { fichier: false, nouveau: false }, bi: { fichier: true, nouveau: true } });
-
-// Provisoire (étape 2) : les apps qui ne se retirent pas, comme dans la maquette (Publipostage+ ne se décoche pas).
-export const ALWAYS_ON = Object.freeze(['publipostage']);
 
 const LIBRARIES_PATH = 'bibliotheques/catalogue.json';
 const FIRST_RUN_KEY = 'gfs.premier-lancement.';
@@ -120,7 +110,7 @@ export class GfsController {
     // Les apps installées et leurs extensions : ce que le document retient dans la table `GFS_Rangement` (contrats 7.4), écrit seulement sur un geste
     // de la personne, et la table seulement avec son accord. Cette table apprend aussi à GFS l'adresse de la personne (6.4, point 6) : sans écriture possible, elle reste inconnue.
     this.rangement = new Rangement({ port: this.port, consent: () => this.#askTableConsent(), canWrite: () => !this.#writeBlock(), onIdentity: () => this.#onIdentity() });
-    this.registry = new AppsState({ always: ALWAYS_ON, store: this.rangement, onChange: () => this.#onRegistryChange() });
+    this.registry = new AppsState({ store: this.rangement, onChange: () => this.#onRegistryChange() });
     this.links = this.#buildLinks();
     // Le cadre d'envoi (js/transfer.js) ne s'ouvre qu'à la première requête : les pièces jointes, et la preuve que la personne est propriétaire (js/rights-reader.js).
     this.transfer = new Transfer({ doc: this.port.doc, base: this.doc.baseURI, createFrame: url => buildTransferFrame(this.doc, url) });
@@ -218,7 +208,7 @@ export class GfsController {
 
   // Une app qui ne reçoit pas encore le fichier : le format est grisé et le clic dit quoi faire en attendant (jamais un sélecteur de fichier pour rien).
   #importLock(appId) {
-    return ACCEPTS_OPEN[appId] && ACCEPTS_OPEN[appId].importer ? null : { text: this.t('ex.import.notYet', { app: this.appName(appId) }), hint: this.t('ex.import.notYetHint') };
+    return acceptsOpening(this.manifestOf(appId), 'importer') ? null : { text: this.t('ex.import.notYet', { app: this.appName(appId) }), hint: this.t('ex.import.notYetHint') };
   }
 
   // Qui lit ce fichier que GFS garde (js/reading.js) : { app, name, lock } avec le grisé de l'app qui sert (`null` : prête), ou `null` quand aucune app du catalogue ne le lit (il se télécharge).
@@ -230,7 +220,7 @@ export class GfsController {
   // Ce qui empêche l'app de lire : le grisé ordinaire (accès, app à installer, extension éteinte), puis le « pas encore » d'une app qui ne reçoit pas le fichier.
   #readLock({ manifest, item }) {
     const lock = this.lockOf({ app: manifest.id, known: true, typeInfo: { extension: item.extension } });
-    return lock || (ACCEPTS_OPEN[manifest.id] && ACCEPTS_OPEN[manifest.id].lire ? null : { text: this.t('files.read.notYet', { app: this.appName(manifest.id) }) });
+    return lock || (acceptsOpening(manifest, 'lire') ? null : { text: this.t('files.read.notYet', { app: this.appName(manifest.id) }) });
   }
 
   // ---------- démarrage ----------
@@ -707,7 +697,7 @@ export class GfsController {
     const running = this.#isOpen(appId) && this.#contextServed;
     if (!this.#activate(appId, opening)) return Promise.resolve(false);
     this.hideExplorer();
-    const knows = ACCEPTS_OPEN[appId] && ACCEPTS_OPEN[appId][openingKind(opening)]; // ouvrir un fichier précis, en créer un vierge (« Nouveau »), en créer un d'après un fichier (« Importer »), ou le lire
+    const knows = acceptsOpening(this.manifestOf(appId), openingKind(opening)); // ouvrir un fichier précis, en créer un vierge (« Nouveau »), en créer un d'après un fichier (« Importer »), ou le lire
     if (!knows) this.notice(this.t(noticeKey, { app: this.appName(appId) }));
     const asked = running && knows ? this.#askToOpen(this.session, opening, noticeKey) : Promise.resolve(true);
     if (running && carriesFile(opening)) this.opening = null; // le fichier part une seule fois, avec l'appel : une réouverture de l'app (#activate avec l'ouverture gardée) ne le reprend pas

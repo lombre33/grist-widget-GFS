@@ -102,7 +102,7 @@ export class ColorPicking {
     this.#opts.onChoice(setting.chooseColor(color));
   }
 
-  // « Personnalisé… » : la fenêtre du carré, de la teinte et du code, par-dessus la fenêtre « Thème ». « Appliquer » pose la couleur ; « Annuler », Échap et un clic à côté ne changent rien.
+  // « Personnalisé… » : la fenêtre du carré, de la teinte et du code, par-dessus la fenêtre « Thème ». « Appliquer » pose la couleur ; « Annuler » et Échap ne changent rien ; un clic à côté ne ferme pas la fenêtre.
   #custom() {
     this.#closePanel(true);
     const { setting, container, mode, host, inertTargets } = this.#opts;

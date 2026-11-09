@@ -763,8 +763,8 @@ ne lit pas).
    - s'il y a une différence, la personne en décide dans une fenêtre de GFS qui dit, dans cet ordre (11.9, point 6) : que le lien est
      public (toute personne qui l'a, sans compte), les tables qu'il remplit (avec les colonnes que le formulaire ne montre pas mais que
      le lien pourra remplir), les colonnes qu'il rend lisibles, que rien ne limite le nombre de lignes ni ne contrôle ce qu'elles
-     contiennent, comment le fermer (« Dépublier » le formulaire, dans Grist) ; le clavier y part sur « Refuser » ; « Refuser », Échap ou
-     un clic à côté : `GFS_ANNULE`, rien n'est envoyé à Grist ; « Autoriser » : le lot passe ;
+     contiennent, comment le fermer (« Dépublier » le formulaire, dans Grist) ; le clavier y part sur « Refuser » ; « Refuser » ou Échap
+     (un clic à côté ne ferme rien, décidé le 09/11) : `GFS_ANNULE`, rien n'est envoyé à Grist ; « Autoriser » : le lot passe ;
    - ce qui est déjà ouvert ne se redemande pas ; les lots qui publient passent **un par un** par session (le suivant est jugé sur un
      document où le précédent est posé) ; un lot qui ne touche pas ces trois tables ne coûte aucune lecture ;
    - **GFS échoue fermé** : une session sans moyen de demander, une structure illisible, un verbe que le courtier ne sait pas juger
@@ -1755,7 +1755,7 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
    - **Ce que la personne voit** : la fenêtre « Ce nom est déjà pris » de 6.6, point 3, et rien d'autre. Elle **nomme l'app** (« <app>
      range un fichier dans GFS, mais GFS garde déjà un fichier « Facture.pdf ». Que faire du nouveau ? » ; le nom est celui du manifeste
      dans la langue de la personne, jamais un texte du message), décrit le fichier gardé, et propose Garder les deux (le clavier y est),
-     Remplacer et Annuler (« le nouveau n'est pas rangé dans GFS »). Échap et un clic à côté valent Annuler. **GFS ne dit rien par-dessus
+     Remplacer et Annuler (« le nouveau n'est pas rangé dans GFS »). Échap vaut Annuler ; un clic à côté ne ferme rien (décidé le 09/11). **GFS ne dit rien par-dessus
      l'app**, ni phrase ni notice : c'est l'app qui rend compte, dans son coin d'état, de ce que dit la réponse ou l'erreur.
    - **Un export en lot** : les fichiers d'un même export portent le même `lot` et chacun son `suivants` (11, 10… 0). Tant qu'il en reste,
      la fenêtre offre la case « Faire pareil pour les suivants » : cochée, la réponse (Remplacer, Garder les deux ou Annuler) vaut pour
@@ -2175,7 +2175,7 @@ fichier lui-même en pièce jointe de Grist.
 3. [T] **Un nom pris.** Importer un fichier dont le nom est déjà gardé ouvre une seule fenêtre, sur la base commune des fenêtres :
    « Remplacer » (la ligne garde son identifiant, son nom, sa place et ses favoris ; le contenu et la date changent), « Garder
    les deux » (le nouveau prend le premier nom libre, « Nom (1).pdf » ; un « (n) » déjà en fin de nom est remplacé, pas empilé ;
-   la casse du nouveau nom est gardée) ou rien (Annuler, Échap, un clic à côté). Le clavier est sur « Garder les deux » : un Entrée
+   la casse du nouveau nom est gardée) ou rien (Annuler, Échap ; un clic à côté ne ferme rien). Le clavier est sur « Garder les deux » : un Entrée
    distrait n'écrase rien. Un fichier qu'une app range sous un nom pris ouvre la même fenêtre, qui nomme l'app (5.4, point 9). Le nom libre et le nom pris sont recalculés sur la table **relue au moment d'écrire** : un fichier
    déposé ou retiré par une autre personne pendant que celle-ci décidait est pris en compte, jamais écrasé. L'ancienne pièce
    jointe d'un fichier remplacé n'est plus citée : Grist l'efface seul au bout de 7 jours (faits vérifiés, 14).
@@ -2508,8 +2508,8 @@ le document, pour que l'installation s'enregistre tout de suite.
 9. [D] **L'ancienne clé `gfs.apps`** du prototype V0.2 n'est plus ni lue ni écrite ; une section qui la porte n'est pas modifiée.
 10. [T] **Mesuré le 16/10** dans un vrai Grist (labo grist-static 0.1.6, Chromium, panneau 700 × 400, V0.3 du prototype ;
     `run-modules.mjs` et `run-reconstruit.mjs`). Lire ne crée rien : sans geste, ni table ni page de plus. Le premier geste
-    d'installation pose la question (le nom de la table, qu'elle vaut pour tout le document, qu'une page s'ajoute) ; Échap,
-    « Annuler » ou un clic hors de la fenêtre la refusent : la case revient, aucune table ni page n'est créée, la personne en est
+    d'installation pose la question (le nom de la table, qu'elle vaut pour tout le document, qu'une page s'ajoute) ; Échap
+    ou « Annuler » la refusent (un clic hors de la fenêtre ne la ferme pas) : la case revient, aucune table ni page n'est créée, la personne en est
     avertie, et la question se repose au geste suivant. Accord donné : `AddTable` rend `{ id, table_id, columns, views }` (GFS
     relit l'identifiant dans `table_id`), la table a ses sept colonnes, **Grist ajoute une page pour elle**, et la ligne
     réservée est écrite par `AddRecord`. Les gestes suivants ne posent plus de question et écrivent par `UpdateRecord` après une

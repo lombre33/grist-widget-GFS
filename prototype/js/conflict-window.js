@@ -1,6 +1,6 @@
 // La fenêtre « Ce nom est déjà pris » (contrats 6.6) : un fichier qu'on range porte le nom d'un fichier que GFS garde déjà. Une seule fenêtre pour tous les rangements, sur la base commune
 // des fenêtres (js/modal.js), que le fichier vienne de la personne (« Nouveau > Importer ») ou d'une app qui le range (contrats 5.4, point 9). Trois issues : « Remplacer » (le fichier existant
-// prend le contenu du nouveau et garde sa place), « Garder les deux » (le nouveau prend le nom libre « Nom (1).pdf ») ou rien (Annuler, Échap, un clic hors de la fenêtre : ni l'un ni l'autre
+// prend le contenu du nouveau et garde sa place), « Garder les deux » (le nouveau prend le nom libre « Nom (1).pdf ») ou rien (Annuler, Échap : ni l'un ni l'autre
 // ne change). Le clavier est sur « Garder les deux » : un Entrée distrait n'écrase rien.
 // Quand une app range des fichiers en lot, une case « Faire pareil pour les suivants » évite de revoir la fenêtre à chaque nom pris : elle vaut quelle que soit l'issue, y compris renoncer.
 

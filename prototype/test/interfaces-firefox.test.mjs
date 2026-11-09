@@ -35,6 +35,7 @@ import { compositeProblems } from './composite-firefox.mjs';
 import { glisserProblems } from './glisser-firefox.mjs';
 import { piecesJointesProblems } from './pieces-jointes-firefox.mjs';
 import { annulerProblems } from './annuler-firefox.mjs';
+import { voileProblems } from './voile-firefox.mjs';
 import { ROW_BUTTON, ROW_HEIGHT, TILE_MIN, columnFaults, expectedTileColumns, measureColumns, measureRows, measureTiles } from '../labo/mesures-liste.mjs';
 import { calendarLogs, calendarProblems } from './mesures-calendrier.mjs';
 
@@ -561,7 +562,7 @@ describe('l\'interface sous Firefox', () => {
         }
       }
       // La corbeille et le clavier (test/corbeille-firefox.mjs), la copie et le presse-papiers (test/copier-firefox.mjs), la question de « fermer » (test/fermer-firefox.mjs), les dossiers sans fichier
-      // (test/dossiers-firefox.mjs), le fichier que seule l'app ouverte sait fermer ou copier (test/composite-firefox.mjs), Ctrl+Z (test/annuler-firefox.mjs) : à 700 px, la largeur du panneau de référence, en clair et en sombre.
+      // (test/dossiers-firefox.mjs), le fichier que seule l'app ouverte sait fermer ou copier (test/composite-firefox.mjs), Ctrl+Z (test/annuler-firefox.mjs), le voile des fenêtres (test/voile-firefox.mjs) : à 700 px, la largeur du panneau de référence, en clair et en sombre.
       await page.view({ width: 700, scale: 1, mode: 'light' });
       for (const mode of MODES) {
         await page.view({ width: 700, scale: 1, mode });
@@ -576,6 +577,7 @@ describe('l\'interface sous Firefox', () => {
         problems.push(...await dossiersProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await compositeProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await annulerProblems(page, language, caption(language, 700, 1, mode)));
+        problems.push(...await voileProblems(page, caption(language, 700, 1, mode)));
         problems.push(...await lookProblems(page, caption(language, 700, 1, mode)));
       }
       // Les icônes des types (test/icones-firefox.mjs) : une fois, en français (la couleur et le trait ne dépendent pas de la langue).

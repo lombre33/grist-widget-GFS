@@ -104,7 +104,6 @@ export class ModulesWindow {
         this.#body,
         h('footer', { class: 'mod-foot' }, h('p', { class: 'mod-note', 'aria-live': 'polite' }),
           h('button', { type: 'button', class: 'btn', dataset: { fk: 'close' }, on: { click: () => this.close() } }, t('mod.close')))));
-    root.addEventListener('pointerdown', event => { if (event.target === root) this.close(); });
     this.#body.addEventListener('change', event => this.#onChange(event));
     this.#body.addEventListener('click', event => {
       const open = event.target.closest('[data-open]');

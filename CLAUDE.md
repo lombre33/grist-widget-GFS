@@ -80,6 +80,7 @@ Si un fait nouveau remet en cause une de ces lignes : le dire au porteur, avec l
 - Grisé, jamais masqué. On ajoute, on ne retire rien sans l'accord du porteur.
 - Fenêtres sur une seule base (titre et boutons fixes) ; saisies et confirmations par des fenêtres du widget, jamais
   `prompt()` ni `confirm()` ; le dernier menu ouvert passe au-dessus (`Layers.raise`, jetons `--z-*`).
+  Un clic sur le voile d'une fenêtre ne ferme rien (charte ; seuls « Annuler », « Fermer » et Échap ferment, décidé le 09/11).
 - Tout choix de colonne, de table, de modèle ou de fichier par la liste avec recherche (mots dans n'importe quel ordre,
   accents, casse et ponctuation ignorés).
 - Panneau de référence : 700 × 400. Vérifier à la vraie souris et au vrai clavier, en clair et en sombre, en français et en

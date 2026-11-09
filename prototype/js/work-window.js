@@ -75,7 +75,6 @@ export class WorkWindow {
         h('div', { class: 'mod-body' }, this.#list),
         h('footer', { class: 'mod-foot' }, this.#note,
           h('button', { type: 'button', class: 'btn', dataset: { fk: 'work-close' }, on: { click: () => this.close() } }, t('work.close')))));
-    root.addEventListener('pointerdown', event => { if (event.target === root) this.close(); });
     this.#list.addEventListener('click', event => this.#onClick(event));
     return root;
   }

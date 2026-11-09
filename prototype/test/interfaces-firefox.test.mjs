@@ -48,7 +48,7 @@ const LANGUAGES = ['fr', 'en'];
 const PAGE = '/essai-explorateur.html';
 
 const firefox = findFirefox();
-if (!firefox) process.stderr.write('Firefox introuvable : l\'interface n\'est PAS mesurée sous Firefox (labo/installer-firefox.sh, ou GFS_FIREFOX=<fichier exécutable>).\n');
+if (!firefox) process.stderr.write(process.env.GFS_SANS_FIREFOX ? 'GFS_SANS_FIREFOX : l\'interface n\'est PAS mesurée sous Firefox sur cette machine (les polices changent la mise en page).\n' : 'Firefox introuvable : l\'interface n\'est PAS mesurée sous Firefox (labo/installer-firefox.sh, ou GFS_FIREFOX=<fichier exécutable>).\n');
 
 // La page d'essai : les feuilles de style et la carte d'importation de index.html, dans son ordre ; le reste est test/pages/explorateur.js.
 function essayPage() {
@@ -645,6 +645,11 @@ describe('l\'outil de test Firefox', () => {
   test('findFirefox : le fichier que désigne GFS_FIREFOX passe avant tout, et un chemin qui n\'existe pas est ignoré', () => {
     assert.equal(findFirefox({ GFS_FIREFOX: process.execPath }), process.execPath);
     assert.notEqual(findFirefox({ GFS_FIREFOX: join(ROOT, 'absent', 'firefox') }), join(ROOT, 'absent', 'firefox'));
+  });
+
+  test('findFirefox : GFS_SANS_FIREFOX dispense cette machine de la mesure sous Firefox, même quand un Firefox s\'y trouve', () => {
+    assert.equal(findFirefox({ GFS_SANS_FIREFOX: '1', GFS_FIREFOX: process.execPath }), null);
+    assert.equal(findFirefox({ GFS_FIREFOX: process.execPath }), process.execPath);
   });
 
   test('serveSite : le dépôt et les pages fabriquées, pas un fichier hors du dossier', async () => {

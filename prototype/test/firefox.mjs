@@ -14,7 +14,10 @@ import { openSocket } from './websocket-client.mjs';
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 // Où est Firefox : `GFS_FIREFOX` (le fichier exécutable), le dossier de labo/installer-firefox.sh, puis les emplacements usuels. Rend le chemin, ou null.
+// `GFS_SANS_FIREFOX` (n'importe quelle valeur) : ne pas mesurer sous Firefox sur cette machine. Les mesures de mise en page (un nom coupé de 4 px, deux en-têtes qui se touchent) dépendent des polices de la machine ;
+// le contrôle au push de GitHub (.github/workflows/essais.yml) n'a pas celles du cloud ni celles du porteur, et y montrait des écarts qui n'en sont pas. La mesure se joue dans le cloud (labo/installer-firefox.sh) et chez le porteur.
 export function findFirefox(env = process.env) {
+  if (env.GFS_SANS_FIREFOX) return null;
   const installed = join(env.GFS_FIREFOX_DIR || join(homedir(), '.cache', 'gfs-firefox'), 'root', 'envs', 'ff', 'bin', 'firefox');
   const candidates = [env.GFS_FIREFOX, installed, '/usr/bin/firefox', '/usr/local/bin/firefox', '/snap/bin/firefox', '/Applications/Firefox.app/Contents/MacOS/firefox',
     'C:\\Program Files\\Mozilla Firefox\\firefox.exe', 'C:\\Program Files (x86)\\Mozilla Firefox\\firefox.exe'];

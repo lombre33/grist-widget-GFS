@@ -28,12 +28,15 @@ jobs:
         run: npm ci --ignore-scripts
         working-directory: prototype
       # Le journal de 6 000 lignes tient mal à la lecture : en cas d'échec, les essais qui échouent sont redits à la fin, avec leur message.
+      # Sans la mesure sous Firefox (GFS_SANS_FIREFOX) : la mise en page y dépend des polices de la machine, et celles de GitHub ne sont ni celles du cloud ni celles du porteur (un nom coupé de 4 px, des en-têtes qui se touchent :
+      # 218 écarts à la première passe, aucun dans le cloud). Cette mesure se joue dans le cloud (labo/installer-firefox.sh) et chez le porteur, avant le push d'une interface.
       - name: Jouer les essais
+        env:
+          GFS_SANS_FIREFOX: '1'
         shell: bash
         run: |
           set -o pipefail
           status=0
-          echo "Firefox des essais : $( { firefox --version || echo absent; } 2>&1 | head -1 )"
           npm test > "$RUNNER_TEMP/essais.log" 2>&1 || status=$?
           grep -E '^# (tests|pass|fail|skipped)' "$RUNNER_TEMP/essais.log"
           if [ "$status" -ne 0 ]; then

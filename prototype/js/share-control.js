@@ -37,12 +37,15 @@ export class ShareControl {
     if (!rows) return none(false);
     const target = this.#target(file);
     let author = lower(file.by);
-    if (target && target.stamped) {
-      // La table de l'app porte-t-elle les colonnes d'aide ? Sinon le partage n'y est pas étendu ; sinon l'auteur est la colonne que Grist écrit.
+    if (target) {
+      // La table de fichiers porte-t-elle les colonnes d'aide ? Sinon le partage n'y est pas étendu (une app ajoutée après coup) ; si elle porte celles d'avant les espaces (pas `GFS_Calc`), le partage est à compléter ;
+      // l'auteur d'un fichier d'app est la colonne que Grist écrit.
       let table = null;
       try { table = await this.#o.port.doc.fetchTable(target.table); } catch (error) { table = null; }
-      if (!table || !Object.prototype.hasOwnProperty.call(table, 'GFS_Lecteurs')) return none(true);
-      author = lower((table[STAMP] || [])[(table.id || []).indexOf(file.row)]);
+      const has = name => Boolean(table) && Object.prototype.hasOwnProperty.call(table, name);
+      if (target.stamped && !has('GFS_Lecteurs')) return none(true);
+      if (has('GFS_Lecteurs') && !has('GFS_Calc')) return none('upgrade');
+      if (target.stamped) author = lower((table[STAMP] || [])[(table.id || []).indexOf(file.row)]);
     }
     const me = lower(this.#o.identity());
     const shares = sharesOf(rows, file.key);

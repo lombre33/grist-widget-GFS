@@ -34,7 +34,7 @@ test('la table d\'une app sans colonnes d\'aide : « étendre », pas « activer
 });
 
 test('une table d\'app couverte : l\'auteur est celui que Grist a écrit (GFS_Auteur de la ligne), non le dernier qui l\'a modifiée', async () => {
-  const fetch = async name => (name === 'GFS_Partages' ? table({ Cible: [], Personne: [] }) : table({ GFS_Lecteurs: [[], [], []], GFS_Auteur: ['a@x.fr', 'Auteur@x.fr', ''] }));
+  const fetch = async name => (name === 'GFS_Partages' ? table({ Cible: [], Personne: [] }) : table({ GFS_Calc: [[], [], []], GFS_Lecteurs: [[], [], []], GFS_Auteur: ['a@x.fr', 'Auteur@x.fr', ''] }));
   const state = await control({ fetch }).load(model);
   assert.equal(state.active, true);
   assert.equal(state.author, 'auteur@x.fr');
@@ -46,4 +46,12 @@ test('une table d\'app couverte : l\'auteur est celui que Grist a écrit (GFS_Au
 test('un PDF de GFS : l\'auteur est la colonne « Auteur » de la ligne que l\'explorateur a lue', async () => {
   const fetch = async name => (name === 'GFS_Partages' ? table({ Cible: [], Personne: [] }) : table({}));
   assert.equal((await control({ fetch }).load(pdf)).author, 'moi@x.fr');
+});
+
+test('un partage d\'avant les espaces (colonnes d\'aide sans GFS_Calc) : « compléter », pour une app comme pour les PDF de GFS', async () => {
+  const old = async name => (name === 'GFS_Partages' ? table({ Cible: [], Personne: [] }) : table({ GFS_Lecteurs: [[], [], []], GFS_Auteur: ['a@x.fr', '', ''] }));
+  const app = await control({ fetch: old }).load(model);
+  assert.deepEqual([app.active, app.extend, app.owner], [false, 'upgrade', true]);
+  const files = await control({ fetch: async name => (name === 'GFS_Partages' ? table({ Cible: [], Personne: [] }) : table({ GFS_Lecteurs: [[]] })) }).load(pdf);
+  assert.equal(files.extend, 'upgrade');
 });

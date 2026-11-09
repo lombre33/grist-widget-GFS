@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-cHEEkwkSu1MI6+C6vBfP7t9QPnk1oH+cPKNQOUpj1bw='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-Y+chx5gnPsov4k2hkjqsAgeri00B8QhLuGQrsTZiMrM='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=6edbc41aa4">
 <link rel="stylesheet" href="css/explorer.css?v=418da9c54e">
 <link rel="stylesheet" href="css/modules.css?v=1109fc818b">
@@ -71,7 +71,7 @@
     "./js/i18n-folders.js": "./js/i18n-folders.js?v=fdfa7f4ccb",
     "./js/i18n-manage.js": "./js/i18n-manage.js?v=4846ff3efa",
     "./js/i18n-rights.js": "./js/i18n-rights.js?v=ad53955a3b",
-    "./js/i18n-share.js": "./js/i18n-share.js?v=87033b18ad",
+    "./js/i18n-share.js": "./js/i18n-share.js?v=b6dc60eaca",
     "./js/i18n-trash.js": "./js/i18n-trash.js?v=a1934883d2",
     "./js/i18n-weight.js": "./js/i18n-weight.js?v=70f193afa2",
     "./js/i18n.js": "./js/i18n.js?v=0e2b12c3c8",
@@ -112,10 +112,10 @@
     "./js/session.js": "./js/session.js?v=c578763aee",
     "./js/settings-menu.js": "./js/settings-menu.js?v=f9ce66c1f3",
     "./js/settings.js": "./js/settings.js?v=a425d4248c",
-    "./js/share-control.js": "./js/share-control.js?v=414869c3fe",
+    "./js/share-control.js": "./js/share-control.js?v=a765d31198",
     "./js/share-other.js": "./js/share-other.js?v=08000ac729",
-    "./js/share-window.js": "./js/share-window.js?v=f381bb31d9",
-    "./js/sharing-model.js": "./js/sharing-model.js?v=a03ae43cba",
+    "./js/share-window.js": "./js/share-window.js?v=878758dc91",
+    "./js/sharing-model.js": "./js/sharing-model.js?v=e2a9d7b781",
     "./js/state.js": "./js/state.js?v=ac1616eaf2",
     "./js/stored-choice.js": "./js/stored-choice.js?v=2f8b5015a1",
     "./js/theme-apply.js": "./js/theme-apply.js?v=a0a1612c97",

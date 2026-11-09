@@ -2980,6 +2980,18 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
        dans une chaîne (« \n » écrit en vrai saut) rendait `Membres` vide sans erreur visible : trouvé par le labo, gardé par un test. **Limites** : une colonne de groupes de type liste de choix n'est pas lue (la recherche
        de Grist compare une valeur) ; un groupe supprimé laisse ses partages sans effet (ils ne donnent plus accès à personne) ; les membres d'un groupe lu d'une table suivent la table mais pas par les apps.
 
+    j. [T] **Espaces et « le plus précis gagne » : cœur livré le 09/11** (lot 4a ; décision du porteur du 09/11, comme Google Drive : des **espaces partagés** dont l'accès passe par des groupes seulement — plusieurs groupes, chacun son rôle —,
+       et dans l'espace des droits différents par personne ou par groupe sur un dossier ou un fichier ; « Partagés avec moi » pour le partage direct entre personnes, lot 4c). `GFS_Espaces` (`Cle`, `Nom`, `Voit` : qui y a accès, groupes
+       développés) et `GFS_Placement` (`Cible` : le fichier, `Espace`, `Dossier`) naissent avec le partage ; un partage vise `espace:<clé>`, `dossier:<clé>/<chemin>` ou un fichier. **Le droit le plus précis gagne** (choix du porteur,
+       09/11 : « si Marc est dans un groupe qui a un espace et que je retire la lecture pour cacher un fichier, Marc n'y a plus accès ») : le fichier avant son dossier, le dossier avant l'espace, l'espace avant le document entier ; à
+       précision égale, la personne avant le groupe, le groupe avant la catégorie ; **à égalité entre deux groupes, le droit le plus large** (choix par défaut de GFS, à confirmer). Nouveau droit **« Aucun accès »** (`aucun`, pour une
+       personne ou un groupe, jamais une catégorie) : une règle `-CRUD` sur la liste `GFS_Refus` passe juste après les propriétaires. Une colonne cachée `GFS_Calc` calcule les six listes (lecteurs, écrivains, administrateurs, refus,
+       catégories qui lisent et qui écrivent) que les règles lisent ; un fichier sans placement garde les règles d'avant (le document, puis lui-même). **Un document partagé avant** est repris : « Partager… » dit « Compléter le partage… »,
+       GFS ajoute `GFS_Calc` et `GFS_Refus`, reprend les formules d'aide, retire puis repose les règles de fichiers, crée les deux tables, sans repartager aucun fichier. Mesuré dans un vrai Grist à trois comptes
+       (`labo/run-partager-espaces.mjs`, 23 vérifications ; `labo/run-partager-reprise.mjs`, 19 vérifications avec l'ancienne version servie depuis une copie du dépôt). **Pas fait** : l'écran des espaces et le droit « Aucun accès » dans
+       les menus (lot 4b), « Partagés avec moi » (4c), le partage d'un dossier par la fenêtre, la gestion d'un espace par un administrateur de groupe (aujourd'hui seuls les propriétaires écrivent les espaces, les placements et les
+       partages d'un espace ou d'un dossier), le renommage d'un dossier (ses partages le suivraient mal).
+
 ### 11.8 À mesurer sur le Grist du porteur
 
 Le labo (grist-static 0.1.6) n'a ni lien public, ni téléchargement, ni historique d'actions, ni les messages d'erreur de la page

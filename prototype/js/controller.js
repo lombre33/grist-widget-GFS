@@ -22,12 +22,11 @@ import { aboutItems } from './about.js';
 import { WorkControl } from './work-control.js';
 import { Explorer } from './explorer.js';
 import { loadFiles, loadAttachments } from './explorer-data.js';
-import { familyOf } from './explorer-model.js';
 import { AppLinks } from './links.js';
 import { Filing } from './filing.js';
 import { askName, chooseFolder } from './filing-window.js';
 import { readCatalogue } from './libraries.js';
-import { activeExtensionIds, extensionsOf } from './extensions.js';
+import { extensionsOf } from './extensions.js';
 import { AppsState } from './apps-state.js';
 import { arrivalApp, arrivalProbes } from './arrival.js';
 import { arrivalTableApp } from './arrival-table.js';
@@ -44,9 +43,9 @@ import { buildAppFiles, buildKept } from './file-managers.js';
 import { Trash } from './trash.js';
 import { Copying } from './copying.js';
 import { ask } from './ask-window.js';
-import { leaveApp, leaveQuestion } from './leave.js';
-import { importFormats, acceptsFile, importOpening, openingKind, acceptsOpening, carriesFile, pickFile } from './import-file.js';
-import { readersOf, chooseReader, readOpening } from './reading.js';
+import { carriesFile } from './import-file.js';
+import { Entries } from './entries.js';
+import { Openings } from './openings.js';
 import { publicationQuestion } from './publication-window.js';
 import { ModulesWindow, rowKey } from './modules-window.js';
 import { buildContext, identityFor, instanceOf, pageOf } from './context.js';
@@ -75,9 +74,8 @@ export class GfsController {
   #sentExtensions = null;
   #sentIdentity = null; // l'identité donnée à l'app active (JSON), ou null tant qu'elle n'a pas demandé son contexte
   #contextServed = false; // l'app active a demandé son contexte : elle a lu l'ouverture qui s'y trouvait, et ne la relira pas
-  #leaveRun = 0; // le numéro de la dernière demande « fermer » : une réponse qui arrive après un autre geste de la personne n'ouvre plus rien
   #modulesWaiters = [];
-  #idleWaiters = []; // ceux qui attendent la fin des écritures des apps installées (#unlock)
+  #idleWaiters = []; // ceux qui attendent la fin des écritures des apps installées (`unlock`)
   #fileStatus = { loading: false, restricted: false, problems: [] }; // ce que l'explorateur dit sous la liste, gardé pour être redit dans la langue qui vaut
 
   // env : { grist, router, search, doc }
@@ -111,6 +109,10 @@ export class GfsController {
     // de la personne, et la table seulement avec son accord. Cette table apprend aussi à GFS l'adresse de la personne (6.4, point 6) : sans écriture possible, elle reste inconnue.
     this.rangement = new Rangement({ port: this.port, consent: () => this.#askTableConsent(), canWrite: () => !this.#writeBlock(), onIdentity: () => this.#onIdentity() });
     this.registry = new AppsState({ store: this.rangement, onChange: () => this.#onRegistryChange() });
+    // Ce que l'explorateur et les liens demandent (grisé, types de « Nouveau » et d'« Importer », qui lit un fichier : js/entries.js), et les ouvertures (js/openings.js).
+    const entries = new Entries(this);
+    Object.assign(this, { lockOf: entries.lockOf, newTypes: entries.newTypes, importTypes: entries.importTypes, readerOf: entries.readerOf });
+    this.openings = new Openings(this);
     this.links = this.#buildLinks();
     // Le cadre d'envoi (js/transfer.js) ne s'ouvre qu'à la première requête : les pièces jointes, et la preuve que la personne est propriétaire (js/rights-reader.js).
     this.transfer = new Transfer({ doc: this.port.doc, base: this.doc.baseURI, createFrame: url => buildTransferFrame(this.doc, url) });
@@ -118,20 +120,27 @@ export class GfsController {
     this.attach = new Attach({ doc: this.port.doc, transfer: this.transfer, session: () => this.session, readonly: () => this.readonly }); // `joindre` (contrats 5.4, point 12)
     // Le partage de fichiers avec d'autres documents Grist (js/share-other.js) : le moteur du kit, son port et les fenêtres ne se chargent qu'au premier besoin.
     this.otherDocuments = createOtherDocuments({
-      t: this.t, container: this.$('stage'), inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')], docApi: () => this.grist.docApi, transfer: this.transfer,
+      t: this.t, container: this.$('stage'), inertTargets: this.inertTargets, docApi: () => this.grist.docApi, transfer: this.transfer,
       language: () => this.lang, notice: text => this.notice(text), writeBlock: () => this.#writeBlock(),
     });
     this.rights = new RightsControl({
-      port: this.port, transfer: this.transfer, manifests: () => this.validApps().map(item => item.manifest), now: () => Date.now(), container: this.$('stage'),
-      inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')], t: this.t, fullAccess: () => this.fullAccess,
+      port: this.port, transfer: this.transfer, manifests: this.manifests, now: () => Date.now(), container: this.$('stage'),
+      inertTargets: this.inertTargets, t: this.t, fullAccess: () => this.fullAccess,
       locale: () => this.locale, identity: () => this.identity, writeBlock: () => this.#writeBlock(), appName: this.appName, spaces: () => this.spaces,
       other: (file, state) => this.otherDocuments.tab(file, state), otherLinks: () => this.otherDocuments.links(), otherStop: link => this.otherDocuments.stop(link),
     });
-    this.weight = new WeightControl({ transfer: this.transfer, container: this.$('stage'), inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')], t: this.t, locale: () => this.locale });
+    this.weight = new WeightControl({ transfer: this.transfer, container: this.$('stage'), inertTargets: this.inertTargets, t: this.t, locale: () => this.locale });
   }
 
   $ = id => this.doc.getElementById(id);
   t = (key, vars) => this.i18n.t(key, vars);
+  // Ce que chaque fenêtre du widget rend inerte tant qu'elle est ouverte : l'explorateur, les cadres des apps, la barre.
+  inertTargets = () => [this.explorer.root, this.$('frames'), this.$('floaters')];
+  // Les manifestes des apps valides (ce que les fenêtres et les liens lisent à chaque appel).
+  manifests = () => this.validApps().map(item => item.manifest);
+
+  // L'app active a demandé son contexte (les ouvertures en ont besoin pour savoir si elle a quelque chose à enregistrer avant de partir).
+  get contextServed() { return this.#contextServed; }
 
   // L'adresse de la personne, '' tant que GFS ne la connaît pas : son rangement est alors commun au document (contrats 6.4, point 4).
   get identity() { return this.rangement.identity; }
@@ -147,81 +156,6 @@ export class GfsController {
   appName = id => { const manifest = this.manifestOf(id); return manifest ? label(manifest.nom, this.lang) : id; };
   validApps() { return this.apps.filter(item => item.ok); }
   typeLabel = file => (file.typeInfo ? label(file.typeInfo.nom, this.lang) : (file.type || '—'));
-
-  // Grisé, jamais masqué (charte) : un fichier d'une app non installée, un type absent du manifeste, un type d'une extension non active sont listés
-  // avec la raison (contrats 5.4, point 1, et 6.5, point 3). `focus` : la ligne de la fenêtre « Apps et extensions » qui le débloque, s'il y en a une.
-  lockOf = file => {
-    if (!this.fullAccess) return { text: this.t('gfs.needsFullAccess'), hint: this.t('gfs.needsFullAccessHint') };
-    if (file.app === FILES_APP) return null; // un fichier que GFS garde : aucune app à installer
-    if (!this.registry.has(file.app)) return { text: this.t('ex.lockedApp', { app: this.appName(file.app) }), focus: rowKey(file.app) };
-    if (!file.known) return { text: this.t('ex.lockedType', { app: this.appName(file.app) }) };
-    const extension = file.typeInfo.extension;
-    if (extension && !this.isExtensionActive(file.app, extension)) {
-      const entry = extensionsOf(this.registry.manifest(file.app)).find(item => item.id === extension);
-      return { text: this.t('ex.lockedExtension', { name: entry ? label(entry.nom, this.lang) : extension }), focus: rowKey(file.app, extension) };
-    }
-    return null;
-  };
-
-  isExtensionActive = (appId, extensionId) => activeExtensionIds(this.registry.manifest(appId), this.registry.apps[appId], this.registry.catalogue).includes(extensionId);
-
-  // Le menu « Nouveau » : un article par type que l'app sait ouvrir (`actions.ouvrir`), le nom de l'app quand il y en a plusieurs.
-  newTypes = () => {
-    const several = this.registry.installedIds().length > 1;
-    const entries = [];
-    for (const { manifest } of this.validApps()) {
-      const canOpen = new Set((manifest.actions && manifest.actions.ouvrir) || []);
-      for (const spec of manifest.fichiers || []) {
-        for (const type of spec.types || []) {
-          if (canOpen.has(type.valeur)) entries.push(this.#newEntry(manifest, type, several));
-        }
-      }
-    }
-    return entries;
-  };
-
-  // Ce que les articles de « Nouveau » et de son sous-menu « Importer » ont en commun : l'app, le type créé, son icône et sa famille de couleur, et le grisé avec sa raison (`reason`, dite au clic).
-  #entry(manifest, type, lock) {
-    return {
-      app: manifest.id, type: type.valeur, icon: type.icone || 'doc', family: lock ? null : familyOf(type.couleur) || null,
-      greyed: Boolean(lock), focus: lock ? lock.focus : null, reason: lock ? lock.text : '',
-    };
-  }
-
-  // Un article du menu « Nouveau » : grisé avec sa raison et son rappel court (`hint`, sous le nom).
-  #newEntry(manifest, type, several) {
-    const lock = this.lockOf({ app: manifest.id, known: true, typeInfo: type });
-    return { ...this.#entry(manifest, type, lock), label: label(type.nom, this.lang), hint: lock ? (lock.hint || lock.text) : (several ? label(manifest.nom, this.lang) : '') };
-  }
-
-  // Le sous-menu « Importer » : un article par format que le manifeste d'une app déclare (`actions.importer`, contrats 2.7, point 4), au nom du format ; le type qu'il crée le suit (l'icône et le mot du type vont ensemble).
-  importTypes = () => {
-    const several = this.registry.installedIds().length > 1;
-    return [...this.validApps().flatMap(({ manifest }) => importFormats(manifest).map(format => this.#importEntry(manifest, format, several))), ...this.kept.importEntries(), this.otherDocuments.entry()];
-  };
-
-  #importEntry(manifest, { item, type }, several) {
-    const lock = this.lockOf({ app: manifest.id, known: true, typeInfo: type }) || this.#importLock(manifest.id);
-    const shown = [label(type.nom, this.lang), several ? label(manifest.nom, this.lang) : ''].filter(Boolean).join(' · ');
-    return { ...this.#entry(manifest, type, lock), valeur: item.valeur, extensions: item.extensions, label: label(item.nom, this.lang), hint: lock ? (lock.hint || lock.text) : shown };
-  }
-
-  // Une app qui ne reçoit pas encore le fichier : le format est grisé et le clic dit quoi faire en attendant (jamais un sélecteur de fichier pour rien).
-  #importLock(appId) {
-    return acceptsOpening(this.manifestOf(appId), 'importer') ? null : { text: this.t('ex.import.notYet', { app: this.appName(appId) }), hint: this.t('ex.import.notYetHint') };
-  }
-
-  // Qui lit ce fichier que GFS garde (js/reading.js) : { app, name, lock } avec le grisé de l'app qui sert (`null` : prête), ou `null` quand aucune app du catalogue ne le lit (il se télécharge).
-  readerOf = file => {
-    const chosen = chooseReader(readersOf(this.validApps().map(item => item.manifest), file.type), reader => this.#readLock(reader));
-    return chosen && { app: chosen.reader.manifest.id, name: this.appName(chosen.reader.manifest.id), lock: chosen.lock };
-  };
-
-  // Ce qui empêche l'app de lire : le grisé ordinaire (accès, app à installer, extension éteinte), puis le « pas encore » d'une app qui ne reçoit pas le fichier.
-  #readLock({ manifest, item }) {
-    const lock = this.lockOf({ app: manifest.id, known: true, typeInfo: { extension: item.extension } });
-    return lock || (acceptsOpening(manifest, 'lire') ? null : { text: this.t('files.read.notYet', { app: this.appName(manifest.id) }) });
-  }
 
   // ---------- démarrage ----------
 
@@ -253,7 +187,7 @@ export class GfsController {
   // L'arrivée (cahier 6.2, point 2 ; js/arrival.js) : une section qui servait à une app s'ouvre sur elle, sans consigne et sans rien écrire ; sinon l'explorateur. Les réglages de la section parlent d'abord ;
   // sans eux, la table d'une app qui garde sa vue dans le document (`arrivee` du manifeste) dit si la section est la sienne (js/arrival-table.js). Rend `true` si une app s'est ouverte.
   async #arrive() {
-    const manifests = this.validApps().map(item => item.manifest);
+    const manifests = this.manifests();
     const rules = { installed: appId => this.registry.has(appId), granted: this.state.grantedAccess };
     let id = arrivalApp(this.state.allOptions, manifests, rules);
     const probes = id ? [] : arrivalProbes(this.state.allOptions, manifests, rules);
@@ -261,7 +195,7 @@ export class GfsController {
       const table = await this.state.whenTable();
       if (table) id = await arrivalTableApp(this.port.doc, probes, table.tableId);
     }
-    if (id && this.#activate(id, null)) {
+    if (id && this.activate(id, null)) {
       this.hideExplorer();
       return true;
     }
@@ -292,7 +226,7 @@ export class GfsController {
   }
 
   #buildExplorer() {
-    const askFor = opts => this.#ask(opts);
+    const askFor = opts => this.ask(opts);
     this.kept = buildKept(this, { ask: askFor, hideNotice: () => this.#hideNotice() });
     const managers = [this.kept, buildAppFiles(this, { ask: askFor })]; // les gardiens des fichiers : les PDF de GFS, les fichiers des apps (la corbeille et la copie les interrogent)
     const gestures = { t: this.t, notice: text => this.notice(text), refresh: () => this.refreshFiles() };
@@ -306,9 +240,9 @@ export class GfsController {
         place: () => this.dock.placeRow(), onAbout: () => this.#openAbout(),
       }),
       onRights: () => void this.rights.open(this.explorer), sharing: this.rights.sharing, onWeight: estimate => void this.weight.open(estimate),
-      onOpen: file => this.#openFile(file), onNew: entry => this.#openNew(entry), onImport: entry => void this.#importFile(entry), onClose: () => this.hideExplorer(), onApps: () => void this.openModules(),
+      onOpen: file => this.openings.openFile(file), onNew: entry => this.openings.openNew(entry), onImport: entry => void this.openings.importFile(entry), onClose: () => this.hideExplorer(), onApps: () => void this.openModules(),
       personal: () => Boolean(this.identity), filing, kept: this.kept, attachments: () => loadAttachments(this.port),
-      trash: new Trash({ managers, ask: opts => this.#ask(opts), keepFolders: file => filing.keepFoldersOf(file), ...gestures }),
+      trash: new Trash({ managers, ask: opts => this.ask(opts), keepFolders: file => filing.keepFoldersOf(file), ...gestures }),
       copying: new Copying({ managers, file: (app, id, folder) => filing.rangeNew([{ app, file: id, pinned: false, folder }]), ...gestures }),
     });
   }
@@ -316,16 +250,16 @@ export class GfsController {
   // Les liens entre apps (js/links.js, contrats 5.4) : ce que le contrôleur prête à `choisir` et `ouvrir`, appelés par une app.
   #buildLinks() {
     return new AppLinks({
-      explorer: () => this.explorer, session: () => this.session, manifests: () => this.validApps().map(item => item.manifest), appById: id => this.appById(id), appName: this.appName,
-      fullAccess: () => this.fullAccess, t: this.t, notice: text => this.notice(text), lockOf: this.lockOf, unlock: lock => this.#unlock(lock),
+      explorer: () => this.explorer, session: () => this.session, manifests: this.manifests, appById: id => this.appById(id), appName: this.appName,
+      fullAccess: () => this.fullAccess, t: this.t, notice: text => this.notice(text), lockOf: this.lockOf, unlock: lock => this.unlock(lock),
       showExplorer: () => this.showExplorer(), hideExplorer: () => this.hideExplorer(), loadFiles: apps => loadFiles(this.port, apps, this.identity),
-      openIn: (appId, opening) => this.#openIn(appId, opening, 'ex.notice.open'),
+      openIn: (appId, opening) => this.openings.openIn(appId, opening, 'ex.notice.open'),
     });
   }
 
   // Épingler, renommer, déplacer depuis l'explorateur (js/filing.js) : les fenêtres du widget par-dessus l'explorateur, et la liste relue après chaque geste.
   #buildFiling() {
-    const layer = opts => ({ ...opts, t: this.t, container: this.$('stage'), inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')] });
+    const layer = opts => ({ ...opts, t: this.t, container: this.$('stage'), inertTargets: this.inertTargets });
     return new Filing({
       port: this.port, rangement: this.rangement, t: this.t, locale: () => this.locale, files: () => this.explorer.files, folders: () => this.explorer.folders, appName: this.appName,
       spaces: { info: () => this.spaces, owner: async () => (await this.transfer.isOwner()) === true },
@@ -345,9 +279,9 @@ export class GfsController {
     });
     // La ligne de travail (contrats 4.5) : une autre table rouvre l'app active, qui la reçoit dès son démarrage.
     this.workControl = new WorkControl({
-      port: this.port, state: this.state, dock: this.dock, container: this.$('stage'), t: this.t, appName: this.appName, manifests: () => this.validApps().map(item => item.manifest),
-      session: () => this.session, inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')], notice: text => this.notice(text),
-      reopen: id => { this.#closeSession(); this.#activate(id, this.opening); }, hidden: () => this.doc.hidden,
+      port: this.port, state: this.state, dock: this.dock, container: this.$('stage'), t: this.t, appName: this.appName, manifests: this.manifests,
+      session: () => this.session, inertTargets: this.inertTargets, notice: text => this.notice(text),
+      reopen: id => { this.#closeSession(); this.activate(id, this.opening); }, hidden: () => this.doc.hidden,
     });
     this.dock.relabel(this.t);
     this.workControl.relabel();
@@ -392,7 +326,7 @@ export class GfsController {
 
   showExplorer() {
     this.status.cover(true);
-    this.#leaveRun++; // la personne repart explorer : une app qui répondrait « fermer » plus tard ne change plus rien
+    this.openings.moved(); // la personne repart explorer : une app qui répondrait « fermer » plus tard ne change plus rien
     this.$('frames').inert = true;
     this.dock.setPresent(false);
     if (this.session) this.session.show(false);
@@ -449,7 +383,7 @@ export class GfsController {
     if (!this.themeWindow) {
       this.themeWindow = new ThemeWindow({
         container: this.$('stage'), i18n: this.i18n, locale: this.locale, setting: this.theme, mode: () => this.themeHost.mode,
-        inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')],
+        inertTargets: this.inertTargets,
       });
       this.themeHost.onMode(() => this.themeWindow.refresh());
     }
@@ -458,7 +392,7 @@ export class GfsController {
 
   // La ligne « À propos » du menu « Réglages » (js/about.js) : la version, l'auteur, le site et la licence, dans une fenêtre du widget qui n'a que son bouton « Fermer ».
   #openAbout() {
-    void this.#ask({ title: this.t('about.title'), message: this.t('about.text'), items: aboutItems(this.t), confirmLabel: this.t('about.close') });
+    void this.ask({ title: this.t('about.title'), message: this.t('about.text'), items: aboutItems(this.t), confirmLabel: this.t('about.close') });
   }
 
   // ---------- la fenêtre « Apps et extensions » ----------
@@ -479,7 +413,7 @@ export class GfsController {
     });
     return new ModulesWindow({
       container: this.$('stage'), i18n: this.i18n, locale: this.locale, model: () => this.registry.model(), blocked: () => this.#writeBlock(),
-      inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')],
+      inertTargets: this.inertTargets,
       on: {
         app: (id, on) => change(this.registry.setApp(id, on)),
         extension: (app, id, on) => change(this.registry.setExtension(app, id, on)),
@@ -499,16 +433,16 @@ export class GfsController {
 
   // La table n'existe pas encore : la personne décide de la créer (contrats 6.2, point 1). Une fenêtre du widget, au-dessus de celle des apps.
   #askTableConsent() {
-    return this.#ask({ title: this.t('table.title'), message: this.t('table.text'), confirmLabel: this.t('table.create'), cancelLabel: this.t('table.cancel') });
+    return this.ask({ title: this.t('table.title'), message: this.t('table.text'), confirmLabel: this.t('table.create'), cancelLabel: this.t('table.cancel') });
   }
 
   // Une app publie un formulaire (contrats 3.3, point 9) : la personne dit si le lien peut ouvrir ce que le lot ouvre.
   #askPublication(manifest, opens) {
-    return this.#ask(publicationQuestion({ t: this.t, app: label(manifest.nom, this.lang), opens }));
+    return this.ask(publicationQuestion({ t: this.t, app: label(manifest.nom, this.lang), opens }));
   }
 
   // Une fenêtre du widget au-dessus de tout ce qui est ouvert (charte : jamais `confirm()`).
-  #ask(opts) {
+  ask(opts) {
     const above = this.modulesWindow && this.modulesWindow.element ? [this.modulesWindow.element] : [];
     return ask({ ...opts, container: this.$('stage'), inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters'), ...above] });
   }
@@ -583,8 +517,8 @@ export class GfsController {
   async #openApp(id) {
     const app = this.appById(id);
     if (app && levelOf(app.manifest.permissions.acces) > levelOf(this.state.grantedAccess)) { this.notice(this.t('gfs.needsFullAccess')); return; }
-    if (!(await this.#leave('app', id))) return;
-    if (!this.#activate(id, null)) return;
+    if (!(await this.openings.leave('app', id))) return;
+    if (!this.activate(id, null)) return;
     this.hideExplorer();
   }
 
@@ -649,97 +583,20 @@ export class GfsController {
 
   // Un clic sur du grisé : la fenêtre qui le débloque s'ouvre sur sa ligne, ou, quand il n'y a rien à débloquer ici, la raison est dite. La promesse se tient jusqu'à la fermeture de la fenêtre et à
   // la fin des écritures qu'elle a lancées : l'appel `ouvrir` d'une app attend que la personne ait fini (contrats 5.4, point 7).
-  async #unlock(lock) {
+  async unlock(lock) {
     if (!lock.focus) { this.notice(lock.text); return; }
     await this.openModules({ focus: lock.focus });
     if (this.registry.busy) await new Promise(resolve => this.#idleWaiters.push(resolve));
   }
 
-  #openFile(file) {
-    const lock = this.lockOf(file);
-    if (lock) { void this.#unlock(lock); return; }
-    if (this.kept.has(file)) { void this.#openKept(file); return; }
-    if (!this.appById(file.app)) { this.notice(this.t('ex.notice.noApp')); return; }
-    void this.#openIn(file.app, { fichier: { id: file.id, type: file.type }, type: file.type, dossier: this.explorer.state.path, raison: 'explorateur' }, 'ex.notice.open');
-  }
-
-  // Un fichier que GFS garde (contrats 5.4, point 8) : lu dans l'app qui sait le lire, une fois ses octets chargés ; l'app pas prête dit ce qui la débloque ; aucune app qui le lise, il se télécharge.
-  async #openKept(file) {
-    const reader = this.readerOf(file);
-    if (!reader) { await this.kept.open(file); return; }
-    if (reader.lock) { await this.#unlock(reader.lock); return; }
-    const bytes = await this.kept.load(file);
-    if (bytes) await this.#openIn(reader.app, readOpening(file, bytes, this.explorer.state.path), 'ex.notice.read');
-  }
-
-  #openNew(entry) {
-    if (entry.greyed) { void this.#unlock({ text: entry.reason || entry.hint, focus: entry.focus }); return; }
-    void this.#openIn(entry.app, { fichier: null, type: entry.type, dossier: this.explorer.state.path, raison: 'nouveau' }, 'ex.notice.new');
-  }
-
-  // « Importer » (contrats 5.4, point 1) : la personne choisit le fichier dans le sélecteur de GFS (ouvert ici, dans son geste), puis l'app le reçoit avec l'ouverture et en fait un modèle vierge.
-  // Annuler le sélecteur ne change rien ; un fichier qui n'est pas du format est dit sans ouvrir l'app.
-  async #importFile(entry) {
-    if (entry.action === 'receive') { await this.otherDocuments.receive(); return; } // « D'un autre document Grist… » : recevoir un partage
-    if (entry.app === FILES_APP) { await this.kept.importFile(entry); return; } // GFS garde ce format lui-même : aucune app n'est ouverte
-    if (entry.greyed) { void this.#unlock({ text: entry.reason || entry.hint, focus: entry.focus }); return; }
-    const file = await pickFile(this.doc, entry.extensions.join(','));
-    if (!file) return;
-    if (!acceptsFile(file.name, entry.extensions)) { this.notice(this.t('ex.import.wrong', { name: file.name, format: entry.label, extensions: entry.extensions.join(', ') })); return; }
-    void this.#openIn(entry.app, importOpening(entry, file, this.explorer.state.path), 'ex.notice.import');
-  }
-
-  // Rend `true` quand l'ouverture est partie vers l'app (ou qu'elle l'a faite), `false` quand l'app n'a pu être activée ou que la personne a annulé dans l'app (l'appel `ouvrir` d'une app attend ce résultat).
-  async #openIn(appId, opening, noticeKey) {
-    if (!(await this.#leave((opening && opening.raison) || 'ouvrir', appId))) return false; // une autre app : la première s'enregistre ou pose sa question avant de partir
-    // L'app déjà ouverte a lu son contexte : elle n'y relira pas l'ouverture, GFS la lui dit par l'appel `ouvrir` (contrats 5.4, point 1).
-    // Sinon (une autre app, ou celle-ci qui démarre) l'ouverture part dans le contexte qu'elle va demander.
-    const running = this.#isOpen(appId) && this.#contextServed;
-    if (!this.#activate(appId, opening)) return Promise.resolve(false);
-    this.hideExplorer();
-    const knows = acceptsOpening(this.manifestOf(appId), openingKind(opening)); // ouvrir un fichier précis, en créer un vierge (« Nouveau »), en créer un d'après un fichier (« Importer »), ou le lire
-    if (!knows) this.notice(this.t(noticeKey, { app: this.appName(appId) }));
-    const asked = running && knows ? this.#askToOpen(this.session, opening, noticeKey) : Promise.resolve(true);
-    if (running && carriesFile(opening)) this.opening = null; // le fichier part une seule fois, avec l'appel : une réouverture de l'app (#activate avec l'ouverture gardée) ne le reprend pas
-    return asked;
-  }
-
-  // L'app ouvre le fichier elle-même, après sa propre question d'enregistrement : `{ ouvert: false }` veut dire que la personne a annulé, GFS n'ajoute rien.
-  // Une app qui ne connaît pas l'appel (GFS_INCONNU) reçoit la phrase provisoire ; une autre erreur est dite avec son texte.
-  async #askToOpen(session, opening, noticeKey) {
-    try {
-      const answer = await session.openFile(opening);
-      return Boolean(answer && answer.ouvert);
-    } catch (error) {
-      if (session !== this.session) return false; // l'app a été fermée ou remplacée pendant l'attente : plus rien à dire
-      const app = this.appName(session.id);
-      if (error && error.code === ERR.INCONNU) this.notice(this.t(noticeKey, { app }));
-      else this.notice(this.t('ex.notice.openFailed', { app, reason: String((error && error.message) || '').slice(0, 120) }));
-      return false;
-    }
-  }
-
-  // Quitter l'app active pour une autre (contrats 5.4, point 3) : GFS lui demande de se fermer ; elle enregistre ou pose sa question, derrière l'explorateur qu'on referme pour qu'elle se voie.
-  // `false` : la personne reste (elle a annulé dans l'app, ou n'a pas voulu fermer) ou a fait autre chose entre-temps. Une app qui n'a pas demandé son contexte n'a encore rien à enregistrer.
-  // Rien à demander quand la même app reste ou que l'app visée ne peut être activée (l'app active resterait alors en place : elle n'a rien arrêté). Une app qui a dit oui puis reste (la personne est revenue à l'explorateur) reçoit « rester ».
-  async #leave(reason, target) {
-    const session = this.session;
-    if (!session || session.id === target || !this.#contextServed || !this.#openable(target)) return true;
-    const run = ++this.#leaveRun;
-    this.hideExplorer();
-    const app = this.appName(session.id);
-    const where = () => (session !== this.session ? 'gone' : run === this.#leaveRun ? 'now' : 'moved');
-    return leaveApp(session, reason, { offer: fault => this.#ask(leaveQuestion({ t: this.t, app, fault })), where });
-  }
-
   // Active l'app : la même reste en place, une autre remplace l'app active (une seule à la fois, contrats 1.4).
-  #openable(id) { return Boolean(this.appById(id)) && this.registry.has(id); }
+  openable(id) { return Boolean(this.appById(id)) && this.registry.has(id); }
 
-  #activate(id, opening) {
-    if (!this.#openable(id)) return false;
+  activate(id, opening) {
+    if (!this.openable(id)) return false;
     const app = this.appById(id);
     this.opening = opening;
-    if (this.#isOpen(id)) return true;
+    if (this.isOpen(id)) return true;
     if (this.session) this.#closeSession();
     const opened = new AppSession(this.#sessionContext(app));
     opened.onLeave(() => this.player.closeFor(opened));
@@ -749,12 +606,12 @@ export class GfsController {
   }
 
   // L'app est déjà ouverte et vivante : une app qui a renoncé (« ne répond pas ») ne l'est plus, la rouvrir la relance au lieu de rendre le cadre muet.
-  #isOpen(id) { return Boolean(this.session) && this.session.id === id && !this.session.gaveUp; }
+  isOpen(id) { return Boolean(this.session) && this.session.id === id && !this.session.gaveUp; }
 
   #sessionContext(app) {
     const { state, port } = this.workControl.sourceFor(app.manifest);
     return {
-      entry: app.app, manifest: app.manifest, catalogue: this.apps.filter(item => item.ok).map(item => item.manifest), state, port, router: this.router,
+      entry: app.app, manifest: app.manifest, catalogue: this.manifests(), state, port, router: this.router,
       container: this.$('frames'), readonly: this.readonly, preferences: this.#appPreferences(), base: this.doc.baseURI, live: this.live, lang: this.lang, onStatus: (kind, current) => this.#onStatus(kind, current),
       envelopeHandlers: session => this.#envelopeHandlers(session), authorize: (manifest, opens) => this.#askPublication(manifest, opens), viewOptions: this.viewOptions,
     };

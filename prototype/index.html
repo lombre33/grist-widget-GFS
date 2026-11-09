@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-LZ4rA82upvKD0DaeFjyBTXiWmxTv7IKeWszgr3yGqx8='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-jCv6uJkcNWDu2cM2tmg8eiQJsN/yA/ia6AKcPrkzO4k='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=6edbc41aa4">
 <link rel="stylesheet" href="css/explorer.css?v=418da9c54e">
 <link rel="stylesheet" href="css/modules.css?v=1109fc818b">
@@ -43,12 +43,13 @@
     "./js/catalogue.js": "./js/catalogue.js?v=9821dc95fc",
     "./js/conflict-window.js": "./js/conflict-window.js?v=e3c9c8e8d3",
     "./js/context.js": "./js/context.js?v=02c3f955eb",
-    "./js/controller.js": "./js/controller.js?v=75f3d92ac0",
+    "./js/controller.js": "./js/controller.js?v=7f47b583c0",
     "./js/copying.js": "./js/copying.js?v=8da0986c98",
     "./js/deposit.js": "./js/deposit.js?v=e11841b099",
     "./js/dock-state.js": "./js/dock-state.js?v=8eec913fd1",
     "./js/dock.js": "./js/dock.js?v=b86406526b",
     "./js/dom.js": "./js/dom.js?v=6093a9f23f",
+    "./js/entries.js": "./js/entries.js?v=feff9dc243",
     "./js/envelope.js": "./js/envelope.js?v=8586bc1508",
     "./js/explorer-clipboard.js": "./js/explorer-clipboard.js?v=fe178bf8ba",
     "./js/explorer-data.js": "./js/explorer-data.js?v=2d6075ca48",
@@ -59,7 +60,7 @@
     "./js/explorer-view.js": "./js/explorer-view.js?v=775f93b929",
     "./js/explorer.js": "./js/explorer.js?v=b21fc4bb18",
     "./js/extensions.js": "./js/extensions.js?v=a6b2033702",
-    "./js/file-managers.js": "./js/file-managers.js?v=dc80360769",
+    "./js/file-managers.js": "./js/file-managers.js?v=67b93f78fa",
     "./js/files-store.js": "./js/files-store.js?v=98d9eb3e5c",
     "./js/filing-window.js": "./js/filing-window.js?v=933db2d364",
     "./js/filing.js": "./js/filing.js?v=0860d3c3d6",
@@ -93,6 +94,7 @@
     "./js/modules-model.js": "./js/modules-model.js?v=f215489de1",
     "./js/modules-window.js": "./js/modules-window.js?v=c9dc57794d",
     "./js/oklch.js": "./js/oklch.js?v=b8905a34c8",
+    "./js/openings.js": "./js/openings.js?v=83652b905d",
     "./js/options-slice.js": "./js/options-slice.js?v=2d3825661c",
     "./js/own-table.js": "./js/own-table.js?v=b7e0d83652",
     "./js/pick-window.js": "./js/pick-window.js?v=2e5a6cb90b",

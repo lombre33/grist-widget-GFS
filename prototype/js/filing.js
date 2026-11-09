@@ -19,6 +19,8 @@ const sameName = (a, b) => String(a ?? '').trim().toLowerCase() === String(b ?? 
 const lastPart = path => path.split('/').pop();
 const parentOf = path => path.split('/').slice(0, -1).join('/');
 const reasonOf = error => String((error && error.message) || error).slice(0, 120);
+// Un lot sans rien à écrire : ni fichier, ni dossier gardé à ajouter ou à retirer.
+const isEmptyWrite = (entries, folders) => !entries.length && !(folders.add || []).length && !(folders.drop || []).length;
 
 // Les colonnes de la table `tableId` d'après les tables internes de Grist (deux petites tables : la table de fichiers peut peser des mégaoctets).
 async function columnsOf(doc, tableId) {
@@ -271,25 +273,38 @@ export class Filing {
   // Grist a refusé le lot : la phrase est dite).
   // `undo` : { undo, redo } (`said`), les phrases de l'annulation et du rétablissement ; l'état d'avant est relu ici, avant d'écrire, et sert à remettre le rangement comme il était.
   async #write(entries, folders = {}, undo = null) {
-    const { rangement, notice, t } = this.#opts;
-    if (!entries.length && !(folders.add || []).length && !(folders.drop || []).length) return false;
+    if (isEmptyWrite(entries, folders)) return false;
     const before = undo ? this.#before(entries, folders) : null;
     const plan = this.#opts.spaces ? splitWrites(entries, folders, this.#opts.files(), this.#opts.spaces.info()) : null;
-    if (plan && plan.error) { notice(t(plan.error)); return false; }
-    if (plan && touchesSpaces(plan) && !(await this.#opts.spaces.owner())) { notice(t('ex.spaceOwnersOnly')); return false; }
+    const refusal = await this.#refusalOf(plan);
+    if (refusal) { this.#opts.notice(this.#opts.t(refusal)); return false; }
+    if (!(await this.#store(entries, folders, plan))) return false;
+    if (before) this.undoStack.push({ run: () => this.#replayWrite(before, undo) });
+    await this.#opts.refresh();
+    return true;
+  }
+
+  // Pourquoi le lot ne s'écrit pas (la clé de sa phrase), ou null : les espaces le refusent, ou seul un propriétaire du document touche à un espace.
+  async #refusalOf(plan) {
+    if (!plan) return null;
+    if (plan.error) return plan.error;
+    return touchesSpaces(plan) && !(await this.#opts.spaces.owner()) ? 'ex.spaceOwnersOnly' : null;
+  }
+
+  // Écrit le placement dans les espaces et le rangement. Rend true quand c'est écrit, false sinon (la personne a refusé la table, Grist a refusé le lot : la phrase est dite).
+  async #store(entries, folders, plan) {
+    const { rangement, notice, t } = this.#opts;
     try {
       if (plan && touchesSpaces(plan)) await writePlacement(this.#opts.port.doc, plan);
       if (!plan) await rangement.setFiling(entries, folders);
-      else if (plan.entries.length || (plan.folders.add || []).length || (plan.folders.drop || []).length) await rangement.setFiling(plan.entries, plan.folders);
+      else if (!isEmptyWrite(plan.entries, plan.folders)) await rangement.setFiling(plan.entries, plan.folders);
+      return true;
     } catch (error) {
       if (error instanceof TableDeclined) { notice(t('ex.filingDeclined')); return false; }
       console.warn('GFS : le rangement n’a pas pu être enregistré', error);
       notice(t('ex.filingFailed', { reason: reasonOf(error) }));
       return false;
     }
-    if (before) this.undoStack.push({ run: () => this.#replayWrite(before, undo) });
-    await this.#opts.refresh();
-    return true;
   }
 
   // L'état d'avant un lot de rangement : ce que chaque fichier touché avait (favori, dossier), les dossiers gardés que le lot retire (à remettre) et ceux qu'il crée (à retirer).

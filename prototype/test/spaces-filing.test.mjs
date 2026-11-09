@@ -161,3 +161,19 @@ test('un fichier neuf (copie, PDF importé) dans un espace : placé par un propr
   assert.equal(other.log.filings[0].entries[0].folder, '');
   assert.deepEqual(other.log.notices, [t('ex.spaceOwnersOnly')]);
 });
+
+test('un chemin sous « Espaces » qui ne désigne aucun espace : rien n\'est écrit, la phrase le dit', async () => {
+  const { filing, log } = harness();
+  await filing.moveFileTo(file(1, 'Perso'), 'Espaces/Inconnu/Dossier');
+  assert.deepEqual(log.placements, []);
+  assert.deepEqual(log.filings, []);
+  assert.deepEqual(log.notices, [t('ex.spaceUnknown')]);
+});
+
+test('retirer un dossier gardé dans un espace : seul le placement s\'écrit, le rangement de la personne n\'est pas touché', async () => {
+  const { filing, log } = harness();
+  await filing.deleteFolder('Espaces/Achats/Contrats/Sous');
+  assert.deepEqual(log.placements, [['RemoveRecord', 'GFS_Placement', 3]]);
+  assert.deepEqual(log.filings, [], 'rien à écrire dans GFS_Rangement : pas d\'écriture à vide');
+  assert.deepEqual(log.notices.filter(text => text !== t('ex.folderDeleted', { name: 'Sous' })), []);
+});

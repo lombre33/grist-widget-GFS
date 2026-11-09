@@ -266,61 +266,109 @@ function dropRules(existing, items) {
 // Rend { ok: true, actions, firstRule, creates: [tables créées], adds: [colonnes ajoutées], legacy: nombre de fichiers déjà là, laissés lisibles de tous, appTables, skipped, extends } ou { ok: false, reason } : 'already'
 // (tout est posé), 'foreign' (une règle d'un autre auteur sur une table de GFS). Une table d'app qui porte déjà une règle d'un autre auteur est laissée (`skipped`) : ce qu'elle protège est à elle.
 export function planSharing(existing, filesColumns, targets = existing.targets || TARGETS) {
+  const view = sharingView(existing);
+  const shared = view.hasTable(SHARES_TABLE);
+  if (!shared && [SHARES_TABLE, FILES_TABLE].some(view.foreign)) return { ok: false, reason: 'foreign' };
+  const picked = pickTargets(view, targets, shared);
+  const { skipped, hadRules, todo } = picked;
+  const core = coreTables(view);
+  const sharesRules = shared && view.mine(SHARES_TABLE).length > 0;
+  if (upToDate({ shared, todo, sharesRules, core })) return { ok: false, reason: 'already' };
+  const { actions, creates, adds } = structureActions(existing, view, filesColumns, { shared, core, ...picked });
+  // Les fichiers déjà rangés restent lisibles de tous ceux qui ont accès au document, comme avant l'activation (contrats 11.7, point 12) : un partage « tout le document » par fichier ; les nouveaux fichiers
+  // ne sont lus que de leur auteur.
+  const legacy = legacyKeys(existing, todo.filter(target => !hadRules(target)));
+  if (legacy.length) actions.push(legacyAction(legacy));
+  const map = byResource(existing);
+  const appTables = todo.filter(target => !isFilesTarget(target)).map(target => target.table);
+  return { ok: true, actions: [...actions, ...rulesActions(existing, ruleGroups({ sharesRules, core, todo }))], firstRule: existing.rules.every(item => isBuiltIn(item, map)), creates, adds, legacy: legacy.length, appTables, skipped, extends: shared };
+}
+
+const isFilesTarget = target => target.table === FILES_TABLE;
+
+// Ce que le plan lit du document : ses tables et leurs colonnes, les règles de GFS (`mine`) et celles d'un autre auteur (`foreign`) sur une table.
+function sharingView(existing) {
   const hasTable = name => existing.tables.some(row => row.tableId === name);
   const columnsOf = table => new Set(existing.columns.filter(col => col.parentId === (existing.tables.find(row => row.tableId === table) || {}).id).map(col => col.colId));
-  const isFiles = target => target.table === FILES_TABLE;
   const mine = table => onTable(existing, table).filter(item => isSharingNote(item.memo));
   const foreign = table => onTable(existing, table).some(item => !isSharingNote(item.memo));
-  const shared = hasTable(SHARES_TABLE);
-  if (!shared && [SHARES_TABLE, FILES_TABLE].some(foreign)) return { ok: false, reason: 'foreign' };
-  const skipped = targets.filter(target => !isFiles(target) && hasTable(target.table) && foreign(target.table)).map(target => target.table);
-  const here = targets.filter(target => (isFiles(target) ? (!shared || hasTable(target.table)) : hasTable(target.table)) && !skipped.includes(target.table));
-  // Une table de fichiers est à jour quand elle porte toutes les colonnes d'aide et la règle des refus (celle du lot 4) ; une table partagée avant, ou avant les groupes, est relue : formules d'aide reprises, règles reposées.
+  return { hasTable, columnsOf, mine, foreign };
+}
+
+// Les tables de fichiers à traiter : celles de GFS et des apps qui sont dans le document, sans celles qui portent une règle d'un autre auteur (`skipped`, laissées). `todo` : celles qui ne sont pas à jour.
+// Une table de fichiers est à jour quand elle porte toutes les colonnes d'aide et la règle des refus (celle du lot 4) ; une table partagée avant, ou avant les groupes, est relue : formules d'aide reprises, règles reposées.
+function pickTargets(view, targets, shared) {
+  const { hasTable, columnsOf, mine, foreign } = view;
+  const skipped = targets.filter(target => !isFilesTarget(target) && hasTable(target.table) && foreign(target.table)).map(target => target.table);
+  const here = targets.filter(target => (isFilesTarget(target) ? (!shared || hasTable(target.table)) : hasTable(target.table)) && !skipped.includes(target.table));
   const hadRules = target => hasTable(target.table) && mine(target.table).length > 0;
   const covered = target => hadRules(target) && helperColumns(target).every(helper => columnsOf(target.table).has(helper.id)) && mine(target.table).some(item => String(item.aclFormula || '').includes('GFS_Refus'));
-  const todo = here.filter(target => !covered(target));
-  const sharesRules = shared && mine(SHARES_TABLE).length > 0;
+  return { skipped, here, hadRules, todo: here.filter(target => !covered(target)) };
+}
+
+// Les tables communes : les groupes (un partage cible `#nom`), les espaces et leur placement. `missing` : celles à créer ; `unruled` : celles qui sont là sans leurs règles.
+function coreTables(view) {
   const core = [[GROUPS_TABLE, groupColumns, GROUP_PUBLIC, groupPublicRules, groupRules], [SPACES_TABLE, spaceColumns, 'Cle,Nom,Voit', null, spaceRules], [PLACE_TABLE, placeColumns, 'Cible,Espace,Dossier,Voit', null, spaceRules]];
-  const coreMissing = core.filter(([name]) => !hasTable(name));
-  const coreUnruled = core.filter(([name]) => hasTable(name) && mine(name).length === 0);
-  if (shared && !todo.length && sharesRules && !coreMissing.length && !coreUnruled.length) return { ok: false, reason: 'already' };
+  return { missing: core.filter(([name]) => !view.hasTable(name)), unruled: core.filter(([name]) => view.hasTable(name) && view.mine(name).length === 0) };
+}
+
+// Rien à faire : le partage est là, avec ses règles, toutes les tables de fichiers sont à jour et les tables communes sont posées.
+const upToDate = ({ shared, todo, sharesRules, core }) => shared && !todo.length && sharesRules && !core.missing.length && !core.unruled.length;
+
+// Les tables et les colonnes à poser, dans l'ordre où Grist les veut : les tables communes en tête (les groupes d'abord : les colonnes d'aide qui les lisent viennent après), les tables de fichiers à créer
+// (la dernière en tête), la table de rangement, puis la table de partages (ou la formule de ses administrateurs) et les colonnes d'aide ajoutées. `creates` : les tables créées ; `adds` : les colonnes ajoutées.
+function structureActions(existing, view, filesColumns, { shared, here, hadRules, todo, core }) {
   const actions = []; const creates = []; const adds = [];
   if (!shared) { actions.push(['AddTable', SHARES_TABLE, shareColumns(here)]); creates.push(SHARES_TABLE); }
   else if (todo.length) actions.push(['ModifyColumn', SHARES_TABLE, 'AdminsBase', { formula: shareColumns(here).find(item => item.id === 'AdminsBase').formula }]);
   // Une fois le partage actif, un éditeur n'ajoute un fichier qu'à son nom : GFS doit connaître son adresse, qu'il ne lit que par la sonde de `GFS_Rangement` (js/rangement.js). Sans cette table, son PDF serait
   // refusé (mesuré, labo/run-partager-fenetre.mjs) : le partage la crée avec le reste, et la question le dit.
-  if (!hasTable(FILING_TABLE)) { actions.unshift(['AddTable', FILING_TABLE, FILING_COLUMNS.map(column => ({ ...column }))]); creates.push(FILING_TABLE); }
+  if (!view.hasTable(FILING_TABLE)) { actions.unshift(['AddTable', FILING_TABLE, FILING_COLUMNS.map(column => ({ ...column }))]); creates.push(FILING_TABLE); }
   for (const target of todo) {
-    if (!hasTable(target.table)) { actions.unshift(['AddTable', target.table, [...filesColumns, ...helperColumns(target)]]); creates.push(target.table); continue; }
-    const have = columnsOf(target.table);
-    for (const helper of helperColumns(target)) {
-      if (have.has(helper.id)) continue;
-      // Les PDF d'avant : l'auteur est repris de `Auteur` (une colonne à formule `$Auteur` qu'on rend ordinaire garde ses valeurs, mesuré le 09/11), puis la formule de création reprend (`user.Email`, pour les nouvelles lignes seulement).
-      if (isFiles(target) && helper.id === STAMP && have.has('Auteur')) actions.push(['AddColumn', target.table, STAMP, { type: 'Text', isFormula: true, formula: '$Auteur' }], ['ModifyColumn', target.table, STAMP, { isFormula: false, formula: helper.formula, recalcWhen: 0, recalcDeps: null }]);
-      else actions.push(['AddColumn', target.table, helper.id, { ...helper, id: undefined }]);
-      adds.push(`${target.table}.${helper.id}`);
-    }
-    if (hadRules(target)) { // une table déjà partagée : les formules d'aide d'avant sont reprises (après les colonnes ajoutées), les règles d'avant retirées pour être reposées
-      for (const helper of helperColumns(target)) if (helper.isFormula && have.has(helper.id)) actions.push(['ModifyColumn', target.table, helper.id, { formula: helper.formula }]);
-      actions.push(...dropRules(existing, mine(target.table)));
-    }
+    if (!view.hasTable(target.table)) { actions.unshift(['AddTable', target.table, [...filesColumns, ...helperColumns(target)]]); creates.push(target.table); continue; }
+    const step = helperActions(existing, view, target, hadRules(target));
+    actions.push(...step.actions);
+    adds.push(...step.adds);
   }
-  // Les groupes (un partage cible `#nom`), les espaces et leur placement : les tables naissent avec le partage, avant les colonnes d'aide qui les lisent (les groupes d'abord).
-  for (const [name, columns] of [...coreMissing].reverse()) actions.unshift(['AddTable', name, columns()]);
-  creates.push(...coreMissing.map(([name]) => name));
-  // Les fichiers déjà rangés restent lisibles de tous ceux qui ont accès au document, comme avant l'activation (contrats 11.7, point 12) : un partage « tout le document » par fichier ; les nouveaux fichiers
-  // ne sont lus que de leur auteur.
-  const legacyOf = target => ((existing.files && existing.files[target.table]) || (isFiles(target) ? existing.fileIds : null) || []).map(String).map(one => `${target.prefix}${one}`);
-  const legacy = todo.filter(target => !hadRules(target)).flatMap(legacyOf);
-  if (legacy.length) actions.push(['BulkAddRecord', SHARES_TABLE, legacy.map(() => null), { Cible: legacy, Personne: legacy.map(() => CATEGORIES.tous), Droit: legacy.map(() => 'lecture'), Telecharger: legacy.map(() => true) }]);
-  const map = byResource(existing);
-  const groups = [
+  for (const [name, columns] of [...core.missing].reverse()) actions.unshift(['AddTable', name, columns()]);
+  creates.push(...core.missing.map(([name]) => name));
+  return { actions, creates, adds };
+}
+
+// Une table de fichiers déjà là : ses colonnes d'aide manquantes ; si elle était déjà partagée (`hadRules`), ses formules d'aide d'avant sont reprises (après les colonnes ajoutées) et ses règles d'avant retirées pour être reposées.
+function helperActions(existing, view, target, hadRules) {
+  const have = view.columnsOf(target.table);
+  const missing = helperColumns(target).filter(helper => !have.has(helper.id));
+  const actions = missing.flatMap(helper => addColumnActions(target, helper, have));
+  const adds = missing.map(helper => `${target.table}.${helper.id}`);
+  if (!hadRules) return { actions, adds };
+  const formulas = helperColumns(target).filter(helper => helper.isFormula && have.has(helper.id)).map(helper => ['ModifyColumn', target.table, helper.id, { formula: helper.formula }]);
+  return { actions: [...actions, ...formulas, ...dropRules(existing, view.mine(target.table))], adds };
+}
+
+// Une colonne d'aide à ajouter. Les PDF d'avant : l'auteur est repris de `Auteur` (une colonne à formule `$Auteur` qu'on rend ordinaire garde ses valeurs, mesuré le 09/11), puis la formule de création reprend (`user.Email`, pour les nouvelles lignes seulement).
+function addColumnActions(target, helper, have) {
+  if (isFilesTarget(target) && helper.id === STAMP && have.has('Auteur')) {
+    return [['AddColumn', target.table, STAMP, { type: 'Text', isFormula: true, formula: '$Auteur' }], ['ModifyColumn', target.table, STAMP, { isFormula: false, formula: helper.formula, recalcWhen: 0, recalcDeps: null }]];
+  }
+  return [['AddColumn', target.table, helper.id, { ...helper, id: undefined }]];
+}
+
+// Les clés des fichiers déjà rangés des tables qui n'étaient pas encore partagées (`existing.files` par table, ou `fileIds` pour les fichiers de GFS).
+function legacyKeys(existing, targets) {
+  const keysOf = target => ((existing.files && existing.files[target.table]) || (isFilesTarget(target) ? existing.fileIds : null) || []).map(String).map(one => `${target.prefix}${one}`);
+  return targets.flatMap(keysOf);
+}
+
+const legacyAction = keys => ['BulkAddRecord', SHARES_TABLE, keys.map(() => null), { Cible: keys, Personne: keys.map(() => CATEGORIES.tous), Droit: keys.map(() => 'lecture'), Telecharger: keys.map(() => true) }];
+
+// Les règles à poser, par ressource : celles de la table de partages (si elles manquent), des tables communes qui n'en ont pas, puis de chaque table de fichiers à faire.
+function ruleGroups({ sharesRules, core, todo }) {
+  return [
     ...(sharesRules ? [] : [{ tableId: SHARES_TABLE, colIds: 'Auteur,AuteurAcces', rules: stampRules() }, { tableId: SHARES_TABLE, colIds: '*', rules: shareRules() }]),
-    ...[...coreMissing, ...coreUnruled].flatMap(([name, , publicColumns, publicRules, tableRules]) => [...(publicRules ? [{ tableId: name, colIds: publicColumns, rules: publicRules() }] : []), { tableId: name, colIds: '*', rules: tableRules() }]),
+    ...[...core.missing, ...core.unruled].flatMap(([name, , publicColumns, publicRules, tableRules]) => [...(publicRules ? [{ tableId: name, colIds: publicColumns, rules: publicRules() }] : []), { tableId: name, colIds: '*', rules: tableRules() }]),
     ...todo.flatMap(target => [...(target.stamped ? [{ tableId: target.table, colIds: STAMP, rules: stampRules('l’auteur d’un fichier est écrit par Grist, personne ne le change') }] : []), { tableId: target.table, colIds: '*', rules: fileRules(target) }]),
   ];
-  const appTables = todo.filter(target => !isFiles(target)).map(target => target.table);
-  return { ok: true, actions: [...actions, ...rulesActions(existing, groups)], firstRule: existing.rules.every(item => isBuiltIn(item, map)), creates, adds, legacy: legacy.length, appTables, skipped, extends: shared };
 }
 
 // Retirer le partage : les règles de GFS (note « GFS : Partages ») et leurs ressources. Les tables et les colonnes d'aide restent (rien d'une donnée ne s'efface) ; plus aucune règle ne les lit.

@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-Nadblru5OhAd55/TLPOa8I9TQKgPuiDd9eBennawwwY='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-Jba5xUTrFTazOLfJbHuTZz3+tQZqAG0oe66IUTmVSYM='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=e13ef00da6">
 <link rel="stylesheet" href="css/explorer.css?v=846c19fa18">
 <link rel="stylesheet" href="css/modules.css?v=b1b43f0db6">
@@ -63,7 +63,7 @@
     "./js/file-managers.js": "./js/file-managers.js?v=67b93f78fa",
     "./js/files-store.js": "./js/files-store.js?v=98d9eb3e5c",
     "./js/filing-window.js": "./js/filing-window.js?v=933db2d364",
-    "./js/filing.js": "./js/filing.js?v=0860d3c3d6",
+    "./js/filing.js": "./js/filing.js?v=a949e1c034",
     "./js/filter.js": "./js/filter.js?v=72e78ac0ad",
     "./js/frames.js": "./js/frames.js?v=554a438e75",
     "./js/gfs-copy.js": "./js/gfs-copy.js?v=204d80003f",
@@ -125,7 +125,7 @@
     "./js/share-receive-flow.js": "./js/share-receive-flow.js?v=1ea8a422a4",
     "./js/share-receive-window.js": "./js/share-receive-window.js?v=23906c52f1",
     "./js/share-window.js": "./js/share-window.js?v=7618284181",
-    "./js/sharing-model.js": "./js/sharing-model.js?v=2ac58f1226",
+    "./js/sharing-model.js": "./js/sharing-model.js?v=b3e6bc7aa8",
     "./js/spaces-filing.js": "./js/spaces-filing.js?v=0702b4b954",
     "./js/state.js": "./js/state.js?v=ac1616eaf2",
     "./js/steps-window.js": "./js/steps-window.js?v=92947a32ee",

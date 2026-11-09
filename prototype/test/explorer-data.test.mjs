@@ -219,3 +219,41 @@ test('la case « + pièces jointes » : la table `_grist_Attachments` est lue te
   assert.equal(refused.data, undefined);
   assert.equal(refused.error.message, 'accès refusé');
 });
+
+test('une table d\'app illisible est dite (l\'app et la raison) et n\'arrête pas la lecture des autres', async () => {
+  const warn = console.warn;
+  console.warn = () => {};
+  try {
+    const data = { ...tables(), GFS_Fichiers: { id: [1], Identifiant: ['aa'], Nom: ['A.pdf'], Type: ['pdf'], Date: [10], Auteur: [''] } };
+    const found = await loadFiles(port(data, { broken: spec.table }), [{ manifest }, FILES_ENTRY], '');
+    assert.deepEqual(found.problems, [{ app: 'publipostage', reason: 'accès refusé' }]);
+    assert.deepEqual(found.files.map(file => file.key), ['gfs-fichiers:aa'], 'les fichiers de GFS se lisent quand même');
+    assert.deepEqual([found.stats.tables, found.stats.rows], [1, 1], 'seules les tables lues comptent');
+  } finally { console.warn = warn; }
+});
+
+test('la corbeille des apps ne rend que les fichiers des apps dont la table se supprime par ligne (`suppression.ligne`), et rien d\'une autre app ni d\'une autre table', async () => {
+  const bin = {
+    id: [1, 2, 3], Identifiant: ['b1', 'b2', 'b3'], App: ['publipostage', 'form', 'publipostage'], Table: [spec.table, spec.table, 'Autre'], FichierId: ['7', '8', '9'], Nom: ['Vieux', 'Autre app', 'Autre table'],
+    Type: ['', '', ''], Date: [0, 0, 0], Auteur: ['', '', ''], SupprimeLe: [1762000000, 1762000000, 1762000000], SupprimePar: ['', '', ''], Instantane: ['{}', '{}', '{}'], Dossier: ['', '', ''],
+  };
+  const data = { ...tables(), GFS_Corbeille: bin };
+  const withRecipe = await loadFiles(port(data), [{ manifest }], '');
+  assert.deepEqual(withRecipe.trash.map(file => file.name), ['Vieux'], 'la ligne de cette app et de cette table seulement');
+  const without = { ...manifest, fichiers: [{ ...spec, suppression: undefined }] };
+  const none = await loadFiles(port(data), [{ manifest: without }], '');
+  assert.deepEqual(none.trash, [], 'sans `suppression.ligne`, la table n\'a pas de corbeille de GFS');
+});
+
+test('un fichier placé dans un espace en prend le dossier ; les dossiers de l\'espace sont ajoutés à ceux de la personne', async () => {
+  const data = {
+    ...tables(),
+    GFS_Espaces: { id: [1], Cle: ['achats'], Nom: ['Achats'] },
+    GFS_Placement: { id: [1], Cible: ['publipostage:1'], Espace: ['achats'], Dossier: ['Contrats'] },
+  };
+  const { files, folders, spaces } = await loadFiles(port(data), [{ manifest }], '');
+  assert.equal(files.find(file => file.id === '1').folder, 'Espaces/Achats/Contrats');
+  assert.equal(files.find(file => file.id === '2').folder, 'Archives');
+  assert.ok(folders.includes('Espaces/Achats'), 'l\'espace est un dossier');
+  assert.equal(spaces.spaces.length, 1);
+});

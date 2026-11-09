@@ -2,7 +2,7 @@
 // clavier) ; ici, la table des touches, sans DOM.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { listAction, isSearchKey, clipboardAction, parentPath, stepRow } from '../js/explorer-keys.js';
+import { listAction, moveTarget, isSearchKey, clipboardAction, parentPath, stepRow } from '../js/explorer-keys.js';
 
 const press = (key, mods = {}) => ({ key, ctrlKey: false, altKey: false, metaKey: false, shiftKey: false, ...mods });
 const LIST = { display: 'list', filtering: false };
@@ -35,6 +35,22 @@ test('un nom de touche qui est aussi un nom de propriété d\'objet ne donne auc
     assert.equal(listAction(press(key), LIST), null, key);
     assert.equal(listAction(press(key), TILES), null, key);
   }
+});
+
+test('moveTarget : l\'index que vise chaque geste de déplacement, avec ou sans choix, en liste et en vignettes ; un autre geste n\'en vise aucun', () => {
+  const columns = () => 3;
+  const move = (action, at, count = 7) => moveTarget(action, at, count, columns);
+  assert.deepEqual(['next', 'prev', 'first', 'last'].map(action => move(action, 2)), [3, 1, 0, 6]);
+  assert.deepEqual(['next', 'prev'].map(action => move(action, -1)), [0, 0], 'rien n\'est choisi : ↓ et ↑ vont à la première ligne');
+  assert.equal(move('prev', 0), -1, 'la borne est ramenée dans la liste par l\'appelant');
+  assert.equal(move('next', 6), 7);
+  assert.deepEqual(['down', 'up'].map(action => move(action, 4)), [6, 1], 'une rangée de trois vignettes plus bas, plus haut');
+  assert.deepEqual(['down', 'up'].map(action => move(action, -1)), [0, 0]);
+  assert.equal(move('last', 0, 1), 0);
+  let read = 0;
+  moveTarget('next', 1, 7, () => { read += 1; return 3; });
+  assert.equal(read, 0, 'le nombre de colonnes n\'est lu que pour ↑ et ↓ en vignettes');
+  for (const action of ['activate', 'rename', 'delete', 'menu', 'parent', 'constructor', 'toString', null, undefined]) assert.equal(moveTarget(action, 2, 7, columns), null, String(action));
 });
 
 test('Retour arrière ne remonte pas pendant une recherche : la liste ne montre pas un dossier', () => {

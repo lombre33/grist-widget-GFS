@@ -21,16 +21,37 @@ const STATUS = Object.freeze({ added: 'ajoute', replaced: 'remplace', copied: 'c
 // `nom` : le nom pour GFS, un « .pdf » manquant est ajouté ; `type` : `pdf` (le seul que GFS garde) ; `lot` : un texte qui nomme l'export en lot (au plus 64 signes) ; `suivants` : combien de
 // fichiers l'app rangera encore après celui-ci (0 : le dernier, la case « pour les suivants » n'est pas offerte) ; `dossier` : le dossier de la personne où va un fichier nouveau.
 export function readDeposit(args) {
-  const { fichier: file, nom, type = PDF_TYPE, lot, suivants, dossier } = args;
+  const { fichier: file, type = PDF_TYPE } = args;
   if (!(file instanceof Blob)) throw refuse('ranger : fichier doit être un File ou un Blob.');
+  const name = readName(args.nom);
+  if (type !== PDF_TYPE) throw refuse(`ranger : GFS ne garde que des fichiers de type « ${PDF_TYPE} » (reçu : « ${String(type).slice(0, 40)} »).`);
+  return { file, name, type, lot: readLot(args.lot), more: readMore(args.suivants), folder: readFolder(args.dossier) };
+}
+
+// Le nom pour GFS : les signes de contrôle deviennent des espaces, un « .pdf » manquant est ajouté.
+function readName(nom) {
   const asked = typeof nom === 'string' ? nom.replace(/[\u0000-\u001f\u007f]+/g, ' ').trim() : '';
   const name = cleanName(asked);
   if (!name || name.length > NAME_MAX) throw refuse(`ranger : nom doit être un texte de 1 à ${NAME_MAX} signes.`);
-  if (type !== PDF_TYPE) throw refuse(`ranger : GFS ne garde que des fichiers de type « ${PDF_TYPE} » (reçu : « ${String(type).slice(0, 40)} »).`);
+  return name;
+}
+
+// Le texte qui nomme l'export en lot, ou `null` quand l'app n'en donne pas.
+function readLot(lot) {
   if (lot !== undefined && (typeof lot !== 'string' || lot.trim() === '' || lot.length > LOT_MAX)) throw refuse(`ranger : lot doit être un texte de 1 à ${LOT_MAX} signes.`);
+  return lot === undefined ? null : lot;
+}
+
+// Combien de fichiers l'app rangera encore après celui-ci, ou `null` quand elle ne le dit pas.
+function readMore(suivants) {
   if (suivants !== undefined && !(Number.isInteger(suivants) && suivants >= 0)) throw refuse('ranger : suivants doit être un entier de 0 ou plus.');
+  return suivants === undefined ? null : suivants;
+}
+
+// Le dossier de la personne où va un fichier nouveau (la racine quand l'app n'en donne pas).
+function readFolder(dossier) {
   if (dossier !== undefined && (typeof dossier !== 'string' || dossier.length > FOLDER_MAX)) throw refuse(`ranger : dossier doit être un chemin de ${FOLDER_MAX} signes au plus.`);
-  return { file, name, type, lot: lot === undefined ? null : lot, more: suivants === undefined ? null : suivants, folder: normalizePath(dossier) };
+  return normalizePath(dossier);
 }
 
 export class Deposit {

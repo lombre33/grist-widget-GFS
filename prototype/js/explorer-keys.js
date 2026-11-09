@@ -24,6 +24,22 @@ export function listAction(event, { display, filtering }) {
   return PLAIN_KEYS.get(key) || null;
 }
 
+// Les gestes qui déplacent le choix : l'index visé, d'après l'index du choix (`at`, -1 sans choix) et le nombre de lignes ; `columns()` rend le nombre de colonnes de la grille (lu seulement en vignettes).
+const MOVES = new Map([
+  ['next', at => at + 1],
+  ['prev', at => (at < 0 ? 0 : at - 1)],
+  ['first', () => 0],
+  ['last', (at, count) => count - 1],
+  ['down', (at, count, columns) => stepRow(at, columns(), count, 1)],
+  ['up', (at, count, columns) => stepRow(at, columns(), count, -1)],
+]);
+
+// L'index que vise un geste de déplacement (hors de la liste : l'appelant le ramène dedans), ou null quand le geste n'en est pas un.
+export function moveTarget(action, at, count, columns) {
+  const move = MOVES.get(action);
+  return move ? move(at, count, columns) : null;
+}
+
 // La personne tape-t-elle dans un champ (la recherche, une fenêtre) ? Ses touches y gardent leur sens.
 const typingIn = target => Boolean(target && typeof target.closest === 'function' && target.closest('input, textarea, select, [contenteditable]'));
 

@@ -46,39 +46,49 @@ export async function loadAttachments(port) {
 export async function loadFiles(port, apps, identity = '') {
   const started = performance.now();
   const tables = await existingTables(port);
-  const files = [];
-  const trash = [];
-  const problems = [];
-  const stats = { ms: 0, tables: 0, rows: 0 };
   const gfs = await readTable(port, tables, TABLE);
   if (gfs.error) console.warn('GFS : le rangement de GFS est illisible', gfs.error);
-  const gfsFiling = gfs.data ? readGfsFiling(gfs.data, identity) : null;
   const folders = gfs.data ? readGfsFolders(gfs.data, identity) : [];
   const spaces = await loadSpaces(port.doc, tables);
   if (spaces) folders.push(...spaces.folders);
   const bin = await readTable(port, tables, BIN_TABLE);
   if (bin.error) console.warn('GFS : la corbeille des apps est illisible', bin.error);
+  const context = { port, tables, identity, spaces, bin, gfsFiling: gfs.data ? readGfsFiling(gfs.data, identity) : null };
+  const files = [];
+  const trash = [];
+  const problems = [];
+  const stats = { ms: 0, tables: 0, rows: 0 };
   for (const { manifest } of apps) {
     for (const spec of manifest.fichiers || []) {
-      const main = await readTable(port, tables, spec.table);
-      if (main.error) { problems.push({ app: manifest.id, reason: String(main.error.message || main.error) }); continue; }
-      const filingTable = spec.rangement ? await readTable(port, tables, spec.rangement.table) : { data: null };
-      const filing = filingTable.data ? readFiling(spec.rangement, filingTable.data, identity) : null;
-      const found = readFiles(manifest, spec, main.data, null, await readLinked(port, tables, spec));
-      applyFiling(found, filing, gfsFiling);
-      applyPlacement(found, spaces);
-      for (const file of found) (file.trashed ? trash : files).push(file);
-      // Les fichiers de l'app que la personne a mis à la corbeille ne sont plus dans sa table : ils sont dans `GFS_Corbeille` (js/gfs-trash.js), et gardent leur dossier, que le rangement n'a pas quitté.
-      if (recipeOf(spec) && bin.data) {
-        const gone = binFiles(spec, bin.data, manifest.id);
-        const entries = readFiles(manifest, gone.spec, gone.data, gone.weights);
-        applyFiling(entries, filing, gfsFiling);
-        trash.push(...entries);
-      }
+      const one = await readAppFiles(context, manifest, spec);
+      if (one.problem) { problems.push(one.problem); continue; }
+      for (const file of one.found) (file.trashed ? trash : files).push(file);
+      trash.push(...one.binned);
       stats.tables += 1;
-      stats.rows += found.length;
+      stats.rows += one.found.length;
     }
   }
   stats.ms = Math.round(performance.now() - started);
   return { files, trash, folders, spaces, problems, stats };
+}
+
+// Les fichiers d'une table de fichiers d'une app, rangés et placés : { found, binned } (`binned` : ceux qu'elle a mis à la corbeille de GFS), ou { problem } quand sa table est illisible.
+async function readAppFiles({ port, tables, identity, spaces, bin, gfsFiling }, manifest, spec) {
+  const main = await readTable(port, tables, spec.table);
+  if (main.error) return { problem: { app: manifest.id, reason: String(main.error.message || main.error) } };
+  const filingTable = spec.rangement ? await readTable(port, tables, spec.rangement.table) : { data: null };
+  const filing = filingTable.data ? readFiling(spec.rangement, filingTable.data, identity) : null;
+  const found = readFiles(manifest, spec, main.data, null, await readLinked(port, tables, spec));
+  applyFiling(found, filing, gfsFiling);
+  applyPlacement(found, spaces);
+  return { found, binned: binnedFiles(manifest, spec, bin, filing, gfsFiling) };
+}
+
+// Les fichiers de l'app que la personne a mis à la corbeille ne sont plus dans sa table : ils sont dans `GFS_Corbeille` (js/gfs-trash.js), et gardent leur dossier, que le rangement n'a pas quitté.
+function binnedFiles(manifest, spec, bin, filing, gfsFiling) {
+  if (!recipeOf(spec) || !bin.data) return [];
+  const gone = binFiles(spec, bin.data, manifest.id);
+  const entries = readFiles(manifest, gone.spec, gone.data, gone.weights);
+  applyFiling(entries, filing, gfsFiling);
+  return entries;
 }

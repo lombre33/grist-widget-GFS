@@ -10,7 +10,7 @@ import { listItems, treeRows, typeChoices } from './explorer-model.js';
 import { words } from './search.js';
 import { buildShell, relabel, rightsChip, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar, trashBar, totalBar, pjBox } from './explorer-view.js';
 import { sumWeights, pieceKeys, otherAttachments } from './weight.js';
-import { listAction, isSearchKey, clipboardAction, parentPath, stepRow } from './explorer-keys.js';
+import { listAction, moveTarget, isSearchKey, clipboardAction, parentPath } from './explorer-keys.js';
 import { UndoStack } from './undo-stack.js';
 import { undoable } from './explorer-undo.js';
 import { Clipboard } from './explorer-clipboard.js';
@@ -471,19 +471,27 @@ export class Explorer {
     const rows = [...this.#refs.list.querySelectorAll('[data-key]')];
     if (!rows.length) { if (action === 'parent') this.#goParent(event); return; }
     const at = rows.findIndex(row => row.dataset.key === this.state.sel);
-    const here = rows[at >= 0 ? at : rows.findIndex(row => row.contains(event.target))] || null;
-    const go = index => { event.preventDefault(); this.#select(rows[Math.min(Math.max(index, 0), rows.length - 1)].dataset.key, true); };
-    const onRow = run => { if (here) { event.preventDefault(); run(here.dataset.key, here); } };
-    if (action === 'next') go(at + 1);
-    else if (action === 'prev') go(at < 0 ? 0 : at - 1);
-    else if (action === 'down' || action === 'up') go(stepRow(at, this.#columns(rows), rows.length, action === 'down' ? 1 : -1));
-    else if (action === 'first') go(0);
-    else if (action === 'last') go(rows.length - 1);
+    const to = moveTarget(action, at, rows.length, () => this.#columns(rows));
+    if (to !== null) this.#moveSelection(event, rows, to);
     else if (action === 'parent') this.#goParent(event);
-    else if (action === 'activate') onRow(key => this.#activate(key));
-    else if (action === 'rename') onRow(key => this.#renameKey(key));
-    else if (action === 'delete') onRow(key => { this.#select(key, false); void this.#trashKey(key); });
-    else if (action === 'menu') onRow((key, row) => this.#rowMenu(key, row.querySelector('[data-menu]') || row));
+    else this.#keyOnRow(event, action, rows[at >= 0 ? at : rows.findIndex(row => row.contains(event.target))] || null);
+  }
+
+  // Le choix va à la ligne d'index `to` (tenu dans la liste).
+  #moveSelection(event, rows, to) {
+    event.preventDefault();
+    this.#select(rows[Math.min(Math.max(to, 0), rows.length - 1)].dataset.key, true);
+  }
+
+  // Un geste sur la ligne choisie, ou sur celle où est le focus (`here`) ; rien quand il n'y en a pas.
+  #keyOnRow(event, action, here) {
+    if (!here) return;
+    event.preventDefault();
+    const key = here.dataset.key;
+    if (action === 'activate') this.#activate(key);
+    else if (action === 'rename') this.#renameKey(key);
+    else if (action === 'delete') { this.#select(key, false); void this.#trashKey(key); }
+    else if (action === 'menu') this.#rowMenu(key, here.querySelector('[data-menu]') || here);
   }
 
   // Le nombre de vignettes par rangée : celles qui sont à la hauteur de la première.

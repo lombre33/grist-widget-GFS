@@ -238,27 +238,42 @@ export function infoBar(ctx) {
 function infoContent(ctx) {
   const { t, selected } = ctx;
   const filingHint = ctx.personal ? t('ex.hintPersonal') : t('ex.hintShared');
-  if (!selected) {
-    const hint = ctx.state.view === 'trash' ? t('trash.hint') : (ctx.state.view === 'folder' ? filingHint : t('ex.hintSelect'));
-    return h('div', { class: 'inf' }, infoLine1(icon('info'), h('span', { class: 'mu' }, ctx.choosing ? t('ex.choose.hint') : hint)),
-      h('div', { class: 'l2' }, icon('pin'), h('span', { class: 'lt' }, ctx.personal ? t('ex.hintFav') : t('ex.hintFavShared'))));
-  }
-  if (selected.kind === 'folder') {
-    return h('div', { class: 'inf' }, infoLine1(icon('folder'), h('b', null, folderLabel(t, selected.path, selected.name)), h('span', { class: 'mu' }, `· ${t('ex.fileCount', { n: selected.count })} · ${weightText(ctx, selected.weight)}`)),
-      h('div', { class: 'l2' }, h('span', { class: 'lt' }, filingHint)));
-  }
-  const { file } = selected;
+  if (!selected) return noSelectionInfo(ctx, filingHint);
+  return selected.kind === 'folder' ? folderInfo(ctx, selected, filingHint) : fileInfo(ctx, selected.file);
+}
+
+// Rien n'est choisi : ce que fait la vue (la corbeille, un choix de fichier, le rangement d'un dossier), puis un rappel des favoris.
+function noSelectionInfo(ctx, filingHint) {
+  const { t } = ctx;
+  const hint = ctx.state.view === 'trash' ? t('trash.hint') : (ctx.state.view === 'folder' ? filingHint : t('ex.hintSelect'));
+  return h('div', { class: 'inf' }, infoLine1(icon('info'), h('span', { class: 'mu' }, ctx.choosing ? t('ex.choose.hint') : hint)),
+    h('div', { class: 'l2' }, icon('pin'), h('span', { class: 'lt' }, ctx.personal ? t('ex.hintFav') : t('ex.hintFavShared'))));
+}
+
+function folderInfo(ctx, selected, filingHint) {
+  const { t } = ctx;
+  return h('div', { class: 'inf' }, infoLine1(icon('folder'), h('b', null, folderLabel(t, selected.path, selected.name)), h('span', { class: 'mu' }, `· ${t('ex.fileCount', { n: selected.count })} · ${weightText(ctx, selected.weight)}`)),
+    h('div', { class: 'l2' }, h('span', { class: 'lt' }, filingHint)));
+}
+
+// Le fichier choisi : son nom, son type et son poids ; en dessous le grisé s'il y en a un, sinon ses faits.
+function fileInfo(ctx, file) {
+  const { t } = ctx;
   const lock = ctx.lockOf(file);
-  const who = person(authorOf(file));
-  const date = formatDate(stampOf(file), ctx.now, ctx.locale, t);
-  // À la corbeille : quand et par qui le fichier y est allé, et où il revient ; sinon : l'app qui l'ouvre, sa dernière modification et son auteur.
-  const facts = file.trashed
-    ? [t('trash.deletedOn', { date }), who.name ? t('ex.modifiedBy', { by: who.name }) : '', file.folder ? t('trash.backTo', { folder: file.folder }) : '']
-    : [ctx.opensIn(file), file.ts === null ? '' : t('ex.modifiedOn', { date }), who.name ? t('ex.modifiedBy', { by: who.name }) : ''];
-  const second = lock ? lock.text : facts.filter(Boolean).join(' · ');
+  const second = lock ? lock.text : fileFacts(ctx, file).filter(Boolean).join(' · ');
   return h('div', { class: 'inf', 'data-fam': lock ? null : family(file) },
     infoLine1(icon(lock ? 'lock' : file.icon), h('b', null, file.name || t('ex.untitled')), h('span', { class: 'mu' }, `· ${ctx.typeLabel(file)} · ${weightText(ctx, file.weight)}`)),
     h('div', { class: 'l2' }, h('span', { class: 'lt' }, second)));
+}
+
+// À la corbeille : quand et par qui le fichier y est allé, et où il revient ; sinon : l'app qui l'ouvre, sa dernière modification et son auteur.
+function fileFacts(ctx, file) {
+  const { t } = ctx;
+  const who = person(authorOf(file));
+  const date = formatDate(stampOf(file), ctx.now, ctx.locale, t);
+  const by = who.name ? t('ex.modifiedBy', { by: who.name }) : '';
+  if (file.trashed) return [t('trash.deletedOn', { date }), by, file.folder ? t('trash.backTo', { folder: file.folder }) : ''];
+  return [ctx.opensIn(file), file.ts === null ? '' : t('ex.modifiedOn', { date }), by];
 }
 
 // La barre de la corbeille, au-dessus de la liste : la règle (rien ne part seul) et « Vider la corbeille… ». Rien tant que la corbeille est vide.

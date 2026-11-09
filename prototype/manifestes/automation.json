@@ -15,7 +15,13 @@
   "permissions": {
     "acces": "full",
     "lit": ["*"],
-    "ecrit": ["*"]
+    "ecrit": ["*"],
+    "formules": {
+      "pourquoi": {
+        "fr": "À la création de sa table, la colonne « Auteur » du journal lit user.Email par une formule déclenchée à la création de la ligne : Grist y met l'adresse de la personne, l'app ne l'écrit jamais.",
+        "en": "When it creates its table, the log’s “Auteur” column reads user.Email through a formula triggered when the row is created: Grist puts the person’s address there, the app never writes it."
+      }
+    }
   },
   "actions": { "ouvrir": [], "choisir": [] }
 }

@@ -788,7 +788,7 @@ par-dessus le cadre de l'app (point 7).
    `AddVisibleColumn`, `AddHiddenColumn` et les colonnes d'`AddTable`, ainsi que `SetDisplayFormula`. [M] **Mesuré le 22/10 avec Form+ à `c249c4a`**
    (`run-form.mjs`) : son mode interne pose `FormPlus_Repondants` et sa colonne `Email`, une formule déclenchée `user.Email` ; sans la
    capacité, le courtier la refusait (« Une colonne à formule demande la capacité « formules » ») ; avec elle, déclarée dans le manifeste
-   de l'app, la table et la colonne naissent, sans refus.
+   de l'app, la table et la colonne naissent, sans refus. [M] **Automation+ la déclare depuis le 09/11** (décision du porteur, carte « Remplir la colonne Auteur du journal ? ») : sa colonne `Auteur` du journal est une formule déclenchée `user.Email` posée à la création de sa table ; mesuré avec la vraie app dans un vrai Grist (`labo/run-auteur-automation.mjs`, faits vérifiés 63) : la table naît avec la formule et Grist y met l'adresse de la personne du moment, sans que l'app écrive d'auteur ni que GFS lui donne l'adresse (`identite` reste non déclarée). Une table créée avant la déclaration garde sa colonne sans formule.
 3. [D] **`structure`** : `{ "pourquoi": { … } }`. Sans elle, les verbes de la classe « Structure » du tableau 3.3
    (`CreateViewSection` en v0) sont refusés : une app qui crée des sections change les pages de la personne.
 4. [D] **Les entrées de `gristInterne`** ont la forme `{ "tables": [ … ], "lit": true, "ecrit": [ "colonne", … ], "retire": true,

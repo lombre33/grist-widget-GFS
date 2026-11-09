@@ -116,7 +116,9 @@ test('contrats 3.3 point 7 : seuls desc et parseStrings passent', () => {
 });
 
 test('contrats 3.4 point 2 : sans « formules », toute colonne à formule est refusée', () => {
-  const noFormulas = policyOf({ ...automation() });
+  const bare = automation(); delete bare.permissions.formules; // Automation+ la déclare depuis le 09/11 (colonne « Auteur ») : l'essai du refus part de son manifeste sans elle
+  const noFormulas = policyOf(bare);
+  allowed(policyOf(automation()), [['AddTable', 'Automation', [{ id: 'Type', type: 'Text' }, { id: 'Auteur', type: 'Text', isFormula: false, formula: 'user.Email', recalcWhen: 0 }]]]);
   assert.match(refused(noFormulas, [['AddColumn', 'Clients', 'F', { formula: '$A + 1', isFormula: true }]]).reason, /formules/);
   assert.match(refused(noFormulas, [['AddColumn', 'Clients', 'F', { formula: '$A + 1', isFormula: false }]]).reason, /formules/);
   assert.match(refused(noFormulas, [['AddTable', 'T', [{ id: 'A' }, { id: 'B', formula: '1' }]]]).reason, /formules/);

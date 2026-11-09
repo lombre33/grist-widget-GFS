@@ -46,6 +46,7 @@ import { ask } from './ask-window.js';
 import { carriesFile } from './import-file.js';
 import { Entries } from './entries.js';
 import { Openings } from './openings.js';
+import { ReceivedControl } from './received-control.js';
 import { publicationQuestion } from './publication-window.js';
 import { ModulesWindow, rowKey } from './modules-window.js';
 import { buildContext, identityFor, instanceOf, pageOf } from './context.js';
@@ -232,8 +233,14 @@ export class GfsController {
     const gestures = { t: this.t, notice: text => this.notice(text), refresh: () => this.refreshFiles() };
     const filing = this.#buildFiling();
     this.filing = filing;
+    // « Partagés avec moi » (js/received-control.js) : les fichiers reçus d'un autre document, grisés tant qu'ils ne sont pas acceptés.
+    this.received = new ReceivedControl({
+      port: this.port, t: this.t, locale: () => this.locale, container: this.$('stage'), inertTargets: this.inertTargets, typeLabel: this.typeLabel, notice: text => this.notice(text),
+      blocked: () => this.#writeBlock(), refresh: () => this.refreshFiles(), open: file => this.openings.openFile(file),
+    });
     this.explorer = new Explorer({
-      container: this.$('stage'), i18n: this.i18n, locale: this.locale, now: () => new Date(), appName: this.appName, typeLabel: this.typeLabel, lockOf: this.lockOf,
+      container: this.$('stage'), i18n: this.i18n, locale: this.locale, now: () => new Date(), appName: this.appName, received: this.received,
+      typeLabel: file => (file.received ? this.received.typeLabel(file) : this.typeLabel(file)), lockOf: file => (file.received ? this.received.lockOf(file) : this.lockOf(file)),
       newTypes: this.newTypes, importTypes: this.importTypes, canClose: () => Boolean(this.session), notice: text => this.notice(text),
       settings: () => settingsItems({
         t: this.t, language: () => ({ choice: this.language.choice, grist: this.language.grist }), onLanguage: choice => this.#chooseLanguage(choice), onTheme: () => this.openTheme(),
@@ -357,9 +364,9 @@ export class GfsController {
     this.#fileStatus = { loading: true, restricted: false, problems: [] };
     this.#showFileStatus();
     try {
-      const { files, trash, folders, spaces, problems, stats } = await loadFiles(this.port, [...this.validApps(), FILES_ENTRY], this.identity);
+      const { files, trash, folders, received, spaces, problems, stats } = await loadFiles(this.port, [...this.validApps(), FILES_ENTRY], this.identity);
       this.spaces = spaces;
-      this.explorer.setFiles(files, trash, folders);
+      this.explorer.setFiles(files, trash, folders, received);
       this.#fileStatus = { loading: false, restricted: false, problems: problems.map(item => ({ key: 'ex.readFailed', app: item.app, reason: item.reason })) };
       this.#showFileStatus();
       this.doc.body.dataset.explorerStats = JSON.stringify(stats);

@@ -25,7 +25,10 @@ import { askName, chooseFolder } from '/js/filing-window.js';
 import { applyFiling, folderMoves, inside, normalizePath, readFiles, readFiling } from '/js/explorer-model.js';
 import { Copying } from '/js/copying.js';
 import { applyPlacement, readSpaces } from '/js/spaces-filing.js';
-import { FILES_MANIFEST } from '/js/gfs-files.js';
+import { FILES_MANIFEST, FILES_COLUMN_IDS } from '/js/gfs-files.js';
+import { ReceivedControl } from '/js/received-control.js';
+import { loadReceived, answerFile } from '/js/received-files.js';
+import { fakeGrist } from '/test/fake-grist.mjs';
 import { createI18n } from '/js/i18n.js';
 import { installSprite } from '/js/icons.js';
 import { leaveQuestion } from '/js/leave.js';
@@ -103,7 +106,8 @@ async function mount() {
   let live = [...files];
   let trashed = [];
   let kept = []; // les dossiers que la personne garde sans fichier
-  const show = () => explorer.setFiles(live, trashed, kept);
+  let arrivals = []; // les fichiers reçus d'un autre document (« Partagés avec moi », `window.__shared`)
+  const show = () => explorer.setFiles(live, trashed, kept, arrivals);
   const folders = new Map(files.map(file => [file.key, file.folder])); // où chaque fichier est au départ : couper puis coller en déplace, `__reset` les remet
   const pick = (list, wanted) => list.findIndex(file => file.key === wanted.key);
   const move = (from, to, wanted) => { const at = pick(from, wanted); if (at < 0) return null; const [file] = from.splice(at, 1); to.push(file); return file; };
@@ -210,9 +214,32 @@ async function mount() {
   // « Apps et extensions » et « Table de travail » (js/modules-window.js, js/work-window.js ; test/voile-firefox.mjs) : des fenêtres à part de la base commune, dont le fond ne ferme rien non plus.
   window.__modulesWindow = () => void new ModulesWindow({ container: stage, i18n, locale, model: () => ({ items: [], active: 0, total: 0 }), blocked: () => null, inertTargets: () => [explorer.root], on: {}, onClose: () => {} }).open();
   window.__workWindow = () => void new WorkWindow({ container: stage, i18n, inertTargets: () => [explorer.root], source: { pageTable: 'Inscrits', pageRow: null, current: null, tables: () => [{ id: 'Inscrits', locked: null }], rows: async () => [] }, onPick: () => {}, onClose: () => {} }).open();
+  // « Partagés avec moi » (js/received-control.js, test/partager-recevoir-firefox.mjs) : le vrai contrôle, la vraie fenêtre « Accepter ? » et les vraies marques, écrites dans un faux Grist en mémoire (`window.__sharedTables`).
+  // `window.__shared(kind)` y pose des arrivées et ouvre la vue ; `window.__sharedBlocked` : la phrase qui dit pourquoi rien ne s'écrit.
+  const baseLabel = file => (file.typeInfo ? file.typeInfo.nom[language] || file.typeInfo.nom.fr : file.type);
+  let sharedGrist = fakeGrist({});
+  const readArrivals = async () => { arrivals = await loadReceived(sharedGrist.port, await sharedGrist.port.doc.listTables()); show(); };
+  const received = new ReceivedControl({
+    port: sharedGrist.port, t: i18n.t, locale: () => locale, container: stage, inertTargets: () => [explorer.root], typeLabel: baseLabel, notice: text => window.__notices.push(text), blocked: () => window.__sharedBlocked || null,
+    refresh: readArrivals, open: file => { window.__opened = file.name; }, answerFile: (port, file, accepted) => answerFile(sharedGrist.port, file, accepted),
+  });
+  window.__sharedBlocked = '';
+  window.__shared = async kind => {
+    const day = Math.floor(Date.now() / 1000) - 86400;
+    const row = (id, name, extra = {}) => ({ id, Identifiant: `r${id}`, Nom: name, Type: 'pdf', Date: day - id * 3600, Auteur: 'Comptabilité <compta@exemple.fr>', Contenu: ['L', id], Taille: 1500 * id, Origine: 'import', Supprimee_a_la_source: false, ...extra });
+    const rows = kind === 'vide' ? [] : [row(1, 'Facture de la session de formation de septembre 2026.pdf'), row(2, 'Devis.pdf'), row(3, 'Contrat.pdf', { Accepte: true, Refuse: false }), row(4, 'Ancien refus.pdf', { Accepte: false, Refuse: true }), row(5, 'Retiré.pdf', { Accepte: true, Refuse: false, Supprimee_a_la_source: true })];
+    const columns = ['id', ...FILES_COLUMN_IDS, 'Supprimee_a_la_source', 'Accepte', 'Refuse'];
+    sharedGrist = fakeGrist(kind === 'vide' ? {} : { GFS_Recus: { columns, rows } });
+    window.__sharedTables = sharedGrist.tables;
+    window.__sharedActions = sharedGrist.actions;
+    await readArrivals();
+    explorer.state.view = 'shared';
+    explorer.render();
+  };
   const explorer = new Explorer({
-    container: stage, i18n, locale, now: () => new Date(), appName: () => 'Publipostage+', typeLabel: file => (file.typeInfo ? file.typeInfo.nom[language] || file.typeInfo.nom.fr : file.type),
-    lockOf: file => (file.type === 'macro' ? { text: i18n.t('ex.lockedExtension', { name: 'Macro-modèles' }) } : null), newTypes: () => [], importTypes: () => [], canClose: () => true,
+    container: stage, i18n, locale, now: () => new Date(), appName: () => 'Publipostage+', received,
+    typeLabel: file => (file.received ? received.typeLabel(file) : baseLabel(file)),
+    lockOf: file => (file.received ? received.lockOf(file) : (file.type === 'macro' ? { text: i18n.t('ex.lockedExtension', { name: 'Macro-modèles' }) } : null)), newTypes: () => [], importTypes: () => [], canClose: () => true,
     notice: text => window.__notices.push(text), settings: () => settingsItems({ t: i18n.t, language: () => ({ choice: window.__language, grist: language }), onLanguage: value => { window.__language = value; }, onTheme: () => theme.open(), place, onAbout: () => window.__about() }),
     onOpen: file => { window.__opened = file.name; }, onNew: () => {},
     onImport: () => {}, onClose: () => {}, onApps: () => {}, onRights: () => window.__rights(window.__rightsKind || 'protege'), sharing: { whyNot: () => null, whyNotFolder: path => (path.split('/').length > 2 && path.startsWith('Espaces/') ? null : i18n.t(path.startsWith('Espaces') ? 'share.folder.space' : 'share.folder.personal')), folderFile: path => ({ key: `dossier:${path}`, name: path.split('/').pop() }), open: () => window.__share(window.__shareKind || 'actif') }, onWeight: estimate => window.__weight(estimate), personal: () => true, kept: null, trash: bin, copying,
@@ -228,6 +255,8 @@ async function mount() {
     for (const file of live) { file.trashed = null; file.folder = folders.get(file.key); delete file.space; delete file.ownFolder; }
     trashed = [];
     kept = [];
+    arrivals = [];
+    window.__sharedBlocked = '';
     window.__filing.length = 0;
     window.__copies.length = 0;
     window.__notices.length = 0;

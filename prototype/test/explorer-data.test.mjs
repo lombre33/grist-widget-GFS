@@ -257,3 +257,12 @@ test('un fichier placé dans un espace en prend le dossier ; les dossiers de l\'
   assert.ok(folders.includes('Espaces/Achats'), 'l\'espace est un dossier');
   assert.equal(spaces.spaces.length, 1);
 });
+
+test('les fichiers reçus d\'un autre document (GFS_Recus, GFS_Recus_2…) sont lus à part : jamais dans `files`, tous états confondus, un document sans partage en rend une liste vide', async () => {
+  const arrival = (id, name, extra = {}) => ({ id: [1], Identifiant: [id], Nom: [name], Type: ['pdf'], Date: [1762000000], Auteur: ['compta@exemple.fr'], Contenu: [['L', 1]], Taille: [100], ...Object.fromEntries(Object.entries(extra).map(([key, value]) => [key, [value]])) });
+  const data = { ...tables(), GFS_Recus: arrival('r1', 'Facture.pdf'), GFS_Recus_2: arrival('r2', 'Devis.pdf', { Accepte: true, Refuse: false }) };
+  const loaded = await loadFiles(port(data), [{ manifest }], '');
+  assert.deepEqual(loaded.received.map(file => [file.name, file.received.table, file.received.state]), [['Facture.pdf', 'GFS_Recus', 'pending'], ['Devis.pdf', 'GFS_Recus_2', 'accepted']]);
+  assert.deepEqual(loaded.files.map(file => file.id).sort(), ['1', '2'], 'les arrivées ne sont pas des fichiers vivants : choisir, ouvrir et lire ne les voient pas');
+  assert.deepEqual((await loadFiles(port(tables()), [{ manifest }], '')).received, []);
+});

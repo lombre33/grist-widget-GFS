@@ -9,12 +9,13 @@
 //   abort()    défait ce qui a été préparé.
 // Le premier lot ne couvre que les PDF que GFS garde (`GFS_Fichiers`).
 import { PASS_MS, PASSES, SENT_COLUMNS, selectionFor } from './share-links.js';
+import { RECEIVED_TABLE } from './received-files.js';
 
 export { PASS_MS, PASSES, SENT_COLUMNS };
 // Les colonnes d'aide que le moteur pose dans la table des fichiers et la table technique qu'il crée (pour le texte de l'accord ; leurs noms sont ceux du protocole entre deux documents).
 export const HELPER_COLUMNS = Object.freeze(['id_sync', 'MajLe', 'RecalculLe']);
 export const SYNC_TABLE_NAME = 'GFS_Synchro';
-export const RECEIVED_TABLE = 'GFS_Recus';
+export { RECEIVED_TABLE };
 
 // Le nom de l'export (celui du journal chez l'autre) : le nom du fichier sans « .pdf ».
 export const exportName = file => (file ? String(file.name || '').replace(/\.pdf$/i, '').trim() || String(file.name || file.id) : '');

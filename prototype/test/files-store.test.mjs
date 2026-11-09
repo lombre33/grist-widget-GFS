@@ -282,6 +282,15 @@ test('download : la pièce jointe de la ligne relue, sous le nom actuel du fichi
   assert.deepEqual(grist.transfer.calls.downloads, [42]);
 });
 
+test('download d\'un fichier reçu d\'un autre document : lu dans sa table GFS_Recus*, par le numéro de sa ligne (deux partages peuvent citer un même identifiant)', async () => {
+  const received = (name, row, attachment) => ({ ...present(name, 'aa', row, { Contenu: ['L', attachment] }) });
+  const grist = setup({ tables: { ...tableWith([present('Mien.pdf', 'aa', 1, { Contenu: ['L', 7] })]), GFS_Recus: { columns: ['id', ...FILES_COLUMN_IDS], rows: [received('Recu.pdf', 3, 31)] }, GFS_Recus_2: { columns: ['id', ...FILES_COLUMN_IDS], rows: [received('Autre.pdf', 3, 32)] } } });
+  const { name } = await grist.store.download({ id: 'aa', received: { table: 'GFS_Recus_2', row: 3 } });
+  assert.equal(name, 'Autre.pdf');
+  assert.deepEqual(grist.transfer.calls.downloads, [32], 'la pièce de la table reçue, ni celle de GFS_Fichiers ni celle de l\'autre table reçue');
+  await assert.rejects(grist.store.download({ id: 'aa', received: { table: 'GFS_Recus', row: 9 } }), /n’est plus dans le document/);
+});
+
 test('download : un fichier à la corbeille ne se télécharge pas', async () => {
   const grist = setup({ tables: tableWith([trashedRow('Facture.pdf', 'aa', 1)]) });
   await assert.rejects(grist.store.download({ id: 'aa' }), /à la corbeille/);

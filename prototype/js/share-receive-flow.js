@@ -7,7 +7,9 @@
 //   accept()  le journal du partage, sa table et la page de son formulaire sont créés (ou, si une réception existe déjà de ce même document, reprise avec la nouvelle invitation) ;
 //   reply()   le lien du formulaire collé, vérifié (il doit écrire dans CE journal) : le code de réponse et le code de contrôle ;
 //   abort()   défait ce qui vient d'être créé, tant que la réponse n'est pas rendue.
-export const RECEIVED_TABLE = 'GFS_Recus';
+import { RECEIVED_TABLE } from './received-files.js';
+
+export { RECEIVED_TABLE };
 const TABLES_TRIED = 50;
 
 // Ce que GFS ne reçoit pas : un lien public ou un échange sont d'autres modes du moteur de Sync+, que GFS ne propose pas.

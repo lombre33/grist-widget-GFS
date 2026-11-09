@@ -304,6 +304,17 @@ test('listItems : la corbeille est une liste à plat, la suppression la plus ré
   assert.deepEqual(listItems(trashed, view({ type: 'docx' }), OPTIONS).rows, []);
 });
 
+test('listItems : « Partagés avec moi » est une liste à plat, sans dossier, même quand un dossier est ouvert ; la recherche et le filtre de type y valent', () => {
+  const arrivals = applyFiling(readFiles(FILES_MANIFEST, gfsSpec, pdfs()), null).filter(file => !file.trashed);
+  const view = extra => state({ view: 'shared', path: 'Un/dossier', sort: { key: 'mod', dir: -1 }, ...extra });
+  const result = listItems(arrivals, view(), OPTIONS);
+  assert.equal(result.flat, true);
+  assert.equal(result.rows.length, arrivals.length, 'toutes les arrivées sont montrées, quel que soit le dossier ouvert avant');
+  assert.ok(result.rows.every(row => row.kind === 'file'));
+  assert.deepEqual(listItems(arrivals, view({ q: arrivals[0].name.slice(0, 3) }), OPTIONS).rows.map(row => row.file.name).includes(arrivals[0].name), true);
+  assert.deepEqual(listItems(arrivals, view({ type: 'docx' }), OPTIONS).rows, []);
+});
+
 // ----- les dossiers gardés sans fichier (contrats 6.4, point 11)
 
 const folderTable = () => ({

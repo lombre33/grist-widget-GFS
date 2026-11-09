@@ -7,6 +7,7 @@
 import { h } from './dom.js';
 import { icon } from './icons.js';
 import { listItems, treeRows, typeChoices } from './explorer-model.js';
+import { shownReceived, pendingOf, NO_RECEIVED } from './received-files.js';
 import { words } from './search.js';
 import { buildShell, relabel, rightsChip, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar, trashBar, totalBar, pjBox } from './explorer-view.js';
 import { sumWeights, pieceKeys, otherAttachments } from './weight.js';
@@ -39,6 +40,7 @@ export class Explorer {
   #refs;
   #files = [];
   #trashed = []; // les fichiers à la corbeille (la vue « Corbeille »)
+  #arrivals = []; // les fichiers reçus d'un autre document, refusés exceptés (la vue « Partagés avec moi », js/received-files.js)
   #folders = []; // les dossiers que la personne garde sans fichier (js/explorer-data.js)
   #rows = [];
   #total = 0; // ce que pèse ce que la liste couvre, en octets (le total du pied de fenêtre)
@@ -52,7 +54,7 @@ export class Explorer {
   #beforeChoice = null; // où la personne en était avant le mode choix
   // Trois tris : celui des dossiers et des favoris (par nom), ceux de Récents et de la corbeille (par date, la plus récente d'abord : le fichier qu'on vient de supprimer est en haut).
   state = {
-    view: 'folder', path: '', open: new Set(), display: 'list', sort: { key: 'name', dir: 1 }, recentSort: { key: 'mod', dir: -1 }, trashSort: { key: 'mod', dir: -1 }, type: 'all', q: '', sel: null,
+    view: 'folder', path: '', open: new Set(), display: 'list', sort: { key: 'name', dir: 1 }, recentSort: { key: 'mod', dir: -1 }, trashSort: { key: 'mod', dir: -1 }, sharedSort: { key: 'mod', dir: -1 }, type: 'all', q: '', sel: null,
   };
 
   // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), importTypes(), onOpen(file), onNew(entry), onImport(entry), onClose(), onApps(), canClose(), notice(text),
@@ -81,7 +83,7 @@ export class Explorer {
     this.#refs = refs;
     opts.container.append(root);
     // Le glisser-déposer (js/explorer-drag.js) : une ligne se dépose sur un dossier du volet, du fil d'Ariane ou de la liste ; hors corbeille et hors choix.
-    this.#drag = new Dragging({ root, may: () => !this.#choice && this.state.view !== 'trash', file: key => this.#files.find(item => item.key === key), moveTo: (key, path) => this.#clipboard.moveTo(key, path), expand: path => { this.state.open.add(path); this.#renderTree(); } });
+    this.#drag = new Dragging({ root, may: () => !this.#choice && !['trash', 'shared'].includes(this.state.view), file: key => this.#files.find(item => item.key === key), moveTo: (key, path) => this.#clipboard.moveTo(key, path), expand: path => { this.state.open.add(path); this.#renderTree(); } });
     this.#bind();
     this.render();
   }
@@ -98,15 +100,19 @@ export class Explorer {
   // Les dossiers sans fichier que la liste montre : tous, sauf en mode choix (il n'y a rien à y choisir).
   get #spare() { return this.#choice ? [] : this.#folders; }
 
-  // Ce que la vue montre : les fichiers de la corbeille dans la corbeille, sinon les fichiers vivants.
-  get #shown() { return this.state.view === 'trash' ? this.#trashed : this.#pool; }
+  // « Partagés avec moi » : ce que la vue demande pour les arrivées d'un autre document (js/received-control.js), ou rien pour les essais de l'explorateur seul.
+  get #shared() { return this.#opts.received || NO_RECEIVED; }
 
-  // `files` : les fichiers vivants ; `trashed` : ceux qui sont à la corbeille ; `folders` : les dossiers gardés sans fichier (js/explorer-data.js).
-  setFiles(files, trashed = [], folders = []) {
+  // Ce que la vue montre : les fichiers de la corbeille dans la corbeille, les arrivées d'un autre document dans « Partagés avec moi », sinon les fichiers vivants.
+  get #shown() { return ({ trash: this.#trashed, shared: this.#arrivals })[this.state.view] || this.#pool; }
+
+  // `files` : les fichiers vivants ; `trashed` : ceux qui sont à la corbeille ; `folders` : les dossiers gardés sans fichier ; `received` : les arrivées d'un autre document, tous états (js/explorer-data.js).
+  setFiles(files, trashed = [], folders = [], received = []) {
     this.#files = files;
     this.#trashed = trashed;
     this.#folders = folders;
-    const keys = new Set([...files, ...trashed].map(file => file.key));
+    this.#arrivals = shownReceived(received);
+    const keys = new Set([...files, ...trashed, ...this.#arrivals].map(file => file.key));
     if (this.state.sel && !this.state.sel.startsWith('dir:') && !keys.has(this.state.sel)) this.state.sel = null;
     this.#pj.failed = false; // une lecture qui avait échoué se retente au prochain clic sur la case
     this.#countOthers();
@@ -196,7 +202,7 @@ export class Explorer {
 
   // ---------- état ----------
 
-  #sort() { return ({ recent: this.state.recentSort, trash: this.state.trashSort })[this.state.view] || this.state.sort; }
+  #sort() { return ({ recent: this.state.recentSort, trash: this.state.trashSort, shared: this.state.sharedSort })[this.state.view] || this.state.sort; }
 
   get #filtering() { return words(this.state.q).length > 0 || this.state.type !== 'all'; }
 
@@ -207,7 +213,7 @@ export class Explorer {
     return {
       t: this.#opts.i18n.t, state, locale: this.#opts.locale, now: this.#opts.now(), appName: this.#opts.appName, typeLabel: this.#opts.typeLabel,
       lockOf: this.#opts.lockOf, opensIn: file => this.#opensIn(file), sort: this.#sort(), filtering: this.#filtering, favCount: this.#pool.filter(file => file.pinned).length, totalFiles: this.#pool.length,
-      trashCount: this.#trashed.length, selected: row, personal: this.#opts.personal(), choosing: this.#choice !== null, total: this.#total, pj: this.#pjFacts(), ...extra,
+      trashCount: this.#trashed.length, sharedPending: pendingOf(this.#arrivals).length, selected: row, personal: this.#opts.personal(), choosing: this.#choice !== null, total: this.#total, pj: this.#pjFacts(), ...extra,
     };
   }
 
@@ -299,6 +305,8 @@ export class Explorer {
   // Le geste principal d'un fichier : « Ouvrir », ou celui d'un fichier que GFS garde (js/kept-files.js) ; à la corbeille : « Restaurer ».
   #openAs(file) {
     if (this.state.view === 'trash') return { label: this.#opts.i18n.t('trash.restore'), icon: 'restore', greyed: false };
+    const answer = this.state.view === 'shared' && file && this.#shared.openAs(file);
+    if (answer) return answer;
     if (!this.#choice && file && this.#kept.has(file)) return this.#kept.openAs(file);
     return { label: this.#opts.i18n.t('ex.open'), icon: 'open', greyed: false };
   }
@@ -411,7 +419,7 @@ export class Explorer {
   }
 
   #goView(view) {
-    if (view === 'trash' && this.#choice) { this.#opts.notice(this.#opts.i18n.t('ex.choose.newOff')); return; }
+    if (['trash', 'shared'].includes(view) && this.#choice) { this.#opts.notice(this.#opts.i18n.t('ex.choose.newOff')); return; }
     Object.assign(this.state, { view, q: '', type: 'all', sel: null });
     this.#refs.search.value = '';
     this.render();
@@ -589,6 +597,7 @@ export class Explorer {
   #activate(key) {
     if (key.startsWith('dir:')) { this.#goFolder(key.slice(4)); return; }
     if (this.state.view === 'trash') { void this.#restore(key); return; }
+    if (this.state.view === 'shared') { const arrival = this.#arrivals.find(item => item.key === key); if (arrival) this.#shared.activate(arrival); return; }
     const file = this.#files.find(item => item.key === key);
     if (!file) return;
     if (this.#choice) this.#choice.onPick(file); else this.#opts.onOpen(file);
@@ -645,9 +654,9 @@ export class Explorer {
       items = [item(t('ex.openFolder'), 'open', () => this.#activate(key), t('key.enter')), item(t('ex.rename'), 'edit', () => void filing.renameFolder(path), 'F2'),
         item(t('ex.move'), 'move', () => void filing.moveFolder(path), this.#choice ? undefined : 'Ctrl+X, V'), this.#shareFolderItem(path), '-', this.#deleteFolderItem(key)];
     } else {
-      const file = (this.state.view === 'trash' ? this.#trashed : this.#files).find(entry => entry.key === key);
+      const file = this.#shown.find(entry => entry.key === key);
       if (!file) return;
-      items = this.state.view === 'trash' ? this.#trashMenu(file) : this.#fileMenu(file);
+      items = ({ trash: () => this.#trashMenu(file), shared: () => this.#sharedMenu(file) })[this.state.view]?.() || this.#fileMenu(file);
     }
     openMenu(anchor, items, { host: this.root, align: 'right', label: t('ex.more') });
   }
@@ -673,6 +682,9 @@ export class Explorer {
     return [{ label: t('trash.restore'), icon: 'restore', hint: t('key.enter'), run: () => void this.#restore(file.key) }, '-',
       { label: t('trash.purge'), icon: 'trash', hint: t('key.delete'), run: () => void this.#purge(file.key) }];
   }
+
+  // Le menu d'une ligne de « Partagés avec moi » : répondre à une arrivée en attente ; lire ou télécharger une arrivée acceptée (comme un PDF que GFS garde).
+  #sharedMenu(file) { const open = this.#openAs(file); return this.#shared.menu(file) || [{ label: open.label, icon: open.icon, hint: this.#opts.i18n.t('key.enter'), greyed: open.greyed, run: () => this.#activate(file.key) }, ...this.#kept.extras(file)]; }
 
   // Pourquoi un geste (la corbeille ou la copie) est grisé pour ce fichier, en une phrase, ou null : pendant un choix ; pour un fichier qu'aucun gardien ne connaît (`unknown`) ; quand l'app doit être ouverte et ne l'est pas.
   #whyGreyed(file, gesture, unknown) {

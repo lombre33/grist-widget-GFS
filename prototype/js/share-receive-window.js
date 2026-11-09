@@ -32,7 +32,7 @@ function accordScreen(ctx, info) {
     ? [h('p', { class: 'so-lead' }, icon('info'), h('span', null, t('sr.accord.known', { name: info.name }))), h('p', { class: 'fine' }, t('sr.accord.keep'))]
     : [h('p', { class: 'so-lead' }, icon('info'), h('span', null, t('sr.accord.lead', { name: info.name }))),
       h('div', { class: 'sec' }, t('sr.accord.adds')),
-      h('ul', { class: 'so-list' }, h('li', null, t('sr.accord.table', { table: info.table })), h('li', null, t('sr.accord.journal'))),
+      h('ul', { class: 'so-list' }, h('li', null, t('sr.accord.table', { table: info.table })), h('li', null, t('sr.accord.journal')), h('li', null, t('sr.accord.marks'))),
       h('p', { class: 'fine' }, t('sr.accord.keep'))];
   return {
     body: h('div', { class: 'rt-content' }, ...body),

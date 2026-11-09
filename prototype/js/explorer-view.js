@@ -98,6 +98,7 @@ export function crumbs(ctx) {
   if (state.view === 'recent') return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, icon('clock'), t('ex.recent'))];
   if (state.view === 'fav') return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, icon('pin'), t('ex.fav'))];
   if (state.view === 'trash') return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, icon('trash'), t('trash.view'))];
+  if (state.view === 'shared') return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, icon('users'), t('rx.view'))];
   if (ctx.filtering) return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, t('ex.results'))];
   const parts = pathParts(state.path);
   if (!parts.length) return [h('span', { class: 'here' }, icon('user'), t('ex.me'))];
@@ -109,7 +110,8 @@ export function crumbs(ctx) {
 }
 
 function treeRow({ label, glyph, data, current, depth = 0, caret = null, toggle = null, count = null, grey = false }) {
-  return h('button', { type: 'button', class: 'tr-row', dataset: data, 'aria-current': String(Boolean(current)), 'aria-disabled': grey ? 'true' : null, vars: { '--d': depth } },
+  // Le nom entier au survol : le volet est étroit, un nom long y est coupé (charte).
+  return h('button', { type: 'button', class: 'tr-row', title: label, dataset: data, 'aria-current': String(Boolean(current)), 'aria-disabled': grey ? 'true' : null, vars: { '--d': depth } },
     h('span', { class: 'car-slot', dataset: toggle === null ? null : { toggle } }, caret ? icon('chev-right', caret === 'open' ? 'open' : '') : null),
     icon(glyph, glyph === 'folder' ? 'fld' : ''), h('span', { class: 'lbl' }, label), count === null ? null : h('span', { class: 'cnt' }, String(count)));
 }
@@ -121,6 +123,8 @@ export function tree(ctx) {
   const pinned = h('div', { class: 'tr-pin' },
     treeRow({ label: t('ex.recent'), glyph: 'clock', data: { view: 'recent' }, current: state.view === 'recent' }),
     treeRow({ label: t('ex.fav'), glyph: 'pin', data: { view: 'fav' }, current: state.view === 'fav', count: ctx.favCount }),
+    // Les arrivées d'un autre document, à accepter ou acceptées : le nombre à accepter, grisées pendant un choix (un fichier d'ailleurs ne se choisit pas).
+    treeRow({ label: t('rx.view'), glyph: 'users', data: { view: 'shared' }, current: state.view === 'shared', count: ctx.sharedPending || null, grey: ctx.choosing }),
     // La corbeille garde son rang pendant le choix d'un fichier, grisée : un fichier supprimé ne se choisit pas.
     treeRow({ label: t('trash.view'), glyph: 'trash', data: { view: 'trash' }, current: state.view === 'trash', count: ctx.trashCount || null, grey: ctx.choosing }),
     h('hr', { class: 'tr-sep' }));
@@ -158,7 +162,7 @@ function fileCells(ctx, file, flat) {
     h('div', { class: 'md', role: 'gridcell' }, formatDate(stampOf(file), ctx.now, ctx.locale, t)),
     h('div', { class: 'by', role: 'gridcell' }, who.initials ? h('span', { class: 'who', title: who.name }, who.initials) : null),
     h('div', { class: 'acts', role: 'gridcell' }, ctx.state.view === 'trash' ? restoreButton(t, file.key)
-      : h('button', { type: 'button', class: `rb pin${file.pinned ? ' on' : ''}`, dataset: { pin: file.key }, title: pinTitle, 'aria-label': pinTitle, 'aria-pressed': String(file.pinned) }, icon('pin')),
+      : (ctx.state.view === 'shared' ? null : h('button', { type: 'button', class: `rb pin${file.pinned ? ' on' : ''}`, dataset: { pin: file.key }, title: pinTitle, 'aria-label': pinTitle, 'aria-pressed': String(file.pinned) }, icon('pin'))),
     moreButton(t, file.key)),
   ];
 }
@@ -219,6 +223,7 @@ export function emptyMessage(ctx) {
   if (ctx.filtering) return t('ex.emptySearch');
   if (ctx.choosing && ctx.totalFiles === 0) return t('ex.choose.empty');
   if (state.view === 'trash') return t('trash.emptyList');
+  if (state.view === 'shared') return t('rx.empty');
   if (state.view === 'fav') return t('ex.emptyFav');
   // « Aucun fichier » ne vaut qu'à la racine : un dossier (créé vide, ou vidé) est « vide » même quand le document n'a aucun fichier.
   if (state.view === 'recent' || (ctx.totalFiles === 0 && state.path === '')) return t('ex.emptyAll');

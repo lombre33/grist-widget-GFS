@@ -7,6 +7,7 @@ import { familyOf } from './explorer-model.js';
 import { activeExtensionIds, extensionsOf } from './extensions.js';
 import { rowKey } from './modules-window.js';
 import { FILES_APP } from './gfs-files.js';
+import { RECEIVED_APP } from './received-files.js';
 import { importFormats, acceptsOpening } from './import-file.js';
 import { readersOf, chooseReader } from './reading.js';
 
@@ -18,7 +19,7 @@ export class Entries {
   lockOf = file => {
     const { c } = this;
     if (!c.fullAccess) return { text: c.t('gfs.needsFullAccess'), hint: c.t('gfs.needsFullAccessHint') };
-    if (file.app === FILES_APP) return null; // un fichier que GFS garde : aucune app à installer
+    if (file.app === FILES_APP || file.app === RECEIVED_APP) return null; // un fichier que GFS garde, ou reçu d'un autre document et accepté : aucune app à installer (une arrivée en attente est grisée par js/received-control.js)
     if (!c.registry.has(file.app)) return { text: c.t('ex.lockedApp', { app: c.appName(file.app) }), focus: rowKey(file.app) };
     if (!file.known) return { text: c.t('ex.lockedType', { app: c.appName(file.app) }) };
     const extension = file.typeInfo.extension;

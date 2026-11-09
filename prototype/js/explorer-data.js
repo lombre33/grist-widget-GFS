@@ -7,6 +7,7 @@ import { TABLE } from './rangement.js';
 import { BIN_TABLE, recipeOf, binFiles } from './gfs-trash.js';
 import { linkedWeights } from './weight.js';
 import { applyPlacement, loadSpaces } from './spaces-filing.js';
+import { loadReceived } from './received-files.js';
 
 const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 
@@ -40,7 +41,7 @@ export async function loadAttachments(port) {
 }
 
 // `apps` : les apps installées dont le manifeste est valide, { manifest }. `identity` : l'adresse de la personne, '' tant que GFS ne la connaît pas.
-// Rend { files, trash, folders, spaces, problems: [{ app, reason }], stats: { ms, tables, rows } } : `spaces` ce que disent les espaces partagés (js/spaces-filing.js, null sans partage), dont les dossiers sont ajoutés à `folders` ; `files` les fichiers vivants, `trash` ceux qui sont à la corbeille (js/explorer-model.js, `trashed`) : ils
+// Rend { files, trash, folders, received, spaces, problems: [{ app, reason }], stats: { ms, tables, rows } } : `spaces` ce que disent les espaces partagés (js/spaces-filing.js, null sans partage), dont les dossiers sont ajoutés à `folders` ; `files` les fichiers vivants, `trash` ceux qui sont à la corbeille (js/explorer-model.js, `trashed`) : ils
 // ne sont jamais mêlés, pour que rien de ce qui lit `files` (choisir, ouvrir, lire) ne voie un fichier supprimé ; `folders` les dossiers que la personne garde sans fichier (6.4, point 11). Un rangement
 // de GFS illisible ne cache aucun fichier : ils restent à leur place d'avant.
 export async function loadFiles(port, apps, identity = '') {
@@ -68,8 +69,9 @@ export async function loadFiles(port, apps, identity = '') {
       stats.rows += one.found.length;
     }
   }
+  const received = await loadReceived(port, tables); // les fichiers reçus d'un autre document (js/received-files.js) : jamais mêlés aux fichiers vivants, rien de ce qui lit `files` ne les voit
   stats.ms = Math.round(performance.now() - started);
-  return { files, trash, folders, spaces, problems, stats };
+  return { files, trash, folders, received, spaces, problems, stats };
 }
 
 // Les fichiers d'une table de fichiers d'une app, rangés et placés : { found, binned } (`binned` : ceux qu'elle a mis à la corbeille de GFS), ou { problem } quand sa table est illisible.

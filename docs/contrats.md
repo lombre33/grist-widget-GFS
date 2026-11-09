@@ -2266,6 +2266,14 @@ fichier lui-même en pièce jointe de Grist.
     `docBaseUrl`, sur le cadre d'envoi. Un refus du serveur lève une erreur qui porte son `status` et le début (200 signes) de ce que Grist en dit ; le reste (cadre, jeton, réseau, délai, réponse inattendue) n'a pas de `status` et se
     dit dans la langue de la personne ; une réponse vide est `null`. `isOwner` reste celui de GFS (le code seul de `GET /webhooks`). [M] 40 vérifications dans un vrai Grist (faits vérifiés, 60 et 66), 16 essais du port sans Grist
     (`test/sync-port.test.mjs`).
+17. [T] **« Partager > Un autre document Grist… » : une copie du fichier, une seule fois, dans un seul sens** (décisions du 07/11 et du 09/11 ; premier lot : les PDF de `GFS_Fichiers`, propriétaire du document). La ligne est celle de la liste du champ
+    d'ajout de « Partager », grisée (jamais masquée) avec sa raison pour un fichier d'app, pour qui n'est pas propriétaire, ou sans le geste branché ; dégrisée pour le propriétaire **même quand les droits de GFS ne sont pas activés**. La fenêtre
+    (`js/share-other-window.js`, sur la base commune) suit le parcours de `js/share-other-flow.js` : l'accord (ce que GFS ajoute : la table `GFS_Synchro` retirée à la fin, trois colonnes d'aide `id_sync`, `MajLe`, `RecalculLe` dans `GFS_Fichiers` qui restent,
+    un webhook retiré à la fin ; **rien n'est écrit avant**), le code d'invitation, la réponse collée par l'autre personne (**le moteur juge le lien et le code, GFS n'en juge rien** : décision du porteur du 09/11), le document qui répond dit par Grist
+    avec le code de contrôle, l'envoi, puis l'arrêt du partage (la copie reste dans `GFS_Recus` de l'autre document, **à part de `GFS_Fichiers`**). Fermer la fenêtre avant l'envoi défait ce qui était préparé ; la fermer en cours d'envoi laisse l'envoi se
+    poursuivre (un avis le dit à la fin). **Le moteur ne se charge que pour un document qui partage ou a reçu** (`js/sync-service.js`) : à l'ouverture de la page, `js/sync-resume.js` lit la liste des tables et relance la boucle d'envoi (table `GFS_Synchro`) ou
+    de réception (un `GFS_Journal_…`), sans quoi le contenu d'un fichier ne passerait pas quand l'une des deux pages était fermée. **Le côté qui reçoit n'a pas encore d'écran dans GFS** (carte du porteur sans réponse). [M] 24 vérifications dans un vrai Grist
+    (faits vérifiés, 68), 0 écart sous Firefox (`test/partager-autre-firefox.mjs`), 8 + 5 essais du parcours et de la reprise sans Grist.
 
 ### 6.7 `GFS_Corbeille`, la corbeille des fichiers des apps
 

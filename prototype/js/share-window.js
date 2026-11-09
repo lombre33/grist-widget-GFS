@@ -101,12 +101,22 @@ function suggestionList(ctx, found) {
   return h('div', { class: 'drop', role: 'listbox', 'aria-label': t('share.add.label') }, ...nodes);
 }
 
+const extraOf = ctx => (typeof ctx.extraTargets === 'function' ? ctx.extraTargets(ctx.state) : ctx.extraTargets);
+
+// « Un autre document Grist… » hors de la liste d'ajout (le partage des droits n'est pas activé, ou la personne ne peut que lire) : envoyer une copie à un autre document ne demande pas les droits de GFS.
+// La ligne reste là, grisée avec sa raison quand elle ne peut pas servir.
+function otherSection(ctx) {
+  const lines = extraOf(ctx);
+  if (!lines.length) return [];
+  return [h('div', { class: 'sec' }, ctx.t('share.other.sec')), h('div', { class: 'drop so-solo' }, ...lines.map(line => suggestion({ who: '', label: line.label, hint: line.hint, glyph: line.icon }, why => (why ? ctx.say(why) : line.run()), line.greyed ? line.why : null)))];
+}
+
 // La zone d'ajout : un champ, et sa liste qui se redessine à chaque touche.
 function addField(ctx) {
   const { t, state } = ctx;
   const input = h('input', { type: 'text', autocomplete: 'off', placeholder: t('share.add.placeholder'), 'aria-label': t('share.add.label'), dataset: { fk: 'share-add' } });
   const slot = h('div', { class: 'sg-slot' });
-  const draw = () => slot.replaceChildren(suggestionList(ctx, suggestions(t, state, input.value, ctx.extraTargets)));
+  const draw = () => slot.replaceChildren(suggestionList(ctx, suggestions(t, state, input.value, extraOf(ctx))));
   input.addEventListener('focus', draw);
   input.addEventListener('click', draw); // le champ déjà actif (la liste fermée par Échap) rouvre sa liste au clic
   input.addEventListener('input', draw);
@@ -150,9 +160,9 @@ function inactiveBlock(ctx) {
   if (state.owner === true) {
     const activate = h('button', { type: 'button', class: 'btn primary', dataset: { fk: 'share-activate' } }, t(state.extend === 'upgrade' ? 'share.upgrade.activate' : (state.extend ? 'share.extend.activate' : 'share.inactive.activate')));
     activate.addEventListener('click', () => void ctx.activate());
-    return h('div', { class: 'rt-content' }, h('p', { class: 'fine' }, t(`${word}.owner`)), h('p', { class: 'sg-actions' }, activate));
+    return h('div', { class: 'rt-content' }, h('p', { class: 'fine' }, t(`${word}.owner`)), h('p', { class: 'sg-actions' }, activate), ...otherSection(ctx));
   }
-  return h('div', { class: 'rt-content' }, h('p', { class: 'rt-lead' }, icon('lock'), h('span', null, t(state.owner === false ? `${word}.other` : 'share.inactive.unknown'))));
+  return h('div', { class: 'rt-content' }, h('p', { class: 'rt-lead' }, icon('lock'), h('span', null, t(state.owner === false ? `${word}.other` : 'share.inactive.unknown'))), ...otherSection(ctx));
 }
 
 // Le contenu d'après l'état : { active, owner, canManage, shares, me, author, people }. `ctx.pending` : la personne choisie, pas encore ajoutée.
@@ -161,13 +171,13 @@ export function shareBody(ctx) {
   if (!state.active) return inactiveBlock(ctx);
   const parts = [];
   if (state.canManage) parts.push(ctx.pending ? h('div', null, h('div', { class: 'sec' }, t('share.sec.add')), pendingForm(ctx, ctx.pending)) : addField(ctx));
-  else parts.push(h('p', { class: 'fine', dataset: { fk: 'share-readonly' } }, t('share.readonly')));
+  else parts.push(h('p', { class: 'fine', dataset: { fk: 'share-readonly' } }, t('share.readonly')), ...otherSection(ctx));
   parts.push(h('div', { class: 'sec' }, t('share.sec.access')), h('ul', { class: 'rt-list sg-list' }, ...fixedRows(ctx), ...state.shares.map(share => row(ctx, share))));
   return h('div', { class: 'rt-content' }, ...parts);
 }
 
 // opts : { container, t, locale, inertTargets, file: { key, name, app }, load() → état, onAdd(record), onChange(id, patch), onRemove(id) → { ok, message? }, onActivate() → true quand Grist va recharger,
-// onManage() ouvre « Gérer les partages » (propriétaire), extraTargets: [{ label, hint, icon, greyed, why, run }] (« Un autre document Grist… » : Sync+) }. Rend la promesse de la fermeture.
+// onManage() ouvre « Gérer les partages » (propriétaire), extraTargets: [{ label, hint, icon, greyed, why, run }] ou state → ce tableau (« Un autre document Grist… » : js/share-other.js) }. Rend la promesse de la fermeture.
 export function openShare(opts) {
   const { container, t, file } = opts;
   const body = h('div', { class: 'ask-body rt-body sh-body' }, h('p', { class: 'rt-none', 'aria-live': 'polite' }, t('share.loading')));

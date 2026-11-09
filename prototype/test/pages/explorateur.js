@@ -39,6 +39,7 @@ import { openRights } from '/js/rights-window.js';
 import { openShare } from '/js/share-window.js';
 import { openManage } from '/js/manage-window.js';
 import { otherDocumentTargets } from '/js/share-other.js';
+import { openShareOther } from '/js/share-other-window.js';
 import { openWeight } from '/js/weight-window.js';
 import { SQL, readWeight } from '/js/weight-reader.js';
 import { TransferError } from '/js/transfer.js';
@@ -320,10 +321,29 @@ async function mount() {
       onAddSpace: async () => { window.__manageActs.push(['addSpace']); return null; }, onRemoveSpace: async (state, space) => { window.__manageActs.push(['removeSpace', space.key]); return null; },
       onSpaceGroup: (state, space, group, right) => record(['spaceGroup', space.key, group, right]), onPickGroup: async () => null });
   };
+  // La fenêtre « Envoyer à un autre document » (js/share-other-window.js, test/partager-autre-firefox.mjs) : la vraie fenêtre, sur un parcours dont les réponses sont des doublures (le moteur de partage et Grist se
+  // mesurent dans un vrai Grist : labo/run-partager-autre.mjs ; ici, la mise en page et les gestes). `kind` : 'ok' (le document qui répond est dans un dossier, son nom très long), 'perso' (dans l'espace personnel),
+  // 'refus' (préparer échoue), 'bloque' (l'envoi ne peut pas finir). `window.__sendActs` note ce que le parcours a reçu ; `window.__sendGo()` laisse l'envoi finir.
+  const LONG_DOC = 'Essai de réception du service de la comptabilité fournisseurs de la région Nord-Est';
+  window.__sendOther = kind => {
+    const acts = window.__sendActs = [];
+    const gate = new Promise(resolve => { window.__sendGo = resolve; });
+    const flow = {
+      prepare: async () => { acts.push(['prepare']); if (kind === 'refus') throw new Error('Grist a refusé la création'); return { code: `GRISTSYNC2.${'eyJraW5kIjoiaW52aXRhdGlvbiJ9'.repeat(30)}`, expire: Date.now() / 1000 + 7 * 86400 }; },
+      check: async text => {
+        acts.push(['check', text]);
+        if (!text.startsWith('GRISTSYNC2.')) throw new Error('Ce texte n’est pas un code de synchro.');
+        return { name: LONG_DOC, folder: 'Comptabilité fournisseurs de la région Nord-Est', team: 'Grande équipe', personal: kind === 'perso', control: 'N5H-2AH' };
+      },
+      send: async () => { acts.push(['send']); await gate; if (kind === 'bloque') throw Object.assign(new Error('blocked'), { share: 'blocked' }); return { document: LONG_DOC }; },
+      abort: async () => { acts.push(['abort']); },
+    };
+    return openShareOther({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], file: { id: 'abc', name: 'Facture de la session de formation de septembre.pdf' }, flow, errorText: error => String(error.message), notice: text => acts.push(['notice', text]) });
+  };
   window.__share = kind => {
     window.__shareActs = [];
     const record = act => { window.__shareActs.push(act); return Promise.resolve({ ok: true }); };
-    return openShare({ container: stage, t: i18n.t, locale: language === 'en' ? 'en-GB' : 'fr-FR', inertTargets: () => [explorer.root], extraTargets: otherDocumentTargets(i18n.t), file: { key: 'gfs-fichiers:abc', name: 'Facture de la session de formation de septembre.pdf', app: 'GFS' },
+    return openShare({ container: stage, t: i18n.t, locale: language === 'en' ? 'en-GB' : 'fr-FR', inertTargets: () => [explorer.root], extraTargets: window.__shareSend ? state => otherDocumentTargets(i18n.t, { file: { id: 'abc', name: 'Facture.pdf', app: 'gfs-fichiers' }, state, open: () => void window.__sendOther(window.__shareSend) }) : otherDocumentTargets(i18n.t), file: { key: 'gfs-fichiers:abc', name: 'Facture de la session de formation de septembre.pdf', app: 'GFS' },
       load: async () => shareStates[kind], onAdd: row => record(['add', row.Personne, row.Droit]), onChange: (id, patch) => record(['change', id, patch.Droit]), onRemove: id => record(['remove', id]), onActivate: async () => { window.__shareActs.push(['activate']); return false; }, onManage: kind === 'actif' ? () => window.__manage() : null });
   };
   // La fenêtre « Poids du document » (js/weight-window.js, test/poids-fenetre-firefox.mjs) : la vraie fenêtre et le vrai lecteur (js/weight-reader.js) sur une doublure de `Transfer.sql`. `window.__weightKind` choisit ce

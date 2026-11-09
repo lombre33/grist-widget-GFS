@@ -91,3 +91,46 @@ test('les groupes : proposés par leur nom avec leur effectif, jamais ceux déj�
   const admin = levelItems(t, { current: 'lecture', category: true, onPick() {}, onWhy() {} }).find(item => item.label === t('share.right.admin'));
   assert.equal(admin.greyed, true);
 });
+
+test('« Un autre document Grist… » : libre pour un PDF de GFS quand la personne est propriétaire, grisée avec sa raison sinon (autre fichier, dossier, pas propriétaire, parcours non branché)', () => {
+  const opened = [];
+  const pdf = { key: 'gfs-fichiers:abc', app: 'gfs-fichiers', id: 'abc', name: 'Facture.pdf' };
+  const open = file => opened.push(file.id);
+  const [free] = otherDocumentTargets(t, { file: pdf, state: { owner: true }, open });
+  assert.equal(free.greyed, false);
+  assert.equal(free.why, null);
+  free.run();
+  assert.deepEqual(opened, ['abc']);
+  const grey = (extra, expected) => {
+    const [line] = otherDocumentTargets(t, { file: pdf, state: { owner: true }, open, ...extra });
+    assert.equal(line.greyed, true);
+    assert.equal(line.why, expected);
+    line.run();
+  };
+  grey({ file: { ...pdf, app: 'publipostage' } }, t('share.other.why.pdf'));
+  grey({ file: { ...pdf, folder: { path: 'Espaces/A/B' } } }, t('share.other.why.pdf'));
+  grey({ file: null }, t('share.other.why.pdf'));
+  grey({ state: { owner: false } }, t('share.other.why.owner'));
+  grey({ state: { owner: null } }, t('share.other.why.owner'));
+  grey({ state: null }, t('share.other.why.owner'));
+  grey({ open: null }, t('share.other.why'));
+  assert.deepEqual(opened, ['abc'], 'une ligne grisée n\'ouvre rien');
+  assert.deepEqual(suggestions(t, state(), 'zzz', otherDocumentTargets(t, { file: pdf, state: { owner: true }, open })).others.map(line => line.greyed), [false], 'la ligne reste dans la liste, quelle que soit la recherche');
+});
+
+test('les textes de la fenêtre d\'envoi sont les mêmes en français et en anglais, et aucun n\'est resté une clé', () => {
+  const fr = createI18n('fr').t;
+  const en = createI18n('en').t;
+  for (const key of ['share.other.sec', 'so.title', 'so.sub', 'so.foot', 'so.continue', 'so.cancel', 'so.close', 'so.accord.lead', 'so.accord.adds', 'so.accord.table', 'so.accord.columns', 'so.accord.hook', 'so.accord.other', 'so.accord.keep',
+    'so.preparing', 'so.code.step', 'so.code.hint', 'so.code.label', 'so.code.copy', 'so.code.copied', 'so.code.select', 'so.reply.step', 'so.reply.hint', 'so.reply.label', 'so.check', 'so.verify.lead',
+    'so.verify.doc', 'so.verify.personal', 'so.verify.in', 'so.verify.control', 'so.verify.hint', 'so.send', 'so.sending', 'so.sending.hint', 'so.done', 'so.done.hint', 'so.stop', 'so.failed',
+    'so.error.blocked', 'so.error.timeout', 'so.error.hint', 'so.toast.done', 'share.other.why.pdf', 'share.other.why.owner']) {
+    const vars = { name: 'F.pdf', doc: 'D', table: 'T', columns: 'a, b', n: 7, folder: 'Dossier', team: 'Équipe', message: 'm' };
+    assert.ok(fr(key, vars) && fr(key, vars) !== key, `fr ${key}`);
+    assert.ok(en(key, vars) && en(key, vars) !== key, `en ${key}`);
+    assert.notEqual(fr(key, vars), en(key, vars), `${key} : traduit`);
+  }
+  assert.match(fr('so.code.hint', { n: 1 }), /1 jour\./);
+  assert.match(fr('so.code.hint', { n: 7 }), /7 jours\./);
+  assert.match(en('so.code.hint', { n: 1 }), /1 day\./);
+});

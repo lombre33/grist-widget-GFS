@@ -46,3 +46,22 @@
 .mg .rr .btn.sm { flex: none; }
 .sh .mod-foot .btn { flex: none; }
 .sh .mod-foot .btn .ic { width: 14px; height: 14px; margin-right: 4px; }
+
+/* « Envoyer à un autre document » (js/share-other-window.js) : mêmes jetons ; le code d'invitation et sa réponse en police fixe du système, le code de contrôle bien lisible. */
+.so-lead { display: flex; align-items: flex-start; gap: 8px; margin: 4px 4px 0; font-size: 13px; }
+.so-lead .ic { flex: none; width: 16px; height: 16px; margin-top: 1px; color: var(--text-muted); }
+.so-list { margin: 2px 4px 0; padding-left: 20px; font-size: 12.5px; }
+.so-list li { margin: 2px 0; }
+.so-box { display: flex; align-items: flex-start; gap: 8px; margin: 4px 4px 0; }
+.so-code { flex: 1; min-width: 0; resize: none; padding: 6px 8px; font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text); background: var(--surface); border: var(--bw) solid var(--border-strong); border-radius: var(--radius-input); }
+.so-code:focus { border-color: var(--accent); outline: 0; }
+.so-box .btn { flex: none; }
+.so-box .btn .ic { width: 14px; height: 14px; margin-right: 4px; }
+.so .rt-content > .so-code { display: block; width: calc(100% - 8px); margin: 4px 4px 0; box-sizing: border-box; }
+.so-who small { display: inline; font-size: 12px; color: var(--text-muted); }
+.so-control { margin: 4px 4px 0; font: 600 20px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .08em; color: var(--text); }
+.so-actions { display: flex; gap: 8px; flex: none; }
+/* Un bouton grisé reste lisible (charte : 4,5:1) : texte atténué sur fond neutre et bordure en pointillés, non la transparence de la base des boutons (le texte blanc sur le bleu pâli tombait à 2,4:1). */
+.so .btn[aria-disabled="true"] { opacity: 1; background: var(--surface); border-style: dashed; color: var(--text-muted); cursor: not-allowed; }
+.so .btn.primary[aria-disabled="true"]:hover { background: var(--surface); }
+.sh .drop.so-solo { box-shadow: none; max-height: none; margin-top: 4px; }

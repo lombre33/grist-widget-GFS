@@ -33,7 +33,8 @@ import { arrivalApp, arrivalProbes } from './arrival.js';
 import { arrivalTableApp } from './arrival-table.js';
 import { Rangement, TableDeclined } from './rangement.js';
 import { RightsControl } from './rights-control.js';
-import { otherDocumentTargets } from './share-other.js';
+import { otherDocumentTargets, openOtherDocument } from './share-other.js';
+import { resumeSharing } from './sync-resume.js';
 import { WeightControl } from './weight-control.js';
 import { FILES_APP, FILES_MANIFEST, FILES_ENTRY, cleanName } from './gfs-files.js';
 import { Transfer, buildTransferFrame } from './transfer.js';
@@ -128,7 +129,7 @@ export class GfsController {
     this.rights = new RightsControl({
       port: this.port, transfer: this.transfer, manifests: () => this.validApps().map(item => item.manifest), now: () => Date.now(), container: this.$('stage'),
       inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')], t: this.t, fullAccess: () => this.fullAccess,
-      locale: () => this.locale, identity: () => this.identity, writeBlock: () => this.#writeBlock(), appName: this.appName, extraTargets: () => otherDocumentTargets(this.t), spaces: () => this.spaces,
+      locale: () => this.locale, identity: () => this.identity, writeBlock: () => this.#writeBlock(), appName: this.appName, extraTargets: (file, state) => otherDocumentTargets(this.t, { file, state, open: shared => void this.#sendToOtherDocument(shared) }), spaces: () => this.spaces,
     });
     this.weight = new WeightControl({ transfer: this.transfer, container: this.$('stage'), inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')], t: this.t, locale: () => this.locale });
   }
@@ -249,6 +250,8 @@ export class GfsController {
     doc.body.dataset.gfs = 'ready';
     if (!arrived) await this.#firstRun(); // une section qui s'ouvre sur son app n'est pas neuve : la fenêtre des apps ne passe pas par-dessus
     doc.body.dataset.gfsFirstRun = 'done';
+    // Un envoi laissé en route, ou un partage reçu dont le contenu arrive encore : les boucles du moteur reprennent d'où elles en étaient (js/sync-resume.js ; rien ne se charge sans table de partage).
+    if (!this.#writeBlock()) void resumeSharing({ docApi: this.grist.docApi, transfer: this.transfer, language: () => this.lang, busy: () => false }).catch(error => console.warn('GFS : le partage entre documents ne reprend pas', error));
   }
 
   // L'arrivée (cahier 6.2, point 2 ; js/arrival.js) : une section qui servait à une app s'ouvre sur elle, sans consigne et sans rien écrire ; sinon l'explorateur. Les réglages de la section parlent d'abord ;
@@ -496,6 +499,19 @@ export class GfsController {
   #writeBlock() {
     if (this.readonly) return this.t('mod.readonly');
     return this.fullAccess ? null : this.t('mod.needsAccess');
+  }
+
+  // « Partager > Un autre document Grist… » : la fenêtre d'envoi d'une copie du fichier à un autre document qui a GFS (js/share-other.js ; le moteur ne se charge qu'ici). L'envoi d'un document en lecture seule
+  // ou sans l'accès complet n'est pas proposé (la ligne est grisée par le propriétaire seul) ; une écriture refusée malgré tout est dite par le moteur.
+  async #sendToOtherDocument(file) {
+    const blocked = this.#writeBlock();
+    if (blocked) { this.notice(blocked); return; }
+    try {
+      await openOtherDocument({
+        file, t: this.t, container: this.$('stage'), inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')],
+        docApi: this.grist.docApi, transfer: this.transfer, language: () => this.lang, notice: text => this.notice(text),
+      });
+    } catch (error) { this.notice(this.t('so.failed', { message: String((error && error.message) || error).slice(0, 200) })); }
   }
 
   // La table n'existe pas encore : la personne décide de la créer (contrats 6.2, point 1). Une fenêtre du widget, au-dessus de celle des apps.

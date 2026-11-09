@@ -123,6 +123,15 @@ async function manageFlow(page, run, t) {
   if (linked.modal && !(linked.modal.body.includes(t('manage.other.cancel')) && linked.modal.body.includes(t('manage.other.stop')))) run.note(kind, 'un lien en attente devait proposer « Annuler », les autres « Arrêter »');
   await run.clickSelector('[data-fk="manage-other-stop-e2"]');
   await seen('annuler l\'invitation en attente devait le demander puis la retirer de la liste', s => s.acts.some(act => act[0] === 'cancelLink' && act[1] === 'e2') && s.modal && s.modal.links === 2);
+  // « Relier un document… » : la fenêtre du lien (sans fichier) s'ouvre par-dessus ; Échap ne ferme qu'elle, et la liste est relue.
+  if (linked.modal && !linked.modal.body.includes(t('manage.other.new'))) run.note(kind, `l'onglet Autres documents devait proposer « ${t('manage.other.new')} »`);
+  await run.clickSelector('[data-fk="manage-other-new"]');
+  await seen('« Relier un document… » devait demander au contrôleur de relier', s => s.acts.some(act => act[0] === 'newLink'));
+  const linkWindow = await page.run(() => { const node = document.querySelector('.mod.so'); return node ? { title: node.querySelector('.mod-head').textContent, modes: node.querySelectorAll('[data-fk^="so-mode-"]').length } : null; });
+  if (!linkWindow) run.note(kind, 'la fenêtre du lien devait s\'ouvrir par-dessus « Gérer les partages »');
+  else if (!linkWindow.title.includes(t('so.title.link')) || linkWindow.modes) run.note(kind, `la fenêtre devait dire « ${t('so.title.link')} » sans choix une fois / à jour (elle dit ${JSON.stringify(linkWindow)})`);
+  await page.press('Escape');
+  await seen('Échap devait fermer la fenêtre du lien seule, « Gérer les partages » restant ouvert', s => s.modal && s.modal.links === 2 && !s.modal.body.includes(t('so.title.link')));
   await run.clickSelector('[data-fk="manage-tab-cats"]');
   const cats = await seen('l\'onglet Catégories devait montrer les deux catégories', s => s.modal && s.modal.body.includes(t('share.cat.editeurs')) && s.modal.body.includes(t('share.cat.tous')));
   steady('onglet Catégories', cats);

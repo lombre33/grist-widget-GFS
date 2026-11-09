@@ -29,6 +29,7 @@ export function createOtherDocuments(deps) {
   }
 
   // La fenêtre du premier envoi à un document neuf. La fenêtre « Partager » est encore ouverte dessous : elle devient inerte avec le reste (la liste est prise avant que la nouvelle fenêtre existe).
+  // `file` null : relier les deux documents sans rien envoyer (« Gérer les partages > Autres documents > Relier un document… »).
   async function open(file) {
     const blocked = deps.writeBlock();
     if (blocked) { deps.notice(blocked); return; }
@@ -36,8 +37,8 @@ export function createOtherDocuments(deps) {
       const [{ openShareOther }, { createSourceFlow }, running, name] = await Promise.all([import('./share-other-window.js'), import('./share-other-flow.js'), engine(), documentName()]);
       const below = [...deps.container.querySelectorAll('.mod-scrim')];
       await openShareOther({
-        container: deps.container, t, inertTargets: () => [...deps.inertTargets(), ...below], file: { id: file.id, name: file.name },
-        createFlow: mode => createSourceFlow({ engine: running, file, mode, name }), errorText: running.errorText, notice: deps.notice,
+        container: deps.container, t, inertTargets: () => [...deps.inertTargets(), ...below], file: file ? { id: file.id, name: file.name } : null,
+        createFlow: mode => createSourceFlow({ engine: running, file, mode: file ? mode : 'live', name }), errorText: running.errorText, notice: deps.notice,
       });
     } catch (error) { deps.notice(await said(error)); }
   }
@@ -61,6 +62,7 @@ export function createOtherDocuments(deps) {
 
   return {
     receive,
+    link: () => open(null),
     entry() {
       const blocked = deps.writeBlock();
       return { action: 'receive', icon: 'download', family: null, greyed: Boolean(blocked), reason: blocked || '', focus: null, label: t('sr.entry'), hint: blocked || t('sr.entry.hint') };

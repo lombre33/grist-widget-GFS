@@ -41,7 +41,7 @@ function state() {
   const outside = node => { const at = node.getBoundingClientRect(); return at.width > 0 && (at.right > box.right + 1 || at.left < box.left - 1); };
   const reply = modal.querySelector('[data-fk="so-reply"]');
   out.modal = {
-    body: text(modal.querySelector('.rt-body')), note: text(modal.querySelector('.mod-note')), focus: active && active.dataset ? active.dataset.fk || null : null, inside: modal.contains(active),
+    title: text(modal.querySelector('.mod-head')), body: text(modal.querySelector('.rt-body')), note: text(modal.querySelector('.mod-note')), focus: active && active.dataset ? active.dataset.fk || null : null, inside: modal.contains(active),
     inPage: box.left >= 0 && box.top >= 0 && box.right <= window.innerWidth + 1 && box.bottom <= window.innerHeight + 1,
     sticky: head.bottom <= foot.top + 1 && foot.bottom <= box.bottom + 1 && head.top >= box.top - 1,
     outside: [...modal.querySelectorAll('.rt-body *, .mod-foot *, .mod-head *')].filter(outside).map(node => node.className || node.tagName).slice(0, 5),
@@ -139,6 +139,32 @@ async function sendingFlow(page, tools, t, flow, mode = 'once') {
 }
 
 // L'échec et ses issues : la préparation refusée (l'accord reste), l'envoi bloqué (« Arrêter le partage » défait), la fenêtre fermée en cours d'envoi (l'envoi se poursuit, un avis le dit).
+// Relier deux documents sans fichier : pas de nom de fichier ni de choix une fois / à jour, rien n'est envoyé maintenant ; le code, la réponse, le document qui répond, puis « relié » (rien n'est parti).
+async function linkFlow(page, tools, t) {
+  const kind = 'relier sans fichier';
+  const now = await tools.open(kind, 'lien');
+  if (!now.modal) return;
+  tools.fits(kind, now, 'l\'accord du lien');
+  if (!now.modal.body.includes(t('so.link.lead')) || now.modal.keys.some(key => key.startsWith('so-mode-')) || !now.modal.body.includes(t('so.accord.hook.live'))) tools.run.note(kind, `l'accord devait dire que rien n'est envoyé maintenant, sans choix une fois / à jour (il dit « ${now.modal.body.slice(0, 200)} »)`);
+  if (!now.modal.title.includes(t('so.title.link'))) tools.run.note(kind, `le titre devait être « ${t('so.title.link')} » (il est « ${now.modal.title} »)`);
+  await tools.press(kind, 'so-continue');
+  await tools.expect(kind, 'le parcours devait recevoir « à jour » (le lien reste)', s => s.acts.some(act => act[0] === 'mode' && act[1] === 'live'));
+  await tools.expect(kind, 'le code devait s\'afficher', s => s.modal && s.modal.keys.includes('so-code'));
+  await tools.press(kind, 'so-reply');
+  await tools.type('GRISTSYNC2.z');
+  await tools.press(kind, 'so-check');
+  const verify = await tools.expect(kind, 'la réponse acceptée devait montrer le document et le code de contrôle', s => s.modal && s.modal.keys.includes('so-send') && s.modal.control === 'N5H-2AH');
+  tools.fits(kind, verify, 'le document qui répond');
+  await tools.press(kind, 'so-send');
+  const sending = await tools.expect(kind, 'l\'envoi devait dire que le lien se met en place', s => s.modal && s.modal.body.includes(t('so.sending.link')) && s.modal.keys.includes('so-close'));
+  tools.fits(kind, sending, 'le lien en cours');
+  await page.run(() => { window.__sendGo(); });
+  const done = await tools.expect(kind, 'la fin devait dire que les documents sont reliés et que rien n\'est parti', s => s.modal && s.modal.body.includes(t('so.done.link.hint')) && s.modal.body.includes(t('so.done.link', { doc: LONG_DOC })));
+  tools.fits(kind, done, 'la fin du lien');
+  await tools.press(kind, 'so-close');
+  await tools.expect(kind, '« Fermer » devait fermer la fenêtre', s => s.modal === null);
+}
+
 async function failureFlow(page, tools, t) {
   let kind = 'préparation refusée';
   await tools.open(kind, 'refus');
@@ -257,6 +283,7 @@ export async function partagerAutreProblems(page, language, tag) {
     await sendingFlow(page, tools, t, 'ok');
     await sendingFlow(page, tools, t, 'ok', 'live');
     await sendingFlow(page, tools, t, 'perso');
+    await linkFlow(page, tools, t);
     await failureFlow(page, tools, t);
     await tabFlow(page, tools, t);
     await emptyTabFlow(page, tools, t);

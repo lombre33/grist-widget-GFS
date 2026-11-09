@@ -16,15 +16,15 @@ export const SYNC_TABLE_NAME = 'GFS_Synchro';
 export const RECEIVED_TABLE = 'GFS_Recus';
 
 // Le nom de l'export (celui du journal chez l'autre) : le nom du fichier sans « .pdf ».
-export const exportName = file => String(file.name || '').replace(/\.pdf$/i, '').trim() || String(file.name || file.id);
+export const exportName = file => (file ? String(file.name || '').replace(/\.pdf$/i, '').trim() || String(file.name || file.id) : '');
 
-// La sélection du moteur : le seul fichier voulu (voir selectionFor).
-export const selectionOf = file => selectionFor([file.id]);
+// La sélection du moteur : le seul fichier voulu (voir selectionFor) ; sans fichier (relier deux documents d'abord, sans rien envoyer), la condition nomme l'identifiant fictif de GFS : aucun fichier ne part.
+export const selectionOf = file => selectionFor(file ? [file.id] : []);
 
 // Ce qui retient l'envoi : un destinataire dont le lien de réception ne répond pas (`blocked`) ou un envoi qui n'a pas fini dans le temps (`timeout`).
 const stuck = code => Object.assign(new Error(code), { share: code });
 
-// deps : { engine, file ({ id, name }), mode ('once' : une copie, une fois ; 'live' : une copie qui se met à jour, le lien reste), name (celui de l'export d'un lien qui reste : le nom de ce document), wait (ms) → promesse }.
+// deps : { engine, file ({ id, name } ou null : relier les deux documents sans fichier, toujours « à jour »), mode ('once' : une copie, une fois ; 'live' : une copie qui se met à jour, le lien reste), name (celui de l'export d'un lien qui reste : le nom de ce document), wait (ms) → promesse }.
 export function createSourceFlow({ engine, file, mode = 'once', name = '', wait = ms => new Promise(resolve => setTimeout(resolve, ms)) }) {
   const state = { exp: null, entry: null, reply: null, hook: null };
 

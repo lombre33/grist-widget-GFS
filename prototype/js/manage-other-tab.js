@@ -15,11 +15,13 @@ function linkRow(ctx, link) {
     h('span', { class: 'tag' }, t(`so.state.${link.state}`)), stop);
 }
 
-// ctx : { t, links (null : en lecture ; false : illisible ; sinon la liste), stopLink(link) }.
+// ctx : { t, links (null : en lecture ; false : illisible ; sinon la liste), stopLink(link), newLink() (relier un document, sans fichier) }.
 export function otherManageTab(ctx) {
   const { t } = ctx;
   const lead = h('p', { class: 'fine' }, t('manage.other.lead'));
   if (ctx.links === null) return h('div', null, lead, h('p', { class: 'rt-none', 'aria-live': 'polite' }, t('so.tab.loading')));
   if (ctx.links === false) return h('div', null, lead, h('p', { class: 'rt-none' }, t('manage.other.unreadable')));
-  return h('div', null, lead, h('div', { class: 'sec' }, t('manage.other.title')), ctx.links.length ? h('ul', { class: 'rt-list sg-list' }, ...ctx.links.map(link => linkRow(ctx, link))) : h('p', { class: 'rt-none' }, t('manage.other.none')));
+  const fresh = h('button', { type: 'button', class: 'btn sm', dataset: { fk: 'manage-other-new' } }, t('manage.other.new'));
+  fresh.addEventListener('click', () => void ctx.newLink());
+  return h('div', null, lead, h('div', { class: 'sec' }, t('manage.other.title')), ctx.links.length ? h('ul', { class: 'rt-list sg-list' }, ...ctx.links.map(link => linkRow(ctx, link))) : h('p', { class: 'rt-none' }, t('manage.other.none')), h('p', null, fresh));
 }

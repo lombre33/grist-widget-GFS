@@ -21,7 +21,7 @@ function accordDetails(ctx) {
   const { t } = ctx;
   const live = ctx.mode === 'live';
   return [
-    h('p', { class: 'so-lead' }, icon('info'), h('span', null, t(live ? 'so.accord.lead.live' : 'so.accord.lead'))),
+    h('p', { class: 'so-lead' }, icon('info'), h('span', null, t(ctx.file ? (live ? 'so.accord.lead.live' : 'so.accord.lead') : 'so.link.lead'))),
     h('div', { class: 'sec' }, t('so.accord.adds')),
     h('ul', { class: 'so-list' },
       h('li', null, t(live ? 'so.accord.table.live' : 'so.accord.table', { table: SYNC_TABLE_NAME })),
@@ -40,8 +40,9 @@ function accordScreen(ctx) {
     input.addEventListener('change', () => { ctx.mode = mode; details.replaceChildren(...accordDetails(ctx)); });
     return h('label', { class: 'chk' }, input, h('span', null, h('b', null, t(`so.mode.${mode}`)), h('small', null, t(`so.mode.${mode}.hint`))));
   };
+  // Sans fichier, le lien est toujours « à jour » : pas de choix à faire.
   return {
-    body: h('div', { class: 'rt-content' }, h('div', { class: 'sec' }, t('so.mode.step')), radio('once'), radio('live'), details),
+    body: h('div', { class: 'rt-content' }, ...(ctx.file ? [h('div', { class: 'sec' }, t('so.mode.step')), radio('once'), radio('live')] : []), details),
     buttons: [ctx.cancelButton(), ctx.go(button('so-continue', t('so.continue'), true), () => ctx.prepare())],
     first: 'so-continue',
   };
@@ -89,7 +90,7 @@ function verifyScreen(ctx, info) {
 function sendingScreen(ctx) {
   const { t } = ctx;
   return {
-    body: h('div', { class: 'rt-content' }, h('p', { class: 'so-lead', role: 'status' }, icon('download'), h('span', null, t('so.sending', { name: ctx.file.name }))), h('p', { class: 'fine' }, t('so.sending.hint'))),
+    body: h('div', { class: 'rt-content' }, h('p', { class: 'so-lead', role: 'status' }, icon('download'), h('span', null, ctx.file ? t('so.sending', { name: ctx.file.name }) : t('so.sending.link'))), h('p', { class: 'fine' }, t(ctx.file ? 'so.sending.hint' : 'so.sending.link.hint'))),
     buttons: [button('so-close', t('so.close'), true)],
     first: 'so-close',
     close: true,
@@ -111,19 +112,19 @@ function failureScreen(ctx, text) {
 function doneScreen(ctx, result) {
   const { t } = ctx;
   return {
-    body: h('div', { class: 'rt-content' }, h('p', { class: 'so-lead', role: 'status' }, icon('check'), h('span', null, t('so.done', { name: ctx.file.name, doc: result.document }))), h('p', { class: 'fine' }, t(result.live ? 'so.done.live.hint' : 'so.done.hint'))),
+    body: h('div', { class: 'rt-content' }, h('p', { class: 'so-lead', role: 'status' }, icon('check'), h('span', null, ctx.file ? t('so.done', { name: ctx.file.name, doc: result.document }) : t('so.done.link', { doc: result.document }))), h('p', { class: 'fine' }, t(ctx.file ? (result.live ? 'so.done.live.hint' : 'so.done.hint') : 'so.done.link.hint'))),
     buttons: [button('so-close', t('so.close'), true)],
     first: 'so-close',
     close: true,
   };
 }
 
-// La fenêtre d'un fichier. opts : { container, t, inertTargets, file ({ id, name }), createFlow(mode) (le parcours : createSourceFlow, `mode` : 'once' ou 'live'), errorText (le moteur), notice (un avis hors fenêtre), now () → ms }. Rend la promesse de sa fermeture.
+// La fenêtre d'un fichier. opts : { container, t, inertTargets, file ({ id, name } ; null : relier les deux documents sans fichier), createFlow(mode) (le parcours : createSourceFlow, `mode` : 'once' ou 'live'), errorText (le moteur), notice (un avis hors fenêtre), now () → ms }. Rend la promesse de sa fermeture.
 export function openShareOther(opts) {
   const { t, file } = opts;
-  const steps = openSteps({ container: opts.container, t, inertTargets: opts.inertTargets, title: t('so.title', { name: file.name }), sub: t('so.sub'), foot: t('so.foot'), errorText: opts.errorText });
+  const steps = openSteps({ container: opts.container, t, inertTargets: opts.inertTargets, title: file ? t('so.title', { name: file.name }) : t('so.title.link'), sub: file ? t('so.sub') : t('so.sub.link'), foot: t('so.foot'), errorText: opts.errorText });
   const { dialog, done, result, say, show } = steps;
-  const ctx = { t, file, now: opts.now || Date.now, closed: false, sending: false, mode: 'once', flow: null, go: steps.go, cancelButton: steps.cancelButton, copy: steps.copy };
+  const ctx = { t, file, now: opts.now || Date.now, closed: false, sending: false, mode: file ? 'once' : 'live', flow: null, go: steps.go, cancelButton: steps.cancelButton, copy: steps.copy };
   ctx.prepare = async () => {
     say(t('so.preparing'));
     ctx.flow = opts.createFlow(ctx.mode);
@@ -137,7 +138,7 @@ export function openShareOther(opts) {
     show(sendingScreen(ctx));
     try {
       const finished = await ctx.flow.send();
-      if (dialog.isConnected) show(doneScreen(ctx, finished)); else opts.notice(t('so.toast.done', { name: file.name, doc: finished.document }));
+      if (dialog.isConnected) show(doneScreen(ctx, finished)); else opts.notice(file ? t('so.toast.done', { name: file.name, doc: finished.document }) : t('so.toast.link', { doc: finished.document }));
     } catch (error) {
       const text = error && error.share ? t(`so.error.${error.share}`) : t('so.failed', { message: opts.errorText(error) });
       if (dialog.isConnected) show(failureScreen(ctx, text)); else opts.notice(text);

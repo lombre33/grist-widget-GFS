@@ -139,7 +139,7 @@ export function manageBody(ctx) {
 }
 
 // opts : { container, t, inertTargets, load() → état, onAddGroup(state, { name, people }), onUpdateGroup(id, people), onRemoveGroup(id), onReadTable(state), onRoot(state, who, right), onStructure(), onConfirmRemove(name),
-//   onAddSpace(state), onRemoveSpace(state, space), onSpaceGroup(state, space, group, right), onPickGroup(state, space), onLinks() → les documents reliés (js/share-links.js), onStopLink(link) → { ok, message? } (confirmé par l'appelant) }.
+//   onAddSpace(state), onRemoveSpace(state, space), onSpaceGroup(state, space, group, right), onPickGroup(state, space), onLinks() → les documents reliés (js/share-links.js), onNewLink() (relier un document, sans fichier ; rend quand sa fenêtre est fermée), onStopLink(link) → { ok, message? } (confirmé par l'appelant) }.
 export function openManage(opts) {
   const { container, t } = opts;
   const body = h('div', { class: 'ask-body rt-body sh-body' }, h('p', { class: 'rt-none', 'aria-live': 'polite' }, t('share.loading')));
@@ -172,6 +172,7 @@ export function openManage(opts) {
     ctx.say(answer.ok ? t('share.foot') : t('share.failed', { message: answer.message || '' }));
     if (answer.ok) await ctx.readLinks();
   };
+  ctx.newLink = async () => { if (opts.onNewLink) await opts.onNewLink(); await ctx.readLinks(); };
   ctx.go = key => { ctx.tab = key; ctx.editing = null; ctx.space = null; draw(); if (key === 'other') void ctx.readLinks(); };
   ctx.openSpace = space => { ctx.space = space ? space.key : null; draw(); };
   ctx.addSpace = async () => { const answer = await opts.onAddSpace(ctx.state); if (answer) { ctx.say(answer.ok ? t('share.foot') : t('share.failed', { message: answer.message || '' })); if (answer.ok) await reload(); } };

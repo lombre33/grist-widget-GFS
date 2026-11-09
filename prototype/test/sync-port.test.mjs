@@ -219,3 +219,38 @@ test('verrou, page et préférences : navigator.locks quand il existe ; la page 
   assert.equal(blocked.prefs.write('x', 1), false);
   assert.equal(await blocked.withLock('y', async () => 6), 6, 'sans verrous : tout de suite');
 });
+
+test('contrôle d\'un lien collé : le document que désigne la clé (shareInfo) est lu chez Grist sans jeton ; clé coupée → null ; Grist muet ou réponse inattendue → « shareUnreadable »', async () => {
+  const good = 'https://grist.exemple.fr/o/docs/api/s/ABCD1234EFGH/tables/Clients/records?flat=1';
+  const body = { id: 'DOC123456789abcdef', name: 'Contrats', workspace: { name: 'Clients', org: { domain: 'docs', name: 'Mon espace' } } };
+  const run = port({ 'GET anonymous': { status: 200, body } });
+  assert.equal(await run.port.shareInfo('https://grist.exemple.fr/api/s/ABCD1234EFGH/tables/Clients/records?flat=1').then(info => info.docId), 'DOC123456789abcdef');
+  assert.equal(run.transfer.asked.at(-1).url, 'https://grist.exemple.fr/api/s/ABCD1234EFGH', 'la fiche est demandée sans jeton, à la clé seule');
+  assert.equal(run.transfer.asked.at(-1).timeout, 15000);
+  const team = await run.port.shareInfo('https://grist.exemple.fr/o/docs/api/s/ABCD1234EFGH/tables/Clients/records?flat=1');
+  assert.deepEqual([team.name, team.folder, team.team, team.personal], ['Contrats', 'Clients', 'docs', true]);
+  assert.equal(run.transfer.asked.at(-1).url, 'https://grist.exemple.fr/o/docs/api/s/ABCD1234EFGH');
+  assert.equal(await run.port.shareInfo('pas une adresse'), null);
+  assert.equal(await run.port.shareInfo('https://grist.exemple.fr/api/docs/DOC/tables/T/records'), null, 'ce n\'est pas une adresse de formulaire');
+  assert.equal(await port({ 'GET anonymous': http(404, 'Share not known') }).port.shareInfo(good), null);
+  assert.equal(await port({ 'GET anonymous': http(403, 'no') }).port.shareInfo(good), null);
+  await assert.rejects(() => port({ 'GET anonymous': http(500, 'boum') }).port.shareInfo(good), /^Error: shareUnreadable$/);
+  await assert.rejects(() => port({ 'GET anonymous': new TransferError('network', 'x') }).port.shareInfo(good), /^Error: shareUnreadable$/);
+  await assert.rejects(() => port({ 'GET anonymous': { status: 200, body: 'texte' } }).port.shareInfo(good), /^Error: shareUnreadable$/);
+  await assert.rejects(() => port({ 'GET anonymous': { status: 200, body: { id: 'court' } } }).port.shareInfo(good), /^Error: shareUnreadable$/);
+});
+
+test('lien public et journal : publicAccess dit le droit, « » s\'il est fermé, null si Grist ne répond pas ; journalStats résume en une requête, null si Grist refuse', async () => {
+  assert.equal(await port({ 'GET anonymous': { status: 200, body: { access: 'editors' } } }).port.publicAccess(BASE), 'editors');
+  assert.equal(await port({ 'GET anonymous': { status: 200, body: {} } }).port.publicAccess(BASE), 'viewers');
+  for (const status of [401, 403, 404]) assert.equal(await port({ 'GET anonymous': http(status) }).port.publicAccess(BASE), '');
+  assert.equal(await port({ 'GET anonymous': http(500) }).port.publicAccess(BASE), null);
+  assert.equal(await port({ 'GET anonymous': new TransferError('network', 'x') }).port.publicAccess(BASE), null);
+  const run = port({ sql: [{ n: '3', last: 1700000000.5, raw: null }] });
+  assert.deepEqual(await run.port.journalStats('GFS_Journal_x', 'Recu', 'Type'), { n: 3, last: 1700000000.5, raw: 0 });
+  assert.match(run.transfer.asked[0].statement, /^select count\(\*\) as n, max\("Recu"\) as last, sum\(case when "Type" is not null and "Type" != '' then 1 else 0 end\) as raw from "GFS_Journal_x"$/);
+  assert.equal(await run.port.journalStats('Mauvais nom"; drop', 'a', 'b'), null, 'un nom de table qui n\'en est pas un ne part pas');
+  assert.equal(run.transfer.asked.length, 1);
+  assert.equal(await port({ sql: http(400, 'no such table') }).port.journalStats('T', 'a', 'b'), null);
+  assert.equal(await port({ sql: [] }).port.journalStats('T', 'a', 'b'), null);
+});

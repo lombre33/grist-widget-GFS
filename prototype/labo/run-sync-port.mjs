@@ -127,6 +127,17 @@ try {
   check('postRows : l\'envoi de lignes à l\'adresse d\'un formulaire publié (sans jeton, depuis le cadre opaque)', posted.ok, posted);
   const formRows = await run.rest.rows('Clients');
   check('la ligne envoyée par la clé du formulaire est dans la table', formRows.some(row => row.Nom === 'Par le formulaire'), formRows.map(row => row.Nom));
+  // Le contrôle de sécurité d'un lien collé : de quel document la clé est-elle ? (écrans de Sync+ aujourd'hui, moteur demain : consigne 005)
+  const info = await until(() => frame.evaluate(address => window.__try(() => window.__p.shareInfo(address)), formUrl));
+  check('shareInfo : la clé du formulaire désigne bien CE document (identifiant complet, nom, dossier ; ici l’espace personnel, sans équipe), lue sans jeton depuis le cadre opaque', info.ok && info.value && docId === info.value.docId && info.value.personal === true && /^Essai/.test(info.value.name), info.ok ? info.value : info);
+  const lost = await frame.evaluate(address => window.__try(() => window.__p.shareInfo(address)), `${identity.origin}${prefix}/api/s/ZZZZ9999AAAA/tables/Clients/records?flat=1`);
+  check('shareInfo d\'une clé qui n\'existe pas : null (lien coupé), pas une erreur', lost.ok && lost.value === null, lost);
+  const elsewhere = await frame.evaluate(() => window.__try(() => window.__p.shareInfo('https://autre-instance.example.org/api/s/ABCD1234EFGH/tables/Clients/records?flat=1')));
+  check('shareInfo d\'un lien d\'une autre instance : rien ne part, « shareUnreadable »', !elsewhere.ok && elsewhere.message === 'shareUnreadable', elsewhere);
+  check('publicAccess : le document est privé (chaîne vide)', await frame.evaluate(base => window.__p.publicAccess(base), identity.baseUrl) === '');
+  const stats = await frame.evaluate(() => window.__p.journalStats('Clients', 'id', 'Nom'));
+  check('journalStats : lignes comptées, dernière valeur, lignes à déplier (une requête SQL)', stats && stats.n >= 6 && stats.last >= stats.n && stats.raw >= stats.n - 1, stats);
+  check('journalStats d\'une table absente : null', await frame.evaluate(() => window.__p.journalStats('Absente', 'a', 'b')) === null);
   // L'avis de fin : le webhook d'un destinataire écrit dans le formulaire publié de l'autre document (même instance) ; le dernier envoi part par cette clé, puis le webhook est effacé.
   const noticed = await frame.evaluate(url => window.__try(async () => {
     const id = await window.__p.createWebhook({ name: 'avis', memo: 'essai', url, tableId: 'Clients', condition: '$Nom == "jamais"' });

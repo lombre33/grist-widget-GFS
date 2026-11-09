@@ -2255,8 +2255,9 @@ fichier lui-même en pièce jointe de Grist.
     Il remplit chaque fonction de `PORT_SHAPE` (`kit/js/synchro/port.js`) avec ce que GFS a déjà : lignes, actions et schéma par `grist.docApi` (valeurs décodées), tout le REST par le cadre d'envoi (point 15), `navigator.locks`,
     la langue de GFS (`js/sync-port-text.js` : les textes du moteur, `error.*` et `recv.*`, plus six clés du port ; une clé inconnue est rendue telle quelle, sans avertissement, car le moteur s'en sert pour reconnaître une erreur
     prévue), `gfs.synchro.` pour les deux préférences. Les tables du moteur portent le préfixe `GFS_`. **Un seul moteur par page** (le port est global) et il ne se charge qu'au premier partage : `sync-port.js` n'est importé qu'à ce moment,
-    et la carte d'importation de `index.html` nomme les modules de `kit/js/synchro/` (`outils/versions.mjs`). Une requête anonyme ne part jamais vers un autre serveur que celui du document (`otherInstance`). [M] 34 vérifications dans un vrai
-    Grist (faits vérifiés, 60), 13 essais du port sans Grist (`test/sync-port.test.mjs`).
+    et la carte d'importation de `index.html` nomme les modules de `kit/js/synchro/` (`outils/versions.mjs`). Une requête anonyme ne part jamais vers un autre serveur que celui du document (`otherInstance`). Le port a aussi `shareInfo` (le document qu'une clé de formulaire désigne : le contrôle d'un lien collé), `publicAccess` et `journalStats`, que les écrans de Sync+ appellent hors de `PORT_SHAPE`
+    (consigne 005). [M] 40 vérifications dans un vrai
+    Grist (faits vérifiés, 60), 15 essais du port sans Grist (`test/sync-port.test.mjs`).
 
 ### 6.7 `GFS_Corbeille`, la corbeille des fichiers des apps
 

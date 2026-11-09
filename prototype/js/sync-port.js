@@ -6,14 +6,16 @@
 //   - la langue, la page et les deux petites valeurs du navigateur : ceux de GFS, préfixe `gfs.synchro.`.
 // Rien n'est lu à l'import : `createSyncPort` reçoit ses dépendances (et ses essais les remplacent). Les tables que le moteur crée portent le préfixe `GFS_`.
 import { startEngine } from '../kit/js/synchro/index.js';
-import { maskKey, parseDocBaseUrl } from '../kit/js/synchro/logic/codes.js';
+import { maskKey, parseDocBaseUrl, parseWebhookUrl } from '../kit/js/synchro/logic/codes.js';
 import { parseJson, toRows } from '../kit/js/synchro/logic/common.js';
 import { schemaFrom } from '../kit/js/synchro/logic/schema.js';
+import { readShare } from '../kit/js/synchro/logic/trust.js';
 import { TransferError } from './transfer.js';
 import { createEngineText } from './sync-port-text.js';
 
 export const SYNC_PREFIX = 'GFS_';
 const PREF_PREFIX = 'gfs.synchro.';
+const SHARE_MS = 15 * 1000; // la fiche d'un partage, demandée à Grist
 const NOTICE_MS = 10 * 1000; // l'avis de fin envoyé juste avant d'effacer un webhook : un lien mort ou lent ne retient pas l'effacement
 
 // Une erreur du cadre d'envoi, dite comme le moteur la lit : un refus du serveur garde son code et ce que Grist en dit (sans jamais montrer une clé de formulaire en entier), le reste est dit dans la
@@ -193,6 +195,49 @@ function publicPort({ transfer }) {
   };
 }
 
+// Ce que les écrans de Sync+ demandent à Grist en plus des fonctions du port d'aujourd'hui, et que le moteur demandera quand il aura l'orchestration des assistants (consigne 005) : le document qu'une clé de formulaire
+// désigne (le contrôle de sécurité d'un lien collé : un lien qui écrirait dans un autre document est refusé), le droit du lien public d'un document, et le résumé d'un journal.
+function inspectPort({ transfer }) {
+  return {
+    // Le document que désigne l'adresse d'écriture `url` (clé d'un formulaire publié), lu chez Grist sans jeton : nom, dossier, équipe, identifiant (kit/js/synchro/logic/trust.js, `readShare`). Null si la clé n'existe
+    // pas (lien coupé) ; « shareUnreadable » si Grist ne répond pas ou autre chose que ce qu'on attend ; seulement le serveur du document.
+    async shareInfo(url) {
+      const target = parseWebhookUrl(url);
+      if (!target) return null;
+      let answer;
+      try {
+        answer = await transfer.anonymous('GET', `${target.origin}${target.prefix}/api/s/${target.key}`, { timeout: SHARE_MS });
+      } catch (error) {
+        if (error instanceof TransferError && error.kind === 'http' && [403, 404].includes(error.status)) return null;
+        throw new Error('shareUnreadable');
+      }
+      const info = readShare(answer.body && typeof answer.body === 'object' ? answer.body : null);
+      if (!info) throw new Error('shareUnreadable');
+      return info;
+    },
+    // Le droit du lien public du document d'adresse REST `base` : 'viewers', 'editors', '' s'il n'est pas public, null quand la réponse ne permet pas de le dire (réseau, serveur occupé).
+    async publicAccess(base) {
+      try {
+        const { body } = await transfer.anonymous('GET', base);
+        return String((body && typeof body === 'object' && body.access) || 'viewers');
+      } catch (error) {
+        return error instanceof TransferError && error.kind === 'http' && [401, 403, 404].includes(error.status) ? '' : null;
+      }
+    },
+    // { n, last, raw } d'un journal en une requête : lignes, dernière arrivée et lignes pas encore dépliées ; null si Grist refuse ou si la table n'a pas ces colonnes.
+    async journalStats(tableId, receivedCol, typeCol) {
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(tableId)) return null;
+      const sql = `select count(*) as n, max("${receivedCol}") as last, sum(case when "${typeCol}" is not null and "${typeCol}" != '' then 1 else 0 end) as raw from "${tableId}"`;
+      try {
+        const [row] = await transfer.sql(sql, { writable: true });
+        return row ? { n: Number(row.n) || 0, last: Number(row.last) || 0, raw: Number(row.raw) || 0 } : null;
+      } catch (error) {
+        return null;
+      }
+    },
+  };
+}
+
 // La page : visible ou non, occupée (une fenêtre ouverte que le rechargement du document fermerait) et ses deux événements ; `env` est la fenêtre (les essais en donnent une fausse).
 function pagePort(env, busy) {
   const visible = () => env.document.visibilityState === 'visible';
@@ -227,6 +272,7 @@ export function createSyncPort({ docApi, transfer, language = () => 'fr', busy =
     ...filesPort(context, sender),
     ...hooksPort(context, sender, data),
     ...publicPort(context),
+    ...inspectPort(context),
     // Une seule exécution à la fois sous ce nom, tous les onglets du navigateur confondus (sans verrous possibles : tout de suite).
     withLock: (name, job) => (env.navigator && env.navigator.locks ? env.navigator.locks.request(name, job) : job()),
     text,

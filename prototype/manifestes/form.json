@@ -65,6 +65,15 @@
         }
       },
       {
+        "tables": ["_grist_Views"],
+        "lit": true,
+        "ecrit": ["name"],
+        "pourquoi": {
+          "fr": "Donner à la page du formulaire qu'elle vient de créer un nom qui la retrouve dans la liste des pages (« Formulaire » suivi du nom de la table), à la place du « New page » de Grist. Elle ne change que ce nom.",
+          "en": "Give the page of the form it has just created a name you can find in the page list (“Form” followed by the table's name), instead of Grist's “New page”. It changes that name only."
+        }
+      },
+      {
         "tables": ["_grist_Views_section_field"],
         "lit": true,
         "ecrit": ["parentId", "colRef", "widgetOptions"],

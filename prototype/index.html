@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-hnTqgZ8BVyETlA0F7kvmZ+t6cxqj0Gxc8A881/LNdp4='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-3UpKkaXlPS8aOTneU779Z/dFU0vo+m/F6F1/nh9/zZw='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=6edbc41aa4">
 <link rel="stylesheet" href="css/explorer.css?v=418da9c54e">
 <link rel="stylesheet" href="css/modules.css?v=1109fc818b">
@@ -43,7 +43,7 @@
     "./js/catalogue.js": "./js/catalogue.js?v=9821dc95fc",
     "./js/conflict-window.js": "./js/conflict-window.js?v=e3c9c8e8d3",
     "./js/context.js": "./js/context.js?v=02c3f955eb",
-    "./js/controller.js": "./js/controller.js?v=3efedd85a3",
+    "./js/controller.js": "./js/controller.js?v=f4a0c98172",
     "./js/copying.js": "./js/copying.js?v=8da0986c98",
     "./js/deposit.js": "./js/deposit.js?v=e11841b099",
     "./js/dock-state.js": "./js/dock-state.js?v=8eec913fd1",
@@ -80,7 +80,7 @@
     "./js/kept-files.js": "./js/kept-files.js?v=f04eeea3fa",
     "./js/language.js": "./js/language.js?v=b287c81a20",
     "./js/layers.js": "./js/layers.js?v=2d0c225b72",
-    "./js/leave.js": "./js/leave.js?v=9128da01d8",
+    "./js/leave.js": "./js/leave.js?v=aa307430cb",
     "./js/libraries.js": "./js/libraries.js?v=f8e30c6112",
     "./js/links.js": "./js/links.js?v=c4e4a9d7bc",
     "./js/manage-control.js": "./js/manage-control.js?v=b157f419a8",
@@ -109,7 +109,7 @@
     "./js/rights.js": "./js/rights.js?v=13cc4f2471",
     "./js/rpc.js": "./js/rpc.js?v=2133dc4192",
     "./js/search.js": "./js/search.js?v=0921c92eb3",
-    "./js/session.js": "./js/session.js?v=c578763aee",
+    "./js/session.js": "./js/session.js?v=8d372a771c",
     "./js/settings-menu.js": "./js/settings-menu.js?v=f9ce66c1f3",
     "./js/settings.js": "./js/settings.js?v=a425d4248c",
     "./js/share-control.js": "./js/share-control.js?v=049c843547",

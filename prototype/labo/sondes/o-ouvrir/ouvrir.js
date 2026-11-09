@@ -6,9 +6,11 @@
 // `fermer` (contrats 5.4, point 3) : `body[data-fermer]` choisit la réponse. Absent ou `inconnu` : une app qui n'a pas la porte (GFS_INCONNU, comme avant). `oui` ({ ferme: true }), `non`
 // ({ ferme: false }), `echec` (GFS_ERREUR et son texte), `muet` (pas de réponse : `window.__fermer(true | false)` y répond plus tard), `question` (la sonde pose dans sa page la question
 // « Enregistrer / Abandonner / Annuler » que pose une app avec des modifications en attente : la personne y répond à la souris). Les appels reçus sont dans `fermer`, les boutons cliqués dans `reponses`.
+// `rester` (contrats 5.4, point 3 : GFS dit « tu restes » à l'app qui avait répondu oui à `fermer`) : `body[data-rester]` choisit la réponse. Absent ou `inconnu` : GFS_INCONNU (une app qui n'a pas la porte). `oui` ({ repris: true }) ou `non`
+// ({ repris: false }). Les appels reçus sont dans `rester`, qu'elle y réponde ou non.
 (function () {
   'use strict';
-  var received = { contexte: false, ouverture: null, appels: [], fermer: [], reponses: [] };
+  var received = { contexte: false, ouverture: null, appels: [], fermer: [], rester: [], reponses: [] };
   var publish = function () { document.body.dataset.sonde = JSON.stringify(received); };
   var post = function (message) { window.parent.postMessage(message, '*'); };
   var closing = null; // l'id de l'appel `fermer` qui attend la réponse de la personne
@@ -49,6 +51,13 @@
     if (mode === 'echec') { post({ gfs: 0, type: 'erreur', id: msg.id, code: 'GFS_ERREUR', message: 'Enregistrement refusé par Grist.' }); return; }
     post({ gfs: 0, type: 'reponse', id: msg.id, data: { ferme: mode !== 'non' } });
   };
+  var onStay = function (msg) {
+    var mode = document.body.dataset.rester || 'inconnu';
+    received.rester.push(msg.args);
+    publish();
+    if (mode === 'inconnu') { post({ gfs: 0, type: 'erreur', id: msg.id, code: 'GFS_INCONNU', message: 'L\'appel « rester » est inconnu de cette app.' }); return; }
+    post({ gfs: 0, type: 'reponse', id: msg.id, data: { repris: mode === 'oui' } });
+  };
   // Le routeur de GFS livre ici les messages du parent ; on ne lit que lui, et que les enveloppes (sans `mtype`).
   window.addEventListener('message', function (event) {
     var msg = event.data;
@@ -61,6 +70,7 @@
     }
     if (msg.type !== 'appel') return;
     if (msg.nom === 'fermer' && (document.body.dataset.fermer || 'inconnu') !== 'inconnu') { onClose(msg); return; }
+    if (msg.nom === 'rester') { onStay(msg); return; }
     if (msg.nom !== 'ouvrir' || document.body.dataset.reponse === 'inconnu') {
       post({ gfs: 0, type: 'erreur', id: msg.id, code: 'GFS_INCONNU', message: 'L\'appel « ' + msg.nom + ' » est inconnu de cette app.' });
       return;

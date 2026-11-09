@@ -43,7 +43,7 @@ import { buildAppFiles, buildKept } from './file-managers.js';
 import { Trash } from './trash.js';
 import { Copying } from './copying.js';
 import { ask } from './ask-window.js';
-import { askToClose, leaveQuestion } from './leave.js';
+import { leaveApp, leaveQuestion } from './leave.js';
 import { importFormats, acceptsFile, importOpening, openingKind, carriesFile, pickFile } from './import-file.js';
 import { readersOf, chooseReader, readOpening } from './reading.js';
 import { publicationQuestion } from './publication-window.js';
@@ -581,7 +581,7 @@ export class GfsController {
   async #openApp(id) {
     const app = this.appById(id);
     if (app && levelOf(app.manifest.permissions.acces) > levelOf(this.state.grantedAccess)) { this.notice(this.t('gfs.needsFullAccess')); return; }
-    if (this.session && this.session.id !== id && !(await this.#leave('app'))) return;
+    if (!(await this.#leave('app', id))) return;
     if (!this.#activate(id, null)) return;
     this.hideExplorer();
   }
@@ -688,7 +688,7 @@ export class GfsController {
 
   // Rend `true` quand l'ouverture est partie vers l'app (ou qu'elle l'a faite), `false` quand l'app n'a pu être activée ou que la personne a annulé dans l'app (l'appel `ouvrir` d'une app attend ce résultat).
   async #openIn(appId, opening, noticeKey) {
-    if (this.session && this.session.id !== appId && !(await this.#leave((opening && opening.raison) || 'ouvrir'))) return false; // une autre app : la première s'enregistre ou pose sa question avant de partir
+    if (!(await this.#leave((opening && opening.raison) || 'ouvrir', appId))) return false; // une autre app : la première s'enregistre ou pose sa question avant de partir
     // L'app déjà ouverte a lu son contexte : elle n'y relira pas l'ouverture, GFS la lui dit par l'appel `ouvrir` (contrats 5.4, point 1).
     // Sinon (une autre app, ou celle-ci qui démarre) l'ouverture part dans le contexte qu'elle va demander.
     const running = this.#isOpen(appId) && this.#contextServed;
@@ -718,21 +718,23 @@ export class GfsController {
 
   // Quitter l'app active pour une autre (contrats 5.4, point 3) : GFS lui demande de se fermer ; elle enregistre ou pose sa question, derrière l'explorateur qu'on referme pour qu'elle se voie.
   // `false` : la personne reste (elle a annulé dans l'app, ou n'a pas voulu fermer) ou a fait autre chose entre-temps. Une app qui n'a pas demandé son contexte n'a encore rien à enregistrer.
-  async #leave(reason) {
+  // Rien à demander quand la même app reste ou que l'app visée ne peut être activée (l'app active resterait alors en place : elle n'a rien arrêté). Une app qui a dit oui puis reste (la personne est revenue à l'explorateur) reçoit « rester ».
+  async #leave(reason, target) {
     const session = this.session;
-    if (!session || !this.#contextServed) return true;
+    if (!session || session.id === target || !this.#contextServed || !this.#openable(target)) return true;
     const run = ++this.#leaveRun;
     this.hideExplorer();
     const app = this.appName(session.id);
-    const offer = fault => this.#ask(leaveQuestion({ t: this.t, app, fault }));
-    const leave = await askToClose(session, reason, { offer });
-    return leave && run === this.#leaveRun && session === this.session;
+    const where = () => (session !== this.session ? 'gone' : run === this.#leaveRun ? 'now' : 'moved');
+    return leaveApp(session, reason, { offer: fault => this.#ask(leaveQuestion({ t: this.t, app, fault })), where });
   }
 
   // Active l'app : la même reste en place, une autre remplace l'app active (une seule à la fois, contrats 1.4).
+  #openable(id) { return Boolean(this.appById(id)) && this.registry.has(id); }
+
   #activate(id, opening) {
+    if (!this.#openable(id)) return false;
     const app = this.appById(id);
-    if (!app || !this.registry.has(id)) return false;
     this.opening = opening;
     if (this.#isOpen(id)) return true;
     if (this.session) this.#closeSession();

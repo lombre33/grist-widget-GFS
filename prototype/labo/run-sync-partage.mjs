@@ -123,6 +123,13 @@ try {
   check('CIBLE : GFS_Fichiers de la CIBLE n\'existe pas (la table reçue est à part)', !(await target.rest.tables()).includes('GFS_Fichiers'), await target.rest.tables());
   const left = (await source.rest.rows('GFS_Fichiers')).map(row => row.Nom);
   check('SOURCE : le fichier d\'origine est intact', left.includes('Facture.pdf') && left.includes('Devis.pdf'), left);
+  for (const [label, each] of [['SOURCE', source], ['CIBLE', target]]) {
+    const rules = await each.frame.evaluate(async () => {
+      const [resources, list] = await Promise.all([window.__p.fetchRows('_grist_ACLResources'), window.__p.fetchRows('_grist_ACLRules')]);
+      return list.map(rule => ({ resource: (resources.find(r => r.id === rule.resource) || {}).tableId + '/' + (resources.find(r => r.id === rule.resource) || {}).colIds, cond: rule.aclFormula, perm: rule.permissionsText, memo: rule.memo }));
+    });
+    say(`Règles d'accès de la ${label} :`, JSON.stringify(rules));
+  }
   for (const each of [source, target]) if (each.problems.length) say('Console de GFS :', each.problems.filter(text => !each.allow.some(known => known.test(text))));
 } finally {
   pages.close();

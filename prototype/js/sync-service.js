@@ -44,6 +44,23 @@ export function loadSharingEngine(deps) {
   return loading;
 }
 
+// Le côté qui reçoit : le moteur et, en plus, les fonctions d'une réception (kit/js/synchro/target/receive.js), que seul celui qui reçoit charge (js/share-receive-flow.js).
+export async function loadReceiveEngine(deps) {
+  const [engine, receive, enginePort] = await Promise.all([loadSharingEngine(deps), import('../kit/js/synchro/target/receive.js'), import('../kit/js/synchro/port.js')]);
+  return Object.freeze({
+    ...engine,
+    // Une table de ce nom existe déjà dans ce document (Grist ne distingue pas les majuscules).
+    tableTaken: async name => (await enginePort.readSchema()).resolve(name) !== null,
+    readInvitation: receive.readInvitation,
+    knownReception: receive.knownReception,
+    relinkReception: receive.relinkReception,
+    checkDestinations: receive.checkDestinations,
+    createReception: receive.createReception,
+    receptionReply: receive.receptionReply,
+    undoReception: receive.undoReception,
+  });
+}
+
 let receiving = null;
 
 // Le côté qui reçoit : la boucle du moteur qui recopie les journaux reçus dans leur table et attache le contenu des fichiers quand il arrive. Lancée une seule fois par page, et seulement quand ce document a

@@ -207,7 +207,7 @@ export class GfsController {
   // Le sous-menu « Importer » : un article par format que le manifeste d'une app déclare (`actions.importer`, contrats 2.7, point 4), au nom du format ; le type qu'il crée le suit (l'icône et le mot du type vont ensemble).
   importTypes = () => {
     const several = this.registry.installedIds().length > 1;
-    return [...this.validApps().flatMap(({ manifest }) => importFormats(manifest).map(format => this.#importEntry(manifest, format, several))), ...this.kept.importEntries()];
+    return [...this.validApps().flatMap(({ manifest }) => importFormats(manifest).map(format => this.#importEntry(manifest, format, several))), ...this.kept.importEntries(), this.otherDocuments.entry()];
   };
 
   #importEntry(manifest, { item, type }, several) {
@@ -690,6 +690,7 @@ export class GfsController {
   // « Importer » (contrats 5.4, point 1) : la personne choisit le fichier dans le sélecteur de GFS (ouvert ici, dans son geste), puis l'app le reçoit avec l'ouverture et en fait un modèle vierge.
   // Annuler le sélecteur ne change rien ; un fichier qui n'est pas du format est dit sans ouvrir l'app.
   async #importFile(entry) {
+    if (entry.action === 'receive') { await this.otherDocuments.receive(); return; } // « D'un autre document Grist… » : recevoir un partage
     if (entry.app === FILES_APP) { await this.kept.importFile(entry); return; } // GFS garde ce format lui-même : aucune app n'est ouverte
     if (entry.greyed) { void this.#unlock({ text: entry.reason || entry.hint, focus: entry.focus }); return; }
     const file = await pickFile(this.doc, entry.extensions.join(','));

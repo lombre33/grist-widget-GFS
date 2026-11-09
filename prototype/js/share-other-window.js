@@ -7,13 +7,11 @@
 
 import { h } from './dom.js';
 import { icon } from './icons.js';
-import { openModal } from './modal.js';
+import { area, button, openSteps } from './steps-window.js';
 import { FILES_TABLE } from './gfs-files.js';
 import { HELPER_COLUMNS, RECEIVED_TABLE, SYNC_TABLE_NAME } from './share-other-flow.js';
 
 const DAY_S = 24 * 60 * 60;
-const button = (fk, label, primary = false) => h('button', { type: 'button', class: primary ? 'btn primary' : 'btn', dataset: { fk } }, label);
-const area = (fk, label, readOnly) => h('textarea', { class: 'so-code', rows: '3', spellcheck: 'false', autocomplete: 'off', readOnly, 'aria-label': label, placeholder: readOnly ? null : label, dataset: { fk } });
 
 // Où se trouve le document qui répond, d'après la fiche que Grist donne de sa clé : son dossier, ou « espace personnel ».
 const placeOf = (t, info) => (info.personal ? t('so.verify.personal') : t('so.verify.in', { folder: info.folder, team: info.team }));
@@ -122,41 +120,10 @@ function doneScreen(ctx, result) {
 
 // La fenêtre d'un fichier. opts : { container, t, inertTargets, file ({ id, name }), createFlow(mode) (le parcours : createSourceFlow, `mode` : 'once' ou 'live'), errorText (le moteur), notice (un avis hors fenêtre), now () → ms }. Rend la promesse de sa fermeture.
 export function openShareOther(opts) {
-  const { container, t, file } = opts;
-  const body = h('div', { class: 'ask-body rt-body sh-body' });
-  const status = h('p', { class: 'mod-note', 'aria-live': 'polite' }, t('so.foot'));
-  const actions = h('span', { class: 'so-actions' });
-  const dialog = h('section', { class: 'mod pt sh so', tabindex: '-1', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'so-title' },
-    h('header', { class: 'mod-head' }, h('h2', { id: 'so-title' }, t('so.title', { name: file.name })), h('p', { class: 'mod-count' }, t('so.sub'))),
-    body, h('footer', { class: 'mod-foot' }, status, actions));
-  const { done, result } = openModal({ container, section: dialog, inertTargets: opts.inertTargets, first: dialog, cancel: null });
-  const ctx = { t, file, now: opts.now || Date.now, closed: false, sending: false, mode: 'once', flow: null };
-  const say = text => { status.textContent = text; };
-  const show = screen => {
-    body.replaceChildren(screen.body);
-    actions.replaceChildren(...screen.buttons);
-    status.textContent = t('so.foot');
-    const first = dialog.querySelector(`[data-fk="${screen.first}"]`);
-    if (first) first.focus({ preventScroll: true });
-    if (screen.close) for (const each of actions.querySelectorAll('[data-fk="so-close"]')) each.addEventListener('click', () => done(null));
-  };
-  // Un bouton qui fait travailler le moteur : grisé le temps du travail (ou tant que `idle` le dit), l'échec est dit par le moteur et la fenêtre reste où elle est.
-  ctx.go = (node, job, idle = () => false) => {
-    node.addEventListener('click', async () => {
-      if (node.getAttribute('aria-disabled') === 'true' || idle()) return;
-      node.setAttribute('aria-disabled', 'true');
-      try { await job(); } catch (error) { say(t('so.failed', { message: opts.errorText(error) })); node.setAttribute('aria-disabled', 'false'); }
-    });
-    return node;
-  };
-  ctx.cancelButton = () => {
-    const cancel = button('so-cancel', t('so.cancel'));
-    cancel.addEventListener('click', () => done(null));
-    return cancel;
-  };
-  ctx.copy = async node => {
-    try { await node.ownerDocument.defaultView.navigator.clipboard.writeText(node.value); say(t('so.code.copied')); } catch (error) { node.focus(); node.select(); say(t('so.code.select')); }
-  };
+  const { t, file } = opts;
+  const steps = openSteps({ container: opts.container, t, inertTargets: opts.inertTargets, title: t('so.title', { name: file.name }), sub: t('so.sub'), foot: t('so.foot'), errorText: opts.errorText });
+  const { dialog, done, result, say, show } = steps;
+  const ctx = { t, file, now: opts.now || Date.now, closed: false, sending: false, mode: 'once', flow: null, go: steps.go, cancelButton: steps.cancelButton, copy: steps.copy };
   ctx.prepare = async () => {
     say(t('so.preparing'));
     ctx.flow = opts.createFlow(ctx.mode);

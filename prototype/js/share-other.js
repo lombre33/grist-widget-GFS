@@ -42,7 +42,29 @@ export function createOtherDocuments(deps) {
     } catch (error) { deps.notice(await said(error)); }
   }
 
+  // « Nouveau > Importer > D'un autre document Grist… » : recevoir un partage. L'article du sous-menu (grisé avec sa raison quand rien ne peut s'écrire) et la fenêtre de la réception (js/share-receive-window.js) ;
+  // la boucle de réception du moteur démarre dès que la réponse est rendue, pour que les fichiers arrivent sans recharger la page.
+  async function receive() {
+    const blocked = deps.writeBlock();
+    if (blocked) { deps.notice(blocked); return; }
+    try {
+      if ((await deps.transfer.isOwner()) !== true) { deps.notice(t('sr.why.owner')); return; }
+      const sync = await import('./sync-service.js');
+      const engineDeps = { docApi: deps.docApi(), transfer: deps.transfer, language: deps.language, busy: () => false };
+      const [{ openShareReceive }, { createTargetFlow }, running] = await Promise.all([import('./share-receive-window.js'), import('./share-receive-flow.js'), sync.loadReceiveEngine(engineDeps)]);
+      await openShareReceive({
+        container: deps.container, t, inertTargets: deps.inertTargets, createFlow: () => createTargetFlow({ engine: running, onReplied: () => void sync.startReceiving(engineDeps).catch(() => {}) }),
+        errorText: running.errorText, notice: deps.notice,
+      });
+    } catch (error) { deps.notice(await said(error)); }
+  }
+
   return {
+    receive,
+    entry() {
+      const blocked = deps.writeBlock();
+      return { action: 'receive', icon: 'download', family: null, greyed: Boolean(blocked), reason: blocked || '', focus: null, label: t('sr.entry'), hint: blocked || t('sr.entry.hint') };
+    },
     // L'onglet de « Partager » pour `file` (l'état que la fenêtre dessine : { owner, … }).
     tab(file, state) {
       const why = whyNot(t, { file, state });

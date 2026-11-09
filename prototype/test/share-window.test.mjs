@@ -100,6 +100,19 @@ test('l\'onglet du contrôleur : sa raison et le fichier, et un document en lect
   assert.deepEqual(notices, [t('mod.readonly')], 'la fenêtre du premier envoi ne s\'ouvre pas : un avis dit pourquoi');
 });
 
+test('« D\'un autre document Grist… » : l\'article du sous-menu « Importer » est grisé avec sa raison quand rien ne peut s\'écrire ; recevoir sans être propriétaire dit pourquoi, sans rien ouvrir', async () => {
+  const notices = [];
+  const make = (writeBlock, owner) => createOtherDocuments({ t, container: null, inertTargets: () => [], docApi: () => null, transfer: { isOwner: async () => owner }, language: () => 'fr', notice: text => notices.push(text), writeBlock: () => writeBlock });
+  const free = make(null, true).entry();
+  assert.deepEqual([free.action, free.greyed, free.label, free.hint], ['receive', false, t('sr.entry'), t('sr.entry.hint')]);
+  const locked = make(t('mod.readonly'), true).entry();
+  assert.deepEqual([locked.greyed, locked.reason], [true, t('mod.readonly')], 'grisé, jamais masqué : un clic dit pourquoi');
+  await make(t('mod.readonly'), true).receive();
+  await make(null, false).receive();
+  await make(null, null).receive();
+  assert.deepEqual(notices, [t('mod.readonly'), t('sr.why.owner'), t('sr.why.owner')], 'ni la fenêtre ni le moteur ne se chargent : un avis dit pourquoi (propriétaire non établi = pas propriétaire)');
+});
+
 test('les textes de la fenêtre d\'envoi sont les mêmes en français et en anglais, et aucun n\'est resté une clé', () => {
   const fr = createI18n('fr').t;
   const en = createI18n('en').t;

@@ -27,6 +27,7 @@ import { fermerProblems } from './fermer-firefox.mjs';
 import { droitsProblems } from './droits-firefox.mjs';
 import { partagerProblems } from './partager-firefox.mjs';
 import { partagerAutreProblems } from './partager-autre-firefox.mjs';
+import { partagerRecevoirProblems } from './partager-recevoir-firefox.mjs';
 import { poidsFenetreProblems } from './poids-fenetre-firefox.mjs';
 import { iconProblems } from './icones-firefox.mjs';
 import { dossiersProblems } from './dossiers-firefox.mjs';
@@ -570,6 +571,7 @@ describe('l\'interface sous Firefox', () => {
         problems.push(...await droitsProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await partagerProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await partagerAutreProblems(page, language, caption(language, 700, 1, mode)));
+        problems.push(...await partagerRecevoirProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await poidsFenetreProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await dossiersProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await compositeProblems(page, language, caption(language, 700, 1, mode)));

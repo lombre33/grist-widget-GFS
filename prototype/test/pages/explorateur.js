@@ -40,6 +40,7 @@ import { openShare } from '/js/share-window.js';
 import { openManage } from '/js/manage-window.js';
 import { whyNot } from '/js/share-other.js';
 import { openShareOther } from '/js/share-other-window.js';
+import { openShareReceive } from '/js/share-receive-window.js';
 import { openWeight } from '/js/weight-window.js';
 import { SQL, readWeight } from '/js/weight-reader.js';
 import { TransferError } from '/js/transfer.js';
@@ -343,6 +344,30 @@ async function mount() {
     };
     let mode = 'once';
     return openShareOther({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], file: { id: 'abc', name: 'Facture de la session de formation de septembre.pdf' }, createFlow: chosen => { mode = chosen; acts.push(['mode', chosen]); return flow; }, errorText: error => String(error.message), notice: text => acts.push(['notice', text]) });
+  };
+  // La fenêtre « Recevoir d'un autre document Grist » (js/share-receive-window.js, test/partager-recevoir-firefox.mjs) : la vraie fenêtre, sur un parcours dont les réponses sont des doublures (le moteur et Grist se mesurent
+  // dans un vrai Grist : labo/run-partager-recevoir.mjs). `kind` : 'ok' (un premier partage : GFS_Recus), 'second' (la table libre suivante : GFS_Recus_2), 'connu' (une réception qui reprend), 'refus' (accepter échoue).
+  // `window.__receiveActs` note ce que le parcours a reçu.
+  window.__receive = kind => {
+    const acts = window.__receiveActs = [];
+    const table = kind === 'second' ? 'GFS_Recus_2' : 'GFS_Recus';
+    let replied = false;
+    const flow = {
+      read: async text => {
+        acts.push(['read', text]);
+        if (!text.startsWith('GRISTSYNC2.')) throw new Error('Ce texte n’est pas un code de synchro.');
+        return { name: LONG_DOC, tables: 1, expire: Date.now() / 1000 + 7 * 86400, known: kind === 'connu', table };
+      },
+      accept: async () => { acts.push(['accept']); if (kind === 'refus') throw new Error('Grist a refusé la création'); return { journal: `GFS_Journal_${LONG_DOC.replace(/ /g, '_')}`, relinked: kind === 'connu', table }; },
+      reply: async link => {
+        acts.push(['reply', link]);
+        if (!link.includes('/forms/')) throw new Error('Ce lien n’écrit pas dans le journal de cette réception.');
+        replied = true;
+        return { code: `GRISTSYNC2.${'eyJraW5kIjoicmVwb25zZSJ9'.repeat(30)}`, control: 'N5H-2AH' };
+      },
+      abort: async () => { acts.push(['abort', replied]); },
+    };
+    return openShareReceive({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], createFlow: () => flow, errorText: error => String(error.message), notice: text => acts.push(['notice', text]) });
   };
   // L'onglet « Dans un autre document Grist » de « Partager » (js/share-other-tab.js) sur des liens que le contrôleur aurait lus : `window.__shareOther = true` le branche ; `window.__links` donne les liens ('actifs'
   // par défaut : un document à jour, un en attente de réponse, un bloqué ; 'aucun', 'illisible') ; `window.__shareActs` note les niveaux demandés. « Relier un nouveau document… » ouvre la fenêtre d'envoi (`__sendOther`).

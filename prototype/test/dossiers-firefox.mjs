@@ -200,12 +200,29 @@ async function lastFileTrashed(run, t) {
   if (pill !== t('ex.fileCount', { n: 0 })) run.note('dossier vidé', `la pastille de « Formation » devait dire « ${t('ex.fileCount', { n: 0 })} » (« ${pill} »)`);
 }
 
+// Les espaces partagés (lot 4b) : « Espaces » est une racine du volet à côté de « Moi », « Moi » ne la liste pas, son fil d'Ariane ne passe pas par « Moi », l'espace, son dossier et son sous-dossier vide s'ouvrent à la souris.
+async function spacesRoot(run, t) {
+  await run.reset();
+  await run.page.run(() => window.__spaces());
+  const tree = await run.page.run(treeNames);
+  if (tree[0] !== t('ex.me') || tree.filter(name => name === t('ex.spaces')).length !== 1) run.note('volet', `le volet devait montrer « Moi » puis la racine « ${t('ex.spaces')} » (${tree.join(' | ')})`);
+  await run.expect('racine « Moi »', '« Moi » ne devait pas lister « Espaces » parmi ses dossiers', state => !names(state).includes('Espaces') && !names(state).includes(t('ex.spaces')));
+  await run.clickSelector('.tr-row[data-path="Espaces"]');
+  await run.expect('« Espaces »', 'la racine devait lister l\'espace Achats, sans passer par « Moi » dans le fil d\'Ariane', state => names(state).join() === 'Achats' && state.crumbs.startsWith(t('ex.spaces')) && !state.crumbs.includes(t('ex.me')));
+  await run.click('Achats');
+  await run.page.press('Enter');
+  await run.expect('l\'espace', 'l\'espace devait montrer son dossier Contrats', state => names(state).join() === 'Contrats' && state.crumbs.includes('Achats'));
+  await run.click('Contrats');
+  await run.page.press('Enter');
+  await run.expect('le dossier d\'espace', 'Contrats devait montrer le modèle rangé et le sous-dossier vide Sous', state => names(state).includes('Sous') && names(state).length === 2 && state.crumbs.includes('Contrats'));
+}
+
 // Les mesures des dossiers sans fichier, dans la langue de la page ; rend les écarts { kind, text }.
 export async function dossiersProblems(page, language, tag) {
   const found = [];
   const t = createI18n(language).t;
   const run = new Run(page, tag, found, 'dossiers sans fichier');
-  const steps = [createFromMenu, refusals, emptyFolder, deleteEmpty, deleteRefused, renameEmpty, fromRecent, tilesAndTree, whileChoosing, lastFileTrashed];
+  const steps = [createFromMenu, refusals, emptyFolder, deleteEmpty, deleteRefused, renameEmpty, fromRecent, tilesAndTree, whileChoosing, lastFileTrashed, spacesRoot];
   for (const step of steps) {
     try {
       await step(run, t);

@@ -4,6 +4,7 @@
 import { h } from './dom.js';
 import { icon } from './icons.js';
 import { person, formatDate, pathParts, stampOf, authorOf, FAMILY_NAMES } from './explorer-model.js';
+import { SPACES_ROOT, folderLabel, isSpacePath } from './spaces-filing.js';
 import { formatBytes } from './weight.js';
 import { chipKey } from './rights.js';
 
@@ -101,7 +102,10 @@ export function crumbs(ctx) {
   const parts = pathParts(state.path);
   if (!parts.length) return [h('span', { class: 'here' }, icon('user'), t('ex.me'))];
   const last = parts.length - 1;
-  return [link('', t('ex.me')), ...parts.flatMap((part, i) => [sep(), i === last ? h('span', { class: 'here' }, part.name) : link(part.path, part.name)])];
+  const crumb = (part, i) => (i === last ? h('span', { class: 'here' }, folderLabel(t, part.path, part.name)) : link(part.path, folderLabel(t, part.path, part.name)));
+  // Les espaces partagés sont une racine à côté de « Moi » : leur fil d'Ariane ne passe pas par « Moi ».
+  if (isSpacePath(state.path)) return parts.flatMap((part, i) => (i ? [sep(), crumb(part, i)] : [crumb(part, i)]));
+  return [link('', t('ex.me')), ...parts.flatMap((part, i) => [sep(), crumb(part, i)])];
 }
 
 function treeRow({ label, glyph, data, current, depth = 0, caret = null, toggle = null, count = null, grey = false }) {
@@ -120,11 +124,14 @@ export function tree(ctx) {
     // La corbeille garde son rang pendant le choix d'un fichier, grisée : un fichier supprimé ne se choisit pas.
     treeRow({ label: t('trash.view'), glyph: 'trash', data: { view: 'trash' }, current: state.view === 'trash', count: ctx.trashCount || null, grey: ctx.choosing }),
     h('hr', { class: 'tr-sep' }));
-  const rows = ctx.treeRows.map(row => h('div', { class: 'tr-folder' }, treeRow({
-    label: row.name, glyph: 'folder', data: { path: row.path }, current: inFolders && state.path === row.path, depth: row.depth + 1,
-    caret: row.hasChildren ? (row.open ? 'open' : 'closed') : null, toggle: row.hasChildren ? row.path : null,
-  })));
-  return [pinned, h('div', { class: 'tr-folder' }, treeRow({ label: t('ex.me'), glyph: 'user', data: { path: '' }, current: inFolders && state.path === '' })), ...rows];
+  // « Espaces » est une racine à côté de « Moi » : ses lignes viennent après celles de « Moi », au même niveau que lui.
+  const row = (item, shift) => h('div', { class: 'tr-folder' }, treeRow({
+    label: folderLabel(t, item.path, item.name), glyph: item.path === SPACES_ROOT ? 'users' : 'folder', data: { path: item.path }, current: inFolders && state.path === item.path, depth: item.depth + shift,
+    caret: item.hasChildren ? (item.open ? 'open' : 'closed') : null, toggle: item.hasChildren ? item.path : null,
+  }));
+  const mine = ctx.treeRows.filter(item => !isSpacePath(item.path)).map(item => row(item, 1));
+  const spaces = ctx.treeRows.filter(item => isSpacePath(item.path)).map(item => row(item, 0));
+  return [pinned, h('div', { class: 'tr-folder' }, treeRow({ label: t('ex.me'), glyph: 'user', data: { path: '' }, current: inFolders && state.path === '' })), ...mine, ...spaces];
 }
 
 // À la corbeille, la colonne de date dit la date de la suppression, non celle de la dernière modification.
@@ -174,7 +181,7 @@ export function folderRow(ctx, folder) {
   const { t } = ctx;
   const key = `dir:${folder.path}`;
   return h('div', { class: 'ls-row folder', role: 'row', tabindex: ctx.state.sel === key ? '0' : '-1', dataset: { key }, 'aria-selected': String(ctx.state.sel === key) },
-    h('div', { class: 'nm', role: 'gridcell' }, icon('folder', 'fld'), h('span', { class: 't' }, folder.name)),
+    h('div', { class: 'nm', role: 'gridcell' }, icon('folder', 'fld'), h('span', { class: 't' }, folderLabel(t, folder.path, folder.name))),
     h('div', { class: 'ty', role: 'gridcell' }, h('span', { class: 'pill' }, t('ex.fileCount', { n: folder.count }))),
     h('div', { class: 'wt', role: 'gridcell' }, weightText(ctx, folder.weight)),
     h('div', { class: 'md', role: 'gridcell' }, formatDate(folder.ts, ctx.now, ctx.locale, t)),
@@ -231,7 +238,7 @@ export function infoBar(ctx) {
       h('div', { class: 'l2' }, icon('pin'), h('span', { class: 'lt' }, ctx.personal ? t('ex.hintFav') : t('ex.hintFavShared'))));
   }
   if (selected.kind === 'folder') {
-    return h('div', { class: 'inf' }, infoLine1(icon('folder'), h('b', null, selected.name), h('span', { class: 'mu' }, `· ${t('ex.fileCount', { n: selected.count })} · ${weightText(ctx, selected.weight)}`)),
+    return h('div', { class: 'inf' }, infoLine1(icon('folder'), h('b', null, folderLabel(t, selected.path, selected.name)), h('span', { class: 'mu' }, `· ${t('ex.fileCount', { n: selected.count })} · ${weightText(ctx, selected.weight)}`)),
       h('div', { class: 'l2' }, h('span', { class: 'lt' }, filingHint)));
   }
   const { file } = selected;

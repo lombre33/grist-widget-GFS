@@ -24,6 +24,7 @@ import { Filing } from '/js/filing.js';
 import { askName, chooseFolder } from '/js/filing-window.js';
 import { applyFiling, folderMoves, inside, normalizePath, readFiles, readFiling } from '/js/explorer-model.js';
 import { Copying } from '/js/copying.js';
+import { applyPlacement, readSpaces } from '/js/spaces-filing.js';
 import { FILES_MANIFEST } from '/js/gfs-files.js';
 import { createI18n } from '/js/i18n.js';
 import { installSprite } from '/js/icons.js';
@@ -186,6 +187,13 @@ async function mount() {
     port: null, rangement, t: i18n.t, locale: () => locale, files: () => live, folders: () => kept, appName: () => 'Publipostage+', here: () => (explorer.state.view === 'folder' ? explorer.state.path : ''),
     writeBlock: () => null, notice: text => window.__notices.push(text), specOf: () => null, refresh: async () => show(), windows: { name: opts => askName(layer(opts)), folder: opts => chooseFolder(layer(opts)) },
   });
+  // Un espace « Achats » (les espaces partagés, lot 4b) : le premier modèle est rangé dans son dossier Contrats, qui a un sous-dossier vide ; « Espaces » est une racine à côté de « Moi ».
+  window.__spaces = () => {
+    const info = readSpaces({ id: [1], Cle: ['achats'], Nom: ['Achats'] }, { id: [1, 2], Cible: [live[0].key, ''], Espace: ['achats', 'achats'], Dossier: ['Contrats', 'Contrats/Sous'] });
+    applyPlacement(live, info);
+    kept = [...new Set([...kept, ...info.folders])];
+    show();
+  };
   window.__keep = (...paths) => { kept = [...new Set([...kept, ...paths])]; show(); };
   // Le menu « Réglages » : la langue et le bord de la barre que la personne a choisis en dernier (la ligne de la barre est une doublure : le vrai Dock se mesure dans le labo), et la vraie fenêtre « À propos ».
   const EDGES = [['gauche', 'dock-left'], ['haut', 'dock-top'], ['droite', 'dock-right'], ['bas', 'dock-bottom']];
@@ -210,7 +218,7 @@ async function mount() {
     explorer.close(); // la fermeture vide le presse-papiers : chaque mesure part de rien
     filing.undoStack.clear(); // et la pile de Ctrl+Z
     live = [...files];
-    for (const file of live) { file.trashed = null; file.folder = folders.get(file.key); }
+    for (const file of live) { file.trashed = null; file.folder = folders.get(file.key); delete file.space; delete file.ownFolder; }
     trashed = [];
     kept = [];
     window.__filing.length = 0;

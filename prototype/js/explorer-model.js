@@ -13,6 +13,8 @@ const FAMILIES = Object.freeze({ document: 'doc', grille: 'grid', presentation: 
 export const FAMILY_NAMES = Object.freeze(Object.values(FAMILIES));
 export const familyOf = couleur => (Object.hasOwn(FAMILIES, couleur) ? FAMILIES[couleur] : '');
 const RECENT_LIMIT = 8;
+// La racine des espaces partagés, à côté de « Moi » (js/spaces-filing.js) : un dossier de plus pour tout ce qui range, mais « Moi » ne la liste pas.
+export const SPACES_ROOT = 'Espaces';
 
 const text = value => (typeof value === 'string' ? value : '');
 const cell = (data, column, i) => (column && data && Array.isArray(data[column]) ? data[column][i] : undefined);
@@ -256,7 +258,8 @@ export function listItems(files, state, { locale, typeLabel, spare = [] }) {
   pool.sort(compare);
   const rows = pool.map(file => ({ kind: 'file', file }));
   if (!flat) {
-    const folders = subfolders(files, state.path, locale, spare).map(folder => ({ kind: 'folder', ...folder }));
+    // « Espaces » est une racine à côté de « Moi » (js/spaces-filing.js) : « Moi » ne la liste pas parmi ses dossiers.
+    const folders = subfolders(files, state.path, locale, spare).filter(folder => folder.path !== SPACES_ROOT).map(folder => ({ kind: 'folder', ...folder }));
     // Les dossiers vont par nom (renversés quand le tri par nom l'est), sauf quand la liste est triée par poids : ils suivent alors le même ordre que les fichiers (le tri est stable : à poids égal, l'ordre des noms).
     if (state.sort.key === 'poids') folders.sort((a, b) => (a.weight - b.weight) * state.sort.dir);
     else if (state.sort.key === 'name' && state.sort.dir < 0) folders.reverse();

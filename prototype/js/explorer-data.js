@@ -6,6 +6,7 @@ import { readFiles, readFiling, readGfsFiling, readGfsFolders, applyFiling } fro
 import { TABLE } from './rangement.js';
 import { BIN_TABLE, recipeOf, binFiles } from './gfs-trash.js';
 import { linkedWeights } from './weight.js';
+import { applyPlacement, loadSpaces } from './spaces-filing.js';
 
 const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 
@@ -39,7 +40,7 @@ export async function loadAttachments(port) {
 }
 
 // `apps` : les apps installées dont le manifeste est valide, { manifest }. `identity` : l'adresse de la personne, '' tant que GFS ne la connaît pas.
-// Rend { files, trash, folders, problems: [{ app, reason }], stats: { ms, tables, rows } } : `files` les fichiers vivants, `trash` ceux qui sont à la corbeille (js/explorer-model.js, `trashed`) : ils
+// Rend { files, trash, folders, spaces, problems: [{ app, reason }], stats: { ms, tables, rows } } : `spaces` ce que disent les espaces partagés (js/spaces-filing.js, null sans partage), dont les dossiers sont ajoutés à `folders` ; `files` les fichiers vivants, `trash` ceux qui sont à la corbeille (js/explorer-model.js, `trashed`) : ils
 // ne sont jamais mêlés, pour que rien de ce qui lit `files` (choisir, ouvrir, lire) ne voie un fichier supprimé ; `folders` les dossiers que la personne garde sans fichier (6.4, point 11). Un rangement
 // de GFS illisible ne cache aucun fichier : ils restent à leur place d'avant.
 export async function loadFiles(port, apps, identity = '') {
@@ -53,6 +54,8 @@ export async function loadFiles(port, apps, identity = '') {
   if (gfs.error) console.warn('GFS : le rangement de GFS est illisible', gfs.error);
   const gfsFiling = gfs.data ? readGfsFiling(gfs.data, identity) : null;
   const folders = gfs.data ? readGfsFolders(gfs.data, identity) : [];
+  const spaces = await loadSpaces(port.doc, tables);
+  if (spaces) folders.push(...spaces.folders);
   const bin = await readTable(port, tables, BIN_TABLE);
   if (bin.error) console.warn('GFS : la corbeille des apps est illisible', bin.error);
   for (const { manifest } of apps) {
@@ -63,6 +66,7 @@ export async function loadFiles(port, apps, identity = '') {
       const filing = filingTable.data ? readFiling(spec.rangement, filingTable.data, identity) : null;
       const found = readFiles(manifest, spec, main.data, null, await readLinked(port, tables, spec));
       applyFiling(found, filing, gfsFiling);
+      applyPlacement(found, spaces);
       for (const file of found) (file.trashed ? trash : files).push(file);
       // Les fichiers de l'app que la personne a mis à la corbeille ne sont plus dans sa table : ils sont dans `GFS_Corbeille` (js/gfs-trash.js), et gardent leur dossier, que le rangement n'a pas quitté.
       if (recipeOf(spec) && bin.data) {
@@ -76,5 +80,5 @@ export async function loadFiles(port, apps, identity = '') {
     }
   }
   stats.ms = Math.round(performance.now() - started);
-  return { files, trash, folders, problems, stats };
+  return { files, trash, folders, spaces, problems, stats };
 }

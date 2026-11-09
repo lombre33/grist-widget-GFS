@@ -3011,8 +3011,18 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
     k. [T] **L'écran des espaces : livré le 09/11** (lot 4b, première partie). « Gérer les partages… » a un onglet **Espaces** : liste, « Nouvel espace » (nom demandé dans une fenêtre du widget), détail avec les groupes de l'espace
        et leur rôle (lecture, écriture, retirer ; un groupe s'ajoute par la liste avec recherche), suppression avec question (les partages de l'espace et de ses dossiers partent, les fichiers restent, hors de l'espace). La fenêtre
        « Partager… » propose **« Aucun accès »** (grisé pour une catégorie) et affiche les droits hérités avec leur origine (« Hérité : espace “…” », « Hérité : dossier “…” »). Mesuré à la vraie souris dans un vrai Grist
-       (`labo/run-partager-espaces.mjs`, étape 4 de la phase propriétaire) et sous Firefox (`test/partager-firefox.mjs`). **Pas fait** : placer un fichier dans un espace et parcourir les espaces depuis l'explorateur (lot 4b, seconde partie),
-       « Partagés avec moi » (4c).
+       (`labo/run-partager-espaces.mjs`, étape 4 de la phase propriétaire) et sous Firefox (`test/partager-firefox.mjs`).
+    l. [T] **Les espaces dans l'explorateur : livrés le 09/11** (lot 4b, seconde partie ; choix du porteur : « Espaces à côté de “Moi” »). « Espaces » est une **racine du volet**, après « Moi », avec les espaces que la personne lit,
+       leurs dossiers et leurs dossiers vides ; « Moi » ne la liste pas, et le fil d'Ariane d'un espace ne passe pas par « Moi ». Pour tout ce qui range (arbre, « Déplacer vers… », couper-coller, glisser-déposer, Ctrl+Z), un
+       espace est un dossier de plus : le fichier a pour dossier « Espaces/<espace>/<dossier> » (`js/spaces-filing.js`), et seule l'écriture sait la différence. **Un fichier placé dans un espace est une ligne de `GFS_Placement`**
+       (`Cible` = la clé du fichier, `Espace`, `Dossier`), partagée avec ceux qui voient l'espace ; **le rangement de la personne (`GFS_Rangement`) ne reçoit jamais un chemin d'espace** : il garde le dossier à elle (le fichier y
+       retourne quand il sort de l'espace) et le favori. Un dossier vide d'espace est une ligne de placement sans `Cible`. **Seul un propriétaire range dans un espace** (ou en sort un fichier, ou y garde un dossier) : les règles de
+       `spaceRules` n'ouvrent l'écriture des placements qu'à eux ; une autre personne lit la phrase « Seul un propriétaire du document range dans un espace partagé » et rien n'est écrit. Un fichier neuf (copie, PDF importé) créé
+       dans un dossier d'espace y est placé par un propriétaire, sinon il va à la racine de la personne. **Refusés pour l'instant, avec une phrase** : renommer ou déplacer un dossier d'espace (les partages portent son chemin et ne le
+       suivraient pas : un refus ciblé perdu ouvrirait le dossier), supprimer ou créer un espace d'ici (« Gérer les partages… », onglet Espaces), nommer « Espaces » un dossier de « Moi ». Mesuré dans un vrai Grist à trois comptes
+       (`labo/run-partager-espaces.mjs`, étape 5 : ranger, parcourir, ressortir, remettre à la souris ; l'éditeur voit la racine et le fichier, ne peut pas en sortir un) et sous Firefox (`test/dossiers-firefox.mjs`, « Espaces »).
+       **Pas fait** : partager un dossier d'espace depuis l'explorateur (la fenêtre « Partager… » ne vise encore que des fichiers), la création d'un fichier d'une app directement dans un dossier d'espace, les fichiers à la corbeille
+       (ils gardent leur place dans l'espace), « Partagés avec moi » (4c).
 
 ### 11.8 À mesurer sur le Grist du porteur
 

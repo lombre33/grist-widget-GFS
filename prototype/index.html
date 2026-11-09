@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-3UpKkaXlPS8aOTneU779Z/dFU0vo+m/F6F1/nh9/zZw='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-BxwXxs91XPboNLjU2b8IeCFTYTPsXDX+ZrWGL1zp+fc='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=6edbc41aa4">
 <link rel="stylesheet" href="css/explorer.css?v=418da9c54e">
 <link rel="stylesheet" href="css/modules.css?v=1109fc818b">
@@ -43,7 +43,7 @@
     "./js/catalogue.js": "./js/catalogue.js?v=9821dc95fc",
     "./js/conflict-window.js": "./js/conflict-window.js?v=e3c9c8e8d3",
     "./js/context.js": "./js/context.js?v=02c3f955eb",
-    "./js/controller.js": "./js/controller.js?v=f4a0c98172",
+    "./js/controller.js": "./js/controller.js?v=a69b4510b4",
     "./js/copying.js": "./js/copying.js?v=8da0986c98",
     "./js/deposit.js": "./js/deposit.js?v=e11841b099",
     "./js/dock-state.js": "./js/dock-state.js?v=8eec913fd1",
@@ -51,24 +51,24 @@
     "./js/dom.js": "./js/dom.js?v=6093a9f23f",
     "./js/envelope.js": "./js/envelope.js?v=8586bc1508",
     "./js/explorer-clipboard.js": "./js/explorer-clipboard.js?v=fe178bf8ba",
-    "./js/explorer-data.js": "./js/explorer-data.js?v=d5278af853",
+    "./js/explorer-data.js": "./js/explorer-data.js?v=2d6075ca48",
     "./js/explorer-drag.js": "./js/explorer-drag.js?v=6fd7796b51",
     "./js/explorer-keys.js": "./js/explorer-keys.js?v=7accc237a9",
-    "./js/explorer-model.js": "./js/explorer-model.js?v=df0ad6b831",
+    "./js/explorer-model.js": "./js/explorer-model.js?v=7a4084e945",
     "./js/explorer-undo.js": "./js/explorer-undo.js?v=f1dd46f5c4",
-    "./js/explorer-view.js": "./js/explorer-view.js?v=27a3fab4f3",
+    "./js/explorer-view.js": "./js/explorer-view.js?v=775f93b929",
     "./js/explorer.js": "./js/explorer.js?v=96d3cfe352",
     "./js/extensions.js": "./js/extensions.js?v=a6b2033702",
-    "./js/file-managers.js": "./js/file-managers.js?v=2fc98bc29a",
+    "./js/file-managers.js": "./js/file-managers.js?v=dc80360769",
     "./js/files-store.js": "./js/files-store.js?v=98d9eb3e5c",
-    "./js/filing-window.js": "./js/filing-window.js?v=ffaa75bf79",
-    "./js/filing.js": "./js/filing.js?v=e00991b20a",
+    "./js/filing-window.js": "./js/filing-window.js?v=933db2d364",
+    "./js/filing.js": "./js/filing.js?v=0860d3c3d6",
     "./js/filter.js": "./js/filter.js?v=72e78ac0ad",
     "./js/frames.js": "./js/frames.js?v=554a438e75",
     "./js/gfs-copy.js": "./js/gfs-copy.js?v=204d80003f",
     "./js/gfs-files.js": "./js/gfs-files.js?v=136137d0cb",
     "./js/gfs-trash.js": "./js/gfs-trash.js?v=3f31b757cd",
-    "./js/i18n-folders.js": "./js/i18n-folders.js?v=fdfa7f4ccb",
+    "./js/i18n-folders.js": "./js/i18n-folders.js?v=25c7dfd5a3",
     "./js/i18n-manage.js": "./js/i18n-manage.js?v=462831e8cb",
     "./js/i18n-rights.js": "./js/i18n-rights.js?v=ad53955a3b",
     "./js/i18n-share.js": "./js/i18n-share.js?v=a6e78949d8",
@@ -116,6 +116,7 @@
     "./js/share-other.js": "./js/share-other.js?v=08000ac729",
     "./js/share-window.js": "./js/share-window.js?v=06c7668c59",
     "./js/sharing-model.js": "./js/sharing-model.js?v=4b3f8d433f",
+    "./js/spaces-filing.js": "./js/spaces-filing.js?v=0702b4b954",
     "./js/state.js": "./js/state.js?v=ac1616eaf2",
     "./js/stored-choice.js": "./js/stored-choice.js?v=2f8b5015a1",
     "./js/sync-port-text.js": "./js/sync-port-text.js?v=189179a250",

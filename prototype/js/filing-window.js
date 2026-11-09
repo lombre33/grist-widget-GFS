@@ -6,6 +6,7 @@ import { h } from './dom.js';
 import { icon } from './icons.js';
 import { LIST_SHOWN as SHOWN, listKeys, openModal } from './modal.js';
 import { normalize, words, matchesWords } from './search.js';
+import { SPACES_ROOT } from './spaces-filing.js';
 
 // opts : { container, inertTargets, t, title, label, value, confirmLabel, clean(texte) -> nom, refuse(nom) -> pourquoi ce nom ne va pas, ou null }.
 // Un nom refusé laisse la fenêtre ouverte et dit pourquoi sous le champ.
@@ -37,7 +38,7 @@ export function askName({ container, inertTargets, t, title, label, value, confi
 // Les articles de la liste : « Moi » (la racine), les dossiers, et le nouveau dossier que dit la recherche quand aucun dossier ne porte ce nom.
 function folderItems({ t, folders, base, query, clean }) {
   const needles = words(query);
-  const all = [{ path: '', label: t('ex.me'), glyph: 'user' }, ...folders.map(path => ({ path, label: path.split('/').join(' / '), glyph: 'folder' }))];
+  const all = [{ path: '', label: t('ex.me'), glyph: 'user' }, ...folders.map(path => ({ path, label: path.split('/').map((part, at) => (at ? part : (path.split('/')[0] === SPACES_ROOT ? t('ex.spaces') : part))).join(' / '), glyph: path.split('/')[0] === SPACES_ROOT ? 'users' : 'folder' }))];
   const found = all.filter(item => matchesWords(needles, normalize(item.label)));
   const name = clean(query);
   const path = name ? (base ? `${base}/${name}` : name) : '';

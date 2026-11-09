@@ -9,6 +9,7 @@ import { folderMoves, folderName, folderPaths, inside, normalizePath, spareMoves
 import { TableDeclined } from './rangement.js';
 import { normalize } from './search.js';
 import { UndoStack } from './undo-stack.js';
+import { isSpaceItself, isSpacePath, SPACES_ROOT, splitWrites, touchesSpaces, writePlacement } from './spaces-filing.js';
 
 // Les deux phrases d'un geste : celle de Ctrl+Z (`undoKey`, js/i18n-trash.js) et celle de Ctrl+Y (`redoKey`) ; `redoParams` : ce que dit le rétablissement quand il n'est pas celui de l'annulation (le dossier où le fichier retourne).
 const said = (undoKey, redoKey, params, redoParams = params) => ({ undo: { key: undoKey, params }, redo: { key: redoKey, params: redoParams } });
@@ -33,7 +34,7 @@ export class Filing {
   #queue = Promise.resolve();
 
   // opts : { port, rangement, t, locale(), files() -> [fichier], folders?() -> les dossiers gardés sans fichier, here() -> le dossier ouvert, specOf(file) -> son entrée `fichiers` du manifeste,
-  //          cleanName?(file) -> la fonction qui met en forme le nom saisi (un PDF garde son « .pdf »), appName(id), writeBlock() -> texte | null, notice(texte), refresh() -> Promise,
+  //          spaces?: { info() -> ce que disent les espaces (js/spaces-filing.js), owner() -> Promise<vrai si la personne est propriétaire> }, cleanName?(file) -> la fonction qui met en forme le nom saisi (un PDF garde son « .pdf »), appName(id), writeBlock() -> texte | null, notice(texte), refresh() -> Promise,
   //          windows: { name(opts) -> Promise<texte | null>, folder(opts) -> Promise<chemin | null> } }
   constructor(opts) {
     this.#opts = opts;
@@ -73,6 +74,7 @@ export class Filing {
       const target = normalizePath(`${folder}/${lastPart(path)}`);
       if (target === path) return 'same';
       if (inside(target, path)) return 'inside';
+      if (this.#fixed(path, target)) return undefined;
       const done = await this.#relocate(path, target);
       return done === true ? 'moved' : (done || undefined);
     });
@@ -84,7 +86,7 @@ export class Filing {
       const name = lastPart(path);
       const folders = this.#folders().filter(other => !inside(other, path));
       const target = await this.#chooseFolder({ title: this.#opts.t('ex.moveFolderTitle', { name }), folders, current: parentOf(path), base: parentOf(path) });
-      if (target !== null && target !== parentOf(path)) await this.#relocateOrSay(path, normalizePath(`${target}/${name}`));
+      if (target !== null && target !== parentOf(path) && !this.#fixed(path, normalizePath(`${target}/${name}`))) await this.#relocateOrSay(path, normalizePath(`${target}/${name}`));
     });
   }
 
@@ -96,7 +98,7 @@ export class Filing {
       const refuse = name => (!name ? t('ex.nameEmpty') : (siblings.includes(normalize(name)) ? t('ex.folderTaken') : null));
       const name = await windows.name({ title: t('ex.renameFolderTitle', { name: lastPart(path) }), label: t('ex.folderNameLabel'), value: lastPart(path), confirmLabel: t('ex.rename'),
         clean: folderName, refuse });
-      if (name !== null && name !== lastPart(path)) await this.#relocateOrSay(path, normalizePath(`${parentOf(path)}/${name}`));
+      if (name !== null && name !== lastPart(path) && !this.#fixed(path, normalizePath(`${parentOf(path)}/${name}`))) await this.#relocateOrSay(path, normalizePath(`${parentOf(path)}/${name}`));
     });
   }
 
@@ -105,11 +107,13 @@ export class Filing {
   newFolder(parent = this.#opts.here()) {
     return this.#gesture(async () => {
       const { t, windows } = this.#opts;
+      if (parent === SPACES_ROOT) { this.#opts.notice(t('ex.spaceCreateElsewhere')); return undefined; }
       const siblings = this.#folders().filter(other => parentOf(other) === parent).map(other => normalize(lastPart(other)));
       const refuse = name => (!name ? t('ex.nameEmpty') : (siblings.includes(normalize(name)) ? t('ex.folderTaken') : null));
       const name = await windows.name({ title: t('ex.newFolderTitle', { folder: parent ? parent.split('/').join(' / ') : t('ex.me') }), label: t('ex.folderNameLabel'), value: '', confirmLabel: t('ex.newFolderConfirm'), clean: folderName, refuse });
       if (name === null) return undefined;
       const path = normalizePath(`${parent}/${name}`);
+      if (parent === '' && normalize(name) === normalize(SPACES_ROOT)) { this.#opts.notice(t('ex.spaceRootTaken')); return undefined; }
       return (await this.#write([], { add: [path] }, said('undo.folderCreated', 'redo.folderCreated', { name: lastPart(path) }))) ? path : undefined;
     });
   }
@@ -119,6 +123,7 @@ export class Filing {
   deleteFolder(path) {
     return this.#gesture(async () => {
       const { t, notice } = this.#opts;
+      if (isSpaceItself(path)) { notice(t('ex.spaceFixed')); return false; }
       if (this.#opts.files().some(file => inside(file.folder, path))) { notice(t('ex.folderNotEmpty')); return false; }
       const kept = this.#spare().filter(each => inside(each, path));
       if (!kept.length) { notice(t('ex.folderGone')); return false; }
@@ -133,7 +138,31 @@ export class Filing {
   async keepFoldersOf(file) {
     const list = [...this.#opts.files().filter(other => other.key !== file.key), file];
     const keep = vacatedFolders(list, [{ app: file.app, file: file.id, folder: null }], this.#spare());
-    if (keep.length) await this.#opts.rangement.setFiling([], { add: keep, quiet: true });
+    if (!keep.length) return;
+    const plan = this.#opts.spaces ? splitWrites([], { add: keep }, [], this.#opts.spaces.info()) : { entries: [], folders: { add: keep }, ops: [], markers: { add: [], drop: [] } };
+    // Le dossier d'un espace que la corbeille vide est gardé aussi, si la personne peut écrire l'espace.
+    if (touchesSpaces(plan) && (await this.#opts.spaces.owner())) await writePlacement(this.#opts.port.doc, plan);
+    if ((plan.folders.add || []).length) await this.#opts.rangement.setFiling([], { add: plan.folders.add, quiet: true });
+  }
+
+  // Range des fichiers neufs (une copie, un PDF importé), sans geste ni annulation : dans un dossier d'espace s'ils y sont placés, à la racine de la personne si elle n'est pas propriétaire (la phrase le dit).
+  async rangeNew(entries) {
+    const { rangement, notice, t, spaces, port } = this.#opts;
+    if (!spaces || !entries.some(entry => isSpacePath(normalizePath(entry.folder)))) return rangement.setFiling(entries);
+    const plan = splitWrites(entries, {}, [], spaces.info());
+    if (!plan.error && (await spaces.owner())) { await writePlacement(port.doc, plan); return rangement.setFiling(plan.entries); }
+    notice(t(plan.error || 'ex.spaceOwnersOnly'));
+    return rangement.setFiling(entries.map(entry => ({ ...entry, folder: isSpacePath(normalizePath(entry.folder)) ? '' : entry.folder })));
+  }
+
+  // Un dossier d'espace ne se renomme ni ne se déplace (ses partages portent son chemin : ils ne le suivraient pas) ; ni « Espaces » ni un espace ne s'écrivent d'ici ; rien ne se range sous « Espaces » sans un espace.
+  // Rend true (la phrase est dite) quand le geste est refusé.
+  #fixed(path, target) {
+    const { notice, t } = this.#opts;
+    if (!isSpacePath(path) && !isSpacePath(target)) return false;
+    if (isSpacePath(path)) { notice(t(isSpaceItself(path) ? 'ex.spaceFixed' : 'ex.spaceFolderFixed')); return true; }
+    if (isSpaceItself(target)) { notice(t('ex.spaceFixed')); return true; }
+    return false;
   }
 
   // Le nom seul, dans la colonne du nom que le manifeste désigne (choix du porteur, 21/10) : ni date ni auteur. Une colonne absente n'est jamais écrite ;
@@ -245,8 +274,13 @@ export class Filing {
     const { rangement, notice, t } = this.#opts;
     if (!entries.length && !(folders.add || []).length && !(folders.drop || []).length) return false;
     const before = undo ? this.#before(entries, folders) : null;
+    const plan = this.#opts.spaces ? splitWrites(entries, folders, this.#opts.files(), this.#opts.spaces.info()) : null;
+    if (plan && plan.error) { notice(t(plan.error)); return false; }
+    if (plan && touchesSpaces(plan) && !(await this.#opts.spaces.owner())) { notice(t('ex.spaceOwnersOnly')); return false; }
     try {
-      await rangement.setFiling(entries, folders);
+      if (plan && touchesSpaces(plan)) await writePlacement(this.#opts.port.doc, plan);
+      if (!plan) await rangement.setFiling(entries, folders);
+      else if (plan.entries.length || (plan.folders.add || []).length || (plan.folders.drop || []).length) await rangement.setFiling(plan.entries, plan.folders);
     } catch (error) {
       if (error instanceof TableDeclined) { notice(t('ex.filingDeclined')); return false; }
       console.warn('GFS : le rangement n’a pas pu être enregistré', error);

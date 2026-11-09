@@ -191,6 +191,16 @@ test('contrats 3.4, point 6 : `identite` se déclare avec sa raison en français
   for (const m of [publipostage(), automation(), form()]) assert.equal(m.permissions.identite, undefined, m.id);
 });
 
+test('contrats 3.4, point 2 : Automation+ déclare « formules » pour la colonne « Auteur » de son journal, avec sa raison (décision du porteur du 09/11)', () => {
+  const m = automation();
+  assert.ok(m.permissions.formules.pourquoi.fr && m.permissions.formules.pourquoi.en);
+  assert.match(m.permissions.formules.pourquoi.fr, /user\.Email/);
+  assert.equal(validateManifest(m, [publipostage()]).ok, true);
+  assert.equal(m.permissions.identite, undefined, 'l\'app n\'écrit aucun auteur : Grist remplit la colonne, GFS ne lui donne pas l\'adresse');
+  const row = listCapabilities([m]).find(each => each.capacite === 'formules');
+  assert.ok(row && row.app === 'automation' && row.pourquoi.fr === m.permissions.formules.pourquoi.fr, 'un client la relit dans la liste des capacités');
+});
+
 test('contrats 3.4 : listCapabilities dit, pour chaque app, les capacités déclarées et leur raison (ce que lit un client)', () => {
   const why = { fr: 'Pour « Mes tâches »', en: 'For “My tasks”' };
   const withIdentity = publipostage(); withIdentity.permissions.identite = { pourquoi: why };

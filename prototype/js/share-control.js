@@ -11,6 +11,15 @@ import { locate } from './spaces-filing.js';
 
 const lower = text => String(text ?? '').trim().toLowerCase();
 
+// L'état d'un fichier dont le partage n'est pas (encore) actif : `extend` dit ce qui manque (false : la table des partages ; true : les colonnes d'aide ; 'upgrade' : celles d'avant les espaces).
+const noShare = (owner, extend) => ({ active: false, extend, owner, shares: [], people: [], me: '', author: '', canManage: false });
+
+// L'espace, puis chaque dossier du chemin : ce qu'un fichier ou un dossier hérite (`parts` : les noms de dossier, du haut vers le bas).
+const originsOf = (spaceKey, name, parts) => [{ kind: 'space', name, target: spaceTarget(spaceKey) }, ...parts.map((part, at) => ({ kind: 'folder', name: part, target: folderTarget(spaceKey, parts.slice(0, at + 1).join('/')) }))];
+
+// Les personnes que GFS connaît déjà : celles des lignes de partage, sans les catégories (« @ ») ni les groupes (« # »), en minuscules, sans doublon, triées.
+const peopleOf = rows => [...new Set(rows.map(row => lower(row.PersonneL || row.Personne)).filter(who => who && !who.startsWith('@') && !who.startsWith('#')))].sort();
+
 export class ShareControl {
   #o;
 
@@ -47,48 +56,48 @@ export class ShareControl {
 
   // L'espace, puis les dossiers au-dessus de celui-ci : ce qu'il hérite (la fenêtre les marque « Hérité »).
   #folderOrigins({ space, path }) {
-    const parts = path.split('/').filter(Boolean).slice(0, -1);
-    return [{ kind: 'space', name: space.name, target: spaceTarget(space.key) }, ...parts.map((part, at) => ({ kind: 'folder', name: part, target: folderTarget(space.key, parts.slice(0, at + 1).join('/')) }))];
+    return originsOf(space.key, space.name, path.split('/').filter(Boolean).slice(0, -1));
   }
 
   // L'état que la fenêtre dessine : la table des partages (absente : le partage n'est pas activé), la preuve de propriété, ce que la personne peut changer.
   async load(file) {
     const owner = await this.#o.reader.owner();
-    let rows = null;
-    try { rows = rowsOf(await this.#o.port.doc.fetchTable(SHARES_TABLE)); } catch (error) { rows = null; }
-    const none = extend => ({ active: false, extend, owner, shares: [], people: [], me: '', author: '', canManage: false });
-    if (!rows) return none(false);
+    const rows = await this.#try(async () => rowsOf(await this.#o.port.doc.fetchTable(SHARES_TABLE)), null);
+    if (!rows) return noShare(owner, false);
     const target = file.folder ? null : this.#target(file);
-    let author = lower(file.by);
-    if (target) {
-      // La table de fichiers porte-t-elle les colonnes d'aide ? Sinon le partage n'y est pas étendu (une app ajoutée après coup) ; si elle porte celles d'avant les espaces (pas `GFS_Calc`), le partage est à compléter ;
-      // l'auteur d'un fichier (d'une app ou un PDF) est la colonne que Grist écrit.
-      let table = null;
-      try { table = await this.#o.port.doc.fetchTable(target.table); } catch (error) { table = null; }
-      const has = name => Boolean(table) && Object.prototype.hasOwnProperty.call(table, name);
-      if (target.stamped && !has('GFS_Lecteurs')) return none(true);
-      if (has('GFS_Lecteurs') && !has('GFS_Calc')) return none('upgrade');
-      if (target.stamped && has('GFS_Lecteurs') && !has(STAMP)) return none('upgrade'); // un partage d'avant l'auteur protégé des PDF : « compléter » reprend l'auteur de la colonne « Auteur »
-      if (target.stamped) author = lower((table[STAMP] || [])[(table.id || []).indexOf(file.row)]);
-    }
+    const read = target ? await this.#authorOf(file, target) : { author: lower(file.by) };
+    if (read.extend !== undefined) return noShare(owner, read.extend);
+    const { author } = read;
     const me = lower(this.#o.identity());
     const shares = sharesOf(rows, file.key, file.folder ? this.#folderOrigins(file.folder) : await this.#inherited(file.key));
     const admin = shares.some(share => share.valid && share.active && share.right === 'admin' && lower(share.who) === me);
-    const people = [...new Set(rows.map(row => lower(row.PersonneL || row.Personne)).filter(who => who && !who.startsWith('@') && !who.startsWith('#')))].sort();
-    let groups = [];
-    try { groups = groupsOf(rowsOf(await this.#o.port.doc.fetchTable(GROUPS_TABLE))); } catch (error) { groups = []; }
-    return { active: true, owner, shares, people, groups, me, author, canManage: !this.#o.writeBlock() && (owner === true || (me !== '' && me === author) || admin) };
+    const groups = await this.#try(async () => groupsOf(rowsOf(await this.#o.port.doc.fetchTable(GROUPS_TABLE))), []);
+    return { active: true, owner, shares, people: peopleOf(rows), groups, me, author, canManage: !this.#o.writeBlock() && (owner === true || (me !== '' && me === author) || admin) };
+  }
+
+  // Une lecture qui peut échouer (table absente, accès refusé) : `fallback` à la place.
+  async #try(read, fallback) {
+    try { return await read(); } catch (error) { return fallback; }
+  }
+
+  // L'auteur d'un fichier (d'une app ou un PDF), ou `{ extend }` quand sa table n'est pas prête au partage. La table de fichiers porte-t-elle les colonnes d'aide ? Sinon le partage n'y est pas étendu (une app ajoutée après coup) ;
+  // si elle porte celles d'avant les espaces (pas `GFS_Calc`), le partage est à compléter ; l'auteur est la colonne que Grist écrit.
+  async #authorOf(file, target) {
+    const table = await this.#try(() => this.#o.port.doc.fetchTable(target.table), null);
+    const has = name => Boolean(table) && Object.prototype.hasOwnProperty.call(table, name);
+    if (target.stamped && !has('GFS_Lecteurs')) return { extend: true };
+    if (has('GFS_Lecteurs') && !has('GFS_Calc')) return { extend: 'upgrade' };
+    if (target.stamped && has('GFS_Lecteurs') && !has(STAMP)) return { extend: 'upgrade' }; // un partage d'avant l'auteur protégé des PDF : « compléter » reprend l'auteur de la colonne « Auteur »
+    return { author: target.stamped ? lower((table[STAMP] || [])[(table.id || []).indexOf(file.row)]) : lower(file.by) };
   }
 
   // Ce que le fichier hérite de l'espace où il est placé : l'espace, puis chaque dossier du chemin (rien si le fichier n'est dans aucun espace, ou si la personne ne lit pas le placement).
   async #inherited(key) {
-    let place = null; let spaces = [];
-    try { place = rowsOf(await this.#o.port.doc.fetchTable(PLACE_TABLE)).find(row => row.Cible === key); } catch (error) { place = null; }
+    const place = await this.#try(async () => rowsOf(await this.#o.port.doc.fetchTable(PLACE_TABLE)).find(row => row.Cible === key), null);
     if (!place || !place.Espace) return [];
-    try { spaces = rowsOf(await this.#o.port.doc.fetchTable(SPACES_TABLE)); } catch (error) { spaces = []; }
+    const spaces = await this.#try(async () => rowsOf(await this.#o.port.doc.fetchTable(SPACES_TABLE)), []);
     const name = (spaces.find(row => row.Cle === place.Espace) || {}).Nom || place.Espace;
-    const parts = String(place.Dossier || '').split('/').filter(Boolean);
-    return [{ kind: 'space', name, target: spaceTarget(place.Espace) }, ...parts.map((part, at) => ({ kind: 'folder', name: part, target: folderTarget(place.Espace, parts.slice(0, at + 1).join('/')) }))];
+    return originsOf(place.Espace, name, String(place.Dossier || '').split('/').filter(Boolean));
   }
 
   async #write(actions) {

@@ -794,7 +794,10 @@ par-dessus le cadre de l'app (point 7).
 4. [D] **Les entrées de `gristInterne`** ont la forme `{ "tables": [ … ], "lit": true, "ecrit": [ "colonne", … ], "retire": true,
    "pourquoi": { "fr": "…", "en": "…" } }`. `tables` et `pourquoi` sont obligatoires ; `lit`, `ecrit` et `retire` sont
    facultatifs, au moins un des trois. Une entrée qui écrit (`ecrit` ou `retire`) nomme une seule table et porte aussi
-   `lit: true` (3.3, point 5). Le `pourquoi` est montré à la personne comme celui des capacités.
+   `lit: true` (3.3, point 5). Le `pourquoi` est montré à la personne comme celui des capacités. [M] **Form+ (09/11, demande de sa page d'état)** :
+   `{ tables: ["_grist_Views"], lit: true, ecrit: ["name"] }` pour renommer la page qu'un `CreateViewSection` vient de créer (Grist l'appelle « New page »
+   et la range tout en bas) en « Formulaire <table> » ; le nom seulement, un seul `UpdateRecord` dans son propre lot (un refus n'arrête rien : l'app garde « New page » et le dit). Mesuré avec
+   la vraie Form+ (faits vérifiés 65).
 5. [T] **`lienPublic`** : `{ "lit": [ "FormPlus_Pub_*" ], "pourquoi": { "fr": "…", "en": "…" } }`. Pas une capacité qui contourne un filtre :
    une déclaration qui en **resserre** un. Elle nomme les tables **de l'app** qu'un lien public, celui d'un formulaire que l'app publie,
    peut lire si la personne y consent (3.3, point 9 ; 11.9, point 4c) ; **sans elle, aucune table de l'app n'est lisible par un lien

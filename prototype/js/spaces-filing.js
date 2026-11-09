@@ -77,19 +77,28 @@ export function splitWrites(entries, folders, files, info) {
   const personal = [];
   const ops = [];
   for (const entry of entries) {
-    const key = fileKey(entry.app, entry.file);
-    const now = byKey.get(key);
-    const to = normalizePath(entry.folder);
-    if (!isSpacePath(to)) {
-      personal.push({ ...entry, folder: to });
-      if (now && now.space) ops.push({ remove: key });
-      continue;
-    }
-    const dest = locate(to, info);
-    if (!dest) return { error: 'ex.spaceUnknown' };
-    personal.push({ ...entry, folder: now ? (now.space ? now.ownFolder || '' : now.folder) : '' });
-    if (!(now && now.space && now.space.key === dest.space.key && now.space.folder === dest.folder)) ops.push({ place: key, space: dest.space.key, folder: dest.folder });
+    const one = splitEntry(entry, byKey.get(fileKey(entry.app, entry.file)), info);
+    if (one.error) return { error: one.error };
+    personal.push(one.personal);
+    if (one.op) ops.push(one.op);
   }
+  const { markers, rest } = splitFolders(folders, info);
+  return { entries: personal, folders: { ...folders, ...rest }, ops, markers };
+}
+
+// Un fichier du lot (`now` : ce que la liste montre de lui, ou rien) : ce qu'il devient dans le rangement de la personne (`personal`) et dans le placement (`op`, ou null quand rien ne change), ou { error }.
+function splitEntry(entry, now, info) {
+  const key = fileKey(entry.app, entry.file);
+  const to = normalizePath(entry.folder);
+  if (!isSpacePath(to)) return { personal: { ...entry, folder: to }, op: now && now.space ? { remove: key } : null };
+  const dest = locate(to, info);
+  if (!dest) return { error: 'ex.spaceUnknown' };
+  const same = now && now.space && now.space.key === dest.space.key && now.space.folder === dest.folder;
+  return { personal: { ...entry, folder: now ? (now.space ? now.ownFolder || '' : now.folder) : '' }, op: same ? null : { place: key, space: dest.space.key, folder: dest.folder } };
+}
+
+// Les dossiers gardés sans fichier : ceux d'un espace vont au placement (`markers`), les autres au rangement de la personne (`rest`).
+function splitFolders(folders, info) {
   const markers = { add: [], drop: [] };
   const rest = { add: [], drop: [] };
   for (const kind of ['add', 'drop']) {
@@ -99,7 +108,7 @@ export function splitWrites(entries, folders, files, info) {
       if (dest && dest.folder) markers[kind].push({ space: dest.space.key, folder: dest.folder });
     }
   }
-  return { entries: personal, folders: { ...folders, ...rest }, ops, markers };
+  return { markers, rest };
 }
 
 // Ce que le plan écrit dans le placement : y a-t-il quelque chose à faire ?

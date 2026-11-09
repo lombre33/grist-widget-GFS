@@ -172,18 +172,28 @@ function raiseEdges(colors, mode) {
   return out;
 }
 
+// La couleur propre de la palette (`#rrggbb`) : celle de la personne, ou, pour l'accessibilité renforcée sur l'ambiance d'origine (qui n'a pas de graine), son bleu ; `null` quand l'ambiance garde la sienne.
+function customColor(spec, customHex, renforcee) {
+  const chosen = customHex ? parseHex(customHex) : null;
+  return chosen || (renforcee && spec && !spec.seeds ? ORIGIN_SEED : null);
+}
+
+// Les graines de chaque mode et celle du bouton : la couleur propre pour les deux modes, sinon celles de l'ambiance.
+function seedsOf(spec, custom) {
+  const own = custom ? hexToOklch(custom) : null;
+  const seeds = custom ? { clair: own, sombre: own } : spec.seeds;
+  return { seeds, fillSeed: own || spec.fill || seeds.clair };
+}
+
 // Rend { clair, sombre, forme, ajustee, graine } ; `customHex` : la couleur libre de la personne (`#rrggbb`), qui remplace la couleur de l'ambiance sans toucher à sa forme. `ajustee` dit qu'une couleur
 // a dû être éclaircie ou assombrie pour que le texte reste lisible. Rend `null` quand rien ne s'écrit : l'ambiance d'origine, sans couleur choisie. `renforcee` : l'accessibilité renforcée, qui garde
 // la couleur de l'ambiance (l'ambiance d'origine y part de son bleu), tient le texte à 7:1 et chaque trait à 3:1, et prend la forme du mode renforcé (pas celle de l'ambiance).
 export function ambiancePalette(id, customHex = null, { renforcee = false } = {}) {
   const spec = SPECS[id];
-  const chosen = customHex ? parseHex(customHex) : null;
-  const custom = chosen || (renforcee && spec && !spec.seeds ? ORIGIN_SEED : null);
+  const custom = customColor(spec, customHex, renforcee);
   if (!spec || (!custom && !spec.seeds)) return null;
   const limits = renforcee ? STRICT : NORMAL;
-  const own = custom ? hexToOklch(custom) : null;
-  const seeds = custom ? { clair: own, sombre: own } : spec.seeds;
-  const fillSeed = own || spec.fill || seeds.clair;
+  const { seeds, fillSeed } = seedsOf(spec, custom);
   const surfaces = MODES.map(mode => oklchToHex({ L: spec.grays[mode]['--surface'][0], C: 0, h: 0 }));
   const fill = { ...fillOf(fillSeed, surfaces, limits), seed: fillSeed };
   const scale = clamp(seeds.clair.C / REFERENCE_CHROMA, 0.02, 1.4);

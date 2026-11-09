@@ -7,6 +7,11 @@
 // la page), Alt+← (page précédente), Ctrl+N, Ctrl+T et Ctrl+W sont au navigateur, qui ne les laisse pas tous à une page ; aucun geste de GFS n'est lié à une touche qu'on ne peut pas avoir partout.
 // Ctrl+D (dupliquer, dans d'autres explorateurs) n'est donc pas liée : « Dupliquer » est dans le menu de la ligne, et Ctrl+C puis Ctrl+V colle la copie.
 
+// Les touches qui valent le même geste en liste et en vignettes.
+const PLAIN_KEYS = new Map([['Home', 'first'], ['End', 'last'], ['Enter', 'activate'], ['F2', 'rename'], ['Delete', 'delete'], ['ContextMenu', 'menu']]);
+// Les flèches : le geste en liste, puis en vignettes (← → ne valent qu'en vignettes ; ↑ ↓ y changent de rangée).
+const ARROWS = new Map([['ArrowDown', ['next', 'down']], ['ArrowUp', ['prev', 'up']], ['ArrowRight', [null, 'next']], ['ArrowLeft', [null, 'prev']]]);
+
 // `view` : { display: 'list'|'tiles', filtering } -> 'next' | 'prev' | 'down' | 'up' | 'first' | 'last' | 'activate' | 'rename' | 'delete' | 'parent' | 'menu' | null.
 // 'down' et 'up' ne valent qu'en vignettes (une rangée plus bas, plus haut) ; en liste, ↓ et ↑ sont 'next' et 'prev'. Retour arrière ne remonte pas pendant une recherche : c'est alors le champ de
 // recherche qui l'efface, la liste ne montre pas un dossier.
@@ -14,21 +19,9 @@ export function listAction(event, { display, filtering }) {
   const { key, shiftKey, ctrlKey, altKey, metaKey } = event;
   if (ctrlKey || altKey || metaKey) return null;
   if (shiftKey) return key === 'F10' ? 'menu' : null;
-  const tiles = display === 'tiles';
-  switch (key) {
-    case 'ArrowDown': return tiles ? 'down' : 'next';
-    case 'ArrowUp': return tiles ? 'up' : 'prev';
-    case 'ArrowRight': return tiles ? 'next' : null;
-    case 'ArrowLeft': return tiles ? 'prev' : null;
-    case 'Home': return 'first';
-    case 'End': return 'last';
-    case 'Enter': return 'activate';
-    case 'F2': return 'rename';
-    case 'Delete': return 'delete';
-    case 'ContextMenu': return 'menu';
-    case 'Backspace': return filtering ? null : 'parent';
-    default: return null;
-  }
+  if (key === 'Backspace') return filtering ? null : 'parent';
+  if (ARROWS.has(key)) return ARROWS.get(key)[display === 'tiles' ? 1 : 0];
+  return PLAIN_KEYS.get(key) || null;
 }
 
 // La personne tape-t-elle dans un champ (la recherche, une fenêtre) ? Ses touches y gardent leur sens.

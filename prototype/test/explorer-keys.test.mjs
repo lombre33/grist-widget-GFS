@@ -30,6 +30,13 @@ test('une touche tapée avec Ctrl, Alt ou Méta n\'est pas à GFS (Ctrl+D, Ctrl+
   for (const key of ['ArrowDown', 'Delete', 'Enter', 'F2']) assert.equal(listAction(press(key, { shiftKey: true }), LIST), null, `Maj+${key}`);
 });
 
+test('un nom de touche qui est aussi un nom de propriété d\'objet ne donne aucun geste (la table des touches ne lit que ses propres entrées)', () => {
+  for (const key of ['constructor', 'toString', '__proto__', 'hasOwnProperty', 'length', 'size']) {
+    assert.equal(listAction(press(key), LIST), null, key);
+    assert.equal(listAction(press(key), TILES), null, key);
+  }
+});
+
 test('Retour arrière ne remonte pas pendant une recherche : la liste ne montre pas un dossier', () => {
   assert.equal(listAction(press('Backspace'), { display: 'list', filtering: true }), null);
   assert.equal(listAction(press('Backspace'), LIST), 'parent');

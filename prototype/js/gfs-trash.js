@@ -84,19 +84,32 @@ export function restorePlan({ snapshot, spec, data, columns }) {
   const cols = spec.colonnes || {};
   const live = (data.id || []).map((row, i) => i).filter(i => !isExcluded(spec, data, i));
   const kept = snapshot.valeurs || {};
+  const present = presentRow({ recipe, cols, kept, data, live });
+  if (present) return present;
+  const taken = live.map(i => text(cell(data, cols.nom, i)));
+  const original = text(kept[cols.nom]);
+  const name = taken.some(other => sameName(other, original)) ? freeName(original, taken, { extension: false }) : original;
+  const values = restoredValues({ recipe, cols, kept, columns, name, data, live });
+  const rowId = (data.id || []).includes(snapshot.id) ? null : snapshot.id;
+  return { rowId, values, name, renamed: name !== original };
+}
+
+// Une ligne vivante porte déjà la même valeur « unique » : rien à restaurer, l'entrée part. Rend { present: true, name }, ou null quand aucune ne la porte.
+function presentRow({ recipe, cols, kept, data, live }) {
   for (const column of recipe.uniques || []) {
     const wanted = kept[column];
     const same = filled(wanted) ? live.find(i => cell(data, column, i) === wanted) : undefined;
     if (same !== undefined) return { present: true, name: text(cell(data, cols.nom, same)) };
   }
-  const taken = live.map(i => text(cell(data, cols.nom, i)));
-  const original = text(kept[cols.nom]);
-  const name = taken.some(other => sameName(other, original)) ? freeName(original, taken, { extension: false }) : original;
+  return null;
+}
+
+// Les valeurs redonnées à la ligne : celles que la corbeille a gardées, le nom libre, les colonnes « exclusives » éteintes quand une ligne vivante en porte une, puis les valeurs que la recette remet (`remettre`).
+function restoredValues({ recipe, cols, kept, columns, name, data, live }) {
   const values = {};
   for (const column of columns) if (column in kept) values[column] = kept[column];
   if (columns.includes(cols.nom)) values[cols.nom] = name;
   for (const column of recipe.exclusives || []) if (columns.includes(column) && filled(values[column]) && live.some(i => filled(cell(data, column, i)))) values[column] = false;
   for (const [column, value] of Object.entries(recipe.remettre || {})) if (columns.includes(column)) values[column] = value;
-  const rowId = (data.id || []).includes(snapshot.id) ? null : snapshot.id;
-  return { rowId, values, name, renamed: name !== original };
+  return values;
 }

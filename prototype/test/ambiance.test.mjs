@@ -166,6 +166,15 @@ test('le calcul est le même à chaque appel, et rend des objets neufs', () => {
   assert.notEqual(ambiancePalette('pop', '#0f766e').clair['--bg'], '#000000');
 });
 
+test('Brut et Enseigne ont leur propre couleur de bouton, que l\'accent de lecture ne suit pas ; une couleur libre la remplace', () => {
+  for (const id of ['brut', 'enseigne']) {
+    const stock = ambiancePalette(id);
+    assert.notEqual(stock.clair['--accent-solid'], stock.clair['--accent'], `${id} : le bouton n'a pas la couleur de l'accent de lecture`);
+    assert.equal(ambiancePalette(id, '#d6336c').clair['--accent-solid'], '#d6336c', `${id} : une couleur libre devient le bouton`);
+  }
+  for (const id of ['pop', 'papier']) assert.equal(ambiancePalette(id).clair['--accent-solid'], ambiancePalette(id).clair['--accent'], `${id} : le bouton suit l'accent`);
+});
+
 test('la couleur libre change la couleur de l\'ambiance et laisse sa forme', () => {
   const own = ambiancePalette('papier', '#1d4ed8');
   const stock = ambiancePalette('papier');

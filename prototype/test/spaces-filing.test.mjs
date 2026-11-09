@@ -74,6 +74,20 @@ test('ranger dans un espace : un placement, le dossier de la personne ne change 
   assert.equal(pin.entries[0].folder, 'Perso', 'et ne met jamais un chemin d\'espace dans le rangement de la personne');
 });
 
+test('ranger : un fichier de la personne qui change de dossier sans toucher aux espaces n\'écrit pas le placement ; un fichier d\'espace qui change de dossier dans son espace, si', () => {
+  const read = info();
+  const files = applyPlacement([file(1, 'Perso'), file(2, 'Perso')], read);
+  const between = splitWrites([{ app: 'publipostage', file: '1', pinned: false, folder: 'Autre' }], {}, files, read);
+  assert.deepEqual(between.ops, [], 'un fichier qui n\'est dans aucun espace n\'a rien à retirer du placement');
+  assert.equal(touchesSpaces(between), false);
+  const within = splitWrites([{ app: 'publipostage', file: '2', pinned: false, folder: 'Espaces/Achats' }], {}, files, read);
+  assert.deepEqual(within.ops, [{ place: 'publipostage:2', space: 'achats', folder: '' }], 'du dossier « Contrats » à la racine de l\'espace');
+  const stay = splitWrites([{ app: 'publipostage', file: '2', pinned: false, folder: 'Espaces/Achats/Contrats' }], {}, files, read);
+  assert.deepEqual(stay.ops, [], 'le même dossier du même espace : rien à écrire');
+  const other = splitWrites([{ app: 'publipostage', file: '2', pinned: false, folder: 'Espaces/Compta' }], {}, files, read);
+  assert.deepEqual(other.ops, [{ place: 'publipostage:2', space: 'compta', folder: '' }], 'd\'un espace à un autre');
+});
+
 test('« Espaces » seul, ou un espace inconnu : refusé', () => {
   const read = info();
   assert.equal(splitWrites([{ app: 'publipostage', file: '1', pinned: false, folder: 'Espaces' }], {}, [], read).error, 'ex.spaceUnknown');

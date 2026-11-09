@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-UDLKQkEJRZkCCUbTM+S+G7uPx7BfvpVZYuAii2Fnr74='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-LZ4rA82upvKD0DaeFjyBTXiWmxTv7IKeWszgr3yGqx8='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=6edbc41aa4">
 <link rel="stylesheet" href="css/explorer.css?v=418da9c54e">
 <link rel="stylesheet" href="css/modules.css?v=1109fc818b">
@@ -114,7 +114,7 @@
     "./js/session.js": "./js/session.js?v=8d372a771c",
     "./js/settings-menu.js": "./js/settings-menu.js?v=f9ce66c1f3",
     "./js/settings.js": "./js/settings.js?v=a425d4248c",
-    "./js/share-control.js": "./js/share-control.js?v=80471baf95",
+    "./js/share-control.js": "./js/share-control.js?v=2fd19cb7c2",
     "./js/share-links.js": "./js/share-links.js?v=49b2331a44",
     "./js/share-other-flow.js": "./js/share-other-flow.js?v=4934bffdb7",
     "./js/share-other-tab.js": "./js/share-other-tab.js?v=2fa346af0d",
@@ -123,7 +123,7 @@
     "./js/share-receive-flow.js": "./js/share-receive-flow.js?v=1ea8a422a4",
     "./js/share-receive-window.js": "./js/share-receive-window.js?v=23906c52f1",
     "./js/share-window.js": "./js/share-window.js?v=f519fa7a2a",
-    "./js/sharing-model.js": "./js/sharing-model.js?v=4b3f8d433f",
+    "./js/sharing-model.js": "./js/sharing-model.js?v=2ac58f1226",
     "./js/spaces-filing.js": "./js/spaces-filing.js?v=0702b4b954",
     "./js/state.js": "./js/state.js?v=ac1616eaf2",
     "./js/steps-window.js": "./js/steps-window.js?v=92947a32ee",

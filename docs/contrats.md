@@ -1063,6 +1063,7 @@ Les noms de la v0 :
 | `inserer` | app → GFS, puis GFS → app qui fournit | 5.4 | 5.4 |
 | `installer` | app → GFS | 5.4 | 5.4 |
 | `fermer` | GFS → app active | 5.4 | 5.4 |
+| `rester` | GFS → app active | 5.4, point 3 | 5.4, point 3 |
 | `extensions` (événement) | GFS → app | `{ extensions: [ … ], bibliotheques: { … } }` (5.2) | aucune |
 | `langue` (événement) | GFS → app | `{ langue }` (5.2, point 6) | aucune |
 | `barre` (événement) | GFS → app | `{ barre }` : `{ bord, epaisseur, zone }` ou `null` (5.2, point 7) | aucune |
@@ -1496,6 +1497,7 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
 | **inserer** | app qui reçoit → GFS : `{ formats, types? }` ; GFS → app qui fournit : même corps | `{ rendu }` (ci-dessous) | grisé, texte commun |
 | **installer** | app → GFS : `{ extension, fonction? }` | `{ actives: [ … ] }` : les extensions actives après le choix de la personne | la fenêtre du grisé (guide des apps, section 5) |
 | **fermer** | GFS → app active : `{ raison }` | `{ ferme: true \| false }` | sans objet |
+| **rester** | GFS → app active : `{ raison }` (celle du `fermer` auquel elle avait dit oui) | `{ repris: true \| false }` | sans objet (`GFS_INCONNU` : l'app n'a rien arrêté qu'elle sache) |
 | **supprimer** | GFS → app active : `{ fichier: { id, type }, raison }` | `{ fait: true \| false, dit? }` | sans objet (l'app garde sa gestion) |
 | **dupliquer** | GFS → app active : `{ fichier: { id, type }, nom }` | `{ id, nom?, dit? }`, ou `{ dit }` sans `id` | sans objet (l'app garde sa gestion) |
 
@@ -1609,10 +1611,10 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
    (sur une erreur) ; « Attendre » suit la réponse de l'app quand elle vient. Une app qui ne connaît pas l'appel (`GFS_INCONNU`, la réponse
    que 5.1, point 3, demande à tout appel inconnu) part comme avant, sans question ; une app qui ne répond à rien, pas même `GFS_INCONNU`, fait
    attendre les 10 secondes puis la question de GFS ; une app qui n'a pas encore demandé son contexte n'a rien à enregistrer, GFS ne lui demande rien. Si
-   la personne repart dans l'explorateur avant la réponse, la réponse tardive n'ouvre rien. **Pas encore gardés** : le changement de
+   la personne repart dans l'explorateur avant la réponse, la réponse tardive n'ouvre rien, et **GFS dit « tu restes » à l'app qui vient de répondre `oui`** (choix du porteur le 09/11 : « GFS le lui dit ») : l'appel `rester { raison }`, avec la raison du `fermer`, répond `{ repris: true | false }`. Une app qui a dit `oui` a pu lever son verrou et couper ce qui tournait (Automation+ : son exécution) : à `rester`, elle reprend ce qu'elle avait arrêté. GFS l'envoie à l'app qui a dit `oui` et que la personne garde (retour à l'explorateur avant la réponse, ou « Fermer quand même » puis retour), jamais à une app qui a dit `non` (elle n'a rien arrêté), ni à une app déjà remplacée ; une app qui ne connaît pas l'appel répond `GFS_INCONNU` et GFS n'ajoute rien (ni fenêtre, ni phrase, ni avertissement), `GFS_INACTIF` de même. GFS ne cherche pas la réponse `repris` pour la montrer à la personne. **Pas encore gardés** : le changement de
    la table de travail (4.5, point 7) et le retrait de l'app active du registre recréent le cadre sans « fermer ». **Le kit répond pour
-   les apps qui s'en servent** : `GfsLink.onClose(fn)` (kit 0.9.0) rappelle `fn({ raison })` et rend l'`oui` ou le `non` de l'app ; sans abonné, le
-   kit répond `GFS_INCONNU` comme avant. [M] Mesuré le 04/11 dans un vrai Grist (faits vérifiés, section 29).
+   les apps qui s'en servent** : `GfsLink.onClose(fn)` (kit 0.9.0) rappelle `fn({ raison })` et rend l'`oui` ou le `non` de l'app ; `GfsLink.onStay(fn)` (kit 0.13.0) rappelle `fn({ raison })` à `rester` et rend vrai quand l'app a repris ; sans abonné, le
+   kit répond `GFS_INCONNU` comme avant. [M] Mesuré le 04/11 dans un vrai Grist (faits vérifiés, section 29) ; « tu restes » mesuré le 09/11 (section 64).
 4. [T] **installer** : GFS ouvre sa fenêtre d'installation à la ligne de l'extension ; rien ne se télécharge (7.3). L'app
    charge l'extension quand elle reçoit l'événement `extensions`.
 5. [D] **inserer** : seule la forme du rendu et ses règles sont arrêtées ici ; le déroulement (GFS active l'app qui fournit au

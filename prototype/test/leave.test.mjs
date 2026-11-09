@@ -1,7 +1,7 @@
 // Quitter l'app active pour une autre (contrats 5.4, point 3, appel `fermer`) : la réponse de l'app, ce que GFS ne ferme jamais tout seul, et la décision de la personne quand l'app se tait ou échoue.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { askToClose, leaveQuestion, PATIENCE_MS } from '../js/leave.js';
+import { askToClose, leaveApp, leaveQuestion, PATIENCE_MS, tellToStay } from '../js/leave.js';
 import { createI18n } from '../js/i18n.js';
 import { ERR } from '../js/filter.js';
 
@@ -119,6 +119,80 @@ test('un appel qui échoue avant de partir (pas de messagerie) est une erreur de
 });
 
 // ---------- ce que la personne lit quand l'app se tait ou échoue (la fenêtre d'accord du widget, en français et en anglais) ----------
+
+// ---------- « tu restes » : l'app a répondu oui, la personne est revenue (contrats 5.4, point 3, appel `rester`) ----------
+
+// Une app qui répond à `fermer` et à `rester` : `closed` et `stayed` gardent les raisons reçues.
+const appThatStays = ({ close = async () => ({ ferme: true }), stay = async () => ({ repris: true }) } = {}) => ({
+  closed: [], stayed: [],
+  closeApp(reason) { this.closed.push(reason); return close(reason); },
+  stayApp(reason) { this.stayed.push(reason); return stay(reason); },
+});
+const warnings = async run => {
+  const kept = [];
+  const original = console.warn;
+  console.warn = (...args) => kept.push(args.map(String).join(' '));
+  try { await run(); } finally { console.warn = original; }
+  return kept;
+};
+
+test('« rester » : la raison part avec l\'appel ; vrai seulement quand l\'app dit `repris: true`', async () => {
+  for (const [reply, expected] of [[{ repris: true }, true], [{ repris: false }, false], [{ repris: 'oui' }, false], [{}, false], [null, false]]) {
+    const session = appThatStays({ stay: async () => reply });
+    assert.equal(await tellToStay(session, 'explorateur'), expected, JSON.stringify(reply));
+    assert.deepEqual(session.stayed, ['explorateur']);
+  }
+});
+
+test('« rester » : une app qui ne connaît pas l\'appel (GFS_INCONNU) ou qui est déjà partie (GFS_INACTIF) ne déclenche aucun avertissement ; toute autre erreur en déclenche un', async () => {
+  for (const code of [ERR.INCONNU, ERR.INACTIF]) {
+    const session = appThatStays({ stay: async () => { throw coded(code); } });
+    const kept = await warnings(async () => assert.equal(await tellToStay(session, 'app'), false));
+    assert.deepEqual(kept, [], code);
+  }
+  const broken = appThatStays({ stay: async () => { throw coded('GFS_ERREUR', 'Reprise refusée'); } });
+  const kept = await warnings(async () => assert.equal(await tellToStay(broken, 'app'), false));
+  assert.equal(kept.length, 1);
+  assert.match(kept[0], /rester/);
+});
+
+test('l\'app dit oui et la personne n\'a rien changé : elle part, et on ne lui dit pas de rester', async () => {
+  const session = appThatStays();
+  assert.equal(await leaveApp(session, 'ouvrir', { offer: person(false).fn, where: () => 'now', patience: FAST }), true);
+  await later(0);
+  assert.deepEqual(session.stayed, []);
+});
+
+test('l\'app dit oui, puis la personne est revenue (l\'app est toujours là) : elle reste et reçoit « rester » avec la raison de son « fermer »', async () => {
+  let place = 'now';
+  const session = appThatStays({ close: async () => { place = 'moved'; return { ferme: true }; } });
+  assert.equal(await leaveApp(session, 'lien', { offer: person(false).fn, where: () => place, patience: FAST }), false);
+  await later(0);
+  assert.deepEqual(session.closed, ['lien']);
+  assert.deepEqual(session.stayed, ['lien'], 'la même raison que le « fermer » qu\'elle a reçu');
+});
+
+test('« rester » ne part que pour une app qui avait dit oui et qui est toujours là', async () => {
+  const noAnswer = appThatStays({ close: async () => ({ ferme: false }) });
+  assert.equal(await leaveApp(noAnswer, 'app', { offer: person(false).fn, where: () => 'moved', patience: FAST }), false);
+  const replaced = appThatStays();
+  assert.equal(await leaveApp(replaced, 'app', { offer: person(false).fn, where: () => 'gone', patience: FAST }), false);
+  await later(0);
+  assert.deepEqual([noAnswer.stayed, replaced.stayed], [[], []], 'une app qui a dit non n\'a rien arrêté ; une app remplacée n\'est plus là');
+});
+
+test('« Fermer quand même » puis retour : l\'app qui s\'était tue reçoit aussi « rester » ; une app qui ne connaît pas « fermer » ni « rester » reste sans avertissement', async () => {
+  const silent = appThatStays({ close: () => new Promise(() => {}) });
+  assert.equal(await leaveApp(silent, 'app', { offer: person(true).fn, where: () => 'moved', patience: FAST }), false);
+  await later(0);
+  assert.deepEqual(silent.stayed, ['app']);
+  const old = appThatStays({ close: async () => { throw coded(ERR.INCONNU); }, stay: async () => { throw coded(ERR.INCONNU); } });
+  const kept = await warnings(async () => {
+    assert.equal(await leaveApp(old, 'app', { offer: person(false).fn, where: () => 'moved', patience: FAST }), false);
+    await later(0);
+  });
+  assert.deepEqual(kept, []);
+});
 
 const WORDS = {
   fr: { silent: 'Publipostage+ ne répond pas', fault: 'Publipostage+ n’a pas pu se fermer', force: 'Fermer quand même', wait: 'Attendre', stay: 'Rester', unexpected: 'réponse inattendue' },

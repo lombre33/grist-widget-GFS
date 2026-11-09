@@ -111,6 +111,22 @@ const refused = await app.evaluate(link => window.sondeK.GfsLink.openFile(link),
 const asked = await app.evaluate(() => window.__fermer.demandes);
 check('l\'abonné du kit reçoit la raison « lien » ; faux : l\'app reste (cadre gardé, jamais détruit), openFile rend false et GFS ne dit rien par-dessus',
   refused === false && JSON.stringify(asked) === '["lien"]' && framesOf(/kit\.html/) === 1 && framesOf(/o-ouvrir\//) === 0 && await toast.isHidden(), { refused, asked });
+say('=== rester : l\'app écrite avec le kit a dit oui, puis la personne est revenue à l\'explorateur ===');
+await app.evaluate(() => {
+  window.__fermer.reponse = new Promise((resolve) => { window.__fermer.libere = resolve; });
+  window.__rester = [];
+  window.sondeK.GfsLink.onStay(({ raison }) => { window.__rester.push(raison); return true; });
+});
+await app.evaluate(link => { window.__attente = window.sondeK.GfsLink.openFile(link); }, key);
+await waitFor('le deuxième fermer', async () => (await app.evaluate(() => window.__fermer.demandes.length)) === 2);
+await frame.locator('#floater-files').click();
+await ex.waitFor({ state: 'visible' });
+await app.evaluate(() => window.__fermer.libere(true));
+await waitFor('l\'appel rester', async () => (await app.evaluate(() => window.__rester.length)) === 1);
+const stayAsked = await app.evaluate(() => window.__rester);
+const waitingOpen = await app.evaluate(() => window.__attente);
+check('l\'abonné `onStay` du kit reçoit la raison « lien » du `fermer` auquel il avait dit oui ; l\'app reste (cadre gardé), openFile rend false, GFS ne dit rien par-dessus',
+  JSON.stringify(stayAsked) === '["lien"]' && waitingOpen === false && framesOf(/kit\.html/) === 1 && framesOf(/o-ouvrir\//) === 0 && await toast.isHidden(), { stayAsked, waitingOpen });
 await app.evaluate(() => { window.__fermer.reponse = true; });
 await app.evaluate(link => { window.__ouvrir = window.sondeK.GfsLink.openFile(link); }, key);
 await waitFor('la sonde O ouverte', async () => framesOf(/o-ouvrir\//) === 1 && framesOf(/kit\.html/) === 0);

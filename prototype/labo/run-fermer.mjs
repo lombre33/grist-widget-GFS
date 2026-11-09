@@ -2,6 +2,7 @@
 // fichier d'une autre app, ouvre une app dans la fenêtre des apps, ou suit un lien. L'app active (la sonde O, labo/sondes/o-ouvrir/, ou la sonde Q) enregistre ou pose sa question avant de partir,
 // comme le fera Publipostage+ après la consigne qui lui demande de répondre à `fermer` ; une app qui ne connaît pas l'appel part comme avant. Le sondage de la sonde : `body[data-fermer]`
 // (`oui`, `non`, `echec`, `muet`, `question`, ou rien : GFS_INCONNU). GFS tient les deux sondes pour des apps qui acceptent « ouvrir » (le labo seul les ajoute à `ACCEPTS_OPEN`).
+// « Tu restes » (contrats 5.4, point 3, appel `rester`) : l'app qui a répondu oui alors que la personne est revenue à l'explorateur reçoit `rester` (`body[data-rester]` de la sonde : `oui`, `non`, ou rien : GFS_INCONNU).
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';
@@ -111,6 +112,7 @@ await page.waitForTimeout(700);
 check('« Annuler » dans l\'app : elle reste (cadre gardé), la sonde Q ne s\'ouvre pas, GFS ne dit rien', count(O) === 1 && count(Q) === 0 && await ex.isHidden(), { o: count(O), q: count(Q) });
 await clean('« Annuler »');
 check('l\'app a gardé sa réponse (« annuler ») et son appel', JSON.stringify((await readProbe(frameOf(O))).reponses) === JSON.stringify(['annuler']));
+check('une app qui a répondu non n\'a rien arrêté : GFS ne lui dit pas « rester »', (await readProbe(frameOf(O))).rester.length === 0, (await readProbe(frameOf(O))).rester);
 await dropOnQ();
 await frameOf(O).locator('#question').waitFor({ state: 'visible', timeout: 5000 });
 await frameOf(O).locator('#abandonner').click();
@@ -157,7 +159,27 @@ await ex.waitFor({ state: 'visible' });
 await frameOf(O).evaluate(() => window.__fermer(true));
 await page.waitForTimeout(1500);
 check('l\'explorateur est rouvert avant la réponse : la réponse tardive n\'ouvre rien, l\'app et l\'explorateur restent', await ex.isVisible() && count(O) === 1 && count(Q) === 0 && (await modal.count()) === 0, { o: count(O), q: count(Q) });
+check('l\'app qui répond oui trop tard, sans connaître « rester » : GFS le lui a dit une fois (raison « explorateur »), elle répond GFS_INCONNU, sans fenêtre ni phrase ni avertissement',
+  JSON.stringify((await readProbe(frameOf(O))).rester) === JSON.stringify([{ raison: 'explorateur' }]) && (await modal.count()) === 0 && await toast.isHidden() && warnings.length === 0, { rester: (await readProbe(frameOf(O))).rester, warnings });
 await closeExplorer();
+
+say('=== 6b. tu restes : l\'app qui connaît « rester » reprend ce qu\'elle avait arrêté ===');
+await becomeO('muet');
+await frameOf(O).evaluate(() => { document.body.dataset.rester = 'oui'; });
+await dropOnQ();
+await waitFor('l\'appel fermer', async () => (await readProbe(frameOf(O))).fermer.length === 2);
+await frame.locator('#floater-files').click();
+await ex.waitFor({ state: 'visible' });
+check('avant la réponse de l\'app, GFS n\'a pas redit « rester » (il n\'y a que l\'appel de l\'essai 6)', (await readProbe(frameOf(O))).rester.length === 1, (await readProbe(frameOf(O))).rester);
+await frameOf(O).evaluate(() => window.__fermer(true));
+await waitFor('l\'appel rester', async () => (await readProbe(frameOf(O))).rester.length === 2);
+await page.waitForTimeout(800);
+const stayed = (await readProbe(frameOf(O))).rester;
+say('rester reçu :', stayed);
+check('l\'app a dit oui puis la personne est restée dans l\'explorateur : GFS lui dit « rester » avec la raison du « fermer »', stayed.length === 2 && JSON.stringify(stayed[1]) === JSON.stringify({ raison: 'explorateur' }), stayed);
+check('l\'app et l\'explorateur sont en place, rien ne s\'ouvre, GFS ne dit rien de plus à la personne', await ex.isVisible() && count(O) === 1 && count(Q) === 0 && (await modal.count()) === 0 && await toast.isHidden(), { o: count(O), q: count(Q) });
+await closeExplorer();
+await clean('« rester »');
 
 say('=== 7. l\'app répond par une erreur ===');
 await becomeO('echec');

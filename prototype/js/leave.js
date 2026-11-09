@@ -37,3 +37,25 @@ export async function askToClose(session, reason, { offer, patience = PATIENCE_M
   if (first) return false; // l'app a répondu par une erreur : la personne reste
   return (await outcome) === true; // « Attendre » : la réponse de l'app, quand elle vient
 }
+
+// L'app avait répondu `oui` à `fermer` (enregistrée, verrou levé, exécution coupée) et GFS ne la remplace pas : la personne est revenue avant la fin. GFS le lui dit (`rester`, contrats 5.4, point 3) pour qu'elle reprenne ce
+// qu'elle avait arrêté. Une app qui ne connaît pas l'appel (GFS_INCONNU) n'a rien arrêté qu'elle sache, une app déjà partie (GFS_INACTIF) n'a plus rien à reprendre : ni l'une ni l'autre ne mérite un avertissement.
+// Rend `true` quand l'app dit qu'elle a repris.
+export async function tellToStay(session, reason) {
+  try {
+    const reply = await session.stayApp(reason);
+    return Boolean(reply && reply.repris === true);
+  } catch (error) {
+    if (!error || (error.code !== ERR.INCONNU && error.code !== ERR.INACTIF)) console.warn('GFS : l\'app n\'a pas répondu à « rester »', error);
+    return false;
+  }
+}
+
+// Quitter l'app pour une autre en tenant compte de la personne. `where()` dit, quand l'app a répondu, où en est la personne : `'now'` (rien n'a changé, l'app part), `'moved'` (elle a fait autre chose, l'app reste
+// en place : si elle avait dit oui, elle reçoit `rester`) ou `'gone'` (l'app a été remplacée ou fermée entre-temps : il n'y a plus personne à qui parler). Rend `true` seulement quand l'app part.
+export async function leaveApp(session, reason, { offer, where, patience = PATIENCE_MS }) {
+  const leave = await askToClose(session, reason, { offer, patience });
+  const place = where();
+  if (leave && place === 'moved') void tellToStay(session, reason);
+  return leave && place === 'now';
+}

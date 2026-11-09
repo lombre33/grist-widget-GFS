@@ -44,16 +44,18 @@ test('« Un autre document Grist… » (Sync+) arrive par `extraTargets` et rest
   assert.deepEqual(suggestions(t, state(), 'zzz', [other]).others, [other]);
 });
 
-test('le menu des droits : cinq droits, le courant coché, commentaires et dépôt seul grisés avec leur raison, administration refusée à une catégorie, « Retirer » en dernier', () => {
+test('le menu des droits : cinq droits et « Aucun accès », le courant coché, commentaires et dépôt seul grisés avec leur raison, administration refusée à une catégorie, « Retirer » en dernier', () => {
   const said = [];
   const items = levelItems(t, { current: 'ecriture', category: false, onPick: key => said.push(`pick:${key}`), onRemove: () => said.push('remove'), onWhy: why => said.push(why) });
-  assert.deepEqual(items.filter(item => item !== '-').map(item => item.label), ['Lecture seule', 'Lecture + commentaires', 'Dépôt seul', 'Écriture', 'Administration', 'Retirer l’accès']);
+  assert.deepEqual(items.filter(item => item !== '-').map(item => item.label), ['Lecture seule', 'Lecture + commentaires', 'Dépôt seul', 'Écriture', 'Administration', 'Aucun accès', 'Retirer l’accès']);
   assert.deepEqual(items.filter(item => item.check).map(item => item.label), ['Écriture']);
   assert.deepEqual(items.filter(item => item.greyed).map(item => item.label), ['Lecture + commentaires', 'Dépôt seul']);
   items[1].run(); items[3].run(); items.at(-1).run();
   assert.deepEqual(said, [t('share.right.commentaire.why'), 'pick:ecriture', 'remove']);
   const forCategory = levelItems(t, { current: 'lecture', category: true, onPick: () => {}, onWhy: () => {} });
   assert.ok(forCategory.find(item => item.label === 'Administration').greyed);
+  assert.ok(forCategory.find(item => item.label === 'Aucun accès').greyed, '« Aucun accès » se donne à une personne ou à un groupe, pas à une catégorie');
+  assert.ok(!items.find(item => item.label === 'Aucun accès').greyed);
   assert.ok(!forCategory.some(item => item.label === 'Retirer l’accès'), 'un nouveau partage, pas encore écrit, n\'a rien à retirer');
 });
 

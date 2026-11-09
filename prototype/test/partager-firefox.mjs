@@ -47,7 +47,7 @@ function manageState() {
     body: modal.querySelector('.sh-body').textContent.replace(/\s+/g, ' ').trim(), focus: active && active.dataset ? active.dataset.fk || null : null, inside: modal.contains(active),
     inPage: box.left >= 0 && box.top >= 0 && box.right <= window.innerWidth + 1 && box.bottom <= window.innerHeight + 1, sticky: head.bottom <= foot.top + 1 && foot.bottom <= box.bottom + 1 && head.top >= box.top - 1,
     outside: [...modal.querySelectorAll('.sh-body *, .mod-foot *, .mod-head *')].filter(outside).map(node => node.className || node.tagName).slice(0, 5),
-    tabs: [...modal.querySelectorAll('.mg-tab')].map(node => [node.textContent, node.getAttribute('aria-selected')]), groups: [...modal.querySelectorAll('.rr[data-group]')].length, form: Boolean(modal.querySelector('.sg-new')),
+    tabs: [...modal.querySelectorAll('.mg-tab')].map(node => [node.textContent, node.getAttribute('aria-selected')]), groups: [...modal.querySelectorAll('.rr[data-group]')].length, spaces: [...modal.querySelectorAll('.rr[data-space]')].length, spaceGroups: [...modal.querySelectorAll('.rr[data-space-group]')].length, form: Boolean(modal.querySelector('.sg-new')),
     greyed: [...modal.querySelectorAll('[aria-disabled="true"]')].map(node => node.dataset.fk || node.className),
   };
   return out;
@@ -68,7 +68,7 @@ async function manageFlow(page, run, t) {
     return now;
   };
   if (!(await run.clickSelector('[data-fk="share-manage"]'))) return;
-  const open = await seen('« Gérer les partages… » devait ouvrir la fenêtre sur « Options », le clavier dedans', s => s.modal && s.modal.body.includes(t('manage.options.structure')) && s.modal.tabs.length === 3);
+  const open = await seen('« Gérer les partages… » devait ouvrir la fenêtre sur « Options », le clavier dedans', s => s.modal && s.modal.body.includes(t('manage.options.structure')) && s.modal.tabs.length === 4);
   if (!open.modal) return;
   if (!open.modal.inPage) run.note(kind, 'la fenêtre devait tenir dans la page');
   if (!open.modal.sticky) run.note(kind, 'le titre et le bouton devaient rester en place');
@@ -85,6 +85,20 @@ async function manageFlow(page, run, t) {
   await page.press(...'Ventes'.split(''));
   await run.clickSelector('[data-fk="manage-group-save"]');
   await seen('« Créer le groupe » devait demander d\'écrire le groupe', s => JSON.stringify(s.acts.slice(1)) === '[["addGroup","Ventes",""]]');
+  await run.clickSelector('[data-fk="manage-tab-spaces"]');
+  const spaces = await seen('l\'onglet Espaces devait lister les deux espaces', s => s.modal && s.modal.spaces === 2);
+  if (spaces.modal && (spaces.modal.outside.length || !spaces.modal.inPage)) run.note(kind, `la liste des espaces (nom très long) devait tenir (sort : ${spaces.modal.outside.join(', ')})`);
+  await run.clickSelector('[data-fk="manage-space-new"]');
+  await seen('« Nouvel espace » devait demander de créer', s => s.acts.some(act => act[0] === 'addSpace'));
+  await run.clickSelector('[data-fk="manage-space-achats"]');
+  await seen('« Ouvrir » devait montrer les groupes de l\'espace', s => s.modal && s.modal.spaceGroups === 1 && s.modal.body.includes(t('manage.spaces.addGroup')));
+  await run.clickSelector('[data-fk="manage-space-group-Achats"]');
+  const roles = await seen('le rôle du groupe devait ouvrir son menu', s => s.menu.length >= 3);
+  const role = await page.run(label => { const node = [...document.querySelectorAll('.menu .menu-item')].find(item => item.textContent.trim().startsWith(label)); if (!node) return null; const box = node.getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; }, t('share.right.ecriture'));
+  if (role) { await page.click(...role); await seen('le choix devait demander d\'écrire le rôle du groupe', s => s.acts.some(act => act[0] === 'spaceGroup' && act[2] === 'Achats' && act[3] === 'ecriture')); }
+  else if (roles.menu.length) run.note(kind, 'le menu du rôle devait proposer « Écriture »');
+  await run.clickSelector('[data-fk="manage-space-back"]');
+  await seen('« Retour » devait revenir à la liste des espaces', s => s.modal && s.modal.spaces === 2);
   await run.clickSelector('[data-fk="manage-tab-cats"]');
   await seen('l\'onglet Catégories devait montrer les deux catégories', s => s.modal && s.modal.body.includes(t('share.cat.editeurs')) && s.modal.body.includes(t('share.cat.tous')));
   await run.clickSelector('[data-fk="manage-cat-tous"]');

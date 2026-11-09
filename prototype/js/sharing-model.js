@@ -335,10 +335,11 @@ export function shareRecord({ target, who, right, download = false, end = null }
   return { Cible: target, Personne: cleaned, Droit: right, Telecharger: Boolean(download), Fin: end ?? null };
 }
 
-// Ce que dit la table de partages d'une cible, pour la fenêtre : les lignes qui la visent (la racine `*` comprise, marquée héritée), triées, avec leur validité.
-export function sharesOf(rows, target) {
-  return rows.filter(row => row.Cible === target || row.Cible === ROOT).map(row => ({
-    id: row.id, who: String(row.Personne || ''), right: row.Droit, download: Boolean(row.Telecharger), end: row.Fin || null, inherited: row.Cible === ROOT, valid: row.Valide !== false, active: row.Actif !== false, author: String(row.Auteur || ''),
+// Ce que dit la table de partages d'une cible, pour la fenêtre : les lignes qui la visent (la racine `*` et, pour un fichier placé dans un espace, l'espace et ses dossiers : `extras` = [{ kind, name, target }], marquées héritées), triées, avec leur validité.
+export function sharesOf(rows, target, extras = []) {
+  const origin = row => (row.Cible === ROOT ? { kind: 'root' } : extras.find(item => item.target === row.Cible) || null);
+  return rows.filter(row => row.Cible === target || origin(row)).map(row => ({
+    id: row.id, who: String(row.Personne || ''), right: row.Droit, download: Boolean(row.Telecharger), end: row.Fin || null, inherited: row.Cible !== target, from: row.Cible === target ? null : origin(row), valid: row.Valide !== false, active: row.Actif !== false, author: String(row.Auteur || ''),
   })).sort((a, b) => Number(a.inherited) - Number(b.inherited) || a.who.localeCompare(b.who));
 }
 
@@ -384,4 +385,54 @@ export function planGroupsRead(rows, source, names) {
   const skipped = new Set((names || []).map(item => String(item ?? '').trim()).filter(Boolean)).size - fresh.length;
   if (!fresh.length) return { ok: false, reason: 'none', skipped };
   return { ok: true, added: fresh.length, skipped, actions: [...planGroupSources(sourcesOf([...(rows || []), ...fresh])).actions, ['BulkAddRecord', GROUPS_TABLE, fresh.map(() => null), Object.fromEntries(Object.keys(fresh[0]).map(key => [key, fresh.map(record => record[key])]))]] };
+}
+
+// ---------- les espaces, vus par les écrans (lot 4b) ----------
+
+// La clé d'un espace d'après son nom : minuscules, sans accent, tirets ; unique parmi `taken`. Rend '' si le nom ne donne rien.
+export function spaceKey(name, taken = []) {
+  const base = String(name ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+  if (!base) return '';
+  const used = new Set(taken);
+  let key = base;
+  for (let at = 2; used.has(key); at += 1) key = `${base}-${at}`;
+  return key;
+}
+
+// Les espaces pour la fenêtre : { id, key, name, people (qui y a accès), groups: [{ id (la ligne de partage), group, right }] }, triés par nom. `shares` : les lignes de GFS_Partages.
+export function spacesOf(spaceRows, shareRows) {
+  return (spaceRows || []).filter(row => row.Cle && row.Nom).map(row => ({
+    id: row.id, key: String(row.Cle), name: String(row.Nom), people: Array.isArray(row.Voit) ? row.Voit.filter(item => typeof item === 'string').length : 0,
+    groups: (shareRows || []).filter(share => share.Cible === spaceTarget(row.Cle) && isGroup(share.Personne)).map(share => ({ id: share.id, group: String(share.Personne).slice(1), right: share.Droit })),
+  })).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Créer un espace : la ligne, rien d'autre (aucun groupe n'y entre tant qu'on ne l'a pas dit). Refuse un nom vide ou déjà pris.
+export function planSpaceAdd(spaceRows, name) {
+  const clean = String(name ?? '').replace(/\s+/g, ' ').trim();
+  if (!clean || clean.length > 60) return { ok: false, reason: 'invalid' };
+  if ((spaceRows || []).some(row => String(row.Nom || '').trim().toLowerCase() === clean.toLowerCase())) return { ok: false, reason: 'exists' };
+  const key = spaceKey(clean, (spaceRows || []).map(row => row.Cle));
+  if (!key) return { ok: false, reason: 'invalid' };
+  return { ok: true, key, actions: [['AddRecord', SPACES_TABLE, null, { Cle: key, Nom: clean }]] };
+}
+
+// Supprimer un espace : sa ligne, les partages de l'espace et de ses dossiers, et les placements (les fichiers restent, simplement hors de l'espace).
+export function planSpaceRemove(space, shareRows, placeRows) {
+  if (!space) return { ok: false, reason: 'none' };
+  const mine = target => target === spaceTarget(space.key) || String(target).startsWith(`dossier:${space.key}/`);
+  const shares = (shareRows || []).filter(share => mine(share.Cible)).map(share => share.id);
+  const places = (placeRows || []).filter(place => place.Espace === space.key).map(place => place.id);
+  return { ok: true, actions: [...(shares.length ? [['BulkRemoveRecord', SHARES_TABLE, shares]] : []), ...(places.length ? [['BulkRemoveRecord', PLACE_TABLE, places]] : []), ['RemoveRecord', SPACES_TABLE, space.id]] };
+}
+
+// Donner à un groupe un rôle dans l'espace (lecture ou écriture), le changer ou le retirer (`right` null). L'administration d'un espace n'est pas encore donnée à un groupe.
+export function planSpaceGroup(space, shareRows, group, right) {
+  const name = String(group ?? '').replace(/^#/, '');
+  if (!space || !name) return { ok: false, reason: 'invalid' };
+  const current = (shareRows || []).find(share => share.Cible === spaceTarget(space.key) && String(share.Personne) === `${GROUP_PREFIX}${name}`);
+  if (!right) return current ? { ok: true, actions: [['RemoveRecord', SHARES_TABLE, current.id]] } : { ok: true, actions: [] };
+  if (!['lecture', 'ecriture'].includes(right)) return { ok: false, reason: 'invalid' };
+  if (current) return { ok: true, actions: [['UpdateRecord', SHARES_TABLE, current.id, { Droit: right }]] };
+  return { ok: true, actions: [['AddRecord', SHARES_TABLE, null, shareRecord({ target: spaceTarget(space.key), who: `${GROUP_PREFIX}${name}`, right })]] };
 }

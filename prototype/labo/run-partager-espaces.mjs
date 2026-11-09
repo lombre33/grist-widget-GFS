@@ -5,6 +5,7 @@
 //     A (espace, dossier Contrats)  B (espace, Contrats ; editor@ « Aucun accès » sur le fichier)  C (espace, racine ; groupe Achats « Aucun accès » sur le fichier)
 //     D (espace, Contrats/Sous ; viewer@ lecture sur le fichier)  E (hors espace, non partagé)
 //     dossier Contrats : editor@ écriture ; dossier Contrats/Sous : groupe Achats lecture.
+//   (lot 4b : l'écran des espaces est mesuré à la vraie souris dans la phase propriétaire, étape 4)
 //   PHASE=proprietaire  active le partage (les tables d'espaces naissent avec lui), pose le décor, vérifie les listes calculées de Grist.
 //   PHASE=editeur       editor@ : lit A (et l'écrit : le dossier Contrats lui donne l'écriture), lit D sans l'écrire (le dossier Sous, plus précis, rend la lecture au groupe), ne lit ni B (fichier) ni C (fichier, groupe) ni E ;
 //                       voit l'espace achats ; ne lit pas les groupes ; n'écrit ni espaces ni placement.
@@ -44,6 +45,58 @@ const has = (list, who) => JSON.stringify(list || []).includes(who);
 async function waitReload(page, old) {
   for (let i = 0; i < 240 && !old.isDetached(); i++) await page.waitForTimeout(250);
   return gfsFrame(page, { keep: true });
+}
+
+// L'écran : créer un espace, y mettre un groupe en écriture, « Aucun accès » à une personne sur un fichier, supprimer l'espace, à la vraie souris.
+async function playScreen(run, frame, keyA) {
+  say('--- 4. l\'écran des espaces (vraie souris) ---');
+  await openRowMenu(frame, FIRST);
+  await frame.getByRole('menuitem', { name: new RegExp(`^${t('share.menu')}`) }).click();
+  await frame.locator('.mod.sh .rt-content').waitFor();
+  // « Aucun accès » à une personne sur un fichier (la fenêtre de partage)
+  await frame.locator('[data-fk="share-add"]').click();
+  await frame.locator('[data-fk="share-add"]').fill(EDITOR);
+  await frame.locator(`[data-fk="share-pick-${EDITOR}"]`).click();
+  await frame.locator('[data-fk="share-new-level"]').click();
+  await frame.getByRole('menuitemradio', { name: new RegExp(t('share.right.aucun')) }).first().click();
+  await frame.locator('[data-fk="share-confirm"]').click();
+  await frame.locator('.mod.sh .rr[data-share]').filter({ hasText: EDITOR }).waitFor({ timeout: 15000 });
+  const first = (await byName(run))[FIRST];
+  const mine = (await rows(run, 'GFS_Partages')).find(row => row.Cible === `publipostage:${first.id}` && row.Personne === EDITOR);
+  check('« Aucun accès » à editor@ s\'écrit, et Grist le met dans la liste des refus', mine && mine.Droit === 'aucun' && has(first.GFS_Refus, EDITOR), mine);
+  // l'onglet Espaces
+  await frame.locator('[data-fk="share-manage"]').click();
+  await frame.locator('.mod.mg .rt-content').waitFor();
+  await frame.locator('[data-fk="manage-tab-spaces"]').click();
+  check('l\'espace du décor est listé', await frame.locator('.mod.mg .rr[data-space="achats"]').count() === 1);
+  await frame.locator('[data-fk="manage-space-new"]').click();
+  await frame.locator('[data-fk="name-input"]').fill('Équipe UI');
+  await frame.locator('[data-fk="name-ok"]').click();
+  await frame.locator('.mod.mg .rr[data-space]').filter({ hasText: 'Équipe UI' }).waitFor({ timeout: 15000 });
+  const made = (await rows(run, 'GFS_Espaces')).find(row => row.Nom === 'Équipe UI');
+  check('l\'espace créé par l\'écran a une clé', made && /^[a-z0-9-]+$/.test(made.Cle), made);
+  await frame.locator(`[data-fk="manage-space-${made.Cle}"]`).click();
+  await frame.locator('[data-fk="manage-space-add-group"]').click();
+  await frame.locator('[data-fk="pick-Achats"]').click();
+  await frame.locator('.mod.mg .rr[data-space-group="Achats"]').waitFor({ timeout: 15000 });
+  await frame.locator('[data-fk="manage-space-group-Achats"]').click();
+  await frame.getByRole('menuitemradio', { name: new RegExp(`^${t('share.right.ecriture')}`) }).first().click();
+  await frame.locator('[data-fk="manage-space-group-Achats"]').filter({ hasText: t('share.right.ecriture') }).waitFor({ timeout: 15000 });
+  const given = (await rows(run, 'GFS_Partages')).filter(row => row.Cible === `espace:${made.Cle}`);
+  check('le groupe Achats a l\'écriture sur l\'espace créé', given.length === 1 && given[0].Personne === '#Achats' && given[0].Droit === 'ecriture', given);
+  const seenSpace = (await rows(run, 'GFS_Espaces')).find(row => row.Cle === made.Cle);
+  check('l\'espace voit l\'éditeur (membre du groupe Achats), pas le lecteur', has(seenSpace.Voit, EDITOR) && !has(seenSpace.Voit, VIEWER), seenSpace);
+  await frame.locator('[data-fk="manage-space-remove"]').click();
+  await frame.locator('[data-fk="ask-yes"]').click();
+  await frame.locator('.mod.mg .rr[data-space]').filter({ hasText: 'Équipe UI' }).waitFor({ state: 'detached', timeout: 15000 });
+  const left = (await rows(run, 'GFS_Partages')).filter(row => row.Cible === `espace:${made.Cle}`);
+  check('supprimer l\'espace retire sa ligne et ses partages', !(await rows(run, 'GFS_Espaces')).some(row => row.Cle === made.Cle) && left.length === 0, left);
+  await frame.locator('.mod.mg [data-fk="manage-close"]').click();
+  // l'état laissé au temps de l'éditeur : editor@ n'a plus « Aucun accès » sur le premier modèle
+  await frame.locator('.mod.sh .rr[data-share]').filter({ hasText: EDITOR }).waitFor();
+  await frame.locator('[data-fk="share-close"]').click();
+  void keyA;
+  return frame;
 }
 
 async function playOwner(run) {
@@ -98,6 +151,7 @@ async function playOwner(run) {
   check('D : le sous-dossier (groupe en lecture) est plus précis que Contrats (personne en écriture) : lecture seule', has(calc('D').GFS_Lecteurs, EDITOR) && !has(calc('D').GFS_Ecrivains, EDITOR), calc('D').GFS_Calc);
   check('D : le lecteur lit par son partage direct sur le fichier, sans être dans l\'espace', has(calc('D').GFS_Lecteurs, VIEWER) && !has(calc('D').GFS_Ecrivains, VIEWER), calc('D').GFS_Calc);
   check('E : hors espace, non partagé : le propriétaire seul', !has(calc('E').GFS_Lecteurs, EDITOR) && !has(calc('E').GFS_Lecteurs, VIEWER) && has(calc('E').GFS_Lecteurs, OWNER), calc('E').GFS_Calc);
+  frame = await playScreen(run, frame, key('A'));
   check('aucune erreur de GFS dans la console', unexpected(run).length === 0, unexpected(run));
   writeFileSync(STATE, JSON.stringify({ path: run.path, docId: run.docId }));
 }
@@ -112,6 +166,7 @@ async function playEditor(run) {
   check('il écrit A : le dossier Contrats lui donne l\'écriture', answer.status === 200, answer.text);
   answer = await apply(run, [['UpdateRecord', MODELS, models[NAMES.D].id, { ModifiePar: 'editeur' }]]);
   check('il n\'écrit pas D : le sous-dossier, plus précis, ne lui laisse que la lecture', answer.status !== 200, answer.text);
+  check('« Aucun accès » posé par l\'écran cache le premier modèle à l\'éditeur', !seen.includes(FIRST), seen.filter(name => name === FIRST));
   const spaces = await rows(run, 'GFS_Espaces');
   check('il voit l\'espace achats', spaces.length === 1 && spaces[0].Nom === 'Achats', spaces);
   const groups = await call(page, 'GET', `/api/docs/${run.docId}/tables/GFS_Groupes/records`);

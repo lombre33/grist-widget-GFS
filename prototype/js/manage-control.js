@@ -7,7 +7,8 @@ import { runAction } from './rights-actions.js';
 import { ask } from './ask-window.js';
 import { openManage } from './manage-window.js';
 import { pickFrom } from './pick-window.js';
-import { CATEGORIES, GROUPS_TABLE, ROOT, SHARES_TABLE, groupRecord, groupsOf, isIdent, planGroupAdd, planGroupsRead, shareRecord } from './sharing-model.js';
+import { CATEGORIES, GROUPS_TABLE, PLACE_TABLE, ROOT, SHARES_TABLE, SPACES_TABLE, groupRecord, groupsOf, isIdent, planGroupAdd, planGroupsRead, planSpaceAdd, planSpaceGroup, planSpaceRemove, shareRecord, spacesOf } from './sharing-model.js';
+import { askName } from './filing-window.js';
 
 const GROUP_TYPES = ['Text', 'Choice'];
 const EMAIL_TYPES = ['Text', 'Choice', 'Any'];
@@ -36,12 +37,13 @@ export class ManageControl {
 
   async load() {
     const owner = await this.#o.reader.owner();
-    if (owner !== true) return { owner, active: false, groups: [], root: {}, structure: null, tables: [] };
-    const [shares, groupRows, plans, raw] = await Promise.all([this.#rows(SHARES_TABLE), this.#rows(GROUPS_TABLE), this.#o.writer.plans(), this.#o.reader.raw()]);
+    if (owner !== true) return { owner, active: false, groups: [], spaces: [], root: {}, structure: null, tables: [] };
+    const [shares, groupRows, plans, raw, spaceRows, placeRows] = await Promise.all([this.#rows(SHARES_TABLE), this.#rows(GROUPS_TABLE), this.#o.writer.plans(), this.#o.reader.raw(), this.#rows(SPACES_TABLE), this.#rows(PLACE_TABLE)]);
     const rootRows = (shares || []).filter(row => row.Cible === ROOT);
     const root = Object.fromEntries(Object.values(CATEGORIES).map(who => { const row = rootRows.find(item => String(item.Personne) === who); return [who, row ? { id: row.id, right: row.Droit } : null]; }));
     return {
-      owner, active: shares !== null && groupRows !== null, groups: groupsOf(groupRows || []), rows: groupRows || [], root, tables: raw ? this.#readable(raw) : [],
+      owner, active: shares !== null && groupRows !== null && spaceRows !== null, groups: groupsOf(groupRows || []), rows: groupRows || [], root, tables: raw ? this.#readable(raw) : [],
+      spaces: spacesOf(spaceRows || [], shares || []), spaceRows: spaceRows || [], shareRows: shares || [], placeRows: placeRows || [],
       structure: plans ? actionsOf(plans)[1] : null, blocked: this.#o.writeBlock(),
     };
   }
@@ -66,6 +68,35 @@ export class ManageControl {
     if (!right) return current ? this.#write([['RemoveRecord', SHARES_TABLE, current.id]]) : Promise.resolve({ ok: true });
     if (current) return this.#write([['UpdateRecord', SHARES_TABLE, current.id, { Droit: right }]]);
     return this.#write([['AddRecord', SHARES_TABLE, null, shareRecord({ target: ROOT, who, right })]]);
+  }
+
+  // Les espaces : créer (le nom se demande dans une fenêtre du widget), supprimer (avec la question), donner un rôle à un groupe, choisir le groupe à ajouter.
+  async addSpace(state) {
+    const { t, container } = this.#o;
+    const name = await askName({ container, inertTargets: this.#o.inertTargets, t, title: t('manage.spaces.new'), label: t('manage.spaces.name'), value: '', confirmLabel: t('manage.spaces.create'),
+      refuse: text => (text ? (state.spaceRows.some(row => String(row.Nom || '').trim().toLowerCase() === text.toLowerCase()) ? t('manage.spaces.exists') : null) : t('manage.spaces.invalid')), clean: text => text.replace(/\s+/g, ' ').trim() });
+    if (!name) return null;
+    const plan = planSpaceAdd(state.spaceRows, name);
+    return plan.ok ? this.#write(plan.actions) : { ok: false, message: t(`manage.spaces.${plan.reason}`) };
+  }
+
+  async removeSpace(state, space) {
+    const { t, container } = this.#o;
+    if (!(await ask({ container, inertTargets: this.#o.inertTargets, title: t('manage.spaces.remove.title', { name: space.name }), message: t('manage.spaces.remove.message'), confirmLabel: t('manage.spaces.remove.confirm'), cancelLabel: t('rights.ask.cancel'), safeFirst: true }))) return null;
+    const plan = planSpaceRemove(space, state.shareRows, state.placeRows);
+    return plan.ok ? this.#write(plan.actions) : { ok: false, message: t('manage.spaces.invalid') };
+  }
+
+  setSpaceGroup(state, space, group, right) {
+    const plan = planSpaceGroup(space, state.shareRows, group, right);
+    return plan.ok ? (plan.actions.length ? this.#write(plan.actions) : Promise.resolve({ ok: true })) : Promise.resolve({ ok: false, message: this.#o.t('manage.spaces.invalid') });
+  }
+
+  pickGroup(state, space) {
+    const { t, container } = this.#o;
+    const taken = new Set(space.groups.map(item => item.group.toLowerCase()));
+    return pickFrom({ container, inertTargets: this.#o.inertTargets, t, title: t('manage.spaces.pick'), text: t('manage.spaces.pickText', { name: space.name }), none: t('pick.none'),
+      items: state.groups.filter(group => !taken.has(group.name.toLowerCase())).map(group => ({ value: group.name, label: group.name, glyph: 'users' })) });
   }
 
   // La structure : fermer ou rouvrir, avec la question qui dit le prix ; la page se recharge, la fenêtre se rouvre (clé `manage`).
@@ -98,7 +129,7 @@ export class ManageControl {
     const { t, container, inertTargets } = this.#o;
     return openManage({
       container, t, inertTargets, load: () => this.load(), onAddGroup: (state, group) => this.addGroup(state, group), onUpdateGroup: (id, people) => this.updateGroup(id, people), onRemoveGroup: id => this.removeGroup(id),
-      onReadTable: state => this.readTable(state), onRoot: (state, who, right) => this.setRoot(state, who, right), onStructure: () => this.structure(),
+      onReadTable: state => this.readTable(state), onAddSpace: state => this.addSpace(state), onRemoveSpace: (state, space) => this.removeSpace(state, space), onSpaceGroup: (state, space, group, right) => this.setSpaceGroup(state, space, group, right), onPickGroup: (state, space) => this.pickGroup(state, space), onRoot: (state, who, right) => this.setRoot(state, who, right), onStructure: () => this.structure(),
       onConfirmRemove: name => ask({ container, inertTargets, title: t('manage.groups.remove.title', { name }), message: t('manage.groups.remove.message'), confirmLabel: t('manage.groups.remove.confirm'), cancelLabel: t('rights.ask.cancel'), safeFirst: true }),
     });
   }

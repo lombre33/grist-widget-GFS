@@ -8,7 +8,7 @@ import { openModal } from './modal.js';
 import { openMenu } from './menu.js';
 import { CATEGORIES } from './sharing-model.js';
 
-const TABS = Object.freeze(['options', 'groups', 'cats']);
+const TABS = Object.freeze(['options', 'groups', 'spaces', 'cats']);
 const CATS = Object.freeze([{ who: CATEGORIES.editeurs, key: 'editeurs', glyph: 'edit' }, { who: CATEGORIES.tous, key: 'tous', glyph: 'globe' }]);
 const RIGHTS = Object.freeze(['lecture', 'ecriture']);
 
@@ -65,6 +65,50 @@ function groupsTab(ctx) {
     state.groups.length ? h('ul', { class: 'rt-list sg-list' }, ...state.groups.map(group => groupRow(ctx, group))) : h('p', { class: 'rt-none' }, t('manage.groups.none')));
 }
 
+function spaceRow(ctx, space) {
+  const { t } = ctx;
+  const notes = [t('manage.groups.count', { n: space.people }), space.groups.length ? t('manage.spaces.groups', { n: space.groups.length }) : t('manage.spaces.noGroup')];
+  const open = h('button', { type: 'button', class: 'btn sm', dataset: { fk: `manage-space-${space.key}` } }, t('manage.spaces.open'));
+  open.addEventListener('click', () => ctx.openSpace(space));
+  return h('li', { class: 'rr', dataset: { space: space.key } }, icon('folder', 'big'), h('span', { class: 'nm' }, h('b', null, space.name), h('small', null, notes.join(' · '))), open);
+}
+
+// Un groupe de l'espace : son rôle (un menu : lecture, écriture, retirer).
+function spaceGroupRow(ctx, space, item) {
+  const { t } = ctx;
+  const level = h('button', { type: 'button', class: 'lvl', 'aria-haspopup': 'menu', dataset: { fk: `manage-space-group-${item.group}` } }, t(`share.right.${item.right}`), icon('chev-down'));
+  level.addEventListener('click', () => openMenu(level, [
+    ...RIGHTS.map(right => ({ label: t(`share.right.${right}`), icon: right === 'lecture' ? 'read' : 'edit', hint: t(`share.right.${right}.hint`), check: right === item.right, run: () => void ctx.spaceGroup(space, item.group, right) })),
+    '-', { label: t('share.remove'), icon: 'x', run: () => void ctx.spaceGroup(space, item.group, null) },
+  ], { host: ctx.container, align: 'right', label: item.group }));
+  return h('li', { class: 'rr', dataset: { spaceGroup: item.group } }, icon('users', 'big'), h('span', { class: 'nm' }, h('b', null, item.group)), level);
+}
+
+function spaceDetail(ctx, space) {
+  const { t } = ctx;
+  const back = h('button', { type: 'button', class: 'btn sm', dataset: { fk: 'manage-space-back' } }, icon('chev-left'), t('work.back'));
+  back.addEventListener('click', () => ctx.openSpace(null));
+  const add = h('button', { type: 'button', class: 'btn', dataset: { fk: 'manage-space-add-group' } }, icon('plus'), t('manage.spaces.addGroup'));
+  add.addEventListener('click', () => void ctx.addGroupTo(space));
+  const remove = h('button', { type: 'button', class: 'btn', dataset: { fk: 'manage-space-remove' } }, t('manage.spaces.remove'));
+  remove.addEventListener('click', () => void ctx.removeSpace(space));
+  return h('div', null, h('p', { class: 'sg-actions mg-back' }, back), h('div', { class: 'sec' }, space.name), h('p', { class: 'fine' }, t('manage.spaces.detail')),
+    h('p', { class: 'sg-actions' }, remove, add),
+    space.groups.length ? h('ul', { class: 'rt-list sg-list' }, ...space.groups.map(item => spaceGroupRow(ctx, space, item))) : h('p', { class: 'rt-none' }, t('manage.spaces.noGroup')),
+    h('p', { class: 'fine' }, t('manage.spaces.rights')));
+}
+
+function spacesTab(ctx) {
+  const { t, state } = ctx;
+  if (!state.active) return lead(t, 'manage.inactive');
+  const open = ctx.space && state.spaces.find(item => item.key === ctx.space);
+  if (open) return spaceDetail(ctx, open);
+  const create = h('button', { type: 'button', class: 'btn', dataset: { fk: 'manage-space-new' } }, icon('plus'), t('manage.spaces.new'));
+  create.addEventListener('click', () => void ctx.addSpace());
+  return h('div', null, h('p', { class: 'fine' }, t('manage.spaces.lead')), h('p', { class: 'sg-actions' }, create), h('div', { class: 'sec' }, t('manage.spaces.title')),
+    state.spaces.length ? h('ul', { class: 'rt-list sg-list' }, ...state.spaces.map(space => spaceRow(ctx, space))) : h('p', { class: 'rt-none' }, t('manage.spaces.none')));
+}
+
 function categoryRow(ctx, cat) {
   const { t, state } = ctx;
   const current = state.root[cat.who] ? state.root[cat.who].right : null;
@@ -92,11 +136,12 @@ export function manageBody(ctx) {
     tab.addEventListener('click', () => ctx.go(key));
     return tab;
   }));
-  const panel = { options: optionsTab, groups: groupsTab, cats: catsTab }[ctx.tab](ctx);
+  const panel = { options: optionsTab, groups: groupsTab, spaces: spacesTab, cats: catsTab }[ctx.tab](ctx);
   return h('div', { class: 'rt-content' }, tabs, h('div', { class: 'mg-panel', role: 'tabpanel' }, panel));
 }
 
-// opts : { container, t, inertTargets, load() → état, onAddGroup(state, { name, people }), onUpdateGroup(id, people), onRemoveGroup(id), onReadTable(state), onRoot(state, who, right), onStructure(), onConfirmRemove(name) }.
+// opts : { container, t, inertTargets, load() → état, onAddGroup(state, { name, people }), onUpdateGroup(id, people), onRemoveGroup(id), onReadTable(state), onRoot(state, who, right), onStructure(), onConfirmRemove(name),
+//   onAddSpace(state), onRemoveSpace(state, space), onSpaceGroup(state, space, group, right), onPickGroup(state, space) }.
 export function openManage(opts) {
   const { container, t } = opts;
   const body = h('div', { class: 'ask-body rt-body sh-body' }, h('p', { class: 'rt-none', 'aria-live': 'polite' }, t('share.loading')));
@@ -106,7 +151,7 @@ export function openManage(opts) {
     h('header', { class: 'mod-head' }, h('h2', { id: 'manage-title' }, t('manage.title')), h('p', { class: 'mod-count' }, t('manage.sub'))), body, h('footer', { class: 'mod-foot' }, status, close));
   const { done, result } = openModal({ container, section: dialog, inertTargets: opts.inertTargets, first: close, cancel: null });
   close.addEventListener('click', () => done(null));
-  const ctx = { t, container, state: null, tab: 'options', editing: null, say: text => { status.textContent = text; } };
+  const ctx = { t, container, state: null, tab: 'options', editing: null, space: null, say: text => { status.textContent = text; } };
   const draw = () => { if (dialog.isConnected && ctx.state) body.replaceChildren(manageBody(ctx)); };
   const reload = async () => {
     try { ctx.state = await opts.load(); draw(); } catch (error) { if (dialog.isConnected) body.replaceChildren(h('p', { class: 'rt-none' }, t('manage.unreadable'))); }
@@ -117,7 +162,12 @@ export function openManage(opts) {
     if (!answer || answer.ok) { ctx.editing = null; await reload(); }
     return answer;
   };
-  ctx.go = key => { ctx.tab = key; ctx.editing = null; draw(); };
+  ctx.go = key => { ctx.tab = key; ctx.editing = null; ctx.space = null; draw(); };
+  ctx.openSpace = space => { ctx.space = space ? space.key : null; draw(); };
+  ctx.addSpace = async () => { const answer = await opts.onAddSpace(ctx.state); if (answer) { ctx.say(answer.ok ? t('share.foot') : t('share.failed', { message: answer.message || '' })); if (answer.ok) await reload(); } };
+  ctx.removeSpace = async space => { const answer = await opts.onRemoveSpace(ctx.state, space); if (answer && answer.ok) ctx.space = null; if (answer) { ctx.say(answer.ok ? t('share.foot') : t('share.failed', { message: answer.message || '' })); if (answer.ok) await reload(); } };
+  ctx.addGroupTo = async space => { const group = await opts.onPickGroup(ctx.state, space); if (group) await write(() => opts.onSpaceGroup(ctx.state, space, group, 'lecture')); };
+  ctx.spaceGroup = (space, group, right) => write(() => opts.onSpaceGroup(ctx.state, space, group, right));
   ctx.edit = group => { ctx.editing = group === null ? null : group; draw(); const field = body.querySelector('[data-fk="manage-group-name"]'); if (field) (field.disabled ? body.querySelector('[data-fk="manage-group-people"]') : field).focus({ preventScroll: true }); };
   ctx.saveGroup = (group, values) => write(() => (group ? opts.onUpdateGroup(group.id, values.people) : opts.onAddGroup(ctx.state, values)));
   ctx.removeGroup = async group => { if (await opts.onConfirmRemove(group.name)) await write(() => opts.onRemoveGroup(group.id)); };

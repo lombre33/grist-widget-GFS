@@ -98,6 +98,14 @@ export async function acceptWindows(page, form, host = null, { quiet = 6000, lim
 // Enregistrer un formulaire à la vraie souris et au vrai clavier : le champ du lien, le lien du formulaire natif `sectionId` (la clé de partage n'est pas lue par Form+ pour enregistrer),
 // « Générer », puis chaque fenêtre d'accord qui s'ouvre, des deux côtés (`acceptWindows`). Rend la liste des fenêtres vues, vide quand rien ne s'est ouvert.
 export async function saveByLink(page, form, sectionId, host = null, options = {}) {
+  // Le guide de publication (Form+ c32ae54) est à l'écran après « Créer le formulaire » : son étape 3 a son propre champ, où le lien se tape et Entrée le valide (le collage aussi).
+  const guideField = form.locator('#guide-link:visible').first();
+  if (await guideField.isVisible().catch(() => false)) {
+    await guideField.click();
+    await page.keyboard.type(formLink(sectionId));
+    await page.keyboard.press('Enter');
+    return acceptWindows(page, form, host, options);
+  }
   await openLinkField(page, form);
   await form.locator('#link').click();
   await page.keyboard.press('Control+A');

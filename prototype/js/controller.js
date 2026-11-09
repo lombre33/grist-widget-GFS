@@ -128,7 +128,7 @@ export class GfsController {
     this.rights = new RightsControl({
       port: this.port, transfer: this.transfer, manifests: () => this.validApps().map(item => item.manifest), now: () => Date.now(), container: this.$('stage'),
       inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')], t: this.t, fullAccess: () => this.fullAccess,
-      locale: () => this.locale, identity: () => this.identity, writeBlock: () => this.#writeBlock(), appName: this.appName, extraTargets: () => otherDocumentTargets(this.t),
+      locale: () => this.locale, identity: () => this.identity, writeBlock: () => this.#writeBlock(), appName: this.appName, extraTargets: () => otherDocumentTargets(this.t), spaces: () => this.spaces,
     });
     this.weight = new WeightControl({ transfer: this.transfer, container: this.$('stage'), inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')], t: this.t, locale: () => this.locale });
   }
@@ -298,6 +298,7 @@ export class GfsController {
     const managers = [this.kept, buildAppFiles(this, { ask: askFor })]; // les gardiens des fichiers : les PDF de GFS, les fichiers des apps (la corbeille et la copie les interrogent)
     const gestures = { t: this.t, notice: text => this.notice(text), refresh: () => this.refreshFiles() };
     const filing = this.#buildFiling();
+    this.filing = filing;
     this.explorer = new Explorer({
       container: this.$('stage'), i18n: this.i18n, locale: this.locale, now: () => new Date(), appName: this.appName, typeLabel: this.typeLabel, lockOf: this.lockOf,
       newTypes: this.newTypes, importTypes: this.importTypes, canClose: () => Boolean(this.session), notice: text => this.notice(text),
@@ -309,7 +310,7 @@ export class GfsController {
       onOpen: file => this.#openFile(file), onNew: entry => this.#openNew(entry), onImport: entry => void this.#importFile(entry), onClose: () => this.hideExplorer(), onApps: () => void this.openModules(),
       personal: () => Boolean(this.identity), filing, kept: this.kept, attachments: () => loadAttachments(this.port),
       trash: new Trash({ managers, ask: opts => this.#ask(opts), keepFolders: file => filing.keepFoldersOf(file), ...gestures }),
-      copying: new Copying({ managers, file: (app, id, folder) => this.rangement.setFiling([{ app, file: id, pinned: false, folder }]), ...gestures }),
+      copying: new Copying({ managers, file: (app, id, folder) => filing.rangeNew([{ app, file: id, pinned: false, folder }]), ...gestures }),
     });
   }
 
@@ -328,6 +329,7 @@ export class GfsController {
     const layer = opts => ({ ...opts, t: this.t, container: this.$('stage'), inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')] });
     return new Filing({
       port: this.port, rangement: this.rangement, t: this.t, locale: () => this.locale, files: () => this.explorer.files, folders: () => this.explorer.folders, appName: this.appName,
+      spaces: { info: () => this.spaces, owner: async () => (await this.transfer.isOwner()) === true },
       here: () => (this.explorer.state.view === 'folder' ? this.explorer.state.path : ''), writeBlock: () => this.#writeBlock(), notice: text => this.notice(text),
       specOf: file => ((this.manifestOf(file.app) || {}).fichiers || []).find(spec => spec.table === file.table) || null,
       cleanName: file => (file.app === FILES_APP ? cleanName : undefined),
@@ -422,7 +424,8 @@ export class GfsController {
     this.#fileStatus = { loading: true, restricted: false, problems: [] };
     this.#showFileStatus();
     try {
-      const { files, trash, folders, problems, stats } = await loadFiles(this.port, [...this.validApps(), FILES_ENTRY], this.identity);
+      const { files, trash, folders, spaces, problems, stats } = await loadFiles(this.port, [...this.validApps(), FILES_ENTRY], this.identity);
+      this.spaces = spaces;
       this.explorer.setFiles(files, trash, folders);
       this.#fileStatus = { loading: false, restricted: false, problems: problems.map(item => ({ key: 'ex.readFailed', app: item.app, reason: item.reason })) };
       this.#showFileStatus();

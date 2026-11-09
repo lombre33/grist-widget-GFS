@@ -15,7 +15,7 @@ export function buildKept(c, { ask, hideNotice }) {
     store: new FilesStore({ port: c.port, transfer: c.transfer, consent, identity: () => c.identity }), doc: c.doc, container: c.$('stage'),
     inertTargets: () => [c.explorer.root, c.$('frames'), c.$('floaters')], t: c.t, lang: () => c.lang, locale: () => c.locale, now: () => Date.now(),
     fullAccess: () => c.fullAccess, readonly: () => c.readonly, notice: text => c.notice(text), refresh: () => c.refreshFiles(),
-    hideNotice: said => { if (c.$('toast').textContent === said) hideNotice(); }, folder: () => (c.explorer.state.view === 'folder' ? c.explorer.state.path : ''), rangement: c.rangement,
+    hideNotice: said => { if (c.$('toast').textContent === said) hideNotice(); }, folder: () => (c.explorer.state.view === 'folder' ? c.explorer.state.path : ''), rangement: { setFiling: entries => c.filing.rangeNew(entries) },
     reader: file => c.readerOf(file), session: () => c.session,
   });
 }

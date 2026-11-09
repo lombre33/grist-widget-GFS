@@ -115,6 +115,31 @@ check('le formulaire natif est seul sur une page neuve, jamais celle du widget',
 // Le cadre n'étant plus rechargé, le retrait du champ que Grist ajoute tout seul, que Form+ fait ensuite, passe (avant la 013 il était perdu : un champ restait dans le formulaire « vide »).
 check('le champ que Grist ajoute tout seul est retiré : le formulaire est vide', created.fields.filter(field => formSection && field.section === formSection.id).length === 0, created.fields);
 
+// ----- 3b. Le guide de publication (Form+ c32ae54, demande de sa page d'état du 09/11) : la page que Grist appelle « New page » est renommée d'après la table (l'écriture de `_grist_Views.name` est
+// déclarée au manifeste de GFS), puis trois étapes. Le Grist du labo ne délivre pas de jeton d'accès (« no access tokens ») : Form+ ne peut pas composer l'adresse de la page et le dit (« tout en bas
+// de la liste des pages »). L'adresse à copier, dans GFS, se mesure sur un vrai serveur (faits vérifiés 65).
+const GUIDE = lang === 'fr'
+  ? { page: 'Formulaire Reponses', title: 'Publiez votre formulaire dans Grist', step1: 'Étape 1 sur 3', step2: 'Étape 2 sur 3', step3: 'Étape 3 sur 3', noLink: 'Elle est tout en bas de la liste des pages, à gauche.', opened: 'J\'ai ouvert la page', waiting: 'J\'attends la publication' }
+  : { page: 'Form Responses', title: 'Publish your form in Grist', step1: 'Step 1 of 3', step2: 'Step 2 of 3', step3: 'Step 3 of 3', noLink: 'It is at the very bottom of the page list, on the left.', opened: 'I opened the page', waiting: 'Waiting for the publication' };
+const viewNames = await lab.frame.evaluate(async () => { const views = await grist.docApi.fetchTable('_grist_Views'); return views.id.map((id, index) => ({ id, name: views.name[index] })); });
+const renamed = viewNames.find(view => formSection && view.id === formSection.page);
+check('la page du formulaire est renommée d\'après la table (« ' + GUIDE.page + ' »), plus « New page » : le courtier a laissé passer l\'écriture de `_grist_Views.name`', Boolean(renamed) && renamed.name === GUIDE.page && refusals.length === 0, { renamed, refusals });
+const guideText = (await app.locator('#start-panel-guide').innerText()).replace(/\s+/g, ' ');
+check('le guide de publication est à l\'écran, à l\'étape 1, et nomme la page renommée', guideText.includes(GUIDE.title) && guideText.includes(GUIDE.step1) && guideText.includes(GUIDE.page), guideText.slice(0, 200));
+check('sans adresse sûre (le Grist du labo ne délivre pas de jeton), l\'étape 1 dit où est la page, sans lien ni bouton d\'ouverture', guideText.includes(GUIDE.noLink) && (await app.locator('#guide-open, #guide-copy').count()) === 0, guideText.slice(0, 300));
+await lab.shotPanel(run, '3b-guide-etape-1');
+await app.locator('[data-guide="opened"]').click();
+await page.waitForTimeout(500);
+const step2 = (await app.locator('#start-panel-guide').innerText()).replace(/\s+/g, ' ');
+check('« ' + GUIDE.opened + ' » : l\'étape 2 attend la publication', step2.includes(GUIDE.step2) && step2.includes(GUIDE.waiting), step2.slice(0, 260));
+await lab.shotPanel(run, '3b-guide-etape-2');
+// Le geste « Publier » de Grist, fait ici depuis le cadre de GFS (accès complet) : Form+ relit `shareOptions` toutes les 2,5 s et passe tout seul à l'étape 3.
+await lab.frame.evaluate(async id => grist.docApi.applyUserActions([['UpdateRecord', '_grist_Views_section', id, { shareOptions: JSON.stringify({ publish: true, form: true }) }]]), formSection.id);
+await app.locator('#guide-link').waitFor({ state: 'visible', timeout: 12000 });
+const step3 = (await app.locator('#start-panel-guide').innerText()).replace(/\s+/g, ' ');
+check('une fois publié, l\'étape 3 s\'ouvre toute seule (Form+ lit `shareOptions` de la section à travers le courtier) et attend le lien', step3.includes(GUIDE.step3), step3.slice(0, 260));
+await lab.shotPanel(run, '3b-guide-etape-3');
+
 // ----- 4. Enregistrer un formulaire par son lien (consignes 007, 008, 012 et 013).
 // 4a. Le formulaire natif de « Partir de zéro », sur sa page. Form+ demande l'accord de la personne avant de créer sa table, puis dit ce que le lien ouvrira avant de publier la copie (013, points 3 et 4) ;
 // GFS demande à son tour l'accord de la personne pour chaque chose que le lien public ouvre (contrats 3.3, point 9).
@@ -129,7 +154,8 @@ const first = await savedForms(lab.frame);
 say('premier enregistrement :', JSON.stringify(first));
 const copy = first.rows[0];
 check('Form+ demande deux fois l\'accord avant d\'écrire : sa table `FormPlus_Formulaires`, puis la publication de la copie, qui dit la table recevant des lignes', ownWindows.length === 2 && /FormPlus_Formulaires/.test(ownWindows[0].texte) && /Reponses|Responses/.test(ownWindows[1].texte), ownWindows);
-check('GFS demande l\'accord deux fois : la table des réponses ouverte à l\'ajout, puis la lecture de `Definition` dans la petite table de CE formulaire seul', gfsWindows.length === 2 && Boolean(copy) && /Reponses|Responses/.test(gfsWindows[0].lignes.join()) && gfsWindows[1].lignes.join().includes('Definition') && gfsWindows[1].lignes.join().includes(`FormPlus_Pub_${copy.vsId}`), gfsWindows);
+// Avec le guide (3b), la personne a publié le formulaire d'origine elle-même, dans Grist : la table des réponses est déjà ouverte à l'ajout, GFS ne le redemande pas. Il demande seulement la lecture de `Definition`.
+check('GFS demande l\'accord une fois : la lecture de `Definition` dans la petite table de CE formulaire seul (la table des réponses est déjà ouverte à l\'ajout par le « Publier » de la personne)', gfsWindows.length === 1 && Boolean(copy) && gfsWindows[0].lignes.join().includes('Definition') && gfsWindows[0].lignes.join().includes(`FormPlus_Pub_${copy.vsId}`), gfsWindows);
 check('`FormPlus_Formulaires` est créée, sans section de garde (008, point 3)', first.table && first.gates.length === 0, first.gates);
 check('une seule ligne, celle de la copie gérée (`Definition.vsId`), pas du formulaire d\'origine', first.rows.length === 1 && Number.isInteger(copy.vsId) && copy.vsId !== formSection.id, first.rows);
 check('la copie a SA petite table d\'une ligne `FormPlus_Pub_<vsId>`, qui porte sa définition (013, point 1)', Boolean(copy.pub) && copy.pub.lignes === 1 && copy.pub.sienne, copy);

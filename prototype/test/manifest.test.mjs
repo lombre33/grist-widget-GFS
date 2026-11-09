@@ -265,6 +265,9 @@ test('contrats 2.4, 3.3 et 8 : le manifeste de Form+ range ses formulaires dans 
   assert.ok(m.permissions.structure.pourquoi.fr && m.permissions.structure.pourquoi.en, 'la structure se déclare, avec son pourquoi');
   assert.equal(m.permissions.jeton.lectureSeule, true, 'cc21a27 : le jeton de Form+ ne sert qu\'à télécharger une pièce jointe, en lecture seule (accord du porteur, 22/10)');
   assert.ok(m.permissions.jeton.pourquoi.fr && m.permissions.jeton.pourquoi.en, 'le jeton se déclare, avec son pourquoi');
+  const views = internal.find(entry => entry.tables.includes('_grist_Views'));
+  assert.ok(views && views.lit === true && JSON.stringify(views.ecrit) === '["name"]' && views.retire === undefined && views.tables.length === 1, 'La page du formulaire se renomme (« Formulaire <table> » au lieu de « New page »), le nom seulement, sans rien retirer (demande du 09/11, c32ae54)');
+  assert.ok(views.pourquoi.fr && views.pourquoi.en, 'l\'écriture d\'une table interne se déclare, avec son pourquoi');
   const attachments = internal.find(entry => entry.tables.includes('_grist_Attachments'));
   assert.ok(attachments && attachments.lit === true && attachments.ecrit === undefined && attachments.retire === undefined, '_grist_Attachments se lit, ne s\'écrit jamais');
   assert.deepEqual(attachments.tables, ['_grist_Attachments']);

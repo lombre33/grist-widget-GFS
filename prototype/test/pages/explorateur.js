@@ -24,6 +24,7 @@ import { Filing } from '/js/filing.js';
 import { askName, chooseFolder } from '/js/filing-window.js';
 import { applyFiling, folderMoves, inside, normalizePath, readFiles, readFiling } from '/js/explorer-model.js';
 import { Copying } from '/js/copying.js';
+import { applyPlacement, readSpaces } from '/js/spaces-filing.js';
 import { FILES_MANIFEST } from '/js/gfs-files.js';
 import { createI18n } from '/js/i18n.js';
 import { installSprite } from '/js/icons.js';
@@ -186,6 +187,13 @@ async function mount() {
     port: null, rangement, t: i18n.t, locale: () => locale, files: () => live, folders: () => kept, appName: () => 'Publipostage+', here: () => (explorer.state.view === 'folder' ? explorer.state.path : ''),
     writeBlock: () => null, notice: text => window.__notices.push(text), specOf: () => null, refresh: async () => show(), windows: { name: opts => askName(layer(opts)), folder: opts => chooseFolder(layer(opts)) },
   });
+  // Un espace « Achats » (les espaces partagés, lot 4b) : le premier modèle est rangé dans son dossier Contrats, qui a un sous-dossier vide ; « Espaces » est une racine à côté de « Moi ».
+  window.__spaces = () => {
+    const info = readSpaces({ id: [1], Cle: ['achats'], Nom: ['Achats'] }, { id: [1, 2], Cible: [live[0].key, ''], Espace: ['achats', 'achats'], Dossier: ['Contrats', 'Contrats/Sous'] });
+    applyPlacement(live, info);
+    kept = [...new Set([...kept, ...info.folders])];
+    show();
+  };
   window.__keep = (...paths) => { kept = [...new Set([...kept, ...paths])]; show(); };
   // Le menu « Réglages » : la langue et le bord de la barre que la personne a choisis en dernier (la ligne de la barre est une doublure : le vrai Dock se mesure dans le labo), et la vraie fenêtre « À propos ».
   const EDGES = [['gauche', 'dock-left'], ['haut', 'dock-top'], ['droite', 'dock-right'], ['bas', 'dock-bottom']];
@@ -200,7 +208,7 @@ async function mount() {
     lockOf: file => (file.type === 'macro' ? { text: i18n.t('ex.lockedExtension', { name: 'Macro-modèles' }) } : null), newTypes: () => [], importTypes: () => [], canClose: () => true,
     notice: text => window.__notices.push(text), settings: () => settingsItems({ t: i18n.t, language: () => ({ choice: window.__language, grist: language }), onLanguage: value => { window.__language = value; }, onTheme: () => theme.open(), place, onAbout: () => window.__about() }),
     onOpen: file => { window.__opened = file.name; }, onNew: () => {},
-    onImport: () => {}, onClose: () => {}, onApps: () => {}, onRights: () => window.__rights(window.__rightsKind || 'protege'), sharing: { whyNot: () => null, open: () => window.__share(window.__shareKind || 'actif') }, onWeight: estimate => window.__weight(estimate), personal: () => true, kept: null, trash: bin, copying,
+    onImport: () => {}, onClose: () => {}, onApps: () => {}, onRights: () => window.__rights(window.__rightsKind || 'protege'), sharing: { whyNot: () => null, whyNotFolder: path => (path.split('/').length > 2 && path.startsWith('Espaces/') ? null : i18n.t(path.startsWith('Espaces') ? 'share.folder.space' : 'share.folder.personal')), folderFile: path => ({ key: `dossier:${path}`, name: path.split('/').pop() }), open: () => window.__share(window.__shareKind || 'actif') }, onWeight: estimate => window.__weight(estimate), personal: () => true, kept: null, trash: bin, copying,
     attachments: async () => { window.__attachments += 1; if (window.__attachmentsFail) return { error: new Error(window.__attachmentsFail) }; return { data: attachmentsTable() }; },
     filing: { togglePin: noted('pin', 'name'), rename: noted('rename', 'name'), moveFile: noted('move', 'name'), renameFolder: async path => { window.__filing.push(['renameFolder', path]); }, moveFolder: async path => { window.__filing.push(['moveFolder', path]); }, ...moving,
       newFolder: () => filing.newFolder(), deleteFolder: path => filing.deleteFolder(path), undoStack: filing.undoStack },
@@ -210,7 +218,7 @@ async function mount() {
     explorer.close(); // la fermeture vide le presse-papiers : chaque mesure part de rien
     filing.undoStack.clear(); // et la pile de Ctrl+Z
     live = [...files];
-    for (const file of live) { file.trashed = null; file.folder = folders.get(file.key); }
+    for (const file of live) { file.trashed = null; file.folder = folders.get(file.key); delete file.space; delete file.ownFolder; }
     trashed = [];
     kept = [];
     window.__filing.length = 0;

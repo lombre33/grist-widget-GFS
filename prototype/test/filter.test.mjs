@@ -164,6 +164,23 @@ test('contrats 3.4 point 1 : Form+ télécharge une pièce jointe par un jeton e
   assert.notEqual(readRefusal(without, '_grist_Attachments'), null, 'sans la déclaration, la lecture de _grist_Attachments est refusée');
 });
 
+// Form+ à `c32ae54` (09/11) : la page que Grist crée pour « Partir de zéro » s'appelle « New page », tout en bas de la liste ; Form+ la renomme « Formulaire <table> » (un seul `UpdateRecord`, dans son
+// propre lot). Le porteur a dit « demande de Form+ » le 09/11. Le nom seulement : ni une autre colonne de la page, ni le retrait d'une page, ni le lot qui mêle le nom et autre chose.
+test('contrats 3.3 point 5 : Form+ renomme la page de son formulaire (_grist_Views.name) et rien d\'autre de _grist_Views', () => {
+  const fp = policyOf(form());
+  assert.equal(readRefusal(fp, '_grist_Views'), null);
+  allowed(fp, [['UpdateRecord', '_grist_Views', 12, { name: 'Formulaire Clients' }]]);
+  refused(fp, [['UpdateRecord', '_grist_Views', 12, { name: 'Formulaire Clients', type: 'raw_data' }]]);
+  refused(fp, [['UpdateRecord', '_grist_Views', 12, { layoutSpec: '{}' }]]);
+  refused(fp, [['RemoveRecord', '_grist_Views', 12]]);
+  refused(fp, [['AddRecord', '_grist_Views', null, { name: 'x', extra: 1 }]]);
+  const bare = form();
+  bare.permissions.gristInterne = bare.permissions.gristInterne.filter(entry => !entry.tables.includes('_grist_Views'));
+  const without = policyOf(bare);
+  assert.match(writeRefusal(without, '_grist_Views'), /./, 'sans la déclaration, le courtier refuse tout le lot (Form+ garde « New page » et le dit)');
+  refused(without, [['UpdateRecord', '_grist_Views', 12, { name: 'Formulaire Clients' }]]);
+});
+
 // Publipostage+ 1.1 lit `_grist_Attachments` (nom, type, extension, largeur de chaque pièce jointe) pour savoir si une pièce jointe est une image (consigne 051, demande du 06/11 ; le porteur a déclaré la lecture seule le 06/11).
 test('contrats 3.2 point 4 : Publipostage+ lit _grist_Attachments (lecture seule) ; sans la déclaration du manifeste, le courtier la refuse', () => {
   assert.equal(readRefusal(pp, '_grist_Attachments'), null);

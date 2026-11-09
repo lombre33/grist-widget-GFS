@@ -28,7 +28,7 @@ const { t } = createI18n(lang);
 const MODELS = 'Publipostage_Modeles';
 const OWNER = 'essai@example.com', EDITOR = 'editor@example.com', VIEWER = 'viewer@example.com';
 const FIRST = 'Contrat de prestation';
-const NAMES = { A: 'Esp A dossier Contrats', B: 'Esp B refus fichier', C: 'Esp C refus groupe', D: 'Esp D sous-dossier', E: 'Esp E hors espace' };
+const NAMES = { A: 'Esp A dossier Contrats', B: 'Esp B refus fichier', C: 'Esp C refus groupe', D: 'Esp D sous-dossier', E: 'Esp E hors espace', F: 'Esp F rangé depuis l\'explorateur' };
 const unexpected = run => run.problems.filter(problem => !run.allow.some(known => known.test(problem)));
 const call = (page, method, path, body) => page.evaluate(async ([m, p, b]) => {
   const response = await fetch(p, { method: m, headers: { 'Content-Type': 'application/json' }, body: b ? JSON.stringify(b) : undefined });
@@ -99,6 +99,72 @@ async function playScreen(run, frame, keyA) {
   return frame;
 }
 
+// L'explorateur : « Espaces » à côté de « Moi », ranger un modèle dans le dossier d'un espace (Déplacer vers…), le ressortir, le remettre ; le rangement de la personne ne reçoit jamais le chemin de l'espace.
+async function playExplorer(run, frame) {
+  say('--- 5. l\'explorateur : ranger dans un espace (vraie souris) ---');
+  const { page } = run;
+  await page.reload();
+  frame = await gfsFrame(page);
+  await frame.locator('.ls-row').first().waitFor();
+  check('« Espaces » est une racine du volet, à côté de « Moi »', await frame.locator('.tr-row[data-path="Espaces"]').count() === 1 && await frame.locator('.tr-row[data-path=""]').count() === 1);
+  check('« Moi » ne liste pas « Espaces » parmi ses dossiers', await frame.locator('.ls-row.folder[data-key="dir:Espaces"]').count() === 0);
+  const move = async path => {
+    await openRowMenu(frame, NAMES.F);
+    await frame.getByRole('menuitem', { name: new RegExp(`^${t('ex.move')}`) }).click();
+    await frame.locator(`[data-fk="move-${path || 'root'}"]`).click();
+  };
+  const placed = async () => (await rows(run, 'GFS_Placement')).find(row => row.Cible === `publipostage:${models_F_id}`);
+  const models_F_id = (await byName(run))[NAMES.F].id;
+  await move('Espaces/Achats/Contrats');
+  for (let i = 0; i < 40 && !(await placed()); i++) await page.waitForTimeout(250);
+  const row = await placed();
+  check('« Déplacer vers… » un dossier d\'espace écrit le placement', row && row.Espace === 'achats' && row.Dossier === 'Contrats', row);
+  const mine = await rows(run, 'GFS_Rangement');
+  check('le rangement de la personne ne reçoit jamais le chemin d\'un espace', mine.every(line => !String(line.Dossier || '').startsWith('Espaces')), mine.map(line => line.Dossier));
+  await frame.locator('.tr-row[data-path="Espaces"]').click();
+  await frame.locator('.ls-row.folder[data-key="dir:Espaces/Achats"]').waitFor();
+  await frame.locator('.ls-row.folder[data-key="dir:Espaces/Achats"]').dblclick();
+  await frame.locator('.ls-row.folder[data-key="dir:Espaces/Achats/Contrats"]').waitFor();
+  await frame.locator('.ls-row.folder[data-key="dir:Espaces/Achats/Contrats"]').dblclick();
+  await frame.locator('.ls-row:not(.folder)').filter({ hasText: NAMES.F }).waitFor();
+  const crumbs = (await frame.locator('nav.crumbs').innerText()).replace(/\s+/g, ' ');
+  check('le fil d\'Ariane part d\'« Espaces », pas de « Moi »', crumbs.includes(t('ex.spaces')) && crumbs.includes('Contrats') && !crumbs.includes(t('ex.me')), crumbs);
+  // « Partager… » sur le dossier Contrats de l'espace : la fenêtre du dossier, ses droits hérités, un droit donné à une personne, qui devient lecteur du fichier rangé dedans
+  await frame.locator('nav.crumbs button[data-path="Espaces/Achats"]').click();
+  const folderRow = frame.locator('.ls-row.folder[data-key="dir:Espaces/Achats/Contrats"]');
+  await folderRow.waitFor();
+  await folderRow.hover();
+  await folderRow.locator('.rb.mn').click();
+  await frame.getByRole('menuitem', { name: new RegExp(`^${t('share.menu')}`) }).click();
+  await frame.locator('.mod.sh .rt-content').waitFor();
+  const inheritedText = await frame.locator('.mod.sh').innerText();
+  check('la fenêtre du dossier dit d\'où vient l\'héritage (l\'espace Achats)', inheritedText.includes(t('share.row.inherited.space', { name: 'Achats' })), inheritedText.slice(0, 300));
+  await frame.locator('[data-fk="share-add"]').click();
+  await frame.locator('[data-fk="share-add"]').fill('lea@example.com');
+  await frame.locator('[data-fk="share-pick-lea@example.com"]').click();
+  await frame.locator('[data-fk="share-confirm"]').click();
+  await frame.locator('.mod.sh .rr[data-share]').filter({ hasText: 'lea@example.com' }).waitFor({ timeout: 15000 });
+  const given = (await rows(run, 'GFS_Partages')).find(line => line.Cible === 'dossier:achats/Contrats' && line.Personne === 'lea@example.com');
+  check('un droit donné dans la fenêtre du dossier s\'écrit sur « dossier:achats/Contrats »', given && given.Droit === 'lecture', given);
+  const withLea = (await byName(run))[NAMES.F];
+  check('la personne lit le fichier rangé dans ce dossier (Grist le calcule)', has(withLea.GFS_Lecteurs, 'lea@example.com'), withLea.GFS_Calc);
+  await frame.locator('[data-fk="share-close"]').click();
+  await frame.locator('.mod.sh').waitFor({ state: 'detached' });
+  await frame.locator('nav.crumbs button[data-path="Espaces"]').waitFor();
+  const personal = frame.locator('.tr-row[data-path=""]');
+  await frame.locator('.ls-row.folder[data-key="dir:Espaces/Achats/Contrats"]').dblclick();
+  await frame.locator('.ls-row:not(.folder)').filter({ hasText: NAMES.F }).waitFor();
+  void personal;
+  await move('');
+  for (let i = 0; i < 40 && (await placed()); i++) await page.waitForTimeout(250);
+  check('le ressortir retire le placement', !(await placed()));
+  await frame.locator('.tr-row[data-path=""]').click();
+  await move('Espaces/Achats/Contrats');
+  for (let i = 0; i < 40 && !(await placed()); i++) await page.waitForTimeout(250);
+  check('et le remettre l\'écrit de nouveau (il reste dans l\'espace pour les autres comptes)', Boolean(await placed()));
+  return frame;
+}
+
 async function playOwner(run) {
   const { page } = run;
   let { frame } = run;
@@ -125,7 +191,7 @@ async function playOwner(run) {
   const now = Math.floor(Date.now() / 1000);
   const keys = Object.values(NAMES);
   let answer = await apply(run, [['BulkAddRecord', MODELS, keys.map(() => null), { Nom: keys, TypeModele: keys.map(() => 'document'), DateModif: keys.map(() => now) }]]);
-  check('cinq modèles privés créés par le propriétaire', answer.status === 200, answer.text);
+  check('six modèles privés créés par le propriétaire (F attend d\'être rangé depuis l\'explorateur)', answer.status === 200, answer.text);
   const models = await byName(run);
   const key = letter => `publipostage:${models[NAMES[letter]].id}`;
   answer = await apply(run, [
@@ -152,6 +218,7 @@ async function playOwner(run) {
   check('D : le lecteur lit par son partage direct sur le fichier, sans être dans l\'espace', has(calc('D').GFS_Lecteurs, VIEWER) && !has(calc('D').GFS_Ecrivains, VIEWER), calc('D').GFS_Calc);
   check('E : hors espace, non partagé : le propriétaire seul', !has(calc('E').GFS_Lecteurs, EDITOR) && !has(calc('E').GFS_Lecteurs, VIEWER) && has(calc('E').GFS_Lecteurs, OWNER), calc('E').GFS_Calc);
   frame = await playScreen(run, frame, key('A'));
+  frame = await playExplorer(run, frame);
   check('aucune erreur de GFS dans la console', unexpected(run).length === 0, unexpected(run));
   writeFileSync(STATE, JSON.stringify({ path: run.path, docId: run.docId }));
 }
@@ -160,7 +227,7 @@ async function playEditor(run) {
   const { page } = run;
   say('--- éditeur ---');
   const seen = await modelNames(run);
-  check('il lit A et D, ni B (refus du fichier) ni C (refus du groupe) ni E (non partagé)', seen.includes(NAMES.A) && seen.includes(NAMES.D) && ![NAMES.B, NAMES.C, NAMES.E].some(name => seen.includes(name)), seen.filter(name => name.startsWith('Esp')));
+  check('il lit A, D et F (rangé depuis l\'explorateur dans le dossier Contrats), ni B (refus du fichier) ni C (refus du groupe) ni E (non partagé)', seen.includes(NAMES.A) && seen.includes(NAMES.D) && seen.includes(NAMES.F) && ![NAMES.B, NAMES.C, NAMES.E].some(name => seen.includes(name)), seen.filter(name => name.startsWith('Esp')));
   const models = await byName(run);
   let answer = await apply(run, [['UpdateRecord', MODELS, models[NAMES.A].id, { ModifiePar: 'editeur' }]]);
   check('il écrit A : le dossier Contrats lui donne l\'écriture', answer.status === 200, answer.text);
@@ -175,13 +242,27 @@ async function playEditor(run) {
   check('il ne crée pas d\'espace', answer.status !== 200, answer.text);
   answer = await apply(run, [['AddRecord', 'GFS_Placement', null, { Cible: 'publipostage:1', Espace: 'achats', Dossier: '' }]]);
   check('il ne place pas un fichier dans l\'espace', answer.status !== 200, answer.text);
+  // l'explorateur de l'éditeur : « Espaces » est là, le fichier rangé par le propriétaire aussi ; ranger ailleurs est réservé au propriétaire
+  const frame = run.frame;
+  await frame.locator('.ls-row').first().waitFor();
+  check('l\'éditeur voit « Espaces » dans le volet, avec l\'espace Achats', await frame.locator('.tr-row[data-path="Espaces"]').count() === 1);
+  await frame.locator('.tr-row[data-path="Espaces"]').click();
+  await frame.locator('.ls-row.folder[data-key="dir:Espaces/Achats"]').dblclick();
+  await frame.locator('.ls-row.folder[data-key="dir:Espaces/Achats/Contrats"]').dblclick();
+  await frame.locator('.ls-row:not(.folder)').filter({ hasText: NAMES.F }).waitFor({ timeout: 15000 });
+  check('il y trouve le fichier que le propriétaire y a rangé', true);
+  await openRowMenu(frame, NAMES.F);
+  await frame.getByRole('menuitem', { name: new RegExp(`^${t('ex.move')}`) }).click();
+  await frame.locator('[data-fk="move-root"]').click();
+  await frame.getByText(t('ex.spaceOwnersOnly')).waitFor({ timeout: 15000 });
+  check('l\'éditeur ne sort pas un fichier de l\'espace : seul un propriétaire range dans un espace', (await rows(run, 'GFS_Placement')).some(row => row.Dossier === 'Contrats' && row.Cible.startsWith('publipostage:')));
   check('aucune erreur de GFS dans la console', unexpected(run).length === 0, unexpected(run));
 }
 
 async function playViewer(run) {
   say('--- lecteur ---');
   const seen = await modelNames(run);
-  check('il lit D (partage direct) et aucun autre fichier de l\'espace', seen.includes(NAMES.D) && ![NAMES.A, NAMES.B, NAMES.C, NAMES.E].some(name => seen.includes(name)), seen.filter(name => name.startsWith('Esp')));
+  check('il lit D (partage direct) et aucun autre fichier de l\'espace', seen.includes(NAMES.D) && ![NAMES.A, NAMES.B, NAMES.C, NAMES.E, NAMES.F].some(name => seen.includes(name)), seen.filter(name => name.startsWith('Esp')));
   const spaces = await rows(run, 'GFS_Espaces');
   check('il ne voit pas l\'espace achats (il n\'est dans aucun groupe de l\'espace)', spaces.length === 0, spaces);
   check('aucune erreur de GFS dans la console', unexpected(run).length === 0, unexpected(run));

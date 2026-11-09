@@ -7,6 +7,7 @@ import { GROUPS_TABLE, PLACE_TABLE, SHARES_TABLE, SPACES_TABLE, STAMP, TARGETS, 
 import { openShare } from './share-window.js';
 import { runAction } from './rights-actions.js';
 import { ask } from './ask-window.js';
+import { locate } from './spaces-filing.js';
 
 const lower = text => String(text ?? '').trim().toLowerCase();
 
@@ -28,6 +29,28 @@ export class ShareControl {
     return this.#target(file) ? null : this.#o.t('share.unsupported');
   }
 
+  // Pourquoi ce dossier ne se partage pas (une phrase), ou null : seuls les dossiers à l'intérieur d'un espace se partagent ; « Moi » n'a pas de droits à donner, et un espace donne ses droits à des groupes dans « Gérer les partages… ».
+  whyNotFolder(path) {
+    const { t } = this.#o;
+    if (!this.#o.fullAccess()) return t('share.noAccess');
+    const at = locate(path, this.#o.spaces ? this.#o.spaces() : null);
+    if (!at) return path === '' || path.split('/')[0] !== 'Espaces' ? t('share.folder.personal') : t('share.folder.space');
+    return at.folder ? null : t('share.folder.space');
+  }
+
+  // Le dossier d'espace `path` ("Espaces/<espace>/<dossier>") comme la fenêtre le prend : une clé (`dossier:<clé>/<chemin>`), un nom, et d'où il hérite.
+  folderFile(path) {
+    const at = locate(path, this.#o.spaces ? this.#o.spaces() : null);
+    if (!at || !at.folder) return null;
+    return { key: folderTarget(at.space.key, at.folder), name: at.folder.split('/').pop(), folder: { space: at.space, path: at.folder } };
+  }
+
+  // L'espace, puis les dossiers au-dessus de celui-ci : ce qu'il hérite (la fenêtre les marque « Hérité »).
+  #folderOrigins({ space, path }) {
+    const parts = path.split('/').filter(Boolean).slice(0, -1);
+    return [{ kind: 'space', name: space.name, target: spaceTarget(space.key) }, ...parts.map((part, at) => ({ kind: 'folder', name: part, target: folderTarget(space.key, parts.slice(0, at + 1).join('/')) }))];
+  }
+
   // L'état que la fenêtre dessine : la table des partages (absente : le partage n'est pas activé), la preuve de propriété, ce que la personne peut changer.
   async load(file) {
     const owner = await this.#o.reader.owner();
@@ -35,7 +58,7 @@ export class ShareControl {
     try { rows = rowsOf(await this.#o.port.doc.fetchTable(SHARES_TABLE)); } catch (error) { rows = null; }
     const none = extend => ({ active: false, extend, owner, shares: [], people: [], me: '', author: '', canManage: false });
     if (!rows) return none(false);
-    const target = this.#target(file);
+    const target = file.folder ? null : this.#target(file);
     let author = lower(file.by);
     if (target) {
       // La table de fichiers porte-t-elle les colonnes d'aide ? Sinon le partage n'y est pas étendu (une app ajoutée après coup) ; si elle porte celles d'avant les espaces (pas `GFS_Calc`), le partage est à compléter ;
@@ -48,7 +71,7 @@ export class ShareControl {
       if (target.stamped) author = lower((table[STAMP] || [])[(table.id || []).indexOf(file.row)]);
     }
     const me = lower(this.#o.identity());
-    const shares = sharesOf(rows, file.key, await this.#inherited(file.key));
+    const shares = sharesOf(rows, file.key, file.folder ? this.#folderOrigins(file.folder) : await this.#inherited(file.key));
     const admin = shares.some(share => share.valid && share.active && share.right === 'admin' && lower(share.who) === me);
     const people = [...new Set(rows.map(row => lower(row.PersonneL || row.Personne)).filter(who => who && !who.startsWith('@') && !who.startsWith('#')))].sort();
     let groups = [];
@@ -77,7 +100,7 @@ export class ShareControl {
   open(file) {
     const { t, container, inertTargets } = this.#o;
     return openShare({
-      container, t, locale: this.#o.locale(), inertTargets, extraTargets: this.#o.extraTargets(), file: { key: file.key, name: file.name, app: this.#o.appName(file.app) },
+      container, t, locale: this.#o.locale(), inertTargets, extraTargets: this.#o.extraTargets(), file: { key: file.key, name: file.name, app: file.folder ? t('share.folder.in', { name: file.folder.space.name }) : this.#o.appName(file.app) },
       load: () => this.load(file), onManage: () => this.#o.manage.open(),
       onAdd: record => this.#write([['AddRecord', SHARES_TABLE, null, record]]),
       onChange: (id, patch) => this.#write([['UpdateRecord', SHARES_TABLE, id, patch]]),

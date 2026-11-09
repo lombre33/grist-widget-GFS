@@ -794,7 +794,10 @@ par-dessus le cadre de l'app (point 7).
 4. [D] **Les entrées de `gristInterne`** ont la forme `{ "tables": [ … ], "lit": true, "ecrit": [ "colonne", … ], "retire": true,
    "pourquoi": { "fr": "…", "en": "…" } }`. `tables` et `pourquoi` sont obligatoires ; `lit`, `ecrit` et `retire` sont
    facultatifs, au moins un des trois. Une entrée qui écrit (`ecrit` ou `retire`) nomme une seule table et porte aussi
-   `lit: true` (3.3, point 5). Le `pourquoi` est montré à la personne comme celui des capacités.
+   `lit: true` (3.3, point 5). Le `pourquoi` est montré à la personne comme celui des capacités. [M] **Form+ (09/11, demande de sa page d'état)** :
+   `{ tables: ["_grist_Views"], lit: true, ecrit: ["name"] }` pour renommer la page qu'un `CreateViewSection` vient de créer (Grist l'appelle « New page »
+   et la range tout en bas) en « Formulaire <table> » ; le nom seulement, un seul `UpdateRecord` dans son propre lot (un refus n'arrête rien : l'app garde « New page » et le dit). Mesuré avec
+   la vraie Form+ (faits vérifiés 65).
 5. [T] **`lienPublic`** : `{ "lit": [ "FormPlus_Pub_*" ], "pourquoi": { "fr": "…", "en": "…" } }`. Pas une capacité qui contourne un filtre :
    une déclaration qui en **resserre** un. Elle nomme les tables **de l'app** qu'un lien public, celui d'un formulaire que l'app publie,
    peut lire si la personne y consent (3.3, point 9 ; 11.9, point 4c) ; **sans elle, aucune table de l'app n'est lisible par un lien
@@ -3011,8 +3014,20 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
     k. [T] **L'écran des espaces : livré le 09/11** (lot 4b, première partie). « Gérer les partages… » a un onglet **Espaces** : liste, « Nouvel espace » (nom demandé dans une fenêtre du widget), détail avec les groupes de l'espace
        et leur rôle (lecture, écriture, retirer ; un groupe s'ajoute par la liste avec recherche), suppression avec question (les partages de l'espace et de ses dossiers partent, les fichiers restent, hors de l'espace). La fenêtre
        « Partager… » propose **« Aucun accès »** (grisé pour une catégorie) et affiche les droits hérités avec leur origine (« Hérité : espace “…” », « Hérité : dossier “…” »). Mesuré à la vraie souris dans un vrai Grist
-       (`labo/run-partager-espaces.mjs`, étape 4 de la phase propriétaire) et sous Firefox (`test/partager-firefox.mjs`). **Pas fait** : placer un fichier dans un espace et parcourir les espaces depuis l'explorateur (lot 4b, seconde partie),
-       « Partagés avec moi » (4c).
+       (`labo/run-partager-espaces.mjs`, étape 4 de la phase propriétaire) et sous Firefox (`test/partager-firefox.mjs`).
+    l. [T] **Les espaces dans l'explorateur : livrés le 09/11** (lot 4b, seconde partie ; choix du porteur : « Espaces à côté de “Moi” »). « Espaces » est une **racine du volet**, après « Moi », avec les espaces que la personne lit,
+       leurs dossiers et leurs dossiers vides ; « Moi » ne la liste pas, et le fil d'Ariane d'un espace ne passe pas par « Moi ». Pour tout ce qui range (arbre, « Déplacer vers… », couper-coller, glisser-déposer, Ctrl+Z), un
+       espace est un dossier de plus : le fichier a pour dossier « Espaces/<espace>/<dossier> » (`js/spaces-filing.js`), et seule l'écriture sait la différence. **Un fichier placé dans un espace est une ligne de `GFS_Placement`**
+       (`Cible` = la clé du fichier, `Espace`, `Dossier`), partagée avec ceux qui voient l'espace ; **le rangement de la personne (`GFS_Rangement`) ne reçoit jamais un chemin d'espace** : il garde le dossier à elle (le fichier y
+       retourne quand il sort de l'espace) et le favori. Un dossier vide d'espace est une ligne de placement sans `Cible`. **Seul un propriétaire range dans un espace** (ou en sort un fichier, ou y garde un dossier) : les règles de
+       `spaceRules` n'ouvrent l'écriture des placements qu'à eux ; une autre personne lit la phrase « Seul un propriétaire du document range dans un espace partagé » et rien n'est écrit. Un fichier neuf (copie, PDF importé) créé
+       dans un dossier d'espace y est placé par un propriétaire, sinon il va à la racine de la personne. **Refusés pour l'instant, avec une phrase** : renommer ou déplacer un dossier d'espace (les partages portent son chemin et ne le
+       suivraient pas : un refus ciblé perdu ouvrirait le dossier), supprimer ou créer un espace d'ici (« Gérer les partages… », onglet Espaces), nommer « Espaces » un dossier de « Moi ». Mesuré dans un vrai Grist à trois comptes
+       (`labo/run-partager-espaces.mjs`, étape 5 : ranger, parcourir, ressortir, remettre à la souris ; l'éditeur voit la racine et le fichier, ne peut pas en sortir un) et sous Firefox (`test/dossiers-firefox.mjs`, « Espaces »).
+       **« Partager… » sur un dossier d'espace : livré le 09/11.** Le menu d'un dossier a « Partager… » : dégrisé pour un dossier à l'intérieur d'un espace (cible `dossier:<clé>/<chemin>`), grisé avec sa phrase pour « Espaces »,
+       un espace (ses groupes se règlent dans « Gérer les partages… », onglet Espaces) et un dossier de « Moi ». La fenêtre est celle des fichiers (personne, groupe, « Aucun accès ») et marque « Hérité » ce qui vient de l'espace
+       et des dossiers au-dessus ; un droit donné se lit tout de suite dans les listes de chaque fichier du dossier (mesuré : `labo/run-partager-espaces.mjs`, étape 5, 43 vérifications ; Firefox : `test/dossiers-firefox.mjs`).
+       **Pas fait** : la création d'un fichier d'une app directement dans un dossier d'espace (il naît à la racine de la personne), les fichiers à la corbeille (ils gardent leur place dans l'espace), « Partagés avec moi » (4c).
 
 ### 11.8 À mesurer sur le Grist du porteur
 

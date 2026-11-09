@@ -55,3 +55,25 @@ test('un partage d\'avant les espaces (colonnes d\'aide sans GFS_Calc) : « comp
   const files = await control({ fetch: async name => (name === 'GFS_Partages' ? table({ Cible: [], Personne: [] }) : table({ GFS_Lecteurs: [[]] })) }).load(pdf);
   assert.equal(files.extend, 'upgrade');
 });
+
+test('un dossier d\'espace se partage (clé « dossier: »), « Moi » et un espace non : la phrase dit pourquoi ; la fenêtre hérite de l\'espace et des dossiers au-dessus', async () => {
+  const info = { spaces: [{ key: 'achats', name: 'Achats', path: 'Espaces/Achats' }], placed: new Map(), folders: [] };
+  const rows = { Cible: ['*', 'espace:achats', 'dossier:achats/Contrats', 'dossier:achats/Contrats/Sous', 'dossier:achats/Autre'], Personne: ['@editeurs', '#Achats', 'marc@x.fr', 'lea@x.fr', 'zoe@x.fr'], Droit: ['lecture', 'lecture', 'ecriture', 'aucun', 'lecture'] };
+  const fetch = async name => (name === 'GFS_Partages' ? { id: [1, 2, 3, 4, 5], ...rows } : { id: [] });
+  const share = new ShareControl({ t, targets: () => targetsOf([PP]), fullAccess: () => true, identity: () => 'moi@x.fr', writeBlock: () => null, reader: { owner: async () => true }, spaces: () => info, port: { doc: { fetchTable: fetch } } });
+  assert.equal(share.whyNotFolder('Espaces/Achats/Contrats'), null);
+  assert.equal(share.whyNotFolder('Espaces/Achats'), t('share.folder.space'));
+  assert.equal(share.whyNotFolder('Espaces'), t('share.folder.space'));
+  assert.equal(share.whyNotFolder('Perso/Dossier'), t('share.folder.personal'));
+  assert.equal(share.folderFile('Perso/Dossier'), null);
+  const folder = share.folderFile('Espaces/Achats/Contrats/Sous');
+  assert.equal(folder.key, 'dossier:achats/Contrats/Sous');
+  assert.equal(folder.name, 'Sous');
+  const state = await share.load(folder);
+  assert.equal(state.active, true);
+  const direct = state.shares.filter(item => !item.inherited);
+  assert.deepEqual(direct.map(item => [item.who, item.right]), [['lea@x.fr', 'aucun']]);
+  const inherited = state.shares.filter(item => item.inherited).map(item => [item.who, item.from.kind, item.from.name]).sort();
+  assert.deepEqual(inherited, [['#Achats', 'space', 'Achats'], ['@editeurs', 'root', undefined], ['marc@x.fr', 'folder', 'Contrats']]);
+  assert.equal(state.canManage, true, 'un propriétaire gère les droits d\'un dossier');
+});

@@ -1859,7 +1859,16 @@ Deux documents qui ont GFS, sur un vrai Grist 1.7.19 (`GRIST_DOCKER_ARGS="-e ALL
 - **Non mesuré** : la réception depuis un autre Grist que le serveur d'essai (le Grist de la DINUM) ; plusieurs milliers de fichiers ; « Partagés avec moi » « à accepter » et les noms avant l'accord (carte posée à Antoine, rien codé) ; la cloche Notifications ; l'arrivée automatique après la première fois.
 - **Rejouer** : `GRIST_DOCKER_ARGS="-e ALLOWED_WEBHOOK_DOMAINS=*" bash prototype/labo/vrai-serveur.sh`, puis depuis `prototype/labo` : `REPO_DIR="$(realpath ../..)" node run-partager-recevoir.mjs` (`LAB_LANG=en LAB_SCHEME=dark` pour l'anglais et le sombre).
 
-## 72. « Écrire » ne doit pas mener à « administrer » : l'auteur d'un PDF partagé (mesuré le 09/11, audit de sécurité)
+## 72. « Partagés avec moi » : où retenir qu'un fichier reçu est accepté ou refusé (mesuré le 09/11)
+
+Deux documents qui ont GFS, sur un vrai Grist 1.7.19, réception « en archive » (ce que fait GFS), le moteur 2.1.0. Essai : `labo/run-recus-etat.mjs` (sans écran ; **9 vérifications, toutes passent**). Rien de la vue n'est codé : cette mesure décide de la façon de retenir le choix de la personne.
+
+- **Grist accepte d'ajouter deux colonnes de GFS (`Accepte`, `Refuse`, Bool) à la table reçue**, et le moteur les laisse : après un renommage du fichier chez l'envoyeur, la mise à jour arrive **sur la même ligne** (pas de doublon), le nom change, **la marque tient** (Facture reste acceptée, Devis reste refusé). Aucun passage du moteur n'a levé d'erreur ; les deux colonnes sont toujours là à la fin.
+- **Effacer la ligne d'un fichier refusé ne suffit pas : elle REVIENT** à la mise à jour suivante de l'envoyeur (mesuré : une nouvelle ligne de Devis réapparaît avec son contenu). Un refus se **marque**, il ne s'efface pas ; refuser = `Refuse` à vrai (la ligne reste, cachée de l'explorateur et des apps).
+- **Un fichier nouveau arrive sans marque** (`Accepte` et `Refuse` à faux) : c'est lui qui est « à accepter ». Son vrai nom et son contenu sont déjà là.
+- **Rejouer** : `GRIST_DOCKER_ARGS="-e ALLOWED_WEBHOOK_DOMAINS=*" bash prototype/labo/vrai-serveur.sh`, puis depuis `prototype/labo` : `REPO_DIR="$(realpath ../..)" node run-recus-etat.mjs`.
+
+## 73. « Écrire » ne doit pas mener à « administrer » : l'auteur d'un PDF partagé (mesuré le 09/11, audit de sécurité)
 
 Vrai Grist 1.7.19, trois comptes (`labo/run-partager-auteur.mjs`, deux temps ; `labo/run-partager.mjs` 25 et `labo/run-partager-fenetre.mjs` rejoués en entier après le correctif, aucun échec).
 
@@ -1869,11 +1878,12 @@ Vrai Grist 1.7.19, trois comptes (`labo/run-partager-auteur.mjs`, deux temps ; `
 - **Pas mesuré** : le placement (`GFS_Placement`, les espaces) ; une reprise d'un partage déjà actif depuis l'interface (le plan l'a rejoué avec `existing` d'un document d'avant, sans règles) ; Firefox.
 - **Rejouer** : `bash prototype/labo/vrai-serveur.sh`, puis `PHASE=proprietaire node run-partager-auteur.mjs` ; `GRIST_EMAIL=editor@example.com bash vrai-serveur.sh` et `PHASE=editeur node run-partager-auteur.mjs` (depuis `prototype/labo`, `REPO_DIR="$(realpath ../..)"`). Le Grist de test se tire de `mirror.gcr.io/gristlabs/grist:1.7.19` quand Docker Hub refuse (limite de débit), puis `docker tag mirror.gcr.io/gristlabs/grist:1.7.19 gristlabs/grist:1.7.19`.
 
-## 72. « Partagés avec moi » : où retenir qu'un fichier reçu est accepté ou refusé (mesuré le 09/11)
+## 74. Le code de contrôle du partage entre documents, exigé par défaut (mesuré le 09/11, audit de sécurité)
 
-Deux documents qui ont GFS, sur un vrai Grist 1.7.19, réception « en archive » (ce que fait GFS), le moteur 2.1.0. Essai : `labo/run-recus-etat.mjs` (sans écran ; **9 vérifications, toutes passent**). Rien de la vue n'est codé : cette mesure décide de la façon de retenir le choix de la personne.
+Choix du porteur (carte du 09/11) : « Exiger la comparaison du code de contrôle » est coché au départ, la personne peut le décocher. Essai : `labo/run-partager-autre.mjs`, vrai Grist 1.7.19, la vraie fenêtre à la vraie souris, 700 × 400 (`LAB_STRICT=0` décoche le réglage).
 
-- **Grist accepte d'ajouter deux colonnes de GFS (`Accepte`, `Refuse`, Bool) à la table reçue**, et le moteur les laisse : après un renommage du fichier chez l'envoyeur, la mise à jour arrive **sur la même ligne** (pas de doublon), le nom change, **la marque tient** (Facture reste acceptée, Devis reste refusé). Aucun passage du moteur n'a levé d'erreur ; les deux colonnes sont toujours là à la fin.
-- **Effacer la ligne d'un fichier refusé ne suffit pas : elle REVIENT** à la mise à jour suivante de l'envoyeur (mesuré : une nouvelle ligne de Devis réapparaît avec son contenu). Un refus se **marque**, il ne s'efface pas ; refuser = `Refuse` à vrai (la ligne reste, cachée de l'explorateur et des apps).
-- **Un fichier nouveau arrive sans marque** (`Accepte` et `Refuse` à faux) : c'est lui qui est « à accepter ». Son vrai nom et son contenu sont déjà là.
-- **Rejouer** : `GRIST_DOCKER_ARGS="-e ALLOWED_WEBHOOK_DOMAINS=*" bash prototype/labo/vrai-serveur.sh`, puis depuis `prototype/labo` : `REPO_DIR="$(realpath ../..)" node run-recus-etat.mjs`.
+- **Coché (par défaut)** : GFS demande une invitation en sécurité renforcée (`startInvitation(exp, { renforce: true })`). L'autre document, qui répond avec le moteur ordinaire (une réception à sens unique n'a pas à comparer), donne le **même code de contrôle** que celui de la fenêtre. « Envoyer » est grisé tant que « J'ai comparé ce code avec celui de l'autre document » n'est pas coché ; un clic dessus (forcé, une vraie souris le donne) n'envoie rien : aucun webhook, la fenêtre reste. Cochée, la case laisse partir le fichier, mêmes octets chez l'autre (27 vérifications, aucun échec).
+- **Décoché** : pas de case, « Envoyer » dégrisé, l'invitation est celle d'avant ; le fichier arrive (25 à 26 vérifications). **Le moteur refuse aussi sans la case** quand l'invitation est renforcée : `approveReply` lève `codeNotCompared` avant toute écriture (essai unitaire `test/share-other-flow.test.mjs`, le moteur est la barrière, pas seulement la fenêtre).
+- **Un bruit vu une fois sur trois passages** : `KeyError 'GFS_Synchro'` dans la console, de `kit/js/synchro/source/resend.js` : le rattrapage lit la table technique juste après que « une fois » l'a supprimée. Même passage sans le correctif : propre ; le bruit ne dépend pas du réglage.
+- **Sous Firefox** (`test/partager-autre-firefox.mjs`, mesure de la seule fenêtre : 0 écart, fr et en, clair et sombre, 700 px) : le réglage est là, coché, se décoche et se recoche à la souris ; avec lui, le clavier arrive sur la case, « Envoyer » grisé et muet, dégrisé par la case ; sans lui, pas de case. **Espace sur la case ne se joue pas** dans ce Firefox sans écran.
+- **Pas mesuré** : l'effet de l'invitation renforcée sur un partage « à jour » plusieurs mois après (les fichiers suivants ne passent plus par le code) ; Firefox avec un vrai Grist.

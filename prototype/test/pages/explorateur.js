@@ -345,11 +345,11 @@ async function mount() {
         if (!text.startsWith('GRISTSYNC2.')) throw new Error('Ce texte n’est pas un code de synchro.');
         return { name: LONG_DOC, folder: 'Comptabilité fournisseurs de la région Nord-Est', team: 'Grande équipe', personal: kind === 'perso', control: 'N5H-2AH' };
       },
-      send: async () => { acts.push(['send', mode]); await gate; if (kind === 'bloque') throw Object.assign(new Error('blocked'), { share: 'blocked' }); return { document: LONG_DOC, live: mode === 'live' }; },
+      send: async (progress, opts) => { acts.push(['send', mode, Boolean(opts && opts.compared)]); await gate; if (kind === 'bloque') throw Object.assign(new Error('blocked'), { share: 'blocked' }); return { document: LONG_DOC, live: mode === 'live' }; },
       abort: async () => { acts.push(['abort']); },
     };
     let mode = 'once';
-    return openShareOther({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], file: kind === 'lien' ? null : { id: 'abc', name: 'Facture de la session de formation de septembre.pdf' }, createFlow: chosen => { mode = chosen; acts.push(['mode', chosen]); return flow; }, errorText: error => String(error.message), notice: text => acts.push(['notice', text]) });
+    return openShareOther({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], file: kind === 'lien' ? null : { id: 'abc', name: 'Facture de la session de formation de septembre.pdf' }, createFlow: (chosen, strict) => { mode = chosen; acts.push(['mode', chosen, Boolean(strict)]); return flow; }, errorText: error => String(error.message), notice: text => acts.push(['notice', text]) });
   };
   // La fenêtre « Recevoir d'un autre document Grist » (js/share-receive-window.js, test/partager-recevoir-firefox.mjs) : la vraie fenêtre, sur un parcours dont les réponses sont des doublures (le moteur et Grist se mesurent
   // dans un vrai Grist : labo/run-partager-recevoir.mjs). `kind` : 'ok' (un premier partage : GFS_Recus), 'second' (la table libre suivante : GFS_Recus_2), 'connu' (une réception qui reprend), 'refus' (accepter échoue).

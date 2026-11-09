@@ -32,6 +32,14 @@ function accordDetails(ctx) {
   ];
 }
 
+// Le réglage « exiger le code » : coché au départ à chaque envoi (décision du porteur, 09/11, audit de sécurité) ; décoché, le code reste affiché mais l'envoi part sans qu'on ait à confirmer l'avoir comparé.
+function strictRow(ctx) {
+  const { t } = ctx;
+  const input = h('input', { type: 'checkbox', checked: ctx.strict, dataset: { fk: 'so-strict' } });
+  input.addEventListener('change', () => { ctx.strict = input.checked; });
+  return h('label', { class: 'chk so-strict' }, input, h('span', null, h('b', null, t('so.strict')), h('small', null, t('so.strict.hint'))));
+}
+
 function accordScreen(ctx) {
   const { t } = ctx;
   const details = h('div', null, ...accordDetails(ctx));
@@ -42,7 +50,7 @@ function accordScreen(ctx) {
   };
   // Sans fichier, le lien est toujours « à jour » : pas de choix à faire.
   return {
-    body: h('div', { class: 'rt-content' }, ...(ctx.file ? [h('div', { class: 'sec' }, t('so.mode.step')), radio('once'), radio('live')] : []), details),
+    body: h('div', { class: 'rt-content' }, ...(ctx.file ? [h('div', { class: 'sec' }, t('so.mode.step')), radio('once'), radio('live')] : []), details, strictRow(ctx)),
     buttons: [ctx.cancelButton(), ctx.go(button('so-continue', t('so.continue'), true), () => ctx.prepare())],
     first: 'so-continue',
   };
@@ -74,16 +82,22 @@ function codeScreen(ctx, made) {
   };
 }
 
+// Avec « exiger le code » : « Envoyer » reste grisé tant que la case « j'ai comparé ce code » n'est pas cochée (le moteur le refuse aussi, avant toute écriture).
 function verifyScreen(ctx, info) {
   const { t } = ctx;
+  const send = button('so-send', t('so.send'), true);
+  const compared = ctx.strict ? h('input', { type: 'checkbox', dataset: { fk: 'so-compared' } }) : null;
+  const gate = () => send.setAttribute('aria-disabled', compared && !compared.checked ? 'true' : 'false');
+  if (compared) { gate(); compared.addEventListener('change', gate); }
   return {
     body: h('div', { class: 'rt-content' },
       h('p', { class: 'rt-lead so-who' }, icon('check'), h('span', null, t('so.verify.lead'), h('br'), h('b', null, t('so.verify.doc', { name: info.name })), ' ', h('small', null, placeOf(t, info)))),
       h('div', { class: 'sec' }, t('so.verify.control')),
       h('p', { class: 'so-control', dataset: { fk: 'so-control' } }, info.control),
-      h('p', { class: 'fine' }, t('so.verify.hint'))),
-    buttons: [ctx.cancelButton(), ctx.go(button('so-send', t('so.send'), true), () => ctx.send())],
-    first: 'so-send',
+      h('p', { class: 'fine' }, t('so.verify.hint')),
+      ...(compared ? [h('label', { class: 'chk so-compared' }, compared, h('span', null, h('b', null, t('so.compared'))))] : [])),
+    buttons: [ctx.cancelButton(), ctx.go(send, () => ctx.send(Boolean(compared && compared.checked)), () => Boolean(compared) && !compared.checked)],
+    first: compared ? 'so-compared' : 'so-send',
   };
 }
 
@@ -124,20 +138,20 @@ export function openShareOther(opts) {
   const { t, file } = opts;
   const steps = openSteps({ container: opts.container, t, inertTargets: opts.inertTargets, title: file ? t('so.title', { name: file.name }) : t('so.title.link'), sub: file ? t('so.sub') : t('so.sub.link'), foot: t('so.foot'), errorText: opts.errorText });
   const { dialog, done, result, say, show } = steps;
-  const ctx = { t, file, now: opts.now || Date.now, closed: false, sending: false, mode: file ? 'once' : 'live', flow: null, go: steps.go, cancelButton: steps.cancelButton, copy: steps.copy };
+  const ctx = { t, file, now: opts.now || Date.now, closed: false, sending: false, mode: file ? 'once' : 'live', strict: true, flow: null, go: steps.go, cancelButton: steps.cancelButton, copy: steps.copy };
   ctx.prepare = async () => {
     say(t('so.preparing'));
-    ctx.flow = opts.createFlow(ctx.mode);
+    ctx.flow = opts.createFlow(ctx.mode, ctx.strict);
     const made = await ctx.flow.prepare();
     if (ctx.closed) { await ctx.flow.abort().catch(() => {}); return; }
     show(codeScreen(ctx, made));
   };
   ctx.check = async text => show(verifyScreen(ctx, await ctx.flow.check(text)));
-  ctx.send = async () => {
+  ctx.send = async compared => {
     ctx.sending = true;
     show(sendingScreen(ctx));
     try {
-      const finished = await ctx.flow.send();
+      const finished = await ctx.flow.send(undefined, { compared });
       if (dialog.isConnected) show(doneScreen(ctx, finished)); else opts.notice(file ? t('so.toast.done', { name: file.name, doc: finished.document }) : t('so.toast.link', { doc: finished.document }));
     } catch (error) {
       const text = error && error.share ? t(`so.error.${error.share}`) : t('so.failed', { message: opts.errorText(error) });

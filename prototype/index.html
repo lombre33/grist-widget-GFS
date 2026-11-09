@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-Sv3ohOYQzdyt00JRtewW7XTZi7eKFYe1A/xDJGgxk/g='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-hd2+VC2osl1Cm+SMCTujaE1ON4dWp7IY5/h8Sc3YFV4='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=e13ef00da6">
 <link rel="stylesheet" href="css/explorer.css?v=846c19fa18">
 <link rel="stylesheet" href="css/modules.css?v=b1b43f0db6">
@@ -72,7 +72,7 @@
     "./js/i18n-folders.js": "./js/i18n-folders.js?v=2dd37b93c0",
     "./js/i18n-manage.js": "./js/i18n-manage.js?v=86f9429b9a",
     "./js/i18n-rights.js": "./js/i18n-rights.js?v=4d3985edb0",
-    "./js/i18n-share-other.js": "./js/i18n-share-other.js?v=ff7c082cee",
+    "./js/i18n-share-other.js": "./js/i18n-share-other.js?v=e8d387df3e",
     "./js/i18n-share.js": "./js/i18n-share.js?v=c6c817c2ca",
     "./js/i18n-trash.js": "./js/i18n-trash.js?v=ba5f9e143a",
     "./js/i18n-weight.js": "./js/i18n-weight.js?v=70f193afa2",
@@ -118,10 +118,10 @@
     "./js/settings.js": "./js/settings.js?v=a425d4248c",
     "./js/share-control.js": "./js/share-control.js?v=19ce7384c1",
     "./js/share-links.js": "./js/share-links.js?v=49b2331a44",
-    "./js/share-other-flow.js": "./js/share-other-flow.js?v=e311fff3d6",
+    "./js/share-other-flow.js": "./js/share-other-flow.js?v=bb7a7f0390",
     "./js/share-other-tab.js": "./js/share-other-tab.js?v=2fa346af0d",
-    "./js/share-other-window.js": "./js/share-other-window.js?v=83ed320408",
-    "./js/share-other.js": "./js/share-other.js?v=557877a61a",
+    "./js/share-other-window.js": "./js/share-other-window.js?v=74141faa33",
+    "./js/share-other.js": "./js/share-other.js?v=e31a2de775",
     "./js/share-receive-flow.js": "./js/share-receive-flow.js?v=1ea8a422a4",
     "./js/share-receive-window.js": "./js/share-receive-window.js?v=23906c52f1",
     "./js/share-window.js": "./js/share-window.js?v=252cc7169b",

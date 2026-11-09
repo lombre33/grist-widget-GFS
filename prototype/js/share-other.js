@@ -38,7 +38,7 @@ export function createOtherDocuments(deps) {
       const below = [...deps.container.querySelectorAll('.mod-scrim')];
       await openShareOther({
         container: deps.container, t, inertTargets: () => [...deps.inertTargets(), ...below], file: file ? { id: file.id, name: file.name } : null,
-        createFlow: mode => createSourceFlow({ engine: running, file, mode: file ? mode : 'live', name }), errorText: running.errorText, notice: deps.notice,
+        createFlow: (mode, strict) => createSourceFlow({ engine: running, file, mode: file ? mode : 'live', strict, name }), errorText: running.errorText, notice: deps.notice,
       });
     } catch (error) { deps.notice(await said(error)); }
   }

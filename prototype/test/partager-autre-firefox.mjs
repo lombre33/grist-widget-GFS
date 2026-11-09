@@ -90,6 +90,14 @@ async function accordFlow(page, tools, t) {
   if (radios[0] !== true || radios[1] !== false) tools.run.note(kind, `l'accord devait proposer « ${t('so.mode.once')} » (coché) et « ${t('so.mode.live')} » (état des deux choix : ${JSON.stringify(radios)})`);
   for (const part of [t('so.mode.once'), t('so.mode.live')]) if (!now.modal.body.includes(part)) tools.run.note(kind, `l'accord devait dire « ${part} »`);
   for (const part of [t('so.accord.adds'), t('so.accord.hook'), t('so.accord.keep')]) if (!now.modal.body.includes(part)) tools.run.note(kind, `l'accord devait dire « ${part} » (il dit « ${now.modal.body.slice(0, 160)} »)`);
+  // « Exiger la comparaison du code de contrôle » : proposé et coché au départ (décision du 09/11, audit de sécurité), décochable à la vraie souris.
+  const strict = () => page.run(() => { const node = document.querySelector('[data-fk="so-strict"]'); return node ? node.checked : null; });
+  if (!now.modal.body.includes(t('so.strict'))) tools.run.note(kind, `l'accord devait proposer « ${t('so.strict')} »`);
+  if ((await strict()) !== true) tools.run.note(kind, '« exiger le code » devait être coché au départ');
+  await tools.press(kind, 'so-strict');
+  if ((await strict()) !== false) tools.run.note(kind, 'un clic sur « exiger le code » devait le décocher');
+  await tools.press(kind, 'so-strict');
+  if ((await strict()) !== true) tools.run.note(kind, 'un second clic devait le recocher');
   for (let i = 0; i < 3; i += 1) { await page.press('Tab'); const inside = await tools.snap(); if (!inside.modal || !inside.modal.inside) tools.run.note(kind, 'Tab devait rester dans la fenêtre'); }
   await page.press('Escape');
   const closed = await tools.expect(kind, 'Échap devait fermer la fenêtre', s => s.modal === null);
@@ -97,16 +105,17 @@ async function accordFlow(page, tools, t) {
 }
 
 // Le code, la réponse collée, le refus puis l'accord du parcours, le document qui répond, l'envoi et la fin.
-async function sendingFlow(page, tools, t, flow, mode = 'once') {
-  const kind = flow === 'perso' ? 'espace personnel' : (mode === 'live' ? 'copie qui se met à jour' : 'envoi');
+async function sendingFlow(page, tools, t, flow, mode = 'once', strict = true) {
+  const kind = (flow === 'perso' ? 'espace personnel' : (mode === 'live' ? 'copie qui se met à jour' : 'envoi')) + (strict ? '' : ' sans exiger le code');
   await tools.open(kind, flow);
   if (mode === 'live') {
     await tools.press(kind, 'so-mode-live');
     const chosen = await tools.expect(kind, 'choisir la copie qui se met à jour devait le cocher et dire que le lien reste', s => s.modal && s.modal.body.includes(t('so.accord.hook.live')));
     tools.fits(kind, chosen, 'l\'accord du lien qui reste');
   }
+  if (!strict) await tools.press(kind, 'so-strict');
   await tools.press(kind, 'so-continue');
-  await tools.expect(kind, `le parcours devait recevoir le choix « ${mode} »`, s => s.acts.some(act => act[0] === 'mode' && act[1] === mode));
+  await tools.expect(kind, `le parcours devait recevoir le choix « ${mode} » et « exiger le code » : ${strict}`, s => s.acts.some(act => act[0] === 'mode' && act[1] === mode && act[2] === strict));
   const code = await tools.expect(kind, 'le code devait s\'afficher, le clavier dessus, « Contrôler » grisé', s => s.modal && s.modal.keys.includes('so-code') && s.modal.focus === 'so-code' && s.modal.greyed.includes('so-check'));
   tools.fits(kind, code, 'le code');
   if (code.modal && !code.modal.body.includes(t('so.code.hint', { n: 7 }))) tools.run.note(kind, `le code devait dire sa durée (« ${t('so.code.hint', { n: 7 })} »)`);
@@ -124,12 +133,26 @@ async function sendingFlow(page, tools, t, flow, mode = 'once') {
   await page.chord('Control', 'a');
   await tools.type('GRISTSYNC2.z');
   await tools.press(kind, 'so-check');
-  const verify = await tools.expect(kind, 'la réponse acceptée devait montrer le document, son lieu et le code de contrôle, le clavier sur « Envoyer le fichier »', s => s.modal && s.modal.keys.includes('so-send') && s.modal.focus === 'so-send' && s.modal.control === 'N5H-2AH');
+  const focusKey = strict ? 'so-compared' : 'so-send';
+  const verify = await tools.expect(kind, `la réponse acceptée devait montrer le document, son lieu et le code de contrôle, le clavier sur « ${strict ? t('so.compared') : t('so.send')} »`, s => s.modal && s.modal.keys.includes('so-send') && s.modal.focus === focusKey && s.modal.control === 'N5H-2AH');
   tools.fits(kind, verify, 'le document qui répond');
   const place = flow === 'perso' ? t('so.verify.personal') : t('so.verify.in', { folder: 'Comptabilité fournisseurs de la région Nord-Est', team: 'Grande équipe' });
   if (verify.modal && !(verify.modal.body.includes(LONG_DOC) && verify.modal.body.includes(place))) tools.run.note(kind, `l'écran devait dire le document et son lieu (« ${place} ») (il dit « ${verify.modal.body.slice(0, 200)} »)`);
+  if (verify.modal && verify.modal.keys.includes('so-compared') !== strict) tools.run.note(kind, `la case « ${t('so.compared')} » devait ${strict ? 'être là' : 'être absente'}`);
+  if (strict) {
+    // Exigé : « Envoyer » reste grisé et muet tant que la case n'est pas cochée ; la case le dégrise ; la décocher le regrise.
+    if (verify.modal && !verify.modal.greyed.includes('so-send')) tools.run.note(kind, '« Envoyer » devait être grisé tant que le code n\'est pas comparé');
+    await tools.press(kind, 'so-send');
+    if ((await tools.snap()).acts.some(act => act[0] === 'send')) tools.run.note(kind, '« Envoyer » grisé ne devait rien demander au parcours');
+    await tools.press(kind, 'so-compared');
+    await tools.expect(kind, 'cocher « j\'ai comparé » devait dégriser « Envoyer »', s => s.modal && !s.modal.greyed.includes('so-send'));
+    await tools.press(kind, 'so-compared');
+    await tools.expect(kind, 'décocher « j\'ai comparé » devait regriser « Envoyer »', s => s.modal && s.modal.greyed.includes('so-send'));
+    await tools.press(kind, 'so-compared'); // Espace sur une case ne se joue pas ici (Firefox sans écran, voir test/interfaces-firefox.test.mjs) : la souris la recoche
+    await tools.expect(kind, 'recocher « j\'ai comparé » devait dégriser « Envoyer »', s => s.modal && !s.modal.greyed.includes('so-send'));
+  }
   await tools.press(kind, 'so-send');
-  const sending = await tools.expect(kind, 'l\'envoi devait montrer « envoi en cours » avec son seul bouton « Fermer »', s => s.modal && s.modal.keys.includes('so-close') && !s.modal.keys.includes('so-send') && s.acts.some(act => act[0] === 'send'));
+  const sending = await tools.expect(kind, 'l\'envoi devait montrer « envoi en cours » avec son seul bouton « Fermer »', s => s.modal && s.modal.keys.includes('so-close') && !s.modal.keys.includes('so-send') && s.acts.some(act => act[0] === 'send' && act[2] === strict));
   tools.fits(kind, sending, 'l\'envoi');
   await page.run(() => { window.__sendGo(); });
   const done = await tools.expect(kind, mode === 'live' ? 'la fin devait dire que le lien reste' : 'la fin devait dire que le partage est arrêté', s => s.modal && s.modal.body.includes(t(mode === 'live' ? 'so.done.live.hint' : 'so.done.hint')) && s.acts.some(act => act[0] === 'send' && act[1] === mode));
@@ -155,6 +178,7 @@ async function linkFlow(page, tools, t) {
   await tools.press(kind, 'so-check');
   const verify = await tools.expect(kind, 'la réponse acceptée devait montrer le document et le code de contrôle', s => s.modal && s.modal.keys.includes('so-send') && s.modal.control === 'N5H-2AH');
   tools.fits(kind, verify, 'le document qui répond');
+  await tools.press(kind, 'so-compared');
   await tools.press(kind, 'so-send');
   const sending = await tools.expect(kind, 'l\'envoi devait dire que le lien se met en place', s => s.modal && s.modal.body.includes(t('so.sending.link')) && s.modal.keys.includes('so-close'));
   tools.fits(kind, sending, 'le lien en cours');
@@ -181,6 +205,7 @@ async function failureFlow(page, tools, t) {
     await tools.type('GRISTSYNC2.z');
     await tools.press(kind, 'so-check');
     await tools.expect(kind, 'le document devait s\'afficher', s => s.modal && s.modal.keys.includes('so-send'));
+    await tools.press(kind, 'so-compared');
     await tools.press(kind, 'so-send');
   };
   await reach('bloque');
@@ -283,6 +308,7 @@ export async function partagerAutreProblems(page, language, tag) {
     await sendingFlow(page, tools, t, 'ok');
     await sendingFlow(page, tools, t, 'ok', 'live');
     await sendingFlow(page, tools, t, 'perso');
+    await sendingFlow(page, tools, t, 'ok', 'once', false);
     await linkFlow(page, tools, t);
     await failureFlow(page, tools, t);
     await tabFlow(page, tools, t);

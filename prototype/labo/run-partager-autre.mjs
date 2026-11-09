@@ -73,6 +73,10 @@ try {
   say('--- 2. accord, code, réponse contrôlée ---');
   await openShare(frame, 'Facture.pdf');
   await (await otherLine(frame)).click();
+  // « Exiger la comparaison du code » : coché au départ (décision du 09/11) ; LAB_STRICT=0 le décoche, pour mesurer l'autre chemin.
+  const strict = process.env.LAB_STRICT !== '0';
+  check('« exiger le code » est proposé et coché au départ', await frame.locator('[data-fk="so-strict"]').isChecked(), await text(frame, '.mod.so'));
+  if (!strict) await frame.locator('[data-fk="so-strict"]').click();
   await frame.locator('[data-fk="so-continue"]').click();
   await frame.locator('[data-fk="so-code"]').waitFor();
   const code = await frame.locator('[data-fk="so-code"]').inputValue();
@@ -110,6 +114,16 @@ try {
   await shot(frame, '4-controle');
 
   say('--- 3. envoi ---');
+  if (strict) {
+    // Le moteur est en sécurité renforcée : sans la case, « Envoyer » est grisé et muet ; avec elle, il part.
+    check('exigé : la case « j\'ai comparé » est là, « Envoyer » grisé', (await frame.locator('[data-fk="so-compared"]').count()) === 1 && (await frame.locator('[data-fk="so-send"]').getAttribute('aria-disabled')) === 'true', await text(frame, '.mod.so'));
+    await frame.locator('[data-fk="so-send"]').click({ force: true }); // grisé : Playwright refuse un clic normal, `force` le donne quand même (c'est ce que fait une vraie souris)
+    await page.waitForTimeout(1500);
+    check('exigé : un clic sur « Envoyer » grisé n\'envoie rien (aucun webhook, la fenêtre reste)', (await webhooks(source)) === 0 && (await frame.locator('[data-fk="so-control"]').count()) === 1);
+    await frame.locator('[data-fk="so-compared"]').click();
+  } else {
+    check('non exigé : pas de case, « Envoyer » dégrisé', (await frame.locator('[data-fk="so-compared"]').count()) === 0 && (await frame.locator('[data-fk="so-send"]').getAttribute('aria-disabled')) !== 'true');
+  }
   await frame.locator('[data-fk="so-send"]').click();
   const waitDone = async () => { for (let i = 0; i < 120; i++) { if ((await text(frame, '.mod.so')).includes(t('so.done.hint'))) return true; await page.waitForTimeout(1000); } return false; };
   check('la fenêtre dit que le fichier est arrivé et que le partage est arrêté', await waitDone(), await text(frame, '.mod.so'));

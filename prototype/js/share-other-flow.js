@@ -2,9 +2,10 @@
 // une copie, une seule fois (`once`), ou une copie qui se met à jour (`live` : le lien reste, les fichiers suivants passent par js/share-links.js sans nouveau code), dans un seul sens.
 // Sans fenêtre ni Grist : tout ce qu'il fait passe par `engine`, les fonctions du moteur de partage du kit (kit/js/synchro/, voir js/sync-service.js), que les essais remplacent. La fenêtre
 // (js/share-other-window.js) ne fait que montrer l'étape et demander le geste suivant.
-//   prepare()  l'export d'un seul fichier (une condition sur son identifiant), l'invitation et son code ;
+//   prepare()  l'export d'un seul fichier (une condition sur son identifiant), l'invitation et son code (avec `strict`, l'invitation est en « sécurité renforcée » : le moteur refuse d'envoyer tant que le code
+//              de contrôle n'a pas été comparé, `compared`, voir send) ;
 //   check()    la réponse collée, contrôlée chez Grist (de quel document est la clé de son formulaire) : le moteur juge le lien, GFS n'en juge rien ;
-//   send()     le webhook, le fichier, puis le partage s'arrête (la copie reste chez l'autre), sauf pour une copie à jour : le lien reste ;
+//   send()     le webhook, le fichier, puis le partage s'arrête (la copie reste chez l'autre), sauf pour une copie à jour : le lien reste ; `{ compared }` : la personne a comparé le code ;
 //   abort()    défait ce qui a été préparé.
 // Le premier lot ne couvre que les PDF que GFS garde (`GFS_Fichiers`).
 import { PASS_MS, PASSES, SENT_COLUMNS, selectionFor } from './share-links.js';
@@ -24,14 +25,15 @@ export const selectionOf = file => selectionFor(file ? [file.id] : []);
 // Ce qui retient l'envoi : un destinataire dont le lien de réception ne répond pas (`blocked`) ou un envoi qui n'a pas fini dans le temps (`timeout`).
 const stuck = code => Object.assign(new Error(code), { share: code });
 
-// deps : { engine, file ({ id, name } ou null : relier les deux documents sans fichier, toujours « à jour »), mode ('once' : une copie, une fois ; 'live' : une copie qui se met à jour, le lien reste), name (celui de l'export d'un lien qui reste : le nom de ce document), wait (ms) → promesse }.
-export function createSourceFlow({ engine, file, mode = 'once', name = '', wait = ms => new Promise(resolve => setTimeout(resolve, ms)) }) {
+// deps : { engine, file ({ id, name } ou null : relier les deux documents sans fichier, toujours « à jour »), mode ('once' : une copie, une fois ; 'live' : une copie qui se met à jour, le lien reste), strict (vrai : le code de
+// contrôle doit être comparé avant l'envoi ; coché au départ dans la fenêtre, décision du porteur du 09/11), name (celui de l'export d'un lien qui reste : le nom de ce document), wait (ms) → promesse }.
+export function createSourceFlow({ engine, file, mode = 'once', strict = false, name = '', wait = ms => new Promise(resolve => setTimeout(resolve, ms)) }) {
   const state = { exp: null, entry: null, reply: null, hook: null };
 
   async function prepare() {
     const saved = await engine.saveChosenExport({ name: mode === 'live' && name ? name : exportName(file), selection: selectionOf(file) });
     state.exp = saved.created;
-    const { entry, secret } = await engine.startInvitation(state.exp);
+    const { entry, secret } = await engine.startInvitation(state.exp, strict ? { renforce: true } : {});
     state.entry = entry;
     const made = await engine.invitationCode(state.exp, entry, secret);
     return { code: made.code, expire: made.expire };
@@ -46,8 +48,8 @@ export function createSourceFlow({ engine, file, mode = 'once', name = '', wait 
 
   // Envoie, jusqu'à ce que plus rien ne reste à partir, puis arrête le partage. Le rattrapage du moteur envoie le contenu du fichier en un second temps (`catchUp`) : on le passe jusqu'à « rien à envoyer ».
   // Si une autre page du navigateur renvoyait déjà (`sendExisting` rend null), les lignes sont seulement marquées : on attend qu'un passage les ait envoyées avant de croire que tout est parti.
-  async function send(progress = () => {}) {
-    state.hook = await engine.approveReply(state.exp, state.entry, state.reply);
+  async function send(progress = () => {}, { compared = false } = {}) {
+    state.hook = await engine.approveReply(state.exp, state.entry, state.reply, { compared });
     progress({ phase: 'rows' });
     let waiting = (await engine.sendExisting(state.exp)) === null;
     for (let pass = 0; pass < PASSES; pass += 1) {

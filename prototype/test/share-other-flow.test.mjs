@@ -17,7 +17,7 @@ function fakeEngine({ passes = [{ why: 'sent' }, { why: 'idle' }], sent = 4, pen
     startInvitation: note('invite', () => ({ entry: { id: 'inv1' }, secret: 's3cret' })),
     invitationCode: note('code', () => ({ code: 'GRISTSYNC2.abc', expire: 1700000000 })),
     checkReply: note('checkReply', () => ({ code: 'WGV-ME3', share: { name: 'Réception', folder: 'Home', teamName: 'Personal', personal: true } })),
-    approveReply: note('approve', 'hook-1'),
+    approveReply: note('approve', args => 'hook-1'),
     sendExisting: note('sendExisting', sent),
     catchUp: note('catchUp', () => { at += 1; }),
     catchState: () => ({ why: (passes[Math.min(at, passes.length - 1)] || {}).why, running: Boolean((passes[Math.min(at, passes.length - 1)] || {}).running) }),
@@ -137,4 +137,28 @@ test('abort : avant l\'envoi, l\'invitation en attente et l\'export sont défait
   const nothing = fakeEngine();
   await flow(nothing).abort();
   assert.deepEqual(nothing.calls, []);
+});
+
+test('« exiger le code » : l\'invitation est en sécurité renforcée (le moteur refuse d\'envoyer sans le code comparé) ; sinon rien ne change', async () => {
+  const strict = fakeEngine();
+  await flow(strict, { strict: true }).prepare();
+  assert.deepEqual(strict.calls.find(call => call[0] === 'invite').slice(2), [{ renforce: true }]);
+  const lax = fakeEngine();
+  await flow(lax).prepare();
+  assert.deepEqual(lax.calls.find(call => call[0] === 'invite').slice(2), [{}], 'sans l\'option, le moteur reçoit les mêmes arguments qu\'avant');
+});
+
+test('send : « j\'ai comparé le code » passe au moteur, qui le vérifie avant toute écriture ; sans lui, en sécurité renforcée, le moteur refuse et rien ne part', async () => {
+  const engine = fakeEngine();
+  const run = flow(engine, { strict: true });
+  await run.prepare(); await run.check('r');
+  await run.send(undefined, { compared: true });
+  assert.deepEqual(engine.calls.find(call => call[0] === 'approve').slice(4), [{ compared: true }]);
+  const refusing = fakeEngine({ fail: { approve: new Error('codeNotCompared') } });
+  const careless = flow(refusing, { strict: true });
+  await careless.prepare(); await careless.check('r');
+  await assert.rejects(() => careless.send(), /^Error: codeNotCompared$/);
+  assert.equal(careless.started, false, 'rien n\'est parti');
+  assert.ok(!names(refusing).includes('sendExisting'));
+  assert.deepEqual(refusing.calls.find(call => call[0] === 'approve').slice(4), [{ compared: false }], 'sans la case, le moteur reçoit « faux »');
 });

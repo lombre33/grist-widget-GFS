@@ -369,3 +369,29 @@ test('la règle des refus passe après les propriétaires et avant les administr
     assert.ok(at < rights.findIndex(formulaText => formulaText.includes('GFS_Admins')));
   }
 });
+
+test('créer, lire, vider un espace : la clé sans accent ni doublon, le nom refusé s\'il est vide ou pris, la suppression emporte ses partages et ses placements', () => {
+  assert.equal(model.spaceKey('Équipe Achats & Compta'), 'equipe-achats-compta');
+  assert.equal(model.spaceKey('Achats', ['achats', 'achats-2']), 'achats-3');
+  assert.equal(model.spaceKey('!!!'), '');
+  const add = model.planSpaceAdd([{ Cle: 'achats', Nom: 'Achats' }], ' Ventes  Nord ');
+  assert.deepEqual([add.ok, add.key, add.actions[0].slice(0, 2), add.actions[0][3]], [true, 'ventes-nord', ['AddRecord', 'GFS_Espaces'], { Cle: 'ventes-nord', Nom: 'Ventes Nord' }]);
+  assert.equal(model.planSpaceAdd([{ Cle: 'achats', Nom: 'Achats' }], 'achats').reason, 'exists');
+  assert.equal(model.planSpaceAdd([], '  ').reason, 'invalid');
+  const shares = [{ id: 1, Cible: 'espace:achats', Personne: '#Achats', Droit: 'lecture' }, { id: 2, Cible: 'dossier:achats/Contrats', Personne: 'a@x.fr', Droit: 'ecriture' }, { id: 3, Cible: 'dossier:achats-2/X', Personne: 'a@x.fr', Droit: 'lecture' }, { id: 4, Cible: 'espace:achats', Personne: 'b@x.fr', Droit: 'lecture' }];
+  const spaces = model.spacesOf([{ id: 7, Cle: 'achats', Nom: 'Achats', Voit: ['a@x.fr', 'b@x.fr'] }, { id: 8, Cle: '', Nom: 'vide' }], shares);
+  assert.deepEqual(spaces, [{ id: 7, key: 'achats', name: 'Achats', people: 2, groups: [{ id: 1, group: 'Achats', right: 'lecture' }] }]);
+  const gone = model.planSpaceRemove(spaces[0], shares, [{ id: 10, Espace: 'achats' }, { id: 11, Espace: 'autre' }]);
+  assert.deepEqual(gone.actions, [['BulkRemoveRecord', 'GFS_Partages', [1, 2, 4]], ['BulkRemoveRecord', 'GFS_Placement', [10]], ['RemoveRecord', 'GFS_Espaces', 7]]);
+});
+
+test('le rôle d\'un groupe dans un espace : ajouté, changé, retiré ; lecture ou écriture seulement', () => {
+  const space = { key: 'achats' };
+  const shares = [{ id: 1, Cible: 'espace:achats', Personne: '#Achats', Droit: 'lecture' }];
+  assert.deepEqual(model.planSpaceGroup(space, shares, 'Achats', 'ecriture').actions, [['UpdateRecord', 'GFS_Partages', 1, { Droit: 'ecriture' }]]);
+  assert.deepEqual(model.planSpaceGroup(space, shares, 'Achats', null).actions, [['RemoveRecord', 'GFS_Partages', 1]]);
+  const added = model.planSpaceGroup(space, shares, 'Compta', 'lecture').actions[0];
+  assert.deepEqual([added[0], added[3].Cible, added[3].Personne, added[3].Droit], ['AddRecord', 'espace:achats', '#Compta', 'lecture']);
+  assert.equal(model.planSpaceGroup(space, shares, 'Compta', 'admin').reason, 'invalid');
+  assert.deepEqual(model.planSpaceGroup(space, shares, 'Absent', null).actions, []);
+});

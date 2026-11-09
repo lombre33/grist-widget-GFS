@@ -3000,13 +3000,17 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
        et dans l'espace des droits différents par personne ou par groupe sur un dossier ou un fichier ; « Partagés avec moi » pour le partage direct entre personnes, lot 4c). `GFS_Espaces` (`Cle`, `Nom`, `Voit` : qui y a accès, groupes
        développés) et `GFS_Placement` (`Cible` : le fichier, `Espace`, `Dossier`) naissent avec le partage ; un partage vise `espace:<clé>`, `dossier:<clé>/<chemin>` ou un fichier. **Le droit le plus précis gagne** (choix du porteur,
        09/11 : « si Marc est dans un groupe qui a un espace et que je retire la lecture pour cacher un fichier, Marc n'y a plus accès ») : le fichier avant son dossier, le dossier avant l'espace, l'espace avant le document entier ; à
-       précision égale, la personne avant le groupe, le groupe avant la catégorie ; **à égalité entre deux groupes, le droit le plus large** (choix par défaut de GFS, à confirmer). Nouveau droit **« Aucun accès »** (`aucun`, pour une
+       précision égale, la personne avant le groupe, le groupe avant la catégorie ; **à égalité entre deux groupes, le droit le plus large** (choix du porteur, 09/11). Nouveau droit **« Aucun accès »** (`aucun`, pour une
        personne ou un groupe, jamais une catégorie) : une règle `-CRUD` sur la liste `GFS_Refus` passe juste après les propriétaires. Une colonne cachée `GFS_Calc` calcule les six listes (lecteurs, écrivains, administrateurs, refus,
        catégories qui lisent et qui écrivent) que les règles lisent ; un fichier sans placement garde les règles d'avant (le document, puis lui-même). **Un document partagé avant** est repris : « Partager… » dit « Compléter le partage… »,
        GFS ajoute `GFS_Calc` et `GFS_Refus`, reprend les formules d'aide, retire puis repose les règles de fichiers, crée les deux tables, sans repartager aucun fichier. Mesuré dans un vrai Grist à trois comptes
-       (`labo/run-partager-espaces.mjs`, 23 vérifications ; `labo/run-partager-reprise.mjs`, 19 vérifications avec l'ancienne version servie depuis une copie du dépôt). **Pas fait** : l'écran des espaces et le droit « Aucun accès » dans
-       les menus (lot 4b), « Partagés avec moi » (4c), le partage d'un dossier par la fenêtre, la gestion d'un espace par un administrateur de groupe (aujourd'hui seuls les propriétaires écrivent les espaces, les placements et les
+       (`labo/run-partager-espaces.mjs`, 23 vérifications ; `labo/run-partager-reprise.mjs`, 19 vérifications avec l'ancienne version servie depuis une copie du dépôt). **Pas fait** : « Partagés avec moi » (4c), le partage d'un dossier par la fenêtre, la gestion d'un espace par un administrateur de groupe (aujourd'hui seuls les propriétaires écrivent les espaces, les placements et les
        partages d'un espace ou d'un dossier), le renommage d'un dossier (ses partages le suivraient mal).
+    k. [T] **L'écran des espaces : livré le 09/11** (lot 4b, première partie). « Gérer les partages… » a un onglet **Espaces** : liste, « Nouvel espace » (nom demandé dans une fenêtre du widget), détail avec les groupes de l'espace
+       et leur rôle (lecture, écriture, retirer ; un groupe s'ajoute par la liste avec recherche), suppression avec question (les partages de l'espace et de ses dossiers partent, les fichiers restent, hors de l'espace). La fenêtre
+       « Partager… » propose **« Aucun accès »** (grisé pour une catégorie) et affiche les droits hérités avec leur origine (« Hérité : espace “…” », « Hérité : dossier “…” »). Mesuré à la vraie souris dans un vrai Grist
+       (`labo/run-partager-espaces.mjs`, étape 4 de la phase propriétaire) et sous Firefox (`test/partager-firefox.mjs`). **Pas fait** : placer un fichier dans un espace et parcourir les espaces depuis l'explorateur (lot 4b, seconde partie),
+       « Partagés avec moi » (4c).
 
 ### 11.8 À mesurer sur le Grist du porteur
 

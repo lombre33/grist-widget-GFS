@@ -11,7 +11,7 @@ import { CATEGORIES, GROUP_PREFIX, isGroup, shareRecord } from './sharing-model.
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Les cinq droits de la maquette ; « commentaire » et « dépôt seul » attendent leurs tables (grisés, avec la raison), un droit d'administration ne se donne pas à une catégorie.
-const LEVELS = Object.freeze([{ key: 'lecture', glyph: 'read' }, { key: 'commentaire', glyph: 'info', later: true }, { key: 'depot', glyph: 'download', later: true }, { key: 'ecriture', glyph: 'edit' }, { key: 'admin', glyph: 'shield' }]);
+const LEVELS = Object.freeze([{ key: 'lecture', glyph: 'read' }, { key: 'commentaire', glyph: 'info', later: true }, { key: 'depot', glyph: 'download', later: true }, { key: 'ecriture', glyph: 'edit' }, { key: 'admin', glyph: 'shield' }, { key: 'aucun', glyph: 'lock' }]);
 const CATS = Object.freeze([{ who: CATEGORIES.editeurs, key: 'editeurs', glyph: 'edit' }, { who: CATEGORIES.tous, key: 'tous', glyph: 'globe' }]);
 const isCategory = who => String(who).startsWith('@');
 
@@ -36,7 +36,7 @@ export function suggestions(t, state, text, extraTargets = []) {
 // Les articles du menu des droits : celui d'aujourd'hui coché ; grisés avec leur raison ; « Retirer l'accès » en dernier (sauf pour un nouveau partage, pas encore écrit).
 export function levelItems(t, { current, category, onPick, onRemove, onWhy }) {
   const items = LEVELS.map(level => {
-    const why = level.later ? t(`share.right.${level.key}.why`) : (level.key === 'admin' && category ? t('share.right.admin.person') : null);
+    const why = level.later ? t(`share.right.${level.key}.why`) : (level.key === 'admin' && category ? t('share.right.admin.person') : (level.key === 'aucun' && category ? t('share.right.aucun.category') : null));
     return { label: t(`share.right.${level.key}`), icon: level.glyph, hint: t(`share.right.${level.key}.hint`), check: level.key === current, greyed: Boolean(why), run: () => (why ? onWhy(why) : onPick(level.key)) };
   });
   return onRemove ? [...items, '-', { label: t('share.remove'), icon: 'x', run: onRemove }] : items;
@@ -49,6 +49,9 @@ function dateText(seconds, locale) {
   try { return new Date(seconds * 1000).toLocaleDateString(locale, { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }); } catch (error) { return ''; }
 }
 
+// D'où vient un droit hérité : le document entier, l'espace, ou un dossier de l'espace.
+const inheritedText = (t, from) => (from && from.kind === 'space' ? t('share.row.inherited.space', { name: from.name }) : (from && from.kind === 'folder' ? t('share.row.inherited.folder', { name: from.name }) : t('share.row.inherited')));
+
 // Une ligne de « Qui a accès » : l'avatar ou l'icône, le nom, ses détails (fin d'accès, téléchargement, validité), et le droit (un bouton qui ouvre le menu quand la personne peut changer les partages).
 function row(ctx, share) {
   const { t, state } = ctx;
@@ -58,7 +61,7 @@ function row(ctx, share) {
   if (expired) notes.push(t('share.row.expired', { date: dateText(share.end, ctx.locale) }));
   if (share.download) notes.push(t('share.row.download'));
   if (!share.valid) notes.push(t('share.row.invalid'));
-  const label = share.inherited ? `${whoLabel(t, share.who)} · ${t('share.row.inherited')}` : whoLabel(t, share.who) + (share.who.toLowerCase() === state.me ? t('share.row.me') : '');
+  const label = share.inherited ? `${whoLabel(t, share.who)} · ${inheritedText(t, share.from)}` : whoLabel(t, share.who) + (share.who.toLowerCase() === state.me ? t('share.row.me') : '');
   const locked = share.inherited || !state.canManage;
   const button = h('button', { type: 'button', class: 'lvl', 'aria-disabled': locked ? 'true' : null, 'aria-haspopup': locked ? null : 'menu', dataset: { fk: `share-level-${share.id}` } }, t(`share.right.${share.right}`), icon(locked ? 'lock' : 'chev-down'));
   if (!locked) button.addEventListener('click', () => openMenu(button, levelItems(t, {

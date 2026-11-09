@@ -3,7 +3,7 @@
 
 import { rowsOf } from './rights.js';
 import { FILES_TABLE } from './gfs-files.js';
-import { GROUPS_TABLE, SHARES_TABLE, STAMP, TARGETS, groupsOf, sharesOf } from './sharing-model.js';
+import { GROUPS_TABLE, PLACE_TABLE, SHARES_TABLE, SPACES_TABLE, STAMP, TARGETS, folderTarget, groupsOf, sharesOf, spaceTarget } from './sharing-model.js';
 import { openShare } from './share-window.js';
 import { runAction } from './rights-actions.js';
 import { ask } from './ask-window.js';
@@ -48,12 +48,23 @@ export class ShareControl {
       if (target.stamped) author = lower((table[STAMP] || [])[(table.id || []).indexOf(file.row)]);
     }
     const me = lower(this.#o.identity());
-    const shares = sharesOf(rows, file.key);
+    const shares = sharesOf(rows, file.key, await this.#inherited(file.key));
     const admin = shares.some(share => share.valid && share.active && share.right === 'admin' && lower(share.who) === me);
     const people = [...new Set(rows.map(row => lower(row.PersonneL || row.Personne)).filter(who => who && !who.startsWith('@') && !who.startsWith('#')))].sort();
     let groups = [];
     try { groups = groupsOf(rowsOf(await this.#o.port.doc.fetchTable(GROUPS_TABLE))); } catch (error) { groups = []; }
     return { active: true, owner, shares, people, groups, me, author, canManage: !this.#o.writeBlock() && (owner === true || (me !== '' && me === author) || admin) };
+  }
+
+  // Ce que le fichier hérite de l'espace où il est placé : l'espace, puis chaque dossier du chemin (rien si le fichier n'est dans aucun espace, ou si la personne ne lit pas le placement).
+  async #inherited(key) {
+    let place = null; let spaces = [];
+    try { place = rowsOf(await this.#o.port.doc.fetchTable(PLACE_TABLE)).find(row => row.Cible === key); } catch (error) { place = null; }
+    if (!place || !place.Espace) return [];
+    try { spaces = rowsOf(await this.#o.port.doc.fetchTable(SPACES_TABLE)); } catch (error) { spaces = []; }
+    const name = (spaces.find(row => row.Cle === place.Espace) || {}).Nom || place.Espace;
+    const parts = String(place.Dossier || '').split('/').filter(Boolean);
+    return [{ kind: 'space', name, target: spaceTarget(place.Espace) }, ...parts.map((part, at) => ({ kind: 'folder', name: part, target: folderTarget(place.Espace, parts.slice(0, at + 1).join('/')) }))];
   }
 
   async #write(actions) {

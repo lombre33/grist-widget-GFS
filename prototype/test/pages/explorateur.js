@@ -301,13 +301,16 @@ async function mount() {
     owner: true, active: true, rows: [], tables: [{ id: 'Contacts', emails: ['Mail'], groups: ['Equipe'] }], root: { '@editeurs': { id: 1, right: 'lecture' }, '@tous': null },
     groups: [{ id: 1, name: 'Achats', count: 3, source: '', here: 'a@example.com\nb@example.com' }, { id: 2, name: 'Comptabilité fournisseurs de la région Nord-Est', count: 1, source: 'Contacts_de_toute_la_societe_internationale', here: '' }],
     structure: { kind: 'close', label: 'rights.act.close', hint: 'rights.act.close.hint' },
+    spaces: [{ id: 1, key: 'achats', name: 'Achats', people: 3, groups: [{ id: 1, group: 'Achats', right: 'lecture' }] }, { id: 2, key: 'long', name: 'Espace de la comptabilité fournisseurs de la région Nord-Est', people: 12, groups: [] }],
   };
   window.__manage = () => {
     window.__manageActs = [];
     const record = act => { window.__manageActs.push(act); return Promise.resolve({ ok: true }); };
     return openManage({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], load: async () => JSON.parse(JSON.stringify(manageState)),
       onAddGroup: (state, group) => record(['addGroup', group.name, group.people]), onUpdateGroup: (id, people) => record(['updateGroup', id, people]), onRemoveGroup: id => record(['removeGroup', id]),
-      onReadTable: async () => { window.__manageActs.push(['readTable']); return null; }, onRoot: (state, who, right) => record(['root', who, right]), onStructure: async () => { window.__manageActs.push(['structure']); return true; }, onConfirmRemove: async name => { window.__manageActs.push(['confirmRemove', name]); return true; } });
+      onReadTable: async () => { window.__manageActs.push(['readTable']); return null; }, onRoot: (state, who, right) => record(['root', who, right]), onStructure: async () => { window.__manageActs.push(['structure']); return true; }, onConfirmRemove: async name => { window.__manageActs.push(['confirmRemove', name]); return true; },
+      onAddSpace: async () => { window.__manageActs.push(['addSpace']); return null; }, onRemoveSpace: async (state, space) => { window.__manageActs.push(['removeSpace', space.key]); return null; },
+      onSpaceGroup: (state, space, group, right) => record(['spaceGroup', space.key, group, right]), onPickGroup: async () => null });
   };
   window.__share = kind => {
     window.__shareActs = [];

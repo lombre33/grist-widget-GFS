@@ -16,6 +16,7 @@ import { UndoStack } from './undo-stack.js';
 import { undoable } from './explorer-undo.js';
 import { Clipboard } from './explorer-clipboard.js';
 import { Dragging } from './explorer-drag.js';
+import { rowItems } from './explorer-menus.js';
 import { openMenu, closeMenu, menuIsOpen } from './menu.js';
 
 // Sans fichiers que GFS garde lui-même (les essais de l'explorateur seul) : aucun fichier n'est de ceux-là.
@@ -641,81 +642,16 @@ export class Explorer {
     openMenu(this.#refs.newBtn, items, { host: this.root, align: 'right', label: t('ex.new') });
   }
 
-  // Le menu d'une ligne. Dupliquer copie le fichier quand un gardien sait le copier (js/copying.js) ; sinon il est grisé et dit où le faire. Supprimer passe par la corbeille : un fichier qu'aucun gardien ne connaît (js/trash.js) grise l'article
-  // et dit pourquoi ; un dossier se supprime quand plus aucun fichier n'est dedans, sinon son article est grisé et le dit. À la corbeille : « Restaurer » et « Supprimer définitivement… ».
+  // Le menu d'une ligne (js/explorer-menus.js). Dupliquer copie le fichier quand un gardien sait le copier (js/copying.js) ; sinon il est grisé et dit où le faire. Supprimer passe par la corbeille : un fichier qu'aucun gardien
+  // ne connaît (js/trash.js) grise l'article et dit pourquoi ; un dossier se supprime quand plus aucun fichier n'est dedans, sinon son article est grisé et le dit. À la corbeille : « Restaurer » et « Supprimer définitivement… ».
   #rowMenu(key, anchor) {
-    const { t } = this.#opts.i18n;
-    const { filing } = this.#opts;
     this.#select(key, false);
-    const item = (label, glyph, run, hint) => ({ label, icon: glyph, run, hint });
-    let items;
-    if (key.startsWith('dir:')) {
-      const path = key.slice(4);
-      items = [item(t('ex.openFolder'), 'open', () => this.#activate(key), t('key.enter')), item(t('ex.rename'), 'edit', () => void filing.renameFolder(path), 'F2'),
-        item(t('ex.move'), 'move', () => void filing.moveFolder(path), this.#choice ? undefined : 'Ctrl+X, V'), this.#shareFolderItem(path), '-', this.#deleteFolderItem(key)];
-    } else {
-      const file = this.#shown.find(entry => entry.key === key);
-      if (!file) return;
-      items = ({ trash: () => this.#trashMenu(file), shared: () => this.#sharedMenu(file) })[this.state.view]?.() || this.#fileMenu(file);
-    }
-    openMenu(anchor, items, { host: this.root, align: 'right', label: t('ex.more') });
-  }
-
-  // « Partager… » d'un dossier (js/share-control.js) : seuls les dossiers d'un espace se partagent ; les autres l'article reste, grisé, et le clic dit pourquoi.
-  #shareFolderItem(path) {
-    const { t } = this.#opts.i18n;
-    const { sharing } = this.#opts;
-    const why = this.#choice ? t('ex.choose.newOff') : (sharing && sharing.whyNotFolder ? sharing.whyNotFolder(path) : t('share.unsupported'));
-    return { label: t('share.menu'), icon: 'user', greyed: why !== null, run: () => (why ? this.#opts.notice(why) : void sharing.open(sharing.folderFile(path))) };
-  }
-
-  // L'article « Supprimer le dossier » : grisé tant qu'un fichier est dans le dossier (ou un de ses sous-dossiers) et pendant un choix ; le clic dit pourquoi.
-  #deleteFolderItem(key) {
-    const { t } = this.#opts.i18n;
-    const row = this.#rows.find(item => item.kind === 'folder' && `dir:${item.path}` === key);
-    const why = this.#choice ? t('ex.choose.newOff') : (row && row.count > 0 ? t('ex.folderNotEmpty') : null);
-    return { label: t('ex.deleteFolder'), icon: 'trash', hint: t('key.delete'), greyed: why !== null, run: () => (why ? this.#opts.notice(why) : void this.#deleteFolder(key)) };
-  }
-
-  #trashMenu(file) {
-    const { t } = this.#opts.i18n;
-    return [{ label: t('trash.restore'), icon: 'restore', hint: t('key.enter'), run: () => void this.#restore(file.key) }, '-',
-      { label: t('trash.purge'), icon: 'trash', hint: t('key.delete'), run: () => void this.#purge(file.key) }];
-  }
-
-  // Le menu d'une ligne de « Partagés avec moi » : répondre à une arrivée en attente ; lire ou télécharger une arrivée acceptée (comme un PDF que GFS garde).
-  #sharedMenu(file) { const open = this.#openAs(file); return this.#shared.menu(file) || [{ label: open.label, icon: open.icon, hint: this.#opts.i18n.t('key.enter'), greyed: open.greyed, run: () => this.#activate(file.key) }, ...this.#kept.extras(file)]; }
-
-  // Pourquoi un geste (la corbeille ou la copie) est grisé pour ce fichier, en une phrase, ou null : pendant un choix ; pour un fichier qu'aucun gardien ne connaît (`unknown`) ; quand l'app doit être ouverte et ne l'est pas.
-  #whyGreyed(file, gesture, unknown) {
-    if (this.#choice) return this.#opts.i18n.t('ex.choose.newOff');
-    if (!gesture.handles(file)) return unknown;
-    const wait = typeof gesture.appLockOf === 'function' ? gesture.appLockOf(file) : null;
-    return wait ? wait.text : null;
-  }
-
-  #fileMenu(file) {
-    const { t } = this.#opts.i18n;
-    const { filing } = this.#opts;
-    const kept = this.#kept.has(file);
-    const item = (label, glyph, run, hint) => ({ label, icon: glyph, run, hint });
-    const grey = (label, glyph, notice) => ({ label, icon: glyph, greyed: true, run: () => this.#opts.notice(notice) });
-    const appOnly = t('ex.notice.appOnly', { app: this.#opts.appName(file.app) });
-    const open = this.#choice ? { label: t('ex.choose.pick'), icon: 'open', greyed: false } : this.#openAs(file);
-    const extras = kept && !this.#choice ? this.#kept.extras(file) : [];
-    // Mettre à la corbeille et dupliquer : grisés pendant un choix, pour un fichier qu'aucun gardien ne connaît, et pour un fichier que seule l'app ouverte sait fermer ou copier (contrats 2.4 `appel`) ; le clic dit pourquoi.
-    // Le presse-papiers (Ctrl+C puis Ctrl+V, Ctrl+X puis Ctrl+V) n'est pas offert pendant un choix.
-    const whyRemove = this.#whyGreyed(file, this.#bin, t('trash.appOnly', { app: this.#opts.appName(file.app) }));
-    const remove = whyRemove ? grey(t('trash.move'), 'trash', whyRemove) : item(t('trash.move'), 'trash', () => void this.#trashKey(file.key), t('key.delete'));
-    const whyDuplicate = this.#whyGreyed(file, this.#copying, appOnly);
-    const duplicate = whyDuplicate ? grey(t('ex.duplicate'), 'copy', whyDuplicate) : item(t('ex.duplicate'), 'copy', () => void this.#duplicate(file), 'Ctrl+C, V');
-    // « Partager… » (js/share-control.js) : grisé pendant un choix et pour un fichier qui ne se partage pas encore, le clic dit pourquoi.
-    const { sharing } = this.#opts;
-    const whyShare = this.#choice ? t('ex.choose.newOff') : (sharing ? sharing.whyNot(file) : t('share.unsupported'));
-    const share = whyShare ? grey(t('share.menu'), 'user', whyShare) : item(t('share.menu'), 'user', () => void sharing.open(file));
-    return [{ ...item(open.label, open.icon, () => this.#activate(file.key), t('key.enter')), greyed: open.greyed }, ...extras, share, item(file.pinned ? t('ex.unpin') : t('ex.pin'), 'pin', () => void filing.togglePin(file)),
-      item(t('ex.rename'), 'edit', () => void filing.rename(file), 'F2'), duplicate, item(t('ex.move'), 'move', () => void filing.moveFile(file), this.#choice ? undefined : 'Ctrl+X, V'),
-      '-', remove];
+    const items = rowItems({
+      t: this.#opts.i18n.t, opts: this.#opts, view: this.state.view, choice: Boolean(this.#choice), rows: this.#rows, shown: this.#shown, kept: this.#kept, bin: this.#bin, copying: this.#copying, shared: this.#shared,
+      openAs: file => this.#openAs(file),
+      act: { activate: at => this.#activate(at), deleteFolder: at => this.#deleteFolder(at), restore: at => this.#restore(at), purge: at => this.#purge(at), trashKey: at => this.#trashKey(at), duplicate: file => this.#duplicate(file) },
+    }, key);
+    if (items) openMenu(anchor, items, { host: this.root, align: 'right', label: this.#opts.i18n.t('ex.more') });
   }
 
   // ---------- la corbeille ----------

@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-w/Ar2ANvsyqDEmZSDa2o83Gqp5OQauUhHD+8ALv1+Mo='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-yh51df/4OQVptugfupolKgH4ORPEVyrGehkCfehiilg='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=e13ef00da6">
 <link rel="stylesheet" href="css/explorer.css?v=846c19fa18">
 <link rel="stylesheet" href="css/modules.css?v=b1b43f0db6">
@@ -55,10 +55,11 @@
     "./js/explorer-data.js": "./js/explorer-data.js?v=6e0afd35ed",
     "./js/explorer-drag.js": "./js/explorer-drag.js?v=6fd7796b51",
     "./js/explorer-keys.js": "./js/explorer-keys.js?v=e49be0325a",
+    "./js/explorer-menus.js": "./js/explorer-menus.js?v=b8e23dfec7",
     "./js/explorer-model.js": "./js/explorer-model.js?v=81ee393505",
     "./js/explorer-undo.js": "./js/explorer-undo.js?v=f1dd46f5c4",
     "./js/explorer-view.js": "./js/explorer-view.js?v=9307333b50",
-    "./js/explorer.js": "./js/explorer.js?v=cc5edebcc1",
+    "./js/explorer.js": "./js/explorer.js?v=806d797fcd",
     "./js/extensions.js": "./js/extensions.js?v=a6b2033702",
     "./js/file-managers.js": "./js/file-managers.js?v=67b93f78fa",
     "./js/files-store.js": "./js/files-store.js?v=07d7843e44",

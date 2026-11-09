@@ -9,6 +9,7 @@ import { SHARE_STRINGS } from './i18n-share.js';
 import { SHARE_OTHER_STRINGS } from './i18n-share-other.js';
 import { MANAGE_STRINGS } from './i18n-manage.js';
 import { RECEIVED_STRINGS } from './i18n-received.js';
+import { NOTIFICATION_STRINGS } from './i18n-notifications.js';
 
 const STRINGS = {
   fr: {
@@ -20,6 +21,7 @@ const STRINGS = {
     ...SHARE_OTHER_STRINGS.fr,
     ...MANAGE_STRINGS.fr,
     ...RECEIVED_STRINGS.fr,
+    ...NOTIFICATION_STRINGS.fr,
     'gfs.title': 'Grist Factory Suite',
     'gfs.noGrist': 'GFS doit être ajouté comme widget personnalisé dans Grist.',
     'gfs.loading': '{app} se charge…',
@@ -294,6 +296,7 @@ const STRINGS = {
     ...SHARE_OTHER_STRINGS.en,
     ...MANAGE_STRINGS.en,
     ...RECEIVED_STRINGS.en,
+    ...NOTIFICATION_STRINGS.en,
     'gfs.title': 'Grist Factory Suite',
     'gfs.noGrist': 'GFS must be added to Grist as a custom widget.',
     'gfs.loading': '{app} is loading…',

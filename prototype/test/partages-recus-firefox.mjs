@@ -4,6 +4,8 @@
 //   la vue : le nombre à accepter dans le volet, des lignes à plat (pas de dossier), les arrivées en attente grisées avec le mot « À accepter » et sans étoile, une arrivée acceptée comme un fichier, une arrivée que l'envoyeur
 //   ne partage plus gardée comme un fichier, aucune arrivée refusée, aucun texte coupé sans son texte entier au survol ; une ligne choisie change le bouton principal en « Accepter ou refuser… » ;
 //   la question : Entrée sur une ligne l'ouvre, le clavier est sur « Accepter », Tab reste dans la fenêtre, Échap ferme sans rien écrire ; le menu « ⋯ » n'offre que la réponse ;
+//   la cloche Notifications (à droite de l'en-tête) : la pastille dit le nombre à accepter (contraste 4,5:1, sans couvrir un autre bouton), son menu nomme les arrivées et tient dans 700 × 400, un clic sur une arrivée
+//   pose sa question, « Ouvrir « Partagés avec moi » » y mène, sans arrivée la ligne reste grisée et dit ce qui s'annonce ici ;
 //   « Refuser » masque la ligne et le dit, « Accepter » dégrise la ligne, les marques sont écrites sur LEUR ligne seulement ; un document en lecture seule dit pourquoi, sans fenêtre ; une vue sans arrivée n'est pas une page blanche.
 import { createI18n } from '../js/i18n.js';
 import { Run, delay, centerOfName, centerOfSelector } from './corbeille-firefox.mjs';
@@ -23,8 +25,22 @@ function state() {
     const clipped = (style.textOverflow === 'ellipsis' && node.scrollWidth > node.clientWidth + 1) || (style.getPropertyValue('-webkit-line-clamp') !== 'none' && node.scrollHeight > node.clientHeight + 1);
     return clipped && !node.closest('[title]') && !node.getAttribute('aria-label');
   }).map(node => `${node.className || node.tagName} « ${text(node).slice(0, 40)} »`);
+  const box = node => { const at = node.getBoundingClientRect(); return { l: at.left, t: at.top, r: at.right, b: at.bottom }; };
+  const channels = value => (String(value).match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+  const light = value => { const [r, g, b] = channels(value).map(v => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+  const ratio = (a, b) => { const [hi, lo] = [light(a), light(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
+  const bell = document.querySelector('.tb-bell');
+  const badge = bell && bell.querySelector('.tb-badge');
+  const menuBox = document.querySelector('.menu');
   const out = {
     cut,
+    bell: bell ? {
+      label: bell.getAttribute('aria-label'), title: bell.getAttribute('title'), disabled: bell.getAttribute('aria-disabled') === 'true', badge: badge && !badge.hidden ? text(badge) : null, box: box(bell),
+      badgeBox: badge && !badge.hidden ? box(badge) : null, badgeContrast: badge && !badge.hidden ? ratio(getComputedStyle(badge).color, getComputedStyle(badge).backgroundColor) : null,
+      others: ['.tb-group', '[aria-label][aria-haspopup="menu"]:not(.tb-bell)'].map(selector => document.querySelector(`.ex-title-row ${selector}`)).filter(Boolean).map(box),
+      grow: box(document.querySelector('.ex-title-row .grow')), page: { w: window.innerWidth, h: window.innerHeight },
+    } : null,
+    menuBox: menuBox ? box(menuBox) : null,
     rail: rail ? { label: text(rail.querySelector('.lbl')), count: text(rail.querySelector('.cnt')), current: rail.getAttribute('aria-current') === 'true', grey: rail.getAttribute('aria-disabled') === 'true' } : null,
     rows: [...document.querySelectorAll('.ls-row')].map(row => ({ name: text(row.querySelector('.t')), folder: row.classList.contains('folder'), grey: row.classList.contains('lk'), pill: text(row.querySelector('.ty .pill')), pins: row.querySelectorAll('.rb.pin').length, key: row.dataset.key })),
     selected: text(document.querySelector('.ls-row[aria-selected="true"] .t')),
@@ -96,6 +112,36 @@ export async function partagesRecusProblems(page, language, tag) {
     if (!gone || gone.grey || gone.pill !== 'PDF') run.note('la vue', `« Retiré.pdf » (l'envoyeur ne le partage plus) devait rester un fichier lisible avec son type (il est ${JSON.stringify(gone)})`);
     if (view.cut.length) run.note('la vue', `un texte coupé devait avoir son texte entier au survol : ${view.cut.slice(0, 3).join(' ; ')}`);
 
+    // La cloche : à droite, la pastille dit le nombre à accepter, le menu nomme les arrivées ; un clic sur l'une pose SA question.
+    const bell = view.bell;
+    if (!bell) run.note('la cloche', 'la cloche devait être dans l\'en-tête');
+    else {
+      const overlap = (a, b) => a.l < b.r - 1 && a.r > b.l + 1 && a.t < b.b - 1 && a.b > b.t + 1;
+      if (bell.badge !== '2' || bell.label !== t('nt.tipCount', { n: 2 })) run.note('la cloche', `la pastille devait dire 2 et le nom de la cloche « ${t('nt.tipCount', { n: 2 })} » (elle dit ${JSON.stringify([bell.badge, bell.label])})`);
+      if (bell.box.l < bell.grow.r - 1) run.note('la cloche', 'la cloche devait être à droite du titre, avec les autres boutons');
+      if (bell.others.some(other => overlap(bell.box, other) || (bell.badgeBox && overlap(bell.badgeBox, other)))) run.note('la cloche', 'la cloche et sa pastille ne devaient couvrir aucun autre bouton');
+      if (bell.badgeBox && (bell.badgeBox.r > bell.page.w || bell.badgeBox.t < 0)) run.note('la cloche', 'la pastille devait tenir dans la page');
+      if (bell.badgeContrast !== null && bell.badgeContrast < 4.5) run.note('la cloche', `le nombre de la pastille devait avoir un contraste de 4,5:1 au moins (il est de ${bell.badgeContrast.toFixed(2)})`);
+    }
+    if (await clickKey('la cloche', '.tb-bell')) {
+      const bellMenu = await expect('la cloche', 'le menu de la cloche devait s\'ouvrir', s => s.menu.length > 0);
+      const labels = bellMenu.menu.map(item => item.label);
+      const wanted = [t('nt.arrival', { name: LONG, by: 'Comptabilité' }), t('nt.arrival', { name: 'Devis.pdf', by: 'Comptabilité' }), t('nt.open')];
+      if (labels.length !== 3 || !wanted.every(label => labels.includes(label)) || labels.at(-1) !== t('nt.open')) run.note('la cloche', `le menu devait nommer les deux arrivées puis ouvrir « ${t('rx.view')} » (il dit ${JSON.stringify(labels)})`);
+      const at = bellMenu.menuBox;
+      if (!at || at.l < 0 || at.t < 0 || at.r > bellMenu.bell.page.w + 1 || at.b > bellMenu.bell.page.h + 1) run.note('la cloche', `le menu devait tenir dans la page (${JSON.stringify(at)})`);
+      await page.press('Escape');
+      await expect('la cloche', 'Échap devait fermer le menu de la cloche', s => s.menu.length === 0);
+      await clickKey('la cloche', '.tb-bell');
+      await expect('la cloche', 'le menu de la cloche devait se rouvrir', s => s.menu.length > 0);
+      await clickKey('la cloche', '.menu .menu-item:nth-child(2)');
+      const fromBell = await expect('la cloche', 'un clic sur une arrivée devait poser la question de CE fichier', s => s.modal && s.modal.focus === 'rx-accept');
+      if (fromBell.modal && ![LONG, 'Devis.pdf'].some(name => fromBell.modal.title === t('rx.answer.title', { name }))) run.note('la cloche', `la question devait nommer une des deux arrivées (« ${fromBell.modal.title} »)`);
+      await page.press('Escape');
+      const back = await expect('la cloche', 'Échap devait fermer la question', s => s.modal === null);
+      if (back.writes !== 0 || (back.bell && back.bell.badge !== '2')) run.note('la cloche', 'Échap ne devait rien écrire : les deux arrivées restent à accepter');
+    }
+
     // Une ligne choisie : le bouton principal dit la réponse ; la barre dit pourquoi la ligne est grisée.
     await clickRow('Devis.pdf');
     const chosen = await expect('la ligne choisie', 'le bouton principal devait devenir « Accepter ou refuser… »', s => s.selected === 'Devis.pdf' && s.openLabel === t('rx.answer.menu'));
@@ -128,6 +174,7 @@ export async function partagesRecusProblems(page, language, tag) {
     const refused = await expect('refuser', '« Refuser » devait fermer la question et masquer la ligne', s => s.modal === null && !names(s).includes('Devis.pdf'));
     if (refused.rail && refused.rail.count !== '1') run.note('refuser', `le nombre à accepter devait tomber à 1 (il dit ${refused.rail && refused.rail.count})`);
     if (!refused.notices.includes(t('rx.refused', { name: 'Devis.pdf' }))) run.note('refuser', `la phrase devait dire que le fichier est refusé (« ${t('rx.refused', { name: 'Devis.pdf' })} »)`);
+    if (refused.bell && refused.bell.badge !== '1') run.note('refuser', `la pastille de la cloche devait tomber à 1 (elle dit ${refused.bell && refused.bell.badge})`);
     const marksAfterRefuse = JSON.stringify(refused.marks.filter(([name]) => name === 'Devis.pdf' || name === LONG));
     if (marksAfterRefuse !== JSON.stringify([[LONG, false, false], ['Devis.pdf', false, true]])) run.note('refuser', `seule la ligne de Devis devait être marquée refusée (marques : ${marksAfterRefuse})`);
 
@@ -139,6 +186,7 @@ export async function partagesRecusProblems(page, language, tag) {
     await clickKey('accepter', '[data-fk="rx-accept"]');
     const done = await expect('accepter', '« Accepter » devait fermer la question et dégriser la ligne', s => s.modal === null && row(s, LONG) && !row(s, LONG).grey);
     if (row(done, LONG) && row(done, LONG).pill !== 'PDF') run.note('accepter', `le mot de la ligne acceptée devait être « PDF » (il est « ${row(done, LONG).pill} »)`);
+    if (done.bell && (done.bell.badge !== null || done.bell.label !== t('nt.tip'))) run.note('accepter', `plus rien à accepter : la cloche ne devait plus porter de nombre (elle dit ${JSON.stringify([done.bell.badge, done.bell.label])})`);
     if (done.rail && done.rail.count !== null) run.note('accepter', `plus rien à accepter : le volet ne devait plus porter de nombre (il dit ${done.rail.count})`);
     if (JSON.stringify(done.marks.find(([name]) => name === LONG)) !== JSON.stringify([LONG, true, false])) run.note('accepter', `la ligne devait être marquée acceptée (${JSON.stringify(done.marks.find(([name]) => name === LONG))})`);
     if (!done.notices.includes(t('rx.accepted', { name: LONG }))) run.note('accepter', 'la phrase devait dire que le fichier est accepté');
@@ -163,11 +211,24 @@ export async function partagesRecusProblems(page, language, tag) {
     await clickKey('Moi', '.tr-row[data-path=""]');
     const me = await expect('Moi', '« Moi » devait être la vue courante', s => s.crumbs && !s.crumbs.includes(t('rx.view')));
     if (me.rows.some(each => each.name === 'Devis.pdf' || each.name === LONG)) run.note('Moi', 'les arrivées d\'un autre document ne devaient pas être dans « Moi »');
+    if (await clickKey('la cloche', '.tb-bell')) {
+      await expect('la cloche', 'le menu de la cloche devait s\'ouvrir depuis « Moi »', s => s.menu.length > 0);
+      await clickKey('la cloche', '.menu .menu-item:last-child');
+      const toShared = await expect('la cloche', '« Ouvrir « Partagés avec moi » » devait mener à la vue', s => s.crumbs && s.crumbs.includes(t('rx.view')));
+      if (toShared.rail && !toShared.rail.current) run.note('la cloche', 'la vue « Partagés avec moi » devait être la vue courante');
+    }
     await run.reset();
     await page.run(() => window.__shared('vide'));
     const empty = await expect('vue vide', 'une vue sans arrivée devait dire quoi faire', s => s.empty === t('rx.empty'));
     if (empty.rows.length) run.note('vue vide', 'aucune ligne ne devait y être');
     if (empty.rail && empty.rail.count !== null) run.note('vue vide', 'le volet ne devait porter aucun nombre');
+    if (!empty.bell || empty.bell.badge !== null || empty.bell.label !== t('nt.tip')) run.note('vue vide', `la cloche devait rester là, sans nombre (${JSON.stringify(empty.bell && [empty.bell.badge, empty.bell.label])})`);
+    if (await clickKey('la cloche', '.tb-bell')) {
+      const none = await expect('la cloche', 'le menu devait s\'ouvrir sans arrivée', s => s.menu.length > 0);
+      if (none.menu[0].label !== t('nt.none') || none.menu.at(-1).label !== t('nt.open')) run.note('la cloche', `sans arrivée, le menu devait dire « ${t('nt.none')} » et garder « ${t('nt.open')} » (${JSON.stringify(none.menu)})`);
+      await clickKey('la cloche', '.menu .menu-item');
+      await expect('la cloche', 'la ligne grisée devait dire ce qui s\'annonce ici', s => s.notices.includes(t('nt.noneWhy')));
+    }
   } catch (error) {
     run.note('geste impossible', String(error.message).slice(0, 200));
     await page.press('Escape').catch(() => {});

@@ -29,6 +29,7 @@ const text = async (frame, selector) => (await frame.locator(selector).innerText
 const rail = frame => frame.locator('.tr-row', { hasText: t('rx.view') });
 const badge = async frame => ((await rail(frame).locator('.cnt').count()) ? (await rail(frame).locator('.cnt').innerText()).trim() : '');
 const pill = (frame, name) => rowOf(frame, name).locator('.ty .pill').innerText();
+const bellBadge = async frame => ((await frame.locator('.tb-bell .tb-badge').isVisible()) ? (await frame.locator('.tb-bell .tb-badge').innerText()).trim() : '');
 const greyed = async (frame, name) => (await rowOf(frame, name).getAttribute('class')).split(' ').includes('lk');
 
 const server = await requireServer();
@@ -72,6 +73,19 @@ try {
   const weak = [...await contrastProblems(frame, '.ex-body'), ...await contrastProblems(frame, '.ex-info')]; // le pied (Ouvrir, Fermer) est grisé par construction tant qu'aucune app n'est ouverte : ce n'est pas la vue
   check('la liste tient dans le panneau (sans défilement horizontal), contraste de 4,5:1', noOverflow && weak.length === 0, { noOverflow, weak });
   await shot(frame, '1-a-accepter');
+  const bellLabel = await frame.locator('.tb-bell').getAttribute('aria-label');
+  check('la cloche Notifications porte le nombre à accepter (2), dit aussi à la voix', (await bellBadge(frame)) === '2' && bellLabel === t('nt.tipCount', { n: 2 }), { badge: await bellBadge(frame), bellLabel });
+  await frame.locator('.tb-bell').click();
+  const bellItems = (await frame.locator('.menu .menu-item .menu-label').allInnerTexts()).map(item => item.trim());
+  check('le menu de la cloche nomme les deux arrivées, puis ouvre « Partagés avec moi »', bellItems.length === 3 && bellItems.some(item => item.includes('Facture.pdf')) && bellItems.some(item => item.includes('Devis.pdf')) && bellItems.at(-1) === t('nt.open'), bellItems);
+  const menuIn = await frame.evaluate(() => { const at = document.querySelector('.menu').getBoundingClientRect(); return at.left >= 0 && at.top >= 0 && at.right <= window.innerWidth && at.bottom <= window.innerHeight; });
+  check('le menu de la cloche tient dans le panneau, contraste de 4,5:1', menuIn && (await contrastProblems(frame, '.menu')).length === 0, { menuIn, weak: await contrastProblems(frame, '.menu') });
+  await shot(frame, '1-cloche');
+  await frame.locator('.menu .menu-item', { hasText: 'Devis.pdf' }).click();
+  await frame.locator('.mod.so').waitFor();
+  check('un clic sur une arrivée, dans la cloche, pose la question de CE fichier', (await text(frame, '.mod.so')).includes(t('rx.answer.title', { name: 'Devis.pdf' })), await text(frame, '.mod.so'));
+  await page.keyboard.press('Escape');
+  await frame.locator('.mod.so').waitFor({ state: 'detached' });
   await goTo(frame, new RegExp(`^${t('ex.me')}`));
   check('ni « Moi » ni « Récents » ne montrent les arrivées (nulle app ne les voit non plus)', (await names(frame)).length === 0, await names(frame));
   await goTo(frame, new RegExp(t('ex.recent')));
@@ -103,6 +117,7 @@ try {
   await frame.waitForFunction(() => document.querySelector('.ls-row:not(.lk) .nm .t'), null, { timeout: 15000 });
   check('« Facture.pdf » n\'est plus grisée, son mot est « PDF », le nombre baisse', !(await greyed(frame, 'Facture.pdf')) && (await pill(frame, 'Facture.pdf')) === 'PDF' && (await badge(frame)) === '1', { grey: await greyed(frame, 'Facture.pdf'), pill: await pill(frame, 'Facture.pdf'), badge: await badge(frame) });
   check('la phrase le dit', (await toast(frame)).includes(t('rx.accepted', { name: 'Facture.pdf' })), await toast(frame));
+  check('la cloche suit : une arrivée reste à accepter', (await bellBadge(frame)) === '1', await bellBadge(frame));
   await shot(frame, '3-accepte');
   await rowOf(frame, 'Devis.pdf').click();
   await frame.getByRole('button', { name: t('rx.answer.menu') }).click();
@@ -111,6 +126,7 @@ try {
   await frame.locator('.mod.so').waitFor({ state: 'detached' });
   await waitForNames(frame, ['Facture.pdf']);
   check('« Devis.pdf » refusé n\'est plus montré, le nombre est vide', JSON.stringify(await names(frame)) === '["Facture.pdf"]' && (await badge(frame)) === '', { names: await names(frame), badge: await badge(frame) });
+  check('la cloche reste là sans nombre quand plus rien n\'attend', (await bellBadge(frame)) === '' && (await frame.locator('.tb-bell').getAttribute('aria-label')) === t('nt.tip'), await frame.locator('.tb-bell').getAttribute('aria-label'));
   const marked = await target.rest.rows('GFS_Recus');
   const row = name => marked.find(each => each.Nom === name);
   check('les marques sont sur leurs lignes (Facture acceptée, Devis refusé), les deux lignes sont là', marked.length === 2 && row('Facture.pdf').Accepte === true && row('Facture.pdf').Refuse === false && row('Devis.pdf').Refuse === true && row('Devis.pdf').Accepte === false, marked.map(each => [each.Nom, each.Accepte, each.Refuse]));

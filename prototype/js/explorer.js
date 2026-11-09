@@ -9,7 +9,7 @@ import { icon } from './icons.js';
 import { listItems, treeRows, typeChoices } from './explorer-model.js';
 import { shownReceived, pendingOf, NO_RECEIVED } from './received-files.js';
 import { words } from './search.js';
-import { buildShell, relabel, rightsChip, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar, trashBar, totalBar, pjBox } from './explorer-view.js';
+import { buildShell, relabel, paintBell, rightsChip, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar, trashBar, totalBar, pjBox } from './explorer-view.js';
 import { sumWeights, pieceKeys, otherAttachments } from './weight.js';
 import { listAction, moveTarget, isSearchKey, clipboardAction, parentPath } from './explorer-keys.js';
 import { UndoStack } from './undo-stack.js';
@@ -17,6 +17,7 @@ import { undoable } from './explorer-undo.js';
 import { Clipboard } from './explorer-clipboard.js';
 import { Dragging } from './explorer-drag.js';
 import { rowItems } from './explorer-menus.js';
+import { notificationItems } from './notifications.js';
 import { openMenu, closeMenu, menuIsOpen } from './menu.js';
 
 // Sans fichiers que GFS garde lui-même (les essais de l'explorateur seul) : aucun fichier n'est de ceux-là.
@@ -239,6 +240,7 @@ export class Explorer {
     const choice = state.type === 'all' ? null : this.#types().find(item => item.value === state.type);
     typeBtn.replaceChildren(...(choice ? [h('span', { class: 'tyi', 'data-fam': choice.known ? choice.family : null }, icon(choice.icon))] : []), choice ? choice.label : t('ex.allTypes'), icon('chev-down'));
     closeBtn.setAttribute('aria-disabled', String(!this.#choice && !this.#opts.canClose()));
+    paintBell(this.#refs, t, pendingOf(this.#arrivals).length, this.#choice !== null);
   }
 
   #renderCrumbs() { this.#refs.crumbs.replaceChildren(...crumbs(this.#ctx())); }
@@ -384,6 +386,7 @@ export class Explorer {
     search.addEventListener('input', () => { this.state.q = search.value; this.state.sel = null; this.#renderCrumbs(); this.#renderList(); });
     appsBtn.addEventListener('click', () => this.#opts.onApps());
     settingsBtn.addEventListener('click', () => this.#settingsMenu());
+    this.#refs.bellBtn.addEventListener('click', () => this.#bellMenu());
     rightsBtn.addEventListener('click', () => this.#opts.onRights());
     this.#refs.total.addEventListener('click', () => this.#openWeight());
     pjInput.addEventListener('click', event => this.#onPj(event));
@@ -621,6 +624,14 @@ export class Explorer {
   }
 
   #setType(value) { this.state.type = value; this.state.sel = null; this.render(); }
+
+  // La cloche : les arrivées qui attendent une réponse (js/notifications.js) ; pendant un choix, elle est grisée et le clic le dit.
+  #bellMenu() {
+    const { t } = this.#opts.i18n;
+    if (this.#choice) { this.#opts.notice(t('ex.choose.newOff')); return; }
+    const x = { t, pending: pendingOf(this.#arrivals), notice: this.#opts.notice, ask: file => this.#shared.activate(file), openShared: () => this.#goView('shared') };
+    openMenu(this.#refs.bellBtn, notificationItems(x), { host: this.root, align: 'right', label: t('nt.menu') });
+  }
 
   // Le menu « Réglages » : ses articles sont ceux du contrôleur (js/settings-menu.js : la langue, le thème, la position de la barre, « À propos »). Le choix d'une langue est rendu au contrôleur, qui le
   // retient et le fait suivre aux apps.

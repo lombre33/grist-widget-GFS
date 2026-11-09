@@ -46,7 +46,19 @@ try {
   const files = await source.rest.rows('GFS_Fichiers');
   const idOf = name => files.find(row => row.Nom === name).Identifiant;
   const first = await handshake(source, target, { name: 'Lot', ids: [idOf('Facture.pdf'), idOf('Devis.pdf')], columns: COLUMNS, options: { archive: true } });
+  // Un document dont les règles d'accès viennent de changer (les tables techniques du partage, réservées aux propriétaires : faits vérifiés 76) fait recharger sa page : le cadre de l'essai est perdu, il est rouvert et le moteur y est remis.
+  const alive = async run => {
+    try { await run.frame.evaluate(() => true); } catch (error) {
+      const lost = run.problems;
+      await run.page.close().catch(() => {});
+      Object.assign(run, await openGfs(context, { lang, path: run.path }));
+      run.problems.unshift(...lost);
+      await startEngine(run.frame);
+    }
+  };
   const pass = async () => {
+    await alive(source);
+    await alive(target);
     await source.frame.evaluate(() => window.__try(() => window.__s.catchUp()));
     await target.frame.evaluate(() => window.__try(() => window.__s.consolidateAll({ reread: true })));
     return target.rest.rows('GFS_Recus');
@@ -147,6 +159,7 @@ try {
   check('« Facture v2.pdf » reste acceptée (ni grisée ni comptée), « Devis v2.pdf » ne revient pas, aucun doublon', JSON.stringify(await names(frame)) === '["Facture v2.pdf"]' && !(await greyed(frame, 'Facture v2.pdf')) && (await badge(frame)) === '' && (await target.rest.rows('GFS_Recus')).length === 2, { names: await names(frame), badge: await badge(frame) });
 
   say('--- 5. un fichier de plus : lui seul est à accepter ---');
+  await alive(source);
   await importPdf(source.page, source.frame, pdfFile('Contrat.pdf', 2, 'Contrat').file);
   await waitForNames(source.frame, ['Contrat.pdf', 'Devis v2.pdf', 'Facture v2.pdf'].sort((a, b) => a.localeCompare(b)));
   const contract = (await source.rest.rows('GFS_Fichiers')).find(each => each.Nom === 'Contrat.pdf').Identifiant;
@@ -163,6 +176,7 @@ try {
 
   say('--- 5b. un fichier arrive PENDANT que l\'explorateur est ouvert ---');
   // La boucle qui reçoit tourne dans la page ouverte (js/sync-service.js) : on ne passe plus par `pass()`, seule la page recopie, et la liste doit se mettre à jour sans être rouverte.
+  await alive(source);
   await importPdf(source.page, source.frame, pdfFile('Avenant.pdf', 1, 'Avenant').file);
   await waitForNames(source.frame, ['Avenant.pdf', 'Contrat.pdf', 'Devis v2.pdf', 'Facture v2.pdf'].sort((a, b) => a.localeCompare(b)));
   const amendment = (await source.rest.rows('GFS_Fichiers')).find(each => each.Nom === 'Avenant.pdf').Identifiant;
@@ -171,6 +185,7 @@ try {
     return window.__s.finishEdit(args.exp, { name: args.exp.name, changed: done.changed });
   }), { exp: first.exp, selection: first.selection([idOf('Facture.pdf'), idOf('Devis.pdf'), contract, amendment]) });
   for (let i = 0; i < 45 && !(await names(frame)).includes('Avenant.pdf'); i += 1) {
+    await alive(source);
     await source.frame.evaluate(() => window.__try(() => window.__s.catchUp()));
     await page.waitForTimeout(3000);
   }

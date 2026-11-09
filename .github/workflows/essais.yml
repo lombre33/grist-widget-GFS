@@ -1,0 +1,32 @@
+# Le contrôle au push (audit du code du 09/11, choix du porteur) : les essais de `prototype/` (npm test) à chaque envoi sur `main` et à chaque demande de fusion.
+# Ils comptent l'essai d'hygiène (test/hygiene.test.mjs : les seuils de l'outil d'audit, pas de console.log ni de onmessage =, aucun prénom). Les sous-modules (le kit, les apps) sont récupérés : des essais lisent leurs manifestes.
+# Les essais qui demandent un vrai serveur Grist (labo/run-*.mjs, Docker) ne sont pas dans `npm test` : ils se jouent à la main, comme avant.
+name: Essais
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  essais:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: prototype/package-lock.json
+      - name: Installer les dépendances d'essai (esbuild, grain-rpc, acorn)
+        run: npm ci --ignore-scripts
+        working-directory: prototype
+      - name: Jouer les essais
+        run: npm test
+        working-directory: prototype

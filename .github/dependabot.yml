@@ -1,0 +1,13 @@
+# Les mises à jour proposées (audit du code du 09/11, choix du porteur). Une proposition = une demande de fusion à relire ; rien n'avance seul.
+# - npm : les outils d'essai de `prototype/` (esbuild, grain-rpc, acorn) ; versions exactes dans package.json, le fichier de verrouillage fait foi.
+# - gitsubmodule : la référence du kit et celle de chaque app ; avancer une référence est un commit à part, relu (CLAUDE.md, « Git et publication »).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /prototype
+    schedule:
+      interval: weekly
+  - package-ecosystem: gitsubmodule
+    directory: /
+    schedule:
+      interval: weekly

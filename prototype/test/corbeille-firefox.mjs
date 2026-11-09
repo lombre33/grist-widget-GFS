@@ -29,7 +29,16 @@ export function snapshot() {
     const inPage = box.left >= 0 && box.top >= 0 && box.right <= window.innerWidth && box.bottom <= window.innerHeight;
     return inPage && outside.length === 0 ? [] : [inPage ? 'dans la page' : 'hors de la page', ...outside];
   };
+  // Un texte coupé (points de suspension, ou lignes limitées) a son texte entier au survol (charte) : la liste de ceux qui n'ont pas de `title`, vide quand tout va bien. Les en-têtes de colonne tiennent sur une ligne.
+  const cut = [...document.querySelectorAll('.ex *')].filter(node => {
+    const style = getComputedStyle(node);
+    const clipped = (style.textOverflow === 'ellipsis' && node.scrollWidth > node.clientWidth + 1) || (style.getPropertyValue('-webkit-line-clamp') !== 'none' && node.scrollHeight > node.clientHeight + 1);
+    return clipped && !node.closest('[title]') && !node.getAttribute('aria-label');
+  }).map(node => `${node.className || node.tagName} « ${text(node).slice(0, 40)} »`);
   return {
+    cut,
+    headHeights: [...document.querySelectorAll('.ls-head .hd')].map(node => Math.round(node.getBoundingClientRect().height)),
+    headOverlap: [...document.querySelectorAll('.ls-head .hd')].map(node => node.getBoundingClientRect()).some((box, at, boxes) => at > 0 && box.width > 0 && boxes[at - 1].width > 0 && box.left < boxes[at - 1].right - 0.5),
     rows: [...document.querySelectorAll('.ls-row')].map(row => ({ name: text(row.querySelector('.t')), folder: row.classList.contains('folder') })),
     tiles: tiles.map(tile => text(tile.querySelector('.tn'))),
     perRow: tiles.length ? tiles.filter(tile => tile.offsetTop === tiles[0].offsetTop).length : 0,
@@ -122,6 +131,7 @@ export const names = state => state.rows.map(row => row.name);
 async function opening(run) {
   await run.reset();
   const start = await run.snap();
+  if (start.cut.length) run.note('texte coupé sans info-bulle', `des textes de la liste sont coupés sans leur texte entier au survol : ${start.cut.slice(0, 3).join(' ; ')}`);
   if (start.focus !== 'Formation' || start.selected !== null) run.note('le clavier à l\'ouverture', `le clavier devait être sur la première ligne, sans rien de choisi (focus ${start.focus}, choisi ${start.selected})`);
   await run.page.press('Enter');
   await run.expect('Entrée sur la première ligne', 'Entrée devait ouvrir le dossier « Formation » avant tout autre geste', state => names(state).join('|') === 'Contrat de prestation|Support de session');
@@ -156,6 +166,9 @@ async function trashView(run, t) {
   await run.clickSelector('.tr-row[data-view="trash"]');
   const view = await run.expect('vue « Corbeille »', 'la vue « Corbeille » devait lister « Convocation », avec sa barre et un bouton « Restaurer » grisé', state => names(state).join() === 'Convocation' && state.bar === t('trash.bar')
     && state.barButton === t('trash.empty') && state.openLabel === t('trash.restore') && state.openDisabled === 'true' && state.crumbs.includes(t('trash.view')));
+  if (view.cut.length) run.note('texte coupé sans info-bulle', `à la corbeille, des textes sont coupés sans leur texte entier au survol : ${view.cut.slice(0, 3).join(' ; ')}`);
+  if (view.headHeights.some(height => height > 24)) run.note('en-tête sur deux lignes', `un en-tête de colonne de la corbeille passe sur deux lignes (hauteurs ${view.headHeights.join(', ')} px)`);
+  if (view.headOverlap) run.note('en-têtes qui se recouvrent', 'deux en-têtes de colonne de la corbeille se recouvrent (« Supprimé » déborde sur la colonne voisine)');
   if (!view.head.includes(t('trash.deleted'))) run.note('colonne de date', `la colonne de date devait dire « ${t('trash.deleted')} » (${view.head.join(', ')})`);
   if (view.restoreButtons !== 1 || view.pinButtons !== 0) run.note('bouton de ligne', `la ligne devait porter « Restaurer » et pas d'étoile (${view.restoreButtons} restaurer, ${view.pinButtons} étoile)`);
   await run.click('Convocation');
@@ -251,6 +264,7 @@ async function tiles(run) {
   await run.reset();
   await run.clickSelector('.tb-group .tb:nth-child(2)');
   const first = await run.expect('vignettes', 'la vue en vignettes devait s\'afficher', state => state.tiles.length > 5);
+  if (first.cut.length) run.note('texte coupé sans info-bulle', `des vignettes ont un nom coupé sans son texte entier au survol : ${first.cut.slice(0, 3).join(' ; ')}`);
   if (first.perRow < 2) { run.note('vignettes', `moins de deux vignettes par rangée (${first.perRow}) : ↓ ne se mesure pas`); return; }
   await run.click(first.tiles[0]);
   await run.page.press('ArrowDown');

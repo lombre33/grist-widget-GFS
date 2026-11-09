@@ -1,5 +1,5 @@
 /* La fenêtre « Poids du document » (js/weight-window.js ; lot 4 du poids). Sur la base commune des fenêtres (css/modules.css) : le titre et le bouton restent en place, le contenu défile. */
-.mod.wd { width: min(560px, 100%); }
+.mod.wd { width: min(var(--win-l), 100%); }
 .wd-body { padding: 10px 16px 12px; }
 .wd-content > * + * { margin-top: 12px; }
 .wd-lead { margin: 0; }

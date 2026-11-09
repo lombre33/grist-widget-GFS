@@ -42,7 +42,7 @@ export function buildWeightView({ t, locale, estimate }) {
     const nodes = state.tables.map(row => {
       let node = rowNodes.get(row.name);
       if (!node) {
-        node = { li: h('li', { class: 'wd-row' }), name: h('span', { class: 'wd-name' }, row.name), bar: h('i'), value: h('span', { class: 'wd-num' }) };
+        node = { li: h('li', { class: 'wd-row' }), name: h('span', { class: 'wd-name', title: row.name }, row.name), bar: h('i'), value: h('span', { class: 'wd-num' }) };
         node.li.append(node.name, h('span', { class: 'wd-bar', 'aria-hidden': 'true' }, node.bar), node.value);
         rowNodes.set(row.name, node);
       }

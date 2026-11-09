@@ -9,6 +9,7 @@ import { openMenu } from './menu.js';
 import { words, normalize, matchesWords } from './search.js';
 import { CATEGORIES, GROUP_PREFIX, isGroup, shareRecord } from './sharing-model.js';
 import { otherTab } from './share-other-tab.js';
+import { replaceKeepingFocus, tabList } from './tabs.js';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Les cinq droits de la maquette ; « commentaire » et « dépôt seul » attendent leurs tables (grisés, avec la raison), un droit d'administration ne se donne pas à une catégorie.
@@ -104,11 +105,7 @@ function suggestionList(ctx, found) {
 // Les deux onglets (« Dans ce document », « Dans un autre document Grist »), quand l'autre document est possible.
 function tabsBar(ctx) {
   const { t } = ctx;
-  return h('div', { class: 'mg-tabs', role: 'tablist', 'aria-label': t('share.sec.access') }, ...['here', 'other'].map(key => {
-    const tab = h('button', { type: 'button', role: 'tab', class: 'mg-tab', 'aria-selected': String(ctx.tab === key), dataset: { fk: `share-tab-${key}` } }, t(`share.tab.${key}`));
-    tab.addEventListener('click', () => ctx.goTab(key));
-    return tab;
-  }));
+  return tabList({ keys: ['here', 'other'], selected: ctx.tab, label: t('share.sec.access'), prefix: 'share', text: key => t(`share.tab.${key}`), onSelect: key => void ctx.goTab(key) });
 }
 
 // La zone d'ajout : un champ, et sa liste qui se redessine à chaque touche.
@@ -196,7 +193,7 @@ export function openShare(opts) {
     if (!dialog.isConnected || !ctx.state) return;
     const content = ctx.other && ctx.tab === 'other' ? otherTab(ctx) : shareBody(ctx);
     if (ctx.other) content.prepend(tabsBar(ctx));
-    body.replaceChildren(content);
+    replaceKeepingFocus(body, content);
     // Après le choix d'une personne, le formulaire est sous les yeux : le clavier est sur le droit, et « Ajouter » (en bas du formulaire) se montre, même sur un petit panneau.
     const form = body.querySelector('.sg-new');
     if (form) { body.querySelector('[data-fk="share-new-level"]').focus({ preventScroll: true }); body.querySelector('.sg-actions').scrollIntoView({ block: 'nearest' }); }
@@ -235,8 +232,11 @@ export function openShare(opts) {
   manage.addEventListener('click', async () => {
     if (!opts.onManage) return;
     if (!ctx.state || ctx.state.owner !== true) { ctx.say(t('manage.other')); return; }
-    await opts.onManage();
-    if (dialog.isConnected) await reload();
+    // « Gérer les partages » prend la place de cette fenêtre (une seule fenêtre à lire, un seul voile) et la rend, avec le clavier sur son bouton, à sa fermeture.
+    const veil = dialog.closest('.mod-scrim');
+    if (veil) veil.classList.add('is-under');
+    try { await opts.onManage(); } finally { if (veil) veil.classList.remove('is-under'); }
+    if (dialog.isConnected) { manage.focus({ preventScroll: true }); await reload(); }
   });
   void reload();
   return result;

@@ -1,7 +1,7 @@
 /* Le panneau « Permissions » (js/rights-window.js) et son mot dans le pied de l'explorateur : tout par les jetons de gfs.css, jamais une couleur en dur. L'état se dit par un mot et une icône, jamais par
    la couleur seule. La même base que les autres fenêtres (modules.css) : le titre et le pied restent en place, seul le contenu défile. */
 
-.mod.rt { width: min(620px, 100%); }
+.mod.rt { width: min(var(--win-l), 100%); }
 .rt-body { padding: 10px 16px 12px; }
 .rt-content > * + * { margin-top: 12px; }
 .rt-lead { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-sunken); }

@@ -30,7 +30,7 @@
    qui ne lit pas ces jetons garde sa forme et prend les couleurs (contrats 5.2, point 10). */
 :root, .amb-mini {
   --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --radius-xs: 5px; --radius-sm: 7px; --radius-md: 8px; --radius-lg: 10px; --radius-pill: 10px; --radius-btn: var(--radius-sm); --radius-input: var(--radius-sm); --radius-panel: 0px;
+  --radius-xs: 5px; --radius-sm: 7px; --radius-md: 8px; --radius-lg: 8px; --radius-pill: 10px; --radius-btn: var(--radius-sm); --radius-input: var(--radius-sm); --radius-panel: 0px;
   --bw: 1px; --divider-w: 1px; --divider: var(--border-strong); --bar-w: 3px;
   --shadow-ctl: none; --shadow-panel: none;
   --font-head: var(--font-ui); --fw-head: 700; --fs-head: 15px; --tt-head: none; --ls-head: normal;

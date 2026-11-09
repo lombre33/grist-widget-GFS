@@ -8,6 +8,7 @@ import { openModal } from './modal.js';
 import { openMenu } from './menu.js';
 import { CATEGORIES } from './sharing-model.js';
 import { otherManageTab } from './manage-other-tab.js';
+import { replaceKeepingFocus, tabList } from './tabs.js';
 
 const TABS = Object.freeze(['options', 'groups', 'spaces', 'cats', 'other']);
 const CATS = Object.freeze([{ who: CATEGORIES.editeurs, key: 'editeurs', glyph: 'edit' }, { who: CATEGORIES.tous, key: 'tous', glyph: 'globe' }]);
@@ -132,13 +133,9 @@ function catsTab(ctx) {
 export function manageBody(ctx) {
   const { t, state } = ctx;
   if (state.owner !== true) return lead(t, state.owner === false ? 'manage.other' : 'manage.unknown');
-  const tabs = h('div', { class: 'mg-tabs', role: 'tablist', 'aria-label': t('manage.title') }, ...TABS.map(key => {
-    const tab = h('button', { type: 'button', role: 'tab', class: 'mg-tab', 'aria-selected': String(ctx.tab === key), dataset: { fk: `manage-tab-${key}` } }, t(`manage.tab.${key}`));
-    tab.addEventListener('click', () => ctx.go(key));
-    return tab;
-  }));
+  const tabs = tabList({ keys: TABS, selected: ctx.tab, label: t('manage.title'), prefix: 'manage', text: key => t(`manage.tab.${key}`), onSelect: key => ctx.go(key) });
   const panel = { options: optionsTab, groups: groupsTab, spaces: spacesTab, cats: catsTab, other: otherManageTab }[ctx.tab](ctx);
-  return h('div', { class: 'rt-content' }, tabs, h('div', { class: 'mg-panel', role: 'tabpanel' }, panel));
+  return h('div', { class: 'rt-content' }, tabs, h('div', { class: 'mg-panel', role: 'tabpanel', 'aria-labelledby': `manage-tab-${ctx.tab}` }, panel));
 }
 
 // opts : { container, t, inertTargets, load() → état, onAddGroup(state, { name, people }), onUpdateGroup(id, people), onRemoveGroup(id), onReadTable(state), onRoot(state, who, right), onStructure(), onConfirmRemove(name),
@@ -153,7 +150,7 @@ export function openManage(opts) {
   const { done, result } = openModal({ container, section: dialog, inertTargets: opts.inertTargets, first: close, cancel: null });
   close.addEventListener('click', () => done(null));
   const ctx = { t, container, state: null, tab: 'options', editing: null, space: null, links: null, say: text => { status.textContent = text; } };
-  const draw = () => { if (dialog.isConnected && ctx.state) body.replaceChildren(manageBody(ctx)); };
+  const draw = () => { if (dialog.isConnected && ctx.state) replaceKeepingFocus(body, manageBody(ctx)); };
   const reload = async () => {
     try { ctx.state = await opts.load(); draw(); } catch (error) { if (dialog.isConnected) body.replaceChildren(h('p', { class: 'rt-none' }, t('manage.unreadable'))); }
   };

@@ -87,7 +87,7 @@ button { cursor: pointer; }
    modifié : « Today 07:59 »). Le poids est aligné à droite (chiffres de même largeur : les unités s'alignent en colonne). */
 .ls-head, .ls-row { display: grid; grid-template-columns: minmax(0, 1fr) 102px 56px 74px 32px 52px; align-items: center; column-gap: 8px; padding: 0 8px; }
 .ls-head { position: sticky; top: 0; z-index: 2; height: 26px; background: var(--surface-sunken); border-bottom: 1px solid var(--border-strong); }
-.ls-head .hd { justify-self: start; border: 0; background: transparent; padding: 2px 4px; margin-left: -4px; border-radius: var(--radius-xs); font-family: var(--font-label); font-size: 11px; font-weight: 700;
+.ls-head .hd { white-space: nowrap; justify-self: start; border: 0; background: transparent; padding: 2px 4px; margin-left: -4px; border-radius: var(--radius-xs); font-family: var(--font-label); font-size: 11px; font-weight: 700;
   letter-spacing: var(--ls-label); text-transform: var(--tt-label); color: var(--text-muted); }
 .ls-head .hd:hover { color: var(--text); background: var(--surface); }
 .ls-head .hd[data-sort="poids"] { justify-self: end; margin-left: 0; margin-right: -4px; }

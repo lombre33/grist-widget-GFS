@@ -3,7 +3,11 @@
    (jeton à 4,5:1), son cadenas et sa raison. Les couleurs de l'état (vert « Actif », ambre « manque ») ne servent qu'à l'état, avec un mot et une icône. */
 
 .mod-scrim { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 12px; background: var(--scrim); }
-.mod { display: flex; flex-direction: column; width: min(640px, 100%); max-height: 100%; overflow: hidden; background: var(--surface); color: var(--text);
+/* Une fenêtre posée par-dessus une autre (« Gérer les partages » depuis « Partager ») cache celle du dessous, voile compris : un seul voile, une seule fenêtre à lire. */
+.mod-scrim.is-under { visibility: hidden; }
+/* Les trois largeurs de la charte (section 1, « une nouvelle fenêtre choisit l'une des trois ») : 400 px (question, saisie), 480 px (formulaire), grande (liste ou tableau : 960 px plafonnés au panneau). */
+:root { --win-s: 400px; --win-m: 480px; --win-l: 960px; }
+.mod { display: flex; flex-direction: column; width: min(var(--win-l), 100%); max-height: 100%; overflow: hidden; background: var(--surface); color: var(--text);
   border: var(--bw) solid var(--border-strong); border-radius: var(--radius-lg); box-shadow: var(--shadow-float); font-family: var(--font-ui); font-size: 13px; line-height: 1.35; }
 
 .mod-head { flex: none; padding: 12px 16px 8px; border-bottom: 1px solid var(--border); }
@@ -17,7 +21,7 @@
 .mod-note { flex: 1; min-width: 0; margin: 0; font-size: 12px; color: var(--text-muted); }
 
 /* La question posée par-dessus (ask-window.js, la création de la table du document) : la même base, plus étroite, les boutons à droite. */
-.mod.ask { width: min(420px, 100%); }
+.mod.ask { width: min(var(--win-s), 100%); }
 .ask-body { flex: 0 1 auto; min-height: 0; overflow-y: auto; padding: 12px 16px; }
 .ask-body p { margin: 0; }
 .ask-items { margin: 8px 0 0; padding-left: 18px; }
@@ -75,7 +79,7 @@
 .rd-hint { font-size: 11.5px; color: var(--text-muted); }
 
 /* ---------- la fenêtre « Table de travail » (contrats 4.5) : la recherche reste en haut, seule la liste défile ---------- */
-.mod.wk { width: min(480px, 100%); height: 100%; }
+.mod.wk { width: min(var(--win-m), 100%); height: 100%; }
 .wk-title-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .wk-title-row h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wk-back { flex: none; display: inline-flex; align-items: center; gap: 2px; }
@@ -100,7 +104,7 @@
 .wk-item.is-fresh .ic { color: var(--accent-ink); }
 
 /* ---------- la fenêtre « Thème » (décision du 03/11) : cinq vignettes, la couleur d'accent, la mesure du contraste ---------- */
-.mod.th-win { width: min(640px, 100%); }
+.mod.th-win { width: min(var(--win-l), 100%); }
 .th-body { display: flex; flex-direction: column; gap: 6px; padding: 6px 14px; }
 .th-set { margin: 0; padding: 0; border: 0; min-width: 0; }
 /* La grille des vignettes de la fenêtre a son propre nom (`amb-grid`) : `th-grid` est la grille de la vue en vignettes de l'explorateur, et cette feuille, chargée après celle de la liste, lui imposait cinq
@@ -162,7 +166,7 @@
 .th-adj { color: var(--text-muted); }
 
 /* La fenêtre « Couleur personnalisée » (js/theme-color.js), posée par-dessus la fenêtre « Thème » : le carré, la teinte, l'aperçu et les champs sont ceux du kit (kit/css/color-picker.css), qui demandent 440 px. */
-.mod.th-edit { width: min(480px, 100%); }
+.mod.th-edit { width: min(var(--win-m), 100%); }
 .th-edit-body { padding: 10px 14px; }
 
 /* ---------- étroit : l'état et le geste passent sous le texte ---------- */

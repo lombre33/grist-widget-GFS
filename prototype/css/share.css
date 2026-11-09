@@ -1,6 +1,10 @@
 /* La fenêtre « Partager » (js/share-window.js ; maquette du 06/11) : tout par les jetons de gfs.css, jamais une couleur en dur. La même base que les autres fenêtres (modules.css) : le titre et le pied restent
    en place, seul le contenu défile. Un droit grisé garde son texte à 4,5:1 (jeton), son cadenas et sa raison. */
-.mod.sh { width: min(560px, 100%); }
+.mod.sh { width: min(var(--win-l), 100%); }
+/* « Gérer les partages » garde la même hauteur à chaque onglet (le titre ne saute plus) : celle du panneau, plafonnée ; le contenu défile dans le corps. */
+.mod.mg { height: min(100%, 440px); }
+/* « Envoyer à un autre document » et « Recevoir » sont des formulaires : la largeur de formulaire de la charte. */
+.mod.sh.so { width: min(var(--win-m), 100%); }
 .sh-body { padding: 8px 16px 12px; }
 .sh .field { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border: var(--bw) solid var(--border-strong); border-radius: var(--radius-input); background: var(--surface); }
 .sh .field:focus-within { border-color: var(--accent); }

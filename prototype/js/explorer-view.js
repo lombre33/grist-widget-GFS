@@ -150,7 +150,7 @@ function fileCells(ctx, file, flat) {
   const name = file.name || t('ex.untitled');
   const pinTitle = file.pinned ? t('ex.unpin') : t('ex.pin');
   return [
-    h('div', { class: 'nm', role: 'gridcell' }, icon(lock ? 'lock' : file.icon), h('span', { class: 't' }, name),
+    h('div', { class: 'nm', role: 'gridcell' }, icon(lock ? 'lock' : file.icon), h('span', { class: 't', title: lock ? `${name} · ${lock.text}` : name }, name),
       flat && file.folder ? h('span', { class: 'hint' }, file.folder.split('/').pop()) : null,
       lock ? h('span', { class: 'sr-only' }, `, ${lock.text}`) : null),
     h('div', { class: 'ty', role: 'gridcell' }, h('span', { class: 'pill' }, ctx.typeLabel(file))),
@@ -181,7 +181,7 @@ export function folderRow(ctx, folder) {
   const { t } = ctx;
   const key = `dir:${folder.path}`;
   return h('div', { class: 'ls-row folder', role: 'row', tabindex: ctx.state.sel === key ? '0' : '-1', dataset: { key }, 'aria-selected': String(ctx.state.sel === key) },
-    h('div', { class: 'nm', role: 'gridcell' }, icon('folder', 'fld'), h('span', { class: 't' }, folderLabel(t, folder.path, folder.name))),
+    h('div', { class: 'nm', role: 'gridcell' }, icon('folder', 'fld'), h('span', { class: 't', title: folderLabel(t, folder.path, folder.name) }, folderLabel(t, folder.path, folder.name))),
     h('div', { class: 'ty', role: 'gridcell' }, h('span', { class: 'pill' }, t('ex.fileCount', { n: folder.count }))),
     h('div', { class: 'wt', role: 'gridcell' }, weightText(ctx, folder.weight)),
     h('div', { class: 'md', role: 'gridcell' }, formatDate(folder.ts, ctx.now, ctx.locale, t)),
@@ -208,7 +208,7 @@ export function tile(ctx, row) {
     'aria-selected': String(selected), 'data-fam': fam, title: lock ? lock.text : null,
   },
   h('div', { class: 'th-pv' }, icon(glyph, folder ? 'fld' : '')),
-  h('span', { class: 'tn' }, name),
+  h('span', { class: 'tn', title: lock ? `${name} · ${lock.text}` : name }, name),
   h('div', { class: 'tt' }, icon(glyph), caption),
   h('div', { class: 'tw' }, weight));
 }
@@ -228,8 +228,14 @@ export function emptyMessage(ctx) {
 const infoLine1 = (...nodes) => h('div', { class: 'l1' }, ...nodes);
 
 // La barre d'information : le fichier choisi (l'app qui l'ouvre, la date, le grisé), sinon un rappel du rangement : à la personne seule, ou commun au
-// document tant que GFS ne sait pas qui elle est (contrats 6.4, point 4).
+// document tant que GFS ne sait pas qui elle est (contrats 6.4, point 4). Ses lignes sont coupées quand la place manque : son texte entier est au survol (charte).
 export function infoBar(ctx) {
+  const bar = infoContent(ctx);
+  bar.title = [...bar.children].map(line => line.textContent.replace(/\s+/g, ' ').trim()).filter(Boolean).join('\n');
+  return bar;
+}
+
+function infoContent(ctx) {
   const { t, selected } = ctx;
   const filingHint = ctx.personal ? t('ex.hintPersonal') : t('ex.hintShared');
   if (!selected) {
@@ -258,7 +264,7 @@ export function infoBar(ctx) {
 // La barre de la corbeille, au-dessus de la liste : la règle (rien ne part seul) et « Vider la corbeille… ». Rien tant que la corbeille est vide.
 export function trashBar(ctx) {
   const { t } = ctx;
-  return h('div', { class: 'trash-bar' }, icon('trash'), h('span', { class: 'tb-text' }, t('trash.bar')),
+  return h('div', { class: 'trash-bar' }, icon('trash'), h('span', { class: 'tb-text', title: t('trash.bar') }, t('trash.bar')),
     h('button', { type: 'button', class: 'btn', dataset: { emptyTrash: '' } }, t('trash.empty')));
 }
 

@@ -65,7 +65,7 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     adresse entière (`https://docs.getgrist.com/grist-plugin-api.js`, jamais toute l'origine) **avec `'unsafe-eval'`**, que ce fichier exige : c'est un bundle de développement qui
     s'évalue par `eval()`. Sans cela le script s'arrête, `window.grist` reste vide et l'app ne dit jamais « prête » : GFS écrit « ne répond pas » (faits vérifiés 27). Un script
     d'API qui n'évalue rien (celui d'un Grist Docker) ne le montre pas : l'essai de l'app le lui fait servir sous la forme `eval(…)`.
-12. **La charte Grist Factory** (cahier 3.4 ; `contexte/charte-ui-ux-grist-factory.md`, section 1).
+12. **La charte Grist Factory** (cahier 3.4 ; `contexte/charte-ui-ux-grist-factory.md`, section 1). **Les textes français vouvoient** (les apps le font ; GFS aussi depuis le 09/11, décision du porteur).
 13. **Ne jamais écrire** qu'activer ou cocher un module rend l'app plus sûre.
 14. **Publier un formulaire, c'est ouvrir une porte à toute personne qui a le lien, sans compte, et sans passer par GFS** (contrats 3.7,
     point 8, et 11.9). Un lien lit la colonne entière de chaque Référence de ses formulaires, champs cachés compris, et ajoute des

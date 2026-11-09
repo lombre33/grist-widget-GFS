@@ -86,6 +86,9 @@ Si un fait nouveau remet en cause une de ces lignes : le dire au porteur, avec l
   anglais.
 - Français et anglais dans le même lot. « modèle », jamais « template » ; pluriels par `{n|singulier|pluriel}` ; le vide
   d'une liste s'écrit « — Choisir … — ». Marque « Grist Factory ».
+- Textes français de GFS : **vouvoiement partout** (décidé par le porteur le 09/11, comme les apps) : « vous », « votre », impératif
+  en « -ez » ; l'anglais ne change pas. `test/i18n.test.mjs` refuse « tu », « ton », « t' » et l'impératif en « tu » ; un texte
+  qui décrit un geste à la 3e personne (« Retire les règles… ») va dans la liste de ce test, avec sa raison.
 - Couleurs par type dans l'explorateur seulement : document bleu, grille vert, présentation orange ; l'icône et le mot du
   type toujours ensemble.
 

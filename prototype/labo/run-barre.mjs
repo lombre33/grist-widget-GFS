@@ -21,7 +21,7 @@ const RUN = `barre-${lang}-${scheme}`;
 const GAP = 4;
 const WORDS = {
   fr: { files: 'Ouvrir l’explorateur de fichiers', apps: 'Apps et extensions de Grist Factory Suite', work: /^Table de travail/, place: 'Position de la barre', group: 'Grist Factory Suite', close: /^Fermer$/,
-    edges: { gauche: 'À gauche', haut: 'En haut', droite: 'À droite', bas: 'En bas' }, notKept: 'Ce choix ne sera pas gardé : ton navigateur refuse l’enregistrement.' },
+    edges: { gauche: 'À gauche', haut: 'En haut', droite: 'À droite', bas: 'En bas' }, notKept: 'Ce choix ne sera pas gardé : votre navigateur refuse l’enregistrement.' },
   en: { files: 'Open the file explorer', apps: 'Apps and extensions of Grist Factory Suite', work: /^Working table/, place: 'Bar position', group: 'Grist Factory Suite', close: /^Close$/,
     edges: { gauche: 'Left', haut: 'Top', droite: 'Right', bas: 'Bottom' }, notKept: 'This choice will not be kept: your browser refuses to store it.' },
 }[lang];

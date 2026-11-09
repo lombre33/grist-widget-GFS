@@ -33,7 +33,7 @@ const panelWidth = Number(process.env.LAB_W || 700);
 const run = `theme-${lang}-${scheme}${panelWidth === 700 ? '' : `-${panelWidth}`}`;
 const WORDS = {
   fr: { themeRow: 'Thème…', title: 'Thème', reset: 'Revenir à Grist Factory', close: 'Fermer', names: ['Grist Factory', 'Pop', 'Papier', 'Brut', 'Enseigne'], saved: 'S’applique tout de suite, reste sur ce navigateur.',
-    notKept: 'Ce choix vaut pour cette page seulement : ton navigateur refuse de le garder.', check: /^Couleurs calculées : contraste de \d,\d:1 au moins/, origin: /^Ambiance d’origine : contraste de \d,\d:1 au moins/,
+    notKept: 'Ce choix vaut pour cette page seulement : votre navigateur refuse de le garder.', check: /^Couleurs calculées : contraste de \d,\d:1 au moins/, origin: /^Ambiance d’origine : contraste de \d,\d:1 au moins/,
     access: 'Accessibilité renforcée', strict: /^Texte à (\d,\d):1 et traits à (\d,\d):1 au moins/,
     own: 'La mienne', none: 'Celle de l’ambiance', pick: 'Choisir ma couleur', customBtn: 'Personnalisé…', custom: 'Couleur personnalisée', apply: 'Appliquer', cancel: 'Annuler', palette: 'Palette de couleurs',
     missing: 'Le sélecteur de couleur ne s’est pas chargé : GFS garde la couleur de l’ambiance. Recharge la page pour réessayer.' },

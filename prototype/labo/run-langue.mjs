@@ -25,7 +25,7 @@ const NAMES = { fr: 'Français', en: 'English' };
 // Ce que le labo cherche à l'écran, dans chaque langue (les textes de js/i18n.js).
 const WORDS = {
   fr: { title: 'Mes fichiers', add: 'Nouveau', open: 'Ouvrir', close: 'Fermer', search: 'Rechercher…', allTypes: 'Tous les types', recent: 'Récents', today: 'Auj.', locked: 'Créé avec une version plus récente', filesTip: 'Ouvrir l’explorateur de fichiers',
-    appsTitle: 'Apps et extensions', settingsTip: 'Réglages de Grist Factory Suite', settingsMenu: 'Réglages', menu: 'Langue', auto: n => `Comme Grist (${n})`, notKept: 'Ce choix ne sera pas gardé : ton navigateur refuse l’enregistrement.' },
+    appsTitle: 'Apps et extensions', settingsTip: 'Réglages de Grist Factory Suite', settingsMenu: 'Réglages', menu: 'Langue', auto: n => `Comme Grist (${n})`, notKept: 'Ce choix ne sera pas gardé : votre navigateur refuse l’enregistrement.' },
   en: { title: 'My files', add: 'New', open: 'Open', close: 'Close', search: 'Search…', allTypes: 'All types', recent: 'Recent', today: 'Today', locked: 'Created with a newer version', filesTip: 'Open the file explorer',
     appsTitle: 'Apps and extensions', settingsTip: 'Grist Factory Suite settings', settingsMenu: 'Settings', menu: 'Language', auto: n => `Same as Grist (${n})`, notKept: 'This choice will not be kept: your browser refuses to store it.' },
 };

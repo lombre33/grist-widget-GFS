@@ -122,6 +122,9 @@ export class Explorer {
     if (this.#pj.on && this.#opts.attachments) void this.#readAttachments(); // un PDF ajouté ou retiré change les pièces jointes
   }
 
+  // Les arrivées d'un autre document ont changé pendant que l'explorateur est ouvert (js/sync-service.js, `whenReceived`) : seule leur liste se remplace, le reste ne bouge pas.
+  setReceived(received) { this.setFiles(this.#files, this.#trashed, this.#folders, received); }
+
   // `restricted` : GFS n'a pas l'accès complet, la liste est vide pour cette raison et non parce qu'il n'y a aucun fichier.
   setStatus({ loading = false, problems = [], restricted = false }) {
     this.#loading = loading;

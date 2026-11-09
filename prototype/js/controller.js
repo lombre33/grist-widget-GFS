@@ -34,6 +34,7 @@ import { Rangement, TableDeclined } from './rangement.js';
 import { RightsControl } from './rights-control.js';
 import { createOtherDocuments } from './share-other.js';
 import { resumeSharing } from './sync-resume.js';
+import { whenReceived } from './sync-service.js';
 import { WeightControl } from './weight-control.js';
 import { FILES_APP, FILES_MANIFEST, FILES_ENTRY, cleanName } from './gfs-files.js';
 import { Transfer, buildTransferFrame } from './transfer.js';
@@ -47,6 +48,7 @@ import { carriesFile } from './import-file.js';
 import { Entries } from './entries.js';
 import { Openings } from './openings.js';
 import { ReceivedControl } from './received-control.js';
+import { loadReceived } from './received-files.js';
 import { publicationQuestion } from './publication-window.js';
 import { ModulesWindow, rowKey } from './modules-window.js';
 import { buildContext, identityFor, instanceOf, pageOf } from './context.js';
@@ -182,6 +184,7 @@ export class GfsController {
     if (!arrived) await this.#firstRun(); // une section qui s'ouvre sur son app n'est pas neuve : la fenêtre des apps ne passe pas par-dessus
     doc.body.dataset.gfsFirstRun = 'done';
     // Un envoi laissé en route, ou un partage reçu dont le contenu arrive encore : les boucles du moteur reprennent d'où elles en étaient (js/sync-resume.js ; rien ne se charge sans table de partage).
+    whenReceived(() => void this.#refreshReceived());
     if (!this.#writeBlock()) void resumeSharing({ docApi: this.grist.docApi, transfer: this.transfer, language: () => this.lang, busy: () => false, isOwner: () => this.transfer.isOwner() }).catch(error => console.warn('GFS : le partage entre documents ne reprend pas', error));
   }
 
@@ -466,6 +469,13 @@ export class GfsController {
       localStorage.setItem(key, '1');
     } catch (error) { return; }
     void this.openModules();
+  }
+
+  // Un passage de la boucle qui reçoit a changé quelque chose (js/sync-service.js) : « Partagés avec moi » et la cloche se mettent à jour, sans relire le reste, et seulement explorateur ouvert (à l'ouverture, la
+  // liste se relit de toute façon).
+  async #refreshReceived() {
+    if (!this.explorer || !this.explorer.isOpen || !this.fullAccess) return;
+    try { this.explorer.setReceived(await loadReceived(this.port, (await this.port.doc.listTables()).map(String))); } catch (error) { console.warn('GFS : les arrivées ne se relisent pas', error); }
   }
 
   // GFS vient d'apprendre l'adresse de la personne (la table est née pendant la session) : sa liste de fichiers se relit avec son propre rangement.

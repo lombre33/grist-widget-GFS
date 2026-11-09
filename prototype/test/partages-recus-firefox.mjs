@@ -6,6 +6,7 @@
 //   la question : Entrée sur une ligne l'ouvre, le clavier est sur « Accepter », Tab reste dans la fenêtre, Échap ferme sans rien écrire ; le menu « ⋯ » n'offre que la réponse ;
 //   la cloche Notifications (à droite de l'en-tête) : la pastille dit le nombre à accepter (contraste 4,5:1, sans couvrir un autre bouton), son menu nomme les arrivées et tient dans 700 × 400, un clic sur une arrivée
 //   pose sa question, « Ouvrir « Partagés avec moi » » y mène, sans arrivée la ligne reste grisée et dit ce qui s'annonce ici ;
+//   un fichier qui arrive pendant que l'explorateur est ouvert s'ajoute seul (liste, volet, cloche) sans changer la ligne choisie ;
 //   « Refuser » masque la ligne et le dit, « Accepter » dégrise la ligne, les marques sont écrites sur LEUR ligne seulement ; un document en lecture seule dit pourquoi, sans fenêtre ; une vue sans arrivée n'est pas une page blanche.
 import { createI18n } from '../js/i18n.js';
 import { Run, delay, centerOfName, centerOfSelector } from './corbeille-firefox.mjs';
@@ -229,6 +230,19 @@ export async function partagesRecusProblems(page, language, tag) {
       await clickKey('la cloche', '.menu .menu-item');
       await expect('la cloche', 'la ligne grisée devait dire ce qui s\'annonce ici', s => s.notices.includes(t('nt.noneWhy')));
     }
+
+    // Un fichier arrive PENDANT que l'explorateur est ouvert : la ligne, le nombre du volet et la cloche se mettent à jour seuls, la ligne choisie reste choisie.
+    await run.reset();
+    await page.run(() => window.__shared('arrivees'));
+    await clickRow('Devis.pdf');
+    await expect('une arrivée', 'la ligne choisie devait l\'être', s => s.selected === 'Devis.pdf');
+    await page.run(() => window.__arrive('Avenant.pdf'));
+    const arrived = await expect('une arrivée', 'la nouvelle arrivée devait s\'ajouter à la liste ouverte, à accepter', s => names(s).includes('Avenant.pdf'));
+    if (!row(arrived, 'Avenant.pdf') || !row(arrived, 'Avenant.pdf').grey || row(arrived, 'Avenant.pdf').pill !== t('rx.pending')) run.note('une arrivée', `« Avenant.pdf » devait arriver grisé, avec le mot « ${t('rx.pending')} » (il est ${JSON.stringify(row(arrived, 'Avenant.pdf'))})`);
+    if (!arrived.rail || arrived.rail.count !== '3') run.note('une arrivée', `le volet devait dire 3 à accepter (il dit ${arrived.rail && arrived.rail.count})`);
+    if (!arrived.bell || arrived.bell.badge !== '3' || arrived.bell.label !== t('nt.tipCount', { n: 3 })) run.note('une arrivée', `la cloche devait dire 3 à accepter (elle dit ${JSON.stringify(arrived.bell && [arrived.bell.badge, arrived.bell.label])})`);
+    if (arrived.selected !== 'Devis.pdf') run.note('une arrivée', `la ligne choisie devait rester choisie (c'est « ${arrived.selected} »)`);
+    if (arrived.modal || arrived.writes !== 0) run.note('une arrivée', 'une arrivée ne devait ni ouvrir de fenêtre ni rien écrire');
   } catch (error) {
     run.note('geste impossible', String(error.message).slice(0, 200));
     await page.press('Escape').catch(() => {});

@@ -161,6 +161,23 @@ try {
   check('« Contrat.pdf » arrive grisé « À accepter » (compté), « Facture v2.pdf » reste acceptée', (await greyed(frame, 'Contrat.pdf')) && (await pill(frame, 'Contrat.pdf')) === t('rx.pending') && !(await greyed(frame, 'Facture v2.pdf')) && (await badge(frame)) === '1', { names: await names(frame), badge: await badge(frame) });
   await shot(frame, '5-un-de-plus');
 
+  say('--- 5b. un fichier arrive PENDANT que l\'explorateur est ouvert ---');
+  // La boucle qui reçoit tourne dans la page ouverte (js/sync-service.js) : on ne passe plus par `pass()`, seule la page recopie, et la liste doit se mettre à jour sans être rouverte.
+  await importPdf(source.page, source.frame, pdfFile('Avenant.pdf', 1, 'Avenant').file);
+  await waitForNames(source.frame, ['Avenant.pdf', 'Contrat.pdf', 'Devis v2.pdf', 'Facture v2.pdf'].sort((a, b) => a.localeCompare(b)));
+  const amendment = (await source.rest.rows('GFS_Fichiers')).find(each => each.Nom === 'Avenant.pdf').Identifiant;
+  await source.frame.evaluate(args => window.__try(async () => {
+    const done = await window.__s.saveChosenExport({ exp: args.exp, name: args.exp.name, selection: args.selection });
+    return window.__s.finishEdit(args.exp, { name: args.exp.name, changed: done.changed });
+  }), { exp: first.exp, selection: first.selection([idOf('Facture.pdf'), idOf('Devis.pdf'), contract, amendment]) });
+  for (let i = 0; i < 45 && !(await names(frame)).includes('Avenant.pdf'); i += 1) {
+    await source.frame.evaluate(() => window.__try(() => window.__s.catchUp()));
+    await page.waitForTimeout(3000);
+  }
+  const live = { names: await names(frame), rail: await badge(frame), bell: await bellBadge(frame) };
+  check('« Avenant.pdf » arrive grisé dans la liste ouverte, le volet et la cloche passent à 2, sans rouvrir', live.names.includes('Avenant.pdf') && (await greyed(frame, 'Avenant.pdf')) && live.rail === '2' && live.bell === '2', live);
+  await shot(frame, '5b-arrivee-en-direct');
+
   say('--- 6. une arrivée acceptée se lit comme un PDF de GFS ---');
   await rowOf(frame, 'Facture v2.pdf').click();
   const wanted = frame.getByRole('button', { name: new RegExp(`^(${t('files.read')}|${t('files.download')})$`) });

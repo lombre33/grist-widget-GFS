@@ -128,7 +128,7 @@ export class GfsController {
     this.rights = new RightsControl({
       port: this.port, transfer: this.transfer, manifests: () => this.validApps().map(item => item.manifest), now: () => Date.now(), container: this.$('stage'),
       inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')], t: this.t, fullAccess: () => this.fullAccess,
-      locale: () => this.locale, identity: () => this.identity, writeBlock: () => this.#writeBlock(), appName: this.appName, extraTargets: () => otherDocumentTargets(this.t),
+      locale: () => this.locale, identity: () => this.identity, writeBlock: () => this.#writeBlock(), appName: this.appName, extraTargets: () => otherDocumentTargets(this.t), spaces: () => this.spaces,
     });
     this.weight = new WeightControl({ transfer: this.transfer, container: this.$('stage'), inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')], t: this.t, locale: () => this.locale });
   }

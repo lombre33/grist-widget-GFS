@@ -3021,8 +3021,10 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
        dans un dossier d'espace y est placé par un propriétaire, sinon il va à la racine de la personne. **Refusés pour l'instant, avec une phrase** : renommer ou déplacer un dossier d'espace (les partages portent son chemin et ne le
        suivraient pas : un refus ciblé perdu ouvrirait le dossier), supprimer ou créer un espace d'ici (« Gérer les partages… », onglet Espaces), nommer « Espaces » un dossier de « Moi ». Mesuré dans un vrai Grist à trois comptes
        (`labo/run-partager-espaces.mjs`, étape 5 : ranger, parcourir, ressortir, remettre à la souris ; l'éditeur voit la racine et le fichier, ne peut pas en sortir un) et sous Firefox (`test/dossiers-firefox.mjs`, « Espaces »).
-       **Pas fait** : partager un dossier d'espace depuis l'explorateur (la fenêtre « Partager… » ne vise encore que des fichiers), la création d'un fichier d'une app directement dans un dossier d'espace, les fichiers à la corbeille
-       (ils gardent leur place dans l'espace), « Partagés avec moi » (4c).
+       **« Partager… » sur un dossier d'espace : livré le 09/11.** Le menu d'un dossier a « Partager… » : dégrisé pour un dossier à l'intérieur d'un espace (cible `dossier:<clé>/<chemin>`), grisé avec sa phrase pour « Espaces »,
+       un espace (ses groupes se règlent dans « Gérer les partages… », onglet Espaces) et un dossier de « Moi ». La fenêtre est celle des fichiers (personne, groupe, « Aucun accès ») et marque « Hérité » ce qui vient de l'espace
+       et des dossiers au-dessus ; un droit donné se lit tout de suite dans les listes de chaque fichier du dossier (mesuré : `labo/run-partager-espaces.mjs`, étape 5, 43 vérifications ; Firefox : `test/dossiers-firefox.mjs`).
+       **Pas fait** : la création d'un fichier d'une app directement dans un dossier d'espace (il naît à la racine de la personne), les fichiers à la corbeille (ils gardent leur place dans l'espace), « Partagés avec moi » (4c).
 
 ### 11.8 À mesurer sur le Grist du porteur
 

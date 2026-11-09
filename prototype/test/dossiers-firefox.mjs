@@ -215,6 +215,24 @@ async function spacesRoot(run, t) {
   await run.click('Contrats');
   await run.page.press('Enter');
   await run.expect('le dossier d\'espace', 'Contrats devait montrer le modèle rangé et le sous-dossier vide Sous', state => names(state).includes('Sous') && names(state).length === 2 && state.crumbs.includes('Contrats'));
+  // « Partager… » : dégrisé sur un dossier d'espace, grisé sur « Espaces » et sur un dossier de « Moi » (le menu garde l'article)
+  const menuOf = async name => {
+    const at = await run.page.run(centerOfName, name);
+    if (!at) { run.note('ligne introuvable', `« ${name} » n'est pas dans la liste`); return null; }
+    await run.page.rightClick(...at);
+    await run.expect('menu du dossier', `le menu de « ${name} » devait s'ouvrir`, state => state.menu.length > 0);
+    const item = await run.page.run(label => { const node = [...document.querySelectorAll('.menu .menu-item')].find(each => ((each.querySelector('.menu-label') || {}).textContent || '').trim() === label); return node ? node.getAttribute('aria-disabled') === 'true' : null; }, t('share.menu'));
+    await run.page.press('Escape');
+    return item;
+  };
+  const sous = await menuOf('Sous');
+  if (sous !== false && sous !== null) run.note('« Partager… » d\'un dossier d\'espace', 'l\'article devait être dégrisé sur « Sous » (dossier d\'un espace)');
+  if (sous === null) run.note('« Partager… » d\'un dossier d\'espace', 'l\'article « Partager… » devait être dans le menu du dossier');
+  await run.page.press('Backspace');
+  await run.page.press('Backspace');
+  await run.expect('retour à « Espaces »', 'Retour arrière deux fois devait revenir à la racine des espaces', state => names(state).join() === 'Achats');
+  const space = await menuOf('Achats');
+  if (space !== true) run.note('« Partager… » d\'un espace', 'l\'article devait être grisé sur un espace (ses droits se règlent dans « Gérer les partages… »)');
 }
 
 // Les mesures des dossiers sans fichier, dans la langue de la page ; rend les écarts { kind, text }.

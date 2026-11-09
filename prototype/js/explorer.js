@@ -635,13 +635,21 @@ export class Explorer {
     if (key.startsWith('dir:')) {
       const path = key.slice(4);
       items = [item(t('ex.openFolder'), 'open', () => this.#activate(key), t('key.enter')), item(t('ex.rename'), 'edit', () => void filing.renameFolder(path), 'F2'),
-        item(t('ex.move'), 'move', () => void filing.moveFolder(path), this.#choice ? undefined : 'Ctrl+X, V'), '-', this.#deleteFolderItem(key)];
+        item(t('ex.move'), 'move', () => void filing.moveFolder(path), this.#choice ? undefined : 'Ctrl+X, V'), this.#shareFolderItem(path), '-', this.#deleteFolderItem(key)];
     } else {
       const file = (this.state.view === 'trash' ? this.#trashed : this.#files).find(entry => entry.key === key);
       if (!file) return;
       items = this.state.view === 'trash' ? this.#trashMenu(file) : this.#fileMenu(file);
     }
     openMenu(anchor, items, { host: this.root, align: 'right', label: t('ex.more') });
+  }
+
+  // « Partager… » d'un dossier (js/share-control.js) : seuls les dossiers d'un espace se partagent ; les autres l'article reste, grisé, et le clic dit pourquoi.
+  #shareFolderItem(path) {
+    const { t } = this.#opts.i18n;
+    const { sharing } = this.#opts;
+    const why = this.#choice ? t('ex.choose.newOff') : (sharing && sharing.whyNotFolder ? sharing.whyNotFolder(path) : t('share.unsupported'));
+    return { label: t('share.menu'), icon: 'user', greyed: why !== null, run: () => (why ? this.#opts.notice(why) : void sharing.open(sharing.folderFile(path))) };
   }
 
   // L'article « Supprimer le dossier » : grisé tant qu'un fichier est dans le dossier (ou un de ses sous-dossiers) et pendant un choix ; le clic dit pourquoi.

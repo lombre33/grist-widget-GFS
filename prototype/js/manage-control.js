@@ -16,7 +16,7 @@ const EMAIL_TYPES = ['Text', 'Choice', 'Any'];
 export class ManageControl {
   #o;
 
-  // opts : { port, reader, writer, t, locale(), container, inertTargets(), fullAccess(), writeBlock() }
+  // opts : { port, reader, writer, t, locale(), container, inertTargets(), fullAccess(), writeBlock(), otherLinks() → les documents reliés (js/share-other.js), otherStop(lien) → { ok, message? }, ask?(options) (la question ; par défaut la fenêtre du widget, js/ask-window.js) }
   constructor(opts) { this.#o = opts; }
 
   // Pourquoi « Gérer les partages » est grisé (une phrase), ou null.
@@ -125,9 +125,18 @@ export class ManageControl {
     return this.#write(plan.actions);
   }
 
+  // « Autres documents » : arrêter un lien, ou annuler une invitation qui attend sa réponse, après la question. Rend { ok, message? } ou null si la personne renonce.
+  async stopLink(link) {
+    const { t, container, inertTargets } = this.#o;
+    const kind = link.state === 'pending' ? 'cancel' : 'stop';
+    const yes = await (this.#o.ask || ask)({ container, inertTargets, title: t(`manage.other.${kind}.title`, { name: link.doc.name || link.name }), message: t(`manage.other.${kind}.message`), confirmLabel: t(`manage.other.${kind}.confirm`), cancelLabel: t('rights.ask.cancel'), safeFirst: true });
+    return yes ? this.#o.otherStop(link) : null;
+  }
+
   open() {
     const { t, container, inertTargets } = this.#o;
     return openManage({
+      onLinks: () => (this.#o.otherLinks ? this.#o.otherLinks() : []), onStopLink: link => this.stopLink(link),
       container, t, inertTargets, load: () => this.load(), onAddGroup: (state, group) => this.addGroup(state, group), onUpdateGroup: (id, people) => this.updateGroup(id, people), onRemoveGroup: id => this.removeGroup(id),
       onReadTable: state => this.readTable(state), onAddSpace: state => this.addSpace(state), onRemoveSpace: (state, space) => this.removeSpace(state, space), onSpaceGroup: (state, space, group, right) => this.setSpaceGroup(state, space, group, right), onPickGroup: (state, space) => this.pickGroup(state, space), onRoot: (state, who, right) => this.setRoot(state, who, right), onStructure: () => this.structure(),
       onConfirmRemove: name => ask({ container, inertTargets, title: t('manage.groups.remove.title', { name }), message: t('manage.groups.remove.message'), confirmLabel: t('manage.groups.remove.confirm'), cancelLabel: t('rights.ask.cancel'), safeFirst: true }),

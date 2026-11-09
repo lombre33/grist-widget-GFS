@@ -3,8 +3,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { suggestions, levelItems, whoLabel } from '../js/share-window.js';
-import { otherDocumentTargets } from '../js/share-other.js';
+import { createOtherDocuments, whyNot } from '../js/share-other.js';
 import { createI18n } from '../js/i18n.js';
+import { SHARE_OTHER_STRINGS } from '../js/i18n-share-other.js';
 
 const { t } = createI18n('fr');
 const state = (extra = {}) => ({ me: 'moi@x.fr', author: 'moi@x.fr', people: ['ann@x.fr', 'marc.petit@x.fr', 'moi@x.fr'], shares: [], ...extra });
@@ -39,11 +40,6 @@ test('ce qui est déjà dans la liste (personne ou catégorie) n\'est plus propo
   assert.deepEqual(found.categories.map(item => item.who), ['@editeurs']);
 });
 
-test('« Un autre document Grist… » (Sync+) arrive par `extraTargets` et reste dans la liste, grisé, avec sa raison', () => {
-  const [other] = otherDocumentTargets(t);
-  assert.deepEqual(suggestions(t, state(), 'zzz', [other]).others, [other]);
-});
-
 test('le menu des droits : cinq droits et « Aucun accès », le courant coché, commentaires et dépôt seul grisés avec leur raison, administration refusée à une catégorie, « Retirer » en dernier', () => {
   const said = [];
   const items = levelItems(t, { current: 'ecriture', category: false, onPick: key => said.push(`pick:${key}`), onRemove: () => said.push('remove'), onWhy: why => said.push(why) });
@@ -65,21 +61,6 @@ test('le nom d\'une catégorie se lit dans la langue de la personne ; une adress
   assert.equal(whoLabel(t, 'a@b.fr'), 'a@b.fr');
 });
 
-test('la ligne « Un autre document Grist… » du contrôleur : grisée jamais masquée, avec son icône, sa raison et les mêmes mots en français et en anglais', () => {
-  for (const language of ['fr', 'en']) {
-    const { t: say } = createI18n(language);
-    const targets = otherDocumentTargets(say);
-    assert.equal(targets.length, 1);
-    const [other] = targets;
-    assert.equal(other.greyed, true);
-    assert.equal(other.icon, 'link');
-    assert.equal(other.label, say('share.other'));
-    assert.equal(other.why, say('share.other.why'));
-    assert.ok(other.label && other.hint && other.why && !other.label.startsWith('share.'));
-  }
-  assert.notEqual(otherDocumentTargets(createI18n('fr').t)[0].label, otherDocumentTargets(createI18n('en').t)[0].label);
-});
-
 test('les groupes : proposés par leur nom avec leur effectif, jamais ceux déjà dans la liste ; « #nom » se lit « Groupe · nom » ; pas d\'administration pour un groupe', () => {
   const groups = [{ name: 'Achats', count: 3 }, { name: 'Compta', count: 1 }];
   const found = suggestions(t, state({ groups, shares: [{ who: '#Compta', inherited: false }] }), '');
@@ -92,30 +73,31 @@ test('les groupes : proposés par leur nom avec leur effectif, jamais ceux déj�
   assert.equal(admin.greyed, true);
 });
 
-test('« Un autre document Grist… » : libre pour un PDF de GFS quand la personne est propriétaire, grisée avec sa raison sinon (autre fichier, dossier, pas propriétaire, parcours non branché)', () => {
-  const opened = [];
+test('l\'onglet « Dans un autre document Grist » : libre pour un PDF de GFS quand la personne est propriétaire, grisé avec sa raison sinon (autre fichier, dossier, pas propriétaire)', () => {
   const pdf = { key: 'gfs-fichiers:abc', app: 'gfs-fichiers', id: 'abc', name: 'Facture.pdf' };
-  const open = file => opened.push(file.id);
-  const [free] = otherDocumentTargets(t, { file: pdf, state: { owner: true }, open });
-  assert.equal(free.greyed, false);
+  assert.equal(whyNot(t, { file: pdf, state: { owner: true } }), null);
+  assert.equal(whyNot(t, { file: { ...pdf, app: 'publipostage' }, state: { owner: true } }), t('share.other.why.pdf'));
+  assert.equal(whyNot(t, { file: { ...pdf, folder: { path: 'Espaces/A/B' } }, state: { owner: true } }), t('share.other.why.pdf'));
+  assert.equal(whyNot(t, { file: null, state: { owner: true } }), t('share.other.why.pdf'));
+  assert.equal(whyNot(t, { file: pdf, state: { owner: false } }), t('share.other.why.owner'));
+  assert.equal(whyNot(t, { file: pdf, state: { owner: null } }), t('share.other.why.owner'));
+  assert.equal(whyNot(t, { file: pdf, state: null }), t('share.other.why.owner'));
+});
+
+test('l\'onglet du contrôleur : sa raison et le fichier, et un document en lecture seule ou sans l\'accès complet n\'écrit rien (le geste rend la raison du blocage)', async () => {
+  const notices = [];
+  const pdf = { key: 'gfs-fichiers:abc', app: 'gfs-fichiers', id: 'abc', name: 'Facture.pdf' };
+  const make = writeBlock => createOtherDocuments({ t, container: null, inertTargets: () => [], docApi: () => null, transfer: null, language: () => 'fr', notice: text => notices.push(text), writeBlock: () => writeBlock });
+  const free = make(null).tab(pdf, { owner: true });
   assert.equal(free.why, null);
-  free.run();
-  assert.deepEqual(opened, ['abc']);
-  const grey = (extra, expected) => {
-    const [line] = otherDocumentTargets(t, { file: pdf, state: { owner: true }, open, ...extra });
-    assert.equal(line.greyed, true);
-    assert.equal(line.why, expected);
-    line.run();
-  };
-  grey({ file: { ...pdf, app: 'publipostage' } }, t('share.other.why.pdf'));
-  grey({ file: { ...pdf, folder: { path: 'Espaces/A/B' } } }, t('share.other.why.pdf'));
-  grey({ file: null }, t('share.other.why.pdf'));
-  grey({ state: { owner: false } }, t('share.other.why.owner'));
-  grey({ state: { owner: null } }, t('share.other.why.owner'));
-  grey({ state: null }, t('share.other.why.owner'));
-  grey({ open: null }, t('share.other.why'));
-  assert.deepEqual(opened, ['abc'], 'une ligne grisée n\'ouvre rien');
-  assert.deepEqual(suggestions(t, state(), 'zzz', otherDocumentTargets(t, { file: pdf, state: { owner: true }, open })).others.map(line => line.greyed), [false], 'la ligne reste dans la liste, quelle que soit la recherche');
+  assert.equal(free.fileId, 'abc');
+  assert.equal(make(null).tab({ ...pdf, app: 'autre' }, { owner: true }).why, t('share.other.why.pdf'));
+  const readonly = make(t('mod.readonly'));
+  assert.deepEqual(await readonly.tab(pdf, { owner: true }).onLevel({ id: 'e1', files: [] }, 'live'), { ok: false, message: t('mod.readonly') });
+  assert.deepEqual(await readonly.stop({ id: 'e1' }), { ok: false, message: t('mod.readonly') });
+  assert.deepEqual(await make(null).tab(pdf, { owner: false }).onLevel({ id: 'e1', files: [] }, 'live'), { ok: false, message: t('share.other.why.owner') });
+  await readonly.tab(pdf, { owner: true }).onNew();
+  assert.deepEqual(notices, [t('mod.readonly')], 'la fenêtre du premier envoi ne s\'ouvre pas : un avis dit pourquoi');
 });
 
 test('les textes de la fenêtre d\'envoi sont les mêmes en français et en anglais, et aucun n\'est resté une clé', () => {
@@ -133,4 +115,15 @@ test('les textes de la fenêtre d\'envoi sont les mêmes en français et en angl
   assert.match(fr('so.code.hint', { n: 1 }), /1 jour\./);
   assert.match(fr('so.code.hint', { n: 7 }), /7 jours\./);
   assert.match(en('so.code.hint', { n: 1 }), /1 day\./);
+});
+
+test('tous les textes du partage vers un autre document existent en français et en anglais, traduits, et gardent les mêmes variables', () => {
+  const { fr, en } = SHARE_OTHER_STRINGS;
+  assert.deepEqual(Object.keys(fr).sort(), Object.keys(en).sort(), 'les mêmes clés dans les deux langues');
+  const vars = text => [...text.matchAll(/\{(\w+)[|}]/g)].map(match => match[1]).sort().join();
+  for (const key of Object.keys(fr)) {
+    assert.ok(fr[key] && en[key], key);
+    assert.equal(vars(fr[key]), vars(en[key]), `${key} : mêmes variables`);
+    if (fr[key].length > 12) assert.notEqual(fr[key], en[key], `${key} : traduit`);
+  }
 });

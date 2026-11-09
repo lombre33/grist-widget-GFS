@@ -34,7 +34,7 @@ test('le nom de l\'export est celui du fichier sans « .pdf » ; la sélection e
   assert.equal(exportName({ id: 'x', name: '.pdf' }), '.pdf');
   const [selection] = selectionOf(FILE);
   assert.equal(selection.table, 'GFS_Fichiers');
-  assert.deepEqual(selection.filter, { mode: 'all', conds: [{ id: 'Identifiant', op: 'eq', values: ['abc123'] }] });
+  assert.deepEqual(selection.filter, { mode: 'all', conds: [{ id: 'Identifiant', op: 'in', values: ['abc123'] }] });
   assert.ok(SENT_COLUMNS.includes('Contenu') && SENT_COLUMNS.includes('Identifiant'));
   assert.ok(!SENT_COLUMNS.includes('SupprimeLe') && !SENT_COLUMNS.includes('SupprimePar'));
   assert.ok(HELPER_COLUMNS.every(name => !SENT_COLUMNS.includes(name)), 'les colonnes d\'aide du moteur ne sont pas des colonnes du fichier');
@@ -69,10 +69,24 @@ test('send : le webhook, l\'existant, le rattrapage jusqu\'à « rien à envoyer
   await run.check('r');
   const phases = [];
   const done = await run.send(step => phases.push(step.phase));
-  assert.deepEqual(done, { document: 'Réception' });
+  assert.deepEqual(done, { document: 'Réception', live: false });
   assert.deepEqual(names(engine).slice(3), ['checkReply', 'approve', 'sendExisting', 'catchUp', 'catchUp', 'end']);
   assert.deepEqual(phases, ['rows', 'files', 'files']);
   assert.equal(run.started, true);
+});
+
+test('une copie qui se met à jour (live) : l\'export porte le nom de ce document, et le lien reste après l\'envoi (aucun « end »)', async () => {
+  const engine = fakeEngine();
+  const run = flow(engine, { mode: 'live', name: 'Compta 2026' });
+  await run.prepare();
+  assert.equal(engine.calls[0][1].name, 'Compta 2026', 'le nom du lien, pas celui du fichier');
+  assert.deepEqual(engine.calls[0][1].selection, selectionOf(FILE));
+  await run.check('r');
+  const done = await run.send();
+  assert.deepEqual(done, { document: 'Réception', live: true });
+  assert.ok(!names(engine).includes('end'), 'le lien reste pour les fichiers suivants');
+  await run.abort();
+  assert.equal(names(engine).at(-1), 'end', 'arrêter le lien reste possible');
 });
 
 test('send : tant que des fichiers restent, un autre passage ; un passage encore en cours n\'est pas la fin ; le partage ne s\'arrête qu\'une fois tout parti', async () => {

@@ -2,7 +2,8 @@
 // La vraie fenêtre (js/share-other-window.js) sur un parcours dont les réponses sont des doublures (test/pages/explorateur.js, `window.__sendOther`) : le moteur de partage et Grist se mesurent dans un vrai Grist
 // (labo/run-partager-autre.mjs) ; ici, la mise en page et les gestes, à la vraie souris et au vrai clavier. À chaque écran (l'accord, le code, le document qui répond, l'envoi, la fin, l'échec) : la fenêtre tient
 // dans la page, son titre et ses boutons restent en place, rien n'en sort, le clavier est sur le bon bouton ; l'accord n'écrit rien (Échap) ; « Contrôler la réponse » reste grisé tant que rien n'est collé et un
-// refus du parcours est dit sans quitter l'écran ; la ligne « Un autre document Grist… » de « Partager » ouvre la fenêtre quand le contrôleur lui donne le geste, et Échap ne ferme que la fenêtre du dessus.
+// refus du parcours est dit sans quitter l'écran ; l'accord offre « Une copie, une fois » et « Une copie qui se met à jour » (la fin dit si le lien reste) ; l'onglet « Dans un autre document Grist » de « Partager »
+// montre les documents reliés avec le niveau de CE fichier, un menu de niveaux (jamais masqué : grisé avec sa raison), « Relier un nouveau document… » ouvre l'accord par-dessus, et Échap ne ferme que la fenêtre du dessus.
 import { createI18n } from '../js/i18n.js';
 import { Run } from './corbeille-firefox.mjs';
 
@@ -11,9 +12,27 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 // Ce que la page montre de la fenêtre.
 function state() {
+  // Ce que la page montre de l'onglet « Dans un autre document Grist » de la fenêtre « Partager » (null si elle n'est pas ouverte). Dans `state` : la page n'y voit que cette fonction.
+  const shareTab = () => {
+    const share = document.querySelector('.mod.sh');
+    if (!share) return null;
+    const text = node => (node ? node.textContent.replace(/\s+/g, ' ').trim() : null);
+    const box = share.getBoundingClientRect();
+    const head = share.querySelector('.mod-head').getBoundingClientRect();
+    const foot = share.querySelector('.mod-foot').getBoundingClientRect();
+    const outside = node => { const at = node.getBoundingClientRect(); return at.width > 0 && (at.right > box.right + 1 || at.left < box.left - 1); };
+    return {
+      tabs: [...share.querySelectorAll('.mg-tab')].map(node => [node.dataset.fk, node.getAttribute('aria-selected')]), body: text(share.querySelector('.sh-body')), note: text(share.querySelector('.mod-note')),
+      links: [...share.querySelectorAll('.rr[data-link]')].map(row => ({ id: row.dataset.link, level: row.dataset.level, label: text(row.querySelector('.lvl')), locked: row.querySelector('.lvl').getAttribute('aria-disabled') === 'true', tag: text(row.querySelector('.tag')) })),
+      fresh: (() => { const node = share.querySelector('[data-fk="other-new"]'); return node ? node.getAttribute('aria-disabled') === 'true' : null; })(),
+      menu: [...document.querySelectorAll('.menu .menu-item')].map(node => ({ text: text(node), greyed: node.getAttribute('aria-disabled') === 'true' })),
+      inPage: box.left >= 0 && box.top >= 0 && box.right <= window.innerWidth + 1 && box.bottom <= window.innerHeight + 1, sticky: head.bottom <= foot.top + 1 && foot.bottom <= box.bottom + 1 && head.top >= box.top - 1,
+      outside: [...share.querySelectorAll('.sh-body *, .mod-foot *, .mod-head *')].filter(outside).map(node => node.className || node.tagName).slice(0, 5),
+    };
+  };
   const modal = document.querySelector('.mod.so');
   const text = node => (node ? node.textContent.replace(/\s+/g, ' ').trim() : null);
-  const out = { modal: null, acts: window.__sendActs || [], below: Boolean(document.querySelector('.mod.sh')) };
+  const out = { modal: null, acts: window.__sendActs || [], below: Boolean(document.querySelector('.mod.sh')), tab: shareTab(), shareActs: window.__shareActs || [] };
   if (!modal) return out;
   const box = modal.getBoundingClientRect();
   const head = modal.querySelector('.mod-head').getBoundingClientRect();
@@ -67,6 +86,9 @@ async function accordFlow(page, tools, t) {
   const now = await tools.open(kind, 'ok');
   if (!now.modal) return;
   tools.fits(kind, now, 'l\'accord');
+  const radios = await page.run(() => ['once', 'live'].map(mode => { const node = document.querySelector(`[data-fk="so-mode-${mode}"]`); return node ? node.checked : null; }));
+  if (radios[0] !== true || radios[1] !== false) tools.run.note(kind, `l'accord devait proposer « ${t('so.mode.once')} » (coché) et « ${t('so.mode.live')} » (état des deux choix : ${JSON.stringify(radios)})`);
+  for (const part of [t('so.mode.once'), t('so.mode.live')]) if (!now.modal.body.includes(part)) tools.run.note(kind, `l'accord devait dire « ${part} »`);
   for (const part of [t('so.accord.adds'), t('so.accord.hook'), t('so.accord.keep')]) if (!now.modal.body.includes(part)) tools.run.note(kind, `l'accord devait dire « ${part} » (il dit « ${now.modal.body.slice(0, 160)} »)`);
   for (let i = 0; i < 3; i += 1) { await page.press('Tab'); const inside = await tools.snap(); if (!inside.modal || !inside.modal.inside) tools.run.note(kind, 'Tab devait rester dans la fenêtre'); }
   await page.press('Escape');
@@ -75,10 +97,16 @@ async function accordFlow(page, tools, t) {
 }
 
 // Le code, la réponse collée, le refus puis l'accord du parcours, le document qui répond, l'envoi et la fin.
-async function sendingFlow(page, tools, t, flow) {
-  const kind = flow === 'perso' ? 'espace personnel' : 'envoi';
+async function sendingFlow(page, tools, t, flow, mode = 'once') {
+  const kind = flow === 'perso' ? 'espace personnel' : (mode === 'live' ? 'copie qui se met à jour' : 'envoi');
   await tools.open(kind, flow);
+  if (mode === 'live') {
+    await tools.press(kind, 'so-mode-live');
+    const chosen = await tools.expect(kind, 'choisir la copie qui se met à jour devait le cocher et dire que le lien reste', s => s.modal && s.modal.body.includes(t('so.accord.hook.live')));
+    tools.fits(kind, chosen, 'l\'accord du lien qui reste');
+  }
   await tools.press(kind, 'so-continue');
+  await tools.expect(kind, `le parcours devait recevoir le choix « ${mode} »`, s => s.acts.some(act => act[0] === 'mode' && act[1] === mode));
   const code = await tools.expect(kind, 'le code devait s\'afficher, le clavier dessus, « Contrôler » grisé', s => s.modal && s.modal.keys.includes('so-code') && s.modal.focus === 'so-code' && s.modal.greyed.includes('so-check'));
   tools.fits(kind, code, 'le code');
   if (code.modal && !code.modal.body.includes(t('so.code.hint', { n: 7 }))) tools.run.note(kind, `le code devait dire sa durée (« ${t('so.code.hint', { n: 7 })} »)`);
@@ -104,7 +132,7 @@ async function sendingFlow(page, tools, t, flow) {
   const sending = await tools.expect(kind, 'l\'envoi devait montrer « envoi en cours » avec son seul bouton « Fermer »', s => s.modal && s.modal.keys.includes('so-close') && !s.modal.keys.includes('so-send') && s.acts.some(act => act[0] === 'send'));
   tools.fits(kind, sending, 'l\'envoi');
   await page.run(() => { window.__sendGo(); });
-  const done = await tools.expect(kind, 'la fin devait dire que le partage est arrêté', s => s.modal && s.modal.body.includes(t('so.done.hint')));
+  const done = await tools.expect(kind, mode === 'live' ? 'la fin devait dire que le lien reste' : 'la fin devait dire que le partage est arrêté', s => s.modal && s.modal.body.includes(t(mode === 'live' ? 'so.done.live.hint' : 'so.done.hint')) && s.acts.some(act => act[0] === 'send' && act[1] === mode));
   tools.fits(kind, done, 'la fin');
   await tools.press(kind, 'so-close');
   await tools.expect(kind, '« Fermer » devait fermer la fenêtre', s => s.modal === null);
@@ -144,30 +172,80 @@ async function failureFlow(page, tools, t) {
   await tools.expect(kind, 'l\'envoi devait finir sans la fenêtre et le dire par un avis', s => s.acts.some(act => act[0] === 'notice' && String(act[1]).includes(LONG_DOC)));
 }
 
-// La ligne « Un autre document Grist… » de « Partager » (le contrôleur lui donne le geste d'ouvrir) : un clic ouvre la fenêtre d'envoi par-dessus ; Échap ne ferme qu'elle.
-async function lineFlow(page, tools, t) {
-  const kind = 'la ligne de « Partager »';
+// L'onglet « Dans un autre document Grist » de « Partager » (le contrôleur lui donne ses liens) : trois liens (à jour, en attente, bloqué) avec le niveau de CE fichier ; le menu des niveaux ; un lien qui attend sa
+// réponse est verrouillé avec sa raison ; « Relier un nouveau document… » ouvre l'accord par-dessus ; Échap ne ferme que lui. Sans lien ou sans pouvoir les lire, l'onglet le dit et garde son bouton.
+async function openShareTab(page, tools, t, kind, links) {
   await tools.run.reset();
-  await page.run(() => { window.__shareSend = 'ok'; window.__sendActs = []; });
+  await page.run(name => { window.__shareOther = true; window.__shareSend = 'ok'; window.__sendActs = []; window.__links = name; window.__shareKind = 'actif'; }, links);
   const at = await page.run(() => { const row = [...document.querySelectorAll('.ls-row:not(.folder):not(.lk)')][0]; row.scrollIntoView({ block: 'nearest' }); const box = row.getBoundingClientRect(); return [box.left + Math.min(60, box.width / 2), box.top + box.height / 2]; });
-  await page.run(name => { window.__shareKind = name; }, 'actif');
   await page.rightClick(...at);
   const entry = await page.run(label => { const node = [...document.querySelectorAll('.menu .menu-item')].find(item => item.textContent.trim().startsWith(label)); if (!node) return null; const box = node.getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; }, t('share.menu'));
-  if (!entry) { tools.run.note(kind, `le menu d'une ligne devait proposer « ${t('share.menu')} »`); return; }
+  if (!entry) { tools.run.note(kind, `le menu d'une ligne devait proposer « ${t('share.menu')} »`); return false; }
   await page.click(...entry);
-  await tools.expect(kind, 'la fenêtre « Partager » devait s\'ouvrir', s => s.below);
-  if (!(await tools.press(kind, 'share-add'))) return;
-  const line = `[data-fk="share-pick-${t('share.other')}"]`;
-  const opened = await page.run(selector => { const node = document.querySelector(selector); return node ? node.getAttribute('aria-disabled') : 'absent'; }, line);
-  if (opened !== null) { tools.run.note(kind, `la ligne « ${t('share.other')} » devait être dégrisée (aria-disabled : ${opened})`); await page.run(() => { window.__shareSend = null; }); await page.press('Escape'); return; }
-  const at2 = await page.run(centerOf, line);
-  await page.click(...at2);
-  const send = await tools.expect(kind, 'un clic sur la ligne devait ouvrir l\'accord de l\'envoi, la fenêtre « Partager » dessous', s => s.modal && s.modal.keys.includes('so-continue') && s.below);
-  tools.fits(kind, send, 'la fenêtre ouverte par la ligne');
+  await tools.expect(kind, 'la fenêtre « Partager » devait s\'ouvrir avec ses deux onglets', s => s.tab && s.tab.tabs.length === 2 && s.tab.body && !s.tab.body.includes(t('share.loading')));
+  return tools.press(kind, 'share-tab-other');
+}
+
+async function tabFlow(page, tools, t) {
+  const kind = 'l\'onglet de « Partager »';
+  if (!(await openShareTab(page, tools, t, kind, 'actifs'))) return;
+  const open = await tools.expect(kind, 'l\'onglet devait montrer les trois liens, chacun avec le niveau de ce fichier', s => s.tab && s.tab.links.length === 3);
+  const tab = open.tab;
+  if (!tab || tab.links.length !== 3) return;
+  const by = id => tab.links.find(link => link.id === id);
+  if (tab.tabs.find(item => item[0] === 'share-tab-other')[1] !== 'true') tools.run.note(kind, 'l\'onglet « Dans un autre document Grist » devait être le choisi');
+  if (!tab.inPage || !tab.sticky || tab.outside.length) tools.run.note(kind, `la fenêtre devait tenir dans la page, titre et bouton en place, rien ne sortir (sort : ${tab.outside.join(', ')})`);
+  const expectLink = (id, level, label, tag, locked) => {
+    const link = by(id);
+    if (!link || link.level !== level || link.label !== label || link.tag !== tag || link.locked !== locked) tools.run.note(kind, `le lien ${id} devait dire « ${label} » (${level}), l'état « ${tag} », verrouillé : ${locked} (il dit ${JSON.stringify(link)})`);
+  };
+  expectLink('e1', 'live', t('so.level.live'), t('so.state.active'), false);
+  expectLink('e2', 'none', t('so.level.none'), t('so.state.pending'), true);
+  expectLink('e3', 'none', t('so.level.none'), t('so.state.blocked'), false);
+  // Un lien qui attend sa réponse : verrouillé, un clic dit pourquoi, aucun menu.
+  await tools.press(kind, 'other-level-e2');
+  const waiting = await tools.expect(kind, 'un lien en attente devait dire pourquoi, sans menu', s => s.tab && s.tab.note === t('so.link.pending'));
+  if (waiting.tab && waiting.tab.menu.length) tools.run.note(kind, 'un lien en attente ne devait ouvrir aucun menu');
+  // Le menu des niveaux d'un fichier pas partagé : « Arrêter la copie » grisé avec sa raison, jamais masqué ; « Copie à jour » écrit le niveau.
+  await tools.press(kind, 'other-level-e3');
+  const menu = await tools.expect(kind, 'le menu devait proposer les trois niveaux', s => s.tab && s.tab.menu.length === 3);
+  if (menu.tab && menu.tab.menu.length === 3) {
+    const [once, live, stop] = menu.tab.menu;
+    if (!once.text.startsWith(t('so.level.once')) || !live.text.startsWith(t('so.level.live')) || !stop.text.startsWith(t('so.level.stop'))) tools.run.note(kind, `le menu devait proposer « ${t('so.level.once')} », « ${t('so.level.live')} » puis « ${t('so.level.stop')} » (il propose ${JSON.stringify(menu.tab.menu)})`);
+    if (!stop.greyed || once.greyed || live.greyed) tools.run.note(kind, `seul « ${t('so.level.stop')} » devait être grisé pour un fichier pas partagé`);
+  }
+  const itemAt = label => page.run(wanted => { const node = [...document.querySelectorAll('.menu .menu-item')].find(item => item.textContent.trim().startsWith(wanted)); if (!node) return null; const box = node.getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; }, label);
+  const live = await itemAt(t('so.level.live'));
+  if (live) { await page.click(...live); await tools.expect(kind, 'le choix devait demander le niveau « à jour »', s => s.shareActs.some(act => act[0] === 'level' && act[1] === 'e3' && act[2] === 'live')); }
+  // « Une copie, une fois » : l'avis dit que le fichier part, sans attendre la fin.
+  await tools.press(kind, 'other-level-e1');
+  await tools.expect(kind, 'le menu devait s\'ouvrir', s => s.tab && s.tab.menu.length === 3);
+  const once = await itemAt(t('so.level.once'));
+  if (once) { await page.click(...once); await tools.expect(kind, 'une copie une fois devait demander ce niveau et dire que le fichier part', s => s.shareActs.some(act => act[0] === 'level' && act[1] === 'e1' && act[2] === 'once') && s.tab && s.tab.note === t('so.once.going', { name: 'Facture.pdf' })); }
+  // Un fichier déjà à jour : « Arrêter la copie » est libre.
+  await tools.press(kind, 'other-level-e1');
+  const menu2 = await tools.expect(kind, 'le menu d\'un fichier à jour devait s\'ouvrir', s => s.tab && s.tab.menu.length === 3);
+  if (menu2.tab && menu2.tab.menu.length === 3 && menu2.tab.menu[2].greyed) tools.run.note(kind, '« Arrêter la copie » devait être libre pour un fichier à jour');
+  const stop = await itemAt(t('so.level.stop'));
+  if (stop) { await page.click(...stop); await tools.expect(kind, 'arrêter la copie devait demander le niveau « pas partagé »', s => s.shareActs.some(act => act[0] === 'level' && act[1] === 'e1' && act[2] === 'none')); }
+  // « Relier un nouveau document… » : l'accord par-dessus, la fenêtre « Partager » dessous ; Échap ne ferme que lui.
+  await tools.press(kind, 'other-new');
+  const send = await tools.expect(kind, 'un clic devait ouvrir l\'accord de l\'envoi, la fenêtre « Partager » dessous', s => s.modal && s.modal.keys.includes('so-continue') && s.below);
+  tools.fits(kind, send, 'la fenêtre ouverte par « Relier un nouveau document… »');
   await page.press('Escape');
   await tools.expect(kind, 'Échap devait fermer la fenêtre d\'envoi seule, « Partager » restant', s => s.modal === null && s.below);
   await page.press('Escape');
-  await page.run(() => { window.__shareSend = null; });
+}
+
+// Sans lien, ou quand les liens ne se lisent pas : l'onglet le dit et garde « Relier un nouveau document… ».
+async function emptyTabFlow(page, tools, t) {
+  for (const [links, said] of [['aucun', t('so.tab.none')], ['illisible', t('so.tab.unreadable')]]) {
+    const kind = `l'onglet de « Partager » (${links})`;
+    if (!(await openShareTab(page, tools, t, kind, links))) continue;
+    const now = await tools.expect(kind, `l'onglet devait dire « ${said} » et garder son bouton`, s => s.tab && s.tab.body.includes(said) && s.tab.fresh === false);
+    if (now.tab && (now.tab.links.length || !now.tab.inPage || !now.tab.sticky || now.tab.outside.length)) tools.run.note(kind, 'aucun lien ne devait se dessiner, la fenêtre devait tenir dans la page');
+    await page.press('Escape');
+  }
 }
 
 export async function partagerAutreProblems(page, language, tag) {
@@ -177,13 +255,16 @@ export async function partagerAutreProblems(page, language, tag) {
   try {
     await accordFlow(page, tools, t);
     await sendingFlow(page, tools, t, 'ok');
+    await sendingFlow(page, tools, t, 'ok', 'live');
     await sendingFlow(page, tools, t, 'perso');
     await failureFlow(page, tools, t);
-    await lineFlow(page, tools, t);
+    await tabFlow(page, tools, t);
+    await emptyTabFlow(page, tools, t);
   } catch (error) {
     tools.run.note('geste impossible', String(error.message).slice(0, 200));
     await page.press('Escape').catch(() => {});
   }
+  await page.run(() => { window.__shareOther = false; window.__shareSend = null; window.__links = null; });
   await tools.run.reset();
   return found;
 }

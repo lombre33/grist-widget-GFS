@@ -1,37 +1,35 @@
-// Le parcours de celui qui envoie un fichier à un autre document Grist (« Partager > Un autre document Grist… » ; décisions du porteur des 06/11 et 09/11) : une copie, une seule fois, dans un seul sens.
+// Le parcours de celui qui envoie un fichier à un autre document Grist, la première fois (« Partager > Dans un autre document Grist > Relier un nouveau document… » ; décisions du porteur des 06/11 et 09/11) :
+// une copie, une seule fois (`once`), ou une copie qui se met à jour (`live` : le lien reste, les fichiers suivants passent par js/share-links.js sans nouveau code), dans un seul sens.
 // Sans fenêtre ni Grist : tout ce qu'il fait passe par `engine`, les fonctions du moteur de partage du kit (kit/js/synchro/, voir js/sync-service.js), que les essais remplacent. La fenêtre
 // (js/share-other-window.js) ne fait que montrer l'étape et demander le geste suivant.
 //   prepare()  l'export d'un seul fichier (une condition sur son identifiant), l'invitation et son code ;
 //   check()    la réponse collée, contrôlée chez Grist (de quel document est la clé de son formulaire) : le moteur juge le lien, GFS n'en juge rien ;
-//   send()     le webhook, le fichier, puis le partage s'arrête (la copie reste chez l'autre) ;
+//   send()     le webhook, le fichier, puis le partage s'arrête (la copie reste chez l'autre), sauf pour une copie à jour : le lien reste ;
 //   abort()    défait ce qui a été préparé.
 // Le premier lot ne couvre que les PDF que GFS garde (`GFS_Fichiers`).
-import { FILES_COLUMN_IDS, FILES_TABLE, TRASH_COLUMN_IDS } from './gfs-files.js';
+import { PASS_MS, PASSES, SENT_COLUMNS, selectionFor } from './share-links.js';
 
-// Les colonnes qui partent : celles du fichier, sans la corbeille (qui n'a de sens que dans le document d'origine).
-export const SENT_COLUMNS = Object.freeze(FILES_COLUMN_IDS.filter(id => !TRASH_COLUMN_IDS.includes(id)));
+export { PASS_MS, PASSES, SENT_COLUMNS };
 // Les colonnes d'aide que le moteur pose dans la table des fichiers et la table technique qu'il crée (pour le texte de l'accord ; leurs noms sont ceux du protocole entre deux documents).
 export const HELPER_COLUMNS = Object.freeze(['id_sync', 'MajLe', 'RecalculLe']);
 export const SYNC_TABLE_NAME = 'GFS_Synchro';
 export const RECEIVED_TABLE = 'GFS_Recus';
-export const PASS_MS = 2000; // entre deux passages du rattrapage, tant que des fichiers partent
-export const PASSES = 90; // trois minutes au plus avant de dire que l'envoi n'est pas fini
 
 // Le nom de l'export (celui du journal chez l'autre) : le nom du fichier sans « .pdf ».
 export const exportName = file => String(file.name || '').replace(/\.pdf$/i, '').trim() || String(file.name || file.id);
 
-// La sélection du moteur : la table des fichiers, ses colonnes, et le seul fichier voulu (son identifiant ne change jamais, ni au renommage ni au remplacement).
-export const selectionOf = file => [{ table: FILES_TABLE, columns: [...SENT_COLUMNS], filter: { mode: 'all', conds: [{ id: 'Identifiant', op: 'eq', values: [file.id] }] } }];
+// La sélection du moteur : le seul fichier voulu (voir selectionFor).
+export const selectionOf = file => selectionFor([file.id]);
 
 // Ce qui retient l'envoi : un destinataire dont le lien de réception ne répond pas (`blocked`) ou un envoi qui n'a pas fini dans le temps (`timeout`).
 const stuck = code => Object.assign(new Error(code), { share: code });
 
-// deps : { engine, file ({ id, name }), wait (ms) → promesse }.
-export function createSourceFlow({ engine, file, wait = ms => new Promise(resolve => setTimeout(resolve, ms)) }) {
+// deps : { engine, file ({ id, name }), mode ('once' : une copie, une fois ; 'live' : une copie qui se met à jour, le lien reste), name (celui de l'export d'un lien qui reste : le nom de ce document), wait (ms) → promesse }.
+export function createSourceFlow({ engine, file, mode = 'once', name = '', wait = ms => new Promise(resolve => setTimeout(resolve, ms)) }) {
   const state = { exp: null, entry: null, reply: null, hook: null };
 
   async function prepare() {
-    const saved = await engine.saveChosenExport({ name: exportName(file), selection: selectionOf(file) });
+    const saved = await engine.saveChosenExport({ name: mode === 'live' && name ? name : exportName(file), selection: selectionOf(file) });
     state.exp = saved.created;
     const { entry, secret } = await engine.startInvitation(state.exp);
     state.entry = entry;
@@ -59,8 +57,8 @@ export function createSourceFlow({ engine, file, wait = ms => new Promise(resolv
       if (caught.why === 'blocked') throw stuck('blocked');
       if (caught.why === 'sent') waiting = false;
       if (!waiting && !caught.running && caught.why === 'idle' && engine.filesPending(state.exp.id) === 0) {
-        await engine.endExport(state.exp);
-        return { document: state.reply.share.name };
+        if (mode === 'once') await engine.endExport(state.exp);
+        return { document: state.reply.share.name, live: mode === 'live' };
       }
       await wait(PASS_MS);
     }

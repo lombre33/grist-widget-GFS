@@ -5,14 +5,24 @@
 let loading = null;
 
 async function load(deps) {
-  const [{ startSyncEngine }, exporting, inviting, resending, acting, filing, failing] = await Promise.all([
+  const [{ startSyncEngine }, exporting, inviting, resending, acting, filing, failing, tabling, sourcing, enginePort, { linksFrom }] = await Promise.all([
     import('./sync-port.js'), import('../kit/js/synchro/source/export.js'), import('../kit/js/synchro/source/invite.js'), import('../kit/js/synchro/source/resend.js'),
     import('../kit/js/synchro/source/actions.js'), import('../kit/js/synchro/source/files.js'), import('../kit/js/synchro/errors.js'),
+    import('../kit/js/synchro/logic/exports.js'), import('../kit/js/synchro/source/synchro.js'), import('../kit/js/synchro/port.js'), import('./share-links.js'),
   ]);
   startSyncEngine(deps);
   // Le rattrapage du moteur (il envoie le contenu des fichiers, et reprend un envoi que la page a laissé en route) tourne tant que la page est ouverte ; sans la table technique, il ne fait presque rien.
   resending.startAutoCatchUp(() => {});
+  // Les documents reliés : ce que la table technique, ses webhooks et leur état disent (js/share-links.js). Sans droit sur les webhooks (pas propriétaire), la liste est vide : rien n'est dit de ce qu'on ne lit pas.
+  const readLinks = async () => {
+    const schema = await enginePort.readSchema();
+    let hooks = null;
+    try { hooks = await sourcing.readHooks(); } catch (error) { hooks = null; }
+    return linksFrom({ note: sourcing.readSourceNote(schema), rows: await sourcing.syncRows(schema), hooks, tablesOf: tabling.exportTables, emailOf: tabling.exportEmail, statusOf: hook => tabling.hookStatus(hook)[0] });
+  };
   return Object.freeze({
+    readLinks,
+    finishEdit: exporting.finishEdit,
     saveChosenExport: exporting.saveChosenExport,
     startInvitation: inviting.startInvitation,
     invitationCode: inviting.invitationCode,

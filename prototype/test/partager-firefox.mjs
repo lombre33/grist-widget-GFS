@@ -27,7 +27,7 @@ function state() {
     outside: [...modal.querySelectorAll('.sh-body *, .mod-foot *, .mod-head *')].filter(outside).map(node => node.className || node.tagName).slice(0, 5),
     add: Boolean(modal.querySelector('[data-fk="share-add"]')), activate: Boolean(modal.querySelector('[data-fk="share-activate"]')), readonly: Boolean(modal.querySelector('[data-fk="share-readonly"]')),
     options: [...modal.querySelectorAll('.drop .opt')].map(node => text(node)), rows: [...modal.querySelectorAll('.rr[data-share]')].length, form: Boolean(modal.querySelector('.sg-new')),
-    note: text(modal.querySelector('.mod-note')), other: (() => { const node = modal.querySelector('.drop .opt[aria-disabled="true"]'); return node ? { text: text(node), icon: Boolean(node.querySelector('svg')), initials: Boolean(node.querySelector('.who')) } : null; })(),
+    note: text(modal.querySelector('.mod-note')), tabs: [...modal.querySelectorAll('.mg-tab')].length,
     confirmShown: confirmBox ? confirmBox.top >= head.bottom - 1 && confirmBox.bottom <= foot.top + 1 : null, locked: [...modal.querySelectorAll('.rr[data-share] .lvl[aria-disabled="true"]')].length,
   };
   return out;
@@ -47,7 +47,7 @@ function manageState() {
     body: modal.querySelector('.sh-body').textContent.replace(/\s+/g, ' ').trim(), focus: active && active.dataset ? active.dataset.fk || null : null, inside: modal.contains(active),
     inPage: box.left >= 0 && box.top >= 0 && box.right <= window.innerWidth + 1 && box.bottom <= window.innerHeight + 1, sticky: head.bottom <= foot.top + 1 && foot.bottom <= box.bottom + 1 && head.top >= box.top - 1,
     outside: [...modal.querySelectorAll('.sh-body *, .mod-foot *, .mod-head *')].filter(outside).map(node => node.className || node.tagName).slice(0, 5),
-    tabs: [...modal.querySelectorAll('.mg-tab')].map(node => [node.textContent, node.getAttribute('aria-selected')]), groups: [...modal.querySelectorAll('.rr[data-group]')].length, spaces: [...modal.querySelectorAll('.rr[data-space]')].length, spaceGroups: [...modal.querySelectorAll('.rr[data-space-group]')].length, form: Boolean(modal.querySelector('.sg-new')),
+    tabs: [...modal.querySelectorAll('.mg-tab')].map(node => [node.textContent, node.getAttribute('aria-selected')]), groups: [...modal.querySelectorAll('.rr[data-group]')].length, links: [...modal.querySelectorAll('.rr[data-link]')].length, spaces: [...modal.querySelectorAll('.rr[data-space]')].length, spaceGroups: [...modal.querySelectorAll('.rr[data-space-group]')].length, form: Boolean(modal.querySelector('.sg-new')),
     greyed: [...modal.querySelectorAll('[aria-disabled="true"]')].map(node => node.dataset.fk || node.className),
   };
   return out;
@@ -68,7 +68,7 @@ async function manageFlow(page, run, t) {
     return now;
   };
   if (!(await run.clickSelector('[data-fk="share-manage"]'))) return;
-  const open = await seen('« Gérer les partages… » devait ouvrir la fenêtre sur « Options », le clavier dedans', s => s.modal && s.modal.body.includes(t('manage.options.structure')) && s.modal.tabs.length === 4);
+  const open = await seen('« Gérer les partages… » devait ouvrir la fenêtre sur « Options », le clavier dedans', s => s.modal && s.modal.body.includes(t('manage.options.structure')) && s.modal.tabs.length === 5);
   if (!open.modal) return;
   if (!open.modal.inPage) run.note(kind, 'la fenêtre devait tenir dans la page');
   if (!open.modal.sticky) run.note(kind, 'le titre et le bouton devaient rester en place');
@@ -99,6 +99,13 @@ async function manageFlow(page, run, t) {
   else if (roles.menu.length) run.note(kind, 'le menu du rôle devait proposer « Écriture »');
   await run.clickSelector('[data-fk="manage-space-back"]');
   await seen('« Retour » devait revenir à la liste des espaces', s => s.modal && s.modal.spaces === 2);
+  // « Autres documents » : les liens (à jour, en attente, bloqué) et leur seul geste ; annuler l'invitation en attente l'enlève de la liste.
+  await run.clickSelector('[data-fk="manage-tab-other"]');
+  const linked = await seen('l\'onglet Autres documents devait lister les trois liens et dire que ce qui est arrivé reste', s => s.modal && s.modal.links === 3 && s.modal.body.includes(t('manage.other.lead')));
+  if (linked.modal && (!linked.modal.inPage || !linked.modal.sticky || linked.modal.outside.length)) run.note(kind, `l'onglet Autres documents devait tenir dans la fenêtre (sort : ${linked.modal.outside.join(', ')})`);
+  if (linked.modal && !(linked.modal.body.includes(t('manage.other.cancel')) && linked.modal.body.includes(t('manage.other.stop')))) run.note(kind, 'un lien en attente devait proposer « Annuler », les autres « Arrêter »');
+  await run.clickSelector('[data-fk="manage-other-stop-e2"]');
+  await seen('annuler l\'invitation en attente devait le demander puis la retirer de la liste', s => s.acts.some(act => act[0] === 'cancelLink' && act[1] === 'e2') && s.modal && s.modal.links === 2);
   await run.clickSelector('[data-fk="manage-tab-cats"]');
   await seen('l\'onglet Catégories devait montrer les deux catégories', s => s.modal && s.modal.body.includes(t('share.cat.editeurs')) && s.modal.body.includes(t('share.cat.tous')));
   await run.clickSelector('[data-fk="manage-cat-tous"]');
@@ -126,7 +133,7 @@ export async function partagerProblems(page, language, tag) {
   try {
     for (const [kind, needs] of [['inactif', [t('share.inactive.owner'), t('share.inactive.activate')]], ['etendre', [t('share.extend.owner'), t('share.extend.activate')]], ['upgrade', [t('share.upgrade.owner'), t('share.upgrade.activate')]], ['actif', [t('share.sec.access'), t('share.row.owners'), t('share.tag.expired'), t('share.tag.invalid'), t('share.row.download')]], ['lecture', [t('share.readonly'), t('share.row.owners')]]]) {
       await run.reset();
-      await page.run(name => { window.__shareKind = name; }, kind);
+      await page.run(name => { window.__shareKind = name; window.__shareOther = true; window.__links = 'actifs'; }, kind);
       const at = await page.run(rowCenter);
       await page.rightClick(...at);
       const entry = await page.run(itemCenter, t('share.menu'));
@@ -149,17 +156,6 @@ export async function partagerProblems(page, language, tag) {
         await run.clickSelector('[data-fk="share-add"]');
         const list = await expect(kind, 'le champ devait ouvrir la liste des personnes et des catégories', s => s.modal && s.modal.options.length >= 2);
         if (list.modal && !list.modal.options.some(label => label.includes(t('share.cat.editeurs')))) run.note(kind, `la liste devait proposer « ${t('share.cat.editeurs')} »`);
-        // « Un autre document Grist… » : dans la liste, grisée (jamais masquée), avec une icône (et non les initiales d'une personne) ; un clic à la vraie souris dit pourquoi, sans rien écrire ni ouvrir de formulaire.
-        if (!list.modal || !list.modal.other) run.note(kind, `la liste devait garder « ${t('share.other')} », grisée`);
-        else {
-          if (!list.modal.other.text.includes(t('share.other')) || !list.modal.other.text.includes(t('share.other.hint'))) run.note(kind, `la ligne grisée devait dire « ${t('share.other')} » et son explication (elle dit « ${list.modal.other.text} »)`);
-          if (!list.modal.other.icon || list.modal.other.initials) run.note(kind, 'la ligne grisée devait porter une icône, pas les initiales d\'une personne');
-          await page.run(() => document.querySelector('.sh .drop .opt[aria-disabled="true"]').scrollIntoView({ block: 'nearest' }));
-          await run.clickSelector('.sh .drop .opt[aria-disabled="true"]');
-          const said = await expect(kind, `un clic sur la ligne grisée devait dire « ${t('share.other.why')} »`, s => s.modal && s.modal.note === t('share.other.why'));
-          if (said.modal && (said.modal.form || said.acts.length)) run.note(kind, 'la ligne grisée ne devait ni ouvrir de formulaire ni rien écrire');
-          if (said.modal && !said.modal.options.some(label => label.includes(t('share.cat.editeurs')))) run.note(kind, 'la liste devait rester ouverte après le clic sur la ligne grisée');
-        }
         const pick = await page.run(selector => { const node = document.querySelector(selector); if (!node) return null; node.scrollIntoView({ block: 'nearest' }); const box = node.getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; }, '[data-fk="share-pick-@editeurs"]');
         if (!pick) run.note(kind, 'la liste devait proposer « les éditeurs »');
         else {
@@ -180,6 +176,7 @@ export async function partagerProblems(page, language, tag) {
     run.note('geste impossible', String(error.message).slice(0, 200));
     await page.press('Escape').catch(() => {});
   }
+  await page.run(() => { window.__shareOther = false; window.__links = null; window.__removed = []; });
   await run.reset();
   return found;
 }

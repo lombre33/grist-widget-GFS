@@ -71,3 +71,19 @@ test('une écriture bloquée (document en lecture, etc.) n\'envoie rien et dit p
   const answer = await control.removeGroup(1);
   assert.deepEqual([answer.ok, answer.message, written.length], [false, 'Le document est en lecture seule.', 0]);
 });
+
+test('arrêter un lien d\'« Autres documents » : la question dit le document (annuler l\'invitation quand il attend sa réponse), « Annuler » n\'arrête rien, « Arrêter » demande l\'arrêt et rend sa réponse', async () => {
+  const asked = [];
+  const stopped = [];
+  const control = (yes, extra = {}) => new ManageControl({ t, fullAccess: () => true, writeBlock: () => null, container: null, inertTargets: () => [], ask: async options => { asked.push(options); return yes; }, otherStop: async link => { stopped.push(link.id); return { ok: true }; }, ...extra });
+  const active = { id: 'e1', name: 'Compta', state: 'active', doc: { name: 'Compta Nord', id: 'd' } };
+  const pending = { id: 'e2', name: 'Direction', state: 'pending', doc: { name: '', id: '' } };
+  assert.equal(await control(false).stopLink(active), null);
+  assert.deepEqual(stopped, [], 'renoncer n\'arrête rien');
+  assert.equal(asked[0].title, t('manage.other.stop.title', { name: 'Compta Nord' }));
+  assert.equal(asked[0].safeFirst, true, 'le clavier est sur « Annuler » : un Entrée distrait n\'arrête pas un partage');
+  assert.deepEqual(await control(true).stopLink(pending), { ok: true });
+  assert.deepEqual(stopped, ['e2']);
+  assert.equal(asked[1].title, t('manage.other.cancel.title', { name: 'Direction' }), 'sans document encore, le nom du lien');
+  assert.equal(asked[1].confirmLabel, t('manage.other.cancel.confirm'));
+});

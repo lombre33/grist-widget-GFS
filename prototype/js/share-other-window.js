@@ -1,7 +1,8 @@
-// La fenêtre « Envoyer à un autre document » (maquette du 09/11 ; « Partager > Un autre document Grist… ») : une copie du fichier, une seule fois, dans un seul sens. Une fenêtre sur la base commune
-// (js/modal.js : le titre et les boutons restent en place) qui montre l'étape où en est le parcours (js/share-other-flow.js) et demande le geste suivant :
-//   1. l'accord (ce que GFS ajoute dans ce document, rien sans lui) ; 2. le code à donner à l'autre document, puis sa réponse collée ; 3. le document qui répond, dit par Grist, avec son code de contrôle ;
-//   4. l'envoi, puis « c'est arrivé et le partage est arrêté ». Le jugement d'un lien ou d'un code est celui du moteur (`errorText`) : cette fenêtre n'en juge rien.
+// La fenêtre « Envoyer à un autre document » (maquette du 09/11 ; « Partager > Dans un autre document Grist > Relier un nouveau document… ») : le premier envoi à un document neuf, dans un seul sens, en une
+// copie une fois ou en une copie qui se met à jour. Une fenêtre sur la base commune (js/modal.js : le titre et les boutons restent en place) qui montre l'étape où en est le parcours (js/share-other-flow.js)
+// et demande le geste suivant :
+//   1. le choix « une fois / à jour » et l'accord (ce que GFS ajoute dans ce document, rien sans lui) ; 2. le code à donner à l'autre document, puis sa réponse collée ; 3. le document qui répond, dit par Grist, avec son code de contrôle ;
+//   4. l'envoi, puis « c'est arrivé » (et le partage est arrêté, ou le lien reste : le fichier suivant passe par « Partager » sans nouveau code). Le jugement d'un lien ou d'un code est celui du moteur (`errorText`) : cette fenêtre n'en juge rien.
 // Fermée en cours d'envoi, elle laisse l'envoi se poursuivre ; elle défait seulement ce qui n'est pas encore parti.
 
 import { h } from './dom.js';
@@ -17,18 +18,32 @@ const area = (fk, label, readOnly) => h('textarea', { class: 'so-code', rows: '3
 // Où se trouve le document qui répond, d'après la fiche que Grist donne de sa clé : son dossier, ou « espace personnel ».
 const placeOf = (t, info) => (info.personal ? t('so.verify.personal') : t('so.verify.in', { folder: info.folder, team: info.team }));
 
+// Ce que GFS ajoute dans ce document, d'après le choix (une fois : retiré à la fin ; à jour : reste tant que le lien dure).
+function accordDetails(ctx) {
+  const { t } = ctx;
+  const live = ctx.mode === 'live';
+  return [
+    h('p', { class: 'so-lead' }, icon('info'), h('span', null, t(live ? 'so.accord.lead.live' : 'so.accord.lead'))),
+    h('div', { class: 'sec' }, t('so.accord.adds')),
+    h('ul', { class: 'so-list' },
+      h('li', null, t(live ? 'so.accord.table.live' : 'so.accord.table', { table: SYNC_TABLE_NAME })),
+      h('li', null, t('so.accord.columns', { table: FILES_TABLE, columns: HELPER_COLUMNS.join(', ') })),
+      h('li', null, t(live ? 'so.accord.hook.live' : 'so.accord.hook'))),
+    h('p', { class: 'fine' }, t('so.accord.other', { table: RECEIVED_TABLE })),
+    h('p', { class: 'fine' }, t('so.accord.keep')),
+  ];
+}
+
 function accordScreen(ctx) {
   const { t } = ctx;
+  const details = h('div', null, ...accordDetails(ctx));
+  const radio = mode => {
+    const input = h('input', { type: 'radio', name: 'so-mode', value: mode, checked: ctx.mode === mode, dataset: { fk: `so-mode-${mode}` } });
+    input.addEventListener('change', () => { ctx.mode = mode; details.replaceChildren(...accordDetails(ctx)); });
+    return h('label', { class: 'chk' }, input, h('span', null, h('b', null, t(`so.mode.${mode}`)), h('small', null, t(`so.mode.${mode}.hint`))));
+  };
   return {
-    body: h('div', { class: 'rt-content' },
-      h('p', { class: 'so-lead' }, icon('info'), h('span', null, t('so.accord.lead'))),
-      h('div', { class: 'sec' }, t('so.accord.adds')),
-      h('ul', { class: 'so-list' },
-        h('li', null, t('so.accord.table', { table: SYNC_TABLE_NAME })),
-        h('li', null, t('so.accord.columns', { table: FILES_TABLE, columns: HELPER_COLUMNS.join(', ') })),
-        h('li', null, t('so.accord.hook'))),
-      h('p', { class: 'fine' }, t('so.accord.other', { table: RECEIVED_TABLE })),
-      h('p', { class: 'fine' }, t('so.accord.keep'))),
+    body: h('div', { class: 'rt-content' }, h('div', { class: 'sec' }, t('so.mode.step')), radio('once'), radio('live'), details),
     buttons: [ctx.cancelButton(), ctx.go(button('so-continue', t('so.continue'), true), () => ctx.prepare())],
     first: 'so-continue',
   };
@@ -98,16 +113,16 @@ function failureScreen(ctx, text) {
 function doneScreen(ctx, result) {
   const { t } = ctx;
   return {
-    body: h('div', { class: 'rt-content' }, h('p', { class: 'so-lead', role: 'status' }, icon('check'), h('span', null, t('so.done', { name: ctx.file.name, doc: result.document }))), h('p', { class: 'fine' }, t('so.done.hint'))),
+    body: h('div', { class: 'rt-content' }, h('p', { class: 'so-lead', role: 'status' }, icon('check'), h('span', null, t('so.done', { name: ctx.file.name, doc: result.document }))), h('p', { class: 'fine' }, t(result.live ? 'so.done.live.hint' : 'so.done.hint'))),
     buttons: [button('so-close', t('so.close'), true)],
     first: 'so-close',
     close: true,
   };
 }
 
-// La fenêtre d'un fichier. opts : { container, t, inertTargets, file ({ id, name }), flow (createSourceFlow), errorText (le moteur), notice (un avis hors fenêtre), now () → ms }. Rend la promesse de sa fermeture.
+// La fenêtre d'un fichier. opts : { container, t, inertTargets, file ({ id, name }), createFlow(mode) (le parcours : createSourceFlow, `mode` : 'once' ou 'live'), errorText (le moteur), notice (un avis hors fenêtre), now () → ms }. Rend la promesse de sa fermeture.
 export function openShareOther(opts) {
-  const { container, t, file, flow } = opts;
+  const { container, t, file } = opts;
   const body = h('div', { class: 'ask-body rt-body sh-body' });
   const status = h('p', { class: 'mod-note', 'aria-live': 'polite' }, t('so.foot'));
   const actions = h('span', { class: 'so-actions' });
@@ -115,7 +130,7 @@ export function openShareOther(opts) {
     h('header', { class: 'mod-head' }, h('h2', { id: 'so-title' }, t('so.title', { name: file.name })), h('p', { class: 'mod-count' }, t('so.sub'))),
     body, h('footer', { class: 'mod-foot' }, status, actions));
   const { done, result } = openModal({ container, section: dialog, inertTargets: opts.inertTargets, first: dialog, cancel: null });
-  const ctx = { t, file, now: opts.now || Date.now, closed: false, sending: false };
+  const ctx = { t, file, now: opts.now || Date.now, closed: false, sending: false, mode: 'once', flow: null };
   const say = text => { status.textContent = text; };
   const show = screen => {
     body.replaceChildren(screen.body);
@@ -144,16 +159,17 @@ export function openShareOther(opts) {
   };
   ctx.prepare = async () => {
     say(t('so.preparing'));
-    const made = await flow.prepare();
-    if (ctx.closed) { await flow.abort().catch(() => {}); return; }
+    ctx.flow = opts.createFlow(ctx.mode);
+    const made = await ctx.flow.prepare();
+    if (ctx.closed) { await ctx.flow.abort().catch(() => {}); return; }
     show(codeScreen(ctx, made));
   };
-  ctx.check = async text => show(verifyScreen(ctx, await flow.check(text)));
+  ctx.check = async text => show(verifyScreen(ctx, await ctx.flow.check(text)));
   ctx.send = async () => {
     ctx.sending = true;
     show(sendingScreen(ctx));
     try {
-      const finished = await flow.send();
+      const finished = await ctx.flow.send();
       if (dialog.isConnected) show(doneScreen(ctx, finished)); else opts.notice(t('so.toast.done', { name: file.name, doc: finished.document }));
     } catch (error) {
       const text = error && error.share ? t(`so.error.${error.share}`) : t('so.failed', { message: opts.errorText(error) });
@@ -161,12 +177,12 @@ export function openShareOther(opts) {
     }
   };
   ctx.stop = async () => {
-    await flow.abort();
+    await ctx.flow.abort();
     ctx.sending = false;
     done(null);
   };
   show(accordScreen(ctx));
   // Fermée avant l'envoi : ce qui a été préparé est défait ; en cours d'envoi, l'envoi continue sans elle.
-  void result.then(() => { ctx.closed = true; if (!ctx.sending) void flow.abort().catch(() => {}); });
+  void result.then(() => { ctx.closed = true; if (!ctx.sending && ctx.flow) void ctx.flow.abort().catch(() => {}); });
   return result;
 }

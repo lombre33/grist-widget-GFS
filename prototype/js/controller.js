@@ -33,7 +33,7 @@ import { arrivalApp, arrivalProbes } from './arrival.js';
 import { arrivalTableApp } from './arrival-table.js';
 import { Rangement, TableDeclined } from './rangement.js';
 import { RightsControl } from './rights-control.js';
-import { otherDocumentTargets, openOtherDocument } from './share-other.js';
+import { createOtherDocuments } from './share-other.js';
 import { resumeSharing } from './sync-resume.js';
 import { WeightControl } from './weight-control.js';
 import { FILES_APP, FILES_MANIFEST, FILES_ENTRY, cleanName } from './gfs-files.js';
@@ -126,10 +126,16 @@ export class GfsController {
     this.transfer = new Transfer({ doc: this.port.doc, base: this.doc.baseURI, createFrame: url => buildTransferFrame(this.doc, url) });
     this.player = new Player({ container: this.$('frames') }); // le lecteur de vidéos posé par-dessus l'app (contrats 5.2, point 11)
     this.attach = new Attach({ doc: this.port.doc, transfer: this.transfer, session: () => this.session, readonly: () => this.readonly }); // `joindre` (contrats 5.4, point 12)
+    // Le partage de fichiers avec d'autres documents Grist (js/share-other.js) : le moteur du kit, son port et les fenêtres ne se chargent qu'au premier besoin.
+    this.otherDocuments = createOtherDocuments({
+      t: this.t, container: this.$('stage'), inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')], docApi: () => this.grist.docApi, transfer: this.transfer,
+      language: () => this.lang, notice: text => this.notice(text), writeBlock: () => this.#writeBlock(),
+    });
     this.rights = new RightsControl({
       port: this.port, transfer: this.transfer, manifests: () => this.validApps().map(item => item.manifest), now: () => Date.now(), container: this.$('stage'),
       inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')], t: this.t, fullAccess: () => this.fullAccess,
-      locale: () => this.locale, identity: () => this.identity, writeBlock: () => this.#writeBlock(), appName: this.appName, extraTargets: (file, state) => otherDocumentTargets(this.t, { file, state, open: shared => void this.#sendToOtherDocument(shared) }), spaces: () => this.spaces,
+      locale: () => this.locale, identity: () => this.identity, writeBlock: () => this.#writeBlock(), appName: this.appName, spaces: () => this.spaces,
+      other: (file, state) => this.otherDocuments.tab(file, state), otherLinks: () => this.otherDocuments.links(), otherStop: link => this.otherDocuments.stop(link),
     });
     this.weight = new WeightControl({ transfer: this.transfer, container: this.$('stage'), inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')], t: this.t, locale: () => this.locale });
   }
@@ -499,19 +505,6 @@ export class GfsController {
   #writeBlock() {
     if (this.readonly) return this.t('mod.readonly');
     return this.fullAccess ? null : this.t('mod.needsAccess');
-  }
-
-  // « Partager > Un autre document Grist… » : la fenêtre d'envoi d'une copie du fichier à un autre document qui a GFS (js/share-other.js ; le moteur ne se charge qu'ici). L'envoi d'un document en lecture seule
-  // ou sans l'accès complet n'est pas proposé (la ligne est grisée par le propriétaire seul) ; une écriture refusée malgré tout est dite par le moteur.
-  async #sendToOtherDocument(file) {
-    const blocked = this.#writeBlock();
-    if (blocked) { this.notice(blocked); return; }
-    try {
-      await openOtherDocument({
-        file, t: this.t, container: this.$('stage'), inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters')],
-        docApi: this.grist.docApi, transfer: this.transfer, language: () => this.lang, notice: text => this.notice(text),
-      });
-    } catch (error) { this.notice(this.t('so.failed', { message: String((error && error.message) || error).slice(0, 200) })); }
   }
 
   // La table n'existe pas encore : la personne décide de la créer (contrats 6.2, point 1). Une fenêtre du widget, au-dessus de celle des apps.

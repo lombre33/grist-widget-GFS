@@ -11,12 +11,12 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-/ccPFJXg2hxIywltm8daCZiqOsiudgvKMKMi2M+Cwsg='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-lQ591haKzGM7eyWeVzD0xW/qWzV1Pvx+h7NIC9nJIpo='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=6edbc41aa4">
 <link rel="stylesheet" href="css/explorer.css?v=418da9c54e">
 <link rel="stylesheet" href="css/modules.css?v=1109fc818b">
 <link rel="stylesheet" href="css/rights.css?v=20ac6b7c9f">
-<link rel="stylesheet" href="css/share.css?v=757bb96f28">
+<link rel="stylesheet" href="css/share.css?v=1de9a0798d">
 <link rel="stylesheet" href="css/weight.css?v=5b796c798e">
 <link rel="stylesheet" href="kit/css/color-picker.css?v=c5a41d6681">
 <!-- Le routeur d'abord : il doit être enregistré avant que le script d'API de Grist n'affecte window.onmessage (contrats 1.2). -->
@@ -43,7 +43,7 @@
     "./js/catalogue.js": "./js/catalogue.js?v=9821dc95fc",
     "./js/conflict-window.js": "./js/conflict-window.js?v=e3c9c8e8d3",
     "./js/context.js": "./js/context.js?v=02c3f955eb",
-    "./js/controller.js": "./js/controller.js?v=4e79ce5c2e",
+    "./js/controller.js": "./js/controller.js?v=e3271dbfd9",
     "./js/copying.js": "./js/copying.js?v=8da0986c98",
     "./js/deposit.js": "./js/deposit.js?v=e11841b099",
     "./js/dock-state.js": "./js/dock-state.js?v=8eec913fd1",
@@ -71,7 +71,7 @@
     "./js/i18n-folders.js": "./js/i18n-folders.js?v=25c7dfd5a3",
     "./js/i18n-manage.js": "./js/i18n-manage.js?v=462831e8cb",
     "./js/i18n-rights.js": "./js/i18n-rights.js?v=ad53955a3b",
-    "./js/i18n-share-other.js": "./js/i18n-share-other.js?v=34aa6d81a6",
+    "./js/i18n-share-other.js": "./js/i18n-share-other.js?v=f5e87616eb",
     "./js/i18n-share.js": "./js/i18n-share.js?v=660055836e",
     "./js/i18n-trash.js": "./js/i18n-trash.js?v=a1934883d2",
     "./js/i18n-weight.js": "./js/i18n-weight.js?v=70f193afa2",
@@ -84,8 +84,9 @@
     "./js/leave.js": "./js/leave.js?v=aa307430cb",
     "./js/libraries.js": "./js/libraries.js?v=f8e30c6112",
     "./js/links.js": "./js/links.js?v=c4e4a9d7bc",
-    "./js/manage-control.js": "./js/manage-control.js?v=b157f419a8",
-    "./js/manage-window.js": "./js/manage-window.js?v=9d60dd5768",
+    "./js/manage-control.js": "./js/manage-control.js?v=3e5dbc2eb8",
+    "./js/manage-other-tab.js": "./js/manage-other-tab.js?v=5d43b1e60b",
+    "./js/manage-window.js": "./js/manage-window.js?v=4d32363f6f",
     "./js/manifest.js": "./js/manifest.js?v=0e9c47c6af",
     "./js/menu.js": "./js/menu.js?v=e317658e25",
     "./js/modal.js": "./js/modal.js?v=d75684dfd9",
@@ -102,7 +103,7 @@
     "./js/rangement.js": "./js/rangement.js?v=f8570af12c",
     "./js/reading.js": "./js/reading.js?v=6b29ec0768",
     "./js/rights-actions.js": "./js/rights-actions.js?v=31c0eee7b7",
-    "./js/rights-control.js": "./js/rights-control.js?v=144d9e28b6",
+    "./js/rights-control.js": "./js/rights-control.js?v=18d626f106",
     "./js/rights-plan.js": "./js/rights-plan.js?v=f1251da1a2",
     "./js/rights-reader.js": "./js/rights-reader.js?v=0640e8f3fc",
     "./js/rights-window.js": "./js/rights-window.js?v=43140717c7",
@@ -113,11 +114,13 @@
     "./js/session.js": "./js/session.js?v=8d372a771c",
     "./js/settings-menu.js": "./js/settings-menu.js?v=f9ce66c1f3",
     "./js/settings.js": "./js/settings.js?v=a425d4248c",
-    "./js/share-control.js": "./js/share-control.js?v=24e4eef39c",
-    "./js/share-other-flow.js": "./js/share-other-flow.js?v=12ef3191a4",
-    "./js/share-other-window.js": "./js/share-other-window.js?v=3b8cf1a6b0",
-    "./js/share-other.js": "./js/share-other.js?v=e8fe0dd4de",
-    "./js/share-window.js": "./js/share-window.js?v=0c35c7441c",
+    "./js/share-control.js": "./js/share-control.js?v=80471baf95",
+    "./js/share-links.js": "./js/share-links.js?v=49b2331a44",
+    "./js/share-other-flow.js": "./js/share-other-flow.js?v=4934bffdb7",
+    "./js/share-other-tab.js": "./js/share-other-tab.js?v=2fa346af0d",
+    "./js/share-other-window.js": "./js/share-other-window.js?v=5621ec6d8b",
+    "./js/share-other.js": "./js/share-other.js?v=0bf8b2f0d9",
+    "./js/share-window.js": "./js/share-window.js?v=f519fa7a2a",
     "./js/sharing-model.js": "./js/sharing-model.js?v=4b3f8d433f",
     "./js/spaces-filing.js": "./js/spaces-filing.js?v=0702b4b954",
     "./js/state.js": "./js/state.js?v=ac1616eaf2",
@@ -125,7 +128,7 @@
     "./js/sync-port-text.js": "./js/sync-port-text.js?v=189179a250",
     "./js/sync-port.js": "./js/sync-port.js?v=6ffc0e2143",
     "./js/sync-resume.js": "./js/sync-resume.js?v=f834759e1a",
-    "./js/sync-service.js": "./js/sync-service.js?v=eadc88a782",
+    "./js/sync-service.js": "./js/sync-service.js?v=4b1194cfae",
     "./js/theme-apply.js": "./js/theme-apply.js?v=a0a1612c97",
     "./js/theme-color.js": "./js/theme-color.js?v=3bc624594f",
     "./js/theme-window.js": "./js/theme-window.js?v=e98f2de3e7",

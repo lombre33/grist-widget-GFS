@@ -1,10 +1,12 @@
-// « Partager > Un autre document Grist… » : la fenêtre d'envoi (js/share-other-window.js) jouée dans GFS lui-même, dans un VRAI Grist (`GRIST_DOCKER_ARGS="-e ALLOWED_WEBHOOK_DOMAINS=*" bash vrai-serveur.sh`),
+// « Partager > Dans un autre document Grist » : l'onglet, la fenêtre d'envoi (js/share-other-window.js) et « Gérer les partages > Autres documents », joués dans GFS lui-même, dans un VRAI Grist (`GRIST_DOCKER_ARGS="-e ALLOWED_WEBHOOK_DOMAINS=*" bash vrai-serveur.sh`),
 // à 700 × 400, à la vraie souris, deux documents qui ont GFS. Le premier est celui de la personne : tout passe par les fenêtres de GFS. Le second est piloté par l'essai avec les fonctions du moteur (le côté
 // qui reçoit n'a pas encore d'écran dans GFS) : il lit l'invitation, crée sa réception, répond.
-//   1. « Partager… » d'un PDF : la ligne « Un autre document Grist… » est là, dégrisée (propriétaire), même sans que les droits de GFS soient activés ; rien n'est écrit avant l'accord ;
+//   1. « Partager… » d'un PDF : l'onglet « Dans un autre document Grist » est là, son bouton « Relier un nouveau document… » dégrisé (propriétaire), même sans que les droits de GFS soient activés ; rien n'est écrit avant l'accord ;
 //   2. l'accord dit ce qui est ajouté ; « Continuer » crée l'export et rend un code ; la réponse collée est contrôlée (le document dit par Grist, le même code de contrôle des deux côtés) ;
 //   3. « Envoyer » : le fichier arrive dans l'autre document avec les mêmes octets, le partage s'arrête (plus de table technique ni de webhook) ;
-//   4. annuler après le code défait ce qui était préparé ; Échap sur l'accord n'écrit rien.
+//   4. annuler après le code défait ce qui était préparé ; Échap sur l'accord n'écrit rien ;
+//   5. « Une copie qui se met à jour » : le lien reste après le premier envoi ; un second PDF part par le menu des niveaux, sans nouveau code ; « Arrêter la copie » le sort du partage (la copie reste chez l'autre, en
+//      archive) ; « Gérer les partages > Autres documents » arrête le lien (plus de webhook ni de table technique chez l'envoyeur).
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { createServer } from 'node:http';
 import { serve } from './lab-server.mjs';
@@ -27,7 +29,13 @@ async function openShare(frame, name) {
   await frame.getByRole('menuitem', { name: new RegExp(`^${t('share.menu')}`) }).click();
   await frame.locator('.mod.sh .rt-content').waitFor();
 }
-const otherLine = frame => frame.locator(`[data-fk="share-pick-${t('share.other')}"]`);
+// Le bouton « Relier un nouveau document… » de l'onglet « Dans un autre document Grist » (la fenêtre « Partager » étant ouverte).
+const otherLine = async frame => {
+  await frame.locator('[data-fk="share-tab-other"]').click();
+  const button = frame.locator('[data-fk="other-new"]');
+  await button.waitFor();
+  return button;
+};
 const docName = ({ page, docId }) => page.evaluate(async id => (await (await fetch(`/api/docs/${id}`)).json()).name, docId);
 const webhooks = ({ page, docId }) => page.evaluate(async id => (await (await fetch(`/api/docs/${id}/webhooks`)).json()).webhooks.length, docId);
 const closeAll = async (page, frame) => { await page.keyboard.press('Escape'); await frame.locator('.mod-scrim').first().waitFor({ state: 'detached' }).catch(() => {}); };
@@ -47,8 +55,8 @@ try {
   const loaded = await frame.evaluate(() => performance.getEntriesByType('resource').map(entry => entry.name).filter(name => /\/kit\/js\/synchro\//.test(name)).length);
   check('un document sans partage ne charge pas le moteur', loaded === 0, loaded);
   await openShare(frame, 'Facture.pdf');
-  const line = otherLine(frame);
-  check('« Un autre document Grist… » est dans la fenêtre « Partager », dégrisée pour le propriétaire', (await line.count()) === 1 && (await line.getAttribute('aria-disabled')) === null, await text(frame, '.mod.sh'));
+  const line = await otherLine(frame);
+  check('l\'onglet « Dans un autre document Grist » est dans la fenêtre « Partager », son bouton dégrisé pour le propriétaire, sans document relié encore', (await line.count()) === 1 && (await line.getAttribute('aria-disabled')) === null && (await frame.locator('.mod.sh .rr[data-link]').count()) === 0, await text(frame, '.mod.sh'));
   await shot(frame, '1-partager');
   await line.click();
   await frame.locator('.mod.so [data-fk="so-continue"]').waitFor();
@@ -64,7 +72,7 @@ try {
 
   say('--- 2. accord, code, réponse contrôlée ---');
   await openShare(frame, 'Facture.pdf');
-  await otherLine(frame).click();
+  await (await otherLine(frame)).click();
   await frame.locator('[data-fk="so-continue"]').click();
   await frame.locator('[data-fk="so-code"]').waitFor();
   const code = await frame.locator('[data-fk="so-code"]').inputValue();
@@ -77,7 +85,7 @@ try {
   check('l\'autre document lit l\'invitation', invitation.ok && invitation.value.name === 'Facture', invitation);
   const made = await target.frame.evaluate(invite => window.__try(async () => {
     const plans = invite.tables.map(tb => ({ tb, dest: 'GFS_Recus' }));
-    const reception = await window.__s.createReception(invite, plans, { reserve: true, options: {} });
+    const reception = await window.__s.createReception(invite, plans, { reserve: true, options: { archive: true } });
     return { journal: reception.journal, note: reception.note };
   }), invitation.value);
   check('l\'autre document crée sa réception', made.ok && made.value.journal === 'GFS_Journal_Facture', made);
@@ -128,7 +136,7 @@ try {
 
   say('--- 4. annuler après le code défait ce qui était préparé ---');
   await openShare(frame, 'Devis.pdf');
-  await otherLine(frame).click();
+  await (await otherLine(frame)).click();
   await frame.locator('[data-fk="so-continue"]').click();
   await frame.locator('[data-fk="so-code"]').waitFor();
   check('le second code est prêt, la table technique est revenue', (await source.rest.tables()).includes('GFS_Synchro'));

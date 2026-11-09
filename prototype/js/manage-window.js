@@ -7,8 +7,9 @@ import { icon } from './icons.js';
 import { openModal } from './modal.js';
 import { openMenu } from './menu.js';
 import { CATEGORIES } from './sharing-model.js';
+import { otherManageTab } from './manage-other-tab.js';
 
-const TABS = Object.freeze(['options', 'groups', 'spaces', 'cats']);
+const TABS = Object.freeze(['options', 'groups', 'spaces', 'cats', 'other']);
 const CATS = Object.freeze([{ who: CATEGORIES.editeurs, key: 'editeurs', glyph: 'edit' }, { who: CATEGORIES.tous, key: 'tous', glyph: 'globe' }]);
 const RIGHTS = Object.freeze(['lecture', 'ecriture']);
 
@@ -136,12 +137,12 @@ export function manageBody(ctx) {
     tab.addEventListener('click', () => ctx.go(key));
     return tab;
   }));
-  const panel = { options: optionsTab, groups: groupsTab, spaces: spacesTab, cats: catsTab }[ctx.tab](ctx);
+  const panel = { options: optionsTab, groups: groupsTab, spaces: spacesTab, cats: catsTab, other: otherManageTab }[ctx.tab](ctx);
   return h('div', { class: 'rt-content' }, tabs, h('div', { class: 'mg-panel', role: 'tabpanel' }, panel));
 }
 
 // opts : { container, t, inertTargets, load() → état, onAddGroup(state, { name, people }), onUpdateGroup(id, people), onRemoveGroup(id), onReadTable(state), onRoot(state, who, right), onStructure(), onConfirmRemove(name),
-//   onAddSpace(state), onRemoveSpace(state, space), onSpaceGroup(state, space, group, right), onPickGroup(state, space) }.
+//   onAddSpace(state), onRemoveSpace(state, space), onSpaceGroup(state, space, group, right), onPickGroup(state, space), onLinks() → les documents reliés (js/share-links.js), onStopLink(link) → { ok, message? } (confirmé par l'appelant) }.
 export function openManage(opts) {
   const { container, t } = opts;
   const body = h('div', { class: 'ask-body rt-body sh-body' }, h('p', { class: 'rt-none', 'aria-live': 'polite' }, t('share.loading')));
@@ -151,7 +152,7 @@ export function openManage(opts) {
     h('header', { class: 'mod-head' }, h('h2', { id: 'manage-title' }, t('manage.title')), h('p', { class: 'mod-count' }, t('manage.sub'))), body, h('footer', { class: 'mod-foot' }, status, close));
   const { done, result } = openModal({ container, section: dialog, inertTargets: opts.inertTargets, first: close, cancel: null });
   close.addEventListener('click', () => done(null));
-  const ctx = { t, container, state: null, tab: 'options', editing: null, space: null, say: text => { status.textContent = text; } };
+  const ctx = { t, container, state: null, tab: 'options', editing: null, space: null, links: null, say: text => { status.textContent = text; } };
   const draw = () => { if (dialog.isConnected && ctx.state) body.replaceChildren(manageBody(ctx)); };
   const reload = async () => {
     try { ctx.state = await opts.load(); draw(); } catch (error) { if (dialog.isConnected) body.replaceChildren(h('p', { class: 'rt-none' }, t('manage.unreadable'))); }
@@ -162,7 +163,19 @@ export function openManage(opts) {
     if (!answer || answer.ok) { ctx.editing = null; await reload(); }
     return answer;
   };
-  ctx.go = key => { ctx.tab = key; ctx.editing = null; ctx.space = null; draw(); };
+  ctx.readLinks = async () => {
+    ctx.links = null;
+    draw();
+    try { ctx.links = opts.onLinks ? await opts.onLinks() : []; } catch (error) { ctx.links = false; }
+    draw();
+  };
+  ctx.stopLink = async link => {
+    const answer = await opts.onStopLink(link);
+    if (!answer) return;
+    ctx.say(answer.ok ? t('share.foot') : t('share.failed', { message: answer.message || '' }));
+    if (answer.ok) await ctx.readLinks();
+  };
+  ctx.go = key => { ctx.tab = key; ctx.editing = null; ctx.space = null; draw(); if (key === 'other') void ctx.readLinks(); };
   ctx.openSpace = space => { ctx.space = space ? space.key : null; draw(); };
   ctx.addSpace = async () => { const answer = await opts.onAddSpace(ctx.state); if (answer) { ctx.say(answer.ok ? t('share.foot') : t('share.failed', { message: answer.message || '' })); if (answer.ok) await reload(); } };
   ctx.removeSpace = async space => { const answer = await opts.onRemoveSpace(ctx.state, space); if (answer && answer.ok) ctx.space = null; if (answer) { ctx.say(answer.ok ? t('share.foot') : t('share.failed', { message: answer.message || '' })); if (answer.ok) await reload(); } };

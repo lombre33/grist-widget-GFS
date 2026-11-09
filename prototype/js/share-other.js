@@ -1,31 +1,72 @@
-// La ligne « Un autre document Grist… » de la liste du champ d'ajout de « Partager » (js/share-window.js, option `extraTargets`) : envoyer une copie de ce fichier à un autre document qui a GFS, par le moteur de
-// partage du kit (kit/js/synchro/, repris de Sync+). Un seul endroit pour la ligne, que le contrôleur (js/controller.js) et la page d'essai Firefox (test/pages/explorateur.js) lisent tous deux. Grisée, jamais
-// masquée, quand elle ne peut pas servir : un clic dit pourquoi. Le premier lot ne couvre que les PDF que GFS garde, et un propriétaire du document.
+// Le partage d'un fichier avec d'autres documents Grist, côté contrôleur (« Partager > Dans un autre document Grist », « Gérer les partages > Autres documents » ; maquette du 09/11) : lit les documents reliés,
+// change le niveau d'un fichier chez l'un d'eux, ouvre la fenêtre du premier envoi à un document neuf (js/share-other-window.js), arrête un lien. Le moteur de partage du kit (kit/js/synchro/, repris de Sync+), son
+// port et les fenêtres ne se chargent qu'au premier besoin : rien ne pèse sur la page de quelqu'un qui ne partage rien. Un seul endroit pour le contrôleur (js/controller.js) et la page d'essai Firefox
+// (test/pages/explorateur.js). Grisé, jamais masqué, quand ça ne peut pas servir : un clic dit pourquoi. Le premier lot ne couvre que les PDF que GFS garde, et un propriétaire du document.
 import { FILES_APP } from './gfs-files.js';
+import { applyLevel, stopLink } from './share-links.js';
 
-// Pourquoi la ligne est grisée (une phrase), ou null. Sans parcours branché (la page d'essai), le partage entre deux documents « arrive bientôt ».
-function whyNot(t, { file, state, open }) {
-  if (!open) return t('share.other.why');
+// Pourquoi l'onglet est grisé (une phrase), ou null.
+export function whyNot(t, { file, state }) {
   if (!file || file.folder || file.app !== FILES_APP) return t('share.other.why.pdf');
   if (!state || state.owner !== true) return t('share.other.why.owner');
   return null;
 }
 
-// opts : { file (le fichier de la fenêtre), state (l'état qu'elle dessine : { owner, … }), open(file) → ouvre la fenêtre d'envoi }.
-export function otherDocumentTargets(t, opts = {}) {
-  const why = whyNot(t, opts);
-  return [{ label: t('share.other'), hint: t('share.other.hint'), icon: 'link', greyed: Boolean(why), why, run: () => { if (!why) opts.open(opts.file); } }];
-}
+// deps : { t, container, inertTargets() , docApi() → grist.docApi, transfer (js/transfer.js), language () → 'fr' | 'en', notice (un avis hors fenêtre), writeBlock() → la raison d'un blocage ou null }.
+export function createOtherDocuments(deps) {
+  const { t } = deps;
+  const engine = async () => (await import('./sync-service.js')).loadSharingEngine({ docApi: deps.docApi(), transfer: deps.transfer, language: deps.language, busy: () => false });
+  const links = async () => (await engine()).readLinks();
+  const said = async error => (error && error.share ? t(`so.error.${error.share}`) : t('so.failed', { message: (await engine().then(each => each.errorText(error), () => (error && error.message) || String(error))) }));
 
-// Ouvre la fenêtre d'envoi du fichier. Le moteur, son port et la fenêtre ne se chargent qu'à ce moment. deps : { file, t, container, inertTargets, docApi (grist.docApi), transfer, language () → 'fr' | 'en',
-// notice (un avis hors fenêtre) }. Rend la promesse de la fermeture de la fenêtre.
-export async function openOtherDocument(deps) {
-  const [{ openShareOther }, { createSourceFlow }, { loadSharingEngine }] = await Promise.all([import('./share-other-window.js'), import('./share-other-flow.js'), import('./sync-service.js')]);
-  const engine = await loadSharingEngine({ docApi: deps.docApi, transfer: deps.transfer, language: deps.language, busy: () => false });
-  // La fenêtre « Partager » est encore ouverte dessous : elle devient inerte avec le reste (la liste est prise avant que la nouvelle fenêtre existe).
-  const below = [...deps.container.querySelectorAll('.mod-scrim')];
-  return openShareOther({
-    container: deps.container, t: deps.t, inertTargets: () => [...deps.inertTargets(), ...below], file: { id: deps.file.id, name: deps.file.name },
-    flow: createSourceFlow({ engine, file: deps.file }), errorText: engine.errorText, notice: deps.notice,
-  });
+  // Le nom de ce document, pour nommer le lien chez l'autre (le journal qu'il y reçoit) ; à défaut, un nom neutre.
+  async function documentName() {
+    try {
+      const reply = await deps.transfer.rest('GET', '', { writable: false });
+      const name = reply && reply.body && reply.body.name;
+      return typeof name === 'string' && name.trim() ? name.trim() : t('so.link.default');
+    } catch (error) { return t('so.link.default'); }
+  }
+
+  // La fenêtre du premier envoi à un document neuf. La fenêtre « Partager » est encore ouverte dessous : elle devient inerte avec le reste (la liste est prise avant que la nouvelle fenêtre existe).
+  async function open(file) {
+    const blocked = deps.writeBlock();
+    if (blocked) { deps.notice(blocked); return; }
+    try {
+      const [{ openShareOther }, { createSourceFlow }, running, name] = await Promise.all([import('./share-other-window.js'), import('./share-other-flow.js'), engine(), documentName()]);
+      const below = [...deps.container.querySelectorAll('.mod-scrim')];
+      await openShareOther({
+        container: deps.container, t, inertTargets: () => [...deps.inertTargets(), ...below], file: { id: file.id, name: file.name },
+        createFlow: mode => createSourceFlow({ engine: running, file, mode, name }), errorText: running.errorText, notice: deps.notice,
+      });
+    } catch (error) { deps.notice(await said(error)); }
+  }
+
+  return {
+    // L'onglet de « Partager » pour `file` (l'état que la fenêtre dessine : { owner, … }).
+    tab(file, state) {
+      const why = whyNot(t, { file, state });
+      return {
+        why, fileId: file ? file.id : '', loadLinks: links, onNew: () => open(file),
+        async onLevel(link, level) {
+          const blocked = why || deps.writeBlock();
+          if (blocked) return { ok: false, message: blocked };
+          try {
+            const done = await applyLevel(await engine(), link, file.id, level);
+            if (!done.later) return { ok: true };
+            const doc = link.doc.name || link.name;
+            void done.later.then(() => deps.notice(t('so.once.done', { name: file.name, doc })), async error => deps.notice(await said(error)));
+            return { ok: true, note: t('so.once.going', { name: file.name }) };
+          } catch (error) { return { ok: false, message: await said(error) }; }
+        },
+      };
+    },
+    // « Gérer les partages > Autres documents » : les liens, et l'arrêt d'un lien (ou l'annulation d'une invitation en attente).
+    links,
+    async stop(link) {
+      const blocked = deps.writeBlock();
+      if (blocked) return { ok: false, message: blocked };
+      try { await stopLink(await engine(), link); return { ok: true }; } catch (error) { return { ok: false, message: await said(error) }; }
+    },
+  };
 }

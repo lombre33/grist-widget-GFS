@@ -14,7 +14,7 @@ const lower = text => String(text ?? '').trim().toLowerCase();
 export class ShareControl {
   #o;
 
-  // opts : { port, reader, writer, t, locale(), container, inertTargets(), identity() → l'adresse de la personne ou '', fullAccess(), writeBlock() → la raison d'un blocage ou null, appName(id), extraTargets(file, state) → les lignes « autre document » }
+  // opts : { port, reader, writer, t, locale(), container, inertTargets(), identity() → l'adresse de la personne ou '', fullAccess(), writeBlock() → la raison d'un blocage ou null, appName(id), other(file, state) → l'onglet « Dans un autre document Grist » (js/share-other.js) ou null }
   constructor(opts) { this.#o = opts; }
 
   // La table de fichiers que le partage couvre pour ce fichier (un PDF de GFS, ou le fichier d'une app qui déclare sa table), ou null.
@@ -100,7 +100,7 @@ export class ShareControl {
   open(file) {
     const { t, container, inertTargets } = this.#o;
     return openShare({
-      container, t, locale: this.#o.locale(), inertTargets, extraTargets: state => this.#o.extraTargets(file, state), file: { key: file.key, name: file.name, app: file.folder ? t('share.folder.in', { name: file.folder.space.name }) : this.#o.appName(file.app) },
+      container, t, locale: this.#o.locale(), inertTargets, other: state => this.#o.other(file, state), file: { key: file.key, name: file.name, app: file.folder ? t('share.folder.in', { name: file.folder.space.name }) : this.#o.appName(file.app) },
       load: () => this.load(file), onManage: () => this.#o.manage.open(),
       onAdd: record => this.#write([['AddRecord', SHARES_TABLE, null, record]]),
       onChange: (id, patch) => this.#write([['UpdateRecord', SHARES_TABLE, id, patch]]),

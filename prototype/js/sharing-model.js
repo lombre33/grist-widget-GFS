@@ -19,9 +19,11 @@ export const isSharingNote = memo => NOTE_ANY.test(String(memo ?? ''));
 // Les tables de fichiers que le partage couvre : la clé d'une ligne est `<préfixe><identifiant>` (le même que `fileKey` de l'explorateur). `id` : la colonne de l'identifiant (null : le numéro de ligne de Grist,
 // `colonnes.id: "id"` du manifeste) ; `author` : la colonne de l'auteur ; `stamped` : GFS pose lui-même cette colonne (une formule déclenchée sur `user`, écrite par Grist à la création, que l'app n'a pas à tenir) ;
 // `open` : une condition sur la ligne (`rec`) des lignes qui ne sont pas des fichiers (`exclure` du manifeste, les réglages de l'app) et restent ouvertes comme avant.
-export const FILES_TARGET = Object.freeze({ table: FILES_TABLE, prefix: 'gfs-fichiers:', id: 'Identifiant', author: 'Auteur', stamped: false, open: '' });
-export const TARGETS = Object.freeze([FILES_TARGET]);
+// L'auteur d'un PDF est `GFS_Auteur`, que Grist écrit à la création et que seuls les propriétaires changent, comme pour les fichiers des apps. Pas `Auteur` : l'explorateur le réécrit à chaque remplacement du contenu (c'est le
+// dernier qui a modifié), et un porteur du droit « écriture » s'y serait nommé auteur, donc administrateur (mesuré le 09/11, labo/run-partager-auteur.mjs).
 export const STAMP = 'GFS_Auteur';
+export const FILES_TARGET = Object.freeze({ table: FILES_TABLE, prefix: 'gfs-fichiers:', id: 'Identifiant', author: STAMP, stamped: true, open: '' });
+export const TARGETS = Object.freeze([FILES_TARGET]);
 
 // Les tables de fichiers que les manifestes des apps déclarent (`fichiers[]`) : une cible par table, d'après la forme de l'explorateur (js/explorer-model.js).
 export function appTargets(manifests) {
@@ -291,7 +293,13 @@ export function planSharing(existing, filesColumns, targets = existing.targets |
   for (const target of todo) {
     if (!hasTable(target.table)) { actions.unshift(['AddTable', target.table, [...filesColumns, ...helperColumns(target)]]); creates.push(target.table); continue; }
     const have = columnsOf(target.table);
-    for (const helper of helperColumns(target)) if (!have.has(helper.id)) { actions.push(['AddColumn', target.table, helper.id, { ...helper, id: undefined }]); adds.push(`${target.table}.${helper.id}`); }
+    for (const helper of helperColumns(target)) {
+      if (have.has(helper.id)) continue;
+      // Les PDF d'avant : l'auteur est repris de `Auteur` (une colonne à formule `$Auteur` qu'on rend ordinaire garde ses valeurs, mesuré le 09/11), puis la formule de création reprend (`user.Email`, pour les nouvelles lignes seulement).
+      if (isFiles(target) && helper.id === STAMP && have.has('Auteur')) actions.push(['AddColumn', target.table, STAMP, { type: 'Text', isFormula: true, formula: '$Auteur' }], ['ModifyColumn', target.table, STAMP, { isFormula: false, formula: helper.formula, recalcWhen: 0, recalcDeps: null }]);
+      else actions.push(['AddColumn', target.table, helper.id, { ...helper, id: undefined }]);
+      adds.push(`${target.table}.${helper.id}`);
+    }
     if (hadRules(target)) { // une table déjà partagée : les formules d'aide d'avant sont reprises (après les colonnes ajoutées), les règles d'avant retirées pour être reposées
       for (const helper of helperColumns(target)) if (helper.isFormula && have.has(helper.id)) actions.push(['ModifyColumn', target.table, helper.id, { formula: helper.formula }]);
       actions.push(...dropRules(existing, mine(target.table)));

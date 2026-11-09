@@ -3012,6 +3012,9 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
        le modèle privé du propriétaire, crée le sien (Grist écrit son adresse), ne triche pas sur l'auteur, écrit un modèle ouvert en écriture et pas un modèle en lecture, garde la ligne de réglages ; le lecteur n'écrit
        rien. **Pas mesuré** : avec les vraies apps sous règles (leur comportement devant un refus d'écriture) ; les tables liées (versions, commentaires) ne sont pas couvertes ; le numéro de ligne peut être réutilisé par Grist
        après une suppression (les partages d'un fichier supprimé attendent un nettoyage) ; la corbeille (point 12).
+       **Corrigé le 09/11 (audit de sécurité, faits vérifiés 72)** : l'auteur d'un PDF de GFS est lui aussi `GFS_Auteur` (écrit par Grist, `-U` pour qui n'est pas propriétaire), plus la colonne « Auteur » : l'explorateur
+       réécrit « Auteur » à chaque remplacement du contenu, et un porteur du droit « écriture » devenait ainsi auteur, donc administrateur, du PDF d'un autre (effacer, donner l'administration). Les PDF d'avant gardent leur
+       auteur : la colonne reprend « Auteur » une fois, à la reprise du partage (« Compléter »).
 
     i. [T] **Groupes et « Gérer les partages » livrés le 07/11** (lot 3 ; `GROUPS_TABLE`, `groupColumns`, `planGroupAdd`, `planGroupsRead` de `js/sharing-model.js` ; `js/manage-window.js`, `js/manage-control.js`, `js/pick-window.js`).
        La table `GFS_Groupes` naît avec le partage (ou à la reprise d'un partage d'avant, qui relit alors les colonnes d'aide) : `Nom`, `NomL`, `PersonnesIci` (adresses tapées), `Source`, `SourceEmail`, `SourceGroupe`

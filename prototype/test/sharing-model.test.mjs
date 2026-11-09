@@ -54,13 +54,15 @@ test('les formules sont du Python valide : aucune ligne de tête n\'est indenté
 
 test('les colonnes d\'aide d\'une table de fichiers : un calcul et six listes, du nom que lisent les règles ; l\'auteur du fichier est toujours administrateur', () => {
   const columns = helperColumns(TARGETS[0]);
-  assert.deepEqual(columns.map(column => column.id), [...HELPERS]);
+  assert.deepEqual(columns.map(column => column.id), ['GFS_Auteur', ...HELPERS]);
+  assert.equal(columns[0].formula, 'user.Email', 'l\'auteur d\'un PDF est écrit par Grist à la création, comme pour les fichiers des apps');
   const calc = columns.find(column => column.id === 'GFS_Calc').formula;
   assert.match(calc, /key = "gfs-fichiers:" \+ str\(\$Identifiant\)/);
-  assert.match(calc, /str\(\$Auteur\)\.strip\(\)\.lower\(\)/);
+  assert.match(calc, /str\(\$GFS_Auteur\)\.strip\(\)\.lower\(\)/);
+  assert.doesNotMatch(calc, /\$Auteur\b/, '« Auteur » n\'est que le dernier qui a modifié : il ne donne aucun droit');
   assert.match(calc, /best\[author\] = \(999, 9, 3\)/);
   assert.match(calc, /GFS_Placement\.lookupOne\(Cible=key\)/);
-  const parts = columns.filter(column => column.id !== 'GFS_Calc').map(column => [column.id, column.formula.match(/\[(\d)\]\)$/)[1]]);
+  const parts = columns.filter(column => column.id !== 'GFS_Calc' && column.id !== 'GFS_Auteur').map(column => [column.id, column.formula.match(/\[(\d)\]\)$/)[1]]);
   assert.deepEqual(parts, [['GFS_Lecteurs', '0'], ['GFS_Ecrivains', '1'], ['GFS_Admins', '2'], ['GFS_Refus', '3'], ['GFS_Cats', '4'], ['GFS_CatsEcrit', '5']]);
   for (const line of calc.split('\n')) assert.equal(line.split('"').length % 2, 1, `guillemets non fermés : ${line}`);
 });
@@ -71,7 +73,7 @@ test('les règles d\'une table de fichiers : propriétaires d\'abord, création 
   assert.equal(rules[0].rights, '+CRUD');
   assert.deepEqual(rules.at(-1), { formula: '', rights: '-CRUD', memo: rules.at(-1).memo });
   assert.ok(rules.every(rule => isSharingNote(rule.memo)));
-  assert.match(rules.find(rule => rule.rights === '+C').formula, /newRec\.Auteur\.lower\(\) == user\.Email\.lower\(\)/);
+  assert.match(rules.find(rule => rule.rights === '+C').formula, /newRec\.GFS_Auteur\.lower\(\) == user\.Email\.lower\(\)/);
   assert.ok(rules.every(rule => !/\bnow\b|NOW|TODAY|lookup/.test(rule.formula)), 'une règle ne lit que `rec` et `newRec`');
 });
 
@@ -94,9 +96,9 @@ test('activer le partage sur un document neuf : les deux tables, les règles, la
   assert.deepEqual(plan.creates, [SHARES_TABLE, 'GFS_Rangement', 'GFS_Fichiers', 'GFS_Groupes', 'GFS_Espaces', 'GFS_Placement']);
   assert.deepEqual(plan.actions.filter(action => action[0] === 'AddTable').map(action => action[1]), ['GFS_Groupes', 'GFS_Espaces', 'GFS_Placement', 'GFS_Fichiers', 'GFS_Rangement', SHARES_TABLE], 'groupes, espaces et placement d\'abord : les colonnes d\'aide les lisent');
   const created = plan.actions.find(action => action[1] === 'GFS_Fichiers')[2];
-  assert.deepEqual(created.map(column => column.id), [...FILES_COLUMNS.map(column => column.id), ...HELPERS]);
+  assert.deepEqual(created.map(column => column.id), [...FILES_COLUMNS.map(column => column.id), 'GFS_Auteur', ...HELPERS]);
   const resources = plan.actions.filter(action => action[1] === '_grist_ACLResources').map(action => action[3]);
-  assert.deepEqual(resources.map(resource => `${resource.tableId}/${resource.colIds}`), [`${SHARES_TABLE}/Auteur,AuteurAcces`, `${SHARES_TABLE}/*`, 'GFS_Groupes/Nom,NomL,Nb,Source', 'GFS_Groupes/*', 'GFS_Espaces/*', 'GFS_Placement/*', 'GFS_Fichiers/*']);
+  assert.deepEqual(resources.map(resource => `${resource.tableId}/${resource.colIds}`), [`${SHARES_TABLE}/Auteur,AuteurAcces`, `${SHARES_TABLE}/*`, 'GFS_Groupes/Nom,NomL,Nb,Source', 'GFS_Groupes/*', 'GFS_Espaces/*', 'GFS_Placement/*', 'GFS_Fichiers/GFS_Auteur', 'GFS_Fichiers/*']);
   assert.ok(plan.actions.findIndex(action => action[0] === 'AddTable') < plan.actions.findIndex(action => action[1] === '_grist_ACLResources'), 'les tables avant les règles');
 });
 
@@ -121,10 +123,15 @@ test('les règles se posent aux numéros qui suivent ceux en place, dans l\'ordr
 test('une table de fichiers déjà là : seules les colonnes d\'aide manquantes sont ajoutées, jamais la table recréée', () => {
   const plan = planSharing(withFiles(), FILES_COLUMNS);
   assert.deepEqual(plan.creates, [SHARES_TABLE, 'GFS_Rangement', 'GFS_Groupes', 'GFS_Espaces', 'GFS_Placement']);
-  assert.deepEqual(plan.actions.filter(action => action[0] === 'AddColumn').map(action => action[2]), [...HELPERS]);
+  assert.deepEqual(plan.actions.filter(action => action[0] === 'AddColumn').map(action => action[2]), ['GFS_Auteur', ...HELPERS]);
+  // Les PDF d'avant : l'auteur est repris de « Auteur » (colonne à formule rendue ordinaire : elle garde ses valeurs), puis la formule de création reprend pour les nouvelles lignes.
+  const kept = plan.actions.filter(action => action[2] === 'GFS_Auteur' && action[1] === 'GFS_Fichiers');
+  assert.deepEqual(kept.map(action => action[0]), ['AddColumn', 'ModifyColumn']);
+  assert.deepEqual([kept[0][3].isFormula, kept[0][3].formula], [true, '$Auteur']);
+  assert.deepEqual([kept[1][3].isFormula, kept[1][3].formula, kept[1][3].recalcWhen], [false, 'user.Email', 0]);
   const some = planSharing(withFiles([{ parentId: 7, colId: 'GFS_Lecteurs' }]), FILES_COLUMNS);
   assert.ok(!some.actions.some(action => action[0] === 'AddColumn' && action[2] === 'GFS_Lecteurs'));
-  assert.equal(some.adds.length, HELPERS.length - 1);
+  assert.equal(some.adds.length, HELPERS.length);
 });
 
 test('refus : déjà activé ; une règle d\'un autre auteur sur une de ces tables', () => {
@@ -206,7 +213,7 @@ test('activer avec une app : ses colonnes, ses règles (la colonne d\'auteur gar
   const legacy = plan.actions.find(action => action[0] === 'BulkAddRecord');
   assert.deepEqual(legacy[3].Cible, ['publipostage:3', 'publipostage:5']);
   const resources = plan.actions.filter(action => action[1] === '_grist_ACLResources').map(action => `${action[3].tableId}/${action[3].colIds}`);
-  assert.deepEqual(resources, [`${SHARES_TABLE}/Auteur,AuteurAcces`, `${SHARES_TABLE}/*`, 'GFS_Groupes/Nom,NomL,Nb,Source', 'GFS_Groupes/*', 'GFS_Espaces/*', 'GFS_Placement/*', 'GFS_Fichiers/*', 'Publipostage_Modeles/GFS_Auteur', 'Publipostage_Modeles/*']);
+  assert.deepEqual(resources, [`${SHARES_TABLE}/Auteur,AuteurAcces`, `${SHARES_TABLE}/*`, 'GFS_Groupes/Nom,NomL,Nb,Source', 'GFS_Groupes/*', 'GFS_Espaces/*', 'GFS_Placement/*', 'GFS_Fichiers/GFS_Auteur', 'GFS_Fichiers/*', 'Publipostage_Modeles/GFS_Auteur', 'Publipostage_Modeles/*']);
   assert.ok(!plan.actions.some(action => action[0] === 'AddTable' && action[1] === 'Autre_Fichiers'));
 });
 

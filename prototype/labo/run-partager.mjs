@@ -41,14 +41,14 @@ try {
     say('partage au document :', await shareWithEditorAndViewer(page, id));
     const existing = await existingOf(page, id);
     const plan = planSharing(existing, FILES_COLUMNS);
-    check('le plan est possible, sans règle d\'un autre auteur, pour un document neuf', plan.ok && plan.firstRule && plan.creates.join(",") === `${SHARES_TABLE},GFS_Rangement,GFS_Fichiers`, plan);
+    check('le plan est possible, sans règle d\'un autre auteur, pour un document neuf', plan.ok && plan.firstRule && [SHARES_TABLE, 'GFS_Rangement', 'GFS_Fichiers'].every(name => plan.creates.includes(name)), plan.creates);
     let answer = await apply(page, id, plan.actions);
     check('les deux tables, les colonnes d\'aide et les règles s\'écrivent en UNE liasse', answer.status === 200, answer.text);
     const again = planSharing(await existingOf(page, id), FILES_COLUMNS);
     check('le plan suivant dit « déjà posé »', !again.ok && again.reason === 'already', again);
     answer = await apply(page, id, [['BulkAddRecord', 'GFS_Fichiers', [null, null, null, null], {
-      Identifiant: ['f1', 'f2', 'f3', 'f4'], Nom: ['Devis.pdf', 'Secret.pdf', 'Public.pdf', 'Equipe.pdf'], Auteur: [EDITOR, OWNER, OWNER, OWNER] }]]);
-    check('quatre fichiers (f1 est à l\'éditeur)', answer.status === 200, answer.text);
+      Identifiant: ['f1', 'f2', 'f3', 'f4'], Nom: ['Devis.pdf', 'Secret.pdf', 'Public.pdf', 'Equipe.pdf'], Auteur: [EDITOR, OWNER, OWNER, OWNER], GFS_Auteur: [EDITOR, OWNER, OWNER, OWNER] }]]);
+    check('quatre fichiers (f1 est à l\'éditeur : le propriétaire écrit GFS_Auteur, il le peut)', answer.status === 200, answer.text);
     answer = await apply(page, id, [['BulkAddRecord', SHARES_TABLE, [null, null], [shareRecord({ target: 'gfs-fichiers:f3', who: '@tous', right: 'lecture' }), shareRecord({ target: 'gfs-fichiers:f4', who: '@editeurs', right: 'lecture' })]
       .reduce((acc, row) => ({ Cible: [...(acc.Cible || []), row.Cible], Personne: [...(acc.Personne || []), row.Personne], Droit: [...(acc.Droit || []), row.Droit], Telecharger: [...(acc.Telecharger || []), row.Telecharger] }), {})]]);
     check('deux partages de catégorie écrits par le propriétaire', answer.status === 200, answer.text);
@@ -97,9 +97,9 @@ try {
       check('il renomme son fichier', answer.status === 200, answer.text);
       answer = await apply(page, id, [['UpdateRecord', 'GFS_Fichiers', 3, { Nom: 'Pirate.pdf' }]]);
       check('il ne renomme pas le fichier d\'un autre', answer.status !== 200, answer.text);
-      answer = await apply(page, id, [['AddRecord', 'GFS_Fichiers', null, { Identifiant: 'e1', Nom: 'Au nom d\'un autre', Auteur: OWNER }]]);
+      answer = await apply(page, id, [['AddRecord', 'GFS_Fichiers', null, { Identifiant: 'e1', Nom: 'Au nom d\'un autre', GFS_Auteur: OWNER }]]);
       check('il ne crée pas de fichier au nom d\'un autre', answer.status !== 200, answer.text);
-      answer = await apply(page, id, [['AddRecord', 'GFS_Fichiers', null, { Identifiant: 'e2', Nom: 'A moi', Auteur: EDITOR }]]);
+      answer = await apply(page, id, [['AddRecord', 'GFS_Fichiers', null, { Identifiant: 'e2', Nom: 'A moi' }]]);
       check('il crée un fichier à son nom', answer.status === 200, answer.text);
     } else {
       say('--- viewer@ ---');

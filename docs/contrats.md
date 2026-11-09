@@ -2261,8 +2261,11 @@ fichier lui-même en pièce jointe de Grist.
     la langue de GFS (`js/sync-port-text.js` : les textes du moteur, `error.*` et `recv.*`, plus six clés du port ; une clé inconnue est rendue telle quelle, sans avertissement, car le moteur s'en sert pour reconnaître une erreur
     prévue), `gfs.synchro.` pour les deux préférences. Les tables du moteur portent le préfixe `GFS_`. **Un seul moteur par page** (le port est global) et il ne se charge qu'au premier partage : `sync-port.js` n'est importé qu'à ce moment,
     et la carte d'importation de `index.html` nomme les modules de `kit/js/synchro/` (`outils/versions.mjs`). Une requête anonyme ne part jamais vers un autre serveur que celui du document (`otherInstance`). Le port a aussi `shareInfo` (le document qu'une clé de formulaire désigne : le contrôle d'un lien collé), `publicAccess` et `journalStats`, que les écrans de Sync+ appellent hors de `PORT_SHAPE`
-    (consigne 005). [M] 40 vérifications dans un vrai
-    Grist (faits vérifiés, 60), 15 essais du port sans Grist (`test/sync-port.test.mjs`).
+    (consigne 005). **Depuis le moteur 2.x (kit 0.14.0)** le REST n'est plus écrit par GFS : `createRestPort({ docApi: { fetchRows }, http })` (`kit/js/synchro/rest-port.js`) le rend tout entier (webhooks, `/compare`, SQL, envois directs,
+    lecture publique, fiche d'un partage, pièces jointes), et GFS ne donne que `http` : `request` (le jeton qui écrit quand `full`), `anonymous` (sans jeton ; une adresse d'un autre serveur n'est pas suivie : `otherInstance`), `download`, `upload` et
+    `docBaseUrl`, sur le cadre d'envoi. Un refus du serveur lève une erreur qui porte son `status` et le début (200 signes) de ce que Grist en dit ; le reste (cadre, jeton, réseau, délai, réponse inattendue) n'a pas de `status` et se
+    dit dans la langue de la personne ; une réponse vide est `null`. `isOwner` reste celui de GFS (le code seul de `GET /webhooks`). [M] 40 vérifications dans un vrai Grist (faits vérifiés, 60 et 66), 16 essais du port sans Grist
+    (`test/sync-port.test.mjs`).
 
 ### 6.7 `GFS_Corbeille`, la corbeille des fichiers des apps
 

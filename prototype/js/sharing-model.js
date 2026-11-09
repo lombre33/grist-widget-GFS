@@ -115,7 +115,7 @@ export const groupPublicRules = () => [rule('user.Access in [EDITOR]', '+R', 'un
 // Le plan d'un changement de sources : la formule de `Membres` relue avec `sources`.
 export const planGroupSources = sources => ({ ok: true, actions: [['ModifyColumn', GROUPS_TABLE, 'Membres', { formula: membersFormula(sources) }]] });
 
-// Les espaces (contrats 11.7, point 13, lot 4 ; décision d'Antoine du 09/11, comme Google Drive) : `GFS_Espaces` (une ligne par espace partagé ; l'accès à l'espace passe par des groupes, des lignes de partage dont la cible est
+// Les espaces (contrats 11.7, point 13, lot 4 ; décision du porteur du 09/11, comme Google Drive) : `GFS_Espaces` (une ligne par espace partagé ; l'accès à l'espace passe par des groupes, des lignes de partage dont la cible est
 // `espace:<clé>`) et `GFS_Placement` (quel fichier est dans quel espace, et dans quel dossier de l'espace). Un dossier se partage par la cible `dossier:<clé>/<chemin>`. Le droit qui s'applique est **le plus précis** : le fichier
 // avant son dossier, le dossier avant l'espace, l'espace avant le document entier (`*`) ; à précision égale, la personne avant le groupe, le groupe avant la catégorie ; à égalité, le droit le plus large. « Aucun accès » retire
 // tout droit à cette personne (ou à ce groupe) à ce niveau et en dessous : c'est ainsi qu'on cache un fichier à un membre de l'espace.

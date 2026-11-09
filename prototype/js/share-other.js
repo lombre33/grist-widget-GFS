@@ -12,6 +12,15 @@ export function whyNot(t, { file, state }) {
   return null;
 }
 
+// Le nom de ce document, pour nommer le lien chez l'autre (le journal qu'il y reçoit) ; à défaut, un nom neutre.
+export async function documentName(transfer, t) {
+  try {
+    const reply = await transfer.rest('GET', '', { writable: false });
+    const name = reply && reply.body && reply.body.name;
+    return typeof name === 'string' && name.trim() ? name.trim() : t('so.link.default');
+  } catch (error) { return t('so.link.default'); }
+}
+
 // deps : { t, container, inertTargets() , docApi() → grist.docApi, transfer (js/transfer.js), language () → 'fr' | 'en', notice (un avis hors fenêtre), writeBlock() → la raison d'un blocage ou null }.
 export function createOtherDocuments(deps) {
   const { t } = deps;
@@ -19,22 +28,13 @@ export function createOtherDocuments(deps) {
   const links = async () => (await engine()).readLinks();
   const said = async error => (error && error.share ? t(`so.error.${error.share}`) : t('so.failed', { message: (await engine().then(each => each.errorText(error), () => (error && error.message) || String(error))) }));
 
-  // Le nom de ce document, pour nommer le lien chez l'autre (le journal qu'il y reçoit) ; à défaut, un nom neutre.
-  async function documentName() {
-    try {
-      const reply = await deps.transfer.rest('GET', '', { writable: false });
-      const name = reply && reply.body && reply.body.name;
-      return typeof name === 'string' && name.trim() ? name.trim() : t('so.link.default');
-    } catch (error) { return t('so.link.default'); }
-  }
-
   // La fenêtre du premier envoi à un document neuf. La fenêtre « Partager » est encore ouverte dessous : elle devient inerte avec le reste (la liste est prise avant que la nouvelle fenêtre existe).
   // `file` null : relier les deux documents sans rien envoyer (« Gérer les partages > Autres documents > Relier un document… »).
   async function open(file) {
     const blocked = deps.writeBlock();
     if (blocked) { deps.notice(blocked); return; }
     try {
-      const [{ openShareOther }, { createSourceFlow }, running, name] = await Promise.all([import('./share-other-window.js'), import('./share-other-flow.js'), engine(), documentName()]);
+      const [{ openShareOther }, { createSourceFlow }, running, name] = await Promise.all([import('./share-other-window.js'), import('./share-other-flow.js'), engine(), documentName(deps.transfer, t)]);
       const below = [...deps.container.querySelectorAll('.mod-scrim')];
       await openShareOther({
         container: deps.container, t, inertTargets: () => [...deps.inertTargets(), ...below], file: file ? { id: file.id, name: file.name } : null,

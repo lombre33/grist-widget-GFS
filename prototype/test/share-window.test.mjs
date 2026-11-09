@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { suggestions, levelItems, whoLabel } from '../js/share-window.js';
-import { createOtherDocuments, whyNot } from '../js/share-other.js';
+import { createOtherDocuments, documentName, whyNot } from '../js/share-other.js';
 import { createI18n } from '../js/i18n.js';
 import { SHARE_OTHER_STRINGS } from '../js/i18n-share-other.js';
 
@@ -139,4 +139,13 @@ test('tous les textes du partage vers un autre document existent en français et
     assert.equal(vars(fr[key]), vars(en[key]), `${key} : mêmes variables`);
     if (fr[key].length > 12) assert.notEqual(fr[key], en[key], `${key} : traduit`);
   }
+});
+
+test('le nom du document, pour nommer le lien chez l\'autre : celui que Grist donne (espaces retirés) ; sinon, ou si la lecture échoue, le nom neutre', async () => {
+  const asks = [];
+  const reply = body => ({ rest: async (...args) => { asks.push(args); return body === 'throw' ? Promise.reject(new Error('x')) : { body }; } });
+  assert.equal(await documentName(reply({ name: '  Achats 2026 ' }), t), 'Achats 2026');
+  assert.deepEqual(asks[0], ['GET', '', { writable: false }], 'une lecture, sans droit d\'écrire');
+  for (const body of [{ name: '   ' }, { name: 3 }, {}, null, 'throw']) assert.equal(await documentName(reply(body), t), t('so.link.default'));
+  assert.equal(await documentName({ rest: async () => null }, t), t('so.link.default'));
 });

@@ -100,9 +100,6 @@ export function planOpenStructure(existing) {
   return { ok: true, actions: [['BulkRemoveRecord', '_grist_ACLRules', [...dropped]], ...(emptied.length ? [['BulkRemoveRecord', '_grist_ACLResources', emptied]] : [])] };
 }
 
-// La structure est-elle fermée par une règle de GFS (celle qu'on peut rouvrir) ?
-export const structureClosedByGfs = rules => rules.some(rule => isStructureNote(rule.memo));
-
 // Les deux lignes du bloc « Poser des règles » du panneau d'après les plans (`RightsWriter.plans()`) : chacune rend { kind | null, label, hint, why }. `kind` est le geste possible (celui que le
 // bouton envoie) ; `null` veut dire grisé, avec `why` : la clé de la raison (jamais masqué, charte). Sans plans (règles illisibles), tout est grisé.
 // Le partage de fichiers (js/sharing-model.js) : activer, ou retirer ses règles.

@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-DcIF/oQ8x6YSS4nLbXTzWzm4IX7zH4pk62sjnjWVCpQ='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-EA4DT619bllDp1yUqsVI99Ej9o4ovWjImFPY4eNVU00='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=e13ef00da6">
 <link rel="stylesheet" href="css/explorer.css?v=eb1aaa65f5">
 <link rel="stylesheet" href="css/modules.css?v=b1b43f0db6">
@@ -43,7 +43,7 @@
     "./js/catalogue.js": "./js/catalogue.js?v=2e588e5749",
     "./js/conflict-window.js": "./js/conflict-window.js?v=6707e6cc39",
     "./js/context.js": "./js/context.js?v=02c3f955eb",
-    "./js/controller.js": "./js/controller.js?v=6b051c97aa",
+    "./js/controller.js": "./js/controller.js?v=7767e6f859",
     "./js/copying.js": "./js/copying.js?v=8da0986c98",
     "./js/deposit.js": "./js/deposit.js?v=d0c15e5868",
     "./js/dock-state.js": "./js/dock-state.js?v=8eec913fd1",
@@ -75,7 +75,7 @@
     "./js/i18n-notifications.js": "./js/i18n-notifications.js?v=48f040ccff",
     "./js/i18n-received.js": "./js/i18n-received.js?v=c23f2a90e7",
     "./js/i18n-rights.js": "./js/i18n-rights.js?v=4d3985edb0",
-    "./js/i18n-share-other.js": "./js/i18n-share-other.js?v=28a17a69ed",
+    "./js/i18n-share-other.js": "./js/i18n-share-other.js?v=0e3214031d",
     "./js/i18n-share.js": "./js/i18n-share.js?v=c6c817c2ca",
     "./js/i18n-trash.js": "./js/i18n-trash.js?v=ba5f9e143a",
     "./js/i18n-weight.js": "./js/i18n-weight.js?v=70f193afa2",
@@ -127,10 +127,10 @@
     "./js/share-links.js": "./js/share-links.js?v=49b2331a44",
     "./js/share-other-flow.js": "./js/share-other-flow.js?v=d8936a9cb6",
     "./js/share-other-tab.js": "./js/share-other-tab.js?v=2fa346af0d",
-    "./js/share-other-window.js": "./js/share-other-window.js?v=74141faa33",
-    "./js/share-other.js": "./js/share-other.js?v=e31a2de775",
+    "./js/share-other-window.js": "./js/share-other-window.js?v=54f5e497c6",
+    "./js/share-other.js": "./js/share-other.js?v=66f5e43454",
     "./js/share-receive-flow.js": "./js/share-receive-flow.js?v=f622824b67",
-    "./js/share-receive-window.js": "./js/share-receive-window.js?v=c219173dbf",
+    "./js/share-receive-window.js": "./js/share-receive-window.js?v=56e8d16396",
     "./js/share-window.js": "./js/share-window.js?v=252cc7169b",
     "./js/sharing-model.js": "./js/sharing-model.js?v=9e06e0651e",
     "./js/spaces-filing.js": "./js/spaces-filing.js?v=7980643854",
@@ -139,7 +139,8 @@
     "./js/stored-choice.js": "./js/stored-choice.js?v=2f8b5015a1",
     "./js/sync-port-text.js": "./js/sync-port-text.js?v=5e62c7c0bc",
     "./js/sync-port.js": "./js/sync-port.js?v=6ffc0e2143",
-    "./js/sync-resume.js": "./js/sync-resume.js?v=f834759e1a",
+    "./js/sync-resume.js": "./js/sync-resume.js?v=01df3db58c",
+    "./js/sync-rules.js": "./js/sync-rules.js?v=d3315e4d05",
     "./js/sync-service.js": "./js/sync-service.js?v=f65ac8ef3d",
     "./js/tabs.js": "./js/tabs.js?v=46e6c0c34b",
     "./js/theme-apply.js": "./js/theme-apply.js?v=a0a1612c97",

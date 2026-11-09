@@ -4,6 +4,7 @@
 // (test/pages/explorateur.js). Grisé, jamais masqué, quand ça ne peut pas servir : un clic dit pourquoi. Le premier lot ne couvre que les PDF que GFS garde, et un propriétaire du document.
 import { FILES_APP } from './gfs-files.js';
 import { applyLevel, stopLink } from './share-links.js';
+import { closeSharingTables } from './sync-rules.js';
 
 // Pourquoi l'onglet est grisé (une phrase), ou null.
 export function whyNot(t, { file, state }) {
@@ -19,6 +20,12 @@ export async function documentName(transfer, t) {
     const name = reply && reply.body && reply.body.name;
     return typeof name === 'string' && name.trim() ? name.trim() : t('so.link.default');
   } catch (error) { return t('so.link.default'); }
+}
+
+// Les tables techniques que la fenêtre vient de créer (`GFS_Synchro`, un journal) se ferment aux non-propriétaires une fois la fenêtre fermée : Grist recharge alors la page, ce qui aurait défait le parcours en
+// cours. Le moteur de partage reprend à l'ouverture suivante (js/sync-resume.js). Réservé à un propriétaire que GFS a prouvé tel ; sans effet, et sans bruit, quand rien n'est à poser (js/sync-rules.js).
+async function closeTechnicalTables(deps) {
+  if ((await deps.transfer.isOwner()) === true) await closeSharingTables({ docApi: deps.docApi() });
 }
 
 // deps : { t, container, inertTargets() , docApi() → grist.docApi, transfer (js/transfer.js), language () → 'fr' | 'en', notice (un avis hors fenêtre), writeBlock() → la raison d'un blocage ou null }.
@@ -38,7 +45,7 @@ export function createOtherDocuments(deps) {
       const below = [...deps.container.querySelectorAll('.mod-scrim')];
       await openShareOther({
         container: deps.container, t, inertTargets: () => [...deps.inertTargets(), ...below], file: file ? { id: file.id, name: file.name } : null,
-        createFlow: (mode, strict) => createSourceFlow({ engine: running, file, mode: file ? mode : 'live', strict, name }), errorText: running.errorText, notice: deps.notice,
+        createFlow: (mode, strict) => createSourceFlow({ engine: running, file, mode: file ? mode : 'live', strict, name }), errorText: running.errorText, notice: deps.notice, settled: () => closeTechnicalTables(deps),
       });
     } catch (error) { deps.notice(await said(error)); }
   }
@@ -55,7 +62,7 @@ export function createOtherDocuments(deps) {
       const [{ openShareReceive }, { createTargetFlow }, running] = await Promise.all([import('./share-receive-window.js'), import('./share-receive-flow.js'), sync.loadReceiveEngine(engineDeps)]);
       await openShareReceive({
         container: deps.container, t, inertTargets: deps.inertTargets, createFlow: () => createTargetFlow({ engine: running, onReplied: () => void sync.startReceiving(engineDeps).catch(() => {}) }),
-        errorText: running.errorText, notice: deps.notice,
+        errorText: running.errorText, notice: deps.notice, settled: () => closeTechnicalTables(deps),
       });
     } catch (error) { deps.notice(await said(error)); }
   }

@@ -15,7 +15,7 @@ import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { createI18n } from '../js/i18n.js';
 import { PAGE_PORT, openGfs, importSamples, openRowMenu, contrastProblems, shot as pdfShot } from './lab-pdf.mjs';
 import { fits } from './lab-droits.mjs';
-import { startEngine, formLink } from './lab-partage.mjs';
+import { startEngine, formLink, sendComparing, reopenedFrame } from './lab-partage.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -47,7 +47,8 @@ const browser = await chromium.launch({ args: ['--no-sandbox'] });
 try {
   const context = await newContext(browser, pluginApi, { colorScheme: scheme });
   const source = await openGfs(context, { lang });
-  const { page, frame } = source;
+  const { page } = source;
+  let frame = source.frame; // reprise après la fermeture de la fenêtre du premier envoi (Grist recharge la page : les règles de GFS_Synchro)
   await importSamples(source);
   const devisId = (await source.rest.rows('GFS_Fichiers')).find(row => row.Nom === 'Devis.pdf').Identifiant;
   const target = await openGfs(context, { lang });
@@ -79,7 +80,7 @@ try {
   await page.keyboard.insertText(replied.value.code);
   await frame.locator('[data-fk="so-check"]').click();
   await frame.locator('[data-fk="so-control"]').waitFor({ timeout: 20000 });
-  await frame.locator('[data-fk="so-send"]').click();
+  await sendComparing(frame);
   const done = async () => { for (let i = 0; i < 120; i++) { if ((await text(frame, '.mod.so')).includes(t('so.done.live.hint'))) return true; await page.waitForTimeout(1000); } return false; };
   check('la fenêtre dit que le lien reste', await done(), await text(frame, '.mod.so'));
   await shot(frame, '1-fini');
@@ -87,8 +88,8 @@ try {
   let rows = await until(rows => has(rows, 'Facture.pdf'));
   check('Facture est chez l\'autre, avec son contenu, et elle seule', has(rows, 'Facture.pdf') && rows.length === 1, rows.map(row => row.Nom));
   await frame.locator('[data-fk="so-close"]').click();
-  await frame.locator('.mod.so').waitFor({ state: 'detached' });
-  await closeAll(page, frame);
+  await reopenedFrame(source);
+  frame = source.frame;
 
   say('--- 2. le niveau de chaque fichier ---');
   await openTab(frame, 'Facture.pdf');

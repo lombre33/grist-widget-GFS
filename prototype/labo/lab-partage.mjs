@@ -47,3 +47,22 @@ export async function handshake(source, target, { name, ids, columns, options = 
   await source.frame.evaluate(args => window.__s.approveReply(args.exp, args.entry, args.reply).then(() => window.__s.sendExisting(args.exp)), { exp: saved.created, entry: invited.entry, reply });
   return { exp: saved.created, entry: invited.entry, journal: made.journal, selection };
 }
+
+// « Envoyer » dans la fenêtre d'envoi : la case « J'ai comparé ce code avec celui de l'autre document » (cochée au départ côté réglage, audit de sécurité du 09/11) dégrise le bouton ; la personne la coche, puis envoie.
+export async function sendComparing(frame) {
+  const compared = frame.locator('[data-fk="so-compared"]');
+  if (await compared.count()) await compared.click();
+  await frame.locator('[data-fk="so-send"]').click();
+}
+
+// Audit de sécurité du 09/11 : quand la fenêtre d'un partage qui laisse une table technique se ferme (`GFS_Synchro` d'un lien, un journal reçu), GFS la réserve aux propriétaires (js/sync-rules.js) et Grist
+// recharge la page. L'essai attend que les règles soient posées, puis reprend le cadre rechargé de `run` (ce que rend `openGfs`).
+export async function reopenedFrame(run) {
+  const { gfsFrame } = await import('./lab-droits.mjs');
+  const posed = () => run.page.evaluate(async doc => {
+    const read = async table => (await (await fetch(`/api/docs/${doc}/tables/${table}/records`)).json()).records.map(row => row.fields);
+    return (await read('_grist_ACLRules')).filter(rule => /^GFS\s*:\s*Partages/.test(rule.memo || '')).length;
+  }, run.docId).catch(() => 0);
+  for (let i = 0; i < 60 && (await posed()) < 2; i += 1) await run.page.waitForTimeout(1000);
+  run.frame = await gfsFrame(run.page);
+}

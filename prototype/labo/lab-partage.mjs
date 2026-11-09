@@ -28,3 +28,22 @@ export async function formLink(run) {
   const identity = await run.frame.evaluate(() => window.__p.docIdentity());
   return { key, link: `${identity.origin}${identity.team ? `/o/${identity.team}` : ''}/forms/${key}/1` };
 }
+
+// Le parcours entier d'un premier partage entre deux documents (`source`, `target` : ce que rend `openGfs`, le moteur démarré dans chacun par `startEngine`), tel que les essais le rejouent : l'export
+// des fichiers `ids` (une condition sur leur identifiant), l'invitation, la réception à part (`GFS_Recus`), le lien du formulaire collé, la réponse contrôlée, le webhook et l'existant envoyé. Rend ce
+// que les passages suivants gardent : l'export (`exp`), l'invitation (`entry`), le journal de la cible.
+export async function handshake(source, target, { name, ids, columns }) {
+  const selection = ids => [{ table: 'GFS_Fichiers', columns, filter: { mode: 'all', conds: [{ id: 'Identifiant', op: 'in', values: ids }] } }];
+  const saved = await source.frame.evaluate(args => window.__s.saveChosenExport({ name: args.name, selection: args.selection }).then(done => ({ id: done.id, created: done.created })), { name, selection: selection(ids) });
+  const invited = await source.frame.evaluate(exp => window.__s.startInvitation(exp).then(async ({ entry, secret }) => ({ entry, code: (await window.__s.invitationCode(exp, entry, secret)).code })), saved.created);
+  const invitation = await target.frame.evaluate(code => window.__s.readInvitation(code), invited.code);
+  const made = await target.frame.evaluate(invite => {
+    const plans = invite.tables.map(tb => ({ tb, dest: 'GFS_Recus' }));
+    return window.__s.createReception(invite, plans, { reserve: true, options: {} }).then(reception => ({ journal: reception.journal, note: reception.note }));
+  }, invitation);
+  const { link } = await formLink(target);
+  const replied = await target.frame.evaluate(args => window.__s.receptionReply(args.made, args.link), { made, link });
+  const reply = await source.frame.evaluate(args => window.__s.checkReply(args.exp, args.entry, args.code), { exp: saved.created, entry: invited.entry, code: replied.code });
+  await source.frame.evaluate(args => window.__s.approveReply(args.exp, args.entry, args.reply).then(() => window.__s.sendExisting(args.exp)), { exp: saved.created, entry: invited.entry, reply });
+  return { exp: saved.created, entry: invited.entry, journal: made.journal, selection };
+}

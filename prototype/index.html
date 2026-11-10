@@ -11,13 +11,13 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-ah37MfXa4QWseL+DiIJWsS96L+zjmKEnnmwGmVc4O9Y='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
-<link rel="stylesheet" href="css/gfs.css?v=e13ef00da6">
-<link rel="stylesheet" href="css/explorer.css?v=4fc0180983">
-<link rel="stylesheet" href="css/modules.css?v=b1b43f0db6">
-<link rel="stylesheet" href="css/rights.css?v=1a8d513ad5">
-<link rel="stylesheet" href="css/share.css?v=026d169a32">
-<link rel="stylesheet" href="css/weight.css?v=05fc380348">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-nw77nXFDz/3FJ/Z+aNgwyCbCl8bRAw8v2gdfwXxgas0='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<link rel="stylesheet" href="css/gfs.css?v=406ce9bd43">
+<link rel="stylesheet" href="css/explorer.css?v=b4cfa1aabe">
+<link rel="stylesheet" href="css/modules.css?v=8ba0d93a3b">
+<link rel="stylesheet" href="css/rights.css?v=339a5bf7f2">
+<link rel="stylesheet" href="css/share.css?v=e906a76a1f">
+<link rel="stylesheet" href="css/weight.css?v=2dbe02cd68">
 <link rel="stylesheet" href="kit/css/color-picker.css?v=c5a41d6681">
 <link rel="stylesheet" href="css/acces.css?v=4828d1e039">
 <!-- Le routeur d'abord : il doit être enregistré avant que le script d'API de Grist n'affecte window.onmessage (contrats 1.2). -->
@@ -80,7 +80,7 @@
     "./js/i18n-share.js": "./js/i18n-share.js?v=c6c817c2ca",
     "./js/i18n-trash.js": "./js/i18n-trash.js?v=ba5f9e143a",
     "./js/i18n-weight.js": "./js/i18n-weight.js?v=70f193afa2",
-    "./js/i18n.js": "./js/i18n.js?v=94f3038553",
+    "./js/i18n.js": "./js/i18n.js?v=7d0410babd",
     "./js/icons.js": "./js/icons.js?v=8be01ead10",
     "./js/import-file.js": "./js/import-file.js?v=1f16ab4ac8",
     "./js/kept-files.js": "./js/kept-files.js?v=090e1cde9a",

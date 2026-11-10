@@ -28,6 +28,8 @@ const ICONS = {
   user: '<circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/>',
   users: '<circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5c0-3.2 2.7-5.2 6-5.2s6 2 6 5.2"/><path d="M15.5 5.6a3.2 3.2 0 0 1 0 5.8"/><path d="M17 14.6c2.4.5 4 2.3 4 4.9"/>',
   clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  // Les fichiers ouverts (la vue « Ouverts ») : trois feuilles en pile.
+  stack: '<path d="M12 3.5l8.5 4.2L12 12 3.5 7.7z"/><path d="M3.5 12L12 16.2 20.5 12"/><path d="M3.5 16.3L12 20.5l8.5-4.2"/>',
   x: '<path d="M6 6l12 12M18 6L6 18"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   lock: '<rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',

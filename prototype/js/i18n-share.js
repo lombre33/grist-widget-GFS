@@ -3,11 +3,13 @@
 
 export const SHARE_STRINGS = Object.freeze({
   fr: {
+    // Le bouton « Partager… » et son panneau : qui a accès à un fichier.
     'share.menu': 'Partager…',
     'share.title': 'Partager « {name} »',
     'share.sub': '{app}',
     'share.loading': 'Lecture des partages…',
     'share.unreadable': 'GFS n’a pas pu lire les partages de ce document.',
+    // Ajouter une personne ou une catégorie : la saisie et ses suggestions.
     'share.add.label': 'Ajouter une personne ou une catégorie',
     'share.add.placeholder': 'Ajouter une personne ou une catégorie',
     'share.suggest.people': 'Personnes',
@@ -25,6 +27,7 @@ export const SHARE_STRINGS = Object.freeze({
     'share.other': 'Un autre document Grist…',
     'share.other.hint': 'Envoyer une copie à un autre document qui a GFS',
     'share.other.why': 'Le partage entre deux documents arrive bientôt.',
+    // La liste « Qui a accès » : les lignes, les étiquettes et les niveaux de droit.
     'share.sec.access': 'Qui a accès',
     'share.sec.add': 'Ajouter',
     'share.row.owners': 'Propriétaires du document',
@@ -38,6 +41,7 @@ export const SHARE_STRINGS = Object.freeze({
     'share.row.download': 'peut télécharger',
     'share.tag.invalid': 'Non valide',
     'share.tag.expired': 'Échu',
+    // Les niveaux de droit (lecture seule, modification, aucun accès) et leurs explications.
     'share.right.lecture': 'Lecture seule',
     'share.right.lecture.hint': 'Voir, sans rien changer',
     'share.right.commentaire': 'Lecture + commentaires',
@@ -62,6 +66,7 @@ export const SHARE_STRINGS = Object.freeze({
     'share.remove': 'Retirer l’accès',
     'share.download': 'Peut télécharger',
     'share.download.hint': 'GFS propose le bouton « Télécharger ». Grist n’empêche pas de copier un fichier qu’on peut lire : c’est un confort, pas une protection.',
+    // La date de fin d'accès et la confirmation.
     'share.end': 'Accès jusqu’au',
     'share.end.hint': 'L’accès s’arrête à cette date dès que Grist recharge le document (à sa prochaine ouverture) : si le document reste ouvert sans interruption, il peut durer un peu au-delà. GFS ne retire rien : la ligne passe en « échu ».',
     'share.end.date': 'Date de fin',
@@ -72,6 +77,7 @@ export const SHARE_STRINGS = Object.freeze({
     'share.readonly': 'Ce fichier vous est partagé : seuls son auteur, ses administrateurs et les propriétaires changent ses partages.',
     'share.unsupported': 'Le partage de ce fichier n’est pas disponible : GFS ne sait partager que les PDF qu’il garde et les fichiers des apps qui déclarent leur table.',
     'share.noAccess': 'Le partage demande l’accès complet au document.',
+    // Quand le partage n'est pas activé dans le document (ou pas pour les fichiers de cette app) : ce que dit GFS à un propriétaire, et aux autres.
     'share.inactive.owner': 'Le partage n’est pas activé dans ce document. Pour que chaque fichier ait ses droits, GFS écrit des règles d’accès dans Grist.',
     'share.inactive.activate': 'Activer le partage…',
     'share.inactive.other': 'Le partage de ce document n’est pas encore activé, et seul un propriétaire peut le faire. Demandez-le à un propriétaire du document.',
@@ -84,6 +90,7 @@ export const SHARE_STRINGS = Object.freeze({
     'share.extend.other': 'Le partage n’est pas encore étendu aux fichiers de cette app, et seul un propriétaire peut le faire. Demandez-le à un propriétaire du document.',
     'share.failed': 'Le partage n’a pas été enregistré : {message}',
     'share.close': 'Compris',
+    // L'activation du partage dans le panneau « Permissions ».
     'rights.act.sharing': 'Activer le partage des fichiers',
     'rights.act.sharing.hint': 'Crée la table des partages et les règles qui font lire chaque fichier à ceux à qui il est partagé.',
     'rights.act.unsharing': 'Retirer les règles du partage',
@@ -105,11 +112,13 @@ export const SHARE_STRINGS = Object.freeze({
     'rights.ask.unsharing.confirm': 'Retirer',
   },
   en: {
+    // Le bouton « Partager… » et son panneau : qui a accès à un fichier.
     'share.menu': 'Share…',
     'share.title': 'Share “{name}”',
     'share.sub': '{app}',
     'share.loading': 'Reading the shares…',
     'share.unreadable': 'GFS could not read this document’s shares.',
+    // Ajouter une personne ou une catégorie : la saisie et ses suggestions.
     'share.add.label': 'Add a person or a category',
     'share.add.placeholder': 'Add a person or a category',
     'share.suggest.people': 'People',
@@ -127,6 +136,7 @@ export const SHARE_STRINGS = Object.freeze({
     'share.other': 'Another Grist document…',
     'share.other.hint': 'Send a copy to another document that has GFS',
     'share.other.why': 'Sharing between two documents is coming soon.',
+    // La liste « Qui a accès » : les lignes, les étiquettes et les niveaux de droit.
     'share.sec.access': 'Who has access',
     'share.sec.add': 'Add',
     'share.row.owners': 'Document owners',
@@ -140,6 +150,7 @@ export const SHARE_STRINGS = Object.freeze({
     'share.row.download': 'can download',
     'share.tag.invalid': 'Not valid',
     'share.tag.expired': 'Expired',
+    // Les niveaux de droit (lecture seule, modification, aucun accès) et leurs explications.
     'share.right.lecture': 'Read only',
     'share.right.lecture.hint': 'View, change nothing',
     'share.right.commentaire': 'Read + comments',
@@ -164,6 +175,7 @@ export const SHARE_STRINGS = Object.freeze({
     'share.remove': 'Remove access',
     'share.download': 'Can download',
     'share.download.hint': 'GFS offers the “Download” button. Grist does not stop copying a file that can be read: it is a convenience, not a protection.',
+    // La date de fin d'accès et la confirmation.
     'share.end': 'Access until',
     'share.end.hint': 'Access ends on this date as soon as Grist reloads the document (the next time it is opened): if the document stays open without interruption, it can last a little longer. GFS removes nothing: the line turns “expired”.',
     'share.end.date': 'End date',
@@ -174,6 +186,7 @@ export const SHARE_STRINGS = Object.freeze({
     'share.readonly': 'This file is shared with you: only its author, its administrators and the owners change who it is shared with.',
     'share.unsupported': 'Sharing this file is not available: GFS can only share the PDFs it keeps and the files of apps that declare their table.',
     'share.noAccess': 'Sharing needs full access to the document.',
+    // Quand le partage n'est pas activé dans le document (ou pas pour les fichiers de cette app) : ce que dit GFS à un propriétaire, et aux autres.
     'share.inactive.owner': 'Sharing is not turned on in this document. So that each file has its own rights, GFS writes access rules into Grist.',
     'share.inactive.activate': 'Turn on sharing…',
     'share.inactive.other': 'Sharing is not turned on in this document yet, and only an owner can do it. Ask an owner of the document.',
@@ -186,6 +199,7 @@ export const SHARE_STRINGS = Object.freeze({
     'share.extend.other': 'Sharing is not extended to this app’s files yet, and only an owner can do it. Ask an owner of the document.',
     'share.failed': 'The share was not saved: {message}',
     'share.close': 'Got it',
+    // L'activation du partage dans le panneau « Permissions ».
     'rights.act.sharing': 'Turn on file sharing',
     'rights.act.sharing.hint': 'Creates the shares table and the rules that let each file be read by those it is shared with.',
     'rights.act.unsharing': 'Remove the sharing rules',

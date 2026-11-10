@@ -114,12 +114,12 @@ const covered = (lit, pattern) => lit.includes('*') || lit.includes(pattern) || 
 // de la vue, et les valeurs que doit porter la ligne (des textes, comparés tels quels). La table doit être de celles que l'app lit.
 function checkArrival(m, errors) {
   if (m.arrivee === undefined) return;
-  const a = m.arrivee;
-  if (!isObject(a)) { errors.push('arrivee : objet attendu'); return; }
-  if (!isText(a.table)) errors.push('arrivee.table : chaîne attendue');
-  else if (isObject(m.permissions) && Array.isArray(m.permissions.lit) && !covered(m.permissions.lit, a.table)) errors.push(`arrivee.table ${a.table} : une table que l'app ne lit pas`);
-  if (!isText(a.colonne)) errors.push('arrivee.colonne : chaîne attendue');
-  if (a.lignes !== undefined && (!isObject(a.lignes) || !Object.values(a.lignes).every(isText))) errors.push('arrivee.lignes : un objet de chaînes attendu');
+  const arrival = m.arrivee;
+  if (!isObject(arrival)) { errors.push('arrivee : objet attendu'); return; }
+  if (!isText(arrival.table)) errors.push('arrivee.table : chaîne attendue');
+  else if (isObject(m.permissions) && Array.isArray(m.permissions.lit) && !covered(m.permissions.lit, arrival.table)) errors.push(`arrivee.table ${arrival.table} : une table que l'app ne lit pas`);
+  if (!isText(arrival.colonne)) errors.push('arrivee.colonne : chaîne attendue');
+  if (arrival.lignes !== undefined && (!isObject(arrival.lignes) || !Object.values(arrival.lignes).every(isText))) errors.push('arrivee.lignes : un objet de chaînes attendu');
 }
 
 function checkPatterns(perm, errors) {
@@ -351,21 +351,31 @@ export function validateManifest(m, others = []) {
   return { ok: errors.length === 0, errors };
 }
 
-// Charge les manifestes du catalogue : { app, manifest, ok, errors }. Un manifeste illisible ou invalide reste dans la liste, grisé.
-export async function loadAll(catalogue, fetchJson) {
-  const loaded = [];
-  for (const entry of catalogue) {
-    let manifest = null;
-    let errors;
-    try {
-      manifest = await fetchJson(entry.manifeste);
-      errors = validateManifest(manifest, loaded.filter(item => item.ok).map(item => item.manifest)).errors;
-      if (manifest && manifest.id !== entry.id) errors.push(`l'id ${manifest.id} ne correspond pas au catalogue (${entry.id})`);
-    } catch (e) {
-      errors = [`manifeste illisible : ${e && e.message}`];
-    }
-    loaded.push({ app: entry, manifest, ok: errors.length === 0, errors });
+// Un manifeste lu (ou la raison pour laquelle il ne l'a pas été), jugé contre les manifestes déjà acceptés : { app, manifest, ok, errors }.
+function judge(entry, read, accepted) {
+  let manifest = null;
+  let errors;
+  try {
+    if (read.error) throw read.error;
+    manifest = read.manifest;
+    errors = validateManifest(manifest, accepted).errors;
+    if (manifest && manifest.id !== entry.id) errors.push(`l'id ${manifest.id} ne correspond pas au catalogue (${entry.id})`);
+  } catch (e) {
+    errors = [`manifeste illisible : ${e && e.message}`];
   }
+  return { app: entry, manifest, ok: errors.length === 0, errors };
+}
+
+// Charge les manifestes du catalogue : { app, manifest, ok, errors }. Un manifeste illisible ou invalide reste dans la liste, grisé.
+// Les lectures partent toutes ensemble (un aller-retour de réseau pour tout le catalogue, au lieu d'un par app : audit vitesse du 10/11, faits vérifiés 82) ;
+// le jugement garde l'ordre du catalogue, car l'unicité des id, des préfixes et des clés se juge contre les manifestes déjà acceptés.
+export async function loadAll(catalogue, fetchJson) {
+  const readOne = async entry => {
+    try { return { manifest: await fetchJson(entry.manifeste) }; } catch (error) { return { error }; }
+  };
+  const reads = await Promise.all(catalogue.map(readOne));
+  const loaded = [];
+  catalogue.forEach((entry, index) => loaded.push(judge(entry, reads[index], loaded.filter(item => item.ok).map(item => item.manifest))));
   return loaded;
 }
 

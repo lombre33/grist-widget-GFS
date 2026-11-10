@@ -23,6 +23,8 @@ import { aboutItems } from './about.js';
 import { WorkControl } from './work-control.js';
 import { Explorer } from './explorer.js';
 import { loadFiles, loadAttachments } from './explorer-data.js';
+import { createFileRefresh } from './file-refresh.js';
+import { createLightReader } from './explorer-sql.js';
 import { AppLinks } from './links.js';
 import { Filing } from './filing.js';
 import { askName, chooseFolder } from './filing-window.js';
@@ -48,6 +50,7 @@ import { ask } from './ask-window.js';
 import { carriesFile } from './import-file.js';
 import { Entries } from './entries.js';
 import { Openings } from './openings.js';
+import { OpenedFiles } from './opened-files.js';
 import { ReceivedControl } from './received-control.js';
 import { loadReceived } from './received-files.js';
 import { publicationQuestion } from './publication-window.js';
@@ -121,10 +124,12 @@ export class GfsController {
     // Ce que l'explorateur et les liens demandent (grisé, types de « Nouveau » et d'« Importer », qui lit un fichier : js/entries.js), et les ouvertures (js/openings.js).
     const entries = new Entries(this);
     Object.assign(this, { lockOf: entries.lockOf, newTypes: entries.newTypes, importTypes: entries.importTypes, readerOf: entries.readerOf });
+    this.opened = new OpenedFiles(); // les fichiers que GFS a ouverts dans une app, pour la vue « Ouverts » de l'explorateur (js/opened-files.js)
     this.openings = new Openings(this);
     this.links = this.#buildLinks();
     // Le cadre d'envoi (js/transfer.js) ne s'ouvre qu'à la première requête : les pièces jointes, et la preuve que la personne est propriétaire (js/rights-reader.js).
     this.transfer = new Transfer({ doc: this.port.doc, base: this.doc.baseURI, createFrame: url => buildTransferFrame(this.doc, url) });
+    this.fileReader = createLightReader({ sql: statement => this.transfer.sql(statement), warn: error => console.warn('GFS : la lecture légère des fichiers est éteinte pour cette session, l\'explorateur relit les tables en entier', error) }); // la lecture des fichiers d'un document lourd sans ses cellules lourdes (js/explorer-sql.js) : jeton en lecture seule, éteinte au premier refus
     this.player = new Player({ container: this.$('frames') }); // le lecteur de vidéos posé par-dessus l'app (contrats 5.2, point 11)
     this.attach = new Attach({ doc: this.port.doc, transfer: this.transfer, session: () => this.session, readonly: () => this.readonly }); // `joindre` (contrats 5.4, point 12)
     // Le partage de fichiers avec d'autres documents Grist (js/share-other.js) : le moteur du kit, son port et les fenêtres ne se chargent qu'au premier besoin.
@@ -178,9 +183,10 @@ export class GfsController {
     this.grist.on('message', message => this.state.feed(message));
     this.grist.ready({ requiredAccess: 'full', onEditOptions: () => this.onEditOptions() });
     this.#installPrint();
+    const libraries = this.#loadLibraries(); // la lecture part avec celles des manifestes : un seul aller-retour de réseau pour les deux (elle ne dépend d'aucun manifeste)
     this.apps = await loadAll(CATALOGUE, readJson);
     this.registry.setApps(this.apps);
-    this.registry.setCatalogue(await this.#loadLibraries());
+    this.registry.setCatalogue(await libraries);
     await this.state.whenOptions();
     if (this.fullAccess) await Promise.all([this.registry.load(), this.rangement.identify()]);
     this.#buildExplorer();
@@ -252,6 +258,7 @@ export class GfsController {
       container: this.$('stage'), i18n: this.i18n, locale: this.locale, now: () => new Date(), appName: this.appName, received: this.received,
       typeLabel: file => (file.received ? this.received.typeLabel(file) : this.typeLabel(file)), lockOf: file => (file.received ? this.received.lockOf(file) : this.lockOf(file)),
       newTypes: this.newTypes, importTypes: this.importTypes, canClose: () => Boolean(this.session), notice: text => this.notice(text),
+      opened: { keys: () => this.opened.keys(), shown: () => this.opened.shown(this.session), remove: key => this.opened.remove(key) },
       settings: () => settingsItems({
         t: this.t, language: () => ({ choice: this.language.choice, grist: this.language.grist }), onLanguage: choice => this.#chooseLanguage(choice), onTheme: () => this.openTheme(),
         place: () => this.dock.placeRow(), onAbout: () => this.#openAbout(),
@@ -269,7 +276,7 @@ export class GfsController {
     return new AppLinks({
       explorer: () => this.explorer, session: () => this.session, manifests: this.manifests, appById: id => this.appById(id), appName: this.appName,
       fullAccess: () => this.fullAccess, t: this.t, notice: text => this.notice(text), lockOf: this.lockOf, unlock: lock => this.unlock(lock),
-      showExplorer: () => this.showExplorer(), hideExplorer: () => this.hideExplorer(), loadFiles: apps => loadFiles(this.port, apps, this.identity),
+      showExplorer: () => this.showExplorer(), hideExplorer: () => this.hideExplorer(), loadFiles: apps => loadFiles(this.port, apps, this.identity, this.fileReader),
       openIn: (appId, opening) => this.openings.openIn(appId, opening, 'ex.notice.open'),
     });
   }
@@ -364,27 +371,35 @@ export class GfsController {
     }
   }
 
-  async refreshFiles() {
-    if (!this.fullAccess) {
+  // Une seule lecture des fichiers fait foi, la dernière lancée (js/file-refresh.js) : une lecture plus ancienne qui finit après ne remplace pas la liste récente.
+  #refresh = createFileRefresh({
+    canRead: () => this.fullAccess,
+    load: () => loadFiles(this.port, [...this.validApps(), FILES_ENTRY], this.identity, this.fileReader),
+    onRestricted: () => {
       this.explorer.setFiles([]);
       this.#fileStatus = { loading: false, restricted: true, problems: [{ key: 'gfs.needsFullAccess' }] };
       this.#showFileStatus();
-      return;
-    }
-    this.#fileStatus = { loading: true, restricted: false, problems: [] };
-    this.#showFileStatus();
-    try {
-      const { files, trash, folders, received, spaces, problems, stats } = await loadFiles(this.port, [...this.validApps(), FILES_ENTRY], this.identity);
+    },
+    onLoading: () => {
+      this.#fileStatus = { loading: true, restricted: false, problems: [] };
+      this.#showFileStatus();
+    },
+    onLoaded: ({ files, trash, folders, received, spaces, problems, stats }) => {
       this.spaces = spaces;
       this.explorer.setFiles(files, trash, folders, received);
       this.#fileStatus = { loading: false, restricted: false, problems: problems.map(item => ({ key: 'ex.readFailed', app: item.app, reason: item.reason })) };
       this.#showFileStatus();
       this.doc.body.dataset.explorerStats = JSON.stringify(stats);
-    } catch (error) {
+    },
+    onFailed: error => {
       console.error('GFS : lecture des fichiers impossible', error);
       this.#fileStatus = { loading: false, restricted: false, problems: [{ key: 'gfs.loadFailed', reason: String(error && error.message) }] };
       this.#showFileStatus();
-    }
+    },
+  });
+
+  refreshFiles() {
+    return this.#refresh();
   }
 
   #showFileStatus() {
@@ -581,6 +596,7 @@ export class GfsController {
     const identity = identityFor(session.policy, this.identity);
     if (session === this.session) this.#sentIdentity = JSON.stringify(identity);
     const role = await this.rights.reader.role(); // ce que GFS a prouvé : propriétaire ou non, `null` sinon (contrats 5.2, point 8)
+    session.announceSaved(); // d'avance, ce que deviendront ses réglages de vue : dans la vue (rien à enregistrer dans Grist) ou en brouillon (contrats 7.3, point 5)
     return buildContext(facts, { access: session.access, extensions: given.extensions, libraries: given.bibliotheques, opening, storage, bar: this.dock.barre(), identity, players: session.policy.lecteurs, ambiance: this.theme.message(), role }, { preferences: this.#appPreferences(), readonly: this.readonly });
   }
 

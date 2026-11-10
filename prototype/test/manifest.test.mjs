@@ -312,6 +312,40 @@ test('contrats 2.1 point 3 : un manifeste illisible ou invalide reste dans la li
   assert.match(wrongId[0].errors.join(), /catalogue/);
 });
 
+test('loadAll : toutes les lectures partent ensemble (un aller-retour de réseau pour le catalogue), la réponse garde l\'ordre du catalogue même si les manifestes arrivent à l\'envers', async () => {
+  let inFlight = 0;
+  let peak = 0;
+  const pending = [];
+  const fetchJson = path => new Promise(resolve => {
+    inFlight += 1;
+    peak = Math.max(peak, inFlight);
+    pending.push(() => { inFlight -= 1; resolve(readJson(path)); });
+  });
+  const loading = loadAll(CATALOGUE, fetchJson);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(pending.length, CATALOGUE.length, 'les lectures sont toutes parties avant que la première ait répondu');
+  pending.reverse().forEach(answer => answer());
+  const loaded = await loading;
+  assert.equal(peak, CATALOGUE.length);
+  assert.deepEqual(loaded.map(item => item.app.id), CATALOGUE.map(entry => entry.id));
+  assert.ok(loaded.every(item => item.ok), loaded.flatMap(item => item.errors).join());
+});
+
+test('loadAll : l\'unicité se juge dans l\'ordre du catalogue, quel que soit l\'ordre d\'arrivée (le premier gardé, le doublon refusé)', async () => {
+  const first = CATALOGUE[0];
+  const twin = { id: first.id, manifeste: CATALOGUE[1].manifeste };
+  const pending = {};
+  const fetchJson = path => new Promise(resolve => { pending[path] = () => resolve(readJson(first.manifeste)); });
+  const loading = loadAll([first, twin], fetchJson);
+  await new Promise(resolve => setImmediate(resolve));
+  pending[twin.manifeste]();
+  pending[first.manifeste]();
+  const [one, two] = await loading;
+  assert.equal(one.ok, true, 'le premier du catalogue est accepté, même arrivé après le second');
+  assert.equal(two.ok, false);
+  assert.match(two.errors.join('|'), /id|préfixe|déjà/);
+});
+
 test('les noms bilingues se lisent dans la langue de la personne', () => {
   assert.equal(label({ fr: 'Graphique', en: 'Chart' }, 'en'), 'Chart');
   assert.equal(label({ fr: 'Graphique' }, 'en'), 'Graphique');

@@ -24,7 +24,7 @@ const scheme = process.env.LAB_SCHEME || 'light';
 const phase = process.env.PHASE || 'proprietaire';
 const STATE = process.env.DROITS_ETAT || '/tmp/droits-gfs-etat.json';
 const { t } = createI18n(lang);
-const SECRET = 'cle-secrete-0123456789';
+const SECRET = 'cle-de-test-du-lien';
 // La sonde V est « toujours là » (elle s'ouvre sans case à cocher) : elle note le contexte que GFS lui rend.
 const ALWAYS = probeDeclares('sonde-v', { permanente: true });
 

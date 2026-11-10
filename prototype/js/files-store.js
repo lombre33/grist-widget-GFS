@@ -161,8 +161,8 @@ export class FilesStore {
   // Le contenu d'un fichier : { blob, name }. La ligne est relue (un fichier retiré par une autre personne, ou une cellule sans pièce jointe, est dit) ; rien n'est écrit.
   // Un fichier reçu d'un autre document (`file.received`, js/received-files.js) est lu dans sa table `GFS_Recus*`, par le numéro de sa ligne.
   async download(file) {
-    const data = file.received ? await this.#port.doc.fetchTable(file.received.table) : (await this.#table.load()).data;
-    const found = filesOf(data).find(other => (file.received ? other.row === file.received.row : other.id === file.id));
+    const stored = file.received ? await this.#port.doc.fetchTable(file.received.table) : (await this.#table.load()).data;
+    const found = filesOf(stored).find(other => (file.received ? other.row === file.received.row : other.id === file.id));
     if (!found) throw new Error('Ce fichier n’est plus dans le document.');
     if (found.trashed) throw new Error('Ce fichier est à la corbeille.');
     if (found.attachment === null) throw new Error('Ce fichier n’a pas de contenu.');

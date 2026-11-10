@@ -155,6 +155,18 @@ test('aucun prénom de personne dans le code publié, commentaires compris', () 
   assert.deepEqual(found, []);
 });
 
+// Dependabot (cahier 3.3, point 5 ; 4.7) : les outils d'essai, la liste des bibliothèques que GFS porte pour les extensions, et les références des sous-modules. Une liste de bibliothèques que personne ne surveille
+// laisse une faille sans alerte, alors que la version vendorisée en dépend.
+function dependabotEntries() {
+  const text = readFileSync(join(ROOT, '..', '.github', 'dependabot.yml'), 'utf8');
+  return text.split(/^\s*- package-ecosystem:\s*/m).slice(1).map(block => ({ ecosystem: block.split(/\s/)[0].replace(/["']/g, ''), directory: (/^\s*directory:\s*["']?([^\s"']+)/m.exec(block) || [])[1] }));
+}
+
+test('Dependabot surveille les outils d\'essai, la liste des bibliothèques de GFS et les références des sous-modules', () => {
+  const watched = dependabotEntries().map(entry => `${entry.ecosystem} ${entry.directory}`);
+  for (const wanted of ['npm /prototype', 'npm /prototype/bibliotheques', 'gitsubmodule /']) assert.ok(watched.includes(wanted), `${wanted} : à ajouter à .github/dependabot.yml (reçu : ${watched.join(', ')})`);
+});
+
 test('l\'analyse voit bien ce qu\'elle doit voir : une fonction trop longue, trop complexe, un console.log, un onmessage =, une fonction appelée aussitôt, les lignes de code', () => {
   const long = `function long() {\n${'  doIt();\n'.repeat(80)}}`;
   const twisted = `function twisted(a) {\n${'  if (a) a = a && a;\n'.repeat(8)}}`;

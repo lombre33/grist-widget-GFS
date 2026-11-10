@@ -4,27 +4,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { planSharing, planUnsharing, shareColumns, helperColumns, fileRules, shareRules, stampRules, shareRecord, sharesOf, isSharingNote, sharingActive, TARGETS, SHARES_TABLE, HELPERS, targetsOf, appTargets } from '../js/sharing-model.js';
 import { FILES_COLUMNS } from '../js/gfs-files.js';
+import { BUILT_IN, base, withFiles, applied } from './sharing-fixtures.mjs';
 import { levelOfNote } from '../js/rights.js';
 
-const BUILT_IN = { id: 1, resource: 1, permissions: 63, principals: '[1]', aclFormula: '', aclColumn: 0, permissionsText: '', rulePos: null, memo: '' };
-const base = () => ({ resources: [{ id: 1, tableId: '', colIds: '' }], rules: [{ ...BUILT_IN }], tables: [], columns: [] });
-const withFiles = (extra = []) => ({ ...base(), tables: [{ id: 7, tableId: 'GFS_Fichiers' }], columns: [{ parentId: 7, colId: 'Identifiant' }, { parentId: 7, colId: 'Auteur' }, ...extra] });
-const applied = (existing, actions) => {
-  const next = { ...existing, resources: [...existing.resources], rules: [...existing.rules], tables: [...existing.tables], columns: [...existing.columns] };
-  for (const [name, table, id, values] of actions) {
-    if (name === 'AddTable') {
-      const added = { id: 100 + next.tables.length, tableId: table };
-      next.tables.push(added);
-      for (const column of values === undefined ? id : []) next.columns.push({ parentId: added.id, colId: column.id });
-    }
-    if (name === 'AddColumn') next.columns.push({ parentId: next.tables.find(row => row.tableId === table).id, colId: id });
-    if (name === 'AddRecord' && table === '_grist_ACLResources') next.resources.push({ id, ...values });
-    if (name === 'AddRecord' && table === '_grist_ACLRules') next.rules.push({ id, ...values });
-    if (name === 'BulkRemoveRecord' && table === '_grist_ACLRules') next.rules = next.rules.filter(rule => !id.includes(rule.id));
-    if (name === 'BulkRemoveRecord' && table === '_grist_ACLResources') next.resources = next.resources.filter(resource => !id.includes(resource.id));
-  }
-  return next;
-};
 
 test('les colonnes de la table de partages : l\'auteur et son rôle sont écrits par Grist (formule déclenchée à la création, jamais ensuite)', () => {
   const columns = shareColumns();

@@ -4,7 +4,7 @@
 .wd-content > * + * { margin-top: 12px; }
 .wd-lead { margin: 0; }
 .wd-lead + .wd-lead { margin-top: 2px; color: var(--text-muted); }
-.wd-sec h3 { margin: 0 0 4px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
+.wd-sec h3 { margin: 0 0 4px; font-size: max(12px, var(--fs-min)); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
 .wd-progress { font-weight: 400; text-transform: none; letter-spacing: 0; }
 .wd-state { margin: 0 0 6px; color: var(--text-muted); }
 .wd-state[hidden] { display: none; }

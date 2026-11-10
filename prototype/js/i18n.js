@@ -22,6 +22,7 @@ const STRINGS = {
     ...MANAGE_STRINGS.fr,
     ...RECEIVED_STRINGS.fr,
     ...NOTIFICATION_STRINGS.fr,
+    // Le démarrage de GFS, le repli sur la copie figée d'une app et la question posée quand une app doit se fermer.
     'gfs.title': 'Grist Factory Suite',
     'gfs.noGrist': 'GFS doit être ajouté comme widget personnalisé dans Grist.',
     'gfs.loading': '{app} se charge…',
@@ -39,6 +40,7 @@ const STRINGS = {
     'gfs.filesTip': 'Ouvrir l’explorateur de fichiers',
     'gfs.apps': 'Apps',
     'gfs.appsTip': 'Apps et extensions de Grist Factory Suite',
+    // La table de travail : la table (et la ligne) que l'app ouverte reçoit comme si c'était celle de sa page.
     'work.title': 'Table de travail',
     'work.tipPage': 'Table de travail : celle de la page ({table})',
     'work.tipTable': 'Table de travail : {table}',
@@ -59,22 +61,27 @@ const STRINGS = {
     'work.rows': '{n} {n|ligne|lignes}',
     'work.locked': '{app} ne lit pas cette table.',
     'work.refused': '{app} ne lit pas la table {table} : elle suit la page.',
+    // Le lien d'une app avec la grille de la page.
     'link.done': 'GFS a relié ce widget à la grille de « {table} » : la ligne suit votre clic.',
     'link.several': 'Plusieurs grilles de « {table} » sont sur la page : GFS ne sait pas laquelle suivre. Reliez le widget vous-même (« Sélectionner par », dans le panneau de droite de Grist).',
+    // La barre de GFS : sa position et ses boutons.
     'dock.place': 'Position de la barre',
     'dock.gauche': 'À gauche',
     'dock.haut': 'En haut',
     'dock.droite': 'À droite',
     'dock.bas': 'En bas',
+    // L'état sans app ouverte, et les bulles des deux boutons flottants (l'explorateur, les apps).
     'gfs.idle': 'Aucune app ouverte. Choisissez un fichier dans l’explorateur.',
     'gfs.settingsFailed': 'Ce choix n’a pas pu être enregistré : {reason}',
     'gfs.needsFullAccess': 'GFS a besoin de l’accès complet au document pour lister vos fichiers et ouvrir vos apps. Dans le panneau de droite de Grist, acceptez la demande d’accès ou réglez le niveau d’accès sur « accès complet ».',
     'gfs.needsFullAccessHint': 'Demande l’accès complet au document.',
 
+    // Le menu « Réglages ».
     'set.tip': 'Réglages de Grist Factory Suite',
     'set.menu': 'Réglages',
     'set.theme': 'Thème…',
     'set.about': 'À propos…',
+    // La fenêtre « À propos ».
     'about.title': 'À propos de Grist Factory Suite',
     'about.text': 'Le widget Grist qui héberge les apps Grist Factory et ouvre leurs fichiers.',
     'about.version': 'Version : {value}',
@@ -83,11 +90,13 @@ const STRINGS = {
     'about.license': 'Licence : {value}',
     'about.close': 'Fermer',
 
+    // Le choix de la langue, commun à GFS et à ses apps.
     'lang.tip': 'Langue de Grist Factory Suite et de ses apps',
     'lang.menu': 'Langue',
     'lang.auto': 'Comme Grist ({name})',
     'lang.notKept': 'Ce choix ne sera pas gardé : votre navigateur refuse l’enregistrement.',
 
+    // Les ambiances (thèmes) et les couleurs de GFS et de ses apps.
     'theme.tip': 'Thème de Grist Factory Suite et de ses apps',
     'theme.title': 'Thème',
     'theme.text': 'L’ambiance et la couleur de GFS et de ses apps, sur ce navigateur.',
@@ -109,8 +118,8 @@ const STRINGS = {
     'theme.color.pick': 'Choisir ma couleur',
     'theme.color.missing': 'Le sélecteur de couleur ne s’est pas chargé : GFS garde la couleur de l’ambiance. Rechargez la page pour réessayer.',
     'theme.acces': 'Accessibilité renforcée',
-    'theme.acces.d': 'Texte à 7:1, traits à 3:1, cadres épais, sans décor ni capitales.',
-    'theme.acces.tip': 'Garde les couleurs de l’ambiance choisie, ou la vôtre ; seule la forme (arrondis, ombres, décor) devient celle du mode renforcé.',
+    'theme.acces.d': 'Texte à 7:1, cibles de 36 px, focus épais, sans décor ni animation.',
+    'theme.acces.tip': 'Garde les couleurs de l’ambiance choisie, ou la vôtre. Texte à 7:1 et de 14 px au moins, traits à 3:1, cadres épais, cibles de 36 px, anneau de focus épais, sans décor, sans capitales et sans animation.',
     'theme.check': 'Couleurs calculées : contraste de {ratio}:1 au moins en clair et en sombre (la norme demande 4,5:1).',
     'theme.check.origin': 'Ambiance d’origine : contraste de {ratio}:1 au moins en clair et en sombre (la norme demande 4,5:1).',
     'theme.check.strict': 'Texte à {ratio}:1 et traits à {edge}:1 au moins, en clair et en sombre (la norme demande 7:1 et 3:1).',
@@ -120,6 +129,7 @@ const STRINGS = {
     'theme.reset': 'Revenir à Grist Factory',
     'theme.close': 'Fermer',
 
+    // La fenêtre « Apps et extensions » : installer, activer, choisir le mode CDN ou la copie vendorisée.
     'mod.title': 'Apps et extensions',
     'mod.count': '{n} {n|actif|actifs} sur {total}',
     'mod.countNote': 'seul le code coché est chargé',
@@ -134,10 +144,12 @@ const STRINGS = {
     'mod.saved': 'Ces choix s’enregistrent tout de suite, pour tout le document.',
     'mod.readonly': 'Lecture seule : ces choix ne s’enregistrent pas.',
     'mod.needsAccess': 'Accès complet au document requis : ces choix ne s’enregistrent pas.',
+    // Les questions « Créer la table … ? » : aucune table n'est créée sans l'accord de la personne.
     'table.title': 'Créer la table GFS_Rangement ?',
     'table.text': 'GFS y retient les apps installées de ce document et le rangement de ses fichiers (favoris, dossiers). Pour que ce rangement soit à chacun, GFS y lit aussi l’adresse de la personne : Grist l’inscrit dans une ligne ajoutée puis retirée aussitôt. La table est ajoutée au document, avec une page pour elle ; les apps ne l’écrivent jamais. Sans elle, rien ne s’installe ni ne se range.',
     'table.create': 'Créer la table',
     'table.cancel': 'Annuler',
+    // La question « Ouvrir au public ? » : ce qu'une app demande d'ouvrir à toute personne qui aura le lien d'un formulaire.
     'pub.title': 'Ouvrir au public ?',
     'pub.text': '{app} veut ouvrir des données de ce document à toute personne qui aura le lien d’un de ses formulaires publiés, sans compte. Cette personne pourra :',
     'pub.write': 'ajouter des lignes à la table « {table} », dans toutes ses colonnes, celles qu’on y ajoutera plus tard comprises',
@@ -159,6 +171,7 @@ const STRINGS = {
     'mod.missingLib': '{lib} {version} manque au catalogue de GFS : l’extension ne peut pas être activée.',
     'mod.invalid': 'Cette app n’est pas utilisable : {reasons}',
 
+    // L'explorateur de fichiers : titre, barre, arbre, liste, menus, messages.
     'ex.title': 'Mes fichiers',
     'ex.display': 'Affichage',
     'ex.list': 'Liste',
@@ -170,6 +183,9 @@ const STRINGS = {
     'ex.typeFilter': 'Filtrer par type',
     'ex.new': 'Nouveau',
     'ex.import': 'Importer',
+    'ex.opened': 'Ouverts',
+    'ex.shown': 'affiché',
+    'ex.openedDrop': 'Retirer des ouverts',
     'ex.recent': 'Récents',
     'ex.fav': 'Favoris',
     'ex.me': 'Moi',
@@ -188,6 +204,7 @@ const STRINGS = {
     'ex.emptyAll': 'Aucun fichier. Créez-en un avec « Nouveau ».',
     'ex.emptyFolder': 'Dossier vide.',
     'ex.emptyFav': 'Aucun favori pour le moment.',
+    'ex.emptyOpened': 'Aucun fichier ouvert pour le moment. Ceux que vous ouvrez s’ajoutent ici : un double-clic y revient.',
     'ex.emptySearch': 'Aucun fichier ne correspond.',
     'ex.emptyNoAccess': 'Les fichiers s’afficheront dès que l’accès complet sera accordé.',
     'ex.hintPersonal': 'Rangement personnel : les autres personnes ne le voient pas.',
@@ -241,6 +258,7 @@ const STRINGS = {
     'ex.notice.openFailed': '{app} n’a pas pu ouvrir ce fichier : {reason}',
     'ex.notice.appOnly': 'Dupliquer se fait dans {app} : ouvrez le fichier.',
     'ex.notice.noApp': 'Aucune app installée ne sait ouvrir ce type de fichier.',
+    // Les fichiers que GFS garde lui-même (les PDF) : la table GFS_Fichiers, l'envoi, la lecture.
     'files.table.title': 'Créer la table GFS_Fichiers ?',
     'files.table.text': 'GFS y garde les PDF que vous importez et ceux qu’une app lui demande de ranger : une ligne par fichier, avec son nom, sa date et son auteur, et le PDF lui-même en pièce jointe de Grist. La table est ajoutée au document, avec une page pour elle ; les apps ne l’écrivent jamais, elles demandent à GFS. Sans elle, aucun PDF ne se garde.',
     'files.import.hint': 'Gardé par GFS',
@@ -281,12 +299,14 @@ const STRINGS = {
     'files.err.token': 'Grist n’a pas donné de jeton d’accès.',
     'files.err.timeout': 'le transfert est trop long.',
     'files.err.http': 'le serveur Grist répond {status} ({message}).',
+    // L'explorateur en mode choix (« Choisir un fichier »).
     'ex.choose.title': 'Choisir un fichier',
     'ex.choose.pick': 'Choisir',
     'ex.choose.cancel': 'Annuler',
     'ex.choose.newOff': 'Indisponible pendant le choix d’un fichier.',
     'ex.choose.hint': 'Double-cliquez un fichier, ou sélectionnez-le puis « Choisir ».',
     'ex.choose.empty': 'Aucun fichier de ce genre à choisir.',
+    // Le lien d'un fichier vers une app qui ne l'a plus.
     'link.gone': '{app} n’a plus ce fichier : le lien ne peut pas s’ouvrir.',
   },
   en: {
@@ -299,6 +319,7 @@ const STRINGS = {
     ...MANAGE_STRINGS.en,
     ...RECEIVED_STRINGS.en,
     ...NOTIFICATION_STRINGS.en,
+    // Le démarrage de GFS, le repli sur la copie figée d'une app et la question posée quand une app doit se fermer.
     'gfs.title': 'Grist Factory Suite',
     'gfs.noGrist': 'GFS must be added to Grist as a custom widget.',
     'gfs.loading': '{app} is loading…',
@@ -316,6 +337,7 @@ const STRINGS = {
     'gfs.filesTip': 'Open the file explorer',
     'gfs.apps': 'Apps',
     'gfs.appsTip': 'Apps and extensions of Grist Factory Suite',
+    // La table de travail : la table (et la ligne) que l'app ouverte reçoit comme si c'était celle de sa page.
     'work.title': 'Working table',
     'work.tipPage': 'Working table: the page’s ({table})',
     'work.tipTable': 'Working table: {table}',
@@ -336,22 +358,27 @@ const STRINGS = {
     'work.rows': '{n} {n|row|rows}',
     'work.locked': '{app} does not read this table.',
     'work.refused': '{app} does not read the {table} table: it follows the page.',
+    // Le lien d'une app avec la grille de la page.
     'link.done': 'GFS linked this widget to the “{table}” grid: the row follows your click.',
     'link.several': 'There are several “{table}” grids on the page: GFS cannot tell which one to follow. Link the widget yourself (“Select by” in Grist’s right panel).',
+    // La barre de GFS : sa position et ses boutons.
     'dock.place': 'Bar position',
     'dock.gauche': 'Left',
     'dock.haut': 'Top',
     'dock.droite': 'Right',
     'dock.bas': 'Bottom',
+    // L'état sans app ouverte, et les bulles des deux boutons flottants (l'explorateur, les apps).
     'gfs.idle': 'No app is open. Pick a file in the explorer.',
     'gfs.settingsFailed': 'This choice could not be saved: {reason}',
     'gfs.needsFullAccess': 'GFS needs full access to the document to list your files and open your apps. In Grist’s right panel, accept the access request or set the access level to “full document access”.',
     'gfs.needsFullAccessHint': 'Needs full access to the document.',
 
+    // Le menu « Réglages ».
     'set.tip': 'Grist Factory Suite settings',
     'set.menu': 'Settings',
     'set.theme': 'Theme…',
     'set.about': 'About…',
+    // La fenêtre « À propos ».
     'about.title': 'About Grist Factory Suite',
     'about.text': 'The Grist widget that hosts the Grist Factory apps and opens their files.',
     'about.version': 'Version: {value}',
@@ -360,11 +387,13 @@ const STRINGS = {
     'about.license': 'License: {value}',
     'about.close': 'Close',
 
+    // Le choix de la langue, commun à GFS et à ses apps.
     'lang.tip': 'Language of Grist Factory Suite and its apps',
     'lang.menu': 'Language',
     'lang.auto': 'Same as Grist ({name})',
     'lang.notKept': 'This choice will not be kept: your browser refuses to store it.',
 
+    // Les ambiances (thèmes) et les couleurs de GFS et de ses apps.
     'theme.tip': 'Theme of Grist Factory Suite and its apps',
     'theme.title': 'Theme',
     'theme.text': 'The look and the color of GFS and its apps, on this browser.',
@@ -386,8 +415,8 @@ const STRINGS = {
     'theme.color.pick': 'Choose my color',
     'theme.color.missing': 'The color picker did not load: GFS keeps the look’s color. Reload the page to try again.',
     'theme.acces': 'Enhanced accessibility',
-    'theme.acces.d': 'Text at 7:1, lines at 3:1, thick frames, no decoration or capitals.',
-    'theme.acces.tip': 'Keeps the colors of the look you chose, or yours; only the shape (corners, shadows, decoration) becomes that of the enhanced mode.',
+    'theme.acces.d': 'Text at 7:1, 36 px targets, thick focus, no decoration or animation.',
+    'theme.acces.tip': 'Keeps the colors of the look you chose, or yours. Text at 7:1 and at least 14 px, lines at 3:1, thick frames, 36 px targets, thick focus ring, no decoration, no capitals and no animation.',
     'theme.check': 'Computed colors: contrast of at least {ratio}:1 in light and dark (the standard asks for 4.5:1).',
     'theme.check.origin': 'Original look: contrast of at least {ratio}:1 in light and dark (the standard asks for 4.5:1).',
     'theme.check.strict': 'Text at {ratio}:1 and lines at {edge}:1 or more, in light and dark (the standard asks for 7:1 and 3:1).',
@@ -397,6 +426,7 @@ const STRINGS = {
     'theme.reset': 'Back to Grist Factory',
     'theme.close': 'Close',
 
+    // La fenêtre « Apps et extensions » : installer, activer, choisir le mode CDN ou la copie vendorisée.
     'mod.title': 'Apps and extensions',
     'mod.count': '{n} of {total} active',
     'mod.countNote': 'only the ticked code is loaded',
@@ -411,10 +441,12 @@ const STRINGS = {
     'mod.saved': 'These choices are saved right away, for the whole document.',
     'mod.readonly': 'Read-only: these choices are not saved.',
     'mod.needsAccess': 'Full document access required: these choices are not saved.',
+    // Les questions « Créer la table … ? » : aucune table n'est créée sans l'accord de la personne.
     'table.title': 'Create the GFS_Rangement table?',
     'table.text': 'GFS keeps this document’s installed apps there, and how its files are filed (favorites, folders). So that the filing belongs to each person, GFS also reads the person’s address there: Grist writes it into a row that is added and removed straight away. The table is added to the document, with a page of its own; apps never write to it. Without it, nothing can be installed or filed.',
     'table.create': 'Create the table',
     'table.cancel': 'Cancel',
+    // La question « Ouvrir au public ? » : ce qu'une app demande d'ouvrir à toute personne qui aura le lien d'un formulaire.
     'pub.title': 'Open to the public?',
     'pub.text': '{app} wants to open some of this document’s data to anyone who has the link of one of its published forms, no account needed. That person will be able to:',
     'pub.write': 'add rows to the table “{table}”, in all its columns, including those added later',
@@ -436,6 +468,7 @@ const STRINGS = {
     'mod.missingLib': '{lib} {version} is missing from the GFS catalogue: the extension cannot be turned on.',
     'mod.invalid': 'This app cannot be used: {reasons}',
 
+    // L'explorateur de fichiers : titre, barre, arbre, liste, menus, messages.
     'ex.title': 'My files',
     'ex.display': 'View',
     'ex.list': 'List',
@@ -447,6 +480,9 @@ const STRINGS = {
     'ex.typeFilter': 'Filter by type',
     'ex.new': 'New',
     'ex.import': 'Import',
+    'ex.opened': 'Open',
+    'ex.shown': 'shown',
+    'ex.openedDrop': 'Remove from open files',
     'ex.recent': 'Recent',
     'ex.fav': 'Favorites',
     'ex.me': 'Me',
@@ -465,6 +501,7 @@ const STRINGS = {
     'ex.emptyAll': 'No files yet. Create one with “New”.',
     'ex.emptyFolder': 'Empty folder.',
     'ex.emptyFav': 'No favorites yet.',
+    'ex.emptyOpened': 'No open files yet. The files you open are added here: double-click to go back to one.',
     'ex.emptySearch': 'No file matches.',
     'ex.emptyNoAccess': 'Your files will show up as soon as full access is granted.',
     'ex.hintPersonal': 'Personal folders: other people do not see them.',
@@ -518,6 +555,7 @@ const STRINGS = {
     'ex.notice.openFailed': '{app} could not open this file: {reason}',
     'ex.notice.appOnly': 'Duplicating is done in {app}: open the file.',
     'ex.notice.noApp': 'No installed app can open this type of file.',
+    // Les fichiers que GFS garde lui-même (les PDF) : la table GFS_Fichiers, l'envoi, la lecture.
     'files.table.title': 'Create the GFS_Fichiers table?',
     'files.table.text': 'GFS keeps the PDFs you import there, and those an app asks it to file: one row per file, with its name, date and author, and the PDF itself as a Grist attachment. The table is added to the document, with a page for it; apps never write to it, they ask GFS. Without it, no PDF can be kept.',
     'files.import.hint': 'Kept by GFS',
@@ -558,12 +596,14 @@ const STRINGS = {
     'files.err.token': 'Grist did not give an access token.',
     'files.err.timeout': 'the transfer takes too long.',
     'files.err.http': 'the Grist server answers {status} ({message}).',
+    // L'explorateur en mode choix (« Choisir un fichier »).
     'ex.choose.title': 'Choose a file',
     'ex.choose.pick': 'Choose',
     'ex.choose.cancel': 'Cancel',
     'ex.choose.newOff': 'Not available while choosing a file.',
     'ex.choose.hint': 'Double-click a file, or select it then “Choose”.',
     'ex.choose.empty': 'No file of this kind to choose.',
+    // Le lien d'un fichier vers une app qui ne l'a plus.
     'link.gone': '{app} no longer has this file: the link cannot be opened.',
   },
 };

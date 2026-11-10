@@ -1,0 +1,122 @@
+/* L'accessibilité renforcée, second temps (décision du porteur du 04/11, feu vert du 10/11) et le contraste forcé du système. Le premier temps (couleurs à 7:1 et 3:1, cadres de 2 px, sans décor) est dans
+   js/ambiance.js et js/ambiance-forme.js, ses jetons dans les messages ; ce second temps ne change aucun jeton, donc rien pour les apps : il ne vit que dans les feuilles de GFS, sous `data-ambiance="renforcee"`.
+   Une app qui veut la même chose lit `id` `renforcee` dans son contexte.
+   - Texte de 14 px au moins : chaque taille de texte de GFS sous 14 px s'écrit `max(Npx, var(--fs-min))` dans sa feuille ; `--fs-min` vaut 14 px ici (css/gfs.css) et rien d'origine.
+   - Cibles de 36 px au moins : chaque commande de GFS (bouton, champ, ligne cliquable, entrée de menu, case et son texte) fait 36 px de haut et de large au moins ; ce fichier le dit, commande par commande.
+   - Un anneau de focus de 3 px à deux couleurs (le texte, et la page entre l'anneau et la commande) : il se lit sur n'importe quel fond, y compris sur un bouton plein.
+   - Aucun mouvement : ni transition ni animation, quel que soit le réglage du système (le réglage du système, lui, coupe déjà le mouvement pour tout le monde, ambiance ou non).
+   - La barre de la ligne choisie est un vrai trait (une bordure), pas une ombre : elle reste quand le système force les couleurs.
+   Le contraste forcé (`forced-colors: active`, le mode « contraste élevé » de Windows) est un réglage du système, pas de GFS : il vaut pour toute ambiance. Le système remplace les couleurs et retire les ombres ;
+   ce qu'une couleur ou une ombre disait (la ligne choisie, le bouton enfoncé, la vignette cochée, la cible d'un dépôt) se dit alors par un trait, une bordure ou une icône. */
+
+/* `--fs-min` (le plancher du texte de GFS, 0 d'origine : css/gfs.css) monte ici à 14 px ; `--target` est la taille des cibles. */
+:root[data-ambiance="renforcee"] { --target: 36px; --fs-min: 14px; }
+
+/* ---------- cibles de 36 px : l'en-tête, la barre de GFS, les boutons ---------- */
+:root[data-ambiance="renforcee"] :is(.tb) { height: var(--target); min-width: var(--target); }
+:root[data-ambiance="renforcee"] :is(.btn, .btn.sm, .trash-bar .btn, .inp-search input, .rights-chip, .nw-input) { height: var(--target); }
+:root[data-ambiance="renforcee"] .inp-search .ic { left: 10px; top: calc(50% - 7px); }
+:root[data-ambiance="renforcee"] .inp-search input { padding-left: 32px; }
+:root[data-ambiance="renforcee"] .floater { width: var(--target); height: var(--target); }
+:root[data-ambiance="renforcee"] .floater .ic { width: 18px; height: 18px; }
+:root[data-ambiance="renforcee"] .crumbs :is(button, .here) { min-height: var(--target); }
+:root[data-ambiance="renforcee"] .crumbs button { padding: 0 8px; }
+
+/* ---------- cibles de 36 px : le volet des dossiers, la liste, les vignettes, les menus ---------- */
+:root[data-ambiance="renforcee"] .tr-row { height: var(--target); }
+:root[data-ambiance="renforcee"] .ls-head { height: calc(var(--target) + 2px); }
+:root[data-ambiance="renforcee"] .ls-head .hd { min-height: var(--target); padding: 0 8px; margin-left: -8px; }
+:root[data-ambiance="renforcee"] .ls-head .hd[data-sort="poids"] { margin-right: -8px; }
+:root[data-ambiance="renforcee"] .ls-row { height: calc(var(--target) + 1px); scroll-margin-top: calc(var(--target) + 2px); }
+:root[data-ambiance="renforcee"] .menu-item { height: var(--target); }
+:root[data-ambiance="renforcee"] .ex-total { min-height: var(--target); }
+:root[data-ambiance="renforcee"] .ex-pj { min-height: var(--target); }
+:root[data-ambiance="renforcee"] .ex-pj input { width: 22px; height: 22px; }
+
+/* La liste : des colonnes mesurées sur le texte de 14 px et des gestes de 36 px (la place d'un geste passe de 52 à 76 px, celle du type de 102 à 134 px). « Modifié » et « Par » ne tiennent plus à 700 px : sous 900 px ils
+   laissent la place, comme ils le font déjà sous 600 px en texte d'origine (l'auteur et la date restent dans la barre du bas quand on choisit un fichier) ; sous 600 px le poids les suit. */
+:root[data-ambiance="renforcee"] .ex-tree { width: 196px; }
+:root[data-ambiance="renforcee"] :is(.ls-head, .ls-row) { grid-template-columns: minmax(0, 1fr) 134px 72px 76px; }
+@media (min-width: 900px) {
+  :root[data-ambiance="renforcee"] :is(.ls-head, .ls-row) { grid-template-columns: minmax(0, 1fr) 134px 72px 92px 44px 76px; }
+}
+@media (max-width: 899px) {
+  :root[data-ambiance="renforcee"] :is(.ls-head .hd[data-sort="mod"], .ls-head .hd[data-sort="by"], .ls-row .md, .ls-row .by) { display: none; }
+}
+@media (min-width: 520px) and (max-width: 699px) {
+  :root[data-ambiance="renforcee"] .ex-tree { width: 150px; }
+}
+@media (max-width: 599px) {
+  :root[data-ambiance="renforcee"] :is(.ls-head, .ls-row) { grid-template-columns: minmax(0, 1fr) 134px 76px; }
+  :root[data-ambiance="renforcee"] :is(.ls-head .hd[data-sort="poids"], .ls-row .wt) { display: none; }
+}
+@media (max-width: 519px) {
+  :root[data-ambiance="renforcee"] .ex-tree { width: auto; }
+}
+:root[data-ambiance="renforcee"] .th-grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
+
+/* ---------- la barre de la ligne choisie : un vrai trait (une bordure), pas une ombre ---------- */
+/* Une bordure de `--bar-w` (6 px) à gauche de chaque ligne, transparente tant que la ligne n'est pas choisie : la place est prise d'avance, la ligne choisie ne bouge pas. L'en-tête de la liste a la même, pour que les
+   colonnes restent alignées. */
+:root[data-ambiance="renforcee"] :is(.ls-row, .ls-head, .tr-row) { border-left: var(--bar-w) solid transparent; }
+:root[data-ambiance="renforcee"] .ls-row[aria-selected="true"] { border-left-color: var(--accent); box-shadow: none; }
+:root[data-ambiance="renforcee"] .tr-row[aria-current="true"] { border-left-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent-soft-border); }
+:root[data-ambiance="renforcee"] .wk-item[aria-current="true"] { box-shadow: inset var(--bar-w) 0 0 var(--accent); }
+
+/* ---------- l'anneau de focus : 3 px de la couleur du texte, la page entre lui et la commande (2 px) ---------- */
+:root[data-ambiance="renforcee"] :focus-visible { outline: 3px solid var(--text); outline-offset: 2px; box-shadow: 0 0 0 2px var(--surface); }
+/* Dans une zone qui défile ou qui rogne (la liste, le volet, les menus, un fil d'Ariane), l'anneau se dessine dedans : dehors, le bord de la zone le couperait. */
+:root[data-ambiance="renforcee"] :is(.ls-row, .ls-head .hd, .tr-row, .menu-item, .crumbs button, .wk-item, .mg-tab, .ex-list, .sh .opt, .tb-group .tb):focus-visible { outline-offset: -3px; box-shadow: inset 0 0 0 5px var(--surface); }
+:root[data-ambiance="renforcee"] .amb:has(input:focus-visible), :root[data-ambiance="renforcee"] .th-acc:has(input:focus-visible) { outline: 3px solid var(--text); outline-offset: 2px; box-shadow: 0 0 0 2px var(--surface); }
+:root[data-ambiance="renforcee"] .amb:has(input:checked:focus-visible) { box-shadow: 0 0 0 2px var(--surface), inset 0 0 0 1px var(--accent); }
+:root[data-ambiance="renforcee"] .sh .field:focus-within { outline: 3px solid var(--text); outline-offset: 2px; box-shadow: 0 0 0 2px var(--surface); }
+:root[data-ambiance="renforcee"] .sh .field input:focus-visible { outline: 0; box-shadow: none; }
+
+/* ---------- pas de mouvement ---------- */
+:root[data-ambiance="renforcee"] *, :root[data-ambiance="renforcee"] *::before, :root[data-ambiance="renforcee"] *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+
+/* ---------- cibles de 36 px : les fenêtres ---------- */
+/* Une case ou une pastille ronde se coche aussi en cliquant son texte : la ligne qui porte les deux (le `label`) fait 36 px, et la case elle-même passe à 22 px. */
+:root[data-ambiance="renforcee"] :is(.ask-again, .rd, .ex-pj) { min-height: var(--target); }
+:root[data-ambiance="renforcee"] :is(.ask-again input, .rd input, .mr-check input, .sh .chk input[type="checkbox"], .sh .chk input[type="radio"]) { width: 22px; height: 22px; }
+:root[data-ambiance="renforcee"] .rd { align-items: center; }
+:root[data-ambiance="renforcee"] .th-acc { min-height: var(--target); }
+:root[data-ambiance="renforcee"] .sh .field { height: calc(var(--target) + 2 * var(--bw)); }
+:root[data-ambiance="renforcee"] .sh .field input { align-self: stretch; }
+:root[data-ambiance="renforcee"] .sh .lvl { height: var(--target); }
+:root[data-ambiance="renforcee"] .sh .opt { min-height: var(--target); }
+:root[data-ambiance="renforcee"] .sh .chk input[type="date"] { height: var(--target); }
+:root[data-ambiance="renforcee"] .mg-tab { min-height: var(--target); }
+/* La case d'une app ou d'une extension se coche aussi par le nom à côté d'elle (`label for`) : c'est lui qui fait 36 px, la case en garde 22 et se centre sur lui. */
+:root[data-ambiance="renforcee"] .mr-title label { min-height: var(--target); }
+:root[data-ambiance="renforcee"] .mr-check { padding-top: 7px; }
+:root[data-ambiance="renforcee"] :is(.mr-check input, .th) { scroll-margin: 8px; }
+:root[data-ambiance="renforcee"] .wk-item { min-height: var(--target); }
+
+/* La fenêtre « Thème » doit tenir dans 700 × 400 avec des lignes de 36 px et un texte de 14 px : ses intervalles se resserrent d'autant (4 px au lieu de 6, 2 px de remplissage sous les vignettes). */
+:root[data-ambiance="renforcee"] .th-body { gap: 4px; padding: 4px 14px; }
+:root[data-ambiance="renforcee"] .amb-grid { padding: 2px 8px; }
+:root[data-ambiance="renforcee"] .th-col { padding-top: 0; padding-bottom: 4px; }
+
+/* ---------- le contraste forcé du système (`forced-colors: active`, « contraste élevé » de Windows) : pour toute ambiance ---------- */
+/* Le système remplace les couleurs et retire les ombres : ce qu'une teinte ou une ombre disait doit se lire autrement. La ligne choisie (liste, volet, table de travail) prend une barre à gauche, un vrai trait
+   (la bordure existe d'avance, de la couleur du fond, pour que rien ne bouge au choix) ; la vignette et la case des ambiances prennent une bordure plus épaisse ; le bouton enfoncé et la cible d'un dépôt un contour ;
+   l'interrupteur dessine son état avec les couleurs du système (`forced-color-adjust: none` : sans cela, sa poignée, faite d'un fond, disparaît) ; les icônes restent au trait, sans remplissage ni halo (un remplissage
+   deviendrait un aplat). Le texte, les contours et l'anneau de focus (`outline`, que le système garde) prennent les couleurs du système tout seuls.
+   Chaque règle porte `:is(:root, :root[data-ambiance="renforcee"])` : sans lui, une règle de l'accessibilité renforcée (qui commence par `:root[data-ambiance="renforcee"]`) l'emporterait par son poids, et la barre de la ligne
+   choisie redeviendrait transparente, donc de la même couleur du système que les autres (mesuré dans un vrai Grist, sous Chromium, le 10/11). */
+@media (forced-colors: active) {
+  :is(:root, :root[data-ambiance="renforcee"]) :is(.ls-row, .ls-head, .tr-row, .wk-item) { border-left: var(--bar-w) solid Canvas; }
+  :is(:root, :root[data-ambiance="renforcee"]) :is(.ls-row[aria-selected="true"], .tr-row[aria-current="true"], .wk-item[aria-current="true"]) { border-left-color: Highlight; }
+  :is(:root, :root[data-ambiance="renforcee"]) .th[aria-selected="true"] { border-width: 3px; border-color: Highlight; padding: 4px; }
+  :is(:root, :root[data-ambiance="renforcee"]) .amb:has(input:checked) { border-width: 3px; border-color: Highlight; padding: 3px 3px 4px; }
+  :is(:root, :root[data-ambiance="renforcee"]) :is(.tb.on, .floater[aria-pressed="true"]) { border: 2px solid Highlight; }
+  :is(:root, :root[data-ambiance="renforcee"]) :is(.ls-row.is-drop, .th.is-drop, .tr-row.is-drop, .crumbs button.is-drop) { outline: 2px solid Highlight; outline-offset: -2px; }
+  :is(:root, :root[data-ambiance="renforcee"]) .mg-tab[aria-selected="true"] { border-bottom-color: Highlight; }
+  :is(:root, :root[data-ambiance="renforcee"]) .tb-badge { border: 1px solid CanvasText; }
+  :is(:root, :root[data-ambiance="renforcee"]) .th-acc-sw { forced-color-adjust: none; background: Canvas; border-color: CanvasText; }
+  :is(:root, :root[data-ambiance="renforcee"]) .th-acc-sw::after { background: CanvasText; }
+  :is(:root, :root[data-ambiance="renforcee"]) .th-acc:has(input:checked) .th-acc-sw { background: Highlight; border-color: Highlight; }
+  :is(:root, :root[data-ambiance="renforcee"]) .th-acc:has(input:checked) .th-acc-sw::after { background: HighlightText; }
+  :is(:root, :root[data-ambiance="renforcee"]) :is(.ic, .ic.fld, .ls-row .nm .ic, .th-pv .ic) { fill: none !important; filter: none !important; }
+}

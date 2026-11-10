@@ -2,6 +2,8 @@
 // `test/interfaces-firefox.test.mjs` (sous Firefox, sans Grist). Les fonctions `measure…` s'exécutent DANS la page (Playwright ou `page.run` les y envoient en texte) : elles ne voient rien de ce module.
 export const ROW_HEIGHT = 28; // la hauteur d'une ligne de la liste (css/explorer.css : `.ls-row`)
 export const ROW_BUTTON = 24; // « Épingler » et « Plus d'actions » : 24 × 24
+export const ROW_HEIGHT_ACCESS = 37; // avec l'accessibilité renforcée, second temps (css/acces.css) : un bouton de ligne fait 36 px, et la ligne 37 (le filet de 1 px du bas en plus)
+export const ROW_BUTTON_ACCESS = 36;
 export const TILE_MIN = 112; // la plus petite vignette de la vue en vignettes
 export const TILE_GAP = 8;
 export const TILE_PAD = 8;

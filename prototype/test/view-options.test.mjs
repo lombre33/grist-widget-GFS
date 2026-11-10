@@ -244,3 +244,47 @@ test('les écritures d\'une même session s\'enchaînent : la seconde part de ce
   await Promise.all([view.write([['a', 1]]), view.write([['b', 2]]), view.write([['a', undefined]])]);
   assert.deepEqual(widgetOptionsOf(document.sections[0].options), { b: 2 });
 });
+
+// L'annonce d'ouverture (`expect`) : GFS lit sa section et dit d'avance si les réglages iront dans la vue, sans jamais rien écrire.
+test('expect : une seule section dit ce que Grist dit à GFS, vrai, et rien n\'est écrit', async () => {
+  const { make, log } = fakeGrist({ sections: [section(4, { widgetOptions: { modeleDeLaVue: '2' } }), section(9, {}, 2)], own: 4 });
+  assert.equal(await make().expect(), true);
+  assert.equal(log.applied.length, 0);
+});
+
+test('expect : sans l\'accès complet, faux, rien n\'est lu, et la raison est dite une fois en console', async t => {
+  const warn = t.mock.method(console, 'warn', () => {});
+  const { make, log } = fakeGrist({ sections: [section(4)], own: 4 });
+  const view = make({ enabled: () => false });
+  assert.equal(await view.expect(), false);
+  assert.equal(await view.expect(), false);
+  assert.equal(log.applied.length, 0);
+  assert.equal(warn.mock.callCount(), 1);
+  assert.match(warn.mock.calls[0].arguments[0], /pas l'accès complet/);
+});
+
+test('expect : aucune section reconnue, ou un brouillon déjà posé, faux avec la raison en console, rien n\'est écrit', async t => {
+  const warn = t.mock.method(console, 'warn', () => {});
+  const none = fakeGrist({ sections: [section(4, { address: 'https://autre.example/w/index.html' })], own: 4 });
+  assert.equal(await none.make().expect(), false);
+  assert.match(warn.mock.calls[0].arguments[0], /ne reconnaît pas sa section/);
+  const draft = fakeGrist({ sections: [section(4)], own: 4, draft: { droitsAcces: 'brouillon' } });
+  assert.equal(await draft.make().expect(), false);
+  assert.match(warn.mock.calls[1].arguments[0], /brouillon est déjà posé/);
+  assert.equal(none.log.applied.length + draft.log.applied.length, 0);
+});
+
+test('expect : plusieurs sections pareilles, GFS ne sait pas (une marque s\'écrirait) ; une fois sa section reconnue par une écriture, vrai', async () => {
+  const { make, log } = fakeGrist({ sections: [section(4), section(5)], own: 5 });
+  const view = make();
+  assert.equal(await view.expect(), null);
+  assert.equal(log.applied.length, 0, 'aucune marque posée pour une annonce');
+  assert.equal(await view.write([['modeleDeLaVue', '16']]), true); // la recherche par marques reconnaît la section
+  assert.equal(await view.expect(), true);
+});
+
+test('expect : une lecture qui échoue ne lève jamais d\'erreur, GFS ne dit rien', async () => {
+  const { make } = fakeGrist({ sections: [section(4)], own: 4 });
+  const view = make({ doc: { fetchTable: async () => { throw new Error('hors ligne'); }, applyUserActions: async () => assert.fail('rien ne s\'écrit') } });
+  assert.equal(await view.expect(), null);
+});

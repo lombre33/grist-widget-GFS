@@ -38,6 +38,9 @@
   --gap: 0px; --ex-bg: var(--surface); --main-bg: var(--surface); --main-overflow: visible; --wash: none; --wash-size: auto; --stripe: none; --stripe-h: 0px;
   --avatar-bg: var(--surface-sunken); --avatar-fg: var(--text-muted); --avatar-line: var(--border);
   --fill: var(--accent-solid); --fill-hover: var(--accent-solid-hover); --fill-line: var(--accent-solid);
+  /* Le plancher du texte de GFS : nul d'origine ; l'accessibilité renforcée le monte à 14 px (second temps, css/acces.css). Chaque taille de texte de GFS sous 14 px s'écrit `max(Npx, var(--fs-min))`
+     (test/acces.test.mjs le garde) ; la vignette d'une ambiance repart de zéro : c'est un dessin, pas du texte à lire. */
+  --fs-min: 0px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-grist-appearance="light"]) {
@@ -88,7 +91,7 @@
 html, body { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 var(--font-ui); overflow: hidden; }
 [hidden] { display: none !important; }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
 
 /* La scène : les sous-cadres des apps, l'explorateur et les fenêtres par-dessus. */
 .stage { position: relative; height: 100%; }
@@ -117,9 +120,9 @@ body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 var(
 /* La ligne de travail choisie (contrats 4.5) : le bouton reste enfoncé, dans le bleu d'accent. */
 .floater[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); box-shadow: inset 0 0 0 1px var(--accent-soft-border); }
 
-/* Une phrase d'état : l'app se charge, ne répond pas, une consigne provisoire. */
-.status { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: var(--z-toast); max-width: calc(100% - 32px); margin: 0; padding: 7px 12px;
-  background: var(--solid-neutral); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); box-shadow: var(--shadow-float); color: var(--on-neutral); font-size: 12.5px; }
+/* Une phrase d'état : l'app se charge, ne répond pas, une consigne provisoire. Elle est du texte seul : la souris la traverse (audit du 10/11, mesuré sous Firefox : posée au-dessus des fenêtres, elle recouvrait « Annuler » et « Créer la table » pendant 3 s et le clic tombait dessus). */
+.status { pointer-events: none; position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: var(--z-toast); max-width: calc(100% - 32px); margin: 0; padding: 7px 12px;
+  background: var(--solid-neutral); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); box-shadow: var(--shadow-float); color: var(--on-neutral); font-size: max(12.5px, var(--fs-min)); }
 .status--bad { background: var(--danger-soft); border-color: var(--danger); color: var(--danger-ink); }
 .toast { bottom: 64px; }
 /* Barre en bas : les phrases d'état se posent au-dessus d'elle. */

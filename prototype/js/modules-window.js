@@ -6,7 +6,7 @@
 
 import { h } from './dom.js';
 import { icon } from './icons.js';
-import { Layers } from './layers.js';
+import { mountWindow, giveBackFocus } from './modal.js';
 import { label } from './manifest.js';
 
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled])';
@@ -20,9 +20,7 @@ export class ModulesWindow {
   #opts;
   #root = null;
   #body = null;
-  #opener = null;
-  #inert = [];
-  #onKey = null;
+  #mounted = null; // { opener, unmount } de la fenêtre ouverte (modal.js, mountWindow)
   #ids = new Map();
 
   // opts : { container, i18n, locale, model(), blocked(), inertTargets(), on: { app(id, on), extension(app, id, on), mode(app, id, mode), open(app) }, onClose() }
@@ -35,32 +33,19 @@ export class ModulesWindow {
 
   open({ focus = null } = {}) {
     if (this.#root) { this.refresh(); this.#reveal(focus); return; }
-    const doc = this.#opts.container.ownerDocument;
-    this.#opener = doc.activeElement;
     this.#root = this.#build();
-    this.#opts.container.append(this.#root);
-    Layers.raise(this.#root, '--z-window');
-    // Le fond ne reçoit ni clic ni clavier ; chaque élément retrouve à la fermeture l'état où il était (l'explorateur en tenait déjà un).
-    this.#inert = this.#opts.inertTargets().map(target => [target, target.inert]);
-    for (const [target] of this.#inert) target.inert = true;
-    // Échap et Tab sur le document, en capture : ils valent même quand le clavier est tombé sur le fond, et passent avant ceux de l'explorateur.
-    this.#onKey = event => this.#keydown(event);
-    doc.addEventListener('keydown', this.#onKey, true);
+    this.#mounted = mountWindow({ container: this.#opts.container, root: this.#root, inertTargets: () => this.#opts.inertTargets(), onKey: event => this.#keydown(event) });
     this.refresh();
     this.#reveal(focus);
   }
 
   close() {
     if (!this.#root) return;
-    this.#root.ownerDocument.removeEventListener('keydown', this.#onKey, true);
-    this.#onKey = null;
-    this.#root.remove();
+    const { opener, unmount } = this.#mounted;
+    unmount();
     this.#root = null;
-    for (const [target, was] of this.#inert) target.inert = was;
-    this.#inert = [];
-    const back = this.#opener;
-    this.#opener = null;
-    if (back && back.isConnected && typeof back.focus === 'function') back.focus({ preventScroll: true });
+    this.#mounted = null;
+    giveBackFocus(opener);
     this.#opts.onClose();
   }
 

@@ -51,7 +51,7 @@ Si un fait nouveau remet en cause une de ces lignes : le dire au porteur, avec l
 ## Règles de code
 
 - JavaScript en modules ES, HTML et CSS, sans framework. Aucune étape de construction pour servir les pages : ce qu'un outil
-  génère (import map, CSP, empreintes) est commité.
+  génère (import map, liens de préchargement, CSP, empreintes) est commité.
 - Le courtier reste petit, sans bibliothèque, avec ses propres tests. Il ne charge jamais de code depuis une adresse lue
   dans des réglages, une table ou un message.
 - Messages : `addEventListener('message')` et vérification de `event.source`, jamais `window.onmessage =` (cela

@@ -3,6 +3,7 @@
 
 export const SHARE_OTHER_STRINGS = Object.freeze({
   fr: {
+    // Relier un autre document Grist : le lien se fait une seule fois, dans un seul sens.
     'share.other.sec': 'Autre document Grist',
     'share.other.why.pdf': 'Pour l’instant, seuls les PDF que GFS garde se partagent avec un autre document.',
     'share.other.why.owner': 'Seul un propriétaire de ce document peut l’envoyer à un autre document Grist.',
@@ -15,6 +16,7 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     'so.done.link.hint': 'Rien n’est parti. Partagez un fichier avec « Partager > Dans un autre document Grist » : il part sans nouveau code. « Gérer les partages » arrête le lien.',
     'so.toast.link': 'Ce document est relié à « {doc} ».',
     'manage.other.new': 'Relier un document…',
+    // Envoyer un fichier à un autre document : titre, accord et préparation de l'envoi.
     'so.title': 'Envoyer « {name} » à un autre document',
     'so.sub': 'Une copie vers un autre document, dans un seul sens',
     'so.foot': 'L’autre document doit avoir GFS, sur le même Grist.',
@@ -30,6 +32,7 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     'so.accord.keep': 'Rien n’est supprimé ni modifié dans vos fichiers.',
     'so.accord.rules': 'Quand vous fermez cette fenêtre, GFS réserve ces tables techniques aux propriétaires du document (Grist recharge alors la page).',
     'so.preparing': 'Préparation de l’envoi…',
+    // Les deux temps de la poignée de main : le code donné à l'autre document, puis sa réponse.
     'so.code.step': '1. Donnez ce code à la personne qui ouvre l’autre document',
     'so.code.hint': 'Dans l’autre document, elle choisit « Nouveau > Importer > D’un autre document Grist… » et le colle. Il reste valable {n} {n|jour|jours}.',
     'so.code.label': 'Code d’invitation',
@@ -46,12 +49,14 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     'so.verify.in': 'dans {folder} ({team})',
     'so.verify.control': 'Code de contrôle',
     'so.verify.hint': 'Le même code doit s’afficher chez l’autre personne. S’il est différent, n’envoyez rien et recommencez.',
+    // Le contrôle par comparaison du code : exigé ou non avant l'envoi.
     'so.strict': 'Exiger la comparaison du code de contrôle',
     'so.strict.hint': 'Avant l’envoi, vous confirmez avoir comparé le code avec celui de l’autre document : un code intercepté ne suffit plus. Décochez pour envoyer sans cette confirmation.',
     'so.compared': 'J’ai comparé ce code avec celui de l’autre document',
     'so.send': 'Envoyer le fichier',
     'so.sending': 'Envoi de « {name} »…',
     'so.sending.hint': 'L’envoi se poursuit tant que ce document reste ouvert ; vous pouvez fermer cette fenêtre.',
+    // La fin de l'envoi, l'arrêt du partage et les messages d'erreur.
     'so.done': '« {name} » est dans « {doc} ».',
     'so.done.hint': 'Le partage est arrêté : rien ne se met à jour ensuite. La copie reste dans l’autre document.',
     'so.stop': 'Arrêter le partage',
@@ -62,6 +67,7 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     'so.toast.done': '« {name} » est dans « {doc} »',
     'share.tab.here': 'Dans ce document',
     'share.tab.other': 'Dans un autre document Grist',
+    // L'onglet « Autres documents » du panneau « Partager » : état et niveau de chaque fichier.
     'so.tab.lead': 'Envoyez une copie de ce fichier à un autre document Grist qui a GFS. La copie arrive chez eux « à accepter ».',
     'so.tab.linked': 'Documents reliés',
     'so.tab.none': 'Aucun document relié pour l’instant : reliez-en un pour lui envoyer ce fichier.',
@@ -86,6 +92,7 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     'so.level.stop.why': 'Ce fichier n’est pas partagé avec ce document.',
     'so.once.going': '« {name} » part ; il sortira du partage ensuite.',
     'so.once.done': '« {name} » est arrivé dans « {doc} ».',
+    // Le mode d'un partage (un envoi seul, ou un fichier qui reste à jour) et ses explications.
     'so.mode.step': 'Que devient ce partage ?',
     'so.mode.once': 'Une copie, une fois',
     'so.mode.once.hint': 'Le fichier part, le partage s’arrête, la copie reste chez eux.',
@@ -95,6 +102,7 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     'so.accord.table.live': 'une table « {table} », qui reste tant que le lien dure ;',
     'so.accord.hook.live': 'un webhook vers l’autre document, retiré quand vous arrêtez le lien.',
     'so.done.live.hint': 'Le lien reste : les prochains fichiers se partagent dans « Partager > Dans un autre document Grist », sans nouveau code. « Gérer les partages » l’arrête.',
+    // La vue « Gérer > Autres documents » : les documents reliés.
     'manage.tab.other': 'Autres documents',
     'manage.other.lead': 'Les documents Grist reliés à celui-ci. Arrêter un lien ne retire rien de ce qui est déjà arrivé chez l’autre.',
     'manage.other.title': 'Partages vers d’autres documents',
@@ -108,6 +116,7 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     'manage.other.cancel.message': 'L’autre document n’a pas encore répondu. Le code déjà donné ne servira plus.',
     'manage.other.cancel.confirm': 'Annuler l’invitation',
     'manage.other.unreadable': 'Les partages vers d’autres documents ne se lisent pas pour l’instant.',
+    // Recevoir d'un autre document : coller le code d'invitation, accepter, donner la réponse.
     'sr.title': 'Recevoir d’un autre document Grist',
     'sr.sub': 'Des fichiers qui arrivent d’un autre document, dans un seul sens',
     'sr.foot': 'Rien n’est copié avant votre accord.',
@@ -141,6 +150,7 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     'sr.entry.hint': 'Un partage reçu',
   },
   en: {
+    // Relier un autre document Grist : le lien se fait une seule fois, dans un seul sens.
     'share.other.sec': 'Another Grist document',
     'share.other.why.pdf': 'For now, only the PDFs GFS keeps can be shared with another document.',
     'share.other.why.owner': 'Only an owner of this document can send it to another Grist document.',
@@ -153,6 +163,7 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     'so.done.link.hint': 'Nothing was sent. Share a file with “Share > In another Grist document”: it goes without a new code. “Manage sharing” stops the link.',
     'so.toast.link': 'This document is linked to “{doc}”.',
     'manage.other.new': 'Link a document…',
+    // Envoyer un fichier à un autre document : titre, accord et préparation de l'envoi.
     'so.title': 'Send “{name}” to another document',
     'so.sub': 'A copy to another document, one way',
     'so.foot': 'The other document must have GFS, on the same Grist.',
@@ -168,6 +179,7 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     'so.accord.keep': 'Nothing in your files is deleted or changed.',
     'so.accord.rules': 'When you close this window, GFS reserves these technical tables for the document’s owners (Grist then reloads the page).',
     'so.preparing': 'Preparing the sending…',
+    // Les deux temps de la poignée de main : le code donné à l'autre document, puis sa réponse.
     'so.code.step': '1. Give this code to the person who opens the other document',
     'so.code.hint': 'In the other document, they choose “New > Import > From another Grist document…” and paste it. It stays valid for {n} {n|day|days}.',
     'so.code.label': 'Invitation code',
@@ -184,12 +196,14 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     'so.verify.in': 'in {folder} ({team})',
     'so.verify.control': 'Check code',
     'so.verify.hint': 'The same code must show on the other person’s side. If it differs, send nothing and start again.',
+    // Le contrôle par comparaison du code : exigé ou non avant l'envoi.
     'so.strict': 'Require comparing the check code',
     'so.strict.hint': 'Before sending, you confirm you compared the code with the one in the other document: an intercepted code is no longer enough. Untick to send without that confirmation.',
     'so.compared': 'I compared this code with the one in the other document',
     'so.send': 'Send the file',
     'so.sending': 'Sending “{name}”…',
     'so.sending.hint': 'Sending goes on as long as this document stays open; you can close this window.',
+    // La fin de l'envoi, l'arrêt du partage et les messages d'erreur.
     'so.done': '“{name}” is in “{doc}”.',
     'so.done.hint': 'Sharing is stopped: nothing is updated afterwards. The copy stays in the other document.',
     'so.stop': 'Stop sharing',
@@ -200,6 +214,7 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     'so.toast.done': '“{name}” is in “{doc}”',
     'share.tab.here': 'In this document',
     'share.tab.other': 'In another Grist document',
+    // L'onglet « Autres documents » du panneau « Partager » : état et niveau de chaque fichier.
     'so.tab.lead': 'Send a copy of this file to another Grist document that has GFS. The copy arrives there “to accept”.',
     'so.tab.linked': 'Linked documents',
     'so.tab.none': 'No linked document yet: link one to send it this file.',
@@ -224,6 +239,7 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     'so.level.stop.why': 'This file is not shared with this document.',
     'so.once.going': '“{name}” is on its way; it will leave the share afterwards.',
     'so.once.done': '“{name}” has arrived in “{doc}”.',
+    // Le mode d'un partage (un envoi seul, ou un fichier qui reste à jour) et ses explications.
     'so.mode.step': 'What happens to this share?',
     'so.mode.once': 'A copy, once',
     'so.mode.once.hint': 'The file goes, sharing stops, the copy stays with them.',
@@ -233,6 +249,7 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     'so.accord.table.live': 'a “{table}” table, which stays as long as the link lasts;',
     'so.accord.hook.live': 'a webhook to the other document, removed when you stop the link.',
     'so.done.live.hint': 'The link stays: the next files are shared in “Share > In another Grist document”, with no new code. “Manage sharing” stops it.',
+    // La vue « Gérer > Autres documents » : les documents reliés.
     'manage.tab.other': 'Other documents',
     'manage.other.lead': 'The Grist documents linked to this one. Stopping a link removes nothing that has already arrived in the other document.',
     'manage.other.title': 'Sharing with other documents',
@@ -246,6 +263,7 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     'manage.other.cancel.message': 'The other document has not replied yet. The code already given will no longer work.',
     'manage.other.cancel.confirm': 'Cancel the invitation',
     'manage.other.unreadable': 'Sharing with other documents cannot be read right now.',
+    // Recevoir d'un autre document : coller le code d'invitation, accepter, donner la réponse.
     'sr.title': 'Receive from another Grist document',
     'sr.sub': 'Files arriving from another document, one way',
     'sr.foot': 'Nothing is copied before you agree.',

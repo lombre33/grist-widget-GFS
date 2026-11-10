@@ -67,8 +67,8 @@ export class EnvelopePeer {
     const answers = Number.isInteger(id) && id >= 1; // un appel sans `id` n'attend pas de réponse (5.1, point 2)
     try {
       if (typeof nom !== 'string' || !Object.hasOwn(this.#handlers, nom)) throw new Refus(ERR.INCONNU, `L'appel « ${nom} » est inconnu de GFS.`);
-      const data = await this.#handlers[nom](isObject(args) ? args : {});
-      if (answers) this.#out({ gfs: ENVELOPE, type: 'reponse', id, data: data === undefined ? null : data });
+      const result = await this.#handlers[nom](isObject(args) ? args : {});
+      if (answers) this.#out({ gfs: ENVELOPE, type: 'reponse', id, data: result === undefined ? null : result });
     } catch (error) {
       if (answers) this.#out({ gfs: ENVELOPE, type: 'erreur', id, code: (error && error.code) || 'GFS_ERREUR', message: String((error && error.message) || 'Erreur') });
     }

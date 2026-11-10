@@ -38,7 +38,7 @@ export class Dragging {
   // opts : { root (le cadre de l'explorateur), may() -> bool (la liste se glisse : pas à la corbeille, pas pendant un choix), file(key) -> le fichier vivant, ou undefined, moveTo(key, path) (js/explorer-clipboard.js),
   //          expand(path) (ouvre un dossier du volet), later?(fonction, ms) -> identifiant, cancel?(identifiant) (les minuteurs, pour les essais) }
   constructor(opts) {
-    this.#opts = { later: (run, ms) => setTimeout(run, ms), cancel: id => clearTimeout(id), ...opts };
+    this.#opts = { later: (run, ms) => setTimeout(() => run(), ms), cancel: id => clearTimeout(id), ...opts };
     const { root } = this.#opts;
     root.addEventListener('dragstart', event => this.#start(event));
     root.addEventListener('dragenter', event => this.#over(event));
@@ -53,6 +53,9 @@ export class Dragging {
     const may = this.#opts.may();
     for (const row of list.querySelectorAll('[data-key]')) row.draggable = may;
   }
+
+  // Une ligne est tenue (un glissement est en cours) : la liste fenêtrée ne retire alors aucune ligne (js/explorer-window.js).
+  get holding() { return this.#key !== null; }
 
   // On ne tient plus rien : la fermeture de l'explorateur, la fin d'un glissement, un dépôt.
   reset() {

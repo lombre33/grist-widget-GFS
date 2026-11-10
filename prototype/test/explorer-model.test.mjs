@@ -463,3 +463,17 @@ test('listItems : `covered` est ce que la liste couvre : les fichiers du dossier
   assert.deepEqual(listItems(list, state({ view: 'fav' }), OPTIONS).covered.map(file => file.id), ['1']);
   assert.deepEqual(listItems(list, state({ type: 'grille' }), OPTIONS).covered.map(file => file.id), ['6']);
 });
+
+test('Ouverts : une liste à plat des fichiers donnés, de tous les dossiers, sans dossier, triée comme demandé et filtrée par la recherche et le type', () => {
+  const all = files();
+  const given = all.filter(file => ['1', '2', '4'].includes(file.id));
+  const result = listItems(given, state({ view: 'opened', path: 'Formation' }), OPTIONS);
+  assert.equal(result.flat, true, 'une liste à plat : aucun dossier, quel que soit le chemin gardé');
+  assert.equal(result.rows.every(row => row.kind === 'file'), true);
+  assert.deepEqual(result.rows.map(row => row.file.id).sort(), ['1', '2', '4'], 'tous les fichiers donnés, quel que soit leur dossier');
+  assert.deepEqual(result.rows.map(row => row.file.name), [...result.rows.map(row => row.file.name)].sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base', numeric: true })), 'par nom, comme les favoris');
+  assert.deepEqual(result.covered.map(file => file.id).sort(), ['1', '2', '4']);
+  const wanted = given[0].name;
+  assert.deepEqual(listItems(given, state({ view: 'opened', q: wanted }), OPTIONS).rows.map(row => row.file.id), [given[0].id], 'la recherche s\'applique à la liste');
+  assert.deepEqual(listItems([], state({ view: 'opened' }), OPTIONS).rows, [], 'rien d\'ouvert : liste vide');
+});

@@ -2,8 +2,8 @@
 // Sortis de l'explorateur pour qu'il reste sous les 600 lignes de code de l'outil d'audit. Rien ne s'y garde : l'explorateur donne, à chaque ouverture, ce qu'il montre (`x`) et ses gestes (`x.act`), et reçoit des articles
 // (des objets simples, dessinés par js/menu.js).
 //
-// x : { t, opts (filing, sharing, notice, appName), view ('folder', 'recent', 'trash', 'shared'…), choice (un mode choix est ouvert), rows, shown (les fichiers de la vue), kept, bin, copying, shared, openAs(file),
-//       act: { activate(key), deleteFolder(key), restore(key), purge(key), trashKey(key), duplicate(file) } }
+// x : { t, opts (filing, sharing, notice, appName), view ('folder', 'recent', 'trash', 'shared', 'opened'…), choice (un mode choix est ouvert), rows, shown (les fichiers de la vue), kept, bin, copying, shared, openAs(file),
+//       act: { activate(key), deleteFolder(key), restore(key), purge(key), trashKey(key), duplicate(file), dropOpened(key) } }
 
 const item = (label, glyph, run, hint) => ({ label, icon: glyph, run, hint });
 
@@ -73,7 +73,9 @@ function fileItems(x, file) {
   // « Partager… » (js/share-control.js) : grisé pendant un choix et pour un fichier qui ne se partage pas encore, le clic dit pourquoi.
   const whyShare = choice ? t('ex.choose.newOff') : (sharing ? sharing.whyNot(file) : t('share.unsupported'));
   const share = whyShare ? grey(t('share.menu'), 'user', whyShare) : item(t('share.menu'), 'user', () => void sharing.open(file));
-  return [{ ...item(open.label, open.icon, () => act.activate(file.key), t('key.enter')), greyed: open.greyed }, ...extras, share, item(file.pinned ? t('ex.unpin') : t('ex.pin'), 'pin', () => void filing.togglePin(file)),
+  // Dans « Ouverts » : sortir le fichier de la liste, sans le fermer ni le toucher.
+  const drop = x.view === 'opened' ? [item(t('ex.openedDrop'), 'x', () => void act.dropOpened(file.key))] : [];
+  return [{ ...item(open.label, open.icon, () => act.activate(file.key), t('key.enter')), greyed: open.greyed }, ...drop, ...extras, share, item(file.pinned ? t('ex.unpin') : t('ex.pin'), 'pin', () => void filing.togglePin(file)),
     item(t('ex.rename'), 'edit', () => void filing.rename(file), 'F2'), duplicate, item(t('ex.move'), 'move', () => void filing.moveFile(file), choice ? undefined : 'Ctrl+X, V'),
     '-', remove];
 }

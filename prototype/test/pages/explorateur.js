@@ -20,6 +20,7 @@
 import { ask } from '/js/ask-window.js';
 import { askConflict } from '/js/conflict-window.js';
 import { Explorer } from '/js/explorer.js';
+import { OpenedFiles } from '/js/opened-files.js';
 import { Filing } from '/js/filing.js';
 import { askName, chooseFolder } from '/js/filing-window.js';
 import { applyFiling, folderMoves, inside, normalizePath, readFiles, readFiling } from '/js/explorer-model.js';
@@ -244,18 +245,23 @@ async function mount() {
     explorer.state.view = 'shared';
     explorer.render();
   };
+  // Les fichiers « ouverts » (la vue « Ouverts », test/ouverts-firefox.mjs) : `window.__open(noms)` les ouvre dans l'ordre, le dernier est celui que l'app affiche ; `__reset` les vide.
+  const SESSION = {};
+  const openedFiles = new OpenedFiles();
   const explorer = new Explorer({
     container: stage, i18n, locale, now: () => new Date(), appName: () => 'Publipostage+', received,
     typeLabel: file => (file.received ? received.typeLabel(file) : baseLabel(file)),
     lockOf: file => (file.received ? received.lockOf(file) : (file.type === 'macro' ? { text: i18n.t('ex.lockedExtension', { name: 'Macro-modèles' }) } : null)), newTypes: () => [], importTypes: () => [], canClose: () => true,
     notice: text => window.__notices.push(text), settings: () => settingsItems({ t: i18n.t, language: () => ({ choice: window.__language, grist: language }), onLanguage: value => { window.__language = value; }, onTheme: () => theme.open(), place, onAbout: () => window.__about() }),
     onOpen: file => { window.__opened = file.name; }, onNew: () => {},
+    opened: { keys: () => openedFiles.keys(), shown: () => openedFiles.shown(SESSION), remove: key => openedFiles.remove(key) },
     onImport: () => {}, onClose: () => {}, onApps: () => {}, onRights: () => window.__rights(window.__rightsKind || 'protege'), sharing: { whyNot: () => null, whyNotFolder: path => (path.split('/').length > 2 && path.startsWith('Espaces/') ? null : i18n.t(path.startsWith('Espaces') ? 'share.folder.space' : 'share.folder.personal')), folderFile: path => ({ key: `dossier:${path}`, name: path.split('/').pop() }), open: () => window.__share(window.__shareKind || 'actif') }, onWeight: estimate => window.__weight(estimate), personal: () => true, kept: null, trash: bin, copying,
     attachments: async () => { window.__attachments += 1; if (window.__attachmentsFail) return { error: new Error(window.__attachmentsFail) }; return { data: attachmentsTable() }; },
     filing: { togglePin: noted('pin', 'name'), rename: noted('rename', 'name'), moveFile: noted('move', 'name'), renameFolder: async path => { window.__filing.push(['renameFolder', path]); }, moveFolder: async path => { window.__filing.push(['moveFolder', path]); }, ...moving,
       newFolder: () => filing.newFolder(), deleteFolder: path => filing.deleteFolder(path), undoStack: filing.undoStack },
   });
   window.__explorer = explorer;
+  window.__open = names => { for (const name of names) openedFiles.add(live.find(file => file.name === name).key, SESSION); explorer.render(); };
   window.__reset = () => {
     explorer.close(); // la fermeture vide le presse-papiers : chaque mesure part de rien
     filing.undoStack.clear(); // et la pile de Ctrl+Z
@@ -271,6 +277,7 @@ async function mount() {
     window.__attachments = 0;
     window.__attachmentsFail = '';
     window.__opened = null;
+    for (const key of openedFiles.keys()) openedFiles.remove(key);
     window.__appOpen = true;
     setting.reset(); // l'ambiance d'origine, comme au départ ; « Revenir à Grist Factory » laisse l'accessibilité renforcée (un besoin, pas un goût) : on l'éteint aussi
     setting.chooseAccess(false);
@@ -292,6 +299,15 @@ async function mount() {
   window.__withPdf = () => {
     const [pdf] = readFiles(FILES_MANIFEST, FILES_MANIFEST.fichiers[0], { id: [900], Identifiant: ['essai-pdf'], Nom: ['Attestation.pdf'], Type: ['pdf'], Date: [Math.floor(Date.now() / 1000) - 3600], Auteur: ['Service RH'], Contenu: [['L', 900]], Taille: [640000] });
     live.push(pdf);
+    show();
+  };
+  // Un document de `count` fichiers de plus (la liste fenêtrée, test/fenetrage-firefox.mjs) : des modèles « Fichier 00001 », de poids et de dates qui varient, lus par le vrai modèle ; `__reset` les retire.
+  window.__many = count => {
+    const at = index => String(index + 1).padStart(5, '0');
+    const indexes = Array.from({ length: count }, (unused, index) => index);
+    const more = { id: indexes.map(index => 1000 + index), Nom: indexes.map(index => `Fichier ${at(index)}`), TypeModele: indexes.map(index => ['document', 'presentation', 'grille'][index % 3]), DateModif: indexes.map(index => Math.floor(Date.now() / 1000) - index * 600), ModifiePar: indexes.map(() => 'Service RH') };
+    const nobody = { id: [], Utilisateur: [], ModeleId: [], Dossier: [], Epingle: [] }; // aucun rangement : tous à la racine ; `applyFiling` pose aussi ce que la recherche lit (`file.search`)
+    live.push(...applyFiling(readFiles(manifest, spec, more, indexes.map(index => 1000 + (index % 97) * 5000)), readFiling(spec.rangement, nobody, '')));
     show();
   };
   // Le fichier gardé qui porte déjà le nom, tel que GFS le décrit (date et auteur) ; la copie prendrait « (1) ».

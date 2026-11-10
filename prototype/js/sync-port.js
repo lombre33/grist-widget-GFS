@@ -104,11 +104,11 @@ function prefsPort(env) {
 // deps : { docApi (grist.docApi), transfer (js/transfer.js), language () -> 'fr' | 'en', busy () -> booléen, env (la fenêtre : par défaut `globalThis`) }.
 export function createSyncPort({ docApi, transfer, language = () => 'fr', busy = () => false, env = globalThis }) {
   const text = createEngineText(language);
-  const data = dataPort({ docApi, transfer }, text);
-  const rest = createRestPort({ docApi: { fetchRows: data.fetchRows }, http: createHttp(transfer, text) });
+  const dataApi = dataPort({ docApi, transfer }, text);
+  const rest = createRestPort({ docApi: { fetchRows: dataApi.fetchRows }, http: createHttp(transfer, text) });
   return {
     ...rest,
-    ...data,
+    ...dataApi,
     // Une seule exécution à la fois sous ce nom, tous les onglets du navigateur confondus (sans verrous possibles : tout de suite).
     withLock: (name, job) => (env.navigator && env.navigator.locks ? env.navigator.locks.request(name, job) : job()),
     text,

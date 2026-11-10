@@ -7,7 +7,7 @@ import { h } from './dom.js';
 // opts : { keys, selected, label (le nom de la rangée), prefix (les clés `data-fk` sont `<prefix>-tab-<clé>`), text(clé) → le texte de l'onglet, onSelect(clé) }.
 export function tabList({ keys, selected, label, prefix, text, onSelect }) {
   const fk = key => `${prefix}-tab-${key}`;
-  const bar = h('div', { class: 'mg-tabs', role: 'tablist', 'aria-label': label }, ...keys.map((key, at) => {
+  const tabs = h('div', { class: 'mg-tabs', role: 'tablist', 'aria-label': label }, ...keys.map((key, at) => {
     const tab = h('button', { type: 'button', role: 'tab', class: 'mg-tab', id: fk(key), 'aria-selected': String(selected === key), tabindex: selected === key ? '0' : '-1', dataset: { fk: fk(key) } }, text(key));
     tab.addEventListener('click', () => onSelect(key));
     tab.addEventListener('keydown', event => {
@@ -21,7 +21,7 @@ export function tabList({ keys, selected, label, prefix, text, onSelect }) {
     });
     return tab;
   }));
-  return bar;
+  return tabs;
 }
 
 // `host.replaceChildren(...nodes)` qui rend le clavier à l'élément qui l'avait, quand il se retrouve (même `data-fk`) dans le nouveau contenu : sans cela, redessiner une fenêtre jette le clavier sur la page.

@@ -37,6 +37,31 @@ export function listKeys(event, { search, items }) {
   return false;
 }
 
+// Rend le fond inerte (ni clic ni clavier) et rend la fonction qui, à la fermeture, redonne à chaque élément l'état où il était (l'explorateur en tenait déjà un).
+export function holdBackground(targets) {
+  const kept = targets.map(target => [target, target.inert]);
+  for (const [target] of kept) target.inert = true;
+  return () => { for (const [target, was] of kept) target.inert = was; };
+}
+
+// Rend le clavier à l'élément qui l'avait avant l'ouverture, quand il est encore dans la page.
+export function giveBackFocus(opener) {
+  if (opener && opener.isConnected && typeof opener.focus === 'function') opener.focus({ preventScroll: true });
+}
+
+// Pose une fenêtre à classe (« Apps et extensions », « Table de travail ») : son fond `root`, déjà bâti, passe au-dessus de ce qui est ouvert (Layers), le fond de la page devient inerte, et
+// Échap et Tab s'écoutent sur le document, en capture (ils valent même quand le clavier est tombé sur le fond, et passent avant ceux de l'explorateur). `onKey(événement)` est leur gestionnaire.
+// Rend { opener, unmount } : `opener` est l'élément qui avait le clavier (à lui rendre par `giveBackFocus`) ; `unmount()` retire la fenêtre, rend au fond son état et défait l'écoute.
+export function mountWindow({ container, root, inertTargets, onKey }) {
+  const doc = container.ownerDocument;
+  const opener = doc.activeElement;
+  container.append(root);
+  Layers.raise(root, '--z-window');
+  const release = holdBackground(inertTargets());
+  doc.addEventListener('keydown', onKey, true);
+  return { opener, unmount() { doc.removeEventListener('keydown', onKey, true); root.remove(); release(); } };
+}
+
 // opts : { container, section (la fenêtre), inertTargets() -> [élément], first (l'élément qui prend le clavier), cancel (la valeur d'Échap) }.
 // Rend { done(valeur), result } : `done` ferme la fenêtre une fois pour toutes, `result` est la promesse de la valeur.
 export function openModal({ container, section, inertTargets, first, cancel = null }) {
@@ -46,8 +71,7 @@ export function openModal({ container, section, inertTargets, first, cancel = nu
   const root = h('div', { class: 'mod-scrim' }, section);
   container.append(root);
   Layers.raise(root, '--z-window');
-  const inert = inertTargets().map(target => [target, target.inert]);
-  for (const [target] of inert) target.inert = true;
+  const release = holdBackground(inertTargets());
   let resolve;
   const result = new Promise(settle => { resolve = settle; });
   let open = true;
@@ -70,7 +94,7 @@ export function openModal({ container, section, inertTargets, first, cancel = nu
     stack.splice(stack.indexOf(token), 1);
     doc.removeEventListener('keydown', onKey, true);
     root.remove();
-    for (const [target, was] of inert) target.inert = was;
+    release();
     const back = opener && opener.isConnected ? opener : (openerKey ? [...container.querySelectorAll('[data-fk]')].find(node => node.dataset.fk === openerKey) : null);
     if (back && typeof back.focus === 'function') back.focus({ preventScroll: true });
     resolve(value);

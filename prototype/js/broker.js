@@ -36,9 +36,9 @@ const guardWrite = env => { if (env.readonly) fail(ERR.LECTURE_SEULE, 'Document 
 
 // Les identifiants réels des tables et la correspondance numéro de ligne -> identifiant, lus dans _grist_Tables (aucune ligne retirée).
 async function tableMap(port) {
-  const data = await port.doc.fetchTable('_grist_Tables');
+  const metaTable = await port.doc.fetchTable('_grist_Tables');
   const map = new Map();
-  (data.id || []).forEach((rowId, i) => map.set(rowId, data.tableId[i]));
+  (metaTable.id || []).forEach((rowId, i) => map.set(rowId, metaTable.tableId[i]));
   return map;
 }
 const realIds = async port => [...(await tableMap(port)).values()].filter(Boolean);

@@ -20,7 +20,7 @@ function context(extra = {}) {
     },
     kept: { has: () => false, extras: () => [{ label: 'Télécharger' }] }, bin: { handles: () => true }, copying: { handles: () => true }, shared: { menu: () => null },
     openAs: () => ({ label: t('ex.open'), icon: 'open', greyed: false }),
-    act: { activate: note('activate'), deleteFolder: note('deleteFolder'), restore: note('restore'), purge: note('purge'), trashKey: note('trashKey'), duplicate: note('duplicate') },
+    act: { activate: note('activate'), deleteFolder: note('deleteFolder'), restore: note('restore'), purge: note('purge'), trashKey: note('trashKey'), duplicate: note('duplicate'), dropOpened: note('dropOpened') },
     ...extra,
   };
   return x;
@@ -152,4 +152,15 @@ test('à la corbeille : restaurer et supprimer définitivement ; dans « Partag�
 test('une ligne qui n\'est plus dans la vue : pas de menu', () => {
   assert.equal(rowItems(context({ shown: [] }), 'publipostage:7'), null);
   assert.equal(rowItems(context({ view: 'trash', shown: [] }), 'publipostage:7'), null);
+});
+
+test('Ouverts : « Retirer des ouverts » vient juste après « Ouvrir », seulement dans cette vue, et appelle le geste avec la clé du fichier', () => {
+  const opened = context({ view: 'opened' });
+  const items = rowItems(opened, 'publipostage:7');
+  assert.deepEqual(labels(items).slice(0, 2), [t('ex.open'), t('ex.openedDrop')]);
+  assert.equal(items[1].icon, 'x');
+  items[1].run();
+  assert.deepEqual(opened.calls, [['dropOpened', 'publipostage:7']]);
+  for (const view of ['folder', 'recent', 'fav']) assert.equal(labels(rowItems(context({ view }), 'publipostage:7')).includes(t('ex.openedDrop')), false, `pas dans « ${view} »`);
+  assert.equal(labels(rowItems(context({ view: 'trash' }), 'publipostage:7')).includes(t('ex.openedDrop')), false, 'ni à la corbeille');
 });

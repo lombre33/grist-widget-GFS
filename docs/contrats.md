@@ -318,6 +318,7 @@ Une entrée de `fichiers` par table de fichiers :
    fermer la fenêtre arrête la lecture. Une table que Grist coupe dit « trop longue » sans retenir les autres. **Sans le droit de tout copier** (403) ou si Grist ne répond pas, la fenêtre reste, grisée, avec la raison ; l'estimation reste. Elle ne
    donne aucun « x % de 15 Go » : le total du site n'est pas lisible depuis un widget, et ce que compte la limite (les pièces jointes de tous les documents, ou les fichiers entiers) n'est pas connu ; les deux chiffres sont dans la fenêtre (faits vérifiés, 43).
    Les lignes liées (`poids.liees`) sont lues avec les fichiers, à chaque ouverture de l'explorateur et à chaque relecture, par `fetchTable` de la table liée (une seule fois par déclaration, jamais une lecture par fichier) : leur coût est celui de la table (Publipostage+ plafonne ses versions à 3 Mo pour tout le document : moins de 0,4 s de plus à l'ouverture, dans le bruit de la mesure, faits vérifiés, 41). À la corbeille, l'entrée d'un fichier pèse sa ligne de `GFS_Corbeille` seule : ses lignes liées restent dans leur table, et l'app décide de les garder ou de les retirer (6.7, point 6).
+   **Dans un document lourd, les relectures ne lisent plus les cellules lourdes.** Quand une lecture complète a compté 4 Mo de fichiers ou plus (`js/explorer-sql.js`), les retours à l'explorateur qui suivent demandent à Grist, par une lecture SQL **en lecture seule** (la route de la fenêtre « Poids du document »), les seules colonnes que le manifeste déclare plus les octets des autres, en une lecture de la structure puis une lecture par table lancées ensemble : un modèle de 500 Ko n'est plus relu pour afficher son nom. Les fichiers et leurs poids sont ceux de la lecture complète, à l'octet près. Un document léger ne change pas (la première lecture d'une session est toujours complète) ; **sans le droit de tout copier (403, un document à règles d'accès), au moindre refus ou serveur muet, la lecture légère s'éteint pour la session** et la lecture complète reprend, sans jeton qui peut écrire (faits vérifiés, 86).
 
 ### 2.5 Les réglages
 
@@ -1089,7 +1090,7 @@ Les noms de la v0 :
 | `langue` (événement) | GFS → app | `{ langue }` (5.2, point 6) | aucune |
 | `barre` (événement) | GFS → app | `{ barre }` : `{ bord, epaisseur, zone }` ou `null` (5.2, point 7) | aucune |
 | `ambiance` (événement) | GFS → app | `{ ambiance }` : le message d'ambiance, ou `null` (5.2, point 10) | aucune |
-| `reglages` (événement) | GFS → app | `{ enregistres }` : vrai quand le réglage que l'app vient d'écrire est dans la vue, faux quand il reste un brouillon (7.3, point 5) | aucune |
+| `reglages` (événement) | GFS → app | `{ enregistres }` : vrai quand le réglage que l'app vient d'écrire est dans la vue, faux quand il reste un brouillon ; dit aussi d'avance, à la demande de `contexte`, ce que deviendront ses réglages (7.3, point 5) | aucune |
 
 1. [D] `gfs` est le numéro de contrat de l'émetteur (pour l'app, celui de son manifeste). Un message sans `gfs` entier, ou d'un
    numéro que le destinataire ne connaît pas, est ignoré.
@@ -1139,7 +1140,8 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    quand la barre de GFS change de bord, de taille, ou disparaît et revient (point 7). `identite` (`{ "identite": { "email": … } | null }`),
    quand GFS apprend l'adresse de la personne pendant que l'app qui la déclare est ouverte (point 9). `ambiance` (`{ "ambiance": { … } | null }`),
    quand la personne change l'ambiance ou la couleur de GFS (point 10). `reglages` (`{ "enregistres": true | false }`), après chaque écriture
-   d'un réglage de l'app : vrai si GFS l'a écrit dans la vue (rien à enregistrer dans Grist), faux s'il est resté un brouillon (7.3, point 5).
+   d'un réglage de l'app : vrai si GFS l'a écrit dans la vue (rien à enregistrer dans Grist), faux s'il est resté un brouillon ; et **d'avance**, une fois
+   par demande de `contexte`, pour une app qui déclare des clés `reglages` (7.3, point 5).
 3. [D] `ouverture` : `null` quand l'app s'ouvre sans consigne (elle applique son propre ordre d'arrivée, cahier 6.2, point 4 : c'est
    le cas du bouton « Ouvrir » de la fenêtre « Apps et extensions » et de l'arrivée sur une vue qui porte ses réglages, 7.4, point 7) ;
    sinon `{ fichier, type, dossier, raison }` où `fichier` est `{ id, type }` (ou `null` pour « Nouveau »), `type` le type
@@ -1346,7 +1348,11 @@ sans événement : seule une règle posée recharge la page (11.5, point 3), et 
    mode renforcé : arrondis courts, `--bw` à 2 px, `--bar-w` à 6 px, `--divider-w` à 2 px, ni ombre, ni trame, ni filet (`--shadow-*`, `--wash`, `--stripe` à `none`), ni capitales ni lettres espacées (`--tt-head` à `none`, `--ls-head` et `--ls-label` à `normal`), le bouton plein uni
    (`--fill` : `var(--accent-solid)`, `--fill-line` : `var(--border-strong)`), et rien d'autre que les jetons de forme du kit (aucune clé nouvelle : le kit 0.6.0 pose le message tel quel). **Ce que fait GFS pour ses propres états**, que l'app peut faire de même : le texte
    d'erreur, d'avertissement, de « bon » et de type, dont les couleurs fixes ne sont pas dans les dix-neuf jetons, prend la couleur du texte (`--text`), et la couleur reste à l'icône ; le mot dit toujours l'état ou le type. « Revenir à Grist Factory » laisse l'accessibilité
-   allumée (un besoin, pas un goût). Le second temps (cibles de 36 px, texte de 14 px, anneau de focus de 3 px à deux couleurs, mouvement réduit, contraste forcé, barre de sélection en vrai trait) est un lot à part qui attend le feu vert du porteur.
+   allumée (un besoin, pas un goût). **Le second temps** (feu vert du porteur, 10/11 ; `css/acces.css`) est l'interface de GFS seule : le message ne change pas et **aucun jeton ne s'ajoute** (`--fs-min` et `--target` sont à GFS, pas des jetons de forme). Texte : plancher de 14 px (`--fs-min`, 0 d'origine ; toute taille de GFS sous 14 px s'écrit
+   `max(Npx, var(--fs-min))`, gardé par `test/acces.test.mjs`). Cibles : 36 px (une case de 22 px compte avec son nom, qui fait 36 px). Anneau de focus : contour de 3 px de la couleur du texte, 2 px de la page entre lui et la commande, dessiné dedans dans une zone qui défile.
+   Aucun mouvement : ni transition, ni animation, ni défilement doux. Barre de la ligne choisie : une bordure de `--bar-w` (6 px), transparente d'avance. Barre de GFS au-dessus d'une app : 36 px par bouton, soit 42 × 156 px au lieu de 34 × 124 ; `contexte.barre.zone` dit la barre mesurée et 4 px autour
+   (le cadre de GFS relit la barre quand sa taille change, pas seulement celle du cadre). **Le contraste forcé du système** (`forced-colors: active`) et **« réduire les animations »** (`prefers-reduced-motion: reduce`) valent pour toute ambiance, interrupteur allumé ou non. **Les apps** n'ont rien à faire (aucun jeton, aucune consigne) et GFS ne touche
+   pas à leur interface ; ce que le système force (le contraste forcé) s'applique de lui-même à chacune, dans son propre cadre.
    **Ce que fait l'app** : le kit en fait la pose (kit 0.6.0) : l'app qui a le lien du kit appelle `Ambiance.start()` (`js/ambiance.js`) une fois à son démarrage ; celle qui
    garde son propre lien appelle `createAmbiance({ link, isDark })` (`js/ambiance-pose.js`, qui ne connaît aucun lien : deux liens dans un même cadre se prendraient les réponses) ;
    aucune n'écrit la sienne. Ce qui suit est ce que le kit fait pour elle (et ce qu'une app sans le kit devrait refaire : elle prend le kit, guide des apps 1.2, points 1 et 4, et règle 15).
@@ -1452,7 +1458,7 @@ sans événement : seule une règle posée recharge la page (11.5, point 3), et 
    et rien de leur côté ne peut la capter** ; ce qui ferme le lecteur est le clic ailleurs dans l'app (son écoute de la souris), le changement de diapositive, le bouton « Fichiers »
    de la barre et `lecteur.fermer`. Un bouton « Fermer » posé par GFS, ou la fermeture quand le focus revient à la page de GFS, ne sont pas construits (interface de plus : le porteur
    choisit après son essai avec une vraie vidéo, avec l'événement `lecteur`). **Non mesuré** : les vrais YouTube et Vimeo (démarrage, son, lecture
-   automatique, plein écran : le porteur, sous Firefox, avec une vraie vidéo), Firefox (le faux lecteur n'a été essayé que sous Chromium), le Grist de la DINUM, l'événement `lecteur` (pas construit).
+   automatique, plein écran : le porteur, sous Firefox, avec une vraie vidéo), Firefox dans un vrai Grist (sans Grist, le lecteur est mesuré sous Firefox 160 depuis le 10/11 : faits vérifiés 78, sauf la touche Échap dans le lecteur), le Grist de la DINUM, l'événement `lecteur` (pas construit).
 
 ### 5.3 Le stockage du navigateur
 
@@ -2142,6 +2148,34 @@ rangée d'un fichier, selon ce qui vient d'abord.
     pendant le choix d'un fichier pour une app, ils sont grisés comme le reste (la phrase le dit). [M] **Mesuré le 04/11** dans un vrai Grist
     (`labo/run-annuler.mjs`) et sous Firefox (`test/annuler-firefox.mjs`) : faits vérifiés, section 42.
 
+14. [D] **« Ouverts » : revenir à un fichier déjà ouvert, sans repartir de l'arborescence** (demande du porteur, 04/11 : « un système d'onglet pour
+    revenir sur un fichier ouvert et pouvoir faire des A/R entre plusieurs fichiers sans repartir à zéro dans l'arborescence » ; choix « la liste d'abord,
+    les onglets vivants après » ; « pas d'ajout sur la barre flottante », reconfirmé le 10/11 : la liste vit **seulement dans l'explorateur**). Le volet a une
+    première ligne, « Ouverts », avant « Récents » ; son nombre est celui des fichiers ouverts que la liste montre (aucun nombre quand il n'y en a pas).
+    **Ce qui y entre** : un fichier précis que GFS a ouvert dans une app et que l'app a ouvert (le double-clic, Entrée, un lien entre apps, « Lire » un PDF que
+    GFS garde). N'y entrent pas : un fichier vierge (« Nouveau », « Importer »), ce qu'une app ouvre toute seule (GFS ne le sait pas), ni un refus (la
+    personne a annulé dans l'app, ou l'app ne connaît pas l'appel `ouvrir`). **La liste** : les huit derniers (un neuvième fait sortir le plus ancien), à
+    plat (tous les dossiers, le dossier en indice), triée comme les favoris (par nom ; la tête de colonne change l'ordre) : son ordre ne bouge pas quand on
+    passe d'un fichier à l'autre, c'est ce qui fait un aller-retour. Elle ne garde que des clés `app:id`, **rien dans Grist ni dans le navigateur** : le
+    nom, le type, la date, le dossier et le poids sont ceux des fichiers d'aujourd'hui (un fichier renommé ou déplacé y est à jour, un fichier mis à la
+    corbeille ou disparu n'y est plus) ; quand Grist recharge le widget, tous les cadres meurent et la liste est vide. **Le mot « affiché »** (jamais
+    une couleur seule) est sur le fichier que l'app active montre, tant que c'est la session d'app que GFS a ouverte sur lui ; il s'efface quand l'app est
+    remplacée ou qu'un fichier vierge s'ouvre. **Revenir à un fichier** : double-clic ou Entrée, comme partout (une autre app est d'abord priée de se
+    fermer, point 5.4 point 3 ; la même app reçoit l'appel `ouvrir`) ; si l'app refuse, rien ne change et le fichier n'entre pas dans la liste.
+    **« Retirer des ouverts »** est le deuxième article du menu d'une ligne, dans cette vue seulement : la ligne sort de la liste, le fichier et l'app ne
+    bougent pas, la ligne suivante prend le clavier. Pendant le choix d'un fichier pour une app, la vue ne montre que ceux que l'app accepte. **Les onglets
+    vivants** (plusieurs cadres d'app gardés ensemble) **ne sont pas faits** : une seule app est vivante à la fois. [M] **Mesuré le 10/11** dans un vrai Grist
+    (`labo/run-ouverts.mjs`) et sous Firefox (`test/ouverts-firefox.mjs`) : faits vérifiés, section 79.
+15. [T] **Une liste longue ne construit que ce qu'on voit** (décision du porteur, 10/11, audit vitesse et poids : « Afficher seulement les lignes
+    visibles »). À partir de 200 lignes (liste) ou vignettes (`WINDOW_FROM`, `js/explorer-window.js`), l'explorateur construit les lignes visibles et huit
+    rangées de part et d'autre ; l'espace des autres est tenu par le remplissage du conteneur : la barre de défilement, Début, Fin, la molette et la position
+    gardée au redessin sont ceux d'une liste entière. **Ce que cela impose** : toutes les lignes d'une vue ont la même hauteur (mesurée à l'exécution, 28 px,
+    37 px en accessibilité renforcée ; le nom d'une vignette réserve deux lignes) ; le clavier, la sélection, le presse-papiers et « Ouverts » lisent les
+    données de la vue, non le DOM (`reveal(index)` construit et amène à l'écran la ligne voulue) ; le clavier reste à la liste quand la ligne qui l'avait sort de
+    la fenêtre ; `aria-rowcount` et `aria-rowindex` annoncent le vrai nombre de lignes et leur rang ; un glissement en cours tient les lignes en place jusqu'à sa
+    fin. **Ce que cela ne fait pas** : la recherche Ctrl+F du navigateur ne trouve pas une ligne qui n'est pas construite (le champ de recherche de l'explorateur,
+    lui, cherche dans toutes les données). [M] **Mesuré le 10/11** dans un vrai Grist et sous Firefox à 700 × 400 : faits vérifiés, section 87.
+
 ### 6.5 Préserver l'inconnu
 
 1. [T] Le socle de chaque app connaît la forme de tous ses objets, même ceux d'une extension absente. Un graphique dans un
@@ -2429,17 +2463,30 @@ d'app mis à la corbeille (6.2), jamais avant.
 5. [T] **L'app en est prévenue.** Après chaque écriture de ses réglages, GFS lui envoie l'événement `reglages` `{ enregistres }`
    (5.1) : vrai si le réglage est dans la vue, faux s'il est resté un brouillon. Une app qui rappelle « Enregistrer » à la personne
    (Publipostage+) tait son rappel quand `enregistres` est vrai ; une app qui ignore l'événement, ou qui est seule, n'a rien à changer.
+   **Et d'avance** (décision du porteur, 10/11, « GFS le dit dès l'ouverture ») : une app qui ne sait rien avant son premier réglage montrait,
+   dans GFS, son rappel un instant à chaque premier réglage, et deux phrases qui demandent d'enregistrer la vue tant qu'aucun réglage n'avait
+   été écrit. À chaque demande de `contexte` d'une app qui déclare des clés `reglages` (pas en lecture seule), GFS **lit sa section, sans rien
+   écrire** (les mêmes sections candidates que pour écrire, point 4) et envoie `reglages` : **vrai** quand une seule section dit ce que Grist
+   dit à GFS (ou que la recherche a déjà reconnu la sienne) ; **faux** quand il sait déjà qu'il se repliera (accès pas `full`, aucune section,
+   brouillon déjà posé : la raison est dite en console, comme à l'écriture) ; **rien** quand il ne sait pas (plusieurs sections pareilles :
+   seule une marque le dirait, et une marque s'écrit). Les droits de structure ne se lisent pas : une annonce vraie se corrige par la première
+   écriture que Grist refuse (`enregistres: false`). Une écriture qui part avant la réponse de la lecture la dépasse : l'annonce n'est alors
+   pas envoyée. Aucune consigne aux apps : celles qui écoutent `reglages` (Publipostage+) le reprennent comme un événement de plus.
 6. [T] **Le repli sur le brouillon.** GFS écrit alors un brouillon, clé par clé (point 1, comme avant), dit `enregistres: false`, et
-   avertit une fois par raison dans la console, quand : l'accès de GFS n'est pas `full` ou le document est en lecture seule ; aucune
+   avertit une fois par raison dans la console, quand : l'accès de GFS n'est pas `full` ; aucune
    section n'est retrouvée (aucune candidate, ou recherche sans réponse) ; le texte de la section est illisible ; **un brouillon est
    déjà posé dans la section** (écrire dans la vue le cacherait, Grist rendant le brouillon avant le réglage enregistré : GFS le
    rejoint plutôt que de le masquer, et « Enregistrer » ou « Retour » le libère) ; Grist refuse l'écriture (une règle d'accès
-   réserve la structure du document) ; l'écho manque.
+   réserve la structure du document) ; l'écho manque. **En lecture seule**, le courtier refuse l'écriture (`GFS_LECTURE_SEULE`) avant tout : ni vue
+   ni brouillon, et aucun événement `reglages` (une app qui montre un rappel à l'écriture le garde alors, sans rien d'enregistré).
 7. [M] **Mesuré le 03/11** dans un vrai Grist (grist-static 0.1.6, Chromium, 700 × 400, souris et clavier réels) avec Publipostage+ :
    le geste « Utiliser le modèle ouvert pour cette vue » et « Retirer » ne montrent aucune barre ; l'arrivée rouvre la vue sur le modèle
    retenu ; deux GFS sur la même table gardent chacune son modèle, sans marque qui reste ; un brouillon déjà posé reste un brouillon
    et se libère par « Retour » (faits vérifiés, 18). Non mesuré : un vrai serveur et une règle d'accès qui refuse (le repli est couvert
    par les tests, contre un faux port), Firefox, ce que « Annuler » (Ctrl+Z) de Grist fait d'une écriture de la vue.
+   **Mesuré le 10/11** (annonce d'ouverture, faits vérifiés 85) : avant l'annonce, la vraie Publipostage+ montrait son rappel au premier
+   réglage et les deux phrases demandaient d'enregistrer ; avec elle, `GfsLink.settingsSaved()` est vrai dès l'ouverture, les deux phrases
+   n'y demandent rien et le rappel ne paraît à aucun moment.
 8. [T] **Ce que cela ne garantit pas.** Une écriture réécrit tout le texte de la section (accès et adresse compris) : un autre
    changement de la même section dans les quelques millisecondes qui suivent la relecture serait perdu. Elle demande le droit de
    modifier la structure du document, sinon c'est le repli du point 6. Et elle ne règle rien pour une app **seule** (point 9).

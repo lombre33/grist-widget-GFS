@@ -116,17 +116,17 @@ export const touchesSpaces = plan => plan.ops.length > 0 || plan.markers.add.len
 
 // Écrit le placement : relit la table, un seul lot. Rend true quand le lot est parti.
 export async function writePlacement(doc, plan) {
-  const data = await doc.fetchTable(PLACE_TABLE);
-  const rows = Array.isArray(data.id) ? data.id : [];
+  const placeTable = await doc.fetchTable(PLACE_TABLE);
+  const rows = Array.isArray(placeTable.id) ? placeTable.id : [];
   const at = test => rows.map((id, i) => (test(i) ? id : null)).filter(id => id !== null);
   const actions = [];
   for (const op of plan.ops) {
-    const found = at(i => text(cell(data, 'Cible', i)) === (op.place || op.remove));
+    const found = at(i => text(cell(placeTable, 'Cible', i)) === (op.place || op.remove));
     if (op.remove) { for (const id of found) actions.push(['RemoveRecord', PLACE_TABLE, id]); continue; }
     if (found.length) actions.push(['UpdateRecord', PLACE_TABLE, found[0], { Espace: op.space, Dossier: op.folder }]);
     else actions.push(['AddRecord', PLACE_TABLE, null, { Cible: op.place, Espace: op.space, Dossier: op.folder }]);
   }
-  const marker = (item, i) => !text(cell(data, 'Cible', i)) && text(cell(data, 'Espace', i)) === item.space && normalizePath(cell(data, 'Dossier', i)) === item.folder;
+  const marker = (item, i) => !text(cell(placeTable, 'Cible', i)) && text(cell(placeTable, 'Espace', i)) === item.space && normalizePath(cell(placeTable, 'Dossier', i)) === item.folder;
   for (const item of plan.markers.drop) for (const id of at(i => marker(item, i))) actions.push(['RemoveRecord', PLACE_TABLE, id]);
   for (const item of plan.markers.add) if (!at(i => marker(item, i)).length && !plan.markers.drop.some(other => other.space === item.space && other.folder === item.folder)) actions.push(['AddRecord', PLACE_TABLE, null, { Cible: '', Espace: item.space, Dossier: item.folder }]);
   if (!actions.length) return false;

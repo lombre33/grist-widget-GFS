@@ -65,15 +65,16 @@ export const entryRecord = ({ id, app, spec, file, snapshot, now, author }) => (
 
 // Les entrées de `GFS_Corbeille` d'une table de fichiers, dans la forme que `readFiles` (js/explorer-model.js) lit : les colonnes de la table de l'app y portent ce que l'entrée a gardé. `id` reste le
 // numéro de ligne de `GFS_Corbeille` (c'est lui qui désigne l'entrée) ; l'identifiant du fichier passe par `FichierId`. Rend { spec, data, weights } : l'entrée du manifeste à lire, les données, et
-// ce que chaque entrée pèse dans le document (toute la ligne de `GFS_Corbeille`, copie JSON de la ligne de l'app comprise : c'est ce que la corbeille garde, non la ligne d'origine).
-export function binFiles(spec, bin, appId) {
+// ce que chaque entrée pèse dans le document (toute la ligne de `GFS_Corbeille`, copie JSON de la ligne de l'app comprise : c'est ce que la corbeille garde, non la ligne d'origine) ; `counted` : ces poids,
+// ligne par ligne, quand l'appelant les a déjà comptés (la lecture légère, js/explorer-sql.js, ne rend pas la copie JSON).
+export function binFiles(spec, bin, appId, counted = null) {
   const cols = spec.colonnes || {};
   const all = Array.from({ length: bin && Array.isArray(bin.id) ? bin.id.length : 0 }, (_, i) => i);
   const rows = all.filter(i => text(cell(bin, 'App', i)) === appId && text(cell(bin, 'Table', i)) === spec.table);
   const pick = column => rows.map(i => cell(bin, column, i));
-  const data = { id: rows.map(i => bin.id[i]), FichierId: pick('FichierId'), SupprimeLe: pick('SupprimeLe'), SupprimePar: pick('SupprimePar') };
-  for (const [key, from] of [['nom', 'Nom'], ['type', 'Type'], ['date', 'Date'], ['par', 'Auteur']]) if (cols[key]) data[cols[key]] = pick(from);
-  return { spec: { ...spec, exclure: undefined, corbeille: { date: 'SupprimeLe', par: 'SupprimePar' }, colonnes: { ...cols, id: 'FichierId' } }, data, weights: rows.map(rowWeigher(bin)) };
+  const binTable = { id: rows.map(i => bin.id[i]), FichierId: pick('FichierId'), SupprimeLe: pick('SupprimeLe'), SupprimePar: pick('SupprimePar') };
+  for (const [key, from] of [['nom', 'Nom'], ['type', 'Type'], ['date', 'Date'], ['par', 'Auteur']]) if (cols[key]) binTable[cols[key]] = pick(from);
+  return { spec: { ...spec, exclure: undefined, corbeille: { date: 'SupprimeLe', par: 'SupprimePar' }, colonnes: { ...cols, id: 'FichierId' } }, data: binTable, weights: rows.map(counted ? i => counted[i] : rowWeigher(bin)) };
 }
 
 // Ce que la restauration écrit dans la table de l'app (`data` : la table relue à l'instant), ou le constat qu'il n'y a rien à restaurer.

@@ -14,13 +14,14 @@
 // Un fichier assemblé est servi par jsDelivr depuis le dépôt public de GFS, épinglé à un commit complet qui porte la copie vendorisée (`gfs.publication` de la liste ;
 // choix du porteur, 19/10). Sans `gfs.publication`, ou déclaré `sansCdn: true` dans la liste (2.6, point 12), il n'a pas de CDN (`cdn: null`) : la copie de GFS est son seul mode.
 
-import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { EXACT_VERSION_RE, isSafePath } from '../js/manifest.js';
+// L'empreinte, un fichier de paquet npm et la comparaison au CDN sont ceux que le kit donne à l'outil d'une app (kit/outils/bibliotheques/primitives.mjs) : une seule fois écrits.
+import { integrity, archiveName, archiveOf, packFile, checkCdn, fetchFile } from '../kit/outils/bibliotheques/primitives.mjs';
 import { readAssembly, assembleFile, licencesText, registeredProblems, assembledPath, licencesPath, sameSet } from './assemblage.mjs';
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -29,7 +30,7 @@ const CDN_BASE = `${CDN_ORIGIN}/npm`;
 const REPO_RE = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
 const COMMIT_RE = /^[0-9a-f]{40}$/;
 
-export const integrity = bytes => `sha384-${createHash('sha384').update(bytes).digest('base64')}`;
+export { integrity, archiveName, checkCdn };
 
 // La liste de GFS : [{ id, paquet, version, fichier }] pour le fichier d'un paquet, [{ id, forme: 'module', version, paquets, modules, externes, alias }]
 // pour un fichier assemblé. Versions exactes seulement.
@@ -186,48 +187,6 @@ export function checkFiles(catalogue, list, read, pin = {}) {
   return problems;
 }
 
-// Ce que le navigateur exige d'un script à empreinte servi par un CDN, en plus des octets : l'en-tête CORS (sans lui, l'empreinte n'est pas contrôlée et le script est refusé,
-// surtout dans un cadre isolé dont l'origine est opaque) et un type JavaScript (un module est refusé sinon).
-function headerProblems(entry, headers) {
-  const found = [];
-  if (headers.cors !== '*' && headers.cors !== 'null') found.push(`${entry.id} : le CDN ne donne pas l'en-tête CORS (access-control-allow-origin : ${headers.cors || 'absent'})`);
-  if (!/(java|ecma)script/i.test(headers.type || '')) found.push(headers.type ? `${entry.id} : le CDN sert le fichier comme « ${headers.type} », pas comme du JavaScript` : `${entry.id} : le CDN ne dit pas le type du fichier (content-type absent), il faut du JavaScript`);
-  return found;
-}
-
-// Compare au CDN réel. `fetchFile(url)` rend { bytes, headers: { cors, type } } (ou seulement les octets, sans contrôle des en-têtes) ; injecté : le réseau n'est pas toujours là.
-// Une entrée sans CDN n'a rien à comparer.
-export async function checkCdn(catalogue, fetchFile) {
-  const problems = [];
-  for (const entry of (catalogue.bibliotheques || []).filter(candidate => candidate.cdn)) {
-    try {
-      const answer = await fetchFile(entry.cdn.src);
-      const { bytes, headers } = Buffer.isBuffer(answer) ? { bytes: answer, headers: null } : answer;
-      const got = integrity(bytes);
-      if (got !== entry.cdn.integrite) problems.push(`${entry.id} : le CDN sert un fichier d'empreinte ${got}, le catalogue dit ${entry.cdn.integrite}`);
-      if (headers) problems.push(...headerProblems(entry, headers));
-    } catch (error) { problems.push(`${entry.id} : le CDN n'a pas répondu (${error.message})`); }
-  }
-  return problems;
-}
-
-// Le nom que `npm pack` donne à l'archive d'un paquet : `@portee/nom` devient `portee-nom`.
-export const archiveName = (paquet, version) => `${paquet.replace(/^@/, '').replace('/', '-')}-${version}.tgz`;
-
-// L'archive d'un paquet : celle du dossier hors ligne si elle y est, sinon `npm pack` (qui vérifie l'intégrité donnée par le registre).
-function archiveOf(paquet, version, packagesDir, workDir) {
-  const archive = packagesDir ? join(packagesDir, archiveName(paquet, version)) : null;
-  if (archive && existsSync(archive)) return archive;
-  const out = execFileSync('npm', ['pack', `${paquet}@${version}`, '--silent', '--pack-destination', workDir], { encoding: 'utf8' }).trim().split('\n').pop();
-  return join(workDir, out);
-}
-
-function packBytes(item, packagesDir, workDir) {
-  const file = archiveOf(item.paquet, item.version, packagesDir, workDir);
-  execFileSync('tar', ['-xzf', file, '-C', workDir, `package/${item.fichier}`]);
-  return readFileSync(join(workDir, 'package', item.fichier));
-}
-
 // Pose chaque paquet de la liste dans `<workDir>/node_modules/<paquet>` : exactement ces paquets, aucun autre (la liste dit tout ce qui entre dans le fichier).
 function unpackPackages(item, packagesDir, workDir) {
   for (const { paquet, version } of item.paquets) {
@@ -275,7 +234,7 @@ function packLicences(item, packagesDir, work) {
 }
 
 function generateScript(root, item, packagesDir, work, log) {
-  const bytes = packBytes(item, packagesDir, work);
+  const bytes = packFile(item.paquet, item.version, item.fichier, packagesDir, work);
   const licences = packLicences(item, packagesDir, work);
   if (licences.problems.length) throw new Error(`${item.id} : pas de licence à poser avec la copie :\n  - ${licences.problems.join('\n  - ')}`);
   const entry = buildEntry(item, bytes);
@@ -353,13 +312,6 @@ export function verify(root, readAtCommit = null) {
   const publication = readPublication(packageJson);
   const pin = { publication, readAtCommit: publication ? (readAtCommit || gitReader(root)) : null };
   return { catalogue, problems: checkFiles(catalogue, readList(packageJson), path => readFileSync(join(root, path)), pin) };
-}
-
-// Ce que le CDN rend d'une adresse : les octets et les deux en-têtes que le navigateur exige d'un script à empreinte (checkCdn).
-async function fetchFile(url) {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return { bytes: Buffer.from(await response.arrayBuffer()), headers: { cors: response.headers.get('access-control-allow-origin'), type: response.headers.get('content-type') } };
 }
 
 async function main(argv) {

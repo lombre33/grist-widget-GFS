@@ -462,6 +462,12 @@ commencer, ou un sous-cadre gardé ouvert et caché (question 4, section 12).
   paquet. La copie de GFS d'abord ; depuis le 19/10 (choix du porteur), le CDN est jsDelivr, qui sert ce fichier depuis le dépôt public de
   GFS à un commit complet épinglé dans la liste de GFS (contrats 2.6, points 8 à 11). L'adresse suit le dépôt : celle du dépôt de
   développement aujourd'hui, celle du dépôt public définitif (question 5) quand il existera, par une consigne à chaque app.
+- **Étape 4, livrée côté GFS (10/11)** : l'outil est dans le kit (0.16.0, `kit/outils/bibliotheques.mjs`, mode d'emploi : son `README.md`). D'après le `package.json` d'une app (versions exactes, section `gfs`), il écrit le
+  catalogue (l'adresse de CDN et l'empreinte de chaque script : jsDelivr octet pour octet depuis l'archive npm, une autre adresse prise une fois sur son CDN), la carte d'importation, le `script-src` de la politique (les
+  adresses du catalogue et l'empreinte de chaque script en ligne, la carte comprise), les empreintes que le code écrit à côté de ses adresses, et le miroir des essais ; `--verifier` relit tout sans réseau, `--verifier-cdn`
+  compare au CDN réel. L'outil de GFS pour sa propre liste d'extensions reprend ses primitives (l'empreinte, un fichier de paquet, la comparaison au CDN). **Mesuré sur une copie de Publipostage+ (`ac9b86d`)** : politique, carte,
+  empreintes du code et miroir se refont depuis la seule liste, le miroir étant identique octet pour octet à celui de son `build.mjs` (faits vérifiés 80) ; Dependabot surveille la liste de GFS depuis le 10/11. **Reste** :
+  l'adoption par Publipostage+ (consigne 063), la question 2 (TipTap : esm.sh ou un fichier figé), la copie vendorisée d'une app et le fichier assemblé d'une app (l'assemblage reste à GFS).
 - **Le script d'API de Grist** vient de `docs.getgrist.com` dans les deux modes (validé par la DINUM d'après le README
   d'Automation+).
 

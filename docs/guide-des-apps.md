@@ -81,9 +81,11 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
    l'interface : accès à Grist, traduction, jetons et thème, fenêtres, liste avec recherche, couches, consentement des
    tables, rappel « Enregistrer ».
 2. Écrire `gfs.json` à la racine du dépôt (cahier 5.1).
-3. Passer à la liste unique des bibliothèques natives (`package.json` à la racine, versions exactes) et à l'outil du kit qui
-   en tire import map, CSP, empreintes, miroir des tests et version vendorisée ; activer Dependabot (`npm`). Celles des
-   extensions n'y sont pas : elles sont à GFS.
+3. Passer à la liste unique des bibliothèques natives (`package.json` à la racine, versions exactes) et à l'outil du kit
+   (`kit/outils/bibliotheques.mjs`, kit 0.16.0 ; son `README.md`, « Les bibliothèques d'une app ») qui en tire le catalogue des
+   empreintes, la carte d'importation, le `script-src` de la politique de sécurité (avec l'empreinte des scripts en ligne), les
+   empreintes écrites dans le code et le miroir des essais ; activer Dependabot (`npm`). La version vendorisée viendra à
+   son tour. Celles des extensions n'y sont pas : elles sont à GFS.
 4. Passer le contexte et le stockage par le client du courtier du kit (avec ses replis quand l'app est seule).
 5. Ranger les fonctions lourdes dans `extensions/`, avec le registre et le grisé du kit, et retirer leurs bibliothèques de la
    liste et de l'import map de l'app : GFS les porte (la CSP garde l'adresse du mode CDN, règle 9).
@@ -327,8 +329,8 @@ ligne 330 ; seul `macro` a sa branche, ligne 270) et peut devenir le modèle de 
 - aucune définition nouvelle dans les réglages de la vue ; une clé nouvelle prend le préfixe `pp_`, celui des clés du
   navigateur (défaut pris ici, à changer si le porteur préfère un autre préfixe) ;
 - une bibliothèque nouvelle dont l'app a besoin pour marcher seule s'inscrit, comme aujourd'hui, dans l'import map, dans la
-  CSP et dans `dev-tests/.offline-cache/package.json` (la liste unique viendra à l'étape 4) ; celle d'une extension ne
-  s'y inscrit pas, GFS la porte (règle 9) ;
+  CSP et dans `dev-tests/.offline-cache/package.json` (jusqu'à l'adoption de la liste unique, consigne 063 : ensuite, dans
+  `package.json` seul) ; celle d'une extension ne s'y inscrit pas, GFS la porte (règle 9) ;
 - aucune lecture nouvelle de `document.referrer` ;
 - les fonctions lourdes à venir (diapositives, temps réel, formats Office) naissent en extensions, et le graphique en est le
   pilote : sa consigne est posée (`consignes/publipostage/`), Plotly quitte alors la liste et l'import map de l'app ; la CSP de
@@ -338,9 +340,10 @@ ligne 330 ; seul `macro` a sa branche, ligne 270) et peut devenir le modèle de 
 
 - **Kit** : Publipostage+ est la source du kit ; elle devient ensuite cliente de son propre code extrait, en rejouant ses
   tests à chaque remplacement (non-régression stricte).
-- **Liste unique** : `package.json` à la racine, tiré de `dev-tests/.offline-cache/package.json` (45 paquets aujourd'hui,
-  dont Plotly, qui passe à la liste de GFS avec le graphique) ; l'outil du kit régénère l'import map et la CSP
-  d'`index.html`, les empreintes et le miroir des tests.
+- **Liste unique** : `package.json` à la racine, tiré de `dev-tests/.offline-cache/package.json` (41 paquets que la page
+  charge et 4 que seuls les essais lisent ; Plotly et ECharts sont à la liste de GFS avec le graphique) ; l'outil du kit
+  régénère l'import map et la CSP d'`index.html`, les empreintes et le miroir des tests. **Rejoué par GFS sur une copie du
+  dépôt à `ac9b86d` (faits vérifiés 80), consigne 063.**
 - **Où est Grist** : `fixBaseUrl` (`js/grist-api.js`, lignes 930 à 944) lit `document.referrer` pour corriger une instance
   auto-hébergée mal réglée. Dans GFS, le référent est l'adresse de GFS : la fonction passe par le kit.
 - **Stockage** : les clés `pp_*` (liste `STORED` de `outils/depot-propre/controles.mjs`) passent par le stockage du kit.

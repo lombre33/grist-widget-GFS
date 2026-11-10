@@ -20,7 +20,7 @@ dans le dépôt d'une app : il lui parle par `consignes/`, elle lui répond par 
 | Dépôt | Pourquoi | Dernier commit lu | Lu le | Licence (21/10) |
 |---|---|---|---|---|
 | `lombre33/SlidesPlus` | référence des diapositives (cahier 1.2) | `747a700` | 20/10/2026 | GPL 3.0 |
-| `lombre33/Grist-widget-audit` | outil d'audit (cahier 3.3) | `f5f251e` | 21/10/2026 | MIT, à passer en GPL 3.0 (décision du 21/10) |
+| `lombre33/Grist-widget-audit` | outil d'audit (cahier 3.3) | `1f4aed6` | 10/11/2026 | MIT encore à cette date, à passer en GPL 3.0 (décision du 21/10, pas appliquée) |
 
 « Dernier commit lu » est le sommet de `main` à la dernière lecture : le journal a été parcouru jusque-là, et le diff ouvert
 seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :

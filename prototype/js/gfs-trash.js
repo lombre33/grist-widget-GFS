@@ -71,9 +71,9 @@ export function binFiles(spec, bin, appId) {
   const all = Array.from({ length: bin && Array.isArray(bin.id) ? bin.id.length : 0 }, (_, i) => i);
   const rows = all.filter(i => text(cell(bin, 'App', i)) === appId && text(cell(bin, 'Table', i)) === spec.table);
   const pick = column => rows.map(i => cell(bin, column, i));
-  const data = { id: rows.map(i => bin.id[i]), FichierId: pick('FichierId'), SupprimeLe: pick('SupprimeLe'), SupprimePar: pick('SupprimePar') };
-  for (const [key, from] of [['nom', 'Nom'], ['type', 'Type'], ['date', 'Date'], ['par', 'Auteur']]) if (cols[key]) data[cols[key]] = pick(from);
-  return { spec: { ...spec, exclure: undefined, corbeille: { date: 'SupprimeLe', par: 'SupprimePar' }, colonnes: { ...cols, id: 'FichierId' } }, data, weights: rows.map(rowWeigher(bin)) };
+  const binTable = { id: rows.map(i => bin.id[i]), FichierId: pick('FichierId'), SupprimeLe: pick('SupprimeLe'), SupprimePar: pick('SupprimePar') };
+  for (const [key, from] of [['nom', 'Nom'], ['type', 'Type'], ['date', 'Date'], ['par', 'Auteur']]) if (cols[key]) binTable[cols[key]] = pick(from);
+  return { spec: { ...spec, exclure: undefined, corbeille: { date: 'SupprimeLe', par: 'SupprimePar' }, colonnes: { ...cols, id: 'FichierId' } }, data: binTable, weights: rows.map(rowWeigher(bin)) };
 }
 
 // Ce que la restauration écrit dans la table de l'app (`data` : la table relue à l'instant), ou le constat qu'il n'y a rien à restaurer.

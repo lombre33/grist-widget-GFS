@@ -8,32 +8,13 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { planSharing, planUnsharing, targetsOf } from '../js/sharing-model.js';
 import { FILES_COLUMNS } from '../js/gfs-files.js';
+import { BUILT_IN, base, withFiles, applied } from './sharing-fixtures.mjs';
 
 const GOLDEN = fileURLToPath(new URL('./golden/plan-sharing.json', import.meta.url));
-const BUILT_IN = { id: 1, resource: 1, permissions: 63, principals: '[1]', aclFormula: '', aclColumn: 0, permissionsText: '', rulePos: null, memo: '' };
-const base = () => ({ resources: [{ id: 1, tableId: '', colIds: '' }], rules: [{ ...BUILT_IN }], tables: [], columns: [] });
-const withFiles = (extra = []) => ({ ...base(), tables: [{ id: 7, tableId: 'GFS_Fichiers' }], columns: [{ parentId: 7, colId: 'Identifiant' }, { parentId: 7, colId: 'Auteur' }, ...extra] });
 const PP = { id: 'publipostage', fichiers: [{ table: 'Publipostage_Modeles', colonnes: { id: 'id', nom: 'Nom' }, exclure: { TypeModele: ['reglages'] } }] };
 const ids = { id: 'fichier', fichiers: [{ table: 'Autre_Fichiers', colonnes: { id: 'Jeton' } }] };
 const withApp = (extra = {}) => ({ ...base(), tables: [{ id: 7, tableId: 'Publipostage_Modeles' }], columns: [{ parentId: 7, colId: 'Nom' }], targets: targetsOf([PP]), files: { Publipostage_Modeles: [3, 5] }, ...extra });
 
-// Rejoue les actions du plan sur l'état du document (les tables, les colonnes, les ressources et les règles seulement).
-const applied = (existing, actions) => {
-  const next = { ...existing, resources: [...existing.resources], rules: [...existing.rules], tables: [...existing.tables], columns: [...existing.columns] };
-  for (const [name, table, id, values] of actions) {
-    if (name === 'AddTable') {
-      const added = { id: 100 + next.tables.length, tableId: table };
-      next.tables.push(added);
-      for (const column of values === undefined ? id : []) next.columns.push({ parentId: added.id, colId: column.id });
-    }
-    if (name === 'AddColumn') next.columns.push({ parentId: next.tables.find(row => row.tableId === table).id, colId: id });
-    if (name === 'AddRecord' && table === '_grist_ACLResources') next.resources.push({ id, ...values });
-    if (name === 'AddRecord' && table === '_grist_ACLRules') next.rules.push({ id, ...values });
-    if (name === 'BulkRemoveRecord' && table === '_grist_ACLRules') next.rules = next.rules.filter(rule => !id.includes(rule.id));
-    if (name === 'BulkRemoveRecord' && table === '_grist_ACLResources') next.resources = next.resources.filter(resource => !id.includes(resource.id));
-  }
-  return next;
-};
 // Un texte long (une formule Python, une règle) est gardé par son empreinte : la fixture reste lisible, et un seul octet de différence se voit.
 const LONG = 40;
 const compact = value => {

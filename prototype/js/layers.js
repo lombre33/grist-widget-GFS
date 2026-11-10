@@ -3,12 +3,12 @@
 // que la politique `style-src 'self'` laisse passer (elle ne refuse que l'attribut `style` écrit dans le HTML).
 
 export const Layers = {
-  raise(el, token = '--z-menu') {
-    const others = [...document.querySelectorAll(`[data-layer="${token}"]`)].filter(node => node !== el);
+  raise(el, layerVar = '--z-menu') {
+    const others = [...document.querySelectorAll(`[data-layer="${layerVar}"]`)].filter(node => node !== el);
     const rank = others.reduce((max, node) => Math.max(max, Number(node.dataset.layerRank) || 0), 0) + 1;
-    el.dataset.layer = token;
+    el.dataset.layer = layerVar;
     el.dataset.layerRank = String(rank);
-    el.style.zIndex = `calc(var(${token}) + ${rank})`;
+    el.style.zIndex = `calc(var(${layerVar}) + ${rank})`;
     return el;
   },
 };

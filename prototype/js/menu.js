@@ -47,19 +47,19 @@ function sideFor(menu, a, box, side, flip) {
 // `side` : 'below' (par défaut : au-dessous du bouton, au-dessus s'il n'y a pas la place), 'above', ou à côté de lui, 'right' ou 'left' (le menu d'une barre posée sur un bord).
 // `flip` : un menu posé à côté passe de l'autre côté quand il n'y a pas la place du premier, ou se rétrécit quand il n'y en a d'aucun côté (un sous-menu).
 function place(menu, anchor, host, align, side, flip = false) {
-  const a = anchor.getBoundingClientRect();
+  const rect = anchor.getBoundingClientRect();
   const box = host.getBoundingClientRect();
-  const at = side === 'right' || side === 'left' ? sideFor(menu, a, box, side, flip) : side;
+  const at = side === 'right' || side === 'left' ? sideFor(menu, rect, box, side, flip) : side;
   const width = menu.offsetWidth;
   const height = menu.offsetHeight;
   const fit = (value, size, room) => Math.min(Math.max(4, value), Math.max(4, room - size - 4));
-  let left = align === 'right' ? a.right - box.left - width : a.left - box.left;
-  let top = a.bottom - box.top + 4;
+  let left = align === 'right' ? rect.right - box.left - width : rect.left - box.left;
+  let top = rect.bottom - box.top + 4;
   if (at === 'right' || at === 'left') {
-    left = at === 'right' ? a.right - box.left + 4 : a.left - box.left - width - 4;
-    top = a.top - box.top;
+    left = at === 'right' ? rect.right - box.left + 4 : rect.left - box.left - width - 4;
+    top = rect.top - box.top;
   } else if (at === 'above' || top + height > box.height - 4) {
-    top = a.top - box.top - height - 4;
+    top = rect.top - box.top - height - 4;
   }
   menu.style.left = `${fit(left, width, box.width)}px`;
   menu.style.top = `${fit(top, height, box.height)}px`;

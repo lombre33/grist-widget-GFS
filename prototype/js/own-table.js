@@ -39,8 +39,8 @@ export class OwnTable {
     const found = tables.find(name => sameName(name, this.#name));
     if (!found) return { exists: false, columns: [], data: null };
     this.#tableId = found;
-    const data = await this.#port.doc.fetchTable(found);
-    return { exists: true, columns: Object.keys(data || {}), data };
+    const fetched = await this.#port.doc.fetchTable(found);
+    return { exists: true, columns: Object.keys(fetched || {}), data: fetched };
   }
 
   // La table prête à être écrite, relue juste avant, avec les colonnes `needed` : sans table, l'accord de la personne, puis la création.

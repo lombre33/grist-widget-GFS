@@ -38,7 +38,7 @@ export class Dragging {
   // opts : { root (le cadre de l'explorateur), may() -> bool (la liste se glisse : pas à la corbeille, pas pendant un choix), file(key) -> le fichier vivant, ou undefined, moveTo(key, path) (js/explorer-clipboard.js),
   //          expand(path) (ouvre un dossier du volet), later?(fonction, ms) -> identifiant, cancel?(identifiant) (les minuteurs, pour les essais) }
   constructor(opts) {
-    this.#opts = { later: (run, ms) => setTimeout(run, ms), cancel: id => clearTimeout(id), ...opts };
+    this.#opts = { later: (run, ms) => setTimeout(() => run(), ms), cancel: id => clearTimeout(id), ...opts };
     const { root } = this.#opts;
     root.addEventListener('dragstart', event => this.#start(event));
     root.addEventListener('dragenter', event => this.#over(event));

@@ -114,12 +114,12 @@ const covered = (lit, pattern) => lit.includes('*') || lit.includes(pattern) || 
 // de la vue, et les valeurs que doit porter la ligne (des textes, comparés tels quels). La table doit être de celles que l'app lit.
 function checkArrival(m, errors) {
   if (m.arrivee === undefined) return;
-  const a = m.arrivee;
-  if (!isObject(a)) { errors.push('arrivee : objet attendu'); return; }
-  if (!isText(a.table)) errors.push('arrivee.table : chaîne attendue');
-  else if (isObject(m.permissions) && Array.isArray(m.permissions.lit) && !covered(m.permissions.lit, a.table)) errors.push(`arrivee.table ${a.table} : une table que l'app ne lit pas`);
-  if (!isText(a.colonne)) errors.push('arrivee.colonne : chaîne attendue');
-  if (a.lignes !== undefined && (!isObject(a.lignes) || !Object.values(a.lignes).every(isText))) errors.push('arrivee.lignes : un objet de chaînes attendu');
+  const arrival = m.arrivee;
+  if (!isObject(arrival)) { errors.push('arrivee : objet attendu'); return; }
+  if (!isText(arrival.table)) errors.push('arrivee.table : chaîne attendue');
+  else if (isObject(m.permissions) && Array.isArray(m.permissions.lit) && !covered(m.permissions.lit, arrival.table)) errors.push(`arrivee.table ${arrival.table} : une table que l'app ne lit pas`);
+  if (!isText(arrival.colonne)) errors.push('arrivee.colonne : chaîne attendue');
+  if (arrival.lignes !== undefined && (!isObject(arrival.lignes) || !Object.values(arrival.lignes).every(isText))) errors.push('arrivee.lignes : un objet de chaînes attendu');
 }
 
 function checkPatterns(perm, errors) {

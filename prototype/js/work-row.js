@@ -237,11 +237,11 @@ export class WorkRow {
     if (this.#filling) return;
     this.#filling = true;
     try {
-      const data = await this.#read(tableId);
-      const [at] = orderOf(data);
+      const table = await this.#read(tableId);
+      const [at] = orderOf(table);
       if (at === undefined || !this.#wantsFirst(base, tableId)) return;
-      if (this.#page && this.#page.rowId === data.id[at]) return;
-      this.#page = { tableId, rowId: data.id[at], picked: false };
+      if (this.#page && this.#page.rowId === table.id[at]) return;
+      this.#page = { tableId, rowId: table.id[at], picked: false };
       this.#emitPage();
     } catch (error) {
       console.warn('GFS : la table de la page est illisible', error);
@@ -282,18 +282,18 @@ export class WorkRow {
   }
 
   async #selectedTable(options) {
-    const data = await this.#read(this.#choice.tableId);
-    const order = orderOf(data);
+    const table = await this.#read(this.#choice.tableId);
+    const order = orderOf(table);
     const out = {};
-    for (const col of this.#columns) out[col.colId] = this.#values(data, col, order, options);
-    out.id = order.map(i => data.id[i]);
+    for (const col of this.#columns) out[col.colId] = this.#values(table, col, order, options);
+    out.id = order.map(i => table.id[i]);
     return out;
   }
 
   async #selectedRecord(rowId, options) {
-    const data = await this.#read(this.#choice.tableId);
+    const table = await this.#read(this.#choice.tableId);
     const record = { id: rowId };
-    for (const col of this.#columns) [record[col.colId]] = this.#values(data, col, [data.id.indexOf(rowId)], options);
+    for (const col of this.#columns) [record[col.colId]] = this.#values(table, col, [table.id.indexOf(rowId)], options);
     return record;
   }
 
@@ -321,14 +321,14 @@ export class WorkRow {
     if (this.#hidden()) { this.#schedule(0); return; }
     let rows = 0;
     try {
-      const data = await this.#read(choice.tableId);
+      const table = await this.#read(choice.tableId);
       if (this.#choice !== choice) return; // une autre table a été choisie pendant la lecture : elle a sa propre relecture
-      rows = data.id.length;
-      const signature = JSON.stringify(data);
+      rows = table.id.length;
+      const signature = JSON.stringify(table);
       if (signature !== this.#signature) {
         // Une colonne ajoutée, retirée ou renommée : les colonnes de la vue se relisent.
-        if (Object.keys(data).join() !== this.#keys) this.#columns = await this.#readColumns(choice.tableId);
-        this.#remember(data, signature);
+        if (Object.keys(table).join() !== this.#keys) this.#columns = await this.#readColumns(choice.tableId);
+        this.#remember(table, signature);
         this.#emit('table');
       }
     } catch (error) {

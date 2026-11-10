@@ -255,9 +255,9 @@ const infoLine1 = (...nodes) => h('div', { class: 'l1' }, ...nodes);
 // La barre d'information : le fichier choisi (l'app qui l'ouvre, la date, le grisé), sinon un rappel du rangement : à la personne seule, ou commun au
 // document tant que GFS ne sait pas qui elle est (contrats 6.4, point 4). Ses lignes sont coupées quand la place manque : son texte entier est au survol (charte).
 export function infoBar(ctx) {
-  const bar = infoContent(ctx);
-  bar.title = [...bar.children].map(line => line.textContent.replace(/\s+/g, ' ').trim()).filter(Boolean).join('\n');
-  return bar;
+  const info = infoContent(ctx);
+  info.title = [...info.children].map(line => line.textContent.replace(/\s+/g, ' ').trim()).filter(Boolean).join('\n');
+  return info;
 }
 
 function infoContent(ctx) {

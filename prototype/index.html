@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-xn/Dc5ii3hlXmz18Li5aIF5ARqKdhb0nSc+qVgS0QQA='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-J4oBj3EAvwD8d+XhaqmiPU51obnLcc6OXE5y32UAgPM='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=e13ef00da6">
 <link rel="stylesheet" href="css/explorer.css?v=eb1aaa65f5">
 <link rel="stylesheet" href="css/modules.css?v=b1b43f0db6">
@@ -43,7 +43,7 @@
     "./js/catalogue.js": "./js/catalogue.js?v=2e588e5749",
     "./js/conflict-window.js": "./js/conflict-window.js?v=6707e6cc39",
     "./js/context.js": "./js/context.js?v=02c3f955eb",
-    "./js/controller.js": "./js/controller.js?v=c6798a9f27",
+    "./js/controller.js": "./js/controller.js?v=b45a9a4204",
     "./js/copying.js": "./js/copying.js?v=8da0986c98",
     "./js/deposit.js": "./js/deposit.js?v=d0c15e5868",
     "./js/dock-state.js": "./js/dock-state.js?v=8eec913fd1",
@@ -79,7 +79,7 @@
     "./js/i18n-share.js": "./js/i18n-share.js?v=c6c817c2ca",
     "./js/i18n-trash.js": "./js/i18n-trash.js?v=ba5f9e143a",
     "./js/i18n-weight.js": "./js/i18n-weight.js?v=70f193afa2",
-    "./js/i18n.js": "./js/i18n.js?v=a7ba40b260",
+    "./js/i18n.js": "./js/i18n.js?v=e6f026b8ef",
     "./js/icons.js": "./js/icons.js?v=fc146f87c5",
     "./js/import-file.js": "./js/import-file.js?v=1f16ab4ac8",
     "./js/kept-files.js": "./js/kept-files.js?v=090e1cde9a",
@@ -150,7 +150,8 @@
     "./js/transfer.js": "./js/transfer.js?v=cabee74d5b",
     "./js/trash.js": "./js/trash.js?v=6744b756e1",
     "./js/undo-stack.js": "./js/undo-stack.js?v=4e123cb751",
-    "./js/view-options.js": "./js/view-options.js?v=f776be2727",
+    "./js/view-link.js": "./js/view-link.js?v=c1f7e951d4",
+    "./js/view-options.js": "./js/view-options.js?v=7470835d0e",
     "./js/weight-control.js": "./js/weight-control.js?v=e720b51a0b",
     "./js/weight-reader.js": "./js/weight-reader.js?v=d2d2a3ce41",
     "./js/weight-window.js": "./js/weight-window.js?v=b7d02adfcf",

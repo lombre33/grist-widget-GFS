@@ -8,17 +8,17 @@
 /* Les trois largeurs de la charte (section 1, « une nouvelle fenêtre choisit l'une des trois ») : 400 px (question, saisie), 480 px (formulaire), grande (liste ou tableau : 960 px plafonnés au panneau). */
 :root { --win-s: 400px; --win-m: 480px; --win-l: 960px; }
 .mod { display: flex; flex-direction: column; width: min(var(--win-l), 100%); max-height: 100%; overflow: hidden; background: var(--surface); color: var(--text);
-  border: var(--bw) solid var(--border-strong); border-radius: var(--radius-lg); box-shadow: var(--shadow-float); font-family: var(--font-ui); font-size: 13px; line-height: 1.35; }
+  border: var(--bw) solid var(--border-strong); border-radius: var(--radius-lg); box-shadow: var(--shadow-float); font-family: var(--font-ui); font-size: max(13px, var(--fs-min)); line-height: 1.35; }
 
 .mod-head { flex: none; padding: 12px 16px 8px; border-bottom: 1px solid var(--border); }
 .mod-head h2 { margin: 0; font-family: var(--font-head); font-size: var(--fs-head); font-weight: var(--fw-head); text-transform: var(--tt-head); letter-spacing: var(--ls-head); }
-.mod-count { margin: 2px 0 0; font-size: 12px; color: var(--text-muted); }
+.mod-count { margin: 2px 0 0; font-size: max(12px, var(--fs-min)); color: var(--text-muted); }
 .mod-count strong { color: var(--text); font-weight: 700; }
 
 .mod-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 2px 8px; }
 
 .mod-foot { flex: none; display: flex; align-items: center; gap: 12px; padding: 8px 16px 10px; border-top: 1px solid var(--border); background: var(--surface-sunken); }
-.mod-note { flex: 1; min-width: 0; margin: 0; font-size: 12px; color: var(--text-muted); }
+.mod-note { flex: 1; min-width: 0; margin: 0; font-size: max(12px, var(--fs-min)); color: var(--text-muted); }
 
 /* La question posée par-dessus (ask-window.js, la création de la table du document) : la même base, plus étroite, les boutons à droite. */
 .mod.ask { width: min(var(--win-s), 100%); }
@@ -32,7 +32,7 @@
 .ask-foot { justify-content: flex-end; }
 
 /* Nommer (filing-window.js : renommer un fichier ou un dossier) : la même base, un champ ; ce qui manque se dit sous lui, en rouge lisible. */
-.nw-label { display: block; margin: 0 0 4px; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.nw-label { display: block; margin: 0 0 4px; font-size: max(12px, var(--fs-min)); font-weight: 600; color: var(--text-muted); }
 .nw-input { display: block; width: 100%; height: 30px; padding: 0 8px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
   background: var(--surface); color: var(--text); font: inherit; }
 .nw-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -49,34 +49,34 @@
 .mr-title { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .mr-title label { display: inline-flex; align-items: center; gap: 6px; min-width: 0; cursor: pointer; }
 .mr-title .ic { width: 15px; height: 15px; color: var(--text-muted); }
-.mr-title strong { font-size: 13px; font-weight: 700; }
-.mr-text { margin: 2px 0 0; font-size: 12px; color: var(--text-muted); }
-.mr-note, .mr-warn { margin: 4px 0 0; font-size: 12px; }
+.mr-title strong { font-size: max(13px, var(--fs-min)); font-weight: 700; }
+.mr-text { margin: 2px 0 0; font-size: max(12px, var(--fs-min)); color: var(--text-muted); }
+.mr-note, .mr-warn { margin: 4px 0 0; font-size: max(12px, var(--fs-min)); }
 .mr-note { color: var(--text-muted); }
 .mr-warn { color: var(--warn-ink); font-weight: 600; }
 .mr--app.is-locked .mr-warn { color: var(--danger-ink); }
 .mr.is-locked .mr-title strong { color: var(--text-muted); }
 .mr-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; padding-top: 1px; }
-.sz { font-size: 11px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
-.btn.sm { height: 26px; padding: 0 8px; font-size: 12px; }
+.sz { font-size: max(11px, var(--fs-min)); font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+.btn.sm { height: 26px; padding: 0 8px; font-size: max(12px, var(--fs-min)); }
 
 /* L'état en un mot et une icône : la couleur ne le porte jamais seule. */
 .badge { display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 7px; border: 1px solid var(--border-strong); border-radius: calc(var(--radius-pill) - 1px);
-  background: var(--surface); font-size: 10.5px; font-weight: 700; letter-spacing: .02em; color: var(--text-muted); white-space: nowrap; }
+  background: var(--surface); font-size: max(10.5px, var(--fs-min)); font-weight: 700; letter-spacing: .02em; color: var(--text-muted); white-space: nowrap; }
 .badge .ic { width: 10px; height: 10px; stroke-width: 2.4; color: inherit; }
 .badge.on { border-color: var(--good-soft-border); background: var(--good-soft); color: var(--good); }
 .badge.locked { border-style: dashed; }
 
 /* ---------- le mode d'une bibliothèque : CDN ou copie de GFS ---------- */
 .mr-mode { display: flex; flex-wrap: wrap; gap: 2px 16px; min-width: 0; margin: 8px 0 0; padding: 6px 10px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-sunken); }
-.mr-mode legend { padding: 0 4px; font-size: 11px; font-weight: 600; color: var(--text-muted); }
+.mr-mode legend { padding: 0 4px; font-size: max(11px, var(--fs-min)); font-weight: 600; color: var(--text-muted); }
 .mr-mode:disabled .rd-label { color: var(--text-muted); }
 .rd { display: flex; flex: 1 1 200px; align-items: flex-start; gap: 7px; min-width: 0; padding: 3px 0; cursor: pointer; }
 .rd input { flex: none; width: 15px; height: 15px; margin: 1px 0 0; accent-color: var(--accent-solid); }
 .rd input:disabled, .rd.is-off { cursor: not-allowed; }
 .rd-text { display: flex; flex-direction: column; min-width: 0; }
-.rd-label { font-size: 12.5px; font-weight: 600; }
-.rd-hint { font-size: 11.5px; color: var(--text-muted); }
+.rd-label { font-size: max(12.5px, var(--fs-min)); font-weight: 600; }
+.rd-hint { font-size: max(11.5px, var(--fs-min)); color: var(--text-muted); }
 
 /* ---------- la fenêtre « Table de travail » (contrats 4.5) : la recherche reste en haut, seule la liste défile ---------- */
 .mod.wk { width: min(var(--win-m), 100%); height: 100%; }
@@ -97,7 +97,7 @@
 .wk-item[aria-current="true"] .ic { color: var(--accent-ink); }
 .wk-label { display: flex; flex: 1; flex-direction: column; min-width: 0; }
 .wk-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wk-reason { font-size: 11.5px; font-weight: 400; color: var(--text-muted); }
+.wk-reason { font-size: max(11.5px, var(--fs-min)); font-weight: 400; color: var(--text-muted); }
 .wk-item.is-locked { cursor: not-allowed; }
 .wk-item.is-locked .wk-name { color: var(--text-muted); }
 /* Déplacer (filing-window.js) : le nouveau dossier que dit la recherche porte le « + » de l'accent. */
@@ -119,8 +119,8 @@
 .amb .chk { position: absolute; top: -7px; right: -7px; z-index: 2; width: 18px; height: 18px; padding: 3px; border: 2px solid var(--surface); border-radius: 50%;
   background: var(--accent-solid); color: var(--on-accent); stroke-width: 3.2; visibility: hidden; }
 .amb:has(input:checked) .chk { visibility: visible; }
-.amb-name { overflow: hidden; font-size: 12px; font-weight: 700; line-height: 1.2; white-space: nowrap; text-overflow: ellipsis; }
-.amb-sub { overflow: hidden; font-size: 11px; line-height: 1.2; color: var(--text-muted); white-space: nowrap; text-overflow: ellipsis; }
+.amb-name { overflow: hidden; font-size: max(12px, var(--fs-min)); font-weight: 700; line-height: 1.2; white-space: nowrap; text-overflow: ellipsis; }
+.amb-sub { overflow: hidden; font-size: max(11px, var(--fs-min)); line-height: 1.2; color: var(--text-muted); white-space: nowrap; text-overflow: ellipsis; }
 /* La petite scène d'une ambiance : les vrais jetons de couleur et de forme de l'ambiance, posés sur la vignette même (js/theme-apply.js, `paint`), à l'échelle d'une vignette.
    Sa classe est `amb-mini` et non `mn` : `.rb.mn` est le bouton « ⋯ » d'une ligne de l'explorateur, qu'une règle sur `.mn` seule rendait haut de 58 px et bordé. */
 .amb-mini { position: relative; display: flex; flex-direction: column; gap: 4px; height: 58px; padding: 5px; overflow: hidden; border: 1px solid var(--border); border-radius: 6px;
@@ -139,7 +139,7 @@
 .mn-p { flex: none; width: 17px; height: 8px; border: 1px solid var(--pill-line, var(--tc-line)); border-radius: min(var(--radius-pill), 4px); background: var(--pill-bg, var(--tc-soft)); }
 /* La couleur d'accent : celle de l'ambiance, ou la sienne. Grisé, jamais masqué : le bouton « Choisir ma couleur » garde son texte lisible et dit pourquoi au clic. */
 .th-col { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; min-width: 0; margin: 0; padding: 4px 12px 6px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-sunken); }
-.th-col legend { padding: 0 4px; font-size: 11px; font-weight: 600; color: var(--text-muted); }
+.th-col legend { padding: 0 4px; font-size: max(11px, var(--fs-min)); font-weight: 600; color: var(--text-muted); }
 .th-col .rd { flex: none; align-items: center; }
 .th-col .rd input:disabled + .rd-text .rd-label { color: var(--text-muted); }
 .th-col .dot { display: inline-block; width: 12px; height: 12px; margin-left: 4px; border: 1px solid var(--border-strong); border-radius: 50%; vertical-align: -2px; }
@@ -159,9 +159,9 @@
 .th-acc:has(input:checked) .th-acc-sw::after { left: 16px; background: var(--on-accent); }
 .th-acc:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
 .th-acc-txt { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.th-acc-t { font-size: 12.5px; font-weight: 700; line-height: 1.25; }
-.th-acc-d { margin-left: 6px; font-size: 11.5px; line-height: 1.3; color: var(--text-muted); }
-.th-check, .th-adj { display: flex; gap: 6px; align-items: flex-start; margin: 0 2px; font-size: 12px; line-height: 1.35; }
+.th-acc-t { font-size: max(12.5px, var(--fs-min)); font-weight: 700; line-height: 1.25; }
+.th-acc-d { margin-left: 6px; font-size: max(11.5px, var(--fs-min)); line-height: 1.3; color: var(--text-muted); }
+.th-check, .th-adj { display: flex; gap: 6px; align-items: flex-start; margin: 0 2px; font-size: max(12px, var(--fs-min)); line-height: 1.35; }
 .th-check .ic, .th-adj .ic { flex: none; margin-top: 1px; width: 14px; height: 14px; color: var(--accent-ink); }
 .th-adj { color: var(--text-muted); }
 

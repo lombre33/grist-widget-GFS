@@ -40,7 +40,8 @@ import { annulerProblems } from './annuler-firefox.mjs';
 import { voileProblems } from './voile-firefox.mjs';
 import { fenetresProblems } from './fenetres-firefox.mjs';
 import { lecteurPages, lecteurProblems, stubProviders } from './lecteur-firefox.mjs';
-import { ROW_BUTTON, ROW_HEIGHT, TILE_MIN, columnFaults, expectedTileColumns, measureColumns, measureRows, measureTiles } from '../labo/mesures-liste.mjs';
+import { accesProblems, contrasteForceProblems } from './acces-firefox.mjs';
+import { ROW_BUTTON, ROW_BUTTON_ACCESS, ROW_HEIGHT, ROW_HEIGHT_ACCESS, TILE_MIN, columnFaults, expectedTileColumns, measureColumns, measureRows, measureTiles } from '../labo/mesures-liste.mjs';
 import { calendarLogs, calendarProblems } from './mesures-calendrier.mjs';
 
 const WIDTHS = [700, 640, 600, 520, 500, 400]; // 700 : le panneau de référence ; 640 : le portable du porteur ; 600 : la plus étroite où la liste a toutes ses colonnes ; 520 : la dernière où le volet reste (liste sans « Modifié » ni « Par ») ; 500 et 400 : la vue étroite
@@ -206,17 +207,18 @@ function measureConflictWindow() {
 
 // ---------- ce que l'essai constate : des écarts { kind, text }, un par constat ----------
 
-async function listProblems(page, tag) {
+async function listProblems(page, tag, access = false) {
+  const [rowHeight, rowButton] = access ? [ROW_HEIGHT_ACCESS, ROW_BUTTON_ACCESS] : [ROW_HEIGHT, ROW_BUTTON];
   const rows = await page.run(measureRows);
   const found = [];
   const note = (row, kind, text) => found.push({ kind, text: `${tag} : « ${row.name} » ${text}` });
   if (rows.length < 8 || !rows.some(row => row.folder)) found.push({ kind: 'la liste', text: `${tag} : la liste n'a pas ses lignes (${rows.length}) ou son dossier` });
   for (const row of rows) {
-    if (Math.abs(row.height - ROW_HEIGHT) > 0.5) note(row, 'hauteur d\'une ligne', `mesure ${row.height} px au lieu de ${ROW_HEIGHT}`);
+    if (Math.abs(row.height - rowHeight) > 0.5) note(row, 'hauteur d\'une ligne', `mesure ${row.height} px au lieu de ${rowHeight}`);
     if (row.off > 1) note(row, 'contenu d\'une ligne décentré', `a son contenu décentré de ${row.off.toFixed(1)} px`);
     if (row.out > 0.5) note(row, 'le trait passe dans le texte', `a son contenu qui sort de ${row.out.toFixed(1)} px par le bas : le trait passe dans le texte`);
     for (const [width, height] of row.buttons) {
-      if (Math.abs(width - ROW_BUTTON) > 0.5 || Math.abs(height - ROW_BUTTON) > 0.5) note(row, 'taille d\'un bouton de ligne', `a un bouton de ${width} × ${height} px au lieu de ${ROW_BUTTON} × ${ROW_BUTTON}`);
+      if (Math.abs(width - rowButton) > 0.5 || Math.abs(height - rowButton) > 0.5) note(row, 'taille d\'un bouton de ligne', `a un bouton de ${width} × ${height} px au lieu de ${rowButton} × ${rowButton}`);
     }
   }
   return found;
@@ -431,7 +433,9 @@ async function accessProblems(page, width, tag, theme) {
   if (!on) { note('clic sans effet', 'un clic à la souris sur la ligne n\'allume pas l\'interrupteur'); return found; }
   if (on.ambiance !== 'renforcee') note('page non peinte', `la page porte « ${on.ambiance} » au lieu de « renforcee » quand l'interrupteur est allumé`);
   const painted = await page.run(measureThemeWindow);
-  if (width >= 520 && painted.scrolls) note('le corps défile, accessibilité allumée', `le corps de la fenêtre « Thème » défile à ${width} px de large une fois l'accessibilité renforcée allumée`);
+  // Avec des lignes de 36 px et du texte de 14 px (second temps de l'accessibilité renforcée, 10/11), la fenêtre tient dans 700 × 400 sans défiler ; en dessous (640 px : le portable du porteur), la phrase de mesure passe à la ligne
+  // et le corps défile de quelques pixels, titre et pied restant en place (comme sous 520 px, texte d'origine).
+  if (width >= 700 && painted.scrolls) note('le corps défile, accessibilité allumée', `le corps de la fenêtre « Thème » défile à ${width} px de large une fois l'accessibilité renforcée allumée`);
   if (!painted.fits) note('fenêtre hors de la page, accessibilité allumée', 'la fenêtre « Thème » sort de la page une fois l\'accessibilité renforcée allumée');
   await page.click(...await page.run(centerOfAccessRow));
   const off = await page.until(accessIsOff, [], 2000).catch(() => null);
@@ -459,7 +463,7 @@ async function lookProblems(page, tag) {
         note('décor en accessibilité renforcée', `le mode renforcé a gardé du décor ou des traits fins : ${JSON.stringify(look)}`);
       }
     } else if (look.titleCase !== 'uppercase' || look.titleGlow === 'none') note('Enseigne sans son décor', `Enseigne a perdu ses capitales ou la lueur de son titre : ${JSON.stringify(look)}`);
-    found.push(...await listProblems(page, label));
+    found.push(...await listProblems(page, label, access));
     await openSettings(page, 1);
     const theme = await page.until(measureThemeWindow);
     if (theme.scrolls) note('le corps de la fenêtre défile', 'la fenêtre « Thème », peinte par ce choix, défile dans 700 px');
@@ -586,6 +590,7 @@ describe('l\'interface sous Firefox', () => {
         problems.push(...await voileProblems(page, caption(language, 700, 1, mode)));
         problems.push(...await fenetresProblems(page, caption(language, 700, 1, mode)));
         problems.push(...await lookProblems(page, caption(language, 700, 1, mode)));
+        problems.push(...await accesProblems(page, caption(language, 700, 1, mode)));
       }
       // Les icônes des types (test/icones-firefox.mjs) : une fois, en français (la couleur et le trait ne dépendent pas de la langue).
       if (language === 'fr') problems.push(...await iconProblems(page));
@@ -593,6 +598,23 @@ describe('l\'interface sous Firefox', () => {
       const logged = page.logs.filter(entry => ((entry.level === 'error' && entry.type === 'javascript') || /GFS/.test(entry.text || '')) && !/sélecteur de couleur du kit/.test(entry.text || ''));
       for (const entry of logged) problems.push({ kind: 'la page écrit dans la console', text: `la page a écrit « ${String(entry.text).slice(0, 120)} »` });
       assert.equal(problems.length, 0, report(problems));
+    });
+
+    // Le contraste forcé du système (test/acces-firefox.mjs) : un Firefox à part, lancé avec `browser.display.document_color_use` à 2 (il force les couleurs, comme le « contraste élevé » de Windows) ; la page est à l'origine :
+    // c'est un réglage du système, il vaut pour toute ambiance. Un Firefox qui ne force pas les couleurs sur cette machine saute l'essai, et le dit.
+    test(`le contraste forcé du système en ${language === 'fr' ? 'français' : 'anglais'} : la ligne choisie, la vignette choisie et l'interrupteur se lisent sans couleur ni ombre`, { skip: SKIP, timeout: 120000 }, async t => {
+      const forced = await startFirefox(firefox, { 'browser.display.document_color_use': 2 });
+      try {
+        const { page } = forced;
+        await page.goto(`${site.url}${PAGE}?lang=${language}`);
+        await page.run(() => window.__ready);
+        await page.view({ width: 700, scale: 1, mode: 'light' });
+        const result = await contrasteForceProblems(page, caption(language, 700, 1, 'light'));
+        if (result.skipped) { t.skip('ce Firefox ne force pas les couleurs (browser.display.document_color_use à 2) : le contraste forcé n\'est PAS mesuré ici'); return; }
+        assert.equal(result.found.length, 0, report(result.found));
+      } finally {
+        await forced.close();
+      }
     });
 
     // Le glisser-déposer (test/glisser-firefox.mjs) : seul, sur une page rechargée, car Firefox sans écran laisse le glissement en cours après le lâcher (il ne mesure que les lignes qui se tiennent, le départ et le survol).

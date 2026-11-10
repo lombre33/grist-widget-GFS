@@ -111,6 +111,9 @@ export class Page {
 
   get logs() { return this.#bidi.logs; }
 
+  // Rend le focus du système à l'onglet : un Firefox sans écran ne le donne à aucune fenêtre, et sans lui ni `:focus` ni `:focus-visible` ne s'appliquent (l'anneau de focus ne se voit pas).
+  async activate() { await this.#bidi.send('browsingContext.activate', { context: this.#context }); }
+
   async goto(url) { await this.#bidi.send('browsingContext.navigate', { context: this.#context, url, wait: 'complete' }); }
 
   // Largeur et hauteur de la page en pixels CSS, zoom de l'écran (1 ; 1,5 pour un portable réglé à 150 %), mode que Grist poserait sur la page (`data-grist-appearance`).
@@ -200,13 +203,15 @@ export class Page {
 
 // Lance Firefox sans écran, avec un profil neuf, et rend { page, close() }. Le lanceur de Firefox est parfois un script qui lance le vrai programme sans le remplacer (celui de conda) : Firefox a donc son propre
 // groupe de processus (`detached`), qu'on arrête en entier, sans quoi un Firefox resterait vivant après l'essai et empêcherait Node de finir.
-export async function startFirefox(binary) {
+export async function startFirefox(binary, extraPrefs = {}) {
   const profile = mkdtempSync(join(tmpdir(), 'gfs-firefox-'));
-  writeFileSync(join(profile, 'user.js'), Object.entries(PREFS).map(([key, value]) => `user_pref(${JSON.stringify(key)}, ${JSON.stringify(value)});`).join('\n'));
+  writeFileSync(join(profile, 'user.js'), Object.entries({ ...PREFS, ...extraPrefs }).map(([key, value]) => `user_pref(${JSON.stringify(key)}, ${JSON.stringify(value)});`).join('\n'));
   const port = await freePort();
   const grouped = process.platform !== 'win32';
-  const child = spawn(binary, ['--headless', '--no-remote', '--profile', profile, '--remote-debugging-port', String(port), 'about:blank'],
-    { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, MOZ_HEADLESS: '1' }, detached: grouped });
+  // `GFS_FIREFOX_ECRAN` (n'importe quelle valeur) : un Firefox avec fenêtre, sur l'écran virtuel que l'appelant donne (`xvfb-run`) ; sans écran, `--headless` ne donne le focus du système à aucune fenêtre.
+  const windowed = Boolean(process.env.GFS_FIREFOX_ECRAN);
+  const child = spawn(binary, [...(windowed ? [] : ['--headless']), '--no-remote', '--profile', profile, '--remote-debugging-port', String(port), 'about:blank'],
+    { stdio: ['ignore', 'pipe', 'pipe'], env: windowed ? process.env : { ...process.env, MOZ_HEADLESS: '1' }, detached: grouped });
   let output = '';
   for (const stream of [child.stdout, child.stderr]) stream.on('data', chunk => { output = (output + chunk).slice(-2000); });
   const stop = () => { try { if (grouped) process.kill(-child.pid, 'SIGKILL'); else child.kill('SIGKILL'); } catch (error) { /* déjà arrêté */ } };

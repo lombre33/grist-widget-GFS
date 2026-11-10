@@ -66,10 +66,10 @@ export function piecesOf(rule, data, i) {
 // (la clé vide ne désigne personne) : clé (texte) -> octets, comptés comme ceux d'un fichier (`rowWeigher`).
 export const LINKED = 'liee:';
 
-export function linkedWeights(data, column) {
+export function linkedWeights(data, column, weights = null) {
   const bytes = new Map();
   if (!data || !Array.isArray(data[column])) return bytes;
-  const weigh = rowWeigher(data);
+  const weigh = weights ? i => weights[i] : rowWeigher(data); // `weights` : les octets de chaque ligne, quand l'appelant les a comptés lui-même (js/explorer-sql.js)
   data[column].forEach((raw, i) => {
     const key = raw === null || raw === undefined ? '' : String(raw);
     if (key !== '') bytes.set(key, (bytes.get(key) || 0) + weigh(i));

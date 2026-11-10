@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-NB8haVTRdgUJH2bEYmqzITiqKwTXH8un4o70VOvdEcM='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-Gy+L+FQ0W9h+lfsoYwYYdsgODNzXv9BaH4Ywc7pIHvQ='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=7a7a55cf8b">
 <link rel="stylesheet" href="css/explorer.css?v=e7e8361999">
 <link rel="stylesheet" href="css/modules.css?v=8ba0d93a3b">
@@ -44,7 +44,7 @@
     "./js/catalogue.js": "./js/catalogue.js?v=2e588e5749",
     "./js/conflict-window.js": "./js/conflict-window.js?v=6707e6cc39",
     "./js/context.js": "./js/context.js?v=02c3f955eb",
-    "./js/controller.js": "./js/controller.js?v=6fba92ce24",
+    "./js/controller.js": "./js/controller.js?v=b49c81520c",
     "./js/copying.js": "./js/copying.js?v=8da0986c98",
     "./js/deposit.js": "./js/deposit.js?v=d0c15e5868",
     "./js/dock-state.js": "./js/dock-state.js?v=8eec913fd1",
@@ -53,11 +53,12 @@
     "./js/entries.js": "./js/entries.js?v=8f6a6f19ce",
     "./js/envelope.js": "./js/envelope.js?v=8ffb709fe9",
     "./js/explorer-clipboard.js": "./js/explorer-clipboard.js?v=fe178bf8ba",
-    "./js/explorer-data.js": "./js/explorer-data.js?v=6e0afd35ed",
+    "./js/explorer-data.js": "./js/explorer-data.js?v=632f0ea357",
     "./js/explorer-drag.js": "./js/explorer-drag.js?v=552033be07",
     "./js/explorer-keys.js": "./js/explorer-keys.js?v=e49be0325a",
     "./js/explorer-menus.js": "./js/explorer-menus.js?v=55067423bc",
     "./js/explorer-model.js": "./js/explorer-model.js?v=88b49c2751",
+    "./js/explorer-sql.js": "./js/explorer-sql.js?v=042e9115cb",
     "./js/explorer-undo.js": "./js/explorer-undo.js?v=c0e6038029",
     "./js/explorer-view.js": "./js/explorer-view.js?v=bf43d0adbb",
     "./js/explorer.js": "./js/explorer.js?v=c657c13c69",
@@ -70,7 +71,7 @@
     "./js/frames.js": "./js/frames.js?v=554a438e75",
     "./js/gfs-copy.js": "./js/gfs-copy.js?v=204d80003f",
     "./js/gfs-files.js": "./js/gfs-files.js?v=136137d0cb",
-    "./js/gfs-trash.js": "./js/gfs-trash.js?v=e6ba33a6f2",
+    "./js/gfs-trash.js": "./js/gfs-trash.js?v=4e5c1ece7c",
     "./js/i18n-folders.js": "./js/i18n-folders.js?v=2dd37b93c0",
     "./js/i18n-manage.js": "./js/i18n-manage.js?v=86f9429b9a",
     "./js/i18n-notifications.js": "./js/i18n-notifications.js?v=48f040ccff",
@@ -157,7 +158,7 @@
     "./js/weight-control.js": "./js/weight-control.js?v=e720b51a0b",
     "./js/weight-reader.js": "./js/weight-reader.js?v=d2d2a3ce41",
     "./js/weight-window.js": "./js/weight-window.js?v=efaa1f0d08",
-    "./js/weight.js": "./js/weight.js?v=4da7caa3ae",
+    "./js/weight.js": "./js/weight.js?v=6d238aa6d1",
     "./js/work-control.js": "./js/work-control.js?v=7efc5aae9e",
     "./js/work-row.js": "./js/work-row.js?v=8dc5c7811f",
     "./js/work-window.js": "./js/work-window.js?v=ce9a4597fb",
@@ -233,7 +234,7 @@
      Le navigateur les demande tous d'un coup au lieu d'un niveau d'imports à la fois (9 niveaux, donc 9 allers-retours de réseau). Après la carte d'importation, jamais avant : une page qui commence à
      charger un module avant elle l'ignore et demande les modules sans leur ?v=. -->
 <!-- préchargement -->
-<link rel="modulepreload" href="./js/controller.js?v=6fba92ce24">
+<link rel="modulepreload" href="./js/controller.js?v=b49c81520c">
 <link rel="modulepreload" href="./js/catalogue.js?v=2e588e5749">
 <link rel="modulepreload" href="./js/manifest.js?v=2adb1a2c16">
 <link rel="modulepreload" href="./js/state.js?v=ac1616eaf2">
@@ -255,7 +256,8 @@
 <link rel="modulepreload" href="./js/about.js?v=63b8993ce8">
 <link rel="modulepreload" href="./js/work-control.js?v=7efc5aae9e">
 <link rel="modulepreload" href="./js/explorer.js?v=c657c13c69">
-<link rel="modulepreload" href="./js/explorer-data.js?v=6e0afd35ed">
+<link rel="modulepreload" href="./js/explorer-data.js?v=632f0ea357">
+<link rel="modulepreload" href="./js/explorer-sql.js?v=042e9115cb">
 <link rel="modulepreload" href="./js/links.js?v=c4e4a9d7bc">
 <link rel="modulepreload" href="./js/filing.js?v=a949e1c034">
 <link rel="modulepreload" href="./js/filing-window.js?v=933db2d364">
@@ -317,7 +319,7 @@
 <link rel="modulepreload" href="./js/explorer-model.js?v=88b49c2751">
 <link rel="modulepreload" href="./js/search.js?v=0921c92eb3">
 <link rel="modulepreload" href="./js/explorer-view.js?v=bf43d0adbb">
-<link rel="modulepreload" href="./js/weight.js?v=4da7caa3ae">
+<link rel="modulepreload" href="./js/weight.js?v=6d238aa6d1">
 <link rel="modulepreload" href="./js/explorer-keys.js?v=e49be0325a">
 <link rel="modulepreload" href="./js/undo-stack.js?v=4e123cb751">
 <link rel="modulepreload" href="./js/explorer-undo.js?v=c0e6038029">
@@ -325,8 +327,9 @@
 <link rel="modulepreload" href="./js/explorer-drag.js?v=552033be07">
 <link rel="modulepreload" href="./js/explorer-menus.js?v=55067423bc">
 <link rel="modulepreload" href="./js/notifications.js?v=cb0675dc97">
-<link rel="modulepreload" href="./js/gfs-trash.js?v=e6ba33a6f2">
+<link rel="modulepreload" href="./js/gfs-trash.js?v=4e5c1ece7c">
 <link rel="modulepreload" href="./js/spaces-filing.js?v=e8edc7c489">
+<link rel="modulepreload" href="./js/weight-reader.js?v=d2d2a3ce41">
 <link rel="modulepreload" href="./js/settings.js?v=a425d4248c">
 <link rel="modulepreload" href="./js/modules-model.js?v=f215489de1">
 <link rel="modulepreload" href="./js/own-table.js?v=71b95d4e4e">
@@ -340,7 +343,6 @@
 <link rel="modulepreload" href="./js/share-links.js?v=49b2331a44">
 <link rel="modulepreload" href="./js/sync-rules.js?v=d3315e4d05">
 <link rel="modulepreload" href="./js/share-other-flow.js?v=d8936a9cb6">
-<link rel="modulepreload" href="./js/weight-reader.js?v=d2d2a3ce41">
 <link rel="modulepreload" href="./js/weight-window.js?v=efaa1f0d08">
 <link rel="modulepreload" href="./js/files-store.js?v=f8aa8e092b">
 <link rel="modulepreload" href="./js/kept-files.js?v=090e1cde9a">

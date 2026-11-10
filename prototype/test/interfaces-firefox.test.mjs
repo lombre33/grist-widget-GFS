@@ -38,6 +38,7 @@ import { piecesJointesProblems } from './pieces-jointes-firefox.mjs';
 import { annulerProblems } from './annuler-firefox.mjs';
 import { voileProblems } from './voile-firefox.mjs';
 import { fenetresProblems } from './fenetres-firefox.mjs';
+import { lecteurPages, lecteurProblems, stubProviders } from './lecteur-firefox.mjs';
 import { ROW_BUTTON, ROW_HEIGHT, TILE_MIN, columnFaults, expectedTileColumns, measureColumns, measureRows, measureTiles } from '../labo/mesures-liste.mjs';
 import { calendarLogs, calendarProblems } from './mesures-calendrier.mjs';
 
@@ -638,6 +639,31 @@ describe('le calendrier du kit sous Firefox', () => {
       assert.equal(problems.length, 0, report(problems));
     });
   }
+});
+
+// Le lecteur de vidéos que GFS pose par-dessus l'app (test/lecteur-firefox.mjs ; carte du 07/11) : le vrai `Player` sur une page d'essai, YouTube et Vimeo remplacés par une page que Firefox reçoit sans toucher au réseau.
+describe('le lecteur de vidéos sous Firefox', () => {
+  let site;
+  let browser;
+  let requested;
+
+  before(async () => {
+    if (!firefox) return;
+    site = await serveSite(ROOT, lecteurPages());
+    browser = await startFirefox(firefox);
+    requested = await stubProviders(browser.page);
+  });
+
+  after(async () => {
+    if (browser) await browser.close();
+    if (site) await site.close();
+  });
+
+  test('le lecteur de vidéos, en clair et en sombre : adresse et attributs du cadre, politique de sécurité, endroit, rognage, souris, panneau qui change de taille, focus', { skip: SKIP, timeout: 120000 }, async () => {
+    const problems = [];
+    for (const mode of MODES) problems.push(...await lecteurProblems(browser.page, site, mode, requested));
+    assert.equal(problems.length, 0, report(problems));
+  });
 });
 
 // L'outil lui-même, sans Firefox : où il cherche le navigateur, et ce que son petit serveur sert (le dépôt, les pages fabriquées, rien d'autre).

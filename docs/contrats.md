@@ -1452,7 +1452,7 @@ sans événement : seule une règle posée recharge la page (11.5, point 3), et 
    et rien de leur côté ne peut la capter** ; ce qui ferme le lecteur est le clic ailleurs dans l'app (son écoute de la souris), le changement de diapositive, le bouton « Fichiers »
    de la barre et `lecteur.fermer`. Un bouton « Fermer » posé par GFS, ou la fermeture quand le focus revient à la page de GFS, ne sont pas construits (interface de plus : le porteur
    choisit après son essai avec une vraie vidéo, avec l'événement `lecteur`). **Non mesuré** : les vrais YouTube et Vimeo (démarrage, son, lecture
-   automatique, plein écran : le porteur, sous Firefox, avec une vraie vidéo), Firefox (le faux lecteur n'a été essayé que sous Chromium), le Grist de la DINUM, l'événement `lecteur` (pas construit).
+   automatique, plein écran : le porteur, sous Firefox, avec une vraie vidéo), Firefox dans un vrai Grist (sans Grist, le lecteur est mesuré sous Firefox 160 depuis le 10/11 : faits vérifiés 78, sauf la touche Échap dans le lecteur), le Grist de la DINUM, l'événement `lecteur` (pas construit).
 
 ### 5.3 Le stockage du navigateur
 

@@ -56,11 +56,12 @@ const PREFS = {
 
 const freePort = () => new Promise(resolve => { const probe = createSocketServer(); probe.listen(0, '127.0.0.1', () => { const { port } = probe.address(); probe.close(() => resolve(port)); }); });
 
-// La conversation avec Firefox : une commande, sa réponse ; les messages du journal de la page (`log.entryAdded`) sont gardés.
+// La conversation avec Firefox : une commande, sa réponse ; les messages du journal de la page (`log.entryAdded`) sont gardés, et `on` écoute les autres événements (`network.beforeRequestSent`).
 class Bidi {
   #socket;
   #next = 1;
   #waiting = new Map();
+  #listeners = new Map();
   logs = [];
 
   constructor(socket) {
@@ -70,7 +71,11 @@ class Bidi {
   }
 
   #receive(message) {
-    if (message.type === 'event') { if (message.method === 'log.entryAdded') this.logs.push(message.params); return; }
+    if (message.type === 'event') {
+      if (message.method === 'log.entryAdded') this.logs.push(message.params);
+      for (const listener of this.#listeners.get(message.method) || []) listener(message.params);
+      return;
+    }
     const entry = this.#waiting.get(message.id);
     if (!entry) return;
     this.#waiting.delete(message.id);
@@ -85,6 +90,8 @@ class Bidi {
       this.#socket.send(JSON.stringify({ id, method, params }));
     });
   }
+
+  on(method, listener) { this.#listeners.set(method, [...(this.#listeners.get(method) || []), listener]); }
 
   close() { try { this.#socket.close(); } catch (error) { /* déjà fermée */ } }
 }
@@ -114,11 +121,35 @@ export class Page {
   }
 
   // `fn` s'exécute dans la page (elle ne voit rien du module qui l'écrit) ; `args` et le résultat passent en JSON.
-  async run(fn, ...args) {
+  run(fn, ...args) { return this.#evaluate(this.#context, fn, args); }
+
+  async #evaluate(context, fn, args) {
     const expression = `(async () => JSON.stringify(await (${fn.toString()})(...${JSON.stringify(args)})))()`;
-    const reply = await this.#bidi.send('script.evaluate', { expression, target: { context: this.#context }, awaitPromise: true });
+    const reply = await this.#bidi.send('script.evaluate', { expression, target: { context }, awaitPromise: true });
     if (reply.type === 'exception') throw new Error(`dans la page : ${reply.exceptionDetails.text}`);
     return reply.result.type === 'undefined' ? undefined : JSON.parse(reply.result.value);
+  }
+
+  // Comme `run`, dans le cadre de la page dont l'adresse contient `part` (un cadre d'une autre origine aussi : WebDriver y entre). Le cadre doit exister : sinon l'erreur le dit.
+  async runInFrame(part, fn, ...args) {
+    const { contexts } = await this.#bidi.send('browsingContext.getTree', { root: this.#context });
+    const all = nodes => nodes.flatMap(node => [node, ...all(node.children || [])]);
+    const found = all(contexts).find(node => node.context !== this.#context && node.url.includes(part));
+    if (!found) throw new Error(`aucun cadre à l'adresse « ${part} »`);
+    return this.#evaluate(found.context, fn, args);
+  }
+
+  // Répond à la place du réseau aux pages des `hostnames` (HTTPS) : `body` en HTML, sans rien demander à l'hôte (les sites de vidéos ne sont pas joignables du cloud). Rend la liste, tenue à jour, des adresses demandées.
+  async stub(hostnames, body) {
+    const requested = [];
+    await this.#bidi.send('session.subscribe', { events: ['network.beforeRequestSent'] });
+    await this.#bidi.send('network.addIntercept', { phases: ['beforeRequestSent'], urlPatterns: hostnames.map(hostname => ({ type: 'pattern', protocol: 'https', hostname })) });
+    this.#bidi.on('network.beforeRequestSent', params => {
+      if (!params.isBlocked) return;
+      requested.push(params.request.url);
+      this.#bidi.send('network.provideResponse', { request: params.request.request, statusCode: 200, reasonPhrase: 'OK', headers: [{ name: 'content-type', value: { type: 'string', value: 'text/html; charset=utf-8' } }], body: { type: 'string', value: body } }).catch(() => {});
+    });
+    return requested;
   }
 
   // Attend que `fn` rende une valeur vraie (au plus `timeout` ms), et la rend.

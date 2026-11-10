@@ -178,6 +178,8 @@ button { cursor: pointer; }
 
 /* ---------- vignettes ---------- */
 .th-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; padding: 8px; }
+/* Une grille longue n'est construite que pour ce qu'on voit (js/explorer-window.js) : toutes les rangées ont la même hauteur, le nom réserve donc ses deux lignes. */
+.th-grid.is-windowed .tn { min-height: 2.5em; }
 .th { display: flex; flex-direction: column; gap: 5px; padding: 6px; border: var(--bw) solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-ctl); background: var(--surface); text-align: left; position: relative; min-width: 0; }
 .th[aria-selected="true"] { border-color: var(--accent); background: var(--accent-soft); }
 .th-pv { aspect-ratio: 16 / 10; border-radius: var(--radius-xs); background: var(--surface-sunken); border: 1px solid var(--border-strong); display: flex; align-items: center; justify-content: center; overflow: hidden; color: var(--accent-ink); }

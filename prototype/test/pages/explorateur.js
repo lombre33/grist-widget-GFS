@@ -301,6 +301,15 @@ async function mount() {
     live.push(pdf);
     show();
   };
+  // Un document de `count` fichiers de plus (la liste fenêtrée, test/fenetrage-firefox.mjs) : des modèles « Fichier 00001 », de poids et de dates qui varient, lus par le vrai modèle ; `__reset` les retire.
+  window.__many = count => {
+    const at = index => String(index + 1).padStart(5, '0');
+    const indexes = Array.from({ length: count }, (unused, index) => index);
+    const more = { id: indexes.map(index => 1000 + index), Nom: indexes.map(index => `Fichier ${at(index)}`), TypeModele: indexes.map(index => ['document', 'presentation', 'grille'][index % 3]), DateModif: indexes.map(index => Math.floor(Date.now() / 1000) - index * 600), ModifiePar: indexes.map(() => 'Service RH') };
+    const nobody = { id: [], Utilisateur: [], ModeleId: [], Dossier: [], Epingle: [] }; // aucun rangement : tous à la racine ; `applyFiling` pose aussi ce que la recherche lit (`file.search`)
+    live.push(...applyFiling(readFiles(manifest, spec, more, indexes.map(index => 1000 + (index % 97) * 5000)), readFiling(spec.rangement, nobody, '')));
+    show();
+  };
   // Le fichier gardé qui porte déjà le nom, tel que GFS le décrit (date et auteur) ; la copie prendrait « (1) ».
   const detail = `${i18n.t('ex.modifiedOn', { date: '12/10/2026' })} · ${i18n.t('ex.modifiedBy', { by: 'Service RH' })}`;
   window.__askConflict = ({ app, repeat }) => {

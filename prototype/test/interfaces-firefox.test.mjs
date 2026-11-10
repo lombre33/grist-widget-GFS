@@ -35,6 +35,7 @@ import { iconProblems } from './icones-firefox.mjs';
 import { dossiersProblems } from './dossiers-firefox.mjs';
 import { compositeProblems } from './composite-firefox.mjs';
 import { glisserProblems } from './glisser-firefox.mjs';
+import { fenetrageProblems } from './fenetrage-firefox.mjs';
 import { piecesJointesProblems } from './pieces-jointes-firefox.mjs';
 import { annulerProblems } from './annuler-firefox.mjs';
 import { voileProblems } from './voile-firefox.mjs';
@@ -617,6 +618,19 @@ describe('l\'interface sous Firefox', () => {
       } finally {
         await forced.close();
       }
+    });
+
+    // La liste fenêtrée (test/fenetrage-firefox.mjs) : 5 000 et 20 000 fichiers, à 700 × 400, à la vraie souris et au vrai clavier, en clair et en sombre ; sur une page rechargée par mode.
+    test(`la liste fenêtrée de l'explorateur en ${language === 'fr' ? 'français' : 'anglais'}, en clair et en sombre : lignes construites, place, clavier, souris, vignettes, accessibilité renforcée, coût`, { skip: SKIP, timeout: 300000 }, async () => {
+      const { page } = browser;
+      const problems = [];
+      for (const mode of MODES) {
+        await page.goto(`${site.url}${PAGE}?lang=${language}`);
+        await page.run(() => window.__ready);
+        await page.view({ width: 700, scale: 1, mode });
+        problems.push(...await fenetrageProblems(page, language, caption(language, 700, 1, mode)));
+      }
+      assert.equal(problems.length, 0, report(problems));
     });
 
     // Le glisser-déposer (test/glisser-firefox.mjs) : seul, sur une page rechargée, car Firefox sans écran laisse le glissement en cours après le lâcher (il ne mesure que les lignes qui se tiennent, le départ et le survol).

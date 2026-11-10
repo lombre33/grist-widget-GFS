@@ -2166,6 +2166,15 @@ rangée d'un fichier, selon ce qui vient d'abord.
     bougent pas, la ligne suivante prend le clavier. Pendant le choix d'un fichier pour une app, la vue ne montre que ceux que l'app accepte. **Les onglets
     vivants** (plusieurs cadres d'app gardés ensemble) **ne sont pas faits** : une seule app est vivante à la fois. [M] **Mesuré le 10/11** dans un vrai Grist
     (`labo/run-ouverts.mjs`) et sous Firefox (`test/ouverts-firefox.mjs`) : faits vérifiés, section 79.
+15. [T] **Une liste longue ne construit que ce qu'on voit** (décision du porteur, 10/11, audit vitesse et poids : « Afficher seulement les lignes
+    visibles »). À partir de 200 lignes (liste) ou vignettes (`WINDOW_FROM`, `js/explorer-window.js`), l'explorateur construit les lignes visibles et huit
+    rangées de part et d'autre ; l'espace des autres est tenu par le remplissage du conteneur : la barre de défilement, Début, Fin, la molette et la position
+    gardée au redessin sont ceux d'une liste entière. **Ce que cela impose** : toutes les lignes d'une vue ont la même hauteur (mesurée à l'exécution, 28 px,
+    37 px en accessibilité renforcée ; le nom d'une vignette réserve deux lignes) ; le clavier, la sélection, le presse-papiers et « Ouverts » lisent les
+    données de la vue, non le DOM (`reveal(index)` construit et amène à l'écran la ligne voulue) ; le clavier reste à la liste quand la ligne qui l'avait sort de
+    la fenêtre ; `aria-rowcount` et `aria-rowindex` annoncent le vrai nombre de lignes et leur rang ; un glissement en cours tient les lignes en place jusqu'à sa
+    fin. **Ce que cela ne fait pas** : la recherche Ctrl+F du navigateur ne trouve pas une ligne qui n'est pas construite (le champ de recherche de l'explorateur,
+    lui, cherche dans toutes les données). [M] **Mesuré le 10/11** dans un vrai Grist et sous Firefox à 700 × 400 : faits vérifiés, section 87.
 
 ### 6.5 Préserver l'inconnu
 

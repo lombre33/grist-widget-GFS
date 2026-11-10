@@ -17,6 +17,7 @@ import { UndoStack } from './undo-stack.js';
 import { undoable } from './explorer-undo.js';
 import { Clipboard } from './explorer-clipboard.js';
 import { Dragging } from './explorer-drag.js';
+import { RowWindow, WINDOW_FROM } from './explorer-window.js';
 import { rowItems } from './explorer-menus.js';
 import { notificationItems } from './notifications.js';
 import { openMenu, closeMenu, menuIsOpen } from './menu.js';
@@ -40,12 +41,14 @@ export class Explorer {
   #clipboard;
   #undo;
   #drag;
+  #win; // la liste fenêtrée quand elle est longue (js/explorer-window.js)
   #refs;
   #files = [];
   #trashed = []; // les fichiers à la corbeille (la vue « Corbeille »)
   #arrivals = []; // les fichiers reçus d'un autre document, refusés exceptés (la vue « Partagés avec moi », js/received-files.js)
   #folders = []; // les dossiers que la personne garde sans fichier (js/explorer-data.js)
   #rows = [];
+  #keys = []; // la clé de chaque ligne de la liste, dans l'ordre : le clavier et la sélection lisent ceci, non le DOM (une liste longue n'en construit qu'une part)
   #total = 0; // ce que pèse ce que la liste couvre, en octets (le total du pied de fenêtre)
   // La case « + pièces jointes » : cochée (`on`), la table de Grist lue (`table`), ce qu'elle ajoute au total (`other`), une lecture en cours (`busy`), ou en échec (`failed`, `reason`).
   #pj = { on: false, table: null, other: NO_OTHER, busy: false, failed: false, reason: '' };
@@ -87,6 +90,7 @@ export class Explorer {
     opts.container.append(root);
     // Le glisser-déposer (js/explorer-drag.js) : une ligne se dépose sur un dossier du volet, du fil d'Ariane ou de la liste ; hors corbeille et hors choix.
     this.#drag = new Dragging({ root, may: () => !this.#choice && !['trash', 'shared'].includes(this.state.view), file: key => this.#files.find(item => item.key === key), moveTo: (key, path) => this.#clipboard.moveTo(key, path), expand: path => { this.state.open.add(path); this.#renderTree(); } });
+    this.#win = new RowWindow({ scroll: refs.scroll, list: refs.list, held: () => this.#drag.holding, onPaint: () => { this.#roving(); this.#drag.mark(refs.list); } });
     this.#bind();
     this.render();
   }
@@ -270,23 +274,43 @@ export class Explorer {
     const result = listItems(this.#shown, { ...this.state, sort: this.#sort() }, { locale: this.#opts.locale, typeLabel: this.#opts.typeLabel, spare: this.#spare });
     this.#rows = result.rows;
     this.#total = sumWeights(result.covered);
-    const keys = this.#rows.map(r => (r.kind === 'folder' ? `dir:${r.path}` : r.file.key));
-    if (this.state.sel && !keys.includes(this.state.sel)) this.state.sel = null;
+    this.#keys = this.#rows.map(r => (r.kind === 'folder' ? `dir:${r.path}` : r.file.key));
+    if (this.state.sel && !this.#keys.includes(this.state.sel)) this.state.sel = null;
     const ctx = this.#ctx();
     const tiles = this.state.display === 'tiles';
-    const cards = this.#rows.map(r => (tiles ? tile(ctx, r) : (r.kind === 'folder' ? folderRow(ctx, r) : fileRow(ctx, r.file, result.flat))));
-    list.replaceChildren(...(tiles ? [h('div', { class: 'th-grid' }, ...cards)] : [listHead(ctx), ...cards]));
     list.classList.toggle('is-tiles', tiles);
-    this.#drag.mark(list);
+    this.#paintRows(ctx, tiles, result.flat);
     notices.replaceChildren(...this.#problems.map(text => h('div', { class: 'banner', role: 'alert' }, icon('warning'), text)), ...(this.state.view === 'trash' && this.#trashed.length ? [trashBar(ctx)] : []));
     const message = this.#loading ? this.#opts.i18n.t('ex.loading') : (this.#rows.length ? '' : (this.#restricted ? this.#opts.i18n.t('ex.emptyNoAccess') : emptyMessage(ctx)));
     empty.textContent = message;
     empty.hidden = !message;
     scroll.scrollTop = top;
+    this.#win.paint();
     this.#roving();
     this.#renderInfo();
     this.#renderTotal();
     if (focused) this.#focusKey(focused);
+  }
+
+  // Les lignes (ou les vignettes) de la liste : toutes, ou, quand elles sont nombreuses, seulement celles qu'on voit (js/explorer-window.js).
+  #paintRows(ctx, tiles, flat) {
+    const { list } = this.#refs;
+    const rows = this.#rows;
+    const one = row => (tiles ? tile(ctx, row) : (row.kind === 'folder' ? folderRow(ctx, row) : fileRow(ctx, row.file, flat)));
+    if (rows.length > WINDOW_FROM) {
+      this.#win.mount({ body: tiles ? h('div', { class: 'th-grid is-windowed' }) : h('div', { class: 'ex-rows', role: 'rowgroup' }), count: rows.length, build: index => one(rows[index]), head: tiles ? null : listHead(ctx), rowIndexFrom: tiles ? null : 2 });
+      return;
+    }
+    this.#win.release();
+    const cards = rows.map(one);
+    list.replaceChildren(...(tiles ? [h('div', { class: 'th-grid' }, ...cards)] : [listHead(ctx), ...cards]));
+    this.#drag.mark(list);
+  }
+
+  // La ligne `key` en élément, construite et amenée à l'écran quand la liste est fenêtrée ; null si la liste ne l'a pas.
+  #rowFor(key) {
+    const index = this.#keys.indexOf(key);
+    return (index >= 0 && this.#win.reveal(index)) || [...this.#refs.list.querySelectorAll('[data-key]')].find(row => row.dataset.key === key) || null;
   }
 
   // Redessiner la liste ne doit pas faire perdre la ligne où se trouve le clavier, ni celle dont un bouton l'a (l'étoile, « Plus d'actions »).
@@ -414,6 +438,7 @@ export class Explorer {
     list.addEventListener('dblclick', event => { const row = event.target.closest('[data-key]'); if (row && !event.target.closest('button')) this.#activate(row.dataset.key); });
     list.addEventListener('keydown', event => this.#onListKey(event));
     list.addEventListener('contextmenu', event => this.#onContext(event));
+    this.root.addEventListener('dragend', () => this.#win.settle());
     notices.addEventListener('click', event => { if (event.target.closest('[data-empty-trash]')) void this.#emptyTrash(); });
     // Échap sur le document : il ferme aussi quand le focus est tombé sur le fond (clic dans une zone vide, liste redessinée). Un menu ou une
     // fenêtre qui l'a pris pour lui (preventDefault, stopPropagation) passe avant.
@@ -478,12 +503,13 @@ export class Explorer {
   // Choisir une ligne sans redessiner la liste : un double-clic a besoin de ses deux clics sur la même ligne.
   #select(key, focus) {
     this.state.sel = key;
+    const target = focus ? this.#rowFor(key) : null;
     for (const row of this.#refs.list.querySelectorAll('[data-key]')) {
       const on = row.dataset.key === key;
       row.setAttribute('aria-selected', String(on));
       row.tabIndex = on ? 0 : -1;
-      if (on && focus) { row.focus({ preventScroll: true }); row.scrollIntoView({ block: 'nearest' }); }
     }
+    if (target) { target.focus({ preventScroll: true }); target.scrollIntoView({ block: 'nearest' }); }
     this.#renderInfo();
   }
 
@@ -492,19 +518,19 @@ export class Explorer {
   #onListKey(event) {
     const action = listAction(event, { display: this.state.display, filtering: this.#filtering });
     if (!action || (event.target.closest('button') && !FROM_BUTTONS.has(action))) return;
-    const rows = [...this.#refs.list.querySelectorAll('[data-key]')];
-    if (!rows.length) { if (action === 'parent') this.#goParent(event); return; }
-    const at = rows.findIndex(row => row.dataset.key === this.state.sel);
-    const to = moveTarget(action, at, rows.length, () => this.#columns(rows));
-    if (to !== null) this.#moveSelection(event, rows, to);
+    const keys = this.#keys;
+    if (!keys.length) { if (action === 'parent') this.#goParent(event); return; }
+    const at = keys.indexOf(this.state.sel);
+    const to = moveTarget(action, at, keys.length, () => this.#columns());
+    if (to !== null) this.#moveSelection(event, to);
     else if (action === 'parent') this.#goParent(event);
-    else this.#keyOnRow(event, action, rows[at >= 0 ? at : rows.findIndex(row => row.contains(event.target))] || null);
+    else this.#keyOnRow(event, action, at >= 0 ? this.#rowFor(keys[at]) : event.target.closest('[data-key]'));
   }
 
   // Le choix va à la ligne d'index `to` (tenu dans la liste).
-  #moveSelection(event, rows, to) {
+  #moveSelection(event, to) {
     event.preventDefault();
-    this.#select(rows[Math.min(Math.max(to, 0), rows.length - 1)].dataset.key, true);
+    this.#select(this.#keys[Math.min(Math.max(to, 0), this.#keys.length - 1)], true);
   }
 
   // Un geste sur la ligne choisie, ou sur celle où est le focus (`here`) ; rien quand il n'y en a pas.
@@ -519,7 +545,10 @@ export class Explorer {
   }
 
   // Le nombre de vignettes par rangée : celles qui sont à la hauteur de la première.
-  #columns(rows) { return rows.filter(row => row.offsetTop === rows[0].offsetTop).length; }
+  #columns() {
+    const rows = [...this.#refs.list.querySelectorAll('[data-key]')];
+    return rows.filter(row => row.offsetTop === rows[0].offsetTop).length;
+  }
 
   // Retour arrière : le dossier parent ; depuis Récents, Favoris ou la corbeille, la racine ; à la racine, rien.
   #goParent(event) {
@@ -578,21 +607,20 @@ export class Explorer {
     if (this.#choice) { this.#opts.notice(this.#opts.i18n.t('ex.choose.newOff')); return; }
     if (action === 'undo' || action === 'redo') { void this.#undo[action](); return; }
     if (action === 'paste') { void this.#clipboard.paste(); return; }
-    const rows = [...this.#refs.list.querySelectorAll('[data-key]')];
-    const key = this.#keyOf(event, rows);
+    const key = this.#keyOf(event);
     if (key) this.#clipboard.take(key, action);
   }
 
   // La clé de la ligne que vise un geste : la ligne choisie, sinon celle où est le clavier (à l'ouverture, le clavier est sur la première ligne sans qu'aucune soit choisie).
-  #keyOf(event, rows) {
-    const chosen = rows.find(row => row.dataset.key === this.state.sel);
-    const here = chosen || rows.find(row => row.contains(event.target));
+  #keyOf(event) {
+    if (this.state.sel && this.#keys.includes(this.state.sel)) return this.state.sel;
+    const here = event.target && typeof event.target.closest === 'function' ? event.target.closest('[data-key]') : null;
     return here ? here.dataset.key : null;
   }
 
   // La ligne `key` prend le clavier, quand la liste la montre (le fichier qu'on vient de copier ou de déplacer).
   #reveal(key) {
-    if (this.isOpen && [...this.#refs.list.querySelectorAll('[data-key]')].some(row => row.dataset.key === key)) this.#select(key, true);
+    if (this.isOpen && this.#keys.includes(key)) this.#select(key, true);
   }
 
   // « Dupliquer » : une copie du fichier, rangée dans le même dossier que lui ; elle prend le clavier.
@@ -725,10 +753,10 @@ export class Explorer {
 
   // Un geste qui fait partir la ligne `key` de la liste : quand il a abouti, le clavier passe à la ligne qui la suivait (ou la précédait), comme dans un explorateur de fichiers.
   async #leaving(key, run) {
-    const keys = this.#rows.map(row => (row.kind === 'folder' ? `dir:${row.path}` : row.file.key));
+    const keys = this.#keys;
     const at = keys.indexOf(key);
     const next = keys[at + 1] || keys[at - 1] || null;
-    if (await run() && next && this.isOpen && [...this.#refs.list.querySelectorAll('[data-key]')].some(row => row.dataset.key === next)) this.#select(next, true);
+    if (await run() && next && this.isOpen && this.#keys.includes(next)) this.#select(next, true);
   }
 
   // F2 : renommer le dossier ou le fichier. À la corbeille, un fichier se restaure d'abord.

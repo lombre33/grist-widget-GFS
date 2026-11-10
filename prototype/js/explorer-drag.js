@@ -54,6 +54,9 @@ export class Dragging {
     for (const row of list.querySelectorAll('[data-key]')) row.draggable = may;
   }
 
+  // Une ligne est tenue (un glissement est en cours) : la liste fenêtrée ne retire alors aucune ligne (js/explorer-window.js).
+  get holding() { return this.#key !== null; }
+
   // On ne tient plus rien : la fermeture de l'explorateur, la fin d'un glissement, un dépôt.
   reset() {
     this.#key = null;

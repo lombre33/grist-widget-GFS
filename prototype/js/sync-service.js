@@ -62,10 +62,15 @@ export async function loadReceiveEngine(deps) {
 }
 
 let receiving = null;
+let onArrival = () => {};
+
+// Ce que GFS fait quand un passage de la boucle qui reçoit a changé quelque chose (un fichier arrive, un nom change, son contenu s'attache) : la liste « Partagés avec moi » et la cloche se relisent
+// (js/controller.js). Un seul écouteur, celui de la page ; une erreur de l'écouteur ne touche pas la boucle.
+export function whenReceived(listener) { onArrival = listener; }
 
 // Le côté qui reçoit : la boucle du moteur qui recopie les journaux reçus dans leur table et attache le contenu des fichiers quand il arrive. Lancée une seule fois par page, et seulement quand ce document a
 // déjà reçu un partage (js/sync-resume.js) : un document qui ne reçoit rien ne la paie pas.
 export function startReceiving(deps) {
-  receiving ||= loadSharingEngine(deps).then(() => import('../kit/js/synchro/target/loop.js')).then(loop => { loop.startAutoConsolidation(() => {}); return true; }).catch(error => { receiving = null; throw error; });
+  receiving ||= loadSharingEngine(deps).then(() => import('../kit/js/synchro/target/loop.js')).then(loop => { loop.startAutoConsolidation(() => { try { onArrival(); } catch (error) { console.warn('GFS : la mise à jour des arrivées a échoué', error); } }); return true; }).catch(error => { receiving = null; throw error; });
   return receiving;
 }

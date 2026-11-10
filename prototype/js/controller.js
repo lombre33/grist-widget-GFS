@@ -6,6 +6,7 @@ import { loadAll, label } from './manifest.js';
 import { GristState } from './state.js';
 import { createPort } from './broker.js';
 import { ViewOptions, addressOf } from './view-options.js';
+import { ViewLink, LINK_KEY } from './view-link.js';
 import { AppSession } from './session.js';
 import { AppStatus } from './app-status.js';
 import { readPreferences, liveSwitch } from './frames.js';
@@ -34,6 +35,7 @@ import { Rangement, TableDeclined } from './rangement.js';
 import { RightsControl } from './rights-control.js';
 import { createOtherDocuments } from './share-other.js';
 import { resumeSharing } from './sync-resume.js';
+import { whenReceived } from './sync-service.js';
 import { WeightControl } from './weight-control.js';
 import { FILES_APP, FILES_MANIFEST, FILES_ENTRY, cleanName } from './gfs-files.js';
 import { Transfer, buildTransferFrame } from './transfer.js';
@@ -47,6 +49,7 @@ import { carriesFile } from './import-file.js';
 import { Entries } from './entries.js';
 import { Openings } from './openings.js';
 import { ReceivedControl } from './received-control.js';
+import { loadReceived } from './received-files.js';
 import { publicationQuestion } from './publication-window.js';
 import { ModulesWindow, rowKey } from './modules-window.js';
 import { buildContext, identityFor, instanceOf, pageOf } from './context.js';
@@ -103,6 +106,11 @@ export class GfsController {
     this.viewOptions = new ViewOptions({
       doc: this.port.doc, widget: this.port.widget, address: addressOf(location.href), tableId: () => (this.state.table ? this.state.table.tableId : null),
       enabled: () => this.fullAccess && !this.readonly,
+    });
+    // La section de GFS se relie d'elle-même à la grille de la même table (js/view-link.js, contrats 4.5 point 8) : « La table de la page » suit alors la ligne que la personne clique.
+    this.viewLink = new ViewLink({
+      doc: this.port.doc, state: this.state, section: () => this.viewOptions.section(), enabled: () => this.fullAccess && !this.readonly && this.params.get('grille') !== '0',
+      chosen: () => Boolean(this.workControl && this.workControl.work.choice), mark: value => this.viewOptions.write([[LINK_KEY, value]]), say: (key, vars) => this.notice(this.t(key, vars)),
     });
     // Les apps sont servies par leur site en ligne (le porteur, 22/10) ; `?live=0` : la copie figée du sous-module, celle des mesures de GFS.
     this.live = liveSwitch(search);
@@ -181,8 +189,10 @@ export class GfsController {
     doc.body.dataset.gfs = 'ready';
     if (!arrived) await this.#firstRun(); // une section qui s'ouvre sur son app n'est pas neuve : la fenêtre des apps ne passe pas par-dessus
     doc.body.dataset.gfsFirstRun = 'done';
+    void this.state.whenTable().then(() => this.viewLink.ensure());
     // Un envoi laissé en route, ou un partage reçu dont le contenu arrive encore : les boucles du moteur reprennent d'où elles en étaient (js/sync-resume.js ; rien ne se charge sans table de partage).
-    if (!this.#writeBlock()) void resumeSharing({ docApi: this.grist.docApi, transfer: this.transfer, language: () => this.lang, busy: () => false }).catch(error => console.warn('GFS : le partage entre documents ne reprend pas', error));
+    whenReceived(() => void this.#refreshReceived());
+    if (!this.#writeBlock()) void resumeSharing({ docApi: this.grist.docApi, transfer: this.transfer, language: () => this.lang, busy: () => false, isOwner: () => this.transfer.isOwner() }).catch(error => console.warn('GFS : le partage entre documents ne reprend pas', error));
   }
 
   // L'arrivée (cahier 6.2, point 2 ; js/arrival.js) : une section qui servait à une app s'ouvre sur elle, sans consigne et sans rien écrire ; sinon l'explorateur. Les réglages de la section parlent d'abord ;
@@ -466,6 +476,13 @@ export class GfsController {
       localStorage.setItem(key, '1');
     } catch (error) { return; }
     void this.openModules();
+  }
+
+  // Un passage de la boucle qui reçoit a changé quelque chose (js/sync-service.js) : « Partagés avec moi » et la cloche se mettent à jour, sans relire le reste, et seulement explorateur ouvert (à l'ouverture, la
+  // liste se relit de toute façon).
+  async #refreshReceived() {
+    if (!this.explorer || !this.explorer.isOpen || !this.fullAccess) return;
+    try { this.explorer.setReceived(await loadReceived(this.port, (await this.port.doc.listTables()).map(String))); } catch (error) { console.warn('GFS : les arrivées ne se relisent pas', error); }
   }
 
   // GFS vient d'apprendre l'adresse de la personne (la table est née pendant la session) : sa liste de fichiers se relit avec son propre rangement.

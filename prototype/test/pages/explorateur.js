@@ -224,6 +224,14 @@ async function mount() {
     refresh: readArrivals, open: file => { window.__opened = file.name; }, answerFile: (port, file, accepted) => answerFile(sharedGrist.port, file, accepted),
   });
   window.__sharedBlocked = '';
+  // Un fichier arrive pendant que l'explorateur est ouvert : la ligne est posée dans le faux Grist, puis la liste des arrivées se remplace seule (`Explorer.setReceived`, comme le fait le contrôleur).
+  window.__arrive = async name => {
+    const rows = sharedGrist.tables.GFS_Recus.rows;
+    const id = rows.length + 1;
+    rows.push({ ...rows[0], id, Identifiant: `r${id}`, Nom: name, Accepte: false, Refuse: false, Contenu: ['L', id] });
+    arrivals = await loadReceived(sharedGrist.port, await sharedGrist.port.doc.listTables());
+    explorer.setReceived(arrivals);
+  };
   window.__shared = async kind => {
     const day = Math.floor(Date.now() / 1000) - 86400;
     const row = (id, name, extra = {}) => ({ id, Identifiant: `r${id}`, Nom: name, Type: 'pdf', Date: day - id * 3600, Auteur: 'Comptabilité <compta@exemple.fr>', Contenu: ['L', id], Taille: 1500 * id, Origine: 'import', Supprimee_a_la_source: false, ...extra });

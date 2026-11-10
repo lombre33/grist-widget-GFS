@@ -9,6 +9,7 @@ import { SHARE_STRINGS } from './i18n-share.js';
 import { SHARE_OTHER_STRINGS } from './i18n-share-other.js';
 import { MANAGE_STRINGS } from './i18n-manage.js';
 import { RECEIVED_STRINGS } from './i18n-received.js';
+import { NOTIFICATION_STRINGS } from './i18n-notifications.js';
 
 const STRINGS = {
   fr: {
@@ -20,6 +21,7 @@ const STRINGS = {
     ...SHARE_OTHER_STRINGS.fr,
     ...MANAGE_STRINGS.fr,
     ...RECEIVED_STRINGS.fr,
+    ...NOTIFICATION_STRINGS.fr,
     'gfs.title': 'Grist Factory Suite',
     'gfs.noGrist': 'GFS doit être ajouté comme widget personnalisé dans Grist.',
     'gfs.loading': '{app} se charge…',
@@ -57,6 +59,8 @@ const STRINGS = {
     'work.rows': '{n} {n|ligne|lignes}',
     'work.locked': '{app} ne lit pas cette table.',
     'work.refused': '{app} ne lit pas la table {table} : elle suit la page.',
+    'link.done': 'GFS a relié ce widget à la grille de « {table} » : la ligne suit votre clic.',
+    'link.several': 'Plusieurs grilles de « {table} » sont sur la page : GFS ne sait pas laquelle suivre. Reliez le widget vous-même (« Sélectionner par », dans le panneau de droite de Grist).',
     'dock.place': 'Position de la barre',
     'dock.gauche': 'À gauche',
     'dock.haut': 'En haut',
@@ -294,6 +298,7 @@ const STRINGS = {
     ...SHARE_OTHER_STRINGS.en,
     ...MANAGE_STRINGS.en,
     ...RECEIVED_STRINGS.en,
+    ...NOTIFICATION_STRINGS.en,
     'gfs.title': 'Grist Factory Suite',
     'gfs.noGrist': 'GFS must be added to Grist as a custom widget.',
     'gfs.loading': '{app} is loading…',
@@ -331,6 +336,8 @@ const STRINGS = {
     'work.rows': '{n} {n|row|rows}',
     'work.locked': '{app} does not read this table.',
     'work.refused': '{app} does not read the {table} table: it follows the page.',
+    'link.done': 'GFS linked this widget to the “{table}” grid: the row follows your click.',
+    'link.several': 'There are several “{table}” grids on the page: GFS cannot tell which one to follow. Link the widget yourself (“Select by” in Grist’s right panel).',
     'dock.place': 'Bar position',
     'dock.gauche': 'Left',
     'dock.haut': 'Top',

@@ -11,7 +11,7 @@ import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { createI18n } from '../js/i18n.js';
 import { PAGE_PORT, openGfs, importSamples, openRowMenu, contrastProblems, shot as pdfShot } from './lab-pdf.mjs';
 import { fits } from './lab-droits.mjs';
-import { startEngine, formLink } from './lab-partage.mjs';
+import { startEngine, formLink, sendComparing, reopenedFrame } from './lab-partage.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -71,17 +71,22 @@ try {
   await source.frame.locator('[data-fk="so-check"]').click();
   await source.frame.locator('[data-fk="so-control"]').waitFor({ timeout: 30000 });
   check('le même code de contrôle des deux côtés', (await source.frame.locator('[data-fk="so-control"]').innerText()) === control, control);
-  await source.frame.locator('[data-fk="so-send"]').click();
+  await sendComparing(source.frame);
   let done = false;
   for (let i = 0; i < 120 && !done; i += 1) { done = (await text(source.frame, '.mod.so')).includes(t('so.done.link.hint')); if (!done) await source.page.waitForTimeout(1000); }
   check('la fenêtre dit que les documents sont reliés et que rien n\'est parti', done, await text(source.frame, '.mod.so'));
   await shot(source.frame, '3-relie');
   await source.frame.locator('[data-fk="so-close"]').click();
-  await source.frame.locator('.mod.so').waitFor({ state: 'detached' });
   await target.frame.locator('[data-fk="so-close"]').click();
-  await target.frame.locator('.mod.so').waitFor({ state: 'detached' });
+  await Promise.all([reopenedFrame(source), reopenedFrame(target)]); // à la fermeture, GFS réserve GFS_Synchro et le journal aux propriétaires : Grist recharge les deux pages
 
   say('--- 3. le lien est là, aucun fichier n\'est parti ---');
+  // La page rechargée n'a plus la fenêtre « Gérer les partages » : la personne la rouvre.
+  await openRowMenu(source.frame, 'Facture.pdf');
+  await source.frame.getByRole('menuitem', { name: new RegExp(`^${t('share.menu')}`) }).click();
+  await source.frame.locator('.mod.sh .rt-content').waitFor();
+  await source.frame.locator('[data-fk="share-manage"]').click();
+  await source.frame.locator('.mod.mg [data-fk="manage-tab-other"]').click();
   await source.frame.locator('.mod.mg .rr[data-link]').waitFor({ timeout: 20000 });
   check('« Autres documents » liste le lien (un webhook chez l\'envoyeur)', (await webhooks(source)) === 1, await text(source.frame, '.mod.mg'));
   await source.page.waitForTimeout(6000);

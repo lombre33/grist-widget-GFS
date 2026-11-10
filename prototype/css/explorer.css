@@ -17,6 +17,12 @@ button { cursor: pointer; }
   border: 1px solid transparent; border-radius: var(--radius-btn); background: transparent; color: var(--text); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
 .tb:hover { background: var(--surface-sunken); }
 .tb.on { background: var(--accent-soft); border-color: var(--accent-soft-border); color: var(--accent-ink); }
+/* La cloche Notifications : la pastille du nombre à accepter pose son coin sur celui du bouton. */
+.tb-bell { position: relative; }
+.tb-bell[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
+.tb-badge { position: absolute; top: -5px; right: -5px; min-width: 15px; height: 15px; padding: 0 4px; box-sizing: border-box; border-radius: 8px; background: var(--fill); color: var(--on-accent);
+  font-size: 10.5px; font-weight: 700; line-height: 15px; text-align: center; pointer-events: none; }
+.tb-badge[hidden] { display: none; }
 .tb-group { display: inline-flex; flex: none; border: var(--bw) solid var(--border-strong); border-radius: var(--radius-btn); box-shadow: var(--shadow-ctl); overflow: hidden; }
 .tb-group .tb { border: 0; border-radius: 0; }
 .tb-group .tb + .tb { border-left: 1px solid var(--border); }

@@ -12,8 +12,8 @@ import { chromium, say, check } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { createI18n } from '../js/i18n.js';
 import { PAGE_PORT, openGfs, importSamples, openRowMenu, contrastProblems, shot as pdfShot } from './lab-pdf.mjs';
-import { fits } from './lab-droits.mjs';
-import { startEngine, formLink } from './lab-partage.mjs';
+import { fits, gfsFrame } from './lab-droits.mjs';
+import { startEngine, formLink, sendComparing } from './lab-partage.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -42,7 +42,8 @@ try {
   await importSamples(source);
   const target = await openGfs(context, { lang });
   await startEngine(target.frame); // l'essai lit la clé du formulaire ; la fenêtre, elle, charge le moteur de GFS à la demande
-  const { page: tpage, frame: tframe } = target;
+  const { page: tpage } = target;
+  let tframe = target.frame; // la page se recharge quand la fenêtre de la réception se ferme (les règles du journal) : le cadre est repris après
 
   say('--- 1. l\'article, l\'accord, un code qui n\'en est pas un ---');
   await tframe.getByRole('button', { name: /^(Nouveau|New)$/ }).click();
@@ -110,7 +111,7 @@ try {
   await source.frame.locator('[data-fk="so-check"]').click();
   await source.frame.locator('[data-fk="so-control"]').waitFor({ timeout: 30000 });
   check('le même code de contrôle chez l\'envoyeur', (await source.frame.locator('[data-fk="so-control"]').innerText()) === control, { sender: await source.frame.locator('[data-fk="so-control"]').innerText(), receiver: control });
-  await source.frame.locator('[data-fk="so-send"]').click();
+  await sendComparing(source.frame);
   let rows = [];
   for (let i = 0; i < 120 && !rows.some(row => row.Nom === 'Facture.pdf' && row.Contenu); i += 1) { rows = await target.rest.rows('GFS_Recus').catch(() => []); if (!rows.some(row => row.Contenu)) await tpage.waitForTimeout(1000); }
   const sent = (await source.rest.rows('GFS_Fichiers')).find(row => row.Identifiant === source.id);
@@ -118,7 +119,19 @@ try {
   const now = rows[0] && rows[0].Contenu ? await target.rest.attachment(rows[0].Contenu[1]) : null;
   check('le fichier arrive dans GFS_Recus, mêmes octets, sans autre geste de l\'essai (la boucle de réception démarre à la réponse)', rows.length === 1 && Boolean(now) && now.hash === was.hash && now.size === was.size, { rows: rows.map(row => row.Nom), was, now });
   await tframe.locator('[data-fk="so-close"]').click();
-  await tframe.locator('.mod.so').waitFor({ state: 'detached' });
+  // Audit de sécurité du 09/11 : à la fermeture, GFS réserve le journal aux propriétaires (js/sync-rules.js) ; Grist recharge alors la page, que l'essai reprend (la boucle de réception repart d'elle-même).
+  let rules = [];
+  for (let i = 0; i < 60 && rules.length < 2; i += 1) {
+    await tpage.waitForTimeout(1000);
+    rules = await tpage.evaluate(async ([doc, name]) => {
+      const read = async table => (await (await fetch(`/api/docs/${doc}/tables/${table}/records`)).json()).records.map(row => ({ id: row.id, ...row.fields }));
+      const [resources, list] = await Promise.all([read('_grist_ACLResources'), read('_grist_ACLRules')]);
+      return list.filter(rule => /^GFS\s*:\s*Partages/.test(rule.memo || '') && resources.some(each => each.id === rule.resource && each.tableId === name)).map(rule => rule.permissionsText);
+    }, [target.docId, journal]).catch(() => []);
+  }
+  check('à la fermeture de la fenêtre, GFS réserve le journal aux propriétaires (propriétaires +CRUD, les autres -RUD)', rules.join() === '+CRUD,-RUD', rules);
+  tframe = await gfsFrame(tpage);
+  check('la page rouverte est celle de GFS, prête', (await tframe.evaluate(() => document.body.dataset.gfs)) === 'ready');
 
   say('--- 4. fermer avant la réponse défait ce qui avait été créé ---');
   await source.frame.locator('[data-fk="so-close"]').click().catch(() => {});

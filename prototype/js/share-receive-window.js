@@ -33,6 +33,7 @@ function accordScreen(ctx, info) {
     : [h('p', { class: 'so-lead' }, icon('info'), h('span', null, t('sr.accord.lead', { name: info.name }))),
       h('div', { class: 'sec' }, t('sr.accord.adds')),
       h('ul', { class: 'so-list' }, h('li', null, t('sr.accord.table', { table: info.table })), h('li', null, t('sr.accord.journal')), h('li', null, t('sr.accord.marks'))),
+      h('p', { class: 'fine' }, t('sr.accord.rules')),
       h('p', { class: 'fine' }, t('sr.accord.keep'))];
   return {
     body: h('div', { class: 'rt-content' }, ...body),
@@ -96,6 +97,10 @@ export function openShareReceive(opts) {
   };
   show(pasteScreen(ctx));
   // Fermée avant la réponse : ce qui a été créé est défait (une réception reprise ou répondue reste).
-  void result.then(() => { if (!ctx.replied) void flow.abort().catch(error => opts.notice(errorText(error))); });
+  // `settled` (la clôture : js/sync-rules.js) vient ensuite, une fois le défait terminé.
+  void result.then(async () => {
+    if (!ctx.replied) await flow.abort().catch(error => opts.notice(errorText(error)));
+    if (opts.settled) await Promise.resolve(opts.settled()).catch(() => {});
+  });
   return result;
 }

@@ -23,6 +23,7 @@ export function buildShell(i18n) {
         h('span', { class: 'grow' }),
         keep('appsBtn', h('button', { type: 'button', class: 'tb', 'aria-haspopup': 'dialog' })),
         keep('display', h('div', { class: 'tb-group', role: 'group' }, toggle('viewList', 'list'), toggle('viewTiles', 'tiles'))),
+        keep('bellBtn', h('button', { type: 'button', class: 'tb tb-bell', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, icon('bell'), keep('bellCount', h('span', { class: 'tb-badge', hidden: true })))),
         keep('settingsBtn', h('button', { type: 'button', class: 'tb', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, icon('sliders')))),
       h('div', { class: 'ex-nav-row' },
         keep('crumbs', h('nav', { class: 'crumbs' })),
@@ -56,6 +57,7 @@ export function relabel(refs, i18n) {
   refs.appsBtn.title = t('gfs.appsTip');
   refs.appsBtn.replaceChildren(icon('modules'), t('gfs.apps'));
   describe(refs.settingsBtn, t('set.tip'));
+  describe(refs.bellBtn, t('nt.tip'));
   refs.display.setAttribute('aria-label', t('ex.display'));
   describe(refs.viewList, t('ex.list'));
   describe(refs.viewTiles, t('ex.tiles'));
@@ -76,6 +78,17 @@ export function relabel(refs, i18n) {
 
 // Le mot du pied (contrats 11.4, point 7) : « Pas protégé », « Protégé en partie », « Protégé », ou « Permissions » tant que GFS n'a rien lu ; il ouvre le panneau des permissions. `rules` : ce que
 // `RightsReader.rules()` a rendu, ou null avant la lecture. Le mot et l'icône vont ensemble.
+// La cloche : le nombre de ce qui attend la personne (la pastille ne se montre qu'à partir d'un), dit aussi à la voix ; grisée pendant le choix d'un fichier, où la vue « Partagés avec moi » ne s'ouvre pas.
+export function paintBell(refs, t, count, choosing) {
+  const { bellBtn, bellCount } = refs;
+  bellCount.hidden = count === 0;
+  bellCount.textContent = count > 99 ? '99+' : String(count);
+  const text = count > 0 ? t('nt.tipCount', { n: count }) : t('nt.tip');
+  bellBtn.setAttribute('title', text);
+  bellBtn.setAttribute('aria-label', text);
+  bellBtn.setAttribute('aria-disabled', String(Boolean(choosing)));
+}
+
 export function rightsChip(refs, i18n, rules) {
   const { t } = i18n;
   const word = rules && rules.readable && rules.word ? rules.word : 'none';

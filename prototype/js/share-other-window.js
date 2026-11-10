@@ -27,6 +27,7 @@ function accordDetails(ctx) {
       h('li', null, t(live ? 'so.accord.table.live' : 'so.accord.table', { table: SYNC_TABLE_NAME })),
       h('li', null, t('so.accord.columns', { table: FILES_TABLE, columns: HELPER_COLUMNS.join(', ') })),
       h('li', null, t(live ? 'so.accord.hook.live' : 'so.accord.hook'))),
+    h('p', { class: 'fine' }, t('so.accord.rules')),
     h('p', { class: 'fine' }, t('so.accord.other', { table: RECEIVED_TABLE })),
     h('p', { class: 'fine' }, t('so.accord.keep')),
   ];
@@ -133,12 +134,13 @@ function doneScreen(ctx, result) {
   };
 }
 
-// La fenêtre d'un fichier. opts : { container, t, inertTargets, file ({ id, name } ; null : relier les deux documents sans fichier), createFlow(mode) (le parcours : createSourceFlow, `mode` : 'once' ou 'live'), errorText (le moteur), notice (un avis hors fenêtre), now () → ms }. Rend la promesse de sa fermeture.
+// La fenêtre d'un fichier. opts : { container, t, inertTargets, settled() (appelée quand elle est fermée et que plus rien n'est en route), file ({ id, name } ; null : relier les deux documents sans fichier), createFlow(mode) (le parcours : createSourceFlow, `mode` : 'once' ou 'live'), errorText (le moteur), notice (un avis hors fenêtre), now () → ms }. Rend la promesse de sa fermeture.
 export function openShareOther(opts) {
   const { t, file } = opts;
   const steps = openSteps({ container: opts.container, t, inertTargets: opts.inertTargets, title: file ? t('so.title', { name: file.name }) : t('so.title.link'), sub: file ? t('so.sub') : t('so.sub.link'), foot: t('so.foot'), errorText: opts.errorText });
   const { dialog, done, result, say, show } = steps;
   const ctx = { t, file, now: opts.now || Date.now, closed: false, sending: false, mode: file ? 'once' : 'live', strict: true, flow: null, go: steps.go, cancelButton: steps.cancelButton, copy: steps.copy };
+  const settle = () => { if (opts.settled) void Promise.resolve(opts.settled()).catch(() => {}); };
   ctx.prepare = async () => {
     say(t('so.preparing'));
     ctx.flow = opts.createFlow(ctx.mode, ctx.strict);
@@ -157,6 +159,8 @@ export function openShareOther(opts) {
       const text = error && error.share ? t(`so.error.${error.share}`) : t('so.failed', { message: opts.errorText(error) });
       if (dialog.isConnected) show(failureScreen(ctx, text)); else opts.notice(text);
     }
+    ctx.sent = true;
+    if (ctx.closed) settle(); // fermée en cours d'envoi : c'est la fin de l'envoi qui clôt
   };
   ctx.stop = async () => {
     await ctx.flow.abort();
@@ -164,7 +168,11 @@ export function openShareOther(opts) {
     done(null);
   };
   show(accordScreen(ctx));
-  // Fermée avant l'envoi : ce qui a été préparé est défait ; en cours d'envoi, l'envoi continue sans elle.
-  void result.then(() => { ctx.closed = true; if (!ctx.sending && ctx.flow) void ctx.flow.abort().catch(() => {}); });
+  // Fermée avant l'envoi : ce qui a été préparé est défait ; en cours d'envoi, l'envoi continue sans elle. `settled` (la clôture : js/sync-rules.js) vient quand plus rien n'est en route.
+  void result.then(async () => {
+    ctx.closed = true;
+    if (!ctx.sending && ctx.flow) await ctx.flow.abort().catch(() => {});
+    if (!ctx.sending || ctx.sent) settle();
+  });
   return result;
 }

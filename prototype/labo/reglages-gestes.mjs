@@ -4,8 +4,8 @@
 
 export const ROW = Object.freeze({ language: 0, theme: 1, place: 2, about: 3 });
 
-// Le bouton « Réglages » : le seul bouton à menu de la ligne du titre.
-export const settingsButton = target => target.locator('.ex-title-row .tb[aria-haspopup="menu"]');
+// Le bouton « Réglages » : le bouton à menu de la ligne du titre qui n'est pas la cloche Notifications.
+export const settingsButton = target => target.locator('.ex-title-row .tb:not(.tb-bell)[aria-haspopup="menu"]');
 
 // Les lignes du menu « Réglages » (pas celles d'un sous-menu) et celles du sous-menu ouvert.
 export const settingsRows = target => target.locator('.menu:not(.menu-sub) .menu-item');

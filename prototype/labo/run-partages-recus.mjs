@@ -29,6 +29,7 @@ const text = async (frame, selector) => (await frame.locator(selector).innerText
 const rail = frame => frame.locator('.tr-row', { hasText: t('rx.view') });
 const badge = async frame => ((await rail(frame).locator('.cnt').count()) ? (await rail(frame).locator('.cnt').innerText()).trim() : '');
 const pill = (frame, name) => rowOf(frame, name).locator('.ty .pill').innerText();
+const bellBadge = async frame => ((await frame.locator('.tb-bell .tb-badge').isVisible()) ? (await frame.locator('.tb-bell .tb-badge').innerText()).trim() : '');
 const greyed = async (frame, name) => (await rowOf(frame, name).getAttribute('class')).split(' ').includes('lk');
 
 const server = await requireServer();
@@ -45,7 +46,19 @@ try {
   const files = await source.rest.rows('GFS_Fichiers');
   const idOf = name => files.find(row => row.Nom === name).Identifiant;
   const first = await handshake(source, target, { name: 'Lot', ids: [idOf('Facture.pdf'), idOf('Devis.pdf')], columns: COLUMNS, options: { archive: true } });
+  // Un document dont les règles d'accès viennent de changer (les tables techniques du partage, réservées aux propriétaires : faits vérifiés 76) fait recharger sa page : le cadre de l'essai est perdu, il est rouvert et le moteur y est remis.
+  const alive = async run => {
+    try { await run.frame.evaluate(() => true); } catch (error) {
+      const lost = run.problems;
+      await run.page.close().catch(() => {});
+      Object.assign(run, await openGfs(context, { lang, path: run.path }));
+      run.problems.unshift(...lost);
+      await startEngine(run.frame);
+    }
+  };
   const pass = async () => {
+    await alive(source);
+    await alive(target);
     await source.frame.evaluate(() => window.__try(() => window.__s.catchUp()));
     await target.frame.evaluate(() => window.__try(() => window.__s.consolidateAll({ reread: true })));
     return target.rest.rows('GFS_Recus');
@@ -72,6 +85,19 @@ try {
   const weak = [...await contrastProblems(frame, '.ex-body'), ...await contrastProblems(frame, '.ex-info')]; // le pied (Ouvrir, Fermer) est grisé par construction tant qu'aucune app n'est ouverte : ce n'est pas la vue
   check('la liste tient dans le panneau (sans défilement horizontal), contraste de 4,5:1', noOverflow && weak.length === 0, { noOverflow, weak });
   await shot(frame, '1-a-accepter');
+  const bellLabel = await frame.locator('.tb-bell').getAttribute('aria-label');
+  check('la cloche Notifications porte le nombre à accepter (2), dit aussi à la voix', (await bellBadge(frame)) === '2' && bellLabel === t('nt.tipCount', { n: 2 }), { badge: await bellBadge(frame), bellLabel });
+  await frame.locator('.tb-bell').click();
+  const bellItems = (await frame.locator('.menu .menu-item .menu-label').allInnerTexts()).map(item => item.trim());
+  check('le menu de la cloche nomme les deux arrivées, puis ouvre « Partagés avec moi »', bellItems.length === 3 && bellItems.some(item => item.includes('Facture.pdf')) && bellItems.some(item => item.includes('Devis.pdf')) && bellItems.at(-1) === t('nt.open'), bellItems);
+  const menuIn = await frame.evaluate(() => { const at = document.querySelector('.menu').getBoundingClientRect(); return at.left >= 0 && at.top >= 0 && at.right <= window.innerWidth && at.bottom <= window.innerHeight; });
+  check('le menu de la cloche tient dans le panneau, contraste de 4,5:1', menuIn && (await contrastProblems(frame, '.menu')).length === 0, { menuIn, weak: await contrastProblems(frame, '.menu') });
+  await shot(frame, '1-cloche');
+  await frame.locator('.menu .menu-item', { hasText: 'Devis.pdf' }).click();
+  await frame.locator('.mod.so').waitFor();
+  check('un clic sur une arrivée, dans la cloche, pose la question de CE fichier', (await text(frame, '.mod.so')).includes(t('rx.answer.title', { name: 'Devis.pdf' })), await text(frame, '.mod.so'));
+  await page.keyboard.press('Escape');
+  await frame.locator('.mod.so').waitFor({ state: 'detached' });
   await goTo(frame, new RegExp(`^${t('ex.me')}`));
   check('ni « Moi » ni « Récents » ne montrent les arrivées (nulle app ne les voit non plus)', (await names(frame)).length === 0, await names(frame));
   await goTo(frame, new RegExp(t('ex.recent')));
@@ -103,6 +129,7 @@ try {
   await frame.waitForFunction(() => document.querySelector('.ls-row:not(.lk) .nm .t'), null, { timeout: 15000 });
   check('« Facture.pdf » n\'est plus grisée, son mot est « PDF », le nombre baisse', !(await greyed(frame, 'Facture.pdf')) && (await pill(frame, 'Facture.pdf')) === 'PDF' && (await badge(frame)) === '1', { grey: await greyed(frame, 'Facture.pdf'), pill: await pill(frame, 'Facture.pdf'), badge: await badge(frame) });
   check('la phrase le dit', (await toast(frame)).includes(t('rx.accepted', { name: 'Facture.pdf' })), await toast(frame));
+  check('la cloche suit : une arrivée reste à accepter', (await bellBadge(frame)) === '1', await bellBadge(frame));
   await shot(frame, '3-accepte');
   await rowOf(frame, 'Devis.pdf').click();
   await frame.getByRole('button', { name: t('rx.answer.menu') }).click();
@@ -111,6 +138,7 @@ try {
   await frame.locator('.mod.so').waitFor({ state: 'detached' });
   await waitForNames(frame, ['Facture.pdf']);
   check('« Devis.pdf » refusé n\'est plus montré, le nombre est vide', JSON.stringify(await names(frame)) === '["Facture.pdf"]' && (await badge(frame)) === '', { names: await names(frame), badge: await badge(frame) });
+  check('la cloche reste là sans nombre quand plus rien n\'attend', (await bellBadge(frame)) === '' && (await frame.locator('.tb-bell').getAttribute('aria-label')) === t('nt.tip'), await frame.locator('.tb-bell').getAttribute('aria-label'));
   const marked = await target.rest.rows('GFS_Recus');
   const row = name => marked.find(each => each.Nom === name);
   check('les marques sont sur leurs lignes (Facture acceptée, Devis refusé), les deux lignes sont là', marked.length === 2 && row('Facture.pdf').Accepte === true && row('Facture.pdf').Refuse === false && row('Devis.pdf').Refuse === true && row('Devis.pdf').Accepte === false, marked.map(each => [each.Nom, each.Accepte, each.Refuse]));
@@ -131,6 +159,7 @@ try {
   check('« Facture v2.pdf » reste acceptée (ni grisée ni comptée), « Devis v2.pdf » ne revient pas, aucun doublon', JSON.stringify(await names(frame)) === '["Facture v2.pdf"]' && !(await greyed(frame, 'Facture v2.pdf')) && (await badge(frame)) === '' && (await target.rest.rows('GFS_Recus')).length === 2, { names: await names(frame), badge: await badge(frame) });
 
   say('--- 5. un fichier de plus : lui seul est à accepter ---');
+  await alive(source);
   await importPdf(source.page, source.frame, pdfFile('Contrat.pdf', 2, 'Contrat').file);
   await waitForNames(source.frame, ['Contrat.pdf', 'Devis v2.pdf', 'Facture v2.pdf'].sort((a, b) => a.localeCompare(b)));
   const contract = (await source.rest.rows('GFS_Fichiers')).find(each => each.Nom === 'Contrat.pdf').Identifiant;
@@ -144,6 +173,25 @@ try {
   await waitForNames(frame, ['Contrat.pdf', 'Facture v2.pdf']);
   check('« Contrat.pdf » arrive grisé « À accepter » (compté), « Facture v2.pdf » reste acceptée', (await greyed(frame, 'Contrat.pdf')) && (await pill(frame, 'Contrat.pdf')) === t('rx.pending') && !(await greyed(frame, 'Facture v2.pdf')) && (await badge(frame)) === '1', { names: await names(frame), badge: await badge(frame) });
   await shot(frame, '5-un-de-plus');
+
+  say('--- 5b. un fichier arrive PENDANT que l\'explorateur est ouvert ---');
+  // La boucle qui reçoit tourne dans la page ouverte (js/sync-service.js) : on ne passe plus par `pass()`, seule la page recopie, et la liste doit se mettre à jour sans être rouverte.
+  await alive(source);
+  await importPdf(source.page, source.frame, pdfFile('Avenant.pdf', 1, 'Avenant').file);
+  await waitForNames(source.frame, ['Avenant.pdf', 'Contrat.pdf', 'Devis v2.pdf', 'Facture v2.pdf'].sort((a, b) => a.localeCompare(b)));
+  const amendment = (await source.rest.rows('GFS_Fichiers')).find(each => each.Nom === 'Avenant.pdf').Identifiant;
+  await source.frame.evaluate(args => window.__try(async () => {
+    const done = await window.__s.saveChosenExport({ exp: args.exp, name: args.exp.name, selection: args.selection });
+    return window.__s.finishEdit(args.exp, { name: args.exp.name, changed: done.changed });
+  }), { exp: first.exp, selection: first.selection([idOf('Facture.pdf'), idOf('Devis.pdf'), contract, amendment]) });
+  for (let i = 0; i < 45 && !(await names(frame)).includes('Avenant.pdf'); i += 1) {
+    await alive(source);
+    await source.frame.evaluate(() => window.__try(() => window.__s.catchUp()));
+    await page.waitForTimeout(3000);
+  }
+  const live = { names: await names(frame), rail: await badge(frame), bell: await bellBadge(frame) };
+  check('« Avenant.pdf » arrive grisé dans la liste ouverte, le volet et la cloche passent à 2, sans rouvrir', live.names.includes('Avenant.pdf') && (await greyed(frame, 'Avenant.pdf')) && live.rail === '2' && live.bell === '2', live);
+  await shot(frame, '5b-arrivee-en-direct');
 
   say('--- 6. une arrivée acceptée se lit comme un PDF de GFS ---');
   await rowOf(frame, 'Facture v2.pdf').click();

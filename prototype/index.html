@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-w4PH1q5txbwoACn44XYNHV7Re67vBmPhNJpuegTDUn0='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-NB8haVTRdgUJH2bEYmqzITiqKwTXH8un4o70VOvdEcM='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=7a7a55cf8b">
 <link rel="stylesheet" href="css/explorer.css?v=e7e8361999">
 <link rel="stylesheet" href="css/modules.css?v=8ba0d93a3b">
@@ -44,7 +44,7 @@
     "./js/catalogue.js": "./js/catalogue.js?v=2e588e5749",
     "./js/conflict-window.js": "./js/conflict-window.js?v=6707e6cc39",
     "./js/context.js": "./js/context.js?v=02c3f955eb",
-    "./js/controller.js": "./js/controller.js?v=360c9dad2c",
+    "./js/controller.js": "./js/controller.js?v=6fba92ce24",
     "./js/copying.js": "./js/copying.js?v=8da0986c98",
     "./js/deposit.js": "./js/deposit.js?v=d0c15e5868",
     "./js/dock-state.js": "./js/dock-state.js?v=8eec913fd1",
@@ -122,7 +122,7 @@
     "./js/rights.js": "./js/rights.js?v=13cc4f2471",
     "./js/rpc.js": "./js/rpc.js?v=4f9d571cf1",
     "./js/search.js": "./js/search.js?v=0921c92eb3",
-    "./js/session.js": "./js/session.js?v=8d372a771c",
+    "./js/session.js": "./js/session.js?v=e684d93f55",
     "./js/settings-menu.js": "./js/settings-menu.js?v=f9ce66c1f3",
     "./js/settings.js": "./js/settings.js?v=a425d4248c",
     "./js/share-control.js": "./js/share-control.js?v=19ce7384c1",
@@ -153,7 +153,7 @@
     "./js/trash.js": "./js/trash.js?v=6744b756e1",
     "./js/undo-stack.js": "./js/undo-stack.js?v=4e123cb751",
     "./js/view-link.js": "./js/view-link.js?v=c1f7e951d4",
-    "./js/view-options.js": "./js/view-options.js?v=7470835d0e",
+    "./js/view-options.js": "./js/view-options.js?v=1a3856ae5e",
     "./js/weight-control.js": "./js/weight-control.js?v=e720b51a0b",
     "./js/weight-reader.js": "./js/weight-reader.js?v=d2d2a3ce41",
     "./js/weight-window.js": "./js/weight-window.js?v=efaa1f0d08",
@@ -233,14 +233,14 @@
      Le navigateur les demande tous d'un coup au lieu d'un niveau d'imports à la fois (9 niveaux, donc 9 allers-retours de réseau). Après la carte d'importation, jamais avant : une page qui commence à
      charger un module avant elle l'ignore et demande les modules sans leur ?v=. -->
 <!-- préchargement -->
-<link rel="modulepreload" href="./js/controller.js?v=360c9dad2c">
+<link rel="modulepreload" href="./js/controller.js?v=6fba92ce24">
 <link rel="modulepreload" href="./js/catalogue.js?v=2e588e5749">
 <link rel="modulepreload" href="./js/manifest.js?v=2adb1a2c16">
 <link rel="modulepreload" href="./js/state.js?v=ac1616eaf2">
 <link rel="modulepreload" href="./js/broker.js?v=1bce6f77de">
-<link rel="modulepreload" href="./js/view-options.js?v=7470835d0e">
+<link rel="modulepreload" href="./js/view-options.js?v=1a3856ae5e">
 <link rel="modulepreload" href="./js/view-link.js?v=c1f7e951d4">
-<link rel="modulepreload" href="./js/session.js?v=8d372a771c">
+<link rel="modulepreload" href="./js/session.js?v=e684d93f55">
 <link rel="modulepreload" href="./js/app-status.js?v=803f91c70f">
 <link rel="modulepreload" href="./js/frames.js?v=554a438e75">
 <link rel="modulepreload" href="./js/i18n.js?v=8550352677">

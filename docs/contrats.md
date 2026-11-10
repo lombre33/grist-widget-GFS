@@ -1089,7 +1089,7 @@ Les noms de la v0 :
 | `langue` (événement) | GFS → app | `{ langue }` (5.2, point 6) | aucune |
 | `barre` (événement) | GFS → app | `{ barre }` : `{ bord, epaisseur, zone }` ou `null` (5.2, point 7) | aucune |
 | `ambiance` (événement) | GFS → app | `{ ambiance }` : le message d'ambiance, ou `null` (5.2, point 10) | aucune |
-| `reglages` (événement) | GFS → app | `{ enregistres }` : vrai quand le réglage que l'app vient d'écrire est dans la vue, faux quand il reste un brouillon (7.3, point 5) | aucune |
+| `reglages` (événement) | GFS → app | `{ enregistres }` : vrai quand le réglage que l'app vient d'écrire est dans la vue, faux quand il reste un brouillon ; dit aussi d'avance, à la demande de `contexte`, ce que deviendront ses réglages (7.3, point 5) | aucune |
 
 1. [D] `gfs` est le numéro de contrat de l'émetteur (pour l'app, celui de son manifeste). Un message sans `gfs` entier, ou d'un
    numéro que le destinataire ne connaît pas, est ignoré.
@@ -1139,7 +1139,8 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    quand la barre de GFS change de bord, de taille, ou disparaît et revient (point 7). `identite` (`{ "identite": { "email": … } | null }`),
    quand GFS apprend l'adresse de la personne pendant que l'app qui la déclare est ouverte (point 9). `ambiance` (`{ "ambiance": { … } | null }`),
    quand la personne change l'ambiance ou la couleur de GFS (point 10). `reglages` (`{ "enregistres": true | false }`), après chaque écriture
-   d'un réglage de l'app : vrai si GFS l'a écrit dans la vue (rien à enregistrer dans Grist), faux s'il est resté un brouillon (7.3, point 5).
+   d'un réglage de l'app : vrai si GFS l'a écrit dans la vue (rien à enregistrer dans Grist), faux s'il est resté un brouillon ; et **d'avance**, une fois
+   par demande de `contexte`, pour une app qui déclare des clés `reglages` (7.3, point 5).
 3. [D] `ouverture` : `null` quand l'app s'ouvre sans consigne (elle applique son propre ordre d'arrivée, cahier 6.2, point 4 : c'est
    le cas du bouton « Ouvrir » de la fenêtre « Apps et extensions » et de l'arrivée sur une vue qui porte ses réglages, 7.4, point 7) ;
    sinon `{ fichier, type, dossier, raison }` où `fichier` est `{ id, type }` (ou `null` pour « Nouveau »), `type` le type
@@ -2452,17 +2453,30 @@ d'app mis à la corbeille (6.2), jamais avant.
 5. [T] **L'app en est prévenue.** Après chaque écriture de ses réglages, GFS lui envoie l'événement `reglages` `{ enregistres }`
    (5.1) : vrai si le réglage est dans la vue, faux s'il est resté un brouillon. Une app qui rappelle « Enregistrer » à la personne
    (Publipostage+) tait son rappel quand `enregistres` est vrai ; une app qui ignore l'événement, ou qui est seule, n'a rien à changer.
+   **Et d'avance** (décision du porteur, 10/11, « GFS le dit dès l'ouverture ») : une app qui ne sait rien avant son premier réglage montrait,
+   dans GFS, son rappel un instant à chaque premier réglage, et deux phrases qui demandent d'enregistrer la vue tant qu'aucun réglage n'avait
+   été écrit. À chaque demande de `contexte` d'une app qui déclare des clés `reglages` (pas en lecture seule), GFS **lit sa section, sans rien
+   écrire** (les mêmes sections candidates que pour écrire, point 4) et envoie `reglages` : **vrai** quand une seule section dit ce que Grist
+   dit à GFS (ou que la recherche a déjà reconnu la sienne) ; **faux** quand il sait déjà qu'il se repliera (accès pas `full`, aucune section,
+   brouillon déjà posé : la raison est dite en console, comme à l'écriture) ; **rien** quand il ne sait pas (plusieurs sections pareilles :
+   seule une marque le dirait, et une marque s'écrit). Les droits de structure ne se lisent pas : une annonce vraie se corrige par la première
+   écriture que Grist refuse (`enregistres: false`). Une écriture qui part avant la réponse de la lecture la dépasse : l'annonce n'est alors
+   pas envoyée. Aucune consigne aux apps : celles qui écoutent `reglages` (Publipostage+) le reprennent comme un événement de plus.
 6. [T] **Le repli sur le brouillon.** GFS écrit alors un brouillon, clé par clé (point 1, comme avant), dit `enregistres: false`, et
-   avertit une fois par raison dans la console, quand : l'accès de GFS n'est pas `full` ou le document est en lecture seule ; aucune
+   avertit une fois par raison dans la console, quand : l'accès de GFS n'est pas `full` ; aucune
    section n'est retrouvée (aucune candidate, ou recherche sans réponse) ; le texte de la section est illisible ; **un brouillon est
    déjà posé dans la section** (écrire dans la vue le cacherait, Grist rendant le brouillon avant le réglage enregistré : GFS le
    rejoint plutôt que de le masquer, et « Enregistrer » ou « Retour » le libère) ; Grist refuse l'écriture (une règle d'accès
-   réserve la structure du document) ; l'écho manque.
+   réserve la structure du document) ; l'écho manque. **En lecture seule**, le courtier refuse l'écriture (`GFS_LECTURE_SEULE`) avant tout : ni vue
+   ni brouillon, et aucun événement `reglages` (une app qui montre un rappel à l'écriture le garde alors, sans rien d'enregistré).
 7. [M] **Mesuré le 03/11** dans un vrai Grist (grist-static 0.1.6, Chromium, 700 × 400, souris et clavier réels) avec Publipostage+ :
    le geste « Utiliser le modèle ouvert pour cette vue » et « Retirer » ne montrent aucune barre ; l'arrivée rouvre la vue sur le modèle
    retenu ; deux GFS sur la même table gardent chacune son modèle, sans marque qui reste ; un brouillon déjà posé reste un brouillon
    et se libère par « Retour » (faits vérifiés, 18). Non mesuré : un vrai serveur et une règle d'accès qui refuse (le repli est couvert
    par les tests, contre un faux port), Firefox, ce que « Annuler » (Ctrl+Z) de Grist fait d'une écriture de la vue.
+   **Mesuré le 10/11** (annonce d'ouverture, faits vérifiés 85) : avant l'annonce, la vraie Publipostage+ montrait son rappel au premier
+   réglage et les deux phrases demandaient d'enregistrer ; avec elle, `GfsLink.settingsSaved()` est vrai dès l'ouverture, les deux phrases
+   n'y demandent rien et le rappel ne paraît à aucun moment.
 8. [T] **Ce que cela ne garantit pas.** Une écriture réécrit tout le texte de la section (accès et adresse compris) : un autre
    changement de la même section dans les quelques millisecondes qui suivent la relecture serait perdu. Elle demande le droit de
    modifier la structure du document, sinon c'est le repli du point 6. Et elle ne règle rien pour une app **seule** (point 9).

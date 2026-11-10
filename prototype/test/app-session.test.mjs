@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { AppSession } from '../js/session.js';
 import { CATALOGUE } from '../js/catalogue.js';
-import { form, catalogue } from './helpers.mjs';
+import { form, publipostage, catalogue } from './helpers.mjs';
 import { isGfsWarning, isSilentProbeWarning } from '../labo/sondes-muettes.mjs';
 
 const DELAY = 15000;
@@ -23,7 +23,7 @@ function fakeFrame() {
   };
 }
 
-function setup(t, { live = true, probe = false } = {}) {
+function setup(t, { live = true, probe = false, publi = false, extra = {} } = {}) {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const warnings = [];
   t.mock.method(console, 'warn', (...args) => { warnings.push(args.join(' ')); });
@@ -33,11 +33,11 @@ function setup(t, { live = true, probe = false } = {}) {
   const events = [];
   const route = { handler: null, setActive(win, handler) { this.handler = handler; }, clearActive() {} };
   const session = new AppSession({
-    entry: probe ? { id: 'sonde-o', dossier: 'labo/sondes/o-ouvrir/', manifeste: 'labo/sondes/sonde-o.json' } : CATALOGUE.find(item => item.id === 'form'),
-    manifest: probe ? { ...form(), id: 'sonde-o' } : form(), catalogue: catalogue(),
+    entry: probe ? { id: 'sonde-o', dossier: 'labo/sondes/o-ouvrir/', manifeste: 'labo/sondes/sonde-o.json' } : CATALOGUE.find(item => item.id === (publi ? 'publipostage' : 'form')),
+    manifest: probe ? { ...form(), id: 'sonde-o' } : publi ? publipostage() : form(), catalogue: catalogue(),
     state: { grantedAccess: 'full', subscribe: () => () => {} }, port: {}, router: route, container: { append() {} },
     readonly: false, preferences: {}, base: 'https://exemple.github.io/grist-widget-GFS/prototype/index.html', live, lang: 'fr',
-    onStatus: kind => events.push(kind), envelopeHandlers: () => ({}),
+    onStatus: kind => events.push(kind), envelopeHandlers: () => ({}), ...extra,
   });
   session.open();
   return { session, frames, events, route, warnings };
@@ -134,4 +134,69 @@ test('`supprimer` et `dupliquer` partent dans l\'enveloppe de GFS vers l\'app, e
   assert.deepEqual(sent[1], { gfs: 0, type: 'appel', id: 2, nom: 'dupliquer', args: { fichier: { id: '7', type: 'formulaire' }, nom: 'Inscription (1)' } });
   route.handler({ gfs: 0, type: 'erreur', id: 2, code: 'GFS_INCONNU', message: 'inconnu' });
   await assert.rejects(copying, { code: 'GFS_INCONNU', message: 'inconnu' });
+});
+
+// L'annonce d'ouverture de l'événement `reglages` (contrats 7.3, point 5) : une app qui rappelle « Enregistrer » ne sait rien avant son premier réglage ; GFS lui dit d'avance, sans rien écrire,
+// ce que deviendront ses réglages de vue. Le faux `viewOptions` ne rend que ce que `expect()` rend ; la lecture de la section se vérifie dans view-options.test.mjs.
+const announce = async (t, expected, options = {}) => {
+  const viewOptions = { expect: () => Promise.resolve(expected) };
+  const { session, frames } = setup(t, { publi: true, extra: { viewOptions, ...options } });
+  const sent = [];
+  frames[0].contentWindow.postMessage = message => sent.push(message);
+  session.announceSaved();
+  await Promise.resolve();
+  await Promise.resolve();
+  return { session, sent };
+};
+const reglages = enregistres => ({ gfs: 0, type: 'evenement', nom: 'reglages', data: { enregistres } });
+
+test('l\'annonce d\'ouverture : GFS dit « enregistres: true » avant tout réglage, quand ils iront dans la vue', async t => {
+  const { sent } = await announce(t, true);
+  assert.deepEqual(sent, [reglages(true)]);
+});
+
+test('l\'annonce d\'ouverture : GFS dit aussi « enregistres: false » quand il sait qu\'il se repliera sur le brouillon', async t => {
+  const { sent } = await announce(t, false);
+  assert.deepEqual(sent, [reglages(false)]);
+});
+
+test('l\'annonce d\'ouverture : quand GFS ne sait pas (null), il ne dit rien', async t => {
+  const { sent } = await announce(t, null);
+  assert.deepEqual(sent, []);
+});
+
+test('l\'annonce d\'ouverture : une app sans réglages de vue (Form+) ne reçoit rien, et GFS ne lit même pas la section', async t => {
+  let asked = 0;
+  const viewOptions = { expect: () => { asked++; return Promise.resolve(true); } };
+  const { session, frames } = setup(t, { extra: { viewOptions } });
+  frames[0].contentWindow.postMessage = () => assert.fail('Form+ ne déclare aucune clé de réglage : rien à annoncer');
+  session.announceSaved();
+  await Promise.resolve();
+  assert.equal(asked, 0);
+});
+
+test('l\'annonce d\'ouverture : un document en lecture seule ne reçoit rien (rien ne s\'y écrit, ni dans la vue ni en brouillon)', async t => {
+  let asked = 0;
+  const viewOptions = { expect: () => { asked++; return Promise.resolve(true); } };
+  const { session, frames } = setup(t, { publi: true, extra: { viewOptions, readonly: true } });
+  const sent = [];
+  frames[0].contentWindow.postMessage = message => sent.push(message);
+  session.announceSaved();
+  await Promise.resolve();
+  assert.deepEqual(sent, []);
+  assert.equal(asked, 0);
+});
+
+test('l\'annonce d\'ouverture : un réglage écrit avant la réponse la dépasse, elle ne dit pas le contraire', async t => {
+  let answer;
+  const viewOptions = { expect: () => new Promise(resolve => { answer = resolve; }) };
+  const { session, frames } = setup(t, { publi: true, extra: { viewOptions } });
+  const sent = [];
+  frames[0].contentWindow.postMessage = message => sent.push(message);
+  session.announceSaved();
+  session.sendSaved(false); // le premier réglage de l'app a été refusé par Grist : brouillon
+  answer(true); // la lecture, partie avant, rend vrai
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.deepEqual(sent, [reglages(false)]);
 });

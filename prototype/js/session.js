@@ -15,6 +15,7 @@ export class AppSession {
   #frame = null;
   #peer = null;
   #envelope = null;
+  #savedCount = 0; // les événements `reglages` envoyés : une annonce d'ouverture qui arrive après l'un d'eux est dépassée
   #unsubscribe = null;
   #timers = [];
   #leavers = [];
@@ -118,7 +119,18 @@ export class AppSession {
 
   // L'événement `reglages` (contrats 7.3, point 5) : un réglage de l'app vient d'être écrit. `enregistres` vrai : il est dans la vue, rien à enregistrer dans Grist ; faux : brouillon.
   sendSaved(saved) {
+    this.#savedCount++;
     if (this.#envelope) this.#envelope.event('reglages', { enregistres: Boolean(saved) });
+  }
+
+  // La même annonce, d'avance, quand l'app demande son contexte (contrats 7.3, point 5) : une app qui rappelle « Enregistrer » ne sait rien avant son premier réglage, et le dirait à tort au
+  // départ. GFS lit sa section (rien n'est écrit) et dit ce qu'il en attend ; une écriture qui passe avant la réponse dit mieux (`#savedCount`), et quand GFS ne sait pas, il ne dit rien.
+  // Seulement pour une app qui a des réglages de vue à écrire, et jamais en lecture seule (rien ne s'y écrit, ni dans la vue ni en brouillon).
+  announceSaved() {
+    const { viewOptions, readonly } = this.ctx;
+    if (!viewOptions || readonly || !this.policy.reglages.size) return;
+    const sent = this.#savedCount;
+    viewOptions.expect().then(expected => { if (expected !== null && this.#savedCount === sent) this.sendSaved(expected); });
   }
 
   // L'événement `identite` (contrats 5.2, points 2 et 9) : GFS vient d'apprendre l'adresse e-mail de la personne après le `contexte` de l'app, qui l'avait déclarée ; `null` quand elle ne vaut plus.

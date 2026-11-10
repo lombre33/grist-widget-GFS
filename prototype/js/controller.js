@@ -585,6 +585,7 @@ export class GfsController {
     const identity = identityFor(session.policy, this.identity);
     if (session === this.session) this.#sentIdentity = JSON.stringify(identity);
     const role = await this.rights.reader.role(); // ce que GFS a prouvé : propriétaire ou non, `null` sinon (contrats 5.2, point 8)
+    session.announceSaved(); // d'avance, ce que deviendront ses réglages de vue : dans la vue (rien à enregistrer dans Grist) ou en brouillon (contrats 7.3, point 5)
     return buildContext(facts, { access: session.access, extensions: given.extensions, libraries: given.bibliotheques, opening, storage, bar: this.dock.barre(), identity, players: session.policy.lecteurs, ambiance: this.theme.message(), role }, { preferences: this.#appPreferences(), readonly: this.readonly });
   }
 

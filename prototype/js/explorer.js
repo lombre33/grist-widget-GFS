@@ -73,7 +73,7 @@ export class Explorer {
     // Ctrl+Z (js/undo-stack.js) : la pile du rangement (js/filing.js), ou la sienne ; la corbeille et la copie y déposent de quoi se défaire (js/explorer-undo.js).
     this.#undo = (opts.filing && opts.filing.undoStack) || new UndoStack({ t: opts.i18n.t, notice: text => opts.notice(text) });
     const guarded = undoable({
-      stack: this.#undo, bin: opts.trash || NO_TRASH, copying: opts.copying || NO_COPYING, trashed: () => this.#trashed, live: () => this.#files, t: opts.i18n.t, appName: id => opts.appName(id),
+      stack: this.#undo, bin: opts.trash || NO_TRASH, copying: opts.copying || NO_COPYING, trashed: () => this.#trashed, live: () => this.#files, t: opts.i18n.t, appName: id => opts.appName(id), reveal: key => this.#reveal(key),
     });
     this.#bin = opts.trash ? guarded.bin : NO_TRASH;
     this.#copying = opts.copying ? guarded.copying : NO_COPYING;

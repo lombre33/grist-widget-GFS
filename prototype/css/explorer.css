@@ -110,6 +110,8 @@ button { cursor: pointer; }
 .ls-row .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ls-row.folder .t { font-weight: 700; }
 .ls-row .hint { flex: none; max-width: 38%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: max(11px, var(--fs-min)); color: var(--text-muted); }
+/* À la corbeille, la ligne est étroite (le volet des dossiers, quatre colonnes) : le dossier d'origine rend sa place au nom avant que le nom ne soit coupé (mesuré le 10/11 : « Convocatio… » à 700 px). */
+.ls-row .hint.yield { flex: 0 1000 auto; min-width: 0; }
 .ls-row .now { flex: none; font-size: max(11px, var(--fs-min)); font-weight: 600; color: var(--accent-ink); }
 .ls-row .ty, .ls-row .md { font-size: max(12px, var(--fs-min)); color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ls-row .ty { overflow: visible; }

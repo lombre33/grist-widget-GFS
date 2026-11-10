@@ -39,6 +39,7 @@ import { piecesJointesProblems } from './pieces-jointes-firefox.mjs';
 import { annulerProblems } from './annuler-firefox.mjs';
 import { voileProblems } from './voile-firefox.mjs';
 import { fenetresProblems } from './fenetres-firefox.mjs';
+import { bulleProblems } from './bulle-firefox.mjs';
 import { lecteurPages, lecteurProblems, stubProviders } from './lecteur-firefox.mjs';
 import { accesProblems, contrasteForceProblems } from './acces-firefox.mjs';
 import { ROW_BUTTON, ROW_BUTTON_ACCESS, ROW_HEIGHT, ROW_HEIGHT_ACCESS, TILE_MIN, columnFaults, expectedTileColumns, measureColumns, measureRows, measureTiles } from '../labo/mesures-liste.mjs';
@@ -589,6 +590,7 @@ describe('l\'interface sous Firefox', () => {
         problems.push(...await annulerProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await voileProblems(page, caption(language, 700, 1, mode)));
         problems.push(...await fenetresProblems(page, caption(language, 700, 1, mode)));
+        problems.push(...await bulleProblems(page, caption(language, 700, 1, mode)));
         problems.push(...await lookProblems(page, caption(language, 700, 1, mode)));
         problems.push(...await accesProblems(page, caption(language, 700, 1, mode)));
       }

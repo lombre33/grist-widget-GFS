@@ -171,7 +171,8 @@ function fileCells(ctx, file, flat) {
   const pinTitle = file.pinned ? t('ex.unpin') : t('ex.pin');
   return [
     h('div', { class: 'nm', role: 'gridcell' }, icon(lock ? 'lock' : file.icon), h('span', { class: 't', title: lock ? `${name} · ${lock.text}` : name }, name),
-      flat && file.folder ? h('span', { class: 'hint' }, file.folder.split('/').pop()) : null,
+      // Le dossier d'origine, à côté du nom (vues à plat) ; son chemin entier au survol. À la corbeille c'est lui qui cède la place quand la ligne est étroite : le nom d'abord (audit du 10/11 : « Convocatio… »).
+      flat && file.folder ? h('span', { class: ctx.state.view === 'trash' ? 'hint yield' : 'hint', title: file.folder }, file.folder.split('/').pop()) : null,
       // Dans « Ouverts », le fichier que l'app affiche en ce moment : le mot, pas une couleur seule.
       ctx.state.view === 'opened' && ctx.shownKey === file.key ? h('span', { class: 'now' }, t('ex.shown')) : null,
       lock ? h('span', { class: 'sr-only' }, `, ${lock.text}`) : null),

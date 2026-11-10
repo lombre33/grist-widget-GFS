@@ -9,9 +9,11 @@
 const stamp = file => Number(file.trashed && file.trashed.ts) || 0;
 const opposite = kind => (kind === 'undo' ? 'redo' : 'undo');
 
-// opts : { stack (js/undo-stack.js), bin (js/trash.js), copying (js/copying.js), trashed() -> les fichiers à la corbeille, live() -> les fichiers vivants, t, appName(id) }
+// opts : { stack (js/undo-stack.js), bin (js/trash.js), copying (js/copying.js), trashed() -> les fichiers à la corbeille, live() -> les fichiers vivants, t, appName(id), reveal(key) }
+// `reveal` (facultatif) : appelée avec la clé du fichier que Ctrl+Z ou Ctrl+Y vient de sortir de la corbeille, pour que l'explorateur le choisisse (audit du 10/11, carte « Sélectionner le fichier ramené » : sans cela,
+// la ligne choisie restait celle d'un voisin, et un Suppr de plus agissait sur lui).
 // Rend { bin, copying } : de quoi mettre à la place de ceux qu'on entoure (même forme, mêmes gestes).
-export function undoable({ stack, bin, copying, trashed, live, t, appName }) {
+export function undoable({ stack, bin, copying, trashed, live, t, appName, reveal }) {
   const nameOf = file => file.name || t('ex.untitled');
   const newestInBin = key => trashed().filter(file => file.key === key).reduce((best, file) => (!best || stamp(file) >= stamp(best) ? file : best), null);
   // Remet à la corbeille le fichier vivant `key` (`kind` : 'undo' pour défaire une restauration ou une copie, 'redo' pour refaire une suppression). Cela attend l'app ouverte pour un fichier qui tient à plus qu'une
@@ -33,6 +35,7 @@ export function undoable({ stack, bin, copying, trashed, live, t, appName }) {
     if (await bin.restore(entry)) {
       const back = live().find(item => !before.has(item.key));
       stack.push({ run: toBin(back ? back.key : file.key, nameOf(file), opposite(kind)) });
+      if (reveal) reveal(back ? back.key : file.key);
     }
     return undefined;
   };

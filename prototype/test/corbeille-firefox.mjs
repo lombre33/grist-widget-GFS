@@ -185,6 +185,37 @@ async function trashView(run, t) {
   await run.expect('retour aux dossiers', 'le fil d\'Ariane devait ramener aux dossiers, « Convocation » y est revenu', state => names(state).includes('Convocation'));
 }
 
+// Audit des parcours du 10/11 (carte « Donner plus de place au nom des fichiers dans la corbeille ») : dans la liste étroite, le dossier d'origine, écrit à côté du nom, rend sa place au nom avant que le nom ne soit coupé
+// (« Convocatio… » à 700 px) ; son chemin entier est au survol. L'essai resserre la cellule du nom à la largeur juste du nom plus ses espaces : le nom y tient seulement si le dossier cède.
+async function nameBeforeOrigin(run, t) {
+  await run.reset();
+  await run.click('Main');
+  await run.page.press('/');
+  await run.page.press('c', 'o', 'n', 't', 'r', 'a', 't');
+  await run.expect('recherche « contrat »', 'taper « contrat » devait lister « Contrat de prestation » (rangé dans « Formation »)', state => names(state).includes('Contrat de prestation'));
+  await run.click('Contrat de prestation');
+  await run.page.press('Delete');
+  await run.expect('Suppr', 'Suppr devait mettre « Contrat de prestation » à la corbeille', state => state.trashCount === '1');
+  await run.clickSelector('.tr-row[data-view="trash"]');
+  await run.expect('vue « Corbeille »', 'la corbeille devait lister « Contrat de prestation »', state => names(state).includes('Contrat de prestation'));
+  const measured = await run.page.run(() => {
+    const cell = document.querySelector('.ls-row .nm');
+    const name = cell && cell.querySelector('.t');
+    const origin = cell && cell.querySelector('.hint');
+    if (!origin) return { noOrigin: true };
+    const gap = parseFloat(getComputedStyle(cell).columnGap) || 0;
+    const room = cell.firstElementChild.getBoundingClientRect().width + name.scrollWidth + 2 * gap + 2;
+    cell.style.width = `${room}px`;
+    const result = { full: name.scrollWidth, shown: name.clientWidth, title: origin.getAttribute('title'), folder: origin.textContent };
+    cell.style.width = '';
+    return result;
+  });
+  if (measured.noOrigin) { run.note('dossier d\'origine', 'la ligne de la corbeille devait dire le dossier d\'origine (« Formation ») à côté du nom'); return; }
+  if (measured.shown < measured.full - 0.5) run.note('nom coupé avant le dossier', `à la corbeille, le nom devait passer avant le dossier d'origine : le nom fait ${measured.full} px, il en montre ${measured.shown} alors que le dossier « ${measured.folder} » garde sa place`);
+  if (!measured.title) run.note('dossier sans info-bulle', 'le dossier d\'origine, qui peut être coupé, devait porter son chemin entier au survol');
+  await run.page.press('Escape');
+}
+
 // Suppr à la corbeille : la fenêtre nomme le fichier et laisse le clavier à « Annuler » ; Échap ne supprime rien ; « Supprimer définitivement » (la souris) supprime ; « Vider la corbeille… » demande aussi.
 async function purgeAndEmpty(run, t) {
   await run.reset();
@@ -295,7 +326,7 @@ export async function corbeilleProblems(page, language, tag) {
   const found = [];
   const t = createI18n(language).t;
   const run = new Run(page, tag, found);
-  const steps = [opening, renameAndTrash, trashView, purgeAndEmpty, tableWindow, menus, searching, tiles, leavingTrash];
+  const steps = [opening, renameAndTrash, trashView, nameBeforeOrigin, purgeAndEmpty, tableWindow, menus, searching, tiles, leavingTrash];
   for (const step of steps) {
     try {
       await step(run, t);

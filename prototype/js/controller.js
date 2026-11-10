@@ -23,6 +23,7 @@ import { aboutItems } from './about.js';
 import { WorkControl } from './work-control.js';
 import { Explorer } from './explorer.js';
 import { loadFiles, loadAttachments } from './explorer-data.js';
+import { createFileRefresh } from './file-refresh.js';
 import { createLightReader } from './explorer-sql.js';
 import { AppLinks } from './links.js';
 import { Filing } from './filing.js';
@@ -370,27 +371,35 @@ export class GfsController {
     }
   }
 
-  async refreshFiles() {
-    if (!this.fullAccess) {
+  // Une seule lecture des fichiers fait foi, la dernière lancée (js/file-refresh.js) : une lecture plus ancienne qui finit après ne remplace pas la liste récente.
+  #refresh = createFileRefresh({
+    canRead: () => this.fullAccess,
+    load: () => loadFiles(this.port, [...this.validApps(), FILES_ENTRY], this.identity, this.fileReader),
+    onRestricted: () => {
       this.explorer.setFiles([]);
       this.#fileStatus = { loading: false, restricted: true, problems: [{ key: 'gfs.needsFullAccess' }] };
       this.#showFileStatus();
-      return;
-    }
-    this.#fileStatus = { loading: true, restricted: false, problems: [] };
-    this.#showFileStatus();
-    try {
-      const { files, trash, folders, received, spaces, problems, stats } = await loadFiles(this.port, [...this.validApps(), FILES_ENTRY], this.identity, this.fileReader);
+    },
+    onLoading: () => {
+      this.#fileStatus = { loading: true, restricted: false, problems: [] };
+      this.#showFileStatus();
+    },
+    onLoaded: ({ files, trash, folders, received, spaces, problems, stats }) => {
       this.spaces = spaces;
       this.explorer.setFiles(files, trash, folders, received);
       this.#fileStatus = { loading: false, restricted: false, problems: problems.map(item => ({ key: 'ex.readFailed', app: item.app, reason: item.reason })) };
       this.#showFileStatus();
       this.doc.body.dataset.explorerStats = JSON.stringify(stats);
-    } catch (error) {
+    },
+    onFailed: error => {
       console.error('GFS : lecture des fichiers impossible', error);
       this.#fileStatus = { loading: false, restricted: false, problems: [{ key: 'gfs.loadFailed', reason: String(error && error.message) }] };
       this.#showFileStatus();
-    }
+    },
+  });
+
+  refreshFiles() {
+    return this.#refresh();
   }
 
   #showFileStatus() {

@@ -54,7 +54,7 @@ const ORDINARY_FRAME = { chemin: '/dist/main.bundle.js', de: 'iframeAttributes:{
 // `live` : GFS sert les apps sur leur site en ligne (le défaut de GFS depuis le 22/10) ; le labo mesure la copie figée du sous-module (`live=0`) sauf `LAB_LIVE=1` ou `live: true`.
 // `liveAbsent` : les sites (`FormPlus`…) qui ne répondent pas, pour mesurer le repli sur la copie.
 // `ordinaryFrame` : le cadre de Grist sans le `credentialless` de grist-static (voir ORDINARY_FRAME) ; faux par défaut, pour ne pas changer les passes déjà mesurées.
-const DEFAULTS = { lang: 'fr', colorScheme: 'light', width: 1280, height: 800, query: '', fullAccess: true, probes: false, frameAttributes: null, patches: [], ordinaryFrame: false, widget: WIDGET, newsSeen: true, user: null, live: process.env.LAB_LIVE === '1', liveAbsent: [] };
+const DEFAULTS = { lang: 'fr', colorScheme: 'light', width: 1280, height: 800, query: '', grille: false, fullAccess: true, probes: false, frameAttributes: null, patches: [], ordinaryFrame: false, widget: WIDGET, newsSeen: true, user: null, live: process.env.LAB_LIVE === '1', liveAbsent: [] };
 
 // Les sites en ligne des apps, vus du labo : `/<site>/…` rend le fichier de la copie de l'app (même serveur, même origine que GFS), ou 404 pour un site « hors ligne ».
 async function routeLiveSites(page, absent) {
@@ -68,7 +68,7 @@ async function routeLiveSites(page, absent) {
 }
 
 export async function startLab(options = {}) {
-  const { lang, colorScheme, width, height, query, fullAccess, probes, frameAttributes, patches, ordinaryFrame, widget, newsSeen, user, live, liveAbsent } = { ...DEFAULTS, ...options };
+  const { lang, colorScheme, width, height, query, grille, fullAccess, probes, frameAttributes, patches, ordinaryFrame, widget, newsSeen, user, live, liveAbsent } = { ...DEFAULTS, ...options };
   await mkdir(SHOTS, { recursive: true });
   const browser = await engine.launch(engineName === 'chromium' ? { args: ['--no-sandbox', '--font-render-hinting=none'] } : {});
   const { page, context } = await newLabPage(browser, { lang, colorScheme, width, height, probes, frameAttributes, patches: ordinaryFrame ? [...patches, ORDINARY_FRAME] : patches, newsSeen, user });
@@ -96,7 +96,9 @@ export async function startLab(options = {}) {
   // Grist ajoute ses propres paramètres après ceux de l'adresse (searchParams.append) : le premier `language` gagne, c'est celui du labo.
   await openDocument(page);
   const liveParam = widget === WIDGET && !live ? '&live=0' : '';
-  await addCustomWidget(page, `${widget}?language=${lang}&culture=${lang === 'en' ? 'en-GB' : 'fr-FR'}${liveParam}${query ? '&' + query.replace(/^\?/, '') : ''}`);
+  // GFS relie lui-même sa section à la grille de la même table (js/view-link.js) : les passes qui mesurent une section non reliée le coupent (`?grille=0`), celles qui le mesurent le laissent faire (`grille: true`).
+  const gridParam = widget === WIDGET && !grille ? '&grille=0' : '';
+  await addCustomWidget(page, `${widget}?language=${lang}&culture=${lang === 'en' ? 'en-GB' : 'fr-FR'}${liveParam}${gridParam}${query ? '&' + query.replace(/^\?/, '') : ''}`);
   let frame = await gfsFrame(/access=none/);
   await page.waitForTimeout(1500);
   if (fullAccess) {

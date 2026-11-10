@@ -127,6 +127,22 @@ export class ViewOptions {
     return run;
   }
 
+  // La section de GFS : `{ id }`, ou `{ reason }` quand GFS ne la reconnaît pas ou ne peut pas écrire dans la vue (la même recherche que pour écrire un réglage). Sert à poser le
+  // lien « Select by » (js/view-link.js). Les recherches passent dans la file des écritures : jamais deux à la fois.
+  section() {
+    const run = this.#queue.then(async () => {
+      if (!this.#enabled()) return { reason: 'disabled' };
+      try {
+        const found = await this.#find(await this.#widget.getOptions());
+        return found.target ? { id: found.target.id } : { reason: found.reason };
+      } catch (error) {
+        return { reason: 'refused' };
+      }
+    });
+    this.#queue = run.catch(() => {});
+    return run;
+  }
+
   async #write(changes) {
     if (!this.#enabled()) return false;
     try {

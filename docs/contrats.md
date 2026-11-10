@@ -1037,8 +1037,21 @@ table, réglé dans le panneau de Grist.
    `run-page-ligne.mjs`, faits vérifiés 1) : un filtre enregistré qui écarte toutes les lignes laissait Publipostage+ sur « Reliez ce
    widget » ; elle reçoit la première ligne, la ligne choisie résiste à un changement de données, `setCursorPos` dans la section la
    remplace.
-7. [M] **À mesurer sur un Grist en ligne** : le coût d'une relecture par le réseau, et un repère léger « le document a changé »
-   (l'historique du document par l'API REST) qui éviterait de relire une table qui n'a pas changé.
+8. [T] **Le lien « Select by », posé par GFS.** Décidé par le porteur le 10/11 (« je choisis la table, celle de la page par défaut, et ça fonctionne » ; carte « Quand GFS
+   relie-t-il le widget à ta grille ? », option « Automatique, avec un mot dans la barre »). Grist ne dit à un widget que la ligne de **sa propre section**, ou de celle à
+   laquelle il est relié (faits vérifiés 1) : sans lien, « La table de la page » reste sur la première ligne, quelle que soit la ligne que la personne clique dans la grille.
+   GFS écrit donc **lui-même** le lien de sa section vers la grille de la même table (`js/view-link.js` : un `UpdateRecord` sur `_grist_Views_section`, `linkSrcSectionRef`, avec
+   `linkSrcColRef` et `linkTargetColRef` à 0, ce que fait le panneau de droite de Grist ; mesuré le 21/10 puis le 10/11), **une seule fois par section**, à l'ouverture, sans geste,
+   quand : (a) GFS a le niveau `full` et le document s'écrit ; (b) la page décide de la table (aucune autre table de travail choisie) ; (c) la section n'est pas reliée
+   (`settings.linking.asTarget`, point 7) ; (d) la marque `gfs.grille` est absente des réglages de la vue ; (e) GFS reconnaît sa section (`js/view-options.js`, 7.3 point 4) ;
+   (f) la page n'a **qu'une** grille, fiche ou liste de fiches de la même table (une fiche déjà liée à la grille suit son curseur et ne compte pas) ; (g) Grist confirme le lien
+   dans les réglages de la section (`asTarget` devient une chaîne) : sinon l'écriture est défaite. **Plusieurs candidates** : GFS le dit (`link.several`) et n'écrit aucun lien.
+   La marque `gfs.grille` (`lie` ou `plusieurs` ; une clé de GFS, 7.1 point 3) garde que c'est fait ou dit : **une personne qui retire le lien dans Grist ne le voit jamais
+   revenir**. GFS dit son geste une fois (`link.done`, phrase qui disparaît seule). Le choix d'une ligne à la main (point 7, b) reste, et la ligne que Grist dit passe toujours
+   devant. `?grille=0` dans l'adresse du widget coupe la fonction (les passes du labo qui mesurent une section non reliée). Un document sans droit d'écrire la structure : Grist
+   refuse, GFS n'insiste pas, rien ne change. Mesuré dans un vrai Grist (faits vérifiés 77, `labo/run-lien-grille.mjs`).
+9. [M] **À mesurer sur un Grist en ligne** : le coût d'une relecture par le réseau, et un repère léger « le document a changé »
+   (l'historique du document par l'API REST) qui éviterait de relire une table qui n'a pas changé. De même pour le lien du point 8 : la version de Grist du porteur.
 
 ---
 

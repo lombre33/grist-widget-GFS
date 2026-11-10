@@ -6,6 +6,7 @@ import { loadAll, label } from './manifest.js';
 import { GristState } from './state.js';
 import { createPort } from './broker.js';
 import { ViewOptions, addressOf } from './view-options.js';
+import { ViewLink, LINK_KEY } from './view-link.js';
 import { AppSession } from './session.js';
 import { AppStatus } from './app-status.js';
 import { readPreferences, liveSwitch } from './frames.js';
@@ -106,6 +107,11 @@ export class GfsController {
       doc: this.port.doc, widget: this.port.widget, address: addressOf(location.href), tableId: () => (this.state.table ? this.state.table.tableId : null),
       enabled: () => this.fullAccess && !this.readonly,
     });
+    // La section de GFS se relie d'elle-même à la grille de la même table (js/view-link.js, contrats 4.5 point 8) : « La table de la page » suit alors la ligne que la personne clique.
+    this.viewLink = new ViewLink({
+      doc: this.port.doc, state: this.state, section: () => this.viewOptions.section(), enabled: () => this.fullAccess && !this.readonly && this.params.get('grille') !== '0',
+      chosen: () => Boolean(this.workControl && this.workControl.work.choice), mark: value => this.viewOptions.write([[LINK_KEY, value]]), say: (key, vars) => this.notice(this.t(key, vars)),
+    });
     // Les apps sont servies par leur site en ligne (le porteur, 22/10) ; `?live=0` : la copie figée du sous-module, celle des mesures de GFS.
     this.live = liveSwitch(search);
     // Les apps installées et leurs extensions : ce que le document retient dans la table `GFS_Rangement` (contrats 7.4), écrit seulement sur un geste
@@ -183,6 +189,7 @@ export class GfsController {
     doc.body.dataset.gfs = 'ready';
     if (!arrived) await this.#firstRun(); // une section qui s'ouvre sur son app n'est pas neuve : la fenêtre des apps ne passe pas par-dessus
     doc.body.dataset.gfsFirstRun = 'done';
+    void this.state.whenTable().then(() => this.viewLink.ensure());
     // Un envoi laissé en route, ou un partage reçu dont le contenu arrive encore : les boucles du moteur reprennent d'où elles en étaient (js/sync-resume.js ; rien ne se charge sans table de partage).
     whenReceived(() => void this.#refreshReceived());
     if (!this.#writeBlock()) void resumeSharing({ docApi: this.grist.docApi, transfer: this.transfer, language: () => this.lang, busy: () => false, isOwner: () => this.transfer.isOwner() }).catch(error => console.warn('GFS : le partage entre documents ne reprend pas', error));

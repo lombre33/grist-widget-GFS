@@ -180,9 +180,10 @@ export class GfsController {
     this.grist.on('message', message => this.state.feed(message));
     this.grist.ready({ requiredAccess: 'full', onEditOptions: () => this.onEditOptions() });
     this.#installPrint();
+    const libraries = this.#loadLibraries(); // la lecture part avec celles des manifestes : un seul aller-retour de réseau pour les deux (elle ne dépend d'aucun manifeste)
     this.apps = await loadAll(CATALOGUE, readJson);
     this.registry.setApps(this.apps);
-    this.registry.setCatalogue(await this.#loadLibraries());
+    this.registry.setCatalogue(await libraries);
     await this.state.whenOptions();
     if (this.fullAccess) await Promise.all([this.registry.load(), this.rangement.identify()]);
     this.#buildExplorer();

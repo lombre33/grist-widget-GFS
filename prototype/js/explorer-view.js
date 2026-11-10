@@ -108,6 +108,7 @@ export function crumbs(ctx) {
   const sep = () => h('span', { class: 'sp' }, icon('chev-right'));
   const link = (path, name) => h('button', { type: 'button', dataset: { path } }, name);
   // Récents et Favoris gardent le chemin du retour à « Moi » : en vue étroite, le volet des dossiers est replié.
+  if (state.view === 'opened') return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, icon('stack'), t('ex.opened'))];
   if (state.view === 'recent') return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, icon('clock'), t('ex.recent'))];
   if (state.view === 'fav') return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, icon('pin'), t('ex.fav'))];
   if (state.view === 'trash') return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, icon('trash'), t('trash.view'))];
@@ -134,6 +135,8 @@ export function tree(ctx) {
   const { t, state } = ctx;
   const inFolders = state.view === 'folder';
   const pinned = h('div', { class: 'tr-pin' },
+    // Les fichiers que GFS a ouverts dans une app depuis que la personne est là, en tête : on y revient d'un clic (js/opened-files.js).
+    treeRow({ label: t('ex.opened'), glyph: 'stack', data: { view: 'opened' }, current: state.view === 'opened', count: ctx.openedCount || null }),
     treeRow({ label: t('ex.recent'), glyph: 'clock', data: { view: 'recent' }, current: state.view === 'recent' }),
     treeRow({ label: t('ex.fav'), glyph: 'pin', data: { view: 'fav' }, current: state.view === 'fav', count: ctx.favCount }),
     // Les arrivées d'un autre document, à accepter ou acceptées : le nombre à accepter, grisées pendant un choix (un fichier d'ailleurs ne se choisit pas).
@@ -169,6 +172,8 @@ function fileCells(ctx, file, flat) {
   return [
     h('div', { class: 'nm', role: 'gridcell' }, icon(lock ? 'lock' : file.icon), h('span', { class: 't', title: lock ? `${name} · ${lock.text}` : name }, name),
       flat && file.folder ? h('span', { class: 'hint' }, file.folder.split('/').pop()) : null,
+      // Dans « Ouverts », le fichier que l'app affiche en ce moment : le mot, pas une couleur seule.
+      ctx.state.view === 'opened' && ctx.shownKey === file.key ? h('span', { class: 'now' }, t('ex.shown')) : null,
       lock ? h('span', { class: 'sr-only' }, `, ${lock.text}`) : null),
     h('div', { class: 'ty', role: 'gridcell' }, h('span', { class: 'pill' }, ctx.typeLabel(file))),
     h('div', { class: 'wt', role: 'gridcell' }, weightText(ctx, file.weight)),
@@ -238,6 +243,7 @@ export function emptyMessage(ctx) {
   if (state.view === 'trash') return t('trash.emptyList');
   if (state.view === 'shared') return t('rx.empty');
   if (state.view === 'fav') return t('ex.emptyFav');
+  if (state.view === 'opened') return t('ex.emptyOpened');
   // « Aucun fichier » ne vaut qu'à la racine : un dossier (créé vide, ou vidé) est « vide » même quand le document n'a aucun fichier.
   if (state.view === 'recent' || (ctx.totalFiles === 0 && state.path === '')) return t('ex.emptyAll');
   return t('ex.emptyFolder');

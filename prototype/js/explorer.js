@@ -8,6 +8,7 @@ import { h } from './dom.js';
 import { icon } from './icons.js';
 import { listItems, treeRows, typeChoices } from './explorer-model.js';
 import { shownReceived, pendingOf, NO_RECEIVED } from './received-files.js';
+import { NO_OPENED } from './opened-files.js';
 import { words } from './search.js';
 import { buildShell, relabel, paintBell, rightsChip, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar, trashBar, totalBar, pjBox } from './explorer-view.js';
 import { sumWeights, pieceKeys, otherAttachments } from './weight.js';
@@ -105,8 +106,16 @@ export class Explorer {
   // « Partagés avec moi » : ce que la vue demande pour les arrivées d'un autre document (js/received-control.js), ou rien pour les essais de l'explorateur seul.
   get #shared() { return this.#opts.received || NO_RECEIVED; }
 
-  // Ce que la vue montre : les fichiers de la corbeille dans la corbeille, les arrivées d'un autre document dans « Partagés avec moi », sinon les fichiers vivants.
-  get #shown() { return ({ trash: this.#trashed, shared: this.#arrivals })[this.state.view] || this.#pool; }
+  // « Ouverts » : ce que la vue demande (js/opened-files.js : `keys()`, `shown()` le fichier que l'app affiche, `remove(key)`), ou rien pour les essais de l'explorateur seul ; les fichiers vivants qui y sont, à jour.
+  get #openedSource() { return this.#opts.opened || NO_OPENED; }
+
+  get #opened() { const keys = new Set(this.#openedSource.keys()); return this.#pool.filter(file => keys.has(file.key)); }
+
+  // Ce que la vue montre : les fichiers de la corbeille dans la corbeille, les arrivées d'un autre document dans « Partagés avec moi », les fichiers ouverts dans « Ouverts », sinon les fichiers vivants.
+  get #shown() {
+    const { view } = this.state;
+    return view === 'trash' ? this.#trashed : view === 'shared' ? this.#arrivals : view === 'opened' ? this.#opened : this.#pool;
+  }
 
   // `files` : les fichiers vivants ; `trashed` : ceux qui sont à la corbeille ; `folders` : les dossiers gardés sans fichier ; `received` : les arrivées d'un autre document, tous états (js/explorer-data.js).
   setFiles(files, trashed = [], folders = [], received = []) {
@@ -218,7 +227,7 @@ export class Explorer {
     return {
       t: this.#opts.i18n.t, state, locale: this.#opts.locale, now: this.#opts.now(), appName: this.#opts.appName, typeLabel: this.#opts.typeLabel,
       lockOf: this.#opts.lockOf, opensIn: file => this.#opensIn(file), sort: this.#sort(), filtering: this.#filtering, favCount: this.#pool.filter(file => file.pinned).length, totalFiles: this.#pool.length,
-      trashCount: this.#trashed.length, sharedPending: pendingOf(this.#arrivals).length, selected: row, personal: this.#opts.personal(), choosing: this.#choice !== null, total: this.#total, pj: this.#pjFacts(), ...extra,
+      openedCount: this.#opened.length, shownKey: this.#openedSource.shown(), trashCount: this.#trashed.length, sharedPending: pendingOf(this.#arrivals).length, selected: row, personal: this.#opts.personal(), choosing: this.#choice !== null, total: this.#total, pj: this.#pjFacts(), ...extra,
     };
   }
 
@@ -663,9 +672,14 @@ export class Explorer {
     const items = rowItems({
       t: this.#opts.i18n.t, opts: this.#opts, view: this.state.view, choice: Boolean(this.#choice), rows: this.#rows, shown: this.#shown, kept: this.#kept, bin: this.#bin, copying: this.#copying, shared: this.#shared,
       openAs: file => this.#openAs(file),
-      act: { activate: at => this.#activate(at), deleteFolder: at => this.#deleteFolder(at), restore: at => this.#restore(at), purge: at => this.#purge(at), trashKey: at => this.#trashKey(at), duplicate: file => this.#duplicate(file) },
+      act: { activate: at => this.#activate(at), deleteFolder: at => this.#deleteFolder(at), restore: at => this.#restore(at), purge: at => this.#purge(at), trashKey: at => this.#trashKey(at), duplicate: file => this.#duplicate(file), dropOpened: at => this.#dropOpened(at) },
     }, key);
     if (items) openMenu(anchor, items, { host: this.root, align: 'right', label: this.#opts.i18n.t('ex.more') });
+  }
+
+  // « Retirer des ouverts » : la ligne sort de la liste, le fichier reste où il est et l'app garde ce qu'elle affiche ; la ligne suivante prend le clavier.
+  async #dropOpened(key) {
+    await this.#leaving(key, () => { this.#openedSource.remove(key); this.render(); return true; });
   }
 
   // ---------- la corbeille ----------

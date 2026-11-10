@@ -24,6 +24,7 @@ import { findFirefox, serveSite, startFirefox } from './firefox.mjs';
 import { corbeilleProblems } from './corbeille-firefox.mjs';
 import { copierProblems } from './copier-firefox.mjs';
 import { fermerProblems } from './fermer-firefox.mjs';
+import { ouvertsProblems } from './ouverts-firefox.mjs';
 import { droitsProblems } from './droits-firefox.mjs';
 import { partagerProblems } from './partager-firefox.mjs';
 import { partagerAutreProblems } from './partager-autre-firefox.mjs';
@@ -564,7 +565,7 @@ describe('l\'interface sous Firefox', () => {
           }
         }
       }
-      // La corbeille et le clavier (test/corbeille-firefox.mjs), la copie et le presse-papiers (test/copier-firefox.mjs), la question de « fermer » (test/fermer-firefox.mjs), les dossiers sans fichier
+      // La corbeille et le clavier (test/corbeille-firefox.mjs), la copie et le presse-papiers (test/copier-firefox.mjs), la question de « fermer » (test/fermer-firefox.mjs), la vue « Ouverts » (test/ouverts-firefox.mjs), les dossiers sans fichier
       // (test/dossiers-firefox.mjs), le fichier que seule l'app ouverte sait fermer ou copier (test/composite-firefox.mjs), Ctrl+Z (test/annuler-firefox.mjs), le voile des fenêtres (test/voile-firefox.mjs), leurs largeurs et leurs coins (test/fenetres-firefox.mjs) : à 700 px, la largeur du panneau de référence, en clair et en sombre.
       await page.view({ width: 700, scale: 1, mode: 'light' });
       for (const mode of MODES) {
@@ -572,6 +573,7 @@ describe('l\'interface sous Firefox', () => {
         problems.push(...await corbeilleProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await copierProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await fermerProblems(page, language, caption(language, 700, 1, mode)));
+        problems.push(...await ouvertsProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await droitsProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await partagerProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await partagerAutreProblems(page, language, caption(language, 700, 1, mode)));

@@ -11,9 +11,9 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-J4oBj3EAvwD8d+XhaqmiPU51obnLcc6OXE5y32UAgPM='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-ah37MfXa4QWseL+DiIJWsS96L+zjmKEnnmwGmVc4O9Y='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=e13ef00da6">
-<link rel="stylesheet" href="css/explorer.css?v=eb1aaa65f5">
+<link rel="stylesheet" href="css/explorer.css?v=4fc0180983">
 <link rel="stylesheet" href="css/modules.css?v=b1b43f0db6">
 <link rel="stylesheet" href="css/rights.css?v=1a8d513ad5">
 <link rel="stylesheet" href="css/share.css?v=026d169a32">
@@ -43,7 +43,7 @@
     "./js/catalogue.js": "./js/catalogue.js?v=2e588e5749",
     "./js/conflict-window.js": "./js/conflict-window.js?v=6707e6cc39",
     "./js/context.js": "./js/context.js?v=02c3f955eb",
-    "./js/controller.js": "./js/controller.js?v=b45a9a4204",
+    "./js/controller.js": "./js/controller.js?v=2bd39742ed",
     "./js/copying.js": "./js/copying.js?v=8da0986c98",
     "./js/deposit.js": "./js/deposit.js?v=d0c15e5868",
     "./js/dock-state.js": "./js/dock-state.js?v=8eec913fd1",
@@ -55,11 +55,11 @@
     "./js/explorer-data.js": "./js/explorer-data.js?v=6e0afd35ed",
     "./js/explorer-drag.js": "./js/explorer-drag.js?v=6fd7796b51",
     "./js/explorer-keys.js": "./js/explorer-keys.js?v=e49be0325a",
-    "./js/explorer-menus.js": "./js/explorer-menus.js?v=b8e23dfec7",
-    "./js/explorer-model.js": "./js/explorer-model.js?v=81ee393505",
+    "./js/explorer-menus.js": "./js/explorer-menus.js?v=55067423bc",
+    "./js/explorer-model.js": "./js/explorer-model.js?v=88b49c2751",
     "./js/explorer-undo.js": "./js/explorer-undo.js?v=f1dd46f5c4",
-    "./js/explorer-view.js": "./js/explorer-view.js?v=e41982de87",
-    "./js/explorer.js": "./js/explorer.js?v=bbaa508033",
+    "./js/explorer-view.js": "./js/explorer-view.js?v=a7bf016369",
+    "./js/explorer.js": "./js/explorer.js?v=f55cc2551d",
     "./js/extensions.js": "./js/extensions.js?v=a6b2033702",
     "./js/file-managers.js": "./js/file-managers.js?v=67b93f78fa",
     "./js/files-store.js": "./js/files-store.js?v=07d7843e44",
@@ -79,8 +79,8 @@
     "./js/i18n-share.js": "./js/i18n-share.js?v=c6c817c2ca",
     "./js/i18n-trash.js": "./js/i18n-trash.js?v=ba5f9e143a",
     "./js/i18n-weight.js": "./js/i18n-weight.js?v=70f193afa2",
-    "./js/i18n.js": "./js/i18n.js?v=e6f026b8ef",
-    "./js/icons.js": "./js/icons.js?v=fc146f87c5",
+    "./js/i18n.js": "./js/i18n.js?v=94f3038553",
+    "./js/icons.js": "./js/icons.js?v=8be01ead10",
     "./js/import-file.js": "./js/import-file.js?v=1f16ab4ac8",
     "./js/kept-files.js": "./js/kept-files.js?v=090e1cde9a",
     "./js/language.js": "./js/language.js?v=b287c81a20",
@@ -98,7 +98,8 @@
     "./js/modules-window.js": "./js/modules-window.js?v=cb3546c77d",
     "./js/notifications.js": "./js/notifications.js?v=cb0675dc97",
     "./js/oklch.js": "./js/oklch.js?v=b8905a34c8",
-    "./js/openings.js": "./js/openings.js?v=83652b905d",
+    "./js/opened-files.js": "./js/opened-files.js?v=aea67bd0ab",
+    "./js/openings.js": "./js/openings.js?v=6554d82587",
     "./js/options-slice.js": "./js/options-slice.js?v=2d3825661c",
     "./js/own-table.js": "./js/own-table.js?v=b7e0d83652",
     "./js/pick-window.js": "./js/pick-window.js?v=2e5a6cb90b",

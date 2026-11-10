@@ -48,6 +48,7 @@ import { ask } from './ask-window.js';
 import { carriesFile } from './import-file.js';
 import { Entries } from './entries.js';
 import { Openings } from './openings.js';
+import { OpenedFiles } from './opened-files.js';
 import { ReceivedControl } from './received-control.js';
 import { loadReceived } from './received-files.js';
 import { publicationQuestion } from './publication-window.js';
@@ -121,6 +122,7 @@ export class GfsController {
     // Ce que l'explorateur et les liens demandent (grisé, types de « Nouveau » et d'« Importer », qui lit un fichier : js/entries.js), et les ouvertures (js/openings.js).
     const entries = new Entries(this);
     Object.assign(this, { lockOf: entries.lockOf, newTypes: entries.newTypes, importTypes: entries.importTypes, readerOf: entries.readerOf });
+    this.opened = new OpenedFiles(); // les fichiers que GFS a ouverts dans une app, pour la vue « Ouverts » de l'explorateur (js/opened-files.js)
     this.openings = new Openings(this);
     this.links = this.#buildLinks();
     // Le cadre d'envoi (js/transfer.js) ne s'ouvre qu'à la première requête : les pièces jointes, et la preuve que la personne est propriétaire (js/rights-reader.js).
@@ -252,6 +254,7 @@ export class GfsController {
       container: this.$('stage'), i18n: this.i18n, locale: this.locale, now: () => new Date(), appName: this.appName, received: this.received,
       typeLabel: file => (file.received ? this.received.typeLabel(file) : this.typeLabel(file)), lockOf: file => (file.received ? this.received.lockOf(file) : this.lockOf(file)),
       newTypes: this.newTypes, importTypes: this.importTypes, canClose: () => Boolean(this.session), notice: text => this.notice(text),
+      opened: { keys: () => this.opened.keys(), shown: () => this.opened.shown(this.session), remove: key => this.opened.remove(key) },
       settings: () => settingsItems({
         t: this.t, language: () => ({ choice: this.language.choice, grist: this.language.grist }), onLanguage: choice => this.#chooseLanguage(choice), onTheme: () => this.openTheme(),
         place: () => this.dock.placeRow(), onAbout: () => this.#openAbout(),

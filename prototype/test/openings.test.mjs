@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Openings } from '../js/openings.js';
 import { FILES_APP } from '../js/gfs-files.js';
+import { OpenedFiles } from '../js/opened-files.js';
 import { ERR } from '../js/filter.js';
 
 const text = (key, vars) => (vars ? `${key} ${JSON.stringify(vars)}` : key);
@@ -15,7 +16,7 @@ function host({ apps = { form: { ouverture: { fichier: true, nouveau: true } }, 
   const calls = [];
   const notes = [];
   const c = {
-    t: text, calls, notes, session, opening: 'gardée', contextServed, explorer: { state: { path: 'Dossier' } }, doc: {},
+    t: text, calls, notes, session, opened: new OpenedFiles(), opening: 'gardée', contextServed, explorer: { state: { path: 'Dossier' } }, doc: {},
     lockOf: file => { calls.push(['lockOf', file.id]); return lock; },
     unlock: async value => { calls.push(['unlock', value]); },
     appById: id => (apps[id] ? { app: { id }, manifest: apps[id] } : null),
@@ -130,6 +131,53 @@ test('openIn : une app qui connaît l\'ouverture la reçoit par `ouvrir` ; une a
   const importation = { fichier: null, type: 'grille', raison: 'importer', importation: { valeur: 'excel' } };
   await withFile.openings.openIn('publipostage', importation, 'ex.notice.import');
   assert.equal(withFile.c.opening, null, 'le fichier part une seule fois : l\'ouverture gardée est vidée');
+});
+
+test('Ouverts : un fichier que l\'app a ouvert entre dans la liste et c\'est lui qu\'elle affiche ; un refus, une app qui ne connaît pas l\'appel ou un fichier vierge n\'y mettent rien', async () => {
+  const one = { fichier: { id: '1', type: 'document' }, type: 'document', raison: 'explorateur' };
+  const running = host({ session: sessionOf('publipostage') });
+  const first = running.c.session;
+  await running.openings.openIn('publipostage', one, 'ex.notice.open');
+  assert.deepEqual(running.c.opened.keys(), ['publipostage:1']);
+  assert.equal(running.c.opened.shown(first), 'publipostage:1', 'l\'app affiche le fichier que GFS vient de lui donner');
+  await running.openings.openIn('publipostage', { ...one, fichier: { id: '2', type: 'document' } }, 'ex.notice.open');
+  assert.deepEqual(running.c.opened.keys(), ['publipostage:1', 'publipostage:2']);
+  assert.equal(running.c.opened.shown(first), 'publipostage:2');
+
+  await running.openings.openIn('publipostage', { fichier: null, type: 'document', raison: 'nouveau' }, 'ex.notice.new');
+  assert.equal(running.c.opened.shown(first), null, 'un fichier vierge n\'est pas dans la liste : l\'app n\'affiche plus aucun fichier ouvert');
+  assert.deepEqual(running.c.opened.keys(), ['publipostage:1', 'publipostage:2'], 'la liste garde ce qu\'elle avait');
+
+  const cancelled = host({ session: sessionOf('publipostage', { openFile: async () => ({ ouvert: false }) }) });
+  await cancelled.openings.openIn('publipostage', one, 'ex.notice.open');
+  assert.deepEqual(cancelled.c.opened.keys(), [], 'la personne a annulé dans l\'app : rien n\'a été ouvert');
+
+  const unknown = host({ session: sessionOf('publipostage', { openFile: async () => { throw refusal(ERR.INCONNU); } }) });
+  await unknown.openings.openIn('publipostage', one, 'ex.notice.open');
+  assert.deepEqual(unknown.c.opened.keys(), [], 'une app qui ne connaît pas l\'appel n\'a pas ouvert le fichier');
+
+  const silent = host({ apps: { form: {} } });
+  await silent.openings.openIn('form', { ...one, type: 'formulaire' }, 'ex.notice.open');
+  assert.deepEqual(silent.c.opened.keys(), [], 'l\'app ne déclare pas `ouverture.fichier` : elle ne l\'ouvre pas');
+
+  const fresh = host({ apps: { form: { ouverture: { fichier: true } } } });
+  await fresh.openings.openIn('form', { fichier: { id: '9', type: 'formulaire' }, type: 'formulaire', raison: 'lien' }, 'ex.notice.open');
+  assert.deepEqual(fresh.c.opened.keys(), ['form:9'], 'une app qui démarre reçoit le fichier dans son contexte : il est ouvert');
+  assert.equal(fresh.c.opened.shown(fresh.c.session), 'form:9');
+});
+
+test('Ouverts : un fichier que GFS garde et fait lire entre dans la liste sous sa clé ; sans lecteur prêt, rien n\'y entre', async () => {
+  const bytes = new Uint8Array([1]);
+  const reading = host({ kept: { has: 'p1', bytes }, reader: { app: 'publipostage', lock: null } });
+  reading.openings.openFile({ id: 'p1', key: `${FILES_APP}:p1`, app: FILES_APP, name: 'Facture.pdf', type: 'pdf' });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(reading.c.opened.keys(), [`${FILES_APP}:p1`]);
+  assert.equal(reading.c.opened.shown(reading.c.session), `${FILES_APP}:p1`);
+
+  const locked = host({ kept: { has: 'p1', bytes }, reader: { app: 'publipostage', lock: { text: 'pas prêt' } } });
+  locked.openings.openFile({ id: 'p1', key: `${FILES_APP}:p1`, app: FILES_APP, name: 'Facture.pdf', type: 'pdf' });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(locked.c.opened.keys(), []);
 });
 
 test('leave : rien à demander sans app active, pour la même app, sans contexte lu ou pour une app qu\'on ne peut pas activer', async () => {

@@ -6,6 +6,7 @@ import { acceptsFile, importOpening, openingKind, acceptsOpening, carriesFile, p
 import { readOpening } from './reading.js';
 import { leaveApp, leaveQuestion } from './leave.js';
 import { FILES_APP } from './gfs-files.js';
+import { fileKey } from './explorer-model.js';
 import { ERR } from './filter.js';
 
 export class Openings {
@@ -55,9 +56,20 @@ export class Openings {
     c.hideExplorer();
     const knows = acceptsOpening(c.manifestOf(appId), openingKind(opening)); // ouvrir un fichier précis, en créer un vierge (« Nouveau »), en créer un d'après un fichier (« Importer »), ou le lire
     if (!knows) c.notice(c.t(noticeKey, { app: c.appName(appId) }));
-    const asked = running && knows ? this.#askToOpen(c.session, opening, noticeKey) : true;
+    const session = c.session;
+    const asked = running && knows ? this.#askToOpen(session, opening, noticeKey) : true;
     if (running && carriesFile(opening)) c.opening = null; // le fichier part une seule fois, avec l'appel : une réouverture de l'app (`activate` avec l'ouverture gardée) ne le reprend pas
-    return asked;
+    const opened = await asked;
+    if (opened && knows) this.#remember(appId, opening, session); // « Ouverts » n'apprend que ce que l'app a ouvert (pas un refus de la personne, ni une app qui ne connaît pas l'appel)
+    return opened;
+  }
+
+  // La vue « Ouverts » (js/opened-files.js) : un fichier précis ouvert dans l'app entre dans la liste et c'est lui qu'elle affiche ; un fichier vierge (« Nouveau ») ou d'après un autre (« Importer »)
+  // n'en est pas un, et l'app n'affiche plus aucun fichier de la liste. Un fichier que GFS garde et fait lire a sa propre entrée (`#openKept`).
+  #remember(appId, opening, session) {
+    const file = opening && opening.fichier;
+    if (file && file.id !== undefined && file.id !== null) this.c.opened.add(fileKey(appId, file.id), session);
+    else this.c.opened.none();
   }
 
   // Quitter l'app active pour une autre (contrats 5.4, point 3) : GFS lui demande de se fermer ; elle enregistre ou pose sa question, derrière l'explorateur qu'on referme pour qu'elle se voie.
@@ -81,7 +93,7 @@ export class Openings {
     if (!reader) { await c.kept.open(file); return; }
     if (reader.lock) { await c.unlock(reader.lock); return; }
     const bytes = await c.kept.load(file);
-    if (bytes) await this.openIn(reader.app, readOpening(file, bytes, c.explorer.state.path), 'ex.notice.read');
+    if (bytes && (await this.openIn(reader.app, readOpening(file, bytes, c.explorer.state.path), 'ex.notice.read'))) c.opened.add(file.key, c.session);
   }
 
   // L'app ouvre le fichier elle-même, après sa propre question d'enregistrement : `{ ouvert: false }` veut dire que la personne a annulé, GFS n'ajoute rien.

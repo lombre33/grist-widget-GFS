@@ -2142,6 +2142,25 @@ rangée d'un fichier, selon ce qui vient d'abord.
     pendant le choix d'un fichier pour une app, ils sont grisés comme le reste (la phrase le dit). [M] **Mesuré le 04/11** dans un vrai Grist
     (`labo/run-annuler.mjs`) et sous Firefox (`test/annuler-firefox.mjs`) : faits vérifiés, section 42.
 
+14. [D] **« Ouverts » : revenir à un fichier déjà ouvert, sans repartir de l'arborescence** (demande du porteur, 04/11 : « un système d'onglet pour
+    revenir sur un fichier ouvert et pouvoir faire des A/R entre plusieurs fichiers sans repartir à zéro dans l'arborescence » ; choix « la liste d'abord,
+    les onglets vivants après » ; « pas d'ajout sur la barre flottante », reconfirmé le 10/11 : la liste vit **seulement dans l'explorateur**). Le volet a une
+    première ligne, « Ouverts », avant « Récents » ; son nombre est celui des fichiers ouverts que la liste montre (aucun nombre quand il n'y en a pas).
+    **Ce qui y entre** : un fichier précis que GFS a ouvert dans une app et que l'app a ouvert (le double-clic, Entrée, un lien entre apps, « Lire » un PDF que
+    GFS garde). N'y entrent pas : un fichier vierge (« Nouveau », « Importer »), ce qu'une app ouvre toute seule (GFS ne le sait pas), ni un refus (la
+    personne a annulé dans l'app, ou l'app ne connaît pas l'appel `ouvrir`). **La liste** : les huit derniers (un neuvième fait sortir le plus ancien), à
+    plat (tous les dossiers, le dossier en indice), triée comme les favoris (par nom ; la tête de colonne change l'ordre) : son ordre ne bouge pas quand on
+    passe d'un fichier à l'autre, c'est ce qui fait un aller-retour. Elle ne garde que des clés `app:id`, **rien dans Grist ni dans le navigateur** : le
+    nom, le type, la date, le dossier et le poids sont ceux des fichiers d'aujourd'hui (un fichier renommé ou déplacé y est à jour, un fichier mis à la
+    corbeille ou disparu n'y est plus) ; quand Grist recharge le widget, tous les cadres meurent et la liste est vide. **Le mot « affiché »** (jamais
+    une couleur seule) est sur le fichier que l'app active montre, tant que c'est la session d'app que GFS a ouverte sur lui ; il s'efface quand l'app est
+    remplacée ou qu'un fichier vierge s'ouvre. **Revenir à un fichier** : double-clic ou Entrée, comme partout (une autre app est d'abord priée de se
+    fermer, point 5.4 point 3 ; la même app reçoit l'appel `ouvrir`) ; si l'app refuse, rien ne change et le fichier n'entre pas dans la liste.
+    **« Retirer des ouverts »** est le deuxième article du menu d'une ligne, dans cette vue seulement : la ligne sort de la liste, le fichier et l'app ne
+    bougent pas, la ligne suivante prend le clavier. Pendant le choix d'un fichier pour une app, la vue ne montre que ceux que l'app accepte. **Les onglets
+    vivants** (plusieurs cadres d'app gardés ensemble) **ne sont pas faits** : une seule app est vivante à la fois. [M] **Mesuré le 10/11** dans un vrai Grist
+    (`labo/run-ouverts.mjs`) et sous Firefox (`test/ouverts-firefox.mjs`) : faits vérifiés, section 79.
+
 ### 6.5 Préserver l'inconnu
 
 1. [T] Le socle de chaque app connaît la forme de tous ses objets, même ceux d'une extension absente. Un graphique dans un

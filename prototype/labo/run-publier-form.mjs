@@ -136,7 +136,7 @@ try {
       return result.retValues[0];
     });
     const secondPage = (await sql(page, docId, `select p.id, v.name from _grist_Pages p join _grist_Views v on v.id = p.viewRef where p.viewRef = ${second.viewRef}`))[0];
-    const attach = () => app.evaluate(async ([pageId, shareRef]) => grist.docApi.applyUserActions([['UpdateRecord', '_grist_Pages', pageId, { shareRef }]]).then(() => 'fait', error => String(error && error.message || error)), [secondPage.id, share.id]);
+    const attach = () => app.evaluate(async ([pageId, shareRef]) => grist.docApi.applyUserActions([['UpdateRecord', '_grist_Pages', pageId, { shareRef }]]).then(() => 'fait', error => ({ code: error && error.code, message: String(error && error.message || error) })), [secondPage.id, share.id]);
     const pageShare = async () => (await sql(page, docId, `select shareRef from _grist_Pages where id = ${secondPage.id}`))[0].shareRef;
     const pending = attach();
     const sameLink = frame.locator('.ask').first();
@@ -148,7 +148,7 @@ try {
     await shot('4-meme-lien');
     await frame.locator('[data-fk="ask-no"]').click();
     const refusedLink = await pending;
-    check('« Refuser » : la page garde son propre état (aucun partage), l\'app reçoit le refus', (await pageShare()) === 0 && /refus/i.test(refusedLink), { partage: await pageShare(), reponse: refusedLink });
+    check('« Refuser » : la page garde son propre état (aucun partage), l\'app reçoit le refus avec le code `GFS_ANNULE` (`error.code`, que Form+ lit pour ne pas dire « n\'a pas pu publier »)', (await pageShare()) === 0 && refusedLink.code === 'GFS_ANNULE', { partage: await pageShare(), reponse: refusedLink });
     const again = attach();
     await frame.locator('.ask').first().waitFor({ state: 'visible', timeout: 20000 });
     await frame.locator('[data-fk="ask-yes"]').click();

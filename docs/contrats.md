@@ -475,7 +475,8 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     dit dans `LICENCES.txt`. **L'éditeur (TipTap, ProseMirror) est le seul morceau dont la copie est dans le dépôt de l'app** (choix du porteur,
     11/11 : « dans le dépôt de Publipostage+ ») : sa « copie » n'est pas un fichier mais une carte d'importation, que la page pose au démarrage
     (Firefox n'en prend qu'une : faits vérifiés 88), et la copie de l'app ne nomme jamais GFS dans sa politique : ses adresses sont relatives,
-    `'self'` suffit. GFS ne la sert pas : la fonction `editeur` du manifeste est `copieDansApp` (2.2), la fenêtre n'y vérifie rien (jamais
+    `'self'` suffit. L'outil du kit 0.20.0 la fabrique dans le dépôt de l'app (`--copies`, section `gfs.copie` de sa liste) et tient la page : deux cartes
+    d'importation en données et un script qui pose l'une des deux (faits vérifiés 98). GFS ne la sert pas : la fonction `editeur` du manifeste est `copieDansApp` (2.2), la fenêtre n'y vérifie rien (jamais
     grisée), le choix se retient comme les autres (`natif:editeur`) et part **dans l'adresse du cadre** (`copie=editeur`, 1.3 point 3), à
     son démarrage. **Il prend effet au prochain démarrage de l'app** : GFS ne recharge rien en cours de route (rien à perdre), la ligne le dit. [M]
 

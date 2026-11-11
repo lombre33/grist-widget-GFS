@@ -95,8 +95,10 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
    celle de ta liste** : égale, charge la copie par `src` avec `integrite` ; différente ou `null`, charge par **ton** CDN (celui que ta
    CSP nomme déjà : GFS ne te donne jamais l'adresse d'un CDN pour tes natives). Seule (sans GFS), l'app n'a pas la copie : elle charge par son CDN. **L'éditeur** (TipTap), dont la « copie » est une carte d'importation (une seule par page sous Firefox), a sa copie **dans ton dépôt** (décision du porteur, 11/11) :
    GFS ne la sert pas, il écrit `copie=editeur` dans l'adresse de ton cadre quand la personne l'a choisie (`GfsLink.copies()`, kit 0.19.0 :
-   lu tout de suite, avant que GFS réponde) ; le choix prend effet au prochain démarrage de ton app. La consigne qui te dit comment la fabriquer
-   suit l'outil du kit.
+   lu tout de suite, avant que GFS réponde) ; le choix prend effet au prochain démarrage de ton app. **Tu la fabriques avec l'outil du kit 0.20.0**
+   (`gfs.copie` dans ta liste, puis `node kit/outils/bibliotheques.mjs --copies` : le dossier commité, ses licences et ses empreintes) ; ta page garde
+   alors **deux cartes d'importation en données et un script** qui pose la bonne au démarrage (copie quand l'adresse dit `copie=editeur`, CDN sinon) ;
+   l'outil tient le bloc et la politique (consigne 066, faits vérifiés 98).
 4. Passer le contexte et le stockage par le client du courtier du kit (avec ses replis quand l'app est seule).
 5. Ranger les fonctions lourdes dans `extensions/`, avec le registre et le grisé du kit, et retirer leurs bibliothèques de la
    liste et de l'import map de l'app : GFS les porte (la CSP garde l'adresse du mode CDN, règle 9).

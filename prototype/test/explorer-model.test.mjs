@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFiles, readFiling, readGfsFiling, readGfsFolders, applyFiling, folderPaths, folderName, folderMoves, spareMoves, vacatedFolders, subfolders, treeRows, pathParts, listItems, typeChoices, person,
-  formatDate, normalizePath, inside, stampOf, authorOf, familyOf, FAMILY_NAMES } from '../js/explorer-model.js';
+  formatDate, normalizePath, inside, stampOf, authorOf, familyOf, rowKey, FAMILY_NAMES } from '../js/explorer-model.js';
 import { FILES_MANIFEST } from '../js/gfs-files.js';
 import { sumWeights } from '../js/weight.js';
 import { createI18n } from '../js/i18n.js';
@@ -476,4 +476,29 @@ test('Ouverts : une liste à plat des fichiers donnés, de tous les dossiers, sa
   const wanted = given[0].name;
   assert.deepEqual(listItems(given, state({ view: 'opened', q: wanted }), OPTIONS).rows.map(row => row.file.id), [given[0].id], 'la recherche s\'applique à la liste');
   assert.deepEqual(listItems([], state({ view: 'opened' }), OPTIONS).rows, [], 'rien d\'ouvert : liste vide');
+});
+
+// ----- « Partagés avec moi » : les dossiers reçus d'un autre document (js/received-folders.js, choix du porteur du 11/11)
+
+test('listItems : « Partagés avec moi » montre en tête les dossiers reçus (clé « grp: »), puis les fichiers sans dossier ; un dossier ouvert ne montre que ses fichiers ; la recherche remet tout à plat', () => {
+  const received = (name, folder, extra = {}) => ({ key: `gfs-recus:GFS_Recus:${name}`, name, folder: '', weight: 100, ts: 10, by: 'a@x.fr', type: 'pdf', search: name.toLowerCase(), received: { table: 'GFS_Recus', row: 1, state: 'pending', folder, ...extra } });
+  const files = [received('A.pdf', 'Contrats'), received('B.pdf', 'Contrats', { state: 'accepted' }), received('C.pdf', ''), received('D.pdf', 'Devis')];
+  const view = extra => state({ view: 'shared', path: 'Un/dossier', group: null, sort: { key: 'mod', dir: -1 }, ...extra });
+  const top = listItems(files, view(), OPTIONS);
+  assert.deepEqual(top.rows.map(row => [row.kind, row.kind === 'folder' ? row.name : row.file.name]), [['folder', 'Contrats'], ['folder', 'Devis'], ['file', 'C.pdf']]);
+  assert.deepEqual(top.rows.slice(0, 2).map(row => [rowKey(row), row.count, row.pending, row.shared]), [['grp:GFS_Recus:Contrats', 2, 1, true], ['grp:GFS_Recus:Devis', 1, 1, true]]);
+  assert.equal(top.covered.length, 4, 'le total compte les fichiers des dossiers montrés');
+  const inside = listItems(files, view({ group: 'GFS_Recus:Contrats' }), OPTIONS);
+  assert.deepEqual(inside.rows.map(row => row.file.name), ['A.pdf', 'B.pdf'].sort((a, b) => a.localeCompare(b)));
+  assert.equal(inside.rows.every(row => row.kind === 'file'), true);
+  assert.deepEqual(listItems(files, view({ group: 'GFS_Recus:Disparu' }), OPTIONS).rows, [], 'un dossier qui n\'existe plus est vide (l\'explorateur le quitte)');
+  const search = listItems(files, view({ q: 'pdf' }), OPTIONS);
+  assert.deepEqual(search.rows.map(row => row.kind), ['file', 'file', 'file', 'file'], 'la recherche cherche dans tous les fichiers reçus, dossiers compris');
+  assert.deepEqual(listItems(files, view({ sort: { key: 'poids', dir: -1 } }), OPTIONS).rows.map(row => row.kind), ['folder', 'folder', 'file']);
+});
+
+test('rowKey : « dir: » pour un dossier du rangement, « grp: » pour un dossier reçu, la clé du fichier sinon', () => {
+  assert.equal(rowKey({ kind: 'file', file: { key: 'app:f1' } }), 'app:f1');
+  assert.equal(rowKey({ kind: 'folder', path: 'Un/dossier' }), 'dir:Un/dossier');
+  assert.equal(rowKey({ kind: 'folder', shared: true, path: 'GFS_Recus:Contrats' }), 'grp:GFS_Recus:Contrats');
 });

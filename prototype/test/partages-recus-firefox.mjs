@@ -7,6 +7,8 @@
 //   la cloche Notifications (à droite de l'en-tête) : la pastille dit le nombre à accepter (contraste 4,5:1, sans couvrir un autre bouton), son menu nomme les arrivées et tient dans 700 × 400, un clic sur une arrivée
 //   pose sa question, « Ouvrir « Partagés avec moi » » y mène, sans arrivée la ligne reste grisée et dit ce qui s'annonce ici ;
 //   un fichier qui arrive pendant que l'explorateur est ouvert s'ajoute seul (liste, volet, cloche) sans changer la ligne choisie ;
+//   les DOSSIERS reçus (js/received-folders.js, choix du 11/11) : des lignes de dossier en tête (grisé « N fichiers à accepter » tant qu'un fichier attend), on y entre (fil d'Ariane, Retour arrière), la barre « Accepter le dossier… »
+//   et sa fenêtre (Échap n'écrit rien, un oui = tous les fichiers à accepter, une seule action, le clavier revient dans la liste), le menu du dossier sans renommer ni supprimer, la cloche à une ligne par dossier ;
 //   « Refuser » masque la ligne et le dit, « Accepter » dégrise la ligne, les marques sont écrites sur LEUR ligne seulement ; un document en lecture seule dit pourquoi, sans fenêtre ; une vue sans arrivée n'est pas une page blanche.
 import { createI18n } from '../js/i18n.js';
 import { Run, delay, centerOfName, centerOfSelector } from './corbeille-firefox.mjs';
@@ -45,6 +47,9 @@ function state() {
     rail: rail ? { label: text(rail.querySelector('.lbl')), count: text(rail.querySelector('.cnt')), current: rail.getAttribute('aria-current') === 'true', grey: rail.getAttribute('aria-disabled') === 'true' } : null,
     rows: [...document.querySelectorAll('.ls-row')].map(row => ({ name: text(row.querySelector('.t')), folder: row.classList.contains('folder'), grey: row.classList.contains('lk'), pill: text(row.querySelector('.ty .pill')), pins: row.querySelectorAll('.rb.pin').length, key: row.dataset.key })),
     selected: text(document.querySelector('.ls-row[aria-selected="true"] .t')),
+    bar: text(document.querySelector('.ex .trash-bar')),
+    focusKey: active && active.dataset ? active.dataset.key || null : null,
+    filings: window.__filing ? window.__filing.length : 0,
     crumbs: text(document.querySelector('.crumbs')),
     empty: (() => { const node = document.querySelector('.ex-scroll .empty'); return node && !node.hidden ? text(node) : null; })(),
     openLabel: text(open),
@@ -198,6 +203,94 @@ export async function partagesRecusProblems(page, language, tag) {
     await page.press('Enter');
     if ((await expect('arrivée acceptée', 'Entrée devait ouvrir le fichier accepté', s => s.opened === 'Contrat.pdf')).modal) run.note('arrivée acceptée', 'un fichier accepté ne devait pas reposer la question');
     if (open.info && open.info.includes(t('rx.lock'))) run.note('arrivée acceptée', 'un fichier accepté n\'est plus grisé');
+
+    // Les DOSSIERS reçus : deux dossiers (« Contrats » : 2 fichiers à accepter + 1 accepté ; « Archives » : 2 acceptés) et un fichier seul.
+    await run.reset();
+    await page.run(() => window.__shared('dossier'));
+    const top = await expect('dossiers', 'la vue devait montrer deux dossiers en tête puis le fichier seul', s => s.rows.length === 3);
+    const kinds = top.rows.map(each => `${each.folder ? 'D' : 'F'}:${each.name}`).join(' | ');
+    if (kinds !== 'D:Archives | D:Contrats | F:Seul.pdf') run.note('dossiers', `la liste devait être « D:Archives | D:Contrats | F:Seul.pdf » (dossiers d'abord) : ${kinds}`);
+    const contrats = row(top, 'Contrats');
+    const archives = row(top, 'Archives');
+    if (!contrats || !contrats.grey || contrats.pill !== t('rx.folder.pending', { n: 2 })) run.note('dossiers', `« Contrats » devait être grisé et dire « ${t('rx.folder.pending', { n: 2 })} » (il est ${JSON.stringify(contrats)})`);
+    if (!archives || archives.grey || archives.pill !== t('ex.fileCount', { n: 2 })) run.note('dossiers', `« Archives » (tout accepté) ne devait pas être grisé et dire « ${t('ex.fileCount', { n: 2 })} » (il est ${JSON.stringify(archives)})`);
+    if (top.rail && top.rail.count !== '3') run.note('dossiers', `le volet devait compter 3 fichiers à accepter (2 du dossier + le fichier seul), il dit ${top.rail && top.rail.count}`);
+    if (top.cut.length) run.note('dossiers', `un texte coupé devait avoir son texte entier au survol : ${top.cut.slice(0, 3).join(' ; ')}`);
+    await clickRow('Contrats');
+    const picked = await expect('dossiers', 'une ligne de dossier choisie devait être choisie', s => s.selected === 'Contrats');
+    if (!picked.info || !picked.info.includes(t('rx.folder.hint'))) run.note('dossiers', `la barre d'information devait dire ce qu'est un dossier reçu (« ${t('rx.folder.hint')} »), elle dit « ${picked.info} »`);
+    await page.press('F2');
+    await page.press('Delete');
+    await page.chord('Control', 'x');
+    const kept = await snap();
+    if (kept.modal || kept.filings !== 0) run.note('dossiers', 'F2, Suppr et Ctrl+X ne devaient rien faire sur un dossier reçu (ni fenêtre ni rangement)');
+    await page.press('Enter');
+    const inside = await expect('dossiers', 'Entrée devait entrer dans le dossier : trois fichiers, le fil d\'Ariane le dit', s => s.rows.length === 3 && s.rows.every(each => !each.folder));
+    if (!inside.crumbs || !inside.crumbs.includes(t('rx.view')) || !inside.crumbs.endsWith('Contrats')) run.note('dossiers', `le fil d'Ariane devait dire « … ${t('rx.view')} › Contrats » (il dit « ${inside.crumbs} »)`);
+    if (JSON.stringify(inside.rows.map(each => [each.name, each.grey])) !== JSON.stringify([['Contrat de prestation.pdf', true], ['Avenant 1.pdf', true], ['Avenant 2.pdf', false]])) run.note('dossiers', `les fichiers du dossier devaient être Contrat de prestation (grisé), Avenant 1 (grisé), Avenant 2 (accepté), du plus récent au plus ancien : ${JSON.stringify(inside.rows.map(each => [each.name, each.grey]))}`);
+    if (!inside.bar || !inside.bar.includes(t('rx.folder.bar', { n: 2 }).replace(/\.$/, '')) || !inside.bar.includes(t('rx.folder.answer'))) run.note('dossiers', `la barre devait dire « ${t('rx.folder.bar', { n: 2 })} » avec « ${t('rx.folder.answer')} » (elle dit « ${inside.bar} »)`);
+    if (inside.cut.length) run.note('dossiers', `dans le dossier, un texte coupé devait avoir son texte entier au survol : ${inside.cut.slice(0, 3).join(' ; ')}`);
+    await page.press('Backspace');
+    const back = await expect('dossiers', 'Retour arrière devait revenir à « Partagés avec moi »', s => s.rows.some(each => each.folder) && s.crumbs && !s.crumbs.endsWith('Contrats'));
+    if (back.rows.length !== 3) run.note('dossiers', 'au retour, les deux dossiers et le fichier seul devaient être là');
+    await clickRow('Contrats');
+    await page.press('Enter');
+    await expect('dossiers', 'on devait pouvoir ressortir par le fil d\'Ariane', s => s.rows.length === 3 && !s.rows[0].folder);
+    await clickKey('dossiers', '.crumbs button[data-view="shared"]');
+    await expect('dossiers', 'le fil d\'Ariane devait ramener à « Partagés avec moi » à la souris', s => s.rows.some(each => each.folder));
+    await clickRow('Contrats');
+    await page.press('Enter');
+    await expect('dossiers', 'rentrer dans le dossier', s => s.rows.length === 3 && !s.rows[0].folder);
+
+    // La question du dossier : la barre, la fenêtre (elle tient, Tab y reste, Échap n'écrit rien), puis « Accepter ».
+    await clickKey('dossiers', '.trash-bar .btn');
+    const folderAsk = await expect('dossiers', 'la barre devait ouvrir la question du dossier, le clavier sur « Accepter »', s => s.modal && s.modal.focus === 'rx-accept');
+    fits('dossiers', folderAsk, 'la question du dossier');
+    if (folderAsk.modal) {
+      if (folderAsk.modal.title !== t('rx.folder.title', { name: 'Contrats' })) run.note('dossiers', `le titre devait dire « ${t('rx.folder.title', { name: 'Contrats' })} », il dit « ${folderAsk.modal.title} »`);
+      if (!folderAsk.modal.body.includes('Comptabilité') || !/Ko|KB|o\b|B\b/.test(folderAsk.modal.body) || !folderAsk.modal.body.includes(t('rx.folder.keep'))) run.note('dossiers', `le texte devait dire qui partage, le poids, et qu'un fichier ajouté plus tard attend (« ${folderAsk.modal.body} »)`);
+      if (folderAsk.modal.foot !== t('rx.folder.foot')) run.note('dossiers', `le pied devait dire « ${t('rx.folder.foot')} » (il dit « ${folderAsk.modal.foot} »)`);
+    }
+    for (let i = 0; i < 3; i += 1) { await page.press('Tab'); const around = await snap(); if (!around.modal || !around.modal.inside) run.note('dossiers', 'Tab devait rester dans la fenêtre du dossier'); }
+    await page.press('Escape');
+    const nothing = await expect('dossiers', 'Échap devait fermer la question', s => s.modal === null);
+    if (nothing.writes !== 0) run.note('dossiers', 'Échap ne devait rien écrire');
+    await clickKey('dossiers', '.trash-bar .btn');
+    await expect('dossiers', 'la question devait se rouvrir', s => s.modal && s.modal.focus === 'rx-accept');
+    await clickKey('dossiers', '[data-fk="rx-accept"]');
+    const accepted2 = await expect('dossiers', '« Accepter » devait fermer la question, enlever la barre et dégriser les fichiers', s => s.modal === null && s.bar === null && s.rows.every(each => !each.grey));
+    const bulk = accepted2.marks.filter(([name]) => /^(Avenant 1|Contrat de prestation)\.pdf$/.test(name)).map(([, yes, no]) => `${yes}/${no}`).join(',');
+    if (bulk !== 'true/false,true/false') run.note('dossiers', `les deux fichiers qui attendaient devaient être marqués acceptés (${bulk})`);
+    if (accepted2.writes !== 1) run.note('dossiers', `la réponse devait tenir en UNE écriture groupée (les colonnes de marques existent déjà) : ${accepted2.writes} actions`);
+    if (!accepted2.notices.includes(t('rx.folder.accepted', { name: 'Contrats', n: 2 }))) run.note('dossiers', 'la phrase devait dire que le dossier est accepté');
+    if (!accepted2.focusKey) run.note('dossiers', 'le clavier devait revenir dans la liste (la barre et son bouton ont disparu)');
+    await page.press('Backspace');
+    const after = await expect('dossiers', 'Retour arrière devait fonctionner tout de suite après la réponse', s => s.rows.some(each => each.folder));
+    if (after.rail && after.rail.count !== '1') run.note('dossiers', `le volet devait ne compter que le fichier seul (1), il dit ${after.rail && after.rail.count}`);
+    if (row(after, 'Contrats') && row(after, 'Contrats').grey) run.note('dossiers', '« Contrats » entièrement accepté ne devait plus être grisé');
+
+    // Le menu d'un dossier reçu : l'ouvrir et répondre, rien d'autre ; un dossier entièrement accepté ne propose plus la réponse.
+    await run.reset();
+    await page.run(() => window.__shared('dossier'));
+    await expect('dossiers', 'rouvrir la vue', s => s.rows.length === 3);
+    await page.run(name => { const found = [...document.querySelectorAll('.ls-row.folder')].find(item => item.querySelector('.t').textContent === name); found.querySelector('.rb.mn').click(); }, 'Contrats');
+    const folderMenu = await expect('dossiers', 'le menu du dossier devait s\'ouvrir', s => s.menu.length > 0);
+    if (JSON.stringify(folderMenu.menu.map(item => item.label)) !== JSON.stringify([t('ex.openFolder'), t('rx.folder.answer')])) run.note('dossiers', `le menu devait offrir « ${t('ex.openFolder')} » et « ${t('rx.folder.answer')} » seulement (il offre ${JSON.stringify(folderMenu.menu.map(item => item.label))})`);
+    await page.press('Escape');
+    await page.run(name => { const found = [...document.querySelectorAll('.ls-row.folder')].find(item => item.querySelector('.t').textContent === name); found.querySelector('.rb.mn').click(); }, 'Archives');
+    const archivesMenu = await expect('dossiers', 'le menu du dossier accepté devait s\'ouvrir', s => s.menu.length > 0);
+    if (JSON.stringify(archivesMenu.menu.map(item => item.label)) !== JSON.stringify([t('ex.openFolder')])) run.note('dossiers', `un dossier tout accepté devait n'offrir que « ${t('ex.openFolder')} » (il offre ${JSON.stringify(archivesMenu.menu.map(item => item.label))})`);
+    await page.press('Escape');
+
+    // La cloche : une ligne pour le dossier (ses fichiers à accepter), une pour le fichier seul.
+    await clickKey('la cloche', '.tb-bell');
+    const folderBell = await expect('la cloche', 'le menu de la cloche devait s\'ouvrir', s => s.menu.length > 0);
+    const bellLabels = folderBell.menu.map(item => item.label);
+    if (bellLabels.length !== 3 || bellLabels[0] !== t('nt.folder', { name: 'Contrats', by: 'Comptabilité', n: 2 }) || bellLabels.at(-1) !== t('nt.open')) run.note('la cloche', `la cloche devait dire une ligne pour le dossier puis une pour le fichier seul (elle dit ${JSON.stringify(bellLabels)})`);
+    await clickKey('la cloche', '.menu .menu-item');
+    const fromFolder = await expect('la cloche', 'la ligne du dossier devait poser la question du DOSSIER', s => s.modal && s.modal.focus === 'rx-accept');
+    if (fromFolder.modal && fromFolder.modal.title !== t('rx.folder.title', { name: 'Contrats' })) run.note('la cloche', `la question devait nommer le dossier (« ${fromFolder.modal.title} »)`);
+    await page.press('Escape');
 
     // Un document en lecture seule : la phrase, pas de fenêtre.
     await run.reset();

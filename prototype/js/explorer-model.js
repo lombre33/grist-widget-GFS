@@ -6,6 +6,7 @@
 
 import { normalize, words, matchesWords } from './search.js';
 import { keptInFolder } from './direct-shares.js';
+import { receivedFolders } from './received-folders.js';
 import { rowWeigher, piecesOf, linkedOf, newSum, addWeight } from './weight.js';
 
 // Le champ `couleur` du manifeste -> la famille de couleur de la charte (cahier 6.5) ; tout autre mot : neutre. Le rouge du PDF est la quatrième famille (décision du porteur, 04/11).
@@ -238,6 +239,26 @@ const SORTERS = {
   by: (a, b, c) => authorOf(a).localeCompare(authorOf(b), c.locale, { sensitivity: 'base' }),
 };
 
+// « Partagés avec moi » sans recherche : à la racine, les dossiers reçus (des lignes de dossier, `shared: true`, leur clé « grp:<id> ») et les fichiers sans dossier ; dans un dossier reçu (`group`, son identifiant), ses fichiers.
+function sharedLevel(files, group, locale) {
+  const { folders, loose } = receivedFolders(files);
+  if (group) return { pool: (folders.find(folder => folder.id === group) || { files: [] }).files, groups: [] };
+  const byName = (a, b) => a.name.localeCompare(b.name, locale, { sensitivity: 'base', numeric: true });
+  return { pool: loose, groups: folders.sort(byName).map(folder => ({ kind: 'folder', shared: true, path: folder.id, ...folder })) };
+}
+
+// La clé d'une ligne : celle du fichier, « dir:<chemin> » pour un dossier, « grp:<id> » pour un dossier reçu d'un autre document (qui ne se renomme, ne se déplace ni ne se supprime).
+export const rowKey = row => (row.kind === 'file' ? row.file.key : `${row.shared ? 'grp' : 'dir'}:${row.path}`);
+
+// Les fichiers du niveau que la vue montre : { pool, flat (une liste à plat, sans les dossiers du rangement), groups (les dossiers reçus d'un autre document à montrer en tête) }.
+function levelOf(files, state, filtering, locale) {
+  if (state.view === 'shared' && !filtering) return { flat: true, ...sharedLevel(files, state.group, locale) };
+  if (state.view === 'recent') return { pool: [...files].sort((a, b) => (b.ts ?? -Infinity) - (a.ts ?? -Infinity)).slice(0, RECENT_LIMIT), flat: true, groups: [] };
+  if (state.view === 'fav') return { pool: files.filter(file => file.pinned), flat: true, groups: [] };
+  if (filtering || ['trash', 'shared', 'opened'].includes(state.view)) return { pool: files, flat: true, groups: [] };
+  return { pool: files.filter(file => file.folder === state.path && keptInFolder(file)), flat: false, groups: [] };
+}
+
 // Les lignes affichées : { rows: [{ kind: 'folder', ... } | { kind: 'file', file }], flat, covered }. `covered` : les fichiers que la liste couvre, ceux des dossiers montrés compris (le total du pied
 // de fenêtre en fait la somme : une pièce jointe que deux d'entre eux citent n'y est comptée qu'une fois).
 // `state` : { view: 'folder'|'recent'|'fav'|'trash'|'shared'|'opened', path, q, type, sort: { key, dir } } ; `locale` : pour le tri ; `typeLabel(file)` : le nom du type dans la langue ; `spare` : les dossiers gardés sans fichier.
@@ -247,26 +268,21 @@ export function listItems(files, state, { locale, typeLabel, spare = [] }) {
   const needles = words(state.q);
   const filtering = needles.length > 0 || state.type !== 'all';
   const ctx = { locale, label: typeLabel, name: (a, b) => (a.name || '').localeCompare(b.name || '', locale, { sensitivity: 'base', numeric: true }) };
-  let pool;
-  let flat = true;
-  if (state.view === 'recent') pool = [...files].sort((a, b) => (b.ts ?? -Infinity) - (a.ts ?? -Infinity)).slice(0, RECENT_LIMIT);
-  else if (state.view === 'fav') pool = files.filter(file => file.pinned);
-  else if (filtering || ['trash', 'shared', 'opened'].includes(state.view)) pool = files;
-  else { pool = files.filter(file => file.folder === state.path && keptInFolder(file)); flat = false; }
+  let { pool, flat, groups } = levelOf(files, state, filtering, locale);
   pool = pool.filter(file => (state.type === 'all' || file.type === state.type) && matchesWords(needles, file.search));
   const sorter = SORTERS[state.sort.key] || SORTERS.name;
   const compare = (a, b) => (sorter(a, b, ctx) * state.sort.dir) || ctx.name(a, b);
   pool.sort(compare);
   const rows = pool.map(file => ({ kind: 'file', file }));
-  if (!flat) {
+  if (!flat || groups.length) {
     // « Espaces » est une racine à côté de « Moi » (js/spaces-filing.js) : « Moi » ne la liste pas parmi ses dossiers.
-    const folders = subfolders(files, state.path, locale, spare).filter(folder => folder.path !== SPACES_ROOT).map(folder => ({ kind: 'folder', ...folder }));
+    const folders = flat ? groups : subfolders(files, state.path, locale, spare).filter(folder => folder.path !== SPACES_ROOT).map(folder => ({ kind: 'folder', ...folder }));
     // Les dossiers vont par nom (renversés quand le tri par nom l'est), sauf quand la liste est triée par poids : ils suivent alors le même ordre que les fichiers (le tri est stable : à poids égal, l'ordre des noms).
     if (state.sort.key === 'poids') folders.sort((a, b) => (a.weight - b.weight) * state.sort.dir);
     else if (state.sort.key === 'name' && state.sort.dir < 0) folders.reverse();
     rows.unshift(...folders);
   }
-  return { rows, flat, covered: flat ? pool : files.filter(file => inside(file.folder, state.path)) };
+  return { rows, flat, covered: flat ? [...pool, ...groups.flatMap(group => group.files)] : files.filter(file => inside(file.folder, state.path)) };
 }
 
 // Les types présents dans les fichiers, pour le filtre : [{ value, label, icon, family, count }] (types connus d'abord, puis inconnus).

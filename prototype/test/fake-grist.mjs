@@ -45,6 +45,8 @@ export function fakeGrist(tables = {}, { renameTo = null, email = null, fail = {
       return made.id;
     }
     if (verb === 'UpdateRecord') { Object.assign(table.rows.find(row => row.id === a), b); return null; }
+    // Plusieurs lignes d'un coup (a : les numéros, b : par colonne, la liste des valeurs) : comme Grist, un numéro absent fait échouer tout le lot.
+    if (verb === 'BulkUpdateRecord') { a.forEach((id, i) => Object.assign(table.rows.find(row => row.id === id) || (() => { throw new Error(`Invalid row id ${id}`); })(), Object.fromEntries(known.map(column => [column, b[column][i]])))); return null; }
     throw new Error(`verbe inattendu ${verb}`);
   };
   const doc = {

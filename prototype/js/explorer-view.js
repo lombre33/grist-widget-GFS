@@ -3,7 +3,7 @@
 
 import { h } from './dom.js';
 import { icon } from './icons.js';
-import { person, formatDate, pathParts, stampOf, authorOf, FAMILY_NAMES } from './explorer-model.js';
+import { person, formatDate, pathParts, stampOf, authorOf, rowKey, FAMILY_NAMES } from './explorer-model.js';
 import { SPACES_ROOT, folderLabel, isSpacePath } from './spaces-filing.js';
 import { formatBytes } from './weight.js';
 import { chipKey } from './rights.js';
@@ -112,6 +112,7 @@ export function crumbs(ctx) {
   if (state.view === 'recent') return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, icon('clock'), t('ex.recent'))];
   if (state.view === 'fav') return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, icon('pin'), t('ex.fav'))];
   if (state.view === 'trash') return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, icon('trash'), t('trash.view'))];
+  if (state.view === 'shared' && state.group) return [link('', t('ex.me')), sep(), h('button', { type: 'button', dataset: { view: 'shared' } }, t('rx.view')), sep(), h('span', { class: 'here' }, icon('folder'), state.group.slice(state.group.indexOf(':') + 1))];
   if (state.view === 'shared') return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, icon('users'), t('rx.view'))];
   if (ctx.filtering) return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, t('ex.results'))];
   const parts = pathParts(state.path);
@@ -212,12 +213,15 @@ export function fileRow(ctx, file, flat) {
   }, ...fileCells(ctx, file, flat));
 }
 
+// Ce que dit un dossier en plus de son nom : le nombre de fichiers, ou, pour un dossier reçu d'un autre document avec des fichiers à accepter, le mot « À accepter » avec leur nombre (le mot et la couleur vont ensemble).
+const folderCaption = (t, folder) => (folder.pending ? t('rx.folder.pending', { n: folder.pending }) : t('ex.fileCount', { n: folder.count }));
+
 export function folderRow(ctx, folder) {
   const { t } = ctx;
-  const key = `dir:${folder.path}`;
-  return h('div', { class: 'ls-row folder', role: 'row', tabindex: ctx.state.sel === key ? '0' : '-1', dataset: { key }, 'aria-selected': String(ctx.state.sel === key) },
+  const key = rowKey(folder);
+  return h('div', { class: `ls-row folder${folder.pending ? ' lk' : ''}`, role: 'row', tabindex: ctx.state.sel === key ? '0' : '-1', dataset: { key }, 'aria-selected': String(ctx.state.sel === key) },
     h('div', { class: 'nm', role: 'gridcell' }, icon('folder', 'fld'), h('span', { class: 't', title: folderLabel(t, folder.path, folder.name) }, folderLabel(t, folder.path, folder.name))),
-    h('div', { class: 'ty', role: 'gridcell' }, h('span', { class: 'pill' }, t('ex.fileCount', { n: folder.count }))),
+    h('div', { class: 'ty', role: 'gridcell' }, h('span', { class: 'pill' }, folderCaption(t, folder))),
     h('div', { class: 'wt', role: 'gridcell' }, weightText(ctx, folder.weight)),
     h('div', { class: 'md', role: 'gridcell' }, formatDate(folder.ts, ctx.now, ctx.locale, t)),
     h('div', { class: 'by', role: 'gridcell' }),
@@ -228,7 +232,7 @@ export function folderRow(ctx, folder) {
 function tileFacts(ctx, row) {
   const { t } = ctx;
   if (row.kind === 'folder') {
-    return { folder: true, key: `dir:${row.path}`, lock: null, glyph: 'folder', name: row.name, caption: t('ex.fileCount', { n: row.count }), weight: weightText(ctx, row.weight), fam: null };
+    return { folder: true, key: rowKey(row), lock: null, glyph: 'folder', name: row.name, caption: folderCaption(t, row), weight: weightText(ctx, row.weight), fam: null, grey: row.pending > 0 };
   }
   const file = row.file;
   const lock = ctx.lockOf(file);
@@ -236,10 +240,10 @@ function tileFacts(ctx, row) {
 }
 
 export function tile(ctx, row) {
-  const { folder, key, lock, glyph, name, caption, weight, fam } = tileFacts(ctx, row);
+  const { folder, key, lock, glyph, name, caption, weight, fam, grey } = tileFacts(ctx, row);
   const selected = ctx.state.sel === key;
   return h('div', {
-    class: `th${folder ? ' folder' : ''}${lock ? ' lk' : ''}`, role: 'row', tabindex: selected ? '0' : '-1', dataset: { key },
+    class: `th${folder ? ' folder' : ''}${lock || grey ? ' lk' : ''}`, role: 'row', tabindex: selected ? '0' : '-1', dataset: { key },
     'aria-selected': String(selected), 'data-fam': fam, title: lock ? lock.text : null,
   },
   h('div', { class: 'th-pv' }, icon(glyph, folder ? 'fld' : '')),
@@ -290,7 +294,7 @@ function noSelectionInfo(ctx, filingHint) {
 function folderInfo(ctx, selected, filingHint) {
   const { t } = ctx;
   return h('div', { class: 'inf' }, infoLine1(icon('folder'), h('b', null, folderLabel(t, selected.path, selected.name)), h('span', { class: 'mu' }, `· ${t('ex.fileCount', { n: selected.count })} · ${weightText(ctx, selected.weight)}`)),
-    h('div', { class: 'l2' }, h('span', { class: 'lt' }, filingHint)));
+    h('div', { class: 'l2' }, h('span', { class: 'lt' }, selected.shared ? t('rx.folder.hint') : filingHint)));
 }
 
 // Le fichier choisi : son nom, son type et son poids ; en dessous le grisé s'il y en a un, sinon ses faits.
@@ -314,6 +318,14 @@ function fileFacts(ctx, file) {
 }
 
 // La barre de la corbeille, au-dessus de la liste : la règle (rien ne part seul) et « Vider la corbeille… ». Rien tant que la corbeille est vide.
+// La barre d'un dossier reçu d'un autre document qui a des fichiers à accepter : un oui ou un non pour TOUS (js/received-control.js, `askFolder`) ; les autres gestes restent fichier par fichier.
+export function groupBar(ctx, folder) {
+  const { t } = ctx;
+  const text = t('rx.folder.bar', { n: folder.pending });
+  return h('div', { class: 'trash-bar' }, icon('lock'), h('span', { class: 'tb-text', title: text }, text),
+    h('button', { type: 'button', class: 'btn', dataset: { answerFolder: folder.id } }, t('rx.folder.answer')));
+}
+
 export function trashBar(ctx) {
   const { t } = ctx;
   return h('div', { class: 'trash-bar' }, icon('trash'), h('span', { class: 'tb-text', title: t('trash.bar') }, t('trash.bar')),

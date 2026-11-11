@@ -47,7 +47,7 @@ test('une arrivée est un fichier de l\'explorateur : type, icône, poids de sa 
   assert.equal(file.key, `${RECEIVED_APP}:GFS_Recus_2:f7`);
   assert.deepEqual([file.id, file.type, file.icon, file.family, file.known, file.by, file.ts, file.trashed], ['f7', 'pdf', 'pdf', 'pdf', true, 'compta@exemple.fr', 1762000007, null]);
   assert.ok(file.weight >= 2007, `le poids compte la pièce jointe (${file.weight})`);
-  assert.deepEqual(file.received, { table: 'GFS_Recus_2', row: 7, state: PENDING, gone: false });
+  assert.deepEqual(file.received, { table: 'GFS_Recus_2', row: 7, state: PENDING, gone: false, folder: '' });
   assert.equal(file.search, 'facture pdf', 'le texte de la recherche est posé (accents et casse ignorés)');
   const other = readReceived('GFS_Recus', data);
   assert.notEqual(other[0].key, file.key);

@@ -6,12 +6,13 @@
 
 import { h } from './dom.js';
 import { icon } from './icons.js';
-import { listItems, treeRows, typeChoices } from './explorer-model.js';
+import { listItems, treeRows, typeChoices, rowKey } from './explorer-model.js';
 import { shownReceived, pendingOf, NO_RECEIVED } from './received-files.js';
+import { receivedFolders } from './received-folders.js';
 import { directFiles } from './direct-shares.js';
 import { NO_OPENED } from './opened-files.js';
 import { words } from './search.js';
-import { buildShell, relabel, paintBell, rightsChip, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar, trashBar, totalBar, pjBox } from './explorer-view.js';
+import { buildShell, relabel, paintBell, rightsChip, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar, trashBar, groupBar, totalBar, pjBox } from './explorer-view.js';
 import { sumWeights } from './weight.js';
 import { PiecesBox } from './explorer-pj.js';
 import { Removal } from './explorer-removal.js';
@@ -69,7 +70,7 @@ export class Explorer {
   #beforeChoice = null; // où la personne en était avant le mode choix
   // Trois tris : celui des dossiers et des favoris (par nom), ceux de Récents et de la corbeille (par date, la plus récente d'abord : le fichier qu'on vient de supprimer est en haut).
   state = {
-    view: 'folder', path: '', open: new Set(), display: 'list', sort: { key: 'name', dir: 1 }, recentSort: { key: 'mod', dir: -1 }, trashSort: { key: 'mod', dir: -1 }, sharedSort: { key: 'mod', dir: -1 }, type: 'all', q: '', sel: null,
+    view: 'folder', path: '', group: null, open: new Set(), display: 'list', sort: { key: 'name', dir: 1 }, recentSort: { key: 'mod', dir: -1 }, trashSort: { key: 'mod', dir: -1 }, sharedSort: { key: 'mod', dir: -1 }, type: 'all', q: '', sel: null,
   };
 
   // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), importTypes(), onOpen(file), onNew(entry), onImport(entry), onClose(), onApps(), canClose(), notice(text),
@@ -137,7 +138,8 @@ export class Explorer {
     this.#folders = folders;
     this.#arrivals = shownReceived(received);
     const keys = new Set([...files, ...trashed, ...this.#arrivals].map(file => file.key));
-    if (this.state.sel && !this.state.sel.startsWith('dir:') && !keys.has(this.state.sel)) this.state.sel = null;
+    if (this.state.sel && !/^(dir|grp):/.test(this.state.sel) && !keys.has(this.state.sel)) this.state.sel = null;
+    if (this.state.group && !receivedFolders(this.#arrivals).folders.some(folder => folder.id === this.state.group)) this.state.group = null; // le dossier reçu n'a plus de fichier montré (tous refusés)
     this.#pieces.filesChanged();
     if (this.isOpen) this.render();
     this.#pieces.reread();
@@ -235,7 +237,7 @@ export class Explorer {
   #ctx(extra = {}) {
     const { state } = this;
     const sel = state.sel;
-    const row = sel ? this.#rows.find(r => (r.kind === 'folder' ? `dir:${r.path}` : r.file.key) === sel) : null;
+    const row = sel ? this.#rows.find(r => rowKey(r) === sel) : null;
     return {
       t: this.#opts.i18n.t, state, locale: this.#opts.locale, now: this.#opts.now(), appName: this.#opts.appName, typeLabel: this.#opts.typeLabel,
       lockOf: this.#opts.lockOf, opensIn: file => this.#opensIn(file), sort: this.#sort(), filtering: this.#filtering, favCount: this.#pool.filter(file => file.pinned).length, totalFiles: this.#pool.length,
@@ -282,13 +284,13 @@ export class Explorer {
     const result = listItems(this.#shown, { ...this.state, sort: this.#sort() }, { locale: this.#opts.locale, typeLabel: this.#opts.typeLabel, spare: this.#spare });
     this.#rows = result.rows;
     this.#total = sumWeights(result.covered);
-    this.#keys = this.#rows.map(r => (r.kind === 'folder' ? `dir:${r.path}` : r.file.key));
+    this.#keys = this.#rows.map(rowKey);
     if (this.state.sel && !this.#keys.includes(this.state.sel)) this.state.sel = null;
     const ctx = this.#ctx();
     const tiles = this.state.display === 'tiles';
     list.classList.toggle('is-tiles', tiles);
     this.#paintRows(ctx, tiles, result.flat);
-    notices.replaceChildren(...this.#problems.map(text => h('div', { class: 'banner', role: 'alert' }, icon('warning'), text)), ...(this.state.view === 'trash' && this.#trashed.length ? [trashBar(ctx)] : []));
+    notices.replaceChildren(...this.#problems.map(text => h('div', { class: 'banner', role: 'alert' }, icon('warning'), text)), ...this.#bars(ctx));
     const message = this.#loading ? this.#opts.i18n.t('ex.loading') : (this.#rows.length ? '' : (this.#restricted ? this.#opts.i18n.t('ex.emptyNoAccess') : emptyMessage(ctx)));
     empty.textContent = message;
     empty.hidden = !message;
@@ -404,14 +406,14 @@ export class Explorer {
     newBtn.addEventListener('click', () => this.#newMenu());
     openBtn.addEventListener('click', () => this.#openSelected());
     closeBtn.addEventListener('click', () => this.#requestClose());
-    crumbsNav.addEventListener('click', event => { const link = event.target.closest('[data-path]'); if (link) this.#goFolder(link.dataset.path); });
+    crumbsNav.addEventListener('click', event => { const link = event.target.closest('[data-path], [data-view]'); if (link && link.dataset.view) this.#goView(link.dataset.view); else if (link) this.#goFolder(link.dataset.path); });
     treeNav.addEventListener('click', event => this.#onTree(event));
     list.addEventListener('click', event => this.#onList(event));
     list.addEventListener('dblclick', event => { const row = event.target.closest('[data-key]'); if (row && !event.target.closest('button')) this.#activate(row.dataset.key); });
     list.addEventListener('keydown', event => this.#onListKey(event));
     list.addEventListener('contextmenu', event => this.#onContext(event));
     this.root.addEventListener('dragend', () => this.#win.settle());
-    notices.addEventListener('click', event => { if (event.target.closest('[data-empty-trash]')) void this.#removal.emptyTrash(); });
+    notices.addEventListener('click', event => { if (event.target.closest('[data-empty-trash]')) void this.#removal.emptyTrash(); else if (event.target.closest('[data-answer-folder]')) void this.#askFolder(this.state.group); });
     // Échap sur le document : il ferme aussi quand le focus est tombé sur le fond (clic dans une zone vide, liste redessinée). Un menu ou une
     // fenêtre qui l'a pris pour lui (preventDefault, stopPropagation) passe avant.
     this.root.ownerDocument.addEventListener('keydown', event => { if (this.isOpen) this.#onKey(event); });
@@ -422,6 +424,7 @@ export class Explorer {
   #goFolder(path) {
     const { state } = this;
     state.view = 'folder';
+    state.group = null;
     state.path = path;
     state.q = '';
     state.type = 'all';
@@ -431,9 +434,30 @@ export class Explorer {
     this.render();
   }
 
+  // Les barres sous le fil d'Ariane : la corbeille (« Vider »), un dossier reçu qui a des fichiers à accepter (« Accepter le dossier »).
+  #bars(ctx) {
+    if (this.state.view === 'trash' && this.#trashed.length) return [trashBar(ctx)];
+    const folder = this.state.view === 'shared' && this.state.group ? receivedFolders(this.#arrivals).folders.find(each => each.id === this.state.group) : null;
+    return folder && folder.pending ? [groupBar(ctx, folder)] : [];
+  }
+
+  // Entrer dans un dossier reçu d'un autre document (« Partagés avec moi ») : ses fichiers seuls, le fil d'Ariane le dit.
+  #goGroup(id) {
+    Object.assign(this.state, { group: id, q: '', type: 'all', sel: null });
+    this.#refs.search.value = '';
+    this.render();
+  }
+
+  // La question d'un dossier reçu : un oui ou un non pour tous ses fichiers à accepter (js/received-control.js).
+  async #askFolder(id) {
+    const folder = receivedFolders(this.#arrivals).folders.find(each => each.id === id);
+    if (!folder || !(await this.#shared.askFolder(folder))) return;
+    this.#refs.list.querySelector('[data-key][tabindex="0"]')?.focus(); // la barre et son bouton ont disparu avec la réponse : le clavier reprend dans la liste
+  }
+
   #goView(view) {
     if (['trash', 'shared'].includes(view) && this.#choice) { this.#opts.notice(this.#opts.i18n.t('ex.choose.newOff')); return; }
-    Object.assign(this.state, { view, q: '', type: 'all', sel: null });
+    Object.assign(this.state, { view, group: null, q: '', type: 'all', sel: null });
     this.#refs.search.value = '';
     this.render();
   }
@@ -524,10 +548,11 @@ export class Explorer {
 
   // Retour arrière : le dossier parent ; depuis Récents, Favoris ou la corbeille, la racine ; à la racine, rien.
   #goParent(event) {
-    const { view, path } = this.state;
+    const { view, path, group } = this.state;
     if (view === 'folder' && path === '') return;
     event.preventDefault();
-    this.#goFolder(view === 'folder' ? parentPath(path) : '');
+    if (view === 'shared' && group) this.#goView('shared');
+    else this.#goFolder(view === 'folder' ? parentPath(path) : '');
   }
 
   // Le clic droit : le menu de la ligne, comme « ⋯ » (le clavier le demande par Maj+F10 ou la touche Menu, dans #onListKey).
@@ -612,6 +637,7 @@ export class Explorer {
   // Un fichier s'ouvre dans son app, ou, en mode choix, est désigné à l'app qui le demandait.
   #activate(key) {
     if (key.startsWith('dir:')) { this.#goFolder(key.slice(4)); return; }
+    if (key.startsWith('grp:')) { this.#goGroup(key.slice(4)); return; }
     if (this.state.view === 'trash') { void this.#removal.restore(key); return; }
     if (this.state.view === 'shared') { const arrival = this.#arrivals.find(item => item.key === key); if (arrival) { this.#shared.activate(arrival); return; } }
     const file = this.#files.find(item => item.key === key);
@@ -641,7 +667,7 @@ export class Explorer {
   #bellMenu() {
     const { t } = this.#opts.i18n;
     if (this.#choice) { this.#opts.notice(t('ex.choose.newOff')); return; }
-    const x = { t, pending: pendingOf(this.#arrivals), notice: this.#opts.notice, ask: file => this.#shared.activate(file), openShared: () => this.#goView('shared') };
+    const x = { t, pending: pendingOf(this.#arrivals), notice: this.#opts.notice, ask: file => this.#shared.activate(file), askFolder: folder => this.#shared.askFolder(folder), openShared: () => this.#goView('shared') };
     openMenu(this.#refs.bellBtn, notificationItems(x), { host: this.root, align: 'right', label: t('nt.menu') });
   }
 

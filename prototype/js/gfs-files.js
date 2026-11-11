@@ -19,6 +19,9 @@ export const FILES_COLUMNS = Object.freeze([
 ].map(column => Object.freeze(column)));
 export const FILES_COLUMN_IDS = Object.freeze(FILES_COLUMNS.map(column => column.id));
 export const TRASH_COLUMN_IDS = Object.freeze(['SupprimeLe', 'SupprimePar']);
+// Le nom du dossier d'un fichier partagé avec un autre document Grist (« Partager un dossier », 11/11) : une colonne de PLUS, ajoutée par GFS au premier dossier partagé (ce n'est pas une colonne de `FILES_COLUMNS` :
+// un document qui ne partage aucun dossier n'en a pas). Le moteur de partage l'envoie avec le fichier, et l'autre document y lit le dossier (js/received-folders.js).
+export const SHARED_FOLDER_COLUMN = 'Dossier_partage';
 
 const bilingual = (fr, en) => Object.freeze({ fr, en });
 

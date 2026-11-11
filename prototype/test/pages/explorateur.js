@@ -28,7 +28,7 @@ import { Copying } from '/js/copying.js';
 import { applyPlacement, readSpaces } from '/js/spaces-filing.js';
 import { FILES_MANIFEST, FILES_COLUMN_IDS } from '/js/gfs-files.js';
 import { ReceivedControl } from '/js/received-control.js';
-import { loadReceived, answerFile } from '/js/received-files.js';
+import { loadReceived, answerFile, answerFolder } from '/js/received-files.js';
 import { fakeGrist } from '/test/fake-grist.mjs';
 import { createI18n } from '/js/i18n.js';
 import { installSprite } from '/js/icons.js';
@@ -250,7 +250,7 @@ async function mount() {
   const readArrivals = async () => { arrivals = await loadReceived(sharedGrist.port, await sharedGrist.port.doc.listTables()); show(); };
   const received = new ReceivedControl({
     port: sharedGrist.port, t: i18n.t, locale: () => locale, container: stage, inertTargets: () => [explorer.root], typeLabel: baseLabel, notice: text => window.__notices.push(text), blocked: () => window.__sharedBlocked || null,
-    refresh: readArrivals, open: file => { window.__opened = file.name; }, answerFile: (port, file, accepted) => answerFile(sharedGrist.port, file, accepted),
+    refresh: readArrivals, open: file => { window.__opened = file.name; }, answerFile: (port, file, accepted) => answerFile(sharedGrist.port, file, accepted), answerFolder: (port, folder, accepted) => answerFolder(sharedGrist.port, folder, accepted),
   });
   window.__sharedBlocked = '';
   // Un fichier arrive pendant que l'explorateur est ouvert : la ligne est posée dans le faux Grist, puis la liste des arrivées se remplace seule (`Explorer.setReceived`, comme le fait le contrôleur).
@@ -264,8 +264,9 @@ async function mount() {
   window.__shared = async kind => {
     const day = Math.floor(Date.now() / 1000) - 86400;
     const row = (id, name, extra = {}) => ({ id, Identifiant: `r${id}`, Nom: name, Type: 'pdf', Date: day - id * 3600, Auteur: 'Comptabilité <compta@exemple.fr>', Contenu: ['L', id], Taille: 1500 * id, Origine: 'import', Supprimee_a_la_source: false, ...extra });
-    const rows = kind === 'vide' ? [] : [row(1, 'Facture de la session de formation de septembre 2026.pdf'), row(2, 'Devis.pdf'), row(3, 'Contrat.pdf', { Accepte: true, Refuse: false }), row(4, 'Ancien refus.pdf', { Accepte: false, Refuse: true }), row(5, 'Retiré.pdf', { Accepte: true, Refuse: false, Supprimee_a_la_source: true })];
-    const columns = ['id', ...FILES_COLUMN_IDS, 'Supprimee_a_la_source', 'Accepte', 'Refuse'];
+    const rows = kind === 'vide' ? [] : kind === 'dossier' ? [row(1, 'Contrat de prestation.pdf', { Dossier_partage: 'Contrats' }), row(2, 'Avenant 1.pdf', { Dossier_partage: 'Contrats' }), row(3, 'Avenant 2.pdf', { Dossier_partage: 'Contrats', Accepte: true, Refuse: false }),
+      row(4, 'Plan.pdf', { Dossier_partage: 'Archives', Accepte: true, Refuse: false }), row(5, 'Rapport.pdf', { Dossier_partage: 'Archives', Accepte: true, Refuse: false }), row(6, 'Seul.pdf', { Dossier_partage: '' })] : [row(1, 'Facture de la session de formation de septembre 2026.pdf'), row(2, 'Devis.pdf'), row(3, 'Contrat.pdf', { Accepte: true, Refuse: false }), row(4, 'Ancien refus.pdf', { Accepte: false, Refuse: true }), row(5, 'Retiré.pdf', { Accepte: true, Refuse: false, Supprimee_a_la_source: true })];
+    const columns = ['id', ...FILES_COLUMN_IDS, 'Supprimee_a_la_source', 'Accepte', 'Refuse', 'Dossier_partage'];
     sharedGrist = fakeGrist(kind === 'vide' ? {} : { GFS_Recus: { columns, rows } });
     window.__sharedTables = sharedGrist.tables;
     window.__sharedActions = sharedGrist.actions;

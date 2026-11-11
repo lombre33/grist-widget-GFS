@@ -6,9 +6,10 @@
 // Deux colonnes Bool, ajoutées par GFS : elles TIENNENT aux mises à jour de l'envoyeur, alors qu'une ligne effacée REVIENT à la mise à jour suivante (mesuré, faits vérifiés 72) : refuser, c'est marquer, jamais effacer.
 // Du code sans effet de bord, sauf `loadReceived` (lecture) et `answerFile` (écriture d'une marque, par OwnTable).
 
-import { FILES_MANIFEST } from './gfs-files.js';
+import { FILES_MANIFEST, SHARED_FOLDER_COLUMN } from './gfs-files.js';
 import { readFiles, applyFiling, fileKey } from './explorer-model.js';
 import { OwnTable } from './own-table.js';
+import { PENDING, ACCEPTED, REFUSED, stateOf } from './received-state.js';
 
 export const RECEIVED_APP = 'gfs-recus';
 export const RECEIVED_TABLE = 'GFS_Recus';
@@ -32,28 +33,25 @@ const FILES_SPEC = FILES_MANIFEST.fichiers[0];
 const spec = table => ({ ...FILES_SPEC, table, corbeille: null });
 
 const flag = (data, column, i) => Array.isArray(data[column]) && data[column][i] === true;
+// Le dossier que l'envoyeur a donné au fichier (js/received-folders.js), ou '' : la colonne manque aux partages d'un fichier seul.
+const folderName = (data, i) => (Array.isArray(data[SHARED_FOLDER_COLUMN]) ? String(data[SHARED_FOLDER_COLUMN][i] ?? '').trim() : '');
 
-export const PENDING = 'pending';
-export const ACCEPTED = 'accepted';
-export const REFUSED = 'refused';
+export { PENDING, ACCEPTED, REFUSED, stateOf };
 
-// L'état d'une arrivée d'après ses deux marques : un refus passe devant un accord (une ligne marquée des deux n'est pas un cas que GFS écrit, mais que l'envoyeur ne peut pas produire non plus).
-export const stateOf = ({ accepted, refused }) => (refused ? REFUSED : accepted ? ACCEPTED : PENDING);
-
-// Les fichiers d'une table reçue, tous états confondus : { …fichier de l'explorateur, key, received: { table, row, state, gone } }. La clé porte la table (deux partages peuvent citer un même identifiant) ;
-// `gone` : le fichier est retiré chez l'envoyeur, la copie reste ici (réception « en archive »).
+// Les fichiers d'une table reçue, tous états confondus : { …fichier de l'explorateur, key, received: { table, row, state, gone, folder } }. La clé porte la table (deux partages peuvent citer un même identifiant) ;
+// `gone` : le fichier est retiré chez l'envoyeur, la copie reste ici (réception « en archive »), `folder` : le nom du dossier partagé où il est chez l'envoyeur, ou ''.
 export function readReceived(table, data) {
   const files = applyFiling(readFiles(RECEIVED_MANIFEST, spec(table), data), null); // sans rangement : le texte de la recherche seul
   const byRow = new Map((data && Array.isArray(data.id) ? data.id : []).map((row, i) => [row, i]));
   return files.map(file => {
     const i = byRow.get(file.row);
     const state = stateOf({ accepted: flag(data, ACCEPTED_COLUMN, i), refused: flag(data, REFUSED_COLUMN, i) });
-    return { ...file, key: fileKey(RECEIVED_APP, `${table}:${file.id}`), received: { table, row: file.row, state, gone: flag(data, ARCHIVE_COLUMN, i) } };
+    return { ...file, key: fileKey(RECEIVED_APP, `${table}:${file.id}`), received: { table, row: file.row, state, gone: flag(data, ARCHIVE_COLUMN, i), folder: folderName(data, i) } };
   });
 }
 
 // Sans « Partagés avec moi » (les essais de l'explorateur seul) : aucune arrivée à répondre, aucun geste de plus.
-export const NO_RECEIVED = Object.freeze({ openAs: () => null, menu: () => null, activate: () => {} });
+export const NO_RECEIVED = Object.freeze({ openAs: () => null, menu: () => null, activate: () => {}, askFolder: () => {} });
 
 // Un fichier reçu et accepté : il se lit (js/kept-files.js).
 export const isAcceptedReceived = file => Boolean(file && file.received && file.received.state === ACCEPTED);
@@ -82,4 +80,17 @@ export async function answerFile(port, file, accepted) {
   await own.existing([ACCEPTED_COLUMN, REFUSED_COLUMN]);
   await port.doc.applyUserActions([['UpdateRecord', own.id, row, { [ACCEPTED_COLUMN]: accepted, [REFUSED_COLUMN]: !accepted }]]);
   return true;
+}
+
+// La réponse à un DOSSIER reçu (`folder` : js/received-folders.js) : les marques de TOUS ses fichiers à accepter, écrites en une seule action (un lot qui échoue n'écrit rien). La table est relue juste avant (une ligne a
+// pu disparaître : le moteur la remet à la mise à jour suivante) et les deux colonnes de marques sont ajoutées d'abord, comme pour un fichier. Rend le nombre de fichiers marqués (0 : plus rien à répondre).
+export async function answerFolder(port, folder, accepted) {
+  const own = new OwnTable({ port, name: folder.table, columns: MARK_COLUMNS, consent: async () => false });
+  const seen = await own.load();
+  if (!seen.exists) return 0;
+  const rows = folder.files.filter(file => file.received.state === PENDING).map(file => file.received.row).filter(row => seen.data.id.includes(row));
+  if (!rows.length) return 0;
+  await own.existing([ACCEPTED_COLUMN, REFUSED_COLUMN]);
+  await port.doc.applyUserActions([['BulkUpdateRecord', own.id, rows, { [ACCEPTED_COLUMN]: rows.map(() => accepted), [REFUSED_COLUMN]: rows.map(() => !accepted) }]]);
+  return rows.length;
 }

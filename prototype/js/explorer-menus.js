@@ -5,11 +5,14 @@
 // x : { t, opts (filing, sharing, notice, appName), view ('folder', 'recent', 'trash', 'shared', 'opened'…), choice (un mode choix est ouvert), rows, shown (les fichiers de la vue), kept, bin, copying, shared, openAs(file),
 //       act: { activate(key), deleteFolder(key), restore(key), purge(key), trashKey(key), duplicate(file), dropOpened(key) } }
 
+import { rowKey } from './explorer-model.js';
+
 const item = (label, glyph, run, hint) => ({ label, icon: glyph, run, hint });
 
 // Les articles de la ligne `key` (« dir:<chemin> » pour un dossier), ou `null` quand le fichier n'est plus dans la vue.
 export function rowItems(x, key) {
   const { t, opts, choice, act } = x;
+  if (key.startsWith('grp:')) return groupItems(x, key);
   if (key.startsWith('dir:')) {
     const path = key.slice(4);
     const { filing } = opts;
@@ -19,6 +22,14 @@ export function rowItems(x, key) {
   const file = x.shown.find(entry => entry.key === key);
   if (!file) return null;
   return ({ trash: () => trashItems(x, file), shared: () => sharedItems(x, file) })[x.view]?.() || fileItems(x, file);
+}
+
+// Le menu d'un dossier reçu d'un autre document (« Partagés avec moi », clé « grp:<id> ») : l'ouvrir, et répondre pour tous ses fichiers à accepter. Il n'est pas à la personne : ni renommer, ni déplacer, ni supprimer.
+function groupItems(x, key) {
+  const { t } = x;
+  const row = x.rows.find(entry => rowKey(entry) === key);
+  if (!row) return null;
+  return [item(t('ex.openFolder'), 'open', () => x.act.activate(key), t('key.enter')), ...(row.pending ? [item(t('rx.folder.answer'), 'check', () => void x.shared.askFolder(row))] : [])];
 }
 
 // « Partager… » d'un dossier (js/share-control.js) : seuls les dossiers d'un espace se partagent ; les autres l'article reste, grisé, et le clic dit pourquoi.

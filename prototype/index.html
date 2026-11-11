@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-YUq6OhdqU4silClrILAtPKuoEcMzNNdqsZ+wlg/8YN4='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-08xA6ENkRwzrK2Ytxq0wFEFSnusZ+OcNgBTBlxWxm4k='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=95756125d5">
 <link rel="stylesheet" href="css/explorer.css?v=24e7c180ff">
 <link rel="stylesheet" href="css/modules.css?v=e9c281ff14">
@@ -58,15 +58,15 @@
     "./js/explorer-data.js": "./js/explorer-data.js?v=16d867f32c",
     "./js/explorer-drag.js": "./js/explorer-drag.js?v=91379dc66a",
     "./js/explorer-keys.js": "./js/explorer-keys.js?v=e49be0325a",
-    "./js/explorer-menus.js": "./js/explorer-menus.js?v=345360f4dd",
-    "./js/explorer-model.js": "./js/explorer-model.js?v=b1843d429f",
+    "./js/explorer-menus.js": "./js/explorer-menus.js?v=6702ccf2c6",
+    "./js/explorer-model.js": "./js/explorer-model.js?v=0649caeb72",
     "./js/explorer-pj.js": "./js/explorer-pj.js?v=c2de40d263",
     "./js/explorer-removal.js": "./js/explorer-removal.js?v=84483dac83",
     "./js/explorer-sql.js": "./js/explorer-sql.js?v=042e9115cb",
     "./js/explorer-undo.js": "./js/explorer-undo.js?v=c0e6038029",
-    "./js/explorer-view.js": "./js/explorer-view.js?v=8674c9722c",
+    "./js/explorer-view.js": "./js/explorer-view.js?v=5f213e8e60",
     "./js/explorer-window.js": "./js/explorer-window.js?v=449ca4c562",
-    "./js/explorer.js": "./js/explorer.js?v=92c0995a4d",
+    "./js/explorer.js": "./js/explorer.js?v=6f6f4d5456",
     "./js/extensions.js": "./js/extensions.js?v=a6b2033702",
     "./js/file-managers.js": "./js/file-managers.js?v=67b93f78fa",
     "./js/file-refresh.js": "./js/file-refresh.js?v=66d4aefd8e",
@@ -76,14 +76,14 @@
     "./js/filter.js": "./js/filter.js?v=01e8ad7504",
     "./js/frames.js": "./js/frames.js?v=4510104d19",
     "./js/gfs-copy.js": "./js/gfs-copy.js?v=aebb603561",
-    "./js/gfs-files.js": "./js/gfs-files.js?v=136137d0cb",
+    "./js/gfs-files.js": "./js/gfs-files.js?v=59dbaafab4",
     "./js/gfs-trash.js": "./js/gfs-trash.js?v=4e5c1ece7c",
     "./js/i18n-explorer.js": "./js/i18n-explorer.js?v=7184a3040f",
     "./js/i18n-folders.js": "./js/i18n-folders.js?v=2dd37b93c0",
     "./js/i18n-manage.js": "./js/i18n-manage.js?v=86f9429b9a",
     "./js/i18n-natives.js": "./js/i18n-natives.js?v=fca58bb298",
-    "./js/i18n-notifications.js": "./js/i18n-notifications.js?v=48f040ccff",
-    "./js/i18n-received.js": "./js/i18n-received.js?v=f9fb90083b",
+    "./js/i18n-notifications.js": "./js/i18n-notifications.js?v=e928ec00d1",
+    "./js/i18n-received.js": "./js/i18n-received.js?v=2fe152333d",
     "./js/i18n-rights.js": "./js/i18n-rights.js?v=4d3985edb0",
     "./js/i18n-share-other.js": "./js/i18n-share-other.js?v=0a64b6c538",
     "./js/i18n-share.js": "./js/i18n-share.js?v=9aa12ad506",
@@ -108,7 +108,7 @@
     "./js/modules-model.js": "./js/modules-model.js?v=65237748cb",
     "./js/modules-window.js": "./js/modules-window.js?v=43607af28d",
     "./js/natives.js": "./js/natives.js?v=3335210a6d",
-    "./js/notifications.js": "./js/notifications.js?v=cb0675dc97",
+    "./js/notifications.js": "./js/notifications.js?v=d4332ac357",
     "./js/oklch.js": "./js/oklch.js?v=4ecc7f440b",
     "./js/opened-bar.js": "./js/opened-bar.js?v=3da8b4821f",
     "./js/opened-files.js": "./js/opened-files.js?v=0f3dd1ab83",
@@ -122,9 +122,11 @@
     "./js/publication.js": "./js/publication.js?v=b20be91fda",
     "./js/rangement.js": "./js/rangement.js?v=86d9434d21",
     "./js/reading.js": "./js/reading.js?v=6b29ec0768",
-    "./js/received-control.js": "./js/received-control.js?v=31c1d0bce2",
-    "./js/received-files.js": "./js/received-files.js?v=2e1ac0ad94",
-    "./js/received-window.js": "./js/received-window.js?v=30ff7157dd",
+    "./js/received-control.js": "./js/received-control.js?v=392dcdcc5e",
+    "./js/received-files.js": "./js/received-files.js?v=82bd77848e",
+    "./js/received-folders.js": "./js/received-folders.js?v=91dc0b3ca8",
+    "./js/received-state.js": "./js/received-state.js?v=e4ad5ce546",
+    "./js/received-window.js": "./js/received-window.js?v=0e5ba7f6ab",
     "./js/rights-actions.js": "./js/rights-actions.js?v=44ffa31e58",
     "./js/rights-control.js": "./js/rights-control.js?v=18d626f106",
     "./js/rights-plan.js": "./js/rights-plan.js?v=ab59b68980",
@@ -271,7 +273,7 @@
 <link rel="modulepreload" href="./js/settings-menu.js?v=f9ce66c1f3">
 <link rel="modulepreload" href="./js/about.js?v=63b8993ce8">
 <link rel="modulepreload" href="./js/work-control.js?v=7efc5aae9e">
-<link rel="modulepreload" href="./js/explorer.js?v=92c0995a4d">
+<link rel="modulepreload" href="./js/explorer.js?v=6f6f4d5456">
 <link rel="modulepreload" href="./js/explorer-data.js?v=16d867f32c">
 <link rel="modulepreload" href="./js/file-refresh.js?v=66d4aefd8e">
 <link rel="modulepreload" href="./js/explorer-sql.js?v=042e9115cb">
@@ -289,7 +291,7 @@
 <link rel="modulepreload" href="./js/sync-resume.js?v=01df3db58c">
 <link rel="modulepreload" href="./js/sync-service.js?v=5ece15be51">
 <link rel="modulepreload" href="./js/weight-control.js?v=e720b51a0b">
-<link rel="modulepreload" href="./js/gfs-files.js?v=136137d0cb">
+<link rel="modulepreload" href="./js/gfs-files.js?v=59dbaafab4">
 <link rel="modulepreload" href="./js/transfer.js?v=9316150bd5">
 <link rel="modulepreload" href="./js/attach.js?v=1f308f71b9">
 <link rel="modulepreload" href="./js/player.js?v=32b6b9b638">
@@ -301,8 +303,8 @@
 <link rel="modulepreload" href="./js/openings.js?v=6554d82587">
 <link rel="modulepreload" href="./js/opened-files.js?v=0f3dd1ab83">
 <link rel="modulepreload" href="./js/opened-bar.js?v=3da8b4821f">
-<link rel="modulepreload" href="./js/received-control.js?v=31c1d0bce2">
-<link rel="modulepreload" href="./js/received-files.js?v=2e1ac0ad94">
+<link rel="modulepreload" href="./js/received-control.js?v=392dcdcc5e">
+<link rel="modulepreload" href="./js/received-files.js?v=82bd77848e">
 <link rel="modulepreload" href="./js/publication-window.js?v=1fc3429923">
 <link rel="modulepreload" href="./js/modules-window.js?v=43607af28d">
 <link rel="modulepreload" href="./js/app-context.js?v=8fbb478dc6">
@@ -322,8 +324,8 @@
 <link rel="modulepreload" href="./js/i18n-share.js?v=9aa12ad506">
 <link rel="modulepreload" href="./js/i18n-share-other.js?v=0a64b6c538">
 <link rel="modulepreload" href="./js/i18n-manage.js?v=86f9429b9a">
-<link rel="modulepreload" href="./js/i18n-received.js?v=f9fb90083b">
-<link rel="modulepreload" href="./js/i18n-notifications.js?v=48f040ccff">
+<link rel="modulepreload" href="./js/i18n-received.js?v=2fe152333d">
+<link rel="modulepreload" href="./js/i18n-notifications.js?v=e928ec00d1">
 <link rel="modulepreload" href="./js/i18n-explorer.js?v=7184a3040f">
 <link rel="modulepreload" href="./js/i18n-sharing.js?v=c630fedb15">
 <link rel="modulepreload" href="./js/stored-choice.js?v=2f8b5015a1">
@@ -338,10 +340,11 @@
 <link rel="modulepreload" href="./js/dock-state.js?v=8eec913fd1">
 <link rel="modulepreload" href="./js/context.js?v=9f530b9828">
 <link rel="modulepreload" href="./js/work-window.js?v=ce9a4597fb">
-<link rel="modulepreload" href="./js/explorer-model.js?v=b1843d429f">
+<link rel="modulepreload" href="./js/explorer-model.js?v=0649caeb72">
+<link rel="modulepreload" href="./js/received-folders.js?v=91dc0b3ca8">
 <link rel="modulepreload" href="./js/direct-shares.js?v=7bf5b6a40e">
 <link rel="modulepreload" href="./js/search.js?v=0921c92eb3">
-<link rel="modulepreload" href="./js/explorer-view.js?v=8674c9722c">
+<link rel="modulepreload" href="./js/explorer-view.js?v=5f213e8e60">
 <link rel="modulepreload" href="./js/weight.js?v=6d238aa6d1">
 <link rel="modulepreload" href="./js/explorer-pj.js?v=c2de40d263">
 <link rel="modulepreload" href="./js/explorer-removal.js?v=84483dac83">
@@ -351,8 +354,8 @@
 <link rel="modulepreload" href="./js/explorer-clipboard.js?v=fe178bf8ba">
 <link rel="modulepreload" href="./js/explorer-drag.js?v=91379dc66a">
 <link rel="modulepreload" href="./js/explorer-window.js?v=449ca4c562">
-<link rel="modulepreload" href="./js/explorer-menus.js?v=345360f4dd">
-<link rel="modulepreload" href="./js/notifications.js?v=cb0675dc97">
+<link rel="modulepreload" href="./js/explorer-menus.js?v=6702ccf2c6">
+<link rel="modulepreload" href="./js/notifications.js?v=d4332ac357">
 <link rel="modulepreload" href="./js/gfs-trash.js?v=4e5c1ece7c">
 <link rel="modulepreload" href="./js/spaces-filing.js?v=e8edc7c489">
 <link rel="modulepreload" href="./js/sharing-model.js?v=a5115d58e0">
@@ -379,7 +382,8 @@
 <link rel="modulepreload" href="./js/import-file.js?v=1f16ab4ac8">
 <link rel="modulepreload" href="./js/reading.js?v=6b29ec0768">
 <link rel="modulepreload" href="./js/leave.js?v=aa307430cb">
-<link rel="modulepreload" href="./js/received-window.js?v=30ff7157dd">
+<link rel="modulepreload" href="./js/received-window.js?v=0e5ba7f6ab">
+<link rel="modulepreload" href="./js/received-state.js?v=e4ad5ce546">
 <link rel="modulepreload" href="./js/sharing-rules.js?v=25e28ae865">
 <link rel="modulepreload" href="./kit/js/color-math.js?v=e9650179cf">
 <link rel="modulepreload" href="./kit/js/dom.js?v=bb61d5ebe7">

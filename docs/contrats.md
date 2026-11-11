@@ -1266,12 +1266,13 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 7. [D] `barre` : **la barre de GFS recouvre un petit morceau du cadre de l'app, et l'app laisse libre la place qu'elle y prend**
    (décision du porteur, 21/10 : la barre se place à gauche, en haut, à droite ou en bas, à la guise de la personne ; les apps
    adaptent leur interface aux quatre emplacements sans recouvrement ; l'emprise reste minimale, donc pas de bande en plus, mais
-   un recouvrement de l'espace que les apps laissent vide). Elle porte quatre boutons à icône seule (« Fichiers », « Apps et
-   extensions », « Table de travail », 4.5, depuis le 21/10 au soir, et « Position de la barre »), de 34 × 124 px au bord
-   gauche ou droit et de 124 × 34 px en haut ou en bas (34 × 94 avec les trois premiers boutons), à 4 px du bord et centrée sur lui ; elle remplace les deux boutons que GFS posait au coin bas droit. Le cadre de l'app reste plein :
+   un recouvrement de l'espace que les apps laissent vide). Elle porte cinq boutons à icône seule (« Fichiers », « Fichiers ouverts »,
+   6.4 point 14, depuis le 11/11, « Apps et extensions », « Table de travail », 4.5, depuis le 21/10 au soir, et « Position de la barre »), de 34 × 154 px au bord
+   gauche ou droit et de 154 × 34 px en haut ou en bas (34 × 124 avec quatre boutons, jusqu'au 11/11 ; 34 × 94 avec les trois premiers), à 4 px du bord et centrée sur lui ; elle remplace les deux boutons que GFS posait au coin bas droit. Le cadre de l'app reste plein :
    rien ne le réduit. `contexte.barre` dit ce qui est recouvert :
-   `{ "bord": "gauche", "epaisseur": 42, "zone": { "x": 0, "y": 134, "largeur": 42, "hauteur": 132 } }` (l'exemple d'un cadre de
-   700 × 400 avec la barre à gauche ; la taille de la barre peut changer, l'app lit toujours la zone qu'on lui donne). `bord` vaut `gauche`, `haut`, `droite` ou `bas` ; `zone` est le rectangle à laisser libre,
+   `{ "bord": "gauche", "epaisseur": 42, "zone": { "x": 0, "y": 119, "largeur": 42, "hauteur": 162 } }` (l'exemple d'un cadre de
+   700 × 400 avec la barre à gauche ; la taille de la barre peut changer, l'app lit toujours la zone qu'on lui donne : elle a grandi de 30 px le 11/11 avec le 5e bouton,
+   sans qu'aucune app ait rien à changer). `bord` vaut `gauche`, `haut`, `droite` ou `bas` ; `zone` est le rectangle à laisser libre,
    en pixels du cadre de l'app (origine en haut à gauche) : la barre et 4 px tout autour, bornés par le cadre ; `epaisseur` est la
    largeur de la zone (bords gauche et droit) ou sa hauteur (haut et bas), la profondeur dont l'app écarte ce qu'elle pose à ce
    bord. Hors de la zone, le cadre est à l'app, coins compris. L'app ne suppose aucun bord : les menus, bulles, fenêtres et bandes
@@ -2211,8 +2212,9 @@ rangée d'un fichier, selon ce qui vient d'abord.
 
 14. [D] **« Ouverts » : revenir à un fichier déjà ouvert, sans repartir de l'arborescence** (demande du porteur, 04/11 : « un système d'onglet pour
     revenir sur un fichier ouvert et pouvoir faire des A/R entre plusieurs fichiers sans repartir à zéro dans l'arborescence » ; choix « la liste d'abord,
-    les onglets vivants après » ; « pas d'ajout sur la barre flottante », reconfirmé le 10/11 : la liste vit **seulement dans l'explorateur**). Le volet a une
-    première ligne, « Ouverts », avant « Récents » ; son nombre est celui des fichiers ouverts que la liste montre (aucun nombre quand il n'y en a pas).
+    les onglets vivants après » ; « pas d'ajout sur la barre flottante » dit le 04/11 d'un autre sujet, les réglages, puis la carte « où poser la liste » : le 10/11 l'option conseillée, la liste
+    seulement dans l'explorateur, avait été prise ; **le 11/11 le porteur a choisi « Un 5e bouton sur la barre »** : la liste vit dans l'explorateur **et** sur la
+    barre). Le volet a une première ligne, « Ouverts », avant « Récents » ; son nombre est celui des fichiers ouverts que la liste montre (aucun nombre quand il n'y en a pas).
     **Ce qui y entre** : un fichier précis que GFS a ouvert dans une app et que l'app a ouvert (le double-clic, Entrée, un lien entre apps, « Lire » un PDF que
     GFS garde). N'y entrent pas : un fichier vierge (« Nouveau », « Importer »), ce qu'une app ouvre toute seule (GFS ne le sait pas), ni un refus (la
     personne a annulé dans l'app, ou l'app ne connaît pas l'appel `ouvrir`). **La liste** : les huit derniers (un neuvième fait sortir le plus ancien), à
@@ -2224,9 +2226,20 @@ rangée d'un fichier, selon ce qui vient d'abord.
     remplacée ou qu'un fichier vierge s'ouvre. **Revenir à un fichier** : double-clic ou Entrée, comme partout (une autre app est d'abord priée de se
     fermer, point 5.4 point 3 ; la même app reçoit l'appel `ouvrir`) ; si l'app refuse, rien ne change et le fichier n'entre pas dans la liste.
     **« Retirer des ouverts »** est le deuxième article du menu d'une ligne, dans cette vue seulement : la ligne sort de la liste, le fichier et l'app ne
-    bougent pas, la ligne suivante prend le clavier. Pendant le choix d'un fichier pour une app, la vue ne montre que ceux que l'app accepte. **Les onglets
+    bougent pas, la ligne suivante prend le clavier. Pendant le choix d'un fichier pour une app, la vue ne montre que ceux que l'app accepte. **Le 5e bouton de la barre, « Fichiers ouverts »**
+    (11/11 ; `js/opened-bar.js`, `js/dock.js`, 5.2 point 7) : le deuxième de la barre, entre « Fichiers » et « Apps » ; icône pile, **pastille qui porte le nombre**
+    (le nombre est aussi dans le nom du bouton, « Fichiers ouverts : 3 ») ; **grisé, jamais masqué**, quand rien n'est ouvert, et son menu le dit (un article grisé dont
+    le clic explique). Son menu (titre « Fichiers ouverts ») liste les mêmes fichiers **du plus récent au plus ancien** (le dernier ouvert en tête : l'aller-retour
+    entre deux fichiers garde les mêmes places ; l'explorateur trie par nom) : l'icône du type (sans couleur : elle est réservée à l'explorateur), le nom (coupé par « … »
+    avec son texte entier au survol), l'app en indice, et le fichier que l'app montre **en gras, avec un trait et son mot « affiché »** pour un lecteur d'écran. Un clic sur un
+    autre fichier l'ouvre comme dans l'explorateur (une autre app est d'abord priée de se fermer, 5.4 point 3) ; **un clic sur le fichier affiché referme le menu sans
+    rien relancer**. **La croix de la ligne (ou Suppr)** retire le fichier de la liste sans le fermer, et le menu se rouvre sans lui, le clavier sur la ligne qui prend sa
+    place ; au clavier, → va à la croix, ← revient, ↓ et ↑ ne s'y arrêtent pas, Début et Fin vont au premier et au dernier article. **« Ouvrir un autre fichier… »** montre
+    l'explorateur, comme « Fichiers ». La barre est une barre d'app : elle s'efface sous l'explorateur, et le menu s'ouvre à côté d'une barre verticale, au-dessous ou au-dessus
+    d'une barre horizontale, sans la recouvrir. **Les onglets
     vivants** (plusieurs cadres d'app gardés ensemble) **ne sont pas faits** : une seule app est vivante à la fois. [M] **Mesuré le 10/11** dans un vrai Grist
-    (`labo/run-ouverts.mjs`) et sous Firefox (`test/ouverts-firefox.mjs`) : faits vérifiés, section 79.
+    (`labo/run-ouverts.mjs`) et sous Firefox (`test/ouverts-firefox.mjs`) : faits vérifiés, section 79 ; **le 5e bouton, le 11/11** (`labo/run-ouverts-barre.mjs`,
+    `test/barre-ouverts-firefox.mjs`) : faits vérifiés, section 93.
 15. [T] **Une liste longue ne construit que ce qu'on voit** (décision du porteur, 10/11, audit vitesse et poids : « Afficher seulement les lignes
     visibles »). À partir de 200 lignes (liste) ou vignettes (`WINDOW_FROM`, `js/explorer-window.js`), l'explorateur construit les lignes visibles et huit
     rangées de part et d'autre ; l'espace des autres est tenu par le remplissage du conteneur : la barre de défilement, Début, Fin, la molette et la position

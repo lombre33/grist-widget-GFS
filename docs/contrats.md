@@ -2239,7 +2239,7 @@ rangée d'un fichier, selon ce qui vient d'abord.
     d'une barre horizontale, sans la recouvrir. **Les onglets
     vivants** (plusieurs cadres d'app gardés ensemble) **ne sont pas faits** : une seule app est vivante à la fois. [M] **Mesuré le 10/11** dans un vrai Grist
     (`labo/run-ouverts.mjs`) et sous Firefox (`test/ouverts-firefox.mjs`) : faits vérifiés, section 79 ; **le 5e bouton, le 11/11** (`labo/run-ouverts-barre.mjs`,
-    `test/barre-ouverts-firefox.mjs`) : faits vérifiés, section 93.
+    `test/barre-ouverts-firefox.mjs`) : faits vérifiés, section 97.
 15. [T] **Une liste longue ne construit que ce qu'on voit** (décision du porteur, 10/11, audit vitesse et poids : « Afficher seulement les lignes
     visibles »). À partir de 200 lignes (liste) ou vignettes (`WINDOW_FROM`, `js/explorer-window.js`), l'explorateur construit les lignes visibles et huit
     rangées de part et d'autre ; l'espace des autres est tenu par le remplissage du conteneur : la barre de défilement, Début, Fin, la molette et la position

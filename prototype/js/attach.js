@@ -1,6 +1,7 @@
-// Joindre un fichier à la cellule « Pièces jointes » d'une ligne (contrats 5.4, point 12) : une app qui a fabriqué un PDF (l'export d'une ligne de Publipostage+) demande à GFS de le joindre à la cellule
-// de CETTE ligne, par l'appel `joindre`. GFS est seul à parler à Grist : l'app ne reçoit aucun jeton d'écriture, elle donne les octets ; GFS les envoie (le cadre d'envoi, js/transfer.js), relit la
-// colonne juste avant d'écrire, et écrit un seul lot. Ce module lit la demande (sans effet de bord), vérifie ce que l'app a le droit de demander, joue l'envoi puis l'écriture, et rend le rapport.
+// Joindre un fichier à la cellule « Pièces jointes » d'une ligne (contrats 5.4, point 12) : une app qui a fabriqué un PDF (l'export d'une ligne de
+// Publipostage+) demande à GFS de le joindre à la cellule de CETTE ligne, par l'appel `joindre`. GFS est seul à parler à Grist : l'app ne reçoit aucun jeton
+// d'écriture, elle donne les octets ; GFS les envoie (le cadre d'envoi, js/transfer.js), relit la colonne juste avant d'écrire, et écrit un seul lot. Ce module
+// lit la demande (sans effet de bord), vérifie ce que l'app a le droit de demander, joue l'envoi puis l'écriture, et rend le rapport.
 
 import { ERR, Refus, readRefusal, writeRefusal } from './filter.js';
 import { PDF_TYPE, cleanName, looksLikePdf, sameName } from './gfs-files.js';
@@ -12,17 +13,21 @@ const ATTACHMENTS = 'Attachments';
 
 const refuse = message => new Refus(ERR.REFUSE, message);
 
-// Ce qui peut arrêter un lot, dans les mots du contrat : `absente`, `inutilisable` (avant tout envoi), puis `refus`, `injoignable`, `echec` (pendant l'envoi ou l'écriture). `trop-gros` n'arrête rien : c'est l'échec d'un seul fichier (`echecs`).
-export const PROBLEM = Object.freeze({ missing: 'absente', unusable: 'inutilisable', denied: 'refus', tooLarge: 'trop-gros', unreachable: 'injoignable', failed: 'echec' });
+// Ce qui peut arrêter un lot, dans les mots du contrat : `absente`, `inutilisable` (avant tout envoi), puis `refus`, `injoignable`, `echec` (pendant l'envoi ou
+// l'écriture). `trop-gros` n'arrête rien : c'est l'échec d'un seul fichier (`echecs`).
+export const PROBLEM = Object.freeze({ missing: 'absente', unusable: 'inutilisable', denied: 'refus', tooLarge: 'trop-gros', unreachable: 'injoignable',
+  failed: 'echec' });
 
-// `joindre { table, colonne, mode?, fichiers: [{ ligne, fichier, nom }] }` (5.4, point 12) -> { table, column, mode, items: [{ index, row, file, name }] }. Une forme hors règle est refusée
-// (GFS_REFUSE) avant que rien ne s'envoie. `nom` : le nom que Grist garde, un « .pdf » manquant est ajouté ; `mode` : `remplacer` (par défaut) ou `ajouter`.
+// `joindre { table, colonne, mode?, fichiers: [{ ligne, fichier, nom }] }` (5.4, point 12) -> { table, column, mode, items: [{ index, row, file, name }] }. Une
+// forme hors règle est refusée (GFS_REFUSE) avant que rien ne s'envoie. `nom` : le nom que Grist garde, un « .pdf » manquant est ajouté ; `mode` : `remplacer`
+// (par défaut) ou `ajouter`.
 export function readAttach(args) {
   const { table, colonne, mode = MODES[0], fichiers } = args && typeof args === 'object' ? args : {};
   if (typeof table !== 'string' || table === '') throw refuse('joindre : table doit être l\'identifiant d\'une table.');
   if (typeof colonne !== 'string' || colonne === '') throw refuse('joindre : colonne doit être l\'identifiant d\'une colonne.');
   if (!MODES.includes(mode)) throw refuse(`joindre : mode doit valoir « ${MODES.join(' » ou « ')} ».`);
-  if (!Array.isArray(fichiers) || fichiers.length === 0 || fichiers.length > ITEMS_MAX) throw refuse(`joindre : fichiers doit être une liste de 1 à ${ITEMS_MAX} entrées.`);
+  if (!Array.isArray(fichiers) || fichiers.length === 0 || fichiers.length > ITEMS_MAX) throw refuse(
+    `joindre : fichiers doit être une liste de 1 à ${ITEMS_MAX} entrées.`);
   return { table, column: colonne, mode, items: fichiers.map(readItem) };
 }
 
@@ -50,13 +55,15 @@ function problemOfTransfer(error) {
 }
 
 // Le refus d'une écriture par Grist (règles d'accès, droits) se lit dans son message ; tout autre échec est `echec`.
-const problemOfWrite = error => (/access|denied|permission|forbidden|not allowed/i.test(String((error && error.message) || error)) ? PROBLEM.denied : PROBLEM.failed);
+const problemOfWrite = error => (/access|denied|permission|forbidden|not allowed/i.test(String((error && error.message) || error)) ? PROBLEM.denied :
+  PROBLEM.failed);
 
 export class Attach {
   #host;
   #queue = Promise.resolve();
 
-  // host : { doc (le document de la page : fetchTable, applyUserActions), transfer (js/transfer.js : upload), session() -> l'app active, readonly() -> le document est en lecture seule }
+  // host : { doc (le document de la page : fetchTable, applyUserActions), transfer (js/transfer.js : upload), session() -> l'app active, readonly() -> le
+  //   document est en lecture seule }
   constructor(host) { this.#host = host; }
 
   // L'appel de l'app à GFS, pour la table des poignées de l'enveloppe (5.1).
@@ -64,12 +71,14 @@ export class Attach {
     return { joindre: args => this.attach(session, args) };
   }
 
-  // Rend { colonne, probleme, joints, echecs } (5.4, point 12). Les refus ont leur code (3.6) : GFS_REFUSE (forme, type non déclaré, table que le manifeste ne laisse pas lire et écrire, fichier qui
-  // n'est pas un PDF), GFS_LECTURE_SEULE, GFS_INACTIF (l'app est partie). Un envoi ou une écriture que Grist refuse n'est pas une erreur de l'appel : le rapport le dit (`probleme`).
+  // Rend { colonne, probleme, joints, echecs } (5.4, point 12). Les refus ont leur code (3.6) : GFS_REFUSE (forme, type non déclaré, table que le manifeste ne
+  // laisse pas lire et écrire, fichier qui n'est pas un PDF), GFS_LECTURE_SEULE, GFS_INACTIF (l'app est partie). Un envoi ou une écriture que Grist refuse
+  // n'est pas une erreur de l'appel : le rapport le dit (`probleme`).
   attach(session, args) {
     const request = readAttach(args);
     const declared = (session.manifest.actions && session.manifest.actions.joindre) || [];
-    if (!declared.includes(PDF_TYPE)) throw refuse(`joindre : le type « ${PDF_TYPE} » ne figure pas dans actions.joindre du manifeste de l'app « ${session.id} ».`);
+    if (!declared.includes(PDF_TYPE)) throw refuse(
+      `joindre : le type « ${PDF_TYPE} » ne figure pas dans actions.joindre du manifeste de l'app « ${session.id} ».`);
     const run = this.#queue.then(() => this.#run(session, request));
     this.#queue = run.catch(() => {});
     return run;
@@ -82,7 +91,8 @@ export class Attach {
     const denied = readRefusal(session.policy, table) || writeRefusal(session.policy, table);
     if (denied) throw refuse(`joindre : ${denied}`);
     for (const item of items) {
-      if (!looksLikePdf(new Uint8Array(await item.file.slice(0, 1024).arrayBuffer()))) throw refuse(`joindre : fichiers[${item.index}].fichier n'est pas un PDF.`);
+      if (!looksLikePdf(new Uint8Array(await item.file.slice(0, 1024).arrayBuffer()))) throw refuse(
+        `joindre : fichiers[${item.index}].fichier n'est pas un PDF.`);
     }
     const report = { colonne: column, probleme: null, joints: [], echecs: [] };
     const state = await this.#columnState(table, column);
@@ -95,7 +105,8 @@ export class Attach {
     return report;
   }
 
-  // `absente` : la colonne n'existe pas dans la table ; `inutilisable` : elle n'est pas de type Pièces jointes, ou elle est à formule (déclenchée comprise) ; null : elle peut recevoir.
+  // `absente` : la colonne n'existe pas dans la table ; `inutilisable` : elle n'est pas de type Pièces jointes, ou elle est à formule (déclenchée comprise) ;
+  //   null : elle peut recevoir.
   async #columnState(table, column) {
     const { doc } = this.#host;
     const tables = await doc.fetchTable('_grist_Tables');
@@ -108,8 +119,9 @@ export class Attach {
     return columns.type[found] === ATTACHMENTS && !formula && !columns.isFormula[found] ? null : PROBLEM.unusable;
   }
 
-  // L'envoi, un fichier après l'autre : ce que Grist refuse arrête le lot (`probleme`), les fichiers pas encore envoyés sont des échecs. Seule la taille n'arrête rien : un fichier que Grist trouve trop gros
-  // est un échec à lui seul (`trop-gros`, 06/11, question de Publipostage+ à sa 053), les suivants partent. Rend les fichiers envoyés avec leur numéro de pièce jointe.
+  // L'envoi, un fichier après l'autre : ce que Grist refuse arrête le lot (`probleme`), les fichiers pas encore envoyés sont des échecs. Seule la taille
+  // n'arrête rien : un fichier que Grist trouve trop gros est un échec à lui seul (`trop-gros`, 06/11, question de Publipostage+ à sa 053), les suivants
+  // partent. Rend les fichiers envoyés avec leur numéro de pièce jointe.
   async #send(items, report) {
     const sent = [];
     for (const item of items) {
@@ -125,7 +137,8 @@ export class Attach {
     return sent;
   }
 
-  // L'écriture : la colonne relue juste avant (une pièce jointe ajoutée entre-temps n'est pas perdue), puis un seul lot. `remplacer` : un fichier de même nom que le nouveau sort de la cellule.
+  // L'écriture : la colonne relue juste avant (une pièce jointe ajoutée entre-temps n'est pas perdue), puis un seul lot. `remplacer` : un fichier de même nom
+  //   que le nouveau sort de la cellule.
   async #write(table, column, mode, sent, report) {
     const { doc } = this.#host;
     const fresh = await doc.fetchTable(table);

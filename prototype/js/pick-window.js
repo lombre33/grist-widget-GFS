@@ -1,5 +1,6 @@
-// Un choix dans une liste avec recherche (charte : tout choix de table, de colonne ou de modèle passe par là ; mots dans n'importe quel ordre, accents, casse et ponctuation ignorés), sur la base commune
-// des fenêtres (js/modal.js). Elle ne décide rien : la valeur choisie est rendue, ou null quand la personne renonce.
+// Un choix dans une liste avec recherche (charte : tout choix de table, de colonne ou de modèle passe par là ; mots dans n'importe quel ordre, accents, casse
+// et ponctuation ignorés), sur la base commune des fenêtres (js/modal.js). Elle ne décide rien : la valeur choisie est rendue, ou null quand la personne
+// renonce.
 
 import { h } from './dom.js';
 import { icon } from './icons.js';
@@ -8,7 +9,8 @@ import { normalize, words, matchesWords } from './search.js';
 
 // opts : { container, inertTargets, t, title, text, items: [{ value, label, glyph }], current, none (le texte quand rien ne correspond) }.
 export function pickFrom({ container, inertTargets, t, title, text = '', items, current = null, none = '' }) {
-  const search = h('input', { type: 'search', autocomplete: 'off', placeholder: t('pick.search'), 'aria-label': t('pick.search'), dataset: { fk: 'pick-search' } });
+  const search = h('input', { type: 'search', autocomplete: 'off', placeholder: t('pick.search'), 'aria-label': t('pick.search'),
+    dataset: { fk: 'pick-search' } });
   const list = h('ul', { class: 'wk-list', 'aria-labelledby': 'pk-title' });
   const note = h('p', { class: 'mod-note', 'aria-live': 'polite' });
   const cancel = h('button', { type: 'button', class: 'btn', dataset: { fk: 'pick-cancel' } }, t('table.cancel'));
@@ -23,8 +25,10 @@ export function pickFrom({ container, inertTargets, t, title, text = '', items, 
     const found = items.filter(item => matchesWords(needles, normalize(item.label)));
     shown = found.slice(0, SHOWN);
     list.replaceChildren(...shown.map((item, index) => h('li', { class: 'wk-row' },
-      h('button', { type: 'button', class: 'wk-item', dataset: { index: String(index), fk: `pick-${item.value}` }, 'aria-current': item.value === current ? 'true' : null },
-        icon(item.glyph || 'table'), h('span', { class: 'wk-label' }, h('span', { class: 'wk-name' }, item.label)), item.value === current ? icon('check') : null))));
+      h('button', { type: 'button', class: 'wk-item', dataset: { index: String(index), fk: `pick-${item.value}` },
+        'aria-current': item.value === current ? 'true' : null },
+        icon(item.glyph || 'table'), h('span', { class: 'wk-label' }, h('span', { class: 'wk-name' }, item.label)),
+          item.value === current ? icon('check') : null))));
     note.textContent = !found.length ? none : (found.length > SHOWN ? t('work.more', { n: SHOWN, total: found.length }) : '');
   };
   search.addEventListener('input', render);

@@ -103,7 +103,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 var(
 .player[hidden] { display: none; }
 .player iframe { position: absolute; border: 0; }
 
-/* La barre de GFS au-dessus d'une app : trois boutons à icône seule, posés au bord que la personne choisit (`data-edge`, js/dock.js), centrés sur ce bord. Le cadre de l'app reste plein :
+/* La barre de GFS au-dessus d'une app : cinq boutons à icône seule, posés au bord que la personne choisit (`data-edge`, js/dock.js), centrés sur ce bord. Le cadre de l'app reste plein :
    la barre le recouvre à 4 px du bord, et l'app apprend la zone à laisser libre (contrats 5.2, point 7). Le mot de chaque bouton est son info-bulle. */
 .floaters { position: absolute; z-index: var(--z-float); display: flex; gap: 2px; padding: 2px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
   background: var(--surface); box-shadow: var(--shadow-card); }
@@ -113,10 +113,14 @@ body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 var(
 .floaters[data-edge="droite"] { right: 4px; }
 .floaters[data-edge="haut"] { top: 4px; }
 .floaters[data-edge="bas"] { bottom: 4px; }
-.floater { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: var(--radius-xs); background: transparent; color: var(--text); cursor: pointer; }
+.floater { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: var(--radius-xs); background: transparent; color: var(--text); cursor: pointer; }
 .floater:hover { background: var(--surface-sunken); }
 .floater:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .floater .ic { width: 16px; height: 16px; }
+/* « Fichiers ouverts » : le nombre en pastille bleue au coin du bouton (le nombre est aussi dans le nom du bouton) ; sans fichier ouvert le bouton est grisé et reste là (grisé, jamais masqué). */
+.floater .badge { position: absolute; top: -3px; right: -3px; min-width: 15px; height: 15px; padding: 0 4px; box-sizing: border-box; border-radius: 8px; background: var(--accent-solid); color: var(--on-accent);
+  font-size: max(10px, var(--fs-min)); font-weight: 700; line-height: 15px; text-align: center; pointer-events: none; }
+.floater[data-empty="true"] { color: var(--text-muted); }
 /* La ligne de travail choisie (contrats 4.5) : le bouton reste enfoncé, dans le bleu d'accent. */
 .floater[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); box-shadow: inset 0 0 0 1px var(--accent-soft-border); }
 

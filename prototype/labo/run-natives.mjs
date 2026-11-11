@@ -3,7 +3,8 @@
 // elle lira le choix (`natives` dans son manifeste, quatre fonctions) est ajouté ICI au manifeste que GFS lit : le labo seul (`transform` de lab-server.mjs), le fichier du dépôt n'est pas touché.
 // À mesurer : le détail se déplie, le geste sur Word s'écrit tout de suite dans la table de GFS (`modes`, jamais dans les réglages de la vue), l'app reçoit l'événement `extensions` avec `natives` (version,
 // adresse de la copie de GFS, empreinte ; jamais le CDN de GFS), le fichier servi a bien cette empreinte et le navigateur le charge en la contrôlant, `contexte` le rend à l'app qui le redemande, le retour
-// au CDN vide `natives`, et en lecture seule tout est grisé et rien ne s'écrit.
+// au CDN vide `natives`, et en lecture seule tout est grisé et rien ne s'écrit. L'éditeur a sa copie figée dans le dépôt de l'app : son choix s'écrit, ne change rien à l'app ouverte (aucun événement, pas de
+// rechargement) et part dans l'adresse du cadre (`copie=editeur`) au démarrage suivant de l'app.
 // REPO_DIR : le dépôt de GFS ; PP_DIR : un clone de Publipostage+ (le sous-module n'est pas récupéré dans le cloud). LAB_LANG=fr|en, LAB_SCHEME=light|dark, LAB_READONLY=1.
 import { createServer } from 'node:http';
 import { createHash } from 'node:crypto';
@@ -11,6 +12,7 @@ import { join } from 'node:path';
 import { serve } from './lab-server.mjs';
 import { startLab } from './lab-setup.mjs';
 import { say, check, LAB } from './lab-common.mjs';
+import { reopenGfs } from './lab-gestes.mjs';
 
 const REPO = process.env.REPO_DIR;
 const PP = process.env.PP_DIR;
@@ -20,11 +22,12 @@ const scheme = process.env.LAB_SCHEME || 'light';
 const readonly = process.env.LAB_READONLY === '1';
 const run = `natives-${lang}-${scheme}${readonly ? '-lecture-seule' : ''}`;
 const GROUPS = [
+  { id: 'editeur', nom: { fr: 'Éditeur (TipTap)', en: 'Editor (TipTap)' }, copieDansApp: true, poids: 1172757 },
   { id: 'pdf', nom: { fr: 'Export PDF (pdfmake, polices, JSZip)', en: 'PDF export (pdfmake, fonts, JSZip)' }, bibliotheques: [['pdfmake', '0.2.7'], ['pdfmake-polices', '0.2.7'], ['jszip', '3.10.1']] },
   { id: 'word', nom: { fr: 'Export Word (docx)', en: 'Word export (docx)' }, bibliotheques: [['docx', '9.15.1'], ['docx-charts', '9.15.1']] },
   { id: 'excel', nom: { fr: 'Export Excel (ExcelJS)', en: 'Excel export (ExcelJS)' }, bibliotheques: [['exceljs', '4.4.0']] },
   { id: 'divers', nom: { fr: 'Divers (marked, QR code, pdf-lib)', en: 'Other (marked, QR code, pdf-lib)' }, bibliotheques: [['pdf-lib', '1.17.1'], ['marked', '15.0.12'], ['qrcode-generator', '1.4.4']] },
-].map(group => ({ ...group, bibliotheques: group.bibliotheques.map(([id, version]) => ({ id, version })) }));
+].map(group => (group.bibliotheques ? { ...group, bibliotheques: group.bibliotheques.map(([id, version]) => ({ id, version })) } : group));
 
 // Le manifeste de Publipostage+ que GFS lit, avec ses quatre fonctions : tout le reste du site est servi tel quel.
 const transform = (file, bytes) => {
@@ -84,7 +87,7 @@ check('les bibliothèques natives sont une ligne de la fenêtre, au CDN, détail
 await shot('1-replie');
 await frame.locator('.mr--app details summary').click();
 s = await state();
-check('le détail se déplie à la souris : une ligne par fonction, rien ne déborde', s.open && s.rows.length === 4 && s.bodyOverflow <= 1 && s.rows.every(row => row.overflow <= 1), s);
+check('le détail se déplie à la souris : une ligne par fonction (l\'éditeur et les quatre exports), rien ne déborde', s.open && s.rows.length === 5 && s.bodyOverflow <= 1 && s.rows.every(row => row.overflow <= 1), s);
 await shot('2-deplie');
 
 if (readonly) {
@@ -146,7 +149,7 @@ if (readonly) {
   await labelOf(null, 'vendorise').click();
   await page.waitForTimeout(1500);
   const all = await modes();
-  check('« toutes » en copie figée écrit les quatre fonctions', JSON.stringify(Object.keys(all || {}).sort()) === JSON.stringify(['natif:divers', 'natif:excel', 'natif:pdf', 'natif:word']), all);
+  check('« toutes » en copie figée écrit les cinq fonctions', JSON.stringify(Object.keys(all || {}).sort()) === JSON.stringify(['natif:divers', 'natif:editeur', 'natif:excel', 'natif:pdf', 'natif:word']), all);
   await app.waitForFunction(() => window.__events.some(data => data.natives && data.natives.pdfmake && data.natives.exceljs && data.natives['qrcode-generator']), null, { timeout: 15000 }).catch(() => {});
   const many = (await app.evaluate(() => window.__events)).pop() || {};
   check('l\'app reçoit alors les neuf bibliothèques natives du manifeste d\'essai', Object.keys(many.natives || {}).length === 9, Object.keys(many.natives || {}));
@@ -159,6 +162,24 @@ if (readonly) {
   check('l\'app reçoit `natives: {}` : son CDN vaut de nouveau', back.natives && Object.keys(back.natives).length === 0, back);
   s = await state();
   check('la fenêtre dit de nouveau « CDN » pour toutes', s.radios['nativeall:publipostage/cdn'].checked && !/mélange|mixed/.test(s.legend), s.legend);
+
+  // ----- L'éditeur : sa copie est dans le dépôt de l'app. Le choix s'écrit, rien ne change pour l'app ouverte, l'adresse du cadre le porte au démarrage suivant.
+  const before = (await app.evaluate(() => window.__events)).length;
+  const urlBefore = app.url();
+  await labelOf('editeur', 'vendorise').click();
+  await page.waitForTimeout(1500);
+  check('le choix de l\'éditeur s\'écrit dans la table de GFS', JSON.stringify(await modes()) === JSON.stringify({ 'natif:editeur': 'vendorise' }), await modes());
+  const events2 = await app.evaluate(() => window.__events);
+  check('l\'app ouverte ne reçoit aucun événement pour l\'éditeur (GFS ne sert rien) et son cadre n\'est pas rechargé', events2.length === before && app.url() === urlBefore && !/[?&]copie=/.test(app.url()), { avant: before, apres: events2.length, url: app.url().replace(/\?.*/, '?…') });
+  const phrase = await frame.locator('.mr-lib', { hasText: /Éditeur|Editor/ }).locator('.mr-note').innerText();
+  check('la ligne de l\'éditeur dit que le choix prend effet au démarrage de l\'app', /prochain démarrage|next time the app starts/.test(phrase), phrase);
+  await shot('5-editeur-en-copie');
+  const gfs2 = await reopenGfs(lab, frame);
+  const app2 = await lab.openApp('publipostage', /./, gfs2);
+  const address = new URL(app2.url());
+  check('au démarrage suivant, l\'adresse du cadre porte `copie=editeur` (et le numéro de contrat)', address.searchParams.get('copie') === 'editeur' && address.searchParams.get('gfs') === '0', app2.url().replace(/^[^?]*/, ''));
+  const read = await app2.evaluate(async () => { try { const { hostCopies } = await import(new URL('/prototype/kit/js/host.js', location.href).href); return hostCopies(location.search); } catch (error) { return String(error); } });
+  check('le kit (`hostCopies`) lit ce choix dans l\'adresse du cadre, tout de suite, sans rien demander à GFS', JSON.stringify(read) === '["editeur"]', read);
 }
 check('aucun avertissement ni erreur de GFS dans la console', warnings.length === 0, warnings);
 say('captures :', run);

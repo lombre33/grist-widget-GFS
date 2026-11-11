@@ -24,7 +24,8 @@ export class AppSession {
   #pinnedUrl = null; // la copie figée de l'app, tant que le site vivant n'a pas répondu : c'est là qu'on se replie
   #gaveUp = false; // l'app n'a rien dit après le délai, copie figée comprise : « ne répond pas »
 
-  // ctx : { entry, manifest, catalogue, state, port, router, container, readonly, preferences, base, live, lang, onStatus, envelopeHandlers(session), authorize(manifest, opens), viewOptions }
+  // ctx : { entry, manifest, catalogue, state, port, router, container, readonly, preferences, base, live, lang, onStatus, envelopeHandlers(session),
+  //   authorize(manifest, opens), viewOptions }
   constructor(ctx) {
     this.ctx = ctx;
     this.manifest = ctx.manifest;
@@ -53,7 +54,8 @@ export class AppSession {
   // Ce qui doit disparaître quand l'app se cache derrière l'explorateur ou se ferme (le lecteur de vidéos, contrats 5.2 point 11).
   onLeave(listener) { this.#leavers.push(listener); }
   get isReady() { return Boolean(this.#peer && this.#peer.isReady); }
-  // Vrai tant qu'une app muette n'a pas fini par répondre : la rouvrir la relance (le cadre muet ne se réutilise pas), au lieu de laisser la personne devant « ne répond pas ».
+  // Vrai tant qu'une app muette n'a pas fini par répondre : la rouvrir la relance (le cadre muet ne se réutilise pas), au lieu de laisser la personne devant
+  // « ne répond pas ».
   get gaveUp() { return this.#gaveUp && !this.isReady; }
 
   open() {
@@ -70,7 +72,8 @@ export class AppSession {
       onMessage: data => this.#onAppMessage(data),
       onReady: () => this.#onReady(),
     });
-    const where = { entry: ctx.entry, manifest: this.manifest, access: this.access, readonly: ctx.readonly, preferences: ctx.preferences, base: ctx.base };
+    const where = { entry: ctx.entry, manifest: this.manifest, access: this.access, readonly: ctx.readonly, preferences: ctx.preferences, base: ctx.base,
+      copies: ctx.copies };
     const live = this.source === 'live';
     const url = frameUrl({ ...where, live });
     if (live) this.#pinnedUrl = frameUrl({ ...where, live: false });
@@ -86,12 +89,14 @@ export class AppSession {
     this.#timers.push(setTimeout(() => this.#onSlow(), READY_TIMEOUT_MS));
   }
 
-  // Le site vivant n'a pas dit `ready` à temps (pas en ligne, ou injoignable) : GFS ouvre la copie figée de l'app, dans le même cadre, et le dit. Sans copie à ouvrir, ou si la
-  // copie tarde aussi, c'est le « ne répond pas » de toujours (contrats 1.4, point 2).
+  // Le site vivant n'a pas dit `ready` à temps (pas en ligne, ou injoignable) : GFS ouvre la copie figée de l'app, dans le même cadre, et le dit. Sans copie à
+  // ouvrir, ou si la copie tarde aussi, c'est le « ne répond pas » de toujours (contrats 1.4, point 2).
   #onSlow() {
     if (this.isReady || !this.#frame) return;
-    // La cause est dans la console du cadre de l'app (une politique de sécurité qui refuse le script de Grist, un fichier qui manque) : GFS dit seulement où il a attendu.
-    console.warn(`GFS : ${this.id} : pas de « prête » en ${READY_TIMEOUT_MS / 1000} s sur ${this.source === 'live' ? 'le site en ligne' : 'la copie figée'} (${this.#frame.src.replace(/\?.*/, '')})`);
+    // La cause est dans la console du cadre de l'app (une politique de sécurité qui refuse le script de Grist, un fichier qui manque) : GFS dit seulement où il
+    // a attendu.
+    console.warn(
+      `GFS : ${this.id} : pas de « prête » en ${READY_TIMEOUT_MS / 1000} s sur ${this.source === 'live' ? 'le site en ligne' : 'la copie figée'} (${this.#frame.src.replace(/\?.*/, '')})`);
     if (!this.#pinnedUrl) { this.#gaveUp = true; this.ctx.onStatus('timeout', this); return; }
     const url = this.#pinnedUrl;
     this.#pinnedUrl = null;
@@ -112,20 +117,23 @@ export class AppSession {
     if (this.#envelope) this.#envelope.event('extensions', { extensions, bibliotheques, natives });
   }
 
-  // L'événement `barre` (contrats 5.2, points 2 et 7) : la barre de GFS a changé de bord, de taille, d'état (montrée, cachée) ; `null` quand rien ne recouvre plus le cadre.
+  // L'événement `barre` (contrats 5.2, points 2 et 7) : la barre de GFS a changé de bord, de taille, d'état (montrée, cachée) ; `null` quand rien ne recouvre
+  // plus le cadre.
   sendBar(barre) {
     if (this.#envelope) this.#envelope.event('barre', { barre });
   }
 
-  // L'événement `reglages` (contrats 7.3, point 5) : un réglage de l'app vient d'être écrit. `enregistres` vrai : il est dans la vue, rien à enregistrer dans Grist ; faux : brouillon.
+  // L'événement `reglages` (contrats 7.3, point 5) : un réglage de l'app vient d'être écrit. `enregistres` vrai : il est dans la vue, rien à enregistrer dans
+  // Grist ; faux : brouillon.
   sendSaved(saved) {
     this.#savedCount++;
     if (this.#envelope) this.#envelope.event('reglages', { enregistres: Boolean(saved) });
   }
 
-  // La même annonce, d'avance, quand l'app demande son contexte (contrats 7.3, point 5) : une app qui rappelle « Enregistrer » ne sait rien avant son premier réglage, et le dirait à tort au
-  // départ. GFS lit sa section (rien n'est écrit) et dit ce qu'il en attend ; une écriture qui passe avant la réponse dit mieux (`#savedCount`), et quand GFS ne sait pas, il ne dit rien.
-  // Seulement pour une app qui a des réglages de vue à écrire, et jamais en lecture seule (rien ne s'y écrit, ni dans la vue ni en brouillon).
+  // La même annonce, d'avance, quand l'app demande son contexte (contrats 7.3, point 5) : une app qui rappelle « Enregistrer » ne sait rien avant son premier
+  // réglage, et le dirait à tort au départ. GFS lit sa section (rien n'est écrit) et dit ce qu'il en attend ; une écriture qui passe avant la réponse dit mieux
+  // (`#savedCount`), et quand GFS ne sait pas, il ne dit rien. Seulement pour une app qui a des réglages de vue à écrire, et jamais en lecture seule (rien ne
+  // s'y écrit, ni dans la vue ni en brouillon).
   announceSaved() {
     const { viewOptions, readonly } = this.ctx;
     if (!viewOptions || readonly || !this.policy.reglages.size) return;
@@ -133,21 +141,23 @@ export class AppSession {
     viewOptions.expect().then(expected => { if (expected !== null && this.#savedCount === sent) this.sendSaved(expected); });
   }
 
-  // L'événement `identite` (contrats 5.2, points 2 et 9) : GFS vient d'apprendre l'adresse e-mail de la personne après le `contexte` de l'app, qui l'avait déclarée ; `null` quand elle ne vaut plus.
+  // L'événement `identite` (contrats 5.2, points 2 et 9) : GFS vient d'apprendre l'adresse e-mail de la personne après le `contexte` de l'app, qui l'avait
+  // déclarée ; `null` quand elle ne vaut plus.
   sendIdentity(identite) {
     if (this.#envelope) this.#envelope.event('identite', { identite });
   }
 
-  // L'événement `langue` (contrats 5.2, points 2 et 6) : la personne a changé la langue de GFS ; l'app le reçoit sans l'avoir demandé et décide comment suivre. Le titre du
-  // cadre (ce que lit un lecteur d'écran) suit tout de suite ; le cadre lui-même n'est jamais rechargé par GFS.
+  // L'événement `langue` (contrats 5.2, points 2 et 6) : la personne a changé la langue de GFS ; l'app le reçoit sans l'avoir demandé et décide comment suivre.
+  // Le titre du cadre (ce que lit un lecteur d'écran) suit tout de suite ; le cadre lui-même n'est jamais rechargé par GFS.
   sendLanguage(language) {
     this.ctx.lang = language;
     if (this.#frame) this.#frame.title = label(this.manifest.nom, language);
     if (this.#envelope) this.#envelope.event('langue', { langue: language });
   }
 
-  // L'événement `ambiance` (contrats 5.2, points 2 et 9) : la personne a changé l'ambiance ou la couleur de GFS, ou le mode (clair, sombre) a changé ; l'app le reçoit sans l'avoir demandé et décide
-  // comment suivre. `null` : rien n'est choisi, l'app reprend ses propres couleurs. (Le `theme` de Grist, lui, est celui du clair et du sombre de Grist : `#sendTheme`.)
+  // L'événement `ambiance` (contrats 5.2, points 2 et 9) : la personne a changé l'ambiance ou la couleur de GFS, ou le mode (clair, sombre) a changé ; l'app le
+  // reçoit sans l'avoir demandé et décide comment suivre. `null` : rien n'est choisi, l'app reprend ses propres couleurs. (Le `theme` de Grist, lui, est celui
+  // du clair et du sombre de Grist : `#sendTheme`.)
   sendAmbiance(ambiance) {
     if (this.#envelope) this.#envelope.event('ambiance', { ambiance });
   }
@@ -183,7 +193,8 @@ export class AppSession {
     }
   }
 
-  // La tranche de l'app et le lien « Select by » de la section : un changement de l'un ou de l'autre est transmis, le reste des réglages jamais (contrats 4.2, point 3).
+  // La tranche de l'app et le lien « Select by » de la section : un changement de l'un ou de l'autre est transmis, le reste des réglages jamais (contrats 4.2,
+  // point 3).
   #sendOptions(message, fromReady) {
     const content = optionsFor(message, this.policy.reglages);
     if (!fromReady && !contentChanged(this.#lastContent, content)) return;
@@ -207,14 +218,17 @@ export class AppSession {
   // `{ ouvert: true | false }` vient quand la personne a répondu, sans délai. Rejetée avec le code de l'app si elle ne connaît pas l'appel.
   openFile(opening) { return this.#envelope.call('ouvrir', opening); }
 
-  // GFS va quitter l'app pour une autre : elle enregistre ou pose sa question, puis répond `{ ferme: true | false }` (contrats 5.4, point 3). Rejetée avec `GFS_INCONNU` si l'app ne connaît pas l'appel.
+  // GFS va quitter l'app pour une autre : elle enregistre ou pose sa question, puis répond `{ ferme: true | false }` (contrats 5.4, point 3). Rejetée avec
+  // `GFS_INCONNU` si l'app ne connaît pas l'appel.
   closeApp(reason) { return this.#envelope.call('fermer', { raison: reason }); }
 
-  // L'app avait répondu `{ ferme: true }` et GFS ne la remplace finalement pas (la personne est revenue) : « tu restes », elle reprend ce que `fermer` avait arrêté et répond `{ repris: true | false }` (contrats 5.4, point 3). Rejetée avec `GFS_INCONNU` si l'app ne connaît pas l'appel.
+  // L'app avait répondu `{ ferme: true }` et GFS ne la remplace finalement pas (la personne est revenue) : « tu restes », elle reprend ce que `fermer` avait
+  // arrêté et répond `{ repris: true | false }` (contrats 5.4, point 3). Rejetée avec `GFS_INCONNU` si l'app ne connaît pas l'appel.
   stayApp(reason) { return this.#envelope.call('rester', { raison: reason }); }
 
-  // Un fichier de l'app tient à plus qu'une ligne (contrats 2.4, `appel`) : GFS lui demande de fermer ce qui y est lié avant de le mettre à la corbeille (`supprimer`, contrats 5.4, point 10), ou de le copier
-  // en entier (`dupliquer`, point 11). La réponse vient quand l'app a fini ; rejetée avec le code de l'app, `GFS_INCONNU` si elle ne connaît pas l'appel, `GFS_INACTIF` si elle part avant de répondre.
+  // Un fichier de l'app tient à plus qu'une ligne (contrats 2.4, `appel`) : GFS lui demande de fermer ce qui y est lié avant de le mettre à la corbeille
+  // (`supprimer`, contrats 5.4, point 10), ou de le copier en entier (`dupliquer`, point 11). La réponse vient quand l'app a fini ; rejetée avec le code de
+  // l'app, `GFS_INCONNU` si elle ne connaît pas l'appel, `GFS_INACTIF` si elle part avant de répondre.
   deleteFile(args) { return this.#envelope.call('supprimer', args); }
 
   copyFile(args) { return this.#envelope.call('dupliquer', args); }

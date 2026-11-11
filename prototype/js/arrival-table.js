@@ -1,6 +1,6 @@
-// La lecture de la table qui dit si la section est celle d'une app (contrats 7.4, point 7 ; `arrivee` du manifeste, 2.5, point 4). GFS la lit par sa propre connexion à Grist, seulement quand
-// aucun réglage de la section ne désigne une app (js/arrival.js, `arrivalProbes`), et n'en fait qu'une comparaison : rien n'est écrit, rien de ce qui est lu n'est jamais pris pour du code.
-// Une table absente ou illisible ne dit rien : l'explorateur, comme avant.
+// La lecture de la table qui dit si la section est celle d'une app (contrats 7.4, point 7 ; `arrivee` du manifeste, 2.5, point 4). GFS la lit par sa propre
+// connexion à Grist, seulement quand aucun réglage de la section ne désigne une app (js/arrival.js, `arrivalProbes`), et n'en fait qu'une comparaison : rien
+// n'est écrit, rien de ce qui est lu n'est jamais pris pour du code. Une table absente ou illisible ne dit rien : l'explorateur, comme avant.
 
 import { arrivalByTable } from './arrival.js';
 
@@ -19,6 +19,7 @@ async function readOne(doc, tables, spec) {
 export async function arrivalTableApp(doc, probes, tableId) {
   let tables;
   try { tables = (await doc.listTables()).map(String); } catch (error) { return null; }
-  const found = await Promise.all(probes.map(async manifest => ({ id: manifest.id, spec: manifest.arrivee, data: await readOne(doc, tables, manifest.arrivee) })));
+  const found = await Promise.all(probes.map(async manifest => ({ id: manifest.id, spec: manifest.arrivee,
+    data: await readOne(doc, tables, manifest.arrivee) })));
   return arrivalByTable(found, tableId);
 }

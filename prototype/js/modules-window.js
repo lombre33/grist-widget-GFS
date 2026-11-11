@@ -25,7 +25,8 @@ export class ModulesWindow {
   #ids = new Map();
   #openNatives = new Set(); // les apps dont le détail « fonction par fonction » est déplié : il le reste d'un dessin à l'autre
 
-  // opts : { container, i18n, locale, model(), blocked(), inertTargets(), on: { app(id, on), extension(app, id, on), mode(app, id, mode), open(app) }, onClose() }
+  // opts : { container, i18n, locale, model(), blocked(), inertTargets(), on: { app(id, on), extension(app, id, on), mode(app, id, mode), open(app) },
+  //   onClose() }
   // `blocked()` : la raison pour laquelle rien ne peut s'enregistrer (texte), ou null.
   constructor(opts) { this.#opts = opts; }
 
@@ -36,7 +37,8 @@ export class ModulesWindow {
   open({ focus = null } = {}) {
     if (this.#root) { this.refresh(); this.#reveal(focus); return; }
     this.#root = this.#build();
-    this.#mounted = mountWindow({ container: this.#opts.container, root: this.#root, inertTargets: () => this.#opts.inertTargets(), onKey: event => this.#keydown(event) });
+    this.#mounted = mountWindow({ container: this.#opts.container, root: this.#root, inertTargets: () => this.#opts.inertTargets(),
+      onKey: event => this.#keydown(event) });
     this.refresh();
     this.#reveal(focus);
   }
@@ -72,7 +74,8 @@ export class ModulesWindow {
     const readonly = blocked !== null;
     this.#body.replaceChildren(...model.items.map(item => (item.kind === 'app' ? this.#appRow(item, readonly) : this.#extensionRow(item, readonly, model))));
     this.#body.scrollTop = top;
-    this.#root.querySelector('.mod-count').replaceChildren(h('strong', null, t('mod.count', { n: model.active, total: model.total })), ` · ${t('mod.countNote')}`);
+    this.#root.querySelector('.mod-count').replaceChildren(h('strong', null, t('mod.count', { n: model.active, total: model.total })),
+      ` · ${t('mod.countNote')}`);
     this.#root.querySelector('.mod-note').textContent = readonly ? blocked : t('mod.saved');
     if (kept) {
       const again = [...this.#root.querySelectorAll('[data-fk]')].find(node => node.dataset.fk === kept && !node.disabled);
@@ -185,7 +188,8 @@ export class ModulesWindow {
     const name = manifest ? label(manifest.nom, lang) : item.id;
     const note = this.#appNote(item, locked);
     const side = item.installed && !locked
-      ? h('button', { type: 'button', class: 'btn sm', title: t('mod.openTip', { app: name }), dataset: { open: item.id, fk: `open:${item.id}` } }, icon('open'), t('mod.open'))
+      ? h('button', { type: 'button', class: 'btn sm', title: t('mod.openTip', { app: name }), dataset: { open: item.id, fk: `open:${item.id}` } },
+        icon('open'), t('mod.open'))
       : null;
     return this.#row({
       key: rowKey(item.id), level: 'app', locked, kind: locked ? 'locked' : (item.installed ? 'on' : 'off'),
@@ -219,16 +223,18 @@ export class ModulesWindow {
     });
   }
 
-  // Un bouton radio du choix CDN ou copie figée. Sans `hint`, la version courte d'une ligne de fonction. `off` : grisé parce que la copie manque (avec sa raison), `disabled` : parce que la fenêtre ne peut rien écrire.
+  // Un bouton radio du choix CDN ou copie figée. Sans `hint`, la version courte d'une ligne de fonction. `off` : grisé parce que la copie manque (avec sa
+  // raison), `disabled` : parce que la fenêtre ne peut rien écrire.
   #radio({ name, mode, checked, disabled, off = false, dataset, hint = null }) {
     const { t } = this.#opts.i18n;
     return h('label', { class: `rd${hint === null ? ' mini' : ''}${off ? ' is-off' : ''}` },
       h('input', { type: 'radio', name, value: mode, checked, disabled: disabled || off, dataset }),
-      h('span', { class: 'rd-text' }, h('span', { class: 'rd-label' }, t(mode === DEFAULT_MODE ? 'mod.native.cdn' : 'mod.native.copy')), hint === null ? null : h('span', { class: 'rd-hint' }, hint)));
+      h('span', { class: 'rd-text' }, h('span', { class: 'rd-label' }, t(mode === DEFAULT_MODE ? 'mod.native.cdn' : 'mod.native.copy')),
+        hint === null ? null : h('span', { class: 'rd-hint' }, hint)));
   }
 
-  // Les bibliothèques natives d'une app (contrats 2.6, point 14) : un choix pour toutes, et, dépliable, un choix par fonction. Quand les fonctions diffèrent, le choix de toutes est vide
-  // (« mélange »). La copie figée est grisée, avec sa raison, quand GFS n'a pas toutes les bibliothèques de la fonction.
+  // Les bibliothèques natives d'une app (contrats 2.6, point 14) : un choix pour toutes, et, dépliable, un choix par fonction. Quand les fonctions diffèrent,
+  // le choix de toutes est vide (« mélange »). La copie figée est grisée, avec sa raison, quand GFS n'a pas toutes les bibliothèques de la fonction.
   #natives(item, enabled) {
     const { t } = this.#opts.i18n;
     const rows = item.natives;
@@ -238,7 +244,8 @@ export class ModulesWindow {
     const size = this.#size(rows.reduce((total, row) => total + row.poids, 0) / 1024);
     const group = `native-${item.id}`;
     const radios = MODES.map(mode => this.#radio({
-      name: group, mode, checked: all === mode, disabled: !enabled, off: mode !== DEFAULT_MODE && some, dataset: { nativeAll: item.id, fk: `nativeall:${item.id}/${mode}` },
+      name: group, mode, checked: all === mode, disabled: !enabled, off: mode !== DEFAULT_MODE && some,
+        dataset: { nativeAll: item.id, fk: `nativeall:${item.id}/${mode}` },
       hint: t(mode === DEFAULT_MODE ? 'mod.native.cdnHint' : (some ? 'mod.native.missingSome' : 'mod.native.copyHint')),
     }));
     const legend = `${t('mod.native.title')} · ${size}${all === null ? ` · ${t('mod.native.mixed')}` : ''}`;
@@ -259,7 +266,8 @@ export class ModulesWindow {
       h('span', { class: 'mr-lib-name' }, label(row.group.nom, lang)),
       h('span', { class: 'mr-lib-size' }, this.#size(row.poids / 1024)),
       ...radios,
-      off ? h('p', { class: 'mr-warn mr-lib-warn' }, t('mod.native.missing', { lib: cap(first.id), version: first.version })) : null);
+      off ? h('p', { class: 'mr-warn mr-lib-warn' }, t('mod.native.missing', { lib: cap(first.id), version: first.version })) : null,
+      row.inApp ? h('p', { class: 'mr-note mr-lib-warn' }, t('mod.native.restart')) : null);
   }
 
   // Le mode des bibliothèques de l'extension : CDN (le défaut) ou copie de GFS. Un seul choix par extension (cahier, question 11).

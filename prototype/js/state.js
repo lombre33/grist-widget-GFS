@@ -38,9 +38,10 @@ export class GristState {
     return () => this.#listeners.delete(listener);
   }
 
-  // L'état de la table qu'un widget qui devient prêt maintenant recevrait de Grist : le dernier message de table, avec la ligne courante. Au `ready`, Grist ne dit la ligne
-  // que dans le message de table (le message de ligne ne part qu'au changement de ligne, `RecordNotifier`), et ne le refait que quand la table change : rejouer le dernier
-  // message de table tel quel redirait la ligne du démarrage de GFS, pas celle que la personne a choisie depuis, dans le widget lié (« Select by »).
+  // L'état de la table qu'un widget qui devient prêt maintenant recevrait de Grist : le dernier message de table, avec la ligne courante. Au `ready`, Grist ne
+  // dit la ligne que dans le message de table (le message de ligne ne part qu'au changement de ligne, `RecordNotifier`), et ne le refait que quand la table
+  // change : rejouer le dernier message de table tel quel redirait la ligne du démarrage de GFS, pas celle que la personne a choisie depuis, dans le widget lié
+  // (« Select by »).
   tableNow() { return this.table && { ...this.table, ...this.cursor }; }
 
   // Les réglages de la section : le dernier objet complet que Grist a envoyé, ou null.
@@ -58,7 +59,8 @@ export class GristState {
     });
   }
 
-  // Attend le premier message de table (celui qui dit la table de la section) ; passé `ms`, rend ce qu'on a (ou null). Ne sert qu'à l'arrivée par la table (js/arrival-table.js).
+  // Attend le premier message de table (celui qui dit la table de la section) ; passé `ms`, rend ce qu'on a (ou null). Ne sert qu'à l'arrivée par la table
+  // (js/arrival-table.js).
   whenTable(ms = 1500) {
     if (this.table) return Promise.resolve(this.table);
     return new Promise(resolve => {

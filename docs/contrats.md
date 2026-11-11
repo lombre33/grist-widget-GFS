@@ -217,7 +217,10 @@ L'app (sous-cadre sans allow-same-origin)
    le niveau de l'**app** (3.1), et `language` : la langue que la personne a choisie dans GFS (`fr` ou `en`, 5.2 point 6),
    ou à défaut celle de Grist, telle qu'elle est quand le cadre est créé. Publipostage+ lit `readonly` dans son adresse
    (`isReadOnlyAddress`). S'y ajoute `gfs=<n>` (le numéro de contrat de GFS) : c'est ainsi qu'une app sait, tout de suite,
-   qu'elle est hébergée.
+   qu'elle est hébergée. **Et, seulement quand la personne l'a choisi, `copie=<fonction>[,<fonction>]`** (11/11) : les fonctions de
+   bibliothèques natives dont la copie figée est rangée dans l'app (l'éditeur : 2.6, point 14). Une page qui doit choisir sa carte
+   d'importation avant que GFS ait répondu ne peut pas attendre le contexte : le choix est dans l'adresse. Sans choix, le paramètre
+   n'y est pas (l'adresse d'avant) ; le kit le lit par `GfsLink.copies()`.
 
 ### 1.4 Un sous-cadre à la fois
 
@@ -263,7 +266,7 @@ L'app (sous-cadre sans allow-same-origin)
 | `permissions` | objet | oui | Accès, tables, tables internes, capacités (section 3). |
 | `extensions` | liste | non | Les extensions de l'app (2.6). |
 | `dependances` | chaîne | non | Chemin de la liste des bibliothèques **natives** de l'app (`package.json`) : celles d'une extension n'y figurent pas (2.6, point 4). |
-| `natives` | liste | non | Les bibliothèques natives de l'app **rangées par fonction**, pour le choix « CDN ou copie figée » : `[ { "id", "nom": { "fr", "en" }, "bibliotheques": [ { "id", "version" } ] } ]` (2.6, point 14 ; 5.2, point 12). Une bibliothèque n'est que dans une fonction, sa version est exacte. L'app le déclare quand elle lit le choix ; sans `natives`, rien n'est proposé et l'app reste au CDN. |
+| `natives` | liste | non | Les bibliothèques natives de l'app **rangées par fonction**, pour le choix « CDN ou copie figée » : `[ { "id", "nom": { "fr", "en" }, "bibliotheques": [ { "id", "version" } ] } ]` (2.6, point 14 ; 5.2, point 12). Une bibliothèque n'est que dans une fonction, sa version est exacte. L'app le déclare quand elle lit le choix ; sans `natives`, rien n'est proposé et l'app reste au CDN. Une fonction dont la copie figée est **dans le dépôt de l'app** (l'éditeur) s'écrit `{ "id", "nom", "copieDansApp": true, "poids": <octets> }`, sans `bibliotheques`. |
 | `actions` | objet | non | Ce que l'app accepte de la part des autres (2.7). |
 | `ouverture` | objet | non | Ce que l'app sait faire d'une ouverture que GFS lui passe : `{ "fichier": true, "nouveau": true, "importer": true, "lire": true }` (5.2, point 3 ; 5.4, points 1 et 8). Un genre absent vaut faux : GFS ouvre alors l'app sur son modèle habituel et le dit, et grise « Importer » ou « Lire ». |
 | `permanente` | booléen | non | `true` : l'app ne se retire pas de la fenêtre « Apps et extensions » (Publipostage+). |
@@ -469,8 +472,13 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     `pdfmake-polices`, `qrcode-generator`), 5,0 Mo de plus dans `vendor/`. **Deux licences que l'outil ne lisait pas** : JSZip livre
     `LICENSE.markdown` (le nom est maintenant reconnu) ; `qrcode-generator` ne livre aucun fichier de licence, l'avis MIT est l'en-tête de
     `qrcode.js` : la liste le dit (`licenceDansLeFichier: true`), l'outil vérifie que l'en-tête nomme la licence que le paquet déclare et le
-    dit dans `LICENCES.txt`. L'éditeur (TipTap, ProseMirror) n'est pas dans ce lot : sa copie est une carte d'importation, pas un fichier
-    (étude, §5). [M]
+    dit dans `LICENCES.txt`. **L'éditeur (TipTap, ProseMirror) est le seul morceau dont la copie est dans le dépôt de l'app** (choix du porteur,
+    11/11 : « dans le dépôt de Publipostage+ ») : sa « copie » n'est pas un fichier mais une carte d'importation, que la page pose au démarrage
+    (Firefox n'en prend qu'une : faits vérifiés 88), et la copie de l'app ne nomme jamais GFS dans sa politique : ses adresses sont relatives,
+    `'self'` suffit. L'outil du kit 0.20.0 la fabrique dans le dépôt de l'app (`--copies`, section `gfs.copie` de sa liste) et tient la page : deux cartes
+    d'importation en données et un script qui pose l'une des deux (faits vérifiés 98). GFS ne la sert pas : la fonction `editeur` du manifeste est `copieDansApp` (2.2), la fenêtre n'y vérifie rien (jamais
+    grisée), le choix se retient comme les autres (`natif:editeur`) et part **dans l'adresse du cadre** (`copie=editeur`, 1.3 point 3), à
+    son démarrage. **Il prend effet au prochain démarrage de l'app** : GFS ne recharge rien en cours de route (rien à perdre), la ligne le dit. [M]
 
 ### 2.7 Les actions acceptées
 
@@ -1259,12 +1267,13 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 7. [D] `barre` : **la barre de GFS recouvre un petit morceau du cadre de l'app, et l'app laisse libre la place qu'elle y prend**
    (décision du porteur, 21/10 : la barre se place à gauche, en haut, à droite ou en bas, à la guise de la personne ; les apps
    adaptent leur interface aux quatre emplacements sans recouvrement ; l'emprise reste minimale, donc pas de bande en plus, mais
-   un recouvrement de l'espace que les apps laissent vide). Elle porte quatre boutons à icône seule (« Fichiers », « Apps et
-   extensions », « Table de travail », 4.5, depuis le 21/10 au soir, et « Position de la barre »), de 34 × 124 px au bord
-   gauche ou droit et de 124 × 34 px en haut ou en bas (34 × 94 avec les trois premiers boutons), à 4 px du bord et centrée sur lui ; elle remplace les deux boutons que GFS posait au coin bas droit. Le cadre de l'app reste plein :
+   un recouvrement de l'espace que les apps laissent vide). Elle porte cinq boutons à icône seule (« Fichiers », « Fichiers ouverts »,
+   6.4 point 14, depuis le 11/11, « Apps et extensions », « Table de travail », 4.5, depuis le 21/10 au soir, et « Position de la barre »), de 34 × 154 px au bord
+   gauche ou droit et de 154 × 34 px en haut ou en bas (34 × 124 avec quatre boutons, jusqu'au 11/11 ; 34 × 94 avec les trois premiers), à 4 px du bord et centrée sur lui ; elle remplace les deux boutons que GFS posait au coin bas droit. Le cadre de l'app reste plein :
    rien ne le réduit. `contexte.barre` dit ce qui est recouvert :
-   `{ "bord": "gauche", "epaisseur": 42, "zone": { "x": 0, "y": 134, "largeur": 42, "hauteur": 132 } }` (l'exemple d'un cadre de
-   700 × 400 avec la barre à gauche ; la taille de la barre peut changer, l'app lit toujours la zone qu'on lui donne). `bord` vaut `gauche`, `haut`, `droite` ou `bas` ; `zone` est le rectangle à laisser libre,
+   `{ "bord": "gauche", "epaisseur": 42, "zone": { "x": 0, "y": 119, "largeur": 42, "hauteur": 162 } }` (l'exemple d'un cadre de
+   700 × 400 avec la barre à gauche ; la taille de la barre peut changer, l'app lit toujours la zone qu'on lui donne : elle a grandi de 30 px le 11/11 avec le 5e bouton,
+   sans qu'aucune app ait rien à changer). `bord` vaut `gauche`, `haut`, `droite` ou `bas` ; `zone` est le rectangle à laisser libre,
    en pixels du cadre de l'app (origine en haut à gauche) : la barre et 4 px tout autour, bornés par le cadre ; `epaisseur` est la
    largeur de la zone (bords gauche et droit) ou sa hauteur (haut et bas), la profondeur dont l'app écarte ce qu'elle pose à ce
    bord. Hors de la zone, le cadre est à l'app, coins compris. L'app ne suppose aucun bord : les menus, bulles, fenêtres et bandes
@@ -1511,7 +1520,8 @@ sans événement : seule une règle posée recharge la page (11.5, point 3), et 
     manifeste déclare ; sinon la fonction reste au CDN et la fenêtre la grise avec la raison (7.3, point 3). Ce que la personne choisit se retient
     dans `modes` de la table de GFS, sous la clé `natif:<fonction>` (7.4, point 1). Côté app, le kit rend `GfsLink.native(id)` (0.18.0) et appelle
     `onExtensions` quand seule une copie figée change. **L'éditeur (TipTap, ProseMirror) n'est pas dans ce champ** : sa copie est une carte
-    d'importation, pas un fichier (étude, §5) ; elle attend le choix du porteur sur l'endroit où la ranger.
+    d'importation rangée dans l'app, que sa page pose avant la réponse de GFS ; le choix lui arrive dans l'adresse du cadre
+    (`copie=editeur`, 1.3 point 3 ; `GfsLink.copies()`, kit 0.19.0), pas dans le contexte ni par événement, et prend effet au prochain démarrage.
 
 ### 5.3 Le stockage du navigateur
 
@@ -2203,8 +2213,9 @@ rangée d'un fichier, selon ce qui vient d'abord.
 
 14. [D] **« Ouverts » : revenir à un fichier déjà ouvert, sans repartir de l'arborescence** (demande du porteur, 04/11 : « un système d'onglet pour
     revenir sur un fichier ouvert et pouvoir faire des A/R entre plusieurs fichiers sans repartir à zéro dans l'arborescence » ; choix « la liste d'abord,
-    les onglets vivants après » ; « pas d'ajout sur la barre flottante », reconfirmé le 10/11 : la liste vit **seulement dans l'explorateur**). Le volet a une
-    première ligne, « Ouverts », avant « Récents » ; son nombre est celui des fichiers ouverts que la liste montre (aucun nombre quand il n'y en a pas).
+    les onglets vivants après » ; « pas d'ajout sur la barre flottante » dit le 04/11 d'un autre sujet, les réglages, puis la carte « où poser la liste » : le 10/11 l'option conseillée, la liste
+    seulement dans l'explorateur, avait été prise ; **le 11/11 le porteur a choisi « Un 5e bouton sur la barre »** : la liste vit dans l'explorateur **et** sur la
+    barre). Le volet a une première ligne, « Ouverts », avant « Récents » ; son nombre est celui des fichiers ouverts que la liste montre (aucun nombre quand il n'y en a pas).
     **Ce qui y entre** : un fichier précis que GFS a ouvert dans une app et que l'app a ouvert (le double-clic, Entrée, un lien entre apps, « Lire » un PDF que
     GFS garde). N'y entrent pas : un fichier vierge (« Nouveau », « Importer »), ce qu'une app ouvre toute seule (GFS ne le sait pas), ni un refus (la
     personne a annulé dans l'app, ou l'app ne connaît pas l'appel `ouvrir`). **La liste** : les huit derniers (un neuvième fait sortir le plus ancien), à
@@ -2216,9 +2227,20 @@ rangée d'un fichier, selon ce qui vient d'abord.
     remplacée ou qu'un fichier vierge s'ouvre. **Revenir à un fichier** : double-clic ou Entrée, comme partout (une autre app est d'abord priée de se
     fermer, point 5.4 point 3 ; la même app reçoit l'appel `ouvrir`) ; si l'app refuse, rien ne change et le fichier n'entre pas dans la liste.
     **« Retirer des ouverts »** est le deuxième article du menu d'une ligne, dans cette vue seulement : la ligne sort de la liste, le fichier et l'app ne
-    bougent pas, la ligne suivante prend le clavier. Pendant le choix d'un fichier pour une app, la vue ne montre que ceux que l'app accepte. **Les onglets
+    bougent pas, la ligne suivante prend le clavier. Pendant le choix d'un fichier pour une app, la vue ne montre que ceux que l'app accepte. **Le 5e bouton de la barre, « Fichiers ouverts »**
+    (11/11 ; `js/opened-bar.js`, `js/dock.js`, 5.2 point 7) : le deuxième de la barre, entre « Fichiers » et « Apps » ; icône pile, **pastille qui porte le nombre**
+    (le nombre est aussi dans le nom du bouton, « Fichiers ouverts : 3 ») ; **grisé, jamais masqué**, quand rien n'est ouvert, et son menu le dit (un article grisé dont
+    le clic explique). Son menu (titre « Fichiers ouverts ») liste les mêmes fichiers **du plus récent au plus ancien** (le dernier ouvert en tête : l'aller-retour
+    entre deux fichiers garde les mêmes places ; l'explorateur trie par nom) : l'icône du type (sans couleur : elle est réservée à l'explorateur), le nom (coupé par « … »
+    avec son texte entier au survol), l'app en indice, et le fichier que l'app montre **en gras, avec un trait et son mot « affiché »** pour un lecteur d'écran. Un clic sur un
+    autre fichier l'ouvre comme dans l'explorateur (une autre app est d'abord priée de se fermer, 5.4 point 3) ; **un clic sur le fichier affiché referme le menu sans
+    rien relancer**. **La croix de la ligne (ou Suppr)** retire le fichier de la liste sans le fermer, et le menu se rouvre sans lui, le clavier sur la ligne qui prend sa
+    place ; au clavier, → va à la croix, ← revient, ↓ et ↑ ne s'y arrêtent pas, Début et Fin vont au premier et au dernier article. **« Ouvrir un autre fichier… »** montre
+    l'explorateur, comme « Fichiers ». La barre est une barre d'app : elle s'efface sous l'explorateur, et le menu s'ouvre à côté d'une barre verticale, au-dessous ou au-dessus
+    d'une barre horizontale, sans la recouvrir. **Les onglets
     vivants** (plusieurs cadres d'app gardés ensemble) **ne sont pas faits** : une seule app est vivante à la fois. [M] **Mesuré le 10/11** dans un vrai Grist
-    (`labo/run-ouverts.mjs`) et sous Firefox (`test/ouverts-firefox.mjs`) : faits vérifiés, section 79.
+    (`labo/run-ouverts.mjs`) et sous Firefox (`test/ouverts-firefox.mjs`) : faits vérifiés, section 79 ; **le 5e bouton, le 11/11** (`labo/run-ouverts-barre.mjs`,
+    `test/barre-ouverts-firefox.mjs`) : faits vérifiés, section 97.
 15. [T] **Une liste longue ne construit que ce qu'on voit** (décision du porteur, 10/11, audit vitesse et poids : « Afficher seulement les lignes
     visibles »). À partir de 200 lignes (liste) ou vignettes (`WINDOW_FROM`, `js/explorer-window.js`), l'explorateur construit les lignes visibles et huit
     rangées de part et d'autre ; l'espace des autres est tenu par le remplissage du conteneur : la barre de défilement, Début, Fin, la molette et la position
@@ -2397,8 +2419,9 @@ fichier lui-même en pièce jointe de Grist.
     de `AddTable` ; l'accord de la réception les annonce). **Refuser masque, n'efface pas** : une ligne effacée reviendrait à la mise à jour de l'envoyeur (72). Un document en lecture seule dit pourquoi, sans fenêtre ; sans arrivée, la vue dit quoi faire.
     **La cloche Notifications** (09/11) : à droite de l'en-tête de l'explorateur (icône `bell`, à ajouter à la charte), une pastille dit le nombre d'arrivées à accepter, et le menu les nomme (« « Contrat.pdf » de X, à accepter » ; six au plus, puis « Voir N autres… ») avant « Ouvrir « Partagés avec moi » » ; un clic sur une arrivée pose sa question. Elle lit la liste déjà chargée : **elle n'écrit rien et ne crée aucune table** ; sans notification la ligne reste, grisée, et son clic dit ce qui s'annonce ici ; pendant le choix d'un fichier la cloche est grisée. La table `GFS_Notifications` ne viendra que pour une notification qu'il faut retenir (lue ou non, un partage demandé avant tout fichier), avec l'accord de la personne.
     **L'arrivée automatique** (09/11) : la boucle qui reçoit (celle du moteur, qui tourne tant que la page est ouverte, `js/sync-service.js`) dit à GFS quand un passage a changé quelque chose (`whenReceived`) ; si l'explorateur est ouvert, la liste des arrivées, le nombre du volet et la cloche se relisent seuls (`Explorer.setReceived`, rien d'autre ne bouge ; la ligne choisie reste choisie). Explorateur fermé : rien ne se relit, l'ouverture relit tout.
-    **Pas encore** : les dossiers partagés, un partage demandé avant tout fichier (la cloche le dira quand `GFS_Notifications` existera). [M] 24 vérifications dans un vrai Grist pour l'envoi (faits vérifiés, 68), 10 pour le retrait d'un fichier et la condition jamais vide, et la vie d'un lien dans
-    les fenêtres de GFS (70), 19 pour la réception de bout en bout (71), la liste « Partagés avec moi » et sa cloche dans un vrai Grist (`labo/run-partages-recus.mjs`, 75), 0 écart sous Firefox (`test/partager-autre-firefox.mjs`, `test/partager-recevoir-firefox.mjs`, `test/partages-recus-firefox.mjs`, `test/partager-firefox.mjs`), essais sans Grist du parcours, des liens et de la reprise.
+    **Les dossiers reçus** (11/11, choix du porteur : « le dossier, à accepter d'un coup »). Le nom du dossier voyage avec chaque fichier dans **une colonne de plus** de `GFS_Fichiers`, `Dossier_partage` (`SHARED_FOLDER_COLUMN`, `js/gfs-files.js` : ce n'est pas une colonne de base, un document qui ne partage aucun dossier ne l'a pas) ; la table reçue l'a avec les valeurs, même ajoutée **après** le premier partage, sans que rien soit renvoyé de zéro, et ses changements suivent (99). « Partagés avec moi » regroupe les arrivées de même nom **dans la même table reçue** (`js/received-folders.js`, `receivedFolders` : deux documents qui envoient chacun un dossier « Contrats » sont deux dossiers) : les dossiers en tête (lignes de dossier, clé `grp:<table>:<nom>`, jamais `dir:` — un dossier reçu ne se renomme, ne se déplace ni ne se supprime, le clavier non plus), puis les fichiers sans dossier (partage d'un fichier seul, fichier donné par une adresse). **Un dossier est grisé tant qu'un de ses fichiers attend** et le dit en mot (« 2 à accepter ») ; on y entre (double clic, Entrée, « Ouvrir le dossier » ; fil d'Ariane « Moi › Partagés avec moi › Contrats », Retour arrière) et une **barre** y propose « Accepter le dossier… ». La question (`ReceivedControl.askFolder`) est la même fenêtre qu'un fichier, avec le texte du dossier : **un oui ou un non pour tous les fichiers qui attendent**, écrit en **une seule action** (`answerFolder`, `BulkUpdateRecord` des marques `Accepte` / `Refuse` ; les deux colonnes sont ajoutées d'abord, jamais de `AddTable`) ; Échap n'écrit rien ; un fichier déjà répondu seul n'est pas retouché ; un fichier **ajouté plus tard au dossier arrive seul, grisé**, les autres gardent leur état ; un fichier refusé seul n'est plus montré, donc ni compté ni accepté avec le dossier, et un dossier dont tous les fichiers sont refusés disparaît. La cloche a **une ligne par dossier** (« Dossier « Contrats » de X : 3 fichiers à accepter ») qui pose la question du dossier. La recherche et le filtre de type remettent tous les fichiers reçus à plat.
+    **Pas encore** : l'envoi d'un dossier (« Partager… » sur un dossier vers un autre document), son suivi à jour, les sous-dossiers, un partage demandé avant tout fichier (la cloche le dira quand `GFS_Notifications` existera). [M] 24 vérifications dans un vrai Grist pour l'envoi (faits vérifiés, 68), 10 pour le retrait d'un fichier et la condition jamais vide, et la vie d'un lien dans
+    les fenêtres de GFS (70), 19 pour la réception de bout en bout (71), la liste « Partagés avec moi » et sa cloche dans un vrai Grist (`labo/run-partages-recus.mjs`, 75), la colonne du dossier (`labo/run-dossier-colonne.mjs`) et les dossiers reçus (`labo/run-dossiers-recus.mjs`, 99), 0 écart sous Firefox (`test/partager-autre-firefox.mjs`, `test/partager-recevoir-firefox.mjs`, `test/partages-recus-firefox.mjs`, `test/partager-firefox.mjs`), essais sans Grist du parcours, des liens et de la reprise.
 
 ### 6.7 `GFS_Corbeille`, la corbeille des fichiers des apps
 
@@ -2495,7 +2518,7 @@ d'app mis à la corbeille (6.2), jamais avant.
    qui en a, et, pour une app dont le manifeste déclare `natives` (2.2), **fonction par fonction** (Export PDF, Export Word…), avec un raccourci
    « toutes » qui dit « mélange » quand les fonctions diffèrent. La ligne s'ouvre repliée (le choix de toutes), le détail se déplie à la souris
    et reste déplié après un choix ; la copie figée d'une fonction à qui il manque une bibliothèque du catalogue (ou sa version) est **grisée avec
-   sa raison**, jamais cachée (2.6, point 14) ; en lecture seule, tout est grisé. Les mots sont les mêmes partout : « CDN » et « Copie figée ».
+   sa raison**, jamais cachée (2.6, point 14) ; en lecture seule, tout est grisé. Les mots sont les mêmes partout : « CDN » et « Copie figée ». La ligne de l'éditeur (copie dans l'app, 2.6 point 14) n'est jamais grisée pour une copie manquante et dit que son choix prend effet au prochain démarrage de l'app.
 4. [T] **GFS écrit les réglages des apps dans la vue, sans « Enregistrer »** (décision du porteur, 03/11, « GFS l'écrit dans la
    vue » ; construit le même jour, `js/view-options.js`). Quand une app écrit un réglage de sa tranche (`setOption`, `setOptions`,
    `clearOptions`, 7.2), le courtier :

@@ -1,5 +1,6 @@
-// Les textes des dossiers créés, vidés et supprimés depuis l'explorateur (décision du porteur du 04/11 : « créer des dossiers et sous-dossiers », tout se fait depuis l'explorateur), en français et en anglais
-// dans le même lot. Ils rejoignent ceux de GFS dans js/i18n.js ; le fichier est à part pour que i18n.js reste sous les 600 lignes de code de l'outil d'audit.
+// Les textes des dossiers créés, vidés et supprimés depuis l'explorateur (décision du porteur du 04/11 : « créer des dossiers et sous-dossiers », tout se fait
+// depuis l'explorateur), en français et en anglais dans le même lot. Ils rejoignent ceux de GFS dans js/i18n.js ; le fichier est à part pour que i18n.js reste
+// sous les 600 lignes de code de l'outil d'audit.
 
 export const FOLDER_STRINGS = Object.freeze({
   fr: {

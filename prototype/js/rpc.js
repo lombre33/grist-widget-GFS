@@ -99,8 +99,9 @@ export class AppPeer {
     else entry.resolve(msg.data);
   }
 
-  // Le premier `ready` libère ce qui attendait, dans l'ordre ; chaque `ready` appelle onReady, qui rejoue l'état à l'app. Comme Grist, qui redéclenche « ready » à chaque
-  // message `ready` (`WidgetFrame._onMessage`, sources de grist-static 0.1.6) : un cadre qui se recharge sur place redit `ready` et retrouve réglages, thème et table.
+  // Le premier `ready` libère ce qui attendait, dans l'ordre ; chaque `ready` appelle onReady, qui rejoue l'état à l'app. Comme Grist, qui redéclenche
+  // « ready » à chaque message `ready` (`WidgetFrame._onMessage`, sources de grist-static 0.1.6) : un cadre qui se recharge sur place redit `ready` et retrouve
+  // réglages, thème et table.
   #markReady() {
     if (!this.#ready) {
       this.#ready = true;

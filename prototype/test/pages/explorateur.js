@@ -28,7 +28,7 @@ import { Copying } from '/js/copying.js';
 import { applyPlacement, readSpaces } from '/js/spaces-filing.js';
 import { FILES_MANIFEST, FILES_COLUMN_IDS } from '/js/gfs-files.js';
 import { ReceivedControl } from '/js/received-control.js';
-import { loadReceived, answerFile } from '/js/received-files.js';
+import { loadReceived, answerFile, answerFolder } from '/js/received-files.js';
 import { fakeGrist } from '/test/fake-grist.mjs';
 import { createI18n } from '/js/i18n.js';
 import { installSprite } from '/js/icons.js';
@@ -220,7 +220,7 @@ async function mount() {
   // « Apps et extensions » et « Table de travail » (js/modules-window.js, js/work-window.js ; test/voile-firefox.mjs) : des fenêtres à part de la base commune, dont le fond ne ferme rien non plus.
   window.__modulesWindow = () => void new ModulesWindow({ container: stage, i18n, locale, model: () => ({ items: [], active: 0, total: 0 }), blocked: () => null, inertTargets: () => [explorer.root], on: {}, onClose: () => {} }).open();
   // « Apps et extensions » avec les bibliothèques natives, fonction par fonction (js/modules-window.js, contrats 2.6 point 14 ; test/natives-firefox.mjs) : le vrai modèle, le vrai catalogue de GFS et le manifeste de
-  // Publipostage+ à qui l'on donne quatre fonctions (ce que son manifeste dira quand l'app lira le choix). `variant` : 'ok', 'manque' (le catalogue n'a pas les polices : la copie du PDF est grisée) ou 'lecture' (rien ne peut s'écrire).
+  // Publipostage+ à qui l'on donne quatre fonctions (ce que son manifeste dira quand l'app lira le choix). `variant` : 'ok', 'manque' (le catalogue n'a pas les polices : la copie du PDF est grisée), 'editeur' (l'éditeur, copie dans l'app) ou 'lecture' (rien ne peut s'écrire).
   window.__natives = async (variant = 'ok') => {
     const L = (id, version) => ({ id, version });
     const manifest = await (await fetch('/manifestes/publipostage.json')).json();
@@ -230,6 +230,8 @@ async function mount() {
       { id: 'excel', nom: { fr: 'Export Excel (ExcelJS)', en: 'Excel export (ExcelJS)' }, bibliotheques: [L('exceljs', '4.4.0')] },
       { id: 'divers', nom: { fr: 'Divers (marked, QR code, pdf-lib)', en: 'Other (marked, QR code, pdf-lib)' }, bibliotheques: [L('pdf-lib', '1.17.1'), L('marked', '15.0.12'), L('qrcode-generator', '1.4.4')] },
     ];
+    // 'editeur' : l'éditeur a sa copie figée dans le dépôt de l'app (carte d'importation, contrats 2.6 point 14) : une fonction de plus, sans bibliothèque de GFS, dont le choix ne prend effet qu'au démarrage de l'app.
+    if (variant === 'editeur') manifest.natives.unshift({ id: 'editeur', nom: { fr: 'Éditeur (TipTap)', en: 'Editor (TipTap)' }, copieDansApp: true, poids: 1172757 });
     const catalogue = readCatalogue(await (await fetch('/bibliotheques/catalogue.json')).json());
     const loaded = [{ app: { id: manifest.id }, manifest, ok: true, errors: [] }];
     let apps = { [manifest.id]: { extensions: [], modes: {} } };
@@ -248,7 +250,7 @@ async function mount() {
   const readArrivals = async () => { arrivals = await loadReceived(sharedGrist.port, await sharedGrist.port.doc.listTables()); show(); };
   const received = new ReceivedControl({
     port: sharedGrist.port, t: i18n.t, locale: () => locale, container: stage, inertTargets: () => [explorer.root], typeLabel: baseLabel, notice: text => window.__notices.push(text), blocked: () => window.__sharedBlocked || null,
-    refresh: readArrivals, open: file => { window.__opened = file.name; }, answerFile: (port, file, accepted) => answerFile(sharedGrist.port, file, accepted),
+    refresh: readArrivals, open: file => { window.__opened = file.name; }, answerFile: (port, file, accepted) => answerFile(sharedGrist.port, file, accepted), answerFolder: (port, folder, accepted) => answerFolder(sharedGrist.port, folder, accepted),
   });
   window.__sharedBlocked = '';
   // Un fichier arrive pendant que l'explorateur est ouvert : la ligne est posée dans le faux Grist, puis la liste des arrivées se remplace seule (`Explorer.setReceived`, comme le fait le contrôleur).
@@ -262,8 +264,9 @@ async function mount() {
   window.__shared = async kind => {
     const day = Math.floor(Date.now() / 1000) - 86400;
     const row = (id, name, extra = {}) => ({ id, Identifiant: `r${id}`, Nom: name, Type: 'pdf', Date: day - id * 3600, Auteur: 'Comptabilité <compta@exemple.fr>', Contenu: ['L', id], Taille: 1500 * id, Origine: 'import', Supprimee_a_la_source: false, ...extra });
-    const rows = kind === 'vide' ? [] : [row(1, 'Facture de la session de formation de septembre 2026.pdf'), row(2, 'Devis.pdf'), row(3, 'Contrat.pdf', { Accepte: true, Refuse: false }), row(4, 'Ancien refus.pdf', { Accepte: false, Refuse: true }), row(5, 'Retiré.pdf', { Accepte: true, Refuse: false, Supprimee_a_la_source: true })];
-    const columns = ['id', ...FILES_COLUMN_IDS, 'Supprimee_a_la_source', 'Accepte', 'Refuse'];
+    const rows = kind === 'vide' ? [] : kind === 'dossier' ? [row(1, 'Contrat de prestation.pdf', { Dossier_partage: 'Contrats' }), row(2, 'Avenant 1.pdf', { Dossier_partage: 'Contrats' }), row(3, 'Avenant 2.pdf', { Dossier_partage: 'Contrats', Accepte: true, Refuse: false }),
+      row(4, 'Plan.pdf', { Dossier_partage: 'Archives', Accepte: true, Refuse: false }), row(5, 'Rapport.pdf', { Dossier_partage: 'Archives', Accepte: true, Refuse: false }), row(6, 'Seul.pdf', { Dossier_partage: '' })] : [row(1, 'Facture de la session de formation de septembre 2026.pdf'), row(2, 'Devis.pdf'), row(3, 'Contrat.pdf', { Accepte: true, Refuse: false }), row(4, 'Ancien refus.pdf', { Accepte: false, Refuse: true }), row(5, 'Retiré.pdf', { Accepte: true, Refuse: false, Supprimee_a_la_source: true })];
+    const columns = ['id', ...FILES_COLUMN_IDS, 'Supprimee_a_la_source', 'Accepte', 'Refuse', 'Dossier_partage'];
     sharedGrist = fakeGrist(kind === 'vide' ? {} : { GFS_Recus: { columns, rows } });
     window.__sharedTables = sharedGrist.tables;
     window.__sharedActions = sharedGrist.actions;

@@ -1,8 +1,9 @@
-// La base commune des fenêtres du widget (charte : une seule base, le titre et les boutons fixes) : la fenêtre passe au-dessus de ce qui est ouvert
-// (Layers), rend le fond inerte, garde Tab en elle, se ferme sur Échap (jamais sur un clic à côté d'elle : charte, « un clic sur le voile ne ferme rien », décidé le 09/11), et rend le clavier à l'élément qui l'avait,
-// retrouvé par sa clé `data-fk` quand il a été redessiné entre-temps. Les fenêtres à liste y prennent aussi leur clavier (`listKeys`).
-// Une fenêtre posée par-dessus une autre (la fenêtre « Couleur personnalisée » sur la fenêtre « Thème ») est seule à tenir le clavier : Échap ne ferme que celle du dessus. Un panneau flottant que la
-// fenêtre a ouvert (`data-popover`, js/menu.js `openPanel`) garde Échap et Tab quand le clavier est dedans.
+// La base commune des fenêtres du widget (charte : une seule base, le titre et les boutons fixes) : la fenêtre passe au-dessus de ce qui est ouvert (Layers),
+// rend le fond inerte, garde Tab en elle, se ferme sur Échap (jamais sur un clic à côté d'elle : charte, « un clic sur le voile ne ferme rien », décidé le
+// 09/11), et rend le clavier à l'élément qui l'avait, retrouvé par sa clé `data-fk` quand il a été redessiné entre-temps. Les fenêtres à liste y prennent aussi
+// leur clavier (`listKeys`). Une fenêtre posée par-dessus une autre (la fenêtre « Couleur personnalisée » sur la fenêtre « Thème ») est seule à tenir le
+// clavier : Échap ne ferme que celle du dessus. Un panneau flottant que la fenêtre a ouvert (`data-popover`, js/menu.js `openPanel`) garde Échap et Tab quand
+// le clavier est dedans.
 
 import { h } from './dom.js';
 import { Layers } from './layers.js';
@@ -10,7 +11,8 @@ import { Layers } from './layers.js';
 const FOCUSABLE = 'input:not([disabled]), button:not([disabled]), [tabindex="0"]';
 const stack = []; // les fenêtres ouvertes, la dernière est au-dessus
 
-// Les arrêts de Tab d'une fenêtre, d'après ses éléments au clavier : un groupe de boutons radio n'en a qu'un, le coché (sinon le premier), comme dans le navigateur ; les flèches font le reste.
+// Les arrêts de Tab d'une fenêtre, d'après ses éléments au clavier : un groupe de boutons radio n'en a qu'un, le coché (sinon le premier), comme dans le
+// navigateur ; les flèches font le reste.
 export function tabStops(nodes) {
   return nodes.filter(node => {
     if (node.type !== 'radio' || !node.name) return true;
@@ -37,7 +39,8 @@ export function listKeys(event, { search, items }) {
   return false;
 }
 
-// Rend le fond inerte (ni clic ni clavier) et rend la fonction qui, à la fermeture, redonne à chaque élément l'état où il était (l'explorateur en tenait déjà un).
+// Rend le fond inerte (ni clic ni clavier) et rend la fonction qui, à la fermeture, redonne à chaque élément l'état où il était (l'explorateur en tenait déjà
+// un).
 export function holdBackground(targets) {
   const kept = targets.map(target => [target, target.inert]);
   for (const [target] of kept) target.inert = true;
@@ -49,9 +52,10 @@ export function giveBackFocus(opener) {
   if (opener && opener.isConnected && typeof opener.focus === 'function') opener.focus({ preventScroll: true });
 }
 
-// Pose une fenêtre à classe (« Apps et extensions », « Table de travail ») : son fond `root`, déjà bâti, passe au-dessus de ce qui est ouvert (Layers), le fond de la page devient inerte, et
-// Échap et Tab s'écoutent sur le document, en capture (ils valent même quand le clavier est tombé sur le fond, et passent avant ceux de l'explorateur). `onKey(événement)` est leur gestionnaire.
-// Rend { opener, unmount } : `opener` est l'élément qui avait le clavier (à lui rendre par `giveBackFocus`) ; `unmount()` retire la fenêtre, rend au fond son état et défait l'écoute.
+// Pose une fenêtre à classe (« Apps et extensions », « Table de travail ») : son fond `root`, déjà bâti, passe au-dessus de ce qui est ouvert (Layers), le fond
+// de la page devient inerte, et Échap et Tab s'écoutent sur le document, en capture (ils valent même quand le clavier est tombé sur le fond, et passent avant
+// ceux de l'explorateur). `onKey(événement)` est leur gestionnaire. Rend { opener, unmount } : `opener` est l'élément qui avait le clavier (à lui rendre par
+// `giveBackFocus`) ; `unmount()` retire la fenêtre, rend au fond son état et défait l'écoute.
 export function mountWindow({ container, root, inertTargets, onKey }) {
   const doc = container.ownerDocument;
   const opener = doc.activeElement;
@@ -95,7 +99,8 @@ export function openModal({ container, section, inertTargets, first, cancel = nu
     doc.removeEventListener('keydown', onKey, true);
     root.remove();
     release();
-    const back = opener && opener.isConnected ? opener : (openerKey ? [...container.querySelectorAll('[data-fk]')].find(node => node.dataset.fk === openerKey) : null);
+    const back = opener && opener.isConnected ? opener : (openerKey ? [...container.querySelectorAll('[data-fk]')].find(node => node.dataset.fk === openerKey) :
+      null);
     if (back && typeof back.focus === 'function') back.focus({ preventScroll: true });
     resolve(value);
   };

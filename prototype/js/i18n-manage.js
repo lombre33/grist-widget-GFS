@@ -1,4 +1,5 @@
-// Les textes de « Gérer les partages » (contrats 11.7, point 13, i) et du choix dans une liste, en français et en anglais dans le même lot. Ils rejoignent dans js/i18n.js.
+// Les textes de « Gérer les partages » (contrats 11.7, point 13, i) et du choix dans une liste, en français et en anglais dans le même lot. Ils rejoignent dans
+// js/i18n.js.
 
 export const MANAGE_STRINGS = Object.freeze({
   fr: {

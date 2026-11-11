@@ -1,12 +1,13 @@
-// Les réglages d'une app écrits dans la vue (contrats 7.3), sans « Enregistrer ». Grist ne garde le réglage qu'un widget pose (`setOption`) qu'en brouillon, et montre
-// « Enregistrer » et « Retour » au-dessus du widget tant que la personne n'a pas tranché. GFS, lui, a le niveau `full` : il retrouve sa propre section dans
-// `_grist_Views_section` et y écrit `customView.widgetOptions` par un `UpdateRecord`, ce qu'écrit Grist lui-même quand on clique « Enregistrer » (mesuré le 03/11 :
-// aucune barre, le cadre n'est pas reconstruit, Grist renvoie les réglages en écho comme pour un brouillon).
+// Les réglages d'une app écrits dans la vue (contrats 7.3), sans « Enregistrer ». Grist ne garde le réglage qu'un widget pose (`setOption`) qu'en brouillon, et
+// montre « Enregistrer » et « Retour » au-dessus du widget tant que la personne n'a pas tranché. GFS, lui, a le niveau `full` : il retrouve sa propre section
+// dans `_grist_Views_section` et y écrit `customView.widgetOptions` par un `UpdateRecord`, ce qu'écrit Grist lui-même quand on clique « Enregistrer » (mesuré
+// le 03/11 : aucune barre, le cadre n'est pas reconstruit, Grist renvoie les réglages en écho comme pour un brouillon).
 //
-// Un widget d'une autre origine ne sait ni sa page ni sa section (Grist ne les met pas dans son adresse, et le référent ne garde que l'origine : faits vérifiés, 18) : GFS
-// retrouve sa section par ce qu'il sait, son adresse et la table de sa section. Une seule candidate : c'est elle, et l'écho le confirme. Plusieurs (deux GFS sur la même
-// table, quasi toujours) : une marque aléatoire est posée un instant dans chacune et GFS relit ses propres réglages : celle qu'il voit est la sienne.
-// Ce qui n'est pas sûr ne s'écrit jamais : sans candidate, sans écho, sans droit, `write` rend faux et le courtier pose le brouillon, comme avant.
+// Un widget d'une autre origine ne sait ni sa page ni sa section (Grist ne les met pas dans son adresse, et le référent ne garde que l'origine : faits
+// vérifiés, 18) : GFS retrouve sa section par ce qu'il sait, son adresse et la table de sa section. Une seule candidate : c'est elle, et l'écho le confirme.
+// Plusieurs (deux GFS sur la même table, quasi toujours) : une marque aléatoire est posée un instant dans chacune et GFS relit ses propres réglages : celle
+// qu'il voit est la sienne. Ce qui n'est pas sûr ne s'écrit jamais : sans candidate, sans écho, sans droit, `write` rend faux et le courtier pose le brouillon,
+// comme avant.
 
 import { sameValue } from './options-slice.js';
 
@@ -19,8 +20,8 @@ const POLL_MS = 50;
 const PROBE_TRIES = 5;
 const LOST_MS = 30000; // une recherche sans réponse ne se refait pas avant ce délai, tant que les candidates sont les mêmes
 
-// Une adresse de widget sans ce qui change d'une ouverture à l'autre : l'origine et le chemin, sans requête, ni fragment, ni « index.html », ni « / » final. Grist ajoute
-// `access`, `readonly` et la langue à l'adresse du cadre ; l'adresse gardée dans la section est celle que la personne a donnée.
+// Une adresse de widget sans ce qui change d'une ouverture à l'autre : l'origine et le chemin, sans requête, ni fragment, ni « index.html », ni « / » final.
+// Grist ajoute `access`, `readonly` et la langue à l'adresse du cadre ; l'adresse gardée dans la section est celle que la personne a donnée.
 export function addressOf(url) {
   try {
     const { origin, pathname } = new URL(url);
@@ -35,7 +36,8 @@ const parse = text => {
   } catch (error) { return null; }
 };
 
-// `options` d'une section : l'objet, et l'objet `customView` qu'il garde en texte (le même texte deux fois codé que Grist écrit). Rend null si l'un des deux manque.
+// `options` d'une section : l'objet, et l'objet `customView` qu'il garde en texte (le même texte deux fois codé que Grist écrit). Rend null si l'un des deux
+// manque.
 export function customViewOf(text) {
   const options = parse(text);
   const custom = options && typeof options.customView === 'string' ? parse(options.customView) : null;
@@ -48,8 +50,8 @@ export function savedOptionsOf(text) {
   return view && view.custom.widgetOptions !== null && typeof view.custom.widgetOptions === 'object' ? view.custom.widgetOptions : null;
 }
 
-// Les sections personnalisées à l'adresse de GFS sur la table de cette section (`tableId` vide : une section sans table) : celles où GFS peut se trouver. `sections` et
-// `tables` sont les tables de Grist telles que `fetchTable` les rend, par colonnes.
+// Les sections personnalisées à l'adresse de GFS sur la table de cette section (`tableId` vide : une section sans table) : celles où GFS peut se trouver.
+// `sections` et `tables` sont les tables de Grist telles que `fetchTable` les rend, par colonnes.
 export function candidatesOf(sections, tables, { address, tableId }) {
   let tableRef = 0;
   if (tableId) {
@@ -66,8 +68,9 @@ export function candidatesOf(sections, tables, { address, tableId }) {
   return found;
 }
 
-// Le texte de `options` après les changements `[[clé, valeur]]` (une valeur indéfinie retire la clé) : seule la tranche `widgetOptions` change, tout le reste de la section
-// reste tel que Grist l'a écrit (les autres clés, l'accès, l'adresse). Sans clé restante, Grist garde `null`. Rend null quand le texte ne se lit pas.
+// Le texte de `options` après les changements `[[clé, valeur]]` (une valeur indéfinie retire la clé) : seule la tranche `widgetOptions` change, tout le reste
+// de la section reste tel que Grist l'a écrit (les autres clés, l'accès, l'adresse). Sans clé restante, Grist garde `null`. Rend null quand le texte ne se lit
+// pas.
 export function withChanges(text, changes) {
   const view = customViewOf(text);
   if (!view) return null;
@@ -108,8 +111,8 @@ export class ViewOptions {
   #lost = null; // { signature, at } : la dernière recherche qui n'a reçu aucune marque
   #warned = new Set();
 
-  // doc : `GristDocAPI` de GFS ; widget : son `WidgetAPI` ; address : `addressOf` de l'adresse de GFS ; tableId() : la table de la section de GFS ; enabled() : GFS a le
-  // niveau `full` et le document s'écrit ; timers : { setTimeout }.
+  // doc : `GristDocAPI` de GFS ; widget : son `WidgetAPI` ; address : `addressOf` de l'adresse de GFS ; tableId() : la table de la section de GFS ; enabled() :
+  //   GFS a le niveau `full` et le document s'écrit ; timers : { setTimeout }.
   constructor({ doc, widget, address, tableId, enabled = () => true, timers = globalThis }) {
     this.#doc = doc;
     this.#widget = widget;
@@ -119,16 +122,16 @@ export class ViewOptions {
     this.#timers = timers;
   }
 
-  // Écrit les changements `[[clé, valeur]]` dans la vue. Rend vrai quand ils y sont, relus par Grist (rien à enregistrer) ; faux quand rien n'a été écrit : l'appelant pose alors
-  // le brouillon. Les écritures d'une même session passent l'une après l'autre, et ne lèvent jamais d'erreur.
+  // Écrit les changements `[[clé, valeur]]` dans la vue. Rend vrai quand ils y sont, relus par Grist (rien à enregistrer) ; faux quand rien n'a été écrit :
+  // l'appelant pose alors le brouillon. Les écritures d'une même session passent l'une après l'autre, et ne lèvent jamais d'erreur.
   write(changes) {
     const run = this.#queue.then(() => this.#write(changes));
     this.#queue = run.catch(() => {});
     return run;
   }
 
-  // La section de GFS : `{ id }`, ou `{ reason }` quand GFS ne la reconnaît pas ou ne peut pas écrire dans la vue (la même recherche que pour écrire un réglage). Sert à poser le
-  // lien « Select by » (js/view-link.js). Les recherches passent dans la file des écritures : jamais deux à la fois.
+  // La section de GFS : `{ id }`, ou `{ reason }` quand GFS ne la reconnaît pas ou ne peut pas écrire dans la vue (la même recherche que pour écrire un
+  // réglage). Sert à poser le lien « Select by » (js/view-link.js). Les recherches passent dans la file des écritures : jamais deux à la fois.
   section() {
     const run = this.#queue.then(async () => {
       if (!this.#enabled()) return { reason: 'disabled' };
@@ -169,15 +172,19 @@ export class ViewOptions {
   #declined(reason, error) {
     if (!this.#warned.has(reason)) {
       this.#warned.add(reason);
-      const why = { access: 'GFS n\'a pas l\'accès complet au document', 'no-section': 'GFS ne reconnaît pas sa section', unreadable: 'les réglages de la section ne se lisent pas ou ne changent pas', 'no-echo': 'Grist n\'a pas renvoyé le réglage écrit (ce n\'était pas la section de GFS)', draft: 'un brouillon est déjà posé (« Enregistrer » ou « Retour » dans Grist le libère)', refused: `Grist a refusé l'écriture (${(error && error.message) || error})` }[reason];
+      const why = { access: 'GFS n\'a pas l\'accès complet au document', 'no-section': 'GFS ne reconnaît pas sa section',
+        unreadable: 'les réglages de la section ne se lisent pas ou ne changent pas',
+        'no-echo': 'Grist n\'a pas renvoyé le réglage écrit (ce n\'était pas la section de GFS)',
+        draft: 'un brouillon est déjà posé (« Enregistrer » ou « Retour » dans Grist le libère)',
+        refused: `Grist a refusé l'écriture (${(error && error.message) || error})` }[reason];
       console.warn(`GFS : les réglages restent un brouillon (« Enregistrer » dans Grist) : ${why}.`);
     }
     return false;
   }
 
-  // Les sections où GFS peut se trouver, en lecture seule : `{ agree }`, les candidates dont les réglages enregistrés disent ce que Grist dit à GFS (`current`, hors marques de recherche), ou
-  // `{ reason }` quand il n'y en a aucune. Une candidate qui dit autre chose n'est pas la nôtre, et si aucune ne le dit, c'est qu'un brouillon est posé (« Enregistrer » est là : il masque les
-  // réglages enregistrés, l'écho ne reviendrait pas et « Enregistrer » le remplacerait).
+  // Les sections où GFS peut se trouver, en lecture seule : `{ agree }`, les candidates dont les réglages enregistrés disent ce que Grist dit à GFS (`current`,
+  // hors marques de recherche), ou `{ reason }` quand il n'y en a aucune. Une candidate qui dit autre chose n'est pas la nôtre, et si aucune ne le dit, c'est
+  // qu'un brouillon est posé (« Enregistrer » est là : il masque les réglages enregistrés, l'écho ne reviendrait pas et « Enregistrer » le remplacerait).
   async #agreeing(current) {
     const [sections, tables] = await Promise.all([this.#doc.fetchTable(SECTIONS), this.#doc.fetchTable(TABLES)]);
     const candidates = candidatesOf(sections, tables, { address: this.#address, tableId: this.#tableId() }).filter(item => !this.#notOurs.has(item.id));
@@ -186,9 +193,10 @@ export class ViewOptions {
     return agree.length ? { agree } : { reason: 'draft' };
   }
 
-  // Ce que GFS peut dire à une app dès son ouverture, avant tout réglage : ses réglages iront-ils dans la vue ? Vrai : une seule section dit ce que Grist dit à GFS (ou celle que la recherche
-  // a déjà reconnue) ; faux : GFS sait déjà qu'il se repliera sur le brouillon (accès, aucune section, brouillon posé), et le dit en console comme à l'écriture ; null : il ne sait pas (plusieurs
-  // sections pareilles : seule une marque le dirait, et une marque s'écrit). Rien n'est jamais écrit. Un refus de Grist (droits de structure) ne se lit pas : il se saura à la première écriture.
+  // Ce que GFS peut dire à une app dès son ouverture, avant tout réglage : ses réglages iront-ils dans la vue ? Vrai : une seule section dit ce que Grist dit à
+  // GFS (ou celle que la recherche a déjà reconnue) ; faux : GFS sait déjà qu'il se repliera sur le brouillon (accès, aucune section, brouillon posé), et le
+  // dit en console comme à l'écriture ; null : il ne sait pas (plusieurs sections pareilles : seule une marque le dirait, et une marque s'écrit). Rien n'est
+  // jamais écrit. Un refus de Grist (droits de structure) ne se lit pas : il se saura à la première écriture.
   async expect() {
     if (!this.#enabled()) { this.#declined('access'); return false; }
     try {
@@ -200,7 +208,8 @@ export class ViewOptions {
     }
   }
 
-  // La section de GFS : `{ target: { id, text } }`, ou `{ reason }` quand GFS ne peut pas écrire dans la vue. `current` : ce que Grist dit à GFS de ses réglages. Une seule candidate qui
+  // La section de GFS : `{ target: { id, text } }`, ou `{ reason }` quand GFS ne peut pas écrire dans la vue. `current` : ce que Grist dit à GFS de ses
+  // réglages. Une seule candidate qui
   // s'accorde : c'est elle, et l'écho le confirme. Plusieurs : la recherche par marques.
   async #find(current) {
     const { agree, reason } = await this.#agreeing(current);
@@ -216,16 +225,18 @@ export class ViewOptions {
     return target ? { target } : { reason: 'no-section' };
   }
 
-  // Plusieurs sections de GFS sur la même table : une marque aléatoire par candidate, posée d'un coup, puis les réglages de GFS relus. Celle qu'il voit est dans sa section. Une marque
-  // d'une autre recherche en cours (deux GFS qui démarrent ensemble) n'est dans aucune de nos listes : on recommence après un délai au hasard. Aucune marque du tout dans le délai : GFS
-  // n'est pas parmi les candidates, inutile d'insister. Les marques sont toujours retirées.
+  // Plusieurs sections de GFS sur la même table : une marque aléatoire par candidate, posée d'un coup, puis les réglages de GFS relus. Celle qu'il voit est
+  // dans sa section. Une marque d'une autre recherche en cours (deux GFS qui démarrent ensemble) n'est dans aucune de nos listes : on recommence après un délai
+  // au hasard. Aucune marque du tout dans le délai : GFS n'est pas parmi les candidates, inutile d'insister. Les marques sont toujours retirées.
   async #probe(candidates) {
     for (let attempt = 0; attempt < PROBE_TRIES; attempt++) {
       const marks = candidates.map(() => nonce());
       let seen = null;
       try {
-        await this.#doc.applyUserActions(candidates.map((item, i) => ['UpdateRecord', SECTIONS, item.id, { options: withChanges(item.text, [[PROBE_KEY, marks[i]]]) }]));
-        seen = await this.#until(async () => { const own = await this.#widget.getOptions(); return own && own[PROBE_KEY] !== undefined ? { mark: own[PROBE_KEY] } : null; }, PROBE_WAIT_MS);
+        await this.#doc.applyUserActions(candidates.map((item, i) => ['UpdateRecord', SECTIONS, item.id,
+          { options: withChanges(item.text, [[PROBE_KEY, marks[i]]]) }]));
+        seen = await this.#until(async () => {
+          const own = await this.#widget.getOptions(); return own && own[PROBE_KEY] !== undefined ? { mark: own[PROBE_KEY] } : null; }, PROBE_WAIT_MS);
       } finally {
         await this.#unmark(candidates);
       }
@@ -251,7 +262,8 @@ export class ViewOptions {
     }
   }
 
-  // Grist renvoie à GFS les réglages de SA section : ce qu'on vient d'écrire s'y retrouve, ou l'écriture a touché une autre section (ou un brouillon masque les réglages enregistrés).
+  // Grist renvoie à GFS les réglages de SA section : ce qu'on vient d'écrire s'y retrouve, ou l'écriture a touché une autre section (ou un brouillon masque les
+  // réglages enregistrés).
   #echoed(wanted) {
     return this.#until(async () => {
       const own = await this.#widget.getOptions();

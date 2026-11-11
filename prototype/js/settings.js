@@ -22,8 +22,9 @@ function cleanApp(manifest, raw) {
   return { extensions, modes };
 }
 
-// `raw` : la valeur retenue dans la table (un objet), ou null ; `manifests` : Map(id -> manifeste valide) ; `always` : les apps qui ne se retirent
-// pas (provisoire : Publipostage+, comme dans la maquette). Rend { apps: { id: { extensions, modes } }, stored } : `stored` dit si le document a déjà retenu ses apps.
+// `raw` : la valeur retenue dans la table (un objet), ou null ; `manifests` : Map(id -> manifeste valide) ; `always` : les apps qui ne se retirent pas
+//   (provisoire : Publipostage+, comme dans la maquette). Rend { apps: { id: { extensions, modes } }, stored } : `stored` dit si le document a déjà retenu ses
+//   apps.
 export function readApps(raw, manifests, always) {
   const stored = isObject(raw);
   const apps = {};

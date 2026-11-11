@@ -1,7 +1,8 @@
-// La fenêtre « Table de travail » (contrats 4.5, point 1) : un clic sur une table la choisit ; son bouton « Ligne » mène, pour qui le veut, à la liste de ses lignes.
-// Chaque liste a sa recherche (mots dans n'importe quel ordre, accents, casse et ponctuation ignorés). Le premier article rend la main à la page : son bouton « Ligne » choisit
-// pourtant une ligne de la table de la page (4.5, point 7). Une table que l'app ouverte ne lit pas est grisée avec sa raison, jamais masquée.
-// Une fenêtre sur une seule base : le titre, la recherche et le pied restent en place, seule la liste défile. Elle ne décide rien : le choix est rendu au contrôleur.
+// La fenêtre « Table de travail » (contrats 4.5, point 1) : un clic sur une table la choisit ; son bouton « Ligne » mène, pour qui le veut, à la liste de ses
+// lignes. Chaque liste a sa recherche (mots dans n'importe quel ordre, accents, casse et ponctuation ignorés). Le premier article rend la main à la page : son
+// bouton « Ligne » choisit pourtant une ligne de la table de la page (4.5, point 7). Une table que l'app ouverte ne lit pas est grisée avec sa raison, jamais
+// masquée. Une fenêtre sur une seule base : le titre, la recherche et le pied restent en place, seule la liste défile. Elle ne décide rien : le choix est rendu
+// au contrôleur.
 
 import { h } from './dom.js';
 import { icon } from './icons.js';
@@ -19,9 +20,10 @@ export class WorkWindow {
   #step = { kind: 'tables', items: [] };
   #mounted = null; // { opener, unmount } de la fenêtre ouverte (modal.js, mountWindow)
 
-  // opts : { container, i18n, inertTargets() -> [élément], source, onPick({ tableId, rowId, label, page } | null), onClose() } ; une table choisie seule a `rowId` null ; `page` : la
-  // ligne est celle de la table de la page.
-  // source : { pageTable, pageRow (la ligne que la personne a choisie sur la page, ou null), current, tables() -> [{ id, locked: texte | null }], rows(id) -> Promise<[{ id, label, search }]> } ; la recherche d'une ligne porte sur `search`.
+  // opts : { container, i18n, inertTargets() -> [élément], source, onPick({ tableId, rowId, label, page } | null), onClose() } ; une table choisie seule a
+  //   `rowId` null ; `page` : la ligne est celle de la table de la page.
+  // source : { pageTable, pageRow (la ligne que la personne a choisie sur la page, ou null), current, tables() -> [{ id, locked: texte | null }], rows(id) ->
+  //   Promise<[{ id, label, search }]> } ; la recherche d'une ligne porte sur `search`.
   constructor(opts) { this.#opts = opts; }
 
   get isOpen() { return this.#root !== null; }
@@ -29,7 +31,8 @@ export class WorkWindow {
   open() {
     if (this.#root) return;
     this.#root = this.#build();
-    this.#mounted = mountWindow({ container: this.#opts.container, root: this.#root, inertTargets: () => this.#opts.inertTargets(), onKey: event => this.#keydown(event) });
+    this.#mounted = mountWindow({ container: this.#opts.container, root: this.#root, inertTargets: () => this.#opts.inertTargets(),
+      onKey: event => this.#keydown(event) });
     this.#showTables();
     try { this.#root.ownerDocument.defaultView.focus(); } catch (error) { /* le cadre garde l'état qu'il avait */ }
     this.#search.focus({ preventScroll: true });
@@ -47,7 +50,8 @@ export class WorkWindow {
 
   #build() {
     const { t } = this.#opts.i18n;
-    this.#search = h('input', { type: 'search', autocomplete: 'off', placeholder: t('work.search'), 'aria-label': t('work.search'), dataset: { fk: 'work-search' },
+    this.#search = h('input', { type: 'search', autocomplete: 'off', placeholder: t('work.search'), 'aria-label': t('work.search'),
+      dataset: { fk: 'work-search' },
       on: { input: () => this.#render() } });
     this.#list = h('ul', { class: 'wk-list', 'aria-labelledby': 'wk-title' });
     this.#note = h('p', { class: 'mod-note', 'aria-live': 'polite' });
@@ -55,7 +59,8 @@ export class WorkWindow {
       h('section', { class: 'mod wk', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'wk-title' },
         h('header', { class: 'mod-head wk-head' },
           h('div', { class: 'wk-title-row' },
-            h('button', { type: 'button', class: 'btn sm wk-back', hidden: true, dataset: { fk: 'work-back' }, on: { click: () => this.#showTables() } }, icon('chev-left'), t('work.back')),
+            h('button', { type: 'button', class: 'btn sm wk-back', hidden: true, dataset: { fk: 'work-back' }, on: { click: () => this.#showTables() } },
+              icon('chev-left'), t('work.back')),
             h('h2', { id: 'wk-title' })),
           h('p', { class: 'mod-count wk-text' }),
           h('label', { class: 'inp-search wk-search' }, icon('search'), this.#search)),
@@ -72,8 +77,10 @@ export class WorkWindow {
     const { t } = this.#opts.i18n;
     const { source } = this.#opts;
     const current = source.current;
-    const page = { id: null, name: source.pageTable, label: t('work.page', { table: source.pageTable || '—' }), glyph: 'link', checked: !current, more: Boolean(source.pageTable) };
-    const tables = source.tables().map(table => ({ id: table.id, label: table.id, glyph: 'table', locked: table.locked, checked: Boolean(current) && current.tableId === table.id, more: true }));
+    const page = { id: null, name: source.pageTable, label: t('work.page', { table: source.pageTable || '—' }), glyph: 'link', checked: !current,
+      more: Boolean(source.pageTable) };
+    const tables = source.tables().map(table => ({ id: table.id, label: table.id, glyph: 'table', locked: table.locked, checked: Boolean(current) &&
+      current.tableId === table.id, more: true }));
     this.#step = { kind: 'tables', items: [page, ...tables] };
     this.#heading(t('work.title'), t('work.textTables'), false);
     this.#search.value = '';
@@ -99,7 +106,8 @@ export class WorkWindow {
     if (!this.#root || this.#step !== step) return; // la fenêtre a été fermée, ou la personne est revenue aux tables
     const { current, pageRow } = this.#opts.source;
     const isChecked = rowId => (page ? pageRow === rowId : Boolean(current) && current.tableId === tableId && current.rowId === rowId);
-    step.items = rows.map(row => ({ id: row.id, label: row.label, search: normalize(`${row.label} ${row.search || ''}`), glyph: null, checked: isChecked(row.id) }));
+    step.items = rows.map(row => ({ id: row.id, label: row.label, search: normalize(`${row.label} ${row.search || ''}`), glyph: null,
+      checked: isChecked(row.id) }));
     this.#render();
     this.#search.focus({ preventScroll: true });
   }
@@ -132,12 +140,15 @@ export class WorkWindow {
     const locked = item.locked ? ' is-locked' : '';
     const disabled = item.locked ? 'true' : null;
     // Le bouton « Ligne » d'une table : facultatif, il mène à la liste de ses lignes ; grisé comme sa table.
-    const rows = item.more ? h('button', { type: 'button', class: `btn sm wk-rows${locked}`, dataset: { index: String(index), fk: `work-rows-${item.id ?? 'page'}` }, 'aria-disabled': disabled,
+    const rows = item.more ? h('button', { type: 'button', class: `btn sm wk-rows${locked}`,
+      dataset: { index: String(index), fk: `work-rows-${item.id ?? 'page'}` }, 'aria-disabled': disabled,
       'aria-label': t('work.rowOf', { table: item.name || item.label }) }, t('work.row'), icon('chev-right')) : null;
     return h('li', { class: 'wk-row' },
-      h('button', { type: 'button', class: `wk-item${locked}`, dataset: { index: String(index), fk: `work-item-${item.id ?? 'page'}` }, 'aria-disabled': disabled,
+      h('button', { type: 'button', class: `wk-item${locked}`, dataset: { index: String(index), fk: `work-item-${item.id ?? 'page'}` },
+        'aria-disabled': disabled,
         'aria-current': item.checked ? 'true' : null },
-      item.glyph ? icon(item.glyph) : null, h('span', { class: 'wk-label' }, h('span', { class: 'wk-name' }, item.label), reason), item.checked ? icon('check') : null),
+      item.glyph ? icon(item.glyph) : null, h('span', { class: 'wk-label' }, h('span', { class: 'wk-name' }, item.label), reason),
+        item.checked ? icon('check') : null),
       rows);
   }
 
@@ -168,7 +179,8 @@ export class WorkWindow {
     if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); this.close(); return; }
     const items = [...this.#list.querySelectorAll('.wk-item')];
     const active = this.#root.ownerDocument.activeElement;
-    if (event.key === 'ArrowRight' && items.includes(active) && active.nextElementSibling) { event.preventDefault(); active.nextElementSibling.click(); return; }
+    if (event.key === 'ArrowRight' && items.includes(active) && active.nextElementSibling) {
+      event.preventDefault(); active.nextElementSibling.click(); return; }
     if (listKeys(event, { search: this.#search, items })) return;
     if (event.key !== 'Tab') return;
     const nodes = [...this.#root.querySelectorAll(FOCUSABLE)].filter(node => !node.hidden && node.offsetParent !== null);

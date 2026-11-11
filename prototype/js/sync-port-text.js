@@ -1,6 +1,7 @@
-// Les textes que le moteur de partage (kit/js/synchro/) demande à GFS par `port.text(clé, valeurs)` : les siens (kit/js/synchro/textes.js, `error.*` et `recv.*`, repris de Sync+) et ceux que
-// le port de GFS ajoute (un échec du cadre d'envoi, une propriété du document que Grist n'a pas dite), en français et en anglais dans le même lot. Une clé inconnue est rendue telle quelle :
-// le moteur s'en sert pour reconnaître une erreur prévue (kit/js/synchro/errors.js), et GFS n'écrit alors aucun avertissement.
+// Les textes que le moteur de partage (kit/js/synchro/) demande à GFS par `port.text(clé, valeurs)` : les siens (kit/js/synchro/textes.js, `error.*` et
+// `recv.*`, repris de Sync+) et ceux que le port de GFS ajoute (un échec du cadre d'envoi, une propriété du document que Grist n'a pas dite), en français et en
+// anglais dans le même lot. Une clé inconnue est rendue telle quelle : le moteur s'en sert pour reconnaître une erreur prévue (kit/js/synchro/errors.js), et
+// GFS n'écrit alors aucun avertissement.
 import { createI18n } from '../kit/js/i18n.js';
 import { TEXTES } from '../kit/js/synchro/textes.js';
 
@@ -23,8 +24,8 @@ export const PORT_TEXTES = Object.freeze({
   }),
 });
 
-// Le texte du moteur dans la langue de GFS à l'instant de l'appel (`language()` rend 'fr' ou 'en' ; la personne peut la changer en route). Une instance du kit par langue : `setLanguage` du kit
-// écrirait l'attribut `lang` de la page, que GFS tient lui-même.
+// Le texte du moteur dans la langue de GFS à l'instant de l'appel (`language()` rend 'fr' ou 'en' ; la personne peut la changer en route). Une instance du kit
+// par langue : `setLanguage` du kit écrirait l'attribut `lang` de la page, que GFS tient lui-même.
 export function createEngineText(language) {
   const strings = {};
   for (const source of [TEXTES, PORT_TEXTES]) {

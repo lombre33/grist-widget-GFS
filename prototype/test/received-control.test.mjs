@@ -101,3 +101,31 @@ test('une ligne qui n\'est plus dans la table : la réponse échoue avec la phra
   await assert.rejects(control.ask(file()), /n’est plus dans le document/);
   assert.deepEqual([log.notices, log.refreshed], [[], 0]);
 });
+
+test('la question d\'un dossier : une écriture pour tous ses fichiers à accepter, les phrases du dossier, la phrase du résultat, la liste relue ; Échap n\'écrit rien', async () => {
+  const waiting = (n, state = PENDING) => ({ ...file(state), key: `gfs-recus:GFS_Recus:f${n}`, id: `f${n}`, weight: 1000, received: { table: 'GFS_Recus', row: n, state, folder: 'Contrats' } });
+  const folder = { id: 'GFS_Recus:Contrats', name: 'Contrats', table: 'GFS_Recus', by: 'Compta <compta@exemple.fr>', files: [waiting(1), waiting(2), waiting(3, ACCEPTED)] };
+  const written = [];
+  const make = answers => {
+    const log = { notices: [], windows: [], refreshed: 0 };
+    const control = new ReceivedControl({
+      port: { doc: {} }, t: FR.t, locale: () => 'fr', container: {}, inertTargets: () => [], typeLabel: () => 'PDF', notice: text => log.notices.push(text), blocked: () => null, refresh: async () => { log.refreshed += 1; }, open() {},
+      answerFolder: async (port, answered, accepted) => { written.push([answered.name, accepted]); return 2; },
+      window: async ctx => { log.windows.push(ctx); if (answers !== 'escape') await ctx.answer(answers === 'accept'); return answers === 'escape' ? null : answers; },
+    });
+    return { control, log };
+  };
+  const { control, log } = make('accept');
+  assert.equal(await control.askFolder(folder), 'accept');
+  assert.deepEqual(written, [['Contrats', true]]);
+  assert.equal(log.windows[0].title, 'Accepter le dossier « Contrats » ?');
+  assert.match(log.windows[0].text, /Compta vous partage le dossier Contrats : 2 fichiers \(/, 'seuls les fichiers qui attendent sont comptés');
+  assert.match(log.windows[0].keep, /arrive grisé, à accepter à part/);
+  assert.deepEqual([log.notices, log.refreshed], [['Le dossier « Contrats » est accepté (2 fichiers).'], 1]);
+  const refused = make('refuse');
+  await refused.control.askFolder(folder);
+  assert.deepEqual(refused.log.notices, ['Le dossier « Contrats » est refusé : 2 fichiers ne reviendront pas.']);
+  const escaped = make('escape');
+  assert.equal(await escaped.control.askFolder(folder), null);
+  assert.deepEqual([escaped.log.notices, escaped.log.refreshed, written.length], [[], 0, 2], 'Échap : ni phrase, ni écriture, ni relecture');
+});

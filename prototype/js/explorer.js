@@ -1,17 +1,19 @@
-// L'explorateur de fichiers (cahier 4.4, 6.3) : le cadre qu'ouvre GFS pour choisir un fichier de n'importe quelle app. Il n'écrit rien lui-même.
-// Il remplace le cadre (défaut 6.7, point 1) ; « Fermer » ou Échap ramène à l'app, restée vivante et cachée. Il ne connaît pas les apps :
-// le contrôleur lui donne les fichiers, les noms, le grisé et ce qu'on peut créer, et reçoit « ouvrir », « nouveau » et « fermer ». Épingler, renommer
-// et déplacer passent à `filing` (js/filing.js) ; supprimer, restaurer et vider la corbeille à `trash` (js/trash.js) ; dupliquer à `copying` (js/copying.js), grisé pour un fichier qu'aucun gardien ne copie.
-// Les touches sont décrites dans js/explorer-keys.js, le presse-papiers (Ctrl+C, Ctrl+X, Ctrl+V) dans js/explorer-clipboard.js.
+// L'explorateur de fichiers (cahier 4.4, 6.3) : le cadre qu'ouvre GFS pour choisir un fichier de n'importe quelle app. Il n'écrit rien lui-même. Il remplace le
+// cadre (défaut 6.7, point 1) ; « Fermer » ou Échap ramène à l'app, restée vivante et cachée. Il ne connaît pas les apps : le contrôleur lui donne les
+// fichiers, les noms, le grisé et ce qu'on peut créer, et reçoit « ouvrir », « nouveau » et « fermer ». Épingler, renommer et déplacer passent à `filing`
+// (js/filing.js) ; supprimer, restaurer et vider la corbeille à `trash` (js/trash.js) ; dupliquer à `copying` (js/copying.js), grisé pour un fichier qu'aucun
+// gardien ne copie. Les touches sont décrites dans js/explorer-keys.js, le presse-papiers (Ctrl+C, Ctrl+X, Ctrl+V) dans js/explorer-clipboard.js.
 
 import { h } from './dom.js';
 import { icon } from './icons.js';
-import { listItems, treeRows, typeChoices } from './explorer-model.js';
+import { listItems, treeRows, typeChoices, rowKey } from './explorer-model.js';
 import { shownReceived, pendingOf, NO_RECEIVED } from './received-files.js';
+import { receivedFolders } from './received-folders.js';
 import { directFiles } from './direct-shares.js';
 import { NO_OPENED } from './opened-files.js';
 import { words } from './search.js';
-import { buildShell, relabel, paintBell, rightsChip, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar, trashBar, totalBar, pjBox } from './explorer-view.js';
+import { buildShell, relabel, paintBell, rightsChip, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar, trashBar, groupBar, totalBar,
+  pjBox } from './explorer-view.js';
 import { sumWeights } from './weight.js';
 import { PiecesBox } from './explorer-pj.js';
 import { Removal } from './explorer-removal.js';
@@ -50,16 +52,19 @@ export class Explorer {
   #arrivals = []; // les fichiers reçus d'un autre document, refusés exceptés (la vue « Partagés avec moi », js/received-files.js)
   #folders = []; // les dossiers que la personne garde sans fichier (js/explorer-data.js)
   #rows = [];
-  #keys = []; // la clé de chaque ligne de la liste, dans l'ordre : le clavier et la sélection lisent ceci, non le DOM (une liste longue n'en construit qu'une part)
+  // la clé de chaque ligne de la liste, dans l'ordre : le clavier et la sélection lisent ceci, non le DOM (une liste longue n'en construit qu'une part)
+  #keys = [];
   #total = 0; // ce que pèse ce que la liste couvre, en octets (le total du pied de fenêtre)
   // La case « + pièces jointes » (js/explorer-pj.js) : son état et ses lectures.
   #pieces = new PiecesBox({
-    t: (key, vars) => this.#opts.i18n.t(key, vars), hasSource: () => Boolean(this.#opts.attachments), load: () => this.#opts.attachments(), restricted: () => this.#restricted,
+    t: (key, vars) => this.#opts.i18n.t(key, vars), hasSource: () => Boolean(this.#opts.attachments), load: () => this.#opts.attachments(),
+      restricted: () => this.#restricted,
     files: () => this.#files, trashed: () => this.#trashed, changed: () => this.#renderTotal(),
   });
   // Les gestes qui font partir une ligne : corbeille, dossier supprimé, restauration (js/explorer-removal.js).
   #removal = new Removal({
-    opts: () => this.#opts, view: () => this.state.view, choice: () => this.#choice, files: () => this.#files, trashed: () => this.#trashed, bin: () => this.#bin, keys: () => this.#keys, isOpen: () => this.isOpen,
+    opts: () => this.#opts, view: () => this.state.view, choice: () => this.#choice, files: () => this.#files, trashed: () => this.#trashed,
+      bin: () => this.#bin, keys: () => this.#keys, isOpen: () => this.isOpen,
     select: (key, focus) => this.#select(key, focus),
   });
   #loading = false;
@@ -67,30 +72,43 @@ export class Explorer {
   #restricted = false;
   #choice = null; // le mode choix (enterChoice) : { title, accept(file), onPick(file), onCancel() }, ou null
   #beforeChoice = null; // où la personne en était avant le mode choix
-  // Trois tris : celui des dossiers et des favoris (par nom), ceux de Récents et de la corbeille (par date, la plus récente d'abord : le fichier qu'on vient de supprimer est en haut).
+  // Trois tris : celui des dossiers et des favoris (par nom), ceux de Récents et de la corbeille (par date, la plus récente d'abord : le fichier qu'on vient de
+  // supprimer est en haut).
   state = {
-    view: 'folder', path: '', open: new Set(), display: 'list', sort: { key: 'name', dir: 1 }, recentSort: { key: 'mod', dir: -1 }, trashSort: { key: 'mod', dir: -1 }, sharedSort: { key: 'mod', dir: -1 }, type: 'all', q: '', sel: null,
+    view: 'folder', path: '', group: null, open: new Set(), display: 'list', sort: { key: 'name', dir: 1 }, recentSort: { key: 'mod', dir: -1 },
+      trashSort: { key: 'mod', dir: -1 }, sharedSort: { key: 'mod', dir: -1 }, type: 'all', q: '', sel: null,
   };
 
-  // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), importTypes(), onOpen(file), onNew(entry), onImport(entry), onClose(), onApps(), canClose(), notice(text),
-  //          settings() → les articles du menu « Réglages » (js/settings-menu.js : langue, thème, position de la barre, « À propos »), onRights() (le mot du pied ouvre le panneau des permissions), onWeight({ list, pj }) (le total du pied ouvre la fenêtre « Poids du document » : la liste en octets et, case cochée et lue, les pièces jointes), personal() → le rangement est-il à la personne seule ?,
-  //          filing: { togglePin(file), rename(file), moveFile(file), renameFolder(path), moveFolder(path), moveFileTo(file, dossier), moveFolderTo(path, dossier) },
-  //          kept?: les fichiers que GFS garde lui-même (js/kept-files.js) : { has(file), openAs(file) -> { label, icon, greyed }, opensIn(file), extras(file) -> [article de menu] },
-  //          trash?: la corbeille (js/trash.js) : { handles(file), appLockOf?(file) -> { text } | null (l'app doit être ouverte), move(file), restore(file), purge(file), empty(files) } (chaque geste rend une promesse, vraie quand il a abouti),
-  //          copying?: la copie (js/copying.js) : { handles(file), appLockOf?(file) -> { text } | null, copy(file, dossier) -> Promise<{ key, name } | null> } },
-  //          attachments?() -> Promise<{ data } | { error }> : la table des pièces jointes de Grist (js/explorer-data.js, `loadAttachments`), lue quand la case « + pièces jointes » est cochée ; sans elle, la case est grisée }
+  // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), importTypes(), onOpen(file), onNew(entry),
+  //   onImport(entry), onClose(), onApps(), canClose(), notice(text),
+  //          settings() → les articles du menu « Réglages » (js/settings-menu.js : langue, thème, position de la barre, « À propos »), onRights() (le mot du
+  //          pied ouvre le panneau des permissions), onWeight({ list, pj }) (le total du pied ouvre la fenêtre « Poids du document » : la liste en octets et,
+  //          case cochée et lue, les pièces jointes), personal() → le rangement est-il à la personne seule ?,
+  //          filing: { togglePin(file), rename(file), moveFile(file), renameFolder(path), moveFolder(path), moveFileTo(file, dossier), moveFolderTo(path,
+  //          dossier) },
+  //          kept?: les fichiers que GFS garde lui-même (js/kept-files.js) : { has(file), openAs(file) -> { label, icon, greyed }, opensIn(file), extras(file)
+  //          -> [article de menu] },
+  //          trash?: la corbeille (js/trash.js) : { handles(file), appLockOf?(file) -> { text } | null (l'app doit être ouverte), move(file), restore(file),
+  //          purge(file), empty(files) } (chaque geste rend une promesse, vraie quand il a abouti),
+  //          copying?: la copie (js/copying.js) : { handles(file), appLockOf?(file) -> { text } | null, copy(file, dossier) -> Promise<{ key, name } | null> }
+  //          },
+  //          attachments?() -> Promise<{ data } | { error }> : la table des pièces jointes de Grist (js/explorer-data.js, `loadAttachments`), lue quand la case
+  //          « + pièces jointes » est cochée ; sans elle, la case est grisée }
   constructor(opts) {
     this.#opts = opts;
     this.#kept = opts.kept || NO_KEPT;
-    // Ctrl+Z (js/undo-stack.js) : la pile du rangement (js/filing.js), ou la sienne ; la corbeille et la copie y déposent de quoi se défaire (js/explorer-undo.js).
+    // Ctrl+Z (js/undo-stack.js) : la pile du rangement (js/filing.js), ou la sienne ; la corbeille et la copie y déposent de quoi se défaire
+    // (js/explorer-undo.js).
     this.#undo = (opts.filing && opts.filing.undoStack) || new UndoStack({ t: opts.i18n.t, notice: text => opts.notice(text) });
     const guarded = undoable({
-      stack: this.#undo, bin: opts.trash || NO_TRASH, copying: opts.copying || NO_COPYING, trashed: () => this.#trashed, live: () => this.#files, t: opts.i18n.t, appName: id => opts.appName(id), reveal: key => this.#reveal(key),
+      stack: this.#undo, bin: opts.trash || NO_TRASH, copying: opts.copying || NO_COPYING, trashed: () => this.#trashed, live: () => this.#files,
+        t: opts.i18n.t, appName: id => opts.appName(id), reveal: key => this.#reveal(key),
     });
     this.#bin = opts.trash ? guarded.bin : NO_TRASH;
     this.#copying = opts.copying ? guarded.copying : NO_COPYING;
     this.#clipboard = new Clipboard({
-      t: opts.i18n.t, notice: text => opts.notice(text), appName: id => opts.appName(id), file: key => this.#files.find(item => item.key === key), where: () => ({ view: this.state.view, path: this.state.path }),
+      t: opts.i18n.t, notice: text => opts.notice(text), appName: id => opts.appName(id), file: key => this.#files.find(item => item.key === key),
+        where: () => ({ view: this.state.view, path: this.state.path }),
       reveal: key => this.#reveal(key), copying: this.#copying, filing: opts.filing,
     });
     const { root, refs } = buildShell(opts.i18n);
@@ -98,8 +116,11 @@ export class Explorer {
     this.#refs = refs;
     opts.container.append(root);
     // Le glisser-déposer (js/explorer-drag.js) : une ligne se dépose sur un dossier du volet, du fil d'Ariane ou de la liste ; hors corbeille et hors choix.
-    this.#drag = new Dragging({ root, may: () => !this.#choice && !['trash', 'shared'].includes(this.state.view), file: key => this.#files.find(item => item.key === key), moveTo: (key, path) => this.#clipboard.moveTo(key, path), expand: path => { this.state.open.add(path); this.#renderTree(); } });
-    this.#win = new RowWindow({ scroll: refs.scroll, list: refs.list, held: () => this.#drag.holding, onPaint: () => { this.#roving(); this.#drag.mark(refs.list); } });
+    this.#drag = new Dragging({ root, may: () => !this.#choice && !['trash', 'shared'].includes(this.state.view),
+      file: key => this.#files.find(item => item.key === key), moveTo: (key, path) => this.#clipboard.moveTo(key, path),
+      expand: path => { this.state.open.add(path); this.#renderTree(); } });
+    this.#win = new RowWindow({ scroll: refs.scroll, list: refs.list, held: () => this.#drag.holding,
+      onPaint: () => { this.#roving(); this.#drag.mark(refs.list); } });
     this.#bind();
     this.render();
   }
@@ -116,34 +137,42 @@ export class Explorer {
   // Les dossiers sans fichier que la liste montre : tous, sauf en mode choix (il n'y a rien à y choisir).
   get #spare() { return this.#choice ? [] : this.#folders; }
 
-  // « Partagés avec moi » : ce que la vue demande pour les arrivées d'un autre document (js/received-control.js), ou rien pour les essais de l'explorateur seul.
+  // « Partagés avec moi » : ce que la vue demande pour les arrivées d'un autre document (js/received-control.js), ou rien pour les essais de l'explorateur
+  // seul.
   get #shared() { return this.#opts.received || NO_RECEIVED; }
 
-  // « Ouverts » : ce que la vue demande (js/opened-files.js : `keys()`, `shown()` le fichier que l'app affiche, `remove(key)`), ou rien pour les essais de l'explorateur seul ; les fichiers vivants qui y sont, à jour.
+  // « Ouverts » : ce que la vue demande (js/opened-files.js : `keys()`, `shown()` le fichier que l'app affiche, `remove(key)`), ou rien pour les essais de
+  // l'explorateur seul ; les fichiers vivants qui y sont, à jour.
   get #openedSource() { return this.#opts.opened || NO_OPENED; }
 
   get #opened() { const keys = new Set(this.#openedSource.keys()); return this.#pool.filter(file => keys.has(file.key)); }
 
-  // Ce que la vue montre : les fichiers de la corbeille dans la corbeille, les arrivées d'un autre document dans « Partagés avec moi », les fichiers ouverts dans « Ouverts », sinon les fichiers vivants.
+  // Ce que la vue montre : les fichiers de la corbeille dans la corbeille, les arrivées d'un autre document dans « Partagés avec moi », les fichiers ouverts
+  // dans « Ouverts », sinon les fichiers vivants.
   get #shown() {
     const { view } = this.state;
-    return view === 'trash' ? this.#trashed : view === 'shared' ? [...this.#arrivals, ...directFiles(this.#pool)] : view === 'opened' ? this.#opened : this.#pool;
+    return view === 'trash' ? this.#trashed : view === 'shared' ? [...this.#arrivals, ...directFiles(this.#pool)] : view === 'opened' ? this.#opened :
+      this.#pool;
   }
 
-  // `files` : les fichiers vivants ; `trashed` : ceux qui sont à la corbeille ; `folders` : les dossiers gardés sans fichier ; `received` : les arrivées d'un autre document, tous états (js/explorer-data.js).
+  // `files` : les fichiers vivants ; `trashed` : ceux qui sont à la corbeille ; `folders` : les dossiers gardés sans fichier ; `received` : les arrivées d'un
+  //   autre document, tous états (js/explorer-data.js).
   setFiles(files, trashed = [], folders = [], received = []) {
     this.#files = files;
     this.#trashed = trashed;
     this.#folders = folders;
     this.#arrivals = shownReceived(received);
     const keys = new Set([...files, ...trashed, ...this.#arrivals].map(file => file.key));
-    if (this.state.sel && !this.state.sel.startsWith('dir:') && !keys.has(this.state.sel)) this.state.sel = null;
+    if (this.state.sel && !/^(dir|grp):/.test(this.state.sel) && !keys.has(this.state.sel)) this.state.sel = null;
+    // le dossier reçu n'a plus de fichier montré (tous refusés)
+    if (this.state.group && !receivedFolders(this.#arrivals).folders.some(folder => folder.id === this.state.group)) this.state.group = null;
     this.#pieces.filesChanged();
     if (this.isOpen) this.render();
     this.#pieces.reread();
   }
 
-  // Les arrivées d'un autre document ont changé pendant que l'explorateur est ouvert (js/sync-service.js, `whenReceived`) : seule leur liste se remplace, le reste ne bouge pas.
+  // Les arrivées d'un autre document ont changé pendant que l'explorateur est ouvert (js/sync-service.js, `whenReceived`) : seule leur liste se remplace, le
+  // reste ne bouge pas.
   setReceived(received) { this.setFiles(this.#files, this.#trashed, this.#folders, received); }
 
   // `restricted` : GFS n'a pas l'accès complet, la liste est vide pour cette raison et non parce qu'il n'y a aucun fichier.
@@ -168,9 +197,9 @@ export class Explorer {
     this.root.hidden = true;
   }
 
-  // Le mode choix (contrats 5.4, point 2) : une app a demandé à la personne de désigner un fichier. L'explorateur ne montre que ceux que `accept` laisse passer, « Ouvrir » devient « Choisir », « Fermer »
-  // « Annuler » et « Nouveau » est grisé ; `onPick(file)` reçoit le fichier désigné (double-clic, Entrée, « Choisir »), `onCancel()` l'abandon (Annuler, Échap). `exitChoice` rend l'explorateur
-  // comme la personne l'avait laissé.
+  // Le mode choix (contrats 5.4, point 2) : une app a demandé à la personne de désigner un fichier. L'explorateur ne montre que ceux que `accept` laisse
+  // passer, « Ouvrir » devient « Choisir », « Fermer » « Annuler » et « Nouveau » est grisé ; `onPick(file)` reçoit le fichier désigné (double-clic, Entrée,
+  // « Choisir »), `onCancel()` l'abandon (Annuler, Échap). `exitChoice` rend l'explorateur comme la personne l'avait laissé.
   enterChoice(choice) {
     if (!this.#choice) this.#beforeChoice = this.#place();
     this.#choice = choice;
@@ -235,11 +264,13 @@ export class Explorer {
   #ctx(extra = {}) {
     const { state } = this;
     const sel = state.sel;
-    const row = sel ? this.#rows.find(r => (r.kind === 'folder' ? `dir:${r.path}` : r.file.key) === sel) : null;
+    const row = sel ? this.#rows.find(r => rowKey(r) === sel) : null;
     return {
       t: this.#opts.i18n.t, state, locale: this.#opts.locale, now: this.#opts.now(), appName: this.#opts.appName, typeLabel: this.#opts.typeLabel,
-      lockOf: this.#opts.lockOf, opensIn: file => this.#opensIn(file), sort: this.#sort(), filtering: this.#filtering, favCount: this.#pool.filter(file => file.pinned).length, totalFiles: this.#pool.length,
-      openedCount: this.#opened.length, shownKey: this.#openedSource.shown(), trashCount: this.#trashed.length, sharedPending: pendingOf(this.#arrivals).length, selected: row, personal: this.#opts.personal(), choosing: this.#choice !== null, total: this.#total, pj: this.#pieces.facts(), ...extra,
+      lockOf: this.#opts.lockOf, opensIn: file => this.#opensIn(file), sort: this.#sort(), filtering: this.#filtering,
+        favCount: this.#pool.filter(file => file.pinned).length, totalFiles: this.#pool.length,
+      openedCount: this.#opened.length, shownKey: this.#openedSource.shown(), trashCount: this.#trashed.length, sharedPending: pendingOf(this.#arrivals).length,
+        selected: row, personal: this.#opts.personal(), choosing: this.#choice !== null, total: this.#total, pj: this.#pieces.facts(), ...extra,
     };
   }
 
@@ -262,7 +293,8 @@ export class Explorer {
       button.setAttribute('aria-pressed', String(on));
     }
     const choice = state.type === 'all' ? null : this.#types().find(item => item.value === state.type);
-    typeBtn.replaceChildren(...(choice ? [h('span', { class: 'tyi', 'data-fam': choice.known ? choice.family : null }, icon(choice.icon))] : []), choice ? choice.label : t('ex.allTypes'), icon('chev-down'));
+    typeBtn.replaceChildren(...(choice ? [h('span', { class: 'tyi', 'data-fam': choice.known ? choice.family : null }, icon(choice.icon))] : []),
+      choice ? choice.label : t('ex.allTypes'), icon('chev-down'));
     closeBtn.setAttribute('aria-disabled', String(!this.#choice && !this.#opts.canClose()));
     paintBell(this.#refs, t, pendingOf(this.#arrivals).length, this.#choice !== null);
   }
@@ -279,17 +311,19 @@ export class Explorer {
     const { list, scroll, empty, notices } = this.#refs;
     const top = scroll.scrollTop;
     const focused = this.#focusedKey();
-    const result = listItems(this.#shown, { ...this.state, sort: this.#sort() }, { locale: this.#opts.locale, typeLabel: this.#opts.typeLabel, spare: this.#spare });
+    const result = listItems(this.#shown, { ...this.state, sort: this.#sort() },
+      { locale: this.#opts.locale, typeLabel: this.#opts.typeLabel, spare: this.#spare });
     this.#rows = result.rows;
     this.#total = sumWeights(result.covered);
-    this.#keys = this.#rows.map(r => (r.kind === 'folder' ? `dir:${r.path}` : r.file.key));
+    this.#keys = this.#rows.map(rowKey);
     if (this.state.sel && !this.#keys.includes(this.state.sel)) this.state.sel = null;
     const ctx = this.#ctx();
     const tiles = this.state.display === 'tiles';
     list.classList.toggle('is-tiles', tiles);
     this.#paintRows(ctx, tiles, result.flat);
-    notices.replaceChildren(...this.#problems.map(text => h('div', { class: 'banner', role: 'alert' }, icon('warning'), text)), ...(this.state.view === 'trash' && this.#trashed.length ? [trashBar(ctx)] : []));
-    const message = this.#loading ? this.#opts.i18n.t('ex.loading') : (this.#rows.length ? '' : (this.#restricted ? this.#opts.i18n.t('ex.emptyNoAccess') : emptyMessage(ctx)));
+    notices.replaceChildren(...this.#problems.map(text => h('div', { class: 'banner', role: 'alert' }, icon('warning'), text)), ...this.#bars(ctx));
+    const message = this.#loading ? this.#opts.i18n.t('ex.loading') : (this.#rows.length ? '' :
+      (this.#restricted ? this.#opts.i18n.t('ex.emptyNoAccess') : emptyMessage(ctx)));
     empty.textContent = message;
     empty.hidden = !message;
     scroll.scrollTop = top;
@@ -306,7 +340,8 @@ export class Explorer {
     const rows = this.#rows;
     const one = row => (tiles ? tile(ctx, row) : (row.kind === 'folder' ? folderRow(ctx, row) : fileRow(ctx, row.file, flat)));
     if (rows.length > WINDOW_FROM) {
-      this.#win.mount({ body: tiles ? h('div', { class: 'th-grid is-windowed' }) : h('div', { class: 'ex-rows', role: 'rowgroup' }), count: rows.length, build: index => one(rows[index]), head: tiles ? null : listHead(ctx), rowIndexFrom: tiles ? null : 2 });
+      this.#win.mount({ body: tiles ? h('div', { class: 'th-grid is-windowed' }) : h('div', { class: 'ex-rows', role: 'rowgroup' }), count: rows.length,
+        build: index => one(rows[index]), head: tiles ? null : listHead(ctx), rowIndexFrom: tiles ? null : 2 });
       return;
     }
     this.#win.release();
@@ -390,7 +425,8 @@ export class Explorer {
   // ---------- gestes ----------
 
   #bind() {
-    const { search, viewList, viewTiles, typeBtn, newBtn, openBtn, closeBtn, appsBtn, settingsBtn, rightsBtn, pjInput, crumbs: crumbsNav, tree: treeNav, list, notices } = this.#refs;
+    const { search, viewList, viewTiles, typeBtn, newBtn, openBtn, closeBtn, appsBtn, settingsBtn, rightsBtn, pjInput, crumbs: crumbsNav, tree: treeNav, list,
+      notices } = this.#refs;
     search.addEventListener('input', () => { this.state.q = search.value; this.state.sel = null; this.#renderCrumbs(); this.#renderList(); });
     appsBtn.addEventListener('click', () => this.#opts.onApps());
     settingsBtn.addEventListener('click', () => this.#settingsMenu());
@@ -404,14 +440,19 @@ export class Explorer {
     newBtn.addEventListener('click', () => this.#newMenu());
     openBtn.addEventListener('click', () => this.#openSelected());
     closeBtn.addEventListener('click', () => this.#requestClose());
-    crumbsNav.addEventListener('click', event => { const link = event.target.closest('[data-path]'); if (link) this.#goFolder(link.dataset.path); });
+    crumbsNav.addEventListener('click', event => {
+      const link = event.target.closest('[data-path], [data-view]'); if (link && link.dataset.view) this.#goView(link.dataset.view);
+      else if (link) this.#goFolder(link.dataset.path); });
     treeNav.addEventListener('click', event => this.#onTree(event));
     list.addEventListener('click', event => this.#onList(event));
-    list.addEventListener('dblclick', event => { const row = event.target.closest('[data-key]'); if (row && !event.target.closest('button')) this.#activate(row.dataset.key); });
+    list.addEventListener('dblclick', event => {
+      const row = event.target.closest('[data-key]'); if (row && !event.target.closest('button')) this.#activate(row.dataset.key); });
     list.addEventListener('keydown', event => this.#onListKey(event));
     list.addEventListener('contextmenu', event => this.#onContext(event));
     this.root.addEventListener('dragend', () => this.#win.settle());
-    notices.addEventListener('click', event => { if (event.target.closest('[data-empty-trash]')) void this.#removal.emptyTrash(); });
+    notices.addEventListener('click', event => {
+      if (event.target.closest('[data-empty-trash]')) void this.#removal.emptyTrash();
+      else if (event.target.closest('[data-answer-folder]')) void this.#askFolder(this.state.group); });
     // Échap sur le document : il ferme aussi quand le focus est tombé sur le fond (clic dans une zone vide, liste redessinée). Un menu ou une
     // fenêtre qui l'a pris pour lui (preventDefault, stopPropagation) passe avant.
     this.root.ownerDocument.addEventListener('keydown', event => { if (this.isOpen) this.#onKey(event); });
@@ -422,6 +463,7 @@ export class Explorer {
   #goFolder(path) {
     const { state } = this;
     state.view = 'folder';
+    state.group = null;
     state.path = path;
     state.q = '';
     state.type = 'all';
@@ -431,9 +473,30 @@ export class Explorer {
     this.render();
   }
 
+  // Les barres sous le fil d'Ariane : la corbeille (« Vider »), un dossier reçu qui a des fichiers à accepter (« Accepter le dossier »).
+  #bars(ctx) {
+    if (this.state.view === 'trash' && this.#trashed.length) return [trashBar(ctx)];
+    const folder = this.state.view === 'shared' && this.state.group ? receivedFolders(this.#arrivals).folders.find(each => each.id === this.state.group) : null;
+    return folder && folder.pending ? [groupBar(ctx, folder)] : [];
+  }
+
+  // Entrer dans un dossier reçu d'un autre document (« Partagés avec moi ») : ses fichiers seuls, le fil d'Ariane le dit.
+  #goGroup(id) {
+    Object.assign(this.state, { group: id, q: '', type: 'all', sel: null });
+    this.#refs.search.value = '';
+    this.render();
+  }
+
+  // La question d'un dossier reçu : un oui ou un non pour tous ses fichiers à accepter (js/received-control.js).
+  async #askFolder(id) {
+    const folder = receivedFolders(this.#arrivals).folders.find(each => each.id === id);
+    if (!folder || !(await this.#shared.askFolder(folder))) return;
+    this.#refs.list.querySelector('[data-key][tabindex="0"]')?.focus(); // la barre et son bouton ont disparu avec la réponse : le clavier reprend dans la liste
+  }
+
   #goView(view) {
     if (['trash', 'shared'].includes(view) && this.#choice) { this.#opts.notice(this.#opts.i18n.t('ex.choose.newOff')); return; }
-    Object.assign(this.state, { view, q: '', type: 'all', sel: null });
+    Object.assign(this.state, { view, group: null, q: '', type: 'all', sel: null });
     this.#refs.search.value = '';
     this.render();
   }
@@ -485,8 +548,8 @@ export class Explorer {
     this.#renderInfo();
   }
 
-  // Les touches de la liste (js/explorer-keys.js). La ligne visée par un geste est la ligne choisie, sinon celle où est le clavier : à l'ouverture, le clavier est sur la première ligne sans qu'aucune
-  // soit choisie, et Entrée, F2 ou Suppr doivent y répondre.
+  // Les touches de la liste (js/explorer-keys.js). La ligne visée par un geste est la ligne choisie, sinon celle où est le clavier : à l'ouverture, le clavier
+  // est sur la première ligne sans qu'aucune soit choisie, et Entrée, F2 ou Suppr doivent y répondre.
   #onListKey(event) {
     const action = listAction(event, { display: this.state.display, filtering: this.#filtering });
     if (!action || (event.target.closest('button') && !FROM_BUTTONS.has(action))) return;
@@ -524,10 +587,11 @@ export class Explorer {
 
   // Retour arrière : le dossier parent ; depuis Récents, Favoris ou la corbeille, la racine ; à la racine, rien.
   #goParent(event) {
-    const { view, path } = this.state;
+    const { view, path, group } = this.state;
     if (view === 'folder' && path === '') return;
     event.preventDefault();
-    this.#goFolder(view === 'folder' ? parentPath(path) : '');
+    if (view === 'shared' && group) this.#goView('shared');
+    else this.#goFolder(view === 'folder' ? parentPath(path) : '');
   }
 
   // Le clic droit : le menu de la ligne, comme « ⋯ » (le clavier le demande par Maj+F10 ou la touche Menu, dans #onListKey).
@@ -547,7 +611,8 @@ export class Explorer {
       return;
     }
     const clip = clipboardAction(event);
-    if (clip && this.#keysAreOurs(event.target) && !menuIsOpen() && !(['copy', 'cut'].includes(clip) && this.#hasTextSelected())) { event.preventDefault(); this.#onClipboard(clip, event); return; }
+    if (clip && this.#keysAreOurs(event.target) && !menuIsOpen() && !(['copy', 'cut'].includes(clip) && this.#hasTextSelected())) {
+      event.preventDefault(); this.#onClipboard(clip, event); return; }
     if (event.key !== 'Escape') return;
     if (event.target === this.#refs.search && this.#refs.search.value) {
       this.#refs.search.value = '';
@@ -560,8 +625,8 @@ export class Explorer {
     event.preventDefault();
   }
 
-  // Les touches du presse-papiers sont à l'explorateur quand le clavier est chez lui, ou nulle part (le corps de la page : la liste vient d'être redessinée, la ligne qui l'avait n'existe plus) ; pas
-  // quand une fenêtre, un menu ou un autre panneau l'a.
+  // Les touches du presse-papiers sont à l'explorateur quand le clavier est chez lui, ou nulle part (le corps de la page : la liste vient d'être redessinée, la
+  // ligne qui l'avait n'existe plus) ; pas quand une fenêtre, un menu ou un autre panneau l'a.
   #keysAreOurs(target) {
     const doc = this.root.ownerDocument;
     return this.root.contains(target) || target === doc.body || target === doc.documentElement;
@@ -573,8 +638,9 @@ export class Explorer {
     return Boolean(selection && !selection.isCollapsed && String(selection).trim());
   }
 
-  // Le presse-papiers (js/explorer-clipboard.js), l'annulation (Ctrl+Z : le dernier geste revient) et le rétablissement (Ctrl+Y ou Ctrl+Maj+Z : on le refait ; js/undo-stack.js). Copier et couper visent la ligne choisie, sinon celle où est le clavier ; coller n'a besoin d'aucune ligne (un dossier vide se colle). Pendant un choix de
-  // fichier pour une app, rien de tout cela : comme « Nouveau » et la corbeille, il est grisé.
+  // Le presse-papiers (js/explorer-clipboard.js), l'annulation (Ctrl+Z : le dernier geste revient) et le rétablissement (Ctrl+Y ou Ctrl+Maj+Z : on le refait ;
+  // js/undo-stack.js). Copier et couper visent la ligne choisie, sinon celle où est le clavier ; coller n'a besoin d'aucune ligne (un dossier vide se colle).
+  // Pendant un choix de fichier pour une app, rien de tout cela : comme « Nouveau » et la corbeille, il est grisé.
   #onClipboard(action, event) {
     if (this.#choice) { this.#opts.notice(this.#opts.i18n.t('ex.choose.newOff')); return; }
     if (action === 'undo' || action === 'redo') { void this.#undo[action](); return; }
@@ -583,7 +649,8 @@ export class Explorer {
     if (key) this.#clipboard.take(key, action);
   }
 
-  // La clé de la ligne que vise un geste : la ligne choisie, sinon celle où est le clavier (à l'ouverture, le clavier est sur la première ligne sans qu'aucune soit choisie).
+  // La clé de la ligne que vise un geste : la ligne choisie, sinon celle où est le clavier (à l'ouverture, le clavier est sur la première ligne sans qu'aucune
+  // soit choisie).
   #keyOf(event) {
     if (this.state.sel && this.#keys.includes(this.state.sel)) return this.state.sel;
     const here = event.target && typeof event.target.closest === 'function' ? event.target.closest('[data-key]') : null;
@@ -612,8 +679,10 @@ export class Explorer {
   // Un fichier s'ouvre dans son app, ou, en mode choix, est désigné à l'app qui le demandait.
   #activate(key) {
     if (key.startsWith('dir:')) { this.#goFolder(key.slice(4)); return; }
+    if (key.startsWith('grp:')) { this.#goGroup(key.slice(4)); return; }
     if (this.state.view === 'trash') { void this.#removal.restore(key); return; }
-    if (this.state.view === 'shared') { const arrival = this.#arrivals.find(item => item.key === key); if (arrival) { this.#shared.activate(arrival); return; } }
+    if (this.state.view === 'shared') {
+      const arrival = this.#arrivals.find(item => item.key === key); if (arrival) { this.#shared.activate(arrival); return; } }
     const file = this.#files.find(item => item.key === key);
     if (!file) return;
     if (this.#choice) this.#choice.onPick(file); else this.#opts.onOpen(file);
@@ -630,7 +699,8 @@ export class Explorer {
     const { t } = this.#opts.i18n;
     const items = [{ label: t('ex.allTypes'), icon: 'list', check: this.state.type === 'all', run: () => this.#setType('all') }, '-',
       ...this.#types().map(item => ({
-        label: `${item.label} (${item.count})`, icon: item.icon, family: item.known ? item.family : null, check: this.state.type === item.value, run: () => this.#setType(item.value),
+        label: `${item.label} (${item.count})`, icon: item.icon, family: item.known ? item.family : null, check: this.state.type === item.value,
+          run: () => this.#setType(item.value),
       }))];
     openMenu(this.#refs.typeBtn, items, { host: this.root, label: t('ex.typeFilter') });
   }
@@ -641,18 +711,20 @@ export class Explorer {
   #bellMenu() {
     const { t } = this.#opts.i18n;
     if (this.#choice) { this.#opts.notice(t('ex.choose.newOff')); return; }
-    const x = { t, pending: pendingOf(this.#arrivals), notice: this.#opts.notice, ask: file => this.#shared.activate(file), openShared: () => this.#goView('shared') };
+    const x = { t, pending: pendingOf(this.#arrivals), notice: this.#opts.notice, ask: file => this.#shared.activate(file),
+      askFolder: folder => this.#shared.askFolder(folder), openShared: () => this.#goView('shared') };
     openMenu(this.#refs.bellBtn, notificationItems(x), { host: this.root, align: 'right', label: t('nt.menu') });
   }
 
-  // Le menu « Réglages » : ses articles sont ceux du contrôleur (js/settings-menu.js : la langue, le thème, la position de la barre, « À propos »). Le choix d'une langue est rendu au contrôleur, qui le
-  // retient et le fait suivre aux apps.
+  // Le menu « Réglages » : ses articles sont ceux du contrôleur (js/settings-menu.js : la langue, le thème, la position de la barre, « À propos »). Le choix
+  // d'une langue est rendu au contrôleur, qui le retient et le fait suivre aux apps.
   #settingsMenu() {
     const { t } = this.#opts.i18n;
     openMenu(this.#refs.settingsBtn, this.#opts.settings(), { host: this.root, align: 'right', label: t('set.menu') });
   }
 
-  // Le menu « Nouveau » : « Nouveau dossier » d'abord, puis un article par type de fichier à créer, et « Importer » (un sous-menu : un article par format qu'une app reçoit d'un autre logiciel, contrats 2.7, point 4).
+  // Le menu « Nouveau » : « Nouveau dossier » d'abord, puis un article par type de fichier à créer, et « Importer » (un sous-menu : un article par format
+  // qu'une app reçoit d'un autre logiciel, contrats 2.7, point 4).
   #newMenu() {
     const { t } = this.#opts.i18n;
     if (this.#choice) { this.#opts.notice(t('ex.choose.newOff')); return; }
@@ -665,14 +737,18 @@ export class Explorer {
     openMenu(this.#refs.newBtn, items, { host: this.root, align: 'right', label: t('ex.new') });
   }
 
-  // Le menu d'une ligne (js/explorer-menus.js). Dupliquer copie le fichier quand un gardien sait le copier (js/copying.js) ; sinon il est grisé et dit où le faire. Supprimer passe par la corbeille : un fichier qu'aucun gardien
-  // ne connaît (js/trash.js) grise l'article et dit pourquoi ; un dossier se supprime quand plus aucun fichier n'est dedans, sinon son article est grisé et le dit. À la corbeille : « Restaurer » et « Supprimer définitivement… ».
+  // Le menu d'une ligne (js/explorer-menus.js). Dupliquer copie le fichier quand un gardien sait le copier (js/copying.js) ; sinon il est grisé et dit où le
+  // faire. Supprimer passe par la corbeille : un fichier qu'aucun gardien ne connaît (js/trash.js) grise l'article et dit pourquoi ; un dossier se supprime
+  // quand plus aucun fichier n'est dedans, sinon son article est grisé et le dit. À la corbeille : « Restaurer » et « Supprimer définitivement… ».
   #rowMenu(key, anchor) {
     this.#select(key, false);
     const items = rowItems({
-      t: this.#opts.i18n.t, opts: this.#opts, view: this.state.view, choice: Boolean(this.#choice), rows: this.#rows, shown: this.#shown, kept: this.#kept, bin: this.#bin, copying: this.#copying, shared: this.#shared,
+      t: this.#opts.i18n.t, opts: this.#opts, view: this.state.view, choice: Boolean(this.#choice), rows: this.#rows, shown: this.#shown, kept: this.#kept,
+        bin: this.#bin, copying: this.#copying, shared: this.#shared,
       openAs: file => this.#openAs(file),
-      act: { activate: at => this.#activate(at), deleteFolder: at => this.#removal.deleteFolder(at), restore: at => this.#removal.restore(at), purge: at => this.#removal.purge(at), trashKey: at => this.#removal.trash(at), duplicate: file => this.#duplicate(file), dropOpened: at => this.#dropOpened(at) },
+      act: { activate: at => this.#activate(at), deleteFolder: at => this.#removal.deleteFolder(at), restore: at => this.#removal.restore(at),
+        purge: at => this.#removal.purge(at), trashKey: at => this.#removal.trash(at), duplicate: file => this.#duplicate(file),
+        dropOpened: at => this.#dropOpened(at) },
     }, key);
     if (items) openMenu(anchor, items, { host: this.root, align: 'right', label: this.#opts.i18n.t('ex.more') });
   }
@@ -684,7 +760,8 @@ export class Explorer {
 
   // ---------- dossiers et noms ----------
 
-  // « Nouveau dossier » : dans le dossier ouvert (à la racine quand la vue n'en est pas un). La personne y est conduite et le dossier créé prend le clavier, prêt à être renommé (F2) ou ouvert (Entrée).
+  // « Nouveau dossier » : dans le dossier ouvert (à la racine quand la vue n'en est pas un). La personne y est conduite et le dossier créé prend le clavier,
+  // prêt à être renommé (F2) ou ouvert (Entrée).
   async #newFolder() {
     const path = await this.#opts.filing.newFolder();
     if (!path) return;

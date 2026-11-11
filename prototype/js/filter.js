@@ -32,11 +32,11 @@ const STRUCTURE_VERBS = new Set(['CreateViewSection']);
 const NEVER_READ = new Set(['_grist_shares', '_grist_triggers']);
 const NEVER_WRITE = new Set(['_grist_aclrules', '_grist_aclresources', '_grist_aclprincipals', '_grist_aclmemberships',
   '_grist_shares', '_grist_triggers', '_grist_docinfo']);
-// `shareRef` rattache une page à un partage déjà là : l'écrire ouvrirait les formulaires de cette page à un autre lien (3.3, point 6) ; seule la capacité `partage` le permet,
-// dans la forme étroite de js/sharing-rules.js.
+// `shareRef` rattache une page à un partage déjà là : l'écrire ouvrirait les formulaires de cette page à un autre lien (3.3, point 6) ; seule la capacité
+// `partage` le permet, dans la forme étroite de js/sharing-rules.js.
 const NEVER_WRITE_COLUMNS = { _grist_views_section: new Set(['options']), _grist_pages: new Set(['shareRef']) };
-// Les tables internes dont une écriture peut changer ce que le lien d'un formulaire ouvre : le courtier en juge le lot (js/publication.js, 3.3 point 9), ce qui exclut
-// les verbes « ajouter ou mettre à jour » (le lot se joue sur des lignes qu'on ne peut pas nommer d'avance).
+// Les tables internes dont une écriture peut changer ce que le lien d'un formulaire ouvre : le courtier en juge le lot (js/publication.js, 3.3 point 9), ce qui
+// exclut les verbes « ajouter ou mettre à jour » (le lot se joue sur des lignes qu'on ne peut pas nommer d'avance).
 export const PUBLISHING_TABLES = new Set(['_grist_tables_column', '_grist_views_section', '_grist_views_section_field']);
 const UPSERT_VERBS = new Set(['AddOrUpdateRecord', 'BulkAddOrUpdateRecord']);
 
@@ -63,10 +63,12 @@ export function makePolicy(manifest, catalogue = []) {
     jeton: perm.jeton || null,
     formules: Boolean(perm.formules),
     structure: Boolean(perm.structure),
-    partage: Boolean(perm.partage), // l'app pose le partage de la page de son formulaire : une ligne de `_grist_Shares` et `shareRef` (contrats 3.3 point 6 : l'exception ; 3.4, point 8)
+    // l'app pose le partage de la page de son formulaire : une ligne de `_grist_Shares` et `shareRef` (contrats 3.3 point 6 : l'exception ; 3.4, point 8)
+    partage: Boolean(perm.partage),
     identite: Boolean(perm.identite), // l'app reçoit l'adresse e-mail de la personne dans son contexte (contrats 3.4, point 6 ; 5.2, point 9)
     lienPublic: perm.lienPublic && Array.isArray(perm.lienPublic.lit) ? perm.lienPublic.lit : [],
-    lecteurs: knownProviders(perm.lecteurs && perm.lecteurs.fournisseurs), // les sites de vidéos dont l'app demande à GFS de poser le lecteur (contrats 3.4, point 7 ; 5.2, point 11)
+    // les sites de vidéos dont l'app demande à GFS de poser le lecteur (contrats 3.4, point 7 ; 5.2, point 11)
+    lecteurs: knownProviders(perm.lecteurs && perm.lecteurs.fournisseurs),
     reglages: new Set(manifest.reglages || []),
   };
 }
@@ -105,8 +107,8 @@ export function covers(patterns, tableId, cls) {
   });
 }
 
-// Une table de l'app que son manifeste déclare lisible par un lien public (`permissions.lienPublic.lit`, contrats 3.3 point 9 et 11.9 point 4c) : la seule que GFS propose
-// encore à la personne, pour un lien public, parmi les tables de l'app qui publie.
+// Une table de l'app que son manifeste déclare lisible par un lien public (`permissions.lienPublic.lit`, contrats 3.3 point 9 et 11.9 point 4c) : la seule que
+// GFS propose encore à la personne, pour un lien public, parmi les tables de l'app qui publie.
 export const publiclyReadable = (policy, tableId) => classify(policy, tableId) === 'propre' && covers(policy.lienPublic, tableId, 'propre');
 
 export function readRefusal(policy, tableId) {
@@ -156,7 +158,8 @@ function internalWriteRefusal(policy, verb, tableId, args) {
   if (NEVER_WRITE.has('_' + key)) return `${tableId} n'est jamais écrite par une app.`;
   const entry = policy.interne.get(key);
   if (!entry || !entry.ecrit) return `Écriture de ${tableId} non déclarée (permissions.gristInterne).`;
-  if (UPSERT_VERBS.has(verb) && PUBLISHING_TABLES.has('_' + key)) return `${verb} ne vise pas ${tableId} : ce que ce lot ouvrirait au public ne se juge pas (AddRecord ou UpdateRecord).`;
+  if (UPSERT_VERBS.has(verb) &&
+    PUBLISHING_TABLES.has('_' + key)) return `${verb} ne vise pas ${tableId} : ce que ce lot ouvrirait au public ne se juge pas (AddRecord ou UpdateRecord).`;
   if (REMOVE_VERBS.has(verb)) return entry.retire ? null : `Retirer des lignes de ${tableId} n'est pas déclaré (retire).`;
   const blocked = NEVER_WRITE_COLUMNS['_' + key];
   for (const column of valueKeys(verb, args)) {

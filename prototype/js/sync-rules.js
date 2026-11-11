@@ -1,10 +1,13 @@
-// Les règles d'accès des tables techniques du partage entre documents (audit de sécurité du 09/11, choix du porteur : « Les fermer comme les fichiers »). Le moteur de partage range dans le document des
-// morceaux de PDF, les clés qui signent les envois et les versions reçues : `GFS_Synchro` (celui qui envoie) et `GFS_Journal_*` (celui qui reçoit, un par réception). Sans règle, toute personne qui ouvre
-// le document les lit, y compris un PDF qu'elle n'avait pas le droit de lire par fichier (js/sharing-model.js).
+// Les règles d'accès des tables techniques du partage entre documents (audit de sécurité du 09/11, choix du porteur : « Les fermer comme les fichiers »). Le
+// moteur de partage range dans le document des morceaux de PDF, les clés qui signent les envois et les versions reçues : `GFS_Synchro` (celui qui envoie) et
+// `GFS_Journal_*` (celui qui reçoit, un par réception). Sans règle, toute personne qui ouvre le document les lit, y compris un PDF qu'elle n'avait pas le droit
+// de lire par fichier (js/sharing-model.js).
 //   - `GFS_Synchro` : réservée aux propriétaires (lecture, écriture, effacement) ;
-//   - un journal : réservé aux propriétaires pour lire, modifier, effacer ; la création reste ouverte, c'est par elle que le formulaire de réception y écrit (mesuré : labo/run-securite-synchro.mjs).
-// Les règles portent la note « GFS : Partages · … » comme celles des fichiers : le pied les dit « Encadré », « Retirer le partage » les retire avec les autres. Une table qui porte déjà une règle d'un autre
-// auteur est laissée. Du code sans effet de bord : il reçoit les lignes des tables internes et rend les actions à écrire ; la lecture et l'écriture sont à `closeSharingTables`.
+//   - un journal : réservé aux propriétaires pour lire, modifier, effacer ; la création reste ouverte, c'est par elle que le formulaire de réception y écrit
+//   (mesuré : labo/run-securite-synchro.mjs).
+// Les règles portent la note « GFS : Partages · … » comme celles des fichiers : le pied les dit « Encadré », « Retirer le partage » les retire avec les autres.
+// Une table qui porte déjà une règle d'un autre auteur est laissée. Du code sans effet de bord : il reçoit les lignes des tables internes et rend les actions à
+// écrire ; la lecture et l'écriture sont à `closeSharingTables`.
 
 import { isSharingNote } from './sharing-model.js';
 import { rowsOf } from './rights.js';
@@ -29,15 +32,18 @@ export function technicalRules(tableId) {
 }
 
 const maxId = rows => rows.reduce((top, row) => Math.max(top, Number(row.id) || 0), 0);
-const same = (rules, wanted) => rules.length === wanted.length && rules.every((rule, at) => String(rule.aclFormula || '') === wanted[at].formula && String(rule.permissionsText || '') === wanted[at].rights);
+const same = (rules, wanted) => rules.length === wanted.length && rules.every((rule, at) => String(rule.aclFormula || '') === wanted[at].formula &&
+  String(rule.permissionsText || '') === wanted[at].rights);
 
-// Ce qu'il y a à écrire : { ok: true, actions, tables } ou { ok: false, reason } : 'none' (aucune table technique), 'already' (tout est posé), 'foreign' (toutes celles qui restent portent la règle d'un autre auteur).
+// Ce qu'il y a à écrire : { ok: true, actions, tables } ou { ok: false, reason } : 'none' (aucune table technique), 'already' (tout est posé), 'foreign'
+// (toutes celles qui restent portent la règle d'un autre auteur).
 // `existing` : { resources, rules, tables } (les lignes de _grist_ACLResources, _grist_ACLRules, _grist_Tables).
 export function planTechnicalRules(existing) {
   const technical = existing.tables.map(row => String(row.tableId)).filter(isTechnical);
   if (!technical.length) return { ok: false, reason: 'none' };
   const resourceOf = new Map(existing.resources.map(resource => [resource.id, resource]));
-  const onTable = tableId => existing.rules.filter(rule => (resourceOf.get(rule.resource) || {}).tableId === tableId).sort((a, b) => (a.rulePos || 0) - (b.rulePos || 0));
+  const onTable = tableId => existing.rules.filter(rule => (resourceOf.get(rule.resource) || {}).tableId === tableId).sort((a, b) => (a.rulePos || 0) -
+    (b.rulePos || 0));
   const todo = []; let foreign = 0;
   for (const tableId of technical) {
     const here = onTable(tableId);
@@ -59,16 +65,19 @@ export function planTechnicalRules(existing) {
   for (const { tableId } of todo) {
     resource += 1;
     actions.push(['AddRecord', '_grist_ACLResources', resource, { tableId, colIds: '*' }]);
-    technicalRules(tableId).forEach((one, at) => actions.push(['AddRecord', '_grist_ACLRules', (id += 1), { resource, aclFormula: one.formula, permissionsText: one.rights, rulePos: at + 1, memo: one.memo }]));
+    technicalRules(tableId).forEach((one, at) => actions.push(['AddRecord', '_grist_ACLRules', (id += 1),
+      { resource, aclFormula: one.formula, permissionsText: one.rights, rulePos: at + 1, memo: one.memo }]));
   }
   return { ok: true, actions, tables: todo.map(entry => entry.tableId) };
 }
 
-// Pose les règles qui manquent. À n'appeler que par un propriétaire que GFS a prouvé tel (`transfer.isOwner() === true`, jamais deviné) : Grist recharge alors le document, comme pour toute règle d'accès.
-// Rend { changed, tables } ; sans effet (et sans bruit) quand rien n'est à poser. Un échec d'écriture est dit en avertissement, jamais levé : le partage, lui, continue.
+// Pose les règles qui manquent. À n'appeler que par un propriétaire que GFS a prouvé tel (`transfer.isOwner() === true`, jamais deviné) : Grist recharge alors
+// le document, comme pour toute règle d'accès. Rend { changed, tables } ; sans effet (et sans bruit) quand rien n'est à poser. Un échec d'écriture est dit en
+// avertissement, jamais levé : le partage, lui, continue.
 export async function closeSharingTables({ docApi }) {
   try {
-    const [resources, rules, tables] = await Promise.all(['_grist_ACLResources', '_grist_ACLRules', '_grist_Tables'].map(async name => rowsOf(await docApi.fetchTable(name))));
+    const [resources, rules, tables] = await Promise.all(['_grist_ACLResources', '_grist_ACLRules',
+      '_grist_Tables'].map(async name => rowsOf(await docApi.fetchTable(name))));
     const plan = planTechnicalRules({ resources, rules, tables });
     if (!plan.ok) return { changed: false, tables: [] };
     await docApi.applyUserActions(plan.actions);

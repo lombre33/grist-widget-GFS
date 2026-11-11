@@ -32,7 +32,8 @@ export const modeOfExtension = (setting, extensionId) => (setting && setting.mod
 
 // Une extension dont une bibliothèque n'a pas de CDN (GFS sans adresse publique, 2.6 point 11) n'a qu'un mode : la copie de GFS. La fenêtre grise
 // alors le CDN avec la raison ; le choix retenu dans les réglages n'est pas modifié (rien ne s'écrit sans un geste de la personne).
-export const withoutCdn = (extension, catalogue) => requirementsOf(extension).some(({ id, version }) => { const entry = lookup(catalogue, id, version); return Boolean(entry) && !entry.cdn; });
+export const withoutCdn = (extension, catalogue) => requirementsOf(extension).some(({ id, version }) =>
+  { const entry = lookup(catalogue, id, version); return Boolean(entry) && !entry.cdn; });
 const effectiveMode = (setting, extension, catalogue) => (catalogue && withoutCdn(extension, catalogue) ? 'vendorise' : modeOfExtension(setting, extension.id));
 
 // Une ligne par extension pour la fenêtre : { extension, checked, greyed, missing, mode, noCdn, libraries: [{ id, version, poids }] }.

@@ -1,8 +1,8 @@
-// La barre de GFS au-dessus d'une app (contrats 5.2 point 7 et 5.1 `barre.masquer`), dans un vrai Grist (grist-static) : trois boutons à icône seule posés par-dessus le cadre de l'app, au bord
+// La barre de GFS au-dessus d'une app (contrats 5.2 point 7 et 5.1 `barre.masquer`), dans un vrai Grist (grist-static) : cinq boutons à icône seule posés par-dessus le cadre de l'app, au bord
 // que la personne choisit (gauche, haut, droite, bas), sans prendre de place à l'app, qui apprend la zone à laisser libre. La sonde R (labo/sondes/r-barre/) fait ce que fera Publipostage+ :
 // elle note `contexte.barre` et chaque événement `barre`, écarte son titre et sa légende de la zone, et sait appeler `barre.masquer`. LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 // Tout se fait à 700 × 400, à la vraie souris (et au vrai clavier pour le premier choix). Ce que la passe mesure :
-//   1. le départ : pas de barre sous l'explorateur ; l'app ouverte, la barre est à gauche, 34 × 124 px (quatre boutons) à 4 px du bord, centrée ; GFS n'a rien écrit sans un geste ; le contexte dit la zone mesurée ;
+//   1. le départ : pas de barre sous l'explorateur ; l'app ouverte, la barre est à gauche, 34 × 154 px (cinq boutons) à 4 px du bord, centrée ; GFS n'a rien écrit sans un geste ; le contexte dit la zone mesurée ;
 //   2. les quatre bords, un par un : le menu de position s'ouvre à côté de la barre sans la recouvrir, le choix est gardé (`gfs.barre`), la barre se pose au bord et au milieu, l'app reçoit un événement
 //      `barre` (et un contexte) qui disent exactement la zone mesurée, son titre et sa légende s'en écartent, les coins et les trois autres milieux de côté restent cliquables, pas le milieu du côté de la barre ;
 //   3. la taille du cadre change (un bord vertical, un bord horizontal) : la barre reste centrée et l'app le sait ;
@@ -20,9 +20,9 @@ const scheme = process.env.LAB_SCHEME || 'light';
 const RUN = `barre-${lang}-${scheme}`;
 const GAP = 4;
 const WORDS = {
-  fr: { files: 'Ouvrir l’explorateur de fichiers', apps: 'Apps et extensions de Grist Factory Suite', work: /^Table de travail/, place: 'Position de la barre', group: 'Grist Factory Suite', close: /^Fermer$/,
+  fr: { files: 'Ouvrir l’explorateur de fichiers', opened: 'Fichiers ouverts', apps: 'Apps et extensions de Grist Factory Suite', work: /^Table de travail/, place: 'Position de la barre', group: 'Grist Factory Suite', close: /^Fermer$/,
     edges: { gauche: 'À gauche', haut: 'En haut', droite: 'À droite', bas: 'En bas' }, notKept: 'Ce choix ne sera pas gardé : votre navigateur refuse l’enregistrement.' },
-  en: { files: 'Open the file explorer', apps: 'Apps and extensions of Grist Factory Suite', work: /^Working table/, place: 'Bar position', group: 'Grist Factory Suite', close: /^Close$/,
+  en: { files: 'Open the file explorer', opened: 'Open files', apps: 'Apps and extensions of Grist Factory Suite', work: /^Working table/, place: 'Bar position', group: 'Grist Factory Suite', close: /^Close$/,
     edges: { gauche: 'Left', haut: 'Top', droite: 'Right', bas: 'Bottom' }, notKept: 'This choice will not be kept: your browser refuses to store it.' },
 }[lang];
 const ORDER = ['gauche', 'haut', 'droite', 'bas']; // l'ordre du menu
@@ -123,12 +123,12 @@ say('au départ :', { barre: seen.contextes[0].barre, rect, stage, state });
 check('le cadre de GFS mesure bien 700 × 400', near(stage.largeur, 700) && near(stage.hauteur, 400), stage);
 check('l\'app ouverte, la barre est à l\'écran, à gauche par défaut', state.visible && state.edge === 'gauche' && state.place === 'gauche', state);
 check('GFS n\'a rien écrit sans un geste de la personne (pas de clé `gfs.barre`)', state.stored === null, state.stored);
-check('la barre mesure 34 × 124 px, à 4 px du bord gauche et centrée sur lui', near(rect.largeur, 34, 0.6) && near(rect.hauteur, 124, 0.6) && placedAt('gauche', rect, stage), rect);
+check('la barre mesure 34 × 154 px, à 4 px du bord gauche et centrée sur lui', near(rect.largeur, 34, 0.6) && near(rect.hauteur, 154, 0.6) && placedAt('gauche', rect, stage), rect);
 check('le groupe de boutons a un nom accessible (« Grist Factory Suite ») et un rôle de groupe', state.role === 'group' && state.label === WORDS.group, state);
-const names = await frame.evaluate(() => ['floater-files', 'floater-apps', 'floater-work', 'floater-place'].map(id => { const b = document.getElementById(id); return { title: b.title, label: b.getAttribute('aria-label'), text: b.textContent.trim(), icons: b.querySelectorAll('svg').length }; }));
+const names = await frame.evaluate(() => ['floater-files', 'floater-opened', 'floater-apps', 'floater-work', 'floater-place'].map(id => { const b = document.getElementById(id); return { title: b.title, label: b.getAttribute('aria-label'), text: b.textContent.trim(), icons: b.querySelectorAll('svg').length }; }));
 // Le nom du bouton « Table de travail » dit aussi ce qui vaut (la table de la page, ou celle choisie) : seul son début est fixe.
 const named = (name, text) => name.title === name.label && name.text === '' && name.icons === 1 && (text instanceof RegExp ? text.test(name.title) : name.title === text);
-check('quatre boutons à icône seule, dont le nom (info-bulle et nom accessible) est dans la langue de GFS', [WORDS.files, WORDS.apps, WORDS.work, WORDS.place].every((text, i) => named(names[i], text)), names);
+check('cinq boutons à icône seule, dont le nom (info-bulle et nom accessible) est dans la langue de GFS', [WORDS.files, WORDS.opened, WORDS.apps, WORDS.work, WORDS.place].every((text, i) => named(names[i], text)), names);
 const colors = await frame.evaluate(() => {
   const parse = c => c.match(/[\d.]+/g).slice(0, 3).map(Number);
   const lum = ([r, g, b]) => { const f = v => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
@@ -140,7 +140,7 @@ const colors = await frame.evaluate(() => {
 });
 check('l\'icône se lit sur le fond de la barre à 4,5:1 au moins (jetons de la charte)', colors.icone >= 4.5, colors);
 check('le contexte de l\'app dit la zone mesurée : { bord, epaisseur, zone } = la barre et 4 px autour', flat(seen.contextes[0].barre) === flat(expectedBarre('gauche', rect, stage)), { recu: seen.contextes[0].barre, attendu: expectedBarre('gauche', rect, stage) });
-check('à 700 × 400 la zone du bord gauche est x 0, y 134, 42 × 132 (épaisseur 42)', stage.largeur !== 700 || stage.hauteur !== 400 || flat(seen.contextes[0].barre) === 'gauche,42,0,134,42,132', seen.contextes[0].barre);
+check('à 700 × 400 la zone du bord gauche est x 0, y 119, 42 × 162 (épaisseur 42)', stage.largeur !== 700 || stage.hauteur !== 400 || flat(seen.contextes[0].barre) === 'gauche,42,0,119,42,162', seen.contextes[0].barre);
 const documentBefore = await lab.rangement(frame);
 let reach = await reachability();
 say('cliquable :', reach);
@@ -265,9 +265,10 @@ await lab.shotPanel(RUN, '4-non-retenu', frame);
 const beforeMove = await eventsCount();
 await chooseEdge('gauche');
 await waitFor('la barre passe à gauche', async () => (await dockState()).edge === 'gauche');
+await waitFor('l\'événement de la zone', async () => (await eventsCount()) > beforeMove); // le message part de GFS après la mesure : l'app le reçoit un instant plus tard
 state = await dockState();
 check('le choix vaut quand même pour la page : la barre passe à gauche, l\'app reçoit la zone, et le navigateur n\'a rien retenu de nouveau (la clé dit toujours « bas »)',
-  state.edge === 'gauche' && state.stored === 'bas' && (await eventsCount()) === beforeMove + 1 && (await lastEvent()).barre.bord === 'gauche', { etat: state, evenement: (await lastEvent()).barre });
+  state.edge === 'gauche' && state.stored === 'bas' && (await eventsCount()) === beforeMove + 1 && (await lastEvent()).barre.bord === 'gauche', { etat: state, evenement: (await lastEvent()).barre, avant: beforeMove, apres: await eventsCount(), derniers: (await probe(app)).evenements.slice(-3).map(e => e.barre && flat(e.barre)) });
 await frame.evaluate(() => { Storage.prototype.setItem = window.__setItem; });
 await chooseEdge('bas');
 await waitFor('la barre revient en bas', async () => (await dockState()).edge === 'bas');

@@ -50,6 +50,7 @@ import { ask } from './ask-window.js';
 import { Entries } from './entries.js';
 import { Openings } from './openings.js';
 import { OpenedFiles } from './opened-files.js';
+import { OpenedBar } from './opened-bar.js';
 import { ReceivedControl } from './received-control.js';
 import { loadReceived } from './received-files.js';
 import { publicationQuestion, sharedLinkQuestion } from './publication-window.js';
@@ -92,7 +93,8 @@ export class GfsController {
     // La langue de GFS et de ses apps : le choix de la personne, retenu sur ce navigateur ; à défaut celle de Grist, ou du navigateur (contrats 5.2).
     this.language = new LanguageSetting({ grist: languageOfGrist(this.params.get('language'), navigator.language), store: browserStore(window) });
     this.#useLanguage();
-    // Le thème de GFS et de ses apps : l'ambiance et la couleur que la personne a choisies, retenues sur ce navigateur comme la langue (js/theme.js) ; posées sur la page tout de suite, dites à l'app ouverte.
+    // Le thème de GFS et de ses apps : l'ambiance et la couleur que la personne a choisies, retenues sur ce navigateur comme la langue (js/theme.js) ; posées
+    // sur la page tout de suite, dites à l'app ouverte.
     this.theme = new ThemeSetting(browserStores(window));
     this.themeHost = new ThemeHost({ win: window, setting: this.theme, onMessage: message => { if (this.session) this.session.sendAmbiance(message); } });
     this.themeHost.start();
@@ -106,29 +108,40 @@ export class GfsController {
       doc: this.port.doc, widget: this.port.widget, address: addressOf(location.href), tableId: () => (this.state.table ? this.state.table.tableId : null),
       enabled: () => this.fullAccess && !this.readonly,
     });
-    // La section de GFS se relie d'elle-même à la grille de la même table (js/view-link.js, contrats 4.5 point 8) : « La table de la page » suit alors la ligne que la personne clique.
+    // La section de GFS se relie d'elle-même à la grille de la même table (js/view-link.js, contrats 4.5 point 8) : « La table de la page » suit alors la ligne
+    // que la personne clique.
     this.viewLink = new ViewLink({
-      doc: this.port.doc, state: this.state, section: () => this.viewOptions.section(), enabled: () => this.fullAccess && !this.readonly && this.params.get('grille') !== '0',
-      chosen: () => Boolean(this.workControl && this.workControl.work.choice), mark: value => this.viewOptions.write([[LINK_KEY, value]]), say: (key, vars) => this.notice(this.t(key, vars)),
+      doc: this.port.doc, state: this.state, section: () => this.viewOptions.section(), enabled: () => this.fullAccess && !this.readonly &&
+        this.params.get('grille') !== '0',
+      chosen: () => Boolean(this.workControl && this.workControl.work.choice), mark: value => this.viewOptions.write([[LINK_KEY, value]]),
+        say: (key, vars) => this.notice(this.t(key, vars)),
     });
     // Les apps sont servies par leur site en ligne (le porteur, 22/10) ; `?live=0` : la copie figée du sous-module, celle des mesures de GFS.
     this.live = liveSwitch(search);
-    // Les apps installées et leurs extensions : ce que le document retient dans la table `GFS_Rangement` (contrats 7.4), écrit seulement sur un geste
-    // de la personne, et la table seulement avec son accord. Cette table apprend aussi à GFS l'adresse de la personne (6.4, point 6) : sans écriture possible, elle reste inconnue.
-    this.rangement = new Rangement({ port: this.port, consent: () => this.#askTableConsent(), canWrite: () => !this.#writeBlock(), onIdentity: () => this.#onIdentity() });
+    // Les apps installées et leurs extensions : ce que le document retient dans la table `GFS_Rangement` (contrats 7.4), écrit seulement sur un geste de la
+    // personne, et la table seulement avec son accord. Cette table apprend aussi à GFS l'adresse de la personne (6.4, point 6) : sans écriture possible, elle
+    // reste inconnue.
+    this.rangement = new Rangement({ port: this.port, consent: () => this.#askTableConsent(), canWrite: () => !this.#writeBlock(),
+      onIdentity: () => this.#onIdentity() });
     this.registry = new AppsState({ store: this.rangement, onChange: () => this.#onRegistryChange() });
-    // Ce que l'explorateur et les liens demandent (grisé, types de « Nouveau » et d'« Importer », qui lit un fichier : js/entries.js), et les ouvertures (js/openings.js).
+    // Ce que l'explorateur et les liens demandent (grisé, types de « Nouveau » et d'« Importer », qui lit un fichier : js/entries.js), et les ouvertures
+    // (js/openings.js).
     const entries = new Entries(this);
     Object.assign(this, { lockOf: entries.lockOf, newTypes: entries.newTypes, importTypes: entries.importTypes, readerOf: entries.readerOf });
     this.opened = new OpenedFiles(); // les fichiers que GFS a ouverts dans une app, pour la vue « Ouverts » de l'explorateur (js/opened-files.js)
     this.openings = new Openings(this);
     this.links = this.#buildLinks();
-    // Le cadre d'envoi (js/transfer.js) ne s'ouvre qu'à la première requête : les pièces jointes, et la preuve que la personne est propriétaire (js/rights-reader.js).
+    // Le cadre d'envoi (js/transfer.js) ne s'ouvre qu'à la première requête : les pièces jointes, et la preuve que la personne est propriétaire
+    // (js/rights-reader.js).
     this.transfer = new Transfer({ doc: this.port.doc, base: this.doc.baseURI, createFrame: url => buildTransferFrame(this.doc, url) });
-    this.fileReader = createLightReader({ sql: statement => this.transfer.sql(statement), warn: error => console.warn('GFS : la lecture légère des fichiers est éteinte pour cette session, l\'explorateur relit les tables en entier', error) }); // la lecture des fichiers d'un document lourd sans ses cellules lourdes (js/explorer-sql.js) : jeton en lecture seule, éteinte au premier refus
+    // la lecture des fichiers d'un document lourd sans ses cellules lourdes (js/explorer-sql.js) : jeton en lecture seule, éteinte au premier refus
+    this.fileReader = createLightReader({ sql: statement => this.transfer.sql(statement),
+      warn: error => console.warn('GFS : la lecture légère des fichiers est éteinte pour cette session, l\'explorateur relit les tables en entier', error) });
     this.player = new Player({ container: this.$('frames') }); // le lecteur de vidéos posé par-dessus l'app (contrats 5.2, point 11)
-    this.attach = new Attach({ doc: this.port.doc, transfer: this.transfer, session: () => this.session, readonly: () => this.readonly }); // `joindre` (contrats 5.4, point 12)
-    // Le partage de fichiers avec d'autres documents Grist (js/share-other.js) : le moteur du kit, son port et les fenêtres ne se chargent qu'au premier besoin.
+    // `joindre` (contrats 5.4, point 12)
+    this.attach = new Attach({ doc: this.port.doc, transfer: this.transfer, session: () => this.session, readonly: () => this.readonly });
+    // Le partage de fichiers avec d'autres documents Grist (js/share-other.js) : le moteur du kit, son port et les fenêtres ne se chargent qu'au premier
+    // besoin.
     this.otherDocuments = createOtherDocuments({
       t: this.t, container: this.$('stage'), inertTargets: this.inertTargets, docApi: () => this.grist.docApi, transfer: this.transfer,
       language: () => this.lang, notice: text => this.notice(text), writeBlock: () => this.#writeBlock(),
@@ -137,9 +150,11 @@ export class GfsController {
       port: this.port, transfer: this.transfer, manifests: this.manifests, now: () => Date.now(), container: this.$('stage'),
       inertTargets: this.inertTargets, t: this.t, fullAccess: () => this.fullAccess,
       locale: () => this.locale, identity: () => this.identity, writeBlock: () => this.#writeBlock(), appName: this.appName, spaces: () => this.spaces,
-      other: (file, state) => this.otherDocuments.tab(file, state), otherLinks: () => this.otherDocuments.links(), otherStop: link => this.otherDocuments.stop(link), otherNew: () => this.otherDocuments.link(),
+      other: (file, state) => this.otherDocuments.tab(file, state), otherLinks: () => this.otherDocuments.links(),
+        otherStop: link => this.otherDocuments.stop(link), otherNew: () => this.otherDocuments.link(),
     });
-    this.weight = new WeightControl({ transfer: this.transfer, container: this.$('stage'), inertTargets: this.inertTargets, t: this.t, locale: () => this.locale });
+    this.weight = new WeightControl({ transfer: this.transfer, container: this.$('stage'), inertTargets: this.inertTargets, t: this.t,
+      locale: () => this.locale });
   }
 
   $ = id => this.doc.getElementById(id);
@@ -179,7 +194,8 @@ export class GfsController {
     this.grist.on('message', message => this.state.feed(message));
     this.grist.ready({ requiredAccess: 'full', onEditOptions: () => this.onEditOptions() });
     this.#installPrint();
-    const libraries = this.#loadLibraries(); // la lecture part avec celles des manifestes : un seul aller-retour de réseau pour les deux (elle ne dépend d'aucun manifeste)
+    // la lecture part avec celles des manifestes : un seul aller-retour de réseau pour les deux (elle ne dépend d'aucun manifeste)
+    const libraries = this.#loadLibraries();
     this.apps = await loadAll(CATALOGUE, readJson);
     this.registry.setApps(this.apps);
     this.registry.setCatalogue(await libraries);
@@ -192,13 +208,16 @@ export class GfsController {
     if (!arrived) await this.#firstRun(); // une section qui s'ouvre sur son app n'est pas neuve : la fenêtre des apps ne passe pas par-dessus
     doc.body.dataset.gfsFirstRun = 'done';
     void this.state.whenTable().then(() => this.viewLink.ensure());
-    // Un envoi laissé en route, ou un partage reçu dont le contenu arrive encore : les boucles du moteur reprennent d'où elles en étaient (js/sync-resume.js ; rien ne se charge sans table de partage).
+    // Un envoi laissé en route, ou un partage reçu dont le contenu arrive encore : les boucles du moteur reprennent d'où elles en étaient (js/sync-resume.js ;
+    // rien ne se charge sans table de partage).
     whenReceived(() => void this.#refreshReceived());
-    if (!this.#writeBlock()) void resumeSharing({ docApi: this.grist.docApi, transfer: this.transfer, language: () => this.lang, busy: () => false, isOwner: () => this.transfer.isOwner() }).catch(error => console.warn('GFS : le partage entre documents ne reprend pas', error));
+    if (!this.#writeBlock()) void resumeSharing({ docApi: this.grist.docApi, transfer: this.transfer, language: () => this.lang, busy: () => false,
+      isOwner: () => this.transfer.isOwner() }).catch(error => console.warn('GFS : le partage entre documents ne reprend pas', error));
   }
 
-  // L'arrivée (cahier 6.2, point 2 ; js/arrival.js) : une section qui servait à une app s'ouvre sur elle, sans consigne et sans rien écrire ; sinon l'explorateur. Les réglages de la section parlent d'abord ;
-  // sans eux, la table d'une app qui garde sa vue dans le document (`arrivee` du manifeste) dit si la section est la sienne (js/arrival-table.js). Rend `true` si une app s'est ouverte.
+  // L'arrivée (cahier 6.2, point 2 ; js/arrival.js) : une section qui servait à une app s'ouvre sur elle, sans consigne et sans rien écrire ; sinon
+  // l'explorateur. Les réglages de la section parlent d'abord ; sans eux, la table d'une app qui garde sa vue dans le document (`arrivee` du manifeste) dit si
+  // la section est la sienne (js/arrival-table.js). Rend `true` si une app s'est ouverte.
   async #arrive() {
     const manifests = this.manifests();
     const rules = { installed: appId => this.registry.has(appId), granted: this.state.grantedAccess };
@@ -241,26 +260,31 @@ export class GfsController {
   #buildExplorer() {
     const askFor = opts => this.ask(opts);
     this.kept = buildKept(this, { ask: askFor, hideNotice: () => this.#hideNotice() });
-    const managers = [this.kept, buildAppFiles(this, { ask: askFor })]; // les gardiens des fichiers : les PDF de GFS, les fichiers des apps (la corbeille et la copie les interrogent)
+    // les gardiens des fichiers : les PDF de GFS, les fichiers des apps (la corbeille et la copie les interrogent)
+    const managers = [this.kept, buildAppFiles(this, { ask: askFor })];
     const gestures = { t: this.t, notice: text => this.notice(text), refresh: () => this.refreshFiles() };
     const filing = this.#buildFiling();
     this.filing = filing;
     // « Partagés avec moi » (js/received-control.js) : les fichiers reçus d'un autre document, grisés tant qu'ils ne sont pas acceptés.
     this.received = new ReceivedControl({
-      port: this.port, t: this.t, locale: () => this.locale, container: this.$('stage'), inertTargets: this.inertTargets, typeLabel: this.typeLabel, notice: text => this.notice(text),
+      port: this.port, t: this.t, locale: () => this.locale, container: this.$('stage'), inertTargets: this.inertTargets, typeLabel: this.typeLabel,
+        notice: text => this.notice(text),
       blocked: () => this.#writeBlock(), refresh: () => this.refreshFiles(), open: file => this.openings.openFile(file),
     });
     this.explorer = new Explorer({
       container: this.$('stage'), i18n: this.i18n, locale: this.locale, now: () => new Date(), appName: this.appName, received: this.received,
-      typeLabel: file => (file.received ? this.received.typeLabel(file) : this.typeLabel(file)), lockOf: file => (file.received ? this.received.lockOf(file) : this.lockOf(file)),
+      typeLabel: file => (file.received ? this.received.typeLabel(file) : this.typeLabel(file)),
+        lockOf: file => (file.received ? this.received.lockOf(file) : this.lockOf(file)),
       newTypes: this.newTypes, importTypes: this.importTypes, canClose: () => Boolean(this.session), notice: text => this.notice(text),
       opened: { keys: () => this.opened.keys(), shown: () => this.opened.shown(this.session), remove: key => this.opened.remove(key) },
       settings: () => settingsItems({
-        t: this.t, language: () => ({ choice: this.language.choice, grist: this.language.grist }), onLanguage: choice => this.#chooseLanguage(choice), onTheme: () => this.openTheme(),
+        t: this.t, language: () => ({ choice: this.language.choice, grist: this.language.grist }), onLanguage: choice => this.#chooseLanguage(choice),
+          onTheme: () => this.openTheme(),
         place: () => this.dock.placeRow(), onAbout: () => this.#openAbout(),
       }),
       onRights: () => void this.rights.open(this.explorer), sharing: this.rights.sharing, onWeight: estimate => void this.weight.open(estimate),
-      onOpen: file => this.openings.openFile(file), onNew: entry => this.openings.openNew(entry), onImport: entry => void this.openings.importFile(entry), onClose: () => this.hideExplorer(), onApps: () => void this.openModules(),
+      onOpen: file => this.openings.openFile(file), onNew: entry => this.openings.openNew(entry), onImport: entry => void this.openings.importFile(entry),
+        onClose: () => this.hideExplorer(), onApps: () => void this.openModules(),
       personal: () => Boolean(this.identity), filing, kept: this.kept, attachments: () => loadAttachments(this.port),
       trash: new Trash({ managers, ask: opts => this.ask(opts), keepFolders: file => filing.keepFoldersOf(file), ...gestures }),
       copying: new Copying({ managers, file: (app, id, folder) => filing.rangeNew([{ app, file: id, pinned: false, folder }]), ...gestures }),
@@ -272,7 +296,8 @@ export class GfsController {
     return new AppLinks({
       explorer: () => this.explorer, session: () => this.session, manifests: this.manifests, appById: id => this.appById(id), appName: this.appName,
       fullAccess: () => this.fullAccess, t: this.t, notice: text => this.notice(text), lockOf: this.lockOf, unlock: lock => this.unlock(lock),
-      showExplorer: () => this.showExplorer(), hideExplorer: () => this.hideExplorer(), loadFiles: apps => loadFiles(this.port, apps, this.identity, this.fileReader),
+      showExplorer: () => this.showExplorer(), hideExplorer: () => this.hideExplorer(),
+        loadFiles: apps => loadFiles(this.port, apps, this.identity, this.fileReader),
       openIn: (appId, opening) => this.openings.openIn(appId, opening, 'ex.notice.open'),
     });
   }
@@ -281,20 +306,23 @@ export class GfsController {
   #buildFiling() {
     const layer = opts => ({ ...opts, t: this.t, container: this.$('stage'), inertTargets: this.inertTargets });
     return new Filing({
-      port: this.port, rangement: this.rangement, t: this.t, locale: () => this.locale, files: () => this.explorer.files, folders: () => this.explorer.folders, appName: this.appName,
+      port: this.port, rangement: this.rangement, t: this.t, locale: () => this.locale, files: () => this.explorer.files, folders: () => this.explorer.folders,
+        appName: this.appName,
       spaces: { info: () => this.spaces, owner: async () => (await this.transfer.isOwner()) === true },
-      here: () => (this.explorer.state.view === 'folder' ? this.explorer.state.path : ''), writeBlock: () => this.#writeBlock(), notice: text => this.notice(text),
+      here: () => (this.explorer.state.view === 'folder' ? this.explorer.state.path : ''), writeBlock: () => this.#writeBlock(),
+        notice: text => this.notice(text),
       specOf: file => ((this.manifestOf(file.app) || {}).fichiers || []).find(spec => spec.table === file.table) || null,
       cleanName: file => (file.app === FILES_APP ? cleanName : undefined),
       refresh: () => this.refreshFiles(), windows: { name: opts => askName(layer(opts)), folder: opts => chooseFolder(layer(opts)) },
     });
   }
 
-  // La barre de GFS au-dessus de l'app ouverte (js/dock.js) : ses boutons ouvrent l'explorateur et la fenêtre des apps ; quand ce qu'elle recouvre change, l'app ouverte le sait
-  // (événement `barre`, contrats 5.2, point 7).
+  // La barre de GFS au-dessus de l'app ouverte (js/dock.js) : ses boutons ouvrent l'explorateur et la fenêtre des apps ; quand ce qu'elle recouvre change,
+  // l'app ouverte le sait (événement `barre`, contrats 5.2, point 7).
   #buildDock() {
     this.dock = new Dock({
-      root: this.$('floaters'), stage: this.$('stage'), onFiles: () => this.showExplorer(), onApps: () => void this.openModules(), onWork: () => void this.workControl.open(),
+      root: this.$('floaters'), stage: this.$('stage'), onFiles: () => this.showExplorer(), onOpened: () => this.openedBar.show(),
+        onApps: () => void this.openModules(), onWork: () => void this.workControl.open(),
       onNotKept: () => this.notice(this.t('lang.notKept')),
     });
     // La ligne de travail (contrats 4.5) : une autre table rouvre l'app active, qui la reçoit dès son démarrage.
@@ -302,6 +330,11 @@ export class GfsController {
       port: this.port, state: this.state, dock: this.dock, container: this.$('stage'), t: this.t, appName: this.appName, manifests: this.manifests,
       session: () => this.session, inertTargets: this.inertTargets, notice: text => this.notice(text),
       reopen: id => { this.#closeSession(); this.activate(id, this.opening); }, hidden: () => this.doc.hidden,
+    });
+    // Le 5e bouton : les fichiers ouverts (js/opened-bar.js), qu'on retrouve d'un clic sans repasser par l'explorateur.
+    this.openedBar = new OpenedBar({
+      opened: this.opened, files: () => this.explorer.files, session: () => this.session, dock: this.dock, t: this.t, appName: this.appName,
+      open: file => this.openings.openFile(file), showExplorer: () => this.showExplorer(), notice: text => this.notice(text),
     });
     this.dock.relabel(this.t);
     this.workControl.relabel();
@@ -317,16 +350,19 @@ export class GfsController {
     this.locale = localeFor({ culture: this.preferences.culture, language: this.lang, grist: this.language.grist });
   }
 
-  // Les paramètres de Grist que les apps reçoivent (adresse du cadre, `contexte`) : ceux de Grist, sauf la langue, qui est celle que la personne a choisie dans GFS.
+  // Les paramètres de Grist que les apps reçoivent (adresse du cadre, `contexte`) : ceux de Grist, sauf la langue, qui est celle que la personne a choisie dans
+  // GFS.
   appPreferences() { return { ...this.preferences, language: this.lang }; }
 
-  // La personne choisit la langue de GFS et de ses apps. Si le navigateur refuse de la retenir, elle vaut pour cette page, et GFS le dit (dans la langue choisie).
+  // La personne choisit la langue de GFS et de ses apps. Si le navigateur refuse de la retenir, elle vaut pour cette page, et GFS le dit (dans la langue
+  // choisie).
   #chooseLanguage(choice) {
     if (!this.language.choose(choice)) this.notice(this.t('lang.notKept'));
   }
 
-  // La langue qui vaut a changé (un geste, ou un autre onglet de la personne) : tout ce que GFS écrit se redit dans la nouvelle langue, et l'app ouverte est prévenue
-  // (contrats 5.2, points 2 et 6) sans que son cadre soit touché. Choisir la langue que Grist donne déjà ne change rien : les apps n'ont rien à apprendre.
+  // La langue qui vaut a changé (un geste, ou un autre onglet de la personne) : tout ce que GFS écrit se redit dans la nouvelle langue, et l'app ouverte est
+  // prévenue (contrats 5.2, points 2 et 6) sans que son cadre soit touché. Choisir la langue que Grist donne déjà ne change rien : les apps n'ont rien à
+  // apprendre.
   #onLanguage({ languageChanged }) {
     if (!languageChanged) return;
     this.#useLanguage();
@@ -367,7 +403,8 @@ export class GfsController {
     }
   }
 
-  // Une seule lecture des fichiers fait foi, la dernière lancée (js/file-refresh.js) : une lecture plus ancienne qui finit après ne remplace pas la liste récente.
+  // Une seule lecture des fichiers fait foi, la dernière lancée (js/file-refresh.js) : une lecture plus ancienne qui finit après ne remplace pas la liste
+  // récente.
   #refresh = createFileRefresh({
     canRead: () => this.fullAccess,
     load: () => loadFiles(this.port, [...this.validApps(), FILES_ENTRY], this.identity, this.fileReader),
@@ -383,6 +420,7 @@ export class GfsController {
     onLoaded: ({ files, trash, folders, received, spaces, problems, stats }) => {
       this.spaces = spaces;
       this.explorer.setFiles(files, trash, folders, received);
+      this.openedBar.sync(); // un fichier renommé, ou disparu, change le compte de la barre
       this.#fileStatus = { loading: false, restricted: false, problems: problems.map(item => ({ key: 'ex.readFailed', app: item.app, reason: item.reason })) };
       this.#showFileStatus();
       this.doc.body.dataset.explorerStats = JSON.stringify(stats);
@@ -400,13 +438,14 @@ export class GfsController {
 
   #showFileStatus() {
     const { loading, restricted, problems } = this.#fileStatus;
-    this.explorer.setStatus({ loading, restricted, problems: problems.map(({ key, app, reason }) => this.t(key, { app: app ? this.appName(app) : '', reason })) });
+    this.explorer.setStatus({ loading, restricted, problems: problems.map(({ key, app, reason }) =>
+      this.t(key, { app: app ? this.appName(app) : '', reason })) });
   }
 
   // ---------- la fenêtre « Thème » ----------
 
-  // La ligne « Thème » du menu « Réglages » de l'explorateur : l'ambiance et la couleur de GFS et de ses apps (js/theme-window.js). La fenêtre suit le mode de la page : ses vignettes se repeignent quand
-  // Grist passe du clair au sombre.
+  // La ligne « Thème » du menu « Réglages » de l'explorateur : l'ambiance et la couleur de GFS et de ses apps (js/theme-window.js). La fenêtre suit le mode de
+  // la page : ses vignettes se repeignent quand Grist passe du clair au sombre.
   openTheme() {
     if (!this.themeWindow) {
       this.themeWindow = new ThemeWindow({
@@ -418,7 +457,8 @@ export class GfsController {
     this.themeWindow.open();
   }
 
-  // La ligne « À propos » du menu « Réglages » (js/about.js) : la version, l'auteur, le site et la licence, dans une fenêtre du widget qui n'a que son bouton « Fermer ».
+  // La ligne « À propos » du menu « Réglages » (js/about.js) : la version, l'auteur, le site et la licence, dans une fenêtre du widget qui n'a que son bouton
+  // « Fermer ».
   #openAbout() {
     void this.ask({ title: this.t('about.title'), message: this.t('about.text'), items: aboutItems(this.t), confirmLabel: this.t('about.close') });
   }
@@ -491,11 +531,12 @@ export class GfsController {
     void this.openModules();
   }
 
-  // Un passage de la boucle qui reçoit a changé quelque chose (js/sync-service.js) : « Partagés avec moi » et la cloche se mettent à jour, sans relire le reste, et seulement explorateur ouvert (à l'ouverture, la
-  // liste se relit de toute façon).
+  // Un passage de la boucle qui reçoit a changé quelque chose (js/sync-service.js) : « Partagés avec moi » et la cloche se mettent à jour, sans relire le
+  // reste, et seulement explorateur ouvert (à l'ouverture, la liste se relit de toute façon).
   async #refreshReceived() {
     if (!this.explorer || !this.explorer.isOpen || !this.fullAccess) return;
-    try { this.explorer.setReceived(await loadReceived(this.port, (await this.port.doc.listTables()).map(String))); } catch (error) { console.warn('GFS : les arrivées ne se relisent pas', error); }
+    try { this.explorer.setReceived(await loadReceived(this.port, (await this.port.doc.listTables()).map(String))); }
+      catch (error) { console.warn('GFS : les arrivées ne se relisent pas', error); }
   }
 
   // GFS vient d'apprendre l'adresse de la personne (la table est née pendant la session) : sa liste de fichiers se relit avec son propre rangement.
@@ -557,15 +598,17 @@ export class GfsController {
   // actives après le choix de la personne.
   async #install(session, args) {
     const wanted = typeof args.extension === 'string' ? args.extension : '';
-    if (!extensionsOf(session.manifest).some(item => item.id === wanted)) throw new Refus(ERR.REFUSE, `L'extension « ${wanted} » n'est pas déclarée dans le manifeste de l'app.`);
+    if (!extensionsOf(session.manifest).some(item => item.id === wanted)) throw new Refus(ERR.REFUSE,
+      `L'extension « ${wanted} » n'est pas déclarée dans le manifeste de l'app.`);
     await this.openModules({ focus: rowKey(session.id, wanted) });
     return { actives: this.registry.extensionsFor(session.id, this.doc.baseURI).extensions };
   }
 
   // ---------- ouvrir ----------
 
-  // Un clic sur du grisé : la fenêtre qui le débloque s'ouvre sur sa ligne, ou, quand il n'y a rien à débloquer ici, la raison est dite. La promesse se tient jusqu'à la fermeture de la fenêtre et à
-  // la fin des écritures qu'elle a lancées : l'appel `ouvrir` d'une app attend que la personne ait fini (contrats 5.4, point 7).
+  // Un clic sur du grisé : la fenêtre qui le débloque s'ouvre sur sa ligne, ou, quand il n'y a rien à débloquer ici, la raison est dite. La promesse se tient
+  // jusqu'à la fermeture de la fenêtre et à la fin des écritures qu'elle a lancées : l'appel `ouvrir` d'une app attend que la personne ait fini (contrats 5.4,
+  // point 7).
   async unlock(lock) {
     if (!lock.focus) { this.notice(lock.text); return; }
     await this.openModules({ focus: lock.focus });
@@ -595,8 +638,10 @@ export class GfsController {
     const { state, port } = this.workControl.sourceFor(app.manifest);
     return {
       entry: app.app, manifest: app.manifest, catalogue: this.manifests(), state, port, router: this.router,
-      container: this.$('frames'), readonly: this.readonly, preferences: this.appPreferences(), base: this.doc.baseURI, live: this.live, lang: this.lang, onStatus: (kind, current) => this.#onStatus(kind, current),
-      envelopeHandlers: session => this.#envelopeHandlers(session), authorize: (manifest, opens) => this.#askPublication(manifest, opens), viewOptions: this.viewOptions,
+      container: this.$('frames'), readonly: this.readonly, preferences: this.appPreferences(), copies: this.registry.copiesFor(app.app.id),
+        base: this.doc.baseURI, live: this.live, lang: this.lang, onStatus: (kind, current) => this.#onStatus(kind, current),
+      envelopeHandlers: session => this.#envelopeHandlers(session), authorize: (manifest, opens) => this.#askPublication(manifest, opens),
+        viewOptions: this.viewOptions,
     };
   }
 

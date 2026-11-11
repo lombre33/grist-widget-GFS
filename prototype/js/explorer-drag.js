@@ -1,9 +1,12 @@
-// Glisser-déposer dans l'explorateur (demande du porteur, 04/11 : « drag & drop des fichiers dans des dossiers, en amont, en aval ») : la personne prend une ligne (un fichier, ou un dossier) et la dépose sur un
-// dossier : une ligne ou une vignette de dossier de la liste (en aval), une ligne du volet des dossiers, un lien du fil d'Ariane (en amont, comme la racine « Moi »). Le déplacement est celui du couper-coller
-// (js/explorer-clipboard.js, `moveTo`, puis js/filing.js) : il n'y a pas de geste de plus à écrire, seulement une autre façon de le demander. Les dossiers du volet qu'on survole un instant s'ouvrent, pour
-// atteindre un sous-dossier. Un dépôt qui ne changerait rien (le dossier où est déjà la ligne, un dossier sur lui-même ou sur un de ses sous-dossiers) n'est pas accepté : la cible ne s'éclaire pas.
-// Rien ne glisse à la corbeille ni pendant un choix de fichier. Au clavier, le même déplacement est Ctrl+X puis Ctrl+V, ou « Déplacer » dans le menu de la ligne.
-// Seule la ligne tenue est gardée ici, pas dans `dataTransfer` : le navigateur ne la rend pas pendant le survol, et un glissement venu d'ailleurs (un fichier de l'ordinateur) n'est pas le nôtre.
+// Glisser-déposer dans l'explorateur (demande du porteur, 04/11 : « drag & drop des fichiers dans des dossiers, en amont, en aval ») : la personne prend une
+// ligne (un fichier, ou un dossier) et la dépose sur un
+// dossier : une ligne ou une vignette de dossier de la liste (en aval), une ligne du volet des dossiers, un lien du fil d'Ariane (en amont, comme la racine
+//   « Moi »). Le déplacement est celui du couper-coller (js/explorer-clipboard.js, `moveTo`, puis js/filing.js) : il n'y a pas de geste de plus à écrire,
+//   seulement une autre façon de le demander. Les dossiers du volet qu'on survole un instant s'ouvrent, pour atteindre un sous-dossier. Un dépôt qui ne
+//   changerait rien (le dossier où est déjà la ligne, un dossier sur lui-même ou sur un de ses sous-dossiers) n'est pas accepté : la cible ne s'éclaire pas.
+//   Rien ne glisse à la corbeille ni pendant un choix de fichier. Au clavier, le même déplacement est Ctrl+X puis Ctrl+V, ou « Déplacer » dans le menu de la
+//   ligne. Seule la ligne tenue est gardée ici, pas dans `dataTransfer` : le navigateur ne la rend pas pendant le survol, et un glissement venu d'ailleurs (un
+//   fichier de l'ordinateur) n'est pas le nôtre.
 
 import { inside } from './explorer-model.js';
 import { parentPath } from './explorer-keys.js';
@@ -12,7 +15,8 @@ const TYPE = 'application/x-gfs-ligne';
 const SPRING_MS = 700; // un dossier fermé du volet qu'on survole depuis si longtemps s'ouvre
 const TARGETS = '.tr-row[data-path], .crumbs [data-path], [data-key^="dir:"]';
 
-// Peut-on déposer la ligne `key` (un fichier, ou « dir:chemin ») dans le dossier `path` ? Pas quand rien ne changerait : le dossier de la ligne, un dossier sur lui-même ou dans un de ses sous-dossiers.
+// Peut-on déposer la ligne `key` (un fichier, ou « dir:chemin ») dans le dossier `path` ? Pas quand rien ne changerait : le dossier de la ligne, un dossier sur
+// lui-même ou dans un de ses sous-dossiers.
 export function canDrop({ key, path, file }) {
   if (key.startsWith('dir:')) {
     const from = key.slice(4);
@@ -22,7 +26,8 @@ export function canDrop({ key, path, file }) {
   return Boolean(found) && found.folder !== path;
 }
 
-// Le dossier que vise un élément : { element, path }, ou null. Le volet et le fil d'Ariane le disent par `data-path`, une ligne ou une vignette de dossier par sa clé « dir:chemin » ; la racine est le chemin vide.
+// Le dossier que vise un élément : { element, path }, ou null. Le volet et le fil d'Ariane le disent par `data-path`, une ligne ou une vignette de dossier par
+// sa clé « dir:chemin » ; la racine est le chemin vide.
 export function targetOf(node) {
   const element = node && typeof node.closest === 'function' ? node.closest(TARGETS) : null;
   if (!element) return null;
@@ -35,7 +40,8 @@ export class Dragging {
   #lit = null; // le dossier éclairé
   #spring = { path: null, timer: null };
 
-  // opts : { root (le cadre de l'explorateur), may() -> bool (la liste se glisse : pas à la corbeille, pas pendant un choix), file(key) -> le fichier vivant, ou undefined, moveTo(key, path) (js/explorer-clipboard.js),
+  // opts : { root (le cadre de l'explorateur), may() -> bool (la liste se glisse : pas à la corbeille, pas pendant un choix), file(key) -> le fichier vivant,
+  //   ou undefined, moveTo(key, path) (js/explorer-clipboard.js),
   //          expand(path) (ouvre un dossier du volet), later?(fonction, ms) -> identifiant, cancel?(identifiant) (les minuteurs, pour les essais) }
   constructor(opts) {
     this.#opts = { later: (run, ms) => setTimeout(() => run(), ms), cancel: id => clearTimeout(id), ...opts };

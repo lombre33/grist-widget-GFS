@@ -30,7 +30,8 @@ function cdnProblem(cdn) {
   if (!isObject(cdn) || typeof cdn.src !== 'string') return 'cdn.src absent';
   let url;
   try { url = new URL(cdn.src); } catch (error) { return 'cdn.src n\'est pas une adresse'; }
-  if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) return 'cdn.src doit être une adresse https sans identifiants ni requête';
+  if (url.protocol !== 'https:' || url.username || url.password || url.search ||
+    url.hash) return 'cdn.src doit être une adresse https sans identifiants ni requête';
   if (!CDN_HOSTS.includes(url.hostname)) return `cdn.src : ${url.hostname} n'est pas un CDN de GFS`;
   const unpinned = githubProblem(url);
   if (unpinned) return unpinned;
@@ -49,7 +50,8 @@ const isContent = item => isObject(item) && typeof item.paquet === 'string' && E
 function formProblem(entry) {
   if (entry.forme !== undefined && !FORMS.includes(entry.forme)) return `forme : ${FORMS.join(' ou ')} attendu`;
   if (entry.forme !== 'module') return null;
-  if (!Array.isArray(entry.contient) || !entry.contient.length || !entry.contient.every(isContent)) return 'contient : liste de { paquet, version exacte } attendue';
+  if (!Array.isArray(entry.contient) || !entry.contient.length || !entry.contient.every(
+    isContent)) return 'contient : liste de { paquet, version exacte } attendue';
   if (!isNames(entry.modules, 1)) return 'modules : liste de noms de paquets attendue';
   return isNames(entry.externes, 0) ? null : 'externes : liste de noms attendue';
 }

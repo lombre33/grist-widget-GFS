@@ -1,27 +1,34 @@
-// La lecture légère des tables de fichiers (carte « Lire seulement les colonnes utiles » de l'audit vitesse du 10/11, faits vérifiés 83). L'explorateur relit les tables des apps à chaque fois qu'il
-// s'affiche ; `fetchTable` rend TOUTES les colonnes, et un modèle de Publipostage+ garde son contenu entier dans une cellule : 100 modèles de 500 Ko, c'est 1,75 s et 1 Go de mémoire à chaque retour.
-// Le fichier n'en montre pourtant que cinq colonnes et son poids. Une lecture SQL (`GET /sql`, par le cadre d'envoi, `Transfer.sql`) rend ces colonnes et le poids de la ligne, sans la cellule lourde : 30 ms.
+// La lecture légère des tables de fichiers (carte « Lire seulement les colonnes utiles » de l'audit vitesse du 10/11, faits vérifiés 83). L'explorateur relit
+// les tables des apps à chaque fois qu'il s'affiche ; `fetchTable` rend TOUTES les colonnes, et un modèle de Publipostage+ garde son contenu entier dans une
+// cellule : 100 modèles de 500 Ko, c'est 1,75 s et 1 Go de mémoire à chaque retour. Le fichier n'en montre pourtant que cinq colonnes et son poids. Une lecture
+// SQL (`GET /sql`, par le cadre d'envoi, `Transfer.sql`) rend ces colonnes et le poids de la ligne, sans la cellule lourde : 30 ms.
 //
 // Trois règles font la forme de ce module :
-//   - elle ne sert qu'APRÈS une lecture complète qui a trouvé un document lourd (`learn`, plus de 4 Mo de fichiers) : un document léger garde la lecture d'avant, sans cadre d'envoi ni jeton de plus ;
-//   - elle n'emploie que le jeton en lecture seule : Grist ne rend `/sql` qu'à qui peut tout copier (faits vérifiés 43) ; un refus, une lecture coupée ou un serveur muet l'éteignent pour la session et
+//   - elle ne sert qu'APRÈS une lecture complète qui a trouvé un document lourd (`learn`, plus de 4 Mo de fichiers) : un document léger garde la lecture
+//   d'avant, sans cadre d'envoi ni jeton de plus ;
+//   - elle n'emploie que le jeton en lecture seule : Grist ne rend `/sql` qu'à qui peut tout copier (faits vérifiés 43) ; un refus, une lecture coupée ou un
+//   serveur muet l'éteignent pour la session et
 //     l'explorateur relit comme avant (jamais de jeton qui peut écrire pour une lecture que la personne n'a pas demandée) ;
-//   - le poids rendu est celui de `js/weight.js` : les colonnes du texte (texte, choix, listes, pièces jointes) se comptent en SQL (`length(CAST(… AS BLOB))`, les octets UTF-8 que SQLite garde) quand la
-//     lecture ne les rend pas, toutes les autres sont lues (ce sont des nombres) et pèsent par `cellBytes`, la fonction de la lecture complète : les deux lectures donnent le même poids à l'octet près.
-// Rien n'est écrit, rien n'est gardé : les noms de tables et de colonnes viennent du manifeste et des tables internes de Grist, jamais d'un texte lu ailleurs, et passent par `TABLE_ID`.
+//   - le poids rendu est celui de `js/weight.js` : les colonnes du texte (texte, choix, listes, pièces jointes) se comptent en SQL (`length(CAST(… AS BLOB))`,
+//   les octets UTF-8 que SQLite garde) quand la
+//     lecture ne les rend pas, toutes les autres sont lues (ce sont des nombres) et pèsent par `cellBytes`, la fonction de la lecture complète : les deux
+//     lectures donnent le même poids à l'octet près.
+// Rien n'est écrit, rien n'est gardé : les noms de tables et de colonnes viennent du manifeste et des tables internes de Grist, jamais d'un texte lu ailleurs,
+// et passent par `TABLE_ID`.
 
 import { TABLE_ID } from './weight-reader.js';
 import { cellBytes } from './weight.js';
 
-// Un document est lourd quand la dernière lecture complète a compté au moins ces octets pour ses fichiers : plus bas, le gain d'une lecture SQL ne paie pas le cadre d'envoi et le jeton qu'elle demande.
+// Un document est lourd quand la dernière lecture complète a compté au moins ces octets pour ses fichiers : plus bas, le gain d'une lecture SQL ne paie pas le
+// cadre d'envoi et le jeton qu'elle demande.
 export const HEAVY_BYTES = 4 * 1024 * 1024;
 
 const TEXT_TYPES = new Set(['Text', 'Choice', 'ChoiceList', 'Attachments']);
 const isText = type => TEXT_TYPES.has(type) || String(type).startsWith('RefList:');
 const isList = type => type === 'ChoiceList' || type === 'Attachments' || String(type).startsWith('RefList:');
 
-// Les colonnes d'une table de fichiers que `readFiles` lit (js/explorer-model.js) d'après `spec` ; `id` est toujours rendu. Tout ce qui lit une colonne de plus d'une table d'app
-// doit être dit ici : `test/explorer-sql.test.mjs` compare les deux lectures sur chaque manifeste.
+// Les colonnes d'une table de fichiers que `readFiles` lit (js/explorer-model.js) d'après `spec` ; `id` est toujours rendu. Tout ce qui lit une colonne de plus
+// d'une table d'app doit être dit ici : `test/explorer-sql.test.mjs` compare les deux lectures sur chaque manifeste.
 export function neededColumns(spec) {
   const cols = spec.colonnes || {};
   const weight = spec.poids || {};
@@ -42,8 +49,8 @@ export function schemaStatement(tables) {
     + `WHERE t.tableId IN (${names.join(', ')}) AND substr(c.colId, 1, 11) <> 'gristHelper' AND c.colId <> 'manualSort' ORDER BY c.parentId, c.colId`;
 }
 
-// La lecture d'une table : le numéro de ligne, les colonnes voulues (`wanted`) et toutes celles qui ne sont pas du texte, et la somme des octets des colonnes de texte que la lecture ne rend pas.
-// Rend { statement, keep } : `keep` sont les colonnes lues, dans l'ordre de la lecture.
+// La lecture d'une table : le numéro de ligne, les colonnes voulues (`wanted`) et toutes celles qui ne sont pas du texte, et la somme des octets des colonnes
+// de texte que la lecture ne rend pas. Rend { statement, keep } : `keep` sont les colonnes lues, dans l'ordre de la lecture.
 export function rowsStatement(table, columns, wanted) {
   const keep = columns.filter(column => valid(column.colId) && (wanted.has(column.colId) || !isText(column.type)));
   const counted = columns.filter(column => valid(column.colId) && isText(column.type) && !wanted.has(column.colId));
@@ -65,11 +72,13 @@ export function readRows(records, keep, wanted) {
   return { data, weights };
 }
 
-// Les lectures d'un même passage sont demandées ensemble : le jeton d'une requête est demandé à Grist à chaque fois (js/transfer.js), et deux lectures de suite coûtent deux fois cet aller-retour (mesuré :
-// 55 ms de plus par table, sans rien lire). Le plan (`prepare`) dit toutes les tables du passage et leurs colonnes voulues ; `read` rend la lecture déjà partie.
+// Les lectures d'un même passage sont demandées ensemble : le jeton d'une requête est demandé à Grist à chaque fois (js/transfer.js), et deux lectures de suite
+// coûtent deux fois cet aller-retour (mesuré : 55 ms de plus par table, sans rien lire). Le plan (`prepare`) dit toutes les tables du passage et leurs colonnes
+// voulues ; `read` rend la lecture déjà partie.
 const planKey = (table, wanted) => `${table}\u0000${[...new Set(wanted)].sort().join('\u0001')}`;
 
-// `sql(statement)` rend les lignes (`Transfer.sql`, jeton en lecture seule) ; `threshold` : le poids à partir duquel la lecture complète fait place à celle-ci ; `warn` : dit pourquoi elle s'éteint.
+// `sql(statement)` rend les lignes (`Transfer.sql`, jeton en lecture seule) ; `threshold` : le poids à partir duquel la lecture complète fait place à
+// celle-ci ; `warn` : dit pourquoi elle s'éteint.
 export function createLightReader({ sql, threshold = HEAVY_BYTES, warn = () => {} }) {
   let heavy = false;
   let broken = false;
@@ -88,7 +97,8 @@ export function createLightReader({ sql, threshold = HEAVY_BYTES, warn = () => {
     isActive: () => heavy && !broken,
     // `bytes` : ce que la dernière lecture complète a compté pour les fichiers du document.
     learn(bytes) { if (bytes >= threshold) heavy = true; },
-    // `plan` : [{ table, wanted }], toutes les lectures du prochain passage. Lit les colonnes de ces tables en une fois, puis lance les lectures ensemble ; une erreur éteint la lecture légère pour la session.
+    // `plan` : [{ table, wanted }], toutes les lectures du prochain passage. Lit les colonnes de ces tables en une fois, puis lance les lectures ensemble ; une
+    //   erreur éteint la lecture légère pour la session.
     async prepare(plan) {
       schema = null;
       prepared = new Map();

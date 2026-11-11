@@ -1,7 +1,9 @@
-// La fenêtre « Recevoir d'un autre document Grist » (maquette du 09/11 ; « Nouveau > Importer > D'un autre document Grist… ») : la première réception d'un partage. Une fenêtre à étapes (js/steps-window.js) qui
-// montre l'étape où en est le parcours (js/share-receive-flow.js) et demande le geste suivant :
-//   1. le code d'invitation collé ; 2. l'accord (ce que GFS ajoute dans ce document, rien sans lui : ce partage est déjà reçu ici ? la réception reprend) ; 3. le lien du formulaire de réception, copié depuis Grist ;
-//   4. la réponse à donner à l'envoyeur, avec le code de contrôle (le même chez lui). Le jugement d'un code ou d'un lien est celui du moteur (`errorText`) : cette fenêtre n'en juge rien.
+// La fenêtre « Recevoir d'un autre document Grist » (maquette du 09/11 ; « Nouveau > Importer > D'un autre document Grist… ») : la première réception d'un
+// partage. Une fenêtre à étapes (js/steps-window.js) qui montre l'étape où en est le parcours (js/share-receive-flow.js) et demande le geste suivant :
+//   1. le code d'invitation collé ; 2. l'accord (ce que GFS ajoute dans ce document, rien sans lui : ce partage est déjà reçu ici ? la réception reprend) ; 3.
+//   le lien du formulaire de réception, copié depuis Grist ;
+//   4. la réponse à donner à l'envoyeur, avec le code de contrôle (le même chez lui). Le jugement d'un code ou d'un lien est celui du moteur (`errorText`) :
+//   cette fenêtre n'en juge rien.
 // Fermée avant que la réponse soit rendue, elle défait ce qu'elle a créé ; après, la réception reste (les fichiers arrivent quand l'envoyeur envoie).
 import { h } from './dom.js';
 import { icon } from './icons.js';
@@ -18,9 +20,11 @@ function pasteField(ctx, { fk, label, action, run }) {
 
 function pasteScreen(ctx) {
   const { t } = ctx;
-  const { field, go } = pasteField(ctx, { fk: 'sr-invite', label: t('sr.paste.label'), action: { fk: 'sr-continue', label: t('so.continue') }, run: text => ctx.read(text) });
+  const { field, go } = pasteField(ctx, { fk: 'sr-invite', label: t('sr.paste.label'), action: { fk: 'sr-continue', label: t('so.continue') },
+    run: text => ctx.read(text) });
   return {
-    body: h('div', { class: 'rt-content' }, h('div', { class: 'sec' }, t('sr.paste.step')), h('p', { class: 'fine' }, t('sr.paste.hint')), field, h('p', { class: 'fine' }, t('sr.paste.after'))),
+    body: h('div', { class: 'rt-content' }, h('div', { class: 'sec' }, t('sr.paste.step')), h('p', { class: 'fine' }, t('sr.paste.hint')), field,
+      h('p', { class: 'fine' }, t('sr.paste.after'))),
     buttons: [ctx.cancelButton(), go],
     first: 'sr-invite',
   };
@@ -32,7 +36,8 @@ function accordScreen(ctx, info) {
     ? [h('p', { class: 'so-lead' }, icon('info'), h('span', null, t('sr.accord.known', { name: info.name }))), h('p', { class: 'fine' }, t('sr.accord.keep'))]
     : [h('p', { class: 'so-lead' }, icon('info'), h('span', null, t('sr.accord.lead', { name: info.name }))),
       h('div', { class: 'sec' }, t('sr.accord.adds')),
-      h('ul', { class: 'so-list' }, h('li', null, t('sr.accord.table', { table: info.table })), h('li', null, t('sr.accord.journal')), h('li', null, t('sr.accord.marks'))),
+      h('ul', { class: 'so-list' }, h('li', null, t('sr.accord.table', { table: info.table })), h('li', null, t('sr.accord.journal')),
+        h('li', null, t('sr.accord.marks'))),
       h('p', { class: 'fine' }, t('sr.accord.rules')),
       h('p', { class: 'fine' }, t('sr.accord.keep'))];
   return {
@@ -44,9 +49,11 @@ function accordScreen(ctx, info) {
 
 function linkScreen(ctx, made) {
   const { t } = ctx;
-  const { field, go } = pasteField(ctx, { fk: 'sr-link', label: t('sr.link.label'), action: { fk: 'sr-check', label: t('sr.link.check') }, run: text => ctx.reply(text) });
+  const { field, go } = pasteField(ctx, { fk: 'sr-link', label: t('sr.link.label'), action: { fk: 'sr-check', label: t('sr.link.check') },
+    run: text => ctx.reply(text) });
   return {
-    body: h('div', { class: 'rt-content' }, h('div', { class: 'sec' }, t('sr.link.step')), h('p', { class: 'fine' }, t('sr.link.hint', { journal: made.journal })), field),
+    body: h('div', { class: 'rt-content' }, h('div', { class: 'sec' }, t('sr.link.step')),
+      h('p', { class: 'fine' }, t('sr.link.hint', { journal: made.journal })), field),
     buttons: [ctx.cancelButton(), go],
     first: 'sr-link',
     foot: t('sr.foot.link'),
@@ -71,11 +78,13 @@ function replyScreen(ctx, replied, table) {
   };
 }
 
-// opts : { container, t, inertTargets, createFlow() (le parcours : createTargetFlow), errorText (le moteur), notice (un avis hors fenêtre) }. Rend la promesse de sa fermeture.
+// opts : { container, t, inertTargets, createFlow() (le parcours : createTargetFlow), errorText (le moteur), notice (un avis hors fenêtre) }. Rend la promesse
+//   de sa fermeture.
 export function openShareReceive(opts) {
   const { t } = opts;
   const errorText = error => (error && error.share ? t(`sr.error.${error.share}`) : opts.errorText(error));
-  const steps = openSteps({ container: opts.container, t, inertTargets: opts.inertTargets, title: t('sr.title'), sub: t('sr.sub'), foot: t('sr.foot'), errorText });
+  const steps = openSteps({ container: opts.container, t, inertTargets: opts.inertTargets, title: t('sr.title'), sub: t('sr.sub'), foot: t('sr.foot'),
+    errorText });
   const { result, show } = steps;
   const flow = opts.createFlow();
   const ctx = { t, go: steps.go, cancelButton: steps.cancelButton, copy: steps.copy, replied: false };

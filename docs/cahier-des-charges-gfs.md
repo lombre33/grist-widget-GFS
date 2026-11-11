@@ -102,7 +102,7 @@ Slides+ (`lombre33/SlidesPlus`) n'est pas une app de GFS : les diapositives devi
 | GFS **référence** le dépôt de chaque app, sans copie figée (« du code dupliqué, plus de maintenance ») | 14/10, 11 h 14 | Sous-modules Git à un commit précis |
 | Pas « tout vendoriser » : une copie dont personne ne corrige la faille | 14/10, 11 h 15 | Pas de copie permanente des bibliothèques dans GFS |
 | **CDN par défaut ; version vendorisée si le RSSI d'un client l'exige** | 14/10, 11 h 15 | Les deux modes depuis une liste : celle de l'app (natives) ou celle de GFS (non natives, ligne suivante) |
-| **Pour chaque bibliothèque d'une app, CDN ou copie figée, au choix dans la fenêtre « Apps et extensions »**, Publipostage+ comprise ; **la copie des bibliothèques natives est chez GFS** (« comme pour Plotly ») et le choix se fait **fonction par fonction** (Export PDF, Word…), avec un raccourci « toutes » | 10/11 (demande), 11/11 (les deux cartes) | Le CDN reste le défaut (« pas tout vendoriser » tient) ; contrats 2.6 point 14 et 5.2 point 12 ; étude `docs/etude-cdn-ou-copie.md` ; l'éditeur (TipTap) attend sa carte (sa copie est une carte d'importation) |
+| **Pour chaque bibliothèque d'une app, CDN ou copie figée, au choix dans la fenêtre « Apps et extensions »**, Publipostage+ comprise ; **la copie des bibliothèques natives est chez GFS** (« comme pour Plotly ») et le choix se fait **fonction par fonction** (Export PDF, Word…), avec un raccourci « toutes » | 10/11 (demande), 11/11 (les deux cartes) | Le CDN reste le défaut (« pas tout vendoriser » tient) ; contrats 2.6 point 14 et 5.2 point 12 ; étude `docs/etude-cdn-ou-copie.md` ; **la copie de l'éditeur (TipTap) est dans le dépôt de l'app** (11/11, « dans le dépôt de Publipostage+ » : sa copie est une carte d'importation, adresses relatives, sa politique ne nomme pas GFS) ; le choix lui arrive dans l'adresse du cadre et prend effet au prochain démarrage |
 | **GFS porte la partie dépendance des bibliothèques non natives** : « les dépôts des apps doivent rester clean ». Le code d'une fonction (la façon dont Publipostage+ gère ses graphiques) reste dans l'app ; la bibliothèque (Plotly), son chargement, sa CSP, sa liste et ses empreintes sont à GFS | 14/10 | Section 4.7 ; le dépôt d'une app n'a ni la liste, ni l'import map d'une bibliothèque d'extension, et sa CSP n'en garde que l'adresse du mode CDN (précisé le 14/10 d'après la mesure du prototype et la réponse « CDN d'abord » à la question 11 : GFS ne peut imposer aucune politique à un sous-cadre). Confirmé par le porteur : l'éditeur et les exports, sans lesquels l'app ne marche pas seule, gardent leurs bibliothèques dans l'app |
 | Une fonction dont la dépendance n'est pas activée est grisée, et un clic explique comment passer à l'adresse de GFS | 14/10 | Texte commun du grisé (guide des apps, section 5) |
 | On passe d'une app seule à GFS et on revient sans perte de données | 14/10 | Section 7 |
@@ -248,7 +248,7 @@ avant toute interface. L'essentiel :
 - **Un seul menu « Réglages »** (décision du porteur, 04/11) : la langue, le thème, la position de la barre et « À propos » sont réunis
   dans le bouton « Réglages » de l'explorateur (icône à curseurs, le dernier de la ligne du titre). « À propos… » dit la version de GFS,
   l'éditeur (Grist Factory), le site et la licence ; le logo, la présentation de l'auteur et le lien du dépôt public s'y ajouteront
-  quand le porteur les donne. La barre flottante n'y gagne aucun bouton.
+  quand le porteur les donne. La barre flottante n'y gagne aucun bouton de réglage.
 
 ### 3.5 Performance
 
@@ -353,7 +353,7 @@ commencer, ou un sous-cadre gardé ouvert et caché (question 4, section 12).
   seulement avec l'accord de la personne (la question « Créer les tables du widget dans ce document ? » de Publipostage+,
   reprise par le kit). Sa forme s'écrit avec les contrats.
 - Interface : la maquette et la page « Parcours » (`maquettes/`). Volet des dossiers à gauche (172 px ; 132 px de 520 à 699 px de large), liste à droite (Nom, Type, Poids, Modifié, Par ; sous 600 px de large, sans Modifié ni Par) ;
-  sous 520 px de large environ, le volet se replie et il reste le fil d'Ariane ; Ouverts, Récents et Favoris toujours visibles (**Ouverts** : les huit derniers fichiers que GFS a ouverts dans une app, pour y revenir d'un double-clic ; en mémoire, rien d'écrit ; demande du porteur du 04/11, la liste seulement dans l'explorateur, pas sur la barre flottante : contrats 6.4, point 14) ;
+  sous 520 px de large environ, le volet se replie et il reste le fil d'Ariane ; Ouverts, Récents et Favoris toujours visibles (**Ouverts** : les huit derniers fichiers que GFS a ouverts dans une app, pour y revenir d'un double-clic ; en mémoire, rien d'écrit ; demande du porteur du 04/11 ; la liste est aussi sur la barre flottante, 5e bouton « Fichiers ouverts », choix du 11/11 : contrats 6.4, point 14) ;
   vignettes plus tard (d'abord icône du type et deux lignes de début de texte).
 - Le **poids** (demande du porteur du 04/11 : une instance de Grist limite l'ensemble des documents à 15 Go) : chaque fichier, chaque dossier (la somme de ses fichiers) et le pied de fenêtre (la somme de ce que la liste montre) disent leur poids estimé en o, Ko, Mo ou Go (1 Ko = 1 024 o) ; la colonne se trie dans les deux sens. C'est une estimation faite avec ce que GFS lit déjà (contrats 2.4, point 5), jamais ce que Grist compte pour sa limite. La case « + pièces jointes » du pied de fenêtre (livrée le 04/11) ajoute au total les pièces jointes du document que nul fichier de l'explorateur ne cite (comptées comme Grist les compte, lues seulement quand la personne coche ; grisée avec sa raison quand GFS ne peut pas les lire ; faits vérifiés, 39).
   Les **tables liées** (lot 3, livré le 04/11) : un fichier compte aussi les lignes d'une autre table de l'app qui le suivent par une clé, déclarées dans le manifeste (`poids.liees`, contrats 2.4) ; Publipostage+ en a une, les versions d'un modèle (`Publipostage_Versions`, par `Jeton`), lue avec les fichiers à chaque ouverture (moins de 0,4 s de plus pour 3 Mo, le plafond de l'app ; faits vérifiés, 41). Form+ : les réponses vont dans les tables que la personne choisit, il n'y a pas de lien fixe à compter (carte de décision posée au porteur).
@@ -670,13 +670,13 @@ enregistrée par l'autre app.
   reste vivant, caché, pendant qu'on explore.
 - **Dans Publipostage+, l'entrée est « Organiser »** (en tête du sélecteur de modèle, déjà là) : sa barre d'outils est gelée.
   Une app sans équivalent reçoit du kit une entrée « Fichiers » à la place que sa charte prévoit.
-- **GFS pose en plus, par-dessus l'app, une petite barre de trois boutons à icône seule** (« Fichiers », « Apps et extensions »,
-  « Position de la barre »), que la personne place où elle veut : à gauche (par défaut), en haut, à droite ou en bas. Elle ne
+- **GFS pose en plus, par-dessus l'app, une petite barre de cinq boutons à icône seule** (« Fichiers », « Fichiers ouverts », « Apps et extensions »,
+  « Table de travail » et « Position de la barre »), que la personne place où elle veut : à gauche (par défaut), en haut, à droite ou en bas. Elle ne
   prend la place de personne : le cadre de l'app reste plein, et chaque app laisse libre, aux quatre bords, la petite zone que la
-  barre recouvre et que GFS lui dit (contrats 5.2, point 7). Décision du porteur, 21/10 (question 7, section 12).
+  barre recouvre et que GFS lui dit (contrats 5.2, point 7). Décision du porteur, 21/10 (question 7, section 12) ; le 5e bouton, « Fichiers ouverts », est son choix du 11/11 (contrats 6.4, point 14).
 - **Les réglages de GFS sont dans l'explorateur, pas sur la barre** : un bouton « Réglages » à icône seule, le dernier de la ligne du
   titre, ouvre « Langue », « Thème… », « Position de la barre » et « À propos… » (décision du porteur, 04/11 : « ok pour la capture 1 »,
-  « pas d'ajout sur la barre flottante » ; la barre garde ses trois boutons).
+  « pas d'ajout sur la barre flottante » : aucun réglage n'est sur la barre).
 - Ouvrir un fichier d'une autre app : « fermer » d'abord (section 5.2).
 - GFS n'ajoute aucune étape à l'historique du navigateur : « Précédent » reste celui de Grist.
 - Deux sections GFS dans une page sont deux cadres indépendants : elles ne se parlent que par la ligne choisie de Grist.

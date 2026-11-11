@@ -3,7 +3,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validateManifest } from '../js/manifest.js';
 import { readCatalogue } from '../js/libraries.js';
-import { nativeRows, nativesState, modeOfGroup, nativeKey } from '../js/natives.js';
+import { nativeRows, nativesState, modeOfGroup, nativeKey, copiesInApp } from '../js/natives.js';
+import { frameUrl } from '../js/frames.js';
+import { CATALOGUE } from '../js/catalogue.js';
 import { readApps, patchApps, withNativeMode, withExtension } from '../js/settings.js';
 import { AppsState } from '../js/apps-state.js';
 import { buildContext } from '../js/context.js';
@@ -107,4 +109,66 @@ test('le contexte de l\'app porte les copies figées choisies, `{}` sinon', () =
   assert.deepEqual(buildContext(facts, base, { preferences: {}, readonly: false }).natives, {});
   const natives = nativesState(manifest(), { extensions: [], modes: { 'natif:word': 'vendorise' } }, catalogue, BASE);
   assert.deepEqual(buildContext(facts, { ...base, natives }, { preferences: {}, readonly: false }).natives, natives);
+});
+
+// L'éditeur : sa copie figée est une carte d'importation, rangée dans le dépôt de l'app (choix du 11/11), pas un fichier de GFS.
+const EDITOR = { id: 'editeur', nom: { fr: 'Éditeur (TipTap)', en: 'Editor (TipTap)' }, copieDansApp: true, poids: 1172757 };
+const withEditor = () => ({ ...manifest(), natives: [structuredClone(EDITOR), ...structuredClone(groups)] });
+
+test('manifeste : une fonction dont la copie est dans l\'app dit son poids et ne liste aucune bibliothèque', () => {
+  assert.deepEqual(validateManifest(withEditor()).errors, []);
+  const refuse = (change, reason) => {
+    const m = withEditor();
+    change(m.natives[0]);
+    assert.match(validateManifest(m).errors.join('|'), reason);
+  };
+  refuse(group => { delete group.poids; }, /natives editeur : poids \(octets\) attendu/);
+  refuse(group => { group.poids = 0; }, /natives editeur : poids \(octets\) attendu/);
+  refuse(group => { group.poids = '1,1 Mo'; }, /natives editeur : poids \(octets\) attendu/);
+  refuse(group => { group.bibliotheques = [{ id: 'tiptap', version: '3.31.3' }]; }, /natives editeur : une fonction dont la copie est dans l'app n'a pas de bibliotheques/);
+});
+
+test('nativeRows : l\'éditeur n\'attend rien du catalogue de GFS (jamais grisé), son poids est celui du manifeste ; sans choix, le CDN', () => {
+  const m = withEditor();
+  const [editor] = nativeRows(m, { extensions: [], modes: {} }, catalogue);
+  assert.deepEqual([editor.group.id, editor.mode, editor.poids, editor.missing.length, editor.inApp], ['editeur', 'cdn', 1172757, 0, true]);
+  const chosen = nativeRows(m, { extensions: [], modes: { 'natif:editeur': 'vendorise' } }, readCatalogue({ bibliotheques: [] }));
+  assert.equal(chosen[0].mode, 'vendorise', 'même avec un catalogue vide : la copie n\'est pas chez GFS');
+  assert.equal(chosen[1].inApp, undefined);
+});
+
+test('copiesInApp : l\'éditeur en copie figée va dans l\'adresse du cadre, jamais dans ce que GFS sert', () => {
+  const m = withEditor();
+  assert.deepEqual(copiesInApp(m, undefined), [], 'une app non installée n\'a rien');
+  assert.deepEqual(copiesInApp(m, { extensions: [], modes: {} }), []);
+  assert.deepEqual(copiesInApp(m, { extensions: [], modes: { 'natif:editeur': 'vendorise', 'natif:pdf': 'vendorise' } }), ['editeur'], 'la copie du PDF est chez GFS : elle n\'est pas dans l\'adresse');
+  assert.deepEqual(copiesInApp(manifest(), { extensions: [], modes: { 'natif:editeur': 'vendorise' } }), [], 'un manifeste sans cette fonction n\'en dit rien');
+  const given = nativesState(m, { extensions: [], modes: { 'natif:editeur': 'vendorise' } }, catalogue, BASE);
+  assert.deepEqual(given, {}, 'GFS ne sert rien pour l\'éditeur : aucune bibliothèque dans `natives`');
+  const both = nativesState(m, { extensions: [], modes: { 'natif:editeur': 'vendorise', 'natif:word': 'vendorise' } }, catalogue, BASE);
+  assert.deepEqual(Object.keys(both), ['docx'], 'les autres fonctions en copie figée sont servies comme avant');
+});
+
+test('AppsState : `copiesFor` suit le choix de l\'éditeur, écrit tout de suite dans la table', async () => {
+  const m = { ...withEditor(), permanente: true };
+  const store = { value: null, read: async () => ({ raw: structuredClone(store.value) }), update: async (mutate) => { store.value = mutate(structuredClone(store.value)); return structuredClone(store.value); } };
+  const state = new AppsState({ store, onChange: () => {} });
+  state.setCatalogue(catalogue);
+  state.setApps([{ app: { id: m.id }, manifest: m, ok: true, errors: [] }]);
+  await state.load();
+  assert.deepEqual(state.copiesFor(m.id), []);
+  assert.equal(await state.setNativeMode(m.id, 'editeur', 'vendorise'), true);
+  assert.deepEqual(store.value.publipostage.modes, { 'natif:editeur': 'vendorise' });
+  assert.deepEqual(state.copiesFor(m.id), ['editeur']);
+  await state.setNativeMode(m.id, null, 'cdn');
+  assert.deepEqual(state.copiesFor(m.id), []);
+});
+
+test('l\'adresse du cadre porte `copie=` pour les fonctions rangées dans l\'app, et rien sans choix', () => {
+  const where = { entry: CATALOGUE.find(entry => entry.id === 'publipostage'), manifest: publipostage(), access: 'full', readonly: false, preferences: { language: 'fr' }, base: BASE };
+  assert.equal(new URL(frameUrl({ ...where })).searchParams.has('copie'), false, 'sans choix : l\'adresse d\'avant');
+  assert.equal(new URL(frameUrl({ ...where, copies: [] })).searchParams.has('copie'), false);
+  const url = new URL(frameUrl({ ...where, copies: ['editeur', 'autre'], live: true }));
+  assert.equal(url.searchParams.get('copie'), 'editeur,autre');
+  assert.equal(url.searchParams.get('gfs'), '0', 'le numéro de contrat reste là, c\'est lui qui dit à l\'app que GFS l\'héberge');
 });

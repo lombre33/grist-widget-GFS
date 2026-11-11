@@ -1,7 +1,8 @@
-// « Importer » du menu « Nouveau » (contrats 2.7, point 4, et 5.4, point 1) : un fichier d'un autre logiciel (un classeur Excel, un Markdown, un PowerPoint) que la personne choisit
-// dans le sélecteur de GFS et que l'app lit pour en faire un modèle vierge. Du code sans effet de bord, sauf le sélecteur.
+// « Importer » du menu « Nouveau » (contrats 2.7, point 4, et 5.4, point 1) : un fichier d'un autre logiciel (un classeur Excel, un Markdown, un PowerPoint)
+// que la personne choisit dans le sélecteur de GFS et que l'app lit pour en faire un modèle vierge. Du code sans effet de bord, sauf le sélecteur.
 
-// Les formats qu'une app reçoit (`actions.importer` du manifeste), chacun avec le type de fichier qu'il crée : [{ item, type }]. Un format dont le type n'est pas déclaré est écarté.
+// Les formats qu'une app reçoit (`actions.importer` du manifeste), chacun avec le type de fichier qu'il crée : [{ item, type }]. Un format dont le type n'est
+// pas déclaré est écarté.
 export function importFormats(manifest) {
   const types = new Map();
   for (const spec of manifest.fichiers || []) for (const type of spec.types || []) types.set(type.valeur, type);
@@ -12,22 +13,25 @@ export function importFormats(manifest) {
 // Le fichier choisi porte-t-il l'une des extensions du format ? Le sélecteur les propose, mais la personne peut choisir « Tous les fichiers ».
 export const acceptsFile = (name, extensions) => extensions.some(extension => String(name).toLowerCase().endsWith(extension.toLowerCase()));
 
-// L'ouverture qu'on passe à l'app (contrats 5.2, point 3) : « Nouveau » d'un type, avec le fichier à lire. `valeur` dit lequel des formats de l'app, `fichier` est l'objet `File` du navigateur
-// (le sous-cadre le lit comme n'importe quel fichier choisi ; GFS ne le lit pas).
-export const importOpening = (entry, file, folder) => ({ fichier: null, type: entry.type, dossier: folder, raison: 'importer', importation: { valeur: entry.valeur, fichier: file } });
+// L'ouverture qu'on passe à l'app (contrats 5.2, point 3) : « Nouveau » d'un type, avec le fichier à lire. `valeur` dit lequel des formats de l'app, `fichier`
+// est l'objet `File` du navigateur (le sous-cadre le lit comme n'importe quel fichier choisi ; GFS ne le lit pas).
+export const importOpening = (entry, file, folder) => ({ fichier: null, type: entry.type, dossier: folder, raison: 'importer',
+  importation: { valeur: entry.valeur, fichier: file } });
 
-// Le genre d'ouverture, tel que `ouverture` du manifeste le range : ouvrir un fichier précis, en créer un vierge (« Nouveau »), en créer un d'après un fichier (« Importer »), ou lire un fichier que GFS
-// garde (js/reading.js).
+// Le genre d'ouverture, tel que `ouverture` du manifeste le range : ouvrir un fichier précis, en créer un vierge (« Nouveau »), en créer un d'après un fichier
+// (« Importer »), ou lire un fichier que GFS garde (js/reading.js).
 export const openingKind = opening => (opening.lecture ? 'lire' : (opening.importation ? 'importer' : (opening.fichier ? 'fichier' : 'nouveau')));
 
-// L'app sait-elle ce genre d'ouverture (contrats 2.2, `ouverture`) ? Sans la déclaration, GFS ouvre l'app sur son modèle habituel et le dit ; `manifest` peut être null (une app absente ou invalide).
+// L'app sait-elle ce genre d'ouverture (contrats 2.2, `ouverture`) ? Sans la déclaration, GFS ouvre l'app sur son modèle habituel et le dit ; `manifest` peut
+// être null (une app absente ou invalide).
 export const acceptsOpening = (manifest, kind) => Boolean(manifest && manifest.ouverture && manifest.ouverture[kind] === true);
 
-// L'ouverture porte-t-elle un fichier du navigateur (`importation`, `lecture`) ? Il part une seule fois, avec l'ouverture ou avec l'appel `ouvrir` : une réouverture de l'app ne le reprend pas.
+// L'ouverture porte-t-elle un fichier du navigateur (`importation`, `lecture`) ? Il part une seule fois, avec l'ouverture ou avec l'appel `ouvrir` : une
+// réouverture de l'app ne le reprend pas.
 export const carriesFile = opening => Boolean(opening && (opening.importation || opening.lecture));
 
-// Le sélecteur de fichier de GFS : un champ « file » caché, cliqué ici même, donc DANS le geste de la personne (le navigateur refuse sinon). Rend le fichier choisi, ou `null` si la
-// personne annule (un navigateur qui ne dit pas l'annulation laisse la promesse en suspens, sans rien casser).
+// Le sélecteur de fichier de GFS : un champ « file » caché, cliqué ici même, donc DANS le geste de la personne (le navigateur refuse sinon). Rend le fichier
+// choisi, ou `null` si la personne annule (un navigateur qui ne dit pas l'annulation laisse la promesse en suspens, sans rien casser).
 export function pickFile(doc, accept) {
   return new Promise(resolve => {
     const input = doc.createElement('input');

@@ -64,23 +64,26 @@ async function applyChecked(env, actions, options) {
   return result;
 }
 
-// Un lot qui ouvre une table ou une colonne à qui aura le lien d'un formulaire publié ne passe qu'avec l'accord de la personne (contrats 3.3, point 9), et jamais pour une table
-// protégée. Sans moyen de le demander, il est refusé : le courtier ne laisse jamais publier en silence.
+// Un lot qui ouvre une table ou une colonne à qui aura le lien d'un formulaire publié ne passe qu'avec l'accord de la personne (contrats 3.3, point 9), et
+// jamais pour une table protégée. Sans moyen de le demander, il est refusé : le courtier ne laisse jamais publier en silence.
 async function agreePublication(env, actions) {
   const opens = await publicationOpens(env.port, actions);
   if (!opens) return;
   const refusal = protectedRefusal(env.policy, opens);
   if (refusal) throw refusal;
-  if (typeof env.authorize !== 'function') fail(ERR.REFUSE, 'Ce lot publie un formulaire, ce qui demande l\'accord de la personne : cette session ne sait pas le demander.');
+  if (typeof env.authorize !== 'function') fail(ERR.REFUSE,
+    'Ce lot publie un formulaire, ce qui demande l\'accord de la personne : cette session ne sait pas le demander.');
   if (!(await env.authorize(opens))) fail(ERR.ANNULE, 'La personne a refusé d\'ouvrir ce formulaire au public.');
 }
 
-// Une page qui prendrait le lien public d'une autre (contrats 11.9, point 4a ; choix du porteur du 11/11, « Au choix, non coché ») : la personne le dit dans une fenêtre de GFS, une par page,
-// et « Refuser » est le défaut. Sans moyen de le demander, le lot est refusé.
+// Une page qui prendrait le lien public d'une autre (contrats 11.9, point 4a ; choix du porteur du 11/11, « Au choix, non coché ») : la personne le dit dans
+// une fenêtre de GFS, une par page, et « Refuser » est le défaut. Sans moyen de le demander, le lot est refusé.
 async function agreeSharedLink(env, asks) {
   for (const shared of asks) {
-    if (typeof env.authorize !== 'function') fail(ERR.REFUSE, 'Ce lot donne à un formulaire le lien d\'un autre, ce qui demande l\'accord de la personne : cette session ne sait pas le demander.');
-    if (!(await env.authorize({ tables: [], reads: [], sharedLink: shared }))) fail(ERR.ANNULE, 'La personne a refusé que ce formulaire ait le même lien qu\'un autre.');
+    if (typeof env.authorize !== 'function') fail(ERR.REFUSE,
+      'Ce lot donne à un formulaire le lien d\'un autre, ce qui demande l\'accord de la personne : cette session ne sait pas le demander.');
+    if (!(await env.authorize({ tables: [], reads: [], sharedLink: shared }))) fail(ERR.ANNULE,
+      'La personne a refusé que ce formulaire ait le même lien qu\'un autre.');
   }
 }
 
@@ -144,8 +147,8 @@ function viewHandlers(env) {
 // Écrire une clé, ou la retirer : Grist garde l'objet en JSON, une valeur indéfinie y disparaît.
 const writeKey = (env, key, value) => env.port.widget.setOption(key, value);
 
-// Écrire des clés `[[clé, valeur]]` : dans la vue quand GFS sait y écrire (view-options.js ; aucun « Enregistrer », contrats 7.3, point 4), sinon en brouillon, clé par
-// clé (7.3, point 1). L'app est prévenue de ce qui s'est passé (`onSaved`) : une app qui rappelle « Enregistrer » le tait quand c'est fait.
+// Écrire des clés `[[clé, valeur]]` : dans la vue quand GFS sait y écrire (view-options.js ; aucun « Enregistrer », contrats 7.3, point 4), sinon en brouillon,
+// clé par clé (7.3, point 1). L'app est prévenue de ce qui s'est passé (`onSaved`) : une app qui rappelle « Enregistrer » le tait quand c'est fait.
 async function writeKeys(env, changes) {
   if (!changes.length) return;
   const saved = Boolean(env.viewOptions) && await env.viewOptions.write(changes);

@@ -1,5 +1,5 @@
-// La barre de GFS vue de l'app (contrats 5.2, point 7) : de quel côté elle est, ce qu'elle recouvre, et quand elle ne recouvre rien. Aucun DOM ici : la page mesure la barre telle qu'elle
-// est posée (`dock.js`), ce module décide de ce que l'app en apprend et de quand GFS le lui dit.
+// La barre de GFS vue de l'app (contrats 5.2, point 7) : de quel côté elle est, ce qu'elle recouvre, et quand elle ne recouvre rien. Aucun DOM ici : la page
+// mesure la barre telle qu'elle est posée (`dock.js`), ce module décide de ce que l'app en apprend et de quand GFS le lui dit.
 
 import { ERR, Refus } from './filter.js';
 
@@ -12,8 +12,9 @@ export const GAP = 4;
 
 const isVertical = edge => edge === 'gauche' || edge === 'droite';
 
-// rect : la barre dans le cadre de l'app, { x, y, largeur, hauteur } en px ; frame : le cadre, { largeur, hauteur }. Rend ce que l'app reçoit :
-// { bord, epaisseur, zone: { x, y, largeur, hauteur } }, où `epaisseur` est la largeur (bord gauche ou droit) ou la hauteur (bord haut ou bas) de la bande que la zone prend au cadre.
+// rect : la barre dans le cadre de l'app, { x, y, largeur, hauteur } en px ; frame : le cadre, { largeur, hauteur }. Rend ce que l'app reçoit : { bord,
+//   epaisseur, zone: { x, y, largeur, hauteur } }, où `epaisseur` est la largeur (bord gauche ou droit) ou la hauteur (bord haut ou bas) de la bande que la
+//   zone prend au cadre.
 export function barreOf(edge, rect, frame) {
   const left = Math.max(0, Math.round(rect.x) - GAP);
   const top = Math.max(0, Math.round(rect.y) - GAP);
@@ -52,21 +53,24 @@ export class DockState {
   get visible() { return this.#present && !this.#masked; }
   get masked() { return this.#masked; }
 
-  // Ce que l'app voit maintenant : la barre qui la recouvre, ou `null` (rien ne la recouvre : l'explorateur est ouvert, l'app a demandé à ne pas l'avoir, ou la barre n'est pas à l'écran).
+  // Ce que l'app voit maintenant : la barre qui la recouvre, ou `null` (rien ne la recouvre : l'explorateur est ouvert, l'app a demandé à ne pas l'avoir, ou la
+  // barre n'est pas à l'écran).
   barre() {
     if (!this.visible) return null;
     const found = this.#measure();
     return found && found.rect.largeur > 0 && found.rect.hauteur > 0 ? barreOf(this.edge, found.rect, found.frame) : null;
   }
 
-  // La barre est au-dessus d'une app ou non. Quand ce n'est plus le cas, la demande de l'app de ne pas l'avoir tombe : elle ne sert que pendant que l'app est montrée.
+  // La barre est au-dessus d'une app ou non. Quand ce n'est plus le cas, la demande de l'app de ne pas l'avoir tombe : elle ne sert que pendant que l'app est
+  // montrée.
   setPresent(present) {
     this.#present = Boolean(present);
     if (!this.#present) this.#masked = false;
     this.#settle();
   }
 
-  // La demande de l'app (`barre.masquer`) ne vaut que pendant que l'app est montrée : une app cachée derrière l'explorateur ne peut pas retirer la barre à la personne qui revient.
+  // La demande de l'app (`barre.masquer`) ne vaut que pendant que l'app est montrée : une app cachée derrière l'explorateur ne peut pas retirer la barre à la
+  // personne qui revient.
   mask(masked) {
     this.#masked = this.#present && Boolean(masked);
     this.#settle();
@@ -97,8 +101,8 @@ export class DockState {
   }
 }
 
-// Les appels de l'app à GFS pour la barre (contrats 5.1) : `barre.masquer` `{ masquee: true | false }`. Un refus se lit en console (comme `stockage.ecrire`) : sans `id`,
-// l'app n'attend pas de réponse et n'aurait aucun autre moyen de l'apprendre. Avec un `id`, la réponse dit l'état qui vaut : `{ masquee }`.
+// Les appels de l'app à GFS pour la barre (contrats 5.1) : `barre.masquer` `{ masquee: true | false }`. Un refus se lit en console (comme `stockage.ecrire`) :
+// sans `id`, l'app n'attend pas de réponse et n'aurait aucun autre moyen de l'apprendre. Avec un `id`, la réponse dit l'état qui vaut : `{ masquee }`.
 export function barHandlers(state, id, warn = console.warn) {
   return {
     'barre.masquer': ({ masquee }) => {

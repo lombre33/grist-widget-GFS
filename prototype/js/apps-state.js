@@ -4,7 +4,7 @@
 
 import { readApps, toOption, patchApps, withApp, withExtension, withMode, withNativeMode } from './settings.js';
 import { extensionsState, extensionsOf } from './extensions.js';
-import { nativesState } from './natives.js';
+import { nativesState, copiesInApp } from './natives.js';
 import { modulesModel } from './modules-model.js';
 
 export class AppsState {
@@ -45,9 +45,12 @@ export class AppsState {
   installedIds() { return this.#order.filter(id => this.has(id)); }
   get busy() { return this.#pending > 0; }
   model() { return modulesModel(this.#loaded, { apps: this.apps }, this.catalogue, this.always); }
+  // Les fonctions dont la copie figée est dans l'app et que la personne a choisies : dans l'adresse de son cadre à son démarrage (contrats 1.3, 2.6 point 14).
+  copiesFor(id) { return copiesInApp(this.manifest(id), this.apps[id]); }
   // Ce que l'app reçoit d'elle-même (contrats 5.2) : ses extensions actives, leurs bibliothèques, et les copies figées de ses bibliothèques natives.
   extensionsFor(id, base) {
-    return { ...extensionsState(this.manifest(id), this.apps[id], this.catalogue, base), natives: nativesState(this.manifest(id), this.apps[id], this.catalogue, base) };
+    return { ...extensionsState(this.manifest(id), this.apps[id], this.catalogue, base),
+      natives: nativesState(this.manifest(id), this.apps[id], this.catalogue, base) };
   }
 
   // Ce que la table dit. Une table illisible vaut une table absente : la liste par défaut, et un avertissement.

@@ -1,7 +1,9 @@
-// Les gestes de l'explorateur qui font partir une ligne de la liste : mettre à la corbeille, supprimer un dossier, restaurer, supprimer pour de bon, vider la corbeille (js/explorer.js). Sortis de l'explorateur pour qu'il
-// reste sous les 600 lignes de code de l'outil d'audit. Rien ne s'y garde : l'explorateur donne, par des fonctions, ce qu'il montre à l'instant du geste.
+// Les gestes de l'explorateur qui font partir une ligne de la liste : mettre à la corbeille, supprimer un dossier, restaurer, supprimer pour de bon, vider la
+// corbeille (js/explorer.js). Sortis de l'explorateur pour qu'il reste sous les 600 lignes de code de l'outil d'audit. Rien ne s'y garde : l'explorateur donne,
+// par des fonctions, ce qu'il montre à l'instant du geste.
 //
-// x : { opts() (les options de l'explorateur : i18n, notice, appName, filing), view() ('folder', 'recent', 'trash'…), choice() (un mode choix est ouvert), files(), trashed() (les fichiers vivants et à la corbeille),
+// x : { opts() (les options de l'explorateur : i18n, notice, appName, filing), view() ('folder', 'recent', 'trash'…), choice() (un mode choix est ouvert),
+//   files(), trashed() (les fichiers vivants et à la corbeille),
 //       bin() (le gardien de la corbeille, js/trash.js), keys() (la clé de chaque ligne, dans l'ordre), isOpen(), select(clé, focus) }
 
 export class Removal {
@@ -9,7 +11,8 @@ export class Removal {
 
   constructor(x) { this.#x = x; }
 
-  // Suppr, ou « Mettre à la corbeille » : le fichier part à la corbeille (pas de question : rien ne s'efface) et la ligne suivante prend le clavier. À la corbeille, Suppr supprime pour de bon.
+  // Suppr, ou « Mettre à la corbeille » : le fichier part à la corbeille (pas de question : rien ne s'efface) et la ligne suivante prend le clavier. À la
+  // corbeille, Suppr supprime pour de bon.
   async trash(key) {
     const x = this.#x;
     const opts = x.opts();
@@ -23,7 +26,8 @@ export class Removal {
     await this.leaving(key, () => x.bin().move(file));
   }
 
-  // Supprimer un dossier : possible quand plus aucun fichier n'est dedans (rien ne s'efface, il ne reste qu'une ligne d'état, js/filing.js) ; sinon la phrase dit quoi faire. La ligne suivante prend le clavier.
+  // Supprimer un dossier : possible quand plus aucun fichier n'est dedans (rien ne s'efface, il ne reste qu'une ligne d'état, js/filing.js) ; sinon la phrase
+  // dit quoi faire. La ligne suivante prend le clavier.
   async deleteFolder(key) {
     await this.leaving(key, () => this.#x.opts().filing.deleteFolder(key.slice(4)));
   }
@@ -43,7 +47,8 @@ export class Removal {
     if (!x.choice() && x.trashed().length) await x.bin().empty([...x.trashed()]);
   }
 
-  // Un geste qui fait partir la ligne `key` de la liste : quand il a abouti, le clavier passe à la ligne qui la suivait (ou la précédait), comme dans un explorateur de fichiers.
+  // Un geste qui fait partir la ligne `key` de la liste : quand il a abouti, le clavier passe à la ligne qui la suivait (ou la précédait), comme dans un
+  // explorateur de fichiers.
   async leaving(key, run) {
     const x = this.#x;
     const keys = x.keys();

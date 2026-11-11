@@ -1,5 +1,6 @@
-// Les textes de « Partager » (contrats 11.7, point 13 ; maquettes du 06/11) et ceux de son activation dans le panneau « Permissions », en français et en anglais dans le même lot. Ils rejoignent ceux de GFS
-// dans js/i18n.js ; le fichier est à part pour que i18n.js reste sous les 600 lignes de code de l'outil d'audit. « Modèle », jamais « template ».
+// Les textes de « Partager » (contrats 11.7, point 13 ; maquettes du 06/11) et ceux de son activation dans le panneau « Permissions », en français et en
+// anglais dans le même lot. Ils rejoignent ceux de GFS dans js/i18n.js ; le fichier est à part pour que i18n.js reste sous les 600 lignes de code de l'outil
+// d'audit. « Modèle », jamais « template ».
 
 export const SHARE_STRINGS = Object.freeze({
   fr: {

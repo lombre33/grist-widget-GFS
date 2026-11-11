@@ -1,5 +1,5 @@
-// Les textes du poids dans l'explorateur (demande du porteur, 04/11 : « estimer le poids de chaque élément »), en français et en anglais dans le même lot. Ils rejoignent ceux de GFS dans js/i18n.js ;
-// le fichier est à part pour que i18n.js reste sous les 600 lignes de code de l'outil d'audit. 1 Ko = 1 024 octets.
+// Les textes du poids dans l'explorateur (demande du porteur, 04/11 : « estimer le poids de chaque élément »), en français et en anglais dans le même lot. Ils
+// rejoignent ceux de GFS dans js/i18n.js ; le fichier est à part pour que i18n.js reste sous les 600 lignes de code de l'outil d'audit. 1 Ko = 1 024 octets.
 
 export const WEIGHT_STRINGS = Object.freeze({
   fr: {

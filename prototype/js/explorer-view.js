@@ -3,15 +3,15 @@
 
 import { h } from './dom.js';
 import { icon } from './icons.js';
-import { person, formatDate, pathParts, stampOf, authorOf, FAMILY_NAMES } from './explorer-model.js';
+import { person, formatDate, pathParts, stampOf, authorOf, rowKey, FAMILY_NAMES } from './explorer-model.js';
 import { SPACES_ROOT, folderLabel, isSpacePath } from './spaces-filing.js';
 import { formatBytes } from './weight.js';
 import { chipKey } from './rights.js';
 
 export const SORT_HEADERS = [['name', 'ex.name'], ['type', 'ex.type'], ['poids', 'ex.weight'], ['mod', 'ex.modified'], ['by', 'ex.by']];
 
-// Le cadre fixe : titre, « Apps », bascule liste/vignettes, « Réglages », fil d'Ariane, recherche, filtre de type, « Nouveau », volet, liste, barre d'information.
-// Ses textes sont posés par `relabel` : la même fonction les réécrit quand la personne change la langue de GFS.
+// Le cadre fixe : titre, « Apps », bascule liste/vignettes, « Réglages », fil d'Ariane, recherche, filtre de type, « Nouveau », volet, liste, barre
+// d'information. Ses textes sont posés par `relabel` : la même fonction les réécrit quand la personne change la langue de GFS.
 export function buildShell(i18n) {
   const refs = {};
   const keep = (key, node) => { refs[key] = node; return node; };
@@ -23,7 +23,8 @@ export function buildShell(i18n) {
         h('span', { class: 'grow' }),
         keep('appsBtn', h('button', { type: 'button', class: 'tb', 'aria-haspopup': 'dialog' })),
         keep('display', h('div', { class: 'tb-group', role: 'group' }, toggle('viewList', 'list'), toggle('viewTiles', 'tiles'))),
-        keep('bellBtn', h('button', { type: 'button', class: 'tb tb-bell', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, icon('bell'), keep('bellCount', h('span', { class: 'tb-badge', hidden: true })))),
+        keep('bellBtn', h('button', { type: 'button', class: 'tb tb-bell', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, icon('bell'),
+          keep('bellCount', h('span', { class: 'tb-badge', hidden: true })))),
         keep('settingsBtn', h('button', { type: 'button', class: 'tb', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, icon('sliders')))),
       h('div', { class: 'ex-nav-row' },
         keep('crumbs', h('nav', { class: 'crumbs' })),
@@ -47,9 +48,9 @@ export function buildShell(i18n) {
   return { root, refs };
 }
 
-// Les textes du cadre fixe, dans la langue de `i18n` : à la construction, puis à chaque changement de langue. Le contenu qui change au fil de l'usage (fil d'Ariane, volet,
-// liste, bouton du filtre de type) est redessiné par l'explorateur. Le bouton « Réglages » n'a que son icône, posée à la construction : `relabel` ne touche qu'à ses noms, et le clavier y reste quand on vient
-// de choisir une langue dans son menu.
+// Les textes du cadre fixe, dans la langue de `i18n` : à la construction, puis à chaque changement de langue. Le contenu qui change au fil de l'usage (fil
+// d'Ariane, volet, liste, bouton du filtre de type) est redessiné par l'explorateur. Le bouton « Réglages » n'a que son icône, posée à la construction :
+// `relabel` ne touche qu'à ses noms, et le clavier y reste quand on vient de choisir une langue dans son menu.
 export function relabel(refs, i18n) {
   const { t } = i18n;
   const describe = (node, text) => { node.setAttribute('title', text); node.setAttribute('aria-label', text); };
@@ -76,9 +77,11 @@ export function relabel(refs, i18n) {
   rightsChip(refs, i18n, refs.rights || null);
 }
 
-// Le mot du pied (contrats 11.4, point 7) : « Pas protégé », « Protégé en partie », « Protégé », ou « Permissions » tant que GFS n'a rien lu ; il ouvre le panneau des permissions. `rules` : ce que
+// Le mot du pied (contrats 11.4, point 7) : « Pas protégé », « Protégé en partie », « Protégé », ou « Permissions » tant que GFS n'a rien lu ; il ouvre le
+// panneau des permissions. `rules` : ce que
 // `RightsReader.rules()` a rendu, ou null avant la lecture. Le mot et l'icône vont ensemble.
-// La cloche : le nombre de ce qui attend la personne (la pastille ne se montre qu'à partir d'un), dit aussi à la voix ; grisée pendant le choix d'un fichier, où la vue « Partagés avec moi » ne s'ouvre pas.
+// La cloche : le nombre de ce qui attend la personne (la pastille ne se montre qu'à partir d'un), dit aussi à la voix ; grisée pendant le choix d'un fichier,
+// où la vue « Partagés avec moi » ne s'ouvre pas.
 export function paintBell(refs, t, count, choosing) {
   const { bellBtn, bellCount } = refs;
   bellCount.hidden = count === 0;
@@ -112,12 +115,15 @@ export function crumbs(ctx) {
   if (state.view === 'recent') return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, icon('clock'), t('ex.recent'))];
   if (state.view === 'fav') return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, icon('pin'), t('ex.fav'))];
   if (state.view === 'trash') return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, icon('trash'), t('trash.view'))];
+  if (state.view === 'shared' && state.group) return [link('', t('ex.me')), sep(), h('button', { type: 'button', dataset: { view: 'shared' } }, t('rx.view')),
+    sep(), h('span', { class: 'here' }, icon('folder'), state.group.slice(state.group.indexOf(':') + 1))];
   if (state.view === 'shared') return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, icon('users'), t('rx.view'))];
   if (ctx.filtering) return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, t('ex.results'))];
   const parts = pathParts(state.path);
   if (!parts.length) return [h('span', { class: 'here' }, icon('user'), t('ex.me'))];
   const last = parts.length - 1;
-  const crumb = (part, i) => (i === last ? h('span', { class: 'here' }, folderLabel(t, part.path, part.name)) : link(part.path, folderLabel(t, part.path, part.name)));
+  const crumb = (part, i) => (i === last ? h('span', { class: 'here' }, folderLabel(t, part.path, part.name)) :
+    link(part.path, folderLabel(t, part.path, part.name)));
   // Les espaces partagés sont une racine à côté de « Moi » : leur fil d'Ariane ne passe pas par « Moi ».
   if (isSpacePath(state.path)) return parts.flatMap((part, i) => (i ? [sep(), crumb(part, i)] : [crumb(part, i)]));
   return [link('', t('ex.me')), ...parts.flatMap((part, i) => [sep(), crumb(part, i)])];
@@ -125,7 +131,8 @@ export function crumbs(ctx) {
 
 function treeRow({ label, glyph, data, current, depth = 0, caret = null, toggle = null, count = null, grey = false }) {
   // Le nom entier au survol : le volet est étroit, un nom long y est coupé (charte).
-  return h('button', { type: 'button', class: 'tr-row', title: label, dataset: data, 'aria-current': String(Boolean(current)), 'aria-disabled': grey ? 'true' : null, vars: { '--d': depth } },
+  return h('button', { type: 'button', class: 'tr-row', title: label, dataset: data, 'aria-current': String(Boolean(current)),
+    'aria-disabled': grey ? 'true' : null, vars: { '--d': depth } },
     h('span', { class: 'car-slot', dataset: toggle === null ? null : { toggle } }, caret ? icon('chev-right', caret === 'open' ? 'open' : '') : null),
     icon(glyph, glyph === 'folder' ? 'fld' : ''), h('span', { class: 'lbl' }, label), count === null ? null : h('span', { class: 'cnt' }, String(count)));
 }
@@ -140,18 +147,22 @@ export function tree(ctx) {
     treeRow({ label: t('ex.recent'), glyph: 'clock', data: { view: 'recent' }, current: state.view === 'recent' }),
     treeRow({ label: t('ex.fav'), glyph: 'pin', data: { view: 'fav' }, current: state.view === 'fav', count: ctx.favCount }),
     // Les arrivées d'un autre document, à accepter ou acceptées : le nombre à accepter, grisées pendant un choix (un fichier d'ailleurs ne se choisit pas).
-    treeRow({ label: t('rx.view'), glyph: 'users', data: { view: 'shared' }, current: state.view === 'shared', count: ctx.sharedPending || null, grey: ctx.choosing }),
+    treeRow({ label: t('rx.view'), glyph: 'users', data: { view: 'shared' }, current: state.view === 'shared', count: ctx.sharedPending || null,
+      grey: ctx.choosing }),
     // La corbeille garde son rang pendant le choix d'un fichier, grisée : un fichier supprimé ne se choisit pas.
-    treeRow({ label: t('trash.view'), glyph: 'trash', data: { view: 'trash' }, current: state.view === 'trash', count: ctx.trashCount || null, grey: ctx.choosing }),
+    treeRow({ label: t('trash.view'), glyph: 'trash', data: { view: 'trash' }, current: state.view === 'trash', count: ctx.trashCount || null,
+      grey: ctx.choosing }),
     h('hr', { class: 'tr-sep' }));
   // « Espaces » est une racine à côté de « Moi » : ses lignes viennent après celles de « Moi », au même niveau que lui.
   const row = (item, shift) => h('div', { class: 'tr-folder' }, treeRow({
-    label: folderLabel(t, item.path, item.name), glyph: item.path === SPACES_ROOT ? 'users' : 'folder', data: { path: item.path }, current: inFolders && state.path === item.path, depth: item.depth + shift,
+    label: folderLabel(t, item.path, item.name), glyph: item.path === SPACES_ROOT ? 'users' : 'folder', data: { path: item.path }, current: inFolders &&
+      state.path === item.path, depth: item.depth + shift,
     caret: item.hasChildren ? (item.open ? 'open' : 'closed') : null, toggle: item.hasChildren ? item.path : null,
   }));
   const mine = ctx.treeRows.filter(item => !isSpacePath(item.path)).map(item => row(item, 1));
   const spaces = ctx.treeRows.filter(item => isSpacePath(item.path)).map(item => row(item, 0));
-  return [pinned, h('div', { class: 'tr-folder' }, treeRow({ label: t('ex.me'), glyph: 'user', data: { path: '' }, current: inFolders && state.path === '' })), ...mine, ...spaces];
+  return [pinned, h('div', { class: 'tr-folder' }, treeRow({ label: t('ex.me'), glyph: 'user', data: { path: '' }, current: inFolders && state.path === '' })),
+    ...mine, ...spaces];
 }
 
 // À la corbeille, la colonne de date dit la date de la suppression, non celle de la dernière modification.
@@ -159,7 +170,8 @@ export function listHead(ctx) {
   const { t, sort } = ctx;
   const trash = ctx.state.view === 'trash';
   return h('div', { class: 'ls-head', role: 'row' }, ...SORT_HEADERS.map(([key, text]) => h('button', {
-    type: 'button', class: 'hd', role: 'columnheader', dataset: { sort: key }, 'aria-sort': sort.key === key ? (sort.dir > 0 ? 'ascending' : 'descending') : null,
+    type: 'button', class: 'hd', role: 'columnheader', dataset: { sort: key }, 'aria-sort': sort.key === key ? (sort.dir > 0 ? 'ascending' : 'descending') :
+      null,
   }, t(trash && key === 'mod' ? 'trash.deleted' : text))), h('span'));
 }
 
@@ -181,8 +193,10 @@ function nameCell(ctx, file, flat) {
   const { t } = ctx;
   const lock = ctx.lockOf(file);
   const name = file.name || t('ex.untitled');
-  return h('div', { class: 'nm', role: 'gridcell' }, icon(lock ? 'lock' : file.icon), h('span', { class: 't', title: lock ? `${name} · ${lock.text}` : name }, name),
-    // Le dossier d'origine, à côté du nom (vues à plat) ; son chemin entier au survol. À la corbeille c'est lui qui cède la place quand la ligne est étroite : le nom d'abord (audit du 10/11 : « Convocatio… »).
+  return h('div', { class: 'nm', role: 'gridcell' }, icon(lock ? 'lock' : file.icon),
+    h('span', { class: 't', title: lock ? `${name} · ${lock.text}` : name }, name),
+    // Le dossier d'origine, à côté du nom (vues à plat) ; son chemin entier au survol. À la corbeille c'est lui qui cède la place quand la ligne est étroite :
+    // le nom d'abord (audit du 10/11 : « Convocatio… »).
     flat && file.folder ? h('span', { class: ctx.state.view === 'trash' ? 'hint yield' : 'hint', title: file.folder }, file.folder.split('/').pop()) : null,
     // Dans « Ouverts », le fichier que l'app affiche en ce moment : le mot, pas une couleur seule.
     ctx.state.view === 'opened' && ctx.shownKey === file.key ? h('span', { class: 'now' }, t('ex.shown')) : null,
@@ -194,15 +208,18 @@ function actionsCell(ctx, file) {
   const { t } = ctx;
   const pinTitle = file.pinned ? t('ex.unpin') : t('ex.pin');
   return h('div', { class: 'acts', role: 'gridcell' }, ctx.state.view === 'trash' ? restoreButton(t, file.key)
-    : (ctx.state.view === 'shared' ? null : h('button', { type: 'button', class: `rb pin${file.pinned ? ' on' : ''}`, dataset: { pin: file.key }, title: pinTitle, 'aria-label': pinTitle, 'aria-pressed': String(file.pinned) }, icon('pin'))),
+    : (ctx.state.view === 'shared' ? null : h('button', { type: 'button', class: `rb pin${file.pinned ? ' on' : ''}`, dataset: { pin: file.key },
+      title: pinTitle, 'aria-label': pinTitle, 'aria-pressed': String(file.pinned) }, icon('pin'))),
     moreButton(t, file.key));
 }
 
 // « Restaurer » d'une ligne de la corbeille : il prend la place de l'étoile (un fichier à la corbeille ne s'épingle pas).
-const restoreButton = (t, key) => h('button', { type: 'button', class: 'rb rs', dataset: { restore: key }, title: t('trash.restore'), 'aria-label': t('trash.restore') }, icon('restore'));
+const restoreButton = (t, key) => h('button', { type: 'button', class: 'rb rs', dataset: { restore: key }, title: t('trash.restore'),
+  'aria-label': t('trash.restore') }, icon('restore'));
 
 // « Plus d'actions » d'une ligne (fichier ou dossier) : le menu de js/explorer.js.
-const moreButton = (t, key) => h('button', { type: 'button', class: 'rb mn', dataset: { menu: key }, title: t('ex.more'), 'aria-label': t('ex.more'), 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, icon('more'));
+const moreButton = (t, key) => h('button', { type: 'button', class: 'rb mn', dataset: { menu: key }, title: t('ex.more'), 'aria-label': t('ex.more'),
+  'aria-haspopup': 'menu', 'aria-expanded': 'false' }, icon('more'));
 
 export function fileRow(ctx, file, flat) {
   const lock = ctx.lockOf(file);
@@ -212,12 +229,18 @@ export function fileRow(ctx, file, flat) {
   }, ...fileCells(ctx, file, flat));
 }
 
+// Ce que dit un dossier en plus de son nom : le nombre de fichiers, ou, pour un dossier reçu d'un autre document avec des fichiers à accepter, le mot « À
+// accepter » avec leur nombre (le mot et la couleur vont ensemble).
+const folderCaption = (t, folder) => (folder.pending ? t('rx.folder.pending', { n: folder.pending }) : t('ex.fileCount', { n: folder.count }));
+
 export function folderRow(ctx, folder) {
   const { t } = ctx;
-  const key = `dir:${folder.path}`;
-  return h('div', { class: 'ls-row folder', role: 'row', tabindex: ctx.state.sel === key ? '0' : '-1', dataset: { key }, 'aria-selected': String(ctx.state.sel === key) },
-    h('div', { class: 'nm', role: 'gridcell' }, icon('folder', 'fld'), h('span', { class: 't', title: folderLabel(t, folder.path, folder.name) }, folderLabel(t, folder.path, folder.name))),
-    h('div', { class: 'ty', role: 'gridcell' }, h('span', { class: 'pill' }, t('ex.fileCount', { n: folder.count }))),
+  const key = rowKey(folder);
+  return h('div', { class: `ls-row folder${folder.pending ? ' lk' : ''}`, role: 'row', tabindex: ctx.state.sel === key ? '0' : '-1', dataset: { key },
+    'aria-selected': String(ctx.state.sel === key) },
+    h('div', { class: 'nm', role: 'gridcell' }, icon('folder', 'fld'), h('span', { class: 't', title: folderLabel(t, folder.path, folder.name) },
+      folderLabel(t, folder.path, folder.name))),
+    h('div', { class: 'ty', role: 'gridcell' }, h('span', { class: 'pill' }, folderCaption(t, folder))),
     h('div', { class: 'wt', role: 'gridcell' }, weightText(ctx, folder.weight)),
     h('div', { class: 'md', role: 'gridcell' }, formatDate(folder.ts, ctx.now, ctx.locale, t)),
     h('div', { class: 'by', role: 'gridcell' }),
@@ -228,18 +251,20 @@ export function folderRow(ctx, folder) {
 function tileFacts(ctx, row) {
   const { t } = ctx;
   if (row.kind === 'folder') {
-    return { folder: true, key: `dir:${row.path}`, lock: null, glyph: 'folder', name: row.name, caption: t('ex.fileCount', { n: row.count }), weight: weightText(ctx, row.weight), fam: null };
+    return { folder: true, key: rowKey(row), lock: null, glyph: 'folder', name: row.name, caption: folderCaption(t, row), weight: weightText(ctx, row.weight),
+      fam: null, grey: row.pending > 0 };
   }
   const file = row.file;
   const lock = ctx.lockOf(file);
-  return { folder: false, key: file.key, lock, glyph: lock ? 'lock' : file.icon, name: file.name || t('ex.untitled'), caption: ctx.typeLabel(file), weight: weightText(ctx, file.weight), fam: lock ? null : family(file) };
+  return { folder: false, key: file.key, lock, glyph: lock ? 'lock' : file.icon, name: file.name || t('ex.untitled'), caption: ctx.typeLabel(file),
+    weight: weightText(ctx, file.weight), fam: lock ? null : family(file) };
 }
 
 export function tile(ctx, row) {
-  const { folder, key, lock, glyph, name, caption, weight, fam } = tileFacts(ctx, row);
+  const { folder, key, lock, glyph, name, caption, weight, fam, grey } = tileFacts(ctx, row);
   const selected = ctx.state.sel === key;
   return h('div', {
-    class: `th${folder ? ' folder' : ''}${lock ? ' lk' : ''}`, role: 'row', tabindex: selected ? '0' : '-1', dataset: { key },
+    class: `th${folder ? ' folder' : ''}${lock || grey ? ' lk' : ''}`, role: 'row', tabindex: selected ? '0' : '-1', dataset: { key },
     'aria-selected': String(selected), 'data-fam': fam, title: lock ? lock.text : null,
   },
   h('div', { class: 'th-pv' }, icon(glyph, folder ? 'fld' : '')),
@@ -264,8 +289,8 @@ export function emptyMessage(ctx) {
 
 const infoLine1 = (...nodes) => h('div', { class: 'l1' }, ...nodes);
 
-// La barre d'information : le fichier choisi (l'app qui l'ouvre, la date, le grisé), sinon un rappel du rangement : à la personne seule, ou commun au
-// document tant que GFS ne sait pas qui elle est (contrats 6.4, point 4). Ses lignes sont coupées quand la place manque : son texte entier est au survol (charte).
+// La barre d'information : le fichier choisi (l'app qui l'ouvre, la date, le grisé), sinon un rappel du rangement : à la personne seule, ou commun au document
+// tant que GFS ne sait pas qui elle est (contrats 6.4, point 4). Ses lignes sont coupées quand la place manque : son texte entier est au survol (charte).
 export function infoBar(ctx) {
   const info = infoContent(ctx);
   info.title = [...info.children].map(line => line.textContent.replace(/\s+/g, ' ').trim()).filter(Boolean).join('\n');
@@ -289,8 +314,9 @@ function noSelectionInfo(ctx, filingHint) {
 
 function folderInfo(ctx, selected, filingHint) {
   const { t } = ctx;
-  return h('div', { class: 'inf' }, infoLine1(icon('folder'), h('b', null, folderLabel(t, selected.path, selected.name)), h('span', { class: 'mu' }, `· ${t('ex.fileCount', { n: selected.count })} · ${weightText(ctx, selected.weight)}`)),
-    h('div', { class: 'l2' }, h('span', { class: 'lt' }, filingHint)));
+  return h('div', { class: 'inf' }, infoLine1(icon('folder'), h('b', null, folderLabel(t, selected.path, selected.name)),
+    h('span', { class: 'mu' }, `· ${t('ex.fileCount', { n: selected.count })} · ${weightText(ctx, selected.weight)}`)),
+    h('div', { class: 'l2' }, h('span', { class: 'lt' }, selected.shared ? t('rx.folder.hint') : filingHint)));
 }
 
 // Le fichier choisi : son nom, son type et son poids ; en dessous le grisé s'il y en a un, sinon ses faits.
@@ -299,7 +325,8 @@ function fileInfo(ctx, file) {
   const lock = ctx.lockOf(file);
   const second = lock ? lock.text : fileFacts(ctx, file).filter(Boolean).join(' · ');
   return h('div', { class: 'inf', 'data-fam': lock ? null : family(file) },
-    infoLine1(icon(lock ? 'lock' : file.icon), h('b', null, file.name || t('ex.untitled')), h('span', { class: 'mu' }, `· ${ctx.typeLabel(file)} · ${weightText(ctx, file.weight)}`)),
+    infoLine1(icon(lock ? 'lock' : file.icon), h('b', null, file.name || t('ex.untitled')),
+      h('span', { class: 'mu' }, `· ${ctx.typeLabel(file)} · ${weightText(ctx, file.weight)}`)),
     h('div', { class: 'l2' }, h('span', { class: 'lt' }, second)));
 }
 
@@ -313,21 +340,32 @@ function fileFacts(ctx, file) {
   return [ctx.opensIn(file), file.ts === null ? '' : t('ex.modifiedOn', { date }), by];
 }
 
-// La barre de la corbeille, au-dessus de la liste : la règle (rien ne part seul) et « Vider la corbeille… ». Rien tant que la corbeille est vide.
+// La barre de la corbeille, au-dessus de la liste : la règle (rien ne part seul) et « Vider la corbeille… ». Rien tant que la corbeille est vide. La barre d'un
+// dossier reçu d'un autre document qui a des fichiers à accepter : un oui ou un non pour TOUS (js/received-control.js, `askFolder`) ; les autres gestes restent
+// fichier par fichier.
+export function groupBar(ctx, folder) {
+  const { t } = ctx;
+  const text = t('rx.folder.bar', { n: folder.pending });
+  return h('div', { class: 'trash-bar' }, icon('lock'), h('span', { class: 'tb-text', title: text }, text),
+    h('button', { type: 'button', class: 'btn', dataset: { answerFolder: folder.id } }, t('rx.folder.answer')));
+}
+
 export function trashBar(ctx) {
   const { t } = ctx;
   return h('div', { class: 'trash-bar' }, icon('trash'), h('span', { class: 'tb-text', title: t('trash.bar') }, t('trash.bar')),
     h('button', { type: 'button', class: 'btn', dataset: { emptyTrash: '' } }, t('trash.empty')));
 }
 
-// Le total du pied de fenêtre : ce que pèse ce que la liste montre, dossiers compris (`ctx.total`, en octets), et, case « + pièces jointes » cochée et lue (`ctx.pj`), les pièces jointes du document qui ne sont
-// pas des fichiers de l'explorateur (js/weight.js, `otherAttachments`). Le mot « Total » est dit aux lecteurs d'écran, avec la part de chacun ; l'infobulle dit ce qui est compté.
+// Le total du pied de fenêtre : ce que pèse ce que la liste montre, dossiers compris (`ctx.total`, en octets), et, case « + pièces jointes » cochée et lue
+// (`ctx.pj`), les pièces jointes du document qui ne sont pas des fichiers de l'explorateur (js/weight.js, `otherAttachments`). Le mot « Total » est dit aux
+// lecteurs d'écran, avec la part de chacun ; l'infobulle dit ce qui est compté.
 const pjCounted = ctx => ctx.pj.on && ctx.pj.ready;
 const totalSplit = ctx => ctx.t('weight.totalSplit', { list: weightText(ctx, ctx.total), pj: weightText(ctx, ctx.pj.bytes), n: ctx.pj.count });
 
 export function totalBar(ctx) {
   const counted = pjCounted(ctx);
-  const parts = [h('span', { class: 'sr-only' }, `${ctx.t('weight.total')} : `), h('b', { class: 'tot-n' }, weightText(ctx, ctx.total + (counted ? ctx.pj.bytes : 0)))];
+  const parts = [h('span', { class: 'sr-only' }, `${ctx.t('weight.total')} : `),
+    h('b', { class: 'tot-n' }, weightText(ctx, ctx.total + (counted ? ctx.pj.bytes : 0)))];
   if (counted) parts.push(h('span', { class: 'sr-only' }, `, ${totalSplit(ctx)}`));
   return parts;
 }
@@ -335,11 +373,13 @@ export function totalBar(ctx) {
 // L'infobulle du total, et l'état du pied de fenêtre : occupé tant que les pièces jointes se lisent.
 export function totalTip(ctx) {
   const { t, pj } = ctx;
-  return [t('weight.totalTip'), pjCounted(ctx) ? totalSplit(ctx) : null, pj.on && pj.busy ? t('weight.pjLoading') : null, t('weight.detailTip')].filter(Boolean).join(' ');
+  return [t('weight.totalTip'), pjCounted(ctx) ? totalSplit(ctx) : null, pj.on && pj.busy ? t('weight.pjLoading') : null,
+    t('weight.detailTip')].filter(Boolean).join(' ');
 }
 
-// La case « + pièces jointes » : cochée quand la personne l'a demandée ; grisée, jamais masquée, quand GFS ne peut pas lire les pièces jointes (`ctx.pj.grey` dit pourquoi : au survol, et au clic
-// par le geste de js/explorer.js). `aria-disabled` et non `disabled` : une case désactivée ne répond pas au clic, et le clic est ce qui explique.
+// La case « + pièces jointes » : cochée quand la personne l'a demandée ; grisée, jamais masquée, quand GFS ne peut pas lire les pièces jointes (`ctx.pj.grey`
+// dit pourquoi : au survol, et au clic par le geste de js/explorer.js). `aria-disabled` et non `disabled` : une case désactivée ne répond pas au clic, et le
+// clic est ce qui explique.
 export function pjBox(refs, ctx) {
   const { pj, t } = ctx;
   refs.pj.classList.toggle('is-grey', Boolean(pj.grey));

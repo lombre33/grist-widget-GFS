@@ -1,7 +1,7 @@
-// Le choix de langue de GFS (décision du porteur, 20/10) : un seul pour toutes les apps, retenu sur le navigateur de la personne. Trois valeurs : « comme Grist »
-// (par défaut : le paramètre `language` que Grist met dans l'adresse du widget), le français, l'anglais. Le choix est dans le `localStorage` de GFS, jamais dans le document
-// ni dans une table ; sans stockage (un navigateur qui le refuse), il vaut pour la page, et GFS le dit. Les apps le reçoivent par le contexte et par l'événement `langue`
-// (contrats 5.2).
+// Le choix de langue de GFS (décision du porteur, 20/10) : un seul pour toutes les apps, retenu sur le navigateur de la personne. Trois valeurs : « comme
+// Grist » (par défaut : le paramètre `language` que Grist met dans l'adresse du widget), le français, l'anglais. Le choix est dans le `localStorage` de GFS,
+// jamais dans le document ni dans une table ; sans stockage (un navigateur qui le refuse), il vaut pour la page, et GFS le dit. Les apps le reçoivent par le
+// contexte et par l'événement `langue` (contrats 5.2).
 
 import { StoredChoice, keyStore, watchKey } from './stored-choice.js';
 
@@ -20,8 +20,9 @@ export function languageOfGrist(param, browser) {
 // Ce que le navigateur garde : lire et écrire la clé de GFS (un navigateur qui refuse n'arrête rien : `stored-choice.js`).
 export const browserStore = (win = window) => keyStore(win, STORAGE_KEY);
 
-// Le format des dates de GFS lui-même. La culture de Grist suit la langue de Grist : si la personne a choisi pour GFS une autre langue, elle ne vaut plus ici (un écran
-// anglais n'écrit pas ses dates en français), à moins qu'elle ne soit de la langue choisie. Les apps gardent la culture de Grist : c'est celle du document.
+// Le format des dates de GFS lui-même. La culture de Grist suit la langue de Grist : si la personne a choisi pour GFS une autre langue, elle ne vaut plus ici
+// (un écran anglais n'écrit pas ses dates en français), à moins qu'elle ne soit de la langue choisie. Les apps gardent la culture de Grist : c'est celle du
+// document.
 export function localeFor({ culture, language, grist }) {
   const standard = language === 'en' ? 'en-GB' : 'fr-FR';
   const kept = culture && (language === grist || String(culture).toLowerCase().startsWith(language)) ? culture : null;
@@ -54,7 +55,8 @@ export class LanguageSetting {
 
   // `languageChanged` dit si la langue qui vaut a vraiment changé : choisir celle que Grist donne déjà ne dérange personne.
   onChange(listener) {
-    return this.#stored.onChange((choice, before) => listener({ choice, language: this.language, languageChanged: this.#languageOf(before) !== this.language }));
+    return this.#stored.onChange((choice, before) => listener({ choice, language: this.language,
+      languageChanged: this.#languageOf(before) !== this.language }));
   }
 }
 

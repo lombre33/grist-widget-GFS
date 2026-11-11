@@ -1,8 +1,12 @@
-// La fenêtre « Thème » (décision du porteur, 03/11) : les cinq ambiances en vignettes (chacune est le vrai décor de GFS à l'échelle d'une vignette, dans la couleur et le mode qui valent), la couleur
-// d'accent (celle de l'ambiance, ou la sienne), l'interrupteur « Accessibilité renforcée » (décision du 04/11, à part des ambiances), le contraste mesuré, le retour à l'origine. Un choix s'applique tout
-// de suite : la fenêtre le rend au réglage (js/theme.js), qui le retient ; la page et les apps le reçoivent par js/theme-apply.js. Une fenêtre sur la base commune (js/modal.js) : le titre et le pied
+// La fenêtre « Thème » (décision du porteur, 03/11) : les cinq ambiances en vignettes (chacune est le vrai décor de GFS à l'échelle d'une vignette, dans la
+// couleur et le mode qui valent), la couleur
+// d'accent (celle de l'ambiance, ou la sienne), l'interrupteur « Accessibilité renforcée » (décision du 04/11, à part des ambiances), le contraste mesuré, le
+// retour à l'origine. Un choix s'applique tout
+// de suite : la fenêtre le rend au réglage (js/theme.js), qui le retient ; la page et les apps le reçoivent par js/theme-apply.js. Une fenêtre sur la base
+// commune (js/modal.js) : le titre et le pied
 // restent en place, seul le corps défile.
-// Les vignettes sont des boutons radio : Tab y entre une fois, les flèches choisissent. « La mienne » ouvre le sélecteur de couleur des documents, celui du kit (js/theme-color.js) ; si le kit ne se charge
+// Les vignettes sont des boutons radio : Tab y entre une fois, les flèches choisissent. « La mienne » ouvre le sélecteur de couleur des documents, celui du kit
+// (js/theme-color.js) ; si le kit ne se charge
 // pas, elle est grisée, avec sa raison dite sous elle : grisé, jamais masqué.
 
 import { h } from './dom.js';
@@ -13,9 +17,11 @@ import { previewMessage } from './theme.js';
 import { paint } from './theme-apply.js';
 import { ColorPicking } from './theme-color.js';
 
-// La petite scène d'une vignette : le titre et un bouton plein, puis une carte à deux lignes (un avatar, un trait de texte, une pastille de type) ; elle prend les jetons de couleur et de forme de son ambiance.
+// La petite scène d'une vignette : le titre et un bouton plein, puis une carte à deux lignes (un avatar, un trait de texte, une pastille de type) ; elle prend
+// les jetons de couleur et de forme de son ambiance.
 function scene() {
-  const row = (family, short) => h('div', { class: 'mn-r' }, h('i', { class: 'mn-av' }), h('span', { class: short ? 'mn-l s' : 'mn-l' }), h('i', { class: 'mn-p', 'data-fam': family }));
+  const row = (family, short) => h('div', { class: 'mn-r' }, h('i', { class: 'mn-av' }), h('span', { class: short ? 'mn-l s' : 'mn-l' }),
+    h('i', { class: 'mn-p', 'data-fam': family }));
   return h('div', { class: 'amb-mini', 'aria-hidden': 'true' },
     h('div', { class: 'mn-head' }, h('b', { class: 'mn-t' }), h('i', { class: 'mn-btn' })),
     h('div', { class: 'mn-card' }, h('i', { class: 'mn-st' }), row('doc', false), row('grid', true)));
@@ -33,10 +39,12 @@ function tile(id) {
 // La couleur d'accent : « celle de l'ambiance » (avec sa pastille) ou « la mienne » (avec le bouton du sélecteur de couleur).
 function colorBox() {
   const refs = {
-    amb: h('input', { type: 'radio', name: 'col', value: 'amb', dataset: { fk: 'col:amb' } }), own: h('input', { type: 'radio', name: 'col', value: 'own', dataset: { fk: 'col:own' } }),
+    amb: h('input', { type: 'radio', name: 'col', value: 'amb', dataset: { fk: 'col:amb' } }),
+      own: h('input', { type: 'radio', name: 'col', value: 'own', dataset: { fk: 'col:own' } }),
     legend: h('legend'), ambText: h('span'), ownText: h('span'), dot: h('i', { class: 'dot' }), swatch: h('i', { class: 'sw' }), pickText: h('span'),
   };
-  refs.pick = h('button', { type: 'button', class: 'btn sm th-pick', 'aria-haspopup': 'dialog', 'aria-expanded': 'false', dataset: { fk: 'col:pick' } }, refs.swatch, refs.pickText, icon('chev-down'));
+  refs.pick = h('button', { type: 'button', class: 'btn sm th-pick', 'aria-haspopup': 'dialog', 'aria-expanded': 'false', dataset: { fk: 'col:pick' } },
+    refs.swatch, refs.pickText, icon('chev-down'));
   refs.node = h('fieldset', { class: 'th-col' }, refs.legend,
     h('label', { class: 'rd' }, refs.amb, h('span', { class: 'rd-text' }, h('span', { class: 'rd-label' }, refs.ambText, refs.dot))),
     h('label', { class: 'rd' }, refs.own, h('span', { class: 'rd-text' }, h('span', { class: 'rd-label' }, refs.ownText))),
@@ -44,11 +52,13 @@ function colorBox() {
   return refs;
 }
 
-// L'accessibilité renforcée : un interrupteur (une case à cocher au rôle « switch » sur toute la ligne, comme une vignette), son nom et ce qu'il change. Il ne fait pas partie des ambiances : il se pose
-// sur celle qu'on a choisie, avec ou sans couleur à soi.
+// L'accessibilité renforcée : un interrupteur (une case à cocher au rôle « switch » sur toute la ligne, comme une vignette), son nom et ce qu'il change. Il ne
+// fait pas partie des ambiances : il se pose sur celle qu'on a choisie, avec ou sans couleur à soi.
 function accessBox() {
-  const refs = { input: h('input', { type: 'checkbox', role: 'switch', dataset: { fk: 'acces' } }), title: h('span', { class: 'th-acc-t' }), text: h('span', { class: 'th-acc-d' }) };
-  refs.node = h('label', { class: 'th-acc' }, refs.input, h('span', { class: 'th-acc-sw', 'aria-hidden': 'true' }), h('span', { class: 'th-acc-txt' }, refs.title, refs.text));
+  const refs = { input: h('input', { type: 'checkbox', role: 'switch', dataset: { fk: 'acces' } }), title: h('span', { class: 'th-acc-t' }),
+    text: h('span', { class: 'th-acc-d' }) };
+  refs.node = h('label', { class: 'th-acc' }, refs.input, h('span', { class: 'th-acc-sw', 'aria-hidden': 'true' }),
+    h('span', { class: 'th-acc-txt' }, refs.title, refs.text));
   return refs;
 }
 
@@ -57,10 +67,12 @@ function buildWindow() {
   const tiles = AMBIANCES.map(tile);
   const line = (cls, glyph, text) => ({ text, node: h('p', { class: cls }, icon(glyph), text) });
   const refs = {
-    tiles, color: colorBox(), access: accessBox(), title: h('h2', { id: 'th-title' }), text: h('p', { class: 'mod-count' }), note: h('p', { class: 'mod-note', 'aria-live': 'polite' }),
+    tiles, color: colorBox(), access: accessBox(), title: h('h2', { id: 'th-title' }), text: h('p', { class: 'mod-count' }),
+      note: h('p', { class: 'mod-note', 'aria-live': 'polite' }),
     grid: h('div', { class: 'amb-grid', role: 'radiogroup' }, ...tiles.map(item => item.node)),
     check: line('th-check', 'check', h('span')), adjusted: line('th-adj', 'info', h('span')), later: line('th-adj', 'info', h('span')),
-    reset: h('button', { type: 'button', class: 'btn', dataset: { fk: 'reset' } }), close: h('button', { type: 'button', class: 'btn primary', dataset: { fk: 'close' } }),
+    reset: h('button', { type: 'button', class: 'btn', dataset: { fk: 'reset' } }),
+      close: h('button', { type: 'button', class: 'btn primary', dataset: { fk: 'close' } }),
   };
   refs.section = h('section', { class: 'mod th-win', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'th-title' },
     h('header', { class: 'mod-head' }, refs.title, refs.text),
@@ -94,7 +106,8 @@ export class ThemeWindow {
     this.#label();
     this.refresh();
     this.#bind(refs);
-    this.#modal = openModal({ container, section: refs.section, inertTargets, first: refs.tiles.find(item => item.id === setting.ambiance).input, cancel: null });
+    this.#modal = openModal({ container, section: refs.section, inertTargets, first: refs.tiles.find(item => item.id === setting.ambiance).input,
+      cancel: null });
     this.#stop = setting.onChange(() => this.refresh()); // un autre onglet de la personne change aussi le choix
     void this.#picking.load(); // le sélecteur de couleur du kit : chargé maintenant, pour qu'il soit prêt au premier clic
     void this.#modal.result.then(() => this.#closed());
@@ -105,7 +118,8 @@ export class ThemeWindow {
     if (this.#modal) this.#modal.done(null);
   }
 
-  // Le sélecteur de couleur, relié à cette fenêtre : il lit son réglage, sa langue et son mode, se pose sous son bouton et lui rend ce que la personne a choisi.
+  // Le sélecteur de couleur, relié à cette fenêtre : il lit son réglage, sa langue et son mode, se pose sous son bouton et lui rend ce que la personne a
+  // choisi.
   #pickingFor() {
     const { setting, container, inertTargets, mode } = this.#opts;
     return new ColorPicking({
@@ -170,8 +184,8 @@ export class ThemeWindow {
     refs.close.textContent = t('theme.close');
   }
 
-  // L'état d'après le réglage : la vignette choisie, la couleur, l'interrupteur, les vignettes repeintes (dans la couleur choisie, avec l'accessibilité renforcée si elle est allumée, et dans le mode de la
-  // page), la mesure du contraste.
+  // L'état d'après le réglage : la vignette choisie, la couleur, l'interrupteur, les vignettes repeintes (dans la couleur choisie, avec l'accessibilité
+  // renforcée si elle est allumée, et dans le mode de la page), la mesure du contraste.
   refresh() {
     const refs = this.#refs;
     if (!refs) return;
@@ -205,7 +219,8 @@ export class ThemeWindow {
     return format.format(Math.floor(value * 10) / 10);
   }
 
-  // La couleur d'accent. Sans le sélecteur de couleur du kit (il ne s'est pas chargé), « la mienne » est grisée (le bouton aussi) et sa raison est dite sous elle ; une couleur déjà retenue reste visible.
+  // La couleur d'accent. Sans le sélecteur de couleur du kit (il ne s'est pas chargé), « la mienne » est grisée (le bouton aussi) et sa raison est dite sous
+  // elle ; une couleur déjà retenue reste visible.
   #refreshColor(box, setting) {
     const { t } = this.#opts.i18n;
     const { color } = setting;

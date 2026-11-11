@@ -54,3 +54,16 @@ test('l\'anglais dit la même chose', () => {
   assert.equal(items.at(-1).label, 'Open “Shared with me”');
   assert.equal(setup([], EN).items[0].label, 'No notifications');
 });
+
+test('les fichiers d\'un dossier reçu n\'ont qu\'une ligne, celle du dossier : un clic pose la question du dossier ; les fichiers sans dossier gardent leur ligne', () => {
+  const inFolder = (n, folder) => ({ ...arrival(n), received: { table: 'GFS_Recus', row: n, state: 'pending', folder } });
+  const asked = [];
+  const items = notificationItems({ t: FR.t, pending: [inFolder(1, 'Contrats'), inFolder(2, 'Contrats'), inFolder(3, 'Contrats'), inFolder(4, ''), { ...inFolder(5, 'Devis'), by: '' }], notice() {}, ask: file => asked.push(file.id), askFolder: folder => asked.push(`dossier ${folder.name}`), openShared() {} });
+  assert.deepEqual(items.slice(0, 3).map(item => item.label), ['Dossier « Contrats » de Compta : 3 fichiers à accepter', 'Dossier « Devis » : 1 fichier à accepter', '« Contrat 4.pdf » de Compta, à accepter']);
+  items[0].run();
+  items[1].run();
+  items[2].run();
+  assert.deepEqual(asked, ['dossier Contrats', 'dossier Devis', 'f4']);
+  const en = notificationItems({ t: EN.t, pending: [inFolder(1, 'Contracts'), inFolder(2, 'Contracts')], notice() {}, ask() {}, askFolder() {}, openShared() {} });
+  assert.equal(en[0].label, 'Folder “Contracts” from Compta: 2 files to accept');
+});

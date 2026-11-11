@@ -1,10 +1,13 @@
-// La pile d'annulation de l'explorateur (demande du porteur, 04/11 : « Ctrl+Z doit aussi faire revenir un fichier supprimé, et plus globalement toutes les modifications : renommage, déplacement, etc. » ;
-// puis, à sa carte du même jour, « Oui, au clavier seulement » : Ctrl+Y et Ctrl+Maj+Z rétablissent). Chaque geste de l'explorateur qui a abouti dépose ici de quoi se défaire (`push`) ; Ctrl+Z (ou ⌘+Z) défait le
-// dernier, puis l'avant-dernier : un geste par appui, dans l'ordre inverse. Défaire écrit comme le geste d'origine (le rangement, le nom, la corbeille) ; ce que l'annulation écrit dépose à son tour de quoi la
-// défaire, mais **dans la pile du rétablissement** : Ctrl+Y (ou Ctrl+Maj+Z) refait le geste qu'on vient de défaire, et ce que le rétablissement écrit retourne dans la pile des annulations (Ctrl+Z, Ctrl+Y, Ctrl+Z
-// ne tournent pas en rond : chaque appui avance d'un cran). **Un geste neuf vide la pile du rétablissement** (ce qu'on avait défait ne se refait plus : l'état a changé). Les gestes qui ne s'annulent pas
-// (supprimer pour de bon, vider la corbeille : la fenêtre le dit avant) n'y déposent rien. Les piles vivent autant que la page (elles survivent à la fermeture de l'explorateur : on peut revenir de l'app et
-// défaire) ; chaque annulation ou rétablissement relit l'état d'aujourd'hui et le dit quand le fichier n'est plus là ou a changé entre-temps, au lieu d'écrire à l'aveugle.
+// La pile d'annulation de l'explorateur (demande du porteur, 04/11 : « Ctrl+Z doit aussi faire revenir un fichier supprimé, et plus globalement toutes les
+// modifications : renommage, déplacement, etc. » ; puis, à sa carte du même jour, « Oui, au clavier seulement » : Ctrl+Y et Ctrl+Maj+Z rétablissent). Chaque
+// geste de l'explorateur qui a abouti dépose ici de quoi se défaire (`push`) ; Ctrl+Z (ou ⌘+Z) défait le dernier, puis l'avant-dernier : un geste par appui,
+// dans l'ordre inverse. Défaire écrit comme le geste d'origine (le rangement, le nom, la corbeille) ; ce que l'annulation écrit dépose à son tour de quoi la
+// défaire, mais **dans la pile du rétablissement** : Ctrl+Y (ou Ctrl+Maj+Z) refait le geste qu'on vient de défaire, et ce que le rétablissement écrit retourne
+// dans la pile des annulations (Ctrl+Z, Ctrl+Y, Ctrl+Z ne tournent pas en rond : chaque appui avance d'un cran). **Un geste neuf vide la pile du
+// rétablissement** (ce qu'on avait défait ne se refait plus : l'état a changé). Les gestes qui ne s'annulent pas (supprimer pour de bon, vider la corbeille :
+// la fenêtre le dit avant) n'y déposent rien. Les piles vivent autant que la page (elles survivent à la fermeture de l'explorateur : on peut revenir de l'app
+// et défaire) ; chaque annulation ou rétablissement relit l'état d'aujourd'hui et le dit quand le fichier n'est plus là ou a changé entre-temps, au lieu
+// d'écrire à l'aveugle.
 
 const LIMIT = 50; // les gestes gardés, dans chaque pile : les plus anciens s'oublient
 const REASON_MAX = 120;
@@ -24,9 +27,10 @@ export class UndoStack {
 
   get redoSize() { return this.#undone.length; }
 
-  // Dépose de quoi défaire le geste qui vient d'aboutir : `entry.run()` rend la phrase qui dit ce qui est revenu (déjà traduite), ou rien quand le geste l'a dite lui-même (la corbeille), ou `{ said, again: true }`
-  // quand rien n'a pu se faire mais que cela pourra plus tard (l'app qui doit être ouverte : la phrase le dit, et le geste reste à défaire). Pendant une annulation, ce qui est déposé est de quoi la refaire
-  // (pile du rétablissement) ; pendant un rétablissement, de quoi le défaire de nouveau ; un geste neuf vide la pile du rétablissement.
+  // Dépose de quoi défaire le geste qui vient d'aboutir : `entry.run()` rend la phrase qui dit ce qui est revenu (déjà traduite), ou rien quand le geste l'a
+  // dite lui-même (la corbeille), ou `{ said, again: true }` quand rien n'a pu se faire mais que cela pourra plus tard (l'app qui doit être ouverte : la phrase
+  // le dit, et le geste reste à défaire). Pendant une annulation, ce qui est déposé est de quoi la refaire (pile du rétablissement) ; pendant un
+  // rétablissement, de quoi le défaire de nouveau ; un geste neuf vide la pile du rétablissement.
   push(entry) {
     if (this.#mode === 'undo') { keep(this.#undone, entry); return; }
     keep(this.#done, entry);
@@ -56,7 +60,8 @@ export class UndoStack {
     return true;
   }
 
-  // Joue le geste : ce qu'il dit se dit ; un geste à refaire en plusieurs fois (`again`) reste sur sa pile ; un échec se dit avec sa raison (et s'écrit, sauf un échec prévu).
+  // Joue le geste : ce qu'il dit se dit ; un geste à refaire en plusieurs fois (`again`) reste sur sa pile ; un échec se dit avec sa raison (et s'écrit, sauf
+  // un échec prévu).
   async #play(kind, entry, from) {
     const { t, notice } = this.#opts;
     try {

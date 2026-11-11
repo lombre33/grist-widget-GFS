@@ -259,7 +259,8 @@ export class ModulesWindow {
       h('span', { class: 'mr-lib-name' }, label(row.group.nom, lang)),
       h('span', { class: 'mr-lib-size' }, this.#size(row.poids / 1024)),
       ...radios,
-      off ? h('p', { class: 'mr-warn mr-lib-warn' }, t('mod.native.missing', { lib: cap(first.id), version: first.version })) : null);
+      off ? h('p', { class: 'mr-warn mr-lib-warn' }, t('mod.native.missing', { lib: cap(first.id), version: first.version })) : null,
+      row.inApp ? h('p', { class: 'mr-note mr-lib-warn' }, t('mod.native.restart')) : null);
   }
 
   // Le mode des bibliothèques de l'extension : CDN (le défaut) ou copie de GFS. Un seul choix par extension (cahier, question 11).

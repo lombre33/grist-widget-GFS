@@ -12,6 +12,7 @@ export const NATIVES_STRINGS = Object.freeze({
     'mod.native.copyHint': 'Servies par GFS, sans adresse externe : pour les réseaux fermés.',
     'mod.native.missing': 'Copie indisponible : GFS n’a pas {lib} {version}.',
     'mod.native.missingSome': 'Indisponible : GFS n’a pas toutes les copies (voir le détail).',
+    'mod.native.restart': 'La copie est dans l’app : le choix prend effet au prochain démarrage de l’app.',
   },
   en: {
     'mod.native.title': 'App libraries',
@@ -23,5 +24,6 @@ export const NATIVES_STRINGS = Object.freeze({
     'mod.native.copyHint': 'Served by GFS, no external address: for closed networks.',
     'mod.native.missing': 'Copy unavailable: GFS does not have {lib} {version}.',
     'mod.native.missingSome': 'Unavailable: GFS does not have every copy (see the detail).',
+    'mod.native.restart': 'The copy is in the app: the choice applies the next time the app starts.',
   },
 });

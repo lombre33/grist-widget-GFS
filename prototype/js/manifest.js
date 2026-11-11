@@ -328,9 +328,15 @@ function checkExtensions(m, errors) {
   }
 }
 
-// Les bibliothèques natives de l'app, rangées par fonction (`natives`, facultatif, contrats 2.6 point 14) : { id, nom (fr, en), bibliotheques: [{ id, version exacte }] }. L'app les
+// Les bibliothèques natives de l'app, rangées par fonction (`natives`, facultatif, contrats 2.6 point 14) : { id, nom (fr, en), bibliotheques: [{ id, version exacte }] }, ou, quand la copie figée est dans le
+// dépôt de l'app (l'éditeur : sa copie est une carte d'importation), { id, nom, copieDansApp: true, poids }. L'app les
 // emploie déjà (sa liste) ; GFS en garde la copie figée, que la personne peut choisir à la place du CDN, fonction par fonction. Une bibliothèque n'est que dans une seule fonction.
 function checkNativeLibraries(group, libraries, errors) {
+  if (group.copieDansApp === true) { // la copie est dans le dépôt de l'app : GFS n'a aucune bibliothèque à lister, seulement le poids à dire (contrats 2.6, point 14)
+    if (group.bibliotheques !== undefined) errors.push(`natives ${group.id} : une fonction dont la copie est dans l'app n'a pas de bibliotheques`);
+    if (!Number.isInteger(group.poids) || group.poids <= 0) errors.push(`natives ${group.id} : poids (octets) attendu`);
+    return;
+  }
   if (!Array.isArray(group.bibliotheques) || !group.bibliotheques.length) { errors.push(`natives ${group.id} : bibliotheques : liste non vide attendue`); return; }
   for (const lib of group.bibliotheques) {
     if (!isObject(lib) || !LIBRARY_ID_RE.test(lib.id || '')) errors.push(`natives ${group.id} : une bibliothèque sans id valable`);

@@ -220,7 +220,7 @@ async function mount() {
   // « Apps et extensions » et « Table de travail » (js/modules-window.js, js/work-window.js ; test/voile-firefox.mjs) : des fenêtres à part de la base commune, dont le fond ne ferme rien non plus.
   window.__modulesWindow = () => void new ModulesWindow({ container: stage, i18n, locale, model: () => ({ items: [], active: 0, total: 0 }), blocked: () => null, inertTargets: () => [explorer.root], on: {}, onClose: () => {} }).open();
   // « Apps et extensions » avec les bibliothèques natives, fonction par fonction (js/modules-window.js, contrats 2.6 point 14 ; test/natives-firefox.mjs) : le vrai modèle, le vrai catalogue de GFS et le manifeste de
-  // Publipostage+ à qui l'on donne quatre fonctions (ce que son manifeste dira quand l'app lira le choix). `variant` : 'ok', 'manque' (le catalogue n'a pas les polices : la copie du PDF est grisée) ou 'lecture' (rien ne peut s'écrire).
+  // Publipostage+ à qui l'on donne quatre fonctions (ce que son manifeste dira quand l'app lira le choix). `variant` : 'ok', 'manque' (le catalogue n'a pas les polices : la copie du PDF est grisée), 'editeur' (l'éditeur, copie dans l'app) ou 'lecture' (rien ne peut s'écrire).
   window.__natives = async (variant = 'ok') => {
     const L = (id, version) => ({ id, version });
     const manifest = await (await fetch('/manifestes/publipostage.json')).json();
@@ -230,6 +230,8 @@ async function mount() {
       { id: 'excel', nom: { fr: 'Export Excel (ExcelJS)', en: 'Excel export (ExcelJS)' }, bibliotheques: [L('exceljs', '4.4.0')] },
       { id: 'divers', nom: { fr: 'Divers (marked, QR code, pdf-lib)', en: 'Other (marked, QR code, pdf-lib)' }, bibliotheques: [L('pdf-lib', '1.17.1'), L('marked', '15.0.12'), L('qrcode-generator', '1.4.4')] },
     ];
+    // 'editeur' : l'éditeur a sa copie figée dans le dépôt de l'app (carte d'importation, contrats 2.6 point 14) : une fonction de plus, sans bibliothèque de GFS, dont le choix ne prend effet qu'au démarrage de l'app.
+    if (variant === 'editeur') manifest.natives.unshift({ id: 'editeur', nom: { fr: 'Éditeur (TipTap)', en: 'Editor (TipTap)' }, copieDansApp: true, poids: 1172757 });
     const catalogue = readCatalogue(await (await fetch('/bibliotheques/catalogue.json')).json());
     const loaded = [{ app: { id: manifest.id }, manifest, ok: true, errors: [] }];
     let apps = { [manifest.id]: { extensions: [], modes: {} } };

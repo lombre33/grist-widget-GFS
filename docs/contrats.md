@@ -217,7 +217,10 @@ L'app (sous-cadre sans allow-same-origin)
    le niveau de l'**app** (3.1), et `language` : la langue que la personne a choisie dans GFS (`fr` ou `en`, 5.2 point 6),
    ou à défaut celle de Grist, telle qu'elle est quand le cadre est créé. Publipostage+ lit `readonly` dans son adresse
    (`isReadOnlyAddress`). S'y ajoute `gfs=<n>` (le numéro de contrat de GFS) : c'est ainsi qu'une app sait, tout de suite,
-   qu'elle est hébergée.
+   qu'elle est hébergée. **Et, seulement quand la personne l'a choisi, `copie=<fonction>[,<fonction>]`** (11/11) : les fonctions de
+   bibliothèques natives dont la copie figée est rangée dans l'app (l'éditeur : 2.6, point 14). Une page qui doit choisir sa carte
+   d'importation avant que GFS ait répondu ne peut pas attendre le contexte : le choix est dans l'adresse. Sans choix, le paramètre
+   n'y est pas (l'adresse d'avant) ; le kit le lit par `GfsLink.copies()`.
 
 ### 1.4 Un sous-cadre à la fois
 
@@ -263,7 +266,7 @@ L'app (sous-cadre sans allow-same-origin)
 | `permissions` | objet | oui | Accès, tables, tables internes, capacités (section 3). |
 | `extensions` | liste | non | Les extensions de l'app (2.6). |
 | `dependances` | chaîne | non | Chemin de la liste des bibliothèques **natives** de l'app (`package.json`) : celles d'une extension n'y figurent pas (2.6, point 4). |
-| `natives` | liste | non | Les bibliothèques natives de l'app **rangées par fonction**, pour le choix « CDN ou copie figée » : `[ { "id", "nom": { "fr", "en" }, "bibliotheques": [ { "id", "version" } ] } ]` (2.6, point 14 ; 5.2, point 12). Une bibliothèque n'est que dans une fonction, sa version est exacte. L'app le déclare quand elle lit le choix ; sans `natives`, rien n'est proposé et l'app reste au CDN. |
+| `natives` | liste | non | Les bibliothèques natives de l'app **rangées par fonction**, pour le choix « CDN ou copie figée » : `[ { "id", "nom": { "fr", "en" }, "bibliotheques": [ { "id", "version" } ] } ]` (2.6, point 14 ; 5.2, point 12). Une bibliothèque n'est que dans une fonction, sa version est exacte. L'app le déclare quand elle lit le choix ; sans `natives`, rien n'est proposé et l'app reste au CDN. Une fonction dont la copie figée est **dans le dépôt de l'app** (l'éditeur) s'écrit `{ "id", "nom", "copieDansApp": true, "poids": <octets> }`, sans `bibliotheques`. |
 | `actions` | objet | non | Ce que l'app accepte de la part des autres (2.7). |
 | `ouverture` | objet | non | Ce que l'app sait faire d'une ouverture que GFS lui passe : `{ "fichier": true, "nouveau": true, "importer": true, "lire": true }` (5.2, point 3 ; 5.4, points 1 et 8). Un genre absent vaut faux : GFS ouvre alors l'app sur son modèle habituel et le dit, et grise « Importer » ou « Lire ». |
 | `permanente` | booléen | non | `true` : l'app ne se retire pas de la fenêtre « Apps et extensions » (Publipostage+). |
@@ -469,8 +472,12 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     `pdfmake-polices`, `qrcode-generator`), 5,0 Mo de plus dans `vendor/`. **Deux licences que l'outil ne lisait pas** : JSZip livre
     `LICENSE.markdown` (le nom est maintenant reconnu) ; `qrcode-generator` ne livre aucun fichier de licence, l'avis MIT est l'en-tête de
     `qrcode.js` : la liste le dit (`licenceDansLeFichier: true`), l'outil vérifie que l'en-tête nomme la licence que le paquet déclare et le
-    dit dans `LICENCES.txt`. L'éditeur (TipTap, ProseMirror) n'est pas dans ce lot : sa copie est une carte d'importation, pas un fichier
-    (étude, §5). [M]
+    dit dans `LICENCES.txt`. **L'éditeur (TipTap, ProseMirror) est le seul morceau dont la copie est dans le dépôt de l'app** (choix du porteur,
+    11/11 : « dans le dépôt de Publipostage+ ») : sa « copie » n'est pas un fichier mais une carte d'importation, que la page pose au démarrage
+    (Firefox n'en prend qu'une : faits vérifiés 88), et la copie de l'app ne nomme jamais GFS dans sa politique : ses adresses sont relatives,
+    `'self'` suffit. GFS ne la sert pas : la fonction `editeur` du manifeste est `copieDansApp` (2.2), la fenêtre n'y vérifie rien (jamais
+    grisée), le choix se retient comme les autres (`natif:editeur`) et part **dans l'adresse du cadre** (`copie=editeur`, 1.3 point 3), à
+    son démarrage. **Il prend effet au prochain démarrage de l'app** : GFS ne recharge rien en cours de route (rien à perdre), la ligne le dit. [M]
 
 ### 2.7 Les actions acceptées
 
@@ -1511,7 +1518,8 @@ sans événement : seule une règle posée recharge la page (11.5, point 3), et 
     manifeste déclare ; sinon la fonction reste au CDN et la fenêtre la grise avec la raison (7.3, point 3). Ce que la personne choisit se retient
     dans `modes` de la table de GFS, sous la clé `natif:<fonction>` (7.4, point 1). Côté app, le kit rend `GfsLink.native(id)` (0.18.0) et appelle
     `onExtensions` quand seule une copie figée change. **L'éditeur (TipTap, ProseMirror) n'est pas dans ce champ** : sa copie est une carte
-    d'importation, pas un fichier (étude, §5) ; elle attend le choix du porteur sur l'endroit où la ranger.
+    d'importation rangée dans l'app, que sa page pose avant la réponse de GFS ; le choix lui arrive dans l'adresse du cadre
+    (`copie=editeur`, 1.3 point 3 ; `GfsLink.copies()`, kit 0.19.0), pas dans le contexte ni par événement, et prend effet au prochain démarrage.
 
 ### 5.3 Le stockage du navigateur
 
@@ -2495,7 +2503,7 @@ d'app mis à la corbeille (6.2), jamais avant.
    qui en a, et, pour une app dont le manifeste déclare `natives` (2.2), **fonction par fonction** (Export PDF, Export Word…), avec un raccourci
    « toutes » qui dit « mélange » quand les fonctions diffèrent. La ligne s'ouvre repliée (le choix de toutes), le détail se déplie à la souris
    et reste déplié après un choix ; la copie figée d'une fonction à qui il manque une bibliothèque du catalogue (ou sa version) est **grisée avec
-   sa raison**, jamais cachée (2.6, point 14) ; en lecture seule, tout est grisé. Les mots sont les mêmes partout : « CDN » et « Copie figée ».
+   sa raison**, jamais cachée (2.6, point 14) ; en lecture seule, tout est grisé. Les mots sont les mêmes partout : « CDN » et « Copie figée ». La ligne de l'éditeur (copie dans l'app, 2.6 point 14) n'est jamais grisée pour une copie manquante et dit que son choix prend effet au prochain démarrage de l'app.
 4. [T] **GFS écrit les réglages des apps dans la vue, sans « Enregistrer »** (décision du porteur, 03/11, « GFS l'écrit dans la
    vue » ; construit le même jour, `js/view-options.js`). Quand une app écrit un réglage de sa tranche (`setOption`, `setOptions`,
    `clearOptions`, 7.2), le courtier :

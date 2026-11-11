@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-Gg7c8wEhREv9SUwMTQV2UPVpNGYcJLIzE+9STyyUJJQ='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-komBSL5D4kkMYa6IOGeSnzGnpitTRLAPoeJRiKqbUA4='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=7a7a55cf8b">
 <link rel="stylesheet" href="css/explorer.css?v=dbe4c9050a">
 <link rel="stylesheet" href="css/modules.css?v=e9c281ff14">
@@ -36,7 +36,7 @@
     "./js/app-files.js": "./js/app-files.js?v=29441685a2",
     "./js/app-status.js": "./js/app-status.js?v=803f91c70f",
     "./js/app-storage.js": "./js/app-storage.js?v=634cc35a22",
-    "./js/apps-state.js": "./js/apps-state.js?v=3f36c10e2e",
+    "./js/apps-state.js": "./js/apps-state.js?v=c2b4578390",
     "./js/arrival-table.js": "./js/arrival-table.js?v=aacd272c57",
     "./js/arrival.js": "./js/arrival.js?v=6a226c188a",
     "./js/ask-window.js": "./js/ask-window.js?v=a82ba34362",
@@ -45,7 +45,7 @@
     "./js/catalogue.js": "./js/catalogue.js?v=2e588e5749",
     "./js/conflict-window.js": "./js/conflict-window.js?v=6707e6cc39",
     "./js/context.js": "./js/context.js?v=9f530b9828",
-    "./js/controller.js": "./js/controller.js?v=d3cc31a7fa",
+    "./js/controller.js": "./js/controller.js?v=225d3be520",
     "./js/copying.js": "./js/copying.js?v=8da0986c98",
     "./js/deposit.js": "./js/deposit.js?v=d0c15e5868",
     "./js/direct-shares.js": "./js/direct-shares.js?v=7bf5b6a40e",
@@ -74,14 +74,14 @@
     "./js/filing-window.js": "./js/filing-window.js?v=933db2d364",
     "./js/filing.js": "./js/filing.js?v=a949e1c034",
     "./js/filter.js": "./js/filter.js?v=01e8ad7504",
-    "./js/frames.js": "./js/frames.js?v=554a438e75",
+    "./js/frames.js": "./js/frames.js?v=4510104d19",
     "./js/gfs-copy.js": "./js/gfs-copy.js?v=aebb603561",
     "./js/gfs-files.js": "./js/gfs-files.js?v=136137d0cb",
     "./js/gfs-trash.js": "./js/gfs-trash.js?v=4e5c1ece7c",
     "./js/i18n-explorer.js": "./js/i18n-explorer.js?v=7184a3040f",
     "./js/i18n-folders.js": "./js/i18n-folders.js?v=2dd37b93c0",
     "./js/i18n-manage.js": "./js/i18n-manage.js?v=86f9429b9a",
-    "./js/i18n-natives.js": "./js/i18n-natives.js?v=ac9eef4a00",
+    "./js/i18n-natives.js": "./js/i18n-natives.js?v=fca58bb298",
     "./js/i18n-notifications.js": "./js/i18n-notifications.js?v=48f040ccff",
     "./js/i18n-received.js": "./js/i18n-received.js?v=f9fb90083b",
     "./js/i18n-rights.js": "./js/i18n-rights.js?v=4d3985edb0",
@@ -102,12 +102,12 @@
     "./js/manage-control.js": "./js/manage-control.js?v=6108919318",
     "./js/manage-other-tab.js": "./js/manage-other-tab.js?v=52426b8e03",
     "./js/manage-window.js": "./js/manage-window.js?v=cf23066ecc",
-    "./js/manifest.js": "./js/manifest.js?v=6384371c69",
+    "./js/manifest.js": "./js/manifest.js?v=3fb7890b7e",
     "./js/menu.js": "./js/menu.js?v=5530eaeb69",
     "./js/modal.js": "./js/modal.js?v=35fe3f2530",
     "./js/modules-model.js": "./js/modules-model.js?v=65237748cb",
-    "./js/modules-window.js": "./js/modules-window.js?v=0b07732489",
-    "./js/natives.js": "./js/natives.js?v=7b8d5229ff",
+    "./js/modules-window.js": "./js/modules-window.js?v=43607af28d",
+    "./js/natives.js": "./js/natives.js?v=3335210a6d",
     "./js/notifications.js": "./js/notifications.js?v=cb0675dc97",
     "./js/oklch.js": "./js/oklch.js?v=4ecc7f440b",
     "./js/opened-files.js": "./js/opened-files.js?v=aea67bd0ab",
@@ -133,7 +133,7 @@
     "./js/rights.js": "./js/rights.js?v=13cc4f2471",
     "./js/rpc.js": "./js/rpc.js?v=4f9d571cf1",
     "./js/search.js": "./js/search.js?v=0921c92eb3",
-    "./js/session.js": "./js/session.js?v=9c643ec4af",
+    "./js/session.js": "./js/session.js?v=27f46ce7bb",
     "./js/settings-menu.js": "./js/settings-menu.js?v=f9ce66c1f3",
     "./js/settings.js": "./js/settings.js?v=08fb6c6ab7",
     "./js/share-control.js": "./js/share-control.js?v=bb729ce49e",
@@ -183,8 +183,8 @@
     "./kit/js/color-strings.js": "./kit/js/color-strings.js?v=1bae4317a5",
     "./kit/js/dialogs.js": "./kit/js/dialogs.js?v=e2e71809c1",
     "./kit/js/dom.js": "./kit/js/dom.js?v=bb61d5ebe7",
-    "./kit/js/gfs-link.js": "./kit/js/gfs-link.js?v=4817d99a79",
-    "./kit/js/host.js": "./kit/js/host.js?v=aca4fbd09b",
+    "./kit/js/gfs-link.js": "./kit/js/gfs-link.js?v=f90c691780",
+    "./kit/js/host.js": "./kit/js/host.js?v=daec6a3a1d",
     "./kit/js/i18n.js": "./kit/js/i18n.js?v=34aa7f2b67",
     "./kit/js/layers.js": "./kit/js/layers.js?v=0a7ababe40",
     "./kit/js/modal-base.js": "./kit/js/modal-base.js?v=6153d38e20",
@@ -249,16 +249,16 @@
      Le navigateur les demande tous d'un coup au lieu d'un niveau d'imports à la fois (9 niveaux, donc 9 allers-retours de réseau). Après la carte d'importation, jamais avant : une page qui commence à
      charger un module avant elle l'ignore et demande les modules sans leur ?v=. -->
 <!-- préchargement -->
-<link rel="modulepreload" href="./js/controller.js?v=d3cc31a7fa">
+<link rel="modulepreload" href="./js/controller.js?v=225d3be520">
 <link rel="modulepreload" href="./js/catalogue.js?v=2e588e5749">
-<link rel="modulepreload" href="./js/manifest.js?v=6384371c69">
+<link rel="modulepreload" href="./js/manifest.js?v=3fb7890b7e">
 <link rel="modulepreload" href="./js/state.js?v=ac1616eaf2">
 <link rel="modulepreload" href="./js/broker.js?v=6973eaf047">
 <link rel="modulepreload" href="./js/view-options.js?v=1a3856ae5e">
 <link rel="modulepreload" href="./js/view-link.js?v=c1f7e951d4">
-<link rel="modulepreload" href="./js/session.js?v=9c643ec4af">
+<link rel="modulepreload" href="./js/session.js?v=27f46ce7bb">
 <link rel="modulepreload" href="./js/app-status.js?v=803f91c70f">
-<link rel="modulepreload" href="./js/frames.js?v=554a438e75">
+<link rel="modulepreload" href="./js/frames.js?v=4510104d19">
 <link rel="modulepreload" href="./js/i18n.js?v=cb139bd19e">
 <link rel="modulepreload" href="./js/language.js?v=b287c81a20">
 <link rel="modulepreload" href="./js/theme.js?v=6632aa171f">
@@ -279,7 +279,7 @@
 <link rel="modulepreload" href="./js/filing-window.js?v=933db2d364">
 <link rel="modulepreload" href="./js/libraries.js?v=f8e30c6112">
 <link rel="modulepreload" href="./js/extensions.js?v=a6b2033702">
-<link rel="modulepreload" href="./js/apps-state.js?v=3f36c10e2e">
+<link rel="modulepreload" href="./js/apps-state.js?v=c2b4578390">
 <link rel="modulepreload" href="./js/arrival.js?v=6a226c188a">
 <link rel="modulepreload" href="./js/arrival-table.js?v=aacd272c57">
 <link rel="modulepreload" href="./js/rangement.js?v=86d9434d21">
@@ -302,7 +302,7 @@
 <link rel="modulepreload" href="./js/received-control.js?v=31c1d0bce2">
 <link rel="modulepreload" href="./js/received-files.js?v=2e1ac0ad94">
 <link rel="modulepreload" href="./js/publication-window.js?v=1fc3429923">
-<link rel="modulepreload" href="./js/modules-window.js?v=0b07732489">
+<link rel="modulepreload" href="./js/modules-window.js?v=43607af28d">
 <link rel="modulepreload" href="./js/app-context.js?v=8fbb478dc6">
 <link rel="modulepreload" href="./js/filter.js?v=01e8ad7504">
 <link rel="modulepreload" href="./js/player-sites.js?v=2c89846218">
@@ -315,7 +315,7 @@
 <link rel="modulepreload" href="./js/i18n-trash.js?v=ba5f9e143a">
 <link rel="modulepreload" href="./js/i18n-folders.js?v=2dd37b93c0">
 <link rel="modulepreload" href="./js/i18n-weight.js?v=70f193afa2">
-<link rel="modulepreload" href="./js/i18n-natives.js?v=ac9eef4a00">
+<link rel="modulepreload" href="./js/i18n-natives.js?v=fca58bb298">
 <link rel="modulepreload" href="./js/i18n-rights.js?v=4d3985edb0">
 <link rel="modulepreload" href="./js/i18n-share.js?v=9aa12ad506">
 <link rel="modulepreload" href="./js/i18n-share-other.js?v=0a64b6c538">
@@ -357,7 +357,7 @@
 <link rel="modulepreload" href="./js/rights.js?v=13cc4f2471">
 <link rel="modulepreload" href="./js/weight-reader.js?v=d2d2a3ce41">
 <link rel="modulepreload" href="./js/settings.js?v=08fb6c6ab7">
-<link rel="modulepreload" href="./js/natives.js?v=7b8d5229ff">
+<link rel="modulepreload" href="./js/natives.js?v=3335210a6d">
 <link rel="modulepreload" href="./js/modules-model.js?v=65237748cb">
 <link rel="modulepreload" href="./js/own-table.js?v=71b95d4e4e">
 <link rel="modulepreload" href="./js/rights-reader.js?v=0640e8f3fc">

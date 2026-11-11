@@ -18,17 +18,25 @@ const missingOf = (group, catalogue) => group.bibliotheques.filter(({ id, versio
 // GFS a TOUTES les bibliothèques de la fonction (jamais servie à moitié) ; le choix retenu n'est pas modifié pour autant (rien ne s'écrit sans un geste de la personne).
 export function nativeRows(manifest, setting, catalogue) {
   return nativesOf(manifest).map(group => {
+    if (group.copieDansApp === true) return { group, libraries: [], poids: group.poids, missing: [], mode: modeOfGroup(setting, group.id), inApp: true }; // la copie est dans l'app : GFS n'a rien à y vérifier
     const libraries = group.bibliotheques.map(({ id, version }) => ({ id, version, poids: (lookup(catalogue, id, version) || {}).poids || 0 }));
     const missing = missingOf(group, catalogue);
     return { group, libraries, poids: libraries.reduce((total, lib) => total + lib.poids, 0), missing, mode: missing.length ? DEFAULT_MODE : modeOfGroup(setting, group.id) };
   });
 }
 
+// Les fonctions dont la personne a choisi la copie figée **rangée dans l'app** (l'éditeur) : GFS ne les sert pas, il met leurs id dans l'adresse du cadre (`copie=editeur`, contrats 1.3) parce que la page de l'app
+// doit connaître le choix avant la réponse de GFS ; il prend effet au prochain démarrage de l'app. Dans l'ordre du manifeste.
+export function copiesInApp(manifest, setting) {
+  if (!setting) return [];
+  return nativesOf(manifest).filter(group => group.copieDansApp === true && modeOfGroup(setting, group.id) !== DEFAULT_MODE).map(group => group.id);
+}
+
 // Ce que l'app reçoit (5.2) : seules les bibliothèques des fonctions en copie figée, `{ "<id>": { version, src, integrite, forme } }` ; l'app charge les autres comme toujours,
 // par ses propres adresses. `version` est celle de la copie : l'app ne la prend que si c'est celle que son code attend (sinon, son CDN). `base` : l'adresse de GFS, d'où part le chemin de la copie.
 export function nativesState(manifest, setting, catalogue, base) {
   if (!setting) return {};
-  const wanted = nativeRows(manifest, setting, catalogue).filter(row => row.mode !== DEFAULT_MODE).flatMap(row => row.group.bibliotheques);
+  const wanted = nativeRows(manifest, setting, catalogue).filter(row => row.mode !== DEFAULT_MODE && !row.inApp).flatMap(row => row.group.bibliotheques);
   const { libraries } = resolveLibraries(catalogue, wanted, () => 'vendorise', base);
   return Object.fromEntries(Object.entries(libraries).map(([id, { version, src, integrite, forme }]) => [id, { version, src, integrite, forme }]));
 }

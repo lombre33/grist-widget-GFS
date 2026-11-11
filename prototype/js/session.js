@@ -70,7 +70,7 @@ export class AppSession {
       onMessage: data => this.#onAppMessage(data),
       onReady: () => this.#onReady(),
     });
-    const where = { entry: ctx.entry, manifest: this.manifest, access: this.access, readonly: ctx.readonly, preferences: ctx.preferences, base: ctx.base };
+    const where = { entry: ctx.entry, manifest: this.manifest, access: this.access, readonly: ctx.readonly, preferences: ctx.preferences, base: ctx.base, copies: ctx.copies };
     const live = this.source === 'live';
     const url = frameUrl({ ...where, live });
     if (live) this.#pinnedUrl = frameUrl({ ...where, live: false });

@@ -595,7 +595,7 @@ export class GfsController {
     const { state, port } = this.workControl.sourceFor(app.manifest);
     return {
       entry: app.app, manifest: app.manifest, catalogue: this.manifests(), state, port, router: this.router,
-      container: this.$('frames'), readonly: this.readonly, preferences: this.appPreferences(), base: this.doc.baseURI, live: this.live, lang: this.lang, onStatus: (kind, current) => this.#onStatus(kind, current),
+      container: this.$('frames'), readonly: this.readonly, preferences: this.appPreferences(), copies: this.registry.copiesFor(app.app.id), base: this.doc.baseURI, live: this.live, lang: this.lang, onStatus: (kind, current) => this.#onStatus(kind, current),
       envelopeHandlers: session => this.#envelopeHandlers(session), authorize: (manifest, opens) => this.#askPublication(manifest, opens), viewOptions: this.viewOptions,
     };
   }

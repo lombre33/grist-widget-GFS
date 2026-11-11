@@ -19,7 +19,7 @@ function state() {
     legend: natives.querySelector('legend').textContent.replace(/\s+/g, ' ').trim(),
     open: Boolean(details && details.open),
     radios: [...app.querySelectorAll('input[type=radio]')].map(input => ({ key: input.dataset.fk, checked: input.checked, disabled: input.disabled })),
-    rows: [...app.querySelectorAll('.mr-lib')].map(row => ({ name: row.querySelector('.mr-lib-name').textContent, overflow: row.scrollWidth - row.clientWidth, box: box(row), warn: (row.querySelector('.mr-lib-warn') || {}).textContent || null })),
+    rows: [...app.querySelectorAll('.mr-lib')].map(row => ({ name: row.querySelector('.mr-lib-name').textContent, overflow: row.scrollWidth - row.clientWidth, box: box(row), warn: (row.querySelector('.mr-warn') || {}).textContent || null, note: (row.querySelector('.mr-note') || {}).textContent || null })),
     bodyOverflow: body.scrollWidth - body.clientWidth,
     window: box(modal),
     summary: details ? box(details.querySelector('summary')) : null,
@@ -103,6 +103,24 @@ export async function nativesProblems(page, language, tag) {
   await click(ROW('pdf', 'vendorise'));
   s = await page.run(state);
   if (s.events.length !== before) note('copie manquante', 'un clic sur une copie grisée a quand même envoyé un choix');
+  await close();
+
+  s = await open('editeur');
+  await click(SUMMARY);
+  s = await page.run(state);
+  const editor = s.rows.find(row => /^(Éditeur|Editor)/.test(row.name));
+  if (s.rows.length !== 5 || !editor || s.rows[0] !== editor) note('éditeur', `l'éditeur devrait être la première des cinq fonctions (${s.rows.length} lignes)`);
+  else {
+    if (editor.note !== t('mod.native.restart') || editor.warn) note('éditeur', `la ligne devrait dire que le choix prend effet au démarrage de l'app (note : ${editor.note}, grisé : ${editor.warn})`);
+    if (s.rows.some(row => row !== editor && row.note)) note('éditeur', 'seule la ligne de l\'éditeur dit que le choix attend le démarrage de l\'app');
+    if (editor.overflow > 1 || s.bodyOverflow > 1 || editor.box.left < s.window.left || editor.box.right > s.window.right) note('éditeur', 'la ligne de l\'éditeur déborde de la fenêtre');
+  }
+  const editorRadio = s.radios.find(item => item.key === 'native:publipostage/editeur/vendorise') || {};
+  if (editorRadio.disabled !== false) note('éditeur', 'la copie figée de l\'éditeur ne doit jamais être grisée : GFS n\'a rien à y vérifier');
+  await click(ROW('editeur', 'vendorise'));
+  s = await page.run(state);
+  if (JSON.stringify(s.events) !== JSON.stringify([['publipostage', 'editeur', 'vendorise']])) note('éditeur', `la souris sur « copie figée » de l'éditeur a envoyé ${JSON.stringify(s.events)}`);
+  if (!checked(s, 'native:publipostage/editeur/vendorise') || !s.legend.includes(t('mod.native.mixed'))) note('éditeur', 'la ligne de l\'éditeur ne montre pas la copie figée choisie, ou la légende ne dit pas « mélange »');
   await close();
 
   s = await open('lecture');

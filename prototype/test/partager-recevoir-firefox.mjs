@@ -5,51 +5,15 @@
 // n'écrit rien (Échap) ; une réception déjà là dit qu'elle reprend ; le lien refusé laisse la fenêtre où elle est ; la réponse et son code de contrôle s'affichent ; fermer avant la réponse défait ce qui a été créé, après elle non.
 import { createI18n } from '../js/i18n.js';
 import { Run } from './corbeille-firefox.mjs';
+import { LONG_DOC, windowMeasure, windowTools } from './fenetre-firefox.mjs';
 
-const LONG_DOC = 'Essai de réception du service de la comptabilité fournisseurs de la région Nord-Est';
-const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-
-// Ce que la page montre de la fenêtre.
-function state() {
-  const modal = document.querySelector('.mod.so');
-  const text = node => (node ? node.textContent.replace(/\s+/g, ' ').trim() : null);
-  const out = { modal: null, acts: window.__receiveActs || [] };
-  if (!modal) return out;
-  const box = modal.getBoundingClientRect();
-  const head = modal.querySelector('.mod-head').getBoundingClientRect();
-  const foot = modal.querySelector('.mod-foot').getBoundingClientRect();
-  const active = document.activeElement;
-  const outside = node => { const at = node.getBoundingClientRect(); return at.width > 0 && (at.right > box.right + 1 || at.left < box.left - 1); };
-  const field = modal.querySelector('textarea');
-  out.modal = {
-    title: text(modal.querySelector('.mod-head')), body: text(modal.querySelector('.rt-body')), note: text(modal.querySelector('.mod-note')), focus: active && active.dataset ? active.dataset.fk || null : null, inside: modal.contains(active),
-    inPage: box.left >= 0 && box.top >= 0 && box.right <= window.innerWidth + 1 && box.bottom <= window.innerHeight + 1,
-    sticky: head.bottom <= foot.top + 1 && foot.bottom <= box.bottom + 1 && head.top >= box.top - 1,
-    outside: [...modal.querySelectorAll('.rt-body *, .mod-foot *, .mod-head *')].filter(outside).map(node => node.className || node.tagName).slice(0, 5),
-    keys: [...modal.querySelectorAll('[data-fk]')].map(node => node.dataset.fk), greyed: [...modal.querySelectorAll('[aria-disabled="true"]')].map(node => node.dataset.fk),
-    field: field ? field.value : null, control: text(modal.querySelector('[data-fk="sr-control"]')),
-  };
-  return out;
-}
-
-const centerOf = selector => { const node = document.querySelector(selector); if (!node) return null; node.scrollIntoView({ block: 'nearest' }); const box = node.getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; };
+// Ce que la page montre de la fenêtre : les mesures communes (test/fenetre-firefox.mjs), le champ du code collé et le code de contrôle, les actes que le parcours a notés.
+const measure = page => page.run(windowMeasure, '.mod.so', '.rt-body', { field: ['textarea', 'value'], control: ['[data-fk="sr-control"]', 'text'] }, { acts: ['__receiveActs', []] });
 
 function toolsFor(page, tag, found) {
   const run = new Run(page, tag, found, 'recevoir d\'un autre document');
-  const snap = () => page.run(state);
-  const expect = async (kind, what, test) => {
-    let now = await snap();
-    for (let i = 0; i < 40 && !test(now); i += 1) { await delay(75); now = await snap(); }
-    if (!test(now)) run.note(kind, `${what} (état : ${JSON.stringify({ ...now, modal: now.modal && { ...now.modal, body: String(now.modal.body).slice(0, 90) } }).slice(0, 700)})`);
-    return now;
-  };
-  const press = async (kind, key) => { const at = await page.run(centerOf, `[data-fk="${key}"]`); if (!at) { run.note(kind, `« ${key} » devait être dans la fenêtre`); return false; } await page.click(...at); return true; };
-  const fits = (kind, now, what) => {
-    if (!now.modal) return;
-    if (!now.modal.inPage) run.note(kind, `${what} : la fenêtre devait tenir dans la page`);
-    if (!now.modal.sticky) run.note(kind, `${what} : le titre et les boutons devaient rester en place`);
-    if (now.modal.outside.length) run.note(kind, `${what} : rien ne devait sortir de la fenêtre (sort : ${now.modal.outside.join(', ')})`);
-  };
+  const snap = () => measure(page);
+  const { expect, press, fits } = windowTools(page, run, snap);
   const open = async (kind, flow) => {
     await run.reset();
     await page.run(name => { window.__receive(name); }, flow);

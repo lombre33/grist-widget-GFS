@@ -1,5 +1,7 @@
 // Un menu déroulant : un seul ouvert à la fois, au clavier comme à la souris (flèches, Entrée, Échap), le dernier ouvert au-dessus.
 // Un article « grisé » reste dans le menu et reste cliquable : son `run` dit pourquoi il ne fait rien (« grisé, jamais masqué »).
+// Une liste de fichiers (la barre, js/opened-bar.js) y ajoute : un titre (`{ heading }`), l'article que l'app montre (`current` : le mot que lit un lecteur d'écran), et pour chaque article une action
+// de retrait au bout de la ligne (`drop : { label, run }` : la croix, Suppr au clavier ; → y va, ← revient à l'article).
 // Un article qui porte `submenu` (une liste d'articles, et `'-'` pour un séparateur) ouvre un sous-menu à côté de lui : par un clic, Entrée ou la flèche droite ; Échap ou la flèche gauche le referme.
 
 import { h } from './dom.js';
@@ -28,8 +30,26 @@ function itemNode(item, close, open) {
     close();
     if (item.run) item.run();
   });
-  return node;
+  if (item.current) markCurrent(node, item.current);
+  return item.drop ? dropRow(node, item.drop, close) : node;
 }
+
+// L'article que l'app montre : en gras avec un trait (css/explorer.css), et dit par un mot à un lecteur d'écran.
+function markCurrent(node, word) {
+  node.classList.add('is-current');
+  node.setAttribute('aria-current', 'true');
+  node.append(h('span', { class: 'sr-only' }, `, ${word}`));
+}
+
+// La ligne d'un article et de sa croix de retrait (`drop : { label, run }`).
+function dropRow(node, drop, close) {
+  const button = h('button', { type: 'button', class: 'menu-item menu-drop', role: 'menuitem', title: drop.label, 'aria-label': drop.label }, icon('x'));
+  button.addEventListener('click', () => { close(); drop.run(); });
+  return h('div', { class: 'menu-row' }, node, button);
+}
+
+// Un article du menu : un séparateur, un titre, ou un article.
+const entryNode = (entry, close, open) => (entry === '-' ? h('hr') : entry.heading ? h('div', { class: 'menu-title', 'aria-hidden': 'true' }, entry.heading) : itemNode(entry, close, open));
 
 // Le côté d'un menu posé à côté de son bouton : celui qu'on demande ; avec `flip` (un sous-menu), l'autre quand le menu n'y tient pas ; quand aucun côté ne suffit, le plus large, où le menu
 // se rétrécit (ses mentions se coupent par « … », jamais son nom) : un sous-menu ne recouvre jamais l'article qui l'ouvre.
@@ -65,10 +85,11 @@ function place(menu, anchor, host, align, side, flip = false) {
   menu.style.top = `${fit(top, height, box.height)}px`;
 }
 
-// Les flèches, Début et Fin d'un menu ou d'un sous-menu : le focus passe d'article en article, en boucle.
+// Les flèches, Début et Fin d'un menu ou d'un sous-menu : le focus passe d'article en article, en boucle (la croix de retrait d'une ligne n'est pas un arrêt de plus : on y va par →).
 function navigate(menu, event) {
-  const buttons = [...menu.querySelectorAll('.menu-item')];
-  const at = buttons.indexOf(document.activeElement);
+  const buttons = [...menu.querySelectorAll('.menu-item:not(.menu-drop)')];
+  const active = document.activeElement;
+  const at = buttons.indexOf(active && active.classList.contains('menu-drop') ? active.previousElementSibling : active);
   const move = index => { event.preventDefault(); buttons[(index + buttons.length) % buttons.length].focus(); };
   if (event.key === 'ArrowDown') move(at + 1);
   else if (event.key === 'ArrowUp') move(at < 0 ? -1 : at - 1);
@@ -76,11 +97,24 @@ function navigate(menu, event) {
   else if (event.key === 'End') move(-1);
 }
 
-// items : { label, icon, family, check, greyed, hint, title, run, submenu } ou '-' (séparateur). Rend { close }.
-export function openMenu(anchor, items, { host, align = 'left', label = '', side = 'below' } = {}) {
+// Les touches d'une ligne qui a une croix de retrait : Suppr retire, → va à la croix, ← revient à l'article. Rend vrai quand la touche est prise.
+function rowKeys(event) {
+  const active = document.activeElement;
+  const row = active && active.closest('.menu-row');
+  if (!row) return false;
+  const [item, drop] = row.children;
+  const go = node => { event.preventDefault(); node.focus(); return true; };
+  if (event.key === 'Delete') { event.preventDefault(); drop.click(); return true; }
+  if (event.key === 'ArrowRight' && active === item) return go(drop);
+  return event.key === 'ArrowLeft' && active === drop && go(item);
+}
+
+// items : { label, icon, family, check, greyed, hint, title, current, drop, run, submenu }, '-' (séparateur) ou { heading } (un titre). `className` : une forme de plus pour le menu ; `start` : le rang de
+// l'article qui prend le clavier (sinon le coché, sinon le premier). Rend { close }.
+export function openMenu(anchor, items, { host, align = 'left', label = '', side = 'below', className = '', start = null } = {}) {
   closeMenu();
   const container = host || document.body;
-  const menu = h('div', { class: 'menu', role: 'menu', 'aria-label': label || null });
+  const menu = h('div', { class: className ? `menu ${className}` : 'menu', role: 'menu', 'aria-label': label || null });
   let closed = false;
   let sub = null; // le sous-menu ouvert : { element, parent }
   const closeSub = () => {
@@ -111,7 +145,7 @@ export function openMenu(anchor, items, { host, align = 'left', label = '', side
   const openSub = (parent, entries) => {
     closeSub();
     const element = h('div', { class: 'menu menu-sub', role: 'menu', 'aria-label': parent.querySelector('.menu-label').textContent });
-    for (const entry of entries) element.append(entry === '-' ? h('hr') : itemNode(entry, done));
+    for (const entry of entries) element.append(entryNode(entry, done));
     container.append(element);
     Layers.raise(element, '--z-menu');
     place(element, parent, container, 'left', 'right', true);
@@ -121,10 +155,11 @@ export function openMenu(anchor, items, { host, align = 'left', label = '', side
     const first = element.querySelector('.menu-item');
     if (first) first.focus({ preventScroll: true });
   };
-  for (const item of items) menu.append(item === '-' ? h('hr') : itemNode(item, done, openSub));
+  for (const item of items) menu.append(entryNode(item, done, openSub));
   menu.addEventListener('keydown', event => {
     if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); done(); }
     else if (event.key === 'Tab') close();
+    else if (rowKeys(event)) return;
     else if (event.key === 'ArrowRight' && document.activeElement.getAttribute('aria-haspopup')) { event.preventDefault(); document.activeElement.click(); }
     else navigate(menu, event);
   });
@@ -134,7 +169,8 @@ export function openMenu(anchor, items, { host, align = 'left', label = '', side
   place(menu, anchor, container, align, side);
   anchor.setAttribute('aria-expanded', 'true');
   document.addEventListener('pointerdown', outside, true);
-  const first = menu.querySelector('[aria-checked="true"]') || menu.querySelector('.menu-item');
+  const rows = menu.querySelectorAll('.menu-item:not(.menu-drop)');
+  const first = (start !== null && rows[Math.min(start, rows.length - 1)]) || menu.querySelector('[aria-checked="true"]') || menu.querySelector('.menu-item');
   if (first) first.focus({ preventScroll: true });
   current = { menu, close };
   return current;

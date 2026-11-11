@@ -11,15 +11,15 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-komBSL5D4kkMYa6IOGeSnzGnpitTRLAPoeJRiKqbUA4='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
-<link rel="stylesheet" href="css/gfs.css?v=7a7a55cf8b">
-<link rel="stylesheet" href="css/explorer.css?v=dbe4c9050a">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-2DG18xMfi/iLHcssyxluUvYikvBtZywACNSGDTyc+Ok='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<link rel="stylesheet" href="css/gfs.css?v=95756125d5">
+<link rel="stylesheet" href="css/explorer.css?v=24e7c180ff">
 <link rel="stylesheet" href="css/modules.css?v=e9c281ff14">
 <link rel="stylesheet" href="css/rights.css?v=339a5bf7f2">
 <link rel="stylesheet" href="css/share.css?v=e906a76a1f">
 <link rel="stylesheet" href="css/weight.css?v=2dbe02cd68">
 <link rel="stylesheet" href="kit/css/color-picker.css?v=c5a41d6681">
-<link rel="stylesheet" href="css/acces.css?v=4828d1e039">
+<link rel="stylesheet" href="css/acces.css?v=455f461af0">
 <!-- Le routeur d'abord : il doit être enregistré avant que le script d'API de Grist n'affecte window.onmessage (contrats 1.2). -->
 <script src="js/router.js?v=20d0f9a823"></script>
 <!-- La carte d'importation, écrite par outils/versions.mjs (ne pas la modifier à la main) : chaque module se charge à son adresse versionnée, si bien que le cache de Pages
@@ -45,12 +45,12 @@
     "./js/catalogue.js": "./js/catalogue.js?v=2e588e5749",
     "./js/conflict-window.js": "./js/conflict-window.js?v=6707e6cc39",
     "./js/context.js": "./js/context.js?v=9f530b9828",
-    "./js/controller.js": "./js/controller.js?v=225d3be520",
+    "./js/controller.js": "./js/controller.js?v=b0245ce93a",
     "./js/copying.js": "./js/copying.js?v=8da0986c98",
     "./js/deposit.js": "./js/deposit.js?v=d0c15e5868",
     "./js/direct-shares.js": "./js/direct-shares.js?v=7bf5b6a40e",
     "./js/dock-state.js": "./js/dock-state.js?v=8eec913fd1",
-    "./js/dock.js": "./js/dock.js?v=117ece603d",
+    "./js/dock.js": "./js/dock.js?v=f12b3d794d",
     "./js/dom.js": "./js/dom.js?v=408c643455",
     "./js/entries.js": "./js/entries.js?v=8f6a6f19ce",
     "./js/envelope.js": "./js/envelope.js?v=8ffb709fe9",
@@ -90,7 +90,7 @@
     "./js/i18n-sharing.js": "./js/i18n-sharing.js?v=c630fedb15",
     "./js/i18n-trash.js": "./js/i18n-trash.js?v=ba5f9e143a",
     "./js/i18n-weight.js": "./js/i18n-weight.js?v=70f193afa2",
-    "./js/i18n.js": "./js/i18n.js?v=cb139bd19e",
+    "./js/i18n.js": "./js/i18n.js?v=ccbc777fcb",
     "./js/icons.js": "./js/icons.js?v=8be01ead10",
     "./js/import-file.js": "./js/import-file.js?v=1f16ab4ac8",
     "./js/kept-files.js": "./js/kept-files.js?v=090e1cde9a",
@@ -103,14 +103,15 @@
     "./js/manage-other-tab.js": "./js/manage-other-tab.js?v=52426b8e03",
     "./js/manage-window.js": "./js/manage-window.js?v=cf23066ecc",
     "./js/manifest.js": "./js/manifest.js?v=3fb7890b7e",
-    "./js/menu.js": "./js/menu.js?v=5530eaeb69",
+    "./js/menu.js": "./js/menu.js?v=397054a24f",
     "./js/modal.js": "./js/modal.js?v=35fe3f2530",
     "./js/modules-model.js": "./js/modules-model.js?v=65237748cb",
     "./js/modules-window.js": "./js/modules-window.js?v=43607af28d",
     "./js/natives.js": "./js/natives.js?v=3335210a6d",
     "./js/notifications.js": "./js/notifications.js?v=cb0675dc97",
     "./js/oklch.js": "./js/oklch.js?v=4ecc7f440b",
-    "./js/opened-files.js": "./js/opened-files.js?v=aea67bd0ab",
+    "./js/opened-bar.js": "./js/opened-bar.js?v=3da8b4821f",
+    "./js/opened-files.js": "./js/opened-files.js?v=0f3dd1ab83",
     "./js/openings.js": "./js/openings.js?v=6554d82587",
     "./js/options-slice.js": "./js/options-slice.js?v=2d3825661c",
     "./js/own-table.js": "./js/own-table.js?v=71b95d4e4e",
@@ -183,8 +184,8 @@
     "./kit/js/color-strings.js": "./kit/js/color-strings.js?v=1bae4317a5",
     "./kit/js/dialogs.js": "./kit/js/dialogs.js?v=e2e71809c1",
     "./kit/js/dom.js": "./kit/js/dom.js?v=bb61d5ebe7",
-    "./kit/js/gfs-link.js": "./kit/js/gfs-link.js?v=f90c691780",
-    "./kit/js/host.js": "./kit/js/host.js?v=daec6a3a1d",
+    "./kit/js/gfs-link.js": "./kit/js/gfs-link.js?v=5a5f892dab",
+    "./kit/js/host.js": "./kit/js/host.js?v=aca4fbd09b",
     "./kit/js/i18n.js": "./kit/js/i18n.js?v=34aa7f2b67",
     "./kit/js/layers.js": "./kit/js/layers.js?v=0a7ababe40",
     "./kit/js/modal-base.js": "./kit/js/modal-base.js?v=6153d38e20",
@@ -249,7 +250,7 @@
      Le navigateur les demande tous d'un coup au lieu d'un niveau d'imports à la fois (9 niveaux, donc 9 allers-retours de réseau). Après la carte d'importation, jamais avant : une page qui commence à
      charger un module avant elle l'ignore et demande les modules sans leur ?v=. -->
 <!-- préchargement -->
-<link rel="modulepreload" href="./js/controller.js?v=225d3be520">
+<link rel="modulepreload" href="./js/controller.js?v=b0245ce93a">
 <link rel="modulepreload" href="./js/catalogue.js?v=2e588e5749">
 <link rel="modulepreload" href="./js/manifest.js?v=3fb7890b7e">
 <link rel="modulepreload" href="./js/state.js?v=ac1616eaf2">
@@ -259,14 +260,14 @@
 <link rel="modulepreload" href="./js/session.js?v=27f46ce7bb">
 <link rel="modulepreload" href="./js/app-status.js?v=803f91c70f">
 <link rel="modulepreload" href="./js/frames.js?v=4510104d19">
-<link rel="modulepreload" href="./js/i18n.js?v=cb139bd19e">
+<link rel="modulepreload" href="./js/i18n.js?v=ccbc777fcb">
 <link rel="modulepreload" href="./js/language.js?v=b287c81a20">
 <link rel="modulepreload" href="./js/theme.js?v=6632aa171f">
 <link rel="modulepreload" href="./js/theme-apply.js?v=a0a1612c97">
 <link rel="modulepreload" href="./js/theme-window.js?v=e98f2de3e7">
 <link rel="modulepreload" href="./js/app-storage.js?v=634cc35a22">
 <link rel="modulepreload" href="./js/icons.js?v=8be01ead10">
-<link rel="modulepreload" href="./js/dock.js?v=117ece603d">
+<link rel="modulepreload" href="./js/dock.js?v=f12b3d794d">
 <link rel="modulepreload" href="./js/settings-menu.js?v=f9ce66c1f3">
 <link rel="modulepreload" href="./js/about.js?v=63b8993ce8">
 <link rel="modulepreload" href="./js/work-control.js?v=7efc5aae9e">
@@ -298,7 +299,8 @@
 <link rel="modulepreload" href="./js/ask-window.js?v=a82ba34362">
 <link rel="modulepreload" href="./js/entries.js?v=8f6a6f19ce">
 <link rel="modulepreload" href="./js/openings.js?v=6554d82587">
-<link rel="modulepreload" href="./js/opened-files.js?v=aea67bd0ab">
+<link rel="modulepreload" href="./js/opened-files.js?v=0f3dd1ab83">
+<link rel="modulepreload" href="./js/opened-bar.js?v=3da8b4821f">
 <link rel="modulepreload" href="./js/received-control.js?v=31c1d0bce2">
 <link rel="modulepreload" href="./js/received-files.js?v=2e1ac0ad94">
 <link rel="modulepreload" href="./js/publication-window.js?v=1fc3429923">
@@ -332,7 +334,7 @@
 <link rel="modulepreload" href="./js/dom.js?v=408c643455">
 <link rel="modulepreload" href="./js/modal.js?v=35fe3f2530">
 <link rel="modulepreload" href="./js/theme-color.js?v=ba9150954a">
-<link rel="modulepreload" href="./js/menu.js?v=5530eaeb69">
+<link rel="modulepreload" href="./js/menu.js?v=397054a24f">
 <link rel="modulepreload" href="./js/dock-state.js?v=8eec913fd1">
 <link rel="modulepreload" href="./js/context.js?v=9f530b9828">
 <link rel="modulepreload" href="./js/work-window.js?v=ce9a4597fb">
@@ -400,10 +402,11 @@
 <body data-gfs="starting">
 <main class="stage" id="stage">
   <div class="frames" id="frames"></div>
-  <!-- La barre de GFS au-dessus d'une app : « Fichiers », « Apps » et la position de la barre, trois boutons à icône seule (js/dock.js) posés au bord que la personne choisit
+  <!-- La barre de GFS au-dessus d'une app : « Fichiers », « Fichiers ouverts », « Apps », la table de travail et la position de la barre, cinq boutons à icône seule (js/dock.js) posés au bord que la personne choisit
        (`data-edge`), par-dessus l'espace que l'app laisse libre ; l'app apprend ce qu'elle recouvre (contrats 5.2, point 7). -->
   <div class="floaters" id="floaters" role="group" data-edge="gauche" hidden>
     <button type="button" class="floater" id="floater-files"></button>
+    <button type="button" class="floater" id="floater-opened" aria-haspopup="menu"></button>
     <button type="button" class="floater" id="floater-apps" aria-haspopup="dialog"></button>
     <button type="button" class="floater" id="floater-work" aria-haspopup="dialog" aria-pressed="false"></button>
     <button type="button" class="floater" id="floater-place" aria-haspopup="menu"></button>

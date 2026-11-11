@@ -5,9 +5,9 @@ import { say, check } from './lab-common.mjs';
 export const EDGES = ['gauche', 'haut', 'droite', 'bas'];
 const EDGE_NAMES = { fr: { gauche: 'À gauche', haut: 'En haut', droite: 'À droite', bas: 'En bas' }, en: { gauche: 'Left', haut: 'Top', droite: 'Right', bas: 'Bottom' } };
 
-// La place de la barre d'après le contrat (5.2, point 7) : 34 × 124 px au bord gauche ou droit, 124 × 34 en haut ou en bas, à 4 px du bord et centrée sur lui. Une app que GFS
+// La place de la barre d'après le contrat (5.2, point 7) : 34 × 154 px au bord gauche ou droit, 154 × 34 en haut ou en bas, à 4 px du bord et centrée sur lui. Une app que GFS
 // ne référence pas encore se mesure seule dans la section, la barre posée là par le calcul ; dans GFS, chaque mesure vérifie que la vraie barre est à cette place.
-const BAR = { long: 124, court: 34, marge: 4 };
+const BAR = { long: 154, court: 34, marge: 4 };
 export function barRect(edge, { largeur, hauteur }) {
   const { long, court, marge } = BAR;
   if (edge === 'gauche' || edge === 'droite') return { x: edge === 'gauche' ? marge : largeur - marge - court, y: Math.round((hauteur - long) / 2), largeur: court, hauteur: long };

@@ -25,6 +25,7 @@ import { corbeilleProblems } from './corbeille-firefox.mjs';
 import { copierProblems } from './copier-firefox.mjs';
 import { fermerProblems } from './fermer-firefox.mjs';
 import { ouvertsProblems } from './ouverts-firefox.mjs';
+import { barrePages, barreProblems } from './barre-ouverts-firefox.mjs';
 import { droitsProblems } from './droits-firefox.mjs';
 import { partagerProblems } from './partager-firefox.mjs';
 import { partagerAutreProblems } from './partager-autre-firefox.mjs';
@@ -706,6 +707,38 @@ describe('le lecteur de vidéos sous Firefox', () => {
     for (const mode of MODES) problems.push(...await lecteurProblems(browser.page, site, mode, requested));
     assert.equal(problems.length, 0, report(problems));
   });
+});
+
+// Le 5e bouton de la barre, « Fichiers ouverts » (test/barre-ouverts-firefox.mjs ; décision du 11/11) : la vraie barre et le vrai menu sur des fichiers d'essai, à 700 × 400 et la liste à 400 px.
+describe('la barre des fichiers ouverts sous Firefox', () => {
+  let site;
+  let browser;
+
+  before(async () => {
+    if (!firefox) return;
+    site = await serveSite(ROOT, barrePages());
+    browser = await startFirefox(firefox);
+  });
+
+  after(async () => {
+    if (browser) await browser.close();
+    if (site) await site.close();
+  });
+
+  for (const language of LANGUAGES) {
+    test(`le bouton « Fichiers ouverts » et son menu en ${language === 'fr' ? 'français' : 'anglais'}, en clair et en sombre : barre, pastille, lignes, souris, clavier, quatre bords, nom long, accessibilité renforcée`, { skip: SKIP, timeout: 240000 }, async () => {
+      const { page } = browser;
+      const logged = page.logs.length;
+      const problems = [];
+      for (const mode of MODES) {
+        problems.push(...await barreProblems(page, site, language, mode, 700));
+        problems.push(...await barreProblems(page, site, language, mode, 400));
+      }
+      const written = page.logs.slice(logged).filter(entry => (entry.level === 'error' && entry.type === 'javascript') || /GFS/.test(entry.text || ''));
+      for (const entry of written) problems.push({ kind: 'barre des fichiers ouverts : la page écrit dans la console', text: `« ${String(entry.text).slice(0, 120)} »` });
+      assert.equal(problems.length, 0, report(problems));
+    });
+  }
 });
 
 // L'outil lui-même, sans Firefox : où il cherche le navigateur, et ce que son petit serveur sert (le dépôt, les pages fabriquées, rien d'autre).

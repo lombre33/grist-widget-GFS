@@ -125,7 +125,7 @@ const expectedZone = (rect, stage) => {
   return { x: x0, y: y0, largeur: x1 - x0, hauteur: y1 - y0 };
 };
 say('la barre renforcée :', { geometry, barre: context.barre });
-check('les quatre boutons de la barre de GFS mesurent 36 × 36 px au moins', geometry.buttons.length === 4 && geometry.buttons.every(([width, height]) => width >= MIN_TARGET - 0.05 && height >= MIN_TARGET - 0.05), geometry.buttons);
+check('les cinq boutons de la barre de GFS mesurent 36 × 36 px au moins', geometry.buttons.length === 5 && geometry.buttons.every(([width, height]) => width >= MIN_TARGET - 0.05 && height >= MIN_TARGET - 0.05), geometry.buttons);
 check('l\'app reçoit la zone qu\'elle doit laisser libre : la barre agrandie, mesurée, et 4 px autour', JSON.stringify(context.barre && context.barre.zone) === JSON.stringify(expectedZone(geometry.rect, geometry.stage)), { zone: context.barre && context.barre.zone, attendue: expectedZone(geometry.rect, geometry.stage) });
 await frame.locator('#floater-place').focus();
 await page.keyboard.press('Tab');

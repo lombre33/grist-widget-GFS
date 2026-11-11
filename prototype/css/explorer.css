@@ -249,6 +249,15 @@ button { cursor: pointer; }
 .menu-sub .menu-hint { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .menu .ic-sp { width: 14px; height: 14px; flex: none; }
 .menu hr { border: 0; border-top: 1px solid var(--border); margin: 4px 0; }
+/* La liste des fichiers ouverts de la barre (js/opened-bar.js) : un titre, des lignes dont la croix retire le fichier de la liste, le fichier que l'app montre en gras avec un trait (et le mot pour un lecteur d'écran). */
+.menu-opened { min-width: 240px; max-width: min(340px, calc(100% - 16px)); }
+.menu-title { padding: 4px 8px 2px; font-size: max(11px, var(--fs-min)); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+.menu-row { display: flex; align-items: center; gap: 2px; }
+.menu-row > .menu-item:first-child { flex: 1; min-width: 0; }
+.menu-item.menu-drop { flex: none; width: 28px; padding: 0; justify-content: center; }
+.menu-item.menu-drop .ic { width: 12px; height: 12px; }
+.menu-item.is-current { font-weight: 700; color: var(--accent-ink); background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+.menu-item.is-current .ic { color: var(--accent-ink); }
 
 /* ---------- liste réduite sous 600 px : la colonne du poids prend 66 px à la liste, et avec elle le nom d'un fichier n'a plus la place de son propre en-tête sous 565 px environ (mesuré). La liste perd alors
    « Modifié » et « Par » (l'auteur et la date restent dans la barre du bas quand on choisit un fichier), comme elle le faisait déjà sous 520 px ; le volet des dossiers reste jusqu'à 520 px (cahier 4.4). ---------- */

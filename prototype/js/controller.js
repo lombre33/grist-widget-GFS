@@ -50,6 +50,7 @@ import { ask } from './ask-window.js';
 import { Entries } from './entries.js';
 import { Openings } from './openings.js';
 import { OpenedFiles } from './opened-files.js';
+import { OpenedBar } from './opened-bar.js';
 import { ReceivedControl } from './received-control.js';
 import { loadReceived } from './received-files.js';
 import { publicationQuestion, sharedLinkQuestion } from './publication-window.js';
@@ -294,7 +295,7 @@ export class GfsController {
   // (événement `barre`, contrats 5.2, point 7).
   #buildDock() {
     this.dock = new Dock({
-      root: this.$('floaters'), stage: this.$('stage'), onFiles: () => this.showExplorer(), onApps: () => void this.openModules(), onWork: () => void this.workControl.open(),
+      root: this.$('floaters'), stage: this.$('stage'), onFiles: () => this.showExplorer(), onOpened: () => this.openedBar.show(), onApps: () => void this.openModules(), onWork: () => void this.workControl.open(),
       onNotKept: () => this.notice(this.t('lang.notKept')),
     });
     // La ligne de travail (contrats 4.5) : une autre table rouvre l'app active, qui la reçoit dès son démarrage.
@@ -302,6 +303,11 @@ export class GfsController {
       port: this.port, state: this.state, dock: this.dock, container: this.$('stage'), t: this.t, appName: this.appName, manifests: this.manifests,
       session: () => this.session, inertTargets: this.inertTargets, notice: text => this.notice(text),
       reopen: id => { this.#closeSession(); this.activate(id, this.opening); }, hidden: () => this.doc.hidden,
+    });
+    // Le 5e bouton : les fichiers ouverts (js/opened-bar.js), qu'on retrouve d'un clic sans repasser par l'explorateur.
+    this.openedBar = new OpenedBar({
+      opened: this.opened, files: () => this.explorer.files, session: () => this.session, dock: this.dock, t: this.t, appName: this.appName,
+      open: file => this.openings.openFile(file), showExplorer: () => this.showExplorer(), notice: text => this.notice(text),
     });
     this.dock.relabel(this.t);
     this.workControl.relabel();
@@ -383,6 +389,7 @@ export class GfsController {
     onLoaded: ({ files, trash, folders, received, spaces, problems, stats }) => {
       this.spaces = spaces;
       this.explorer.setFiles(files, trash, folders, received);
+      this.openedBar.sync(); // un fichier renommé, ou disparu, change le compte de la barre
       this.#fileStatus = { loading: false, restricted: false, problems: problems.map(item => ({ key: 'ex.readFailed', app: item.app, reason: item.reason })) };
       this.#showFileStatus();
       this.doc.body.dataset.explorerStats = JSON.stringify(stats);

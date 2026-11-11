@@ -82,3 +82,16 @@ test('« affiché » : le mot sur la ligne du fichier que l\'app affiche, dans �
   assert.deepEqual(marks({ shownKey: null }), []);
   assert.deepEqual(marks({ shownKey: 'publipostage:1', state: { view: 'recent', path: '', sel: null } }), [], 'ailleurs que dans « Ouverts », le mot ne s\'écrit pas');
 });
+
+test('onChange : chaque ajout, retrait ou « aucun fichier » prévient la barre ; se désabonner la fait taire', () => {
+  const opened = new OpenedFiles();
+  let calls = 0;
+  const stop = opened.onChange(() => { calls++; });
+  opened.add('a:1', {});
+  opened.none();
+  opened.remove('a:1');
+  assert.equal(calls, 3);
+  stop();
+  opened.add('a:2', {});
+  assert.equal(calls, 3, 'plus rien après le désabonnement');
+});

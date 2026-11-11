@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-csAFOdD0h7lM4/s3EcLqjKtcEnBOvvDRMS/Milxp5zQ='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-nBOcLhyURNCVn8aAlh7ZAmaAlbg7lLuScQ/BXrohKX8='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=7a7a55cf8b">
 <link rel="stylesheet" href="css/explorer.css?v=dbe4c9050a">
 <link rel="stylesheet" href="css/modules.css?v=e9c281ff14">
@@ -78,7 +78,7 @@
     "./js/gfs-copy.js": "./js/gfs-copy.js?v=aebb603561",
     "./js/gfs-files.js": "./js/gfs-files.js?v=136137d0cb",
     "./js/gfs-trash.js": "./js/gfs-trash.js?v=4e5c1ece7c",
-    "./js/i18n-explorer.js": "./js/i18n-explorer.js?v=3566619d46",
+    "./js/i18n-explorer.js": "./js/i18n-explorer.js?v=7184a3040f",
     "./js/i18n-folders.js": "./js/i18n-folders.js?v=2dd37b93c0",
     "./js/i18n-manage.js": "./js/i18n-manage.js?v=86f9429b9a",
     "./js/i18n-natives.js": "./js/i18n-natives.js?v=ac9eef4a00",
@@ -315,7 +315,7 @@
 <link rel="modulepreload" href="./js/i18n-manage.js?v=86f9429b9a">
 <link rel="modulepreload" href="./js/i18n-received.js?v=f9fb90083b">
 <link rel="modulepreload" href="./js/i18n-notifications.js?v=48f040ccff">
-<link rel="modulepreload" href="./js/i18n-explorer.js?v=3566619d46">
+<link rel="modulepreload" href="./js/i18n-explorer.js?v=7184a3040f">
 <link rel="modulepreload" href="./js/stored-choice.js?v=2f8b5015a1">
 <link rel="modulepreload" href="./js/ambiance.js?v=6a80838b63">
 <link rel="modulepreload" href="./js/oklch.js?v=4ecc7f440b">

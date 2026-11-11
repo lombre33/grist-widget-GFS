@@ -76,7 +76,7 @@ const contract = 'Contrat de prestation';
 const rent = 'Quittance de loyer';
 const contractId = await idOf(contract);
 const rentId = await idOf(rent);
-const FAV_HINT = /le tien seulement|yours only/;
+const FAV_HINT = /le vôtre seulement|yours only/;
 const PERSONAL = /Rangement personnel|Personal folders/;
 const SHARED = /Rangement commun au document|Folders shared by the whole document/;
 
@@ -110,7 +110,7 @@ check('la ligne d\'Ana est à son adresse, favori, sans dossier ; plus aucune li
   && first[0].Fichier === contractId && first[0].Favori === true && first[0].Dossier === '', first);
 check('Grist n\'a rien inscrit dans Adresse pour la ligne d\'Ana (seule la ligne-sonde en reçoit, et elle est partie)', first.every(line => !line.Adresse), first);
 const learned = await info();
-check('GFS connaît Ana : la barre du bas dit « personnel » et « le tien seulement », la liste est relue pour elle', PERSONAL.test(learned) && FAV_HINT.test(learned) && (await favCount()) === 1, learned);
+check('GFS connaît Ana : la barre du bas dit « personnel » et « le vôtre seulement », la liste est relue pour elle', PERSONAL.test(learned) && FAV_HINT.test(learned) && (await favCount()) === 1, learned);
 await shot('2-personnel');
 
 // ----- 2. Ana rouvre : une sonde par ouverture.

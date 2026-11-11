@@ -86,7 +86,13 @@ const moreLabel = await frame.evaluate(() => document.activeElement.getAttribute
 await page.keyboard.press('Enter');
 await frame.locator('.menu').waitFor();
 await page.keyboard.press('ArrowDown');
-const chosen = await frame.evaluate(() => document.activeElement.textContent.trim());
+const focusedItem = () => frame.evaluate(() => document.activeElement.textContent.trim());
+let chosen = await focusedItem();
+// Le menu s'ouvre sur « Partager… » (le partage, 07/11) avant les autres gestes : la flèche descend jusqu'à « Retirer des favoris ».
+for (let step = 0; step < 8 && !/Retirer des favoris|Remove from favorites/.test(chosen); step++) {
+  await page.keyboard.press('ArrowDown');
+  chosen = await focusedItem();
+}
 await page.keyboard.press('Enter');
 const off = await until(async () => !(await starOn(contract)));
 const keyAfter = await frame.evaluate(() => { const node = document.activeElement && document.activeElement.closest('[data-key]'); return node ? node.dataset.key : (document.activeElement || {}).tagName; });

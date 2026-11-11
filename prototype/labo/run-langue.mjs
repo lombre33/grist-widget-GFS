@@ -49,10 +49,10 @@ const screen = () => frame.evaluate(() => {
   const rowText = re => { const row = [...document.querySelectorAll('.ls-row')].find(item => re.test(item.textContent)); return row ? row.textContent.replace(/\s+/g, ' ').trim() : null; };
   const foot = [...document.querySelectorAll('.ex-foot .btn')].map(node => node.textContent.trim());
   return {
-    html: document.documentElement.lang, title: text('.ex-title'), settingsLabel: attr('.ex-title-row .tb[aria-haspopup="menu"]', 'aria-label'), settingsTip: attr('.ex-title-row .tb[aria-haspopup="menu"]', 'title'),
+    html: document.documentElement.lang, title: text('.ex-title'), settingsLabel: attr('.ex-title-row .tb[aria-haspopup="menu"]:not(.tb-bell)', 'aria-label'), settingsTip: attr('.ex-title-row .tb[aria-haspopup="menu"]:not(.tb-bell)', 'title'),
     add: text('.btn.primary'), open: foot[0], close: foot[1], search: attr('.inp-search input', 'placeholder'), allTypes: text('.ex-nav-row .btn[aria-haspopup="menu"]'),
-    recent: text('.tr-pin .tr-row'), head: text('.ls-head'), contract: rowText(/Contrat de prestation/), slides: rowText(/Support de session/),
-    onSettings: document.activeElement === document.querySelector('.ex-title-row .tb[aria-haspopup="menu"]'),
+    recent: text('.tr-row[data-view="recent"]'), head: text('.ls-head'), contract: rowText(/Contrat de prestation/), slides: rowText(/Support de session/),
+    onSettings: document.activeElement === document.querySelector('.ex-title-row .tb[aria-haspopup="menu"]:not(.tb-bell)'),
   };
 });
 const stored = () => frame.evaluate(() => { try { return localStorage.getItem('gfs.langue'); } catch (error) { return 'REFUSÉ'; } });
@@ -73,7 +73,7 @@ check('le bouton « Réglages » porte son nom accessible et son info-bulle (il 
 check('rien n\'est retenu tant que la personne n\'a rien choisi', (await stored()) === null, await stored());
 const layout = await frame.evaluate(() => {
   const rect = selector => { const node = document.querySelector(selector); const r = node.getBoundingClientRect(); return { left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top), bottom: Math.round(r.bottom), width: Math.round(r.width) }; };
-  const settings = '.ex-title-row .tb[aria-haspopup="menu"]';
+  const settings = '.ex-title-row .tb[aria-haspopup="menu"]:not(.tb-bell)';
   return { apps: rect('.ex-title-row .tb[aria-haspopup="dialog"]:not([hidden])'), group: rect('.tb-group'), settings: rect(settings), view: window.innerWidth, scroll: document.documentElement.scrollWidth, text: document.querySelector(settings).textContent.trim() };
 });
 say('mise en page de la ligne du titre :', layout);

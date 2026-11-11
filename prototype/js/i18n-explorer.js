@@ -4,6 +4,7 @@
 export const EXPLORER_STRINGS = {
   fr: {
     // L'explorateur de fichiers : titre, barre, arbre, liste, menus, messages.
+    // La barre du haut : titre, affichage, chemin, recherche, filtre par type, « Nouveau » et « Importer ».
     'ex.title': 'Mes fichiers',
     'ex.display': 'Affichage',
     'ex.list': 'Liste',
@@ -15,6 +16,7 @@ export const EXPLORER_STRINGS = {
     'ex.typeFilter': 'Filtrer par type',
     'ex.new': 'Nouveau',
     'ex.import': 'Importer',
+    // L'arbre à gauche : Ouverts, Récents, Favoris, Moi, Résultats, Dossiers.
     'ex.opened': 'Ouverts',
     'ex.shown': 'affiché',
     'ex.openedDrop': 'Retirer des ouverts',
@@ -23,6 +25,7 @@ export const EXPLORER_STRINGS = {
     'ex.me': 'Moi',
     'ex.results': 'Résultats',
     'ex.folders': 'Dossiers',
+    // Les colonnes de la liste et les boutons « Ouvrir » et « Fermer ».
     'ex.name': 'Nom',
     'ex.type': 'Type',
     'ex.modified': 'Modifié',
@@ -31,6 +34,7 @@ export const EXPLORER_STRINGS = {
     'ex.close': 'Fermer',
     'ex.closeNone': 'Aucune app n’est ouverte : choisissez d’abord un fichier.',
     'ex.untitled': '(sans nom)',
+    // Les comptes (avec leurs pluriels) et ce que dit une liste vide, selon la vue.
     'ex.fileCount': '{n} {n|fichier|fichiers}',
     'ex.subfolderCount': '{n} {n|sous-dossier|sous-dossiers}',
     'ex.emptyAll': 'Aucun fichier. Créez-en un avec « Nouveau ».',
@@ -39,6 +43,7 @@ export const EXPLORER_STRINGS = {
     'ex.emptyOpened': 'Aucun fichier ouvert pour le moment. Ceux que vous ouvrez s’ajoutent ici : un double-clic y revient.',
     'ex.emptySearch': 'Aucun fichier ne correspond.',
     'ex.emptyNoAccess': 'Les fichiers s’afficheront dès que l’accès complet sera accordé.',
+    // La barre d'information du bas : le rangement de la personne, puis le fichier choisi.
     'ex.hintPersonal': 'Rangement personnel : les autres personnes ne le voient pas.',
     'ex.hintFav': 'Favori, le vôtre seulement.',
     'ex.hintShared': 'Rangement commun au document : chacun voit et change les mêmes dossiers.',
@@ -49,6 +54,7 @@ export const EXPLORER_STRINGS = {
     'ex.modifiedBy': 'par {by}',
     'ex.today': 'Auj. {time}',
     'ex.yesterday': 'Hier',
+    // Les gestes d'une ligne : favori, renommer, dupliquer, déplacer, ouvrir le dossier.
     'ex.pin': 'Épingler en favori',
     'ex.unpin': 'Retirer des favoris',
     'ex.more': 'Plus d’actions',
@@ -56,6 +62,7 @@ export const EXPLORER_STRINGS = {
     'ex.duplicate': 'Dupliquer',
     'ex.move': 'Déplacer vers…',
     'ex.openFolder': 'Ouvrir le dossier',
+    // Les fenêtres « Renommer » et « Déplacer » et leurs refus.
     'ex.renameTitle': 'Renommer « {name} »',
     'ex.nameLabel': 'Nouveau nom',
     'ex.nameEmpty': 'Le nom ne peut pas être vide.',
@@ -74,6 +81,7 @@ export const EXPLORER_STRINGS = {
     'ex.filingDeclined': 'Rien n’a été rangé : la table GFS_Rangement n’a pas été créée.',
     'ex.renameFailed': 'Le fichier n’a pas pu être renommé : {reason}',
     'ex.renameNoColumn': '{app} ne dit pas où est le nom de ses fichiers : renommez celui-ci dans {app}.',
+    // Un fichier grisé (jamais caché) et pourquoi, puis la lecture des fichiers et ses échecs.
     'ex.lockedType': 'Créé avec une version plus récente de {app}',
     'ex.lockedApp': 'Demande l’app {app} (Grist Factory Suite)',
     'ex.import.notYet': '{app} ne reçoit pas encore de fichier de GFS : importez-le depuis le menu de l’app.',
@@ -83,6 +91,7 @@ export const EXPLORER_STRINGS = {
     'ex.lockedHint': 'Grisé : un double-clic explique pourquoi',
     'ex.loading': 'Lecture des fichiers…',
     'ex.readFailed': '{app} : lecture impossible ({reason}).',
+    // Les avis provisoires : ce que l'app n'accepte pas encore.
     'ex.notice.open': 'Provisoire : {app} ne sait pas encore ouvrir un fichier précis, il s’ouvre sur son modèle habituel.',
     'ex.notice.new': 'Provisoire : {app} ne sait pas encore créer un fichier de ce type depuis GFS, il s’ouvre sur son modèle habituel.',
     'ex.notice.import': '{app} s’ouvre, mais ne sait pas encore recevoir ce fichier de GFS : importez-le depuis son menu.',
@@ -141,6 +150,7 @@ export const EXPLORER_STRINGS = {
   },
   en: {
     // L'explorateur de fichiers : titre, barre, arbre, liste, menus, messages.
+    // La barre du haut : titre, affichage, chemin, recherche, filtre par type, « Nouveau » et « Importer ».
     'ex.title': 'My files',
     'ex.display': 'View',
     'ex.list': 'List',
@@ -152,6 +162,7 @@ export const EXPLORER_STRINGS = {
     'ex.typeFilter': 'Filter by type',
     'ex.new': 'New',
     'ex.import': 'Import',
+    // L'arbre à gauche : Ouverts, Récents, Favoris, Moi, Résultats, Dossiers.
     'ex.opened': 'Open',
     'ex.shown': 'shown',
     'ex.openedDrop': 'Remove from open files',
@@ -160,6 +171,7 @@ export const EXPLORER_STRINGS = {
     'ex.me': 'Me',
     'ex.results': 'Results',
     'ex.folders': 'Folders',
+    // Les colonnes de la liste et les boutons « Ouvrir » et « Fermer ».
     'ex.name': 'Name',
     'ex.type': 'Type',
     'ex.modified': 'Modified',
@@ -168,6 +180,7 @@ export const EXPLORER_STRINGS = {
     'ex.close': 'Close',
     'ex.closeNone': 'No app is open: pick a file first.',
     'ex.untitled': '(untitled)',
+    // Les comptes (avec leurs pluriels) et ce que dit une liste vide, selon la vue.
     'ex.fileCount': '{n} {n|file|files}',
     'ex.subfolderCount': '{n} {n|subfolder|subfolders}',
     'ex.emptyAll': 'No files yet. Create one with “New”.',
@@ -176,6 +189,7 @@ export const EXPLORER_STRINGS = {
     'ex.emptyOpened': 'No open files yet. The files you open are added here: double-click to go back to one.',
     'ex.emptySearch': 'No file matches.',
     'ex.emptyNoAccess': 'Your files will show up as soon as full access is granted.',
+    // La barre d'information du bas : le rangement de la personne, puis le fichier choisi.
     'ex.hintPersonal': 'Personal folders: other people do not see them.',
     'ex.hintFav': 'Favorite, yours only.',
     'ex.hintShared': 'Folders shared by the whole document: everyone sees and changes the same ones.',
@@ -186,6 +200,7 @@ export const EXPLORER_STRINGS = {
     'ex.modifiedBy': 'by {by}',
     'ex.today': 'Today {time}',
     'ex.yesterday': 'Yesterday',
+    // Les gestes d'une ligne : favori, renommer, dupliquer, déplacer, ouvrir le dossier.
     'ex.pin': 'Pin as favorite',
     'ex.unpin': 'Remove from favorites',
     'ex.more': 'More actions',
@@ -193,6 +208,7 @@ export const EXPLORER_STRINGS = {
     'ex.duplicate': 'Duplicate',
     'ex.move': 'Move to…',
     'ex.openFolder': 'Open folder',
+    // Les fenêtres « Renommer » et « Déplacer » et leurs refus.
     'ex.renameTitle': 'Rename “{name}”',
     'ex.nameLabel': 'New name',
     'ex.nameEmpty': 'The name cannot be empty.',
@@ -211,6 +227,7 @@ export const EXPLORER_STRINGS = {
     'ex.filingDeclined': 'Nothing was filed: the GFS_Rangement table was not created.',
     'ex.renameFailed': 'The file could not be renamed: {reason}',
     'ex.renameNoColumn': '{app} does not say where its file names are: rename this one in {app}.',
+    // Un fichier grisé (jamais caché) et pourquoi, puis la lecture des fichiers et ses échecs.
     'ex.lockedType': 'Created with a newer version of {app}',
     'ex.lockedApp': 'Needs the {app} app (Grist Factory Suite)',
     'ex.import.notYet': '{app} cannot receive a file from GFS yet: import it from the app’s own menu.',
@@ -220,6 +237,7 @@ export const EXPLORER_STRINGS = {
     'ex.lockedHint': 'Greyed out: double-click to see why',
     'ex.loading': 'Reading files…',
     'ex.readFailed': '{app}: cannot read ({reason}).',
+    // Les avis provisoires : ce que l'app n'accepte pas encore.
     'ex.notice.open': 'Provisional: {app} cannot open a specific file yet, it opens on its usual template.',
     'ex.notice.new': 'Provisional: {app} cannot create a file of this type from GFS yet, it opens on its usual template.',
     'ex.notice.import': '{app} opens, but cannot receive this file from GFS yet: import it from its own menu.',

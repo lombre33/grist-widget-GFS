@@ -5,7 +5,7 @@
   "description": "La liste unique des bibliotheques que GFS porte : celles des extensions des apps (contrats 2.6) et les copies figees des bibliotheques natives d'une app (`natifDe`, choix du porteur du 11/11 : chez GFS, comme Plotly). La liste de l'app dit toujours quelles bibliotheques elle emploie ; la version ici suit la sienne. outils/bibliotheques.mjs en tire bibliotheques/catalogue.json et vendor/.",
   "dependencies": {
     "@tiptap/extension-collaboration": "3.31.3",
-    "@tiptap/extension-collaboration-caret": "3.31.3",
+    "@tiptap/extension-collaboration-caret": "3.33.0",
     "@tiptap/y-tiptap": "3.0.10",
     "docx": "9.15.1",
     "echarts": "6.1.0",

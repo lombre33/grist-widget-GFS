@@ -14,6 +14,16 @@ updates:
     directory: /prototype/bibliotheques
     schedule:
       interval: weekly
+    # Les bibliothèques natives d'une app (`natifDe` dans la liste) suivent la liste de leur app, pas Dependabot : l'app monte sa version (Dependabot de son dépôt), le dit dans
+    # « Changements qui touchent GFS » de sa page d'état, et GFS réécrit sa copie dans le lot qui lit la demande. Une montée ici laisserait la copie à une version que l'app n'emploie pas.
+    ignore:
+      - dependency-name: docx
+      - dependency-name: exceljs
+      - dependency-name: jszip
+      - dependency-name: marked
+      - dependency-name: pdf-lib
+      - dependency-name: pdfmake
+      - dependency-name: qrcode-generator
   - package-ecosystem: gitsubmodule
     directory: /
     schedule:

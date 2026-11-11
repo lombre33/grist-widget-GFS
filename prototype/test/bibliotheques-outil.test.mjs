@@ -67,7 +67,7 @@ test('checkFiles : une copie vendorisée sans sa licence, ou avec celle d\'un au
 });
 
 // Une archive de paquet comme `npm pack` la fait : un dossier `package/` (le fichier à servir, le package.json, et les fichiers de licence donnés).
-function packArchive(dir, files) {
+function packArchive(dir, files, paquet = 'echarts', version = '6.1.0') {
   const staging = join(dir, 'staging');
   rmSync(staging, { recursive: true, force: true });
   for (const [name, text] of Object.entries(files)) {
@@ -75,7 +75,7 @@ function packArchive(dir, files) {
     writeFileSync(join(staging, 'package', name), text);
   }
   mkdirSync(join(dir, 'paquets'), { recursive: true });
-  execFileSync('tar', ['-czf', join(dir, 'paquets', archiveName('echarts', '6.1.0')), '-C', staging, 'package']);
+  execFileSync('tar', ['-czf', join(dir, 'paquets', archiveName(paquet, version)), '-C', staging, 'package']);
 }
 
 test('generate : la copie d\'un paquet Apache 2.0 porte son LICENCES.txt avec la licence et le NOTICE ; sans licence dans le paquet, l\'outil refuse', async () => {
@@ -96,6 +96,29 @@ test('generate : la copie d\'un paquet Apache 2.0 porte son LICENCES.txt avec la
 
     packArchive(dir, base);
     await assert.rejects(generate(root, join(dir, 'paquets'), () => {}), /pas de fichier de licence dans le paquet/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('generate : un paquet sans fichier de licence est accepté quand la liste dit que le fichier servi porte l\'avis, et que son en-tête nomme la licence', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gfs-bibliotheques-test-'));
+  try {
+    const root = join(dir, 'prototype');
+    mkdirSync(join(root, 'bibliotheques'), { recursive: true });
+    const list = flag => JSON.stringify({ dependencies: { 'qrcode-generator': '1.4.4' }, gfs: { bibliotheques: { 'qrcode-generator': { paquet: 'qrcode-generator', fichier: 'qrcode.js', ...(flag ? { licenceDansLeFichier: true } : {}) } } } });
+    const files = (header, extra = {}) => ({ ...extra, 'qrcode.js': `${header}\nvar qrcode = {};`, 'package.json': JSON.stringify({ name: 'qrcode-generator', version: '1.4.4', license: 'MIT' }) });
+    const make = (header, flag, extra) => { writeFileSync(join(root, 'bibliotheques/package.json'), list(flag)); packArchive(dir, files(header, extra), 'qrcode-generator', '1.4.4'); return generate(root, join(dir, 'paquets'), () => {}); };
+
+    await assert.rejects(make('// Licensed under the MIT license', false), /qrcode-generator : pas de fichier de licence dans le paquet/, 'sans le mot de la liste, un paquet sans licence reste refusé');
+    await assert.rejects(make('// Un fichier sans avis', true), /l'en-tête du fichier servi ne nomme pas la licence déclarée \(MIT\)/);
+    await make('// Un fichier sans avis', false, { 'LICENSE.markdown': 'The MIT License (MIT)' });
+    assert.match(readFileSync(join(root, 'vendor/qrcode-generator/1.4.4/LICENCES.txt'), 'utf8'), /The MIT License \(MIT\)/, 'un fichier LICENSE.markdown (JSZip) est une licence');
+    await make('// Licensed under the MIT license', true);
+    const licences = readFileSync(join(root, 'vendor/qrcode-generator/1.4.4/LICENCES.txt'), 'utf8');
+    assert.match(licences, /qrcode-generator@1\.4\.4 · MIT/);
+    assert.match(licences, /l'avis de droit d'auteur et la licence sont l'en-tête du fichier servi/);
+    assert.deepEqual(verify(root).problems, []);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

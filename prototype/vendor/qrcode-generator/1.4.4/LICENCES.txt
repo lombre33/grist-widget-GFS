@@ -1,0 +1,8 @@
+Licences des paquets contenus dans qrcode-generator@1.4.4 (liste de GFS : bibliotheques/package.json).
+Chaque texte est celui du fichier de licence livré avec le paquet, recopié par outils/bibliotheques.mjs.
+
+========================================================================
+qrcode-generator@1.4.4 · MIT
+========================================================================
+
+Le paquet ne livre pas de fichier de licence : l'avis de droit d'auteur et la licence sont l'en-tête du fichier servi, recopié tel quel.

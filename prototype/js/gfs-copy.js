@@ -45,8 +45,13 @@ export function copyPlan({ spec, data, at, columns }) {
   const values = {};
   for (const column of ids) values[column] = data[column][at];
   values[nameColumn] = name;
+  applyRecipe(values, recipe, columns);
+  return { values, name };
+}
+
+// La recette de la copie (contrats 2.4, `copie`) appliquée aux valeurs recopiées : les colonnes uniques vidées, les exclusives à faux, les valeurs imposées ; une colonne que la copie n'écrit pas est laissée.
+function applyRecipe(values, recipe, columns) {
   for (const column of recipe.uniques || []) if (column in values) values[column] = emptyOf((columns.find(item => item.id === column) || {}).type);
   for (const column of recipe.exclusives || []) if (column in values) values[column] = false;
   for (const [column, value] of Object.entries(recipe.valeurs || {})) if (column in values) values[column] = value;
-  return { values, name };
 }

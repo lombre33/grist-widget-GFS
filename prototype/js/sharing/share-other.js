@@ -6,11 +6,15 @@
 // que GFS garde, et un propriétaire du document.
 import { FILES_APP } from '../files/gfs-files.js';
 import { applyLevel, stopLink } from './share-links.js';
+import { filesOfFolder, folderLabel, isFolderTarget, skippedInFolder, writeFolderName } from './share-folder.js';
 import { closeSharingTables } from './sync-rules.js';
 
-// Pourquoi l'onglet est grisé (une phrase), ou null.
-export function whyNot(t, { file, state }) {
-  if (!file || file.folder || file.app !== FILES_APP) return t('share.other.why.pdf');
+// Pourquoi l'onglet est grisé (une phrase), ou null. `files` : pour un dossier, les fichiers qui peuvent y partir (js/share-folder.js) ; un dossier sans PDF à
+// partager n'a rien à envoyer.
+export function whyNot(t, { file, state, files }) {
+  if (!file) return t('share.other.why.pdf');
+  if (isFolderTarget(file)) { if (!files || !files.length) return t('share.other.why.emptyFolder'); }
+    else if (file.app !== FILES_APP) return t('share.other.why.pdf');
   if (!state || state.owner !== true) return t('share.other.why.owner');
   return null;
 }
@@ -31,25 +35,38 @@ async function closeTechnicalTables(deps) {
   if ((await deps.transfer.isOwner()) === true) await closeSharingTables({ docApi: deps.docApi() });
 }
 
-// Le changement de niveau d'un lien dans l'onglet de « Partager » : un blocage dit pourquoi, un changement qui ne s'applique qu'après coup s'annonce, puis
-// s'achève par un avis.
-function levelChanger({ deps, engine, said, file, why }) {
+// L'onglet de « Partager » pour `file` : un fichier, ou un DOSSIER (js/share-folder.js : tous ses PDF, avec le nom du dossier). `tools` : ce que
+// `createOtherDocuments` tient (le moteur, la lecture des liens, la fenêtre du premier envoi).
+function buildTab({ deps, links, open, engine, said }, file, state) {
   const { t } = deps;
-  return async (link, level) => {
-    const blocked = why || deps.writeBlock();
-    if (blocked) return { ok: false, message: blocked };
-    try {
-      const done = await applyLevel(await engine(), link, file.id, level);
-      if (!done.later) return { ok: true };
-      const doc = link.doc.name || link.name;
-      void done.later.then(() => deps.notice(t('so.once.done', { name: file.name, doc })), async error => deps.notice(await said(error)));
-      return { ok: true, note: t('so.once.going', { name: file.name }) };
-    } catch (error) { return { ok: false, message: await said(error) }; }
+  const folder = isFolderTarget(file);
+  const all = folder && deps.files ? deps.files() : [];
+  const picked = folder ? filesOfFolder(all, file.path) : null;
+  const why = whyNot(t, { file, state, files: picked });
+  const ids = picked ? picked.map(each => each.id) : null;
+  const rows = picked ? picked.map(each => each.row) : [];
+  const label = folder ? folderLabel(file.path) : '';
+  return {
+    why, fileId: ids || (file ? file.id : ''), folder, count: rows.length, skipped: folder ? skippedInFolder(all, file.path, picked) : 0, loadLinks: links,
+      onNew: () => open(folder ? null : file),
+    async onLevel(link, level) {
+      const blocked = why || deps.writeBlock();
+      if (blocked) return { ok: false, message: blocked };
+      try {
+        if (folder && level !== 'none') await writeFolderName(deps.docApi(), rows, label);
+        const done = await applyLevel(await engine(), link, ids || file.id, level);
+        if (!done.later) return { ok: true };
+        const doc = link.doc.name || link.name;
+        void done.later.then(() => deps.notice(t('so.once.done', { name: file.name, doc })), async error => deps.notice(await said(error)));
+        return { ok: true, note: t('so.once.going', { name: file.name }) };
+      } catch (error) { return { ok: false, message: await said(error) }; }
+    },
   };
 }
 
 // deps : { t, container, inertTargets() , docApi() → grist.docApi, transfer (js/broker/transfer.js), language () → 'fr' | 'en', notice (un avis hors fenêtre),
-//   writeBlock() → la raison d'un blocage ou null }.
+//   writeBlock() → la raison d'un blocage ou null,
+//   files() → les fichiers que l'explorateur montre (les fichiers d'un dossier qu'on partage), following { follow(lien, chemin, fichiers) → vrai si retenu, unfollow(lien, chemin) } (js/sharing/share-follow.js) }.
 export function createOtherDocuments(deps) {
   const { t } = deps;
   const engine = async () => (await import('./sync-service.js')).loadSharingEngine(
@@ -104,14 +121,9 @@ export function createOtherDocuments(deps) {
       return { action: 'receive', icon: 'download', family: null, greyed: Boolean(blocked), reason: blocked || '', focus: null, label: t('sr.entry'),
         hint: blocked || t('sr.entry.hint') };
     },
-    // L'onglet de « Partager » pour `file` (l'état que la fenêtre dessine : { owner, … }).
-    tab(file, state) {
-      const why = whyNot(t, { file, state });
-      return {
-        why, fileId: file ? file.id : '', loadLinks: links, onNew: () => open(file),
-        onLevel: levelChanger({ deps, engine, said, file, why }),
-      };
-    },
+    // L'onglet de « Partager » pour `file` (l'état que la fenêtre dessine : { owner, … }) : un fichier, ou un DOSSIER (js/share-folder.js : tous ses PDF, avec
+    // le nom du dossier).
+    tab: (file, state) => buildTab({ deps, links, open, engine, said }, file, state),
     // « Gérer les partages > Autres documents » : les liens, et l'arrêt d'un lien (ou l'annulation d'une invitation en attente).
     links,
     async stop(link) {

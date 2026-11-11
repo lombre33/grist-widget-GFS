@@ -72,11 +72,18 @@ test('un dossier d\'espace se partage (clé « dossier: »), « Moi » et un esp
   assert.equal(share.whyNotFolder('Espaces/Achats/Contrats'), null);
   assert.equal(share.whyNotFolder('Espaces/Achats'), t('share.folder.space'));
   assert.equal(share.whyNotFolder('Espaces'), t('share.folder.space'));
-  assert.equal(share.whyNotFolder('Perso/Dossier'), t('share.folder.personal'));
-  assert.equal(share.folderFile('Perso/Dossier'), null);
+  // Un dossier de « Moi » n'a pas de droits à donner ici, mais il se partage avec un autre document (une copie) : la fenêtre le prend avec son chemin (`mine`), sans espace dont hériter.
+  assert.equal(share.whyNotFolder('Perso/Dossier'), null);
+  assert.equal(share.whyNotFolder(''), t('share.folder.personal'));
+  assert.equal(share.whyNotFolder('Espaces/Inconnu/Dossier'), t('share.folder.space'));
+  assert.deepEqual(share.folderFile('Perso/Dossier'), { key: 'dossier:moi/Perso/Dossier', name: 'Dossier', path: 'Perso/Dossier', mine: true });
+  assert.equal(share.folderFile(''), null);
+  assert.equal(share.folderFile('Espaces/Achats'), null);
+  assert.deepEqual(await share.load(share.folderFile('Perso/Dossier')), { active: false, extend: false, owner: true, shares: [], people: [], me: '', author: '', canManage: false, mine: true });
   const folder = share.folderFile('Espaces/Achats/Contrats/Sous');
   assert.equal(folder.key, 'dossier:achats/Contrats/Sous');
   assert.equal(folder.name, 'Sous');
+  assert.equal(folder.path, 'Espaces/Achats/Contrats/Sous', 'le chemin de l\'explorateur voyage avec le dossier d\'espace : les fichiers rangés dedans le portent');
   const state = await share.load(folder);
   assert.equal(state.active, true);
   const direct = state.shares.filter(item => !item.inherited);

@@ -217,6 +217,8 @@ function inactiveBlock(ctx) {
 // Le contenu d'après l'état : { active, owner, canManage, shares, me, author, people }. `ctx.pending` : la personne choisie, pas encore ajoutée.
 export function shareBody(ctx) {
   const { t, state } = ctx;
+  if (state.mine) return h('div', { class: 'rt-content' }, h('p', { class: 'rt-lead', dataset: { fk: 'share-mine' } }, icon('lock'),
+    h('span', null, t('share.folder.mine'))));
   if (!state.active) return inactiveBlock(ctx);
   const parts = [];
   if (state.canManage) parts.push(ctx.pending ? h('div', null, h('div', { class: 'sec' }, t('share.sec.add')), pendingForm(ctx, ctx.pending)) : addField(ctx));
@@ -227,10 +229,9 @@ export function shareBody(ctx) {
 }
 
 // opts : { container, t, locale, inertTargets, file: { key, name, app }, load() → état, onAdd(record), onChange(id, patch), onRemove(id) → { ok, message? },
-//   onActivate() → true quand Grist va recharger, onManage() ouvre « Gérer les partages » (propriétaire), other: { why, fileId, loadLinks(), onLevel(link,
-//   level) → { ok, message?, note? }, onNew() } ou state → cet objet (l'onglet « Dans un autre document Grist » : js/sharing/share-other-tab.js,
-//   js/sharing/share-other.js ;
-//   sans lui, pas d'onglets) }. Rend la promesse de la fermeture.
+//   onActivate() → true quand Grist va recharger, onManage() ouvre « Gérer les partages » (propriétaire), startTab ('here' par défaut ; 'other' pour un dossier
+//   de « Moi »), other: { why, fileId, loadLinks(), onLevel(link, level) → { ok, message?, note? }, onNew() } ou state → cet objet (l'onglet « Dans un autre
+//   document Grist » : js/sharing/share-other-tab.js, js/sharing/share-other.js ; sans lui, pas d'onglets) }. Rend la promesse de la fermeture.
 export function openShare(opts) {
   const { container, t, file } = opts;
   const body = h('div', { class: 'ask-body rt-body sh-body' }, h('p', { class: 'rt-none', 'aria-live': 'polite' }, t('share.loading')));
@@ -245,7 +246,7 @@ export function openShare(opts) {
     body, h('footer', { class: 'mod-foot' }, status, manage, close));
   const { done, result } = openModal({ container, section: dialog, inertTargets: opts.inertTargets, first: close, cancel: null });
   close.addEventListener('click', () => done(null));
-  const ctx = { t, container, locale: opts.locale, target: file.key, state: null, pending: null, tab: 'here', links: null, other: null,
+  const ctx = { t, container, locale: opts.locale, target: file.key, state: null, pending: null, tab: opts.startTab || 'here', links: null, other: null,
     say: text => { status.textContent = text; } };
   const draw = () => {
     if (!dialog.isConnected || !ctx.state) return;
@@ -265,7 +266,7 @@ export function openShare(opts) {
   const reload = async () => {
     try {
       ctx.state = await opts.load(); ctx.pending = null; ctx.other = otherOf();
-      if (ctx.other && ctx.links !== null) await readLinks();
+      if (ctx.other && (ctx.links !== null || ctx.tab === 'other')) await readLinks();
       draw();
     } catch (error) { if (dialog.isConnected) body.replaceChildren(h('p', { class: 'rt-none' }, t('share.unreadable'))); }
   };

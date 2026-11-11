@@ -187,6 +187,9 @@ async function failureFlow(page, tools, t) {
   await tools.expect(kind, 'l\'envoi devait finir sans la fenêtre et le dire par un avis', s => s.acts.some(act => act[0] === 'notice' && String(act[1]).includes(LONG_DOC)));
 }
 
+// Le centre, à l'écran, de l'article d'un menu ouvert dont le texte commence par `wanted` (null s'il n'y est pas).
+const itemCenter = (page, wanted) => page.run(label => { const node = [...document.querySelectorAll('.menu .menu-item')].find(item => item.textContent.trim().startsWith(label)); if (!node) return null; const box = node.getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; }, wanted);
+
 // L'onglet « Dans un autre document Grist » de « Partager » (le contrôleur lui donne ses liens) : trois liens (à jour, en attente, bloqué) avec le niveau de CE fichier ; le menu des niveaux ; un lien qui attend sa
 // réponse est verrouillé avec sa raison ; « Relier un nouveau document… » ouvre l'accord par-dessus ; Échap ne ferme que lui. Sans lien ou sans pouvoir les lire, l'onglet le dit et garde son bouton.
 async function openShareTab(page, tools, t, kind, links) {
@@ -229,7 +232,7 @@ async function tabFlow(page, tools, t) {
     if (!once.text.startsWith(t('so.level.once')) || !live.text.startsWith(t('so.level.live')) || !stop.text.startsWith(t('so.level.stop'))) tools.run.note(kind, `le menu devait proposer « ${t('so.level.once')} », « ${t('so.level.live')} » puis « ${t('so.level.stop')} » (il propose ${JSON.stringify(menu.tab.menu)})`);
     if (!stop.greyed || once.greyed || live.greyed) tools.run.note(kind, `seul « ${t('so.level.stop')} » devait être grisé pour un fichier pas partagé`);
   }
-  const itemAt = label => page.run(wanted => { const node = [...document.querySelectorAll('.menu .menu-item')].find(item => item.textContent.trim().startsWith(wanted)); if (!node) return null; const box = node.getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; }, label);
+  const itemAt = label => itemCenter(page, label);
   const live = await itemAt(t('so.level.live'));
   if (live) { await page.click(...live); await tools.expect(kind, 'le choix devait demander le niveau « à jour »', s => s.shareActs.some(act => act[0] === 'level' && act[1] === 'e3' && act[2] === 'live')); }
   // « Une copie, une fois » : l'avis dit que le fichier part, sans attendre la fin.
@@ -263,6 +266,69 @@ async function emptyTabFlow(page, tools, t) {
   }
 }
 
+// Un DOSSIER de « Moi » (« Partager… » sur sa ligne) : la fenêtre s'ouvre sur « Dans un autre document Grist » (« Dans ce document » n'a pas de droits à donner pour « Moi » et le dit), le texte parle des PDF du dossier et des
+// fichiers d'une app qui ne partent pas, chaque document relié dit le niveau de TOUT le dossier (à jour, une partie, pas partagé), « Arrêter la copie » est libre pour une partie ; un dossier sans PDF est grisé avec sa raison.
+async function folderFlow(page, tools, t, empty) {
+  const kind = empty ? 'l\'onglet d\'un dossier sans PDF' : 'l\'onglet d\'un dossier';
+  await tools.run.reset();
+  await page.run(none => { window.__shareOther = true; window.__sendActs = []; window.__links = 'dossier'; window.__shareKind = 'actif'; window.__folderCount = none ? 0 : 3; window.__folderSkipped = 2; window.__keep('Contrats'); }, empty);
+  const at = await page.run(() => { const row = document.querySelector('.ls-row[data-key="dir:Contrats"]'); if (!row) return null; row.scrollIntoView({ block: 'nearest' }); const box = row.getBoundingClientRect(); return [box.left + Math.min(60, box.width / 2), box.top + box.height / 2]; });
+  if (!at) { tools.run.note(kind, 'le dossier « Contrats » devait être dans la liste'); return; }
+  await page.rightClick(...at);
+  const entry = await itemCenter(page, t('share.menu'));
+  if (!entry) { tools.run.note(kind, `le menu d'un dossier devait proposer « ${t('share.menu')} »`); return; }
+  const greyed = await page.run(label => { const node = [...document.querySelectorAll('.menu .menu-item')].find(item => item.textContent.trim().startsWith(label)); return node.getAttribute('aria-disabled') === 'true'; }, t('share.menu'));
+  if (greyed) tools.run.note(kind, `« ${t('share.menu')} » devait être libre pour un dossier de « Moi »`);
+  await page.click(...entry);
+  const open = await tools.expect(kind, 'la fenêtre devait s\'ouvrir sur l\'onglet « Dans un autre document Grist », les trois liens lus', s => s.tab && s.tab.links.length === 3);
+  const tab = open.tab;
+  if (!tab || tab.links.length !== 3) return;
+  tools.fits(kind, open, 'l\'onglet du dossier');
+  if (tab.tabs.find(item => item[0] === 'share-tab-other')[1] !== 'true') tools.run.note(kind, 'un dossier de « Moi » devait ouvrir « Dans un autre document Grist »');
+  if (!tab.title.includes(t('share.folder.inMine', { name: t('ex.me') }))) tools.run.note(kind, `le titre devait dire « ${t('share.folder.inMine', { name: t('ex.me') })} » (il dit « ${tab.title} »)`);
+  const lead = empty ? t('share.other.why.emptyFolder') : t('so.tab.lead.folder', { n: 3 });
+  if (!tab.body.includes(lead)) tools.run.note(kind, `l'onglet devait dire « ${lead} » (il dit « ${tab.body.slice(0, 200)} »)`);
+  const skipped = t('so.tab.skipped.folder', { n: 2 });
+  if (!tab.body.includes(skipped)) tools.run.note(kind, `l'onglet devait dire « ${skipped} »`);
+  const by = id => tab.links.find(link => link.id === id);
+  const expectLink = (id, level, label, tag, locked) => {
+    const link = by(id);
+    if (!link || link.level !== level || link.label !== label || link.tag !== tag || link.locked !== locked) tools.run.note(kind, `le lien ${id} devait dire « ${label} » (${level}), l'état « ${tag} », verrouillé : ${locked} (il dit ${JSON.stringify(link)})`);
+  };
+  // Sans PDF, aucun fichier n'est dans aucune condition : « Pas partagé » partout, et tout est verrouillé.
+  if (empty) { for (const id of ['e1', 'e2']) expectLink(id, 'none', t('so.level.none'), null, true); } else {
+    expectLink('e1', 'live', t('so.level.live'), t('so.state.active'), false);
+    expectLink('e2', 'part', t('so.level.part'), null, false);
+  }
+  expectLink('e3', 'none', t('so.level.none'), t('so.state.pending'), true);
+  if (empty) {
+    if (tab.fresh !== true) tools.run.note(kind, '« Relier un nouveau document… » devait être grisé pour un dossier sans PDF');
+    await page.press('Escape');
+    return;
+  }
+  // « Dans ce document » : un dossier de « Moi » n'a pas de droits à donner ici, la phrase le dit (rien d'écrit).
+  await tools.press(kind, 'share-tab-here');
+  await tools.expect(kind, 'l\'onglet « Dans ce document » devait dire que « Moi » n\'a pas de droits à donner', s => s.tab && s.tab.body.includes(t('share.folder.mine')));
+  await tools.press(kind, 'share-tab-other');
+  await tools.expect(kind, 'l\'onglet « Dans un autre document Grist » devait revenir avec ses trois liens', s => s.tab && s.tab.links.length === 3);
+  // Une partie du dossier : le menu est libre, « Copie à jour » complète le dossier.
+  await tools.press(kind, 'other-level-e2');
+  const menu = await tools.expect(kind, 'le menu d\'une partie du dossier devait proposer les trois niveaux', s => s.tab && s.tab.menu.length === 3);
+  if (menu.tab && menu.tab.menu.length === 3) {
+    const [once, live, stop] = menu.tab.menu;
+    if (stop.greyed || once.greyed || live.greyed) tools.run.note(kind, 'rien ne devait être grisé pour une partie du dossier');
+    if (!once.text.includes(t('so.level.once.hint.folder'))) tools.run.note(kind, `« ${t('so.level.once')} » devait dire « ${t('so.level.once.hint.folder')} » (il dit « ${once.text} »)`);
+  }
+  const live = await itemCenter(page, t('so.level.live'));
+  if (live) { await page.click(...live); await tools.expect(kind, 'le choix devait demander le niveau « à jour » pour le dossier', s => s.shareActs.some(act => act[0] === 'level' && act[1] === 'e2' && act[2] === 'live' && act[3] === 'dossier')); }
+  // Un dossier pas partagé : « Arrêter la copie » grisé, sa raison parle du dossier.
+  await tools.press(kind, 'other-level-e1');
+  await tools.expect(kind, 'le menu devait s\'ouvrir', s => s.tab && s.tab.menu.length === 3);
+  const stop = await itemCenter(page, t('so.level.stop'));
+  if (stop) { await page.click(...stop); await tools.expect(kind, 'arrêter la copie devait demander le niveau « pas partagé » pour le dossier', s => s.shareActs.some(act => act[0] === 'level' && act[1] === 'e1' && act[2] === 'none' && act[3] === 'dossier')); }
+  await page.press('Escape');
+}
+
 export async function partagerAutreProblems(page, language, tag) {
   const found = [];
   const t = createI18n(language).t;
@@ -277,11 +343,13 @@ export async function partagerAutreProblems(page, language, tag) {
     await failureFlow(page, tools, t);
     await tabFlow(page, tools, t);
     await emptyTabFlow(page, tools, t);
+    await folderFlow(page, tools, t, false);
+    await folderFlow(page, tools, t, true);
   } catch (error) {
     tools.run.note('geste impossible', String(error.message).slice(0, 200));
     await page.press('Escape').catch(() => {});
   }
-  await page.run(() => { window.__shareOther = false; window.__shareSend = null; window.__links = null; });
+  await page.run(() => { window.__shareOther = false; window.__shareSend = null; window.__links = null; window.__folderCount = undefined; window.__folderSkipped = undefined; });
   await tools.run.reset();
   return found;
 }

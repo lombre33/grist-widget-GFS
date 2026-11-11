@@ -145,6 +145,7 @@ export class GfsController {
     this.otherDocuments = createOtherDocuments({
       t: this.t, container: this.$('stage'), inertTargets: this.inertTargets, docApi: () => this.grist.docApi, transfer: this.transfer,
       language: () => this.lang, notice: text => this.notice(text), writeBlock: () => this.#writeBlock(),
+        files: () => (this.explorer ? this.explorer.files : []),
     });
     this.rights = new RightsControl({
       port: this.port, transfer: this.transfer, manifests: this.manifests, now: () => Date.now(), container: this.$('stage'),
@@ -307,8 +308,8 @@ export class GfsController {
   #buildFiling() {
     const layer = opts => ({ ...opts, t: this.t, container: this.$('stage'), inertTargets: this.inertTargets });
     return new Filing({
-      port: this.port, rangement: this.rangement, t: this.t, locale: () => this.locale, files: () => this.explorer.files, folders: () => this.explorer.folders,
-        appName: this.appName,
+      port: this.port, rangement: this.rangement, t: this.t, locale: () => this.locale, files: () => (this.explorer ? this.explorer.files : []),
+        folders: () => this.explorer.folders, appName: this.appName,
       spaces: { info: () => this.spaces, owner: async () => (await this.transfer.isOwner()) === true },
       here: () => (this.explorer.state.view === 'folder' ? this.explorer.state.path : ''), writeBlock: () => this.#writeBlock(),
         notice: text => this.notice(text),
@@ -334,7 +335,8 @@ export class GfsController {
     });
     // Le 5e bouton : les fichiers ouverts (js/explorer/opened-bar.js), qu'on retrouve d'un clic sans repasser par l'explorateur.
     this.openedBar = new OpenedBar({
-      opened: this.opened, files: () => this.explorer.files, session: () => this.session, dock: this.dock, t: this.t, appName: this.appName,
+      opened: this.opened, files: () => (this.explorer ? this.explorer.files : []), session: () => this.session, dock: this.dock, t: this.t,
+        appName: this.appName,
       open: file => this.openings.openFile(file), showExplorer: () => this.showExplorer(), notice: text => this.notice(text),
     });
     this.dock.relabel(this.t);

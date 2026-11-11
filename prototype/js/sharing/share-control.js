@@ -43,21 +43,26 @@ export class ShareControl {
     return this.#target(file) ? null : this.#o.t('share.unsupported');
   }
 
-  // Pourquoi ce dossier ne se partage pas (une phrase), ou null : seuls les dossiers à l'intérieur d'un espace se partagent ; « Moi » n'a pas de droits à
-  // donner, et un espace donne ses droits à des groupes dans « Gérer les partages… ».
+  // Pourquoi ce dossier ne se partage pas du tout (une phrase), ou null : la racine, « Espaces » et un espace entier n'ont rien à envoyer ou se règlent
+  // ailleurs. Un dossier de « Moi » se partage avec un autre document (une copie) ; dans ce document « Moi » n'a pas de droits à donner, et l'onglet « Dans ce
+  // document » le dit (`share.folder.personal`).
   whyNotFolder(path) {
     const { t } = this.#o;
     if (!this.#o.fullAccess()) return t('share.noAccess');
     const at = locate(path, this.#o.spaces ? this.#o.spaces() : null);
-    if (!at) return path === '' || path.split('/')[0] !== 'Espaces' ? t('share.folder.personal') : t('share.folder.space');
-    return at.folder ? null : t('share.folder.space');
+    if (at) return at.folder ? null : t('share.folder.space');
+    if (path === '') return t('share.folder.personal');
+    return path.split('/')[0] === 'Espaces' ? t('share.folder.space') : null;
   }
 
-  // Le dossier d'espace `path` ("Espaces/<espace>/<dossier>") comme la fenêtre le prend : une clé (`dossier:<clé>/<chemin>`), un nom, et d'où il hérite.
+  // Le dossier `path` comme la fenêtre le prend : un dossier d'espace ("Espaces/<espace>/<dossier>") a une clé (`dossier:<clé>/<chemin>`), un nom et d'où il
+  // hérite (`shared`) ; un dossier de « Moi » n'a que son nom (`mine`) ; `path` est dans les deux cas le chemin de l'explorateur, celui que portent les
+  // fichiers rangés dedans. Rien pour un dossier qui ne se partage pas (`whyNotFolder`).
   folderFile(path) {
     const at = locate(path, this.#o.spaces ? this.#o.spaces() : null);
-    if (!at || !at.folder) return null;
-    return { key: folderTarget(at.space.key, at.folder), name: at.folder.split('/').pop(), shared: { space: at.space, path: at.folder } };
+    const name = (at && at.folder ? at.folder : path).split('/').pop();
+    if (at && at.folder) return { key: folderTarget(at.space.key, at.folder), name, path, shared: { space: at.space, path: at.folder } };
+    return !at && this.whyNotFolder(path) === null ? { key: `dossier:moi/${path}`, name, path, mine: true } : null;
   }
 
   // L'espace, puis les dossiers au-dessus de celui-ci : ce qu'il hérite (la fenêtre les marque « Hérité »).
@@ -68,6 +73,7 @@ export class ShareControl {
   // L'état que la fenêtre dessine : la table des partages (absente : le partage n'est pas activé), la preuve de propriété, ce que la personne peut changer.
   async load(file) {
     const owner = await this.#o.reader.owner();
+    if (file.mine) return { ...noShare(owner, false), mine: true };
     const rows = await this.#try(async () => rowsOf(await this.#o.port.doc.fetchTable(SHARES_TABLE)), null);
     if (!rows) return noShare(owner, false);
     const target = file.shared ? null : this.#target(file);
@@ -112,12 +118,19 @@ export class ShareControl {
 
   #write(actions) { return writeActions(this.#o, actions); }
 
+  // Le sous-titre de la fenêtre : l'espace d'un dossier d'espace, « Moi » pour un dossier de la personne, l'app d'un fichier.
+  #appLabel(file) {
+    const { t } = this.#o;
+    if (file.shared) return t('share.folder.in', { name: file.shared.space.name });
+    return file.mine ? t('share.folder.inMine', { name: t('ex.me') }) : this.#o.appName(file.app);
+  }
+
   // Ouvre la fenêtre du fichier ; rend la promesse de sa fermeture.
   open(file) {
     const { t, container, inertTargets } = this.#o;
     return openShare({
       container, t, locale: this.#o.locale(), inertTargets, other: state => this.#o.other(file, state),
-        file: { key: file.key, name: file.name, app: file.shared ? t('share.folder.in', { name: file.shared.space.name }) : this.#o.appName(file.app) },
+        file: { key: file.key, name: file.name, app: this.#appLabel(file) }, startTab: file.mine ? 'other' : 'here',
       load: () => this.load(file), onManage: () => this.#o.manage.open(),
       onAdd: record => this.#write([['AddRecord', SHARES_TABLE, null, record]]),
       onChange: (id, patch) => this.#write([['UpdateRecord', SHARES_TABLE, id, patch]]),

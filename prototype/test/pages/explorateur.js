@@ -284,7 +284,7 @@ async function mount() {
     notice: text => window.__notices.push(text), settings: () => settingsItems({ t: i18n.t, language: () => ({ choice: window.__language, grist: language }), onLanguage: value => { window.__language = value; }, onTheme: () => theme.open(), place, onAbout: () => window.__about() }),
     onOpen: file => { window.__opened = file.name; }, onNew: () => {},
     opened: { keys: () => openedFiles.keys(), shown: () => openedFiles.shown(SESSION), remove: key => openedFiles.remove(key) },
-    onImport: () => {}, onClose: () => {}, onApps: () => {}, onRights: () => window.__rights(window.__rightsKind || 'protege'), sharing: { whyNot: () => null, whyNotFolder: path => (path.split('/').length > 2 && path.startsWith('Espaces/') ? null : i18n.t(path.startsWith('Espaces') ? 'share.folder.space' : 'share.folder.personal')), folderFile: path => ({ key: `dossier:${path}`, name: path.split('/').pop() }), open: () => window.__share(window.__shareKind || 'actif') }, onWeight: estimate => window.__weight(estimate), personal: () => true, kept: null, trash: bin, copying,
+    onImport: () => {}, onClose: () => {}, onApps: () => {}, onRights: () => window.__rights(window.__rightsKind || 'protege'), sharing: { whyNot: () => null, whyNotFolder: path => (path.startsWith('Espaces') && path.split('/').length < 3 ? i18n.t('share.folder.space') : null), folderFile: path => ({ key: `dossier:${path}`, name: path.split('/').pop(), path, mine: !path.startsWith('Espaces/') }), open: file => window.__share(window.__shareKind || 'actif', file) }, onWeight: estimate => window.__weight(estimate), personal: () => true, kept: null, trash: bin, copying,
     attachments: async () => { window.__attachments += 1; if (window.__attachmentsFail) return { error: new Error(window.__attachmentsFail) }; return { data: attachmentsTable() }; },
     filing: { togglePin: noted('pin', 'name'), rename: noted('rename', 'name'), moveFile: noted('move', 'name'), renameFolder: async path => { window.__filing.push(['renameFolder', path]); }, moveFolder: async path => { window.__filing.push(['moveFolder', path]); }, ...moving,
       newFolder: () => filing.newFolder(), deleteFolder: path => filing.deleteFolder(path), undoStack: filing.undoStack },
@@ -463,20 +463,36 @@ async function mount() {
   const LINKS = {
     actifs: [{ id: 'e1', name: 'Compta', files: ['abc', 'x', 'y'], state: 'active', doc: { name: LINK_DOC, id: 'd1' } }, { id: 'e2', name: 'Direction', files: [], state: 'pending', doc: { name: '', id: '' } }, { id: 'e3', name: 'Archives', files: ['x'], state: 'blocked', doc: { name: 'Archives', id: 'd3' } }],
     aucun: [],
+    // Un DOSSIER (js/share-folder.js : `fileId` est la liste de ses fichiers) : un document qui les a tous (à jour), un qui n'en a qu'une partie, un qui attend sa réponse.
+    dossier: [{ id: 'e1', name: 'Compta', files: ['f1', 'f2', 'f3', 'x'], state: 'active', doc: { name: LINK_DOC, id: 'd1' } }, { id: 'e2', name: 'Direction', files: ['f1'], state: 'active', doc: { name: 'Direction', id: 'd2' } }, { id: 'e3', name: 'Archives', files: [], state: 'pending', doc: { name: '', id: '' } }],
   };
   const linksNow = () => { if (window.__links === 'illisible') throw new Error('illisible'); return JSON.parse(JSON.stringify(LINKS[window.__links || 'actifs'])).filter(each => !(window.__removed || []).includes(each.id)); };
-  const otherTab = state => ({
+  // `folder` : le dossier que « Partager » a reçu (`window.__folderCount` PDF de GFS dedans, 3 par défaut, et `window.__folderSkipped` fichiers d'une app qui ne partent pas, 2 par défaut).
+  const folderTab = (state, folder) => {
+    const count = window.__folderCount === undefined ? 3 : window.__folderCount;
+    const ids = ['f1', 'f2', 'f3', 'f4', 'f5'].slice(0, count);
+    return {
+      why: whyNot(i18n.t, { file: folder, state, files: ids }), fileId: ids, folder: true, count, skipped: window.__folderSkipped === undefined ? 2 : window.__folderSkipped,
+      loadLinks: async () => linksNow(),
+      onLevel: async (link, level) => { window.__shareActs.push(['level', link.id, level, 'dossier']); return { ok: true, note: level === 'once' ? i18n.t('so.once.going', { name: folder.name }) : undefined }; },
+      onNew: async () => { window.__shareActs.push(['new']); await window.__sendOther(window.__shareSend || 'ok'); },
+    };
+  };
+  const otherTab = (state, folder) => folder ? folderTab(state, folder) : ({
     why: whyNot(i18n.t, { file: { id: 'abc', name: 'Facture.pdf', app: 'gfs-fichiers' }, state }), fileId: 'abc',
     loadLinks: async () => linksNow(),
     onLevel: async (link, level) => { window.__shareActs.push(['level', link.id, level]); return { ok: true, note: level === 'once' ? i18n.t('so.once.going', { name: 'Facture.pdf' }) : undefined }; },
     onNew: async () => { window.__shareActs.push(['new']); await window.__sendOther(window.__shareSend || 'ok'); },
   });
-  window.__share = kind => {
+  // `folder` : l'objet d'un dossier (`mine` : un dossier de « Moi », sans droits à donner ici : la fenêtre s'ouvre sur l'onglet « Dans un autre document Grist »).
+  window.__share = (kind, folder) => {
     window.__shareActs = [];
     window.__removed = [];
     const record = act => { window.__shareActs.push(act); return Promise.resolve({ ok: true }); };
-    return openShare({ container: stage, t: i18n.t, locale: language === 'en' ? 'en-GB' : 'fr-FR', inertTargets: () => [explorer.root], other: window.__shareOther ? state => otherTab(state) : null, file: { key: 'gfs-fichiers:abc', name: 'Facture de la session de formation de septembre.pdf', app: 'GFS' },
-      load: async () => shareStates[kind], onAdd: row => record(['add', row.Personne, row.Droit]), onChange: (id, patch) => record(['change', id, patch.Droit]), onRemove: id => record(['remove', id]), onActivate: async () => { window.__shareActs.push(['activate']); return false; }, onManage: kind === 'actif' ? () => window.__manage() : null });
+    const dir = folder && typeof folder.path === 'string' ? folder : null;
+    const file = dir ? { key: dir.key, name: dir.name, app: dir.mine ? i18n.t('share.folder.inMine', { name: i18n.t('ex.me') }) : i18n.t('share.folder.in', { name: 'Achats' }) } : { key: 'gfs-fichiers:abc', name: 'Facture de la session de formation de septembre.pdf', app: 'GFS' };
+    return openShare({ container: stage, t: i18n.t, locale: language === 'en' ? 'en-GB' : 'fr-FR', inertTargets: () => [explorer.root], other: window.__shareOther ? state => otherTab(state, dir) : null, file, startTab: dir && dir.mine ? 'other' : 'here',
+      load: async () => (dir && dir.mine ? { ...shareStates.inactif, mine: true } : shareStates[kind]), onAdd: row => record(['add', row.Personne, row.Droit]), onChange: (id, patch) => record(['change', id, patch.Droit]), onRemove: id => record(['remove', id]), onActivate: async () => { window.__shareActs.push(['activate']); return false; }, onManage: kind === 'actif' ? () => window.__manage() : null });
   };
   // La fenêtre « Poids du document » (js/weight/weight-window.js, test/poids-fenetre-firefox.mjs) : la vraie fenêtre et le vrai lecteur (js/weight/weight-reader.js) sur une doublure de `Transfer.sql`. `window.__weightKind` choisit ce
   // que le serveur répond : 'ok' (un document de dix-huit tables dont une au nom très long et une trop longue à lire), 'refuse' (pas le droit de tout copier : 403), 'muet' (le serveur ne répond pas).

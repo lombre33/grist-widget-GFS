@@ -8,10 +8,12 @@
 //   identifiant qui n'existe pas ;
 //   - un fichier retiré de la condition est effacé chez l'autre, sauf quand sa réception est « en archive » (la copie reste, marquée « supprimée à la source
 //   ») : GFS reçoit toujours en archive.
-import { FILES_COLUMN_IDS, FILES_TABLE, TRASH_COLUMN_IDS } from '../files/gfs-files.js';
+import { FILES_COLUMN_IDS, FILES_TABLE, SHARED_FOLDER_COLUMN, TRASH_COLUMN_IDS } from '../files/gfs-files.js';
 
-// Les colonnes qui partent : celles du fichier, sans la corbeille (qui n'a de sens que dans le document d'origine).
-export const SENT_COLUMNS = Object.freeze(FILES_COLUMN_IDS.filter(id => !TRASH_COLUMN_IDS.includes(id)));
+// Les colonnes qui partent : celles du fichier, sans la corbeille (qui n'a de sens que dans le document d'origine), et le nom du dossier partagé. Cette
+// dernière n'existe qu'après le premier dossier partagé : le moteur n'envoie que les colonnes que la table porte au moment de l'enregistrement, la nommer
+// d'avance ne coûte rien, et un lien qui existait avant elle la porte dès son premier enregistrement ensuite (faits vérifiés, 99).
+export const SENT_COLUMNS = Object.freeze([...FILES_COLUMN_IDS.filter(id => !TRASH_COLUMN_IDS.includes(id)), SHARED_FOLDER_COLUMN]);
 export const NONE = 'gfs-aucun';
 export const LEVELS = Object.freeze(['none', 'once', 'live']);
 export const PASS_MS = 2000; // entre deux passages du rattrapage, tant que des fichiers partent
@@ -61,12 +63,23 @@ export function linksFrom({ note, rows, hooks, tablesOf, emailOf, statusOf }) {
   return links;
 }
 
-// Le niveau d'un fichier chez un document relié : 'live' (dans la condition) ou 'none'. « Une copie, une fois » n'est pas un état : elle part, puis le fichier
-// sort de la condition.
-export const levelOf = (link, fileId) => (link.files.includes(fileId) ? 'live' : 'none');
+// Un fichier (son identifiant) ou une liste de fichiers (ceux d'un dossier) : toujours une liste.
+const listed = ids => (Array.isArray(ids) ? ids : [ids]);
 
-// Ce que la condition devient quand le fichier `fileId` y entre (`on`) ou en sort.
-export const idsWith = (link, fileId, on) => (on ? [...new Set([...link.files, fileId])] : link.files.filter(id => id !== fileId));
+// Le niveau d'un fichier, ou de tous ceux d'un dossier, chez un document relié : 'live' (tous dans la condition), 'part' (une partie seulement : un dossier
+// dont un fichier a été partagé ou retiré à part) ou 'none'. « Une copie, une fois » n'est pas un état : elle part, puis le fichier sort de la condition.
+export function levelOf(link, ids) {
+  const wanted = listed(ids);
+  const inside = wanted.filter(id => link.files.includes(id)).length;
+  if (wanted.length && inside === wanted.length) return 'live';
+  return inside ? 'part' : 'none';
+}
+
+// Ce que la condition devient quand le fichier `ids` (ou les fichiers d'un dossier) y entre (`on`) ou en sort.
+export function idsWith(link, ids, on) {
+  const wanted = listed(ids);
+  return on ? [...new Set([...link.files, ...wanted])] : link.files.filter(id => !wanted.includes(id));
+}
 
 // Enregistre la condition de l'export et renvoie ce qui a changé (le moteur envoie l'ajout, le contenu suit par son rattrapage).
 export async function setCondition(engine, link, ids) {
@@ -88,8 +101,8 @@ export async function settle(engine, link, wait = ms => new Promise(resolve => s
   throw Object.assign(new Error('timeout'), { share: 'timeout' });
 }
 
-// Change le niveau du fichier `fileId` chez le document relié `link` ; rend le nouveau niveau ou, pour « une fois », une promesse que la fenêtre n'attend pas
-// (`later`) : le fichier part, puis sort de la condition.
+// Change le niveau du fichier `fileId` (ou de la liste des fichiers d'un dossier) chez le document relié `link` ; rend le nouveau niveau ou, pour « une fois »,
+// une promesse que la fenêtre n'attend pas (`later`) : le fichier part, puis sort de la condition.
 //   live  le fichier entre dans la condition et y reste ;
 //   once  il entre, part, puis sort (la copie reste chez l'autre : réception en archive) ;
 //   none  il sort (idem).
@@ -101,7 +114,7 @@ export async function applyLevel(engine, link, fileId, level, wait) {
   // avec celui-ci.
   const leave = async () => {
     const fresh = (await engine.readLinks()).find(each => each.id === link.id);
-    if (fresh && fresh.files.includes(fileId)) await setCondition(engine, fresh, idsWith(fresh, fileId, false));
+    if (fresh && listed(fileId).some(id => fresh.files.includes(id))) await setCondition(engine, fresh, idsWith(fresh, fileId, false));
   };
   return { level, ids, later: settle(engine, link, wait).then(leave) };
 }

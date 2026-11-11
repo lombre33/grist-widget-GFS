@@ -77,7 +77,13 @@ test('l\'onglet « Dans un autre document Grist » : libre pour un PDF de GFS qu
   const pdf = { key: 'gfs-fichiers:abc', app: 'gfs-fichiers', id: 'abc', name: 'Facture.pdf' };
   assert.equal(whyNot(t, { file: pdf, state: { owner: true } }), null);
   assert.equal(whyNot(t, { file: { ...pdf, app: 'publipostage' }, state: { owner: true } }), t('share.other.why.pdf'));
-  assert.equal(whyNot(t, { file: { ...pdf, folder: { path: 'Espaces/A/B' } }, state: { owner: true } }), t('share.other.why.pdf'));
+  assert.equal(whyNot(t, { file: { ...pdf, folder: 'Contrats' }, state: { owner: true } }), null, 'un PDF rangé dans un dossier se partage comme un autre');
+  // Un dossier (js/share-folder.js) : un chemin et pas d'app ; il part s'il porte au moins un PDF de GFS, et pour un propriétaire.
+  const folder = { key: 'dossier:moi/Contrats', name: 'Contrats', path: 'Contrats', mine: true };
+  assert.equal(whyNot(t, { file: folder, state: { owner: true }, files: [pdf] }), null);
+  assert.equal(whyNot(t, { file: folder, state: { owner: true }, files: [] }), t('share.other.why.emptyFolder'));
+  assert.equal(whyNot(t, { file: folder, state: { owner: true } }), t('share.other.why.emptyFolder'));
+  assert.equal(whyNot(t, { file: folder, state: { owner: false }, files: [pdf] }), t('share.other.why.owner'));
   assert.equal(whyNot(t, { file: null, state: { owner: true } }), t('share.other.why.pdf'));
   assert.equal(whyNot(t, { file: pdf, state: { owner: false } }), t('share.other.why.owner'));
   assert.equal(whyNot(t, { file: pdf, state: { owner: null } }), t('share.other.why.owner'));
@@ -98,6 +104,23 @@ test('l\'onglet du contrôleur : sa raison et le fichier, et un document en lect
   assert.deepEqual(await make(null).tab(pdf, { owner: false }).onLevel({ id: 'e1', files: [] }, 'live'), { ok: false, message: t('share.other.why.owner') });
   await readonly.tab(pdf, { owner: true }).onNew();
   assert.deepEqual(notices, [t('mod.readonly')], 'la fenêtre du premier envoi ne s\'ouvre pas : un avis dit pourquoi');
+});
+
+test('l\'onglet d\'un dossier : tous ses PDF de GFS (le niveau du dossier), le nombre de ceux d\'une app qui ne partent pas, et rien à envoyer pour un dossier sans PDF', async () => {
+  const notices = [];
+  const pdf = (id, extra = {}) => ({ key: `gfs-fichiers:${id}`, app: 'gfs-fichiers', id, row: Number(id.slice(1)), name: `${id}.pdf`, folder: 'Contrats', trashed: null, ...extra });
+  const files = [pdf('p1'), pdf('p2'), pdf('p3', { folder: 'Autre' }), pdf('p4', { app: 'publipostage' }), pdf('p5', { trashed: { ts: 1 } })];
+  const make = list => createOtherDocuments({ t, container: null, inertTargets: () => [], docApi: () => null, transfer: null, language: () => 'fr', notice: text => notices.push(text), writeBlock: () => null, files: () => list });
+  const folder = { key: 'dossier:moi/Contrats', name: 'Contrats', path: 'Contrats', mine: true };
+  const tab = make(files).tab(folder, { owner: true });
+  assert.deepEqual([tab.why, tab.folder, tab.fileId, tab.count, tab.skipped], [null, true, ['p1', 'p2'], 2, 1]);
+  const empty = make([pdf('p4', { app: 'publipostage' })]).tab(folder, { owner: true });
+  assert.deepEqual([empty.why, empty.count, empty.skipped], [t('share.other.why.emptyFolder'), 0, 1]);
+  assert.deepEqual(await empty.onLevel({ id: 'e1', files: [] }, 'live'), { ok: false, message: t('share.other.why.emptyFolder') }, 'rien n\'est écrit pour un dossier sans PDF');
+  assert.equal(make(files).tab(folder, { owner: false }).why, t('share.other.why.owner'));
+  assert.equal(make(files).tab(pdf('p1'), { owner: true }).folder, false, 'un fichier rangé dans un dossier reste un fichier');
+  assert.equal(make(files).tab(pdf('p1'), { owner: true }).fileId, 'p1');
+  assert.deepEqual(notices, []);
 });
 
 test('« D\'un autre document Grist… » : l\'article du sous-menu « Importer » est grisé avec sa raison quand rien ne peut s\'écrire ; recevoir sans être propriétaire dit pourquoi, sans rien ouvrir', async () => {

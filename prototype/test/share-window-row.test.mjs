@@ -2,17 +2,9 @@
 // (le texte et les attributs seulement) ; la fenêtre à la souris se mesure sous Firefox (test/partager-firefox.mjs) et dans un vrai Grist (labo/run-partager-fenetre.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { installFakeDocument } from './fake-dom.mjs';
 
-class FakeNode {
-  constructor(tag) { this.tag = tag; this.attrs = {}; this.dataset = {}; this.style = { setProperty() {} }; this.className = ''; this.children = []; this.listeners = {}; }
-  setAttribute(name, value) { this.attrs[name] = value; }
-  addEventListener(type, fn) { (this.listeners[type] = this.listeners[type] || []).push(fn); }
-  append(...nodes) { for (const node of nodes) this.children.push(node); }
-  cloneNode() { return this; }
-  get elements() { return this.children.filter(node => typeof node !== 'string'); }
-  get textContent() { return this.children.map(node => (typeof node === 'string' ? node : node.textContent)).join(''); }
-}
-globalThis.document = { createElement: tag => new FakeNode(tag), createElementNS: (ns, tag) => new FakeNode(tag) };
+installFakeDocument();
 
 const { row } = await import('../js/share-window.js');
 const { createI18n } = await import('../js/i18n.js');

@@ -9,6 +9,7 @@
 //   5. Restaurer : la ligne revient à son numéro, valeurs identiques ; la phrase de l'app, longue, tient dans le panneau.
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';
+import { collectWarnings, waiter, seedProbeFiles, reopenGfs, probeTools } from './lab-gestes.mjs';
 import { createI18n } from '../js/i18n.js';
 
 const lang = process.env.LAB_LANG || 'fr';
@@ -23,35 +24,17 @@ const PATIENCE = { fichier: 'app-files.js', de: 'const APP_PATIENCE_MS = 20000;'
 const lab = await startLab({ lang, colorScheme: scheme, probes: ['zf', 'q'], patches: [PATIENCE] });
 await lab.fitPanel(undefined, 700, 400);
 const { page } = lab;
-const warnings = [];
-page.on('console', message => { if (message.type() === 'warning' && message.text().startsWith('GFS')) warnings.push(message.text()); });
+// Cette passe compte aussi les avertissements des sondes muettes (sondes-muettes.mjs les écarte dans les passes plus récentes).
+const warnings = collectWarnings(page, text => text.startsWith('GFS'));
 
 // Les formulaires de la sonde : une table du préfixe de l'app, remplie par GFS (accès complet) ; GFS les relit en repartant.
-const now = Math.floor(Date.now() / 1000);
-await lab.frame.evaluate(async stamp => {
-  const columns = [{ id: 'Nom', type: 'Text' }, { id: 'Type', type: 'Text' }, { id: 'DateModif', type: 'DateTime' }];
-  await grist.docApi.applyUserActions([['AddTable', 'SondeZf_Fichiers', columns]]);
-  await grist.docApi.applyUserActions([['BulkAddRecord', 'SondeZf_Fichiers', [null, null, null], { Nom: ['Inscription atelier', 'Enquête', 'Bilan'], Type: ['formulaire', 'formulaire', 'formulaire'], DateModif: [stamp - 60, stamp - 120, stamp - 180] }]]);
-}, now);
-await lab.frame.evaluate(() => location.reload());
-await page.waitForTimeout(1000);
-const frame = await lab.gfsFrame(/access=full/);
-await lab.gfsReady(frame);
-await page.waitForTimeout(800);
+const now = await seedProbeFiles(lab, { SondeZf_Fichiers: [['Inscription atelier', 'formulaire', 60], ['Enquête', 'formulaire', 120], ['Bilan', 'formulaire', 180]] });
+const frame = await reopenGfs(lab);
 
 const ZF = /zf-composite\//;
 const Q = /q-liens\//;
-const frameOf = re => page.frames().find(each => re.test(each.url()));
-const count = re => page.frames().filter(each => re.test(each.url())).length;
-const readProbe = each => each.evaluate(() => JSON.parse(document.body.dataset.sonde || '{}')).catch(() => ({}));
-const waitFor = async (label, test, tries = 80) => {
-  for (let i = 0; i < tries; i++) {
-    if (await test()) return true;
-    await page.waitForTimeout(100);
-  }
-  say(`(pas arrivé : ${label})`);
-  return false;
-};
+const { frameOf, count, readProbe } = probeTools(page);
+const waitFor = waiter(page, 80);
 const modal = frame.locator('.mod.ask');
 const toast = frame.locator('#toast');
 const row = name => frame.locator('.ls-row', { has: frame.locator('.t', { hasText: new RegExp(`^${name.replace(/[()]/g, '\\$&')}$`) }) }).first();

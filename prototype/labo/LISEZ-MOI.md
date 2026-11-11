@@ -18,6 +18,8 @@ REPO_DIR="$(realpath ../..)" node run-ordre.mjs                   # un essai ; l
 Le miroir ne construit que les bibliothèques de l'app. Celles que GFS porte (Plotly et ECharts, pour le graphique) n'y sont pas : à leur adresse de CDN, le labo
 rend la copie de GFS (`vendor/…`, nommée par `bibliotheques/catalogue.json`), qui a les mêmes octets et la même empreinte que le CDN.
 
+**Écrire un essai** : la mise en place commune est dans `lab-setup.mjs` (`startLab`), les mesures et les verdicts dans `lab-common.mjs`, et les gestes que les passes à sondes répétaient dans `lab-gestes.mjs` : compter les avertissements de GFS (`collectWarnings`), attendre un état (`waiter`), remplir les tables de fichiers d'une sonde (`seedProbeFiles`), rouvrir GFS après un semis (`reopenGfs`), lire une sonde (`probeTools`), lire l'explorateur (`explorerTools`). Les essais Firefox d'une fenêtre ont les leurs dans `test/fenetre-firefox.mjs`, la doublure de DOM des essais Node dans `test/fake-dom.mjs`. Avant de recopier un bloc d'une passe à l'autre, le mettre là : l'outil d'audit compte les copies (faits vérifiés 84).
+
 L'attribut `integrity` des scripts est neutralisé (le miroir ne rend pas toujours les octets exacts du CDN), sauf dans les sondes et pour un script que GFS sert
 lui-même (`vendor/…`) : là, le navigateur contrôle l'empreinte pour de bon, y compris pour un module dans un sous-cadre à origine opaque.
 

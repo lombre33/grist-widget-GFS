@@ -13,7 +13,7 @@
 //   rien de tout cela n'écrit dans le document (ni table, ni ligne de GFS_Rangement).
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';
-import { isGfsWarning } from './sondes-muettes.mjs';
+import { collectWarnings, waiter } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -31,20 +31,12 @@ const MIDDLE = { gauche: 'w', haut: 'n', droite: 'e', bas: 's' }; // le bouton d
 
 const lab = await startLab({ lang, colorScheme: scheme, probes: true });
 const { page } = lab;
-const warnings = [];
-page.on('console', m => { if (m.type() === 'warning' && isGfsWarning(m.text())) warnings.push(m.text()); });
+const warnings = collectWarnings(page);
 await lab.fitPanel(undefined, 700, 400);
 let frame = await lab.gfsFrame(/access=full/);
 await lab.gfsReady(frame);
 
-const waitFor = async (label, test, tries = 60) => {
-  for (let i = 0; i < tries; i++) {
-    if (await test()) return true;
-    await page.waitForTimeout(100);
-  }
-  say(`(pas arrivé : ${label})`);
-  return false;
-};
+const waitFor = waiter(page, 60);
 // Ce que la sonde a reçu : écrit dans body[data-sonde] à chaque message ; une page rechargée repart de zéro.
 const probe = target => target.evaluate(() => ({ contextes: [], evenements: [], reponses: [], erreurs: [], clics: {}, ...JSON.parse((document.body && document.body.dataset.sonde) || '{}') }));
 const probeFrames = () => page.frames().filter(f => /r-barre\//.test(f.url()) && !f.isDetached());

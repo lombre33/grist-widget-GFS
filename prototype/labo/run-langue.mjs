@@ -13,7 +13,7 @@
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check } from './lab-common.mjs';
-import { isGfsWarning } from './sondes-muettes.mjs';
+import { collectWarnings, waiter, reopenGfs } from './lab-gestes.mjs';
 import { settingsButton, openSettings, openLanguageMenu, chooseLanguage, subRows } from './reglages-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
@@ -34,31 +34,13 @@ const wordsOther = WORDS[other];
 
 const lab = await startLab({ lang, colorScheme: scheme, probes: true });
 const { page } = lab;
-const warnings = [];
-page.on('console', m => { if (m.type() === 'warning' && isGfsWarning(m.text())) warnings.push(m.text()); });
+const warnings = collectWarnings(page);
 await lab.fitPanel(undefined, panelWidth, 400);
 say('semis :', await seedFiles(lab.frame));
-await lab.frame.evaluate(() => location.reload());
-await page.waitForTimeout(1000);
-let frame = await lab.gfsFrame(/access=full/);
-await lab.gfsReady(frame);
-await page.waitForTimeout(800);
+let frame = await reopenGfs(lab);
 const shot = name => lab.shotPanel(run, name, frame);
-const reload = async () => {
-  await frame.evaluate(() => location.reload());
-  await page.waitForTimeout(1000);
-  frame = await lab.gfsFrame(/access=full/);
-  await lab.gfsReady(frame);
-  await page.waitForTimeout(500);
-};
-const waitFor = async (label, test) => {
-  for (let i = 0; i < 60; i++) {
-    if (await test()) return true;
-    await page.waitForTimeout(100);
-  }
-  say(`(pas arrivé : ${label})`);
-  return false;
-};
+const reload = async () => { frame = await reopenGfs(lab, frame, 500); };
+const waitFor = waiter(page, 60);
 
 // Ce que l'explorateur écrit à l'écran, relevé d'un coup.
 const screen = () => frame.evaluate(() => {

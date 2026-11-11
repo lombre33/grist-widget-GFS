@@ -12,6 +12,7 @@
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check } from './lab-common.mjs';
+import { explorerTools } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -32,27 +33,14 @@ if (await frame.locator('.mod').count()) { await page.keyboard.press('Escape'); 
 say('panneau :', await (await frame.frameElement()).boundingBox());
 
 const shot = name => lab.shotPanel(run, name, frame);
-const row = text => frame.locator('.ls-row', { hasText: text }).first();
-const folderRow = name => frame.locator('.ls-row.folder', { has: frame.locator('.t', { hasText: new RegExp(`^${name}$`) }) });
-const fileNames = () => frame.locator('.ls-row:not(.folder) .t').allInnerTexts();
-const folderNames = () => frame.locator('.ls-row.folder .t').allInnerTexts();
-const toast = async () => ((await frame.locator('#toast').isVisible()) ? (await frame.locator('#toast').innerText()) : '');
-const starOn = async name => (await row(name).locator('.rb.pin').getAttribute('class')).includes(' on');
-const favCount = async () => Number(await frame.locator('.tr-row[data-view="fav"] .cnt').innerText());
+// Les lignes de l'explorateur et ses lectures, vues du cadre de GFS (rechargé : `frame` change).
+const { row, folderRow, fileNames, folderNames, toast, starOn, favCount, table, until } = explorerTools(() => frame, page);
 const menuItem = re => frame.locator('.menu-item', { hasText: re });
 const openRowMenu = async locator => { await locator.hover(); await locator.locator('.rb.mn').click(); await frame.locator('.menu').waitFor(); };
 // Les lignes de rangement de GFS (sans la ligne réservée), et les tables de Publipostage+, lues par la connexion de GFS.
 const gfsLines = async () => { const state = await lab.rangement(frame); return state.table ? state.lines.filter(line => !String(line.Utilisateur).startsWith('@')) : null; };
 const lineOf = async id => ((await gfsLines()) || []).find(line => line.App === 'publipostage' && line.Fichier === id) || null;
-const table = name => frame.evaluate(name => grist.docApi.fetchTable(name), name);
 const idOf = async name => { const data = await table('Publipostage_Modeles'); return String(data.id[data.Nom.indexOf(name)]); };
-// L'explorateur se relit après chaque geste : on attend ce que le geste doit montrer, jamais plus de huit secondes.
-const until = async (probe, timeout = 8000) => {
-  const end = Date.now() + timeout;
-  let value;
-  while (Date.now() < end) { value = await probe().catch(() => false); if (value) return value; await page.waitForTimeout(150); }
-  return value;
-};
 
 // ----- 1. L'étoile sans la table.
 say('\n1. Épingler sans la table');

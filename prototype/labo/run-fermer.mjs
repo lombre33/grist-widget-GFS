@@ -6,7 +6,7 @@
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { startLab } from './lab-setup.mjs';
 import { say, check, probeDeclares } from './lab-common.mjs';
-import { isGfsWarning } from './sondes-muettes.mjs';
+import { collectWarnings, waiter, seedProbeFiles, reopenGfs, probeTools } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -19,38 +19,16 @@ const ACCEPTS = [probeDeclares('sonde-o', { ouverture: { fichier: true, nouveau:
 const lab = await startLab({ lang, colorScheme: scheme, probes: true, patches: [...ACCEPTS] });
 await lab.fitPanel(undefined, 700, 400);
 const { page } = lab;
-const warnings = [];
-page.on('console', m => { if (m.type() === 'warning' && isGfsWarning(m.text())) warnings.push(m.text()); });
+const warnings = collectWarnings(page);
 
 // Les fichiers des deux sondes : une table du préfixe de chaque app, remplie par GFS (accès complet) ; GFS les relit en repartant.
-const now = Math.floor(Date.now() / 1000);
-await lab.frame.evaluate(async stamp => {
-  const columns = [{ id: 'Nom', type: 'Text' }, { id: 'Type', type: 'Text' }, { id: 'DateModif', type: 'DateTime' }];
-  await grist.docApi.applyUserActions([['AddTable', 'SondeO_Fichiers', columns], ['AddTable', 'SondeQ_Fichiers', columns]]);
-  await grist.docApi.applyUserActions([
-    ['BulkAddRecord', 'SondeO_Fichiers', [null, null, null], { Nom: ['Premier', 'Deuxième', 'Troisième'], Type: ['document', 'document', 'document'], DateModif: [stamp - 60, stamp - 120, stamp - 180] }],
-    ['BulkAddRecord', 'SondeQ_Fichiers', [null], { Nom: ['Projet Q'], Type: ['projet'], DateModif: [stamp - 30] }],
-  ]);
-}, now);
-await lab.frame.evaluate(() => location.reload());
-await page.waitForTimeout(1000);
-const frame = await lab.gfsFrame(/access=full/);
-await lab.gfsReady(frame);
-await page.waitForTimeout(800);
+await seedProbeFiles(lab, { SondeO_Fichiers: [['Premier', 'document', 60], ['Deuxième', 'document', 120], ['Troisième', 'document', 180]], SondeQ_Fichiers: [['Projet Q', 'projet', 30]] });
+const frame = await reopenGfs(lab);
 
 const O = /o-ouvrir\//;
 const Q = /q-liens\//;
-const frameOf = re => page.frames().find(f => re.test(f.url()));
-const count = re => page.frames().filter(f => re.test(f.url())).length;
-const readProbe = f => f.evaluate(() => JSON.parse(document.body.dataset.sonde || '{}')).catch(() => ({}));
-const waitFor = async (label, test, tries = 60) => {
-  for (let i = 0; i < tries; i++) {
-    if (await test()) return true;
-    await page.waitForTimeout(100);
-  }
-  say(`(pas arrivé : ${label})`);
-  return false;
-};
+const { frameOf, count, readProbe } = probeTools(page);
+const waitFor = waiter(page, 60);
 const modal = frame.locator('.mod.ask');
 const toast = frame.locator('#toast');
 const ex = frame.locator('.ex');

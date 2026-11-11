@@ -34,7 +34,7 @@ test('les formules sont du Python valide : aucune ligne de tête n\'est indenté
   }
 });
 
-test('les colonnes d\'aide d\'une table de fichiers : un calcul et six listes, du nom que lisent les règles ; l\'auteur du fichier est toujours administrateur', () => {
+test('les colonnes d\'aide d\'une table de fichiers : un calcul et sept listes, du nom que lisent les règles ; l\'auteur du fichier est toujours administrateur', () => {
   const columns = helperColumns(TARGETS[0]);
   assert.deepEqual(columns.map(column => column.id), ['GFS_Auteur', ...HELPERS]);
   assert.equal(columns[0].formula, 'user.Email', 'l\'auteur d\'un PDF est écrit par Grist à la création, comme pour les fichiers des apps');
@@ -42,10 +42,12 @@ test('les colonnes d\'aide d\'une table de fichiers : un calcul et six listes, d
   assert.match(calc, /key = "gfs-fichiers:" \+ str\(\$Identifiant\)/);
   assert.match(calc, /str\(\$GFS_Auteur\)\.strip\(\)\.lower\(\)/);
   assert.doesNotMatch(calc, /\$Auteur\b/, '« Auteur » n\'est que le dernier qui a modifié : il ne donne aucun droit');
-  assert.match(calc, /best\[author\] = \(999, 9, 3\)/);
+  assert.match(calc, /best\[author\] = \(999, 9, 3, ""\)/);
   assert.match(calc, /GFS_Placement\.lookupOne\(Cible=key\)/);
   const parts = columns.filter(column => column.id !== 'GFS_Calc' && column.id !== 'GFS_Auteur').map(column => [column.id, column.formula.match(/\[(\d)\]\)$/)[1]]);
-  assert.deepEqual(parts, [['GFS_Lecteurs', '0'], ['GFS_Ecrivains', '1'], ['GFS_Admins', '2'], ['GFS_Refus', '3'], ['GFS_Cats', '4'], ['GFS_CatsEcrit', '5']]);
+  assert.deepEqual(parts, [['GFS_Lecteurs', '0'], ['GFS_Ecrivains', '1'], ['GFS_Admins', '2'], ['GFS_Refus', '3'], ['GFS_Cats', '4'], ['GFS_CatsEcrit', '5'], ['GFS_Directs', '6']]);
+  assert.match(calc, /directs = sorted\(who \+ ">" \+ v\[3\]/);
+  assert.match(calc, /put\(best, p\.PersonneL, lvl, 2, rank, str\(p\.Auteur/);
   for (const line of calc.split('\n')) assert.equal(line.split('"').length % 2, 1, `guillemets non fermés : ${line}`);
 });
 

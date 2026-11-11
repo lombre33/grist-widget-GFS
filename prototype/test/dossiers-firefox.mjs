@@ -235,12 +235,27 @@ async function spacesRoot(run, t) {
   if (space !== true) run.note('« Partager… » d\'un espace', 'l\'article devait être grisé sur un espace (ses droits se règlent dans « Gérer les partages… »)');
 }
 
+// « Partagés avec moi » (lot 4c) : un fichier donné par une adresse n'est pas à la racine de « Moi » tant que la personne ne l'a pas rangé ; il est dans « Partagés avec moi », avec son menu de fichier ordinaire.
+async function directShares(run, t) {
+  await run.reset();
+  await run.page.run(() => window.__direct());
+  const before = await run.expect('racine de « Moi »', 'le fichier donné ne devait pas figurer à la racine de « Moi »', state => !names(state).includes('Attestation de formation de fin de session'));
+  await run.clickSelector('.tr-row[data-view="shared"]');
+  const state = await run.expect('« Partagés avec moi »', 'la vue devait lister le fichier donné, avec son fil d\'Ariane', now => names(now).join() === 'Attestation de formation de fin de session' && now.crumbs.includes(t('rx.view')));
+  void before; void state;
+  const at = await run.page.run(centerOfName, 'Attestation de formation de fin de session');
+  if (!at) { run.note('ligne introuvable', '« Attestation de formation de fin de session » n\'est pas dans la vue'); return; }
+  await run.page.rightClick(...at);
+  await run.expect('menu du fichier donné', 'le menu devait être celui d\'un fichier ordinaire (« Ouvrir » en tête)', now => now.menu.length > 0 && now.menu[0].label === t('ex.open'));
+  await run.page.press('Escape');
+}
+
 // Les mesures des dossiers sans fichier, dans la langue de la page ; rend les écarts { kind, text }.
 export async function dossiersProblems(page, language, tag) {
   const found = [];
   const t = createI18n(language).t;
   const run = new Run(page, tag, found, 'dossiers sans fichier');
-  const steps = [createFromMenu, refusals, emptyFolder, deleteEmpty, deleteRefused, renameEmpty, fromRecent, tilesAndTree, whileChoosing, lastFileTrashed, spacesRoot];
+  const steps = [createFromMenu, refusals, emptyFolder, deleteEmpty, deleteRefused, renameEmpty, fromRecent, tilesAndTree, whileChoosing, lastFileTrashed, spacesRoot, directShares];
   for (const step of steps) {
     try {
       await step(run, t);

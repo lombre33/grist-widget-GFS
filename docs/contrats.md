@@ -3141,7 +3141,15 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
        **« Partager… » sur un dossier d'espace : livré le 09/11.** Le menu d'un dossier a « Partager… » : dégrisé pour un dossier à l'intérieur d'un espace (cible `dossier:<clé>/<chemin>`), grisé avec sa phrase pour « Espaces »,
        un espace (ses groupes se règlent dans « Gérer les partages… », onglet Espaces) et un dossier de « Moi ». La fenêtre est celle des fichiers (personne, groupe, « Aucun accès ») et marque « Hérité » ce qui vient de l'espace
        et des dossiers au-dessus ; un droit donné se lit tout de suite dans les listes de chaque fichier du dossier (mesuré : `labo/run-partager-espaces.mjs`, étape 5, 43 vérifications ; Firefox : `test/dossiers-firefox.mjs`).
-       **Pas fait** : la création d'un fichier d'une app directement dans un dossier d'espace (il naît à la racine de la personne), les fichiers à la corbeille (ils gardent leur place dans l'espace), « Partagés avec moi » (4c).
+       **Pas fait** : la création d'un fichier d'une app directement dans un dossier d'espace (il naît à la racine de la personne), les fichiers à la corbeille (ils gardent leur place dans l'espace).
+    m. [T] **« Partagés avec moi » : ce qu'on m'a donné par mon adresse, livré le 11/11** (lot 4c ; choix du porteur, 11/11 : « ce qu'on m'a donné par mon adresse »). La vue est celle des fichiers reçus d'un autre document (contrats 6.6,
+       point 17) ; elle montre aussi les fichiers dont **le droit vient d'une ligne de partage à l'adresse de la personne, sur le fichier ou sur un dossier d'espace, écrite par quelqu'un d'autre**. Ni un groupe, ni une catégorie
+       (« éditeurs », « tous »), ni la racine, ni un espace entier n'y comptent ; un fichier déjà rangé dans un espace que la personne voit reste dans l'espace. Grist le calcule : une colonne cachée de plus, **`GFS_Directs`**
+       (« adresse>auteur du partage », septième liste de `GFS_Calc` ; le droit gagnant d'une personne doit être une ligne de personne au niveau d'un dossier ou du fichier). Le fichier garde son menu ordinaire (ouvrir, partager…) ; la
+       colonne « Par » dit celui qui l'a donné ; **à la racine de « Moi » il ne figure pas tant que la personne ne l'a pas rangé dans un dossier**. Un lecteur ne peut pas apprendre son adresse par la sonde du rangement (il n'écrit
+       rien) : GFS la lit alors dans les partages qu'il lit (« chacun lit les partages qui le concernent »), si une seule adresse de personne y figure. **Un document partagé avant** reçoit la colonne par « Compléter le partage… »
+       (mesuré : `labo/run-partager-reprise.mjs`). Mesuré dans un vrai Grist à trois comptes (`labo/run-partager-espaces.mjs`) et sous Firefox (`test/dossiers-firefox.mjs`, « Partagés avec moi »).
+       **Pas fait** : le partage direct d'un dossier de « Moi » (seuls les dossiers d'espace ont des droits), l'acceptation ou le refus d'un fichier donné (un droit donné se retire dans « Partager… » par celui qui l'a donné), la lecture légère des gros documents n'est pas mesurée.
 
 ### 11.8 À mesurer sur le Grist du porteur
 

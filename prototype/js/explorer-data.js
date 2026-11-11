@@ -7,6 +7,9 @@ import { TABLE } from './rangement.js';
 import { BIN_TABLE, recipeOf, binFiles } from './gfs-trash.js';
 import { linkedWeights } from './weight.js';
 import { applyPlacement, loadSpaces } from './spaces-filing.js';
+import { addressFromShares, applyDirect } from './direct-shares.js';
+import { SHARES_TABLE } from './sharing-model.js';
+import { rowsOf } from './rights.js';
 import { loadReceived } from './received-files.js';
 import { neededColumns } from './explorer-sql.js';
 
@@ -26,6 +29,12 @@ function lightPlan(tables, apps) {
     }
   }
   return plan;
+}
+
+// L'adresse que disent les lignes de partage lues, quand la personne n'a pu l'apprendre autrement (js/direct-shares.js) ; '' sans table de partages ou sans certitude.
+async function sharedAddress(port, tables) {
+  if (!tables || !tables.some(name => sameName(name, SHARES_TABLE))) return '';
+  try { return addressFromShares(rowsOf(await port.doc.fetchTable(SHARES_TABLE))); } catch (error) { return ''; }
 }
 
 async function existingTables(port) {
@@ -104,13 +113,14 @@ async function readShared(port, apps, identity, reader) {
   const folders = gfs.data ? readGfsFolders(gfs.data, identity) : [];
   const spaces = await loadSpaces(port.doc, tables);
   if (spaces) folders.push(...spaces.folders);
+  const address = identity || await sharedAddress(port, tables);
   const bin = await readTable(port, tables, BIN_TABLE, light, BIN_LIGHT);
   if (bin.error) console.warn('GFS : la corbeille des apps est illisible', bin.error);
-  return { folders, context: { port, tables, identity, spaces, bin, light, gfsFiling: gfs.data ? readGfsFiling(gfs.data, identity) : null } };
+  return { folders, context: { port, tables, identity, address, spaces, bin, light, gfsFiling: gfs.data ? readGfsFiling(gfs.data, identity) : null } };
 }
 
 // Les fichiers d'une table de fichiers d'une app, rangés et placés : { found, binned } (`binned` : ceux qu'elle a mis à la corbeille de GFS), ou { problem } quand sa table est illisible.
-async function readAppFiles({ port, tables, identity, spaces, bin, light, gfsFiling }, manifest, spec) {
+async function readAppFiles({ port, tables, identity, address, spaces, bin, light, gfsFiling }, manifest, spec) {
   const main = await readTable(port, tables, spec.table, light, neededColumns(spec));
   if (main.error) return { problem: { app: manifest.id, reason: String(main.error.message || main.error) } };
   const filingTable = spec.rangement ? await readTable(port, tables, spec.rangement.table) : { data: null };
@@ -118,6 +128,7 @@ async function readAppFiles({ port, tables, identity, spaces, bin, light, gfsFil
   const found = readFiles(manifest, spec, main.data, main.weights || null, await readLinked(port, tables, spec, light));
   applyFiling(found, filing, gfsFiling);
   applyPlacement(found, spaces);
+  applyDirect(found, main.data, address);
   return { found, binned: binnedFiles(manifest, spec, bin, filing, gfsFiling) };
 }
 

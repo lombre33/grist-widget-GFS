@@ -203,6 +203,8 @@ async function mount() {
     kept = [...new Set([...kept, ...info.folders])];
     show();
   };
+  // Un fichier que quelqu'un a donné à la personne par son adresse (« Partagés avec moi », lot 4c) : le premier modèle, à la racine, jamais rangé par elle.
+  window.__direct = () => { live[0].folder = ''; live[0].direct = { by: 'marc@example.com' }; show(); };
   window.__keep = (...paths) => { kept = [...new Set([...kept, ...paths])]; show(); };
   // Le menu « Réglages » : la langue et le bord de la barre que la personne a choisis en dernier (la ligne de la barre est une doublure : le vrai Dock se mesure dans le labo), et la vraie fenêtre « À propos ».
   const EDGES = [['gauche', 'dock-left'], ['haut', 'dock-top'], ['droite', 'dock-right'], ['bas', 'dock-bottom']];
@@ -266,7 +268,7 @@ async function mount() {
     explorer.close(); // la fermeture vide le presse-papiers : chaque mesure part de rien
     filing.undoStack.clear(); // et la pile de Ctrl+Z
     live = [...files];
-    for (const file of live) { file.trashed = null; file.folder = folders.get(file.key); delete file.space; delete file.ownFolder; }
+    for (const file of live) { file.trashed = null; file.folder = folders.get(file.key); delete file.space; delete file.ownFolder; delete file.direct; }
     trashed = [];
     kept = [];
     arrivals = [];

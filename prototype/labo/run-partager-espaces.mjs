@@ -155,6 +155,14 @@ async function playExplorer(run, frame) {
   await frame.locator('.ls-row.folder[data-key="dir:Espaces/Achats/Contrats"]').dblclick();
   await frame.locator('.ls-row:not(.folder)').filter({ hasText: NAMES.F }).waitFor();
   void personal;
+  // « Partager… » sur le fichier rangé dans ce dossier : la fenêtre s'ouvre (le dossier du fichier n'est pas un dossier à partager) et dit d'où vient l'héritage
+  await openRowMenu(frame, NAMES.F);
+  await frame.getByRole('menuitem', { name: new RegExp(`^${t('share.menu')}`) }).click();
+  await frame.locator('.mod.sh .rt-content').waitFor({ timeout: 15000 });
+  const fileWindow = await frame.locator('.mod.sh').innerText();
+  check('« Partager… » sur un fichier rangé dans un dossier d\'espace ouvre sa fenêtre, avec l\'héritage du dossier', fileWindow.includes(t('share.row.inherited.folder', { name: 'Contrats' })), fileWindow.slice(0, 300));
+  await frame.locator('[data-fk="share-close"]').click();
+  await frame.locator('.mod.sh').waitFor({ state: 'detached' });
   await move('');
   for (let i = 0; i < 40 && (await placed()); i++) await page.waitForTimeout(250);
   check('le ressortir retire le placement', !(await placed()));

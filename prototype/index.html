@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-S0eiyc6e5cKaA1JdOafe7GRBS2UBbWWbHP3JlxSr+FM='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-Gg7c8wEhREv9SUwMTQV2UPVpNGYcJLIzE+9STyyUJJQ='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=7a7a55cf8b">
 <link rel="stylesheet" href="css/explorer.css?v=dbe4c9050a">
 <link rel="stylesheet" href="css/modules.css?v=e9c281ff14">
@@ -136,7 +136,7 @@
     "./js/session.js": "./js/session.js?v=9c643ec4af",
     "./js/settings-menu.js": "./js/settings-menu.js?v=f9ce66c1f3",
     "./js/settings.js": "./js/settings.js?v=08fb6c6ab7",
-    "./js/share-control.js": "./js/share-control.js?v=1134801cf8",
+    "./js/share-control.js": "./js/share-control.js?v=bb729ce49e",
     "./js/share-links.js": "./js/share-links.js?v=49b2331a44",
     "./js/share-other-flow.js": "./js/share-other-flow.js?v=d8936a9cb6",
     "./js/share-other-tab.js": "./js/share-other-tab.js?v=2fa346af0d",
@@ -183,7 +183,7 @@
     "./kit/js/color-strings.js": "./kit/js/color-strings.js?v=1bae4317a5",
     "./kit/js/dialogs.js": "./kit/js/dialogs.js?v=e2e71809c1",
     "./kit/js/dom.js": "./kit/js/dom.js?v=bb61d5ebe7",
-    "./kit/js/gfs-link.js": "./kit/js/gfs-link.js?v=5a5f892dab",
+    "./kit/js/gfs-link.js": "./kit/js/gfs-link.js?v=4817d99a79",
     "./kit/js/host.js": "./kit/js/host.js?v=aca4fbd09b",
     "./kit/js/i18n.js": "./kit/js/i18n.js?v=34aa7f2b67",
     "./kit/js/layers.js": "./kit/js/layers.js?v=0a7ababe40",
@@ -364,7 +364,7 @@
 <link rel="modulepreload" href="./js/rights-window.js?v=d5e3b15454">
 <link rel="modulepreload" href="./js/rights-writer.js?v=4a2e82e625">
 <link rel="modulepreload" href="./js/rights-actions.js?v=44ffa31e58">
-<link rel="modulepreload" href="./js/share-control.js?v=1134801cf8">
+<link rel="modulepreload" href="./js/share-control.js?v=bb729ce49e">
 <link rel="modulepreload" href="./js/manage-control.js?v=6108919318">
 <link rel="modulepreload" href="./js/share-links.js?v=49b2331a44">
 <link rel="modulepreload" href="./js/sync-rules.js?v=d3315e4d05">

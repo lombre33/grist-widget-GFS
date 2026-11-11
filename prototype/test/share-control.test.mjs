@@ -160,3 +160,12 @@ test('load : un fichier placé dans un espace hérite de l\'espace puis de chaqu
   assert.deepEqual(await inherited({ place: { id: [1], Cible: ['pdf:1'], Espace: [''], Dossier: ['Contrats'] }, spaces: { id: [] } }), [], 'sans espace, aucun dossier ne compte');
   assert.deepEqual(await inherited({ place: { id: [1], Cible: ['pdf:1'], Espace: ['achats'], Dossier: [null] }, spaces: { id: [1], Cle: ['achats'], Nom: [''] } }), [['#Achats', 'space', 'achats']], 'un espace sans dossier ; un nom vide : la clé');
 });
+
+test('un fichier rangé dans un dossier (« folder » est son dossier, un texte) se partage comme un autre : seul le dossier d\'espace de folderFile est traité en dossier', async () => {
+  const fetch = async name => (name === 'GFS_Partages' ? table({ Cible: [], Personne: [] }) : table({ GFS_Directs: [], GFS_Calc: [[]], GFS_Lecteurs: [[]], GFS_Auteur: ['a@x.fr', 'a@x.fr', ''] }));
+  const state = await control({ fetch }).load({ ...model, folder: 'Contrats' });
+  assert.equal(state.active, true);
+  assert.equal(state.author, 'a@x.fr');
+  const filed = await control({ fetch }).load({ ...pdf, folder: 'Contrats/Sous' });
+  assert.equal(filed.active, true);
+});

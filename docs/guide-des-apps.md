@@ -73,7 +73,10 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     définition de son seul formulaire (jamais celle des autres, ni leurs clés) ; donne à chaque formulaire sa page et sa table de
     réception, sans colonne de gestion ; dit à la personne ce que le lien ouvre avant de publier ; traite toute ligne reçue comme un
     texte non fiable ; prend un refus de GFS (`GFS_ANNULE` : la personne ; `GFS_REFUSE` : une table protégée) sans laisser de section à
-    moitié faite. GFS demande l'accord de la personne à chaque publication (contrats 3.3, point 9).
+    moitié faite. GFS demande l'accord de la personne à chaque publication (contrats 3.3, point 9). **Depuis le 11/11**, une app qui déclare `partage` (contrats 3.4, point 8) peut poser
+    elle-même le partage de la page de son formulaire (la recette du bouton « Publier » de Grist) : poser le partage n'ouvre rien, l'accord se demande à la publication ; un refus de la
+    personne (`GFS_ANNULE`) n'est pas un échec de l'app, elle le dit comme tel et laisse la personne recommencer ou publier à la main. Un lien commun à deux formulaires ne se propose que
+    **décoché**, et la personne le confirme dans une fenêtre de GFS (3.4, point 8 d).
 
 ### 1.2 Quand GFS arrive (étapes 3 à 5 du plan, cahier 10)
 

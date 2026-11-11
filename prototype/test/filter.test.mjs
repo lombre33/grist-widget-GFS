@@ -198,7 +198,8 @@ test('contrats 3.2 point 4 : Publipostage+ lit _grist_Attachments (lecture seule
 
 test('contrats 3.3, points 6 et 9 : le rattachement d\'une page à un partage ne s\'écrit jamais, et les lots « ajouter ou mettre à jour » sur les tables qui décident d\'une publication sont refusés', () => {
   const fp = policyOf(form());
-  const declaring = entries => policyOf({ ...form(), permissions: { ...form().permissions, gristInterne: [...form().permissions.gristInterne, ...entries] } });
+  // Sans la capacité `partage` (test/sharing.test.mjs dit ce qu'elle change) : la règle « jamais » est celle de toute app qui ne la déclare pas.
+  const declaring = entries => { const manifest = form(); delete manifest.permissions.partage; manifest.permissions.gristInterne.push(...entries); return policyOf(manifest); };
   const pages = declaring([{ tables: ['_grist_Pages'], lit: true, ecrit: ['shareRef', 'pagePos'], pourquoi: { fr: 'a', en: 'a' } }]);
   assert.match(refused(pages, [['UpdateRecord', '_grist_Pages', 3, { shareRef: 2 }]]).reason, /shareRef.*jamais écrite/);
   allowed(pages, [['UpdateRecord', '_grist_Pages', 3, { pagePos: 2 }]]);

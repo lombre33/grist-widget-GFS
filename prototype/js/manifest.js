@@ -162,7 +162,7 @@ function checkInternalEntry(entry, errors) {
 
 // `identite` (3.4, point 6) donne à l'app l'adresse e-mail de la personne : elle ne contourne aucun filtre de tables, donc elle ne demande pas l'accès `full` (voir checkPermissions).
 function checkCapabilities(perm, errors) {
-  for (const key of ['jeton', 'formules', 'structure', 'identite', 'lecteurs']) {
+  for (const key of ['jeton', 'formules', 'structure', 'identite', 'lecteurs', 'partage']) {
     if (perm[key] !== undefined && (!isObject(perm[key]) || !isBilingual(perm[key].pourquoi))) errors.push(`permissions.${key} : pourquoi doit porter fr et en`);
   }
   checkPlayers(perm.lecteurs, errors);
@@ -183,7 +183,7 @@ function checkPlayers(players, errors) {
 
 // Les capacités et les raisons que les apps déclarent (3.4), pour qui doit les relire (un client, son responsable de la sécurité) : une ligne par capacité déclarée,
 // { app, nom, capacite, detail, pourquoi }. `detail` dit sur quoi elle porte quand c'est utile (les tables d'une entrée de `gristInterne`, les motifs de `lienPublic`).
-const CAPABILITIES = ['jeton', 'formules', 'structure', 'identite', 'lecteurs', 'lienPublic'];
+const CAPABILITIES = ['jeton', 'formules', 'structure', 'identite', 'lecteurs', 'lienPublic', 'partage'];
 const reasonOf = entry => (isObject(entry) && isBilingual(entry.pourquoi) ? entry.pourquoi : null);
 const namesOf = list => (Array.isArray(list) ? list.join(', ') : '');
 export function listCapabilities(manifests) {
@@ -232,7 +232,7 @@ function checkPublicLink(m, errors) {
 function checkPermissions(m, errors) {
   const perm = m.permissions;
   if (!isObject(perm) || !ACCESS.includes(perm.acces)) { errors.push('permissions.acces : none, read table ou full'); return; }
-  const declares = ['lit', 'ecrit', 'gristInterne', 'jeton', 'formules', 'structure', 'lienPublic'].some(key => perm[key] !== undefined);
+  const declares = ['lit', 'ecrit', 'gristInterne', 'jeton', 'formules', 'structure', 'lienPublic', 'partage'].some(key => perm[key] !== undefined);
   if (perm.acces !== 'full' && declares) errors.push('lit, ecrit, gristInterne et capacités demandent l\'accès full');
   checkPatterns(perm, errors);
   if (perm.gristInterne !== undefined && !Array.isArray(perm.gristInterne)) errors.push('permissions.gristInterne : liste attendue');

@@ -9,6 +9,7 @@ import { ERR, Refus, levelOf, checkBatch, readRefusal, visibleTables, cleanApply
   realNameRefusal, tokenOptions } from './filter.js';
 import { sliceOf, optionOf, checkKey, planSetOptions, planClear } from './options-slice.js';
 import { touchesPublication, publicationOpens, protectedRefusal } from './publication.js';
+import { touchesSharing, judgeSharing } from './sharing.js';
 
 export function createPort(grist) {
   return {
@@ -74,6 +75,15 @@ async function agreePublication(env, actions) {
   if (!(await env.authorize(opens))) fail(ERR.ANNULE, 'La personne a refusé d\'ouvrir ce formulaire au public.');
 }
 
+// Une page qui prendrait le lien public d'une autre (contrats 11.9, point 4a ; choix du porteur du 11/11, « Au choix, non coché ») : la personne le dit dans une fenêtre de GFS, une par page,
+// et « Refuser » est le défaut. Sans moyen de le demander, le lot est refusé.
+async function agreeSharedLink(env, asks) {
+  for (const shared of asks) {
+    if (typeof env.authorize !== 'function') fail(ERR.REFUSE, 'Ce lot donne à un formulaire le lien d\'un autre, ce qui demande l\'accord de la personne : cette session ne sait pas le demander.');
+    if (!(await env.authorize({ tables: [], reads: [], sharedLink: shared }))) fail(ERR.ANNULE, 'La personne a refusé que ce formulaire ait le même lien qu\'un autre.');
+  }
+}
+
 // Les lots qui publient passent l'un après l'autre : le second est jugé sur un document où le premier est déjà posé, et deux demandes ne se superposent pas.
 const lanes = new WeakMap();
 function inLane(env, task) {
@@ -87,8 +97,13 @@ async function applyActions(env, [actions, options]) {
   const ctx = Array.isArray(actions) && batchCreatesSection(actions) ? { tableRefs: await tableMap(env.port) } : {};
   const verdict = checkBatch(env.policy, actions, ctx);
   if (!verdict.ok) fail(ERR.REFUSE, `Action ${verdict.rank + 1} refusée : ${verdict.reason}`);
-  if (!touchesPublication(actions)) return applyChecked(env, actions, options);
-  return inLane(env, async () => { await agreePublication(env, actions); return applyChecked(env, actions, options); });
+  const sharing = touchesSharing(actions);
+  if (!sharing && !touchesPublication(actions)) return applyChecked(env, actions, options);
+  return inLane(env, async () => {
+    if (sharing) await agreeSharedLink(env, await judgeSharing(env.port, actions));
+    await agreePublication(env, actions);
+    return applyChecked(env, actions, options);
+  });
 }
 
 function docHandlers(env) {

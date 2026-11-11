@@ -12,6 +12,7 @@ import { MANAGE_STRINGS } from './i18n-manage.js';
 import { RECEIVED_STRINGS } from './i18n-received.js';
 import { NOTIFICATION_STRINGS } from './i18n-notifications.js';
 import { EXPLORER_STRINGS } from './i18n-explorer.js';
+import { SHARING_STRINGS } from './i18n-sharing.js';
 
 const STRINGS = {
   fr: {
@@ -26,6 +27,7 @@ const STRINGS = {
     ...RECEIVED_STRINGS.fr,
     ...NOTIFICATION_STRINGS.fr,
     ...EXPLORER_STRINGS.fr,
+    ...SHARING_STRINGS.fr,
     // Le démarrage de GFS, le repli sur la copie figée d'une app et la question posée quand une app doit se fermer.
     'gfs.title': 'Grist Factory Suite',
     'gfs.noGrist': 'GFS doit être ajouté comme widget personnalisé dans Grist.',
@@ -190,6 +192,7 @@ const STRINGS = {
     ...RECEIVED_STRINGS.en,
     ...NOTIFICATION_STRINGS.en,
     ...EXPLORER_STRINGS.en,
+    ...SHARING_STRINGS.en,
     // Le démarrage de GFS, le repli sur la copie figée d'une app et la question posée quand une app doit se fermer.
     'gfs.title': 'Grist Factory Suite',
     'gfs.noGrist': 'GFS must be added to Grist as a custom widget.',

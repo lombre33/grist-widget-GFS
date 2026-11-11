@@ -746,7 +746,7 @@ ne lit pas).
    l'instance visée [M]) :
    - `_grist_ACLRules`, `_grist_ACLResources`, et les deux anciennes tables `_grist_ACLPrincipals`, `_grist_ACLMemberships` :
      les règles d'accès ;
-   - `_grist_Shares` : les partages publics ;
+   - `_grist_Shares` : les partages publics (**exception : la capacité `partage`**, 3.4 point 8, qui ne laisse faire que la recette du bouton « Publier » de Grist) ;
    - `_grist_Triggers` : les déclencheurs de rappels vers l'extérieur (webhooks) : les modifier change ce qui sort du
      document ;
    - `_grist_DocInfo` : les réglages du document ;
@@ -754,7 +754,8 @@ ne lit pas).
      l'accès de chaque widget, GFS compris. Une app qui l'écrirait pourrait remplacer GFS par un autre code, avec l'accès
      de son choix, et ce changement survivrait à son retrait ;
    - la colonne `shareRef` de `_grist_Pages` : elle lie une page à un partage, donc ouvre au public les formulaires publiés de la
-     page (point 9). Une app peut la lire ; la poser ou la changer est un geste de la personne, dans Grist.
+     page (point 9). Une app peut la lire ; la poser ou la changer est un geste de la personne, dans Grist, **ou celui d'une app qui déclare `partage`**
+     (3.4, point 8), dans la seule forme et aux seules conditions de ce point.
 7. [D] Du deuxième argument de `applyUserActions`, le courtier ne transmet que `desc` et `parseStrings` [M : relire
    `ApplyUAOptions` dans l'instance visée].
 8. [T] En **lecture seule** (`readonly=true` dans l'adresse de GFS), toute écriture est refusée sans appeler Grist
@@ -798,9 +799,9 @@ ne lit pas).
 ### 3.4 Les capacités à déclarer
 
 Trois capacités contournent un filtre de tables. L'app les déclare, avec une raison en français et en anglais ; GFS les montre
-à la personne dans la fenêtre d'installation, en mots simples. Trois déclarations de plus se font de la même façon sans rien
-contourner : `lienPublic` resserre un filtre (point 5), `identite` donne une donnée que GFS seul sait (point 6), `lecteurs` fait poser par GFS un lecteur de vidéo
-par-dessus le cadre de l'app (point 7).
+à la personne dans la fenêtre d'installation, en mots simples. Quatre déclarations de plus se font de la même façon : `lienPublic` resserre un filtre (point 5),
+`identite` donne une donnée que GFS seul sait (point 6), `lecteurs` fait poser par GFS un lecteur de vidéo par-dessus le cadre de l'app (point 7), et `partage` lève,
+dans une forme très étroite, deux des interdictions de 3.3 point 6 (point 8).
 
 1. [D] **`jeton`** : `{ "lectureSeule": true, "pourquoi": { … } }`. Sans elle, `getAccessToken` est refusé. Avec elle, le
    courtier force `readOnly: true` sauf `lectureSeule: false`, et transmet `route` tel quel. Un jeton ouvre l'API REST sur
@@ -849,6 +850,30 @@ par-dessus le cadre de l'app (point 7).
    `lecteur.*` sont refusés (`GFS_REFUSE`) : l'app ouvre alors la vidéo sur son site, dans un onglet. Elle ne demande pas `acces: full` : aucune table de l'app n'est en jeu.
    `node outils/capacites.mjs` la liste avec les sites. Les appels et leurs règles : 5.2, point 11. Codé le 07/11 (`js/player.js`, `js/player-sites.js`, `js/manifest.js` : `checkPlayers`,
    `js/filter.js` : `makePolicy`, `js/context.js`).
+
+8. [T] **`partage`** : `{ "pourquoi": { "fr": "…", "en": "…" } }`. **Décidé par le porteur le 11/11** (« Avec accord » : « Laisser Form+ publier le formulaire à ta place, avec ton accord à chaque
+   fois ») ; **« Au choix, non coché » pour un lien commun à deux formulaires** (même jour). Elle laisse l'app poser le partage de la page de son formulaire, c'est-à-dire
+   la recette du bouton « Publier » de Grist (`app/client/components/Forms/FormView.ts`, lu dans la 1.7.19 : `AddRecord _grist_Shares`, `UpdateRecord _grist_Pages.shareRef`,
+   puis `shareOptions`), et rien d'autre. Elle ne demande pas la lecture de `_grist_Shares` (qui reste interdite, 3.2 point 4) et ne se déclare pas par `gristInterne`
+   (le validateur refuse toujours `_grist_Shares` et `shareRef` dans une entrée, 3.3 point 5) ; elle demande `acces: full`. Sans elle, 3.3 point 6 vaut tel quel. Avec elle, le courtier juge :
+   a. [T] **La forme** (`js/sharing-rules.js`) : `AddRecord _grist_Shares` porte `linkId` (un identifiant de 8 à 64 caractères, lettres, chiffres, « - » et « _ ») et `options`
+      valant exactement `{"publish":true}`, et rien d'autre ; `UpdateRecord _grist_Shares` ne change que `options`, exactement `{"publish":true}` ou `{"publish":false}` ;
+      `UpdateRecord _grist_Pages` écrit `shareRef` seule, vers un partage (positif : détacher un partage n'est pas permis) ; aucun autre verbe, aucune forme `Bulk…` ni « ajouter ou mettre à
+      jour », jamais `RemoveRecord` (un partage ne se retire pas). Les autres colonnes de `_grist_Pages` et les autres tables de 3.3 point 6 restent fermées.
+   b. [T] **Ce que dit le document** (`js/sharing.js`, `_grist_Pages`, `_grist_Shares`, `_grist_Views_section` lus par GFS seul, jamais par l'app ; un document illisible refuse le lot,
+      GFS échoue fermé) : la page et le partage existent ; la page n'a pas déjà un partage ; **la page ne porte pas déjà un formulaire marqué publié** (`shareOptions` avec `publish` et `form` :
+      lui rattacher un partage l'ouvrirait sans l'accord de la personne) ; rouvrir un partage fermé (`publish` à vrai) est refusé si une page qui le porte a un formulaire marqué publié
+      (la personne l'avait fermé). Un lot est jugé action par action, chacune sur le document que les précédentes laisseraient.
+   c. [T] **Rien de ceci n'ouvre quoi que ce soit.** Un formulaire ne s'ouvre à qui a le lien que par `shareOptions` : c'est CE geste qui demande l'accord de la personne (3.3, point 9, inchangé). Un
+      partage posé sans formulaire publié ne donne ni le formulaire ni l'ajout de lignes (mesuré, faits vérifiés 95). Si la personne refuse à la publication, le partage reste posé sur la page,
+      sans effet (l'app reçoit `GFS_ANNULE`) ; GFS ne le retire pas.
+   d. [D] **Un lien commun à deux formulaires** (11.9, point 4a, modifié) : rattacher à une page un partage qui est déjà celui d'une autre page n'est pas refusé, **il est demandé** : une fenêtre
+      de GFS (« Un seul lien pour deux formulaires ? ») nomme la page qui prend le lien, celles qui l'ont déjà et les tables de leurs formulaires, dit qu'une seule adresse les ouvre tous et que si
+      elle fuit elle les ouvre tous ; « Refuser » est le défaut au clavier (`GFS_ANNULE`, rien n'est écrit) ; « Même lien » rattache. Sans moyen de demander, le lot est refusé. La publication du
+      second formulaire passe ensuite par son propre accord (3.3, point 9), qui nomme sa table. **C'est à l'app de proposer ce choix, décoché, à la personne** : GFS ne l'impose jamais.
+   Le `pourquoi` est montré à la personne comme celui des capacités. `node outils/capacites.mjs` la liste. Codé le 11/11 (`js/sharing-rules.js`, `js/sharing.js`, `js/filter.js` : `makePolicy`,
+   `internalWriteRefusal` ; `js/broker.js` : `agreeSharedLink` ; `js/publication-window.js` : `sharedLinkQuestion` ; `js/manifest.js` : `checkCapabilities`). Mesuré dans un vrai Grist 1.7.19 avec la vraie
+   Form+ (`labo/run-publier-form.mjs`, faits vérifiés 95).
 
 ### 3.5 Les clés de réglages
 
@@ -3213,7 +3238,8 @@ labo n'a pas de partages, 10.11).
    fiable**, même dans une colonne que l'app croit remplir elle-même.
 4. **Segmenter : une porte, sa table de réception.**
    a. [T] Un formulaire publié a **son partage** (sa page) et n'ouvre que **les tables qu'il remplit**, dites une à une dans
-      l'accord (point 6) : jamais deux formulaires sur le même partage, jamais un lien qui écrit dans la table d'un autre formulaire.
+      l'accord (point 6) : **un partage par page** (**modifié le 11/11, « Au choix, non coché » : deux pages ne partagent un partage que si la personne l'accepte dans une fenêtre
+      de GFS, qui reste sur « Refuser », 3.4 point 8 d** ; le défaut reste un lien par formulaire), jamais un lien qui écrit dans la table d'un autre formulaire que ceux de son partage.
    b. [T] La table qu'un lien remplit est une **table de réception** : elle reçoit, et ce qu'on en tire (valider, publipostage,
       workflow) se fait après le geste d'une personne (point 5). Ce que le formulaire ne montre pas (statut, note, état de
       traitement) n'y est pas une colonne de donnée : c'est une colonne-formule pure, ou une colonne d'une autre table liée à la

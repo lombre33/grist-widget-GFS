@@ -52,7 +52,7 @@ import { Openings } from './openings.js';
 import { OpenedFiles } from './opened-files.js';
 import { ReceivedControl } from './received-control.js';
 import { loadReceived } from './received-files.js';
-import { publicationQuestion } from './publication-window.js';
+import { publicationQuestion, sharedLinkQuestion } from './publication-window.js';
 import { ModulesWindow, rowKey } from './modules-window.js';
 import { AppContext } from './app-context.js';
 import { Refus, ERR, levelOf } from './filter.js';
@@ -467,7 +467,8 @@ export class GfsController {
 
   // Une app publie un formulaire (contrats 3.3, point 9) : la personne dit si le lien peut ouvrir ce que le lot ouvre.
   #askPublication(manifest, opens) {
-    return this.ask(publicationQuestion({ t: this.t, app: label(manifest.nom, this.lang), opens }));
+    const app = label(manifest.nom, this.lang);
+    return this.ask(opens.sharedLink ? sharedLinkQuestion({ t: this.t, app, shared: opens.sharedLink }) : publicationQuestion({ t: this.t, app, opens }));
   }
 
   // Une fenêtre du widget au-dessus de tout ce qui est ouvert (charte : jamais `confirm()`).

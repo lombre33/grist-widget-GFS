@@ -70,7 +70,8 @@ function buildTab({ deps, links, open, engine, said }, file, state) {
 
 // deps : { t, container, inertTargets() , docApi() → grist.docApi, transfer (js/broker/transfer.js), language () → 'fr' | 'en', notice (un avis hors fenêtre),
 //   writeBlock() → la raison d'un blocage ou null,
-//   files() → les fichiers que l'explorateur montre (les fichiers d'un dossier qu'on partage), following { follow(lien, chemin, fichiers) → vrai si retenu, unfollow(lien, chemin) } (js/sharing/share-follow.js) }.
+//   files() → les fichiers que l'explorateur montre (les fichiers d'un dossier qu'on partage), following { follow(lien, chemin, fichiers) → vrai si retenu,
+//   unfollow(lien, chemin) } (js/sharing/share-follow.js) }.
 export function createOtherDocuments(deps) {
   const { t } = deps;
   const engine = async () => (await import('./sync-service.js')).loadSharingEngine(

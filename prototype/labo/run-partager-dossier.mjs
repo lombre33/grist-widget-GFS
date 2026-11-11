@@ -16,7 +16,7 @@ import { createServer } from 'node:http';
 import { serve } from './lab-server.mjs';
 import { chromium, say, check } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { PAGE_PORT, openGfs, importSamples, importPdf, pdfFile, waitForNames, openRowMenu, rowOf, goTo, contrastProblems, shot as pdfShot } from './lab-pdf.mjs';
 import { fits } from './lab-droits.mjs';
 import { startEngine, formLink, sendComparing, reopenedFrame } from './lab-partage.mjs';

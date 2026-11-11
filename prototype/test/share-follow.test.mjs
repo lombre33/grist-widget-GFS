@@ -1,8 +1,8 @@
 // Suivre un dossier partagé « à jour » (js/share-follow.js) : ce que la condition d'un lien devient quand le dossier change, et le suiveur de la page qui ne charge rien tant qu'aucun dossier n'est suivi.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createFollower, followFolders, planFollow } from '../js/share-follow.js';
-import { FILES_APP, FILES_TABLE, SHARED_FOLDER_COLUMN } from '../js/gfs-files.js';
+import { createFollower, followFolders, planFollow } from '../js/sharing/share-follow.js';
+import { FILES_APP, FILES_TABLE, SHARED_FOLDER_COLUMN } from '../js/files/gfs-files.js';
 import { fakeGrist } from './fake-grist.mjs';
 
 const file = (id, extra = {}) => ({ app: FILES_APP, id, row: Number(id.slice(1)), name: `${id}.pdf`, folder: 'Contrats', trashed: null, ...extra });

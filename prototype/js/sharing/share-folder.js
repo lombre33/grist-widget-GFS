@@ -10,8 +10,8 @@
 //   chez l'autre avec l'archive de la copie : mesuré,
 //     labo/run-partager-dossier.mjs) ; un fichier qui repart seul plus tard garde donc le nom de son dernier dossier partagé ;
 //   - la colonne est écrite AVANT la condition : le moteur ne compose ses colonnes que d'après ce que la table porte au moment de l'enregistrement.
-import { FILES_APP, FILES_COLUMNS, FILES_TABLE, SHARED_FOLDER_COLUMN } from './gfs-files.js';
-import { OwnTable } from './own-table.js';
+import { FILES_APP, FILES_COLUMNS, FILES_TABLE, SHARED_FOLDER_COLUMN } from '../files/gfs-files.js';
+import { OwnTable } from '../files/own-table.js';
 
 // Les fichiers d'un dossier qui peuvent partir : les PDF de GFS rangés dans ce dossier même, ni à la corbeille, ni reçus d'un autre document, ni donnés par une
 // adresse.

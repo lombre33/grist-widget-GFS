@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-+jle9OnhoXN7w7cXcbYEdwTWIaUkQh1noiJYRTuZtLk='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-zm3zg578SaKopbx+mi78JbUAUMpVVQSYSQJm9hECN8w='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=6c6e51caa4">
 <link rel="stylesheet" href="css/explorer.css?v=a1c7636359">
 <link rel="stylesheet" href="css/modules.css?v=beca3b680b">
@@ -70,7 +70,7 @@
     "./js/broker/transfer.js": "./js/broker/transfer.js?v=5324b55361",
     "./js/broker/view-link.js": "./js/broker/view-link.js?v=1853f29883",
     "./js/broker/view-options.js": "./js/broker/view-options.js?v=5eb21ceaf1",
-    "./js/controller.js": "./js/controller.js?v=c6596e9e00",
+    "./js/controller.js": "./js/controller.js?v=f673b4d15c",
     "./js/explorer/explorer-clipboard.js": "./js/explorer/explorer-clipboard.js?v=94ea4bfb9c",
     "./js/explorer/explorer-data.js": "./js/explorer/explorer-data.js?v=55dfa19b63",
     "./js/explorer/explorer-drag.js": "./js/explorer/explorer-drag.js?v=bb4575a2a0",
@@ -100,7 +100,7 @@
     "./js/files/import-file.js": "./js/files/import-file.js?v=346e379874",
     "./js/files/kept-files.js": "./js/files/kept-files.js?v=f0430d76d6",
     "./js/files/own-table.js": "./js/files/own-table.js?v=daf40276b1",
-    "./js/files/rangement.js": "./js/files/rangement.js?v=6b0e9ffdad",
+    "./js/files/rangement.js": "./js/files/rangement.js?v=100fd72ce9",
     "./js/files/trash.js": "./js/files/trash.js?v=f5e61f59a7",
     "./js/files/undo-stack.js": "./js/files/undo-stack.js?v=03740febaf",
     "./js/i18n/i18n-explorer.js": "./js/i18n/i18n-explorer.js?v=7271a79e36",
@@ -110,8 +110,8 @@
     "./js/i18n/i18n-notifications.js": "./js/i18n/i18n-notifications.js?v=f703a62960",
     "./js/i18n/i18n-received.js": "./js/i18n/i18n-received.js?v=684f00488e",
     "./js/i18n/i18n-rights.js": "./js/i18n/i18n-rights.js?v=5fe31ff52f",
-    "./js/i18n/i18n-share-other.js": "./js/i18n/i18n-share-other.js?v=dde048a850",
-    "./js/i18n/i18n-share.js": "./js/i18n/i18n-share.js?v=45de170058",
+    "./js/i18n/i18n-share-other.js": "./js/i18n/i18n-share-other.js?v=6bd3e812c4",
+    "./js/i18n/i18n-share.js": "./js/i18n/i18n-share.js?v=6804e837d4",
     "./js/i18n/i18n-sharing.js": "./js/i18n/i18n-sharing.js?v=7e09272a2c",
     "./js/i18n/i18n-trash.js": "./js/i18n/i18n-trash.js?v=e5c74092fa",
     "./js/i18n/i18n-weight.js": "./js/i18n/i18n-weight.js?v=e60a5723e4",
@@ -133,15 +133,17 @@
     "./js/sharing/received-folders.js": "./js/sharing/received-folders.js?v=1867d68ede",
     "./js/sharing/received-state.js": "./js/sharing/received-state.js?v=1c9496578a",
     "./js/sharing/received-window.js": "./js/sharing/received-window.js?v=4e40f52a8a",
-    "./js/sharing/share-control.js": "./js/sharing/share-control.js?v=284f12c416",
-    "./js/sharing/share-links.js": "./js/sharing/share-links.js?v=8b9f3fcc8a",
+    "./js/sharing/share-control.js": "./js/sharing/share-control.js?v=683ad8c186",
+    "./js/sharing/share-folder.js": "./js/sharing/share-folder.js?v=7836831167",
+    "./js/sharing/share-follow.js": "./js/sharing/share-follow.js?v=dd38aa1c8e",
+    "./js/sharing/share-links.js": "./js/sharing/share-links.js?v=78544afffc",
     "./js/sharing/share-other-flow.js": "./js/sharing/share-other-flow.js?v=9f937aefea",
-    "./js/sharing/share-other-tab.js": "./js/sharing/share-other-tab.js?v=f436aee4d5",
+    "./js/sharing/share-other-tab.js": "./js/sharing/share-other-tab.js?v=de22db0bde",
     "./js/sharing/share-other-window.js": "./js/sharing/share-other-window.js?v=5feee84eb4",
-    "./js/sharing/share-other.js": "./js/sharing/share-other.js?v=cd67743598",
+    "./js/sharing/share-other.js": "./js/sharing/share-other.js?v=59d24e644a",
     "./js/sharing/share-receive-flow.js": "./js/sharing/share-receive-flow.js?v=f09211eb7a",
     "./js/sharing/share-receive-window.js": "./js/sharing/share-receive-window.js?v=61ed17d802",
-    "./js/sharing/share-window.js": "./js/sharing/share-window.js?v=0ebd207160",
+    "./js/sharing/share-window.js": "./js/sharing/share-window.js?v=d1f555044e",
     "./js/sharing/sharing-model.js": "./js/sharing/sharing-model.js?v=5fd87904d0",
     "./js/sharing/spaces-filing.js": "./js/sharing/spaces-filing.js?v=44d468c68b",
     "./js/sharing/steps-window.js": "./js/sharing/steps-window.js?v=7b4de53456",
@@ -252,7 +254,7 @@
      Le navigateur les demande tous d'un coup au lieu d'un niveau d'imports à la fois (9 niveaux, donc 9 allers-retours de réseau). Après la carte d'importation, jamais avant : une page qui commence à
      charger un module avant elle l'ignore et demande les modules sans leur ?v=. -->
 <!-- préchargement -->
-<link rel="modulepreload" href="./js/controller.js?v=c6596e9e00">
+<link rel="modulepreload" href="./js/controller.js?v=f673b4d15c">
 <link rel="modulepreload" href="./js/apps/catalogue.js?v=2e588e5749">
 <link rel="modulepreload" href="./js/apps/manifest.js?v=3ba6720db8">
 <link rel="modulepreload" href="./js/broker/state.js?v=69aa288268">
@@ -285,9 +287,10 @@
 <link rel="modulepreload" href="./js/apps/apps-state.js?v=dbd598efa0">
 <link rel="modulepreload" href="./js/broker/arrival.js?v=058a55e88d">
 <link rel="modulepreload" href="./js/broker/arrival-table.js?v=46265f4a63">
-<link rel="modulepreload" href="./js/files/rangement.js?v=6b0e9ffdad">
+<link rel="modulepreload" href="./js/files/rangement.js?v=100fd72ce9">
 <link rel="modulepreload" href="./js/rights/rights-control.js?v=f2481f204c">
-<link rel="modulepreload" href="./js/sharing/share-other.js?v=cd67743598">
+<link rel="modulepreload" href="./js/sharing/share-other.js?v=59d24e644a">
+<link rel="modulepreload" href="./js/sharing/share-follow.js?v=dd38aa1c8e">
 <link rel="modulepreload" href="./js/sharing/sync-resume.js?v=6ce10fb5a5">
 <link rel="modulepreload" href="./js/sharing/sync-service.js?v=c0a5b7f292">
 <link rel="modulepreload" href="./js/weight/weight-control.js?v=9f56bb2a73">
@@ -321,8 +324,8 @@
 <link rel="modulepreload" href="./js/i18n/i18n-weight.js?v=e60a5723e4">
 <link rel="modulepreload" href="./js/i18n/i18n-natives.js?v=655b6e207d">
 <link rel="modulepreload" href="./js/i18n/i18n-rights.js?v=5fe31ff52f">
-<link rel="modulepreload" href="./js/i18n/i18n-share.js?v=45de170058">
-<link rel="modulepreload" href="./js/i18n/i18n-share-other.js?v=dde048a850">
+<link rel="modulepreload" href="./js/i18n/i18n-share.js?v=6804e837d4">
+<link rel="modulepreload" href="./js/i18n/i18n-share-other.js?v=6bd3e812c4">
 <link rel="modulepreload" href="./js/i18n/i18n-manage.js?v=d484ea2848">
 <link rel="modulepreload" href="./js/i18n/i18n-received.js?v=684f00488e">
 <link rel="modulepreload" href="./js/i18n/i18n-notifications.js?v=f703a62960">
@@ -369,9 +372,10 @@
 <link rel="modulepreload" href="./js/rights/rights-window.js?v=a3c26c1280">
 <link rel="modulepreload" href="./js/rights/rights-writer.js?v=af8d827f2a">
 <link rel="modulepreload" href="./js/rights/rights-actions.js?v=285803e997">
-<link rel="modulepreload" href="./js/sharing/share-control.js?v=284f12c416">
+<link rel="modulepreload" href="./js/sharing/share-control.js?v=683ad8c186">
 <link rel="modulepreload" href="./js/sharing/manage-control.js?v=98c6d7fa9f">
-<link rel="modulepreload" href="./js/sharing/share-links.js?v=8b9f3fcc8a">
+<link rel="modulepreload" href="./js/sharing/share-links.js?v=78544afffc">
+<link rel="modulepreload" href="./js/sharing/share-folder.js?v=7836831167">
 <link rel="modulepreload" href="./js/sharing/sync-rules.js?v=8410e84e3a">
 <link rel="modulepreload" href="./js/sharing/share-other-flow.js?v=9f937aefea">
 <link rel="modulepreload" href="./js/weight/weight-window.js?v=70b38075d2">
@@ -389,14 +393,14 @@
 <link rel="modulepreload" href="./kit/js/dom.js?v=bb61d5ebe7">
 <link rel="modulepreload" href="./js/ui/layers.js?v=8fb5891dcf">
 <link rel="modulepreload" href="./js/rights/rights-plan.js?v=f7daea2036">
-<link rel="modulepreload" href="./js/sharing/share-window.js?v=0ebd207160">
+<link rel="modulepreload" href="./js/sharing/share-window.js?v=d1f555044e">
 <link rel="modulepreload" href="./js/sharing/manage-window.js?v=97ba074990">
 <link rel="modulepreload" href="./js/ui/pick-window.js?v=b5b2ea278b">
 <link rel="modulepreload" href="./js/files/conflict-window.js?v=cd891b5136">
 <link rel="modulepreload" href="./js/broker/deposit.js?v=357a730c38">
 <link rel="modulepreload" href="./js/files/gfs-copy.js?v=a43281652a">
 <link rel="modulepreload" href="./js/sharing/steps-window.js?v=7b4de53456">
-<link rel="modulepreload" href="./js/sharing/share-other-tab.js?v=f436aee4d5">
+<link rel="modulepreload" href="./js/sharing/share-other-tab.js?v=de22db0bde">
 <link rel="modulepreload" href="./js/ui/tabs.js?v=b412c3fcbc">
 <link rel="modulepreload" href="./js/sharing/manage-other-tab.js?v=132e9a4141">
 <!-- /préchargement -->

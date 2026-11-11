@@ -1,8 +1,8 @@
 // Partager un dossier avec un autre document Grist (js/share-folder.js) : quels fichiers partent, le nom du dossier écrit sur eux (la colonne de plus), et ce qu'on efface quand le partage s'arrête.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { filesOfFolder, folderLabel, isFolderTarget, skippedInFolder, writeFolderName } from '../js/share-folder.js';
-import { FILES_APP, FILES_TABLE, SHARED_FOLDER_COLUMN } from '../js/gfs-files.js';
+import { filesOfFolder, folderLabel, isFolderTarget, skippedInFolder, writeFolderName } from '../js/sharing/share-folder.js';
+import { FILES_APP, FILES_TABLE, SHARED_FOLDER_COLUMN } from '../js/files/gfs-files.js';
 import { fakeGrist } from './fake-grist.mjs';
 
 const file = (id, extra = {}) => ({ app: FILES_APP, id, row: Number(id.slice(1)), name: `${id}.pdf`, folder: 'Contrats', trashed: null, ...extra });

@@ -291,6 +291,17 @@ test('download d\'un fichier reçu d\'un autre document : lu dans sa table GFS_R
   await assert.rejects(grist.store.download({ id: 'aa', received: { table: 'GFS_Recus', row: 9 } }), /n’est plus dans le document/);
 });
 
+test('download d\'un fichier reçu : le nom choisi par l\'envoyeur devient un nom de PDF, sans chemin (audit « contournement » du 11/11) ; un fichier de GFS garde son nom', async () => {
+  const row = (name, id) => ({ ...present(name, id, 3, { Contenu: ['L', 31] }) });
+  const names = [['Recu.pdf', 'Recu.pdf'], ['setup.exe', 'setup.exe.pdf'], ['../../etc/passwd', 'etc passwd.pdf'], ['  facture\u0000.PDF ', 'facture .PDF'], ['.hidden', 'hidden.pdf'], ['', 'fichier.pdf']];
+  for (const [sent, wanted] of names) {
+    const grist = setup({ tables: { ...tableWith([]), GFS_Recus: { columns: ['id', ...FILES_COLUMN_IDS], rows: [row(sent, 'aa')] } } });
+    assert.equal((await grist.store.download({ id: 'aa', received: { table: 'GFS_Recus', row: 3 } })).name, wanted, `reçu : ${JSON.stringify(sent)}`);
+  }
+  const own = setup({ tables: tableWith([present('rapport.exe', 'bb', 1, { Contenu: ['L', 5] })]) });
+  assert.equal((await own.store.download({ id: 'bb' })).name, 'rapport.exe', 'ce que la personne a nommé elle-même n\'est pas réécrit');
+});
+
 test('download : un fichier à la corbeille ne se télécharge pas', async () => {
   const grist = setup({ tables: tableWith([trashedRow('Facture.pdf', 'aa', 1)]) });
   await assert.rejects(grist.store.download({ id: 'aa' }), /à la corbeille/);

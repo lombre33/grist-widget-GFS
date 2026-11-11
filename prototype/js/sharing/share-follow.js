@@ -35,7 +35,7 @@ export async function followFolders({ followed, links, files, engine, docApi, re
     const { add, drop } = planFollow({ current, previous: entry.ids, inside: link.files });
     // le nom d'abord : le moteur n'envoie que ce que la table porte à l'enregistrement
     if (add.length) await writeFolderName(docApi, picked.filter(file => add.includes(file.id)).map(file => file.row), folderLabel(entry.path));
-    if (add.length || drop.length) await setCondition(engine, link, [...link.files.filter(id => !drop.includes(id)), ...add]);
+    if (add.length || drop.length) await setCondition(engine, link, [...link.files.filter(id => !drop.includes(id)), ...add], { folder: true });
     if (add.length || drop.length || !same(current, entry.ids)) await remember(entry.link, entry.path, current);
     if (add.length || drop.length) changed.push({ link: entry.link, path: entry.path, add, drop });
   }

@@ -55,7 +55,7 @@ function buildTab({ deps, links, open, engine, said }, file, state) {
       try {
         if (folder && level !== 'live') await deps.following.unfollow(link.id, file.path); // d'abord : le suivi ne doit pas rajouter ce que la personne retire
         if (folder && level !== 'none') await writeFolderName(deps.docApi(), rows, label);
-        const done = await applyLevel(await engine(), link, ids || file.id, level);
+        const done = await applyLevel(await engine(), link, ids || file.id, level, undefined, { folder });
         // « Copie à jour » suit le dossier : un fichier ajouté ensuite part tout seul (js/share-follow.js). Sans la table du rangement, rien ne se retient : la
         // personne le sait.
         if (folder && level === 'live' && !(await deps.following.follow(link.id, file.path, ids))) return { ok: true, note: t('so.follow.off') };

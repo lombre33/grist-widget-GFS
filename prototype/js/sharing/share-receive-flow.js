@@ -6,10 +6,13 @@
 // », mesuré : faits vérifiés, 70) et range tout ce qui arrive dans une seule table, `GFS_Recus`.
 //   read()    le code collé, lu et contrôlé : le nom du partage, ce qu'il apporte, si une réception de ce partage existe déjà ;
 //   accept()  le journal du partage, sa table et la page de son formulaire sont créés (ou, si une réception existe déjà de ce même document, reprise avec la
-//             nouvelle invitation) ;
+//             nouvelle invitation) ; les colonnes de marque « accepté » et « refusé » sont posées d'emblée et une colonne envoyée qui porte leur nom arrive
+//             sous
+//             un autre (js/sharing/received-marks.js : sans cela, l'envoyeur écrirait lui-même « accepté ») ;
 //   reply()   le lien du formulaire collé, vérifié (il doit écrire dans CE journal) : le code de réponse et le code de contrôle ;
 //   abort()   défait ce qui vient d'être créé, tant que la réponse n'est pas rendue.
 import { RECEIVED_TABLE } from './received-files.js';
+import { reservedMap } from './received-marks.js';
 
 export { RECEIVED_TABLE };
 const TABLES_TRIED = 50;
@@ -17,6 +20,7 @@ const TABLES_TRIED = 50;
 // Ce que GFS ne reçoit pas : un lien public ou un échange sont d'autres modes du moteur de Sync+, que GFS ne propose pas.
 const mode = invitation => invitation.mode || 'reponse';
 const refused = code => Object.assign(new Error(code), { share: code });
+const withMap = map => (Object.keys(map).length ? { map } : {});
 
 // deps : { engine, onReplied (rend la main quand la réponse est rendue : la boucle de réception du document démarre) }.
 export function createTargetFlow({ engine, onReplied = () => {} }) {
@@ -54,10 +58,11 @@ export function createTargetFlow({ engine, onReplied = () => {} }) {
       state.made = await engine.relinkReception(known, invitation);
       state.relinked = true;
     } else {
-      const plans = invitation.tables.map(tb => ({ tb, dest: state.table }));
+      const plans = invitation.tables.map(tb => ({ tb, dest: state.table, ...withMap(reservedMap(tb.columns)) }));
       await engine.checkDestinations(invitation, plans);
       state.made = await engine.createReception(invitation, plans, { reserve: true, options: { archive: true } });
     }
+    await engine.ensureMarks(state.table);
     return { journal: state.made.journal, relinked: state.relinked, table: state.table };
   }
 

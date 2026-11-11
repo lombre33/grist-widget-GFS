@@ -53,12 +53,14 @@ export function loadSharingEngine(deps) {
 // Le côté qui reçoit : le moteur et, en plus, les fonctions d'une réception (kit/js/synchro/target/receive.js), que seul celui qui reçoit charge
 // (js/sharing/share-receive-flow.js).
 export async function loadReceiveEngine(deps) {
-  const [engine, receive, enginePort] = await Promise.all([loadSharingEngine(deps), import('../../kit/js/synchro/target/receive.js'),
-    import('../../kit/js/synchro/port.js')]);
+  const [engine, receive, enginePort, marks] = await Promise.all([loadSharingEngine(deps), import('../../kit/js/synchro/target/receive.js'),
+    import('../../kit/js/synchro/port.js'), import('./received-marks.js')]);
   return Object.freeze({
     ...engine,
     // Une table de ce nom existe déjà dans ce document (Grist ne distingue pas les majuscules).
     tableTaken: async name => (await enginePort.readSchema()).resolve(name) !== null,
+    // Les colonnes « accepté » et « refusé » de la table reçue, posées d'emblée (js/sharing/received-marks.js).
+    ensureMarks: table => marks.ensureMarks(deps.docApi, [table]),
     readInvitation: receive.readInvitation,
     knownReception: receive.knownReception,
     relinkReception: receive.relinkReception,

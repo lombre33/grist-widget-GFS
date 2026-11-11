@@ -47,6 +47,14 @@ export function filesOf(data) {
 
 const alive = file => !file.trashed;
 
+// Le nom sous lequel un fichier REÇU se télécharge : celui que l'envoyeur lui a donné, sans chemin ni caractère de commande, et toujours en `.pdf` (GFS ne
+// reçoit que des PDF : un nom en `.exe` ne sort pas d'ici, audit « contournement » du 11/11).
+export function receivedName(name) {
+  const clean = String(name ?? '').replace(/[\u0000-\u001f\u007f/\\]+/g, ' ').replace(/\s+/g, ' ').replace(/^[.\s]+/, '').trim();
+  if (!clean) return 'fichier.pdf';
+  return /\.pdf$/i.test(clean) ? clean : `${clean}.pdf`;
+}
+
 export class FilesStore {
   #port;
   #table;
@@ -179,6 +187,6 @@ export class FilesStore {
     if (!found) throw new Error('Ce fichier n’est plus dans le document.');
     if (found.trashed) throw new Error('Ce fichier est à la corbeille.');
     if (found.attachment === null) throw new Error('Ce fichier n’a pas de contenu.');
-    return { blob: await this.#transfer.download(found.attachment), name: found.name };
+    return { blob: await this.#transfer.download(found.attachment), name: file.received ? receivedName(found.name) : found.name };
   }
 }

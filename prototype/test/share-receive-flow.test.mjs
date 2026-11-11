@@ -19,6 +19,7 @@ function fakeEngine({ invitation = INVITATION, known = null, fail = {}, taken = 
     relinkReception: note('relink', () => ({ journal: 'GFS_Journal_Ancien', note: {} })),
     receptionReply: note('reply', { code: 'GRISTSYNC2.reponse', control: 'WGV-ME3' }),
     undoReception: note('undo', undefined),
+    ensureMarks: note('marks', undefined),
   };
 }
 const names = engine => engine.calls.map(call => call[0]);
@@ -47,7 +48,8 @@ test('accept : tout va dans GFS_Recus, en archive, après la vérification des d
   assert.deepEqual(names(engine), ['read', 'known'], 'lire ne crée rien');
   assert.equal(flow.created, false);
   assert.deepEqual(await flow.accept(), { journal: 'GFS_Journal_Fichiers_GFS', relinked: false, table: 'GFS_Recus' });
-  assert.deepEqual(names(engine).slice(2), ['check', 'create']);
+  assert.deepEqual(names(engine).slice(2), ['check', 'create', 'marks'], 'les marques « accepté » et « refusé » naissent tout de suite, avant la réponse à l\'envoyeur');
+  assert.deepEqual(engine.calls[4], ['marks', 'GFS_Recus']);
   const [, invitation, plans, options] = engine.calls[3];
   assert.equal(invitation, INVITATION);
   assert.deepEqual(plans, [{ tb: INVITATION.tables[0], dest: 'GFS_Recus' }]);
@@ -61,9 +63,31 @@ test('accept : un partage déjà reçu de ce document reprend sa réception (nou
   const flow = createTargetFlow({ engine });
   await flow.read('x');
   assert.deepEqual(await flow.accept(), { journal: 'GFS_Journal_Ancien', relinked: true, table: 'GFS_Recus' });
-  assert.deepEqual(names(engine).slice(2), ['relink']);
+  assert.deepEqual(names(engine).slice(2), ['relink', 'marks'], 'une réception d\'avant reçoit aussi ses colonnes de marque (additif)');
   await flow.abort();
   assert.ok(!names(engine).includes('undo'), 'une réception qui existait avant reste');
+});
+
+test('accept : une colonne envoyée qui porte le nom d\'une marque arrive sous un autre nom ; les autres colonnes ne sont pas touchées', async () => {
+  const columns = [{ id: 'Identifiant', type: 'Text' }, { id: 'Accepte', type: 'Bool' }, { id: 'refuse', type: 'Bool' }, { id: 'Nom', type: 'Text' }];
+  const invitation = { ...INVITATION, tables: [{ table: 'GFS_Fichiers', columns }, { table: 'Autre', columns: [{ id: 'Nom' }] }] };
+  const engine = fakeEngine({ invitation });
+  const flow = createTargetFlow({ engine });
+  await flow.read('x'); await flow.accept();
+  const plans = engine.calls.find(call => call[0] === 'create')[2];
+  assert.deepEqual(plans[0].map, { Accepte: 'Accepte_envoye', refuse: 'refuse_envoye' });
+  assert.ok(!('map' in plans[1]), 'une table sans colonne de ce nom n\'a aucune correspondance');
+  assert.deepEqual(engine.calls.find(call => call[0] === 'check')[2], plans, 'le moteur contrôle les destinations avec les mêmes choix');
+});
+
+test('accept : si les colonnes de marque ne se posent pas, la réception qui vient d\'être créée peut être défaite (jamais une réception sans elles)', async () => {
+  const engine = fakeEngine({ fail: { marks: new Error('Blocked by structure access rules') } });
+  const flow = createTargetFlow({ engine });
+  await flow.read('x');
+  await assert.rejects(() => flow.accept(), /Blocked by structure/);
+  assert.equal(flow.created, true);
+  await flow.abort();
+  assert.ok(names(engine).includes('undo'));
 });
 
 test('reply : le lien collé est rogné, le moteur le vérifie, la fenêtre reçoit la réponse et le code de contrôle', async () => {

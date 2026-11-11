@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-SjgsH8gyOaYOXwbLrIhvdWftq4S1SgWy+isaGK/I4Yk='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-csAFOdD0h7lM4/s3EcLqjKtcEnBOvvDRMS/Milxp5zQ='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=7a7a55cf8b">
 <link rel="stylesheet" href="css/explorer.css?v=dbe4c9050a">
 <link rel="stylesheet" href="css/modules.css?v=e9c281ff14">
@@ -98,7 +98,7 @@
     "./js/leave.js": "./js/leave.js?v=aa307430cb",
     "./js/libraries.js": "./js/libraries.js?v=f8e30c6112",
     "./js/links.js": "./js/links.js?v=c4e4a9d7bc",
-    "./js/manage-control.js": "./js/manage-control.js?v=adcffc9672",
+    "./js/manage-control.js": "./js/manage-control.js?v=6108919318",
     "./js/manage-other-tab.js": "./js/manage-other-tab.js?v=52426b8e03",
     "./js/manage-window.js": "./js/manage-window.js?v=cf23066ecc",
     "./js/manifest.js": "./js/manifest.js?v=05565083ba",
@@ -123,7 +123,7 @@
     "./js/received-control.js": "./js/received-control.js?v=31c1d0bce2",
     "./js/received-files.js": "./js/received-files.js?v=2e1ac0ad94",
     "./js/received-window.js": "./js/received-window.js?v=30ff7157dd",
-    "./js/rights-actions.js": "./js/rights-actions.js?v=31c0eee7b7",
+    "./js/rights-actions.js": "./js/rights-actions.js?v=44ffa31e58",
     "./js/rights-control.js": "./js/rights-control.js?v=18d626f106",
     "./js/rights-plan.js": "./js/rights-plan.js?v=ab59b68980",
     "./js/rights-reader.js": "./js/rights-reader.js?v=0640e8f3fc",
@@ -135,19 +135,19 @@
     "./js/session.js": "./js/session.js?v=9c643ec4af",
     "./js/settings-menu.js": "./js/settings-menu.js?v=f9ce66c1f3",
     "./js/settings.js": "./js/settings.js?v=08fb6c6ab7",
-    "./js/share-control.js": "./js/share-control.js?v=fb92870e10",
+    "./js/share-control.js": "./js/share-control.js?v=1134801cf8",
     "./js/share-links.js": "./js/share-links.js?v=49b2331a44",
     "./js/share-other-flow.js": "./js/share-other-flow.js?v=d8936a9cb6",
     "./js/share-other-tab.js": "./js/share-other-tab.js?v=2fa346af0d",
-    "./js/share-other-window.js": "./js/share-other-window.js?v=54f5e497c6",
+    "./js/share-other-window.js": "./js/share-other-window.js?v=272058f285",
     "./js/share-other.js": "./js/share-other.js?v=66f5e43454",
     "./js/share-receive-flow.js": "./js/share-receive-flow.js?v=f622824b67",
-    "./js/share-receive-window.js": "./js/share-receive-window.js?v=56e8d16396",
+    "./js/share-receive-window.js": "./js/share-receive-window.js?v=f851eceef3",
     "./js/share-window.js": "./js/share-window.js?v=252cc7169b",
     "./js/sharing-model.js": "./js/sharing-model.js?v=a5115d58e0",
     "./js/spaces-filing.js": "./js/spaces-filing.js?v=e8edc7c489",
     "./js/state.js": "./js/state.js?v=ac1616eaf2",
-    "./js/steps-window.js": "./js/steps-window.js?v=92947a32ee",
+    "./js/steps-window.js": "./js/steps-window.js?v=b77a52a2aa",
     "./js/stored-choice.js": "./js/stored-choice.js?v=2f8b5015a1",
     "./js/sync-port-text.js": "./js/sync-port-text.js?v=5e62c7c0bc",
     "./js/sync-port.js": "./js/sync-port.js?v=dcc192eb78",
@@ -180,7 +180,7 @@
     "./kit/js/color-strings.js": "./kit/js/color-strings.js?v=1bae4317a5",
     "./kit/js/dialogs.js": "./kit/js/dialogs.js?v=e2e71809c1",
     "./kit/js/dom.js": "./kit/js/dom.js?v=bb61d5ebe7",
-    "./kit/js/gfs-link.js": "./kit/js/gfs-link.js?v=4817d99a79",
+    "./kit/js/gfs-link.js": "./kit/js/gfs-link.js?v=5a5f892dab",
     "./kit/js/host.js": "./kit/js/host.js?v=aca4fbd09b",
     "./kit/js/i18n.js": "./kit/js/i18n.js?v=34aa7f2b67",
     "./kit/js/layers.js": "./kit/js/layers.js?v=0a7ababe40",
@@ -193,51 +193,48 @@
     "./kit/js/synchro/form-link.js": "./kit/js/synchro/form-link.js?v=087b7764cc",
     "./kit/js/synchro/index.js": "./kit/js/synchro/index.js?v=db492d63b3",
     "./kit/js/synchro/logic/acl.js": "./kit/js/synchro/logic/acl.js?v=0edcbbe9f6",
-    "./kit/js/synchro/logic/codes.js": "./kit/js/synchro/logic/codes.js?v=c39a51bde0",
+    "./kit/js/synchro/logic/codes.js": "./kit/js/synchro/logic/codes.js?v=4e121b0bf7",
     "./kit/js/synchro/logic/common.js": "./kit/js/synchro/logic/common.js?v=843d22d255",
-    "./kit/js/synchro/logic/consolidation.js": "./kit/js/synchro/logic/consolidation.js?v=ef8aca7218",
-    "./kit/js/synchro/logic/diagnostic.js": "./kit/js/synchro/logic/diagnostic.js?v=92b1191eb8",
+    "./kit/js/synchro/logic/consolidation.js": "./kit/js/synchro/logic/consolidation.js?v=63fd6be827",
+    "./kit/js/synchro/logic/diagnostic.js": "./kit/js/synchro/logic/diagnostic.js?v=8cfe51e1e5",
     "./kit/js/synchro/logic/estimate.js": "./kit/js/synchro/logic/estimate.js?v=4f061c1bfc",
-    "./kit/js/synchro/logic/exports.js": "./kit/js/synchro/logic/exports.js?v=e6f46cf0fb",
-    "./kit/js/synchro/logic/files.js": "./kit/js/synchro/logic/files.js?v=710417c86d",
+    "./kit/js/synchro/logic/exports.js": "./kit/js/synchro/logic/exports.js?v=ad32ae6c9c",
+    "./kit/js/synchro/logic/files.js": "./kit/js/synchro/logic/files.js?v=2ed55ae432",
     "./kit/js/synchro/logic/filters.js": "./kit/js/synchro/logic/filters.js?v=dad1731cdd",
-    "./kit/js/synchro/logic/formulas.js": "./kit/js/synchro/logic/formulas.js?v=73bb54e2a3",
+    "./kit/js/synchro/logic/formulas.js": "./kit/js/synchro/logic/formulas.js?v=1e94829039",
     "./kit/js/synchro/logic/health.js": "./kit/js/synchro/logic/health.js?v=396a10aadb",
     "./kit/js/synchro/logic/journal.js": "./kit/js/synchro/logic/journal.js?v=ab88d9cc99",
     "./kit/js/synchro/logic/keys.js": "./kit/js/synchro/logic/keys.js?v=8c693a1728",
     "./kit/js/synchro/logic/links.js": "./kit/js/synchro/logic/links.js?v=765b58b2aa",
-    "./kit/js/synchro/logic/lost.js": "./kit/js/synchro/logic/lost.js?v=071e42cc46",
-    "./kit/js/synchro/logic/notes.js": "./kit/js/synchro/logic/notes.js?v=b13d9ee08f",
+    "./kit/js/synchro/logic/notes.js": "./kit/js/synchro/logic/notes.js?v=4a0e92cb71",
     "./kit/js/synchro/logic/options.js": "./kit/js/synchro/logic/options.js?v=9ed40d9519",
-    "./kit/js/synchro/logic/page-order.js": "./kit/js/synchro/logic/page-order.js?v=6e1140e2ce",
     "./kit/js/synchro/logic/received.js": "./kit/js/synchro/logic/received.js?v=41d664666d",
-    "./kit/js/synchro/logic/report.js": "./kit/js/synchro/logic/report.js?v=e3e219e047",
+    "./kit/js/synchro/logic/report.js": "./kit/js/synchro/logic/report.js?v=61424e4de2",
     "./kit/js/synchro/logic/resend.js": "./kit/js/synchro/logic/resend.js?v=4480446432",
     "./kit/js/synchro/logic/schema.js": "./kit/js/synchro/logic/schema.js?v=0f1cbb20b8",
     "./kit/js/synchro/logic/strays.js": "./kit/js/synchro/logic/strays.js?v=7111fe7b44",
     "./kit/js/synchro/logic/tally.js": "./kit/js/synchro/logic/tally.js?v=d647dc0941",
-    "./kit/js/synchro/logic/trust.js": "./kit/js/synchro/logic/trust.js?v=b0d79de21f",
-    "./kit/js/synchro/pages.js": "./kit/js/synchro/pages.js?v=0102e7d9e5",
+    "./kit/js/synchro/logic/trust.js": "./kit/js/synchro/logic/trust.js?v=c8bd58a655",
+    "./kit/js/synchro/pages.js": "./kit/js/synchro/pages.js?v=7e1d57dbbe",
     "./kit/js/synchro/port.js": "./kit/js/synchro/port.js?v=0e9a738459",
-    "./kit/js/synchro/rest-port.js": "./kit/js/synchro/rest-port.js?v=6b2d9b51ff",
-    "./kit/js/synchro/source/actions.js": "./kit/js/synchro/source/actions.js?v=1f6e3c05b3",
+    "./kit/js/synchro/rest-port.js": "./kit/js/synchro/rest-port.js?v=ef96457462",
+    "./kit/js/synchro/source/actions.js": "./kit/js/synchro/source/actions.js?v=c077dd94ba",
     "./kit/js/synchro/source/estimate.js": "./kit/js/synchro/source/estimate.js?v=7e8be07926",
     "./kit/js/synchro/source/export.js": "./kit/js/synchro/source/export.js?v=ea5453a6df",
-    "./kit/js/synchro/source/files.js": "./kit/js/synchro/source/files.js?v=fc09f9d165",
+    "./kit/js/synchro/source/files.js": "./kit/js/synchro/source/files.js?v=a108b9ab5f",
     "./kit/js/synchro/source/hook-check.js": "./kit/js/synchro/source/hook-check.js?v=e05830989e",
-    "./kit/js/synchro/source/invite.js": "./kit/js/synchro/source/invite.js?v=622374332d",
+    "./kit/js/synchro/source/invite.js": "./kit/js/synchro/source/invite.js?v=f64ebd9de7",
     "./kit/js/synchro/source/keys.js": "./kit/js/synchro/source/keys.js?v=484931afbe",
     "./kit/js/synchro/source/pausing.js": "./kit/js/synchro/source/pausing.js?v=9d76a3f7d4",
     "./kit/js/synchro/source/resend.js": "./kit/js/synchro/source/resend.js?v=0b0e5e05f2",
-    "./kit/js/synchro/source/synchro.js": "./kit/js/synchro/source/synchro.js?v=4b81927299",
+    "./kit/js/synchro/source/synchro.js": "./kit/js/synchro/source/synchro.js?v=0ef07599a8",
     "./kit/js/synchro/target/dest.js": "./kit/js/synchro/target/dest.js?v=7deeb92ae2",
     "./kit/js/synchro/target/files.js": "./kit/js/synchro/target/files.js?v=9f9594d359",
     "./kit/js/synchro/target/journals.js": "./kit/js/synchro/target/journals.js?v=e319792d54",
-    "./kit/js/synchro/target/loop.js": "./kit/js/synchro/target/loop.js?v=ed2129bbfc",
-    "./kit/js/synchro/target/lost.js": "./kit/js/synchro/target/lost.js?v=d2cf32e033",
-    "./kit/js/synchro/target/receive.js": "./kit/js/synchro/target/receive.js?v=744903598e",
-    "./kit/js/synchro/textes.js": "./kit/js/synchro/textes.js?v=3dd826afac",
-    "./kit/js/synchro/version.js": "./kit/js/synchro/version.js?v=0c976201fe",
+    "./kit/js/synchro/target/loop.js": "./kit/js/synchro/target/loop.js?v=1ce614fe2b",
+    "./kit/js/synchro/target/receive.js": "./kit/js/synchro/target/receive.js?v=5e01ff7946",
+    "./kit/js/synchro/textes.js": "./kit/js/synchro/textes.js?v=1b89b3c487",
+    "./kit/js/synchro/version.js": "./kit/js/synchro/version.js?v=2fba966fae",
     "./kit/js/theme.js": "./kit/js/theme.js?v=55b9ccfb58"
   }
 }
@@ -358,9 +355,9 @@
 <link rel="modulepreload" href="./js/rights-reader.js?v=0640e8f3fc">
 <link rel="modulepreload" href="./js/rights-window.js?v=d5e3b15454">
 <link rel="modulepreload" href="./js/rights-writer.js?v=4a2e82e625">
-<link rel="modulepreload" href="./js/rights-actions.js?v=31c0eee7b7">
-<link rel="modulepreload" href="./js/share-control.js?v=fb92870e10">
-<link rel="modulepreload" href="./js/manage-control.js?v=adcffc9672">
+<link rel="modulepreload" href="./js/rights-actions.js?v=44ffa31e58">
+<link rel="modulepreload" href="./js/share-control.js?v=1134801cf8">
+<link rel="modulepreload" href="./js/manage-control.js?v=6108919318">
 <link rel="modulepreload" href="./js/share-links.js?v=49b2331a44">
 <link rel="modulepreload" href="./js/sync-rules.js?v=d3315e4d05">
 <link rel="modulepreload" href="./js/share-other-flow.js?v=d8936a9cb6">
@@ -383,7 +380,7 @@
 <link rel="modulepreload" href="./js/conflict-window.js?v=6707e6cc39">
 <link rel="modulepreload" href="./js/deposit.js?v=d0c15e5868">
 <link rel="modulepreload" href="./js/gfs-copy.js?v=aebb603561">
-<link rel="modulepreload" href="./js/steps-window.js?v=92947a32ee">
+<link rel="modulepreload" href="./js/steps-window.js?v=b77a52a2aa">
 <link rel="modulepreload" href="./js/share-other-tab.js?v=2fa346af0d">
 <link rel="modulepreload" href="./js/tabs.js?v=22d4ee7ed4">
 <link rel="modulepreload" href="./js/manage-other-tab.js?v=52426b8e03">

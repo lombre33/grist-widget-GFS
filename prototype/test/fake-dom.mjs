@@ -5,6 +5,7 @@ class FakeNode {
   setAttribute(name, value) { this.attrs[name] = value; }
   addEventListener(type, fn) { (this.listeners[type] = this.listeners[type] || []).push(fn); }
   append(...nodes) { for (const node of nodes) this.children.push(node); }
+  prepend(...nodes) { this.children.unshift(...nodes); }
   cloneNode() { return this; }
   get elements() { return this.children.filter(node => typeof node !== 'string'); }
   // `h` ajoute du texte comme chaîne ; `children` de `infoBar` est lu comme des éléments : la doublure sépare les deux.

@@ -5,7 +5,7 @@ import { rowsOf } from './rights.js';
 import { FILES_TABLE } from './gfs-files.js';
 import { GROUPS_TABLE, PLACE_TABLE, SHARES_TABLE, SPACES_TABLE, STAMP, TARGETS, folderTarget, groupsOf, sharesOf, spaceTarget } from './sharing-model.js';
 import { openShare } from './share-window.js';
-import { runAction } from './rights-actions.js';
+import { runAction, writeActions } from './rights-actions.js';
 import { ask } from './ask-window.js';
 import { locate } from './spaces-filing.js';
 
@@ -100,11 +100,7 @@ export class ShareControl {
     return originsOf(place.Espace, name, String(place.Dossier || '').split('/').filter(Boolean));
   }
 
-  async #write(actions) {
-    const blocked = this.#o.writeBlock();
-    if (blocked) return { ok: false, message: blocked };
-    try { await this.#o.port.doc.applyUserActions(actions); return { ok: true }; } catch (error) { return { ok: false, message: String((error && error.message) || error).slice(0, 300) }; }
-  }
+  #write(actions) { return writeActions(this.#o, actions); }
 
   // Ouvre la fenêtre du fichier ; rend la promesse de sa fermeture.
   open(file) {

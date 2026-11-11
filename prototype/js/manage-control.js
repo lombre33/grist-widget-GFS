@@ -3,7 +3,7 @@
 
 import { rowsOf } from './rights.js';
 import { actionsOf } from './rights-plan.js';
-import { runAction } from './rights-actions.js';
+import { runAction, writeActions } from './rights-actions.js';
 import { ask } from './ask-window.js';
 import { openManage } from './manage-window.js';
 import { pickFrom } from './pick-window.js';
@@ -48,11 +48,7 @@ export class ManageControl {
     };
   }
 
-  async #write(actions) {
-    const blocked = this.#o.writeBlock();
-    if (blocked) return { ok: false, message: blocked };
-    try { await this.#o.port.doc.applyUserActions(actions); return { ok: true }; } catch (error) { return { ok: false, message: String((error && error.message) || error).slice(0, 300) }; }
-  }
+  #write(actions) { return writeActions(this.#o, actions); }
 
   addGroup(state, { name, people }) {
     const plan = planGroupAdd(state.rows, groupRecord({ name, people }));

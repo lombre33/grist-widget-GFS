@@ -263,6 +263,7 @@ L'app (sous-cadre sans allow-same-origin)
 | `permissions` | objet | oui | Accès, tables, tables internes, capacités (section 3). |
 | `extensions` | liste | non | Les extensions de l'app (2.6). |
 | `dependances` | chaîne | non | Chemin de la liste des bibliothèques **natives** de l'app (`package.json`) : celles d'une extension n'y figurent pas (2.6, point 4). |
+| `natives` | liste | non | Les bibliothèques natives de l'app **rangées par fonction**, pour le choix « CDN ou copie figée » : `[ { "id", "nom": { "fr", "en" }, "bibliotheques": [ { "id", "version" } ] } ]` (2.6, point 14 ; 5.2, point 12). Une bibliothèque n'est que dans une fonction, sa version est exacte. L'app le déclare quand elle lit le choix ; sans `natives`, rien n'est proposé et l'app reste au CDN. |
 | `actions` | objet | non | Ce que l'app accepte de la part des autres (2.7). |
 | `ouverture` | objet | non | Ce que l'app sait faire d'une ouverture que GFS lui passe : `{ "fichier": true, "nouveau": true, "importer": true, "lire": true }` (5.2, point 3 ; 5.4, points 1 et 8). Un genre absent vaut faux : GFS ouvre alors l'app sur son modèle habituel et le dit, et grise « Importer » ou « Lire ». |
 | `permanente` | booléen | non | `true` : l'app ne se retire pas de la fenêtre « Apps et extensions » (Publipostage+). |
@@ -458,8 +459,8 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
 
 14. [D] **Les copies figées des bibliothèques natives d'une app, chez GFS** (choix du porteur, 11/11 : « chez GFS, comme pour Plotly » ; étude
     `docs/etude-cdn-ou-copie.md`). La liste de l'app dit toujours quelles bibliothèques elle emploie (point 4, confirmé le 14/10) ; GFS en
-    garde en plus une copie figée, que le porteur peut choisir à la place du CDN, fonction par fonction (5.2, point 5 : à venir avec la
-    fenêtre). Dans la liste de GFS, une telle entrée porte `natifDe` (l'id de l'app) et la même forme que les autres (`paquet`, `fichier`) ;
+    garde en plus une copie figée, que le porteur peut choisir à la place du CDN, fonction par fonction (fenêtre « Apps et
+    extensions », 7.3, point 3 ; ce que l'app reçoit : 5.2, point 12). Dans la liste de GFS, une telle entrée porte `natifDe` (l'id de l'app) et la même forme que les autres (`paquet`, `fichier`) ;
     **sa version suit celle de l'app, jamais celle de Dependabot** (`.github/dependabot.yml` les ignore, un essai de `test/hygiene.test.mjs`
     le garde) : l'app monte sa version, le dit dans « Changements qui touchent GFS » de sa page d'état, et GFS réécrit sa copie dans le lot
     qui lit la demande. Le catalogue donne à chacune la copie (`vendorise`) et, comme pour toute entrée de paquet npm, l'adresse jsDelivr du
@@ -1149,8 +1150,8 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 1. [T] Les six paramètres de l'adresse (1.3) et le contexte disent la même chose : l'adresse existe pour le code des apps
    qui la lit déjà, le contexte pour le kit. Une seule différence dans le temps : la langue de l'adresse est celle du cadre
    quand il a été créé, et le contexte dit la langue qui vaut maintenant (point 6).
-2. [D] Six événements en cours de vie. `extensions` (`{ "extensions": [ … ], "bibliotheques": { … } }`), quand la personne
-   active ou désactive une extension dans GFS : l'app charge alors l'extension au premier usage, comme ses moteurs d'export.
+2. [D] Six événements en cours de vie. `extensions` (`{ "extensions": [ … ], "bibliotheques": { … }, "natives": { … } }`), quand la personne
+   active ou désactive une extension dans GFS, ou change le mode d'une bibliothèque native (point 12) : l'app charge alors l'extension au premier usage, comme ses moteurs d'export.
    `langue` (`{ "langue": "fr" | "en" }`), quand la personne change la langue de GFS (point 6). `barre` (`{ "barre": { … } | null }`),
    quand la barre de GFS change de bord, de taille, ou disparaît et revient (point 7). `identite` (`{ "identite": { "email": … } | null }`),
    quand GFS apprend l'adresse de la personne pendant que l'app qui la déclare est ouverte (point 9). `ambiance` (`{ "ambiance": { … } | null }`),
@@ -1474,6 +1475,18 @@ sans événement : seule une règle posée recharge la page (11.5, point 3), et 
    de la barre et `lecteur.fermer`. Un bouton « Fermer » posé par GFS, ou la fermeture quand le focus revient à la page de GFS, ne sont pas construits (interface de plus : le porteur
    choisit après son essai avec une vraie vidéo, avec l'événement `lecteur`). **Non mesuré** : les vrais YouTube et Vimeo (démarrage, son, lecture
    automatique, plein écran : le porteur, sous Firefox, avec une vraie vidéo), Firefox dans un vrai Grist (sans Grist, le lecteur est mesuré sous Firefox 160 depuis le 10/11 : faits vérifiés 78, sauf la touche Échap dans le lecteur), le Grist de la DINUM, l'événement `lecteur` (pas construit).
+
+12. [T] **`natives`** (choix du porteur, 11/11 : « chez GFS, comme pour Plotly » et « fonction par fonction » ; étude `docs/etude-cdn-ou-copie.md` ;
+    mesuré le 11/11 dans un vrai Grist, faits vérifiés 93) : `{ "<id de bibliothèque>": { "version", "src", "integrite", "forme" } }`, dans le
+    contexte et dans l'événement `extensions` (point 2), **seulement pour les bibliothèques natives dont la personne a choisi la copie figée** ;
+    `{}` quand tout est au CDN (le défaut). L'app qui lit ce champ compare `version` à celle de sa liste : égale, elle charge la copie par `src`,
+    avec `integrite` et `crossorigin="anonymous"` (`'self'` suffit, point 5) ; différente ou absente, elle charge par **son** CDN, celui que sa CSP
+    nomme déjà. **GFS ne donne jamais l'adresse d'un CDN pour une bibliothèque native** (2.6, point 14) : l'app qui ne lit pas le champ reste au
+    CDN, comme avant. Pour une fonction, GFS ne dit « copie figée » que si **toutes** ses bibliothèques sont dans son catalogue à la version que le
+    manifeste déclare ; sinon la fonction reste au CDN et la fenêtre la grise avec la raison (7.3, point 3). Ce que la personne choisit se retient
+    dans `modes` de la table de GFS, sous la clé `natif:<fonction>` (7.4, point 1). Côté app, le kit rend `GfsLink.native(id)` (0.18.0) et appelle
+    `onExtensions` quand seule une copie figée change. **L'éditeur (TipTap, ProseMirror) n'est pas dans ce champ** : sa copie est une carte
+    d'importation, pas un fichier (étude, §5) ; elle attend le choix du porteur sur l'endroit où la ranger.
 
 ### 5.3 Le stockage du navigateur
 
@@ -2453,7 +2466,11 @@ d'app mis à la corbeille (6.2), jamais avant.
 3. [T] **Installer ne télécharge rien** : le code de toutes les apps livrées est déjà dans le site de GFS (sous-modules). Installer
    une app, c'est inscrire son `id` dans la liste du document (7.4) ; activer une extension, l'inscrire à la ligne de l'app ;
    désinstaller, retirer l'inscription. Désinstaller ne supprime aucune donnée (cahier 3.1, point 1) : réinstaller retrouve
-   tout.
+   tout. **Le mode d'une bibliothèque** (11/11 ; CDN par défaut, ou copie figée de GFS) se choisit dans la même fenêtre : pour une extension
+   qui en a, et, pour une app dont le manifeste déclare `natives` (2.2), **fonction par fonction** (Export PDF, Export Word…), avec un raccourci
+   « toutes » qui dit « mélange » quand les fonctions diffèrent. La ligne s'ouvre repliée (le choix de toutes), le détail se déplie à la souris
+   et reste déplié après un choix ; la copie figée d'une fonction à qui il manque une bibliothèque du catalogue (ou sa version) est **grisée avec
+   sa raison**, jamais cachée (2.6, point 14) ; en lecture seule, tout est grisé. Les mots sont les mêmes partout : « CDN » et « Copie figée ».
 4. [T] **GFS écrit les réglages des apps dans la vue, sans « Enregistrer »** (décision du porteur, 03/11, « GFS l'écrit dans la
    vue » ; construit le même jour, `js/view-options.js`). Quand une app écrit un réglage de sa tranche (`setOption`, `setOptions`,
    `clearOptions`, 7.2), le courtier :
@@ -2514,8 +2531,9 @@ Le conseil du cahier était les réglages de la section, avec le rappel « Enreg
 le document, pour que l'installation s'enregistre tout de suite.
 
 1. [T] **Où.** Une ligne réservée de `GFS_Rangement` (6.4) : `Utilisateur` = `@document`, `App` = `gfs`, `Fichier` = `apps`,
-   et dans `Valeur` un texte JSON `{ "<id>": { "extensions": [ "…" ], "modes": { "<extension>": "cdn" | "vendorise" } } }`
-   (`modes` est facultatif, le défaut est le CDN : question 11). La ligne n'existe qu'après la première installation.
+   et dans `Valeur` un texte JSON `{ "<id>": { "extensions": [ "…" ], "modes": { "<extension>": "cdn" | "vendorise", "natif:<fonction>": "vendorise" } } }`
+   (`modes` est facultatif, le défaut est le CDN : question 11 ; la clé `natif:<fonction>` est celle d'une fonction de bibliothèques natives de l'app,
+   2.6 point 14 : elle n'existe que pour la copie figée, le CDN n'est jamais écrit ; une clé que cette version de GFS ne connaît pas est gardée). La ligne n'existe qu'après la première installation.
 2. [T] **Immédiat.** Installer, désinstaller, activer une extension, choisir son mode : l'écriture de la ligne suffit, sans
    « Enregistrer ». Le rappel ne vaut plus que pour les réglages d'une app **seule**, ou quand GFS se replie sur le brouillon (7.3,
    points 6 et 9), pas pour ceux de GFS.

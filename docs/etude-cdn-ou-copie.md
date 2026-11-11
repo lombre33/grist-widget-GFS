@@ -4,6 +4,14 @@
 il a refusé l'un-ou-l'autre de la carte sur TipTap (esm.sh ou fichier figé). Deux cartes attendent son choix : où ranger la copie, à quelle échelle choisir. Les captures
 (`maquette-*.png`, rendues avec le vrai code de la fenêtre « Apps et extensions », sans les textes que le code n'a pas encore) sont à côté de ce fichier dans les fichiers du projet.
 
+## Mise à jour du 11/11 : les deux cartes sont répondues
+
+Le porteur a choisi **« Chez GFS, comme pour Plotly »** (A ; le conseil B de l'étude, §3, n'est donc pas retenu) et **« Fonction par fonction »** avec le raccourci « toutes » (§4). Ce qui en découle, construit le même jour :
+
+- **Lot 1 (copies chez GFS)** : neuf bibliothèques natives de Publipostage+ dans `prototype/vendor/` (5,1 Mo), entrées `natifDe: "publipostage"` de la liste de GFS dont **la version suit celle de l'app** (Dependabot les ignore, un essai le garde) : la dérive de version du §3 se règle par la demande de l'app (circuit « Demandes à GFS »), et par la comparaison de `version` côté app (contrats 5.2, point 12) qui retombe sur son CDN. Faits vérifiés 92.
+- **Lot 2 (la fenêtre et ce que l'app reçoit)** : une ligne « Bibliothèques de l'app » par app dont le manifeste déclare `natives` (fonctions : bibliothèques et version), détail par fonction replié, clés `natif:<fonction>` dans `modes`, champ `natives` du contexte et de l'événement `extensions`, `GfsLink.native(id)` dans le kit 0.18.0. Mesuré dans un vrai Grist avec la vraie Publipostage+ et sous Firefox (faits vérifiés 93).
+- **Reste** : (3) la **consigne à Publipostage+** (groupes, lecture de `natives`, comparaison de `version` ; seule, sans GFS, l'app n'a pas la copie : elle reste au CDN, conséquence du choix « chez GFS »), après la 063 ; GFS ne déclare `natives` dans son manifeste qu'une fois l'app prête, pour ne pas montrer un choix sans effet ; (4) **l'éditeur** : sa copie est une carte d'importation (§5) et, avec la copie chez GFS, le texte de la carte porte l'adresse de GFS, que la politique de l'app doit nommer par empreinte : carte posée au porteur (copie dans le dépôt de l'app, chez GFS avec l'adresse nommée par l'app, ou éditeur au CDN seulement) ; rien n'est codé pour l'éditeur avant sa réponse.
+
 ## En bref
 
 - **Ce qui existe** : le choix « Depuis un CDN / Copie de GFS » est fait **par extension** (cahier, question 11 ; `prototype/js/extensions.js:31`, `prototype/js/modules-window.js`, `prototype/css/modules.css:71-79`), pour 4 bibliothèques que GFS porte (Plotly, ECharts, l'écriture en direct, la lecture des PDF ; `vendor/` pèse 3,9 Mo). Les bibliothèques **natives** de Publipostage+ n'ont **aucune copie** : sept fichiers en CDN avec empreinte, TipTap et ProseMirror par esm.sh (sans empreinte possible).

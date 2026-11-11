@@ -37,6 +37,9 @@ import { ThemeHost } from '/js/theme-apply.js';
 import { settingsItems } from '/js/settings-menu.js';
 import { aboutItems } from '/js/about.js';
 import { ThemeSetting } from '/js/theme.js';
+import { modulesModel } from '/js/modules-model.js';
+import { readCatalogue } from '/js/libraries.js';
+import { withNativeMode } from '/js/settings.js';
 import { ThemeWindow } from '/js/theme-window.js';
 import { Trash } from '/js/trash.js';
 import { openRights } from '/js/rights-window.js';
@@ -216,6 +219,27 @@ async function mount() {
   window.__about = () => void ask({ title: i18n.t('about.title'), message: i18n.t('about.text'), items: aboutItems(i18n.t), confirmLabel: i18n.t('about.close'), container: stage, inertTargets: () => [explorer.root] });
   // « Apps et extensions » et « Table de travail » (js/modules-window.js, js/work-window.js ; test/voile-firefox.mjs) : des fenêtres à part de la base commune, dont le fond ne ferme rien non plus.
   window.__modulesWindow = () => void new ModulesWindow({ container: stage, i18n, locale, model: () => ({ items: [], active: 0, total: 0 }), blocked: () => null, inertTargets: () => [explorer.root], on: {}, onClose: () => {} }).open();
+  // « Apps et extensions » avec les bibliothèques natives, fonction par fonction (js/modules-window.js, contrats 2.6 point 14 ; test/natives-firefox.mjs) : le vrai modèle, le vrai catalogue de GFS et le manifeste de
+  // Publipostage+ à qui l'on donne quatre fonctions (ce que son manifeste dira quand l'app lira le choix). `variant` : 'ok', 'manque' (le catalogue n'a pas les polices : la copie du PDF est grisée) ou 'lecture' (rien ne peut s'écrire).
+  window.__natives = async (variant = 'ok') => {
+    const L = (id, version) => ({ id, version });
+    const manifest = await (await fetch('/manifestes/publipostage.json')).json();
+    manifest.natives = [
+      { id: 'pdf', nom: { fr: 'Export PDF (pdfmake, polices, JSZip)', en: 'PDF export (pdfmake, fonts, JSZip)' }, bibliotheques: [L('pdfmake', '0.2.7'), L('pdfmake-polices', variant === 'manque' ? '9.9.9' : '0.2.7'), L('jszip', '3.10.1')] },
+      { id: 'word', nom: { fr: 'Export Word (docx)', en: 'Word export (docx)' }, bibliotheques: [L('docx', '9.15.1'), L('docx-charts', '9.15.1')] },
+      { id: 'excel', nom: { fr: 'Export Excel (ExcelJS)', en: 'Excel export (ExcelJS)' }, bibliotheques: [L('exceljs', '4.4.0')] },
+      { id: 'divers', nom: { fr: 'Divers (marked, QR code, pdf-lib)', en: 'Other (marked, QR code, pdf-lib)' }, bibliotheques: [L('pdf-lib', '1.17.1'), L('marked', '15.0.12'), L('qrcode-generator', '1.4.4')] },
+    ];
+    const catalogue = readCatalogue(await (await fetch('/bibliotheques/catalogue.json')).json());
+    const loaded = [{ app: { id: manifest.id }, manifest, ok: true, errors: [] }];
+    let apps = { [manifest.id]: { extensions: [], modes: {} } };
+    window.__nativeEvents = [];
+    const win = new ModulesWindow({
+      container: stage, i18n, locale, model: () => modulesModel(loaded, { apps }, catalogue, [manifest.id]), blocked: () => (variant === 'lecture' ? 'lecture seule' : null), inertTargets: () => [explorer.root],
+      on: { nativeMode(app, group, mode) { apps = withNativeMode(apps, manifest, group, mode); window.__nativeEvents.push([app, group, mode]); win.refresh(); } }, onClose: () => {},
+    });
+    win.open();
+  };
   window.__workWindow = () => void new WorkWindow({ container: stage, i18n, inertTargets: () => [explorer.root], source: { pageTable: 'Inscrits', pageRow: null, current: null, tables: () => [{ id: 'Inscrits', locked: null }], rows: async () => [] }, onPick: () => {}, onClose: () => {} }).open();
   // « Partagés avec moi » (js/received-control.js, test/partager-recevoir-firefox.mjs) : le vrai contrôle, la vraie fenêtre « Accepter ? » et les vraies marques, écrites dans un faux Grist en mémoire (`window.__sharedTables`).
   // `window.__shared(kind)` y pose des arrivées et ouvre la vue ; `window.__sharedBlocked` : la phrase qui dit pourquoi rien ne s'écrit.

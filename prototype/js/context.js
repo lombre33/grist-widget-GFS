@@ -45,6 +45,7 @@ export function buildContext(facts, session, params) {
     acces: session.access,
     extensions: session.extensions,
     bibliotheques: session.libraries,
+    natives: session.natives || {}, // les copies figées des bibliothèques natives que la personne a choisies, `{ id: { version, src, integrite, forme } }` ; `{}` : l'app charge tout par son CDN (5.2, point 12)
     ouverture: session.opening || null,
     stockage: session.storage || {}, // la copie de l'espace de CETTE app dans le navigateur de GFS (5.3)
     barre: session.bar || null, // la barre de GFS qui recouvre le cadre : { bord, epaisseur, zone }, ou `null` quand rien ne le recouvre (5.2, point 7)

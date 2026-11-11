@@ -5,6 +5,7 @@
 
 import { extensionsOf } from './extensions.js';
 import { MODES, DEFAULT_MODE } from './libraries.js';
+import { nativesOf, nativeKey } from './natives.js';
 
 const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 
@@ -15,7 +16,8 @@ function cleanApp(manifest, raw) {
   const extensions = known.filter(id => wanted.includes(id));
   const modes = {};
   if (isObject(raw) && isObject(raw.modes)) {
-    for (const id of extensions) if (MODES.includes(raw.modes[id]) && raw.modes[id] !== DEFAULT_MODE) modes[id] = raw.modes[id];
+    const keys = [...extensions, ...nativesOf(manifest).map(group => nativeKey(group.id))];
+    for (const key of keys) if (MODES.includes(raw.modes[key]) && raw.modes[key] !== DEFAULT_MODE) modes[key] = raw.modes[key];
   }
   return { extensions, modes };
 }
@@ -48,7 +50,7 @@ export function patchApps(raw, id, entry, manifest, seed = {}) {
   const base = isObject(raw) ? { ...raw } : { ...seed };
   if (!entry) { delete base[id]; return base; }
   const before = isObject(base[id]) ? base[id] : {};
-  const known = new Set(extensionsOf(manifest).map(ext => ext.id));
+  const known = new Set([...extensionsOf(manifest).map(ext => ext.id), ...nativesOf(manifest).map(group => nativeKey(group.id))]);
   const keptExtensions = Array.isArray(before.extensions) ? before.extensions.filter(ext => !known.has(ext)) : [];
   const keptModes = isObject(before.modes) ? Object.entries(before.modes).filter(([ext]) => !known.has(ext)) : [];
   const modes = { ...Object.fromEntries(keptModes), ...entry.modes };
@@ -78,4 +80,14 @@ export function withMode(apps, manifest, extensionId, mode) {
   const current = apps[manifest.id];
   if (!current || !MODES.includes(mode)) return apps;
   return { ...apps, [manifest.id]: cleanApp(manifest, { extensions: current.extensions, modes: { ...current.modes, [extensionId]: mode } }) };
+}
+
+// Le mode d'une fonction des bibliothèques natives (contrats 2.6, point 14), ou de toutes à la fois (`groupId` absent : le raccourci « toutes »).
+export function withNativeMode(apps, manifest, groupId, mode) {
+  const current = apps[manifest.id];
+  const groups = nativesOf(manifest).filter(group => groupId === null || group.id === groupId);
+  if (!current || !MODES.includes(mode) || !groups.length) return apps;
+  const modes = { ...current.modes };
+  for (const group of groups) modes[nativeKey(group.id)] = mode;
+  return { ...apps, [manifest.id]: cleanApp(manifest, { extensions: current.extensions, modes }) };
 }

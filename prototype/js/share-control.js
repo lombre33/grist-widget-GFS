@@ -5,7 +5,7 @@ import { rowsOf } from './rights.js';
 import { FILES_TABLE } from './gfs-files.js';
 import { GROUPS_TABLE, PLACE_TABLE, SHARES_TABLE, SPACES_TABLE, STAMP, TARGETS, folderTarget, groupsOf, sharesOf, spaceTarget } from './sharing-model.js';
 import { openShare } from './share-window.js';
-import { runAction } from './rights-actions.js';
+import { runAction, writeActions } from './rights-actions.js';
 import { ask } from './ask-window.js';
 import { locate } from './spaces-filing.js';
 
@@ -81,12 +81,12 @@ export class ShareControl {
   }
 
   // L'auteur d'un fichier (d'une app ou un PDF), ou `{ extend }` quand sa table n'est pas prête au partage. La table de fichiers porte-t-elle les colonnes d'aide ? Sinon le partage n'y est pas étendu (une app ajoutée après coup) ;
-  // si elle porte celles d'avant les espaces (pas `GFS_Calc`), le partage est à compléter ; l'auteur est la colonne que Grist écrit.
+  // si elle porte celles d'avant les espaces (pas `GFS_Directs`), le partage est à compléter ; l'auteur est la colonne que Grist écrit.
   async #authorOf(file, target) {
     const table = await this.#try(() => this.#o.port.doc.fetchTable(target.table), null);
     const has = name => Boolean(table) && Object.prototype.hasOwnProperty.call(table, name);
     if (target.stamped && !has('GFS_Lecteurs')) return { extend: true };
-    if (has('GFS_Lecteurs') && !has('GFS_Calc')) return { extend: 'upgrade' };
+    if (has('GFS_Lecteurs') && !has('GFS_Directs')) return { extend: 'upgrade' };
     if (target.stamped && has('GFS_Lecteurs') && !has(STAMP)) return { extend: 'upgrade' }; // un partage d'avant l'auteur protégé des PDF : « compléter » reprend l'auteur de la colonne « Auteur »
     return { author: target.stamped ? lower((table[STAMP] || [])[(table.id || []).indexOf(file.row)]) : lower(file.by) };
   }
@@ -100,11 +100,7 @@ export class ShareControl {
     return originsOf(place.Espace, name, String(place.Dossier || '').split('/').filter(Boolean));
   }
 
-  async #write(actions) {
-    const blocked = this.#o.writeBlock();
-    if (blocked) return { ok: false, message: blocked };
-    try { await this.#o.port.doc.applyUserActions(actions); return { ok: true }; } catch (error) { return { ok: false, message: String((error && error.message) || error).slice(0, 300) }; }
-  }
+  #write(actions) { return writeActions(this.#o, actions); }
 
   // Ouvre la fenêtre du fichier ; rend la promesse de sa fermeture.
   open(file) {

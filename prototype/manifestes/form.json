@@ -99,6 +99,12 @@
         "en": "Place Grist's native form section in a page, when the person starts from scratch or duplicates a form."
       }
     },
+    "partage": {
+      "pourquoi": {
+        "fr": "Poser le partage de la page du formulaire (une ligne de partage, rattachée à la page) quand la personne clique sur « Publier le formulaire », pour qu'elle n'ait pas à passer par le menu Partager de Grist. Cela n'ouvre rien : un formulaire ne s'ouvre au public que lorsque sa publication est écrite, et GFS demande l'accord de la personne à chaque fois. Un partage n'est commun à deux pages que si la personne l'accepte, dans une fenêtre de GFS.",
+        "en": "Set up the share of the form's page (a share row, attached to the page) when the person clicks “Publish the form”, so they do not have to go through Grist's Share menu. This opens nothing: a form only opens to the public when its publication is written, and GFS asks the person's agreement each time. A share is used by two pages only if the person agrees, in a GFS window."
+      }
+    },
     "lienPublic": {
       "lit": ["FormPlus_Pub_*"],
       "pourquoi": {

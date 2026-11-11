@@ -13,7 +13,7 @@
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check } from './lab-common.mjs';
-import { isGfsWarning } from './sondes-muettes.mjs';
+import { collectWarnings, waiter, reopenGfs } from './lab-gestes.mjs';
 import { settingsButton, openSettings, openLanguageMenu, chooseLanguage, subRows } from './reglages-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
@@ -34,31 +34,13 @@ const wordsOther = WORDS[other];
 
 const lab = await startLab({ lang, colorScheme: scheme, probes: true });
 const { page } = lab;
-const warnings = [];
-page.on('console', m => { if (m.type() === 'warning' && isGfsWarning(m.text())) warnings.push(m.text()); });
+const warnings = collectWarnings(page);
 await lab.fitPanel(undefined, panelWidth, 400);
 say('semis :', await seedFiles(lab.frame));
-await lab.frame.evaluate(() => location.reload());
-await page.waitForTimeout(1000);
-let frame = await lab.gfsFrame(/access=full/);
-await lab.gfsReady(frame);
-await page.waitForTimeout(800);
+let frame = await reopenGfs(lab);
 const shot = name => lab.shotPanel(run, name, frame);
-const reload = async () => {
-  await frame.evaluate(() => location.reload());
-  await page.waitForTimeout(1000);
-  frame = await lab.gfsFrame(/access=full/);
-  await lab.gfsReady(frame);
-  await page.waitForTimeout(500);
-};
-const waitFor = async (label, test) => {
-  for (let i = 0; i < 60; i++) {
-    if (await test()) return true;
-    await page.waitForTimeout(100);
-  }
-  say(`(pas arrivé : ${label})`);
-  return false;
-};
+const reload = async () => { frame = await reopenGfs(lab, frame, 500); };
+const waitFor = waiter(page, 60);
 
 // Ce que l'explorateur écrit à l'écran, relevé d'un coup.
 const screen = () => frame.evaluate(() => {
@@ -67,10 +49,10 @@ const screen = () => frame.evaluate(() => {
   const rowText = re => { const row = [...document.querySelectorAll('.ls-row')].find(item => re.test(item.textContent)); return row ? row.textContent.replace(/\s+/g, ' ').trim() : null; };
   const foot = [...document.querySelectorAll('.ex-foot .btn')].map(node => node.textContent.trim());
   return {
-    html: document.documentElement.lang, title: text('.ex-title'), settingsLabel: attr('.ex-title-row .tb[aria-haspopup="menu"]', 'aria-label'), settingsTip: attr('.ex-title-row .tb[aria-haspopup="menu"]', 'title'),
+    html: document.documentElement.lang, title: text('.ex-title'), settingsLabel: attr('.ex-title-row .tb[aria-haspopup="menu"]:not(.tb-bell)', 'aria-label'), settingsTip: attr('.ex-title-row .tb[aria-haspopup="menu"]:not(.tb-bell)', 'title'),
     add: text('.btn.primary'), open: foot[0], close: foot[1], search: attr('.inp-search input', 'placeholder'), allTypes: text('.ex-nav-row .btn[aria-haspopup="menu"]'),
-    recent: text('.tr-pin .tr-row'), head: text('.ls-head'), contract: rowText(/Contrat de prestation/), slides: rowText(/Support de session/),
-    onSettings: document.activeElement === document.querySelector('.ex-title-row .tb[aria-haspopup="menu"]'),
+    recent: text('.tr-row[data-view="recent"]'), head: text('.ls-head'), contract: rowText(/Contrat de prestation/), slides: rowText(/Support de session/),
+    onSettings: document.activeElement === document.querySelector('.ex-title-row .tb[aria-haspopup="menu"]:not(.tb-bell)'),
   };
 });
 const stored = () => frame.evaluate(() => { try { return localStorage.getItem('gfs.langue'); } catch (error) { return 'REFUSÉ'; } });
@@ -91,7 +73,7 @@ check('le bouton « Réglages » porte son nom accessible et son info-bulle (il 
 check('rien n\'est retenu tant que la personne n\'a rien choisi', (await stored()) === null, await stored());
 const layout = await frame.evaluate(() => {
   const rect = selector => { const node = document.querySelector(selector); const r = node.getBoundingClientRect(); return { left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top), bottom: Math.round(r.bottom), width: Math.round(r.width) }; };
-  const settings = '.ex-title-row .tb[aria-haspopup="menu"]';
+  const settings = '.ex-title-row .tb[aria-haspopup="menu"]:not(.tb-bell)';
   return { apps: rect('.ex-title-row .tb[aria-haspopup="dialog"]:not([hidden])'), group: rect('.tb-group'), settings: rect(settings), view: window.innerWidth, scroll: document.documentElement.scrollWidth, text: document.querySelector(settings).textContent.trim() };
 });
 say('mise en page de la ligne du titre :', layout);

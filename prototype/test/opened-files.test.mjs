@@ -2,17 +2,10 @@
 // dans un vrai Grist (labo/run-ouverts.mjs) et sous Firefox (test/interfaces-firefox.test.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { installFakeDocument } from './fake-dom.mjs';
 import { OpenedFiles, OPENED_LIMIT, NO_OPENED } from '../js/opened-files.js';
 
-class FakeNode {
-  constructor(tag) { this.tag = tag; this.attrs = {}; this.dataset = {}; this.style = { setProperty() {} }; this.className = ''; this.children = []; this.title = undefined; }
-  setAttribute(name, value) { this.attrs[name] = value; }
-  addEventListener() {}
-  append(...nodes) { for (const node of nodes) this.children.push(node); }
-  get elements() { return this.children.filter(node => typeof node !== 'string'); }
-  get textContent() { return this.children.map(node => (typeof node === 'string' ? node : node.textContent)).join(''); }
-}
-globalThis.document = { createElement: tag => new FakeNode(tag), createElementNS: (ns, tag) => new FakeNode(tag) };
+installFakeDocument();
 const { tree, crumbs, emptyMessage, fileRow } = await import('../js/explorer-view.js');
 const { createI18n } = await import('../js/i18n.js');
 

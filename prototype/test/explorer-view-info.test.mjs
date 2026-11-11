@@ -2,18 +2,9 @@
 // celui du navigateur (le texte et les attributs seulement) ; l'aspect à l'écran, lui, se mesure dans le labo, à la vraie souris.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { installFakeDocument } from './fake-dom.mjs';
 
-class FakeNode {
-  constructor(tag) { this.tag = tag; this.attrs = {}; this.dataset = {}; this.style = { setProperty() {} }; this.className = ''; this.children = []; this.title = undefined; }
-  setAttribute(name, value) { this.attrs[name] = value; }
-  addEventListener() {}
-  append(...nodes) { for (const node of nodes) this.children.push(node); }
-  get elements() { return this.children.filter(node => typeof node !== 'string'); }
-  get textContent() { return this.children.map(node => (typeof node === 'string' ? node : node.textContent)).join(''); }
-}
-// `h` ajoute du texte comme chaîne ; `children` de `infoBar` est lu comme des éléments : la doublure sépare les deux.
-Object.defineProperty(FakeNode.prototype, 'childrenElements', { get() { return this.elements; } });
-globalThis.document = { createElement: tag => new FakeNode(tag), createElementNS: (ns, tag) => new FakeNode(tag) };
+installFakeDocument();
 
 const { infoBar } = await import('../js/explorer-view.js');
 const { createI18n } = await import('../js/i18n.js');

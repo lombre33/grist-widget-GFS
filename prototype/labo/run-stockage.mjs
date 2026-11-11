@@ -9,7 +9,7 @@
 //   6. un navigateur qui refuse de garder : `{ retenu: false }`, la valeur vaut pour la page (contexte compris), et rien n'est gardé au rechargement de GFS.
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';
-import { isGfsWarning } from './sondes-muettes.mjs';
+import { collectWarnings, waiter } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -18,20 +18,12 @@ const QUOTA = 1048576;
 // `newsSeen: false` : la passe relit tout l'espace des apps chez GFS, sans la clé que le labo pose pour la fenêtre des nouveautés de Publipostage+.
 const lab = await startLab({ lang, colorScheme: scheme, probes: true, newsSeen: false });
 const { page } = lab;
-const warnings = [];
-page.on('console', m => { if (m.type() === 'warning' && isGfsWarning(m.text())) warnings.push(m.text()); });
+const warnings = collectWarnings(page);
 await lab.fitPanel(undefined, 700, 400);
 let frame = await lab.gfsFrame(/access=full/);
 await lab.gfsReady(frame);
 
-const waitFor = async (label, test, tries = 60) => {
-  for (let i = 0; i < tries; i++) {
-    if (await test()) return true;
-    await page.waitForTimeout(100);
-  }
-  say(`(pas arrivé : ${label})`);
-  return false;
-};
+const waitFor = waiter(page, 60);
 // Ce que la sonde a reçu : écrit dans body[data-sonde] à chaque message ; une page rechargée repart de zéro.
 const probe = target => target.evaluate(() => ({ navigateur: null, contextes: [], reponses: [], erreurs: [], ...JSON.parse((document.body && document.body.dataset.sonde) || '{}') }));
 const write = (target, key, value, withId = false, extra = null) => target.evaluate(([k, v, id, more]) => window.sondeS.ecrire(k, v, id, more), [key, value, withId, extra]);

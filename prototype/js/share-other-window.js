@@ -7,7 +7,7 @@
 
 import { h } from './dom.js';
 import { icon } from './icons.js';
-import { area, button, openSteps } from './steps-window.js';
+import { area, button, codeWithCopy, openSteps } from './steps-window.js';
 import { FILES_TABLE } from './gfs-files.js';
 import { HELPER_COLUMNS, RECEIVED_TABLE, SYNC_TABLE_NAME } from './share-other-flow.js';
 
@@ -59,12 +59,7 @@ function accordScreen(ctx) {
 
 function codeScreen(ctx, made) {
   const { t } = ctx;
-  const code = area('so-code', t('so.code.label'), true);
-  code.value = made.code;
-  code.addEventListener('focus', () => code.select());
-  const copy = button('so-copy', t('so.code.copy'));
-  copy.prepend(icon('copy'));
-  copy.addEventListener('click', () => void ctx.copy(code));
+  const { code, copy } = codeWithCopy(ctx, { fk: 'so-code', copyFk: 'so-copy', label: t('so.code.label'), value: made.code });
   const reply = area('so-reply', t('so.reply.label'), false);
   const check = button('so-check', t('so.check'), true);
   check.setAttribute('aria-disabled', 'true');

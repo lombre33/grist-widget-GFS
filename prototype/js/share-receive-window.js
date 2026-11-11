@@ -5,7 +5,7 @@
 // Fermée avant que la réponse soit rendue, elle défait ce qu'elle a créé ; après, la réception reste (les fichiers arrivent quand l'envoyeur envoie).
 import { h } from './dom.js';
 import { icon } from './icons.js';
-import { area, button, openSteps } from './steps-window.js';
+import { area, button, codeWithCopy, openSteps } from './steps-window.js';
 
 // Un champ où l'on colle, et le bouton qui le suit : grisé tant que rien n'est collé.
 function pasteField(ctx, { fk, label, action, run }) {
@@ -55,12 +55,7 @@ function linkScreen(ctx, made) {
 
 function replyScreen(ctx, replied, table) {
   const { t } = ctx;
-  const code = area('sr-code', t('sr.reply.label'), true);
-  code.value = replied.code;
-  code.addEventListener('focus', () => code.select());
-  const copy = button('sr-copy', t('so.code.copy'));
-  copy.prepend(icon('copy'));
-  copy.addEventListener('click', () => void ctx.copy(code));
+  const { code, copy } = codeWithCopy(ctx, { fk: 'sr-code', copyFk: 'sr-copy', label: t('sr.reply.label'), value: replied.code });
   return {
     body: h('div', { class: 'rt-content' },
       h('div', { class: 'sec' }, t('sr.reply.step')),

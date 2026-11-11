@@ -8,10 +8,13 @@ import { h } from './dom.js';
 import { icon } from './icons.js';
 import { listItems, treeRows, typeChoices } from './explorer-model.js';
 import { shownReceived, pendingOf, NO_RECEIVED } from './received-files.js';
+import { directFiles } from './direct-shares.js';
 import { NO_OPENED } from './opened-files.js';
 import { words } from './search.js';
 import { buildShell, relabel, paintBell, rightsChip, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar, trashBar, totalBar, pjBox } from './explorer-view.js';
-import { sumWeights, pieceKeys, otherAttachments } from './weight.js';
+import { sumWeights } from './weight.js';
+import { PiecesBox } from './explorer-pj.js';
+import { Removal } from './explorer-removal.js';
 import { listAction, moveTarget, isSearchKey, clipboardAction, parentPath } from './explorer-keys.js';
 import { UndoStack } from './undo-stack.js';
 import { undoable } from './explorer-undo.js';
@@ -29,7 +32,6 @@ const NO_TRASH = Object.freeze({ handles: () => false });
 // Sans copie (les essais de l'explorateur seul) : aucun fichier ne peut se copier.
 const NO_COPYING = Object.freeze({ handles: () => false, copy: async () => null });
 // Ce que la case « + pièces jointes » ajoute tant que rien n'est lu.
-const NO_OTHER = Object.freeze({ bytes: 0, count: 0 });
 // Les gestes d'une ligne qu'un clavier posé sur ☆ ou ⋯ (ou ailleurs dans la ligne) fait aussi ; les flèches et Entrée restent aux boutons.
 const FROM_BUTTONS = new Set(['rename', 'delete', 'menu', 'parent']);
 
@@ -50,9 +52,16 @@ export class Explorer {
   #rows = [];
   #keys = []; // la clé de chaque ligne de la liste, dans l'ordre : le clavier et la sélection lisent ceci, non le DOM (une liste longue n'en construit qu'une part)
   #total = 0; // ce que pèse ce que la liste couvre, en octets (le total du pied de fenêtre)
-  // La case « + pièces jointes » : cochée (`on`), la table de Grist lue (`table`), ce qu'elle ajoute au total (`other`), une lecture en cours (`busy`), ou en échec (`failed`, `reason`).
-  #pj = { on: false, table: null, other: NO_OTHER, busy: false, failed: false, reason: '' };
-  #pjRun = 0; // le numéro de la dernière lecture des pièces jointes : une réponse plus ancienne est ignorée
+  // La case « + pièces jointes » (js/explorer-pj.js) : son état et ses lectures.
+  #pieces = new PiecesBox({
+    t: (key, vars) => this.#opts.i18n.t(key, vars), hasSource: () => Boolean(this.#opts.attachments), load: () => this.#opts.attachments(), restricted: () => this.#restricted,
+    files: () => this.#files, trashed: () => this.#trashed, changed: () => this.#renderTotal(),
+  });
+  // Les gestes qui font partir une ligne : corbeille, dossier supprimé, restauration (js/explorer-removal.js).
+  #removal = new Removal({
+    opts: () => this.#opts, view: () => this.state.view, choice: () => this.#choice, files: () => this.#files, trashed: () => this.#trashed, bin: () => this.#bin, keys: () => this.#keys, isOpen: () => this.isOpen,
+    select: (key, focus) => this.#select(key, focus),
+  });
   #loading = false;
   #problems = [];
   #restricted = false;
@@ -118,7 +127,7 @@ export class Explorer {
   // Ce que la vue montre : les fichiers de la corbeille dans la corbeille, les arrivées d'un autre document dans « Partagés avec moi », les fichiers ouverts dans « Ouverts », sinon les fichiers vivants.
   get #shown() {
     const { view } = this.state;
-    return view === 'trash' ? this.#trashed : view === 'shared' ? this.#arrivals : view === 'opened' ? this.#opened : this.#pool;
+    return view === 'trash' ? this.#trashed : view === 'shared' ? [...this.#arrivals, ...directFiles(this.#pool)] : view === 'opened' ? this.#opened : this.#pool;
   }
 
   // `files` : les fichiers vivants ; `trashed` : ceux qui sont à la corbeille ; `folders` : les dossiers gardés sans fichier ; `received` : les arrivées d'un autre document, tous états (js/explorer-data.js).
@@ -129,10 +138,9 @@ export class Explorer {
     this.#arrivals = shownReceived(received);
     const keys = new Set([...files, ...trashed, ...this.#arrivals].map(file => file.key));
     if (this.state.sel && !this.state.sel.startsWith('dir:') && !keys.has(this.state.sel)) this.state.sel = null;
-    this.#pj.failed = false; // une lecture qui avait échoué se retente au prochain clic sur la case
-    this.#countOthers();
+    this.#pieces.filesChanged();
     if (this.isOpen) this.render();
-    if (this.#pj.on && this.#opts.attachments) void this.#readAttachments(); // un PDF ajouté ou retiré change les pièces jointes
+    this.#pieces.reread();
   }
 
   // Les arrivées d'un autre document ont changé pendant que l'explorateur est ouvert (js/sync-service.js, `whenReceived`) : seule leur liste se remplace, le reste ne bouge pas.
@@ -231,7 +239,7 @@ export class Explorer {
     return {
       t: this.#opts.i18n.t, state, locale: this.#opts.locale, now: this.#opts.now(), appName: this.#opts.appName, typeLabel: this.#opts.typeLabel,
       lockOf: this.#opts.lockOf, opensIn: file => this.#opensIn(file), sort: this.#sort(), filtering: this.#filtering, favCount: this.#pool.filter(file => file.pinned).length, totalFiles: this.#pool.length,
-      openedCount: this.#opened.length, shownKey: this.#openedSource.shown(), trashCount: this.#trashed.length, sharedPending: pendingOf(this.#arrivals).length, selected: row, personal: this.#opts.personal(), choosing: this.#choice !== null, total: this.#total, pj: this.#pjFacts(), ...extra,
+      openedCount: this.#opened.length, shownKey: this.#openedSource.shown(), trashCount: this.#trashed.length, sharedPending: pendingOf(this.#arrivals).length, selected: row, personal: this.#opts.personal(), choosing: this.#choice !== null, total: this.#total, pj: this.#pieces.facts(), ...extra,
     };
   }
 
@@ -361,20 +369,9 @@ export class Explorer {
 
   // ---------- la case « + pièces jointes » ----------
 
-  // La case, ce qu'elle ajoute au total, et, quand GFS ne peut pas lire les pièces jointes, la raison : grisée, jamais masquée (charte).
-  #pjFacts() {
-    const { t } = this.#opts.i18n;
-    const { on, table, other, busy, failed, reason } = this.#pj;
-    let grey = '';
-    if (!this.#opts.attachments) grey = t('weight.pjNone');
-    else if (this.#restricted) grey = t('gfs.needsFullAccess');
-    else if (failed) grey = t('weight.pjFailed', { reason });
-    return { on: on && !grey, ready: table !== null, busy, bytes: other.bytes, count: other.count, grey };
-  }
-
   // Un clic sur le total : la fenêtre « Poids du document » (js/weight-window.js), avec ce que le total montre à cet instant.
   #openWeight() {
-    const pj = this.#pjFacts();
+    const pj = this.#pieces.facts();
     if (this.#opts.onWeight) this.#opts.onWeight({ list: this.#total, pj: pj.on && pj.ready ? { bytes: pj.bytes, count: pj.count } : null });
   }
 
@@ -384,35 +381,10 @@ export class Explorer {
     pjBox(this.#refs, ctx);
   }
 
-  // Un clic sur la case : grisée, il dit pourquoi ; sinon il coche ou décoche, et les pièces jointes ne se lisent que cochée.
+  // Un clic sur la case : grisée, il dit pourquoi ; sinon il coche ou décoche.
   #onPj(event) {
-    const { grey } = this.#pjFacts();
-    if (grey) { event.preventDefault(); this.#opts.notice(grey); return; }
-    this.#pj.on = this.#refs.pjInput.checked;
-    if (this.#pj.on) { void this.#readAttachments(); return; }
-    this.#pjRun += 1;
-    Object.assign(this.#pj, { table: null, other: NO_OTHER, busy: false });
-    this.#renderTotal();
-  }
-
-  // Lit la table des pièces jointes de Grist. Pendant une relecture, le total garde ce qu'il disait ; un échec décoche la case et la grise avec sa raison.
-  async #readAttachments() {
-    const run = ++this.#pjRun;
-    this.#pj.busy = true;
-    this.#renderTotal();
-    let result;
-    try { result = await this.#opts.attachments(); } catch (error) { result = { error }; }
-    if (run !== this.#pjRun) return;
-    this.#pj.busy = false;
-    if (result.error) Object.assign(this.#pj, { on: false, failed: true, table: null, reason: String(result.error.message || result.error) });
-    else this.#pj.table = result.data;
-    this.#countOthers();
-    this.#renderTotal();
-  }
-
-  // Ce que la case ajoute : les pièces jointes de la table qu'aucun fichier de l'explorateur, vivant ou à la corbeille, ne cite (js/weight.js).
-  #countOthers() {
-    this.#pj.other = this.#pj.table ? otherAttachments(this.#pj.table, pieceKeys(this.#files, this.#trashed)) : NO_OTHER;
+    const grey = this.#pieces.toggle(this.#refs.pjInput.checked);
+    if (grey) { event.preventDefault(); this.#opts.notice(grey); }
   }
 
   // ---------- gestes ----------
@@ -439,7 +411,7 @@ export class Explorer {
     list.addEventListener('keydown', event => this.#onListKey(event));
     list.addEventListener('contextmenu', event => this.#onContext(event));
     this.root.addEventListener('dragend', () => this.#win.settle());
-    notices.addEventListener('click', event => { if (event.target.closest('[data-empty-trash]')) void this.#emptyTrash(); });
+    notices.addEventListener('click', event => { if (event.target.closest('[data-empty-trash]')) void this.#removal.emptyTrash(); });
     // Échap sur le document : il ferme aussi quand le focus est tombé sur le fond (clic dans une zone vide, liste redessinée). Un menu ou une
     // fenêtre qui l'a pris pour lui (preventDefault, stopPropagation) passe avant.
     this.root.ownerDocument.addEventListener('keydown', event => { if (this.isOpen) this.#onKey(event); });
@@ -488,7 +460,7 @@ export class Explorer {
     const row = event.target.closest('[data-key]');
     if (sort) this.#setSort(sort.dataset.sort);
     else if (pin) this.#togglePin(pin.dataset.pin);
-    else if (restore) void this.#restore(restore.dataset.restore);
+    else if (restore) void this.#removal.restore(restore.dataset.restore);
     else if (more) this.#rowMenu(more.dataset.menu, more);
     else if (row) this.#select(row.dataset.key, false);
   }
@@ -540,7 +512,7 @@ export class Explorer {
     const key = here.dataset.key;
     if (action === 'activate') this.#activate(key);
     else if (action === 'rename') this.#renameKey(key);
-    else if (action === 'delete') { this.#select(key, false); void this.#trashKey(key); }
+    else if (action === 'delete') { this.#select(key, false); void this.#removal.trash(key); }
     else if (action === 'menu') this.#rowMenu(key, here.querySelector('[data-menu]') || here);
   }
 
@@ -640,8 +612,8 @@ export class Explorer {
   // Un fichier s'ouvre dans son app, ou, en mode choix, est désigné à l'app qui le demandait.
   #activate(key) {
     if (key.startsWith('dir:')) { this.#goFolder(key.slice(4)); return; }
-    if (this.state.view === 'trash') { void this.#restore(key); return; }
-    if (this.state.view === 'shared') { const arrival = this.#arrivals.find(item => item.key === key); if (arrival) this.#shared.activate(arrival); return; }
+    if (this.state.view === 'trash') { void this.#removal.restore(key); return; }
+    if (this.state.view === 'shared') { const arrival = this.#arrivals.find(item => item.key === key); if (arrival) { this.#shared.activate(arrival); return; } }
     const file = this.#files.find(item => item.key === key);
     if (!file) return;
     if (this.#choice) this.#choice.onPick(file); else this.#opts.onOpen(file);
@@ -700,34 +672,17 @@ export class Explorer {
     const items = rowItems({
       t: this.#opts.i18n.t, opts: this.#opts, view: this.state.view, choice: Boolean(this.#choice), rows: this.#rows, shown: this.#shown, kept: this.#kept, bin: this.#bin, copying: this.#copying, shared: this.#shared,
       openAs: file => this.#openAs(file),
-      act: { activate: at => this.#activate(at), deleteFolder: at => this.#deleteFolder(at), restore: at => this.#restore(at), purge: at => this.#purge(at), trashKey: at => this.#trashKey(at), duplicate: file => this.#duplicate(file), dropOpened: at => this.#dropOpened(at) },
+      act: { activate: at => this.#activate(at), deleteFolder: at => this.#removal.deleteFolder(at), restore: at => this.#removal.restore(at), purge: at => this.#removal.purge(at), trashKey: at => this.#removal.trash(at), duplicate: file => this.#duplicate(file), dropOpened: at => this.#dropOpened(at) },
     }, key);
     if (items) openMenu(anchor, items, { host: this.root, align: 'right', label: this.#opts.i18n.t('ex.more') });
   }
 
   // « Retirer des ouverts » : la ligne sort de la liste, le fichier reste où il est et l'app garde ce qu'elle affiche ; la ligne suivante prend le clavier.
   async #dropOpened(key) {
-    await this.#leaving(key, () => { this.#openedSource.remove(key); this.render(); return true; });
+    await this.#removal.leaving(key, () => { this.#openedSource.remove(key); this.render(); return true; });
   }
 
-  // ---------- la corbeille ----------
-
-  // Suppr, ou « Mettre à la corbeille » : le fichier part à la corbeille (pas de question : rien ne s'efface) et la ligne suivante prend le clavier. À la corbeille, Suppr supprime pour de bon.
-  async #trashKey(key) {
-    const { t } = this.#opts.i18n;
-    if (this.#choice) { this.#opts.notice(t('ex.choose.newOff')); return; }
-    if (this.state.view === 'trash') { await this.#purge(key); return; }
-    if (key.startsWith('dir:')) { await this.#deleteFolder(key); return; }
-    const file = this.#files.find(item => item.key === key);
-    if (!file) return;
-    if (!this.#bin.handles(file)) { this.#opts.notice(t('trash.appOnly', { app: this.#opts.appName(file.app) })); return; }
-    await this.#leaving(key, () => this.#bin.move(file));
-  }
-
-  // Supprimer un dossier : possible quand plus aucun fichier n'est dedans (rien ne s'efface, il ne reste qu'une ligne d'état, js/filing.js) ; sinon la phrase dit quoi faire. La ligne suivante prend le clavier.
-  async #deleteFolder(key) {
-    await this.#leaving(key, () => this.#opts.filing.deleteFolder(key.slice(4)));
-  }
+  // ---------- dossiers et noms ----------
 
   // « Nouveau dossier » : dans le dossier ouvert (à la racine quand la vue n'en est pas un). La personne y est conduite et le dossier créé prend le clavier, prêt à être renommé (F2) ou ouvert (Entrée).
   async #newFolder() {
@@ -735,28 +690,6 @@ export class Explorer {
     if (!path) return;
     this.#goFolder(parentPath(path));
     this.#reveal(`dir:${path}`);
-  }
-
-  #restore(key) {
-    const file = this.#trashed.find(item => item.key === key);
-    return file ? this.#leaving(key, () => this.#bin.restore(file)) : Promise.resolve();
-  }
-
-  #purge(key) {
-    const file = this.#trashed.find(item => item.key === key);
-    return file ? this.#leaving(key, () => this.#bin.purge(file)) : Promise.resolve();
-  }
-
-  async #emptyTrash() {
-    if (!this.#choice && this.#trashed.length) await this.#bin.empty([...this.#trashed]);
-  }
-
-  // Un geste qui fait partir la ligne `key` de la liste : quand il a abouti, le clavier passe à la ligne qui la suivait (ou la précédait), comme dans un explorateur de fichiers.
-  async #leaving(key, run) {
-    const keys = this.#keys;
-    const at = keys.indexOf(key);
-    const next = keys[at + 1] || keys[at - 1] || null;
-    if (await run() && next && this.isOpen && this.#keys.includes(next)) this.#select(next, true);
   }
 
   // F2 : renommer le dossier ou le fichier. À la corbeille, un fichier se restaure d'abord.

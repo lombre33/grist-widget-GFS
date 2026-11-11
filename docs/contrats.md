@@ -263,6 +263,7 @@ L'app (sous-cadre sans allow-same-origin)
 | `permissions` | objet | oui | Accès, tables, tables internes, capacités (section 3). |
 | `extensions` | liste | non | Les extensions de l'app (2.6). |
 | `dependances` | chaîne | non | Chemin de la liste des bibliothèques **natives** de l'app (`package.json`) : celles d'une extension n'y figurent pas (2.6, point 4). |
+| `natives` | liste | non | Les bibliothèques natives de l'app **rangées par fonction**, pour le choix « CDN ou copie figée » : `[ { "id", "nom": { "fr", "en" }, "bibliotheques": [ { "id", "version" } ] } ]` (2.6, point 14 ; 5.2, point 12). Une bibliothèque n'est que dans une fonction, sa version est exacte. L'app le déclare quand elle lit le choix ; sans `natives`, rien n'est proposé et l'app reste au CDN. |
 | `actions` | objet | non | Ce que l'app accepte de la part des autres (2.7). |
 | `ouverture` | objet | non | Ce que l'app sait faire d'une ouverture que GFS lui passe : `{ "fichier": true, "nouveau": true, "importer": true, "lire": true }` (5.2, point 3 ; 5.4, points 1 et 8). Un genre absent vaut faux : GFS ouvre alors l'app sur son modèle habituel et le dit, et grise « Importer » ou « Lire ». |
 | `permanente` | booléen | non | `true` : l'app ne se retire pas de la fenêtre « Apps et extensions » (Publipostage+). |
@@ -455,6 +456,21 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     licence Apache 2.0, article 4 d, veut que la copie redistribuée porte les deux ; ECharts en livre un). Un paquet sans fichier de
     licence, ou sans licence déclarée, ne se vendorise pas : l'outil s'arrête en le disant. `--verifier` contrôle que ce fichier est
     là et nomme chaque paquet de la copie (Plotly en a un depuis cette date).
+
+14. [D] **Les copies figées des bibliothèques natives d'une app, chez GFS** (choix du porteur, 11/11 : « chez GFS, comme pour Plotly » ; étude
+    `docs/etude-cdn-ou-copie.md`). La liste de l'app dit toujours quelles bibliothèques elle emploie (point 4, confirmé le 14/10) ; GFS en
+    garde en plus une copie figée, que le porteur peut choisir à la place du CDN, fonction par fonction (fenêtre « Apps et
+    extensions », 7.3, point 3 ; ce que l'app reçoit : 5.2, point 12). Dans la liste de GFS, une telle entrée porte `natifDe` (l'id de l'app) et la même forme que les autres (`paquet`, `fichier`) ;
+    **sa version suit celle de l'app, jamais celle de Dependabot** (`.github/dependabot.yml` les ignore, un essai de `test/hygiene.test.mjs`
+    le garde) : l'app monte sa version, le dit dans « Changements qui touchent GFS » de sa page d'état, et GFS réécrit sa copie dans le lot
+    qui lit la demande. Le catalogue donne à chacune la copie (`vendorise`) et, comme pour toute entrée de paquet npm, l'adresse jsDelivr du
+    même fichier (`cdn`) ; **une app ne reçoit jamais cette adresse** : son CDN, en mode CDN, est le sien (celui que sa CSP nomme déjà), la
+    copie de GFS passe par `'self'`. Publipostage+ en a neuf (`docx`, `docx-charts`, `exceljs`, `jszip`, `marked`, `pdf-lib`, `pdfmake`,
+    `pdfmake-polices`, `qrcode-generator`), 5,0 Mo de plus dans `vendor/`. **Deux licences que l'outil ne lisait pas** : JSZip livre
+    `LICENSE.markdown` (le nom est maintenant reconnu) ; `qrcode-generator` ne livre aucun fichier de licence, l'avis MIT est l'en-tête de
+    `qrcode.js` : la liste le dit (`licenceDansLeFichier: true`), l'outil vérifie que l'en-tête nomme la licence que le paquet déclare et le
+    dit dans `LICENCES.txt`. L'éditeur (TipTap, ProseMirror) n'est pas dans ce lot : sa copie est une carte d'importation, pas un fichier
+    (étude, §5). [M]
 
 ### 2.7 Les actions acceptées
 
@@ -730,7 +746,7 @@ ne lit pas).
    l'instance visée [M]) :
    - `_grist_ACLRules`, `_grist_ACLResources`, et les deux anciennes tables `_grist_ACLPrincipals`, `_grist_ACLMemberships` :
      les règles d'accès ;
-   - `_grist_Shares` : les partages publics ;
+   - `_grist_Shares` : les partages publics (**exception : la capacité `partage`**, 3.4 point 8, qui ne laisse faire que la recette du bouton « Publier » de Grist) ;
    - `_grist_Triggers` : les déclencheurs de rappels vers l'extérieur (webhooks) : les modifier change ce qui sort du
      document ;
    - `_grist_DocInfo` : les réglages du document ;
@@ -738,7 +754,8 @@ ne lit pas).
      l'accès de chaque widget, GFS compris. Une app qui l'écrirait pourrait remplacer GFS par un autre code, avec l'accès
      de son choix, et ce changement survivrait à son retrait ;
    - la colonne `shareRef` de `_grist_Pages` : elle lie une page à un partage, donc ouvre au public les formulaires publiés de la
-     page (point 9). Une app peut la lire ; la poser ou la changer est un geste de la personne, dans Grist.
+     page (point 9). Une app peut la lire ; la poser ou la changer est un geste de la personne, dans Grist, **ou celui d'une app qui déclare `partage`**
+     (3.4, point 8), dans la seule forme et aux seules conditions de ce point.
 7. [D] Du deuxième argument de `applyUserActions`, le courtier ne transmet que `desc` et `parseStrings` [M : relire
    `ApplyUAOptions` dans l'instance visée].
 8. [T] En **lecture seule** (`readonly=true` dans l'adresse de GFS), toute écriture est refusée sans appeler Grist
@@ -782,9 +799,9 @@ ne lit pas).
 ### 3.4 Les capacités à déclarer
 
 Trois capacités contournent un filtre de tables. L'app les déclare, avec une raison en français et en anglais ; GFS les montre
-à la personne dans la fenêtre d'installation, en mots simples. Trois déclarations de plus se font de la même façon sans rien
-contourner : `lienPublic` resserre un filtre (point 5), `identite` donne une donnée que GFS seul sait (point 6), `lecteurs` fait poser par GFS un lecteur de vidéo
-par-dessus le cadre de l'app (point 7).
+à la personne dans la fenêtre d'installation, en mots simples. Quatre déclarations de plus se font de la même façon : `lienPublic` resserre un filtre (point 5),
+`identite` donne une donnée que GFS seul sait (point 6), `lecteurs` fait poser par GFS un lecteur de vidéo par-dessus le cadre de l'app (point 7), et `partage` lève,
+dans une forme très étroite, deux des interdictions de 3.3 point 6 (point 8).
 
 1. [D] **`jeton`** : `{ "lectureSeule": true, "pourquoi": { … } }`. Sans elle, `getAccessToken` est refusé. Avec elle, le
    courtier force `readOnly: true` sauf `lectureSeule: false`, et transmet `route` tel quel. Un jeton ouvre l'API REST sur
@@ -833,6 +850,30 @@ par-dessus le cadre de l'app (point 7).
    `lecteur.*` sont refusés (`GFS_REFUSE`) : l'app ouvre alors la vidéo sur son site, dans un onglet. Elle ne demande pas `acces: full` : aucune table de l'app n'est en jeu.
    `node outils/capacites.mjs` la liste avec les sites. Les appels et leurs règles : 5.2, point 11. Codé le 07/11 (`js/player.js`, `js/player-sites.js`, `js/manifest.js` : `checkPlayers`,
    `js/filter.js` : `makePolicy`, `js/context.js`).
+
+8. [T] **`partage`** : `{ "pourquoi": { "fr": "…", "en": "…" } }`. **Décidé par le porteur le 11/11** (« Avec accord » : « Laisser Form+ publier le formulaire à ta place, avec ton accord à chaque
+   fois ») ; **« Au choix, non coché » pour un lien commun à deux formulaires** (même jour). Elle laisse l'app poser le partage de la page de son formulaire, c'est-à-dire
+   la recette du bouton « Publier » de Grist (`app/client/components/Forms/FormView.ts`, lu dans la 1.7.19 : `AddRecord _grist_Shares`, `UpdateRecord _grist_Pages.shareRef`,
+   puis `shareOptions`), et rien d'autre. Elle ne demande pas la lecture de `_grist_Shares` (qui reste interdite, 3.2 point 4) et ne se déclare pas par `gristInterne`
+   (le validateur refuse toujours `_grist_Shares` et `shareRef` dans une entrée, 3.3 point 5) ; elle demande `acces: full`. Sans elle, 3.3 point 6 vaut tel quel. Avec elle, le courtier juge :
+   a. [T] **La forme** (`js/sharing-rules.js`) : `AddRecord _grist_Shares` porte `linkId` (un identifiant de 8 à 64 caractères, lettres, chiffres, « - » et « _ ») et `options`
+      valant exactement `{"publish":true}`, et rien d'autre ; `UpdateRecord _grist_Shares` ne change que `options`, exactement `{"publish":true}` ou `{"publish":false}` ;
+      `UpdateRecord _grist_Pages` écrit `shareRef` seule, vers un partage (positif : détacher un partage n'est pas permis) ; aucun autre verbe, aucune forme `Bulk…` ni « ajouter ou mettre à
+      jour », jamais `RemoveRecord` (un partage ne se retire pas). Les autres colonnes de `_grist_Pages` et les autres tables de 3.3 point 6 restent fermées.
+   b. [T] **Ce que dit le document** (`js/sharing.js`, `_grist_Pages`, `_grist_Shares`, `_grist_Views_section` lus par GFS seul, jamais par l'app ; un document illisible refuse le lot,
+      GFS échoue fermé) : la page et le partage existent ; la page n'a pas déjà un partage ; **la page ne porte pas déjà un formulaire marqué publié** (`shareOptions` avec `publish` et `form` :
+      lui rattacher un partage l'ouvrirait sans l'accord de la personne) ; rouvrir un partage fermé (`publish` à vrai) est refusé si une page qui le porte a un formulaire marqué publié
+      (la personne l'avait fermé). Un lot est jugé action par action, chacune sur le document que les précédentes laisseraient.
+   c. [T] **Rien de ceci n'ouvre quoi que ce soit.** Un formulaire ne s'ouvre à qui a le lien que par `shareOptions` : c'est CE geste qui demande l'accord de la personne (3.3, point 9, inchangé). Un
+      partage posé sans formulaire publié ne donne ni le formulaire ni l'ajout de lignes (mesuré, faits vérifiés 95). Si la personne refuse à la publication, le partage reste posé sur la page,
+      sans effet (l'app reçoit `GFS_ANNULE`) ; GFS ne le retire pas.
+   d. [D] **Un lien commun à deux formulaires** (11.9, point 4a, modifié) : rattacher à une page un partage qui est déjà celui d'une autre page n'est pas refusé, **il est demandé** : une fenêtre
+      de GFS (« Un seul lien pour deux formulaires ? ») nomme la page qui prend le lien, celles qui l'ont déjà et les tables de leurs formulaires, dit qu'une seule adresse les ouvre tous et que si
+      elle fuit elle les ouvre tous ; « Refuser » est le défaut au clavier (`GFS_ANNULE`, rien n'est écrit) ; « Même lien » rattache. Sans moyen de demander, le lot est refusé. La publication du
+      second formulaire passe ensuite par son propre accord (3.3, point 9), qui nomme sa table. **C'est à l'app de proposer ce choix, décoché, à la personne** : GFS ne l'impose jamais.
+   Le `pourquoi` est montré à la personne comme celui des capacités. `node outils/capacites.mjs` la liste. Codé le 11/11 (`js/sharing-rules.js`, `js/sharing.js`, `js/filter.js` : `makePolicy`,
+   `internalWriteRefusal` ; `js/broker.js` : `agreeSharedLink` ; `js/publication-window.js` : `sharedLinkQuestion` ; `js/manifest.js` : `checkCapabilities`). Mesuré dans un vrai Grist 1.7.19 avec la vraie
+   Form+ (`labo/run-publier-form.mjs`, faits vérifiés 95).
 
 ### 3.5 Les clés de réglages
 
@@ -1134,8 +1175,8 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 1. [T] Les six paramètres de l'adresse (1.3) et le contexte disent la même chose : l'adresse existe pour le code des apps
    qui la lit déjà, le contexte pour le kit. Une seule différence dans le temps : la langue de l'adresse est celle du cadre
    quand il a été créé, et le contexte dit la langue qui vaut maintenant (point 6).
-2. [D] Six événements en cours de vie. `extensions` (`{ "extensions": [ … ], "bibliotheques": { … } }`), quand la personne
-   active ou désactive une extension dans GFS : l'app charge alors l'extension au premier usage, comme ses moteurs d'export.
+2. [D] Six événements en cours de vie. `extensions` (`{ "extensions": [ … ], "bibliotheques": { … }, "natives": { … } }`), quand la personne
+   active ou désactive une extension dans GFS, ou change le mode d'une bibliothèque native (point 12) : l'app charge alors l'extension au premier usage, comme ses moteurs d'export.
    `langue` (`{ "langue": "fr" | "en" }`), quand la personne change la langue de GFS (point 6). `barre` (`{ "barre": { … } | null }`),
    quand la barre de GFS change de bord, de taille, ou disparaît et revient (point 7). `identite` (`{ "identite": { "email": … } | null }`),
    quand GFS apprend l'adresse de la personne pendant que l'app qui la déclare est ouverte (point 9). `ambiance` (`{ "ambiance": { … } | null }`),
@@ -1459,6 +1500,18 @@ sans événement : seule une règle posée recharge la page (11.5, point 3), et 
    de la barre et `lecteur.fermer`. Un bouton « Fermer » posé par GFS, ou la fermeture quand le focus revient à la page de GFS, ne sont pas construits (interface de plus : le porteur
    choisit après son essai avec une vraie vidéo, avec l'événement `lecteur`). **Non mesuré** : les vrais YouTube et Vimeo (démarrage, son, lecture
    automatique, plein écran : le porteur, sous Firefox, avec une vraie vidéo), Firefox dans un vrai Grist (sans Grist, le lecteur est mesuré sous Firefox 160 depuis le 10/11 : faits vérifiés 78, sauf la touche Échap dans le lecteur), le Grist de la DINUM, l'événement `lecteur` (pas construit).
+
+12. [T] **`natives`** (choix du porteur, 11/11 : « chez GFS, comme pour Plotly » et « fonction par fonction » ; étude `docs/etude-cdn-ou-copie.md` ;
+    mesuré le 11/11 dans un vrai Grist, faits vérifiés 93) : `{ "<id de bibliothèque>": { "version", "src", "integrite", "forme" } }`, dans le
+    contexte et dans l'événement `extensions` (point 2), **seulement pour les bibliothèques natives dont la personne a choisi la copie figée** ;
+    `{}` quand tout est au CDN (le défaut). L'app qui lit ce champ compare `version` à celle de sa liste : égale, elle charge la copie par `src`,
+    avec `integrite` et `crossorigin="anonymous"` (`'self'` suffit, point 5) ; différente ou absente, elle charge par **son** CDN, celui que sa CSP
+    nomme déjà. **GFS ne donne jamais l'adresse d'un CDN pour une bibliothèque native** (2.6, point 14) : l'app qui ne lit pas le champ reste au
+    CDN, comme avant. Pour une fonction, GFS ne dit « copie figée » que si **toutes** ses bibliothèques sont dans son catalogue à la version que le
+    manifeste déclare ; sinon la fonction reste au CDN et la fenêtre la grise avec la raison (7.3, point 3). Ce que la personne choisit se retient
+    dans `modes` de la table de GFS, sous la clé `natif:<fonction>` (7.4, point 1). Côté app, le kit rend `GfsLink.native(id)` (0.18.0) et appelle
+    `onExtensions` quand seule une copie figée change. **L'éditeur (TipTap, ProseMirror) n'est pas dans ce champ** : sa copie est une carte
+    d'importation, pas un fichier (étude, §5) ; elle attend le choix du porteur sur l'endroit où la ranger.
 
 ### 5.3 Le stockage du navigateur
 
@@ -2438,7 +2491,11 @@ d'app mis à la corbeille (6.2), jamais avant.
 3. [T] **Installer ne télécharge rien** : le code de toutes les apps livrées est déjà dans le site de GFS (sous-modules). Installer
    une app, c'est inscrire son `id` dans la liste du document (7.4) ; activer une extension, l'inscrire à la ligne de l'app ;
    désinstaller, retirer l'inscription. Désinstaller ne supprime aucune donnée (cahier 3.1, point 1) : réinstaller retrouve
-   tout.
+   tout. **Le mode d'une bibliothèque** (11/11 ; CDN par défaut, ou copie figée de GFS) se choisit dans la même fenêtre : pour une extension
+   qui en a, et, pour une app dont le manifeste déclare `natives` (2.2), **fonction par fonction** (Export PDF, Export Word…), avec un raccourci
+   « toutes » qui dit « mélange » quand les fonctions diffèrent. La ligne s'ouvre repliée (le choix de toutes), le détail se déplie à la souris
+   et reste déplié après un choix ; la copie figée d'une fonction à qui il manque une bibliothèque du catalogue (ou sa version) est **grisée avec
+   sa raison**, jamais cachée (2.6, point 14) ; en lecture seule, tout est grisé. Les mots sont les mêmes partout : « CDN » et « Copie figée ».
 4. [T] **GFS écrit les réglages des apps dans la vue, sans « Enregistrer »** (décision du porteur, 03/11, « GFS l'écrit dans la
    vue » ; construit le même jour, `js/view-options.js`). Quand une app écrit un réglage de sa tranche (`setOption`, `setOptions`,
    `clearOptions`, 7.2), le courtier :
@@ -2499,8 +2556,9 @@ Le conseil du cahier était les réglages de la section, avec le rappel « Enreg
 le document, pour que l'installation s'enregistre tout de suite.
 
 1. [T] **Où.** Une ligne réservée de `GFS_Rangement` (6.4) : `Utilisateur` = `@document`, `App` = `gfs`, `Fichier` = `apps`,
-   et dans `Valeur` un texte JSON `{ "<id>": { "extensions": [ "…" ], "modes": { "<extension>": "cdn" | "vendorise" } } }`
-   (`modes` est facultatif, le défaut est le CDN : question 11). La ligne n'existe qu'après la première installation.
+   et dans `Valeur` un texte JSON `{ "<id>": { "extensions": [ "…" ], "modes": { "<extension>": "cdn" | "vendorise", "natif:<fonction>": "vendorise" } } }`
+   (`modes` est facultatif, le défaut est le CDN : question 11 ; la clé `natif:<fonction>` est celle d'une fonction de bibliothèques natives de l'app,
+   2.6 point 14 : elle n'existe que pour la copie figée, le CDN n'est jamais écrit ; une clé que cette version de GFS ne connaît pas est gardée). La ligne n'existe qu'après la première installation.
 2. [T] **Immédiat.** Installer, désinstaller, activer une extension, choisir son mode : l'écriture de la ligne suffit, sans
    « Enregistrer ». Le rappel ne vaut plus que pour les réglages d'une app **seule**, ou quand GFS se replie sur le brouillon (7.3,
    points 6 et 9), pas pour ceux de GFS.
@@ -3126,7 +3184,15 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
        **« Partager… » sur un dossier d'espace : livré le 09/11.** Le menu d'un dossier a « Partager… » : dégrisé pour un dossier à l'intérieur d'un espace (cible `dossier:<clé>/<chemin>`), grisé avec sa phrase pour « Espaces »,
        un espace (ses groupes se règlent dans « Gérer les partages… », onglet Espaces) et un dossier de « Moi ». La fenêtre est celle des fichiers (personne, groupe, « Aucun accès ») et marque « Hérité » ce qui vient de l'espace
        et des dossiers au-dessus ; un droit donné se lit tout de suite dans les listes de chaque fichier du dossier (mesuré : `labo/run-partager-espaces.mjs`, étape 5, 43 vérifications ; Firefox : `test/dossiers-firefox.mjs`).
-       **Pas fait** : la création d'un fichier d'une app directement dans un dossier d'espace (il naît à la racine de la personne), les fichiers à la corbeille (ils gardent leur place dans l'espace), « Partagés avec moi » (4c).
+       **Pas fait** : la création d'un fichier d'une app directement dans un dossier d'espace (il naît à la racine de la personne), les fichiers à la corbeille (ils gardent leur place dans l'espace).
+    m. [T] **« Partagés avec moi » : ce qu'on m'a donné par mon adresse, livré le 11/11** (lot 4c ; choix du porteur, 11/11 : « ce qu'on m'a donné par mon adresse »). La vue est celle des fichiers reçus d'un autre document (contrats 6.6,
+       point 17) ; elle montre aussi les fichiers dont **le droit vient d'une ligne de partage à l'adresse de la personne, sur le fichier ou sur un dossier d'espace, écrite par quelqu'un d'autre**. Ni un groupe, ni une catégorie
+       (« éditeurs », « tous »), ni la racine, ni un espace entier n'y comptent ; un fichier déjà rangé dans un espace que la personne voit reste dans l'espace. Grist le calcule : une colonne cachée de plus, **`GFS_Directs`**
+       (« adresse>auteur du partage », septième liste de `GFS_Calc` ; le droit gagnant d'une personne doit être une ligne de personne au niveau d'un dossier ou du fichier). Le fichier garde son menu ordinaire (ouvrir, partager…) ; la
+       colonne « Par » dit celui qui l'a donné ; **à la racine de « Moi » il ne figure pas tant que la personne ne l'a pas rangé dans un dossier**. Un lecteur ne peut pas apprendre son adresse par la sonde du rangement (il n'écrit
+       rien) : GFS la lit alors dans les partages qu'il lit (« chacun lit les partages qui le concernent »), si une seule adresse de personne y figure. **Un document partagé avant** reçoit la colonne par « Compléter le partage… »
+       (mesuré : `labo/run-partager-reprise.mjs`). Mesuré dans un vrai Grist à trois comptes (`labo/run-partager-espaces.mjs`) et sous Firefox (`test/dossiers-firefox.mjs`, « Partagés avec moi »).
+       **Pas fait** : le partage direct d'un dossier de « Moi » (seuls les dossiers d'espace ont des droits), l'acceptation ou le refus d'un fichier donné (un droit donné se retire dans « Partager… » par celui qui l'a donné), la lecture légère des gros documents n'est pas mesurée.
 
 ### 11.8 À mesurer sur le Grist du porteur
 
@@ -3172,7 +3238,8 @@ labo n'a pas de partages, 10.11).
    fiable**, même dans une colonne que l'app croit remplir elle-même.
 4. **Segmenter : une porte, sa table de réception.**
    a. [T] Un formulaire publié a **son partage** (sa page) et n'ouvre que **les tables qu'il remplit**, dites une à une dans
-      l'accord (point 6) : jamais deux formulaires sur le même partage, jamais un lien qui écrit dans la table d'un autre formulaire.
+      l'accord (point 6) : **un partage par page** (**modifié le 11/11, « Au choix, non coché » : deux pages ne partagent un partage que si la personne l'accepte dans une fenêtre
+      de GFS, qui reste sur « Refuser », 3.4 point 8 d** ; le défaut reste un lien par formulaire), jamais un lien qui écrit dans la table d'un autre formulaire que ceux de son partage.
    b. [T] La table qu'un lien remplit est une **table de réception** : elle reçoit, et ce qu'on en tire (valider, publipostage,
       workflow) se fait après le geste d'une personne (point 5). Ce que le formulaire ne montre pas (statut, note, état de
       traitement) n'y est pas une colonne de donnée : c'est une colonne-formule pure, ou une colonne d'une autre table liée à la

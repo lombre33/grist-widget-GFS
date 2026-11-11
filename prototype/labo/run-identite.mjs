@@ -14,6 +14,7 @@
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check } from './lab-common.mjs';
+import { explorerTools } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -47,24 +48,12 @@ const open = async (who, { query = '' } = {}) => {
   if (await frame.locator('.mod').count()) { await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
 };
 const shot = name => lab.shotPanel(run, name, frame);
-const row = text => frame.locator('.ls-row', { hasText: text }).first();
-const folderRow = name => frame.locator('.ls-row.folder', { has: frame.locator('.t', { hasText: new RegExp(`^${name}$`) }) });
-const fileNames = () => frame.locator('.ls-row:not(.folder) .t').allInnerTexts();
-const folderNames = () => frame.locator('.ls-row.folder .t').allInnerTexts();
-const toast = async () => ((await frame.locator('#toast').isVisible()) ? (await frame.locator('#toast').innerText()) : '');
-const starOn = async name => (await row(name).locator('.rb.pin').getAttribute('class')).includes(' on');
-const favCount = async () => Number(await frame.locator('.tr-row[data-view="fav"] .cnt').innerText());
+// Les lignes de l'explorateur et ses lectures, vues du cadre de GFS (rechargé : `frame` change).
+const { row, folderRow, fileNames, folderNames, toast, starOn, favCount, table, until } = explorerTools(() => frame, page);
 const info = async () => (await frame.locator('.ex-info').innerText()).replace(/\s+/g, ' ');
 const menuItem = re => frame.locator('.menu-item', { hasText: re });
 const openRowMenu = async locator => { await locator.hover(); await locator.locator('.rb.mn').click(); await frame.locator('.menu').waitFor(); };
-const table = name => frame.evaluate(name => grist.docApi.fetchTable(name), name);
 const idOf = async name => { const data = await table('Publipostage_Modeles'); return String(data.id[data.Nom.indexOf(name)]); };
-const until = async (probe, timeout = 8000) => {
-  const end = Date.now() + timeout;
-  let value;
-  while (Date.now() < end) { value = await probe().catch(() => false); if (value) return value; await page.waitForTimeout(150); }
-  return value;
-};
 // Les lignes de rangement de GFS (la ligne réservée et une sonde oubliée comprises : `all`), lues par la connexion de GFS.
 const lines = async ({ all = false } = {}) => {
   const state = await lab.rangement(frame);
@@ -87,7 +76,7 @@ const contract = 'Contrat de prestation';
 const rent = 'Quittance de loyer';
 const contractId = await idOf(contract);
 const rentId = await idOf(rent);
-const FAV_HINT = /le tien seulement|yours only/;
+const FAV_HINT = /le vôtre seulement|yours only/;
 const PERSONAL = /Rangement personnel|Personal folders/;
 const SHARED = /Rangement commun au document|Folders shared by the whole document/;
 
@@ -121,7 +110,7 @@ check('la ligne d\'Ana est à son adresse, favori, sans dossier ; plus aucune li
   && first[0].Fichier === contractId && first[0].Favori === true && first[0].Dossier === '', first);
 check('Grist n\'a rien inscrit dans Adresse pour la ligne d\'Ana (seule la ligne-sonde en reçoit, et elle est partie)', first.every(line => !line.Adresse), first);
 const learned = await info();
-check('GFS connaît Ana : la barre du bas dit « personnel » et « le tien seulement », la liste est relue pour elle', PERSONAL.test(learned) && FAV_HINT.test(learned) && (await favCount()) === 1, learned);
+check('GFS connaît Ana : la barre du bas dit « personnel » et « le vôtre seulement », la liste est relue pour elle', PERSONAL.test(learned) && FAV_HINT.test(learned) && (await favCount()) === 1, learned);
 await shot('2-personnel');
 
 // ----- 2. Ana rouvre : une sonde par ouverture.

@@ -5,6 +5,7 @@
 // un document ancien n'a pas toutes les colonnes (2.4, point 2).
 
 import { normalize, words, matchesWords } from './search.js';
+import { keptInFolder } from './direct-shares.js';
 import { rowWeigher, piecesOf, linkedOf, newSum, addWeight } from './weight.js';
 
 // Le champ `couleur` du manifeste -> la famille de couleur de la charte (cahier 6.5) ; tout autre mot : neutre. Le rouge du PDF est la quatrième famille (décision du porteur, 04/11).
@@ -251,7 +252,7 @@ export function listItems(files, state, { locale, typeLabel, spare = [] }) {
   if (state.view === 'recent') pool = [...files].sort((a, b) => (b.ts ?? -Infinity) - (a.ts ?? -Infinity)).slice(0, RECENT_LIMIT);
   else if (state.view === 'fav') pool = files.filter(file => file.pinned);
   else if (filtering || ['trash', 'shared', 'opened'].includes(state.view)) pool = files;
-  else { pool = files.filter(file => file.folder === state.path); flat = false; }
+  else { pool = files.filter(file => file.folder === state.path && keptInFolder(file)); flat = false; }
   pool = pool.filter(file => (state.type === 'all' || file.type === state.type) && matchesWords(needles, file.search));
   const sorter = SORTERS[state.sort.key] || SORTERS.name;
   const compare = (a, b) => (sorter(a, b, ctx) * state.sort.dir) || ctx.name(a, b);

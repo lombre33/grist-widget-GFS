@@ -2,10 +2,21 @@
 // et les boutons restent en place) qui montre un écran à la fois, avec ses boutons, et les gestes que tous les écrans partagent : un bouton qui fait travailler le moteur (grisé le temps du travail, l'échec dit par
 // le moteur sans quitter l'écran), « Annuler », copier un code. Ne parle ni à Grist ni au moteur : les écrans et le parcours sont ceux de la fenêtre qui s'en sert.
 import { h } from './dom.js';
+import { icon } from './icons.js';
 import { openModal } from './modal.js';
 
 export const button = (fk, label, primary = false) => h('button', { type: 'button', class: primary ? 'btn primary' : 'btn', dataset: { fk } }, label);
 export const area = (fk, label, readOnly) => h('textarea', { class: 'so-code', rows: '3', spellcheck: 'false', autocomplete: 'off', readOnly, 'aria-label': label, placeholder: readOnly ? null : label, dataset: { fk } });
+// Une zone de code en lecture seule qui se sélectionne quand le clavier y arrive, et son bouton « Copier » (`ctx.copy` recopie la zone) ; `fk` et `copyFk` : leurs clés.
+export function codeWithCopy(ctx, { fk, copyFk, label, value }) {
+  const code = area(fk, label, true);
+  code.value = value;
+  code.addEventListener('focus', () => code.select());
+  const copy = button(copyFk, ctx.t('so.code.copy'));
+  copy.prepend(icon('copy'));
+  copy.addEventListener('click', () => void ctx.copy(code));
+  return { code, copy };
+}
 
 // opts : { container, t, inertTargets, title, sub, foot (la phrase du pied de chaque écran), errorText (le moteur dit ses refus) }. Rend { dialog, result (la promesse de la fermeture), done(valeur), say(texte),
 // show(écran), go(bouton, travail, grisé?), cancelButton(), copy(zone) } ; un écran est { body, buttons, first (la clé du bouton qui reçoit le clavier), close? (« so-close » ferme la fenêtre), foot? (le texte du pied, sinon celui de la fenêtre) }.

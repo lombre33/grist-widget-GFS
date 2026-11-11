@@ -100,16 +100,19 @@ export function exposureOf(meta) {
     if (!options.publish || !options.form || !tableId) continue;
     const entry = writes.get(tableId) || { tableId, shown: new Set(), columns: dataOf.get(section.tableRef) || [] };
     writes.set(tableId, entry);
-    for (const field of fieldsOf.get(section.id) || []) {
-      const column = columnOf.get(field.colRef);
-      if (!column) continue;
-      if (!parse(field.widgetOptions).formIsHidden) entry.shown.add(column.colId);
-      const visible = isRef(column.type) && column.visibleCol ? columnOf.get(column.visibleCol) : null;
-      const target = visible ? tableOf.get(visible.parentId) : null;
-      if (target) reads.set(`${target}.${visible.colId}`, { tableId: target, colId: visible.colId });
-    }
+    for (const field of fieldsOf.get(section.id) || []) exposeField(field, { tableOf, columnOf }, entry, reads);
   }
   return { writes, reads };
+}
+
+// Ce qu'un champ du formulaire ouvre : sa colonne est montrée (sauf un champ caché), et une référence rend lisible la colonne qu'elle affiche, dans la table qu'elle vise.
+function exposeField(field, { tableOf, columnOf }, entry, reads) {
+  const column = columnOf.get(field.colRef);
+  if (!column) return;
+  if (!parse(field.widgetOptions).formIsHidden) entry.shown.add(column.colId);
+  const visible = isRef(column.type) && column.visibleCol ? columnOf.get(column.visibleCol) : null;
+  const target = visible ? tableOf.get(visible.parentId) : null;
+  if (target) reads.set(`${target}.${visible.colId}`, { tableId: target, colId: visible.colId });
 }
 
 // Ce que le lot ouvre de plus : { tables: [{ tableId, shown, unshown }], reads: [{ tableId, colId }] }. `unshown` : les colonnes de données que le formulaire ne montre pas

@@ -73,7 +73,10 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     définition de son seul formulaire (jamais celle des autres, ni leurs clés) ; donne à chaque formulaire sa page et sa table de
     réception, sans colonne de gestion ; dit à la personne ce que le lien ouvre avant de publier ; traite toute ligne reçue comme un
     texte non fiable ; prend un refus de GFS (`GFS_ANNULE` : la personne ; `GFS_REFUSE` : une table protégée) sans laisser de section à
-    moitié faite. GFS demande l'accord de la personne à chaque publication (contrats 3.3, point 9).
+    moitié faite. GFS demande l'accord de la personne à chaque publication (contrats 3.3, point 9). **Depuis le 11/11**, une app qui déclare `partage` (contrats 3.4, point 8) peut poser
+    elle-même le partage de la page de son formulaire (la recette du bouton « Publier » de Grist) : poser le partage n'ouvre rien, l'accord se demande à la publication ; un refus de la
+    personne (`GFS_ANNULE`) n'est pas un échec de l'app, elle le dit comme tel et laisse la personne recommencer ou publier à la main. Un lien commun à deux formulaires ne se propose que
+    **décoché**, et la personne le confirme dans une fenêtre de GFS (3.4, point 8 d).
 
 ### 1.2 Quand GFS arrive (étapes 3 à 5 du plan, cahier 10)
 
@@ -84,8 +87,14 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
 3. Passer à la liste unique des bibliothèques natives (`package.json` à la racine, versions exactes) et à l'outil du kit
    (`kit/outils/bibliotheques.mjs`, kit 0.16.0 ; son `README.md`, « Les bibliothèques d'une app ») qui en tire le catalogue des
    empreintes, la carte d'importation, le `script-src` de la politique de sécurité (avec l'empreinte des scripts en ligne), les
-   empreintes écrites dans le code et le miroir des essais ; activer Dependabot (`npm`). La version vendorisée viendra à
-   son tour. Celles des extensions n'y sont pas : elles sont à GFS.
+   empreintes écrites dans le code et le miroir des essais ; activer Dependabot (`npm`). Celles des extensions n'y sont pas :
+   elles sont à GFS. **Leur copie figée** (décision du porteur du 11/11 : « chez GFS, comme pour Plotly », « fonction par fonction ») est
+   aussi chez GFS (`vendor/`, 2.6 point 14) : l'app range ses bibliothèques par **fonction** (Export PDF, Word, Excel, divers), GFS met
+   ce rangement dans son manifeste (`natives`) quand l'app lit le choix, et l'app lit `GfsLink.native(id)` (kit 0.18.0, 5.2 point 12) :
+   `{ version, src, integrite, forme }` si la personne a choisi la copie figée de cette fonction, `null` sinon. **Compare `version` à
+   celle de ta liste** : égale, charge la copie par `src` avec `integrite` ; différente ou `null`, charge par **ton** CDN (celui que ta
+   CSP nomme déjà : GFS ne te donne jamais l'adresse d'un CDN pour tes natives). Seule (sans GFS), l'app n'a pas la copie : elle charge par son CDN. L'éditeur
+   (TipTap) attend la décision du porteur.
 4. Passer le contexte et le stockage par le client du courtier du kit (avec ses replis quand l'app est seule).
 5. Ranger les fonctions lourdes dans `extensions/`, avec le registre et le grisé du kit, et retirer leurs bibliothèques de la
    liste et de l'import map de l'app : GFS les porte (la CSP garde l'adresse du mode CDN, règle 9).

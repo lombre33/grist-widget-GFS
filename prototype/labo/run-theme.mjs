@@ -19,6 +19,7 @@
 //   11. un navigateur qui refuse de retenir : le choix (l'ambiance et la couleur) vaut pour la page, la fenêtre le dit ;
 //   12. un kit qui ne se charge pas (le sous-module n'est pas servi) : « La mienne » et son bouton sont grisés, la raison est dite dans la fenêtre, un seul avertissement de GFS, les ambiances marchent.
 import { startLab } from './lab-setup.mjs';
+import { waiter, reopenGfs } from './lab-gestes.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check, contrastAudit, edgeAudit } from './lab-common.mjs';
 import { themeGestures } from './theme-gestes.mjs';
@@ -52,27 +53,10 @@ const warnings = [];
 page.on('console', m => { if ((m.type() === 'warning' || m.type() === 'error') && /GFS/.test(m.text())) warnings.push(m.text().slice(0, 200)); });
 await lab.fitPanel(undefined, panelWidth, 400);
 say('semis :', await seedFiles(lab.frame));
-await lab.frame.evaluate(() => location.reload());
-await page.waitForTimeout(1000);
-let frame = await lab.gfsFrame(/access=full/);
-await lab.gfsReady(frame);
-await page.waitForTimeout(800);
+let frame = await reopenGfs(lab);
 const shot = name => lab.shotPanel(run, name, frame);
-const reload = async () => {
-  await frame.evaluate(() => location.reload());
-  await page.waitForTimeout(1000);
-  frame = await lab.gfsFrame(/access=full/);
-  await lab.gfsReady(frame);
-  await page.waitForTimeout(500);
-};
-const waitFor = async (label, test) => {
-  for (let i = 0; i < 60; i++) {
-    if (await test()) return true;
-    await page.waitForTimeout(100);
-  }
-  say(`(pas arrivé : ${label})`);
-  return false;
-};
+const reload = async () => { frame = await reopenGfs(lab, frame, 500); };
+const waitFor = waiter(page, 60);
 const stored = () => frame.evaluate(() => { try { return { theme: localStorage.getItem('gfs.theme'), couleur: localStorage.getItem('gfs.couleur') }; } catch (error) { return 'REFUSÉ'; } });
 // Ce que la page porte : l'ambiance, le nombre de jetons posés en ligne sur <html>, quelques valeurs calculées qui disent la forme et la couleur.
 const page_ = () => frame.evaluate(() => {

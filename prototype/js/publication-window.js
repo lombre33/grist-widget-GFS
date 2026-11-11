@@ -16,3 +16,12 @@ export function publicationQuestion({ t, app, opens }) {
   const reads = opens.reads.map(read => t('pub.read', { table: read.tableId, column: read.colId }));
   return { title: t('pub.title'), message: t('pub.text', { app }), items: [...writes, ...reads], note: t('pub.note'), confirmLabel: t('pub.allow'), cancelLabel: t('pub.refuse'), safeFirst: true };
 }
+
+// Une app veut que la page d'un formulaire prenne le lien public d'une autre page (contrats 3.3 point 6, 11.9 point 4a ; choix du porteur du 11/11 : « Au choix, non coché »). `shared` :
+// { page, others: [{ page, tables }] } (js/sharing.js). Le clavier commence sur « Refuser » : un lien partagé n'est jamais le défaut.
+export function sharedLinkQuestion({ t, app, shared }) {
+  const items = shared.others.map(other => (other.tables.length
+    ? t('sl.item', { page: other.page, n: other.tables.length, tables: other.tables.map(name => t('sl.quote', { name })).join(', ') })
+    : t('sl.itemBare', { page: other.page })));
+  return { title: t('sl.title'), message: t('sl.text', { app, page: shared.page }), items, note: t('sl.note'), confirmLabel: t('sl.allow'), cancelLabel: t('sl.refuse'), safeFirst: true };
+}

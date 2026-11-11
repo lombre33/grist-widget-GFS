@@ -6,71 +6,35 @@
 // montre les documents reliés avec le niveau de CE fichier, un menu de niveaux (jamais masqué : grisé avec sa raison), « Relier un nouveau document… » ouvre l'accord par-dessus, et Échap ne ferme que la fenêtre du dessus.
 import { createI18n } from '../js/i18n.js';
 import { Run } from './corbeille-firefox.mjs';
+import { LONG_DOC, windowMeasure, windowTools } from './fenetre-firefox.mjs';
 
-const LONG_DOC = 'Essai de réception du service de la comptabilité fournisseurs de la région Nord-Est';
-const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-
-// Ce que la page montre de la fenêtre.
-function state() {
-  // Ce que la page montre de l'onglet « Dans un autre document Grist » de la fenêtre « Partager » (null si elle n'est pas ouverte). Dans `state` : la page n'y voit que cette fonction.
-  const shareTab = () => {
-    const share = document.querySelector('.mod.sh');
-    if (!share) return null;
-    const text = node => (node ? node.textContent.replace(/\s+/g, ' ').trim() : null);
-    const box = share.getBoundingClientRect();
-    const head = share.querySelector('.mod-head').getBoundingClientRect();
-    const foot = share.querySelector('.mod-foot').getBoundingClientRect();
-    const outside = node => { const at = node.getBoundingClientRect(); return at.width > 0 && (at.right > box.right + 1 || at.left < box.left - 1); };
-    return {
-      tabs: [...share.querySelectorAll('.mg-tab')].map(node => [node.dataset.fk, node.getAttribute('aria-selected')]), body: text(share.querySelector('.sh-body')), note: text(share.querySelector('.mod-note')),
-      links: [...share.querySelectorAll('.rr[data-link]')].map(row => ({ id: row.dataset.link, level: row.dataset.level, label: text(row.querySelector('.lvl')), locked: row.querySelector('.lvl').getAttribute('aria-disabled') === 'true', tag: text(row.querySelector('.tag')) })),
-      fresh: (() => { const node = share.querySelector('[data-fk="other-new"]'); return node ? node.getAttribute('aria-disabled') === 'true' : null; })(),
-      menu: [...document.querySelectorAll('.menu .menu-item')].map(node => ({ text: text(node), greyed: node.getAttribute('aria-disabled') === 'true' })),
-      inPage: box.left >= 0 && box.top >= 0 && box.right <= window.innerWidth + 1 && box.bottom <= window.innerHeight + 1, sticky: head.bottom <= foot.top + 1 && foot.bottom <= box.bottom + 1 && head.top >= box.top - 1,
-      outside: [...share.querySelectorAll('.sh-body *, .mod-foot *, .mod-head *')].filter(outside).map(node => node.className || node.tagName).slice(0, 5),
-    };
-  };
-  const modal = document.querySelector('.mod.so');
+// Ce que la page montre de l'onglet « Dans un autre document Grist » de la fenêtre « Partager » (null si elle n'est pas ouverte) : ce qui lui est propre ; le reste (titre, corps, place) vient de `windowMeasure`.
+function shareTabOwn() {
+  const share = document.querySelector('.mod.sh');
+  if (!share) return null;
   const text = node => (node ? node.textContent.replace(/\s+/g, ' ').trim() : null);
-  const out = { modal: null, acts: window.__sendActs || [], below: Boolean(document.querySelector('.mod.sh')), tab: shareTab(), shareActs: window.__shareActs || [] };
-  if (!modal) return out;
-  const box = modal.getBoundingClientRect();
-  const head = modal.querySelector('.mod-head').getBoundingClientRect();
-  const foot = modal.querySelector('.mod-foot').getBoundingClientRect();
-  const active = document.activeElement;
-  const outside = node => { const at = node.getBoundingClientRect(); return at.width > 0 && (at.right > box.right + 1 || at.left < box.left - 1); };
-  const reply = modal.querySelector('[data-fk="so-reply"]');
-  out.modal = {
-    title: text(modal.querySelector('.mod-head')), body: text(modal.querySelector('.rt-body')), note: text(modal.querySelector('.mod-note')), focus: active && active.dataset ? active.dataset.fk || null : null, inside: modal.contains(active),
-    inPage: box.left >= 0 && box.top >= 0 && box.right <= window.innerWidth + 1 && box.bottom <= window.innerHeight + 1,
-    sticky: head.bottom <= foot.top + 1 && foot.bottom <= box.bottom + 1 && head.top >= box.top - 1,
-    outside: [...modal.querySelectorAll('.rt-body *, .mod-foot *, .mod-head *')].filter(outside).map(node => node.className || node.tagName).slice(0, 5),
-    keys: [...modal.querySelectorAll('[data-fk]')].map(node => node.dataset.fk), greyed: [...modal.querySelectorAll('[aria-disabled="true"]')].map(node => node.dataset.fk),
-    reply: reply ? reply.value : null, control: text(modal.querySelector('[data-fk="so-control"]')),
+  return {
+    tabs: [...share.querySelectorAll('.mg-tab')].map(node => [node.dataset.fk, node.getAttribute('aria-selected')]),
+    links: [...share.querySelectorAll('.rr[data-link]')].map(row => ({ id: row.dataset.link, level: row.dataset.level, label: text(row.querySelector('.lvl')), locked: row.querySelector('.lvl').getAttribute('aria-disabled') === 'true', tag: text(row.querySelector('.tag')) })),
+    fresh: (() => { const node = share.querySelector('[data-fk="other-new"]'); return node ? node.getAttribute('aria-disabled') === 'true' : null; })(),
+    menu: [...document.querySelectorAll('.menu .menu-item')].map(node => ({ text: text(node), greyed: node.getAttribute('aria-disabled') === 'true' })),
   };
-  return out;
 }
 
-const centerOf = selector => { const node = document.querySelector(selector); if (!node) return null; node.scrollIntoView({ block: 'nearest' }); const box = node.getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; };
+// Ce que la page montre de la fenêtre « Envoyer » et, dessous, de « Partager » : les mesures communes (test/fenetre-firefox.mjs), la réponse collée, le code de contrôle, les actes que les parcours ont notés.
+async function measure(page) {
+  const out = await page.run(windowMeasure, '.mod.so', '.rt-body', { reply: ['[data-fk="so-reply"]', 'value'], control: ['[data-fk="so-control"]', 'text'] }, { acts: ['__sendActs', []], shareActs: ['__shareActs', []] });
+  const share = await page.run(windowMeasure, '.mod.sh', '.sh-body', {}, {});
+  out.below = share.modal !== null;
+  out.tab = share.modal && { ...share.modal, ...(await page.run(shareTabOwn)) };
+  return out;
+}
 
 // La fenêtre ouverte d'un parcours (`kind`, voir test/pages/explorateur.js), et un petit jeu de gestes à la vraie souris.
 function toolsFor(page, tag, found) {
   const run = new Run(page, tag, found, 'envoyer à un autre document');
-  const snap = () => page.run(state);
-  const expect = async (kind, what, test) => {
-    let now = await snap();
-    for (let i = 0; i < 40 && !test(now); i += 1) { await delay(75); now = await snap(); }
-    if (!test(now)) run.note(kind, `${what} (état : ${JSON.stringify({ ...now, modal: now.modal && { ...now.modal, body: String(now.modal.body).slice(0, 90) } }).slice(0, 700)})`);
-    return now;
-  };
-  const press = async (kind, key) => { const at = await page.run(centerOf, `[data-fk="${key}"]`); if (!at) { run.note(kind, `« ${key} » devait être dans la fenêtre`); return false; } await page.click(...at); return true; };
-  // L'écran d'une fenêtre qui tient : dans la page, titre et boutons en place, rien qui sorte.
-  const fits = (kind, now, what) => {
-    if (!now.modal) return;
-    if (!now.modal.inPage) run.note(kind, `${what} : la fenêtre devait tenir dans la page`);
-    if (!now.modal.sticky) run.note(kind, `${what} : le titre et les boutons devaient rester en place`);
-    if (now.modal.outside.length) run.note(kind, `${what} : rien ne devait sortir de la fenêtre (sort : ${now.modal.outside.join(', ')})`);
-  };
+  const snap = () => measure(page);
+  const { expect, press, fits } = windowTools(page, run, snap);
   const open = async (kind, flow) => {
     await run.reset();
     await page.run(name => { window.__sendOther(name); }, flow);

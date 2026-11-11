@@ -71,10 +71,13 @@ function checkWeight(weight, prefix, errors) {
   if (pieces !== undefined && !(isObject(pieces) && isText(pieces.colonne) && isText(pieces.taille))) errors.push('fichiers[].poids.pieces : { colonne, taille } attendu');
   if (weight.liees === undefined) return;
   if (!Array.isArray(weight.liees)) { errors.push('fichiers[].poids.liees : liste attendue'); return; }
-  for (const link of weight.liees) {
-    if (!isObject(link) || !isText(link.table) || !isText(link.colonne) || !isText(link.fichier)) errors.push('fichiers[].poids.liees : { table, colonne, fichier } attendu');
-    else if (!link.table.toLowerCase().startsWith(prefix.toLowerCase())) errors.push('fichiers[].poids.liees[].table hors du préfixe');
-  }
+  for (const link of weight.liees) checkLink(link, prefix, errors);
+}
+
+// Une table liée au poids d'un fichier (`poids.liees[]`) : { table, colonne, fichier } en texte, la table du préfixe de l'app.
+function checkLink(link, prefix, errors) {
+  if (!isObject(link) || !isText(link.table) || !isText(link.colonne) || !isText(link.fichier)) errors.push('fichiers[].poids.liees : { table, colonne, fichier } attendu');
+  else if (!link.table.toLowerCase().startsWith(prefix.toLowerCase())) errors.push('fichiers[].poids.liees[].table hors du préfixe');
 }
 
 // Une recette (2.4 ; contrats 6.7) : comment GFS retire et remet un fichier de cette table (`suppression`), ou le copie (`copie`). `ligne: true` (un fichier est une ligne) est le mode de base ; `appel: true` dit que
@@ -85,6 +88,11 @@ function checkRecipe(recipe, name, values, errors) {
   const alone = name === 'copie' && isObject(recipe) && recipe.appel === true; // la copie par l'app n'a pas besoin de la ligne
   if (!isObject(recipe) || (recipe.ligne !== true && !alone)) { errors.push(`fichiers[].${name}.ligne : true attendu`); return; }
   if (recipe.appel !== undefined && typeof recipe.appel !== 'boolean') errors.push(`fichiers[].${name}.appel : true ou false attendu`);
+  checkRecipeLists(recipe, name, values, errors);
+}
+
+// Ce que la recette dit de colonnes : `uniques` et `exclusives` (listes de noms) et `values` (un objet { colonne: valeur }).
+function checkRecipeLists(recipe, name, values, errors) {
   for (const key of ['uniques', 'exclusives']) {
     if (recipe[key] !== undefined && !(Array.isArray(recipe[key]) && recipe[key].every(isText))) errors.push(`fichiers[].${name}.${key} : liste de noms de colonnes attendue`);
   }
@@ -154,7 +162,7 @@ function checkInternalEntry(entry, errors) {
 
 // `identite` (3.4, point 6) donne à l'app l'adresse e-mail de la personne : elle ne contourne aucun filtre de tables, donc elle ne demande pas l'accès `full` (voir checkPermissions).
 function checkCapabilities(perm, errors) {
-  for (const key of ['jeton', 'formules', 'structure', 'identite', 'lecteurs']) {
+  for (const key of ['jeton', 'formules', 'structure', 'identite', 'lecteurs', 'partage']) {
     if (perm[key] !== undefined && (!isObject(perm[key]) || !isBilingual(perm[key].pourquoi))) errors.push(`permissions.${key} : pourquoi doit porter fr et en`);
   }
   checkPlayers(perm.lecteurs, errors);
@@ -175,7 +183,7 @@ function checkPlayers(players, errors) {
 
 // Les capacités et les raisons que les apps déclarent (3.4), pour qui doit les relire (un client, son responsable de la sécurité) : une ligne par capacité déclarée,
 // { app, nom, capacite, detail, pourquoi }. `detail` dit sur quoi elle porte quand c'est utile (les tables d'une entrée de `gristInterne`, les motifs de `lienPublic`).
-const CAPABILITIES = ['jeton', 'formules', 'structure', 'identite', 'lecteurs', 'lienPublic'];
+const CAPABILITIES = ['jeton', 'formules', 'structure', 'identite', 'lecteurs', 'lienPublic', 'partage'];
 const reasonOf = entry => (isObject(entry) && isBilingual(entry.pourquoi) ? entry.pourquoi : null);
 const namesOf = list => (Array.isArray(list) ? list.join(', ') : '');
 export function listCapabilities(manifests) {
@@ -224,7 +232,7 @@ function checkPublicLink(m, errors) {
 function checkPermissions(m, errors) {
   const perm = m.permissions;
   if (!isObject(perm) || !ACCESS.includes(perm.acces)) { errors.push('permissions.acces : none, read table ou full'); return; }
-  const declares = ['lit', 'ecrit', 'gristInterne', 'jeton', 'formules', 'structure', 'lienPublic'].some(key => perm[key] !== undefined);
+  const declares = ['lit', 'ecrit', 'gristInterne', 'jeton', 'formules', 'structure', 'lienPublic', 'partage'].some(key => perm[key] !== undefined);
   if (perm.acces !== 'full' && declares) errors.push('lit, ecrit, gristInterne et capacités demandent l\'accès full');
   checkPatterns(perm, errors);
   if (perm.gristInterne !== undefined && !Array.isArray(perm.gristInterne)) errors.push('permissions.gristInterne : liste attendue');
@@ -320,6 +328,31 @@ function checkExtensions(m, errors) {
   }
 }
 
+// Les bibliothèques natives de l'app, rangées par fonction (`natives`, facultatif, contrats 2.6 point 14) : { id, nom (fr, en), bibliotheques: [{ id, version exacte }] }. L'app les
+// emploie déjà (sa liste) ; GFS en garde la copie figée, que la personne peut choisir à la place du CDN, fonction par fonction. Une bibliothèque n'est que dans une seule fonction.
+function checkNativeLibraries(group, libraries, errors) {
+  if (!Array.isArray(group.bibliotheques) || !group.bibliotheques.length) { errors.push(`natives ${group.id} : bibliotheques : liste non vide attendue`); return; }
+  for (const lib of group.bibliotheques) {
+    if (!isObject(lib) || !LIBRARY_ID_RE.test(lib.id || '')) errors.push(`natives ${group.id} : une bibliothèque sans id valable`);
+    else if (!EXACT_VERSION_RE.test(lib.version || '')) errors.push(`natives ${group.id} : la version de ${lib.id} doit être exacte (ni intervalle ni latest)`);
+    else if (libraries.has(lib.id)) errors.push(`natives ${group.id} : ${lib.id} est déjà dans une autre fonction`);
+    else libraries.add(lib.id);
+  }
+}
+function checkNatives(m, errors) {
+  if (m.natives === undefined) return;
+  if (!Array.isArray(m.natives)) { errors.push('natives : liste attendue'); return; }
+  const groups = new Set();
+  const libraries = new Set();
+  for (const group of m.natives) {
+    if (!isObject(group) || !LIBRARY_ID_RE.test(group.id || '') || !isBilingual(group.nom)) { errors.push('natives[] : id et nom (fr, en) attendus'); continue; }
+    if (groups.has(group.id)) errors.push(`natives ${group.id} : fonction déjà déclarée`);
+    groups.add(group.id);
+    checkDisplay(group, `natives ${group.id}`, errors);
+    checkNativeLibraries(group, libraries, errors);
+  }
+}
+
 const OPENINGS = ['fichier', 'nouveau', 'importer', 'lire'];
 
 // `ouverture` (facultatif, contrats 2.2) : ce que l'app sait faire d'une ouverture que GFS lui passe, `{ fichier, nouveau, importer, lire }` en booléens ; un genre absent vaut faux (GFS ouvre alors l'app
@@ -348,6 +381,7 @@ export function validateManifest(m, others = []) {
   checkReads(m, errors);
   checkFiled(m, errors);
   checkExtensions(m, errors);
+  checkNatives(m, errors);
   return { ok: errors.length === 0, errors };
 }
 

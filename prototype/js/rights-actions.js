@@ -25,3 +25,10 @@ export async function runAction({ kind, plans, t, ask, writer, resume }) {
   await ask({ title: t('rights.ask.failed.title'), message, confirmLabel: t('rights.ask.ok') });
   return false;
 }
+
+// Écrit des actions dans le document, sauf si l'écriture est bloquée (`options.writeBlock()` dit pourquoi) ; rend { ok } ou { ok: false, message } (la raison de Grist, coupée à 300 signes).
+export async function writeActions(options, actions) {
+  const blocked = options.writeBlock();
+  if (blocked) return { ok: false, message: blocked };
+  try { await options.port.doc.applyUserActions(actions); return { ok: true }; } catch (error) { return { ok: false, message: String((error && error.message) || error).slice(0, 300) }; }
+}

@@ -216,6 +216,9 @@ async function playOwner(run) {
   check('C : « Aucun accès » au groupe sur le fichier le retire à l\'éditeur (le fichier passe avant l\'espace)', has(calc('C').GFS_Refus, EDITOR) && !has(calc('C').GFS_Lecteurs, EDITOR), calc('C').GFS_Calc);
   check('D : le sous-dossier (groupe en lecture) est plus précis que Contrats (personne en écriture) : lecture seule', has(calc('D').GFS_Lecteurs, EDITOR) && !has(calc('D').GFS_Ecrivains, EDITOR), calc('D').GFS_Calc);
   check('D : le lecteur lit par son partage direct sur le fichier, sans être dans l\'espace', has(calc('D').GFS_Lecteurs, VIEWER) && !has(calc('D').GFS_Ecrivains, VIEWER), calc('D').GFS_Calc);
+  check('A : l\'éditeur y est « donné » par son adresse (dossier Contrats, écrit par le propriétaire) ; le groupe ne compte pas', has(calc('A').GFS_Directs, `${EDITOR}>${OWNER}`) && !has(calc('A').GFS_Directs, VIEWER), calc('A').GFS_Calc);
+  check('D : le lecteur y est « donné » par son adresse ; l\'éditeur non (le sous-dossier du groupe est plus précis)', has(calc('D').GFS_Directs, `${VIEWER}>${OWNER}`) && !has(calc('D').GFS_Directs, EDITOR), calc('D').GFS_Calc);
+  check('B, C, E : personne n\'y est « donné » (refus, groupe, rien)', ['B', 'C', 'E'].every(letter => !has(calc(letter).GFS_Directs, '>')), ['B', 'C', 'E'].map(letter => calc(letter).GFS_Directs));
   check('E : hors espace, non partagé : le propriétaire seul', !has(calc('E').GFS_Lecteurs, EDITOR) && !has(calc('E').GFS_Lecteurs, VIEWER) && has(calc('E').GFS_Lecteurs, OWNER), calc('E').GFS_Calc);
   frame = await playScreen(run, frame, key('A'));
   frame = await playExplorer(run, frame);
@@ -255,6 +258,14 @@ async function playEditor(run) {
   await frame.getByRole('menuitem', { name: new RegExp(`^${t('ex.move')}`) }).click();
   await frame.locator('[data-fk="move-root"]').click();
   await frame.getByText(t('ex.spaceOwnersOnly')).waitFor({ timeout: 15000 });
+  await frame.locator('.tr-row[data-view="shared"]').click();
+  await frame.locator('.ls-empty, .empty, [data-empty]').first().waitFor({ timeout: 5000 }).catch(() => {});
+  const editorShared = await frame.locator('.ls-row:not(.folder)').count();
+  check('« Partagés avec moi » de l\'éditeur reste vide : ses fichiers donnés sont dans un espace qu\'il voit', editorShared === 0, editorShared);
+  await frame.locator('.tr-row[data-path="Espaces"]').click();
+  await frame.locator('.ls-row.folder[data-key="dir:Espaces/Achats"]').dblclick();
+  await frame.locator('.ls-row.folder[data-key="dir:Espaces/Achats/Contrats"]').dblclick();
+  await frame.locator('.ls-row:not(.folder)').filter({ hasText: NAMES.F }).waitFor({ timeout: 15000 });
   check('l\'éditeur ne sort pas un fichier de l\'espace : seul un propriétaire range dans un espace', (await rows(run, 'GFS_Placement')).some(row => row.Dossier === 'Contrats' && row.Cible.startsWith('publipostage:')));
   check('aucune erreur de GFS dans la console', unexpected(run).length === 0, unexpected(run));
 }
@@ -265,6 +276,24 @@ async function playViewer(run) {
   check('il lit D (partage direct) et aucun autre fichier de l\'espace', seen.includes(NAMES.D) && ![NAMES.A, NAMES.B, NAMES.C, NAMES.E, NAMES.F].some(name => seen.includes(name)), seen.filter(name => name.startsWith('Esp')));
   const spaces = await rows(run, 'GFS_Espaces');
   check('il ne voit pas l\'espace achats (il n\'est dans aucun groupe de l\'espace)', spaces.length === 0, spaces);
+  // l'explorateur du lecteur : D lui a été donné par son adresse, il est dans « Partagés avec moi » et pas à la racine de « Moi »
+  const frame = run.frame;
+  await frame.locator('.tr-row[data-view="shared"]').waitFor({ timeout: 30000 });
+  await frame.locator('.tr-row[data-path=""]').click();
+  await frame.locator('.ls-row, .ls-empty').first().waitFor({ timeout: 15000 }).catch(() => {});
+  check('D n\'est pas à la racine de « Moi » (le lecteur ne l\'a pas rangé)', await frame.locator('.ls-row:not(.folder)').filter({ hasText: NAMES.D }).count() === 0);
+  check('« Espaces » n\'est pas dans son volet (aucun espace à voir)', await frame.locator('.tr-row[data-path="Espaces"]').count() === 0);
+  await frame.locator('.tr-row[data-view="shared"]').click();
+  const row = frame.locator('.ls-row:not(.folder)').filter({ hasText: NAMES.D });
+  await row.waitFor({ timeout: 15000 });
+  const text = (await row.innerText()).replace(/\s+/g, ' ');
+  check('D est dans « Partagés avec moi », avec celui qui l\'a donné (initiales ES d\'essai@) dans « Par »', text.includes('ES'), text);
+  check('c\'est le seul fichier donné au lecteur', await frame.locator('.ls-row:not(.folder)').count() === 1);
+  await row.click({ button: 'right' });
+  await frame.locator('.menu').waitFor();
+  const items = (await frame.locator('.menu .menu-item').allInnerTexts()).map(item => item.replace(/\s+/g, ' ').trim());
+  check('le menu de D est celui d\'un fichier ordinaire (ouvrir, partager…)', items.some(item => item.startsWith(t('ex.open'))) && items.some(item => item.startsWith(t('share.menu'))), items);
+  await frame.page().keyboard.press('Escape');
   check('aucune erreur de GFS dans la console', unexpected(run).length === 0, unexpected(run));
 }
 

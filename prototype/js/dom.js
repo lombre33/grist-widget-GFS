@@ -1,20 +1,6 @@
-// Construire du DOM sans jamais interpréter du texte comme du HTML : les noms de fichiers viennent du document, donc d'une personne.
-// Les enfants sont des nœuds ou du texte (ajouté comme texte) ; aucun `innerHTML`.
-
+// Construire du DOM sans jamais interpréter du texte comme du HTML : les noms de fichiers viennent du document, donc d'une personne. `h` est celui du kit (kit/js/dom.js), le même pour GFS et pour les apps : GFS ne le recopie
+// plus (audit du code du 09/11 ; choix du porteur, 11/11 : « reprendre les copies exactes du kit »). Les enfants sont des nœuds ou du texte (ajouté comme texte) ; aucun `innerHTML`.
 // h('button', { class: 'btn', dataset: { id: 3 }, on: { click: fn }, vars: { '--d': 2 }, 'aria-pressed': false }, enfants…)
-export function h(tag, props, ...children) {
-  const el = document.createElement(tag);
-  for (const [key, value] of Object.entries(props || {})) {
-    if (value === undefined || value === null || value === false) continue;
-    if (key === 'class') el.className = value;
-    else if (key === 'dataset') Object.assign(el.dataset, value);
-    else if (key === 'on') for (const [type, fn] of Object.entries(value)) el.addEventListener(type, fn);
-    else if (key === 'vars') for (const [name, v] of Object.entries(value)) el.style.setProperty(name, String(v)); // CSSOM : permis sous `style-src 'self'`
-    else if (value === true) el.setAttribute(key, '');
-    else el.setAttribute(key, String(value));
-  }
-  el.append(...children.flat(Infinity).filter(child => child !== null && child !== undefined && child !== false));
-  return el;
-}
+export { h } from '../kit/js/dom.js';
 
 export const clear = el => { el.replaceChildren(); return el; };

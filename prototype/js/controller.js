@@ -47,15 +47,14 @@ import { buildAppFiles, buildKept } from './file-managers.js';
 import { Trash } from './trash.js';
 import { Copying } from './copying.js';
 import { ask } from './ask-window.js';
-import { carriesFile } from './import-file.js';
 import { Entries } from './entries.js';
 import { Openings } from './openings.js';
 import { OpenedFiles } from './opened-files.js';
 import { ReceivedControl } from './received-control.js';
 import { loadReceived } from './received-files.js';
-import { publicationQuestion } from './publication-window.js';
+import { publicationQuestion, sharedLinkQuestion } from './publication-window.js';
 import { ModulesWindow, rowKey } from './modules-window.js';
-import { buildContext, identityFor, instanceOf, pageOf } from './context.js';
+import { AppContext } from './app-context.js';
 import { Refus, ERR, levelOf } from './filter.js';
 
 const NOTICE_MS = 6000;
@@ -77,10 +76,7 @@ export class GfsController {
   modulesWindow = null;
   themeWindow = null;
   #noticeTimer = null;
-  #facts = null;
-  #sentExtensions = null;
-  #sentIdentity = null; // l'identité donnée à l'app active (JSON), ou null tant qu'elle n'a pas demandé son contexte
-  #contextServed = false; // l'app active a demandé son contexte : elle a lu l'ouverture qui s'y trouvait, et ne la relira pas
+  #told = new AppContext(this); // ce que GFS a dit à l'app active (js/app-context.js)
   #modulesWaiters = [];
   #idleWaiters = []; // ceux qui attendent la fin des écritures des apps installées (`unlock`)
   #fileStatus = { loading: false, restricted: false, problems: [] }; // ce que l'explorateur dit sous la liste, gardé pour être redit dans la langue qui vaut
@@ -154,7 +150,7 @@ export class GfsController {
   manifests = () => this.validApps().map(item => item.manifest);
 
   // L'app active a demandé son contexte (les ouvertures en ont besoin pour savoir si elle a quelque chose à enregistrer avant de partir).
-  get contextServed() { return this.#contextServed; }
+  get contextServed() { return this.#told.served; }
 
   // L'adresse de la personne, '' tant que GFS ne la connaît pas : son rangement est alors commun au document (contrats 6.4, point 4).
   get identity() { return this.rangement.identity; }
@@ -322,7 +318,7 @@ export class GfsController {
   }
 
   // Les paramètres de Grist que les apps reçoivent (adresse du cadre, `contexte`) : ceux de Grist, sauf la langue, qui est celle que la personne a choisie dans GFS.
-  #appPreferences() { return { ...this.preferences, language: this.lang }; }
+  appPreferences() { return { ...this.preferences, language: this.lang }; }
 
   // La personne choisit la langue de GFS et de ses apps. Si le navigateur refuse de la retenir, elle vaut pour cette page, et GFS le dit (dans la langue choisie).
   #chooseLanguage(choice) {
@@ -450,6 +446,7 @@ export class GfsController {
         app: (id, on) => change(this.registry.setApp(id, on)),
         extension: (app, id, on) => change(this.registry.setExtension(app, id, on)),
         mode: (app, id, mode) => change(this.registry.setMode(app, id, mode)),
+        nativeMode: (app, group, mode) => change(this.registry.setNativeMode(app, group, mode)),
         open: id => this.#openApp(id),
       },
       onClose: () => this.#modulesWaiters.splice(0).forEach(resolve => resolve()),
@@ -470,7 +467,8 @@ export class GfsController {
 
   // Une app publie un formulaire (contrats 3.3, point 9) : la personne dit si le lien peut ouvrir ce que le lot ouvre.
   #askPublication(manifest, opens) {
-    return this.ask(publicationQuestion({ t: this.t, app: label(manifest.nom, this.lang), opens }));
+    const app = label(manifest.nom, this.lang);
+    return this.ask(opens.sharedLink ? sharedLinkQuestion({ t: this.t, app, shared: opens.sharedLink }) : publicationQuestion({ t: this.t, app, opens }));
   }
 
   // Une fenêtre du widget au-dessus de tout ce qui est ouvert (charte : jamais `confirm()`).
@@ -483,7 +481,7 @@ export class GfsController {
   // « Une fois » se retient par document, dans le navigateur ; sans stockage, la fenêtre reste atteignable par les deux autres portes.
   async #firstRun() {
     if (this.registry.stored || this.readonly) return;
-    const facts = await this.#readFacts();
+    const facts = await this.#told.readFacts();
     if (!facts.document) return;
     const key = `${FIRST_RUN_KEY}${facts.document}`;
     try {
@@ -503,17 +501,7 @@ export class GfsController {
   // GFS vient d'apprendre l'adresse de la personne (la table est née pendant la session) : sa liste de fichiers se relit avec son propre rangement.
   #onIdentity() {
     if (this.explorer && this.explorer.isOpen) void this.refreshFiles();
-    this.#pushIdentity();
-  }
-
-  // L'événement `identite` (contrats 5.2, points 2 et 9) : seulement à l'app qui a déjà son contexte et que l'adresse vient de changer (une app qui ne l'a pas déclarée n'en reçoit rien).
-  #pushIdentity() {
-    if (!this.session || this.#sentIdentity === null) return;
-    const identity = identityFor(this.session.policy, this.identity);
-    const sent = JSON.stringify(identity);
-    if (sent === this.#sentIdentity) return;
-    this.#sentIdentity = sent;
-    this.session.sendIdentity(identity);
+    this.#told.pushIdentity();
   }
 
   // Un changement des apps installées (un geste, ou le retour à ce que la table dit) : tout ce qui en dépend se met à jour.
@@ -528,7 +516,7 @@ export class GfsController {
       this.#closeSession();
       this.showExplorer();
     } else if (this.session) {
-      this.#pushExtensions();
+      this.#told.pushExtensions();
     }
   }
 
@@ -538,18 +526,7 @@ export class GfsController {
     this.dock.mask(false);
     this.session.close();
     this.session = null;
-    this.#sentExtensions = null;
-    this.#sentIdentity = null;
-    this.#contextServed = false;
-  }
-
-  // L'événement `extensions` (contrats 5.2, point 2) : seulement quand ce que l'app doit charger a vraiment changé.
-  #pushExtensions() {
-    const given = this.registry.extensionsFor(this.session.id, this.doc.baseURI);
-    const sent = JSON.stringify([given.extensions, given.bibliotheques]);
-    if (sent === this.#sentExtensions) return;
-    this.#sentExtensions = sent;
-    this.session.sendExtensions(given);
+    this.#told.reset();
   }
 
   // « Ouvrir » sur une ligne de la fenêtre : l'app s'ouvre sans consigne (elle applique son propre ordre d'arrivée, contrats 5.2, point 3).
@@ -563,19 +540,9 @@ export class GfsController {
 
   // ---------- ce que l'app demande à GFS (contrats 5.1) ----------
 
-  // Les faits qui ne changent pas pendant la vie de la page : lus une fois.
-  async #readFacts() {
-    if (this.#facts) return this.#facts;
-    let document = null;
-    try { document = await this.port.doc.getDocName(); } catch (error) { console.warn('GFS : le nom du document est illisible', error); }
-    const referrer = this.doc.referrer;
-    this.#facts = { instance: instanceOf(referrer), page: pageOf(referrer), document, widgetAddress: `${location.origin}${location.pathname}` };
-    return this.#facts;
-  }
-
   #envelopeHandlers(session) {
     return {
-      contexte: () => this.#contextFor(session),
+      contexte: () => this.#told.contextFor(session),
       installer: args => this.#install(session, args),
       ...storageHandlers(this.appStorage, session.id),
       ...this.dock.handlers(session.id),
@@ -584,30 +551,6 @@ export class GfsController {
       ...this.attach.handlers(session),
       ...this.player.handlers(session),
     };
-  }
-
-  async #contextFor(session) {
-    this.dock.mask(false); // un cadre qui redemande son contexte repart avec la barre (contrats 5.2, point 7)
-    const opening = this.#takeOpening(session);
-    const given = this.registry.extensionsFor(session.id, this.doc.baseURI);
-    this.#sentExtensions = JSON.stringify([given.extensions, given.bibliotheques]);
-    const facts = await this.#readFacts();
-    const storage = this.appStorage.read(session.id);
-    const identity = identityFor(session.policy, this.identity);
-    if (session === this.session) this.#sentIdentity = JSON.stringify(identity);
-    const role = await this.rights.reader.role(); // ce que GFS a prouvé : propriétaire ou non, `null` sinon (contrats 5.2, point 8)
-    session.announceSaved(); // d'avance, ce que deviendront ses réglages de vue : dans la vue (rien à enregistrer dans Grist) ou en brouillon (contrats 7.3, point 5)
-    return buildContext(facts, { access: session.access, extensions: given.extensions, libraries: given.bibliotheques, opening, storage, bar: this.dock.barre(), identity, players: session.policy.lecteurs, ambiance: this.theme.message(), role }, { preferences: this.#appPreferences(), readonly: this.readonly });
-  }
-
-  // L'ouverture n'est rendue qu'au premier `contexte` de l'app qui vient d'être activée (contrats 5.2, point 3) : une app dont le cadre est rechargé sur place (sa langue, un
-  // réglage qui le demande) retrouve son ordre habituel, au lieu de refaire un « Nouveau » déjà fait ou de rouvrir le modèle du dernier clic. Une app déjà ouverte reçoit l'appel `ouvrir`.
-  #takeOpening(session) {
-    if (session !== this.session) return null;
-    const opening = this.#contextServed ? null : this.opening;
-    this.#contextServed = true;
-    if (carriesFile(opening)) this.opening = null; // le fichier part une seule fois : une réouverture de l'app ne le reprend pas
-    return opening;
   }
 
   // L'appel `installer` (5.4, point 4) : la fenêtre s'ouvre sur la ligne de l'extension, rien ne se télécharge ; la réponse dit les extensions
@@ -652,7 +595,7 @@ export class GfsController {
     const { state, port } = this.workControl.sourceFor(app.manifest);
     return {
       entry: app.app, manifest: app.manifest, catalogue: this.manifests(), state, port, router: this.router,
-      container: this.$('frames'), readonly: this.readonly, preferences: this.#appPreferences(), base: this.doc.baseURI, live: this.live, lang: this.lang, onStatus: (kind, current) => this.#onStatus(kind, current),
+      container: this.$('frames'), readonly: this.readonly, preferences: this.appPreferences(), base: this.doc.baseURI, live: this.live, lang: this.lang, onStatus: (kind, current) => this.#onStatus(kind, current),
       envelopeHandlers: session => this.#envelopeHandlers(session), authorize: (manifest, opens) => this.#askPublication(manifest, opens), viewOptions: this.viewOptions,
     };
   }

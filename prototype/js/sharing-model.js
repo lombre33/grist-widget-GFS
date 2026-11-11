@@ -152,10 +152,10 @@ function calcFormula(target) {
     'RANK = {"aucun": 0, "lecture": 1, "ecriture": 2, "admin": 3}',
     'best = {}',
     'cats = {}',
-    'def put(table, who, lvl, kind, rank):',
+    'def put(table, who, lvl, kind, rank, src=""):',
     '  cur = table.get(who)',
     '  if cur is None or (lvl, kind) > (cur[0], cur[1]) or ((lvl, kind) == (cur[0], cur[1]) and rank > cur[2]):',
-    '    table[who] = (lvl, kind, rank)',
+    '    table[who] = (lvl, kind, rank, src)',
     'for cible, lvl in chain.items():',
     `  for p in ${SHARES_TABLE}.lookupRecords(Cible=cible):`,
     '    if not (p.Valide and p.Actif) or p.Droit not in RANK:',
@@ -169,19 +169,21 @@ function calcFormula(target) {
     '      for m in (list(g.Membres or ()) if g else []):',
     '        put(best, m, lvl, 1, rank)',
     '    elif p.PersonneL:',
-    '      put(best, p.PersonneL, lvl, 2, rank)',
+    '      put(best, p.PersonneL, lvl, 2, rank, str(p.Auteur or "").strip().lower() if lvl >= 2 else "")',
     `author = str($${target.author}).strip().lower()`,
     'if author:',
-    '  best[author] = (999, 9, 3)',
+    '  best[author] = (999, 9, 3, "")',
     'def has(table, least):',
     '  return sorted(who for who, v in table.items() if v[2] >= least)',
-    'return [has(best, 1), has(best, 2), has(best, 3), sorted(who for who, v in best.items() if v[2] == 0), has(cats, 1), has(cats, 2)]'].join('\n');
+    // Ceux à qui le fichier a été donné par leur adresse, sur le fichier ou sur un dossier d'espace, par quelqu'un d'autre : « adresse>auteur du partage » (« Partagés avec moi », lot 4c).
+    'directs = sorted(who + ">" + v[3] for who, v in best.items() if v[1] == 2 and v[2] >= 1 and v[3] and v[3] != who)',
+    'return [has(best, 1), has(best, 2), has(best, 3), sorted(who for who, v in best.items() if v[2] == 0), has(cats, 1), has(cats, 2), directs]'].join('\n');
 }
 
 // Les colonnes d'aide d'une table de fichiers : `GFS_Calc` (le calcul), puis les adresses qui lisent, écrivent, administrent, celles à qui l'accès est retiré (`GFS_Refus`), et les catégories entières (`editeurs`, `tous`) qui lisent ou écrivent.
-export const HELPERS = Object.freeze(['GFS_Calc', 'GFS_Lecteurs', 'GFS_Ecrivains', 'GFS_Admins', 'GFS_Refus', 'GFS_Cats', 'GFS_CatsEcrit']);
+export const HELPERS = Object.freeze(['GFS_Calc', 'GFS_Lecteurs', 'GFS_Ecrivains', 'GFS_Admins', 'GFS_Refus', 'GFS_Cats', 'GFS_CatsEcrit', 'GFS_Directs']);
 export function helperColumns(target = FILES_TARGET) {
-  const part = at => `tuple(($GFS_Calc or [[], [], [], [], [], []])[${at}])`;
+  const part = at => `tuple(($GFS_Calc or [[], [], [], [], [], [], []])[${at}])`;
   return [
     ...(target.stamped ? [stamped(STAMP, 'user.Email')] : []),
     formula('GFS_Calc', 'Any', calcFormula(target)),
@@ -191,6 +193,7 @@ export function helperColumns(target = FILES_TARGET) {
     formula('GFS_Refus', 'Any', part(3)),
     formula('GFS_Cats', 'Any', part(4)),
     formula('GFS_CatsEcrit', 'Any', part(5)),
+    formula('GFS_Directs', 'Any', part(6)),
   ];
 }
 

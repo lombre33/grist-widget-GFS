@@ -2,6 +2,7 @@
 // Du code sans effet de bord : il rend « permis » ou la raison du refus ; c'est le courtier qui répond à l'app et qui appelle Grist.
 
 import { knownProviders } from './player-sites.js';
+import { sharingRefusal } from './sharing-rules.js';
 
 export const ERR = Object.freeze({
   REFUSE: 'GFS_REFUSE',
@@ -31,7 +32,8 @@ const STRUCTURE_VERBS = new Set(['CreateViewSection']);
 const NEVER_READ = new Set(['_grist_shares', '_grist_triggers']);
 const NEVER_WRITE = new Set(['_grist_aclrules', '_grist_aclresources', '_grist_aclprincipals', '_grist_aclmemberships',
   '_grist_shares', '_grist_triggers', '_grist_docinfo']);
-// `shareRef` rattache une page à un partage déjà là : l'écrire ouvrirait les formulaires de cette page à un autre lien (3.3, point 6).
+// `shareRef` rattache une page à un partage déjà là : l'écrire ouvrirait les formulaires de cette page à un autre lien (3.3, point 6) ; seule la capacité `partage` le permet,
+// dans la forme étroite de js/sharing-rules.js.
 const NEVER_WRITE_COLUMNS = { _grist_views_section: new Set(['options']), _grist_pages: new Set(['shareRef']) };
 // Les tables internes dont une écriture peut changer ce que le lien d'un formulaire ouvre : le courtier en juge le lot (js/publication.js, 3.3 point 9), ce qui exclut
 // les verbes « ajouter ou mettre à jour » (le lot se joue sur des lignes qu'on ne peut pas nommer d'avance).
@@ -61,6 +63,7 @@ export function makePolicy(manifest, catalogue = []) {
     jeton: perm.jeton || null,
     formules: Boolean(perm.formules),
     structure: Boolean(perm.structure),
+    partage: Boolean(perm.partage), // l'app pose le partage de la page de son formulaire : une ligne de `_grist_Shares` et `shareRef` (contrats 3.3 point 6 : l'exception ; 3.4, point 8)
     identite: Boolean(perm.identite), // l'app reçoit l'adresse e-mail de la personne dans son contexte (contrats 3.4, point 6 ; 5.2, point 9)
     lienPublic: perm.lienPublic && Array.isArray(perm.lienPublic.lit) ? perm.lienPublic.lit : [],
     lecteurs: knownProviders(perm.lecteurs && perm.lecteurs.fournisseurs), // les sites de vidéos dont l'app demande à GFS de poser le lecteur (contrats 3.4, point 7 ; 5.2, point 11)
@@ -148,6 +151,8 @@ function valueKeys(verb, args) {
 
 function internalWriteRefusal(policy, verb, tableId, args) {
   const key = norm(tableId);
+  const sharing = policy.partage ? sharingRefusal(verb, '_' + key, args) : undefined;
+  if (sharing !== undefined) return sharing;
   if (NEVER_WRITE.has('_' + key)) return `${tableId} n'est jamais écrite par une app.`;
   const entry = policy.interne.get(key);
   if (!entry || !entry.ecrit) return `Écriture de ${tableId} non déclarée (permissions.gristInterne).`;

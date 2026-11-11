@@ -108,8 +108,8 @@ export class AppSession {
   }
 
   // L'événement `extensions` (contrats 5.2, point 2) : l'app le reçoit sans l'avoir demandé.
-  sendExtensions({ extensions, bibliotheques }) {
-    if (this.#envelope) this.#envelope.event('extensions', { extensions, bibliotheques });
+  sendExtensions({ extensions, bibliotheques, natives }) {
+    if (this.#envelope) this.#envelope.event('extensions', { extensions, bibliotheques, natives });
   }
 
   // L'événement `barre` (contrats 5.2, points 2 et 7) : la barre de GFS a changé de bord, de taille, d'état (montrée, cachée) ; `null` quand rien ne recouvre plus le cadre.

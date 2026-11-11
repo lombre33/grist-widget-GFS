@@ -101,6 +101,7 @@ async function playNew(run) {
   const shares = await rows(run, 'GFS_Partages');
   check('rien n\'est repartagé : le même nombre de lignes de partage', shares.length === before, [before, shares.length]);
   const models = await byName(run);
+  check('GFS_Directs est là : A a été donné à l\'éditeur par son adresse (par le propriétaire), B par un groupe (non compté)', has(models[A].GFS_Directs, `${EDITOR}>${OWNER}`) && !has(models[B].GFS_Directs, EDITOR), [models[A].GFS_Directs, models[B].GFS_Directs]);
   check('GFS_Calc est là et les listes gardent les mêmes personnes (A : éditeur ; B : éditeur par le groupe)', Boolean(models[A].GFS_Calc) && has(models[A].GFS_Lecteurs, EDITOR) && has(models[B].GFS_Lecteurs, EDITOR) && !has(models[PRIVATE].GFS_Lecteurs, EDITOR), [models[A].GFS_Calc, models[B].GFS_Lecteurs]);
   check('les anciens fichiers (« tous » en lecture) restent lisibles de tous', has((await byName(run))[FIRST].GFS_Cats, 'tous'));
   await frame.locator('[data-fk="share-close"]').click();

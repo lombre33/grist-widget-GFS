@@ -10,6 +10,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as acorn from 'acorn';
+import { overlong, publishedScripts, WIDTH } from '../outils/couper-lignes.mjs';
 
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 const MAX_FILE_LINES = 600;
@@ -144,6 +145,11 @@ const formFaults = () => SOURCES.flatMap(dir => filesUnder(dir, ['.js', '.mjs'])
 
 test('ni console.log ni onmessage = dans le code publié', () => {
   assert.deepEqual(formFaults(), []);
+});
+
+test(`aucune ligne de plus de ${WIDTH} caractères que l'outil de coupe sait couper`, () => {
+  const found = publishedScripts().flatMap(file => overlong(file, readFileSync(file, 'utf8')));
+  assert.deepEqual(found.slice(0, 10), [], `${found.length} ligne(s) trop longue(s) : lancez \`node outils/couper-lignes.mjs\` (dans prototype/), il les coupe sans changer le code`);
 });
 
 // Tous les fichiers lisibles de ce qui est publié (`PUBLISHED`), en chemins complets.

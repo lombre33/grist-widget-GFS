@@ -70,6 +70,10 @@ Si un fait nouveau remet en cause une de ces lignes : le dire au porteur, avec l
   la recherche de copies.
 - Fichiers et fonctions sous les seuils de l'outil d'audit : 600 lignes de code par fichier, moins de 81 lignes par
   fonction, complexité 15 au plus.
+- Lignes de 160 caractères au plus dans `prototype/js/` et `prototype/transfer/` (11/11) : `node prototype/outils/couper-lignes.mjs`
+  les coupe sans changer le programme (vérifié sur l'arbre) ; `test/hygiene.test.mjs` refuse celles qu'il sait couper. Les phrases
+  des tables `i18n*.js` et les chaînes longues restent permises. Couper ajoute des lignes : une fonction proche de 80 lignes peut
+  passer la limite.
 
 ## Interface
 

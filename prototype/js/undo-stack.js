@@ -49,6 +49,17 @@ export class UndoStack {
     if (!entry) { notice(t(`${kind}.nothing`)); return false; }
     this.#mode = kind;
     try {
+      await this.#play(kind, entry, from);
+    } finally {
+      this.#mode = null;
+    }
+    return true;
+  }
+
+  // Joue le geste : ce qu'il dit se dit ; un geste à refaire en plusieurs fois (`again`) reste sur sa pile ; un échec se dit avec sa raison (et s'écrit, sauf un échec prévu).
+  async #play(kind, entry, from) {
+    const { t, notice } = this.#opts;
+    try {
       const done = await entry.run();
       const said = done && typeof done === 'object' ? done.said : done;
       if (done && done.again) keep(from, entry);
@@ -56,9 +67,6 @@ export class UndoStack {
     } catch (error) {
       if (!(error && error.expected)) console.warn(`GFS : ${kind === 'undo' ? 'l’annulation' : 'le rétablissement'} a échoué`, error);
       notice(t(`${kind}.failed`, { reason: String((error && error.message) || error).slice(0, REASON_MAX) }));
-    } finally {
-      this.#mode = null;
     }
-    return true;
   }
 }

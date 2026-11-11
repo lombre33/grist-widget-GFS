@@ -71,10 +71,13 @@ function checkWeight(weight, prefix, errors) {
   if (pieces !== undefined && !(isObject(pieces) && isText(pieces.colonne) && isText(pieces.taille))) errors.push('fichiers[].poids.pieces : { colonne, taille } attendu');
   if (weight.liees === undefined) return;
   if (!Array.isArray(weight.liees)) { errors.push('fichiers[].poids.liees : liste attendue'); return; }
-  for (const link of weight.liees) {
-    if (!isObject(link) || !isText(link.table) || !isText(link.colonne) || !isText(link.fichier)) errors.push('fichiers[].poids.liees : { table, colonne, fichier } attendu');
-    else if (!link.table.toLowerCase().startsWith(prefix.toLowerCase())) errors.push('fichiers[].poids.liees[].table hors du préfixe');
-  }
+  for (const link of weight.liees) checkLink(link, prefix, errors);
+}
+
+// Une table liée au poids d'un fichier (`poids.liees[]`) : { table, colonne, fichier } en texte, la table du préfixe de l'app.
+function checkLink(link, prefix, errors) {
+  if (!isObject(link) || !isText(link.table) || !isText(link.colonne) || !isText(link.fichier)) errors.push('fichiers[].poids.liees : { table, colonne, fichier } attendu');
+  else if (!link.table.toLowerCase().startsWith(prefix.toLowerCase())) errors.push('fichiers[].poids.liees[].table hors du préfixe');
 }
 
 // Une recette (2.4 ; contrats 6.7) : comment GFS retire et remet un fichier de cette table (`suppression`), ou le copie (`copie`). `ligne: true` (un fichier est une ligne) est le mode de base ; `appel: true` dit que
@@ -85,6 +88,11 @@ function checkRecipe(recipe, name, values, errors) {
   const alone = name === 'copie' && isObject(recipe) && recipe.appel === true; // la copie par l'app n'a pas besoin de la ligne
   if (!isObject(recipe) || (recipe.ligne !== true && !alone)) { errors.push(`fichiers[].${name}.ligne : true attendu`); return; }
   if (recipe.appel !== undefined && typeof recipe.appel !== 'boolean') errors.push(`fichiers[].${name}.appel : true ou false attendu`);
+  checkRecipeLists(recipe, name, values, errors);
+}
+
+// Ce que la recette dit de colonnes : `uniques` et `exclusives` (listes de noms) et `values` (un objet { colonne: valeur }).
+function checkRecipeLists(recipe, name, values, errors) {
   for (const key of ['uniques', 'exclusives']) {
     if (recipe[key] !== undefined && !(Array.isArray(recipe[key]) && recipe[key].every(isText))) errors.push(`fichiers[].${name}.${key} : liste de noms de colonnes attendue`);
   }

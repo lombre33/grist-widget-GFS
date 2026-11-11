@@ -165,25 +165,37 @@ export function listHead(ctx) {
 
 function fileCells(ctx, file, flat) {
   const { t } = ctx;
-  const lock = ctx.lockOf(file);
   const who = person(authorOf(file));
-  const name = file.name || t('ex.untitled');
-  const pinTitle = file.pinned ? t('ex.unpin') : t('ex.pin');
   return [
-    h('div', { class: 'nm', role: 'gridcell' }, icon(lock ? 'lock' : file.icon), h('span', { class: 't', title: lock ? `${name} · ${lock.text}` : name }, name),
-      // Le dossier d'origine, à côté du nom (vues à plat) ; son chemin entier au survol. À la corbeille c'est lui qui cède la place quand la ligne est étroite : le nom d'abord (audit du 10/11 : « Convocatio… »).
-      flat && file.folder ? h('span', { class: ctx.state.view === 'trash' ? 'hint yield' : 'hint', title: file.folder }, file.folder.split('/').pop()) : null,
-      // Dans « Ouverts », le fichier que l'app affiche en ce moment : le mot, pas une couleur seule.
-      ctx.state.view === 'opened' && ctx.shownKey === file.key ? h('span', { class: 'now' }, t('ex.shown')) : null,
-      lock ? h('span', { class: 'sr-only' }, `, ${lock.text}`) : null),
+    nameCell(ctx, file, flat),
     h('div', { class: 'ty', role: 'gridcell' }, h('span', { class: 'pill' }, ctx.typeLabel(file))),
     h('div', { class: 'wt', role: 'gridcell' }, weightText(ctx, file.weight)),
     h('div', { class: 'md', role: 'gridcell' }, formatDate(stampOf(file), ctx.now, ctx.locale, t)),
     h('div', { class: 'by', role: 'gridcell' }, who.initials ? h('span', { class: 'who', title: who.name }, who.initials) : null),
-    h('div', { class: 'acts', role: 'gridcell' }, ctx.state.view === 'trash' ? restoreButton(t, file.key)
-      : (ctx.state.view === 'shared' ? null : h('button', { type: 'button', class: `rb pin${file.pinned ? ' on' : ''}`, dataset: { pin: file.key }, title: pinTitle, 'aria-label': pinTitle, 'aria-pressed': String(file.pinned) }, icon('pin'))),
-    moreButton(t, file.key)),
+    actionsCell(ctx, file),
   ];
+}
+
+// Le nom du fichier, avec son cadenas quand un geste est grisé, son dossier d'origine (vues à plat) et, dans « Ouverts », le mot « affiché ».
+function nameCell(ctx, file, flat) {
+  const { t } = ctx;
+  const lock = ctx.lockOf(file);
+  const name = file.name || t('ex.untitled');
+  return h('div', { class: 'nm', role: 'gridcell' }, icon(lock ? 'lock' : file.icon), h('span', { class: 't', title: lock ? `${name} · ${lock.text}` : name }, name),
+    // Le dossier d'origine, à côté du nom (vues à plat) ; son chemin entier au survol. À la corbeille c'est lui qui cède la place quand la ligne est étroite : le nom d'abord (audit du 10/11 : « Convocatio… »).
+    flat && file.folder ? h('span', { class: ctx.state.view === 'trash' ? 'hint yield' : 'hint', title: file.folder }, file.folder.split('/').pop()) : null,
+    // Dans « Ouverts », le fichier que l'app affiche en ce moment : le mot, pas une couleur seule.
+    ctx.state.view === 'opened' && ctx.shownKey === file.key ? h('span', { class: 'now' }, t('ex.shown')) : null,
+    lock ? h('span', { class: 'sr-only' }, `, ${lock.text}`) : null);
+}
+
+// Les boutons de la ligne : « Restaurer » à la corbeille, l'étoile d'un fichier qu'on épingle (rien dans « Partagés avec moi »), et « Plus d'actions ».
+function actionsCell(ctx, file) {
+  const { t } = ctx;
+  const pinTitle = file.pinned ? t('ex.unpin') : t('ex.pin');
+  return h('div', { class: 'acts', role: 'gridcell' }, ctx.state.view === 'trash' ? restoreButton(t, file.key)
+    : (ctx.state.view === 'shared' ? null : h('button', { type: 'button', class: `rb pin${file.pinned ? ' on' : ''}`, dataset: { pin: file.key }, title: pinTitle, 'aria-label': pinTitle, 'aria-pressed': String(file.pinned) }, icon('pin'))),
+    moreButton(t, file.key));
 }
 
 // « Restaurer » d'une ligne de la corbeille : il prend la place de l'étoile (un fichier à la corbeille ne s'épingle pas).

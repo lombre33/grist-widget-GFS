@@ -51,7 +51,7 @@ export class ShareControl {
   folderFile(path) {
     const at = locate(path, this.#o.spaces ? this.#o.spaces() : null);
     if (!at || !at.folder) return null;
-    return { key: folderTarget(at.space.key, at.folder), name: at.folder.split('/').pop(), folder: { space: at.space, path: at.folder } };
+    return { key: folderTarget(at.space.key, at.folder), name: at.folder.split('/').pop(), shared: { space: at.space, path: at.folder } };
   }
 
   // L'espace, puis les dossiers au-dessus de celui-ci : ce qu'il hérite (la fenêtre les marque « Hérité »).
@@ -64,12 +64,12 @@ export class ShareControl {
     const owner = await this.#o.reader.owner();
     const rows = await this.#try(async () => rowsOf(await this.#o.port.doc.fetchTable(SHARES_TABLE)), null);
     if (!rows) return noShare(owner, false);
-    const target = file.folder ? null : this.#target(file);
+    const target = file.shared ? null : this.#target(file);
     const read = target ? await this.#authorOf(file, target) : { author: lower(file.by) };
     if (read.extend !== undefined) return noShare(owner, read.extend);
     const { author } = read;
     const me = lower(this.#o.identity());
-    const shares = sharesOf(rows, file.key, file.folder ? this.#folderOrigins(file.folder) : await this.#inherited(file.key));
+    const shares = sharesOf(rows, file.key, file.shared ? this.#folderOrigins(file.shared) : await this.#inherited(file.key));
     const admin = shares.some(share => share.valid && share.active && share.right === 'admin' && lower(share.who) === me);
     const groups = await this.#try(async () => groupsOf(rowsOf(await this.#o.port.doc.fetchTable(GROUPS_TABLE))), []);
     return { active: true, owner, shares, people: peopleOf(rows), groups, me, author, canManage: !this.#o.writeBlock() && (owner === true || (me !== '' && me === author) || admin) };
@@ -106,7 +106,7 @@ export class ShareControl {
   open(file) {
     const { t, container, inertTargets } = this.#o;
     return openShare({
-      container, t, locale: this.#o.locale(), inertTargets, other: state => this.#o.other(file, state), file: { key: file.key, name: file.name, app: file.folder ? t('share.folder.in', { name: file.folder.space.name }) : this.#o.appName(file.app) },
+      container, t, locale: this.#o.locale(), inertTargets, other: state => this.#o.other(file, state), file: { key: file.key, name: file.name, app: file.shared ? t('share.folder.in', { name: file.shared.space.name }) : this.#o.appName(file.app) },
       load: () => this.load(file), onManage: () => this.#o.manage.open(),
       onAdd: record => this.#write([['AddRecord', SHARES_TABLE, null, record]]),
       onChange: (id, patch) => this.#write([['UpdateRecord', SHARES_TABLE, id, patch]]),

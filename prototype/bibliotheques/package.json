@@ -16,7 +16,7 @@
     "pdf-lib": "1.17.1",
     "pdfjs-dist": "6.5.438",
     "pdfmake": "0.2.7",
-    "plotly.js-basic-dist-min": "2.13.2",
+    "plotly.js-basic-dist-min": "4.2.0",
     "qrcode-generator": "1.4.4",
     "y-protocols": "1.0.7",
     "yjs": "13.6.33"

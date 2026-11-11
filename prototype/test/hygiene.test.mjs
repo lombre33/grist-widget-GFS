@@ -146,13 +146,35 @@ test('ni console.log ni onmessage = dans le code publié', () => {
   assert.deepEqual(formFaults(), []);
 });
 
+// Tous les fichiers lisibles de ce qui est publié (`PUBLISHED`), en chemins complets.
+const publishedFiles = () => PUBLISHED.flatMap(entry => (entry.includes('.') ? [join(ROOT, entry)] : filesUnder(entry, ['.js', '.mjs', '.css', '.html', '.json', '.md'])));
+
 test('aucun prénom de personne dans le code publié, commentaires compris', () => {
   const found = [];
   const pattern = new RegExp(`\\b(${FIRST_NAMES.join('|')})\\b`, 'i');
-  for (const file of PUBLISHED.flatMap(entry => (entry.includes('.') ? [join(ROOT, entry)] : filesUnder(entry, ['.js', '.mjs', '.css', '.html', '.json', '.md'])))) {
+  for (const file of publishedFiles()) {
     readFileSync(file, 'utf8').split('\n').forEach((line, at) => { if (pattern.test(line)) found.push(`${relative(ROOT, file)}:${at + 1}`); });
   }
   assert.deepEqual(found, []);
+});
+
+// Un conflit de Git laissé tel quel dans un fichier publié (`<<<<<<<`, `=======`, `>>>>>>>` en début de ligne). Le 11/11, index.html en a porté pendant plusieurs commits : deux lignes de politique de sécurité,
+// que le navigateur ne retient plus quand du texte les sort de l'en-tête de la page, donc aucune politique appliquée, sans qu'aucun essai ne le voie.
+const CONFLICT = /^(<{7}( |$)|={7}$|>{7}( |$))/;
+const conflictsIn = text => text.split('\n').flatMap((line, at) => (CONFLICT.test(line) ? [at + 1] : []));
+
+test('aucun marqueur de conflit de Git dans ce qui est publié, et une seule politique de sécurité dans index.html', () => {
+  const found = publishedFiles().flatMap(file => conflictsIn(readFileSync(file, 'utf8')).map(at => `${relative(ROOT, file)}:${at}`));
+  assert.deepEqual(found, []);
+  const page = readFileSync(join(ROOT, 'index.html'), 'utf8');
+  assert.equal(page.match(/http-equiv="Content-Security-Policy"/g)?.length, 1, 'une seule balise de politique de sécurité');
+  const head = page.slice(0, page.indexOf('</head>'));
+  assert.ok(head.includes('http-equiv="Content-Security-Policy"'), 'la politique est dans l\'en-tête de la page : ailleurs, le navigateur ne la retient pas');
+});
+
+test('le détecteur de conflit voit les trois marqueurs et rien d\'autre', () => {
+  assert.deepEqual(conflictsIn('a\n<<<<<<< HEAD\nb\n=======\nc\n>>>>>>> dc61a14 (message)\nd'), [2, 4, 6]);
+  assert.deepEqual(conflictsIn('x = a <<<<<<< b\n// =======\n  =======\n<<<<<<<<'), [], 'au milieu d\'une ligne, indentés ou trop longs : pas des marqueurs');
 });
 
 // Dependabot (cahier 3.3, point 5 ; 4.7) : les outils d'essai, la liste des bibliothèques que GFS porte pour les extensions, et les références des sous-modules. Une liste de bibliothèques que personne ne surveille

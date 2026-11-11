@@ -167,6 +167,16 @@ test('Dependabot surveille les outils d\'essai, la liste des bibliothèques de G
   for (const wanted of ['npm /prototype', 'npm /prototype/bibliotheques', 'gitsubmodule /']) assert.ok(watched.includes(wanted), `${wanted} : à ajouter à .github/dependabot.yml (reçu : ${watched.join(', ')})`);
 });
 
+// Les bibliothèques natives d'une app (`natifDe` dans la liste de GFS) suivent la version de leur app : Dependabot ne les propose pas, et rien d'autre n'est ignoré sans raison.
+test('Dependabot ignore exactement les paquets natifs de la liste de GFS', () => {
+  const text = readFileSync(join(ROOT, '..', '.github', 'dependabot.yml'), 'utf8');
+  const block = text.split(/^\s*- package-ecosystem:\s*/m).find(part => /directory:\s*\/prototype\/bibliotheques\b/.test(part)) || '';
+  const ignored = [...block.matchAll(/^\s*- dependency-name:\s*["']?([^\s"']+)/gm)].map(match => match[1]).sort();
+  const list = JSON.parse(readFileSync(join(ROOT, 'bibliotheques', 'package.json'), 'utf8'));
+  const natives = [...new Set(Object.values(list.gfs.bibliotheques).filter(spec => spec.natifDe).map(spec => spec.paquet))].sort();
+  assert.deepEqual(ignored, natives, 'chaque paquet `natifDe` de bibliotheques/package.json est ignoré par Dependabot, et seulement eux');
+});
+
 test('l\'analyse voit bien ce qu\'elle doit voir : une fonction trop longue, trop complexe, un console.log, un onmessage =, une fonction appelée aussitôt, les lignes de code', () => {
   const long = `function long() {\n${'  doIt();\n'.repeat(80)}}`;
   const twisted = `function twisted(a) {\n${'  if (a) a = a && a;\n'.repeat(8)}}`;

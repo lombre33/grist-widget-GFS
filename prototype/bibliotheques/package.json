@@ -2,28 +2,60 @@
   "name": "gfs-bibliotheques",
   "private": true,
   "license": "GPL-3.0-only",
-  "description": "La liste unique des bibliotheques que GFS porte pour les extensions des apps (contrats 2.6). Les bibliotheques natives d'une app restent dans la liste de cette app. outils/bibliotheques.mjs en tire bibliotheques/catalogue.json et vendor/.",
+  "description": "La liste unique des bibliotheques que GFS porte : celles des extensions des apps (contrats 2.6) et les copies figees des bibliotheques natives d'une app (`natifDe`, choix du porteur du 11/11 : chez GFS, comme Plotly). La liste de l'app dit toujours quelles bibliotheques elle emploie ; la version ici suit la sienne. outils/bibliotheques.mjs en tire bibliotheques/catalogue.json et vendor/.",
   "dependencies": {
     "@tiptap/extension-collaboration": "3.31.3",
     "@tiptap/extension-collaboration-caret": "3.31.3",
     "@tiptap/y-tiptap": "3.0.10",
+    "docx": "9.15.1",
     "echarts": "6.1.0",
+    "exceljs": "4.4.0",
+    "jszip": "3.10.1",
     "lib0": "0.2.119",
+    "marked": "15.0.12",
+    "pdf-lib": "1.17.1",
     "pdfjs-dist": "6.5.438",
+    "pdfmake": "0.2.7",
     "plotly.js-basic-dist-min": "2.13.2",
+    "qrcode-generator": "1.4.4",
     "y-protocols": "1.0.7",
     "yjs": "13.6.33"
   },
   "gfs": {
     "bibliotheques": {
-      "plotly": { "paquet": "plotly.js-basic-dist-min", "fichier": "plotly-basic.min.js" },
-      "echarts": { "paquet": "echarts", "fichier": "dist/echarts.min.js" },
+      "plotly": {
+        "paquet": "plotly.js-basic-dist-min",
+        "fichier": "plotly-basic.min.js"
+      },
+      "echarts": {
+        "paquet": "echarts",
+        "fichier": "dist/echarts.min.js"
+      },
       "edition-live": {
         "assemble": {
           "version": "1.0.0",
-          "paquets": ["yjs", "y-protocols", "lib0", "@tiptap/y-tiptap", "@tiptap/extension-collaboration", "@tiptap/extension-collaboration-caret"],
-          "modules": ["yjs", "y-protocols/awareness", "@tiptap/y-tiptap", "@tiptap/extension-collaboration", "@tiptap/extension-collaboration-caret"],
-          "externes": ["@tiptap/core", "prosemirror-model", "prosemirror-state", "prosemirror-transform", "prosemirror-view"],
+          "paquets": [
+            "yjs",
+            "y-protocols",
+            "lib0",
+            "@tiptap/y-tiptap",
+            "@tiptap/extension-collaboration",
+            "@tiptap/extension-collaboration-caret"
+          ],
+          "modules": [
+            "yjs",
+            "y-protocols/awareness",
+            "@tiptap/y-tiptap",
+            "@tiptap/extension-collaboration",
+            "@tiptap/extension-collaboration-caret"
+          ],
+          "externes": [
+            "@tiptap/core",
+            "prosemirror-model",
+            "prosemirror-state",
+            "prosemirror-transform",
+            "prosemirror-view"
+          ],
           "alias": {
             "@tiptap/pm/model": "prosemirror-model",
             "@tiptap/pm/state": "prosemirror-state",
@@ -35,11 +67,62 @@
       "pdfjs": {
         "assemble": {
           "version": "1.0.0",
-          "paquets": ["pdfjs-dist"],
-          "modules": ["pdfjs-dist/build/pdf.min.mjs", "pdfjs-dist/build/pdf.worker.min.mjs"],
+          "paquets": [
+            "pdfjs-dist"
+          ],
+          "modules": [
+            "pdfjs-dist/build/pdf.min.mjs",
+            "pdfjs-dist/build/pdf.worker.min.mjs"
+          ],
           "externes": [],
           "sansCdn": true
         }
+      },
+      "docx": {
+        "natifDe": "publipostage",
+        "paquet": "docx",
+        "fichier": "dist/index.iife.js"
+      },
+      "docx-charts": {
+        "natifDe": "publipostage",
+        "paquet": "docx",
+        "fichier": "dist/charts.iife.js"
+      },
+      "exceljs": {
+        "natifDe": "publipostage",
+        "paquet": "exceljs",
+        "fichier": "dist/exceljs.min.js"
+      },
+      "jszip": {
+        "natifDe": "publipostage",
+        "paquet": "jszip",
+        "fichier": "dist/jszip.min.js"
+      },
+      "marked": {
+        "natifDe": "publipostage",
+        "paquet": "marked",
+        "fichier": "marked.min.js"
+      },
+      "pdf-lib": {
+        "natifDe": "publipostage",
+        "paquet": "pdf-lib",
+        "fichier": "dist/pdf-lib.min.js"
+      },
+      "pdfmake": {
+        "natifDe": "publipostage",
+        "paquet": "pdfmake",
+        "fichier": "build/pdfmake.min.js"
+      },
+      "pdfmake-polices": {
+        "natifDe": "publipostage",
+        "paquet": "pdfmake",
+        "fichier": "build/vfs_fonts.js"
+      },
+      "qrcode-generator": {
+        "natifDe": "publipostage",
+        "paquet": "qrcode-generator",
+        "fichier": "qrcode.js",
+        "licenceDansLeFichier": true
       }
     },
     "publication": {

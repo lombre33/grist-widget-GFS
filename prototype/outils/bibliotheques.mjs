@@ -69,7 +69,7 @@ function readPackageFile(id, spec, deps) {
   const version = deps[spec.paquet];
   if (!EXACT_VERSION_RE.test(version || '')) throw new Error(`${id} : la version de ${spec.paquet} doit être exacte (reçu : ${version})`);
   if (!spec.fichier || spec.fichier.includes('..') || spec.fichier.startsWith('/')) throw new Error(`${id} : fichier hors du paquet`);
-  return { id, paquet: spec.paquet, version, fichier: spec.fichier };
+  return { id, paquet: spec.paquet, version, fichier: spec.fichier, ...(spec.licenceDansLeFichier === true ? { licenceDansLeFichier: true } : {}) };
 }
 
 // L'entrée du catalogue d'une bibliothèque, d'après les octets du fichier du paquet.
@@ -222,20 +222,21 @@ async function generateAssembled(root, item, packagesDir, work, log, pin) {
 
 // La licence d'une bibliothèque qui est le fichier d'un paquet : le même LICENCES.txt que celui d'un fichier assemblé (la licence du paquet et, s'il en livre un, son NOTICE).
 // Seuls ces fichiers et le package.json du paquet sont tirés de l'archive.
-function packLicences(item, packagesDir, work) {
+function packLicences(item, packagesDir, work, bytes = null) {
   const archive = archiveOf(item.paquet, item.version, packagesDir, work);
   const names = execFileSync('tar', ['-tzf', archive], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 }).split('\n');
-  const wanted = ['package/package.json', ...names.filter(name => /^package\/(licen[cs]e|notice)(\.(md|txt))?$/i.test(name))];
+  const wanted = ['package/package.json', ...names.filter(name => /^package\/(licen[cs]e|notice)(\.(md|markdown|txt))?$/i.test(name))];
   const dir = join(work, `${item.id}-licences`);
   const target = join(dir, 'node_modules', ...item.paquet.split('/'));
   mkdirSync(target, { recursive: true });
   execFileSync('tar', ['-xzf', archive, '-C', target, '--strip-components=1', ...wanted]);
-  return licencesText({ id: item.id, version: item.version, paquets: [{ paquet: item.paquet, version: item.version }] }, dir);
+  const enTete = item.licenceDansLeFichier && bytes ? { enTete: bytes } : {};
+  return licencesText({ id: item.id, version: item.version, paquets: [{ paquet: item.paquet, version: item.version, ...enTete }] }, dir);
 }
 
 function generateScript(root, item, packagesDir, work, log) {
   const bytes = packFile(item.paquet, item.version, item.fichier, packagesDir, work);
-  const licences = packLicences(item, packagesDir, work);
+  const licences = packLicences(item, packagesDir, work, bytes);
   if (licences.problems.length) throw new Error(`${item.id} : pas de licence à poser avec la copie :\n  - ${licences.problems.join('\n  - ')}`);
   const entry = buildEntry(item, bytes);
   writeVendored(root, entry.vendorise.chemin, bytes);

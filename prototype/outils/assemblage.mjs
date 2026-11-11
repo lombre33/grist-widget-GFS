@@ -136,22 +136,27 @@ export async function assembleFile(item, workDir, esbuild) {
   return { bytes: Buffer.from(result.outputFiles[0].contents), problems: bundleProblems(item, result.metafile, workDir) };
 }
 
+// Un paquet qui ne livre aucun fichier de licence (qrcode-generator) peut le dire dans la liste (`licenceDansLeFichier`) : l'avis est alors l'en-tête du fichier
+// servi lui-même, et il doit nommer la licence que le paquet déclare. `bytes` : le fichier servi.
+const headerCarries = (bytes, declared) => Boolean(declared) && /licen[cs]e/i.test(bytes.subarray(0, 4000).toString('utf8')) && bytes.subarray(0, 4000).toString('utf8').toLowerCase().includes(String(declared).toLowerCase());
+
 // Les licences des paquets contenus : le texte de chaque fichier de licence, recopié tel quel, à côté du fichier assemblé (les licences MIT demandent que
 // l'avis accompagne toute copie). Rend { text, problems } : un paquet sans fichier de licence ou sans licence déclarée est un écart.
 export function licencesText(item, workDir) {
   const problems = [];
-  const blocks = item.paquets.map(({ paquet, version }) => {
+  const blocks = item.paquets.map(({ paquet, version, enTete }) => {
     const dir = join(workDir, 'node_modules', paquet);
     const names = existsSync(dir) ? readdirSync(dir) : [];
-    const file = names.find(name => /^licen[cs]e(\.(md|txt))?$/i.test(name));
-    const notice = names.find(name => /^notice(\.(md|txt))?$/i.test(name));
+    const file = names.find(name => /^licen[cs]e(\.(md|markdown|txt))?$/i.test(name));
+    const notice = names.find(name => /^notice(\.(md|markdown|txt))?$/i.test(name));
     const declared = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).license;
-    if (!file) problems.push(`${paquet} : pas de fichier de licence dans le paquet`);
+    if (!file && !enTete) problems.push(`${paquet} : pas de fichier de licence dans le paquet`);
+    if (!file && enTete && !headerCarries(enTete, declared)) problems.push(`${paquet} : pas de fichier de licence dans le paquet, et l'en-tête du fichier servi ne nomme pas la licence déclarée (${declared})`);
     if (!declared) problems.push(`${paquet} : licence non déclarée dans le paquet`);
     const bar = '='.repeat(72);
     const text = name => readFileSync(join(dir, name), 'utf8').trim();
     // Apache 2.0 (article 4, d) : la copie redistribuée porte aussi le texte du fichier NOTICE du paquet, quand il en livre un (ECharts).
-    return `${bar}\n${paquet}@${version} · ${declared || '?'}\n${bar}\n\n${file ? text(file) : ''}\n${notice ? `\nNOTICE\n\n${text(notice)}\n` : ''}`;
+    return `${bar}\n${paquet}@${version} · ${declared || '?'}\n${bar}\n\n${file ? text(file) : (enTete ? 'Le paquet ne livre pas de fichier de licence : l\'avis de droit d\'auteur et la licence sont l\'en-tête du fichier servi, recopié tel quel.' : '')}\n${notice ? `\nNOTICE\n\n${text(notice)}\n` : ''}`;
   });
   const head = `Licences des paquets contenus dans ${item.id}@${item.version} (liste de GFS : bibliotheques/package.json).\nChaque texte est celui du fichier de licence livré avec le paquet, recopié par outils/bibliotheques.mjs.\n\n`;
   return { text: head + blocks.join('\n'), problems };

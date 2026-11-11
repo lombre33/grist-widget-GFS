@@ -456,6 +456,21 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     licence, ou sans licence déclarée, ne se vendorise pas : l'outil s'arrête en le disant. `--verifier` contrôle que ce fichier est
     là et nomme chaque paquet de la copie (Plotly en a un depuis cette date).
 
+14. [D] **Les copies figées des bibliothèques natives d'une app, chez GFS** (choix du porteur, 11/11 : « chez GFS, comme pour Plotly » ; étude
+    `docs/etude-cdn-ou-copie.md`). La liste de l'app dit toujours quelles bibliothèques elle emploie (point 4, confirmé le 14/10) ; GFS en
+    garde en plus une copie figée, que le porteur peut choisir à la place du CDN, fonction par fonction (5.2, point 5 : à venir avec la
+    fenêtre). Dans la liste de GFS, une telle entrée porte `natifDe` (l'id de l'app) et la même forme que les autres (`paquet`, `fichier`) ;
+    **sa version suit celle de l'app, jamais celle de Dependabot** (`.github/dependabot.yml` les ignore, un essai de `test/hygiene.test.mjs`
+    le garde) : l'app monte sa version, le dit dans « Changements qui touchent GFS » de sa page d'état, et GFS réécrit sa copie dans le lot
+    qui lit la demande. Le catalogue donne à chacune la copie (`vendorise`) et, comme pour toute entrée de paquet npm, l'adresse jsDelivr du
+    même fichier (`cdn`) ; **une app ne reçoit jamais cette adresse** : son CDN, en mode CDN, est le sien (celui que sa CSP nomme déjà), la
+    copie de GFS passe par `'self'`. Publipostage+ en a neuf (`docx`, `docx-charts`, `exceljs`, `jszip`, `marked`, `pdf-lib`, `pdfmake`,
+    `pdfmake-polices`, `qrcode-generator`), 5,0 Mo de plus dans `vendor/`. **Deux licences que l'outil ne lisait pas** : JSZip livre
+    `LICENSE.markdown` (le nom est maintenant reconnu) ; `qrcode-generator` ne livre aucun fichier de licence, l'avis MIT est l'en-tête de
+    `qrcode.js` : la liste le dit (`licenceDansLeFichier: true`), l'outil vérifie que l'en-tête nomme la licence que le paquet déclare et le
+    dit dans `LICENCES.txt`. L'éditeur (TipTap, ProseMirror) n'est pas dans ce lot : sa copie est une carte d'importation, pas un fichier
+    (étude, §5). [M]
+
 ### 2.7 Les actions acceptées
 
 ```json

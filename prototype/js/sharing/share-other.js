@@ -53,8 +53,12 @@ function buildTab({ deps, links, open, engine, said }, file, state) {
       const blocked = why || deps.writeBlock();
       if (blocked) return { ok: false, message: blocked };
       try {
+        if (folder && level !== 'live') await deps.following.unfollow(link.id, file.path); // d'abord : le suivi ne doit pas rajouter ce que la personne retire
         if (folder && level !== 'none') await writeFolderName(deps.docApi(), rows, label);
         const done = await applyLevel(await engine(), link, ids || file.id, level);
+        // « Copie à jour » suit le dossier : un fichier ajouté ensuite part tout seul (js/share-follow.js). Sans la table du rangement, rien ne se retient : la
+        // personne le sait.
+        if (folder && level === 'live' && !(await deps.following.follow(link.id, file.path, ids))) return { ok: true, note: t('so.follow.off') };
         if (!done.later) return { ok: true };
         const doc = link.doc.name || link.name;
         void done.later.then(() => deps.notice(t('so.once.done', { name: file.name, doc })), async error => deps.notice(await said(error)));
@@ -115,6 +119,7 @@ export function createOtherDocuments(deps) {
 
   return {
     receive,
+    engine,
     link: () => open(null),
     entry() {
       const blocked = deps.writeBlock();

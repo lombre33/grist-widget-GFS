@@ -36,6 +36,7 @@ import { arrivalTableApp } from './broker/arrival-table.js';
 import { Rangement, TableDeclined } from './files/rangement.js';
 import { RightsControl } from './rights/rights-control.js';
 import { createOtherDocuments } from './sharing/share-other.js';
+import { createFollower } from './sharing/share-follow.js';
 import { resumeSharing } from './sharing/sync-resume.js';
 import { whenReceived } from './sharing/sync-service.js';
 import { WeightControl } from './weight/weight-control.js';
@@ -146,6 +147,12 @@ export class GfsController {
       t: this.t, container: this.$('stage'), inertTargets: this.inertTargets, docApi: () => this.grist.docApi, transfer: this.transfer,
       language: () => this.lang, notice: text => this.notice(text), writeBlock: () => this.#writeBlock(),
         files: () => (this.explorer ? this.explorer.files : []),
+      following: { follow: (link, path, ids) => this.rangement.follow(link, path, ids), unfollow: (link, path) => this.rangement.unfollow(link, path) },
+    });
+    // Les dossiers partagés « à jour » (js/share-follow.js) : à chaque lecture des fichiers, la condition du lien suit le contenu du dossier.
+    this.followFolders = createFollower({
+      rangement: this.rangement, writeBlock: () => this.#writeBlock(), isOwner: () => this.transfer.isOwner(), engine: () => this.otherDocuments.engine(),
+        docApi: () => this.grist.docApi,
     });
     this.rights = new RightsControl({
       port: this.port, transfer: this.transfer, manifests: this.manifests, now: () => Date.now(), container: this.$('stage'),
@@ -423,6 +430,7 @@ export class GfsController {
     onLoaded: ({ files, trash, folders, received, spaces, problems, stats }) => {
       this.spaces = spaces;
       this.explorer.setFiles(files, trash, folders, received);
+      void this.followFolders(files);
       this.openedBar.sync(); // un fichier renommé, ou disparu, change le compte de la barre
       this.#fileStatus = { loading: false, restricted: false, problems: problems.map(item => ({ key: 'ex.readFailed', app: item.app, reason: item.reason })) };
       this.#showFileStatus();

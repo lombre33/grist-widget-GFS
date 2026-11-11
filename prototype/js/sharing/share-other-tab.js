@@ -18,7 +18,7 @@ function levelItems(ctx, link, level) {
   const { t } = ctx;
   return [
     { label: t('so.level.once'), icon: 'copy', hint: word(ctx, 'so.level.once.hint'), run: () => void ctx.setLevel(link, 'once') },
-    { label: t('so.level.live'), icon: 'link', hint: t('so.level.live.hint'), check: level === 'live', run: () => void ctx.setLevel(link, 'live') },
+    { label: t('so.level.live'), icon: 'link', hint: word(ctx, 'so.level.live.hint'), check: level === 'live', run: () => void ctx.setLevel(link, 'live') },
     '-',
     { label: t('so.level.stop'), icon: 'x', hint: t('so.level.stop.hint'), greyed: level === 'none',
       run: () => (level === 'none' ? ctx.say(word(ctx, 'so.level.stop.why')) : void ctx.setLevel(link, 'none')) },

@@ -1,9 +1,9 @@
-// La table du document où GFS retient ce qui vaut pour tout le document et le rangement des fichiers : `GFS_Rangement` (contrats 6.4). Trois sortes de lignes :
-// la ligne réservée des apps installées (`@document` / `gfs` / `apps`, la valeur en JSON dans `Valeur`, contrats 7.4), la ligne-sonde qui apprend à GFS
-// l'adresse de la personne (`@sonde`, ajoutée puis retirée aussitôt, 6.4 point 6) et une ligne par (personne, app, fichier) qui a un favori ou un dossier (6.4,
-// point 1). GFS seul l'écrit, par sa propre connexion à Grist. Les règles d'une table de GFS (lire ne crée rien, 7.4 point 6 ; écrire relit d'abord et ne crée
-// la table qu'avec l'accord de la personne, 6.2 point 1 ; l'identifiant réel relu après `AddTable`, 6.2 point 2 ; une colonne absente ajoutée avant d'être
-// écrite, 6.1 point 3) sont celles de `OwnTable` (js/files/own-table.js).
+// La table du document où GFS retient ce qui vaut pour tout le document et le rangement des fichiers : `GFS_Rangement` (contrats 6.4). Quatre sortes de lignes
+// (la dernière, les dossiers suivis, plus bas) : la ligne réservée des apps installées (`@document` / `gfs` / `apps`, la valeur en JSON dans `Valeur`, contrats
+// 7.4), la ligne-sonde qui apprend à GFS l'adresse de la personne (`@sonde`, ajoutée puis retirée aussitôt, 6.4 point 6) et une ligne par (personne, app,
+// fichier) qui a un favori ou un dossier (6.4, point 1). GFS seul l'écrit, par sa propre connexion à Grist. Les règles d'une table de GFS (lire ne crée rien,
+// 7.4 point 6 ; écrire relit d'abord et ne crée la table qu'avec l'accord de la personne, 6.2 point 1 ; l'identifiant réel relu après `AddTable`, 6.2 point 2 ;
+// une colonne absente ajoutée avant d'être écrite, 6.1 point 3) sont celles de `OwnTable` (js/files/own-table.js).
 
 import { OwnTable, TableDeclined } from './own-table.js';
 
@@ -23,6 +23,12 @@ export const COLUMNS = Object.freeze([
 ]);
 // Les colonnes sans lesquelles la ligne réservée ne s'écrit pas, puis celles d'une ligne de rangement.
 const REQUIRED = Object.freeze(['Utilisateur', 'App', 'Fichier', 'Valeur']);
+// Les dossiers partagés « à jour » avec un document relié (11/11) : une ligne par (personne, document relié, dossier), `App` = FOLLOW_APP, `Fichier` = l'export
+// du lien, `Dossier` = le chemin, `Valeur` = la liste JSON des fichiers du dossier au dernier passage (js/share-follow.js). Ni un fichier rangé ni un dossier
+// gardé : `readGfsFiling` ne trouve aucun fichier sous cette app.
+export const FOLLOW_APP = 'gfs-suivi';
+const FOLLOW = Object.freeze(['Utilisateur', 'App', 'Fichier', 'Dossier', 'Valeur']);
+const followKey = (identity, link, path) => ({ Utilisateur: identity, App: FOLLOW_APP, Fichier: String(link), Dossier: path });
 const FILING = Object.freeze(['Utilisateur', 'App', 'Fichier', 'Favori', 'Dossier']);
 
 const ANONYMOUS = 'anon@getgrist.com'; // l'adresse que Grist donne à quiconque n'est pas connecté
@@ -38,6 +44,12 @@ function addressOf(value) {
 function parseValue(text) {
   if (typeof text !== 'string' || !text.trim()) return null;
   try { return JSON.parse(text); } catch (error) { return null; }
+}
+
+// Une liste JSON de textes (les fichiers d'un dossier suivi), ou [] quand la cellule n'en est pas une.
+function parseList(text) {
+  const value = parseValue(text);
+  return Array.isArray(value) ? value.map(String) : [];
 }
 
 // La ligne de `data` (une table telle que `fetchTable` la rend) dont les colonnes valent `values`, ou -1.
@@ -145,6 +157,43 @@ export class Rangement {
     await this.#port.doc.applyUserActions([at >= 0 ? ['UpdateRecord', tableId, data.id[at], record] :
       ['AddRecord', tableId, null, { ...RESERVED, ...record }]]);
     return next;
+  }
+
+  // Les dossiers que la personne partage « à jour » : [{ link, path, ids }] (`ids` : les fichiers du dossier au dernier passage). Sans table, ou sans la
+  // colonne des valeurs : rien.
+  async followed() {
+    const { exists, columns, data } = await this.#table.load();
+    if (!exists || FOLLOW.some(column => !columns.includes(column))) return [];
+    await this.identify();
+    const identity = this.identity;
+    return data.id.map((rowId, i) => ({ user: data.Utilisateur[i], app: data.App[i], link: String(data.Fichier[i] || ''), path: String(data.Dossier[i] || ''),
+      ids: parseList(data.Valeur[i]) }))
+      .filter(row => row.user === identity && row.app === FOLLOW_APP && row.link && row.path).map(({ link, path, ids }) => ({ link, path, ids }));
+  }
+
+  // Suit le dossier `path` pour le lien `link` (ou met à jour ses fichiers, `ids`). Sans la table du rangement, rien n'est écrit et rien n'est demandé (un
+  // dossier d'espace peut n'en avoir aucune) : rend false.
+  async follow(link, path, ids) {
+    const state = await this.#table.existing(FOLLOW);
+    if (!state) return false;
+    await this.identify();
+    const key = followKey(this.identity, link, path);
+    const at = findRow(state.data, key);
+    const record = { Valeur: JSON.stringify(ids) };
+    const tableId = this.#table.id;
+    await this.#port.doc.applyUserActions([at >= 0 ? ['UpdateRecord', tableId, state.data.id[at], record] :
+      ['AddRecord', tableId, null, { ...key, ...record }]]);
+    return true;
+  }
+
+  // Ne suit plus le dossier `path` pour le lien `link` (ses lignes s'en vont). Rend le nombre de lignes retirées.
+  async unfollow(link, path) {
+    const { exists, data } = await this.#table.load();
+    if (!exists) return 0;
+    await this.identify();
+    const rows = rowsOf(data, followKey(this.identity, link, path));
+    if (rows.length) await this.#port.doc.applyUserActions(rows.map(rowId => ['RemoveRecord', this.#table.id, rowId]));
+    return rows.length;
   }
 
   // La table du rangement telle qu'elle est, sans la créer ni poser de question : null quand elle manque ou qu'une colonne du rangement lui manque (aucune

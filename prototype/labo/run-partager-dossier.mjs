@@ -7,6 +7,8 @@
 //      nom du dossier, sans nouveau code, Facture reste sans dossier ; rouvert, GFS de l'autre montre le dossier « Contrats » grisé, « 2 à accepter » ;
 //   3. « Arrêter la copie » : le dossier sort de la condition (Facture reste), les copies restent chez l'autre avec leur dossier ; les noms RESTENT écrits chez l'envoyeur (effacés, ils partaient chez l'autre avec l'archive) ;
 //   4. un fichier du dossier partagé à part : le dossier est « Une partie du dossier » ; « Copie à jour » complète le dossier ;
+//   4 bis. le dossier est suivi (une ligne `gfs-suivi` du rangement) : un PDF déplacé dans le dossier entre tout seul dans la condition avec le nom du dossier, arrive chez l'autre grisé ; à la corbeille, il sort de la
+//      condition et sa copie reste chez l'autre en archive ;
 //   5. « Une copie, une fois » : les fichiers repartent puis sortent de la condition tout seuls, la copie garde son dossier ;
 //   6. la console reste muette.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark. REPO_DIR="$(realpath ../..)" node run-partager-dossier.mjs
@@ -205,6 +207,42 @@ try {
   check('« Copie à jour » complète le dossier : les deux fichiers portent « Contrats »', completed['Contrat.pdf'] === 'Contrats' && completed['Avenant.pdf'] === 'Contrats', completed);
   await closeAll(page, frame);
 
+  say('--- 4 bis. le dossier est suivi ---');
+  const follows = async () => (await source.rest.rows('GFS_Rangement')).filter(row => row.App === 'gfs-suivi');
+  check('« Copie à jour » sur le dossier a retenu qu\'il est suivi (une ligne du rangement, ses deux fichiers)', (await follows()).length === 1 && (await follows())[0].Dossier === 'Contrats' && JSON.parse((await follows())[0].Valeur).length === 2, await follows());
+  await importPdf(page, frame, pdfFile('Annexe.pdf', 1, 'Annexe').file);
+  await waitForNames(frame, ['Annexe.pdf', 'Devis.pdf', 'Facture.pdf']);
+  await openRowMenu(frame, 'Annexe.pdf');
+  await frame.getByRole('menuitem', { name: new RegExp(`^${t('ex.move')}`) }).click();
+  await frame.locator('[data-fk="move-Contrats"]').click();
+  await frame.locator('.mod').waitFor({ state: 'detached' }).catch(() => {});
+  const followed = await waitSource(now => now['Annexe.pdf'] === 'Contrats');
+  check('Annexe, déplacée dans le dossier, porte son nom sans rien demander à la personne', followed['Annexe.pdf'] === 'Contrats', followed);
+  rows = await until(list => has(list, 'Annexe.pdf'));
+  check('Annexe arrive chez l\'autre avec son contenu et son dossier, les autres n\'ont pas bougé', has(rows, 'Annexe.pdf') && folderOf(rows, 'Annexe.pdf') === 'Contrats' && rows.length === 4, rows.map(row => [row.Nom, row[FOLDER]]));
+  await goHome(frame);
+  await openFolderShare(frame, 'Contrats');
+  check('le dossier est « Copie à jour » avec ses trois fichiers, Facture en plus dans la condition', (await level(frame)) === 'live' && (await text(frame, '.mod.sh .rr[data-link]')).includes(t('so.link.sub', { n: 4 })), await text(frame, '.mod.sh .rr[data-link]'));
+  await closeAll(page, frame);
+  await folderRow(frame, 'Contrats').dblclick();
+  await openRowMenu(frame, 'Annexe.pdf');
+  await frame.getByRole('menuitem', { name: new RegExp(`^${t('trash.move')}`) }).click();
+  const confirm = frame.locator('[data-fk="ask-yes"]');
+  if (await confirm.count()) await confirm.click();
+  await frame.locator('.ls-row:not(.folder)').filter({ hasText: 'Annexe.pdf' }).waitFor({ state: 'detached', timeout: 20000 });
+  let sub = '';
+  for (let i = 0; i < 30 && !sub.includes(t('so.link.sub', { n: 3 })); i += 1) {
+    await goHome(frame);
+    await openFolderShare(frame, 'Contrats');
+    sub = await text(frame, '.mod.sh .rr[data-link]');
+    await closeAll(page, frame);
+    if (!sub.includes(t('so.link.sub', { n: 3 }))) await page.waitForTimeout(1500);
+  }
+  check('Annexe, à la corbeille, sort de la condition (trois fichiers restent)', sub.includes(t('so.link.sub', { n: 3 })), sub);
+  rows = await until(list => list.filter(row => row.Nom === 'Annexe.pdf' && row.Supprimee_a_la_source).length === 1, 30);
+  check('sa copie reste chez l\'autre, marquée « supprimée à la source », avec son dossier', has(rows, 'Annexe.pdf') && folderOf(rows, 'Annexe.pdf') === 'Contrats' && rows.filter(row => row.Supprimee_a_la_source).length === 1, rows.map(row => [row.Nom, row[FOLDER], row.Supprimee_a_la_source]));
+  await goHome(frame);
+
   say('--- 5. « Une copie, une fois » ---');
   await goHome(frame);
   await openFolderShare(frame, 'Contrats');
@@ -222,6 +260,7 @@ try {
     out = (await level(frame)) === 'none';
     if (!out) await page.waitForTimeout(1500);
   }
+  check('le dossier n\'est plus suivi (la ligne du rangement s\'en est allée)', (await follows()).length === 0, await follows());
   check('les deux fichiers sont sortis de la condition tout seuls (le dossier est « Pas partagé »), Facture y est restée', out && (await text(frame, '.mod.sh .rr[data-link]')).includes(t('so.link.sub', { n: 1 })), await text(frame, '.mod.sh .rr[data-link]'));
   rows = await until(() => false, 4);
   check('la copie garde son dossier chez l\'autre', has(rows, 'Contrat.pdf') && folderOf(rows, 'Contrat.pdf') === 'Contrats' && folderOf(rows, 'Avenant.pdf') === 'Contrats', rows.map(row => [row.Nom, row[FOLDER]]));
@@ -229,7 +268,7 @@ try {
 
   say('--- 6. la console ---');
   check('aucune erreur de GFS dans la console', unexpected(source).length === 0 && unexpected(target).length === 0, [...unexpected(source), ...unexpected(target)]);
-  check('rien d\'autre n\'a bougé chez l\'envoyeur : les PDF sont intacts', (await source.rest.rows('GFS_Fichiers')).map(row => row.Nom).sort().join() === 'Avenant.pdf,Contrat.pdf,Devis.pdf,Facture.pdf' && (await webhooks(source)) === 1);
+  check('rien d\'autre n\'a bougé chez l\'envoyeur : les cinq PDF sont là (Annexe à la corbeille), un seul lien', (await source.rest.rows('GFS_Fichiers')).map(row => row.Nom).sort().join() === 'Annexe.pdf,Avenant.pdf,Contrat.pdf,Devis.pdf,Facture.pdf' && (await webhooks(source)) === 1);
   if (races.length) say(`(courses connues, faits vérifiés 71 : ${races.length})`);
 } finally {
   await browser.close();

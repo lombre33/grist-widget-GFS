@@ -1,5 +1,6 @@
-// Les textes de « Envoyer à un autre document Grist » (js/share-other-window.js ; maquette du 09/11), en français et en anglais dans le même lot. Ils rejoignent js/i18n.js ; le fichier est à part pour que
-// i18n.js reste sous les 600 lignes de code de l'outil d'audit. Les messages d'erreur d'un code ou d'un lien (autre instance, autre document, invitation périmée…) sont ceux du moteur (kit/js/synchro/textes.js).
+// Les textes de « Envoyer à un autre document Grist » (js/share-other-window.js ; maquette du 09/11), en français et en anglais dans le même lot. Ils
+// rejoignent js/i18n.js ; le fichier est à part pour que i18n.js reste sous les 600 lignes de code de l'outil d'audit. Les messages d'erreur d'un code ou d'un
+// lien (autre instance, autre document, invitation périmée…) sont ceux du moteur (kit/js/synchro/textes.js).
 
 export const SHARE_OTHER_STRINGS = Object.freeze({
   fr: {

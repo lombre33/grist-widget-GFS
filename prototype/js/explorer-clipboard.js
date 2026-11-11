@@ -1,7 +1,9 @@
-// Le presse-papiers de l'explorateur (décision du porteur, 04/11 : tout se fait depuis l'explorateur, au clavier aussi) : Ctrl+C copie un fichier, Ctrl+X coupe un fichier ou un dossier, Ctrl+V colle dans le
-// dossier ouvert. Copier-coller fait une copie du fichier dans ce dossier (js/copying.js) ; couper-coller le déplace (js/filing.js), sans rien dupliquer ; l'un et l'autre se font dans les dossiers de la
-// personne (« Moi » et ses sous-dossiers), pas dans Récents, Favoris ou la corbeille. Ce n'est pas le presse-papiers du système : rien n'y est écrit, et rien n'en est lu. Un dossier se coupe, il ne se copie
-// pas. Ce module garde ce qui est copié ou coupé (jusqu'à la fermeture de l'explorateur) et dit ce qui s'est passé ; l'explorateur (js/explorer.js) sait quelle ligne la personne vise et où elle est. Le glisser-déposer (js/explorer-drag.js) déplace par `moveTo`, avec les mêmes phrases.
+// Le presse-papiers de l'explorateur (décision du porteur, 04/11 : tout se fait depuis l'explorateur, au clavier aussi) : Ctrl+C copie un fichier, Ctrl+X coupe
+// un fichier ou un dossier, Ctrl+V colle dans le dossier ouvert. Copier-coller fait une copie du fichier dans ce dossier (js/copying.js) ; couper-coller le
+// déplace (js/filing.js), sans rien dupliquer ; l'un et l'autre se font dans les dossiers de la personne (« Moi » et ses sous-dossiers), pas dans Récents,
+// Favoris ou la corbeille. Ce n'est pas le presse-papiers du système : rien n'y est écrit, et rien n'en est lu. Un dossier se coupe, il ne se copie pas. Ce
+// module garde ce qui est copié ou coupé (jusqu'à la fermeture de l'explorateur) et dit ce qui s'est passé ; l'explorateur (js/explorer.js) sait quelle ligne
+// la personne vise et où elle est. Le glisser-déposer (js/explorer-drag.js) déplace par `moveTo`, avec les mêmes phrases.
 
 const lastPart = path => path.split('/').pop();
 
@@ -9,7 +11,8 @@ export class Clipboard {
   #opts;
   #held = null; // { mode: 'copy' | 'cut', key, name } : le fichier ou le dossier copié ou coupé, ou null
 
-  // opts : { t, notice(texte), appName(id), file(key) -> le fichier vivant de la liste, ou undefined, where() -> { view, path } (où est la personne), reveal(key) (met la ligne au clavier quand elle y est),
+  // opts : { t, notice(texte), appName(id), file(key) -> le fichier vivant de la liste, ou undefined, where() -> { view, path } (où est la personne),
+  //   reveal(key) (met la ligne au clavier quand elle y est),
   //          copying: { handles(fichier), copy(fichier, dossier) -> Promise<{ key } | null> } (js/copying.js),
   //          filing: { moveFileTo(fichier, dossier), moveFolderTo(chemin, dossier) } (js/filing.js : 'moved' | 'same' | 'inside' | 'gone' | rien) }
   constructor(opts) {
@@ -19,10 +22,12 @@ export class Clipboard {
   // Ce que la personne a copié ou coupé, ou null.
   get held() { return this.#held; }
 
-  // On n'a plus rien de copié ni de coupé : l'explorateur se ferme, et ce qui était à coller a pu changer pendant que la personne était dans une app (le fichier supprimé, renommé, déjà ailleurs).
+  // On n'a plus rien de copié ni de coupé : l'explorateur se ferme, et ce qui était à coller a pu changer pendant que la personne était dans une app (le
+  // fichier supprimé, renommé, déjà ailleurs).
   clear() { this.#held = null; }
 
-  // Ctrl+C (`mode` 'copy') ou Ctrl+X (`mode` 'cut') sur la ligne `key` (un fichier, ou un dossier : « dir:chemin »). Un fichier qu'aucun gardien ne copie, ou un dossier, ne se copie pas : la phrase dit pourquoi.
+  // Ctrl+C (`mode` 'copy') ou Ctrl+X (`mode` 'cut') sur la ligne `key` (un fichier, ou un dossier : « dir:chemin »). Un fichier qu'aucun gardien ne copie, ou
+  // un dossier, ne se copie pas : la phrase dit pourquoi.
   take(key, mode) {
     const { t, notice, appName, copying, file, where } = this.#opts;
     if (where().view === 'trash') { notice(t('clip.inTrash')); return; }
@@ -45,7 +50,8 @@ export class Clipboard {
     if (!held) { notice(t('clip.empty')); return; }
     const { view, path } = where();
     if (view !== 'folder') { notice(t('clip.noFolder')); return; }
-    if (held.key.startsWith('dir:')) { this.#moved(held, await filing.moveFolderTo(held.key.slice(4), path), path, `dir:${path ? `${path}/` : ''}${held.name}`); return; }
+    if (held.key.startsWith('dir:')) {
+      this.#moved(held, await filing.moveFolderTo(held.key.slice(4), path), path, `dir:${path ? `${path}/` : ''}${held.name}`); return; }
     const found = file(held.key);
     if (!found) { this.#held = null; notice(t('clip.gone', { name: held.name })); return; }
     if (held.mode === 'cut') { this.#moved(held, await filing.moveFileTo(found, path), path, held.key); return; }
@@ -53,8 +59,9 @@ export class Clipboard {
     if (made) reveal(made.key);
   }
 
-  // Le glisser-déposer (js/explorer-drag.js) : la ligne `key` (un fichier, ou un dossier : « dir:chemin ») va dans le dossier `path`, comme après un couper-coller mais sans le presse-papiers : ce qui est coupé
-  // reste coupé. La phrase dit ce qui s'est passé. Un fichier qui n'est plus dans la liste n'est pas déplacé (la liste dit la vérité).
+  // Le glisser-déposer (js/explorer-drag.js) : la ligne `key` (un fichier, ou un dossier : « dir:chemin ») va dans le dossier `path`, comme après un
+  // couper-coller mais sans le presse-papiers : ce qui est coupé reste coupé. La phrase dit ce qui s'est passé. Un fichier qui n'est plus dans la liste n'est
+  // pas déplacé (la liste dit la vérité).
   async moveTo(key, path) {
     const { t, filing, file } = this.#opts;
     const folder = key.startsWith('dir:');
@@ -65,12 +72,14 @@ export class Clipboard {
     this.#moved({ key, name }, result, path, folder ? `dir:${path ? `${path}/` : ''}${name}` : key, 'drag.gone');
   }
 
-  // La phrase d'un déplacement : `result` est ce que js/filing.js rend (rien : le rangement n'a pas pu s'écrire, il l'a dit). Un fichier ou un dossier déplacé n'est plus à coller (`held` : { key, name }).
+  // La phrase d'un déplacement : `result` est ce que js/filing.js rend (rien : le rangement n'a pas pu s'écrire, il l'a dit). Un fichier ou un dossier déplacé
+  // n'est plus à coller (`held` : { key, name }).
   #moved(held, result, folder, key, gone = 'clip.gone') {
     const { t, notice, reveal } = this.#opts;
     if (!result) return;
     const sentences = {
-      moved: () => t('clip.moved', { name: held.name, folder: folder || t('ex.me') }), same: () => t('clip.same', { name: held.name }), inside: () => t('clip.folderInto'), gone: () => t(gone, { name: held.name }),
+      moved: () => t('clip.moved', { name: held.name, folder: folder || t('ex.me') }), same: () => t('clip.same', { name: held.name }),
+        inside: () => t('clip.folderInto'), gone: () => t(gone, { name: held.name }),
     };
     notice(sentences[result]());
     if ((result === 'moved' || result === 'gone') && this.#held && this.#held.key === held.key) this.#held = null;

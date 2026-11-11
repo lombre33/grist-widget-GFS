@@ -38,7 +38,9 @@ export function askName({ container, inertTargets, t, title, label, value, confi
 // Les articles de la liste : « Moi » (la racine), les dossiers, et le nouveau dossier que dit la recherche quand aucun dossier ne porte ce nom.
 function folderItems({ t, folders, base, query, clean }) {
   const needles = words(query);
-  const all = [{ path: '', label: t('ex.me'), glyph: 'user' }, ...folders.map(path => ({ path, label: path.split('/').map((part, at) => (at ? part : (path.split('/')[0] === SPACES_ROOT ? t('ex.spaces') : part))).join(' / '), glyph: path.split('/')[0] === SPACES_ROOT ? 'users' : 'folder' }))];
+  const all = [{ path: '', label: t('ex.me'), glyph: 'user' }, ...folders.map(path =>
+    ({ path, label: path.split('/').map((part, at) => (at ? part : (path.split('/')[0] === SPACES_ROOT ? t('ex.spaces') : part))).join(' / '),
+    glyph: path.split('/')[0] === SPACES_ROOT ? 'users' : 'folder' }))];
   const found = all.filter(item => matchesWords(needles, normalize(item.label)));
   const name = clean(query);
   const path = name ? (base ? `${base}/${name}` : name) : '';
@@ -48,9 +50,11 @@ function folderItems({ t, folders, base, query, clean }) {
   return found;
 }
 
-// opts : { container, inertTargets, t, title, folders: [chemin], current (le dossier où est l'objet), base (le dossier où naît un nouveau dossier), clean(texte) -> nom }.
+// opts : { container, inertTargets, t, title, folders: [chemin], current (le dossier où est l'objet), base (le dossier où naît un nouveau dossier),
+//   clean(texte) -> nom }.
 export function chooseFolder({ container, inertTargets, t, title, folders, current, base, clean }) {
-  const search = h('input', { type: 'search', autocomplete: 'off', placeholder: t('ex.moveSearch'), 'aria-label': t('ex.moveSearch'), dataset: { fk: 'move-search' } });
+  const search = h('input', { type: 'search', autocomplete: 'off', placeholder: t('ex.moveSearch'), 'aria-label': t('ex.moveSearch'),
+    dataset: { fk: 'move-search' } });
   const list = h('ul', { class: 'wk-list', 'aria-labelledby': 'mv-title' });
   const note = h('p', { class: 'mod-note', 'aria-live': 'polite' });
   const cancel = h('button', { type: 'button', class: 'btn', dataset: { fk: 'move-cancel' } }, t('table.cancel'));
@@ -65,9 +69,11 @@ export function chooseFolder({ container, inertTargets, t, title, folders, curre
     const found = folderItems({ t, folders, base, query: search.value, clean });
     shown = found.slice(0, SHOWN);
     list.replaceChildren(...shown.map((item, index) => h('li', { class: 'wk-row' },
-      h('button', { type: 'button', class: `wk-item${item.fresh ? ' is-fresh' : ''}`, dataset: { index: String(index), fk: `move-${item.fresh ? 'new' : item.path || 'root'}` },
+      h('button', { type: 'button', class: `wk-item${item.fresh ? ' is-fresh' : ''}`,
+        dataset: { index: String(index), fk: `move-${item.fresh ? 'new' : item.path || 'root'}` },
         'aria-current': !item.fresh && item.path === current ? 'true' : null },
-      icon(item.glyph), h('span', { class: 'wk-label' }, h('span', { class: 'wk-name' }, item.label)), !item.fresh && item.path === current ? icon('check') : null))));
+      icon(item.glyph), h('span', { class: 'wk-label' }, h('span', { class: 'wk-name' }, item.label)), !item.fresh &&
+        item.path === current ? icon('check') : null))));
     note.textContent = !found.length ? t('ex.moveNone') : (found.length > SHOWN ? t('work.more', { n: SHOWN, total: found.length }) : '');
   };
   search.addEventListener('input', render);

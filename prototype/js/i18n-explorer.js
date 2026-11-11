@@ -1,5 +1,6 @@
-// Les textes de l'explorateur de fichiers (« Mes fichiers » : titre, barre, arbre, liste, menus, messages, mode choix) et ceux des fichiers que GFS garde (`files.*`), sortis de js/i18n.js pour qu'il reste sous les
-// 600 lignes de code de l'outil d'audit. Même forme que les autres tables de textes (js/i18n-trash.js…) : js/i18n.js les étale dans le dictionnaire de chaque langue ; test/i18n.test.mjs les contrôle avec le reste.
+// Les textes de l'explorateur de fichiers (« Mes fichiers » : titre, barre, arbre, liste, menus, messages, mode choix) et ceux des fichiers que GFS garde
+// (`files.*`), sortis de js/i18n.js pour qu'il reste sous les 600 lignes de code de l'outil d'audit. Même forme que les autres tables de textes
+// (js/i18n-trash.js…) : js/i18n.js les étale dans le dictionnaire de chaque langue ; test/i18n.test.mjs les contrôle avec le reste.
 
 export const EXPLORER_STRINGS = {
   fr: {

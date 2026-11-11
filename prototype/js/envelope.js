@@ -34,8 +34,9 @@ export class EnvelopePeer {
     else if (msg.type === 'reponse' || msg.type === 'erreur') this.#answered(msg);
   }
 
-  // Un appel de GFS à l'app (`ouvrir`, `fermer` : contrats 5.1). Les ids sont ceux de GFS, à partir de 1, sans rapport avec ceux de l'app. La promesse attend la
-  // réponse, sans délai (la personne répond à l'app quand elle veut) ; une erreur de l'app la rejette avec son code ; elle est rejetée aussi si l'app se ferme avant.
+  // Un appel de GFS à l'app (`ouvrir`, `fermer` : contrats 5.1). Les ids sont ceux de GFS, à partir de 1, sans rapport avec ceux de l'app. La promesse attend
+  // la réponse, sans délai (la personne répond à l'app quand elle veut) ; une erreur de l'app la rejette avec son code ; elle est rejetée aussi si l'app se
+  // ferme avant.
   call(nom, args) {
     if (this.#closed) return Promise.reject(inactive());
     const id = this.#nextId++;
@@ -70,7 +71,8 @@ export class EnvelopePeer {
       const result = await this.#handlers[nom](isObject(args) ? args : {});
       if (answers) this.#out({ gfs: ENVELOPE, type: 'reponse', id, data: result === undefined ? null : result });
     } catch (error) {
-      if (answers) this.#out({ gfs: ENVELOPE, type: 'erreur', id, code: (error && error.code) || 'GFS_ERREUR', message: String((error && error.message) || 'Erreur') });
+      if (answers) this.#out({ gfs: ENVELOPE, type: 'erreur', id, code: (error && error.code) || 'GFS_ERREUR',
+        message: String((error && error.message) || 'Erreur') });
     }
   }
 

@@ -1,17 +1,20 @@
-// Poser et retirer des règles depuis le panneau « Permissions » (étape 7, lot a ; contrats 11.5) : relit les règles en place (un propriétaire prouvé seulement), fait le plan (js/rights-plan.js) et
-// l'envoie en UNE `applyUserActions`. Grist recharge alors la page de tout le monde, celle qui pose comprise (11.5, point 3) : avant d'écrire, GFS retient dans son navigateur (clé `gfs.reprise`, jamais
-// dans le document) qu'il doit rouvrir le panneau au retour, et le retire si l'écriture échoue.
+// Poser et retirer des règles depuis le panneau « Permissions » (étape 7, lot a ; contrats 11.5) : relit les règles en place (un propriétaire prouvé
+// seulement), fait le plan (js/rights-plan.js) et l'envoie en UNE `applyUserActions`. Grist recharge alors la page de tout le monde, celle qui pose comprise
+// (11.5, point 3) : avant d'écrire, GFS retient dans son navigateur (clé `gfs.reprise`, jamais dans le document) qu'il doit rouvrir le panneau au retour, et le
+// retire si l'écriture échoue.
 
 import { planShared, planRemoveLevel, planCloseStructure, planOpenStructure, planSharingFor, planUnsharing } from './rights-plan.js';
 
-const PLANS = { shared: planShared, 'remove-level': planRemoveLevel, close: planCloseStructure, open: planOpenStructure, sharing: planSharingFor, unsharing: planUnsharing };
+const PLANS = { shared: planShared, 'remove-level': planRemoveLevel, close: planCloseStructure, open: planOpenStructure, sharing: planSharingFor,
+  unsharing: planUnsharing };
 export const KINDS = Object.freeze(Object.keys(PLANS));
 export const RESUME_KEY = 'gfs.reprise';
 
 export class RightsWriter {
   #opts;
 
-  // opts : { port, reader, store } ; `store` : { read(), write(valeur | null) } sur la clé `gfs.reprise` du navigateur de GFS (js/stored-choice.js, `keyStore` : sans exception).
+  // opts : { port, reader, store } ; `store` : { read(), write(valeur | null) } sur la clé `gfs.reprise` du navigateur de GFS (js/stored-choice.js,
+  //   `keyStore` : sans exception).
   constructor(opts) { this.#opts = opts; }
 
   // Les quatre plans pour l'état du document (ou null quand GFS n'a pas pu le lire).

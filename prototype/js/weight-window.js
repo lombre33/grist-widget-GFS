@@ -1,9 +1,11 @@
-// La fenêtre « Poids du document » (lot 4 du poids, demande du porteur du 04/11 ; contrats 2.4 point 5) : un clic sur le total du pied de l'explorateur l'ouvre. En haut, ce que la liste montre (l'estimation,
-// qui est toujours là) ; dessous, ce que Grist garde, lu dans sa base (js/weight-reader.js) : le fichier entier, les tables, les pièces jointes, l'historique des modifications, le reste ; enfin chaque table
-// avec son poids exact, lues l'une après l'autre. Sur la base commune des fenêtres (js/modal.js) : le titre et le bouton restent en place, le contenu défile. Elle ne pose rien et ne garde rien.
+// La fenêtre « Poids du document » (lot 4 du poids, demande du porteur du 04/11 ; contrats 2.4 point 5) : un clic sur le total du pied de l'explorateur
+// l'ouvre. En haut, ce que la liste montre (l'estimation, qui est toujours là) ; dessous, ce que Grist garde, lu dans sa base (js/weight-reader.js) : le
+// fichier entier, les tables, les pièces jointes, l'historique des modifications, le reste ; enfin chaque table avec son poids exact, lues l'une après l'autre.
+// Sur la base commune des fenêtres (js/modal.js) : le titre et le bouton restent en place, le contenu défile. Elle ne pose rien et ne garde rien.
 //
-// Sans le droit de tout copier (ou si Grist ne répond pas), le bloc « Ce que Grist garde » reste là, grisé, avec la raison : grisé, jamais masqué. L'estimation, elle, ne dépend de rien.
-// Les lignes sont dessinées une fois et mises à jour à chaque lecture : le défilement de la liste des tables n'est pas remis en haut pendant que les tables se lisent.
+// Sans le droit de tout copier (ou si Grist ne répond pas), le bloc « Ce que Grist garde » reste là, grisé, avec la raison : grisé, jamais masqué.
+// L'estimation, elle, ne dépend de rien. Les lignes sont dessinées une fois et mises à jour à chaque lecture : le défilement de la liste des tables n'est pas
+// remis en haut pendant que les tables se lisent.
 
 import { h } from './dom.js';
 import { openModal } from './modal.js';
@@ -21,7 +23,8 @@ function linesBlock(t) {
   return { node: h('dl', { class: 'wd-lines' }, ...rows), values };
 }
 
-// Le contenu, ses éléments mis à jour par `update(état)` (l'état de js/weight-reader.js, ou null avant la première lecture). `estimate` : { list (octets), pj (null ou { bytes }) }.
+// Le contenu, ses éléments mis à jour par `update(état)` (l'état de js/weight-reader.js, ou null avant la première lecture). `estimate` : { list (octets), pj
+// (null ou { bytes }) }.
 export function buildWeightView({ t, locale, estimate }) {
   const show = bytes => (bytes === null || bytes === undefined ? t('wd.none') : formatBytes(bytes, locale, t));
   const lead = [h('p', { class: 'wd-lead' }, h('b', null, `${t('wd.estimate')} : `), t('wd.estimateText', { list: show(estimate.list) }))];
@@ -42,7 +45,8 @@ export function buildWeightView({ t, locale, estimate }) {
     const nodes = state.tables.map(row => {
       let node = rowNodes.get(row.name);
       if (!node) {
-        node = { li: h('li', { class: 'wd-row' }), name: h('span', { class: 'wd-name', title: row.name }, row.name), bar: h('i'), value: h('span', { class: 'wd-num' }) };
+        node = { li: h('li', { class: 'wd-row' }), name: h('span', { class: 'wd-name', title: row.name }, row.name), bar: h('i'),
+          value: h('span', { class: 'wd-num' }) };
         node.li.append(node.name, h('span', { class: 'wd-bar', 'aria-hidden': 'true' }, node.bar), node.value);
         rowNodes.set(row.name, node);
       }
@@ -72,7 +76,8 @@ export function buildWeightView({ t, locale, estimate }) {
     const dataBytes = state.status === 'ok' && state.tables ? state.tables.reduce((sum, row) => sum + (row.bytes || 0), 0) : null;
     values.file.textContent = show(state.file);
     values.history.textContent = show(state.history);
-    values.attachments.textContent = state.stored === null ? show(state.counted) : `${show(state.stored)} · ${t('wd.attachmentsCounted', { n: show(state.counted) })}`;
+    values.attachments.textContent = state.stored === null ? show(state.counted) :
+      `${show(state.stored)} · ${t('wd.attachmentsCounted', { n: show(state.counted) })}`;
     values.data.textContent = show(dataBytes);
     values.rest.textContent = show(state.rest);
     if (state.tables) {

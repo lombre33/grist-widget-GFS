@@ -1,5 +1,5 @@
-// Les textes du choix « CDN ou copie figée » des bibliothèques natives d'une app (demande du porteur, 10/11 ; contrats 2.6, point 14), en français et en anglais dans le même lot.
-// Le fichier est à part pour que i18n.js reste sous les 600 lignes de code de l'outil d'audit.
+// Les textes du choix « CDN ou copie figée » des bibliothèques natives d'une app (demande du porteur, 10/11 ; contrats 2.6, point 14), en français et en
+// anglais dans le même lot. Le fichier est à part pour que i18n.js reste sous les 600 lignes de code de l'outil d'audit.
 
 export const NATIVES_STRINGS = Object.freeze({
   fr: {

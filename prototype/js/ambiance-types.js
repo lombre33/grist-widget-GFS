@@ -1,9 +1,12 @@
-// Les couleurs de type de chaque ambiance (décision du porteur, 04/11 : « adapter les icônes des types de fichier aussi au thème », et une icône colorée pour le PDF). Quatre familles, chacune en quatre jetons :
-// l'icône (`--t-doc`), le texte de sa pastille (`-ink`), le fond doux de la pastille (`-soft`) et son trait (`-line`), en clair et en sombre. Les familles gardent leur teinte d'une ambiance à l'autre (document : bleu,
-// grille : vert, présentation : orange, PDF : rouge carmin) : un type se reconnaît partout ; l'ambiance en règle la clarté, la vivacité et la nuance.
-// Des DONNÉES, comme ORIGIN (js/ambiance.js) : GFS les pose avec l'ambiance (js/theme-apply.js), sur la page et sur chaque vignette de la fenêtre « Thème » ; elles ne vont pas aux apps, car les couleurs par type
-// ne vivent que dans l'explorateur (cahier 6.5 ; contrats 5.2, point 10). La couleur libre de la personne ne les change pas : elle ne change que l'accent. L'ambiance d'origine dit ce que css/gfs.css dit.
-// Le contraste (texte 4,5:1, icône 3:1, avec toute couleur libre) et l'accord avec css/gfs.css sont mesurés par test/ambiance.test.mjs ; les teintes et l'écart entre les types, par test/ambiance-types.test.mjs.
+// Les couleurs de type de chaque ambiance (décision du porteur, 04/11 : « adapter les icônes des types de fichier aussi au thème », et une icône colorée pour
+// le PDF). Quatre familles, chacune en quatre jetons : l'icône (`--t-doc`), le texte de sa pastille (`-ink`), le fond doux de la pastille (`-soft`) et son
+// trait (`-line`), en clair et en sombre. Les familles gardent leur teinte d'une ambiance à l'autre (document : bleu,
+// grille : vert, présentation : orange, PDF : rouge carmin) : un type se reconnaît partout ; l'ambiance en règle la clarté, la vivacité et la nuance. Des
+//   DONNÉES, comme ORIGIN (js/ambiance.js) : GFS les pose avec l'ambiance (js/theme-apply.js), sur la page et sur chaque vignette de la fenêtre « Thème » ;
+//   elles ne vont pas aux apps, car les couleurs par type ne vivent que dans l'explorateur (cahier 6.5 ; contrats 5.2, point 10). La couleur libre de la
+//   personne ne les change pas : elle ne change que l'accent. L'ambiance d'origine dit ce que css/gfs.css dit. Le contraste (texte 4,5:1, icône 3:1, avec toute
+//   couleur libre) et l'accord avec css/gfs.css sont mesurés par test/ambiance.test.mjs ; les teintes et l'écart entre les types, par
+//   test/ambiance-types.test.mjs.
 
 export const TYPES = Object.freeze(['doc', 'grid', 'slides', 'pdf']);
 const PARTS = Object.freeze(['', '-ink', '-soft', '-line']);
@@ -73,7 +76,8 @@ const COLORS = Object.freeze({
       pdf: ['#ff7074', '#ff9a99', '#452222', '#793a3b'],
     },
   },
-  // Enseigne (à la place de Néon, 04/11) : des tubes allumés ; en sombre ils brillent, en clair (l'enseigne de jour) ils s'approfondissent pour rester lisibles.
+  // Enseigne (à la place de Néon, 04/11) : des tubes allumés ; en sombre ils brillent, en clair (l'enseigne de jour) ils s'approfondissent pour rester
+  // lisibles.
   enseigne: {
     clair: {
       doc: ['#005dca', '#0048a1', '#e8f1fe', '#c4d9f9'],
@@ -90,7 +94,8 @@ const COLORS = Object.freeze({
   },
 });
 
-// Les jetons de type d'une ambiance dans un mode ({ '--t-doc': '#2f6fed', … }), ou `{}` pour une ambiance ou un mode inconnu : les feuilles de style disent alors l'aspect d'origine. Un objet neuf à chaque appel.
+// Les jetons de type d'une ambiance dans un mode ({ '--t-doc': '#2f6fed', … }), ou `{}` pour une ambiance ou un mode inconnu : les feuilles de style disent
+// alors l'aspect d'origine. Un objet neuf à chaque appel.
 export function typeTokens(id, mode) {
   const set = Object.hasOwn(COLORS, id) && Object.hasOwn(COLORS[id], mode) ? COLORS[id][mode] : null;
   const out = {};

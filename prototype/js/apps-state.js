@@ -49,7 +49,8 @@ export class AppsState {
   copiesFor(id) { return copiesInApp(this.manifest(id), this.apps[id]); }
   // Ce que l'app reçoit d'elle-même (contrats 5.2) : ses extensions actives, leurs bibliothèques, et les copies figées de ses bibliothèques natives.
   extensionsFor(id, base) {
-    return { ...extensionsState(this.manifest(id), this.apps[id], this.catalogue, base), natives: nativesState(this.manifest(id), this.apps[id], this.catalogue, base) };
+    return { ...extensionsState(this.manifest(id), this.apps[id], this.catalogue, base),
+      natives: nativesState(this.manifest(id), this.apps[id], this.catalogue, base) };
   }
 
   // Ce que la table dit. Une table illisible vaut une table absente : la liste par défaut, et un avertissement.

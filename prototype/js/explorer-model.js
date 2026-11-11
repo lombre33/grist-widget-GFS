@@ -9,9 +9,11 @@ import { keptInFolder } from './direct-shares.js';
 import { receivedFolders } from './received-folders.js';
 import { rowWeigher, piecesOf, linkedOf, newSum, addWeight } from './weight.js';
 
-// Le champ `couleur` du manifeste -> la famille de couleur de la charte (cahier 6.5) ; tout autre mot : neutre. Le rouge du PDF est la quatrième famille (décision du porteur, 04/11).
+// Le champ `couleur` du manifeste -> la famille de couleur de la charte (cahier 6.5) ; tout autre mot : neutre. Le rouge du PDF est la quatrième famille
+// (décision du porteur, 04/11).
 const FAMILIES = Object.freeze({ document: 'doc', grille: 'grid', presentation: 'slides', pdf: 'pdf' });
-// Les familles que l'explorateur colore (attribut `data-fam`, jetons `--t-*` de css/gfs.css) ; `familyOf` : la famille d'un mot du manifeste, ou '' (neutre : jamais un mot de la chaîne de prototypes).
+// Les familles que l'explorateur colore (attribut `data-fam`, jetons `--t-*` de css/gfs.css) ; `familyOf` : la famille d'un mot du manifeste, ou '' (neutre :
+// jamais un mot de la chaîne de prototypes).
 export const FAMILY_NAMES = Object.freeze(Object.values(FAMILIES));
 export const familyOf = couleur => (Object.hasOwn(FAMILIES, couleur) ? FAMILIES[couleur] : '');
 const RECENT_LIMIT = 8;
@@ -33,7 +35,8 @@ export const normalizePath = path => text(path).split('/').map(part => part.trim
 
 const rowCount = data => (data && Array.isArray(data.id) ? data.id.length : 0);
 
-// À la corbeille ? `marker` = `corbeille` du manifeste ({ date, par }) : le fichier y est quand sa colonne de date porte une date. Rend { ts, by } (la date du geste, son auteur) ou null.
+// À la corbeille ? `marker` = `corbeille` du manifeste ({ date, par }) : le fichier y est quand sa colonne de date porte une date. Rend { ts, by } (la date du
+// geste, son auteur) ou null.
 function trashOf(marker, data, i) {
   if (!marker) return null;
   const ts = seconds(cell(data, marker.date, i));
@@ -47,13 +50,15 @@ export function isExcluded(spec, data, i) {
 // La clé d'un fichier dans l'explorateur et dans le rangement de GFS : « app:identifiant ».
 export const fileKey = (app, id) => `${app}:${id}`;
 
-// Les fichiers d'une table : { key, app, id, table, row, name, type, typeInfo, known, family, icon, ts, by, folder, pinned, trashed, weight, pieces, search } ; `table` et `row` : la table
-// du manifeste et la ligne de Grist (renommer) ; `trashed` : { ts, by } quand le fichier est à la corbeille (le manifeste déclare alors `corbeille`), sinon null. La liste des fichiers vivants
-// et celle de la corbeille se séparent après la lecture (js/explorer-data.js) : ce modèle rend tout, le fichier à la corbeille a gardé son nom, son dossier et son type.
-// `typeInfo` est l'entrée de `types` qui porte le type, ou null : un type que le manifeste ne connaît pas est listé grisé (6.5, point 3).
-// `weight` : le poids estimé en octets (js/weight.js), les cellules de la ligne (ou `weights[i]` quand l'appelant les a comptées lui-même : une entrée de la corbeille pèse ce qu'elle garde) plus la pièce
-// jointe que le fichier EST (`spec.poids.pieces`) et les lignes des tables liées qui le suivent (`spec.poids.liees`, lues par l'appelant : `linked`, js/weight.js `linkedOf`) ; `pieces` : [[clé, taille]]
-// de ces pièces et de ces lignes liées, pour qu'une somme compte une fois celle que deux fichiers citent.
+// Les fichiers d'une table : { key, app, id, table, row, name, type, typeInfo, known, family, icon, ts, by, folder, pinned, trashed, weight, pieces, search } ;
+// `table` et `row` : la table du manifeste et la ligne de Grist (renommer) ; `trashed` : { ts, by } quand le fichier est à la corbeille (le manifeste déclare
+// alors `corbeille`), sinon null. La liste des fichiers vivants et celle de la corbeille se séparent après la lecture (js/explorer-data.js) : ce modèle rend
+// tout, le fichier à la corbeille a gardé son nom, son dossier et son type. `typeInfo` est l'entrée de `types` qui porte le type, ou null : un type que le
+// manifeste ne connaît pas est listé grisé (6.5, point 3).
+// `weight` : le poids estimé en octets (js/weight.js), les cellules de la ligne (ou `weights[i]` quand l'appelant les a comptées lui-même : une entrée de la
+//   corbeille pèse ce qu'elle garde) plus la pièce jointe que le fichier EST (`spec.poids.pieces`) et les lignes des tables liées qui le suivent
+//   (`spec.poids.liees`, lues par l'appelant : `linked`, js/weight.js `linkedOf`) ; `pieces` : [[clé, taille]] de ces pièces et de ces lignes liées, pour
+//   qu'une somme compte une fois celle que deux fichiers citent.
 export function readFiles(manifest, spec, data, weights = null, linked = null) {
   const cols = spec.colonnes || {};
   const weigh = rowWeigher(data);
@@ -70,7 +75,8 @@ export function readFiles(manifest, spec, data, weights = null, linked = null) {
       key: fileKey(manifest.id, rawId), app: manifest.id, id: String(rawId), table: spec.table, row: data.id[i], name, type, typeInfo, known: Boolean(typeInfo),
       family: typeInfo ? familyOf(typeInfo.couleur) : '', icon: (typeInfo && typeInfo.icone) || 'doc',
       ts: seconds(cell(data, cols.date, i)), by: text(cell(data, cols.par, i)), folder: normalizePath(cell(data, cols.dossier, i)), pinned: false,
-      trashed: trashOf(spec.corbeille, data, i), weight: (weights ? weights[i] : weigh(i)) + pieces.reduce((sum, [, size]) => sum + size, 0), pieces, search: '',
+      trashed: trashOf(spec.corbeille, data, i), weight: (weights ? weights[i] : weigh(i)) + pieces.reduce((sum, [, size]) => sum + size, 0), pieces,
+        search: '',
     });
   }
   return files;
@@ -107,8 +113,9 @@ export function readGfsFiling(data, identity = '') {
   return byFile;
 }
 
-// Les dossiers que la personne `identity` garde même sans fichier (`GFS_Rangement`, les lignes d'état de dossier : ni app ni fichier, contrats 6.4, point 11) : des chemins normalisés, sans doublon.
-// Ceux qu'elle a créés, et ceux qu'un rangement a vidés de leur dernier fichier ; un dossier qui a des fichiers existe de toute façon par eux.
+// Les dossiers que la personne `identity` garde même sans fichier (`GFS_Rangement`, les lignes d'état de dossier : ni app ni fichier, contrats 6.4, point 11) :
+// des chemins normalisés, sans doublon. Ceux qu'elle a créés, et ceux qu'un rangement a vidés de leur dernier fichier ; un dossier qui a des fichiers existe de
+// toute façon par eux.
 export function readGfsFolders(data, identity = '') {
   const found = new Set();
   for (let i = 0; i < rowCount(data); i++) {
@@ -131,7 +138,8 @@ export function applyFiling(files, filing, gfsFiling = null) {
   return files;
 }
 
-// Tous les dossiers que nomment les fichiers, ou que la personne garde sans fichier (`spare`, `readGfsFolders`), leurs parents compris, triés : la liste où choisir où ranger.
+// Tous les dossiers que nomment les fichiers, ou que la personne garde sans fichier (`spare`, `readGfsFolders`), leurs parents compris, triés : la liste où
+// choisir où ranger.
 export function folderPaths(files, locale, spare = []) {
   const found = new Set();
   for (const folder of [...files.map(file => file.folder), ...spare]) for (const part of pathParts(folder)) found.add(part.path);
@@ -150,7 +158,8 @@ export function folderMoves(files, from, to) {
     .map(file => ({ app: file.app, file: file.id, pinned: file.pinned, folder: normalizePath(`${to}/${file.folder.slice(from.length)}`) }));
 }
 
-// Ce que le dossier `from` qui devient `to` change aux dossiers gardés sans fichier (`spare`) : ceux qu'il est ou contient changent de chemin. Rend { drop, add } : les chemins à ne plus garder et ceux à garder.
+// Ce que le dossier `from` qui devient `to` change aux dossiers gardés sans fichier (`spare`) : ceux qu'il est ou contient changent de chemin. Rend { drop, add
+// } : les chemins à ne plus garder et ceux à garder.
 export function spareMoves(spare, from, to) {
   if (!from || to === from || inside(to, from)) return { drop: [], add: [] };
   const moved = spare.filter(path => inside(path, from));
@@ -164,9 +173,11 @@ const withParents = folders => {
   return found;
 };
 
-// Les dossiers qui n'existeraient plus après ces rangements (`entries` : [{ app, file, folder }] ; `folder: null` : le fichier quitte la liste, il part à la corbeille) : ceux que plus aucun fichier ni aucune
-// ligne d'état ne nomme. Un dossier que la personne vide ne disparaît pas, il est gardé (contrats 6.4, point 11) : l'appelant écrit une ligne d'état pour chacun. `spare` : les dossiers déjà gardés ;
-// `moved` : { drop, add }, ce que le même lot change à ces lignes (`spareMoves`, un dossier qu'on déplace). Un dossier qui part avec tout son contenu n'est pas gardé derrière lui : l'appelant l'ôte du résultat.
+// Les dossiers qui n'existeraient plus après ces rangements (`entries` : [{ app, file, folder }] ; `folder: null` : le fichier quitte la liste, il part à la
+// corbeille) : ceux que plus aucun fichier ni aucune ligne d'état ne nomme. Un dossier que la personne vide ne disparaît pas, il est gardé (contrats 6.4, point
+// 11) : l'appelant écrit une ligne d'état pour chacun. `spare` : les dossiers déjà gardés ;
+// `moved` : { drop, add }, ce que le même lot change à ces lignes (`spareMoves`, un dossier qu'on déplace). Un dossier qui part avec tout son contenu n'est pas
+//   gardé derrière lui : l'appelant l'ôte du résultat.
 export function vacatedFolders(files, entries, spare = [], moved = {}) {
   const target = new Map(entries.map(entry => [fileKey(entry.app, entry.file), entry.folder === null ? null : normalizePath(entry.folder)]));
   const kept = [...spare.filter(path => !(moved.drop || []).includes(path)), ...(moved.add || [])];
@@ -184,8 +195,9 @@ function childOf(folder, path) {
   return { name, path: path ? `${path}/${name}` : name };
 }
 
-// Les sous-dossiers directs de `path` : [{ path, name, count, ts, weight }] triés par nom. Un dossier existe tant qu'un fichier le nomme, ou que la personne le garde sans fichier (`spare`, compte 0, poids 0). Son
-// poids est celui de tous ses fichiers, sous-dossiers compris, une pièce jointe citée par deux d'entre eux comptée une fois.
+// Les sous-dossiers directs de `path` : [{ path, name, count, ts, weight }] triés par nom. Un dossier existe tant qu'un fichier le nomme, ou que la personne le
+// garde sans fichier (`spare`, compte 0, poids 0). Son poids est celui de tous ses fichiers, sous-dossiers compris, une pièce jointe citée par deux d'entre eux
+// comptée une fois.
 export function subfolders(files, path, locale, spare = []) {
   const found = new Map();
   const entryOf = child => found.get(child.name) || found.set(child.name, { ...child, count: 0, ts: null, sum: newSum() }).get(child.name);
@@ -227,7 +239,8 @@ export function pathParts(path) {
   return parts;
 }
 
-// Ce que les colonnes « Modifié » et « Par » disent d'un fichier : sa dernière modification et son auteur, ou, à la corbeille, la date du geste qui l'y a mis et son auteur.
+// Ce que les colonnes « Modifié » et « Par » disent d'un fichier : sa dernière modification et son auteur, ou, à la corbeille, la date du geste qui l'y a mis
+// et son auteur.
 export const stampOf = file => (file.trashed ? file.trashed.ts : file.ts);
 export const authorOf = file => (file.trashed ? file.trashed.by : file.by);
 
@@ -239,7 +252,8 @@ const SORTERS = {
   by: (a, b, c) => authorOf(a).localeCompare(authorOf(b), c.locale, { sensitivity: 'base' }),
 };
 
-// « Partagés avec moi » sans recherche : à la racine, les dossiers reçus (des lignes de dossier, `shared: true`, leur clé « grp:<id> ») et les fichiers sans dossier ; dans un dossier reçu (`group`, son identifiant), ses fichiers.
+// « Partagés avec moi » sans recherche : à la racine, les dossiers reçus (des lignes de dossier, `shared: true`, leur clé « grp:<id> ») et les fichiers sans
+// dossier ; dans un dossier reçu (`group`, son identifiant), ses fichiers.
 function sharedLevel(files, group, locale) {
   const { folders, loose } = receivedFolders(files);
   if (group) return { pool: (folders.find(folder => folder.id === group) || { files: [] }).files, groups: [] };
@@ -247,23 +261,27 @@ function sharedLevel(files, group, locale) {
   return { pool: loose, groups: folders.sort(byName).map(folder => ({ kind: 'folder', shared: true, path: folder.id, ...folder })) };
 }
 
-// La clé d'une ligne : celle du fichier, « dir:<chemin> » pour un dossier, « grp:<id> » pour un dossier reçu d'un autre document (qui ne se renomme, ne se déplace ni ne se supprime).
+// La clé d'une ligne : celle du fichier, « dir:<chemin> » pour un dossier, « grp:<id> » pour un dossier reçu d'un autre document (qui ne se renomme, ne se
+// déplace ni ne se supprime).
 export const rowKey = row => (row.kind === 'file' ? row.file.key : `${row.shared ? 'grp' : 'dir'}:${row.path}`);
 
-// Les fichiers du niveau que la vue montre : { pool, flat (une liste à plat, sans les dossiers du rangement), groups (les dossiers reçus d'un autre document à montrer en tête) }.
+// Les fichiers du niveau que la vue montre : { pool, flat (une liste à plat, sans les dossiers du rangement), groups (les dossiers reçus d'un autre document à
+// montrer en tête) }.
 function levelOf(files, state, filtering, locale) {
   if (state.view === 'shared' && !filtering) return { flat: true, ...sharedLevel(files, state.group, locale) };
-  if (state.view === 'recent') return { pool: [...files].sort((a, b) => (b.ts ?? -Infinity) - (a.ts ?? -Infinity)).slice(0, RECENT_LIMIT), flat: true, groups: [] };
+  if (state.view === 'recent') return { pool: [...files].sort((a, b) => (b.ts ?? -Infinity) - (a.ts ?? -Infinity)).slice(0, RECENT_LIMIT), flat: true,
+    groups: [] };
   if (state.view === 'fav') return { pool: files.filter(file => file.pinned), flat: true, groups: [] };
   if (filtering || ['trash', 'shared', 'opened'].includes(state.view)) return { pool: files, flat: true, groups: [] };
   return { pool: files.filter(file => file.folder === state.path && keptInFolder(file)), flat: false, groups: [] };
 }
 
-// Les lignes affichées : { rows: [{ kind: 'folder', ... } | { kind: 'file', file }], flat, covered }. `covered` : les fichiers que la liste couvre, ceux des dossiers montrés compris (le total du pied
-// de fenêtre en fait la somme : une pièce jointe que deux d'entre eux citent n'y est comptée qu'une fois).
-// `state` : { view: 'folder'|'recent'|'fav'|'trash'|'shared'|'opened', path, q, type, sort: { key, dir } } ; `locale` : pour le tri ; `typeLabel(file)` : le nom du type dans la langue ; `spare` : les dossiers gardés sans fichier.
-// Récents garde d'abord les huit plus récents, puis les trie comme demandé (l'explorateur y commence par « modifié, le plus récent d'abord »). La corbeille, « Partagés avec moi » et « Ouverts » sont des listes à plat : `files` est alors
-// celle des fichiers qui y sont, tous montrés, sans dossier.
+// Les lignes affichées : { rows: [{ kind: 'folder', ... } | { kind: 'file', file }], flat, covered }. `covered` : les fichiers que la liste couvre, ceux des
+// dossiers montrés compris (le total du pied de fenêtre en fait la somme : une pièce jointe que deux d'entre eux citent n'y est comptée qu'une fois).
+// `state` : { view: 'folder'|'recent'|'fav'|'trash'|'shared'|'opened', path, q, type, sort: { key, dir } } ; `locale` : pour le tri ; `typeLabel(file)` : le
+//   nom du type dans la langue ; `spare` : les dossiers gardés sans fichier. Récents garde d'abord les huit plus récents, puis les trie comme demandé
+//   (l'explorateur y commence par « modifié, le plus récent d'abord »). La corbeille, « Partagés avec moi » et « Ouverts » sont des listes à plat : `files` est
+//   alors celle des fichiers qui y sont, tous montrés, sans dossier.
 export function listItems(files, state, { locale, typeLabel, spare = [] }) {
   const needles = words(state.q);
   const filtering = needles.length > 0 || state.type !== 'all';
@@ -276,8 +294,10 @@ export function listItems(files, state, { locale, typeLabel, spare = [] }) {
   const rows = pool.map(file => ({ kind: 'file', file }));
   if (!flat || groups.length) {
     // « Espaces » est une racine à côté de « Moi » (js/spaces-filing.js) : « Moi » ne la liste pas parmi ses dossiers.
-    const folders = flat ? groups : subfolders(files, state.path, locale, spare).filter(folder => folder.path !== SPACES_ROOT).map(folder => ({ kind: 'folder', ...folder }));
-    // Les dossiers vont par nom (renversés quand le tri par nom l'est), sauf quand la liste est triée par poids : ils suivent alors le même ordre que les fichiers (le tri est stable : à poids égal, l'ordre des noms).
+    const folders = flat ? groups : subfolders(files, state.path, locale, spare).filter(folder => folder.path !== SPACES_ROOT).map(folder =>
+      ({ kind: 'folder', ...folder }));
+    // Les dossiers vont par nom (renversés quand le tri par nom l'est), sauf quand la liste est triée par poids : ils suivent alors le même ordre que les
+    // fichiers (le tri est stable : à poids égal, l'ordre des noms).
     if (state.sort.key === 'poids') folders.sort((a, b) => (a.weight - b.weight) * state.sort.dir);
     else if (state.sort.key === 'name' && state.sort.dir < 0) folders.reverse();
     rows.unshift(...folders);

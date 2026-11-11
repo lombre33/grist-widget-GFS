@@ -1,5 +1,6 @@
-// Les textes de la corbeille et des raccourcis de l'explorateur (décision du porteur du 04/11 : tout se fait depuis l'explorateur, avec une corbeille), en français et en anglais dans le même lot.
-// Ils rejoignent ceux de GFS dans js/i18n.js ; le fichier est à part pour que i18n.js reste sous les 600 lignes de code de l'outil d'audit.
+// Les textes de la corbeille et des raccourcis de l'explorateur (décision du porteur du 04/11 : tout se fait depuis l'explorateur, avec une corbeille), en
+// français et en anglais dans le même lot. Ils rejoignent ceux de GFS dans js/i18n.js ; le fichier est à part pour que i18n.js reste sous les 600 lignes de
+// code de l'outil d'audit.
 
 export const TRASH_STRINGS = Object.freeze({
   fr: {

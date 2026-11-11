@@ -1,7 +1,8 @@
-// Le choix de thème de GFS (décision du porteur, 03/11) : une ambiance (Grist Factory d'origine, Pop, Papier, Brut, Enseigne) et, au choix, la couleur de la personne, qui remplace celle de l'ambiance ; puis,
-// à part (décision du 04/11), l'accessibilité renforcée, qui se pose sur l'ambiance et la couleur choisies. Un seul choix pour GFS et pour toutes ses apps, retenu sur le navigateur de la personne comme la
-// langue (clés `gfs.theme`, `gfs.couleur` et `gfs.acces` du `localStorage` de GFS), jamais dans le document ni dans une table ; sans stockage, il vaut pour la page, et GFS le dit. Le clair et le sombre
-// restent ceux de Grist. Les apps le reçoivent par le contexte et par l'événement `ambiance` (contrats 5.2, point 10).
+// Le choix de thème de GFS (décision du porteur, 03/11) : une ambiance (Grist Factory d'origine, Pop, Papier, Brut, Enseigne) et, au choix, la couleur de la
+// personne, qui remplace celle de l'ambiance ; puis, à part (décision du 04/11), l'accessibilité renforcée, qui se pose sur l'ambiance et la couleur choisies.
+// Un seul choix pour GFS et pour toutes ses apps, retenu sur le navigateur de la personne comme la langue (clés `gfs.theme`, `gfs.couleur` et `gfs.acces` du
+// `localStorage` de GFS), jamais dans le document ni dans une table ; sans stockage, il vaut pour la page, et GFS le dit. Le clair et le sombre restent ceux de
+// Grist. Les apps le reçoivent par le contexte et par l'événement `ambiance` (contrats 5.2, point 10).
 
 import { StoredChoice, keyStore, watchKey } from './stored-choice.js';
 import { AMBIANCES, DEFAULT_AMBIANCE, ORIGIN, RENFORCEE, ambiancePalette } from './ambiance.js';
@@ -16,23 +17,28 @@ const STANDARD = 'standard';
 const ACCESS_CHOICES = Object.freeze([STANDARD, RENFORCEE]);
 
 // Ce que le navigateur garde : lire et écrire les trois clés de GFS (un navigateur qui refuse n'arrête rien : `stored-choice.js`).
-export const browserStores = (win = window) => ({ ambianceStore: keyStore(win, AMBIANCE_KEY), colorStore: keyStore(win, COLOR_KEY), accessStore: keyStore(win, ACCESS_KEY) });
+export const browserStores = (win = window) => ({ ambianceStore: keyStore(win, AMBIANCE_KEY), colorStore: keyStore(win, COLOR_KEY),
+  accessStore: keyStore(win, ACCESS_KEY) });
 
-// Néon, retiré le 04/11 au profit d'Enseigne, a pu être choisi la veille : sa clé se lit comme celle d'Enseigne (la clé elle-même n'est réécrite qu'au prochain choix de la personne).
-const readingNeonAsEnseigne = store => ({ read: () => { const found = store.read(); return found === 'neon' ? 'enseigne' : found; }, write: value => store.write(value) });
+// Néon, retiré le 04/11 au profit d'Enseigne, a pu être choisi la veille : sa clé se lit comme celle d'Enseigne (la clé elle-même n'est réécrite qu'au prochain
+// choix de la personne).
+const readingNeonAsEnseigne = store => ({ read: () => { const found = store.read(); return found === 'neon' ? 'enseigne' : found; },
+  write: value => store.write(value) });
 
-// Ce que les apps reçoivent (contrats 5.2, point 10) : l'ambiance (`id`), la couleur libre (`couleur`, ou null), les dix-neuf jetons de couleur de chaque mode et les jetons de forme ; `null` quand rien n'est choisi :
-// l'app garde alors ses propres couleurs, celles de la charte. `ajustee` dit qu'une couleur a dû être éclaircie ou assombrie pour que le texte reste lisible. Avec l'accessibilité renforcée (`strict`), l'`id` est
-// `renforcee` et non celui de l'ambiance : ni GFS ni une app n'accroche alors le décor d'une ambiance (lueurs, capitales) à une page qui n'en veut plus ; les jetons, eux, gardent la couleur de l'ambiance.
+// Ce que les apps reçoivent (contrats 5.2, point 10) : l'ambiance (`id`), la couleur libre (`couleur`, ou null), les dix-neuf jetons de couleur de chaque mode
+// et les jetons de forme ; `null` quand rien n'est choisi : l'app garde alors ses propres couleurs, celles de la charte. `ajustee` dit qu'une couleur a dû être
+// éclaircie ou assombrie pour que le texte reste lisible. Avec l'accessibilité renforcée (`strict`), l'`id` est `renforcee` et non celui de l'ambiance : ni GFS
+// ni une app n'accroche alors le décor d'une ambiance (lueurs, capitales) à une page qui n'en veut plus ; les jetons, eux, gardent la couleur de l'ambiance.
 export function ambianceMessage(id, color, strict = false) {
   const palette = ambiancePalette(id, color, { renforcee: strict });
   if (!palette) return null;
-  return { id: strict ? RENFORCEE : id, couleur: color ? parseHex(color) : null, ajustee: palette.ajustee, clair: palette.clair, sombre: palette.sombre, forme: palette.forme };
+  return { id: strict ? RENFORCEE : id, couleur: color ? parseHex(color) : null, ajustee: palette.ajustee, clair: palette.clair, sombre: palette.sombre,
+    forme: palette.forme };
 }
 
-// Ce que la vignette d'une ambiance montre (fenêtre « Thème ») : le message de cette ambiance pour la couleur choisie, et pour l'accessibilité renforcée si elle est allumée (la vignette montre ce que le
-// choix donnerait). L'ambiance d'origine, sans couleur ni accessibilité renforcée, n'écrit rien sur la page ; sa vignette pose pourtant les couleurs d'origine, pour les montrer même quand la page porte une
-// autre ambiance.
+// Ce que la vignette d'une ambiance montre (fenêtre « Thème ») : le message de cette ambiance pour la couleur choisie, et pour l'accessibilité renforcée si
+// elle est allumée (la vignette montre ce que le choix donnerait). L'ambiance d'origine, sans couleur ni accessibilité renforcée, n'écrit rien sur la page ; sa
+// vignette pose pourtant les couleurs d'origine, pour les montrer même quand la page porte une autre ambiance.
 export function previewMessage(id, color, strict = false) {
   return ambianceMessage(id, color, strict) || { id: DEFAULT_AMBIANCE, couleur: null, ajustee: false, clair: ORIGIN.clair, sombre: ORIGIN.sombre, forme: {} };
 }
@@ -45,9 +51,11 @@ export class ThemeSetting {
   #held = false; // un geste change les deux choix (« Revenir à l'origine ») : on ne le dit qu'une fois
   #told;
 
-  // ambianceStore, colorStore, accessStore : { read(), write(valeur | null) → retenu ? } ; l'ambiance d'origine, l'absence de couleur et l'accessibilité éteinte sont les clés absentes
+  // ambianceStore, colorStore, accessStore : { read(), write(valeur | null) → retenu ? } ; l'ambiance d'origine, l'absence de couleur et l'accessibilité
+  // éteinte sont les clés absentes
   constructor({ ambianceStore, colorStore, accessStore }) {
-    this.#ambiance = new StoredChoice({ choices: AMBIANCES, fallback: DEFAULT_AMBIANCE, store: readingNeonAsEnseigne(ambianceStore), keep: id => (id === DEFAULT_AMBIANCE ? null : id) });
+    this.#ambiance = new StoredChoice({ choices: AMBIANCES, fallback: DEFAULT_AMBIANCE, store: readingNeonAsEnseigne(ambianceStore),
+      keep: id => (id === DEFAULT_AMBIANCE ? null : id) });
     this.#color = new StoredChoice({ choices: value => value === null || isHex(value), fallback: null, store: colorStore });
     this.#access = new StoredChoice({ choices: ACCESS_CHOICES, fallback: STANDARD, store: accessStore, keep: value => (value === RENFORCEE ? value : null) });
     this.#told = this.#key();
@@ -76,8 +84,8 @@ export class ThemeSetting {
   }
   // Allumer (`true`) ou éteindre l'accessibilité renforcée. Rend `true` si le navigateur l'a retenue.
   chooseAccess(on) { return this.#access.choose(on ? RENFORCEE : STANDARD); }
-  // Revenir à l'aspect d'origine : l'ambiance Grist Factory, sans couleur choisie. L'accessibilité renforcée n'est pas touchée : c'est un besoin et non un goût, qu'un retour à l'origine du décor ne doit pas
-  // retirer à qui en a besoin ; elle s'éteint par son interrupteur.
+  // Revenir à l'aspect d'origine : l'ambiance Grist Factory, sans couleur choisie. L'accessibilité renforcée n'est pas touchée : c'est un besoin et non un
+  // goût, qu'un retour à l'origine du décor ne doit pas retirer à qui en a besoin ; elle s'éteint par son interrupteur.
   reset() {
     this.#held = true;
     const kept = [this.#ambiance.choose(DEFAULT_AMBIANCE), this.#color.choose(null)].every(Boolean);

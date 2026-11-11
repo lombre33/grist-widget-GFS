@@ -1,25 +1,29 @@
-// L'accord de la personne à la publication d'un formulaire (contrats 3.3, point 9). Du code sans effet de bord, qui juge ce qu'un lot d'actions ouvre de nouveau.
+// L'accord de la personne à la publication d'un formulaire (contrats 3.3, point 9). Du code sans effet de bord, qui juge ce qu'un lot d'actions ouvre de
+// nouveau.
 //
-// Ce que Grist ouvre à qui a le lien d'un formulaire publié (app/common/ACLRulesReader.ts : _addRulesForShare, _shareTableForForm, _shareTableReferencesForForm ;
-// lu le 22/10, et mesuré par Form+ sur un vrai Grist) :
-//   - AJOUTER des lignes dans la table de chaque section publiée (`shareOptions` : `publish` et `form`), dans TOUTES ses colonnes, même celles que le formulaire ne
+// Ce que Grist ouvre à qui a le lien d'un formulaire publié (app/common/ACLRulesReader.ts : _addRulesForShare, _shareTableForForm,
+// _shareTableReferencesForForm ; lu le 22/10, et mesuré par Form+ sur un vrai Grist) :
+//   - AJOUTER des lignes dans la table de chaque section publiée (`shareOptions` : `publish` et `form`), dans TOUTES ses colonnes, même celles que le
+//   formulaire ne
 //     montre pas (Grist le note lui-même : « hidden columns could be written ») ;
 //   - LIRE toutes les valeurs de la colonne affichée (`visibleCol`) des tables vers lesquelles pointent les Références de ces formulaires.
 // Rien d'autre : ni modifier, ni supprimer, ni relire une ligne existante.
 //
-// Le courtier calcule ce qui est ouvert avant le lot et après, et demande l'accord de la personne pour la différence. Le partage (la page) ne compte pas : un drapeau
-// posé aujourd'hui ouvre dès qu'une page est partagée, et la personne peut la partager sans passer par GFS.
+// Le courtier calcule ce qui est ouvert avant le lot et après, et demande l'accord de la personne pour la différence. Le partage (la page) ne compte pas : un
+// drapeau posé aujourd'hui ouvre dès qu'une page est partagée, et la personne peut la partager sans passer par GFS.
 
 import { ERR, Refus, ROW_VERBS, PUBLISHING_TABLES, classify, publiclyReadable, readRefusal, writeRefusal } from './filter.js';
 
-// Les quatre tables internes que ce calcul lit, et sous quel nom il les tient (une écriture dans les trois dernières peut changer ce qui est ouvert : PUBLISHING_TABLES).
+// Les quatre tables internes que ce calcul lit, et sous quel nom il les tient (une écriture dans les trois dernières peut changer ce qui est ouvert :
+// PUBLISHING_TABLES).
 const NAMES = { _grist_tables: 'tables', _grist_tables_column: 'columns', _grist_views_section: 'sections', _grist_views_section_field: 'fields' };
 export const META_TABLES = ['_grist_Tables', '_grist_Tables_column', '_grist_Views_section', '_grist_Views_section_field'];
 
 const lower = name => String(name).toLowerCase();
 const isRef = type => /^Ref(List)?:/.test(String(type || ''));
 
-export const touchesPublication = actions => actions.some(action => Array.isArray(action) && ROW_VERBS.has(action[0]) && PUBLISHING_TABLES.has(lower(action[1])));
+export const touchesPublication = actions => actions.some(action => Array.isArray(action) && ROW_VERBS.has(action[0]) &&
+  PUBLISHING_TABLES.has(lower(action[1])));
 
 // Les lignes d'une table que Grist rend par colonnes ({ id: [...], colonne: [...] }), en objets.
 export function rowsOf(data) {
@@ -45,7 +49,8 @@ const add = (rows, id, values, counter) => rows.push({ ...values, id: id ?? -(++
 const update = (rows, id, values) => { const row = rows.find(item => item.id === id); if (row) Object.assign(row, values); };
 const remove = (rows, ids) => { for (const id of ids) { const at = rows.findIndex(item => item.id === id); if (at >= 0) rows.splice(at, 1); } };
 
-// Rejoue un verbe de lignes sur les lignes de sa table ; un verbe dont on ne sait pas dire ce qu'il change (un `AddOrUpdateRecord`, un `Bulk…` sans liste de lignes) lève un refus.
+// Rejoue un verbe de lignes sur les lignes de sa table ; un verbe dont on ne sait pas dire ce qu'il change (un `AddOrUpdateRecord`, un `Bulk…` sans liste de
+// lignes) lève un refus.
 function replay(rows, [verb, , first, second], counter) {
   if (verb === 'AddRecord') add(rows, first, second || {}, counter);
   else if (verb === 'UpdateRecord') update(rows, first, second || {});
@@ -83,7 +88,8 @@ function groupBy(rows, key, pick) {
 }
 
 // Une colonne de données : celle qu'une ligne ajoutée peut remplir. Les colonnes de formule, la colonne d'ordre et les colonnes d'aide de Grist n'en sont pas.
-const isData = column => (!column.isFormula || !String(column.formula || '').trim()) && column.colId !== 'manualSort' && !String(column.colId).startsWith('gristHelper_');
+const isData = column => (!column.isFormula || !String(column.formula || '').trim()) && column.colId !== 'manualSort' &&
+  !String(column.colId).startsWith('gristHelper_');
 
 // Ce que les sections marquées publiées ouvrent : { writes: Map(table -> { tableId, shown, columns }), reads: Map("table.colonne" -> { tableId, colId }) }.
 // `shown` : les colonnes que le formulaire montre (un champ caché n'en est pas) ; `columns` : toutes les colonnes de données de la table.
@@ -105,7 +111,8 @@ export function exposureOf(meta) {
   return { writes, reads };
 }
 
-// Ce qu'un champ du formulaire ouvre : sa colonne est montrée (sauf un champ caché), et une référence rend lisible la colonne qu'elle affiche, dans la table qu'elle vise.
+// Ce qu'un champ du formulaire ouvre : sa colonne est montrée (sauf un champ caché), et une référence rend lisible la colonne qu'elle affiche, dans la table
+// qu'elle vise.
 function exposeField(field, { tableOf, columnOf }, entry, reads) {
   const column = columnOf.get(field.colRef);
   if (!column) return;
@@ -115,8 +122,8 @@ function exposeField(field, { tableOf, columnOf }, entry, reads) {
   if (target) reads.set(`${target}.${visible.colId}`, { tableId: target, colId: visible.colId });
 }
 
-// Ce que le lot ouvre de plus : { tables: [{ tableId, shown, unshown }], reads: [{ tableId, colId }] }. `unshown` : les colonnes de données que le formulaire ne montre pas
-// et que le lien pourra pourtant remplir.
+// Ce que le lot ouvre de plus : { tables: [{ tableId, shown, unshown }], reads: [{ tableId, colId }] }. `unshown` : les colonnes de données que le formulaire
+// ne montre pas et que le lien pourra pourtant remplir.
 export function newExposure(before, after) {
   const tables = [...after.writes.values()].filter(entry => !before.writes.has(entry.tableId)).map(entry => ({
     tableId: entry.tableId,
@@ -127,15 +134,16 @@ export function newExposure(before, after) {
   return { tables, reads };
 }
 
-// Pourquoi un lien public n'ouvrira jamais cette table, ou null (contrats 11.9, point 4c) : celle de GFS, celle d'une autre app, celle de l'app qui publie (à l'ajout : un lien n'y
-// écrit jamais ; à la lecture : seulement les petites tables que son manifeste déclare, `permissions.lienPublic`, comme la définition d'UN formulaire de Form+, décision du porteur
-// du 03/11), ou ce que l'app ne pourrait pas écrire, ni lire, elle-même.
+// Pourquoi un lien public n'ouvrira jamais cette table, ou null (contrats 11.9, point 4c) : celle de GFS, celle d'une autre app, celle de l'app qui publie (à
+// l'ajout : un lien n'y écrit jamais ; à la lecture : seulement les petites tables que son manifeste déclare, `permissions.lienPublic`, comme la définition
+// d'UN formulaire de Form+, décision du porteur du 03/11), ou ce que l'app ne pourrait pas écrire, ni lire, elle-même.
 function whyNot(policy, tableId, writing) {
   const kind = classify(policy, tableId);
   if (kind === 'gfs') return 'elle est réservée à GFS';
   if (kind === 'autre-app') return 'elle appartient à une autre app';
   if (kind === 'propre' && writing) return 'c\'est une table de l\'app : un lien public n\'y écrit jamais';
-  if (kind === 'propre') return publiclyReadable(policy, tableId) ? null : 'c\'est une table de l\'app que son manifeste ne déclare pas lisible par un lien public (permissions.lienPublic)';
+  if (kind === 'propre') return publiclyReadable(policy, tableId) ? null :
+    'c\'est une table de l\'app que son manifeste ne déclare pas lisible par un lien public (permissions.lienPublic)';
   return String((writing ? writeRefusal : readRefusal)(policy, tableId) || '').replace(/\.$/, '') || null;
 }
 
@@ -144,7 +152,8 @@ export function protectedRefusal(policy, opens) {
   const asked = [...opens.tables.map(({ tableId }) => [tableId, true]), ...opens.reads.map(({ tableId }) => [tableId, false])];
   for (const [tableId, writing] of asked) {
     const why = whyNot(policy, tableId, writing);
-    if (why) return new Refus(ERR.REFUSE, `Ce lot ouvrirait ${tableId} ${writing ? 'à l\'ajout' : 'à la lecture'} par toute personne qui aurait le lien d'un formulaire : ${why}. GFS ne le propose pas à la personne.`);
+    if (why) return new Refus(ERR.REFUSE,
+      `Ce lot ouvrirait ${tableId} ${writing ? 'à l\'ajout' : 'à la lecture'} par toute personne qui aurait le lien d'un formulaire : ${why}. GFS ne le propose pas à la personne.`);
   }
   return null;
 }

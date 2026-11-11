@@ -1,5 +1,6 @@
-// Les textes de la question « Un seul lien pour deux formulaires ? » (js/publication-window.js ; contrats 3.3 point 6 et 3.4 point 8 ; choix du porteur du 11/11, « Au choix, non coché »),
-// en français (vouvoiement) et en anglais dans le même lot. Dans leur propre fichier : js/i18n.js reste sous les 600 lignes de code de l'outil d'audit.
+// Les textes de la question « Un seul lien pour deux formulaires ? » (js/publication-window.js ; contrats 3.3 point 6 et 3.4 point 8 ; choix du porteur du
+// 11/11, « Au choix, non coché »), en français (vouvoiement) et en anglais dans le même lot. Dans leur propre fichier : js/i18n.js reste sous les 600 lignes de
+// code de l'outil d'audit.
 
 export const SHARING_STRINGS = Object.freeze({
   fr: {

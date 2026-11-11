@@ -1,9 +1,10 @@
-// Les fichiers ouverts (la vue « Ouverts » de l'explorateur, contrats 6.4 point 14) : ceux que la personne a ouverts dans une app depuis qu'elle est dans ce document, pour y revenir d'un clic et
-// faire des allers-retours sans repartir de l'arborescence. Une liste de clés (`app:id`, js/explorer-model.js) et rien d'autre : le nom, le type, la date, le dossier et le poids se lisent chaque
-// fois dans les fichiers vivants (un fichier renommé, déplacé ou mis à la corbeille y est à jour, un fichier disparu n'y est plus).
-// Elle se montre à deux endroits : la vue « Ouverts » de l'explorateur et le 5e bouton de la barre (js/opened-bar.js, contrats 5.2 point 7) ; `onChange` dit à la barre de recompter.
-// Gardée en mémoire seulement, jamais dans Grist ni dans le navigateur : quand Grist recharge le widget tous les cadres meurent, et la liste avec eux.
-// GFS ne connaît que ce qu'il ouvre lui-même : un fichier que l'app ouvre de son côté n'y entre pas.
+// Les fichiers ouverts (la vue « Ouverts » de l'explorateur, contrats 6.4 point 14) : ceux que la personne a ouverts dans une app depuis qu'elle est dans ce
+// document, pour y revenir d'un clic et faire des allers-retours sans repartir de l'arborescence. Une liste de clés (`app:id`, js/explorer-model.js) et rien
+// d'autre : le nom, le type, la date, le dossier et le poids se lisent chaque fois dans les fichiers vivants (un fichier renommé, déplacé ou mis à la corbeille
+// y est à jour, un fichier disparu n'y est plus). Elle se montre à deux endroits : la vue « Ouverts » de l'explorateur et le 5e bouton de la barre
+// (js/opened-bar.js, contrats 5.2 point 7) ; `onChange` dit à la barre de recompter. Gardée en mémoire seulement, jamais dans Grist ni dans le navigateur :
+// quand Grist recharge le widget tous les cadres meurent, et la liste avec eux. GFS ne connaît que ce qu'il ouvre lui-même : un fichier que l'app ouvre de son
+// côté n'y entre pas.
 
 // Les derniers fichiers ouverts qu'elle garde : le plus ancien sort quand un neuvième arrive (comme « Récents »).
 export const OPENED_LIMIT = 8;
@@ -31,7 +32,8 @@ export class OpenedFiles {
     this.#changed();
   }
 
-  // GFS vient d'ouvrir autre chose qu'un fichier précis (un fichier vierge par « Nouveau », ou d'après un fichier par « Importer ») : l'app n'affiche plus aucun fichier de la liste.
+  // GFS vient d'ouvrir autre chose qu'un fichier précis (un fichier vierge par « Nouveau », ou d'après un fichier par « Importer ») : l'app n'affiche plus
+  // aucun fichier de la liste.
   none() {
     this.#shown = null;
     this.#changed();
@@ -46,6 +48,7 @@ export class OpenedFiles {
 
   keys() { return [...this.#keys]; }
 
-  // Le fichier que l'app active affiche, quand c'est GFS qui le lui a donné : `null` dès que la session d'app n'est plus la même (l'app a été remplacée, ou rouverte sans fichier).
+  // Le fichier que l'app active affiche, quand c'est GFS qui le lui a donné : `null` dès que la session d'app n'est plus la même (l'app a été remplacée, ou
+  // rouverte sans fichier).
   shown(session) { return this.#shown && session && this.#shown.session === session ? this.#shown.key : null; }
 }

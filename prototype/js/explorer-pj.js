@@ -1,7 +1,9 @@
-// La case « + pièces jointes » de l'explorateur (js/explorer.js) : son état et ses lectures. Le dessin reste à js/explorer-view.js (`pjBox`, `totalBar`). Sorti de l'explorateur pour qu'il reste sous les 600 lignes de code
-// de l'outil d'audit, et pour que la course des lectures (une réponse plus ancienne est ignorée) ait son essai.
+// La case « + pièces jointes » de l'explorateur (js/explorer.js) : son état et ses lectures. Le dessin reste à js/explorer-view.js (`pjBox`, `totalBar`). Sorti
+// de l'explorateur pour qu'il reste sous les 600 lignes de code de l'outil d'audit, et pour que la course des lectures (une réponse plus ancienne est ignorée)
+// ait son essai.
 //
-// deps : { t, hasSource() (GFS sait-il lire la table des pièces jointes), load() (la lit : { data } ou { error }), restricted() (pas d'accès complet), files(), trashed() (les fichiers vivants et à la corbeille),
+// deps : { t, hasSource() (GFS sait-il lire la table des pièces jointes), load() (la lit : { data } ou { error }), restricted() (pas d'accès complet), files(),
+//   trashed() (les fichiers vivants et à la corbeille),
 //          changed() (le total est à redessiner) }
 
 import { pieceKeys, otherAttachments } from './weight.js';
@@ -38,7 +40,8 @@ export class PiecesBox {
     if (this.#state.on && this.#deps.hasSource()) void this.#read();
   }
 
-  // Un clic sur la case, `checked` son nouvel état : grisée, rend la raison (le clic ne coche rien) ; sinon rend `null`, et les pièces jointes ne se lisent que cochée.
+  // Un clic sur la case, `checked` son nouvel état : grisée, rend la raison (le clic ne coche rien) ; sinon rend `null`, et les pièces jointes ne se lisent que
+  // cochée.
   toggle(checked) {
     const { grey } = this.facts();
     if (grey) return grey;

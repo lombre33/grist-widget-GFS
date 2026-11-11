@@ -1,5 +1,5 @@
-// Les textes de « Partagés avec moi » (js/received-control.js, js/received-window.js ; maquette du 09/11), en français (vouvoiement) et en anglais dans le même lot. Ils rejoignent js/i18n.js ; le fichier est à part pour que
-// i18n.js reste sous les 600 lignes de code de l'outil d'audit.
+// Les textes de « Partagés avec moi » (js/received-control.js, js/received-window.js ; maquette du 09/11), en français (vouvoiement) et en anglais dans le même
+// lot. Ils rejoignent js/i18n.js ; le fichier est à part pour que i18n.js reste sous les 600 lignes de code de l'outil d'audit.
 
 export const RECEIVED_STRINGS = Object.freeze({
   fr: {

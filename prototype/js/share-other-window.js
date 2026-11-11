@@ -1,8 +1,10 @@
-// La fenêtre « Envoyer à un autre document » (maquette du 09/11 ; « Partager > Dans un autre document Grist > Relier un nouveau document… ») : le premier envoi à un document neuf, dans un seul sens, en une
-// copie une fois ou en une copie qui se met à jour. Une fenêtre sur la base commune (js/modal.js : le titre et les boutons restent en place) qui montre l'étape où en est le parcours (js/share-other-flow.js)
-// et demande le geste suivant :
-//   1. le choix « une fois / à jour » et l'accord (ce que GFS ajoute dans ce document, rien sans lui) ; 2. le code à donner à l'autre document, puis sa réponse collée ; 3. le document qui répond, dit par Grist, avec son code de contrôle ;
-//   4. l'envoi, puis « c'est arrivé » (et le partage est arrêté, ou le lien reste : le fichier suivant passe par « Partager » sans nouveau code). Le jugement d'un lien ou d'un code est celui du moteur (`errorText`) : cette fenêtre n'en juge rien.
+// La fenêtre « Envoyer à un autre document » (maquette du 09/11 ; « Partager > Dans un autre document Grist > Relier un nouveau document… ») : le premier envoi
+// à un document neuf, dans un seul sens, en une copie une fois ou en une copie qui se met à jour. Une fenêtre sur la base commune (js/modal.js : le titre et
+// les boutons restent en place) qui montre l'étape où en est le parcours (js/share-other-flow.js) et demande le geste suivant :
+//   1. le choix « une fois / à jour » et l'accord (ce que GFS ajoute dans ce document, rien sans lui) ; 2. le code à donner à l'autre document, puis sa réponse
+//   collée ; 3. le document qui répond, dit par Grist, avec son code de contrôle ;
+//   4. l'envoi, puis « c'est arrivé » (et le partage est arrêté, ou le lien reste : le fichier suivant passe par « Partager » sans nouveau code). Le jugement
+//   d'un lien ou d'un code est celui du moteur (`errorText`) : cette fenêtre n'en juge rien.
 // Fermée en cours d'envoi, elle laisse l'envoi se poursuivre ; elle défait seulement ce qui n'est pas encore parti.
 
 import { h } from './dom.js';
@@ -33,7 +35,8 @@ function accordDetails(ctx) {
   ];
 }
 
-// Le réglage « exiger le code » : coché au départ à chaque envoi (décision du porteur, 09/11, audit de sécurité) ; décoché, le code reste affiché mais l'envoi part sans qu'on ait à confirmer l'avoir comparé.
+// Le réglage « exiger le code » : coché au départ à chaque envoi (décision du porteur, 09/11, audit de sécurité) ; décoché, le code reste affiché mais l'envoi
+// part sans qu'on ait à confirmer l'avoir comparé.
 function strictRow(ctx) {
   const { t } = ctx;
   const input = h('input', { type: 'checkbox', checked: ctx.strict, dataset: { fk: 'so-strict' } });
@@ -51,7 +54,8 @@ function accordScreen(ctx) {
   };
   // Sans fichier, le lien est toujours « à jour » : pas de choix à faire.
   return {
-    body: h('div', { class: 'rt-content' }, ...(ctx.file ? [h('div', { class: 'sec' }, t('so.mode.step')), radio('once'), radio('live')] : []), details, strictRow(ctx)),
+    body: h('div', { class: 'rt-content' }, ...(ctx.file ? [h('div', { class: 'sec' }, t('so.mode.step')), radio('once'), radio('live')] : []), details,
+      strictRow(ctx)),
     buttons: [ctx.cancelButton(), ctx.go(button('so-continue', t('so.continue'), true), () => ctx.prepare())],
     first: 'so-continue',
   };
@@ -78,7 +82,8 @@ function codeScreen(ctx, made) {
   };
 }
 
-// Avec « exiger le code » : « Envoyer » reste grisé tant que la case « j'ai comparé ce code » n'est pas cochée (le moteur le refuse aussi, avant toute écriture).
+// Avec « exiger le code » : « Envoyer » reste grisé tant que la case « j'ai comparé ce code » n'est pas cochée (le moteur le refuse aussi, avant toute
+// écriture).
 function verifyScreen(ctx, info) {
   const { t } = ctx;
   const send = button('so-send', t('so.send'), true);
@@ -87,7 +92,8 @@ function verifyScreen(ctx, info) {
   if (compared) { gate(); compared.addEventListener('change', gate); }
   return {
     body: h('div', { class: 'rt-content' },
-      h('p', { class: 'rt-lead so-who' }, icon('check'), h('span', null, t('so.verify.lead'), h('br'), h('b', null, t('so.verify.doc', { name: info.name })), ' ', h('small', null, placeOf(t, info)))),
+      h('p', { class: 'rt-lead so-who' }, icon('check'), h('span', null, t('so.verify.lead'), h('br'), h('b', null, t('so.verify.doc', { name: info.name })),
+        ' ', h('small', null, placeOf(t, info)))),
       h('div', { class: 'sec' }, t('so.verify.control')),
       h('p', { class: 'so-control', dataset: { fk: 'so-control' } }, info.control),
       h('p', { class: 'fine' }, t('so.verify.hint')),
@@ -100,19 +106,23 @@ function verifyScreen(ctx, info) {
 function sendingScreen(ctx) {
   const { t } = ctx;
   return {
-    body: h('div', { class: 'rt-content' }, h('p', { class: 'so-lead', role: 'status' }, icon('download'), h('span', null, ctx.file ? t('so.sending', { name: ctx.file.name }) : t('so.sending.link'))), h('p', { class: 'fine' }, t(ctx.file ? 'so.sending.hint' : 'so.sending.link.hint'))),
+    body: h('div', { class: 'rt-content' }, h('p', { class: 'so-lead', role: 'status' }, icon('download'),
+      h('span', null, ctx.file ? t('so.sending', { name: ctx.file.name }) : t('so.sending.link'))),
+      h('p', { class: 'fine' }, t(ctx.file ? 'so.sending.hint' : 'so.sending.link.hint'))),
     buttons: [button('so-close', t('so.close'), true)],
     first: 'so-close',
     close: true,
   };
 }
 
-// L'envoi n'a pas pu finir (le lien de réception de l'autre ne répond pas, ou le temps est passé) : le partage reste là ; la personne l'arrête, ou le laisse se poursuivre tant que ce document est ouvert.
+// L'envoi n'a pas pu finir (le lien de réception de l'autre ne répond pas, ou le temps est passé) : le partage reste là ; la personne l'arrête, ou le laisse se
+// poursuivre tant que ce document est ouvert.
 function failureScreen(ctx, text) {
   const { t } = ctx;
   const stop = ctx.go(button('so-stop', t('so.stop')), () => ctx.stop());
   return {
-    body: h('div', { class: 'rt-content' }, h('p', { class: 'rt-lead', role: 'alert' }, icon('warning'), h('span', null, text)), h('p', { class: 'fine' }, t('so.error.hint'))),
+    body: h('div', { class: 'rt-content' }, h('p', { class: 'rt-lead', role: 'alert' }, icon('warning'), h('span', null, text)),
+      h('p', { class: 'fine' }, t('so.error.hint'))),
     buttons: [stop, button('so-close', t('so.close'), true)],
     first: 'so-close',
     close: true,
@@ -122,19 +132,26 @@ function failureScreen(ctx, text) {
 function doneScreen(ctx, result) {
   const { t } = ctx;
   return {
-    body: h('div', { class: 'rt-content' }, h('p', { class: 'so-lead', role: 'status' }, icon('check'), h('span', null, ctx.file ? t('so.done', { name: ctx.file.name, doc: result.document }) : t('so.done.link', { doc: result.document }))), h('p', { class: 'fine' }, t(ctx.file ? (result.live ? 'so.done.live.hint' : 'so.done.hint') : 'so.done.link.hint'))),
+    body: h('div', { class: 'rt-content' }, h('p', { class: 'so-lead', role: 'status' }, icon('check'),
+      h('span', null, ctx.file ? t('so.done', { name: ctx.file.name, doc: result.document }) : t('so.done.link', { doc: result.document }))),
+      h('p', { class: 'fine' }, t(ctx.file ? (result.live ? 'so.done.live.hint' : 'so.done.hint') : 'so.done.link.hint'))),
     buttons: [button('so-close', t('so.close'), true)],
     first: 'so-close',
     close: true,
   };
 }
 
-// La fenêtre d'un fichier. opts : { container, t, inertTargets, settled() (appelée quand elle est fermée et que plus rien n'est en route), file ({ id, name } ; null : relier les deux documents sans fichier), createFlow(mode) (le parcours : createSourceFlow, `mode` : 'once' ou 'live'), errorText (le moteur), notice (un avis hors fenêtre), now () → ms }. Rend la promesse de sa fermeture.
+// La fenêtre d'un fichier. opts : { container, t, inertTargets, settled() (appelée quand elle est fermée et que plus rien n'est en route), file ({ id, name } ;
+// null : relier les deux documents sans fichier), createFlow(mode) (le parcours : createSourceFlow, `mode` : 'once' ou 'live'), errorText (le moteur), notice
+// (un avis hors fenêtre), now () → ms }. Rend la promesse de sa fermeture.
 export function openShareOther(opts) {
   const { t, file } = opts;
-  const steps = openSteps({ container: opts.container, t, inertTargets: opts.inertTargets, title: file ? t('so.title', { name: file.name }) : t('so.title.link'), sub: file ? t('so.sub') : t('so.sub.link'), foot: t('so.foot'), errorText: opts.errorText });
+  const steps = openSteps({ container: opts.container, t, inertTargets: opts.inertTargets,
+    title: file ? t('so.title', { name: file.name }) : t('so.title.link'), sub: file ? t('so.sub') : t('so.sub.link'), foot: t('so.foot'),
+    errorText: opts.errorText });
   const { dialog, done, result, say, show } = steps;
-  const ctx = { t, file, now: opts.now || Date.now, closed: false, sending: false, mode: file ? 'once' : 'live', strict: true, flow: null, go: steps.go, cancelButton: steps.cancelButton, copy: steps.copy };
+  const ctx = { t, file, now: opts.now || Date.now, closed: false, sending: false, mode: file ? 'once' : 'live', strict: true, flow: null, go: steps.go,
+    cancelButton: steps.cancelButton, copy: steps.copy };
   const settle = () => { if (opts.settled) void Promise.resolve(opts.settled()).catch(() => {}); };
   ctx.prepare = async () => {
     say(t('so.preparing'));
@@ -149,7 +166,8 @@ export function openShareOther(opts) {
     show(sendingScreen(ctx));
     try {
       const finished = await ctx.flow.send(undefined, { compared });
-      if (dialog.isConnected) show(doneScreen(ctx, finished)); else opts.notice(file ? t('so.toast.done', { name: file.name, doc: finished.document }) : t('so.toast.link', { doc: finished.document }));
+      if (dialog.isConnected) show(doneScreen(ctx, finished)); else opts.notice(file ? t('so.toast.done', { name: file.name, doc: finished.document }) :
+        t('so.toast.link', { doc: finished.document }));
     } catch (error) {
       const text = error && error.share ? t(`so.error.${error.share}`) : t('so.failed', { message: opts.errorText(error) });
       if (dialog.isConnected) show(failureScreen(ctx, text)); else opts.notice(text);
@@ -163,7 +181,8 @@ export function openShareOther(opts) {
     done(null);
   };
   show(accordScreen(ctx));
-  // Fermée avant l'envoi : ce qui a été préparé est défait ; en cours d'envoi, l'envoi continue sans elle. `settled` (la clôture : js/sync-rules.js) vient quand plus rien n'est en route.
+  // Fermée avant l'envoi : ce qui a été préparé est défait ; en cours d'envoi, l'envoi continue sans elle. `settled` (la clôture : js/sync-rules.js) vient
+  // quand plus rien n'est en route.
   void result.then(async () => {
     ctx.closed = true;
     if (!ctx.sending && ctx.flow) await ctx.flow.abort().catch(() => {});

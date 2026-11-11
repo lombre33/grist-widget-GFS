@@ -1,6 +1,7 @@
-// Les fichiers que GFS garde lui-même (contrats 6.6), côté personne : « Nouveau > Importer > PDF », le téléchargement, les gestes de la corbeille, les phrases qui disent ce qui s'est passé, et le dépôt
-// d'une app qui range un fichier (js/deposit.js). Ce module lie les gestes de l'explorateur, les fenêtres du widget (js/conflict-window.js, js/ask-window.js) et les données (js/files-store.js) ;
-// le contrôleur lui prête ce qu'il sait faire (l'accord de la personne, une phrase, la relecture de la liste) et l'explorateur l'interroge pour ne rien savoir lui-même d'un PDF.
+// Les fichiers que GFS garde lui-même (contrats 6.6), côté personne : « Nouveau > Importer > PDF », le téléchargement, les gestes de la corbeille, les phrases
+// qui disent ce qui s'est passé, et le dépôt d'une app qui range un fichier (js/deposit.js). Ce module lie les gestes de l'explorateur, les fenêtres du widget
+// (js/conflict-window.js, js/ask-window.js) et les données (js/files-store.js) ; le contrôleur lui prête ce qu'il sait faire (l'accord de la personne, une
+// phrase, la relecture de la liste) et l'explorateur l'interroge pour ne rien savoir lui-même d'un PDF.
 
 import { isAcceptedReceived } from './received-files.js';
 import { FILES_APP, FILES_MANIFEST, PDF_EXTENSION, PDF_MIME, cleanName, looksLikePdf } from './gfs-files.js';
@@ -28,10 +29,13 @@ export class KeptFiles {
   #store;
   #deposits;
 
-  // opts : { store (js/files-store.js), doc (le document de la page), container, inertTargets(), t(clé, vars), lang(), locale(), now(), fullAccess(), readonly(), notice(texte), refresh() -> Promise,
+  // opts : { store (js/files-store.js), doc (le document de la page), container, inertTargets(), t(clé, vars), lang(), locale(), now(), fullAccess(),
+  //   readonly(), notice(texte), refresh() -> Promise,
   //          folder() -> le dossier ouvert dans l'explorateur, rangement (js/rangement.js : pour ranger un fichier dans ce dossier),
-  //          reader?(fichier) -> { name, lock } | null : l'app qui lit ce fichier (js/reading.js), son nom et son grisé (null : prête) ; null quand aucune app ne le lit,
-  //          session?() -> l'app active (celle qui range un fichier doit l'être encore quand son tour vient), conflict? (la fenêtre du nom pris : js/conflict-window.js, par défaut) }
+  //          reader?(fichier) -> { name, lock } | null : l'app qui lit ce fichier (js/reading.js), son nom et son grisé (null : prête) ; null quand aucune app
+  //          ne le lit,
+  //          session?() -> l'app active (celle qui range un fichier doit l'être encore quand son tour vient), conflict? (la fenêtre du nom pris :
+  //          js/conflict-window.js, par défaut) }
   constructor(opts) {
     this.#opts = { reader: () => null, session: () => null, conflict: askConflict, ...opts };
     this.#store = opts.store;
@@ -43,20 +47,22 @@ export class KeptFiles {
 
   // ---------- ce que l'explorateur demande ----------
 
-  // Un fichier que GFS garde se lit comme tel : les PDF de `GFS_Fichiers`, et ceux qu'un autre document a partagés et que la personne a acceptés (js/received-files.js : ils sont dans une table `GFS_Recus`).
+  // Un fichier que GFS garde se lit comme tel : les PDF de `GFS_Fichiers`, et ceux qu'un autre document a partagés et que la personne a acceptés
+  // (js/received-files.js : ils sont dans une table `GFS_Recus`).
   has = file => file.app === FILES_APP || isAcceptedReceived(file);
 
-  // La corbeille (js/trash.js) : GFS garde ces fichiers, il sait donc les mettre à la corbeille, les restaurer et les supprimer pour de bon. `lock()` : { text } quand rien ne peut s'écrire.
-  // Un fichier reçu n'est à nous que pour le lire : la table qui le porte appartient au partage.
+  // La corbeille (js/trash.js) : GFS garde ces fichiers, il sait donc les mettre à la corbeille, les restaurer et les supprimer pour de bon. `lock()` : { text
+  // } quand rien ne peut s'écrire. Un fichier reçu n'est à nous que pour le lire : la table qui le porte appartient au partage.
   manages = file => file.app === FILES_APP;
 
   lock = () => this.#lock('trash.readonly');
 
-  // Le geste principal d'un fichier que GFS garde : « Lire » quand une app le lit (grisé tant qu'elle n'est pas prête : le clic dit ce qui la débloque), sinon « Télécharger ». Le bouton, l'article
-  // du menu et la phrase de la barre d'information le disent.
+  // Le geste principal d'un fichier que GFS garde : « Lire » quand une app le lit (grisé tant qu'elle n'est pas prête : le clic dit ce qui la débloque), sinon
+  // « Télécharger ». Le bouton, l'article du menu et la phrase de la barre d'information le disent.
   openAs = file => {
     const reader = this.#opts.reader(file);
-    return reader ? { label: this.#opts.t('files.read'), icon: 'read', greyed: Boolean(reader.lock) } : { label: this.#opts.t('files.download'), icon: 'download', greyed: false };
+    return reader ? { label: this.#opts.t('files.read'), icon: 'read', greyed: Boolean(reader.lock) } :
+      { label: this.#opts.t('files.download'), icon: 'download', greyed: false };
   };
 
   opensIn = file => {
@@ -73,7 +79,8 @@ export class KeptFiles {
     const { t, lang } = this.#opts;
     const lock = this.#lock();
     return importFormats(FILES_MANIFEST).map(({ item, type }) => ({
-      app: FILES_APP, type: type.valeur, icon: type.icone, family: familyOf(type.couleur) || null, greyed: Boolean(lock), focus: null, reason: lock ? lock.text : '',
+      app: FILES_APP, type: type.valeur, icon: type.icone, family: familyOf(type.couleur) || null, greyed: Boolean(lock), focus: null,
+        reason: lock ? lock.text : '',
       valeur: item.valeur, extensions: item.extensions, label: label(item.nom, lang()), hint: lock ? (lock.hint || lock.text) : t('files.import.hint'),
     }));
   }
@@ -87,7 +94,8 @@ export class KeptFiles {
 
   // ---------- importer ----------
 
-  // Le sélecteur de fichier s'ouvre tout de suite (dans le geste de la personne : le navigateur refuse sinon), puis les vérifications, la décision en cas de nom pris, l'envoi.
+  // Le sélecteur de fichier s'ouvre tout de suite (dans le geste de la personne : le navigateur refuse sinon), puis les vérifications, la décision en cas de
+  // nom pris, l'envoi.
   async importFile(entry) {
     const { t, notice } = this.#opts;
     if (entry.greyed) { notice(entry.reason || entry.hint); return; }
@@ -97,7 +105,8 @@ export class KeptFiles {
     try {
       const problem = await this.#check(file, entry);
       if (problem) { notice(problem); return; }
-      const result = await this.#store.add({ file, name, decide: (existing, copy) => this.#decide(existing, copy), onUpload: () => notice(t('files.sending', { name })) });
+      const result = await this.#store.add({ file, name, decide: (existing, copy) => this.#decide(existing, copy),
+        onUpload: () => notice(t('files.sending', { name })) });
       if (result) {
         notice(this.#saidAfter(result, name));
         const unfiled = await this.#file(result, this.#opts.folder());
@@ -112,7 +121,8 @@ export class KeptFiles {
   // Un fichier du bon format, non vide, qui commence comme un PDF : le problème, dit à la personne, ou ''.
   async #check(file, entry) {
     const { t } = this.#opts;
-    if (!acceptsFile(file.name, entry.extensions)) return t('ex.import.wrong', { name: file.name, format: entry.label, extensions: entry.extensions.join(', ') });
+    if (!acceptsFile(file.name, entry.extensions)) return t('ex.import.wrong', { name: file.name, format: entry.label,
+      extensions: entry.extensions.join(', ') });
     return this.#content(file, file.name);
   }
 
@@ -124,8 +134,9 @@ export class KeptFiles {
     return looksLikePdf(head) ? '' : t('files.notPdf', { name });
   }
 
-  // Un nom déjà pris : la personne choisit (js/conflict-window.js). Le fichier existant est décrit par sa date et son auteur ; `copy` est le nom que prendrait la copie ; `from` : { app, repeat }
-  // quand c'est une app qui range le fichier (la fenêtre la nomme, et offre la case « Faire pareil pour les suivants » quand `repeat`). Rend { choice: 'replace' | 'both' | 'skip', again }.
+  // Un nom déjà pris : la personne choisit (js/conflict-window.js). Le fichier existant est décrit par sa date et son auteur ; `copy` est le nom que prendrait
+  // la copie ; `from` : { app, repeat } quand c'est une app qui range le fichier (la fenêtre la nomme, et offre la case « Faire pareil pour les suivants »
+  // quand `repeat`). Rend { choice: 'replace' | 'both' | 'skip', again }.
   #askName(existing, copy, from = {}) {
     const { t, locale, now } = this.#opts;
     const who = person(existing.by).name;
@@ -147,8 +158,8 @@ export class KeptFiles {
     return result.name === asked ? t('files.added', { name: result.name }) : t('files.copied', { name: result.name });
   }
 
-  // Un fichier ajouté va dans le dossier `folder`, comme un fichier créé dans une app : le rangement de la personne le sait (js/rangement.js). Un fichier remplacé garde sa place.
-  // Rend l'erreur du rangement (le fichier est gardé quand même), ou null.
+  // Un fichier ajouté va dans le dossier `folder`, comme un fichier créé dans une app : le rangement de la personne le sait (js/rangement.js). Un fichier
+  // remplacé garde sa place. Rend l'erreur du rangement (le fichier est gardé quand même), ou null.
   async #file(result, folder) {
     if (result.status !== 'added' || !folder) return null;
     try {
@@ -171,11 +182,12 @@ export class KeptFiles {
 
   // ---------- ranger (une app dépose un fichier : contrats 5.4, point 9) ----------
 
-  // Une app demande à GFS de garder un PDF. `request` : { file (le Blob), name (celui de GFS, avec « .pdf »), app (son identifiant : la colonne `Origine`), appName, folder (le dossier de la
-  // personne où va un fichier nouveau, '' : aucun), repeat (offrir « Faire pareil pour les suivants »), batch (ce qui vaut pour tout le lot : { choice, declined, noFolder }) }.
-  // Rend { status: 'added' | 'replaced' | 'copied' | 'skipped', id, name }. Un refus est un `Refus` (ses codes : contrats 3.6) : GFS_ACCES ou GFS_LECTURE_SEULE (rien ne s'écrit), GFS_REFUSE
-  // (le fichier est vide ou n'est pas un PDF), GFS_ANNULE (la personne refuse de créer la table), GFS_ECHEC (Grist ou le cadre d'envoi n'ont pas suivi). GFS ne dit rien à la personne en dehors
-  // de ses fenêtres : c'est l'app qui lui rend compte.
+  // Une app demande à GFS de garder un PDF. `request` : { file (le Blob), name (celui de GFS, avec « .pdf »), app (son identifiant : la colonne `Origine`),
+  // appName, folder (le dossier de la personne où va un fichier nouveau, '' : aucun), repeat (offrir « Faire pareil pour les suivants »), batch (ce qui vaut
+  // pour tout le lot : { choice, declined, noFolder }) }. Rend { status: 'added' | 'replaced' | 'copied' | 'skipped', id, name }. Un refus est un `Refus` (ses
+  // codes : contrats 3.6) : GFS_ACCES ou GFS_LECTURE_SEULE (rien ne s'écrit), GFS_REFUSE (le fichier est vide ou n'est pas un PDF), GFS_ANNULE (la personne
+  // refuse de créer la table), GFS_ECHEC (Grist ou le cadre d'envoi n'ont pas suivi). GFS ne dit rien à la personne en dehors de ses fenêtres : c'est l'app qui
+  // lui rend compte.
   async deposit({ file, name, app, appName, folder, repeat, batch }) {
     const { t } = this.#opts;
     const blocked = this.#lock();
@@ -184,7 +196,8 @@ export class KeptFiles {
     const problem = await this.#content(file, name);
     if (problem) throw new Refus(ERR.REFUSE, problem);
     try {
-      const result = await this.#store.add({ file, name, origin: app, decide: (existing, copy) => this.#decideFor(existing, copy, { appName, repeat, batch }) });
+      const result = await this.#store.add({ file, name, origin: app, decide: (existing, copy) =>
+        this.#decideFor(existing, copy, { appName, repeat, batch }) });
       if (!result) return { status: 'skipped', id: null, name: null };
       if (!batch.noFolder) await this.#filedIn(result, folder, batch);
       return { status: result.status === 'replaced' ? 'replaced' : (result.name === name ? 'added' : 'copied'), id: result.id, name: result.name };
@@ -194,15 +207,16 @@ export class KeptFiles {
     }
   }
 
-  // Un nom pris par un fichier qu'une app range : la réponse retenue pour le lot (« Faire pareil pour les suivants ») vaut sans rien demander ; sinon la fenêtre, qui nomme l'app.
+  // Un nom pris par un fichier qu'une app range : la réponse retenue pour le lot (« Faire pareil pour les suivants ») vaut sans rien demander ; sinon la
+  // fenêtre, qui nomme l'app.
   async #decideFor(existing, copy, { appName, repeat, batch }) {
     const answer = batch.choice ? { choice: batch.choice, again: false } : await this.#askName(existing, copy, { app: appName, repeat });
     if (answer.again) batch.choice = answer.choice;
     return answer.choice === 'skip' ? null : answer.choice;
   }
 
-  // Le dossier d'un fichier nouveau. Un rangement qui échoue ne perd pas le fichier : il est gardé, sans dossier ; la personne qui refuse de créer la table du rangement n'est pas
-  // interrogée une seconde fois pour le même lot.
+  // Le dossier d'un fichier nouveau. Un rangement qui échoue ne perd pas le fichier : il est gardé, sans dossier ; la personne qui refuse de créer la table du
+  // rangement n'est pas interrogée une seconde fois pour le même lot.
   async #filedIn(result, folder, batch) {
     const failed = await this.#file(result, folder);
     if (failed instanceof TableDeclined) batch.noFolder = true;
@@ -223,8 +237,9 @@ export class KeptFiles {
     }
   }
 
-  // Lire : les octets du fichier, prêts à être remis à l'app qui le lit, en objet `File` au nom du fichier (contrats 5.4, point 8). Rend `null` quand le transfert a échoué : la phrase est dite.
-  // « Ouverture de… » ne dure que le transfert : une fois fini, l'app prend le relais et la phrase s'efface (`hideNotice`, qui ne retire que cette phrase-là), au lieu de rester six secondes sur le PDF.
+  // Lire : les octets du fichier, prêts à être remis à l'app qui le lit, en objet `File` au nom du fichier (contrats 5.4, point 8). Rend `null` quand le
+  //   transfert a échoué : la phrase est dite. « Ouverture de… » ne dure que le transfert : une fois fini, l'app prend le relais et la phrase s'efface
+  //   (`hideNotice`, qui ne retire que cette phrase-là), au lieu de rester six secondes sur le PDF.
   async load(file) {
     const { t, notice, hideNotice = () => {} } = this.#opts;
     const reading = t('files.reading', { name: file.name });
@@ -241,7 +256,8 @@ export class KeptFiles {
 
   // ---------- la corbeille ----------
 
-  // Contrats 6.6, point 7. Les gestes seuls, sans question ni phrase : js/trash.js les demande à la personne, les dit et relit la liste. Rendus : voir js/files-store.js.
+  // Contrats 6.6, point 7. Les gestes seuls, sans question ni phrase : js/trash.js les demande à la personne, les dit et relit la liste. Rendus : voir
+  // js/files-store.js.
   trash = file => this.#store.trash(file);
 
   restore = file => this.#store.restore(file);

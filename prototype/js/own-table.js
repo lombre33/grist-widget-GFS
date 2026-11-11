@@ -1,7 +1,8 @@
-// Une table que GFS crée et écrit lui-même dans le document (`GFS_Rangement`, contrats 6.4 ; `GFS_Fichiers`, contrats 6.6) : la relire, la créer avec l'accord de la personne,
-// lui ajouter une colonne absente. Un seul lieu pour ces règles, pour que chaque table de GFS les suive :
+// Une table que GFS crée et écrit lui-même dans le document (`GFS_Rangement`, contrats 6.4 ; `GFS_Fichiers`, contrats 6.6) : la relire, la créer avec l'accord
+// de la personne, lui ajouter une colonne absente. Un seul lieu pour ces règles, pour que chaque table de GFS les suive :
 //   lire ne crée rien ; écrire relit d'abord, et ne crée la table qu'avec l'accord de la personne (6.2, point 1) ;
-//   après `AddTable`, l'identifiant réel est relu (6.2, point 2) ; une colonne absente est ajoutée avant d'être écrite (6.1, point 3) : une seule colonne inconnue annulerait tout le lot.
+//   après `AddTable`, l'identifiant réel est relu (6.2, point 2) ; une colonne absente est ajoutée avant d'être écrite (6.1, point 3) : une seule colonne
+//   inconnue annulerait tout le lot.
 
 const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 
@@ -21,7 +22,8 @@ export class OwnTable {
   #consent;
   #tableId;
 
-  // `port` : { doc } (les interfaces brutes de Grist) ; `columns` : [{ id, type, … }] telles que `AddTable` les reçoit ; `consent()` : une promesse, `true` quand la personne accepte la création.
+  // `port` : { doc } (les interfaces brutes de Grist) ; `columns` : [{ id, type, … }] telles que `AddTable` les reçoit ; `consent()` : une promesse, `true`
+  //   quand la personne accepte la création.
   constructor({ port, name, columns, consent }) {
     this.#port = port;
     this.#name = name;
@@ -55,8 +57,8 @@ export class OwnTable {
     return state;
   }
 
-  // La table seulement si elle existe, relue juste avant, avec les colonnes `needed` ajoutées au besoin ; null sans table. Pour un geste sur une ligne qui y est déjà (mettre un fichier à la
-  // corbeille, le restaurer) : un geste de ce genre ne crée jamais la table, et ne demande donc jamais son accord.
+  // La table seulement si elle existe, relue juste avant, avec les colonnes `needed` ajoutées au besoin ; null sans table. Pour un geste sur une ligne qui y
+  // est déjà (mettre un fichier à la corbeille, le restaurer) : un geste de ce genre ne crée jamais la table, et ne demande donc jamais son accord.
   async existing(needed = []) {
     const state = await this.load();
     if (!state.exists) return null;

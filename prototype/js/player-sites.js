@@ -1,4 +1,5 @@
-// Les sites de vidéos dont GFS sait poser le lecteur (contrats 3.4 point 7, 5.2 point 11). Un petit fichier à part, sans import : le manifeste, la politique de l'app et le lecteur le lisent tous trois.
+// Les sites de vidéos dont GFS sait poser le lecteur (contrats 3.4 point 7, 5.2 point 11). Un petit fichier à part, sans import : le manifeste, la politique de
+// l'app et le lecteur le lisent tous trois.
 
 export const PROVIDERS = Object.freeze(['youtube', 'vimeo']);
 

@@ -1,6 +1,7 @@
-// La barre de GFS au-dessus d'une app (cahier 6.3, contrats 5.2 point 7) : cinq boutons à icône seule (« Fichiers », « Fichiers ouverts » avec son nombre, « Apps », la ligne de travail, contrats 4.5,
-// et la position de la barre) posés par-dessus le cadre de l'app, au bord que la personne choisit, centrés sur ce bord. Le cadre de l'app reste plein : la barre ne prend de place à personne, et dit à l'app ce qu'elle recouvre (`dock-state.js`).
-// Le bord est retenu dans le `localStorage` de GFS (clé `gfs.barre`), comme la langue : jamais dans le document.
+// La barre de GFS au-dessus d'une app (cahier 6.3, contrats 5.2 point 7) : cinq boutons à icône seule (« Fichiers », « Fichiers ouverts » avec son nombre,
+// « Apps », la ligne de travail, contrats 4.5, et la position de la barre) posés par-dessus le cadre de l'app, au bord que la personne choisit, centrés sur ce
+// bord. Le cadre de l'app reste plein : la barre ne prend de place à personne, et dit à l'app ce qu'elle recouvre (`dock-state.js`). Le bord est retenu dans le
+// `localStorage` de GFS (clé `gfs.barre`), comme la langue : jamais dans le document.
 
 import { h } from './dom.js';
 import { icon } from './icons.js';
@@ -27,8 +28,9 @@ export class Dock {
   #t = key => key;
   #onNotKept;
 
-  // root : l'élément de la barre, avec ses boutons ; stage : la scène (sa taille est celle du cadre de l'app) ; onFiles, onOpened, onApps et onWork : les boutons qui font quelque chose
-  // (le menu de position est celui de la barre) ; onNotKept : le navigateur refuse de retenir le bord choisi (il vaut alors pour la page).
+  // root : l'élément de la barre, avec ses boutons ; stage : la scène (sa taille est celle du cadre de l'app) ; onFiles, onOpened, onApps et onWork : les
+  //   boutons qui font quelque chose (le menu de position est celui de la barre) ; onNotKept : le navigateur refuse de retenir le bord choisi (il vaut alors
+  //   pour la page).
   constructor({ root, stage, onFiles, onOpened, onApps, onWork, onNotKept, win = window }) {
     this.#root = root;
     this.#stage = stage;
@@ -46,8 +48,8 @@ export class Dock {
     this.#work.addEventListener('click', onWork);
     this.#place.addEventListener('click', () => this.#openPlaceMenu());
     watchKey(setting, STORAGE_KEY, win);
-    // La barre est centrée sur son bord : un cadre qui change de taille la déplace ; et la zone qu'elle dit à l'app est sa taille : l'accessibilité renforcée (cibles de 36 px, css/acces.css) l'agrandit sans que le cadre
-    // bouge, la zone se relit donc aussi quand c'est la barre qui change de taille.
+    // La barre est centrée sur son bord : un cadre qui change de taille la déplace ; et la zone qu'elle dit à l'app est sa taille : l'accessibilité renforcée
+    // (cibles de 36 px, css/acces.css) l'agrandit sans que le cadre bouge, la zone se relit donc aussi quand c'est la barre qui change de taille.
     if (win.ResizeObserver) {
       const observer = new win.ResizeObserver(() => this.#state.refresh());
       observer.observe(stage);
@@ -82,7 +84,8 @@ export class Dock {
     this.#work.setAttribute('aria-pressed', active ? 'true' : 'false');
   }
 
-  // Le nombre de fichiers ouverts, sur le bouton « Fichiers ouverts » : une pastille (pas d'elle seule : le nombre est aussi dans le nom du bouton) ; sans fichier ouvert le bouton est grisé et reste là.
+  // Le nombre de fichiers ouverts, sur le bouton « Fichiers ouverts » : une pastille (pas d'elle seule : le nombre est aussi dans le nom du bouton) ; sans
+  // fichier ouvert le bouton est grisé et reste là.
   setOpened(count) {
     this.#openedCount = count;
     this.#paintOpened();
@@ -120,7 +123,8 @@ export class Dock {
   #measure() {
     const box = this.#root.getBoundingClientRect();
     const stage = this.#stage.getBoundingClientRect();
-    return { rect: { x: box.left - stage.left, y: box.top - stage.top, largeur: box.width, hauteur: box.height }, frame: { largeur: stage.width, hauteur: stage.height } };
+    return { rect: { x: box.left - stage.left, y: box.top - stage.top, largeur: box.width, hauteur: box.height },
+      frame: { largeur: stage.width, hauteur: stage.height } };
   }
 
   // Les quatre bords, un article chacun : celui qui vaut est coché.
@@ -132,7 +136,8 @@ export class Dock {
     openMenu(this.#place, this.#edgeItems(), { host: this.#stage, side: MENU_SIDE[this.edge], label: this.#t('dock.place') });
   }
 
-  // La ligne « Position de la barre » du menu « Réglages » de l'explorateur (js/settings-menu.js) : le même choix que le dernier bouton de la barre, ses quatre bords en sous-menu.
+  // La ligne « Position de la barre » du menu « Réglages » de l'explorateur (js/settings-menu.js) : le même choix que le dernier bouton de la barre, ses quatre
+  // bords en sous-menu.
   placeRow() {
     return { label: this.#t('dock.place'), icon: EDGE_ICONS[this.edge], submenu: this.#edgeItems() };
   }

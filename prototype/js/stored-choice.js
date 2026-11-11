@@ -1,9 +1,10 @@
-// Un choix de la personne, retenu sur le navigateur de GFS (jamais dans le document ni dans une table) : la langue, le bord de la barre, l'ambiance et sa couleur. Une clé du `localStorage` de GFS ;
-// une valeur étrangère (une main qui y a écrit, une version à venir) est tenue pour absente ; un navigateur qui refuse de retenir n'arrête rien (le choix vaut pour la page, et
-// `choose` le dit) ; un autre onglet, ou une autre section de GFS dans la page, qui change la clé est suivi par l'événement `storage` du navigateur.
+// Un choix de la personne, retenu sur le navigateur de GFS (jamais dans le document ni dans une table) : la langue, le bord de la barre, l'ambiance et sa
+// couleur. Une clé du `localStorage` de GFS ; une valeur étrangère (une main qui y a écrit, une version à venir) est tenue pour absente ; un navigateur qui
+// refuse de retenir n'arrête rien (le choix vaut pour la page, et `choose` le dit) ; un autre onglet, ou une autre section de GFS dans la page, qui change la
+// clé est suivi par l'événement `storage` du navigateur.
 
-// Ce que le navigateur garde pour une clé : la lire, l'écrire, la retirer (`write(null)`). Un navigateur qui refuse (cadre sans stockage, navigation privée, quota) n'arrête rien :
-// la lecture rend `null`, l'écriture rend `false`.
+// Ce que le navigateur garde pour une clé : la lire, l'écrire, la retirer (`write(null)`). Un navigateur qui refuse (cadre sans stockage, navigation privée,
+// quota) n'arrête rien : la lecture rend `null`, l'écriture rend `false`.
 export function keyStore(win, key) {
   return {
     read() {
@@ -19,7 +20,8 @@ export function keyStore(win, key) {
   };
 }
 
-// Le choix change ailleurs : le navigateur le dit par l'événement `storage`. `addEventListener` et non `window.onstorage =`, comme pour les messages (cela ne remplace l'écoute de personne).
+// Le choix change ailleurs : le navigateur le dit par l'événement `storage`. `addEventListener` et non `window.onstorage =`, comme pour les messages (cela ne
+// remplace l'écoute de personne).
 export function watchKey(choice, key, win = window) {
   const handler = event => { if (event.key === null || event.key === key) choice.reload(); };
   win.addEventListener('storage', handler);
@@ -34,8 +36,9 @@ export class StoredChoice {
   #value;
   #listeners = [];
 
-  // choices : les valeurs permises (une liste, ou une fonction qui dit si une valeur l'est : une couleur `#rrggbb` ne tient pas dans une liste) ; fallback : la valeur tant que rien n'est retenu
-  // (l'une des valeurs permises) ; store : { read(), write(valeur | null) → retenu ? } ; keep(valeur) : ce qu'on écrit pour elle (`null` retire la clé : la langue « comme Grist » est la clé absente).
+  // choices : les valeurs permises (une liste, ou une fonction qui dit si une valeur l'est : une couleur `#rrggbb` ne tient pas dans une liste) ; fallback : la
+  //   valeur tant que rien n'est retenu (l'une des valeurs permises) ; store : { read(), write(valeur | null) → retenu ? } ; keep(valeur) : ce qu'on écrit pour
+  //   elle (`null` retire la clé : la langue « comme Grist » est la clé absente).
   constructor({ choices, fallback, store, keep = value => value }) {
     this.#allows = typeof choices === 'function' ? choices : value => choices.includes(value);
     this.#fallback = fallback;

@@ -62,13 +62,15 @@ function checkFiles(m, errors) {
   }
 }
 
-// Le poids d'un fichier (2.4, point 5) : `pieces` { colonne, taille } (le fichier EST une pièce jointe), `liees` [{ table, colonne, fichier }] (les lignes d'une table de l'app, du préfixe, qui suivent le fichier :
-// `colonne` de cette table porte la clé que `fichier`, une colonne de la table du fichier, porte aussi). Facultatif.
+// Le poids d'un fichier (2.4, point 5) : `pieces` { colonne, taille } (le fichier EST une pièce jointe), `liees` [{ table, colonne, fichier }] (les lignes
+// d'une table de l'app, du préfixe, qui suivent le fichier : `colonne` de cette table porte la clé que `fichier`, une colonne de la table du fichier, porte
+// aussi). Facultatif.
 function checkWeight(weight, prefix, errors) {
   if (weight === undefined) return;
   if (!isObject(weight)) { errors.push('fichiers[].poids : objet attendu'); return; }
   const pieces = weight.pieces;
-  if (pieces !== undefined && !(isObject(pieces) && isText(pieces.colonne) && isText(pieces.taille))) errors.push('fichiers[].poids.pieces : { colonne, taille } attendu');
+  if (pieces !== undefined && !(isObject(pieces) && isText(pieces.colonne) && isText(pieces.taille))) errors.push(
+    'fichiers[].poids.pieces : { colonne, taille } attendu');
   if (weight.liees === undefined) return;
   if (!Array.isArray(weight.liees)) { errors.push('fichiers[].poids.liees : liste attendue'); return; }
   for (const link of weight.liees) checkLink(link, prefix, errors);
@@ -76,13 +78,15 @@ function checkWeight(weight, prefix, errors) {
 
 // Une table liée au poids d'un fichier (`poids.liees[]`) : { table, colonne, fichier } en texte, la table du préfixe de l'app.
 function checkLink(link, prefix, errors) {
-  if (!isObject(link) || !isText(link.table) || !isText(link.colonne) || !isText(link.fichier)) errors.push('fichiers[].poids.liees : { table, colonne, fichier } attendu');
+  if (!isObject(link) || !isText(link.table) || !isText(link.colonne) || !isText(link.fichier)) errors.push(
+    'fichiers[].poids.liees : { table, colonne, fichier } attendu');
   else if (!link.table.toLowerCase().startsWith(prefix.toLowerCase())) errors.push('fichiers[].poids.liees[].table hors du préfixe');
 }
 
-// Une recette (2.4 ; contrats 6.7) : comment GFS retire et remet un fichier de cette table (`suppression`), ou le copie (`copie`). `ligne: true` (un fichier est une ligne) est le mode de base ; `appel: true` dit que
-// l'app ouverte a aussi son mot (un fichier qui tient à plus qu'une ligne : `supprimer` avant de retirer la ligne, `dupliquer` à la place de la copie de la ligne, qui n'a alors pas besoin de `ligne`) ;
-// `uniques` et `exclusives` : des noms de colonnes ; `values` (`remettre` pour la suppression, `valeurs` pour la copie) : { colonne: valeur }.
+// Une recette (2.4 ; contrats 6.7) : comment GFS retire et remet un fichier de cette table (`suppression`), ou le copie (`copie`). `ligne: true` (un fichier
+// est une ligne) est le mode de base ; `appel: true` dit que l'app ouverte a aussi son mot (un fichier qui tient à plus qu'une ligne : `supprimer` avant de
+// retirer la ligne, `dupliquer` à la place de la copie de la ligne, qui n'a alors pas besoin de `ligne`) ; `uniques` et `exclusives` : des noms de colonnes ;
+// `values` (`remettre` pour la suppression, `valeurs` pour la copie) : { colonne: valeur }.
 function checkRecipe(recipe, name, values, errors) {
   if (recipe === undefined) return;
   const alone = name === 'copie' && isObject(recipe) && recipe.appel === true; // la copie par l'app n'a pas besoin de la ligne
@@ -94,7 +98,8 @@ function checkRecipe(recipe, name, values, errors) {
 // Ce que la recette dit de colonnes : `uniques` et `exclusives` (listes de noms) et `values` (un objet { colonne: valeur }).
 function checkRecipeLists(recipe, name, values, errors) {
   for (const key of ['uniques', 'exclusives']) {
-    if (recipe[key] !== undefined && !(Array.isArray(recipe[key]) && recipe[key].every(isText))) errors.push(`fichiers[].${name}.${key} : liste de noms de colonnes attendue`);
+    if (recipe[key] !== undefined && !(Array.isArray(recipe[key]) && recipe[key].every(isText))) errors.push(
+      `fichiers[].${name}.${key} : liste de noms de colonnes attendue`);
   }
   if (recipe[values] !== undefined && !isObject(recipe[values])) errors.push(`fichiers[].${name}.${values} : objet attendu`);
 }
@@ -118,16 +123,19 @@ function checkSettings(m, errors) {
 
 const covered = (lit, pattern) => lit.includes('*') || lit.includes(pattern) || lit.some(p => p.endsWith('*') && pattern.startsWith(p.slice(0, -1)));
 
-// `arrivee` (facultatif, contrats 2.5, point 4) : où GFS lit, sans réglage de la vue, que la section est celle de l'app. { table, colonne, lignes } : la table de l'app, la colonne qui dit la table
-// de la vue, et les valeurs que doit porter la ligne (des textes, comparés tels quels). La table doit être de celles que l'app lit.
+// `arrivee` (facultatif, contrats 2.5, point 4) : où GFS lit, sans réglage de la vue, que la section est celle de l'app. { table, colonne, lignes } : la table
+// de l'app, la colonne qui dit la table de la vue, et les valeurs que doit porter la ligne (des textes, comparés tels quels). La table doit être de celles que
+// l'app lit.
 function checkArrival(m, errors) {
   if (m.arrivee === undefined) return;
   const arrival = m.arrivee;
   if (!isObject(arrival)) { errors.push('arrivee : objet attendu'); return; }
   if (!isText(arrival.table)) errors.push('arrivee.table : chaîne attendue');
-  else if (isObject(m.permissions) && Array.isArray(m.permissions.lit) && !covered(m.permissions.lit, arrival.table)) errors.push(`arrivee.table ${arrival.table} : une table que l'app ne lit pas`);
+  else if (isObject(m.permissions) && Array.isArray(m.permissions.lit) && !covered(m.permissions.lit, arrival.table)) errors.push(
+    `arrivee.table ${arrival.table} : une table que l'app ne lit pas`);
   if (!isText(arrival.colonne)) errors.push('arrivee.colonne : chaîne attendue');
-  if (arrival.lignes !== undefined && (!isObject(arrival.lignes) || !Object.values(arrival.lignes).every(isText))) errors.push('arrivee.lignes : un objet de chaînes attendu');
+  if (arrival.lignes !== undefined && (!isObject(arrival.lignes) || !Object.values(arrival.lignes).every(isText))) errors.push(
+    'arrivee.lignes : un objet de chaînes attendu');
 }
 
 function checkPatterns(perm, errors) {
@@ -146,8 +154,10 @@ function checkInternalTable(entry, table, writes, errors) {
   if (!key.startsWith('_grist_')) errors.push(`gristInterne : ${table} n'est pas une table interne`);
   if (entry.lit && NEVER_READ.includes(key)) errors.push(`gristInterne : ${table} ne se lit jamais`);
   if (writes && NEVER_WRITE.includes(key)) errors.push(`gristInterne : ${table} n'est jamais écrite`);
-  if (writes && key === '_grist_views_section' && (entry.ecrit || []).includes('options')) errors.push('gristInterne : la colonne options de _grist_Views_section n\'est jamais écrite');
-  if (writes && key === '_grist_pages' && (entry.ecrit || []).includes('shareRef')) errors.push('gristInterne : la colonne shareRef de _grist_Pages n\'est jamais écrite');
+  if (writes && key === '_grist_views_section' && (entry.ecrit || []).includes('options')) errors.push(
+    'gristInterne : la colonne options de _grist_Views_section n\'est jamais écrite');
+  if (writes && key === '_grist_pages' && (entry.ecrit || []).includes('shareRef')) errors.push(
+    'gristInterne : la colonne shareRef de _grist_Pages n\'est jamais écrite');
 }
 
 function checkInternalEntry(entry, errors) {
@@ -160,29 +170,34 @@ function checkInternalEntry(entry, errors) {
   if (writes && entry.tables.length !== 1) errors.push('gristInterne : une entrée qui écrit nomme une seule table');
 }
 
-// `identite` (3.4, point 6) donne à l'app l'adresse e-mail de la personne : elle ne contourne aucun filtre de tables, donc elle ne demande pas l'accès `full` (voir checkPermissions).
+// `identite` (3.4, point 6) donne à l'app l'adresse e-mail de la personne : elle ne contourne aucun filtre de tables, donc elle ne demande pas l'accès `full`
+// (voir checkPermissions).
 function checkCapabilities(perm, errors) {
   for (const key of ['jeton', 'formules', 'structure', 'identite', 'lecteurs', 'partage']) {
-    if (perm[key] !== undefined && (!isObject(perm[key]) || !isBilingual(perm[key].pourquoi))) errors.push(`permissions.${key} : pourquoi doit porter fr et en`);
+    if (perm[key] !== undefined && (!isObject(perm[key]) || !isBilingual(perm[key].pourquoi))) errors.push(
+      `permissions.${key} : pourquoi doit porter fr et en`);
   }
   checkPlayers(perm.lecteurs, errors);
 }
 
-// `lecteurs` (3.4, point 7) : les sites de vidéos dont l'app demande à GFS de poser le lecteur, `{ fournisseurs: ["youtube", "vimeo"], pourquoi }`. Comme `identite`, elle ne contourne aucun filtre de tables : pas d'accès `full`.
+// `lecteurs` (3.4, point 7) : les sites de vidéos dont l'app demande à GFS de poser le lecteur, `{ fournisseurs: ["youtube", "vimeo"], pourquoi }`. Comme
+// `identite`, elle ne contourne aucun filtre de tables : pas d'accès `full`.
 function checkPlayers(players, errors) {
   if (players === undefined || !isObject(players)) return;
   const list = players.fournisseurs;
   if (!Array.isArray(list) || !list.length) { errors.push('permissions.lecteurs.fournisseurs : liste de sites attendue'); return; }
   const seen = new Set();
   for (const name of list) {
-    if (!PROVIDERS.includes(name)) errors.push(`permissions.lecteurs.fournisseurs : ${JSON.stringify(name)} n'est pas un site que GFS sait jouer (${PROVIDERS.join(', ')})`);
+    if (!PROVIDERS.includes(name)) errors.push(
+      `permissions.lecteurs.fournisseurs : ${JSON.stringify(name)} n'est pas un site que GFS sait jouer (${PROVIDERS.join(', ')})`);
     else if (seen.has(name)) errors.push(`permissions.lecteurs.fournisseurs ${name} : site déjà déclaré`);
     seen.add(name);
   }
 }
 
-// Les capacités et les raisons que les apps déclarent (3.4), pour qui doit les relire (un client, son responsable de la sécurité) : une ligne par capacité déclarée,
-// { app, nom, capacite, detail, pourquoi }. `detail` dit sur quoi elle porte quand c'est utile (les tables d'une entrée de `gristInterne`, les motifs de `lienPublic`).
+// Les capacités et les raisons que les apps déclarent (3.4), pour qui doit les relire (un client, son responsable de la sécurité) : une ligne par capacité
+// déclarée, { app, nom, capacite, detail, pourquoi }. `detail` dit sur quoi elle porte quand c'est utile (les tables d'une entrée de `gristInterne`, les motifs
+// de `lienPublic`).
 const CAPABILITIES = ['jeton', 'formules', 'structure', 'identite', 'lecteurs', 'lienPublic', 'partage'];
 const reasonOf = entry => (isObject(entry) && isBilingual(entry.pourquoi) ? entry.pourquoi : null);
 const namesOf = list => (Array.isArray(list) ? list.join(', ') : '');
@@ -215,11 +230,13 @@ function checkPublicPattern(pattern, m, errors) {
   if (!PUBLIC_PATTERN_RE.test(pattern)) errors.push(`${where} doit être un nom de table, ou un préfixe suivi de « * », sans accent`);
   else if (!stem.startsWith(prefix)) errors.push(`${where} est hors du préfixe de l'app`);
   else if (stem === prefix) errors.push(`${where} couvre toutes les tables de l'app : il faut nommer les petites tables`);
-  else for (const table of filesTables(m)) if (covers([pattern], table, 'propre')) errors.push(`${where} couvre ${table}, la table des fichiers de l'app : un lien public ne la lit jamais`);
+  else for (const table of filesTables(m)) if (covers([pattern], table, 'propre')) errors.push(
+    `${where} couvre ${table}, la table des fichiers de l'app : un lien public ne la lit jamais`);
 }
 
-// Les tables de l'app qu'un lien public peut lire, si la personne y consent à la publication (contrats 3.3, point 9 ; 11.9, point 4c) : des petites tables nommées une à une
-// ou par un préfixe plus précis que celui de l'app, jamais celle des fichiers (Form+ : `FormPlus_Formulaires` garde la définition et la clé de partage de tous ses formulaires).
+// Les tables de l'app qu'un lien public peut lire, si la personne y consent à la publication (contrats 3.3, point 9 ; 11.9, point 4c) : des petites tables
+// nommées une à une ou par un préfixe plus précis que celui de l'app, jamais celle des fichiers (Form+ : `FormPlus_Formulaires` garde la définition et la clé
+// de partage de tous ses formulaires).
 function checkPublicLink(m, errors) {
   const link = m.permissions.lienPublic;
   if (link === undefined) return;
@@ -264,14 +281,16 @@ function checkDisplay(item, where, errors) {
 
 const EXTENSION_RE = /^\.[a-z0-9]{1,8}$/i;
 
-// Un format que l'app reçoit de GFS (`actions.importer`, 2.7 point 4) : une valeur à elle, un nom (fr, en), le type de fichier qu'il crée (un type que l'app ouvre) et les extensions du sélecteur.
+// Un format que l'app reçoit de GFS (`actions.importer`, 2.7 point 4) : une valeur à elle, un nom (fr, en), le type de fichier qu'il crée (un type que l'app
+// ouvre) et les extensions du sélecteur.
 function checkImport(item, opens, seen, errors) {
   if (!isObject(item) || !isText(item.valeur) || !isBilingual(item.nom)) { errors.push('actions.importer[] : valeur et nom (fr, en) attendus'); return; }
   const where = `actions.importer ${item.valeur}`;
   if (seen.has(item.valeur)) errors.push(`${where} : valeur déjà prise`);
   seen.add(item.valeur);
   if (!opens.has(item.type)) errors.push(`${where} : le type ${item.type} n'est pas dans actions.ouvrir`);
-  if (!Array.isArray(item.extensions) || !item.extensions.length || !item.extensions.every(extension => EXTENSION_RE.test(extension))) errors.push(`${where} : extensions : une liste de « .ext » attendue`);
+  if (!Array.isArray(item.extensions) || !item.extensions.length || !item.extensions.every(extension => EXTENSION_RE.test(extension))) errors.push(
+    `${where} : extensions : une liste de « .ext » attendue`);
 }
 
 function checkImports(m, errors) {
@@ -285,13 +304,15 @@ function checkImports(m, errors) {
 
 const FILE_TYPE_RE = /^[a-z][a-z0-9-]{0,23}$/;
 
-// Ce que l'app lit de ce que GFS garde (`actions.lire`, 2.7 point 5) : le type du fichier (un mot, comme `pdf`) et, quand c'est une extension de l'app qui le lit, son identifiant, déclaré dans `extensions`.
+// Ce que l'app lit de ce que GFS garde (`actions.lire`, 2.7 point 5) : le type du fichier (un mot, comme `pdf`) et, quand c'est une extension de l'app qui le
+// lit, son identifiant, déclaré dans `extensions`.
 function checkRead(item, extensions, seen, errors) {
   if (!isObject(item) || !FILE_TYPE_RE.test(item.type || '')) { errors.push('actions.lire[] : un type de fichier attendu (un mot, comme pdf)'); return; }
   const where = `actions.lire ${item.type}`;
   if (seen.has(item.type)) errors.push(`${where} : type déjà déclaré`);
   seen.add(item.type);
-  if (item.extension !== undefined && !extensions.has(item.extension)) errors.push(`${where} : l'extension ${item.extension} n'est pas déclarée dans extensions`);
+  if (item.extension !== undefined && !extensions.has(item.extension)) errors.push(
+    `${where} : l'extension ${item.extension} n'est pas déclarée dans extensions`);
 }
 
 function checkReads(m, errors) {
@@ -303,8 +324,8 @@ function checkReads(m, errors) {
   for (const item of actions.lire) checkRead(item, extensions, seen, errors);
 }
 
-// Ce que l'app range chez GFS (`actions.ranger`, 2.7 point 6) et ce qu'elle lui donne à joindre à une cellule (`actions.joindre`, point 7) : les types de fichiers que GFS garde ou joint (aujourd'hui `pdf`).
-// L'appel d'un type qui n'y est pas est refusé (5.4, points 9 et 12).
+// Ce que l'app range chez GFS (`actions.ranger`, 2.7 point 6) et ce qu'elle lui donne à joindre à une cellule (`actions.joindre`, point 7) : les types de
+// fichiers que GFS garde ou joint (aujourd'hui `pdf`). L'appel d'un type qui n'y est pas est refusé (5.4, points 9 et 12).
 function checkFiled(m, errors) {
   const actions = isObject(m.actions) ? m.actions : {};
   for (const name of ['ranger', 'joindre']) {
@@ -328,16 +349,20 @@ function checkExtensions(m, errors) {
   }
 }
 
-// Les bibliothèques natives de l'app, rangées par fonction (`natives`, facultatif, contrats 2.6 point 14) : { id, nom (fr, en), bibliotheques: [{ id, version exacte }] }, ou, quand la copie figée est dans le
+// Les bibliothèques natives de l'app, rangées par fonction (`natives`, facultatif, contrats 2.6 point 14) : { id, nom (fr, en), bibliotheques: [{ id, version
+// exacte }] }, ou, quand la copie figée est dans le
 // dépôt de l'app (l'éditeur : sa copie est une carte d'importation), { id, nom, copieDansApp: true, poids }. L'app les
-// emploie déjà (sa liste) ; GFS en garde la copie figée, que la personne peut choisir à la place du CDN, fonction par fonction. Une bibliothèque n'est que dans une seule fonction.
+// emploie déjà (sa liste) ; GFS en garde la copie figée, que la personne peut choisir à la place du CDN, fonction par fonction. Une bibliothèque n'est que dans
+// une seule fonction.
 function checkNativeLibraries(group, libraries, errors) {
-  if (group.copieDansApp === true) { // la copie est dans le dépôt de l'app : GFS n'a aucune bibliothèque à lister, seulement le poids à dire (contrats 2.6, point 14)
+  // la copie est dans le dépôt de l'app : GFS n'a aucune bibliothèque à lister, seulement le poids à dire (contrats 2.6, point 14)
+  if (group.copieDansApp === true) {
     if (group.bibliotheques !== undefined) errors.push(`natives ${group.id} : une fonction dont la copie est dans l'app n'a pas de bibliotheques`);
     if (!Number.isInteger(group.poids) || group.poids <= 0) errors.push(`natives ${group.id} : poids (octets) attendu`);
     return;
   }
-  if (!Array.isArray(group.bibliotheques) || !group.bibliotheques.length) { errors.push(`natives ${group.id} : bibliotheques : liste non vide attendue`); return; }
+  if (!Array.isArray(group.bibliotheques) || !group.bibliotheques.length) {
+    errors.push(`natives ${group.id} : bibliotheques : liste non vide attendue`); return; }
   for (const lib of group.bibliotheques) {
     if (!isObject(lib) || !LIBRARY_ID_RE.test(lib.id || '')) errors.push(`natives ${group.id} : une bibliothèque sans id valable`);
     else if (!EXACT_VERSION_RE.test(lib.version || '')) errors.push(`natives ${group.id} : la version de ${lib.id} doit être exacte (ni intervalle ni latest)`);
@@ -351,7 +376,8 @@ function checkNatives(m, errors) {
   const groups = new Set();
   const libraries = new Set();
   for (const group of m.natives) {
-    if (!isObject(group) || !LIBRARY_ID_RE.test(group.id || '') || !isBilingual(group.nom)) { errors.push('natives[] : id et nom (fr, en) attendus'); continue; }
+    if (!isObject(group) || !LIBRARY_ID_RE.test(group.id || '') || !isBilingual(group.nom)) {
+      errors.push('natives[] : id et nom (fr, en) attendus'); continue; }
     if (groups.has(group.id)) errors.push(`natives ${group.id} : fonction déjà déclarée`);
     groups.add(group.id);
     checkDisplay(group, `natives ${group.id}`, errors);
@@ -361,12 +387,14 @@ function checkNatives(m, errors) {
 
 const OPENINGS = ['fichier', 'nouveau', 'importer', 'lire'];
 
-// `ouverture` (facultatif, contrats 2.2) : ce que l'app sait faire d'une ouverture que GFS lui passe, `{ fichier, nouveau, importer, lire }` en booléens ; un genre absent vaut faux (GFS ouvre alors l'app
-// sur son modèle habituel et le dit). `permanente` (facultatif) : l'app ne se retire pas de la fenêtre « Apps et extensions ».
+// `ouverture` (facultatif, contrats 2.2) : ce que l'app sait faire d'une ouverture que GFS lui passe, `{ fichier, nouveau, importer, lire }` en booléens ; un
+// genre absent vaut faux (GFS ouvre alors l'app sur son modèle habituel et le dit). `permanente` (facultatif) : l'app ne se retire pas de la fenêtre « Apps et
+// extensions ».
 function checkOpening(m, errors) {
   if (m.ouverture !== undefined) {
     if (!isObject(m.ouverture)) errors.push('ouverture : objet attendu');
-    else for (const key of OPENINGS) if (m.ouverture[key] !== undefined && typeof m.ouverture[key] !== 'boolean') errors.push(`ouverture.${key} : true ou false attendu`);
+    else for (const key of OPENINGS) if (m.ouverture[key] !== undefined && typeof m.ouverture[key] !== 'boolean') errors.push(
+      `ouverture.${key} : true ou false attendu`);
   }
   if (m.permanente !== undefined && typeof m.permanente !== 'boolean') errors.push('permanente : true ou false attendu');
 }

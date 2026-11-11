@@ -1,7 +1,8 @@
-// Ranger un fichier dans GFS (contrats 5.4, point 9) : une app qui a fabriqué un PDF (un export de Publipostage+) demande à GFS de le garder, par l'appel `ranger`. GFS est seul à écrire ce qu'il
-// garde (6.6) : l'app ne reçoit aucun jeton, elle donne le fichier et son nom ; la table, la fenêtre « Ce nom est déjà pris » et le rangement sont ceux de la personne qui importe un PDF
-// (js/kept-files.js). Ce module lit la demande (sans effet de bord), vérifie que l'app a déclaré `actions.ranger`, met les dépôts à la file (un seul à la fois : la fenêtre d'un nom pris
-// ne se superpose pas à celle d'un autre) et retient ce qui vaut pour tout un lot : la réponse « Faire pareil pour les suivants », la table refusée, le rangement refusé.
+// Ranger un fichier dans GFS (contrats 5.4, point 9) : une app qui a fabriqué un PDF (un export de Publipostage+) demande à GFS de le garder, par l'appel
+// `ranger`. GFS est seul à écrire ce qu'il garde (6.6) : l'app ne reçoit aucun jeton, elle donne le fichier et son nom ; la table, la fenêtre « Ce nom est déjà
+// pris » et le rangement sont ceux de la personne qui importe un PDF (js/kept-files.js). Ce module lit la demande (sans effet de bord), vérifie que l'app a
+// déclaré `actions.ranger`, met les dépôts à la file (un seul à la fois : la fenêtre d'un nom pris ne se superpose pas à celle d'un autre) et retient ce qui
+// vaut pour tout un lot : la réponse « Faire pareil pour les suivants », la table refusée, le rangement refusé.
 
 import { ERR, Refus } from './filter.js';
 import { PDF_TYPE, cleanName } from './gfs-files.js';
@@ -13,13 +14,15 @@ const FOLDER_MAX = 200;
 
 const refuse = message => new Refus(ERR.REFUSE, message);
 
-// Ce que GFS a fait, dans les mots du contrat : `ajoute` (un nouveau fichier), `remplace` (le fichier de ce nom prend le contenu), `copie` (le nom était pris : le nouveau a un nom libre),
-// `ignore` (la personne n'en veut pas).
+// Ce que GFS a fait, dans les mots du contrat : `ajoute` (un nouveau fichier), `remplace` (le fichier de ce nom prend le contenu), `copie` (le nom était pris :
+// le nouveau a un nom libre), `ignore` (la personne n'en veut pas).
 const STATUS = Object.freeze({ added: 'ajoute', replaced: 'remplace', copied: 'copie', skipped: 'ignore' });
 
-// `ranger { fichier, nom, type?, lot?, suivants?, dossier? }` (5.4, point 9) -> { file, name, type, lot, more, folder }. Une forme hors règle est refusée (GFS_REFUSE) avant que rien ne s'écrive.
-// `nom` : le nom pour GFS, un « .pdf » manquant est ajouté ; `type` : `pdf` (le seul que GFS garde) ; `lot` : un texte qui nomme l'export en lot (au plus 64 signes) ; `suivants` : combien de
-// fichiers l'app rangera encore après celui-ci (0 : le dernier, la case « pour les suivants » n'est pas offerte) ; `dossier` : le dossier de la personne où va un fichier nouveau.
+// `ranger { fichier, nom, type?, lot?, suivants?, dossier? }` (5.4, point 9) -> { file, name, type, lot, more, folder }. Une forme hors règle est refusée
+// (GFS_REFUSE) avant que rien ne s'écrive.
+// `nom` : le nom pour GFS, un « .pdf » manquant est ajouté ; `type` : `pdf` (le seul que GFS garde) ; `lot` : un texte qui nomme l'export en lot (au plus 64
+//   signes) ; `suivants` : combien de fichiers l'app rangera encore après celui-ci (0 : le dernier, la case « pour les suivants » n'est pas offerte) ;
+//   `dossier` : le dossier de la personne où va un fichier nouveau.
 export function readDeposit(args) {
   const { fichier: file, type = PDF_TYPE } = args;
   if (!(file instanceof Blob)) throw refuse('ranger : fichier doit être un File ou un Blob.');
@@ -38,7 +41,8 @@ function readName(nom) {
 
 // Le texte qui nomme l'export en lot, ou `null` quand l'app n'en donne pas.
 function readLot(lot) {
-  if (lot !== undefined && (typeof lot !== 'string' || lot.trim() === '' || lot.length > LOT_MAX)) throw refuse(`ranger : lot doit être un texte de 1 à ${LOT_MAX} signes.`);
+  if (lot !== undefined && (typeof lot !== 'string' || lot.trim() === '' || lot.length > LOT_MAX)) throw refuse(
+    `ranger : lot doit être un texte de 1 à ${LOT_MAX} signes.`);
   return lot === undefined ? null : lot;
 }
 
@@ -50,7 +54,8 @@ function readMore(suivants) {
 
 // Le dossier de la personne où va un fichier nouveau (la racine quand l'app n'en donne pas).
 function readFolder(dossier) {
-  if (dossier !== undefined && (typeof dossier !== 'string' || dossier.length > FOLDER_MAX)) throw refuse(`ranger : dossier doit être un chemin de ${FOLDER_MAX} signes au plus.`);
+  if (dossier !== undefined && (typeof dossier !== 'string' || dossier.length > FOLDER_MAX)) throw refuse(
+    `ranger : dossier doit être un chemin de ${FOLDER_MAX} signes au plus.`);
   return normalizePath(dossier);
 }
 
@@ -67,12 +72,14 @@ export class Deposit {
     return { ranger: args => this.file(session, args) };
   }
 
-  // Rend { statut, id, nom } (5.4, point 9) ; `id` et `nom` sont `null` quand la personne n'a pas voulu du fichier. Les refus ont leur code (3.6) : GFS_REFUSE (forme, type non déclaré, fichier vide
-  // ou qui n'est pas un PDF), GFS_ACCES et GFS_LECTURE_SEULE, GFS_ANNULE (la personne refuse de créer la table), GFS_ECHEC (Grist ou le cadre d'envoi), GFS_INACTIF (l'app est partie).
+  // Rend { statut, id, nom } (5.4, point 9) ; `id` et `nom` sont `null` quand la personne n'a pas voulu du fichier. Les refus ont leur code (3.6) : GFS_REFUSE
+  // (forme, type non déclaré, fichier vide ou qui n'est pas un PDF), GFS_ACCES et GFS_LECTURE_SEULE, GFS_ANNULE (la personne refuse de créer la table),
+  // GFS_ECHEC (Grist ou le cadre d'envoi), GFS_INACTIF (l'app est partie).
   file(session, args) {
     const request = readDeposit(args);
     const declared = (session.manifest.actions && session.manifest.actions.ranger) || [];
-    if (!declared.includes(request.type)) throw refuse(`ranger : le type « ${request.type} » ne figure pas dans actions.ranger du manifeste de l'app « ${session.id} ».`);
+    if (!declared.includes(request.type)) throw refuse(
+      `ranger : le type « ${request.type} » ne figure pas dans actions.ranger du manifeste de l'app « ${session.id} ».`);
     const batch = this.#batchOf(session, request.lot);
     const run = this.#queue.then(() => this.#run(session, request, batch));
     this.#queue = run.catch(() => {});

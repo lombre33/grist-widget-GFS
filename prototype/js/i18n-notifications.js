@@ -1,5 +1,5 @@
-// Les textes de la cloche Notifications (js/notifications.js ; maquette du 09/11, la cloche est à droite de l'en-tête de l'explorateur), en français (vouvoiement) et en anglais dans le même lot. Ils rejoignent
-// js/i18n.js, qui reste sous les 600 lignes de code de l'outil d'audit.
+// Les textes de la cloche Notifications (js/notifications.js ; maquette du 09/11, la cloche est à droite de l'en-tête de l'explorateur), en français
+// (vouvoiement) et en anglais dans le même lot. Ils rejoignent js/i18n.js, qui reste sous les 600 lignes de code de l'outil d'audit.
 
 export const NOTIFICATION_STRINGS = Object.freeze({
   fr: {

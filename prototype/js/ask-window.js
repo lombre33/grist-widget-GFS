@@ -1,7 +1,7 @@
 // Une question à la personne, dans une fenêtre du widget (charte : jamais `confirm()`), sur la base commune des fenêtres (js/modal.js) : le titre et les
-// boutons restent en place, Tab reste dans ses boutons. La promesse vaut `true` pour le bouton principal, `false` pour « Annuler » ou Échap
-// (un clic hors de la fenêtre ne la ferme pas). Sans `cancelLabel`, la fenêtre n'a que son bouton principal (un compte rendu) ; `items` ajoute une liste sous le message, `note` une phrase sous la liste.
-// `safeFirst` donne le clavier à « Annuler » : ce qu'on n'accorde pas d'un Entrée distrait (ouvrir des données au public).
+// boutons restent en place, Tab reste dans ses boutons. La promesse vaut `true` pour le bouton principal, `false` pour « Annuler » ou Échap (un clic hors de la
+// fenêtre ne la ferme pas). Sans `cancelLabel`, la fenêtre n'a que son bouton principal (un compte rendu) ; `items` ajoute une liste sous le message, `note`
+// une phrase sous la liste. `safeFirst` donne le clavier à « Annuler » : ce qu'on n'accorde pas d'un Entrée distrait (ouvrir des données au public).
 
 import { h } from './dom.js';
 import { openModal } from './modal.js';

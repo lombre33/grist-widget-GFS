@@ -1,4 +1,5 @@
-// La couleur d'une ambiance se calcule en OKLCH (clarté, vivacité et teinte qui se tiennent d'une teinte à l'autre) : la clarté d'un rôle s'ajuste, jamais sa teinte. Du code sans DOM ni
+// La couleur d'une ambiance se calcule en OKLCH (clarté, vivacité et teinte qui se tiennent d'une teinte à l'autre) : la clarté d'un rôle s'ajuste, jamais sa
+// teinte. Du code sans DOM ni
 // stockage : il rend et reçoit des textes `#rrggbb` en minuscules. Le contraste est celui de la WCAG 2 (de 1 à 21), le même que mesurent les essais.
 
 import { ColorMath } from '../kit/js/color-math.js';
@@ -10,7 +11,8 @@ const fromLinear = value => (value <= 0.0031308 ? 12.92 * value : 1.055 * value 
 
 export const isHex = value => typeof value === 'string' && /^#[0-9a-f]{6}$/.test(value);
 
-// « #6d4fd6 », « 6D4FD6 », « #6df » : le texte d'une personne en `#rrggbb` en minuscules, ou null (cinq chiffres, un caractère qui n'est pas hexadécimal, une opacité). Celui du kit (kit/js/color-math.js).
+// « #6d4fd6 », « 6D4FD6 », « #6df » : le texte d'une personne en `#rrggbb` en minuscules, ou null (cinq chiffres, un caractère qui n'est pas hexadécimal, une
+// opacité). Celui du kit (kit/js/color-math.js).
 export const parseHex = ColorMath.parseHex;
 
 // { L, C, h } : clarté de 0 à 1, vivacité (0 pour un gris), teinte en degrés.
@@ -33,7 +35,8 @@ function linearOf({ L, C, h }) {
   const l = (L + 0.3963377774 * labA + 0.2158037573 * labB) ** 3;
   const m = (L - 0.1055613458 * labA - 0.0638541728 * labB) ** 3;
   const s = (L - 0.0894841775 * labA - 1.291485548 * labB) ** 3;
-  return [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s];
+  return [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s];
 }
 
 const inGamut = rgb => rgb.every(value => value >= -0.0005 && value <= 1.0005);
@@ -48,10 +51,12 @@ export function oklchToHex({ L, C, h }) {
   return hexOf(linearOf({ L, C: low, h }));
 }
 
-// Le contraste de deux couleurs (WCAG 2) : de 1 à 21. C'est celui du kit (kit/js/color-math.js), le même pour GFS et pour les apps : GFS ne le recopie plus (choix du porteur, 11/11).
+// Le contraste de deux couleurs (WCAG 2) : de 1 à 21. C'est celui du kit (kit/js/color-math.js), le même pour GFS et pour les apps : GFS ne le recopie plus
+// (choix du porteur, 11/11).
 export const contrast = ColorMath.contrast;
 
-// Monte ou baisse la clarté d'une couleur, d'un pas à la fois, jusqu'à ce que `ok(hex)` soit vrai ; la teinte et la vivacité demandée restent. Rend { hex, L } (la dernière essayée si rien ne convient).
+// Monte ou baisse la clarté d'une couleur, d'un pas à la fois, jusqu'à ce que `ok(hex)` soit vrai ; la teinte et la vivacité demandée restent. Rend { hex, L }
+// (la dernière essayée si rien ne convient).
 export function settle(color, step, ok) {
   let L = color.L;
   for (let i = 0; i < 400; i++) {

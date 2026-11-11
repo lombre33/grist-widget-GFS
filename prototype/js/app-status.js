@@ -1,5 +1,6 @@
-// La phrase d'état de l'app active (« Form+ se charge… », « Form+ ne répond pas. »), au bas de l'écran. Elle parle de l'app, pas de l'explorateur : tant que l'explorateur recouvre l'app,
-// elle se tait (un « ne répond pas » en rouge restait sur la liste des fichiers) ; elle revient avec l'app, si elle est encore vraie.
+// La phrase d'état de l'app active (« Form+ se charge… », « Form+ ne répond pas. »), au bas de l'écran. Elle parle de l'app, pas de l'explorateur : tant que
+// l'explorateur recouvre l'app, elle se tait (un « ne répond pas » en rouge restait sur la liste des fichiers) ; elle revient avec l'app, si elle est encore
+// vraie.
 
 export class AppStatus {
   #el;

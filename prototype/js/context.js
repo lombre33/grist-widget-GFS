@@ -19,14 +19,16 @@ export function pageOf(referrer) {
   } catch (error) { return null; }
 }
 
-// L'identité que GFS donne à une app (contrats 5.2, point 9) : l'adresse e-mail de la personne, `{ email }`, seulement à l'app qui l'a déclarée (`permissions.identite`, 3.4, point 6) et quand GFS la
-// connaît (6.4, point 6) ; `null` dans tous les autres cas, sans que l'app puisse distinguer « pas déclarée » de « GFS ne la connaît pas ». `address` : celle que GFS a apprise, '' tant qu'il l'ignore.
+// L'identité que GFS donne à une app (contrats 5.2, point 9) : l'adresse e-mail de la personne, `{ email }`, seulement à l'app qui l'a déclarée
+// (`permissions.identite`, 3.4, point 6) et quand GFS la connaît (6.4, point 6) ; `null` dans tous les autres cas, sans que l'app puisse distinguer « pas
+// déclarée » de « GFS ne la connaît pas ». `address` : celle que GFS a apprise, '' tant qu'il l'ignore.
 export function identityFor(policy, address) {
   const email = typeof address === 'string' ? address.trim() : '';
   return policy && policy.identite && email ? { email } : null;
 }
 
-// `facts` : ce que le contrôleur a lu (instance, page, document, adresse du widget), `session` : { access, extensions, libraries, opening, storage, bar, identity, players, ambiance }.
+// `facts` : ce que le contrôleur a lu (instance, page, document, adresse du widget), `session` : { access, extensions, libraries, opening, storage, bar,
+//   identity, players, ambiance }.
 export function buildContext(facts, session, params) {
   const { preferences, readonly } = params;
   return {
@@ -45,13 +47,20 @@ export function buildContext(facts, session, params) {
     acces: session.access,
     extensions: session.extensions,
     bibliotheques: session.libraries,
-    natives: session.natives || {}, // les copies figées des bibliothèques natives que la personne a choisies, `{ id: { version, src, integrite, forme } }` ; `{}` : l'app charge tout par son CDN (5.2, point 12)
+    // les copies figées des bibliothèques natives que la personne a choisies, `{ id: { version, src, integrite, forme } }` ; `{}` : l'app charge tout par son
+    // CDN (5.2, point 12)
+    natives: session.natives || {},
     ouverture: session.opening || null,
     stockage: session.storage || {}, // la copie de l'espace de CETTE app dans le navigateur de GFS (5.3)
     barre: session.bar || null, // la barre de GFS qui recouvre le cadre : { bord, epaisseur, zone }, ou `null` quand rien ne le recouvre (5.2, point 7)
-    lecteurs: session.players || [], // les sites de vidéos dont GFS pose le lecteur pour cette app, ceux qu'elle a déclarés (`permissions.lecteurs`) : `[]` sinon, l'app ouvre alors la vidéo sur son site (5.2, point 11)
+    // les sites de vidéos dont GFS pose le lecteur pour cette app, ceux qu'elle a déclarés (`permissions.lecteurs`) : `[]` sinon, l'app ouvre alors la vidéo
+    // sur son site (5.2, point 11)
+    lecteurs: session.players || [],
     identite: session.identity || null, // l'adresse e-mail de la personne, `{ email }`, pour l'app qui l'a déclarée et quand GFS la connaît (5.2, point 9)
-    ambiance: session.ambiance || null, // l'ambiance et la couleur que la personne a choisies pour GFS et ses apps (js/theme.js), ou `null` : l'app garde ses couleurs (5.2, point 10)
-    role: session.role || { proprietaire: null, responsableDe: [] }, // ce que GFS a prouvé de la personne : propriétaire (true/false/null) et espaces dont elle est responsable (5.2, point 8) ; pour griser, jamais pour décider
+    // l'ambiance et la couleur que la personne a choisies pour GFS et ses apps (js/theme.js), ou `null` : l'app garde ses couleurs (5.2, point 10)
+    ambiance: session.ambiance || null,
+    // ce que GFS a prouvé de la personne : propriétaire (true/false/null) et espaces dont elle est responsable (5.2, point 8) ; pour griser, jamais pour
+    // décider
+    role: session.role || { proprietaire: null, responsableDe: [] },
   };
 }

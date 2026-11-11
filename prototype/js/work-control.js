@@ -19,8 +19,8 @@ export class WorkControl {
     env.state.subscribe(kind => { if (kind === 'table' && !this.work.choice) this.relabel(); });
   }
 
-  // L'état et la vue de Grist que reçoit l'app qu'on ouvre : ceux de la ligne de travail si elle peut lire la table choisie, sinon ceux de la page, et GFS le dit
-  // (4.5, point 5).
+  // L'état et la vue de Grist que reçoit l'app qu'on ouvre : ceux de la ligne de travail si elle peut lire la table choisie, sinon ceux de la page, et GFS le
+  // dit (4.5, point 5).
   sourceFor(manifest) {
     const { state, port } = this.#env;
     const choice = this.work.choice;
@@ -31,7 +31,8 @@ export class WorkControl {
     return { state: this.work.state(state), port: this.work.port(port) };
   }
 
-  // L'info-bulle du bouton dit ce qui vaut : la table choisie, avec sa ligne quand elle a été choisie aussi, ou celle de la page (avec sa ligne, si la personne en a choisi une).
+  // L'info-bulle du bouton dit ce qui vaut : la table choisie, avec sa ligne quand elle a été choisie aussi, ou celle de la page (avec sa ligne, si la personne
+  // en a choisi une).
   relabel() {
     const { t, dock, state } = this.#env;
     const choice = this.work.choice;
@@ -63,7 +64,8 @@ export class WorkControl {
     const { state } = this.#env;
     this.#window = new WorkWindow({
       container, i18n: { t }, inertTargets: this.#env.inertTargets,
-      source: { pageTable: state.table && state.table.tableId, pageRow: this.#pickedPageRow(), current: this.work.choice, tables: () => tables, rows: id => this.work.rows(id) },
+      source: { pageTable: state.table && state.table.tableId, pageRow: this.#pickedPageRow(), current: this.work.choice, tables: () => tables,
+        rows: id => this.work.rows(id) },
       onPick: choice => void this.#pick(choice), onClose: () => { this.#window = null; },
     });
     this.#window.open();
@@ -74,8 +76,8 @@ export class WorkControl {
     return page && page.picked ? page.rowId : null;
   }
 
-  // Une ligne de la table de la page (4.5, point 7) : la page décide toujours de la table ; l'app reçoit la ligne choisie tout de suite, rouverte seulement si une autre table
-  // de travail était choisie.
+  // Une ligne de la table de la page (4.5, point 7) : la page décide toujours de la table ; l'app reçoit la ligne choisie tout de suite, rouverte seulement si
+  // une autre table de travail était choisie.
   #pickPageRow(choice) {
     const { tableChanged } = this.work.clear();
     this.work.pickPage(this.#env.state, choice.tableId, choice.rowId);

@@ -1,5 +1,6 @@
-// Les textes du panneau « Permissions » et de son mot dans le pied (contrats 11.4, point 7 ; 11.9, point 8), en français et en anglais dans le même lot. Ils rejoignent ceux de GFS dans js/i18n.js ;
-// le fichier est à part pour que i18n.js reste sous les 600 lignes de code de l'outil d'audit. « Grist Factory Suite » ne parle que de ses tables et de celles des apps : jamais des tables de données.
+// Les textes du panneau « Permissions » et de son mot dans le pied (contrats 11.4, point 7 ; 11.9, point 8), en français et en anglais dans le même lot. Ils
+// rejoignent ceux de GFS dans js/i18n.js ; le fichier est à part pour que i18n.js reste sous les 600 lignes de code de l'outil d'audit. « Grist Factory Suite »
+// ne parle que de ses tables et de celles des apps : jamais des tables de données.
 
 export const RIGHTS_STRINGS = Object.freeze({
   fr: {

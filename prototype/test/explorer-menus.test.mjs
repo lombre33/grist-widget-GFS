@@ -164,3 +164,10 @@ test('Ouverts : « Retirer des ouverts » vient juste après « Ouvrir », seule
   for (const view of ['folder', 'recent', 'fav']) assert.equal(labels(rowItems(context({ view }), 'publipostage:7')).includes(t('ex.openedDrop')), false, `pas dans « ${view} »`);
   assert.equal(labels(rowItems(context({ view: 'trash' }), 'publipostage:7')).includes(t('ex.openedDrop')), false, 'ni à la corbeille');
 });
+
+test('« Partagés avec moi » : un fichier donné par une adresse a le menu d\'un fichier ordinaire (ouvrir, partager…), pas celui d\'une arrivée', () => {
+  const f = { ...file(), direct: { by: 'marc@x.fr' } };
+  const items = rowItems(context({ view: 'shared', shown: [f], shared: { menu: () => { throw new Error('une arrivée seulement'); } } }), f.key);
+  assert.equal(items[0].label, t('ex.open'));
+  assert.ok(items.some(entry => entry.label === t('share.menu')));
+});

@@ -328,6 +328,31 @@ function checkExtensions(m, errors) {
   }
 }
 
+// Les bibliothèques natives de l'app, rangées par fonction (`natives`, facultatif, contrats 2.6 point 14) : { id, nom (fr, en), bibliotheques: [{ id, version exacte }] }. L'app les
+// emploie déjà (sa liste) ; GFS en garde la copie figée, que la personne peut choisir à la place du CDN, fonction par fonction. Une bibliothèque n'est que dans une seule fonction.
+function checkNativeLibraries(group, libraries, errors) {
+  if (!Array.isArray(group.bibliotheques) || !group.bibliotheques.length) { errors.push(`natives ${group.id} : bibliotheques : liste non vide attendue`); return; }
+  for (const lib of group.bibliotheques) {
+    if (!isObject(lib) || !LIBRARY_ID_RE.test(lib.id || '')) errors.push(`natives ${group.id} : une bibliothèque sans id valable`);
+    else if (!EXACT_VERSION_RE.test(lib.version || '')) errors.push(`natives ${group.id} : la version de ${lib.id} doit être exacte (ni intervalle ni latest)`);
+    else if (libraries.has(lib.id)) errors.push(`natives ${group.id} : ${lib.id} est déjà dans une autre fonction`);
+    else libraries.add(lib.id);
+  }
+}
+function checkNatives(m, errors) {
+  if (m.natives === undefined) return;
+  if (!Array.isArray(m.natives)) { errors.push('natives : liste attendue'); return; }
+  const groups = new Set();
+  const libraries = new Set();
+  for (const group of m.natives) {
+    if (!isObject(group) || !LIBRARY_ID_RE.test(group.id || '') || !isBilingual(group.nom)) { errors.push('natives[] : id et nom (fr, en) attendus'); continue; }
+    if (groups.has(group.id)) errors.push(`natives ${group.id} : fonction déjà déclarée`);
+    groups.add(group.id);
+    checkDisplay(group, `natives ${group.id}`, errors);
+    checkNativeLibraries(group, libraries, errors);
+  }
+}
+
 const OPENINGS = ['fichier', 'nouveau', 'importer', 'lire'];
 
 // `ouverture` (facultatif, contrats 2.2) : ce que l'app sait faire d'une ouverture que GFS lui passe, `{ fichier, nouveau, importer, lire }` en booléens ; un genre absent vaut faux (GFS ouvre alors l'app
@@ -356,6 +381,7 @@ export function validateManifest(m, others = []) {
   checkReads(m, errors);
   checkFiled(m, errors);
   checkExtensions(m, errors);
+  checkNatives(m, errors);
   return { ok: errors.length === 0, errors };
 }
 

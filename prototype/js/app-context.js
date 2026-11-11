@@ -37,7 +37,7 @@ export class AppContext {
   pushExtensions() {
     const { c } = this;
     const given = c.registry.extensionsFor(c.session.id, c.doc.baseURI);
-    const sent = JSON.stringify([given.extensions, given.bibliotheques]);
+    const sent = JSON.stringify([given.extensions, given.bibliotheques, given.natives]);
     if (sent === this.#sentExtensions) return;
     this.#sentExtensions = sent;
     c.session.sendExtensions(given);
@@ -60,14 +60,14 @@ export class AppContext {
     c.dock.mask(false); // un cadre qui redemande son contexte repart avec la barre (contrats 5.2, point 7)
     const opening = this.#takeOpening(session);
     const given = c.registry.extensionsFor(session.id, c.doc.baseURI);
-    this.#sentExtensions = JSON.stringify([given.extensions, given.bibliotheques]);
+    this.#sentExtensions = JSON.stringify([given.extensions, given.bibliotheques, given.natives]);
     const facts = await this.readFacts();
     const storage = c.appStorage.read(session.id);
     const identity = identityFor(session.policy, c.identity);
     if (session === c.session) this.#sentIdentity = JSON.stringify(identity);
     const role = await c.rights.reader.role(); // ce que GFS a prouvé : propriétaire ou non, `null` sinon (contrats 5.2, point 8)
     session.announceSaved(); // d'avance, ce que deviendront ses réglages de vue : dans la vue (rien à enregistrer dans Grist) ou en brouillon (contrats 7.3, point 5)
-    return buildContext(facts, { access: session.access, extensions: given.extensions, libraries: given.bibliotheques, opening, storage, bar: c.dock.barre(), identity, players: session.policy.lecteurs, ambiance: c.theme.message(), role }, { preferences: c.appPreferences(), readonly: c.readonly });
+    return buildContext(facts, { access: session.access, extensions: given.extensions, libraries: given.bibliotheques, natives: given.natives, opening, storage, bar: c.dock.barre(), identity, players: session.policy.lecteurs, ambiance: c.theme.message(), role }, { preferences: c.appPreferences(), readonly: c.readonly });
   }
 
   // L'ouverture n'est rendue qu'au premier `contexte` de l'app qui vient d'être activée (contrats 5.2, point 3) : une app dont le cadre est rechargé sur place (sa langue, un

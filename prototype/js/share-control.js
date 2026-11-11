@@ -81,12 +81,12 @@ export class ShareControl {
   }
 
   // L'auteur d'un fichier (d'une app ou un PDF), ou `{ extend }` quand sa table n'est pas prête au partage. La table de fichiers porte-t-elle les colonnes d'aide ? Sinon le partage n'y est pas étendu (une app ajoutée après coup) ;
-  // si elle porte celles d'avant les espaces (pas `GFS_Calc`), le partage est à compléter ; l'auteur est la colonne que Grist écrit.
+  // si elle porte celles d'avant les espaces (pas `GFS_Directs`), le partage est à compléter ; l'auteur est la colonne que Grist écrit.
   async #authorOf(file, target) {
     const table = await this.#try(() => this.#o.port.doc.fetchTable(target.table), null);
     const has = name => Boolean(table) && Object.prototype.hasOwnProperty.call(table, name);
     if (target.stamped && !has('GFS_Lecteurs')) return { extend: true };
-    if (has('GFS_Lecteurs') && !has('GFS_Calc')) return { extend: 'upgrade' };
+    if (has('GFS_Lecteurs') && !has('GFS_Directs')) return { extend: 'upgrade' };
     if (target.stamped && has('GFS_Lecteurs') && !has(STAMP)) return { extend: 'upgrade' }; // un partage d'avant l'auteur protégé des PDF : « compléter » reprend l'auteur de la colonne « Auteur »
     return { author: target.stamped ? lower((table[STAMP] || [])[(table.id || []).indexOf(file.row)]) : lower(file.by) };
   }

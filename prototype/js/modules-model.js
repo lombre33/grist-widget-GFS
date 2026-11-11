@@ -2,6 +2,7 @@
 // Une app dont le manifeste est invalide reste dans la liste, grisée, avec le motif (contrats 2.1, point 3). Du code sans effet de bord.
 
 import { extensionRows } from './extensions.js';
+import { nativeRows } from './natives.js';
 
 // `loaded` : le résultat de loadAll ({ app, manifest, ok, errors }) ; `settings` : { apps } ; `always` : les apps qui ne se retirent pas.
 // Rend { items, active, total } ; `active` et `total` comptent les apps et les extensions.
@@ -14,7 +15,7 @@ export function modulesModel(loaded, settings, catalogue, always) {
     }
     const manifest = item.manifest;
     const setting = settings.apps[manifest.id];
-    items.push({ kind: 'app', id: manifest.id, manifest, ok: true, errors: [], installed: Boolean(setting), always: always.includes(manifest.id) });
+    items.push({ kind: 'app', id: manifest.id, manifest, ok: true, errors: [], installed: Boolean(setting), always: always.includes(manifest.id), natives: nativeRows(manifest, setting, catalogue) });
     for (const row of extensionRows(manifest, setting, catalogue)) items.push({ kind: 'ext', app: manifest.id, appInstalled: Boolean(setting), ...row });
   }
   const valid = items.filter(item => item.kind === 'ext' || item.ok);

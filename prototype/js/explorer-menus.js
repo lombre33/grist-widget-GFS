@@ -45,6 +45,7 @@ function trashItems(x, file) {
 
 // Le menu d'une ligne de « Partagés avec moi » : répondre à une arrivée en attente ; lire ou télécharger une arrivée acceptée (comme un PDF que GFS garde).
 function sharedItems(x, file) {
+  if (file.direct) return fileItems(x, file);
   const open = x.openAs(file);
   return x.shared.menu(file) || [{ label: open.label, icon: open.icon, hint: x.t('key.enter'), greyed: open.greyed, run: () => x.act.activate(file.key) }, ...x.kept.extras(file)];
 }

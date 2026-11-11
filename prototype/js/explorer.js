@@ -8,6 +8,7 @@ import { h } from './dom.js';
 import { icon } from './icons.js';
 import { listItems, treeRows, typeChoices } from './explorer-model.js';
 import { shownReceived, pendingOf, NO_RECEIVED } from './received-files.js';
+import { directFiles } from './direct-shares.js';
 import { NO_OPENED } from './opened-files.js';
 import { words } from './search.js';
 import { buildShell, relabel, paintBell, rightsChip, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar, trashBar, totalBar, pjBox } from './explorer-view.js';
@@ -126,7 +127,7 @@ export class Explorer {
   // Ce que la vue montre : les fichiers de la corbeille dans la corbeille, les arrivées d'un autre document dans « Partagés avec moi », les fichiers ouverts dans « Ouverts », sinon les fichiers vivants.
   get #shown() {
     const { view } = this.state;
-    return view === 'trash' ? this.#trashed : view === 'shared' ? this.#arrivals : view === 'opened' ? this.#opened : this.#pool;
+    return view === 'trash' ? this.#trashed : view === 'shared' ? [...this.#arrivals, ...directFiles(this.#pool)] : view === 'opened' ? this.#opened : this.#pool;
   }
 
   // `files` : les fichiers vivants ; `trashed` : ceux qui sont à la corbeille ; `folders` : les dossiers gardés sans fichier ; `received` : les arrivées d'un autre document, tous états (js/explorer-data.js).
@@ -612,7 +613,7 @@ export class Explorer {
   #activate(key) {
     if (key.startsWith('dir:')) { this.#goFolder(key.slice(4)); return; }
     if (this.state.view === 'trash') { void this.#removal.restore(key); return; }
-    if (this.state.view === 'shared') { const arrival = this.#arrivals.find(item => item.key === key); if (arrival) this.#shared.activate(arrival); return; }
+    if (this.state.view === 'shared') { const arrival = this.#arrivals.find(item => item.key === key); if (arrival) { this.#shared.activate(arrival); return; } }
     const file = this.#files.find(item => item.key === key);
     if (!file) return;
     if (this.#choice) this.#choice.onPick(file); else this.#opts.onOpen(file);

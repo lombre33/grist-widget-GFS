@@ -2,8 +2,9 @@
 // La fenêtre répond tout de suite : l'état change d'abord, l'écriture suit (une à la fois, relue juste avant d'écrire), et si elle échoue l'état revient
 // à ce que la table a dit en dernier. Une écriture n'a lieu que sur un geste de la personne (7.3, point 2) : `load` ne fait que lire.
 
-import { readApps, toOption, patchApps, withApp, withExtension, withMode } from './settings.js';
+import { readApps, toOption, patchApps, withApp, withExtension, withMode, withNativeMode } from './settings.js';
 import { extensionsState, extensionsOf } from './extensions.js';
+import { nativesState } from './natives.js';
 import { modulesModel } from './modules-model.js';
 
 export class AppsState {
@@ -44,7 +45,10 @@ export class AppsState {
   installedIds() { return this.#order.filter(id => this.has(id)); }
   get busy() { return this.#pending > 0; }
   model() { return modulesModel(this.#loaded, { apps: this.apps }, this.catalogue, this.always); }
-  extensionsFor(id, base) { return extensionsState(this.manifest(id), this.apps[id], this.catalogue, base); }
+  // Ce que l'app reçoit d'elle-même (contrats 5.2) : ses extensions actives, leurs bibliothèques, et les copies figées de ses bibliothèques natives.
+  extensionsFor(id, base) {
+    return { ...extensionsState(this.manifest(id), this.apps[id], this.catalogue, base), natives: nativesState(this.manifest(id), this.apps[id], this.catalogue, base) };
+  }
 
   // Ce que la table dit. Une table illisible vaut une table absente : la liste par défaut, et un avertissement.
   async load() {
@@ -80,6 +84,13 @@ export class AppsState {
     const manifest = this.manifest(id);
     if (!manifest) return Promise.resolve(false);
     return this.#change(id, withMode(this.apps, manifest, extensionId, mode));
+  }
+
+  // Le mode d'une fonction des bibliothèques natives, ou de toutes (`groupId` null) : CDN ou copie figée (contrats 2.6, point 14).
+  setNativeMode(id, groupId, mode) {
+    const manifest = this.manifest(id);
+    if (!manifest) return Promise.resolve(false);
+    return this.#change(id, withNativeMode(this.apps, manifest, groupId, mode));
   }
 
   async #change(id, next) {

@@ -44,6 +44,7 @@ const TROISIEME_PERSONNE = new Set([
   'weight.pjTip', 'rights.link.protected', 'rights.act.remove.hint', 'rights.act.sharing.hint', 'rights.act.unsharing.hint',
   'theme.acces.tip', 'gfs.needsFullAccessHint', 'mod.needsApp', 'ex.lockedApp', 'ex.lockedExtension',
   'copy.done', 'copy.doneIn', 'so.level.live', 'so.level.stop.hint', 'mod.mode.vendorise',
+  'mod.native.copy', 'mod.native.missing', // le nom « copie » (« Copie figée », « Copie indisponible : … »), pas l'impératif de « copier »
 ]);
 const PRONOM_TU = /(^|[^\p{L}])(?:(?:tu|toi|ton|ta|tes|te|tien|tiens|tienne|tiennes)(?![\p{L}])|t[’'](?=\p{L}))/iu;
 const IMPERATIF_TU = /(^|[.:;!?«»(—–]\s*|\s-\s|,\sn[’'])(?:n[’'])?(?:double-)?(ajoute|attends|choisis|clique|colle|copie|demande|ouvre|recharge|réessaie|sélectionne|essaie|vérifie|garde|tape|écris|lis|retire|dépose|glisse|donne|réponds|fais|passe|enregistre|regarde|prends|mets|va|reviens|coche|décoche|saisis|entre|indique|nomme|renomme|déplace|supprime|crée|change|trouve|utilise|appuie|laisse|continue|annule|valide|confirme|accepte|refuse|relis|reprends|commence|termine|ferme|lance|teste|connecte|autorise|accorde|envoie|reçois|transmets|invite|partage|active|désactive|cherche|note|patiente|contacte|consulte|affine|relie|importe|télécharge|range|compare|recommence)\b/iu;

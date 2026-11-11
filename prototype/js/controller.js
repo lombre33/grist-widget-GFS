@@ -446,6 +446,7 @@ export class GfsController {
         app: (id, on) => change(this.registry.setApp(id, on)),
         extension: (app, id, on) => change(this.registry.setExtension(app, id, on)),
         mode: (app, id, mode) => change(this.registry.setMode(app, id, mode)),
+        nativeMode: (app, group, mode) => change(this.registry.setNativeMode(app, group, mode)),
         open: id => this.#openApp(id),
       },
       onClose: () => this.#modulesWaiters.splice(0).forEach(resolve => resolve()),

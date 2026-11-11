@@ -321,6 +321,7 @@ test('identify : une sonde qu\'on ne peut pas retirer le dit, et l\'adresse lue 
   try {
     const { port } = fakeGrist({ [TABLE]: { columns: full, rows: [] } }, { email: ANA, fail: { RemoveRecord: 'refusé' } });
     assert.equal(await new Rangement({ port, consent: accept() }).identify(), ANA);
+    await new Promise(resolve => setImmediate(resolve)); // le retrait part sans que l'adresse l'attende : son échec se dit un instant après
     assert.equal(warned.length, 1);
     assert.match(warned[0], /ligne-sonde/);
   } finally { console.warn = warn; }
@@ -428,4 +429,20 @@ test('les dossiers suivis sont ceux de la personne : la ligne d\'une autre n\'es
   assert.deepEqual(actions.map(action => action[0]), ['AddColumn', 'AddRecord'], 'la colonne d\'abord (une colonne inconnue annulerait le lot)');
   tables[TABLE].rows.push({ id: 9, Utilisateur: 'autre@x.fr', App: 'gfs-suivi', Fichier: 'e7', Dossier: 'Secret', Valeur: '["z"]' });
   assert.deepEqual((await filing.followed()).map(each => each.path), ['Contrats'], 'chacun ses dossiers suivis');
+});
+
+test('identify rend l\'adresse sans attendre le retrait de la ligne-sonde (une écriture de plus à Grist, deux fois le prix d\'une lecture) ; `learning` est la promesse tant que la sonde est en route, puis l\'adresse', async () => {
+  const { port, actions } = fakeGrist({ [TABLE]: { columns: full, rows: [] } }, { email: ANA });
+  let stuck = false;
+  const apply = port.doc.applyUserActions;
+  port.doc.applyUserActions = list => (list[0][0] === 'RemoveRecord' ? (stuck = true, new Promise(() => {})) : apply(list));
+  const store = new Rangement({ port, consent: accept() });
+  assert.equal(store.learning, '', 'avant la sonde : rien de connu');
+  const first = store.identify();
+  assert.equal(store.learning, first, 'la sonde en route : la même promesse, sans refaire la sonde');
+  const answer = await Promise.race([first, new Promise(resolve => setTimeout(() => resolve('trop long'), 500))]);
+  assert.equal(answer, ANA);
+  assert.ok(stuck, 'le retrait est parti');
+  assert.equal(store.learning, ANA, 'la sonde finie : ce que GFS en sait');
+  assert.deepEqual(actions.map(action => action[0]), ['AddRecord'], 'la ligne-sonde est ajoutée une fois ; son retrait est celui qui reste en route');
 });

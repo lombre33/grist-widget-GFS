@@ -266,3 +266,50 @@ test('les fichiers reçus d\'un autre document (GFS_Recus, GFS_Recus_2…) sont 
   assert.deepEqual(loaded.files.map(file => file.id).sort(), ['1', '2'], 'les arrivées ne sont pas des fichiers vivants : choisir, ouvrir et lire ne les voient pas');
   assert.deepEqual((await loadFiles(port(tables()), [{ manifest }], '')).received, []);
 });
+
+// ---------- la lecture se fait en une vague (ouverture de l'explorateur, 11/11) : un aller-retour de réseau par table, c'était 15 lectures l'une derrière l'autre
+
+// Un port où chaque lecture reste en route jusqu'à `release()` : `started` dit les tables déjà demandées à Grist.
+function gatedPort(data) {
+  const started = [];
+  const gates = [];
+  const doc = {
+    listTables: async () => Object.keys(data),
+    fetchTable: name => new Promise(resolve => { started.push(name); gates.push(() => resolve(data[name])); }),
+  };
+  const settle = () => new Promise(resolve => setImmediate(resolve));
+  return { port: { doc }, started, settle, release: () => gates.splice(0).forEach(open => open()) };
+}
+
+const arrivalRow = (id, name) => ({ id: [1], Identifiant: [id], Nom: [name], Type: ['pdf'], Date: [1762000000], Auteur: ['compta@exemple.fr'], Contenu: [['L', 1]], Taille: [100] });
+
+test('toutes les tables de la lecture sont demandées à Grist ensemble, sans attendre l\'une pour demander l\'autre : table des fichiers, rangement de l\'app, tables liées, rangement de GFS, fichiers reçus', async () => {
+  const data = { ...tables(), Publipostage_Versions: { id: [1], Jeton: ['x'] }, GFS_Recus: arrivalRow('r1', 'Facture.pdf'), GFS_Recus_2: arrivalRow('r2', 'Devis.pdf') };
+  const gated = gatedPort(data);
+  const pending = loadFiles(gated.port, [{ manifest }], '');
+  await gated.settle();
+  const wanted = [spec.table, spec.rangement.table, 'gfs_rangement', 'Publipostage_Versions', 'GFS_Recus', 'GFS_Recus_2'];
+  assert.deepEqual([...gated.started].sort(), [...wanted].sort(), 'toutes les lectures sont déjà parties alors qu\'aucune n\'a répondu');
+  gated.release();
+  const loaded = await pending;
+  assert.deepEqual(loaded.files.map(file => file.id), ['1', '2']);
+  assert.equal(loaded.received.length, 2);
+});
+
+test('la lecture ne dépend pas de l\'adresse de la personne pour partir : donnée en promesse, elle n\'est attendue qu\'au moment de ranger, et le rangement est celui de cette personne', async () => {
+  const gated = gatedPort(tables());
+  let learn;
+  const identity = new Promise(resolve => { learn = resolve; });
+  const pending = loadFiles(gated.port, [{ manifest }], identity);
+  await gated.settle();
+  assert.ok(gated.started.length >= 3, 'les tables sont demandées avant que l\'adresse ne soit connue');
+  gated.release();
+  learn('quelqu.un@exemple.org');
+  const { files } = await pending;
+  assert.deepEqual(files.map(file => [file.id, file.folder, file.pinned]), [['1', '', false], ['2', '', false]], 'le rangement de GFS d\'une autre personne ne s\'applique pas');
+  const again = gatedPort(tables());
+  const known = loadFiles(again.port, [{ manifest }], Promise.resolve(''));
+  await again.settle();
+  again.release();
+  assert.deepEqual((await known).files.map(file => file.folder), ['Formation', 'Archives'], 'sans adresse, le rangement commun s\'applique');
+});

@@ -86,6 +86,10 @@ export class Rangement {
   // L'adresse de la personne, '' tant que GFS ne la connaît pas : son rangement est alors commun au document (contrats 6.4, point 4).
   get identity() { return this.#identity || ''; }
 
+  // Ce qui dit l'adresse sans rien refaire : la promesse de la sonde quand elle est en route, sinon ce que GFS en sait (`identity`). La lecture des fichiers
+  // part sans attendre la sonde et ne l'attend qu'au moment de ranger (js/explorer/explorer-data.js).
+  get learning() { return this.#pending || this.identity; }
+
   // Apprend l'adresse de la personne (6.4, point 6) : une ligne-sonde est ajoutée, Grist en remplit `Adresse`, GFS la lit et la retire. Une fois par
   // ouverture : la réponse, avec adresse ou sans, est gardée en mémoire (jamais dans le navigateur : une autre personne sur le même poste doit être reconnue).
   // Sans table (elle ne se crée pas ici), en lecture seule ou sur une erreur, rien n'est gardé et le geste suivant réessaie. Ne lève jamais : une adresse non
@@ -127,7 +131,9 @@ export class Rangement {
       const at = (table.id || []).indexOf(rowId);
       return addressOf(at >= 0 && table.Adresse ? table.Adresse[at] : '');
     } finally {
-      await doc.applyUserActions([['RemoveRecord', tableId, rowId]]).catch(error => console.warn('GFS : la ligne-sonde n’a pas pu être retirée', error));
+      // La ligne part sans que l'adresse l'attende : une écriture de plus à Grist, c'est un aller-retour de réseau (deux fois le prix d'une lecture) que
+      // l'explorateur n'a pas à patienter pour une adresse déjà lue.
+      doc.applyUserActions([['RemoveRecord', tableId, rowId]]).catch(error => console.warn('GFS : la ligne-sonde n’a pas pu être retirée', error));
     }
   }
 

@@ -119,6 +119,9 @@ await open(ANA);
 const reopened = await gfsActions();
 check('à l\'ouverture, une seule sonde : ajoutée puis retirée, rien d\'autre n\'est écrit', JSON.stringify(reopened) === JSON.stringify([SONDE, 'RemoveRecord GFS_Rangement']) && (await lab.actions()).length === 2, await lab.actions());
 check('le favori d\'Ana est allumé dès l\'ouverture, la barre du bas dit « personnel »', (await starOn(contract)) && PERSONAL.test(await info()), await info());
+// La liste se lit pendant que GFS apprend l'adresse (la sonde) : l'adresse apprise ne relance pas la lecture qui l'attend, chaque table de fichiers est lue une fois.
+const readOnce = (await lab.reads()).filter(name => name === 'Publipostage_Modeles');
+check('à l\'ouverture, la table des modèles est lue une seule fois : l\'adresse apprise ne relance pas la lecture qui l\'attend', readOnce.length === 1, readOnce);
 await lab.forgetActions();
 await row(contract).hover();
 await row(contract).locator('.rb.pin').click();

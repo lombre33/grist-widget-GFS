@@ -149,7 +149,7 @@ export async function loadSpaces(doc, tables) {
   const has = name => !tables || tables.some(each => String(each).toLowerCase() === name.toLowerCase());
   if (!has(SPACES_TABLE) || !has(PLACE_TABLE)) return null;
   try {
-    return readSpaces(await doc.fetchTable(SPACES_TABLE), await doc.fetchTable(PLACE_TABLE));
+    return readSpaces(...await Promise.all([doc.fetchTable(SPACES_TABLE), doc.fetchTable(PLACE_TABLE)]));
   } catch (error) {
     console.warn('GFS : les espaces sont illisibles', error);
     return null;

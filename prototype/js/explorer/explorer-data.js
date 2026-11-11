@@ -59,14 +59,16 @@ async function readTable(port, tables, tableId, light = null, wanted = null) {
 
 // Les tables liées aux fichiers d'une table (`poids.liees`, contrats 2.4, point 5) : [{ table, fichier, bytes }], `bytes` les octets des lignes de la table
 // liée par clé (js/weight/weight.js, `linkedWeights`). Une table que l'app n'a pas encore créée ne pèse rien ; une table illisible est dite et ne cache aucun
-// fichier : le poids est une estimation, il perd ces lignes.
+// fichier : le poids est une estimation, il perd ces lignes. Les tables liées sont lues ensemble.
 async function readLinked(port, tables, spec, light) {
+  const rules = (spec.poids && spec.poids.liees) || [];
+  const reads = await Promise.all(rules.map(rule => readTable(port, tables, rule.table, light, [rule.colonne])));
   const links = [];
-  for (const rule of (spec.poids && spec.poids.liees) || []) {
-    const linked = await readTable(port, tables, rule.table, light, [rule.colonne]);
+  reads.forEach((linked, index) => {
+    const rule = rules[index];
     if (linked.error) console.warn(`GFS : la table liée ${rule.table} est illisible`, linked.error);
     else if (linked.data) links.push({ table: rule.table, fichier: rule.fichier, bytes: linkedWeights(linked.data, rule.colonne, linked.weights) });
-  }
+  });
   return links;
 }
 
@@ -77,7 +79,36 @@ export async function loadAttachments(port) {
   try { return { data: await port.doc.fetchTable('_grist_Attachments') }; } catch (error) { return { error }; }
 }
 
-// `apps` : les apps installées dont le manifeste est valide, { manifest }. `identity` : l'adresse de la personne, '' tant que GFS ne la connaît pas. Rend {
+// Les tables d'une table de fichiers d'une app, lues ensemble : { main, filing, links } (la table des fichiers, son rangement, ses tables liées).
+async function readSpec(port, tables, spec, light) {
+  const [main, filing, links] = await Promise.all([
+    readTable(port, tables, spec.table, light, neededColumns(spec)),
+    spec.rangement ? readTable(port, tables, spec.rangement.table) : { data: null },
+    readLinked(port, tables, spec, light),
+  ]);
+  return { main, filing, links };
+}
+
+// Tout ce que la lecture demande à Grist, en deux temps : la liste des tables, puis toutes les tables ensemble (chacune ne dépend que de son nom, jamais d'une
+// autre ni de l'adresse de la personne). Une lecture qui allait table après table coûtait un aller-retour de réseau par table, et l'explorateur paraissait lent
+// dès que Grist n'était pas sur la même machine. Rend { tables, light, gfs, spaces, bin, received, reads: [{ manifest, spec, main, filing, links }] }.
+async function readEverything(port, apps, reader) {
+  const tables = await existingTables(port);
+  const light = reader && reader.isActive() && tables ? reader : null;
+  // le rangement de GFS, les espaces et les fichiers reçus se lisent pendant que la lecture légère prépare la sienne
+  const own = Promise.all([readTable(port, tables, TABLE), loadSpaces(port.doc, tables), loadReceived(port, tables)]);
+  if (light) await light.prepare(lightPlan(tables, apps));
+  const specs = apps.flatMap(({ manifest }) => (manifest.fichiers || []).map(spec => ({ manifest, spec })));
+  const [bin, ...found] = await Promise.all([readTable(port, tables, BIN_TABLE, light, BIN_LIGHT),
+    ...specs.map(({ spec }) => readSpec(port, tables, spec, light))]);
+  const [gfs, spaces, received] = await own;
+  return { tables, light, gfs, spaces, bin, received, reads: specs.map((item, index) => ({ ...item, ...found[index] })) };
+}
+
+// `apps` : les apps installées dont le manifeste est valide, { manifest }. `identity` : l'adresse de la personne, '' tant que GFS ne la connaît pas ; ou la
+//   promesse de cette adresse, quand GFS l'apprend encore (js/files/rangement.js, `identify`) : la lecture des tables n'en dépend pas, elle part tout de suite,
+//   et
+//   l'adresse n'est attendue qu'au moment de ranger. Rend {
 //   files, trash, folders, received, spaces, problems: [{ app, reason }], stats: { ms, tables, rows } } : `spaces` ce que disent les espaces partagés
 //   (js/sharing/spaces-filing.js, null sans partage), dont les dossiers sont ajoutés à `folders` ; `files` les fichiers vivants, `trash` ceux qui sont à la
 //   corbeille
@@ -90,56 +121,46 @@ export async function loadAttachments(port) {
 //   ne change.
 export async function loadFiles(port, apps, identity = '', reader = null) {
   const started = performance.now();
-  const { context, folders } = await readShared(port, apps, identity, reader);
-  const { tables, light } = context;
+  const raw = await readEverything(port, apps, reader);
+  const who = await identity;
+  const { context, folders } = await arrange(port, raw, who);
   const files = [];
   const trash = [];
   const problems = [];
   const stats = { ms: 0, tables: 0, rows: 0 };
-  for (const { manifest } of apps) {
-    for (const spec of manifest.fichiers || []) {
-      const one = await readAppFiles(context, manifest, spec);
-      if (one.problem) { problems.push(one.problem); continue; }
-      for (const file of one.found) (file.trashed ? trash : files).push(file);
-      trash.push(...one.binned);
-      stats.tables += 1;
-      stats.rows += one.found.length;
-    }
+  for (const read of raw.reads) {
+    const one = readAppFiles(context, read);
+    if (one.problem) { problems.push(one.problem); continue; }
+    for (const file of one.found) (file.trashed ? trash : files).push(file);
+    trash.push(...one.binned);
+    stats.tables += 1;
+    stats.rows += one.found.length;
   }
-  // les fichiers reçus d'un autre document (js/sharing/received-files.js) : jamais mêlés aux fichiers vivants, rien de ce qui lit `files` ne les voit
-  const received = await loadReceived(port, tables);
   stats.bytes = [...files, ...trash].reduce((sum, file) => sum + file.weight, 0);
-  stats.light = Boolean(light && light.isActive());
-  if (reader && !light) reader.learn(stats.bytes);
+  stats.light = Boolean(raw.light && raw.light.isActive());
+  if (reader && !raw.light) reader.learn(stats.bytes);
   stats.ms = Math.round(performance.now() - started);
-  return { files, trash, folders, received, spaces: context.spaces, problems, stats };
+  return { files, trash, folders, received: raw.received, spaces: raw.spaces, problems, stats };
 }
 
-// Ce que la lecture lit avant les tables des apps : l'état de la lecture légère (préparée ici quand elle sert), le rangement de GFS, les espaces partagés et la
-// corbeille des apps. Rend { context, folders }, `context` ce que `readAppFiles` reçoit, `folders` les dossiers de GFS et ceux des espaces.
-async function readShared(port, apps, identity, reader) {
-  const tables = await existingTables(port);
-  const light = reader && reader.isActive() && tables ? reader : null;
-  if (light) await light.prepare(lightPlan(tables, apps));
-  const gfs = await readTable(port, tables, TABLE);
+// Ce que la lecture range avec l'adresse de la personne : le rangement de GFS, les espaces partagés et la corbeille des apps. Rend { context, folders },
+// `context` ce que `readAppFiles` reçoit, `folders` les dossiers de GFS et ceux des espaces.
+async function arrange(port, raw, identity) {
+  const { tables, light, gfs, spaces, bin } = raw;
   if (gfs.error) console.warn('GFS : le rangement de GFS est illisible', gfs.error);
   const folders = gfs.data ? readGfsFolders(gfs.data, identity) : [];
-  const spaces = await loadSpaces(port.doc, tables);
   if (spaces) folders.push(...spaces.folders);
   const address = identity || await sharedAddress(port, tables);
-  const bin = await readTable(port, tables, BIN_TABLE, light, BIN_LIGHT);
   if (bin.error) console.warn('GFS : la corbeille des apps est illisible', bin.error);
-  return { folders, context: { port, tables, identity, address, spaces, bin, light, gfsFiling: gfs.data ? readGfsFiling(gfs.data, identity) : null } };
+  return { folders, context: { identity, address, spaces, bin, gfsFiling: gfs.data ? readGfsFiling(gfs.data, identity) : null } };
 }
 
 // Les fichiers d'une table de fichiers d'une app, rangés et placés : { found, binned } (`binned` : ceux qu'elle a mis à la corbeille de GFS), ou { problem }
 // quand sa table est illisible.
-async function readAppFiles({ port, tables, identity, address, spaces, bin, light, gfsFiling }, manifest, spec) {
-  const main = await readTable(port, tables, spec.table, light, neededColumns(spec));
+function readAppFiles({ identity, address, spaces, bin, gfsFiling }, { manifest, spec, main, filing: filingTable, links }) {
   if (main.error) return { problem: { app: manifest.id, reason: String(main.error.message || main.error) } };
-  const filingTable = spec.rangement ? await readTable(port, tables, spec.rangement.table) : { data: null };
   const filing = filingTable.data ? readFiling(spec.rangement, filingTable.data, identity) : null;
-  const found = readFiles(manifest, spec, main.data, main.weights || null, await readLinked(port, tables, spec, light));
+  const found = readFiles(manifest, spec, main.data, main.weights || null, links);
   applyFiling(found, filing, gfsFiling);
   applyPlacement(found, spaces);
   applyDirect(found, main.data, address);

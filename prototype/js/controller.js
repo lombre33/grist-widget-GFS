@@ -208,10 +208,14 @@ export class GfsController {
     this.registry.setApps(this.apps);
     this.registry.setCatalogue(await libraries);
     await this.state.whenOptions();
-    if (this.fullAccess) await Promise.all([this.registry.load(), this.rangement.identify()]);
+    // L'adresse de la personne s'apprend pendant que le reste se lit : la sonde coûte plusieurs allers-retours de réseau, et la liste des fichiers n'en a
+    // besoin qu'au moment de ranger (js/explorer/explorer-data.js). Une app qui s'ouvre d'emblée, et « prêt », l'attendent.
+    const identified = this.fullAccess ? this.rangement.identify() : Promise.resolve('');
+    if (this.fullAccess) await this.registry.load();
     this.#buildExplorer();
     this.#buildDock();
-    const arrived = await this.#arrive();
+    const arrived = await this.#arrive(identified);
+    await identified;
     doc.body.dataset.gfs = 'ready';
     if (!arrived) await this.#firstRun(); // une section qui s'ouvre sur son app n'est pas neuve : la fenêtre des apps ne passe pas par-dessus
     doc.body.dataset.gfsFirstRun = 'done';
@@ -226,7 +230,7 @@ export class GfsController {
   // L'arrivée (cahier 6.2, point 2 ; js/broker/arrival.js) : une section qui servait à une app s'ouvre sur elle, sans consigne et sans rien écrire ; sinon
   // l'explorateur. Les réglages de la section parlent d'abord ; sans eux, la table d'une app qui garde sa vue dans le document (`arrivee` du manifeste) dit si
   // la section est la sienne (js/broker/arrival-table.js). Rend `true` si une app s'est ouverte.
-  async #arrive() {
+  async #arrive(identified) {
     const manifests = this.manifests();
     const rules = { installed: appId => this.registry.has(appId), granted: this.state.grantedAccess };
     let id = arrivalApp(this.state.allOptions, manifests, rules);
@@ -235,6 +239,7 @@ export class GfsController {
       const table = await this.state.whenTable();
       if (table) id = await arrivalTableApp(this.port.doc, probes, table.tableId);
     }
+    if (id) await identified; // l'app reçoit l'adresse de la personne dans son contexte (contrats 5.2, point 9)
     if (id && this.activate(id, null)) {
       this.hideExplorer();
       return true;
@@ -305,7 +310,7 @@ export class GfsController {
       explorer: () => this.explorer, session: () => this.session, manifests: this.manifests, appById: id => this.appById(id), appName: this.appName,
       fullAccess: () => this.fullAccess, t: this.t, notice: text => this.notice(text), lockOf: this.lockOf, unlock: lock => this.unlock(lock),
       showExplorer: () => this.showExplorer(), hideExplorer: () => this.hideExplorer(),
-        loadFiles: apps => loadFiles(this.port, apps, this.identity, this.fileReader),
+        loadFiles: apps => loadFiles(this.port, apps, this.rangement.learning, this.fileReader),
       openIn: (appId, opening) => this.openings.openIn(appId, opening, 'ex.notice.open'),
     });
   }
@@ -413,11 +418,18 @@ export class GfsController {
     }
   }
 
+  // La dernière lecture des fichiers a-t-elle attendu l'adresse de la personne (qui s'apprenait encore) ? Alors son rangement est déjà le bon.
+  #readWaited = false;
+
   // Une seule lecture des fichiers fait foi, la dernière lancée (js/explorer/file-refresh.js) : une lecture plus ancienne qui finit après ne remplace pas la
   // liste récente.
   #refresh = createFileRefresh({
     canRead: () => this.fullAccess,
-    load: () => loadFiles(this.port, [...this.validApps(), FILES_ENTRY], this.identity, this.fileReader),
+    load: () => {
+      const learning = this.rangement.learning;
+      this.#readWaited = typeof learning !== 'string';
+      return loadFiles(this.port, [...this.validApps(), FILES_ENTRY], learning, this.fileReader);
+    },
     onRestricted: () => {
       this.explorer.setFiles([]);
       this.#fileStatus = { loading: false, restricted: true, problems: [{ key: 'gfs.needsFullAccess' }] };
@@ -551,8 +563,9 @@ export class GfsController {
   }
 
   // GFS vient d'apprendre l'adresse de la personne (la table est née pendant la session) : sa liste de fichiers se relit avec son propre rangement.
+  // Sauf la lecture qui l'attend en ce moment : elle range déjà avec cette adresse (la relancer jetterait ce qu'elle a lu).
   #onIdentity() {
-    if (this.explorer && this.explorer.isOpen) void this.refreshFiles();
+    if (this.explorer && this.explorer.isOpen && !(this.#fileStatus.loading && this.#readWaited)) void this.refreshFiles();
     this.#told.pushIdentity();
   }
 

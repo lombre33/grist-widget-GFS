@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Cadre d'envoi de GFS</title>
-<!-- Le cadre d'envoi de GFS (js/transfer.js) : isolé (sandbox sans allow-same-origin, origine opaque), il envoie et télécharge les pièces jointes de Grist pour GFS, qui lui donne chaque
+<!-- Le cadre d'envoi de GFS (js/broker/transfer.js) : isolé (sandbox sans allow-same-origin, origine opaque), il envoie et télécharge les pièces jointes de Grist pour GFS, qui lui donne chaque
      adresse avec son jeton. Politique de sécurité du contenu, ligne par ligne :
      script-src 'self' : son seul script, transfer.js, à côté de cette page ; le reste est fermé par default-src 'none' (pas de style, d'image, de cadre, de formulaire) ;
      connect-src https: : l'adresse du serveur Grist (docs.getgrist.com, l'instance d'une administration, un serveur privé) n'est connue qu'à l'exécution, c'est le baseUrl du jeton : aucune adresse
@@ -11,6 +11,6 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; connect-src https:; base-uri 'none'; form-action 'none'">
 </head>
 <body>
-<script src="transfer.js?v=11f54bb602"></script>
+<script src="transfer.js?v=2de0cdb126"></script>
 </body>
 </html>

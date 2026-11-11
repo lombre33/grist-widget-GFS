@@ -1,10 +1,10 @@
-// Épingler, ranger et renommer depuis l'explorateur (js/filing.js, contrats 6.4 et 6.3 point 2) : ce que chaque geste écrit, et ce qu'il n'écrit pas.
+// Épingler, ranger et renommer depuis l'explorateur (js/explorer/filing.js, contrats 6.4 et 6.3 point 2) : ce que chaque geste écrit, et ce qu'il n'écrit pas.
 // Les fenêtres et le rangement sont remplacés par des doublures ; ce que Grist fait vraiment de ces écritures se mesure dans le labo (run-ranger.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Filing } from '../js/filing.js';
-import { TableDeclined } from '../js/rangement.js';
-import { createI18n } from '../js/i18n.js';
+import { Filing } from '../js/explorer/filing.js';
+import { TableDeclined } from '../js/files/rangement.js';
+import { createI18n } from '../js/i18n/i18n.js';
 
 const { t } = createI18n('fr');
 const file = (id, folder = '', extra = {}) => ({ key: `publipostage:${id}`, app: 'publipostage', id: String(id), table: 'Publipostage_Modeles', row: Number(id) * 10, name: `Modèle ${id}`, folder, pinned: false, ...extra });
@@ -363,7 +363,7 @@ test('mettre à la corbeille un fichier dont le dossier a un autre fichier, ou e
   assert.deepEqual(calls, []);
 });
 
-// ---------- Ctrl+Z : chaque geste qui a abouti dépose de quoi se défaire (js/undo-stack.js) ----------
+// ---------- Ctrl+Z : chaque geste qui a abouti dépose de quoi se défaire (js/files/undo-stack.js) ----------
 
 const placesOf = list => list.map(item => [item.id, item.folder, item.pinned]);
 

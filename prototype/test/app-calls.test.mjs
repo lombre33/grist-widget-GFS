@@ -1,7 +1,7 @@
-// Les appels de GFS à l'app ouverte pour un fichier composite (js/app-calls.js, contrats 5.4, points 10 et 11) : seule l'app ouverte et prête répond ; une autre, ou aucune, est « pas ouverte ».
+// Les appels de GFS à l'app ouverte pour un fichier composite (js/broker/app-calls.js, contrats 5.4, points 10 et 11) : seule l'app ouverte et prête répond ; une autre, ou aucune, est « pas ouverte ».
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { activeAppCalls } from '../js/app-calls.js';
+import { activeAppCalls } from '../js/broker/app-calls.js';
 
 const session = (id, over = {}) => ({ id, isReady: true, calls: [], deleteFile(body) { this.calls.push(['supprimer', body]); return Promise.resolve({ fait: true }); }, copyFile(body) { this.calls.push(['dupliquer', body]); return Promise.resolve({ id: '9' }); }, ...over });
 

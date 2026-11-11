@@ -1,6 +1,6 @@
 // Les requêtes REST que le moteur de Sync+ fera passer par GFS, jouées depuis le VRAI cadre d'envoi de GFS (origine opaque, `connect-src https:`, sans cookie) dans un VRAI serveur Grist (`GRIST_DOCKER_ARGS="-e
 // ALLOWED_WEBHOOK_DOMAINS=*" bash vrai-serveur.sh`) : étude « Partager un dossier avec un autre document », mesure 5, `Transfer.rest` et `Transfer.anonymous` (contrats 6.6, point 15).
-// GFS est ajouté à un document comme le fait la personne (accès complet) ; l'essai ouvre dans son cadre un second `Transfer` (le vrai, js/transfer.js) et lui fait faire ce que fait `js/grist.js` de Sync+ :
+// GFS est ajouté à un document comme le fait la personne (accès complet) ; l'essai ouvre dans son cadre un second `Transfer` (le vrai, js/broker/transfer.js) et lui fait faire ce que fait `js/grist.js` de Sync+ :
 //   1. être propriétaire (`GET /webhooks`), puis le cycle d'un webhook : créer (avec une condition), lister, désactiver, vider sa file, effacer ; Grist livre bien l'ajout d'une ligne à l'adresse du webhook ;
 //   2. un refus (404 sur un webhook qui n'existe pas) arrive avec son code, sans casser le cadre ;
 //   3. un document public : lecture sans jeton (`Origin: null`) d'une table filtrée, par `anonymous` ; refusée tant que le document n'est pas public ;
@@ -24,7 +24,7 @@ try {
   const { page, frame, docId } = run;
   // Un second `Transfer`, le vrai, dans le cadre de GFS ; `window.__t` le garde. Rend l'adresse REST du document (sans jeton).
   const base = await frame.evaluate(async () => {
-    const { Transfer, buildTransferFrame } = await import('./js/transfer.js');
+    const { Transfer, buildTransferFrame } = await import('./js/broker/transfer.js');
     window.__t = new Transfer({ doc: grist.docApi, base: document.baseURI, createFrame: url => buildTransferFrame(document, url) });
     window.__try = async job => { try { return { ok: true, value: await job() }; } catch (error) { return { ok: false, kind: error.kind, status: error.status, message: String(error.message).slice(0, 160) }; } };
     return (await grist.docApi.getAccessToken({ readOnly: true })).baseUrl;

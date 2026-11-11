@@ -1,9 +1,9 @@
-// Ce que le contrôleur fait des droits (js/rights-control.js) : les règles ne se rendent qu'à un propriétaire prouvé (mesuré dans un vrai Grist 1.7.19 : dès qu'une règle refuse la lecture d'une table
+// Ce que le contrôleur fait des droits (js/rights/rights-control.js) : les règles ne se rendent qu'à un propriétaire prouvé (mesuré dans un vrai Grist 1.7.19 : dès qu'une règle refuse la lecture d'une table
 // à une personne, les tables des règles lui arrivent vides), et le panneau relit tout à son ouverture.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { RightsControl } from '../js/rights-control.js';
-import { chipKey, leadKey } from '../js/rights.js';
+import { RightsControl } from '../js/rights/rights-control.js';
+import { chipKey, leadKey } from '../js/rights/rights.js';
 
 const columns = rows => { const keys = [...new Set(rows.flatMap(row => Object.keys(row)))]; return Object.fromEntries(keys.map(key => [key, rows.map(row => row[key])])); };
 const BUILT_IN = { id: 1, resource: 1, permissions: 63, principals: '[1]', aclFormula: '', aclColumn: 0, permissionsText: '', memo: '' };

@@ -147,6 +147,17 @@ test('ni console.log ni onmessage = dans le code publié', () => {
   assert.deepEqual(formFaults(), []);
 });
 
+// Le rangement de js/ (11/11) : un dossier par sujet, sans sous-dossier, et seuls l'entrée et le contrôleur à la racine. Un module nouveau va dans le dossier de son sujet ; un dossier nouveau se décide (CLAUDE.md, « Architecture en une minute »).
+const JS_FOLDERS = ['apps', 'broker', 'explorer', 'files', 'i18n', 'rights', 'sharing', 'shell', 'theme', 'ui', 'weight'];
+const JS_ROOT = ['controller.js', 'gfs.js'];
+
+test('js/ est rangé par sujet : onze dossiers sans sous-dossier, et à la racine seulement gfs.js et controller.js', () => {
+  const entries = readdirSync(join(ROOT, 'js'), { withFileTypes: true });
+  assert.deepEqual(entries.filter(entry => entry.isFile()).map(entry => entry.name).sort(), JS_ROOT, `à la racine de js/ : ${JS_ROOT.join(' et ')} seulement ; rangez le module nouveau dans le dossier de son sujet (${JS_FOLDERS.join(', ')})`);
+  assert.deepEqual(entries.filter(entry => entry.isDirectory()).map(entry => entry.name).sort(), JS_FOLDERS, 'les dossiers de js/ sont ceux de la liste (hygiene.test.mjs) ; un dossier nouveau se décide');
+  for (const folder of JS_FOLDERS) assert.deepEqual(readdirSync(join(ROOT, 'js', folder), { withFileTypes: true }).filter(entry => !entry.isFile() || !entry.name.endsWith('.js')).map(entry => entry.name), [], `js/${folder}/ : des modules seulement, sans sous-dossier`);
+});
+
 test(`aucune ligne de plus de ${WIDTH} caractères que l'outil de coupe sait couper`, () => {
   const found = publishedScripts().flatMap(file => overlong(file, readFileSync(file, 'utf8')));
   assert.deepEqual(found.slice(0, 10), [], `${found.length} ligne(s) trop longue(s) : lancez \`node outils/couper-lignes.mjs\` (dans prototype/), il les coupe sans changer le code`);

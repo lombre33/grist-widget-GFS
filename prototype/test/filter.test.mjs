@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { checkBatch, readRefusal, writeRefusal, visibleTables, cleanApplyOptions, realNameRefusal, tokenOptions, classify,
-  lowestAccess, batchTouchesTables, publiclyReadable, makePolicy } from '../js/filter.js';
+  lowestAccess, batchTouchesTables, publiclyReadable, makePolicy } from '../js/broker/filter.js';
 import { policyOf, publipostage, automation, form } from './helpers.mjs';
 
 const pp = policyOf(publipostage());

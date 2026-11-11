@@ -1,4 +1,4 @@
-// « Partagés avec moi » (js/received-control.js, js/received-files.js ; 09/11) : la vue de ce qu'un autre document partage, jouée dans le VRAI GFS à 700 × 400, à la vraie souris, dans un VRAI Grist
+// « Partagés avec moi » (js/sharing/received-control.js, js/sharing/received-files.js ; 09/11) : la vue de ce qu'un autre document partage, jouée dans le VRAI GFS à 700 × 400, à la vraie souris, dans un VRAI Grist
 // (`GRIST_DOCKER_ARGS="-e ALLOWED_WEBHOOK_DOMAINS=*" bash vrai-serveur.sh`). Le premier document envoie (le premier partage est monté par les fonctions du moteur, comme `run-recus-etat.mjs` : la fenêtre qui
 // reçoit un premier code est mesurée par `run-partager-recevoir.mjs`) ; le second ouvre GFS :
 //   1. deux arrivées : « Partagés avec moi » porte le nombre à accepter, les lignes sont grisées (cadenas, mot « À accepter », sans étoile), nulle d'elles n'est dans « Moi » ni dans « Récents » ;
@@ -12,7 +12,7 @@ import { createServer } from 'node:http';
 import { serve } from './lab-server.mjs';
 import { chromium, say, check } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { PAGE_PORT, openGfs, importSamples, importPdf, pdfFile, waitForNames, rowOf, goTo, contrastProblems, sha256, names, toast, shot as pdfShot } from './lab-pdf.mjs';
 import { fits } from './lab-droits.mjs';
 import { startEngine, handshake } from './lab-partage.mjs';
@@ -175,7 +175,7 @@ try {
   await shot(frame, '5-un-de-plus');
 
   say('--- 5b. un fichier arrive PENDANT que l\'explorateur est ouvert ---');
-  // La boucle qui reçoit tourne dans la page ouverte (js/sync-service.js) : on ne passe plus par `pass()`, seule la page recopie, et la liste doit se mettre à jour sans être rouverte.
+  // La boucle qui reçoit tourne dans la page ouverte (js/sharing/sync-service.js) : on ne passe plus par `pass()`, seule la page recopie, et la liste doit se mettre à jour sans être rouverte.
   await alive(source);
   await importPdf(source.page, source.frame, pdfFile('Avenant.pdf', 1, 'Avenant').file);
   await waitForNames(source.frame, ['Avenant.pdf', 'Contrat.pdf', 'Devis v2.pdf', 'Facture v2.pdf'].sort((a, b) => a.localeCompare(b)));

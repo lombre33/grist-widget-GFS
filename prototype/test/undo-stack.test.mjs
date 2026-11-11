@@ -1,7 +1,7 @@
-// La pile d'annulation (js/undo-stack.js) : un geste par appui, dans l'ordre inverse ; ce qu'une annulation écrit se refait (Ctrl+Y) et ce qu'un rétablissement écrit se défait ; un geste neuf vide le rétablissement ; une annulation qui échoue le dit.
+// La pile d'annulation (js/files/undo-stack.js) : un geste par appui, dans l'ordre inverse ; ce qu'une annulation écrit se refait (Ctrl+Y) et ce qu'un rétablissement écrit se défait ; un geste neuf vide le rétablissement ; une annulation qui échoue le dit.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { UndoStack } from '../js/undo-stack.js';
+import { UndoStack } from '../js/files/undo-stack.js';
 
 const t = (key, params = {}) => `${key}${params.reason ? `:${params.reason}` : ''}`;
 const make = () => {

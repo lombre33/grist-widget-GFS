@@ -1,12 +1,12 @@
-// Les deux gestes que les fenêtres « Envoyer » et « Recevoir » (et les panneaux de droits) partagent : la zone de code avec son bouton « Copier » (js/steps-window.js, `codeWithCopy`) et l'écriture des actions
-// dans le document (js/rights-actions.js, `writeActions`). Un DOM de doublure (test/fake-dom.mjs) : le texte, les clés et les écouteurs ; la mise en page se mesure sous Firefox (test/partager-autre-firefox.mjs).
+// Les deux gestes que les fenêtres « Envoyer » et « Recevoir » (et les panneaux de droits) partagent : la zone de code avec son bouton « Copier » (js/sharing/steps-window.js, `codeWithCopy`) et l'écriture des actions
+// dans le document (js/rights/rights-actions.js, `writeActions`). Un DOM de doublure (test/fake-dom.mjs) : le texte, les clés et les écouteurs ; la mise en page se mesure sous Firefox (test/partager-autre-firefox.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { installFakeDocument } from './fake-dom.mjs';
 
 installFakeDocument();
-const { codeWithCopy } = await import('../js/steps-window.js');
-const { writeActions } = await import('../js/rights-actions.js');
+const { codeWithCopy } = await import('../js/sharing/steps-window.js');
+const { writeActions } = await import('../js/rights/rights-actions.js');
 
 test('la zone de code porte sa clé et sa valeur, se sélectionne quand le clavier y arrive ; le bouton « Copier » recopie la zone', () => {
   const copied = [];

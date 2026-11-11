@@ -1,7 +1,7 @@
-// Le lecteur des droits (js/rights-reader.js) sur un faux document : ce qu'il rend, ce qu'il garde, et la preuve de propriétaire. Ce que le vrai Grist rend se mesure dans le labo (run-droits-reel.mjs).
+// Le lecteur des droits (js/rights/rights-reader.js) sur un faux document : ce qu'il rend, ce qu'il garde, et la preuve de propriétaire. Ce que le vrai Grist rend se mesure dans le labo (run-droits-reel.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { RightsReader } from '../js/rights-reader.js';
+import { RightsReader } from '../js/rights/rights-reader.js';
 
 const columns = rows => { const keys = [...new Set(rows.flatMap(row => Object.keys(row)))]; return Object.fromEntries(keys.map(key => [key, rows.map(row => row[key])])); };
 const BUILT_IN = { id: 1, resource: 1, permissions: 63, principals: '[1]', aclFormula: '', aclColumn: 0, permissionsText: '', memo: '' };

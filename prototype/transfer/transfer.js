@@ -1,5 +1,5 @@
-// Le cadre d'envoi de GFS (voir js/transfer.js) : il attend de GFS un port privé, puis fait les requêtes que GFS lui envoie par ce port et en rend le résultat.
-// Script classique : un module de ce cadre isolé demanderait une autorisation d'origine (CORS) à la page qui le sert.
+// Le cadre d'envoi de GFS (voir js/broker/transfer.js) : il attend de GFS un port privé, puis fait les requêtes que GFS lui envoie par ce port et en rend le
+// résultat. Script classique : un module de ce cadre isolé demanderait une autorisation d'origine (CORS) à la page qui le sert.
 //
 // Les requêtes :
 //   { id, op: 'upload', url, file, name }  POST multipart (champ `upload`) vers la liste des pièces jointes -> { id, ok: true, value: <numéro de la pièce

@@ -4,7 +4,7 @@
 // souris, reste déplié après un choix et tient dans la fenêtre (rien ne déborde, rien ne se superpose) ; le choix d'une fonction la met en copie figée et le choix de toutes dit « mélange » ;
 // le raccourci « toutes » met toutes les fonctions du même côté ; le clavier (flèche) choisit comme la souris et le clavier reste là où il était ; une copie qui manque est grisée avec sa raison
 // (un clic dessus ne fait rien) ; la fenêtre en lecture seule grise tout.
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 
 function state() {
   const modal = document.querySelector('.mod-scrim .mod');

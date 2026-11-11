@@ -9,8 +9,8 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { CATALOGUE } from '../js/catalogue.js';
-import { listCapabilities, label } from '../js/manifest.js';
+import { CATALOGUE } from '../js/apps/catalogue.js';
+import { listCapabilities, label } from '../js/apps/manifest.js';
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 

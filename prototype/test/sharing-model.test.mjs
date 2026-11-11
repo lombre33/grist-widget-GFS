@@ -1,11 +1,11 @@
-// Le modèle de « Partager » (js/sharing-model.js ; contrats 11.7, point 13) : la table de partages, les colonnes d'aide, les règles, le plan d'activation et de retrait, la ligne d'un partage.
+// Le modèle de « Partager » (js/sharing/sharing-model.js ; contrats 11.7, point 13) : la table de partages, les colonnes d'aide, les règles, le plan d'activation et de retrait, la ligne d'un partage.
 // Ce que Grist en fait (l'auteur écrit par lui, les règles lisant les colonnes-formules, un administrateur qui partage sans propriétaire) se mesure dans un vrai Grist : labo/run-partager.mjs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { planSharing, planUnsharing, shareColumns, helperColumns, fileRules, shareRules, stampRules, shareRecord, sharesOf, isSharingNote, sharingActive, TARGETS, SHARES_TABLE, HELPERS, targetsOf, appTargets } from '../js/sharing-model.js';
-import { FILES_COLUMNS } from '../js/gfs-files.js';
+import { planSharing, planUnsharing, shareColumns, helperColumns, fileRules, shareRules, stampRules, shareRecord, sharesOf, isSharingNote, sharingActive, TARGETS, SHARES_TABLE, HELPERS, targetsOf, appTargets } from '../js/sharing/sharing-model.js';
+import { FILES_COLUMNS } from '../js/files/gfs-files.js';
 import { BUILT_IN, base, withFiles, applied } from './sharing-fixtures.mjs';
-import { levelOfNote } from '../js/rights.js';
+import { levelOfNote } from '../js/rights/rights.js';
 
 
 test('les colonnes de la table de partages : l\'auteur et son rôle sont écrits par Grist (formule déclenchée à la création, jamais ensuite)', () => {
@@ -230,7 +230,7 @@ test('après un retrait, activer de nouveau repose les règles sans recréer les
 });
 
 // Les groupes (lot 3) : un partage cible `#nom`, les colonnes d'aide développent les membres, la table des groupes naît avec le partage.
-import * as model from '../js/sharing-model.js';
+import * as model from '../js/sharing/sharing-model.js';
 
 test('les colonnes d\'un groupe : nom, nom minuscule, adresses tapées, source, membres et nombre calculés par Grist', () => {
   const ids = model.groupColumns().map(item => item.id);

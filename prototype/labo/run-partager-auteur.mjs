@@ -1,4 +1,4 @@
-// Audit de sécurité du 09/11 : « écrire » sur un PDF partagé mène-t-il à « administrer » ? Le vrai plan de js/sharing-model.js joué dans un VRAI Grist, en deux temps (un compte à la fois, comme run-partager.mjs) :
+// Audit de sécurité du 09/11 : « écrire » sur un PDF partagé mène-t-il à « administrer » ? Le vrai plan de js/sharing/sharing-model.js joué dans un VRAI Grist, en deux temps (un compte à la fois, comme run-partager.mjs) :
 //   PHASE=proprietaire  essai@example.com : un document qui a déjà des PDF (« Auteur » écrit, pas de GFS_Auteur : le document d'avant) ; le plan est posé et reprend l'auteur ; deux fichiers du propriétaire, f2 partagé
 //                       à editor@ avec le droit « écriture » (rien de plus) ;
 //   PHASE=editeur       editor@example.com : il lit et renomme f2 (c'est son droit) ; il remplace son contenu comme le fait l'explorateur (qui réécrit « Auteur ») ; il essaie de se mettre auteur de f2 par
@@ -8,8 +8,8 @@ import { chromium, say, check } from './lab-common.mjs';
 import { requireServer, newContext, createDocument, docIdOf, GRIST } from './lab-serveur.mjs';
 import { shareWithEditorAndViewer } from './lab-droits.mjs';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { planSharing, SHARES_TABLE, shareRecord } from '../js/sharing-model.js';
-import { FILES_COLUMNS } from '../js/gfs-files.js';
+import { planSharing, SHARES_TABLE, shareRecord } from '../js/sharing/sharing-model.js';
+import { FILES_COLUMNS } from '../js/files/gfs-files.js';
 
 const phase = process.env.PHASE || 'proprietaire';
 const STATE = process.env.AUTEUR_ETAT || '/tmp/partager-auteur-etat.json';

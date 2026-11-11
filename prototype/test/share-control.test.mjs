@@ -1,10 +1,10 @@
-// Ce que « Partager » sait d'un fichier (js/share-control.js ; contrats 11.7, point 13), en code pur : quelles tables se partagent, l'auteur lu dans la colonne que Grist écrit, « étendre » quand la table d'une app n'a
+// Ce que « Partager » sait d'un fichier (js/sharing/share-control.js ; contrats 11.7, point 13), en code pur : quelles tables se partagent, l'auteur lu dans la colonne que Grist écrit, « étendre » quand la table d'une app n'a
 // pas encore les colonnes d'aide. La fenêtre à la souris se mesure sous Firefox (test/partager-firefox.mjs), les règles dans un vrai Grist (labo/run-partager-apps.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ShareControl } from '../js/share-control.js';
-import { targetsOf } from '../js/sharing-model.js';
-import { createI18n } from '../js/i18n.js';
+import { ShareControl } from '../js/sharing/share-control.js';
+import { targetsOf } from '../js/sharing/sharing-model.js';
+import { createI18n } from '../js/i18n/i18n.js';
 
 const { t } = createI18n('fr');
 const PP = { id: 'publipostage', fichiers: [{ table: 'Publipostage_Modeles', colonnes: { id: 'id' } }] };
@@ -72,11 +72,18 @@ test('un dossier d\'espace se partage (clé « dossier: »), « Moi » et un esp
   assert.equal(share.whyNotFolder('Espaces/Achats/Contrats'), null);
   assert.equal(share.whyNotFolder('Espaces/Achats'), t('share.folder.space'));
   assert.equal(share.whyNotFolder('Espaces'), t('share.folder.space'));
-  assert.equal(share.whyNotFolder('Perso/Dossier'), t('share.folder.personal'));
-  assert.equal(share.folderFile('Perso/Dossier'), null);
+  // Un dossier de « Moi » n'a pas de droits à donner ici, mais il se partage avec un autre document (une copie) : la fenêtre le prend avec son chemin (`mine`), sans espace dont hériter.
+  assert.equal(share.whyNotFolder('Perso/Dossier'), null);
+  assert.equal(share.whyNotFolder(''), t('share.folder.personal'));
+  assert.equal(share.whyNotFolder('Espaces/Inconnu/Dossier'), t('share.folder.space'));
+  assert.deepEqual(share.folderFile('Perso/Dossier'), { key: 'dossier:moi/Perso/Dossier', name: 'Dossier', path: 'Perso/Dossier', mine: true });
+  assert.equal(share.folderFile(''), null);
+  assert.equal(share.folderFile('Espaces/Achats'), null);
+  assert.deepEqual(await share.load(share.folderFile('Perso/Dossier')), { active: false, extend: false, owner: true, shares: [], people: [], me: '', author: '', canManage: false, mine: true });
   const folder = share.folderFile('Espaces/Achats/Contrats/Sous');
   assert.equal(folder.key, 'dossier:achats/Contrats/Sous');
   assert.equal(folder.name, 'Sous');
+  assert.equal(folder.path, 'Espaces/Achats/Contrats/Sous', 'le chemin de l\'explorateur voyage avec le dossier d\'espace : les fichiers rangés dedans le portent');
   const state = await share.load(folder);
   assert.equal(state.active, true);
   const direct = state.shares.filter(item => !item.inherited);

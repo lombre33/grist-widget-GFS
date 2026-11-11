@@ -1,5 +1,5 @@
 // Ctrl+Z et Ctrl+Y dans l'explorateur (demande du porteur, 04/11 : « Ctrl+Z doit aussi faire revenir un fichier supprimé, et plus globalement toutes les modifications : renommage, déplacement, etc. », puis le
-// rétablissement « au clavier seulement » ; js/undo-stack.js, js/explorer-undo.js, js/filing.js), dans un VRAI Grist (grist-static), sous Chromium, à 700 × 400, au vrai clavier. La sonde ZF (labo/sondes/zf-composite/) apporte trois formulaires et répond aux appels
+// rétablissement « au clavier seulement » ; js/files/undo-stack.js, js/explorer/explorer-undo.js, js/explorer/filing.js), dans un VRAI Grist (grist-static), sous Chromium, à 700 × 400, au vrai clavier. La sonde ZF (labo/sondes/zf-composite/) apporte trois formulaires et répond aux appels
 // `supprimer` et `dupliquer` de GFS comme le fera Form+ ; les dossiers naissent par « Nouveau dossier », donc avec l'accord de la personne pour la table du rangement. LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 //   1. Rien à annuler au départ.
 //   2. Suppr puis Ctrl+Z : la ligne revient À SON NUMÉRO, valeurs identiques, la corbeille est vide ; un second Ctrl+Z n'a plus rien à défaire.
@@ -11,7 +11,7 @@
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';
 import { collectWarnings, waiter, seedProbeFiles, reopenGfs, probeTools } from './lab-gestes.mjs';
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';

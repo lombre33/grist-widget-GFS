@@ -1,9 +1,9 @@
-// La copie depuis l'explorateur (js/copying.js) : ce qui est commun à tous les gardiens (vérifier qu'on peut écrire, ranger la copie dans son dossier, dire ce qui s'est passé, relire la liste). Les gardiens
+// La copie depuis l'explorateur (js/files/copying.js) : ce qui est commun à tous les gardiens (vérifier qu'on peut écrire, ranger la copie dans son dossier, dire ce qui s'est passé, relire la liste). Les gardiens
 // sont des doublures ; ce que fait celui des PDF est dans files-store.test.mjs, celui des apps dans app-files.test.mjs, et ce que Grist rend vraiment se mesure dans le labo (labo/run-copie.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Copying } from '../js/copying.js';
-import { TableDeclined } from '../js/own-table.js';
+import { Copying } from '../js/files/copying.js';
+import { TableDeclined } from '../js/files/own-table.js';
 import { FR, EN } from './kept-setup.mjs';
 
 // Un gardien de doublure : il garde la trace de ce qu'on lui demande et rend ce qu'on lui a dit de rendre.

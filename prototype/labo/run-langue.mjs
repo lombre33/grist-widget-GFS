@@ -22,7 +22,7 @@ const panelWidth = Number(process.env.LAB_W || 700);
 const other = lang === 'fr' ? 'en' : 'fr';
 const run = `langue-${lang}-${scheme}${panelWidth === 700 ? '' : `-${panelWidth}`}`;
 const NAMES = { fr: 'Français', en: 'English' };
-// Ce que le labo cherche à l'écran, dans chaque langue (les textes de js/i18n.js).
+// Ce que le labo cherche à l'écran, dans chaque langue (les textes de js/i18n/i18n.js).
 const WORDS = {
   fr: { title: 'Mes fichiers', add: 'Nouveau', open: 'Ouvrir', close: 'Fermer', search: 'Rechercher…', allTypes: 'Tous les types', recent: 'Récents', today: 'Auj.', locked: 'Créé avec une version plus récente', filesTip: 'Ouvrir l’explorateur de fichiers',
     appsTitle: 'Apps et extensions', settingsTip: 'Réglages de Grist Factory Suite', settingsMenu: 'Réglages', menu: 'Langue', auto: n => `Comme Grist (${n})`, notKept: 'Ce choix ne sera pas gardé : votre navigateur refuse l’enregistrement.' },

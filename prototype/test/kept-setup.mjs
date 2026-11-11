@@ -1,8 +1,8 @@
-// Les doublures des tests des fichiers que GFS garde (js/kept-files.js, contrats 6.6) : le document de la page (le champ « file » caché du sélecteur), le magasin de données et le rangement.
+// Les doublures des tests des fichiers que GFS garde (js/files/kept-files.js, contrats 6.6) : le document de la page (le champ « file » caché du sélecteur), le magasin de données et le rangement.
 // Les fenêtres (nom pris, confirmation) et le vrai sélecteur de fichier se jouent dans le labo, avec une vraie souris (labo/run-pdf.mjs, labo/run-ranger-pdf.mjs) ; `conflict` est la doublure de la
 // fenêtre du nom pris : elle rend ce que la personne aurait choisi.
-import { KeptFiles } from '../js/kept-files.js';
-import { createI18n } from '../js/i18n.js';
+import { KeptFiles } from '../js/files/kept-files.js';
+import { createI18n } from '../js/i18n/i18n.js';
 
 export const FR = createI18n('fr');
 export const EN = createI18n('en');

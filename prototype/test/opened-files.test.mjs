@@ -1,13 +1,13 @@
-// La vue « Ouverts » (js/opened-files.js, js/explorer-view.js) : la liste des fichiers que GFS a ouverts dans une app, en code pur ; la liste à l'écran (la ligne du volet, le mot « affiché », le menu) se mesure
+// La vue « Ouverts » (js/explorer/opened-files.js, js/explorer/explorer-view.js) : la liste des fichiers que GFS a ouverts dans une app, en code pur ; la liste à l'écran (la ligne du volet, le mot « affiché », le menu) se mesure
 // dans un vrai Grist (labo/run-ouverts.mjs) et sous Firefox (test/interfaces-firefox.test.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { installFakeDocument } from './fake-dom.mjs';
-import { OpenedFiles, OPENED_LIMIT, NO_OPENED } from '../js/opened-files.js';
+import { OpenedFiles, OPENED_LIMIT, NO_OPENED } from '../js/explorer/opened-files.js';
 
 installFakeDocument();
-const { tree, crumbs, emptyMessage, fileRow } = await import('../js/explorer-view.js');
-const { createI18n } = await import('../js/i18n.js');
+const { tree, crumbs, emptyMessage, fileRow } = await import('../js/explorer/explorer-view.js');
+const { createI18n } = await import('../js/i18n/i18n.js');
 
 const walk = (node, found = []) => { found.push(node); if (typeof node !== 'string') for (const child of node.children) walk(child, found); return found; };
 const nodes = node => (Array.isArray(node) ? node : [node]).flatMap(entry => walk(entry)).filter(entry => typeof entry !== 'string');

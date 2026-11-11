@@ -1,8 +1,8 @@
-// Les plans de pose (js/rights-plan.js, étape 7 lot a ; contrats 11.4, 11.5) : la liasse de Partagé, la structure fermée et rouverte, ce que GFS refuse de toucher, les gestes du panneau.
+// Les plans de pose (js/rights/rights-plan.js, étape 7 lot a ; contrats 11.4, 11.5) : la liasse de Partagé, la structure fermée et rouverte, ce que GFS refuse de toucher, les gestes du panneau.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { planShared, planRemoveLevel, planCloseStructure, planOpenStructure, planSharingFor, planUnsharing, sharedRules, actionsOf, RANGEMENT } from '../js/rights-plan.js';
-import { userRules, structureClosed, tableLevels } from '../js/rights.js';
+import { planShared, planRemoveLevel, planCloseStructure, planOpenStructure, planSharingFor, planUnsharing, sharedRules, actionsOf, RANGEMENT } from '../js/rights/rights-plan.js';
+import { userRules, structureClosed, tableLevels } from '../js/rights/rights.js';
 
 const BUILT_IN = { id: 1, resource: 1, permissions: 63, principals: '[1]', aclFormula: '', aclColumn: 0, permissionsText: '', rulePos: null, memo: '' };
 const base = () => ({

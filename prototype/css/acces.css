@@ -1,5 +1,5 @@
 /* L'accessibilité renforcée, second temps (décision du porteur du 04/11, feu vert du 10/11) et le contraste forcé du système. Le premier temps (couleurs à 7:1 et 3:1, cadres de 2 px, sans décor) est dans
-   js/ambiance.js et js/ambiance-forme.js, ses jetons dans les messages ; ce second temps ne change aucun jeton, donc rien pour les apps : il ne vit que dans les feuilles de GFS, sous `data-ambiance="renforcee"`.
+   js/theme/ambiance.js et js/theme/ambiance-forme.js, ses jetons dans les messages ; ce second temps ne change aucun jeton, donc rien pour les apps : il ne vit que dans les feuilles de GFS, sous `data-ambiance="renforcee"`.
    Une app qui veut la même chose lit `id` `renforcee` dans son contexte.
    - Texte de 14 px au moins : chaque taille de texte de GFS sous 14 px s'écrit `max(Npx, var(--fs-min))` dans sa feuille ; `--fs-min` vaut 14 px ici (css/gfs.css) et rien d'origine.
    - Cibles de 36 px au moins : chaque commande de GFS (bouton, champ, ligne cliquable, entrée de menu, case et son texte) fait 36 px de haut et de large au moins ; ce fichier le dit, commande par commande.

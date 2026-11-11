@@ -1,10 +1,10 @@
-// Le poids dans l'explorateur (js/weight.js ; demande du porteur du 04/11) : les octets d'une cellule et d'une ligne comme Grist les range, la pièce jointe qu'un fichier EST, les sommes (une
+// Le poids dans l'explorateur (js/weight/weight.js ; demande du porteur du 04/11) : les octets d'une cellule et d'une ligne comme Grist les range, la pièce jointe qu'un fichier EST, les sommes (une
 // pièce citée deux fois n'est comptée qu'une fois), les pièces jointes du document que la case « + pièces jointes » ajoute et l'écriture du poids, en français et en anglais. Ce que Grist range vraiment
 // se mesure dans le labo (labo/run-poids.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { utf8Length, cellBytes, rowWeigher, attachmentIds, piecesOf, linkedWeights, linkedOf, LINKED, newSum, addWeight, sumWeights, pieceKeys, otherAttachments, formatBytes } from '../js/weight.js';
-import { createI18n } from '../js/i18n.js';
+import { utf8Length, cellBytes, rowWeigher, attachmentIds, piecesOf, linkedWeights, linkedOf, LINKED, newSum, addWeight, sumWeights, pieceKeys, otherAttachments, formatBytes } from '../js/weight/weight.js';
+import { createI18n } from '../js/i18n/i18n.js';
 
 test('utf8Length : les octets d\'un texte en UTF-8, comme Buffer.byteLength, sans copier le texte', () => {
   const samples = ['', 'abc', 'é', 'Émargement (grille)', '€', '日本語のテキスト', 'a😀b', '😀😀', '\u0000', 'x'.repeat(10000) + 'é'.repeat(1000) + '😀'.repeat(100)];

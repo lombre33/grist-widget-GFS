@@ -13,9 +13,9 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { serve } from './lab-server.mjs';
 import { chromium, say, check } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
-import { createI18n } from '../js/i18n.js';
-import { formatBytes } from '../js/weight.js';
-import { SQL } from '../js/weight-reader.js';
+import { createI18n } from '../js/i18n/i18n.js';
+import { formatBytes } from '../js/weight/weight.js';
+import { SQL } from '../js/weight/weight-reader.js';
 import { PAGE_PORT, contrastProblems, openGfs, shot } from './lab-pdf.mjs';
 import { apply, noise, sql, upload } from './lab-poids.mjs';
 

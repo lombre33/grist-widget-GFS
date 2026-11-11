@@ -5,10 +5,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { ratio } from './helpers.mjs';
-import { AMBIANCES, COLOR_TOKENS, ORIGIN, ORIGIN_SEED, ACCENT_PAIRS, TEXT_PAIRS, RENFORCEE, ambiancePalette, seedOf, weakestContrast, weakestEdge } from '../js/ambiance.js';
-import { FORME, FORME_TOKENS } from '../js/ambiance-forme.js';
-import { TYPES, typeTokens } from '../js/ambiance-types.js';
-import { oklchToHex, hexToOklch, parseHex, isHex, contrast } from '../js/oklch.js';
+import { AMBIANCES, COLOR_TOKENS, ORIGIN, ORIGIN_SEED, ACCENT_PAIRS, TEXT_PAIRS, RENFORCEE, ambiancePalette, seedOf, weakestContrast, weakestEdge } from '../js/theme/ambiance.js';
+import { FORME, FORME_TOKENS } from '../js/theme/ambiance-forme.js';
+import { TYPES, typeTokens } from '../js/theme/ambiance-types.js';
+import { oklchToHex, hexToOklch, parseHex, isHex, contrast } from '../js/theme/oklch.js';
 
 const read = name => readFileSync(new URL(`../css/${name}`, import.meta.url), 'utf8');
 const CSS = { gfs: read('gfs.css'), explorer: read('explorer.css'), modules: read('modules.css') };
@@ -29,7 +29,7 @@ const charter = { clair: hexTokens(blockOf(':root {')), sombre: { ...hexTokens(b
 
 const PAIRS = [...TEXT_PAIRS, ...ACCENT_PAIRS];
 
-// Ce qui ne change jamais d'une ambiance à l'autre (l'état) se pose sur ses fonds. Les couleurs de type, elles, sont celles de l'ambiance (js/ambiance-types.js, décision du 04/11) : `weakestType`, plus bas.
+// Ce qui ne change jamais d'une ambiance à l'autre (l'état) se pose sur ses fonds. Les couleurs de type, elles, sont celles de l'ambiance (js/theme/ambiance-types.js, décision du 04/11) : `weakestType`, plus bas.
 const FIXED = ['--danger-ink', '--good', '--warn-ink'];
 const BACKGROUNDS = ['--surface', '--bg', '--surface-sunken'];
 
@@ -326,7 +326,7 @@ test('css/gfs.css : en accessibilité renforcée, le texte d\'état et de type p
   for (const value of Object.values(tokens)) assert.equal(value, 'var(--text)');
 });
 
-// En accessibilité renforcée, le message a l'`id` `renforcee` et aucune couleur de type n'est posée avec lui (js/ambiance-types.js n'a pas d'entrée `renforcee`) : les feuilles de style disent celles d'origine.
+// En accessibilité renforcée, le message a l'`id` `renforcee` et aucune couleur de type n'est posée avec lui (js/theme/ambiance-types.js n'a pas d'entrée `renforcee`) : les feuilles de style disent celles d'origine.
 // Le texte de type est celui de la page (la règle ci-dessus) ; l'icône garde sa couleur, et tient 3:1 sur les fonds de l'ambiance renforcée, avec toute couleur libre.
 test('accessibilité renforcée : pas de couleurs de type propres, et l\'icône d\'origine tient 3:1 sur les fonds de chaque ambiance renforcée et de toute couleur libre', () => {
   assert.deepEqual(typeTokens(RENFORCEE, 'clair'), {});

@@ -1,9 +1,9 @@
-// La corbeille de l'explorateur (js/trash.js) : ce qui est commun à tous les gardiens de fichiers (vérifier qu'on peut écrire, poser la question avant ce qui ne s'annule pas, dire ce qui s'est
+// La corbeille de l'explorateur (js/files/trash.js) : ce qui est commun à tous les gardiens de fichiers (vérifier qu'on peut écrire, poser la question avant ce qui ne s'annule pas, dire ce qui s'est
 // passé, relire la liste). Les gardiens sont des doublures ; ce que fait le gardien des PDF est dans files-store.test.mjs et kept-files.test.mjs, ce que Grist rend vraiment se mesure dans le labo
 // (labo/run-corbeille.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Trash } from '../js/trash.js';
+import { Trash } from '../js/files/trash.js';
 import { FR, EN } from './kept-setup.mjs';
 
 // Un gardien de doublure : il garde la trace de ce qu'on lui demande et rend ce qu'on lui a dit de rendre.

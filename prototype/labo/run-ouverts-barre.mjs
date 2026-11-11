@@ -1,4 +1,4 @@
-// Le 5e bouton de la barre, « Fichiers ouverts » (js/opened-bar.js, contrats 5.2 point 7 et 6.4 point 14), dans un vrai Grist, à 700 × 400, à la vraie souris et au vrai clavier : la liste des fichiers que GFS a
+// Le 5e bouton de la barre, « Fichiers ouverts » (js/explorer/opened-bar.js, contrats 5.2 point 7 et 6.4 point 14), dans un vrai Grist, à 700 × 400, à la vraie souris et au vrai clavier : la liste des fichiers que GFS a
 // ouverts dans une app, à un clic de l'app, pour y revenir et faire des allers-retours sans repasser par l'explorateur. Les deux apps sont les sondes O (labo/sondes/o-ouvrir/, qui répond à `fermer` selon
 // `body[data-fermer]`) et Q (qui ne connaît pas l'appel). Mesuré : la place du bouton (deuxième, entre « Fichiers » et « Apps ») et la barre de 34 × 154 ; le bouton grisé sans fichier ouvert (jamais masqué)
 // et son menu qui le dit ; la pastille et le nom du bouton qui portent le nombre ; l'ordre du plus récent au plus ancien ; le fichier affiché marqué par un mot (pas une couleur seule) ; le va-et-vient par la

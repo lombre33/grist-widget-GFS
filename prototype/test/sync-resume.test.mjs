@@ -1,11 +1,11 @@
-// La reprise du partage à l'ouverture de la page (js/sync-resume.js) : un document sans table de partage ne charge rien ; la table technique reprend l'envoi ; un journal reçu reprend la réception.
+// La reprise du partage à l'ouverture de la page (js/sharing/sync-resume.js) : un document sans table de partage ne charge rien ; la table technique reprend l'envoi ; un journal reçu reprend la réception.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resumeSharing, sharingNeeds } from '../js/sync-resume.js';
+import { resumeSharing, sharingNeeds } from '../js/sharing/sync-resume.js';
 
 const engineFor = calls => ({ load: async () => { calls.push('load'); }, receive: async () => { calls.push('receive'); } });
 const docOf = tables => ({ listTables: async () => tables });
-// La pose des règles des tables techniques (js/sync-rules.js) est remplacée ici : elle a ses propres essais (test/sync-rules.test.mjs).
+// La pose des règles des tables techniques (js/sharing/sync-rules.js) est remplacée ici : elle a ses propres essais (test/sync-rules.test.mjs).
 const closing = (calls, changed = false) => async () => { calls.push('close'); return { changed, tables: changed ? ['GFS_Synchro'] : [] }; };
 const owner = async () => true;
 

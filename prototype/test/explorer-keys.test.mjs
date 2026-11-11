@@ -1,8 +1,8 @@
-// Les touches de l'explorateur (js/explorer-keys.js) : la touche tapée -> le geste. Ce que le geste fait de la ligne choisie se mesure dans l'interface (test/interfaces-firefox.test.mjs, avec un vrai
+// Les touches de l'explorateur (js/explorer/explorer-keys.js) : la touche tapée -> le geste. Ce que le geste fait de la ligne choisie se mesure dans l'interface (test/interfaces-firefox.test.mjs, avec un vrai
 // clavier) ; ici, la table des touches, sans DOM.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { listAction, moveTarget, isSearchKey, clipboardAction, parentPath, stepRow } from '../js/explorer-keys.js';
+import { listAction, moveTarget, isSearchKey, clipboardAction, parentPath, stepRow } from '../js/explorer/explorer-keys.js';
 
 const press = (key, mods = {}) => ({ key, ctrlKey: false, altKey: false, metaKey: false, shiftKey: false, ...mods });
 const LIST = { display: 'list', filtering: false };

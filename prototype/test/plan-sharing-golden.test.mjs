@@ -1,4 +1,4 @@
-// Le plan d'activation du partage (planSharing, js/sharing-model.js) sous une batterie d'états du document : le plan rendu (actions, tables et colonnes créées, règles écrites, raison du refus) est comparé,
+// Le plan d'activation du partage (planSharing, js/sharing/sharing-model.js) sous une batterie d'états du document : le plan rendu (actions, tables et colonnes créées, règles écrites, raison du refus) est comparé,
 // à l'octet près, à celui que l'ancienne version écrivait avant d'être découpée en petites fonctions (test/golden/plan-sharing.json, réécrit à la main par `UPDATE_GOLDEN=1 node --test …` quand le plan
 // DOIT changer, avec le diff relu). Ce qu'une règle fait dans Grist se mesure dans un vrai Grist : labo/run-partager.mjs, run-partager-auteur.mjs. Les cas particuliers sont aussi dans sharing-model.test.mjs.
 import { test } from 'node:test';
@@ -6,8 +6,8 @@ import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { planSharing, planUnsharing, targetsOf } from '../js/sharing-model.js';
-import { FILES_COLUMNS } from '../js/gfs-files.js';
+import { planSharing, planUnsharing, targetsOf } from '../js/sharing/sharing-model.js';
+import { FILES_COLUMNS } from '../js/files/gfs-files.js';
 import { BUILT_IN, base, withFiles, applied } from './sharing-fixtures.mjs';
 
 const GOLDEN = fileURLToPath(new URL('./golden/plan-sharing.json', import.meta.url));

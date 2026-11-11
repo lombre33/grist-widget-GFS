@@ -1,9 +1,9 @@
 // Le panneau « Permissions » et son mot dans le pied de l'explorateur sous Firefox (règle du 03/11 : toute nouvelle interface ajoute ses mesures à test/interfaces-firefox.test.mjs ; contrats 11.4 point 7).
-// Le vrai panneau (js/rights-window.js) s'ouvre sur quatre états que le lecteur des droits aurait rendus (test/pages/explorateur.js, `window.__rights`) : rien posé avec un lien public qui ouvre une table
+// Le vrai panneau (js/rights/rights-window.js) s'ouvre sur quatre états que le lecteur des droits aurait rendus (test/pages/explorateur.js, `window.__rights`) : rien posé avec un lien public qui ouvre une table
 // protégée, Encadré partout structure fermée, des règles à la main, une personne qui n'est pas propriétaire. À chaque largeur de l'essai : le mot du pied (icône et mot ensemble, dans le pied, sans
 // le faire déborder), le panneau tient dans la page, son titre et son bouton restent en place, seul le contenu défile, rien n'en sort, le clavier est sur « Fermer », Tab reste dedans, Échap le ferme et
 // le clavier revient sur le mot du pied ; la vraie souris ouvre le panneau depuis le mot du pied et le ferme par « Fermer ».
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { Run, delay } from './corbeille-firefox.mjs';
 
 // Ce que la page montre du panneau et du mot du pied.

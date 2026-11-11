@@ -1,5 +1,5 @@
 // Deux documents qui ont GFS, dans un VRAI Grist (`GRIST_DOCKER_ARGS="-e ALLOWED_WEBHOOK_DOMAINS=*" bash vrai-serveur.sh`) : un PDF du premier arrive dans le second par le moteur de partage du kit
-// (kit/js/synchro/) branché sur le port de GFS (js/sync-port.js), une fois, dans un sens. Rien n'est simulé côté Grist : le port est celui de GFS, ses requêtes passent par le vrai cadre d'envoi, les
+// (kit/js/synchro/) branché sur le port de GFS (js/sharing/sync-port.js), une fois, dans un sens. Rien n'est simulé côté Grist : le port est celui de GFS, ses requêtes passent par le vrai cadre d'envoi, les
 // webhooks sont ceux de Grist. Le parcours est celui que dessine l'écran à venir, sans écran :
 //   SOURCE (le premier) : l'export du PDF (un seul fichier, une condition sur son identifiant), l'invitation et son code ;
 //   CIBLE (le second)   : l'invitation lue et contrôlée, la réception créée (un journal, son formulaire publié, la table `GFS_Recus`), le lien du formulaire collé une fois, le code de réponse ;

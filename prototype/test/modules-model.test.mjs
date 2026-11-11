@@ -1,8 +1,8 @@
 // Ce que la fenêtre « Apps et extensions » montre : lignes, grisé, compte.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { modulesModel } from '../js/modules-model.js';
-import { readCatalogue } from '../js/libraries.js';
+import { modulesModel } from '../js/apps/modules-model.js';
+import { readCatalogue } from '../js/apps/libraries.js';
 import { publipostage, automation } from './helpers.mjs';
 
 const SRI = `sha384-${'C'.repeat(64)}`;

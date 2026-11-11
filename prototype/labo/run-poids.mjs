@@ -3,7 +3,7 @@
 // à la vraie souris et au vrai clavier. Ce que ni grist-static ni un faux Grist ne disent : ce que `fetchTable` rend de chaque colonne (listes de pièces jointes, entiers, booléens, formules), la taille que Grist
 // garde des pièces jointes, ce que SQLite range vraiment (`dbstat`), et ce que la copie d'un PDF fait de sa pièce. Chromium seulement (test/interfaces-firefox.test.mjs mesure l'interface sous Firefox).
 //   bash vrai-serveur.sh && REPO_DIR="$(realpath ../..)" node run-poids.mjs        (LAB_LANG=fr|en, LAB_SCHEME=light|dark)
-//   1. Chaque fichier de la racine dit le poids que ses cellules ont dans Grist (lues par l'API REST, comptées par js/weight.js), la pièce jointe d'un PDF en plus (sa taille est celle de Grist) ;
+//   1. Chaque fichier de la racine dit le poids que ses cellules ont dans Grist (lues par l'API REST, comptées par js/weight/weight.js), la pièce jointe d'un PDF en plus (sa taille est celle de Grist) ;
 //      chaque dossier dit la somme de ses fichiers ; le pied de fenêtre dit le total ; les en-têtes et le total tiennent dans 700 × 400.
 //   2. L'estimation face à l'octet exact de SQLite (`dbstat`) : jamais au-dessus, à moins de 2 % pour la table des modèles lourds, et ce qu'elle laisse pour les petites tables.
 //   3. Un PDF dupliqué cite la même pièce : sa ligne seule s'ajoute au total, jamais la pièce une deuxième fois.
@@ -18,8 +18,8 @@ import { createServer } from 'node:http';
 import { serve } from './lab-server.mjs';
 import { chromium, say, check } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
-import { createI18n } from '../js/i18n.js';
-import { attachmentIds, cellBytes, formatBytes, sumWeights } from '../js/weight.js';
+import { createI18n } from '../js/i18n/i18n.js';
+import { attachmentIds, cellBytes, formatBytes, sumWeights } from '../js/weight/weight.js';
 import { seedFiles } from './seed.mjs';
 import { apply, noise, sql, upload } from './lab-poids.mjs';
 import { PAGE_PORT, contrastProblems, importPdf, importSamples, openGfs, openRowMenu, pdfFile, rowOf, shot, waitFor, waitForNames, goTo } from './lab-pdf.mjs';
@@ -37,7 +37,7 @@ const VERSIONS = 'Publipostage_Versions';
 const show = bytes => formatBytes(bytes, locale, t);
 const byName = (a, b) => a.name.localeCompare(b.name, locale, { numeric: true, sensitivity: 'base' });
 
-// Les octets d'une ligne lue par l'API REST : la somme de ses cellules, comme js/weight.js la fait pour ce que GFS lit.
+// Les octets d'une ligne lue par l'API REST : la somme de ses cellules, comme js/weight/weight.js la fait pour ce que GFS lit.
 const rowBytes = ({ id, ...fields }) => Object.values(fields).reduce((sum, value) => sum + cellBytes(value), 0);
 
 // Ce que l'explorateur doit montrer, tiré de Grist sans passer par GFS : [{ name, folder, bytes, pieces }] pour les modèles (la ligne de réglages n'est pas un fichier) et les PDF (la ligne, plus la taille
@@ -45,7 +45,7 @@ const rowBytes = ({ id, ...fields }) => Object.values(fields).reduce((sum, value
 async function expectedFiles(run) {
   const sizes = new Map((await sql(run, 'SELECT id, fileSize FROM _grist_Attachments')).map(row => [row.id, row.fileSize]));
   const folderOf = new Map((await run.rest.rows(PREFS)).filter(row => row.Utilisateur === '' && row.ModeleId > 0).map(row => [row.ModeleId, row.Dossier || '']));
-  // Les versions d'un modèle (`Publipostage_Versions`, par `Jeton`) : leurs octets s'ajoutent à ceux du modèle, une fois par jeton (comme js/weight.js, `linkedOf`).
+  // Les versions d'un modèle (`Publipostage_Versions`, par `Jeton`) : leurs octets s'ajoutent à ceux du modèle, une fois par jeton (comme js/weight/weight.js, `linkedOf`).
   const byToken = new Map();
   if ((await run.rest.tables()).includes(VERSIONS)) for (const row of await run.rest.rows(VERSIONS)) if (row.Jeton) byToken.set(row.Jeton, (byToken.get(row.Jeton) || 0) + rowBytes(row));
   const list = (await run.rest.rows(MODELS)).filter(row => row.TypeModele !== 'reglages').map(row => {

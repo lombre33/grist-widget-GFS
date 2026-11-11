@@ -3,9 +3,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { AMBIANCES } from '../js/ambiance.js';
-import { TYPES, TYPE_TOKENS, typeTokens } from '../js/ambiance-types.js';
-import { hexToOklch, isHex } from '../js/oklch.js';
+import { AMBIANCES } from '../js/theme/ambiance.js';
+import { TYPES, TYPE_TOKENS, typeTokens } from '../js/theme/ambiance-types.js';
+import { hexToOklch, isHex } from '../js/theme/oklch.js';
 
 const MODES = ['clair', 'sombre'];
 const read = name => readFileSync(new URL(`../css/${name}`, import.meta.url), 'utf8');

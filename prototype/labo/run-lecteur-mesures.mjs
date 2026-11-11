@@ -9,7 +9,7 @@ import { createServer } from 'node:http';
 import { serve } from './lab-server.mjs';
 import { chromium, say, check, probeDeclares } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { PAGE_PORT, openGfs, settle, closeModules } from './lab-pdf.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
@@ -32,7 +32,7 @@ async function openProbe({ page, frame }) {
   return Boolean(probeFrame(page));
 }
 
-// Pose un cadre de lecteur dans la page de GFS et rend ce qu'il dit. Le routeur de GFS jette tout message d'une fenêtre qui n'est ni Grist ni l'app active (js/router.js, contrats 1.2) :
+// Pose un cadre de lecteur dans la page de GFS et rend ce qu'il dit. Le routeur de GFS jette tout message d'une fenêtre qui n'est ni Grist ni l'app active (js/broker/router.js, contrats 1.2) :
 // l'essai écoute les messages jetés par `GFSRouter.setStrayListener` (le seul moyen, aujourd'hui, de les voir).
 async function playerFrame(frame, { sandbox = null, name, url = PLAYER }) {
   await frame.evaluate(({ url, sandboxValue, id }) => {

@@ -1,11 +1,11 @@
-// Les fichiers que GFS garde, côté données (js/files-store.js, contrats 6.6) : la table naît avec l'accord de la personne avant tout envoi, le fichier part avant la ligne, un nom pris se décide,
+// Les fichiers que GFS garde, côté données (js/files/files-store.js, contrats 6.6) : la table naît avec l'accord de la personne avant tout envoi, le fichier part avant la ligne, un nom pris se décide,
 // la table est relue avant d'écrire. Le port est un faux Grist en mémoire (fake-grist.mjs) et le cadre d'envoi une doublure ; ce que Grist et le serveur rendent vraiment (la pièce jointe,
 // la cellule Attachments, le téléchargement) se mesure dans le labo, sur un vrai serveur (labo/run-pdf.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { FilesStore, filesOf } from '../js/files-store.js';
-import { TableDeclined } from '../js/own-table.js';
-import { FILES_TABLE, FILES_COLUMN_IDS } from '../js/gfs-files.js';
+import { FilesStore, filesOf } from '../js/files/files-store.js';
+import { TableDeclined } from '../js/files/own-table.js';
+import { FILES_TABLE, FILES_COLUMN_IDS } from '../js/files/gfs-files.js';
 import { fakeGrist } from './fake-grist.mjs';
 
 const NOW = 1762000123456;

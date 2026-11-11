@@ -5,7 +5,7 @@
 // Deux jeux de cadres pour `haut`, selon `data-jeu` du corps : `complet` (index.html, cadres A à E) et `profond` (profond.html, cadres P1 à P5).
 'use strict';
 
-// Les attributs du cadre d'une app dans GFS (prototype/js/frames.js : SANDBOX et `allow`).
+// Les attributs du cadre d'une app dans GFS (prototype/js/broker/frames.js : SANDBOX et `allow`).
 const SANDBOX = 'allow-scripts allow-forms allow-popups allow-modals allow-downloads';
 const ALLOW = 'clipboard-write';
 const TOUS = 't1,t2,t3,t4,t5,t6';

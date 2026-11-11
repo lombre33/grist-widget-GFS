@@ -1,8 +1,8 @@
-// Le parcours de celui qui reçoit (js/share-receive-flow.js) : ce qu'il demande au moteur, dans quel ordre, et ce qu'il défait. Le moteur est ici un faux qui note ses appels ; ce que le vrai moteur fait
+// Le parcours de celui qui reçoit (js/sharing/share-receive-flow.js) : ce qu'il demande au moteur, dans quel ordre, et ce qu'il défait. Le moteur est ici un faux qui note ses appels ; ce que le vrai moteur fait
 // dans un vrai Grist est mesuré par labo/run-partager-recevoir.mjs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createTargetFlow, RECEIVED_TABLE } from '../js/share-receive-flow.js';
+import { createTargetFlow, RECEIVED_TABLE } from '../js/sharing/share-receive-flow.js';
 
 const INVITATION = { id: 'i1', export: 'e1', name: 'Fichiers GFS', mode: 'reponse', expire: 1800000000, tables: [{ table: 'GFS_Fichiers', columns: ['Identifiant', 'Nom'] }] };
 

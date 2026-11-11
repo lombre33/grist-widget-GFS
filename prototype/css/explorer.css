@@ -146,7 +146,7 @@ button { cursor: pointer; }
 .ls-row[data-fam] .nm .ic { color: var(--tc); }
 .ls-row[data-fam] .pill { border-color: var(--pill-line, var(--tc-line)); background: var(--pill-bg, var(--tc-soft)); color: var(--pill-fg, var(--tc-ink)); }
 .ls-row[data-fam][aria-selected="true"] .pill { background: var(--pill-bg, var(--surface)); }
-/* Les couleurs des types sont celles de l'ambiance (jetons --t-*, posés avec elle : js/ambiance-types.js). Comment l'ambiance choisie remplit une pastille de type (jetons --pill-*, posés ici et non par
+/* Les couleurs des types sont celles de l'ambiance (jetons --t-*, posés avec elle : js/theme/ambiance-types.js). Comment l'ambiance choisie remplit une pastille de type (jetons --pill-*, posés ici et non par
    l'ambiance : la forme d'une pastille ne vit que dans l'explorateur) : pleine (Pop), cernée (Brut), évidée (Enseigne). Sans ambiance, ou pour Papier, la pastille garde sa teinte douce d'origine. L'accessibilité
    renforcée (décision du 04/11) la veut unie, quelle que soit l'ambiance dessous : le texte est celui de la page (7:1) et le contour est le trait fort (3:1) ; le type se dit par l'icône et par le mot, comme toujours. */
 [data-ambiance="pop"] [data-fam], .amb-mini[data-ambiance="pop"] .mn-p[data-fam] { --pill-bg: var(--tc-ink); --pill-line: var(--tc-ink); --pill-fg: var(--surface); }
@@ -178,7 +178,7 @@ button { cursor: pointer; }
 
 /* ---------- vignettes ---------- */
 .th-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; padding: 8px; }
-/* Une grille longue n'est construite que pour ce qu'on voit (js/explorer-window.js) : toutes les rangées ont la même hauteur, le nom réserve donc ses deux lignes. */
+/* Une grille longue n'est construite que pour ce qu'on voit (js/explorer/explorer-window.js) : toutes les rangées ont la même hauteur, le nom réserve donc ses deux lignes. */
 .th-grid.is-windowed .tn { min-height: 2.5em; }
 .th { display: flex; flex-direction: column; gap: 5px; padding: 6px; border: var(--bw) solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-ctl); background: var(--surface); text-align: left; position: relative; min-width: 0; }
 .th[aria-selected="true"] { border-color: var(--accent); background: var(--accent-soft); }
@@ -208,7 +208,7 @@ button { cursor: pointer; }
 /* ---------- barre d'information et pied ---------- */
 .ex-foot { flex: none; display: flex; align-items: center; gap: 8px; margin: 0 var(--gap) var(--gap); padding: 7px 16px 9px; border-top: var(--divider-w) solid var(--divider); border-radius: var(--radius-panel); box-shadow: var(--shadow-panel); background: var(--surface-sunken); }
 .ex-info { flex: 1; min-width: 0; display: flex; align-items: center; height: 40px; font-size: max(12px, var(--fs-min)); }
-/* Le total de ce que la liste montre (js/weight.js) : à droite de la barre d'information, avant les boutons. */
+/* Le total de ce que la liste montre (js/weight/weight.js) : à droite de la barre d'information, avant les boutons. */
 /* Le total est un bouton (lot 4 du poids) : un clic ouvre la fenêtre « Poids du document » (css/weight.css). */
 .ex-total { flex: none; display: flex; align-items: center; gap: 10px; margin: 0 -6px; padding: 3px 6px; font: inherit; font-size: max(12px, var(--fs-min)); color: var(--text-muted); white-space: nowrap; background: none; border: 0; border-radius: var(--radius-sm); cursor: pointer; }
 .ex-total:hover { background: var(--surface-sunken); }
@@ -216,7 +216,7 @@ button { cursor: pointer; }
 .ex-total .tot-n { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
 /* La lecture des pièces jointes en cours (case « + pièces jointes » cochée) : le total garde ce qu'il disait, un peu pâli. */
 .ex-total[aria-busy="true"] { opacity: .6; }
-/* La case « + pièces jointes » (js/explorer-view.js, `pjBox`), entre le total et les boutons. Grisée, jamais masquée, quand GFS ne peut pas lire les pièces jointes : son clic dit pourquoi. */
+/* La case « + pièces jointes » (js/explorer/explorer-view.js, `pjBox`), entre le total et les boutons. Grisée, jamais masquée, quand GFS ne peut pas lire les pièces jointes : son clic dit pourquoi. */
 .ex-pj { flex: none; display: flex; align-items: center; gap: 6px; font-size: max(12px, var(--fs-min)); color: var(--text-muted); white-space: nowrap; cursor: pointer; }
 .ex-pj input { flex: none; width: 15px; height: 15px; margin: 0; accent-color: var(--accent-solid); cursor: inherit; }
 .ex-pj.is-grey { opacity: .55; cursor: not-allowed; }
@@ -232,7 +232,7 @@ button { cursor: pointer; }
 /* ---------- menus ---------- */
 .menu { position: absolute; min-width: 178px; max-height: 300px; overflow-y: auto; padding: 4px; background: var(--surface); border: var(--bw) solid var(--border-strong); border-radius: var(--radius-md);
   box-shadow: var(--shadow-float); font-size: max(12.5px, var(--fs-min)); }
-/* Un panneau flottant sous un bouton (js/menu.js, openPanel) : du contenu que l'appelant donne (la palette de couleur du kit, kit/css/color-picker.css), sans la largeur d'une liste d'articles ni de défilement. */
+/* Un panneau flottant sous un bouton (js/ui/menu.js, openPanel) : du contenu que l'appelant donne (la palette de couleur du kit, kit/css/color-picker.css), sans la largeur d'une liste d'articles ni de défilement. */
 .menu-panel { min-width: 0; max-height: none; overflow: visible; padding: 8px; }
 .menu-item { display: flex; align-items: center; gap: 8px; width: 100%; height: 28px; padding: 0 8px; border: 0; border-radius: calc(var(--radius-xs) + 1px); background: transparent; text-align: left; color: var(--text); }
 .menu-item:hover, .menu-item:focus-visible { background: var(--surface-sunken); }
@@ -249,7 +249,7 @@ button { cursor: pointer; }
 .menu-sub .menu-hint { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .menu .ic-sp { width: 14px; height: 14px; flex: none; }
 .menu hr { border: 0; border-top: 1px solid var(--border); margin: 4px 0; }
-/* La liste des fichiers ouverts de la barre (js/opened-bar.js) : un titre, des lignes dont la croix retire le fichier de la liste, le fichier que l'app montre en gras avec un trait (et le mot pour un lecteur d'écran). */
+/* La liste des fichiers ouverts de la barre (js/explorer/opened-bar.js) : un titre, des lignes dont la croix retire le fichier de la liste, le fichier que l'app montre en gras avec un trait (et le mot pour un lecteur d'écran). */
 .menu-opened { min-width: 240px; max-width: min(340px, calc(100% - 16px)); }
 .menu-title { padding: 4px 8px 2px; font-size: max(11px, var(--fs-min)); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
 .menu-row { display: flex; align-items: center; gap: 2px; }
@@ -291,6 +291,6 @@ button { cursor: pointer; }
   .ex-pj { grid-column: 2; grid-row: 2; }
   .ex-foot > .btn { grid-row: 1 / 3; }
 }
-/* Glisser-déposer (js/explorer-drag.js) : la ligne tenue s'efface un peu ; le dossier qui l'accueillerait prend le bleu de la sélection, cerné d'un trait plein. */
+/* Glisser-déposer (js/explorer/explorer-drag.js) : la ligne tenue s'efface un peu ; le dossier qui l'accueillerait prend le bleu de la sélection, cerné d'un trait plein. */
 .is-dragging { opacity: .5; }
 .ls-row.is-drop, .th.is-drop, .tr-row.is-drop, .crumbs button.is-drop { background: var(--accent-soft); color: var(--accent-ink); box-shadow: inset 0 0 0 2px var(--accent); }

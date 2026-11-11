@@ -1,5 +1,5 @@
 // Audit de sécurité du 09/11 : les tables techniques du partage entre documents (`GFS_Synchro` côté qui envoie, `GFS_Journal_*` côté qui reçoit) rangent des morceaux de PDF et les clés qui signent les envois.
-// Sans règle, toute personne qui ouvre le document les lit. Choix du porteur : « les fermer comme les fichiers » (js/sync-rules.js : propriétaires seuls ; un journal garde la création ouverte, c'est par elle que le
+// Sans règle, toute personne qui ouvre le document les lit. Choix du porteur : « les fermer comme les fichiers » (js/sharing/sync-rules.js : propriétaires seuls ; un journal garde la création ouverte, c'est par elle que le
 // formulaire de réception y écrit). Mesuré dans un VRAI Grist, avec trois comptes, un à la fois (le serveur n'en connaît qu'un : on le relance sous chacun), en cinq passages :
 //   PHASE=proprietaire  essai@ : deux documents qui ont GFS, un vrai partage « à jour » (Facture.pdf arrive), les deux documents partagés à editor@ et viewer@ ; aucune règle n'est encore posée ;
 //   PHASE=avant         editor@ puis viewer@ : AVANT le correctif, ils lisent les morceaux de PDF et les clés (mesure du défaut) ;

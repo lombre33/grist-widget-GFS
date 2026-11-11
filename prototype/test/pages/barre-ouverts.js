@@ -1,10 +1,10 @@
-// La page d'essai du 5e bouton de la barre sous Firefox (test/barre-ouverts-firefox.mjs) : la vraie barre de index.html (ses cinq boutons), le vrai `Dock` (js/dock.js) et le vrai `OpenedBar`
-// (js/opened-bar.js) sur des fichiers d'essai ; le reste de GFS est absent. `window.__bar` : `fill(n)` ouvre les n premiers fichiers (le dernier est celui que l'app affiche), `clear()` vide la liste,
+// La page d'essai du 5e bouton de la barre sous Firefox (test/barre-ouverts-firefox.mjs) : la vraie barre de index.html (ses cinq boutons), le vrai `Dock` (js/shell/dock.js) et le vrai `OpenedBar`
+// (js/explorer/opened-bar.js) sur des fichiers d'essai ; le reste de GFS est absent. `window.__bar` : `fill(n)` ouvre les n premiers fichiers (le dernier est celui que l'app affiche), `clear()` vide la liste,
 // `edge(nom)` choisit le bord de la barre, `access(bool)` allume l'accessibilité renforcée, `opens` garde les clés des fichiers que le menu a fait ouvrir, `explorer` compte les « Ouvrir un autre fichier… ».
-import { Dock } from '/js/dock.js';
-import { OpenedBar } from '/js/opened-bar.js';
-import { OpenedFiles } from '/js/opened-files.js';
-import { createI18n } from '/js/i18n.js';
+import { Dock } from '/js/shell/dock.js';
+import { OpenedBar } from '/js/explorer/opened-bar.js';
+import { OpenedFiles } from '/js/explorer/opened-files.js';
+import { createI18n } from '/js/i18n/i18n.js';
 
 const language = new URLSearchParams(location.search).get('lang') === 'en' ? 'en' : 'fr';
 const { t } = createI18n(language);

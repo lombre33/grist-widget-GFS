@@ -5,8 +5,8 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT } from './helpers.mjs';
-import { Dock } from '../js/dock.js';
-import { FORME_TOKENS } from '../js/ambiance-forme.js';
+import { Dock } from '../js/shell/dock.js';
+import { FORME_TOKENS } from '../js/theme/ambiance-forme.js';
 
 const cssDir = join(ROOT, 'css');
 const sheets = readdirSync(cssDir).filter(name => name.endsWith('.css')).map(name => ({ name, text: readFileSync(join(cssDir, name), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '') }));

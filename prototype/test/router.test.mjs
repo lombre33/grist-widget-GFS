@@ -10,7 +10,7 @@ function load() {
   const listeners = [];
   const parent = { name: 'grist' };
   const window = { parent, addEventListener: (type, fn, capture) => listeners.push({ type, fn, capture }) };
-  vm.runInNewContext(readFileSync(join(ROOT, 'js/router.js'), 'utf8'), { window });
+  vm.runInNewContext(readFileSync(join(ROOT, 'js/broker/router.js'), 'utf8'), { window });
   // Comme le navigateur : les écouteurs dans l'ordre, jusqu'à stopImmediatePropagation().
   const dispatch = (source, data) => {
     let stopped = false;

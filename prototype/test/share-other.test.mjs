@@ -1,8 +1,8 @@
-// Le changement de niveau d'un lien dans l'onglet de « Partager » (js/share-other.js, `levelChanger`) : ce qui le bloque, ce qui l'échoue. Le chemin qui réussit passe par le moteur de partage du kit : il se mesure dans le labo.
+// Le changement de niveau d'un lien dans l'onglet de « Partager » (js/sharing/share-other.js, `levelChanger`) : ce qui le bloque, ce qui l'échoue. Le chemin qui réussit passe par le moteur de partage du kit : il se mesure dans le labo.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createOtherDocuments } from '../js/share-other.js';
-import { FILES_APP } from '../js/gfs-files.js';
+import { createOtherDocuments } from '../js/sharing/share-other.js';
+import { FILES_APP } from '../js/files/gfs-files.js';
 
 const t = (key, vars) => (vars ? `${key} ${JSON.stringify(vars)}` : key);
 const make = (over = {}) => createOtherDocuments({

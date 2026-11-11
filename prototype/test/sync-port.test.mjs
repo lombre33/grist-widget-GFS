@@ -1,10 +1,10 @@
-// Le port de GFS pour le moteur de partage (js/sync-port.js) : ce que GFS dit au cadre d'envoi et à l'API des widgets pour chaque fonction du port (le REST lui-même est écrit une fois par le moteur,
+// Le port de GFS pour le moteur de partage (js/sharing/sync-port.js) : ce que GFS dit au cadre d'envoi et à l'API des widgets pour chaque fonction du port (le REST lui-même est écrit une fois par le moteur,
 // `createRestPort`, et testé avec lui : ici, le `http` de GFS qui le porte), les erreurs que le moteur lit, les textes, la page et les préférences. Le cadre et Grist sont ici de faux interlocuteurs qui
 // notent ce qu'on leur demande : ce que le VRAI Grist répond est mesuré par labo/run-sync-port.mjs, jamais par ces essais.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createSyncPort, startSyncEngine, SYNC_PREFIX } from '../js/sync-port.js';
-import { TransferError } from '../js/transfer.js';
+import { createSyncPort, startSyncEngine, SYNC_PREFIX } from '../js/sharing/sync-port.js';
+import { TransferError } from '../js/broker/transfer.js';
 import { PORT_SHAPE } from '../kit/js/synchro/port.js';
 import { SYNC_TABLE } from '../kit/js/synchro/logic/common.js';
 import { errorText } from '../kit/js/synchro/errors.js';

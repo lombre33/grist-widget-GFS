@@ -1,13 +1,13 @@
-// Les fichiers que GFS garde lui-même (js/gfs-files.js, contrats 6.6) : le manifeste intégré, les règles de nom, l'identifiant, la reconnaissance d'un PDF, les enregistrements.
+// Les fichiers que GFS garde lui-même (js/files/gfs-files.js, contrats 6.6) : le manifeste intégré, les règles de nom, l'identifiant, la reconnaissance d'un PDF, les enregistrements.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateManifest } from '../js/manifest.js';
-import { readFiles } from '../js/explorer-model.js';
-import { importFormats } from '../js/import-file.js';
-import { loadFiles } from '../js/explorer-data.js';
+import { validateManifest } from '../js/apps/manifest.js';
+import { readFiles } from '../js/explorer/explorer-model.js';
+import { importFormats } from '../js/files/import-file.js';
+import { loadFiles } from '../js/explorer/explorer-data.js';
 import {
   FILES_APP, FILES_TABLE, FILES_COLUMNS, FILES_MANIFEST, FILES_ENTRY, TRASH_COLUMN_IDS, sameName, cleanName, freeName, newId, looksLikePdf, newRecord, replacementRecord, trashRecord, restoreRecord,
-} from '../js/gfs-files.js';
+} from '../js/files/gfs-files.js';
 
 test('le manifeste intégré se lit comme celui d\'une app : l\'explorateur y trouve la table, les colonnes déclarées, le type PDF et l\'icône du type', () => {
   const spec = FILES_MANIFEST.fichiers[0];

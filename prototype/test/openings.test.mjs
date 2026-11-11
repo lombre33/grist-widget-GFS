@@ -1,12 +1,12 @@
-// Les ouvertures (js/openings.js, contrats 5.4) : ouvrir un fichier, créer un fichier vierge (« Nouveau »), importer, lire un fichier que GFS garde, et quitter l'app active pour une autre,
+// Les ouvertures (js/broker/openings.js, contrats 5.4) : ouvrir un fichier, créer un fichier vierge (« Nouveau »), importer, lire un fichier que GFS garde, et quitter l'app active pour une autre,
 // face à un contrôleur joué par l'essai (`host`, qui note chaque appel). Ce que Grist et l'app envoient vraiment (le cadre, les messages, le sélecteur de fichier) se mesure dans un vrai Grist :
 // labo/run-ouvrir.mjs, run-importer.mjs, run-fermer.mjs, run-lire.mjs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Openings } from '../js/openings.js';
-import { FILES_APP } from '../js/gfs-files.js';
-import { OpenedFiles } from '../js/opened-files.js';
-import { ERR } from '../js/filter.js';
+import { Openings } from '../js/broker/openings.js';
+import { FILES_APP } from '../js/files/gfs-files.js';
+import { OpenedFiles } from '../js/explorer/opened-files.js';
+import { ERR } from '../js/broker/filter.js';
 
 const text = (key, vars) => (vars ? `${key} ${JSON.stringify(vars)}` : key);
 const refusal = code => Object.assign(new Error('refus'), { code });

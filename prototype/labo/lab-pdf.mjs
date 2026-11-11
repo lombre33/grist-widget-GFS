@@ -35,7 +35,7 @@ export async function openGfs(context, { lang = 'fr', probes = null, patches = [
   const page = await context.newPage();
   if (!oldBrowser) await page.addInitScript(addModernMethods);
   if (probes) {
-    await page.route(/\/prototype\/js\/catalogue\.js(\?|$)/, async route => {
+    await page.route(/\/prototype\/js\/apps\/catalogue\.js(\?|$)/, async route => {
       const response = await route.fetch();
       await route.fulfill({ response, body: withProbes(await response.text(), probes) });
     });

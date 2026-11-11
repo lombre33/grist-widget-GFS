@@ -7,7 +7,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { engine, engineName, say, check } from './lab-common.mjs';
-import { SANDBOX } from '../js/frames.js';
+import { SANDBOX } from '../js/broker/frames.js';
 
 const PORT = 8916;
 const BASE = `http://127.0.0.1:${PORT}/`;

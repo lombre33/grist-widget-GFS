@@ -13,7 +13,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { serve } from './lab-server.mjs';
 import { chromium, say, check, probeDeclares } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { PAGE_PORT, openGfs, contrastProblems, windowFits } from './lab-pdf.mjs';
 import { SHOTS } from './lab-common.mjs';
 import { join } from 'node:path';

@@ -1,8 +1,8 @@
-// Le parcours de celui qui envoie un fichier à un autre document (js/share-other-flow.js) : ce qu'il demande au moteur, dans quel ordre, et quand il arrête le partage. Le moteur est ici un faux qui note
+// Le parcours de celui qui envoie un fichier à un autre document (js/sharing/share-other-flow.js) : ce qu'il demande au moteur, dans quel ordre, et quand il arrête le partage. Le moteur est ici un faux qui note
 // ses appels ; ce que le vrai moteur fait dans un vrai Grist est mesuré par labo/run-sync-partage.mjs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createSourceFlow, exportName, selectionOf, SENT_COLUMNS, HELPER_COLUMNS, PASSES } from '../js/share-other-flow.js';
+import { createSourceFlow, exportName, selectionOf, SENT_COLUMNS, HELPER_COLUMNS, PASSES } from '../js/sharing/share-other-flow.js';
 
 const FILE = { id: 'abc123', name: 'Facture 2026.pdf' };
 

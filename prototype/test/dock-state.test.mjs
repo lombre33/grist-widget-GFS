@@ -1,8 +1,8 @@
 // La barre de GFS vue de l'app (contrats 5.2, point 7) : ce qu'elle recouvre, quand l'app l'apprend, ce que l'app peut lui demander.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { EDGES, DEFAULT_EDGE, GAP, barreOf, sameBarre, DockState, barHandlers } from '../js/dock-state.js';
-import { StoredChoice } from '../js/stored-choice.js';
+import { EDGES, DEFAULT_EDGE, GAP, barreOf, sameBarre, DockState, barHandlers } from '../js/shell/dock-state.js';
+import { StoredChoice } from '../js/shell/stored-choice.js';
 
 const FRAME = { largeur: 700, hauteur: 400 };
 function fakeStore(initial = null, { accepts = true } = {}) {

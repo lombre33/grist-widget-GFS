@@ -1,4 +1,4 @@
-// La vue « Ouverts » de l'explorateur (js/opened-files.js, contrats 6.4 point 14), dans un vrai Grist, à 700 × 400, à la vraie souris : les fichiers que GFS a ouverts dans une app depuis que la personne est là,
+// La vue « Ouverts » de l'explorateur (js/explorer/opened-files.js, contrats 6.4 point 14), dans un vrai Grist, à 700 × 400, à la vraie souris : les fichiers que GFS a ouverts dans une app depuis que la personne est là,
 // pour y revenir d'un double-clic et faire des allers-retours sans repartir de l'arborescence. Les deux apps sont les sondes O (labo/sondes/o-ouvrir/, qui répond à `fermer` selon `body[data-fermer]`) et Q
 // (qui ne connaît pas l'appel et part comme avant). Mesuré : la liste vide et son message, le nombre et l'ordre (par nom), le mot « affiché » sur le fichier que l'app montre, le retour d'un fichier à l'autre
 // par la liste (l'app active est priée de se fermer, le fichier part dans l'ouverture), un refus dans l'app (la liste ne change pas), « Retirer des ouverts », le contraste de chaque texte, la mise en page à 700 × 400.

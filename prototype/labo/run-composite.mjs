@@ -10,7 +10,7 @@
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';
 import { collectWarnings, waiter, seedProbeFiles, reopenGfs, probeTools } from './lab-gestes.mjs';
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -20,7 +20,7 @@ const APP = lang === 'fr' ? 'Sonde ZF' : 'Probe ZF';
 const SAID = { trash: 'Son lien public est fermé.', refused: 'Ce formulaire est en cours de publication.', copy: 'Elle n’est pas publiée.', title: 'Il faut un titre.' };
 const FAULT = { delete: 'Le lien public n’a pas pu être fermé.' };
 // Le délai de GFS devant une app muette (20 s) est ramené à 1,5 s pour cette mesure seule (le fichier publié n'est pas touché).
-const PATIENCE = { fichier: 'app-files.js', de: 'const APP_PATIENCE_MS = 20000;', vers: 'const APP_PATIENCE_MS = 1500;' };
+const PATIENCE = { fichier: 'files/app-files.js', de: 'const APP_PATIENCE_MS = 20000;', vers: 'const APP_PATIENCE_MS = 1500;' };
 const lab = await startLab({ lang, colorScheme: scheme, probes: ['zf', 'q'], patches: [PATIENCE] });
 await lab.fitPanel(undefined, 700, 400);
 const { page } = lab;

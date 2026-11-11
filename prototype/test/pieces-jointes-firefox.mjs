@@ -7,7 +7,7 @@
 // boutons) ne se recouvre ni ne se coupe. Ce Firefox sans écran n'a pas le focus du système (`document.hasFocus()` est faux, `:focus` et `:focus-visible` ne s'appliquent jamais), n'active ni un bouton ni
 // une case à Entrée ou Espace (les événements arrivent, aucun clic ne part : voir test/interfaces-firefox.test.mjs, conflictProblems) et sa touche Tab tourne en rond entre deux éléments après une réouverture de
 // l'explorateur (mesuré le 04/11) : le trajet de Tab, l'anneau de focus et Espace sur la case se mesurent dans le labo, sous Chromium (labo/run-poids.mjs) ; ici, l'ordre des arrêts de Tab se lit dans le document.
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { columnFaults, measureColumns } from '../labo/mesures-liste.mjs';
 import { centerOfSelector, delay } from './corbeille-firefox.mjs';
 

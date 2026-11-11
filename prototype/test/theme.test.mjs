@@ -2,11 +2,11 @@
 // laisse l'accessibilité), suivi d'un autre onglet ; le message que les apps reçoivent ; l'ambiance posée sur la page par le CSSOM, au mode de la page, et reposée quand il change.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ACCESS_KEY, AMBIANCE_KEY, COLOR_KEY, ThemeSetting, ambianceMessage, browserStores, previewMessage } from '../js/theme.js';
-import { ThemeHost, modeOf, paint, watchAppearance } from '../js/theme-apply.js';
-import { AMBIANCES, COLOR_TOKENS, ORIGIN } from '../js/ambiance.js';
-import { FORME, FORME_TOKENS } from '../js/ambiance-forme.js';
-import { TYPE_TOKENS, typeTokens } from '../js/ambiance-types.js';
+import { ACCESS_KEY, AMBIANCE_KEY, COLOR_KEY, ThemeSetting, ambianceMessage, browserStores, previewMessage } from '../js/theme/theme.js';
+import { ThemeHost, modeOf, paint, watchAppearance } from '../js/theme/theme-apply.js';
+import { AMBIANCES, COLOR_TOKENS, ORIGIN } from '../js/theme/ambiance.js';
+import { FORME, FORME_TOKENS } from '../js/theme/ambiance-forme.js';
+import { TYPE_TOKENS, typeTokens } from '../js/theme/ambiance-types.js';
 
 function fakeStore(initial = null, { accepts = true } = {}) {
   const store = { value: initial, writes: [], read: () => store.value, write(value) { store.writes.push(value); if (!accepts) return false; store.value = value; return true; } };
@@ -149,7 +149,7 @@ test('le message aux apps : null à l\'origine ; sinon l\'ambiance, la couleur, 
   assert.deepEqual(JSON.parse(JSON.stringify(own)), own);
 });
 
-// Le kit (sous-module `kit/`) pose l'ambiance dans les apps (js/ambiance.js) et lit le message de GFS avec sa propre liste de jetons : elle reste celle du moteur de GFS, et rien de ce que GFS écrit n'est refusé.
+// Le kit (sous-module `kit/`) pose l'ambiance dans les apps (js/theme/ambiance.js) et lit le message de GFS avec sa propre liste de jetons : elle reste celle du moteur de GFS, et rien de ce que GFS écrit n'est refusé.
 test('le kit lit le message de GFS tel quel : mêmes jetons de couleur et de forme, aucune valeur perdue, pour chaque ambiance et pour une couleur libre', async () => {
   const kit = await import('../kit/js/ambiance-message.js').catch(() => null);
   assert.ok(kit, 'le sous-module du kit n\'est pas là : git submodule update --init prototype/kit');

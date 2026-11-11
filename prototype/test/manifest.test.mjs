@@ -3,10 +3,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { validateManifest, isSafePath, loadAll, label, listCapabilities } from '../js/manifest.js';
-import { CATALOGUE } from '../js/catalogue.js';
-import { makePolicy } from '../js/filter.js';
-import { iconNames } from '../js/icons.js';
+import { validateManifest, isSafePath, loadAll, label, listCapabilities } from '../js/apps/manifest.js';
+import { CATALOGUE } from '../js/apps/catalogue.js';
+import { makePolicy } from '../js/broker/filter.js';
+import { iconNames } from '../js/ui/icons.js';
 import { publipostage, automation, form, bi, readJson, ROOT } from './helpers.mjs';
 
 const bad = (mutate, others) => { const m = publipostage(); mutate(m); const r = validateManifest(m, others); assert.equal(r.ok, false); return r.errors.join(' | '); };

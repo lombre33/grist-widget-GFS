@@ -1,8 +1,8 @@
-// La page d'essai du lecteur de vidéos sous Firefox (test/lecteur-firefox.mjs) : le vrai `Player` (js/player.js), posé dans `.frames` comme le fait GFS, par-dessus un cadre d'app (une page d'essai, dans un bac à sable
+// La page d'essai du lecteur de vidéos sous Firefox (test/lecteur-firefox.mjs) : le vrai `Player` (js/broker/player.js), posé dans `.frames` comme le fait GFS, par-dessus un cadre d'app (une page d'essai, dans un bac à sable
 // comme celui d'une vraie app) ; l'app est une doublure (`session`), qui ne fait que porter le cadre et les sites que son manifeste a déclarés. Les feuilles de style et la politique de sécurité sont celles de index.html
 // (le test les recopie de la page). `window.__lecteur.call(nom, args)` envoie à GFS l'un des quatre appels de l'app et rend le code de refus (ou null) ; `window.__lecteur.warnings` garde les avertissements de GFS ;
 // `window.__violations` garde les refus de la politique de sécurité ; `window.__lecteur.shown(false)` cache l'app derrière l'explorateur ; `window.__lecteur.leave()` ferme l'app.
-import { Player } from '/js/player.js';
+import { Player } from '/js/broker/player.js';
 
 const frames = document.getElementById('frames');
 const appFrame = frames.querySelector('iframe');

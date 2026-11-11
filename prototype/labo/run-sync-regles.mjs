@@ -1,13 +1,13 @@
 // Les règles d'accès de GFS et celles du moteur de Sync+ dans le MÊME document, jouées dans un VRAI serveur Grist (`bash vrai-serveur.sh`) : étude « Partager un dossier avec un autre document », mesure 2.
-// Les règles de Sync+ sont écrites par ses propres fonctions (`js/logic/acl.js`, dépôt `lombre33/grist-widget-one-way-sync`, cloné à part : SYNC_PLUS_DIR) ; celles de GFS par ses plans (`js/rights-plan.js`).
+// Les règles de Sync+ sont écrites par ses propres fonctions (`js/logic/acl.js`, dépôt `lombre33/grist-widget-one-way-sync`, cloné à part : SYNC_PLUS_DIR) ; celles de GFS par ses plans (`js/rights/rights-plan.js`).
 // Les deux ordres sont joués : GFS puis Sync+, Sync+ puis GFS. On regarde ce que Grist accepte, où chacun range ses règles, si l'un retire celles de l'autre, et si chacun reste idempotent.
 //   SYNC_PLUS_DIR=/chemin/vers/grist-widget-one-way-sync node run-sync-regles.mjs
 import { pathToFileURL } from 'node:url';
 import { chromium, say, check } from './lab-common.mjs';
 import { requireServer, newContext, createDocument, docIdOf } from './lab-serveur.mjs';
 import { apply, records } from './lab-droits.mjs';
-import { COLUMNS } from '../js/rangement.js';
-import { planShared, planCloseStructure, planOpenStructure, planRemoveLevel } from '../js/rights-plan.js';
+import { COLUMNS } from '../js/files/rangement.js';
+import { planShared, planCloseStructure, planOpenStructure, planRemoveLevel } from '../js/rights/rights-plan.js';
 
 const dir = process.env.SYNC_PLUS_DIR;
 if (!dir) { say('SYNC_PLUS_DIR : le dossier du dépôt de Sync+ (cloné à part).'); process.exit(2); }

@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readCatalogue } from '../js/libraries.js';
+import { readCatalogue } from '../js/apps/libraries.js';
 import { servedPluginApi } from './api-evaluee.mjs';
 const require = createRequire(import.meta.url);
 // Playwright : celui du dossier du labo si on l'y a installé, sinon celui du conteneur du cloud.
@@ -180,7 +180,7 @@ function servePages(browser) {
   };
 }
 
-// Des fichiers de GFS remplacés pour UN essai (le labo seul, le fichier publié n'est pas touché) : `{ fichier: 'filter.js', de: texte, vers: texte }` pour un module de js/,
+// Des fichiers de GFS remplacés pour UN essai (le labo seul, le fichier publié n'est pas touché) : `{ fichier: 'broker/filter.js', de: texte, vers: texte }` pour un module de js/,
 // `{ chemin: '/prototype/labo/reel/index.html', de, vers }` pour tout autre fichier du dépôt. Sert à affaiblir une défense pour mesurer celle qui la suit (le contrôle
 // de l'identifiant réel que Grist rend, après un jugement volontairement trop large), ou à ouvrir une adresse de test dans la politique d'une page de mesure.
 // Une page HTML modifiée n'est pas rendue par `fulfill` : le navigateur la prendrait pour un document d'adresse inconnue et refuserait (accès au réseau local) tous les
@@ -299,13 +299,13 @@ export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', 
   const context = await browser.newContext({ viewport: { width, height }, colorScheme, bypassCSP: process.env.LAB_BYPASS_CSP === '1', locale: 'en-US' });
   const page = await context.newPage();
   if (probes) {
-    await page.route(/\/prototype\/js\/catalogue\.js(\?|$)/, async route => {
+    await page.route(/\/prototype\/js\/apps\/catalogue\.js(\?|$)/, async route => {
       const response = await route.fetch();
       await route.fulfill({ response, body: withProbes(await response.text(), Array.isArray(probes) ? probes : undefined) });
     });
   }
   if (frameAttributes) {
-    await page.route(/\/prototype\/js\/frames\.js(\?|$)/, async route => {
+    await page.route(/\/prototype\/js\/broker\/frames\.js(\?|$)/, async route => {
       const response = await route.fetch();
       await route.fulfill({ response, body: withFrameAttributes(await response.text(), frameAttributes) });
     });

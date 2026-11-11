@@ -2,10 +2,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFiles, readFiling, readGfsFiling, readGfsFolders, applyFiling, folderPaths, folderName, folderMoves, spareMoves, vacatedFolders, subfolders, treeRows, pathParts, listItems, typeChoices, person,
-  formatDate, normalizePath, inside, stampOf, authorOf, familyOf, rowKey, FAMILY_NAMES } from '../js/explorer-model.js';
-import { FILES_MANIFEST } from '../js/gfs-files.js';
-import { sumWeights } from '../js/weight.js';
-import { createI18n } from '../js/i18n.js';
+  formatDate, normalizePath, inside, stampOf, authorOf, familyOf, rowKey, FAMILY_NAMES } from '../js/explorer/explorer-model.js';
+import { FILES_MANIFEST } from '../js/files/gfs-files.js';
+import { sumWeights } from '../js/weight/weight.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { publipostage } from './helpers.mjs';
 
 const manifest = publipostage();
@@ -478,7 +478,7 @@ test('Ouverts : une liste à plat des fichiers donnés, de tous les dossiers, sa
   assert.deepEqual(listItems([], state({ view: 'opened' }), OPTIONS).rows, [], 'rien d\'ouvert : liste vide');
 });
 
-// ----- « Partagés avec moi » : les dossiers reçus d'un autre document (js/received-folders.js, choix du porteur du 11/11)
+// ----- « Partagés avec moi » : les dossiers reçus d'un autre document (js/sharing/received-folders.js, choix du porteur du 11/11)
 
 test('listItems : « Partagés avec moi » montre en tête les dossiers reçus (clé « grp: »), puis les fichiers sans dossier ; un dossier ouvert ne montre que ses fichiers ; la recherche remet tout à plat', () => {
   const received = (name, folder, extra = {}) => ({ key: `gfs-recus:GFS_Recus:${name}`, name, folder: '', weight: 100, ts: 10, by: 'a@x.fr', type: 'pdf', search: name.toLowerCase(), received: { table: 'GFS_Recus', row: 1, state: 'pending', folder, ...extra } });

@@ -3,7 +3,7 @@
 // adresse écrite par la formule déclenchée) se mesure dans le labo (run-modules.mjs, run-identite.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Rangement, TableDeclined, TABLE, RESERVED } from '../js/rangement.js';
+import { Rangement, TableDeclined, TABLE, RESERVED } from '../js/files/rangement.js';
 import { fakeGrist } from './fake-grist.mjs';
 
 const row = (id, extra) => ({ id, Utilisateur: '', App: '', Fichier: '', Favori: false, Dossier: '', Replie: false, Valeur: '', Adresse: '', ...extra });
@@ -395,4 +395,37 @@ test('update (les apps installées) reconnaît aussi la personne avant d\'écrir
   assert.equal(store.identity, ANA);
   assert.deepEqual(verbs(actions), ['AddTable', 'AddRecord', 'RemoveRecord', 'AddRecord']);
   assert.deepEqual(tables[TABLE].rows.map(line => line.Utilisateur), ['@document']);
+});
+
+test('les dossiers suivis « à jour » : une ligne par lien et dossier (app « gfs-suivi »), la liste des fichiers en valeur ; sans table, rien ne s\'écrit et rien ne se demande ; mise à jour sur place, retrait par lien et dossier', async () => {
+  const none = fakeGrist({});
+  const bare = new Rangement({ port: none.port, consent: () => assert.fail('aucune question : un dossier suivi ne crée jamais la table'), ...noProbe });
+  assert.deepEqual(await bare.followed(), []);
+  assert.equal(await bare.follow('e1', 'Contrats', ['a']), false);
+  assert.equal(await bare.unfollow('e1', 'Contrats'), 0);
+  assert.deepEqual(none.actions, []);
+
+  const tables = { [TABLE]: { columns: full, rows: [row(1, { App: 'gfs', Fichier: 'f1', Dossier: 'Contrats' })] } };
+  const { port, actions } = fakeGrist(tables);
+  const filing = new Rangement({ port, consent: () => assert.fail('aucune question'), ...noProbe });
+  assert.equal(await filing.follow('e1', 'Contrats', ['a', 'b']), true);
+  assert.equal(await filing.follow('e2', 'Contrats', ['a']), true);
+  assert.equal(await filing.follow('e1', 'Contrats', ['a', 'b', 'c']), true, 'la ligne du lien et du dossier est mise à jour, pas doublée');
+  assert.deepEqual(await filing.followed(), [{ link: 'e1', path: 'Contrats', ids: ['a', 'b', 'c'] }, { link: 'e2', path: 'Contrats', ids: ['a'] }]);
+  assert.deepEqual(actions.map(action => action[0]), ['AddRecord', 'AddRecord', 'UpdateRecord']);
+  assert.equal(await filing.unfollow('e1', 'Contrats'), 1);
+  assert.deepEqual((await filing.followed()).map(each => each.link), ['e2']);
+  assert.equal(tables[TABLE].rows.filter(line => line.App === 'gfs').length, 1, 'le rangement des fichiers n\'est pas touché');
+});
+
+test('les dossiers suivis sont ceux de la personne : la ligne d\'une autre n\'est pas lue, et une colonne des valeurs absente est ajoutée avant d\'écrire', async () => {
+  const tables = { [TABLE]: { columns: ['id', 'Utilisateur', 'App', 'Fichier', 'Favori', 'Dossier', 'Replie', 'Adresse'], rows: [] } };
+  const { port, actions } = fakeGrist(tables);
+  const filing = new Rangement({ port, consent: () => assert.fail('aucune question'), ...noProbe });
+  assert.deepEqual(await filing.followed(), [], 'sans la colonne « Valeur » : rien de suivi, rien d\'ajouté en lecture');
+  assert.deepEqual(actions, []);
+  assert.equal(await filing.follow('e1', 'Contrats', ['a']), true);
+  assert.deepEqual(actions.map(action => action[0]), ['AddColumn', 'AddRecord'], 'la colonne d\'abord (une colonne inconnue annulerait le lot)');
+  tables[TABLE].rows.push({ id: 9, Utilisateur: 'autre@x.fr', App: 'gfs-suivi', Fichier: 'e7', Dossier: 'Secret', Valeur: '["z"]' });
+  assert.deepEqual((await filing.followed()).map(each => each.path), ['Contrats'], 'chacun ses dossiers suivis');
 });

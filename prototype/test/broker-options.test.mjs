@@ -2,8 +2,8 @@
 // à l'app ce qui s'est passé. Un faux `WidgetAPI` ne sert ici qu'à voir quels appels partent ; ce que Grist en fait se mesure dans le labo (run-reglages-directs.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeCallHandler } from '../js/broker.js';
-import { ERR } from '../js/filter.js';
+import { makeCallHandler } from '../js/broker/broker.js';
+import { ERR } from '../js/broker/filter.js';
 import { policyOf, publipostage } from './helpers.mjs';
 
 const DECLARED = new Set(['modeleDeLaVue', 'droitsAcces']);

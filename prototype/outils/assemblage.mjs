@@ -6,7 +6,7 @@
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { LIBRARY_ID_RE, EXACT_VERSION_RE } from '../js/manifest.js';
+import { LIBRARY_ID_RE, EXACT_VERSION_RE } from '../js/apps/manifest.js';
 
 // Les réglages de la construction : les mêmes octets pour la même liste. Mesuré le 16/10 : 145 862 octets pour les six paquets de l'écriture en direct.
 export const BUILD_OPTIONS = Object.freeze({ bundle: true, format: 'esm', target: 'es2022', platform: 'browser', minify: true, legalComments: 'none' });

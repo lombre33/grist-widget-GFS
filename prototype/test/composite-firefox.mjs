@@ -3,7 +3,7 @@
 // d'essai (test/pages/explorateur.js : le vrai explorateur, le vrai `Trash` et le vrai `Copying`, dont la « Grille de suivi » fait office de fichier composite, l'app étant « ouverte » ou non) : app fermée, « Mettre à
 // la corbeille » et « Dupliquer » sont grisés (le clic, Suppr et Ctrl+C puis Ctrl+V disent d'ouvrir l'app, rien ne bouge) ; app ouverte, les gestes marchent et la phrase de l'app s'ajoute à celle de GFS ; à la
 // corbeille, « Restaurer » et « Supprimer définitivement… » n'ont pas besoin de l'app. Ce que fait chaque garde sans DOM est dans test/app-files-composite.test.mjs.
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { Run, centerOfName, names } from './corbeille-firefox.mjs';
 import { centerOfMenuItem, menuFits } from './copier-firefox.mjs';
 

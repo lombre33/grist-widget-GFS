@@ -42,7 +42,7 @@ try {
 
   let rows = await until(list => list.length === 1 && list[0].Contenu);
   check('le premier fichier est arrivé, sans la colonne de dossier', rows.length === 1 && !(FOLDER in rows[0]), Object.keys(rows[0] || {}));
-  // La marque s'écrit comme GFS l'écrit (js/received-files.js, `answerFile`) : les deux colonnes sont ajoutées à la table reçue, puis la ligne est marquée.
+  // La marque s'écrit comme GFS l'écrit (js/sharing/received-files.js, `answerFile`) : les deux colonnes sont ajoutées à la table reçue, puis la ligne est marquée.
   await target.frame.evaluate(() => grist.docApi.applyUserActions([['AddColumn', 'GFS_Recus', 'Accepte', { type: 'Bool', isFormula: false }], ['AddColumn', 'GFS_Recus', 'Refuse', { type: 'Bool', isFormula: false }]]));
   const marked = await patch(target, 'GFS_Recus', rows[0].id, { Accepte: true });
   check('la première arrivée est marquée « acceptée »', marked === 200, marked);

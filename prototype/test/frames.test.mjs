@@ -2,8 +2,8 @@
 // adresse venue d'ailleurs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { frameUrl, liveSwitch } from '../js/frames.js';
-import { CATALOGUE } from '../js/catalogue.js';
+import { frameUrl, liveSwitch } from '../js/broker/frames.js';
+import { CATALOGUE } from '../js/apps/catalogue.js';
 import { publipostage, form } from './helpers.mjs';
 
 const BASE = 'https://exemple.github.io/grist-widget-GFS/prototype/index.html?access=full&language=fr';

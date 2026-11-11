@@ -1,10 +1,10 @@
-// La lecture du poids exact (js/weight-reader.js, lot 4 du poids) : les lectures SQL se font dans l'ordre (le fichier entier d'abord : c'est la sonde), une table à la fois (Grist coupe toute lecture de plus
+// La lecture du poids exact (js/weight/weight-reader.js, lot 4 du poids) : les lectures SQL se font dans l'ordre (le fichier entier d'abord : c'est la sonde), une table à la fois (Grist coupe toute lecture de plus
 // d'une seconde), un refus de droits grise tout, une table trop longue ne retient pas les autres, et la fenêtre qui se ferme arrête la lecture. `sql` est une doublure de `Transfer.sql` ; ce que le vrai
 // Grist rend se mesure dans le labo (labo/run-poids.mjs, passe 8).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SQL, TABLE_ID, escalating, failureKind, readWeight } from '../js/weight-reader.js';
-import { TransferError } from '../js/transfer.js';
+import { SQL, TABLE_ID, escalating, failureKind, readWeight } from '../js/weight/weight-reader.js';
+import { TransferError } from '../js/broker/transfer.js';
 
 const http = (status, message = '') => new TransferError('http', message, status);
 

@@ -1,9 +1,9 @@
-// Le lecteur de vidéos que GFS pose par-dessus l'app (js/player.js ; contrats 3.4 point 7, 5.2 point 11) : la lecture des quatre appels, l'adresse montée par GFS, le rognage, et la pose
+// Le lecteur de vidéos que GFS pose par-dessus l'app (js/broker/player.js ; contrats 3.4 point 7, 5.2 point 11) : la lecture des quatre appels, l'adresse montée par GFS, le rognage, et la pose
 // avec un faux DOM (ce que le navigateur en fait se mesure dans un vrai Grist : labo/run-lecteur.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Player, readShow, readMove, readHide, readClose, playerUrl, visiblePart } from '../js/player.js';
-import { knownProviders } from '../js/player-sites.js';
+import { Player, readShow, readMove, readHide, readClose, playerUrl, visiblePart } from '../js/broker/player.js';
+import { knownProviders } from '../js/broker/player-sites.js';
 
 const BOX = { x: 10, y: 20, largeur: 300, hauteur: 200 };
 const ZONE = { x: 0, y: 0, largeur: 600, hauteur: 400 };

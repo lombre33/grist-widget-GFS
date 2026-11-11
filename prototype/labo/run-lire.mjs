@@ -14,7 +14,7 @@ import { readFile } from 'node:fs/promises';
 import { serve } from './lab-server.mjs';
 import { chromium, say, check, probeDeclares } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { pageTitle, ACCENTED_LINE } from './pdf-fixture.mjs';
 import { PAGE_PORT, sha256, openGfs, importSamples, waitForToast, shot, rowOf, openRowMenu, pressGreyed, contrastProblems, waitFor, settle, closeModules } from './lab-pdf.mjs';
 

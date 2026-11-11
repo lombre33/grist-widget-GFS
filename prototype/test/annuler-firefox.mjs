@@ -3,7 +3,7 @@
 // le vrai `Filing`, qui partagent une pile) : Suppr puis Ctrl+Z, restaurer puis Ctrl+Z, copier puis Ctrl+Z, plusieurs gestes défaits un par appui dans l'ordre inverse, « Rien à annuler », la recherche qui garde son
 // Ctrl+Z, Ctrl+Y et Ctrl+Maj+Z qui rétablissent (un par appui, jamais en rond, vidés par un geste neuf), le fichier que seule l'app ouverte sait fermer (remettre à la corbeille attend l'app, restaurer non), le choix d'un fichier pour une app. Ce que fait la pile est dans
 // test/undo-stack.test.mjs, ce que la corbeille y dépose dans test/explorer-undo.test.mjs, ce que le rangement y dépose dans test/filing.test.mjs, et tout cela dans un vrai Grist dans labo/run-annuler.mjs.
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { Run, centerOfName, delay, names } from './corbeille-firefox.mjs';
 
 const FILE = 'Grille de suivi';

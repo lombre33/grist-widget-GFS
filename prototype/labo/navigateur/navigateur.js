@@ -1,7 +1,7 @@
 // La page de mesures du navigateur (contrats 9, point 4, et cahier 9, points 3 et 5) : ce que le navigateur de la personne fait de l'ordre des écouteurs et d'un
 // sous-cadre isolé comme celui de GFS (mêmes drapeaux `sandbox`, même `allow`, même politique `frame-src`). La sonde G s'y exécute sans GFS ; ses réponses arrivent
 // par message (`?hote`), et la personne dit ce que seul son œil voit (un fichier arrivé, une fenêtre ouverte). Le résultat se copie en un texte à coller.
-import { SANDBOX } from '../../js/frames.js';
+import { SANDBOX } from '../../js/broker/frames.js';
 
 const PROBE = '../sondes/g-capacites/index.html?hote=1';
 const ALLOW = 'clipboard-write';

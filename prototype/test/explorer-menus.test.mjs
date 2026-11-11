@@ -1,9 +1,9 @@
-// Les articles du menu d'une ligne de l'explorateur (js/explorer-menus.js), en code pur : les objets que le menu dessine, leur ordre, leurs raisons de grisé et ce que chaque clic appelle. Le menu à la vraie souris se mesure
+// Les articles du menu d'une ligne de l'explorateur (js/explorer/explorer-menus.js), en code pur : les objets que le menu dessine, leur ordre, leurs raisons de grisé et ce que chaque clic appelle. Le menu à la vraie souris se mesure
 // sous Firefox (test/interfaces-firefox.test.mjs : corbeille, dossiers, copie, « Partager… »).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { rowItems } from '../js/explorer-menus.js';
-import { createI18n } from '../js/i18n.js';
+import { rowItems } from '../js/explorer/explorer-menus.js';
+import { createI18n } from '../js/i18n/i18n.js';
 
 const { t } = createI18n('fr');
 const file = (extra = {}) => ({ key: 'publipostage:7', name: 'Convocation', app: 'publipostage', pinned: false, ...extra });

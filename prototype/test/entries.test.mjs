@@ -1,10 +1,10 @@
-// Ce que l'explorateur demande au contrôleur (js/entries.js) : le grisé et sa raison, les types de « Nouveau », les formats d'« Importer », l'app qui lit un fichier que GFS garde.
+// Ce que l'explorateur demande au contrôleur (js/broker/entries.js) : le grisé et sa raison, les types de « Nouveau », les formats d'« Importer », l'app qui lit un fichier que GFS garde.
 // Un contrôleur joué par l'essai (`host`) : les manifestes sont les quatre de GFS, lus tels quels. Ce que l'explorateur en fait à l'écran se mesure dans un vrai Grist (labo/run-ouvrir.mjs, run-importer.mjs, run-lire.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Entries } from '../js/entries.js';
-import { readCatalogue } from '../js/libraries.js';
-import { FILES_APP, FILES_MANIFEST } from '../js/gfs-files.js';
+import { Entries } from '../js/broker/entries.js';
+import { readCatalogue } from '../js/apps/libraries.js';
+import { FILES_APP, FILES_MANIFEST } from '../js/files/gfs-files.js';
 import { catalogue as manifestsOfGfs, readJson } from './helpers.mjs';
 
 const text = (key, vars) => (vars ? `${key} ${JSON.stringify(vars)}` : key);

@@ -1,4 +1,4 @@
-// Les états de document que les essais du partage rejouent (js/sharing-model.js) : la règle intégrée de Grist, un document sans rien, un document avec la table des fichiers de GFS, et `applied`,
+// Les états de document que les essais du partage rejouent (js/sharing/sharing-model.js) : la règle intégrée de Grist, un document sans rien, un document avec la table des fichiers de GFS, et `applied`,
 // qui rejoue les actions d'un plan sur un état (les tables, les colonnes, les ressources et les règles seulement). Un seul lieu pour ces fixtures : sharing-model.test.mjs et plan-sharing-golden.test.mjs.
 export const BUILT_IN = { id: 1, resource: 1, permissions: 63, principals: '[1]', aclFormula: '', aclColumn: 0, permissionsText: '', rulePos: null, memo: '' };
 export const base = () => ({ resources: [{ id: 1, tableId: '', colIds: '' }], rules: [{ ...BUILT_IN }], tables: [], columns: [] });

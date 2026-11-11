@@ -5,7 +5,7 @@
 //   3. un choix : l'ambiance est posée sur la page tout de suite (`data-ambiance`, jetons de couleur et de forme), retenue (`gfs.theme`), les vignettes montrent la couleur choisie ;
 //   4. le clavier : Entrée sur « Réglages », Bas puis Entrée sur « Thème… » ouvrent la fenêtre, les flèches choisissent, Tab traverse la fenêtre sans s'arrêter sur chaque vignette, Échap ferme et rend le clavier au bouton « Réglages » ;
 //   5. chaque ambiance, dans le mode de Grist : la page est lisible (contraste de 4,5:1 au moins pour chaque texte de l'explorateur et de la fenêtre, mesuré sur les couleurs affichées) ;
-//      les icônes de type de la liste ont la couleur du tableau de js/ambiance-types.js et le trait de l'ambiance (décision du 04/11) ;
+//      les icônes de type de la liste ont la couleur du tableau de js/theme/ambiance-types.js et le trait de l'ambiance (décision du 04/11) ;
 //   6. retenu sur le navigateur : GFS rechargé repart dans l'ambiance choisie ;
 //   7. les apps suivent : la sonde M (labo/sondes/m-ambiance/) reçoit l'ambiance dans son contexte, puis l'événement `ambiance` à chaque changement (`null` au retour à l'origine), sans que son cadre
 //      soit rechargé ;
@@ -23,8 +23,8 @@ import { waiter, reopenGfs } from './lab-gestes.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check, contrastAudit, edgeAudit } from './lab-common.mjs';
 import { themeGestures } from './theme-gestes.mjs';
-import { FORME } from '../js/ambiance-forme.js';
-import { TYPE_TOKENS } from '../js/ambiance-types.js';
+import { FORME } from '../js/theme/ambiance-forme.js';
+import { TYPE_TOKENS } from '../js/theme/ambiance-types.js';
 import { readIcons, rowProblems } from './mesures-icones.mjs';
 import { openSettings } from './reglages-gestes.mjs';
 
@@ -242,7 +242,7 @@ for (const id of IDS) {
   const total = { seen: inWindow.seen + inExplorer.seen, gradients: inWindow.gradients + inExplorer.gradients, failures: [...inWindow.failures, ...inExplorer.failures] };
   say(`contraste affiché, ${id} :`, { textes: total.seen, surFondDégradé: total.gradients, sous4_5: total.failures });
   failures.push(...total.failures.map(item => `${id} : ${item}`));
-  // Les icônes de type de la liste (décision du 04/11) : la couleur du tableau de js/ambiance-types.js et le trait de l'ambiance, tels que ce Grist les fait calculer (labo/mesures-icones.mjs).
+  // Les icônes de type de la liste (décision du 04/11) : la couleur du tableau de js/theme/ambiance-types.js et le trait de l'ambiance, tels que ce Grist les fait calculer (labo/mesures-icones.mjs).
   const icons = await frame.evaluate(readIcons, { display: 'list' });
   icons.rows.forEach(row => { if (row.fam) families.add(row.fam); });
   iconFailures.push(...icons.rows.flatMap(row => rowProblems(row, { id, mode: scheme === 'dark' ? 'sombre' : 'clair', display: 'list', tag: `${scheme}, ${id}` })).map(item => `${item.kind} : ${item.text}`));

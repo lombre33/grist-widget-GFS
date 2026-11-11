@@ -1,7 +1,7 @@
 // La recherche : mots dans n'importe quel ordre, accents, casse et ponctuation ignorés.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalize, words, matchesWords } from '../js/search.js';
+import { normalize, words, matchesWords } from '../js/ui/search.js';
 
 test('normalize : accents, casse, ponctuation et ligatures', () => {
   assert.equal(normalize('  Émargement — Feuille d’ÉMARGEMENT (v2) '), 'emargement feuille d emargement v2');

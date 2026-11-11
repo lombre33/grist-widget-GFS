@@ -1,8 +1,8 @@
-// Le presse-papiers de l'explorateur (js/explorer-clipboard.js) : copier, couper, coller. La copie (js/copying.js) et le rangement (js/filing.js) sont des doublures ; ce que le vrai explorateur en fait,
+// Le presse-papiers de l'explorateur (js/explorer/explorer-clipboard.js) : copier, couper, coller. La copie (js/files/copying.js) et le rangement (js/explorer/filing.js) sont des doublures ; ce que le vrai explorateur en fait,
 // à la vraie touche, se mesure sous Firefox (test/interfaces-firefox.test.mjs) et dans un vrai Grist (labo/run-copie.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Clipboard } from '../js/explorer-clipboard.js';
+import { Clipboard } from '../js/explorer/explorer-clipboard.js';
 import { FR, EN } from './kept-setup.mjs';
 
 const file = (id, name = `Fichier ${id}`, app = 'gfs-fichiers') => ({ key: `${app}:${id}`, app, id, name });
@@ -164,7 +164,7 @@ test('une ligne qui n\'est plus dans la liste ne se copie pas ; un fichier sans 
   assert.match(log.notices[0], /“\(untitled\)” is copied/);
 });
 
-test('une copie qui n\'aboutit pas (verrou, échec : js/copying.js l\'a dit) ne met rien au clavier', async () => {
+test('une copie qui n\'aboutit pas (verrou, échec : js/files/copying.js l\'a dit) ne met rien au clavier', async () => {
   const { clipboard, log } = setup({ copy: async () => null });
   clipboard.take('gfs-fichiers:aa', 'copy');
   await clipboard.paste();

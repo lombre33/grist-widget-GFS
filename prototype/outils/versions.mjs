@@ -22,9 +22,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PAGE = 'index.html';
-const FOLDERS = ['css', 'js', 'kit/css', 'kit/js'];
-// Les dossiers du kit que GFS charge avec tous leurs sous-dossiers (le moteur de partage : kit/js/synchro/, logic/, source/, target/). Les autres modules du kit (le calendrier…) ne sont pas ceux de GFS.
-const NESTED = ['kit/js/synchro'];
+const FOLDERS = ['css', 'kit/css', 'kit/js'];
+// Les dossiers que GFS charge avec tous leurs sous-dossiers : ses propres modules (js/, rangés par sujet : broker/, explorer/…) et le moteur de partage du kit (kit/js/synchro/, logic/, source/, target/). Les autres modules du kit (le calendrier…) ne sont pas ceux de GFS.
+const NESTED = ['js', 'kit/js/synchro'];
 // Les pages qui citent un script de leur propre dossier : { page, dossier }.
 const SIDE_PAGES = [{ page: 'transfer/index.html', folder: 'transfer' }];
 const SIDE_TAG_RE = /(<script\b[^>]*?\bsrc=")([^"?:/]+\.js)(?:\?v=([^"]*))?(")/g;
@@ -44,7 +44,7 @@ const HASH_RE = /'sha256-[A-Za-z0-9+/=]+'/g;
 export const version = bytes => createHash('sha256').update(bytes).digest('hex').slice(0, 10);
 export const cspHash = text => `'sha256-${createHash('sha256').update(text, 'utf8').digest('base64')}'`;
 
-// { 'css/gfs.css': octets, 'js/gfs.js': octets, 'kit/js/i18n.js': octets, 'kit/js/synchro/port.js': octets, … } : les fichiers du premier niveau de css/ et de js/, et de ceux du kit, plus tout le moteur de partage.
+// { 'css/gfs.css': octets, 'js/gfs.js': octets, 'kit/js/i18n.js': octets, 'kit/js/synchro/port.js': octets, … } : les fichiers du premier niveau de css/ et des dossiers du kit, tous ceux de js/ (sous-dossiers compris) et tout le moteur de partage du kit.
 export function readFiles(root = ROOT) {
   const files = {};
   for (const folder of FOLDERS) {

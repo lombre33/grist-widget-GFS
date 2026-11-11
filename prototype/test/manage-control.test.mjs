@@ -1,9 +1,9 @@
-// « Gérer les partages » en code pur (js/manage-control.js ; contrats 11.7, point 13, i) : ce que la fenêtre lit (groupes, droits sur tout le document, tables lisibles) et ce qu'elle écrit. La fenêtre à la
+// « Gérer les partages » en code pur (js/sharing/manage-control.js ; contrats 11.7, point 13, i) : ce que la fenêtre lit (groupes, droits sur tout le document, tables lisibles) et ce qu'elle écrit. La fenêtre à la
 // souris se mesure sous Firefox (test/partager-firefox.mjs), les règles et les groupes dans un vrai Grist (labo/run-partager-groupes.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ManageControl } from '../js/manage-control.js';
-import { createI18n } from '../js/i18n.js';
+import { ManageControl } from '../js/sharing/manage-control.js';
+import { createI18n } from '../js/i18n/i18n.js';
 
 const { t } = createI18n('fr');
 const table = columns => ({ id: Object.values(columns)[0].map((_, at) => at + 1), ...columns });

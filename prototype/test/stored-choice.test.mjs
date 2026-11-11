@@ -1,7 +1,7 @@
 // Un choix retenu sur le navigateur de GFS (la langue, le bord de la barre) : la logique commune, essayée avec un choix qui n'est pas la langue.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { StoredChoice, keyStore, watchKey } from '../js/stored-choice.js';
+import { StoredChoice, keyStore, watchKey } from '../js/shell/stored-choice.js';
 
 const EDGES = ['gauche', 'haut', 'droite', 'bas'];
 function fakeStore(initial = null, { accepts = true } = {}) {

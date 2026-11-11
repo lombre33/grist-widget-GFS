@@ -1,8 +1,8 @@
-// Les documents reliés (js/share-links.js) : ce que la table technique du moteur dit d'un lien, la condition qui ne reste jamais vide, et le niveau d'un fichier (une copie une fois, à jour, plus rien). Le moteur est
+// Les documents reliés (js/sharing/share-links.js) : ce que la table technique du moteur dit d'un lien, la condition qui ne reste jamais vide, et le niveau d'un fichier (une copie une fois, à jour, plus rien). Le moteur est
 // ici un faux qui note ses appels ; ce qu'il fait dans un vrai Grist est mesuré par labo/run-sync-retrait.mjs (faits vérifiés 70).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { NONE, SENT_COLUMNS, applyLevel, docOf, filesOf, idsWith, levelOf, linksFrom, selectionFor, settle, stopLink } from '../js/share-links.js';
+import { NONE, SENT_COLUMNS, applyLevel, docOf, filesOf, idsWith, levelOf, linksFrom, selectionFor, settle, stopLink } from '../js/sharing/share-links.js';
 
 const tablesWith = values => [{ table: 'GFS_Fichiers', columns: [], filter: { mode: 'all', conds: [{ id: 'Identifiant', op: 'in', values }] } }];
 const hook = (id, memo = 'ami@exemple.fr · abcdef123456 · Equipe/Compta') => ({ id, fields: { memo, enabled: true } });
@@ -12,6 +12,7 @@ test('la sélection nomme les fichiers par leur identifiant ; sans fichier elle 
   assert.equal(one.table, 'GFS_Fichiers');
   assert.deepEqual(one.filter.conds, [{ id: 'Identifiant', op: 'in', values: ['a', 'b'] }]);
   assert.ok(SENT_COLUMNS.includes('Contenu') && !SENT_COLUMNS.includes('SupprimeLe'));
+  assert.ok(SENT_COLUMNS.includes('Dossier_partage'), 'le nom du dossier partagé part avec le fichier (le moteur ne l\'envoie que si la table porte la colonne)');
   const [none] = selectionFor([]);
   assert.deepEqual(none.filter.conds[0].values, [NONE], 'jamais une liste vide');
   assert.deepEqual(filesOf(tablesWith([NONE])), [], 'l\'identifiant fictif n\'est pas un fichier');
@@ -74,6 +75,16 @@ test('le niveau d\'un fichier est « à jour » quand il est dans la condition, 
   assert.deepEqual(idsWith(link, 'a', false), ['b']);
 });
 
+test('le niveau d\'un dossier (la liste de ses fichiers) : « à jour » si tous sont dans la condition, « une partie » si certains seulement, sinon « pas partagé » ; un dossier sans fichier n\'est jamais « à jour »', () => {
+  const link = { files: ['a', 'b', 'x'] };
+  assert.equal(levelOf(link, ['a', 'b']), 'live');
+  assert.equal(levelOf(link, ['a', 'c']), 'part', 'un fichier ajouté plus tard au dossier, pas encore partagé');
+  assert.equal(levelOf(link, ['c', 'd']), 'none');
+  assert.equal(levelOf(link, []), 'none');
+  assert.deepEqual(idsWith(link, ['b', 'c', 'd'], true), ['a', 'b', 'x', 'c', 'd'], 'les fichiers du dossier entrent d\'un coup, sans doublon');
+  assert.deepEqual(idsWith(link, ['a', 'b'], false), ['x'], 'et sortent d\'un coup, sans toucher à ce qui est partagé à côté');
+});
+
 // Un moteur qui note ses appels ; `links` : ce que relit `readLinks` à chaque appel (la condition telle qu'elle est au moment de la retirer).
 function fakeEngine({ links = [], passes = [{ why: 'sent' }, { why: 'idle' }], pending = [0] } = {}) {
   const calls = [];
@@ -91,6 +102,19 @@ function fakeEngine({ links = [], passes = [{ why: 'sent' }, { why: 'idle' }], p
 }
 const LINK = { id: 'e1', name: 'Compta', files: ['a'], exp: { id: 'e1', name: 'Compta' } };
 const nowait = async () => {};
+
+test('applyLevel pour un dossier : tous ses fichiers entrent ou sortent en UNE condition ; « une fois » les retire tous après l\'envoi, sans toucher aux autres', async () => {
+  const engine = fakeEngine({ links: [{ ...LINK, files: ['a', 'b', 'c', 'z'] }] });
+  assert.equal((await applyLevel(engine, LINK, ['b', 'c'], 'live', nowait)).level, 'live');
+  assert.deepEqual(engine.calls, [['save', ['a', 'b', 'c']], ['finish']]);
+  const out = fakeEngine();
+  await applyLevel(out, { ...LINK, files: ['a', 'b', 'c'] }, ['b', 'c'], 'none', nowait);
+  assert.deepEqual(out.calls[0], ['save', ['a']]);
+  const once = fakeEngine({ links: [{ ...LINK, files: ['a', 'b', 'c', 'z'] }] });
+  const done = await applyLevel(once, LINK, ['b', 'c'], 'once', nowait);
+  await done.later;
+  assert.deepEqual(once.calls.filter(call => call[0] === 'save'), [['save', ['a', 'b', 'c']], ['save', ['a', 'z']]], 'les deux fichiers du dossier sortent, z (partagé à côté) reste');
+});
 
 test('applyLevel « à jour » : le fichier entre dans la condition et y reste ; « pas partagé » l\'en sort, et la condition ne devient jamais vide', async () => {
   const engine = fakeEngine();

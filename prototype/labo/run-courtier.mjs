@@ -2,7 +2,7 @@
 // absorbé ; le jeton relayé ; les noms de tables que Grist normalise, comparés à ce que le courtier juge, puis ce que le courtier fait de chacun (la sonde H).
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';
-import { norm } from '../js/filter.js';
+import { norm } from '../js/broker/filter.js';
 
 // Des noms qui visent les préfixes réservés (GFS_, celui d'une autre app) par un détour : espaces, tirets, « _ » de tête, pleine chasse, signes combinants, lettres
 // que seule une translittération ramènerait à G, F ou S.
@@ -13,7 +13,7 @@ const NAMES = ['GFS_Rangement', '_GFS_Rangement', '__gfs_rangement', 'gfs rangem
 // COURTIER_JUGE=large : le jugement du nom avant l'appel est volontairement affaibli (il ne retire plus les « _ » de tête et ne remplace plus les signes) pour mesurer
 // le contrôle d'après : l'identifiant que Grist rend est relu, la table créée est retirée, une table renommée retrouve son nom.
 const wide = process.env.COURTIER_JUGE === 'large';
-const WEAKEN = { fichier: 'filter.js', de: "\n  .replace(/[^A-Za-z0-9_]/g, '_').replace(/^_+/, '').toLowerCase();", vers: '.toLowerCase();' };
+const WEAKEN = { fichier: 'broker/filter.js', de: "\n  .replace(/[^A-Za-z0-9_]/g, '_').replace(/^_+/, '').toLowerCase();", vers: '.toLowerCase();' };
 const lab = await startLab({ lang: 'fr', probes: true, patches: wide ? [WEAKEN] : [] });
 await lab.fitPanel(undefined, 700, 400);
 const gfs = lab.frame;

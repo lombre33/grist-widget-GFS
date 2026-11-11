@@ -13,7 +13,7 @@ import { createServer } from 'node:http';
 import { serve } from './lab-server.mjs';
 import { chromium, say, check } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { PAGE_PORT, openGfs, importSamples, pdfFile, importPdf, names, waitForNames, waitForToast, toast, shot, rowOf, goTo, openRowMenu, contrastProblems, windowFits } from './lab-pdf.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';

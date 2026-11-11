@@ -1,4 +1,4 @@
-// La barre d'information de l'explorateur (js/explorer-view.js, `infoBar`) : ce qu'elle dit d'un fichier choisi, d'un dossier choisi, ou de rien (le rappel du rangement), et son infobulle. Un DOM de poche remplace
+// La barre d'information de l'explorateur (js/explorer/explorer-view.js, `infoBar`) : ce qu'elle dit d'un fichier choisi, d'un dossier choisi, ou de rien (le rappel du rangement), et son infobulle. Un DOM de poche remplace
 // celui du navigateur (le texte et les attributs seulement) ; l'aspect à l'écran, lui, se mesure dans le labo, à la vraie souris.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -6,8 +6,8 @@ import { installFakeDocument } from './fake-dom.mjs';
 
 installFakeDocument();
 
-const { infoBar } = await import('../js/explorer-view.js');
-const { createI18n } = await import('../js/i18n.js');
+const { infoBar } = await import('../js/explorer/explorer-view.js');
+const { createI18n } = await import('../js/i18n/i18n.js');
 
 const { t } = createI18n('fr');
 const NOW = new Date('2026-11-09T12:00:00Z');

@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { ROOT } from './helpers.mjs';
 
 const dir = new URL('../css/', import.meta.url);
@@ -20,7 +20,7 @@ function selectors(text) {
   return out;
 }
 
-// Les classes que js/explorer-view.js donne aux boutons d'une ligne (`rb pin`, `rb mn`) : seule css/explorer.css a le droit de les nommer. `.mn-p` et ses pareilles sont d'autres classes.
+// Les classes que js/explorer/explorer-view.js donne aux boutons d'une ligne (`rb pin`, `rb mn`) : seule css/explorer.css a le droit de les nommer. `.mn-p` et ses pareilles sont d'autres classes.
 const ROW_BUTTON_CLASSES = ['rb', 'mn', 'pin'];
 const names = (selector, name) => new RegExp(`\\.${name}(?![\\w-])`).test(selector);
 
@@ -34,7 +34,7 @@ test('les classes des boutons d\'une ligne de l\'explorateur ne sont reprises pa
 });
 
 test('la garde n\'est pas vide : l\'explorateur nomme bien ces classes, dans son code et dans sa feuille', () => {
-  const view = readFileSync(new URL('../js/explorer-view.js', import.meta.url), 'utf8');
+  const view = readFileSync(new URL('../js/explorer/explorer-view.js', import.meta.url), 'utf8');
   const explorer = selectors(sheets.find(sheet => sheet.name === 'explorer.css').text);
   for (const cls of ROW_BUTTON_CLASSES) {
     assert.match(view, new RegExp(`class: [\`']rb[^\`']*\\b${cls}\\b|class: [\`']${cls}\\b`), `.${cls} n'est plus une classe de l'explorateur : mettre la liste à jour`);
@@ -45,10 +45,10 @@ test('la garde n\'est pas vide : l\'explorateur nomme bien ces classes, dans son
 // ---- Une classe, un propriétaire : la liste de l'explorateur (css/explorer.css) et les fenêtres (css/modules.css) ----
 // Ce test lit les classes que les modules construisent (`class: '…'`) et celles qu'une feuille nomme seule (`.nom`, `.nom:hover`, `.nom[attribut]`, et non `.liste .nom` ou `.btn.sm`, qui complètent une
 // classe d'ailleurs).
-const EXPLORER = ['js/explorer-view.js', 'js/explorer.js'];
-// Les fenêtres : les modules dont le nom finit par `-window.js`, ceux qui ouvrent une fenêtre sur la base commune (ils importent js/modal.js), la base elle-même et les morceaux de la fenêtre « Ligne de travail ».
-const WINDOWS = readdirSync(join(ROOT, 'js')).map(name => `js/${name}`).filter(file => /-window\.js$/.test(file) || ['js/modal.js', 'js/work-row.js', 'js/work-control.js'].includes(file)
-  || /from '\.\/modal\.js'/.test(readFileSync(join(ROOT, file), 'utf8')));
+const EXPLORER = ['js/explorer/explorer-view.js', 'js/explorer/explorer.js'];
+// Les fenêtres : les modules dont le nom finit par `-window.js`, ceux qui ouvrent une fenêtre sur la base commune (ils importent js/ui/modal.js), la base elle-même et les morceaux de la fenêtre « Ligne de travail ».
+const WINDOWS = readdirSync(join(ROOT, 'js'), { recursive: true }).filter(name => name.endsWith('.js')).map(name => `js/${name.split(sep).join('/')}`)
+  .filter(file => /-window\.js$/.test(file) || ['js/ui/modal.js', 'js/apps/work-row.js', 'js/apps/work-control.js'].includes(file) || /from '(?:\.\/|\.\.\/ui\/)modal\.js'/.test(readFileSync(join(ROOT, file), 'utf8')));
 // Partagées exprès : le bouton, le champ de recherche (la fenêtre « Ligne de travail » le reprend), le filet de couleur que l'ambiance pose en tête de la liste et des fenêtres, et la pastille d'initiales d'une
 // personne (`who` : la colonne « Par » de la liste et les lignes de personnes de la fenêtre « Partager » la dessinent de la même façon, une seule feuille la style).
 const SHARED = new Set(['btn', 'inp-search', 'mod', 'who']);

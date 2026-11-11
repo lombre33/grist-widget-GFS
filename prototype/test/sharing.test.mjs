@@ -3,11 +3,11 @@
 // (labo/run-form.mjs, labo/run-cle-partage.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeCallHandler } from '../js/broker.js';
-import { checkBatch } from '../js/filter.js';
-import { validateManifest, listCapabilities } from '../js/manifest.js';
-import { sharedLinkQuestion } from '../js/publication-window.js';
-import { createI18n } from '../js/i18n.js';
+import { makeCallHandler } from '../js/broker/broker.js';
+import { checkBatch } from '../js/broker/filter.js';
+import { validateManifest, listCapabilities } from '../js/apps/manifest.js';
+import { sharedLinkQuestion } from '../js/broker/publication-window.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { policyOf, form } from './helpers.mjs';
 
 const PUBLISHED = '{"publish":true,"form":true}';

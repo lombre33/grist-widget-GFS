@@ -7,7 +7,7 @@ vrai dans le code, ce que chaque réponse coûte, et ce qui peut se préparer sa
 ## Ce que le code dit déjà (lu, pas encore mesuré pour un dossier)
 
 1. **Le dossier d'un fichier n'est pas dans `GFS_Fichiers`.** Il tient à `GFS_Rangement` (rangement de la personne, pour « Moi ») ou à
-   `GFS_Placement` (partagé, pour un espace : `js/spaces-filing.js`). Un dossier partagé ne peut donc pas être « une colonne de plus »
+   `GFS_Placement` (partagé, pour un espace : `js/sharing/spaces-filing.js`). Un dossier partagé ne peut donc pas être « une colonne de plus »
    que le moteur exporte : le dossier est la **liste des fichiers qui y sont** au moment du partage.
 2. **Un partage = une table reçue.** Chaque partage arrive dans sa propre table (`GFS_Recus`, `GFS_Recus_2`…) et son journal
    (`GFS_Journal_<nom de l'export>`) garde le nom de l'export, le document qui l'envoie (`note.name`, `note.from.docName`, kit

@@ -1,7 +1,7 @@
-// La garde de séquence de la lecture des fichiers (js/file-refresh.js ; audit du code du 09/11, défaut 9) : deux lectures qui se chevauchent, la plus ancienne finissant en dernier, ne remplacent pas la liste récente.
+// La garde de séquence de la lecture des fichiers (js/explorer/file-refresh.js ; audit du code du 09/11, défaut 9) : deux lectures qui se chevauchent, la plus ancienne finissant en dernier, ne remplacent pas la liste récente.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createFileRefresh } from '../js/file-refresh.js';
+import { createFileRefresh } from '../js/explorer/file-refresh.js';
 
 // Un banc : chaque lecture lancée attend qu'on la termine à la main (`finish(n, résultat)` ou `fail(n, erreur)`), et le banc note ce que la lecture a fait de l'état.
 function bench({ access = true } = {}) {

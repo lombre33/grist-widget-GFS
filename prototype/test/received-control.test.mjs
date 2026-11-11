@@ -1,11 +1,11 @@
-// « Partagés avec moi », ce que l'explorateur demande (js/received-control.js) : le grisé et le mot d'une arrivée en attente, le geste principal, le menu, la question et ce qui s'écrit ensuite. La fenêtre de la question
+// « Partagés avec moi », ce que l'explorateur demande (js/sharing/received-control.js) : le grisé et le mot d'une arrivée en attente, le geste principal, le menu, la question et ce qui s'écrit ensuite. La fenêtre de la question
 // est une doublure (elle se mesure sous Firefox, test/partager-recevoir-firefox.mjs, et dans un vrai Grist, labo/run-partages-recus.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ReceivedControl } from '../js/received-control.js';
-import { PENDING, ACCEPTED } from '../js/received-files.js';
-import { createI18n } from '../js/i18n.js';
-import { KeptFiles } from '../js/kept-files.js';
+import { ReceivedControl } from '../js/sharing/received-control.js';
+import { PENDING, ACCEPTED } from '../js/sharing/received-files.js';
+import { createI18n } from '../js/i18n/i18n.js';
+import { KeptFiles } from '../js/files/kept-files.js';
 
 const FR = createI18n('fr');
 const EN = createI18n('en');

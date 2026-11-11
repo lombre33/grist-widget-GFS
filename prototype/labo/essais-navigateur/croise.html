@@ -41,7 +41,7 @@ const POINT = new URLSearchParams(location.search).has('point');
 const CADRES_BASE = (() => { if (!POINT) return BASE; const url = new URL(BASE); url.hostname += '.'; return url.href; })();
 const ORIGINE_CADRES = new URL(CADRES_BASE).origin;
 const ORIGINE_SANS_POINT = new URL(BASE).origin;
-// Les attributs du cadre d'une app dans GFS (prototype/js/frames.js : SANDBOX et `allow`).
+// Les attributs du cadre d'une app dans GFS (prototype/js/broker/frames.js : SANDBOX et `allow`).
 const SANDBOX = 'allow-scripts allow-forms allow-popups allow-modals allow-downloads';
 const CADRES = [
   { id: 'X', titre: "X · cadre simple d'une autre origine, comme Publipostage+ seule dans Grist" },

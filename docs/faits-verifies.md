@@ -2077,3 +2077,13 @@ Pages d'essai servies en local, pilotées par `test/firefox.mjs` (Firefox 160.0,
 - **Avec une politique `script-src 'self'` + empreintes**, cette carte posée n'est prise que si la politique nomme l'empreinte sha256 de son texte exact : sans elle, refusée dans les deux navigateurs (même échec de résolution, sans autre message).
 - Conséquence retenue dans l'étude : la page de Publipostage+ choisirait, au démarrage, entre deux textes de carte (éditeur en CDN ou en copie), les deux empreintes dans la politique ; le mode doit donc être connu avant la réponse de GFS.
 - **Pas mesuré** : la même chose dans la vraie page de Publipostage+ et dans un vrai Grist ; Safari ; les Firefox plus anciens que 160.
+
+## 89. Le moteur de partage 2.6.0 du kit 0.17.0, rejoué par le port de GFS dans un vrai Grist 1.7.19 (11/11)
+
+Le kit passe de 0.16.0 à **0.17.0** (`cddb6f4`) : le moteur de Sync+ de 2.1.0 à **2.6.0** (Sync+ `c631cfa`), repris par `outils/reprendre-synchro.mjs` (corrigé le même jour : un dossier `golden/` dans `tests/unit` de Sync+ l'arrêtait). `ENGINE_VERSION` du kit : `2.6.0`. Mesuré avec la référence du kit avancée dans GFS, le serveur Docker `gristlabs/grist:1.7.19` (`vrai-serveur.sh` avec `ALLOWED_WEBHOOK_DOMAINS=*`), Chromium 153 :
+
+- **`labo/run-sync-port.mjs` : 40 vérifications sur 40**, console de GFS vide : le port de GFS (`js/sync-port.js`, sans changement) prend toujours ses vingt noms de `createRestPort` (même ordre) ; démarrage, lignes, schéma, lecture SQL, `docChanges` (dont l'état perdu qui rend « inconnu »), pièce jointe, webhooks avec condition, document public, envoi à un vrai formulaire publié, autre instance (« otherInstance »), clé inconnue.
+- **`labo/run-sync-partage.mjs` : 21 vérifications sur 21**, console vide : un PDF d'un document à l'autre (même contenu chez le second), `GFS_Synchro` et `GFS_Fichiers` chez l'envoyeur, `GFS_Recus` et `GFS_Journal_<export>` chez le receveur.
+- Essais Node : kit `node --test "test/*.test.mjs"` 525 sur 525 ; GFS `sync-port`, `sync-resume`, `sync-rules`, `kit-copies`, `versions`, `csp`, `hygiene` 64 sur 64.
+- Dans le diff de 2.1.0 à 2.6.0 : aucune adresse, aucun `fetch`, aucun `eval`, aucun stockage du navigateur, aucun `console.log` ajouté. Le texte des formules de la table `GFS_Synchro` est gardé octet pour octet par `test/synchro-formulas-golden.test.mjs`.
+- **Pas mesuré** : Firefox ; les ajouts facultatifs de 2.2.0 à 2.5.0 (`docUrl` sous sa nouvelle forme sur l'instance DINUM, `arrange`, `readLost`) : GFS ne les appelle pas encore, ils sont dans le kit pour quand une fenêtre en aura l'usage.

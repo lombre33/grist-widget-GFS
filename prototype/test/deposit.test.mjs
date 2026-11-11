@@ -40,6 +40,7 @@ test('readDeposit : lot, suivants et dossier sont lus ; le dossier est un chemin
 
 test('readDeposit : un nom sur plusieurs lignes devient une ligne (une ligne d\'explorateur ne se brise pas)', () => {
   assert.equal(readDeposit(ask({ nom: 'Contrat\n\tclient\r\n.pdf' })).name, 'Contrat client .pdf');
+  assert.equal(readDeposit(ask({ nom: 'Contrat\u007fclient.pdf' })).name, 'Contrat client.pdf', 'le signe « suppression » (DEL) est un signe de contrôle comme les autres');
 });
 
 test('readDeposit : une demande hors règle est refusée (GFS_REFUSE), avant que rien ne s\'écrive', () => {

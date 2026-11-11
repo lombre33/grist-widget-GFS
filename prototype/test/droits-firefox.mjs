@@ -4,7 +4,7 @@
 // le faire déborder), le panneau tient dans la page, son titre et son bouton restent en place, seul le contenu défile, rien n'en sort, le clavier est sur « Fermer », Tab reste dedans, Échap le ferme et
 // le clavier revient sur le mot du pied ; la vraie souris ouvre le panneau depuis le mot du pied et le ferme par « Fermer ».
 import { createI18n } from '../js/i18n.js';
-import { Run } from './corbeille-firefox.mjs';
+import { Run, delay } from './corbeille-firefox.mjs';
 
 // Ce que la page montre du panneau et du mot du pied.
 function state() {
@@ -79,6 +79,20 @@ export async function droitsProblems(page, language, tag) {
         await page.press('Escape');
         const after = await page.run(() => ({ ask: Boolean(document.querySelector('.mod.ask')), panel: Boolean(document.querySelector('.mod.rt')) }));
         if (after.ask || !after.panel) run.note(kind, `Échap devait fermer la question et laisser le panneau (état : ${JSON.stringify(after)})`);
+        // « Gérer les partages… » prend la place du panneau (une seule fenêtre à lire, un seul voile) : le panneau est caché pendant qu'elle est ouverte, et revient avec le clavier sur le même bouton.
+        await page.run(() => { document.querySelector('[data-fk="rights-act-manage"]').scrollIntoView({ block: 'center' }); });
+        await run.clickSelector('[data-fk="rights-act-manage"]');
+        await delay(200);
+        const during = await page.run(() => ({ ask: Boolean(document.querySelector('.mod.ask')), panel: getComputedStyle(document.querySelector('.mod.rt').closest('.mod-scrim')).visibility }));
+        if (!during.ask || during.panel !== 'hidden') run.note(kind, `« Gérer les partages… » devait cacher le panneau pendant que sa fenêtre est ouverte (état : ${JSON.stringify(during)})`);
+        await page.press('Escape');
+        let back = null;
+        for (let i = 0; i < 40; i += 1) {
+          back = await page.run(() => ({ panel: getComputedStyle(document.querySelector('.mod.rt').closest('.mod-scrim')).visibility, key: document.activeElement.dataset ? document.activeElement.dataset.fk || null : null }));
+          if (back.panel === 'visible' && back.key === 'rights-act-manage') break;
+          await delay(75);
+        }
+        if (back.panel !== 'visible' || back.key !== 'rights-act-manage') run.note(kind, `le panneau devait revenir à la fermeture, le clavier sur « Gérer les partages… » (état : ${JSON.stringify(back)})`);
       }
       // Tab reste dans le panneau ; Échap le ferme et rend le clavier au mot du pied ; la souris le rouvre, « Fermer » le ferme.
       for (let i = 0; i < 3; i += 1) { await page.press('Tab'); const inside = await snap(); if (!inside.modal || !inside.modal.inside) run.note(kind, 'Tab devait rester dans le panneau'); }

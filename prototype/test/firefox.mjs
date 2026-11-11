@@ -14,7 +14,10 @@ import { openSocket } from './websocket-client.mjs';
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 // Où est Firefox : `GFS_FIREFOX` (le fichier exécutable), le dossier de labo/installer-firefox.sh, puis les emplacements usuels. Rend le chemin, ou null.
+// `GFS_SANS_FIREFOX` (n'importe quelle valeur) : ne pas mesurer sous Firefox sur cette machine. Les mesures de mise en page (un nom coupé de 4 px, deux en-têtes qui se touchent) dépendent des polices de la machine ;
+// le contrôle au push de GitHub (.github/workflows/essais.yml) n'a pas celles du cloud ni celles du porteur, et y montrait des écarts qui n'en sont pas. La mesure se joue dans le cloud (labo/installer-firefox.sh) et chez le porteur.
 export function findFirefox(env = process.env) {
+  if (env.GFS_SANS_FIREFOX) return null;
   const installed = join(env.GFS_FIREFOX_DIR || join(homedir(), '.cache', 'gfs-firefox'), 'root', 'envs', 'ff', 'bin', 'firefox');
   const candidates = [env.GFS_FIREFOX, installed, '/usr/bin/firefox', '/usr/local/bin/firefox', '/snap/bin/firefox', '/Applications/Firefox.app/Contents/MacOS/firefox',
     'C:\\Program Files\\Mozilla Firefox\\firefox.exe', 'C:\\Program Files (x86)\\Mozilla Firefox\\firefox.exe'];
@@ -53,11 +56,12 @@ const PREFS = {
 
 const freePort = () => new Promise(resolve => { const probe = createSocketServer(); probe.listen(0, '127.0.0.1', () => { const { port } = probe.address(); probe.close(() => resolve(port)); }); });
 
-// La conversation avec Firefox : une commande, sa réponse ; les messages du journal de la page (`log.entryAdded`) sont gardés.
+// La conversation avec Firefox : une commande, sa réponse ; les messages du journal de la page (`log.entryAdded`) sont gardés, et `on` écoute les autres événements (`network.beforeRequestSent`).
 class Bidi {
   #socket;
   #next = 1;
   #waiting = new Map();
+  #listeners = new Map();
   logs = [];
 
   constructor(socket) {
@@ -67,7 +71,11 @@ class Bidi {
   }
 
   #receive(message) {
-    if (message.type === 'event') { if (message.method === 'log.entryAdded') this.logs.push(message.params); return; }
+    if (message.type === 'event') {
+      if (message.method === 'log.entryAdded') this.logs.push(message.params);
+      for (const listener of this.#listeners.get(message.method) || []) listener(message.params);
+      return;
+    }
     const entry = this.#waiting.get(message.id);
     if (!entry) return;
     this.#waiting.delete(message.id);
@@ -82,6 +90,8 @@ class Bidi {
       this.#socket.send(JSON.stringify({ id, method, params }));
     });
   }
+
+  on(method, listener) { this.#listeners.set(method, [...(this.#listeners.get(method) || []), listener]); }
 
   close() { try { this.#socket.close(); } catch (error) { /* déjà fermée */ } }
 }
@@ -101,6 +111,9 @@ export class Page {
 
   get logs() { return this.#bidi.logs; }
 
+  // Rend le focus du système à l'onglet : un Firefox sans écran ne le donne à aucune fenêtre, et sans lui ni `:focus` ni `:focus-visible` ne s'appliquent (l'anneau de focus ne se voit pas).
+  async activate() { await this.#bidi.send('browsingContext.activate', { context: this.#context }); }
+
   async goto(url) { await this.#bidi.send('browsingContext.navigate', { context: this.#context, url, wait: 'complete' }); }
 
   // Largeur et hauteur de la page en pixels CSS, zoom de l'écran (1 ; 1,5 pour un portable réglé à 150 %), mode que Grist poserait sur la page (`data-grist-appearance`).
@@ -111,11 +124,35 @@ export class Page {
   }
 
   // `fn` s'exécute dans la page (elle ne voit rien du module qui l'écrit) ; `args` et le résultat passent en JSON.
-  async run(fn, ...args) {
+  run(fn, ...args) { return this.#evaluate(this.#context, fn, args); }
+
+  async #evaluate(context, fn, args) {
     const expression = `(async () => JSON.stringify(await (${fn.toString()})(...${JSON.stringify(args)})))()`;
-    const reply = await this.#bidi.send('script.evaluate', { expression, target: { context: this.#context }, awaitPromise: true });
+    const reply = await this.#bidi.send('script.evaluate', { expression, target: { context }, awaitPromise: true });
     if (reply.type === 'exception') throw new Error(`dans la page : ${reply.exceptionDetails.text}`);
     return reply.result.type === 'undefined' ? undefined : JSON.parse(reply.result.value);
+  }
+
+  // Comme `run`, dans le cadre de la page dont l'adresse contient `part` (un cadre d'une autre origine aussi : WebDriver y entre). Le cadre doit exister : sinon l'erreur le dit.
+  async runInFrame(part, fn, ...args) {
+    const { contexts } = await this.#bidi.send('browsingContext.getTree', { root: this.#context });
+    const all = nodes => nodes.flatMap(node => [node, ...all(node.children || [])]);
+    const found = all(contexts).find(node => node.context !== this.#context && node.url.includes(part));
+    if (!found) throw new Error(`aucun cadre à l'adresse « ${part} »`);
+    return this.#evaluate(found.context, fn, args);
+  }
+
+  // Répond à la place du réseau aux pages des `hostnames` (HTTPS) : `body` en HTML, sans rien demander à l'hôte (les sites de vidéos ne sont pas joignables du cloud). Rend la liste, tenue à jour, des adresses demandées.
+  async stub(hostnames, body) {
+    const requested = [];
+    await this.#bidi.send('session.subscribe', { events: ['network.beforeRequestSent'] });
+    await this.#bidi.send('network.addIntercept', { phases: ['beforeRequestSent'], urlPatterns: hostnames.map(hostname => ({ type: 'pattern', protocol: 'https', hostname })) });
+    this.#bidi.on('network.beforeRequestSent', params => {
+      if (!params.isBlocked) return;
+      requested.push(params.request.url);
+      this.#bidi.send('network.provideResponse', { request: params.request.request, statusCode: 200, reasonPhrase: 'OK', headers: [{ name: 'content-type', value: { type: 'string', value: 'text/html; charset=utf-8' } }], body: { type: 'string', value: body } }).catch(() => {});
+    });
+    return requested;
   }
 
   // Attend que `fn` rende une valeur vraie (au plus `timeout` ms), et la rend.
@@ -166,13 +203,15 @@ export class Page {
 
 // Lance Firefox sans écran, avec un profil neuf, et rend { page, close() }. Le lanceur de Firefox est parfois un script qui lance le vrai programme sans le remplacer (celui de conda) : Firefox a donc son propre
 // groupe de processus (`detached`), qu'on arrête en entier, sans quoi un Firefox resterait vivant après l'essai et empêcherait Node de finir.
-export async function startFirefox(binary) {
+export async function startFirefox(binary, extraPrefs = {}) {
   const profile = mkdtempSync(join(tmpdir(), 'gfs-firefox-'));
-  writeFileSync(join(profile, 'user.js'), Object.entries(PREFS).map(([key, value]) => `user_pref(${JSON.stringify(key)}, ${JSON.stringify(value)});`).join('\n'));
+  writeFileSync(join(profile, 'user.js'), Object.entries({ ...PREFS, ...extraPrefs }).map(([key, value]) => `user_pref(${JSON.stringify(key)}, ${JSON.stringify(value)});`).join('\n'));
   const port = await freePort();
   const grouped = process.platform !== 'win32';
-  const child = spawn(binary, ['--headless', '--no-remote', '--profile', profile, '--remote-debugging-port', String(port), 'about:blank'],
-    { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, MOZ_HEADLESS: '1' }, detached: grouped });
+  // `GFS_FIREFOX_ECRAN` (n'importe quelle valeur) : un Firefox avec fenêtre, sur l'écran virtuel que l'appelant donne (`xvfb-run`) ; sans écran, `--headless` ne donne le focus du système à aucune fenêtre.
+  const windowed = Boolean(process.env.GFS_FIREFOX_ECRAN);
+  const child = spawn(binary, [...(windowed ? [] : ['--headless']), '--no-remote', '--profile', profile, '--remote-debugging-port', String(port), 'about:blank'],
+    { stdio: ['ignore', 'pipe', 'pipe'], env: windowed ? process.env : { ...process.env, MOZ_HEADLESS: '1' }, detached: grouped });
   let output = '';
   for (const stream of [child.stdout, child.stderr]) stream.on('data', chunk => { output = (output + chunk).slice(-2000); });
   const stop = () => { try { if (grouped) process.kill(-child.pid, 'SIGKILL'); else child.kill('SIGKILL'); } catch (error) { /* déjà arrêté */ } };

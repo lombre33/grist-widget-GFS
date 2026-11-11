@@ -1,0 +1,47 @@
+# Le contrôle au push (audit du code du 09/11, choix du porteur) : les essais de `prototype/` (npm test) à chaque envoi sur `main` et à chaque demande de fusion.
+# Ils comptent l'essai d'hygiène (test/hygiene.test.mjs : les seuils de l'outil d'audit, pas de console.log ni de onmessage =, aucun prénom). Les sous-modules (le kit, les apps) sont récupérés : des essais lisent leurs manifestes.
+# Les essais qui demandent un vrai serveur Grist (labo/run-*.mjs, Docker) ne sont pas dans `npm test` : ils se jouent à la main, comme avant.
+name: Essais
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  essais:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: prototype/package-lock.json
+      - name: Installer les dépendances d'essai (esbuild, grain-rpc, acorn)
+        run: npm ci --ignore-scripts
+        working-directory: prototype
+      # Le journal de 6 000 lignes tient mal à la lecture : en cas d'échec, les essais qui échouent sont redits à la fin, avec leur message.
+      # Sans la mesure sous Firefox (GFS_SANS_FIREFOX) : la mise en page y dépend des polices de la machine, et celles de GitHub ne sont ni celles du cloud ni celles du porteur (un nom coupé de 4 px, des en-têtes qui se touchent :
+      # 218 écarts à la première passe, aucun dans le cloud). Cette mesure se joue dans le cloud (labo/installer-firefox.sh) et chez le porteur, avant le push d'une interface.
+      - name: Jouer les essais
+        env:
+          GFS_SANS_FIREFOX: '1'
+        shell: bash
+        run: |
+          set -o pipefail
+          status=0
+          npm test > "$RUNNER_TEMP/essais.log" 2>&1 || status=$?
+          grep -E '^# (tests|pass|fail|skipped)' "$RUNNER_TEMP/essais.log"
+          if [ "$status" -ne 0 ]; then
+            echo '--- Essais en échec ---'
+            grep -E -A30 '^ *not ok' "$RUNNER_TEMP/essais.log" | grep -vE '^[ ]*(duration_ms|type|\.\.\.|---)' | head -400
+          fi
+          exit "$status"
+        working-directory: prototype

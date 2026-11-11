@@ -5,7 +5,7 @@
 //   3. Déplacer un fichier vers un nouveau dossier (la recherche, Entrée), puis vers un dossier existant (la souris).
 //   4. Renommer un dossier (un nom vide, ou celui d'un dossier voisin, est refusé dans la fenêtre), puis le déplacer : ni lui ni ses sous-dossiers ne sont proposés.
 //   5. Renommer un fichier : un nom pris est refusé ; le nom seul, dans la table de l'app ; ses autres colonnes ne bougent pas.
-//   6. Dupliquer reste grisé et dit pourquoi ; Échap et un clic hors de la fenêtre ferment sans rien écrire, l'explorateur reste ouvert.
+//   6. Dupliquer reste grisé et dit pourquoi ; Échap ferme sans rien écrire, un clic hors de la fenêtre ne la ferme pas, l'explorateur reste ouvert.
 //   7. Renommer un modèle que Publipostage+ tient ouvert, puis l'enregistrer dans l'app : il garde le nom donné dans GFS (l'app ne remet jamais l'ancien, consigne 029 ;
 //      avec l'app à `2f6440a`, cette vérification échoue : l'ancien nom revient).
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
@@ -195,7 +195,7 @@ check('dans la table de Publipostage+, seule la colonne du nom change, sur la li
 check('le rangement de GFS n\'a pas bougé', JSON.stringify(await gfsLines()) === gfsBefore);
 
 // ----- 6. Grisé, Échap, clic dehors.
-say('\n6. Grisé, Échap, clic dehors');
+say('\n6. Grisé, Échap, clic dehors (qui ne ferme rien)');
 await openRowMenu(row(newName));
 // Un article grisé reste cliquable (il explique) : le geste est forcé, mais c'est toujours la vraie souris.
 await menuItem(/Dupliquer|Duplicate/).click({ force: true });
@@ -217,7 +217,10 @@ await frame.locator('.mv').waitFor();
 const scrim = await frame.locator('.mod-scrim').boundingBox();
 await page.mouse.click(scrim.x + 4, scrim.y + 4);
 await page.waitForTimeout(300);
-check('un clic hors de la fenêtre la ferme sans rien écrire', (await frame.locator('.mv').count()) === 0 && JSON.stringify(await gfsLines()) === lines);
+check('un clic hors de la fenêtre ne la ferme pas (charte, décidé le 09/11) et n\'écrit rien', (await frame.locator('.mv').count()) === 1 && JSON.stringify(await gfsLines()) === lines);
+await page.keyboard.press('Escape');
+await page.waitForTimeout(300);
+check('Échap ferme alors « Déplacer » sans rien écrire', (await frame.locator('.mv').count()) === 0 && JSON.stringify(await gfsLines()) === lines);
 
 // ----- 7. Renommer un modèle que Publipostage+ tient ouvert : l'app ne doit jamais remettre l'ancien nom (guide des apps 1.2, point 10 ; consigne 029).
 say('\n7. Renommer un modèle ouvert dans l\'app');

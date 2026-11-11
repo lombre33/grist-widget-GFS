@@ -2,6 +2,7 @@
 // d'une app qui range un fichier (js/deposit.js). Ce module lie les gestes de l'explorateur, les fenêtres du widget (js/conflict-window.js, js/ask-window.js) et les données (js/files-store.js) ;
 // le contrôleur lui prête ce qu'il sait faire (l'accord de la personne, une phrase, la relecture de la liste) et l'explorateur l'interroge pour ne rien savoir lui-même d'un PDF.
 
+import { isAcceptedReceived } from './received-files.js';
 import { FILES_APP, FILES_MANIFEST, PDF_EXTENSION, PDF_MIME, cleanName, looksLikePdf } from './gfs-files.js';
 import { importFormats, acceptsFile, pickFile } from './import-file.js';
 import { TransferError } from './transfer.js';
@@ -42,10 +43,12 @@ export class KeptFiles {
 
   // ---------- ce que l'explorateur demande ----------
 
-  has = file => file.app === FILES_APP;
+  // Un fichier que GFS garde se lit comme tel : les PDF de `GFS_Fichiers`, et ceux qu'un autre document a partagés et que la personne a acceptés (js/received-files.js : ils sont dans une table `GFS_Recus`).
+  has = file => file.app === FILES_APP || isAcceptedReceived(file);
 
   // La corbeille (js/trash.js) : GFS garde ces fichiers, il sait donc les mettre à la corbeille, les restaurer et les supprimer pour de bon. `lock()` : { text } quand rien ne peut s'écrire.
-  manages = file => this.has(file);
+  // Un fichier reçu n'est à nous que pour le lire : la table qui le porte appartient au partage.
+  manages = file => file.app === FILES_APP;
 
   lock = () => this.#lock('trash.readonly');
 
@@ -246,7 +249,7 @@ export class KeptFiles {
   empty = files => this.#store.empty(files);
 
   // La copie (js/copying.js) : un PDF que GFS garde se copie ; le geste seul, comme les précédents (rendu : voir `copy` de js/files-store.js).
-  copies = file => this.has(file);
+  copies = file => file.app === FILES_APP;
 
   copy = file => this.#store.copy(file);
 }

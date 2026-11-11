@@ -104,9 +104,9 @@ export class Rangement {
     const rowId = added && Array.isArray(added.retValues) ? added.retValues[0] : null;
     if (rowId == null) throw new Error(`AddRecord sur ${tableId} n’a renvoyé aucun identifiant de ligne`);
     try {
-      const data = await doc.fetchTable(tableId);
-      const at = (data.id || []).indexOf(rowId);
-      return addressOf(at >= 0 && data.Adresse ? data.Adresse[at] : '');
+      const table = await doc.fetchTable(tableId);
+      const at = (table.id || []).indexOf(rowId);
+      return addressOf(at >= 0 && table.Adresse ? table.Adresse[at] : '');
     } finally {
       await doc.applyUserActions([['RemoveRecord', tableId, rowId]]).catch(error => console.warn('GFS : la ligne-sonde n’a pas pu être retirée', error));
     }

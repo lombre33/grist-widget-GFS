@@ -65,7 +65,7 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     adresse entière (`https://docs.getgrist.com/grist-plugin-api.js`, jamais toute l'origine) **avec `'unsafe-eval'`**, que ce fichier exige : c'est un bundle de développement qui
     s'évalue par `eval()`. Sans cela le script s'arrête, `window.grist` reste vide et l'app ne dit jamais « prête » : GFS écrit « ne répond pas » (faits vérifiés 27). Un script
     d'API qui n'évalue rien (celui d'un Grist Docker) ne le montre pas : l'essai de l'app le lui fait servir sous la forme `eval(…)`.
-12. **La charte Grist Factory** (cahier 3.4 ; `contexte/charte-ui-ux-grist-factory.md`, section 1).
+12. **La charte Grist Factory** (cahier 3.4 ; `contexte/charte-ui-ux-grist-factory.md`, section 1). **Les textes français vouvoient** (les apps le font ; GFS aussi depuis le 09/11, décision du porteur).
 13. **Ne jamais écrire** qu'activer ou cocher un module rend l'app plus sûre.
 14. **Publier un formulaire, c'est ouvrir une porte à toute personne qui a le lien, sans compte, et sans passer par GFS** (contrats 3.7,
     point 8, et 11.9). Un lien lit la colonne entière de chaque Référence de ses formulaires, champs cachés compris, et ajoute des
@@ -81,9 +81,11 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
    l'interface : accès à Grist, traduction, jetons et thème, fenêtres, liste avec recherche, couches, consentement des
    tables, rappel « Enregistrer ».
 2. Écrire `gfs.json` à la racine du dépôt (cahier 5.1).
-3. Passer à la liste unique des bibliothèques natives (`package.json` à la racine, versions exactes) et à l'outil du kit qui
-   en tire import map, CSP, empreintes, miroir des tests et version vendorisée ; activer Dependabot (`npm`). Celles des
-   extensions n'y sont pas : elles sont à GFS.
+3. Passer à la liste unique des bibliothèques natives (`package.json` à la racine, versions exactes) et à l'outil du kit
+   (`kit/outils/bibliotheques.mjs`, kit 0.16.0 ; son `README.md`, « Les bibliothèques d'une app ») qui en tire le catalogue des
+   empreintes, la carte d'importation, le `script-src` de la politique de sécurité (avec l'empreinte des scripts en ligne), les
+   empreintes écrites dans le code et le miroir des essais ; activer Dependabot (`npm`). La version vendorisée viendra à
+   son tour. Celles des extensions n'y sont pas : elles sont à GFS.
 4. Passer le contexte et le stockage par le client du courtier du kit (avec ses replis quand l'app est seule).
 5. Ranger les fonctions lourdes dans `extensions/`, avec le registre et le grisé du kit, et retirer leurs bibliothèques de la
    liste et de l'import map de l'app : GFS les porte (la CSP garde l'adresse du mode CDN, règle 9).
@@ -160,7 +162,7 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
 15. Lire un fichier que GFS garde, un PDF (demande du porteur du 03/11 ; contrats 2.7, point 5, et 5.4, point 8). Une app qui sait lire le type
     le **déclare** dans `actions.lire` (`[{ "type": "pdf", "extension": "lecture-pdf" }]`, l'`extension` étant celle de l'app qui apporte
     la lecture, déclarée dans `extensions` avec sa bibliothèque `{ id: "pdfjs", version: "1.0.0" }`) : GFS fait de « Lire » le geste du PDF, grisé
-    tant que l'app ou l'extension manque ou que `ACCEPTS_OPEN` n'a pas la consigne faite. GFS **télécharge lui-même** le PDF et le donne à l'app avec
+    tant que l'app ou l'extension manque ou que `ouverture.lire` n'est pas déclaré dans le manifeste (la consigne faite). GFS **télécharge lui-même** le PDF et le donne à l'app avec
     l'ouverture (`raison: lire`, `lecture: { id, fichier }`) ou, quand elle est déjà ouverte, avec l'appel `ouvrir` : l'app ne reçoit aucun jeton, ne
     demande rien à l'API de Grist, ne renvoie jamais les octets. Elle **garde `lecture` dans sa lecture de l'ouverture** (le `normalizeOpening` du kit
     la garde depuis sa version 0.7.0 ; celui de Publipostage+ ne garde aujourd'hui que `fichier`, `type`, `dossier`, `raison`, `importation`), lit `lecture.fichier` comme
@@ -201,6 +203,8 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     - **L'accessibilité renforcée arrive par le même message** (décision du 04/11, premier temps ; contrats 5.2, point 10) : quand la personne allume l'interrupteur de la fenêtre « Thème », `contexte.ambiance.id` vaut `renforcee`, avec les mêmes
       dix-neuf jetons de couleur (le texte à 7:1 sur les mêmes paires, le trait des commandes à 3:1 : `--border-strong` sur `--surface`, `--bg` et `--surface-sunken`) et les mêmes jetons de forme (`--bw` à 2 px, `--bar-w` à 6 px, ni ombre, ni trame, ni filet, ni capitales). L'app ne fait rien
       de plus : elle lit des jetons, **jamais l'`id`** (une règle écrite pour une ambiance ne s'applique pas à `renforcee`). Ce que GFS fait de ses propres couleurs d'état et de type, qui ne sont pas dans les dix-neuf jetons : le texte (erreur, avertissement, « bon », type) prend `--text`, la couleur reste à l'icône.
+      **Le second temps (10/11) est l'interface de GFS seule** : cibles de 36 px, texte de 14 px, anneau de focus de 3 px, aucun mouvement, barre de sélection en vrai trait. Aucun jeton ne le dit, donc **l'app n'a rien à changer** (et GFS ne touche pas à son cadre) ; si elle veut le même confort dans ses propres
+      écrans, c'est son choix et sa mesure, et le dire à GFS pour qu'un jeton existe si l'on veut qu'elle le suive. Une chose se fait toute seule : le contraste forcé du système et « réduire les animations » valent dans chaque cadre, et une app qui retire ses couleurs (`forced-colors: active`) doit rester lisible sans elles.
     - **Seulement ce qu'elle affiche à la personne**, jamais ce qu'elle produit (un e-mail, un PDF, un document, un formulaire public).
     Seule, l'app garde ses couleurs. Quand l'app propose elle-même un choix de couleur (une couleur de modèle, de document, de thème de présentation), elle prend
     **le sélecteur de couleur du kit** (`createColorPalette`, `ColorEditor` et `ColorDialog`, kit 0.5.0, tiré de celui de Publipostage+) et n'en garde pas de copie :
@@ -327,8 +331,8 @@ ligne 330 ; seul `macro` a sa branche, ligne 270) et peut devenir le modèle de 
 - aucune définition nouvelle dans les réglages de la vue ; une clé nouvelle prend le préfixe `pp_`, celui des clés du
   navigateur (défaut pris ici, à changer si le porteur préfère un autre préfixe) ;
 - une bibliothèque nouvelle dont l'app a besoin pour marcher seule s'inscrit, comme aujourd'hui, dans l'import map, dans la
-  CSP et dans `dev-tests/.offline-cache/package.json` (la liste unique viendra à l'étape 4) ; celle d'une extension ne
-  s'y inscrit pas, GFS la porte (règle 9) ;
+  CSP et dans `dev-tests/.offline-cache/package.json` (jusqu'à l'adoption de la liste unique, consigne 063 : ensuite, dans
+  `package.json` seul) ; celle d'une extension ne s'y inscrit pas, GFS la porte (règle 9) ;
 - aucune lecture nouvelle de `document.referrer` ;
 - les fonctions lourdes à venir (diapositives, temps réel, formats Office) naissent en extensions, et le graphique en est le
   pilote : sa consigne est posée (`consignes/publipostage/`), Plotly quitte alors la liste et l'import map de l'app ; la CSP de
@@ -338,9 +342,10 @@ ligne 330 ; seul `macro` a sa branche, ligne 270) et peut devenir le modèle de 
 
 - **Kit** : Publipostage+ est la source du kit ; elle devient ensuite cliente de son propre code extrait, en rejouant ses
   tests à chaque remplacement (non-régression stricte).
-- **Liste unique** : `package.json` à la racine, tiré de `dev-tests/.offline-cache/package.json` (45 paquets aujourd'hui,
-  dont Plotly, qui passe à la liste de GFS avec le graphique) ; l'outil du kit régénère l'import map et la CSP
-  d'`index.html`, les empreintes et le miroir des tests.
+- **Liste unique** : `package.json` à la racine, tiré de `dev-tests/.offline-cache/package.json` (41 paquets que la page
+  charge et 4 que seuls les essais lisent ; Plotly et ECharts sont à la liste de GFS avec le graphique) ; l'outil du kit
+  régénère l'import map et la CSP d'`index.html`, les empreintes et le miroir des tests. **Rejoué par GFS sur une copie du
+  dépôt à `ac9b86d` (faits vérifiés 80), consigne 063.**
 - **Où est Grist** : `fixBaseUrl` (`js/grist-api.js`, lignes 930 à 944) lit `document.referrer` pour corriger une instance
   auto-hébergée mal réglée. Dans GFS, le référent est l'adresse de GFS : la fonction passe par le kit.
 - **Stockage** : les clés `pp_*` (liste `STORED` de `outils/depot-propre/controles.mjs`) passent par le stockage du kit.

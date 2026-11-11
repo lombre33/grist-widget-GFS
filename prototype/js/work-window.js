@@ -5,8 +5,7 @@
 
 import { h } from './dom.js';
 import { icon } from './icons.js';
-import { Layers } from './layers.js';
-import { LIST_SHOWN as SHOWN, listKeys } from './modal.js';
+import { LIST_SHOWN as SHOWN, listKeys, mountWindow, giveBackFocus } from './modal.js';
 import { normalize, words, matchesWords } from './search.js';
 
 const FOCUSABLE = 'input, button:not([disabled])';
@@ -18,9 +17,7 @@ export class WorkWindow {
   #search;
   #note;
   #step = { kind: 'tables', items: [] };
-  #opener = null;
-  #inert = [];
-  #onKey = null;
+  #mounted = null; // { opener, unmount } de la fenêtre ouverte (modal.js, mountWindow)
 
   // opts : { container, i18n, inertTargets() -> [élément], source, onPick({ tableId, rowId, label, page } | null), onClose() } ; une table choisie seule a `rowId` null ; `page` : la
   // ligne est celle de la table de la page.
@@ -31,30 +28,20 @@ export class WorkWindow {
 
   open() {
     if (this.#root) return;
-    const doc = this.#opts.container.ownerDocument;
-    this.#opener = doc.activeElement;
     this.#root = this.#build();
-    this.#opts.container.append(this.#root);
-    Layers.raise(this.#root, '--z-window');
-    this.#inert = this.#opts.inertTargets().map(target => [target, target.inert]);
-    for (const [target] of this.#inert) target.inert = true;
-    this.#onKey = event => this.#keydown(event);
-    doc.addEventListener('keydown', this.#onKey, true);
+    this.#mounted = mountWindow({ container: this.#opts.container, root: this.#root, inertTargets: () => this.#opts.inertTargets(), onKey: event => this.#keydown(event) });
     this.#showTables();
-    try { doc.defaultView.focus(); } catch (error) { /* le cadre garde l'état qu'il avait */ }
+    try { this.#root.ownerDocument.defaultView.focus(); } catch (error) { /* le cadre garde l'état qu'il avait */ }
     this.#search.focus({ preventScroll: true });
   }
 
   close() {
     if (!this.#root) return;
-    this.#root.ownerDocument.removeEventListener('keydown', this.#onKey, true);
-    this.#root.remove();
+    const { opener, unmount } = this.#mounted;
+    unmount();
     this.#root = null;
-    for (const [target, was] of this.#inert) target.inert = was;
-    this.#inert = [];
-    const back = this.#opener;
-    this.#opener = null;
-    if (back && back.isConnected && typeof back.focus === 'function') back.focus({ preventScroll: true });
+    this.#mounted = null;
+    giveBackFocus(opener);
     this.#opts.onClose();
   }
 
@@ -75,7 +62,6 @@ export class WorkWindow {
         h('div', { class: 'mod-body' }, this.#list),
         h('footer', { class: 'mod-foot' }, this.#note,
           h('button', { type: 'button', class: 'btn', dataset: { fk: 'work-close' }, on: { click: () => this.close() } }, t('work.close')))));
-    root.addEventListener('pointerdown', event => { if (event.target === root) this.close(); });
     this.#list.addEventListener('click', event => this.#onClick(event));
     return root;
   }

@@ -176,10 +176,11 @@ export class Transfer {
     const ready = new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new TransferError('frame', 'Le cadre d’envoi de GFS ne répond pas.')), READY_TIMEOUT_MS);
       port1.onmessage = event => {
-        const data = event.data || {};
-        if (data.ready === true) { clearTimeout(timer); resolve(); } else this.#answer(data);
+        const reply = event.data || {};
+        if (reply.ready === true) { clearTimeout(timer); resolve(); } else this.#answer(reply);
       };
     });
+    // La cible est '*' : le cadre est un `sandbox` sans `allow-same-origin`, son origine est opaque, aucune adresse ne peut la désigner. Le message ne dit rien ; ce qui compte est le port transféré, et le cadre est celui que GFS vient de créer.
     frame.window.postMessage({ gfs: 'transfer' }, '*', [port2]);
     await ready;
     this.#port = port1;

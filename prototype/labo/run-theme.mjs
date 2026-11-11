@@ -33,10 +33,10 @@ const panelWidth = Number(process.env.LAB_W || 700);
 const run = `theme-${lang}-${scheme}${panelWidth === 700 ? '' : `-${panelWidth}`}`;
 const WORDS = {
   fr: { themeRow: 'Thème…', title: 'Thème', reset: 'Revenir à Grist Factory', close: 'Fermer', names: ['Grist Factory', 'Pop', 'Papier', 'Brut', 'Enseigne'], saved: 'S’applique tout de suite, reste sur ce navigateur.',
-    notKept: 'Ce choix vaut pour cette page seulement : ton navigateur refuse de le garder.', check: /^Couleurs calculées : contraste de \d,\d:1 au moins/, origin: /^Ambiance d’origine : contraste de \d,\d:1 au moins/,
+    notKept: 'Ce choix vaut pour cette page seulement : votre navigateur refuse de le garder.', check: /^Couleurs calculées : contraste de \d,\d:1 au moins/, origin: /^Ambiance d’origine : contraste de \d,\d:1 au moins/,
     access: 'Accessibilité renforcée', strict: /^Texte à (\d,\d):1 et traits à (\d,\d):1 au moins/,
     own: 'La mienne', none: 'Celle de l’ambiance', pick: 'Choisir ma couleur', customBtn: 'Personnalisé…', custom: 'Couleur personnalisée', apply: 'Appliquer', cancel: 'Annuler', palette: 'Palette de couleurs',
-    missing: 'Le sélecteur de couleur ne s’est pas chargé : GFS garde la couleur de l’ambiance. Recharge la page pour réessayer.' },
+    missing: 'Le sélecteur de couleur ne s’est pas chargé : GFS garde la couleur de l’ambiance. Rechargez la page pour réessayer.' },
   en: { themeRow: 'Theme…', title: 'Theme', reset: 'Back to Grist Factory', close: 'Close', names: ['Grist Factory', 'Pop', 'Paper', 'Raw', 'Neon sign'], saved: 'Applies right away, stays on this browser.',
     notKept: 'This choice only holds for this page: your browser refuses to keep it.', check: /^Computed colors: contrast of at least \d\.\d:1/, origin: /^Original look: contrast of at least \d\.\d:1/,
     access: 'Enhanced accessibility', strict: /^Text at (\d\.\d):1 and lines at (\d\.\d):1 or more/,
@@ -205,7 +205,7 @@ check('les vignettes sont différentes (fond, forme)', new Set(minis.map(item =>
 await shot('3-pop-fenetre');
 await page.keyboard.press('Escape');
 await frame.locator('.th-win').waitFor({ state: 'detached' });
-check('Échap ferme la fenêtre et rend le clavier au bouton « Réglages » (celui d\'où la fenêtre a été ouverte)', await frame.evaluate(() => document.activeElement === document.querySelector('.ex-title-row .tb[aria-haspopup="menu"]')));
+check('Échap ferme la fenêtre et rend le clavier au bouton « Réglages » (celui d\'où la fenêtre a été ouverte)', await frame.evaluate(() => document.activeElement === document.querySelector('.ex-title-row .tb:not(.tb-bell)[aria-haspopup="menu"]')));
 check('l\'explorateur n\'est plus inerte', await frame.evaluate(() => !document.querySelector('.ex').inert));
 await shot('4-pop-explorateur');
 
@@ -617,7 +617,7 @@ await page.keyboard.press('Tab');
 await page.keyboard.press('Tab');
 await page.keyboard.press('Tab');
 acc = await switchState();
-check('Tab arrive sur l\'interrupteur, qui montre son anneau de focus (2 px)', acc.focus && acc.outline === 'solid' && acc.outlineWidth === '2px', acc);
+check('Tab arrive sur l\'interrupteur, qui montre son anneau de focus (3 px depuis le second temps)', acc.focus && acc.outline === 'solid' && acc.outlineWidth === '3px', acc);
 await page.keyboard.press('Space');
 await page.waitForTimeout(250);
 acc = await switchState();

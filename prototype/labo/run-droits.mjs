@@ -11,7 +11,7 @@
 import { createServer } from 'node:http';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { serve } from './lab-server.mjs';
-import { chromium, say, check } from './lab-common.mjs';
+import { chromium, say, check, probeDeclares } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { createI18n } from '../js/i18n.js';
 import { PAGE_PORT, openGfs, contrastProblems, windowFits } from './lab-pdf.mjs';
@@ -24,9 +24,9 @@ const scheme = process.env.LAB_SCHEME || 'light';
 const phase = process.env.PHASE || 'proprietaire';
 const STATE = process.env.DROITS_ETAT || '/tmp/droits-gfs-etat.json';
 const { t } = createI18n(lang);
-const SECRET = 'cle-secrete-0123456789';
+const SECRET = 'cle-de-test-du-lien';
 // La sonde V est « toujours là » (elle s'ouvre sans case à cocher) : elle note le contexte que GFS lui rend.
-const ALWAYS = { fichier: 'controller.js', de: "export const ALWAYS_ON = Object.freeze(['publipostage']);", vers: "export const ALWAYS_ON = Object.freeze(['publipostage', 'sonde-v']);" };
+const ALWAYS = probeDeclares('sonde-v', { permanente: true });
 
 const shot = async (frame, name) => (await frame.frameElement()).screenshot({ path: join(SHOTS, `droits-${lang}-${scheme}-${name}.png`) });
 const text = async frame => (await frame.locator('.mod.rt').innerText()).replace(/\s+/g, ' ');

@@ -18,6 +18,3 @@ export function h(tag, props, ...children) {
 }
 
 export const clear = el => { el.replaceChildren(); return el; };
-
-// Texte pour une info-bulle ou un lecteur d'écran : jamais plus d'une ligne.
-export const oneLine = value => String(value ?? '').replace(/\s+/g, ' ').trim();

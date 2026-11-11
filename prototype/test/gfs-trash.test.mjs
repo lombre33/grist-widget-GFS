@@ -114,6 +114,14 @@ test('restaurer : la ligne revient au même numéro, avec ses valeurs, quand le 
   assert.deepEqual([result.name, result.renamed], ['Attestation', false]);
 });
 
+test('restaurer : une colonne que la corbeille n\'a pas gardée n\'est pas écrite (la table a gagné une colonne depuis la suppression)', () => {
+  const snapshot = snapshotOf(models(), 1, COLUMNS);
+  delete snapshot.valeurs.Contenu;
+  const result = plan({ data: without(), snapshot });
+  assert.equal('Contenu' in result.values, false);
+  assert.equal(result.values.TypeModele, 'grille');
+});
+
 test('restaurer : un numéro pris par une autre ligne donne un numéro neuf (null), jamais l\'écrasement', () => {
   const data = without();
   data.id.push(2); // quelqu'un a ajouté une ligne, qui a reçu le numéro libéré

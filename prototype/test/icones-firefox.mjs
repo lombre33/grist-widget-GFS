@@ -30,7 +30,7 @@ const rowCenter = name => {
 };
 
 // Le centre du bouton « Réglages » de l'explorateur (depuis le 04/11 la fenêtre « Thème » s'ouvre par sa ligne), puis celui de la ligne « Thème… » du menu, la deuxième.
-const settingsButtonCenter = () => { const box = document.querySelector('.ex-title-row .tb[aria-haspopup="menu"]').getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; };
+const settingsButtonCenter = () => { const box = document.querySelector('.ex-title-row .tb:not(.tb-bell)[aria-haspopup="menu"]').getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; };
 const themeRowCenter = () => { const row = document.querySelectorAll('.menu:not(.menu-sub) .menu-item')[1]; if (!row) return null; const box = row.getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; };
 
 // L'ambiance posée sur la page, comme la lit la feuille de style : `data-ambiance`, ou null pour l'ambiance d'origine.

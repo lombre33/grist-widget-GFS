@@ -65,15 +65,16 @@ export const entryRecord = ({ id, app, spec, file, snapshot, now, author }) => (
 
 // Les entrées de `GFS_Corbeille` d'une table de fichiers, dans la forme que `readFiles` (js/explorer-model.js) lit : les colonnes de la table de l'app y portent ce que l'entrée a gardé. `id` reste le
 // numéro de ligne de `GFS_Corbeille` (c'est lui qui désigne l'entrée) ; l'identifiant du fichier passe par `FichierId`. Rend { spec, data, weights } : l'entrée du manifeste à lire, les données, et
-// ce que chaque entrée pèse dans le document (toute la ligne de `GFS_Corbeille`, copie JSON de la ligne de l'app comprise : c'est ce que la corbeille garde, non la ligne d'origine).
-export function binFiles(spec, bin, appId) {
+// ce que chaque entrée pèse dans le document (toute la ligne de `GFS_Corbeille`, copie JSON de la ligne de l'app comprise : c'est ce que la corbeille garde, non la ligne d'origine) ; `counted` : ces poids,
+// ligne par ligne, quand l'appelant les a déjà comptés (la lecture légère, js/explorer-sql.js, ne rend pas la copie JSON).
+export function binFiles(spec, bin, appId, counted = null) {
   const cols = spec.colonnes || {};
   const all = Array.from({ length: bin && Array.isArray(bin.id) ? bin.id.length : 0 }, (_, i) => i);
   const rows = all.filter(i => text(cell(bin, 'App', i)) === appId && text(cell(bin, 'Table', i)) === spec.table);
   const pick = column => rows.map(i => cell(bin, column, i));
-  const data = { id: rows.map(i => bin.id[i]), FichierId: pick('FichierId'), SupprimeLe: pick('SupprimeLe'), SupprimePar: pick('SupprimePar') };
-  for (const [key, from] of [['nom', 'Nom'], ['type', 'Type'], ['date', 'Date'], ['par', 'Auteur']]) if (cols[key]) data[cols[key]] = pick(from);
-  return { spec: { ...spec, exclure: undefined, corbeille: { date: 'SupprimeLe', par: 'SupprimePar' }, colonnes: { ...cols, id: 'FichierId' } }, data, weights: rows.map(rowWeigher(bin)) };
+  const binTable = { id: rows.map(i => bin.id[i]), FichierId: pick('FichierId'), SupprimeLe: pick('SupprimeLe'), SupprimePar: pick('SupprimePar') };
+  for (const [key, from] of [['nom', 'Nom'], ['type', 'Type'], ['date', 'Date'], ['par', 'Auteur']]) if (cols[key]) binTable[cols[key]] = pick(from);
+  return { spec: { ...spec, exclure: undefined, corbeille: { date: 'SupprimeLe', par: 'SupprimePar' }, colonnes: { ...cols, id: 'FichierId' } }, data: binTable, weights: rows.map(counted ? i => counted[i] : rowWeigher(bin)) };
 }
 
 // Ce que la restauration écrit dans la table de l'app (`data` : la table relue à l'instant), ou le constat qu'il n'y a rien à restaurer.
@@ -84,19 +85,32 @@ export function restorePlan({ snapshot, spec, data, columns }) {
   const cols = spec.colonnes || {};
   const live = (data.id || []).map((row, i) => i).filter(i => !isExcluded(spec, data, i));
   const kept = snapshot.valeurs || {};
+  const present = presentRow({ recipe, cols, kept, data, live });
+  if (present) return present;
+  const taken = live.map(i => text(cell(data, cols.nom, i)));
+  const original = text(kept[cols.nom]);
+  const name = taken.some(other => sameName(other, original)) ? freeName(original, taken, { extension: false }) : original;
+  const values = restoredValues({ recipe, cols, kept, columns, name, data, live });
+  const rowId = (data.id || []).includes(snapshot.id) ? null : snapshot.id;
+  return { rowId, values, name, renamed: name !== original };
+}
+
+// Une ligne vivante porte déjà la même valeur « unique » : rien à restaurer, l'entrée part. Rend { present: true, name }, ou null quand aucune ne la porte.
+function presentRow({ recipe, cols, kept, data, live }) {
   for (const column of recipe.uniques || []) {
     const wanted = kept[column];
     const same = filled(wanted) ? live.find(i => cell(data, column, i) === wanted) : undefined;
     if (same !== undefined) return { present: true, name: text(cell(data, cols.nom, same)) };
   }
-  const taken = live.map(i => text(cell(data, cols.nom, i)));
-  const original = text(kept[cols.nom]);
-  const name = taken.some(other => sameName(other, original)) ? freeName(original, taken, { extension: false }) : original;
+  return null;
+}
+
+// Les valeurs redonnées à la ligne : celles que la corbeille a gardées, le nom libre, les colonnes « exclusives » éteintes quand une ligne vivante en porte une, puis les valeurs que la recette remet (`remettre`).
+function restoredValues({ recipe, cols, kept, columns, name, data, live }) {
   const values = {};
   for (const column of columns) if (column in kept) values[column] = kept[column];
   if (columns.includes(cols.nom)) values[cols.nom] = name;
   for (const column of recipe.exclusives || []) if (columns.includes(column) && filled(values[column]) && live.some(i => filled(cell(data, column, i)))) values[column] = false;
   for (const [column, value] of Object.entries(recipe.remettre || {})) if (columns.includes(column)) values[column] = value;
-  const rowId = (data.id || []).includes(snapshot.id) ? null : snapshot.id;
-  return { rowId, values, name, renamed: name !== original };
+  return values;
 }

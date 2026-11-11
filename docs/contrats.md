@@ -264,9 +264,13 @@ L'app (sous-cadre sans allow-same-origin)
 | `extensions` | liste | non | Les extensions de l'app (2.6). |
 | `dependances` | chaîne | non | Chemin de la liste des bibliothèques **natives** de l'app (`package.json`) : celles d'une extension n'y figurent pas (2.6, point 4). |
 | `actions` | objet | non | Ce que l'app accepte de la part des autres (2.7). |
+| `ouverture` | objet | non | Ce que l'app sait faire d'une ouverture que GFS lui passe : `{ "fichier": true, "nouveau": true, "importer": true, "lire": true }` (5.2, point 3 ; 5.4, points 1 et 8). Un genre absent vaut faux : GFS ouvre alors l'app sur son modèle habituel et le dit, et grise « Importer » ou « Lire ». |
+| `permanente` | booléen | non | `true` : l'app ne se retire pas de la fenêtre « Apps et extensions » (Publipostage+). |
 | `classes` | objet | non | La classe de chaque table de l'app pour les règles des personnes (11.2) ; une table non déclarée est du travail courant. |
 
 Un champ inconnu est ignoré (le contrat s'étend par ajout) ; un champ obligatoire absent ou mal formé invalide le manifeste.
+
+*Le 09/11, `ouverture` et `permanente` remplacent deux listes écrites par nom d'app dans le contrôleur de GFS (`ACCEPTS_OPEN` et `ALWAYS_ON`, provisoires depuis l'étape 2) : plus bas, `ACCEPTS_OPEN.<app>.<genre>` se lit `ouverture.<genre>` du manifeste de l'app. Les quatre manifestes sont encore tenus par GFS (`manifestes/`) ; quand une app publie son propre `gfs.json`, elle déclare ces deux champs elle-même.*
 
 ### 2.3 Le préfixe des tables
 
@@ -314,6 +318,7 @@ Une entrée de `fichiers` par table de fichiers :
    fermer la fenêtre arrête la lecture. Une table que Grist coupe dit « trop longue » sans retenir les autres. **Sans le droit de tout copier** (403) ou si Grist ne répond pas, la fenêtre reste, grisée, avec la raison ; l'estimation reste. Elle ne
    donne aucun « x % de 15 Go » : le total du site n'est pas lisible depuis un widget, et ce que compte la limite (les pièces jointes de tous les documents, ou les fichiers entiers) n'est pas connu ; les deux chiffres sont dans la fenêtre (faits vérifiés, 43).
    Les lignes liées (`poids.liees`) sont lues avec les fichiers, à chaque ouverture de l'explorateur et à chaque relecture, par `fetchTable` de la table liée (une seule fois par déclaration, jamais une lecture par fichier) : leur coût est celui de la table (Publipostage+ plafonne ses versions à 3 Mo pour tout le document : moins de 0,4 s de plus à l'ouverture, dans le bruit de la mesure, faits vérifiés, 41). À la corbeille, l'entrée d'un fichier pèse sa ligne de `GFS_Corbeille` seule : ses lignes liées restent dans leur table, et l'app décide de les garder ou de les retirer (6.7, point 6).
+   **Dans un document lourd, les relectures ne lisent plus les cellules lourdes.** Quand une lecture complète a compté 4 Mo de fichiers ou plus (`js/explorer-sql.js`), les retours à l'explorateur qui suivent demandent à Grist, par une lecture SQL **en lecture seule** (la route de la fenêtre « Poids du document »), les seules colonnes que le manifeste déclare plus les octets des autres, en une lecture de la structure puis une lecture par table lancées ensemble : un modèle de 500 Ko n'est plus relu pour afficher son nom. Les fichiers et leurs poids sont ceux de la lecture complète, à l'octet près. Un document léger ne change pas (la première lecture d'une session est toujours complète) ; **sans le droit de tout copier (403, un document à règles d'accès), au moindre refus ou serveur muet, la lecture légère s'éteint pour la session** et la lecture complète reprend, sans jeton qui peut écrire (faits vérifiés, 86).
 
 ### 2.5 Les réglages
 
@@ -505,6 +510,7 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
    - un champ obligatoire absent ou d'un autre type ; un `id` ou un préfixe hors format, déjà pris, ou égal à `GFS_` ;
    - `fichiers[].table` hors du préfixe ; une colonne de `colonnes` qui n'est pas une chaîne ;
    - une clé de `reglages` qui commence par `gfs.` ou que le catalogue donne à une autre app ;
+   - dans `ouverture` : autre chose qu'un objet, un genre (`fichier`, `nouveau`, `importer`, `lire`) qui n'est pas un booléen ; `permanente` qui n'est pas un booléen ;
    - dans `arrivee` (2.5, point 4) : autre chose qu'un objet, une `table` ou une `colonne` qui n'est pas une chaîne, une `table` que
      `permissions.lit` ne couvre pas, des `lignes` qui ne sont pas un objet de chaînes ;
    - dans `permissions` : une règle de la section 3 non tenue (un motif `ecrit` que `lit` ne couvre pas, un `pourquoi` absent,
@@ -758,8 +764,8 @@ ne lit pas).
    - s'il y a une différence, la personne en décide dans une fenêtre de GFS qui dit, dans cet ordre (11.9, point 6) : que le lien est
      public (toute personne qui l'a, sans compte), les tables qu'il remplit (avec les colonnes que le formulaire ne montre pas mais que
      le lien pourra remplir), les colonnes qu'il rend lisibles, que rien ne limite le nombre de lignes ni ne contrôle ce qu'elles
-     contiennent, comment le fermer (« Dépublier » le formulaire, dans Grist) ; le clavier y part sur « Refuser » ; « Refuser », Échap ou
-     un clic à côté : `GFS_ANNULE`, rien n'est envoyé à Grist ; « Autoriser » : le lot passe ;
+     contiennent, comment le fermer (« Dépublier » le formulaire, dans Grist) ; le clavier y part sur « Refuser » ; « Refuser » ou Échap
+     (un clic à côté ne ferme rien, décidé le 09/11) : `GFS_ANNULE`, rien n'est envoyé à Grist ; « Autoriser » : le lot passe ;
    - ce qui est déjà ouvert ne se redemande pas ; les lots qui publient passent **un par un** par session (le suivant est jugé sur un
      document où le précédent est posé) ; un lot qui ne touche pas ces trois tables ne coûte aucune lecture ;
    - **GFS échoue fermé** : une session sans moyen de demander, une structure illisible, un verbe que le courtier ne sait pas juger
@@ -1032,8 +1038,21 @@ table, réglé dans le panneau de Grist.
    `run-page-ligne.mjs`, faits vérifiés 1) : un filtre enregistré qui écarte toutes les lignes laissait Publipostage+ sur « Reliez ce
    widget » ; elle reçoit la première ligne, la ligne choisie résiste à un changement de données, `setCursorPos` dans la section la
    remplace.
-7. [M] **À mesurer sur un Grist en ligne** : le coût d'une relecture par le réseau, et un repère léger « le document a changé »
-   (l'historique du document par l'API REST) qui éviterait de relire une table qui n'a pas changé.
+8. [T] **Le lien « Select by », posé par GFS.** Décidé par le porteur le 10/11 (« je choisis la table, celle de la page par défaut, et ça fonctionne » ; carte « Quand GFS
+   relie-t-il le widget à ta grille ? », option « Automatique, avec un mot dans la barre »). Grist ne dit à un widget que la ligne de **sa propre section**, ou de celle à
+   laquelle il est relié (faits vérifiés 1) : sans lien, « La table de la page » reste sur la première ligne, quelle que soit la ligne que la personne clique dans la grille.
+   GFS écrit donc **lui-même** le lien de sa section vers la grille de la même table (`js/view-link.js` : un `UpdateRecord` sur `_grist_Views_section`, `linkSrcSectionRef`, avec
+   `linkSrcColRef` et `linkTargetColRef` à 0, ce que fait le panneau de droite de Grist ; mesuré le 21/10 puis le 10/11), **une seule fois par section**, à l'ouverture, sans geste,
+   quand : (a) GFS a le niveau `full` et le document s'écrit ; (b) la page décide de la table (aucune autre table de travail choisie) ; (c) la section n'est pas reliée
+   (`settings.linking.asTarget`, point 7) ; (d) la marque `gfs.grille` est absente des réglages de la vue ; (e) GFS reconnaît sa section (`js/view-options.js`, 7.3 point 4) ;
+   (f) la page n'a **qu'une** grille, fiche ou liste de fiches de la même table (une fiche déjà liée à la grille suit son curseur et ne compte pas) ; (g) Grist confirme le lien
+   dans les réglages de la section (`asTarget` devient une chaîne) : sinon l'écriture est défaite. **Plusieurs candidates** : GFS le dit (`link.several`) et n'écrit aucun lien.
+   La marque `gfs.grille` (`lie` ou `plusieurs` ; une clé de GFS, 7.1 point 3) garde que c'est fait ou dit : **une personne qui retire le lien dans Grist ne le voit jamais
+   revenir**. GFS dit son geste une fois (`link.done`, phrase qui disparaît seule). Le choix d'une ligne à la main (point 7, b) reste, et la ligne que Grist dit passe toujours
+   devant. `?grille=0` dans l'adresse du widget coupe la fonction (les passes du labo qui mesurent une section non reliée). Un document sans droit d'écrire la structure : Grist
+   refuse, GFS n'insiste pas, rien ne change. Mesuré dans un vrai Grist (faits vérifiés 77, `labo/run-lien-grille.mjs`).
+9. [M] **À mesurer sur un Grist en ligne** : le coût d'une relecture par le réseau, et un repère léger « le document a changé »
+   (l'historique du document par l'API REST) qui éviterait de relire une table qui n'a pas changé. De même pour le lien du point 8 : la version de Grist du porteur.
 
 ---
 
@@ -1071,7 +1090,7 @@ Les noms de la v0 :
 | `langue` (événement) | GFS → app | `{ langue }` (5.2, point 6) | aucune |
 | `barre` (événement) | GFS → app | `{ barre }` : `{ bord, epaisseur, zone }` ou `null` (5.2, point 7) | aucune |
 | `ambiance` (événement) | GFS → app | `{ ambiance }` : le message d'ambiance, ou `null` (5.2, point 10) | aucune |
-| `reglages` (événement) | GFS → app | `{ enregistres }` : vrai quand le réglage que l'app vient d'écrire est dans la vue, faux quand il reste un brouillon (7.3, point 5) | aucune |
+| `reglages` (événement) | GFS → app | `{ enregistres }` : vrai quand le réglage que l'app vient d'écrire est dans la vue, faux quand il reste un brouillon ; dit aussi d'avance, à la demande de `contexte`, ce que deviendront ses réglages (7.3, point 5) | aucune |
 
 1. [D] `gfs` est le numéro de contrat de l'émetteur (pour l'app, celui de son manifeste). Un message sans `gfs` entier, ou d'un
    numéro que le destinataire ne connaît pas, est ignoré.
@@ -1121,7 +1140,8 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    quand la barre de GFS change de bord, de taille, ou disparaît et revient (point 7). `identite` (`{ "identite": { "email": … } | null }`),
    quand GFS apprend l'adresse de la personne pendant que l'app qui la déclare est ouverte (point 9). `ambiance` (`{ "ambiance": { … } | null }`),
    quand la personne change l'ambiance ou la couleur de GFS (point 10). `reglages` (`{ "enregistres": true | false }`), après chaque écriture
-   d'un réglage de l'app : vrai si GFS l'a écrit dans la vue (rien à enregistrer dans Grist), faux s'il est resté un brouillon (7.3, point 5).
+   d'un réglage de l'app : vrai si GFS l'a écrit dans la vue (rien à enregistrer dans Grist), faux s'il est resté un brouillon ; et **d'avance**, une fois
+   par demande de `contexte`, pour une app qui déclare des clés `reglages` (7.3, point 5).
 3. [D] `ouverture` : `null` quand l'app s'ouvre sans consigne (elle applique son propre ordre d'arrivée, cahier 6.2, point 4 : c'est
    le cas du bouton « Ouvrir » de la fenêtre « Apps et extensions » et de l'arrivée sur une vue qui porte ses réglages, 7.4, point 7) ;
    sinon `{ fichier, type, dossier, raison }` où `fichier` est `{ id, type }` (ou `null` pour « Nouveau »), `type` le type
@@ -1328,7 +1348,11 @@ sans événement : seule une règle posée recharge la page (11.5, point 3), et 
    mode renforcé : arrondis courts, `--bw` à 2 px, `--bar-w` à 6 px, `--divider-w` à 2 px, ni ombre, ni trame, ni filet (`--shadow-*`, `--wash`, `--stripe` à `none`), ni capitales ni lettres espacées (`--tt-head` à `none`, `--ls-head` et `--ls-label` à `normal`), le bouton plein uni
    (`--fill` : `var(--accent-solid)`, `--fill-line` : `var(--border-strong)`), et rien d'autre que les jetons de forme du kit (aucune clé nouvelle : le kit 0.6.0 pose le message tel quel). **Ce que fait GFS pour ses propres états**, que l'app peut faire de même : le texte
    d'erreur, d'avertissement, de « bon » et de type, dont les couleurs fixes ne sont pas dans les dix-neuf jetons, prend la couleur du texte (`--text`), et la couleur reste à l'icône ; le mot dit toujours l'état ou le type. « Revenir à Grist Factory » laisse l'accessibilité
-   allumée (un besoin, pas un goût). Le second temps (cibles de 36 px, texte de 14 px, anneau de focus de 3 px à deux couleurs, mouvement réduit, contraste forcé, barre de sélection en vrai trait) est un lot à part qui attend le feu vert du porteur.
+   allumée (un besoin, pas un goût). **Le second temps** (feu vert du porteur, 10/11 ; `css/acces.css`) est l'interface de GFS seule : le message ne change pas et **aucun jeton ne s'ajoute** (`--fs-min` et `--target` sont à GFS, pas des jetons de forme). Texte : plancher de 14 px (`--fs-min`, 0 d'origine ; toute taille de GFS sous 14 px s'écrit
+   `max(Npx, var(--fs-min))`, gardé par `test/acces.test.mjs`). Cibles : 36 px (une case de 22 px compte avec son nom, qui fait 36 px). Anneau de focus : contour de 3 px de la couleur du texte, 2 px de la page entre lui et la commande, dessiné dedans dans une zone qui défile.
+   Aucun mouvement : ni transition, ni animation, ni défilement doux. Barre de la ligne choisie : une bordure de `--bar-w` (6 px), transparente d'avance. Barre de GFS au-dessus d'une app : 36 px par bouton, soit 42 × 156 px au lieu de 34 × 124 ; `contexte.barre.zone` dit la barre mesurée et 4 px autour
+   (le cadre de GFS relit la barre quand sa taille change, pas seulement celle du cadre). **Le contraste forcé du système** (`forced-colors: active`) et **« réduire les animations »** (`prefers-reduced-motion: reduce`) valent pour toute ambiance, interrupteur allumé ou non. **Les apps** n'ont rien à faire (aucun jeton, aucune consigne) et GFS ne touche
+   pas à leur interface ; ce que le système force (le contraste forcé) s'applique de lui-même à chacune, dans son propre cadre.
    **Ce que fait l'app** : le kit en fait la pose (kit 0.6.0) : l'app qui a le lien du kit appelle `Ambiance.start()` (`js/ambiance.js`) une fois à son démarrage ; celle qui
    garde son propre lien appelle `createAmbiance({ link, isDark })` (`js/ambiance-pose.js`, qui ne connaît aucun lien : deux liens dans un même cadre se prendraient les réponses) ;
    aucune n'écrit la sienne. Ce qui suit est ce que le kit fait pour elle (et ce qu'une app sans le kit devrait refaire : elle prend le kit, guide des apps 1.2, points 1 et 4, et règle 15).
@@ -1434,7 +1458,7 @@ sans événement : seule une règle posée recharge la page (11.5, point 3), et 
    et rien de leur côté ne peut la capter** ; ce qui ferme le lecteur est le clic ailleurs dans l'app (son écoute de la souris), le changement de diapositive, le bouton « Fichiers »
    de la barre et `lecteur.fermer`. Un bouton « Fermer » posé par GFS, ou la fermeture quand le focus revient à la page de GFS, ne sont pas construits (interface de plus : le porteur
    choisit après son essai avec une vraie vidéo, avec l'événement `lecteur`). **Non mesuré** : les vrais YouTube et Vimeo (démarrage, son, lecture
-   automatique, plein écran : le porteur, sous Firefox, avec une vraie vidéo), Firefox (le faux lecteur n'a été essayé que sous Chromium), le Grist de la DINUM, l'événement `lecteur` (pas construit).
+   automatique, plein écran : le porteur, sous Firefox, avec une vraie vidéo), Firefox dans un vrai Grist (sans Grist, le lecteur est mesuré sous Firefox 160 depuis le 10/11 : faits vérifiés 78, sauf la touche Échap dans le lecteur), le Grist de la DINUM, l'événement `lecteur` (pas construit).
 
 ### 5.3 Le stockage du navigateur
 
@@ -1750,7 +1774,7 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
    - **Ce que la personne voit** : la fenêtre « Ce nom est déjà pris » de 6.6, point 3, et rien d'autre. Elle **nomme l'app** (« <app>
      range un fichier dans GFS, mais GFS garde déjà un fichier « Facture.pdf ». Que faire du nouveau ? » ; le nom est celui du manifeste
      dans la langue de la personne, jamais un texte du message), décrit le fichier gardé, et propose Garder les deux (le clavier y est),
-     Remplacer et Annuler (« le nouveau n'est pas rangé dans GFS »). Échap et un clic à côté valent Annuler. **GFS ne dit rien par-dessus
+     Remplacer et Annuler (« le nouveau n'est pas rangé dans GFS »). Échap vaut Annuler ; un clic à côté ne ferme rien (décidé le 09/11). **GFS ne dit rien par-dessus
      l'app**, ni phrase ni notice : c'est l'app qui rend compte, dans son coin d'état, de ce que dit la réponse ou l'erreur.
    - **Un export en lot** : les fichiers d'un même export portent le même `lot` et chacun son `suivants` (11, 10… 0). Tant qu'il en reste,
      la fenêtre offre la case « Faire pareil pour les suivants » : cochée, la réponse (Remplacer, Garder les deux ou Annuler) vaut pour
@@ -2124,6 +2148,34 @@ rangée d'un fichier, selon ce qui vient d'abord.
     pendant le choix d'un fichier pour une app, ils sont grisés comme le reste (la phrase le dit). [M] **Mesuré le 04/11** dans un vrai Grist
     (`labo/run-annuler.mjs`) et sous Firefox (`test/annuler-firefox.mjs`) : faits vérifiés, section 42.
 
+14. [D] **« Ouverts » : revenir à un fichier déjà ouvert, sans repartir de l'arborescence** (demande du porteur, 04/11 : « un système d'onglet pour
+    revenir sur un fichier ouvert et pouvoir faire des A/R entre plusieurs fichiers sans repartir à zéro dans l'arborescence » ; choix « la liste d'abord,
+    les onglets vivants après » ; « pas d'ajout sur la barre flottante », reconfirmé le 10/11 : la liste vit **seulement dans l'explorateur**). Le volet a une
+    première ligne, « Ouverts », avant « Récents » ; son nombre est celui des fichiers ouverts que la liste montre (aucun nombre quand il n'y en a pas).
+    **Ce qui y entre** : un fichier précis que GFS a ouvert dans une app et que l'app a ouvert (le double-clic, Entrée, un lien entre apps, « Lire » un PDF que
+    GFS garde). N'y entrent pas : un fichier vierge (« Nouveau », « Importer »), ce qu'une app ouvre toute seule (GFS ne le sait pas), ni un refus (la
+    personne a annulé dans l'app, ou l'app ne connaît pas l'appel `ouvrir`). **La liste** : les huit derniers (un neuvième fait sortir le plus ancien), à
+    plat (tous les dossiers, le dossier en indice), triée comme les favoris (par nom ; la tête de colonne change l'ordre) : son ordre ne bouge pas quand on
+    passe d'un fichier à l'autre, c'est ce qui fait un aller-retour. Elle ne garde que des clés `app:id`, **rien dans Grist ni dans le navigateur** : le
+    nom, le type, la date, le dossier et le poids sont ceux des fichiers d'aujourd'hui (un fichier renommé ou déplacé y est à jour, un fichier mis à la
+    corbeille ou disparu n'y est plus) ; quand Grist recharge le widget, tous les cadres meurent et la liste est vide. **Le mot « affiché »** (jamais
+    une couleur seule) est sur le fichier que l'app active montre, tant que c'est la session d'app que GFS a ouverte sur lui ; il s'efface quand l'app est
+    remplacée ou qu'un fichier vierge s'ouvre. **Revenir à un fichier** : double-clic ou Entrée, comme partout (une autre app est d'abord priée de se
+    fermer, point 5.4 point 3 ; la même app reçoit l'appel `ouvrir`) ; si l'app refuse, rien ne change et le fichier n'entre pas dans la liste.
+    **« Retirer des ouverts »** est le deuxième article du menu d'une ligne, dans cette vue seulement : la ligne sort de la liste, le fichier et l'app ne
+    bougent pas, la ligne suivante prend le clavier. Pendant le choix d'un fichier pour une app, la vue ne montre que ceux que l'app accepte. **Les onglets
+    vivants** (plusieurs cadres d'app gardés ensemble) **ne sont pas faits** : une seule app est vivante à la fois. [M] **Mesuré le 10/11** dans un vrai Grist
+    (`labo/run-ouverts.mjs`) et sous Firefox (`test/ouverts-firefox.mjs`) : faits vérifiés, section 79.
+15. [T] **Une liste longue ne construit que ce qu'on voit** (décision du porteur, 10/11, audit vitesse et poids : « Afficher seulement les lignes
+    visibles »). À partir de 200 lignes (liste) ou vignettes (`WINDOW_FROM`, `js/explorer-window.js`), l'explorateur construit les lignes visibles et huit
+    rangées de part et d'autre ; l'espace des autres est tenu par le remplissage du conteneur : la barre de défilement, Début, Fin, la molette et la position
+    gardée au redessin sont ceux d'une liste entière. **Ce que cela impose** : toutes les lignes d'une vue ont la même hauteur (mesurée à l'exécution, 28 px,
+    37 px en accessibilité renforcée ; le nom d'une vignette réserve deux lignes) ; le clavier, la sélection, le presse-papiers et « Ouverts » lisent les
+    données de la vue, non le DOM (`reveal(index)` construit et amène à l'écran la ligne voulue) ; le clavier reste à la liste quand la ligne qui l'avait sort de
+    la fenêtre ; `aria-rowcount` et `aria-rowindex` annoncent le vrai nombre de lignes et leur rang ; un glissement en cours tient les lignes en place jusqu'à sa
+    fin. **Ce que cela ne fait pas** : la recherche Ctrl+F du navigateur ne trouve pas une ligne qui n'est pas construite (le champ de recherche de l'explorateur,
+    lui, cherche dans toutes les données). [M] **Mesuré le 10/11** dans un vrai Grist et sous Firefox à 700 × 400 : faits vérifiés, section 87.
+
 ### 6.5 Préserver l'inconnu
 
 1. [T] Le socle de chaque app connaît la forme de tous ses objets, même ceux d'une extension absente. Un graphique dans un
@@ -2170,7 +2222,7 @@ fichier lui-même en pièce jointe de Grist.
 3. [T] **Un nom pris.** Importer un fichier dont le nom est déjà gardé ouvre une seule fenêtre, sur la base commune des fenêtres :
    « Remplacer » (la ligne garde son identifiant, son nom, sa place et ses favoris ; le contenu et la date changent), « Garder
    les deux » (le nouveau prend le premier nom libre, « Nom (1).pdf » ; un « (n) » déjà en fin de nom est remplacé, pas empilé ;
-   la casse du nouveau nom est gardée) ou rien (Annuler, Échap, un clic à côté). Le clavier est sur « Garder les deux » : un Entrée
+   la casse du nouveau nom est gardée) ou rien (Annuler, Échap ; un clic à côté ne ferme rien). Le clavier est sur « Garder les deux » : un Entrée
    distrait n'écrase rien. Un fichier qu'une app range sous un nom pris ouvre la même fenêtre, qui nomme l'app (5.4, point 9). Le nom libre et le nom pris sont recalculés sur la table **relue au moment d'écrire** : un fichier
    déposé ou retiré par une autre personne pendant que celle-ci décidait est pris en compte, jamais écrasé. L'ancienne pièce
    jointe d'un fichier remplacé n'est plus citée : Grist l'efface seul au bout de 7 jours (faits vérifiés, 14).
@@ -2261,8 +2313,39 @@ fichier lui-même en pièce jointe de Grist.
     la langue de GFS (`js/sync-port-text.js` : les textes du moteur, `error.*` et `recv.*`, plus six clés du port ; une clé inconnue est rendue telle quelle, sans avertissement, car le moteur s'en sert pour reconnaître une erreur
     prévue), `gfs.synchro.` pour les deux préférences. Les tables du moteur portent le préfixe `GFS_`. **Un seul moteur par page** (le port est global) et il ne se charge qu'au premier partage : `sync-port.js` n'est importé qu'à ce moment,
     et la carte d'importation de `index.html` nomme les modules de `kit/js/synchro/` (`outils/versions.mjs`). Une requête anonyme ne part jamais vers un autre serveur que celui du document (`otherInstance`). Le port a aussi `shareInfo` (le document qu'une clé de formulaire désigne : le contrôle d'un lien collé), `publicAccess` et `journalStats`, que les écrans de Sync+ appellent hors de `PORT_SHAPE`
-    (consigne 005). [M] 40 vérifications dans un vrai
-    Grist (faits vérifiés, 60), 15 essais du port sans Grist (`test/sync-port.test.mjs`).
+    (consigne 005). **Depuis le moteur 2.x (kit 0.14.0)** le REST n'est plus écrit par GFS : `createRestPort({ docApi: { fetchRows }, http })` (`kit/js/synchro/rest-port.js`) le rend tout entier (webhooks, `/compare`, SQL, envois directs,
+    lecture publique, fiche d'un partage, pièces jointes), et GFS ne donne que `http` : `request` (le jeton qui écrit quand `full`), `anonymous` (sans jeton ; une adresse d'un autre serveur n'est pas suivie : `otherInstance`), `download`, `upload` et
+    `docBaseUrl`, sur le cadre d'envoi. Un refus du serveur lève une erreur qui porte son `status` et le début (200 signes) de ce que Grist en dit ; le reste (cadre, jeton, réseau, délai, réponse inattendue) n'a pas de `status` et se
+    dit dans la langue de la personne ; une réponse vide est `null`. `isOwner` reste celui de GFS (le code seul de `GET /webhooks`). [M] 40 vérifications dans un vrai Grist (faits vérifiés, 60 et 66), 16 essais du port sans Grist
+    (`test/sync-port.test.mjs`).
+17. [T] **« Partager > Dans un autre document Grist » : un fichier, un document, un niveau** (décisions du 07/11 et du 09/11 ; premier lot : les PDF de `GFS_Fichiers`, propriétaire du document). La fenêtre « Partager » a deux onglets, « Dans ce document »
+    et **« Dans un autre document Grist »**, grisé (jamais masqué) avec sa raison pour un fichier d'app, pour un dossier, ou pour qui n'est pas propriétaire ; dégrisé pour le propriétaire **même quand les droits de GFS ne sont pas activés**. L'onglet liste les
+    **documents reliés** (`js/share-links.js`) avec le niveau **de ce fichier** : « Pas partagé », « Copie à jour », et par le menu « Une copie, une fois », « Arrêter la copie » (grisé, avec sa raison, pour un fichier pas partagé) ; un lien qui attend la
+    réponse de l'autre document est verrouillé (un clic dit pourquoi). « **Relier un nouveau document…** » ouvre le premier envoi (`js/share-other-window.js`, par-dessus « Partager »). **Un document relié est un export du moteur dont la condition nomme les
+    fichiers partagés** (`Identifiant in […]` sur `GFS_Fichiers`, jamais vide : un identifiant fictif quand le dernier fichier sort, car une condition sans valeur envoie tous les fichiers : faits vérifiés, 70). « Copie à jour » = le fichier est dans la
+    condition ; « Une copie, une fois » = il y entre, part, puis en sort (condition relue à ce moment-là) ; « Pas partagé » = il en sort. **GFS reçoit toujours « en archive »** : un fichier qui sort du partage **reste chez l'autre**, marqué `Supprimee_a_la_source`.
+    Le premier envoi suit `js/share-other-flow.js` : le choix (une copie une fois ou qui se met à jour ; le nom du lien est celui du document pour le second), l'accord (ce que GFS ajoute : la table `GFS_Synchro`, trois colonnes d'aide `id_sync`, `MajLe`, `RecalculLe`
+    dans `GFS_Fichiers` qui restent, un webhook ; **rien n'est écrit avant**), le code d'invitation, la réponse collée par l'autre personne (**le moteur juge le lien et le code, GFS n'en juge rien** : décision du porteur du 09/11), le document qui répond dit par
+    Grist avec le code de contrôle (**« Exiger la comparaison du code » est coché au départ à chaque envoi** — décision du porteur du 09/11, audit de sécurité : l'invitation est alors en sécurité renforcée du moteur, la case « J'ai comparé ce code avec celui de l'autre document » grise « Envoyer » tant qu'elle n'est pas cochée et le moteur refuse sans elle, `codeNotCompared` ; décochée, le code reste affiché et l'envoi part sans confirmation ; le réglage n'est pas retenu d'un envoi à l'autre), l'envoi ; « une fois » arrête ensuite le partage, « à jour » **garde le lien** (les fichiers suivants partent par le menu, sans nouveau code). Fermer la fenêtre avant l'envoi défait ce qui était préparé ; la fermer en cours
+    d'envoi laisse l'envoi se poursuivre (un avis le dit à la fin). **« Gérer les partages > Autres documents »** liste les liens avec leur état (à jour, en pause, bloqué, en attente) ; « Arrêter » (« Annuler » pour une invitation en attente) **demande d'abord**,
+    puis défait l'export, son webhook et ses lignes : **ce qui est arrivé reste chez l'autre**. **Le moteur ne se charge que pour un document qui partage ou a reçu, ou à l'ouverture d'un onglet ou d'une fenêtre qui en parle** (`js/sync-service.js`) : à
+    l'ouverture de la page, `js/sync-resume.js` lit la liste des tables et relance la boucle d'envoi (table `GFS_Synchro`) ou de réception (un `GFS_Journal_…`), sans quoi le contenu d'un fichier ne passerait pas quand l'une des deux pages était fermée. **Les tables techniques ne sont lisibles que des propriétaires** (décision du porteur du 09/11, audit de sécurité ; faits vérifiés, 76) : `js/sync-rules.js` pose, avec la note « GFS : Partages · … », `GFS_Synchro` en `+CRUD` pour les propriétaires et `-CRUD` pour les autres, un journal `GFS_Journal_…` en `+CRUD` / `-RUD` (la création reste ouverte, c'est par elle que le formulaire de réception écrit) ; `GFS_Recus…` reste lisible. Les règles se posent à la fermeture de la fenêtre de l'envoi, de la réception ou de « Relier » (Grist recharge alors la page) et à l'ouverture de la page ; seuls les propriétaires, prouvés tels, font tourner les boucles du moteur : **les fichiers ne se recopient que lorsqu'un propriétaire ouvre le document**.
+    **Le côté qui reçoit** : « Nouveau > Importer > **D'un autre document Grist…** » (`js/share-receive-window.js`, parcours `js/share-receive-flow.js`, fonctions du moteur `kit/js/synchro/target/receive.js` ; grisé avec sa raison quand rien ne peut s'écrire
+    ou pour qui n'est pas propriétaire). Quatre écrans sur la base commune des parcours (`js/steps-window.js`) : le code d'invitation collé (le moteur le lit ; un code d'une autre sorte, un lien public ou un échange, est refusé), **l'accord** (ce que GFS ajoute :
+    une table et un journal technique avec la page de son formulaire ; **rien n'est écrit avant « Accepter »**), le **lien du formulaire** que la personne copie dans Grist (Grist ne donne pas la clé d'un formulaire à un widget ; le moteur vérifie que le lien
+    écrit bien dans ce journal), puis **la réponse** à donner à l'envoyeur et le même code de contrôle que chez lui. GFS reçoit **toujours en archive** (70) ; la boucle de réception démarre dès la réponse. **Où arrivent les fichiers** : une destination ne reçoit
+    les fichiers que d'un seul partage (règle du moteur, `destTaken`, mesurée) : `GFS_Recus` pour le premier, puis `GFS_Recus_2`, `GFS_Recus_3`… (la première table libre, jamais une table qui existe déjà) ; un partage déjà reçu de ce document reprend sa
+    réception (même table, même journal) avec la nouvelle invitation. Fermée avant la réponse, la fenêtre défait ce qu'elle a créé (le journal, la page, la table encore vide) ; après la réponse, rien n'est défait. **Relier sans fichier** (le modèle du porteur en deux étapes : le setup qui lie les deux documents, avec ou sans fichier, puis les partages par fichier) : « Gérer les partages > Autres documents > **Relier un document…** » ouvre la même
+    fenêtre sans fichier (la condition nomme l'identifiant fictif de GFS, rien ne part, le lien reste ; faits vérifiés, 71 et essai `labo/run-relier-sans-fichier.mjs`) ; chaque fichier se partage ensuite par « Partager » sans nouveau code. **« Partagés avec moi »** (09/11 ; une vue du volet de gauche, entre « Favoris » et « Corbeille » : `js/received-files.js`, `js/received-control.js`, `js/received-window.js`) : la liste à plat de tout ce qui arrive dans
+    les tables `GFS_Recus`, `GFS_Recus_2`… (toutes, par leur nom), jamais mêlée aux fichiers vivants (`loadFiles` les rend à part, `received` : choisir, ouvrir, lire, ranger et chercher d'une app ne les voient pas, et les marques de
+    rangement de GFS ne les touchent pas). Une arrivée est **à accepter** (ni `Accepte` ni `Refuse` : grisée, cadenas, mot « À accepter », sans étoile ; le volet porte leur nombre), **acceptée** (`Accepte` vrai : elle se lit comme un PDF que GFS garde,
+    « Lire » ou « Télécharger » ; ni corbeille, ni copie, ni renommage : la table est celle du partage) ou **refusée** (`Refuse` vrai : plus montrée). La question « Accepter « X » ? » (Entrée, double clic, « Ouvrir », menu « ⋯ ») est
+    **un oui ou un non pour ce fichier seulement** : Échap n'écrit rien ; la marque s'écrit sur la seule ligne, après le geste (`OwnTable` ajoute les deux colonnes Bool `Accepte` et `Refuse` à la table reçue avant d'écrire, jamais
+    de `AddTable` ; l'accord de la réception les annonce). **Refuser masque, n'efface pas** : une ligne effacée reviendrait à la mise à jour de l'envoyeur (72). Un document en lecture seule dit pourquoi, sans fenêtre ; sans arrivée, la vue dit quoi faire.
+    **La cloche Notifications** (09/11) : à droite de l'en-tête de l'explorateur (icône `bell`, à ajouter à la charte), une pastille dit le nombre d'arrivées à accepter, et le menu les nomme (« « Contrat.pdf » de X, à accepter » ; six au plus, puis « Voir N autres… ») avant « Ouvrir « Partagés avec moi » » ; un clic sur une arrivée pose sa question. Elle lit la liste déjà chargée : **elle n'écrit rien et ne crée aucune table** ; sans notification la ligne reste, grisée, et son clic dit ce qui s'annonce ici ; pendant le choix d'un fichier la cloche est grisée. La table `GFS_Notifications` ne viendra que pour une notification qu'il faut retenir (lue ou non, un partage demandé avant tout fichier), avec l'accord de la personne.
+    **L'arrivée automatique** (09/11) : la boucle qui reçoit (celle du moteur, qui tourne tant que la page est ouverte, `js/sync-service.js`) dit à GFS quand un passage a changé quelque chose (`whenReceived`) ; si l'explorateur est ouvert, la liste des arrivées, le nombre du volet et la cloche se relisent seuls (`Explorer.setReceived`, rien d'autre ne bouge ; la ligne choisie reste choisie). Explorateur fermé : rien ne se relit, l'ouverture relit tout.
+    **Pas encore** : les dossiers partagés, un partage demandé avant tout fichier (la cloche le dira quand `GFS_Notifications` existera). [M] 24 vérifications dans un vrai Grist pour l'envoi (faits vérifiés, 68), 10 pour le retrait d'un fichier et la condition jamais vide, et la vie d'un lien dans
+    les fenêtres de GFS (70), 19 pour la réception de bout en bout (71), la liste « Partagés avec moi » et sa cloche dans un vrai Grist (`labo/run-partages-recus.mjs`, 75), 0 écart sous Firefox (`test/partager-autre-firefox.mjs`, `test/partager-recevoir-firefox.mjs`, `test/partages-recus-firefox.mjs`, `test/partager-firefox.mjs`), essais sans Grist du parcours, des liens et de la reprise.
 
 ### 6.7 `GFS_Corbeille`, la corbeille des fichiers des apps
 
@@ -2380,17 +2463,30 @@ d'app mis à la corbeille (6.2), jamais avant.
 5. [T] **L'app en est prévenue.** Après chaque écriture de ses réglages, GFS lui envoie l'événement `reglages` `{ enregistres }`
    (5.1) : vrai si le réglage est dans la vue, faux s'il est resté un brouillon. Une app qui rappelle « Enregistrer » à la personne
    (Publipostage+) tait son rappel quand `enregistres` est vrai ; une app qui ignore l'événement, ou qui est seule, n'a rien à changer.
+   **Et d'avance** (décision du porteur, 10/11, « GFS le dit dès l'ouverture ») : une app qui ne sait rien avant son premier réglage montrait,
+   dans GFS, son rappel un instant à chaque premier réglage, et deux phrases qui demandent d'enregistrer la vue tant qu'aucun réglage n'avait
+   été écrit. À chaque demande de `contexte` d'une app qui déclare des clés `reglages` (pas en lecture seule), GFS **lit sa section, sans rien
+   écrire** (les mêmes sections candidates que pour écrire, point 4) et envoie `reglages` : **vrai** quand une seule section dit ce que Grist
+   dit à GFS (ou que la recherche a déjà reconnu la sienne) ; **faux** quand il sait déjà qu'il se repliera (accès pas `full`, aucune section,
+   brouillon déjà posé : la raison est dite en console, comme à l'écriture) ; **rien** quand il ne sait pas (plusieurs sections pareilles :
+   seule une marque le dirait, et une marque s'écrit). Les droits de structure ne se lisent pas : une annonce vraie se corrige par la première
+   écriture que Grist refuse (`enregistres: false`). Une écriture qui part avant la réponse de la lecture la dépasse : l'annonce n'est alors
+   pas envoyée. Aucune consigne aux apps : celles qui écoutent `reglages` (Publipostage+) le reprennent comme un événement de plus.
 6. [T] **Le repli sur le brouillon.** GFS écrit alors un brouillon, clé par clé (point 1, comme avant), dit `enregistres: false`, et
-   avertit une fois par raison dans la console, quand : l'accès de GFS n'est pas `full` ou le document est en lecture seule ; aucune
+   avertit une fois par raison dans la console, quand : l'accès de GFS n'est pas `full` ; aucune
    section n'est retrouvée (aucune candidate, ou recherche sans réponse) ; le texte de la section est illisible ; **un brouillon est
    déjà posé dans la section** (écrire dans la vue le cacherait, Grist rendant le brouillon avant le réglage enregistré : GFS le
    rejoint plutôt que de le masquer, et « Enregistrer » ou « Retour » le libère) ; Grist refuse l'écriture (une règle d'accès
-   réserve la structure du document) ; l'écho manque.
+   réserve la structure du document) ; l'écho manque. **En lecture seule**, le courtier refuse l'écriture (`GFS_LECTURE_SEULE`) avant tout : ni vue
+   ni brouillon, et aucun événement `reglages` (une app qui montre un rappel à l'écriture le garde alors, sans rien d'enregistré).
 7. [M] **Mesuré le 03/11** dans un vrai Grist (grist-static 0.1.6, Chromium, 700 × 400, souris et clavier réels) avec Publipostage+ :
    le geste « Utiliser le modèle ouvert pour cette vue » et « Retirer » ne montrent aucune barre ; l'arrivée rouvre la vue sur le modèle
    retenu ; deux GFS sur la même table gardent chacune son modèle, sans marque qui reste ; un brouillon déjà posé reste un brouillon
    et se libère par « Retour » (faits vérifiés, 18). Non mesuré : un vrai serveur et une règle d'accès qui refuse (le repli est couvert
    par les tests, contre un faux port), Firefox, ce que « Annuler » (Ctrl+Z) de Grist fait d'une écriture de la vue.
+   **Mesuré le 10/11** (annonce d'ouverture, faits vérifiés 85) : avant l'annonce, la vraie Publipostage+ montrait son rappel au premier
+   réglage et les deux phrases demandaient d'enregistrer ; avec elle, `GfsLink.settingsSaved()` est vrai dès l'ouverture, les deux phrases
+   n'y demandent rien et le rappel ne paraît à aucun moment.
 8. [T] **Ce que cela ne garantit pas.** Une écriture réécrit tout le texte de la section (accès et adresse compris) : un autre
    changement de la même section dans les quelques millisecondes qui suivent la relecture serait perdu. Elle demande le droit de
    modifier la structure du document, sinon c'est le repli du point 6. Et elle ne règle rien pour une app **seule** (point 9).
@@ -2480,8 +2576,8 @@ le document, pour que l'installation s'enregistre tout de suite.
 9. [D] **L'ancienne clé `gfs.apps`** du prototype V0.2 n'est plus ni lue ni écrite ; une section qui la porte n'est pas modifiée.
 10. [T] **Mesuré le 16/10** dans un vrai Grist (labo grist-static 0.1.6, Chromium, panneau 700 × 400, V0.3 du prototype ;
     `run-modules.mjs` et `run-reconstruit.mjs`). Lire ne crée rien : sans geste, ni table ni page de plus. Le premier geste
-    d'installation pose la question (le nom de la table, qu'elle vaut pour tout le document, qu'une page s'ajoute) ; Échap,
-    « Annuler » ou un clic hors de la fenêtre la refusent : la case revient, aucune table ni page n'est créée, la personne en est
+    d'installation pose la question (le nom de la table, qu'elle vaut pour tout le document, qu'une page s'ajoute) ; Échap
+    ou « Annuler » la refusent (un clic hors de la fenêtre ne la ferme pas) : la case revient, aucune table ni page n'est créée, la personne en est
     avertie, et la question se repose au geste suivant. Accord donné : `AddTable` rend `{ id, table_id, columns, views }` (GFS
     relit l'identifiant dans `table_id`), la table a ses sept colonnes, **Grist ajoute une page pour elle**, et la ligne
     réservée est écrite par `AddRecord`. Les gestes suivants ne posent plus de question et écrivent par `UpdateRecord` après une
@@ -2989,6 +3085,9 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
        le modèle privé du propriétaire, crée le sien (Grist écrit son adresse), ne triche pas sur l'auteur, écrit un modèle ouvert en écriture et pas un modèle en lecture, garde la ligne de réglages ; le lecteur n'écrit
        rien. **Pas mesuré** : avec les vraies apps sous règles (leur comportement devant un refus d'écriture) ; les tables liées (versions, commentaires) ne sont pas couvertes ; le numéro de ligne peut être réutilisé par Grist
        après une suppression (les partages d'un fichier supprimé attendent un nettoyage) ; la corbeille (point 12).
+       **Corrigé le 09/11 (audit de sécurité, faits vérifiés 73)** : l'auteur d'un PDF de GFS est lui aussi `GFS_Auteur` (écrit par Grist, `-U` pour qui n'est pas propriétaire), plus la colonne « Auteur » : l'explorateur
+       réécrit « Auteur » à chaque remplacement du contenu, et un porteur du droit « écriture » devenait ainsi auteur, donc administrateur, du PDF d'un autre (effacer, donner l'administration). Les PDF d'avant gardent leur
+       auteur : la colonne reprend « Auteur » une fois, à la reprise du partage (« Compléter »).
 
     i. [T] **Groupes et « Gérer les partages » livrés le 07/11** (lot 3 ; `GROUPS_TABLE`, `groupColumns`, `planGroupAdd`, `planGroupsRead` de `js/sharing-model.js` ; `js/manage-window.js`, `js/manage-control.js`, `js/pick-window.js`).
        La table `GFS_Groupes` naît avec le partage (ou à la reprise d'un partage d'avant, qui relit alors les colonnes d'aide) : `Nom`, `NomL`, `PersonnesIci` (adresses tapées), `Source`, `SourceEmail`, `SourceGroupe`

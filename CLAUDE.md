@@ -51,7 +51,7 @@ Si un fait nouveau remet en cause une de ces lignes : le dire au porteur, avec l
 ## Règles de code
 
 - JavaScript en modules ES, HTML et CSS, sans framework. Aucune étape de construction pour servir les pages : ce qu'un outil
-  génère (import map, CSP, empreintes) est commité.
+  génère (import map, liens de préchargement, CSP, empreintes) est commité.
 - Le courtier reste petit, sans bibliothèque, avec ses propres tests. Il ne charge jamais de code depuis une adresse lue
   dans des réglages, une table ou un message.
 - Messages : `addEventListener('message')` et vérification de `event.source`, jamais `window.onmessage =` (cela
@@ -80,12 +80,16 @@ Si un fait nouveau remet en cause une de ces lignes : le dire au porteur, avec l
 - Grisé, jamais masqué. On ajoute, on ne retire rien sans l'accord du porteur.
 - Fenêtres sur une seule base (titre et boutons fixes) ; saisies et confirmations par des fenêtres du widget, jamais
   `prompt()` ni `confirm()` ; le dernier menu ouvert passe au-dessus (`Layers.raise`, jetons `--z-*`).
+  Un clic sur le voile d'une fenêtre ne ferme rien (charte ; seuls « Annuler », « Fermer » et Échap ferment, décidé le 09/11).
 - Tout choix de colonne, de table, de modèle ou de fichier par la liste avec recherche (mots dans n'importe quel ordre,
   accents, casse et ponctuation ignorés).
 - Panneau de référence : 700 × 400. Vérifier à la vraie souris et au vrai clavier, en clair et en sombre, en français et en
   anglais.
 - Français et anglais dans le même lot. « modèle », jamais « template » ; pluriels par `{n|singulier|pluriel}` ; le vide
   d'une liste s'écrit « — Choisir … — ». Marque « Grist Factory ».
+- Textes français de GFS : **vouvoiement partout** (décidé par le porteur le 09/11, comme les apps) : « vous », « votre », impératif
+  en « -ez » ; l'anglais ne change pas. `test/i18n.test.mjs` refuse « tu », « ton », « t' » et l'impératif en « tu » ; un texte
+  qui décrit un geste à la 3e personne (« Retire les règles… ») va dans la liste de ce test, avec sa raison.
 - Couleurs par type dans l'explorateur seulement : document bleu, grille vert, présentation orange ; l'icône et le mot du
   type toujours ensemble.
 

@@ -14,7 +14,7 @@
 //   9. Une règle d'accès de Grist qui refuse d'écrire la colonne : « refus », rien n'est écrit (ce que GFS dit, c'est ce que Grist a refusé).
 import { createServer } from 'node:http';
 import { serve } from './lab-server.mjs';
-import { chromium, say, check } from './lab-common.mjs';
+import { chromium, say, check, probeDeclares } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { createI18n } from '../js/i18n.js';
 import { makePdf } from './pdf-fixture.mjs';
@@ -27,7 +27,7 @@ const KIT = process.env.LAB_KIT === '1';
 const ID = KIT ? 'sonde-jk' : 'sonde-j';
 const GFS_URL = `http://127.0.0.1:${PAGE_PORT}/prototype/index.html`;
 const PROBE_URL = `http://127.0.0.1:${PAGE_PORT}/prototype/labo/sondes/j-joindre/`;
-const ALWAYS = { fichier: 'controller.js', de: "export const ALWAYS_ON = Object.freeze(['publipostage']);", vers: `export const ALWAYS_ON = Object.freeze(['publipostage', '${ID}']);` };
+const ALWAYS = probeDeclares(ID, { permanente: true });
 
 const pdfItem = (ligne, nom, title) => {
   const buffer = makePdf({ pages: 1, title });

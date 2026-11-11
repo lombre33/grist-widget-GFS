@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { Transfer, TransferError } from '../js/transfer.js';
 
 const BASE = 'https://pages.exemple.fr/gfs/index.html';
-const GIVEN = { token: 'jeton+secret/=', baseUrl: 'https://grist.exemple.fr/o/docs/api/docs/DOC123/' };
+const GIVEN = { token: 'test+jeton/=', baseUrl: 'https://grist.exemple.fr/o/docs/api/docs/DOC123/' };
 
 // Une doublure du cadre : à la poignée de main elle reçoit le port, dit `ready` (sauf `mute`) et répond à chaque requête par `answer(requête)`.
 function fakeFrames({ answer = request => ({ id: request.id, ok: true, value: 5 }), mute = false } = {}) {
@@ -51,7 +51,7 @@ test('envoyer : un jeton en écriture, le fichier et son nom au cadre, l\'adress
   assert.deepEqual(run.asked, [{ readOnly: false }]);
   const [request] = run.frames.requests;
   assert.deepEqual([request.op, request.name], ['upload', 'Facture.pdf']);
-  assert.equal(request.url, 'https://grist.exemple.fr/o/docs/api/docs/DOC123/attachments?auth=jeton%2Bsecret%2F%3D', 'un seul « / » entre l\'adresse et le chemin, le jeton encodé');
+  assert.equal(request.url, 'https://grist.exemple.fr/o/docs/api/docs/DOC123/attachments?auth=test%2Bjeton%2F%3D', 'un seul « / » entre l\'adresse et le chemin, le jeton encodé');
   assert.deepEqual(request.file, file);
   finish(run);
 });
@@ -62,7 +62,7 @@ test('télécharger : un jeton en lecture seule, l\'adresse de la pièce jointe,
   const got = await run.transfer.download(42);
   assert.equal(await got.text(), '%PDF-1.4');
   assert.deepEqual(run.asked, [{ readOnly: true }]);
-  assert.equal(run.frames.requests[0].url, 'https://grist.exemple.fr/o/docs/api/docs/DOC123/attachments/42/download?auth=jeton%2Bsecret%2F%3D');
+  assert.equal(run.frames.requests[0].url, 'https://grist.exemple.fr/o/docs/api/docs/DOC123/attachments/42/download?auth=test%2Bjeton%2F%3D');
   assert.equal(run.frames.requests[0].op, 'download');
   finish(run);
 });
@@ -153,7 +153,7 @@ test('isOwner : 200 → vrai ; 403 « No owner access » → faux ; tout le rest
   assert.equal(await owner.transfer.isOwner(), true);
   assert.deepEqual(owner.asked, [{ readOnly: false }], 'le jeton en lecture seule est refusé à tous : il faut celui qui peut écrire');
   assert.equal(owner.frames.requests[0].op, 'status');
-  assert.equal(owner.frames.requests[0].url, 'https://grist.exemple.fr/o/docs/api/docs/DOC123/webhooks?auth=jeton%2Bsecret%2F%3D');
+  assert.equal(owner.frames.requests[0].url, 'https://grist.exemple.fr/o/docs/api/docs/DOC123/webhooks?auth=test%2Bjeton%2F%3D');
   finish(owner);
   const editor = setup({ frame: { answer: request => ({ id: request.id, ok: false, network: false, status: 403, message: 'No owner access' }) } });
   assert.equal(await editor.transfer.isOwner(), false);
@@ -180,7 +180,7 @@ test('sql : un jeton en lecture seule, l\'adresse /sql porte le jeton et la lect
   assert.deepEqual(run.asked, [{ readOnly: true }], 'une lecture : le jeton ne peut pas écrire');
   const [request] = run.frames.requests;
   assert.equal(request.op, 'json');
-  assert.equal(request.url, 'https://grist.exemple.fr/o/docs/api/docs/DOC123/sql?auth=jeton%2Bsecret%2F%3D&q=SELECT%201%20AS%20octets');
+  assert.equal(request.url, 'https://grist.exemple.fr/o/docs/api/docs/DOC123/sql?auth=test%2Bjeton%2F%3D&q=SELECT%201%20AS%20octets');
   finish(run);
 });
 
@@ -211,10 +211,10 @@ test('rest : un jeton qui peut écrire (par défaut), l\'adresse du document + l
   assert.deepEqual(run.asked, [{ readOnly: false }]);
   const [request] = run.frames.requests;
   assert.deepEqual([request.op, request.method, request.json], ['rest', 'POST', { webhooks: [{ fields: { name: 'x' } }] }]);
-  assert.equal(request.url, 'https://grist.exemple.fr/o/docs/api/docs/DOC123/webhooks?auth=jeton%2Bsecret%2F%3D');
+  assert.equal(request.url, 'https://grist.exemple.fr/o/docs/api/docs/DOC123/webhooks?auth=test%2Bjeton%2F%3D');
   await run.transfer.rest('GET', '/compare', { writable: false, params: { left: 'a b', right: 'HEAD' } });
   assert.deepEqual(run.asked.at(-1), { readOnly: true }, 'une lecture : le jeton ne peut pas écrire');
-  assert.equal(run.frames.requests.at(-1).url, 'https://grist.exemple.fr/o/docs/api/docs/DOC123/compare?auth=jeton%2Bsecret%2F%3D&left=a%20b&right=HEAD');
+  assert.equal(run.frames.requests.at(-1).url, 'https://grist.exemple.fr/o/docs/api/docs/DOC123/compare?auth=test%2Bjeton%2F%3D&left=a%20b&right=HEAD');
   finish(run);
 });
 

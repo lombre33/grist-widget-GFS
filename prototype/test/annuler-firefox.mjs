@@ -25,6 +25,19 @@ async function afterDelete(run, t) {
   await run.expect('Ctrl+Z de plus', 'Ctrl+Z de plus devait dire qu\'il n\'y a rien à annuler', state => state.notices.at(-1) === t('undo.nothing') && names(state).includes('Convocation'));
 }
 
+// Audit des parcours du 10/11 (carte « Sélectionner le fichier ramené ») : après Ctrl+Z, le fichier qui revient est la ligne choisie et prend le clavier ; avant, la sélection restait sur un voisin (« Main » ici),
+// et un Suppr de plus agissait sur lui.
+async function selectsRestored(run) {
+  await run.reset();
+  await run.click('Convocation');
+  await run.page.press('Delete');
+  await run.expect('Suppr', 'Suppr devait mettre « Convocation » à la corbeille', state => state.trashCount === '1' && !names(state).includes('Convocation'));
+  await run.click('Main');
+  await run.expect('Main choisie', 'un clic sur « Main » devait la choisir', state => state.selected === 'Main');
+  await undo(run.page);
+  await run.expect('Ctrl+Z choisit le fichier ramené', 'Ctrl+Z devait ramener « Convocation » et la choisir (la ligne choisie était « Main »), le clavier sur elle', state => names(state).includes('Convocation') && state.selected === 'Convocation' && state.focus === 'Convocation');
+}
+
 // Restaurer à la corbeille (Entrée) puis Ctrl+Z : le fichier retourne à la corbeille.
 async function afterRestore(run, t) {
   await run.reset();
@@ -213,7 +226,7 @@ export async function annulerProblems(page, language, tag) {
   const found = [];
   const t = createI18n(language).t;
   const run = new Run(page, tag, found, 'Ctrl+Z et Ctrl+Y');
-  const steps = [afterDelete, afterRestore, afterCopy, reverseOrder, searchKeepsKey, redoKeys, redoCopy, newGestureClearsRedo, searchKeepsRedoKeys, compositeWaitsForApp, compositeRestoreNeedsNoApp, compositeRedoWaitsForApp, whileChoosing];
+  const steps = [afterDelete, selectsRestored, afterRestore, afterCopy, reverseOrder, searchKeepsKey, redoKeys, redoCopy, newGestureClearsRedo, searchKeepsRedoKeys, compositeWaitsForApp, compositeRestoreNeedsNoApp, compositeRedoWaitsForApp, whileChoosing];
   for (const step of steps) {
     try {
       await step(run, t);

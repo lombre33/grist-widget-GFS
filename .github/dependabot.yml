@@ -1,0 +1,20 @@
+# Les mises à jour proposées (audit du code du 09/11, choix du porteur). Une proposition = une demande de fusion à relire ; rien n'avance seul.
+# - npm : les outils d'essai de `prototype/` (esbuild, grain-rpc, acorn) ; versions exactes dans package.json, le fichier de verrouillage fait foi.
+# - npm, la liste des bibliothèques que GFS porte pour les extensions (`prototype/bibliotheques/package.json`, cahier 4.7) : une proposition ne change que la version de la liste ; l'essai « catalogue cohérent » reste rouge
+#   jusqu'à ce que `node outils/bibliotheques.mjs` (depuis `prototype/`) réécrive le catalogue, les empreintes et la copie vendorisée, dans le même lot : la proposition se complète puis se relit.
+#   À relire avec elle : les paquets TipTap de la liste suivent la version de l'éditeur de Publipostage+ (une seule copie de ProseMirror, sinon le curseur des autres disparaît) ; pdf.js fixe le navigateur minimal de la lecture de PDF.
+# - gitsubmodule : la référence du kit et celle de chaque app ; avancer une référence est un commit à part, relu (CLAUDE.md, « Git et publication »).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /prototype
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /prototype/bibliotheques
+    schedule:
+      interval: weekly
+  - package-ecosystem: gitsubmodule
+    directory: /
+    schedule:
+      interval: weekly

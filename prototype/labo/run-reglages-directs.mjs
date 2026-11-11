@@ -1,5 +1,6 @@
 // Les réglages d'une app écrits dans la vue, sans « Enregistrer » (contrats 7.3), dans un vrai Grist, avec la vraie Publipostage+ que GFS référence, à 700 × 400, à la vraie souris et au vrai clavier.
 // Le geste qui a fait naître le besoin (03/11) : Réglages > Vue > « Utiliser le modèle ouvert pour cette vue » ouvrait la barre « Enregistrer » de Grist.
+//   0. L'annonce d'ouverture : avant tout geste, GFS dit à l'app que ses réglages iront dans la vue (`GfsLink.settingsSaved()` vrai, les deux phrases des Réglages sans demande d'enregistrer), et le rappel de l'app ne paraît jamais.
 //   1. Le geste : aucune barre ; le réglage est dans `_grist_Views_section.options` (`customView.widgetOptions.modeleDeLaVue`), le reste de la section tel quel (accès, adresse, autres options) ; aucun cadre
 //      reconstruit (GFS ni l'app) ; l'app reçoit l'écho des réglages et l'événement `reglages` (`enregistres: true`).
 //   2. « Retirer » : la clé repasse à `null` dans la vue, toujours sans barre.
@@ -91,6 +92,20 @@ check('une seule section de GFS, sans réglage de widget', start.length === 1 &&
 check('aucune barre « Enregistrer » au départ', (await saveBars()) === 0);
 let app = await appOf(frame, DOCUMENT.name);
 await watch(frame, app);
+// L'annonce d'ouverture (contrats 7.3, point 5) : avant tout geste, GFS a dit à l'app que ses réglages iront dans la vue ; la ligne et les deux phrases de Publipostage+ n'attendent pas le premier réglage.
+const opened = await app.evaluate(() => ({
+  saved: GfsLink.settingsSaved(),
+  view: document.querySelector('[data-i18n^="settings.view.intro"]').getAttribute('data-i18n'),
+  access: document.querySelector('[data-i18n^="settings.access.saveHint"]').getAttribute('data-i18n'),
+}));
+check('avant tout réglage, l\'app sait que ses réglages iront dans la vue (annonce de GFS à l\'ouverture)', opened.saved === true, opened);
+check('les deux phrases des Réglages (Vue, Accès) ne demandent pas d\'enregistrer, dès la première ouverture', opened.view === 'settings.view.introSaved' && opened.access === 'settings.access.saveHintSaved', opened);
+// Le rappel ne doit jamais paraître, pas même un instant : on note chaque fois qu'il est montré avec un texte.
+await app.evaluate(() => {
+  const box = document.getElementById('settings-save-reminder');
+  window.__rappel = [];
+  new MutationObserver(() => { if (!box.hidden && box.textContent) window.__rappel.push(box.textContent); }).observe(box, { attributes: true, childList: true, characterData: true, subtree: true });
+});
 
 // ===== 1. Le geste de la personne.
 say('--- 1. Réglages > Vue > « Utiliser le modèle ouvert pour cette vue »');
@@ -107,6 +122,7 @@ check('l\'app relit son réglage (écho de Grist) : le modèle de la vue est cel
 check('l\'app reçoit l\'événement `reglages` : enregistré dans la vue', JSON.stringify(await received(app)) === JSON.stringify([{ enregistres: true }]), await received(app));
 check('ni le cadre de GFS ni celui de l\'app n\'ont été reconstruits', (await marks(frame, app)).join() === 'avant,avant', await marks(frame, app));
 check('GFS n\'a rien dit en console (aucun repli sur le brouillon)', warnings.length === 0, warnings);
+check('le rappel « Enregistrer » de Publipostage+ n\'a paru à aucun moment, pas même un instant', (await app.evaluate(() => window.__rappel)).length === 0, await app.evaluate(() => window.__rappel));
 say('rappel « Enregistrer » de Publipostage+ (son texte, à taire quand GFS dit que c\'est enregistré) :', JSON.stringify(afterSet.reminder));
 await lab.shotPanel(run, '1-apres', frame);
 

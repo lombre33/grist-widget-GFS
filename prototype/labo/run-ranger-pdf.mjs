@@ -7,13 +7,13 @@
 //   1. La table GFS_Fichiers n'existe pas : GFS demande l'accord ; refusée, rien n'est créé et l'app reçoit GFS_ANNULE ; dans un lot, la question n'est posée qu'une fois.
 //   2. Accordée : le PDF est rangé (le File vient d'un cadre isolé : même empreinte), l'app reçoit { statut, id, nom }, GFS ne dit rien par-dessus l'app, la liste de l'explorateur le montre.
 //   3. Le dossier que l'app donne : un fichier nouveau y entre (la table du rangement est celle de l'installation de l'app), un fichier remplacé garde sa place.
-//   4. Un nom pris : la fenêtre nomme l'app, décrit le fichier existant, tient dans le panneau ; Remplacer, Garder les deux, Annuler, Échap et un clic à côté.
+//   4. Un nom pris : la fenêtre nomme l'app, décrit le fichier existant, tient dans le panneau ; Remplacer, Garder les deux, Annuler, Échap ; un clic à côté ne ferme rien.
 //   5. Un lot : la case « Faire pareil pour les suivants » (souris et clavier), Annuler avec la case, la case absente du dernier fichier, la fenêtre qui revient sans la case.
 //   6. Des dépôts lancés ensemble passent l'un après l'autre (une seule fenêtre à la fois).
 //   7. Des demandes hors règle et des fichiers qui n'en sont pas : refusés (GFS_REFUSE) sans rien écrire ; un envoi qui échoue : GFS_ECHEC, avec la raison en mots.
 import { createServer } from 'node:http';
 import { serve } from './lab-server.mjs';
-import { chromium, say, check } from './lab-common.mjs';
+import { chromium, say, check, probeDeclares } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { createI18n } from '../js/i18n.js';
 import { makePdf } from './pdf-fixture.mjs';
@@ -27,7 +27,7 @@ const PROBE = KIT ? 'zk' : 'z';
 const ID = `sonde-${PROBE}`;
 const APP = `${lang === 'fr' ? 'Sonde' : 'Probe'} Z${KIT ? ' kit' : ''}`;
 const PROBE_URL = `http://127.0.0.1:${PAGE_PORT}/prototype/labo/sondes/z-ranger-pdf/`;
-const ACCEPTS = { fichier: 'controller.js', de: 'const ACCEPTS_OPEN = Object.freeze({', vers: `const ACCEPTS_OPEN = Object.freeze({ '${ID}': { nouveau: true },` };
+const ACCEPTS = probeDeclares(ID, { ouverture: { nouveau: true } });
 const FIVE_SECONDS = 5000;
 
 // Un PDF de l'app : son nom pour GFS, ses octets (base64, pour passer dans le cadre de l'app), l'empreinte qu'on doit retrouver chez Grist. `title` change le contenu, donc l'empreinte.
@@ -186,11 +186,15 @@ async function playTaken(run) {
     && (await hashOf(rest, 'Facture (1).pdf')) === run.items.facture3.hash && (await hashOf(rest, 'Facture.pdf')) === run.items.facture2.hash && (await snapshot(rest)).rows === before.rows + 1, answer);
 
   const rowsNow = await snapshot(rest);
-  for (const [how, give] of [['Annuler', () => win.cancel.click()], ['Échap', () => page.keyboard.press('Escape')], ['un appui à côté de la fenêtre', () => pressOutside(page, frame)]]) {
+  // Un appui à côté de la fenêtre ne la ferme pas (charte, décidé le 09/11) : elle reste ouverte et ne répond rien, puis « Annuler » la ferme.
+  let stayed = true;
+  const pressedOutside = async () => { await pressOutside(page, frame); await page.waitForTimeout(300); stayed = (await win.cancel.count()) === 1 && (await settled(pending, 150)) === 'attente'; await win.cancel.click(); };
+  for (const [how, give] of [['Annuler', () => win.cancel.click()], ['Échap', () => page.keyboard.press('Escape')], ['un appui à côté de la fenêtre (elle reste ouverte), puis Annuler', pressedOutside]]) {
     pending = ask(page, 'ranger', run.items.facture4);
     await win.open();
     await give();
     answer = await settled(pending);
+    if (how.startsWith('un appui')) check('un appui à côté de la fenêtre ne la ferme pas et ne répond rien', stayed);
     check(`${how} : { statut: « ignore », id et nom nuls }, rien n'est envoyé ni écrit`, answer.ok === true && answer.data.statut === 'ignore' && answer.data.id === null && answer.data.nom === null && JSON.stringify(await snapshot(rest)) === JSON.stringify(rowsNow), answer);
   }
 }

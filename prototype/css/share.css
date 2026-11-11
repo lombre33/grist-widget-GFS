@@ -1,48 +1,71 @@
 /* La fenêtre « Partager » (js/share-window.js ; maquette du 06/11) : tout par les jetons de gfs.css, jamais une couleur en dur. La même base que les autres fenêtres (modules.css) : le titre et le pied restent
    en place, seul le contenu défile. Un droit grisé garde son texte à 4,5:1 (jeton), son cadenas et sa raison. */
-.mod.sh { width: min(560px, 100%); }
+.mod.sh { width: min(var(--win-l), 100%); }
+/* « Gérer les partages » garde la même hauteur à chaque onglet (le titre ne saute plus) : celle du panneau, plafonnée ; le contenu défile dans le corps. */
+.mod.mg { height: min(100%, 440px); }
+/* « Envoyer à un autre document » et « Recevoir » sont des formulaires : la largeur de formulaire de la charte. */
+.mod.sh.so { width: min(var(--win-m), 100%); }
 .sh-body { padding: 8px 16px 12px; }
 .sh .field { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border: var(--bw) solid var(--border-strong); border-radius: var(--radius-input); background: var(--surface); }
 .sh .field:focus-within { border-color: var(--accent); }
-.sh .field input { flex: 1; min-width: 0; border: 0; background: transparent; outline: 0; font-size: 13px; color: var(--text); }
+.sh .field input { flex: 1; min-width: 0; border: 0; background: transparent; outline: 0; font-size: max(13px, var(--fs-min)); color: var(--text); }
 .sh .field .ic { width: 15px; height: 15px; color: var(--text-muted); }
 .sg-add { position: relative; }
 .sg-slot:empty { display: none; }
 .sh .drop { margin-top: 4px; padding: 4px; background: var(--surface); border: var(--bw) solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-float); max-height: 170px; overflow-y: auto; }
-.sh .sec { margin: 8px 4px 2px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
+.sh .sec { margin: 8px 4px 2px; font-size: max(11.5px, var(--fs-min)); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
 .sh .drop .sec { margin: 4px 8px 2px; }
-.sh .opt { display: flex; align-items: flex-start; gap: 8px; width: 100%; padding: 5px 8px; border: 0; border-radius: calc(var(--radius-xs) + 1px); background: transparent; text-align: left; font-size: 12.5px; color: var(--text); }
+.sh .opt { display: flex; align-items: flex-start; gap: 8px; width: 100%; padding: 5px 8px; border: 0; border-radius: calc(var(--radius-xs) + 1px); background: transparent; text-align: left; font-size: max(12.5px, var(--fs-min)); color: var(--text); }
 .sh .opt:hover, .sh .opt:focus-visible { background: var(--surface-sunken); }
 .sh .opt[aria-disabled="true"] { color: var(--text-muted); }
 .sh .opt .ic { margin-top: 2px; width: 14px; height: 14px; color: var(--text-muted); }
-.sh .opt small, .sh .rr small, .sh .chk small { display: block; font-size: 11.5px; color: var(--text-muted); }
+.sh .opt small, .sh .rr small, .sh .chk small { display: block; font-size: max(11.5px, var(--fs-min)); color: var(--text-muted); }
 .sh .rr { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 2px 4px; border-bottom: 1px solid var(--border); }
 .sh .rr .ic.big { width: 16px; height: 16px; color: var(--text-muted); }
 .sh .rr .nm { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .sh .rr .nm b { font-weight: 600; }
-.sh .tag { flex: none; padding: 0 7px; border: 1px solid var(--border-strong); border-radius: 999px; font-size: 11px; font-weight: 600; line-height: 16px; color: var(--text-muted); white-space: nowrap; }
-.sh .lvl { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 8px; font: inherit; font-size: 12px; font-weight: 600; color: var(--text); background: var(--surface); border: var(--bw) solid var(--border-strong); border-radius: var(--radius-btn); }
+.sh .tag { flex: none; padding: 0 7px; border: 1px solid var(--border-strong); border-radius: 999px; font-size: max(11px, var(--fs-min)); font-weight: 600; line-height: 16px; color: var(--text-muted); white-space: nowrap; }
+.sh .lvl { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 8px; font: inherit; font-size: max(12px, var(--fs-min)); font-weight: 600; color: var(--text); background: var(--surface); border: var(--bw) solid var(--border-strong); border-radius: var(--radius-btn); }
 .sh button.lvl:hover { background: var(--surface-sunken); }
 .sh .lvl .ic { width: 12px; height: 12px; color: var(--text-muted); }
 .sh .lvl[aria-disabled="true"] { background: transparent; border-color: var(--border); color: var(--text-muted); cursor: default; }
 .sh .chk { display: flex; align-items: flex-start; gap: 10px; padding: 8px 4px; border-bottom: 1px solid var(--border); }
-.sh .chk input[type="checkbox"] { flex: none; margin: 2px 0 0; width: 16px; height: 16px; accent-color: var(--accent-solid); }
-.sh .chk input[type="date"] { margin: 4px 0; height: 28px; padding: 0 8px; border: var(--bw) solid var(--border-strong); border-radius: var(--radius-input); background: var(--surface); color: var(--text); font-size: 12.5px; }
+.sh .chk input[type="checkbox"], .sh .chk input[type="radio"] { flex: none; margin: 2px 0 0; width: 16px; height: 16px; accent-color: var(--accent-solid); }
+.sh .chk input[type="date"] { margin: 4px 0; height: 28px; padding: 0 8px; border: var(--bw) solid var(--border-strong); border-radius: var(--radius-input); background: var(--surface); color: var(--text); font-size: max(12.5px, var(--fs-min)); }
 .sh .chk input[type="date"]:disabled { color: var(--text-muted); }
-.sh .fine { margin: 8px 4px 0; font-size: 12px; color: var(--text-muted); }
+.sh .fine { margin: 8px 4px 0; font-size: max(12px, var(--fs-min)); color: var(--text-muted); }
 .sh .sg-actions { display: flex; justify-content: flex-end; gap: 8px; margin: 10px 4px 0; }
 .sh .rt-lead { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-sunken); }
 .sh .rt-lead .ic { flex: none; width: 16px; height: 16px; margin-top: 1px; color: var(--text-muted); }
 
 /* « Gérer les partages » (js/manage-window.js) : trois onglets, un groupe tapé dans une zone, les boutons du pied ; mêmes jetons. */
 .mg-tabs { display: flex; gap: 4px; margin: 0 0 6px; border-bottom: 1px solid var(--border); }
-.mg-tab { padding: 6px 10px; font: inherit; font-size: 13px; font-weight: 600; color: var(--text-muted); background: transparent; border: 0; border-bottom: 2px solid transparent; cursor: pointer; }
+.mg-tab { padding: 6px 10px; font: inherit; font-size: max(13px, var(--fs-min)); font-weight: 600; color: var(--text-muted); background: transparent; border: 0; border-bottom: 2px solid transparent; cursor: pointer; }
 .mg-tab:hover { color: var(--text); }
 .mg-tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
 .mg-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .mg .field.mg-area { height: auto; align-items: stretch; padding: 4px 6px; margin-top: 8px; }
-.mg .field textarea { flex: 1; min-width: 0; border: 0; background: transparent; outline: 0; resize: vertical; font: inherit; font-size: 13px; color: var(--text); }
+.mg .field textarea { flex: 1; min-width: 0; border: 0; background: transparent; outline: 0; resize: vertical; font: inherit; font-size: max(13px, var(--fs-min)); color: var(--text); }
 .mg .sg-new .field { margin-top: 8px; }
 .mg .rr .btn.sm { flex: none; }
 .sh .mod-foot .btn { flex: none; }
 .sh .mod-foot .btn .ic { width: 14px; height: 14px; margin-right: 4px; }
+
+/* « Envoyer à un autre document » (js/share-other-window.js) : mêmes jetons ; le code d'invitation et sa réponse en police fixe du système, le code de contrôle bien lisible. */
+.so-lead { display: flex; align-items: flex-start; gap: 8px; margin: 4px 4px 0; font-size: max(13px, var(--fs-min)); }
+.so-lead .ic { flex: none; width: 16px; height: 16px; margin-top: 1px; color: var(--text-muted); }
+.so-list { margin: 2px 4px 0; padding-left: 20px; font-size: max(12.5px, var(--fs-min)); }
+.so-list li { margin: 2px 0; }
+.so-box { display: flex; align-items: flex-start; gap: 8px; margin: 4px 4px 0; }
+.so-code { flex: 1; min-width: 0; resize: none; padding: 6px 8px; font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: max(12px, var(--fs-min)); color: var(--text); background: var(--surface); border: var(--bw) solid var(--border-strong); border-radius: var(--radius-input); }
+.so-code:focus { border-color: var(--accent); outline: 0; }
+.so-box .btn { flex: none; }
+.so-box .btn .ic { width: 14px; height: 14px; margin-right: 4px; }
+.so .rt-content > .so-code { display: block; width: calc(100% - 8px); margin: 4px 4px 0; box-sizing: border-box; }
+.so-who small { display: inline; font-size: max(12px, var(--fs-min)); color: var(--text-muted); }
+.so-control { margin: 4px 4px 0; font: 600 20px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .08em; color: var(--text); }
+.so-actions { display: flex; gap: 8px; flex: none; }
+/* Un bouton grisé reste lisible (charte : 4,5:1) : texte atténué sur fond neutre et bordure en pointillés, non la transparence de la base des boutons (le texte blanc sur le bleu pâli tombait à 2,4:1). */
+.so .btn[aria-disabled="true"] { opacity: 1; background: var(--surface); border-style: dashed; color: var(--text-muted); cursor: not-allowed; }
+.so .btn.primary[aria-disabled="true"]:hover { background: var(--surface); }
+.sh .drop.so-solo { box-shadow: none; max-height: none; margin-top: 4px; }

@@ -2,7 +2,7 @@
 // a un sous-menu « Importer », un article par format que le manifeste d'une app déclare ; un clic ouvre le sélecteur de fichier de GFS (celui du navigateur), et l'app reçoit le fichier avec
 // l'ouverture (au démarrage) ou avec l'appel `ouvrir` (déjà ouverte). Publipostage+ reçoit le fichier depuis sa consigne 035 (la vraie app : run-importer-pp.mjs) ; ici le labo la remet à « pas encore » (`importer: false`) pour mesurer le grisé d'une
 // app qui déclare un format sans le recevoir : ses formats sont grisés, sans sélecteur.
-// La sonde P (labo/sondes/p-importer/) fait ce que fait Publipostage+ : le labo seul la range dans la ligne provisoire `ACCEPTS_OPEN` (`importer: true`) et elle LIT le fichier reçu.
+// La sonde P (labo/sondes/p-importer/) fait ce que fait Publipostage+ : le labo seul lui fait déclarer `ouverture.importer` dans son manifeste et elle LIT le fichier reçu.
 //   1. Rien n'est installé : le sous-menu liste les cinq formats (Publipostage+, puis la sonde), tous grisés, un clic ouvre la fenêtre des apps sur la ligne de l'app, sans sélecteur.
 //   2. Publipostage+ installée : Excel et Markdown restent grisés (« Pas encore », la phrase au clic), PowerPoint attend l'extension « Diapositives » (le clic ouvre la fenêtre des apps).
 //   3. La sonde P installée : Texte et Tableur se dégrisent, avec leur type et le nom de l'app en rappel.
@@ -13,25 +13,21 @@
 //   8. Échap deux fois, puis un clic à côté : le sous-menu, puis le menu se referment.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { startLab } from './lab-setup.mjs';
-import { say, check, fileChooser, importMenu } from './lab-common.mjs';
+import { say, check, fileChooser, importMenu, probeDeclares } from './lab-common.mjs';
 import { isGfsWarning } from './sondes-muettes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
 const run = `importer-${lang}-${scheme}`;
 const WORDS = lang === 'fr'
-  ? { import: 'Importer', excel: 'Excel', markdown: 'Markdown', pptx: 'PowerPoint', text: 'Texte', sheet: 'Tableur', notYet: /ne reçoit pas encore de fichier de GFS/, wrong: /n’est pas un fichier Texte \(\.txt, \.md\)/, notYetHint: 'Pas encore', doc: 'Document', grid: 'Grille', probe: 'Sonde P', pp: 'Publipostage+', slides: /extension Diapositives/, probeApp: /app Sonde P/ }
-  : { import: 'Import', excel: 'Excel', markdown: 'Markdown', pptx: 'PowerPoint', text: 'Text', sheet: 'Spreadsheet', notYet: /cannot receive a file from GFS yet/, wrong: /is not a Text file \(\.txt, \.md\)/, notYetHint: 'Not yet', doc: 'Document', grid: 'Grid', probe: 'Probe P', pp: 'Publipostage+', slides: /Slides extension/, probeApp: /Probe P app/ };
-const ACCEPTS = {
-  fichier: 'controller.js',
-  de: 'const ACCEPTS_OPEN = Object.freeze({',
-  vers: "const ACCEPTS_OPEN = Object.freeze({ 'sonde-p': { fichier: true, nouveau: true, importer: true },",
-};
+  ? { import: 'Importer', excel: 'Excel', markdown: 'Markdown', pptx: 'PowerPoint', word: 'Word', text: 'Texte', sheet: 'Tableur', other: 'D’un autre document Grist…', notYet: /ne reçoit pas encore de fichier de GFS/, wrong: /n’est pas un fichier Texte \(\.txt, \.md\)/, notYetHint: 'Pas encore', doc: 'Document', grid: 'Grille', probe: 'Sonde P', pp: 'Publipostage+', slides: /extension Diapositives/, probeApp: /app Sonde P/ }
+  : { import: 'Import', excel: 'Excel', markdown: 'Markdown', pptx: 'PowerPoint', word: 'Word', text: 'Text', sheet: 'Spreadsheet', other: 'From another Grist document…', notYet: /cannot receive a file from GFS yet/, wrong: /is not a Text file \(\.txt, \.md\)/, notYetHint: 'Not yet', doc: 'Document', grid: 'Grid', probe: 'Probe P', pp: 'Publipostage+', slides: /Slides extension/, probeApp: /Probe P app/ };
+const ACCEPTS = probeDeclares('sonde-p', { ouverture: { fichier: true, nouveau: true, importer: true } });
 // Publipostage+ reçoit le fichier depuis sa consigne 035 (run-importer-pp.mjs) : le labo la remet à « pas encore » pour mesurer le grisé d'une app qui déclare un format sans le recevoir.
 const NOT_YET = {
-  fichier: 'controller.js',
-  de: 'publipostage: { fichier: true, nouveau: true, importer: true }',
-  vers: 'publipostage: { fichier: true, nouveau: true, importer: false }',
+  chemin: '/prototype/manifestes/publipostage.json',
+  de: '"importer": true',
+  vers: '"importer": false',
 };
 const PROBE = /p-importer\//;
 
@@ -78,14 +74,14 @@ await frame.waitForFunction(() => document.body.dataset.gfsFirstRun === 'done', 
 if (await frame.locator('.mod').count()) await closeModules();
 await openNew();
 const importRow = parent();
-check('« Nouveau » a « Importer » après un séparateur, avec la flèche des sous-menus', (await importRow.count()) === 1 && (await frame.locator('.menu > hr').count()) === 1
+check('« Nouveau » a « Importer » après un séparateur, avec la flèche des sous-menus', (await importRow.count()) === 1 && (await frame.locator('.menu > hr').count()) >= 1
   && (await importRow.getAttribute('aria-haspopup')) === 'menu' && (await importRow.getAttribute('aria-expanded')) === 'false' && (await importRow.locator('.sub-chev').count()) === 1,
 { parent: await importRow.count(), separateurs: await frame.locator('.menu > hr').count() });
 check('« Importer » est la dernière ligne du menu', (await frame.locator('.menu > *').last().getAttribute('aria-haspopup')) === 'menu');
 await importRow.click();
 await sub().waitFor();
 const labels = () => frame.locator('.menu-sub .menu-item .menu-label').allInnerTexts();
-check('le clic ouvre le sous-menu : un article par format déclaré (Publipostage+, puis la sonde P), puis le PDF que GFS garde lui-même', JSON.stringify(await labels()) === JSON.stringify([WORDS.excel, WORDS.markdown, WORDS.pptx, WORDS.text, WORDS.sheet, 'PDF']), await labels());
+check('le clic ouvre le sous-menu : un article par format déclaré (Publipostage+, puis la sonde P), puis le PDF que GFS garde lui-même, puis l’arrivée d’un autre document Grist', JSON.stringify(await labels()) === JSON.stringify([WORDS.excel, WORDS.markdown, WORDS.pptx, WORDS.word, WORDS.text, WORDS.sheet, 'PDF', WORDS.other]), await labels());
 check('« Importer » se dit déplié (aria-expanded) et le sous-menu est nommé', (await importRow.getAttribute('aria-expanded')) === 'true' && (await sub().getAttribute('aria-label')) === WORDS.import, await sub().getAttribute('aria-label'));
 // Le menu « Nouveau » est large (ses mentions de grisé) : le sous-menu se rétrécit au lieu de recouvrir « Importer ».
 const geometry = () => frame.evaluate(() => {
@@ -194,8 +190,8 @@ check('Fin va à la dernière ligne, « Importer »', (await focusedText()) === 
 await page.keyboard.press('ArrowRight');
 await sub().waitFor();
 check('la flèche droite ouvre le sous-menu et y met le focus sur le premier article', (await focusedText()) === WORDS.excel && (await parent().getAttribute('aria-expanded')) === 'true', await focusedText());
-for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowDown');
-check('la flèche bas descend d\'un article à l\'autre (« Texte » au quatrième)', (await focusedText()) === WORDS.text, await focusedText());
+for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowDown');
+check('la flèche bas descend d\'un article à l\'autre (« Texte » au cinquième)', (await focusedText()) === WORDS.text, await focusedText());
 await page.keyboard.press('Escape');
 await sub().waitFor({ state: 'detached' });
 check('Échap referme le sous-menu, le menu reste ouvert, le focus revient sur « Importer »', (await focusedText()) === WORDS.import && (await frame.locator('.menu').count()) === 1 && (await parent().getAttribute('aria-expanded')) === 'false', await focusedText());
@@ -203,7 +199,7 @@ await page.keyboard.press('ArrowLeft');
 check('la flèche gauche dans le menu ne ferme rien', (await frame.locator('.menu').count()) === 1);
 await page.keyboard.press('Enter');
 await sub().waitFor();
-for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowDown');
+for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowDown');
 const keyboard = await pickWith(() => page.keyboard.press('Enter'), { name: 'clavier.md', mimeType: 'text/markdown', buffer: Buffer.from('# Titre', 'utf8') });
 check('Entrée sur « Texte » ouvre le sélecteur, comme la souris', keyboard.accept === '.txt,.md', keyboard);
 await waitFor('le second appel', async () => (await probe()).appels.length === 2);

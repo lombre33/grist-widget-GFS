@@ -29,7 +29,16 @@ export function snapshot() {
     const inPage = box.left >= 0 && box.top >= 0 && box.right <= window.innerWidth && box.bottom <= window.innerHeight;
     return inPage && outside.length === 0 ? [] : [inPage ? 'dans la page' : 'hors de la page', ...outside];
   };
+  // Un texte coupé (points de suspension, ou lignes limitées) a son texte entier au survol (charte) : la liste de ceux qui n'ont pas de `title`, vide quand tout va bien. Les en-têtes de colonne tiennent sur une ligne.
+  const cut = [...document.querySelectorAll('.ex *')].filter(node => {
+    const style = getComputedStyle(node);
+    const clipped = (style.textOverflow === 'ellipsis' && node.scrollWidth > node.clientWidth + 1) || (style.getPropertyValue('-webkit-line-clamp') !== 'none' && node.scrollHeight > node.clientHeight + 1);
+    return clipped && !node.closest('[title]') && !node.getAttribute('aria-label');
+  }).map(node => `${node.className || node.tagName} « ${text(node).slice(0, 40)} »`);
   return {
+    cut,
+    headHeights: [...document.querySelectorAll('.ls-head .hd')].map(node => Math.round(node.getBoundingClientRect().height)),
+    headOverlap: [...document.querySelectorAll('.ls-head .hd')].map(node => node.getBoundingClientRect()).some((box, at, boxes) => at > 0 && box.width > 0 && boxes[at - 1].width > 0 && box.left < boxes[at - 1].right - 0.5),
     rows: [...document.querySelectorAll('.ls-row')].map(row => ({ name: text(row.querySelector('.t')), folder: row.classList.contains('folder') })),
     tiles: tiles.map(tile => text(tile.querySelector('.tn'))),
     perRow: tiles.length ? tiles.filter(tile => tile.offsetTop === tiles[0].offsetTop).length : 0,
@@ -122,6 +131,7 @@ export const names = state => state.rows.map(row => row.name);
 async function opening(run) {
   await run.reset();
   const start = await run.snap();
+  if (start.cut.length) run.note('texte coupé sans info-bulle', `des textes de la liste sont coupés sans leur texte entier au survol : ${start.cut.slice(0, 3).join(' ; ')}`);
   if (start.focus !== 'Formation' || start.selected !== null) run.note('le clavier à l\'ouverture', `le clavier devait être sur la première ligne, sans rien de choisi (focus ${start.focus}, choisi ${start.selected})`);
   await run.page.press('Enter');
   await run.expect('Entrée sur la première ligne', 'Entrée devait ouvrir le dossier « Formation » avant tout autre geste', state => names(state).join('|') === 'Contrat de prestation|Support de session');
@@ -156,6 +166,9 @@ async function trashView(run, t) {
   await run.clickSelector('.tr-row[data-view="trash"]');
   const view = await run.expect('vue « Corbeille »', 'la vue « Corbeille » devait lister « Convocation », avec sa barre et un bouton « Restaurer » grisé', state => names(state).join() === 'Convocation' && state.bar === t('trash.bar')
     && state.barButton === t('trash.empty') && state.openLabel === t('trash.restore') && state.openDisabled === 'true' && state.crumbs.includes(t('trash.view')));
+  if (view.cut.length) run.note('texte coupé sans info-bulle', `à la corbeille, des textes sont coupés sans leur texte entier au survol : ${view.cut.slice(0, 3).join(' ; ')}`);
+  if (view.headHeights.some(height => height > 24)) run.note('en-tête sur deux lignes', `un en-tête de colonne de la corbeille passe sur deux lignes (hauteurs ${view.headHeights.join(', ')} px)`);
+  if (view.headOverlap) run.note('en-têtes qui se recouvrent', 'deux en-têtes de colonne de la corbeille se recouvrent (« Supprimé » déborde sur la colonne voisine)');
   if (!view.head.includes(t('trash.deleted'))) run.note('colonne de date', `la colonne de date devait dire « ${t('trash.deleted')} » (${view.head.join(', ')})`);
   if (view.restoreButtons !== 1 || view.pinButtons !== 0) run.note('bouton de ligne', `la ligne devait porter « Restaurer » et pas d'étoile (${view.restoreButtons} restaurer, ${view.pinButtons} étoile)`);
   await run.click('Convocation');
@@ -170,6 +183,37 @@ async function trashView(run, t) {
     && state.notices.at(-1) === t('trash.restored', { name: 'Convocation' }) && state.trashCount === null);
   await run.clickSelector('.crumbs button');
   await run.expect('retour aux dossiers', 'le fil d\'Ariane devait ramener aux dossiers, « Convocation » y est revenu', state => names(state).includes('Convocation'));
+}
+
+// Audit des parcours du 10/11 (carte « Donner plus de place au nom des fichiers dans la corbeille ») : dans la liste étroite, le dossier d'origine, écrit à côté du nom, rend sa place au nom avant que le nom ne soit coupé
+// (« Convocatio… » à 700 px) ; son chemin entier est au survol. L'essai resserre la cellule du nom à la largeur juste du nom plus ses espaces : le nom y tient seulement si le dossier cède.
+async function nameBeforeOrigin(run, t) {
+  await run.reset();
+  await run.click('Main');
+  await run.page.press('/');
+  await run.page.press('c', 'o', 'n', 't', 'r', 'a', 't');
+  await run.expect('recherche « contrat »', 'taper « contrat » devait lister « Contrat de prestation » (rangé dans « Formation »)', state => names(state).includes('Contrat de prestation'));
+  await run.click('Contrat de prestation');
+  await run.page.press('Delete');
+  await run.expect('Suppr', 'Suppr devait mettre « Contrat de prestation » à la corbeille', state => state.trashCount === '1');
+  await run.clickSelector('.tr-row[data-view="trash"]');
+  await run.expect('vue « Corbeille »', 'la corbeille devait lister « Contrat de prestation »', state => names(state).includes('Contrat de prestation'));
+  const measured = await run.page.run(() => {
+    const cell = document.querySelector('.ls-row .nm');
+    const name = cell && cell.querySelector('.t');
+    const origin = cell && cell.querySelector('.hint');
+    if (!origin) return { noOrigin: true };
+    const gap = parseFloat(getComputedStyle(cell).columnGap) || 0;
+    const room = cell.firstElementChild.getBoundingClientRect().width + name.scrollWidth + 2 * gap + 2;
+    cell.style.width = `${room}px`;
+    const result = { full: name.scrollWidth, shown: name.clientWidth, title: origin.getAttribute('title'), folder: origin.textContent };
+    cell.style.width = '';
+    return result;
+  });
+  if (measured.noOrigin) { run.note('dossier d\'origine', 'la ligne de la corbeille devait dire le dossier d\'origine (« Formation ») à côté du nom'); return; }
+  if (measured.shown < measured.full - 0.5) run.note('nom coupé avant le dossier', `à la corbeille, le nom devait passer avant le dossier d'origine : le nom fait ${measured.full} px, il en montre ${measured.shown} alors que le dossier « ${measured.folder} » garde sa place`);
+  if (!measured.title) run.note('dossier sans info-bulle', 'le dossier d\'origine, qui peut être coupé, devait porter son chemin entier au survol');
+  await run.page.press('Escape');
 }
 
 // Suppr à la corbeille : la fenêtre nomme le fichier et laisse le clavier à « Annuler » ; Échap ne supprime rien ; « Supprimer définitivement » (la souris) supprime ; « Vider la corbeille… » demande aussi.
@@ -251,6 +295,7 @@ async function tiles(run) {
   await run.reset();
   await run.clickSelector('.tb-group .tb:nth-child(2)');
   const first = await run.expect('vignettes', 'la vue en vignettes devait s\'afficher', state => state.tiles.length > 5);
+  if (first.cut.length) run.note('texte coupé sans info-bulle', `des vignettes ont un nom coupé sans son texte entier au survol : ${first.cut.slice(0, 3).join(' ; ')}`);
   if (first.perRow < 2) { run.note('vignettes', `moins de deux vignettes par rangée (${first.perRow}) : ↓ ne se mesure pas`); return; }
   await run.click(first.tiles[0]);
   await run.page.press('ArrowDown');
@@ -281,7 +326,7 @@ export async function corbeilleProblems(page, language, tag) {
   const found = [];
   const t = createI18n(language).t;
   const run = new Run(page, tag, found);
-  const steps = [opening, renameAndTrash, trashView, purgeAndEmpty, tableWindow, menus, searching, tiles, leavingTrash];
+  const steps = [opening, renameAndTrash, trashView, nameBeforeOrigin, purgeAndEmpty, tableWindow, menus, searching, tiles, leavingTrash];
   for (const step of steps) {
     try {
       await step(run, t);

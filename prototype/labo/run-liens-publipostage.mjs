@@ -3,7 +3,7 @@
 // l'ouvrir. La présentation demande l'extension « Diapositives » : le fichier est grisé tant qu'elle est éteinte, et la fenêtre qui la débloque s'ouvre sur sa ligne. LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
-import { say, check } from './lab-common.mjs';
+import { say, check, probeDeclares } from './lab-common.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -12,11 +12,7 @@ const WORD = lang === 'fr'
   ? { deck: 'Ma présentation', grid: 'Émargement (grille)', doc: 'Feuille d’émargement', note: 'Notes de session', hiddenRows: ['Convocation de session', 'Dossier de formation', 'Support de session'], folder: 'Formation', opened: /Ouvert depuis l.explorateur\./, title: 'Lier un modèle' }
   : { deck: 'My presentation', grid: 'Émargement (grille)', doc: 'Feuille d’émargement', note: 'Notes de session', hiddenRows: ['Convocation de session', 'Dossier de formation', 'Support de session'], folder: 'Formation', opened: /Opened from the explorer\./, title: 'Link a template' };
 const FK = 'ext:publipostage/diapositives';
-const ACCEPTS = {
-  fichier: 'controller.js',
-  de: 'const ACCEPTS_OPEN = Object.freeze({',
-  vers: "const ACCEPTS_OPEN = Object.freeze({ 'sonde-q': { fichier: true, nouveau: true },",
-};
+const ACCEPTS = probeDeclares('sonde-q', { ouverture: { fichier: true, nouveau: true } });
 const lab = await startLab({ lang, colorScheme: scheme, probes: true, patches: [ACCEPTS] });
 await lab.fitPanel(undefined, 700, 400);
 const { page } = lab;

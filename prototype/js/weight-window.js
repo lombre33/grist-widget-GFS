@@ -42,7 +42,7 @@ export function buildWeightView({ t, locale, estimate }) {
     const nodes = state.tables.map(row => {
       let node = rowNodes.get(row.name);
       if (!node) {
-        node = { li: h('li', { class: 'wd-row' }), name: h('span', { class: 'wd-name' }, row.name), bar: h('i'), value: h('span', { class: 'wd-num' }) };
+        node = { li: h('li', { class: 'wd-row' }), name: h('span', { class: 'wd-name', title: row.name }, row.name), bar: h('i'), value: h('span', { class: 'wd-num' }) };
         node.li.append(node.name, h('span', { class: 'wd-bar', 'aria-hidden': 'true' }, node.bar), node.value);
         rowNodes.set(row.name, node);
       }
@@ -69,11 +69,11 @@ export function buildWeightView({ t, locale, estimate }) {
     if (!state) return;
     if (state.status === 'denied' || state.status === 'slow' || state.status === 'failed') { grey(state); return; }
     const done = state.tables ? state.tables.filter(row => row.state !== 'wait').length : 0;
-    const data = state.status === 'ok' && state.tables ? state.tables.reduce((sum, row) => sum + (row.bytes || 0), 0) : null;
+    const dataBytes = state.status === 'ok' && state.tables ? state.tables.reduce((sum, row) => sum + (row.bytes || 0), 0) : null;
     values.file.textContent = show(state.file);
     values.history.textContent = show(state.history);
     values.attachments.textContent = state.stored === null ? show(state.counted) : `${show(state.stored)} · ${t('wd.attachmentsCounted', { n: show(state.counted) })}`;
-    values.data.textContent = show(data);
+    values.data.textContent = show(dataBytes);
     values.rest.textContent = show(state.rest);
     if (state.tables) {
       placeTables(state);

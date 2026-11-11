@@ -74,6 +74,20 @@ test('ranger dans un espace : un placement, le dossier de la personne ne change 
   assert.equal(pin.entries[0].folder, 'Perso', 'et ne met jamais un chemin d\'espace dans le rangement de la personne');
 });
 
+test('ranger : un fichier de la personne qui change de dossier sans toucher aux espaces n\'écrit pas le placement ; un fichier d\'espace qui change de dossier dans son espace, si', () => {
+  const read = info();
+  const files = applyPlacement([file(1, 'Perso'), file(2, 'Perso')], read);
+  const between = splitWrites([{ app: 'publipostage', file: '1', pinned: false, folder: 'Autre' }], {}, files, read);
+  assert.deepEqual(between.ops, [], 'un fichier qui n\'est dans aucun espace n\'a rien à retirer du placement');
+  assert.equal(touchesSpaces(between), false);
+  const within = splitWrites([{ app: 'publipostage', file: '2', pinned: false, folder: 'Espaces/Achats' }], {}, files, read);
+  assert.deepEqual(within.ops, [{ place: 'publipostage:2', space: 'achats', folder: '' }], 'du dossier « Contrats » à la racine de l\'espace');
+  const stay = splitWrites([{ app: 'publipostage', file: '2', pinned: false, folder: 'Espaces/Achats/Contrats' }], {}, files, read);
+  assert.deepEqual(stay.ops, [], 'le même dossier du même espace : rien à écrire');
+  const other = splitWrites([{ app: 'publipostage', file: '2', pinned: false, folder: 'Espaces/Compta' }], {}, files, read);
+  assert.deepEqual(other.ops, [{ place: 'publipostage:2', space: 'compta', folder: '' }], 'd\'un espace à un autre');
+});
+
 test('« Espaces » seul, ou un espace inconnu : refusé', () => {
   const read = info();
   assert.equal(splitWrites([{ app: 'publipostage', file: '1', pinned: false, folder: 'Espaces' }], {}, [], read).error, 'ex.spaceUnknown');
@@ -160,4 +174,20 @@ test('un fichier neuf (copie, PDF importé) dans un espace : placé par un propr
   assert.deepEqual(other.log.placements, []);
   assert.equal(other.log.filings[0].entries[0].folder, '');
   assert.deepEqual(other.log.notices, [t('ex.spaceOwnersOnly')]);
+});
+
+test('un chemin sous « Espaces » qui ne désigne aucun espace : rien n\'est écrit, la phrase le dit', async () => {
+  const { filing, log } = harness();
+  await filing.moveFileTo(file(1, 'Perso'), 'Espaces/Inconnu/Dossier');
+  assert.deepEqual(log.placements, []);
+  assert.deepEqual(log.filings, []);
+  assert.deepEqual(log.notices, [t('ex.spaceUnknown')]);
+});
+
+test('retirer un dossier gardé dans un espace : seul le placement s\'écrit, le rangement de la personne n\'est pas touché', async () => {
+  const { filing, log } = harness();
+  await filing.deleteFolder('Espaces/Achats/Contrats/Sous');
+  assert.deepEqual(log.placements, [['RemoveRecord', 'GFS_Placement', 3]]);
+  assert.deepEqual(log.filings, [], 'rien à écrire dans GFS_Rangement : pas d\'écriture à vide');
+  assert.deepEqual(log.notices.filter(text => text !== t('ex.folderDeleted', { name: 'Sous' })), []);
 });

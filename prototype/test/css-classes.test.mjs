@@ -49,8 +49,9 @@ const EXPLORER = ['js/explorer-view.js', 'js/explorer.js'];
 // Les fenêtres : les modules dont le nom finit par `-window.js`, ceux qui ouvrent une fenêtre sur la base commune (ils importent js/modal.js), la base elle-même et les morceaux de la fenêtre « Ligne de travail ».
 const WINDOWS = readdirSync(join(ROOT, 'js')).map(name => `js/${name}`).filter(file => /-window\.js$/.test(file) || ['js/modal.js', 'js/work-row.js', 'js/work-control.js'].includes(file)
   || /from '\.\/modal\.js'/.test(readFileSync(join(ROOT, file), 'utf8')));
-// Partagées exprès : le bouton, le champ de recherche (la fenêtre « Ligne de travail » le reprend) et le filet de couleur que l'ambiance pose en tête de la liste et des fenêtres.
-const SHARED = new Set(['btn', 'inp-search', 'mod']);
+// Partagées exprès : le bouton, le champ de recherche (la fenêtre « Ligne de travail » le reprend), le filet de couleur que l'ambiance pose en tête de la liste et des fenêtres, et la pastille d'initiales d'une
+// personne (`who` : la colonne « Par » de la liste et les lignes de personnes de la fenêtre « Partager » la dessinent de la même façon, une seule feuille la style).
+const SHARED = new Set(['btn', 'inp-search', 'mod', 'who']);
 
 // Les classes que construisent des modules : tout `class: '…'` ou `class: \`…\`` ; les mots entre guillemets d'une expression `${…}` comptent.
 function builtClasses(files) {

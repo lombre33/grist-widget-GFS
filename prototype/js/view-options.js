@@ -127,8 +127,24 @@ export class ViewOptions {
     return run;
   }
 
+  // La section de GFS : `{ id }`, ou `{ reason }` quand GFS ne la reconnaît pas ou ne peut pas écrire dans la vue (la même recherche que pour écrire un réglage). Sert à poser le
+  // lien « Select by » (js/view-link.js). Les recherches passent dans la file des écritures : jamais deux à la fois.
+  section() {
+    const run = this.#queue.then(async () => {
+      if (!this.#enabled()) return { reason: 'disabled' };
+      try {
+        const found = await this.#find(await this.#widget.getOptions());
+        return found.target ? { id: found.target.id } : { reason: found.reason };
+      } catch (error) {
+        return { reason: 'refused' };
+      }
+    });
+    this.#queue = run.catch(() => {});
+    return run;
+  }
+
   async #write(changes) {
-    if (!this.#enabled()) return false;
+    if (!this.#enabled()) return this.#declined('access');
     try {
       const current = await this.#widget.getOptions();
       const wanted = changes.filter(([key, value]) => !sameValue(current ? current[key] : undefined, value));
@@ -153,21 +169,42 @@ export class ViewOptions {
   #declined(reason, error) {
     if (!this.#warned.has(reason)) {
       this.#warned.add(reason);
-      const why = { 'no-section': 'GFS ne reconnaît pas sa section', unreadable: 'les réglages de la section ne se lisent pas ou ne changent pas', 'no-echo': 'Grist n\'a pas renvoyé le réglage écrit (ce n\'était pas la section de GFS)', draft: 'un brouillon est déjà posé (« Enregistrer » ou « Retour » dans Grist le libère)', refused: `Grist a refusé l'écriture (${(error && error.message) || error})` }[reason];
+      const why = { access: 'GFS n\'a pas l\'accès complet au document', 'no-section': 'GFS ne reconnaît pas sa section', unreadable: 'les réglages de la section ne se lisent pas ou ne changent pas', 'no-echo': 'Grist n\'a pas renvoyé le réglage écrit (ce n\'était pas la section de GFS)', draft: 'un brouillon est déjà posé (« Enregistrer » ou « Retour » dans Grist le libère)', refused: `Grist a refusé l'écriture (${(error && error.message) || error})` }[reason];
       console.warn(`GFS : les réglages restent un brouillon (« Enregistrer » dans Grist) : ${why}.`);
     }
     return false;
   }
 
-  // La section de GFS : `{ target: { id, text } }`, ou `{ reason }` quand GFS ne peut pas écrire dans la vue. `current` : ce que Grist dit à GFS de ses réglages. La section de GFS dit la même
-  // chose que lui : une candidate qui dit autre chose n'est pas la nôtre, et si aucune ne le dit, c'est qu'un brouillon est posé (« Enregistrer » est là : il masque les réglages enregistrés, l'écho
-  // ne reviendrait pas et « Enregistrer » le remplacerait). Une seule candidate qui s'accorde : c'est elle, et l'écho le confirme. Plusieurs : la recherche par marques.
-  async #find(current) {
+  // Les sections où GFS peut se trouver, en lecture seule : `{ agree }`, les candidates dont les réglages enregistrés disent ce que Grist dit à GFS (`current`, hors marques de recherche), ou
+  // `{ reason }` quand il n'y en a aucune. Une candidate qui dit autre chose n'est pas la nôtre, et si aucune ne le dit, c'est qu'un brouillon est posé (« Enregistrer » est là : il masque les
+  // réglages enregistrés, l'écho ne reviendrait pas et « Enregistrer » le remplacerait).
+  async #agreeing(current) {
     const [sections, tables] = await Promise.all([this.#doc.fetchTable(SECTIONS), this.#doc.fetchTable(TABLES)]);
     const candidates = candidatesOf(sections, tables, { address: this.#address, tableId: this.#tableId() }).filter(item => !this.#notOurs.has(item.id));
     if (!candidates.length) return { reason: 'no-section' };
     const agree = candidates.filter(item => sameValue(clean(current), clean(savedOptionsOf(item.text))));
-    if (!agree.length) return { reason: 'draft' };
+    return agree.length ? { agree } : { reason: 'draft' };
+  }
+
+  // Ce que GFS peut dire à une app dès son ouverture, avant tout réglage : ses réglages iront-ils dans la vue ? Vrai : une seule section dit ce que Grist dit à GFS (ou celle que la recherche
+  // a déjà reconnue) ; faux : GFS sait déjà qu'il se repliera sur le brouillon (accès, aucune section, brouillon posé), et le dit en console comme à l'écriture ; null : il ne sait pas (plusieurs
+  // sections pareilles : seule une marque le dirait, et une marque s'écrit). Rien n'est jamais écrit. Un refus de Grist (droits de structure) ne se lit pas : il se saura à la première écriture.
+  async expect() {
+    if (!this.#enabled()) { this.#declined('access'); return false; }
+    try {
+      const { agree, reason } = await this.#agreeing(await this.#widget.getOptions());
+      if (!agree) { this.#declined(reason); return false; }
+      return agree.length === 1 || agree.some(item => item.id === this.#own) ? true : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  // La section de GFS : `{ target: { id, text } }`, ou `{ reason }` quand GFS ne peut pas écrire dans la vue. `current` : ce que Grist dit à GFS de ses réglages. Une seule candidate qui
+  // s'accorde : c'est elle, et l'écho le confirme. Plusieurs : la recherche par marques.
+  async #find(current) {
+    const { agree, reason } = await this.#agreeing(current);
+    if (!agree) return { reason };
     if (agree.length === 1) return { target: agree[0] };
     const known = agree.find(item => item.id === this.#own);
     if (known) return { target: known };

@@ -239,8 +239,8 @@ const SORTERS = {
 
 // Les lignes affichées : { rows: [{ kind: 'folder', ... } | { kind: 'file', file }], flat, covered }. `covered` : les fichiers que la liste couvre, ceux des dossiers montrés compris (le total du pied
 // de fenêtre en fait la somme : une pièce jointe que deux d'entre eux citent n'y est comptée qu'une fois).
-// `state` : { view: 'folder'|'recent'|'fav'|'trash', path, q, type, sort: { key, dir } } ; `locale` : pour le tri ; `typeLabel(file)` : le nom du type dans la langue ; `spare` : les dossiers gardés sans fichier.
-// Récents garde d'abord les huit plus récents, puis les trie comme demandé (l'explorateur y commence par « modifié, le plus récent d'abord »). La corbeille est une liste à plat : `files` est alors
+// `state` : { view: 'folder'|'recent'|'fav'|'trash'|'shared'|'opened', path, q, type, sort: { key, dir } } ; `locale` : pour le tri ; `typeLabel(file)` : le nom du type dans la langue ; `spare` : les dossiers gardés sans fichier.
+// Récents garde d'abord les huit plus récents, puis les trie comme demandé (l'explorateur y commence par « modifié, le plus récent d'abord »). La corbeille, « Partagés avec moi » et « Ouverts » sont des listes à plat : `files` est alors
 // celle des fichiers qui y sont, tous montrés, sans dossier.
 export function listItems(files, state, { locale, typeLabel, spare = [] }) {
   const needles = words(state.q);
@@ -250,7 +250,7 @@ export function listItems(files, state, { locale, typeLabel, spare = [] }) {
   let flat = true;
   if (state.view === 'recent') pool = [...files].sort((a, b) => (b.ts ?? -Infinity) - (a.ts ?? -Infinity)).slice(0, RECENT_LIMIT);
   else if (state.view === 'fav') pool = files.filter(file => file.pinned);
-  else if (filtering || state.view === 'trash') pool = files;
+  else if (filtering || ['trash', 'shared', 'opened'].includes(state.view)) pool = files;
   else { pool = files.filter(file => file.folder === state.path); flat = false; }
   pool = pool.filter(file => (state.type === 'all' || file.type === state.type) && matchesWords(needles, file.search));
   const sorter = SORTERS[state.sort.key] || SORTERS.name;

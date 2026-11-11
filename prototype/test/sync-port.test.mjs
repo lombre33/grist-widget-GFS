@@ -1,5 +1,6 @@
-// Le port de GFS pour le moteur de partage (js/sync-port.js) : ce que GFS dit au cadre d'envoi et à l'API des widgets pour chaque fonction du port, les erreurs que le moteur lit, les textes, la page et
-// les préférences. Le cadre et Grist sont ici de faux interlocuteurs qui notent ce qu'on leur demande : ce que le VRAI Grist répond est mesuré par labo/run-sync-port.mjs, jamais par ces essais.
+// Le port de GFS pour le moteur de partage (js/sync-port.js) : ce que GFS dit au cadre d'envoi et à l'API des widgets pour chaque fonction du port (le REST lui-même est écrit une fois par le moteur,
+// `createRestPort`, et testé avec lui : ici, le `http` de GFS qui le porte), les erreurs que le moteur lit, les textes, la page et les préférences. Le cadre et Grist sont ici de faux interlocuteurs qui
+// notent ce qu'on leur demande : ce que le VRAI Grist répond est mesuré par labo/run-sync-port.mjs, jamais par ces essais.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createSyncPort, startSyncEngine, SYNC_PREFIX } from '../js/sync-port.js';
@@ -23,7 +24,6 @@ function fakeTransfer(answers = {}) {
     asked,
     baseUrl: async () => BASE,
     isOwner: async () => reply('isOwner', true),
-    sql: async (statement, options) => { asked.push({ op: 'sql', statement, options }); return reply('sql', []); },
     rest: async (method, path, options = {}) => { asked.push({ op: 'rest', method, path, ...options }); return reply(`${method} ${path}`, { status: 200, body: '' }); },
     anonymous: async (method, url, options = {}) => { asked.push({ op: 'anonymous', method, url, ...options }); return reply(`${method} anonymous`, { status: 200, body: '' }); },
     download: async id => { asked.push({ op: 'download', id }); return reply('download', new Blob([new Uint8Array([1, 2, 3])])); },
@@ -50,7 +50,9 @@ const http = (status, message = '') => new TransferError('http', message, status
 
 test('le moteur démarre sur ce port (forme complète) avec le préfixe GFS_', () => {
   const run = port();
-  assert.equal(Object.keys(run.port).filter(name => [...PORT_SHAPE.data, ...PORT_SHAPE.files, ...PORT_SHAPE.hooks, ...PORT_SHAPE.publicDoc].includes(name)).length, 8 + 2 + 9 + 1);
+  const names = [...PORT_SHAPE.data, ...PORT_SHAPE.files, ...PORT_SHAPE.hooks, ...PORT_SHAPE.publicDoc, ...PORT_SHAPE.environment];
+  assert.deepEqual(names.filter(name => typeof run.port[name] !== 'function'), []);
+  assert.equal(names.length, 9 + 2 + 10 + 3 + 2);
   startSyncEngine({ docApi: run.docApi, transfer: run.transfer });
   assert.equal(SYNC_PREFIX, 'GFS_');
   assert.equal(SYNC_TABLE, 'GFS_Synchro', 'les tables du moteur sont à part de celles de la personne');
@@ -79,12 +81,12 @@ test('isOwner : vrai ou faux gardé ; « Grist n\'a pas répondu » levé, dit d
 });
 
 test('lectures SQL : le jeton peut écrire (/sql le demande dans un document à règles) ; un refus rend null ; selectRows échappe', async () => {
-  const run = port({ sql: () => [{ id: 1 }] });
+  const run = port({ 'GET /sql': { status: 200, body: { records: [{ fields: { id: 1 } }] } } });
   assert.deepEqual(await run.port.querySql('select 1'), [{ id: 1 }]);
   await run.port.selectRows('Mes "Tables"', ['A', 'B'], { Cle: "l'été", Autre: 3 });
-  assert.deepEqual(run.transfer.asked.map(each => each.options), [{ writable: true }, { writable: true }]);
-  assert.equal(run.transfer.asked[1].statement, `select "id", "A", "B" from "Mes "Tables"" where "Cle" = 'l''été' and "Autre" = '3'`);
-  const refused = port({ sql: http(403, 'no') });
+  assert.deepEqual(run.transfer.asked.map(each => [each.method, each.path, each.writable]), [['GET', '/sql', true], ['GET', '/sql', true]]);
+  assert.equal(run.transfer.asked[1].params.q, `select "id", "A", "B" from "Mes "Tables"" where "Cle" = 'l''été' and "Autre" = '3'`);
+  const refused = port({ 'GET /sql': http(403, 'no') });
   assert.equal(await refused.port.querySql('select 1'), null);
   assert.equal(await refused.port.selectRows('T', ['A']), null);
 });
@@ -96,7 +98,7 @@ test('docChanges : refus de la comparaison → null ; 404 → null ; état incon
   assert.equal(changes.hash, 'H2');
   assert.deepEqual([...changes.tables].sort(), ['Autre', 'Clients']);
   assert.deepEqual(ok.transfer.asked[0].params, { left: 'H1', right: 'HEAD', maxRows: 1 });
-  assert.equal(ok.transfer.asked[0].writable, undefined, 'le jeton par défaut peut écrire : /compare est réservé à qui lit tout');
+  assert.equal(ok.transfer.asked[0].writable, true, 'le jeton peut écrire : /compare est réservé à qui lit tout');
   assert.equal((await ok.port.docChanges('')).tables, null, 'sans état de départ : pas de liste de tables');
   assert.equal(await port({ 'GET /compare': http(403) }).port.docChanges('H1'), null);
   assert.equal(await port({ 'GET /compare': http(404) }).port.docChanges(''), null);
@@ -114,7 +116,7 @@ test('pièces jointes : octets rendus, fichier déposé sous son nom ; un échec
   assert.deepEqual([...await run.port.downloadAttachment('5')], [1, 2, 3]);
   assert.equal(await run.port.uploadAttachment('a.pdf', new Uint8Array(10)), 41);
   assert.deepEqual(run.transfer.asked, [{ op: 'download', id: 5 }, { op: 'upload', size: 10, name: 'a.pdf' }]);
-  await assert.rejects(() => port({ download: http(404, 'Not found') }).port.downloadAttachment(9), /^Error: HTTP 404 Not found$/);
+  await assert.rejects(() => port({ download: http(404, 'Not found') }).port.downloadAttachment(9), /^Error: HTTP 404$/);
 });
 
 test('webhooks : liste (le refus 403 est celui des propriétaires seuls), activation, file vidée avant l\'effacement', async () => {
@@ -235,7 +237,10 @@ test('contrôle d\'un lien collé : le document que désigne la clé (shareInfo)
   assert.equal(await port({ 'GET anonymous': http(404, 'Share not known') }).port.shareInfo(good), null);
   assert.equal(await port({ 'GET anonymous': http(403, 'no') }).port.shareInfo(good), null);
   await assert.rejects(() => port({ 'GET anonymous': http(500, 'boum') }).port.shareInfo(good), /^Error: shareUnreadable$/);
-  await assert.rejects(() => port({ 'GET anonymous': new TransferError('network', 'x') }).port.shareInfo(good), /^Error: shareUnreadable$/);
+  await assert.rejects(() => port({ 'GET anonymous': new TransferError('network', 'x') }).port.shareInfo(good), /^Error: Le serveur Grist ne répond pas\.$/, 'un serveur muet est dit comme tel, sans code');
+  const elsewhere = port();
+  await assert.rejects(() => elsewhere.port.shareInfo('https://autre.example.org/api/s/ABCD1234EFGH/tables/Clients/records?flat=1'), /^Error: otherInstance$/, 'le lien d\'une autre instance est dit comme tel');
+  assert.deepEqual(elsewhere.transfer.asked, [], 'et rien ne part vers elle');
   await assert.rejects(() => port({ 'GET anonymous': { status: 200, body: 'texte' } }).port.shareInfo(good), /^Error: shareUnreadable$/);
   await assert.rejects(() => port({ 'GET anonymous': { status: 200, body: { id: 'court' } } }).port.shareInfo(good), /^Error: shareUnreadable$/);
 });
@@ -246,11 +251,20 @@ test('lien public et journal : publicAccess dit le droit, « » s\'il est fermé
   for (const status of [401, 403, 404]) assert.equal(await port({ 'GET anonymous': http(status) }).port.publicAccess(BASE), '');
   assert.equal(await port({ 'GET anonymous': http(500) }).port.publicAccess(BASE), null);
   assert.equal(await port({ 'GET anonymous': new TransferError('network', 'x') }).port.publicAccess(BASE), null);
-  const run = port({ sql: [{ n: '3', last: 1700000000.5, raw: null }] });
+  const run = port({ 'GET /sql': { status: 200, body: { records: [{ fields: { n: '3', last: 1700000000.5, raw: null } }] } } });
   assert.deepEqual(await run.port.journalStats('GFS_Journal_x', 'Recu', 'Type'), { n: 3, last: 1700000000.5, raw: 0 });
-  assert.match(run.transfer.asked[0].statement, /^select count\(\*\) as n, max\("Recu"\) as last, sum\(case when "Type" is not null and "Type" != '' then 1 else 0 end\) as raw from "GFS_Journal_x"$/);
+  assert.match(run.transfer.asked[0].params.q, /^select count\(\*\) as n, max\("Recu"\) as last, sum\(case when "Type" is not null and "Type" != '' then 1 else 0 end\) as raw from "GFS_Journal_x"$/);
   assert.equal(await run.port.journalStats('Mauvais nom"; drop', 'a', 'b'), null, 'un nom de table qui n\'en est pas un ne part pas');
   assert.equal(run.transfer.asked.length, 1);
-  assert.equal(await port({ sql: http(400, 'no such table') }).port.journalStats('T', 'a', 'b'), null);
-  assert.equal(await port({ sql: [] }).port.journalStats('T', 'a', 'b'), null);
+  assert.equal(await port({ 'GET /sql': http(400, 'no such table') }).port.journalStats('T', 'a', 'b'), null);
+  assert.equal(await port({ 'GET /sql': { status: 200, body: { records: [] } } }).port.journalStats('T', 'a', 'b'), null);
+});
+
+test('le http de GFS : `full` demande le jeton qui écrit, les paramètres partent en texte, une réponse vide est null ; un refus garde son code et 200 signes au plus, le reste n\'a pas de code et se dit', async () => {
+  const run = port({ 'POST /webhooks': http(500, 'x'.repeat(500)), 'GET /compare': new TransferError('timeout', 'x') }, { language: () => 'en' });
+  assert.equal(await run.port.deleteWebhook('a'), null, 'le corps vide d\'une réponse est null pour le moteur, jamais une chaîne vide');
+  const failure = await run.port.createWebhook({ name: 'n', memo: 'm', url: 'u', tableId: 'T', condition: '$A' }).catch(error => error);
+  assert.ok(failure.message.startsWith('HTTP 500 x') && failure.message.length <= 'HTTP 500 '.length + 200, 'le début de la réponse, 200 signes au plus');
+  assert.deepEqual(await run.port.docChanges('H1'), { hash: 'H1', tables: null }, 'un délai dépassé n\'est pas un refus du serveur : tout est relu');
+  assert.deepEqual(run.transfer.asked.map(each => each.writable), [true, true, true, true]);
 });

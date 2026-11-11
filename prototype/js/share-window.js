@@ -8,6 +8,8 @@ import { openModal, listKeys } from './modal.js';
 import { openMenu } from './menu.js';
 import { words, normalize, matchesWords } from './search.js';
 import { CATEGORIES, GROUP_PREFIX, isGroup, shareRecord } from './sharing-model.js';
+import { otherTab } from './share-other-tab.js';
+import { replaceKeepingFocus, tabList } from './tabs.js';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Les cinq droits de la maquette ; « commentaire » et « dépôt seul » attendent leurs tables (grisés, avec la raison), un droit d'administration ne se donne pas à une catégorie.
@@ -20,8 +22,8 @@ const notPerson = who => isCategory(who) || isGroup(who);
 
 export const whoLabel = (t, who) => (isCategory(who) ? t(`share.cat.${String(who).slice(1)}`) : (isGroup(who) ? t('share.group.label', { name: String(who).slice(1) }) : who));
 
-// Ce que la zone d'ajout propose pour `text` : { people, categories, invite, others }. Jamais une personne ni une catégorie déjà dans la liste, jamais la personne elle-même.
-export function suggestions(t, state, text, extraTargets = []) {
+// Ce que la zone d'ajout propose pour `text` : { people, categories, groups, invite }. Jamais une personne ni une catégorie déjà dans la liste, jamais la personne elle-même.
+export function suggestions(t, state, text) {
   const needles = words(text);
   const have = new Set(state.shares.filter(share => !share.inherited).map(share => share.who.toLowerCase()));
   const skip = new Set([...have, state.me, state.author].filter(Boolean));
@@ -30,7 +32,7 @@ export function suggestions(t, state, text, extraTargets = []) {
   const groups = (state.groups || []).filter(group => !have.has(`${GROUP_PREFIX}${group.name}`.toLowerCase()) && matchesWords(needles, normalize(group.name))).map(group => ({ who: `${GROUP_PREFIX}${group.name}`, label: group.name, hint: t('share.group.hint', { n: group.count }), glyph: 'users' }));
   const typed = String(text || '').trim().toLowerCase();
   const invite = EMAIL.test(typed) && !skip.has(typed) && !state.people.includes(typed) ? { who: typed, label: t('share.suggest.invite', { email: typed }), hint: t('share.suggest.inviteHint'), glyph: 'mail' } : null;
-  return { people, categories, groups, invite, others: extraTargets };
+  return { people, categories, groups, invite };
 }
 
 // Les articles du menu des droits : celui d'aujourd'hui coché ; grisés avec leur raison ; « Retirer l'accès » en dernier (sauf pour un nouveau partage, pas encore écrit).
@@ -52,23 +54,41 @@ function dateText(seconds, locale) {
 // D'où vient un droit hérité : le document entier, l'espace, ou un dossier de l'espace.
 const inheritedText = (t, from) => (from && from.kind === 'space' ? t('share.row.inherited.space', { name: from.name }) : (from && from.kind === 'folder' ? t('share.row.inherited.folder', { name: from.name }) : t('share.row.inherited')));
 
-// Une ligne de « Qui a accès » : l'avatar ou l'icône, le nom, ses détails (fin d'accès, téléchargement, validité), et le droit (un bouton qui ouvre le menu quand la personne peut changer les partages).
-function row(ctx, share) {
-  const { t, state } = ctx;
-  const expired = !share.active;
+// Les détails d'une ligne : fin d'accès, téléchargement, accès terminé, partage invalide.
+function rowNotes(ctx, share) {
+  const { t } = ctx;
   const notes = [];
-  if (share.end && !expired) notes.push(t('share.row.until', { date: dateText(share.end, ctx.locale) }));
-  if (expired) notes.push(t('share.row.expired', { date: dateText(share.end, ctx.locale) }));
+  if (share.end && share.active) notes.push(t('share.row.until', { date: dateText(share.end, ctx.locale) }));
+  if (!share.active) notes.push(t('share.row.expired', { date: dateText(share.end, ctx.locale) }));
   if (share.download) notes.push(t('share.row.download'));
   if (!share.valid) notes.push(t('share.row.invalid'));
-  const label = share.inherited ? `${whoLabel(t, share.who)} · ${inheritedText(t, share.from)}` : whoLabel(t, share.who) + (share.who.toLowerCase() === state.me ? t('share.row.me') : '');
-  const locked = share.inherited || !state.canManage;
+  return notes;
+}
+
+// Le nom d'une ligne : celui de la personne (« moi » après le sien), ou d'où vient un droit hérité.
+function rowLabel(ctx, share) {
+  const { t, state } = ctx;
+  if (share.inherited) return `${whoLabel(t, share.who)} · ${inheritedText(t, share.from)}`;
+  return whoLabel(t, share.who) + (share.who.toLowerCase() === state.me ? t('share.row.me') : '');
+}
+
+// Le droit d'une ligne : un bouton qui ouvre le menu des droits, ou un cadenas quand le droit est hérité ou que la personne ne gère pas les partages.
+function levelButton(ctx, share) {
+  const { t } = ctx;
+  const locked = share.inherited || !ctx.state.canManage;
   const button = h('button', { type: 'button', class: 'lvl', 'aria-disabled': locked ? 'true' : null, 'aria-haspopup': locked ? null : 'menu', dataset: { fk: `share-level-${share.id}` } }, t(`share.right.${share.right}`), icon(locked ? 'lock' : 'chev-down'));
   if (!locked) button.addEventListener('click', () => openMenu(button, levelItems(t, {
     current: share.right, category: notPerson(share.who), onPick: right => ctx.change(share, right), onRemove: () => ctx.remove(share), onWhy: why => ctx.say(why),
   }), { host: ctx.container, align: 'right', label: t('share.sec.access') }));
-  const tags = [!share.valid ? t('share.tag.invalid') : null, expired ? t('share.tag.expired') : null].filter(Boolean).map(text => h('span', { class: 'tag' }, text));
-  return h('li', { class: 'rr', dataset: { share: String(share.id) } }, avatar(share.who), h('span', { class: 'nm' }, h('b', null, label), notes.length ? h('small', null, notes.join(' · ')) : null), ...tags, button);
+  return button;
+}
+
+// Une ligne de « Qui a accès » : l'avatar ou l'icône, le nom, ses détails, les étiquettes « Invalide » et « Terminé », et le droit.
+export function row(ctx, share) {
+  const { t } = ctx;
+  const notes = rowNotes(ctx, share);
+  const tags = [!share.valid ? t('share.tag.invalid') : null, !share.active ? t('share.tag.expired') : null].filter(Boolean).map(text => h('span', { class: 'tag' }, text));
+  return h('li', { class: 'rr', dataset: { share: String(share.id) } }, avatar(share.who), h('span', { class: 'nm' }, h('b', null, rowLabel(ctx, share)), notes.length ? h('small', null, notes.join(' · ')) : null), ...tags, levelButton(ctx, share));
 }
 
 // Les deux lignes qui sont toujours là : les propriétaires, et l'auteur du fichier.
@@ -97,8 +117,13 @@ function suggestionList(ctx, found) {
     for (const item of items) nodes.push(suggestion(item, () => ctx.choose(item.who)));
   }
   if (!found.people.length && !found.invite && !found.categories.length && !found.groups.length) nodes.push(h('p', { class: 'fine' }, t('share.suggest.none')));
-  for (const other of found.others) nodes.push(suggestion({ who: '', label: other.label, hint: other.hint, glyph: other.icon }, why => (why ? ctx.say(why) : other.run()), other.greyed ? other.why : null));
   return h('div', { class: 'drop', role: 'listbox', 'aria-label': t('share.add.label') }, ...nodes);
+}
+
+// Les deux onglets (« Dans ce document », « Dans un autre document Grist »), quand l'autre document est possible.
+function tabsBar(ctx) {
+  const { t } = ctx;
+  return tabList({ keys: ['here', 'other'], selected: ctx.tab, label: t('share.sec.access'), prefix: 'share', text: key => t(`share.tab.${key}`), onSelect: key => void ctx.goTab(key) });
 }
 
 // La zone d'ajout : un champ, et sa liste qui se redessine à chaque touche.
@@ -106,7 +131,7 @@ function addField(ctx) {
   const { t, state } = ctx;
   const input = h('input', { type: 'text', autocomplete: 'off', placeholder: t('share.add.placeholder'), 'aria-label': t('share.add.label'), dataset: { fk: 'share-add' } });
   const slot = h('div', { class: 'sg-slot' });
-  const draw = () => slot.replaceChildren(suggestionList(ctx, suggestions(t, state, input.value, ctx.extraTargets)));
+  const draw = () => slot.replaceChildren(suggestionList(ctx, suggestions(t, state, input.value)));
   input.addEventListener('focus', draw);
   input.addEventListener('click', draw); // le champ déjà actif (la liste fermée par Échap) rouvre sa liste au clic
   input.addEventListener('input', draw);
@@ -167,7 +192,8 @@ export function shareBody(ctx) {
 }
 
 // opts : { container, t, locale, inertTargets, file: { key, name, app }, load() → état, onAdd(record), onChange(id, patch), onRemove(id) → { ok, message? }, onActivate() → true quand Grist va recharger,
-// onManage() ouvre « Gérer les partages » (propriétaire), extraTargets: [{ label, hint, icon, greyed, why, run }] (« Un autre document Grist… » : Sync+) }. Rend la promesse de la fermeture.
+// onManage() ouvre « Gérer les partages » (propriétaire), other: { why, fileId, loadLinks(), onLevel(link, level) → { ok, message?, note? }, onNew() } ou state → cet objet (l'onglet « Dans un autre document Grist » :
+// js/share-other-tab.js, js/share-other.js ; sans lui, pas d'onglets) }. Rend la promesse de la fermeture.
 export function openShare(opts) {
   const { container, t, file } = opts;
   const body = h('div', { class: 'ask-body rt-body sh-body' }, h('p', { class: 'rt-none', 'aria-live': 'polite' }, t('share.loading')));
@@ -180,22 +206,41 @@ export function openShare(opts) {
     body, h('footer', { class: 'mod-foot' }, status, manage, close));
   const { done, result } = openModal({ container, section: dialog, inertTargets: opts.inertTargets, first: close, cancel: null });
   close.addEventListener('click', () => done(null));
-  const ctx = { t, container, locale: opts.locale, target: file.key, state: null, pending: null, extraTargets: opts.extraTargets || [], say: text => { status.textContent = text; } };
+  const ctx = { t, container, locale: opts.locale, target: file.key, state: null, pending: null, tab: 'here', links: null, other: null, say: text => { status.textContent = text; } };
   const draw = () => {
     if (!dialog.isConnected || !ctx.state) return;
-    body.replaceChildren(shareBody(ctx));
+    const content = ctx.other && ctx.tab === 'other' ? otherTab(ctx) : shareBody(ctx);
+    if (ctx.other) content.prepend(tabsBar(ctx));
+    replaceKeepingFocus(body, content);
     // Après le choix d'une personne, le formulaire est sous les yeux : le clavier est sur le droit, et « Ajouter » (en bas du formulaire) se montre, même sur un petit panneau.
     const form = body.querySelector('.sg-new');
     if (form) { body.querySelector('[data-fk="share-new-level"]').focus({ preventScroll: true }); body.querySelector('.sg-actions').scrollIntoView({ block: 'nearest' }); }
   };
+  const otherOf = () => (typeof opts.other === 'function' ? opts.other(ctx.state) : opts.other) || null;
+  // Les documents reliés ne se lisent qu'à l'ouverture de leur onglet (le moteur de partage ne se charge pas pour qui ne s'en sert pas), puis à chaque relecture.
+  const readLinks = async () => { try { ctx.links = await ctx.other.loadLinks(); } catch (error) { ctx.links = false; } };
   const reload = async () => {
-    try { ctx.state = await opts.load(); ctx.pending = null; draw(); } catch (error) { if (dialog.isConnected) body.replaceChildren(h('p', { class: 'rt-none' }, t('share.unreadable'))); }
+    try {
+      ctx.state = await opts.load(); ctx.pending = null; ctx.other = otherOf();
+      if (ctx.other && ctx.links !== null) await readLinks();
+      draw();
+    } catch (error) { if (dialog.isConnected) body.replaceChildren(h('p', { class: 'rt-none' }, t('share.unreadable'))); }
   };
   const write = async job => {
     const answer = await job();
-    ctx.say(answer && !answer.ok ? t('share.failed', { message: answer.message || '' }) : t('share.foot'));
+    ctx.say(answer && !answer.ok ? t('share.failed', { message: answer.message || '' }) : ((answer && answer.note) || t('share.foot')));
     if (!answer || answer.ok) await reload();
     return answer;
+  };
+  ctx.goTab = async tab => {
+    ctx.tab = tab;
+    if (tab === 'other' && ctx.links === null) { draw(); await readLinks(); }
+    draw();
+  };
+  ctx.setLevel = (link, level) => write(() => ctx.other.onLevel(link, level));
+  ctx.newDocument = async () => {
+    await ctx.other.onNew();
+    if (dialog.isConnected) await reload();
   };
   ctx.choose = who => { ctx.pending = who; draw(); };
   ctx.add = record => (record ? write(() => opts.onAdd(record)) : Promise.resolve());
@@ -205,8 +250,11 @@ export function openShare(opts) {
   manage.addEventListener('click', async () => {
     if (!opts.onManage) return;
     if (!ctx.state || ctx.state.owner !== true) { ctx.say(t('manage.other')); return; }
-    await opts.onManage();
-    if (dialog.isConnected) await reload();
+    // « Gérer les partages » prend la place de cette fenêtre (une seule fenêtre à lire, un seul voile) et la rend, avec le clavier sur son bouton, à sa fermeture.
+    const veil = dialog.closest('.mod-scrim');
+    if (veil) veil.classList.add('is-under');
+    try { await opts.onManage(); } finally { if (veil) veil.classList.remove('is-under'); }
+    if (dialog.isConnected) { manage.focus({ preventScroll: true }); await reload(); }
   });
   void reload();
   return result;

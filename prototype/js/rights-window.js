@@ -73,7 +73,16 @@ export function openRights({ container, t, inertTargets, load, act = async () =>
     h('footer', { class: 'mod-foot' }, h('p', { class: 'mod-note' }, t('rights.foot')), close));
   const { done, result } = openModal({ container, section: dialog, inertTargets, first: close, cancel: null });
   close.addEventListener('click', () => done(null));
-  const show = () => load().then(state => { if (dialog.isConnected) body.replaceChildren(rightsBody(t, state, kind => void act(kind).then(show))); })
+  // « Gérer les partages… » prend la place de ce panneau (une seule fenêtre à lire, un seul voile) ; à sa fermeture le panneau revient, avec le clavier sur le même bouton.
+  const run = async kind => {
+    const veil = kind === 'manage' ? dialog.closest('.mod-scrim') : null;
+    if (veil) veil.classList.add('is-under');
+    try { await act(kind); } finally { if (veil) veil.classList.remove('is-under'); }
+    await show();
+    const again = dialog.isConnected ? body.querySelector(`[data-fk="rights-act-${kind}"]`) : null;
+    if (again) again.focus({ preventScroll: true });
+  };
+  const show = () => load().then(state => { if (dialog.isConnected) body.replaceChildren(rightsBody(t, state, kind => void run(kind))); })
     .catch(() => { if (dialog.isConnected) body.replaceChildren(h('p', { class: 'rt-none' }, t('rights.lead.unreadable'))); });
   void show();
   return result;

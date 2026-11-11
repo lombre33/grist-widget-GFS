@@ -146,6 +146,14 @@ export function withProbes(text, keys = Object.keys(PROBE_FOLDERS)) {
   return text.replace('\n]);', `\n${entries.join('\n')}\n]);`);
 }
 
+// Ce qu'une sonde déclare dans son manifeste pour UN essai (le labo seul, le fichier publié n'est pas touché) : `ouverture` (ce qu'elle sait d'une ouverture : fichier, nouveau, importer, lire) et `permanente`
+// (elle est installée d'office, comme Publipostage+). `id` : celui de la sonde (`sonde-o`). À passer dans `patches`.
+export const probeDeclares = (id, { ouverture, permanente } = {}) => ({
+  chemin: `/prototype/labo/sondes/${id}.json`,
+  de: '"contrat": 0,',
+  vers: `"contrat": 0, ${[ouverture && `"ouverture": ${JSON.stringify(ouverture)}`, permanente && '"permanente": true'].filter(Boolean).join(', ')},`,
+});
+
 // Les attributs `sandbox` et `allow` du sous-cadre d'une app : ceux de GFS, ou ceux d'un essai (le labo seul, pour mesurer l'effet d'un drapeau en plus ou en moins ;
 // le fichier publié n'est pas modifié).
 export function withFrameAttributes(text, { sandbox, allow } = {}) {

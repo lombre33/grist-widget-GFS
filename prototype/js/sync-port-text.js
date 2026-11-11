@@ -11,7 +11,7 @@ export const PORT_TEXTES = Object.freeze({
     'error.transfer.network': 'Le serveur Grist ne répond pas.',
     'error.transfer.timeout': 'Le serveur Grist met trop de temps à répondre.',
     'error.transfer.answer': 'La réponse de Grist n’est pas celle qu’on attend.',
-    'error.ownerUnknown': 'Grist n’a pas dit si tu es propriétaire de ce document : réessaie dans un instant.',
+    'error.ownerUnknown': 'Grist n’a pas dit si vous êtes propriétaire de ce document : réessayez dans un instant.',
   }),
   en: Object.freeze({
     'error.transfer.frame': 'The GFS sending frame is not answering.',

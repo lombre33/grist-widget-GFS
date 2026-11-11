@@ -1,0 +1,43 @@
+// Les textes de « Partagés avec moi » (js/received-control.js, js/received-window.js ; maquette du 09/11), en français (vouvoiement) et en anglais dans le même lot. Ils rejoignent js/i18n.js ; le fichier est à part pour que
+// i18n.js reste sous les 600 lignes de code de l'outil d'audit.
+
+export const RECEIVED_STRINGS = Object.freeze({
+  fr: {
+    'rx.view': 'Partagés avec moi',
+    'rx.pending': 'À accepter',
+    'rx.lock': 'Reçu d’un autre document Grist : acceptez-le pour le lire.',
+    'rx.empty': 'Aucun fichier d’un autre document Grist pour l’instant. Un partage arrive ici, à accepter ; « Nouveau > Importer > D’un autre document Grist… » en relie un premier.',
+    'rx.answer.menu': 'Accepter ou refuser…',
+    'rx.answer.title': 'Accepter « {name} » ?',
+    'rx.answer.sub': 'Partagé par {by}',
+    'rx.answer.subUnknown': 'Partagé depuis un autre document Grist',
+    'rx.answer.text': '{who} vous partage {name} ({size}). Il est déjà dans ce document, grisé : l’accepter le montre dans « Partagés avec moi », le refuser le masque.',
+    'rx.answer.keep': 'Un refus tient : le fichier ne revient pas, même si l’envoyeur le met à jour.',
+    'rx.answer.foot': 'Un oui ou un non, pour ce fichier seulement.',
+    'rx.answer.gone': 'Ce fichier n’est plus dans le document : la liste va se mettre à jour.',
+    'rx.who.unknown': 'Un autre document',
+    'rx.accept': 'Accepter',
+    'rx.refuse': 'Refuser',
+    'rx.accepted': '« {name} » est accepté.',
+    'rx.refused': '« {name} » est refusé : il ne reviendra pas.',
+  },
+  en: {
+    'rx.view': 'Shared with me',
+    'rx.pending': 'To accept',
+    'rx.lock': 'Received from another Grist document: accept it to read it.',
+    'rx.empty': 'No file from another Grist document yet. A share arrives here, waiting to be accepted; “New > Import > From another Grist document…” links a first one.',
+    'rx.answer.menu': 'Accept or refuse…',
+    'rx.answer.title': 'Accept “{name}”?',
+    'rx.answer.sub': 'Shared by {by}',
+    'rx.answer.subUnknown': 'Shared from another Grist document',
+    'rx.answer.text': '{who} shares {name} ({size}) with you. It is already in this document, greyed: accepting it shows it in “Shared with me”, refusing it hides it.',
+    'rx.answer.keep': 'A refusal holds: the file does not come back, even if the sender updates it.',
+    'rx.answer.foot': 'A yes or a no, for this file only.',
+    'rx.answer.gone': 'This file is no longer in the document: the list will update.',
+    'rx.who.unknown': 'Another document',
+    'rx.accept': 'Accept',
+    'rx.refuse': 'Refuse',
+    'rx.accepted': '“{name}” is accepted.',
+    'rx.refused': '“{name}” is refused: it will not come back.',
+  },
+});

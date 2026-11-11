@@ -42,8 +42,13 @@ export class Dock {
     this.#work.addEventListener('click', onWork);
     this.#place.addEventListener('click', () => this.#openPlaceMenu());
     watchKey(setting, STORAGE_KEY, win);
-    // La barre est centrée sur son bord : un cadre qui change de taille la déplace.
-    if (win.ResizeObserver) new win.ResizeObserver(() => this.#state.refresh()).observe(stage);
+    // La barre est centrée sur son bord : un cadre qui change de taille la déplace ; et la zone qu'elle dit à l'app est sa taille : l'accessibilité renforcée (cibles de 36 px, css/acces.css) l'agrandit sans que le cadre
+    // bouge, la zone se relit donc aussi quand c'est la barre qui change de taille.
+    if (win.ResizeObserver) {
+      const observer = new win.ResizeObserver(() => this.#state.refresh());
+      observer.observe(stage);
+      observer.observe(root);
+    }
   }
 
   get edge() { return this.#state.edge; }

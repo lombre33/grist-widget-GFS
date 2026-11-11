@@ -23,6 +23,7 @@ export function buildShell(i18n) {
         h('span', { class: 'grow' }),
         keep('appsBtn', h('button', { type: 'button', class: 'tb', 'aria-haspopup': 'dialog' })),
         keep('display', h('div', { class: 'tb-group', role: 'group' }, toggle('viewList', 'list'), toggle('viewTiles', 'tiles'))),
+        keep('bellBtn', h('button', { type: 'button', class: 'tb tb-bell', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, icon('bell'), keep('bellCount', h('span', { class: 'tb-badge', hidden: true })))),
         keep('settingsBtn', h('button', { type: 'button', class: 'tb', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, icon('sliders')))),
       h('div', { class: 'ex-nav-row' },
         keep('crumbs', h('nav', { class: 'crumbs' })),
@@ -56,6 +57,7 @@ export function relabel(refs, i18n) {
   refs.appsBtn.title = t('gfs.appsTip');
   refs.appsBtn.replaceChildren(icon('modules'), t('gfs.apps'));
   describe(refs.settingsBtn, t('set.tip'));
+  describe(refs.bellBtn, t('nt.tip'));
   refs.display.setAttribute('aria-label', t('ex.display'));
   describe(refs.viewList, t('ex.list'));
   describe(refs.viewTiles, t('ex.tiles'));
@@ -76,6 +78,17 @@ export function relabel(refs, i18n) {
 
 // Le mot du pied (contrats 11.4, point 7) : « Pas protégé », « Protégé en partie », « Protégé », ou « Permissions » tant que GFS n'a rien lu ; il ouvre le panneau des permissions. `rules` : ce que
 // `RightsReader.rules()` a rendu, ou null avant la lecture. Le mot et l'icône vont ensemble.
+// La cloche : le nombre de ce qui attend la personne (la pastille ne se montre qu'à partir d'un), dit aussi à la voix ; grisée pendant le choix d'un fichier, où la vue « Partagés avec moi » ne s'ouvre pas.
+export function paintBell(refs, t, count, choosing) {
+  const { bellBtn, bellCount } = refs;
+  bellCount.hidden = count === 0;
+  bellCount.textContent = count > 99 ? '99+' : String(count);
+  const text = count > 0 ? t('nt.tipCount', { n: count }) : t('nt.tip');
+  bellBtn.setAttribute('title', text);
+  bellBtn.setAttribute('aria-label', text);
+  bellBtn.setAttribute('aria-disabled', String(Boolean(choosing)));
+}
+
 export function rightsChip(refs, i18n, rules) {
   const { t } = i18n;
   const word = rules && rules.readable && rules.word ? rules.word : 'none';
@@ -95,9 +108,11 @@ export function crumbs(ctx) {
   const sep = () => h('span', { class: 'sp' }, icon('chev-right'));
   const link = (path, name) => h('button', { type: 'button', dataset: { path } }, name);
   // Récents et Favoris gardent le chemin du retour à « Moi » : en vue étroite, le volet des dossiers est replié.
+  if (state.view === 'opened') return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, icon('stack'), t('ex.opened'))];
   if (state.view === 'recent') return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, icon('clock'), t('ex.recent'))];
   if (state.view === 'fav') return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, icon('pin'), t('ex.fav'))];
   if (state.view === 'trash') return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, icon('trash'), t('trash.view'))];
+  if (state.view === 'shared') return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, icon('users'), t('rx.view'))];
   if (ctx.filtering) return [link('', t('ex.me')), sep(), h('span', { class: 'here' }, t('ex.results'))];
   const parts = pathParts(state.path);
   if (!parts.length) return [h('span', { class: 'here' }, icon('user'), t('ex.me'))];
@@ -109,7 +124,8 @@ export function crumbs(ctx) {
 }
 
 function treeRow({ label, glyph, data, current, depth = 0, caret = null, toggle = null, count = null, grey = false }) {
-  return h('button', { type: 'button', class: 'tr-row', dataset: data, 'aria-current': String(Boolean(current)), 'aria-disabled': grey ? 'true' : null, vars: { '--d': depth } },
+  // Le nom entier au survol : le volet est étroit, un nom long y est coupé (charte).
+  return h('button', { type: 'button', class: 'tr-row', title: label, dataset: data, 'aria-current': String(Boolean(current)), 'aria-disabled': grey ? 'true' : null, vars: { '--d': depth } },
     h('span', { class: 'car-slot', dataset: toggle === null ? null : { toggle } }, caret ? icon('chev-right', caret === 'open' ? 'open' : '') : null),
     icon(glyph, glyph === 'folder' ? 'fld' : ''), h('span', { class: 'lbl' }, label), count === null ? null : h('span', { class: 'cnt' }, String(count)));
 }
@@ -119,8 +135,12 @@ export function tree(ctx) {
   const { t, state } = ctx;
   const inFolders = state.view === 'folder';
   const pinned = h('div', { class: 'tr-pin' },
+    // Les fichiers que GFS a ouverts dans une app depuis que la personne est là, en tête : on y revient d'un clic (js/opened-files.js).
+    treeRow({ label: t('ex.opened'), glyph: 'stack', data: { view: 'opened' }, current: state.view === 'opened', count: ctx.openedCount || null }),
     treeRow({ label: t('ex.recent'), glyph: 'clock', data: { view: 'recent' }, current: state.view === 'recent' }),
     treeRow({ label: t('ex.fav'), glyph: 'pin', data: { view: 'fav' }, current: state.view === 'fav', count: ctx.favCount }),
+    // Les arrivées d'un autre document, à accepter ou acceptées : le nombre à accepter, grisées pendant un choix (un fichier d'ailleurs ne se choisit pas).
+    treeRow({ label: t('rx.view'), glyph: 'users', data: { view: 'shared' }, current: state.view === 'shared', count: ctx.sharedPending || null, grey: ctx.choosing }),
     // La corbeille garde son rang pendant le choix d'un fichier, grisée : un fichier supprimé ne se choisit pas.
     treeRow({ label: t('trash.view'), glyph: 'trash', data: { view: 'trash' }, current: state.view === 'trash', count: ctx.trashCount || null, grey: ctx.choosing }),
     h('hr', { class: 'tr-sep' }));
@@ -150,15 +170,18 @@ function fileCells(ctx, file, flat) {
   const name = file.name || t('ex.untitled');
   const pinTitle = file.pinned ? t('ex.unpin') : t('ex.pin');
   return [
-    h('div', { class: 'nm', role: 'gridcell' }, icon(lock ? 'lock' : file.icon), h('span', { class: 't' }, name),
-      flat && file.folder ? h('span', { class: 'hint' }, file.folder.split('/').pop()) : null,
+    h('div', { class: 'nm', role: 'gridcell' }, icon(lock ? 'lock' : file.icon), h('span', { class: 't', title: lock ? `${name} · ${lock.text}` : name }, name),
+      // Le dossier d'origine, à côté du nom (vues à plat) ; son chemin entier au survol. À la corbeille c'est lui qui cède la place quand la ligne est étroite : le nom d'abord (audit du 10/11 : « Convocatio… »).
+      flat && file.folder ? h('span', { class: ctx.state.view === 'trash' ? 'hint yield' : 'hint', title: file.folder }, file.folder.split('/').pop()) : null,
+      // Dans « Ouverts », le fichier que l'app affiche en ce moment : le mot, pas une couleur seule.
+      ctx.state.view === 'opened' && ctx.shownKey === file.key ? h('span', { class: 'now' }, t('ex.shown')) : null,
       lock ? h('span', { class: 'sr-only' }, `, ${lock.text}`) : null),
     h('div', { class: 'ty', role: 'gridcell' }, h('span', { class: 'pill' }, ctx.typeLabel(file))),
     h('div', { class: 'wt', role: 'gridcell' }, weightText(ctx, file.weight)),
     h('div', { class: 'md', role: 'gridcell' }, formatDate(stampOf(file), ctx.now, ctx.locale, t)),
     h('div', { class: 'by', role: 'gridcell' }, who.initials ? h('span', { class: 'who', title: who.name }, who.initials) : null),
     h('div', { class: 'acts', role: 'gridcell' }, ctx.state.view === 'trash' ? restoreButton(t, file.key)
-      : h('button', { type: 'button', class: `rb pin${file.pinned ? ' on' : ''}`, dataset: { pin: file.key }, title: pinTitle, 'aria-label': pinTitle, 'aria-pressed': String(file.pinned) }, icon('pin')),
+      : (ctx.state.view === 'shared' ? null : h('button', { type: 'button', class: `rb pin${file.pinned ? ' on' : ''}`, dataset: { pin: file.key }, title: pinTitle, 'aria-label': pinTitle, 'aria-pressed': String(file.pinned) }, icon('pin'))),
     moreButton(t, file.key)),
   ];
 }
@@ -181,7 +204,7 @@ export function folderRow(ctx, folder) {
   const { t } = ctx;
   const key = `dir:${folder.path}`;
   return h('div', { class: 'ls-row folder', role: 'row', tabindex: ctx.state.sel === key ? '0' : '-1', dataset: { key }, 'aria-selected': String(ctx.state.sel === key) },
-    h('div', { class: 'nm', role: 'gridcell' }, icon('folder', 'fld'), h('span', { class: 't' }, folderLabel(t, folder.path, folder.name))),
+    h('div', { class: 'nm', role: 'gridcell' }, icon('folder', 'fld'), h('span', { class: 't', title: folderLabel(t, folder.path, folder.name) }, folderLabel(t, folder.path, folder.name))),
     h('div', { class: 'ty', role: 'gridcell' }, h('span', { class: 'pill' }, t('ex.fileCount', { n: folder.count }))),
     h('div', { class: 'wt', role: 'gridcell' }, weightText(ctx, folder.weight)),
     h('div', { class: 'md', role: 'gridcell' }, formatDate(folder.ts, ctx.now, ctx.locale, t)),
@@ -208,7 +231,7 @@ export function tile(ctx, row) {
     'aria-selected': String(selected), 'data-fam': fam, title: lock ? lock.text : null,
   },
   h('div', { class: 'th-pv' }, icon(glyph, folder ? 'fld' : '')),
-  h('span', { class: 'tn' }, name),
+  h('span', { class: 'tn', title: lock ? `${name} · ${lock.text}` : name }, name),
   h('div', { class: 'tt' }, icon(glyph), caption),
   h('div', { class: 'tw' }, weight));
 }
@@ -219,7 +242,9 @@ export function emptyMessage(ctx) {
   if (ctx.filtering) return t('ex.emptySearch');
   if (ctx.choosing && ctx.totalFiles === 0) return t('ex.choose.empty');
   if (state.view === 'trash') return t('trash.emptyList');
+  if (state.view === 'shared') return t('rx.empty');
   if (state.view === 'fav') return t('ex.emptyFav');
+  if (state.view === 'opened') return t('ex.emptyOpened');
   // « Aucun fichier » ne vaut qu'à la racine : un dossier (créé vide, ou vidé) est « vide » même quand le document n'a aucun fichier.
   if (state.view === 'recent' || (ctx.totalFiles === 0 && state.path === '')) return t('ex.emptyAll');
   return t('ex.emptyFolder');
@@ -228,37 +253,58 @@ export function emptyMessage(ctx) {
 const infoLine1 = (...nodes) => h('div', { class: 'l1' }, ...nodes);
 
 // La barre d'information : le fichier choisi (l'app qui l'ouvre, la date, le grisé), sinon un rappel du rangement : à la personne seule, ou commun au
-// document tant que GFS ne sait pas qui elle est (contrats 6.4, point 4).
+// document tant que GFS ne sait pas qui elle est (contrats 6.4, point 4). Ses lignes sont coupées quand la place manque : son texte entier est au survol (charte).
 export function infoBar(ctx) {
+  const info = infoContent(ctx);
+  info.title = [...info.children].map(line => line.textContent.replace(/\s+/g, ' ').trim()).filter(Boolean).join('\n');
+  return info;
+}
+
+function infoContent(ctx) {
   const { t, selected } = ctx;
   const filingHint = ctx.personal ? t('ex.hintPersonal') : t('ex.hintShared');
-  if (!selected) {
-    const hint = ctx.state.view === 'trash' ? t('trash.hint') : (ctx.state.view === 'folder' ? filingHint : t('ex.hintSelect'));
-    return h('div', { class: 'inf' }, infoLine1(icon('info'), h('span', { class: 'mu' }, ctx.choosing ? t('ex.choose.hint') : hint)),
-      h('div', { class: 'l2' }, icon('pin'), h('span', { class: 'lt' }, ctx.personal ? t('ex.hintFav') : t('ex.hintFavShared'))));
-  }
-  if (selected.kind === 'folder') {
-    return h('div', { class: 'inf' }, infoLine1(icon('folder'), h('b', null, folderLabel(t, selected.path, selected.name)), h('span', { class: 'mu' }, `· ${t('ex.fileCount', { n: selected.count })} · ${weightText(ctx, selected.weight)}`)),
-      h('div', { class: 'l2' }, h('span', { class: 'lt' }, filingHint)));
-  }
-  const { file } = selected;
+  if (!selected) return noSelectionInfo(ctx, filingHint);
+  return selected.kind === 'folder' ? folderInfo(ctx, selected, filingHint) : fileInfo(ctx, selected.file);
+}
+
+// Rien n'est choisi : ce que fait la vue (la corbeille, un choix de fichier, le rangement d'un dossier), puis un rappel des favoris.
+function noSelectionInfo(ctx, filingHint) {
+  const { t } = ctx;
+  const hint = ctx.state.view === 'trash' ? t('trash.hint') : (ctx.state.view === 'folder' ? filingHint : t('ex.hintSelect'));
+  return h('div', { class: 'inf' }, infoLine1(icon('info'), h('span', { class: 'mu' }, ctx.choosing ? t('ex.choose.hint') : hint)),
+    h('div', { class: 'l2' }, icon('pin'), h('span', { class: 'lt' }, ctx.personal ? t('ex.hintFav') : t('ex.hintFavShared'))));
+}
+
+function folderInfo(ctx, selected, filingHint) {
+  const { t } = ctx;
+  return h('div', { class: 'inf' }, infoLine1(icon('folder'), h('b', null, folderLabel(t, selected.path, selected.name)), h('span', { class: 'mu' }, `· ${t('ex.fileCount', { n: selected.count })} · ${weightText(ctx, selected.weight)}`)),
+    h('div', { class: 'l2' }, h('span', { class: 'lt' }, filingHint)));
+}
+
+// Le fichier choisi : son nom, son type et son poids ; en dessous le grisé s'il y en a un, sinon ses faits.
+function fileInfo(ctx, file) {
+  const { t } = ctx;
   const lock = ctx.lockOf(file);
-  const who = person(authorOf(file));
-  const date = formatDate(stampOf(file), ctx.now, ctx.locale, t);
-  // À la corbeille : quand et par qui le fichier y est allé, et où il revient ; sinon : l'app qui l'ouvre, sa dernière modification et son auteur.
-  const facts = file.trashed
-    ? [t('trash.deletedOn', { date }), who.name ? t('ex.modifiedBy', { by: who.name }) : '', file.folder ? t('trash.backTo', { folder: file.folder }) : '']
-    : [ctx.opensIn(file), file.ts === null ? '' : t('ex.modifiedOn', { date }), who.name ? t('ex.modifiedBy', { by: who.name }) : ''];
-  const second = lock ? lock.text : facts.filter(Boolean).join(' · ');
+  const second = lock ? lock.text : fileFacts(ctx, file).filter(Boolean).join(' · ');
   return h('div', { class: 'inf', 'data-fam': lock ? null : family(file) },
     infoLine1(icon(lock ? 'lock' : file.icon), h('b', null, file.name || t('ex.untitled')), h('span', { class: 'mu' }, `· ${ctx.typeLabel(file)} · ${weightText(ctx, file.weight)}`)),
     h('div', { class: 'l2' }, h('span', { class: 'lt' }, second)));
 }
 
+// À la corbeille : quand et par qui le fichier y est allé, et où il revient ; sinon : l'app qui l'ouvre, sa dernière modification et son auteur.
+function fileFacts(ctx, file) {
+  const { t } = ctx;
+  const who = person(authorOf(file));
+  const date = formatDate(stampOf(file), ctx.now, ctx.locale, t);
+  const by = who.name ? t('ex.modifiedBy', { by: who.name }) : '';
+  if (file.trashed) return [t('trash.deletedOn', { date }), by, file.folder ? t('trash.backTo', { folder: file.folder }) : ''];
+  return [ctx.opensIn(file), file.ts === null ? '' : t('ex.modifiedOn', { date }), by];
+}
+
 // La barre de la corbeille, au-dessus de la liste : la règle (rien ne part seul) et « Vider la corbeille… ». Rien tant que la corbeille est vide.
 export function trashBar(ctx) {
   const { t } = ctx;
-  return h('div', { class: 'trash-bar' }, icon('trash'), h('span', { class: 'tb-text' }, t('trash.bar')),
+  return h('div', { class: 'trash-bar' }, icon('trash'), h('span', { class: 'tb-text', title: t('trash.bar') }, t('trash.bar')),
     h('button', { type: 'button', class: 'btn', dataset: { emptyTrash: '' } }, t('trash.empty')));
 }
 

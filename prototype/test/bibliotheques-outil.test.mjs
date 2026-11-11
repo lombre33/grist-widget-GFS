@@ -7,6 +7,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { integrity, readList, readPublication, githubAddress, buildEntry, checkFiles, checkCdn, generate, archiveName, verify, ROOT } from '../outils/bibliotheques.mjs';
 
+import { EXACT_VERSION_RE as KIT_EXACT_VERSION_RE, integrity as kitIntegrity } from '../kit/outils/bibliotheques/primitives.mjs';
+import { EXACT_VERSION_RE } from '../js/manifest.js';
+
 const pkg = extra => ({ dependencies: { 'plotly.js-basic-dist-min': '2.13.2' }, gfs: { bibliotheques: { plotly: { paquet: 'plotly.js-basic-dist-min', fichier: 'plotly-basic.min.js' } } }, ...extra });
 const BYTES = Buffer.from('console.log("exemple")');
 const LICENCES = Buffer.from('plotly.js-basic-dist-min@2.13.2 · MIT');
@@ -15,6 +18,12 @@ const reading = bytes => path => (path.endsWith('LICENCES.txt') ? LICENCES : byt
 
 test('integrity : sha384 en base 64, comme l\'attribut integrity', () => {
   assert.equal(integrity(Buffer.from('abc')), 'sha384-ywB1P0WjXou1oD1pmsZQBycsMqsO3tFjGotgWkP/W+2AhgcroefMI1i67KE0yCWn');
+});
+
+test('l\'outil de GFS reprend les primitives du kit (l\'empreinte, le fichier d\'un paquet, la comparaison au CDN) et n\'en redéfinit aucune ; la version exacte du manifeste est celle du kit', () => {
+  assert.equal(integrity, kitIntegrity);
+  assert.doesNotMatch(readFileSync(join(ROOT, 'outils/bibliotheques.mjs'), 'utf8'), /createHash|function archiveOf|function packBytes|function headerProblems/);
+  assert.equal(EXACT_VERSION_RE.source, KIT_EXACT_VERSION_RE.source, 'deux écritures de la même règle (le manifeste de GFS, l\'outil du kit) : elles ne divergent pas');
 });
 
 test('readList : une version exacte par bibliothèque, jamais un intervalle ni latest', () => {

@@ -13,6 +13,7 @@ function harness({ restoreAs = null, lock = null, handles = true } = {}) {
   const trashed = [];
   const said = [];
   const calls = [];
+  const revealed = [];
   const stack = new UndoStack({ t, notice: text => said.push(text) });
   const bin = {
     handles: () => handles,
@@ -49,8 +50,8 @@ function harness({ restoreAs = null, lock = null, handles = true } = {}) {
       return { key: made.key, name: made.name };
     },
   };
-  const wrapped = undoable({ stack, bin, copying, trashed: () => trashed, live: () => live, t, appName: id => id });
-  return { ...wrapped, stack, live, trashed, said, calls };
+  const wrapped = undoable({ stack, bin, copying, trashed: () => trashed, live: () => live, t, appName: id => id, reveal: key => revealed.push(key) });
+  return { ...wrapped, stack, live, trashed, said, calls, revealed };
 }
 
 test('mettre à la corbeille puis Ctrl+Z : le fichier revient, par la corbeille, avec sa phrase', async () => {
@@ -225,4 +226,37 @@ test('remettre à la corbeille (Ctrl+Y d\'une suppression) attend l\'app ouverte
   h.calls.length = 0;
   await h.stack.redo();
   assert.deepEqual([h.said.at(-1), h.calls, h.stack.redoSize], [lock.text, [], 1]);
+});
+
+// Audit des parcours du 10/11 : après Ctrl+Z, le fichier ramené n'était pas la ligne choisie (la sélection restait sur un voisin, et un Suppr de plus agissait sur lui). L'explorateur reçoit la clé du fichier sorti de la corbeille.
+test('Ctrl+Z d\'une suppression : la clé du fichier ramené est donnée à l\'explorateur pour qu\'il le choisisse', async () => {
+  const { bin, stack, live, revealed } = harness();
+  await bin.move(live[0]);
+  assert.deepEqual(revealed, [], 'mettre à la corbeille ne choisit rien');
+  await stack.undo();
+  assert.deepEqual(revealed, ['zf:1']);
+});
+
+test('Ctrl+Z quand la restauration donne une autre clé (nouvelle ligne) : c\'est la nouvelle clé qui est donnée', async () => {
+  const { bin, stack, live, revealed } = harness({ restoreAs: 9 });
+  await bin.move(live[0]);
+  await stack.undo();
+  assert.deepEqual(revealed, ['zf:9']);
+});
+
+test('Ctrl+Y d\'une copie défaite : la copie qui sort de la corbeille est donnée à l\'explorateur', async () => {
+  const { copying, stack, live, revealed } = harness();
+  const made = await copying.copy(live[0]);
+  await stack.undo();
+  assert.deepEqual(revealed, [], 'défaire la copie la met à la corbeille : rien à choisir');
+  await stack.redo();
+  assert.deepEqual(revealed, [made.key]);
+});
+
+test('un fichier qui n\'est plus à la corbeille : rien n\'est donné à l\'explorateur', async () => {
+  const { bin, stack, live, trashed, revealed } = harness();
+  await bin.move(live[0]);
+  trashed.length = 0;
+  await stack.undo();
+  assert.deepEqual(revealed, []);
 });

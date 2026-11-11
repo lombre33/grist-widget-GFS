@@ -79,8 +79,8 @@ export class AppPeer {
     }
     try {
       const args = Array.isArray(call.args) ? call.args : [];
-      const data = await this.#onCall({ iface: call.iface, meth: call.meth, args });
-      this.#out({ mtype: MSG.RESP, reqId, data });
+      const result = await this.#onCall({ iface: call.iface, meth: call.meth, args });
+      this.#out({ mtype: MSG.RESP, reqId, data: result });
     } catch (e) {
       this.#fail(reqId, e && e.code, e && e.message);
     }

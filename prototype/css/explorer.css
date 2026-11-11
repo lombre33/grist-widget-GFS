@@ -14,14 +14,20 @@ button { cursor: pointer; }
 .ex-list:focus-visible { outline-offset: -2px; }
 
 .tb { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 28px; min-width: 28px; padding: 0 5px;
-  border: 1px solid transparent; border-radius: var(--radius-btn); background: transparent; color: var(--text); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+  border: 1px solid transparent; border-radius: var(--radius-btn); background: transparent; color: var(--text); font-size: max(12.5px, var(--fs-min)); font-weight: 600; white-space: nowrap; }
 .tb:hover { background: var(--surface-sunken); }
 .tb.on { background: var(--accent-soft); border-color: var(--accent-soft-border); color: var(--accent-ink); }
+/* La cloche Notifications : la pastille du nombre à accepter pose son coin sur celui du bouton. */
+.tb-bell { position: relative; }
+.tb-bell[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
+.tb-badge { position: absolute; top: -5px; right: -5px; min-width: 15px; height: 15px; padding: 0 4px; box-sizing: border-box; border-radius: 8px; background: var(--fill); color: var(--on-accent);
+  font-size: max(10.5px, var(--fs-min)); font-weight: 700; line-height: 15px; text-align: center; pointer-events: none; }
+.tb-badge[hidden] { display: none; }
 .tb-group { display: inline-flex; flex: none; border: var(--bw) solid var(--border-strong); border-radius: var(--radius-btn); box-shadow: var(--shadow-ctl); overflow: hidden; }
 .tb-group .tb { border: 0; border-radius: 0; }
 .tb-group .tb + .tb { border-left: 1px solid var(--border); }
 
-.btn { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; font-size: 12.5px; font-weight: 600; white-space: nowrap; border-radius: var(--radius-btn); box-shadow: var(--shadow-ctl); }
+.btn { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; font-size: max(12.5px, var(--fs-min)); font-weight: 600; white-space: nowrap; border-radius: var(--radius-btn); box-shadow: var(--shadow-ctl); }
 .btn .ic { width: 14px; height: 14px; }
 .btn[aria-expanded="true"] { background: var(--surface-sunken); }
 .btn[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
@@ -30,30 +36,30 @@ button { cursor: pointer; }
 
 /* ---------- le cadre ---------- */
 .ex { position: absolute; inset: 0; z-index: var(--z-window); display: flex; flex-direction: column; background-color: var(--ex-bg); background-image: var(--wash); background-size: var(--wash-size); color: var(--text);
-  font-family: var(--font-ui); font-size: 13px; line-height: 1.35; }
+  font-family: var(--font-ui); font-size: max(13px, var(--fs-min)); line-height: 1.35; }
 .ex-head { flex: none; display: flex; flex-direction: column; gap: 6px; margin: var(--gap) var(--gap) 0; padding: 10px 16px 8px; background: var(--surface); border-radius: var(--radius-panel); box-shadow: var(--shadow-panel); }
 .ex-title-row, .ex-nav-row { display: flex; align-items: center; gap: 8px; }
 .ex-title { margin: 0; font-family: var(--font-head); font-size: var(--fs-head); font-weight: var(--fw-head); text-transform: var(--tt-head); letter-spacing: var(--ls-head); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Le mode choix (contrats 5.4, point 2) : le titre de l'app qui demande, avec l'icône du lien. */
 .ex-title .ic { width: 15px; height: 15px; margin-right: 6px; vertical-align: -2px; color: var(--text-muted); }
 .crumbs { flex: 1; min-width: 0; display: flex; align-items: center; gap: 1px; overflow: hidden; white-space: nowrap; }
-.crumbs button { border: 0; background: transparent; padding: 3px 6px; border-radius: var(--radius-sm); font-size: 12.5px; font-weight: 600; color: var(--text-muted); }
+.crumbs button { border: 0; background: transparent; padding: 3px 6px; border-radius: var(--radius-sm); font-size: max(12.5px, var(--fs-min)); font-weight: 600; color: var(--text-muted); }
 .crumbs button:hover { background: var(--surface-sunken); color: var(--text); }
-.crumbs .here { display: inline-flex; align-items: center; gap: 5px; padding: 3px 6px; font-size: 12.5px; font-weight: 700; color: var(--text); }
+.crumbs .here { display: inline-flex; align-items: center; gap: 5px; padding: 3px 6px; font-size: max(12.5px, var(--fs-min)); font-weight: 700; color: var(--text); }
 .crumbs .sp { display: inline-flex; color: var(--text-muted); }
 .crumbs .ic { width: 12px; height: 12px; }
 .crumbs .here .ic { width: 14px; height: 14px; }
 .inp-search { position: relative; flex: none; width: 176px; }
-.inp-search input { width: 100%; height: 30px; border: var(--bw) solid var(--border-strong); border-radius: var(--radius-input); padding: 0 8px 0 28px; font-size: 12.5px; background: var(--surface); color: var(--text); }
+.inp-search input { width: 100%; height: 30px; border: var(--bw) solid var(--border-strong); border-radius: var(--radius-input); padding: 0 8px 0 28px; font-size: max(12.5px, var(--fs-min)); background: var(--surface); color: var(--text); }
 .inp-search input::placeholder { color: var(--text-muted); opacity: 1; }
 .inp-search .ic { position: absolute; left: 8px; top: 8px; width: 14px; height: 14px; color: var(--text-muted); pointer-events: none; }
 .tyi { display: inline-flex; }
 
 .ex-notices:empty { display: none; }
-.banner { display: flex; align-items: center; gap: 8px; padding: 6px 16px; border-top: 1px solid var(--border-strong); background: var(--warn-soft); color: var(--warn-ink); font-size: 12.5px; }
+.banner { display: flex; align-items: center; gap: 8px; padding: 6px 16px; border-top: 1px solid var(--border-strong); background: var(--warn-soft); color: var(--warn-ink); font-size: max(12.5px, var(--fs-min)); }
 
 /* La corbeille : sa barre (la règle, « Vider la corbeille… »), une ligne du volet grisée pendant le choix d'un fichier. */
-.trash-bar { display: flex; align-items: center; gap: 8px; padding: 4px 16px; border-top: 1px solid var(--border-strong); background: var(--surface-sunken); color: var(--text-muted); font-size: 12.5px; }
+.trash-bar { display: flex; align-items: center; gap: 8px; padding: 4px 16px; border-top: 1px solid var(--border-strong); background: var(--surface-sunken); color: var(--text-muted); font-size: max(12.5px, var(--fs-min)); }
 .trash-bar .ic { flex: none; width: 14px; height: 14px; }
 .trash-bar .tb-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .trash-bar .btn { flex: none; height: 26px; }
@@ -64,7 +70,7 @@ button { cursor: pointer; }
 .tr-pin { position: sticky; top: 0; z-index: 2; padding-top: 6px; background: var(--surface-sunken); }
 .tr-sep { border: 0; border-top: 1px solid var(--border-strong); margin: 5px 4px; }
 .tr-row { display: flex; align-items: center; gap: 5px; width: 100%; height: 26px; padding: 0 6px 0 calc(2px + var(--d, 0) * 13px); border: 0; border-radius: var(--radius-sm);
-  background: transparent; font-size: 12.5px; font-weight: 500; text-align: left; color: var(--text); }
+  background: transparent; font-size: max(12.5px, var(--fs-min)); font-weight: 500; text-align: left; color: var(--text); }
 .tr-row:hover { background: var(--surface); box-shadow: inset 0 0 0 1px var(--border); }
 .tr-row[aria-current="true"] { background: var(--accent-soft); box-shadow: inset var(--bar-w) 0 0 var(--accent), inset 0 0 0 1px var(--accent-soft-border); color: var(--accent-ink); font-weight: 700; }
 .tr-row .ic { width: 14px; height: 14px; color: var(--text-muted); }
@@ -74,7 +80,7 @@ button { cursor: pointer; }
 .tr-row .car-slot .ic { width: 11px; height: 11px; transition: transform .12s; }
 .tr-row .car-slot .ic.open { transform: rotate(90deg); }
 .tr-row .lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tr-row .cnt { font-size: 11px; color: var(--text-muted); }
+.tr-row .cnt { font-size: max(11px, var(--fs-min)); color: var(--text-muted); }
 .tr-row[aria-current="true"] .cnt { color: var(--accent-ink); }
 .tr-row[aria-disabled="true"] { color: var(--text-muted); cursor: not-allowed; }
 
@@ -87,14 +93,14 @@ button { cursor: pointer; }
    modifié : « Today 07:59 »). Le poids est aligné à droite (chiffres de même largeur : les unités s'alignent en colonne). */
 .ls-head, .ls-row { display: grid; grid-template-columns: minmax(0, 1fr) 102px 56px 74px 32px 52px; align-items: center; column-gap: 8px; padding: 0 8px; }
 .ls-head { position: sticky; top: 0; z-index: 2; height: 26px; background: var(--surface-sunken); border-bottom: 1px solid var(--border-strong); }
-.ls-head .hd { justify-self: start; border: 0; background: transparent; padding: 2px 4px; margin-left: -4px; border-radius: var(--radius-xs); font-family: var(--font-label); font-size: 11px; font-weight: 700;
+.ls-head .hd { white-space: nowrap; justify-self: start; border: 0; background: transparent; padding: 2px 4px; margin-left: -4px; border-radius: var(--radius-xs); font-family: var(--font-label); font-size: max(11px, var(--fs-min)); font-weight: 700;
   letter-spacing: var(--ls-label); text-transform: var(--tt-label); color: var(--text-muted); }
 .ls-head .hd:hover { color: var(--text); background: var(--surface); }
 .ls-head .hd[data-sort="poids"] { justify-self: end; margin-left: 0; margin-right: -4px; }
 .ls-head .hd[aria-sort] { color: var(--text); }
 .ls-head .hd[aria-sort="ascending"]::after { content: " ↑"; }
 .ls-head .hd[aria-sort="descending"]::after { content: " ↓"; }
-.ls-row { height: 28px; font-size: 12.5px; outline-offset: -2px; scroll-margin-top: 28px; border-bottom: 1px solid var(--border); }
+.ls-row { height: 28px; font-size: max(12.5px, var(--fs-min)); outline-offset: -2px; scroll-margin-top: 28px; border-bottom: 1px solid var(--border); }
 .ls-row, .th, .tr-row { user-select: none; -webkit-user-select: none; }
 .ls-row:hover { background: var(--surface-sunken); }
 .ls-row[aria-selected="true"] { background: var(--accent-soft); box-shadow: inset var(--bar-w) 0 0 var(--accent); }
@@ -103,17 +109,20 @@ button { cursor: pointer; }
 .ls-row.folder .nm .ic { color: var(--accent-ink); }
 .ls-row .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ls-row.folder .t { font-weight: 700; }
-.ls-row .hint { flex: none; max-width: 38%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--text-muted); }
-.ls-row .ty, .ls-row .md { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ls-row .hint { flex: none; max-width: 38%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: max(11px, var(--fs-min)); color: var(--text-muted); }
+/* À la corbeille, la ligne est étroite (le volet des dossiers, quatre colonnes) : le dossier d'origine rend sa place au nom avant que le nom ne soit coupé (mesuré le 10/11 : « Convocatio… » à 700 px). */
+.ls-row .hint.yield { flex: 0 1000 auto; min-width: 0; }
+.ls-row .now { flex: none; font-size: max(11px, var(--fs-min)); font-weight: 600; color: var(--accent-ink); }
+.ls-row .ty, .ls-row .md { font-size: max(12px, var(--fs-min)); color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ls-row .ty { overflow: visible; }
-.ls-row .wt { text-align: right; font-size: 12px; color: var(--text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ls-row .wt { text-align: right; font-size: max(12px, var(--fs-min)); color: var(--text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .ls-row.folder .wt { font-weight: 700; }
 .pill { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; padding: 0 8px; border: 1px solid var(--border-strong);
-  border-radius: var(--radius-pill); background: var(--surface); font-size: 11px; font-weight: 600; line-height: 17px; color: var(--text-muted); }
+  border-radius: var(--radius-pill); background: var(--surface); font-size: max(11px, var(--fs-min)); font-weight: 600; line-height: 17px; color: var(--text-muted); }
 .ls-row.folder .pill { border-style: dashed; }
 .ls-row[aria-selected="true"] .pill { border-color: var(--accent-soft-border); background: var(--surface); }
 .who { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 5px; border-radius: calc(var(--radius-pill) + 1px); background: var(--avatar-bg);
-  border: 1px solid var(--avatar-line); font-size: 10px; font-weight: 700; color: var(--avatar-fg); }
+  border: 1px solid var(--avatar-line); font-size: max(10px, var(--fs-min)); font-weight: 700; color: var(--avatar-fg); }
 .ls-row .acts { display: flex; justify-content: flex-end; gap: 2px; }
 .rb { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 0; border-radius: calc(var(--radius-xs) + 1px); background: transparent; color: var(--text-muted); padding: 0; }
 .rb .ic { width: 14px; height: 14px; }
@@ -122,7 +131,7 @@ button { cursor: pointer; }
 .rb.pin.on { opacity: 1; color: var(--accent); }
 .ls-row:hover .rb, .ls-row:focus-within .rb, .ls-row[aria-selected="true"] .rb, .th:hover .rb, .th:focus-within .rb { opacity: 1; }
 @media (hover: none) { .rb.pin, .rb.mn, .rb.rs { opacity: 1; } }
-.empty { padding: 22px 16px; text-align: center; font-size: 12.5px; color: var(--text-muted); }
+.empty { padding: 22px 16px; text-align: center; font-size: max(12.5px, var(--fs-min)); color: var(--text-muted); }
 
 /* Un fichier grisé (type inconnu, extension absente) : cadenas, texte atténué (jeton à 4,5:1), jamais retiré. */
 .ls-row.lk .t, .ls-row.lk .nm .ic, .ls-row.lk .ty, .th.lk .tn { color: var(--text-muted); }
@@ -157,6 +166,9 @@ button { cursor: pointer; }
 [data-ambiance="renforcee"] .pill { border-width: 2px; }
 [data-ambiance="renforcee"] .ls-head { border-bottom: 2px solid var(--border-strong); }
 [data-ambiance="renforcee"] .ls-row[aria-selected="true"] .t { font-weight: 700; }
+/* Les boutons d'une ligne (`.rb`, que seule cette feuille nomme) : cible de 36 px et anneau de focus dessiné dedans (la ligne rogne) en accessibilité renforcée, second temps (`--target`, css/acces.css). */
+:root[data-ambiance="renforcee"] .rb { width: var(--target); height: var(--target); }
+:root[data-ambiance="renforcee"] .rb:focus-visible { outline-offset: -3px; box-shadow: inset 0 0 0 5px var(--surface); }
 .th[data-fam] .th-pv { background: var(--tc-soft); border-color: var(--tc-line); }
 .th[data-fam] .tt { color: var(--tc-ink); }
 .th[data-fam] .tt .ic, .th[data-fam] .th-pv .ic { color: var(--tc); }
@@ -166,15 +178,17 @@ button { cursor: pointer; }
 
 /* ---------- vignettes ---------- */
 .th-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; padding: 8px; }
+/* Une grille longue n'est construite que pour ce qu'on voit (js/explorer-window.js) : toutes les rangées ont la même hauteur, le nom réserve donc ses deux lignes. */
+.th-grid.is-windowed .tn { min-height: 2.5em; }
 .th { display: flex; flex-direction: column; gap: 5px; padding: 6px; border: var(--bw) solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-ctl); background: var(--surface); text-align: left; position: relative; min-width: 0; }
 .th[aria-selected="true"] { border-color: var(--accent); background: var(--accent-soft); }
 .th-pv { aspect-ratio: 16 / 10; border-radius: var(--radius-xs); background: var(--surface-sunken); border: 1px solid var(--border-strong); display: flex; align-items: center; justify-content: center; overflow: hidden; color: var(--accent-ink); }
 .th-pv .ic { width: 34px; height: 34px; }
 .th.folder .th-pv .ic { fill: var(--accent-soft-border); color: var(--accent-ink); }
-.th .tn { font-size: 12px; font-weight: 600; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.th .tt { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); }
+.th .tn { font-size: max(12px, var(--fs-min)); font-weight: 600; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.th .tt { display: flex; align-items: center; gap: 5px; font-size: max(11px, var(--fs-min)); color: var(--text-muted); }
 .th .tt .ic { width: 12px; height: 12px; }
-.th .tw { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.th .tw { font-size: max(11px, var(--fs-min)); color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
 /* ---------- le trait des icônes de type, selon l'ambiance ---------- */
 /* Les icônes des types de fichier (ligne de la liste, vignette, barre d'information) prennent le trait de l'ambiance (décision du porteur, 04/11) : l'épaisseur d'origine (1,8 en liste, 1,4 en vignette) multipliée
@@ -193,17 +207,17 @@ button { cursor: pointer; }
 
 /* ---------- barre d'information et pied ---------- */
 .ex-foot { flex: none; display: flex; align-items: center; gap: 8px; margin: 0 var(--gap) var(--gap); padding: 7px 16px 9px; border-top: var(--divider-w) solid var(--divider); border-radius: var(--radius-panel); box-shadow: var(--shadow-panel); background: var(--surface-sunken); }
-.ex-info { flex: 1; min-width: 0; display: flex; align-items: center; height: 40px; font-size: 12px; }
+.ex-info { flex: 1; min-width: 0; display: flex; align-items: center; height: 40px; font-size: max(12px, var(--fs-min)); }
 /* Le total de ce que la liste montre (js/weight.js) : à droite de la barre d'information, avant les boutons. */
 /* Le total est un bouton (lot 4 du poids) : un clic ouvre la fenêtre « Poids du document » (css/weight.css). */
-.ex-total { flex: none; display: flex; align-items: center; gap: 10px; margin: 0 -6px; padding: 3px 6px; font: inherit; font-size: 12px; color: var(--text-muted); white-space: nowrap; background: none; border: 0; border-radius: var(--radius-sm); cursor: pointer; }
+.ex-total { flex: none; display: flex; align-items: center; gap: 10px; margin: 0 -6px; padding: 3px 6px; font: inherit; font-size: max(12px, var(--fs-min)); color: var(--text-muted); white-space: nowrap; background: none; border: 0; border-radius: var(--radius-sm); cursor: pointer; }
 .ex-total:hover { background: var(--surface-sunken); }
 .ex-total:empty { display: none; }
 .ex-total .tot-n { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
 /* La lecture des pièces jointes en cours (case « + pièces jointes » cochée) : le total garde ce qu'il disait, un peu pâli. */
 .ex-total[aria-busy="true"] { opacity: .6; }
 /* La case « + pièces jointes » (js/explorer-view.js, `pjBox`), entre le total et les boutons. Grisée, jamais masquée, quand GFS ne peut pas lire les pièces jointes : son clic dit pourquoi. */
-.ex-pj { flex: none; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); white-space: nowrap; cursor: pointer; }
+.ex-pj { flex: none; display: flex; align-items: center; gap: 6px; font-size: max(12px, var(--fs-min)); color: var(--text-muted); white-space: nowrap; cursor: pointer; }
 .ex-pj input { flex: none; width: 15px; height: 15px; margin: 0; accent-color: var(--accent-solid); cursor: inherit; }
 .ex-pj.is-grey { opacity: .55; cursor: not-allowed; }
 .inf { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
@@ -217,7 +231,7 @@ button { cursor: pointer; }
 
 /* ---------- menus ---------- */
 .menu { position: absolute; min-width: 178px; max-height: 300px; overflow-y: auto; padding: 4px; background: var(--surface); border: var(--bw) solid var(--border-strong); border-radius: var(--radius-md);
-  box-shadow: var(--shadow-float); font-size: 12.5px; }
+  box-shadow: var(--shadow-float); font-size: max(12.5px, var(--fs-min)); }
 /* Un panneau flottant sous un bouton (js/menu.js, openPanel) : du contenu que l'appelant donne (la palette de couleur du kit, kit/css/color-picker.css), sans la largeur d'une liste d'articles ni de défilement. */
 .menu-panel { min-width: 0; max-height: none; overflow: visible; padding: 8px; }
 .menu-item { display: flex; align-items: center; gap: 8px; width: 100%; height: 28px; padding: 0 8px; border: 0; border-radius: calc(var(--radius-xs) + 1px); background: transparent; text-align: left; color: var(--text); }
@@ -229,7 +243,7 @@ button { cursor: pointer; }
 .menu-item .sub-chev { margin-left: auto; width: 12px; height: 12px; color: var(--text-muted); }
 .menu-item[aria-expanded="true"] { background: var(--surface-sunken); }
 .menu-item .menu-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.menu-item .menu-hint { margin-left: auto; padding-left: 10px; font-size: 11px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+.menu-item .menu-hint { margin-left: auto; padding-left: 10px; font-size: max(11px, var(--fs-min)); font-weight: 600; color: var(--text-muted); white-space: nowrap; }
 /* Un sous-menu trop large pour le panneau se rétrécit (menu.js, sideFor) : son nom reste entier, sa mention se coupe par « … » (la raison complète est dans l'infobulle et au clic). */
 .menu-sub .menu-label { flex: 0 0 auto; }
 .menu-sub .menu-hint { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }

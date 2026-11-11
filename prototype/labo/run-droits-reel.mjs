@@ -27,7 +27,7 @@ try {
     const call = (url, method, body) => page.evaluate(async ([url, method, body]) => (await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).status, [url, method, body]);
     say('partage', await call(`/api/docs/${id}/access`, 'PATCH', { delta: { users: { 'editor@example.com': 'editors', 'viewer@example.com': 'viewers' } } }));
     if (process.env.REGLE !== '0') say('règle', await call(`/api/docs/${id}/apply`, 'POST', [['AddRecord', '_grist_ACLResources', -1, { tableId: 'Clients', colIds: '*' }], ['AddRecord', '_grist_ACLRules', null, { resource: -1, aclFormula: 'user.Access == EDITOR', permissionsText: '-C', memo: 'GFS : Encadré' }]]));
-    if (process.env.PARTAGE === '1') say('partage de page', await call(`/api/docs/${id}/apply`, 'POST', [['AddRecord', '_grist_Shares', null, { linkId: 'cle-secrete-0123456789', options: '{"publish":true}' }]]));
+    if (process.env.PARTAGE === '1') say('partage de page', await call(`/api/docs/${id}/apply`, 'POST', [['AddRecord', '_grist_Shares', null, { linkId: 'cle-de-test-du-lien', options: '{"publish":true}' }]]));
     await addWidget(page, path, ADRESSE);
     writeFileSync(ETAT, JSON.stringify({ path }));
   } else {

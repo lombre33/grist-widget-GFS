@@ -19,9 +19,8 @@ export class AppsState {
   apps = {};
   stored = false;
 
-  // opts : { always: [id], store: { read() -> { raw }, update(mutate) -> raw écrit }, onChange() }
-  constructor({ always, store, onChange }) {
-    this.always = always;
+  // opts : { store: { read() -> { raw }, update(mutate) -> raw écrit }, onChange() }
+  constructor({ store, onChange }) {
     this.#store = store;
     this.#onChange = onChange;
   }
@@ -36,6 +35,9 @@ export class AppsState {
   }
 
   setCatalogue(catalogue) { this.catalogue = catalogue; }
+
+  // Les apps qui ne se retirent pas : celles dont le manifeste dit `permanente: true` (contrats 2.2).
+  get always() { return [...this.#manifests.values()].filter(manifest => manifest.permanente === true).map(manifest => manifest.id); }
 
   manifest(id) { return this.#manifests.get(id) || null; }
   has(id) { return Object.hasOwn(this.apps, id); }

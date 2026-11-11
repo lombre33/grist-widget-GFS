@@ -1,10 +1,10 @@
-// Joindre un fichier à la cellule « Pièces jointes » d'une ligne (js/attach.js, contrats 5.4 point 12) : la lecture de la demande, les contrôles du manifeste et de la colonne, l'envoi puis le lot
+// Joindre un fichier à la cellule « Pièces jointes » d'une ligne (js/broker/attach.js, contrats 5.4 point 12) : la lecture de la demande, les contrôles du manifeste et de la colonne, l'envoi puis le lot
 // unique, le rapport. Le document et le cadre d'envoi sont des doublures ; ce que Grist garde vraiment se joue dans un vrai Grist (labo/run-joindre.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Attach, readAttach } from '../js/attach.js';
-import { ERR, Refus } from '../js/filter.js';
-import { TransferError } from '../js/transfer.js';
+import { Attach, readAttach } from '../js/broker/attach.js';
+import { ERR, Refus } from '../js/broker/filter.js';
+import { TransferError } from '../js/broker/transfer.js';
 import { policyOf, publipostage } from './helpers.mjs';
 import { PDF_BYTES } from './kept-setup.mjs';
 

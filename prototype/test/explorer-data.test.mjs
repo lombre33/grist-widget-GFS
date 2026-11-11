@@ -1,10 +1,10 @@
-// La lecture des fichiers pour l'explorateur (js/explorer-data.js, contrats 2.4 et 6.4) : le rangement de GFS passe devant celui de l'app, et un rangement
+// La lecture des fichiers pour l'explorateur (js/explorer/explorer-data.js, contrats 2.4 et 6.4) : le rangement de GFS passe devant celui de l'app, et un rangement
 // illisible ne cache aucun fichier. Le port est une doublure ; ce que Grist rend vraiment se mesure dans le labo (run-explorer.mjs, run-ranger.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadFiles, loadAttachments } from '../js/explorer-data.js';
-import { FILES_ENTRY } from '../js/gfs-files.js';
-import { sumWeights } from '../js/weight.js';
+import { loadFiles, loadAttachments } from '../js/explorer/explorer-data.js';
+import { FILES_ENTRY } from '../js/files/gfs-files.js';
+import { sumWeights } from '../js/weight/weight.js';
 import { publipostage } from './helpers.mjs';
 
 const manifest = publipostage();

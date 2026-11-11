@@ -190,7 +190,7 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
 15. Suivre l'ambiance de GFS (décision du porteur du 02/11 et du 03/11 ; contrats 5.2, point 10 ; kit 0.6.0). Dans GFS, `contexte.ambiance` dit
     l'ambiance et la couleur que la personne a choisies pour GFS et ses apps (`null` : rien n'est choisi, l'app garde ses couleurs) ;
     l'événement `ambiance` les change en cours de vie, sans recharger le cadre. **Le kit fait la pose, l'app ne l'écrit pas** : elle appelle
-    `Ambiance.start()` (`js/ambiance.js`) une fois, dans son module d'entrée, avant d'afficher. Le kit lit le message avec méfiance
+    `Ambiance.start()` (`js/ambiance.js` du kit) une fois, dans son module d'entrée, avant d'afficher. Le kit lit le message avec méfiance
     (`js/ambiance-message.js` : les jetons qu'il connaît, des `#rrggbb`, rien qui sorte de sa déclaration), pose par le CSSOM les dix-neuf jetons
     de couleur du mode que l'app affiche (son thème, puis celui de Grist, puis le système : il suit le mode sans événement de GFS) et les jetons de
     forme, et retire tout ce qu'il avait posé, et rien d'autre, quand GFS dit `null`. Une app qui n'a pas encore le kit le prend (1.2, points 1 et 4 : le

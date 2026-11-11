@@ -4,7 +4,7 @@
 //   2. Devis est retiré de la condition (`saveChosenExport` + `finishEdit`) : reste-t-il dans `GFS_Recus` après le prochain passage ? et son contenu ?
 //   3. Devis est remis dans la condition : revient-il sans doublon ?
 //   4. la même chose quand la réception est « en archive » (option du moteur : rien n'est effacé à l'arrivée d'un retrait) ;
-//   5. tous les fichiers sortent de la condition : avec `selectionFor([])` de GFS (js/share-links.js), qui nomme un identifiant inexistant, rien d'autre ne part (un PDF jamais cité reste chez l'envoyeur) ;
+//   5. tous les fichiers sortent de la condition : avec `selectionFor([])` de GFS (js/sharing/share-links.js), qui nomme un identifiant inexistant, rien d'autre ne part (un PDF jamais cité reste chez l'envoyeur) ;
 //   6. contre-épreuve : une condition SANS valeur envoie tout.
 //   REPO_DIR="$(realpath ../..)" node run-sync-retrait.mjs
 import { createServer } from 'node:http';
@@ -58,7 +58,7 @@ async function scenario(context, label, options) {
     await importPdf(source.page, source.frame, pdfFile('Contrat.pdf', 2, 'Contrat').file);
     await waitForNames(source.frame, ['Contrat.pdf', 'Devis.pdf', 'Facture.pdf']);
     const empty = await source.frame.evaluate(args => window.__try(async () => {
-      const { selectionFor } = await import('./js/share-links.js');
+      const { selectionFor } = await import('./js/sharing/share-links.js');
       const done = await window.__s.saveChosenExport({ exp: args.exp, name: args.exp.name, selection: selectionFor([]) });
       return { filter: JSON.stringify(selectionFor([])[0].filter), sent: await window.__s.finishEdit(args.exp, { name: args.exp.name, changed: done.changed }) };
     }), { exp: first.exp });

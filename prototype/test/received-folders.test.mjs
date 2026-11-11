@@ -1,11 +1,11 @@
-// Les dossiers reçus d'un autre document Grist (js/received-folders.js, js/received-files.js `answerFolder` ; choix du porteur, 11/11 : « le dossier, à accepter d'un coup ») : le nom du dossier se lit de la colonne
+// Les dossiers reçus d'un autre document Grist (js/sharing/received-folders.js, js/sharing/received-files.js `answerFolder` ; choix du porteur, 11/11 : « le dossier, à accepter d'un coup ») : le nom du dossier se lit de la colonne
 // que l'envoyeur ajoute, les arrivées de même nom forment un dossier, un oui les marque toutes en UNE action, un fichier ajouté plus tard arrive seul à accepter. Faux Grist en mémoire : ce que le moteur fait de la
 // colonne (elle suit, avec ses valeurs, même ajoutée après le premier partage) est mesuré dans un vrai Grist (labo/run-dossier-colonne.mjs, faits vérifiés 99).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readReceived, answerFolder, shownReceived, PENDING, ACCEPTED, REFUSED } from '../js/received-files.js';
-import { receivedFolders, folderId } from '../js/received-folders.js';
-import { FILES_COLUMN_IDS, SHARED_FOLDER_COLUMN } from '../js/gfs-files.js';
+import { readReceived, answerFolder, shownReceived, PENDING, ACCEPTED, REFUSED } from '../js/sharing/received-files.js';
+import { receivedFolders, folderId } from '../js/sharing/received-folders.js';
+import { FILES_COLUMN_IDS, SHARED_FOLDER_COLUMN } from '../js/files/gfs-files.js';
 import { fakeGrist } from './fake-grist.mjs';
 
 const COLUMNS = ['id', ...FILES_COLUMN_IDS, 'Supprimee_a_la_source', SHARED_FOLDER_COLUMN];

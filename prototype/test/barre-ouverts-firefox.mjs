@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT } from './helpers.mjs';
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { Run } from './corbeille-firefox.mjs';
 
 export const PAGE = '/essai-barre-ouverts.html';

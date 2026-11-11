@@ -13,7 +13,7 @@ const PAGE = `<head>
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-ancienne'; style-src 'self'">
 <link rel="stylesheet" href="css/a.css?v=2">
 <link rel="stylesheet" href="kit/css/k.css?v=2">
-<script src="js/router.js"></script>
+<script src="js/broker/router.js"></script>
 <script type="importmap"></script>
 <!-- préchargement -->
 <!-- /préchargement -->
@@ -24,9 +24,9 @@ const files = () => ({
   'css/a.css': Buffer.from('a{}'),
   'kit/css/k.css': Buffer.from('k{}'),
   'kit/js/k.js': Buffer.from('kit'),
-  'js/router.js': Buffer.from('router'),
+  'js/broker/router.js': Buffer.from('router'),
   'js/main.js': Buffer.from('main'),
-  'js/dom.js': Buffer.from('dom'),
+  'js/ui/dom.js': Buffer.from('dom'),
   'js/b.js': Buffer.from('b'),
 });
 
@@ -41,14 +41,14 @@ test('version : dix caractères hexadécimaux, qui changent avec le contenu', ()
 test('applyVersions : chaque balise locale porte l\'empreinte de son fichier', () => {
   const html = applyVersions(PAGE, files());
   assert.ok(html.includes(`href="css/a.css?v=${version(Buffer.from('a{}'))}"`));
-  assert.ok(html.includes(`src="js/router.js?v=${version(Buffer.from('router'))}"`));
+  assert.ok(html.includes(`src="js/broker/router.js?v=${version(Buffer.from('router'))}"`));
   assert.ok(html.includes(`src="js/main.js?v=${version(Buffer.from('main'))}"`));
 });
 
 test('applyVersions : la carte versionne les modules importés, pas ceux que la page cite elle-même', () => {
   const map = JSON.parse(inlineText(applyVersions(PAGE, files())));
-  assert.deepEqual(Object.keys(map.imports), ['./js/b.js', './js/dom.js', './kit/js/k.js']);
-  assert.equal(map.imports['./js/dom.js'], `./js/dom.js?v=${version(Buffer.from('dom'))}`);
+  assert.deepEqual(Object.keys(map.imports), ['./js/b.js', './js/ui/dom.js', './kit/js/k.js']);
+  assert.equal(map.imports['./js/ui/dom.js'], `./js/ui/dom.js?v=${version(Buffer.from('dom'))}`);
 });
 
 test('applyVersions : le kit (sous-module) est versionné comme le reste : sa feuille dans sa balise, ses modules dans la carte', () => {
@@ -67,10 +67,15 @@ test('readFiles : les dossiers du kit sont lus avec leur préfixe ; sans le sous
   assert.throws(() => readFiles(root), /git submodule update --init prototype\/kit/);
   const real = readFiles();
   assert.ok(Object.keys(real).some(path => /^kit\/js\/[a-z-]+\.js$/.test(path)) && Object.keys(real).some(path => /^kit\/css\/[a-z-]+\.css$/.test(path)));
-  const nested = Object.keys(real).filter(path => path.split('/').length > (path.startsWith('kit/') ? 3 : 2));
-  assert.ok(nested.length > 20 && nested.every(path => path.startsWith('kit/js/synchro/') && path.endsWith('.js')), `seul le moteur de partage descend dans ses sous-dossiers : ${nested.slice(0, 3)}`);
-  assert.ok(nested.includes('kit/js/synchro/logic/common.js') && real['kit/js/synchro/port.js'], 'le moteur de partage est lu avec ses sous-dossiers');
-  assert.ok(Object.keys(real).filter(path => !nested.includes(path)).every(path => /^(?:kit\/)?(?:css|js)\/[^/]+\.(?:css|js)$/.test(path)) && !Object.keys(real).some(path => path.startsWith('kit/js/calendrier/')), 'premier niveau de chaque autre dossier seulement');
+  const paths = Object.keys(real);
+  const engine = paths.filter(path => path.startsWith('kit/js/synchro/'));
+  assert.ok(engine.length > 20 && engine.every(path => path.endsWith('.js')), 'le moteur de partage descend dans ses sous-dossiers');
+  assert.ok(engine.includes('kit/js/synchro/logic/common.js') && real['kit/js/synchro/port.js'], 'le moteur de partage est lu avec ses sous-dossiers');
+  // Les modules de GFS sont rangés par sujet (js/broker/…) : un dossier de profondeur, sauf l'entrée et le contrôleur, à la racine.
+  const own = paths.filter(path => path.startsWith('js/'));
+  assert.ok(own.length > 100 && own.every(path => /^js\/(?:[a-z0-9]+\/)?[a-z0-9-]+\.js$/.test(path)), `les modules de js/ : un sous-dossier au plus (${own.filter(path => !/^js\/(?:[a-z0-9]+\/)?[a-z0-9-]+\.js$/.test(path)).slice(0, 3)})`);
+  assert.ok(real['js/gfs.js'] && real['js/controller.js'] && real['js/broker/router.js'] && real['js/ui/modal.js'], 'l\'entrée et le contrôleur sont à la racine, les autres modules dans leur dossier');
+  assert.ok(paths.filter(path => !path.startsWith('js/') && !engine.includes(path)).every(path => /^(?:kit\/)?(?:css|js)\/[^/]+\.(?:css|js)$/.test(path)) && !paths.some(path => path.startsWith('kit/js/calendrier/')), 'les autres dossiers sont lus à plat, sans le calendrier du kit');
 });
 
 test('applyVersions : l\'empreinte de la politique est celle du texte exact de la carte, et remplace l\'ancienne', () => {
@@ -94,7 +99,7 @@ test('staleItems : un fichier modifié, une balise sans ?v= et une carte vieilli
   const current = applyVersions(PAGE, files());
   assert.deepEqual(staleItems(current, files()), []);
 
-  const changed = { ...files(), 'js/dom.js': Buffer.from('dom modifié') };
+  const changed = { ...files(), 'js/ui/dom.js': Buffer.from('dom modifié') };
   assert.match(staleItems(current, changed).join('|'), /carte d'importation/);
 
   const edited = { ...files(), 'css/a.css': Buffer.from('a{color:red}') };
@@ -182,7 +187,7 @@ test('index.html du prototype : les liens de préchargement sont les modules que
 });
 
 test('importMapText : stable, trié, deux espaces d\'indentation, un retour à la ligne avant et après', () => {
-  const text = importMapText(files(), ['js/router.js', 'js/main.js']);
+  const text = importMapText(files(), ['js/broker/router.js', 'js/main.js']);
   assert.ok(text.startsWith('\n{\n  "imports": {\n    "./js/b.js"'));
   assert.ok(text.endsWith('}\n}\n'));
 });

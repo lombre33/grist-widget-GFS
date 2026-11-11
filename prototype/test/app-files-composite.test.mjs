@@ -1,12 +1,12 @@
-// Un fichier qui tient à plus qu'une ligne (js/app-files.js, contrats 2.4 `appel`, 5.4 points 10 et 11) : un formulaire de Form+ et son lien public. GFS demande à l'app ouverte de le fermer (`supprimer`) avant
+// Un fichier qui tient à plus qu'une ligne (js/files/app-files.js, contrats 2.4 `appel`, 5.4 points 10 et 11) : un formulaire de Form+ et son lien public. GFS demande à l'app ouverte de le fermer (`supprimer`) avant
 // de retirer la ligne, ou de le copier (`dupliquer`) ; seule l'app ouverte répond. Un faux Grist (test/fake-grist.mjs) et une app de doublure ; ce que Grist rend vraiment et la vraie question de l'accord se mesurent
 // dans le labo (labo/run-composite.mjs, avec une app d'essai qui répond comme le fera Form+).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { AppFiles } from '../js/app-files.js';
-import { loadFiles } from '../js/explorer-data.js';
-import { BIN_TABLE } from '../js/gfs-trash.js';
-import { createI18n } from '../js/i18n.js';
+import { AppFiles } from '../js/files/app-files.js';
+import { loadFiles } from '../js/explorer/explorer-data.js';
+import { BIN_TABLE } from '../js/files/gfs-trash.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { fakeGrist } from './fake-grist.mjs';
 import { form } from './helpers.mjs';
 

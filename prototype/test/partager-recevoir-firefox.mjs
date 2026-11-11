@@ -1,9 +1,9 @@
 // La fenêtre « Recevoir d'un autre document Grist » sous Firefox (règle du 03/11 : toute nouvelle interface ajoute ses mesures à test/interfaces-firefox.test.mjs ; « Nouveau > Importer > D'un autre document Grist… », 09/11).
-// La vraie fenêtre (js/share-receive-window.js) sur un parcours dont les réponses sont des doublures (test/pages/explorateur.js, `window.__receive`) : le moteur et Grist se mesurent dans un vrai Grist (labo/run-partager-recevoir.mjs) ;
+// La vraie fenêtre (js/sharing/share-receive-window.js) sur un parcours dont les réponses sont des doublures (test/pages/explorateur.js, `window.__receive`) : le moteur et Grist se mesurent dans un vrai Grist (labo/run-partager-recevoir.mjs) ;
 // ici, la mise en page et les gestes, à la vraie souris et au vrai clavier. À chaque écran (le code à coller, l'accord, le lien du formulaire, la réponse) : la fenêtre tient dans la page, son titre et ses boutons restent en place,
 // rien n'en sort, le clavier est sur le bon bouton ; « Continuer » reste grisé tant que rien n'est collé et un refus est dit sans quitter l'écran ; l'accord dit ce que GFS ajoute dans la table libre (GFS_Recus, puis GFS_Recus_2) et
 // n'écrit rien (Échap) ; une réception déjà là dit qu'elle reprend ; le lien refusé laisse la fenêtre où elle est ; la réponse et son code de contrôle s'affichent ; fermer avant la réponse défait ce qui a été créé, après elle non.
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { Run } from './corbeille-firefox.mjs';
 import { LONG_DOC, windowMeasure, windowTools } from './fenetre-firefox.mjs';
 

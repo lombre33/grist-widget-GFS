@@ -1,10 +1,10 @@
-// Poser et retirer (js/rights-writer.js, js/rights-actions.js ; étape 7 lot a) : une seule liasse envoyée, plan relu au moment d’écrire, rien d’écrit pour un non-propriétaire, la reprise après le
+// Poser et retirer (js/rights/rights-writer.js, js/rights/rights-actions.js ; étape 7 lot a) : une seule liasse envoyée, plan relu au moment d’écrire, rien d’écrit pour un non-propriétaire, la reprise après le
 // rechargement que Grist impose, et la question posée avant d’écrire.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { RightsWriter } from '../js/rights-writer.js';
-import { runAction, askOptions } from '../js/rights-actions.js';
-import { RANGEMENT } from '../js/rights-plan.js';
+import { RightsWriter } from '../js/rights/rights-writer.js';
+import { runAction, askOptions } from '../js/rights/rights-actions.js';
+import { RANGEMENT } from '../js/rights/rights-plan.js';
 
 const BUILT_IN = { id: 1, resource: 1, permissions: 63, aclFormula: '', permissionsText: '', rulePos: 1, memo: '' };
 const RAW = () => ({ resources: [{ id: 1, tableId: '', colIds: '' }], rules: [{ ...BUILT_IN }], tables: [{ id: 5, tableId: RANGEMENT }], columns: [{ parentId: 5, colId: 'Utilisateur' }, { parentId: 5, colId: 'Adresse' }] });

@@ -1,7 +1,7 @@
 // Les textes : même lot en français et en anglais, pluriels par {n|singulier|pluriel}.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createI18n, STRING_TABLES } from '../js/i18n.js';
+import { createI18n, STRING_TABLES } from '../js/i18n/i18n.js';
 
 test('chaque texte existe en français et en anglais, avec les mêmes variables', () => {
   const fr = Object.keys(STRING_TABLES.fr);

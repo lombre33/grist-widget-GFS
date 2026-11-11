@@ -1,10 +1,10 @@
-// Le 5e bouton de la barre (js/opened-bar.js, contrats 5.2 point 7 et 6.4 point 14) : la liste du plus récent au plus ancien, les articles du menu et le lien avec la liste des ouverts, en code pur ;
+// Le 5e bouton de la barre (js/explorer/opened-bar.js, contrats 5.2 point 7 et 6.4 point 14) : la liste du plus récent au plus ancien, les articles du menu et le lien avec la liste des ouverts, en code pur ;
 // le bouton, la pastille et le menu à l'écran se mesurent dans un vrai Grist (labo/run-ouverts-barre.mjs) et sous Firefox (test/interfaces-firefox.test.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { OpenedFiles } from '../js/opened-files.js';
-import { OpenedBar, openedItems, openedList } from '../js/opened-bar.js';
-import { createI18n } from '../js/i18n.js';
+import { OpenedFiles } from '../js/explorer/opened-files.js';
+import { OpenedBar, openedItems, openedList } from '../js/explorer/opened-bar.js';
+import { createI18n } from '../js/i18n/i18n.js';
 
 const file = (app, id, name, icon = 'doc') => ({ key: `${app}:${id}`, app, id, name, icon });
 const FILES = [file('pp', 1, 'Convocation'), file('pp', 2, 'Émargement'), file('form', 3, 'Inscription', 'check'), file('pp', 4, 'Grille de suivi', 'grid')];

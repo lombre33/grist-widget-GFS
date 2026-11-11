@@ -1,13 +1,13 @@
-// La lecture légère des tables de fichiers (js/explorer-sql.js, carte « Lire seulement les colonnes utiles » de l'audit vitesse du 10/11, faits vérifiés 83) : les mêmes fichiers et le même poids que la
+// La lecture légère des tables de fichiers (js/explorer/explorer-sql.js, carte « Lire seulement les colonnes utiles » de l'audit vitesse du 10/11, faits vérifiés 83) : les mêmes fichiers et le même poids que la
 // lecture complète, sans la cellule lourde, et rien de changé tant que le document n'est pas lourd ou que Grist refuse. Les lectures SQL se jouent dans un vrai SQLite (`node:sqlite`) qui garde les tables
 // comme Grist les garde (texte, entiers de toutes tailles, réels, listes en JSON) ; la lecture dans un vrai Grist se mesure au labo (faits vérifiés 83).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadFiles } from '../js/explorer-data.js';
-import { createLightReader, neededColumns, rowsStatement, schemaStatement, readRows, HEAVY_BYTES } from '../js/explorer-sql.js';
-import { rowWeigher } from '../js/weight.js';
-import { FILES_ENTRY, FILES_MANIFEST } from '../js/gfs-files.js';
-import { BIN_COLUMNS } from '../js/gfs-trash.js';
+import { loadFiles } from '../js/explorer/explorer-data.js';
+import { createLightReader, neededColumns, rowsStatement, schemaStatement, readRows, HEAVY_BYTES } from '../js/explorer/explorer-sql.js';
+import { rowWeigher } from '../js/weight/weight.js';
+import { FILES_ENTRY, FILES_MANIFEST } from '../js/files/gfs-files.js';
+import { BIN_COLUMNS } from '../js/files/gfs-trash.js';
 import { publipostage, form, bi } from './helpers.mjs';
 
 const sqlite = await import('node:sqlite').catch(() => null);

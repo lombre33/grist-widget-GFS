@@ -2,7 +2,7 @@
 // une liste à plat, par nom, de ces fichiers (de tous les dossiers) ; le fichier que l'app affiche porte le mot « affiché » (jamais une couleur seule) ; chaque ligne mesure 28 px, son contenu y reste et
 // aucun texte n'est coupé sans son texte entier au survol ; « Retirer des ouverts » est le deuxième article du menu d'une ligne (à la vraie souris), retire la ligne, rend le clavier à la suivante et met
 // le nombre à jour ; Entrée ouvre le fichier choisi ; une liste vide le dit. À 700 px, en clair et en sombre, en français et en anglais (le contraste se mesure dans un vrai Grist : labo/run-ouverts.mjs).
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { Run } from './corbeille-firefox.mjs';
 
 const OPENED = ['Support de session', 'Convocation', 'Grille de suivi']; // le dernier est celui que l'app affiche ; « Support de session » est dans le dossier « Formation »

@@ -688,7 +688,7 @@ seulement pour les commits qui touchent ce que GFS suit. Notes du 14/10 :
   11/2022 : à confronter au critère du porteur « sûre, documentée, maintenue » quand il dira « demande de Grist-BI ») ; **Tuesday a lu les consignes 005 à 007** (INDEX mis à jour) et
   attend la réponse sur l'identité (008) ; **Calendar+ a maintenant un `GFS-ETAT.md`** (006 et 007 lues) et pose une question sur le labo (009). Form+ n'a pas encore lu la 015.
 - Les liens entre apps (03/11, le porteur : « Construire maintenant ») : GFS livre `choisir` et `ouvrir` côté app (contrats 3.6 et 5.4, points 2 et 7 ;
-  `js/links.js`, l'explorateur en mode choix) et le kit passe à 0.3.0 (`GfsLink.choose` et `GfsLink.openFile`, `lombre33/grist-factory-kit` à `9d17844`, sans
+  `js/broker/links.js`, l'explorateur en mode choix) et le kit passe à 0.3.0 (`GfsLink.choose` et `GfsLink.openFile`, `lombre33/grist-factory-kit` à `9d17844`, sans
   étiquette : le porteur la pose). Publipostage+ offre aussi ses présentations à choisir (`actions.choisir`, `prototype/manifestes/publipostage.json`). Mesuré dans
   un vrai Grist avec une sonde, avec la vraie Publipostage+ à `134d043` et avec le vrai client du kit (`run-liens.mjs`, `run-liens-publipostage.mjs`,
   `run-liens-kit.mjs`). Tuesday le reprend par la consigne 005.

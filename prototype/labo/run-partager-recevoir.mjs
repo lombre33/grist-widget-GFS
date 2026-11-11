@@ -1,4 +1,4 @@
-// « Nouveau > Importer > D'un autre document Grist… » : la réception d'un partage (js/share-receive-window.js), jouée de bout en bout dans GFS lui-même, des DEUX côtés, dans un VRAI Grist
+// « Nouveau > Importer > D'un autre document Grist… » : la réception d'un partage (js/sharing/share-receive-window.js), jouée de bout en bout dans GFS lui-même, des DEUX côtés, dans un VRAI Grist
 // (`GRIST_DOCKER_ARGS="-e ALLOWED_WEBHOOK_DOMAINS=*" bash vrai-serveur.sh`), à 700 × 400, à la vraie souris : le premier document envoie par « Partager > Dans un autre document Grist », le second reçoit par « Importer ».
 // Seul le lien du formulaire (que Grist ne donne pas à un widget : sa clé se lit dans la base du serveur d'essai) est lu par l'essai, à la place de la personne qui le copie dans Grist.
 //   1. « D'un autre document Grist… » est dans le sous-menu « Importer » ; rien n'est écrit avant l'accord, Échap n'écrit rien ; un code qui n'en est pas un est refusé par le moteur ;
@@ -10,7 +10,7 @@ import { createServer } from 'node:http';
 import { serve } from './lab-server.mjs';
 import { chromium, say, check } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { PAGE_PORT, openGfs, importSamples, openRowMenu, contrastProblems, shot as pdfShot } from './lab-pdf.mjs';
 import { fits, gfsFrame } from './lab-droits.mjs';
 import { startEngine, formLink, sendComparing } from './lab-partage.mjs';
@@ -119,7 +119,7 @@ try {
   const now = rows[0] && rows[0].Contenu ? await target.rest.attachment(rows[0].Contenu[1]) : null;
   check('le fichier arrive dans GFS_Recus, mêmes octets, sans autre geste de l\'essai (la boucle de réception démarre à la réponse)', rows.length === 1 && Boolean(now) && now.hash === was.hash && now.size === was.size, { rows: rows.map(row => row.Nom), was, now });
   await tframe.locator('[data-fk="so-close"]').click();
-  // Audit de sécurité du 09/11 : à la fermeture, GFS réserve le journal aux propriétaires (js/sync-rules.js) ; Grist recharge alors la page, que l'essai reprend (la boucle de réception repart d'elle-même).
+  // Audit de sécurité du 09/11 : à la fermeture, GFS réserve le journal aux propriétaires (js/sharing/sync-rules.js) ; Grist recharge alors la page, que l'essai reprend (la boucle de réception repart d'elle-même).
   let rules = [];
   for (let i = 0; i < 60 && rules.length < 2; i += 1) {
     await tpage.waitForTimeout(1000);

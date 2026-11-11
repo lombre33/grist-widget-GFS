@@ -130,7 +130,7 @@ test('l\'outil est sans effet sur un texte déjà coupé', () => {
 });
 
 test('les tables de textes ne se coupent que dans leurs commentaires', () => {
-  assert.ok(isTextTable('js/i18n.js') && isTextTable('js/i18n-share.js') && isTextTable('/a/b/js/i18n-explorer.js'));
+  assert.ok(isTextTable('js/i18n/i18n.js') && isTextTable('js/i18n/i18n-share.js') && isTextTable('/a/b/js/i18n-explorer.js'));
   assert.ok(!isTextTable('js/controller.js'));
   const phrase = long('mot', 40);
   const source = `export const FR = { 'a.b': '${phrase}', 'c.d': '${phrase}' }; // ${long('note', 20)}\n`;

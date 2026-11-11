@@ -1,7 +1,7 @@
 // L'enveloppe des messages propres à GFS (contrats 5.1) : appels, réponses, erreurs, numéro de contrat, appel sans `id`, événement.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { EnvelopePeer, isEnvelope, ENVELOPE } from '../js/envelope.js';
+import { EnvelopePeer, isEnvelope, ENVELOPE } from '../js/broker/envelope.js';
 
 const make = handlers => {
   const sent = [];

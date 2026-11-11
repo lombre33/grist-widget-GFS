@@ -1,8 +1,8 @@
-// Ctrl+Z et Ctrl+Y pour la corbeille et la copie (js/explorer-undo.js) : la corbeille et la copie entourées déposent dans la pile le geste qui les défait, et ce geste dépose le contraire (le rétablissement) ; supprimer pour de bon ne dépose rien.
+// Ctrl+Z et Ctrl+Y pour la corbeille et la copie (js/explorer/explorer-undo.js) : la corbeille et la copie entourées déposent dans la pile le geste qui les défait, et ce geste dépose le contraire (le rétablissement) ; supprimer pour de bon ne dépose rien.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { UndoStack } from '../js/undo-stack.js';
-import { undoable } from '../js/explorer-undo.js';
+import { UndoStack } from '../js/files/undo-stack.js';
+import { undoable } from '../js/explorer/explorer-undo.js';
 
 const t = (key, params = {}) => `${key}${params.name ? `[${params.name}]` : ''}${params.app ? `<${params.app}>` : ''}`;
 const entry = (id, name, extra = {}) => ({ key: `zf:${id}`, app: 'zf', id: String(id), name, ...extra });

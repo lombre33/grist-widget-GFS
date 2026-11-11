@@ -3,8 +3,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { AppPeer, MSG } from '../js/rpc.js';
-import { Refus, ERR } from '../js/filter.js';
+import { AppPeer, MSG } from '../js/broker/rpc.js';
+import { Refus, ERR } from '../js/broker/filter.js';
 
 const { Rpc } = createRequire(import.meta.url)('grain-rpc');
 

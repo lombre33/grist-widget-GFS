@@ -7,7 +7,7 @@ import { serve } from './lab-server.mjs';
 import { chromium, say, check } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { miniPdf } from './reel/pj.js';
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { PAGE_PORT, sha256, openGfs, toast, names, folders, waitForNames, waitForToast, importPdf, shot, rowOf, openRowMenu, pressGreyed, goTo, contrastProblems, windowFits } from './lab-pdf.mjs';
 
 const pdfFile = (name, label) => {

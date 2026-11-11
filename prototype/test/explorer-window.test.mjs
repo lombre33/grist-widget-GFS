@@ -1,8 +1,8 @@
-// La liste fenêtrée de l'explorateur (js/explorer-window.js, carte « Afficher seulement les lignes visibles » de l'audit vitesse du 10/11, faits vérifiés 87) : la géométrie, sans navigateur. Ce que le
+// La liste fenêtrée de l'explorateur (js/explorer/explorer-window.js, carte « Afficher seulement les lignes visibles » de l'audit vitesse du 10/11, faits vérifiés 87) : la géométrie, sans navigateur. Ce que le
 // navigateur en fait (le clavier, le défilement, la souris, le glisser-déposer, la mémoire) se mesure sous Firefox dans test/fenetrage-firefox.mjs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { windowRange, scrollToReveal, WINDOW_FROM } from '../js/explorer-window.js';
+import { windowRange, scrollToReveal, WINDOW_FROM } from '../js/explorer/explorer-window.js';
 
 const LIST = { offset: 26, rowH: 28, perRow: 1, viewport: 400 };
 

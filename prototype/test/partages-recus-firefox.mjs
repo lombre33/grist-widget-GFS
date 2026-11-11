@@ -1,5 +1,5 @@
 // « Partagés avec moi » sous Firefox (règle du 03/11 : toute nouvelle interface ajoute ses mesures à test/interfaces-firefox.test.mjs ; ouverte depuis le volet de gauche, décision du 09/11). Le vrai explorateur, le vrai
-// contrôle (js/received-control.js) et la vraie fenêtre « Accepter ? » (js/received-window.js) sur des arrivées que le vrai modèle lit dans un faux Grist en mémoire (test/pages/explorateur.js, `window.__shared`) ; ce que le
+// contrôle (js/sharing/received-control.js) et la vraie fenêtre « Accepter ? » (js/sharing/received-window.js) sur des arrivées que le vrai modèle lit dans un faux Grist en mémoire (test/pages/explorateur.js, `window.__shared`) ; ce que le
 // moteur de Sync+ fait de ces tables se mesure dans un vrai Grist (labo/run-partages-recus.mjs). Ici, la mise en page à 700 × 400 et les gestes, à la vraie souris et au vrai clavier :
 //   la vue : le nombre à accepter dans le volet, des lignes à plat (pas de dossier), les arrivées en attente grisées avec le mot « À accepter » et sans étoile, une arrivée acceptée comme un fichier, une arrivée que l'envoyeur
 //   ne partage plus gardée comme un fichier, aucune arrivée refusée, aucun texte coupé sans son texte entier au survol ; une ligne choisie change le bouton principal en « Accepter ou refuser… » ;
@@ -7,10 +7,10 @@
 //   la cloche Notifications (à droite de l'en-tête) : la pastille dit le nombre à accepter (contraste 4,5:1, sans couvrir un autre bouton), son menu nomme les arrivées et tient dans 700 × 400, un clic sur une arrivée
 //   pose sa question, « Ouvrir « Partagés avec moi » » y mène, sans arrivée la ligne reste grisée et dit ce qui s'annonce ici ;
 //   un fichier qui arrive pendant que l'explorateur est ouvert s'ajoute seul (liste, volet, cloche) sans changer la ligne choisie ;
-//   les DOSSIERS reçus (js/received-folders.js, choix du 11/11) : des lignes de dossier en tête (grisé « N fichiers à accepter » tant qu'un fichier attend), on y entre (fil d'Ariane, Retour arrière), la barre « Accepter le dossier… »
+//   les DOSSIERS reçus (js/sharing/received-folders.js, choix du 11/11) : des lignes de dossier en tête (grisé « N fichiers à accepter » tant qu'un fichier attend), on y entre (fil d'Ariane, Retour arrière), la barre « Accepter le dossier… »
 //   et sa fenêtre (Échap n'écrit rien, un oui = tous les fichiers à accepter, une seule action, le clavier revient dans la liste), le menu du dossier sans renommer ni supprimer, la cloche à une ligne par dossier ;
 //   « Refuser » masque la ligne et le dit, « Accepter » dégrise la ligne, les marques sont écrites sur LEUR ligne seulement ; un document en lecture seule dit pourquoi, sans fenêtre ; une vue sans arrivée n'est pas une page blanche.
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { Run, delay, centerOfName, centerOfSelector } from './corbeille-firefox.mjs';
 
 const KEY = id => `gfs-recus:GFS_Recus:r${id}`;

@@ -3,7 +3,7 @@
 // et la vraie fenêtre « Nouveau dossier » sur un rangement de doublure qui tient les dossiers gardés) : l'article « Nouveau dossier » du menu « Nouveau » et sa fenêtre (à 700 px, le clavier dans le champ), le nom
 // vide ou déjà pris, un dossier vide ouvert (« Dossier vide. », pas « Aucun fichier »), un sous-dossier, Suppr et « Supprimer le dossier » (grisé quand un fichier est dedans), « Nouveau dossier » depuis Récents,
 // les vignettes et le volet, le choix d'un fichier pour une app, et le dossier qui reste quand son dernier fichier part à la corbeille. Ce que chaque geste écrit est dans test/filing.test.mjs.
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { Run, centerOfName, delay, names } from './corbeille-firefox.mjs';
 import { centerOfMenuItem, menuFits } from './copier-firefox.mjs';
 

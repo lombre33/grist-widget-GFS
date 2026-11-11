@@ -1,4 +1,4 @@
-// Le glisser-déposer de l'explorateur (demande du porteur, 04/11 : « drag & drop des fichiers dans des dossiers, en amont, en aval » ; js/explorer-drag.js), dans un VRAI Grist (grist-static), sous Chromium, à 700 × 400,
+// Le glisser-déposer de l'explorateur (demande du porteur, 04/11 : « drag & drop des fichiers dans des dossiers, en amont, en aval » ; js/explorer/explorer-drag.js), dans un VRAI Grist (grist-static), sous Chromium, à 700 × 400,
 // à la vraie souris (le bouton appuyé, la souris tirée de pas en pas, le bouton relâché : le navigateur lance lui-même le glissement HTML5). Sous Firefox sans écran le dépôt n'aboutit pas (test/firefox.mjs, `Page.drag`) :
 // c'est ici qu'il se mesure. La sonde ZF (labo/sondes/zf-composite/) apporte trois fichiers ; les dossiers naissent par « Nouveau dossier », donc avec l'accord de la personne pour la table du rangement.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
@@ -9,7 +9,7 @@
 //   5. Ce qui ne s'accepte pas : le dossier où est déjà la ligne, un dossier sur lui-même ou dans son sous-dossier ; la corbeille ne se tient pas.
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';

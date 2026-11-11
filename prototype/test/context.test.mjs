@@ -1,7 +1,7 @@
 // Le contexte que GFS rend à une app (contrats 5.2).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildContext, identityFor, instanceOf, pageOf, HOST } from '../js/context.js';
+import { buildContext, identityFor, instanceOf, pageOf, HOST } from '../js/broker/context.js';
 import { policyOf, publipostage } from './helpers.mjs';
 
 test('instanceOf : l\'origine de la page de Grist, ou rien', () => {

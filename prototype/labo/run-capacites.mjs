@@ -12,7 +12,7 @@
 //   CAP_SET=main|nav                                     les essais d'une page (main) ou les navigations du cadre (nav, un lancement de Grist par essai)
 import { startLab } from './lab-setup.mjs';
 import { say, chromium } from './lab-common.mjs';
-import { SANDBOX } from '../js/frames.js';
+import { SANDBOX } from '../js/broker/frames.js';
 
 const CONFIGS = {
   courante: undefined,

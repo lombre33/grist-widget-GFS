@@ -1,10 +1,10 @@
-// Les espaces partagés dans l'explorateur (js/spaces-filing.js, contrats 11.7, point 13, lot 4b) : ce que l'explorateur montre d'un espace, et ce qu'un rangement écrit dans le placement plutôt que dans le rangement de la personne.
+// Les espaces partagés dans l'explorateur (js/sharing/spaces-filing.js, contrats 11.7, point 13, lot 4b) : ce que l'explorateur montre d'un espace, et ce qu'un rangement écrit dans le placement plutôt que dans le rangement de la personne.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Filing } from '../js/filing.js';
-import { applyPlacement, folderLabel, isInsideSpace, isSpaceItself, isSpacePath, locate, readSpaces, splitWrites, touchesSpaces, writePlacement } from '../js/spaces-filing.js';
-import { listItems } from '../js/explorer-model.js';
-import { createI18n } from '../js/i18n.js';
+import { Filing } from '../js/explorer/filing.js';
+import { applyPlacement, folderLabel, isInsideSpace, isSpaceItself, isSpacePath, locate, readSpaces, splitWrites, touchesSpaces, writePlacement } from '../js/sharing/spaces-filing.js';
+import { listItems } from '../js/explorer/explorer-model.js';
+import { createI18n } from '../js/i18n/i18n.js';
 
 const { t } = createI18n('fr');
 const SPACES = { id: [1, 2], Cle: ['achats', 'compta'], Nom: ['Achats', 'Compta'] };

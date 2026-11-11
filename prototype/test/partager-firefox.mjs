@@ -1,9 +1,9 @@
 // La fenêtre « Partager » sous Firefox (règle du 03/11 : toute nouvelle interface ajoute ses mesures à test/interfaces-firefox.test.mjs ; contrats 11.7, point 13).
-// La vraie fenêtre (js/share-window.js) s'ouvre par le vrai menu d'une ligne de l'explorateur (clic droit, puis « Partager… »), sur trois états que le contrôleur aurait lus (test/pages/explorateur.js,
+// La vraie fenêtre (js/sharing/share-window.js) s'ouvre par le vrai menu d'une ligne de l'explorateur (clic droit, puis « Partager… »), sur trois états que le contrôleur aurait lus (test/pages/explorateur.js,
 // `window.__share`) : le partage n'est pas activé (une personne propriétaire), activé (propriétaire : adresse très longue, catégories, fin d'accès, accès échu, partage invalide), une personne qui ne
 // peut rien changer. À chaque largeur de l'essai : la fenêtre tient dans la page, son titre et son bouton restent en place, seul le contenu défile, rien n'en sort, le clavier est sur « Terminé », Tab reste
 // dedans, Échap la ferme ; sur l'état « activé », la vraie souris ouvre la liste du champ, choisit une catégorie, le formulaire se montre avec « Ajouter » sans défiler, et « Ajouter » demande bien d'écrire.
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { Run } from './corbeille-firefox.mjs';
 
 // Ce que la page montre de la fenêtre.
@@ -33,7 +33,7 @@ function state() {
   return out;
 }
 
-// Ce que la page montre de « Gérer les partages » (js/manage-window.js).
+// Ce que la page montre de « Gérer les partages » (js/sharing/manage-window.js).
 function manageState() {
   const modal = document.querySelector('.mod.mg');
   // La fenêtre « Partager » dessous : cachée (visibilité) tant que « Gérer les partages » est ouverte ; et où est le clavier, fenêtre ou non.

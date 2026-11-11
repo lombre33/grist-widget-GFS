@@ -6,7 +6,7 @@
 // le menu « Réglages » (le bouton de l'en-tête, depuis le 04/11 : langue, thème, position de la barre, « À propos ») s'ouvre sous le bouton, garde ses quatre lignes de 28 px sans nom coupé, et ouvre sa langue et sa
 // position en sous-menu à côté de la ligne, sans la recouvrir ; à 700 px, à la vraie souris et au vrai clavier, choisir une langue ou un bord le rend à la page et rend le clavier au bouton, Échap referme le sous-menu puis le menu ; « À propos » tient dans
 // la page avec ses quatre lignes et son seul bouton ; la fenêtre « Thème » garde ses vignettes (cinq, ou trois en vue étroite), ouverte par la ligne « Thème… » de ce menu, sa ligne « Accessibilité renforcée » sur une seule ligne, sans que le corps défile à 520 px et au-delà, et son interrupteur répond à la vraie souris (Tab y arrive ; Espace et l'anneau de focus restent au labo, voir accessProblems) ; la page peinte
-// par l'accessibilité renforcée et par Enseigne (décision du 04/11) garde ses lignes à 28 px, leur contenu dans la ligne, ses traits de 2 px et son absence de décor ; la fenêtre « Ce nom est déjà pris » (js/conflict-window.js, telle qu'une app qui range un lot la fait ouvrir, puis telle que
+// par l'accessibilité renforcée et par Enseigne (décision du 04/11) garde ses lignes à 28 px, leur contenu dans la ligne, ses traits de 2 px et son absence de décor ; la fenêtre « Ce nom est déjà pris » (js/files/conflict-window.js, telle qu'une app qui range un lot la fait ouvrir, puis telle que
 // « Nouveau > Importer » la fait ouvrir) tient dans la page sans défiler, garde son titre et ses trois boutons sur une ligne, met le clavier sur « Garder les deux », tourne avec Tab, et ses issues répondent à
 // la vraie souris et au vrai clavier (la case « Faire pareil pour les suivants » se coche en cliquant son texte). Entrée et Espace sur un bouton ne se jouent pas ici (voir conflictProblems). La colonne « Poids » (demande du 04/11) : son titre et ses cases ne sont coupés nulle part, son tri
 // va dans les deux sens sur le poids de chaque fichier, et le total du pied dit la somme de ce que la liste montre ; la case « + pièces jointes » du pied (test/pieces-jointes-firefox.mjs : à la souris et au clavier, le total qui
@@ -170,7 +170,7 @@ function measureThemeWindow() {
   };
 }
 
-// Ce que la page porte quand une ambiance ou l'accessibilité renforcée est posée (js/theme-apply.js) : l'attribut, les traits, les capitales, la lueur, les ombres, la trame, le filet, la bordure d'une pastille.
+// Ce que la page porte quand une ambiance ou l'accessibilité renforcée est posée (js/theme/theme-apply.js) : l'attribut, les traits, les capitales, la lueur, les ombres, la trame, le filet, la bordure d'une pastille.
 function measureLook() {
   const css = (selector, property, pseudo = null) => { const node = document.querySelector(selector); return node ? getComputedStyle(node, pseudo)[property] : null; };
   return {
@@ -448,7 +448,7 @@ async function accessProblems(page, width, tag, theme) {
   return found;
 }
 
-// La page peinte par l'ambiance et l'accessibilité renforcée (js/theme-apply.js, décision du 04/11) : ce que chaque feuille de style fait des jetons. Les lignes de la liste gardent leur hauteur et leur contenu (le 03/11, un trait
+// La page peinte par l'ambiance et l'accessibilité renforcée (js/theme/theme-apply.js, décision du 04/11) : ce que chaque feuille de style fait des jetons. Les lignes de la liste gardent leur hauteur et leur contenu (le 03/11, un trait
 // passait dans le texte), le mode renforcé tient ses promesses (traits de 2 px, ni capitales, ni ombre, ni trame, ni filet, ni lueur, une bordure de 2 px aux pastilles) et Enseigne garde ses capitales et sa lueur ; la fenêtre « Thème »,
 // peinte elle aussi, reste dans la page sans défiler. Le réglage se fait par `window.__theme` ; la page est rendue à l'origine à la fin.
 async function lookProblems(page, tag) {

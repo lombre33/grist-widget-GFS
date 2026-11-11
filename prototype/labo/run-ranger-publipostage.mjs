@@ -14,7 +14,7 @@ import { readFile } from 'node:fs/promises';
 import { serve } from './lab-server.mjs';
 import { chromium, say, check } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { seedFiles } from './seed.mjs';
 import { PAGE_PORT, openGfs, sha256, waitFor, shot, rowOf, contrastProblems, windowFits } from './lab-pdf.mjs';
 
@@ -45,7 +45,7 @@ const statusOf = app => app.evaluate(() => { const el = document.getElementById(
 const files = async rest => (await rest.rows('GFS_Fichiers')).sort((a, b) => a.id - b.id);
 const hashOfRow = async (rest, row) => (await rest.attachment(row.Contenu[1])).hash;
 const center = (app, selector) => app.evaluate(sel => { const el = document.querySelector(sel); if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height }; }, selector);
-// La fenêtre du nom pris, vue par la personne (js/conflict-window.js).
+// La fenêtre du nom pris, vue par la personne (js/files/conflict-window.js).
 const cf = frame => ({
   open: () => frame.locator('#cf-title').waitFor({ timeout: 30000 }),
   gone: () => frame.locator('.mod-scrim').waitFor({ state: 'detached' }),

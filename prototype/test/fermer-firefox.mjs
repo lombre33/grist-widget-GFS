@@ -1,8 +1,8 @@
 // La question de « fermer » sous Firefox (règle du 03/11 : toute nouvelle interface ajoute ses mesures à test/interfaces-firefox.test.mjs). Quand l'app active ne répond pas à `fermer`, ou répond par une
-// erreur, GFS pose une question dans la fenêtre d'accord du widget (js/ask-window.js, textes de js/leave.js) : elle nomme l'app, tient dans la page à 700 px avec ses deux boutons, met le clavier sur le choix sûr
+// erreur, GFS pose une question dans la fenêtre d'accord du widget (js/ui/ask-window.js, textes de js/broker/leave.js) : elle nomme l'app, tient dans la page à 700 px avec ses deux boutons, met le clavier sur le choix sûr
 // (« Attendre » ou « Rester », jamais « Fermer quand même »), et ses deux issues répondent à la vraie souris. Le plus long nom d'app (« Publipostage+ ») et la plus longue phrase d'app (cent vingt signes,
 // la limite de GFS) sont ceux de l'essai. Entrée et Espace sur un bouton ne se jouent pas dans ce Firefox sans écran (voir test/interfaces-firefox.test.mjs) : les issues se jouent à la souris.
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { Run } from './corbeille-firefox.mjs';
 
 const APP = 'Publipostage+';

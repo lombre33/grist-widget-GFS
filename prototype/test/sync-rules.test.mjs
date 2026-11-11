@@ -1,9 +1,9 @@
-// Les règles des tables techniques du partage entre documents (js/sync-rules.js ; audit de sécurité du 09/11) : `GFS_Synchro` et les journaux reçus ne se lisent qu'avec les droits de propriétaire.
+// Les règles des tables techniques du partage entre documents (js/sharing/sync-rules.js ; audit de sécurité du 09/11) : `GFS_Synchro` et les journaux reçus ne se lisent qu'avec les droits de propriétaire.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { planTechnicalRules, technicalRules, closeSharingTables, isTechnical, isJournal } from '../js/sync-rules.js';
-import { isSharingNote } from '../js/sharing-model.js';
-import { levelOfNote, tableLevels, userRules } from '../js/rights.js';
+import { planTechnicalRules, technicalRules, closeSharingTables, isTechnical, isJournal } from '../js/sharing/sync-rules.js';
+import { isSharingNote } from '../js/sharing/sharing-model.js';
+import { levelOfNote, tableLevels, userRules } from '../js/rights/rights.js';
 
 const tables = names => names.map((tableId, at) => ({ id: at + 1, tableId }));
 const world = (names, resources = [], rules = []) => ({ tables: tables(names), resources, rules });

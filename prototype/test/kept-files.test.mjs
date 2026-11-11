@@ -1,12 +1,12 @@
-// Les fichiers que GFS garde, côté personne (js/kept-files.js, contrats 6.6) : l'article « PDF » du sous-menu « Importer » (grisé avec sa raison), les vérifications du fichier choisi, les phrases
+// Les fichiers que GFS garde, côté personne (js/files/kept-files.js, contrats 6.6) : l'article « PDF » du sous-menu « Importer » (grisé avec sa raison), les vérifications du fichier choisi, les phrases
 // qui disent ce qui s'est passé, le rangement dans le dossier ouvert, le téléchargement. Les fenêtres (nom pris, confirmation) et le vrai sélecteur de fichier se jouent dans le labo,
 // avec une vraie souris (labo/run-pdf.mjs) ; ici le magasin de données, le sélecteur et le rangement sont des doublures.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { saveBlob } from '../js/kept-files.js';
+import { saveBlob } from '../js/files/kept-files.js';
 import { FR, EN, PDF_BYTES, entryOf, fakeDoc, setup, pdf } from './kept-setup.mjs';
-import { TransferError } from '../js/transfer.js';
-import { TableDeclined } from '../js/own-table.js';
+import { TransferError } from '../js/broker/transfer.js';
+import { TableDeclined } from '../js/files/own-table.js';
 
 test('l\'article « PDF » de « Importer » : l\'icône et le mot du type ensemble, dans la famille rouge du PDF, avec ce que GFS en fait', () => {
   const { kept } = setup();
@@ -147,7 +147,7 @@ test('la corbeille : GFS gère les fichiers qu\'il garde, et dit ce qui l\'empê
   assert.equal(setup({ readonly: true, i18n: EN }).kept.lock().text, EN.t('trash.readonly'));
 });
 
-test('la corbeille : les gestes passent au magasin tels quels (les questions et les phrases sont à js/trash.js)', async () => {
+test('la corbeille : les gestes passent au magasin tels quels (les questions et les phrases sont à js/files/trash.js)', async () => {
   const { kept, log } = setup();
   const file = { id: 'aa', name: 'Facture.pdf' };
   assert.deepEqual([await kept.trash(file), await kept.restore(file), await kept.empty([file])], [true, { name: 'Facture.pdf', renamed: false }, 1]);
@@ -166,7 +166,7 @@ test('ce que dit l\'explorateur d\'un fichier gardé : se télécharge, se copie
   assert.equal(kept.copies({ app: 'publipostage' }), false, 'les fichiers d\'une app ne sont pas les siens');
 });
 
-test('la copie : le geste passe au magasin tel quel (la phrase et la liste relue sont à js/copying.js)', async () => {
+test('la copie : le geste passe au magasin tel quel (la phrase et la liste relue sont à js/files/copying.js)', async () => {
   const { kept, log } = setup();
   const file = { id: 'aa', name: 'Facture.pdf' };
   assert.deepEqual(await kept.copy(file), { id: 'bb', name: 'Facture (1).pdf', row: 2 });
@@ -174,7 +174,7 @@ test('la copie : le geste passe au magasin tel quel (la phrase et la liste relue
   assert.deepEqual(log.notices, [], 'aucune phrase : le module de la copie parle');
 });
 
-// Lire (js/reading.js, contrats 5.4 point 8) : quand une app du catalogue lit le PDF, « Lire » devient le geste principal, « Télécharger » passe dans le menu de la ligne.
+// Lire (js/broker/reading.js, contrats 5.4 point 8) : quand une app du catalogue lit le PDF, « Lire » devient le geste principal, « Télécharger » passe dans le menu de la ligne.
 const FILE = { app: 'gfs-fichiers', id: 'aa', name: 'Facture.pdf' };
 
 test('une app lit le PDF et elle est prête : « Lire » est le geste, la barre dit où il s\'ouvre, « Télécharger » reste dans le menu', async t => {

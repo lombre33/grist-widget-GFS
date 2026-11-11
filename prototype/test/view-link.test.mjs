@@ -2,8 +2,8 @@
 // à un widget, et que la ligne cliquée arrive ensuite à l'app, se mesure dans un vrai Grist (labo/run-lien-grille.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ViewLink, planLink, LINK_KEY, MARK } from '../js/view-link.js';
-import { GristState } from '../js/state.js';
+import { ViewLink, planLink, LINK_KEY, MARK } from '../js/broker/view-link.js';
+import { GristState } from '../js/broker/state.js';
 
 const columnar = rows => Object.fromEntries(Object.keys(rows[0]).map(key => [key, rows.map(row => row[key])]));
 // Une section de Grist : la nôtre est la 10 (un widget personnalisé de la page 3, table Clients = 1).

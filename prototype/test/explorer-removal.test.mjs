@@ -1,8 +1,8 @@
-// Les gestes de l'explorateur qui font partir une ligne (js/explorer-removal.js), sortis de js/explorer.js : la corbeille, le dossier supprimé, la restauration, la suppression pour de bon, la corbeille vidée, et le clavier
+// Les gestes de l'explorateur qui font partir une ligne (js/explorer/explorer-removal.js), sortis de js/explorer/explorer.js : la corbeille, le dossier supprimé, la restauration, la suppression pour de bon, la corbeille vidée, et le clavier
 // qui passe à la ligne voisine quand un geste a abouti.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Removal } from '../js/explorer-removal.js';
+import { Removal } from '../js/explorer/explorer-removal.js';
 
 function bench({ view = 'folder', choice = false, files = [{ key: 'a', app: 'pp' }, { key: 'b', app: 'pp' }, { key: 'c', app: 'pp' }], trashed = [{ key: 't1' }, { key: 't2' }], handles = true, keys = ['a', 'b', 'c'], open = true, moved = true } = {}) {
   const calls = [];

@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { integrity, readList, readPublication, githubAddress, buildEntry, checkFiles, checkCdn, generate, archiveName, verify, ROOT } from '../outils/bibliotheques.mjs';
 
 import { EXACT_VERSION_RE as KIT_EXACT_VERSION_RE, integrity as kitIntegrity } from '../kit/outils/bibliotheques/primitives.mjs';
-import { EXACT_VERSION_RE } from '../js/manifest.js';
+import { EXACT_VERSION_RE } from '../js/apps/manifest.js';
 
 const pkg = extra => ({ dependencies: { 'plotly.js-basic-dist-min': '2.13.2' }, gfs: { bibliotheques: { plotly: { paquet: 'plotly.js-basic-dist-min', fichier: 'plotly-basic.min.js' } } }, ...extra });
 const BYTES = Buffer.from('console.log("exemple")');

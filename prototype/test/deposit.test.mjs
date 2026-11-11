@@ -1,9 +1,9 @@
-// Ranger un fichier dans GFS (js/deposit.js, contrats 5.4 point 9) : la lecture de la demande `ranger`, le contrôle du manifeste, la file des dépôts, la mémoire d'un lot. Le magasin et les
+// Ranger un fichier dans GFS (js/broker/deposit.js, contrats 5.4 point 9) : la lecture de la demande `ranger`, le contrôle du manifeste, la file des dépôts, la mémoire d'un lot. Le magasin et les
 // fenêtres sont des doublures (`kept`) ; ce que GFS écrit dans le document et ce que la personne voit se jouent dans un vrai Grist (labo/run-ranger-pdf.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Deposit, readDeposit } from '../js/deposit.js';
-import { ERR, Refus } from '../js/filter.js';
+import { Deposit, readDeposit } from '../js/broker/deposit.js';
+import { ERR, Refus } from '../js/broker/filter.js';
 import { PDF_BYTES } from './kept-setup.mjs';
 
 const blob = () => new File([PDF_BYTES], 'export.pdf', { type: 'application/pdf' });

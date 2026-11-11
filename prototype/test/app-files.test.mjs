@@ -1,11 +1,11 @@
-// Le gardien des fichiers des apps (js/app-files.js, contrats 6.7) : mettre à la corbeille, restaurer, supprimer pour de bon, avec un faux Grist (test/fake-grist.mjs : un lot est atomique, un numéro
+// Le gardien des fichiers des apps (js/files/app-files.js, contrats 6.7) : mettre à la corbeille, restaurer, supprimer pour de bon, avec un faux Grist (test/fake-grist.mjs : un lot est atomique, un numéro
 // de ligne pris est refusé). Ce que le vrai Grist en fait (les tables internes, les dates, la fenêtre de l'accord, le lot atomique) se mesure dans le labo : labo/run-corbeille-apps.mjs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { AppFiles, dataColumnsOf } from '../js/app-files.js';
-import { loadFiles } from '../js/explorer-data.js';
-import { BIN_TABLE, parseSnapshot } from '../js/gfs-trash.js';
-import { createI18n } from '../js/i18n.js';
+import { AppFiles, dataColumnsOf } from '../js/files/app-files.js';
+import { loadFiles } from '../js/explorer/explorer-data.js';
+import { BIN_TABLE, parseSnapshot } from '../js/files/gfs-trash.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { fakeGrist } from './fake-grist.mjs';
 import { publipostage, form } from './helpers.mjs';
 

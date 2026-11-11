@@ -43,7 +43,7 @@ inférieur ne laisse pas passer cela.
   `GFS_Recus`, `GFS_Placement`, `GFS_Partages`, `GFS_Notifications`) ; les tables que l'app ouverte déclare écrire.
 - **Structure** : des changements additifs (ajout d'une table ou d'une colonne), et jamais l'écriture d'une colonne absente. Une
   seule exception : quand Grist donne à une table créée par une app un nom que son manifeste ne permet pas, le courtier la retire
-  (ou lui rend son nom) et le dit (`prototype/js/broker.js`).
+  (ou lui rend son nom) et le dit (`prototype/js/broker/broker.js`).
 - **Lignes** : les gestes de la personne (corbeille, « Supprimer définitivement », dossiers, partages) écrivent et retirent des
   lignes dans les tables de GFS et dans celles des apps que leur manifeste déclare.
 - **Règles d'accès** : écrites (et retirées) seulement quand le propriétaire active ou arrête le partage, après une fenêtre qui

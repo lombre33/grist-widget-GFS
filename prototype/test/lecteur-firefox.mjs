@@ -1,5 +1,5 @@
 // Le lecteur de vidéos sous Firefox (règle du 03/11 : toute nouvelle interface ajoute ses mesures à ce banc ; le lecteur du 07/11 n'avait été joué que sous Chromium, dans un vrai Grist). Le vrai `Player`
-// (js/player.js) est posé dans `.frames` par-dessus un cadre d'app (test/pages/lecteur.js), avec les feuilles de style et la politique de sécurité de index.html. Les sites de vidéos ne sont pas joignables du
+// (js/broker/player.js) est posé dans `.frames` par-dessus un cadre d'app (test/pages/lecteur.js), avec les feuilles de style et la politique de sécurité de index.html. Les sites de vidéos ne sont pas joignables du
 // cloud : Firefox les voit répondre une petite page d'essai (WebDriver BiDi, `page.stub` : la requête n'atteint pas le réseau), tout le reste est celui du navigateur. Ce que l'essai mesure, à 700 × 400, à la vraie
 // souris et au vrai clavier : l'adresse et les attributs du cadre que Firefox lit, la politique de sécurité (les deux sites passent, un troisième est refusé), l'endroit où le lecteur se pose, son rognage à la zone
 // de l'app, qui reçoit la souris, le panneau qui change de taille, le lecteur qui part avec l'app, et le focus (un clic dans le lecteur lui donne le clavier, un clic dans l'app le lui reprend).

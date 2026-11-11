@@ -1,9 +1,9 @@
-// Une app qui ne répond pas (js/session.js, contrats 1.4, point 2) : GFS attend 15 secondes son site en ligne, ouvre sa copie figée, attend 15 secondes de plus, puis renonce.
+// Une app qui ne répond pas (js/broker/session.js, contrats 1.4, point 2) : GFS attend 15 secondes son site en ligne, ouvre sa copie figée, attend 15 secondes de plus, puis renonce.
 // Le porteur a vu (04/11) « Form+ ne répond pas. » et rouvrir l'app ne la relançait pas : une session qui a renoncé le dit (`gaveUp`), et le contrôleur ne la réutilise plus.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { AppSession } from '../js/session.js';
-import { CATALOGUE } from '../js/catalogue.js';
+import { AppSession } from '../js/broker/session.js';
+import { CATALOGUE } from '../js/apps/catalogue.js';
 import { form, publipostage, catalogue } from './helpers.mjs';
 import { isGfsWarning, isSilentProbeWarning } from '../labo/sondes-muettes.mjs';
 

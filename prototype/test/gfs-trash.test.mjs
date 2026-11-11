@@ -1,9 +1,9 @@
-// La corbeille des fichiers des apps, sans Grist (js/gfs-trash.js, contrats 2.4 `suppression` et 6.7) : la recette du manifeste, l'instantané d'une ligne, l'entrée de `GFS_Corbeille`, sa lecture
+// La corbeille des fichiers des apps, sans Grist (js/files/gfs-trash.js, contrats 2.4 `suppression` et 6.7) : la recette du manifeste, l'instantané d'une ligne, l'entrée de `GFS_Corbeille`, sa lecture
 // pour l'explorateur et ce que la restauration remet. Ce que Grist fait de ces écritures se mesure dans le labo (labo/run-corbeille-apps.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { BIN_COLUMN_IDS, recipeOf, asksApp, writable, snapshotOf, parseSnapshot, entryRecord, binFiles, restorePlan } from '../js/gfs-trash.js';
-import { readFiles } from '../js/explorer-model.js';
+import { BIN_COLUMN_IDS, recipeOf, asksApp, writable, snapshotOf, parseSnapshot, entryRecord, binFiles, restorePlan } from '../js/files/gfs-trash.js';
+import { readFiles } from '../js/explorer/explorer-model.js';
 import { publipostage } from './helpers.mjs';
 
 const manifest = publipostage();

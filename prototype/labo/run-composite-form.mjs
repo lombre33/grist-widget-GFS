@@ -10,7 +10,7 @@
 import { startLab } from './lab-setup.mjs';
 import { seedFormDesigner } from './seed.mjs';
 import { say, check } from './lab-common.mjs';
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';

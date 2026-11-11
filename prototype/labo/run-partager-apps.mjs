@@ -11,7 +11,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { serve } from './lab-server.mjs';
 import { chromium, say, check } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { seedFiles, seedForms } from './seed.mjs';
 import { PAGE_PORT, openGfs, names, openRowMenu, contrastProblems, shot as pdfShot } from './lab-pdf.mjs';
 import { gfsFrame, fits, shareWithEditorAndViewer } from './lab-droits.mjs';

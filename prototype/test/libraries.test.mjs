@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { readCatalogue, resolveLibraries, forContext, lookup, CDN_HOSTS } from '../js/libraries.js';
+import { readCatalogue, resolveLibraries, forContext, lookup, CDN_HOSTS } from '../js/apps/libraries.js';
 
 const SRI = `sha384-${'A'.repeat(64)}`;
 const entry = (extra = {}) => ({

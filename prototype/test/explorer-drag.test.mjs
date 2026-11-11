@@ -1,8 +1,8 @@
-// Le glisser-déposer de l'explorateur (js/explorer-drag.js) : ce qui s'accepte, ce qui s'éclaire, ce qui est déplacé. Des doublures du DOM : ce que le vrai navigateur fait des événements de glisser se mesure
+// Le glisser-déposer de l'explorateur (js/explorer/explorer-drag.js) : ce qui s'accepte, ce qui s'éclaire, ce qui est déplacé. Des doublures du DOM : ce que le vrai navigateur fait des événements de glisser se mesure
 // à la vraie souris dans le labo (labo/run-glisser-explorateur.mjs) ; sous Firefox, le départ et le survol d'une cible sont mesurés par test/interfaces-firefox.test.mjs (le dépôt, lui, n'y aboutit pas au banc).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Dragging, canDrop, targetOf } from '../js/explorer-drag.js';
+import { Dragging, canDrop, targetOf } from '../js/explorer/explorer-drag.js';
 
 const TYPE = 'application/x-gfs-ligne';
 const files = [{ key: 'a:1', folder: 'Factures' }, { key: 'a:2', folder: '' }];

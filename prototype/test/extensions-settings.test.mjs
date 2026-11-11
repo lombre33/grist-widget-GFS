@@ -1,9 +1,9 @@
 // Les extensions d'une app (contrats 2.6) et ce que GFS retient des apps installées dans la table du document (7.4, 6.5 point 4).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readCatalogue } from '../js/libraries.js';
-import { activeExtensionIds, libraryNeeds, extensionRows, missingLibraries, modeOfExtension, libraryModes, extensionsState } from '../js/extensions.js';
-import { readApps, toOption, patchApps, withApp, withExtension, withMode } from '../js/settings.js';
+import { readCatalogue } from '../js/apps/libraries.js';
+import { activeExtensionIds, libraryNeeds, extensionRows, missingLibraries, modeOfExtension, libraryModes, extensionsState } from '../js/apps/extensions.js';
+import { readApps, toOption, patchApps, withApp, withExtension, withMode } from '../js/apps/settings.js';
 import { publipostage, readJson } from './helpers.mjs';
 
 const SRI = `sha384-${'B'.repeat(64)}`;

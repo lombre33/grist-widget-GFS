@@ -1,12 +1,12 @@
-// « Partagés avec moi », côté données (js/received-files.js, contrats 6.6, point 17) : les tables reçues se reconnaissent, l'état d'une arrivée se lit de ses deux marques, la réponse s'écrit sur la ligne,
+// « Partagés avec moi », côté données (js/sharing/received-files.js, contrats 6.6, point 17) : les tables reçues se reconnaissent, l'état d'une arrivée se lit de ses deux marques, la réponse s'écrit sur la ligne,
 // sans jamais créer de table. Le port est un faux Grist en mémoire (fake-grist.mjs) ; ce que le moteur de Sync+ fait de ces colonnes aux mises à jour (elles tiennent, une ligne effacée revient) se mesure
 // dans un vrai Grist (labo/run-recus-etat.mjs, faits vérifiés 72).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   isReceivedTable, receivedTables, readReceived, loadReceived, answerFile, shownReceived, pendingOf, isAcceptedReceived, stateOf, PENDING, ACCEPTED, REFUSED, RECEIVED_APP,
-} from '../js/received-files.js';
-import { FILES_COLUMN_IDS } from '../js/gfs-files.js';
+} from '../js/sharing/received-files.js';
+import { FILES_COLUMN_IDS } from '../js/files/gfs-files.js';
 import { fakeGrist } from './fake-grist.mjs';
 
 const COLUMNS = ['id', ...FILES_COLUMN_IDS, 'Supprimee_a_la_source'];

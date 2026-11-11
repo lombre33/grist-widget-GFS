@@ -1,62 +1,62 @@
 // Le contrôleur de GFS (contrats 4.1, cahier 6) : le démarrage, l'explorateur, l'app active et le passage de l'un à l'autre.
 // Deux lieux dans le cadre : l'explorateur (qui remplace le cadre) et le fichier ouvert (le sous-cadre de l'app, resté vivant et caché quand on explore).
 
-import { CATALOGUE } from './catalogue.js';
-import { loadAll, label } from './manifest.js';
-import { GristState } from './state.js';
-import { createPort } from './broker.js';
-import { ViewOptions, addressOf } from './view-options.js';
-import { ViewLink, LINK_KEY } from './view-link.js';
-import { AppSession } from './session.js';
-import { AppStatus } from './app-status.js';
-import { readPreferences, liveSwitch } from './frames.js';
-import { createI18n } from './i18n.js';
-import { LanguageSetting, browserStore, languageOfGrist, localeFor, watchStorage } from './language.js';
-import { ThemeSetting, browserStores } from './theme.js';
-import { ThemeHost } from './theme-apply.js';
-import { ThemeWindow } from './theme-window.js';
-import { AppStorage, browserBackend, storageHandlers } from './app-storage.js';
-import { installSprite } from './icons.js';
-import { Dock } from './dock.js';
-import { settingsItems } from './settings-menu.js';
-import { aboutItems } from './about.js';
-import { WorkControl } from './work-control.js';
-import { Explorer } from './explorer.js';
-import { loadFiles, loadAttachments } from './explorer-data.js';
-import { createFileRefresh } from './file-refresh.js';
-import { createLightReader } from './explorer-sql.js';
-import { AppLinks } from './links.js';
-import { Filing } from './filing.js';
-import { askName, chooseFolder } from './filing-window.js';
-import { readCatalogue } from './libraries.js';
-import { extensionsOf } from './extensions.js';
-import { AppsState } from './apps-state.js';
-import { arrivalApp, arrivalProbes } from './arrival.js';
-import { arrivalTableApp } from './arrival-table.js';
-import { Rangement, TableDeclined } from './rangement.js';
-import { RightsControl } from './rights-control.js';
-import { createOtherDocuments } from './share-other.js';
-import { resumeSharing } from './sync-resume.js';
-import { whenReceived } from './sync-service.js';
-import { WeightControl } from './weight-control.js';
-import { FILES_APP, FILES_MANIFEST, FILES_ENTRY, cleanName } from './gfs-files.js';
-import { Transfer, buildTransferFrame } from './transfer.js';
-import { Attach } from './attach.js';
-import { Player } from './player.js';
-import { buildAppFiles, buildKept } from './file-managers.js';
-import { Trash } from './trash.js';
-import { Copying } from './copying.js';
-import { ask } from './ask-window.js';
-import { Entries } from './entries.js';
-import { Openings } from './openings.js';
-import { OpenedFiles } from './opened-files.js';
-import { OpenedBar } from './opened-bar.js';
-import { ReceivedControl } from './received-control.js';
-import { loadReceived } from './received-files.js';
-import { publicationQuestion, sharedLinkQuestion } from './publication-window.js';
-import { ModulesWindow, rowKey } from './modules-window.js';
-import { AppContext } from './app-context.js';
-import { Refus, ERR, levelOf } from './filter.js';
+import { CATALOGUE } from './apps/catalogue.js';
+import { loadAll, label } from './apps/manifest.js';
+import { GristState } from './broker/state.js';
+import { createPort } from './broker/broker.js';
+import { ViewOptions, addressOf } from './broker/view-options.js';
+import { ViewLink, LINK_KEY } from './broker/view-link.js';
+import { AppSession } from './broker/session.js';
+import { AppStatus } from './broker/app-status.js';
+import { readPreferences, liveSwitch } from './broker/frames.js';
+import { createI18n } from './i18n/i18n.js';
+import { LanguageSetting, browserStore, languageOfGrist, localeFor, watchStorage } from './shell/language.js';
+import { ThemeSetting, browserStores } from './theme/theme.js';
+import { ThemeHost } from './theme/theme-apply.js';
+import { ThemeWindow } from './theme/theme-window.js';
+import { AppStorage, browserBackend, storageHandlers } from './broker/app-storage.js';
+import { installSprite } from './ui/icons.js';
+import { Dock } from './shell/dock.js';
+import { settingsItems } from './shell/settings-menu.js';
+import { aboutItems } from './shell/about.js';
+import { WorkControl } from './apps/work-control.js';
+import { Explorer } from './explorer/explorer.js';
+import { loadFiles, loadAttachments } from './explorer/explorer-data.js';
+import { createFileRefresh } from './explorer/file-refresh.js';
+import { createLightReader } from './explorer/explorer-sql.js';
+import { AppLinks } from './broker/links.js';
+import { Filing } from './explorer/filing.js';
+import { askName, chooseFolder } from './explorer/filing-window.js';
+import { readCatalogue } from './apps/libraries.js';
+import { extensionsOf } from './apps/extensions.js';
+import { AppsState } from './apps/apps-state.js';
+import { arrivalApp, arrivalProbes } from './broker/arrival.js';
+import { arrivalTableApp } from './broker/arrival-table.js';
+import { Rangement, TableDeclined } from './files/rangement.js';
+import { RightsControl } from './rights/rights-control.js';
+import { createOtherDocuments } from './sharing/share-other.js';
+import { resumeSharing } from './sharing/sync-resume.js';
+import { whenReceived } from './sharing/sync-service.js';
+import { WeightControl } from './weight/weight-control.js';
+import { FILES_APP, FILES_MANIFEST, FILES_ENTRY, cleanName } from './files/gfs-files.js';
+import { Transfer, buildTransferFrame } from './broker/transfer.js';
+import { Attach } from './broker/attach.js';
+import { Player } from './broker/player.js';
+import { buildAppFiles, buildKept } from './files/file-managers.js';
+import { Trash } from './files/trash.js';
+import { Copying } from './files/copying.js';
+import { ask } from './ui/ask-window.js';
+import { Entries } from './broker/entries.js';
+import { Openings } from './broker/openings.js';
+import { OpenedFiles } from './explorer/opened-files.js';
+import { OpenedBar } from './explorer/opened-bar.js';
+import { ReceivedControl } from './sharing/received-control.js';
+import { loadReceived } from './sharing/received-files.js';
+import { publicationQuestion, sharedLinkQuestion } from './broker/publication-window.js';
+import { ModulesWindow, rowKey } from './apps/modules-window.js';
+import { AppContext } from './broker/app-context.js';
+import { Refus, ERR, levelOf } from './broker/filter.js';
 
 const NOTICE_MS = 6000;
 
@@ -77,7 +77,7 @@ export class GfsController {
   modulesWindow = null;
   themeWindow = null;
   #noticeTimer = null;
-  #told = new AppContext(this); // ce que GFS a dit à l'app active (js/app-context.js)
+  #told = new AppContext(this); // ce que GFS a dit à l'app active (js/broker/app-context.js)
   #modulesWaiters = [];
   #idleWaiters = []; // ceux qui attendent la fin des écritures des apps installées (`unlock`)
   #fileStatus = { loading: false, restricted: false, problems: [] }; // ce que l'explorateur dit sous la liste, gardé pour être redit dans la langue qui vaut
@@ -93,8 +93,8 @@ export class GfsController {
     // La langue de GFS et de ses apps : le choix de la personne, retenu sur ce navigateur ; à défaut celle de Grist, ou du navigateur (contrats 5.2).
     this.language = new LanguageSetting({ grist: languageOfGrist(this.params.get('language'), navigator.language), store: browserStore(window) });
     this.#useLanguage();
-    // Le thème de GFS et de ses apps : l'ambiance et la couleur que la personne a choisies, retenues sur ce navigateur comme la langue (js/theme.js) ; posées
-    // sur la page tout de suite, dites à l'app ouverte.
+    // Le thème de GFS et de ses apps : l'ambiance et la couleur que la personne a choisies, retenues sur ce navigateur comme la langue (js/theme/theme.js) ;
+    // posées sur la page tout de suite, dites à l'app ouverte.
     this.theme = new ThemeSetting(browserStores(window));
     this.themeHost = new ThemeHost({ win: window, setting: this.theme, onMessage: message => { if (this.session) this.session.sendAmbiance(message); } });
     this.themeHost.start();
@@ -108,8 +108,8 @@ export class GfsController {
       doc: this.port.doc, widget: this.port.widget, address: addressOf(location.href), tableId: () => (this.state.table ? this.state.table.tableId : null),
       enabled: () => this.fullAccess && !this.readonly,
     });
-    // La section de GFS se relie d'elle-même à la grille de la même table (js/view-link.js, contrats 4.5 point 8) : « La table de la page » suit alors la ligne
-    // que la personne clique.
+    // La section de GFS se relie d'elle-même à la grille de la même table (js/broker/view-link.js, contrats 4.5 point 8) : « La table de la page » suit alors
+    // la ligne que la personne clique.
     this.viewLink = new ViewLink({
       doc: this.port.doc, state: this.state, section: () => this.viewOptions.section(), enabled: () => this.fullAccess && !this.readonly &&
         this.params.get('grille') !== '0',
@@ -124,24 +124,24 @@ export class GfsController {
     this.rangement = new Rangement({ port: this.port, consent: () => this.#askTableConsent(), canWrite: () => !this.#writeBlock(),
       onIdentity: () => this.#onIdentity() });
     this.registry = new AppsState({ store: this.rangement, onChange: () => this.#onRegistryChange() });
-    // Ce que l'explorateur et les liens demandent (grisé, types de « Nouveau » et d'« Importer », qui lit un fichier : js/entries.js), et les ouvertures
-    // (js/openings.js).
+    // Ce que l'explorateur et les liens demandent (grisé, types de « Nouveau » et d'« Importer », qui lit un fichier : js/broker/entries.js), et les ouvertures
+    // (js/broker/openings.js).
     const entries = new Entries(this);
     Object.assign(this, { lockOf: entries.lockOf, newTypes: entries.newTypes, importTypes: entries.importTypes, readerOf: entries.readerOf });
-    this.opened = new OpenedFiles(); // les fichiers que GFS a ouverts dans une app, pour la vue « Ouverts » de l'explorateur (js/opened-files.js)
+    this.opened = new OpenedFiles(); // les fichiers que GFS a ouverts dans une app, pour la vue « Ouverts » de l'explorateur (js/explorer/opened-files.js)
     this.openings = new Openings(this);
     this.links = this.#buildLinks();
-    // Le cadre d'envoi (js/transfer.js) ne s'ouvre qu'à la première requête : les pièces jointes, et la preuve que la personne est propriétaire
-    // (js/rights-reader.js).
+    // Le cadre d'envoi (js/broker/transfer.js) ne s'ouvre qu'à la première requête : les pièces jointes, et la preuve que la personne est propriétaire
+    // (js/rights/rights-reader.js).
     this.transfer = new Transfer({ doc: this.port.doc, base: this.doc.baseURI, createFrame: url => buildTransferFrame(this.doc, url) });
-    // la lecture des fichiers d'un document lourd sans ses cellules lourdes (js/explorer-sql.js) : jeton en lecture seule, éteinte au premier refus
+    // la lecture des fichiers d'un document lourd sans ses cellules lourdes (js/explorer/explorer-sql.js) : jeton en lecture seule, éteinte au premier refus
     this.fileReader = createLightReader({ sql: statement => this.transfer.sql(statement),
       warn: error => console.warn('GFS : la lecture légère des fichiers est éteinte pour cette session, l\'explorateur relit les tables en entier', error) });
     this.player = new Player({ container: this.$('frames') }); // le lecteur de vidéos posé par-dessus l'app (contrats 5.2, point 11)
     // `joindre` (contrats 5.4, point 12)
     this.attach = new Attach({ doc: this.port.doc, transfer: this.transfer, session: () => this.session, readonly: () => this.readonly });
-    // Le partage de fichiers avec d'autres documents Grist (js/share-other.js) : le moteur du kit, son port et les fenêtres ne se chargent qu'au premier
-    // besoin.
+    // Le partage de fichiers avec d'autres documents Grist (js/sharing/share-other.js) : le moteur du kit, son port et les fenêtres ne se chargent qu'au
+    // premier besoin.
     this.otherDocuments = createOtherDocuments({
       t: this.t, container: this.$('stage'), inertTargets: this.inertTargets, docApi: () => this.grist.docApi, transfer: this.transfer,
       language: () => this.lang, notice: text => this.notice(text), writeBlock: () => this.#writeBlock(),
@@ -176,7 +176,7 @@ export class GfsController {
   get fullAccess() { return levelOf(this.state.grantedAccess) >= levelOf('full'); }
 
   appById(id) { return this.apps.find(item => item.app.id === id && item.ok) || null; }
-  // Le manifeste d'une app installable, ou celui des fichiers que GFS garde lui-même (js/gfs-files.js) : null quand l'id n'est ni l'un ni l'autre.
+  // Le manifeste d'une app installable, ou celui des fichiers que GFS garde lui-même (js/files/gfs-files.js) : null quand l'id n'est ni l'un ni l'autre.
   manifestOf = id => (id === FILES_APP ? FILES_MANIFEST : (this.appById(id) || { manifest: null }).manifest);
   appName = id => { const manifest = this.manifestOf(id); return manifest ? label(manifest.nom, this.lang) : id; };
   validApps() { return this.apps.filter(item => item.ok); }
@@ -208,16 +208,16 @@ export class GfsController {
     if (!arrived) await this.#firstRun(); // une section qui s'ouvre sur son app n'est pas neuve : la fenêtre des apps ne passe pas par-dessus
     doc.body.dataset.gfsFirstRun = 'done';
     void this.state.whenTable().then(() => this.viewLink.ensure());
-    // Un envoi laissé en route, ou un partage reçu dont le contenu arrive encore : les boucles du moteur reprennent d'où elles en étaient (js/sync-resume.js ;
-    // rien ne se charge sans table de partage).
+    // Un envoi laissé en route, ou un partage reçu dont le contenu arrive encore : les boucles du moteur reprennent d'où elles en étaient
+    // (js/sharing/sync-resume.js ; rien ne se charge sans table de partage).
     whenReceived(() => void this.#refreshReceived());
     if (!this.#writeBlock()) void resumeSharing({ docApi: this.grist.docApi, transfer: this.transfer, language: () => this.lang, busy: () => false,
       isOwner: () => this.transfer.isOwner() }).catch(error => console.warn('GFS : le partage entre documents ne reprend pas', error));
   }
 
-  // L'arrivée (cahier 6.2, point 2 ; js/arrival.js) : une section qui servait à une app s'ouvre sur elle, sans consigne et sans rien écrire ; sinon
+  // L'arrivée (cahier 6.2, point 2 ; js/broker/arrival.js) : une section qui servait à une app s'ouvre sur elle, sans consigne et sans rien écrire ; sinon
   // l'explorateur. Les réglages de la section parlent d'abord ; sans eux, la table d'une app qui garde sa vue dans le document (`arrivee` du manifeste) dit si
-  // la section est la sienne (js/arrival-table.js). Rend `true` si une app s'est ouverte.
+  // la section est la sienne (js/broker/arrival-table.js). Rend `true` si une app s'est ouverte.
   async #arrive() {
     const manifests = this.manifests();
     const rules = { installed: appId => this.registry.has(appId), granted: this.state.grantedAccess };
@@ -265,7 +265,7 @@ export class GfsController {
     const gestures = { t: this.t, notice: text => this.notice(text), refresh: () => this.refreshFiles() };
     const filing = this.#buildFiling();
     this.filing = filing;
-    // « Partagés avec moi » (js/received-control.js) : les fichiers reçus d'un autre document, grisés tant qu'ils ne sont pas acceptés.
+    // « Partagés avec moi » (js/sharing/received-control.js) : les fichiers reçus d'un autre document, grisés tant qu'ils ne sont pas acceptés.
     this.received = new ReceivedControl({
       port: this.port, t: this.t, locale: () => this.locale, container: this.$('stage'), inertTargets: this.inertTargets, typeLabel: this.typeLabel,
         notice: text => this.notice(text),
@@ -291,7 +291,7 @@ export class GfsController {
     });
   }
 
-  // Les liens entre apps (js/links.js, contrats 5.4) : ce que le contrôleur prête à `choisir` et `ouvrir`, appelés par une app.
+  // Les liens entre apps (js/broker/links.js, contrats 5.4) : ce que le contrôleur prête à `choisir` et `ouvrir`, appelés par une app.
   #buildLinks() {
     return new AppLinks({
       explorer: () => this.explorer, session: () => this.session, manifests: this.manifests, appById: id => this.appById(id), appName: this.appName,
@@ -302,7 +302,8 @@ export class GfsController {
     });
   }
 
-  // Épingler, renommer, déplacer depuis l'explorateur (js/filing.js) : les fenêtres du widget par-dessus l'explorateur, et la liste relue après chaque geste.
+  // Épingler, renommer, déplacer depuis l'explorateur (js/explorer/filing.js) : les fenêtres du widget par-dessus l'explorateur, et la liste relue après chaque
+  // geste.
   #buildFiling() {
     const layer = opts => ({ ...opts, t: this.t, container: this.$('stage'), inertTargets: this.inertTargets });
     return new Filing({
@@ -317,8 +318,8 @@ export class GfsController {
     });
   }
 
-  // La barre de GFS au-dessus de l'app ouverte (js/dock.js) : ses boutons ouvrent l'explorateur et la fenêtre des apps ; quand ce qu'elle recouvre change,
-  // l'app ouverte le sait (événement `barre`, contrats 5.2, point 7).
+  // La barre de GFS au-dessus de l'app ouverte (js/shell/dock.js) : ses boutons ouvrent l'explorateur et la fenêtre des apps ; quand ce qu'elle recouvre
+  // change, l'app ouverte le sait (événement `barre`, contrats 5.2, point 7).
   #buildDock() {
     this.dock = new Dock({
       root: this.$('floaters'), stage: this.$('stage'), onFiles: () => this.showExplorer(), onOpened: () => this.openedBar.show(),
@@ -331,7 +332,7 @@ export class GfsController {
       session: () => this.session, inertTargets: this.inertTargets, notice: text => this.notice(text),
       reopen: id => { this.#closeSession(); this.activate(id, this.opening); }, hidden: () => this.doc.hidden,
     });
-    // Le 5e bouton : les fichiers ouverts (js/opened-bar.js), qu'on retrouve d'un clic sans repasser par l'explorateur.
+    // Le 5e bouton : les fichiers ouverts (js/explorer/opened-bar.js), qu'on retrouve d'un clic sans repasser par l'explorateur.
     this.openedBar = new OpenedBar({
       opened: this.opened, files: () => this.explorer.files, session: () => this.session, dock: this.dock, t: this.t, appName: this.appName,
       open: file => this.openings.openFile(file), showExplorer: () => this.showExplorer(), notice: text => this.notice(text),
@@ -403,8 +404,8 @@ export class GfsController {
     }
   }
 
-  // Une seule lecture des fichiers fait foi, la dernière lancée (js/file-refresh.js) : une lecture plus ancienne qui finit après ne remplace pas la liste
-  // récente.
+  // Une seule lecture des fichiers fait foi, la dernière lancée (js/explorer/file-refresh.js) : une lecture plus ancienne qui finit après ne remplace pas la
+  // liste récente.
   #refresh = createFileRefresh({
     canRead: () => this.fullAccess,
     load: () => loadFiles(this.port, [...this.validApps(), FILES_ENTRY], this.identity, this.fileReader),
@@ -444,8 +445,8 @@ export class GfsController {
 
   // ---------- la fenêtre « Thème » ----------
 
-  // La ligne « Thème » du menu « Réglages » de l'explorateur : l'ambiance et la couleur de GFS et de ses apps (js/theme-window.js). La fenêtre suit le mode de
-  // la page : ses vignettes se repeignent quand Grist passe du clair au sombre.
+  // La ligne « Thème » du menu « Réglages » de l'explorateur : l'ambiance et la couleur de GFS et de ses apps (js/theme/theme-window.js). La fenêtre suit le
+  // mode de la page : ses vignettes se repeignent quand Grist passe du clair au sombre.
   openTheme() {
     if (!this.themeWindow) {
       this.themeWindow = new ThemeWindow({
@@ -457,8 +458,8 @@ export class GfsController {
     this.themeWindow.open();
   }
 
-  // La ligne « À propos » du menu « Réglages » (js/about.js) : la version, l'auteur, le site et la licence, dans une fenêtre du widget qui n'a que son bouton
-  // « Fermer ».
+  // La ligne « À propos » du menu « Réglages » (js/shell/about.js) : la version, l'auteur, le site et la licence, dans une fenêtre du widget qui n'a que son
+  // bouton « Fermer ».
   #openAbout() {
     void this.ask({ title: this.t('about.title'), message: this.t('about.text'), items: aboutItems(this.t), confirmLabel: this.t('about.close') });
   }
@@ -531,8 +532,8 @@ export class GfsController {
     void this.openModules();
   }
 
-  // Un passage de la boucle qui reçoit a changé quelque chose (js/sync-service.js) : « Partagés avec moi » et la cloche se mettent à jour, sans relire le
-  // reste, et seulement explorateur ouvert (à l'ouverture, la liste se relit de toute façon).
+  // Un passage de la boucle qui reçoit a changé quelque chose (js/sharing/sync-service.js) : « Partagés avec moi » et la cloche se mettent à jour, sans relire
+  // le reste, et seulement explorateur ouvert (à l'ouverture, la liste se relit de toute façon).
   async #refreshReceived() {
     if (!this.explorer || !this.explorer.isOpen || !this.fullAccess) return;
     try { this.explorer.setReceived(await loadReceived(this.port, (await this.port.doc.listTables()).map(String))); }

@@ -1,7 +1,7 @@
 // Ce que Grist a dit à GFS en dernier (contrats 4.1, point 2), et ce que GFS rejoue à l'app qui devient prête (4.2, point 2).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { classify, GristState } from '../js/state.js';
+import { classify, GristState } from '../js/broker/state.js';
 
 const options = { options: null, settings: { accessLevel: 'full', linking: { asTarget: null, asSource: false } }, fromReady: true };
 const table = (rowId, extra = {}) => ({ tableId: 'Clients', rowId, dataChange: true, mappingsChange: true, ...extra });

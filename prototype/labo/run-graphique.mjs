@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { startLab } from './lab-setup.mjs';
 import { say, check, LAB } from './lab-common.mjs';
-import { readCatalogue, resolveLibraries, forContext } from '../js/libraries.js';
+import { readCatalogue, resolveLibraries, forContext } from '../js/apps/libraries.js';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';

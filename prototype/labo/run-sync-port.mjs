@@ -1,4 +1,4 @@
-// Le port de GFS pour le moteur de partage (js/sync-port.js) et le moteur de Sync+ (kit/js/synchro/) branchés dans la page de GFS, dans un VRAI Grist (`GRIST_DOCKER_ARGS="-e ALLOWED_WEBHOOK_DOMAINS=*" bash
+// Le port de GFS pour le moteur de partage (js/sharing/sync-port.js) et le moteur de Sync+ (kit/js/synchro/) branchés dans la page de GFS, dans un VRAI Grist (`GRIST_DOCKER_ARGS="-e ALLOWED_WEBHOOK_DOMAINS=*" bash
 // vrai-serveur.sh`) : étude « Partager un dossier avec un autre document », mesure 6. Rien n'est simulé : le port est celui de GFS, ses requêtes REST passent par le vrai cadre d'envoi (origine opaque), le
 // moteur est celui du kit. Ce que l'essai fait faire à chaque fonction du port :
 //   1. le démarrage du moteur (port complet, tables au préfixe `GFS_`), l'identité du document, le propriétaire ;
@@ -27,8 +27,8 @@ try {
   const { page, frame, docId } = run;
   // Le port de GFS, le vrai : le cadre d'envoi, l'API des widgets, le moteur du kit. `window.__p` : le port ; `window.__e` : quelques fonctions du moteur ; `window.__try` : un essai qui rend l'erreur au lieu de la lever.
   const started = await frame.evaluate(async () => {
-    const { Transfer, buildTransferFrame } = await import('./js/transfer.js');
-    const { startSyncEngine, SYNC_PREFIX } = await import('./js/sync-port.js');
+    const { Transfer, buildTransferFrame } = await import('./js/broker/transfer.js');
+    const { startSyncEngine, SYNC_PREFIX } = await import('./js/sharing/sync-port.js');
     const common = await import('./kit/js/synchro/logic/common.js');
     const pagesModule = await import('./kit/js/synchro/pages.js');
     const transfer = new Transfer({ doc: grist.docApi, base: document.baseURI, createFrame: url => buildTransferFrame(document, url) });

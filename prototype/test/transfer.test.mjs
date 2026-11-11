@@ -1,9 +1,9 @@
-// Le cadre d'envoi, côté GFS (js/transfer.js, contrats 6.6) : le jeton est demandé à Grist pour chaque requête, l'adresse qui le porte part au cadre par un canal privé, la réponse (ou
+// Le cadre d'envoi, côté GFS (js/broker/transfer.js, contrats 6.6) : le jeton est demandé à Grist pour chaque requête, l'adresse qui le porte part au cadre par un canal privé, la réponse (ou
 // l'échec) lui revient par le même canal. Le cadre est une doublure sur un vrai MessageChannel ; ce que le vrai cadre fait de la requête (CSP, origine opaque, le serveur) se mesure
 // dans le labo, sur un vrai serveur (labo/run-pdf.mjs).
 import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { Transfer, TransferError } from '../js/transfer.js';
+import { Transfer, TransferError } from '../js/broker/transfer.js';
 
 const BASE = 'https://pages.exemple.fr/gfs/index.html';
 const GIVEN = { token: 'test+jeton/=', baseUrl: 'https://grist.exemple.fr/o/docs/api/docs/DOC123/' };

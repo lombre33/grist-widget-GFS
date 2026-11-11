@@ -2,7 +2,7 @@
 // section, sans « Enregistrer » et sans reconstruire son cadre, se mesure dans un vrai Grist (labo/run-reglages-directs.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ViewOptions, addressOf, candidatesOf, withChanges, PROBE_KEY } from '../js/view-options.js';
+import { ViewOptions, addressOf, candidatesOf, withChanges, PROBE_KEY } from '../js/broker/view-options.js';
 
 const ADDRESS = 'https://gfs.example/suite/prototype';
 const url = (suffix = '') => `https://gfs.example/suite/prototype/index.html${suffix}`;

@@ -1,4 +1,4 @@
-// « Partager > Dans un autre document Grist » : l'onglet, la fenêtre d'envoi (js/share-other-window.js) et « Gérer les partages > Autres documents », joués dans GFS lui-même, dans un VRAI Grist (`GRIST_DOCKER_ARGS="-e ALLOWED_WEBHOOK_DOMAINS=*" bash vrai-serveur.sh`),
+// « Partager > Dans un autre document Grist » : l'onglet, la fenêtre d'envoi (js/sharing/share-other-window.js) et « Gérer les partages > Autres documents », joués dans GFS lui-même, dans un VRAI Grist (`GRIST_DOCKER_ARGS="-e ALLOWED_WEBHOOK_DOMAINS=*" bash vrai-serveur.sh`),
 // à 700 × 400, à la vraie souris, deux documents qui ont GFS. Le premier est celui de la personne : tout passe par les fenêtres de GFS. Le second est piloté par l'essai avec les fonctions du moteur (le côté
 // qui reçoit n'a pas encore d'écran dans GFS) : il lit l'invitation, crée sa réception, répond.
 //   1. « Partager… » d'un PDF : l'onglet « Dans un autre document Grist » est là, son bouton « Relier un nouveau document… » dégrisé (propriétaire), même sans que les droits de GFS soient activés ; rien n'est écrit avant l'accord ;
@@ -12,7 +12,7 @@ import { createServer } from 'node:http';
 import { serve } from './lab-server.mjs';
 import { chromium, say, check } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { PAGE_PORT, openGfs, importSamples, openRowMenu, contrastProblems, shot as pdfShot } from './lab-pdf.mjs';
 import { fits } from './lab-droits.mjs';
 import { startEngine, formLink } from './lab-partage.mjs';
@@ -129,7 +129,7 @@ try {
   check('la fenêtre dit que le fichier est arrivé et que le partage est arrêté', await waitDone(), await text(frame, '.mod.so'));
   await shot(frame, '5-fini');
   check('plus de table technique ni de webhook chez l\'envoyeur ; les colonnes d\'aide restent', !(await source.rest.tables()).includes('GFS_Synchro') && (await webhooks(source)) === 0, await source.rest.tables());
-  // La réception reprend d'elle-même : la page de l'autre document est fermée, puis rouverte par la personne ; GFS y voit le journal reçu et relance la boucle du moteur (js/sync-resume.js) : le contenu du PDF
+  // La réception reprend d'elle-même : la page de l'autre document est fermée, puis rouverte par la personne ; GFS y voit le journal reçu et relance la boucle du moteur (js/sharing/sync-resume.js) : le contenu du PDF
   // arrive sans que l'essai fasse rien.
   const targetPath = target.path;
   await target.page.close();

@@ -1,6 +1,6 @@
 /* GFS : couleurs par les jetons de la charte Grist Factory (section 1) : gris bleutés, un seul bleu d'accent, rouge et vert pour l'état seulement.
    Thème : celui de Grist (le script d'API pose data-grist-appearance sur <html>) ; sans Grist, celui du système.
-   Les couleurs par type (document, grille, présentation, PDF) ne servent que dans l'explorateur (explorer.css) ; une ambiance les redit (js/ambiance-types.js, comme pour les autres jetons : ce sont ici celles d'origine). */
+   Les couleurs par type (document, grille, présentation, PDF) ne servent que dans l'explorateur (explorer.css) ; une ambiance les redit (js/theme/ambiance-types.js, comme pour les autres jetons : ce sont ici celles d'origine). */
 :root {
   color-scheme: light;
   --bg: #f4f6fa; --surface: #ffffff; --surface-sunken: #eef1f6;
@@ -25,7 +25,7 @@
   --z-frames: 1; --z-float: 100; --z-window: 200; --z-menu: 300; --z-toast: 400;
 }
 /* La forme (police, arrondis, traits, ombres, fond, filet) se dit par des jetons, comme les couleurs. Leurs valeurs ici sont celles d'avant les ambiances : sans ambiance choisie, rien
-   ne change d'un pixel. Une ambiance les redit sur <html>, par le CSSOM (js/theme-apply.js) ; la vignette de la fenêtre « Thème » les redit sur la sienne (`.amb-mini`) : d'où le
+   ne change d'un pixel. Une ambiance les redit sur <html>, par le CSSOM (js/theme/theme-apply.js) ; la vignette de la fenêtre « Thème » les redit sur la sienne (`.amb-mini`) : d'où le
    même bloc pour les deux, afin que la vignette parte des valeurs d'origine (et non de celles de la page) et que chaque `var()` se résolve là où elle pose ses propres couleurs. Une app
    qui ne lit pas ces jetons garde sa forme et prend les couleurs (contrats 5.2, point 10). */
 :root, .amb-mini {
@@ -82,7 +82,7 @@
   --shadow-float: 0 14px 32px -8px rgba(0, 0, 0, .65), 0 2px 8px rgba(0, 0, 0, .45);
   --shadow-card: 0 1px 2px rgba(0, 0, 0, .45);
 }
-/* L'accessibilité renforcée (décision du 04/11, js/theme.js) tient le texte à 7:1 sur les fonds de l'ambiance ; les couleurs d'état de la charte, qui ne changent pas d'une ambiance à l'autre, et celles de type
+/* L'accessibilité renforcée (décision du 04/11, js/theme/theme.js) tient le texte à 7:1 sur les fonds de l'ambiance ; les couleurs d'état de la charte, qui ne changent pas d'une ambiance à l'autre, et celles de type
    (le message de l'accessibilité renforcée a l'`id` `renforcee` et pas de couleur de type propre : ce sont celles d'origine, ci-dessus) ne le tiennent pas toutes. Leur texte prend donc celui de la page, après les deux
    blocs sombres ci-dessus (même poids, le dernier gagne) ; l'icône, le contour et le fond doux gardent la couleur : l'état ou le type se lit aussi par le mot et par l'icône. */
 :root[data-ambiance="renforcee"] { --danger-ink: var(--text); --warn-ink: var(--text); --good: var(--text); --t-doc-ink: var(--text); --t-grid-ink: var(--text); --t-slides-ink: var(--text); --t-pdf-ink: var(--text); }
@@ -103,7 +103,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 var(
 .player[hidden] { display: none; }
 .player iframe { position: absolute; border: 0; }
 
-/* La barre de GFS au-dessus d'une app : cinq boutons à icône seule, posés au bord que la personne choisit (`data-edge`, js/dock.js), centrés sur ce bord. Le cadre de l'app reste plein :
+/* La barre de GFS au-dessus d'une app : cinq boutons à icône seule, posés au bord que la personne choisit (`data-edge`, js/shell/dock.js), centrés sur ce bord. Le cadre de l'app reste plein :
    la barre le recouvre à 4 px du bord, et l'app apprend la zone à laisser libre (contrats 5.2, point 7). Le mot de chaque bouton est son info-bulle. */
 .floaters { position: absolute; z-index: var(--z-float); display: flex; gap: 2px; padding: 2px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
   background: var(--surface); box-shadow: var(--shadow-card); }

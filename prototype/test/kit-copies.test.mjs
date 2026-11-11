@@ -1,5 +1,5 @@
 // Ce que GFS tient du kit (audit du code du 09/11 ; choix du porteur : d'abord « garder les copies et ajouter un essai » (10/11), puis « reprendre les copies exactes du kit » (11/11)).
-//   - `h` (js/dom.js), le contraste de la WCAG 2 et `parseHex` (js/oklch.js) ne sont plus des copies : GFS les reprend du kit (kit/js/dom.js, kit/js/color-math.js), et l'essai garde que ce sont bien les mêmes fonctions ;
+//   - `h` (js/ui/dom.js), le contraste de la WCAG 2 et `parseHex` (js/theme/oklch.js) ne sont plus des copies : GFS les reprend du kit (kit/js/dom.js, kit/js/color-math.js), et l'essai garde que ce sont bien les mêmes fonctions ;
 //   - les jetons de couleur de css/gfs.css sont encore écrits des deux côtés (les sélecteurs du sombre ne sont pas ceux du kit) : l'essai échoue dès qu'une valeur diverge de kit/css/tokens.css, en clair et en
 //     sombre, sauf les couches (`--z-menu`, `--z-window` : GFS les compte de 100 en 100, le kit de 1500 à 2100).
 // Les deux `Layers` et les deux bases de fenêtres ne sont pas des copies (ils n'ont pas les mêmes fonctions) : rien à comparer.
@@ -32,15 +32,15 @@ export function compareTokens(gfs, kit) {
   return { shared: shared.length, differing: shared.filter(name => gfs.get(name) !== kit.get(name)).map(name => [name, gfs.get(name), kit.get(name)]) };
 }
 
-test('`h` : js/dom.js rend le `h` du kit (kit/js/dom.js), pas une copie', { skip }, async () => {
-  const mine = await import('../js/dom.js');
+test('`h` : js/ui/dom.js rend le `h` du kit (kit/js/dom.js), pas une copie', { skip }, async () => {
+  const mine = await import('../js/ui/dom.js');
   const theirs = await import(join(KIT, 'js', 'dom.js'));
   assert.equal(typeof theirs.h, 'function');
   assert.equal(mine.h, theirs.h);
 });
 
-test('le contraste de la WCAG 2 et `parseHex` : js/oklch.js rend ceux du kit (kit/js/color-math.js), de 1 à 21', { skip }, async () => {
-  const mine = await import('../js/oklch.js');
+test('le contraste de la WCAG 2 et `parseHex` : js/theme/oklch.js rend ceux du kit (kit/js/color-math.js), de 1 à 21', { skip }, async () => {
+  const mine = await import('../js/theme/oklch.js');
   const { ColorMath } = await import(join(KIT, 'js', 'color-math.js'));
   assert.equal(mine.contrast, ColorMath.contrast);
   assert.equal(mine.parseHex, ColorMath.parseHex);

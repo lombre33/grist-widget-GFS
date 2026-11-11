@@ -1,8 +1,8 @@
 // Le stockage des choix de chaque app (contrats 5.3) : un espace par app dans le navigateur de GFS, des clés et des valeurs réglées, un quota, un navigateur qui refuse.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { AppStorage, browserBackend, storageHandlers, QUOTA, PREFIX, KEY_PATTERN } from '../js/app-storage.js';
-import { EnvelopePeer } from '../js/envelope.js';
+import { AppStorage, browserBackend, storageHandlers, QUOTA, PREFIX, KEY_PATTERN } from '../js/broker/app-storage.js';
+import { EnvelopePeer } from '../js/broker/envelope.js';
 
 // Un navigateur de pied, au plus près de `localStorage` : des chaînes, rangées dans l'ordre d'écriture. `refuse` dit ce qu'il ne veut plus faire.
 function fakeBackend(refuse = {}) {

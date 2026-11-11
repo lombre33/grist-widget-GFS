@@ -2,8 +2,8 @@
 // Un faux Grist ne sert ici qu'à compter ce qui est lu et appliqué ; ce que Grist ouvre vraiment se mesure dans le labo et chez Form+.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeCallHandler } from '../js/broker.js';
-import { simulate } from '../js/publication.js';
+import { makeCallHandler } from '../js/broker/broker.js';
+import { simulate } from '../js/broker/publication.js';
 import { policyOf, form } from './helpers.mjs';
 
 const PUBLISHED = '{"publish":true,"form":true}';

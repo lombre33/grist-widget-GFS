@@ -1,11 +1,11 @@
-// Ranger un fichier dans GFS, côté données et côté personne (KeptFiles.deposit, js/kept-files.js, contrats 5.4 point 9 et 6.6) : les verrous, les vérifications du contenu, les issues, le dossier,
+// Ranger un fichier dans GFS, côté données et côté personne (KeptFiles.deposit, js/files/kept-files.js, contrats 5.4 point 9 et 6.6) : les verrous, les vérifications du contenu, les issues, le dossier,
 // la mémoire d'un lot (« Faire pareil pour les suivants »), les refus et leurs codes. Le magasin, le rangement et la fenêtre du nom pris sont des doublures ; la fenêtre elle-même, le vrai
 // Grist et la vraie souris se jouent dans le labo (labo/run-ranger-pdf.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ERR, Refus } from '../js/filter.js';
-import { TransferError } from '../js/transfer.js';
-import { TableDeclined } from '../js/own-table.js';
+import { ERR, Refus } from '../js/broker/filter.js';
+import { TransferError } from '../js/broker/transfer.js';
+import { TableDeclined } from '../js/files/own-table.js';
 import { FR, EN, PDF_BYTES, setup, pdf } from './kept-setup.mjs';
 
 const newBatch = () => ({ choice: null, declined: false, noFolder: false });

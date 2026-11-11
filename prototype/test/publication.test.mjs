@@ -2,7 +2,7 @@
 // (app/common/ACLRulesReader.ts) : l'ajout de lignes dans toutes les colonnes de la table de la section publiée, la lecture de la colonne affichée des Références.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { touchesPublication, rowsOf, simulate, exposureOf, newExposure, publicationOpens, protectedRefusal } from '../js/publication.js';
+import { touchesPublication, rowsOf, simulate, exposureOf, newExposure, publicationOpens, protectedRefusal } from '../js/broker/publication.js';
 import { policyOf, form } from './helpers.mjs';
 
 // Un document : « Reponses » (Nom, Email, Statut, une Référence cachée vers la Définition), « Menus » (Nom), « FormPlus_Formulaires » (Definition), une section de formulaire.

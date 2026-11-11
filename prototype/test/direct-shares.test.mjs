@@ -1,8 +1,8 @@
-// « Partagés avec moi », ce qu'on m'a donné par mon adresse (js/direct-shares.js, contrats 11.7, point 13, lot 4c) : qui compte comme « donné », et où le fichier apparaît.
+// « Partagés avec moi », ce qu'on m'a donné par mon adresse (js/sharing/direct-shares.js, contrats 11.7, point 13, lot 4c) : qui compte comme « donné », et où le fichier apparaît.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { addressFromShares, applyDirect, directFiles, keptInFolder } from '../js/direct-shares.js';
-import { listItems } from '../js/explorer-model.js';
+import { addressFromShares, applyDirect, directFiles, keptInFolder } from '../js/sharing/direct-shares.js';
+import { listItems } from '../js/explorer/explorer-model.js';
 
 const file = (id, extra = {}) => ({ key: `publipostage:${id}`, app: 'publipostage', id: String(id), row: id * 10, name: `Modèle ${id}`, folder: '', by: 'dernier@x.fr', search: '', weight: 0, pieces: [], ts: null, ...extra });
 const data = { id: [10, 20, 30, 40], GFS_Directs: [['L', 'moi@x.fr>marc@x.fr'], ['L', 'autre@x.fr>marc@x.fr'], ['L'], '["L","MOI@x.fr>lea@x.fr"]'] };

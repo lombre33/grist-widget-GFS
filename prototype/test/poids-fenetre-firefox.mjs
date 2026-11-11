@@ -1,11 +1,11 @@
 // La fenêtre « Poids du document » sous Firefox (règle du 03/11 : toute nouvelle interface ajoute ses mesures à test/interfaces-firefox.test.mjs ; lot 4 du poids, contrats 2.4 point 5).
-// La vraie fenêtre (js/weight-window.js) et le vrai lecteur (js/weight-reader.js) s'ouvrent à la vraie souris, d'un clic sur le total du pied, sur une doublure de `Transfer.sql` (test/pages/explorateur.js,
+// La vraie fenêtre (js/weight/weight-window.js) et le vrai lecteur (js/weight/weight-reader.js) s'ouvrent à la vraie souris, d'un clic sur le total du pied, sur une doublure de `Transfer.sql` (test/pages/explorateur.js,
 // `window.__weight`) qui répond comme un serveur : 'ok' (dix-huit tables, dont une au nom très long et une que Grist coupe), 'refuse' (403 : pas le droit de tout copier) et 'muet' (le serveur ne répond
 // pas). Ce que le vrai Grist rend se mesure dans un vrai Grist (labo/run-poids.mjs, passe 8). À mesurer : le total est un bouton au clavier ; la fenêtre dit l'estimation, ses cinq lignes et ses tables du plus
 // lourd au plus léger, avec la raison de ce qu'elle n'a pas pu lire ; refusée, elle reste là, grisée, avec la raison ; elle tient dans la page, son titre et son bouton restent en place, seul le contenu défile,
 // rien n'en sort ; le clavier est sur « Fermer », Tab reste dedans, Échap la ferme et le clavier revient sur le total ; la souris la rouvre et « Fermer » la ferme.
-import { createI18n } from '../js/i18n.js';
-import { formatBytes } from '../js/weight.js';
+import { createI18n } from '../js/i18n/i18n.js';
+import { formatBytes } from '../js/weight/weight.js';
 import { Run } from './corbeille-firefox.mjs';
 
 // Les octets que la doublure répond (test/pages/explorateur.js) et ce qu'on en tire.

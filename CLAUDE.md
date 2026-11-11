@@ -44,6 +44,11 @@ Si un fait nouveau remet en cause une de ces lignes : le dire au porteur, avec l
   autre app ; une extension importe son app et le kit, jamais une autre extension.
 - Dossiers : `apps/<id>/` (sous-modules des apps), `kit/` (sous-module du kit), `docs/` (dont `contrats.md`, étape 1 du
   plan), `prototype/` (étape 2).
+- `prototype/js/` est rangé par sujet (11/11) : `broker/` (courtier, session, contexte, ouvertures), `apps/` (catalogue, manifestes,
+  bibliothèques, fenêtres des apps), `explorer/` (la liste et le rangement), `files/` (fichiers que GFS garde, corbeille, copie),
+  `sharing/` (partage, réception, moteur de Sync+), `rights/`, `weight/`, `theme/`, `shell/` (barre, réglages, langue), `ui/`
+  (fenêtres, menus, icônes) et `i18n/`. Seuls `gfs.js` et `controller.js` restent à la racine ; un module nouveau va dans le
+  dossier de son sujet (`test/hygiene.test.mjs` le garde).
 - Le courtier relaie le protocole de l'API des widgets (`grain-rpc`, `mtype` 1 à 5), renumérote les appels, filtre d'après
   le manifeste `gfs.json` de l'app (tables lues, tables écrites, clés de réglages, `_grist_*` refusé sauf déclaration),
   et fournit le contexte, le stockage, l'impression et les actions « ouvrir », « choisir », « insérer », « fermer ».

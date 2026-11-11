@@ -15,7 +15,7 @@ import { createServer } from 'node:http';
 import { serve } from './lab-server.mjs';
 import { chromium, say, check, probeDeclares } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { makePdf } from './pdf-fixture.mjs';
 import { PAGE_PORT, sha256, openGfs, waitForNames, folders, shot, contrastProblems, windowFits, waitFor, settle, closeModules } from './lab-pdf.mjs';
 

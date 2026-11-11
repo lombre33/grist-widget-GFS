@@ -19,7 +19,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync, rmSync
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { EXACT_VERSION_RE, isSafePath } from '../js/manifest.js';
+import { EXACT_VERSION_RE, isSafePath } from '../js/apps/manifest.js';
 // L'empreinte, un fichier de paquet npm et la comparaison au CDN sont ceux que le kit donne à l'outil d'une app (kit/outils/bibliotheques/primitives.mjs) : une seule fois écrits.
 import { integrity, archiveName, archiveOf, packFile, checkCdn, fetchFile } from '../kit/outils/bibliotheques/primitives.mjs';
 import { readAssembly, assembleFile, licencesText, registeredProblems, assembledPath, licencesPath, sameSet } from './assemblage.mjs';

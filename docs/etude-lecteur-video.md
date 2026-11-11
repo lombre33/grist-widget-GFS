@@ -14,11 +14,11 @@
 Quatre appels de l'app à GFS, sans `id` (GFS ne répond rien, comme `barre.masquer`, consigne 025) :
 `lecteur.afficher { id, fournisseur, video, debut, rect, zone }`, `lecteur.deplacer { id, rect, zone }`, `lecteur.masquer { id, masque }`, `lecteur.fermer { id }` ; une clé `lecteurs` au contexte puis un événement du même nom (la liste des fournisseurs que GFS sait jouer, `['youtube', 'vimeo']`) ; un événement facultatif `lecteur { id, etat }` (`lecture`, `pause`, `fin`, `erreur`). `rect` est le rectangle de l'objet dans le cadre de l'app (zoom compris), `zone` la partie où il peut se voir (le défilement de l'éditeur) : GFS rogne le lecteur à la zone. Un seul lecteur à la fois. L'app n'envoie rien tant que GFS n'annonce pas `lecteurs` : **sans l'annonce, la vignette ouvre la vidéo dans un onglet** (c'est le repli, il reste).
 
-Lu dans le code de GFS : sans `id`, un appel dont le nom est inconnu est jeté (`prototype/js/envelope.js:69` lève `GFS_INCONNU`, sans réponse faute d'`id`) : un GFS qui ne sait pas encore faire ce geste n'est pas dérangé par `lecteur.*`.
+Lu dans le code de GFS : sans `id`, un appel dont le nom est inconnu est jeté (`prototype/js/broker/envelope.js:69` lève `GFS_INCONNU`, sans réponse faute d'`id`) : un GFS qui ne sait pas encore faire ce geste n'est pas dérangé par `lecteur.*`.
 
 ## 2. Pourquoi GFS et pas l'app
 
-Le sous-cadre d'une app porte `sandbox="allow-scripts allow-forms allow-popups allow-modals allow-downloads"`, sans `allow-same-origin` (`prototype/js/frames.js:8`), et ce bac à sable s'impose à tout cadre que l'app contient. La page de GFS, elle, n'est pas dans un bac à sable (Grist lui donne un cadre sans attribut `sandbox`, mesuré) : un cadre qu'elle pose a sa vraie origine.
+Le sous-cadre d'une app porte `sandbox="allow-scripts allow-forms allow-popups allow-modals allow-downloads"`, sans `allow-same-origin` (`prototype/js/broker/frames.js:8`), et ce bac à sable s'impose à tout cadre que l'app contient. La page de GFS, elle, n'est pas dans un bac à sable (Grist lui donne un cadre sans attribut `sandbox`, mesuré) : un cadre qu'elle pose a sa vraie origine.
 
 ## 3. Les deux façons de poser le cadre
 
@@ -36,7 +36,7 @@ Le sous-cadre d'une app porte `sandbox="allow-scripts allow-forms allow-popups a
 - **Un cadre posé par GFS** : origine à lui, stockage qui répond. **Le même, isolé comme celui d'une app** : origine « null », stockage `SecurityError`.
 - **Autorisations d'un lecteur** : `autoplay` refusée, `encrypted-media` refusée, `fullscreen` refusée, `picture-in-picture` accordée. Elles ne dépendent pas de la façon de poser le cadre (directe ou par la page relais : mêmes valeurs) mais de ce que Grist délègue à GFS.
 - **Activation de la personne** (réponse au point 5 de la demande de l'app) : un vrai clic dans le cadre isolé de l'app donne l'activation à l'app **et à la page de GFS** (l'ancêtre), **pas au cadre du lecteur** (autre origine) : 0 relevé « active » sur le lecteur contre 30 sur 30 pour les deux autres, sur 1,2 s après le clic. Le démarrage automatique ne profite donc pas du clic dans l'app.
-- **Le routeur de GFS jette les messages du cadre du lecteur** (`prototype/js/router.js`, contrats 1.2 : seule la source « Grist » ou « l'app active » passe). L'événement `lecteur { id, etat }` demanderait une troisième classe de source, le cadre du lecteur que GFS a posé lui-même, jamais traitée comme un ordre : ce que dit YouTube ou Vimeo (leur API par messages) est une information, pas une commande.
+- **Le routeur de GFS jette les messages du cadre du lecteur** (`prototype/js/broker/router.js`, contrats 1.2 : seule la source « Grist » ou « l'app active » passe). L'événement `lecteur { id, etat }` demanderait une troisième classe de source, le cadre du lecteur que GFS a posé lui-même, jamais traitée comme un ordre : ce que dit YouTube ou Vimeo (leur API par messages) est une information, pas une commande.
 - **Pas mesuré** : un vrai YouTube ou Vimeo (réseau refusé), Firefox, Safari, un téléphone ; ce que fait réellement YouTube quand `autoplay=1` arrive sans délégation (le lecteur démarre-t-il muet ? attend-il un clic ?).
 
 ## 5. Ce que GFS ferait (si le go est donné)

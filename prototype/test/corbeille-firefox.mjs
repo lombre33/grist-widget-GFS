@@ -3,7 +3,7 @@
 // `Trash`, la vraie fenêtre d'accord, un gardien de doublure) : Entrée dès l'ouverture, F2, Suppr, Retour arrière, « / », le clic droit et Maj+F10, ↑ ↓ en vignettes ; la vue « Corbeille » (comptée dans le
 // volet, ses colonnes, sa barre, « Restaurer »), Suppr et « Vider la corbeille… » devant leur fenêtre (le clavier est sur « Annuler »). Entrée et Espace sur un BOUTON ne se jouent pas dans ce Firefox sans
 // écran (voir test/interfaces-firefox.test.mjs) : la fenêtre se confirme à la souris. Ce que fait chaque touche sans DOM est dans test/explorer-keys.test.mjs.
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 
 export const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 

@@ -1,8 +1,8 @@
-// Les documents reliés (js/share-links.js) : ce que la table technique du moteur dit d'un lien, la condition qui ne reste jamais vide, et le niveau d'un fichier (une copie une fois, à jour, plus rien). Le moteur est
+// Les documents reliés (js/sharing/share-links.js) : ce que la table technique du moteur dit d'un lien, la condition qui ne reste jamais vide, et le niveau d'un fichier (une copie une fois, à jour, plus rien). Le moteur est
 // ici un faux qui note ses appels ; ce qu'il fait dans un vrai Grist est mesuré par labo/run-sync-retrait.mjs (faits vérifiés 70).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { NONE, SENT_COLUMNS, applyLevel, docOf, filesOf, idsWith, levelOf, linksFrom, selectionFor, settle, stopLink } from '../js/share-links.js';
+import { NONE, SENT_COLUMNS, applyLevel, docOf, filesOf, idsWith, levelOf, linksFrom, selectionFor, settle, stopLink } from '../js/sharing/share-links.js';
 
 const tablesWith = values => [{ table: 'GFS_Fichiers', columns: [], filter: { mode: 'all', conds: [{ id: 'Identifiant', op: 'in', values }] } }];
 const hook = (id, memo = 'ami@exemple.fr · abcdef123456 · Equipe/Compta') => ({ id, fields: { memo, enabled: true } });

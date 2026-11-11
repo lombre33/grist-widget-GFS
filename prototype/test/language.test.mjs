@@ -1,7 +1,7 @@
 // Le choix de langue de GFS (décision du 20/10) : un seul pour toutes les apps, retenu sur le navigateur, « comme Grist » par défaut.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { LanguageSetting, STORAGE_KEY, browserStore, languageOfGrist, localeFor, watchStorage } from '../js/language.js';
+import { LanguageSetting, STORAGE_KEY, browserStore, languageOfGrist, localeFor, watchStorage } from '../js/shell/language.js';
 
 // Un stockage de pied : ce que le navigateur garde, et s'il accepte d'écrire.
 function fakeStore(initial = null, { accepts = true } = {}) {

@@ -2,7 +2,7 @@
 // cinq fois, il y entre une fois et les flèches choisissent.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { tabStops } from '../js/modal.js';
+import { tabStops } from '../js/ui/modal.js';
 
 const radio = (name, value, checked = false, form = null) => ({ type: 'radio', name, value, checked, form });
 const other = type => ({ type });

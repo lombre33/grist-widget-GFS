@@ -1,7 +1,7 @@
 // Ce que les mesures des icônes de type ont en commun (décision du porteur, 04/11 : elles suivent l'ambiance, et le PDF a sa couleur rouge) : test/icones-firefox.mjs les joue sous Firefox sur la page d'essai,
 // labo/run-theme.mjs dans un vrai Grist. Une seule lecture (`readIcons`, qui s'exécute dans la page) et un seul jugement (`rowProblems`) : ce que Firefox ou Chromium CALCULE pour l'icône d'une ligne ou d'une
-// vignette (sa couleur, l'épaisseur de son trait, ses angles et ses bouts, son remplissage, son halo) contre ce que dit le tableau de js/ambiance-types.js et le trait de css/explorer.css.
-import { typeTokens } from '../js/ambiance-types.js';
+// vignette (sa couleur, l'épaisseur de son trait, ses angles et ses bouts, son remplissage, son halo) contre ce que dit le tableau de js/theme/ambiance-types.js et le trait de css/explorer.css.
+import { typeTokens } from '../js/theme/ambiance-types.js';
 
 // Le trait de chaque ambiance (css/explorer.css, « le trait des icônes de type ») : le facteur de l'épaisseur d'origine, les angles, les bouts, le remplissage doux, le halo.
 export const STROKE = {

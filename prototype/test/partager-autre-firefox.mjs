@@ -1,10 +1,10 @@
 // La fenêtre « Envoyer à un autre document » sous Firefox (règle du 03/11 : toute nouvelle interface ajoute ses mesures à test/interfaces-firefox.test.mjs ; « Partager > Un autre document Grist… », 09/11).
-// La vraie fenêtre (js/share-other-window.js) sur un parcours dont les réponses sont des doublures (test/pages/explorateur.js, `window.__sendOther`) : le moteur de partage et Grist se mesurent dans un vrai Grist
+// La vraie fenêtre (js/sharing/share-other-window.js) sur un parcours dont les réponses sont des doublures (test/pages/explorateur.js, `window.__sendOther`) : le moteur de partage et Grist se mesurent dans un vrai Grist
 // (labo/run-partager-autre.mjs) ; ici, la mise en page et les gestes, à la vraie souris et au vrai clavier. À chaque écran (l'accord, le code, le document qui répond, l'envoi, la fin, l'échec) : la fenêtre tient
 // dans la page, son titre et ses boutons restent en place, rien n'en sort, le clavier est sur le bon bouton ; l'accord n'écrit rien (Échap) ; « Contrôler la réponse » reste grisé tant que rien n'est collé et un
 // refus du parcours est dit sans quitter l'écran ; l'accord offre « Une copie, une fois » et « Une copie qui se met à jour » (la fin dit si le lien reste) ; l'onglet « Dans un autre document Grist » de « Partager »
 // montre les documents reliés avec le niveau de CE fichier, un menu de niveaux (jamais masqué : grisé avec sa raison), « Relier un nouveau document… » ouvre l'accord par-dessus, et Échap ne ferme que la fenêtre du dessus.
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { Run } from './corbeille-firefox.mjs';
 import { LONG_DOC, windowMeasure, windowTools } from './fenetre-firefox.mjs';
 

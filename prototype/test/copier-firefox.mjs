@@ -3,7 +3,7 @@
 // explorateur, le vrai `Copying`, un gardien de doublure qui ajoute la copie, un rangement de doublure qui déplace) : « Dupliquer » dans le menu et ses touches, Ctrl+C puis Ctrl+V dans un autre dossier,
 // Ctrl+X puis Ctrl+V, un dossier qui se coupe et ne se copie pas, coller ailleurs que dans un dossier, un fichier que l'app ne laisse pas copier, la recherche qui garde son presse-papiers, Ctrl+D laissée
 // au navigateur, la corbeille, le choix d'un fichier pour une app. Ce que fait chaque touche sans DOM est dans test/explorer-keys.test.mjs, ce que dit chaque phrase dans test/explorer-clipboard.test.mjs.
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { Run, centerOfName, centerOfSelector, delay, names } from './corbeille-firefox.mjs';
 
 // ---------- ce qui s'exécute dans la page (rien du module n'y est visible) ----------

@@ -2,7 +2,7 @@
 // sert à rien, donc on lui montre des lignes lues à la main, bonnes puis fausses. Sans navigateur.
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { typeTokens } from '../js/ambiance-types.js';
+import { typeTokens } from '../js/theme/ambiance-types.js';
 import { BASE, STROKE, infoProblems, parseColor, rgbOf, rowProblems } from '../labo/mesures-icones.mjs';
 
 const ctx = (id, mode = 'sombre', display = 'list') => ({ id, mode, display, tag: `${id}, ${mode}` });

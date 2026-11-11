@@ -1,9 +1,9 @@
-// La cloche Notifications (js/notifications.js) : les articles de son menu d'après les arrivées qui attendent une réponse. Le dessin (la pastille, le menu à 700 × 400) se mesure sous Firefox
+// La cloche Notifications (js/sharing/notifications.js) : les articles de son menu d'après les arrivées qui attendent une réponse. Le dessin (la pastille, le menu à 700 × 400) se mesure sous Firefox
 // (test/partages-recus-firefox.mjs) et dans un vrai Grist (labo/run-partages-recus.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { notificationItems, SHOWN } from '../js/notifications.js';
-import { createI18n } from '../js/i18n.js';
+import { notificationItems, SHOWN } from '../js/sharing/notifications.js';
+import { createI18n } from '../js/i18n/i18n.js';
 
 const FR = createI18n('fr');
 const EN = createI18n('en');

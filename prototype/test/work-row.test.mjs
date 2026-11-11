@@ -1,8 +1,8 @@
 // La ligne de travail (contrats 4.5) : ce que l'app reçoit, la relecture, les tables qu'on peut choisir.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { WorkRow, encode, pollDelay, rowLabel, viewColumns, workTables } from '../js/work-row.js';
-import { GristState } from '../js/state.js';
+import { WorkRow, encode, pollDelay, rowLabel, viewColumns, workTables } from '../js/apps/work-row.js';
+import { GristState } from '../js/broker/state.js';
 
 // Un document : Participants (une Référence affichée par le numéro de la session, une date) et Sessions ; les métadonnées comme Grist les rend.
 const META = {

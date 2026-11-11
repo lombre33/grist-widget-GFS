@@ -1,14 +1,14 @@
-// Le menu « Réglages » de l'explorateur (js/settings-menu.js) et la fenêtre « À propos » (js/about.js). Le 04/11, le porteur a dit « ok pour la capture 1 » : un seul bouton « Réglages » dans l'explorateur,
+// Le menu « Réglages » de l'explorateur (js/shell/settings-menu.js) et la fenêtre « À propos » (js/shell/about.js). Le 04/11, le porteur a dit « ok pour la capture 1 » : un seul bouton « Réglages » dans l'explorateur,
 // qui rassemble la langue, le thème, la position de la barre et « À propos » ; la barre flottante ne change pas. La mise en page et la souris sont mesurées sous Firefox
 // (test/interfaces-firefox.test.mjs) et dans un vrai Grist (labo/run-langue.mjs, labo/run-theme.mjs) ; ici, ce que le menu contient et ce que chaque ligne fait.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createI18n } from '../js/i18n.js';
-import { settingsItems } from '../js/settings-menu.js';
-import { aboutItems, CREDITS } from '../js/about.js';
-import { HOST } from '../js/context.js';
+import { createI18n } from '../js/i18n/i18n.js';
+import { settingsItems } from '../js/shell/settings-menu.js';
+import { aboutItems, CREDITS } from '../js/shell/about.js';
+import { HOST } from '../js/broker/context.js';
 
-// La ligne « Position de la barre » est celle du vrai Dock (js/dock.js) : ici, une doublure que le menu doit laisser telle quelle.
+// La ligne « Position de la barre » est celle du vrai Dock (js/shell/dock.js) : ici, une doublure que le menu doit laisser telle quelle.
 const PLACE = Object.freeze({ label: 'Position de la barre', icon: 'dock-left', submenu: [] });
 
 function build(lang = 'fr', { choice = 'auto', grist = 'fr' } = {}) {

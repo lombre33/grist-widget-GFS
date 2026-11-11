@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { importFormats, acceptsFile, importOpening, openingKind, acceptsOpening, pickFile } from '../js/import-file.js';
+import { importFormats, acceptsFile, importOpening, openingKind, acceptsOpening, pickFile } from '../js/files/import-file.js';
 import { publipostage, automation, form } from './helpers.mjs';
 
 test('les formats d\'une app : chacun avec le type qu\'il crée, dans l\'ordre du manifeste', () => {

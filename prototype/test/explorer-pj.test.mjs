@@ -1,7 +1,7 @@
-// La case « + pièces jointes » de l'explorateur (js/explorer-pj.js), sortie de js/explorer.js : le grisé et sa raison, la lecture à la coche, la course des lectures, l'échec, le recompte quand les fichiers changent.
+// La case « + pièces jointes » de l'explorateur (js/explorer/explorer-pj.js), sortie de js/explorer/explorer.js : le grisé et sa raison, la lecture à la coche, la course des lectures, l'échec, le recompte quand les fichiers changent.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { PiecesBox } from '../js/explorer-pj.js';
+import { PiecesBox } from '../js/explorer/explorer-pj.js';
 
 // La table des pièces jointes de Grist telle que `fetchTable` la rend : 3 pièces (numéros 1 à 3), de 100, 200 et 400 octets.
 const table = { id: [1, 2, 3], fileIdent: ['a', 'b', 'c'], fileSize: [100, 200, 400], timeDeleted: [null, null, null] };

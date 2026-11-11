@@ -14,7 +14,7 @@ Le porteur a choisi **« Chez GFS, comme pour Plotly »** (A ; le conseil B de l
 
 ## En bref
 
-- **Ce qui existe** : le choix « Depuis un CDN / Copie de GFS » est fait **par extension** (cahier, question 11 ; `prototype/js/extensions.js:31`, `prototype/js/modules-window.js`, `prototype/css/modules.css:71-79`), pour 4 bibliothèques que GFS porte (Plotly, ECharts, l'écriture en direct, la lecture des PDF ; `vendor/` pèse 3,9 Mo). Les bibliothèques **natives** de Publipostage+ n'ont **aucune copie** : sept fichiers en CDN avec empreinte, TipTap et ProseMirror par esm.sh (sans empreinte possible).
+- **Ce qui existe** : le choix « Depuis un CDN / Copie de GFS » est fait **par extension** (cahier, question 11 ; `prototype/js/apps/extensions.js:31`, `prototype/js/apps/modules-window.js`, `prototype/css/modules.css:71-79`), pour 4 bibliothèques que GFS porte (Plotly, ECharts, l'écriture en direct, la lecture des PDF ; `vendor/` pèse 3,9 Mo). Les bibliothèques **natives** de Publipostage+ n'ont **aucune copie** : sept fichiers en CDN avec empreinte, TipTap et ProseMirror par esm.sh (sans empreinte possible).
 - **Ce qu'il faut** : des copies figées des natives, un moyen pour l'app de savoir quel mode est choisi, les lignes dans la fenêtre d'Antoine, et l'outil qui fabrique et vérifie les copies depuis la liste (celle de la consigne 063 reste la source).
 - **Où ranger la copie : dans le dépôt de l'app (conseillé, B).** Avant d'écrire cette étude, la carte conseillait « chez GFS » ; un fait nouveau a changé le conseil (§3) : la liste d'une app est montée par Dependabot, et une copie rangée ailleurs que dans le même lot reste en retard, sans bruit.
 - **TipTap est le cas dur** : sa « copie » n'est pas un fichier mais une autre carte d'importation, et Firefox n'en prend qu'une par page (mesuré, §5). Faisable : la page choisit sa carte au démarrage, le mode lui arrivant par l'adresse du cadre ; changer le mode de l'éditeur recharge l'app.
@@ -22,8 +22,8 @@ Le porteur a choisi **« Chez GFS, comme pour Plotly »** (A ; le conseil B de l
 
 ## 1. Ce qui existe aujourd'hui
 
-- Le réglage est un objet `modes` par app (`js/settings.js`) : `{ "<extension>": "cdn" | "vendorise" }`. Écrit tout de suite dans la table de GFS (jamais dans les réglages de la vue), rendu à l'app par l'événement `extensions` (contrats 5.2, point 4) avec, pour chaque bibliothèque, `{ src, integrite, forme }`.
-- Une bibliothèque sans CDN n'a que la copie ; l'option CDN est alors grisée avec sa raison (`js/modules-window.js`, `noCdn`).
+- Le réglage est un objet `modes` par app (`js/apps/settings.js`) : `{ "<extension>": "cdn" | "vendorise" }`. Écrit tout de suite dans la table de GFS (jamais dans les réglages de la vue), rendu à l'app par l'événement `extensions` (contrats 5.2, point 4) avec, pour chaque bibliothèque, `{ src, integrite, forme }`.
+- Une bibliothèque sans CDN n'a que la copie ; l'option CDN est alors grisée avec sa raison (`js/apps/modules-window.js`, `noCdn`).
 - Décision d'Antoine du 14/10 (contrats 2.6, point 4) : **l'éditeur et les exports restent natifs, avec leurs bibliothèques dans la liste de l'app**. La demande du 10/11 ne la remet pas en cause : elle ajoute un choix de mode ; elle dit seulement que la copie ne peut plus être « celle de GFS » pour les natives sans la contredire.
 
 ## 2. Ce que Publipostage+ charge lui-même (mesuré sur le miroir de l'outil du kit, 10/11)

@@ -1,4 +1,4 @@
-// Une ligne de « Qui a accès » (js/share-window.js, `row`) : le nom et ses détails, les étiquettes, le bouton du droit (menu, ou cadenas quand la personne ne peut pas le changer). Un DOM de poche remplace celui du navigateur
+// Une ligne de « Qui a accès » (js/sharing/share-window.js, `row`) : le nom et ses détails, les étiquettes, le bouton du droit (menu, ou cadenas quand la personne ne peut pas le changer). Un DOM de poche remplace celui du navigateur
 // (le texte et les attributs seulement) ; la fenêtre à la souris se mesure sous Firefox (test/partager-firefox.mjs) et dans un vrai Grist (labo/run-partager-fenetre.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -6,8 +6,8 @@ import { installFakeDocument } from './fake-dom.mjs';
 
 installFakeDocument();
 
-const { row } = await import('../js/share-window.js');
-const { createI18n } = await import('../js/i18n.js');
+const { row } = await import('../js/sharing/share-window.js');
+const { createI18n } = await import('../js/i18n/i18n.js');
 
 const { t } = createI18n('fr');
 const share = (extra = {}) => ({ id: 7, who: 'ann@x.fr', right: 'lecture', download: false, end: null, inherited: false, from: null, valid: true, active: true, ...extra });

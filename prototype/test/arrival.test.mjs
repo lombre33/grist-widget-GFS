@@ -1,8 +1,8 @@
 // L'arrivée de GFS (cahier 6.2, point 2 ; contrats 7.4, point 7) : l'app que servait la section s'ouvre seule.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { arrivalApp, arrivalProbes, arrivalByTable, tableServes } from '../js/arrival.js';
-import { arrivalTableApp } from '../js/arrival-table.js';
+import { arrivalApp, arrivalProbes, arrivalByTable, tableServes } from '../js/broker/arrival.js';
+import { arrivalTableApp } from '../js/broker/arrival-table.js';
 import { publipostage, automation, form } from './helpers.mjs';
 
 const manifests = [publipostage(), automation(), form()];

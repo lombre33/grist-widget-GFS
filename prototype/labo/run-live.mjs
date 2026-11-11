@@ -1,5 +1,5 @@
 // Les apps servies par leur site en ligne (le porteur, 22/10 : « servir les dépôts live, pas une copie figée »), dans un vrai Grist, avec les vraies apps, à 700 × 400.
-// GFS ouvre chaque app sur son site (js/catalogue.js, `site`), à la racine de l'origine de GFS ; le labo rend à ces adresses les fichiers de la copie de l'app (lab-setup.mjs, `routeLiveSites`).
+// GFS ouvre chaque app sur son site (js/apps/catalogue.js, `site`), à la racine de l'origine de GFS ; le labo rend à ces adresses les fichiers de la copie de l'app (lab-setup.mjs, `routeLiveSites`).
 // Trois passes : le site vivant (adresse, sous-cadre isolé, app prête, rien servi de la copie), `live=0` (la copie figée, celle des autres essais), et un site qui ne répond pas
 // (repli sur la copie au bout de 15 secondes, dit à la personne). LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { startLab } from './lab-setup.mjs';

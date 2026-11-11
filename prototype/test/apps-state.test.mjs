@@ -1,9 +1,9 @@
 // L'état des apps installées : lire ce que la table dit, changer d'abord puis écrire (une écriture à la fois), revenir en arrière si elle échoue.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { AppsState } from '../js/apps-state.js';
-import { TableDeclined } from '../js/rangement.js';
-import { readCatalogue } from '../js/libraries.js';
+import { AppsState } from '../js/apps/apps-state.js';
+import { TableDeclined } from '../js/files/rangement.js';
+import { readCatalogue } from '../js/apps/libraries.js';
 import { publipostage } from './helpers.mjs';
 
 const SRI = `sha384-${'B'.repeat(64)}`;

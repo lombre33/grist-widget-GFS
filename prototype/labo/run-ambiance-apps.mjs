@@ -15,9 +15,9 @@ import { startLab } from './lab-setup.mjs';
 import { say, check, contrastAudit, constat } from './lab-common.mjs';
 import { themeGestures } from './theme-gestes.mjs';
 import { screensOf } from './ecrans-apps.mjs';
-import { ambiancePalette, COLOR_TOKENS } from '../js/ambiance.js';
-import { FORME } from '../js/ambiance-forme.js';
-import { hexToOklch, contrast } from '../js/oklch.js';
+import { ambiancePalette, COLOR_TOKENS } from '../js/theme/ambiance.js';
+import { FORME } from '../js/theme/ambiance-forme.js';
+import { hexToOklch, contrast } from '../js/theme/oklch.js';
 
 const appId = process.env.APP || 'automation';
 const lang = process.env.LAB_LANG || 'fr';

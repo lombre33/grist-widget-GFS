@@ -1,4 +1,4 @@
-// Les DOSSIERS reçus (js/received-folders.js ; choix du porteur, 11/11 : « le dossier, à accepter d'un coup »), joués dans le VRAI GFS à 700 × 400, à la vraie souris et au vrai clavier, dans un VRAI Grist
+// Les DOSSIERS reçus (js/sharing/received-folders.js ; choix du porteur, 11/11 : « le dossier, à accepter d'un coup »), joués dans le VRAI GFS à 700 × 400, à la vraie souris et au vrai clavier, dans un VRAI Grist
 // (`GRIST_DOCKER_ARGS="-e ALLOWED_WEBHOOK_DOMAINS=*" bash vrai-serveur.sh`). Le premier document envoie par les fonctions du moteur (comme run-partages-recus.mjs) : un fichier seul, puis, avec la colonne
 // `Dossier_partage` ajoutée à l'export (mesure : run-dossier-colonne.mjs), deux fichiers d'un dossier « Contrats » ; le second ouvre GFS :
 //   1. « Partagés avec moi » : le dossier « Contrats » en tête (grisé, « 2 fichiers à accepter »), le fichier seul dessous ; le volet et la cloche comptent 3 fichiers, la cloche nomme le DOSSIER d'une ligne ;
@@ -12,7 +12,7 @@ import { createServer } from 'node:http';
 import { serve } from './lab-server.mjs';
 import { chromium, say, check } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
-import { createI18n } from '../js/i18n.js';
+import { createI18n } from '../js/i18n/i18n.js';
 import { PAGE_PORT, openGfs, importSamples, importPdf, pdfFile, waitForNames, rowOf, goTo, contrastProblems, names, folders, toast, shot as pdfShot } from './lab-pdf.mjs';
 import { fits } from './lab-droits.mjs';
 import { startEngine, handshake } from './lab-partage.mjs';

@@ -3,7 +3,7 @@
 // adresse écrite par la formule déclenchée) se mesure dans le labo (run-modules.mjs, run-identite.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Rangement, TableDeclined, TABLE, RESERVED } from '../js/rangement.js';
+import { Rangement, TableDeclined, TABLE, RESERVED } from '../js/files/rangement.js';
 import { fakeGrist } from './fake-grist.mjs';
 
 const row = (id, extra) => ({ id, Utilisateur: '', App: '', Fichier: '', Favori: false, Dossier: '', Replie: false, Valeur: '', Adresse: '', ...extra });

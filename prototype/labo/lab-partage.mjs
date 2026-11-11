@@ -5,8 +5,8 @@ import { execFileSync } from 'node:child_process';
 // Le port de GFS, le vrai : le cadre d'envoi, l'API des widgets, le moteur du kit. `window.__p` : le port ; `window.__s` : les fonctions du moteur que le parcours appelle ; `window.__try` : un essai qui rend
 // l'erreur au lieu de la lever.
 export const startEngine = frame => frame.evaluate(async () => {
-  const { Transfer, buildTransferFrame } = await import('./js/transfer.js');
-  const { startSyncEngine } = await import('./js/sync-port.js');
+  const { Transfer, buildTransferFrame } = await import('./js/broker/transfer.js');
+  const { startSyncEngine } = await import('./js/sharing/sync-port.js');
   const [exportMod, inviteMod, receiveMod, loopMod, receivedMod, resendMod, actionsMod, filesMod, errorsMod] = await Promise.all([
     import('./kit/js/synchro/source/export.js'), import('./kit/js/synchro/source/invite.js'), import('./kit/js/synchro/target/receive.js'),
     import('./kit/js/synchro/target/loop.js'), import('./kit/js/synchro/logic/received.js'), import('./kit/js/synchro/source/resend.js'), import('./kit/js/synchro/source/actions.js'),
@@ -55,7 +55,7 @@ export async function sendComparing(frame) {
   await frame.locator('[data-fk="so-send"]').click();
 }
 
-// Audit de sécurité du 09/11 : quand la fenêtre d'un partage qui laisse une table technique se ferme (`GFS_Synchro` d'un lien, un journal reçu), GFS la réserve aux propriétaires (js/sync-rules.js) et Grist
+// Audit de sécurité du 09/11 : quand la fenêtre d'un partage qui laisse une table technique se ferme (`GFS_Synchro` d'un lien, un journal reçu), GFS la réserve aux propriétaires (js/sharing/sync-rules.js) et Grist
 // recharge la page. L'essai attend que les règles soient posées, puis reprend le cadre rechargé de `run` (ce que rend `openGfs`).
 export async function reopenedFrame(run) {
   const { gfsFrame } = await import('./lab-droits.mjs');

@@ -1,8 +1,8 @@
-// Lire un fichier que GFS garde (js/reading.js, contrats 2.7 point 5 et 5.4 point 8) : quelles apps lisent un type, laquelle sert, et l'ouverture qu'on lui passe.
+// Lire un fichier que GFS garde (js/broker/reading.js, contrats 2.7 point 5 et 5.4 point 8) : quelles apps lisent un type, laquelle sert, et l'ouverture qu'on lui passe.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readersOf, chooseReader, readOpening } from '../js/reading.js';
-import { openingKind, carriesFile } from '../js/import-file.js';
+import { readersOf, chooseReader, readOpening } from '../js/broker/reading.js';
+import { openingKind, carriesFile } from '../js/files/import-file.js';
 
 const manifest = (id, lire) => ({ id, actions: lire === undefined ? {} : { lire } });
 const APPS = [manifest('form'), manifest('bi', [{ type: 'pdf' }]), manifest('publipostage', [{ type: 'pdf', extension: 'lecture-pdf' }, { type: 'image' }]), { id: 'sans-actions' }];

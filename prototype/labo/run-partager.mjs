@@ -1,4 +1,4 @@
-// « Partager » (contrats 11.7, point 13) : le vrai plan de js/sharing-model.js joué dans un VRAI Grist, à trois comptes, en trois temps (le serveur d'essai ne connaît qu'une personne à la fois, `GRIST_EMAIL`) :
+// « Partager » (contrats 11.7, point 13) : le vrai plan de js/sharing/sharing-model.js joué dans un VRAI Grist, à trois comptes, en trois temps (le serveur d'essai ne connaît qu'une personne à la fois, `GRIST_EMAIL`) :
 //   PHASE=proprietaire  essai@example.com : le plan crée `GFS_Partages` et `GFS_Fichiers`, ajoute les colonnes d'aide et pose les règles en une fois ; quatre fichiers, trois partages ;
 //   PHASE=editeur       editor@example.com : il lit ses fichiers et ceux qu'on lui a partagés, partage le sien SANS propriétaire, ne peut ni se nommer auteur d'un autre ni valider un partage hors de ses fichiers ;
 //   PHASE=lecteur       viewer@example.com : il lit ce que l'éditeur et le propriétaire lui ont partagé, rien d'autre ; PHASE=retrait : le propriétaire retire les règles.
@@ -6,8 +6,8 @@ import { chromium, say, check } from './lab-common.mjs';
 import { requireServer, newContext, createDocument, docIdOf, GRIST } from './lab-serveur.mjs';
 import { shareWithEditorAndViewer } from './lab-droits.mjs';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { planSharing, planUnsharing, SHARES_TABLE, shareRecord } from '../js/sharing-model.js';
-import { FILES_COLUMNS } from '../js/gfs-files.js';
+import { planSharing, planUnsharing, SHARES_TABLE, shareRecord } from '../js/sharing/sharing-model.js';
+import { FILES_COLUMNS } from '../js/files/gfs-files.js';
 
 const phase = process.env.PHASE || 'proprietaire';
 const STATE = process.env.PARTAGER_ETAT || '/tmp/partager-gfs-etat.json';
@@ -23,7 +23,7 @@ const records = async (page, id, table) => { const answer = await call(page, 'GE
 const ids = list => (Array.isArray(list) ? list.map(row => row.Identifiant).sort().join(',') : JSON.stringify(list));
 const strip = value => (Array.isArray(value) && value[0] === 'L' ? value.slice(1) : value);
 
-// L'état que lit le plan : les tables internes de Grist, dans la forme de js/rights-reader.js (`raw`).
+// L'état que lit le plan : les tables internes de Grist, dans la forme de js/rights/rights-reader.js (`raw`).
 async function existingOf(page, id) {
   const [resources, rules, tables, columns] = await Promise.all(['_grist_ACLResources', '_grist_ACLRules', '_grist_Tables', '_grist_Tables_column'].map(name => records(page, id, name)));
   return { resources, rules, tables, columns };

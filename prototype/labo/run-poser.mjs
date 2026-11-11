@@ -12,8 +12,8 @@ import { join } from 'node:path';
 import { serve } from './lab-server.mjs';
 import { chromium, say, check, SHOTS } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
-import { createI18n } from '../js/i18n.js';
-import { COLUMNS } from '../js/rangement.js';
+import { createI18n } from '../js/i18n/i18n.js';
+import { COLUMNS } from '../js/files/rangement.js';
 import { PAGE_PORT, openGfs, contrastProblems } from './lab-pdf.mjs';
 import { gfsFrame, chip, chipWord, openPanel, closePanel, apply, shareWithEditorAndViewer, records, fits } from './lab-droits.mjs';
 

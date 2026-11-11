@@ -1,8 +1,8 @@
-// Les droits lus dans les tables internes de Grist (js/rights.js) : le niveau d'une table, la structure fermée, le mot du pied, les partages. Les lignes d'essai sont celles qu'un vrai Grist 1.7.19 a rendues
+// Les droits lus dans les tables internes de Grist (js/rights/rights.js) : le niveau d'une table, la structure fermée, le mot du pied, les partages. Les lignes d'essai sont celles qu'un vrai Grist 1.7.19 a rendues
 // (labo/run-droits-reel.mjs, 04/11) : la règle intégrée « tout le monde peut tout » (permissions 63), puis une règle posée par action.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { levelOfNote, userRules, structureClosed, tableLevels, wordOf, ownedTables, linksOf, rowsOf } from '../js/rights.js';
+import { levelOfNote, userRules, structureClosed, tableLevels, wordOf, ownedTables, linksOf, rowsOf } from '../js/rights/rights.js';
 
 const BUILT_IN = { id: 1, resource: 1, permissions: 63, principals: '[1]', aclFormula: '', aclColumn: 0, permissionsText: '', memo: '' };
 const DEFAULT = { id: 1, tableId: '', colIds: '' };

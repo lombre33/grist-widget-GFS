@@ -1,7 +1,7 @@
-// La copie d'un fichier d'une app (js/gfs-copy.js, contrats 2.4 `copie`) : la recette du manifeste, le nom de la copie, ce qu'on écrit dans la table de l'app. Du code sans effet de bord : des tables en mémoire.
+// La copie d'un fichier d'une app (js/files/gfs-copy.js, contrats 2.4 `copie`) : la recette du manifeste, le nom de la copie, ce qu'on écrit dans la table de l'app. Du code sans effet de bord : des tables en mémoire.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { copyPlan, copyRecipeOf, copiesByApp, copyNameOf } from '../js/gfs-copy.js';
+import { copyPlan, copyRecipeOf, copiesByApp, copyNameOf } from '../js/files/gfs-copy.js';
 import { publipostage, form } from './helpers.mjs';
 
 const spec = publipostage().fichiers[0];

@@ -1,4 +1,4 @@
-// Le clavier dans la liste de l'explorateur (js/explorer.js `#onListKey`, js/explorer-keys.js ; décision du porteur du 04/11 : tout se fait aussi au clavier), dans un vrai Grist (grist-static), à 700 × 400,
+// Le clavier dans la liste de l'explorateur (js/explorer/explorer.js `#onListKey`, js/explorer/explorer-keys.js ; décision du porteur du 04/11 : tout se fait aussi au clavier), dans un vrai Grist (grist-static), à 700 × 400,
 // au vrai clavier (Playwright : touches du navigateur, jamais dispatchEvent). Les gestes qui déplacent le choix (↑ ↓ Début Fin, ← → ↑ ↓ en vignettes), ceux qui agissent sur la ligne choisie (Entrée, F2,
 // la touche Menu) et Retour arrière, qui remonte d'un dossier. LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 //   REPO_DIR="$(realpath ../..)" node run-liste-clavier.mjs

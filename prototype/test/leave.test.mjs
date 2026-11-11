@@ -1,9 +1,9 @@
 // Quitter l'app active pour une autre (contrats 5.4, point 3, appel `fermer`) : la réponse de l'app, ce que GFS ne ferme jamais tout seul, et la décision de la personne quand l'app se tait ou échoue.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { askToClose, leaveApp, leaveQuestion, PATIENCE_MS, tellToStay } from '../js/leave.js';
-import { createI18n } from '../js/i18n.js';
-import { ERR } from '../js/filter.js';
+import { askToClose, leaveApp, leaveQuestion, PATIENCE_MS, tellToStay } from '../js/broker/leave.js';
+import { createI18n } from '../js/i18n/i18n.js';
+import { ERR } from '../js/broker/filter.js';
 
 const coded = (code, message = 'non') => Object.assign(new Error(message), { code });
 const later = ms => new Promise(resolve => setTimeout(resolve, ms));

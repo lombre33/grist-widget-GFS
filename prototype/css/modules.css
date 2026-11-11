@@ -121,7 +121,7 @@
 .amb:has(input:checked) .chk { visibility: visible; }
 .amb-name { overflow: hidden; font-size: max(12px, var(--fs-min)); font-weight: 700; line-height: 1.2; white-space: nowrap; text-overflow: ellipsis; }
 .amb-sub { overflow: hidden; font-size: max(11px, var(--fs-min)); line-height: 1.2; color: var(--text-muted); white-space: nowrap; text-overflow: ellipsis; }
-/* La petite scène d'une ambiance : les vrais jetons de couleur et de forme de l'ambiance, posés sur la vignette même (js/theme-apply.js, `paint`), à l'échelle d'une vignette.
+/* La petite scène d'une ambiance : les vrais jetons de couleur et de forme de l'ambiance, posés sur la vignette même (js/theme/theme-apply.js, `paint`), à l'échelle d'une vignette.
    Sa classe est `amb-mini` et non `mn` : `.rb.mn` est le bouton « ⋯ » d'une ligne de l'explorateur, qu'une règle sur `.mn` seule rendait haut de 58 px et bordé. */
 .amb-mini { position: relative; display: flex; flex-direction: column; gap: 4px; height: 58px; padding: 5px; overflow: hidden; border: 1px solid var(--border); border-radius: 6px;
   background-color: var(--ex-bg); background-image: var(--wash); background-size: var(--wash-size); color: var(--text); font-family: var(--font-ui); }
@@ -165,7 +165,7 @@
 .th-check .ic, .th-adj .ic { flex: none; margin-top: 1px; width: 14px; height: 14px; color: var(--accent-ink); }
 .th-adj { color: var(--text-muted); }
 
-/* La fenêtre « Couleur personnalisée » (js/theme-color.js), posée par-dessus la fenêtre « Thème » : le carré, la teinte, l'aperçu et les champs sont ceux du kit (kit/css/color-picker.css), qui demandent 440 px. */
+/* La fenêtre « Couleur personnalisée » (js/theme/theme-color.js), posée par-dessus la fenêtre « Thème » : le carré, la teinte, l'aperçu et les champs sont ceux du kit (kit/css/color-picker.css), qui demandent 440 px. */
 .mod.th-edit { width: min(var(--win-m), 100%); }
 .th-edit-body { padding: 10px 14px; }
 

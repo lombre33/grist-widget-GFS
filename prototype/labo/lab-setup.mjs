@@ -42,7 +42,7 @@ export async function chooseFullAccess(page) {
   await page.waitForTimeout(500);
 }
 
-// Le site en ligne de chaque app (js/catalogue.js, `site`) et le dossier de sa copie dans le dépôt : GFS ouvre l'app sur son site, le labo rend les fichiers de la copie à cette adresse.
+// Le site en ligne de chaque app (js/apps/catalogue.js, `site`) et le dossier de sa copie dans le dépôt : GFS ouvre l'app sur son site, le labo rend les fichiers de la copie à cette adresse.
 const SITES = { publipostageGrist: 'publipostage', GRIST_automation: 'automation', FormPlus: 'form', 'Grist-BI': 'bi' };
 
 // grist-static donne `credentialless` au cadre que Grist ouvre pour un widget (`iframeAttributes` de ses réglages, `main.bundle.js`) ; le Grist ordinaire n'ajoute rien à ce cadre (`WidgetFrame`
@@ -96,7 +96,7 @@ export async function startLab(options = {}) {
   // Grist ajoute ses propres paramètres après ceux de l'adresse (searchParams.append) : le premier `language` gagne, c'est celui du labo.
   await openDocument(page);
   const liveParam = widget === WIDGET && !live ? '&live=0' : '';
-  // GFS relie lui-même sa section à la grille de la même table (js/view-link.js) : les passes qui mesurent une section non reliée le coupent (`?grille=0`), celles qui le mesurent le laissent faire (`grille: true`).
+  // GFS relie lui-même sa section à la grille de la même table (js/broker/view-link.js) : les passes qui mesurent une section non reliée le coupent (`?grille=0`), celles qui le mesurent le laissent faire (`grille: true`).
   const gridParam = widget === WIDGET && !grille ? '&grille=0' : '';
   await addCustomWidget(page, `${widget}?language=${lang}&culture=${lang === 'en' ? 'en-GB' : 'fr-FR'}${liveParam}${gridParam}${query ? '&' + query.replace(/^\?/, '') : ''}`);
   let frame = await gfsFrame(/access=none/);

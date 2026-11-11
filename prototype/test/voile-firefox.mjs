@@ -1,5 +1,5 @@
 // Le voile des fenêtres sous Firefox (décision du porteur du 09/11, charte « un clic sur le voile ne ferme rien » : seuls « Annuler », « Fermer » et Échap ferment). Chaque fenêtre bâtie sur la base commune
-// (js/modal.js), et les deux qui ont la leur (« Apps et extensions », « Table de travail »), s'ouvre, la vraie souris clique sur le voile à côté d'elle (un point qui est bien sur le voile : l'essai le vérifie, sinon il ne mesurerait rien), la fenêtre reste ouverte, puis Échap la ferme.
+// (js/ui/modal.js), et les deux qui ont la leur (« Apps et extensions », « Table de travail »), s'ouvre, la vraie souris clique sur le voile à côté d'elle (un point qui est bien sur le voile : l'essai le vérifie, sinon il ne mesurerait rien), la fenêtre reste ouverte, puis Échap la ferme.
 // Avant le 09/11, `modal.js`, `modules-window.js` et `work-window.js` fermaient la fenêtre au premier appui sur le voile (« Ce nom est déjà pris » comptait même ce clic comme un « Annuler »).
 
 const WINDOWS = [

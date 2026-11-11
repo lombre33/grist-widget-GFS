@@ -1,11 +1,11 @@
-// Ce que la zone d'ajout de « Partager » propose et les articles du menu des droits (js/share-window.js ; contrats 11.7, point 13), en code pur. La fenêtre elle-même, à la souris et au clavier, à 700 × 400,
+// Ce que la zone d'ajout de « Partager » propose et les articles du menu des droits (js/sharing/share-window.js ; contrats 11.7, point 13), en code pur. La fenêtre elle-même, à la souris et au clavier, à 700 × 400,
 // se mesure sous Firefox (test/partager-firefox.mjs) et dans un vrai Grist (labo/run-partager-fenetre.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { suggestions, levelItems, whoLabel } from '../js/share-window.js';
-import { createOtherDocuments, documentName, whyNot } from '../js/share-other.js';
-import { createI18n } from '../js/i18n.js';
-import { SHARE_OTHER_STRINGS } from '../js/i18n-share-other.js';
+import { suggestions, levelItems, whoLabel } from '../js/sharing/share-window.js';
+import { createOtherDocuments, documentName, whyNot } from '../js/sharing/share-other.js';
+import { createI18n } from '../js/i18n/i18n.js';
+import { SHARE_OTHER_STRINGS } from '../js/i18n/i18n-share-other.js';
 
 const { t } = createI18n('fr');
 const state = (extra = {}) => ({ me: 'moi@x.fr', author: 'moi@x.fr', people: ['ann@x.fr', 'marc.petit@x.fr', 'moi@x.fr'], shares: [], ...extra });

@@ -1,9 +1,9 @@
-// Les liens entre apps (js/links.js, contrats 5.4 points 2 et 7) : la lecture des deux demandes, les fichiers qu'un choix laisse passer, et le déroulement de `choisir` et `ouvrir` face à un
+// Les liens entre apps (js/broker/links.js, contrats 5.4 points 2 et 7) : la lecture des deux demandes, les fichiers qu'un choix laisse passer, et le déroulement de `choisir` et `ouvrir` face à un
 // contrôleur joué par l'essai. Ce que Grist envoie (les tables, les fenêtres, le cadre) se mesure dans un vrai Grist : labo/run-liens.mjs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { AppLinks, chooser, readChoice, readOpen } from '../js/links.js';
-import { ERR } from '../js/filter.js';
+import { AppLinks, chooser, readChoice, readOpen } from '../js/broker/links.js';
+import { ERR } from '../js/broker/filter.js';
 import { automation, form, publipostage } from './helpers.mjs';
 
 const refused = (run, code) => assert.throws(run, error => error.code === code, `attendu : ${code}`);

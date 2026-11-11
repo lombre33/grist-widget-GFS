@@ -1,8 +1,8 @@
-// La phrase d'état de l'app active (js/app-status.js) : « se charge… », « ne répond pas. » en rouge. Le porteur a vu (04/11) un « Form+ ne répond pas. » rester sur la liste des fichiers
+// La phrase d'état de l'app active (js/broker/app-status.js) : « se charge… », « ne répond pas. » en rouge. Le porteur a vu (04/11) un « Form+ ne répond pas. » rester sur la liste des fichiers
 // quand il est revenu à l'explorateur : la phrase parle de l'app, l'explorateur la cache tant qu'il la recouvre, et elle revient avec l'app.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { AppStatus } from '../js/app-status.js';
+import { AppStatus } from '../js/broker/app-status.js';
 
 // L'élément de la page, réduit à ce que AppStatus lit et écrit.
 function fakeElement() {

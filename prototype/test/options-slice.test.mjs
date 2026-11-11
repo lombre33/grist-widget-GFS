@@ -1,7 +1,7 @@
 // La tranche de réglages d'une app (contrats 7.2).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sliceOf, optionOf, checkKey, planSetOptions, planClear, contentChanged, optionsFor, gfsPart } from '../js/options-slice.js';
+import { sliceOf, optionOf, checkKey, planSetOptions, planClear, contentChanged, optionsFor, gfsPart } from '../js/broker/options-slice.js';
 
 const keys = new Set(['modeleDeLaVue', 'droitsAcces']);
 const all = { modeleDeLaVue: 4, droitsAcces: { a: 1 }, 'gfs.apps': { x: {} }, autre: 1 };

@@ -1,4 +1,4 @@
-// Un faux Grist en mémoire pour les essais des tables de GFS (js/own-table.js, rangement.js, files-store.js, app-files.js) : il refuse, comme le vrai, d'écrire une colonne absente, et un lot
+// Un faux Grist en mémoire pour les essais des tables de GFS (js/files/own-table.js, rangement.js, files-store.js, app-files.js) : il refuse, comme le vrai, d'écrire une colonne absente, et un lot
 // s'applique en entier ou pas du tout (une action qui échoue défait les précédentes : le lot de la corbeille, qui ajoute à `GFS_Corbeille` et retire de la table de l'app, ne laisse jamais les deux).
 // Ce qui dépend de ce que Grist envoie vraiment (identifiant rendu par AddTable, colonnes lues, adresse écrite par la formule déclenchée, pièces jointes) se mesure dans
 // le labo, sur un vrai serveur (labo/run-reel-serveur.mjs, labo/run-pdf.mjs).

@@ -14,7 +14,7 @@ import { startLab } from './lab-setup.mjs';
 import { say, check, engineName } from './lab-common.mjs';
 
 const ROUTER_LINE = "window.addEventListener('message', route, true);";
-const late = capture => ({ fichier: 'router.js', de: ROUTER_LINE, vers: `document.addEventListener('DOMContentLoaded', function () { window.addEventListener('message', route, ${capture}); });` });
+const late = capture => ({ fichier: 'broker/router.js', de: ROUTER_LINE, vers: `document.addEventListener('DOMContentLoaded', function () { window.addEventListener('message', route, ${capture}); });` });
 // `attendu` : 'jete' (le message ne doit rien changer), 'fuite' (contrôle : il doit changer quelque chose), null (on mesure, le navigateur décide).
 const VARIANTS = {
   courant: { patches: [], attendu: 'jete' },

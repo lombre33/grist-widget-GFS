@@ -1,14 +1,14 @@
 // Les bibliothèques natives d'une app, rangées par fonction : CDN ou copie figée au choix (contrats 2.6, point 14 ; étude `docs/etude-cdn-ou-copie.md`).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateManifest } from '../js/manifest.js';
-import { readCatalogue } from '../js/libraries.js';
-import { nativeRows, nativesState, modeOfGroup, nativeKey, copiesInApp } from '../js/natives.js';
-import { frameUrl } from '../js/frames.js';
-import { CATALOGUE } from '../js/catalogue.js';
-import { readApps, patchApps, withNativeMode, withExtension } from '../js/settings.js';
-import { AppsState } from '../js/apps-state.js';
-import { buildContext } from '../js/context.js';
+import { validateManifest } from '../js/apps/manifest.js';
+import { readCatalogue } from '../js/apps/libraries.js';
+import { nativeRows, nativesState, modeOfGroup, nativeKey, copiesInApp } from '../js/apps/natives.js';
+import { frameUrl } from '../js/broker/frames.js';
+import { CATALOGUE } from '../js/apps/catalogue.js';
+import { readApps, patchApps, withNativeMode, withExtension } from '../js/apps/settings.js';
+import { AppsState } from '../js/apps/apps-state.js';
+import { buildContext } from '../js/broker/context.js';
 import { publipostage } from './helpers.mjs';
 
 const SRI = `sha384-${'C'.repeat(64)}`;

@@ -115,29 +115,39 @@ check('le formulaire natif est seul sur une page neuve, jamais celle du widget',
 // Le cadre n'étant plus rechargé, le retrait du champ que Grist ajoute tout seul, que Form+ fait ensuite, passe (avant la 013 il était perdu : un champ restait dans le formulaire « vide »).
 check('le champ que Grist ajoute tout seul est retiré : le formulaire est vide', created.fields.filter(field => formSection && field.section === formSection.id).length === 0, created.fields);
 
-// ----- 3b. Le guide de publication (Form+ c32ae54, demande de sa page d'état du 09/11) : la page que Grist appelle « New page » est renommée d'après la table (l'écriture de `_grist_Views.name` est
-// déclarée au manifeste de GFS), puis trois étapes. Le Grist du labo ne délivre pas de jeton d'accès (« no access tokens ») : Form+ ne peut pas composer l'adresse de la page et le dit (« tout en bas
-// de la liste des pages »). L'adresse à copier, dans GFS, se mesure sur un vrai serveur (faits vérifiés 65).
+// ----- 3b. Le guide de publication (Form+ `c32ae54`, puis `b791c22` et `3b9ac0c` : Form+ PUBLIE LUI-MÊME, au bouton « Publier le formulaire » de l'étape 1). La page que Grist appelle « New page » est renommée
+// d'après la table (l'écriture de `_grist_Views.name` est déclarée au manifeste de GFS). Le bouton écrit `_grist_Shares` (AddRecord), `_grist_Pages.shareRef` puis `shareOptions` : GFS ne déclare que la
+// dernière (décision du porteur attendue, 11/11) ; le courtier refuse donc la première et Form+ passe au geste à la main, qu'elle dit avec le nom de la page. Le Grist du labo ne délivre pas de jeton d'accès
+// (« no access tokens ») : Form+ ne peut pas composer l'adresse de la page et le dit (« tout en bas de la liste des pages »). L'adresse à copier, dans GFS, se mesure sur un vrai serveur (faits vérifiés 65).
 const GUIDE = lang === 'fr'
-  ? { page: 'Formulaire Reponses', title: 'Publiez votre formulaire dans Grist', step1: 'Étape 1 sur 3', step2: 'Étape 2 sur 3', step3: 'Étape 3 sur 3', noLink: 'Elle est tout en bas de la liste des pages, à gauche.', opened: 'J\'ai ouvert la page', waiting: 'J\'attends la publication' }
-  : { page: 'Form Responses', title: 'Publish your form in Grist', step1: 'Step 1 of 3', step2: 'Step 2 of 3', step3: 'Step 3 of 3', noLink: 'It is at the very bottom of the page list, on the left.', opened: 'I opened the page', waiting: 'Waiting for the publication' };
+  ? { page: 'Formulaire Reponses', title: 'Publiez votre formulaire dans Grist', step1: 'Étape 1 sur 3', step2: 'Étape 2 sur 3', step3: 'Étape 3 sur 3', publish: 'Publier le formulaire', manual: 'n\'a pas pu publier à votre place', waiting: 'J\'attends la publication', noLink: 'Elle est tout en bas de la liste des pages, à gauche.', copied: 'J\'ai copié le lien' }
+  : { page: 'Form Responses', title: 'Publish your form in Grist', step1: 'Step 1 of 3', step2: 'Step 2 of 3', step3: 'Step 3 of 3', publish: 'Publish the form', manual: 'could not publish for you', waiting: 'Waiting for the publication', noLink: 'It is at the very bottom of the page list, on the left.', copied: 'I copied the link' };
 const viewNames = await lab.frame.evaluate(async () => { const views = await grist.docApi.fetchTable('_grist_Views'); return views.id.map((id, index) => ({ id, name: views.name[index] })); });
 const renamed = viewNames.find(view => formSection && view.id === formSection.page);
 check('la page du formulaire est renommée d\'après la table (« ' + GUIDE.page + ' »), plus « New page » : le courtier a laissé passer l\'écriture de `_grist_Views.name`', Boolean(renamed) && renamed.name === GUIDE.page && refusals.length === 0, { renamed, refusals });
 const guideText = (await app.locator('#start-panel-guide').innerText()).replace(/\s+/g, ' ');
-check('le guide de publication est à l\'écran, à l\'étape 1, et nomme la page renommée', guideText.includes(GUIDE.title) && guideText.includes(GUIDE.step1) && guideText.includes(GUIDE.page), guideText.slice(0, 200));
-check('sans adresse sûre (le Grist du labo ne délivre pas de jeton), l\'étape 1 dit où est la page, sans lien ni bouton d\'ouverture', guideText.includes(GUIDE.noLink) && (await app.locator('#guide-open, #guide-copy').count()) === 0, guideText.slice(0, 300));
+check('le guide de publication est à l\'écran, à l\'étape 1, avec le bouton « ' + GUIDE.publish + ' »', guideText.includes(GUIDE.title) && guideText.includes(GUIDE.step1) && (await app.locator('#guide-publish').innerText()).trim() === GUIDE.publish, guideText.slice(0, 200));
 await lab.shotPanel(run, '3b-guide-etape-1');
-await app.locator('[data-guide="opened"]').click();
-await page.waitForTimeout(500);
-const step2 = (await app.locator('#start-panel-guide').innerText()).replace(/\s+/g, ' ');
-check('« ' + GUIDE.opened + ' » : l\'étape 2 attend la publication', step2.includes(GUIDE.step2) && step2.includes(GUIDE.waiting), step2.slice(0, 260));
-await lab.shotPanel(run, '3b-guide-etape-2');
-// Le geste « Publier » de Grist, fait ici depuis le cadre de GFS (accès complet) : Form+ relit `shareOptions` toutes les 2,5 s et passe tout seul à l'étape 3.
+const sharesBefore = await lab.frame.evaluate(async () => { const shares = await grist.docApi.fetchTable('_grist_Shares'); return shares.id.length; });
+refusals.length = 0;
+await app.locator('#guide-publish').click();
+await page.waitForTimeout(2500);
+const manualText = (await app.locator('#start-panel-guide').innerText()).replace(/\s+/g, ' ');
+const sharesAfter = await lab.frame.evaluate(async () => { const shares = await grist.docApi.fetchTable('_grist_Shares'); return shares.id.length; });
+const sectionPublished = await lab.frame.evaluate(async id => { const sections = await grist.docApi.fetchTable('_grist_Views_section'); return sections.shareOptions[sections.id.indexOf(id)]; }, formSection.id);
+check('le courtier refuse l\'écriture de `_grist_Shares` que le bouton demande (non déclarée) : rien n\'est publié, aucune ligne de partage, la section est intacte', refusals.some(text => /_grist_Shares/.test(text)) && sharesAfter === sharesBefore && !String(sectionPublished || '').includes('publish'), { refusals, sharesBefore, sharesAfter, sectionPublished });
+check('Form+ ne montre pas d\'erreur : elle passe au geste à la main, dit la page à ouvrir (« ' + GUIDE.page + ' ») et attend la publication', manualText.includes(GUIDE.manual) && manualText.includes(GUIDE.page) && manualText.includes(GUIDE.waiting) && manualText.includes(GUIDE.noLink) && (await app.locator('#guide-open, #guide-copy').count()) === 0, manualText.slice(0, 400));
+await lab.shotPanel(run, '3b-guide-geste-a-la-main');
+// Le geste « Publier » de Grist, fait ici depuis le cadre de GFS (accès complet) : Form+ relit `shareOptions` toutes les 2,5 s et passe tout seul à l'étape 2.
 await lab.frame.evaluate(async id => grist.docApi.applyUserActions([['UpdateRecord', '_grist_Views_section', id, { shareOptions: JSON.stringify({ publish: true, form: true }) }]]), formSection.id);
+await app.locator('[data-guide="opened"]').waitFor({ state: 'visible', timeout: 12000 });
+const step2 = (await app.locator('#start-panel-guide').innerText()).replace(/\s+/g, ' ');
+check('une fois publié, l\'étape 2 s\'ouvre toute seule (Form+ lit `shareOptions` de la section à travers le courtier)', step2.includes(GUIDE.step2) && step2.includes(GUIDE.copied), step2.slice(0, 260));
+await lab.shotPanel(run, '3b-guide-etape-2');
+await app.locator('[data-guide="opened"]').click();
 await app.locator('#guide-link').waitFor({ state: 'visible', timeout: 12000 });
 const step3 = (await app.locator('#start-panel-guide').innerText()).replace(/\s+/g, ' ');
-check('une fois publié, l\'étape 3 s\'ouvre toute seule (Form+ lit `shareOptions` de la section à travers le courtier) et attend le lien', step3.includes(GUIDE.step3), step3.slice(0, 260));
+check('« ' + GUIDE.copied + ' » : l\'étape 3 attend le lien', step3.includes(GUIDE.step3), step3.slice(0, 260));
 await lab.shotPanel(run, '3b-guide-etape-3');
 
 // ----- 4. Enregistrer un formulaire par son lien (consignes 007, 008, 012 et 013).

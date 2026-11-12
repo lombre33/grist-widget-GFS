@@ -17,11 +17,15 @@ const EMAIL_TYPES = ['Text', 'Choice', 'Any'];
 
 export class ManageControl {
   #o;
+  #fixed = null; // ce que la fenêtre ouverte garde d'une première lecture : les tables lisibles et la structure ne changent pas avec un groupe ou un espace
+  #dirty = false; // une écriture a réussi depuis l'ouverture : l'explorateur relit ses fichiers à la fermeture (un espace de plus s'y voit)
 
   // opts : { port, reader, writer, t, locale(), container, inertTargets(), fullAccess(), writeBlock(), otherLinks() → les documents reliés
   //   (js/sharing/share-other.js),
   //   otherStop(lien) → { ok, message? }, otherNew() (relier un document sans fichier), ask?(options) (la question ; par défaut la fenêtre du widget,
-  //   js/ui/ask-window.js) }
+  //   js/ui/ask-window.js), askName?(options) (la saisie du nom d'un espace ; par défaut la fenêtre du widget), identity?() (l'adresse de la personne : elle
+  //   entre dans l'espace qu'elle crée), refresh?() (relire les fichiers de l'explorateur), openWindow?(options) (la fenêtre ; par défaut
+  //   js/sharing/manage-window.js) }
   constructor(opts) { this.#o = opts; }
 
   // Pourquoi « Gérer les partages » est grisé (une phrase), ou null.
@@ -41,23 +45,38 @@ export class ManageControl {
     }).filter(table => table.emails.some(email => table.groups.some(group => group !== email)));
   }
 
+  // L'état que la fenêtre dessine. Les tables lisibles et la structure (les règles d'accès) ne se lisent qu'une fois par ouverture : écrire un groupe ou un
+  // espace ne les change pas (la structure change par `structure()`, qui recharge la page). Les quatre tables du partage se lisent ensemble, une seule fois
+  // chacune.
   async load() {
     const owner = await this.#o.reader.owner();
     if (owner !== true) return { owner, active: false, groups: [], spaces: [], root: {}, structure: null, tables: [] };
-    const [shares, groupRows, plans, raw, spaceRows, placeRows] = await Promise.all(
-      [this.#rows(SHARES_TABLE), this.#rows(GROUPS_TABLE), this.#o.writer.plans(), this.#o.reader.raw(), this.#rows(SPACES_TABLE), this.#rows(PLACE_TABLE)]);
+    const fixed = this.#fixed || (this.#fixed = this.#readFixed().catch(error => { this.#fixed = null; throw error; }));
+    const [shares, groupRows, spaceRows, placeRows, { tables, structure }] = await Promise.all(
+      [this.#rows(SHARES_TABLE), this.#rows(GROUPS_TABLE), this.#rows(SPACES_TABLE), this.#rows(PLACE_TABLE), fixed]);
     const rootRows = (shares || []).filter(row => row.Cible === ROOT);
     const root = Object.fromEntries(Object.values(CATEGORIES).map(who => {
       const row = rootRows.find(item => String(item.Personne) === who); return [who, row ? { id: row.id, right: row.Droit } : null]; }));
     return {
-      owner, active: shares !== null && groupRows !== null && spaceRows !== null, groups: groupsOf(groupRows || []), rows: groupRows || [], root,
-        tables: raw ? this.#readable(raw) : [],
+      owner, active: shares !== null && groupRows !== null && spaceRows !== null, groups: groupsOf(groupRows || []), rows: groupRows || [], root, tables,
       spaces: spacesOf(spaceRows || [], shares || []), spaceRows: spaceRows || [], shareRows: shares || [], placeRows: placeRows || [],
-      structure: plans ? actionsOf(plans)[1] : null, blocked: this.#o.writeBlock(),
+      structure, blocked: this.#o.writeBlock(),
     };
   }
 
-  #write(actions) { return writeActions(this.#o, actions); }
+  // Les règles d'accès lues une fois (sans les tables de fichiers : « Gérer les partages » n'en a pas besoin) : les tables lisibles pour un groupe, et le geste
+  // de structure (fermer ou rouvrir) que les règles permettent.
+  async #readFixed() {
+    const raw = await this.#o.reader.raw({ files: false });
+    const plans = raw ? this.#o.writer.plansFrom(raw) : null;
+    return { tables: raw ? this.#readable(raw) : [], structure: plans ? actionsOf(plans)[1] : null };
+  }
+
+  async #write(actions) {
+    const answer = await writeActions(this.#o, actions);
+    if (answer.ok) this.#dirty = true;
+    return answer;
+  }
 
   addGroup(state, { name, people }) {
     const plan = planGroupAdd(state.rows, groupRecord({ name, people }));
@@ -78,12 +97,13 @@ export class ManageControl {
   // Les espaces : créer (le nom se demande dans une fenêtre du widget), supprimer (avec la question), donner un rôle à un groupe, choisir le groupe à ajouter.
   async addSpace(state) {
     const { t, container } = this.#o;
-    const name = await askName({ container, inertTargets: this.#o.inertTargets, t, title: t('manage.spaces.new'), label: t('manage.spaces.name'), value: '',
+    const name = await (this.#o.askName || askName)({ container, inertTargets: this.#o.inertTargets, t, title: t('manage.spaces.new'),
+      label: t('manage.spaces.name'), value: '',
       confirmLabel: t('manage.spaces.create'),
       refuse: text => (text ? (state.spaceRows.some(row => String(row.Nom || '').trim().toLowerCase() === text.toLowerCase()) ? t('manage.spaces.exists') :
         null) : t('manage.spaces.invalid')), clean: text => text.replace(/\s+/g, ' ').trim() });
     if (!name) return null;
-    const plan = planSpaceAdd(state.spaceRows, name);
+    const plan = planSpaceAdd(state.spaceRows, name, this.#o.identity ? this.#o.identity() : '');
     return plan.ok ? this.#write(plan.actions) : { ok: false, message: t(`manage.spaces.${plan.reason}`) };
   }
 
@@ -113,8 +133,9 @@ export class ManageControl {
   // La structure : fermer ou rouvrir, avec la question qui dit le prix ; la page se recharge, la fenêtre se rouvre (clé `manage`).
   async structure() {
     const { t, container } = this.#o;
-    const kind = actionsOf(await this.#o.writer.plans())[1].kind;
-    return kind ? runAction({ kind, plans: await this.#o.writer.plans(), t, ask: options => ask({ container, inertTargets: this.#o.inertTargets, ...options }),
+    const plans = await this.#o.writer.plans();
+    const kind = actionsOf(plans)[1].kind;
+    return kind ? runAction({ kind, plans, t, ask: options => ask({ container, inertTargets: this.#o.inertTargets, ...options }),
       writer: this.#o.writer, resume: 'manage' }) : false;
   }
 
@@ -153,9 +174,13 @@ export class ManageControl {
     return yes ? this.#o.otherStop(link) : null;
   }
 
+  // Ouvre la fenêtre ; rend la promesse de sa fermeture. À la fermeture, si quelque chose a été écrit, l'explorateur relit ses fichiers (un espace créé s'y
+  // voit sans recharger la page : mesuré, labo/run-partager-vitesse.mjs).
   open() {
     const { t, container, inertTargets } = this.#o;
-    return openManage({
+    this.#fixed = null;
+    this.#dirty = false;
+    const closed = (this.#o.openWindow || openManage)({
       onLinks: () => (this.#o.otherLinks ? this.#o.otherLinks() : []), onStopLink: link => this.stopLink(link),
         onNewLink: () => (this.#o.otherNew ? this.#o.otherNew() : null),
       container, t, inertTargets, load: () => this.load(), onAddGroup: (state, group) => this.addGroup(state, group),
@@ -166,6 +191,12 @@ export class ManageControl {
         onStructure: () => this.structure(),
       onConfirmRemove: name => ask({ container, inertTargets, title: t('manage.groups.remove.title', { name }), message: t('manage.groups.remove.message'),
         confirmLabel: t('manage.groups.remove.confirm'), cancelLabel: t('rights.ask.cancel'), safeFirst: true }),
+    });
+    return Promise.resolve(closed).then(value => {
+      if (this.#dirty && this.#o.refresh) void Promise.resolve(this.#o.refresh()).catch(error =>
+        console.warn('GFS : relecture des fichiers impossible', error));
+      this.#dirty = false;
+      return value;
     });
   }
 }

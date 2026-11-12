@@ -66,8 +66,9 @@ export class RightsReader {
   }
 
   // Les lignes dont les plans de pose ont besoin (js/rights/rights-plan.js) : les règles et leurs ressources en entier, les tables et leurs colonnes. Seulement
-  // pour un propriétaire prouvé ; null sinon.
-  async raw() {
+  // pour un propriétaire prouvé ; null sinon. `files: false` : sans lire les tables de fichiers en entier (leurs identifiants ne servent qu'à l'activation du
+  // partage ; « Gérer les partages » n'en a pas besoin, et une table de fichiers est la plus lourde du document).
+  async raw({ files: withFiles = true } = {}) {
     if ((await this.owner()) !== true) return null;
     try {
       const [resources, rules, tables, columns] = await Promise.all(['_grist_ACLResources', '_grist_ACLRules', '_grist_Tables',
@@ -75,7 +76,7 @@ export class RightsReader {
       // Les identifiants des fichiers que GFS garde déjà : l'activation du partage les laisse lisibles de tous, comme avant (contrats 11.7, point 13).
       const targets = this.#opts.targets ? this.#opts.targets() : TARGETS;
       const files = {};
-      for (const target of targets) {
+      for (const target of withFiles ? targets : []) {
         if (!tables.some(row => row.tableId === target.table)) continue;
         files[target.table] = rowsOf(await this.#opts.port.doc.fetchTable(target.table)).map(row => String(target.id ? row[target.id] || '' : row.id)).filter(
           Boolean);

@@ -25,6 +25,7 @@ function state() {
     inPage: box.left >= 0 && box.top >= 0 && box.right <= window.innerWidth + 1 && box.bottom <= window.innerHeight + 1,
     sticky: head.bottom <= foot.top + 1 && foot.bottom <= box.bottom + 1 && head.top >= box.top - 1,
     outside: [...modal.querySelectorAll('.sh-body *, .mod-foot *, .mod-head *')].filter(outside).map(node => node.className || node.tagName).slice(0, 5),
+    centered: (() => { const need = modal.querySelector('[data-fk="share-need"] [data-fk="share-activate"]'); if (!need) return null; const at = need.getBoundingClientRect(); const area = body.getBoundingClientRect(); return Math.abs((at.left + at.right) / 2 - (area.left + body.clientWidth / 2)) <= 6; })(), // le milieu de la zone qui défile (sans sa barre)
     add: Boolean(modal.querySelector('[data-fk="share-add"]')), activate: Boolean(modal.querySelector('[data-fk="share-activate"]')), readonly: Boolean(modal.querySelector('[data-fk="share-readonly"]')),
     options: [...modal.querySelectorAll('.drop .opt')].map(node => text(node)), rows: [...modal.querySelectorAll('.rr[data-share]')].length, form: Boolean(modal.querySelector('.sg-new')),
     note: text(modal.querySelector('.mod-note')), tabs: [...modal.querySelectorAll('.mg-tab')].length,
@@ -169,7 +170,7 @@ export async function partagerProblems(page, language, tag) {
     return now;
   };
   try {
-    for (const [kind, needs] of [['inactif', [t('share.inactive.owner'), t('share.inactive.activate')]], ['etendre', [t('share.extend.owner'), t('share.extend.activate')]], ['upgrade', [t('share.upgrade.owner'), t('share.upgrade.activate')]], ['actif', [t('share.sec.access'), t('share.row.owners'), t('share.tag.expired'), t('share.tag.invalid'), t('share.row.download')]], ['lecture', [t('share.readonly'), t('share.row.owners')]]]) {
+    for (const [kind, needs] of [['inactif', [t('share.inactive.title'), t('share.inactive.owner'), t('share.inactive.activate')]], ['etendre', [t('share.extend.title'), t('share.extend.owner'), t('share.extend.activate')]], ['upgrade', [t('share.upgrade.title'), t('share.upgrade.owner'), t('share.upgrade.activate')]], ['actif', [t('share.sec.access'), t('share.row.owners'), t('share.tag.expired'), t('share.tag.invalid'), t('share.row.download')]], ['lecture', [t('share.readonly'), t('share.row.owners')]]]) {
       await run.reset();
       await page.run(name => { window.__shareKind = name; window.__shareOther = true; window.__links = 'actifs'; }, kind);
       const at = await page.run(rowCenter);
@@ -183,6 +184,7 @@ export async function partagerProblems(page, language, tag) {
       if (open.modal) {
         if (!open.modal.inPage) run.note(kind, 'la fenêtre devait tenir dans la page');
         if (!open.modal.sticky) run.note(kind, 'le titre et le bouton devaient rester en place');
+        if (['inactif', 'etendre', 'upgrade'].includes(kind) && open.modal.centered !== true) run.note(kind, 'le bouton de l\'étape obligatoire devait être au milieu de la fenêtre');
         if (open.modal.outside.length) run.note(kind, `rien ne devait sortir de la fenêtre (sort : ${open.modal.outside.join(', ')})`);
         if ((kind === 'inactif' || kind === 'etendre' || kind === 'upgrade') && !(open.modal.activate && !open.modal.add)) run.note(kind, 'le propriétaire devait voir le bouton d\'activation (« Activer… » ou « Étendre… ») et pas le champ d\'ajout');
         if (kind === 'lecture' && (open.modal.add || !open.modal.readonly)) run.note(kind, 'une personne qui ne peut rien changer ne devait voir ni le champ d\'ajout ni de geste');

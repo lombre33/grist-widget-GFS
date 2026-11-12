@@ -533,14 +533,18 @@ export function spacesOf(spaceRows, shareRows) {
   })).sort((a, b) => a.name.localeCompare(b.name));
 }
 
-// Créer un espace : la ligne, rien d'autre (aucun groupe n'y entre tant qu'on ne l'a pas dit). Refuse un nom vide ou déjà pris.
-export function planSpaceAdd(spaceRows, name) {
+// Créer un espace : la ligne, et la personne qui le crée y entre (écriture : elle le voit, y range des fichiers ; sans cela un espace neuf est « vide de
+// monde » et on ne l'y retrouve pas) ; aucun groupe n'y entre tant qu'on ne l'a pas dit. `creator` : l'adresse de la personne, ou rien. Refuse un nom vide ou
+// déjà pris.
+export function planSpaceAdd(spaceRows, name, creator = '') {
   const clean = String(name ?? '').replace(/\s+/g, ' ').trim();
   if (!clean || clean.length > 60) return { ok: false, reason: 'invalid' };
   if ((spaceRows || []).some(row => String(row.Nom || '').trim().toLowerCase() === clean.toLowerCase())) return { ok: false, reason: 'exists' };
   const key = spaceKey(clean, (spaceRows || []).map(row => row.Cle));
   if (!key) return { ok: false, reason: 'invalid' };
-  return { ok: true, key, actions: [['AddRecord', SPACES_TABLE, null, { Cle: key, Nom: clean }]] };
+  const member = shareRecord({ target: spaceTarget(key), who: String(creator ?? '').trim().toLowerCase(), right: 'ecriture' });
+  return { ok: true, key, actions: [['AddRecord', SPACES_TABLE, null, { Cle: key, Nom: clean }],
+    ...(member ? [['AddRecord', SHARES_TABLE, null, member]] : [])] };
 }
 
 // Supprimer un espace : sa ligne, les partages de l'espace et de ses dossiers, et les placements (les fichiers restent, simplement hors de l'espace).

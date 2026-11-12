@@ -386,3 +386,11 @@ test('le rôle d\'un groupe dans un espace : ajouté, changé, retiré ; lecture
   assert.equal(model.planSpaceGroup(space, shares, 'Compta', 'admin').reason, 'invalid');
   assert.deepEqual(model.planSpaceGroup(space, shares, 'Absent', null).actions, []);
 });
+
+test('créer un espace : la personne qui le crée y entre (écriture, en minuscules) dans la même écriture ; sans adresse, seulement l\'espace', () => {
+  const added = model.planSpaceAdd([], 'Équipe UI', ' Moi@X.fr ');
+  assert.deepEqual(added.actions.map(action => action.slice(0, 2)), [['AddRecord', 'GFS_Espaces'], ['AddRecord', 'GFS_Partages']]);
+  assert.deepEqual([added.actions[1][3].Cible, added.actions[1][3].Personne, added.actions[1][3].Droit], ['espace:equipe-ui', 'moi@x.fr', 'ecriture']);
+  assert.equal(model.planSpaceAdd([], 'Équipe UI').actions.length, 1);
+  assert.equal(model.planSpaceAdd([], 'Équipe UI', '  ').actions.length, 1);
+});

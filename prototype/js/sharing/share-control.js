@@ -72,19 +72,22 @@ export class ShareControl {
 
   // L'état que la fenêtre dessine : la table des partages (absente : le partage n'est pas activé), la preuve de propriété, ce que la personne peut changer.
   async load(file) {
-    const owner = await this.#o.reader.owner();
-    if (file.mine) return { ...noShare(owner, false), mine: true };
-    const rows = await this.#try(async () => rowsOf(await this.#o.port.doc.fetchTable(SHARES_TABLE)), null);
-    if (!rows) return noShare(owner, false);
+    if (file.mine) return { ...noShare(await this.#o.reader.owner(), false), mine: true };
     const target = file.shared ? null : this.#target(file);
-    const read = target ? await this.#authorOf(file, target) : { author: lower(file.by) };
+    // Tout se lit ensemble : un seul aller-retour avec Grist, au lieu de quatre l'un après l'autre (mesuré, labo/run-partager-vitesse.mjs). Un partage pas
+    // activé (pas de table des partages) laisse de côté ce qui a été lu en plus.
+    const [owner, rows, read, inherited, groupRows] = await Promise.all([this.#o.reader.owner(),
+      this.#try(async () => rowsOf(await this.#o.port.doc.fetchTable(SHARES_TABLE)), null),
+      target ? this.#authorOf(file, target) : { author: lower(file.by) },
+      file.shared ? this.#folderOrigins(file.shared) : this.#inherited(file.key),
+      this.#try(async () => rowsOf(await this.#o.port.doc.fetchTable(GROUPS_TABLE)), null)]);
+    if (!rows) return noShare(owner, false);
     if (read.extend !== undefined) return noShare(owner, read.extend);
     const { author } = read;
     const me = lower(this.#o.identity());
-    const shares = sharesOf(rows, file.key, file.shared ? this.#folderOrigins(file.shared) : await this.#inherited(file.key));
+    const shares = sharesOf(rows, file.key, inherited);
     const admin = shares.some(share => share.valid && share.active && share.right === 'admin' && lower(share.who) === me);
-    const groups = await this.#try(async () => groupsOf(rowsOf(await this.#o.port.doc.fetchTable(GROUPS_TABLE))), []);
-    return { active: true, owner, shares, people: peopleOf(rows), groups, me, author, canManage: !this.#o.writeBlock() &&
+    return { active: true, owner, shares, people: peopleOf(rows), groups: groupRows ? groupsOf(groupRows) : [], me, author, canManage: !this.#o.writeBlock() &&
       (owner === true || (me !== '' && me === author) || admin) };
   }
 

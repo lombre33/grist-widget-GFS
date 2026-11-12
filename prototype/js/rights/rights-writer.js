@@ -17,11 +17,14 @@ export class RightsWriter {
   //   `keyStore` : sans exception).
   constructor(opts) { this.#opts = opts; }
 
-  // Les quatre plans pour l'état du document (ou null quand GFS n'a pas pu le lire).
+  // Les plans pour des lignes déjà lues (`reader.raw()`) : un appelant qui a lu ces lignes n'a pas à les relire pour les plans.
+  plansFrom(existing) {
+    return existing ? Object.fromEntries(KINDS.map(kind => [kind, PLANS[kind](existing)])) : null;
+  }
+
+  // Les plans pour l'état du document (ou null quand GFS n'a pas pu le lire).
   async plans() {
-    const existing = await this.#opts.reader.raw();
-    if (!existing) return null;
-    return Object.fromEntries(KINDS.map(kind => [kind, PLANS[kind](existing)]));
+    return this.plansFrom(await this.#opts.reader.raw());
   }
 
   // Écrit le plan de `kind`, relu au moment même (rien n'est envoyé d'un plan périmé). Rend { ok: true } ou { ok: false, reason | message }.

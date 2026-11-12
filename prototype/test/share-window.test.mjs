@@ -56,7 +56,7 @@ test('le menu des droits : cinq droits et « Aucun accès », le courant coché,
 });
 
 test('le nom d\'une catégorie se lit dans la langue de la personne ; une adresse reste telle quelle', () => {
-  assert.equal(whoLabel(t, '@tous'), 'Tout le document');
+  assert.equal(whoLabel(t, '@tous'), 'Tout le document (Editor, Viewer)');
   assert.equal(whoLabel(createI18n('en').t, '@editeurs'), 'All editors');
   assert.equal(whoLabel(t, 'a@b.fr'), 'a@b.fr');
 });

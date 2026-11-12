@@ -208,7 +208,9 @@ function inactiveBlock(ctx) {
     const activate = h('button', { type: 'button', class: 'btn primary', dataset: { fk: 'share-activate' } },
       t(state.extend === 'upgrade' ? 'share.upgrade.activate' : (state.extend ? 'share.extend.activate' : 'share.inactive.activate')));
     activate.addEventListener('click', () => void ctx.activate());
-    return h('div', { class: 'rt-content' }, h('p', { class: 'fine' }, t(`${word}.owner`)), h('p', { class: 'sg-actions' }, activate));
+    // Une étape obligatoire avant de partager : son nom, pourquoi elle est nécessaire, et le bouton au milieu (pas en bas à droite comme un geste de plus).
+    return h('div', { class: 'rt-content sg-need', dataset: { fk: 'share-need' } }, icon('shield'), h('h3', { class: 'sg-need-title' }, t(`${word}.title`)),
+      h('p', { class: 'fine' }, t(`${word}.owner`)), h('p', { class: 'sg-actions' }, activate));
   }
   return h('div', { class: 'rt-content' }, h('p', { class: 'rt-lead' }, icon('lock'),
     h('span', null, t(state.owner === false ? `${word}.other` : 'share.inactive.unknown'))));

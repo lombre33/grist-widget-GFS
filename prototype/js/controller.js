@@ -160,7 +160,7 @@ export class GfsController {
       inertTargets: this.inertTargets, t: this.t, fullAccess: () => this.fullAccess,
       locale: () => this.locale, identity: () => this.identity, writeBlock: () => this.#writeBlock(), appName: this.appName, spaces: () => this.spaces,
       other: (file, state) => this.otherDocuments.tab(file, state), otherLinks: () => this.otherDocuments.links(),
-        otherStop: link => this.otherDocuments.stop(link), otherNew: () => this.otherDocuments.link(),
+        otherStop: link => this.otherDocuments.stop(link), otherNew: () => this.otherDocuments.link(), refresh: () => this.refreshFiles(),
     });
     this.weight = new WeightControl({ transfer: this.transfer, container: this.$('stage'), inertTargets: this.inertTargets, t: this.t,
       locale: () => this.locale });

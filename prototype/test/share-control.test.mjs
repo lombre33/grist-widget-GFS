@@ -176,3 +176,17 @@ test('un fichier rangé dans un dossier (« folder » est son dossier, un texte)
   const filed = await control({ fetch }).load({ ...pdf, folder: 'Contrats/Sous' });
   assert.equal(filed.active, true);
 });
+
+test('load : les tables se lisent ensemble (un seul aller-retour avec Grist, pas quatre l\'un après l\'autre) et rendent le même état', async () => {
+  let inFlight = 0;
+  let most = 0;
+  const fetch = async name => {
+    inFlight += 1; most = Math.max(most, inFlight);
+    await new Promise(resolve => setTimeout(resolve, 5));
+    inFlight -= 1;
+    return name === 'GFS_Partages' ? table({ Cible: [], Personne: [] }) : table({ GFS_Directs: [], GFS_Calc: [[], [], []], GFS_Lecteurs: [[], [], []], GFS_Auteur: ['a@x.fr', 'Createur@x.fr', ''] });
+  };
+  const state = await control({ fetch }).load({ ...pdf, row: 2 });
+  assert.ok(most >= 3, `les lectures partent ensemble (${most} en même temps)`);
+  assert.deepEqual([state.active, state.author, state.canManage], [true, 'createur@x.fr', true]);
+});

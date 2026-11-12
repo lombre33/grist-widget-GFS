@@ -35,6 +35,12 @@
 .sh .chk input[type="date"]:disabled { color: var(--text-muted); }
 .sh .fine { margin: 8px 4px 0; font-size: max(12px, var(--fs-min)); color: var(--text-muted); }
 .sh .sg-actions { display: flex; justify-content: flex-end; gap: 8px; margin: 10px 4px 0; }
+/* L'étape obligatoire avant de partager (activer, mettre à jour) : au milieu de la fenêtre, le bouton sous son explication. */
+.sh .sg-need { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 14px 12px 6px; }
+.sh .sg-need > .ic { width: 28px; height: 28px; color: var(--accent); }
+.sh .sg-need-title { margin: 8px 0 0; font-size: max(14px, var(--fs-min)); font-weight: 600; color: var(--text); }
+.sh .sg-need .fine { max-width: 52ch; margin: 8px 0 0; }
+.sh .sg-need .sg-actions { justify-content: center; margin: 14px 0 6px; }
 .sh .rt-lead { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-sunken); }
 .sh .rt-lead .ic { flex: none; width: 16px; height: 16px; margin-top: 1px; color: var(--text-muted); }
 

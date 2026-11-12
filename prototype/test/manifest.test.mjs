@@ -52,6 +52,18 @@ test('contrats 2.5 point 4 : `arrivee` dit la table, la colonne et les lignes qu
   assert.match(ok({ table: 'Automation', colonne: 'Table' }, m => { m.permissions.lit = ['Clients']; m.permissions.ecrit = []; }).errors.join(' | '), /ne lit pas/, 'une table que l\'app ne lit pas');
 });
 
+test('contrats 2.5 point 5 : `reglagesArrivee` est une liste de clés de `reglages` ; facultative', () => {
+  const ok = reglagesArrivee => { const m = publipostage(); m.reglagesArrivee = reglagesArrivee; return validateManifest(m); };
+  assert.deepEqual(ok(['modeleDeLaVue']), { ok: true, errors: [] });
+  assert.deepEqual(ok([]), { ok: true, errors: [] }, 'une liste vide : aucune clé ne fait ouvrir l\'app');
+  assert.deepEqual(ok(undefined), { ok: true, errors: [] }, 'sans `reglagesArrivee`, toutes les clés de `reglages` comptent');
+  assert.match(ok('modeleDeLaVue').errors.join(' | '), /reglagesArrivee : liste/);
+  assert.match(ok(['modeleDeLaVue', 3]).errors.join(' | '), /reglagesArrivee : liste/);
+  assert.match(ok(['modeleDeLaVue', 'inconnue']).errors.join(' | '), /reglagesArrivee : inconnue n'est pas une clé de reglages/);
+  assert.match(bad(m => { m.reglagesArrivee = ['workflow']; }), /reglagesArrivee : workflow/, 'une clé d\'une autre app n\'est pas une clé de celle-ci');
+  assert.deepEqual(publipostage().reglagesArrivee, ['modeleDeLaVue', 'modeleSelonLigne'], 'Publipostage+ : le modèle de la vue et le modèle selon la ligne');
+});
+
 test('contrats 2.4 : les tables de fichiers sont dans le préfixe, avec id et nom', () => {
   assert.match(bad(m => { m.fichiers[0].table = 'Clients'; }), /hors du préfixe/);
   assert.match(bad(m => { delete m.fichiers[0].colonnes.id; }), /id et nom/);

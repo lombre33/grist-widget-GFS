@@ -119,6 +119,13 @@ function checkSettings(m, errors) {
     if (!isText(key)) errors.push('reglages : chaînes attendues');
     else if (key.startsWith('gfs.')) errors.push(`la clé ${key} commence par gfs.`);
   }
+  // `reglagesArrivee` (facultatif, contrats 2.5, point 5) : celles des clés de `reglages` dont une valeur fait s'ouvrir l'app à l'arrivée
+  // (js/broker/arrival.js).
+  if (m.reglagesArrivee === undefined) return;
+  if (!Array.isArray(m.reglagesArrivee) || !m.reglagesArrivee.every(isText)) { errors.push('reglagesArrivee : liste de chaînes attendue'); return; }
+  for (const key of m.reglagesArrivee) {
+    if (!(m.reglages || []).includes(key)) errors.push(`reglagesArrivee : ${key} n'est pas une clé de reglages`);
+  }
 }
 
 const covered = (lit, pattern) => lit.includes('*') || lit.includes(pattern) || lit.some(p => p.endsWith('*') && pattern.startsWith(p.slice(0, -1)));

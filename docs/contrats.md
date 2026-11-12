@@ -263,6 +263,7 @@ L'app (sous-cadre sans allow-same-origin)
 | `fichiers` | liste | non | Les tables de fichiers que l'explorateur lit (2.4). |
 | `reglages` | liste | non | Les clés de réglages de la vue que l'app lit et écrit (2.5). |
 | `arrivee` | objet | non | Où GFS lit, dans une table du document, que la section est celle de l'app quand la vue n'a aucun réglage : `{ table, colonne, lignes }` (2.5, point 4). |
+| `reglagesArrivee` | liste | non | Celles des clés de `reglages` dont une valeur fait s'ouvrir l'app à l'arrivée ; sans elle, toutes les clés de `reglages` comptent (2.5, point 5). |
 | `permissions` | objet | oui | Accès, tables, tables internes, capacités (section 3). |
 | `extensions` | liste | non | Les extensions de l'app (2.6). |
 | `dependances` | chaîne | non | Chemin de la liste des bibliothèques **natives** de l'app (`package.json`) : celles d'une extension n'y figurent pas (2.6, point 4). |
@@ -338,6 +339,12 @@ Une entrée de `fichiers` par table de fichiers :
    valeurs que doit porter la ligne (des textes, comparés tels quels, `Type` = `Workflow` : un `Log` ou un `Lock` ne désigne pas la
    vue). GFS ne s'en sert qu'à l'arrivée, aux conditions de 7.4, point 7 ; il ne fait que comparer, il ne lit jamais une valeur comme
    du code ni comme une adresse. L'app qui garde aussi une clé de réglage (`reglages`) reste reconnue par elle d'abord.
+5. [T] **`reglagesArrivee`** (facultatif, décidé par le porteur le 12/11) : parmi les clés de `reglages`, celles dont **une valeur dit à GFS d'ouvrir l'app à
+   l'arrivée** (7.4, point 7). Une clé de `reglages` qui n'y est pas se lit, s'écrit et se retire comme les autres, mais ne désigne pas l'app : une vue qui n'a
+   que celle-là arrive sur l'explorateur, et non sur la page de départ de l'app. Publipostage+ : `["modeleDeLaVue", "modeleSelonLigne"]` (un modèle choisi pour la
+   vue, ou une règle qui en choisit un selon la ligne) ; ses droits d'accès, la colonne de la date du dernier export et celle des pièces jointes (`droitsAcces`,
+   `dateDernierExport`, `pp_attach_column`, `pp_attach_mode`) ne disent pas quoi ouvrir. Sans `reglagesArrivee`, toutes les clés de `reglages` comptent (Automation+ :
+   `workflow`). Chaque entrée est une clé de `reglages` de la même app (le manifeste est refusé sinon) ; une liste vide : aucune clé ne fait ouvrir l'app.
 
 ### 2.6 Les extensions
 
@@ -534,6 +541,7 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
    - un champ obligatoire absent ou d'un autre type ; un `id` ou un préfixe hors format, déjà pris, ou égal à `GFS_` ;
    - `fichiers[].table` hors du préfixe ; une colonne de `colonnes` qui n'est pas une chaîne ;
    - une clé de `reglages` qui commence par `gfs.` ou que le catalogue donne à une autre app ;
+   - `reglagesArrivee` (2.5, point 5) : autre chose qu'une liste de chaînes, une entrée qui n'est pas une clé de `reglages` de la même app ;
    - dans `ouverture` : autre chose qu'un objet, un genre (`fichier`, `nouveau`, `importer`, `lire`) qui n'est pas un booléen ; `permanente` qui n'est pas un booléen ;
    - dans `arrivee` (2.5, point 4) : autre chose qu'un objet, une `table` ou une `colonne` qui n'est pas une chaîne, une `table` que
      `permissions.lit` ne couvre pas, des `lignes` qui ne sont pas un objet de chaînes ;
@@ -2603,7 +2611,11 @@ le document, pour que l'installation s'enregistre tout de suite.
    sur le choix du porteur, « comme avant GFS » : le modèle de la vue de Publipostage+ (un document, une grille ou une
    présentation) s'ouvre à l'arrivée, comme dans l'app seule. La règle :
    - une clé compte quand elle a une valeur : `null` et le texte vide, par lesquels une app retire un choix (Publipostage+,
-     « Retirer » du modèle de la vue : `setWidgetOption(clé, null)`), ne comptent pas ; `0`, `false` et un objet comptent ;
+     « Retirer » du modèle de la vue : `setWidgetOption(clé, null)`), ne comptent pas ; `0`, `false` et un objet comptent ; **un objet
+     qui dit `enabled: false` ne compte pas** (un choix coupé mais gardé : le « modèle selon la ligne » décoché de Publipostage+ garde
+     ses règles pour qu'on les retrouve) ; **seules les clés `reglagesArrivee` du manifeste comptent** quand il les déclare (2.5, point 5 ;
+     sinon toutes ses clés de `reglages`) : pour Publipostage+, le modèle de la vue et le modèle selon la ligne, pas les droits
+     d'accès, la date du dernier export ni les pièces jointes (complété le 12/11, voir plus bas) ;
    - ne comptent que les apps qu'on peut ouvrir ici : installées (rien ne s'installe à l'arrivée) et dont l'accès demandé ne
      dépasse pas celui que Grist a donné à GFS ;
    - une seule app servie par la section : elle s'ouvre **sans consigne** (`ouverture` à `null`, 5.2, point 3 : elle applique
@@ -2655,6 +2667,21 @@ le document, pour que l'installation s'enregistre tout de suite.
    ou sans la lecture de la table (la table n'a qu'une ligne : le journal n'est pas élagué par l'app, la lecture grandira avec lui,
    11 à 14 ms pour 1 000 lignes mesurés le 21/10). Pas mesuré : Firefox (aucune interface de plus ; la comparaison est la même),
    une table `Automation` de plusieurs milliers de lignes.
+
+   **Complété le 12/11 : seulement un modèle choisi** (choix du porteur, « Seulement si un modèle est choisi » ; `reglagesArrivee` du
+   manifeste, 2.5, point 5). Une vue dont le seul réglage de Publipostage+ était sa date du dernier export, ses droits d'accès ou ses
+   pièces jointes arrivait sur la page blanche de l'app (sans modèle ni ★) : rien ne disait quoi ouvrir. Désormais seuls
+   `modeleDeLaVue` et `modeleSelonLigne` désignent Publipostage+ ; un objet qui dit `enabled: false` (le modèle selon la ligne décoché, ses
+   règles gardées) ne compte pas. Conséquence pour la table : sans modèle, la table d'Automation+ est lue (un réglage de droits ou de date
+   ne parle plus avant elle). Rien n'est écrit, rien ne change pour une app qui ne déclare pas `reglagesArrivee` (Automation+ : `workflow`).
+   [M] **Mesuré le 12/11** (`run-arrivee.mjs`, labo grist-static 0.1.6, Chromium, 700 × 400 à la vraie souris, vraie Publipostage+ à `de63f27`
+   et vraie Automation+ à `aaad9bf` ; **français / clair et anglais / sombre : 41 vérifications sur 42 chacune**, la 42e est un avertissement
+   de GFS (« un brouillon est déjà posé ») que le labo produit aussi sur le code d'avant : voir faits vérifiés, 103) : la date du dernier
+   export seule, les droits d'accès et les pièces jointes seuls, puis le modèle selon la ligne décoché : l'explorateur, sans app ni barre ;
+   le modèle selon la ligne coché : Publipostage+ s'ouvre, sur son ordre habituel (le ★) ; le modèle de la vue avec les droits et la date :
+   Publipostage+ s'ouvre sur le modèle ; le graphe d'Automation+ avec seulement la date et les droits de Publipostage+ : Automation+ s'ouvre
+   (une seule app servie) ; la date et les droits ne parlent pas avant la table : Automation+ s'ouvre par sa ligne `Workflow`. **Sur l'ancien code,
+   cinq de ces vérifications échouent** (la vue s'ouvre sur Publipostage+, ou l'explorateur quand Automation+ était aussi servie).
 8. [D] **L'app de départ** (`gfs.depart`) reste un réglage de la section, écrit seulement sur un geste de la personne ; personne
    ne l'écrit encore. Quand GFS l'écrira, ce sera comme les réglages des apps (7.3, point 4), sans « Enregistrer ».
 9. [D] **L'ancienne clé `gfs.apps`** du prototype V0.2 n'est plus ni lue ni écrite ; une section qui la porte n'est pas modifiée.

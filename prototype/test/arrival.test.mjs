@@ -14,11 +14,26 @@ test('cahier 6.2 point 2 : une vue qui a son modèle s\'ouvre sur Publipostage+'
   assert.equal(arrivalApp({ modeleDeLaVue: 16 }, manifests, both), 'publipostage', 'l\'identifiant d\'un modèle peut être un nombre');
 });
 
-test('cahier 6.2 point 2 : toute clé que le manifeste déclare compte, pas seulement le modèle de la vue', () => {
-  for (const key of publipostage().reglages) {
+test('contrats 2.5 point 5 : seules les clés `reglagesArrivee` d\'une app la font s\'ouvrir, les autres réglages de la vue ne disent pas quoi ouvrir', () => {
+  assert.deepEqual(publipostage().reglagesArrivee, ['modeleDeLaVue', 'modeleSelonLigne']);
+  for (const key of publipostage().reglagesArrivee) {
     assert.equal(arrivalApp({ [key]: { a: 1 } }, manifests, both), 'publipostage', key);
   }
+  const others = publipostage().reglages.filter(key => !publipostage().reglagesArrivee.includes(key));
+  assert.deepEqual(others, ['droitsAcces', 'dateDernierExport', 'pp_attach_column', 'pp_attach_mode']);
+  for (const key of others) {
+    assert.equal(arrivalApp({ [key]: { a: 1 } }, manifests, both), null, `${key} seul : l'explorateur (Publipostage+ n'aurait qu'une page blanche)`);
+  }
+  assert.equal(arrivalApp({ droitsAcces: { table: 'Equipe' }, dateDernierExport: 'Exporte', pp_attach_column: 'Pieces', pp_attach_mode: 'add' }, manifests, both), null,
+    'tous ensemble, sans modèle : l\'explorateur');
+  assert.equal(arrivalApp({ droitsAcces: { table: 'Equipe' }, modeleDeLaVue: '16' }, manifests, both), 'publipostage', 'avec le modèle, elle s\'ouvre');
+});
+
+test('une app qui ne déclare pas `reglagesArrivee` s\'ouvre sur toute clé de `reglages` (Automation+ : son graphe)', () => {
+  assert.equal(automation().reglagesArrivee, undefined);
   assert.equal(arrivalApp({ workflow: '{"noeuds":[]}' }, manifests, both), 'automation', 'Automation+ pareil, pour son graphe');
+  const other = { id: 'autre', permissions: { acces: 'full' }, reglages: ['a', 'b'] };
+  assert.equal(arrivalApp({ b: 1 }, [other], both), 'autre');
 });
 
 test('cahier 6.2 point 2 : sans clé d\'une app, l\'explorateur', () => {
@@ -32,9 +47,19 @@ test('cahier 6.2 point 2 : sans clé d\'une app, l\'explorateur', () => {
 test('un choix retiré ne compte pas : `null` ou un texte vide laissent la clé sans valeur', () => {
   assert.equal(arrivalApp({ modeleDeLaVue: null }, manifests, both), null, 'Publipostage+ retire le modèle de la vue en écrivant null');
   assert.equal(arrivalApp({ modeleDeLaVue: '' }, manifests, both), null);
-  assert.equal(arrivalApp({ modeleDeLaVue: null, droitsAcces: { lecteurs: [] } }, manifests, both), 'publipostage', 'une autre clé qui a sa valeur suffit');
+  assert.equal(arrivalApp({ modeleDeLaVue: null, droitsAcces: { lecteurs: [] } }, manifests, both), null, 'les droits d\'accès ne disent pas quoi ouvrir');
+  assert.equal(arrivalApp({ modeleDeLaVue: null, modeleSelonLigne: { enabled: true, rules: [{ column: 'Type', modeleId: '3' }] } }, manifests, both), 'publipostage',
+    'une autre clé d\'arrivée qui a sa valeur suffit');
   assert.equal(arrivalApp({ modeleDeLaVue: 0 }, manifests, both), 'publipostage', '0 est une valeur');
   assert.equal(arrivalApp({ modeleDeLaVue: false }, manifests, both), 'publipostage', 'false aussi');
+});
+
+test('un choix coupé mais gardé ne compte pas : le modèle selon la ligne décoché garde ses règles', () => {
+  const rules = [{ column: 'Type', operator: '=', value: 'A', modeleId: '3' }];
+  assert.equal(arrivalApp({ modeleSelonLigne: { enabled: false, rules, otherwise: 'default' } }, manifests, both), null);
+  assert.equal(arrivalApp({ modeleSelonLigne: { enabled: true, rules, otherwise: 'default' } }, manifests, both), 'publipostage');
+  assert.equal(arrivalApp({ modeleSelonLigne: { rules } }, manifests, both), 'publipostage', 'sans `enabled`, rien n\'est dit coupé');
+  assert.equal(arrivalApp({ modeleSelonLigne: [{ enabled: false }] }, manifests, both), 'publipostage', 'une liste n\'est pas un choix coupé');
 });
 
 test('une app qui n\'est pas installée ne s\'ouvre pas : l\'explorateur, rien ne s\'installe sans un geste', () => {
@@ -118,6 +143,7 @@ test('arrivalProbes : la table n\'est lue que si aucune app qu\'on peut ouvrir n
   assert.deepEqual(ids({ modeleDeLaVue: '16' }), [], 'la vue a son modèle : Publipostage+ garde la vue, la table n\'est pas lue');
   assert.deepEqual(ids({ workflow: '{"noeuds":[]}' }), [], 'la clé workflow (Automation+ avant 0.15.0) parle déjà');
   assert.deepEqual(ids({ modeleDeLaVue: null }), ['automation'], 'un modèle retiré ne parle plus');
+  assert.deepEqual(ids({ droitsAcces: { table: 'Equipe' }, dateDernierExport: 'Exporte' }), ['automation'], 'des droits ou une date d\'export ne parlent pas : la table est lue');
   assert.deepEqual(arrivalProbes({}, manifests, only('publipostage')), [], 'Automation+ n\'est pas installée');
   assert.deepEqual(arrivalProbes({}, manifests, { installed: () => true, granted: 'read table' }), [], 'GFS n\'a pas l\'accès que l\'app demande');
 });

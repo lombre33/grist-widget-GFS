@@ -30,6 +30,7 @@
     "poids": { "liees": [{ "table": "Publipostage_Versions", "colonne": "Jeton", "fichier": "Jeton" }] }
   }],
   "reglages": ["modeleDeLaVue", "modeleSelonLigne", "droitsAcces", "dateDernierExport", "pp_attach_column", "pp_attach_mode"],
+  "reglagesArrivee": ["modeleDeLaVue", "modeleSelonLigne"],
   "permissions": {
     "acces": "full",
     "lit": ["*"],

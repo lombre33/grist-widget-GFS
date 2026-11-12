@@ -8,6 +8,8 @@
 //   5. Automation+ pour sa table (contrats 2.5, point 4) : 0.15.0 garde son graphe dans la table `Automation` et n'écrit plus la clé `workflow`. Une vue sans aucun réglage, dont la table a une ligne
 //      `Workflow` dans `Automation`, s'ouvre sur Automation+ (la ligne est écrite par la vraie app, à la souris) ; la ligne d'une autre table, ou d'un autre type, ne désigne pas la vue ; un réglage de la
 //      vue (le modèle de Publipostage+) parle avant la table. Rien n'est écrit par l'arrivée.
+//   Publipostage+ ne s'ouvre seule que sur un modèle choisi (contrats 2.5, point 5 : `reglagesArrivee`, décidé le 12/11) : la date du dernier export, les droits d'accès ou les pièces jointes seuls laissent
+//   l'explorateur (la page blanche de l'app n'est plus ce qu'on voit à l'arrivée), un modèle selon la ligne décoché aussi ; coché, ou avec un modèle de la vue, l'app s'ouvre.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark, LAB_READONLY=1 (la section est en lecture seule : l'app s'ouvre aussi, et la fenêtre du premier lancement ne vient pas).
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
@@ -29,7 +31,7 @@ const { page } = lab;
 const warnings = [];
 const errors = [];
 page.on('console', message => {
-  if (message.type() === 'warning' && message.text().startsWith('GFS')) warnings.push(message.text());
+  if (message.type() === 'warning' && message.text().startsWith('GFS')) { warnings.push(message.text()); if (process.env.LAB_TRACE_WARN === '1') say('  [avertissement]', message.text().slice(0, 140)); }
   if (message.type() === 'error' && /127\.0\.0\.1:8911/.test(message.location().url || '')) errors.push(message.text());
 });
 page.on('pageerror', error => errors.push(error.message));
@@ -169,10 +171,24 @@ await setOptions({ modeleDeLaVue: '9999' });
 await restart();
 await arrivesOnPublipostage(STAR, 'un modèle disparu : l\'app l\'ignore et ouvre le ★', seen => seen.view === '9999' && seen.usable === null);
 
-// Une autre clé de l'app suffit : la vue servait à Publipostage+ (la règle de ligne, les droits, la date du dernier export), même sans modèle de la vue.
+// Les autres réglages de l'app ne disent pas quoi ouvrir (contrats 2.5, point 5 : `reglagesArrivee`) : sans modèle, la vue arrive sur l'explorateur, et non sur la page blanche de l'app.
+const RULES = [{ column: 'Statut', operator: '=', value: 'A', modeleId: DOCUMENT.id }];
+const RIGHTS = { source: 'personne', table: 'Equipe', emailColumn: 'Email', readOnlyColumn: 'Lecture_seule', exportColumn: '', commentsColumn: '', cleanReading: false };
 await setOptions({ modeleDeLaVue: null, dateDernierExport: 'Date' });
 await restart();
-await arrivesOnPublipostage(STAR, 'une autre clé de l\'app (ici la colonne de la date du dernier export), sans modèle de la vue : l\'app s\'ouvre, sur son ordre habituel (le ★)');
+await showsExplorer('la colonne de la date du dernier export, sans modèle de la vue : l\'explorateur (Publipostage+ n\'aurait que sa page blanche)');
+await setOptions({ droitsAcces: RIGHTS, pp_attach_column: 'Pieces', pp_attach_mode: 'add' });
+await restart();
+await showsExplorer('les droits d\'accès et la colonne des pièces jointes, sans modèle de la vue : l\'explorateur');
+await setOptions({ modeleSelonLigne: { enabled: false, rules: RULES, otherwise: 'default' }, dateDernierExport: 'Date' });
+await restart();
+await showsExplorer('le modèle selon la ligne décoché (ses règles sont gardées) : l\'explorateur');
+await setOptions({ modeleSelonLigne: { enabled: true, rules: RULES, otherwise: 'default' } });
+await restart();
+await arrivesOnPublipostage(STAR, 'le modèle selon la ligne coché, sans modèle de la vue : l\'app s\'ouvre, sur son ordre habituel (aucune ligne retenue : le ★)');
+await setOptions({ modeleDeLaVue: DOCUMENT.id, droitsAcces: RIGHTS, dateDernierExport: 'Date' });
+await restart();
+await arrivesOnPublipostage(DOCUMENT, 'le modèle de la vue avec les autres réglages de l\'app : Publipostage+ s\'ouvre sur le modèle');
 
 // ===== 4. L'extension cochée : la présentation s'ouvre. Cocher écrit la table du rangement (l'accord de la personne) : après les mesures « rien n'est écrit ».
 if (!readonly) {
@@ -207,6 +223,11 @@ if (!readonly) {
   await setOptions({ modeleDeLaVue: DOCUMENT.id });
   await restart();
   await arrivesOnPublipostage(DOCUMENT, 'le modèle de la vue seul, Automation+ installée : Publipostage+ s\'ouvre sur le modèle');
+
+  await setOptions({ workflow: GRAPH, dateDernierExport: 'Date', droitsAcces: RIGHTS });
+  await restart();
+  await page.waitForTimeout(1500);
+  check('le graphe d\'Automation+ avec seulement la date d\'export et les droits de Publipostage+ : une seule app est servie, Automation+ s\'ouvre', !(await explorerShown()) && appIds().join() === 'automation' && (await barShown()), { explorateur: await explorerShown(), apps: appIds() });
 }
 
 // ===== 6. Automation+ pour sa table : le graphe est dans `Automation`, la vue n'a aucun réglage.
@@ -264,6 +285,12 @@ if (!readonly) {
   await setOptions({ modeleDeLaVue: DOCUMENT.id });
   await restart();
   await arrivesOnPublipostage(DOCUMENT, 'le modèle de la vue de Publipostage+ parle avant la table : Publipostage+ s\'ouvre, même avec la ligne `Workflow` d\'Automation+');
+
+  // Les autres réglages de Publipostage+ (droits, date du dernier export) ne parlent pas avant la table : la table est lue, Automation+ s'ouvre.
+  await setOptions({ dateDernierExport: 'Date', droitsAcces: RIGHTS });
+  await restart();
+  await page.waitForTimeout(1500);
+  await arrivesOnAutomation('la date d\'export et les droits de Publipostage+ ne parlent pas avant la table : Automation+ s\'ouvre par sa ligne `Workflow`');
 
   // La ligne ne désigne pas la vue : une autre table, ou un autre type de ligne.
   const rowId = workflow ? workflow.id : 0;

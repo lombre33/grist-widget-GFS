@@ -28,7 +28,10 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
    Les réglages de la vue ne gardent que ce qui se refait en un clic. Toute clé de réglage nouvelle porte le préfixe de
    l'app (cahier 5.5). Une clé déclarée dans `reglages` sert aussi à l'arrivée : une vue qui en porte une, avec une valeur,
    s'ouvre sur ton app dans GFS (cahier 6.2, point 2) ; pour retirer un choix, écris `null` ou retire la clé, les deux
-   disent « pas de choix ».
+   disent « pas de choix ». **Seulement les clés qui disent quoi ouvrir** : si une clé n'est qu'un réglage (des droits, une
+   colonne, une date), ne la compte pas à l'arrivée en la laissant hors de `reglagesArrivee` (contrats 2.5, point 5) : une vue
+   qui n'a que celle-là arrive sur l'explorateur, pas sur la page de départ de ton app. Un choix que tu coupes sans le
+   retirer s'écrit avec `enabled: false`, il ne compte pas non plus.
 3. **Préserver l'inconnu** : un fichier d'un type que l'app ne sait pas ouvrir est listé grisé, jamais ouvert, jamais
    réenregistré, jamais proposé comme fichier de départ ; un nœud ou un attribut inconnu dans un contenu est gardé tel quel à
    l'enregistrement (cahier 5.4).

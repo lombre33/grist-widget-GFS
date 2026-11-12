@@ -656,6 +656,11 @@ enregistrée par l'autre app.
    dans les réglages (Automation+ 0.15.0 : la ligne `Workflow` de `Automation`), se déclare par `arrivee` dans son manifeste
    (contrats 2.5, point 4) ; quand aucun réglage de la section ne désigne une app, GFS lit cette table et ouvre l'app dont une
    ligne porte la table de la section. Un réglage de la vue parle toujours avant la table. Contrats 7.4, point 7.
+   **Resserré le 12/11** (choix du porteur, « Seulement si un modèle est choisi », après une vue qui arrivait sur la page blanche de
+   Publipostage+ sans aucun modèle choisi) : seules les clés qu'un manifeste dit « d'arrivée » (`reglagesArrivee`) désignent l'app.
+   Pour Publipostage+ : le modèle de la vue et le modèle selon la ligne (un choix coupé, décoché, ne compte pas). Ses droits d'accès,
+   la colonne de la date du dernier export et celle des pièces jointes ne disent pas quoi ouvrir : une vue qui n'a que ceux-là arrive
+   sur l'explorateur. Sans `reglagesArrivee`, toutes les clés de l'app comptent comme avant (Automation+ : `workflow`). Contrats 2.5, point 5.
 3. Sinon, une seule app installée : elle s'ouvre. Sinon : l'explorateur. *Pas codé au prototype : « une seule app
    installée : elle s'ouvre » (sans clé d'une app, l'explorateur, le plus prudent), ni le point 1 (rien n'écrit encore
    `gfs.depart`).*

@@ -280,12 +280,12 @@ async function mount() {
   const explorer = new Explorer({
     container: stage, i18n, locale, now: () => new Date(), appName: () => 'Publipostage+', received,
     typeLabel: file => (file.received ? received.typeLabel(file) : baseLabel(file)),
-    lockOf: file => (file.received ? received.lockOf(file) : (file.type === 'macro' ? { text: i18n.t('ex.lockedExtension', { name: 'Macro-modèles' }) } : null)), newTypes: () => [], importTypes: () => [], canClose: () => true,
+    lockOf: file => (file.received ? received.lockOf(file) : (file.type === 'macro' ? { text: i18n.t('ex.lockedExtension', { name: 'Macro-modèles' }) } : null)), newTypes: () => [], importTypes: () => [], canClose: () => window.__canClose !== false,
     notice: text => window.__notices.push(text), settings: () => settingsItems({ t: i18n.t, language: () => ({ choice: window.__language, grist: language }), onLanguage: value => { window.__language = value; }, onTheme: () => theme.open(),
       langtool: () => ({ shown: window.__langtool, toggle: () => { window.__langtool = !window.__langtool; } }), place, onAbout: () => window.__about() }),
     onOpen: file => { window.__opened = file.name; }, onNew: () => {},
     opened: { keys: () => openedFiles.keys(), shown: () => openedFiles.shown(SESSION), remove: key => openedFiles.remove(key) },
-    onImport: () => {}, onClose: () => {}, onApps: () => {}, onRights: () => window.__rights(window.__rightsKind || 'protege'), sharing: { whyNot: () => null, whyNotFolder: path => (path.startsWith('Espaces') && path.split('/').length < 3 ? i18n.t('share.folder.space') : null), folderFile: path => ({ key: `dossier:${path}`, name: path.split('/').pop(), path, mine: !path.startsWith('Espaces/') }), open: file => window.__share(window.__shareKind || 'actif', file) }, onWeight: estimate => window.__weight(estimate), personal: () => true, kept: null, trash: bin, copying,
+    onImport: () => {}, onClose: () => {}, onApps: () => {}, sharing: { whyNot: () => null, whyNotFolder: path => (path.startsWith('Espaces') && path.split('/').length < 3 ? i18n.t('share.folder.space') : null), folderFile: path => ({ key: `dossier:${path}`, name: path.split('/').pop(), path, mine: !path.startsWith('Espaces/') }), open: file => window.__share(window.__shareKind || 'actif', file) }, onWeight: estimate => window.__weight(estimate), personal: () => true, kept: null, trash: bin, copying,
     attachments: async () => { window.__attachments += 1; if (window.__attachmentsFail) return { error: new Error(window.__attachmentsFail) }; return { data: attachmentsTable() }; },
     filing: { togglePin: noted('pin', 'name'), rename: noted('rename', 'name'), moveFile: noted('move', 'name'), renameFolder: async path => { window.__filing.push(['renameFolder', path]); }, moveFolder: async path => { window.__filing.push(['moveFolder', path]); }, ...moving,
       newFolder: () => filing.newFolder(), deleteFolder: path => filing.deleteFolder(path), undoStack: filing.undoStack },
@@ -309,6 +309,7 @@ async function mount() {
     window.__opened = null;
     for (const key of openedFiles.keys()) openedFiles.remove(key);
     window.__appOpen = true;
+    window.__canClose = true;
     setting.reset(); // l'ambiance d'origine, comme au départ ; « Revenir à Grist Factory » laisse l'accessibilité renforcée (un besoin, pas un goût) : on l'éteint aussi
     setting.chooseAccess(false);
     window.__resetSettings();
@@ -359,7 +360,7 @@ async function mount() {
       .then(answer => { window.__leave = answer ? 'force' : 'stay'; });
   };
   // Le panneau « Permissions » (js/rights/rights-window.js, test/droits-firefox.mjs) : la vraie fenêtre sur un état que le lecteur aurait rendu ; `kind` : 'pas' (rien posé, un lien public qui ouvre une table protégée),
-  // 'protege' (Encadré partout, structure fermée, deux liens), 'autre' (des règles à la main), 'proprietaire-seul' (une personne qui n'est pas propriétaire). `window.__rightsKind` désigne celui que le mot du pied ouvre.
+  // 'protege' (Encadré partout, structure fermée, deux liens), 'autre' (des règles à la main), 'proprietaire-seul' (une personne qui n'est pas propriétaire). Le panneau n'a plus de porte dans l'explorateur (la pastille du pied est retirée, 12/11) : l'essai l'ouvre par `window.__rights(kind)`. `window.__canClose = false` : aucune app n'est ouverte, « Fermer » se cache.
   const LONG = 'Publipostage_Modeles_Attestations_De_Formation_Fin_De_Session';
   const FRESH = { shared: { ok: true, firstRule: true }, 'remove-level': { ok: false, reason: 'none' }, close: { ok: true, firstRule: true }, open: { ok: false, reason: 'none' }, sharing: { ok: true, firstRule: true }, unsharing: { ok: false, reason: 'none' } };
   const DONE = { shared: { ok: false, reason: 'already' }, 'remove-level': { ok: true }, close: { ok: false, reason: 'already' }, open: { ok: true }, sharing: { ok: true, firstRule: true }, unsharing: { ok: false, reason: 'none' } };
@@ -374,12 +375,10 @@ async function mount() {
   };
   window.__rights = kind => {
     const state = states[kind];
-    explorer.setRights(state.rules);
     window.__rightsActs = [];
     return openRights({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], load: async () => state,
       act: async act => { window.__rightsActs.push(act); await ask({ title: act, message: act, confirmLabel: 'OK', cancelLabel: 'Annuler', safeFirst: true, container: stage, inertTargets: () => [explorer.root] }); } });
   };
-  window.__rightsState = kind => explorer.setRights(states[kind].rules);
   // La fenêtre « Partager » (js/sharing/share-window.js, test/partager-firefox.mjs) : la vraie fenêtre sur un état que le contrôleur aurait lu ; `kind` : 'inactif' (le partage n'est pas activé, une personne propriétaire),
   // 'actif' (propriétaire : des lignes de personnes à l'adresse très longue, de catégories, une fin d'accès, un accès échu), 'lecture' (une personne qui ne peut rien changer). `window.__shareActs` note ce que la
   // fenêtre demande d'écrire.

@@ -1,21 +1,19 @@
-// Le panneau « Permissions » et son mot dans le pied de l'explorateur sous Firefox (règle du 03/11 : toute nouvelle interface ajoute ses mesures à test/interfaces-firefox.test.mjs ; contrats 11.4 point 7).
-// Le vrai panneau (js/rights/rights-window.js) s'ouvre sur quatre états que le lecteur des droits aurait rendus (test/pages/explorateur.js, `window.__rights`) : rien posé avec un lien public qui ouvre une table
-// protégée, Encadré partout structure fermée, des règles à la main, une personne qui n'est pas propriétaire. À chaque largeur de l'essai : le mot du pied (icône et mot ensemble, dans le pied, sans
-// le faire déborder), le panneau tient dans la page, son titre et son bouton restent en place, seul le contenu défile, rien n'en sort, le clavier est sur « Fermer », Tab reste dedans, Échap le ferme et
-// le clavier revient sur le mot du pied ; la vraie souris ouvre le panneau depuis le mot du pied et le ferme par « Fermer ».
+// Le panneau « Permissions » sous Firefox (règle du 03/11 : toute nouvelle interface ajoute ses mesures à test/interfaces-firefox.test.mjs ; contrats 11.4 point 7). Depuis le 12/11 la pastille du pied n'existe
+// plus (choix du porteur) : le panneau n'a plus de porte dans l'explorateur, l'essai l'ouvre par la page d'essai (`window.__rights`). Le vrai panneau (js/rights/rights-window.js) s'ouvre sur quatre états que le
+// lecteur des droits aurait rendus (test/pages/explorateur.js) : rien posé avec un lien public qui ouvre une table protégée, Encadré partout structure fermée, des règles à la main, une personne qui n'est pas
+// propriétaire. À chaque largeur de l'essai : le panneau tient dans la page, son titre et son bouton restent en place, seul le contenu défile, rien n'en sort, le clavier est sur « Fermer », Tab reste dedans,
+// Échap le ferme ; le pied de l'explorateur ne porte plus de pastille et ne déborde pas.
 import { createI18n } from '../js/i18n/i18n.js';
 import { Run, delay } from './corbeille-firefox.mjs';
 
-// Ce que la page montre du panneau et du mot du pied.
+// Ce que la page montre du panneau et du pied (qui ne porte plus de pastille).
+
 function state() {
   const modal = document.querySelector('.mod.rt');
-  const chip = document.querySelector('.rights-chip');
   const foot = document.querySelector('.ex-foot');
   const text = node => (node ? node.textContent.replace(/\s+/g, ' ').trim() : null);
   const within = (node, box) => { const at = node.getBoundingClientRect(); return at.width > 0 && (at.right > box.right + 1 || at.left < box.left - 1); };
-  const chipBox = chip ? chip.getBoundingClientRect() : null;
-  const footBox = foot ? foot.getBoundingClientRect() : null;
-  const out = { chip: chip ? { word: chip.dataset.word, text: text(chip), icon: Boolean(chip.querySelector('svg')), inFoot: chipBox.right <= footBox.right + 1 && chipBox.left >= footBox.left - 1, height: Math.round(chipBox.height), visible: chipBox.width > 0 } : null, footOverflow: foot ? foot.scrollWidth > foot.clientWidth + 1 : null, modal: null };
+  const out = { chip: document.querySelector('.rights-chip') !== null, footOverflow: foot ? foot.scrollWidth > foot.clientWidth + 1 : null, modal: null };
   if (modal) {
     const box = modal.getBoundingClientRect();
     const head = modal.querySelector('.mod-head').getBoundingClientRect();
@@ -45,15 +43,14 @@ export async function droitsProblems(page, language, tag) {
     return now;
   };
   try {
-    for (const [kind, word, needs] of [['pas', 'pas', [t('rights.lead.pas'), t('rights.level.ouvert'), t('rights.link.protected', { n: 1, tables: 'FormPlus_Pub_3' }), t('rights.act.title'), t('rights.act.shared'), t('rights.act.close')]],
+    for (const [kind, , needs] of [['pas', 'pas', [t('rights.lead.pas'), t('rights.level.ouvert'), t('rights.link.protected', { n: 1, tables: 'FormPlus_Pub_3' }), t('rights.act.title'), t('rights.act.shared'), t('rights.act.close')]],
       ['protege', 'protege', [t('rights.lead.protege'), t('rights.level.encadre'), t('rights.structure.closed'), t('rights.act.remove'), t('rights.act.open')]], ['autre', 'autre', [t('rights.lead.autre'), t('rights.level.autre'), t('rights.act.why.foreign'), t('rights.act.why.already')]],
       ['proprietaire-seul', 'none', [t('rights.lead.ownerOnly'), t('rights.role.false'), t('rights.links.owner-only')]]]) {
       await run.reset();
-      await page.run(name => { window.__rightsKind = name; window.__rightsState(name); }, kind);
-      const chip = await expect(kind, 'le mot du pied devait dire l\'état, avec son icône, dans le pied, sans le faire déborder', s => s.chip && s.chip.word === word && s.chip.icon && s.chip.inFoot && !s.footOverflow && s.chip.visible);
-      if (chip.chip && word !== 'none' && !chip.chip.text.includes(t(`rights.chip.${word}`))) run.note(kind, `le mot du pied devait être « ${t(`rights.chip.${word}`)} » (il dit « ${chip.chip.text} »)`);
-      await run.clickSelector('.rights-chip');
-      const open = await expect(kind, 'le panneau devait s\'ouvrir à la souris, le clavier sur « Fermer »', s => s.modal && s.modal.focus === 'rights-close');
+      await page.run(name => { window.__rightsKind = name; }, kind);
+      await expect(kind, 'le pied ne devait porter aucune pastille des droits ni déborder', s => !s.chip && !s.footOverflow);
+      await page.run(name => { void window.__rights(name); }, kind);
+      const open = await expect(kind, 'le panneau devait s\'ouvrir, le clavier sur « Fermer »', s => s.modal && s.modal.focus === 'rights-close');
       const body = open.modal ? open.modal.body : '';
       for (const part of [t('rights.title'), ...needs]) if (!body.includes(part) && !(open.modal && open.modal.title === part)) run.note(kind, `le panneau devait dire « ${part} » (il dit « ${String(body).slice(0, 160)} »)`);
       if (open.modal) {
@@ -94,11 +91,11 @@ export async function droitsProblems(page, language, tag) {
         }
         if (back.panel !== 'visible' || back.key !== 'rights-act-manage') run.note(kind, `le panneau devait revenir à la fermeture, le clavier sur « Gérer les partages… » (état : ${JSON.stringify(back)})`);
       }
-      // Tab reste dans le panneau ; Échap le ferme et rend le clavier au mot du pied ; la souris le rouvre, « Fermer » le ferme.
+      // Tab reste dans le panneau ; Échap le ferme ; il se rouvre, « Fermer » le ferme à la souris.
       for (let i = 0; i < 3; i += 1) { await page.press('Tab'); const inside = await snap(); if (!inside.modal || !inside.modal.inside) run.note(kind, 'Tab devait rester dans le panneau'); }
       await page.press('Escape');
       await expect(kind, 'Échap devait fermer le panneau', s => s.modal === null);
-      await run.clickSelector('.rights-chip');
+      await page.run(name => { void window.__rights(name); }, kind);
       await expect(kind, 'le panneau devait se rouvrir', s => s.modal !== null);
       await run.clickSelector('[data-fk="rights-close"]');
       await expect(kind, '« Fermer » devait fermer le panneau', s => s.modal === null);

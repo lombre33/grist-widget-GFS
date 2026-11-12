@@ -297,7 +297,7 @@ export class GfsController {
         langtool: () => ({ shown: this.correcteurs.state.shown, toggle: () => this.#chooseLangtool() }),
         place: () => this.dock.placeRow(), onAbout: () => this.#openAbout(),
       }),
-      onRights: () => void this.rights.open(this.explorer), sharing: this.rights.sharing, onWeight: estimate => void this.weight.open(estimate),
+      sharing: this.rights.sharing, onWeight: estimate => void this.weight.open(estimate),
       onOpen: file => this.openings.openFile(file), onNew: entry => this.openings.openNew(entry), onImport: entry => void this.openings.importFile(entry),
         onClose: () => this.hideExplorer(), onApps: () => void this.openModules(),
       personal: () => Boolean(this.identity), filing, kept: this.kept, attachments: () => loadAttachments(this.port),
@@ -419,7 +419,7 @@ export class GfsController {
     if (this.session) this.session.show(false);
     this.explorer.open();
     void this.refreshFiles();
-    void this.rights.refresh(this.explorer);
+    this.rights.resume(this.explorer);
   }
 
   hideExplorer() {

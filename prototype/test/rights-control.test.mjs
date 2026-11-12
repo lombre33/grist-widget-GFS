@@ -16,9 +16,8 @@ const TABLES = {
 function setup({ owner = true, full = true } = {}) {
   const read = [];
   const port = { doc: { fetchTable: async name => { read.push(name); return columns(TABLES[name] || []); } } };
-  const shown = [];
   const control = new RightsControl({ port, transfer: { isOwner: async () => owner }, prefixes: () => [], now: () => 0, container: null, inertTargets: () => [], t: key => key, fullAccess: () => full });
-  return { control, read, shown, explorer: { setRights: rules => shown.push(rules) } };
+  return { control, read };
 }
 
 test('rules : un propriétaire prouvé reçoit les règles lues', async () => {
@@ -40,7 +39,7 @@ test('rules : une personne qui n\'est pas propriétaire, ou non prouvée, ne re�
 });
 
 test('les mots et la phrase du panneau suivent la raison : propriétaire seul, non prouvé, accès trop bas, rien à juger', () => {
-  assert.equal(chipKey({ readable: false, reason: 'owner-only' }), 'rights.chip.none', 'le mot du pied reste « Permissions » : GFS ne dit ni protégé ni ouvert');
+  assert.equal(chipKey({ readable: false, reason: 'owner-only' }), 'rights.chip.none', 'le mot du panneau reste « Permissions » : GFS ne dit ni protégé ni ouvert');
   assert.equal(leadKey({ readable: false, reason: 'owner-only' }), 'rights.lead.ownerOnly');
   assert.equal(leadKey({ readable: false, reason: 'unknown' }), 'rights.lead.unknown');
   assert.equal(leadKey({ readable: false, reason: 'access' }), 'rights.lead.unreadable');
@@ -49,9 +48,8 @@ test('les mots et la phrase du panneau suivent la raison : propriétaire seul, n
   assert.equal(chipKey({ readable: true, word: 'protege' }), 'rights.chip.protege');
 });
 
-test('refresh : le mot du pied vient des règles du moment', async () => {
-  const { control, shown, explorer } = setup({ owner: true });
-  await control.refresh(explorer);
-  assert.equal(shown.length, 1);
-  assert.equal(shown[0].word, 'pas');
+test('le contrôleur ne lit plus les règles pour le pied : l\'explorateur n\'a plus de mot des droits (12/11), seule l\'ouverture du panneau les lit', () => {
+  const { control } = setup({ owner: true });
+  assert.equal(control.refresh, undefined, 'plus de `refresh` : rien ne lit les règles à chaque ouverture de l\'explorateur');
+  assert.equal(typeof control.resume, 'function', 'la reprise après un rechargement reste');
 });

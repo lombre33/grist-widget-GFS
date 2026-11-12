@@ -14,7 +14,7 @@
 
 /* ---------- cibles de 36 px : l'en-tête, la barre de GFS, les boutons ---------- */
 :root[data-ambiance="renforcee"] :is(.tb) { height: var(--target); min-width: var(--target); }
-:root[data-ambiance="renforcee"] :is(.btn, .btn.sm, .trash-bar .btn, .inp-search input, .rights-chip, .nw-input) { height: var(--target); }
+:root[data-ambiance="renforcee"] :is(.btn, .btn.sm, .trash-bar .btn, .inp-search input, .nw-input) { height: var(--target); }
 :root[data-ambiance="renforcee"] .inp-search .ic { left: 10px; top: calc(50% - 7px); }
 :root[data-ambiance="renforcee"] .inp-search input { padding-left: 32px; }
 :root[data-ambiance="renforcee"] .floater { width: var(--target); height: var(--target); }

@@ -6,7 +6,6 @@ export const RIGHTS_STRINGS = Object.freeze({
   fr: {
     'rights.title': 'Permissions',
     'rights.close': 'Fermer',
-    'rights.chip.tip': 'Voir les permissions du document',
     'rights.chip.none': 'Permissions',
     'rights.chip.pas': 'Pas protégé',
     'rights.chip.partie': 'Protégé en partie',
@@ -88,7 +87,6 @@ export const RIGHTS_STRINGS = Object.freeze({
   en: {
     'rights.title': 'Permissions',
     'rights.close': 'Close',
-    'rights.chip.tip': 'See the document’s permissions',
     'rights.chip.none': 'Permissions',
     'rights.chip.pas': 'Not protected',
     'rights.chip.partie': 'Partly protected',

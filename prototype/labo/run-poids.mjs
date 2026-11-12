@@ -297,21 +297,22 @@ async function attachmentsMouse(run, { box, base, footBefore }) {
   return first;
 }
 
-// Au clavier : la case est un arrêt de Tab avant la pastille des droits et « Ouvrir », son anneau de focus se voit, Espace la coche et elle garde le focus.
+// Au clavier : la case est un arrêt de Tab avant « Ouvrir », son anneau de focus se voit, Espace la coche et elle garde le focus.
 async function attachmentsKeyboard(run, { box, base, first }) {
   const { page, frame } = run;
-  // 3. Le clavier : de la case, Maj+Tab vient de la liste et Tab va à la pastille des droits, « Ouvrir » puis « Fermer » ; Espace coche sans que la case perde le focus ; l'anneau de focus se voit.
+  // 3. Le clavier : de la case, Maj+Tab vient de la liste et Tab va à « Ouvrir », puis à « Fermer » quand une app est ouverte (sans app, « Fermer » est caché : décidé le 12/11) ; Espace coche sans que
+  // la case perde le focus ; l'anneau de focus se voit.
   await frame.locator('.ex-foot button', { hasText: t('ex.open') }).first().focus();
   await page.keyboard.press('Shift+Tab');
-  await page.keyboard.press('Shift+Tab');
   const onBox = await frame.evaluate(() => document.activeElement && document.activeElement.matches('.ex-pj input'));
+  const wanted = await frame.evaluate(() => [...document.querySelectorAll('.ex-foot > .btn')].filter(button => !button.hidden).map(button => button.textContent.trim()));
   const stops = [];
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < wanted.length; i++) {
     await page.keyboard.press('Tab');
-    stops.push(await frame.evaluate(() => (document.activeElement.matches('.rights-chip') ? 'droits' : document.activeElement.textContent.trim())));
+    stops.push(await frame.evaluate(() => document.activeElement.textContent.trim()));
   }
-  check('au clavier, la case est juste avant la pastille des droits, « Ouvrir » et « Fermer » (Tab : droits, Ouvrir, Fermer)', onBox && stops.join('|') === ['droits', t('ex.open'), t('ex.close')].join('|'), { onBox, stops });
-  for (let i = 0; i < 3; i++) await page.keyboard.press('Shift+Tab');
+  check('au clavier, la case est juste avant « Ouvrir » puis « Fermer » (s\'il est là) : Tab les prend dans l\'ordre', onBox && wanted[0] === t('ex.open') && stops.join('|') === wanted.join('|'), { onBox, stops, wanted });
+  for (let i = 0; i < wanted.length; i++) await page.keyboard.press('Shift+Tab');
   const ring = await box.evaluate(input => { const style = getComputedStyle(input); return { focused: document.activeElement === input, visible: input.matches(':focus-visible'), style: style.outlineStyle, width: style.outlineWidth }; });
   check('la case prise au clavier montre son anneau de focus (2 px)', ring.focused && ring.visible && ring.style === 'solid' && parseFloat(ring.width) >= 2, ring);
   const keyStart = Date.now();

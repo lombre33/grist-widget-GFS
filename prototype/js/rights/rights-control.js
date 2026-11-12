@@ -1,6 +1,7 @@
-// Ce que le contrôleur fait des droits (étape 6, contrats 11.4 point 7 ; 5.2 point 8) : le lecteur (js/rights/rights-reader.js), le mot du pied de
-// l'explorateur, le panneau « Permissions » (js/rights/rights-window.js) et le rôle que `contexte` rend aux apps. Tout est en lecture ; le fichier est à part
-// pour que le contrôleur ne grossisse que de quelques lignes.
+// Ce que le contrôleur fait des droits (étape 6, contrats 11.4 point 7 ; 5.2 point 8) : le lecteur (js/rights/rights-reader.js), le panneau « Permissions »
+// (js/rights/rights-window.js) et le rôle que `contexte` rend aux apps ; le fichier est à part pour que le contrôleur ne grossisse que de quelques lignes.
+// Le mot du pied de l'explorateur (la pastille « Pas protégé ») a été retiré le 12/11, choix du porteur : le panneau n'a plus de porte dans l'interface
+// (`open` n'est appelé que par `resume`), « Gérer les partages… » et le partage de fichiers restent joignables par « Partager… ».
 
 import { RightsReader } from './rights-reader.js';
 import { openRights } from './rights-window.js';
@@ -47,15 +48,9 @@ export class RightsControl {
     return this.reader.rules();
   }
 
-  // Redonne à l'explorateur le mot du pied d'après les règles du moment.
-  async refresh(explorer) {
-    explorer.setRights(await this.rules());
-    this.resume(explorer);
-  }
-
   // Le panneau : tout se relit à l'ouverture (une règle posée dans Grist recharge la page, mais un partage publié ne la recharge pas). Un propriétaire y trouve
   // aussi les gestes « poser » et « retirer ».
-  open(explorer) {
+  open() {
     const { container, inertTargets, t, fullAccess } = this.#opts;
     const asking = options => ask({ container, inertTargets, ...options });
     return openRights({
@@ -64,7 +59,6 @@ export class RightsControl {
         const [rules, owner, links] = await Promise.all([this.rules(), this.reader.owner(),
           fullAccess() ? this.reader.links() : { status: 'unreadable', links: [] }]);
         const plans = rules.readable ? await this.writer.plans() : null;
-        explorer.setRights(rules);
         return { rules, owner, links, plans };
       },
       act: async kind => {
@@ -78,7 +72,7 @@ export class RightsControl {
   // fichiers un instant).
   resume(explorer) {
     const wanted = this.writer.take();
-    if (wanted === 'rights') void this.open(explorer);
+    if (wanted === 'rights') void this.open();
     else if (wanted === 'manage') void this.manage.open();
     else if (wanted && wanted.startsWith('share:')) void this.#reopenShare(explorer, wanted.slice(6));
   }

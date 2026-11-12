@@ -1,3 +1,5 @@
+// ATTENTION (12/11) : la pastille du pied (« Pas protégé ») est retirée, choix du porteur : le panneau « Permissions » n'a plus de porte dans l'explorateur et ce banc, qui l'ouvrait par elle, ne
+// se rejoue plus tel quel. Une carte propose de supprimer le panneau ou de lui rendre une porte.
 // Les permissions lues par GFS (étape 6 ; contrats 11.4 point 7, 11.9 point 8 et 5.2 point 8), jouées dans un VRAI serveur Grist (l'image officielle, `bash vrai-serveur.sh`), à 700 × 400, à la vraie souris
 // et au vrai clavier. Le serveur d'essai ne connaît qu'une personne à la fois (GRIST_DEFAULT_EMAIL) : deux temps, entre lesquels on relance le serveur (voir LISEZ-MOI.md, « Les droits »).
 //   PHASE=proprietaire  la personne d'essai crée le document et le partage, GFS lit les règles : « Pas protégé » sans règle ; les règles de GFS (« Encadré » partout, structure fermée) posées par

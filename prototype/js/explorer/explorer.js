@@ -13,7 +13,7 @@ import { receivedFolders } from '../sharing/received-folders.js';
 import { directFiles } from '../sharing/direct-shares.js';
 import { NO_OPENED } from './opened-files.js';
 import { words } from '../ui/search.js';
-import { buildShell, relabel, paintBell, rightsChip, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar, trashBar, groupBar, totalBar,
+import { buildShell, relabel, paintBell, crumbs, tree, listHead, fileRow, folderRow, tile, emptyMessage, infoBar, trashBar, groupBar, totalBar,
   pjBox } from './explorer-view.js';
 import { sumWeights } from '../weight/weight.js';
 import { PiecesBox } from './explorer-pj.js';
@@ -82,9 +82,8 @@ export class Explorer {
 
   // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), importTypes(), onOpen(file), onNew(entry),
   //   onImport(entry), onClose(), onApps(), canClose(), notice(text),
-  //          settings() → les articles du menu « Réglages » (js/shell/settings-menu.js : langue, thème, position de la barre, « À propos »), onRights() (le mot
-  //          du
-  //          pied ouvre le panneau des permissions), onWeight({ list, pj }) (le total du pied ouvre la fenêtre « Poids du document » : la liste en octets et,
+  //          settings() → les articles du menu « Réglages » (js/shell/settings-menu.js : langue, thème, position de la barre, « À propos »),
+  //          onWeight({ list, pj }) (le total du pied ouvre la fenêtre « Poids du document » : la liste en octets et,
   //          case cochée et lue, les pièces jointes), personal() → le rangement est-il à la personne seule ?,
   //          filing: { togglePin(file), rename(file), moveFile(file), renameFolder(path), moveFolder(path), moveFileTo(file, dossier), moveFolderTo(path,
   //          dossier) },
@@ -247,12 +246,6 @@ export class Explorer {
     newBtn.title = t('ex.choose.newOff');
   }
 
-  // Le mot du pied (contrats 11.4, point 7) d'après ce que le lecteur des droits a lu (`RightsReader.rules()`), ou null avant la lecture.
-  setRights(rules) {
-    this.#refs.rights = rules;
-    rightsChip(this.#refs, this.#opts.i18n, rules);
-  }
-
   // La langue de GFS a changé : les textes du cadre fixe se réécrivent, et tout le reste se redessine dans la nouvelle langue (dates comprises).
   relocalize({ i18n, locale }) {
     this.#opts = { ...this.#opts, i18n, locale };
@@ -302,7 +295,9 @@ export class Explorer {
     const choice = state.type === 'all' ? null : this.#types().find(item => item.value === state.type);
     typeBtn.replaceChildren(...(choice ? [h('span', { class: 'tyi', 'data-fam': choice.known ? choice.family : null }, icon(choice.icon))] : []),
       choice ? choice.label : t('ex.allTypes'), icon('chev-down'));
-    closeBtn.setAttribute('aria-disabled', String(!this.#choice && !this.#opts.canClose()));
+    // « Fermer » ramène à l'app ouverte, « Annuler » (un choix de fichier) à celle qui l'attendait ; sans l'une ni l'autre il ne ferait rien : il se cache
+    // (décidé le 12/11). Échap garde son explication.
+    closeBtn.hidden = !this.#choice && !this.#opts.canClose();
     paintBell(this.#refs, t, pendingOf(this.#arrivals).length, this.#choice !== null);
   }
 
@@ -432,13 +427,12 @@ export class Explorer {
   // ---------- gestes ----------
 
   #bind() {
-    const { search, viewList, viewTiles, typeBtn, newBtn, openBtn, closeBtn, appsBtn, settingsBtn, rightsBtn, pjInput, crumbs: crumbsNav, tree: treeNav, list,
+    const { search, viewList, viewTiles, typeBtn, newBtn, openBtn, closeBtn, appsBtn, settingsBtn, pjInput, crumbs: crumbsNav, tree: treeNav, list,
       notices } = this.#refs;
     search.addEventListener('input', () => { this.state.q = search.value; this.state.sel = null; this.#renderCrumbs(); this.#renderList(); });
     appsBtn.addEventListener('click', () => this.#opts.onApps());
     settingsBtn.addEventListener('click', () => this.#settingsMenu());
     this.#refs.bellBtn.addEventListener('click', () => this.#bellMenu());
-    rightsBtn.addEventListener('click', () => this.#opts.onRights());
     this.#refs.total.addEventListener('click', () => this.#openWeight());
     pjInput.addEventListener('click', event => this.#onPj(event));
     viewList.addEventListener('click', () => this.#setDisplay('list'));

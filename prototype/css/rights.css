@@ -38,13 +38,3 @@
 .rt-warn { color: var(--warn-ink); }
 .rt-bad { color: var(--danger-ink); font-weight: 600; }
 
-/* Le mot dans le pied de l'explorateur : un bouton comme ceux du pied, qui ouvre le panneau, dans sa propre boîte (les boutons du pied sont les enfants directs du pied : « Ouvrir » et « Fermer »). Le mot et l'icône vont toujours ensemble. */
-.ex-rights { flex: none; display: flex; align-items: center; }
-/* Le pied compte les boutons `.btn` (les essais du labo prennent le premier) : la pastille a donc sa propre base, la même que celle d'un bouton. */
-.rights-chip { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; font: inherit; font-size: max(12.5px, var(--fs-min)); font-weight: 600; color: var(--text); background: var(--surface); border: var(--bw) solid var(--border-strong); border-radius: var(--radius-btn); box-shadow: var(--shadow-ctl); cursor: pointer; white-space: nowrap; }
-.rights-chip:hover { background: var(--surface-sunken); }
-.rights-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.rights-chip .ic { width: 14px; height: 14px; color: var(--text-muted); }
-.rights-chip[data-word="protege"] .ic { color: var(--good); }
-.rights-chip[data-word="pas"] .ic { color: var(--warn-ink); }
-@media (max-width: 519px) { .rights-chip .lbl { display: none; } }

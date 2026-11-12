@@ -3028,6 +3028,9 @@ soit la dernière de sa ressource. Les droits s'écrivent comme Grist les range 
    protègent) ; « Permissions » tant qu'il n'a rien lu ou qu'il n'a rien à juger. Le niveau d'une table se lit à la note de ses règles (« GFS : Encadré »), jamais à leur contenu. **Seulement quand
    un propriétaire a lu les règles** (la preuve est celle de `contexte.role`, 5.2, point 8) : mesuré, dès qu'une règle refuse la lecture d'une table à une personne, les tables de règles
    lui arrivent **vides**, et vides elles ne disent pas « aucune règle » ; à toute autre personne le pied dit « Permissions », et le panneau en donne la raison.
+   **Retiré le 12/11 (choix du porteur, carte « Pas protégé » : « Retirer »)** : le pied de l'explorateur ne porte plus ni la pastille ni son mot. Le panneau « Permissions » (liens publics, « Partagé » du rangement, structure) n'a plus de
+   porte dans l'interface ; son code et ses essais restent (il n'est joignable que par la reprise d'après un rechargement), et « Gérer les partages… » comme l'activation du partage restent joignables par « Partager… ». GFS ne lit plus les règles
+   à chaque ouverture de l'explorateur : seule l'ouverture du panneau les lit. Qui veut les liens publics ou la structure les trouve dans Grist.
 
 ### 11.5 Poser et retirer
 

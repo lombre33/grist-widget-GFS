@@ -1,3 +1,5 @@
+// ATTENTION (12/11) : la pastille du pied (« Pas protégé ») est retirée, choix du porteur : le panneau « Permissions » n'a plus de porte dans l'explorateur et ce banc, qui l'ouvrait par elle, ne
+// se rejoue plus tel quel. Une carte propose de supprimer le panneau ou de lui rendre une porte.
 // Poser et retirer des règles depuis le panneau « Permissions » (étape 7, lot a ; contrats 11.4, 11.5), jouées dans un VRAI serveur Grist (`bash vrai-serveur.sh`), à 700 × 400, à la vraie souris. Le serveur
 // d'essai ne connaît qu'une personne à la fois (GRIST_EMAIL) : trois temps sur le même document, en relançant le serveur entre eux (voir LISEZ-MOI.md, « Poser des règles »).
 //   PHASE=proprietaire  le document a le rangement de GFS et des lignes de trois personnes ; Annuler n'écrit rien ; « Poser Partagé » écrit les six règles, Grist recharge la page, GFS rouvre le panneau ;

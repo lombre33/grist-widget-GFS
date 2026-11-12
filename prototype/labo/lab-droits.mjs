@@ -1,3 +1,5 @@
+// ATTENTION (12/11) : la pastille du pied (« Pas protégé ») est retirée, choix du porteur : le panneau « Permissions » n'a plus de porte dans l'explorateur et ce banc, qui l'ouvrait par elle, ne
+// se rejoue plus tel quel. Une carte propose de supprimer le panneau ou de lui rendre une porte.
 // Les gestes communs des essais de droits dans un VRAI Grist (labo/run-droits.mjs, labo/run-poser.mjs) : le cadre de GFS prêt après un rechargement, le mot du pied, le panneau « Permissions »,
 // une action envoyée à l'API du document. Un seul endroit, pour que les essais ne se recopient pas.
 

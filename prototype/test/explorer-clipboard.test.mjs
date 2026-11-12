@@ -205,3 +205,73 @@ test('déposer le fichier qui était coupé : il n\'est plus à coller ; un fich
   await clipboard.moveTo('dir:Fantôme', 'Autre');
   assert.equal(log.notices.at(-1), FR.t('drag.gone', { name: 'Fantôme' }));
 });
+
+// Ctrl+D (12/11) : dupliquer d'un geste, sans presse-papiers.
+test('Ctrl+D sur un fichier : la copie est rangée dans le dossier de l\'original (pas dans le dossier ouvert), prend le clavier, et ne touche pas au presse-papiers', async () => {
+  const files = [{ ...file('aa', 'Facture.pdf'), folder: 'Factures/2026' }];
+  const { clipboard, log, place } = setup({ files });
+  place.path = 'Autre';
+  clipboard.take('gfs-fichiers:aa', 'copy');
+  await clipboard.take('gfs-fichiers:aa', 'duplicate');
+  assert.deepEqual(log.copies, [['gfs-fichiers:aa', 'Factures/2026']]);
+  assert.deepEqual(log.revealed, ['gfs-fichiers:neuf']);
+  assert.deepEqual(clipboard.held, { mode: 'copy', key: 'gfs-fichiers:aa', name: 'Facture.pdf' }, 'ce qui était copié reste à coller');
+  assert.deepEqual(log.notices, [FR.t('clip.copied', { name: 'Facture.pdf' })], 'la phrase de la copie est celle de js/files/copying.js, pas de GFS ici');
+});
+
+test('Ctrl+D à la racine ou depuis Récents : la copie va là où est l\'original ; le menu « Dupliquer » passe par le même chemin', async () => {
+  const files = [{ ...file('aa', 'Facture.pdf'), folder: '' }, { ...file('cc', 'Convocation', 'publipostage'), folder: 'Formation' }];
+  const { clipboard, log, place } = setup({ files, copyable: ['gfs-fichiers', 'publipostage'] });
+  place.view = 'recent';
+  await clipboard.take('gfs-fichiers:aa', 'duplicate');
+  await clipboard.duplicate(files[1]);
+  assert.deepEqual(log.copies, [['gfs-fichiers:aa', ''], ['publipostage:cc', 'Formation']]);
+});
+
+test('Ctrl+D sur un dossier, à la corbeille, ou sur un fichier que l\'app seule copie : la phrase dit pourquoi, rien n\'est copié', async () => {
+  const { clipboard, log, place } = setup({ copyable: [] });
+  await clipboard.take('dir:A/B', 'duplicate');
+  assert.equal(log.notices.at(-1), FR.t('clip.folderCopy'));
+  await clipboard.take('publipostage:cc', 'duplicate');
+  assert.equal(log.notices.at(-1), FR.t('ex.notice.appOnly', { app: 'Publipostage+' }));
+  place.view = 'trash';
+  await clipboard.take('gfs-fichiers:aa', 'duplicate');
+  assert.equal(log.notices.at(-1), FR.t('clip.inTrash'));
+  assert.equal(log.notices.length, 3);
+  assert.deepEqual([log.copies, log.revealed, clipboard.held], [[], [], null]);
+});
+
+test('Ctrl+D sur une ligne qui n\'est plus dans la liste : rien', async () => {
+  const { clipboard, log } = setup();
+  await clipboard.take('gfs-fichiers:zz', 'duplicate');
+  assert.deepEqual([log.notices, log.copies], [[], []]);
+});
+
+test('deux Ctrl+D qui se suivent font deux copies l\'une après l\'autre : la seconde ne démarre que quand la première est rangée (sinon les deux prendraient le même nom)', async () => {
+  const steps = [];
+  let running = 0;
+  const copy = async (item, folder) => {
+    running += 1;
+    steps.push(`début ${running}`);
+    if (running > 1) steps.push('chevauchement');
+    await new Promise(resolve => setTimeout(resolve, 20));
+    running -= 1;
+    steps.push('fin');
+    return { key: `${item.app}:copie${steps.length}`, name: item.name };
+  };
+  const { clipboard, log } = setup({ copy });
+  const first = clipboard.take('gfs-fichiers:aa', 'duplicate');
+  const second = clipboard.take('gfs-fichiers:aa', 'duplicate');
+  await Promise.all([first, second]);
+  assert.deepEqual(steps.filter(step => step !== 'fin' && step !== 'début 1'), [], 'jamais deux copies en même temps');
+  assert.equal(steps.filter(step => step === 'fin').length, 2);
+  assert.equal(log.revealed.length, 2);
+});
+
+test('une copie qui échoue ne bloque pas les Ctrl+D suivants', async () => {
+  let n = 0;
+  const { clipboard, log } = setup({ copy: async item => { n += 1; if (n === 1) throw new Error('refus'); return { key: `${item.app}:neuf`, name: 'ok' }; } });
+  await assert.rejects(clipboard.take('gfs-fichiers:aa', 'duplicate'), /refus/);
+  await clipboard.take('gfs-fichiers:aa', 'duplicate');
+  assert.deepEqual(log.revealed, ['gfs-fichiers:neuf']);
+});

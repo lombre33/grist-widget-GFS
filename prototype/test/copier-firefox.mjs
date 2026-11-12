@@ -1,8 +1,8 @@
 // La copie et le presse-papiers de l'explorateur sous Firefox (décision du porteur du 04/11 : tout se fait depuis l'explorateur, « Dupliquer » et Ctrl+C, Ctrl+X, Ctrl+V compris ; règle du 03/11 : toute
 // nouvelle interface ajoute ses mesures à test/interfaces-firefox.test.mjs). Les gestes se font à la vraie souris et au vrai clavier de Firefox, sur la page d'essai (test/pages/explorateur.js : le vrai
 // explorateur, le vrai `Copying`, un gardien de doublure qui ajoute la copie, un rangement de doublure qui déplace) : « Dupliquer » dans le menu et ses touches, Ctrl+C puis Ctrl+V dans un autre dossier,
-// Ctrl+X puis Ctrl+V, un dossier qui se coupe et ne se copie pas, coller ailleurs que dans un dossier, un fichier que l'app ne laisse pas copier, la recherche qui garde son presse-papiers, Ctrl+D laissée
-// au navigateur, la corbeille, le choix d'un fichier pour une app. Ce que fait chaque touche sans DOM est dans test/explorer-keys.test.mjs, ce que dit chaque phrase dans test/explorer-clipboard.test.mjs.
+// Ctrl+X puis Ctrl+V, un dossier qui se coupe et ne se copie pas, coller ailleurs que dans un dossier, un fichier que l'app ne laisse pas copier, la recherche qui garde son presse-papiers, Ctrl+D qui
+// duplique d'un geste (12/11) et que l'explorateur retient au navigateur, la corbeille, le choix d'un fichier pour une app. Ce que fait chaque touche sans DOM est dans test/explorer-keys.test.mjs, ce que dit chaque phrase dans test/explorer-clipboard.test.mjs.
 import { createI18n } from '../js/i18n/i18n.js';
 import { Run, centerOfName, centerOfSelector, delay, names } from './corbeille-firefox.mjs';
 
@@ -34,7 +34,7 @@ export function menuFits() {
   return problems;
 }
 
-// Ctrl+D est laissée au navigateur (marque-page) : la page note, après l'explorateur, si l'événement a été retenu (`defaultPrevented`).
+// Ctrl+D est aussi le marque-page du navigateur : la page note, après l'explorateur, si l'événement a été retenu (`defaultPrevented`) ; retenu, Firefox n'ajoute pas de marque-page.
 function watchCtrlD() {
   if (window.__ctrlD) { window.__ctrlD.length = 0; return; }
   window.__ctrlD = [];
@@ -58,9 +58,9 @@ async function menuDuplicate(run, t) {
   await run.reset();
   const at = await run.page.run(centerOfName, 'Convocation');
   await run.page.rightClick(...at);
-  await run.expect('menu', 'le menu de « Convocation » devait avoir « Dupliquer » (Ctrl+C, V) et « Déplacer vers… » (Ctrl+X, V), le premier dégrisé', state => {
+  await run.expect('menu', 'le menu de « Convocation » devait avoir « Dupliquer » (Ctrl+D) et « Déplacer vers… » (Ctrl+X, V), le premier dégrisé', state => {
     const entry = label => state.menu.find(item => item.label === label);
-    return entry(t('ex.duplicate')) && entry(t('ex.duplicate')).hint === 'Ctrl+C, V' && entry(t('ex.duplicate')).greyed === false && entry(t('ex.move')) && entry(t('ex.move')).hint === 'Ctrl+X, V';
+    return entry(t('ex.duplicate')) && entry(t('ex.duplicate')).hint === 'Ctrl+D' && entry(t('ex.duplicate')).greyed === false && entry(t('ex.move')) && entry(t('ex.move')).hint === 'Ctrl+X, V';
   });
   const fits = await run.page.run(menuFits);
   if (fits.length) run.note('menu de la ligne', `le menu devait tenir dans la page, ses touches à l'écart de leur nom (${fits.join(' ; ')})`);
@@ -166,6 +166,9 @@ async function withoutRecipe(run, t) {
   await run.click('Autre format');
   await copyKey(run.page, 'c');
   await run.expect('Ctrl+C sans recette', 'Ctrl+C devait dire la même chose, sans rien copier', state => state.notices.at(-1) === t('ex.notice.appOnly', { app }));
+  await run.page.run(() => { window.__notices.length = 0; });
+  await copyKey(run.page, 'd');
+  await run.expect('Ctrl+D sans recette', 'Ctrl+D devait dire la même chose, sans rien copier', state => state.notices.at(-1) === t('ex.notice.appOnly', { app }) && state.copies.length === 0 && names(state).every(name => !name.includes('(1)')));
   await copyKey(run.page, 'v');
   await run.expect('Ctrl+V sans recette', 'il n\'y a rien à coller', state => state.notices.at(-1) === t('clip.empty'));
 }
@@ -188,18 +191,48 @@ async function searchKeepsKeys(run, t) {
   await run.page.press('Escape');
 }
 
-// Ctrl+D (marque-page) n'est liée à rien : l'événement n'est pas retenu par l'explorateur, le navigateur en fait ce qu'il veut.
-async function noCtrlD(run) {
+// Ctrl+D duplique la ligne choisie d'un geste, sans passer par le presse-papiers : la copie est rangée à côté de l'original et prend le clavier, et l'explorateur retient l'événement (`defaultPrevented` : sans cela
+// Firefox ouvrirait le marque-page). Un dossier ne se duplique pas ; dans la recherche, Ctrl+D reste au navigateur ; une touche tenue enfoncée ne fait qu'une copie ; deux appuis qui se suivent font deux copies.
+async function ctrlD(run, t) {
   await run.reset();
   await run.page.run(watchCtrlD);
   await run.click('Convocation');
+  await copyKey(run.page, 'c');
+  await copyKey(run.page, 'd');
+  await run.expect('Ctrl+D', 'Ctrl+D devait ajouter « Convocation (1) », la dire, et lui donner le clavier', state => names(state).includes('Convocation (1)') && state.selected === 'Convocation (1)'
+    && state.focus === 'Convocation (1)' && state.notices.at(-1) === t('copy.done', { as: 'Convocation (1)' }) && state.copies.length === 0);
+  let kept = await run.page.run(readCtrlD);
+  if (kept.length !== 1 || kept[0] !== true) run.note('Ctrl+D', `l'explorateur devait retenir Ctrl+D, sinon Firefox ajoute un marque-page (defaultPrevented : ${JSON.stringify(kept)})`);
+  const count = state => names(state).filter(name => name.startsWith('Convocation')).length;
+  const base = count(await run.snap());
+  await run.click('Convocation');
+  await copyKey(run.page, 'd');
+  await copyKey(run.page, 'd');
+  await run.expect('Ctrl+D deux fois', 'deux Ctrl+D qui se suivent devaient faire deux copies de plus, sous deux noms différents', state => count(state) === base + 2 && new Set(names(state)).size === names(state).length);
+  await copyKey(run.page, 'v');
+  await run.expect('le presse-papiers', 'Ctrl+D n\'a pas touché au presse-papiers : Ctrl+V colle encore « Convocation » (Ctrl+C l\'avait copié)', state => count(state) === base + 3);
+  await run.click('Formation');
+  await copyKey(run.page, 'd');
+  await run.expect('Ctrl+D sur un dossier', 'un dossier ne se duplique pas : la phrase dit de le couper', state => state.notices.at(-1) === t('clip.folderCopy') && !names(state).includes('Formation (1)'));
+  kept = await run.page.run(readCtrlD);
+  if (kept.length !== 4 || kept.some(value => value !== true)) run.note('Ctrl+D', `chaque Ctrl+D dans la liste devait être retenue (defaultPrevented : ${JSON.stringify(kept)})`);
+}
+
+// Dans la recherche, Ctrl+D reste au navigateur (le marque-page) : l'explorateur ne la retient pas et ne copie rien.
+async function ctrlDInSearch(run) {
+  await run.reset();
+  await run.page.run(watchCtrlD);
+  await run.click('Convocation');
+  await run.page.press('/');
+  await run.expect('« / »', '« / » devait mettre le clavier dans la recherche', state => state.focus === '(recherche)');
   const before = await run.snap();
   await copyKey(run.page, 'd');
   await delay(250);
   const kept = await run.page.run(readCtrlD);
   const after = await run.snap();
-  if (kept.length !== 1 || kept[0] !== false) run.note('Ctrl+D', `Ctrl+D ne devait pas être retenue par l'explorateur (defaultPrevented : ${JSON.stringify(kept)})`);
-  if (after.notices.length !== before.notices.length || names(after).length !== names(before).length) run.note('Ctrl+D', 'Ctrl+D ne devait rien faire dans l\'explorateur');
+  if (kept.length !== 1 || kept[0] !== false) run.note('Ctrl+D dans la recherche', `dans la recherche, Ctrl+D devait rester au navigateur (defaultPrevented : ${JSON.stringify(kept)})`);
+  if (after.notices.length !== before.notices.length || after.copies.length !== 0 || names(after).includes('Convocation (1)')) run.note('Ctrl+D dans la recherche', 'dans la recherche, Ctrl+D ne devait rien copier');
+  await run.page.press('Escape');
 }
 
 // En vignettes, le presse-papiers vise la vignette choisie.
@@ -226,6 +259,9 @@ async function inTrash(run, t) {
   await run.click('Convocation');
   await copyKey(run.page, 'c');
   await run.expect('Ctrl+C à la corbeille', 'à la corbeille, la phrase devait dire de restaurer d\'abord', state => state.notices.at(-1) === t('clip.inTrash'));
+  await run.page.run(() => { window.__notices.length = 0; });
+  await copyKey(run.page, 'd');
+  await run.expect('Ctrl+D à la corbeille', 'à la corbeille, Ctrl+D devait dire la même chose, sans copier', state => state.notices.at(-1) === t('clip.inTrash') && state.copies.length === 0 && names(state).join() === 'Convocation');
 }
 
 // Pendant le choix d'un fichier pour une app (contrats 5.4), le presse-papiers est grisé comme « Nouveau » et la corbeille : la phrase le dit, « Dupliquer » est grisé sans touche.
@@ -235,6 +271,9 @@ async function whileChoosing(run, t) {
   await run.click('Convocation');
   await copyKey(run.page, 'c');
   await run.expect('Ctrl+C pendant un choix', 'pendant un choix, Ctrl+C devait dire que c\'est indisponible', state => state.notices.at(-1) === t('ex.choose.newOff'));
+  await run.page.run(() => { window.__notices.length = 0; });
+  await copyKey(run.page, 'd');
+  await run.expect('Ctrl+D pendant un choix', 'pendant un choix, Ctrl+D devait dire la même chose, sans copier', state => state.notices.at(-1) === t('ex.choose.newOff') && !names(state).includes('Convocation (1)'));
   const at = await run.page.run(centerOfName, 'Convocation');
   await run.page.rightClick(...at);
   await run.expect('menu pendant un choix', '« Dupliquer » devait être grisé, sans touche, pendant un choix', state => { const entry = state.menu.find(item => item.label === t('ex.duplicate')); return entry && entry.greyed === true && entry.hint === null; });
@@ -247,7 +286,7 @@ export async function copierProblems(page, language, tag) {
   const found = [];
   const t = createI18n(language).t;
   const run = new Run(page, tag, found, 'copier et coller');
-  const steps = [menuDuplicate, duplicateInFolder, copyPaste, cutPaste, folders, pasteElsewhere, withoutRecipe, searchKeepsKeys, noCtrlD, tiles, inTrash, whileChoosing];
+  const steps = [menuDuplicate, duplicateInFolder, copyPaste, cutPaste, folders, pasteElsewhere, withoutRecipe, searchKeepsKeys, ctrlD, ctrlDInSearch, tiles, inTrash, whileChoosing];
   for (const step of steps) {
     try {
       await step(run, t);

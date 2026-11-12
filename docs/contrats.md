@@ -2169,9 +2169,14 @@ rangée d'un fichier, selon ce qui vient d'abord.
     ligne n'est écrite. Un fichier copié qui a disparu entre-temps (supprimé ou mis à la corbeille par une autre personne) n'est pas
     collé : la phrase le dit. Le geste est refusé, avec sa raison, dans un document en lecture seule, pendant le choix d'un fichier
     pour une app (les gestes d'écriture y sont grisés), et dans un champ de saisie (la touche reste au texte, qui se copie comme
-    avant) ; quand du texte est sélectionné, Ctrl+C copie ce texte. **Ctrl+D n'est lié à rien** : c'est le marque-page de Firefox,
-    le navigateur du porteur ; « Dupliquer » est dans le menu de la ligne (clic droit, Maj+F10, « Plus d'actions »), qui dit les
-    raccourcis (« Ctrl+C, V »).
+    avant) ; quand du texte est sélectionné, Ctrl+C copie ce texte. **Ctrl+D duplique d'un geste** (demande du porteur, 12/11 ; elle
+    était laissée au marque-page du navigateur jusque-là) : même geste que « Dupliquer » du menu de la ligne (clic droit, Maj+F10,
+    « Plus d'actions »), qui dit « Ctrl+D » ; la copie est rangée dans le dossier de l'original (pas dans le dossier ouvert), prend le
+    clavier, et ne touche pas à ce qui est copié ou coupé. L'explorateur retient l'événement (`preventDefault`) pour que le navigateur
+    n'ajoute pas de marque-page ; dans un champ de saisie (la recherche), Ctrl+D reste au navigateur. Un dossier ne se duplique pas
+    (la phrase dit de le couper), ni à la corbeille ni pendant le choix d'un fichier, ni un fichier que l'app seule sait copier (mêmes
+    phrases que Ctrl+C). Une touche tenue enfoncée ne fait qu'une copie ; deux appuis qui se suivent font deux copies, l'une après
+    l'autre (la seconde lit le dossier quand la première y est rangée : deux noms différents).
 11. [D] **Créer, garder et supprimer un dossier, même vide** (décision du porteur, 04/11 : « créer des dossiers et sous-dossiers », tout
     se fait depuis l'explorateur). Un dossier sans fichier tient à une **ligne d'état** : `App` et `Fichier` vides, `Dossier` = son chemin,
     `Utilisateur` = la personne (point 1). Un sous-dossier n'a que sa propre ligne : ses parents existent d'office. Une ligne d'une autre

@@ -87,12 +87,12 @@ function fileItems(x, file) {
   const open = choice ? { label: t('ex.choose.pick'), icon: 'open', greyed: false } : x.openAs(file);
   const extras = x.kept.has(file) && !choice ? x.kept.extras(file) : [];
   // Mettre à la corbeille et dupliquer : grisés pendant un choix, pour un fichier qu'aucun gardien ne connaît, et pour un fichier que seule l'app ouverte sait
-  // fermer ou copier (contrats 2.4 `appel`) ; le clic dit pourquoi. Le presse-papiers (Ctrl+C puis Ctrl+V, Ctrl+X puis Ctrl+V) n'est pas offert pendant un
-  // choix.
+  // fermer ou copier (contrats 2.4 `appel`) ; le clic dit pourquoi. Le presse-papiers (Ctrl+C puis Ctrl+V, Ctrl+X puis Ctrl+V) et Ctrl+D ne sont pas offerts
+  // pendant un choix.
   const whyRemove = whyGreyed(x, file, x.bin, t('trash.appOnly', { app: opts.appName(file.app) }));
   const remove = whyRemove ? grey(t('trash.move'), 'trash', whyRemove) : item(t('trash.move'), 'trash', () => void act.trashKey(file.key), t('key.delete'));
   const whyDuplicate = whyGreyed(x, file, x.copying, appOnly);
-  const duplicate = whyDuplicate ? grey(t('ex.duplicate'), 'copy', whyDuplicate) : item(t('ex.duplicate'), 'copy', () => void act.duplicate(file), 'Ctrl+C, V');
+  const duplicate = whyDuplicate ? grey(t('ex.duplicate'), 'copy', whyDuplicate) : item(t('ex.duplicate'), 'copy', () => void act.duplicate(file), 'Ctrl+D');
   // « Partager… » (js/sharing/share-control.js) : grisé pendant un choix et pour un fichier qui ne se partage pas encore, le clic dit pourquoi.
   const whyShare = choice ? t('ex.choose.newOff') : (sharing ? sharing.whyNot(file) : t('share.unsupported'));
   const share = whyShare ? grey(t('share.menu'), 'user', whyShare) : item(t('share.menu'), 'user', () => void sharing.open(file));

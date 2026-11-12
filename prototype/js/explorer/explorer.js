@@ -645,15 +645,16 @@ export class Explorer {
     return Boolean(selection && !selection.isCollapsed && String(selection).trim());
   }
 
-  // Le presse-papiers (js/explorer/explorer-clipboard.js), l'annulation (Ctrl+Z : le dernier geste revient) et le rétablissement (Ctrl+Y ou Ctrl+Maj+Z : on le
-  // refait ; js/files/undo-stack.js). Copier et couper visent la ligne choisie, sinon celle où est le clavier ; coller n'a besoin d'aucune ligne (un dossier
-  // vide se colle). Pendant un choix de fichier pour une app, rien de tout cela : comme « Nouveau » et la corbeille, il est grisé.
+  // Le presse-papiers et Ctrl+D (js/explorer/explorer-clipboard.js), l'annulation (Ctrl+Z : le dernier geste revient) et le rétablissement (Ctrl+Y ou
+  // Ctrl+Maj+Z : on le refait ; js/files/undo-stack.js). Copier, couper et dupliquer visent la ligne choisie, sinon celle où est le clavier ; coller n'a besoin
+  // d'aucune ligne (un dossier vide se colle). Pendant un choix de fichier pour une app, rien de tout cela : comme « Nouveau » et la corbeille, il est grisé.
   #onClipboard(action, event) {
     if (this.#choice) { this.#opts.notice(this.#opts.i18n.t('ex.choose.newOff')); return; }
     if (action === 'undo' || action === 'redo') { void this.#undo[action](); return; }
     if (action === 'paste') { void this.#clipboard.paste(); return; }
+    if (action === 'duplicate' && event.repeat) return; // la touche tenue enfoncée ne fait qu'une copie
     const key = this.#keyOf(event);
-    if (key) this.#clipboard.take(key, action);
+    if (key) void this.#clipboard.take(key, action);
   }
 
   // La clé de la ligne que vise un geste : la ligne choisie, sinon celle où est le clavier (à l'ouverture, le clavier est sur la première ligne sans qu'aucune
@@ -667,12 +668,6 @@ export class Explorer {
   // La ligne `key` prend le clavier, quand la liste la montre (le fichier qu'on vient de copier ou de déplacer).
   #reveal(key) {
     if (this.isOpen && this.#keys.includes(key)) this.#select(key, true);
-  }
-
-  // « Dupliquer » : une copie du fichier, rangée dans le même dossier que lui ; elle prend le clavier.
-  async #duplicate(file) {
-    const done = await this.#copying.copy(file, file.folder);
-    if (done) this.#reveal(done.key);
   }
 
   #requestClose() {
@@ -755,7 +750,7 @@ export class Explorer {
         bin: this.#bin, copying: this.#copying, shared: this.#shared,
       openAs: file => this.#openAs(file),
       act: { activate: at => this.#activate(at), deleteFolder: at => this.#removal.deleteFolder(at), restore: at => this.#removal.restore(at),
-        purge: at => this.#removal.purge(at), trashKey: at => this.#removal.trash(at), duplicate: file => this.#duplicate(file),
+        purge: at => this.#removal.purge(at), trashKey: at => this.#removal.trash(at), duplicate: file => this.#clipboard.duplicate(file),
         dropOpened: at => this.#dropOpened(at) },
     }, key);
     if (items) openMenu(anchor, items, { host: this.root, align: 'right', label: this.#opts.i18n.t('ex.more') });

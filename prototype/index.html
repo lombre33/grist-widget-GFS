@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-bsPcBWdhwEVyf0hJeedY0Ao+YXVFCAaEc4wBPM1j1FY='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-aezh00ZNsTaDpLtoT99bKR5/5ZvqSYonVOiclDZ8k44='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=6c6e51caa4">
 <link rel="stylesheet" href="css/explorer.css?v=a1c7636359">
 <link rel="stylesheet" href="css/modules.css?v=beca3b680b">
@@ -70,7 +70,7 @@
     "./js/broker/transfer.js": "./js/broker/transfer.js?v=5324b55361",
     "./js/broker/view-link.js": "./js/broker/view-link.js?v=1853f29883",
     "./js/broker/view-options.js": "./js/broker/view-options.js?v=5eb21ceaf1",
-    "./js/controller.js": "./js/controller.js?v=3f871df68b",
+    "./js/controller.js": "./js/controller.js?v=4b2c2323ca",
     "./js/explorer/explorer-clipboard.js": "./js/explorer/explorer-clipboard.js?v=62a4670621",
     "./js/explorer/explorer-data.js": "./js/explorer/explorer-data.js?v=0e132d5eb8",
     "./js/explorer/explorer-drag.js": "./js/explorer/explorer-drag.js?v=bb4575a2a0",
@@ -158,7 +158,7 @@
     "./js/shell/dock-state.js": "./js/shell/dock-state.js?v=bf40af2343",
     "./js/shell/dock.js": "./js/shell/dock.js?v=95361d92b0",
     "./js/shell/language.js": "./js/shell/language.js?v=fdc529d628",
-    "./js/shell/settings-menu.js": "./js/shell/settings-menu.js?v=0918dce267",
+    "./js/shell/settings-menu.js": "./js/shell/settings-menu.js?v=00e7bf8643",
     "./js/shell/stored-choice.js": "./js/shell/stored-choice.js?v=08d02d1bfe",
     "./js/theme/ambiance-forme.js": "./js/theme/ambiance-forme.js?v=9945157b3b",
     "./js/theme/ambiance-types.js": "./js/theme/ambiance-types.js?v=deef46c542",
@@ -262,7 +262,7 @@
      Le navigateur les demande tous d'un coup au lieu d'un niveau d'imports à la fois (9 niveaux, donc 9 allers-retours de réseau). Après la carte d'importation, jamais avant : une page qui commence à
      charger un module avant elle l'ignore et demande les modules sans leur ?v=. -->
 <!-- préchargement -->
-<link rel="modulepreload" href="./js/controller.js?v=3f871df68b">
+<link rel="modulepreload" href="./js/controller.js?v=4b2c2323ca">
 <link rel="modulepreload" href="./js/apps/catalogue.js?v=2e588e5749">
 <link rel="modulepreload" href="./js/apps/manifest.js?v=8c0cedee7c">
 <link rel="modulepreload" href="./js/broker/state.js?v=69aa288268">
@@ -281,7 +281,7 @@
 <link rel="modulepreload" href="./js/ui/icons.js?v=d967360a99">
 <link rel="modulepreload" href="./js/shell/dock.js?v=95361d92b0">
 <link rel="modulepreload" href="./js/shell/correcteurs.js?v=55348b7ebd">
-<link rel="modulepreload" href="./js/shell/settings-menu.js?v=0918dce267">
+<link rel="modulepreload" href="./js/shell/settings-menu.js?v=00e7bf8643">
 <link rel="modulepreload" href="./js/shell/about.js?v=b2b79b416a">
 <link rel="modulepreload" href="./js/apps/work-control.js?v=3a43a1dac2">
 <link rel="modulepreload" href="./js/explorer/explorer.js?v=eb702df9f4">

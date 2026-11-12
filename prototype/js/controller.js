@@ -296,6 +296,7 @@ export class GfsController {
           onTheme: () => this.openTheme(),
         langtool: () => ({ shown: this.correcteurs.state.shown, toggle: () => this.#chooseLangtool() }),
         place: () => this.dock.placeRow(), onAbout: () => this.#openAbout(),
+        manage: () => ({ why: this.rights.manage.whyNot(), open: () => void this.rights.manage.open(), notice: text => this.notice(text) }),
       }),
       sharing: this.rights.sharing, onWeight: estimate => void this.weight.open(estimate),
       onOpen: file => this.openings.openFile(file), onNew: entry => this.openings.openNew(entry), onImport: entry => void this.openings.importFile(entry),

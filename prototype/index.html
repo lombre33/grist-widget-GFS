@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-h5z/M5zHhhO2DgcOKGAEIovPENvjx71RLCTq40yVw+E='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-vSsFIFFzPrUJZtTa6J+TptzO6j4xbqMZ+Mc/HTz1eDI='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=6c6e51caa4">
 <link rel="stylesheet" href="css/explorer.css?v=a1c7636359">
 <link rel="stylesheet" href="css/modules.css?v=beca3b680b">
@@ -31,7 +31,7 @@
     "./js/apps/catalogue.js": "./js/apps/catalogue.js?v=2e588e5749",
     "./js/apps/extensions.js": "./js/apps/extensions.js?v=83220ade45",
     "./js/apps/libraries.js": "./js/apps/libraries.js?v=8271fec7c5",
-    "./js/apps/manifest.js": "./js/apps/manifest.js?v=3ba6720db8",
+    "./js/apps/manifest.js": "./js/apps/manifest.js?v=8c0cedee7c",
     "./js/apps/modules-model.js": "./js/apps/modules-model.js?v=c3fd60515a",
     "./js/apps/modules-window.js": "./js/apps/modules-window.js?v=4019700d7c",
     "./js/apps/natives.js": "./js/apps/natives.js?v=d61cf17735",
@@ -44,7 +44,7 @@
     "./js/broker/app-status.js": "./js/broker/app-status.js?v=651007029f",
     "./js/broker/app-storage.js": "./js/broker/app-storage.js?v=d24c6008f9",
     "./js/broker/arrival-table.js": "./js/broker/arrival-table.js?v=46265f4a63",
-    "./js/broker/arrival.js": "./js/broker/arrival.js?v=058a55e88d",
+    "./js/broker/arrival.js": "./js/broker/arrival.js?v=7694fcdfd6",
     "./js/broker/attach.js": "./js/broker/attach.js?v=1c1097b59b",
     "./js/broker/broker.js": "./js/broker/broker.js?v=07e94d37f4",
     "./js/broker/context.js": "./js/broker/context.js?v=b967bfd609",
@@ -260,7 +260,7 @@
 <!-- préchargement -->
 <link rel="modulepreload" href="./js/controller.js?v=4f1a99c36a">
 <link rel="modulepreload" href="./js/apps/catalogue.js?v=2e588e5749">
-<link rel="modulepreload" href="./js/apps/manifest.js?v=3ba6720db8">
+<link rel="modulepreload" href="./js/apps/manifest.js?v=8c0cedee7c">
 <link rel="modulepreload" href="./js/broker/state.js?v=69aa288268">
 <link rel="modulepreload" href="./js/broker/broker.js?v=07e94d37f4">
 <link rel="modulepreload" href="./js/broker/view-options.js?v=5eb21ceaf1">
@@ -289,7 +289,7 @@
 <link rel="modulepreload" href="./js/apps/libraries.js?v=8271fec7c5">
 <link rel="modulepreload" href="./js/apps/extensions.js?v=83220ade45">
 <link rel="modulepreload" href="./js/apps/apps-state.js?v=dbd598efa0">
-<link rel="modulepreload" href="./js/broker/arrival.js?v=058a55e88d">
+<link rel="modulepreload" href="./js/broker/arrival.js?v=7694fcdfd6">
 <link rel="modulepreload" href="./js/broker/arrival-table.js?v=46265f4a63">
 <link rel="modulepreload" href="./js/files/rangement.js?v=53bcee3a8e">
 <link rel="modulepreload" href="./js/rights/rights-control.js?v=f2481f204c">

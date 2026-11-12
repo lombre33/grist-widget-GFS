@@ -170,7 +170,7 @@ test('une extension dont la bibliothèque n\'a pas de CDN : la copie de GFS est 
 
 test('le manifeste et le catalogue réels s\'accordent : chaque extension a ses bibliothèques, l\'édition collaborative a ses deux modes, le CDN par défaut', () => {
   const real = readCatalogue(readJson('bibliotheques/catalogue.json'));
-  assert.deepEqual(pub.extensions.map(extension => extension.id), ['graphique', 'edition', 'diapositives', 'lecture-pdf']);
+  assert.deepEqual(pub.extensions.map(extension => extension.id), ['graphique', 'edition', 'diapositives', 'lecture-pdf', 'polices']);
   assert.deepEqual(pub.extensions.flatMap(extension => missingLibraries(extension, real)), [], 'aucune extension déclarée n\'est grisée par le catalogue');
   const rows = extensionRows(pub, { extensions: ['graphique', 'edition'], modes: {} }, real);
   const edition = rows.find(row => row.extension.id === 'edition');
@@ -209,6 +209,29 @@ test('Publipostage+ : « Lecture de PDF » reçoit pdf.js de la copie de GFS seu
   assert.equal(state.bibliotheques.pdfjs.forme, 'module');
   assert.equal(state.bibliotheques.pdfjs.src, 'https://exemple.test/gfs/vendor/pdfjs/1.0.0/pdfjs.js');
   assert.match(state.bibliotheques.pdfjs.integrite, /^sha384-[A-Za-z0-9+/]{64}$/);
+});
+
+// « Polices » de Publipostage+ (sa demande du 12/11, `GFS-ETAT.md` : la police Marianne de l'État dans le PDF) : un seul fichier de l'app, sans bibliothèque ni point d'entrée (elle ouvre un
+// choix dans une fenêtre qui existe déjà), décochée au départ, grisée jamais ; les fichiers de Marianne ne vont ni au catalogue de GFS ni dans `vendor/`.
+test('Publipostage+ : « Polices » est déclarée sans bibliothèque ni point d\'entrée, décochée au départ, et l\'app ne reçoit que son identifiant', () => {
+  const real = readCatalogue(readJson('bibliotheques/catalogue.json'));
+  const fonts = pub.extensions.find(extension => extension.id === 'polices');
+  assert.deepEqual(fonts.nom, { fr: 'Polices', en: 'Fonts' }, 'le nom est celui de l\'app (`extension.polices.name`)');
+  assert.equal(fonts.dossier, 'extensions/polices/');
+  assert.equal(fonts.poids, 8, 'un fichier de 7 705 octets');
+  assert.equal(fonts.bibliotheques, undefined, 'GFS n\'a rien à porter : Marianne ne vient pas du catalogue');
+  assert.equal(fonts.pointsEntree, undefined, 'ni bouton, ni menu, ni type, ni export');
+  assert.match(fonts.texte.fr, /Marianne.*quand la personne dit avoir le droit de s.en servir/);
+  assert.match(fonts.texte.en, /Marianne.*when the person says they are entitled to use it/);
+  assert.deepEqual(missingLibraries(fonts, real), []);
+  const off = extensionRows(pub, { extensions: [], modes: {} }, real).find(item => item.extension.id === 'polices');
+  assert.equal(off.checked, false, 'décochée tant que la personne n\'a pas choisi : l\'app ne charge rien');
+  assert.equal(off.greyed, false);
+  assert.deepEqual(off.libraries, []);
+  const on = extensionsState(pub, { extensions: ['polices'], modes: {} }, real, 'https://exemple.test/gfs/');
+  assert.deepEqual(on.extensions, ['polices']);
+  assert.deepEqual(Object.keys(on.bibliotheques), []);
+  assert.deepEqual(extensionsState(pub, { extensions: [], modes: {} }, real, 'https://exemple.test/gfs/').extensions, []);
 });
 
 // Une extension sans bibliothèque (les diapositives de Publipostage+ : un type de fichier et une ligne de menu, du code qui reste dans l'app).

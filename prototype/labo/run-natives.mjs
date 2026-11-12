@@ -4,7 +4,8 @@
 // À mesurer : le détail se déplie, le geste sur Word s'écrit tout de suite dans la table de GFS (`modes`, jamais dans les réglages de la vue), l'app reçoit l'événement `extensions` avec `natives` (version,
 // adresse de la copie de GFS, empreinte ; jamais le CDN de GFS), le fichier servi a bien cette empreinte et le navigateur le charge en la contrôlant, `contexte` le rend à l'app qui le redemande, le retour
 // au CDN vide `natives`, et en lecture seule tout est grisé et rien ne s'écrit. L'éditeur a sa copie figée dans le dépôt de l'app : son choix s'écrit, ne change rien à l'app ouverte (aucun événement, pas de
-// rechargement) et part dans l'adresse du cadre (`copie=editeur`) au démarrage suivant de l'app.
+// rechargement) et part dans l'adresse du cadre (`copie=editeur`) au démarrage suivant de l'app, que la vraie page lit (consigne 066, `db6b388`) : elle charge alors son éditeur de `vendor/editeur/`
+// et non d'`esm.sh`, la case « Éditeur hors ligne » de ses Réglages est cochée et grisée (GFS décide), et l'éditeur se tape au vrai clavier.
 // REPO_DIR : le dépôt de GFS ; PP_DIR : un clone de Publipostage+ (le sous-module n'est pas récupéré dans le cloud). LAB_LANG=fr|en, LAB_SCHEME=light|dark, LAB_READONLY=1.
 import { createServer } from 'node:http';
 import { createHash } from 'node:crypto';
@@ -47,6 +48,8 @@ const warnings = [];
 page.on('console', m => { if ((m.type() === 'warning' || m.type() === 'error') && /GFS/.test(m.text())) warnings.push(m.text().slice(0, 200)); });
 await lab.fitPanel(undefined, 700, 400);
 const frame = lab.frame;
+const requested = [];
+page.on('request', request => requested.push(request.url()));
 const shot = name => lab.shotPanel(run, name, frame);
 await frame.waitForFunction(() => document.body.dataset.gfsFirstRun === 'done', null, { timeout: 30000 }).catch(() => {});
 
@@ -174,12 +177,37 @@ if (readonly) {
   const phrase = await frame.locator('.mr-lib', { hasText: /Éditeur|Editor/ }).locator('.mr-note').innerText();
   check('la ligne de l\'éditeur dit que le choix prend effet au démarrage de l\'app', /prochain démarrage|next time the app starts/.test(phrase), phrase);
   await shot('5-editeur-en-copie');
+  const mark = requested.length;
   const gfs2 = await reopenGfs(lab, frame);
   const app2 = await lab.openApp('publipostage', /./, gfs2);
   const address = new URL(app2.url());
   check('au démarrage suivant, l\'adresse du cadre porte `copie=editeur` (et le numéro de contrat)', address.searchParams.get('copie') === 'editeur' && address.searchParams.get('gfs') === '0', app2.url().replace(/^[^?]*/, ''));
   const read = await app2.evaluate(async () => { try { const { hostCopies } = await import(new URL('/prototype/kit/js/host.js', location.href).href); return hostCopies(location.search); } catch (error) { return String(error); } });
   check('le kit (`hostCopies`) lit ce choix dans l\'adresse du cadre, tout de suite, sans rien demander à GFS', JSON.stringify(read) === '["editeur"]', read);
+  // La vraie page démarre depuis sa copie : l'éditeur vient de `vendor/editeur/` (ses 57 fichiers servis par la page), pas d'`esm.sh` ; il s'écrit au vrai clavier.
+  await app2.waitForFunction(() => Boolean(document.querySelector('.ProseMirror')), null, { timeout: 30000 });
+  await page.waitForTimeout(1500);
+  const since = requested.slice(mark);
+  const fromCopy = since.filter(url => /\/apps\/publipostage\/vendor\/editeur\//.test(url));
+  const fromCdn = since.filter(url => /^https:\/\/esm\.sh\/(@tiptap|@floating-ui|@handlewithcare|prosemirror|orderedmap|rope-sequence|w3c-keyname)/.test(url));
+  check('l\'éditeur de la vraie page vient de sa copie (`vendor/editeur/`), pas d\'esm.sh', fromCopy.length >= 30 && fromCdn.length === 0, { copie: fromCopy.length, cdn: fromCdn.slice(0, 3) });
+  // Le document d'essai n'a pas encore les tables de l'app : sa première question (créer les tables) reçoit la réponse de la personne, à la souris.
+  const create = app2.locator('#pp-dialog-modal .pp-modal-actions button').filter({ hasText: lang === 'fr' ? /^Cr/ : /^Create/ });
+  if (await create.count()) { await create.first().click(); await page.waitForTimeout(2500); }
+  await app2.locator('.ProseMirror p').first().click();
+  await page.keyboard.type('Copie hors ligne');
+  const typed = await app2.evaluate(() => document.querySelector('.ProseMirror').textContent);
+  check('l\'éditeur de la copie marche : on y tape au vrai clavier', typed.includes('Copie hors ligne'), typed.slice(0, 60));
+  await app2.locator('#v2-btn-settings').click();
+  await app2.locator('[data-settings-tab="theme"]').click();
+  await page.waitForTimeout(300);
+  const offline = await app2.evaluate(() => {
+    const input = document.getElementById('settings-offline-editor');
+    const note = document.getElementById('settings-offline-editor-gfs-note');
+    return { checked: input.checked, disabled: input.disabled, noteShown: !note.hidden && note.getBoundingClientRect().height > 0, note: note.textContent.trim().slice(0, 90) };
+  });
+  check('Réglages > Thème > Éditeur hors ligne : cochée (ce qui est chargé) et grisée, la phrase dit où choisir (GFS décide, jamais masquée)', offline.checked && offline.disabled && offline.noteShown, offline);
+  await shot('6-editeur-hors-ligne');
 }
 check('aucun avertissement ni erreur de GFS dans la console', warnings.length === 0, warnings);
 say('captures :', run);

@@ -216,6 +216,12 @@ export async function routePatches(browser, page, patches) {
 // de l'API des widgets (lab-serveur.mjs, `newContext`) : la route du contexte le rend alors. `newsSeen` : voir `newLabPage`.
 export async function mirrorCdns(page, { lang = 'fr', port = 8911, pluginApi = true, newsSeen = true } = {}) {
   const origin = `http://127.0.0.1:${port}`;
+  // Les morceaux partagés du miroir, à l'adresse de la page (voir plus bas) : le dossier `esm/` du miroir, avec l'en-tête CORS d'un CDN.
+  await page.route(`${origin}/__miroir/*`, async route => {
+    const file = join(MIRROR, 'esm', new URL(route.request().url()).pathname.split('/').pop());
+    if (!existsSync(file)) return route.fallback();
+    return route.fulfill({ status: 200, contentType: 'text/javascript; charset=utf-8', headers: { 'Access-Control-Allow-Origin': '*' }, body: await readFile(file) });
+  });
   await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, async route => {
     const url = route.request().url();
     try {
@@ -237,7 +243,9 @@ export async function mirrorCdns(page, { lang = 'fr', port = 8911, pluginApi = t
       if (local && existsSync(local)) {
         // Les morceaux partagés (chunk-*.js) sont importés par adresse relative : servis sous des adresses différentes, le navigateur en chargerait deux
         // copies (deux ProseMirror, qui cassent TipTap). On les rend absolus, vers une seule adresse.
-        const text = (await readFile(local, 'utf8')).replace(/(["'])\.\/(chunk-[A-Za-z0-9]+\.js)\1/g, '$1https://esm.sh/__miroir/$2$1');
+        // Depuis `bd9f53e` (11/11) la politique de la page ne nomme plus tout `esm.sh` mais 92 dossiers de paquets : une adresse `esm.sh/__miroir/` n'en est pas, les morceaux sont donc
+        // servis par la page elle-même (`'self'`), à une seule adresse.
+        const text = (await readFile(local, 'utf8')).replace(/(["'])\.\/(chunk-[A-Za-z0-9]+\.js)\1/g, `$1${origin}/__miroir/$2$1`);
         return route.fulfill({ status: 200, contentType: 'text/javascript; charset=utf-8', headers: { 'Access-Control-Allow-Origin': '*' }, body: text });
       }
       const resp = await route.fetch({ timeout: 30000 });

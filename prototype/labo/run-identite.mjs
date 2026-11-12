@@ -76,9 +76,10 @@ const contract = 'Contrat de prestation';
 const rent = 'Quittance de loyer';
 const contractId = await idOf(contract);
 const rentId = await idOf(rent);
-const FAV_HINT = /le vôtre seulement|yours only/;
-const PERSONAL = /Rangement personnel|Personal folders/;
+// Le rangement à soi ne se dit plus (12/11, « standard d'interface ») : une personne connue, c'est une barre du bas SANS les mots du rangement commun.
 const SHARED = /Rangement commun au document|Folders shared by the whole document/;
+const SHARED_FAV = /Favori commun|Shared favorite/;
+const PERSONAL = { test: text => !SHARED.test(text) && !SHARED_FAV.test(text) };
 
 // ----- 1. Ana, sans la table.
 say('\n1. Ana ouvre un document sans la table');
@@ -110,7 +111,7 @@ check('la ligne d\'Ana est à son adresse, favori, sans dossier ; plus aucune li
   && first[0].Fichier === contractId && first[0].Favori === true && first[0].Dossier === '', first);
 check('Grist n\'a rien inscrit dans Adresse pour la ligne d\'Ana (seule la ligne-sonde en reçoit, et elle est partie)', first.every(line => !line.Adresse), first);
 const learned = await info();
-check('GFS connaît Ana : la barre du bas dit « personnel » et « le vôtre seulement », la liste est relue pour elle', PERSONAL.test(learned) && FAV_HINT.test(learned) && (await favCount()) === 1, learned);
+check('GFS connaît Ana : la barre du bas ne parle plus de rangement commun, la liste est relue pour elle', PERSONAL.test(learned) && (await favCount()) === 1, learned);
 await shot('2-personnel');
 
 // ----- 2. Ana rouvre : une sonde par ouverture.
@@ -118,7 +119,7 @@ say('\n2. Ana rouvre le document');
 await open(ANA);
 const reopened = await gfsActions();
 check('à l\'ouverture, une seule sonde : ajoutée puis retirée, rien d\'autre n\'est écrit', JSON.stringify(reopened) === JSON.stringify([SONDE, 'RemoveRecord GFS_Rangement']) && (await lab.actions()).length === 2, await lab.actions());
-check('le favori d\'Ana est allumé dès l\'ouverture, la barre du bas dit « personnel »', (await starOn(contract)) && PERSONAL.test(await info()), await info());
+check('le favori d\'Ana est allumé dès l\'ouverture, la barre du bas ne dit plus « commun »', (await starOn(contract)) && PERSONAL.test(await info()), await info());
 // La liste se lit pendant que GFS apprend l'adresse (la sonde) : l'adresse apprise ne relance pas la lecture qui l'attend, chaque table de fichiers est lue une fois.
 const readOnce = (await lab.reads()).filter(name => name === 'Publipostage_Modeles');
 check('à l\'ouverture, la table des modèles est lue une seule fois : l\'adresse apprise ne relance pas la lecture qui l\'attend', readOnce.length === 1, readOnce);
@@ -149,7 +150,7 @@ const anaBefore = JSON.stringify(await linesOf(ANA.Email));
 await open(BEN);
 check('à l\'ouverture de Ben, une seule sonde', JSON.stringify(await gfsActions()) === JSON.stringify([SONDE, 'RemoveRecord GFS_Rangement']), await lab.actions());
 check('Ben ne voit pas le favori d\'Ana : l\'étoile est éteinte, aucun favori', !(await starOn(contract)) && (await favCount()) === 0);
-check('la barre du bas dit « personnel » pour Ben aussi', PERSONAL.test(await info()), await info());
+check('la barre du bas ne dit plus « commun » pour Ben aussi', PERSONAL.test(await info()), await info());
 await row(rent).hover();
 await row(rent).locator('.rb.pin').click();
 check('Ben épingle un fichier : la table existe, aucune question', (await until(() => starOn(rent))) && (await frame.locator('.ask').count()) === 0);
@@ -205,7 +206,7 @@ const oldTable = await gfsActions();
 check('à l\'ouverture, la colonne est ajoutée avant la sonde, qui passe', JSON.stringify(oldTable) === JSON.stringify(['AddColumn GFS_Rangement', SONDE, 'RemoveRecord GFS_Rangement']), oldTable);
 const back = await COLUMN('Adresse');
 check('la colonne est revenue à formule déclenchée', back && back.isFormula === false && /user\.Email/.test(back.formula) && back.recalcWhen === 0, back);
-check('Ana est reconnue : son favori, la barre du bas « personnel »', (await starOn(contract)) && PERSONAL.test(await info()));
+check('Ana est reconnue : son favori, la barre du bas sans « commun »', (await starOn(contract)) && PERSONAL.test(await info()));
 
 // ----- 7. Une personne que Grist ne connaît pas.
 say('\n7. Une personne que Grist ne connaît pas');

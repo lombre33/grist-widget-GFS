@@ -44,9 +44,7 @@ export const EXPLORER_STRINGS = {
     'ex.emptyOpened': 'Aucun fichier ouvert pour le moment. Ceux que vous ouvrez s’ajoutent ici : un double-clic y revient.',
     'ex.emptySearch': 'Aucun fichier ne correspond.',
     'ex.emptyNoAccess': 'Les fichiers s’afficheront dès que l’accès complet sera accordé.',
-    // La barre d'information du bas : le rangement de la personne, puis le fichier choisi.
-    'ex.hintPersonal': 'Rangement personnel : les autres personnes ne le voient pas.',
-    'ex.hintFav': 'Favori, le vôtre seulement.',
+    // La barre d'information du bas : le rangement commun au document (seul cas dit), puis le fichier choisi.
     'ex.hintShared': 'Rangement commun au document : chacun voit et change les mêmes dossiers.',
     'ex.hintFavShared': 'Favori commun : chacun voit les mêmes.',
     'ex.hintSelect': 'Sélectionnez un fichier pour voir ses détails.',
@@ -190,9 +188,7 @@ export const EXPLORER_STRINGS = {
     'ex.emptyOpened': 'No open files yet. The files you open are added here: double-click to go back to one.',
     'ex.emptySearch': 'No file matches.',
     'ex.emptyNoAccess': 'Your files will show up as soon as full access is granted.',
-    // La barre d'information du bas : le rangement de la personne, puis le fichier choisi.
-    'ex.hintPersonal': 'Personal folders: other people do not see them.',
-    'ex.hintFav': 'Favorite, yours only.',
+    // La barre d'information du bas : le rangement commun au document (seul cas dit), puis le fichier choisi.
     'ex.hintShared': 'Folders shared by the whole document: everyone sees and changes the same ones.',
     'ex.hintFavShared': 'Shared favorite: everyone sees the same ones.',
     'ex.hintSelect': 'Select a file to see its details.',

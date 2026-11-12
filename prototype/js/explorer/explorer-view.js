@@ -289,34 +289,46 @@ export function emptyMessage(ctx) {
 
 const infoLine1 = (...nodes) => h('div', { class: 'l1' }, ...nodes);
 
-// La barre d'information : le fichier choisi (l'app qui l'ouvre, la date, le grisé), sinon un rappel du rangement : à la personne seule, ou commun au document
-// tant que GFS ne sait pas qui elle est (contrats 6.4, point 4). Ses lignes sont coupées quand la place manque : son texte entier est au survol (charte).
+// La barre d'information : le fichier choisi (l'app qui l'ouvre, la date, le grisé), sinon ce que fait la vue. Le rangement à la personne seule va de soi
+// (c'est l'usage partout) et ne se dit plus ; seul le rangement COMMUN au document, tant que GFS ne sait pas qui est la personne, se dit (contrats 6.4,
+// point 4) : c'est l'exception qui surprend. Ses lignes sont coupées quand la place manque : son texte entier est au survol (charte).
 export function infoBar(ctx) {
   const info = infoContent(ctx);
   info.title = [...info.children].map(line => line.textContent.replace(/\s+/g, ' ').trim()).filter(Boolean).join('\n');
   return info;
 }
 
+// Le rappel du rangement d'un dossier : rien quand il est à la personne ; le mot du rangement commun sinon.
+const filingHintOf = ctx => (ctx.personal ? '' : ctx.t('ex.hintShared'));
+
 function infoContent(ctx) {
-  const { t, selected } = ctx;
-  const filingHint = ctx.personal ? t('ex.hintPersonal') : t('ex.hintShared');
-  if (!selected) return noSelectionInfo(ctx, filingHint);
-  return selected.kind === 'folder' ? folderInfo(ctx, selected, filingHint) : fileInfo(ctx, selected.file);
+  const { selected } = ctx;
+  if (!selected) return noSelectionInfo(ctx);
+  return selected.kind === 'folder' ? folderInfo(ctx, selected) : fileInfo(ctx, selected.file);
 }
 
-// Rien n'est choisi : ce que fait la vue (la corbeille, un choix de fichier, le rangement d'un dossier), puis un rappel des favoris.
-function noSelectionInfo(ctx, filingHint) {
-  const { t } = ctx;
-  const hint = ctx.state.view === 'trash' ? t('trash.hint') : (ctx.state.view === 'folder' ? filingHint : t('ex.hintSelect'));
-  return h('div', { class: 'inf' }, infoLine1(icon('info'), h('span', { class: 'mu' }, ctx.choosing ? t('ex.choose.hint') : hint)),
-    h('div', { class: 'l2' }, icon('pin'), h('span', { class: 'lt' }, ctx.personal ? t('ex.hintFav') : t('ex.hintFavShared'))));
+// Ce que dit la barre quand rien n'est choisi : le choix d'un fichier, la corbeille, un dossier (le rangement commun, s'il l'est), ou l'invite à choisir.
+function viewHint(ctx) {
+  if (ctx.choosing) return ctx.t('ex.choose.hint');
+  if (ctx.state.view === 'trash') return ctx.t('trash.hint');
+  return ctx.state.view === 'folder' ? filingHintOf(ctx) : ctx.t('ex.hintSelect');
 }
 
-function folderInfo(ctx, selected, filingHint) {
+// Rien n'est choisi : ce que fait la vue, puis, pour un rangement commun seulement, le rappel des favoris communs. Dans un dossier à soi, rien : la barre
+// reste vide (sa hauteur ne bouge pas quand on choisit une ligne).
+function noSelectionInfo(ctx) {
   const { t } = ctx;
+  const hint = viewHint(ctx);
+  return h('div', { class: 'inf' }, hint ? infoLine1(icon('info'), h('span', { class: 'mu' }, hint)) : null,
+    ctx.personal ? null : h('div', { class: 'l2' }, icon('pin'), h('span', { class: 'lt' }, t('ex.hintFavShared'))));
+}
+
+function folderInfo(ctx, selected) {
+  const { t } = ctx;
+  const second = selected.shared ? t('rx.folder.hint') : filingHintOf(ctx);
   return h('div', { class: 'inf' }, infoLine1(icon('folder'), h('b', null, folderLabel(t, selected.path, selected.name)),
     h('span', { class: 'mu' }, `· ${t('ex.fileCount', { n: selected.count })} · ${weightText(ctx, selected.weight)}`)),
-    h('div', { class: 'l2' }, h('span', { class: 'lt' }, selected.shared ? t('rx.folder.hint') : filingHint)));
+    second ? h('div', { class: 'l2' }, h('span', { class: 'lt' }, second)) : null);
 }
 
 // Le fichier choisi : son nom, son type et son poids ; en dessous le grisé s'il y en a un, sinon ses faits.

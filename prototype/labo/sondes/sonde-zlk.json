@@ -1,0 +1,27 @@
+{
+  "contrat": 0,
+  "id": "sonde-zlk",
+  "nom": {
+    "fr": "Sonde ZL kit",
+    "en": "Probe ZL kit"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Une app écrite avec le kit commun (Correcteurs.start) qui coupe les correcteurs du navigateur quand GFS le dit, comme Publipostage+",
+    "en": "An app written with the common kit (Correcteurs.start) that turns off the browser's correctors when GFS says so, like Publipostage+"
+  },
+  "icone": "doc",
+  "entree": "kit.html",
+  "tables": {
+    "prefixe": "SondeZlk_"
+  },
+  "reglages": [],
+  "permissions": {
+    "acces": "none"
+  },
+  "extensions": [],
+  "actions": {
+    "ouvrir": [],
+    "choisir": []
+  }
+}

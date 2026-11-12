@@ -2,6 +2,7 @@
 // (Playwright : événements du pointeur et du clavier du navigateur, jamais dispatchEvent). LAB_LANG=fr|en est la langue de Grist, LAB_SCHEME=light|dark, LAB_W la largeur du panneau (700).
 // Un correcteur du navigateur (LanguageTool) juge chaque cadre d'après sa propre adresse : son interrupteur « pour ce site » ne coupe rien dans une app. GFS retient deux choix de la personne et
 // les dit à l'app (`contexte.correcteurs` et événement `correcteurs`) ; la sonde ZL (labo/sondes/z-correcteurs/) fait ce que fera le kit : elle pose `data-lt-active="false"` sur ses zones de texte.
+// `LAB_KIT=1` rejoue la même passe avec la sonde ZL kit (le vrai `Correcteurs.start()` du kit, branché sur le vrai `GfsLink`) et ajoute les zones qui naissent après (un `MutationObserver` réel) : 35 vérifications.
 // Ce que la passe mesure :
 //   1. le départ : rien n'est retenu, le bouton n'est pas dans la barre, le menu « Réglages » a sa ligne « Bouton LanguageTool » (non cochée, avec son info-bulle) ; l'app reçoit `coupes: false`
 //      dans son contexte, sans événement, et ses zones ne portent aucune marque ;
@@ -21,7 +22,10 @@ import { openSettings, settingsRows, ROW } from './reglages-gestes.mjs';
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
 const panelWidth = Number(process.env.LAB_W || 700);
-const run = `correcteurs-${lang}-${scheme}${panelWidth === 700 ? '' : `-${panelWidth}`}`;
+// LAB_KIT=1 : la sonde ZL kit (`kit.html`), qui coupe les correcteurs par le VRAI module du kit (`Correcteurs.start()`, le sous-module `prototype/kit`) au lieu de poser la marque à la main.
+const KIT = process.env.LAB_KIT === '1';
+const PROBE = KIT ? 'sonde-zlk' : 'sonde-zl';
+const run = `correcteurs${KIT ? '-kit' : ''}-${lang}-${scheme}${panelWidth === 700 ? '' : `-${panelWidth}`}`;
 // Ce que le labo cherche à l'écran, dans chaque langue (les textes de js/i18n/i18n.js).
 const WORDS = {
   fr: { close: 'Fermer', row: 'Bouton LanguageTool', rowTip: 'Un bouton de la barre coupe ou rallume LanguageTool dans l’app ouverte', on: 'LanguageTool travaille dans les apps (un clic le coupe)',
@@ -79,7 +83,7 @@ check('le menu tient dans le panneau de 700 × 400', menuBox.right <= menuBox.vi
 await shot('1-menu');
 await page.keyboard.press('Escape');
 
-let app = await lab.openApp('sonde-zl', /z-correcteurs\//, frame);
+let app = await lab.openApp(PROBE, /z-correcteurs\//, frame);
 await waitFor('le contexte de la sonde', async () => (await probe(app)).contextes.length >= 1);
 let seen = await probe(app);
 say('ce que la sonde a reçu au départ :', seen);
@@ -117,6 +121,12 @@ check('l\'app reçoit l\'événement `correcteurs` ({ correcteurs: { coupes: tru
   seen.evenements.length === 1 && JSON.stringify(seen.evenements[0]) === JSON.stringify({ correcteurs: { coupes: true } }) && same(seen.marques, 'false'), seen);
 const attrs = await app.evaluate(() => ['e1', 'i1', 't1'].map(id => document.getElementById(id).getAttribute('data-lt-active')));
 check('la marque est bien sur chacun des éléments éditables eux-mêmes (le contenteditable, le champ, la zone de texte), non sur un parent', JSON.stringify(attrs) === JSON.stringify(['false', 'false', 'false']), attrs);
+if (KIT) {
+  await app.evaluate(() => window.addZone('late'));
+  await waitFor('les zones qui naissent ensuite', async () => (await app.evaluate(() => window.readZone('late-area'))) === 'false');
+  const zones = await app.evaluate(() => ['late-dialog', 'late-area', 'late-editor', 'secret', 'wrap'].map(id => window.readZone(id)));
+  check('le kit marque les zones qui naissent ensuite (une fenêtre ouverte après le clic : sa zone de texte et son éditeur), jamais la fenêtre, le conteneur ni le mot de passe', JSON.stringify(zones) === JSON.stringify([null, 'false', 'false', null, null]), zones);
+}
 check('GFS n\'a pas touché au cadre de l\'app : le même cadre, un seul cadre', !app.isDetached() && page.frames().filter(f => /z-correcteurs\//.test(f.url())).length === 1);
 check('le bouton garde la taille des autres boutons de la barre (28 × 28)', button.width === 28 && button.height === 28, button);
 await shot('3-bouton-releve');
@@ -139,7 +149,7 @@ check('au clavier, Entrée coupe de nouveau : le bouton est relevé, l\'app marq
 // ---------- 5. GFS rechargé ----------
 await reload();
 check('GFS rechargé : les deux choix sont retenus', (await stored('gfs.langtool')) === 'oui' && (await stored('gfs.correcteurs')) === 'oui');
-app = await lab.openApp('sonde-zl', /z-correcteurs\//, frame);
+app = await lab.openApp(PROBE, /z-correcteurs\//, frame);
 await waitFor('le contexte de la sonde rouverte', async () => (await probe(app)).contextes.length >= 1);
 seen = await probe(app);
 check('une app ouverte après le choix reçoit `coupes: true` dès le départ (contexte), sans événement, et marque ses zones tout de suite', JSON.stringify(seen.contextes) === JSON.stringify([{ coupes: true }])

@@ -1536,7 +1536,7 @@ sans événement : seule une règle posée recharge la page (11.5, point 3), et 
 13. [D] `correcteurs` : **le bouton « LanguageTool » de la barre** (demande du porteur, 12/11 ; mesuré le même jour, faits vérifiés 104). Un correcteur du navigateur
     (LanguageTool) juge chaque cadre d'après sa propre adresse : son interrupteur « pour ce site » ne coupe donc rien dans le cadre d'une app (l'adresse de l'app n'est pas
     celle de Grist), et un gros document le fait ramer. **GFS ne peut ni couper l'extension ni toucher au texte d'une app** (cadre isolé) : il retient deux choix de la personne
-    et le dit à l'app. La ligne **« Bouton LanguageTool »** du menu « Réglages » (une case à cocher, éteinte au départ) met un sixième bouton dans la barre, entre « Table de travail » et
+    et le dit à l'app. La ligne **« Bouton LanguageTool »** du sous-menu « Réglages avancés » du menu « Réglages » (une case à cocher, éteinte au départ) met un sixième bouton dans la barre, entre « Table de travail » et
     « Position de la barre » ; enfoncé, LanguageTool travaille ; relevé, il est coupé dans les apps ; son nom et son info-bulle disent l'état. **Sans le bouton rien n'est coupé** : GFS
     laisse les correcteurs comme le navigateur les fait ; le choix de couper est gardé et reprend quand le bouton revient. Retenu dans le `localStorage` de GFS (jamais dans le document ;
     clés `gfs.langtool` : le bouton est dans la barre, et `gfs.correcteurs` : coupé ; absentes tant que la personne n'a rien voulu), suivi d'un onglet ou d'une section à l'autre ;

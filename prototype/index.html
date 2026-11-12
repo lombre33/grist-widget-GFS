@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-mzn/5CPM1ZiZtUaod2X+suzZ6xmBAZrgjGcwi2dXod0='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-CN0HjVzPrJRVBwNJtG5JCRfcWvfSERdW1UkJ1iOYNRs='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=6c6e51caa4">
 <link rel="stylesheet" href="css/explorer.css?v=a1c7636359">
 <link rel="stylesheet" href="css/modules.css?v=beca3b680b">
@@ -115,7 +115,7 @@
     "./js/i18n/i18n-sharing.js": "./js/i18n/i18n-sharing.js?v=7e09272a2c",
     "./js/i18n/i18n-trash.js": "./js/i18n/i18n-trash.js?v=e5c74092fa",
     "./js/i18n/i18n-weight.js": "./js/i18n/i18n-weight.js?v=e60a5723e4",
-    "./js/i18n/i18n.js": "./js/i18n/i18n.js?v=2b15a1a795",
+    "./js/i18n/i18n.js": "./js/i18n/i18n.js?v=621d2bf4a5",
     "./js/rights/rights-actions.js": "./js/rights/rights-actions.js?v=285803e997",
     "./js/rights/rights-control.js": "./js/rights/rights-control.js?v=f2481f204c",
     "./js/rights/rights-plan.js": "./js/rights/rights-plan.js?v=f7daea2036",
@@ -158,7 +158,7 @@
     "./js/shell/dock-state.js": "./js/shell/dock-state.js?v=bf40af2343",
     "./js/shell/dock.js": "./js/shell/dock.js?v=95361d92b0",
     "./js/shell/language.js": "./js/shell/language.js?v=fdc529d628",
-    "./js/shell/settings-menu.js": "./js/shell/settings-menu.js?v=41e019f25a",
+    "./js/shell/settings-menu.js": "./js/shell/settings-menu.js?v=0918dce267",
     "./js/shell/stored-choice.js": "./js/shell/stored-choice.js?v=08d02d1bfe",
     "./js/theme/ambiance-forme.js": "./js/theme/ambiance-forme.js?v=9945157b3b",
     "./js/theme/ambiance-types.js": "./js/theme/ambiance-types.js?v=deef46c542",
@@ -272,7 +272,7 @@
 <link rel="modulepreload" href="./js/broker/session.js?v=9921c3d5ac">
 <link rel="modulepreload" href="./js/broker/app-status.js?v=651007029f">
 <link rel="modulepreload" href="./js/broker/frames.js?v=f45d5dcf64">
-<link rel="modulepreload" href="./js/i18n/i18n.js?v=2b15a1a795">
+<link rel="modulepreload" href="./js/i18n/i18n.js?v=621d2bf4a5">
 <link rel="modulepreload" href="./js/shell/language.js?v=fdc529d628">
 <link rel="modulepreload" href="./js/theme/theme.js?v=e97475679a">
 <link rel="modulepreload" href="./js/theme/theme-apply.js?v=01cd2ffc43">
@@ -281,7 +281,7 @@
 <link rel="modulepreload" href="./js/ui/icons.js?v=d967360a99">
 <link rel="modulepreload" href="./js/shell/dock.js?v=95361d92b0">
 <link rel="modulepreload" href="./js/shell/correcteurs.js?v=55348b7ebd">
-<link rel="modulepreload" href="./js/shell/settings-menu.js?v=41e019f25a">
+<link rel="modulepreload" href="./js/shell/settings-menu.js?v=0918dce267">
 <link rel="modulepreload" href="./js/shell/about.js?v=b2b79b416a">
 <link rel="modulepreload" href="./js/apps/work-control.js?v=3a43a1dac2">
 <link rel="modulepreload" href="./js/explorer/explorer.js?v=b41dc7469e">

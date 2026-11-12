@@ -676,7 +676,7 @@ enregistrée par l'autre app.
 - **Dans Publipostage+, l'entrée est « Organiser »** (en tête du sélecteur de modèle, déjà là) : sa barre d'outils est gelée.
   Une app sans équivalent reçoit du kit une entrée « Fichiers » à la place que sa charte prévoit.
 - **GFS pose en plus, par-dessus l'app, une petite barre de cinq boutons à icône seule** (« Fichiers », « Fichiers ouverts », « Apps et extensions »,
-  « Table de travail » et « Position de la barre » ; **un sixième, « LanguageTool », quand la personne coche « Bouton LanguageTool » dans « Réglages »** : il coupe ou rallume le correcteur du navigateur dans l'app, demande du porteur du 12/11, contrats 5.2, point 13), que la personne place où elle veut : à gauche (par défaut), en haut, à droite ou en bas. Elle ne
+  « Table de travail » et « Position de la barre » ; **un sixième, « LanguageTool », quand la personne coche « Bouton LanguageTool » dans « Réglages » ▸ « Réglages avancés »** : il coupe ou rallume le correcteur du navigateur dans l'app, demande du porteur du 12/11, contrats 5.2, point 13), que la personne place où elle veut : à gauche (par défaut), en haut, à droite ou en bas. Elle ne
   prend la place de personne : le cadre de l'app reste plein, et chaque app laisse libre, aux quatre bords, la petite zone que la
   barre recouvre et que GFS lui dit (contrats 5.2, point 7). Décision du porteur, 21/10 (question 7, section 12) ; le 5e bouton, « Fichiers ouverts », est son choix du 11/11 (contrats 6.4, point 14).
 - **Les réglages de GFS sont dans l'explorateur, pas sur la barre** : un bouton « Réglages » à icône seule, le dernier de la ligne du

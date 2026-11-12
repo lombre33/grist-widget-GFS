@@ -17,7 +17,7 @@ import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check } from './lab-common.mjs';
 import { collectWarnings, waiter, reopenGfs } from './lab-gestes.mjs';
-import { openSettings, settingsRows, ROW } from './reglages-gestes.mjs';
+import { openAdvancedMenu, subRows } from './reglages-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -86,7 +86,7 @@ const closeExplorer = async () => {
   await frame.locator('#floaters').waitFor({ state: 'visible' });
   await page.waitForTimeout(300);
 };
-const clickRow = async () => { await openSettings(frame); await settingsRows(frame).nth(ROW.langtool).click(); await frame.locator('.menu').waitFor({ state: 'detached' }); };
+const clickRow = async () => { await openAdvancedMenu(frame); await subRows(frame).first().click(); await frame.locator('.menu').waitFor({ state: 'detached' }); };
 const openModel = async (name, folder) => {
   await showFiles();
   if (folder) await row(folder).dblclick();

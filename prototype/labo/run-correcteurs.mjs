@@ -4,7 +4,7 @@
 // les dit à l'app (`contexte.correcteurs` et événement `correcteurs`) ; la sonde ZL (labo/sondes/z-correcteurs/) fait ce que fera le kit : elle pose `data-lt-active="false"` sur ses zones de texte.
 // `LAB_KIT=1` rejoue la même passe avec la sonde ZL kit (le vrai `Correcteurs.start()` du kit, branché sur le vrai `GfsLink`) et ajoute les zones qui naissent après (un `MutationObserver` réel) : 35 vérifications.
 // Ce que la passe mesure :
-//   1. le départ : rien n'est retenu, le bouton n'est pas dans la barre, le menu « Réglages » a sa ligne « Bouton LanguageTool » (non cochée, avec son info-bulle) ; l'app reçoit `coupes: false`
+//   1. le départ : rien n'est retenu, le bouton n'est pas dans la barre, le menu « Réglages » n'a pas de ligne LanguageTool mais « Réglages avancés », dont le sous-menu a « Bouton LanguageTool » (non cochée, avec son info-bulle) ; l'app reçoit `coupes: false`
 //      dans son contexte, sans événement, et ses zones ne portent aucune marque ;
 //   2. la ligne cochée à la souris : le bouton paraît dans la barre (enfoncé : LanguageTool travaille), GFS retient `gfs.langtool`, l'app n'apprend rien (rien n'est coupé) ;
 //   3. le bouton à la souris : LanguageTool est coupé (relevé), `gfs.correcteurs` est retenue, l'app reçoit l'événement une seule fois et marque ses trois zones, sans que son cadre soit rechargé ;
@@ -17,7 +17,7 @@ import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check } from './lab-common.mjs';
 import { collectWarnings, waiter, reopenGfs } from './lab-gestes.mjs';
-import { openSettings, settingsRows, ROW } from './reglages-gestes.mjs';
+import { openSettings, openAdvancedMenu, settingsRows, subRows, ROW } from './reglages-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -28,9 +28,9 @@ const PROBE = KIT ? 'sonde-zlk' : 'sonde-zl';
 const run = `correcteurs${KIT ? '-kit' : ''}-${lang}-${scheme}${panelWidth === 700 ? '' : `-${panelWidth}`}`;
 // Ce que le labo cherche à l'écran, dans chaque langue (les textes de js/i18n/i18n.js).
 const WORDS = {
-  fr: { close: 'Fermer', row: 'Bouton LanguageTool', rowTip: 'Un bouton de la barre coupe ou rallume LanguageTool dans l’app ouverte', on: 'LanguageTool travaille dans les apps (un clic le coupe)',
+  fr: { close: 'Fermer', advanced: 'Réglages avancés', row: 'Bouton LanguageTool', rowTip: 'Un bouton de la barre coupe ou rallume LanguageTool dans l’app ouverte', on: 'LanguageTool travaille dans les apps (un clic le coupe)',
     off: 'LanguageTool est coupé dans les apps (un clic le rallume)', notKept: 'Ce choix ne sera pas gardé : votre navigateur refuse l’enregistrement.' },
-  en: { close: 'Close', row: 'LanguageTool button', rowTip: 'A button in the bar turns LanguageTool off or back on in the open app', on: 'LanguageTool is working in the apps (click to turn it off)',
+  en: { close: 'Close', advanced: 'Advanced settings', row: 'LanguageTool button', rowTip: 'A button in the bar turns LanguageTool off or back on in the open app', on: 'LanguageTool is working in the apps (click to turn it off)',
     off: 'LanguageTool is turned off in the apps (click to turn it back on)', notKept: 'This choice will not be kept: your browser refuses to store it.' },
 };
 const words = WORDS[lang];
@@ -56,10 +56,10 @@ const ltState = () => frame.evaluate(() => {
   return { hidden: node.hidden, pressed: node.getAttribute('aria-pressed'), title: node.title, label: node.getAttribute('aria-label'), text: node.textContent.trim(), focused: document.activeElement === node,
     width: Math.round(rect.width), height: Math.round(rect.height), icon: Boolean(node.querySelector('svg')) };
 });
-// La ligne « Bouton LanguageTool » du menu « Réglages » : le menu est ouvert (explorateur ouvert), la ligne se lit puis se clique à la vraie souris.
-const settingsRow = () => settingsRows(frame).nth(ROW.langtool);
+// La ligne « Bouton LanguageTool » du sous-menu « Réglages avancés » (menu « Réglages » → « Réglages avancés ») : le sous-menu est ouvert (explorateur ouvert), la ligne se lit puis se clique à la vraie souris.
+const settingsRow = () => subRows(frame).first();
 const rowState = () => settingsRow().evaluate(node => ({ text: node.querySelector('.menu-label').textContent.trim(), checked: node.getAttribute('aria-checked'), role: node.getAttribute('role'), title: node.title }));
-const clickRow = async () => { await openSettings(frame); await settingsRow().click(); await frame.locator('.menu').waitFor({ state: 'detached' }); };
+const clickRow = async () => { await openAdvancedMenu(frame); await settingsRow().click(); await frame.locator('.menu').waitFor({ state: 'detached' }); };
 // Entre l'explorateur et l'app : « Fermer » rend l'app et la barre, le bouton « Fichiers » rend l'explorateur.
 const showApp = async () => {
   await frame.locator('.ex-foot .btn', { hasText: new RegExp(`^${words.close}$`) }).click();
@@ -75,11 +75,15 @@ check('rien n\'est retenu tant que la personne n\'a rien choisi', (await stored(
 await openSettings(frame);
 const rows = await frame.evaluate(() => [...document.querySelectorAll('.menu:not(.menu-sub) .menu-item')].map(node => node.querySelector('.menu-label').textContent.trim()));
 say('lignes du menu « Réglages » :', rows);
-check('le menu « Réglages » a sa ligne « Bouton LanguageTool » entre « Thème » et « Position de la barre », non cochée, avec son info-bulle', rows.length === 5 && rows[ROW.langtool] === words.row, rows);
+check('le menu « Réglages » a cinq lignes et aucune ne nomme LanguageTool : « Réglages avancés » est entre « Thème » et « Position de la barre »', rows.length === 5 && rows[ROW.advanced] === words.advanced && !rows.some(text => /LanguageTool/.test(text)), rows);
+await settingsRows(frame).nth(ROW.advanced).click();
+await frame.locator('.menu-sub').waitFor();
+const subNames = await subRows(frame).evaluateAll(nodes => nodes.map(node => node.querySelector('.menu-label').textContent.trim()));
+check('« Réglages avancés » n\'a que « Bouton LanguageTool », non coché, avec son info-bulle', subNames.length === 1 && subNames[0] === words.row, subNames);
 let row = await rowState();
 check('la ligne est une case à cocher (rôle et état dits au lecteur d\'écran), décochée, et son info-bulle dit ce qu\'elle fait', row.role === 'menuitemcheckbox' && row.checked === 'false' && row.title === words.rowTip, row);
-const menuBox = await frame.evaluate(() => { const box = document.querySelector('.menu:not(.menu-sub)').getBoundingClientRect(); return { right: Math.round(box.right), bottom: Math.round(box.bottom), view: [window.innerWidth, window.innerHeight] }; });
-check('le menu tient dans le panneau de 700 × 400', menuBox.right <= menuBox.view[0] && menuBox.bottom <= menuBox.view[1], menuBox);
+const menuBox = await frame.evaluate(() => { const box = document.querySelector('.menu-sub').getBoundingClientRect(); const main = document.querySelector('.menu:not(.menu-sub)').getBoundingClientRect(); return { right: Math.round(Math.max(box.right, main.right)), bottom: Math.round(Math.max(box.bottom, main.bottom)), view: [window.innerWidth, window.innerHeight] }; });
+check('le menu et son sous-menu tiennent dans le panneau de 700 × 400', menuBox.right <= menuBox.view[0] && menuBox.bottom <= menuBox.view[1], menuBox);
 await shot('1-menu');
 await page.keyboard.press('Escape');
 
@@ -95,7 +99,7 @@ check('le bouton n\'est pas dans la barre (l\'espace est celui des cinq autres)'
 await showExplorer();
 await clickRow();
 check('la ligne cochée : GFS retient `gfs.langtool`, pas `gfs.correcteurs`', (await stored('gfs.langtool')) === 'oui' && (await stored('gfs.correcteurs')) === null);
-await openSettings(frame);
+await openAdvancedMenu(frame);
 row = await rowState();
 check('la ligne est cochée au menu suivant', row.checked === 'true', row);
 await shot('2-menu-coche');

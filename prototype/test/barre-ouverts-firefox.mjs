@@ -1,4 +1,4 @@
-// Le 5e bouton de la barre, « Fichiers ouverts », sous Firefox (règle du 03/11 : toute nouvelle interface ajoute ses mesures à ce banc ; décision d'Antoine du 11/11). La vraie barre de index.html, le vrai `Dock` et le
+// Le 5e bouton de la barre, « Fichiers ouverts », et le 6e, « LanguageTool » (12/11), sous Firefox (règle du 03/11 : toute nouvelle interface ajoute ses mesures à ce banc ; décision d'Antoine du 11/11). La vraie barre de index.html, le vrai `Dock` et le
 // vrai `OpenedBar` (test/pages/barre-ouverts.js) sur des fichiers d'essai, avec les feuilles de style de index.html. Ce que l'essai mesure, à 700 × 400 (et la liste à 400 px de large), en français et en anglais, en clair
 // et en sombre, à la vraie souris et au vrai clavier : les cinq boutons dans l'ordre et la barre de 34 × 154 ; le bouton grisé sans fichier ouvert et son menu (titre, article grisé qui explique, « Ouvrir un autre
 // fichier… ») ; la pastille et le nom qui portent le nombre ; chaque ligne (28 px, contenu dans la ligne, fichier affiché en gras avec son mot, indice de l'app, croix de 24 px au moins) ; un clic sur un fichier l'ouvre,
@@ -38,6 +38,7 @@ function read() {
   const bar = document.getElementById('floaters');
   const menu = document.querySelector('.menu-opened');
   const badge = button.querySelector('.badge');
+  const lt = document.getElementById('floater-lt');
   const active = document.activeElement;
   const rowOf = row => {
     const [main, drop] = [...row.children];
@@ -52,10 +53,11 @@ function read() {
     };
   };
   return {
-    view: [document.documentElement.clientWidth, document.documentElement.clientHeight], ids: [...bar.querySelectorAll('.floater')].map(node => node.id),
-    sizes: [...bar.querySelectorAll('.floater')].map(node => [Math.round(node.getBoundingClientRect().width), Math.round(node.getBoundingClientRect().height)]),
+    view: [document.documentElement.clientWidth, document.documentElement.clientHeight], ids: [...bar.querySelectorAll('.floater:not([hidden])')].map(node => node.id),
+    sizes: [...bar.querySelectorAll('.floater:not([hidden])')].map(node => [Math.round(node.getBoundingClientRect().width), Math.round(node.getBoundingClientRect().height)]),
     bar: box(bar), button: box(button), name: button.getAttribute('aria-label'), title: button.title, empty: button.dataset.empty, expanded: button.getAttribute('aria-expanded'),
     badge: badge ? { text: text(badge), box: box(badge) } : null,
+    lt: { hidden: lt.hidden, pressed: lt.getAttribute('aria-pressed'), name: lt.getAttribute('aria-label'), title: lt.title, box: box(lt), onButton: active === lt, clicks: window.__bar.ltClicks },
     menu: menu ? {
       box: box(menu), title: text(menu.querySelector('.menu-title')), rows: [...menu.querySelectorAll('.menu-row')].map(rowOf), separators: menu.querySelectorAll('hr').length,
       items: [...menu.querySelectorAll('.menu-item:not(.menu-drop)')].map(item => ({ name: text(item.querySelector('.menu-label')), greyed: item.getAttribute('aria-disabled') === 'true', height: Math.round(item.getBoundingClientRect().height) })),
@@ -122,6 +124,41 @@ async function layout(run) {
   if (!near(right - left, 34) || !near(bottom - top, 154) || !near(left, 4) || !near((top + bottom) / 2, view.view[1] / 2, 1)) run.note('la barre', `la barre devait mesurer 34 × 154 px, à 4 px du bord gauche et centrée (${view.bar.map(Math.round)})`);
   if (view.sizes.some(([w, h]) => w !== 28 || h !== 28)) run.note('les boutons', `chaque bouton devait mesurer 28 × 28 px (${JSON.stringify(view.sizes)})`);
   if (view.name !== t('dock.opened') || view.title !== t('dock.opened') || view.empty !== 'true' || view.badge) run.note('le bouton vide', `grisé, nommé « ${t('dock.opened')} », sans pastille (${view.name}, ${view.empty}, ${JSON.stringify(view.badge)})`);
+}
+
+// Le 6e bouton, « LanguageTool » (demande du 12/11) : caché tant que la personne ne l'a pas voulu (la barre garde ses cinq boutons, 34 × 154) ; montré, il se met entre « Table de travail » et « Position » (34 × 184), mesure
+// 28 px, est enfoncé tant que LanguageTool travaille et relevé quand il est coupé, son nom dit l'état ; un clic à la souris le fait basculer (Espace et Entrée : labo/run-correcteurs.mjs) ; sur les quatre bords
+// la barre tient dans la page ; l'accessibilité renforcée le met à 36 px.
+async function langTool(run) {
+  const { t } = run;
+  await run.setup(0);
+  await run.page.run(() => window.__bar.lt(false, false));
+  await new Promise(resolve => setTimeout(resolve, 100));
+  let view = await run.state();
+  if (!view.lt.hidden || view.ids.length !== 5 || !near(view.bar[3] - view.bar[1], 154)) run.note('LanguageTool : caché', `sans le réglage le bouton devait rester caché et la barre à cinq boutons de 154 px (${view.lt.hidden}, ${view.ids.length}, ${Math.round(view.bar[3] - view.bar[1])})`);
+  await run.page.run(() => window.__bar.lt(true, false));
+  await new Promise(resolve => setTimeout(resolve, 100));
+  view = await run.state();
+  if (view.ids.join() !== 'floater-files,floater-opened,floater-apps,floater-work,floater-lt,floater-place') run.note('LanguageTool : la place', `le bouton devait venir entre « Table de travail » et « Position » (${view.ids.join()})`);
+  if (!near(view.bar[2] - view.bar[0], 34) || !near(view.bar[3] - view.bar[1], 184)) run.note('LanguageTool : la barre', `la barre à six boutons devait mesurer 34 × 184 px (${view.bar.map(Math.round)})`);
+  if (view.sizes.some(([w, h]) => w !== 28 || h !== 28)) run.note('LanguageTool : la taille', `chaque bouton devait mesurer 28 × 28 px (${JSON.stringify(view.sizes)})`);
+  if (view.lt.pressed !== 'true' || view.lt.name !== t('dock.ltOn') || view.lt.title !== t('dock.ltOn')) run.note('LanguageTool : enfoncé', `LanguageTool travaille : le bouton devait être enfoncé et dire « ${t('dock.ltOn')} » (${view.lt.pressed}, ${view.lt.name})`);
+  if (!(await run.clickAt('le bouton « LanguageTool »', centerOf, '#floater-lt'))) return;
+  view = await run.expectState('LanguageTool : le clic', 'un clic devait couper : bouton relevé, nom « coupé »', state => state.lt.clicks === 1 && state.lt.pressed === 'false' && state.lt.name === t('dock.ltOff'));
+  // Espace et Entrée sur un bouton ne se jouent pas sous ce Firefox sans écran (voir conflictProblems) : ils se mesurent dans le labo (labo/run-correcteurs.mjs, Chromium).
+  for (const edge of Object.keys(SIDES)) {
+    await run.setup(0, edge);
+    view = await run.state();
+    const horizontal = edge === 'haut' || edge === 'bas';
+    const [w, h] = [view.bar[2] - view.bar[0], view.bar[3] - view.bar[1]];
+    if (!inside(view.bar, view.view) || !near(horizontal ? w : h, 184) || !near(horizontal ? h : w, 34) || view.lt.box[0] < view.bar[0] - 0.5 || view.lt.box[2] > view.bar[2] + 0.5) run.note(`LanguageTool : le bord ${edge}`, `la barre à six boutons devait tenir dans la page, 34 × 184 px (${view.bar.map(Math.round)} / ${view.view})`);
+  }
+  await run.setup(0, 'gauche');
+  await run.page.run(() => window.__bar.access(true));
+  await new Promise(resolve => setTimeout(resolve, 150));
+  view = await run.state();
+  if (view.sizes.length !== 6 || view.sizes.some(([w, h]) => w < 36 || h < 36) || !inside(view.bar, view.view)) run.note('LanguageTool : accessibilité renforcée', `les six boutons devaient mesurer 36 px au moins et tenir dans la page (${JSON.stringify(view.sizes)})`);
+  await run.page.run(() => { window.__bar.access(false); window.__bar.lt(false, false); });
 }
 
 // Sans fichier ouvert : le menu dit pourquoi (un article grisé dont le clic explique) et garde « Ouvrir un autre fichier… » ; Échap rend le clavier au bouton.
@@ -268,7 +305,7 @@ export async function barreProblems(page, site, language, mode, width = 700) {
   await page.view({ width, height: 400, scale: 1, mode });
   await page.activate();
   const run = new Bar(page, language, `${width} px, ${mode === 'dark' ? 'sombre' : 'clair'}, ${language}`, found);
-  const steps = width === 700 ? [layout, emptyMenu, filled, mouse, keyboard, edges, longName, access] : [longName, edges];
+  const steps = width === 700 ? [layout, emptyMenu, filled, mouse, keyboard, edges, longName, access, langTool] : [longName, edges];
   for (const step of steps) {
     try {
       await step(run);

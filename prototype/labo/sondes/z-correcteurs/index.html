@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Sonde ZL</title>
+<!-- Politique de l'app sonde ZL : celle de Publipostage+ (script-src 'self', frame-src 'none', form-action 'none', pas de default-src). -->
+<meta http-equiv="Content-Security-Policy" content="script-src 'self'; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'">
+</head>
+<body>
+<h1>Sonde ZL : une app qui suit « correcteurs coupés » de GFS</h1>
+<p>Ce que la sonde a reçu est écrit dans <code>body[data-sonde]</code>, que le labo lit : le champ <code>correcteurs</code> de son contexte, les événements <code>correcteurs</code> et la marque que l'app pose sur ses zones de texte.</p>
+<textarea id="t1" rows="2" cols="30">Zone de texte</textarea>
+<div id="e1" contenteditable="true">Zone éditable</div>
+<input id="i1" type="text" value="Champ">
+<script src="correcteurs.js"></script>
+</body>
+</html>

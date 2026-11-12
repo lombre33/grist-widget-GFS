@@ -117,7 +117,7 @@ const geometry = await frame.evaluate(() => {
   const dock = document.getElementById('floaters').getBoundingClientRect();
   const stage = document.getElementById('stage').getBoundingClientRect();
   return { rect: { x: dock.left - stage.left, y: dock.top - stage.top, largeur: dock.width, hauteur: dock.height }, stage: { largeur: stage.width, hauteur: stage.height },
-    buttons: [...document.querySelectorAll('#floaters .floater')].map(button => { const box = button.getBoundingClientRect(); return [Math.round(box.width * 10) / 10, Math.round(box.height * 10) / 10]; }) };
+    buttons: [...document.querySelectorAll('#floaters .floater:not([hidden])')].map(button => { const box = button.getBoundingClientRect(); return [Math.round(box.width * 10) / 10, Math.round(box.height * 10) / 10]; }) };
 });
 const expectedZone = (rect, stage) => {
   const x0 = Math.max(0, Math.round(rect.x) - GAP), y0 = Math.max(0, Math.round(rect.y) - GAP);

@@ -291,6 +291,16 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     copié. `dit` est une phrase d'une ligne (200 signes au plus) que GFS ajoute à la sienne. Aucun délai à tenir à ta charge, mais sans réponse
     au bout de 20 secondes GFS ne t'attend plus et le dit ; `GFS_INCONNU` pour un appel que tu ne connais pas. Tu n'écris ni dans `GFS_Corbeille`
     ni dans `GFS_Rangement`. Seule, hors de GFS, l'app garde sa propre gestion de ses fichiers (ses boutons de suppression et de copie).
+21. Couper les correcteurs du navigateur quand GFS le dit (demande du porteur du 12/11 : un bouton de la barre de GFS pour couper LanguageTool dans l'app ; contrats 5.2,
+    point 13 ; faits vérifiés 104 ; kit 0.22.0). Un correcteur du navigateur juge ton cadre d'après **ton** adresse, non celle de Grist : son interrupteur « pour ce site » ne coupe rien
+    chez toi, et un gros document le fait ramer. GFS ne peut rien toucher dans ton cadre : il te dit `contexte.correcteurs` (`{ coupes }`) et l'événement `correcteurs` quand la personne
+    coupe ou rallume par le bouton de la barre. **Le kit fait la pose, tu ne l'écris pas** : appelle `Correcteurs.start()` (`js/correcteurs.js` du kit) une fois, dans ton module d'entrée.
+    Il pose `data-lt-active="false"` sur **chaque élément éditable lui-même** (`[contenteditable]` qui n'est pas `"false"`, `textarea`, `input` de texte : la racine de ton éditeur, pas un
+    conteneur plus haut, que l'extension ignore), la retire quand GFS dit `coupes: false`, à chaud et sans recharger ton cadre, et surveille les zones qui naissent après (une fenêtre, un
+    champ de cellule, un éditeur de champ). Rien à faire d'autre : pas de bouton à toi, pas de réglage à toi, pas de lien avec LanguageTool. **Seule, hors de GFS**, ou si GFS ne dit rien,
+    l'app ne pose aucune marque : les correcteurs restent comme le navigateur les fait. Ne marque rien de ta propre initiative : la personne coupe pour **tout** ton cadre, ou pas.
+    **Fait quand** : avec le bouton de GFS relevé, chacune de tes zones de texte porte la marque (dans chaque mode de l'app : Publipostage+ en document, en présentation et en grille),
+    celles qui naissent ensuite aussi ; enfoncé, aucune ne la porte ; ton cadre n'est jamais rechargé par le bouton.
 
 ### 1.3 Licence : GPL 3.0 dans tous les dépôts (décision du porteur, 21/10)
 

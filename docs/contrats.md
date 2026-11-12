@@ -42,7 +42,7 @@ connaît pas.
 3. **Listes fermées, tenues par GFS** : les verbes d'écriture que le courtier laisse passer ; sept tables internes
    (règles d'accès, partages, rappels, réglages du document) qu'aucune app n'écrit, quoi qu'elle déclare ; la colonne
    `options` de `_grist_Views_section`, qui porte l'adresse et l'accès de chaque widget, GFS compris (section 3).
-4. **Messages propres à GFS** (contexte, stockage, barre, ambiance, actions « ouvrir », « choisir », « ranger », « joindre », « insérer », « installer », « fermer ») :
+4. **Messages propres à GFS** (contexte, stockage, barre, ambiance, correcteurs, actions « ouvrir », « choisir », « ranger », « joindre », « insérer », « installer », « fermer ») :
    une enveloppe à part, sans `mtype`, que le script d'API de Grist ignore (sections 4 et 5).
 5. **Installer ne télécharge rien** : le code de toutes les apps livrées est déjà dans le site de GFS ; installer inscrit
    l'identifiant de l'app dans une table du document (sections 6.4 et 7.4). La bibliothèque d'une extension n'est pas dans
@@ -1147,6 +1147,7 @@ Les noms de la v0 :
 | `langue` (événement) | GFS → app | `{ langue }` (5.2, point 6) | aucune |
 | `barre` (événement) | GFS → app | `{ barre }` : `{ bord, epaisseur, zone }` ou `null` (5.2, point 7) | aucune |
 | `ambiance` (événement) | GFS → app | `{ ambiance }` : le message d'ambiance, ou `null` (5.2, point 10) | aucune |
+| `correcteurs` (événement) | GFS → app | `{ correcteurs }` : `{ coupes }`, vrai quand la personne a coupé LanguageTool et les correcteurs du navigateur dans les apps (5.2, point 13) | aucune |
 | `reglages` (événement) | GFS → app | `{ enregistres }` : vrai quand le réglage que l'app vient d'écrire est dans la vue, faux quand il reste un brouillon ; dit aussi d'avance, à la demande de `contexte`, ce que deviendront ses réglages (7.3, point 5) | aucune |
 
 1. [D] `gfs` est le numéro de contrat de l'émetteur (pour l'app, celui de son manifeste). Un message sans `gfs` entier, ou d'un
@@ -1184,6 +1185,7 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 | `barre` | la barre de GFS qui recouvre le cadre de l'app, `{ bord, epaisseur, zone }`, ou `null` quand rien ne le recouvre (point 7) | oui, mesurée à chaque appel | `null` |
 | `lecteurs` | les sites dont GFS pose le lecteur de vidéo pour cette app, `["youtube", "vimeo"]` (point 11) | seulement pour une app qui déclare `lecteurs` (3.4, point 7), `[]` pour toute autre ; relue à chaque appel | `[]` |
 | `ambiance` | l'ambiance et la couleur que la personne a choisies pour GFS et ses apps, ou `null` quand rien n'est choisi (point 10) | oui, relue à chaque appel | `null` |
+| `correcteurs` | `{ coupes }` : vrai quand la personne a coupé les correcteurs du navigateur (LanguageTool) dans les apps par le bouton de la barre (point 13) | oui, relue à chaque appel | `{ coupes: false }` |
 | `role` | ce que GFS sait de la personne, `{ proprietaire, responsableDe }` (point 8) | oui, à chaque appel ; la preuve se garde pour la vie de la page, 1,5 s d'attente au plus | `{ proprietaire: null, responsableDe: [] }` |
 | `liensPublics` | **pas encore rendu** (décidé le 06/11, 11.7, point 11) : `{ connu, tables }`, les tables qu'un lien public remplit ; `connu` faux (ni propriétaire prouvé, ni lecture possible) = l'app attend un geste sur toute ligne reçue | oui, une fois codé | `{ connu: false, tables: [] }` |
 | `identite` | l'adresse e-mail de la personne, `{ email }`, ou `null` (point 9) | seulement pour une app qui déclare `identite` (3.4, point 6), `null` pour toute autre ; relue à chaque appel | `null` (l'app garde sa propre sonde, 11.6, point 5) |
@@ -1191,12 +1193,12 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 1. [T] Les six paramètres de l'adresse (1.3) et le contexte disent la même chose : l'adresse existe pour le code des apps
    qui la lit déjà, le contexte pour le kit. Une seule différence dans le temps : la langue de l'adresse est celle du cadre
    quand il a été créé, et le contexte dit la langue qui vaut maintenant (point 6).
-2. [D] Six événements en cours de vie. `extensions` (`{ "extensions": [ … ], "bibliotheques": { … }, "natives": { … } }`), quand la personne
+2. [D] Sept événements en cours de vie. `extensions` (`{ "extensions": [ … ], "bibliotheques": { … }, "natives": { … } }`), quand la personne
    active ou désactive une extension dans GFS, ou change le mode d'une bibliothèque native (point 12) : l'app charge alors l'extension au premier usage, comme ses moteurs d'export.
    `langue` (`{ "langue": "fr" | "en" }`), quand la personne change la langue de GFS (point 6). `barre` (`{ "barre": { … } | null }`),
    quand la barre de GFS change de bord, de taille, ou disparaît et revient (point 7). `identite` (`{ "identite": { "email": … } | null }`),
    quand GFS apprend l'adresse de la personne pendant que l'app qui la déclare est ouverte (point 9). `ambiance` (`{ "ambiance": { … } | null }`),
-   quand la personne change l'ambiance ou la couleur de GFS (point 10). `reglages` (`{ "enregistres": true | false }`), après chaque écriture
+   quand la personne change l'ambiance ou la couleur de GFS (point 10). `correcteurs` (`{ "correcteurs": { "coupes": true | false } }`), quand la personne coupe ou rallume les correcteurs du navigateur par le bouton de la barre, ou le montre ou le cache (point 13). `reglages` (`{ "enregistres": true | false }`), après chaque écriture
    d'un réglage de l'app : vrai si GFS l'a écrit dans la vue (rien à enregistrer dans Grist), faux s'il est resté un brouillon ; et **d'avance**, une fois
    par demande de `contexte`, pour une app qui déclare des clés `reglages` (7.3, point 5).
 3. [D] `ouverture` : `null` quand l'app s'ouvre sans consigne (elle applique son propre ordre d'arrivée, cahier 6.2, point 4 : c'est
@@ -1277,7 +1279,7 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    adaptent leur interface aux quatre emplacements sans recouvrement ; l'emprise reste minimale, donc pas de bande en plus, mais
    un recouvrement de l'espace que les apps laissent vide). Elle porte cinq boutons à icône seule (« Fichiers », « Fichiers ouverts »,
    6.4 point 14, depuis le 11/11, « Apps et extensions », « Table de travail », 4.5, depuis le 21/10 au soir, et « Position de la barre »), de 34 × 154 px au bord
-   gauche ou droit et de 154 × 34 px en haut ou en bas (34 × 124 avec quatre boutons, jusqu'au 11/11 ; 34 × 94 avec les trois premiers), à 4 px du bord et centrée sur lui ; elle remplace les deux boutons que GFS posait au coin bas droit. Le cadre de l'app reste plein :
+   gauche ou droit et de 154 × 34 px en haut ou en bas (**34 × 184 avec le sixième bouton, « LanguageTool », que la personne ajoute par le réglage du même nom, point 13**, entre « Table de travail » et « Position de la barre » ; 34 × 124 avec quatre boutons, jusqu'au 11/11 ; 34 × 94 avec les trois premiers), à 4 px du bord et centrée sur lui ; elle remplace les deux boutons que GFS posait au coin bas droit. Le cadre de l'app reste plein :
    rien ne le réduit. `contexte.barre` dit ce qui est recouvert :
    `{ "bord": "gauche", "epaisseur": 42, "zone": { "x": 0, "y": 119, "largeur": 42, "hauteur": 162 } }` (l'exemple d'un cadre de
    700 × 400 avec la barre à gauche ; la taille de la barre peut changer, l'app lit toujours la zone qu'on lui donne : elle a grandi de 30 px le 11/11 avec le 5e bouton,
@@ -1530,6 +1532,23 @@ sans événement : seule une règle posée recharge la page (11.5, point 3), et 
     `onExtensions` quand seule une copie figée change. **L'éditeur (TipTap, ProseMirror) n'est pas dans ce champ** : sa copie est une carte
     d'importation rangée dans l'app, que sa page pose avant la réponse de GFS ; le choix lui arrive dans l'adresse du cadre
     (`copie=editeur`, 1.3 point 3 ; `GfsLink.copies()`, kit 0.19.0), pas dans le contexte ni par événement, et prend effet au prochain démarrage.
+
+13. [D] `correcteurs` : **le bouton « LanguageTool » de la barre** (demande du porteur, 12/11 ; mesuré le même jour, faits vérifiés 104). Un correcteur du navigateur
+    (LanguageTool) juge chaque cadre d'après sa propre adresse : son interrupteur « pour ce site » ne coupe donc rien dans le cadre d'une app (l'adresse de l'app n'est pas
+    celle de Grist), et un gros document le fait ramer. **GFS ne peut ni couper l'extension ni toucher au texte d'une app** (cadre isolé) : il retient deux choix de la personne
+    et le dit à l'app. La ligne **« Bouton LanguageTool »** du menu « Réglages » (une case à cocher, éteinte au départ) met un sixième bouton dans la barre, entre « Table de travail » et
+    « Position de la barre » ; enfoncé, LanguageTool travaille ; relevé, il est coupé dans les apps ; son nom et son info-bulle disent l'état. **Sans le bouton rien n'est coupé** : GFS
+    laisse les correcteurs comme le navigateur les fait ; le choix de couper est gardé et reprend quand le bouton revient. Retenu dans le `localStorage` de GFS (jamais dans le document ;
+    clés `gfs.langtool` : le bouton est dans la barre, et `gfs.correcteurs` : coupé ; absentes tant que la personne n'a rien voulu), suivi d'un onglet ou d'une section à l'autre ;
+    si le navigateur refuse de retenir, le choix vaut pour la page et GFS le dit (comme la langue). **Le message** : `{ "coupes": true | false }`, dans `contexte.correcteurs` (relu à chaque
+    appel, `{ "coupes": false }` pour une app seule ou sans choix) et dans l'événement `correcteurs` (`{ "correcteurs": { "coupes": … } }`), **une seule fois par changement de `coupes`** : cocher
+    la ligne ou la décocher alors que le choix de couper est éteint n'envoie rien. **Ce que fait l'app** : sur chacun de ses éléments éditables **eux-mêmes** (`[contenteditable]` qui n'est pas
+    `"false"`, `textarea`, `input` de texte), présents et à venir, elle pose `data-lt-active="false"` quand `coupes` est vrai et la retire quand il est faux, à chaud, sans recharger
+    son cadre (le porteur l'a mesuré : LanguageTool relit la marque à chaud ; posée sur un élément qui entoure la zone, elle ne coupe rien). Le kit en fait la pose : `Correcteurs.start()`
+    (`js/correcteurs.js`, kit 0.22.0), qui lit `contexte.correcteurs` à son démarrage et l'événement ensuite, et surveille les zones qui naissent après. Une app qui ne l'appelle pas
+    n'est pas touchée : le bouton est sans effet sur elle (GFS ne le grise pas : il n'a aucun moyen de savoir si l'app lit le champ). [M] **Mesuré le 12/11** dans un vrai Grist (`labo/run-correcteurs.mjs`,
+    sonde ZL qui pose la marque comme le fera le kit : 29 vérifications en français et en anglais, en clair et en sombre) et sous Firefox 160 sans écran (menu « Réglages » à cinq lignes, barre à
+    six boutons sur les quatre bords) ; la réponse de LanguageTool lui-même est celle du porteur (faits vérifiés 104).
 
 ### 5.3 Le stockage du navigateur
 

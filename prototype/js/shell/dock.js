@@ -1,5 +1,7 @@
 // La barre de GFS au-dessus d'une app (cahier 6.3, contrats 5.2 point 7) : cinq boutons à icône seule (« Fichiers », « Fichiers ouverts » avec son nombre,
-// « Apps », la ligne de travail, contrats 4.5, et la position de la barre) posés par-dessus le cadre de l'app, au bord que la personne choisit, centrés sur ce
+// « Apps », la ligne de travail, contrats 4.5, et la position de la barre), et un sixième, « LanguageTool », que la personne ajoute par les réglages (contrats
+// 5.2,
+// point 13), posés par-dessus le cadre de l'app, au bord que la personne choisit, centrés sur ce
 // bord. Le cadre de l'app reste plein : la barre ne prend de place à personne, et dit à l'app ce qu'elle recouvre (`dock-state.js`). Le bord est retenu dans le
 // `localStorage` de GFS (clé `gfs.barre`), comme la langue : jamais dans le document.
 
@@ -23,21 +25,24 @@ export class Dock {
   #apps;
   #work;
   #workTip = null;
+  #lt;
+  #ltState = { shown: false, coupes: false };
   #place;
   #state;
   #t = key => key;
   #onNotKept;
 
-  // root : l'élément de la barre, avec ses boutons ; stage : la scène (sa taille est celle du cadre de l'app) ; onFiles, onOpened, onApps et onWork : les
+  // root : l'élément de la barre, avec ses boutons ; stage : la scène (sa taille est celle du cadre de l'app) ; onFiles, onOpened, onApps, onWork et onLt : les
   //   boutons qui font quelque chose (le menu de position est celui de la barre) ; onNotKept : le navigateur refuse de retenir le bord choisi (il vaut alors
   //   pour la page).
-  constructor({ root, stage, onFiles, onOpened, onApps, onWork, onNotKept, win = window }) {
+  constructor({ root, stage, onFiles, onOpened, onApps, onWork, onLt, onNotKept, win = window }) {
     this.#root = root;
     this.#stage = stage;
     this.#files = root.querySelector('#floater-files');
     this.#opened = root.querySelector('#floater-opened');
     this.#apps = root.querySelector('#floater-apps');
     this.#work = root.querySelector('#floater-work');
+    this.#lt = root.querySelector('#floater-lt');
     this.#place = root.querySelector('#floater-place');
     this.#onNotKept = onNotKept;
     const setting = new StoredChoice({ choices: EDGES, fallback: DEFAULT_EDGE, store: keyStore(win, STORAGE_KEY) });
@@ -46,6 +51,7 @@ export class Dock {
     this.#opened.addEventListener('click', onOpened);
     this.#apps.addEventListener('click', onApps);
     this.#work.addEventListener('click', onWork);
+    this.#lt.addEventListener('click', onLt);
     this.#place.addEventListener('click', () => this.#openPlaceMenu());
     watchKey(setting, STORAGE_KEY, win);
     // La barre est centrée sur son bord : un cadre qui change de taille la déplace ; et la zone qu'elle dit à l'app est sa taille : l'accessibilité renforcée
@@ -73,6 +79,7 @@ export class Dock {
     this.#paintOpened();
     this.#name(this.#apps, 'modules', t('gfs.appsTip'));
     this.#name(this.#work, 'work-row', this.#workTip || t('work.title'));
+    this.#paintLt();
     this.#name(this.#place, EDGE_ICONS[this.edge], t('dock.place'));
     this.#place.dataset.edge = this.edge;
   }
@@ -82,6 +89,20 @@ export class Dock {
     this.#workTip = text;
     this.#name(this.#work, 'work-row', text);
     this.#work.setAttribute('aria-pressed', active ? 'true' : 'false');
+  }
+
+  // Le bouton « LanguageTool » : dans la barre seulement quand la personne l'a voulu (`shown`, grisé ou caché n'a pas de sens ici : le réglage le montre ou
+  // non) ; enfoncé tant que LanguageTool travaille dans les apps, relevé quand il est coupé. Le nom dit l'état, l'info-bulle ce qu'un clic fait.
+  setLt(state) {
+    this.#ltState = state;
+    this.#paintLt();
+  }
+
+  #paintLt() {
+    const { shown, coupes } = this.#ltState;
+    this.#lt.hidden = !shown;
+    this.#name(this.#lt, 'spell', this.#t(coupes ? 'dock.ltOff' : 'dock.ltOn'));
+    this.#lt.setAttribute('aria-pressed', coupes ? 'false' : 'true');
   }
 
   // Le nombre de fichiers ouverts, sur le bouton « Fichiers ouverts » : une pastille (pas d'elle seule : le nombre est aussi dans le nom du bouton) ; sans

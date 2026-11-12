@@ -61,6 +61,8 @@ const ICONS = {
   restore: '<path d="M3 4v5.5h5.5"/><path d="M3.8 15a8.5 8.5 0 1 0 2.2-8.2L3 9.5"/>',
   // Un formulaire : des questions à cocher (type « Formulaire » de Form+, et l'app elle-même).
   form: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M7.5 8.2l1.2 1.2 2-2.4M13 8.5h4"/><path d="M7.5 14.2l1.2 1.2 2-2.4M13 14.5h4"/>',
+  // Le correcteur du navigateur (bouton « LanguageTool » de la barre, contrats 5.2, point 13) : un A que coche un trait.
+  spell: '<path d="M3 17.5l4.5-11 4.5 11M4.9 13h5.2"/><path d="M13.5 15l3 3 5-7"/>',
   // La position de la barre de GFS : un cadre dont le trait dit de quel côté elle est.
   'dock-left': '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M9 4v16"/>',
   'dock-right': '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M15 4v16"/>',

@@ -1,8 +1,8 @@
 // Le menu « Réglages » de l'explorateur, à la vraie souris, pour les essais du labo que se partagent run-langue.mjs, run-theme.mjs (par theme-gestes.mjs), run-liste.mjs, run-ouvrir-form.mjs et
-// run-langue-publipostage.mjs. Depuis le 04/11 (le porteur : « ok pour la capture 1 ») la langue, le thème, la position de la barre et « À propos » sont ses lignes : les boutons « Langue » et
+// run-langue-publipostage.mjs. Depuis le 04/11 (le porteur : « ok pour la capture 1 ») la langue, le thème, la position de la barre et « À propos » sont ses lignes (et, depuis le 12/11, « Bouton LanguageTool ») : les boutons « Langue » et
 // « Thème » de la ligne du titre n'existent plus. Les lignes se désignent par leur rang, pas par leur texte, qui change avec la langue. `target` est le cadre de GFS (ou une autre section de GFS).
 
-export const ROW = Object.freeze({ language: 0, theme: 1, place: 2, about: 3 });
+export const ROW = Object.freeze({ language: 0, theme: 1, langtool: 2, place: 3, about: 4 });
 
 // Le bouton « Réglages » : le bouton à menu de la ligne du titre qui n'est pas la cloche Notifications.
 export const settingsButton = target => target.locator('.ex-title-row .tb:not(.tb-bell)[aria-haspopup="menu"]');

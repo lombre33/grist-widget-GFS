@@ -14,11 +14,15 @@ let current = null;
 export const closeMenu = () => { if (current) current.close(); };
 export const menuIsOpen = () => current !== null;
 
+// Le rôle d'un article : `check` le rend coché ou non ; sans autre précision il fait partie d'un choix parmi d'autres (une langue : bouton radio), avec
+// `toggle` il est un interrupteur à lui seul (case à cocher).
+const itemRole = item => (item.check === undefined ? 'menuitem' : (item.toggle ? 'menuitemcheckbox' : 'menuitemradio'));
+
 // `open(node, articles)` : ce que fait le clic d'un article à sous-menu.
 function itemNode(item, close, open) {
   const sub = Array.isArray(item.submenu);
   const node = h('button', {
-    type: 'button', class: 'menu-item', role: item.check === undefined ? 'menuitem' : 'menuitemradio',
+    type: 'button', class: 'menu-item', role: itemRole(item),
       'aria-checked': item.check === undefined ? null : String(item.check),
     'aria-disabled': item.greyed ? 'true' : null, 'aria-haspopup': sub ? 'menu' : null, 'aria-expanded': sub ? 'false' : null, 'data-fam': item.family || null,
       title: item.title || null,

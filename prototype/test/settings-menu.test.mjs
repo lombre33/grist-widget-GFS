@@ -1,5 +1,5 @@
 // Le menu « Réglages » de l'explorateur (js/shell/settings-menu.js) et la fenêtre « À propos » (js/shell/about.js). Le 04/11, le porteur a dit « ok pour la capture 1 » : un seul bouton « Réglages » dans l'explorateur,
-// qui rassemble la langue, le thème, la position de la barre et « À propos » ; la barre flottante ne change pas. La mise en page et la souris sont mesurées sous Firefox
+// qui rassemble la langue, le thème, le bouton « LanguageTool » (12/11), la position de la barre et « À propos » ; la barre flottante ne change pas. La mise en page et la souris sont mesurées sous Firefox
 // (test/interfaces-firefox.test.mjs) et dans un vrai Grist (labo/run-langue.mjs, labo/run-theme.mjs) ; ici, ce que le menu contient et ce que chaque ligne fait.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -11,21 +11,22 @@ import { HOST } from '../js/broker/context.js';
 // La ligne « Position de la barre » est celle du vrai Dock (js/shell/dock.js) : ici, une doublure que le menu doit laisser telle quelle.
 const PLACE = Object.freeze({ label: 'Position de la barre', icon: 'dock-left', submenu: [] });
 
-function build(lang = 'fr', { choice = 'auto', grist = 'fr' } = {}) {
+function build(lang = 'fr', { choice = 'auto', grist = 'fr', shown = false } = {}) {
   const calls = [];
   const { t } = createI18n(lang);
   const items = settingsItems({
-    t, language: () => ({ choice, grist }), onLanguage: value => calls.push(['langue', value]), onTheme: () => calls.push(['theme']), place: () => PLACE, onAbout: () => calls.push(['apropos']),
+    t, language: () => ({ choice, grist }), onLanguage: value => calls.push(['langue', value]), onTheme: () => calls.push(['theme']),
+    langtool: () => ({ shown, toggle: () => calls.push(['langtool']) }), place: () => PLACE, onAbout: () => calls.push(['apropos']),
   });
   return { items, calls };
 }
 const rows = items => items.filter(item => item !== '-');
 
-test('le menu a ses lignes dans l\'ordre : la langue, le thème, la position de la barre, un séparateur, « À propos »', () => {
+test('le menu a ses lignes dans l\'ordre : la langue, le thème, le bouton LanguageTool, la position de la barre, un séparateur, « À propos »', () => {
   const fr = build('fr').items;
-  assert.deepEqual(fr.map(item => (item === '-' ? '-' : item.label)), ['Langue', 'Thème…', 'Position de la barre', '-', 'À propos…']);
+  assert.deepEqual(fr.map(item => (item === '-' ? '-' : item.label)), ['Langue', 'Thème…', 'Bouton LanguageTool', 'Position de la barre', '-', 'À propos…']);
   const en = build('en').items;
-  assert.deepEqual(en.map(item => (item === '-' ? '-' : item.label)), ['Language', 'Theme…', PLACE.label, '-', 'About…']);
+  assert.deepEqual(en.map(item => (item === '-' ? '-' : item.label)), ['Language', 'Theme…', 'LanguageTool button', PLACE.label, '-', 'About…']);
 });
 
 test('aucune ligne n\'est grisée ni sans icône : une fonction de GFS n\'est jamais cachée', () => {
@@ -51,20 +52,37 @@ test('la coche suit le choix : « Comme Grist », le français ou l\'anglais, ja
   }
 });
 
-test('chaque ligne fait ce qu\'elle dit : choisir une langue, ouvrir le thème, ouvrir « À propos »', () => {
+test('« Bouton LanguageTool » est un interrupteur à lui seul (case à cocher), non un choix parmi d\'autres comme les langues', () => {
+  const { items } = build('fr');
+  assert.equal(items[2].toggle, true);
+  assert.equal(items[0].submenu.some(entry => entry !== '-' && entry.toggle), false);
+});
+
+test('chaque ligne fait ce qu\'elle dit : choisir une langue, ouvrir le thème, mettre le bouton LanguageTool dans la barre, ouvrir « À propos »', () => {
   const { items, calls } = build('fr');
-  const [language, theme, , , about] = items;
+  const [language, theme, langtool, , , about] = items;
   const [auto, , fr, en] = language.submenu;
   auto.run();
   fr.run();
   en.run();
   theme.run();
+  langtool.run();
   about.run();
-  assert.deepEqual(calls, [['langue', 'auto'], ['langue', 'fr'], ['langue', 'en'], ['theme'], ['apropos']]);
+  assert.deepEqual(calls, [['langue', 'auto'], ['langue', 'fr'], ['langue', 'en'], ['theme'], ['langtool'], ['apropos']]);
 });
 
 test('la ligne de la barre est celle que le contrôleur donne, sans changement : le menu ne connaît pas la barre', () => {
-  assert.equal(build('fr').items[2], PLACE);
+  assert.equal(build('fr').items[3], PLACE);
+});
+
+test('« Bouton LanguageTool » : cochée quand le bouton est dans la barre, décochée sinon, et l\'infobulle dit ce que la ligne fait (le bouton coupe ou rallume LanguageTool dans l\'app)', () => {
+  for (const shown of [false, true]) {
+    const row = build('fr', { shown }).items[2];
+    assert.equal(row.check, shown);
+    assert.equal(row.icon, 'spell');
+    assert.match(row.title, /bouton de la barre coupe ou rallume LanguageTool dans l’app ouverte/);
+  }
+  assert.match(build('en').items[2].title, /button in the bar turns LanguageTool off or back on in the open app/);
 });
 
 test('les lignes à fenêtre ou à sous-menu disent pourquoi à l\'infobulle : la langue et le thème valent pour la suite et ses apps', () => {

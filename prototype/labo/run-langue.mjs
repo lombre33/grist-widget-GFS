@@ -83,7 +83,7 @@ await shot('1-depart');
 
 await openSettings(frame);
 const main = await frame.evaluate(() => [...document.querySelectorAll('.menu:not(.menu-sub) .menu-item')].map(node => ({ text: node.querySelector('.menu-label').textContent.trim(), popup: node.getAttribute('aria-haspopup') })));
-check('le menu « Réglages » a ses quatre lignes : Langue (sous-menu), Thème, Position de la barre (sous-menu), À propos', main.length === 4 && main[0].text === words.menu && main[0].popup === 'menu' && main[1].popup === null && main[2].popup === 'menu' && main[3].popup === null, main);
+check('le menu « Réglages » a ses cinq lignes : Langue (sous-menu), Thème, Bouton LanguageTool, Position de la barre (sous-menu), À propos', main.length === 5 && main[0].text === words.menu && main[0].popup === 'menu' && main[1].popup === null && main[2].popup === null && main[3].popup === 'menu' && main[4].popup === null, main);
 await page.keyboard.press('Escape');
 await openMenu();
 let items = await menuItems();

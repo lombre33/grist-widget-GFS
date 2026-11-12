@@ -18,6 +18,7 @@ import { ThemeWindow } from './theme/theme-window.js';
 import { AppStorage, browserBackend, storageHandlers } from './broker/app-storage.js';
 import { installSprite } from './ui/icons.js';
 import { Dock } from './shell/dock.js';
+import { Correcteurs } from './shell/correcteurs.js';
 import { settingsItems } from './shell/settings-menu.js';
 import { aboutItems } from './shell/about.js';
 import { WorkControl } from './apps/work-control.js';
@@ -293,6 +294,7 @@ export class GfsController {
       settings: () => settingsItems({
         t: this.t, language: () => ({ choice: this.language.choice, grist: this.language.grist }), onLanguage: choice => this.#chooseLanguage(choice),
           onTheme: () => this.openTheme(),
+        langtool: () => ({ shown: this.correcteurs.state.shown, toggle: () => this.#chooseLangtool() }),
         place: () => this.dock.placeRow(), onAbout: () => this.#openAbout(),
       }),
       onRights: () => void this.rights.open(this.explorer), sharing: this.rights.sharing, onWeight: estimate => void this.weight.open(estimate),
@@ -334,11 +336,15 @@ export class GfsController {
   // La barre de GFS au-dessus de l'app ouverte (js/shell/dock.js) : ses boutons ouvrent l'explorateur et la fenêtre des apps ; quand ce qu'elle recouvre
   // change, l'app ouverte le sait (événement `barre`, contrats 5.2, point 7).
   #buildDock() {
+    // Le bouton « LanguageTool » de la barre : deux choix retenus sur ce navigateur, dits aux apps (js/shell/correcteurs.js, contrats 5.2, point 13).
+    this.correcteurs = new Correcteurs({ win: window });
     this.dock = new Dock({
       root: this.$('floaters'), stage: this.$('stage'), onFiles: () => this.showExplorer(), onOpened: () => this.openedBar.show(),
-        onApps: () => void this.openModules(), onWork: () => void this.workControl.open(),
+        onApps: () => void this.openModules(), onWork: () => void this.workControl.open(), onLt: () => this.#toggleLt(),
       onNotKept: () => this.notice(this.t('lang.notKept')),
     });
+    this.dock.setLt(this.correcteurs.state);
+    this.correcteurs.onChange((state, before) => this.#syncLt(state, before));
     // La ligne de travail (contrats 4.5) : une autre table rouvre l'app active, qui la reçoit dès son démarrage.
     this.workControl = new WorkControl({
       port: this.port, state: this.state, dock: this.dock, container: this.$('stage'), t: this.t, appName: this.appName, manifests: this.manifests,
@@ -354,6 +360,16 @@ export class GfsController {
     this.dock.relabel(this.t);
     this.workControl.relabel();
     this.dock.onChange(barre => { if (this.session) this.session.sendBar(barre); });
+  }
+
+  // Le bouton « LanguageTool » (contrats 5.2, point 13) : le bouton de la barre coupe ou rallume ; la ligne du menu « Réglages » le met dans la barre ou l'en
+  // retire. Un navigateur qui refuse de retenir le choix le garde pour la page, et GFS le dit. Quand ce que les apps doivent faire change, l'app ouverte le
+  // sait (événement `correcteurs`).
+  #toggleLt() { if (!this.correcteurs.toggleCut()) this.notice(this.t('lang.notKept')); }
+  #chooseLangtool() { if (!this.correcteurs.setShown(!this.correcteurs.state.shown)) this.notice(this.t('lang.notKept')); }
+  #syncLt(state, before) {
+    this.dock.setLt(state);
+    if (state.coupes !== before.coupes && this.session) this.session.sendCorrecteurs({ coupes: state.coupes });
   }
 
   // ---------- la langue ----------

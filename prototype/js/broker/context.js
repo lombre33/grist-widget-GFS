@@ -28,7 +28,7 @@ export function identityFor(policy, address) {
 }
 
 // `facts` : ce que le contrôleur a lu (instance, page, document, adresse du widget), `session` : { access, extensions, libraries, opening, storage, bar,
-//   identity, players, ambiance }.
+//   identity, players, ambiance, correcteurs }.
 export function buildContext(facts, session, params) {
   const { preferences, readonly } = params;
   return {
@@ -59,6 +59,9 @@ export function buildContext(facts, session, params) {
     identite: session.identity || null, // l'adresse e-mail de la personne, `{ email }`, pour l'app qui l'a déclarée et quand GFS la connaît (5.2, point 9)
     // l'ambiance et la couleur que la personne a choisies pour GFS et ses apps (js/theme/theme.js), ou `null` : l'app garde ses couleurs (5.2, point 10)
     ambiance: session.ambiance || null,
+    // LanguageTool est-il coupé dans les apps (le bouton de la barre, js/shell/correcteurs.js) : `{ coupes }`, jamais `null` ; faux tant que la personne n'a
+    // pas voulu le bouton (5.2, point 13)
+    correcteurs: session.correcteurs || { coupes: false },
     // ce que GFS a prouvé de la personne : propriétaire (true/false/null) et espaces dont elle est responsable (5.2, point 8) ; pour griser, jamais pour
     // décider
     role: session.role || { proprietaire: null, responsableDe: [] },

@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-vSsFIFFzPrUJZtTa6J+TptzO6j4xbqMZ+Mc/HTz1eDI='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-jzrMGu+65DRKz257YL10LRdrRYf8HL/+vUWIkGD2isU='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=6c6e51caa4">
 <link rel="stylesheet" href="css/explorer.css?v=a1c7636359">
 <link rel="stylesheet" href="css/modules.css?v=beca3b680b">
@@ -40,14 +40,14 @@
     "./js/apps/work-row.js": "./js/apps/work-row.js?v=d41fd514ae",
     "./js/apps/work-window.js": "./js/apps/work-window.js?v=7e55716161",
     "./js/broker/app-calls.js": "./js/broker/app-calls.js?v=b78fa262c3",
-    "./js/broker/app-context.js": "./js/broker/app-context.js?v=6ebcbfded3",
+    "./js/broker/app-context.js": "./js/broker/app-context.js?v=c9b4491db6",
     "./js/broker/app-status.js": "./js/broker/app-status.js?v=651007029f",
     "./js/broker/app-storage.js": "./js/broker/app-storage.js?v=d24c6008f9",
     "./js/broker/arrival-table.js": "./js/broker/arrival-table.js?v=46265f4a63",
     "./js/broker/arrival.js": "./js/broker/arrival.js?v=7694fcdfd6",
     "./js/broker/attach.js": "./js/broker/attach.js?v=1c1097b59b",
     "./js/broker/broker.js": "./js/broker/broker.js?v=07e94d37f4",
-    "./js/broker/context.js": "./js/broker/context.js?v=b967bfd609",
+    "./js/broker/context.js": "./js/broker/context.js?v=549402edc9",
     "./js/broker/deposit.js": "./js/broker/deposit.js?v=357a730c38",
     "./js/broker/entries.js": "./js/broker/entries.js?v=f97845180b",
     "./js/broker/envelope.js": "./js/broker/envelope.js?v=761782e0d4",
@@ -63,14 +63,14 @@
     "./js/broker/publication.js": "./js/broker/publication.js?v=fc697bbcec",
     "./js/broker/reading.js": "./js/broker/reading.js?v=750a14c1da",
     "./js/broker/rpc.js": "./js/broker/rpc.js?v=d54b5c5f33",
-    "./js/broker/session.js": "./js/broker/session.js?v=bd5559b180",
+    "./js/broker/session.js": "./js/broker/session.js?v=9921c3d5ac",
     "./js/broker/sharing-rules.js": "./js/broker/sharing-rules.js?v=efe8774466",
     "./js/broker/sharing.js": "./js/broker/sharing.js?v=e6dccec1cd",
     "./js/broker/state.js": "./js/broker/state.js?v=69aa288268",
     "./js/broker/transfer.js": "./js/broker/transfer.js?v=5324b55361",
     "./js/broker/view-link.js": "./js/broker/view-link.js?v=1853f29883",
     "./js/broker/view-options.js": "./js/broker/view-options.js?v=5eb21ceaf1",
-    "./js/controller.js": "./js/controller.js?v=4f1a99c36a",
+    "./js/controller.js": "./js/controller.js?v=338661099b",
     "./js/explorer/explorer-clipboard.js": "./js/explorer/explorer-clipboard.js?v=94ea4bfb9c",
     "./js/explorer/explorer-data.js": "./js/explorer/explorer-data.js?v=0e132d5eb8",
     "./js/explorer/explorer-drag.js": "./js/explorer/explorer-drag.js?v=bb4575a2a0",
@@ -115,7 +115,7 @@
     "./js/i18n/i18n-sharing.js": "./js/i18n/i18n-sharing.js?v=7e09272a2c",
     "./js/i18n/i18n-trash.js": "./js/i18n/i18n-trash.js?v=e5c74092fa",
     "./js/i18n/i18n-weight.js": "./js/i18n/i18n-weight.js?v=e60a5723e4",
-    "./js/i18n/i18n.js": "./js/i18n/i18n.js?v=ccbc777fcb",
+    "./js/i18n/i18n.js": "./js/i18n/i18n.js?v=2b15a1a795",
     "./js/rights/rights-actions.js": "./js/rights/rights-actions.js?v=285803e997",
     "./js/rights/rights-control.js": "./js/rights/rights-control.js?v=f2481f204c",
     "./js/rights/rights-plan.js": "./js/rights/rights-plan.js?v=f7daea2036",
@@ -154,10 +154,11 @@
     "./js/sharing/sync-rules.js": "./js/sharing/sync-rules.js?v=8410e84e3a",
     "./js/sharing/sync-service.js": "./js/sharing/sync-service.js?v=85bb7a599b",
     "./js/shell/about.js": "./js/shell/about.js?v=b2b79b416a",
+    "./js/shell/correcteurs.js": "./js/shell/correcteurs.js?v=55348b7ebd",
     "./js/shell/dock-state.js": "./js/shell/dock-state.js?v=bf40af2343",
-    "./js/shell/dock.js": "./js/shell/dock.js?v=4973a27cb9",
+    "./js/shell/dock.js": "./js/shell/dock.js?v=95361d92b0",
     "./js/shell/language.js": "./js/shell/language.js?v=fdc529d628",
-    "./js/shell/settings-menu.js": "./js/shell/settings-menu.js?v=a2dff92446",
+    "./js/shell/settings-menu.js": "./js/shell/settings-menu.js?v=41e019f25a",
     "./js/shell/stored-choice.js": "./js/shell/stored-choice.js?v=08d02d1bfe",
     "./js/theme/ambiance-forme.js": "./js/theme/ambiance-forme.js?v=9945157b3b",
     "./js/theme/ambiance-types.js": "./js/theme/ambiance-types.js?v=deef46c542",
@@ -169,9 +170,9 @@
     "./js/theme/theme.js": "./js/theme/theme.js?v=e97475679a",
     "./js/ui/ask-window.js": "./js/ui/ask-window.js?v=bc29f4db59",
     "./js/ui/dom.js": "./js/ui/dom.js?v=8a85959bdc",
-    "./js/ui/icons.js": "./js/ui/icons.js?v=7918f6d586",
+    "./js/ui/icons.js": "./js/ui/icons.js?v=d967360a99",
     "./js/ui/layers.js": "./js/ui/layers.js?v=8fb5891dcf",
-    "./js/ui/menu.js": "./js/ui/menu.js?v=50df83c82d",
+    "./js/ui/menu.js": "./js/ui/menu.js?v=be94c12bc6",
     "./js/ui/modal.js": "./js/ui/modal.js?v=afe775a169",
     "./js/ui/pick-window.js": "./js/ui/pick-window.js?v=b5b2ea278b",
     "./js/ui/search.js": "./js/ui/search.js?v=0921c92eb3",
@@ -258,25 +259,26 @@
      Le navigateur les demande tous d'un coup au lieu d'un niveau d'imports à la fois (9 niveaux, donc 9 allers-retours de réseau). Après la carte d'importation, jamais avant : une page qui commence à
      charger un module avant elle l'ignore et demande les modules sans leur ?v=. -->
 <!-- préchargement -->
-<link rel="modulepreload" href="./js/controller.js?v=4f1a99c36a">
+<link rel="modulepreload" href="./js/controller.js?v=338661099b">
 <link rel="modulepreload" href="./js/apps/catalogue.js?v=2e588e5749">
 <link rel="modulepreload" href="./js/apps/manifest.js?v=8c0cedee7c">
 <link rel="modulepreload" href="./js/broker/state.js?v=69aa288268">
 <link rel="modulepreload" href="./js/broker/broker.js?v=07e94d37f4">
 <link rel="modulepreload" href="./js/broker/view-options.js?v=5eb21ceaf1">
 <link rel="modulepreload" href="./js/broker/view-link.js?v=1853f29883">
-<link rel="modulepreload" href="./js/broker/session.js?v=bd5559b180">
+<link rel="modulepreload" href="./js/broker/session.js?v=9921c3d5ac">
 <link rel="modulepreload" href="./js/broker/app-status.js?v=651007029f">
 <link rel="modulepreload" href="./js/broker/frames.js?v=f45d5dcf64">
-<link rel="modulepreload" href="./js/i18n/i18n.js?v=ccbc777fcb">
+<link rel="modulepreload" href="./js/i18n/i18n.js?v=2b15a1a795">
 <link rel="modulepreload" href="./js/shell/language.js?v=fdc529d628">
 <link rel="modulepreload" href="./js/theme/theme.js?v=e97475679a">
 <link rel="modulepreload" href="./js/theme/theme-apply.js?v=01cd2ffc43">
 <link rel="modulepreload" href="./js/theme/theme-window.js?v=be3e075a12">
 <link rel="modulepreload" href="./js/broker/app-storage.js?v=d24c6008f9">
-<link rel="modulepreload" href="./js/ui/icons.js?v=7918f6d586">
-<link rel="modulepreload" href="./js/shell/dock.js?v=4973a27cb9">
-<link rel="modulepreload" href="./js/shell/settings-menu.js?v=a2dff92446">
+<link rel="modulepreload" href="./js/ui/icons.js?v=d967360a99">
+<link rel="modulepreload" href="./js/shell/dock.js?v=95361d92b0">
+<link rel="modulepreload" href="./js/shell/correcteurs.js?v=55348b7ebd">
+<link rel="modulepreload" href="./js/shell/settings-menu.js?v=41e019f25a">
 <link rel="modulepreload" href="./js/shell/about.js?v=b2b79b416a">
 <link rel="modulepreload" href="./js/apps/work-control.js?v=3a43a1dac2">
 <link rel="modulepreload" href="./js/explorer/explorer.js?v=d5cf202a7b">
@@ -314,7 +316,7 @@
 <link rel="modulepreload" href="./js/sharing/received-files.js?v=b4c5151049">
 <link rel="modulepreload" href="./js/broker/publication-window.js?v=387f9b97c4">
 <link rel="modulepreload" href="./js/apps/modules-window.js?v=4019700d7c">
-<link rel="modulepreload" href="./js/broker/app-context.js?v=6ebcbfded3">
+<link rel="modulepreload" href="./js/broker/app-context.js?v=c9b4491db6">
 <link rel="modulepreload" href="./js/broker/filter.js?v=0c9dfa9363">
 <link rel="modulepreload" href="./js/broker/player-sites.js?v=79d15fdf51">
 <link rel="modulepreload" href="./js/broker/options-slice.js?v=63ada0fcde">
@@ -343,9 +345,9 @@
 <link rel="modulepreload" href="./js/ui/dom.js?v=8a85959bdc">
 <link rel="modulepreload" href="./js/ui/modal.js?v=afe775a169">
 <link rel="modulepreload" href="./js/theme/theme-color.js?v=c94f777ad7">
-<link rel="modulepreload" href="./js/ui/menu.js?v=50df83c82d">
+<link rel="modulepreload" href="./js/ui/menu.js?v=be94c12bc6">
 <link rel="modulepreload" href="./js/shell/dock-state.js?v=bf40af2343">
-<link rel="modulepreload" href="./js/broker/context.js?v=b967bfd609">
+<link rel="modulepreload" href="./js/broker/context.js?v=549402edc9">
 <link rel="modulepreload" href="./js/apps/work-window.js?v=7e55716161">
 <link rel="modulepreload" href="./js/explorer/explorer-model.js?v=adde50aa84">
 <link rel="modulepreload" href="./js/sharing/received-folders.js?v=1867d68ede">
@@ -415,13 +417,14 @@
 <body data-gfs="starting">
 <main class="stage" id="stage">
   <div class="frames" id="frames"></div>
-  <!-- La barre de GFS au-dessus d'une app : « Fichiers », « Fichiers ouverts », « Apps », la table de travail et la position de la barre, cinq boutons à icône seule (js/dock.js) posés au bord que la personne choisit
+  <!-- La barre de GFS au-dessus d'une app : « Fichiers », « Fichiers ouverts », « Apps », la table de travail et la position de la barre, cinq boutons à icône seule (js/shell/dock.js), plus « LanguageTool » quand la personne l'a voulu, posés au bord que la personne choisit
        (`data-edge`), par-dessus l'espace que l'app laisse libre ; l'app apprend ce qu'elle recouvre (contrats 5.2, point 7). -->
   <div class="floaters" id="floaters" role="group" data-edge="gauche" hidden>
     <button type="button" class="floater" id="floater-files"></button>
     <button type="button" class="floater" id="floater-opened" aria-haspopup="menu"></button>
     <button type="button" class="floater" id="floater-apps" aria-haspopup="dialog"></button>
     <button type="button" class="floater" id="floater-work" aria-haspopup="dialog" aria-pressed="false"></button>
+    <button type="button" class="floater" id="floater-lt" aria-pressed="true" hidden></button>
     <button type="button" class="floater" id="floater-place" aria-haspopup="menu"></button>
   </div>
   <p class="status" id="status" role="status" aria-live="polite" hidden></p>

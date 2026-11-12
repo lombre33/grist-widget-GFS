@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; frame-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Essai : LanguageTool et la marque data-lt-active</title>
+<link rel="stylesheet" href="essai.css?v=2">
+<link rel="stylesheet" href="marque.css?v=1">
+</head>
+<body data-role="haut">
+<h1>Essai : LanguageTool obéit-il à la marque <code>data-lt-active="false"</code> ?</h1>
+<p>Deux questions, pour le futur bouton « LanguageTool » de GFS : LanguageTool laisse-t-il tranquille une zone de texte qui porte cette marque, et la reprend-il quand on la retire, <b>sans recharger la page</b> ? Deux cadres : G est isolé comme celui d'une app dans GFS, H est un cadre simple (témoin). La page ne touche à aucun document Grist.</p>
+<p><strong>Avant tout :</strong> rallume LanguageTool pour ce site (<code>lombre33.github.io</code>, que tu avais coupé), puis recharge cette page.</p>
+<ol>
+  <li>Dans chaque cadre, zone par zone : clique dans la zone (les fautes sont voulues), attends deux secondes, puis réponds à la question sous la zone. « Oui » : LanguageTool souligne en couleur ou montre sa pastille ; « non » : seul Firefox souligne en rouge.</li>
+  <li>Zone 3 : suis les pas dans l'ordre, <b>à la souris</b> (les boutons ne prennent pas le focus, pour que la zone le garde).</li>
+  <li>Le rapport tout en bas se remplit seul. Copie-le avec le bouton, colle-le dans la conversation, et ajoute la version de LanguageTool (son menu, en bas).</li>
+</ol>
+<div id="cadres"></div>
+<h2>Rapport</h2>
+<textarea id="rapport" rows="22" readonly spellcheck="false" aria-label="Rapport à copier"></textarea>
+<p><button id="copier" type="button">Copier le rapport</button> <span id="copie"></span></p>
+<script src="marque.js?v=1"></script>
+</body>
+</html>

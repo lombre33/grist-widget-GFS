@@ -1,0 +1,8 @@
+/* Page d'essai de la marque data-lt-active (marque.html) : une grille pour les deux cadres, des cadres assez hauts pour les quatre zones. */
+#cadres { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 12px; }
+#cadres iframe { height: 880px; }
+.zone { margin: 0 0 10px; }
+.zone h3 { font-size: 14px; margin: 8px 0 2px; }
+.question { margin: 2px 0; }
+.pas { margin: 4px 0; padding-left: 20px; }
+.pas li { margin: 6px 0; }

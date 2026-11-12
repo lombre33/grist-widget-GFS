@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Cadre d'essai de la marque</title>
+<link rel="stylesheet" href="essai.css?v=2">
+<link rel="stylesheet" href="marque.css?v=1">
+</head>
+<body data-role="cadre">
+<h2 id="titre">Cadre</h2>
+<section class="zone">
+  <h3>1 · Témoin : aucune marque</h3>
+  <div class="editable" id="e1" contenteditable="true" role="textbox" aria-label="Zone 1"></div>
+  <p class="question">LanguageTool corrige ici ? <span id="q-z1"></span></p>
+</section>
+<section class="zone">
+  <h3>2 · La marque est posée dès le départ</h3>
+  <div class="editable" id="e2" contenteditable="true" role="textbox" aria-label="Zone 2" data-lt-active="false"></div>
+  <p class="question">LanguageTool corrige ici ? <span id="q-z2"></span></p>
+</section>
+<section class="zone">
+  <h3>3 · La marque est posée puis retirée en cours de route</h3>
+  <div class="editable" id="e3" contenteditable="true" role="textbox" aria-label="Zone 3"></div>
+  <ol class="pas">
+    <li>Clique dans la zone, attends deux secondes : LanguageTool doit corriger ici (sinon, saute cette zone).</li>
+    <li><button id="poser" type="button">Poser la marque</button> Regarde la zone sans cliquer. Le soulignement et la pastille de LanguageTool : <span id="q-z3a"></span></li>
+    <li>Clique ailleurs (sur le titre), puis de nouveau dans la zone, attends deux secondes. <span id="q-z3b"></span></li>
+    <li><button id="retirer" type="button">Retirer la marque</button> Regarde la zone sans cliquer. <span id="q-z3c"></span></li>
+    <li>Clique ailleurs, puis de nouveau dans la zone, attends deux secondes. <span id="q-z3d"></span></li>
+  </ol>
+</section>
+<section class="zone">
+  <h3>4 · La marque est sur l'élément qui entoure la zone</h3>
+  <div id="p4" data-lt-active="false"><div class="editable" id="e4" contenteditable="true" role="textbox" aria-label="Zone 4"></div></div>
+  <p class="question">LanguageTool corrige ici ? <span id="q-z4"></span></p>
+</section>
+<script src="marque.js?v=1"></script>
+</body>
+</html>

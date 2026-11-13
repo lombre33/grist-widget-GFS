@@ -3,6 +3,8 @@
 //
 // Mise en place : script.google.com > Nouveau projet > coller ce fichier > Déployer > Application web (Exécuter en tant que : moi ; Accès : tout le monde) ;
 // l'adresse « …/exec » donnée à GFS est suivie de « ?cle=<le secret de GFS> » (Apps Script ne lit pas l'en-tête Authorization).
+// Deux essais sans rien d'autre : ouvrir « …/exec?cle=<secret>&essai=<votre adresse> » envoie un message d'essai (vérifie le déploiement, l'autorisation de Google et
+// l'envoi) ; un webhook de Grist vers « …/exec?cle=<secret> » sur une table d'essai montre si Grist accepte l'adresse et sa redirection (Exécutions du projet : doPost).
 // Limites que ce service impose et que relais.mjs n'a pas : il répond toujours 200 (donc Grist ne retente jamais : un échec est accusé « erreur », et la personne
 // renvoie la ligne) ; MailApp : 100 destinataires par jour avec un compte Google gratuit, 1 500 avec Google Workspace (page des quotas d'Apps Script).
 
@@ -58,4 +60,17 @@ function doPost(e) {
   try { lignes = JSON.parse(e.postData.contents); } catch (erreur) { return reponse({ error: 'JSON attendu' }); }
   if (!Array.isArray(lignes)) return reponse({ error: 'tableau attendu' });
   return reponse({ results: lignes.filter(function (ligne) { return ligne && typeof ligne.Cle === 'string' && /^[0-9a-f]{16,64}$/.test(ligne.Cle) && Number.isInteger(ligne.id); }).map(function (ligne) { return { id: ligne.id, state: traiter(ligne) }; }) });
+}
+
+// Ouvrir l'adresse dans un navigateur : sans « essai », dit que le relais répond ; avec « essai=<adresse> », envoie un message d'essai à cette adresse.
+function doGet(e) {
+  const reponse = function (objet) { return ContentService.createTextOutput(JSON.stringify(objet)).setMimeType(ContentService.MimeType.JSON); };
+  if (!e || !e.parameter || e.parameter.cle !== SECRET) return reponse({ error: 'secret refusé' });
+  if (!e.parameter.essai) return reponse({ ok: true, relais: 'répond' });
+  const a = liste(e.parameter.essai);
+  if (!a || a.length !== 1) return reponse({ error: 'une seule adresse attendue' });
+  try {
+    MailApp.sendEmail({ to: a[0], subject: 'Essai du relais de courrier', body: 'Ce message prouve que le script envoie depuis votre compte Google.' });
+  } catch (erreur) { return reponse({ error: String(erreur.message || erreur).slice(0, 150) }); }
+  return reponse({ ok: true, envoye: 'oui' });
 }

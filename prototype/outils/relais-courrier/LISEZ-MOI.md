@@ -66,7 +66,7 @@ par Grist à la création de la ligne, lue seulement par les éditeurs du docume
 
 `apps-script.gs` : le même contrat dans un script Google (aucun serveur), **écrit mais pas essayé**. Elle ne lit pas l'en-tête `Authorization` (le secret va dans
 l'adresse, `?cle=`), répond toujours 200 (Grist ne retente pas : un échec est accusé « erreur », on renvoie la ligne) et plafonne à 100 destinataires par jour avec un
-compte gratuit. Apps Script répond par une redirection à un envoi POST : si Grist la traite comme un échec, il retentera, et la mémoire du script (6 heures) évite les doublons.
+compte gratuit. Ouvrir « …/exec?cle=<secret>&essai=<adresse> » dans un navigateur envoie un message d'essai (déploiement et autorisation de Google). Apps Script répond par une redirection à un envoi POST : si Grist la traite comme un échec, il retentera, et la mémoire du script (6 heures) évite les doublons.
 
 ## Essais
 

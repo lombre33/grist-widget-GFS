@@ -3309,6 +3309,30 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
        f. **Suggestions d'adresses dans un groupe** (choix « connues + une colonne d'e-mails »). Le formulaire d'un groupe tapé a « Ajouter une adresse connue… » (liste avec recherche des adresses que GFS a déjà lues : la
           personne, les partages et leurs auteurs, les membres des groupes tapés, le rangement de chacun — un propriétaire le lit en entier) et « Adresses d'une table… » (une table, puis une colonne d'adresses : ses
           valeurs deviennent des suggestions le temps de la fenêtre, rien n'est écrit dans la table). Grist ne donne pas la liste des personnes du document à un widget (`/access` : 403, faits vérifiés 107).
+    o. [T] **Lier un dossier ou un fichier dans un autre espace, avec son droit : livré le 13/11** (demande du porteur : « une référence vers un fichier [...] accessible depuis un espace B sans avoir à gérer deux
+          copies, le groupe B peut avoir l'écriture ou juste la lecture » ; réponse à la carte : « au moment de créer un raccourci, créer les droits qui vont avec », donc « Un lien avec son droit » ; mesuré dans un
+          vrai Grist à trois comptes, `labo/run-liens-espaces.mjs`, faits vérifiés 110). C'est le même dossier ou le même fichier, jamais une copie : le lien n'ajoute ni fichier ni octet.
+       a. **Un lien est une ligne de `GFS_Placement` sans `Cible`** (comme le marqueur d'un dossier vide), avec deux colonnes de plus : `Lien` (la source : la clé du fichier, ou `dossier:<espace>/<chemin>` ; un dossier
+          `dossier:moi:…` marche aussi), `Espace` (l'espace B), `Dossier` (le nom du dossier lié pour un dossier ; le dossier qui reçoit le fichier pour un fichier, vide = la racine), et `Partages` (la liste des
+          groupes `#…` dont le lien a **ajouté** la ligne de partage). Les colonnes naissent par « Compléter le partage… » (un document plus ancien passe en « à compléter »).
+       b. **Le lien ne donne aucun droit par lui-même : sa création écrit des lignes de partage ordinaires** sur la source, une par groupe de l'espace B, au droit choisi (Lecture ou Écriture ; un seul niveau pour tous
+          les groupes de B, à affiner ensuite dans « Partager… » sur l'original, où ces lignes sont des lignes comme les autres). Un groupe qui a déjà un droit plus faible le voit relevé ; un droit plus large (ou
+          l'administration) est gardé. Seules les lignes **ajoutées** sont inscrites dans `Partages` et retirées avec le lien : « Retirer le lien » ne retire ni un droit qui existait avant, ni un fichier, ni un autre lien.
+          Un seul propriétaire du document crée un lien (comme il active le partage). Un groupe qui n'a aucun membre ou un espace sans groupe : refus dit en clair, rien n'est écrit.
+       c. **Tout est calculé par Grist, avec les mêmes verrous que le reste.** `GFS_Vus` (une colonne d'aide de plus sur chaque table de fichiers, formule de Grist) liste, pour chaque dossier de la chaîne du fichier,
+          `<espace>/<chemin>` pour chaque lien dont la source est ce dossier ou le fichier lui-même ; le reste du chemin sous le dossier lié est gardé (sous-dossiers). `GFS_Lecteurs` et `GFS_Ecrivains` sont ceux des partages
+          ordinaires : une personne ne lit que les fichiers où elle a un droit, donc ne voit une copie du lien que pour ceux-là. Un éditeur qui forge un lien, retire un lien, change ou retire la ligne de partage
+          posée par le lien, réécrit `GFS_Vus` ou ajoute une colonne au placement est refusé par Grist (placement réservé aux propriétaires, partages valides seulement s'ils viennent d'un propriétaire, structure fermée).
+       d. **L'explorateur** ajoute, après le rangement direct (`applyLinks`, après `applyDirect`), une copie de chaque fichier pour chaque espace que la personne lit : même clé, même ligne (`space: null`,
+          `linked: { space }`), donc toute action par clé (ouvrir, partager, corbeille) agit sur le vrai fichier. L'original est caché à la racine de « Moi » pour qui n'est pas son auteur (un éditeur qui reçoit le lien n'a pas
+          à voir, dans « Moi », des fichiers qui ne sont pas à lui) et reste visible pour son auteur. Menu d'un dossier : « Lier dans un espace… » (trois fenêtres du widget : l'espace, le nom du dossier lié ou le
+          dossier de réception du fichier, le droit) ; menu d'un dossier lié : ouvrir, « Retirer le lien » (une question dit que rien n'est supprimé) ; renommer, déplacer et partager sont grisés avec leur raison
+          (`slink.fixed`, `share.folder.link`).
+       e. **Refus dans le code** : rien ne se range ni ne se crée dans un dossier lié (`ex.linkTarget`) ; un dossier lié ne se renomme, ne se déplace, ne se supprime ni ne se partage (la source se travaille dans son espace) ;
+          le marqueur d'un dossier vide ignore les lignes de lien ; le même lien (même source, même espace, même nom) deux fois est refusé (`exists`) ; lier un dossier dans son propre espace est refusé dès le choix de l'espace (`sameSpace`), avant les autres questions.
+       f. **Limites** : trois questions pour créer un lien ; le niveau est commun aux groupes de B ; une personne qui est dans A et dans B voit deux entrées (l'original et le lien) ; un fichier sans auteur
+          (`GFS_Auteur` vide) n'est jamais caché à la racine de « Moi » ; renommer le dossier source d'un lien le rompt sans bruit (même limite que les partages par dossier ; lu dans le code, non mesuré) ; la source d'un lien n'est pas
+          vérifiée à la lecture (un lien dont la source a disparu ne montre rien).
 
 ### 11.8 À mesurer sur le Grist du porteur
 

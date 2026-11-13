@@ -11,6 +11,7 @@ import { openShare } from './share-window.js';
 import { runAction, writeActions } from '../rights/rights-actions.js';
 import { ask } from '../ui/ask-window.js';
 import { locate } from './spaces-filing.js';
+import { linkWithin } from './space-links.js';
 
 const lower = text => String(text ?? '').trim().toLowerCase();
 
@@ -71,7 +72,9 @@ export class ShareControl {
   whyNotFolder(path) {
     const { t } = this.#o;
     if (!this.#o.fullAccess()) return t('share.noAccess');
-    const at = locate(path, this.#o.spaces ? this.#o.spaces() : null);
+    const info = this.#o.spaces ? this.#o.spaces() : null;
+    if (linkWithin(info, path)) return t('share.folder.link');
+    const at = locate(path, info);
     if (at) return at.folder ? null : t('share.folder.space');
     if (path === '') return t('share.folder.personal');
     if (path.split('/')[0] === 'Espaces') return t('share.folder.space');
@@ -120,12 +123,12 @@ export class ShareControl {
 
   // L'auteur d'un fichier (d'une app ou un PDF), ou `{ extend }` quand sa table n'est pas prête au partage. La table de fichiers porte-t-elle les colonnes
   // d'aide ? Sinon le partage n'y est pas étendu (une app ajoutée après coup) ; si elle porte celles d'avant les espaces ou d'avant le dossier de « Moi » (pas
-  // `GFS_Directs`, pas `GFS_Dossier`), le partage est à compléter ; l'auteur est la colonne que Grist écrit.
+  // `GFS_Directs`, pas `GFS_Dossier`, pas `GFS_Vus`), le partage est à compléter ; l'auteur est la colonne que Grist écrit.
   async #authorOf(file, target) {
     const table = await this.#try(() => this.#o.port.doc.fetchTable(target.table), null);
     const has = name => Boolean(table) && Object.prototype.hasOwnProperty.call(table, name);
     if (target.stamped && !has('GFS_Lecteurs')) return { extend: true };
-    if (has('GFS_Lecteurs') && !(has('GFS_Directs') && has('GFS_Dossier'))) return { extend: 'upgrade' };
+    if (has('GFS_Lecteurs') && !(has('GFS_Directs') && has('GFS_Dossier') && has('GFS_Vus'))) return { extend: 'upgrade' };
     // un partage d'avant l'auteur protégé des PDF : « compléter » reprend l'auteur de la colonne « Auteur »
     if (target.stamped && has('GFS_Lecteurs') && !has(STAMP)) return { extend: 'upgrade' };
     return { author: target.stamped ? lower((table[STAMP] || [])[(table.id || []).indexOf(file.row)]) : lower(file.by) };

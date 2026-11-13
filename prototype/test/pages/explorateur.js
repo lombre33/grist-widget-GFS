@@ -26,6 +26,7 @@ import { askName, chooseFolder } from '/js/explorer/filing-window.js';
 import { applyFiling, folderMoves, inside, normalizePath, readFiles, readFiling } from '/js/explorer/explorer-model.js';
 import { Copying } from '/js/files/copying.js';
 import { applyPlacement, readSpaces } from '/js/sharing/spaces-filing.js';
+import { LinkControl } from '/js/sharing/link-control.js';
 import { FILES_MANIFEST, FILES_COLUMN_IDS } from '/js/files/gfs-files.js';
 import { ReceivedControl } from '/js/sharing/received-control.js';
 import { loadReceived, answerFile, answerFolder } from '/js/sharing/received-files.js';
@@ -205,6 +206,40 @@ async function mount() {
     kept = [...new Set([...kept, ...info.folders])];
     show();
   };
+  // Les liens entre espaces (js/sharing/link-control.js, test/liens-espaces-firefox.mjs) : le vrai contrôle, les vraies fenêtres (choisir, nommer, demander) et le vrai calcul des lignes à écrire, sur un faux Grist
+  // en mémoire (`window.__linkTables`, `window.__linkActions`). Deux espaces : Achats (le dossier Contrats, le premier modèle) et Ventes (le groupe « Commerciaux » y lit) ; `variant` : 'neuf' (aucun lien) ou 'lie' (Contrats
+  // est déjà lié dans Ventes, sous le nom « Contrats achats »). `window.__linkOwner` : false = la personne n'est pas propriétaire.
+  window.__spaceLinks = (variant = 'neuf') => {
+    const linked = variant === 'lie';
+    const tables = {
+      GFS_Espaces: { columns: ['id', 'Cle', 'Nom'], rows: [{ id: 1, Cle: 'achats', Nom: 'Achats' }, { id: 2, Cle: 'ventes', Nom: 'Ventes' }] },
+      GFS_Partages: { columns: ['id', 'Cible', 'Personne', 'Droit', 'Telecharger', 'Fin'], rows: [{ id: 1, Cible: 'espace:achats', Personne: '#Achats', Droit: 'lecture' }, { id: 2, Cible: 'espace:ventes', Personne: '#Commerciaux', Droit: 'lecture' },
+        ...(linked ? [{ id: 3, Cible: 'dossier:achats/Contrats', Personne: '#Commerciaux', Droit: 'lecture' }] : [])] },
+      GFS_Placement: { columns: ['id', 'Cible', 'Espace', 'Dossier', 'Lien', 'Partages'], rows: [
+        { id: 1, Cible: live[0].key, Espace: 'achats', Dossier: 'Contrats', Lien: '', Partages: '' },
+        { id: 2, Cible: '', Espace: 'achats', Dossier: 'Contrats/Sous', Lien: '', Partages: '' },
+        ...(linked ? [{ id: 3, Cible: '', Espace: 'ventes', Dossier: 'Contrats achats', Lien: 'dossier:achats/Contrats', Partages: '#Commerciaux' }] : [])] },
+    };
+    const grist = fakeGrist(tables);
+    window.__linkTables = grist.tables;
+    window.__linkActions = grist.actions;
+    window.__linkOwner = true;
+    let info = null;
+    const read = () => {
+      const column = (rows, id) => rows.map(row => row[id]);
+      const place = tables.GFS_Placement.rows;
+      info = readSpaces({ id: column(tables.GFS_Espaces.rows, 'id'), Cle: column(tables.GFS_Espaces.rows, 'Cle'), Nom: column(tables.GFS_Espaces.rows, 'Nom') },
+        { id: column(place, 'id'), Cible: column(place, 'Cible'), Espace: column(place, 'Espace'), Dossier: column(place, 'Dossier'), Lien: column(place, 'Lien'), Partages: column(place, 'Partages') });
+      applyPlacement(live, info);
+      kept = [...new Set([...kept, ...info.folders])];
+      show();
+    };
+    read();
+    const control = new LinkControl({ t: i18n.t, container: stage, inertTargets: () => [explorer.root], port: grist.port, fullAccess: () => true, writeBlock: () => null, spaces: () => info, files: () => live,
+      notice: text => window.__notices.push(text), reader: { owner: async () => window.__linkOwner !== false }, refresh: async () => read() });
+    window.__linkProxy = { whyNot: () => control.whyNot(), linkAt: path => control.linkAt(path), open: source => control.open(source), remove: link => control.remove(link) };
+    explorer.render();
+  };
   // Un fichier que quelqu'un a donné à la personne par son adresse (« Partagés avec moi », lot 4c) : le premier modèle, à la racine, jamais rangé par elle.
   window.__direct = () => { live[0].folder = ''; live[0].direct = { by: 'marc@example.com' }; show(); };
   window.__keep = (...paths) => { kept = [...new Set([...kept, ...paths])]; show(); };
@@ -288,9 +323,9 @@ async function mount() {
     notice: text => window.__notices.push(text), settings: () => settingsItems({ t: i18n.t, language: () => ({ choice: window.__language, grist: language }), onLanguage: value => { window.__language = value; }, onTheme: () => theme.open(),
       langtool: () => ({ shown: window.__langtool, toggle: () => { window.__langtool = !window.__langtool; } }), place, onAbout: () => window.__about(),
       manage: () => ({ why: null, open: () => { window.__manageFromSettings = (window.__manageFromSettings || 0) + 1; }, notice: text => window.__notices.push(text) }) }),
-    onOpen: file => { window.__opened = file.name; }, onNew: () => {},
+    onOpen: file => { window.__opened = file.name; }, onNew: () => {}, get links() { return window.__linkProxy; },
     opened: { keys: () => openedFiles.keys(), shown: () => openedFiles.shown(SESSION), remove: key => openedFiles.remove(key) },
-    onImport: () => {}, onClose: () => {}, onApps: () => {}, sharing: { whyNot: () => null, whyNotFolder: path => (path.startsWith('Espaces') && path.split('/').length < 3 ? i18n.t('share.folder.space') : null), folderFile: path => ({ key: `dossier:${path}`, name: path.split('/').pop(), path, mine: !path.startsWith('Espaces/') }), open: file => window.__share(window.__shareKind || 'actif', file) }, onWeight: estimate => window.__weight(estimate), personal: () => true, kept: null, trash: bin, copying,
+    onImport: () => {}, onClose: () => {}, onApps: () => {}, sharing: { whyNot: () => null, whyNotFolder: path => (path.startsWith('Espaces') && path.split('/').length < 3 ? i18n.t('share.folder.space') : null), folderFile: path => ({ key: window.__linkProxy && path.startsWith('Espaces/') ? `dossier:${path.split('/').slice(1).join('/').replace(/^[^/]+/, word => word.toLowerCase())}` : `dossier:${path}`, name: path.split('/').pop(), path, mine: !path.startsWith('Espaces/') }), open: file => window.__share(window.__shareKind || 'actif', file) }, onWeight: estimate => window.__weight(estimate), personal: () => true, kept: null, trash: bin, copying,
     attachments: async () => { window.__attachments += 1; if (window.__attachmentsFail) return { error: new Error(window.__attachmentsFail) }; return { data: attachmentsTable() }; },
     filing: { togglePin: noted('pin', 'name'), rename: noted('rename', 'name'), moveFile: noted('move', 'name'), renameFolder: async path => { window.__filing.push(['renameFolder', path]); }, moveFolder: async path => { window.__filing.push(['moveFolder', path]); }, ...moving,
       newFolder: () => filing.newFolder(), deleteFolder: path => filing.deleteFolder(path), undoStack: filing.undoStack },
@@ -306,6 +341,7 @@ async function mount() {
     kept = [];
     arrivals = [];
     window.__sharedBlocked = '';
+    window.__linkProxy = undefined; // plus de liens entre espaces : les menus redeviennent ceux d'avant
     window.__filing.length = 0;
     window.__copies.length = 0;
     window.__notices.length = 0;

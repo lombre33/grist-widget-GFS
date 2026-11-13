@@ -8,6 +8,7 @@
 import { SPACES_ROOT, fileKey, folderName, normalizePath } from '../explorer/explorer-model.js';
 import { normalize } from '../ui/search.js';
 import { PLACE_TABLE, SPACES_TABLE } from './sharing-model.js';
+import { linkWithin } from './space-links.js';
 
 export { SPACES_ROOT };
 const text = value => (typeof value === 'string' ? value : '');
@@ -25,8 +26,8 @@ export const isInsideSpace = path => isSpacePath(path) && path.split('/').length
 export const folderLabel = (t, path, name = path.split('/').pop()) => (path === SPACES_ROOT ? t('ex.spaces') : name);
 
 // Ce que disent `GFS_Espaces` et `GFS_Placement` (tables telles que `fetchTable` les rend, ou null) : { spaces: [{ key, name, path }], placed: Map(cible -> {
-// space, folder }), folders: [chemins montrés même sans fichier] }. Un espace que la personne ne lit pas n'est pas dans sa table : ses fichiers restent là où
-// le rangement de la personne les met.
+// space, folder }), folders: [chemins montrés même sans fichier], links: [{ id, source, space, folder, groups, path }] (les liens, contrats 11.7, point 13.o)
+// }. Un espace que la personne ne lit pas n'est pas dans sa table : ses fichiers restent là où le rangement de la personne les met.
 export function readSpaces(spacesData, placeData) {
   const spaces = [];
   const taken = new Set();
@@ -41,14 +42,18 @@ export function readSpaces(spacesData, placeData) {
   const byKey = new Map(spaces.map(space => [space.key, space]));
   const placed = new Map();
   const folders = new Set(spaces.map(space => space.path));
+  const links = [];
   for (let i = 0; i < rowCount(placeData); i++) {
     const space = byKey.get(text(cell(placeData, 'Espace', i)));
     if (!space) continue;
     const folder = normalizePath(cell(placeData, 'Dossier', i));
     const target = text(cell(placeData, 'Cible', i));
+    const source = text(cell(placeData, 'Lien', i));
+    if (!target && source) links.push({ id: placeData.id[i], source, space, folder, groups: text(cell(placeData, 'Partages', i)),
+      path: folder ? `${space.path}/${folder}` : space.path });
     if (target) { if (!placed.has(target)) placed.set(target, { space, folder }); } else if (folder) folders.add(`${space.path}/${folder}`);
   }
-  return { spaces, placed, folders: [...folders] };
+  return { spaces, placed, folders: [...folders], links };
 }
 
 // Pose le dossier d'espace sur les fichiers placés (le dossier de la personne, lui, est gardé dans `ownFolder` : il revient si le fichier quitte l'espace) et
@@ -78,6 +83,8 @@ export function locate(path, info) {
 // désigne aucun espace). `ops` : [{ place, space, folder }] ou [{ remove }] ; `markers` : { add, drop } de { space, folder }. Un fichier qui entre dans un
 // espace garde son dossier à lui (rien n'y change) ; un fichier qui en sort va dans le dossier demandé.
 export function splitWrites(entries, folders, files, info) {
+  // Un lien montre le dossier d'un autre espace : on n'y range rien et on n'y crée rien (cela se fait dans l'espace d'origine).
+  if ((folders.add || []).some(path => linkWithin(info, path))) return { error: 'ex.linkTarget' };
   const byKey = new Map(files.map(file => [file.key, file]));
   const personal = [];
   const ops = [];
@@ -99,6 +106,7 @@ function splitEntry(entry, now, info) {
   if (!isSpacePath(to)) return { personal: { ...entry, folder: to }, op: now && now.space ? { remove: key } : null };
   const dest = locate(to, info);
   if (!dest) return { error: 'ex.spaceUnknown' };
+  if (linkWithin(info, to)) return { error: 'ex.linkTarget' };
   const same = now && now.space && now.space.key === dest.space.key && now.space.folder === dest.folder;
   return { personal: { ...entry, folder: now ? (now.space ? now.ownFolder || '' : now.folder) : '' },
     op: same ? null : { place: key, space: dest.space.key, folder: dest.folder } };
@@ -133,7 +141,7 @@ export async function writePlacement(doc, plan) {
     if (found.length) actions.push(['UpdateRecord', PLACE_TABLE, found[0], { Espace: op.space, Dossier: op.folder }]);
     else actions.push(['AddRecord', PLACE_TABLE, null, { Cible: op.place, Espace: op.space, Dossier: op.folder }]);
   }
-  const marker = (item, i) => !text(cell(placeTable, 'Cible', i)) && text(cell(placeTable, 'Espace', i)) === item.space &&
+  const marker = (item, i) => !text(cell(placeTable, 'Cible', i)) && !text(cell(placeTable, 'Lien', i)) && text(cell(placeTable, 'Espace', i)) === item.space &&
     normalizePath(cell(placeTable, 'Dossier', i)) === item.folder;
   for (const item of plan.markers.drop) for (const id of at(i => marker(item, i))) actions.push(['RemoveRecord', PLACE_TABLE, id]);
   for (const item of plan.markers.add) if (!at(i => marker(item, i)).length && !plan.markers.drop.some(other => other.space === item.space &&

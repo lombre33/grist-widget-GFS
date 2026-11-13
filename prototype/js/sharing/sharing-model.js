@@ -170,8 +170,12 @@ export const spaceColumns = () => [column('Cle', 'Text'), column('Nom', 'Text'),
   '    elif p.PersonneL and not p.PersonneL.startswith("@"):',
   '      out.add(p.PersonneL)',
   'return tuple(sorted(out))'].join('\n'))];
+// Un lien (contrats 11.7, point 13.o) est une ligne de placement sans `Cible` (comme un dossier vide d'espace) qui porte en plus `Lien` (la cible vue d'un
+// autre
+// espace : un fichier ou `dossier:<clé>/<chemin>`) et `Partages` (les groupes à qui le lien a donné un droit, `#nom` séparés par une virgule).
+export const PLACE_LINK_COLUMNS = Object.freeze(['Lien', 'Partages']);
 export const placeColumns = () => [column('Cible', 'Text'), column('Espace', 'Text'), column('Dossier', 'Text'),
-  formula('Voit', 'Any', `${SPACES_TABLE}.lookupOne(Cle=$Espace).Voit or ()`)];
+  formula('Voit', 'Any', `${SPACES_TABLE}.lookupOne(Cle=$Espace).Voit or ()`), ...PLACE_LINK_COLUMNS.map(id => column(id, 'Text'))];
 
 // Le dossier que l'auteur du fichier lui a donné dans « Moi » (une ligne de `GFS_Rangement` à son adresse, pour ce fichier ; rien si le fichier n'y est pas
 // rangé) : le calcul des droits le lit, et c'est aussi ce qui dit à GFS qu'un document partagé avant ce lot est à mettre à jour.
@@ -186,27 +190,51 @@ function folderFormula(target) {
     'return out'].join('\n');
 }
 
+// Les cibles qui valent pour un fichier, de la plus large (`*`, 0) à la plus précise (le fichier, 99) : l'espace où il est placé et ses dossiers, ou, hors d'un
+// espace, le dossier que son auteur lui a donné dans « Moi » (`GFS_Dossier`) : les droits de ce dossier et de ceux au-dessus valent pour lui, et pour tout
+// fichier que l'auteur y rangera. Le dossier d'une autre personne ne compte jamais : sa clé porte l'adresse de l'auteur. `full` : les noms de ces dossiers
+// (`GFS_Vus` en tire le chemin sous le dossier d'un lien).
+const chainLines = target => [
+  `key = "${target.prefix}" + str(${idOf(target)})`,
+  `author = str($${target.author}).strip().lower()`,
+  'chain = {"*": 0}',
+  'full = []',
+  `pl = ${PLACE_TABLE}.lookupOne(Cible=key)`,
+  'if pl and pl.Espace:',
+  '  chain["espace:" + str(pl.Espace)] = 1',
+  '  parts = [x for x in str(pl.Dossier or "").split("/") if x]',
+  '  full = parts',
+  '  for i in range(len(parts)):',
+  '    chain["dossier:" + str(pl.Espace) + "/" + "/".join(parts[:i + 1])] = 2 + i',
+  'elif author:',
+  '  mine = [x for x in str($GFS_Dossier or "").split("/") if x]',
+  '  full = mine',
+  '  for i in range(len(mine)):',
+  `    chain["${PERSONAL_PREFIX}" + author + "/" + "/".join(mine[:i + 1])] = 2 + i`,
+  'chain[key] = 99'];
+
+// Où le fichier se montre en plus, par les liens d'autres espaces (contrats 11.7, point 13.o) : « <clé de l'espace>/<chemin> », un par lien dont la source est
+// le fichier ou un dossier au-dessus de lui (le chemin sous ce dossier suit celui du lien). Une personne ne lit que les fichiers où elle a un droit : Grist
+// décide donc seul qui voit quoi, comme pour les listes de lecteurs.
+function vusFormula(target) {
+  return [...chainLines(target),
+    'out = set()',
+    'for cible, lvl in chain.items():',
+    `  for l in ${PLACE_TABLE}.lookupRecords(Lien=cible):`,
+    '    if not l.Espace:',
+    '      continue',
+    '    base = [x for x in str(l.Dossier or "").split("/") if x]',
+    '    rest = [] if cible == key else full[lvl - 1:]',
+    '    out.add(str(l.Espace) + "/" + "/".join(base + rest))',
+    'return tuple(sorted(out))'].join('\n');
+}
+
 // Le calcul du droit de chaque personne sur un fichier (une seule colonne cachée, `GFS_Calc`, que les autres lisent) : la liste des lecteurs, des écrivains,
 // des administrateurs, des refus, des catégories qui lisent et qui écrivent.
 function calcFormula(target) {
   return [
-    `key = "${target.prefix}" + str(${idOf(target)})`,
-    `author = str($${target.author}).strip().lower()`,
-    'chain = {"*": 0}',
-    `pl = ${PLACE_TABLE}.lookupOne(Cible=key)`,
-    'if pl and pl.Espace:',
-    '  chain["espace:" + str(pl.Espace)] = 1',
-    '  parts = [x for x in str(pl.Dossier or "").split("/") if x]',
-    '  for i in range(len(parts)):',
-    '    chain["dossier:" + str(pl.Espace) + "/" + "/".join(parts[:i + 1])] = 2 + i',
-    // Hors d'un espace, le fichier est dans le dossier que son auteur lui a donné dans « Moi » (`GFS_Dossier`) : les droits de ce dossier et de ceux au-dessus
-    // valent pour lui, et pour tout fichier que l'auteur y rangera. Le dossier d'une autre personne ne compte jamais : sa clé porte l'adresse de l'auteur.
-    'elif author:',
-    '  mine = [x for x in str($GFS_Dossier or "").split("/") if x]',
-    '  for i in range(len(mine)):',
-    `    chain["${PERSONAL_PREFIX}" + author + "/" + "/".join(mine[:i + 1])] = 2 + i`,
-    'chain[key] = 99',
-    'RANK = {"aucun": 0, "lecture": 1, "ecriture": 2, "admin": 3}',
+    ...chainLines(target),
+    'RANK ={"aucun": 0, "lecture": 1, "ecriture": 2, "admin": 3}',
     'best = {}',
     'cats = {}',
     'def put(table, who, lvl, kind, rank, src=""):',
@@ -243,7 +271,7 @@ function calcFormula(target) {
 // Les colonnes d'aide d'une table de fichiers : `GFS_Calc` (le calcul), puis les adresses qui lisent, écrivent, administrent, celles à qui l'accès est retiré
 // (`GFS_Refus`), et les catégories entières (`editeurs`, `tous`) qui lisent ou écrivent.
 export const HELPERS = Object.freeze(['GFS_Dossier', 'GFS_Calc', 'GFS_Lecteurs', 'GFS_Ecrivains', 'GFS_Admins', 'GFS_Refus', 'GFS_Cats', 'GFS_CatsEcrit',
-  'GFS_Directs']);
+  'GFS_Directs', 'GFS_Vus']);
 export function helperColumns(target = FILES_TARGET) {
   const part = at => `tuple(($GFS_Calc or [[], [], [], [], [], [], []])[${at}])`;
   return [
@@ -257,6 +285,7 @@ export function helperColumns(target = FILES_TARGET) {
     formula('GFS_Cats', 'Any', part(4)),
     formula('GFS_CatsEcrit', 'Any', part(5)),
     formula('GFS_Directs', 'Any', part(6)),
+    formula('GFS_Vus', 'Any', vusFormula(target)),
   ];
 }
 
@@ -425,12 +454,15 @@ function pickTargets(view, targets, shared) {
 function coreTables(view) {
   const core = [[GROUPS_TABLE, groupColumns, GROUP_PUBLIC, groupPublicRules, groupRules], [SPACES_TABLE, spaceColumns, 'Cle,Nom,Voit', null, spaceRules],
     [PLACE_TABLE, placeColumns, 'Cible,Espace,Dossier,Voit', null, spaceRules]];
-  return { missing: core.filter(([name]) => !view.hasTable(name)), unruled: core.filter(([name]) => view.hasTable(name) && view.mine(name).length === 0) };
+  // Un placement d'avant les liens : ses deux colonnes de lien s'ajoutent (additif, rien ne se recharge).
+  const have = view.columnsOf(PLACE_TABLE);
+  return { missing: core.filter(([name]) => !view.hasTable(name)), unruled: core.filter(([name]) => view.hasTable(name) && view.mine(name).length === 0),
+    placeMissing: view.hasTable(PLACE_TABLE) ? PLACE_LINK_COLUMNS.filter(colId => !have.has(colId)) : [] };
 }
 
 // Rien à faire : le partage est là, avec ses règles, toutes les tables de fichiers sont à jour et les tables communes sont posées.
 const upToDate = ({ shared, todo, sharesRules, core, filing }) => shared && !todo.length && sharesRules && !core.missing.length && !core.unruled.length &&
-  filing.covered;
+  !core.placeMissing.length && filing.covered;
 
 // Les tables et les colonnes à poser, dans l'ordre où Grist les veut : les tables communes en tête (les groupes d'abord : les colonnes d'aide qui les lisent
 // viennent après), les tables de fichiers à créer (la dernière en tête), la table de rangement, puis la table de partages (ou la formule de ses
@@ -442,6 +474,8 @@ function structureActions(existing, view, filesColumns, { shared, here, hadRules
     actions.push(['AddColumn', FILING_TABLE, colId, { ...FILING_COLUMNS.find(column => column.id === colId), id: undefined }]);
     adds.push(`${FILING_TABLE}.${colId}`);
   }
+  // Les colonnes de lien du placement, avant les formules d'aide des fichiers qui les lisent (`GFS_Vus`).
+  for (const colId of core.placeMissing) { actions.push(['AddColumn', PLACE_TABLE, colId, { type: 'Text' }]); adds.push(`${PLACE_TABLE}.${colId}`); }
   if (!shared) { actions.push(['AddTable', SHARES_TABLE, shareColumns(here)]); creates.push(SHARES_TABLE); }
   else if (todo.length) actions.push(['ModifyColumn', SHARES_TABLE, 'AdminsBase',
     { formula: shareColumns(here).find(item => item.id === 'AdminsBase').formula }]);

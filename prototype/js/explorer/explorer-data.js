@@ -8,6 +8,7 @@ import { BIN_TABLE, recipeOf, binFiles } from '../files/gfs-trash.js';
 import { linkedWeights } from '../weight/weight.js';
 import { applyPlacement, loadSpaces } from '../sharing/spaces-filing.js';
 import { addressFromShares, applyDirect } from '../sharing/direct-shares.js';
+import { applyLinks } from '../sharing/space-links.js';
 import { SHARES_TABLE } from '../sharing/sharing-model.js';
 import { rowsOf } from '../rights/rights.js';
 import { loadReceived } from '../sharing/received-files.js';
@@ -164,6 +165,7 @@ function readAppFiles({ identity, address, spaces, bin, gfsFiling }, { manifest,
   applyFiling(found, filing, gfsFiling);
   applyPlacement(found, spaces);
   applyDirect(found, main.data, address);
+  applyLinks(found, main.data, spaces, identity || address);
   return { found, binned: binnedFiles(manifest, spec, bin, filing, gfsFiling) };
 }
 

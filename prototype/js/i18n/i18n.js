@@ -9,6 +9,7 @@ import { RIGHTS_STRINGS } from './i18n-rights.js';
 import { SHARE_STRINGS } from './i18n-share.js';
 import { SHARE_OTHER_STRINGS } from './i18n-share-other.js';
 import { MANAGE_STRINGS } from './i18n-manage.js';
+import { SPACE_LINK_STRINGS } from './i18n-space-links.js';
 import { RECEIVED_STRINGS } from './i18n-received.js';
 import { NOTIFICATION_STRINGS } from './i18n-notifications.js';
 import { EXPLORER_STRINGS } from './i18n-explorer.js';
@@ -24,6 +25,7 @@ const STRINGS = {
     ...SHARE_STRINGS.fr,
     ...SHARE_OTHER_STRINGS.fr,
     ...MANAGE_STRINGS.fr,
+    ...SPACE_LINK_STRINGS.fr,
     ...RECEIVED_STRINGS.fr,
     ...NOTIFICATION_STRINGS.fr,
     ...EXPLORER_STRINGS.fr,
@@ -204,6 +206,7 @@ const STRINGS = {
     ...SHARE_STRINGS.en,
     ...SHARE_OTHER_STRINGS.en,
     ...MANAGE_STRINGS.en,
+    ...SPACE_LINK_STRINGS.en,
     ...RECEIVED_STRINGS.en,
     ...NOTIFICATION_STRINGS.en,
     ...EXPLORER_STRINGS.en,

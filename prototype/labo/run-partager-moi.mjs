@@ -18,6 +18,7 @@ import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { createI18n } from '../js/i18n/i18n.js';
 import { PAGE_PORT, openGfs, importSamples, openRowMenu, rowOf, goTo, names, contrastProblems, shot as pdfShot } from './lab-pdf.mjs';
 import { gfsFrame, fits, shareWithEditorAndViewer } from './lab-droits.mjs';
+import { call, apply, rowsOf as rows } from './lab-rest.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -29,14 +30,6 @@ const FILES = 'GFS_Fichiers', SHARES = 'GFS_Partages', FILING = 'GFS_Rangement';
 const FOLDER = 'Contrats';
 const shot = (frame, name) => pdfShot(frame, `partager-moi-${lang}-${scheme}-${name}`);
 const unexpected = run => run.problems.filter(problem => !run.allow.some(known => known.test(problem)));
-const call = (page, method, path, body) => page.evaluate(async ([m, p, b]) => {
-  const response = await fetch(p, { method: m, headers: { 'Content-Type': 'application/json' }, body: b ? JSON.stringify(b) : undefined });
-  const text = await response.text();
-  let json = null; try { json = JSON.parse(text); } catch { /* texte */ }
-  return { status: response.status, json, text: text.slice(0, 500) };
-}, [method, path, body]);
-const apply = (run, actions) => call(run.page, 'POST', `/api/docs/${run.docId}/apply`, actions);
-const rows = async (run, table) => { const answer = await call(run.page, 'GET', `/api/docs/${run.docId}/tables/${table}/records`); return answer.status === 200 ? answer.json.records.map(row => ({ id: row.id, ...row.fields })) : null; };
 const has = (value, who) => JSON.stringify(value ?? null).toLowerCase().includes(who);
 const fileRow = async (run, name) => ((await rows(run, FILES)) || []).find(row => row.Nom === name);
 const keyOf = row => `gfs-fichiers:${row.Identifiant}`;

@@ -44,7 +44,7 @@ test('les colonnes d\'aide d\'une table de fichiers : un calcul et sept listes, 
   assert.doesNotMatch(calc, /\$Auteur\b/, '« Auteur » n\'est que le dernier qui a modifié : il ne donne aucun droit');
   assert.match(calc, /best\[author\] = \(999, 9, 3, ""\)/);
   assert.match(calc, /GFS_Placement\.lookupOne\(Cible=key\)/);
-  const parts = columns.filter(column => !['GFS_Calc', 'GFS_Auteur', 'GFS_Dossier'].includes(column.id)).map(column => [column.id, column.formula.match(/\[(\d)\]\)$/)[1]]);
+  const parts = columns.filter(column => !['GFS_Calc', 'GFS_Auteur', 'GFS_Dossier', 'GFS_Vus'].includes(column.id)).map(column => [column.id, column.formula.match(/\[(\d)\]\)$/)[1]]);
   assert.deepEqual(parts, [['GFS_Lecteurs', '0'], ['GFS_Ecrivains', '1'], ['GFS_Admins', '2'], ['GFS_Refus', '3'], ['GFS_Cats', '4'], ['GFS_CatsEcrit', '5'], ['GFS_Directs', '6']]);
   assert.match(calc, /directs = sorted\(who \+ ">" \+ v\[3\]/);
   assert.match(calc, /put\(best, p\.PersonneL, lvl, 2, rank, str\(p\.Auteur/);
@@ -290,6 +290,32 @@ test('un document partagé avant les espaces : les tables naissent, GFS_Calc s\'
   assert.equal(planSharing(applied(old, plan.actions), FILES_COLUMNS).reason, 'already');
 });
 
+test('les liens entre espaces (13.o) : GFS_Vus lit les liens de la chaîne du fichier, le placement porte Lien et Partages, les deux calculs partent de la même chaîne', () => {
+  const [calc, vus] = ['GFS_Calc', 'GFS_Vus'].map(id => model.helperColumns(TARGETS[0]).find(item => item.id === id));
+  assert.equal(vus.isFormula, true);
+  assert.match(vus.formula, /GFS_Placement\.lookupRecords\(Lien=cible\)/);
+  assert.match(vus.formula, /rest = \[\] if cible == key else full\[lvl - 1:\]/);
+  assert.ok(HELPERS.includes('GFS_Vus'));
+  assert.deepEqual(model.placeColumns().map(column => column.id), ['Cible', 'Espace', 'Dossier', 'Voit', 'Lien', 'Partages']);
+  const chain = vus.formula.split('\nout = set()')[0];
+  assert.ok(calc.formula.startsWith(chain), 'la chaîne des cibles est écrite une seule fois');
+  assert.match(chain, /full = parts/);
+  assert.match(chain, /full = mine/);
+});
+
+test('un document partagé avant les liens : les deux colonnes du placement et GFS_Vus s\'ajoutent (additif), rien ne se recrée, un second passage ne trouve rien', () => {
+  const done = applied(withFiles(), planSharing(withFiles(), FILES_COLUMNS).actions);
+  const old = { ...done, columns: done.columns.filter(col => !['Lien', 'Partages', 'GFS_Vus'].includes(col.colId)) };
+  const plan = planSharing(old, FILES_COLUMNS);
+  assert.equal(plan.ok, true);
+  assert.deepEqual(plan.creates, []);
+  const adds = plan.actions.filter(action => action[0] === 'AddColumn').map(action => `${action[1]}.${action[2]}`);
+  assert.ok(adds.includes('GFS_Placement.Lien') && adds.includes('GFS_Placement.Partages') && adds.includes('GFS_Fichiers.GFS_Vus'), adds.join(', '));
+  assert.ok(adds.indexOf('GFS_Placement.Lien') < adds.indexOf('GFS_Fichiers.GFS_Vus'), 'les colonnes du placement avant la formule qui les lit');
+  assert.equal(plan.actions.some(action => action[0] === 'AddTable'), false);
+  assert.equal(planSharing(applied(old, plan.actions), FILES_COLUMNS).reason, 'already');
+});
+
 test('le nom d\'un groupe : nettoyé, sans @ ni # au début, 60 signes au plus', () => {
   assert.equal(model.groupName('  Équipe   des  achats '), 'Équipe des achats');
   assert.equal(model.groupName('@editeurs'), null);
@@ -350,7 +376,7 @@ test('les tables d\'espaces : un espace voit qui y a accès (groupes développé
   assert.deepEqual(model.spaceColumns().map(item => item.id), ['Cle', 'Nom', 'Voit']);
   assert.match(model.spaceColumns().find(item => item.id === 'Voit').formula, /Cible="espace:" \+ str\(\$Cle\)/);
   assert.match(model.spaceColumns().find(item => item.id === 'Voit').formula, /g\.Membres/);
-  assert.deepEqual(model.placeColumns().map(item => item.id), ['Cible', 'Espace', 'Dossier', 'Voit']);
+  assert.deepEqual(model.placeColumns().map(item => item.id), ['Cible', 'Espace', 'Dossier', 'Voit', 'Lien', 'Partages']);
   assert.deepEqual(model.spaceRules().map(item => item.rights), ['+CRUD', '+R', '-CRUD']);
   for (const line of model.spaceColumns().find(item => item.id === 'Voit').formula.split('\n')) assert.equal(line.split('"').length % 2, 1, line);
 });

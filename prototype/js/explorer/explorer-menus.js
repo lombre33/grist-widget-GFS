@@ -19,8 +19,11 @@ export function rowItems(x, key) {
   if (key.startsWith('dir:')) {
     const path = key.slice(4);
     const { filing } = opts;
+    const link = opts.links ? opts.links.linkAt(path) : null;
+    if (link) return linkFolderItems(x, key, link);
     return [item(t('ex.openFolder'), 'open', () => act.activate(key), t('key.enter')), item(t('ex.rename'), 'edit', () => void filing.renameFolder(path), 'F2'),
-      item(t('ex.move'), 'move', () => void filing.moveFolder(path), choice ? undefined : 'Ctrl+X, V'), shareFolderItem(x, path), '-',
+      item(t('ex.move'), 'move', () => void filing.moveFolder(path), choice ? undefined : 'Ctrl+X, V'), shareFolderItem(x, path), ...linkFolderItem(x, path),
+        '-',
         deleteFolderItem(x, key)];
   }
   const file = x.shown.find(entry => entry.key === key);
@@ -45,6 +48,29 @@ function shareFolderItem(x, path) {
   const { sharing } = opts;
   const why = x.choice ? t('ex.choose.newOff') : (sharing && sharing.whyNotFolder ? sharing.whyNotFolder(path) : t('share.unsupported'));
   return { label: t('share.menu'), icon: 'user', greyed: why !== null, run: () => (why ? opts.notice(why) : void sharing.open(sharing.folderFile(path))) };
+}
+
+// « Lier dans un espace… » d'un dossier (js/sharing/link-control.js) : un dossier d'espace ou de « Moi » se montre dans un autre espace ; les autres, l'article
+// reste grisé et le clic dit pourquoi. Rien (liste vide) sans le contrôle des liens (les essais de l'explorateur seul).
+function linkFolderItem(x, path) {
+  const { t, opts } = x;
+  const { links, sharing } = opts;
+  if (!links) return [];
+  const why = x.choice ? t('ex.choose.newOff') : ((sharing && sharing.whyNotFolder ? sharing.whyNotFolder(path) : t('share.unsupported')) || links.whyNot());
+  return [{ label: t('slink.menu'), icon: 'link', greyed: why !== null,
+    run: () => { if (why) opts.notice(why); else {
+      const folder = sharing.folderFile(path); void links.open({ target: folder.key, name: folder.name, kind: 'folder' }); } } }];
+}
+
+// Le menu du dossier d'un lien (un autre espace y montre ses fichiers) : l'ouvrir, ou retirer le lien. Le reste est grisé : le nom, la place et le partage se
+// règlent dans l'espace d'origine ; le clic dit pourquoi.
+function linkFolderItems(x, key, link) {
+  const { t, opts, choice, act } = x;
+  const fixed = (label, glyph) => ({ label, icon: glyph, greyed: true, run: () => opts.notice(t('slink.fixed')) });
+  const why = choice ? t('ex.choose.newOff') : null;
+  return [item(t('ex.openFolder'), 'open', () => act.activate(key), t('key.enter')), fixed(t('ex.rename'), 'edit'), fixed(t('ex.move'), 'move'),
+    { label: t('share.menu'), icon: 'user', greyed: true, run: () => opts.notice(t('share.folder.link')) }, '-',
+    { label: t('slink.remove'), icon: 'trash', greyed: why !== null, run: () => (why ? opts.notice(why) : void opts.links.remove(link)) }];
 }
 
 // L'article « Supprimer le dossier » : grisé tant qu'un fichier est dans le dossier (ou un de ses sous-dossiers) et pendant un choix ; le clic dit pourquoi.
@@ -79,6 +105,14 @@ function whyGreyed(x, file, gesture, unknown) {
   return wait ? wait.text : null;
 }
 
+// « Lier dans un espace… » d'un fichier : grisé pour ce qui ne se partage pas (même raison que « Partager… »), sans partage activé et sans espace.
+function linkFileItem(x, file, whyShare) {
+  const { t, opts } = x;
+  const why = whyShare || opts.links.whyNot();
+  return { label: t('slink.menu'), icon: 'link', greyed: why !== null, run: () => (why ? opts.notice(why) :
+    void opts.links.open({ target: file.key, name: file.name, kind: 'file' })) };
+}
+
 function fileItems(x, file) {
   const { t, opts, choice, act } = x;
   const { filing, sharing } = opts;
@@ -98,7 +132,8 @@ function fileItems(x, file) {
   const share = whyShare ? grey(t('share.menu'), 'user', whyShare) : item(t('share.menu'), 'user', () => void sharing.open(file));
   // Dans « Ouverts » : sortir le fichier de la liste, sans le fermer ni le toucher.
   const drop = x.view === 'opened' ? [item(t('ex.openedDrop'), 'x', () => void act.dropOpened(file.key))] : [];
-  return [{ ...item(open.label, open.icon, () => act.activate(file.key), t('key.enter')), greyed: open.greyed }, ...drop, ...extras, share,
+  const linkTo = opts.links ? [linkFileItem(x, file, whyShare)] : [];
+  return [{ ...item(open.label, open.icon, () => act.activate(file.key), t('key.enter')), greyed: open.greyed }, ...drop, ...extras, share, ...linkTo,
     item(file.pinned ? t('ex.unpin') : t('ex.pin'), 'pin', () => void filing.togglePin(file)),
     item(t('ex.rename'), 'edit', () => void filing.rename(file), 'F2'), duplicate,
       item(t('ex.move'), 'move', () => void filing.moveFile(file), choice ? undefined : 'Ctrl+X, V'),

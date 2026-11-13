@@ -8,6 +8,7 @@ import { RightsWriter, RESUME_KEY } from './rights-writer.js';
 import { targetsOf } from '../sharing/sharing-model.js';
 import { ShareControl } from '../sharing/share-control.js';
 import { ManageControl } from '../sharing/manage-control.js';
+import { LinkControl } from '../sharing/link-control.js';
 import { keyStore } from '../shell/stored-choice.js';
 
 export class RightsControl {
@@ -31,6 +32,8 @@ export class RightsControl {
     this.manage = new ManageControl({ ...opts, reader: this.reader, writer: this.writer });
     this.sharing = new ShareControl({ ...opts, targets: this.targets, reader: this.reader, writer: this.writer, other: opts.other || (() => null),
       manage: this.manage });
+    // Les liens entre espaces (js/sharing/link-control.js).
+    this.links = new LinkControl({ ...opts, reader: this.reader });
   }
 
   // Au retour du rechargement que Grist impose après une pose (contrats 11.5, point 3).

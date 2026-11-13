@@ -86,9 +86,7 @@ export class GfsController {
 
   // env : { grist, router, search, doc }
   constructor({ grist, router, search, doc = document }) {
-    this.grist = grist;
-    this.router = router;
-    this.doc = doc;
+    Object.assign(this, { grist, router, doc });
     this.status = new AppStatus(this.$('status')); // la phrase d'état de l'app active : l'explorateur la cache tant qu'il recouvre l'app
     this.params = new URLSearchParams(search);
     this.preferences = readPreferences(search);
@@ -161,6 +159,7 @@ export class GfsController {
       locale: () => this.locale, identity: () => this.identity, writeBlock: () => this.#writeBlock(), appName: this.appName, spaces: () => this.spaces,
       other: (file, state) => this.otherDocuments.tab(file, state), otherLinks: () => this.otherDocuments.links(),
         otherStop: link => this.otherDocuments.stop(link), otherNew: () => this.otherDocuments.link(), refresh: () => this.refreshFiles(),
+      notice: text => this.notice(text), files: () => this.explorer.files,
     });
     this.weight = new WeightControl({ transfer: this.transfer, container: this.$('stage'), inertTargets: this.inertTargets, t: this.t,
       locale: () => this.locale });
@@ -298,7 +297,7 @@ export class GfsController {
         place: () => this.dock.placeRow(), onAbout: () => this.#openAbout(),
         manage: () => ({ why: this.rights.manage.whyNot(), open: () => void this.rights.manage.open(), notice: text => this.notice(text) }),
       }),
-      sharing: this.rights.sharing, onWeight: estimate => void this.weight.open(estimate),
+      sharing: this.rights.sharing, links: this.rights.links, onWeight: estimate => void this.weight.open(estimate),
       onOpen: file => this.openings.openFile(file), onNew: entry => this.openings.openNew(entry), onImport: entry => void this.openings.importFile(entry),
         onClose: () => this.hideExplorer(), onApps: () => void this.openModules(),
       personal: () => Boolean(this.identity), filing, kept: this.kept, attachments: () => loadAttachments(this.port),

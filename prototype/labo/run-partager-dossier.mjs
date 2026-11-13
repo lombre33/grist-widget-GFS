@@ -53,13 +53,15 @@ async function openFileTab(frame, name) {
 }
 
 // « Partager… » sur la ligne d'un dossier (à la vraie souris : clic droit) : rend l'article du menu.
-async function openFolderShare(frame, name) {
+// La fenêtre s'ouvre sur « Dans ce document » (un dossier de « Moi » s'y partage, 13/11) ; `stay` la laisse là, sinon l'onglet « Dans un autre document Grist » est choisi.
+async function openFolderShare(frame, name, { stay = false } = {}) {
   await folderRow(frame, name).click({ button: 'right' });
   const entry = frame.getByRole('menuitem', { name: new RegExp(`^${t('share.menu')}`) });
   await entry.waitFor();
   const greyed = (await entry.getAttribute('aria-disabled')) === 'true';
   await entry.click();
   await frame.locator('.mod.sh .rt-content').waitFor();
+  if (!stay) await frame.locator('[data-fk="share-tab-other"]').click();
   await frame.waitForFunction(loading => !document.querySelector('.mod.sh .sh-body').textContent.includes(loading), t('so.tab.loading'));
   return greyed;
 }
@@ -136,17 +138,21 @@ try {
 
   say('--- 1. « Partager… » sur le dossier ---');
   await goHome(frame);
-  const greyed = await openFolderShare(frame, 'Contrats');
+  const greyed = await openFolderShare(frame, 'Contrats', { stay: true });
   check('l\'article « Partager… » d\'un dossier de « Moi » est libre, la fenêtre s\'ouvre', !greyed && (await frame.locator('.mod.sh').count()) === 1, greyed);
   const head = await text(frame, '.mod.sh .mod-head');
   check('le titre nomme le dossier, le sous-titre dit « Dossier de « Moi » »', head.includes('Contrats') && head.includes(t('share.folder.inMine', { name: t('ex.me') })), head);
-  check('la fenêtre s\'ouvre sur « Dans un autre document Grist », le dossier est « Pas partagé »', (await frame.locator('[data-fk="share-tab-other"]').getAttribute('aria-selected')) === 'true' && (await level(frame)) === 'none', await text(frame, '.mod.sh'));
+  check('la fenêtre s\'ouvre sur « Dans ce document » (partage pas activé ici : l\'étape obligatoire), le dossier est « Pas partagé » dans « Dans un autre document Grist »',
+    (await frame.locator('[data-fk="share-tab-here"]').getAttribute('aria-selected')) === 'true' && (await frame.locator('[data-fk="share-need"]').count()) === 1, await text(frame, '.mod.sh'));
+  await frame.locator('[data-fk="share-tab-other"]').click();
+  await frame.locator('[data-fk="other-new"]').waitFor();
+  check('le dossier est « Pas partagé » avec un autre document', (await level(frame)) === 'none', await text(frame, '.mod.sh'));
   const body = await text(frame, '.mod.sh .sh-body');
   check('le texte dit les deux PDF du dossier', body.includes(t('so.tab.lead.folder', { n: 2 })), body);
   check('la fenêtre tient dans le panneau, contraste de 4,5:1', await fits(frame, '.mod.sh'), await contrastProblems(frame, '.mod.sh'));
   await shot(frame, '1-onglet');
   await frame.locator('[data-fk="share-tab-here"]').click();
-  check('« Dans ce document » dit que « Moi » n\'a pas de droits à donner, sans rien écrire', (await text(frame, '.mod.sh .sh-body')).includes(t('share.folder.mine')) && (await frame.locator('[data-fk="share-new-level"]').count()) === 0, await text(frame, '.mod.sh .sh-body'));
+  check('« Dans ce document » dit que le partage est à activer avant de donner des droits (rien d\'écrit)', (await text(frame, '.mod.sh .sh-body')).includes(t('share.inactive.title')) && (await frame.locator('[data-fk="share-new-level"]').count()) === 0, await text(frame, '.mod.sh .sh-body'));
   await shot(frame, '2-ici');
   await frame.locator('[data-fk="share-tab-other"]').click();
   await frame.locator('.mod.sh .rr[data-link]').waitFor();

@@ -145,8 +145,8 @@ async function playOwner(run) {
   await frame.locator('.mod.sh .rr[data-share]').filter({ hasText: 'Lecteurs' }).locator('button.lvl').click();
   const adminItem = frame.getByRole('menuitemradio', { name: new RegExp(t('share.right.admin')) }).first();
   const greyed = await adminItem.getAttribute('aria-disabled');
-  await adminItem.click({ force: true });
-  check('l\'administration est grisée pour un groupe, et dit pourquoi', greyed === 'true' && (await frame.locator('.mod.sh .mod-note').innerText()).includes(t('share.right.admin.person')));
+  await frame.getByRole('menuitemradio', { name: new RegExp(t('share.right.lecture')) }).first().click(); // le même droit : l'état du banc ne change pas
+  check('l\'administration est permise à un groupe (choix du porteur, 13/11) : l\'article n\'est pas grisé', greyed !== 'true', greyed);
   await closeShare(frame);
 
   say('--- 5. changer les adresses du groupe : les fichiers suivent ---');

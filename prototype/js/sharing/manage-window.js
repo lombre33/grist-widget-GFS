@@ -8,6 +8,7 @@ import { icon } from '../ui/icons.js';
 import { openModal } from '../ui/modal.js';
 import { openMenu } from '../ui/menu.js';
 import { CATEGORIES } from './sharing-model.js';
+import { withAddress } from './group-suggest.js';
 import { otherManageTab } from './manage-other-tab.js';
 import { replaceKeepingFocus, tabList } from '../ui/tabs.js';
 
@@ -59,7 +60,30 @@ function groupForm(ctx, group) {
   no.addEventListener('click', () => ctx.edit(null));
   yes.addEventListener('click', () => void ctx.saveGroup(group, { name: name.value, people: people.value }));
   return h('div', { class: 'sg-new' }, h('div', { class: 'field' }, icon('users'), name), h('div', { class: 'field mg-area' }, people),
-    h('p', { class: 'fine' }, t('manage.groups.people.hint')), h('p', { class: 'sg-actions' }, no, yes));
+    h('p', { class: 'fine' }, t('manage.groups.people.hint')), h('p', { class: 'sg-actions mg-form' }, ...suggestButtons(ctx, people), no, yes));
+}
+
+// Les adresses à proposer en tapant (choix du 13/11) : une liste des adresses connues, et le choix d'une colonne d'adresses d'une table (grisé sans table qui
+// en ait). Les deux boutons partagent la ligne de « Annuler » et « Créer le groupe » (le formulaire ne grandit pas à 700 × 400) ; la colonne choisie se dit
+// pied de la fenêtre, qui ne défile pas.
+function suggestButtons(ctx, people) {
+  const { t, state } = ctx;
+  const known = h('button', { type: 'button', class: 'btn sm', dataset: { fk: 'manage-group-suggest' } }, icon('plus'), t('manage.suggest.button'));
+  known.addEventListener('click', async () => {
+    const address = await ctx.suggest(people.value);
+    if (address) people.value = withAddress(people.value, address);
+    people.focus({ preventScroll: true });
+  });
+  const hasTable = Boolean(state.mail && state.mail.length);
+  const column = h('button', { type: 'button', class: 'btn sm mg-more', 'aria-disabled': hasTable ? null : 'true', dataset: { fk: 'manage-group-column' } },
+    icon('table'), t('manage.suggest.column'));
+  column.addEventListener('click', async () => {
+    if (!hasTable) return void ctx.say(t('manage.suggest.noTable'));
+    const answer = await ctx.chooseColumn();
+    if (!answer) return;
+    ctx.say(answer.ok ? answer.label : answer.message || '');
+  });
+  return [known, column];
 }
 
 function groupsTab(ctx) {
@@ -162,7 +186,8 @@ export function manageBody(ctx) {
 }
 
 // opts : { container, t, inertTargets, load() → état, onAddGroup(state, { name, people }), onUpdateGroup(id, people), onRemoveGroup(id), onReadTable(state),
-//   onRoot(state, who, right), onStructure(), onConfirmRemove(name),
+//   onSuggest(state, typed) → l'adresse choisie (ou null), onColumn(state) → { ok, label?, message? } (la colonne d'adresses des suggestions), onRoot(state,
+//   who, right), onStructure(), onConfirmRemove(name),
 //   onAddSpace(state), onRemoveSpace(state, space), onSpaceGroup(state, space, group, right), onPickGroup(state, space), onLinks() → les documents reliés
 //   (js/sharing/share-links.js), onNewLink() (relier un document, sans fichier ; rend quand sa fenêtre est fermée), onStopLink(link) → { ok, message? }
 //   (confirmé par
@@ -177,7 +202,8 @@ export function openManage(opts) {
       h('footer', { class: 'mod-foot' }, status, close));
   const { done, result } = openModal({ container, section: dialog, inertTargets: opts.inertTargets, first: close, cancel: null });
   close.addEventListener('click', () => done(null));
-  const ctx = { t, container, state: null, tab: 'options', editing: null, space: null, links: null, say: text => { status.textContent = text; } };
+  const ctx = { t, container, state: null, tab: 'options', editing: null, space: null, links: null,
+    say: text => { status.textContent = text; } };
   const draw = () => { if (dialog.isConnected && ctx.state) replaceKeepingFocus(body, manageBody(ctx)); };
   const reload = async () => {
     try { ctx.state = await opts.load(); draw(); } catch (error) {
@@ -221,6 +247,8 @@ export function openManage(opts) {
   ctx.readTable = async () => {
     const answer = await opts.onReadTable(ctx.state); if (answer) {
     ctx.say(answer.ok ? t('share.foot') : t('share.failed', { message: answer.message || '' })); if (answer.ok) await reload(); } };
+  ctx.suggest = typed => opts.onSuggest(ctx.state, typed);
+  ctx.chooseColumn = () => opts.onColumn(ctx.state);
   ctx.root = (who, right) => write(() => opts.onRoot(ctx.state, who, right));
   ctx.structure = async () => { if (!(await opts.onStructure())) await reload(); };
   void reload();

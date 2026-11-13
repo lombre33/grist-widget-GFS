@@ -380,7 +380,7 @@ async function mount() {
   };
   // La fenêtre « Gérer les partages » (js/sharing/manage-window.js, test/partager-firefox.mjs) sur un état que le contrôleur aurait lu ; `window.__manageActs` note ce que la fenêtre demande d'écrire.
   const manageState = {
-    owner: true, active: true, rows: [], tables: [{ id: 'Contacts', emails: ['Mail'], groups: ['Equipe'] }], root: { '@editeurs': { id: 1, right: 'lecture' }, '@tous': null },
+    owner: true, active: true, rows: [], tables: [{ id: 'Contacts', emails: ['Mail'], groups: ['Equipe'] }], mail: [{ id: 'Contacts', emails: ['Mail'] }], root: { '@editeurs': { id: 1, right: 'lecture' }, '@tous': null },
     groups: [{ id: 1, name: 'Achats', count: 3, source: '', here: 'a@example.com\nb@example.com' }, { id: 2, name: 'Comptabilité fournisseurs de la région Nord-Est', count: 1, source: 'Contacts_de_toute_la_societe_internationale', here: '' }],
     structure: { kind: 'close', label: 'rights.act.close', hint: 'rights.act.close.hint' },
     spaces: [{ id: 1, key: 'achats', name: 'Achats', people: 3, groups: [{ id: 1, group: 'Achats', right: 'lecture' }] }, { id: 2, key: 'long', name: 'Espace de la comptabilité fournisseurs de la région Nord-Est', people: 12, groups: [] }],
@@ -391,7 +391,9 @@ async function mount() {
     const record = act => { window.__manageActs.push(act); return Promise.resolve({ ok: true }); };
     return openManage({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], load: async () => JSON.parse(JSON.stringify(manageState)),
       onAddGroup: (state, group) => record(['addGroup', group.name, group.people]), onUpdateGroup: (id, people) => record(['updateGroup', id, people]), onRemoveGroup: id => record(['removeGroup', id]),
-      onReadTable: async () => { window.__manageActs.push(['readTable']); return null; }, onRoot: (state, who, right) => record(['root', who, right]), onStructure: async () => { window.__manageActs.push(['structure']); return true; }, onConfirmRemove: async name => { window.__manageActs.push(['confirmRemove', name]); return true; },
+      onReadTable: async () => { window.__manageActs.push(['readTable']); return null; },
+      onSuggest: async (state, typed) => { window.__manageActs.push(['suggest', typed]); return 'lea@example.com'; },
+      onColumn: async () => { window.__manageActs.push(['column']); return { ok: true, label: i18n.t('manage.suggest.chosen', { table: 'Contacts', column: 'Mail', n: 12 }) }; }, onRoot: (state, who, right) => record(['root', who, right]), onStructure: async () => { window.__manageActs.push(['structure']); return true; }, onConfirmRemove: async name => { window.__manageActs.push(['confirmRemove', name]); return true; },
       onAddSpace: async () => { window.__manageActs.push(['addSpace']); return null; }, onRemoveSpace: async (state, space) => { window.__manageActs.push(['removeSpace', space.key]); return null; },
       onSpaceGroup: (state, space, group, right) => record(['spaceGroup', space.key, group, right]), onPickGroup: async () => null,
       onLinks: async () => linksNow(),
@@ -476,8 +478,8 @@ async function mount() {
     const record = act => { window.__shareActs.push(act); return Promise.resolve({ ok: true }); };
     const dir = folder && typeof folder.path === 'string' ? folder : null;
     const file = dir ? { key: dir.key, name: dir.name, app: dir.mine ? i18n.t('share.folder.inMine', { name: i18n.t('ex.me') }) : i18n.t('share.folder.in', { name: 'Achats' }) } : { key: 'gfs-fichiers:abc', name: 'Facture de la session de formation de septembre.pdf', app: 'GFS' };
-    return openShare({ container: stage, t: i18n.t, locale: language === 'en' ? 'en-GB' : 'fr-FR', inertTargets: () => [explorer.root], other: window.__shareOther ? state => otherTab(state, dir) : null, file, startTab: dir && dir.mine ? 'other' : 'here',
-      load: async () => (dir && dir.mine ? { ...shareStates.inactif, mine: true } : shareStates[kind]), onAdd: row => record(['add', row.Personne, row.Droit]), onChange: (id, patch) => record(['change', id, patch.Droit]), onRemove: id => record(['remove', id]), onActivate: async () => { window.__shareActs.push(['activate']); return false; }, onManage: kind === 'actif' ? () => window.__manage() : null });
+    return openShare({ container: stage, t: i18n.t, locale: language === 'en' ? 'en-GB' : 'fr-FR', inertTargets: () => [explorer.root], other: window.__shareOther ? state => otherTab(state, dir) : null, file, startTab: 'here',
+      load: async () => (dir && dir.mine ? { ...shareStates.actif, folder: true, author: '', shares: [share(1, 'marc@example.com', 'lecture')] } : shareStates[kind]), onAdd: row => record(['add', row.Personne, row.Droit]), onChange: (id, patch) => record(['change', id, patch.Droit]), onRemove: id => record(['remove', id]), onActivate: async () => { window.__shareActs.push(['activate']); return false; }, onManage: kind === 'actif' ? () => window.__manage() : null });
   };
   // La fenêtre « Poids du document » (js/weight/weight-window.js, test/poids-fenetre-firefox.mjs) : la vraie fenêtre et le vrai lecteur (js/weight/weight-reader.js) sur une doublure de `Transfer.sql`. `window.__weightKind` choisit ce
   // que le serveur répond : 'ok' (un document de dix-huit tables dont une au nom très long et une trop longue à lire), 'refuse' (pas le droit de tout copier : 403), 'muet' (le serveur ne répond pas).

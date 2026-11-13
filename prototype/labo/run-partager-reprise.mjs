@@ -15,6 +15,7 @@ import { seedFiles } from './seed.mjs';
 import { PAGE_PORT, openGfs, openRowMenu } from './lab-pdf.mjs';
 import { gfsFrame, shareWithEditorAndViewer } from './lab-droits.mjs';
 
+const OLD_LOT = process.env.OLD_LOT || '3';
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
 const phase = process.env.PHASE || 'ancien';
@@ -61,7 +62,9 @@ async function playOld(run) {
   await Promise.all([waitReload(page, frame).then(next => { frame = next; }), frame.locator('[data-fk="ask-yes"]').click()]);
   await frame.locator('.mod.sh .rt-content').waitFor({ timeout: 40000 });
   const tables = ((await call(page, 'GET', `/api/docs/${run.docId}/tables`)).json.tables || []).map(table => table.id);
-  check('la version d\'avant n\'a ni espaces ni placement', !tables.includes('GFS_Espaces') && !tables.includes('GFS_Placement') && tables.includes('GFS_Groupes'), tables);
+  // OLD_LOT=4 : la version d'avant est celle des espaces (avant l'administration par un groupe et les dossiers de « Moi », 13/11) ; sinon celle des groupes (lot 3).
+  if (OLD_LOT === '4') check('la version d\'avant a les espaces et le placement', tables.includes('GFS_Espaces') && tables.includes('GFS_Placement') && tables.includes('GFS_Groupes'), tables);
+  else check('la version d\'avant n\'a ni espaces ni placement', !tables.includes('GFS_Espaces') && !tables.includes('GFS_Placement') && tables.includes('GFS_Groupes'), tables);
   await frame.locator('[data-fk="share-close"]').click();
   const now = Math.floor(Date.now() / 1000);
   let answer = await apply(run, [['BulkAddRecord', MODELS, [null, null, null], { Nom: [A, B, PRIVATE], TypeModele: ['document', 'document', 'document'], DateModif: [now, now, now] }]]);
@@ -74,7 +77,11 @@ async function playOld(run) {
   check('A partagé à l\'éditeur, B au groupe Achats', answer.status === 200, answer.text);
   const after = await byName(run);
   check('avant : A et B sont lus de l\'éditeur, le fichier privé non', has(after[A].GFS_Lecteurs, EDITOR) && has(after[B].GFS_Lecteurs, EDITOR) && !has(after[PRIVATE].GFS_Lecteurs, EDITOR), [after[A].GFS_Lecteurs, after[B].GFS_Lecteurs]);
-  check('avant : la table de l\'app n\'a pas GFS_Calc', !('GFS_Calc' in after[A]), Object.keys(after[A]).filter(key => key.startsWith('GFS_')));
+  if (OLD_LOT === '4') {
+    check('avant : la table de l\'app a GFS_Calc, pas encore GFS_Dossier', 'GFS_Calc' in after[A] && !('GFS_Dossier' in after[A]), Object.keys(after[A]).filter(key => key.startsWith('GFS_')));
+    const rules = (await rows(run, '_grist_ACLRules')) || [];
+    check('avant : le rangement n\'a pas encore ses règles « GFS : Partagé »', !rules.some(rule => /^GFS : Partagé/.test(rule.memo || '')), rules.map(rule => rule.memo));
+  } else check('avant : la table de l\'app n\'a pas GFS_Calc', !('GFS_Calc' in after[A]), Object.keys(after[A]).filter(key => key.startsWith('GFS_')));
   const shares = await rows(run, 'GFS_Partages');
   writeFileSync(STATE, JSON.stringify({ path: run.path, docId: run.docId, shares: shares.length }));
   check('aucune erreur de GFS dans la console', unexpected(run).length === 0, unexpected(run));
@@ -93,6 +100,7 @@ async function playNew(run) {
   await frame.locator('.mod.ask').waitFor();
   const asked = (await frame.locator('.mod.ask').innerText()).replace(/\s+/g, ' ');
   check('la question parle de compléter (pas d\'activer)', asked.includes(t('rights.ask.sharing.extend.title')), asked);
+  if (OLD_LOT === '4') check('la question dit ce qui arrive au rangement de chacun', asked.includes(t('rights.ask.sharing.filing').slice(0, 60)), asked);
   await Promise.all([waitReload(page, frame).then(next => { frame = next; }), frame.locator('[data-fk="ask-yes"]').click()]);
   await frame.locator('.mod.sh .rt-content').waitFor({ timeout: 40000 });
   check('la fenêtre du même fichier revient, active', (await frame.locator('[data-fk="share-add"]').count()) === 1 && (await frame.locator('#share-title').innerText()).includes(A));
@@ -103,6 +111,12 @@ async function playNew(run) {
   const models = await byName(run);
   check('GFS_Directs est là : A a été donné à l\'éditeur par son adresse (par le propriétaire), B par un groupe (non compté)', has(models[A].GFS_Directs, `${EDITOR}>${OWNER}`) && !has(models[B].GFS_Directs, EDITOR), [models[A].GFS_Directs, models[B].GFS_Directs]);
   check('GFS_Calc est là et les listes gardent les mêmes personnes (A : éditeur ; B : éditeur par le groupe)', Boolean(models[A].GFS_Calc) && has(models[A].GFS_Lecteurs, EDITOR) && has(models[B].GFS_Lecteurs, EDITOR) && !has(models[PRIVATE].GFS_Lecteurs, EDITOR), [models[A].GFS_Calc, models[B].GFS_Lecteurs]);
+  if (OLD_LOT === '4') {
+    const columns = (await run.rest.columns('Publipostage_Modeles')).map(column => column.id);
+    check('la colonne d\'aide GFS_Dossier est née dans la table de l\'app', columns.includes('GFS_Dossier'), columns);
+    const rules = (await rows(run, '_grist_ACLRules')) || [];
+    check('les six règles « GFS : Partagé » du rangement sont posées', rules.filter(rule => /^GFS : Partagé/.test(rule.memo || '')).length === 6, rules.map(rule => rule.memo));
+  }
   check('les anciens fichiers (« tous » en lecture) restent lisibles de tous', has((await byName(run))[FIRST].GFS_Cats, 'tous'));
   await frame.locator('[data-fk="share-close"]').click();
   await openShareFor(frame, B);

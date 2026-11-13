@@ -4,35 +4,18 @@
 // Ce lot pose le niveau Partagé du rangement de GFS et la fermeture de la structure ; Encadré et les espaces suivent.
 
 import { levelOfNote } from './rights.js';
-import { isSharingNote, planSharing, planUnsharing } from '../sharing/sharing-model.js';
+import { isGfsNote, isSharingNote, planSharing, planUnsharing, sharedRules, RANGEMENT_NEEDED } from '../sharing/sharing-model.js';
 import { FILES_COLUMNS } from '../files/gfs-files.js';
 
 export const RANGEMENT = 'GFS_Rangement';
-export const NEEDED_COLUMNS = Object.freeze(['Utilisateur', 'Adresse']);
-const GFS_ANY = /^\s*GFS\s*:/i;
+export const NEEDED_COLUMNS = RANGEMENT_NEEDED;
 const STRUCTURE_NOTE = 'GFS : Structure fermée · seul un propriétaire change les tables, les colonnes et les pages';
 const STRUCTURE_ANY = /^\s*GFS\s*:\s*Structure/i;
 
-export const isGfsNote = memo => GFS_ANY.test(String(memo ?? ''));
+export { isGfsNote, sharedRules };
 const isStructureNote = memo => STRUCTURE_ANY.test(String(memo ?? ''));
 const maxId = rows => rows.reduce((top, row) => Math.max(top, Number(row.id) || 0), 0);
 const isDefaultResource = resource => !resource || ((!resource.tableId || resource.tableId === '*') && (!resource.colIds || resource.colIds === '*'));
-
-// Les six règles de Partagé pour une table de lignes par personne (11.4, point 2), de la première à la dernière ; chacune porte sa note, que Grist joint à son
-// refus (lu, 10.2).
-export function sharedRules() {
-  const own = 'user.Email and rec.Utilisateur and rec.Utilisateur.lower() == user.Email.lower()';
-  return [
-    { formula: 'user.Access in [OWNER]', rights: '+CRUD', memo: 'GFS : Partagé · les propriétaires gardent la main' },
-    { formula: 'rec.Utilisateur == "@document"', rights: '+R', memo: 'GFS : Partagé · la liste des apps du document se lit par tous' },
-    { formula: own, rights: '+R', memo: 'GFS : Partagé · chacun lit son propre rangement' },
-    { formula: `${own} and newRec.Utilisateur.lower() == user.Email.lower()`, rights: '+CUD',
-      memo: 'GFS : Partagé · chacun écrit son propre rangement, jamais celui d’un autre' },
-    { formula: 'rec.Utilisateur == "@sonde" and user.Email and rec.Adresse and rec.Adresse.lower() == user.Email.lower()', rights: '+CRD',
-      memo: 'GFS : Partagé · la ligne-sonde de l’adresse' },
-    { formula: '', rights: '-CRUD', memo: 'GFS : Partagé · le rangement d’une autre personne n’est pas à vous' },
-  ];
-}
 
 // Les règles de la ressource `resourceId` rangées par position, avec leur ressource : la liasse qui les écrit (ressource en tête, puis les règles aux
 // identifiants choisis).

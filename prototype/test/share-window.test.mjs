@@ -61,7 +61,7 @@ test('le nom d\'une catégorie se lit dans la langue de la personne ; une adress
   assert.equal(whoLabel(t, 'a@b.fr'), 'a@b.fr');
 });
 
-test('les groupes : proposés par leur nom avec leur effectif, jamais ceux déjà dans la liste ; « #nom » se lit « Groupe · nom » ; pas d\'administration pour un groupe', () => {
+test('les groupes : proposés par leur nom avec leur effectif, jamais ceux déjà dans la liste ; « #nom » se lit « Groupe · nom » ; l\'administration n\'est refusée qu\'à une catégorie', () => {
   const groups = [{ name: 'Achats', count: 3 }, { name: 'Compta', count: 1 }];
   const found = suggestions(t, state({ groups, shares: [{ who: '#Compta', inherited: false }] }), '');
   assert.deepEqual(found.groups.map(item => [item.who, item.glyph]), [['#Achats', 'users']]);
@@ -69,8 +69,10 @@ test('les groupes : proposés par leur nom avec leur effectif, jamais ceux déj�
   assert.deepEqual(suggestions(t, state({ groups }), 'compta').groups.map(item => item.who), ['#Compta']);
   assert.match(whoLabel(t, '#Achats'), /Achats/);
   assert.notEqual(whoLabel(t, '#Achats'), '#Achats');
-  const admin = levelItems(t, { current: 'lecture', category: true, onPick() {}, onWhy() {} }).find(item => item.label === t('share.right.admin'));
-  assert.equal(admin.greyed, true);
+  const adminOf = category => levelItems(t, { current: 'lecture', category, onPick() {}, onWhy() {} }).find(item => item.label === t('share.right.admin'));
+  assert.equal(adminOf(true).greyed, true, 'une catégorie n\'administre pas');
+  assert.equal(adminOf(false).greyed, false, 'une personne ou un groupe, si');
+  assert.match(t('share.right.admin.person'), /catégorie/);
 });
 
 test('l\'onglet « Dans un autre document Grist » : libre pour un PDF de GFS quand la personne est propriétaire, grisé avec sa raison sinon (autre fichier, dossier, pas propriétaire)', () => {

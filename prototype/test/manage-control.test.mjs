@@ -129,3 +129,54 @@ test('créer un espace : la personne qui est connectée y entre dans la même é
   await control(() => '').addSpace(state);
   assert.equal(written[1].length, 1);
 });
+
+test('la fenêtre sait quelles tables ont une colonne d\'adresses (pour les suggestions), même sans colonne de groupes ; jamais GFS_ ni _grist_', async () => {
+  const state = await make({ fetch: fetchAll }).load();
+  assert.deepEqual(state.mail.map(item => [item.id, item.emails]), [['Contacts', ['Mail', 'Equipe']], ['Notes', ['Texte']]]);
+  assert.deepEqual((await make({ owner: false }).load()).mail, []);
+});
+
+test('les adresses proposées : celles des partages, des groupes, de la personne et du rangement de chacun (lu à la demande), sans celles déjà tapées ; la liste dit d\'où elles viennent', async () => {
+  const asked = [];
+  const fetch = async name => (name === 'GFS_Rangement' ? table({ Utilisateur: ['eve@x.fr', '@sonde', 'marc@x.fr'] }) : fetchAll(name));
+  const control = make({ fetch, extra: { identity: () => 'Moi@x.fr', pick: async options => { asked.push(options); return options.items[0].value; } } });
+  const state = await control.load();
+  assert.equal(asked.length, 0, 'rien n\'est lu avant que la personne demande la liste');
+  assert.equal(await control.suggest(state, 'b@x.fr'), 'a@x.fr');
+  assert.deepEqual(asked[0].items.map(item => item.value), ['a@x.fr', 'eve@x.fr', 'marc@x.fr', 'moi@x.fr', 'x@y.fr']);
+  assert.equal(asked[0].text, t('manage.suggest.known'));
+  assert.equal(asked[0].none, t('manage.suggest.none'));
+});
+
+test('choisir la colonne d\'adresses d\'une table : ses adresses s\'ajoutent aux suggestions le temps de la fenêtre, rien n\'est écrit ; une colonne sans adresse ou une renonciation ne change rien', async () => {
+  const written = [];
+  const answers = [];
+  const rows = table({ Mail: ['lea@x.fr', 'Zoe@x.fr, a@x.fr', '', 'Jean'], Equipe: ['x', 'y', 'z', 't'] });
+  const fetch = async name => (name === 'Contacts' ? rows : fetchAll(name));
+  const control = make({ fetch, written, extra: { pick: async options => { asked.push(options); return answers.shift(); } } });
+  const asked = [];
+  const state = await control.load();
+  answers.push('Contacts', 'Mail');
+  const chosen = await control.chooseColumn(state);
+  assert.deepEqual([chosen.ok, chosen.label], [true, t('manage.suggest.chosen', { table: 'Contacts', column: 'Mail', n: 3 })]);
+  assert.deepEqual(asked[0].items.map(item => item.value), ['Contacts', 'Notes'], 'toutes les tables qui ont une colonne d\'adresses');
+  assert.deepEqual(asked[1].items.map(item => item.value), ['Mail', 'Equipe']);
+  assert.equal(written.length, 0, 'aucune écriture : le choix vaut le temps de la fenêtre');
+  asked.length = 0;
+  answers.push('a@x.fr');
+  await control.suggest(state, '');
+  assert.equal(asked[0].items.length, 5, 'a, b, x@y.fr (connues) + lea, zoe (la colonne), a@x.fr une seule fois');
+  assert.ok(['lea@x.fr', 'zoe@x.fr'].every(address => asked[0].items.some(item => item.value === address)));
+  assert.equal(asked[0].text, t('manage.suggest.from', { table: 'Contacts', column: 'Mail' }));
+  answers.push('Contacts', 'Equipe');
+  const bare = await control.chooseColumn(state);
+  assert.deepEqual([bare.ok, bare.message], [false, t('manage.suggest.empty', { table: 'Contacts', column: 'Equipe' })]);
+  answers.push(null);
+  assert.equal(await control.chooseColumn(state), null);
+  answers.push('Contacts', null);
+  assert.equal(await control.chooseColumn(state), null);
+  asked.length = 0;
+  answers.push(null);
+  await control.suggest(state, '');
+  assert.equal(asked[0].text, t('manage.suggest.from', { table: 'Contacts', column: 'Mail' }), 'la colonne d\'avant reste choisie');
+});

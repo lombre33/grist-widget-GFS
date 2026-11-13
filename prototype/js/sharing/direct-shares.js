@@ -8,7 +8,7 @@ const lower = value => String(value ?? '').trim().toLowerCase();
 
 // Une liste de Grist : ['L', …] (une cellule d'un type quelconque), un tableau simple, ou son texte JSON (la lecture légère des gros documents,
 // js/explorer/explorer-sql.js).
-function listOf(value) {
+export function listOf(value) {
   let items = value;
   if (typeof value === 'string' && value.startsWith('[')) { try { items = JSON.parse(value); } catch (error) { items = []; } }
   return Array.isArray(items) ? (items[0] === 'L' ? items.slice(1) : items) : [];

@@ -83,7 +83,9 @@ async function playScreen(run, frame, keyA) {
   await frame.getByRole('menuitemradio', { name: new RegExp(`^${t('share.right.ecriture')}`) }).first().click();
   await frame.locator('[data-fk="manage-space-group-Achats"]').filter({ hasText: t('share.right.ecriture') }).waitFor({ timeout: 15000 });
   const given = (await rows(run, 'GFS_Partages')).filter(row => row.Cible === `espace:${made.Cle}`);
-  check('le groupe Achats a l\'écriture sur l\'espace créé', given.length === 1 && given[0].Personne === '#Achats' && given[0].Droit === 'ecriture', given);
+  // La personne qui crée l'espace y entre en écriture dans la même écriture (12/11) : deux lignes, la sienne et celle du groupe.
+  check('le groupe Achats a l\'écriture sur l\'espace créé, et la personne qui l\'a créé y entre aussi', given.length === 2 && given.some(row => row.Personne === '#Achats' && row.Droit === 'ecriture') &&
+    given.some(row => row.Personne === OWNER && row.Droit === 'ecriture'), given);
   const seenSpace = (await rows(run, 'GFS_Espaces')).find(row => row.Cle === made.Cle);
   check('l\'espace voit l\'éditeur (membre du groupe Achats), pas le lecteur', has(seenSpace.Voit, EDITOR) && !has(seenSpace.Voit, VIEWER), seenSpace);
   await frame.locator('[data-fk="manage-space-remove"]').click();

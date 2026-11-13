@@ -53,6 +53,10 @@
 .mg .field.mg-area { height: auto; align-items: stretch; padding: 4px 6px; margin-top: 8px; }
 .mg .field textarea { flex: 1; min-width: 0; border: 0; background: transparent; outline: 0; resize: vertical; font: inherit; font-size: max(13px, var(--fs-min)); color: var(--text); }
 .mg .sg-new .field { margin-top: 8px; }
+/* Les adresses à proposer en tapant un groupe : deux boutons à gauche, sur la ligne de « Annuler » et « Créer le groupe » (qui passent dessous si la fenêtre est étroite). */
+.mg .sg-actions.mg-form { flex-wrap: wrap; align-items: center; }
+.mg .mg-form .mg-more { margin-right: auto; }
+.mg .mg-form .btn .ic { width: 14px; height: 14px; margin-right: 4px; }
 .mg .rr .btn.sm { flex: none; }
 .sh .mod-foot .btn { flex: none; }
 .sh .mod-foot .btn .ic { width: 14px; height: 14px; margin-right: 4px; }

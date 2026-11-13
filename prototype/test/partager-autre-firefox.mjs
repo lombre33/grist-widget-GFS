@@ -266,7 +266,7 @@ async function emptyTabFlow(page, tools, t) {
   }
 }
 
-// Un DOSSIER de « Moi » (« Partager… » sur sa ligne) : la fenêtre s'ouvre sur « Dans un autre document Grist » (« Dans ce document » n'a pas de droits à donner pour « Moi » et le dit), le texte parle des PDF du dossier et des
+// Un DOSSIER de « Moi » (« Partager… » sur sa ligne) : la fenêtre s'ouvre sur « Dans ce document » (le dossier se partage ici : la personne en est la propriétaire), puis « Dans un autre document Grist » : le texte parle des PDF du dossier et des
 // fichiers d'une app qui ne partent pas, chaque document relié dit le niveau de TOUT le dossier (à jour, une partie, pas partagé), « Arrêter la copie » est libre pour une partie ; un dossier sans PDF est grisé avec sa raison.
 async function folderFlow(page, tools, t, empty) {
   const kind = empty ? 'l\'onglet d\'un dossier sans PDF' : 'l\'onglet d\'un dossier';
@@ -280,11 +280,16 @@ async function folderFlow(page, tools, t, empty) {
   const greyed = await page.run(label => { const node = [...document.querySelectorAll('.menu .menu-item')].find(item => item.textContent.trim().startsWith(label)); return node.getAttribute('aria-disabled') === 'true'; }, t('share.menu'));
   if (greyed) tools.run.note(kind, `« ${t('share.menu')} » devait être libre pour un dossier de « Moi »`);
   await page.click(...entry);
-  const open = await tools.expect(kind, 'la fenêtre devait s\'ouvrir sur l\'onglet « Dans un autre document Grist », les trois liens lus', s => s.tab && s.tab.links.length === 3);
+  const here = await tools.expect(kind, 'la fenêtre devait s\'ouvrir sur « Dans ce document » : le dossier de « Moi » se partage ici, avec la personne propriétaire du dossier', s => s.tab && s.tab.tabs.length === 2 && s.tab.body &&
+    s.tab.body.includes(t('share.row.folderOwner', { who: 'essai@example.com' }).split(' · ')[1]) && s.tab.body.includes('marc@example.com'));
+  if (here.tab && here.tab.tabs.find(item => item[0] === 'share-tab-here')[1] !== 'true') tools.run.note(kind, 'un dossier de « Moi » devait ouvrir « Dans ce document »');
+  if (here.tab && /n’ont pas de droits|carry no rights/.test(here.tab.body)) tools.run.note(kind, 'l\'ancienne phrase « Moi n\'a pas de droits à donner » ne devait plus se lire');
+  await tools.press(kind, 'share-tab-other');
+  const open = await tools.expect(kind, 'l\'onglet « Dans un autre document Grist » devait montrer les trois liens lus', s => s.tab && s.tab.links.length === 3);
   const tab = open.tab;
   if (!tab || tab.links.length !== 3) return;
   tools.fits(kind, open, 'l\'onglet du dossier');
-  if (tab.tabs.find(item => item[0] === 'share-tab-other')[1] !== 'true') tools.run.note(kind, 'un dossier de « Moi » devait ouvrir « Dans un autre document Grist »');
+  if (tab.tabs.find(item => item[0] === 'share-tab-other')[1] !== 'true') tools.run.note(kind, 'l\'onglet « Dans un autre document Grist » devait être celui qu\'on vient de choisir');
   if (!tab.title.includes(t('share.folder.inMine', { name: t('ex.me') }))) tools.run.note(kind, `le titre devait dire « ${t('share.folder.inMine', { name: t('ex.me') })} » (il dit « ${tab.title} »)`);
   const lead = empty ? t('share.other.why.emptyFolder') : t('so.tab.lead.folder', { n: 3 });
   if (!tab.body.includes(lead)) tools.run.note(kind, `l'onglet devait dire « ${lead} » (il dit « ${tab.body.slice(0, 200)} »)`);
@@ -306,9 +311,9 @@ async function folderFlow(page, tools, t, empty) {
     await page.press('Escape');
     return;
   }
-  // « Dans ce document » : un dossier de « Moi » n'a pas de droits à donner ici, la phrase le dit (rien d'écrit).
+  // « Dans ce document » : le dossier de « Moi » se partage ici, la liste de ses personnes est là.
   await tools.press(kind, 'share-tab-here');
-  await tools.expect(kind, 'l\'onglet « Dans ce document » devait dire que « Moi » n\'a pas de droits à donner', s => s.tab && s.tab.body.includes(t('share.folder.mine')));
+  await tools.expect(kind, 'l\'onglet « Dans ce document » devait lister les personnes du dossier', s => s.tab && s.tab.body.includes('marc@example.com'));
   await tools.press(kind, 'share-tab-other');
   await tools.expect(kind, 'l\'onglet « Dans un autre document Grist » devait revenir avec ses trois liens', s => s.tab && s.tab.links.length === 3);
   // Une partie du dossier : le menu est libre, « Copie à jour » complète le dossier.

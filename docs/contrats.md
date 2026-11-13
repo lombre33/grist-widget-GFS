@@ -3243,8 +3243,8 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
     i. [T] **Groupes et « Gérer les partages » livrés le 07/11** (lot 3 ; `GROUPS_TABLE`, `groupColumns`, `planGroupAdd`, `planGroupsRead` de `js/sharing/sharing-model.js` ; `js/sharing/manage-window.js`, `js/sharing/manage-control.js`, `js/ui/pick-window.js`).
        La table `GFS_Groupes` naît avec le partage (ou à la reprise d'un partage d'avant, qui relit alors les colonnes d'aide) : `Nom`, `NomL`, `PersonnesIci` (adresses tapées), `Source`, `SourceEmail`, `SourceGroupe`
        (un groupe lu d'une table du document) et deux colonnes que Grist calcule, `Membres` et `Nb`. Un partage vise un groupe par `#nom` ; les colonnes d'aide de chaque fichier développent `#nom` par `Membres` (une règle de
-       Grist ne lit pas une autre table). Règles : les propriétaires font tout, un éditeur lit `Nom`, `NomL`, `Nb` et `Source` (pour proposer un groupe), jamais les adresses, le reste est refusé. L'administration d'un fichier ne se donne
-       pas à un groupe ni à une catégorie. « Gérer les partages… » (bouton de la fenêtre « Partager » et du panneau « Permissions », propriétaire seulement ; clé de reprise `manage`) : **Options** (fermer ou rouvrir la structure, avec la
+       Grist ne lit pas une autre table). Règles : les propriétaires font tout, un éditeur lit `Nom`, `NomL`, `Nb` et `Source` (pour proposer un groupe), jamais les adresses, le reste est refusé. L'administration d'un fichier se donne
+       à une personne ou à un groupe, jamais à une catégorie (13/11, point n). « Gérer les partages… » (bouton de la fenêtre « Partager » et du panneau « Permissions », propriétaire seulement ; clé de reprise `manage`) : **Options** (fermer ou rouvrir la structure, avec la
        question du panneau ; les liens publics se créent dans Grist), **Groupes** (créer un groupe tapé, le modifier, le supprimer, **lire les groupes d'une table** : trois listes avec recherche, un groupe par valeur distincte,
        les identifiants vérifiés avant d'entrer dans une formule, les noms pris laissés), **Catégories** (un droit sur tout le document pour les éditeurs et pour tout le monde : une ligne de partage dont la cible est la racine `*`).
        Mesuré dans un vrai Grist à trois comptes (`labo/run-partager-groupes.mjs`, 32 vérifications) et sous Firefox (`test/partager-firefox.mjs`, 700 × 400 à la vraie souris). Une formule de `Membres` qui contenait un saut de ligne
@@ -3285,7 +3285,30 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
        colonne « Par » dit celui qui l'a donné ; **à la racine de « Moi » il ne figure pas tant que la personne ne l'a pas rangé dans un dossier**. Un lecteur ne peut pas apprendre son adresse par la sonde du rangement (il n'écrit
        rien) : GFS la lit alors dans les partages qu'il lit (« chacun lit les partages qui le concernent »), si une seule adresse de personne y figure. **Un document partagé avant** reçoit la colonne par « Compléter le partage… »
        (mesuré : `labo/run-partager-reprise.mjs`). Mesuré dans un vrai Grist à trois comptes (`labo/run-partager-espaces.mjs`) et sous Firefox (`test/dossiers-firefox.mjs`, « Partagés avec moi »).
-       **Pas fait** : le partage direct d'un dossier de « Moi » (seuls les dossiers d'espace ont des droits), l'acceptation ou le refus d'un fichier donné (un droit donné se retire dans « Partager… » par celui qui l'a donné), la lecture légère des gros documents n'est pas mesurée.
+       **Pas fait** : l'acceptation ou le refus d'un fichier donné (un droit donné se retire dans « Partager… » par celui qui l'a donné), la lecture légère des gros documents n'est pas mesurée.
+
+    n. [T] **Administrer par un groupe, partager un dossier de « Moi », suggestions d'adresses : livrés le 13/11** (trois cartes du porteur, 13/11 ; mesuré dans un vrai Grist à trois comptes,
+       `labo/run-partager-moi.mjs`, 77 vérifications, faits vérifiés 109). Contrainte du porteur : **de vrais verrous sur la donnée brute** (les tables des apps et de GFS), pas un grisé de l'interface : chaque verrou
+       a donc été attaqué par l'API REST de Grist avec la session d'un éditeur, sans passer par GFS.
+       a. **« Administration » : une personne ou un groupe, pas une catégorie** (« personnes et groupes, sans catégories »). `AdminsBase` et `AdminsCible` développent le groupe par `Membres` ; un éditeur membre d'un
+          groupe administrateur partage le fichier (sa ligne est valide, la fenêtre l'y autorise), un éditeur qui n'a que la catégorie « éditeurs » non (la ligne est écrite, sans effet d'administration).
+       b. **Un dossier de « Moi » se partage dans ce document** (« le dossier et ses futurs fichiers »). La cible est `dossier:moi:<adresse du propriétaire du dossier>/<chemin>`. Une colonne d'aide de plus, `GFS_Dossier`,
+          lit le rangement du **propriétaire du fichier** (`GFS_Auteur`) : le fichier hérite des partages du dossier où son auteur l'a rangé, et d'aucun autre ; le fichier qu'une autre personne range dans son propre dossier
+          n'hérite de rien. Un fichier rangé plus tard dans le dossier est partagé aussitôt (c'est une formule de Grist, aucune page n'a à s'ouvrir) ; un fichier qui sort du dossier ne l'est plus. Le droit le plus précis gagne
+          comme ailleurs (le dossier de « Moi » compte comme un dossier d'espace). Les destinataires le voient dans « Partagés avec moi » ; la fenêtre « Partager… » s'ouvre sur « Dans ce document », la personne y est
+          « propriétaire du dossier » (ligne fixe). Un propriétaire du document peut aussi donner un dossier de « Moi » (sa ligne est valide) ; un éditeur donne le sien.
+       c. **Le rangement de chacun est protégé à l'activation du partage** : six règles « GFS : Partagé · … » sur `GFS_Rangement` (les propriétaires gardent la main, la liste des apps se lit par tous, chacun lit et
+          écrit son propre rangement et jamais celui d'un autre, la ligne-sonde, le reste refusé), posées par l'activation et reprises par « Compléter le partage… ». Sans elles, un éditeur écrivait une ligne de rangement
+          au nom d'un autre et faisait entrer un fichier dans un dossier partagé. Des règles d'un autre auteur sur cette table : l'activation s'arrête (« étrangères »), rien n'est écrit.
+       d. **Il faut aussi fermer la structure** (« Gérer les partages… », Options). Mesuré : tant qu'elle est ouverte (le réglage par défaut de Grist), un éditeur peut changer la formule d'une colonne d'aide
+          (`ModifyColumn` répondu 200), ce qui annule les partages par dossier. Structure fermée, il ne peut ni changer ni retirer une colonne d'aide, ni retirer la table des partages, ni retirer une règle d'accès.
+          Le verrou sur la donnée brute est donc **le partage activé et la structure fermée**.
+       e. **Limites** : un PDF importé avant que GFS ait appris l'adresse de la personne n'a pas d'auteur (`GFS_Auteur` vide) : un dossier de « Moi » ne lui donne rien (échec fermé : le rangement seul ne prouve pas à qui
+          est le fichier) tant qu'un propriétaire n'écrit pas son auteur ; renommer ou déplacer un dossier de « Moi » partagé en perd les partages sans bruit (même limite que pour un dossier d'espace) ; la délégation reste
+          à deux niveaux ; la réception par un groupe n'apparaît dans « Partagés avec moi » que pour un dossier de « Moi ».
+       f. **Suggestions d'adresses dans un groupe** (choix « connues + une colonne d'e-mails »). Le formulaire d'un groupe tapé a « Ajouter une adresse connue… » (liste avec recherche des adresses que GFS a déjà lues : la
+          personne, les partages et leurs auteurs, les membres des groupes tapés, le rangement de chacun — un propriétaire le lit en entier) et « Adresses d'une table… » (une table, puis une colonne d'adresses : ses
+          valeurs deviennent des suggestions le temps de la fenêtre, rien n'est écrit dans la table). Grist ne donne pas la liste des personnes du document à un widget (`/access` : 403, faits vérifiés 107).
 
 ### 11.8 À mesurer sur le Grist du porteur
 

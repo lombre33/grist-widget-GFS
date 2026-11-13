@@ -44,7 +44,7 @@ test('les colonnes d\'aide d\'une table de fichiers : un calcul et sept listes, 
   assert.doesNotMatch(calc, /\$Auteur\b/, '« Auteur » n\'est que le dernier qui a modifié : il ne donne aucun droit');
   assert.match(calc, /best\[author\] = \(999, 9, 3, ""\)/);
   assert.match(calc, /GFS_Placement\.lookupOne\(Cible=key\)/);
-  const parts = columns.filter(column => column.id !== 'GFS_Calc' && column.id !== 'GFS_Auteur').map(column => [column.id, column.formula.match(/\[(\d)\]\)$/)[1]]);
+  const parts = columns.filter(column => !['GFS_Calc', 'GFS_Auteur', 'GFS_Dossier'].includes(column.id)).map(column => [column.id, column.formula.match(/\[(\d)\]\)$/)[1]]);
   assert.deepEqual(parts, [['GFS_Lecteurs', '0'], ['GFS_Ecrivains', '1'], ['GFS_Admins', '2'], ['GFS_Refus', '3'], ['GFS_Cats', '4'], ['GFS_CatsEcrit', '5'], ['GFS_Directs', '6']]);
   assert.match(calc, /directs = sorted\(who \+ ">" \+ v\[3\]/);
   assert.match(calc, /put\(best, p\.PersonneL, lvl, 2, rank, str\(p\.Auteur/);
@@ -82,7 +82,7 @@ test('activer le partage sur un document neuf : les deux tables, les règles, la
   const created = plan.actions.find(action => action[1] === 'GFS_Fichiers')[2];
   assert.deepEqual(created.map(column => column.id), [...FILES_COLUMNS.map(column => column.id), 'GFS_Auteur', ...HELPERS]);
   const resources = plan.actions.filter(action => action[1] === '_grist_ACLResources').map(action => action[3]);
-  assert.deepEqual(resources.map(resource => `${resource.tableId}/${resource.colIds}`), [`${SHARES_TABLE}/Auteur,AuteurAcces`, `${SHARES_TABLE}/*`, 'GFS_Groupes/Nom,NomL,Nb,Source', 'GFS_Groupes/*', 'GFS_Espaces/*', 'GFS_Placement/*', 'GFS_Fichiers/GFS_Auteur', 'GFS_Fichiers/*']);
+  assert.deepEqual(resources.map(resource => `${resource.tableId}/${resource.colIds}`), [`${SHARES_TABLE}/Auteur,AuteurAcces`, `${SHARES_TABLE}/*`, 'GFS_Groupes/Nom,NomL,Nb,Source', 'GFS_Groupes/*', 'GFS_Espaces/*', 'GFS_Placement/*', 'GFS_Fichiers/GFS_Auteur', 'GFS_Fichiers/*', 'GFS_Rangement/*']);
   assert.ok(plan.actions.findIndex(action => action[0] === 'AddTable') < plan.actions.findIndex(action => action[1] === '_grist_ACLResources'), 'les tables avant les règles');
 });
 
@@ -132,8 +132,10 @@ test('retirer : les règles de partage et leurs ressources, rien d\'autre ; les 
   const plan = planUnsharing(done);
   assert.equal(plan.ok, true);
   const after = applied(done, plan.actions);
-  assert.deepEqual(after.rules.map(rule => rule.id).sort((a, b) => a - b), [1, 50]);
-  assert.deepEqual(after.resources.map(resource => resource.id), [1]);
+  // Le rangement garde ses règles « Partagé » : elles protègent le rangement de chacun, partage ou non (c'est un autre geste que de les retirer).
+  assert.deepEqual(after.rules.filter(rule => !/^GFS : Partagé/.test(rule.memo)).map(rule => rule.id).sort((a, b) => a - b), [1, 50]);
+  assert.equal(after.rules.filter(rule => /^GFS : Partagé/.test(rule.memo)).length, 6);
+  assert.equal(after.resources.length, 2);
   assert.equal(sharingActive(after.tables), true);
   assert.equal(planUnsharing(after).reason, 'none');
 });
@@ -175,8 +177,9 @@ test('une table d\'app : GFS pose sa colonne d\'auteur (écrite par Grist) et le
   assert.deepEqual(columns.map(column => column.id), ['GFS_Auteur', ...HELPERS]);
   assert.equal(columns[0].isFormula, false);
   assert.equal(columns[0].recalcWhen, 0);
-  assert.match(columns[1].formula, /key = "publipostage:" \+ str\(\$id\)/);
-  assert.match(columns[1].formula, /\$GFS_Auteur/);
+  assert.match(columns.find(column => column.id === 'GFS_Calc').formula, /key = "publipostage:" \+ str\(\$id\)/);
+  assert.match(columns.find(column => column.id === 'GFS_Calc').formula, /\$GFS_Auteur/);
+  assert.match(columns.find(column => column.id === 'GFS_Dossier').formula, /lookupRecords\(App="publipostage", Fichier=str\(\$id\)\)/);
   const share = shareColumns(targetsOf([PP])).find(column => column.id === 'AdminsBase').formula;
   assert.match(share, /lookupOne\(id=int\(raw\)\) if raw\.isdigit\(\) else None/);
   assert.match(share, /found\.GFS_Auteur/);
@@ -197,7 +200,7 @@ test('activer avec une app : ses colonnes, ses règles (la colonne d\'auteur gar
   const legacy = plan.actions.find(action => action[0] === 'BulkAddRecord');
   assert.deepEqual(legacy[3].Cible, ['publipostage:3', 'publipostage:5']);
   const resources = plan.actions.filter(action => action[1] === '_grist_ACLResources').map(action => `${action[3].tableId}/${action[3].colIds}`);
-  assert.deepEqual(resources, [`${SHARES_TABLE}/Auteur,AuteurAcces`, `${SHARES_TABLE}/*`, 'GFS_Groupes/Nom,NomL,Nb,Source', 'GFS_Groupes/*', 'GFS_Espaces/*', 'GFS_Placement/*', 'GFS_Fichiers/GFS_Auteur', 'GFS_Fichiers/*', 'Publipostage_Modeles/GFS_Auteur', 'Publipostage_Modeles/*']);
+  assert.deepEqual(resources, [`${SHARES_TABLE}/Auteur,AuteurAcces`, `${SHARES_TABLE}/*`, 'GFS_Groupes/Nom,NomL,Nb,Source', 'GFS_Groupes/*', 'GFS_Espaces/*', 'GFS_Placement/*', 'GFS_Fichiers/GFS_Auteur', 'GFS_Fichiers/*', 'Publipostage_Modeles/GFS_Auteur', 'Publipostage_Modeles/*', 'GFS_Rangement/*']);
   assert.ok(!plan.actions.some(action => action[0] === 'AddTable' && action[1] === 'Autre_Fichiers'));
 });
 
@@ -339,7 +342,8 @@ test('« Aucun accès » : un droit pour une personne ou un groupe, jamais pour 
   assert.equal(model.shareRecord({ target: 'a:1', who: 'x@y.fr', right: 'aucun' }).Droit, 'aucun');
   assert.equal(model.shareRecord({ target: 'a:1', who: '#Achats', right: 'aucun' }).Droit, 'aucun');
   assert.equal(model.shareRecord({ target: 'a:1', who: '@tous', right: 'aucun' }), null);
-  assert.equal(model.shareRecord({ target: 'a:1', who: '#Achats', right: 'admin' }), null);
+  assert.equal(model.shareRecord({ target: 'a:1', who: '@editeurs', right: 'admin' }), null);
+  assert.equal(model.shareRecord({ target: 'a:1', who: '#Achats', right: 'admin' }).Droit, 'admin', 'un groupe administre comme une personne (choix du porteur, 13/11)');
 });
 
 test('les tables d\'espaces : un espace voit qui y a accès (groupes développés), le placement le relit ; les règles cachent l\'espace à qui n\'y a pas accès', () => {
@@ -393,4 +397,56 @@ test('créer un espace : la personne qui le crée y entre (écriture, en minuscu
   assert.deepEqual([added.actions[1][3].Cible, added.actions[1][3].Personne, added.actions[1][3].Droit], ['espace:equipe-ui', 'moi@x.fr', 'ecriture']);
   assert.equal(model.planSpaceAdd([], 'Équipe UI').actions.length, 1);
   assert.equal(model.planSpaceAdd([], 'Équipe UI', '  ').actions.length, 1);
+});
+
+test('« Administrer » : une personne ou un groupe (ses membres), jamais une catégorie ; le calcul des droits plafonne une catégorie à l\'écriture', () => {
+  for (const id of ['AdminsBase', 'AdminsCible']) {
+    const formula = model.shareColumns().find(column => column.id === id).formula;
+    assert.match(formula, /if p\.PersonneL\.startswith\("#"\):\n *g = GFS_Groupes\.lookupOne\(NomL=p\.PersonneL\[1:\]\)\n *out\.update\(list\(g\.Membres or \(\)\) if g else \[\]\)/, `${id} développe un groupe`);
+    assert.match(formula, /elif p\.PersonneL and not p\.PersonneL\.startswith\("@"\):\n *out\.add\(p\.PersonneL\)/, `${id} ne compte aucune catégorie`);
+  }
+  const calc = model.helperColumns().find(column => column.id === 'GFS_Calc').formula;
+  assert.match(calc, /put\(cats, p\.PersonneL\[1:\], lvl, 0, min\(rank, 2\)\)/);
+});
+
+test('le dossier de « Moi » : l\'auteur du fichier le donne par GFS_Rangement, la chaîne des droits l\'ajoute hors d\'un espace, sa clé porte l\'adresse de l\'auteur', () => {
+  const dossier = model.helperColumns().find(column => column.id === 'GFS_Dossier').formula;
+  assert.match(dossier, /GFS_Rangement\.lookupRecords\(App="gfs-fichiers", Fichier=str\(\$Identifiant\)\)/);
+  assert.match(dossier, /str\(r\.Utilisateur or ""\)\.strip\(\)\.lower\(\) == author/);
+  const calc = model.helperColumns().find(column => column.id === 'GFS_Calc').formula;
+  assert.match(calc, /elif author:\n {2}mine = \[x for x in str\(\$GFS_Dossier or ""\)\.split\("\/"\) if x\]/, 'seulement quand le fichier n\'est pas dans un espace');
+  assert.match(calc, /chain\["dossier:moi:" \+ author \+ "\/" \+ "\/"\.join\(mine\[:i \+ 1\]\)\] = 2 \+ i/);
+  assert.ok(calc.indexOf('author = ') < calc.indexOf('chain = '), 'l\'auteur est connu avant la chaîne');
+  assert.equal(model.personalTarget('Marie@Exemple.fr', 'Docs/Factures'), 'dossier:moi:marie@exemple.fr/Docs/Factures');
+  assert.ok(model.personalTarget('a@b.fr', 'Docs').startsWith(model.PERSONAL_PREFIX));
+  const base = model.shareColumns().find(column => column.id === 'AdminsBase').formula;
+  assert.match(base, /if cible\.startswith\("dossier:moi:"\):\n *out\.add\(cible\[12:\]\.split\("\/"\)\[0\]\.strip\(\)\.lower\(\)\)/, 'la personne administre son dossier, sans propriétaire');
+});
+
+test('les membres d\'un groupe à qui un dossier de « Moi » est donné ont le fichier « donné » (Partagés avec moi), pas ceux d\'un autre partage de groupe', () => {
+  const calc = model.helperColumns().find(column => column.id === 'GFS_Calc').formula;
+  assert.match(calc, /gave = str\(p\.Auteur or ""\)\.strip\(\)\.lower\(\) if cible\.startswith\("dossier:moi:"\) else ""/);
+  assert.match(calc, /put\(best, m, lvl, 1, rank, gave\)/);
+  assert.match(calc, /if v\[1\] in \(1, 2\) and v\[2\] >= 1 and v\[3\] and v\[3\] != who/);
+});
+
+test('les règles du rangement : le partage les pose avec le reste (sinon une ligne de rangement falsifiée mettrait le fichier d\'un autre dans un dossier partagé)', () => {
+  const plan = planSharing(base(), FILES_COLUMNS);
+  const rules = plan.actions.filter(action => action[1] === '_grist_ACLRules').map(action => action[3]);
+  const filing = rules.filter(rule => /^GFS : Partagé/.test(rule.memo));
+  assert.deepEqual(filing.map(rule => rule.permissionsText), model.sharedRules().map(rule => rule.rights));
+  assert.deepEqual(filing.map(rule => rule.aclFormula), model.sharedRules().map(rule => rule.formula));
+  // Des règles « Partagé » déjà posées (le panneau d'avant) suffisent : rien n'est reposé ; une règle d'un autre auteur sur le rangement bloque (GFS n'y touche pas).
+  const done = applied(base(), plan.actions);
+  assert.equal(planSharing(done, FILES_COLUMNS).reason, 'already');
+  const foreignRule = { id: 91, resource: 91, aclFormula: 'user.Access in [OWNER]', permissionsText: '+CRUD', memo: 'écrite à la main' };
+  const hand = { ...base(), tables: [{ id: 3, tableId: 'GFS_Rangement' }], resources: [{ id: 1, tableId: '', colIds: '' }, { id: 91, tableId: 'GFS_Rangement', colIds: '*' }],
+    rules: [{ ...BUILT_IN }, foreignRule] };
+  assert.equal(planSharing(hand, FILES_COLUMNS).reason, 'foreign');
+  // Un rangement d'avant la sonde : la colonne `Adresse` que nomme une règle est ajoutée d'abord.
+  const old = { ...base(), tables: [{ id: 3, tableId: 'GFS_Rangement' }], columns: [{ parentId: 3, colId: 'Utilisateur' }] };
+  const added = planSharing(old, FILES_COLUMNS);
+  const at = added.actions.findIndex(action => action[0] === 'AddColumn' && action[1] === 'GFS_Rangement' && action[2] === 'Adresse');
+  assert.ok(at >= 0 && at < added.actions.findIndex(action => action[1] === '_grist_ACLResources'), 'la colonne avant les règles');
+  assert.ok(added.adds.includes('GFS_Rangement.Adresse'));
 });

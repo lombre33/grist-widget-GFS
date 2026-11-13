@@ -14,14 +14,11 @@ import { replaceKeepingFocus, tabList } from '../ui/tabs.js';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Les cinq droits de la maquette ; « commentaire » et « dépôt seul » attendent leurs tables (grisés, avec la raison), un droit d'administration ne se donne pas
-// à une catégorie.
+// à une catégorie (une personne ou un groupe l'a, choix du porteur, 13/11).
 const LEVELS = Object.freeze([{ key: 'lecture', glyph: 'read' }, { key: 'commentaire', glyph: 'info', later: true },
   { key: 'depot', glyph: 'download', later: true }, { key: 'ecriture', glyph: 'edit' }, { key: 'admin', glyph: 'shield' }, { key: 'aucun', glyph: 'lock' }]);
 const CATS = Object.freeze([{ who: CATEGORIES.editeurs, key: 'editeurs', glyph: 'edit' }, { who: CATEGORIES.tous, key: 'tous', glyph: 'globe' }]);
 const isCategory = who => String(who).startsWith('@');
-
-// Un droit d'administration ne se donne qu'à une personne : ni une catégorie ni un groupe.
-const notPerson = who => isCategory(who) || isGroup(who);
 
 export const whoLabel = (t, who) => (isCategory(who) ? t(`share.cat.${String(who).slice(1)}`) :
   (isGroup(who) ? t('share.group.label', { name: String(who).slice(1) }) : who));
@@ -95,7 +92,7 @@ function levelButton(ctx, share) {
   const button = h('button', { type: 'button', class: 'lvl', 'aria-disabled': locked ? 'true' : null, 'aria-haspopup': locked ? null : 'menu',
     dataset: { fk: `share-level-${share.id}` } }, t(`share.right.${share.right}`), icon(locked ? 'lock' : 'chev-down'));
   if (!locked) button.addEventListener('click', () => openMenu(button, levelItems(t, {
-    current: share.right, category: notPerson(share.who), onPick: right => ctx.change(share, right), onRemove: () => ctx.remove(share),
+    current: share.right, category: isCategory(share.who), onPick: right => ctx.change(share, right), onRemove: () => ctx.remove(share),
       onWhy: why => ctx.say(why),
   }), { host: ctx.container, align: 'right', label: t('share.sec.access') }));
   return button;
@@ -118,8 +115,10 @@ function fixedRows(ctx) {
   const lock = h('span', { class: 'lvl', 'aria-disabled': 'true' }, t('share.right.admin'), icon('lock'));
   const rows = [h('li', { class: 'rr', dataset: { fixed: 'owners' } }, icon('shield', 'big'),
     h('span', { class: 'nm' }, h('b', null, t('share.row.owners')), h('small', null, t('share.row.owners.hint'))), lock.cloneNode(true))];
-  if (state.author) rows.push(h('li', { class: 'rr', dataset: { fixed: 'author' } }, avatar(state.author),
-    h('span', { class: 'nm' }, h('b', null, t('share.row.author', { who: state.author }) + (state.author === state.me ? t('share.row.me') : ''))), lock));
+  const author = state.author || (state.folder ? state.me : '');
+  if (author) rows.push(h('li', { class: 'rr', dataset: { fixed: 'author' } }, avatar(author),
+    h('span', { class: 'nm' }, h('b', null, t(state.folder ? 'share.row.folderOwner' : 'share.row.author', { who: author }) +
+      (author === state.me ? t('share.row.me') : ''))), lock));
   return rows;
 }
 
@@ -180,7 +179,7 @@ function pendingForm(ctx, who) {
   const level = h('button', { type: 'button', class: 'lvl', 'aria-haspopup': 'menu', dataset: { fk: 'share-new-level' } }, t(`share.right.${right}`),
     icon('chev-down'));
   const setLevel = next => { right = next; level.replaceChildren(t(`share.right.${right}`), icon('chev-down')); };
-  level.addEventListener('click', () => openMenu(level, levelItems(t, { current: right, category: notPerson(who), onPick: setLevel,
+  level.addEventListener('click', () => openMenu(level, levelItems(t, { current: right, category: isCategory(who), onPick: setLevel,
     onWhy: why => ctx.say(why) }), { host: ctx.container, align: 'right', label: t('share.sec.add') }));
   const download = h('input', { type: 'checkbox', dataset: { fk: 'share-download' } });
   const endOn = h('input', { type: 'checkbox', dataset: { fk: 'share-end-on' } });
@@ -219,8 +218,6 @@ function inactiveBlock(ctx) {
 // Le contenu d'après l'état : { active, owner, canManage, shares, me, author, people }. `ctx.pending` : la personne choisie, pas encore ajoutée.
 export function shareBody(ctx) {
   const { t, state } = ctx;
-  if (state.mine) return h('div', { class: 'rt-content' }, h('p', { class: 'rt-lead', dataset: { fk: 'share-mine' } }, icon('lock'),
-    h('span', null, t('share.folder.mine'))));
   if (!state.active) return inactiveBlock(ctx);
   const parts = [];
   if (state.canManage) parts.push(ctx.pending ? h('div', null, h('div', { class: 'sec' }, t('share.sec.add')), pendingForm(ctx, ctx.pending)) : addField(ctx));
@@ -231,8 +228,8 @@ export function shareBody(ctx) {
 }
 
 // opts : { container, t, locale, inertTargets, file: { key, name, app }, load() → état, onAdd(record), onChange(id, patch), onRemove(id) → { ok, message? },
-//   onActivate() → true quand Grist va recharger, onManage() ouvre « Gérer les partages » (propriétaire), startTab ('here' par défaut ; 'other' pour un dossier
-//   de « Moi »), other: { why, fileId, loadLinks(), onLevel(link, level) → { ok, message?, note? }, onNew() } ou state → cet objet (l'onglet « Dans un autre
+//   onActivate() → true quand Grist va recharger, onManage() ouvre « Gérer les partages » (propriétaire), startTab ('here' par défaut), other: { why, fileId,
+//   loadLinks(), onLevel(link, level) → { ok, message?, note? }, onNew() } ou state → cet objet (l'onglet « Dans un autre
 //   document Grist » : js/sharing/share-other-tab.js, js/sharing/share-other.js ; sans lui, pas d'onglets) }. Rend la promesse de la fermeture.
 export function openShare(opts) {
   const { container, t, file } = opts;

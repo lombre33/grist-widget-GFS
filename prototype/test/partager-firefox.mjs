@@ -52,7 +52,7 @@ function manageState() {
     body: modal.querySelector('.sh-body').textContent.replace(/\s+/g, ' ').trim(), focus: active && active.dataset ? active.dataset.fk || null : null, inside: modal.contains(active),
     inPage: box.left >= 0 && box.top >= 0 && box.right <= window.innerWidth + 1 && box.bottom <= window.innerHeight + 1, sticky: head.bottom <= foot.top + 1 && foot.bottom <= box.bottom + 1 && head.top >= box.top - 1,
     outside: [...modal.querySelectorAll('.sh-body *, .mod-foot *, .mod-head *')].filter(outside).map(node => node.className || node.tagName).slice(0, 5),
-    tabs: [...modal.querySelectorAll('.mg-tab')].map(node => [node.textContent, node.getAttribute('aria-selected')]), groups: [...modal.querySelectorAll('.rr[data-group]')].length, links: [...modal.querySelectorAll('.rr[data-link]')].length, spaces: [...modal.querySelectorAll('.rr[data-space]')].length, spaceGroups: [...modal.querySelectorAll('.rr[data-space-group]')].length, form: Boolean(modal.querySelector('.sg-new')),
+    tabs: [...modal.querySelectorAll('.mg-tab')].map(node => [node.textContent, node.getAttribute('aria-selected')]), groups: [...modal.querySelectorAll('.rr[data-group]')].length, links: [...modal.querySelectorAll('.rr[data-link]')].length, spaces: [...modal.querySelectorAll('.rr[data-space]')].length, spaceGroups: [...modal.querySelectorAll('.rr[data-space-group]')].length, foot: (modal.querySelector('.mod-foot .mod-note') || {}).textContent || '', people: (modal.querySelector('[data-fk="manage-group-people"]') || {}).value || '', form: Boolean(modal.querySelector('.sg-new')),
     greyed: [...modal.querySelectorAll('[aria-disabled="true"]')].map(node => node.dataset.fk || node.className),
   };
   return out;
@@ -98,8 +98,18 @@ async function manageFlow(page, run, t) {
   await run.clickSelector('[data-fk="manage-group-new"]');
   await seen('« Nouveau groupe » devait montrer le formulaire, le clavier sur le nom', s => s.modal && s.modal.form && s.modal.focus === 'manage-group-name');
   await page.press(...'Ventes'.split(''));
+  // Les adresses à proposer (choix du 13/11) : les deux boutons sont là, dans la fenêtre, et ne la font pas grandir (le contenu défile) ; la colonne choisie se dit à côté ;
+  // « Ajouter une adresse connue… » ajoute l'adresse choisie au champ, sur sa ligne.
+  const withButtons = await seen('le formulaire devait offrir « Ajouter une adresse connue… » et « Adresses d\'une table… »', s => s.modal && s.modal.body.includes(t('manage.suggest.button')) && s.modal.body.includes(t('manage.suggest.column')));
+  steady('formulaire du groupe', withButtons);
+  if (withButtons.modal && (withButtons.modal.outside.length || !withButtons.modal.inPage || !withButtons.modal.sticky)) run.note(kind, `le formulaire du groupe devait tenir à 700 × 400 (sort : ${withButtons.modal.outside.join(', ')})`);
+  if (withButtons.modal && withButtons.modal.greyed.some(key => /manage-group-(suggest|column)/.test(key))) run.note(kind, 'les deux boutons d\'adresses devaient être libres (la table Contacts a une colonne d\'adresses)');
+  await run.clickSelector('[data-fk="manage-group-column"]');
+  await seen('« Adresses d\'une table… » devait dire la colonne choisie dans le pied de la fenêtre', s => s.modal && s.modal.foot === t('manage.suggest.chosen', { table: 'Contacts', column: 'Mail', n: 12 }) && JSON.stringify(s.acts.slice(1)) === '[["column"]]');
+  await run.clickSelector('[data-fk="manage-group-suggest"]');
+  await seen('« Ajouter une adresse connue… » devait mettre l\'adresse choisie dans le champ, le clavier dessus', s => s.modal && s.modal.people === 'lea@example.com' && s.modal.focus === 'manage-group-people' && JSON.stringify(s.acts[2]) === '["suggest",""]');
   await run.clickSelector('[data-fk="manage-group-save"]');
-  await seen('« Créer le groupe » devait demander d\'écrire le groupe', s => JSON.stringify(s.acts.slice(1)) === '[["addGroup","Ventes",""]]');
+  await seen('« Créer le groupe » devait demander d\'écrire le groupe', s => JSON.stringify(s.acts.slice(3)) === '[["addGroup","Ventes","lea@example.com"]]');
   await run.clickSelector('[data-fk="manage-tab-spaces"]');
   const spaces = await seen('l\'onglet Espaces devait lister les deux espaces', s => s.modal && s.modal.spaces === 2);
   steady('onglet Espaces', spaces);
@@ -202,6 +212,13 @@ export async function partagerProblems(page, language, tag) {
           await page.click(...pick);
           const form = await expect(kind, 'le formulaire devait se montrer avec « Ajouter » visible sans défiler, le clavier sur le droit', s => s.modal && s.modal.form && s.modal.confirmShown === true && s.modal.focus === 'share-new-level');
           if (form.modal && form.modal.form) {
+            // Le menu du droit du formulaire : « Administration » est grisée pour une catégorie (une personne ou un groupe l'a, choix du 13/11), puis on revient à « Lecture ».
+            await run.clickSelector('[data-fk="share-new-level"]');
+            const menu = await page.run(() => [...document.querySelectorAll('.menu .menu-item')].map(node => [node.textContent.replace(/\s+/g, ' ').trim(), node.getAttribute('aria-disabled')]));
+            const admin = menu.find(item => item[0].startsWith(t('share.right.admin')));
+            if (!admin || admin[1] !== 'true') run.note(kind, `pour une catégorie, « ${t('share.right.admin')} » devait être grisée dans le menu du formulaire (menu : ${JSON.stringify(menu).slice(0, 200)})`);
+            const back = await page.run(label => { const node = [...document.querySelectorAll('.menu .menu-item')].find(item => item.textContent.trim().startsWith(label)); if (!node) return null; const box = node.getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; }, t('share.right.lecture'));
+            if (back) await page.click(...back); else run.note(kind, 'le menu du droit devait proposer « Lecture »');
             await run.clickSelector('[data-fk="share-confirm"]');
             await expect(kind, '« Ajouter » devait demander d\'écrire la ligne', s => JSON.stringify(s.acts) === '[["add","@editeurs","lecture"]]');
           }

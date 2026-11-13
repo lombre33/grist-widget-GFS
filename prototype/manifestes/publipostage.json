@@ -133,7 +133,8 @@
       "poids": 103,
       "dossier": "extensions/edition/",
       "pointsEntree": [{ "genre": "menu", "id": "edition" }],
-      "bibliotheques": [{ "id": "edition-live", "version": "1.0.0" }]
+      "bibliotheques": [{ "id": "edition-live", "version": "1.0.0" }],
+      "cdnAccepte": false
     },
     {
       "id": "diapositives",

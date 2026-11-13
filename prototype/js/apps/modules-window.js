@@ -275,6 +275,8 @@ export class ModulesWindow {
     const { t } = this.#opts.i18n;
     const group = `mode-${item.app}-${item.extension.id}`;
     const names = item.libraries.map(lib => (lib.poids ? t('mod.library', { lib: cap(lib.id), size: this.#size(lib.poids / 1024) }) : cap(lib.id))).join(' · ');
+    // « Par défaut. » se dit du mode que GFS choisit à l'activation : le CDN, ou la copie quand l'app ne nomme pas encore l'adresse du CDN (2.6 point 15).
+    const hintKey = mode => (mode === 'cdn' && item.noCdn ? 'mod.mode.cdnNone' : `mod.mode.${mode}${mode === item.defaultMode ? 'Hint' : 'Plain'}`);
     // Sans CDN (GFS n'a pas encore d'adresse publique, 2.6 point 11), l'option CDN reste là, grisée, avec la raison.
     const option = mode => h('label', { class: mode === 'cdn' && item.noCdn ? 'rd is-off' : 'rd' },
       h('input', {
@@ -282,7 +284,10 @@ export class ModulesWindow {
         dataset: { modeFor: item.extension.id, parent: item.app, fk: `mode:${item.app}/${item.extension.id}/${mode}` },
       }),
       h('span', { class: 'rd-text' }, h('span', { class: 'rd-label' }, t(`mod.mode.${mode}`)),
-        h('span', { class: 'rd-hint' }, t(mode === 'cdn' && item.noCdn ? 'mod.mode.cdnNone' : `mod.mode.${mode}Hint`))));
-    return h('fieldset', { class: 'mr-mode', disabled: !enabled }, h('legend', null, names), option('cdn'), option('vendorise'));
+        h('span', { class: 'rd-hint' }, t(hintKey(mode)))));
+    // L'app ne nomme pas encore l'adresse du CDN dans sa politique de sécurité (`cdnAccepte: false`, 2.6 point 15) : le navigateur refusera le fichier. Le
+    // choix reste libre ; la phrase le dit tant que le CDN est le mode retenu, et conseille la copie.
+    const refused = item.cdnRefused && item.mode === 'cdn' ? h('p', { class: 'mr-warn mr-mode-warn' }, t('mod.mode.cdnRefused')) : null;
+    return h('fieldset', { class: 'mr-mode', disabled: !enabled }, h('legend', null, names), option('cdn'), option('vendorise'), refused);
   }
 }

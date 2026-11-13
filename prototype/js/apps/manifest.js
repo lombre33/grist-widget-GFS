@@ -347,12 +347,15 @@ function checkFiled(m, errors) {
   }
 }
 
+// `cdnAccepte` (facultatif, contrats 2.6 point 15) : faux quand la politique de sécurité de l'app ne nomme pas encore l'adresse du CDN de GFS pour cette
+// extension ; la fenêtre le dit sous le choix « Depuis un CDN » (qui reste libre) et conseille « Copie de GFS ». Absent ou vrai : rien à dire.
 function checkExtensions(m, errors) {
   for (const ext of m.extensions || []) {
     if (!isText(ext.id) || !isBilingual(ext.nom)) errors.push('extensions[] : id et nom (fr, en) attendus');
     checkDisplay(ext, `extension ${ext.id}`, errors);
     if (!isSafePath(String(ext.dossier || '').replace(/\/$/, ''))) errors.push(`extension ${ext.id} : dossier hors de l'app`);
     checkLibraries(ext, errors);
+    if (ext.cdnAccepte !== undefined && typeof ext.cdnAccepte !== 'boolean') errors.push(`extension ${ext.id} : cdnAccepte : vrai ou faux attendu`);
   }
 }
 

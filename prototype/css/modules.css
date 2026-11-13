@@ -69,6 +69,7 @@
 
 /* ---------- le mode d'une bibliothèque : CDN ou copie de GFS ---------- */
 .mr-mode { display: flex; flex-wrap: wrap; gap: 2px 16px; min-width: 0; margin: 8px 0 0; padding: 6px 10px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-sunken); }
+.mr-mode-warn { flex: 1 0 100%; margin: 4px 0 0; }
 .mr-mode legend { padding: 0 4px; font-size: max(11px, var(--fs-min)); font-weight: 600; color: var(--text-muted); }
 .mr-mode:disabled .rd-label { color: var(--text-muted); }
 .rd { display: flex; flex: 1 1 200px; align-items: flex-start; gap: 7px; min-width: 0; padding: 3px 0; cursor: pointer; }

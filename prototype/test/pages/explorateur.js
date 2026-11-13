@@ -39,7 +39,7 @@ import { aboutItems } from '/js/shell/about.js';
 import { ThemeSetting } from '/js/theme/theme.js';
 import { modulesModel } from '/js/apps/modules-model.js';
 import { readCatalogue } from '/js/apps/libraries.js';
-import { withNativeMode } from '/js/apps/settings.js';
+import { withMode, withNativeMode } from '/js/apps/settings.js';
 import { ThemeWindow } from '/js/theme/theme-window.js';
 import { Trash } from '/js/files/trash.js';
 import { openShare } from '/js/sharing/share-window.js';
@@ -219,7 +219,7 @@ async function mount() {
   // « Apps et extensions » et « Table de travail » (js/apps/modules-window.js, js/apps/work-window.js ; test/voile-firefox.mjs) : des fenêtres à part de la base commune, dont le fond ne ferme rien non plus.
   window.__modulesWindow = () => void new ModulesWindow({ container: stage, i18n, locale, model: () => ({ items: [], active: 0, total: 0 }), blocked: () => null, inertTargets: () => [explorer.root], on: {}, onClose: () => {} }).open();
   // « Apps et extensions » avec les bibliothèques natives, fonction par fonction (js/apps/modules-window.js, contrats 2.6 point 14 ; test/natives-firefox.mjs) : le vrai modèle, le vrai catalogue de GFS et le manifeste de
-  // Publipostage+ à qui l'on donne quatre fonctions (ce que son manifeste dira quand l'app lira le choix). `variant` : 'ok', 'manque' (le catalogue n'a pas les polices : la copie du PDF est grisée), 'editeur' (l'éditeur, copie dans l'app) ou 'lecture' (rien ne peut s'écrire).
+  // Publipostage+ à qui l'on donne quatre fonctions (ce que son manifeste dira quand l'app lira le choix). `variant` : 'ok', 'manque' (le catalogue n'a pas les polices : la copie du PDF est grisée), 'editeur' (l'éditeur, copie dans l'app), 'direct' (l'édition collaborative cochée) ou 'lecture' (rien ne peut s'écrire).
   window.__natives = async (variant = 'ok') => {
     const L = (id, version) => ({ id, version });
     const manifest = await (await fetch('/manifestes/publipostage.json')).json();
@@ -233,11 +233,16 @@ async function mount() {
     if (variant === 'editeur') manifest.natives.unshift({ id: 'editeur', nom: { fr: 'Éditeur (TipTap)', en: 'Editor (TipTap)' }, copieDansApp: true, poids: 1172757 });
     const catalogue = readCatalogue(await (await fetch('/bibliotheques/catalogue.json')).json());
     const loaded = [{ app: { id: manifest.id }, manifest, ok: true, errors: [] }];
-    let apps = { [manifest.id]: { extensions: [], modes: {} } };
+    // 'direct' : l'édition collaborative est cochée (Publipostage+ ne nomme pas encore l'adresse de son CDN : la fenêtre le dit sous le choix « Depuis un CDN », test/natives-firefox.mjs).
+    let apps = { [manifest.id]: { extensions: variant === 'direct' ? ['edition'] : [], modes: {} } };
     window.__nativeEvents = [];
+    window.__modeEvents = [];
     const win = new ModulesWindow({
       container: stage, i18n, locale, model: () => modulesModel(loaded, { apps }, catalogue, [manifest.id]), blocked: () => (variant === 'lecture' ? 'lecture seule' : null), inertTargets: () => [explorer.root],
-      on: { nativeMode(app, group, mode) { apps = withNativeMode(apps, manifest, group, mode); window.__nativeEvents.push([app, group, mode]); win.refresh(); } }, onClose: () => {},
+      on: {
+        nativeMode(app, group, mode) { apps = withNativeMode(apps, manifest, group, mode); window.__nativeEvents.push([app, group, mode]); win.refresh(); },
+        mode(app, extension, mode) { apps = withMode(apps, manifest, extension, mode); window.__modeEvents.push([app, extension, mode]); win.refresh(); },
+      }, onClose: () => {},
     });
     win.open();
   };

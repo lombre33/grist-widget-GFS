@@ -165,21 +165,21 @@ test('une extension dont la bibliothèque n\'a pas de CDN : la copie de GFS est 
   assert.equal(edition.greyed, false, 'sans CDN ne veut pas dire grisée : la copie sert');
   assert.equal(modeOfExtension({ modes: { edition: 'cdn' } }, 'edition'), 'cdn', 'le réglage retenu n\'est pas réécrit');
   assert.equal(libraryModes(live, { extensions: ['edition'], modes: {} }, ['edition'], withModule).get('edition-live'), 'vendorise');
-  assert.equal(libraryModes(live, { extensions: ['edition'], modes: {} }, ['edition']).get('edition-live'), 'cdn', 'sans catalogue, le réglage seul décide');
+  assert.equal(libraryModes(live, { extensions: ['edition'], modes: { edition: 'cdn' } }, ['edition']).get('edition-live'), 'cdn', 'sans catalogue, le réglage seul décide');
 });
 
-test('le manifeste et le catalogue réels s\'accordent : chaque extension a ses bibliothèques, l\'édition collaborative a ses deux modes, le CDN par défaut', () => {
+test('le manifeste et le catalogue réels s\'accordent : chaque extension a ses bibliothèques, l\'édition collaborative a ses deux modes (le CDN une fois choisi)', () => {
   const real = readCatalogue(readJson('bibliotheques/catalogue.json'));
   assert.deepEqual(pub.extensions.map(extension => extension.id), ['graphique', 'edition', 'diapositives', 'lecture-pdf', 'polices']);
   assert.deepEqual(pub.extensions.flatMap(extension => missingLibraries(extension, real)), [], 'aucune extension déclarée n\'est grisée par le catalogue');
-  const rows = extensionRows(pub, { extensions: ['graphique', 'edition'], modes: {} }, real);
+  const rows = extensionRows(pub, { extensions: ['graphique', 'edition'], modes: { graphique: 'cdn', edition: 'cdn' } }, real);
   const edition = rows.find(row => row.extension.id === 'edition');
   assert.equal(edition.greyed, false);
   assert.equal(edition.noCdn, false, 'GFS épingle un commit de son dépôt public : jsDelivr sert le fichier assemblé');
-  assert.equal(edition.mode, 'cdn');
+  assert.equal(edition.mode, 'cdn', 'le CDN choisi à la main reste le CDN');
   assert.deepEqual(edition.libraries.map(lib => `${lib.id}@${lib.version}`), ['edition-live@1.0.0']);
   assert.ok(edition.libraries[0].poids > 100000, 'le poids du fichier assemblé est celui du catalogue');
-  const state = extensionsState(pub, { extensions: ['edition'], modes: {} }, real, 'https://exemple.test/gfs/');
+  const state = extensionsState(pub, { extensions: ['edition'], modes: { edition: 'cdn' } }, real, 'https://exemple.test/gfs/');
   assert.deepEqual(state.extensions, ['edition']);
   assert.deepEqual(Object.keys(state.bibliotheques), ['edition-live']);
   const given = state.bibliotheques['edition-live'];
@@ -261,3 +261,40 @@ test('extensionsState : un fichier assemblé arrive à l\'app sous la forme modu
   assert.equal(state.details['edition-live'].mode, 'vendorise');
   assert.deepEqual(extensionsState(live, { extensions: ['edition'], modes: {} }, empty, base).extensions, [], 'absent du catalogue : grisée comme toute extension');
 });
+
+// 13/11 : le porteur a vu « Écriture en direct impossible » au premier essai. Le défaut était « Depuis un CDN » et la politique de sécurité de Publipostage+ ne nomme pas l'adresse de
+// jsDelivr (consigne 016 en attente de la bascule) : le navigateur refusait le fichier. Sa demande : que cela fonctionne dans les deux modes, et que l'un soit réglé par défaut quand
+// on active l'extension. Le manifeste dit que l'app n'accepte pas encore le CDN (`cdnAccepte: false`) : le défaut est la copie de GFS, qui marche ; le CDN reste un choix libre.
+test('Publipostage+ ne nomme pas encore l\'adresse du CDN de l\'édition collaborative : activée, elle démarre en copie de GFS ; le CDN reste un choix libre', () => {
+  const real = readCatalogue(readJson('bibliotheques/catalogue.json'));
+  const rows = extensionRows(pub, { extensions: ['edition'], modes: {} }, real);
+  assert.deepEqual(rows.filter(row => row.cdnRefused).map(row => row.extension.id), ['edition'], 'seule l\'édition collaborative est refusée au CDN');
+  const edition = rows.find(row => row.extension.id === 'edition');
+  assert.equal(edition.mode, 'vendorise', 'au défaut, l\'activation donne la copie de GFS : le CDN serait refusé par le navigateur');
+  assert.equal(edition.defaultMode, 'vendorise');
+  assert.equal(rows.find(row => row.extension.id === 'graphique').defaultMode, 'cdn', 'les autres extensions gardent le CDN par défaut');
+  assert.equal(edition.noCdn, false, 'le CDN reste libre : il suffira que l\'app nomme l\'adresse');
+  assert.equal(extensionRows(pub, { extensions: ['edition'], modes: { edition: 'cdn' } }, real).find(row => row.extension.id === 'edition').mode, 'cdn', 'le choix du CDN est respecté');
+  const given = extensionsState(pub, { extensions: ['edition'], modes: {} }, real, 'https://exemple.test/gfs/').bibliotheques['edition-live'];
+  assert.equal(given.src, 'https://exemple.test/gfs/vendor/edition-live/1.0.0/edition-live.js', 'l\'app reçoit l\'adresse de la copie de GFS, que sa politique accepte (\'self\')');
+  assert.match(extensionsState(pub, { extensions: ['edition'], modes: { edition: 'cdn' } }, real, 'https://exemple.test/gfs/').bibliotheques['edition-live'].src, /^https:\/\/cdn\.jsdelivr\.net\/gh\//);
+  const named = JSON.parse(JSON.stringify(pub));
+  delete named.extensions.find(extension => extension.id === 'edition').cdnAccepte;
+  const back = extensionRows(named, { extensions: ['edition'], modes: {} }, real).find(row => row.extension.id === 'edition');
+  assert.equal(back.mode, 'cdn', 'dès que l\'app nomme l\'adresse, le défaut redevient le CDN');
+  assert.equal(back.cdnRefused, false);
+});
+
+// Le défaut de l'édition collaborative étant la copie, c'est le CDN qui doit pouvoir se retenir : `cleanApp` n'écrit que ce qui n'est pas le défaut de l'extension (un CDN écarté comme « défaut »
+// aurait rendu le choix du CDN impossible : la ligne serait revenue à la copie au rechargement).
+test('Publipostage+ : choisir le CDN pour l\'édition collaborative se retient ; choisir la copie, qui est le défaut, ne s\'écrit pas ; les autres extensions gardent le CDN pour défaut', () => {
+  const start = { publipostage: { extensions: ['edition', 'graphique'], modes: {} } };
+  const cdn = withMode(start, pub, 'edition', 'cdn');
+  assert.deepEqual(cdn.publipostage.modes, { edition: 'cdn' }, 'le CDN est un choix : il s\'écrit');
+  assert.deepEqual(readApps(toOption(cdn, ['publipostage']), new Map([['publipostage', pub]]), []).apps.publipostage.modes, { edition: 'cdn' }, 'et il se relit tel quel');
+  assert.deepEqual(withMode(cdn, pub, 'edition', 'vendorise').publipostage.modes, {}, 'la copie est le défaut de cette extension : rien à écrire');
+  const graphic = withMode(start, pub, 'graphique', 'vendorise');
+  assert.deepEqual(graphic.publipostage.modes, { graphique: 'vendorise' }, 'ailleurs la copie est le choix, le CDN le défaut');
+  assert.deepEqual(withMode(graphic, pub, 'graphique', 'cdn').publipostage.modes, {});
+});
+

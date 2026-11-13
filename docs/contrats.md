@@ -375,7 +375,7 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
    avec GFS : la source d'une bibliothèque n'est jamais lue dans un réglage, une table ou un message d'une app (cahier 3.2,
    point 3). Une extension dont une bibliothèque exigée manque au catalogue (identifiant ou version) est grisée dans GFS, avec
    la raison.
-7. [D] Le mode, CDN (le défaut) ou vendorisé, se choisit dans GFS, à l'activation de l'extension ; l'app ne le connaît pas.
+7. [D] Le mode, CDN (le défaut, sauf `cdnAccepte: false`, point 15) ou vendorisé, se choisit dans GFS, à l'activation de l'extension ; l'app ne le connaît pas.
    [Q] Où se retient ce choix (par extension, ou pour toute la section) : cahier, question 11.
 8. [T] **Un fichier assemblé, quand plusieurs paquets doivent partager leurs instances avec l'éditeur natif de l'app** (choix du
    porteur, 16/10, sur la demande d'écriture en direct de Publipostage+). Les six paquets de cette demande importent
@@ -486,6 +486,16 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     d'importation en données et un script qui pose l'une des deux (faits vérifiés 98). GFS ne la sert pas : la fonction `editeur` du manifeste est `copieDansApp` (2.2), la fenêtre n'y vérifie rien (jamais
     grisée), le choix se retient comme les autres (`natif:editeur`) et part **dans l'adresse du cadre** (`copie=editeur`, 1.3 point 3), à
     son démarrage. **Il prend effet au prochain démarrage de l'app** : GFS ne recharge rien en cours de route (rien à perdre), la ligne le dit. [M]
+
+15. [D] **`cdnAccepte` : l'app dit que sa politique de sécurité ne nomme pas encore l'adresse du CDN d'une extension** (13/11, demande du porteur : « que cela fonctionne dans les
+    deux cas, et qu'un des deux soit réglé par défaut à l'activation »). Champ facultatif de l'entrée de l'extension, booléen ; GFS l'écrit dans le manifeste de l'app d'après ce
+    qu'il lit de sa CSP (point 4 : l'adresse exacte du CDN, ou rien). **`false`** : le navigateur refuse le fichier à son adresse de CDN (mesuré avec la vraie Publipostage+, Chromium et
+    Firefox 160 : faits vérifiés 108), l'app dit « le fichier n'a pas pu être chargé (empreinte, réseau ou politique de sécurité) ». GFS en tire trois choses : (1) **le défaut de
+    l'extension est la copie de GFS** (point 7) : cocher l'extension suffit, la copie passe par `'self'` et marche ; (2) **le CDN reste un choix libre**, jamais grisé (grisé, jamais masqué),
+    et, une fois choisi, la fenêtre « Apps et extensions » écrit sous les deux choix que l'app ne nomme pas encore l'adresse et conseille « Copie de GFS » ; (3) **un seul mode s'écrit
+    quand il n'est pas le défaut de l'extension** : choisir le CDN s'écrit (`modes.<extension>: "cdn"`), choisir la copie, qui est le défaut, n'écrit rien. **Absent ou `true`** :
+    le défaut est le CDN, comme avant. Le jour où l'app nomme l'adresse (la consigne qui remplace la 016 pour Publipostage+), GFS retire le champ : le défaut redevient le CDN, sans
+    toucher aux choix déjà écrits. L'app ne lit jamais ce champ : il est à GFS. [M]
 
 ### 2.7 Les actions acceptées
 

@@ -3,14 +3,16 @@
 // Tout est vrai : le catalogue, le manifeste, l'app à la référence de GFS, le fichier assemblé `edition-live` (contrats 2.6, points 8 à 11), et l'empreinte, que le navigateur
 // contrôle pour de bon (le labo ne neutralise pas `integrity` pour un script que GFS sert lui-même, ni pour l'adresse du CDN du catalogue : à cette adresse, son miroir rend les
 // octets exacts de la copie de GFS, qui sont ceux que jsDelivr sert au commit épinglé).
-//   Partie 1 : la personne coche « Édition collaborative » et choisit « Copie de GFS » ; l'app reçoit le fichier de GFS (adresse, empreinte, forme « module »), ne le demande
+//   Partie 1 : la personne coche « Édition collaborative » et ne touche à rien : le défaut est « Copie de GFS » (le manifeste dit que Publipostage+ ne nomme pas encore l'adresse du CDN,
+//   `cdnAccepte: false`, contrats 2.6 point 15 ; demande du porteur du 13/11 : que cela marche dans les deux modes, avec un défaut qui marche) ; rien ne s'écrit pour le défaut ; l'app reçoit le fichier de GFS (adresse, empreinte, forme « module »), ne le demande
 //   qu'au premier clic, le charge dans son sous-cadre isolé sous sa politique de sécurité, et le direct démarre par le menu de l'app ; la table `Publipostage_Direct` naît par le
 //   courtier, se remplit à la frappe, et se vide quand la dernière personne s'arrête. Autour de cela, on compte ce que l'app lit toute seule pour l'entrée automatique (js/live-entry.js, contrats
 //   5.5, point 7) : la liste des tables sans la table du direct, rien juste après l'arrêt par la personne, la table du direct une fois le modèle rouvert.
 //   Partie 2 : l'empreinte de la copie dans le catalogue est remplacée par une fausse (pour cet essai seulement) : le navigateur refuse le fichier, le direct ne démarre pas.
-//   Partie 3 : la personne garde le défaut, « Depuis un CDN » (jsDelivr, au commit épinglé), mais la politique de sécurité de l'app ne nomme pas encore cette adresse : le navigateur
-//   la refuse, l'app le dit sans rien casser, et le choix de « Copie de GFS » remet le direct en marche.
-//   Partie 4 : la politique de l'app nomme l'adresse exacte du catalogue (ce que demande la consigne 016) : le direct démarre par le CDN, comme la partie 1.
+//   Partie 3 : la personne choisit « Depuis un CDN » (jsDelivr, au commit épinglé), mais la politique de sécurité de l'app ne nomme pas encore cette adresse : la fenêtre de GFS le dit sous le choix,
+//   le navigateur refuse l'adresse, l'app le dit sans rien casser, et le retour à « Copie de GFS » remet le direct en marche.
+//   Partie 4 : la politique de l'app nomme l'adresse exacte du catalogue (ce que demandera la consigne qui remplace la 016) et le manifeste ne dit plus `cdnAccepte: false` : le défaut redevient le CDN
+//   et le direct démarre par le CDN, comme la partie 1.
 //   Partie 5 : de même, mais avec une fausse empreinte du CDN dans le catalogue : le navigateur refuse le fichier, ce qui prouve que la partie 4 contrôle bien l'empreinte.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -34,6 +36,10 @@ const catalogueWith = (block, wrong) => ({ chemin: '/prototype/bibliotheques/cat
 // Ce que le projet de l'app écrit dans sa politique (consigne 016) : l'adresse exacte du catalogue, à côté de celle de Plotly, et rien d'autre.
 const PLOTLY = 'https://cdn.jsdelivr.net/npm/plotly.js-basic-dist-min@2.13.2/plotly-basic.min.js';
 const cspNamingTheAddress = { chemin: '/prototype/apps/publipostage/index.html', de: PLOTLY, vers: `${PLOTLY} ${CDN}` };
+// Le manifeste de GFS quand l'app a nommé l'adresse : plus de `cdnAccepte: false`, le défaut redevient le CDN (contrats 2.6 point 15).
+const acceptingBlock = '"bibliotheques": [{ "id": "edition-live", "version": "1.0.0" }],\n      "cdnAccepte": false';
+const manifestAccepting = { chemin: '/prototype/manifestes/publipostage.json', de: acceptingBlock, vers: '"bibliotheques": [{ "id": "edition-live", "version": "1.0.0" }]' };
+if (!readFileSync(join(LAB, '..', 'manifestes', 'publipostage.json'), 'utf8').includes(acceptingBlock)) throw new Error('Le manifeste n\'a plus la forme que l\'essai remplace (cdnAccepte)');
 for (const text of [copyBlock, cdnBlock]) if (!catalogueText.includes(text)) throw new Error(`Le catalogue n'a plus la forme que l'essai remplace : ${text.slice(0, 60)}`);
 
 // Le choix du mode dans la fenêtre de GFS, à la vraie souris, sur la ligne de l'extension.
@@ -73,10 +79,12 @@ async function prepare(lab, observed, mode = null) {
   await lab.settle(gfs);
   if (mode) await chooseMode(lab, gfs, mode);
   const chosen = await gfs.evaluate(() => [...document.querySelectorAll('input[data-mode-for="edition"]')].map(input => ({ mode: input.value, checked: input.checked, disabled: input.disabled })));
+  // La phrase « le navigateur refuse ce choix » (contrats 2.6 point 15), lue pendant que la fenêtre est ouverte.
+  const warning = await gfs.evaluate(() => { const node = document.querySelector('.mr-mode-warn'); return node && node.textContent; });
   await lab.shotPanel(run, `1-fenetre-edition-cochee-${mode || 'defaut'}`);
   await page.keyboard.press('Escape');
   await app.waitForFunction(() => Extensions.isActive('edition'), null, { timeout: 15000 });
-  return { app, gfs, chosen };
+  return { app, gfs, chosen, warning };
 }
 
 // Un clic sur la ligne « Écriture en direct » du menu « Édition collaborative » de l'app, à la vraie souris. Après un échec, la ligne est grisée mais cliquable (« Cliquer pour
@@ -204,10 +212,11 @@ async function liveRefused(lab, { app, gfs }, label, shot) {
 {
   const observed = { requests: [], console: [] };
   const lab = await startLab({ lang, colorScheme: scheme });
-  const context = await prepare(lab, observed, 'vendorise');
-  check('copie : « Copie de GFS » est cochée, « Depuis un CDN » reste libre', JSON.stringify(context.chosen) === JSON.stringify([{ mode: 'cdn', checked: false, disabled: false }, { mode: 'vendorise', checked: true, disabled: false }]), context.chosen);
+  const context = await prepare(lab, observed);
+  check('copie : « Copie de GFS » est cochée par défaut, « Depuis un CDN » reste libre', JSON.stringify(context.chosen) === JSON.stringify([{ mode: 'cdn', checked: false, disabled: false }, { mode: 'vendorise', checked: true, disabled: false }]), context.chosen);
   const saved = ((await lab.rangement(context.gfs)).value || {}).publipostage || {};
-  check('copie : le choix de la personne s\'écrit dans le document (un geste)', JSON.stringify(saved.extensions) === '["edition"]' && JSON.stringify(saved.modes) === '{"edition":"vendorise"}', saved);
+  check('copie : cocher l\'extension s\'écrit (un geste), le défaut ne s\'écrit pas', JSON.stringify(saved.extensions) === '["edition"]' && saved.modes === undefined, saved);
+  check('copie : la phrase « le navigateur refuse ce choix » n\'est pas là tant que le CDN n\'est pas choisi', context.warning === null, context.warning);
   await liveWorks(lab, context, observed, COPY, entry.vendorise.integrite, 'copie');
   await lab.browser.close();
 }
@@ -216,7 +225,7 @@ async function liveRefused(lab, { app, gfs }, label, shot) {
 {
   const observed = { requests: [], console: [] };
   const lab = await startLab({ lang, colorScheme: scheme, patches: [catalogueWith(copyBlock, WRONG)] });
-  const context = await prepare(lab, observed, 'vendorise');
+  const context = await prepare(lab, observed);
   const given = await context.app.evaluate(() => GfsLink.library('edition-live'));
   check('copie fausse : l\'app reçoit l\'empreinte fausse du catalogue de cet essai', given && given.src === COPY && given.integrite === WRONG, given);
   await liveRefused(lab, context, 'copie fausse', '4-empreinte-fausse');
@@ -228,10 +237,12 @@ async function liveRefused(lab, { app, gfs }, label, shot) {
 {
   const observed = { requests: [], console: [] };
   const lab = await startLab({ lang, colorScheme: scheme });
-  const context = await prepare(lab, observed);
+  const context = await prepare(lab, observed, 'cdn');
   const { app, gfs } = context;
-  check('CDN refusé : « Depuis un CDN » est cochée par défaut et libre, « Copie de GFS » aussi', JSON.stringify(context.chosen) === JSON.stringify([{ mode: 'cdn', checked: true, disabled: false }, { mode: 'vendorise', checked: false, disabled: false }]), context.chosen);
-  check('CDN refusé : le défaut ne s\'écrit pas (rien sans un geste de la personne)', ((await lab.rangement(gfs)).value.publipostage || {}).modes === undefined, (await lab.rangement(gfs)).value);
+  check('CDN refusé : la personne a choisi « Depuis un CDN » : il est coché et libre, « Copie de GFS » aussi', JSON.stringify(context.chosen) === JSON.stringify([{ mode: 'cdn', checked: true, disabled: false }, { mode: 'vendorise', checked: false, disabled: false }]), context.chosen);
+  check('CDN refusé : ce choix, qui n\'est pas le défaut, s\'écrit dans le document (un geste)', JSON.stringify(((await lab.rangement(gfs)).value.publipostage || {}).modes) === '{"edition":"cdn"}', (await lab.rangement(gfs)).value);
+  const warning = context.warning;
+  check('CDN refusé : la fenêtre de GFS dit, sous le choix, que le navigateur refuse l\'adresse et conseille « Copie de GFS »', /Copie de GFS|GFS copy/.test(warning || '') && /CDN/.test(warning || ''), warning);
   const given = await app.evaluate(() => GfsLink.library('edition-live'));
   check('CDN refusé : l\'app reçoit l\'adresse jsDelivr du catalogue, avec l\'empreinte du CDN', given && given.src === CDN && given.integrite === entry.cdn.integrite && given.forme === 'module', given);
   await liveRefused(lab, context, 'CDN refusé', '5-cdn-refuse-par-la-politique');
@@ -244,7 +255,8 @@ async function liveRefused(lab, { app, gfs }, label, shot) {
   await lab.shotPanel(run, '6-copie-choisie-apres-le-refus');
   await lab.page.keyboard.press('Escape');
   await app.waitForFunction(() => /\/vendor\//.test((GfsLink.library('edition-live') || {}).src || ''), null, { timeout: 15000 });
-  check('CDN refusé : le choix de la copie s\'écrit, et l\'app reçoit l\'adresse de la copie', JSON.stringify(((await lab.rangement(gfs)).value || {}).publipostage.modes) === JSON.stringify({ edition: 'vendorise' }) && (await app.evaluate(() => GfsLink.library('edition-live').src)) === COPY, (await lab.rangement(gfs)).value);
+  check('CDN refusé : le retour à la copie, qui est le défaut, n\'écrit plus de mode, et l\'app reçoit l\'adresse de la copie', ((await lab.rangement(gfs)).value || {}).publipostage.modes === undefined && (await app.evaluate(() => GfsLink.library('edition-live').src)) === COPY, (await lab.rangement(gfs)).value);
+  check('CDN refusé : la phrase a disparu avec le choix du CDN', (await gfs.evaluate(() => document.querySelector('.mr-mode-warn'))) === null);
   observed.requests.length = 0;
   observed.console.length = 0;
   check('CDN refusé : la ligne grisée dit qu\'un clic réessaie', await app.evaluate(() => /(réessayer|try again)/i.test(document.querySelector('#v2-btn-live').title)), await app.evaluate(() => document.querySelector('#v2-btn-live').title));
@@ -258,9 +270,9 @@ async function liveRefused(lab, { app, gfs }, label, shot) {
 // ----- Partie 4 : la politique de l'app nomme l'adresse exacte du catalogue (consigne 016) : le direct démarre par le CDN.
 {
   const observed = { requests: [], console: [] };
-  const lab = await startLab({ lang, colorScheme: scheme, patches: [cspNamingTheAddress] });
+  const lab = await startLab({ lang, colorScheme: scheme, patches: [cspNamingTheAddress, manifestAccepting] });
   const context = await prepare(lab, observed);
-  check('CDN : « Depuis un CDN » est cochée par défaut', context.chosen[0].mode === 'cdn' && context.chosen[0].checked, context.chosen);
+  check('CDN : « Depuis un CDN » redevient le défaut, cochée', context.chosen[0].mode === 'cdn' && context.chosen[0].checked, context.chosen);
   await liveWorks(lab, context, observed, CDN, entry.cdn.integrite, 'CDN');
   await lab.browser.close();
 }
@@ -268,7 +280,7 @@ async function liveRefused(lab, { app, gfs }, label, shot) {
 // ----- Partie 5 : la même politique, mais une empreinte fausse pour le CDN dans le catalogue (cet essai seulement) : le navigateur refuse le fichier du CDN.
 {
   const observed = { requests: [], console: [] };
-  const lab = await startLab({ lang, colorScheme: scheme, patches: [cspNamingTheAddress, catalogueWith(cdnBlock, WRONG)] });
+  const lab = await startLab({ lang, colorScheme: scheme, patches: [cspNamingTheAddress, manifestAccepting, catalogueWith(cdnBlock, WRONG)] });
   const context = await prepare(lab, observed);
   const given = await context.app.evaluate(() => GfsLink.library('edition-live'));
   check('CDN faux : l\'app reçoit l\'adresse jsDelivr et l\'empreinte fausse de cet essai', given && given.src === CDN && given.integrite === WRONG, given);

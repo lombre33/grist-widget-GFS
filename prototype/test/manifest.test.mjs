@@ -137,6 +137,18 @@ test('contrats 2.6 et 2.8 : la bibliothèque d\'une extension est un id et une v
   assert.equal(validateManifest(ok).ok, true);
 });
 
+test('contrats 2.6 point 15 : cdnAccepte dit que la politique de l\'app ne nomme pas encore l\'adresse du CDN (vrai ou faux, facultatif)', () => {
+  const edition = m => m.extensions.find(extension => extension.id === 'edition');
+  assert.equal(edition(publipostage()).cdnAccepte, false, 'Publipostage+ ne nomme pas l\'adresse de jsDelivr tant que la consigne 016 attend la bascule');
+  assert.match(bad(m => { edition(m).cdnAccepte = 'non'; }), /extension edition : cdnAccepte : vrai ou faux attendu/);
+  assert.match(bad(m => { edition(m).cdnAccepte = 0; }), /cdnAccepte/);
+  const named = publipostage();
+  edition(named).cdnAccepte = true;
+  assert.equal(validateManifest(named).ok, true);
+  delete edition(named).cdnAccepte;
+  assert.equal(validateManifest(named).ok, true);
+});
+
 test('contrats 2.8 : règles des permissions', () => {
   assert.match(bad(m => { m.permissions.acces = 'tout'; }), /acces/);
   assert.match(bad(m => { m.permissions.acces = 'read table'; }), /accès full/);

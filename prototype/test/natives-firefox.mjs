@@ -41,6 +41,34 @@ const ALL = value => `.mr--app input[data-native-all][value="${value}"]`;
 const ROW = (group, value) => `.mr--app input[data-native-for="${group}"][value="${value}"]`;
 const SUMMARY = '.mr--app details summary';
 
+// Le choix « Depuis un CDN » ou « Copie de GFS » de l'édition collaborative, et la phrase qui dit que Publipostage+ ne nomme pas encore l'adresse du CDN (contrats 2.6 point 15, carte du 13/11).
+function modeState(want) {
+  const radio = value => document.querySelector(`input[data-mode-for="edition"][value="${value}"]`);
+  const cdn = radio('cdn');
+  if (!cdn || (want && !radio(want).checked)) return null;
+  const fieldset = cdn.closest('fieldset');
+  const warn = fieldset.querySelector('.mr-mode-warn');
+  if (warn) warn.scrollIntoView({ block: 'nearest' });
+  const box = node => { const r = node.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom }; };
+  const rgb = value => (value.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+  const light = ([r, g, b]) => { const f = c => { const s = c / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+  let contrast = null;
+  if (warn) {
+    const back = light(rgb(getComputedStyle(fieldset).backgroundColor));
+    const front = light(rgb(getComputedStyle(warn).color));
+    contrast = (Math.max(back, front) + 0.05) / (Math.min(back, front) + 0.05);
+  }
+  const options = [...fieldset.querySelectorAll('label.rd')];
+  const hint = value => radio(value).closest('label').querySelector('.rd-hint').textContent.trim();
+  return {
+    hints: { cdn: hint('cdn'), vendorise: hint('vendorise') },
+    cdn: cdn.checked, vendorise: radio('vendorise').checked, cdnDisabled: cdn.disabled, vendoriseDisabled: radio('vendorise').disabled,
+    warn: warn ? warn.textContent.trim() : null, warnBox: warn ? box(warn) : null, warnOverflow: warn ? warn.scrollWidth - warn.clientWidth : 0, contrast,
+    fieldset: box(fieldset), optionsBottom: Math.max(...options.map(option => box(option).bottom)), window: box(document.querySelector('.mod-scrim .mod')),
+    bodyOverflow: document.querySelector('.mod-body').scrollWidth - document.querySelector('.mod-body').clientWidth, events: window.__modeEvents,
+  };
+}
+
 export async function nativesProblems(page, language, tag) {
   const found = [];
   const { t } = createI18n(language);
@@ -121,6 +149,33 @@ export async function nativesProblems(page, language, tag) {
   s = await page.run(state);
   if (JSON.stringify(s.events) !== JSON.stringify([['publipostage', 'editeur', 'vendorise']])) note('éditeur', `la souris sur « copie figée » de l'éditeur a envoyé ${JSON.stringify(s.events)}`);
   if (!checked(s, 'native:publipostage/editeur/vendorise') || !s.legend.includes(t('mod.native.mixed'))) note('éditeur', 'la ligne de l\'éditeur ne montre pas la copie figée choisie, ou la légende ne dit pas « mélange »');
+  await close();
+
+  // L'édition collaborative cochée, au défaut : « Copie de GFS » est choisie (Publipostage+ ne nomme pas encore l'adresse du CDN), sans phrase ; « Depuis un CDN » reste libre et, une fois choisi
+  // à la souris, la phrase dit que le navigateur le refuse ; la copie la fait disparaître.
+  await open('direct');
+  let m = await page.until(modeState);
+  const noteMode = text => note('mode de l\'édition collaborative', text);
+  if (!m.vendorise || m.cdn || m.cdnDisabled || m.vendoriseDisabled) noteMode(`au départ « Copie de GFS » devrait être choisie, et les deux choix libres (CDN ${m.cdn}/${m.cdnDisabled}, copie ${m.vendorise}/${m.vendoriseDisabled})`);
+  if (m.warn !== null) noteMode(`tant que le CDN n'est pas choisi, la phrase ne devrait pas être là : « ${m.warn} »`);
+  if (m.hints.vendorise !== t('mod.mode.vendoriseHint') || m.hints.cdn !== t('mod.mode.cdnPlain')) noteMode(`seule la copie devrait dire « Par défaut » (copie : « ${m.hints.vendorise} », CDN : « ${m.hints.cdn} »)`);
+  const modeAt = async value => page.run(centerOf, `input[data-mode-for="edition"][value="${value}"]`);
+  await page.click(...await modeAt('cdn'));
+  m = await page.until(modeState, ['cdn']);
+  if (!m.cdn || m.vendorise) noteMode('à la souris sur « Depuis un CDN », le CDN devrait être choisi');
+  if (JSON.stringify(m.events) !== JSON.stringify([['publipostage', 'edition', 'cdn']])) noteMode(`la souris sur « Depuis un CDN » a envoyé ${JSON.stringify(m.events)}`);
+  if (m.warn !== t('mod.mode.cdnRefused')) noteMode(`la phrase sous le CDN devrait être « ${t('mod.mode.cdnRefused')} » : « ${m.warn} »`);
+  else {
+    if (m.warnOverflow > 1 || m.bodyOverflow > 1) noteMode(`la phrase ou la liste déborde (${m.warnOverflow} px, ${m.bodyOverflow} px)`);
+    if (m.warnBox.left < m.fieldset.left - 1 || m.warnBox.right > m.fieldset.right + 1 || m.warnBox.bottom > m.fieldset.bottom + 1) noteMode('la phrase sort du cadre des deux choix');
+    if (m.warnBox.top < m.optionsBottom - 1) noteMode('la phrase recouvre les deux choix');
+    if (m.warnBox.left < m.window.left || m.warnBox.right > m.window.right) noteMode('la phrase sort de la fenêtre');
+    if (m.contrast < 4.5) noteMode(`la phrase est trop pâle (contraste ${m.contrast.toFixed(2)}, 4,5 attendu)`);
+  }
+  await page.click(...await modeAt('vendorise'));
+  m = await page.until(modeState, ['vendorise']);
+  if (!m.vendorise || m.cdn || m.warn !== null) noteMode(`à la souris sur « Copie de GFS », la copie devrait être choisie et la phrase partir (copie ${m.vendorise}, phrase ${m.warn})`);
+  if (JSON.stringify(m.events) !== JSON.stringify([['publipostage', 'edition', 'cdn'], ['publipostage', 'edition', 'vendorise']])) noteMode(`les deux clics ont envoyé ${JSON.stringify(m.events)}`);
   await close();
 
   s = await open('lecture');

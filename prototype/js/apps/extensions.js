@@ -1,7 +1,7 @@
 // Les extensions d'une app (contrats 2.6) : lesquelles sont actives, ce que leur code exige, lesquelles sont grisées et pourquoi.
 // Du code sans effet de bord : le contrôleur et la fenêtre « Modules » s'en servent, aucun ne recalcule cela de son côté.
 
-import { lookup, resolveLibraries, forContext, DEFAULT_MODE } from './libraries.js';
+import { lookup, resolveLibraries, forContext, DEFAULT_MODE, defaultModeOf } from './libraries.js';
 
 export const extensionsOf = manifest => (manifest && manifest.extensions) || [];
 export const findExtension = (manifest, id) => extensionsOf(manifest).find(ext => ext.id === id) || null;
@@ -28,21 +28,24 @@ export function libraryNeeds(manifest, activeIds) {
   return [...seen.values()];
 }
 
-export const modeOfExtension = (setting, extensionId) => (setting && setting.modes && setting.modes[extensionId]) || DEFAULT_MODE;
+// Le mode d'une extension : celui que la personne a retenu, sinon `fallback` (le défaut de l'extension : `defaultModeOf`, libraries.js).
+export const modeOfExtension = (setting, extensionId, fallback = DEFAULT_MODE) => (setting && setting.modes && setting.modes[extensionId]) || fallback;
 
 // Une extension dont une bibliothèque n'a pas de CDN (GFS sans adresse publique, 2.6 point 11) n'a qu'un mode : la copie de GFS. La fenêtre grise
 // alors le CDN avec la raison ; le choix retenu dans les réglages n'est pas modifié (rien ne s'écrit sans un geste de la personne).
 export const withoutCdn = (extension, catalogue) => requirementsOf(extension).some(({ id, version }) =>
   { const entry = lookup(catalogue, id, version); return Boolean(entry) && !entry.cdn; });
-const effectiveMode = (setting, extension, catalogue) => (catalogue && withoutCdn(extension, catalogue) ? 'vendorise' : modeOfExtension(setting, extension.id));
+const effectiveMode = (setting, extension, catalogue) => (catalogue && withoutCdn(extension, catalogue) ? 'vendorise' :
+  modeOfExtension(setting, extension.id, defaultModeOf(extension)));
 
-// Une ligne par extension pour la fenêtre : { extension, checked, greyed, missing, mode, noCdn, libraries: [{ id, version, poids }] }.
+// Une ligne par extension pour la fenêtre : { extension, checked, greyed, missing, mode, defaultMode, noCdn, cdnRefused, libraries: [{ id, version, poids }] }.
 export function extensionRows(manifest, setting, catalogue) {
   return extensionsOf(manifest).map(extension => {
     const missing = missingLibraries(extension, catalogue);
     const libraries = requirementsOf(extension).map(({ id, version }) => ({ id, version, poids: (lookup(catalogue, id, version) || {}).poids || 0 }));
     return {
-      extension, missing, libraries, greyed: missing.length > 0, mode: effectiveMode(setting, extension, catalogue), noCdn: withoutCdn(extension, catalogue),
+      extension, missing, libraries, greyed: missing.length > 0, mode: effectiveMode(setting, extension, catalogue), defaultMode: defaultModeOf(extension),
+        noCdn: withoutCdn(extension, catalogue), cdnRefused: extension.cdnAccepte === false,
       checked: Boolean(setting && (setting.extensions || []).includes(extension.id)) && !missing.length,
     };
   });

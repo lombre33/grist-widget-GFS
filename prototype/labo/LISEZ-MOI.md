@@ -172,7 +172,6 @@ REPO_DIR="$(realpath ../..)" node run-copie.mjs        # la copie depuis l'explo
 REPO_DIR="$(realpath ../..)" node run-dossiers.mjs     # les dossiers sans fichier : Nouveau dossier, le dossier qui reste quand on le vide, supprimer un dossier vide (décision du 04/11)
 REPO_DIR="$(realpath ../..)" node run-composite.mjs     # un formulaire (Form+) : Supprimer et Dupliquer par l'app ouverte, grisés sinon (décision du 04/11)
 REPO_DIR="$(realpath ../..)" node run-glisser-explorateur.mjs     # glisser-déposer des fichiers et dossiers vers un dossier, en amont et en aval (demande du 04/11)
-REPO_DIR="$(realpath ../..)" PHASE=proprietaire node run-droits.mjs   # les permissions lues par GFS (contrats 11.4 point 7, 11.9 point 8, 5.2 point 8) : voir « Les droits » plus bas
 REPO_DIR="$(realpath ../..)" node run-poids.mjs         # le poids : chaque fichier, chaque dossier, le total, face à SQLite ; un PDF dupliqué ; le tri ; la corbeille ; la case « + pièces jointes » et les versions d'un modèle (demande du 04/11)
 REPO_DIR="$(realpath ../..)" PHASE=seed node run-poids-fenetre.mjs   # la fenêtre « Poids du document » : le premier temps (six en tout, voir « La fenêtre du poids »)
 REPO_DIR="$(realpath ../..)" node run-annuler.mjs                  # Ctrl+Z et Ctrl+Y : corbeille, nom, épingle, dossiers, déplacement, copie (demande du 04/11)
@@ -188,30 +187,16 @@ la mise en page sous Firefox se mesure à part (« L'interface sous Firefox », 
 ### Les droits : trois personnes, un seul serveur
 
 Le serveur d'essai ne connaît qu'une personne à la fois (`GRIST_EMAIL`, `essai@example.com` par défaut) ; les essais de droits se jouent donc en trois temps sur le **même** document, en relançant le serveur entre les temps (la base reste dans
-`/tmp/grist-persist`) :
+`/tmp/grist-persist`). La fenêtre « Permissions » et ses deux bancs (`run-droits.mjs`, `run-poser.mjs`) ont été supprimés le 13/11, choix du porteur ; il reste la sonde brute :
 
 ```bash
 cd prototype/labo && export REPO_DIR="$(realpath ../..)"
-bash vrai-serveur.sh                                                      && PHASE=proprietaire node run-droits.mjs   # crée le document, le partage à editor@ et viewer@, pose des règles et un lien, vérifie
-GRIST_EMAIL=editor@example.com bash vrai-serveur.sh                       && PHASE=editeur      node run-droits.mjs   # le même document, vu par un éditeur
-GRIST_EMAIL=viewer@example.com bash vrai-serveur.sh                       && PHASE=lecteur      node run-droits.mjs   # idem, par un lecteur
-PHASE=proprietaire node run-droits-reel.mjs                               # la sonde brute (labo/droits/) : ce que voit un widget en accès complet, sans GFS (`PARTAGE=1` ajoute un partage)
+bash vrai-serveur.sh && PHASE=proprietaire node run-droits-reel.mjs   # la sonde brute (labo/droits/) : ce que voit un widget en accès complet, sans GFS (`PARTAGE=1` ajoute un partage)
+GRIST_EMAIL=editor@example.com bash vrai-serveur.sh && PHASE=editeur node run-droits-reel.mjs
+GRIST_EMAIL=viewer@example.com bash vrai-serveur.sh && PHASE=lecteur node run-droits-reel.mjs
 ```
 
-`LAB_LANG=en LAB_SCHEME=dark` jouent la passe en anglais, en sombre. La suite joue aussi l'essai sous Firefox : `test/droits-firefox.mjs` (voir plus bas). Résultats : `docs/faits-verifies.md`, section 40.
-
-### Poser des règles : trois temps, un seul document
-
-Même principe que les droits (un seul compte à la fois, le même document, l'état dans `/tmp/poser-gfs-etat.json`), pour les gestes du panneau « Permissions » (étape 7, lot a ; contrats 11.4, 11.5). Le rangement du document a le schéma réel de GFS (`COLUMNS` de `js/files/rangement.js`).
-
-```bash
-cd prototype/labo && export REPO_DIR="$(realpath ../..)"
-bash vrai-serveur.sh                                  && PHASE=proprietaire node run-poser.mjs   # Annuler n'écrit rien ; « Poser Partagé » (six règles) et « Fermer la structure » : Grist recharge, GFS rouvre le panneau
-GRIST_EMAIL=editor@example.com bash vrai-serveur.sh   && PHASE=editeur      node run-poser.mjs   # l'éditeur : son rangement seul, aucun geste de structure, ni copie ; GFS marche pour lui (la sonde d'adresse passe)
-bash vrai-serveur.sh                                  && PHASE=retrait      node run-poser.mjs   # « Rouvrir », « Retirer » : il ne reste que la règle écrite à la main
-```
-
-`LAB_LANG=en LAB_SCHEME=dark` jouent la passe en anglais, en sombre. Les gestes communs aux essais de droits sont dans `lab-droits.mjs`.
+Les gestes communs aux essais de droits et de partage sont dans `lab-droits.mjs`. Résultats : `docs/faits-verifies.md`, sections 40 et 44.
 
 ### « Partager » : le modèle, puis la fenêtre dans GFS (contrats 11.7, point 13)
 
@@ -301,7 +286,7 @@ en clair et en sombre, à 700, 640, 600, 520, 500 et 400 px de large, à 100 % e
 - le voile des fenêtres (`test/voile-firefox.mjs`, 09/11, à 700 px, en clair et en sombre, en français et en anglais) : un clic de la vraie souris sur le voile, à côté de sept fenêtres (conflit, À propos, Permissions, Partager, Gérer les partages, Apps et extensions, Table de travail), ne ferme rien ; Échap les ferme ;
 - les largeurs et les coins des fenêtres (`test/fenetres-firefox.mjs`, 09/11 ; `test/fenetres-css.test.mjs` pour toutes, « Thème » comprise) : 400 px (question), 480 px (formulaire) ou grande (960 px plafonnés au panneau), 8 px de rayon ;
 - la ligne « Gérer les partages… » du menu « Réglages » (`test/interfaces-firefox.test.mjs`, 12/11) : un clic de la vraie souris l'ouvre une fois et ferme le menu ;
-- « Gérer les partages » (`test/partager-firefox.mjs`, 09/11) : la même hauteur et la même place à chacun des cinq onglets, « Partager » cachée dessous (le panneau « Permissions » aussi, `test/droits-firefox.mjs`) et rendue avec le clavier sur « Gérer les partages… », le clavier sur l'onglet choisi, ← → Début Fin entre les onglets ; la corbeille (`test/corbeille-firefox.mjs`) : « Supprimé » sur une ligne, et tout texte coupé de la liste, des vignettes et de la barre a son texte entier au survol ;
+- « Gérer les partages » (`test/partager-firefox.mjs`, 09/11) : la même hauteur et la même place à chacun des cinq onglets, « Partager » cachée dessous et rendue avec le clavier sur « Gérer les partages… », le clavier sur l'onglet choisi, ← → Début Fin entre les onglets ; la corbeille (`test/corbeille-firefox.mjs`) : « Supprimé » sur une ligne, et tout texte coupé de la liste, des vignettes et de la barre a son texte entier au survol ;
 - le lecteur de vidéos que GFS pose par-dessus l'app (`test/lecteur-firefox.mjs`, 10/11 ; faits vérifiés 78 ; à 700 × 400, en clair et en sombre, une page rechargée par mode) : le vrai `Player` sur une page d'essai (`test/pages/lecteur.js`, avec les feuilles de style et la politique de sécurité de `index.html`), YouTube et Vimeo remplacés par une page que Firefox reçoit sans toucher au réseau (`page.stub`) ; l'adresse et les attributs du cadre, les deux sites qui passent et un troisième refusé, l'endroit où le lecteur se pose, son rognage, la vraie souris, le panneau qui change de taille, l'app cachée ou fermée, le focus. **La touche Échap tapée dans le lecteur ne se joue pas ici** (voir plus bas : même limite du focus) ; elle est au labo (`run-lecteur`, point 8, Chromium) ;
 - la page n'écrit aucune erreur de script ni aucun avertissement de GFS (un texte inconnu, par exemple).
 

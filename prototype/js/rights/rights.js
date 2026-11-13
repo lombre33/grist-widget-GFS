@@ -1,15 +1,13 @@
-// Les droits tels que Grist les range, lus pour le panneau « Permissions » et le pied de GFS (contrats 11.4 point 7 ; 11.9 point 8). Du code sans effet de
-// bord : il reçoit les lignes des tables internes de Grist et en tire des mots. Il ne pose rien (étape 7) et ne parle jamais des tables de données : elles
-// relèvent de Grist seul (11.1, point 2).
+// Les droits tels que Grist les range (contrats 11.4). Du code sans effet de bord : il reçoit les lignes des tables internes de Grist et en tire des niveaux.
+// Il ne pose rien et ne parle jamais des tables de données : elles relèvent de Grist seul (11.1, point 2). Le mot du pied et le panneau « Permissions » qui
+// s'en servaient ont disparu (12 et 13/11) ; les niveaux restent ceux que lisent les essais du partage.
 //
 // Les règles d'accès sont dans `_grist_ACLResources` (la table ou la colonne visée) et `_grist_ACLRules` (la condition, les droits, la note). GFS note chaque
 // règle qu'il pose « GFS : <niveau> » : c'est ce qui permet de relire, plus tard, quel niveau une table porte, et de ne jamais prendre pour sienne une règle
 // que la personne a écrite à la main.
 
-import { exposureOf, rowsOf } from '../broker/publication.js';
+import { rowsOf } from '../broker/publication.js';
 
-// Du plus ouvert au plus fermé : le mot d'un ensemble de tables est celui de la moins fermée.
-export const LEVELS = Object.freeze(['ouvert', 'autre', 'partage', 'encadre']);
 const GFS_NOTE = /^\s*GFS\s*:\s*(.+?)\s*$/i;
 const plain = text => String(text ?? '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -64,58 +62,6 @@ export function tableLevels(rules, tableIds) {
     if (noted.length) return [tableId, noted.includes('encadre') ? 'encadre' : 'partage'];
     return [tableId, mine.length ? 'autre' : 'ouvert'];
   }));
-}
-
-// Le mot du pied (11.4, point 7) : `pas` (Pas protégé), `partie` (Protégé en partie), `protege` (Protégé : Encadré partout ET structure fermée), `autre` (des
-// règles que GFS n'a pas posées), ou null quand il n'y a aucune table de GFS ni d'app à juger. Il ne se calcule que sur les règles qu'un propriétaire a lues
-// (js/rights/rights-control.js) : mesuré le 04/11 sur Grist 1.7.19, dès qu'une règle refuse la lecture d'une table à une personne, `_grist_ACLRules` et
-// `_grist_ACLResources` lui arrivent vides (et la table disparaît de ses tables) ; une lecture vide ne dit donc rien.
-export function wordOf(levels, closed) {
-  if (!levels.size) return null;
-  const lowest = Math.min(...[...levels.values()].map(level => LEVELS.indexOf(level)));
-  const level = LEVELS[lowest];
-  if (level === 'ouvert') return 'pas';
-  if (level === 'autre') return 'autre';
-  if (level === 'partage') return 'partie';
-  return closed ? 'protege' : 'partie';
-}
-
-// Les tables dont le pied parle : celles de GFS (`GFS_…`) et celles des apps (leur préfixe, sans casse ni accent), jamais celles de la personne.
-export function ownedTables(tableIds, prefixes) {
-  const starts = ['gfs_', ...prefixes.filter(Boolean).map(plain)];
-  return tableIds.filter(tableId => !/^_grist_/i.test(tableId) && starts.some(prefix => plain(tableId).replace(/[^a-z0-9_]/g, '_').startsWith(prefix)));
-}
-
-// Les mots du pied et du panneau pour un état des règles (`RightsReader.rules()`) : la clé du texte du mot, et celle de sa phrase.
-export const chipKey = rules => (rules && rules.readable && rules.word ? `rights.chip.${rules.word}` : 'rights.chip.none');
-export function leadKey(rules) {
-  if (!rules || !rules.readable) return rules && rules.reason === 'owner-only' ? 'rights.lead.ownerOnly' :
-    (rules && rules.reason === 'unknown' ? 'rights.lead.unknown' : 'rights.lead.unreadable');
-  return rules.word ? `rights.lead.${rules.word}` : 'rights.lead.none';
-}
-
-const parse = text => {
-  try { const value = JSON.parse(text || '{}'); return value && typeof value === 'object' ? value : {}; } catch { return {}; }
-};
-
-// Tous les partages du document (11.9, point 8), publiés par GFS ou par l'interface de Grist. `meta` : les lignes de `_grist_Shares` (shares), `_grist_Pages`
-// (pages), `_grist_Views` (views), `_grist_Views_section`, `_grist_Views_section_field`, `_grist_Tables` et `_grist_Tables_column`. Pour chacun : ses pages, ce
-// que ses formulaires publiés laissent écrire (colonnes montrées ou non) et lire, et celles de ces tables qui sont protégées (`isProtected`). La clé du lien
-// (`linkId`) n'est jamais lue ici : elle ne sort pas de ce code.
-export function linksOf(meta, isProtected) {
-  const viewName = new Map(meta.views.map(view => [view.id, view.name]));
-  return meta.shares.map(share => {
-    const pages = meta.pages.filter(page => page.shareRef === share.id);
-    const views = new Set(pages.map(page => page.viewRef));
-    const sections = meta.sections.filter(section => views.has(section.parentId));
-    const { writes, reads } = exposureOf({ tables: meta.tables, columns: meta.columns, fields: meta.fields, sections });
-    const filled = [...writes.values()].map(entry => ({ tableId: entry.tableId, shown: entry.columns.filter(colId => entry.shown.has(colId)),
-      unshown: entry.columns.filter(colId => !entry.shown.has(colId)) }));
-    const readable = [...reads.values()].map(({ tableId, colId }) => ({ tableId, colId }));
-    const open = [...new Set([...filled.map(entry => entry.tableId), ...readable.map(entry => entry.tableId)])].filter(isProtected);
-    return { id: share.id, published: Boolean(parse(share.options).publish), pages: pages.map(page => viewName.get(page.viewRef) || ''), filled, readable,
-      protectedOpen: open };
-  });
 }
 
 export { rowsOf };

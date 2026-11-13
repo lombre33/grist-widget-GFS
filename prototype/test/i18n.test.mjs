@@ -41,7 +41,7 @@ test('le français parle de « modèle », jamais de « template »', () => {
 // L'anglais ne change pas. Un texte à la 3e personne qui décrit un geste (« Retire les règles… ») n'est pas un impératif :
 // il est listé ici, avec sa raison, pour que tout autre tutoiement soit refusé.
 const TROISIEME_PERSONNE = new Set([
-  'weight.pjTip', 'rights.link.protected', 'rights.act.remove.hint', 'rights.act.sharing.hint', 'rights.act.unsharing.hint',
+  'weight.pjTip', 'rights.act.remove.hint', 'rights.act.sharing.hint', 'rights.act.unsharing.hint',
   'theme.acces.tip', 'gfs.needsFullAccessHint', 'mod.needsApp', 'ex.lockedApp', 'ex.lockedExtension',
   'copy.done', 'copy.doneIn', 'so.level.live', 'so.level.stop.hint', 'mod.mode.vendorise',
   'mod.native.copy', 'mod.native.missing', 'so.tab.none.folder', // le nom « copie » (« Copie figée », « Copie indisponible : … », le niveau « Copie à jour »), pas l'impératif de « copier »

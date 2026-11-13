@@ -26,7 +26,6 @@ import { copierProblems } from './copier-firefox.mjs';
 import { fermerProblems } from './fermer-firefox.mjs';
 import { ouvertsProblems } from './ouverts-firefox.mjs';
 import { barrePages, barreProblems } from './barre-ouverts-firefox.mjs';
-import { droitsProblems } from './droits-firefox.mjs';
 import { partagerProblems } from './partager-firefox.mjs';
 import { partagerAutreProblems } from './partager-autre-firefox.mjs';
 import { partagerRecevoirProblems } from './partager-recevoir-firefox.mjs';
@@ -611,7 +610,6 @@ describe('l\'interface sous Firefox', () => {
         problems.push(...await copierProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await fermerProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await ouvertsProblems(page, language, caption(language, 700, 1, mode)));
-        problems.push(...await droitsProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await partagerProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await partagerAutreProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await partagerRecevoirProblems(page, language, caption(language, 700, 1, mode)));

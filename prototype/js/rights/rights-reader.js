@@ -1,23 +1,17 @@
-// Le lecteur des droits (étape 6, contrats 11.4 point 7 ; 5.2 point 8 ; 11.9 point 8) : lit dans le document, sans rien écrire, les règles d'accès, les
-// partages publics et la preuve que la personne est propriétaire. Il ne garde que ce qu'il rend : la clé d'un lien public (`linkId`) est jetée dès la lecture.
-// Mesuré dans un vrai Grist 1.7.19 (labo/run-droits-reel.mjs, run-droits.mjs, 04/11) : les tables des règles ne disent PAS qui est propriétaire (un éditeur et
-// un lecteur dont le widget a l'accès complet les lisent comme lui tant qu'aucune règle ne leur refuse la lecture d'une table, puis elles leur arrivent
-// vides) ; seul `GET /webhooks` les distingue (Transfer.isOwner). Ce lecteur lit ; c'est js/rights/rights-control.js qui ne rend les règles qu'à un
-// propriétaire prouvé.
+// Le lecteur des droits (étape 6, contrats 5.2 point 8 ; 11.4) : lit dans le document, sans rien écrire, les règles d'accès (pour les plans de pose) et la
+// preuve que la personne est propriétaire. Mesuré dans un vrai Grist 1.7.19 (labo/run-droits-reel.mjs, 04/11) : les tables des règles ne disent PAS qui est
+// propriétaire (un éditeur et un lecteur dont le widget a l'accès complet les lisent comme lui tant qu'aucune règle ne leur refuse la lecture d'une table, puis
+// elles leur arrivent vides) ; seul `GET /webhooks` les distingue (Transfer.isOwner). Les lignes ne se rendent donc (`raw`) qu'à un propriétaire prouvé. La
+// lecture des règles pour un mot du pied, et celle des liens publics, ont disparu avec la fenêtre « Permissions » (13/11).
 
 import { FILES_TABLE } from '../files/gfs-files.js';
 import { TARGETS } from '../sharing/sharing-model.js';
-import { rowsOf, userRules, structureClosed, tableLevels, wordOf, ownedTables, linksOf } from './rights.js';
+import { rowsOf } from './rights.js';
 
 const RETRY_MS = 30 * 1000;
 
-// Les colonnes que ce lecteur garde de chaque table interne : le reste (la clé d'un lien, la formule d'une règle d'une autre table…) n'est pas recopié.
+// Les colonnes que ce lecteur garde de chaque table interne : le reste n'est pas recopié.
 const KEEP = {
-  _grist_Shares: ['id', 'options'],
-  _grist_Pages: ['id', 'viewRef', 'shareRef'],
-  _grist_Views: ['id', 'name'],
-  _grist_Views_section: ['id', 'parentId', 'tableRef', 'shareOptions'],
-  _grist_Views_section_field: ['id', 'parentId', 'colRef', 'widgetOptions'],
   _grist_Tables: ['id', 'tableId'],
   _grist_Tables_column: ['id', 'parentId', 'colId', 'type', 'isFormula', 'formula', 'visibleCol'],
 };
@@ -27,7 +21,7 @@ export class RightsReader {
   #opts;
   #owner = null;
 
-  // opts : { port (port.doc.fetchTable), transfer (isOwner()), prefixes() → les préfixes de table des apps, now() }
+  // opts : { port (port.doc.fetchTable), transfer (isOwner()), targets() → les tables de fichiers, now() }
   constructor(opts) { this.#opts = opts; }
 
   async #rows(name) {
@@ -45,24 +39,6 @@ export class RightsReader {
     const entry = this.#owner;
     void promise.then(value => { entry.value = value; });
     return promise;
-  }
-
-  // Ce que le pied et le panneau disent des règles : { readable, tables: [{ tableId, level }], closed, hasRules, word, count }. `readable: false` quand Grist
-  // ne rend pas les tables internes (accès trop bas).
-  async rules() {
-    try {
-      const [resources, rules, tables] = await Promise.all([this.#rows('_grist_ACLResources'), this.#rows('_grist_ACLRules'), this.#rows('_grist_Tables')]);
-      const found = userRules(resources, rules);
-      // Les tables que les règles nomment comptent aussi : une table que les règles retirent à la personne n'est plus dans ses tables internes (mesuré dans un
-      // vrai Grist, 04/11), mais ses règles, elles, sont lues.
-      const owned = ownedTables([...new Set([...tables, ...resources].map(row => row.tableId).filter(Boolean))], this.#opts.prefixes());
-      const levels = tableLevels(found, owned);
-      const closed = structureClosed(found);
-      return { readable: true, tables: [...levels].map(([tableId, level]) => ({ tableId, level })), closed, hasRules: found.length > 0, count: found.length,
-        word: wordOf(levels, closed) };
-    } catch (error) {
-      return { readable: false, tables: [], closed: false, hasRules: false, count: 0, word: null };
-    }
   }
 
   // Les lignes dont les plans de pose ont besoin (js/rights/rights-plan.js) : les règles et leurs ressources en entier, les tables et leurs colonnes. Seulement
@@ -85,29 +61,6 @@ export class RightsReader {
     } catch (error) {
       return null;
     }
-  }
-
-  // Tous les partages du document, publiés par GFS ou par l'interface de Grist, avec le nombre de lignes de chaque table qu'un lien remplit. Seul un
-  // propriétaire les voit (contrats 11.9, point 8) : `status` vaut 'ok', 'owner-only' (la personne n'est pas propriétaire), 'unknown' (GFS ne l'a pas prouvé)
-  // ou 'unreadable'.
-  async links() {
-    const owner = await this.owner();
-    if (owner !== true) return { status: owner === false ? 'owner-only' : 'unknown', links: [] };
-    try {
-      const names = ['_grist_Shares', '_grist_Pages', '_grist_Views', '_grist_Views_section', '_grist_Views_section_field', '_grist_Tables',
-        '_grist_Tables_column'];
-      const [shares, pages, views, sections, fields, tables, columns] = await Promise.all(names.map(name => this.#rows(name)));
-      const owned = new Set(ownedTables(tables.map(table => table.tableId), this.#opts.prefixes()));
-      const links = linksOf({ shares, pages, views, sections, fields, tables, columns }, tableId => owned.has(tableId));
-      for (const link of links) for (const entry of link.filled) entry.rows = await this.#count(entry.tableId);
-      return { status: 'ok', links };
-    } catch (error) {
-      return { status: 'unreadable', links: [] };
-    }
-  }
-
-  async #count(tableId) {
-    try { return ((await this.#opts.port.doc.fetchTable(tableId)).id || []).length; } catch (error) { return null; }
   }
 
   // Ce que `contexte.role` dit (contrats 5.2, point 8). `responsableDe` reste vide tant que les espaces n'existent pas (étape 7, 11.3). Au plus `waitMs`

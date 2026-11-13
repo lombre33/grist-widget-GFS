@@ -3029,9 +3029,11 @@ soit la dernière de sa ressource. Les droits s'écrivent comme Grist les range 
    protègent) ; « Permissions » tant qu'il n'a rien lu ou qu'il n'a rien à juger. Le niveau d'une table se lit à la note de ses règles (« GFS : Encadré »), jamais à leur contenu. **Seulement quand
    un propriétaire a lu les règles** (la preuve est celle de `contexte.role`, 5.2, point 8) : mesuré, dès qu'une règle refuse la lecture d'une table à une personne, les tables de règles
    lui arrivent **vides**, et vides elles ne disent pas « aucune règle » ; à toute autre personne le pied dit « Permissions », et le panneau en donne la raison.
-   **Retiré le 12/11 (choix du porteur, carte « Pas protégé » : « Retirer »)** : le pied de l'explorateur ne porte plus ni la pastille ni son mot. Le panneau « Permissions » (liens publics, « Partagé » du rangement, structure) n'a plus de
-   porte dans l'interface ; son code et ses essais restent (il n'est joignable que par la reprise d'après un rechargement), et « Gérer les partages… » comme l'activation du partage restent joignables par « Partager… » ; **« Gérer les partages… » a aussi sa ligne dans le menu « Réglages »** (12/11, choix du porteur : une porte directe, sans passer par un fichier ; `js/shell/settings-menu.js`, paramètre `manage` ; grisée avec sa raison, au clic, quand `RightsControl.manage.whyNot()` refuse). GFS ne lit plus les règles
-   à chaque ouverture de l'explorateur : seule l'ouverture du panneau les lit. Qui veut les liens publics ou la structure les trouve dans Grist.
+   **Retiré le 12/11, supprimé le 13/11 (choix du porteur, cartes « Pas protégé » : « Retirer », puis « Permissions, sans porte » : « si elle ne sert plus à rien et est redondante on supprime »)** : le pied de
+   l'explorateur ne porte plus ni la pastille ni son mot, et la fenêtre « Permissions » (liste des liens publics du document, « Partagé » du rangement, structure) n'existe plus ; le lecteur n'en lit plus ni les règles
+   pour un mot, ni les liens publics. Restent, parce que « Gérer les partages… » et « Partager… » s'en servent : les plans de pose (`rights-plan.js`), `runAction` et l'écrivain, dont la fermeture et la réouverture de la
+   structure et l'activation du partage ; les gestes « Partagé » et « Retirer les règles de GFS » n'ont plus de porte (code à retirer quand le partage n'y touche plus). Qui veut les liens publics ou le « Partagé » du rangement
+   les trouve dans Grist.
 
 ### 11.5 Poser et retirer
 
@@ -3064,7 +3066,7 @@ soit la dernière de sa ressource. Les droits s'écrivent comme Grist les range 
    fermer la structure de lui-même (11.7, point 1) ; laisser publier un formulaire qui remplit une table protégée (11.9, point 4).
 8. [D] Une nouvelle table de classe (une app installée plus tard) demande de poser ses règles : c'est une action sur les tables
    de règles, donc la même liasse, le même avertissement, le même rechargement.
-9. [T] **Codé le 06/11 (étape 7, lot a)** : dans le panneau « Permissions » (`js/rights/rights-plan.js`, `rights-writer.js`, `rights-actions.js`), un propriétaire prouvé pose ou retire **Partagé sur le rangement** (les six règles de
+9. [T] **Codé le 06/11 (étape 7, lot a)** : dans le panneau « Permissions » (supprimé le 13/11 : seules la structure et l'activation du partage ont gardé une porte, par « Gérer les partages… » ; `js/rights/rights-plan.js`, `rights-writer.js`, `rights-actions.js`), un propriétaire prouvé pose ou retire **Partagé sur le rangement** (les six règles de
    11.4, point 2, en une liasse, note « GFS : Partagé · … ») et **ferme ou rouvre la structure** (11.7, point 1). Chaque geste passe par une fenêtre du widget qui dit son prix (la première règle du document, le rechargement,
    ce que coûte la structure fermée), avec « Annuler » au clavier ; GFS relit les règles juste avant d'écrire (un plan périmé n'écrit rien), retient `gfs.reprise` dans le navigateur et rouvre le panneau après le rechargement.
    Un geste impossible reste à l'écran, grisé, avec sa raison (rangement absent ou sans la colonne `Adresse`, règles écrites à la main sur le rangement, structure déjà fermée à la main). Pas encore codé : Encadré, les

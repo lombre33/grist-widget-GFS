@@ -42,7 +42,6 @@ import { readCatalogue } from '/js/apps/libraries.js';
 import { withNativeMode } from '/js/apps/settings.js';
 import { ThemeWindow } from '/js/theme/theme-window.js';
 import { Trash } from '/js/files/trash.js';
-import { openRights } from '/js/rights/rights-window.js';
 import { openShare } from '/js/sharing/share-window.js';
 import { openManage } from '/js/sharing/manage-window.js';
 import { whyNot } from '/js/sharing/share-other.js';
@@ -310,7 +309,7 @@ async function mount() {
     window.__opened = null;
     for (const key of openedFiles.keys()) openedFiles.remove(key);
     window.__appOpen = true;
-    window.__canClose = true;
+    window.__canClose = true; // `false` : aucune app n'est ouverte, « Fermer » se cache (test/pieces-jointes-firefox.mjs)
     setting.reset(); // l'ambiance d'origine, comme au départ ; « Revenir à Grist Factory » laisse l'accessibilité renforcée (un besoin, pas un goût) : on l'éteint aussi
     setting.chooseAccess(false);
     window.__resetSettings();
@@ -359,26 +358,6 @@ async function mount() {
     window.__leave = null;
     ask({ ...leaveQuestion({ t: i18n.t, app: 'Publipostage+', fault: reason === null ? null : new Error(reason) }), container: stage, inertTargets: () => [explorer.root] })
       .then(answer => { window.__leave = answer ? 'force' : 'stay'; });
-  };
-  // Le panneau « Permissions » (js/rights/rights-window.js, test/droits-firefox.mjs) : la vraie fenêtre sur un état que le lecteur aurait rendu ; `kind` : 'pas' (rien posé, un lien public qui ouvre une table protégée),
-  // 'protege' (Encadré partout, structure fermée, deux liens), 'autre' (des règles à la main), 'proprietaire-seul' (une personne qui n'est pas propriétaire). Le panneau n'a plus de porte dans l'explorateur (la pastille du pied est retirée, 12/11) : l'essai l'ouvre par `window.__rights(kind)`. `window.__canClose = false` : aucune app n'est ouverte, « Fermer » se cache.
-  const LONG = 'Publipostage_Modeles_Attestations_De_Formation_Fin_De_Session';
-  const FRESH = { shared: { ok: true, firstRule: true }, 'remove-level': { ok: false, reason: 'none' }, close: { ok: true, firstRule: true }, open: { ok: false, reason: 'none' }, sharing: { ok: true, firstRule: true }, unsharing: { ok: false, reason: 'none' } };
-  const DONE = { shared: { ok: false, reason: 'already' }, 'remove-level': { ok: true }, close: { ok: false, reason: 'already' }, open: { ok: true }, sharing: { ok: true, firstRule: true }, unsharing: { ok: false, reason: 'none' } };
-  const BYHAND = { shared: { ok: false, reason: 'foreign' }, 'remove-level': { ok: false, reason: 'none' }, close: { ok: false, reason: 'already' }, open: { ok: false, reason: 'none' }, sharing: { ok: false, reason: 'foreign' }, unsharing: { ok: false, reason: 'none' } };
-  const states = {
-    pas: { rules: { readable: true, word: 'pas', closed: false, tables: [{ tableId: 'GFS_Rangement', level: 'ouvert' }, { tableId: LONG, level: 'ouvert' }] }, owner: true, plans: FRESH,
-      links: { status: 'ok', links: [{ id: 1, published: true, pages: ['Inscription à la session de formation de septembre'], filled: [{ tableId: 'FormPlus_Pub_3', shown: ['Nom'], unshown: ['Statut', 'Note interne', 'Montant', 'Reçu le'], rows: 1204 }], readable: [{ tableId: 'Villes', colId: 'Nom' }], protectedOpen: ['FormPlus_Pub_3'] }] } },
-    protege: { rules: { readable: true, word: 'protege', closed: true, tables: [{ tableId: 'GFS_Rangement', level: 'encadre' }, { tableId: LONG, level: 'encadre' }] }, owner: true, plans: DONE,
-      links: { status: 'ok', links: [{ id: 1, published: true, pages: ['Inscription'], filled: [{ tableId: 'Inscrits', shown: ['Nom', 'Ville'], unshown: [], rows: 12 }], readable: [], protectedOpen: [] }, { id: 2, published: false, pages: [], filled: [], readable: [], protectedOpen: [] }] } },
-    autre: { rules: { readable: true, word: 'autre', closed: false, tables: [{ tableId: 'GFS_Rangement', level: 'autre' }] }, owner: true, plans: BYHAND, links: { status: 'ok', links: [] } },
-    'proprietaire-seul': { rules: { readable: false, reason: 'owner-only', tables: [], closed: false, word: null }, owner: false, links: { status: 'owner-only', links: [] } },
-  };
-  window.__rights = kind => {
-    const state = states[kind];
-    window.__rightsActs = [];
-    return openRights({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], load: async () => state,
-      act: async act => { window.__rightsActs.push(act); await ask({ title: act, message: act, confirmLabel: 'OK', cancelLabel: 'Annuler', safeFirst: true, container: stage, inertTargets: () => [explorer.root] }); } });
   };
   // La fenêtre « Partager » (js/sharing/share-window.js, test/partager-firefox.mjs) : la vraie fenêtre sur un état que le contrôleur aurait lu ; `kind` : 'inactif' (le partage n'est pas activé, une personne propriétaire),
   // 'actif' (propriétaire : des lignes de personnes à l'adresse très longue, de catégories, une fin d'accès, un accès échu), 'lecture' (une personne qui ne peut rien changer). `window.__shareActs` note ce que la
@@ -498,6 +477,7 @@ async function mount() {
   // La fenêtre « Poids du document » (js/weight/weight-window.js, test/poids-fenetre-firefox.mjs) : la vraie fenêtre et le vrai lecteur (js/weight/weight-reader.js) sur une doublure de `Transfer.sql`. `window.__weightKind` choisit ce
   // que le serveur répond : 'ok' (un document de dix-huit tables dont une au nom très long et une trop longue à lire), 'refuse' (pas le droit de tout copier : 403), 'muet' (le serveur ne répond pas).
   // `window.__weightEstimate` garde ce que le total a donné à l'ouverture.
+  const LONG = 'Publipostage_Modeles_Attestations_De_Formation_Fin_De_Session';
   const TABLE_BYTES = { [LONG]: 9437184, Clients: 2621440, Inscrits: 524288, Factures: 1310720, Stock: 40960, Notes: 4096 };
   const BIG = Array.from({ length: 12 }, (unused, i) => `Table_${String(i + 1).padStart(2, '0')}`);
   const fakeSql = kind => async statement => {

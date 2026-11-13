@@ -1472,6 +1472,8 @@ Lot 2 du poids (section 32 pour le lot 1) : le total du pied de fenêtre peut pr
 
 ## 40. Les droits lus par GFS : qui est propriétaire, et qui lit les règles (mesuré le 04/11)
 
+*(13/11 : la fenêtre « Permissions » et ses bancs `run-droits.mjs` et `run-poser.mjs` ont été supprimés ; les mesures de Grist ci-dessous restent vraies.)*
+
 Étape 6 du plan (contrats 5.2 point 8, 11.4 point 7, 11.9 point 8). Joué dans un **vrai serveur Grist 1.7.19** (Docker, `labo/vrai-serveur.sh`) avec trois comptes : le serveur d'essai ne connaît qu'une personne à la fois
 (`GRIST_DEFAULT_EMAIL`), on le relance entre les temps (propriétaire `essai@`, éditeur `editor@`, lecteur `viewer@`, tous trois dans le même document). Sonde brute : `labo/droits/` (`labo/run-droits-reel.mjs`) ; GFS entier :
 `labo/run-droits.mjs` (`PHASE=proprietaire`, `editeur`, `lecteur`), panneau à 700 × 400, souris et clavier réels.
@@ -1546,6 +1548,8 @@ Lot 4 du poids (sections 32, 39 et 41 pour les lots 1 à 3) : un clic sur le tot
 - **Pas mesuré** : l'instance de la DINUM ; un document de plusieurs Go (la lecture d'une table de plus d'une seconde dit « trop longue » ligne par ligne, essai Node seulement) ; Firefox avec un vrai Grist (le labo n'a que Chromium : Firefox joue la fenêtre sans Grist) ; Form+ (rien de plus à compter dans le poids d'un formulaire, carte de décision posée au porteur).
 
 ## 44. Poser et retirer des règles depuis le panneau « Permissions » : ce que le vrai Grist a mesuré (06/11)
+
+*(13/11 : la fenêtre « Permissions » et ses bancs `run-droits.mjs` et `run-poser.mjs` ont été supprimés ; les mesures de Grist ci-dessous restent vraies.)*
 
 Étape 7, lot a (contrats 11.4 points 2 et 5, 11.5 point 9). Joué dans un **vrai serveur Grist 1.7.19** (Docker, `labo/vrai-serveur.sh`), trois comptes (propriétaire, éditeur), à 700 × 400, à la vraie souris : `labo/run-poser.mjs` (`PHASE=proprietaire`, `editeur`, `retrait`) ; le panneau sous Firefox 159 dans `test/droits-firefox.mjs`.
 

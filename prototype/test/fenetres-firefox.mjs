@@ -6,7 +6,6 @@ const WIDTHS = { question: 400, form: 480, large: 960 };
 const WINDOWS = [
   { name: '« Ce nom est déjà pris »', kind: 'question', open: () => { window.__askConflict({ app: 'Publipostage+', repeat: true }); } },
   { name: '« À propos »', kind: 'question', open: () => { window.__about(); } },
-  { name: '« Permissions »', kind: 'large', open: () => { window.__rights('autre'); } },
   { name: '« Partager »', kind: 'large', open: () => { window.__share('actif'); } },
   { name: '« Gérer les partages »', kind: 'large', open: () => { window.__manage(); } },
   { name: '« Envoyer à un autre document »', kind: 'form', open: () => { window.__sendOther('ok'); } },

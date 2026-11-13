@@ -1,4 +1,4 @@
-// Les textes de « Partager » (contrats 11.7, point 13 ; maquettes du 06/11) et ceux de son activation dans le panneau « Permissions », en français et en
+// Les textes de « Partager » (contrats 11.7, point 13 ; maquettes du 06/11) et ceux de son activation, en français et en
 // anglais dans le même lot. Ils rejoignent ceux de GFS dans js/i18n/i18n.js ; le fichier est à part pour que i18n.js reste sous les 600 lignes de code de
 // l'outil d'audit. « Modèle », jamais « template ».
 
@@ -97,7 +97,7 @@ export const SHARE_STRINGS = Object.freeze({
     'share.extend.other': 'Les fichiers de cette app ne sont pas encore prêts pour le partage, et seul un propriétaire peut les préparer. Demandez-le à un propriétaire du document.',
     'share.failed': 'Le partage n’a pas été enregistré : {message}',
     'share.close': 'Compris',
-    // L'activation du partage dans le panneau « Permissions ».
+    // L'activation du partage.
     'rights.act.sharing': 'Activer le partage des fichiers',
     'rights.act.sharing.hint': 'Crée la table des partages et les règles qui font lire chaque fichier à ceux à qui il est partagé.',
     'rights.act.unsharing': 'Retirer les règles du partage',
@@ -106,7 +106,7 @@ export const SHARE_STRINGS = Object.freeze({
     'rights.act.why.sharing.already': 'Le partage est déjà activé, par des règles que GFS n’a pas posées.',
     'rights.act.why.sharing.none': 'Rien à retirer : GFS n’a posé aucune règle de partage.',
     'rights.ask.sharing.title': 'Activer le partage dans ce document ?',
-    'rights.ask.sharing.message': 'GFS crée la table des partages (et celles des fichiers qu’il garde et du rangement, si elles manquent), ajoute cinq colonnes d’aide aux fichiers et écrit des règles d’accès dans Grist. Vous les retrouvez dans « Règles d’accès » et vous les retirez depuis le panneau « Permissions ».',
+    'rights.ask.sharing.message': 'GFS crée la table des partages (et celles des fichiers qu’il garde et du rangement, si elles manquent), ajoute cinq colonnes d’aide aux fichiers et écrit des règles d’accès dans Grist. Vous les retrouvez dans « Règles d’accès » de Grist : leurs noms commencent par « GFS : ».',
     'rights.ask.sharing.item1': 'Les fichiers déjà là (PDF et fichiers des apps) restent lisibles de toute personne qui a accès au document, comme avant ; les nouveaux ne sont lus que de leur auteur, jusqu’à ce qu’il les partage.',
     'rights.ask.sharing.apps': 'Les tables de fichiers des apps reçoivent des colonnes d’aide dont le nom commence par « GFS_ » ({tables}) : les apps les ignorent, et les lignes de réglages de l’app restent ouvertes.',
     'rights.ask.sharing.item2': 'Rien ne change pour les tables de données.',
@@ -213,7 +213,7 @@ export const SHARE_STRINGS = Object.freeze({
     'share.extend.other': 'This app’s files are not ready for sharing yet, and only an owner can prepare them. Ask an owner of the document.',
     'share.failed': 'The share was not saved: {message}',
     'share.close': 'Got it',
-    // L'activation du partage dans le panneau « Permissions ».
+    // L'activation du partage.
     'rights.act.sharing': 'Turn on file sharing',
     'rights.act.sharing.hint': 'Creates the shares table and the rules that let each file be read by those it is shared with.',
     'rights.act.unsharing': 'Remove the sharing rules',
@@ -222,7 +222,7 @@ export const SHARE_STRINGS = Object.freeze({
     'rights.act.why.sharing.already': 'Sharing is already turned on, by rules GFS did not set.',
     'rights.act.why.sharing.none': 'Nothing to remove: GFS has set no sharing rule.',
     'rights.ask.sharing.title': 'Turn on sharing in this document?',
-    'rights.ask.sharing.message': 'GFS creates the shares table (and the tables of the files it keeps and of the filing, if they are missing), adds five helper columns to the files and writes access rules into Grist. You find them under “Access rules” and remove them from the “Permissions” panel.',
+    'rights.ask.sharing.message': 'GFS creates the shares table (and the tables of the files it keeps and of the filing, if they are missing), adds five helper columns to the files and writes access rules into Grist. You find them under “Access rules” in Grist: their names start with “GFS :”.',
     'rights.ask.sharing.item1': 'Files already there (PDFs and the apps’ files) stay readable by anyone with access to the document, as before; new ones are read only by their author, until they share them.',
     'rights.ask.sharing.apps': 'The apps’ file tables get helper columns whose names start with “GFS_” ({tables}): the apps ignore them, and the app’s settings rows stay open.',
     'rights.ask.sharing.item2': 'Nothing changes for the data tables.',

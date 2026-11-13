@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-1JW9zIQT20fcTUrz/wuoxJml52bp5DCB973p8u98iN4='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-FW7BdtfXXHXTsqMJarkdBuLgr6+jJ3UyJB56ozS9Xs4='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=6c6e51caa4">
 <link rel="stylesheet" href="css/explorer.css?v=a1c7636359">
 <link rel="stylesheet" href="css/modules.css?v=a186a97c4e">
@@ -111,7 +111,7 @@
     "./js/i18n/i18n-received.js": "./js/i18n/i18n-received.js?v=684f00488e",
     "./js/i18n/i18n-rights.js": "./js/i18n/i18n-rights.js?v=1d8ac3e0c5",
     "./js/i18n/i18n-share-other.js": "./js/i18n/i18n-share-other.js?v=6bd3e812c4",
-    "./js/i18n/i18n-share.js": "./js/i18n/i18n-share.js?v=cb5bb0c0fc",
+    "./js/i18n/i18n-share.js": "./js/i18n/i18n-share.js?v=d256e260c5",
     "./js/i18n/i18n-sharing.js": "./js/i18n/i18n-sharing.js?v=7e09272a2c",
     "./js/i18n/i18n-trash.js": "./js/i18n/i18n-trash.js?v=e5c74092fa",
     "./js/i18n/i18n-weight.js": "./js/i18n/i18n-weight.js?v=e60a5723e4",
@@ -333,7 +333,7 @@
 <link rel="modulepreload" href="./js/i18n/i18n-weight.js?v=e60a5723e4">
 <link rel="modulepreload" href="./js/i18n/i18n-natives.js?v=655b6e207d">
 <link rel="modulepreload" href="./js/i18n/i18n-rights.js?v=1d8ac3e0c5">
-<link rel="modulepreload" href="./js/i18n/i18n-share.js?v=cb5bb0c0fc">
+<link rel="modulepreload" href="./js/i18n/i18n-share.js?v=d256e260c5">
 <link rel="modulepreload" href="./js/i18n/i18n-share-other.js?v=6bd3e812c4">
 <link rel="modulepreload" href="./js/i18n/i18n-manage.js?v=0a3999d8e2">
 <link rel="modulepreload" href="./js/i18n/i18n-received.js?v=684f00488e">

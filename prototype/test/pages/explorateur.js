@@ -283,10 +283,12 @@ async function mount() {
   };
   // « Apps et extensions » en vitrine (js/apps/vitrine.js, décision du 17/11, « A · Vitrine » ; test/vitrine-firefox.mjs) : les quatre manifestes de GFS, le vrai modèle et le vrai catalogue. Chaque geste est noté
   // dans `window.__vitrineEvents` et change l'état comme le registre le ferait ; la fenêtre se redessine ensuite. `variant` : 'ok' (Publipostage+, toujours active, est la seule installée), 'lecture' (document en lecture
-  // seule), 'refusee' (le manifeste de Grist-BI est refusé), 'captures' (Publipostage+ déclare deux captures : un vrai fichier, un fichier absent ; Automation+ deux vrais fichiers).
+  // seule), 'refusee' (le manifeste de Grist-BI est refusé), 'captures' (Publipostage+ déclare deux captures : un vrai fichier, un fichier absent ; Automation+ deux vrais fichiers), 'livrees' (les vraies vitrines des manifestes).
   window.__vitrine = async (variant = 'ok') => {
     const L = (fr, en) => ({ fr, en });
     const manifests = await Promise.all(['publipostage', 'automation', 'form', 'bi'].map(async id => (await fetch(`/manifestes/${id}.json`)).json()));
+    // Sauf `livrees` (les vitrines que les apps ont rendues, vraies images de GFS comprises), la fenêtre est essayée sans vitrine : chaque variante pose les siennes.
+    if (variant !== 'livrees') for (const manifest of manifests) delete manifest.vitrine;
     if (variant === 'captures') {
       manifests[0].vitrine = { description: L('Une description longue de Publipostage+.', 'A long description of Publipostage+.'), captures: [
         { fichier: '../test/pages/capture-essai.png', legende: L('Première capture', 'First screenshot') }, { fichier: 'absente.png', legende: L('Deuxième capture', 'Second screenshot') }] };

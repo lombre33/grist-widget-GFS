@@ -4,8 +4,9 @@
 // « Installer » (la carte passe à « Ouvrir », le compte monte, le clavier suit), la fiche (un clic sur le nom ou la capture, Échap qui revient au même nom et au même défilement, le bandeau et son
 // bouton, la barre du haut qui reprend le nom et le bouton quand le bandeau est sorti de l'écran, les extensions en cartes qui s'ajoutent et se retirent, le lien qui y mène), l'ordre de Tab,
 // la lecture seule et l'app refusée (grisées, avec leur raison au clic), les captures (une bande qui défile, un fichier qui se charge, un fichier absent qui laisse la vignette d'attente), la fenêtre
-// étroite (deux colonnes, une colonne), le contraste des textes, boutons grisés compris : l'opacité d'un bouton grisé compte (mesuré le 17/11 : « Installer » grisé tombait à 2:1).
+// étroite (deux colonnes, une colonne), les vitrines rendues par les apps le 17/11 (Automation+, Form+, Grist-BI : leurs vraies images de GFS sur la carte et sur la fiche, légendes et description comprises), le contraste des textes, boutons grisés compris : l'opacité d'un bouton grisé compte (mesuré le 17/11 : « Installer » grisé tombait à 2:1).
 import { createI18n } from '../js/i18n/i18n.js';
+import { readJson } from './helpers.mjs';
 
 // Ce que la fenêtre montre : la fenêtre, les cartes (place, nom, texte, bouton, vignette), les colonnes, le compte, le pied, le clavier.
 function grid() {
@@ -331,6 +332,39 @@ async function blockedProblems(page, t, note) {
   await page.until(closed, [], 2000);
 }
 
+// Les vitrines que les apps ont rendues (consignes 014, 018 et 031, 17/11) : sur les vrais manifestes, les vraies images de `vitrine/` s'affichent. Chaque carte montre sa première capture (chargée,
+// sans vignette d'attente) ; la fiche porte les trois captures, leurs légendes dans la langue de la personne, la description de l'app, et la bande des captures prend le clavier.
+async function deliveredProblems(page, language, t, note) {
+  await page.run(() => window.__vitrine('livrees'));
+  const ids3 = ['automation', 'form', 'bi'];
+  const s = await page.until(() => { const g = grid(); return g && g.cards.filter(card => card.id !== 'publipostage').every(card => card.image && card.image.loaded) ? g : null; }, [], 5000)
+    .catch(() => null);
+  const seen = s || await page.run(grid);
+  for (const id of ids3) {
+    const card = seen.cards.find(item => item.id === id);
+    if (!card || card.placeholder || !card.image || !card.image.loaded) note('vitrines rendues : carte', `la carte de « ${id} » devrait montrer sa première capture, chargée : ${JSON.stringify(card && { placeholder: card.placeholder, image: card.image })}`);
+    else if (card.overflow > 1 || card.shot.height < 40) note('vitrines rendues : carte', `la carte de « ${id} » est coupée (${card.overflow} px) ou sa vignette trop basse (${card.shot.height.toFixed(0)} px)`);
+  }
+  for (const id of ids3) {
+    const manifest = readJson(`manifestes/${id}.json`);
+    await page.click(...await page.run(centerOf, `[data-fk="name:${id}"]`));
+    const f = await page.until(() => { const x = fiche(); return x && x.slides.length === 3 && x.slides.every(slide => slide.image) ? x : null; }, [], 5000).catch(() => null);
+    if (!f) { note('vitrines rendues : fiche', `la fiche de « ${id} » devrait porter trois captures chargées`); await page.press('Escape'); await page.until(grid).catch(() => null); continue; }
+    const wanted = manifest.vitrine.captures.map(capture => capture.legende[language]);
+    if (f.slides.map(slide => slide.caption).join('|') !== wanted.join('|')) note('vitrines rendues : légendes', `la fiche de « ${id} » devrait dire « ${wanted.join(' | ')} » : ${f.slides.map(slide => slide.caption).join(' | ')}`);
+    if (f.about !== manifest.vitrine.description[language]) note('vitrines rendues : description', `la fiche de « ${id} » devrait montrer la description de l'app : « ${f.about} »`);
+    if (f.noShot || !f.strip || f.strip.tab !== '0') note('vitrines rendues : bande', `la bande des captures de « ${id} » devrait être une région qui prend le clavier`);
+    if (f.slides[0].box.left < f.strip.box.left - 1 || f.slides[0].box.right > f.window.right) note('vitrines rendues : première capture', `la première capture de « ${id} » devrait se voir en entier dans la fenêtre`);
+    if (f.body.overflow > 1) note('vitrines rendues : fiche', `la fiche de « ${id} » déborde la fenêtre de ${f.body.overflow} px`);
+    await contrastProblems(page, note, `la fiche de « ${id} » avec ses captures`);
+    await page.click(...await page.run(centerOf, '[data-fk="back"]'));
+    await page.until(grid);
+  }
+  await page.press('Escape');
+  await page.until(closed, [], 2000);
+}
+
+
 // Les captures : une qui se charge dans la carte et dans la bande, une absente remplacée par la vignette d'attente ; les flèches et le clavier font défiler la bande ; la barre du haut reprend « Installer ».
 async function capturesProblems(page, t, note) {
   await page.run(() => window.__vitrine('captures'));
@@ -414,6 +448,7 @@ export async function vitrineProblems(page, language, tag, mode = 'light') {
     await openProblems(page, note);
     await blockedProblems(page, t, note);
     await capturesProblems(page, t, note);
+    await deliveredProblems(page, language, t, note);
     await narrowProblems(page, mode, note);
   } catch (error) {
     note('essai interrompu', String(error && error.message));

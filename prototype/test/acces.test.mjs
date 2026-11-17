@@ -82,8 +82,11 @@ test('le contraste forcé pèse autant que l\'accessibilité renforcée : chacun
   assert.ok(rules(block).length >= 10, 'le bloc n\'est pas vide');
 });
 
-test('la case d\'une app ou d\'une extension (22 px) se coche par son nom, qui fait 36 px : la cible est le nom', () => {
-  assert.match(sheet('acces.css'), /:root\[data-ambiance="renforcee"\] \.mr-title label \{ min-height: var\(--target\); \}/);
+test('la fiche d\'une app : le segment « CDN | Copie figée », le lien des extensions et les flèches des captures font 36 px, la case d\'une carte 22 px', () => {
+  const text = sheet('acces.css');
+  assert.match(text, /:root\[data-ambiance="renforcee"\] :is\(\.ap-name, \.fp-chip-link, \.fp-segs label\) \{ min-height: var\(--target\); \}/);
+  assert.match(text, /:root\[data-ambiance="renforcee"\] \.fp-nav \{ width: var\(--target\); height: var\(--target\); \}/);
+  assert.match(text, /\.fp-choice input/);
 });
 
 test('css/acces.css est la dernière feuille de la page : à poids égal, c\'est la dernière qui gagne', () => {

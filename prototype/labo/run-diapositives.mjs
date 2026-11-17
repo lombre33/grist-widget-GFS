@@ -15,6 +15,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { startLab } from './lab-setup.mjs';
 import { say, check, SHOTS } from './lab-common.mjs';
+import { showFiche, setExtension, extensionOn, closeModules } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -86,16 +87,15 @@ const savedRow = name => gfs.evaluate(async wanted => {
   try { margins = data.Margins && data.Margins[at] ? JSON.parse(data.Margins[at]) : null; } catch (error) { margins = 'illisible'; }
   return { id: data.id[at], type: data.TypeModele[at], content: data.Contenu[at], margins, count: data.id.length };
 }, name);
-const openWindow = async () => { await gfs.locator('#floater-apps').click(); await gfs.locator('.mod').waitFor(); };
+const openWindow = async () => { await gfs.locator('#floater-apps').click(); await gfs.locator('.mod').waitFor(); await showFiche(gfs, 'publipostage'); };
 const focusedRow = () => gfs.evaluate(() => (document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.fk : null));
-// Le même geste que la personne : un clic sur la case de la ligne « Diapositives », la table du document déjà là, puis Échap pour fermer la fenêtre.
+// Le même geste que la personne : un clic sur « Ajouter » (ou « Retirer ») de la carte « Diapositives », la table du document déjà là, puis Échap pour fermer la fenêtre.
 async function toggleSlides(wantOn) {
   if (!(await gfs.locator('.mod').count())) await openWindow();
-  const box = gfs.locator(`[data-fk="${FK}"]`);
-  if ((await box.isChecked()) !== wantOn) await gfs.locator(`[data-row="${FK}"] label`).click();
+  await setExtension(gfs, FK, wantOn);
   await lab.settle(gfs);
-  check(`la case « Diapositives » est ${wantOn ? 'cochée' : 'décochée'}`, (await box.isChecked()) === wantOn);
-  await page.keyboard.press('Escape');
+  check(`la carte « Diapositives » est ${wantOn ? 'ajoutée' : 'retirée'}`, (await extensionOn(gfs, FK)) === wantOn);
+  await closeModules(page, gfs);
   await gfs.locator('.mod').waitFor({ state: 'hidden' });
 }
 
@@ -144,15 +144,15 @@ check('un clic sur la ligne grisée ouvre la fenêtre de GFS sur la ligne « Dia
 const line = gfs.locator(`[data-row="${FK}"]`);
 const text = (await line.innerText()).replace(/\s+/g, ' ');
 say('la ligne dans la fenêtre :', text);
-const sizes = await line.locator('.sz').allInnerTexts();
+const sizes = await line.locator('.fp-ext-size').allInnerTexts();
 check(`la ligne dit ce qu'elle apporte et sa taille du manifeste (≈ ${WEIGHT} Ko), sans choix de bibliothèque (rien à charger)`,
-  (lang === 'fr' ? /Diapositives.*présentations en 16:9/ : /Slides.*16:9 presentations/).test(text) && (await line.locator('.mr-mode').count()) === 0
+  (lang === 'fr' ? /Diapositives.*présentations en 16:9/ : /Slides.*16:9 presentations/).test(text) && (await line.locator('.fp-seg').count()) === 0
     && sizes.length === 1 && new RegExp(`^≈\\s${WEIGHT}\\s(Ko|KB)$`).test(sizes[0].trim()), `${text} | ${JSON.stringify(sizes)}`);
-check('elle n\'est pas grisée : aucune bibliothèque ne peut lui manquer', !(await line.evaluate(node => node.classList.contains('is-locked'))));
+check('elle n\'est pas grisée : aucune bibliothèque ne peut lui manquer', !(await line.evaluate(node => node.classList.contains('is-off'))));
 await lab.shotPanel(run, '2-fenetre-diapositives');
 
 // Le bouton « Objets » de la barre d'outils du haut (865afa3, 0.31 : il a quitté la bande), extension éteinte : grisé, jamais caché, sa raison dans son menu ; son clic appelle `installer` comme la ligne du menu « + ».
-await page.keyboard.press('Escape');
+await closeModules(page, gfs);
 await gfs.locator('.mod').waitFor({ state: 'hidden' });
 const objectsButton = app.locator('#v2-btn-objects');
 await objectsButton.hover();
@@ -177,7 +177,7 @@ const objectsBox = await objectsButton.boundingBox();
 await page.mouse.click(objectsBox.x + objectsBox.width / 2, objectsBox.y + objectsBox.height / 2);
 await gfs.locator('.mod').waitFor({ timeout: 15000 });
 check('un clic sur le bouton « Objets » grisé ouvre la fenêtre de GFS sur la ligne « Diapositives » (appel `installer`)', (await focusedRow()) === FK, await focusedRow());
-await page.keyboard.press('Escape');
+await closeModules(page, gfs);
 await gfs.locator('.mod').waitFor({ state: 'hidden' });
 await page.mouse.move(690, 390, { steps: 4 });
 
@@ -541,14 +541,14 @@ await page.keyboard.press('Control+v');
 await gfs.locator('.mod').waitFor({ timeout: 15000 });
 check('éteinte, Ctrl+V sur une miniature ouvre la fenêtre de GFS sur la ligne « Diapositives » (appel `installer`), et le document ne change pas',
   (await focusedRow()) === FK && (await slidesNow()).html === idle.html, { focus: await focusedRow(), same: (await slidesNow()).html === idle.html });
-await page.keyboard.press('Escape');
+await closeModules(page, gfs);
 await gfs.locator('.mod').waitFor({ state: 'hidden' });
 await intoStrip(1);
 await page.keyboard.press('Control+c');
 await gfs.locator('.mod').waitFor({ timeout: 15000 });
 clip = await slidesNow();
 check('Ctrl+C sur la miniature aussi : la même fenêtre, et le coin d\'état ne dit pas « copiée »', (await focusedRow()) === FK && clip.html === idle.html && clip.status !== WORDS.copied(1), { focus: await focusedRow(), status: clip.status });
-await page.keyboard.press('Escape');
+await closeModules(page, gfs);
 await gfs.locator('.mod').waitFor({ state: 'hidden' });
 // Le bouton ▶ « Présenter » reste là, grisé avec sa raison (jamais caché) ; son clic explique de la même façon et ne lance rien.
 const playOff = await app.evaluate(() => { const button = document.querySelector('.pp-slide-show-open'); return button ? { hidden: button.hidden, disabled: button.getAttribute('aria-disabled'), title: button.title } : null; });
@@ -559,7 +559,7 @@ if (playClickOff) await app.locator('.pp-slide-show-open').click();
 else { await intoStrip(1); await page.keyboard.press('Shift+F5'); }
 await gfs.locator('.mod').waitFor({ timeout: 15000 });
 check('son clic (ou Maj+F5) ouvre la fenêtre de GFS sur la ligne « Diapositives » (appel `installer`), sans lancer de diaporama', (await focusedRow()) === FK && (await app.locator('.pp-slide-show').count()) === 0, { focus: await focusedRow(), byMouse: playClickOff });
-await page.keyboard.press('Escape');
+await closeModules(page, gfs);
 await gfs.locator('.mod').waitFor({ state: 'hidden' });
 await app.locator('#editor-container .ProseMirror').click();
 await page.keyboard.press('End');

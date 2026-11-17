@@ -1,7 +1,7 @@
-// La vitrine de la fenêtre « Apps » (décision du porteur, 17/11 : la mosaïque « A · Vitrine ») : la carte d'une app dans la mosaïque et la galerie de sa fiche.
-// Une app montre ses captures quand son manifeste en déclare (`vitrine.captures`, contrats 2.2) ; sans capture, ou si le fichier ne se charge pas, une vignette
-// d'attente montre son icône et son nom. Les captures sont des fichiers de GFS (dossier `vitrine/`) : la politique de sécurité du contenu ne laisse charger une
-// image que de GFS. Du code qui ne décide rien : les gestes sont rendus à la fenêtre par `data-act`.
+// La vitrine de la fenêtre « Apps » (décision du porteur, 17/11 : la mosaïque « A · Vitrine ») : la carte d'une app dans la mosaïque, ses boutons et ses
+// captures. Une app montre ses captures quand son manifeste en déclare (`vitrine.captures`, contrats 2.2) ; sans capture, ou si le fichier ne se charge pas,
+// une vignette d'attente montre son icône et son nom. Les captures sont des fichiers de GFS (dossier `vitrine/`) : la politique de sécurité du contenu ne
+// laisse charger une image que de GFS. Du code qui ne décide rien : les gestes sont rendus à la fenêtre par `data-act`. La fiche de l'app est dans fiche.js.
 
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
@@ -23,11 +23,10 @@ function placeholder(glyph, name) {
   return h('span', { class: 'ap-ph' }, icon(glyph), h('span', { class: 'ap-ph-name' }, name));
 }
 
-// Une capture, ou la vignette d'attente quand il n'y en a pas ou quand le fichier ne se charge pas. `alt` : la légende, pour la grande vue seulement (les
-// petites sont des doublons).
-function shot({ capture, glyph, name, alt = false }) {
+// Une capture, ou la vignette d'attente quand il n'y en a pas ou quand le fichier ne se charge pas. Elle est décorative : sa légende est écrite à côté.
+export function shot({ capture, glyph, name }) {
   if (!capture) return placeholder(glyph, name);
-  const image = h('img', { class: 'ap-img', src: capture.src, alt: alt ? capture.caption : '', loading: 'lazy', decoding: 'async' });
+  const image = h('img', { class: 'ap-img', src: capture.src, alt: '', loading: 'lazy', decoding: 'async' });
   image.addEventListener('error', () => image.replaceWith(placeholder(glyph, name)), { once: true });
   return image;
 }
@@ -37,17 +36,27 @@ export const glyphOf = item => (item.ok ? ((item.manifest && item.manifest.icone
 export const nameOf = (item, lang) => (item.manifest ? label(item.manifest.nom, lang) : item.id);
 
 // Le bouton qui dit quoi faire de l'app : « Ouvrir » quand elle est installée, sinon « Installer » ; grisé (`aria-disabled`, jamais masqué) avec sa raison
-// quand l'app est refusée ou que le document est en lecture seule : un clic dit pourquoi, dans le pied de la fenêtre.
-export function mainButton(ctx, item, reason) {
+// quand l'app est refusée ou que le document est en lecture seule : un clic dit pourquoi, dans le pied de la fenêtre. `prefix` distingue les doubles de la
+// barre du haut de la fiche (`mini-open:…`), `size` : 'sm' (la carte, la barre) ou 'lg' (le haut de la fiche), `solid` : « Ouvrir » plein, comme « Installer »
+// (la fiche) ; sur la carte il reste au trait.
+export function mainButton(ctx, item, reason, { prefix = '', size = 'sm', solid = false } = {}) {
   const { t, lang, key } = ctx;
   if (item.installed && item.ok) {
-    return h('button', { type: 'button', class: 'btn sm', title: t('mod.openTip', { app: nameOf(item, lang) }),
-      dataset: { act: 'open', id: item.id, open: item.id, fk: `open:${item.id}` } },
+    // `data-open` est le repère des essais du labo : le double de la barre du haut ne le porte pas, pour qu'il n'y ait qu'un bouton par app.
+    const data = { act: 'open', id: item.id, fk: `${prefix}open:${item.id}`, ...(prefix ? {} : { open: item.id }) };
+    return h('button', { type: 'button', class: `btn${solid ? ' primary' : ''} ${size}`, title: t('mod.openTip', { app: nameOf(item, lang) }), dataset: data },
       icon('open'), t('mod.open'));
   }
-  return h('button', { type: 'button', class: 'btn sm primary', 'aria-disabled': reason ? 'true' : null, title: reason,
-    dataset: { act: 'install', id: item.id, reason: reason || '', fk: key(item.id) } },
+  return h('button', { type: 'button', class: `btn primary ${size}`, 'aria-disabled': reason ? 'true' : null, title: reason,
+    dataset: { act: 'install', id: item.id, reason: reason || '', fk: `${prefix}${key(item.id)}` } },
     t('ap.install'));
+}
+
+// « Retirer » : pour une app installée qui n'est pas toujours active ; grisé avec sa raison quand rien ne peut s'écrire (`blocked`).
+export function removeButton(ctx, item, blocked, { prefix = '', size = 'sm' } = {}) {
+  if (!(item.installed && item.ok && !item.always)) return null;
+  return h('button', { type: 'button', class: `btn quiet ${size}`, 'aria-disabled': blocked !== null ? 'true' : null, title: blocked,
+    dataset: { act: 'remove', id: item.id, reason: blocked || '', fk: `${prefix}remove:${item.id}` } }, ctx.t('ap.remove'));
 }
 
 // La carte d'une app dans la mosaïque : la capture (un clic ouvre la fiche), le nom (le bouton qui a le clavier), l'état, le texte court, le bouton.
@@ -67,22 +76,4 @@ export function appCard(ctx, item, reason) {
       h('p', { class: 'ap-text' }, item.manifest ? label(item.manifest.texte, lang) : ''),
       item.ok ? null : h('p', { class: 'ap-warn' }, t('mod.invalid', { reasons: item.errors.join(' ; ') }))),
     h('div', { class: 'ap-act' }, mainButton(ctx, item, reason)));
-}
-
-// La galerie de la fiche : la grande vue, la bande des petites (quand il y a plusieurs captures) et la légende de celle qu'on regarde.
-export function gallery(ctx, item, shown, index) {
-  const { t, lang } = ctx;
-  const name = nameOf(item, lang);
-  const glyph = glyphOf(item);
-  const { captures } = shown;
-  const current = captures[index] || captures[0] || null;
-  const thumbs = captures.length > 1
-    ? h('div', { class: 'ap-thumbs' }, ...captures.map((capture, at) => h('button',
-      { type: 'button', class: 'ap-thumb', 'aria-current': String(capture === current),
-      'aria-label': t('ap.shotN', { n: at + 1, total: captures.length }), dataset: { act: 'shot', index: at, fk: `shot:${at}` } },
-        shot({ capture, glyph, name }))))
-    : null;
-  return h('div', { class: 'ap-gallery', role: 'group', 'aria-label': t('ap.captions', { app: name }) },
-    h('div', { class: 'ap-big' }, shot({ capture: current, glyph, name, alt: true })), thumbs,
-    current ? h('p', { class: 'ap-cap', 'aria-live': 'polite' }, current.caption) : null);
 }

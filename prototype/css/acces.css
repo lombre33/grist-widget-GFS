@@ -79,20 +79,18 @@
 /* ---------- cibles de 36 px : les fenêtres ---------- */
 /* Une case ou une pastille ronde se coche aussi en cliquant son texte : la ligne qui porte les deux (le `label`) fait 36 px, et la case elle-même passe à 22 px. */
 :root[data-ambiance="renforcee"] :is(.ask-again, .rd, .ex-pj) { min-height: var(--target); }
-:root[data-ambiance="renforcee"] :is(.ask-again input, .rd input, .mr-check input, .sh .chk input[type="checkbox"], .sh .chk input[type="radio"]) { width: 22px; height: 22px; }
+:root[data-ambiance="renforcee"] :is(.ask-again input, .rd input, .fp-choice input, .sh .chk input[type="checkbox"], .sh .chk input[type="radio"]) { width: 22px; height: 22px; }
 :root[data-ambiance="renforcee"] .rd { align-items: center; }
 :root[data-ambiance="renforcee"] .th-acc { min-height: var(--target); }
-:root[data-ambiance="renforcee"] :is(.ap-name, .ap-link, .ap-thumb) { min-height: var(--target); }
+:root[data-ambiance="renforcee"] :is(.ap-name, .fp-chip-link, .fp-segs label) { min-height: var(--target); }
+:root[data-ambiance="renforcee"] .fp-nav { width: var(--target); height: var(--target); }
 :root[data-ambiance="renforcee"] .sh .field { height: calc(var(--target) + 2 * var(--bw)); }
 :root[data-ambiance="renforcee"] .sh .field input { align-self: stretch; }
 :root[data-ambiance="renforcee"] .sh .lvl { height: var(--target); }
 :root[data-ambiance="renforcee"] .sh .opt { min-height: var(--target); }
 :root[data-ambiance="renforcee"] .sh .chk input[type="date"] { height: var(--target); }
 :root[data-ambiance="renforcee"] .mg-tab { min-height: var(--target); }
-/* La case d'une app ou d'une extension se coche aussi par le nom à côté d'elle (`label for`) : c'est lui qui fait 36 px, la case en garde 22 et se centre sur lui. */
-:root[data-ambiance="renforcee"] .mr-title label { min-height: var(--target); }
-:root[data-ambiance="renforcee"] .mr-check { padding-top: 7px; }
-:root[data-ambiance="renforcee"] :is(.mr-check input, .th) { scroll-margin: 8px; }
+:root[data-ambiance="renforcee"] .th { scroll-margin: 8px; }
 :root[data-ambiance="renforcee"] .wk-item { min-height: var(--target); }
 
 /* La fenêtre « Thème » doit tenir dans 700 × 400 avec des lignes de 36 px et un texte de 14 px : ses intervalles se resserrent d'autant (4 px au lieu de 6, 2 px de remplissage sous les vignettes). */

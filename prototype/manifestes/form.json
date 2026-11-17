@@ -7,6 +7,17 @@
     "fr": "Des formulaires aux questions conditionnelles, branchés sur les tables du document (preuve de concept).",
     "en": "Forms with conditional questions, wired to the document’s tables (proof of concept)."
   },
+  "vitrine": {
+    "description": {
+      "fr": "Composez un formulaire à la souris, avec des questions de tous types, publiez-le et recevez les réponses dans une table de votre document Grist, où vous les relisez en un coup d’œil.",
+      "en": "Build a form with your mouse using any kind of question, publish it, and collect the answers in a table of your Grist document, where you can review them at a glance."
+    },
+    "captures": [
+      { "fichier": "form/1.webp", "legende": { "fr": "Le formulaire, tel que le voit la personne qui répond", "en": "The form, as the person answering sees it" } },
+      { "fichier": "form/2.webp", "legende": { "fr": "L’éditeur : chaque question se règle sur place", "en": "The editor: each question is set up in place" } },
+      { "fichier": "form/3.webp", "legende": { "fr": "Les réponses reçues, résumées une par une", "en": "The answers received, summarized one by one" } }
+    ]
+  },
   "icone": "form",
   "entree": "poc/widget.html",
   "ouverture": { "fichier": true, "nouveau": true },

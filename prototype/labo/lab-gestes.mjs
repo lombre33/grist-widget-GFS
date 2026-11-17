@@ -72,8 +72,9 @@ export function explorerTools(currentFrame, page) {
   return { row, folderRow, fileNames, folderNames, toast, starOn, favCount, table, until };
 }
 
-// « Apps et extensions » en vitrine (décision du 17/11, « A · Vitrine ») : une app se pose par le bouton « Installer » de sa carte (puis la carte dit « Ouvrir »), se retire sur sa
-// fiche, et ses extensions, leurs modes et ses bibliothèques sont sur sa fiche (un clic sur son nom). Ces gestes remplacent les anciennes cases de la liste (`[data-fk="app:…"]`).
+// « Apps et extensions » en vitrine (décisions du 17/11, « A · Vitrine » puis « A · Page produit ») : une app se pose par le bouton « Installer » de sa carte (puis la carte dit « Ouvrir »),
+// se retire sur sa fiche, et ses extensions (des cartes avec « Ajouter » / « Retirer »), leurs modes (un segment « CDN | Copie figée ») et ses bibliothèques (deux cartes) sont sur sa fiche
+// (un clic sur son nom). Ces gestes remplacent les anciennes cases de la liste (`[data-fk="app:…"]`).
 // `frame` : le cadre de GFS ; la fenêtre est ouverte (`lab.openModules`).
 export async function installApp(frame, id) {
   const button = frame.locator(`[data-fk="app:${id}"]`);
@@ -82,11 +83,11 @@ export async function installApp(frame, id) {
 
 // La fiche de l'app (`id`), ouverte à la vraie souris par son nom ; sans effet quand c'est déjà la fiche de cette app.
 export async function showFiche(frame, id) {
-  const current = await frame.locator('.ap-fiche').count() ? await frame.locator('.ap-fiche').getAttribute('data-app') : null;
+  const current = await frame.locator('.fp-page').count() ? await frame.locator('.fp-page').getAttribute('data-app') : null;
   if (current === id) return;
   if (current) await backToGrid(frame);
   await frame.locator(`[data-fk="name:${id}"]`).click();
-  await frame.locator(`.ap-fiche[data-app="${id}"]`).waitFor();
+  await frame.locator(`.fp-page[data-app="${id}"]`).waitFor();
 }
 
 // La fiche qui porte la ligne `key` (`ext:<app>/<extension>`, `mode:<app>/<extension>/<mode>`, `native:<app>/…`, `nativeall:<app>/…`) ; rend le locator de la ligne.
@@ -96,9 +97,34 @@ export async function showRow(frame, key) {
 }
 
 export async function backToGrid(frame) {
-  if (!await frame.locator('.ap-fiche').count()) return;
+  if (!await frame.locator('.fp-page').count()) return;
   await frame.locator('[data-fk="back"]').click();
   await frame.locator('.ap-grid').waitFor();
+}
+
+// L'extension `key` (`ext:<app>/<extension>`) est ajoutée ? Son bouton dit « Retirer » : il propose `data-on="false"`.
+export async function extensionOn(frame, key) {
+  return (await (await showRow(frame, key)).getAttribute('data-on')) === 'false';
+}
+
+// Ajoute (`on` vrai) ou retire l'extension `key` sur la fiche de son app, à la vraie souris, si elle n'est pas déjà dans cet état.
+export async function setExtension(frame, key, on) {
+  const button = await showRow(frame, key);
+  if ((await button.getAttribute('data-on')) === String(on)) await button.click();
+}
+
+// Choisit le mode `key` (`mode:<app>/<extension>/<mode>`, `native:…`) à la vraie souris : le clic va sur le texte du segment (le rond est celui de la carte).
+export async function chooseMode(frame, key) {
+  await (await showRow(frame, key)).locator('xpath=ancestor::label').click();
+}
+
+// Ferme la fenêtre « Apps et extensions » au clavier : Échap revient de la fiche à la mosaïque, un second Échap ferme (jamais plus de trois essais), puis on attend qu'elle ait disparu.
+export async function closeModules(page, frame) {
+  for (let i = 0; i < 3 && await frame.locator('.mod').count(); i++) {
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(150);
+  }
+  await frame.locator('.mod').waitFor({ state: 'hidden' });
 }
 
 // Retire l'app sur sa fiche (« Retirer ») puis revient à la mosaïque.

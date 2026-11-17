@@ -4,7 +4,7 @@
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check, probeDeclares } from './lab-common.mjs';
-import { installApp } from './lab-gestes.mjs';
+import { installApp, closeModules } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -129,10 +129,9 @@ await row(WORD.deck).dblclick();
 await frame.locator('.mod').waitFor();
 check('un double-clic sur la présentation grisée ouvre la fenêtre des apps sur la ligne « Diapositives »', (await focusedRow()) === FK && (await probe()).resultats.length === 0, await focusedRow());
 await shot('4-extension-a-cocher');
-await frame.locator(`[data-row="${FK}"] label`).click();
+await frame.locator(`[data-fk="${FK}"]`).click();
 await lab.settle(frame);
-await page.keyboard.press('Escape');
-await frame.locator('.mod').waitFor({ state: 'hidden' });
+await closeModules(page, frame);
 await page.waitForTimeout(500);
 check('l\'extension cochée, la présentation n\'est plus grisée et le choix continue', (await frame.locator('.ls-row.lk').count()) === 0 && (await frame.locator('.ex.ex--choose').count()) === 1, await rowTexts());
 await row(WORD.deck).dblclick();

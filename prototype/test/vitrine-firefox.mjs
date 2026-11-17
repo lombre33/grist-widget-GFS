@@ -1,10 +1,12 @@
-// La vitrine de la fenêtre « Apps et extensions » sous Firefox (règle du 03/11 : toute nouvelle interface ajoute ses mesures à test/interfaces-firefox.test.mjs ; décision du porteur du 17/11,
-// « A · Vitrine »). La vraie fenêtre, le vrai modèle et le vrai catalogue de GFS sur les quatre manifestes (`window.__vitrine`, test/pages/explorateur.js), à 700 × 400 ; la vraie souris et le vrai
-// clavier. À mesurer : la mosaïque (trois colonnes, quatre cartes dans la fenêtre, rien qui déborde, la vignette d'attente), « Installer » (la carte passe à « Ouvrir », le compte monte, le clavier
-// suit), la fiche (un clic sur le nom ou la capture, Échap qui revient au même nom et au même défilement, le lien vers les extensions, une extension qui se coche), l'ordre de Tab, la lecture
-// seule et l'app refusée (grisées, avec leur raison au clic), les captures (un fichier qui se charge, un fichier absent qui laisse la vignette d'attente), la fenêtre étroite (deux colonnes, une colonne),
-// le contraste des textes de la vitrine.
+// La vitrine de la fenêtre « Apps et extensions » sous Firefox (règle du 03/11 : toute nouvelle interface ajoute ses mesures à test/interfaces-firefox.test.mjs ; décisions du porteur du 17/11,
+// « A · Vitrine » pour la mosaïque et « A · Page produit » pour la fiche). La vraie fenêtre, le vrai modèle et le vrai catalogue de GFS sur les quatre manifestes (`window.__vitrine`,
+// test/pages/explorateur.js), à 700 × 400 ; la vraie souris et le vrai clavier. À mesurer : la mosaïque (trois colonnes, quatre cartes dans la fenêtre, rien qui déborde, la vignette d'attente),
+// « Installer » (la carte passe à « Ouvrir », le compte monte, le clavier suit), la fiche (un clic sur le nom ou la capture, Échap qui revient au même nom et au même défilement, le bandeau et son
+// bouton, la barre du haut qui reprend le nom et le bouton quand le bandeau est sorti de l'écran, les extensions en cartes qui s'ajoutent et se retirent, le lien qui y mène), l'ordre de Tab,
+// la lecture seule et l'app refusée (grisées, avec leur raison au clic), les captures (une bande qui défile, un fichier qui se charge, un fichier absent qui laisse la vignette d'attente), la fenêtre
+// étroite (deux colonnes, une colonne), les vitrines rendues par les apps le 17/11 (Automation+, Form+, Grist-BI : leurs vraies images de GFS sur la carte et sur la fiche, légendes et description comprises), le contraste des textes, boutons grisés compris : l'opacité d'un bouton grisé compte (mesuré le 17/11 : « Installer » grisé tombait à 2:1).
 import { createI18n } from '../js/i18n/i18n.js';
+import { readJson } from './helpers.mjs';
 
 // Ce que la fenêtre montre : la fenêtre, les cartes (place, nom, texte, bouton, vignette), les colonnes, le compte, le pied, le clavier.
 function grid() {
@@ -26,27 +28,35 @@ function grid() {
     title: modal.querySelector('h2').textContent, events: window.__vitrineEvents };
 }
 
-// La fiche d'une app : son en-tête, la galerie, la description, les faits, l'état des extensions.
+// La fiche d'une app : le bandeau et ses boutons, la barre du haut, les pastilles, les captures, les extensions en cartes, le choix des bibliothèques.
 function fiche() {
   const modal = document.querySelector('.mod-scrim .mod');
-  const page = modal && modal.querySelector('.ap-fiche');
+  const page = modal && modal.querySelector('.fp-page');
   if (!page) return null;
   const box = node => { const r = node.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height }; };
+  const text = node => node.textContent.replace(/\s+/g, ' ').trim();
   const body = modal.querySelector('.mod-body');
   const head = modal.querySelector('.mod-head');
-  const big = page.querySelector('.ap-big');
-  const image = big.querySelector('img');
-  const link = page.querySelector('.ap-link');
-  const section = page.querySelector('.ap-sect');
-  const headButtons = [...head.querySelectorAll('.ap-head-acts .btn')].map(button => ({ text: button.textContent.trim(), disabled: button.getAttribute('aria-disabled') === 'true', key: button.dataset.fk }));
-  return { window: box(modal), title: head.querySelector('h2').textContent, back: head.querySelector('.ap-back').textContent.trim(), buttons: headButtons, count: head.querySelector('.mod-count').textContent,
-    long: page.querySelector('.ap-long').textContent, facts: page.querySelector('.ap-facts').textContent, big: box(big), bigImage: image ? { loaded: image.complete && image.naturalWidth > 0 } : null,
-    bigPlaceholder: Boolean(big.querySelector('.ap-ph')), thumbs: [...page.querySelectorAll('.ap-thumb')].map(thumb => ({ current: thumb.getAttribute('aria-current') === 'true', key: thumb.dataset.fk,
-      placeholder: Boolean(thumb.querySelector('.ap-ph')), image: Boolean(thumb.querySelector('img')) })), caption: (page.querySelector('.ap-cap') || {}).textContent || null,
-    link: link ? link.textContent.trim() : null, section: section ? { top: box(section).top, rows: section.querySelectorAll('.mr').length, active: section.querySelector('h3').textContent } : null,
-    natives: Boolean(page.querySelector('.mr-natives')), hint: [...page.querySelectorAll('.ap-about .mr-note')].map(node => node.textContent), body: { overflow: body.scrollWidth - body.clientWidth, top: body.scrollTop, bottom: box(body).bottom, topEdge: box(body).top },
-    focused: document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.fk || null : null, events: window.__vitrineEvents,
-    checks: [...page.querySelectorAll('.ap-sect input[type=checkbox]')].map(input => ({ key: input.dataset.fk, checked: input.checked, disabled: input.disabled })), note: modal.querySelector('.mod-note').textContent };
+  const hero = page.querySelector('.fp-hero');
+  const strip = page.querySelector('.fp-strip');
+  const button = node => ({ text: text(node), disabled: node.getAttribute('aria-disabled') === 'true', key: node.dataset.fk, box: box(node), shown: node.getClientRects().length > 0 });
+  const about = page.querySelector('.fp-about .fp-long');
+  const exts = page.querySelector('.fp-exts');
+  const count = exts && exts.querySelector('.fp-count');
+  const slides = [...page.querySelectorAll('.fp-slide')].map(slide => ({ caption: text(slide.querySelector('figcaption')), placeholder: Boolean(slide.querySelector('.ap-ph')), image: slide.querySelector('img') ? slide.querySelector('img').complete && slide.querySelector('img').naturalWidth > 0 : false, box: box(slide) }));
+  const nav = dir => { const node = page.querySelector(`.fp-nav.${dir}`); return node ? { shown: node.getClientRects().length > 0 && getComputedStyle(node).visibility !== 'hidden', disabled: node.disabled } : null; };
+  return { window: box(modal), title: hero.querySelector('h1').firstChild.textContent, badge: Boolean(hero.querySelector('h1 .badge')), back: text(head.querySelector('.ap-back')), mini: head.classList.contains('is-mini'),
+    miniButtons: [...head.querySelectorAll('.fp-head-cta .btn')].map(button), miniName: head.querySelector('.fp-mini strong') ? text(head.querySelector('.fp-mini strong')) : null, head: box(head),
+    buttons: [...hero.querySelectorAll('.fp-cta .btn')].map(button), cta: box(hero.querySelector('.fp-cta-wrap')), hero: box(hero), tag: (hero.querySelector('.fp-tag') || {}).textContent || null,
+    chips: [...hero.querySelectorAll('.fp-chips li')].map(text), link: hero.querySelector('.fp-chip-link') ? text(hero.querySelector('.fp-chip-link')) : null,
+    about: about ? about.textContent : null, noShot: Boolean(page.querySelector('.fp-noshot')), strip: strip ? { scroll: strip.scrollLeft, max: strip.scrollWidth - strip.clientWidth, box: box(strip), tab: strip.getAttribute('tabindex') } : null, slides,
+    prev: nav('prev'), next: nav('next'),
+    section: exts ? { top: box(exts).top, count: count ? text(count) : null, note: exts.querySelector('.fp-note') ? text(exts.querySelector('.fp-note')) : null } : null,
+    cards: [...page.querySelectorAll('.fp-ext')].map(card => ({ key: card.dataset.row, name: text(card.querySelector('h3')), on: card.classList.contains('is-on'), off: card.classList.contains('is-off'),
+      added: Boolean(card.querySelector('.fp-added')), button: button(card.querySelector('.fp-ext-foot .btn')), box: box(card), overflow: card.scrollWidth - card.clientWidth, seg: Boolean(card.querySelector('.fp-seg')) })),
+    libs: Boolean(page.querySelector('.fp-libs')), libsNote: [...page.querySelectorAll('.fp-libs > .fp-note')].map(text), choices: page.querySelectorAll('.fp-choice').length,
+    body: { overflow: body.scrollWidth - body.clientWidth, top: body.scrollTop, max: body.scrollHeight - body.clientHeight, bottom: box(body).bottom, topEdge: box(body).top },
+    focused: document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.fk || null : null, events: window.__vitrineEvents, note: modal.querySelector('.mod-note').textContent };
 }
 
 // Le centre, en pixels de la page, d'un élément amené dans la fenêtre : le clic s'y fait à la vraie souris.
@@ -58,27 +68,53 @@ function centerOf(selector) {
   return [r.left + r.width / 2, r.top + r.height / 2];
 }
 
-// Le contraste des textes de la vitrine : le texte d'une carte, le nom de la vignette d'attente, le texte du bouton grisé, le bouton « Installer ».
-function contrasts() {
+// Le contraste des textes de la vitrine, opacité comprise (un bouton grisé à 55 % d'opacité tombait à 2:1 sans que l'ancien essai le voie) : [le texte, le fond sur lequel il se pose].
+const PROBES = {
+  text: ['.ap-card .ap-text', '.ap-card'], name: ['.ap-card .ap-name', '.ap-card'], placeholder: ['.ap-shot .ap-ph-name', '.ap-shot'],
+  install: ['.ap-card .btn.primary:not([aria-disabled="true"])', '.ap-card'], disabled: ['.ap-card .btn.primary[aria-disabled="true"]', '.ap-card'],
+  tag: ['.fp-tag', '.fp-hero'], chip: ['.fp-chips li', '.fp-hero'], chipLink: ['.fp-chip-link', 'li'], heroInstall: ['.fp-hero .btn.primary:not([aria-disabled="true"])', '.fp-hero'],
+  heroDisabled: ['.fp-hero .btn.primary[aria-disabled="true"]', '.fp-hero'], heroOpen: ['.fp-hero .btn.primary', '.fp-hero'], remove: ['.fp-hero .btn.quiet:not([aria-disabled="true"])', '.fp-hero'],
+  removeDisabled: ['.fp-hero .btn.quiet[aria-disabled="true"]', '.fp-hero'], miniDisabled: ['.fp-head .btn.primary[aria-disabled="true"]', '.mod'],
+  about: ['.fp-long', '.mod'], lead: ['.fp-lead', '.mod'], count: ['.fp-count', '.mod'], caption: ['.fp-slide figcaption', '.mod'], noShot: ['.fp-noshot', '.mod'],
+  extText: ['.fp-ext-text', '.fp-ext'], extNote: ['.fp-ext .fp-note', '.fp-ext'], extAdd: ['.fp-ext .btn:not([aria-disabled="true"])', '.fp-ext'], extDisabled: ['.fp-ext .btn[aria-disabled="true"]', '.fp-ext'],
+  added: ['.fp-added', '.fp-ext'], choiceDesc: ['.fp-choice-desc', '.fp-choice'], pill: ['.fp-pill', '.fp-choice'], seg: ['.fp-segs label', '.fp-segs'], summary: ['.fp-detail summary', '.mod'],
+};
+
+function contrasts(probes) {
   const rgb = value => (value.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+  const alphaOf = value => { const parts = value.match(/[\d.]+/g) || []; return parts.length > 3 ? Number(parts[3]) : 1; };
   const light = ([r, g, b]) => { const f = c => { const v = c / 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
-  const ratio = (front, back) => { const a = light(rgb(front)); const b = light(rgb(back)); return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05); };
-  const of = (selector, backSelector) => {
+  const ratio = (front, back) => { const a = light(front); const b = light(back); return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05); };
+  const mix = (front, back, alpha) => front.map((channel, index) => channel * alpha + back[index] * (1 - alpha));
+  const opacityOf = (node) => { let alpha = 1; for (let at = node; at && at.nodeType === 1; at = at.parentElement) alpha *= Number(getComputedStyle(at).opacity); return alpha; };
+  const out = {};
+  for (const [name, [selector, groundSelector]] of Object.entries(probes)) {
     const node = document.querySelector(selector);
-    if (!node) return null;
-    const back = backSelector === null ? node : (backSelector ? node.closest(backSelector) : node);
-    return ratio(getComputedStyle(node).color, getComputedStyle(back).backgroundColor);
-  };
-  return { text: of('.ap-card .ap-text', '.ap-card'), name: of('.ap-card .ap-name', '.ap-card'), placeholder: of('.ap-shot .ap-ph-name', '.ap-shot'),
-    install: of('.ap-card .btn.primary:not([aria-disabled="true"])', null), disabled: of('.ap-card .btn.primary[aria-disabled="true"]', null) };
+    const ground = node && node.closest(groundSelector);
+    if (!node || !ground) continue;
+    const under = rgb(getComputedStyle(ground).backgroundColor);
+    const own = getComputedStyle(node).backgroundColor;
+    const back = alphaOf(own) > 0 ? rgb(own) : under;
+    const alpha = opacityOf(node);
+    out[name] = ratio(mix(rgb(getComputedStyle(node).color), under, alpha), mix(back, under, alpha));
+  }
+  return out;
+}
+
+// Les contrastes de l'écran où l'on est : ce qui est sous 4,5:1 est noté.
+async function contrastProblems(page, note, where) {
+  const ratios = await page.run(contrasts, PROBES);
+  for (const [what, value] of Object.entries(ratios)) if (value < 4.5) note('contraste', `${where} : le texte « ${what} » est trop pâle (contraste ${value.toFixed(2)}, 4,5 attendu)`);
 }
 
 const ids = cards => cards.map(card => card.id).join();
+const closed = () => !document.querySelector('.mod-scrim');
+const memo = {}; // ce qu'un essai garde pour un autre : la hauteur de la fenêtre d'une fiche
 
 // La mosaïque au départ : quatre cartes, trois colonnes, dans la fenêtre, la vignette d'attente, l'état de chacune.
 async function gridProblems(page, t, note) {
   await page.run(() => window.__vitrine('ok'));
-  let s = await page.until(grid);
+  const s = await page.until(grid);
   if (ids(s.cards) !== 'publipostage,automation,form,bi') note('cartes', `la mosaïque devrait montrer les quatre apps du catalogue dans l'ordre : ${ids(s.cards)}`);
   if (s.columns !== 3) note('colonnes', `à 700 px la mosaïque devrait poser trois colonnes : ${s.columns}`);
   if (s.body.overflow > 1) note('débordement', `la mosaïque déborde la fenêtre de ${s.body.overflow} px`);
@@ -99,8 +135,7 @@ async function gridProblems(page, t, note) {
   if (s.count !== `${t('mod.count', { n: 1, total: 9 })} · ${t('mod.countNote')}`) note('compte', `le compte devrait dire « ${t('mod.count', { n: 1, total: 9 })} » : « ${s.count} »`);
   if (s.note !== t('mod.saved')) note('pied', `le pied devrait dire « ${t('mod.saved')} » : « ${s.note} »`);
   if (s.focused !== 'name:publipostage') note('clavier', `à l'ouverture le clavier devrait être sur le premier nom : ${s.focused}`);
-  const ratios = await page.run(contrasts);
-  for (const [what, value] of Object.entries(ratios)) if (value !== null && value < 4.5) note('contraste', `le texte « ${what} » est trop pâle (contraste ${value.toFixed(2)}, 4,5 attendu)`);
+  await contrastProblems(page, note, 'la mosaïque');
   return s;
 }
 
@@ -127,25 +162,33 @@ async function undoProblems(page, t, note) {
   if (s.focused !== 'app:bi') note('refus', `après le refus le clavier devrait suivre sur « ${t('ap.install')} » : ${s.focused}`);
 }
 
-// La fiche : un clic sur le nom, la galerie d'attente, la description, « Installer » dans l'en-tête, Échap qui revient au même nom et au même défilement.
+// La fiche d'une app sans extension ni capture (Form+) : la page, le bandeau et son bouton, « Installer » qui devient « Retirer » et « Ouvrir », Échap qui revient au même nom et au même défilement.
 async function ficheProblems(page, t, note) {
   await page.run(() => { const body = document.querySelector('.mod-body'); body.scrollTop = Math.min(30, body.scrollHeight - body.clientHeight); });
   const before = (await page.run(grid)).body.top;
   const card = (await page.run(grid)).cards.find(item => item.id === 'form');
   await page.click(...await page.run(centerOf, '[data-fk="name:form"]'));
   let f = await page.until(fiche);
+  memo.height = f.window.height;
   if (f.title !== 'Form+' || f.back !== t('ap.back')) note('fiche', `un clic sur le nom devrait ouvrir la fiche de Form+ avec « ${t('ap.back')} » : ${f.title} / ${f.back}`);
   if (f.focused !== 'back') note('fiche', `le clavier devrait être sur « ${t('ap.back')} » : ${f.focused}`);
-  if (f.long !== card.text) note('fiche', `sans description à elle, la fiche reprend le texte de la carte : « ${f.long} »`);
-  if (!f.bigPlaceholder || f.bigImage || f.thumbs.length) note('galerie d\'attente', `sans capture la fiche montre la vignette d'attente, sans bande de petites vues (grande : ${f.bigPlaceholder}, bande : ${f.thumbs.length})`);
-  if (f.facts !== t('ap.version', { v: '0.1.0' })) note('fiche', `les faits devraient dire la version : « ${f.facts} »`);
-  if (JSON.stringify(f.buttons.map(item => item.text)) !== JSON.stringify([t('ap.install')]) || f.buttons[0].disabled) note('fiche', `Form+ n'est pas installée : l'en-tête devrait proposer seulement « ${t('ap.install')} » : ${JSON.stringify(f.buttons)}`);
+  if (f.tag !== card.text) note('fiche', `le bandeau reprend le texte de la carte : « ${f.tag} »`);
+  if (f.about !== null) note('fiche', `sans description à elle, la fiche ne répète pas le texte court : « ${f.about} »`);
+  if (!f.noShot || f.strip || f.slides.length) note('captures', 'sans capture la fiche le dit en une phrase, sans bande de captures');
+  if (f.chips[0] !== t('ap.version', { v: '0.1.0' }) || f.chips[f.chips.length - 1] !== t('ap.noExt')) note('fiche', `les pastilles devraient dire la version et « ${t('ap.noExt')} » : ${JSON.stringify(f.chips)}`);
+  if (JSON.stringify(f.buttons.map(item => item.text)) !== JSON.stringify([t('ap.install')]) || f.buttons[0].disabled) note('fiche', `Form+ n'est pas installée : le bandeau devrait proposer seulement « ${t('ap.install')} » : ${JSON.stringify(f.buttons)}`);
+  if (f.mini || f.miniButtons.some(item => item.shown)) note('barre du haut', 'en haut de la page la barre du haut ne reprend ni le nom ni le bouton');
+  if (!f.libs || f.libsNote.join() !== t('ap.noNatives') || f.choices) note('bibliothèques', `Form+ n'a pas de bibliothèque à choisir et devrait le dire : ${JSON.stringify(f.libsNote)}`);
+  if (f.section.count !== null || f.section.note !== t('ap.extNone')) note('extensions', `sans extension la rubrique le dit : « ${f.section.note} »`);
   if (f.body.overflow > 1) note('fiche', `la fiche déborde la fenêtre de ${f.body.overflow} px`);
-  if (f.window.bottom > 400 || f.big.right > f.window.right) note('fiche', 'la fiche sort de la fenêtre');
+  if (f.window.bottom > 400 || f.hero.right > f.window.right || f.cta.right > f.hero.right) note('fiche', 'la fiche sort de la fenêtre');
+  if (f.tag && f.hero.top < f.body.topEdge - 1) note('fiche', 'le bandeau devrait être en haut de la page');
+  await contrastProblems(page, note, 'la fiche de Form+');
   await page.click(...await page.run(centerOf, '[data-fk="app:form"]'));
   f = await page.until(() => { const x = fiche(); return x && x.buttons.some(item => item.text === 'Retirer' || item.text === 'Remove') ? x : null; });
-  if (JSON.stringify(f.buttons.map(item => item.text)) !== JSON.stringify([t('ap.remove'), t('mod.open')])) note('fiche', `Form+ installée : l'en-tête devrait proposer « ${t('ap.remove')} » puis « ${t('mod.open')} » : ${JSON.stringify(f.buttons)}`);
+  if (JSON.stringify(f.buttons.map(item => item.text)) !== JSON.stringify([t('mod.open'), t('ap.remove')])) note('fiche', `Form+ installée : le bandeau devrait proposer « ${t('mod.open')} » puis « ${t('ap.remove')} » : ${JSON.stringify(f.buttons)}`);
   if (f.focused !== 'open:form') note('fiche', `après « ${t('ap.install')} » le clavier devrait être sur « ${t('mod.open')} » : ${f.focused}`);
+  if (!f.badge) note('fiche', `Form+ installée devrait porter « ${t('mod.badge.on')} » à côté de son nom`);
   await page.press('Escape');
   const s = await page.until(grid);
   if (s.focused !== 'name:form') note('retour', `Échap devrait ramener le clavier sur le nom de Form+ : ${s.focused}`);
@@ -158,22 +201,51 @@ async function ficheProblems(page, t, note) {
   await page.until(grid);
 }
 
-// La fiche de Publipostage+ : ses bibliothèques, ses extensions, le lien qui y mène, une extension cochée.
+// La fiche de Publipostage+ : la page entière, le lien qui mène aux extensions, une extension qui s'ajoute puis se retire, la barre du haut, l'ordre de Tab.
 async function extensionsProblems(page, t, note) {
   await page.click(...await page.run(centerOf, '[data-fk="name:publipostage"]'));
   let f = await page.until(fiche);
-  if (!f.natives) note('bibliothèques', 'la fiche de Publipostage+ devrait porter le choix de ses bibliothèques natives');
+  if (f.window.height !== memo.height) note('fenêtre fixe', `la fenêtre d'une fiche garde sa hauteur d'une app à l'autre (${memo.height} px, ici ${f.window.height} px)`);
+  if (!f.libs || f.choices !== 2) note('bibliothèques', `la fiche de Publipostage+ devrait porter le choix de ses bibliothèques en deux cartes : ${f.choices}`);
   if (f.buttons.map(item => item.text).join() !== t('mod.open')) note('fiche', `Publipostage+ est toujours active : pas de « ${t('ap.remove')} », seulement « ${t('mod.open')} » : ${JSON.stringify(f.buttons)}`);
-  if (!f.facts.includes(t('mod.always').replace(/\.$/, ''))) note('fiche', `les faits devraient dire que l'app est toujours active : « ${f.facts} »`);
-  if (!f.section || f.section.rows !== 5 || f.link !== t('ap.extCount', { n: 5 })) note('extensions', `la fiche devrait montrer cinq extensions et un lien « ${t('ap.extCount', { n: 5 })} » : ${JSON.stringify(f.section)} / ${f.link}`);
+  if (!f.chips.includes(t('mod.always').replace(/\.$/, ''))) note('fiche', `les pastilles devraient dire que l'app est toujours active : ${JSON.stringify(f.chips)}`);
+  if (f.cards.length !== 5 || f.link !== t('ap.extCount', { n: 5 })) note('extensions', `la fiche devrait montrer cinq extensions et un lien « ${t('ap.extCount', { n: 5 })} » : ${f.cards.length} / ${f.link}`);
+  if (!f.section || f.section.count !== t('ap.extOf', { n: 0, total: 5 })) note('extensions', `le compte devrait dire « ${t('ap.extOf', { n: 0, total: 5 })} » : ${f.section && f.section.count}`);
+  for (const card of f.cards) if (card.overflow > 1 || card.box.right > f.window.right) note('extensions', `la carte « ${card.name} » déborde la fenêtre`);
+  await contrastProblems(page, note, 'la fiche de Publipostage+');
+  const order = [];
+  await page.run(() => document.querySelector('[data-fk="back"]').focus());
+  for (let step = 0; step < 6; step += 1) { await page.press('Tab'); order.push((await page.run(fiche)).focused); }
+  if (order[0] !== 'to-ext' || order[1] !== 'open:publipostage' || !/^ext:/.test(order[2] || '') || order.some(key => /^mini-/.test(key || ''))) {
+    note('Tab', `après « ${t('ap.back')} », Tab devrait aller au lien des extensions, au bouton du bandeau, puis aux cartes, sans jamais entrer dans la barre du haut cachée : ${order.join()}`);
+  }
   await page.click(...await page.run(centerOf, '[data-fk="to-ext"]'));
   f = await page.until(fiche);
   if (f.section && Math.abs(f.section.top - f.body.topEdge) > 40) note('lien des extensions', `le lien devrait amener les extensions en haut de la fenêtre (écart ${(f.section.top - f.body.topEdge).toFixed(0)} px)`);
-  await page.click(...await page.run(centerOf, '[data-fk="ext:publipostage/graphique"]'));
+  const key = 'ext:publipostage/graphique';
+  await page.click(...await page.run(centerOf, `[data-fk="${key}"]`));
   f = await page.until(() => { const x = fiche(); return x && x.events.some(event => event[0] === 'extension') ? x : null; });
-  if (JSON.stringify(f.events.filter(event => event[0] === 'extension')) !== JSON.stringify([['extension', 'publipostage', 'graphique', true]])) note('extension', `cocher « Graphique » a envoyé ${JSON.stringify(f.events)}`);
-  if (!f.checks.find(item => item.key === 'ext:publipostage/graphique').checked) note('extension', 'la case « Graphique » devrait rester cochée après le geste');
+  if (JSON.stringify(f.events.filter(event => event[0] === 'extension')) !== JSON.stringify([['extension', 'publipostage', 'graphique', true]])) note('extension', `« ${t('ap.extAdd')} » sur Graphique a envoyé ${JSON.stringify(f.events)}`);
+  let graph = f.cards.find(card => card.key === key);
+  if (!graph.on || !graph.added || graph.button.text !== t('ap.remove')) note('extension', `la carte Graphique devrait dire « ${t('ap.extAdded')} » et proposer « ${t('ap.remove')} » : ${JSON.stringify([graph.on, graph.added, graph.button.text])}`);
+  if (f.section.count !== t('ap.extOf', { n: 1, total: 5 })) note('extension', `le compte devrait monter à « ${t('ap.extOf', { n: 1, total: 5 })} » : ${f.section.count}`);
+  if (f.focused !== key) note('extension', `le clavier devrait rester sur le bouton de la carte : ${f.focused}`);
   if (f.body.top < 20) note('extension', 'la fiche ne devrait pas remonter en haut après un geste');
+  await page.click(...await page.run(centerOf, `[data-fk="${key}"]`));
+  f = await page.until(() => { const x = fiche(); return x && x.events.filter(event => event[0] === 'extension').length === 2 ? x : null; });
+  graph = f.cards.find(card => card.key === key);
+  if (JSON.stringify(f.events[f.events.length - 1]) !== JSON.stringify(['extension', 'publipostage', 'graphique', false]) || graph.on || graph.added || graph.button.text !== t('ap.extAdd')) {
+    note('extension', `« ${t('ap.remove')} » devrait retirer l'extension : ${JSON.stringify(f.events[f.events.length - 1])} / ${JSON.stringify([graph.on, graph.button.text])}`);
+  }
+  await page.run(() => { const body = document.querySelector('.mod-body'); body.scrollTop = body.scrollHeight; });
+  f = await page.until(() => { const x = fiche(); return x && x.mini ? x : null; });
+  const shown = f.miniButtons.filter(item => item.shown);
+  if (f.miniName !== 'Publipostage+' || shown.map(item => item.text).join() !== t('mod.open') || shown.some(item => item.box.right > f.head.right || item.box.bottom > f.head.bottom)) {
+    note('barre du haut', `quand le bandeau est sorti de l'écran, la barre du haut reprend le nom et « ${t('mod.open')} » : ${f.miniName} / ${JSON.stringify(shown.map(item => item.text))}`);
+  }
+  await page.run(() => { document.querySelector('.mod-body').scrollTop = 0; });
+  f = await page.until(() => { const x = fiche(); return x && !x.mini ? x : null; });
+  if (f.miniButtons.some(item => item.shown)) note('barre du haut', 'de retour en haut de la page la barre du haut rend le nom et le bouton');
   await page.press('Escape');
   await page.until(grid);
 }
@@ -187,12 +259,11 @@ async function keyboardProblems(page, note) {
   const expected = 'open:publipostage,name:automation,app:automation,name:form,app:form,name:bi,app:bi,close,name:publipostage';
   if (order.join() !== expected) note('Tab', `l'ordre de Tab devrait être ${expected} : ${order.join()}`);
   await page.press('Escape');
-  await page.until(() => !document.querySelector('.mod-scrim'), [], 2000);
+  await page.until(closed, [], 2000);
 }
 
-// « Ouvrir » (la carte, puis l'en-tête de la fiche) : un seul appel `open` avec l'identifiant de l'app, et la fenêtre se ferme (le labo « vrai Grist » l'a trouvé le 17/11 : l'identifiant manquait).
+// « Ouvrir » (la carte, le bandeau de la fiche, puis la barre du haut) : un seul appel `open` avec l'identifiant de l'app, et la fenêtre se ferme (le labo « vrai Grist » l'a trouvé le 17/11 : l'identifiant manquait).
 async function openProblems(page, note) {
-  const closed = () => !document.querySelector('.mod-scrim');
   await page.run(() => window.__vitrine('ok'));
   await page.until(grid);
   await page.click(...await page.run(centerOf, '[data-fk="open:publipostage"]'));
@@ -203,10 +274,20 @@ async function openProblems(page, note) {
   await page.until(grid);
   await page.click(...await page.run(centerOf, '[data-fk="name:publipostage"]'));
   await page.until(fiche);
-  await page.click(...await page.run(centerOf, '.ap-head-acts [data-fk="open:publipostage"]'));
+  await page.click(...await page.run(centerOf, '.fp-hero [data-fk="open:publipostage"]'));
   await page.until(closed, [], 2000);
   events = await page.run(() => window.__vitrineEvents);
-  if (JSON.stringify(events) !== JSON.stringify([['open', 'publipostage']])) note('ouvrir', `« Ouvrir » dans l'en-tête de la fiche a envoyé ${JSON.stringify(events)}`);
+  if (JSON.stringify(events) !== JSON.stringify([['open', 'publipostage']])) note('ouvrir', `« Ouvrir » dans le bandeau de la fiche a envoyé ${JSON.stringify(events)}`);
+  await page.run(() => window.__vitrine('ok'));
+  await page.until(grid);
+  await page.click(...await page.run(centerOf, '[data-fk="name:publipostage"]'));
+  await page.until(fiche);
+  await page.run(() => { const body = document.querySelector('.mod-body'); body.scrollTop = body.scrollHeight; });
+  await page.until(() => { const x = fiche(); return x && x.mini ? x : null; });
+  await page.click(...await page.run(centerOf, '.fp-head [data-fk="mini-open:publipostage"]'));
+  await page.until(closed, [], 2000);
+  events = await page.run(() => window.__vitrineEvents);
+  if (JSON.stringify(events) !== JSON.stringify([['open', 'publipostage']])) note('ouvrir', `« Ouvrir » dans la barre du haut a envoyé ${JSON.stringify(events)}`);
 }
 
 // L'app refusée et le document en lecture seule : grisés avec leur texte lisible, un clic dit pourquoi dans le pied et n'envoie rien.
@@ -219,10 +300,17 @@ async function blockedProblems(page, t, note) {
   await page.click(...await page.run(centerOf, '[data-app="bi"] .ap-act .btn'));
   s = await page.run(grid);
   if (s.events.length || s.note !== reason) note('app refusée', `un clic sur « ${t('ap.install')} » grisé ne devrait rien envoyer et dire la raison dans le pied (envoyé : ${JSON.stringify(s.events)}, pied : « ${s.note} »)`);
-  const ratios = await page.run(contrasts);
-  if (ratios.disabled !== null && ratios.disabled < 4.5) note('contraste', `le bouton grisé est trop pâle (contraste ${ratios.disabled.toFixed(2)}, 4,5 attendu)`);
+  await contrastProblems(page, note, 'la mosaïque avec une app refusée');
+  await page.click(...await page.run(centerOf, '[data-fk="name:bi"]'));
+  let f = await page.until(fiche);
+  if (!f.badge || f.buttons.length !== 1 || !f.buttons[0].disabled || f.buttons[0].text !== t('ap.install')) note('app refusée', `la fiche de Grist-BI refusée devrait garder « ${t('ap.install')} » grisé et son badge : ${JSON.stringify(f.buttons)}`);
+  await contrastProblems(page, note, 'la fiche de l\'app refusée');
+  await page.click(...await page.run(centerOf, '[data-fk="app:bi"]'));
+  f = await page.run(fiche);
+  if (f.events.length || f.note !== reason) note('app refusée', `un clic sur « ${t('ap.install')} » grisé de la fiche ne devrait rien envoyer et dire la raison (envoyé : ${JSON.stringify(f.events)}, pied : « ${f.note} »)`);
   await page.press('Escape');
-  await page.until(() => !document.querySelector('.mod-scrim'), [], 2000);
+  await page.press('Escape');
+  await page.until(closed, [], 2000);
   await page.run(() => window.__vitrine('lecture'));
   s = await page.until(grid);
   if (s.note !== t('mod.readonly')) note('lecture seule', `le pied devrait dire « ${t('mod.readonly')} » : « ${s.note} »`);
@@ -231,38 +319,98 @@ async function blockedProblems(page, t, note) {
   await page.click(...await page.run(centerOf, '[data-app="form"] .ap-act .btn'));
   s = await page.run(grid);
   if (s.events.length) note('lecture seule', `un clic sur « ${t('ap.install')} » grisé a envoyé ${JSON.stringify(s.events)}`);
-  await page.click(...await page.run(centerOf, '[data-fk="name:automation"]'));
-  const f = await page.until(fiche);
-  if (JSON.stringify(f.hint) !== JSON.stringify([t('ap.noNatives')]) || f.natives) note('fiche', `la fiche d'Automation+ n'a pas de bibliothèque à choisir et devrait le dire : ${JSON.stringify(f.hint)}`);
+  await page.click(...await page.run(centerOf, '[data-fk="name:publipostage"]'));
+  f = await page.until(fiche);
+  const grayed = f.cards.filter(card => card.button.disabled);
+  if (grayed.length !== 5 || f.cards.some(card => card.button.text !== t('ap.extAdd'))) note('lecture seule', `en lecture seule les cinq « ${t('ap.extAdd')} » devraient être grisés : ${JSON.stringify(f.cards.map(card => [card.button.text, card.button.disabled]))}`);
+  await contrastProblems(page, note, 'la fiche en lecture seule');
+  await page.click(...await page.run(centerOf, `[data-fk="${f.cards[0].key}"]`));
+  f = await page.run(fiche);
+  if (f.events.length || f.note !== t('mod.readonly')) note('lecture seule', `un clic sur « ${t('ap.extAdd')} » grisé a envoyé ${JSON.stringify(f.events)} (pied : « ${f.note} »)`);
   await page.press('Escape');
   await page.press('Escape');
-  await page.until(() => !document.querySelector('.mod-scrim'), [], 2000);
+  await page.until(closed, [], 2000);
 }
 
-// Les captures : une qui se charge dans la carte, la grande vue et la bande ; une absente, remplacée par la vignette d'attente ; la légende change avec la vignette cliquée.
+// Les vitrines que les apps ont rendues (consignes 014, 018 et 031, 17/11) : sur les vrais manifestes, les vraies images de `vitrine/` s'affichent. Chaque carte montre sa première capture (chargée,
+// sans vignette d'attente) ; la fiche porte les trois captures, leurs légendes dans la langue de la personne, la description de l'app, et la bande des captures prend le clavier.
+async function deliveredProblems(page, language, t, note) {
+  await page.run(() => window.__vitrine('livrees'));
+  const ids3 = ['automation', 'form', 'bi'];
+  const s = await page.until(() => { const g = grid(); return g && g.cards.filter(card => card.id !== 'publipostage').every(card => card.image && card.image.loaded) ? g : null; }, [], 5000)
+    .catch(() => null);
+  const seen = s || await page.run(grid);
+  for (const id of ids3) {
+    const card = seen.cards.find(item => item.id === id);
+    if (!card || card.placeholder || !card.image || !card.image.loaded) note('vitrines rendues : carte', `la carte de « ${id} » devrait montrer sa première capture, chargée : ${JSON.stringify(card && { placeholder: card.placeholder, image: card.image })}`);
+    else if (card.overflow > 1 || card.shot.height < 40) note('vitrines rendues : carte', `la carte de « ${id} » est coupée (${card.overflow} px) ou sa vignette trop basse (${card.shot.height.toFixed(0)} px)`);
+  }
+  for (const id of ids3) {
+    const manifest = readJson(`manifestes/${id}.json`);
+    await page.click(...await page.run(centerOf, `[data-fk="name:${id}"]`));
+    const f = await page.until(() => { const x = fiche(); return x && x.slides.length === 3 && x.slides.every(slide => slide.image) ? x : null; }, [], 5000).catch(() => null);
+    if (!f) { note('vitrines rendues : fiche', `la fiche de « ${id} » devrait porter trois captures chargées`); await page.press('Escape'); await page.until(grid).catch(() => null); continue; }
+    const wanted = manifest.vitrine.captures.map(capture => capture.legende[language]);
+    if (f.slides.map(slide => slide.caption).join('|') !== wanted.join('|')) note('vitrines rendues : légendes', `la fiche de « ${id} » devrait dire « ${wanted.join(' | ')} » : ${f.slides.map(slide => slide.caption).join(' | ')}`);
+    if (f.about !== manifest.vitrine.description[language]) note('vitrines rendues : description', `la fiche de « ${id} » devrait montrer la description de l'app : « ${f.about} »`);
+    if (f.noShot || !f.strip || f.strip.tab !== '0') note('vitrines rendues : bande', `la bande des captures de « ${id} » devrait être une région qui prend le clavier`);
+    if (f.slides[0].box.left < f.strip.box.left - 1 || f.slides[0].box.right > f.window.right) note('vitrines rendues : première capture', `la première capture de « ${id} » devrait se voir en entier dans la fenêtre`);
+    if (f.body.overflow > 1) note('vitrines rendues : fiche', `la fiche de « ${id} » déborde la fenêtre de ${f.body.overflow} px`);
+    await contrastProblems(page, note, `la fiche de « ${id} » avec ses captures`);
+    await page.click(...await page.run(centerOf, '[data-fk="back"]'));
+    await page.until(grid);
+  }
+  await page.press('Escape');
+  await page.until(closed, [], 2000);
+}
+
+
+// Les captures : une qui se charge dans la carte et dans la bande, une absente remplacée par la vignette d'attente ; les flèches et le clavier font défiler la bande ; la barre du haut reprend « Installer ».
 async function capturesProblems(page, t, note) {
   await page.run(() => window.__vitrine('captures'));
   let s = await page.until(() => { const g = grid(); return g && g.cards[0].image && g.cards[0].image.loaded ? g : null; });
   if (!s.cards[0].image || !s.cards[0].image.loaded || s.cards[0].placeholder) note('captures', `la carte de Publipostage+ devrait montrer sa première capture, sans vignette d'attente : ${JSON.stringify(s.cards[0].image)}`);
-  if (s.cards.slice(1).some(card => card.image)) note('captures', 'les autres cartes n\'ont pas de capture : seule la vignette d\'attente');
+  if (s.cards.slice(2).some(card => card.image)) note('captures', 'Form+ et Grist-BI n\'ont pas de capture : seule la vignette d\'attente');
   await page.click(...await page.run(centerOf, '[data-fk="name:publipostage"]'));
-  let f = await page.until(() => { const x = fiche(); return x && x.bigImage && x.bigImage.loaded && x.thumbs.length === 2 && x.thumbs[1].placeholder ? x : null; });
-  const caption = language => (language === 'fr' ? ['Première capture', 'Deuxième capture'] : ['First screenshot', 'Second screenshot']);
-  const [first, second] = caption(t('ap.back') === 'Apps' && t('mod.open') === 'Ouvrir' ? 'fr' : 'en');
-  if (f.long !== (t('mod.open') === 'Ouvrir' ? 'Une description longue de Publipostage+.' : 'A long description of Publipostage+.')) note('description', `la fiche devrait montrer la description de la vitrine : « ${f.long} »`);
-  if (f.caption !== first || !f.thumbs[0].current || f.thumbs[1].current) note('galerie', `la première capture devrait être en grand avec sa légende « ${first} » : ${f.caption} / ${JSON.stringify(f.thumbs)}`);
-  if (!f.thumbs[1].placeholder || f.thumbs[1].image) note('capture absente', 'la capture dont le fichier est absent devrait laisser la vignette d\'attente dans la bande');
-  await page.click(...await page.run(centerOf, '[data-fk="shot:1"]'));
-  f = await page.until(() => { const x = fiche(); return x && x.thumbs[1] && x.thumbs[1].current ? x : null; });
-  if (f.caption !== second || f.thumbs[0].current) note('galerie', `un clic sur la deuxième vignette devrait en montrer la légende « ${second} » : ${f.caption}`);
-  await page.until(() => { const x = fiche(); return x && x.bigPlaceholder ? x : null; }, [], 3000).catch(() => note('capture absente', 'la grande vue de la capture absente devrait montrer la vignette d\'attente'));
-  if ((await page.run(fiche)).focused !== 'shot:1') note('galerie', `le clavier devrait rester sur la vignette cliquée : ${(await page.run(fiche)).focused}`);
+  let f = await page.until(() => { const x = fiche(); return x && x.slides.length === 2 && x.slides[0].image && x.slides[1].placeholder ? x : null; });
+  const fr = t('mod.open') === 'Ouvrir';
+  const [first, second] = fr ? ['Première capture', 'Deuxième capture'] : ['First screenshot', 'Second screenshot'];
+  if (f.about !== (fr ? 'Une description longue de Publipostage+.' : 'A long description of Publipostage+.')) note('description', `la fiche devrait montrer la description de la vitrine : « ${f.about} »`);
+  if (f.slides.map(slide => slide.caption).join() !== [first, second].join()) note('captures', `les légendes devraient être « ${first} » et « ${second} » : ${f.slides.map(slide => slide.caption).join()}`);
+  if (f.noShot || !f.strip || f.strip.tab !== '0') note('captures', 'la bande des captures est une région qui prend le clavier');
+  if (f.slides[0].box.left < f.strip.box.left - 1 || f.slides[0].box.right > f.window.right) note('captures', 'la première capture devrait se voir en entier dans la fenêtre');
+  if (f.slides[1].image || !f.slides[1].placeholder) note('capture absente', 'la capture dont le fichier est absent devrait laisser la vignette d\'attente dans la bande');
+  if (!f.next || !f.next.shown || f.next.disabled || (f.prev && f.prev.shown)) note('captures', `au début de la bande « suivante » est là et « précédente » reste cachée : ${JSON.stringify([f.prev, f.next])}`);
+  await contrastProblems(page, note, 'la fiche avec captures');
+  await page.click(...await page.run(centerOf, '.fp-nav.next'));
+  f = await page.until(() => { const x = fiche(); return x && x.strip.scroll > 20 && x.next.disabled ? x : null; }, [], 3000).catch(() => null);
+  if (!f) note('captures', 'la flèche « suivante » devrait faire défiler la bande jusqu\'au bout, puis se cacher');
+  else if (!f.prev.shown || f.prev.disabled) note('captures', 'au bout de la bande « précédente » devrait se montrer');
+  await page.click(...await page.run(centerOf, '.fp-nav.prev'));
+  await page.until(() => { const x = fiche(); return x && x.strip.scroll < 4 ? x : null; }, [], 3000).catch(() => note('captures', 'la flèche « précédente » devrait ramener la bande au début'));
+  await page.run(() => document.querySelector('.fp-strip').focus());
+  await page.press('ArrowRight');
+  await page.until(() => { const x = fiche(); return x && x.strip.scroll > 20 ? x : null; }, [], 3000).catch(() => note('captures', 'la flèche droite sur la bande devrait la faire défiler'));
+  await page.press('Escape');
+  await page.until(grid);
+  // La barre du haut reprend « Installer » : Automation+ (non installée) a deux captures dans cet essai ; le geste vient de la barre, et le clavier la suit sur « Ouvrir ».
+  await page.click(...await page.run(centerOf, '[data-fk="name:automation"]'));
+  await page.until(fiche);
+  await page.run(() => { const body = document.querySelector('.mod-body'); body.scrollTop = body.scrollHeight; });
+  f = await page.until(() => { const x = fiche(); return x && x.mini ? x : null; });
+  const mini = f.miniButtons.filter(item => item.shown);
+  if (mini.map(item => item.text).join() !== t('ap.install') || f.miniName !== 'Automation+') note('barre du haut', `la barre du haut devrait reprendre « ${t('ap.install')} » d'Automation+ : ${f.miniName} / ${JSON.stringify(mini.map(item => item.text))}`);
+  await page.click(...await page.run(centerOf, '.fp-head [data-fk="mini-app:automation"]'));
+  f = await page.until(() => { const x = fiche(); return x && x.events.length ? x : null; });
+  if (JSON.stringify(f.events) !== JSON.stringify([['app', 'automation', true]])) note('barre du haut', `« ${t('ap.install')} » de la barre du haut a envoyé ${JSON.stringify(f.events)}`);
+  if (f.focused !== 'mini-open:automation') note('barre du haut', `le clavier devrait suivre sur « ${t('mod.open')} » de la barre du haut : ${f.focused}`);
+  if (!f.mini || f.body.top < 20) note('barre du haut', 'après le geste la page garde son défilement et la barre du haut ses boutons');
   await page.press('Escape');
   await page.press('Escape');
-  await page.until(() => !document.querySelector('.mod-scrim'), [], 2000);
+  await page.until(closed, [], 2000);
 }
 
-// La fenêtre étroite : deux colonnes à 560 px, une à 480 px ; rien ne déborde.
+// La fenêtre étroite : deux colonnes à 560 px, une à 480 px ; rien ne déborde, ni la mosaïque ni la fiche, boutons du bandeau compris.
 async function narrowProblems(page, mode, note) {
   for (const [width, columns] of [[560, 2], [480, 1]]) {
     await page.view({ width, scale: 1, mode });
@@ -272,10 +420,11 @@ async function narrowProblems(page, mode, note) {
     if (s.body.overflow > 1 || s.cards.some(card => card.box.right > s.window.right || card.box.left < s.window.left)) note('fenêtre étroite', `à ${width} px une carte déborde la fenêtre`);
     await page.click(...await page.run(centerOf, '[data-fk="name:publipostage"]'));
     const f = await page.until(fiche);
-    if (f.body.overflow > 1 || f.big.right > f.window.right) note('fenêtre étroite', `à ${width} px la fiche déborde la fenêtre`);
+    if (f.body.overflow > 1 || f.hero.right > f.window.right || f.buttons.some(item => item.box.right > f.window.right || item.box.left < f.window.left)) note('fenêtre étroite', `à ${width} px la fiche déborde la fenêtre`);
+    if (f.cards.some(card => card.overflow > 1 || card.box.right > f.window.right)) note('fenêtre étroite', `à ${width} px une carte d'extension déborde la fenêtre`);
     await page.press('Escape');
     await page.press('Escape');
-    await page.until(() => !document.querySelector('.mod-scrim'), [], 2000);
+    await page.until(closed, [], 2000);
   }
   await page.view({ width: 700, scale: 1, mode });
 }
@@ -294,11 +443,12 @@ export async function vitrineProblems(page, language, tag, mode = 'light') {
     await ficheProblems(page, t, note);
     await extensionsProblems(page, t, note);
     await page.press('Escape');
-    await page.until(() => !document.querySelector('.mod-scrim'), [], 2000);
+    await page.until(closed, [], 2000);
     await keyboardProblems(page, note);
     await openProblems(page, note);
     await blockedProblems(page, t, note);
     await capturesProblems(page, t, note);
+    await deliveredProblems(page, language, t, note);
     await narrowProblems(page, mode, note);
   } catch (error) {
     note('essai interrompu', String(error && error.message));

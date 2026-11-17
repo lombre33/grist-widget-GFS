@@ -13,11 +13,11 @@
 //   8. « HTML » et « OpenDocument » (déclarés le 17/11 à la demande de l'app, `b0dec60`, `54176f8` ; choix du porteur : « Oui, les deux ») : le sélecteur propose les extensions du manifeste ; l'app déjà
 //      ouverte (appel `ouvrir`) : une page HTML, puis un texte OpenDocument (`.fodt`) et un tableur (`.fods`) par la MÊME valeur ; l'app fermée, au démarrage : le HTML et le tableur ; rien n'est écrit.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
+import { closeModules as closeModulesOf, setExtension } from './lab-gestes.mjs';
 import { readFileSync } from 'node:fs';
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check, fileChooser, importMenu } from './lab-common.mjs';
-import { showRow } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -90,11 +90,7 @@ const toast = async () => ((await frame.locator('#toast').isVisible()) ? (await 
 const explorerHidden = () => frame.locator('.ex').isHidden();
 const { sub, subItem, newButton, openImport, mouseOn } = importMenu(page, () => frame, WORDS.import);
 const { pickWith, noChooser, strays } = fileChooser(page);
-// Échap sur la fiche d'une app revient à la mosaïque ; un second Échap ferme la fenêtre.
-const closeModules = async () => {
-  for (let i = 0; i < 3 && await frame.locator('.mod').count(); i++) { await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
-  await frame.locator('.mod').waitFor({ state: 'hidden' });
-};
+const closeModules = () => closeModulesOf(page, frame);
 const showFiles = async () => { await frame.locator('#floater-files').click(); await frame.locator('.ex').waitFor(); };
 // GFS repart (le document garde ses tables et ses choix) : l'explorateur d'abord, aucune app ouverte.
 const restart = async () => {
@@ -269,7 +265,7 @@ check('rien n\'est écrit dans le document par l\'import d\'Excel', await untouc
 // 4. « Diapositives » cochée, « PowerPoint » par l'appel `ouvrir`.
 await showFiles();
 await lab.openModules(frame);
-await (await showRow(frame, FK_SLIDES)).check();
+await setExtension(frame, FK_SLIDES, true);
 await lab.settle(frame);
 await closeModules();
 // Cocher « Diapositives » est un geste de la personne : GFS crée les tables de l'extension avec son accord. L'état d'après devient le point de départ de l'import de PowerPoint.

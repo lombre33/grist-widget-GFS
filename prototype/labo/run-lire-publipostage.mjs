@@ -18,7 +18,7 @@ import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { createI18n } from '../js/i18n/i18n.js';
 import { pageTitle, ACCENTED_LINE } from './pdf-fixture.mjs';
 import { PAGE_PORT, sha256, oldBrowser, openGfs, importSamples, shot, rowOf, openRowMenu, pressGreyed, waitFor, settle, closeModules } from './lab-pdf.mjs';
-import { showRow } from './lab-gestes.mjs';
+import { setExtension, extensionOn } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -100,10 +100,10 @@ async function playBeforeExtension(run) {
   await frame.locator('.mod').waitFor();
   check('le clic sur « Lire » grisé ouvre « Apps et extensions » sur la ligne de l\'extension', await focusedRow(frame) === FK, await focusedRow(frame));
   check('aucune app n\'a été ouverte', !appFrame(page));
-  await (await showRow(frame, FK)).check();
+  await setExtension(frame, FK, true);
   await settle(page, frame);
-  const hint = (await frame.locator('.mr', { has: frame.locator('[data-parent="publipostage"][data-ext="lecture-pdf"]') }).locator('.rd', { has: frame.locator('input[value="cdn"]') }).locator('.rd-hint').innerText()).trim();
-  check('la copie de GFS est le seul mode de pdf.js (le CDN est grisé avec sa raison)', await frame.locator(`[data-fk="${FK}"]`).isChecked() && hint.length > 0, hint);
+  const hint = (await frame.locator('.fp-ext', { has: frame.locator('[data-parent="publipostage"][data-ext="lecture-pdf"]') }).locator('.fp-ext-libs > :last-child').innerText()).trim();
+  check('la copie de GFS est le seul mode de pdf.js (le CDN est grisé avec sa raison)', await extensionOn(frame, FK) && hint.length > 0, hint);
   await shot(frame, 'lire-pp-2-extension');
   await closeModules(page, frame);
   const ready = await buttonState(frame);

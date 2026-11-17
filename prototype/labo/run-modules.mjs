@@ -2,10 +2,11 @@
 // événements du pointeur et du clavier du navigateur, jamais dispatchEvent). Les apps installées se retiennent dans la table `GFS_Rangement` du document
 // (contrats 7.4) : la question de la création, le refus, l'accord, l'écriture, le rechargement du cadre de GFS.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark, LAB_W (largeur du panneau), LAB_READONLY=1 (la vue est ouverte en lecture seule : la fenêtre se grise).
-// Depuis le 17/11 la fenêtre est une vitrine (« A · Vitrine ») : une carte par app (« Installer » ou « Ouvrir »), une fiche (un clic sur le nom) pour ses extensions, leurs modes et ses bibliothèques.
+// Depuis le 17/11 la fenêtre est une vitrine (« A · Vitrine ») : une carte par app (« Installer » ou « Ouvrir »), une fiche (un clic sur le nom, « A · Page produit ») pour ses extensions
+// (des cartes « Ajouter »), leurs modes (« CDN | Copie figée ») et ses bibliothèques (deux cartes).
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';
-import { removeApp, showFiche, showRow, backToGrid } from './lab-gestes.mjs';
+import { removeApp, showFiche, backToGrid, extensionOn, setExtension } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -25,7 +26,7 @@ const appsOption = async () => (await rangement()).value;
 const insideWindow = () => frame.evaluate(() => Boolean(document.activeElement && document.activeElement.closest('.mod')));
 const count = () => text(frame.locator('.mod-count'));
 // La ligne d'une extension : Publipostage+ en déclare deux, le graphique (avec un CDN) et l'édition collaborative (sans : la copie de GFS est son seul mode).
-const extRow = id => frame.locator('.mr', { has: frame.locator(`[data-ext="${id}"]`) });
+const extRow = id => frame.locator('.fp-ext', { has: frame.locator(`[data-ext="${id}"]`) });
 const state = () => frame.evaluate(() => ({
   explorerInert: document.querySelector('.ex').inert, framesInert: document.getElementById('frames').inert, floatersInert: document.getElementById('floaters').inert,
   explorerHidden: document.querySelector('.ex').hidden, windows: document.querySelectorAll('.mod').length, appFrames: document.querySelectorAll('.app-frame').length,
@@ -78,7 +79,8 @@ await shot('2-fenetre');
 if (readonly) {
   check('lecture seule : tous les boutons « Installer » sont grisés', (await frame.locator('.mod .ap-act .btn.primary:not([aria-disabled="true"])').count()) === 0);
   await showFiche(frame, 'publipostage');
-  check('lecture seule : les cases et les choix de la fiche sont grisés', (await frame.locator('.mod .ap-fiche input:not(:disabled)').count()) === 0);
+  check('lecture seule : les « Ajouter » et les choix de la fiche sont grisés', (await frame.locator('.mod .fp-page input:not(:disabled)').count()) === 0
+    && (await frame.locator('.mod .fp-ext .btn:not([aria-disabled="true"])').count()) === 0);
   await backToGrid(frame);
   say('rappel :', await text(frame.locator('.mod-note')));
   await shot('2b-lecture-seule');
@@ -132,17 +134,20 @@ await shot('3-automation-installee');
 
 // ----- Activer l'extension, choisir la copie de GFS : sur la fiche de Publipostage+.
 await showFiche(frame, 'publipostage');
-check('le mode est grisé tant que l\'extension est décochée', await extRow('graphique').locator('.mr-mode').evaluate(node => node.disabled));
-await frame.locator('label', { hasText: /^\s*Graphique|^\s*Chart/ }).first().click();
+check('le mode est grisé tant que l\'extension n\'est pas ajoutée', await extRow('graphique').locator('.fp-seg').evaluate(node => node.disabled));
+await setExtension(frame, 'ext:publipostage/graphique', true);
 await page.waitForTimeout(500);
 check('la table existe déjà : aucune question de plus', (await frame.locator('.ask').count()) === 0);
-check('Graphique cochée : 3 actifs sur 5', /^3 /.test(await count()), await count());
-check('le mode se choisit maintenant', !(await extRow('graphique').locator('.mr-mode').evaluate(node => node.disabled)));
-await extRow('graphique').locator('.rd', { hasText: /Copie de GFS|GFS copy/ }).click();
+check('Graphique ajoutée : « 1 ajoutée sur 5 » sur la fiche', /^(1 ajoutée sur 5|1 of 5 added)$/.test(await text(frame.locator('.fp-exts .fp-count'))), await text(frame.locator('.fp-exts .fp-count')));
+await backToGrid(frame);
+check('Graphique ajoutée : 3 actifs sur 5', /^3 /.test(await count()), await count());
+await showFiche(frame, 'publipostage');
+check('le mode se choisit maintenant', !(await extRow('graphique').locator('.fp-seg').evaluate(node => node.disabled)));
+await extRow('graphique').locator('.fp-segs label', { hasText: /Copie figée|Frozen copy/ }).click();
 await page.waitForTimeout(500);
-check('mode « copie de GFS » retenu pour l\'extension', JSON.stringify(await appsOption()) === JSON.stringify({ publipostage: { extensions: ['graphique'], modes: { graphique: 'vendorise' } }, automation: { extensions: [] } }), await appsOption());
+check('mode « copie figée » retenu pour l\'extension', JSON.stringify(await appsOption()) === JSON.stringify({ publipostage: { extensions: ['graphique'], modes: { graphique: 'vendorise' } }, automation: { extensions: [] } }), await appsOption());
 await shot('4-extension-copie-de-gfs');
-await extRow('graphique').locator('.rd', { hasText: /CDN/ }).click();
+await extRow('graphique').locator('.fp-segs label', { hasText: /^\s*CDN\s*$/ }).click();
 await page.waitForTimeout(400);
 check('retour au CDN : le défaut ne s\'écrit pas', JSON.stringify((await appsOption()).publipostage) === JSON.stringify({ extensions: ['graphique'] }), (await appsOption()).publipostage);
 
@@ -155,7 +160,7 @@ check('rechargé : la fenêtre des apps ne s\'ouvre pas toute seule', (await sta
 await frame.locator('.ex-title-row .tb', { hasText: /Apps/ }).click();
 await frame.locator('.mod').waitFor();
 check('rechargé : 3 actifs sur 5, comme avant', /^3 /.test(await count()), await count());
-check('rechargé : Automation+ est installée (« Ouvrir ») et Graphique est cochée', (await frame.locator('[data-fk="open:automation"]').count()) === 1 && (await (await showRow(frame, 'ext:publipostage/graphique')).isChecked()));
+check('rechargé : Automation+ est installée (« Ouvrir ») et Graphique est cochée', (await frame.locator('[data-fk="open:automation"]').count()) === 1 && (await extensionOn(frame, 'ext:publipostage/graphique')));
 await backToGrid(frame);
 check('rechargé : rien n\'a été récrit ni créé', JSON.stringify(await rangement()) === JSON.stringify(saved), await rangement());
 await shot('4b-apres-rechargement');

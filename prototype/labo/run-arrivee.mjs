@@ -14,7 +14,7 @@
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check } from './lab-common.mjs';
-import { showRow } from './lab-gestes.mjs';
+import { setExtension } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -195,7 +195,7 @@ await arrivesOnPublipostage(DOCUMENT, 'le modèle de la vue avec les autres rég
 if (!readonly) {
   say('--- 4. la présentation, l\'extension cochée');
   await lab.openModules(frame);
-  await (await showRow(frame, 'ext:publipostage/diapositives')).check();
+  await setExtension(frame, 'ext:publipostage/diapositives', true);
   await lab.settle(frame);
   await frame.locator('.mod [data-fk="close"]').click();
   await setOptions({ modeleDeLaVue: SLIDES.id });

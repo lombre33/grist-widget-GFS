@@ -136,7 +136,8 @@ export async function settle(page, frame) {
     await page.waitForTimeout(100);
   }
 }
-export const closeModules = async (page, frame) => { await page.keyboard.press('Escape'); await frame.locator('.mod').waitFor({ state: 'hidden' }); };
+// Échap revient de la fiche à la mosaïque, puis ferme : le geste partagé de lab-gestes.mjs.
+export { closeModules } from './lab-gestes.mjs';
 
 // ---------- les PDF d'essai ----------
 

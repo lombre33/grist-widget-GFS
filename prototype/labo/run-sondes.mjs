@@ -3,7 +3,7 @@
 // extensions » à la vraie souris, les réglages de la vue dans Grist, l'événement `extensions`, le chargement par la sonde, un vrai graphique.
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';
-import { installApp, showRow } from './lab-gestes.mjs';
+import { installApp, setExtension, chooseMode } from './lab-gestes.mjs';
 
 const lab = await startLab({ lang: 'fr', probes: true });
 const { page } = lab;
@@ -29,7 +29,7 @@ for (const key of ['a', 'b', 'c', 'd', 'f', 'e']) {
   await lab.settle(); // le premier geste crée la table du document, avec l'accord de la personne (contrats 7.4)
   const staged = key === 'a'; // la sonde A : app installée seule d'abord, l'extension ensuite (l'événement `extensions` arrive en cours de vie)
   if (!staged) {
-    await (await showRow(frame, `ext:${id}/graphique`)).check();
+    await setExtension(frame, `ext:${id}/graphique`, true);
     await lab.settle();
   }
   await frame.locator(`[data-open="${id}"]`).click();
@@ -41,7 +41,7 @@ for (const key of ['a', 'b', 'c', 'd', 'f', 'e']) {
   if (staged) {
     check(`${id} : sans extension, aucune bibliothèque dans le contexte`, probe.contexte && probe.contexte.extensions.length === 0 && probe.contexte.bibliotheques.length === 0 && probe.chargements.length === 0);
     await windowOpen();
-    await (await showRow(frame, `ext:${id}/graphique`)).check();
+    await setExtension(frame, `ext:${id}/graphique`, true);
     await lab.settle();
     await page.keyboard.press('Escape');
   }
@@ -49,7 +49,7 @@ for (const key of ['a', 'b', 'c', 'd', 'f', 'e']) {
   probe = await probeOf(app);
   const first = probe.chargements[0];
   await windowOpen();
-  await (await showRow(frame, `mode:${id}/graphique/vendorise`)).check();
+  await chooseMode(frame, `mode:${id}/graphique/vendorise`);
   await lab.settle();
   await page.keyboard.press('Escape');
   await waitLoads(app, 2);

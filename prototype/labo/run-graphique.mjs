@@ -12,7 +12,7 @@ import { join } from 'node:path';
 import { startLab } from './lab-setup.mjs';
 import { say, check, LAB } from './lab-common.mjs';
 import { readCatalogue, resolveLibraries, forContext } from '../js/apps/libraries.js';
-import { showRow } from './lab-gestes.mjs';
+import { showFiche, setExtension, closeModules } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -128,23 +128,24 @@ const painted = uri => app.evaluate(async source => {
 // ----- 1. La fenêtre « Apps et extensions » : l'extension, ses deux bibliothèques, son mode.
 await gfs.locator('#floater-apps').click();
 await gfs.locator('.mod').waitFor();
+await showFiche(gfs, 'publipostage');
 const row = gfs.locator(`[data-row="${FK}"]`);
-const legend = (await row.locator('legend').innerText()).replace(/\s+/g, ' ');
-const sizes = await row.locator('.sz').allInnerTexts();
+const legend = (await row.locator('.fp-ext-libs > .fp-note').first().innerText()).replace(/\s+/g, ' ');
+const sizes = await row.locator('.fp-ext-size').allInnerTexts();
 say('la ligne dans la fenêtre :', (await row.innerText()).replace(/\s+/g, ' '));
 check('la ligne de l\'extension nomme ses DEUX bibliothèques (Plotly, ECharts), chacune avec son poids, et dit le sien du manifeste',
   /Plotly/i.test(legend) && /E-?charts/i.test(legend) && (legend.match(/≈\s[\d\u00a0\u202f.,]+\s(Ko|Mo|KB|MB)/g) || []).length === 2 && sizes.length === 1 && new RegExp(`^≈\\s${declared.poids}\\s(Ko|KB)$`).test(sizes[0].trim()), `${legend} | ${sizes}`);
-await (await showRow(gfs, FK)).check();
+await setExtension(gfs, FK, true);
 await lab.settle(gfs);
 if (mode === 'vendorise') {
-  await row.locator('.rd', { has: gfs.locator('input[value="vendorise"]') }).click();
+  await row.locator('.fp-segs label', { has: gfs.locator('input[value="vendorise"]') }).click();
   await lab.settle(gfs);
 }
 const chosen = await gfs.evaluate(() => [...document.querySelectorAll('input[data-mode-for="graphique"]')].map(input => ({ mode: input.value, checked: input.checked, disabled: input.disabled })));
-check(`le mode ${mode === 'cdn' ? '« Depuis un CDN » (le défaut)' : '« Copie de GFS »'} est celui qui est coché, l'autre reste libre`,
+check(`le mode ${mode === 'cdn' ? '« CDN » (le défaut)' : '« Copie figée »'} est celui qui est coché, l'autre reste libre`,
   JSON.stringify(chosen) === JSON.stringify([{ mode: 'cdn', checked: mode === 'cdn', disabled: false }, { mode: 'vendorise', checked: mode === 'vendorise', disabled: false }]), chosen);
 await lab.shotPanel(run, '1-fenetre-graphique');
-await page.keyboard.press('Escape');
+await closeModules(page, gfs);
 await app.waitForFunction(() => Extensions.isActive('graphique'), null, { timeout: 15000 });
 const given = await app.evaluate(() => ({ echarts: GfsLink.library('echarts'), plotly: GfsLink.library('plotly') }));
 check('GFS donne à l\'app ECharts (adresse, empreinte, forme) comme son catalogue le dit', Boolean(given.echarts) && given.echarts.src === ECHARTS && JSON.stringify(given.echarts) === JSON.stringify(expected.echarts), given.echarts);

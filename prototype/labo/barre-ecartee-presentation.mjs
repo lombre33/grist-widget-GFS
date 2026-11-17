@@ -4,6 +4,7 @@
 // et sa liste avec recherche ; puis « Présenter » : le menu ▾ du ▶ (4dfcd0c), puis les tours (barre-ecartee-diaporama.mjs).
 // La bande et le volet étendent exprès leur fond sous la barre (une gouttière : `--pp-slide-strip-bar`) : on juge leur contenu, pas ce fond.
 import { check, say } from './lab-common.mjs';
+import { setExtension, extensionOn, closeModules } from './lab-gestes.mjs';
 import { stands, judge, asked, none, label, wait, hits, inFrame, rectOf, shownRect, clickOpener, unopened } from './barre-ecartee-lab.mjs';
 import { atRest, windows, menus as toolbarMenus } from './barre-ecartee-scenarios.mjs';
 import { TOURS, tour, showMenu, setFullscreen, windowTour } from './barre-ecartee-diaporama.mjs';
@@ -30,12 +31,10 @@ export const seedDeck = frame => frame.evaluate(rows => grist.docApi.applyUserAc
 // La personne coche « Diapositives » dans la fenêtre « Apps et extensions » de GFS, puis ouvre la présentation par l'explorateur (double-clic), l'app déjà ouverte.
 export async function openDeck({ lab, page, frame, app }) {
   await lab.openModules(frame);
-  const box = frame.locator(`[data-fk="${FK}"]`);
-  if (!(await box.isChecked())) await frame.locator(`[data-row="${FK}"] label`).click();
+  await setExtension(frame, FK, true);
   await lab.settle(frame);
-  check('la case « Diapositives » est cochée', await box.isChecked());
-  await page.keyboard.press('Escape');
-  await frame.locator('.mod').waitFor({ state: 'hidden' });
+  check('l\'extension « Diapositives » est ajoutée', await extensionOn(frame, FK));
+  await closeModules(page, frame);
   await app.waitForFunction(() => Extensions.isActive('diapositives'), null, { timeout: 15000 });
   await app.waitForFunction(() => !LiveEntry.hasUnsavedEdits(), null, { timeout: 20000 }).catch(() => {});
   await frame.locator('#floater-files').click();

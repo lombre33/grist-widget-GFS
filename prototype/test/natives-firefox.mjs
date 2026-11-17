@@ -3,7 +3,8 @@
 // d'essai donne quatre fonctions (`window.__natives`, test/pages/explorateur.js) ; la vraie souris et le vrai clavier. À mesurer : le choix de toutes les fonctions ; le détail se déplie à la
 // souris, reste déplié après un choix et tient dans la fenêtre (rien ne déborde, rien ne se superpose) ; le choix d'une fonction la met en copie figée et le choix de toutes dit « mélange » ;
 // le raccourci « toutes » met toutes les fonctions du même côté ; le clavier (flèche) choisit comme la souris et le clavier reste là où il était ; une copie qui manque est grisée avec sa raison
-// (un clic dessus ne fait rien) ; la fenêtre en lecture seule grise tout.
+// (un clic dessus ne fait rien) ; la fenêtre en lecture seule grise tout. Depuis le 17/11 (« A · Page produit ») le choix est dans la fiche de l'app : deux cartes (CDN, Copie figée) et, dépliable, une ligne
+// par fonction avec son segment « CDN | Copie figée » ; le choix d'une extension est un segment sur sa carte.
 import { createI18n } from '../js/i18n/i18n.js';
 
 function state() {
@@ -11,15 +12,17 @@ function state() {
   if (!modal) return null;
   const body = modal.querySelector('.mod-body');
   const box = (node) => { const r = node.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom }; };
-  const app = modal.querySelector('.ap-about');
-  const natives = app && app.querySelector('.mr-natives');
+  const natives = modal.querySelector('.fp-libs');
   if (!natives) return null;
-  const details = app.querySelector('details');
+  const details = natives.querySelector('details');
+  const text = node => node.textContent.replace(/\s+/g, ' ').trim();
   return {
-    legend: natives.querySelector('legend').textContent.replace(/\s+/g, ' ').trim(),
+    legend: text(natives.querySelector('h2')),
     open: Boolean(details && details.open),
-    radios: [...app.querySelectorAll('input[type=radio]')].map(input => ({ key: input.dataset.fk, checked: input.checked, disabled: input.disabled })),
-    rows: [...app.querySelectorAll('.mr-lib')].map(row => ({ name: row.querySelector('.mr-lib-name').textContent, overflow: row.scrollWidth - row.clientWidth, box: box(row), warn: (row.querySelector('.mr-warn') || {}).textContent || null, note: (row.querySelector('.mr-note') || {}).textContent || null })),
+    radios: [...natives.querySelectorAll('input[type=radio]')].map(input => ({ key: input.dataset.fk, checked: input.checked, disabled: input.disabled })),
+    rows: [...natives.querySelectorAll('.fp-fn')].map(row => ({ name: row.querySelector('.fp-fn-name').textContent, overflow: row.scrollWidth - row.clientWidth, box: box(row),
+      warn: (row.querySelector('.fp-warn') || {}).textContent || null, note: (row.querySelector('.fp-note') || {}).textContent || null })),
+    cards: [...natives.querySelectorAll('.fp-choice')].map(card => ({ off: card.classList.contains('is-off'), desc: text(card.querySelector('.fp-choice-desc')), pill: text(card.querySelector('.fp-pill')), box: box(card) })),
     bodyOverflow: body.scrollWidth - body.clientWidth,
     window: box(modal),
     summary: details ? box(details.querySelector('summary')) : null,
@@ -37,34 +40,35 @@ function centerOf(selector) {
   return [r.left + r.width / 2, r.top + r.height / 2];
 }
 
-const ALL = value => `.ap-about input[data-native-all][value="${value}"]`;
-const ROW = (group, value) => `.ap-about input[data-native-for="${group}"][value="${value}"]`;
-const SUMMARY = '.ap-about details summary';
+const ALL = value => `.fp-libs input[data-native-all][value="${value}"]`;
+const ROW = (group, value) => `.fp-libs input[data-native-for="${group}"][value="${value}"]`;
+const SUMMARY = '.fp-libs details summary';
 
-// Le choix « Depuis un CDN » ou « Copie de GFS » de l'édition collaborative, et la phrase qui dit que Publipostage+ ne nomme pas encore l'adresse du CDN (contrats 2.6 point 15, carte du 13/11).
+// Le choix « CDN » ou « Copie figée » de l'édition collaborative (le segment de sa carte), et la phrase qui dit que Publipostage+ ne nomme pas encore l'adresse du CDN (contrats 2.6 point 15, carte du 13/11).
 function modeState(want) {
   const radio = value => document.querySelector(`input[data-mode-for="edition"][value="${value}"]`);
   const cdn = radio('cdn');
   if (!cdn || (want && !radio(want).checked)) return null;
   const fieldset = cdn.closest('fieldset');
-  const warn = fieldset.querySelector('.mr-mode-warn');
+  const libs = cdn.closest('.fp-ext-libs');
+  const sentence = libs.lastElementChild;
+  const warn = sentence.classList.contains('fp-warn') ? sentence : null;
   if (warn) warn.scrollIntoView({ block: 'nearest' });
   const box = node => { const r = node.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom }; };
   const rgb = value => (value.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
   const light = ([r, g, b]) => { const f = c => { const s = c / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
   let contrast = null;
   if (warn) {
-    const back = light(rgb(getComputedStyle(fieldset).backgroundColor));
+    const back = light(rgb(getComputedStyle(cdn.closest('.fp-ext')).backgroundColor));
     const front = light(rgb(getComputedStyle(warn).color));
     contrast = (Math.max(back, front) + 0.05) / (Math.min(back, front) + 0.05);
   }
-  const options = [...fieldset.querySelectorAll('label.rd')];
-  const hint = value => radio(value).closest('label').querySelector('.rd-hint').textContent.trim();
+  const card = cdn.closest('.fp-ext');
   return {
-    hints: { cdn: hint('cdn'), vendorise: hint('vendorise') },
+    sentence: sentence.textContent.trim(),
     cdn: cdn.checked, vendorise: radio('vendorise').checked, cdnDisabled: cdn.disabled, vendoriseDisabled: radio('vendorise').disabled,
     warn: warn ? warn.textContent.trim() : null, warnBox: warn ? box(warn) : null, warnOverflow: warn ? warn.scrollWidth - warn.clientWidth : 0, contrast,
-    fieldset: box(fieldset), optionsBottom: Math.max(...options.map(option => box(option).bottom)), window: box(document.querySelector('.mod-scrim .mod')),
+    fieldset: box(fieldset), card: box(card), window: box(document.querySelector('.mod-scrim .mod')),
     bodyOverflow: document.querySelector('.mod-body').scrollWidth - document.querySelector('.mod-body').clientWidth, events: window.__modeEvents,
   };
 }
@@ -96,8 +100,13 @@ export async function nativesProblems(page, language, tag) {
   };
 
   let s = await open('ok');
-  if (!s.legend.startsWith(t('mod.native.title')) || s.legend.includes(t('mod.native.mixed'))) note('légende', `« ${s.legend} » devrait nommer les bibliothèques de l'app, sans « mélange »`);
+  if (!s.legend.startsWith(t('ap.libsTitle')) || s.legend.includes(t('mod.native.mixed'))) note('légende', `« ${s.legend} » devrait nommer les bibliothèques de l'app, sans « mélange »`);
   if (s.open || !checked(s, 'nativeall:publipostage/cdn') || checked(s, 'nativeall:publipostage/vendorise')) note('départ', 'au départ le détail est replié et le choix de toutes est le CDN');
+  const [cdnCard, copyCard] = s.cards;
+  if (s.cards.length !== 2 || cdnCard.pill !== t('ap.libDefault') || copyCard.pill !== t('ap.libClosed') || copyCard.desc !== t('mod.native.copyHint') || copyCard.off) {
+    note('cartes', `deux cartes : « ${t('mod.native.cdn')} » (${t('ap.libDefault')}) et « ${t('mod.native.copy')} » (${t('ap.libClosed')}, ${t('mod.native.copyHint')}) : ${JSON.stringify(s.cards.map(card => [card.pill, card.desc, card.off]))}`);
+  }
+  if (s.cards.length === 2 && (cdnCard.box.right > copyCard.box.left + 1 || cdnCard.box.left < s.window.left || copyCard.box.right > s.window.right)) note('cartes', 'les deux cartes devraient se suivre, dans la fenêtre');
 
   await click(SUMMARY);
   s = await page.run(state);
@@ -134,6 +143,7 @@ export async function nativesProblems(page, language, tag) {
   s = await page.run(state);
   const pdf = s.rows.find(row => row.name.startsWith('Export PDF') || row.name.startsWith('PDF export'));
   const radio = (s.radios.find(item => item.key === 'native:publipostage/pdf/vendorise') || {});
+  if (!s.cards[1].off || s.cards[1].desc !== t('mod.native.missingSome')) note('copie manquante', `la carte « ${t('mod.native.copy')} » devrait être grisée avec sa raison : ${JSON.stringify(s.cards[1])}`);
   if (!radio.disabled || !pdf || !/9\.9\.9/.test(pdf.warn || '')) note('copie manquante', `la copie figée du PDF devrait être grisée avec sa raison (grisée : ${radio.disabled}, raison : ${pdf && pdf.warn})`);
   if (!(s.radios.find(item => item.key === 'nativeall:publipostage/vendorise') || {}).disabled) note('copie manquante', 'le choix de toutes en copie figée devrait être grisé tant qu\'une copie manque');
   const before = s.events.length;
@@ -160,30 +170,30 @@ export async function nativesProblems(page, language, tag) {
   if (!checked(s, 'native:publipostage/editeur/vendorise') || !s.legend.includes(t('mod.native.mixed'))) note('éditeur', 'la ligne de l\'éditeur ne montre pas la copie figée choisie, ou la légende ne dit pas « mélange »');
   await close();
 
-  // L'édition collaborative cochée, au défaut : « Copie de GFS » est choisie (Publipostage+ ne nomme pas encore l'adresse du CDN), sans phrase ; « Depuis un CDN » reste libre et, une fois choisi
+  // L'édition collaborative cochée, au défaut : « Copie figée » est choisie (Publipostage+ ne nomme pas encore l'adresse du CDN), avec « Par défaut » ; « CDN » reste libre et, une fois choisi
   // à la souris, la phrase dit que le navigateur le refuse ; la copie la fait disparaître.
   await open('direct');
   let m = await page.until(modeState);
   const noteMode = text => note('mode de l\'édition collaborative', text);
-  if (!m.vendorise || m.cdn || m.cdnDisabled || m.vendoriseDisabled) noteMode(`au départ « Copie de GFS » devrait être choisie, et les deux choix libres (CDN ${m.cdn}/${m.cdnDisabled}, copie ${m.vendorise}/${m.vendoriseDisabled})`);
-  if (m.warn !== null) noteMode(`tant que le CDN n'est pas choisi, la phrase ne devrait pas être là : « ${m.warn} »`);
-  if (m.hints.vendorise !== t('mod.mode.vendoriseHint') || m.hints.cdn !== t('mod.mode.cdnPlain')) noteMode(`seule la copie devrait dire « Par défaut » (copie : « ${m.hints.vendorise} », CDN : « ${m.hints.cdn} »)`);
+  if (!m.vendorise || m.cdn || m.cdnDisabled || m.vendoriseDisabled) noteMode(`au départ « ${t('mod.native.copy')} » devrait être choisie, et les deux choix libres (CDN ${m.cdn}/${m.cdnDisabled}, copie ${m.vendorise}/${m.vendoriseDisabled})`);
+  if (m.warn !== null) noteMode(`tant que le CDN n'est pas choisi, l'avertissement ne devrait pas être là : « ${m.warn} »`);
+  if (m.sentence !== t('mod.mode.vendoriseHint')) noteMode(`sous le segment la copie devrait dire « ${t('mod.mode.vendoriseHint')} » : « ${m.sentence} »`);
   const modeAt = async value => page.run(centerOf, `input[data-mode-for="edition"][value="${value}"]`);
   await page.click(...await modeAt('cdn'));
   m = await page.until(modeState, ['cdn']);
-  if (!m.cdn || m.vendorise) noteMode('à la souris sur « Depuis un CDN », le CDN devrait être choisi');
-  if (JSON.stringify(m.events) !== JSON.stringify([['publipostage', 'edition', 'cdn']])) noteMode(`la souris sur « Depuis un CDN » a envoyé ${JSON.stringify(m.events)}`);
+  if (!m.cdn || m.vendorise) noteMode('à la souris sur « CDN », le CDN devrait être choisi');
+  if (JSON.stringify(m.events) !== JSON.stringify([['publipostage', 'edition', 'cdn']])) noteMode(`la souris sur « CDN » a envoyé ${JSON.stringify(m.events)}`);
   if (m.warn !== t('mod.mode.cdnRefused')) noteMode(`la phrase sous le CDN devrait être « ${t('mod.mode.cdnRefused')} » : « ${m.warn} »`);
   else {
     if (m.warnOverflow > 1 || m.bodyOverflow > 1) noteMode(`la phrase ou la liste déborde (${m.warnOverflow} px, ${m.bodyOverflow} px)`);
-    if (m.warnBox.left < m.fieldset.left - 1 || m.warnBox.right > m.fieldset.right + 1 || m.warnBox.bottom > m.fieldset.bottom + 1) noteMode('la phrase sort du cadre des deux choix');
-    if (m.warnBox.top < m.optionsBottom - 1) noteMode('la phrase recouvre les deux choix');
+    if (m.warnBox.left < m.card.left - 1 || m.warnBox.right > m.card.right + 1 || m.warnBox.bottom > m.card.bottom + 1) noteMode('la phrase sort de la carte de l\'extension');
+    if (m.warnBox.top < m.fieldset.bottom - 1) noteMode('la phrase recouvre le segment des deux choix');
     if (m.warnBox.left < m.window.left || m.warnBox.right > m.window.right) noteMode('la phrase sort de la fenêtre');
     if (m.contrast < 4.5) noteMode(`la phrase est trop pâle (contraste ${m.contrast.toFixed(2)}, 4,5 attendu)`);
   }
   await page.click(...await modeAt('vendorise'));
   m = await page.until(modeState, ['vendorise']);
-  if (!m.vendorise || m.cdn || m.warn !== null) noteMode(`à la souris sur « Copie de GFS », la copie devrait être choisie et la phrase partir (copie ${m.vendorise}, phrase ${m.warn})`);
+  if (!m.vendorise || m.cdn || m.warn !== null) noteMode(`à la souris sur « Copie figée », la copie devrait être choisie et la phrase partir (copie ${m.vendorise}, phrase ${m.warn})`);
   if (JSON.stringify(m.events) !== JSON.stringify([['publipostage', 'edition', 'cdn'], ['publipostage', 'edition', 'vendorise']])) noteMode(`les deux clics ont envoyé ${JSON.stringify(m.events)}`);
   await close();
 

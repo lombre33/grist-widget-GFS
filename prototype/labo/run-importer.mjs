@@ -12,6 +12,7 @@
 //   7. Au clavier : Entrée, Fin, flèche droite (le sous-menu s'ouvre), Échap (il se referme, le focus revient à « Importer »), puis Entrée sur « Texte » ouvre le sélecteur.
 //   8. Échap deux fois, puis un clic à côté : le sous-menu, puis le menu se referment.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
+import { closeModules as closeModulesOf } from './lab-gestes.mjs';
 import { startLab } from './lab-setup.mjs';
 import { say, check, fileChooser, importMenu, probeDeclares } from './lab-common.mjs';
 import { isGfsWarning } from './sondes-muettes.mjs';
@@ -61,7 +62,7 @@ const waitFor = async (label, test, ms = 10000) => {
 };
 const probeFrames = () => page.frames().filter(f => PROBE.test(f.url()) && !f.isDetached()).length;
 const showFiles = async () => { await frame.locator('#floater-files').click(); await frame.locator('.ex').waitFor(); };
-const closeModules = async () => { await page.keyboard.press('Escape'); await frame.locator('.mod').waitFor({ state: 'hidden' }); };
+const closeModules = () => closeModulesOf(page, frame);
 const install = async id => {
   await frame.waitForFunction(() => Boolean(document.body) && document.body.dataset.gfsFirstRun === 'done', null, { timeout: 30000 }).catch(() => {});
   await lab.openModules(frame);

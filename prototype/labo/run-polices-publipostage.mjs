@@ -8,7 +8,7 @@
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check } from './lab-common.mjs';
-import { collectWarnings, waiter } from './lab-gestes.mjs';
+import { collectWarnings, waiter, showFiche } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -27,19 +27,21 @@ await seedFiles(lab.frame);
 const frame = lab.frame;
 const waitFor = waiter(page, 60);
 const line = () => frame.locator(`[data-row="${FK}"]`);
-const box = () => frame.locator(`input[data-fk="${FK}"]`);
+const box = () => frame.locator(`button[data-fk="${FK}"]`);
+const isAdded = async () => (await box().getAttribute('data-on')) === 'false'; // « Retirer » : la carte est ajoutée
 const received = () => app.evaluate(() => GfsLink.extensions());
 
 // ---------- 1. la ligne de la fenêtre ----------
 await lab.openModules(frame);
+await showFiche(frame, 'publipostage');
 await line().waitFor();
 const text = (await line().innerText()).replace(/\s+/g, ' ');
-const sizes = await line().locator('.sz').allInnerTexts();
-const facts = await line().evaluate(node => ({ over: node.scrollWidth - node.clientWidth, modes: node.querySelectorAll('.mr-mode').length, libs: node.querySelectorAll('.mr-lib').length }));
+const sizes = await line().locator('.fp-ext-size').allInnerTexts();
+const facts = await line().evaluate(node => ({ over: node.scrollWidth - node.clientWidth, modes: node.querySelectorAll('[data-mode-for]').length, libs: node.querySelectorAll('.fp-ext-libs').length }));
 say('la ligne :', text, sizes, facts);
 check('la ligne « Polices » dit ce qu\'elle apporte (Marianne, à la déclaration de la personne), sans choix de bibliothèque, avec son poids du manifeste', text.includes(WORDS.name) && WORDS.text.test(text)
   && facts.modes === 0 && facts.libs === 0 && sizes.length === 1 && WORDS.size.test(sizes[0].trim()), { text, sizes, facts });
-check('décochée au départ, jamais grisée, tenue dans le panneau de 700 × 400', !(await box().isChecked()) && (await box().isEnabled()) && facts.over <= 0, facts);
+check('décochée au départ, jamais grisée, tenue dans le panneau de 700 × 400', !(await isAdded()) && (await box().getAttribute('aria-disabled')) !== 'true' && facts.over <= 0, facts);
 await lab.shotPanel(run, '1-ligne', frame);
 
 // ---------- 2. l'app ouverte ne la reçoit pas encore ----------
@@ -52,7 +54,8 @@ check('l\'app ouverte ne reçoit pas « polices » tant que la case n\'est pas c
 
 // ---------- 3. la case cochée ----------
 await lab.openModules(frame);
-await box().check();
+await showFiche(frame, 'publipostage');
+await box().click();
 await lab.settle(frame);
 await waitFor('l\'extension reçue par l\'app', async () => (await received()).includes('polices'));
 const given = await app.evaluate(() => ({ list: GfsLink.extensions(), library: typeof GfsLink.library === 'function' ? GfsLink.library('polices') : null }));
@@ -60,7 +63,7 @@ check('cochée à la souris : l\'app apprend « polices » sans que son cadre so
 await lab.shotPanel(run, '2-cochee', frame);
 
 // ---------- 4. la case décochée ----------
-await box().uncheck();
+await box().click();
 await lab.settle(frame);
 await waitFor('l\'extension retirée', async () => !(await received()).includes('polices'));
 check('décochée : l\'app ne l\'a plus, son cadre n\'a toujours pas été rechargé', !(await received()).includes('polices') && app.url() === before && !app.isDetached());

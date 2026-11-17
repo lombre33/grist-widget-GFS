@@ -3,7 +3,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validateManifest } from '../js/apps/manifest.js';
 import { vitrineOf, SHOT_FOLDER } from '../js/apps/vitrine.js';
-import { publipostage, bi } from './helpers.mjs';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { STRING_TABLES } from '../js/i18n/i18n.js';
+import { publipostage, bi, ROOT } from './helpers.mjs';
 
 const L = (fr, en) => ({ fr, en });
 const withVitrine = vitrine => ({ ...bi(), vitrine });
@@ -46,4 +49,25 @@ test('la vitrine d\'une app : sa description (sinon le texte court), ses capture
 test('un manifeste refusé ou absent n\'a rien à montrer que son nom : pas de plantage', () => {
   assert.deepEqual(vitrineOf(null, 'fr'), { description: '', captures: [] });
   assert.deepEqual(vitrineOf({ vitrine: 'x' }, 'fr'), { description: '', captures: [] });
+});
+
+// Mesuré le 17/11 dans un vrai Firefox : l'opacité de `.btn[aria-disabled]` (gfs.css) faisait tomber « Installer » grisé à 2:1 sur la fiche (app refusée, lecture seule). Une règle qui grise un
+// bouton de la fenêtre en pointillé lui rend l'opacité pleine et laisse le texte au gris du texte discret (4,5:1) ; test/vitrine-firefox.mjs le mesure, celui-ci garde la règle.
+test('un bouton grisé de la fenêtre « Apps » garde son opacité pleine : le texte discret, en pointillé, lisible à 4,5:1', () => {
+  const css = readFileSync(join(ROOT, 'css/modules.css'), 'utf8');
+  const rule = css.match(/\.ap-win \.btn\[aria-disabled="true"\] \{([^}]*)\}/);
+  assert.ok(rule, 'une règle grise les boutons de la fenêtre');
+  assert.match(rule[1], /opacity: 1;/);
+  assert.match(rule[1], /border-style: dashed;/);
+  assert.match(rule[1], /color: var\(--text-muted\);/);
+});
+
+test('la fiche dit « Copie figée » partout : plus « Copie de GFS » ni « Depuis un CDN » (une seule façon de nommer la même chose)', () => {
+  for (const [language, banned] of [['fr', /Copie de GFS|Depuis un CDN/], ['en', /GFS copy|From a CDN/]]) {
+    const found = Object.entries(STRING_TABLES[language]).filter(([, text]) => banned.test(text)).map(([key]) => key);
+    assert.deepEqual(found, [], `${language} : ${found.join()}`);
+  }
+  assert.equal(STRING_TABLES.fr['mod.native.copy'], 'Copie figée');
+  assert.equal(STRING_TABLES.en['mod.native.copy'], 'Frozen copy');
+  assert.match(STRING_TABLES.fr['mod.mode.cdnRefused'], /« Copie figée »/);
 });

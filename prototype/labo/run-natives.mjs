@@ -13,7 +13,7 @@ import { join } from 'node:path';
 import { serve } from './lab-server.mjs';
 import { startLab } from './lab-setup.mjs';
 import { say, check, LAB } from './lab-common.mjs';
-import { reopenGfs } from './lab-gestes.mjs';
+import { reopenGfs, showFiche } from './lab-gestes.mjs';
 
 const REPO = process.env.REPO_DIR;
 const PP = process.env.PP_DIR;
@@ -54,18 +54,17 @@ const shot = name => lab.shotPanel(run, name, frame);
 await frame.waitForFunction(() => document.body.dataset.gfsFirstRun === 'done', null, { timeout: 30000 }).catch(() => {});
 
 const state = () => frame.evaluate(() => {
-  const app = document.querySelector('.mod .mr--app');
-  const natives = app && app.querySelector('.mr-natives');
+  const natives = document.querySelector('.mod .fp-libs');
   if (!natives) return null;
-  const details = app.querySelector('details');
+  const details = natives.querySelector('details');
   return {
-    legend: natives.querySelector('legend').textContent.replace(/\s+/g, ' ').trim(), open: Boolean(details && details.open),
-    radios: Object.fromEntries([...app.querySelectorAll('input[type=radio]')].map(input => [input.dataset.fk, { checked: input.checked, disabled: input.disabled }])),
-    rows: [...app.querySelectorAll('.mr-lib')].map(row => ({ name: row.querySelector('.mr-lib-name').textContent, overflow: row.scrollWidth - row.clientWidth })),
+    legend: natives.querySelector('h2').textContent.replace(/\s+/g, ' ').trim(), open: Boolean(details && details.open),
+    radios: Object.fromEntries([...natives.querySelectorAll('input[type=radio]')].map(input => [input.dataset.fk, { checked: input.checked, disabled: input.disabled }])),
+    rows: [...natives.querySelectorAll('.fp-fn')].map(row => ({ name: row.querySelector('.fp-fn-name').textContent, overflow: row.scrollWidth - row.clientWidth })),
     bodyOverflow: document.querySelector('.mod-body').scrollWidth - document.querySelector('.mod-body').clientWidth,
   };
 });
-const labelOf = (group, value) => frame.locator('.mr--app label', { has: frame.locator(group ? `input[data-native-for="${group}"][value="${value}"]` : `input[data-native-all][value="${value}"]`) });
+const labelOf = (group, value) => frame.locator('.fp-libs label', { has: frame.locator(group ? `input[data-native-for="${group}"][value="${value}"]` : `input[data-native-all][value="${value}"]`) });
 const modes = async () => { const value = (await lab.rangement(frame)).value; return value && value.publipostage ? value.publipostage.modes || {} : null; };
 const sha384 = bytes => `sha384-${createHash('sha384').update(bytes).digest('base64')}`;
 
@@ -83,12 +82,13 @@ if (!readonly) {
 
 // ----- La fenêtre : le détail est replié, le CDN est le choix de toutes les fonctions.
 await lab.openModules(frame);
-const natives = frame.locator('.mr--app .mr-natives');
+await showFiche(frame, 'publipostage');
+const natives = frame.locator('.fp-libs');
 await natives.waitFor();
 let s = await state();
-check('les bibliothèques natives sont une ligne de la fenêtre, au CDN, détail replié', !s.open && s.radios['nativeall:publipostage/cdn'].checked && !/mélange|mixed/.test(s.legend), s.legend);
+check('les bibliothèques natives sont une rubrique de la fiche, au CDN, détail replié', !s.open && s.radios['nativeall:publipostage/cdn'].checked && !/mélange|mixed/.test(s.legend), s.legend);
 await shot('1-replie');
-await frame.locator('.mr--app details summary').click();
+await frame.locator('.fp-libs details summary').click();
 s = await state();
 check('le détail se déplie à la souris : une ligne par fonction (l\'éditeur et les quatre exports), rien ne déborde', s.open && s.rows.length === 5 && s.bodyOverflow <= 1 && s.rows.every(row => row.overflow <= 1), s);
 await shot('2-deplie');
@@ -174,7 +174,7 @@ if (readonly) {
   check('le choix de l\'éditeur s\'écrit dans la table de GFS', JSON.stringify(await modes()) === JSON.stringify({ 'natif:editeur': 'vendorise' }), await modes());
   const events2 = await app.evaluate(() => window.__events);
   check('l\'app ouverte ne reçoit aucun événement pour l\'éditeur (GFS ne sert rien) et son cadre n\'est pas rechargé', events2.length === before && app.url() === urlBefore && !/[?&]copie=/.test(app.url()), { avant: before, apres: events2.length, url: app.url().replace(/\?.*/, '?…') });
-  const phrase = await frame.locator('.mr-lib', { hasText: /Éditeur|Editor/ }).locator('.mr-note').innerText();
+  const phrase = await frame.locator('.fp-fn', { hasText: /Éditeur|Editor/ }).locator('.fp-note').innerText();
   check('la ligne de l\'éditeur dit que le choix prend effet au démarrage de l\'app', /prochain démarrage|next time the app starts/.test(phrase), phrase);
   await shot('5-editeur-en-copie');
   const mark = requested.length;

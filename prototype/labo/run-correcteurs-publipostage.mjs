@@ -16,7 +16,7 @@
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check } from './lab-common.mjs';
-import { collectWarnings, waiter, reopenGfs } from './lab-gestes.mjs';
+import { collectWarnings, reopenGfs, showRow, waiter } from './lab-gestes.mjs';
 import { openAdvancedMenu, subRows } from './reglages-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
@@ -100,7 +100,7 @@ await frame.evaluate(({ name, html }) => grist.docApi.applyUserActions([
   ['AddRecord', 'Publipostage_Modeles', null, { Nom: name, TypeModele: 'presentation', Contenu: html }],
 ]), { name: DECK, html: DECK_HTML });
 await lab.openModules(frame);
-await frame.locator('[data-fk="ext:publipostage/diapositives"]').check();
+await (await showRow(frame, 'ext:publipostage/diapositives')).check();
 await lab.settle(frame);
 await frame.locator('[data-open="publipostage"]').click();
 app = await lab.appFrame(/publipostage/);

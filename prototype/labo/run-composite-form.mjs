@@ -11,6 +11,7 @@ import { startLab } from './lab-setup.mjs';
 import { seedFormDesigner } from './seed.mjs';
 import { say, check } from './lab-common.mjs';
 import { createI18n } from '../js/i18n/i18n.js';
+import { installApp } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -106,7 +107,7 @@ const waitEditor = async (app, title) => {
 say('=== préparation : Form+ installée, deux formulaires enregistrés comme Form+ les range, le premier publié ===');
 await restart();
 await lab.openModules(frame);
-await frame.locator('[data-fk="app:form"]').check();
+await installApp(frame, 'form');
 await lab.settle(frame);
 await page.keyboard.press('Escape');
 await frame.locator('.mod').waitFor({ state: 'hidden' });

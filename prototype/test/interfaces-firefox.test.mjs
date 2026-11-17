@@ -41,6 +41,7 @@ import { piecesJointesProblems } from './pieces-jointes-firefox.mjs';
 import { annulerProblems } from './annuler-firefox.mjs';
 import { voileProblems } from './voile-firefox.mjs';
 import { nativesProblems } from './natives-firefox.mjs';
+import { vitrineProblems } from './vitrine-firefox.mjs';
 import { fenetresProblems } from './fenetres-firefox.mjs';
 import { bulleProblems } from './bulle-firefox.mjs';
 import { lecteurPages, lecteurProblems, stubProviders } from './lecteur-firefox.mjs';
@@ -622,6 +623,7 @@ describe('l\'interface sous Firefox', () => {
         problems.push(...await annulerProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await voileProblems(page, caption(language, 700, 1, mode)));
         problems.push(...await nativesProblems(page, language, caption(language, 700, 1, mode)));
+        problems.push(...await vitrineProblems(page, language, caption(language, 700, 1, mode), mode));
         problems.push(...await fenetresProblems(page, caption(language, 700, 1, mode)));
         problems.push(...await bulleProblems(page, caption(language, 700, 1, mode)));
         problems.push(...await lookProblems(page, caption(language, 700, 1, mode)));

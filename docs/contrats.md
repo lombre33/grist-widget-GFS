@@ -271,6 +271,7 @@ L'app (sous-cadre sans allow-same-origin)
 | `actions` | objet | non | Ce que l'app accepte de la part des autres (2.7). |
 | `ouverture` | objet | non | Ce que l'app sait faire d'une ouverture que GFS lui passe : `{ "fichier": true, "nouveau": true, "importer": true, "lire": true }` (5.2, point 3 ; 5.4, points 1 et 8). Un genre absent vaut faux : GFS ouvre alors l'app sur son modèle habituel et le dit, et grise « Importer » ou « Lire ». |
 | `permanente` | booléen | non | `true` : l'app ne se retire pas de la fenêtre « Apps et extensions » (Publipostage+). |
+| `vitrine` | objet | non | Ce que la fenêtre « Apps et extensions » montre de l'app (17/11, mosaïque « Vitrine ») : `{ "description": { "fr", "en" }, "captures": [ { "fichier": "publipostage/1.webp", "legende": { "fr", "en" } } ] }`. `description` : plus longue que `texte`, montrée sur la fiche (sinon `texte`). `captures` : six au plus, des fichiers de GFS rangés dans `vitrine/` (`fichier` est relatif à ce dossier : chemin sûr, `.webp`, `.png` ou `.jpg`), car la politique de sécurité du contenu ne charge une image que de GFS ; la première illustre la carte, toutes la fiche. Sans capture, ou si le fichier ne se charge pas, la carte et la fiche montrent l'icône et le nom de l'app. |
 | `classes` | objet | non | La classe de chaque table de l'app pour les règles des personnes (11.2) ; une table non déclarée est du travail courant. |
 
 Un champ inconnu est ignoré (le contrat s'étend par ajout) ; un champ obligatoire absent ou mal formé invalide le manifeste.

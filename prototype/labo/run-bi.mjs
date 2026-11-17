@@ -12,6 +12,7 @@
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark ; LAB_LIVE=1 pour jouer le site en ligne de l'app au lieu de sa copie.
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';
+import { installApp } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -77,7 +78,7 @@ check('un clic sur la ligne grisée ne lance rien : la fenêtre « Apps et exten
 await page.keyboard.press('Escape');
 
 await lab.openModules(frame);
-await frame.locator('[data-fk="app:bi"]').check();
+await installApp(frame, 'bi');
 await lab.settle(frame);
 await page.keyboard.press('Escape');
 await frame.locator('.mod').waitFor({ state: 'hidden' });

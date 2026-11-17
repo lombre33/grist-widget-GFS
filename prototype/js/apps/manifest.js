@@ -409,6 +409,27 @@ function checkOpening(m, errors) {
   if (m.permanente !== undefined && typeof m.permanente !== 'boolean') errors.push('permanente : true ou false attendu');
 }
 
+const SHOT_FILE_RE = /\.(webp|png|jpe?g)$/i;
+const SHOT_MAX = 6;
+
+// `vitrine` (facultatif, contrats 2.2) : ce que la fenêtre des apps montre de l'app, une description plus longue que `texte` et jusqu'à six captures, des
+// fichiers de GFS rangés dans `vitrine/` (la politique de sécurité du contenu ne charge une image que de GFS) : `{ description: { fr, en }, captures: [{
+// fichier, legende: { fr, en } }] }`.
+function checkVitrine(m, errors) {
+  const shown = m.vitrine;
+  if (shown === undefined) return;
+  if (!isObject(shown)) { errors.push('vitrine : objet attendu'); return; }
+  if (shown.description !== undefined && !isBilingual(shown.description)) errors.push('vitrine.description doit porter fr et en');
+  if (shown.captures === undefined) return;
+  if (!Array.isArray(shown.captures) || shown.captures.length > SHOT_MAX) {
+    errors.push(`vitrine.captures : une liste de ${SHOT_MAX} captures au plus est attendue`); return; }
+  for (const capture of shown.captures) {
+    if (!isObject(capture) || !isSafePath(capture.fichier) || !SHOT_FILE_RE.test(capture.fichier)) errors.push(
+      'vitrine.captures[].fichier : chemin relatif sûr d\'une image (.webp, .png, .jpg) attendu');
+    else if (!isBilingual(capture.legende)) errors.push('vitrine.captures[].legende doit porter fr et en');
+  }
+}
+
 // Rend { ok, errors }. `others` : les manifestes déjà acceptés du catalogue (unicité des id, des préfixes et des clés de réglages).
 export function validateManifest(m, others = []) {
   const errors = [];
@@ -426,6 +447,7 @@ export function validateManifest(m, others = []) {
   checkFiled(m, errors);
   checkExtensions(m, errors);
   checkNatives(m, errors);
+  checkVitrine(m, errors);
   return { ok: errors.length === 0, errors };
 }
 

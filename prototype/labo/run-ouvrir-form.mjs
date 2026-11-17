@@ -16,6 +16,7 @@ import { startLab } from './lab-setup.mjs';
 import { seedFormDesigner } from './seed.mjs';
 import { say, check, constat } from './lab-common.mjs';
 import { chooseLanguage } from './reglages-gestes.mjs';
+import { installApp } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -114,7 +115,7 @@ await page.keyboard.press('Escape');
 
 // Installer Form+ par la fenêtre, comme une personne.
 await lab.openModules(frame);
-await frame.locator('[data-fk="app:form"]').check();
+await installApp(frame, 'form');
 await lab.settle(frame);
 await page.keyboard.press('Escape');
 await frame.locator('.mod').waitFor({ state: 'hidden' });

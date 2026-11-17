@@ -40,7 +40,7 @@ import { aboutItems } from '/js/shell/about.js';
 import { ThemeSetting } from '/js/theme/theme.js';
 import { modulesModel } from '/js/apps/modules-model.js';
 import { readCatalogue } from '/js/apps/libraries.js';
-import { withMode, withNativeMode } from '/js/apps/settings.js';
+import { withApp, withExtension, withMode, withNativeMode } from '/js/apps/settings.js';
 import { ThemeWindow } from '/js/theme/theme-window.js';
 import { Trash } from '/js/files/trash.js';
 import { openShare } from '/js/sharing/share-window.js';
@@ -277,6 +277,37 @@ async function mount() {
       on: {
         nativeMode(app, group, mode) { apps = withNativeMode(apps, manifest, group, mode); window.__nativeEvents.push([app, group, mode]); win.refresh(); },
         mode(app, extension, mode) { apps = withMode(apps, manifest, extension, mode); window.__modeEvents.push([app, extension, mode]); win.refresh(); },
+      }, onClose: () => {},
+    });
+    win.open();
+  };
+  // « Apps et extensions » en vitrine (js/apps/vitrine.js, décision du 17/11, « A · Vitrine » ; test/vitrine-firefox.mjs) : les quatre manifestes de GFS, le vrai modèle et le vrai catalogue. Chaque geste est noté
+  // dans `window.__vitrineEvents` et change l'état comme le registre le ferait ; la fenêtre se redessine ensuite. `variant` : 'ok' (Publipostage+, toujours active, est la seule installée), 'lecture' (document en lecture
+  // seule), 'refusee' (le manifeste de Grist-BI est refusé), 'captures' (Publipostage+ déclare deux captures : un vrai fichier, un fichier absent).
+  window.__vitrine = async (variant = 'ok') => {
+    const L = (fr, en) => ({ fr, en });
+    const manifests = await Promise.all(['publipostage', 'automation', 'form', 'bi'].map(async id => (await fetch(`/manifestes/${id}.json`)).json()));
+    if (variant === 'captures') {
+      manifests[0].vitrine = { description: L('Une description longue de Publipostage+.', 'A long description of Publipostage+.'), captures: [
+        { fichier: '../test/pages/capture-essai.png', legende: L('Première capture', 'First screenshot') }, { fichier: 'absente.png', legende: L('Deuxième capture', 'Second screenshot') }] };
+    }
+    const refused = manifest => variant === 'refusee' && manifest.id === 'bi';
+    const loaded = manifests.map(manifest => ({ app: { id: manifest.id }, manifest, ok: !refused(manifest), errors: refused(manifest) ? ['version « 1.0 » : une version exacte est attendue'] : [] }));
+    const catalogue = readCatalogue(await (await fetch('/bibliotheques/catalogue.json')).json());
+    const byId = id => manifests.find(manifest => manifest.id === id);
+    let apps = { publipostage: { extensions: [], modes: {} } };
+    window.__vitrineEvents = [];
+    let before = apps;
+    const change = (event, next) => { window.__vitrineEvents.push(event); before = apps; apps = next; win.refresh(); };
+    window.__vitrineUndo = () => { apps = before; win.refresh(); }; // un refus (de créer la table) remet l'état d'avant
+    const win = new ModulesWindow({
+      container: stage, i18n, locale, model: () => modulesModel(loaded, { apps }, catalogue, ['publipostage']), blocked: () => (variant === 'lecture' ? i18n.t('mod.readonly') : null), inertTargets: () => [explorer.root],
+      on: {
+        app: (id, on) => change(['app', id, on], withApp(apps, byId(id), on)),
+        extension: (app, id, on) => change(['extension', app, id, on], withExtension(apps, byId(app), id, on)),
+        mode: (app, id, mode) => change(['mode', app, id, mode], withMode(apps, byId(app), id, mode)),
+        nativeMode: (app, group, mode) => change(['nativeMode', app, group, mode], withNativeMode(apps, byId(app), group, mode)),
+        open: id => window.__vitrineEvents.push(['open', id]),
       }, onClose: () => {},
     });
     win.open();

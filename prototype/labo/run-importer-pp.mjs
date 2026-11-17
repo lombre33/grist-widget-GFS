@@ -15,6 +15,7 @@ import { readFileSync } from 'node:fs';
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check, fileChooser, importMenu } from './lab-common.mjs';
+import { showRow } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -242,7 +243,7 @@ check('rien n\'est écrit dans le document par l\'import d\'Excel', await untouc
 // 4. « Diapositives » cochée, « PowerPoint » par l'appel `ouvrir`.
 await showFiles();
 await lab.openModules(frame);
-await frame.locator(`[data-fk="${FK_SLIDES}"]`).check();
+await (await showRow(frame, FK_SLIDES)).check();
 await lab.settle(frame);
 await closeModules();
 // Cocher « Diapositives » est un geste de la personne : GFS crée les tables de l'extension avec son accord. L'état d'après devient le point de départ de l'import de PowerPoint.

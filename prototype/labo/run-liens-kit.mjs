@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { startLab } from './lab-setup.mjs';
 import { say, check, serveKit, probeDeclares } from './lab-common.mjs';
 import { isGfsWarning } from './sondes-muettes.mjs';
+import { installApp } from './lab-gestes.mjs';
 
 const KIT = process.env.KIT_DIR || '/home/claude/grist-factory-kit';
 if (!existsSync(join(KIT, 'js/gfs-link.js'))) {
@@ -54,7 +55,7 @@ const shot = name => lab.shotPanel(run, name, frame);
 const framesOf = re => page.frames().filter(f => re.test(f.url())).length;
 
 await lab.openModules(frame);
-await frame.locator('[data-fk="app:sonde-o"]').check();
+await installApp(frame, 'sonde-o');
 await lab.settle(frame);
 await page.keyboard.press('Escape');
 await frame.locator('.mod').waitFor({ state: 'detached' });

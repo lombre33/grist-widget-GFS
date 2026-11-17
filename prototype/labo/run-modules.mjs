@@ -2,8 +2,10 @@
 // événements du pointeur et du clavier du navigateur, jamais dispatchEvent). Les apps installées se retiennent dans la table `GFS_Rangement` du document
 // (contrats 7.4) : la question de la création, le refus, l'accord, l'écriture, le rechargement du cadre de GFS.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark, LAB_W (largeur du panneau), LAB_READONLY=1 (la vue est ouverte en lecture seule : la fenêtre se grise).
+// Depuis le 17/11 la fenêtre est une vitrine (« A · Vitrine ») : une carte par app (« Installer » ou « Ouvrir »), une fiche (un clic sur le nom) pour ses extensions, leurs modes et ses bibliothèques.
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';
+import { removeApp, showFiche, showRow, backToGrid } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -41,11 +43,14 @@ if (readonly) {
 }
 await frame.locator('.mod').waitFor();
 say('titre :', await text(frame.locator('.mod-head')));
-say('lignes :', await frame.locator('.mr').allInnerTexts().then(a => a.map(t => t.replace(/\s+/g, ' ').trim().slice(0, 90))));
+say('cartes :', await frame.locator('.ap-card').allInnerTexts().then(a => a.map(t => t.replace(/\s+/g, ' ').trim().slice(0, 90))));
 say('rappel :', await text(frame.locator('.mod-note')));
 check('le clavier est dans la fenêtre', await insideWindow());
 check('le fond est inerte', (await state()).explorerInert === true && (await state()).framesInert === true);
-check('Publipostage+ ne se décoche pas', await frame.locator('[data-fk="app:publipostage"]').isDisabled());
+const noInstall = (await frame.locator('[data-fk="app:publipostage"]').count()) === 0 && (await frame.locator('[data-fk="open:publipostage"]').count()) === 1;
+await showFiche(frame, 'publipostage');
+check('Publipostage+ ne se retire pas : « Ouvrir » sur sa carte, ni « Installer » ni « Retirer »', noInstall && (await frame.locator('[data-fk="remove:publipostage"]').count()) === 0);
+await backToGrid(frame);
 // Le versionnage (outils/versions.mjs) : la carte d'importation passe la politique de sécurité, et chaque fichier de GFS se charge une seule fois, à son adresse versionnée.
 const loaded = await frame.evaluate(() => performance.getEntriesByType('resource').map(entry => entry.name).filter(name => /\/(js|css)\/(?:[a-z0-9]+\/)?[^/?]+\.(js|css)(\?|$)/.test(name)));
 check('chaque script et chaque feuille de style de GFS est chargé à son adresse versionnée', loaded.length > 25 && loaded.every(name => /\?v=[0-9a-f]{10}$/.test(name)), loaded.filter(name => !/\?v=/.test(name)));
@@ -71,7 +76,10 @@ await frame.locator('.mod').waitFor();
 check('le bouton Apps ouvre la fenêtre', (await state()).windows === 1);
 await shot('2-fenetre');
 if (readonly) {
-  check('lecture seule : toutes les cases sont grisées', (await frame.locator('.mod input:not(:disabled)').count()) === 0);
+  check('lecture seule : tous les boutons « Installer » sont grisés', (await frame.locator('.mod .ap-act .btn.primary:not([aria-disabled="true"])').count()) === 0);
+  await showFiche(frame, 'publipostage');
+  check('lecture seule : les cases et les choix de la fiche sont grisés', (await frame.locator('.mod .ap-fiche input:not(:disabled)').count()) === 0);
+  await backToGrid(frame);
   say('rappel :', await text(frame.locator('.mod-note')));
   await shot('2b-lecture-seule');
   await lab.browser.close();
@@ -85,7 +93,7 @@ check('rien n\'est écrit avant un geste : pas de table GFS_Rangement', before.t
 check('la fenêtre dit que les choix s\'enregistrent tout de suite', /tout de suite|right away/.test(await text(frame.locator('.mod-note'))), await text(frame.locator('.mod-note')));
 
 // Le refus : rien ne s'installe, rien n'est créé, la case revient, la personne en est avertie.
-await frame.locator('label', { hasText: 'Automation+' }).first().click();
+await frame.locator('[data-fk="app:automation"]').click();
 await frame.locator('.ask').waitFor();
 say('question :', await text(frame.locator('.ask')));
 check('la question nomme la table et dit ce qui est ajouté', /GFS_Rangement/.test(await text(frame.locator('.ask'))) && /page/.test(await text(frame.locator('.ask-body'))));
@@ -99,15 +107,15 @@ await lab.shot(run, '3a-page-grist-question');
 await page.keyboard.press('Escape');
 await page.waitForTimeout(500);
 check('Échap refuse : la question est partie, la fenêtre des apps reste', (await frame.locator('.ask').count()) === 0 && (await state()).windows === 1);
-check('refusé : la case revient, 1 actif sur 5', !(await frame.locator('[data-fk="app:automation"]').isChecked()) && /^1 /.test(await count()), await count());
+check('refusé : la carte propose encore « Installer », 1 actif', (await frame.locator('[data-fk="app:automation"]').count()) === 1 && /^1 /.test(await count()), await count());
 const refused = await rangement();
 check('refusé : aucune table créée, aucune page de plus', refused.table === false && refused.pages === before.pages && refused.tables === before.tables, refused);
 check('refusé : la personne est avertie', /GFS_Rangement/.test(await text(frame.locator('#toast'))), await text(frame.locator('#toast')));
-check('refusé : le clavier est revenu sur la case', await frame.evaluate(() => document.activeElement && document.activeElement.dataset.fk === 'app:automation'));
+check('refusé : le clavier est revenu sur « Installer »', await frame.evaluate(() => document.activeElement && document.activeElement.dataset.fk === 'app:automation'));
 await shot('3b-apres-refus');
 
 // L'accord : la table naît avec ses colonnes et une page, la ligne réservée porte les apps.
-await frame.locator('label', { hasText: 'Automation+' }).first().click();
+await frame.locator('[data-fk="app:automation"]').click();
 await frame.locator('.ask').waitFor();
 await frame.locator('[data-fk="ask-yes"]').click();
 await frame.waitForFunction(() => document.body.dataset.registry === 'idle' && document.querySelectorAll('.ask').length === 0, null, { timeout: 15000 });
@@ -118,11 +126,12 @@ check('la table GFS_Rangement existe avec ses sept colonnes', made.table && ['Ut
 check('Grist a ajouté une page pour elle', made.pages === before.pages + 1 && made.tables === before.tables + 1, made);
 check('une seule ligne : la ligne réservée, avec les apps', made.rows === 1 && JSON.stringify(made.value) === JSON.stringify({ publipostage: { extensions: [] }, automation: { extensions: [] } }), made);
 check('Automation+ a son bouton Ouvrir', await frame.locator('[data-open="automation"]').isVisible());
-check('le clavier est revenu sur la case', await frame.evaluate(() => document.activeElement && document.activeElement.dataset.fk === 'app:automation'));
+check('le clavier est sur « Ouvrir » de la carte', await frame.evaluate(() => document.activeElement && document.activeElement.dataset.fk === 'open:automation'));
 await lab.shot(run, '3-page-grist-apres-accord');
 await shot('3-automation-installee');
 
-// ----- Activer l'extension, choisir la copie de GFS.
+// ----- Activer l'extension, choisir la copie de GFS : sur la fiche de Publipostage+.
+await showFiche(frame, 'publipostage');
 check('le mode est grisé tant que l\'extension est décochée', await extRow('graphique').locator('.mr-mode').evaluate(node => node.disabled));
 await frame.locator('label', { hasText: /^\s*Graphique|^\s*Chart/ }).first().click();
 await page.waitForTimeout(500);
@@ -146,7 +155,8 @@ check('rechargé : la fenêtre des apps ne s\'ouvre pas toute seule', (await sta
 await frame.locator('.ex-title-row .tb', { hasText: /Apps/ }).click();
 await frame.locator('.mod').waitFor();
 check('rechargé : 3 actifs sur 5, comme avant', /^3 /.test(await count()), await count());
-check('rechargé : Automation+ et Graphique sont cochées', (await frame.locator('[data-fk="app:automation"]').isChecked()) && (await frame.locator('[data-fk="ext:publipostage/graphique"]').isChecked()));
+check('rechargé : Automation+ est installée (« Ouvrir ») et Graphique est cochée', (await frame.locator('[data-fk="open:automation"]').count()) === 1 && (await (await showRow(frame, 'ext:publipostage/graphique')).isChecked()));
+await backToGrid(frame);
 check('rechargé : rien n\'a été récrit ni créé', JSON.stringify(await rangement()) === JSON.stringify(saved), await rangement());
 await shot('4b-apres-rechargement');
 
@@ -176,7 +186,7 @@ await frame.locator('[data-open="automation"]').click();
 await page.waitForTimeout(800);
 check('Automation+ est l\'app active', await frame.evaluate(() => document.querySelector('.app-frame').title.startsWith('Automation')));
 await frame.locator('#floater-apps').click();
-await frame.locator('label', { hasText: 'Automation+' }).first().click();
+await removeApp(frame, 'automation');
 await page.waitForTimeout(800);
 now = await state();
 check('retirer l\'app active ferme son cadre et rouvre l\'explorateur', now.appFrames === 0 && !now.explorerHidden, now);

@@ -18,6 +18,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { startLab } from './lab-setup.mjs';
 import { say, check, LAB } from './lab-common.mjs';
+import { showRow } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -75,7 +76,7 @@ async function prepare(lab, observed, mode = null) {
   await app.waitForFunction(() => document.querySelectorAll('#template-select option').length === 2, null, { timeout: 15000 });
   const gfs = lab.frame;
   await openWindow(gfs);
-  await gfs.locator('[data-fk="ext:publipostage/edition"]').check();
+  await (await showRow(gfs, 'ext:publipostage/edition')).check();
   await lab.settle(gfs);
   if (mode) await chooseMode(lab, gfs, mode);
   const chosen = await gfs.evaluate(() => [...document.querySelectorAll('input[data-mode-for="edition"]')].map(input => ({ mode: input.value, checked: input.checked, disabled: input.disabled })));

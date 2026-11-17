@@ -18,6 +18,7 @@ import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { createI18n } from '../js/i18n/i18n.js';
 import { makePdf } from './pdf-fixture.mjs';
 import { PAGE_PORT, sha256, openGfs, waitForNames, folders, shot, contrastProblems, windowFits, waitFor, settle, closeModules } from './lab-pdf.mjs';
+import { installApp } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -73,7 +74,7 @@ async function installProbe(run) {
   say('--- 0. la sonde Z range ses exports : installée et ouverte ---');
   await frame.locator('.tb', { hasText: t('gfs.apps') }).first().click();
   await frame.locator('.mod').waitFor();
-  await frame.locator(`[data-fk="app:${ID}"]`).check();
+  await installApp(frame, ID);
   await settle(page, frame);
   await closeModules(page, frame);
   await frame.getByRole('button', { name: /^(Nouveau|New)$/ }).click();

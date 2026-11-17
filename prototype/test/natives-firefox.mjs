@@ -11,7 +11,7 @@ function state() {
   if (!modal) return null;
   const body = modal.querySelector('.mod-body');
   const box = (node) => { const r = node.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom }; };
-  const app = modal.querySelector('.mr--app');
+  const app = modal.querySelector('.ap-about');
   const natives = app && app.querySelector('.mr-natives');
   if (!natives) return null;
   const details = app.querySelector('details');
@@ -37,9 +37,9 @@ function centerOf(selector) {
   return [r.left + r.width / 2, r.top + r.height / 2];
 }
 
-const ALL = value => `.mr--app input[data-native-all][value="${value}"]`;
-const ROW = (group, value) => `.mr--app input[data-native-for="${group}"][value="${value}"]`;
-const SUMMARY = '.mr--app details summary';
+const ALL = value => `.ap-about input[data-native-all][value="${value}"]`;
+const ROW = (group, value) => `.ap-about input[data-native-for="${group}"][value="${value}"]`;
+const SUMMARY = '.ap-about details summary';
 
 // Le choix « Depuis un CDN » ou « Copie de GFS » de l'édition collaborative, et la phrase qui dit que Publipostage+ ne nomme pas encore l'adresse du CDN (contrats 2.6 point 15, carte du 13/11).
 function modeState(want) {
@@ -80,11 +80,20 @@ export async function nativesProblems(page, language, tag) {
     await page.run(() => new Promise(resolve => setTimeout(resolve, 120)));
   };
   const checked = (s, key) => (s.radios.find(radio => radio.key === key) || {}).checked;
+  // La fenêtre s'ouvre sur la mosaïque (« A · Vitrine », 17/11) : le choix des bibliothèques est sur la fiche de l'app, qu'un clic à la vraie souris sur son nom ouvre.
   const open = async (variant) => {
     await page.run(variant => window.__natives(variant), variant);
+    const name = await page.run(() => { const r = document.querySelector('.ap-name').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+    await page.click(...name);
     return page.until(state);
   };
-  const close = async () => { await page.press('Escape'); await page.until(() => !document.querySelector('.mod-scrim'), [], 2000).catch(async () => { await page.press('Escape'); }); };
+  // Échap sur la fiche revient à la mosaïque ; un second Échap ferme la fenêtre.
+  const close = async () => {
+    await page.press('Escape');
+    await page.run(() => new Promise(resolve => setTimeout(resolve, 60)));
+    await page.press('Escape');
+    await page.until(() => !document.querySelector('.mod-scrim'), [], 2000);
+  };
 
   let s = await open('ok');
   if (!s.legend.startsWith(t('mod.native.title')) || s.legend.includes(t('mod.native.mixed'))) note('légende', `« ${s.legend} » devrait nommer les bibliothèques de l'app, sans « mélange »`);

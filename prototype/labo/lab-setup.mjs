@@ -3,6 +3,7 @@
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { engine, engineName, newLabPage, SHOTS } from './lab-common.mjs';
+import { installApp } from './lab-gestes.mjs';
 
 const WIDGET = 'http://127.0.0.1:8911/prototype/index.html';
 
@@ -145,7 +146,7 @@ export async function startLab(options = {}) {
   const openApp = async (id, pattern = /./, target = frame) => {
     await target.waitForFunction(() => Boolean(document.body) && document.body.dataset.gfsFirstRun === 'done', null, { timeout: 30000 }).catch(() => {});
     await openModules(target);
-    await target.locator(`[data-fk="app:${id}"]`).check();
+    await installApp(target, id);
     await settle(target);
     await target.locator(`[data-open="${id}"]`).click();
     return appFrame(pattern);

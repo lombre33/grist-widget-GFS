@@ -5,6 +5,7 @@ import { TRASH_STRINGS } from './i18n-trash.js';
 import { FOLDER_STRINGS } from './i18n-folders.js';
 import { WEIGHT_STRINGS } from './i18n-weight.js';
 import { NATIVES_STRINGS } from './i18n-natives.js';
+import { VITRINE_STRINGS } from './i18n-vitrine.js';
 import { RIGHTS_STRINGS } from './i18n-rights.js';
 import { SHARE_STRINGS } from './i18n-share.js';
 import { SHARE_OTHER_STRINGS } from './i18n-share-other.js';
@@ -21,6 +22,7 @@ const STRINGS = {
     ...FOLDER_STRINGS.fr,
     ...WEIGHT_STRINGS.fr,
     ...NATIVES_STRINGS.fr,
+    ...VITRINE_STRINGS.fr,
     ...RIGHTS_STRINGS.fr,
     ...SHARE_STRINGS.fr,
     ...SHARE_OTHER_STRINGS.fr,
@@ -202,6 +204,7 @@ const STRINGS = {
     ...FOLDER_STRINGS.en,
     ...WEIGHT_STRINGS.en,
     ...NATIVES_STRINGS.en,
+    ...VITRINE_STRINGS.en,
     ...RIGHTS_STRINGS.en,
     ...SHARE_STRINGS.en,
     ...SHARE_OTHER_STRINGS.en,

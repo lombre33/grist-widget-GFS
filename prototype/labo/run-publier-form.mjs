@@ -20,6 +20,7 @@ import { serve } from './lab-server.mjs';
 import { chromium, say, check, SHOTS } from './lab-common.mjs';
 import { GRIST, openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { PAGE_PORT, openGfs, settle } from './lab-pdf.mjs';
+import { installApp } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -41,7 +42,7 @@ async function openForm(run) {
     else await frame.locator('.ex-title-row .tb', { hasText: /Apps/ }).click();
     await frame.locator('.mod').waitFor();
   }
-  await frame.locator('[data-fk="app:form"]').check();
+  await installApp(frame, 'form');
   await settle(page, frame);
   await frame.locator('[data-open="form"]').click();
   for (let i = 0; i < 120 && !appFrame(page); i++) await page.waitForTimeout(500);

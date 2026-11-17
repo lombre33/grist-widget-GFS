@@ -23,7 +23,6 @@ const centerOf = (glyph, selector, nth = 0) => {
 const WINDOWS = [
   ['« Ce nom est déjà pris »', () => { window.__askConflict({ app: 'Publipostage+', repeat: true }); }],
   ['« À propos »', () => { window.__about(); }],
-  ['« Permissions »', () => { window.__rights('autre'); }],
   ['« Partager »', () => { window.__share('actif'); }],
   ['« Gérer les partages »', () => { window.__manage(); }],
   ['« Envoyer à un autre document »', () => { window.__sendOther('ok'); }],

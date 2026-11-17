@@ -67,6 +67,9 @@ export class Entries {
   // du catalogue ne le lit (il se télécharge).
   readerOf = file => {
     const { c } = this;
+    // Le type d'un fichier REÇU est celui que l'envoyeur a écrit : GFS ne reçoit que des PDF, un autre type n'ouvre aucune app (le fichier se télécharge) —
+    // sans cela un envoyeur choisirait l'app qui reçoit les octets (audit « contournement » du 11/11).
+    if (file.received && !file.known) return null;
     const chosen = chooseReader(readersOf(c.manifests(), file.type), reader => this.#readLock(reader));
     return chosen && { app: chosen.reader.manifest.id, name: c.appName(chosen.reader.manifest.id), lock: chosen.lock };
   };

@@ -5,6 +5,7 @@
 import { startLab } from './lab-setup.mjs';
 import { say, check, probeDeclares } from './lab-common.mjs';
 import { isGfsWarning } from './sondes-muettes.mjs';
+import { installApp, removeApp } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const NAME = lang === 'fr' ? 'Sonde O' : 'Probe O'; // le nom de la sonde dans la langue de GFS
@@ -115,7 +116,7 @@ await waitFor('l\'appel resté sans réponse', async () => (await probe()).appel
 await page.waitForTimeout(1500);
 check('sans réponse, GFS attend (aucune phrase, l\'app reste là)', (await toast().isHidden()) && frames() === 1, await toast().innerText());
 await lab.openModules(frame);
-await frame.locator('[data-fk="app:sonde-o"]').uncheck();
+await removeApp(frame, 'sonde-o');
 await lab.settle(frame);
 await page.waitForTimeout(600);
 check('retirer l\'app pendant l\'attente : le cadre part, l\'explorateur revient, aucune phrase d\'erreur', frames() === 0 && (await frame.locator('.ex').isVisible()) && (await toast().isHidden()), { cadres: frames(), phrase: await toast().innerText() });
@@ -123,7 +124,7 @@ check('retirer l\'app pendant l\'attente : le cadre part, l\'explorateur revient
 // 6. L'ouverture n'est rendue qu'une fois (contrats 5.2, point 3) : l'app qui démarre sur un fichier la reçoit à son premier `contexte` ; son cadre rechargé sur place (sa langue, un réglage)
 //    redemande le contexte et n'y retrouve plus ni ce fichier ni un « Nouveau » déjà fait. Sans cela, un modèle vierge enregistré puis rechargé reviendrait vierge.
 await lab.openModules(frame);
-await frame.locator('[data-fk="app:sonde-o"]').check();
+await installApp(frame, 'sonde-o');
 await lab.settle(frame);
 await page.keyboard.press('Escape');
 await row('Deuxième').dblclick();

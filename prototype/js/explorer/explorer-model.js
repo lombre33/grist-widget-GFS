@@ -131,9 +131,13 @@ export function readGfsFolders(data, identity = '') {
 
 // Pose dossier et favori sur les fichiers, et le texte de recherche (nom et dossier, normalisés une fois). Le rangement propre de l'app (`filing`, par
 // identifiant) sert de point de départ ; celui de GFS (`gfsFiling`, par clé « app:fichier ») passe devant : l'app seule garde le sien (6.4, point 5).
-export function applyFiling(files, filing, gfsFiling = null) {
+// `appFirst` : l'app tient son rangement et laisse GFS l'écrire (js/files/app-filing.js, 6.4 point 8) : c'est le sien qui passe devant, celui de GFS ne sert
+//   que pour un fichier que l'app n'a jamais rangé.
+export function applyFiling(files, filing, gfsFiling = null, appFirst = false) {
   for (const file of files) {
-    const entry = (gfsFiling && gfsFiling.get(file.key)) || (filing && filing.get(file.id));
+    const own = filing && filing.get(file.id);
+    const shared = gfsFiling && gfsFiling.get(file.key);
+    const entry = appFirst ? own || shared : shared || own;
     if (entry) { file.folder = entry.folder; file.pinned = entry.pinned; }
     file.search = normalize(`${file.name} ${file.folder}`);
   }

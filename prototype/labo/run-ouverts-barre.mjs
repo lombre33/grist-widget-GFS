@@ -92,7 +92,7 @@ await ready(Q);
 // ---------------------------------------------------------------------------------------------------------------------------------
 say('=== 1. la place du bouton et la barre : cinq boutons, « Fichiers ouverts » le deuxième, 34 × 154 ===');
 await bar.waitFor({ state: 'visible' });
-const order = await frame.evaluate(() => [...document.querySelectorAll('#floaters .floater')].map(b => b.id));
+const order = await frame.evaluate(() => [...document.querySelectorAll('#floaters .floater:not([hidden])')].map(b => b.id));
 check('cinq boutons : Fichiers, Fichiers ouverts, Apps, Table de travail, Position', JSON.stringify(order) === JSON.stringify(['floater-files', 'floater-opened', 'floater-apps', 'floater-work', 'floater-place']), order);
 const barRect = await rectOf('#floaters');
 const stage = await stageBox();
@@ -287,7 +287,7 @@ await closeMenu();
 say('=== 11. l\'accessibilité renforcée : cibles de 36 px, la barre et le menu tiennent encore ===');
 await frame.evaluate(() => document.documentElement.setAttribute('data-ambiance', 'renforcee'));
 await page.waitForTimeout(300);
-const targets = await frame.evaluate(() => [...document.querySelectorAll('#floaters .floater')].map(b => { const r = b.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
+const targets = await frame.evaluate(() => [...document.querySelectorAll('#floaters .floater:not([hidden])')].map(b => { const r = b.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
 check('les cinq boutons de la barre mesurent 36 × 36 px', targets.length === 5 && targets.every(([w, h]) => w >= 36 && h >= 36), targets);
 await openMenu();
 const big = await rectOf('.menu-opened');

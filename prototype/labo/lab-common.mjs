@@ -139,7 +139,7 @@ export const serveKit = (page, kit) => page.route('http://127.0.0.1:8911/kit/**'
 
 // Les sondes du labo (labo/sondes/) : des apps d'essai que GFS ne connaît pas. Elles entrent dans le catalogue SEULEMENT pour la page du labo qui le demande
 // (le fichier publié n'est pas modifié, les autres essais ne les voient pas) : la page reçoit un catalogue.js complété, après les apps du catalogue.
-const PROBE_FOLDERS = { a: 'a-self', b: 'b-host', c: 'c-hash', d: 'd-texte', e: 'e-blob', f: 'f-texte-ferme', g: 'g-capacites', h: 'h-courtier', i: 'i-lecture', k: 'q-liens', l: 'l-langue', o: 'o-ouvrir', p: 'p-importer', q: 'q-liens', r: 'r-barre', s: 's-stockage', t: 's-stockage', u: 'u-glisser', v: 'v-personne', w: 'v-personne', x: 'v-personne', m: 'm-ambiance', n: 'n-ambiance-kit', j: 'j-joindre', jk: 'j-joindre', y: 'y-lire-pdf', z: 'z-ranger-pdf', zk: 'z-ranger-pdf', zc: 'z-calendrier', zf: 'zf-composite' };
+const PROBE_FOLDERS = { a: 'a-self', b: 'b-host', c: 'c-hash', d: 'd-texte', e: 'e-blob', f: 'f-texte-ferme', g: 'g-capacites', h: 'h-courtier', i: 'i-lecture', k: 'q-liens', l: 'l-langue', o: 'o-ouvrir', p: 'p-importer', q: 'q-liens', r: 'r-barre', s: 's-stockage', t: 's-stockage', u: 'u-glisser', v: 'v-personne', w: 'v-personne', x: 'v-personne', m: 'm-ambiance', n: 'n-ambiance-kit', j: 'j-joindre', jk: 'j-joindre', y: 'y-lire-pdf', z: 'z-ranger-pdf', zk: 'z-ranger-pdf', zc: 'z-calendrier', zf: 'zf-composite', zl: 'z-correcteurs', zlk: 'z-correcteurs' };
 // `keys` : seulement ces sondes (leurs lettres), quand l'essai ne veut pas des autres dans la fenêtre des apps ; toutes par défaut.
 export function withProbes(text, keys = Object.keys(PROBE_FOLDERS)) {
   const entries = Object.entries(PROBE_FOLDERS).filter(([key]) => keys.includes(key)).map(([key, folder]) => `  Object.freeze({ id: 'sonde-${key}', dossier: 'labo/sondes/${folder}/', manifeste: 'labo/sondes/sonde-${key}.json' }),`);
@@ -216,6 +216,12 @@ export async function routePatches(browser, page, patches) {
 // de l'API des widgets (lab-serveur.mjs, `newContext`) : la route du contexte le rend alors. `newsSeen` : voir `newLabPage`.
 export async function mirrorCdns(page, { lang = 'fr', port = 8911, pluginApi = true, newsSeen = true } = {}) {
   const origin = `http://127.0.0.1:${port}`;
+  // Les morceaux partagés du miroir, à l'adresse de la page (voir plus bas) : le dossier `esm/` du miroir, avec l'en-tête CORS d'un CDN.
+  await page.route(`${origin}/__miroir/*`, async route => {
+    const file = join(MIRROR, 'esm', new URL(route.request().url()).pathname.split('/').pop());
+    if (!existsSync(file)) return route.fallback();
+    return route.fulfill({ status: 200, contentType: 'text/javascript; charset=utf-8', headers: { 'Access-Control-Allow-Origin': '*' }, body: await readFile(file) });
+  });
   await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, async route => {
     const url = route.request().url();
     try {
@@ -237,7 +243,9 @@ export async function mirrorCdns(page, { lang = 'fr', port = 8911, pluginApi = t
       if (local && existsSync(local)) {
         // Les morceaux partagés (chunk-*.js) sont importés par adresse relative : servis sous des adresses différentes, le navigateur en chargerait deux
         // copies (deux ProseMirror, qui cassent TipTap). On les rend absolus, vers une seule adresse.
-        const text = (await readFile(local, 'utf8')).replace(/(["'])\.\/(chunk-[A-Za-z0-9]+\.js)\1/g, '$1https://esm.sh/__miroir/$2$1');
+        // Depuis `bd9f53e` (11/11) la politique de la page ne nomme plus tout `esm.sh` mais 92 dossiers de paquets : une adresse `esm.sh/__miroir/` n'en est pas, les morceaux sont donc
+        // servis par la page elle-même (`'self'`), à une seule adresse.
+        const text = (await readFile(local, 'utf8')).replace(/(["'])\.\/(chunk-[A-Za-z0-9]+\.js)\1/g, `$1${origin}/__miroir/$2$1`);
         return route.fulfill({ status: 200, contentType: 'text/javascript; charset=utf-8', headers: { 'Access-Control-Allow-Origin': '*' }, body: text });
       }
       const resp = await route.fetch({ timeout: 30000 });
@@ -324,15 +332,18 @@ export async function newLabPage(browser, { lang = 'fr', colorScheme = 'light', 
   // La personne que Grist donne au moteur de données. grist-static (0.1.6) ouvre le document sans compte : la formule `user.Email` y rend None. Le labo ne change que cela : l'argument `user` de
   // `apply_user_actions` (l'objet que les formules lisent), à la frontière du moteur, de la page de Grist à son bac à sable Python. La formule, le moteur et les actions sont ceux de Grist :
   // une colonne à formule déclenchée `user.Email` se remplit pour de bon, avec l'adresse de la personne du moment (`window.__labUser`, changée par `lab.setUser`).
-  // `window.__labActions` garde ce que le moteur a reçu (verbe, table et, pour une ligne ajoutée, sa colonne Utilisateur) : ce que GFS écrit se compte.
+  // `window.__labActions` garde ce que le moteur a reçu (verbe, table et, pour une ligne ajoutée, sa colonne Utilisateur) : ce que GFS écrit se compte ; `window.__labReads`, les tables qu'il a
+  // dû rendre : ce que GFS lit se compte aussi (l'explorateur lit chaque table de fichiers une fois à l'ouverture, pas deux).
   await page.addInitScript((initial) => {
     try {
       if (location.port !== '8910') return;
       window.__labUser = initial;
       window.__labActions = [];
+      window.__labReads = [];
       const post = Worker.prototype.postMessage;
       Worker.prototype.postMessage = function (message, ...rest) {
         try {
+          if (message && message.type === 'call' && message.name === 'fetch_table' && Array.isArray(message.args)) window.__labReads.push(String(message.args[0]));
           if (message && message.type === 'call' && message.name === 'apply_user_actions' && Array.isArray(message.args)) {
             for (const action of Array.isArray(message.args[0]) ? message.args[0] : []) {
               if (!Array.isArray(action)) continue;

@@ -12,6 +12,7 @@ import { TableDeclined } from '../files/rangement.js';
 import { normalize } from '../ui/search.js';
 import { UndoStack } from '../files/undo-stack.js';
 import { isSpaceItself, isSpacePath, SPACES_ROOT, splitWrites, touchesSpaces, writePlacement } from '../sharing/spaces-filing.js';
+import { linkWithin } from '../sharing/space-links.js';
 
 // Les deux phrases d'un geste : celle de Ctrl+Z (`undoKey`, js/i18n/i18n-trash.js) et celle de Ctrl+Y (`redoKey`) ; `redoParams` : ce que dit le rétablissement
 // quand il n'est pas celui de l'annulation (le dossier où le fichier retourne).
@@ -142,6 +143,7 @@ export class Filing {
     return this.#gesture(async () => {
       const { t, notice } = this.#opts;
       if (isSpaceItself(path)) { notice(t('ex.spaceFixed')); return false; }
+      if (this.#opts.spaces && linkWithin(this.#opts.spaces.info(), path)) { notice(t('slink.fixed')); return false; }
       if (this.#opts.files().some(file => inside(file.folder, path))) { notice(t('ex.folderNotEmpty')); return false; }
       const kept = this.#spare().filter(each => inside(each, path));
       if (!kept.length) { notice(t('ex.folderGone')); return false; }

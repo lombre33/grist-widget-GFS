@@ -12,6 +12,7 @@ import { join } from 'node:path';
 import { startLab } from './lab-setup.mjs';
 import { say, check, LAB } from './lab-common.mjs';
 import { readCatalogue, resolveLibraries, forContext } from '../js/apps/libraries.js';
+import { showRow } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -133,7 +134,7 @@ const sizes = await row.locator('.sz').allInnerTexts();
 say('la ligne dans la fenêtre :', (await row.innerText()).replace(/\s+/g, ' '));
 check('la ligne de l\'extension nomme ses DEUX bibliothèques (Plotly, ECharts), chacune avec son poids, et dit le sien du manifeste',
   /Plotly/i.test(legend) && /E-?charts/i.test(legend) && (legend.match(/≈\s[\d\u00a0\u202f.,]+\s(Ko|Mo|KB|MB)/g) || []).length === 2 && sizes.length === 1 && new RegExp(`^≈\\s${declared.poids}\\s(Ko|KB)$`).test(sizes[0].trim()), `${legend} | ${sizes}`);
-await gfs.locator(`[data-fk="${FK}"]`).check();
+await (await showRow(gfs, FK)).check();
 await lab.settle(gfs);
 if (mode === 'vendorise') {
   await row.locator('.rd', { has: gfs.locator('input[value="vendorise"]') }).click();

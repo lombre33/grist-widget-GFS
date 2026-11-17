@@ -1,0 +1,27 @@
+{
+  "contrat": 0,
+  "id": "sonde-zl",
+  "nom": {
+    "fr": "Sonde ZL",
+    "en": "Probe ZL"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Une app qui suit « correcteurs coupés » de GFS et marque ses zones de texte, comme le kit après la consigne aux apps",
+    "en": "An app that follows GFS's “correctors off” and marks its text fields, like the kit after the instruction to apps"
+  },
+  "icone": "doc",
+  "entree": "index.html",
+  "tables": {
+    "prefixe": "SondeZL_"
+  },
+  "reglages": [],
+  "permissions": {
+    "acces": "none"
+  },
+  "extensions": [],
+  "actions": {
+    "ouvrir": [],
+    "choisir": []
+  }
+}

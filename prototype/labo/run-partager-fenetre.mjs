@@ -11,7 +11,7 @@ import { serve } from './lab-server.mjs';
 import { chromium, say, check } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { createI18n } from '../js/i18n/i18n.js';
-import { PAGE_PORT, openGfs, importSamples, importPdf, pdfFile, waitForNames, names, rowOf, openRowMenu, contrastProblems, shot as pdfShot } from './lab-pdf.mjs';
+import { PAGE_PORT, openGfs, importSamples, importPdf, pdfFile, waitForNames, names, goTo, rowOf, openRowMenu, contrastProblems, shot as pdfShot } from './lab-pdf.mjs';
 import { gfsFrame, fits } from './lab-droits.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
@@ -148,8 +148,12 @@ async function playEditor(run) {
 async function playViewer(run) {
   const { frame } = run;
   say('--- lecteur ---');
-  const list = await waitForNames(frame, ['Contrat.pdf', 'Devis.pdf', 'Facture.pdf']);
-  check('il voit son partage et ceux de « tous »', JSON.stringify(list) === JSON.stringify(['Contrat.pdf', 'Devis.pdf', 'Facture.pdf']), list);
+  const list = await waitForNames(frame, ['Devis.pdf']);
+  say('   les lignes que Grist lui rend :', JSON.stringify((await run.rest.rows('GFS_Fichiers')).map(row => [row.Nom, row.GFS_Auteur, row.GFS_Lecteurs, row.GFS_Cats, row.GFS_Dossier])));
+  check('à la racine, il voit les PDF ouverts à « tous »', JSON.stringify(list) === JSON.stringify(['Devis.pdf']), list);
+  await goTo(frame, new RegExp(t('rx.view')));
+  const gifts = await waitForNames(frame, ['Contrat.pdf', 'Facture.pdf']);
+  check('« Partagés avec moi » montre ce qu\'on lui a donné à lui (Contrat, Facture)', JSON.stringify(gifts) === JSON.stringify(['Contrat.pdf', 'Facture.pdf']), gifts);
   await openShareFor(frame, 'Contrat.pdf');
   check('il lit la fenêtre sans rien pouvoir changer', (await frame.locator('[data-fk="share-add"]').count()) === 0 && (await frame.locator('[data-fk="share-readonly"]').count()) === 1, await panel(frame));
   await shot(frame, '11-lecteur');

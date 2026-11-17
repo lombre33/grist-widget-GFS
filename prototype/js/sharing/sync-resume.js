@@ -6,6 +6,7 @@
 import { loadSharingEngine, startReceiving } from './sync-service.js';
 import { SYNC_TABLE_NAME } from './share-other-flow.js';
 import { closeSharingTables } from './sync-rules.js';
+import { ensureMarks } from './received-marks.js';
 
 const JOURNAL = /^GFS_Journal_/;
 
@@ -13,11 +14,12 @@ const JOURNAL = /^GFS_Journal_/;
 export const sharingNeeds = tables => ({ sending: tables.includes(SYNC_TABLE_NAME), receiving: tables.some(name => JOURNAL.test(name)) });
 
 // deps : { docApi (grist.docApi), transfer, language, busy, isOwner () → vrai/faux/null (la preuve qu'a GFS) } ; `engine` : { load, receive } (les essais le
-//   remplacent) ; `close` : la pose des règles des tables techniques (js/sharing/sync-rules.js). Rend ce qui a été repris, sans rien lever : une page qui ne
+//   remplacent) ; `close` : la pose des règles des tables techniques (js/sharing/sync-rules.js) ; `mark` : la pose des colonnes de marque des tables reçues.
+//   Rend ce qui a été repris, sans rien lever : une page qui ne
 //   peut pas
 //   lire ses tables (accès refusé) ne reprend rien. Les tables techniques ne sont lisibles que des propriétaires (audit de sécurité du 09/11) : les boucles du
 //   moteur ne tournent que sur leur page, qui pose aussi les règles qui manquent (Grist recharge alors le document, une seule fois).
-export async function resumeSharing(deps, engine = { load: loadSharingEngine, receive: startReceiving }, close = closeSharingTables) {
+export async function resumeSharing(deps, engine = { load: loadSharingEngine, receive: startReceiving }, close = closeSharingTables, mark = ensureMarks) {
   let tables;
   try { tables = (await deps.docApi.listTables()).map(String); } catch (error) { return { sending: false, receiving: false }; }
   const needs = sharingNeeds(tables);
@@ -25,6 +27,9 @@ export async function resumeSharing(deps, engine = { load: loadSharingEngine, re
   if (!deps.isOwner || (await deps.isOwner()) !== true) return needs; // jamais deviné : sans la preuve d'être propriétaire, rien ne reprend
   const closing = await close({ docApi: deps.docApi });
   if (closing.changed) return needs; // Grist recharge le document : les boucles reprendront à l'ouverture suivante
+  // Les marques « accepté » et « refusé » des tables reçues d'avant : sans elles, un envoyeur pourrait écrire lui-même « accepté »
+  // (js/sharing/received-marks.js).
+  if (needs.receiving) await mark(deps.docApi, tables).catch(error => console.warn('GFS : les marques des fichiers reçus ne se posent pas', error));
   if (needs.receiving) await engine.receive(deps);
   else if (needs.sending) await engine.load(deps);
   return needs;

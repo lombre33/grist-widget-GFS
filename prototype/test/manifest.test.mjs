@@ -52,6 +52,18 @@ test('contrats 2.5 point 4 : `arrivee` dit la table, la colonne et les lignes qu
   assert.match(ok({ table: 'Automation', colonne: 'Table' }, m => { m.permissions.lit = ['Clients']; m.permissions.ecrit = []; }).errors.join(' | '), /ne lit pas/, 'une table que l\'app ne lit pas');
 });
 
+test('contrats 2.5 point 5 : `reglagesArrivee` est une liste de clés de `reglages` ; facultative', () => {
+  const ok = reglagesArrivee => { const m = publipostage(); m.reglagesArrivee = reglagesArrivee; return validateManifest(m); };
+  assert.deepEqual(ok(['modeleDeLaVue']), { ok: true, errors: [] });
+  assert.deepEqual(ok([]), { ok: true, errors: [] }, 'une liste vide : aucune clé ne fait ouvrir l\'app');
+  assert.deepEqual(ok(undefined), { ok: true, errors: [] }, 'sans `reglagesArrivee`, toutes les clés de `reglages` comptent');
+  assert.match(ok('modeleDeLaVue').errors.join(' | '), /reglagesArrivee : liste/);
+  assert.match(ok(['modeleDeLaVue', 3]).errors.join(' | '), /reglagesArrivee : liste/);
+  assert.match(ok(['modeleDeLaVue', 'inconnue']).errors.join(' | '), /reglagesArrivee : inconnue n'est pas une clé de reglages/);
+  assert.match(bad(m => { m.reglagesArrivee = ['workflow']; }), /reglagesArrivee : workflow/, 'une clé d\'une autre app n\'est pas une clé de celle-ci');
+  assert.deepEqual(publipostage().reglagesArrivee, ['modeleDeLaVue', 'modeleSelonLigne'], 'Publipostage+ : le modèle de la vue et le modèle selon la ligne');
+});
+
 test('contrats 2.4 : les tables de fichiers sont dans le préfixe, avec id et nom', () => {
   assert.match(bad(m => { m.fichiers[0].table = 'Clients'; }), /hors du préfixe/);
   assert.match(bad(m => { delete m.fichiers[0].colonnes.id; }), /id et nom/);
@@ -62,6 +74,19 @@ test('contrats 2.4 : le rangement propre à une app est une table du préfixe, a
   assert.match(bad(m => { m.fichiers[0].rangement.table = 'Clients'; }), /rangement\.table hors du préfixe/);
   assert.match(bad(m => { m.fichiers[0].rangement = 'x'; }), /rangement\.table/);
   assert.match(bad(m => { m.fichiers[0].rangement.dossier = 3; }), /rangement\.dossier/);
+});
+
+test('contrats 2.4 : `rangement.ecriture` laisse GFS écrire le rangement de l\'app (objet, `dossiers` entier ou texte, les quatre colonnes nommées, une seule table par app) ; Publipostage+ la déclare', () => {
+  assert.deepEqual(publipostage().fichiers[0].rangement.ecriture, { dossiers: 0 });
+  assert.deepEqual(validateManifest(publipostage()), { ok: true, errors: [] });
+  const ok = mutate => { const m = publipostage(); mutate(m); return validateManifest(m); };
+  assert.equal(ok(m => { m.fichiers[0].rangement.ecriture = {}; }).ok, true, 'sans `dossiers`, l\'app n\'a pas de ligne d\'état de dossier');
+  assert.equal(ok(m => { m.fichiers[0].rangement.ecriture = { dossiers: '@dossier' }; }).ok, true);
+  assert.match(bad(m => { m.fichiers[0].rangement.ecriture = true; }), /rangement\.ecriture : objet attendu/);
+  assert.match(bad(m => { m.fichiers[0].rangement.ecriture = { dossiers: 1.5 }; }), /ecriture\.dossiers : entier ou chaîne attendu/);
+  assert.match(bad(m => { m.fichiers[0].rangement.ecriture = { dossiers: 0, ailleurs: 1 }; }), /ecriture\.ailleurs : inconnu/);
+  assert.match(bad(m => { delete m.fichiers[0].rangement.epingle; }), /rangement\.ecriture demande la colonne epingle/);
+  assert.match(bad(m => { m.fichiers.push({ ...structuredClone(m.fichiers[0]), table: 'Publipostage_Autres' }); }), /une seule table de fichiers par app/);
 });
 
 // La recette de suppression (contrats 2.4) : ce que le manifeste dit pour que GFS retire et remette un fichier de l'app depuis l'explorateur (la corbeille).
@@ -123,6 +148,18 @@ test('contrats 2.6 et 2.8 : la bibliothèque d\'une extension est un id et une v
   const ok = publipostage();
   ok.extensions[0].bibliotheques.push({ id: 'autre-lib', version: '1.0.0-rc.1' });
   assert.equal(validateManifest(ok).ok, true);
+});
+
+test('contrats 2.6 point 15 : cdnAccepte dit que la politique de l\'app ne nomme pas encore l\'adresse du CDN (vrai ou faux, facultatif)', () => {
+  const edition = m => m.extensions.find(extension => extension.id === 'edition');
+  assert.equal(edition(publipostage()).cdnAccepte, false, 'Publipostage+ ne nomme pas l\'adresse de jsDelivr tant que la consigne 016 attend la bascule');
+  assert.match(bad(m => { edition(m).cdnAccepte = 'non'; }), /extension edition : cdnAccepte : vrai ou faux attendu/);
+  assert.match(bad(m => { edition(m).cdnAccepte = 0; }), /cdnAccepte/);
+  const named = publipostage();
+  edition(named).cdnAccepte = true;
+  assert.equal(validateManifest(named).ok, true);
+  delete edition(named).cdnAccepte;
+  assert.equal(validateManifest(named).ok, true);
 });
 
 test('contrats 2.8 : règles des permissions', () => {

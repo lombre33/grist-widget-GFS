@@ -42,7 +42,7 @@ connaît pas.
 3. **Listes fermées, tenues par GFS** : les verbes d'écriture que le courtier laisse passer ; sept tables internes
    (règles d'accès, partages, rappels, réglages du document) qu'aucune app n'écrit, quoi qu'elle déclare ; la colonne
    `options` de `_grist_Views_section`, qui porte l'adresse et l'accès de chaque widget, GFS compris (section 3).
-4. **Messages propres à GFS** (contexte, stockage, barre, ambiance, actions « ouvrir », « choisir », « ranger », « joindre », « insérer », « installer », « fermer ») :
+4. **Messages propres à GFS** (contexte, stockage, barre, ambiance, correcteurs, actions « ouvrir », « choisir », « ranger », « joindre », « insérer », « installer », « fermer ») :
    une enveloppe à part, sans `mtype`, que le script d'API de Grist ignore (sections 4 et 5).
 5. **Installer ne télécharge rien** : le code de toutes les apps livrées est déjà dans le site de GFS ; installer inscrit
    l'identifiant de l'app dans une table du document (sections 6.4 et 7.4). La bibliothèque d'une extension n'est pas dans
@@ -263,6 +263,7 @@ L'app (sous-cadre sans allow-same-origin)
 | `fichiers` | liste | non | Les tables de fichiers que l'explorateur lit (2.4). |
 | `reglages` | liste | non | Les clés de réglages de la vue que l'app lit et écrit (2.5). |
 | `arrivee` | objet | non | Où GFS lit, dans une table du document, que la section est celle de l'app quand la vue n'a aucun réglage : `{ table, colonne, lignes }` (2.5, point 4). |
+| `reglagesArrivee` | liste | non | Celles des clés de `reglages` dont une valeur fait s'ouvrir l'app à l'arrivée ; sans elle, toutes les clés de `reglages` comptent (2.5, point 5). |
 | `permissions` | objet | oui | Accès, tables, tables internes, capacités (section 3). |
 | `extensions` | liste | non | Les extensions de l'app (2.6). |
 | `dependances` | chaîne | non | Chemin de la liste des bibliothèques **natives** de l'app (`package.json`) : celles d'une extension n'y figurent pas (2.6, point 4). |
@@ -270,6 +271,7 @@ L'app (sous-cadre sans allow-same-origin)
 | `actions` | objet | non | Ce que l'app accepte de la part des autres (2.7). |
 | `ouverture` | objet | non | Ce que l'app sait faire d'une ouverture que GFS lui passe : `{ "fichier": true, "nouveau": true, "importer": true, "lire": true }` (5.2, point 3 ; 5.4, points 1 et 8). Un genre absent vaut faux : GFS ouvre alors l'app sur son modèle habituel et le dit, et grise « Importer » ou « Lire ». |
 | `permanente` | booléen | non | `true` : l'app ne se retire pas de la fenêtre « Apps et extensions » (Publipostage+). |
+| `vitrine` | objet | non | Ce que la fenêtre « Apps et extensions » montre de l'app (17/11, mosaïque « Vitrine ») : `{ "description": { "fr", "en" }, "captures": [ { "fichier": "publipostage/1.webp", "legende": { "fr", "en" } } ] }`. `description` : plus longue que `texte`, montrée sur la fiche (sinon `texte`). `captures` : six au plus, des fichiers de GFS rangés dans `vitrine/` (`fichier` est relatif à ce dossier : chemin sûr, `.webp`, `.png` ou `.jpg`), car la politique de sécurité du contenu ne charge une image que de GFS ; la première illustre la carte, toutes la fiche. Sans capture, ou si le fichier ne se charge pas, la carte et la fiche montrent l'icône et le nom de l'app. |
 | `classes` | objet | non | La classe de chaque table de l'app pour les règles des personnes (11.2) ; une table non déclarée est du travail courant. |
 
 Un champ inconnu est ignoré (le contrat s'étend par ajout) ; un champ obligatoire absent ou mal formé invalide le manifeste.
@@ -297,7 +299,7 @@ Une entrée de `fichiers` par table de fichiers :
 | `typeParDefaut` | Le type d'un fichier dont la cellule de type est vide (Publipostage+ : `document`). |
 | `types` | Liste de `{ valeur, nom: { fr, en }, icone, couleur, extension }`. `couleur` : `document`, `grille`, `presentation` ou `pdf` (les quatre du cahier 6.5), sinon neutre. `icone` : identifiant d'une icône du kit [D]. `extension` : l'extension qui possède ce type (absente : le socle). |
 | `exclure` | `{ "<colonne>": [valeurs] }` : lignes que l'explorateur ignore (les lignes réservées, comme `reglages`). |
-| `rangement` | Le rangement propre à l'app (3.1 point 7 du cahier), s'il y en a un : `{ table, utilisateur, fichier, dossier, epingle }`, des noms de colonnes. L'explorateur le lit comme point de départ et n'y écrit jamais (6.4, point 8). |
+| `rangement` | Le rangement propre à l'app (3.1 point 7 du cahier), s'il y en a un : `{ table, utilisateur, fichier, dossier, epingle, ecriture }`, des noms de colonnes. L'explorateur le lit comme point de départ (6.4, point 8). **`ecriture`** (facultatif, décision du porteur du 17/11) : `{ dossiers }`, l'app laisse GFS écrire ce rangement ; alors **la table de l'app fait foi** pour ses fichiers, GFS la lit et l'écrit, et une app ouverte seule montre la même liste que l'explorateur (6.4, point 8). `dossiers` (facultatif, un entier ou un texte) : la valeur de la colonne `fichier` qui marque une ligne d'état de dossier (Publipostage+ : `0`, la colonne `ModeleId`) ; absent, l'app n'a pas de ligne pour un dossier vide et GFS ne lui en écrit pas. GFS n'ajoute jamais une colonne ni une table à l'app : si l'une des quatre colonnes manque, ou la table, GFS range comme avant dans `GFS_Rangement`. Un seul `fichiers[]` par manifeste déclare `ecriture`. |
 | `corbeille` | `{ date, par }` : les deux colonnes où GFS marque un fichier mis à la corbeille (la date en secondes comme Grist la rend, la personne), facultatif (décision du porteur du 04/11). Une ligne dont `date` est positive n'est plus listée dans l'explorateur mais dans sa vue « Corbeille », avec son dossier et son rangement. **Seule la table que GFS écrit lui-même en a** (`GFS_Fichiers`, 6.6, point 10) : aucune app ne déclare ces colonnes, GFS n'en ajoute à aucune table d'app. |
 | `suppression` | `{ ligne: true, uniques, exclusives, remettre, appel }` : comment GFS retire et remet un fichier de cette table depuis l'explorateur (la corbeille des fichiers d'une app, décision du porteur du 04/11), facultatif. `ligne: true` (le seul mode) : un fichier est une ligne de la table, la retirer le supprime et la remettre le restaure. `uniques` : colonnes dont la valeur désigne un fichier (un jeton) : si une ligne de la table la porte déjà, il n'y a rien à restaurer. `exclusives` : colonnes booléennes qu'une seule ligne peut porter (« le modèle par défaut ») : le fichier restauré ne la reprend pas si une autre ligne l'a. `remettre` : `{ colonne: valeur }` posées à la restauration à la place des valeurs gardées. `appel: true` : le fichier tient à plus qu'une ligne (un formulaire, sa section, son lien public : Form+) ; avant de retirer la ligne, GFS demande à l'app ouverte de fermer ce qui y est lié (l'appel `supprimer`, 5.4, point 10), et grise le geste tant que cette app n'est pas ouverte. Sans recette, « Mettre à la corbeille » est grisé pour les fichiers de cette table et un clic dit pourquoi. **Une app seule, sans GFS, garde sa propre gestion de ses fichiers** : seul GFS lit cette recette (6.7). |
 | `copie` | `{ ligne: true, uniques, exclusives, valeurs, appel }` : comment GFS copie un fichier de cette table depuis l'explorateur (« Dupliquer », Ctrl+C puis Ctrl+V ; décision du porteur du 04/11), facultatif. `ligne: true` (le seul mode) : un fichier est une ligne de la table, le copier, c'est ajouter une ligne qui a les mêmes valeurs. `uniques` : colonnes dont la valeur désigne un fichier (un jeton) : la copie les a vides (l'app lui en donne un quand elle en a besoin). `exclusives` : colonnes booléennes qu'une seule ligne peut porter (« le modèle par défaut ») : la copie ne la porte pas. `valeurs` : `{ colonne: valeur }` posées à la place de celles de l'original (elles passent en dernier : l'app décide). Le nom de la copie est le premier nom libre (« Contrat (1) ») ; la date et l'auteur restent ceux de l'original (le contenu est le même : l'app les met à jour quand elle enregistre) ; les pièces jointes restent **citées** par les deux lignes (rien n'est envoyé : Grist garde une pièce tant qu'une cellule la cite). `appel: true` (seul, sans `ligne`, il suffit) : le fichier tient à plus qu'une ligne ; c'est l'app ouverte qui le copie (l'appel `dupliquer`, 5.4, point 11) sous le nom que GFS a calculé, et GFS n'écrit rien dans la table. Sans recette, « Dupliquer » est grisé pour les fichiers de cette table et un clic dit où le faire. **Une app seule, sans GFS, garde sa propre gestion de ses fichiers** : seul GFS lit cette recette. |
@@ -338,6 +340,12 @@ Une entrée de `fichiers` par table de fichiers :
    valeurs que doit porter la ligne (des textes, comparés tels quels, `Type` = `Workflow` : un `Log` ou un `Lock` ne désigne pas la
    vue). GFS ne s'en sert qu'à l'arrivée, aux conditions de 7.4, point 7 ; il ne fait que comparer, il ne lit jamais une valeur comme
    du code ni comme une adresse. L'app qui garde aussi une clé de réglage (`reglages`) reste reconnue par elle d'abord.
+5. [T] **`reglagesArrivee`** (facultatif, décidé par le porteur le 12/11) : parmi les clés de `reglages`, celles dont **une valeur dit à GFS d'ouvrir l'app à
+   l'arrivée** (7.4, point 7). Une clé de `reglages` qui n'y est pas se lit, s'écrit et se retire comme les autres, mais ne désigne pas l'app : une vue qui n'a
+   que celle-là arrive sur l'explorateur, et non sur la page de départ de l'app. Publipostage+ : `["modeleDeLaVue", "modeleSelonLigne"]` (un modèle choisi pour la
+   vue, ou une règle qui en choisit un selon la ligne) ; ses droits d'accès, la colonne de la date du dernier export et celle des pièces jointes (`droitsAcces`,
+   `dateDernierExport`, `pp_attach_column`, `pp_attach_mode`) ne disent pas quoi ouvrir. Sans `reglagesArrivee`, toutes les clés de `reglages` comptent (Automation+ :
+   `workflow`). Chaque entrée est une clé de `reglages` de la même app (le manifeste est refusé sinon) ; une liste vide : aucune clé ne fait ouvrir l'app.
 
 ### 2.6 Les extensions
 
@@ -368,7 +376,7 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
    avec GFS : la source d'une bibliothèque n'est jamais lue dans un réglage, une table ou un message d'une app (cahier 3.2,
    point 3). Une extension dont une bibliothèque exigée manque au catalogue (identifiant ou version) est grisée dans GFS, avec
    la raison.
-7. [D] Le mode, CDN (le défaut) ou vendorisé, se choisit dans GFS, à l'activation de l'extension ; l'app ne le connaît pas.
+7. [D] Le mode, CDN (le défaut, sauf `cdnAccepte: false`, point 15) ou vendorisé, se choisit dans GFS, à l'activation de l'extension ; l'app ne le connaît pas.
    [Q] Où se retient ce choix (par extension, ou pour toute la section) : cahier, question 11.
 8. [T] **Un fichier assemblé, quand plusieurs paquets doivent partager leurs instances avec l'éditeur natif de l'app** (choix du
    porteur, 16/10, sur la demande d'écriture en direct de Publipostage+). Les six paquets de cette demande importent
@@ -480,6 +488,16 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     grisée), le choix se retient comme les autres (`natif:editeur`) et part **dans l'adresse du cadre** (`copie=editeur`, 1.3 point 3), à
     son démarrage. **Il prend effet au prochain démarrage de l'app** : GFS ne recharge rien en cours de route (rien à perdre), la ligne le dit. [M]
 
+15. [D] **`cdnAccepte` : l'app dit que sa politique de sécurité ne nomme pas encore l'adresse du CDN d'une extension** (13/11, demande du porteur : « que cela fonctionne dans les
+    deux cas, et qu'un des deux soit réglé par défaut à l'activation »). Champ facultatif de l'entrée de l'extension, booléen ; GFS l'écrit dans le manifeste de l'app d'après ce
+    qu'il lit de sa CSP (point 4 : l'adresse exacte du CDN, ou rien). **`false`** : le navigateur refuse le fichier à son adresse de CDN (mesuré avec la vraie Publipostage+, Chromium et
+    Firefox 160 : faits vérifiés 108), l'app dit « le fichier n'a pas pu être chargé (empreinte, réseau ou politique de sécurité) ». GFS en tire trois choses : (1) **le défaut de
+    l'extension est la copie de GFS** (point 7) : cocher l'extension suffit, la copie passe par `'self'` et marche ; (2) **le CDN reste un choix libre**, jamais grisé (grisé, jamais masqué),
+    et, une fois choisi, la fenêtre « Apps et extensions » écrit sous les deux choix que l'app ne nomme pas encore l'adresse et conseille « Copie de GFS » ; (3) **un seul mode s'écrit
+    quand il n'est pas le défaut de l'extension** : choisir le CDN s'écrit (`modes.<extension>: "cdn"`), choisir la copie, qui est le défaut, n'écrit rien. **Absent ou `true`** :
+    le défaut est le CDN, comme avant. Le jour où l'app nomme l'adresse (la consigne qui remplace la 016 pour Publipostage+), GFS retire le champ : le défaut redevient le CDN, sans
+    toucher aux choix déjà écrits. L'app ne lit jamais ce champ : il est à GFS. [M]
+
 ### 2.7 Les actions acceptées
 
 ```json
@@ -534,6 +552,7 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
    - un champ obligatoire absent ou d'un autre type ; un `id` ou un préfixe hors format, déjà pris, ou égal à `GFS_` ;
    - `fichiers[].table` hors du préfixe ; une colonne de `colonnes` qui n'est pas une chaîne ;
    - une clé de `reglages` qui commence par `gfs.` ou que le catalogue donne à une autre app ;
+   - `reglagesArrivee` (2.5, point 5) : autre chose qu'une liste de chaînes, une entrée qui n'est pas une clé de `reglages` de la même app ;
    - dans `ouverture` : autre chose qu'un objet, un genre (`fichier`, `nouveau`, `importer`, `lire`) qui n'est pas un booléen ; `permanente` qui n'est pas un booléen ;
    - dans `arrivee` (2.5, point 4) : autre chose qu'un objet, une `table` ou une `colonne` qui n'est pas une chaîne, une `table` que
      `permissions.lit` ne couvre pas, des `lignes` qui ne sont pas un objet de chaînes ;
@@ -1139,6 +1158,7 @@ Les noms de la v0 :
 | `langue` (événement) | GFS → app | `{ langue }` (5.2, point 6) | aucune |
 | `barre` (événement) | GFS → app | `{ barre }` : `{ bord, epaisseur, zone }` ou `null` (5.2, point 7) | aucune |
 | `ambiance` (événement) | GFS → app | `{ ambiance }` : le message d'ambiance, ou `null` (5.2, point 10) | aucune |
+| `correcteurs` (événement) | GFS → app | `{ correcteurs }` : `{ coupes }`, vrai quand la personne a coupé LanguageTool et les correcteurs du navigateur dans les apps (5.2, point 13) | aucune |
 | `reglages` (événement) | GFS → app | `{ enregistres }` : vrai quand le réglage que l'app vient d'écrire est dans la vue, faux quand il reste un brouillon ; dit aussi d'avance, à la demande de `contexte`, ce que deviendront ses réglages (7.3, point 5) | aucune |
 
 1. [D] `gfs` est le numéro de contrat de l'émetteur (pour l'app, celui de son manifeste). Un message sans `gfs` entier, ou d'un
@@ -1176,6 +1196,7 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 | `barre` | la barre de GFS qui recouvre le cadre de l'app, `{ bord, epaisseur, zone }`, ou `null` quand rien ne le recouvre (point 7) | oui, mesurée à chaque appel | `null` |
 | `lecteurs` | les sites dont GFS pose le lecteur de vidéo pour cette app, `["youtube", "vimeo"]` (point 11) | seulement pour une app qui déclare `lecteurs` (3.4, point 7), `[]` pour toute autre ; relue à chaque appel | `[]` |
 | `ambiance` | l'ambiance et la couleur que la personne a choisies pour GFS et ses apps, ou `null` quand rien n'est choisi (point 10) | oui, relue à chaque appel | `null` |
+| `correcteurs` | `{ coupes }` : vrai quand la personne a coupé les correcteurs du navigateur (LanguageTool) dans les apps par le bouton de la barre (point 13) | oui, relue à chaque appel | `{ coupes: false }` |
 | `role` | ce que GFS sait de la personne, `{ proprietaire, responsableDe }` (point 8) | oui, à chaque appel ; la preuve se garde pour la vie de la page, 1,5 s d'attente au plus | `{ proprietaire: null, responsableDe: [] }` |
 | `liensPublics` | **pas encore rendu** (décidé le 06/11, 11.7, point 11) : `{ connu, tables }`, les tables qu'un lien public remplit ; `connu` faux (ni propriétaire prouvé, ni lecture possible) = l'app attend un geste sur toute ligne reçue | oui, une fois codé | `{ connu: false, tables: [] }` |
 | `identite` | l'adresse e-mail de la personne, `{ email }`, ou `null` (point 9) | seulement pour une app qui déclare `identite` (3.4, point 6), `null` pour toute autre ; relue à chaque appel | `null` (l'app garde sa propre sonde, 11.6, point 5) |
@@ -1183,12 +1204,12 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 1. [T] Les six paramètres de l'adresse (1.3) et le contexte disent la même chose : l'adresse existe pour le code des apps
    qui la lit déjà, le contexte pour le kit. Une seule différence dans le temps : la langue de l'adresse est celle du cadre
    quand il a été créé, et le contexte dit la langue qui vaut maintenant (point 6).
-2. [D] Six événements en cours de vie. `extensions` (`{ "extensions": [ … ], "bibliotheques": { … }, "natives": { … } }`), quand la personne
+2. [D] Sept événements en cours de vie. `extensions` (`{ "extensions": [ … ], "bibliotheques": { … }, "natives": { … } }`), quand la personne
    active ou désactive une extension dans GFS, ou change le mode d'une bibliothèque native (point 12) : l'app charge alors l'extension au premier usage, comme ses moteurs d'export.
    `langue` (`{ "langue": "fr" | "en" }`), quand la personne change la langue de GFS (point 6). `barre` (`{ "barre": { … } | null }`),
    quand la barre de GFS change de bord, de taille, ou disparaît et revient (point 7). `identite` (`{ "identite": { "email": … } | null }`),
    quand GFS apprend l'adresse de la personne pendant que l'app qui la déclare est ouverte (point 9). `ambiance` (`{ "ambiance": { … } | null }`),
-   quand la personne change l'ambiance ou la couleur de GFS (point 10). `reglages` (`{ "enregistres": true | false }`), après chaque écriture
+   quand la personne change l'ambiance ou la couleur de GFS (point 10). `correcteurs` (`{ "correcteurs": { "coupes": true | false } }`), quand la personne coupe ou rallume les correcteurs du navigateur par le bouton de la barre, ou le montre ou le cache (point 13). `reglages` (`{ "enregistres": true | false }`), après chaque écriture
    d'un réglage de l'app : vrai si GFS l'a écrit dans la vue (rien à enregistrer dans Grist), faux s'il est resté un brouillon ; et **d'avance**, une fois
    par demande de `contexte`, pour une app qui déclare des clés `reglages` (7.3, point 5).
 3. [D] `ouverture` : `null` quand l'app s'ouvre sans consigne (elle applique son propre ordre d'arrivée, cahier 6.2, point 4 : c'est
@@ -1269,7 +1290,7 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    adaptent leur interface aux quatre emplacements sans recouvrement ; l'emprise reste minimale, donc pas de bande en plus, mais
    un recouvrement de l'espace que les apps laissent vide). Elle porte cinq boutons à icône seule (« Fichiers », « Fichiers ouverts »,
    6.4 point 14, depuis le 11/11, « Apps et extensions », « Table de travail », 4.5, depuis le 21/10 au soir, et « Position de la barre »), de 34 × 154 px au bord
-   gauche ou droit et de 154 × 34 px en haut ou en bas (34 × 124 avec quatre boutons, jusqu'au 11/11 ; 34 × 94 avec les trois premiers), à 4 px du bord et centrée sur lui ; elle remplace les deux boutons que GFS posait au coin bas droit. Le cadre de l'app reste plein :
+   gauche ou droit et de 154 × 34 px en haut ou en bas (**34 × 184 avec le sixième bouton, « LanguageTool », que la personne ajoute par le réglage du même nom, point 13**, entre « Table de travail » et « Position de la barre » ; 34 × 124 avec quatre boutons, jusqu'au 11/11 ; 34 × 94 avec les trois premiers), à 4 px du bord et centrée sur lui ; elle remplace les deux boutons que GFS posait au coin bas droit. Le cadre de l'app reste plein :
    rien ne le réduit. `contexte.barre` dit ce qui est recouvert :
    `{ "bord": "gauche", "epaisseur": 42, "zone": { "x": 0, "y": 119, "largeur": 42, "hauteur": 162 } }` (l'exemple d'un cadre de
    700 × 400 avec la barre à gauche ; la taille de la barre peut changer, l'app lit toujours la zone qu'on lui donne : elle a grandi de 30 px le 11/11 avec le 5e bouton,
@@ -1522,6 +1543,23 @@ sans événement : seule une règle posée recharge la page (11.5, point 3), et 
     `onExtensions` quand seule une copie figée change. **L'éditeur (TipTap, ProseMirror) n'est pas dans ce champ** : sa copie est une carte
     d'importation rangée dans l'app, que sa page pose avant la réponse de GFS ; le choix lui arrive dans l'adresse du cadre
     (`copie=editeur`, 1.3 point 3 ; `GfsLink.copies()`, kit 0.19.0), pas dans le contexte ni par événement, et prend effet au prochain démarrage.
+
+13. [D] `correcteurs` : **le bouton « LanguageTool » de la barre** (demande du porteur, 12/11 ; mesuré le même jour, faits vérifiés 104). Un correcteur du navigateur
+    (LanguageTool) juge chaque cadre d'après sa propre adresse : son interrupteur « pour ce site » ne coupe donc rien dans le cadre d'une app (l'adresse de l'app n'est pas
+    celle de Grist), et un gros document le fait ramer. **GFS ne peut ni couper l'extension ni toucher au texte d'une app** (cadre isolé) : il retient deux choix de la personne
+    et le dit à l'app. La ligne **« Bouton LanguageTool »** du sous-menu « Réglages avancés » du menu « Réglages » (une case à cocher, éteinte au départ) met un sixième bouton dans la barre, entre « Table de travail » et
+    « Position de la barre » ; enfoncé, LanguageTool travaille ; relevé, il est coupé dans les apps ; son nom et son info-bulle disent l'état. **Sans le bouton rien n'est coupé** : GFS
+    laisse les correcteurs comme le navigateur les fait ; le choix de couper est gardé et reprend quand le bouton revient. Retenu dans le `localStorage` de GFS (jamais dans le document ;
+    clés `gfs.langtool` : le bouton est dans la barre, et `gfs.correcteurs` : coupé ; absentes tant que la personne n'a rien voulu), suivi d'un onglet ou d'une section à l'autre ;
+    si le navigateur refuse de retenir, le choix vaut pour la page et GFS le dit (comme la langue). **Le message** : `{ "coupes": true | false }`, dans `contexte.correcteurs` (relu à chaque
+    appel, `{ "coupes": false }` pour une app seule ou sans choix) et dans l'événement `correcteurs` (`{ "correcteurs": { "coupes": … } }`), **une seule fois par changement de `coupes`** : cocher
+    la ligne ou la décocher alors que le choix de couper est éteint n'envoie rien. **Ce que fait l'app** : sur chacun de ses éléments éditables **eux-mêmes** (`[contenteditable]` qui n'est pas
+    `"false"`, `textarea`, `input` de texte), présents et à venir, elle pose `data-lt-active="false"` quand `coupes` est vrai et la retire quand il est faux, à chaud, sans recharger
+    son cadre (le porteur l'a mesuré : LanguageTool relit la marque à chaud ; posée sur un élément qui entoure la zone, elle ne coupe rien). Le kit en fait la pose : `Correcteurs.start()`
+    (`js/correcteurs.js`, kit 0.22.0), qui lit `contexte.correcteurs` à son démarrage et l'événement ensuite, et surveille les zones qui naissent après. Une app qui ne l'appelle pas
+    n'est pas touchée : le bouton est sans effet sur elle (GFS ne le grise pas : il n'a aucun moyen de savoir si l'app lit le champ). [M] **Mesuré le 12/11** dans un vrai Grist (`labo/run-correcteurs.mjs`,
+    sonde ZL qui pose la marque comme le fera le kit : 29 vérifications en français et en anglais, en clair et en sombre) et sous Firefox 160 sans écran (menu « Réglages » à cinq lignes, barre à
+    six boutons sur les quatre bords) ; la réponse de LanguageTool lui-même est celle du porteur (faits vérifiés 104).
 
 ### 5.3 Le stockage du navigateur
 
@@ -2100,7 +2138,7 @@ rangée d'un fichier, selon ce qui vient d'abord.
    identifiée ne les voit plus, quiconque n'est pas identifié les voit toujours. Cette même adresse est donnée aux apps qui
    déclarent `identite` (3.4, point 6 ; 5.2, point 9), et à elles seules.
 5. [T] Le rangement propre à une app (les dossiers personnels de Publipostage+) reste valable dans l'app ; l'explorateur de GFS
-   le lit (champ `fichiers[].rangement`, 2.4) et n'y écrit jamais (point 8).
+   le lit (champ `fichiers[].rangement`, 2.4) et ne l'écrit que si le manifeste le déclare (`rangement.ecriture`, point 8).
 6. [T] Une ligne dont `Utilisateur` commence par `@` est une ligne réservée de GFS : l'état du document, jamais le rangement
    d'une personne. Deux à ce jour : `@document` / `gfs` / `apps`, les apps installées (7.4), et `@sonde`, la ligne-sonde
    (point 9), qui n'existe que le temps d'une lecture. Le rangement ignore toute ligne en « @ ». Une app n'écrit jamais cette
@@ -2111,9 +2149,29 @@ rangée d'un fichier, selon ce qui vient d'abord.
    contient et celle de chaque dossier gardé sans fichier, sous-dossiers compris ; un dossier ne va ni en lui-même ni dans un de
    ses sous-dossiers. Deux dossiers voisins ne portent pas le même nom (comparé
    comme la recherche) : renommer vers le nom d'un voisin est refusé, déplacer dans un dossier qui a déjà ce nom les réunit.
-8. [D] Dans l'explorateur, la ligne de GFS d'un fichier passe devant le rangement propre de l'app (point 5) ; sans ligne de
-   GFS, celui de l'app reste le point de départ. L'app garde le sien, que GFS ne réécrit pas : un fichier rangé dans GFS
-   peut donc avoir une autre place dans l'app.
+8. [D] **Qui fait foi (décision du porteur, 17/11, qui remplace celle du 21/10).** Le porteur a vu un dossier créé ou un fichier
+   déplacé dans GFS ne pas se retrouver dans Publipostage+ (mesuré : faits vérifiés, 111) : deux listes pour un même document,
+   alors que l'app doit rester utilisable seule. Pour une app dont le manifeste déclare `rangement.ecriture` (2.4), **la table
+   de l'app fait foi**. GFS la lit et l'écrit : pour un fichier, il met à jour la ligne de la personne (toutes, s'il y en a
+   plusieurs : l'app lit la dernière, GFS la première) ou en ajoute une, avec les seules colonnes déclarées (`utilisateur`,
+   `fichier`, `dossier`, `epingle`), dans le même lot que ses propres lignes ; l'identifiant d'un fichier s'écrit en nombre quand
+   la colonne est un entier. `GFS_Rangement` ne garde pour cette app que le repli (point suivant) et les lignes d'état de dossier.
+   **Les dossiers sans fichier se gardent aux deux endroits** (point 11) : une ligne d'état dans `GFS_Rangement` et, si
+   `ecriture.dossiers` est déclaré, une ligne d'état dans la table de l'app (la colonne du fichier porte la marque ; la colonne
+   du dossier, le chemin) ; supprimer un dossier vide retire les deux. **Reprise** : au premier rangement d'un fichier de cette
+   app, les lignes de `GFS_Rangement` que GFS avait écrites pour la personne passent dans la table de l'app (la première ligne de
+   chaque fichier, comme la lecture ; une ligne sans dossier ni favori n'est reprise que si l'app a déjà une ligne pour ce
+   fichier) et sont retirées de `GFS_Rangement`, dans le même lot : une ligne qui y resterait pourrait défaire plus tard un
+   rangement fait dans l'app ; les dossiers sans fichier de `GFS_Rangement` passent chez l'app aussi. **Repli** : si la table
+   de l'app ou l'une de ses quatre colonnes manque, GFS range comme avant, dans `GFS_Rangement`, et n'écrit rien chez l'app (une
+   colonne absente annulerait tout le lot). Pour une app sans `ecriture`, rien ne change : la ligne de GFS d'un fichier passe
+   devant le rangement propre de l'app, qui reste le point de départ sans elle ; GFS ne réécrit pas celui de l'app, et un fichier
+   rangé dans GFS peut avoir une autre place dans l'app. **Ce que l'app fait de son côté** (consigne 072) : relire sa liste au
+   retour de GFS (elle la charge au démarrage : une ligne que GFS écrit pendant qu'elle est ouverte pourrait doubler la sienne),
+   et montrer les lignes d'état comme des dossiers vides. GFS n'ajoute jamais de colonne à l'app (6.1, point 3 pour sa table à
+   lui seulement), ne donne aucune porte nouvelle au courtier (l'écriture est la sienne, par sa propre connexion, comme
+   `suppression` et `copie`), et ne lit pas une ligne qui n'est pas celle de la personne. [M] Mesuré le 17/11 dans un vrai Grist
+   (`prototype/labo/run-rangement-app.mjs`, 19 vérifications) : faits vérifiés, 111.
 9. [T] **La sonde de l'adresse.** La colonne `Adresse` porte une formule déclenchée (`recalcWhen: 0`, `recalcDeps: null` : calculée
    à la création d'une ligne, jamais ensuite) : `user.Email if $Utilisateur == '@sonde' else ''`. Une fois à chaque ouverture
    de GFS, avant la première lecture du rangement ou à la première écriture, GFS ajoute une ligne `Utilisateur = '@sonde'`,
@@ -2142,9 +2200,14 @@ rangée d'un fichier, selon ce qui vient d'abord.
     ligne n'est écrite. Un fichier copié qui a disparu entre-temps (supprimé ou mis à la corbeille par une autre personne) n'est pas
     collé : la phrase le dit. Le geste est refusé, avec sa raison, dans un document en lecture seule, pendant le choix d'un fichier
     pour une app (les gestes d'écriture y sont grisés), et dans un champ de saisie (la touche reste au texte, qui se copie comme
-    avant) ; quand du texte est sélectionné, Ctrl+C copie ce texte. **Ctrl+D n'est lié à rien** : c'est le marque-page de Firefox,
-    le navigateur du porteur ; « Dupliquer » est dans le menu de la ligne (clic droit, Maj+F10, « Plus d'actions »), qui dit les
-    raccourcis (« Ctrl+C, V »).
+    avant) ; quand du texte est sélectionné, Ctrl+C copie ce texte. **Ctrl+D duplique d'un geste** (demande du porteur, 12/11 ; elle
+    était laissée au marque-page du navigateur jusque-là) : même geste que « Dupliquer » du menu de la ligne (clic droit, Maj+F10,
+    « Plus d'actions »), qui dit « Ctrl+D » ; la copie est rangée dans le dossier de l'original (pas dans le dossier ouvert), prend le
+    clavier, et ne touche pas à ce qui est copié ou coupé. L'explorateur retient l'événement (`preventDefault`) pour que le navigateur
+    n'ajoute pas de marque-page ; dans un champ de saisie (la recherche), Ctrl+D reste au navigateur. Un dossier ne se duplique pas
+    (la phrase dit de le couper), ni à la corbeille ni pendant le choix d'un fichier, ni un fichier que l'app seule sait copier (mêmes
+    phrases que Ctrl+C). Une touche tenue enfoncée ne fait qu'une copie ; deux appuis qui se suivent font deux copies, l'une après
+    l'autre (la seconde lit le dossier quand la première y est rangée : deux noms différents).
 11. [D] **Créer, garder et supprimer un dossier, même vide** (décision du porteur, 04/11 : « créer des dossiers et sous-dossiers », tout
     se fait depuis l'explorateur). Un dossier sans fichier tient à une **ligne d'état** : `App` et `Fichier` vides, `Dossier` = son chemin,
     `Utilisateur` = la personne (point 1). Un sous-dossier n'a que sa propre ligne : ses parents existent d'office. Une ligne d'une autre
@@ -2422,6 +2485,8 @@ fichier lui-même en pièce jointe de Grist.
     **Les dossiers reçus** (11/11, choix du porteur : « le dossier, à accepter d'un coup »). Le nom du dossier voyage avec chaque fichier dans **une colonne de plus** de `GFS_Fichiers`, `Dossier_partage` (`SHARED_FOLDER_COLUMN`, `js/files/gfs-files.js` : ce n'est pas une colonne de base, un document qui ne partage aucun dossier ne l'a pas) ; la table reçue l'a avec les valeurs, même ajoutée **après** le premier partage, sans que rien soit renvoyé de zéro, et ses changements suivent (99). « Partagés avec moi » regroupe les arrivées de même nom **dans la même table reçue** (`js/sharing/received-folders.js`, `receivedFolders` : deux documents qui envoient chacun un dossier « Contrats » sont deux dossiers) : les dossiers en tête (lignes de dossier, clé `grp:<table>:<nom>`, jamais `dir:` — un dossier reçu ne se renomme, ne se déplace ni ne se supprime, le clavier non plus), puis les fichiers sans dossier (partage d'un fichier seul, fichier donné par une adresse). **Un dossier est grisé tant qu'un de ses fichiers attend** et le dit en mot (« 2 à accepter ») ; on y entre (double clic, Entrée, « Ouvrir le dossier » ; fil d'Ariane « Moi › Partagés avec moi › Contrats », Retour arrière) et une **barre** y propose « Accepter le dossier… ». La question (`ReceivedControl.askFolder`) est la même fenêtre qu'un fichier, avec le texte du dossier : **un oui ou un non pour tous les fichiers qui attendent**, écrit en **une seule action** (`answerFolder`, `BulkUpdateRecord` des marques `Accepte` / `Refuse` ; les deux colonnes sont ajoutées d'abord, jamais de `AddTable`) ; Échap n'écrit rien ; un fichier déjà répondu seul n'est pas retouché ; un fichier **ajouté plus tard au dossier arrive seul, grisé**, les autres gardent leur état ; un fichier refusé seul n'est plus montré, donc ni compté ni accepté avec le dossier, et un dossier dont tous les fichiers sont refusés disparaît. La cloche a **une ligne par dossier** (« Dossier « Contrats » de X : 3 fichiers à accepter ») qui pose la question du dossier. La recherche et le filtre de type remettent tous les fichiers reçus à plat.
     **L'envoi d'un dossier** (11/11, même choix : « un seul lien par document »). « Partager… » sur un dossier de « Moi » est libre (`ShareControl.whyNotFolder` ne grise plus que la racine, « Espaces » et un espace entier ; `folderFile(path)` rend `{ key, name, path, mine: true }` pour « Moi », avec `shared` pour un dossier d'espace ; `load()` rend `mine: true` sans lire les partages) : la fenêtre s'ouvre sur **« Dans un autre document Grist »** (`startTab`), l'onglet « Dans ce document » dit que « Moi » n'a pas de droits à donner (`share.folder.mine`). Le **niveau du dossier est celui de TOUS ses fichiers** (`levelOf(link, ids)` : « Copie à jour » quand tous sont dans la condition du lien, « Une partie du dossier » quand certains seulement, « Pas partagé » sinon) ; un fichier du dossier se partage aussi seul. Ce qui part : **les PDF de GFS rangés dans ce dossier même** (`filesOfFolder` : ni à la corbeille, ni reçus, ni donnés par une adresse ; ni sous-dossiers, ni fichiers d'une app, dits en une ligne : « 2 fichiers d'apps ne partent pas ») ; un dossier sans PDF est grisé avec sa raison. Le geste (`share-other.js`, `buildTab`) : **la colonne `Dossier_partage` est ajoutée au besoin (une seule action, jamais avant que le fichier existe) et reçoit le dernier mot du chemin du dossier sur les lignes du dossier, AVANT la condition** (le moteur ne compose ses colonnes que d'après la table au moment de l'enregistrement : `SENT_COLUMNS` nomme la colonne d'avance) ; puis la condition du lien reçoit tous les fichiers d'un coup (`applyLevel` accepte une liste). **Le nom reste écrit** quand le dossier s'arrête (« Arrêter la copie », ou « Une copie, une fois » une fois partie) : effacé après la sortie de la condition, il partait chez l'autre avec l'archive de la copie (mesuré, 100) ; la copie garde son dossier chez l'autre, et un fichier qui repart seul plus tard garde le nom de son dernier dossier partagé (le prix de « un seul nom par fichier »). « Relier un nouveau document… » depuis un dossier relie seulement (aucun fichier n'est envoyé : le niveau se choisit ensuite). Un fichier rangé dans un dossier se partageait mal (`whyNot` le prenait pour un dossier) : réglé. Faits vérifiés, 100.
     **Le suivi « à jour »** (11/11). « Copie à jour » sur un dossier **retient qu'il est suivi** : une ligne de `GFS_Rangement` par (personne, lien, dossier) — `App` = `gfs-suivi` (`FOLLOW_APP`), `Fichier` = l'export du lien, `Dossier` = le chemin, `Valeur` = la liste JSON des fichiers du dossier au dernier passage (`Rangement.followed / follow / unfollow` ; sans la table du rangement, rien ne s'écrit et rien ne se demande : la fenêtre dit que le dossier n'est pas suivi, `so.follow.off`). À chaque lecture des fichiers (`onLoaded` du contrôleur), tant que la page est ouverte, que la personne est propriétaire et que le document a un dossier suivi, `createFollower` (`js/share-follow.js`) compare le dossier d'aujourd'hui à celui du dernier passage (`planFollow`) : **un PDF nouveau dans le dossier** (ajouté, déplacé dedans, restauré) **entre dans la condition** avec le nom du dossier (écrit d'abord) et arrive chez l'autre grisé, seul, « à accepter » ; **un PDF qui n'y est plus** (déplacé, à la corbeille) **sort de la condition** (sa copie reste chez l'autre, en archive) ; **un PDF retiré à part n'est pas rajouté** (seuls les fichiers nouveaux entrent) ; **un dossier sans fichier** (vidé, ou renommé : ses fichiers ont un autre chemin) **ne change rien** : le suivi attend, il ne suit pas un renommage. « Arrêter la copie » et « Une copie, une fois » ne suivent plus ; un lien arrêté ne suit plus rien (ses lignes sont oubliées au passage suivant). Un seul passage à la fois, jamais d'erreur vers la page (un avertissement). Faits vérifiés, 100.
+    **« Gérer les partages » et « Partager » : vitesse et exactitude** (12/11, faits vérifiés 107). Les tables d'une fenêtre se lisent **ensemble** (un aller-retour avec Grist) ; « Gérer les partages » lit les règles d'accès une fois par ouverture, sans les tables de fichiers (`RightsReader.raw({ files: false })`, `RightsWriter.plansFrom`), et un groupe ou un espace écrit ne relit que les quatre tables du partage ; à la fermeture, si une écriture a réussi, l'explorateur relit ses fichiers (un espace créé s'y voit). **La personne qui crée un espace y entre** (`planSpaceAdd(…, creator)` : une ligne de partage en écriture, dans la même écriture). L'étape obligatoire avant de partager (activer, mettre à jour) se montre au milieu de la fenêtre : son titre, pourquoi elle est nécessaire, et son bouton (« Activer le partage… », « Mettre à jour le partage… » ; `data-fk="share-need"`). **Accès direct** : la ligne « Gérer les partages… » du menu « Réglages » (après « Thème ») ouvre la même fenêtre sans la fenêtre « Partager » dessous ; sans l'accès complet elle reste grisée et un clic en donne la raison.
+    **Ce que l'envoyeur ne peut pas écrire chez l'autre** (audit « contournement » du 11/11, faits vérifiés 101). Les marques `Accepte` et `Refuse` sont à la personne qui reçoit : le moteur remplit pourtant la table reçue avec les colonnes que l'envoyeur déclare, et recopie une colonne envoyée dans la colonne de même nom d'ici, si bien qu'un envoyeur qui rangeait une colonne `Accepte` vraie dans son export faisait arriver ses fichiers **déjà acceptés** (mesuré). Deux gestes ferment le trou (`js/sharing/received-marks.js`) : à la réception, une colonne envoyée qui porte le nom d'une marque (casse ignorée) arrive sous un autre nom (`Accepte_envoye`, correspondance passée au moteur) ; les deux colonnes Bool de marque sont créées **dès la réception** (`ensureMarks`, additif, jamais une table), et à l'ouverture de la page par un propriétaire pour les réceptions d'avant. Le type et le nom d'un fichier reçu sont des données de l'envoyeur : un fichier reçu non encore connu de GFS ne choisit jamais l'app qui l'ouvre (`readerOf`), et son nom de téléchargement est nettoyé (`receivedName`). La colonne `Dossier_partage` n'est plus envoyée qu'avec un lien qui reçoit un dossier (un lien de fichier seul ne dit rien des dossiers de l'envoyeur ; `carriesFolder`).
     **Pas encore** : le suivi d'un dossier renommé ou déplacé (le chemin retenu ne suit pas), un dossier d'espace sans table du rangement, les sous-dossiers, un partage demandé avant tout fichier (la cloche le dira quand `GFS_Notifications` existera). [M] 24 vérifications dans un vrai Grist pour l'envoi (faits vérifiés, 68), 10 pour le retrait d'un fichier et la condition jamais vide, et la vie d'un lien dans
     les fenêtres de GFS (70), 19 pour la réception de bout en bout (71), la liste « Partagés avec moi » et sa cloche dans un vrai Grist (`labo/run-partages-recus.mjs`, 75), la colonne du dossier (`labo/run-dossier-colonne.mjs`), les dossiers reçus (`labo/run-dossiers-recus.mjs`, 99) et l'envoi d'un dossier de bout en bout (`labo/run-partager-dossier.mjs`, 100), 0 écart sous Firefox (`test/partager-autre-firefox.mjs`, `test/partager-recevoir-firefox.mjs`, `test/partages-recus-firefox.mjs`, `test/partager-firefox.mjs`), essais sans Grist du parcours, des liens et de la reprise.
 
@@ -2602,7 +2667,11 @@ le document, pour que l'installation s'enregistre tout de suite.
    sur le choix du porteur, « comme avant GFS » : le modèle de la vue de Publipostage+ (un document, une grille ou une
    présentation) s'ouvre à l'arrivée, comme dans l'app seule. La règle :
    - une clé compte quand elle a une valeur : `null` et le texte vide, par lesquels une app retire un choix (Publipostage+,
-     « Retirer » du modèle de la vue : `setWidgetOption(clé, null)`), ne comptent pas ; `0`, `false` et un objet comptent ;
+     « Retirer » du modèle de la vue : `setWidgetOption(clé, null)`), ne comptent pas ; `0`, `false` et un objet comptent ; **un objet
+     qui dit `enabled: false` ne compte pas** (un choix coupé mais gardé : le « modèle selon la ligne » décoché de Publipostage+ garde
+     ses règles pour qu'on les retrouve) ; **seules les clés `reglagesArrivee` du manifeste comptent** quand il les déclare (2.5, point 5 ;
+     sinon toutes ses clés de `reglages`) : pour Publipostage+, le modèle de la vue et le modèle selon la ligne, pas les droits
+     d'accès, la date du dernier export ni les pièces jointes (complété le 12/11, voir plus bas) ;
    - ne comptent que les apps qu'on peut ouvrir ici : installées (rien ne s'installe à l'arrivée) et dont l'accès demandé ne
      dépasse pas celui que Grist a donné à GFS ;
    - une seule app servie par la section : elle s'ouvre **sans consigne** (`ouverture` à `null`, 5.2, point 3 : elle applique
@@ -2654,6 +2723,21 @@ le document, pour que l'installation s'enregistre tout de suite.
    ou sans la lecture de la table (la table n'a qu'une ligne : le journal n'est pas élagué par l'app, la lecture grandira avec lui,
    11 à 14 ms pour 1 000 lignes mesurés le 21/10). Pas mesuré : Firefox (aucune interface de plus ; la comparaison est la même),
    une table `Automation` de plusieurs milliers de lignes.
+
+   **Complété le 12/11 : seulement un modèle choisi** (choix du porteur, « Seulement si un modèle est choisi » ; `reglagesArrivee` du
+   manifeste, 2.5, point 5). Une vue dont le seul réglage de Publipostage+ était sa date du dernier export, ses droits d'accès ou ses
+   pièces jointes arrivait sur la page blanche de l'app (sans modèle ni ★) : rien ne disait quoi ouvrir. Désormais seuls
+   `modeleDeLaVue` et `modeleSelonLigne` désignent Publipostage+ ; un objet qui dit `enabled: false` (le modèle selon la ligne décoché, ses
+   règles gardées) ne compte pas. Conséquence pour la table : sans modèle, la table d'Automation+ est lue (un réglage de droits ou de date
+   ne parle plus avant elle). Rien n'est écrit, rien ne change pour une app qui ne déclare pas `reglagesArrivee` (Automation+ : `workflow`).
+   [M] **Mesuré le 12/11** (`run-arrivee.mjs`, labo grist-static 0.1.6, Chromium, 700 × 400 à la vraie souris, vraie Publipostage+ à `de63f27`
+   et vraie Automation+ à `aaad9bf` ; **français / clair et anglais / sombre : 41 vérifications sur 42 chacune**, la 42e est un avertissement
+   de GFS (« un brouillon est déjà posé ») que le labo produit aussi sur le code d'avant : voir faits vérifiés, 103) : la date du dernier
+   export seule, les droits d'accès et les pièces jointes seuls, puis le modèle selon la ligne décoché : l'explorateur, sans app ni barre ;
+   le modèle selon la ligne coché : Publipostage+ s'ouvre, sur son ordre habituel (le ★) ; le modèle de la vue avec les droits et la date :
+   Publipostage+ s'ouvre sur le modèle ; le graphe d'Automation+ avec seulement la date et les droits de Publipostage+ : Automation+ s'ouvre
+   (une seule app servie) ; la date et les droits ne parlent pas avant la table : Automation+ s'ouvre par sa ligne `Workflow`. **Sur l'ancien code,
+   cinq de ces vérifications échouent** (la vue s'ouvre sur Publipostage+, ou l'explorateur quand Automation+ était aussi servie).
 8. [D] **L'app de départ** (`gfs.depart`) reste un réglage de la section, écrit seulement sur un geste de la personne ; personne
    ne l'écrit encore. Quand GFS l'écrira, ce sera comme les réglages des apps (7.3, point 4), sans « Enregistrer ».
 9. [D] **L'ancienne clé `gfs.apps`** du prototype V0.2 n'est plus ni lue ni écrite ; une section qui la porte n'est pas modifiée.
@@ -2976,6 +3060,11 @@ soit la dernière de sa ressource. Les droits s'écrivent comme Grist les range 
    protègent) ; « Permissions » tant qu'il n'a rien lu ou qu'il n'a rien à juger. Le niveau d'une table se lit à la note de ses règles (« GFS : Encadré »), jamais à leur contenu. **Seulement quand
    un propriétaire a lu les règles** (la preuve est celle de `contexte.role`, 5.2, point 8) : mesuré, dès qu'une règle refuse la lecture d'une table à une personne, les tables de règles
    lui arrivent **vides**, et vides elles ne disent pas « aucune règle » ; à toute autre personne le pied dit « Permissions », et le panneau en donne la raison.
+   **Retiré le 12/11, supprimé le 13/11 (choix du porteur, cartes « Pas protégé » : « Retirer », puis « Permissions, sans porte » : « si elle ne sert plus à rien et est redondante on supprime »)** : le pied de
+   l'explorateur ne porte plus ni la pastille ni son mot, et la fenêtre « Permissions » (liste des liens publics du document, « Partagé » du rangement, structure) n'existe plus ; le lecteur n'en lit plus ni les règles
+   pour un mot, ni les liens publics. Restent, parce que « Gérer les partages… » et « Partager… » s'en servent : les plans de pose (`rights-plan.js`), `runAction` et l'écrivain, dont la fermeture et la réouverture de la
+   structure et l'activation du partage ; les gestes « Partagé » et « Retirer les règles de GFS » n'ont plus de porte (code à retirer quand le partage n'y touche plus). Qui veut les liens publics ou le « Partagé » du rangement
+   les trouve dans Grist.
 
 ### 11.5 Poser et retirer
 
@@ -3008,7 +3097,7 @@ soit la dernière de sa ressource. Les droits s'écrivent comme Grist les range 
    fermer la structure de lui-même (11.7, point 1) ; laisser publier un formulaire qui remplit une table protégée (11.9, point 4).
 8. [D] Une nouvelle table de classe (une app installée plus tard) demande de poser ses règles : c'est une action sur les tables
    de règles, donc la même liasse, le même avertissement, le même rechargement.
-9. [T] **Codé le 06/11 (étape 7, lot a)** : dans le panneau « Permissions » (`js/rights/rights-plan.js`, `rights-writer.js`, `rights-actions.js`), un propriétaire prouvé pose ou retire **Partagé sur le rangement** (les six règles de
+9. [T] **Codé le 06/11 (étape 7, lot a)** : dans le panneau « Permissions » (supprimé le 13/11 : seules la structure et l'activation du partage ont gardé une porte, par « Gérer les partages… » ; `js/rights/rights-plan.js`, `rights-writer.js`, `rights-actions.js`), un propriétaire prouvé pose ou retire **Partagé sur le rangement** (les six règles de
    11.4, point 2, en une liasse, note « GFS : Partagé · … ») et **ferme ou rouvre la structure** (11.7, point 1). Chaque geste passe par une fenêtre du widget qui dit son prix (la première règle du document, le rechargement,
    ce que coûte la structure fermée), avec « Annuler » au clavier ; GFS relit les règles juste avant d'écrire (un plan périmé n'écrit rien), retient `gfs.reprise` dans le navigateur et rouvre le panneau après le rechargement.
    Un geste impossible reste à l'écran, grisé, avec sa raison (rangement absent ou sans la colonne `Adresse`, règles écrites à la main sur le rangement, structure déjà fermée à la main). Pas encore codé : Encadré, les
@@ -3175,8 +3264,8 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
     i. [T] **Groupes et « Gérer les partages » livrés le 07/11** (lot 3 ; `GROUPS_TABLE`, `groupColumns`, `planGroupAdd`, `planGroupsRead` de `js/sharing/sharing-model.js` ; `js/sharing/manage-window.js`, `js/sharing/manage-control.js`, `js/ui/pick-window.js`).
        La table `GFS_Groupes` naît avec le partage (ou à la reprise d'un partage d'avant, qui relit alors les colonnes d'aide) : `Nom`, `NomL`, `PersonnesIci` (adresses tapées), `Source`, `SourceEmail`, `SourceGroupe`
        (un groupe lu d'une table du document) et deux colonnes que Grist calcule, `Membres` et `Nb`. Un partage vise un groupe par `#nom` ; les colonnes d'aide de chaque fichier développent `#nom` par `Membres` (une règle de
-       Grist ne lit pas une autre table). Règles : les propriétaires font tout, un éditeur lit `Nom`, `NomL`, `Nb` et `Source` (pour proposer un groupe), jamais les adresses, le reste est refusé. L'administration d'un fichier ne se donne
-       pas à un groupe ni à une catégorie. « Gérer les partages… » (bouton de la fenêtre « Partager » et du panneau « Permissions », propriétaire seulement ; clé de reprise `manage`) : **Options** (fermer ou rouvrir la structure, avec la
+       Grist ne lit pas une autre table). Règles : les propriétaires font tout, un éditeur lit `Nom`, `NomL`, `Nb` et `Source` (pour proposer un groupe), jamais les adresses, le reste est refusé. L'administration d'un fichier se donne
+       à une personne ou à un groupe, jamais à une catégorie (13/11, point n). « Gérer les partages… » (bouton de la fenêtre « Partager » et du panneau « Permissions », propriétaire seulement ; clé de reprise `manage`) : **Options** (fermer ou rouvrir la structure, avec la
        question du panneau ; les liens publics se créent dans Grist), **Groupes** (créer un groupe tapé, le modifier, le supprimer, **lire les groupes d'une table** : trois listes avec recherche, un groupe par valeur distincte,
        les identifiants vérifiés avant d'entrer dans une formule, les noms pris laissés), **Catégories** (un droit sur tout le document pour les éditeurs et pour tout le monde : une ligne de partage dont la cible est la racine `*`).
        Mesuré dans un vrai Grist à trois comptes (`labo/run-partager-groupes.mjs`, 32 vérifications) et sous Firefox (`test/partager-firefox.mjs`, 700 × 400 à la vraie souris). Une formule de `Membres` qui contenait un saut de ligne
@@ -3217,7 +3306,54 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
        colonne « Par » dit celui qui l'a donné ; **à la racine de « Moi » il ne figure pas tant que la personne ne l'a pas rangé dans un dossier**. Un lecteur ne peut pas apprendre son adresse par la sonde du rangement (il n'écrit
        rien) : GFS la lit alors dans les partages qu'il lit (« chacun lit les partages qui le concernent »), si une seule adresse de personne y figure. **Un document partagé avant** reçoit la colonne par « Compléter le partage… »
        (mesuré : `labo/run-partager-reprise.mjs`). Mesuré dans un vrai Grist à trois comptes (`labo/run-partager-espaces.mjs`) et sous Firefox (`test/dossiers-firefox.mjs`, « Partagés avec moi »).
-       **Pas fait** : le partage direct d'un dossier de « Moi » (seuls les dossiers d'espace ont des droits), l'acceptation ou le refus d'un fichier donné (un droit donné se retire dans « Partager… » par celui qui l'a donné), la lecture légère des gros documents n'est pas mesurée.
+       **Pas fait** : l'acceptation ou le refus d'un fichier donné (un droit donné se retire dans « Partager… » par celui qui l'a donné), la lecture légère des gros documents n'est pas mesurée.
+
+    n. [T] **Administrer par un groupe, partager un dossier de « Moi », suggestions d'adresses : livrés le 13/11** (trois cartes du porteur, 13/11 ; mesuré dans un vrai Grist à trois comptes,
+       `labo/run-partager-moi.mjs`, 77 vérifications, faits vérifiés 109). Contrainte du porteur : **de vrais verrous sur la donnée brute** (les tables des apps et de GFS), pas un grisé de l'interface : chaque verrou
+       a donc été attaqué par l'API REST de Grist avec la session d'un éditeur, sans passer par GFS.
+       a. **« Administration » : une personne ou un groupe, pas une catégorie** (« personnes et groupes, sans catégories »). `AdminsBase` et `AdminsCible` développent le groupe par `Membres` ; un éditeur membre d'un
+          groupe administrateur partage le fichier (sa ligne est valide, la fenêtre l'y autorise), un éditeur qui n'a que la catégorie « éditeurs » non (la ligne est écrite, sans effet d'administration).
+       b. **Un dossier de « Moi » se partage dans ce document** (« le dossier et ses futurs fichiers »). La cible est `dossier:moi:<adresse du propriétaire du dossier>/<chemin>`. Une colonne d'aide de plus, `GFS_Dossier`,
+          lit le rangement du **propriétaire du fichier** (`GFS_Auteur`) : le fichier hérite des partages du dossier où son auteur l'a rangé, et d'aucun autre ; le fichier qu'une autre personne range dans son propre dossier
+          n'hérite de rien. Un fichier rangé plus tard dans le dossier est partagé aussitôt (c'est une formule de Grist, aucune page n'a à s'ouvrir) ; un fichier qui sort du dossier ne l'est plus. Le droit le plus précis gagne
+          comme ailleurs (le dossier de « Moi » compte comme un dossier d'espace). Les destinataires le voient dans « Partagés avec moi » ; la fenêtre « Partager… » s'ouvre sur « Dans ce document », la personne y est
+          « propriétaire du dossier » (ligne fixe). Un propriétaire du document peut aussi donner un dossier de « Moi » (sa ligne est valide) ; un éditeur donne le sien.
+       c. **Le rangement de chacun est protégé à l'activation du partage** : six règles « GFS : Partagé · … » sur `GFS_Rangement` (les propriétaires gardent la main, la liste des apps se lit par tous, chacun lit et
+          écrit son propre rangement et jamais celui d'un autre, la ligne-sonde, le reste refusé), posées par l'activation et reprises par « Compléter le partage… ». Sans elles, un éditeur écrivait une ligne de rangement
+          au nom d'un autre et faisait entrer un fichier dans un dossier partagé. Des règles d'un autre auteur sur cette table : l'activation s'arrête (« étrangères »), rien n'est écrit.
+       d. **Il faut aussi fermer la structure** (« Gérer les partages… », Options). Mesuré : tant qu'elle est ouverte (le réglage par défaut de Grist), un éditeur peut changer la formule d'une colonne d'aide
+          (`ModifyColumn` répondu 200), ce qui annule les partages par dossier. Structure fermée, il ne peut ni changer ni retirer une colonne d'aide, ni retirer la table des partages, ni retirer une règle d'accès.
+          Le verrou sur la donnée brute est donc **le partage activé et la structure fermée**.
+       e. **Limites** : un PDF importé avant que GFS ait appris l'adresse de la personne n'a pas d'auteur (`GFS_Auteur` vide) : un dossier de « Moi » ne lui donne rien (échec fermé : le rangement seul ne prouve pas à qui
+          est le fichier) tant qu'un propriétaire n'écrit pas son auteur ; renommer ou déplacer un dossier de « Moi » partagé en perd les partages sans bruit (même limite que pour un dossier d'espace) ; la délégation reste
+          à deux niveaux ; la réception par un groupe n'apparaît dans « Partagés avec moi » que pour un dossier de « Moi ».
+       f. **Suggestions d'adresses dans un groupe** (choix « connues + une colonne d'e-mails »). Le formulaire d'un groupe tapé a « Ajouter une adresse connue… » (liste avec recherche des adresses que GFS a déjà lues : la
+          personne, les partages et leurs auteurs, les membres des groupes tapés, le rangement de chacun — un propriétaire le lit en entier) et « Adresses d'une table… » (une table, puis une colonne d'adresses : ses
+          valeurs deviennent des suggestions le temps de la fenêtre, rien n'est écrit dans la table). Grist ne donne pas la liste des personnes du document à un widget (`/access` : 403, faits vérifiés 107).
+    o. [T] **Lier un dossier ou un fichier dans un autre espace, avec son droit : livré le 13/11** (demande du porteur : « une référence vers un fichier [...] accessible depuis un espace B sans avoir à gérer deux
+          copies, le groupe B peut avoir l'écriture ou juste la lecture » ; réponse à la carte : « au moment de créer un raccourci, créer les droits qui vont avec », donc « Un lien avec son droit » ; mesuré dans un
+          vrai Grist à trois comptes, `labo/run-liens-espaces.mjs`, faits vérifiés 110). C'est le même dossier ou le même fichier, jamais une copie : le lien n'ajoute ni fichier ni octet.
+       a. **Un lien est une ligne de `GFS_Placement` sans `Cible`** (comme le marqueur d'un dossier vide), avec deux colonnes de plus : `Lien` (la source : la clé du fichier, ou `dossier:<espace>/<chemin>` ; un dossier
+          `dossier:moi:…` marche aussi), `Espace` (l'espace B), `Dossier` (le nom du dossier lié pour un dossier ; le dossier qui reçoit le fichier pour un fichier, vide = la racine), et `Partages` (la liste des
+          groupes `#…` dont le lien a **ajouté** la ligne de partage). Les colonnes naissent par « Compléter le partage… » (un document plus ancien passe en « à compléter »).
+       b. **Le lien ne donne aucun droit par lui-même : sa création écrit des lignes de partage ordinaires** sur la source, une par groupe de l'espace B, au droit choisi (Lecture ou Écriture ; un seul niveau pour tous
+          les groupes de B, à affiner ensuite dans « Partager… » sur l'original, où ces lignes sont des lignes comme les autres). Un groupe qui a déjà un droit plus faible le voit relevé ; un droit plus large (ou
+          l'administration) est gardé. Seules les lignes **ajoutées** sont inscrites dans `Partages` et retirées avec le lien : « Retirer le lien » ne retire ni un droit qui existait avant, ni un fichier, ni un autre lien.
+          Un seul propriétaire du document crée un lien (comme il active le partage). Un groupe qui n'a aucun membre ou un espace sans groupe : refus dit en clair, rien n'est écrit.
+       c. **Tout est calculé par Grist, avec les mêmes verrous que le reste.** `GFS_Vus` (une colonne d'aide de plus sur chaque table de fichiers, formule de Grist) liste, pour chaque dossier de la chaîne du fichier,
+          `<espace>/<chemin>` pour chaque lien dont la source est ce dossier ou le fichier lui-même ; le reste du chemin sous le dossier lié est gardé (sous-dossiers). `GFS_Lecteurs` et `GFS_Ecrivains` sont ceux des partages
+          ordinaires : une personne ne lit que les fichiers où elle a un droit, donc ne voit une copie du lien que pour ceux-là. Un éditeur qui forge un lien, retire un lien, change ou retire la ligne de partage
+          posée par le lien, réécrit `GFS_Vus` ou ajoute une colonne au placement est refusé par Grist (placement réservé aux propriétaires, partages valides seulement s'ils viennent d'un propriétaire, structure fermée).
+       d. **L'explorateur** ajoute, après le rangement direct (`applyLinks`, après `applyDirect`), une copie de chaque fichier pour chaque espace que la personne lit : même clé, même ligne (`space: null`,
+          `linked: { space }`), donc toute action par clé (ouvrir, partager, corbeille) agit sur le vrai fichier. L'original est caché à la racine de « Moi » pour qui n'est pas son auteur (un éditeur qui reçoit le lien n'a pas
+          à voir, dans « Moi », des fichiers qui ne sont pas à lui) et reste visible pour son auteur. Menu d'un dossier : « Lier dans un espace… » (trois fenêtres du widget : l'espace, le nom du dossier lié ou le
+          dossier de réception du fichier, le droit) ; menu d'un dossier lié : ouvrir, « Retirer le lien » (une question dit que rien n'est supprimé) ; renommer, déplacer et partager sont grisés avec leur raison
+          (`slink.fixed`, `share.folder.link`).
+       e. **Refus dans le code** : rien ne se range ni ne se crée dans un dossier lié (`ex.linkTarget`) ; un dossier lié ne se renomme, ne se déplace, ne se supprime ni ne se partage (la source se travaille dans son espace) ;
+          le marqueur d'un dossier vide ignore les lignes de lien ; le même lien (même source, même espace, même nom) deux fois est refusé (`exists`) ; lier un dossier dans son propre espace est refusé dès le choix de l'espace (`sameSpace`), avant les autres questions.
+       f. **Limites** : trois questions pour créer un lien ; le niveau est commun aux groupes de B ; une personne qui est dans A et dans B voit deux entrées (l'original et le lien) ; un fichier sans auteur
+          (`GFS_Auteur` vide) n'est jamais caché à la racine de « Moi » ; renommer le dossier source d'un lien le rompt sans bruit (même limite que les partages par dossier ; lu dans le code, non mesuré) ; la source d'un lien n'est pas
+          vérifiée à la lecture (un lien dont la source a disparu ne montre rien).
 
 ### 11.8 À mesurer sur le Grist du porteur
 

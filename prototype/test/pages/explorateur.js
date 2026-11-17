@@ -4,7 +4,7 @@
 // dernier fichier que l'explorateur a ouvert ; `window.__askConflict({ app, repeat })` ouvre la fenêtre du nom pris et `window.__conflict` garde la réponse de la personne quand elle se ferme.
 // La corbeille et le clavier (test/corbeille-firefox.mjs) : le vrai `Trash` (js/files/trash.js) et la vraie fenêtre d'accord (js/ui/ask-window.js) sur un gardien de doublure qui déplace les fichiers entre deux
 // listes ; `window.__filing` note ce que l'explorateur demande au rangement (renommer, déplacer, épingler), `window.__notices` les phrases qu'il dit, `window.__explorer` est l'explorateur, et
-// `window.__reset()` remet les fichiers, la vue et la recherche comme au départ ; `window.__language` et `window.__place` gardent le dernier choix du menu « Réglages » (la langue, le bord de la barre : la ligne de la barre est ici une doublure,
+// `window.__reset()` remet les fichiers, la vue et la recherche comme au départ ; `window.__language`, `window.__place` et `window.__langtool` gardent le dernier choix du menu « Réglages » (la langue, le bord de la barre : la ligne de la barre est ici une doublure,
 // celle du vrai Dock se mesure dans le labo) et `window.__resetSettings()` les remet au départ. L'ambiance (décision du 03/11) et l'accessibilité renforcée (04/11) : `window.__theme` est le réglage du thème (`choose`, `chooseAccess`), et la page prend
 // ce qu'il dit comme celle de GFS. La copie et le presse-papiers (test/copier-firefox.mjs) : le vrai `Copying` (js/files/copying.js) sur un gardien de doublure qui
 // ajoute une copie à la liste (premier nom libre), et un rangement de doublure qui déplace vraiment les fichiers et les dossiers ; `window.__copies` note [identifiant, dossier] de chaque copie rangée.
@@ -26,6 +26,7 @@ import { askName, chooseFolder } from '/js/explorer/filing-window.js';
 import { applyFiling, folderMoves, inside, normalizePath, readFiles, readFiling } from '/js/explorer/explorer-model.js';
 import { Copying } from '/js/files/copying.js';
 import { applyPlacement, readSpaces } from '/js/sharing/spaces-filing.js';
+import { LinkControl } from '/js/sharing/link-control.js';
 import { FILES_MANIFEST, FILES_COLUMN_IDS } from '/js/files/gfs-files.js';
 import { ReceivedControl } from '/js/sharing/received-control.js';
 import { loadReceived, answerFile, answerFolder } from '/js/sharing/received-files.js';
@@ -39,10 +40,9 @@ import { aboutItems } from '/js/shell/about.js';
 import { ThemeSetting } from '/js/theme/theme.js';
 import { modulesModel } from '/js/apps/modules-model.js';
 import { readCatalogue } from '/js/apps/libraries.js';
-import { withNativeMode } from '/js/apps/settings.js';
+import { withApp, withExtension, withMode, withNativeMode } from '/js/apps/settings.js';
 import { ThemeWindow } from '/js/theme/theme-window.js';
 import { Trash } from '/js/files/trash.js';
-import { openRights } from '/js/rights/rights-window.js';
 import { openShare } from '/js/sharing/share-window.js';
 import { openManage } from '/js/sharing/manage-window.js';
 import { whyNot } from '/js/sharing/share-other.js';
@@ -206,12 +206,46 @@ async function mount() {
     kept = [...new Set([...kept, ...info.folders])];
     show();
   };
+  // Les liens entre espaces (js/sharing/link-control.js, test/liens-espaces-firefox.mjs) : le vrai contrôle, les vraies fenêtres (choisir, nommer, demander) et le vrai calcul des lignes à écrire, sur un faux Grist
+  // en mémoire (`window.__linkTables`, `window.__linkActions`). Deux espaces : Achats (le dossier Contrats, le premier modèle) et Ventes (le groupe « Commerciaux » y lit) ; `variant` : 'neuf' (aucun lien) ou 'lie' (Contrats
+  // est déjà lié dans Ventes, sous le nom « Contrats achats »). `window.__linkOwner` : false = la personne n'est pas propriétaire.
+  window.__spaceLinks = (variant = 'neuf') => {
+    const linked = variant === 'lie';
+    const tables = {
+      GFS_Espaces: { columns: ['id', 'Cle', 'Nom'], rows: [{ id: 1, Cle: 'achats', Nom: 'Achats' }, { id: 2, Cle: 'ventes', Nom: 'Ventes' }] },
+      GFS_Partages: { columns: ['id', 'Cible', 'Personne', 'Droit', 'Telecharger', 'Fin'], rows: [{ id: 1, Cible: 'espace:achats', Personne: '#Achats', Droit: 'lecture' }, { id: 2, Cible: 'espace:ventes', Personne: '#Commerciaux', Droit: 'lecture' },
+        ...(linked ? [{ id: 3, Cible: 'dossier:achats/Contrats', Personne: '#Commerciaux', Droit: 'lecture' }] : [])] },
+      GFS_Placement: { columns: ['id', 'Cible', 'Espace', 'Dossier', 'Lien', 'Partages'], rows: [
+        { id: 1, Cible: live[0].key, Espace: 'achats', Dossier: 'Contrats', Lien: '', Partages: '' },
+        { id: 2, Cible: '', Espace: 'achats', Dossier: 'Contrats/Sous', Lien: '', Partages: '' },
+        ...(linked ? [{ id: 3, Cible: '', Espace: 'ventes', Dossier: 'Contrats achats', Lien: 'dossier:achats/Contrats', Partages: '#Commerciaux' }] : [])] },
+    };
+    const grist = fakeGrist(tables);
+    window.__linkTables = grist.tables;
+    window.__linkActions = grist.actions;
+    window.__linkOwner = true;
+    let info = null;
+    const read = () => {
+      const column = (rows, id) => rows.map(row => row[id]);
+      const place = tables.GFS_Placement.rows;
+      info = readSpaces({ id: column(tables.GFS_Espaces.rows, 'id'), Cle: column(tables.GFS_Espaces.rows, 'Cle'), Nom: column(tables.GFS_Espaces.rows, 'Nom') },
+        { id: column(place, 'id'), Cible: column(place, 'Cible'), Espace: column(place, 'Espace'), Dossier: column(place, 'Dossier'), Lien: column(place, 'Lien'), Partages: column(place, 'Partages') });
+      applyPlacement(live, info);
+      kept = [...new Set([...kept, ...info.folders])];
+      show();
+    };
+    read();
+    const control = new LinkControl({ t: i18n.t, container: stage, inertTargets: () => [explorer.root], port: grist.port, fullAccess: () => true, writeBlock: () => null, spaces: () => info, files: () => live,
+      notice: text => window.__notices.push(text), reader: { owner: async () => window.__linkOwner !== false }, refresh: async () => read() });
+    window.__linkProxy = { whyNot: () => control.whyNot(), linkAt: path => control.linkAt(path), open: source => control.open(source), remove: link => control.remove(link) };
+    explorer.render();
+  };
   // Un fichier que quelqu'un a donné à la personne par son adresse (« Partagés avec moi », lot 4c) : le premier modèle, à la racine, jamais rangé par elle.
   window.__direct = () => { live[0].folder = ''; live[0].direct = { by: 'marc@example.com' }; show(); };
   window.__keep = (...paths) => { kept = [...new Set([...kept, ...paths])]; show(); };
   // Le menu « Réglages » : la langue et le bord de la barre que la personne a choisis en dernier (la ligne de la barre est une doublure : le vrai Dock se mesure dans le labo), et la vraie fenêtre « À propos ».
   const EDGES = [['gauche', 'dock-left'], ['haut', 'dock-top'], ['droite', 'dock-right'], ['bas', 'dock-bottom']];
-  window.__resetSettings = () => { window.__language = language; window.__place = 'gauche'; };
+  window.__resetSettings = () => { window.__language = language; window.__place = 'gauche'; window.__langtool = false; };
   window.__resetSettings();
   const place = () => ({
     label: i18n.t('dock.place'), icon: 'dock-left', submenu: EDGES.map(([edge, glyph]) => ({ label: i18n.t(`dock.${edge}`), icon: glyph, check: window.__place === edge, run: () => { window.__place = edge; } })),
@@ -220,7 +254,7 @@ async function mount() {
   // « Apps et extensions » et « Table de travail » (js/apps/modules-window.js, js/apps/work-window.js ; test/voile-firefox.mjs) : des fenêtres à part de la base commune, dont le fond ne ferme rien non plus.
   window.__modulesWindow = () => void new ModulesWindow({ container: stage, i18n, locale, model: () => ({ items: [], active: 0, total: 0 }), blocked: () => null, inertTargets: () => [explorer.root], on: {}, onClose: () => {} }).open();
   // « Apps et extensions » avec les bibliothèques natives, fonction par fonction (js/apps/modules-window.js, contrats 2.6 point 14 ; test/natives-firefox.mjs) : le vrai modèle, le vrai catalogue de GFS et le manifeste de
-  // Publipostage+ à qui l'on donne quatre fonctions (ce que son manifeste dira quand l'app lira le choix). `variant` : 'ok', 'manque' (le catalogue n'a pas les polices : la copie du PDF est grisée), 'editeur' (l'éditeur, copie dans l'app) ou 'lecture' (rien ne peut s'écrire).
+  // Publipostage+ à qui l'on donne quatre fonctions (ce que son manifeste dira quand l'app lira le choix). `variant` : 'ok', 'manque' (le catalogue n'a pas les polices : la copie du PDF est grisée), 'editeur' (l'éditeur, copie dans l'app), 'direct' (l'édition collaborative cochée) ou 'lecture' (rien ne peut s'écrire).
   window.__natives = async (variant = 'ok') => {
     const L = (id, version) => ({ id, version });
     const manifest = await (await fetch('/manifestes/publipostage.json')).json();
@@ -234,11 +268,47 @@ async function mount() {
     if (variant === 'editeur') manifest.natives.unshift({ id: 'editeur', nom: { fr: 'Éditeur (TipTap)', en: 'Editor (TipTap)' }, copieDansApp: true, poids: 1172757 });
     const catalogue = readCatalogue(await (await fetch('/bibliotheques/catalogue.json')).json());
     const loaded = [{ app: { id: manifest.id }, manifest, ok: true, errors: [] }];
-    let apps = { [manifest.id]: { extensions: [], modes: {} } };
+    // 'direct' : l'édition collaborative est cochée (Publipostage+ ne nomme pas encore l'adresse de son CDN : la fenêtre le dit sous le choix « Depuis un CDN », test/natives-firefox.mjs).
+    let apps = { [manifest.id]: { extensions: variant === 'direct' ? ['edition'] : [], modes: {} } };
     window.__nativeEvents = [];
+    window.__modeEvents = [];
     const win = new ModulesWindow({
       container: stage, i18n, locale, model: () => modulesModel(loaded, { apps }, catalogue, [manifest.id]), blocked: () => (variant === 'lecture' ? 'lecture seule' : null), inertTargets: () => [explorer.root],
-      on: { nativeMode(app, group, mode) { apps = withNativeMode(apps, manifest, group, mode); window.__nativeEvents.push([app, group, mode]); win.refresh(); } }, onClose: () => {},
+      on: {
+        nativeMode(app, group, mode) { apps = withNativeMode(apps, manifest, group, mode); window.__nativeEvents.push([app, group, mode]); win.refresh(); },
+        mode(app, extension, mode) { apps = withMode(apps, manifest, extension, mode); window.__modeEvents.push([app, extension, mode]); win.refresh(); },
+      }, onClose: () => {},
+    });
+    win.open();
+  };
+  // « Apps et extensions » en vitrine (js/apps/vitrine.js, décision du 17/11, « A · Vitrine » ; test/vitrine-firefox.mjs) : les quatre manifestes de GFS, le vrai modèle et le vrai catalogue. Chaque geste est noté
+  // dans `window.__vitrineEvents` et change l'état comme le registre le ferait ; la fenêtre se redessine ensuite. `variant` : 'ok' (Publipostage+, toujours active, est la seule installée), 'lecture' (document en lecture
+  // seule), 'refusee' (le manifeste de Grist-BI est refusé), 'captures' (Publipostage+ déclare deux captures : un vrai fichier, un fichier absent).
+  window.__vitrine = async (variant = 'ok') => {
+    const L = (fr, en) => ({ fr, en });
+    const manifests = await Promise.all(['publipostage', 'automation', 'form', 'bi'].map(async id => (await fetch(`/manifestes/${id}.json`)).json()));
+    if (variant === 'captures') {
+      manifests[0].vitrine = { description: L('Une description longue de Publipostage+.', 'A long description of Publipostage+.'), captures: [
+        { fichier: '../test/pages/capture-essai.png', legende: L('Première capture', 'First screenshot') }, { fichier: 'absente.png', legende: L('Deuxième capture', 'Second screenshot') }] };
+    }
+    const refused = manifest => variant === 'refusee' && manifest.id === 'bi';
+    const loaded = manifests.map(manifest => ({ app: { id: manifest.id }, manifest, ok: !refused(manifest), errors: refused(manifest) ? ['version « 1.0 » : une version exacte est attendue'] : [] }));
+    const catalogue = readCatalogue(await (await fetch('/bibliotheques/catalogue.json')).json());
+    const byId = id => manifests.find(manifest => manifest.id === id);
+    let apps = { publipostage: { extensions: [], modes: {} } };
+    window.__vitrineEvents = [];
+    let before = apps;
+    const change = (event, next) => { window.__vitrineEvents.push(event); before = apps; apps = next; win.refresh(); };
+    window.__vitrineUndo = () => { apps = before; win.refresh(); }; // un refus (de créer la table) remet l'état d'avant
+    const win = new ModulesWindow({
+      container: stage, i18n, locale, model: () => modulesModel(loaded, { apps }, catalogue, ['publipostage']), blocked: () => (variant === 'lecture' ? i18n.t('mod.readonly') : null), inertTargets: () => [explorer.root],
+      on: {
+        app: (id, on) => change(['app', id, on], withApp(apps, byId(id), on)),
+        extension: (app, id, on) => change(['extension', app, id, on], withExtension(apps, byId(app), id, on)),
+        mode: (app, id, mode) => change(['mode', app, id, mode], withMode(apps, byId(app), id, mode)),
+        nativeMode: (app, group, mode) => change(['nativeMode', app, group, mode], withNativeMode(apps, byId(app), group, mode)),
+        open: id => window.__vitrineEvents.push(['open', id]),
+      }, onClose: () => {},
     });
     win.open();
   };
@@ -280,11 +350,13 @@ async function mount() {
   const explorer = new Explorer({
     container: stage, i18n, locale, now: () => new Date(), appName: () => 'Publipostage+', received,
     typeLabel: file => (file.received ? received.typeLabel(file) : baseLabel(file)),
-    lockOf: file => (file.received ? received.lockOf(file) : (file.type === 'macro' ? { text: i18n.t('ex.lockedExtension', { name: 'Macro-modèles' }) } : null)), newTypes: () => [], importTypes: () => [], canClose: () => true,
-    notice: text => window.__notices.push(text), settings: () => settingsItems({ t: i18n.t, language: () => ({ choice: window.__language, grist: language }), onLanguage: value => { window.__language = value; }, onTheme: () => theme.open(), place, onAbout: () => window.__about() }),
-    onOpen: file => { window.__opened = file.name; }, onNew: () => {},
+    lockOf: file => (file.received ? received.lockOf(file) : (file.type === 'macro' ? { text: i18n.t('ex.lockedExtension', { name: 'Macro-modèles' }) } : null)), newTypes: () => [], importTypes: () => [], canClose: () => window.__canClose !== false,
+    notice: text => window.__notices.push(text), settings: () => settingsItems({ t: i18n.t, language: () => ({ choice: window.__language, grist: language }), onLanguage: value => { window.__language = value; }, onTheme: () => theme.open(),
+      langtool: () => ({ shown: window.__langtool, toggle: () => { window.__langtool = !window.__langtool; } }), place, onAbout: () => window.__about(),
+      manage: () => ({ why: null, open: () => { window.__manageFromSettings = (window.__manageFromSettings || 0) + 1; }, notice: text => window.__notices.push(text) }) }),
+    onOpen: file => { window.__opened = file.name; }, onNew: () => {}, get links() { return window.__linkProxy; },
     opened: { keys: () => openedFiles.keys(), shown: () => openedFiles.shown(SESSION), remove: key => openedFiles.remove(key) },
-    onImport: () => {}, onClose: () => {}, onApps: () => {}, onRights: () => window.__rights(window.__rightsKind || 'protege'), sharing: { whyNot: () => null, whyNotFolder: path => (path.startsWith('Espaces') && path.split('/').length < 3 ? i18n.t('share.folder.space') : null), folderFile: path => ({ key: `dossier:${path}`, name: path.split('/').pop(), path, mine: !path.startsWith('Espaces/') }), open: file => window.__share(window.__shareKind || 'actif', file) }, onWeight: estimate => window.__weight(estimate), personal: () => true, kept: null, trash: bin, copying,
+    onImport: () => {}, onClose: () => {}, onApps: () => {}, sharing: { whyNot: () => null, whyNotFolder: path => (path.startsWith('Espaces') && path.split('/').length < 3 ? i18n.t('share.folder.space') : null), folderFile: path => ({ key: window.__linkProxy && path.startsWith('Espaces/') ? `dossier:${path.split('/').slice(1).join('/').replace(/^[^/]+/, word => word.toLowerCase())}` : `dossier:${path}`, name: path.split('/').pop(), path, mine: !path.startsWith('Espaces/') }), open: file => window.__share(window.__shareKind || 'actif', file) }, onWeight: estimate => window.__weight(estimate), personal: () => true, kept: null, trash: bin, copying,
     attachments: async () => { window.__attachments += 1; if (window.__attachmentsFail) return { error: new Error(window.__attachmentsFail) }; return { data: attachmentsTable() }; },
     filing: { togglePin: noted('pin', 'name'), rename: noted('rename', 'name'), moveFile: noted('move', 'name'), renameFolder: async path => { window.__filing.push(['renameFolder', path]); }, moveFolder: async path => { window.__filing.push(['moveFolder', path]); }, ...moving,
       newFolder: () => filing.newFolder(), deleteFolder: path => filing.deleteFolder(path), undoStack: filing.undoStack },
@@ -300,6 +372,7 @@ async function mount() {
     kept = [];
     arrivals = [];
     window.__sharedBlocked = '';
+    window.__linkProxy = undefined; // plus de liens entre espaces : les menus redeviennent ceux d'avant
     window.__filing.length = 0;
     window.__copies.length = 0;
     window.__notices.length = 0;
@@ -308,6 +381,7 @@ async function mount() {
     window.__opened = null;
     for (const key of openedFiles.keys()) openedFiles.remove(key);
     window.__appOpen = true;
+    window.__canClose = true; // `false` : aucune app n'est ouverte, « Fermer » se cache (test/pieces-jointes-firefox.mjs)
     setting.reset(); // l'ambiance d'origine, comme au départ ; « Revenir à Grist Factory » laisse l'accessibilité renforcée (un besoin, pas un goût) : on l'éteint aussi
     setting.chooseAccess(false);
     window.__resetSettings();
@@ -357,28 +431,6 @@ async function mount() {
     ask({ ...leaveQuestion({ t: i18n.t, app: 'Publipostage+', fault: reason === null ? null : new Error(reason) }), container: stage, inertTargets: () => [explorer.root] })
       .then(answer => { window.__leave = answer ? 'force' : 'stay'; });
   };
-  // Le panneau « Permissions » (js/rights/rights-window.js, test/droits-firefox.mjs) : la vraie fenêtre sur un état que le lecteur aurait rendu ; `kind` : 'pas' (rien posé, un lien public qui ouvre une table protégée),
-  // 'protege' (Encadré partout, structure fermée, deux liens), 'autre' (des règles à la main), 'proprietaire-seul' (une personne qui n'est pas propriétaire). `window.__rightsKind` désigne celui que le mot du pied ouvre.
-  const LONG = 'Publipostage_Modeles_Attestations_De_Formation_Fin_De_Session';
-  const FRESH = { shared: { ok: true, firstRule: true }, 'remove-level': { ok: false, reason: 'none' }, close: { ok: true, firstRule: true }, open: { ok: false, reason: 'none' }, sharing: { ok: true, firstRule: true }, unsharing: { ok: false, reason: 'none' } };
-  const DONE = { shared: { ok: false, reason: 'already' }, 'remove-level': { ok: true }, close: { ok: false, reason: 'already' }, open: { ok: true }, sharing: { ok: true, firstRule: true }, unsharing: { ok: false, reason: 'none' } };
-  const BYHAND = { shared: { ok: false, reason: 'foreign' }, 'remove-level': { ok: false, reason: 'none' }, close: { ok: false, reason: 'already' }, open: { ok: false, reason: 'none' }, sharing: { ok: false, reason: 'foreign' }, unsharing: { ok: false, reason: 'none' } };
-  const states = {
-    pas: { rules: { readable: true, word: 'pas', closed: false, tables: [{ tableId: 'GFS_Rangement', level: 'ouvert' }, { tableId: LONG, level: 'ouvert' }] }, owner: true, plans: FRESH,
-      links: { status: 'ok', links: [{ id: 1, published: true, pages: ['Inscription à la session de formation de septembre'], filled: [{ tableId: 'FormPlus_Pub_3', shown: ['Nom'], unshown: ['Statut', 'Note interne', 'Montant', 'Reçu le'], rows: 1204 }], readable: [{ tableId: 'Villes', colId: 'Nom' }], protectedOpen: ['FormPlus_Pub_3'] }] } },
-    protege: { rules: { readable: true, word: 'protege', closed: true, tables: [{ tableId: 'GFS_Rangement', level: 'encadre' }, { tableId: LONG, level: 'encadre' }] }, owner: true, plans: DONE,
-      links: { status: 'ok', links: [{ id: 1, published: true, pages: ['Inscription'], filled: [{ tableId: 'Inscrits', shown: ['Nom', 'Ville'], unshown: [], rows: 12 }], readable: [], protectedOpen: [] }, { id: 2, published: false, pages: [], filled: [], readable: [], protectedOpen: [] }] } },
-    autre: { rules: { readable: true, word: 'autre', closed: false, tables: [{ tableId: 'GFS_Rangement', level: 'autre' }] }, owner: true, plans: BYHAND, links: { status: 'ok', links: [] } },
-    'proprietaire-seul': { rules: { readable: false, reason: 'owner-only', tables: [], closed: false, word: null }, owner: false, links: { status: 'owner-only', links: [] } },
-  };
-  window.__rights = kind => {
-    const state = states[kind];
-    explorer.setRights(state.rules);
-    window.__rightsActs = [];
-    return openRights({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], load: async () => state,
-      act: async act => { window.__rightsActs.push(act); await ask({ title: act, message: act, confirmLabel: 'OK', cancelLabel: 'Annuler', safeFirst: true, container: stage, inertTargets: () => [explorer.root] }); } });
-  };
-  window.__rightsState = kind => explorer.setRights(states[kind].rules);
   // La fenêtre « Partager » (js/sharing/share-window.js, test/partager-firefox.mjs) : la vraie fenêtre sur un état que le contrôleur aurait lu ; `kind` : 'inactif' (le partage n'est pas activé, une personne propriétaire),
   // 'actif' (propriétaire : des lignes de personnes à l'adresse très longue, de catégories, une fin d'accès, un accès échu), 'lecture' (une personne qui ne peut rien changer). `window.__shareActs` note ce que la
   // fenêtre demande d'écrire.
@@ -395,7 +447,7 @@ async function mount() {
   };
   // La fenêtre « Gérer les partages » (js/sharing/manage-window.js, test/partager-firefox.mjs) sur un état que le contrôleur aurait lu ; `window.__manageActs` note ce que la fenêtre demande d'écrire.
   const manageState = {
-    owner: true, active: true, rows: [], tables: [{ id: 'Contacts', emails: ['Mail'], groups: ['Equipe'] }], root: { '@editeurs': { id: 1, right: 'lecture' }, '@tous': null },
+    owner: true, active: true, rows: [], tables: [{ id: 'Contacts', emails: ['Mail'], groups: ['Equipe'] }], mail: [{ id: 'Contacts', emails: ['Mail'] }], root: { '@editeurs': { id: 1, right: 'lecture' }, '@tous': null },
     groups: [{ id: 1, name: 'Achats', count: 3, source: '', here: 'a@example.com\nb@example.com' }, { id: 2, name: 'Comptabilité fournisseurs de la région Nord-Est', count: 1, source: 'Contacts_de_toute_la_societe_internationale', here: '' }],
     structure: { kind: 'close', label: 'rights.act.close', hint: 'rights.act.close.hint' },
     spaces: [{ id: 1, key: 'achats', name: 'Achats', people: 3, groups: [{ id: 1, group: 'Achats', right: 'lecture' }] }, { id: 2, key: 'long', name: 'Espace de la comptabilité fournisseurs de la région Nord-Est', people: 12, groups: [] }],
@@ -406,7 +458,9 @@ async function mount() {
     const record = act => { window.__manageActs.push(act); return Promise.resolve({ ok: true }); };
     return openManage({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], load: async () => JSON.parse(JSON.stringify(manageState)),
       onAddGroup: (state, group) => record(['addGroup', group.name, group.people]), onUpdateGroup: (id, people) => record(['updateGroup', id, people]), onRemoveGroup: id => record(['removeGroup', id]),
-      onReadTable: async () => { window.__manageActs.push(['readTable']); return null; }, onRoot: (state, who, right) => record(['root', who, right]), onStructure: async () => { window.__manageActs.push(['structure']); return true; }, onConfirmRemove: async name => { window.__manageActs.push(['confirmRemove', name]); return true; },
+      onReadTable: async () => { window.__manageActs.push(['readTable']); return null; },
+      onSuggest: async (state, typed) => { window.__manageActs.push(['suggest', typed]); return 'lea@example.com'; },
+      onColumn: async () => { window.__manageActs.push(['column']); return { ok: true, label: i18n.t('manage.suggest.chosen', { table: 'Contacts', column: 'Mail', n: 12 }) }; }, onRoot: (state, who, right) => record(['root', who, right]), onStructure: async () => { window.__manageActs.push(['structure']); return true; }, onConfirmRemove: async name => { window.__manageActs.push(['confirmRemove', name]); return true; },
       onAddSpace: async () => { window.__manageActs.push(['addSpace']); return null; }, onRemoveSpace: async (state, space) => { window.__manageActs.push(['removeSpace', space.key]); return null; },
       onSpaceGroup: (state, space, group, right) => record(['spaceGroup', space.key, group, right]), onPickGroup: async () => null,
       onLinks: async () => linksNow(),
@@ -491,12 +545,13 @@ async function mount() {
     const record = act => { window.__shareActs.push(act); return Promise.resolve({ ok: true }); };
     const dir = folder && typeof folder.path === 'string' ? folder : null;
     const file = dir ? { key: dir.key, name: dir.name, app: dir.mine ? i18n.t('share.folder.inMine', { name: i18n.t('ex.me') }) : i18n.t('share.folder.in', { name: 'Achats' }) } : { key: 'gfs-fichiers:abc', name: 'Facture de la session de formation de septembre.pdf', app: 'GFS' };
-    return openShare({ container: stage, t: i18n.t, locale: language === 'en' ? 'en-GB' : 'fr-FR', inertTargets: () => [explorer.root], other: window.__shareOther ? state => otherTab(state, dir) : null, file, startTab: dir && dir.mine ? 'other' : 'here',
-      load: async () => (dir && dir.mine ? { ...shareStates.inactif, mine: true } : shareStates[kind]), onAdd: row => record(['add', row.Personne, row.Droit]), onChange: (id, patch) => record(['change', id, patch.Droit]), onRemove: id => record(['remove', id]), onActivate: async () => { window.__shareActs.push(['activate']); return false; }, onManage: kind === 'actif' ? () => window.__manage() : null });
+    return openShare({ container: stage, t: i18n.t, locale: language === 'en' ? 'en-GB' : 'fr-FR', inertTargets: () => [explorer.root], other: window.__shareOther ? state => otherTab(state, dir) : null, file, startTab: 'here',
+      load: async () => (dir && dir.mine ? { ...shareStates.actif, folder: true, author: '', shares: [share(1, 'marc@example.com', 'lecture')] } : shareStates[kind]), onAdd: row => record(['add', row.Personne, row.Droit]), onChange: (id, patch) => record(['change', id, patch.Droit]), onRemove: id => record(['remove', id]), onActivate: async () => { window.__shareActs.push(['activate']); return false; }, onManage: kind === 'actif' ? () => window.__manage() : null });
   };
   // La fenêtre « Poids du document » (js/weight/weight-window.js, test/poids-fenetre-firefox.mjs) : la vraie fenêtre et le vrai lecteur (js/weight/weight-reader.js) sur une doublure de `Transfer.sql`. `window.__weightKind` choisit ce
   // que le serveur répond : 'ok' (un document de dix-huit tables dont une au nom très long et une trop longue à lire), 'refuse' (pas le droit de tout copier : 403), 'muet' (le serveur ne répond pas).
   // `window.__weightEstimate` garde ce que le total a donné à l'ouverture.
+  const LONG = 'Publipostage_Modeles_Attestations_De_Formation_Fin_De_Session';
   const TABLE_BYTES = { [LONG]: 9437184, Clients: 2621440, Inscrits: 524288, Factures: 1310720, Stock: 40960, Notes: 4096 };
   const BIG = Array.from({ length: 12 }, (unused, i) => `Table_${String(i + 1).padStart(2, '0')}`);
   const fakeSql = kind => async statement => {

@@ -5,7 +5,6 @@
 const WINDOWS = [
   { name: '« Ce nom est déjà pris »', open: () => { window.__askConflict({ app: 'Publipostage+', repeat: true }); } },
   { name: '« À propos »', open: () => { window.__about(); } },
-  { name: '« Permissions »', open: () => { window.__rights('autre'); } },
   { name: '« Partager »', open: () => { window.__share('actif'); } },
   { name: '« Gérer les partages »', open: () => { window.__manage(); } },
   { name: '« Apps et extensions »', open: () => { window.__modulesWindow(); } },

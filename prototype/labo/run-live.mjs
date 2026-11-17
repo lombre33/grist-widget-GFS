@@ -4,6 +4,7 @@
 // (repli sur la copie au bout de 15 secondes, dit à la personne). LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';
+import { installApp } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -59,7 +60,7 @@ const watch = lab => {
   // Form+ : l'entrée n'est pas à la racine de son site (`poc/widget.html`), le dossier du kit imbriqué non plus.
   const gfs = await gfsOf(lab);
   await lab.openModules(gfs);
-  await gfs.locator('[data-fk="app:form"]').check();
+  await installApp(gfs, 'form');
   await lab.settle(gfs);
   await gfs.locator('[data-open="form"]').click();
   const form = await lab.appFrame(/FormPlus\//);
@@ -91,7 +92,7 @@ const watch = lab => {
   const gfs = await gfsOf(lab);
   await gfs.waitForFunction(() => document.body.dataset.gfsFirstRun === 'done', null, { timeout: 30000 }).catch(() => {});
   await lab.openModules(gfs);
-  await gfs.locator('[data-fk="app:automation"]').check();
+  await installApp(gfs, 'automation');
   await lab.settle(gfs);
   const t0 = Date.now();
   await gfs.locator('[data-open="automation"]').click();

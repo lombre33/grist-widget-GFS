@@ -10,6 +10,7 @@
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';
 import { isGfsWarning } from './sondes-muettes.mjs';
+import { installApp } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -47,7 +48,7 @@ const configState = () => frame.evaluate(async () => {
 
 await restart();
 await lab.openModules(frame);
-await frame.locator('[data-fk="app:bi"]').check();
+await installApp(frame, 'bi');
 await lab.settle(frame);
 await page.keyboard.press('Escape');
 await frame.locator('.mod').waitFor({ state: 'hidden' });

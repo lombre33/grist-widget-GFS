@@ -72,7 +72,7 @@ export class AppContext {
     // d'avance, ce que deviendront ses réglages de vue : dans la vue (rien à enregistrer dans Grist) ou en brouillon (contrats 7.3, point 5)
     session.announceSaved();
     return buildContext(facts, { access: session.access, extensions: given.extensions, libraries: given.bibliotheques, natives: given.natives, opening, storage,
-      bar: c.dock.barre(), identity, players: session.policy.lecteurs, ambiance: c.theme.message(), role },
+      bar: c.dock.barre(), identity, players: session.policy.lecteurs, ambiance: c.theme.message(), correcteurs: c.correcteurs.message(), role },
       { preferences: c.appPreferences(), readonly: c.readonly });
   }
 

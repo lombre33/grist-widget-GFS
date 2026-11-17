@@ -10,7 +10,8 @@ export function askOptions(t, kind, plan) {
   const items = [];
   if (kind === 'close') items.push(t('rights.ask.close.item1'), t('rights.ask.close.item2'));
   if (kind === 'sharing') items.push(t('rights.ask.sharing.item1'), ...(plan.appTables &&
-    plan.appTables.length ? [t('rights.ask.sharing.apps', { tables: plan.appTables.join(', ') })] : []), t('rights.ask.sharing.item2'));
+    plan.appTables.length ? [t('rights.ask.sharing.apps', { tables: plan.appTables.join(', ') })] : []), t('rights.ask.sharing.item2'),
+    ...(plan.filing ? [t('rights.ask.sharing.filing')] : []));
   if (plan.firstRule) items.push(t('rights.ask.firstRule'));
   const word = kind === 'sharing' && plan.extends ? `${key}.extend` : key;
   return { title: t(`rights.ask.${word}.title`), message: t(`rights.ask.${word}.message`), items, note: t('rights.ask.reload'),

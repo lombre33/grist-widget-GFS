@@ -30,8 +30,21 @@ test('un envoi laissé en route reprend par le moteur', async () => {
 
 test('un document qui a reçu un partage reprend la réception (le moteur est chargé par elle)', async () => {
   const calls = [];
-  await resumeSharing({ docApi: docOf(['GFS_Recus', 'GFS_Journal_Facture']), isOwner: owner }, engineFor(calls), closing(calls));
+  await resumeSharing({ docApi: docOf(['GFS_Recus', 'GFS_Journal_Facture']), isOwner: owner }, engineFor(calls), closing(calls), async () => []);
   assert.deepEqual(calls, ['close', 'receive']);
+});
+
+test('un document qui a reçu un partage pose d\'abord les colonnes de marque de ses tables reçues (propriétaire seulement), puis reprend la réception', async () => {
+  const calls = [];
+  const marks = async (docApi, tables) => { calls.push(['marks', tables]); };
+  await resumeSharing({ docApi: docOf(['GFS_Recus', 'GFS_Journal_Facture', 'Clients']), isOwner: owner }, engineFor(calls), closing(calls), marks);
+  assert.deepEqual(calls, ['close', ['marks', ['GFS_Recus', 'GFS_Journal_Facture', 'Clients']], 'receive']);
+  const sending = [];
+  await resumeSharing({ docApi: docOf(['GFS_Fichiers', 'GFS_Synchro']), isOwner: owner }, engineFor(sending), closing(sending), marks);
+  assert.deepEqual(sending, ['close', 'load'], 'qui n\'a rien reçu n\'a pas de marque à poser');
+  const failing = [];
+  await resumeSharing({ docApi: docOf(['GFS_Recus', 'GFS_Journal_Facture']), isOwner: owner }, engineFor(failing), closing(failing), async () => { throw new Error('refusé'); });
+  assert.deepEqual(failing, ['close', 'receive'], 'un échec est dit en console mais la réception reprend');
 });
 
 test('des tables illisibles ne reprennent rien et ne lèvent rien', async () => {

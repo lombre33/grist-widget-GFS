@@ -47,7 +47,14 @@ function checkCatalogue(m, others, errors) {
   }
 }
 
+// Un seul rangement écrit par app : un identifiant de fichier n'a de sens que dans la table qui le porte (js/files/app-filing.js).
+function checkOneFilingWrite(m, errors) {
+  const writing = (m.fichiers || []).filter(file => file && file.rangement && file.rangement.ecriture !== undefined);
+  if (writing.length > 1) errors.push('fichiers[].rangement.ecriture : une seule table de fichiers par app');
+}
+
 function checkFiles(m, errors) {
+  checkOneFilingWrite(m, errors);
   for (const file of m.fichiers || []) {
     const prefix = (m.tables && m.tables.prefixe) || '';
     if (!isText(file.table) || !file.table.toLowerCase().startsWith(prefix.toLowerCase())) errors.push('fichiers[].table hors du préfixe');
@@ -111,13 +118,36 @@ function checkFiling(filing, prefix, errors) {
     errors.push('fichiers[].rangement.table hors du préfixe');
     return;
   }
-  for (const [key, value] of Object.entries(filing)) if (!isText(value)) errors.push(`fichiers[].rangement.${key} : chaîne attendue`);
+  for (const [key, value] of Object.entries(filing)) if (key !== 'ecriture' && !isText(value)) errors.push(`fichiers[].rangement.${key} : chaîne attendue`);
+  checkFilingWrite(filing, errors);
+}
+
+// `ecriture` (facultatif, 2.4 et 6.4 point 8) : l'app laisse GFS écrire son rangement, qui fait alors foi pour ses fichiers. GFS lit et écrit les quatre
+// colonnes (personne, fichier, dossier, épingle) : toutes doivent être nommées. `dossiers` (facultatif) : la valeur de la colonne du fichier qui marque une
+// ligne d'état de dossier (un dossier gardé sans fichier), un entier ou un texte.
+function checkFilingWrite(filing, errors) {
+  if (filing.ecriture === undefined) return;
+  const write = filing.ecriture;
+  if (!isObject(write)) { errors.push('fichiers[].rangement.ecriture : objet attendu'); return; }
+  const mark = write.dossiers;
+  if (mark !== undefined && !(Number.isInteger(mark) || isText(mark))) errors.push('fichiers[].rangement.ecriture.dossiers : entier ou chaîne attendu');
+  for (const key of Object.keys(write)) if (key !== 'dossiers') errors.push(`fichiers[].rangement.ecriture.${key} : inconnu`);
+  for (const key of ['utilisateur', 'fichier', 'dossier', 'epingle']) {
+    if (!isText(filing[key])) errors.push(`fichiers[].rangement.ecriture demande la colonne ${key}`);
+  }
 }
 
 function checkSettings(m, errors) {
   for (const key of m.reglages || []) {
     if (!isText(key)) errors.push('reglages : chaînes attendues');
     else if (key.startsWith('gfs.')) errors.push(`la clé ${key} commence par gfs.`);
+  }
+  // `reglagesArrivee` (facultatif, contrats 2.5, point 5) : celles des clés de `reglages` dont une valeur fait s'ouvrir l'app à l'arrivée
+  // (js/broker/arrival.js).
+  if (m.reglagesArrivee === undefined) return;
+  if (!Array.isArray(m.reglagesArrivee) || !m.reglagesArrivee.every(isText)) { errors.push('reglagesArrivee : liste de chaînes attendue'); return; }
+  for (const key of m.reglagesArrivee) {
+    if (!(m.reglages || []).includes(key)) errors.push(`reglagesArrivee : ${key} n'est pas une clé de reglages`);
   }
 }
 
@@ -340,12 +370,15 @@ function checkFiled(m, errors) {
   }
 }
 
+// `cdnAccepte` (facultatif, contrats 2.6 point 15) : faux quand la politique de sécurité de l'app ne nomme pas encore l'adresse du CDN de GFS pour cette
+// extension ; la fenêtre le dit sous le choix « Depuis un CDN » (qui reste libre) et conseille « Copie de GFS ». Absent ou vrai : rien à dire.
 function checkExtensions(m, errors) {
   for (const ext of m.extensions || []) {
     if (!isText(ext.id) || !isBilingual(ext.nom)) errors.push('extensions[] : id et nom (fr, en) attendus');
     checkDisplay(ext, `extension ${ext.id}`, errors);
     if (!isSafePath(String(ext.dossier || '').replace(/\/$/, ''))) errors.push(`extension ${ext.id} : dossier hors de l'app`);
     checkLibraries(ext, errors);
+    if (ext.cdnAccepte !== undefined && typeof ext.cdnAccepte !== 'boolean') errors.push(`extension ${ext.id} : cdnAccepte : vrai ou faux attendu`);
   }
 }
 
@@ -399,6 +432,27 @@ function checkOpening(m, errors) {
   if (m.permanente !== undefined && typeof m.permanente !== 'boolean') errors.push('permanente : true ou false attendu');
 }
 
+const SHOT_FILE_RE = /\.(webp|png|jpe?g)$/i;
+const SHOT_MAX = 6;
+
+// `vitrine` (facultatif, contrats 2.2) : ce que la fenêtre des apps montre de l'app, une description plus longue que `texte` et jusqu'à six captures, des
+// fichiers de GFS rangés dans `vitrine/` (la politique de sécurité du contenu ne charge une image que de GFS) : `{ description: { fr, en }, captures: [{
+// fichier, legende: { fr, en } }] }`.
+function checkVitrine(m, errors) {
+  const shown = m.vitrine;
+  if (shown === undefined) return;
+  if (!isObject(shown)) { errors.push('vitrine : objet attendu'); return; }
+  if (shown.description !== undefined && !isBilingual(shown.description)) errors.push('vitrine.description doit porter fr et en');
+  if (shown.captures === undefined) return;
+  if (!Array.isArray(shown.captures) || shown.captures.length > SHOT_MAX) {
+    errors.push(`vitrine.captures : une liste de ${SHOT_MAX} captures au plus est attendue`); return; }
+  for (const capture of shown.captures) {
+    if (!isObject(capture) || !isSafePath(capture.fichier) || !SHOT_FILE_RE.test(capture.fichier)) errors.push(
+      'vitrine.captures[].fichier : chemin relatif sûr d\'une image (.webp, .png, .jpg) attendu');
+    else if (!isBilingual(capture.legende)) errors.push('vitrine.captures[].legende doit porter fr et en');
+  }
+}
+
 // Rend { ok, errors }. `others` : les manifestes déjà acceptés du catalogue (unicité des id, des préfixes et des clés de réglages).
 export function validateManifest(m, others = []) {
   const errors = [];
@@ -416,6 +470,7 @@ export function validateManifest(m, others = []) {
   checkFiled(m, errors);
   checkExtensions(m, errors);
   checkNatives(m, errors);
+  checkVitrine(m, errors);
   return { ok: errors.length === 0, errors };
 }
 

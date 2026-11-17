@@ -28,7 +28,10 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
    Les réglages de la vue ne gardent que ce qui se refait en un clic. Toute clé de réglage nouvelle porte le préfixe de
    l'app (cahier 5.5). Une clé déclarée dans `reglages` sert aussi à l'arrivée : une vue qui en porte une, avec une valeur,
    s'ouvre sur ton app dans GFS (cahier 6.2, point 2) ; pour retirer un choix, écris `null` ou retire la clé, les deux
-   disent « pas de choix ».
+   disent « pas de choix ». **Seulement les clés qui disent quoi ouvrir** : si une clé n'est qu'un réglage (des droits, une
+   colonne, une date), ne la compte pas à l'arrivée en la laissant hors de `reglagesArrivee` (contrats 2.5, point 5) : une vue
+   qui n'a que celle-là arrive sur l'explorateur, pas sur la page de départ de ton app. Un choix que tu coupes sans le
+   retirer s'écrit avec `enabled: false`, il ne compte pas non plus.
 3. **Préserver l'inconnu** : un fichier d'un type que l'app ne sait pas ouvrir est listé grisé, jamais ouvert, jamais
    réenregistré, jamais proposé comme fichier de départ ; un nœud ou un attribut inconnu dans un contenu est gardé tel quel à
    l'enregistrement (cahier 5.4).
@@ -288,6 +291,26 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     copié. `dit` est une phrase d'une ligne (200 signes au plus) que GFS ajoute à la sienne. Aucun délai à tenir à ta charge, mais sans réponse
     au bout de 20 secondes GFS ne t'attend plus et le dit ; `GFS_INCONNU` pour un appel que tu ne connais pas. Tu n'écris ni dans `GFS_Corbeille`
     ni dans `GFS_Rangement`. Seule, hors de GFS, l'app garde sa propre gestion de ses fichiers (ses boutons de suppression et de copie).
+21. Couper les correcteurs du navigateur quand GFS le dit (demande du porteur du 12/11 : un bouton de la barre de GFS pour couper LanguageTool dans l'app ; contrats 5.2,
+    point 13 ; faits vérifiés 104 ; kit 0.22.0). Un correcteur du navigateur juge ton cadre d'après **ton** adresse, non celle de Grist : son interrupteur « pour ce site » ne coupe rien
+    chez toi, et un gros document le fait ramer. GFS ne peut rien toucher dans ton cadre : il te dit `contexte.correcteurs` (`{ coupes }`) et l'événement `correcteurs` quand la personne
+    coupe ou rallume par le bouton de la barre. **Le kit fait la pose, tu ne l'écris pas** : appelle `Correcteurs.start()` (`js/correcteurs.js` du kit) une fois, dans ton module d'entrée.
+    Il pose `data-lt-active="false"` sur **chaque élément éditable lui-même** (`[contenteditable]` qui n'est pas `"false"`, `textarea`, `input` de texte : la racine de ton éditeur, pas un
+    conteneur plus haut, que l'extension ignore), la retire quand GFS dit `coupes: false`, à chaud et sans recharger ton cadre, et surveille les zones qui naissent après (une fenêtre, un
+    champ de cellule, un éditeur de champ). Rien à faire d'autre : pas de bouton à toi, pas de réglage à toi, pas de lien avec LanguageTool. **Seule, hors de GFS**, ou si GFS ne dit rien,
+    l'app ne pose aucune marque : les correcteurs restent comme le navigateur les fait. Ne marque rien de ta propre initiative : la personne coupe pour **tout** ton cadre, ou pas.
+    **Fait quand** : avec le bouton de GFS relevé, chacune de tes zones de texte porte la marque (dans chaque mode de l'app : Publipostage+ en document, en présentation et en grille),
+    celles qui naissent ensuite aussi ; enfoncé, aucune ne la porte ; ton cadre n'est jamais rechargé par le bouton.
+
+22. Montrer l'app dans la vitrine de GFS (décision du porteur du 17/11 : « A · Vitrine », la fenêtre « Apps et extensions » en mosaïque, comme un magasin d'apps ; contrats 2.2, champ
+    `vitrine`). **Facultatif, et sans effet hors de GFS.** Chaque app a une carte (son icône, son nom, `texte`, « Installer » ou « Ouvrir ») et une fiche. Pour les enrichir, mets dans ton
+    dépôt un dossier `vitrine/` à la racine : `vitrine.json` (`{ "description": { "fr", "en" }, "captures": [ { "fichier": "1.webp", "legende": { "fr", "en" } } ] }`, une description de
+    280 caractères au plus, des légendes de 60 au plus) et les images (trois conseillées, six au plus). Une image : WebP de préférence (`.png` ou `.jpg` acceptés), 960 × 600 px (16:10),
+    60 Ko au plus, l'app seule, prise dans un vrai Grist, en clair, avec des données d'exemple sans nom de personne réel, l'essentiel au centre (la carte rogne un dixième en haut et en
+    bas) ; la première illustre la carte. Demande ensuite à GFS (section « Demandes à GFS » de ton `GFS-ETAT.md`, une ligne `vitrine · <commit> · vitrine/vitrine.json · …`). **Les captures
+    servies sont des fichiers de GFS**, rangés dans son dossier `vitrine/` : la politique de sécurité du contenu de GFS ne charge une image que de lui, jamais de ton dépôt ni d'un CDN ;
+    GFS copie tes images, déclare `vitrine` dans le manifeste de ton app et avance sa référence. Sans capture, la carte montre ton icône et ton nom : rien n'est cassé. **Fait quand** : la
+    carte et la fiche de ton app montrent la description et les captures, en français et en anglais, à 700 × 400, en clair et en sombre.
 
 ### 1.3 Licence : GPL 3.0 dans tous les dépôts (décision du porteur, 21/10)
 

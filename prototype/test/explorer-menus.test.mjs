@@ -86,7 +86,7 @@ test('un fichier : ouvrir, ce que GFS garde en plus, partager, épingler, renomm
   const items = rowItems(x, f.key);
   assert.deepEqual(labels(items), [t('ex.open'), 'Télécharger', t('share.menu'), t('ex.pin'), t('ex.rename'), t('ex.duplicate'), t('ex.move'), '-', t('trash.move')]);
   assert.deepEqual(items.filter(entry => entry !== '-' && entry.label !== 'Télécharger').map(entry => [entry.hint, Boolean(entry.greyed)]),
-    [[t('key.enter'), false], [undefined, false], [undefined, false], ['F2', false], ['Ctrl+C, V', false], ['Ctrl+X, V', false], [t('key.delete'), false]]);
+    [[t('key.enter'), false], [undefined, false], [undefined, false], ['F2', false], ['Ctrl+D', false], ['Ctrl+X, V', false], [t('key.delete'), false]]);
   for (const at of [0, 2, 3, 4, 5, 6, 8]) items[at].run();
   assert.deepEqual(x.calls, [['activate', f.key], ['share', f], ['togglePin', f], ['rename', f], ['duplicate', f], ['moveFile', f], ['trashKey', f.key]]);
   assert.equal(rowItems(context({ shown: [file({ pinned: true })] }), f.key)[2].label, t('ex.unpin'));

@@ -20,10 +20,10 @@ const TEXTS = {
 const REASON = 'accès refusé';
 const BOX = '.ex-pj input';
 
-// Les arrêts de Tab du pied de fenêtre, dans l'ordre du document : le total (« total », un bouton depuis le lot 4), la case, la pastille des droits (« droits »), puis « Ouvrir » et « Fermer » (un élément qu'un tabindex négatif ou `disabled` retire de la tabulation n'y est pas).
+// Les arrêts de Tab du pied de fenêtre, dans l'ordre du document : le total (« total », un bouton depuis le lot 4), la case, puis « Ouvrir » et « Fermer » (un élément qu'un tabindex négatif ou `disabled` retire de la tabulation n'y est pas).
 function tabStops() {
   return [...document.querySelectorAll('.ex-foot button, .ex-foot input')].filter(element => element.tabIndex >= 0 && !element.disabled && !element.closest('[inert], [hidden]'))
-    .map(element => (element.matches('.ex-pj input') ? 'case' : (element.matches('.rights-chip') ? 'droits' : (element.matches('.ex-total') ? 'total' : element.textContent.trim()))));
+    .map(element => (element.matches('.ex-pj input') ? 'case' : (element.matches('.ex-total') ? 'total' : element.textContent.trim())));
 }
 
 // Ce que la page montre de la case et du total, et ce que l'explorateur a lu (`window.__attachments` compte les lectures de la table des pièces jointes).
@@ -35,6 +35,13 @@ function readFoot() {
     checked: input.checked, grey: input.getAttribute('aria-disabled') === 'true' && label.classList.contains('is-grey'), busy: total.getAttribute('aria-busy') === 'true', total: total.querySelector('.tot-n').textContent,
     text: total.textContent, title: total.title, boxTitle: label.title, reads: window.__attachments, notices: [...window.__notices],
   };
+}
+
+// « Fermer » du pied : caché ou non (le dernier bouton du pied), et le pied tient-il dans sa largeur ?
+function closeState() {
+  const close = [...document.querySelectorAll('.ex-foot > .btn')].pop();
+  const foot = document.querySelector('.ex-foot');
+  return { hidden: close.hidden || getComputedStyle(close).display === 'none', overflow: foot.scrollWidth > foot.clientWidth + 1 };
 }
 
 export async function piecesJointesProblems(page, width, language, tag) {
@@ -74,9 +81,9 @@ export async function piecesJointesProblems(page, width, language, tag) {
   await clickBox();
   await expect('recocher', `un clic de plus devait la recocher, relire une fois de plus et dire ${x.all}`, state => state.checked && state.reads === 2 && state.total === x.all);
 
-  // 3. Le clavier : la case est un arrêt de Tab, avant la pastille des droits, « Ouvrir » et « Fermer ».
+  // 3. Le clavier : la case est un arrêt de Tab, avant « Ouvrir » et « Fermer ».
   const stops = await page.run(tabStops);
-  const wanted = ['total', 'case', 'droits', t('ex.open'), t('ex.close')];
+  const wanted = ['total', 'case', t('ex.open'), t('ex.close')];
   if (stops.join('|') !== wanted.join('|')) note('arrêts de Tab', `les arrêts de Tab du pied devaient être ${wanted.join(', ')} : ${stops.join(', ')}`);
 
   // 4. Le PDF dans la liste, la case cochée : sa pièce n'est pas recomptée (le total reste à 24,9 Mo ; recomptée, il dirait 25,5 Mo) ; la liste est relue, donc les pièces aussi.
@@ -95,5 +102,16 @@ export async function piecesJointesProblems(page, width, language, tag) {
   await expect('clic sur la case grisée', 'le clic sur la case grisée devait dire pourquoi, sans la cocher ni relire', state => !state.checked && state.reads === 1 && state.notices.includes(t('weight.pjFailed', { reason: REASON })));
   await page.run(() => { window.__attachmentsFail = ''; window.__reset(); });
   await expect('après une relecture des fichiers', 'la liste relue devait rendre la case dégrisée', state => !state.grey && !state.checked);
+
+  // 6. Sans app ouverte, « Fermer » ne ferait rien : il se cache (décidé le 12/11) ; « Ouvrir » reste, le pied tient ; avec une app il revient.
+  await page.run(() => { window.__canClose = false; window.__explorer.render(); });
+  const alone = await page.run(closeState);
+  if (!alone.hidden) note('« Fermer » sans app', 'sans app ouverte, « Fermer » devait être caché');
+  if (alone.overflow) note('pied sans « Fermer »', 'le pied ne devait pas déborder sans « Fermer »');
+  const stopsAlone = (await page.run(tabStops)).join('|');
+  if (stopsAlone !== ['total', 'case', t('ex.open')].join('|')) note('arrêts de Tab sans app', `sans app, les arrêts de Tab devaient être total, case, ${t('ex.open')} : ${stopsAlone}`);
+  await page.run(() => { window.__canClose = true; window.__explorer.render(); });
+  const back = await page.run(closeState);
+  if (back.hidden) note('« Fermer » avec une app', 'avec une app ouverte, « Fermer » devait être là');
   return found;
 }

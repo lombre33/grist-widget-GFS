@@ -26,6 +26,8 @@ export function fakeGrist(tables = {}, { renameTo = null, email = null, fail = {
       if (at >= 0) table.rows.splice(at, 1);
       return null;
     }
+    // Plusieurs lignes retirées d'un coup (a : les numéros) ; comme RemoveRecord, un numéro absent n'échoue pas ici.
+    if (verb === 'BulkRemoveRecord') { for (const id of a) { const at = table.rows.findIndex(row => row.id === id); if (at >= 0) table.rows.splice(at, 1); } return null; }
     const known = Object.keys(b);
     const unknown = known.filter(column => !table.columns.includes(column));
     if (unknown.length) throw new Error(`Invalid column ${unknown[0]}`);

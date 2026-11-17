@@ -71,3 +71,39 @@ export function explorerTools(currentFrame, page) {
   };
   return { row, folderRow, fileNames, folderNames, toast, starOn, favCount, table, until };
 }
+
+// « Apps et extensions » en vitrine (décision du 17/11, « A · Vitrine ») : une app se pose par le bouton « Installer » de sa carte (puis la carte dit « Ouvrir »), se retire sur sa
+// fiche, et ses extensions, leurs modes et ses bibliothèques sont sur sa fiche (un clic sur son nom). Ces gestes remplacent les anciennes cases de la liste (`[data-fk="app:…"]`).
+// `frame` : le cadre de GFS ; la fenêtre est ouverte (`lab.openModules`).
+export async function installApp(frame, id) {
+  const button = frame.locator(`[data-fk="app:${id}"]`);
+  if (await button.count()) await button.click(); // sinon elle est déjà installée : la carte dit « Ouvrir »
+}
+
+// La fiche de l'app (`id`), ouverte à la vraie souris par son nom ; sans effet quand c'est déjà la fiche de cette app.
+export async function showFiche(frame, id) {
+  const current = await frame.locator('.ap-fiche').count() ? await frame.locator('.ap-fiche').getAttribute('data-app') : null;
+  if (current === id) return;
+  if (current) await backToGrid(frame);
+  await frame.locator(`[data-fk="name:${id}"]`).click();
+  await frame.locator(`.ap-fiche[data-app="${id}"]`).waitFor();
+}
+
+// La fiche qui porte la ligne `key` (`ext:<app>/<extension>`, `mode:<app>/<extension>/<mode>`, `native:<app>/…`, `nativeall:<app>/…`) ; rend le locator de la ligne.
+export async function showRow(frame, key) {
+  await showFiche(frame, key.slice(key.indexOf(':') + 1).split('/')[0]);
+  return frame.locator(`[data-fk="${key}"]`);
+}
+
+export async function backToGrid(frame) {
+  if (!await frame.locator('.ap-fiche').count()) return;
+  await frame.locator('[data-fk="back"]').click();
+  await frame.locator('.ap-grid').waitFor();
+}
+
+// Retire l'app sur sa fiche (« Retirer ») puis revient à la mosaïque.
+export async function removeApp(frame, id) {
+  await showFiche(frame, id);
+  await frame.locator(`[data-fk="remove:${id}"]`).click();
+  await backToGrid(frame);
+}

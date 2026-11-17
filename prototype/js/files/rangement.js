@@ -6,6 +6,7 @@
 // une colonne absente ajoutée avant d'être écrite, 6.1 point 3) sont celles de `OwnTable` (js/files/own-table.js).
 
 import { OwnTable, TableDeclined } from './own-table.js';
+import { appActions, carryOver, usable } from './app-filing.js';
 
 export { TableDeclined };
 
@@ -70,21 +71,29 @@ export class Rangement {
   #table;
   #canWrite;
   #onIdentity;
+  #appFilings;
   #identity = null; // null : pas encore lue ; '' : lue, sans adresse de personne ; sinon l'adresse
   #pending = null;
 
   // `port` : { doc } (les interfaces brutes de Grist) ; `consent()` : une promesse, true quand la personne accepte la création de la table ;
   // `canWrite()` : faux quand le document est en lecture seule (la sonde n'écrirait que des refus) ; `onIdentity(adresse)` : appelé quand GFS apprend l'adresse
-  //   de la personne.
-  constructor({ port, consent, canWrite = () => true, onIdentity = () => {} }) {
+  //   de la personne ; `appFilings()` : les rangements que les apps tiennent elles-mêmes et que GFS écrit (js/files/app-filing.js, `appFilingOf`), lus au
+  //   moment
+  //   de ranger.
+  constructor({ port, consent, canWrite = () => true, onIdentity = () => {}, appFilings = () => [] }) {
     this.#port = port;
     this.#table = new OwnTable({ port, name: TABLE, columns: COLUMNS, consent });
     this.#canWrite = canWrite;
     this.#onIdentity = onIdentity;
+    this.#appFilings = appFilings;
   }
 
   // L'adresse de la personne, '' tant que GFS ne la connaît pas : son rangement est alors commun au document (contrats 6.4, point 4).
   get identity() { return this.#identity || ''; }
+
+  // Ce qui dit l'adresse sans rien refaire : la promesse de la sonde quand elle est en route, sinon ce que GFS en sait (`identity`). La lecture des fichiers
+  // part sans attendre la sonde et ne l'attend qu'au moment de ranger (js/explorer/explorer-data.js).
+  get learning() { return this.#pending || this.identity; }
 
   // Apprend l'adresse de la personne (6.4, point 6) : une ligne-sonde est ajoutée, Grist en remplit `Adresse`, GFS la lit et la retire. Une fois par
   // ouverture : la réponse, avec adresse ou sans, est gardée en mémoire (jamais dans le navigateur : une autre personne sur le même poste doit être reconnue).
@@ -127,7 +136,9 @@ export class Rangement {
       const at = (table.id || []).indexOf(rowId);
       return addressOf(at >= 0 && table.Adresse ? table.Adresse[at] : '');
     } finally {
-      await doc.applyUserActions([['RemoveRecord', tableId, rowId]]).catch(error => console.warn('GFS : la ligne-sonde n’a pas pu être retirée', error));
+      // La ligne part sans que l'adresse l'attende : une écriture de plus à Grist, c'est un aller-retour de réseau (deux fois le prix d'une lecture) que
+      // l'explorateur n'a pas à patienter pour une adresse déjà lue.
+      doc.applyUserActions([['RemoveRecord', tableId, rowId]]).catch(error => console.warn('GFS : la ligne-sonde n’a pas pu être retirée', error));
     }
   }
 
@@ -205,13 +216,27 @@ export class Rangement {
     return state;
   }
 
+  // Les rangements que les apps tiennent elles-mêmes et que GFS écrit, pour celles dont la table est là avec ses colonnes (js/files/app-filing.js) : une Map,
+  // app -> { filing, tableId, data }. Pour les autres (la table n'est pas née, une colonne manque), GFS range comme avant, dans `GFS_Rangement`.
+  async #appTargets() {
+    const targets = new Map();
+    for (const filing of this.#appFilings()) {
+      const table = new OwnTable({ port: this.#port, name: filing.table, columns: [], consent: async () => false });
+      const { data } = await table.load();
+      if (usable(filing, data)) targets.set(filing.app, { filing, tableId: table.id, data });
+    }
+    return targets;
+  }
+
   // Range des fichiers pour la personne que Grist connaît (`identity`, ou '' quand son adresse n'est pas lue : le rangement est alors commun au document, 6.4
   // point 4) : la ligne de chaque (personne, app, fichier) est mise à jour si elle existe, ajoutée sinon. `entries` : [{ app, file, pinned, folder }], le
-  // dossier en chemin normalisé.
+  // dossier en chemin normalisé. **Les fichiers d'une app qui tient son rangement et le laisse écrire (6.4, point 8) sont rangés dans la table de l'app**, pas
+  // ici ; ce que `GFS_Rangement` disait déjà d'elle passe alors chez elle, dans le même lot.
   // `folders` : { add, drop, quiet }, les dossiers que la personne garde sans fichier (6.4, point 11) : `add` les chemins à garder (une ligne chacun, s'il n'y
-  //   en a pas déjà), `drop` ceux à ne plus garder (toutes leurs lignes) ; `quiet` : sans la table, rien n'est écrit et rien n'est demandé. Relit d'abord ;
-  //   fichiers et dossiers partent dans un seul lot, que Grist rejoue en entier ou pas du tout : un dossier déplacé n'est jamais rangé à moitié. Rend true
-  //   quand le lot est parti.
+  //   en a pas déjà, ici et chez chaque app qui a une ligne d'état de dossier), `drop` ceux à ne plus garder (toutes leurs lignes) ; `quiet` : sans la table,
+  //   rien
+  //   n'est écrit et rien n'est demandé. Relit d'abord ; fichiers et dossiers partent dans un seul lot, que Grist rejoue en entier ou pas du tout : un dossier
+  //   déplacé n'est jamais rangé à moitié. Rend true quand le lot est parti.
   async setFiling(entries, folders = {}) {
     const add = [...new Set(folders.add || [])];
     const drop = [...new Set(folders.drop || [])];
@@ -221,7 +246,8 @@ export class Rangement {
     const { data } = state;
     const identity = this.identity;
     const tableId = this.#table.id;
-    const actions = entries.map(({ app, file, pinned, folder }) => {
+    const targets = await this.#appTargets();
+    const actions = entries.filter(({ app }) => !targets.has(app)).map(({ app, file, pinned, folder }) => {
       const key = { Utilisateur: identity, App: app, Fichier: String(file) };
       const at = findRow(data, key);
       const record = { Favori: pinned === true, Dossier: folder || '' };
@@ -230,8 +256,20 @@ export class Rangement {
     for (const path of drop) actions.push(...rowsOf(data, folderKey(identity, path)).map(rowId => ['RemoveRecord', tableId, rowId]));
     for (const path of add.filter(each => !drop.includes(each) && findRow(data, folderKey(identity, each)) < 0)) actions.push(
       ['AddRecord', tableId, null, { ...folderKey(identity, path), Favori: false }]);
+    for (const [app, target] of targets) actions.push(...this.#appBatch(app, target, { entries, add, drop }, { tableId, data }, identity));
     if (!actions.length) return false;
     await this.#port.doc.applyUserActions(actions);
     return true;
+  }
+
+  // Les actions d'un lot pour une app qui tient son rangement : ses fichiers du lot, les dossiers gardés ou retirés, et ce que `GFS_Rangement` disait d'elle
+  // (`carryOver`), que le lot reprend sans le doubler.
+  #appBatch(app, target, { entries, add, drop }, gfs, identity) {
+    const own = entries.filter(entry => entry.app === app).map(({ file, pinned, folder }) => ({ file, pinned, folder }));
+    const carried = carryOver(target.filing, target, gfs, identity);
+    const named = new Set(own.map(entry => String(entry.file)));
+    const folders = [...new Set([...add, ...carried.folders.filter(path => !drop.includes(path))])];
+    return [...appActions(target.filing, target.tableId, target.data, identity, {
+      entries: [...own, ...carried.entries.filter(entry => !named.has(entry.file))], add: folders, drop }), ...carried.removed];
   }
 }

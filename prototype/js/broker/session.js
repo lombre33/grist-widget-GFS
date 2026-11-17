@@ -162,6 +162,12 @@ export class AppSession {
     if (this.#envelope) this.#envelope.event('ambiance', { ambiance });
   }
 
+  // L'événement `correcteurs` (contrats 5.2, points 2 et 13) : la personne a coupé ou rallumé LanguageTool par le bouton de la barre (ou l'a retiré de la
+  // barre) ; l'app le reçoit sans l'avoir demandé et pose ou retire la marque sur ses zones de texte, sans que son cadre soit touché.
+  sendCorrecteurs(correcteurs) {
+    if (this.#envelope) this.#envelope.event('correcteurs', { correcteurs });
+  }
+
   // L'app n'a pas dit `themeInitialized` : on la montre quand même après un délai (Grist fait de même avec un cadre qui tarde).
   #reveal() {
     if (this.visible || !this.#frame) return;

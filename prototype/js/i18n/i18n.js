@@ -5,10 +5,12 @@ import { TRASH_STRINGS } from './i18n-trash.js';
 import { FOLDER_STRINGS } from './i18n-folders.js';
 import { WEIGHT_STRINGS } from './i18n-weight.js';
 import { NATIVES_STRINGS } from './i18n-natives.js';
+import { VITRINE_STRINGS } from './i18n-vitrine.js';
 import { RIGHTS_STRINGS } from './i18n-rights.js';
 import { SHARE_STRINGS } from './i18n-share.js';
 import { SHARE_OTHER_STRINGS } from './i18n-share-other.js';
 import { MANAGE_STRINGS } from './i18n-manage.js';
+import { SPACE_LINK_STRINGS } from './i18n-space-links.js';
 import { RECEIVED_STRINGS } from './i18n-received.js';
 import { NOTIFICATION_STRINGS } from './i18n-notifications.js';
 import { EXPLORER_STRINGS } from './i18n-explorer.js';
@@ -20,10 +22,12 @@ const STRINGS = {
     ...FOLDER_STRINGS.fr,
     ...WEIGHT_STRINGS.fr,
     ...NATIVES_STRINGS.fr,
+    ...VITRINE_STRINGS.fr,
     ...RIGHTS_STRINGS.fr,
     ...SHARE_STRINGS.fr,
     ...SHARE_OTHER_STRINGS.fr,
     ...MANAGE_STRINGS.fr,
+    ...SPACE_LINK_STRINGS.fr,
     ...RECEIVED_STRINGS.fr,
     ...NOTIFICATION_STRINGS.fr,
     ...EXPLORER_STRINGS.fr,
@@ -78,6 +82,8 @@ const STRINGS = {
     'dock.openedMore': 'Ouvrir un autre fichier…',
     'dock.openedDropName': 'Retirer des ouverts : {name}',
     'dock.place': 'Position de la barre',
+    'dock.ltOn': 'LanguageTool travaille dans les apps (un clic le coupe)',
+    'dock.ltOff': 'LanguageTool est coupé dans les apps (un clic le rallume)',
     'dock.gauche': 'À gauche',
     'dock.haut': 'En haut',
     'dock.droite': 'À droite',
@@ -92,6 +98,10 @@ const STRINGS = {
     'set.tip': 'Réglages de Grist Factory Suite',
     'set.menu': 'Réglages',
     'set.theme': 'Thème…',
+    'set.advanced': 'Réglages avancés',
+    'set.advanced.tip': 'Des réglages dont on se sert rarement',
+    'set.langtool': 'Bouton LanguageTool',
+    'langtool.tip': 'Un bouton de la barre coupe ou rallume LanguageTool dans l’app ouverte',
     'set.about': 'À propos…',
     // La fenêtre « À propos ».
     'about.title': 'À propos de Grist Factory Suite',
@@ -177,9 +187,12 @@ const STRINGS = {
     'mod.library': 'Bibliothèque {lib}, {size} au premier usage',
     'mod.mode.cdn': 'Depuis un CDN',
     'mod.mode.cdnHint': 'Par défaut. Chargée depuis jsDelivr, vérifiée par son empreinte.',
+    'mod.mode.cdnPlain': 'Chargée depuis jsDelivr, vérifiée par son empreinte.',
     'mod.mode.cdnNone': 'Indisponible : GFS n’a pas encore d’adresse publique pour servir cette bibliothèque.',
+    'mod.mode.cdnRefused': 'Avec cette app, le navigateur refuse ce choix : elle ne nomme pas encore l’adresse du CDN. Choisissez « Copie de GFS ».',
     'mod.mode.vendorise': 'Copie de GFS',
-    'mod.mode.vendoriseHint': 'Servie par GFS, sans adresse externe : pour les réseaux fermés.',
+    'mod.mode.vendoriseHint': 'Par défaut. Servie par GFS, sans adresse externe : pour les réseaux fermés.',
+    'mod.mode.vendorisePlain': 'Servie par GFS, sans adresse externe : pour les réseaux fermés.',
     'mod.missingLib': '{lib} {version} manque au catalogue de GFS : l’extension ne peut pas être activée.',
     'mod.invalid': 'Cette app n’est pas utilisable : {reasons}',
 
@@ -191,10 +204,12 @@ const STRINGS = {
     ...FOLDER_STRINGS.en,
     ...WEIGHT_STRINGS.en,
     ...NATIVES_STRINGS.en,
+    ...VITRINE_STRINGS.en,
     ...RIGHTS_STRINGS.en,
     ...SHARE_STRINGS.en,
     ...SHARE_OTHER_STRINGS.en,
     ...MANAGE_STRINGS.en,
+    ...SPACE_LINK_STRINGS.en,
     ...RECEIVED_STRINGS.en,
     ...NOTIFICATION_STRINGS.en,
     ...EXPLORER_STRINGS.en,
@@ -249,6 +264,8 @@ const STRINGS = {
     'dock.openedMore': 'Open another file…',
     'dock.openedDropName': 'Remove from open files: {name}',
     'dock.place': 'Bar position',
+    'dock.ltOn': 'LanguageTool is working in the apps (click to turn it off)',
+    'dock.ltOff': 'LanguageTool is turned off in the apps (click to turn it back on)',
     'dock.gauche': 'Left',
     'dock.haut': 'Top',
     'dock.droite': 'Right',
@@ -263,6 +280,10 @@ const STRINGS = {
     'set.tip': 'Grist Factory Suite settings',
     'set.menu': 'Settings',
     'set.theme': 'Theme…',
+    'set.advanced': 'Advanced settings',
+    'set.advanced.tip': 'Settings that are rarely needed',
+    'set.langtool': 'LanguageTool button',
+    'langtool.tip': 'A button in the bar turns LanguageTool off or back on in the open app',
     'set.about': 'About…',
     // La fenêtre « À propos ».
     'about.title': 'About Grist Factory Suite',
@@ -348,9 +369,12 @@ const STRINGS = {
     'mod.library': '{lib} library, {size} on first use',
     'mod.mode.cdn': 'From a CDN',
     'mod.mode.cdnHint': 'Default. Loaded from jsDelivr, checked against its fingerprint.',
+    'mod.mode.cdnPlain': 'Loaded from jsDelivr, checked against its fingerprint.',
     'mod.mode.cdnNone': 'Unavailable: GFS has no public address yet to serve this library.',
+    'mod.mode.cdnRefused': 'With this app, the browser refuses this choice: it does not name the CDN address yet. Choose “GFS copy”.',
     'mod.mode.vendorise': 'GFS copy',
-    'mod.mode.vendoriseHint': 'Served by GFS, no external address: for closed networks.',
+    'mod.mode.vendoriseHint': 'Default. Served by GFS, no external address: for closed networks.',
+    'mod.mode.vendorisePlain': 'Served by GFS, no external address: for closed networks.',
     'mod.missingLib': '{lib} {version} is missing from the GFS catalogue: the extension cannot be turned on.',
     'mod.invalid': 'This app cannot be used: {reasons}',
 

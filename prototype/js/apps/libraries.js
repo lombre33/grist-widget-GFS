@@ -17,6 +17,11 @@ export const CDN_HOSTS = Object.freeze(['cdn.jsdelivr.net']);
 const GITHUB_PINNED_RE = /^\/gh\/[^/@]+\/[^/@]+@[0-9a-f]{40}\/[^/]/;
 export const MODES = Object.freeze(['cdn', 'vendorise']);
 export const DEFAULT_MODE = 'cdn';
+// Le mode d'une extension à l'activation, tant que la personne n'a rien choisi : le CDN, sauf quand l'app dit que sa politique de sécurité ne nomme pas encore
+// l'adresse du CDN (`cdnAccepte: false`, 2.6 point 15) : le navigateur refuserait le fichier, le défaut est alors la copie de GFS, qui marche (le porteur,
+// 13/11 : « que cela fonctionne dans les deux cas, et qu'un des deux soit réglé par défaut à l'activation »). Le CDN reste un choix libre ; le défaut y revient
+// dès que l'app nomme l'adresse.
+export const defaultModeOf = extension => (extension && extension.cdnAccepte === false ? 'vendorise' : DEFAULT_MODE);
 export const FORMS = Object.freeze(['script', 'module']);
 export const DEFAULT_FORM = 'script';
 const SRI_RE = /^sha384-[A-Za-z0-9+/]{64}$/;

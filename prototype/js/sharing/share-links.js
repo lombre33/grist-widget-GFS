@@ -10,19 +10,26 @@
 //   ») : GFS reçoit toujours en archive.
 import { FILES_COLUMN_IDS, FILES_TABLE, SHARED_FOLDER_COLUMN, TRASH_COLUMN_IDS } from '../files/gfs-files.js';
 
-// Les colonnes qui partent : celles du fichier, sans la corbeille (qui n'a de sens que dans le document d'origine), et le nom du dossier partagé. Cette
-// dernière n'existe qu'après le premier dossier partagé : le moteur n'envoie que les colonnes que la table porte au moment de l'enregistrement, la nommer
-// d'avance ne coûte rien, et un lien qui existait avant elle la porte dès son premier enregistrement ensuite (faits vérifiés, 99).
-export const SENT_COLUMNS = Object.freeze([...FILES_COLUMN_IDS.filter(id => !TRASH_COLUMN_IDS.includes(id)), SHARED_FOLDER_COLUMN]);
+// Les colonnes qui partent : celles du fichier, sans la corbeille (qui n'a de sens que dans le document d'origine). Le nom du dossier partagé n'y est PAS : il
+// ne part qu'avec un lien qui reçoit un dossier (`selectionFor`, `folder`). Sans cela, le nom de dossier écrit pour un document A partait aussi chez un
+// document B qui ne reçoit que des fichiers seuls : il y voyait un fichier rangé dans un dossier qu'on ne lui a jamais partagé (audit « contournement » du
+// 11/11).
+export const SENT_COLUMNS = Object.freeze(FILES_COLUMN_IDS.filter(id => !TRASH_COLUMN_IDS.includes(id)));
 export const NONE = 'gfs-aucun';
 export const LEVELS = Object.freeze(['none', 'once', 'live']);
 export const PASS_MS = 2000; // entre deux passages du rattrapage, tant que des fichiers partent
 export const PASSES = 90; // trois minutes au plus avant de dire que l'envoi n'est pas fini
 
 // La sélection du moteur : la table des fichiers, ses colonnes, et les fichiers voulus (leur identifiant ne change jamais, ni au renommage ni au remplacement).
-// Jamais une condition vide (voir plus haut).
-export const selectionFor = ids => [{ table: FILES_TABLE, columns: [...SENT_COLUMNS],
+// Jamais une condition vide (voir plus haut). `folder` : le lien reçoit un dossier, le nom du dossier part avec chaque fichier (le moteur ne l'envoie que si la
+// table porte la colonne à l'enregistrement : faits vérifiés, 99).
+export const selectionFor = (ids, { folder = false } = {}) => [{ table: FILES_TABLE,
+  columns: folder ? [...SENT_COLUMNS, SHARED_FOLDER_COLUMN] : [...SENT_COLUMNS],
   filter: { mode: 'all', conds: [{ id: 'Identifiant', op: 'in', values: ids.length ? [...ids] : [NONE] }] } }];
+
+// Le lien envoie-t-il déjà le nom du dossier ? (sa colonne est dans l'export : un lien qui a reçu un dossier la garde, même pour un fichier seul de plus.)
+export const carriesFolder = link => (((link && link.exp && link.exp.tables) || [])[0]?.columns || []).some(column => column &&
+  column.id === SHARED_FOLDER_COLUMN);
 
 // Les fichiers d'une sélection, lue dans les tables d'un export (`tables` : [{ table, columns, filter }] ; null si la condition n'est pas celle de GFS :
 // l'export est ignoré).
@@ -82,8 +89,8 @@ export function idsWith(link, ids, on) {
 }
 
 // Enregistre la condition de l'export et renvoie ce qui a changé (le moteur envoie l'ajout, le contenu suit par son rattrapage).
-export async function setCondition(engine, link, ids) {
-  const saved = await engine.saveChosenExport({ exp: link.exp, name: link.name, selection: selectionFor(ids) });
+export async function setCondition(engine, link, ids, { folder = false } = {}) {
+  const saved = await engine.saveChosenExport({ exp: link.exp, name: link.name, selection: selectionFor(ids, { folder: folder || carriesFolder(link) }) });
   await engine.finishEdit(link.exp, { name: link.name, changed: saved.changed });
   return ids;
 }
@@ -106,15 +113,15 @@ export async function settle(engine, link, wait = ms => new Promise(resolve => s
 //   live  le fichier entre dans la condition et y reste ;
 //   once  il entre, part, puis sort (la copie reste chez l'autre : réception en archive) ;
 //   none  il sort (idem).
-export async function applyLevel(engine, link, fileId, level, wait) {
-  if (level === 'none') return { level, ids: await setCondition(engine, link, idsWith(link, fileId, false)) };
-  const ids = await setCondition(engine, link, idsWith(link, fileId, true));
+export async function applyLevel(engine, link, fileId, level, wait, options = {}) {
+  if (level === 'none') return { level, ids: await setCondition(engine, link, idsWith(link, fileId, false), options) };
+  const ids = await setCondition(engine, link, idsWith(link, fileId, true), options);
   if (level === 'live') return { level, ids };
   // La condition est relue au moment de la retirer : un autre fichier ajouté entre-temps (par la même personne, dans une autre fenêtre) ne doit pas disparaître
   // avec celui-ci.
   const leave = async () => {
     const fresh = (await engine.readLinks()).find(each => each.id === link.id);
-    if (fresh && listed(fileId).some(id => fresh.files.includes(id))) await setCondition(engine, fresh, idsWith(fresh, fileId, false));
+    if (fresh && listed(fileId).some(id => fresh.files.includes(id))) await setCondition(engine, fresh, idsWith(fresh, fileId, false), options);
   };
   return { level, ids, later: settle(engine, link, wait).then(leave) };
 }

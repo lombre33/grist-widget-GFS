@@ -24,12 +24,13 @@
       { "valeur": "macro", "nom": { "fr": "Macro-modèle", "en": "Macro template" }, "icone": "macro" }
     ],
     "exclure": { "TypeModele": ["reglages"] },
-    "rangement": { "table": "Publipostage_PreferencesModeles", "utilisateur": "Utilisateur", "fichier": "ModeleId", "dossier": "Dossier", "epingle": "Epingle" },
+    "rangement": { "table": "Publipostage_PreferencesModeles", "utilisateur": "Utilisateur", "fichier": "ModeleId", "dossier": "Dossier", "epingle": "Epingle", "ecriture": { "dossiers": 0 } },
     "suppression": { "ligne": true, "uniques": ["Jeton"], "exclusives": ["EstParDefaut"] },
     "copie": { "ligne": true, "uniques": ["Jeton"], "exclusives": ["EstParDefaut"] },
     "poids": { "liees": [{ "table": "Publipostage_Versions", "colonne": "Jeton", "fichier": "Jeton" }] }
   }],
   "reglages": ["modeleDeLaVue", "modeleSelonLigne", "droitsAcces", "dateDernierExport", "pp_attach_column", "pp_attach_mode"],
+  "reglagesArrivee": ["modeleDeLaVue", "modeleSelonLigne"],
   "permissions": {
     "acces": "full",
     "lit": ["*"],
@@ -81,8 +82,8 @@
         "tables": ["_grist_Attachments"],
         "lit": true,
         "pourquoi": {
-          "fr": "Savoir si une pièce jointe est une image : un PDF ou un Word s'écrit par son nom au lieu de se dessiner.",
-          "en": "Know whether an attachment is an image: a PDF or Word file is written by its name instead of being drawn."
+          "fr": "Savoir si une pièce jointe est une image (un PDF ou un Word s'écrit par son nom au lieu de se dessiner), et connaître son nom et son type pour l'écrire en pièce jointe d'un e-mail .eml.",
+          "en": "Know whether an attachment is an image (a PDF or Word file is written by its name instead of being drawn), and know its name and type to write it as an attachment of an .eml email."
         }
       }
     ],
@@ -132,7 +133,8 @@
       "poids": 103,
       "dossier": "extensions/edition/",
       "pointsEntree": [{ "genre": "menu", "id": "edition" }],
-      "bibliotheques": [{ "id": "edition-live", "version": "1.0.0" }]
+      "bibliotheques": [{ "id": "edition-live", "version": "1.0.0" }],
+      "cdnAccepte": false
     },
     {
       "id": "diapositives",
@@ -142,7 +144,7 @@
         "en": "16:9 presentations, written with the same editor as documents."
       },
       "icone": "slides",
-      "poids": 582,
+      "poids": 640,
       "dossier": "extensions/diapositives/",
       "pointsEntree": [{ "genre": "type", "id": "presentation" }, { "genre": "menu", "id": "nouveau" }]
     },
@@ -157,7 +159,21 @@
       "poids": 88,
       "dossier": "extensions/lecture-pdf/",
       "bibliotheques": [{ "id": "pdfjs", "version": "1.0.0" }]
+    },
+    {
+      "id": "polices",
+      "nom": { "fr": "Polices", "en": "Fonts" },
+      "texte": {
+        "fr": "Ajoute la police Marianne de l'État aux PDF, quand la personne dit avoir le droit de s'en servir.",
+        "en": "Adds the State's Marianne font to PDFs, when the person says they are entitled to use it."
+      },
+      "icone": "pdf",
+      "poids": 8,
+      "dossier": "extensions/polices/"
     }
+  ],
+  "natives": [
+    { "id": "editeur", "nom": { "fr": "Éditeur (TipTap)", "en": "Editor (TipTap)" }, "copieDansApp": true, "poids": 615704 }
   ],
   "actions": {
     "ouvrir": ["document", "grille", "presentation", "email", "macro"],

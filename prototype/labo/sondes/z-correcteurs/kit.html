@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Sonde ZL kit</title>
+<!-- Politique de l'app sonde ZL kit : celle des apps hébergées (script-src 'self', frame-src 'none', form-action 'none'). Le kit est servi par le labo sous /prototype/kit/ (le sous-module de GFS), même origine que la page. -->
+<meta http-equiv="Content-Security-Policy" content="script-src 'self'; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'">
+</head>
+<body>
+<h1>Sonde ZL kit : le vrai module du kit coupe les correcteurs</h1>
+<p>Ce que la sonde a reçu est écrit dans <code>body[data-sonde]</code>, que le labo lit.</p>
+<div id="wrap"><div id="e1" contenteditable="true">Zone éditable</div></div>
+<textarea id="t1" rows="2" cols="30">Zone de texte</textarea>
+<input id="i1" type="text" value="Champ">
+<input id="secret" type="password" value="secret">
+<script type="module" src="kit.js"></script>
+</body>
+</html>

@@ -83,11 +83,12 @@ test('stepRow : une rangée plus bas ou plus haut, sans sortir de la grille ; de
   assert.equal(stepRow(3, 1, 4, 1), 3, 'une colonne, dernière ligne : on reste');
 });
 
-// Le presse-papiers : Ctrl+C, Ctrl+X, Ctrl+V (⌘ sur Mac). Ctrl+D n'est pas liée : c'est le marque-page du navigateur, et GFS ne lie aucun geste à une touche qu'on ne peut pas avoir partout.
-test('Ctrl+C copie, Ctrl+X coupe, Ctrl+V colle ; ⌘ vaut Ctrl ; la majuscule d\'un verrouillage des capitales aussi', () => {
-  assert.deepEqual(['c', 'x', 'v'].map(key => clipboardAction(press(key, { ctrlKey: true }))), ['copy', 'cut', 'paste']);
-  assert.deepEqual(['c', 'x', 'v'].map(key => clipboardAction(press(key, { metaKey: true }))), ['copy', 'cut', 'paste']);
-  assert.deepEqual(['C', 'X', 'V'].map(key => clipboardAction(press(key, { ctrlKey: true }))), ['copy', 'cut', 'paste']);
+// Le presse-papiers : Ctrl+C, Ctrl+X, Ctrl+V (⌘ sur Mac), et Ctrl+D qui duplique d'un geste (12/11). Ctrl+D est aussi le marque-page du navigateur : l'explorateur la retient
+// (`preventDefault`, essai Firefox test/copier-firefox.mjs) ; dans un champ de saisie elle reste au navigateur.
+test('Ctrl+C copie, Ctrl+X coupe, Ctrl+V colle, Ctrl+D duplique ; ⌘ vaut Ctrl ; la majuscule d\'un verrouillage des capitales aussi', () => {
+  assert.deepEqual(['c', 'x', 'v', 'd'].map(key => clipboardAction(press(key, { ctrlKey: true }))), ['copy', 'cut', 'paste', 'duplicate']);
+  assert.deepEqual(['c', 'x', 'v', 'd'].map(key => clipboardAction(press(key, { metaKey: true }))), ['copy', 'cut', 'paste', 'duplicate']);
+  assert.deepEqual(['C', 'X', 'V', 'D'].map(key => clipboardAction(press(key, { ctrlKey: true }))), ['copy', 'cut', 'paste', 'duplicate']);
 });
 
 test('Ctrl+Z (⌘+Z sur Mac) est l\'annulation ; Ctrl+Y et Ctrl+Maj+Z (⌘+Maj+Z) le rétablissement ; avec Alt, rien', () => {
@@ -104,18 +105,20 @@ test('Ctrl+Z (⌘+Z sur Mac) est l\'annulation ; Ctrl+Y et Ctrl+Maj+Z (⌘+Maj+Z
 });
 
 test('sans Ctrl ou ⌘, une lettre n\'est pas le presse-papiers ; avec Alt (AltGr) ou Maj (Ctrl+Maj+V : coller sans mise en forme), non plus ; ni les autres lettres', () => {
-  assert.deepEqual(['c', 'x', 'v', 'z'].map(key => clipboardAction(press(key))), [null, null, null, null]);
-  assert.deepEqual(['c', 'x', 'v', 'z'].map(key => clipboardAction(press(key, { ctrlKey: true, altKey: true }))), Array(4).fill(null));
-  assert.deepEqual(['c', 'x', 'v'].map(key => clipboardAction(press(key, { ctrlKey: true, shiftKey: true }))), Array(3).fill(null));
-  assert.deepEqual(['d', 'a', 'f', 'w', 'F2', 'Delete', 'Control'].map(key => clipboardAction(press(key, { ctrlKey: true }))), Array(7).fill(null), 'Ctrl+D (marque-page) n\'est jamais liée');
+  assert.deepEqual(['c', 'x', 'v', 'z', 'd'].map(key => clipboardAction(press(key))), Array(5).fill(null));
+  assert.deepEqual(['c', 'x', 'v', 'z', 'd'].map(key => clipboardAction(press(key, { ctrlKey: true, altKey: true }))), Array(5).fill(null));
+  assert.deepEqual(['c', 'x', 'v', 'd'].map(key => clipboardAction(press(key, { ctrlKey: true, shiftKey: true }))), Array(4).fill(null), 'Ctrl+Maj+D (tous les onglets en marque-pages) reste au navigateur');
+  assert.deepEqual(['a', 'f', 'w', 'F2', 'Delete', 'Control'].map(key => clipboardAction(press(key, { ctrlKey: true }))), Array(6).fill(null), 'les autres touches ne sont pas liées');
   assert.equal(clipboardAction({ ctrlKey: true }), null, 'un événement sans touche');
 });
 
-test('dans un champ de saisie (la recherche, une fenêtre), Ctrl+C, X, V, Z et Y gardent leur sens : copier, couper, coller, annuler et rétablir le texte', () => {
+test('dans un champ de saisie (la recherche, une fenêtre), Ctrl+C, X, V, Z et Y gardent leur sens : copier, couper, coller, annuler et rétablir le texte ; Ctrl+D reste au navigateur', () => {
   const field = tag => ({ closest: selector => (selector.split(',').map(part => part.trim()).includes(tag) ? {} : null) });
   for (const tag of ['input', 'textarea', 'select', '[contenteditable]']) assert.equal(clipboardAction({ ...press('v', { ctrlKey: true }), target: field(tag) }), null, tag);
   assert.equal(clipboardAction({ ...press('v', { ctrlKey: true }), target: field('li') }), 'paste', 'une ligne de la liste n\'est pas un champ');
   assert.equal(clipboardAction({ ...press('v', { ctrlKey: true }), target: {} }), 'paste', 'une cible sans `closest`');
+  assert.equal(clipboardAction({ ...press('d', { ctrlKey: true }), target: field('input') }), null, 'Ctrl+D dans la recherche : le marque-page, comme avant');
+  assert.equal(clipboardAction({ ...press('d', { ctrlKey: true }), target: field('li') }), 'duplicate', 'sur une ligne de la liste, elle duplique');
   assert.equal(clipboardAction({ ...press('z', { ctrlKey: true }), target: field('input') }), null, 'Ctrl+Z défait la frappe dans la recherche');
   assert.equal(clipboardAction({ ...press('y', { ctrlKey: true }), target: field('input') }), null, 'Ctrl+Y la refait');
   assert.equal(clipboardAction({ ...press('Z', { ctrlKey: true, shiftKey: true }), target: field('input') }), null, 'Ctrl+Maj+Z aussi');

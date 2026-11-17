@@ -3,8 +3,8 @@
 // le CDN) : proposé par le prototype, d'après la question 11 du cahier (le mode se retient par extension).
 // Du code sans effet de bord : il lit, il rend de nouveaux objets ; le contrôleur écrit, et seulement sur un geste de la personne.
 
-import { extensionsOf } from './extensions.js';
-import { MODES, DEFAULT_MODE } from './libraries.js';
+import { extensionsOf, findExtension } from './extensions.js';
+import { MODES, DEFAULT_MODE, defaultModeOf } from './libraries.js';
 import { nativesOf, nativeKey } from './natives.js';
 
 const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -17,7 +17,10 @@ function cleanApp(manifest, raw) {
   const modes = {};
   if (isObject(raw) && isObject(raw.modes)) {
     const keys = [...extensions, ...nativesOf(manifest).map(group => nativeKey(group.id))];
-    for (const key of keys) if (MODES.includes(raw.modes[key]) && raw.modes[key] !== DEFAULT_MODE) modes[key] = raw.modes[key];
+    // Seul un mode qui n'est pas le défaut s'écrit : celui d'une extension est le sien (`defaultModeOf` : la copie quand l'app n'accepte pas encore le CDN),
+    // celui d'une fonction native le CDN.
+    const standard = key => { const ext = findExtension(manifest, key); return ext ? defaultModeOf(ext) : DEFAULT_MODE; };
+    for (const key of keys) if (MODES.includes(raw.modes[key]) && raw.modes[key] !== standard(key)) modes[key] = raw.modes[key];
   }
   return { extensions, modes };
 }

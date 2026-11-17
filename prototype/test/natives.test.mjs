@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validateManifest } from '../js/apps/manifest.js';
 import { readCatalogue } from '../js/apps/libraries.js';
-import { nativeRows, nativesState, modeOfGroup, nativeKey, copiesInApp } from '../js/apps/natives.js';
+import { nativeRows, nativesState, modeOfGroup, nativeKey, copiesInApp, nativesOf } from '../js/apps/natives.js';
 import { frameUrl } from '../js/broker/frames.js';
 import { CATALOGUE } from '../js/apps/catalogue.js';
 import { readApps, patchApps, withNativeMode, withExtension } from '../js/apps/settings.js';
@@ -171,4 +171,19 @@ test('l\'adresse du cadre porte `copie=` pour les fonctions rangées dans l\'app
   const url = new URL(frameUrl({ ...where, copies: ['editeur', 'autre'], live: true }));
   assert.equal(url.searchParams.get('copie'), 'editeur,autre');
   assert.equal(url.searchParams.get('gfs'), '0', 'le numéro de contrat reste là, c\'est lui qui dit à l\'app que GFS l\'héberge');
+});
+
+// Publipostage+ a fait la consigne 066 (12/11, `db6b388`) : la copie figée de son éditeur est dans son dépôt (`vendor/editeur`), sa page la charge quand l'adresse dit `copie=editeur`. GFS déclare
+// donc cette seule fonction ; les six autres (exports) attendent la 065 et le choix du porteur.
+test('Publipostage+ : le manifeste réel déclare la fonction « Éditeur » dont la copie est dans l\'app, et elle seule', () => {
+  const real = publipostage();
+  assert.deepEqual(validateManifest(real).errors, []);
+  assert.deepEqual(nativesOf(real), [{ id: 'editeur', nom: { fr: 'Éditeur (TipTap)', en: 'Editor (TipTap)' }, copieDansApp: true, poids: 615704 }], 'le poids est celui de la copie construite (vendor/editeur, 57 fichiers)');
+  const empty = readCatalogue({ bibliotheques: [] });
+  const [row] = nativeRows(real, { extensions: [], modes: {} }, empty);
+  assert.equal(row.inApp, true, 'sa copie est dans l\'app : le catalogue de GFS n\'a rien à y mettre');
+  assert.equal(row.poids, 615704);
+  assert.equal(row.mode, 'cdn', 'au départ, la page lit le CDN');
+  assert.deepEqual(copiesInApp(real, { extensions: [], modes: {} }), [], 'rien à demander à l\'app tant que la personne n\'a pas choisi la copie');
+  assert.deepEqual(copiesInApp(real, { extensions: [], modes: { [nativeKey('editeur')]: 'vendorise' } }), ['editeur'], 'la copie choisie part dans l\'adresse du cadre (`copie=editeur`)');
 });

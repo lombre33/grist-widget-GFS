@@ -7,6 +7,7 @@
 import { execSync } from 'node:child_process';
 import { startLab } from './lab-setup.mjs';
 import { say } from './lab-common.mjs';
+import { installApp } from './lab-gestes.mjs';
 
 const appId = process.env.COUT_APP || 'sonde-g';
 const pattern = appId === 'publipostage' ? /apps\/publipostage\// : /labo\/sondes\//;
@@ -49,7 +50,7 @@ const before = await snapshot();
 say('GFS seul :', before);
 
 await lab.openModules();
-await frame.locator(`[data-fk="app:${appId}"]`).check();
+await installApp(frame, appId);
 await lab.settle(); // la table du document naît avec l'accord de la personne (contrats 7.4) : on répond, puis on mesure
 const clicked = Date.now();
 await frame.locator(`[data-open="${appId}"]`).click();

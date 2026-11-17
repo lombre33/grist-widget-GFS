@@ -124,3 +124,11 @@ test('la question du partage cite les tables des apps touchées ; sur un partage
   assert.equal(later.confirmLabel, t('rights.ask.sharing.extend.confirm'));
   assert.ok(!askOptions(t, 'sharing', { ok: true, appTables: [], extends: false }).items.some(item => item.startsWith('rights.ask.sharing.apps')));
 });
+
+test('plansFrom : les plans de lignes déjà lues, sans les relire (un appelant qui a lu raw() ne le relit pas) ; rien lu, rien à planifier', async () => {
+  let reads = 0;
+  const writer = new RightsWriter({ port: { doc: {} }, reader: { raw: async () => { reads += 1; return null; } }, store: { read: () => null, write: () => {} } });
+  assert.equal(writer.plansFrom(null), null);
+  assert.equal(await writer.plans(), null);
+  assert.equal(reads, 1, 'plans() relit ; plansFrom() ne lit rien');
+});

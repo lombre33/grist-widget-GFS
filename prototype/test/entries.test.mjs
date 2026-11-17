@@ -92,3 +92,9 @@ test('readerOf : l\'app qui lit le PDF, son grisé, ou rien quand aucune app ne 
   assert.deepEqual(notYet.lock, { text: 'files.read.notYet {"app":"Publipostage+"}' }, 'une app qui ne reçoit pas encore le fichier : « pas encore »');
   assert.equal(host({ installed: { publipostage: { extensions: [] } } }).entries.readerOf({ type: 'zip' }), null, 'aucune app ne lit ce type : le fichier se télécharge');
 });
+
+test('readerOf : un fichier REÇU dont le type n\'est pas celui de GFS n\'ouvre aucune app (le type est écrit par l\'envoyeur) ; un PDF reçu se lit comme un PDF de GFS', () => {
+  const installed = { publipostage: { extensions: ['lecture-pdf'] } };
+  assert.equal(host({ installed }).entries.readerOf({ type: 'pdf', known: false, received: { state: 'accepted' } }), null, 'type inconnu de GFS : téléchargement seulement');
+  assert.deepEqual(host({ installed }).entries.readerOf({ type: 'pdf', known: true, received: { state: 'accepted' } }), { app: 'publipostage', name: 'Publipostage+', lock: null });
+});

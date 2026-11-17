@@ -18,6 +18,7 @@ import { ThemeWindow } from './theme/theme-window.js';
 import { AppStorage, browserBackend, storageHandlers } from './broker/app-storage.js';
 import { installSprite } from './ui/icons.js';
 import { Dock } from './shell/dock.js';
+import { Correcteurs } from './shell/correcteurs.js';
 import { settingsItems } from './shell/settings-menu.js';
 import { aboutItems } from './shell/about.js';
 import { WorkControl } from './apps/work-control.js';
@@ -34,6 +35,7 @@ import { AppsState } from './apps/apps-state.js';
 import { arrivalApp, arrivalProbes } from './broker/arrival.js';
 import { arrivalTableApp } from './broker/arrival-table.js';
 import { Rangement, TableDeclined } from './files/rangement.js';
+import { appFilingOf } from './files/app-filing.js';
 import { RightsControl } from './rights/rights-control.js';
 import { createOtherDocuments } from './sharing/share-other.js';
 import { createFollower } from './sharing/share-follow.js';
@@ -85,9 +87,7 @@ export class GfsController {
 
   // env : { grist, router, search, doc }
   constructor({ grist, router, search, doc = document }) {
-    this.grist = grist;
-    this.router = router;
-    this.doc = doc;
+    Object.assign(this, { grist, router, doc });
     this.status = new AppStatus(this.$('status')); // la phrase d'état de l'app active : l'explorateur la cache tant qu'il recouvre l'app
     this.params = new URLSearchParams(search);
     this.preferences = readPreferences(search);
@@ -123,7 +123,7 @@ export class GfsController {
     // personne, et la table seulement avec son accord. Cette table apprend aussi à GFS l'adresse de la personne (6.4, point 6) : sans écriture possible, elle
     // reste inconnue.
     this.rangement = new Rangement({ port: this.port, consent: () => this.#askTableConsent(), canWrite: () => !this.#writeBlock(),
-      onIdentity: () => this.#onIdentity() });
+      onIdentity: () => this.#onIdentity(), appFilings: () => this.manifests().map(appFilingOf).filter(Boolean) });
     this.registry = new AppsState({ store: this.rangement, onChange: () => this.#onRegistryChange() });
     // Ce que l'explorateur et les liens demandent (grisé, types de « Nouveau » et d'« Importer », qui lit un fichier : js/broker/entries.js), et les ouvertures
     // (js/broker/openings.js).
@@ -159,7 +159,8 @@ export class GfsController {
       inertTargets: this.inertTargets, t: this.t, fullAccess: () => this.fullAccess,
       locale: () => this.locale, identity: () => this.identity, writeBlock: () => this.#writeBlock(), appName: this.appName, spaces: () => this.spaces,
       other: (file, state) => this.otherDocuments.tab(file, state), otherLinks: () => this.otherDocuments.links(),
-        otherStop: link => this.otherDocuments.stop(link), otherNew: () => this.otherDocuments.link(),
+        otherStop: link => this.otherDocuments.stop(link), otherNew: () => this.otherDocuments.link(), refresh: () => this.refreshFiles(),
+      notice: text => this.notice(text), files: () => this.explorer.files,
     });
     this.weight = new WeightControl({ transfer: this.transfer, container: this.$('stage'), inertTargets: this.inertTargets, t: this.t,
       locale: () => this.locale });
@@ -208,10 +209,14 @@ export class GfsController {
     this.registry.setApps(this.apps);
     this.registry.setCatalogue(await libraries);
     await this.state.whenOptions();
-    if (this.fullAccess) await Promise.all([this.registry.load(), this.rangement.identify()]);
+    // L'adresse de la personne s'apprend pendant que le reste se lit : la sonde coûte plusieurs allers-retours de réseau, et la liste des fichiers n'en a
+    // besoin qu'au moment de ranger (js/explorer/explorer-data.js). Une app qui s'ouvre d'emblée, et « prêt », l'attendent.
+    const identified = this.fullAccess ? this.rangement.identify() : Promise.resolve('');
+    if (this.fullAccess) await this.registry.load();
     this.#buildExplorer();
     this.#buildDock();
-    const arrived = await this.#arrive();
+    const arrived = await this.#arrive(identified);
+    await identified;
     doc.body.dataset.gfs = 'ready';
     if (!arrived) await this.#firstRun(); // une section qui s'ouvre sur son app n'est pas neuve : la fenêtre des apps ne passe pas par-dessus
     doc.body.dataset.gfsFirstRun = 'done';
@@ -226,7 +231,7 @@ export class GfsController {
   // L'arrivée (cahier 6.2, point 2 ; js/broker/arrival.js) : une section qui servait à une app s'ouvre sur elle, sans consigne et sans rien écrire ; sinon
   // l'explorateur. Les réglages de la section parlent d'abord ; sans eux, la table d'une app qui garde sa vue dans le document (`arrivee` du manifeste) dit si
   // la section est la sienne (js/broker/arrival-table.js). Rend `true` si une app s'est ouverte.
-  async #arrive() {
+  async #arrive(identified) {
     const manifests = this.manifests();
     const rules = { installed: appId => this.registry.has(appId), granted: this.state.grantedAccess };
     let id = arrivalApp(this.state.allOptions, manifests, rules);
@@ -235,6 +240,7 @@ export class GfsController {
       const table = await this.state.whenTable();
       if (table) id = await arrivalTableApp(this.port.doc, probes, table.tableId);
     }
+    if (id) await identified; // l'app reçoit l'adresse de la personne dans son contexte (contrats 5.2, point 9)
     if (id && this.activate(id, null)) {
       this.hideExplorer();
       return true;
@@ -288,9 +294,11 @@ export class GfsController {
       settings: () => settingsItems({
         t: this.t, language: () => ({ choice: this.language.choice, grist: this.language.grist }), onLanguage: choice => this.#chooseLanguage(choice),
           onTheme: () => this.openTheme(),
+        langtool: () => ({ shown: this.correcteurs.state.shown, toggle: () => this.#chooseLangtool() }),
         place: () => this.dock.placeRow(), onAbout: () => this.#openAbout(),
+        manage: () => ({ why: this.rights.manage.whyNot(), open: () => void this.rights.manage.open(), notice: text => this.notice(text) }),
       }),
-      onRights: () => void this.rights.open(this.explorer), sharing: this.rights.sharing, onWeight: estimate => void this.weight.open(estimate),
+      sharing: this.rights.sharing, links: this.rights.links, onWeight: estimate => void this.weight.open(estimate),
       onOpen: file => this.openings.openFile(file), onNew: entry => this.openings.openNew(entry), onImport: entry => void this.openings.importFile(entry),
         onClose: () => this.hideExplorer(), onApps: () => void this.openModules(),
       personal: () => Boolean(this.identity), filing, kept: this.kept, attachments: () => loadAttachments(this.port),
@@ -305,7 +313,7 @@ export class GfsController {
       explorer: () => this.explorer, session: () => this.session, manifests: this.manifests, appById: id => this.appById(id), appName: this.appName,
       fullAccess: () => this.fullAccess, t: this.t, notice: text => this.notice(text), lockOf: this.lockOf, unlock: lock => this.unlock(lock),
       showExplorer: () => this.showExplorer(), hideExplorer: () => this.hideExplorer(),
-        loadFiles: apps => loadFiles(this.port, apps, this.identity, this.fileReader),
+        loadFiles: apps => loadFiles(this.port, apps, this.rangement.learning, this.fileReader),
       openIn: (appId, opening) => this.openings.openIn(appId, opening, 'ex.notice.open'),
     });
   }
@@ -329,11 +337,15 @@ export class GfsController {
   // La barre de GFS au-dessus de l'app ouverte (js/shell/dock.js) : ses boutons ouvrent l'explorateur et la fenêtre des apps ; quand ce qu'elle recouvre
   // change, l'app ouverte le sait (événement `barre`, contrats 5.2, point 7).
   #buildDock() {
+    // Le bouton « LanguageTool » de la barre : deux choix retenus sur ce navigateur, dits aux apps (js/shell/correcteurs.js, contrats 5.2, point 13).
+    this.correcteurs = new Correcteurs({ win: window });
     this.dock = new Dock({
       root: this.$('floaters'), stage: this.$('stage'), onFiles: () => this.showExplorer(), onOpened: () => this.openedBar.show(),
-        onApps: () => void this.openModules(), onWork: () => void this.workControl.open(),
+        onApps: () => void this.openModules(), onWork: () => void this.workControl.open(), onLt: () => this.#toggleLt(),
       onNotKept: () => this.notice(this.t('lang.notKept')),
     });
+    this.dock.setLt(this.correcteurs.state);
+    this.correcteurs.onChange((state, before) => this.#syncLt(state, before));
     // La ligne de travail (contrats 4.5) : une autre table rouvre l'app active, qui la reçoit dès son démarrage.
     this.workControl = new WorkControl({
       port: this.port, state: this.state, dock: this.dock, container: this.$('stage'), t: this.t, appName: this.appName, manifests: this.manifests,
@@ -349,6 +361,16 @@ export class GfsController {
     this.dock.relabel(this.t);
     this.workControl.relabel();
     this.dock.onChange(barre => { if (this.session) this.session.sendBar(barre); });
+  }
+
+  // Le bouton « LanguageTool » (contrats 5.2, point 13) : le bouton de la barre coupe ou rallume ; la ligne du menu « Réglages » le met dans la barre ou l'en
+  // retire. Un navigateur qui refuse de retenir le choix le garde pour la page, et GFS le dit. Quand ce que les apps doivent faire change, l'app ouverte le
+  // sait (événement `correcteurs`).
+  #toggleLt() { if (!this.correcteurs.toggleCut()) this.notice(this.t('lang.notKept')); }
+  #chooseLangtool() { if (!this.correcteurs.setShown(!this.correcteurs.state.shown)) this.notice(this.t('lang.notKept')); }
+  #syncLt(state, before) {
+    this.dock.setLt(state);
+    if (state.coupes !== before.coupes && this.session) this.session.sendCorrecteurs({ coupes: state.coupes });
   }
 
   // ---------- la langue ----------
@@ -398,7 +420,7 @@ export class GfsController {
     if (this.session) this.session.show(false);
     this.explorer.open();
     void this.refreshFiles();
-    void this.rights.refresh(this.explorer);
+    this.rights.resume(this.explorer);
   }
 
   hideExplorer() {
@@ -413,11 +435,18 @@ export class GfsController {
     }
   }
 
+  // La dernière lecture des fichiers a-t-elle attendu l'adresse de la personne (qui s'apprenait encore) ? Alors son rangement est déjà le bon.
+  #readWaited = false;
+
   // Une seule lecture des fichiers fait foi, la dernière lancée (js/explorer/file-refresh.js) : une lecture plus ancienne qui finit après ne remplace pas la
   // liste récente.
   #refresh = createFileRefresh({
     canRead: () => this.fullAccess,
-    load: () => loadFiles(this.port, [...this.validApps(), FILES_ENTRY], this.identity, this.fileReader),
+    load: () => {
+      const learning = this.rangement.learning;
+      this.#readWaited = typeof learning !== 'string';
+      return loadFiles(this.port, [...this.validApps(), FILES_ENTRY], learning, this.fileReader);
+    },
     onRestricted: () => {
       this.explorer.setFiles([]);
       this.#fileStatus = { loading: false, restricted: true, problems: [{ key: 'gfs.needsFullAccess' }] };
@@ -551,8 +580,9 @@ export class GfsController {
   }
 
   // GFS vient d'apprendre l'adresse de la personne (la table est née pendant la session) : sa liste de fichiers se relit avec son propre rangement.
+  // Sauf la lecture qui l'attend en ce moment : elle range déjà avec cette adresse (la relancer jetterait ce qu'elle a lu).
   #onIdentity() {
-    if (this.explorer && this.explorer.isOpen) void this.refreshFiles();
+    if (this.explorer && this.explorer.isOpen && !(this.#fileStatus.loading && this.#readWaited)) void this.refreshFiles();
     this.#told.pushIdentity();
   }
 

@@ -3,6 +3,7 @@
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { engine, engineName, newLabPage, SHOTS } from './lab-common.mjs';
+import { installApp } from './lab-gestes.mjs';
 
 const WIDGET = 'http://127.0.0.1:8911/prototype/index.html';
 
@@ -145,7 +146,7 @@ export async function startLab(options = {}) {
   const openApp = async (id, pattern = /./, target = frame) => {
     await target.waitForFunction(() => Boolean(document.body) && document.body.dataset.gfsFirstRun === 'done', null, { timeout: 30000 }).catch(() => {});
     await openModules(target);
-    await target.locator(`[data-fk="app:${id}"]`).check();
+    await installApp(target, id);
     await settle(target);
     await target.locator(`[data-open="${id}"]`).click();
     return appFrame(pattern);
@@ -169,8 +170,10 @@ export async function startLab(options = {}) {
   const setUser = who => page.evaluate(next => { window.__labUser = next; }, who);
   // Ce que le moteur a reçu depuis le début (ou depuis le dernier `forgetActions`) : « Verbe Table [Utilisateur de la ligne ajoutée] ».
   const actions = () => page.evaluate(() => window.__labActions.slice());
-  const forgetActions = () => page.evaluate(() => { window.__labActions.length = 0; });
-  return { browser, context, page, frame, gfsFrame, appFrame, openModules, openApp, settle, gfsReady, fitPanel, rangement, addSection, setUser, actions, forgetActions, shot: (run, name) => page.screenshot({ path: join(SHOTS, `${run}-${name}.png`) }),
+  const forgetActions = () => page.evaluate(() => { window.__labActions.length = 0; window.__labReads.length = 0; });
+  // Les tables que le moteur a rendues depuis le début (ou depuis le dernier `forgetActions`), une fois par lecture.
+  const reads = () => page.evaluate(() => window.__labReads.slice());
+  return { browser, context, page, frame, gfsFrame, appFrame, openModules, openApp, settle, gfsReady, fitPanel, rangement, addSection, setUser, actions, forgetActions, reads, shot: (run, name) => page.screenshot({ path: join(SHOTS, `${run}-${name}.png`) }),
     // La capture du cadre de GFS seul (le panneau), pas de la page de Grist.
     shotPanel: async (run, name, target = frame) => (await target.frameElement()).screenshot({ path: join(SHOTS, `${run}-${name}.png`) }) };
 }

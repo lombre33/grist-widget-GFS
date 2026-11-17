@@ -4,6 +4,7 @@
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check, probeDeclares } from './lab-common.mjs';
+import { installApp } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -56,7 +57,7 @@ const waitStarted = async () => {
 };
 const startQ = async () => {
   await lab.openModules(frame);
-  await frame.locator('[data-fk="app:sonde-q"]').check().catch(() => {});
+  await installApp(frame, 'sonde-q').catch(() => {});
   await lab.settle(frame);
   await frame.locator('[data-open="sonde-q"]').click();
   app = await lab.appFrame(/q-liens\//);
@@ -75,7 +76,7 @@ const answer = async () => {
 
 // Le premier départ de l'app écrit lui-même dans le document (des colonnes ajoutées à ses tables) : il passe par la fenêtre des apps, comme dans run-ouvrir-publipostage.
 await lab.openModules(frame);
-await frame.locator('[data-fk="app:publipostage"]').check();
+await installApp(frame, 'publipostage');
 await lab.settle(frame);
 await frame.locator('[data-open="publipostage"]').click();
 app = await lab.appFrame(/publipostage/);

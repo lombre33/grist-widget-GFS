@@ -15,6 +15,7 @@
 import { startLab } from './lab-setup.mjs';
 import { say, check, fileChooser, importMenu, probeDeclares } from './lab-common.mjs';
 import { isGfsWarning } from './sondes-muettes.mjs';
+import { installApp } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -64,7 +65,7 @@ const closeModules = async () => { await page.keyboard.press('Escape'); await fr
 const install = async id => {
   await frame.waitForFunction(() => Boolean(document.body) && document.body.dataset.gfsFirstRun === 'done', null, { timeout: 30000 }).catch(() => {});
   await lab.openModules(frame);
-  await frame.locator(`[data-fk="app:${id}"]`).check();
+  await installApp(frame, id);
   await lab.settle(frame);
   await closeModules();
 };

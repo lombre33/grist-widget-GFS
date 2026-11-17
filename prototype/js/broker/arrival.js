@@ -1,10 +1,10 @@
 // L'arrivée de GFS (cahier 6.2, point 2) : quelle app s'ouvre toute seule quand la section démarre. Une section dont les réglages portent une clé qu'un
-// manifeste déclare servait à cette app : GFS l'ouvre sans consigne (elle applique son propre ordre d'arrivée ; pour Publipostage+ : la ligne choisie, le
-// modèle de la vue, le ★ du document) et sans rien écrire. C'est l'aller-retour sans perte (contrats 7.4, point 7) : changer l'adresse du widget, dans un sens
-// ou dans l'autre, retrouve la vue telle qu'elle était. Une app qui garde ce qu'il faut pour rouvrir la vue dans une table du document (Automation+ : son
-// graphe, `arrivee` du manifeste) est reconnue par cette table, mais seulement quand aucun réglage de la vue ne parle : un réglage est le choix explicite de la
-// vue, la table ne dit que ce que le document contient. Du code sans effet de bord, comme `options-slice.js` : le contrôleur ouvre l'app ; la lecture de la
-// table est à `arrival-table.js`.
+// manifeste déclare pour l'arrivée (`reglagesArrivee`, sinon `reglages`) servait à cette app : GFS l'ouvre sans consigne (elle applique son propre ordre
+// d'arrivée ; pour Publipostage+ : la ligne choisie, le modèle de la vue, le ★ du document) et sans rien écrire. C'est l'aller-retour sans perte (contrats 7.4,
+// point 7) : changer l'adresse du widget, dans un sens ou dans l'autre, retrouve la vue telle qu'elle était. Une app qui garde ce qu'il faut pour rouvrir la
+// vue dans une table du document (Automation+ : son graphe, `arrivee` du manifeste) est reconnue par cette table, mais seulement quand aucun réglage de la vue
+// ne parle : un réglage est le choix explicite de la vue, la table ne dit que ce que le document contient. Du code sans effet de bord, comme
+// `options-slice.js` : le contrôleur ouvre l'app ; la lecture de la table est à `arrival-table.js`.
 //
 // Pas fait, exprès : le point 1 (l'app de départ `gfs.depart`, que personne n'écrit encore) et le point 3 (une seule app installée : elle s'ouvre). Sans clé
 // d'une app, l'explorateur.
@@ -13,12 +13,18 @@ import { sliceOf } from './options-slice.js';
 import { levelOf } from './filter.js';
 
 // Un réglage qui a une valeur. Une app qui retire un choix écrit `null` (Publipostage+, « Retirer » du modèle de la vue : `setWidgetOption(clé, null)`),
-// parfois un texte vide : la clé reste dans l'objet des réglages de la section, mais il n'y a plus de choix.
-const isSet = value => value !== undefined && value !== null && value !== '';
+// parfois un texte vide : la clé reste dans l'objet des réglages de la section, mais il n'y a plus de choix. Un objet qui dit `enabled: false` est un choix
+// coupé mais gardé (Publipostage+, « modèle selon la ligne » décoché : ses règles restent, pour qu'on les retrouve) : il ne compte pas non plus.
+const isSet = value => value !== undefined && value !== null && value !== '' &&
+  !(typeof value === 'object' && !Array.isArray(value) && value.enabled === false);
 
-// La section porte-t-elle un réglage de cette app ?
+// Les clés dont une valeur fait s'ouvrir l'app à l'arrivée : `reglagesArrivee` du manifeste (Publipostage+ : le modèle de la vue et le modèle selon la ligne,
+// pas les droits d'accès ni la date du dernier export, qui ne disent pas quoi ouvrir), sinon toutes ses clés de `reglages`.
+const arrivalKeys = manifest => (Array.isArray(manifest.reglagesArrivee) ? manifest.reglagesArrivee : manifest.reglages) || [];
+
+// La section porte-t-elle un réglage de cette app qui dit de l'ouvrir ?
 function servedBy(allOptions, manifest) {
-  const slice = sliceOf(allOptions, manifest.reglages || []);
+  const slice = sliceOf(allOptions, arrivalKeys(manifest));
   return slice !== null && Object.values(slice).some(isSet);
 }
 

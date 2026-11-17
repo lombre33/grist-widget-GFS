@@ -5,7 +5,7 @@
 #   bash vrai-serveur.sh                 # puis : REPO_DIR="$(realpath ../..)" node run-reel-serveur.mjs
 #   GRIST_VERSION=1.7.19 GRIST_PORT=8484 bash vrai-serveur.sh
 #   GRIST_DOCKER_ARGS="-e ALLOWED_WEBHOOK_DOMAINS=*" bash vrai-serveur.sh   # des réglages de plus pour le serveur (ici : des webhooks vers 127.0.0.1, run-sync-webhook.mjs et run-sync-rest.mjs)
-#   GRIST_EMAIL=editor@example.com bash vrai-serveur.sh   # la personne d'essai du moment (le serveur n'en connaît qu'une) : les essais de droits relancent le serveur sous chaque compte (run-droits.mjs)
+#   GRIST_EMAIL=editor@example.com bash vrai-serveur.sh   # la personne d'essai du moment (le serveur n'en connaît qu'une) : les essais de droits relancent le serveur sous chaque compte (run-droits-reel.mjs)
 set -euo pipefail
 VERSION="${GRIST_VERSION:-1.7.19}"
 PORT="${GRIST_PORT:-8484}"

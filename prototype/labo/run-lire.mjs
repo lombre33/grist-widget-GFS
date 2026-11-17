@@ -17,6 +17,7 @@ import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { createI18n } from '../js/i18n/i18n.js';
 import { pageTitle, ACCENTED_LINE } from './pdf-fixture.mjs';
 import { PAGE_PORT, sha256, openGfs, importSamples, waitForToast, shot, rowOf, openRowMenu, pressGreyed, contrastProblems, waitFor, settle, closeModules } from './lab-pdf.mjs';
+import { installApp, showRow } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -70,7 +71,7 @@ async function installReader(run) {
   check('le clic sur « Lire » grisé ouvre « Apps et extensions » sur la ligne de l\'app', await focusedRow(frame) === 'app:sonde-y', await focusedRow(frame));
   check('aucune app n\'a été ouverte', !probeFrame(page));
   await shot(frame, 'lire-3-fenetre-app');
-  await frame.locator('[data-fk="app:sonde-y"]').check();
+  await installApp(frame, 'sonde-y');
   await settle(page, frame);
   await closeModules(page, frame);
   const afterApp = await frame.locator('.ex-info').textContent();
@@ -78,7 +79,7 @@ async function installReader(run) {
   await pressGreyed(page, openButton(frame));
   await frame.locator('.mod').waitFor();
   check('le clic ouvre la fenêtre sur la ligne de l\'extension', await focusedRow(frame) === 'ext:sonde-y/lecture-pdf', await focusedRow(frame));
-  await frame.locator('[data-fk="ext:sonde-y/lecture-pdf"]').check();
+  await (await showRow(frame, 'ext:sonde-y/lecture-pdf')).check();
   await settle(page, frame);
   const hint = (await frame.locator('.mr', { has: frame.locator('[data-parent="sonde-y"][data-ext="lecture-pdf"]') }).locator('.rd', { has: frame.locator('input[value="cdn"]') }).locator('.rd-hint').innerText()).trim();
   check('la copie de GFS est le seul mode de pdf.js (le CDN est grisé avec sa raison)', await frame.locator('[data-parent="sonde-y"][data-ext="lecture-pdf"]').isChecked() && hint.length > 0, hint);

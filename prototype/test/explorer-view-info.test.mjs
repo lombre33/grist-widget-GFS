@@ -15,27 +15,31 @@ const file = (extra = {}) => ({ name: 'Convocation', type: 'document', icon: 'do
 const ctx = (extra = {}) => ({
   t, locale: 'fr', now: NOW, state: { view: 'folder' }, personal: true, choosing: false, selected: null, lockOf: () => null, opensIn: () => 'S\'ouvre dans Publipostage+', typeLabel: item => item.type, ...extra,
 });
-// Les deux lignes de la barre, leur attribut `data-fam` et le symbole de la première.
+// Les deux lignes de la barre (vides quand elles n'y sont pas), leur attribut `data-fam` et le symbole de la première.
 const read = bar => {
   const [l1, l2] = bar.elements;
-  return { first: l1.textContent, second: l2.textContent, fam: bar.attrs['data-fam'], symbol: l1.elements[0].elements[0].attrs.href, title: bar.title };
+  return { first: l1 ? l1.textContent : '', second: l2 ? l2.textContent : '', lines: bar.elements.length, fam: bar.attrs['data-fam'],
+    symbol: l1 ? l1.elements[0].elements[0].attrs.href : null, title: bar.title };
 };
 
-test('rien de choisi : le rappel du rangement (à la personne ou commun au document), de la corbeille, du choix d\'un fichier', () => {
+test('rien de choisi : rien d\'écrit dans un dossier à soi ; le rangement commun au document se dit ; la corbeille, le choix d\'un fichier', () => {
   const folder = read(infoBar(ctx()));
-  assert.deepEqual([folder.first, folder.second], [t('ex.hintPersonal'), t('ex.hintFav')]);
+  assert.deepEqual([folder.lines, folder.first, folder.second, folder.title], [0, '', '', ''], 'le rangement à la personne seule va de soi : la barre reste vide');
   const shared = read(infoBar(ctx({ personal: false })));
   assert.deepEqual([shared.first, shared.second], [t('ex.hintShared'), t('ex.hintFavShared')], 'GFS ne sait pas qui est la personne : le rangement est commun au document');
-  assert.equal(read(infoBar(ctx({ state: { view: 'trash' } }))).first, t('trash.hint'));
+  assert.equal(shared.title, `${t('ex.hintShared')}\n${t('ex.hintFavShared')}`, 'l\'infobulle redit les deux lignes, une par ligne');
+  const trash = read(infoBar(ctx({ state: { view: 'trash' } })));
+  assert.deepEqual([trash.first, trash.lines], [t('trash.hint'), 1], 'la corbeille : sa phrase seule, sans rappel de favori');
   assert.equal(read(infoBar(ctx({ state: { view: 'fav' } }))).first, t('ex.hintSelect'));
-  assert.equal(read(infoBar(ctx({ choosing: true }))).first, t('ex.choose.hint'), 'un choix de fichier demandé par une app passe avant le rappel');
-  assert.equal(folder.title, `${t('ex.hintPersonal')}\n${t('ex.hintFav')}`, 'l\'infobulle redit les deux lignes, une par ligne');
+  const choosing = read(infoBar(ctx({ choosing: true })));
+  assert.deepEqual([choosing.first, choosing.lines], [t('ex.choose.hint'), 1], 'un choix de fichier demandé par une app passe avant le rappel');
+  assert.equal(read(infoBar(ctx({ choosing: true, personal: false }))).second, t('ex.hintFavShared'), 'le favori commun se dit aussi pendant un choix');
 });
 
-test('un dossier choisi : son nom, le nombre de fichiers et le poids, puis le rappel du rangement', () => {
+test('un dossier choisi : son nom, le nombre de fichiers et le poids ; le rappel du rangement seulement quand il est commun au document', () => {
   const one = read(infoBar(ctx({ selected: { kind: 'folder', path: 'A/B', name: 'B', count: 3, weight: 2048 } })));
   assert.match(one.first, new RegExp(`^B· ${t('ex.fileCount', { n: 3 })} · 2 Ko$`));
-  assert.equal(one.second, t('ex.hintPersonal'));
+  assert.deepEqual([one.lines, one.second], [1, ''], 'un dossier à soi : une seule ligne');
   assert.equal(one.symbol, '#i-folder');
   assert.equal(read(infoBar(ctx({ personal: false, selected: { kind: 'folder', path: 'A', name: 'A', count: 0, weight: 0 } }))).second, t('ex.hintShared'));
 });

@@ -68,15 +68,16 @@ export const shownReceived = files => files.filter(file => file.received.state !
 export const pendingOf = files => files.filter(file => file.received.state === PENDING);
 
 // Lit toutes les tables reçues du document (`tables` : leurs noms, ou null quand la liste n'a pu être lue). Une table illisible est dite par la console et ne
-// cache pas les autres. Rend les fichiers à plat.
+// cache pas les autres. Les tables sont lues ensemble. Rend les fichiers à plat.
 export async function loadReceived(port, tables) {
   const found = tables ? receivedTables(tables) : [];
-  const files = [];
-  for (const table of found) {
-    try { files.push(...readReceived(table, await port.doc.fetchTable(table))); }
-      catch (error) { console.warn(`GFS : la table reçue ${table} est illisible`, error); }
-  }
-  return files;
+  const lists = await Promise.all(found.map(async table => {
+    try { return readReceived(table, await port.doc.fetchTable(table)); } catch (error) {
+      console.warn(`GFS : la table reçue ${table} est illisible`, error);
+      return [];
+    }
+  }));
+  return lists.flat();
 }
 
 // La réponse à une arrivée : les deux marques écrites sur sa ligne, relue juste avant (la ligne a pu disparaître : le moteur la remet à la mise à jour

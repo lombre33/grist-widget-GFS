@@ -1,23 +1,18 @@
 #!/usr/bin/env bash
 # Miroir local des bibliothèques que Publipostage+ charge depuis des CDN (esm.sh, cdnjs, jsDelivr), pour le labo SEUL : le conteneur du
-# cloud n'atteint que le registre npm. On reprend le constructeur de Publipostage+ (dev-tests/.offline-cache : package.json + build.mjs),
-# sans rien écrire dans le sous-module : le miroir se construit ici, dans mirror/ (hors Git).
+# cloud n'atteint que le registre npm. Depuis la 063 de l'app (82ae542), son miroir se refait par l'outil du kit, d'après la liste unique de son
+# package.json (`node kit/outils/bibliotheques.mjs --miroir`) : on lui donne une COPIE de l'app (git archive de la référence de GFS), rien n'est écrit dans le
+# sous-module, puis on range ici (mirror/, hors Git) ce que le labo lit : `esm/` (les modules ES), `esm-map.json` et `umd/` (les fichiers UMD).
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-SRC="$HERE/../apps/publipostage/dev-tests/.offline-cache"
+APP="$HERE/../apps/publipostage"
+KIT="$HERE/../kit"
+WORK="$(mktemp -d)"
+trap 'rm -rf "$WORK"' EXIT
+git -C "$APP" archive HEAD | tar -x -C "$WORK"
+(cd "$WORK" && node "$KIT/outils/bibliotheques.mjs" --miroir --racine "$WORK")
+SRC="$WORK/dev-tests/.offline-cache"
+rm -rf "$HERE/mirror"
 mkdir -p "$HERE/mirror"
-cp "$SRC/build.mjs" "$HERE/mirror/build.mjs"
-# Seulement ce que l'ouverture d'un document demande : l'éditeur (TipTap, ProseMirror), marked, esbuild, plus JSZip et ExcelJS (les importations Excel et PowerPoint
-# de « Nouveau > Importer », run-importer-pp.mjs), plus pdfmake et ses polices (l'export PDF de l'app, run-ranger-publipostage.mjs). Plotly n'est plus à l'app (le graphique est une extension, sa bibliothèque est à GFS) : lab-common.mjs sert la
-# copie de GFS à l'adresse du CDN du catalogue.
-python3 - "$SRC/package.json" "$HERE/mirror/package.json" <<'PY'
-import json, sys
-src = json.load(open(sys.argv[1]))
-keep = lambda n: n.startswith(('prosemirror', '@tiptap', '@floating-ui', '@handlewithcare')) or n in (
-    'orderedmap', 'rope-sequence', 'w3c-keyname', 'esbuild', 'marked', 'jszip', 'exceljs', 'pdfmake')
-src['dependencies'] = {n: v for n, v in src['dependencies'].items() if keep(n)}
-json.dump(src, open(sys.argv[2], 'w'), indent=2)
-PY
-cd "$HERE/mirror"
-npm install --no-audit --no-fund --silent
-node build.mjs
+cp -r "$SRC/esm" "$SRC/umd" "$SRC/esm-map.json" "$HERE/mirror/"
+echo "miroir : $(ls "$HERE/mirror/esm" | wc -l) fichiers ES, $(ls "$HERE/mirror/umd" | wc -l) fichiers UMD dans $HERE/mirror"

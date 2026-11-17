@@ -72,7 +72,11 @@ const toast = async () => ((await frame.locator('#toast').isVisible()) ? (await 
 const explorerHidden = () => frame.locator('.ex').isHidden();
 const { sub, subItem, newButton, openImport, mouseOn } = importMenu(page, () => frame, WORDS.import);
 const { pickWith, noChooser, strays } = fileChooser(page);
-const closeModules = async () => { await page.keyboard.press('Escape'); await frame.locator('.mod').waitFor({ state: 'hidden' }); };
+// Échap sur la fiche d'une app revient à la mosaïque ; un second Échap ferme la fenêtre.
+const closeModules = async () => {
+  for (let i = 0; i < 3 && await frame.locator('.mod').count(); i++) { await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
+  await frame.locator('.mod').waitFor({ state: 'hidden' });
+};
 const showFiles = async () => { await frame.locator('#floater-files').click(); await frame.locator('.ex').waitFor(); };
 // GFS repart (le document garde ses tables et ses choix) : l'explorateur d'abord, aucune app ouverte.
 const restart = async () => {

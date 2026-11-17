@@ -35,6 +35,7 @@ import { AppsState } from './apps/apps-state.js';
 import { arrivalApp, arrivalProbes } from './broker/arrival.js';
 import { arrivalTableApp } from './broker/arrival-table.js';
 import { Rangement, TableDeclined } from './files/rangement.js';
+import { appFilingOf } from './files/app-filing.js';
 import { RightsControl } from './rights/rights-control.js';
 import { createOtherDocuments } from './sharing/share-other.js';
 import { createFollower } from './sharing/share-follow.js';
@@ -122,7 +123,7 @@ export class GfsController {
     // personne, et la table seulement avec son accord. Cette table apprend aussi à GFS l'adresse de la personne (6.4, point 6) : sans écriture possible, elle
     // reste inconnue.
     this.rangement = new Rangement({ port: this.port, consent: () => this.#askTableConsent(), canWrite: () => !this.#writeBlock(),
-      onIdentity: () => this.#onIdentity() });
+      onIdentity: () => this.#onIdentity(), appFilings: () => this.manifests().map(appFilingOf).filter(Boolean) });
     this.registry = new AppsState({ store: this.rangement, onChange: () => this.#onRegistryChange() });
     // Ce que l'explorateur et les liens demandent (grisé, types de « Nouveau » et d'« Importer », qui lit un fichier : js/broker/entries.js), et les ouvertures
     // (js/broker/openings.js).

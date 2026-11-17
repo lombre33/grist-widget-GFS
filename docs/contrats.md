@@ -299,7 +299,7 @@ Une entrée de `fichiers` par table de fichiers :
 | `typeParDefaut` | Le type d'un fichier dont la cellule de type est vide (Publipostage+ : `document`). |
 | `types` | Liste de `{ valeur, nom: { fr, en }, icone, couleur, extension }`. `couleur` : `document`, `grille`, `presentation` ou `pdf` (les quatre du cahier 6.5), sinon neutre. `icone` : identifiant d'une icône du kit [D]. `extension` : l'extension qui possède ce type (absente : le socle). |
 | `exclure` | `{ "<colonne>": [valeurs] }` : lignes que l'explorateur ignore (les lignes réservées, comme `reglages`). |
-| `rangement` | Le rangement propre à l'app (3.1 point 7 du cahier), s'il y en a un : `{ table, utilisateur, fichier, dossier, epingle }`, des noms de colonnes. L'explorateur le lit comme point de départ et n'y écrit jamais (6.4, point 8). |
+| `rangement` | Le rangement propre à l'app (3.1 point 7 du cahier), s'il y en a un : `{ table, utilisateur, fichier, dossier, epingle, ecriture }`, des noms de colonnes. L'explorateur le lit comme point de départ (6.4, point 8). **`ecriture`** (facultatif, décision du porteur du 17/11) : `{ dossiers }`, l'app laisse GFS écrire ce rangement ; alors **la table de l'app fait foi** pour ses fichiers, GFS la lit et l'écrit, et une app ouverte seule montre la même liste que l'explorateur (6.4, point 8). `dossiers` (facultatif, un entier ou un texte) : la valeur de la colonne `fichier` qui marque une ligne d'état de dossier (Publipostage+ : `0`, la colonne `ModeleId`) ; absent, l'app n'a pas de ligne pour un dossier vide et GFS ne lui en écrit pas. GFS n'ajoute jamais une colonne ni une table à l'app : si l'une des quatre colonnes manque, ou la table, GFS range comme avant dans `GFS_Rangement`. Un seul `fichiers[]` par manifeste déclare `ecriture`. |
 | `corbeille` | `{ date, par }` : les deux colonnes où GFS marque un fichier mis à la corbeille (la date en secondes comme Grist la rend, la personne), facultatif (décision du porteur du 04/11). Une ligne dont `date` est positive n'est plus listée dans l'explorateur mais dans sa vue « Corbeille », avec son dossier et son rangement. **Seule la table que GFS écrit lui-même en a** (`GFS_Fichiers`, 6.6, point 10) : aucune app ne déclare ces colonnes, GFS n'en ajoute à aucune table d'app. |
 | `suppression` | `{ ligne: true, uniques, exclusives, remettre, appel }` : comment GFS retire et remet un fichier de cette table depuis l'explorateur (la corbeille des fichiers d'une app, décision du porteur du 04/11), facultatif. `ligne: true` (le seul mode) : un fichier est une ligne de la table, la retirer le supprime et la remettre le restaure. `uniques` : colonnes dont la valeur désigne un fichier (un jeton) : si une ligne de la table la porte déjà, il n'y a rien à restaurer. `exclusives` : colonnes booléennes qu'une seule ligne peut porter (« le modèle par défaut ») : le fichier restauré ne la reprend pas si une autre ligne l'a. `remettre` : `{ colonne: valeur }` posées à la restauration à la place des valeurs gardées. `appel: true` : le fichier tient à plus qu'une ligne (un formulaire, sa section, son lien public : Form+) ; avant de retirer la ligne, GFS demande à l'app ouverte de fermer ce qui y est lié (l'appel `supprimer`, 5.4, point 10), et grise le geste tant que cette app n'est pas ouverte. Sans recette, « Mettre à la corbeille » est grisé pour les fichiers de cette table et un clic dit pourquoi. **Une app seule, sans GFS, garde sa propre gestion de ses fichiers** : seul GFS lit cette recette (6.7). |
 | `copie` | `{ ligne: true, uniques, exclusives, valeurs, appel }` : comment GFS copie un fichier de cette table depuis l'explorateur (« Dupliquer », Ctrl+C puis Ctrl+V ; décision du porteur du 04/11), facultatif. `ligne: true` (le seul mode) : un fichier est une ligne de la table, le copier, c'est ajouter une ligne qui a les mêmes valeurs. `uniques` : colonnes dont la valeur désigne un fichier (un jeton) : la copie les a vides (l'app lui en donne un quand elle en a besoin). `exclusives` : colonnes booléennes qu'une seule ligne peut porter (« le modèle par défaut ») : la copie ne la porte pas. `valeurs` : `{ colonne: valeur }` posées à la place de celles de l'original (elles passent en dernier : l'app décide). Le nom de la copie est le premier nom libre (« Contrat (1) ») ; la date et l'auteur restent ceux de l'original (le contenu est le même : l'app les met à jour quand elle enregistre) ; les pièces jointes restent **citées** par les deux lignes (rien n'est envoyé : Grist garde une pièce tant qu'une cellule la cite). `appel: true` (seul, sans `ligne`, il suffit) : le fichier tient à plus qu'une ligne ; c'est l'app ouverte qui le copie (l'appel `dupliquer`, 5.4, point 11) sous le nom que GFS a calculé, et GFS n'écrit rien dans la table. Sans recette, « Dupliquer » est grisé pour les fichiers de cette table et un clic dit où le faire. **Une app seule, sans GFS, garde sa propre gestion de ses fichiers** : seul GFS lit cette recette. |
@@ -2138,7 +2138,7 @@ rangée d'un fichier, selon ce qui vient d'abord.
    identifiée ne les voit plus, quiconque n'est pas identifié les voit toujours. Cette même adresse est donnée aux apps qui
    déclarent `identite` (3.4, point 6 ; 5.2, point 9), et à elles seules.
 5. [T] Le rangement propre à une app (les dossiers personnels de Publipostage+) reste valable dans l'app ; l'explorateur de GFS
-   le lit (champ `fichiers[].rangement`, 2.4) et n'y écrit jamais (point 8).
+   le lit (champ `fichiers[].rangement`, 2.4) et ne l'écrit que si le manifeste le déclare (`rangement.ecriture`, point 8).
 6. [T] Une ligne dont `Utilisateur` commence par `@` est une ligne réservée de GFS : l'état du document, jamais le rangement
    d'une personne. Deux à ce jour : `@document` / `gfs` / `apps`, les apps installées (7.4), et `@sonde`, la ligne-sonde
    (point 9), qui n'existe que le temps d'une lecture. Le rangement ignore toute ligne en « @ ». Une app n'écrit jamais cette
@@ -2149,9 +2149,29 @@ rangée d'un fichier, selon ce qui vient d'abord.
    contient et celle de chaque dossier gardé sans fichier, sous-dossiers compris ; un dossier ne va ni en lui-même ni dans un de
    ses sous-dossiers. Deux dossiers voisins ne portent pas le même nom (comparé
    comme la recherche) : renommer vers le nom d'un voisin est refusé, déplacer dans un dossier qui a déjà ce nom les réunit.
-8. [D] Dans l'explorateur, la ligne de GFS d'un fichier passe devant le rangement propre de l'app (point 5) ; sans ligne de
-   GFS, celui de l'app reste le point de départ. L'app garde le sien, que GFS ne réécrit pas : un fichier rangé dans GFS
-   peut donc avoir une autre place dans l'app.
+8. [D] **Qui fait foi (décision du porteur, 17/11, qui remplace celle du 21/10).** Le porteur a vu un dossier créé ou un fichier
+   déplacé dans GFS ne pas se retrouver dans Publipostage+ (mesuré : faits vérifiés, 111) : deux listes pour un même document,
+   alors que l'app doit rester utilisable seule. Pour une app dont le manifeste déclare `rangement.ecriture` (2.4), **la table
+   de l'app fait foi**. GFS la lit et l'écrit : pour un fichier, il met à jour la ligne de la personne (toutes, s'il y en a
+   plusieurs : l'app lit la dernière, GFS la première) ou en ajoute une, avec les seules colonnes déclarées (`utilisateur`,
+   `fichier`, `dossier`, `epingle`), dans le même lot que ses propres lignes ; l'identifiant d'un fichier s'écrit en nombre quand
+   la colonne est un entier. `GFS_Rangement` ne garde pour cette app que le repli (point suivant) et les lignes d'état de dossier.
+   **Les dossiers sans fichier se gardent aux deux endroits** (point 11) : une ligne d'état dans `GFS_Rangement` et, si
+   `ecriture.dossiers` est déclaré, une ligne d'état dans la table de l'app (la colonne du fichier porte la marque ; la colonne
+   du dossier, le chemin) ; supprimer un dossier vide retire les deux. **Reprise** : au premier rangement d'un fichier de cette
+   app, les lignes de `GFS_Rangement` que GFS avait écrites pour la personne passent dans la table de l'app (la première ligne de
+   chaque fichier, comme la lecture ; une ligne sans dossier ni favori n'est reprise que si l'app a déjà une ligne pour ce
+   fichier) et sont retirées de `GFS_Rangement`, dans le même lot : une ligne qui y resterait pourrait défaire plus tard un
+   rangement fait dans l'app ; les dossiers sans fichier de `GFS_Rangement` passent chez l'app aussi. **Repli** : si la table
+   de l'app ou l'une de ses quatre colonnes manque, GFS range comme avant, dans `GFS_Rangement`, et n'écrit rien chez l'app (une
+   colonne absente annulerait tout le lot). Pour une app sans `ecriture`, rien ne change : la ligne de GFS d'un fichier passe
+   devant le rangement propre de l'app, qui reste le point de départ sans elle ; GFS ne réécrit pas celui de l'app, et un fichier
+   rangé dans GFS peut avoir une autre place dans l'app. **Ce que l'app fait de son côté** (consigne 072) : relire sa liste au
+   retour de GFS (elle la charge au démarrage : une ligne que GFS écrit pendant qu'elle est ouverte pourrait doubler la sienne),
+   et montrer les lignes d'état comme des dossiers vides. GFS n'ajoute jamais de colonne à l'app (6.1, point 3 pour sa table à
+   lui seulement), ne donne aucune porte nouvelle au courtier (l'écriture est la sienne, par sa propre connexion, comme
+   `suppression` et `copie`), et ne lit pas une ligne qui n'est pas celle de la personne. [M] Mesuré le 17/11 dans un vrai Grist
+   (`prototype/labo/run-rangement-app.mjs`, 19 vérifications) : faits vérifiés, 111.
 9. [T] **La sonde de l'adresse.** La colonne `Adresse` porte une formule déclenchée (`recalcWhen: 0`, `recalcDeps: null` : calculée
    à la création d'une ligne, jamais ensuite) : `user.Email if $Utilisateur == '@sonde' else ''`. Une fois à chaque ouverture
    de GFS, avant la première lecture du rangement ou à la première écriture, GFS ajoute une ligne `Utilisateur = '@sonde'`,

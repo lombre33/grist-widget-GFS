@@ -9,6 +9,8 @@ import { publipostage } from './helpers.mjs';
 
 const manifest = publipostage();
 const spec = manifest.fichiers[0];
+// Une app qui tient son rangement mais ne laisse pas GFS l'écrire (sans `rangement.ecriture`) : celui de GFS passe devant le sien (6.4, point 5).
+const legacy = (() => { const copy = structuredClone(manifest); delete copy.fichiers[0].rangement.ecriture; return copy; })();
 
 const tables = () => ({
   [spec.table]: { id: [1, 2], Nom: ['Convocation', 'Attestation'], TypeModele: ['', ''], DateModif: [0, 0], ModifiePar: ['', ''] },
@@ -23,8 +25,8 @@ function port(data, { broken = null } = {}) {
   } };
 }
 
-test('le rangement de GFS passe devant celui de l\'app (nom de table sans tenir compte de la casse) ; sans ligne de GFS, celui de l\'app reste', async () => {
-  const { files, problems } = await loadFiles(port(tables()), [{ manifest }], '');
+test('app sans `ecriture` : le rangement de GFS passe devant celui de l\'app (nom de table sans tenir compte de la casse) ; sans ligne de GFS, celui de l\'app reste', async () => {
+  const { files, problems } = await loadFiles(port(tables()), [{ manifest: legacy }], '');
   const of = id => files.find(file => file.id === id);
   assert.deepEqual(problems, []);
   assert.deepEqual([of('1').folder, of('1').pinned], ['Formation', true]);
@@ -251,7 +253,7 @@ test('un fichier placé dans un espace en prend le dossier ; les dossiers de l\'
     GFS_Espaces: { id: [1], Cle: ['achats'], Nom: ['Achats'] },
     GFS_Placement: { id: [1], Cible: ['publipostage:1'], Espace: ['achats'], Dossier: ['Contrats'] },
   };
-  const { files, folders, spaces } = await loadFiles(port(data), [{ manifest }], '');
+  const { files, folders, spaces } = await loadFiles(port(data), [{ manifest: legacy }], '');
   assert.equal(files.find(file => file.id === '1').folder, 'Espaces/Achats/Contrats');
   assert.equal(files.find(file => file.id === '2').folder, 'Archives');
   assert.ok(folders.includes('Espaces/Achats'), 'l\'espace est un dossier');
@@ -308,8 +310,59 @@ test('la lecture ne dépend pas de l\'adresse de la personne pour partir : donn�
   const { files } = await pending;
   assert.deepEqual(files.map(file => [file.id, file.folder, file.pinned]), [['1', '', false], ['2', '', false]], 'le rangement de GFS d\'une autre personne ne s\'applique pas');
   const again = gatedPort(tables());
-  const known = loadFiles(again.port, [{ manifest }], Promise.resolve(''));
+  const known = loadFiles(again.port, [{ manifest: legacy }], Promise.resolve(''));
   await again.settle();
   again.release();
   assert.deepEqual((await known).files.map(file => file.folder), ['Formation', 'Archives'], 'sans adresse, le rangement commun s\'applique');
+});
+
+// ----- L'app tient son rangement et laisse GFS l'écrire (`rangement.ecriture`, contrats 2.4 et 6.4, point 8) : son rangement fait foi.
+const appTables = () => ({
+  [spec.table]: { id: [1, 2, 3], Nom: ['Convocation', 'Attestation', 'Facture'], TypeModele: ['', '', ''], DateModif: [0, 0, 0], ModifiePar: ['', '', ''] },
+  [spec.rangement.table]: { id: [1, 2, 3, 4, 5], Utilisateur: ['', '', '', '', 'autre@exemple.org'], ModeleId: [1, 2, 0, 0, 0], Dossier: ['Formation', 'Formation', 'Vide', 'Vide/Sous-dossier', 'Prive'],
+    Epingle: [true, false, false, false, false] },
+  // GFS_Rangement dit autre chose pour 2 (rangé dans GFS avant la reprise) et seul parle du fichier 3 (l'app n'a aucune ligne pour lui).
+  gfs_rangement: { id: [1, 2], Utilisateur: ['', ''], App: ['publipostage', 'publipostage'], Fichier: ['2', '3'], Favori: [true, true], Dossier: ['Archives', 'Factures'] },
+});
+
+test('app avec `ecriture` : sa table fait foi, la ligne de GFS ne sert que pour un fichier que l\'app n\'a jamais rangé', async () => {
+  const { files, problems } = await loadFiles(port(appTables()), [{ manifest }], '');
+  const of = id => files.find(file => file.id === id);
+  assert.deepEqual(problems, []);
+  assert.deepEqual([of('1').folder, of('1').pinned], ['Formation', true]);
+  assert.deepEqual([of('2').folder, of('2').pinned], ['Formation', false], 'l\'app a une ligne pour 2 : celle de GFS ne passe plus devant');
+  assert.deepEqual([of('3').folder, of('3').pinned], ['Factures', true], 'l\'app n\'a aucune ligne pour 3 : le repli sur GFS');
+});
+
+test('app avec `ecriture` : ses lignes d\'état de dossier (la marque `dossiers`) s\'ajoutent aux dossiers de la personne, une autre personne ne compte pas', async () => {
+  const { folders } = await loadFiles(port(appTables()), [{ manifest }], '');
+  assert.deepEqual([...folders].sort(), ['Vide', 'Vide/Sous-dossier']);
+  const other = await loadFiles(port(appTables()), [{ manifest }], 'autre@exemple.org');
+  assert.deepEqual(other.folders, ['Prive']);
+});
+
+test('app avec `ecriture` : sans sa table, ou sans l\'une de ses colonnes, GFS range comme avant (le rangement de GFS passe devant, aucun dossier de l\'app)', async () => {
+  const noTable = appTables();
+  delete noTable[spec.rangement.table];
+  const first = await loadFiles(port(noTable), [{ manifest }], '');
+  assert.deepEqual(first.files.map(file => [file.id, file.folder]), [['1', ''], ['2', 'Archives'], ['3', 'Factures']]);
+  assert.deepEqual(first.folders, []);
+  const noColumn = appTables();
+  delete noColumn[spec.rangement.table].Epingle;
+  const second = await loadFiles(port(noColumn), [{ manifest }], '');
+  assert.deepEqual(second.files.map(file => [file.id, file.folder]), [['1', 'Formation'], ['2', 'Archives'], ['3', 'Factures']]);
+  assert.deepEqual(second.folders, []);
+});
+
+test('app avec `ecriture` : un fichier à la corbeille de GFS garde le dossier que l\'app lui donne', async () => {
+  const data = appTables();
+  data[spec.table] = { id: [1, 2], Nom: ['Convocation', 'Attestation'], TypeModele: ['', ''], DateModif: [0, 0], ModifiePar: ['', ''], Jeton: ['a', 'b'] };
+  data.GFS_Corbeille = { id: [1], App: ['publipostage'], Table: [spec.table], FichierId: ['3'], Nom: ['Facture'], Type: [''], Date: [0], Auteur: [''], SupprimeLe: [1762000000],
+    SupprimePar: [''], Instantane: ['{"Nom":"Facture","Jeton":"c"}'] };
+  data[spec.rangement.table] = { ...data[spec.rangement.table], id: [1, 2, 3, 4, 5, 6], Utilisateur: ['', '', '', '', 'autre@exemple.org', ''], ModeleId: [1, 2, 0, 0, 0, 3],
+    Dossier: ['Formation', 'Formation', 'Vide', 'Vide/Sous-dossier', 'Prive', 'Compta'], Epingle: [true, false, false, false, false, false] };
+  const recipe = structuredClone(manifest);
+  recipe.fichiers[0].suppression = { ligne: true, uniques: ['Jeton'] };
+  const { trash } = await loadFiles(port(data), [{ manifest: recipe }], '');
+  assert.deepEqual(trash.map(file => [file.id, file.folder]), [['3', 'Compta']], 'le dossier de l\'app, pas celui de GFS (Factures)');
 });

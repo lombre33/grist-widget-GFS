@@ -48,6 +48,9 @@ function checkCatalogue(m, others, errors) {
 }
 
 function checkFiles(m, errors) {
+  // Un seul rangement écrit par app : un identifiant de fichier n'a de sens que dans la table qui le porte (js/files/app-filing.js).
+  if ((m.fichiers || []).filter(file => file && file.rangement && file.rangement.ecriture !== undefined).length > 1) errors.push(
+    'fichiers[].rangement.ecriture : une seule table de fichiers par app');
   for (const file of m.fichiers || []) {
     const prefix = (m.tables && m.tables.prefixe) || '';
     if (!isText(file.table) || !file.table.toLowerCase().startsWith(prefix.toLowerCase())) errors.push('fichiers[].table hors du préfixe');
@@ -111,7 +114,23 @@ function checkFiling(filing, prefix, errors) {
     errors.push('fichiers[].rangement.table hors du préfixe');
     return;
   }
-  for (const [key, value] of Object.entries(filing)) if (!isText(value)) errors.push(`fichiers[].rangement.${key} : chaîne attendue`);
+  for (const [key, value] of Object.entries(filing)) if (key !== 'ecriture' && !isText(value)) errors.push(`fichiers[].rangement.${key} : chaîne attendue`);
+  checkFilingWrite(filing, errors);
+}
+
+// `ecriture` (facultatif, 2.4 et 6.4 point 8) : l'app laisse GFS écrire son rangement, qui fait alors foi pour ses fichiers. GFS lit et écrit les quatre
+// colonnes (personne, fichier, dossier, épingle) : toutes doivent être nommées. `dossiers` (facultatif) : la valeur de la colonne du fichier qui marque une
+// ligne d'état de dossier (un dossier gardé sans fichier), un entier ou un texte.
+function checkFilingWrite(filing, errors) {
+  if (filing.ecriture === undefined) return;
+  const write = filing.ecriture;
+  if (!isObject(write)) { errors.push('fichiers[].rangement.ecriture : objet attendu'); return; }
+  const mark = write.dossiers;
+  if (mark !== undefined && !(Number.isInteger(mark) || isText(mark))) errors.push('fichiers[].rangement.ecriture.dossiers : entier ou chaîne attendu');
+  for (const key of Object.keys(write)) if (key !== 'dossiers') errors.push(`fichiers[].rangement.ecriture.${key} : inconnu`);
+  for (const key of ['utilisateur', 'fichier', 'dossier', 'epingle']) {
+    if (!isText(filing[key])) errors.push(`fichiers[].rangement.ecriture demande la colonne ${key}`);
+  }
 }
 
 function checkSettings(m, errors) {

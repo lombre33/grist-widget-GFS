@@ -168,7 +168,9 @@ Numérotées pour que les tests les citent (« 3.1, point 4 »).
    (« gérer les enregistrements automatiques en cas de swap d'app ou de fichier »).
 6. « Nouveau » crée un fichier de n'importe quel type des apps installées ; il se range dans le dossier courant.
 7. Ranger : dossiers et favoris communs à toutes les apps, dans une seule table de GFS. Le rangement propre à une app (les
-   dossiers personnels de Publipostage+) reste valable.
+   dossiers personnels de Publipostage+) reste valable, et **quand l'app le laisse écrire (son manifeste le déclare), il fait foi
+   pour ses fichiers** : GFS le lit et l'écrit, de sorte que l'app ouverte seule et l'explorateur montrent la même liste (décision
+   du porteur du 17/11, contrats 6.4 point 8) ; les dossiers vides se gardent aux deux endroits.
 8. Une fonction qui demande une extension non active est grisée, jamais cachée. Dans GFS, un clic ouvre l'installation ;
    dans l'app seule, un clic explique comment passer à GFS (guide des apps, section 5).
 9. À l'arrivée, GFS ouvre l'app de la section, puis l'app applique son propre ordre d'arrivée (section 6.2).

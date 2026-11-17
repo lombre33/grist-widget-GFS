@@ -76,6 +76,19 @@ test('contrats 2.4 : le rangement propre à une app est une table du préfixe, a
   assert.match(bad(m => { m.fichiers[0].rangement.dossier = 3; }), /rangement\.dossier/);
 });
 
+test('contrats 2.4 : `rangement.ecriture` laisse GFS écrire le rangement de l\'app (objet, `dossiers` entier ou texte, les quatre colonnes nommées, une seule table par app) ; Publipostage+ la déclare', () => {
+  assert.deepEqual(publipostage().fichiers[0].rangement.ecriture, { dossiers: 0 });
+  assert.deepEqual(validateManifest(publipostage()), { ok: true, errors: [] });
+  const ok = mutate => { const m = publipostage(); mutate(m); return validateManifest(m); };
+  assert.equal(ok(m => { m.fichiers[0].rangement.ecriture = {}; }).ok, true, 'sans `dossiers`, l\'app n\'a pas de ligne d\'état de dossier');
+  assert.equal(ok(m => { m.fichiers[0].rangement.ecriture = { dossiers: '@dossier' }; }).ok, true);
+  assert.match(bad(m => { m.fichiers[0].rangement.ecriture = true; }), /rangement\.ecriture : objet attendu/);
+  assert.match(bad(m => { m.fichiers[0].rangement.ecriture = { dossiers: 1.5 }; }), /ecriture\.dossiers : entier ou chaîne attendu/);
+  assert.match(bad(m => { m.fichiers[0].rangement.ecriture = { dossiers: 0, ailleurs: 1 }; }), /ecriture\.ailleurs : inconnu/);
+  assert.match(bad(m => { delete m.fichiers[0].rangement.epingle; }), /rangement\.ecriture demande la colonne epingle/);
+  assert.match(bad(m => { m.fichiers.push({ ...structuredClone(m.fichiers[0]), table: 'Publipostage_Autres' }); }), /une seule table de fichiers par app/);
+});
+
 // La recette de suppression (contrats 2.4) : ce que le manifeste dit pour que GFS retire et remette un fichier de l'app depuis l'explorateur (la corbeille).
 test('contrats 2.4 : la recette de suppression est `ligne: true`, avec des listes de colonnes et un objet `remettre` au besoin ; une app sans recette reste valide (ses fichiers sont grisés)', () => {
   assert.match(bad(m => { m.fichiers[0].suppression = {}; }), /suppression\.ligne : true attendu/);

@@ -4,6 +4,7 @@
 
 import { readFiles, readFiling, readGfsFiling, readGfsFolders, applyFiling } from './explorer-model.js';
 import { TABLE } from '../files/rangement.js';
+import { readAppFolders, usable } from '../files/app-filing.js';
 import { BIN_TABLE, recipeOf, binFiles } from '../files/gfs-trash.js';
 import { linkedWeights } from '../weight/weight.js';
 import { applyPlacement, loadSpaces } from '../sharing/spaces-filing.js';
@@ -134,6 +135,7 @@ export async function loadFiles(port, apps, identity = '', reader = null) {
     if (one.problem) { problems.push(one.problem); continue; }
     for (const file of one.found) (file.trashed ? trash : files).push(file);
     trash.push(...one.binned);
+    for (const path of one.folders) if (!folders.includes(path)) folders.push(path);
     stats.tables += 1;
     stats.rows += one.found.length;
   }
@@ -161,20 +163,23 @@ async function arrange(port, raw, identity) {
 function readAppFiles({ identity, address, spaces, bin, gfsFiling }, { manifest, spec, main, filing: filingTable, links }) {
   if (main.error) return { problem: { app: manifest.id, reason: String(main.error.message || main.error) } };
   const filing = filingTable.data ? readFiling(spec.rangement, filingTable.data, identity) : null;
+  // L'app tient son rangement et laisse GFS l'écrire (6.4, point 8) : le sien fait foi, et ses dossiers sans fichier s'ajoutent à ceux de la personne.
+  const appFirst = Boolean(spec.rangement && spec.rangement.ecriture) && usable(spec.rangement, filingTable.data);
   const found = readFiles(manifest, spec, main.data, main.weights || null, links);
-  applyFiling(found, filing, gfsFiling);
+  applyFiling(found, filing, gfsFiling, appFirst);
   applyPlacement(found, spaces);
   applyDirect(found, main.data, address);
   applyLinks(found, main.data, spaces, identity || address);
-  return { found, binned: binnedFiles(manifest, spec, bin, filing, gfsFiling) };
+  const folders = appFirst ? readAppFolders({ ...spec.rangement, marque: spec.rangement.ecriture.dossiers }, filingTable.data, identity) : [];
+  return { found, folders, binned: binnedFiles(manifest, spec, bin, { filing, gfsFiling, appFirst }) };
 }
 
 // Les fichiers de l'app que la personne a mis à la corbeille ne sont plus dans sa table : ils sont dans `GFS_Corbeille` (js/files/gfs-trash.js), et gardent
 // leur dossier, que le rangement n'a pas quitté.
-function binnedFiles(manifest, spec, bin, filing, gfsFiling) {
+function binnedFiles(manifest, spec, bin, { filing, gfsFiling, appFirst }) {
   if (!recipeOf(spec) || !bin.data) return [];
   const gone = binFiles(spec, bin.data, manifest.id, bin.weights);
   const entries = readFiles(manifest, gone.spec, gone.data, gone.weights);
-  applyFiling(entries, filing, gfsFiling);
+  applyFiling(entries, filing, gfsFiling, appFirst);
   return entries;
 }

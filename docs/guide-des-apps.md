@@ -303,12 +303,14 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     celles qui naissent ensuite aussi ; enfoncé, aucune ne la porte ; ton cadre n'est jamais rechargé par le bouton.
 
 22. Montrer l'app dans la vitrine de GFS (décision du porteur du 17/11 : « A · Vitrine », la fenêtre « Apps et extensions » en mosaïque, comme un magasin d'apps ; contrats 2.2, champ
-    `vitrine`). **Facultatif, et sans effet hors de GFS.** Chaque app a une carte (son icône, son nom, `texte`, « Installer » ou « Ouvrir ») et une fiche. Pour les enrichir, demande-le à
-    GFS (section « Demandes à GFS » de ton `GFS-ETAT.md`) : une `description` plus longue que `texte` (français et anglais) et au plus six captures, en `.webp` de préférence (`.png`, `.jpg`),
-    chacune avec sa `legende` (français et anglais). **Les captures sont des fichiers de GFS**, rangés dans son dossier `vitrine/` : la politique de sécurité du contenu de GFS ne charge une
-    image que de lui, jamais de ton dépôt ni d'un CDN. Prends-les dans un vrai Grist, à 700 × 400 ou plus large, en clair, sans nom de personne ni donnée réelle ; GFS les range et déclare
-    `vitrine` dans le manifeste de ton app. Sans capture, la carte montre ton icône et ton nom : rien n'est cassé. **Fait quand** : la carte et la fiche de ton app montrent la description et
-    les captures, en français et en anglais, à 700 × 400, en clair et en sombre.
+    `vitrine`). **Facultatif, et sans effet hors de GFS.** Chaque app a une carte (son icône, son nom, `texte`, « Installer » ou « Ouvrir ») et une fiche. Pour les enrichir, mets dans ton
+    dépôt un dossier `vitrine/` à la racine : `vitrine.json` (`{ "description": { "fr", "en" }, "captures": [ { "fichier": "1.webp", "legende": { "fr", "en" } } ] }`, une description de
+    280 caractères au plus, des légendes de 60 au plus) et les images (trois conseillées, six au plus). Une image : WebP de préférence (`.png` ou `.jpg` acceptés), 960 × 600 px (16:10),
+    60 Ko au plus, l'app seule, prise dans un vrai Grist, en clair, avec des données d'exemple sans nom de personne réel, l'essentiel au centre (la carte rogne un dixième en haut et en
+    bas) ; la première illustre la carte. Demande ensuite à GFS (section « Demandes à GFS » de ton `GFS-ETAT.md`, une ligne `vitrine · <commit> · vitrine/vitrine.json · …`). **Les captures
+    servies sont des fichiers de GFS**, rangés dans son dossier `vitrine/` : la politique de sécurité du contenu de GFS ne charge une image que de lui, jamais de ton dépôt ni d'un CDN ;
+    GFS copie tes images, déclare `vitrine` dans le manifeste de ton app et avance sa référence. Sans capture, la carte montre ton icône et ton nom : rien n'est cassé. **Fait quand** : la
+    carte et la fiche de ton app montrent la description et les captures, en français et en anglais, à 700 × 400, en clair et en sombre.
 
 ### 1.3 Licence : GPL 3.0 dans tous les dépôts (décision du porteur, 21/10)
 

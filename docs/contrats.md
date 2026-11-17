@@ -585,9 +585,11 @@ D'après son code du 14/10 (`e4a239c`). Les sept tables internes qu'il lit vienn
 `_grist_Tables_column`) et de `page-tree.js` (`indentation`, `pagePos` et `options` de `_grist_Pages`). Une entrée qui écrit
 nomme une seule table et porte aussi `lit: true` (3.3, point 5). Depuis le 21/10, une huitième lecture : `_grist_DocInfo`, pour
 la langue et la devise du document (demande de l'app, `32822d6`) ; elle ne s'écrit jamais (3.3, point 6). Depuis le 22/10,
-`actions.importer` déclare les imports que l'app fait par son menu « + » (`js/main.js` : `onImportXlsx`, `onImportMd`,
-`onImportPptx`) : Excel (une grille), Markdown (un document) et PowerPoint (une présentation, le type de l'extension
-« Diapositives », absent de cet exemple, qui n'en montre que les deux premiers). GFS grise les formats d'une app qui ne sait pas encore recevoir
+`actions.importer` déclare les imports que l'app fait par son menu « + » (`js/main-import.js` : `onImportXlsx`, `onImportMd`,
+`onImportPptx`, `onImportDocx`, `onImportHtml` et `onImportOdf`) : Excel (une grille), Markdown (un document), PowerPoint (une présentation,
+le type de l'extension « Diapositives », absente de cet exemple, qui n'en montre que les deux premiers), Word, HTML (une page web, ou son archive
+`.zip`) et OpenDocument (une seule valeur pour un texte, un tableur et une présentation : l'app choisit son moteur d'après le contenu du fichier,
+et le `type` déclaré, `document`, est celui du texte, le genre le plus courant). GFS grise les formats d'une app qui ne sait pas encore recevoir
 le fichier de lui, avec « Pas encore » (5.4, point 1) ; Publipostage+ le sait depuis sa consigne 035 (`d76430c`, 23/10).
 
 ```json

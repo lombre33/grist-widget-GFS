@@ -10,6 +10,8 @@
 //   6. Un fichier illisible (`faux.xlsx`) : l'app le dit et garde son document, GFS ne dit rien.
 //   7. « Word » (déclaré à la demande de l'app, 187464a ; choix du porteur du 07/11) : le sélecteur propose les quatre extensions du manifeste ; l'app déjà ouverte (appel `ouvrir`) pose sa question, puis le document du fichier ;
 //      GFS repart, l'app fermée : le Word part avec l'ouverture du contexte et remplace le ★, sans nom ; rien n'est écrit dans le document.
+//   8. « HTML » et « OpenDocument » (déclarés le 17/11 à la demande de l'app, `b0dec60`, `54176f8` ; choix du porteur : « Oui, les deux ») : le sélecteur propose les extensions du manifeste ; l'app déjà
+//      ouverte (appel `ouvrir`) : une page HTML, puis un texte OpenDocument (`.fodt`) et un tableur (`.fods`) par la MÊME valeur ; l'app fermée, au démarrage : le HTML et le tableur ; rien n'est écrit.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { readFileSync } from 'node:fs';
 import { startLab } from './lab-setup.mjs';
@@ -22,24 +24,32 @@ const scheme = process.env.LAB_SCHEME || 'light';
 const run = `importer-pp-${lang}-${scheme}`;
 const WORDS = lang === 'fr'
   ? {
-    import: 'Importer', excel: 'Excel', markdown: 'Markdown', pptx: 'PowerPoint', word: 'Word', type: { excel: 'Grille', markdown: 'Document', powerpoint: 'Présentation', word: 'Document' }, slides: /extension Diapositives/,
+    import: 'Importer', excel: 'Excel', markdown: 'Markdown', pptx: 'PowerPoint', word: 'Word', html: 'HTML', odf: 'OpenDocument', type: { excel: 'Grille', markdown: 'Document', powerpoint: 'Présentation', word: 'Document', html: 'Document', odf: 'Document' },
+    slides: /extension Diapositives/,
     buttons: ['Annuler', 'Ne pas enregistrer'], cancel: 'Annuler', discard: 'Ne pas enregistrer', unsaved: /^Modèle non enregistré/,
     imported: {
       markdown: 'Markdown importé. Nommez le modèle puis enregistrez-le.',
       excel: 'Excel importé : 3 lignes, 2 colonnes. Nommez le modèle puis enregistrez-le.',
       powerpoint: 'PowerPoint importé : 2 diapositives. Nommez le modèle puis enregistrez-le.',
       word: 'Word importé. Nommez le modèle puis enregistrez-le.',
+      html: 'HTML importé. Nommez le modèle puis enregistrez-le.',
+      odf: 'OpenDocument importé. Nommez le modèle puis enregistrez-le.',
+      odfSheet: 'OpenDocument importé : 3 lignes, 2 colonnes. Nommez le modèle puis enregistrez-le.',
     },
     unreadable: 'Ce fichier n’est pas un classeur Excel (.xlsx) lisible.',
   }
   : {
-    import: 'Import', excel: 'Excel', markdown: 'Markdown', pptx: 'PowerPoint', word: 'Word', type: { excel: 'Grid', markdown: 'Document', powerpoint: 'Presentation', word: 'Document' }, slides: /Slides extension/,
+    import: 'Import', excel: 'Excel', markdown: 'Markdown', pptx: 'PowerPoint', word: 'Word', html: 'HTML', odf: 'OpenDocument', type: { excel: 'Grid', markdown: 'Document', powerpoint: 'Presentation', word: 'Document', html: 'Document', odf: 'Document' },
+    slides: /Slides extension/,
     buttons: ['Cancel', 'Don’t save'], cancel: 'Cancel', discard: 'Don’t save', unsaved: /^Template not saved/,
     imported: {
       markdown: 'Markdown imported. Name the template, then save it.',
       excel: 'Excel imported: 3 rows, 2 columns. Name the template, then save it.',
       powerpoint: 'PowerPoint imported: 2 slides. Name the template, then save it.',
       word: 'Word imported. Name the template, then save it.',
+      html: 'HTML imported. Name the template, then save it.',
+      odf: 'OpenDocument imported. Name the template, then save it.',
+      odfSheet: 'OpenDocument imported: 3 rows, 2 columns. Name the template, then save it.',
     },
     unreadable: 'This file is not a readable Excel (.xlsx) workbook.',
   };
@@ -51,6 +61,14 @@ const MARKDOWN_TEXT = 'Titre importéTexte du fichier de GFS.';
 const NOT_A_BOOK = { name: 'faux.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: Buffer.from('ceci n’est pas un classeur', 'utf8') };
 const MIME = { excel: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', powerpoint: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', word: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' };
 const WORD_TEXT = 'Titre du WordTexte du fichier Word de GFS.';
+// HTML et OpenDocument : des fichiers en clair (une page, un texte et un tableur « à plat » : `.fodt` et `.fods`), sans bibliothèque à charger pour les écrire.
+const HTML_TEXT = 'Titre de la pageTexte de la page HTML de GFS.';
+const ODF_TEXT = 'Titre du fichier OpenDocumentTexte du fichier OpenDocument de GFS.';
+const ODF_NS = 'xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" office:version="1.3"';
+const cell = (value, number) => `<table:table-cell office:value-type="${number ? 'float' : 'string'}"${number ? ` office:value="${value}"` : ''}><text:p>${value}</text:p></table:table-cell>`;
+const HTML_FILE = { name: 'page.html', mimeType: 'text/html', buffer: Buffer.from('<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Page</title></head><body><h1>Titre de la page</h1><p>Texte de la page HTML de GFS.</p></body></html>', 'utf8') };
+const ODF_TEXT_FILE = { name: 'compte-rendu.fodt', mimeType: 'application/vnd.oasis.opendocument.text', buffer: Buffer.from(`<?xml version="1.0" encoding="UTF-8"?><office:document ${ODF_NS} office:mimetype="application/vnd.oasis.opendocument.text"><office:body><office:text><text:h text:outline-level="1">Titre du fichier OpenDocument</text:h><text:p>Texte du fichier OpenDocument de GFS.</text:p></office:text></office:body></office:document>`, 'utf8') };
+const ODF_SHEET_FILE = { name: 'ventes.fods', mimeType: 'application/vnd.oasis.opendocument.spreadsheet', buffer: Buffer.from(`<?xml version="1.0" encoding="UTF-8"?><office:document ${ODF_NS} office:mimetype="application/vnd.oasis.opendocument.spreadsheet"><office:body><office:spreadsheet><table:table table:name="Ventes"><table:table-row>${cell('Produit')}${cell('Quantité')}</table:table-row><table:table-row>${cell('Vis')}${cell(12, true)}</table:table-row><table:table-row>${cell('Clou')}${cell(7, true)}</table:table-row></table:table></office:spreadsheet></office:body></office:document>`, 'utf8') };
 const FK_SLIDES = 'ext:publipostage/diapositives';
 
 const lab = await startLab({ lang, colorScheme: scheme });
@@ -192,12 +210,16 @@ baseline = before;
 // 1. Au départ : « Excel » et « Markdown » ne sont plus grisés, « PowerPoint » attend « Diapositives ».
 await openImport();
 const labels = await frame.locator('.menu-sub .menu-item .menu-label').allInnerTexts();
-check('le sous-menu « Importer » liste les quatre formats de Publipostage+ (Word est le quatrième), puis le PDF que GFS garde lui-même', JSON.stringify(labels) === JSON.stringify([WORDS.excel, WORDS.markdown, WORDS.pptx, WORDS.word, 'PDF']), labels);
-const disabled = await Promise.all([WORDS.excel, WORDS.markdown, WORDS.pptx, WORDS.word].map(async name => (await subItem(name).getAttribute('aria-disabled')) === 'true'));
-check('« Excel », « Markdown » et « Word » ne sont pas grisés ; « PowerPoint » l\'est (l\'extension « Diapositives » manque)', JSON.stringify(disabled) === JSON.stringify([false, false, true, false]), disabled);
-const hints = await Promise.all([WORDS.excel, WORDS.markdown, WORDS.pptx, WORDS.word].map(name => subItem(name).locator('.menu-hint').innerText()));
-check('chacun dit son type (Grille, Document, Document) ; « PowerPoint » dit ce qui manque', hints[0] === WORDS.type.excel && hints[1] === WORDS.type.markdown && WORDS.slides.test(hints[2]) && hints[3] === WORDS.type.word, hints);
-check('ils portent la couleur de leur type (grille verte, document bleu, Word compris), le grisé non', (await subItem(WORDS.excel).getAttribute('data-fam')) === 'grid' && (await subItem(WORDS.markdown).getAttribute('data-fam')) === 'doc' && (await subItem(WORDS.word).getAttribute('data-fam')) === 'doc' && (await subItem(WORDS.pptx).getAttribute('data-fam')) === null);
+const FORMATS = [WORDS.excel, WORDS.markdown, WORDS.pptx, WORDS.word, WORDS.html, WORDS.odf];
+check('le sous-menu « Importer » liste les six formats de Publipostage+ (HTML et OpenDocument en dernier), puis le PDF que GFS garde lui-même, puis l\'arrivée d\'un autre document',
+  JSON.stringify(labels.slice(0, 7)) === JSON.stringify([...FORMATS, 'PDF']) && labels.length === 8, labels);
+const disabled = await Promise.all(FORMATS.map(async name => (await subItem(name).getAttribute('aria-disabled')) === 'true'));
+check('« Excel », « Markdown », « Word », « HTML » et « OpenDocument » ne sont pas grisés ; « PowerPoint » l\'est (l\'extension « Diapositives » manque)', JSON.stringify(disabled) === JSON.stringify([false, false, true, false, false, false]), disabled);
+const hints = await Promise.all(FORMATS.map(name => subItem(name).locator('.menu-hint').innerText()));
+check('chacun dit son type (Grille, Document, Document…) ; « PowerPoint » dit ce qui manque', hints[0] === WORDS.type.excel && hints[1] === WORDS.type.markdown && WORDS.slides.test(hints[2]) && hints[3] === WORDS.type.word
+  && hints[4] === WORDS.type.html && hints[5] === WORDS.type.odf, hints);
+check('ils portent la couleur de leur type (grille verte, document bleu, Word compris), le grisé non', (await subItem(WORDS.excel).getAttribute('data-fam')) === 'grid' && (await subItem(WORDS.markdown).getAttribute('data-fam')) === 'doc' && (await subItem(WORDS.word).getAttribute('data-fam')) === 'doc' && (await subItem(WORDS.html).getAttribute('data-fam')) === 'doc' && (await subItem(WORDS.odf).getAttribute('data-fam')) === 'doc'
+  && (await subItem(WORDS.pptx).getAttribute('data-fam')) === null);
 await lab.shotPanel(run, '1-sous-menu', frame);
 const none = await noChooser(() => mouseOn(subItem(WORDS.pptx)));
 await frame.locator('.mod').waitFor();
@@ -282,12 +304,52 @@ check('l\'app garde son cadre (non rechargée), GFS ne dit rien, l\'explorateur 
 await lab.shotPanel(run, '5b-word-par-ouvrir', frame);
 check('rien n\'est écrit dans le document par l\'import de Word', await untouched('Word par ouvrir'));
 
+// 8. « HTML » et « OpenDocument » par l'appel `ouvrir` (le Word importé attend d'être enregistré : la question se pose chaque fois).
+await showFiles();
+await openImport();
+const htmlPick = await pickWith(() => subItem(WORDS.html).click(), HTML_FILE);
+check('« HTML » propose les quatre extensions du manifeste', htmlPick.accept === EXTENSIONS.html && htmlPick.multiple === false, { htmlPick, attendu: EXTENSIONS.html });
+asked = await waitDialog();
+check('le Word importé attend d\'être enregistré : la question se pose, dans le panneau', asked.open && asked.inPanel && JSON.stringify(asked.buttons) === JSON.stringify(WORDS.buttons), asked);
+await pressDialog(WORDS.discard);
+seen = await waitStatus(WORDS.imported.html);
+say('HTML par ouvrir :', seen);
+check('la page est à l\'écran (son titre et son paragraphe), sans nom ni modèle courant, avec la phrase « HTML importé… »', isImported(seen, 'html') && seen.text === HTML_TEXT && !seen.grid && seen.slides === 0, seen);
+check('l\'app garde son cadre (non rechargée), GFS ne dit rien, l\'explorateur est fermé', (await lab.appFrame(APP)) === app && (await toast()) === '' && (await explorerHidden()));
+await lab.shotPanel(run, '5d-html-par-ouvrir', frame);
+check('rien n\'est écrit dans le document par l\'import de HTML', await untouched('HTML par ouvrir'));
+
+await showFiles();
+await openImport();
+const odfPick = await pickWith(() => subItem(WORDS.odf).click(), ODF_TEXT_FILE);
+check('« OpenDocument » propose les neuf extensions du manifeste (texte, tableur, présentation, modèles, fichiers « à plat »)', odfPick.accept === EXTENSIONS.opendocument && odfPick.multiple === false
+  && EXTENSIONS.opendocument.split(',').length === 9, { odfPick, attendu: EXTENSIONS.opendocument });
+asked = await waitDialog();
+check('la page HTML importée attend d\'être enregistrée : la question se pose', asked.open && asked.inPanel && JSON.stringify(asked.buttons) === JSON.stringify(WORDS.buttons), asked);
+await pressDialog(WORDS.discard);
+seen = await waitStatus(WORDS.imported.odf);
+say('OpenDocument texte par ouvrir :', seen);
+check('le texte OpenDocument est à l\'écran (titre et paragraphe), avec la phrase « OpenDocument importé… »', isImported(seen, 'odf') && seen.text === ODF_TEXT && !seen.grid && seen.slides === 0, seen);
+await lab.shotPanel(run, '5e-opendocument-texte', frame);
+
+// Le tableur passe par la MÊME valeur : l'app choisit son moteur d'après le contenu du fichier, GFS n'a rien à distinguer.
+await showFiles();
+await openImport();
+await pickWith(() => subItem(WORDS.odf).click(), ODF_SHEET_FILE);
+asked = await waitDialog();
+check('le texte importé attend d\'être enregistré : la question se pose', asked.open && asked.inPanel, asked);
+await pressDialog(WORDS.discard);
+seen = await waitStatus(WORDS.imported.odfSheet);
+say('OpenDocument tableur par ouvrir :', seen);
+check('le tableur est une grille à l\'écran (3 lignes, 2 colonnes), sans nom, avec la phrase du tableur', isImported(seen, 'odf', WORDS.imported.odfSheet) && seen.grid && seen.cells.join('|') === 'Produit|Quantité|Vis|12|Clou|7', seen);
+check('rien n\'est écrit dans le document par l\'import OpenDocument', await untouched('OpenDocument par ouvrir'));
+
 // 6. Un fichier illisible : l'app le dit, garde son document, GFS ne dit rien.
 await showFiles();
 await openImport();
 await pickWith(() => subItem(WORDS.excel).click(), NOT_A_BOOK);
 seen = await waitStatus(WORDS.unreadable);
-check('« faux.xlsx » : l\'app dit qu\'il n\'est pas lisible (état d\'erreur) et garde le document Word, sans question', seen.status === WORDS.unreadable && seen.statusClass !== '' && seen.text === WORD_TEXT && seen.slides === 0 && !(await dialogOf()).open, seen);
+check('« faux.xlsx » : l\'app dit qu\'il n\'est pas lisible (état d\'erreur) et garde le tableur OpenDocument importé juste avant, sans question', seen.status === WORDS.unreadable && seen.statusClass !== '' && seen.grid && seen.cells.join('|') === 'Produit|Quantité|Vis|12|Clou|7' && seen.slides === 0 && !(await dialogOf()).open, seen);
 check('GFS ne dit rien, l\'explorateur est fermé', (await toast()) === '' && (await explorerHidden()), await toast());
 
 // 5. GFS repart : l'app est fermée, l'import part avec l'ouverture du contexte.
@@ -310,6 +372,26 @@ seen = await waitStatus(WORDS.imported.word);
 check('au démarrage, « Word » : le document du fichier remplace le ★, sans nom ni modèle courant', isImported(seen, 'word') && seen.text === WORD_TEXT && !seen.grid, seen);
 check('GFS ne dit rien et l\'explorateur est fermé', (await toast()) === '' && (await explorerHidden()), await toast());
 await lab.shotPanel(run, '5c-word-au-demarrage', frame);
+
+// HTML et OpenDocument au démarrage : l'app est fermée, le fichier part avec l'ouverture du contexte et remplace le ★.
+await restart();
+await openImport();
+await pickWith(() => subItem(WORDS.html).click(), HTML_FILE);
+app = await lab.appFrame(APP);
+await waitStarted();
+seen = await waitStatus(WORDS.imported.html);
+check('au démarrage, « HTML » : la page remplace le ★, sans nom ni modèle courant', isImported(seen, 'html') && seen.text === HTML_TEXT && !seen.grid, seen);
+check('GFS ne dit rien et l\'explorateur est fermé', (await toast()) === '' && (await explorerHidden()), await toast());
+await lab.shotPanel(run, '5f-html-au-demarrage', frame);
+await restart();
+await openImport();
+await pickWith(() => subItem(WORDS.odf).click(), ODF_SHEET_FILE);
+app = await lab.appFrame(APP);
+await waitStarted();
+seen = await waitStatus(WORDS.imported.odfSheet);
+check('au démarrage, « OpenDocument » (un tableur) : la grille du fichier remplace le ★, sans nom', isImported(seen, 'odf', WORDS.imported.odfSheet) && seen.grid && seen.cells.join('|') === 'Produit|Quantité|Vis|12|Clou|7', seen);
+check('GFS ne dit rien et l\'explorateur est fermé', (await toast()) === '' && (await explorerHidden()), await toast());
+await lab.shotPanel(run, '5g-opendocument-au-demarrage', frame);
 
 await restart();
 await newButton().focus();

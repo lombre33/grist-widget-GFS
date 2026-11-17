@@ -47,10 +47,14 @@ function checkCatalogue(m, others, errors) {
   }
 }
 
+// Un seul rangement écrit par app : un identifiant de fichier n'a de sens que dans la table qui le porte (js/files/app-filing.js).
+function checkOneFilingWrite(m, errors) {
+  const writing = (m.fichiers || []).filter(file => file && file.rangement && file.rangement.ecriture !== undefined);
+  if (writing.length > 1) errors.push('fichiers[].rangement.ecriture : une seule table de fichiers par app');
+}
+
 function checkFiles(m, errors) {
-  // Un seul rangement écrit par app : un identifiant de fichier n'a de sens que dans la table qui le porte (js/files/app-filing.js).
-  if ((m.fichiers || []).filter(file => file && file.rangement && file.rangement.ecriture !== undefined).length > 1) errors.push(
-    'fichiers[].rangement.ecriture : une seule table de fichiers par app');
+  checkOneFilingWrite(m, errors);
   for (const file of m.fichiers || []) {
     const prefix = (m.tables && m.tables.prefixe) || '';
     if (!isText(file.table) || !file.table.toLowerCase().startsWith(prefix.toLowerCase())) errors.push('fichiers[].table hors du préfixe');

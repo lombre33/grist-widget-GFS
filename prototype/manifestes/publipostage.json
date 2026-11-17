@@ -144,7 +144,7 @@
         "en": "16:9 presentations, written with the same editor as documents."
       },
       "icone": "slides",
-      "poids": 640,
+      "poids": 653,
       "dossier": "extensions/diapositives/",
       "pointsEntree": [{ "genre": "type", "id": "presentation" }, { "genre": "menu", "id": "nouveau" }]
     },
@@ -164,11 +164,11 @@
       "id": "polices",
       "nom": { "fr": "Polices", "en": "Fonts" },
       "texte": {
-        "fr": "Ajoute la police Marianne de l'État aux PDF, quand la personne dit avoir le droit de s'en servir.",
-        "en": "Adds the State's Marianne font to PDFs, when the person says they are entitled to use it."
+        "fr": "Ajoute aux PDF des polices libres (Open Sans, Lato, Inter...) et la police Marianne de l'État quand la personne dit avoir le droit de s'en servir.",
+        "en": "Adds free fonts (Open Sans, Lato, Inter...) to PDFs, and the State's Marianne font when the person says they are entitled to use it."
       },
       "icone": "pdf",
-      "poids": 8,
+      "poids": 29,
       "dossier": "extensions/polices/"
     }
   ],

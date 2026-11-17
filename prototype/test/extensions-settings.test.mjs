@@ -218,11 +218,11 @@ test('Publipostage+ : « Polices » est déclarée sans bibliothèque ni point d
   const fonts = pub.extensions.find(extension => extension.id === 'polices');
   assert.deepEqual(fonts.nom, { fr: 'Polices', en: 'Fonts' }, 'le nom est celui de l\'app (`extension.polices.name`)');
   assert.equal(fonts.dossier, 'extensions/polices/');
-  assert.equal(fonts.poids, 8, 'un fichier de 7 705 octets');
+  assert.equal(fonts.poids, 29, 'les quatre fichiers de extensions/polices/ à 2008d26 : 29 040 octets');
   assert.equal(fonts.bibliotheques, undefined, 'GFS n\'a rien à porter : Marianne ne vient pas du catalogue');
   assert.equal(fonts.pointsEntree, undefined, 'ni bouton, ni menu, ni type, ni export');
-  assert.match(fonts.texte.fr, /Marianne.*quand la personne dit avoir le droit de s.en servir/);
-  assert.match(fonts.texte.en, /Marianne.*when the person says they are entitled to use it/);
+  assert.match(fonts.texte.fr, /polices libres.*Marianne.*quand la personne dit avoir le droit de s.en servir/, 'les polices libres du PDF (1fbf33b) et Marianne');
+  assert.match(fonts.texte.en, /free fonts.*Marianne.*when the person says they are entitled to use it/);
   assert.deepEqual(missingLibraries(fonts, real), []);
   const off = extensionRows(pub, { extensions: [], modes: {} }, real).find(item => item.extension.id === 'polices');
   assert.equal(off.checked, false, 'décochée tant que la personne n\'a pas choisi : l\'app ne charge rien');

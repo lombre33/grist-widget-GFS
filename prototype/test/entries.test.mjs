@@ -66,14 +66,14 @@ test('importTypes : un article par format, grisé tant que l\'app ne reçoit pas
   const other = { action: 'receive' };
   const ready = host({ installed: { publipostage: { extensions: ['diapositives'] } }, kept: [kept], other }).entries.importTypes();
   const formats = ready.filter(entry => entry.app === 'publipostage');
-  assert.deepEqual(formats.map(entry => entry.valeur), ['excel', 'markdown', 'powerpoint', 'word']);
+  assert.deepEqual(formats.map(entry => entry.valeur), ['excel', 'markdown', 'powerpoint', 'word', 'html', 'opendocument']);
   assert.ok(formats.every(entry => !entry.greyed && Array.isArray(entry.extensions)), 'Publipostage+ reçoit les fichiers : rien de grisé');
   assert.deepEqual(ready.slice(-2), [kept, other], 'les formats que GFS garde, puis l\'arrivée d\'un partage, restent en fin de liste');
   const notYet = host({
     installed: { publipostage: { extensions: ['diapositives'] } },
     patch: { publipostage: manifest => ({ ...manifest, ouverture: { ...manifest.ouverture, importer: false } }) },
   }).entries.importTypes().filter(entry => entry.app === 'publipostage');
-  assert.equal(notYet.length, 4);
+  assert.equal(notYet.length, 6);
   assert.ok(notYet.every(entry => entry.greyed && entry.reason === 'ex.import.notYet {"app":"Publipostage+"}' && entry.hint === 'ex.import.notYetHint' && !entry.focus), 'sans `ouverture.importer`, le format est grisé avec « pas encore » et rien à débloquer');
   const missing = host({ kept: [], other }).entries.importTypes().filter(entry => entry.app === 'publipostage');
   assert.ok(missing.every(entry => entry.greyed && entry.focus === 'app:publipostage'), 'l\'app absente : le clic ouvre la fenêtre des apps sur sa ligne');

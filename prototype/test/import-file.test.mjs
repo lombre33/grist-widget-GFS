@@ -8,7 +8,8 @@ import { publipostage, automation, form } from './helpers.mjs';
 
 test('les formats d\'une app : chacun avec le type qu\'il crée, dans l\'ordre du manifeste', () => {
   const formats = importFormats(publipostage());
-  assert.deepEqual(formats.map(({ item, type }) => [item.valeur, type.valeur, type.icone]), [['excel', 'grille', 'grid'], ['markdown', 'document', 'doc'], ['powerpoint', 'presentation', 'slides'], ['word', 'document', 'doc']]);
+  assert.deepEqual(formats.map(({ item, type }) => [item.valeur, type.valeur, type.icone]), [['excel', 'grille', 'grid'], ['markdown', 'document', 'doc'], ['powerpoint', 'presentation', 'slides'], ['word', 'document', 'doc'],
+    ['html', 'document', 'doc'], ['opendocument', 'document', 'doc']]);
   assert.deepEqual(importFormats(automation()), [], 'une app sans `actions.importer` n\'a rien dans « Importer »');
   assert.deepEqual(importFormats(form()), []);
 });
@@ -16,7 +17,7 @@ test('les formats d\'une app : chacun avec le type qu\'il crée, dans l\'ordre d
 test('un format dont le type n\'est pas déclaré par l\'app est écarté', () => {
   const m = publipostage();
   m.actions.importer.push({ valeur: 'keynote', type: 'tableau', nom: { fr: 'Keynote', en: 'Keynote' }, extensions: ['.key'] });
-  assert.deepEqual(importFormats(m).map(({ item }) => item.valeur), ['excel', 'markdown', 'powerpoint', 'word']);
+  assert.deepEqual(importFormats(m).map(({ item }) => item.valeur), ['excel', 'markdown', 'powerpoint', 'word', 'html', 'opendocument']);
   delete m.actions;
   assert.deepEqual(importFormats(m), []);
 });

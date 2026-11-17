@@ -433,15 +433,20 @@ test('le poids annoncé de chaque extension est la taille de son dossier dans l\
 });
 
 // « Nouveau > Importer » (contrats 2.7, point 4) : les formats qu'une app reçoit d'un autre logiciel, chacun avec le type qu'il crée.
-test('contrats 2.7, point 4 : Publipostage+ déclare Excel, Markdown, PowerPoint et Word, chacun vers un type qu\'il ouvre', () => {
+test('contrats 2.7, point 4 : Publipostage+ déclare Excel, Markdown, PowerPoint, Word, HTML et OpenDocument, chacun vers un type qu\'il ouvre', () => {
   const { importer, ouvrir } = publipostage().actions;
-  assert.deepEqual(importer.map(item => [item.valeur, item.type]), [['excel', 'grille'], ['markdown', 'document'], ['powerpoint', 'presentation'], ['word', 'document']]);
+  assert.deepEqual(importer.map(item => [item.valeur, item.type]), [['excel', 'grille'], ['markdown', 'document'], ['powerpoint', 'presentation'], ['word', 'document'], ['html', 'document'],
+    ['opendocument', 'document']]);
   for (const item of importer) {
     assert.ok(ouvrir.includes(item.type), `${item.valeur} : ${item.type} est un type que l'app ouvre`);
     assert.ok(item.extensions.every(extension => /^\.[a-z0-9]{1,8}$/i.test(extension)), `${item.valeur} : des extensions « .ext »`);
   }
   assert.deepEqual(importer[0].extensions, ['.xlsx', '.xlsm'], 'ce que le sélecteur de l\'app propose déjà pour un classeur');
   assert.deepEqual(importer[3].extensions, ['.docx', '.docm', '.dotx', '.dotm'], 'les quatre extensions que la ligne « Importer un Word… » du menu « + » de l\'app propose déjà');
+  assert.deepEqual(importer[4].extensions, ['.html', '.htm', '.xhtml', '.zip'], 'la page web, et son archive qui garde les images et les feuilles de style (b0dec60, 4a335f7)');
+  assert.deepEqual(importer[5].extensions, ['.odt', '.ott', '.fodt', '.ods', '.ots', '.fods', '.odp', '.otp', '.fodp'], 'une seule valeur : l\'app choisit son moteur d\'après le contenu (54176f8, 155c4e2)');
+  const taken = importer.flatMap(item => item.extensions);
+  assert.equal(new Set(taken).size, taken.length, 'aucune terminaison n\'est portée par deux formats : le fichier choisi n\'a qu\'un format');
 });
 
 test('contrats 2.7 et 2.8 : un format importé mal formé invalide le manifeste', () => {

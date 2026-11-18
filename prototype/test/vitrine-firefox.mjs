@@ -349,7 +349,7 @@ async function blockedProblems(page, t, note) {
 }
 
 // Les vitrines que les apps ont rendues (consignes 014, 018 et 031, 17/11) : sur les vrais manifestes, les vraies images de `vitrine/` s'affichent. Chaque carte montre sa première capture (chargée,
-// sans vignette d'attente) ; la fiche porte les trois captures, leurs légendes dans la langue de la personne, la description de l'app, et la bande des captures prend le clavier.
+// sans vignette d'attente) ; la fiche porte toutes ses captures (de trois à six), leurs légendes dans la langue de la personne, la description de l'app, et la bande des captures prend le clavier.
 async function deliveredProblems(page, language, t, note) {
   await page.run(() => window.__vitrine('livrees'));
   const ids = ['publipostage', 'automation', 'form', 'bi'];
@@ -364,8 +364,14 @@ async function deliveredProblems(page, language, t, note) {
   for (const id of ids) {
     const manifest = readJson(`manifestes/${id}.json`);
     await page.click(...await page.run(centerOf, `[data-fk="name:${id}"]`));
-    const f = await page.until(() => { const x = fiche(); return x && x.slides.length === 3 && x.slides.every(slide => slide.image) ? x : null; }, [], 5000).catch(() => null);
-    if (!f) { note('vitrines rendues : fiche', `la fiche de « ${id} » devrait porter trois captures chargées`); await page.press('Escape'); await page.until(grid).catch(() => null); continue; }
+    // Les captures se chargent à l'approche (`loading="lazy"`) : celles qu'on voit d'abord, puis le reste quand la bande défile jusqu'à lui.
+    const f = await page.until(count => { const x = fiche(); return x && x.slides.length === count && x.slides.filter(slide => slide.box.left < x.window.right).every(slide => slide.image) ? x : null; },
+      [manifest.vitrine.captures.length], 5000).catch(() => null);
+    if (!f) { note('vitrines rendues : fiche', `la fiche de « ${id} » devrait porter ses ${manifest.vitrine.captures.length} captures, celles qu'on voit chargées`); await page.press('Escape'); await page.until(grid).catch(() => null); continue; }
+    await page.run(() => { const strip = document.querySelector('.fp-strip'); if (strip) strip.scrollLeft = strip.scrollWidth; });
+    const all = await page.until(() => { const x = fiche(); return x && x.slides.every(slide => slide.image) ? x : null; }, [], 5000).catch(() => null);
+    if (!all) note('vitrines rendues : fiche', `la bande de « ${id} » défilée jusqu'au bout devrait avoir chargé ses ${manifest.vitrine.captures.length} captures`);
+    await page.run(() => { const strip = document.querySelector('.fp-strip'); if (strip) strip.scrollLeft = 0; });
     const wanted = manifest.vitrine.captures.map(capture => capture.legende[language]);
     if (f.slides.map(slide => slide.caption).join('|') !== wanted.join('|')) note('vitrines rendues : légendes', `la fiche de « ${id} » devrait dire « ${wanted.join(' | ')} » : ${f.slides.map(slide => slide.caption).join(' | ')}`);
     if (f.about !== manifest.vitrine.description[language]) note('vitrines rendues : description', `la fiche de « ${id} » devrait montrer la description de l'app : « ${f.about} »`);

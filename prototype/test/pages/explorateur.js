@@ -326,15 +326,17 @@ async function mount() {
     });
     win.open();
   };
-  // « Nouveau > Depuis un modèle » (test/modeles-firefox.mjs) : le vrai contrôle, la vraie fenêtre et les vraies `Entries` (js/broker/entries.js) sur les quatre manifestes de GFS et le vrai catalogue
-  // provisoire de Publipostage+ (22 modèles, leurs vignettes). `variant` : 'pret' (Publipostage+ sait ouvrir un modèle, ses extensions sont cochées), 'attente' (le manifeste tel que livré : pas encore
-  // de `ouverture.modele`), 'extension' (le graphique n'est pas coché), 'absente' (l'app n'est pas installée), 'illisible' (le catalogue ne se lit pas). `window.__templatesLog` note ce que la fenêtre
+  // « Nouveau > Depuis un modèle » (test/modeles-firefox.mjs) : le vrai contrôle, la vraie fenêtre et les vraies `Entries` (js/broker/entries.js) sur les quatre manifestes de GFS et les vrais
+  // catalogues de modèles (Publipostage+ 22, Form+ 5, Grist-BI 3, leurs vignettes). `variant` : 'pret' (les trois apps savent ouvrir un modèle, leurs extensions sont cochées), 'attente' (sans
+  // `ouverture.modele`), 'extension' (le graphique n'est pas coché), 'absente' (l'app n'est pas installée), 'illisible' (le catalogue ne se lit pas). `window.__templatesLog` note ce que la fenêtre
   // rend au contrôleur (`created` : « app/modèle » ; `unlocked` : le grisé débloqué) ; `window.__templatesLanguage(lang)` change la langue fenêtre ouverte, comme le contrôleur de GFS.
   window.__templates = async (variant = 'pret') => {
     const manifests = await Promise.all(['publipostage', 'automation', 'form', 'bi'].map(async id => (await fetch(`/manifestes/${id}.json`)).json()));
-    if (variant !== 'attente') manifests[0].ouverture = { ...manifests[0].ouverture, modele: true };
+    // Les manifestes sont ceux de GFS : trois apps déclarent un catalogue (`modeles`) et savent ouvrir un modèle ; 'attente' ôte ce savoir-faire aux trois (le grisé « pas encore »).
+    for (const manifest of manifests) if (manifest.modeles) manifest.ouverture = { ...manifest.ouverture, modele: variant !== 'attente' };
     const catalogue = readCatalogue(await (await fetch('/bibliotheques/catalogue.json')).json());
-    const apps = variant === 'absente' ? {} : { publipostage: { extensions: variant === 'extension' ? ['diapositives'] : ['diapositives', 'graphique'], modes: {} } };
+    const apps = variant === 'absente' ? {} : { publipostage: { extensions: variant === 'extension' ? ['diapositives'] : ['diapositives', 'graphique'], modes: {} },
+      form: { extensions: [], modes: {} }, bi: { extensions: [], modes: {} } };
     const byId = new Map(manifests.map(manifest => [manifest.id, manifest]));
     let current = { i18n, lang: language };
     const host = {

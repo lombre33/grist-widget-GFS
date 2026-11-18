@@ -144,9 +144,11 @@ test('le catalogue provisoire de Publipostage+ : 22 modèles bien formés, chacu
   assert.deepEqual(files.sort(), models.map(model => model.vignette).sort(), 'aucune vignette orpheline');
 });
 
-test('seule Publipostage+ déclare `modeles` : les autres apps n\'en ont pas encore, la fenêtre les grise « bientôt »', () => {
-  assert.deepEqual(catalogue().filter(manifest => manifest.modeles).map(manifest => manifest.id), ['publipostage']);
-  assert.equal(publipostage().ouverture.modele, undefined, 'tant que l\'app ne sait pas ouvrir un modèle, les siens sont grisés « pas encore » (contrats 5.4, point 13)');
+test('Publipostage+, Form+ et Grist-BI déclarent `modeles` et savent ouvrir un modèle ; Automation+ n\'a pas de type de fichier : sa pastille reste grisée « bientôt »', () => {
+  const declared = catalogue().filter(manifest => manifest.modeles);
+  assert.deepEqual(declared.map(manifest => manifest.id), ['publipostage', 'form', 'bi']);
+  for (const manifest of declared) assert.equal(manifest.ouverture.modele, true, `${manifest.id} : ouverture.modele dit que l'app ouvre un modèle (contrats 5.4, point 13)`);
+  assert.equal(catalogue().find(manifest => manifest.id === 'automation').modeles, undefined, 'tant que GFS ne sait pas ranger un type pour une app sans fichier, rien n\'est déclaré');
 });
 
 // ---------- l'outil : outils/modeles.mjs ----------
@@ -224,9 +226,9 @@ test('une app sans `modeles/modeles.json` dans son dépôt garde le catalogue qu
     assert.equal(plain.status, 0);
     assert.match(plain.lines.join('\n'), /publipostage : pas de modeles\/modeles\.json dans le dépôt de l'app/);
     assert.equal(planApp(publipostage(), { root }).state, 'sans-source');
-    const unknown = run(root, '--app', 'form');
+    const unknown = run(root, '--app', 'automation');
     assert.equal(unknown.status, 1);
-    assert.match(unknown.lines.join('\n'), /form : aucune app du catalogue qui déclare « modeles »/);
+    assert.match(unknown.lines.join('\n'), /automation : aucune app du catalogue qui déclare « modeles »/);
     const elsewhere = mkdtempSync(join(tmpdir(), 'gfs-modeles-depot-'));
     try {
       mkdirSync(join(elsewhere, 'modeles'));

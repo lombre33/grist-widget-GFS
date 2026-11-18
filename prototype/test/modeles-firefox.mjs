@@ -1,5 +1,5 @@
 // « Nouveau > Depuis un modèle » sous Firefox (règle du 03/11 : toute nouvelle interface ajoute ses mesures à test/interfaces-firefox.test.mjs ; décision du porteur du 18/11 : « Une galerie
-// commune »). La vraie fenêtre (js/apps/templates-window.js), le vrai contrôle et les vraies `Entries` sur les quatre manifestes de GFS et le vrai catalogue provisoire de Publipostage+ : 22 modèles et
+// commune »). La vraie fenêtre (js/apps/templates-window.js), le vrai contrôle et les vraies `Entries` sur les quatre manifestes de GFS et les vrais catalogues de modèles de Publipostage+ (22), Form+ (5) et Grist-BI (3) :
 // leurs vignettes (`window.__templates`, test/pages/explorateur.js), à 700 × 400, à la vraie souris et au vrai clavier. À mesurer : l'article « Depuis un modèle… » du menu « Nouveau » (entre
 // « Nouveau dossier » et « Importer », 28 px, rien de coupé, un clic le demande à l'explorateur) ; la fenêtre (dans la page, titre et nombre, recherche au clavier, pastilles par app dont les apps sans
 // modèle grisées « bientôt », cinq colonnes de cartes, des vignettes qui se chargent, rien qui déborde, le pied qui reste en place quand les cartes défilent) ; la recherche (mots dans n'importe quel
@@ -13,6 +13,10 @@ import { Run } from './corbeille-firefox.mjs';
 import { contrasts } from './vitrine-firefox.mjs';
 
 const CATALOGUE = readJson('modeles/publipostage/modeles.json');
+// Les trois apps qui livrent un catalogue (le 18/11 : Publipostage+, Form+, Grist-BI) ; Automation+ n'en a pas encore, sa pastille reste grisée « bientôt ».
+const FORM = readJson('modeles/form/modeles.json').length;
+const BI = readJson('modeles/bi/modeles.json').length;
+const TOTAL = CATALOGUE.length + FORM + BI;
 const OTHER = { fr: 'en', en: 'fr' };
 const SEARCH = { fr: 'mouvement stock', en: 'movement stock' }; // un seul modèle : « Bon de mouvement de stock » / « Stock movement slip »
 
@@ -144,13 +148,13 @@ async function menuProblems(page, language, t, note) {
 async function startProblems(s, t, note, language) {
   if (s.window.left < -0.5 || s.window.top < -0.5 || s.window.right > s.view[0] + 0.5 || s.window.bottom > s.view[1] + 0.5) note('fenêtre', `la fenêtre (${[s.window.left, s.window.top, s.window.right, s.window.bottom].map(Math.round).join(', ')}) sort de la page de ${s.view.join(' × ')} px`);
   if (s.title !== t('tp.title') || s.titleCut) note('titre', `le titre devrait être « ${t('tp.title')} », entier : « ${s.title} »${s.titleCut ? ' (coupé)' : ''}`);
-  if (s.count !== t('tp.count', { n: 22 })) note('nombre', `le nombre devrait dire « ${t('tp.count', { n: 22 })} » : « ${s.count} »`);
+  if (s.count !== t('tp.count', { n: TOTAL })) note('nombre', `le nombre devrait dire « ${t('tp.count', { n: TOTAL })} » : « ${s.count} »`);
   if (s.focused !== 'search') note('clavier', `à l'ouverture le clavier devrait être dans la recherche : ${s.focused}`);
   const chips = s.chips.map(chip => `${chip.app}:${chip.text}${chip.pressed ? ':on' : ''}${chip.disabled ? ':off' : ''}`).join(' | ');
-  const wantedChips = [`all:${t('tp.all')}22:on`, 'publipostage:Publipostage+22', `automation:Automation+${t('tp.soon')}:off`, `form:Form+${t('tp.soon')}:off`, `bi:Grist-BI${t('tp.soon')}:off`].join(' | ');
+  const wantedChips = [`all:${t('tp.all')}${TOTAL}:on`, `publipostage:Publipostage+${CATALOGUE.length}`, `automation:Automation+${t('tp.soon')}:off`, `form:Form+${FORM}`, `bi:Grist-BI${BI}`].join(' | ');
   if (chips !== wantedChips) note('pastilles', `les pastilles devraient être « ${wantedChips} » : « ${chips} »`);
   if (new Set(s.chips.map(chip => Math.round(chip.box.top))).size > 1) note('pastilles', 'les pastilles devraient tenir sur une seule rangée');
-  if (s.cards.length !== 22) note('cartes', `la galerie devrait montrer 22 cartes : ${s.cards.length}`);
+  if (s.cards.length !== TOTAL) note('cartes', `la galerie devrait montrer ${TOTAL} cartes : ${s.cards.length}`);
   if (s.columns < 4) note('colonnes', `à ${s.view[0]} px la galerie devrait poser quatre colonnes au moins : ${s.columns}`);
   if (s.body.overflowX > 1) note('débordement', `la galerie déborde la fenêtre de ${s.body.overflowX} px`);
   const first = s.cards[0];
@@ -173,7 +177,7 @@ async function startProblems(s, t, note, language) {
   if (s.note !== t('tp.idle')) note('pied', `le pied devrait dire « ${t('tp.idle')} » : « ${s.note} »`);
   if (!s.create.disabled || s.see.shown) note('boutons', `sans choix, « Créer » devrait être éteint et « Voir dans Apps » absent : ${JSON.stringify([s.create, s.see])}`);
   if (s.create.text !== t('tp.create') || s.close !== t('tp.close')) note('boutons', `les boutons devraient dire « ${t('tp.close')} » et « ${t('tp.create')} » : « ${s.close} » et « ${s.create.text} »`);
-  if (s.body.max < 10) note('défilement', 'vingt-deux cartes à 400 px de haut : la galerie devrait défiler');
+  if (s.body.max < 10) note('défilement', `${TOTAL} cartes à 400 px de haut : la galerie devrait défiler`);
   if (s.foot.bottom > s.window.bottom + 0.5 || s.head.top < s.window.top - 0.5) note('pied et en-tête', 'l\'en-tête et le pied devraient rester dans la fenêtre');
 }
 
@@ -197,7 +201,7 @@ async function mainProblems(page, language, t, note, { open, close, click, contr
   else {
     if (s.cards[0].name !== nameOf('bon-de-mouvement')) note('recherche', `« ${SEARCH[language]} » devrait trouver « ${nameOf('bon-de-mouvement')} » : « ${s.cards[0].name} »`);
     if (s.count !== t('tp.count', { n: 1 })) note('recherche', `le nombre devrait dire « ${t('tp.count', { n: 1 })} » : « ${s.count} »`);
-    if (s.chips[0].text !== `${t('tp.all')}22`) note('recherche', 'les pastilles gardent leurs nombres (toute la galerie) pendant la recherche');
+    if (s.chips[0].text !== `${t('tp.all')}${TOTAL}`) note('recherche', 'les pastilles gardent leurs nombres (toute la galerie) pendant la recherche');
   }
   await page.chord('Control', 'a');
   await page.press('Backspace', ...'zzzz'.split(''));
@@ -207,8 +211,8 @@ async function mainProblems(page, language, t, note, { open, close, click, contr
   await contrastsAt(`la galerie sans résultat (${mode})`);
   await page.chord('Control', 'a');
   await page.press('Backspace');
-  s = await page.until(() => { const g = gallery(); return g && g.query === '' && g.cards.length === 22 ? g : null; }).catch(() => null);
-  if (!s) note('recherche', 'effacer la recherche devrait rendre les 22 cartes');
+  s = await page.until(total => { const g = gallery(); return g && g.query === '' && g.cards.length === total ? g : null; }, [TOTAL]).catch(() => null);
+  if (!s) note('recherche', `effacer la recherche devrait rendre les ${TOTAL} cartes`);
   await pillProblems(page, t, note, { click });
   await createProblems(page, language, t, note, { open, close, click, contrastsAt, nameOf });
   await languageProblems(page, language, t, note, { open, close, other });
@@ -220,16 +224,25 @@ async function pillProblems(page, t, note, { click }) {
   if (!await click('[data-app="publipostage"]')) return;
   let s = await page.until(() => { const g = gallery(); return g && g.chips.find(chip => chip.app === 'publipostage').pressed ? g : null; }).catch(() => null);
   if (!s) note('pastille', 'un clic sur « Publipostage+ » devrait la choisir');
-  else if (s.cards.length !== 22 || s.chips[0].pressed) note('pastille', `filtrer sur Publipostage+ devrait garder ses 22 cartes et défaire « ${t('tp.all')} » : ${s.cards.length} / ${s.chips[0].pressed}`);
+  else if (s.cards.length !== CATALOGUE.length || s.chips[0].pressed) note('pastille', `filtrer sur Publipostage+ devrait garder ses ${CATALOGUE.length} cartes et défaire « ${t('tp.all')} » : ${s.cards.length} / ${s.chips[0].pressed}`);
   await click('[data-app="publipostage"]');
   s = await page.until(() => { const g = gallery(); return g && g.chips[0].pressed ? g : null; }).catch(() => null);
   if (!s) note('pastille', 'un second clic sur la même pastille devrait revenir à toutes les apps');
+  // Form+ et Grist-BI livrent leur catalogue : leur pastille filtre sur leurs cartes, libres et avec leur vignette.
+  for (const [app, count] of [['form', FORM], ['bi', BI]]) {
+    if (!await click(`[data-app="${app}"]`)) continue;
+    s = await page.until(id => { const g = gallery(); return g && g.chips.find(chip => chip.app === id).pressed && g.cards.every(card => !card.image || card.image.loaded) ? g : null; }, [app]).catch(() => null);
+    if (!s) note('pastille', `un clic sur la pastille « ${app} » devrait la choisir et charger ses vignettes`);
+    else if (s.cards.length !== count || s.chips[0].pressed || s.cards.some(card => card.disabled)) note('pastille', `filtrer sur « ${app} » devrait montrer ses ${count} cartes libres : ${s.cards.length} / ${s.cards.filter(card => card.disabled).length} grisées`);
+    await click(`[data-app="${app}"]`);
+    await page.until(() => { const g = gallery(); return g && g.chips[0].pressed ? g : null; }).catch(() => null);
+  }
   await click('[data-app="automation"]');
   s = await page.until(() => { const g = gallery(); return g && g.note !== undefined && g.note.includes('Automation+') ? g : null; }).catch(() => null);
   if (!s) note('pastille grisée', 'un clic sur une app sans modèle devrait dire pourquoi, dans le pied');
   else {
     if (s.note !== t('tp.appSoon', { app: 'Automation+' })) note('pastille grisée', `le pied devrait dire « ${t('tp.appSoon', { app: 'Automation+' })} » : « ${s.note} »`);
-    if (!s.chips[0].pressed || s.cards.length !== 22) note('pastille grisée', 'une pastille grisée ne filtre pas : « Toutes les apps » reste choisie');
+    if (!s.chips[0].pressed || s.cards.length !== TOTAL) note('pastille grisée', 'une pastille grisée ne filtre pas : « Toutes les apps » reste choisie');
   }
 }
 
@@ -308,9 +321,9 @@ async function narrowProblems(page, t, note, { open, close, mode }) {
 
 // Le grisé : une app qui ne sait pas encore ouvrir un modèle, une extension éteinte (« Voir dans Apps » et le retour), l'app absente, un catalogue illisible.
 async function lockedProblems(page, language, t, note, { open, close, click, contrastsAt, nameOf }) {
-  // Tel que livré : Publipostage+ ne déclare pas encore `ouverture.modele`.
+  // Une app qui ne déclare pas (encore) `ouverture.modele` : le banc l'ôte aux trois apps qui ont un catalogue.
   let s = await open('attente');
-  if (s.cards.length !== 22 || s.cards.some(card => !card.disabled || !card.dashed)) note('attente', 'sans `ouverture.modele` les 22 cartes devraient rester, grisées et en pointillé');
+  if (s.cards.length !== TOTAL || s.cards.some(card => !card.disabled || !card.dashed)) note('attente', `sans \`ouverture.modele\` les ${TOTAL} cartes devraient rester, grisées et en pointillé`);
   if (s.cards.some(card => card.image && Math.abs(card.image.opacity - 0.5) > 0.05)) note('attente', 'la vignette d\'un modèle grisé devrait être à demi effacée');
   await click('.tp-card');
   s = await page.until(() => { const g = gallery(); return g && g.cards[0].pressed ? g : null; }).catch(() => null);

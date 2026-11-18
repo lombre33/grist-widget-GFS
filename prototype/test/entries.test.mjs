@@ -101,16 +101,17 @@ test('readerOf : un fichier REÇU dont le type n\'est pas celui de GFS n\'ouvre 
 });
 
 // La galerie « Depuis un modèle » (contrats 5.4, point 13) : les apps lues avec leurs modèles (`loaded`, js/apps/templates-control.js), les articles qui en sortent.
-const loadedOf = (manifests, states = {}) => manifests.map(manifest => {
-  if (!manifest.modeles) return { manifest, models: [], state: states[manifest.id] || 'soon', reason: '' };
+// `only` : les apps dont on lit le catalogue (Publipostage+ seule par défaut : les essais de grisé ne regardent que ses modèles, Form+ et Grist-BI ont les leurs plus bas).
+const loadedOf = (manifests, states = {}, only = ['publipostage']) => manifests.map(manifest => {
+  if (!manifest.modeles || !only.includes(manifest.id)) return { manifest, models: [], state: states[manifest.id] || 'soon', reason: '' };
   const { models } = parseCatalogue(readJson(`modeles/${manifest.modeles.catalogue}`), manifest);
   return { manifest, models, state: 'ok', reason: '' };
 });
 const canOpenModels = { publipostage: manifest => ({ ...manifest, ouverture: { ...manifest.ouverture, modele: true } }) };
-const templatesOf = (options, lang = 'fr') => {
+const templatesOf = (options, lang = 'fr', only) => {
   const { c, entries } = host(options);
   c.lang = lang;
-  return entries.templates(loadedOf(c.manifests()));
+  return entries.templates(loadedOf(c.manifests(), {}, only));
 };
 
 test('templates : une pastille par app (« bientôt » pour celles sans catalogue) et un article par modèle, avec le nom, le type et l\'app dans la langue de la personne', () => {
@@ -140,9 +141,29 @@ test('templates : grisé, jamais masqué, avec la raison et la ligne qui débloq
   assert.equal(find(noSlides, 'facture').greyed, false, 'un modèle sans extension reste libre');
   const noChart = templatesOf({ installed: { publipostage: { extensions: ['diapositives'] } }, patch: canOpenModels }).models;
   assert.deepEqual([find(noChart, 'proposition-commerciale').greyed, find(noChart, 'proposition-commerciale').focus], [true, 'ext:publipostage/graphique'], 'puis celle que le modèle demande en plus');
-  const notYet = templatesOf({ installed: ready }).models;
+  const notYet = templatesOf({ installed: ready, patch: { publipostage: manifest => ({ ...manifest, ouverture: { ...manifest.ouverture, modele: false } }) } }).models;
   assert.ok(notYet.every(model => model.greyed && model.reason === 'ex.template.notYet {"app":"Publipostage+"}' && !model.focus), 'sans `ouverture.modele` : « pas encore », rien à débloquer ici');
   assert.equal(templatesOf({ installed: ready, patch: canOpenModels }).models.filter(model => model.greyed).length, 0, 'tout est prêt : rien de grisé');
+});
+
+// Les trois catalogues livrés le 18/11 (Publipostage+ 22, Form+ 5, Grist-BI 3) : chaque app ouvre ses modèles selon SON type, Automation+ garde sa pastille « bientôt ».
+const canOpenAll = { publipostage: canOpenModels.publipostage, form: manifest => ({ ...manifest, ouverture: { ...manifest.ouverture, modele: true } }),
+  bi: manifest => ({ ...manifest, ouverture: { ...manifest.ouverture, modele: true } }) };
+test('templates : Publipostage+, Form+ et Grist-BI livrent chacune leur catalogue, ouvert par le type de l\'app ; une app absente grise ses seuls modèles', () => {
+  const all = ['publipostage', 'form', 'bi'];
+  const ready = { publipostage: { extensions: ['diapositives', 'graphique'] }, form: { extensions: [] }, bi: { extensions: [] } };
+  const { apps, models } = templatesOf({ installed: ready, patch: canOpenAll }, 'fr', all);
+  assert.deepEqual(apps.map(app => [app.id, app.state, app.count]), [['publipostage', 'ok', 22], ['automation', 'soon', 0], ['form', 'ok', 5], ['bi', 'ok', 3]]);
+  assert.equal(models.length, 30);
+  assert.equal(models.filter(model => model.greyed).length, 0, 'les trois apps savent ouvrir un modèle : rien de grisé');
+  assert.deepEqual([...new Set(models.filter(model => model.app === 'form').map(model => model.type))], ['formulaire']);
+  assert.deepEqual([...new Set(models.filter(model => model.app === 'bi').map(model => model.type))], ['rapport']);
+  assert.ok(models.filter(model => model.app === 'form').every(model => model.tables), 'les modèles de Form+ viennent avec leurs tables');
+  assert.ok(models.filter(model => model.app === 'bi').every(model => !model.tables), 'ceux de Grist-BI n\'en créent aucune');
+  const noForm = templatesOf({ installed: { publipostage: ready.publipostage, bi: ready.bi }, patch: canOpenAll }, 'fr', all).models;
+  const form = noForm.filter(model => model.app === 'form');
+  assert.ok(form.length === 5 && form.every(model => model.greyed && model.focus === 'app:form' && model.reason === 'ex.lockedApp {"app":"Form+"}'), 'Form+ absente : ses cinq modèles grisés, avec sa ligne');
+  assert.ok(noForm.filter(model => model.app !== 'form').every(model => !model.greyed), 'les autres apps ne sont pas touchées');
 });
 
 test('templates : un catalogue illisible garde la pastille de l\'app, avec son état', () => {

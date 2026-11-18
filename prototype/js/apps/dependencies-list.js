@@ -9,6 +9,7 @@ import { icon } from '../ui/icons.js';
 import { groupsOf } from './dependencies-model.js';
 import { buildDetail, externalLink } from './dependencies-detail.js';
 import { sourceOf } from './dependencies-source.js';
+import { carriedBlock } from './dependencies-carried-view.js';
 
 // L'état d'une ligne de la colonne « Dernière stable » : un mot et une icône, la couleur ne le porte jamais seule.
 const GAP_LOOK = { 'a-jour': ['ok', 'check'], correctif: ['info', 'download'], mineure: ['info', 'download'], majeure: ['warn', 'download'],
@@ -50,9 +51,9 @@ async function runCheck(state, row, verify) {
     shown([{ state: 'erreur', reason: String((error && error.message) || error).slice(0, 120), address: '' }]); }
 }
 
-// opts : { t, locale, state ({ open: Set de `slot`, more, checks, details, rows }), date (la date du relevé, lisible), matches(row) -> booléen (les filtres
-//   et la recherche), verify(row), blocked() -> texte | null, pick(row, mode), after({ shown, rest }) (les lignes montrées, et celles du panneau : de quoi
-//   dire le vide) }.
+// opts : { t, locale, state ({ open: Set de `slot`, more, checks, details, rows, carried }), date (la date du relevé, lisible), matches(row) -> booléen (les
+//   filtres et la recherche), matchesCarried(entrée) -> booléen (de même, pour ce que les apps déclarent), plain() -> aucun filtre ni recherche, verify(row),
+//   blocked() -> texte | null, pick(row, mode), after({ shown, rest }) (les lignes montrées, et celles du panneau : de quoi dire le vide) }.
 // Rend { node, render(), items() } : `items` est ce que les flèches parcourent (les lignes et le bouton du panneau).
 export function buildList(opts) {
   const { t, locale, state, date } = opts;
@@ -92,8 +93,8 @@ export function buildList(opts) {
       t(group.installed ? 'dep.group.on' : 'dep.group.off'));
     return h('section', { class: 'dp-group', dataset: { group: group.id || 'none' }, 'aria-labelledby': id },
       h('header', { class: 'dp-group-head' }, h('h3', { id }, group.name || t('dep.group.none')),
-        h('span', { class: 'dp-sub' }, t('dep.group.count', { n: group.rows.length })), chip),
-      h('ul', { class: 'dp-list' }, ...group.rows.map(item)));
+        h('span', { class: 'dp-sub' }, t('dep.group.count', { n: group.rows.length + group.carried.length })), chip),
+      group.rows.length ? h('ul', { class: 'dp-list' }, ...group.rows.map(item)) : null, carriedBlock({ t, group, state, plain: opts.plain() }));
   };
   const toggleMore = () => {
     state.more = !state.more;
@@ -104,10 +105,14 @@ export function buildList(opts) {
     dataset: { fk: 'dep-more' }, on: { click: toggleMore } }, icon('chev-down'), t('dep.more', { n: count }));
 
   function render() {
-    const found = groupsOf(state.rows).map(group => ({ ...group, rows: group.rows.filter(opts.matches) })).filter(group => group.rows.length);
+    // Une app qui dit n'en charger aucune reste montrée tant qu'aucun filtre ni recherche ne l'écarte : l'absence de déclaration n'est pas la même chose.
+    const found = groupsOf(state.rows, state.carried).map(group => ({ ...group, rows: group.rows.filter(opts.matches),
+      carried: group.carried.filter(opts.matchesCarried) })).filter(group => group.rows.length || group.carried.length ||
+        (opts.plain() && group.declared !== null));
     const shown = found.filter(group => group.installed);
     const rest = found.filter(group => !group.installed);
-    const count = list => new Set(list.flatMap(group => group.rows.map(row => row.key))).size;
+    const count = list => new Set(list.flatMap(group => [...group.rows, ...group.carried].map(row => row.key))).size
+      + list.filter(group => !group.rows.length && !group.carried.length).length;
     state.details.clear();
     groups.replaceChildren(...shown.map(section));
     body.replaceChildren(...(state.more ? rest.map(section) : []));

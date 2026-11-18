@@ -4,6 +4,7 @@
 import { covers } from '../broker/filter.js';
 import { PROVIDERS } from '../broker/player-sites.js';
 import { checkNames } from './manifest-names.js';
+import { checkCarried } from './manifest-carried.js';
 
 export const CONTRACT = 0;
 
@@ -502,6 +503,7 @@ export function validateManifest(m, others = []) {
   checkFiled(m, errors);
   checkExtensions(m, errors);
   checkNatives(m, errors);
+  checkCarried(m, errors);
   checkVitrine(m, errors);
   checkMaturity(m, errors);
   checkTemplates(m, errors);

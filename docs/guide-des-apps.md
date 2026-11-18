@@ -324,6 +324,16 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     · …`) : GFS copie le dossier chez lui (`img-src 'self'`), déclare `modeles` dans ton manifeste et avance sa référence. **Fait quand** : tes modèles s'affichent dans la fenêtre, un clic sur
     « Créer » ouvre ton app sur le bon modèle, rien n'est écrit avant un geste de la personne.
 
+24. Dire à GFS ce que l'app charge elle-même (décision du porteur du 18/11 : « Oui, déclaré par chaque app », pour la partie « Portées par l'app » de la fenêtre « Dépendances » ; contrats 2.6, point 17, champ
+    `portees`). **Facultatif, sans code, et sans effet hors de GFS.** La fenêtre montre ce que GFS sert ; pour que la personne voie aussi ce que ton app charge de son côté (une bibliothèque d'un CDN, une copie que tu
+    gardes dans ton dépôt, un service en ligne comme l'API de Grist), dis-le dans une section « Bibliothèques que l'app charge elle-même » de ton `GFS-ETAT.md` : une ligne par bibliothèque, ou par famille (un
+    éditeur et ses dépendances : une ligne, avec `contient : ProseMirror, linkifyjs`, pas cinquante), de la forme `<id> · <nom> · <version exacte, ou —> · <adresse https> · <démarrage | usage | option>`, puis au
+    besoin `contient : …`, `paquet : <nom npm>` et une phrase de précision. `démarrage` : chargée à l'ouverture de ton app ; `usage` : au premier usage de la fonction qui la demande ; `option` : seulement si la
+    personne active l'option. L'adresse est celle que le navigateur contacte, ou ton propre site pour une copie de ton dépôt. Mets aussi ce que tu as demandé à GFS de servir : la fenêtre n'en montre qu'une ligne
+    (celle de GFS) dès que GFS le sert à ton app. « aucune » si ton app ne charge rien. GFS recopie ta liste dans le manifeste qu'il tient pour ton app, **n'en vérifie ni la version ni l'adresse ni l'empreinte**,
+    et la montre « déclarée par l'app » ; elle ne ressort donc jamais plus fiable que ta page. Remets la section à jour quand ta liste change (sa date est celle de ta page). **Fait quand** : la fenêtre
+    « Dépendances » de GFS montre, sous ton app, le bloc « Portées par l'app » avec tes lignes, ou dit que ton app n'en charge aucune.
+
 ### 1.3 Licence : GPL 3.0 dans tous les dépôts (décision du porteur, 21/10)
 
 1. **Le texte officiel de la GNU General Public License version 3** est le fichier `LICENSE`, à la racine du dépôt : 674

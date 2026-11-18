@@ -209,6 +209,23 @@
   "natives": [
     { "id": "editeur", "nom": { "fr": "Éditeur (TipTap)", "en": "Editor (TipTap)" }, "copieDansApp": true, "poids": 615704 }
   ],
+  "portees": [
+    { "id": "tiptap", "nom": "TipTap", "version": "3.31.3", "adresse": "https://esm.sh/", "quand": "demarrage",
+      "contient": ["ProseMirror", "floating-ui", "prosemirror-suggest-changes", "linkifyjs"],
+      "note": { "fr": "Si vous cochez l’option « Éditeur hors ligne », l’éditeur se charge depuis la copie de l’app (vendor/editeur) au lieu d’esm.sh.",
+        "en": "If you tick the “Offline editor” option, the editor loads from the app’s own copy (vendor/editeur) instead of esm.sh." } },
+    { "id": "grist-api", "nom": "API de Grist", "adresse": "https://docs.getgrist.com/", "quand": "demarrage" },
+    { "id": "pdfmake", "nom": "pdfmake", "version": "0.2.7", "adresse": "https://cdnjs.cloudflare.com/", "quand": "usage", "paquet": "pdfmake",
+      "contient": ["polices (vfs_fonts)"] },
+    { "id": "pdf-lib", "nom": "pdf-lib", "version": "1.17.1", "adresse": "https://cdnjs.cloudflare.com/", "quand": "usage", "paquet": "pdf-lib" },
+    { "id": "jszip", "nom": "JSZip", "version": "3.10.1", "adresse": "https://cdnjs.cloudflare.com/", "quand": "usage", "paquet": "jszip" },
+    { "id": "docx", "nom": "docx", "version": "9.15.1", "adresse": "https://cdnjs.cloudflare.com/", "quand": "usage", "paquet": "docx",
+      "contient": ["docx-charts (graphiques)"] },
+    { "id": "exceljs", "nom": "ExcelJS", "version": "4.4.0", "adresse": "https://cdnjs.cloudflare.com/", "quand": "usage", "paquet": "exceljs" },
+    { "id": "marked", "nom": "marked", "version": "15.0.12", "adresse": "https://cdnjs.cloudflare.com/", "quand": "usage", "paquet": "marked" },
+    { "id": "qrcode-generator", "nom": "qrcode-generator", "version": "1.4.4", "adresse": "https://cdnjs.cloudflare.com/", "quand": "usage",
+      "paquet": "qrcode-generator" }
+  ],
   "actions": {
     "ouvrir": ["document", "grille", "presentation", "email", "macro"],
     "choisir": ["document", "grille", "presentation"],

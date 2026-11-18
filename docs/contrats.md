@@ -269,6 +269,7 @@ L'app (sous-cadre sans allow-same-origin)
 | `extensions` | liste | non | Les extensions de l'app (2.6). |
 | `dependances` | chaîne | non | Chemin de la liste des bibliothèques **natives** de l'app (`package.json`) : celles d'une extension n'y figurent pas (2.6, point 4). |
 | `natives` | liste | non | Les bibliothèques natives de l'app **rangées par fonction**, pour le choix « CDN ou copie figée » : `[ { "id", "nom": { "fr", "en" }, "bibliotheques": [ { "id", "version" } ] } ]` (2.6, point 14 ; 5.2, point 12). Une bibliothèque n'est que dans une fonction, sa version est exacte. L'app le déclare quand elle lit le choix ; sans `natives`, rien n'est proposé et l'app reste au CDN. Une fonction dont la copie figée est **dans le dépôt de l'app** (l'éditeur) s'écrit `{ "id", "nom", "copieDansApp": true, "poids": <octets> }`, sans `bibliotheques`. |
+| `portees` | liste | non | Les bibliothèques que l'app **charge elle-même** (18/11, demande du porteur : « Oui, déclaré par chaque app »), que la fenêtre « Dépendances » montre sous l'app comme « Portées par l'app » : `[ { "id", "nom", "version"?, "adresse", "quand": "demarrage" \| "usage" \| "option", "contient"?, "paquet"?, "note"?: { "fr", "en" } } ]` (2.6, point 17). Une liste vide : l'app dit n'en charger aucune ; le champ absent : elle n'a encore rien déclaré. GFS les écrit d'après la section de son `GFS-ETAT.md` et n'en vérifie rien. |
 | `actions` | objet | non | Ce que l'app accepte de la part des autres (2.7). |
 | `ouverture` | objet | non | Ce que l'app sait faire d'une ouverture que GFS lui passe : `{ "fichier": true, "nouveau": true, "importer": true, "lire": true, "modele": true }` (5.2, point 3 ; 5.4, points 1, 8 et 13). Un genre absent vaut faux : GFS ouvre alors l'app sur son modèle habituel et le dit, et grise « Importer », « Lire » ou les modèles de « Depuis un modèle ». |
 | `permanente` | booléen | non | `true` : l'app ne se retire pas de la fenêtre « Apps et extensions » (Publipostage+). |
@@ -550,9 +551,28 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     fenêtre) : le réglage des réseaux fermés ; une question (une fenêtre du widget) dit les apps et leurs fonctions, « Annuler » n'écrit rien, confirmer écrit une fois par app ; quand chaque fonction qui le
     peut y est déjà, le bouton devient « Tout en CDN » (le retour, avec sa question). **« Exporter »** : deux fichiers JSON fabriqués dans le navigateur, sans rien envoyer : le rapport de GFS
     (`gfs-dependances-AAAA-MM-JJ.json` : ce que la fenêtre montre, source retenue comprise) et l'inventaire **CycloneDX 1.5** (`….cdx.json` : un composant par bibliothèque avec `purl`, licence, empreinte
-    SHA-384 en hexadécimal quand un seul fichier la porte seul, adresses du CDN avec leur empreinte, avis du relevé en `vulnerabilities`). **Pas encore** : les bibliothèques que chaque app porte
-    elle-même (une note le dit sous la liste). Code : `js/apps/dependencies-model.js` (lignes), `-source.js` (ce qui se choisit, le plan d'écriture), `-source-view.js`, `-foot.js`, `-export.js`,
+    SHA-384 en hexadécimal quand un seul fichier la porte seul, adresses du CDN avec leur empreinte, avis du relevé en `vulnerabilities`). **Les bibliothèques que chaque app porte
+    elle-même** : point 17. Code : `js/apps/dependencies-model.js` (lignes), `-source.js` (ce qui se choisit, le plan d'écriture), `-source-view.js`, `-foot.js`, `-export.js`,
     `-cyclonedx.js`, `-audit.js`, `-detail.js`, `-window.js`, `-control.js`, `licences.js`, `version-gap.js` (la règle de l'écart, partagée avec l'outil). Mesuré dans un vrai Grist (faits vérifiés 119, `labo/run-dependances.mjs`) : le choix s'écrit et revient au rechargement, la question de « Tout… » rend la fenêtre inerte, la lecture seule n'écrit rien. [M]
+
+17. [D] **« Portées par l'app » : ce que chaque app charge elle-même** (demande du porteur, 18/11 : « es-tu sûr que ta fenêtre est exhaustive ? », puis la carte « Afficher aussi ce que chaque app charge elle-même ? » : « Oui, déclaré par chaque app »).
+    La fenêtre du point 16 ne listait que ce que GFS sert : elle ne disait rien de ce qu'une app charge de son côté (l'éditeur de Publipostage+ depuis esm.sh, ses bibliothèques d'export depuis cdnjs, l'API de Grist depuis
+    docs.getgrist.com, Leaflet de Form+…). Le champ `portees` du manifeste (2.2) le dit, app par app : une liste de `{ id, nom, version?, adresse, quand, contient?, paquet?, note? }`. `id` : minuscules, chiffres et tirets,
+    unique dans la liste. `nom` : 60 signes au plus ; une famille est **une entrée**, pas cinquante (« TipTap », avec `contient` : « ProseMirror », « linkifyjs »…, douze noms au plus). `version` : exacte (ni intervalle ni `latest`),
+    absente pour un service sans numéro (l'API de Grist). `adresse` : `https`, un nom d'hôte avec un point, sans identifiants ni port ; c'est ce que le navigateur contacte, ou le site de l'app elle-même pour une copie qu'elle garde
+    dans son dépôt. `quand` : `demarrage` (à l'ouverture de l'app), `usage` (au premier usage de la fonction qui la demande) ou `option` (seulement si la personne active l'option qui la demande). `paquet` : le nom npm, facultatif ;
+    il sert à dire que GFS en garde aussi une copie, et à ôter l'entrée quand GFS sert ce paquet à cette même app (sa ligne est alors celle de la fenêtre, avec la source à choisir). `note` : `{ fr, en }`, 240 signes au plus.
+    Une liste vide dit que l'app n'en charge aucune ; le champ absent, qu'elle n'a encore rien déclaré (la fenêtre le dit sous sa liste). **Qui écrit quoi** : l'app déclare dans la section « Bibliothèques que l'app charge
+    elle-même » de son `GFS-ETAT.md` (guide des apps 1.2, point 24 ; `consignes/LISEZ-MOI.md`), GFS recopie dans le manifeste qu'il tient pour elle (le contrat s'étend par ajout) ; **GFS n'en vérifie rien** (ni la version,
+    ni l'adresse, ni l'empreinte) et n'offre aucun choix de source : c'est l'app qui charge. La fenêtre l'écrit en toutes lettres (« déclarée par l'app » : sous le titre du bloc, sur la note, dans le détail) et **n'offre aucune
+    adresse déclarée en lien** : elle vient de l'app, pas du relevé de GFS. **Rangement** : sous chaque app, installée ou non comme ses lignes de GFS, un bloc « Portées par l'app » à trois colonnes (la bibliothèque et son moment,
+    la version déclarée, l'adresse contactée), le démarrage avant le premier usage ; un clic déplie l'origine, la version, ce que la bibliothèque contient, l'adresse, le moment, la précision de l'app et, quand `paquet` en est un
+    que GFS garde, « GFS garde aussi une copie figée ». Elles ne se montrent que sous « Toutes » (GFS n'en connaît ni l'état, ni l'écart, ni les avis), se cherchent par nom, version, hôte et contenu, et le sous-titre les compte
+    (« n bibliothèques déclarées par les apps ») ; une app qui déclare n'en charger aucune le dit. **L'export les garde** : le rapport de GFS porte une clé `declarees` (par app, `nombre` et la liste, chaque entrée
+    `declaree_par: "app"` et `verifiee: false`) ; l'inventaire CycloneDX un composant `gfs:declared:<app>:<id>` sans `purl`, sans licence et sans empreinte, avec les propriétés `gfs:declared-by-app`, `gfs:verified` (`false`) et
+    `gfs:loaded`. **Pas encore** (second lot) : la dernière version stable et les avis de ces bibliothèques, que le relevé ne couvre pas. Code : `js/apps/manifest-carried.js` (la validation), `dependencies-carried.js` (le modèle),
+    `dependencies-carried-view.js` (le bloc et son détail), `groupsOf` de `dependencies-model.js`. Mesuré sous Firefox à 700 × 400 (`test/dependances-carried-firefox.mjs`) et dans un vrai Grist (`labo/run-dependances.mjs` :
+    le manifeste de Publipostage+ en déclare neuf, la fenêtre n'appelle aucune des adresses déclarées ; faits vérifiés 132). [M]
 
 ### 2.7 Les actions acceptées
 
@@ -621,6 +641,9 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
      absent, sans français ou sans anglais, des `fournisseurs` absents, vides, hors de `youtube` et `vimeo` ou en double ;
    - une extension dont le `dossier` sort de l'app, ou dont une entrée de `bibliotheques` n'a pas d'`id` ou n'a pas une
      `version` exacte (un intervalle, `latest`) ;
+   - dans `portees` (2.6, point 17) : autre chose qu'une liste, une entrée qui n'est pas un objet ou qui porte un champ inconnu, un `id` hors format ou déjà pris, un `nom` vide ou de plus de 60 signes, une `version`
+     qui n'est pas exacte, une `adresse` qui n'est pas en `https` (ou porte des identifiants, un port, un nom d'hôte sans point), un `quand` hors de `demarrage`, `usage` et `option`, un `contient` de plus de douze noms,
+     un `paquet` qui n'est pas un nom npm, une `note` sans français ou sans anglais ;
    - dans `actions.importer` (2.7, point 4) : une entrée sans `valeur` ou sans `nom` en français et en anglais, une `valeur` déjà
      prise, un `type` qui n'est pas dans `actions.ouvrir`, des `extensions` qui ne sont pas une liste non vide de terminaisons (un
      point, puis un à huit caractères ou chiffres : `.xlsx`) ;

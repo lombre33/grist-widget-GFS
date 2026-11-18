@@ -15,7 +15,7 @@ export function externalLink(t, { href, what, name, text, cls = 'dp-link' }) {
   return h('a', { class: cls, href, target: '_blank', rel: 'noopener noreferrer', 'aria-label': t('dep.d.link.label', { what, name }) }, text, icon('open'));
 }
 
-const fact = (title, ...content) => h('div', { class: 'dp-fact' }, h('dt', null, title), h('dd', null, ...content));
+export const fact = (title, ...content) => h('div', { class: 'dp-fact' }, h('dt', null, title), h('dd', null, ...content));
 
 // Tous les usages de la bibliothèque, ceux des autres apps comprises (la ligne n'est vue que depuis une app, mais l'audit voit tout).
 function usersFact(t, row) {

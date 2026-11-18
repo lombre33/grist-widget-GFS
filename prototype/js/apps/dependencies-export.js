@@ -16,10 +16,15 @@ const useOf = use => ({ app: use.appName, fonction: use.what, etat: use.state, s
 const fileOf = file => ({ id: file.id, version: file.version, poids: file.poids, forme: file.forme, copie: { ...file.copie },
   cdn: file.cdn ? { ...file.cdn } : null });
 
+// Ce qu'une app déclare charger elle-même (js/apps/dependencies-carried.js) : GFS ne le sert pas et n'en vérifie rien, le rapport le dit à chaque entrée.
+const declaredEntry = entry => ({ app: entry.app, id: entry.id, nom: entry.name, version: entry.version, contient: [...entry.contains], adresse: entry.address,
+  hote: entry.host, quand: entry.when, paquet: entry.paquet, note: entry.note || null, declaree_par: 'app', verifiee: false });
+
 // Le rapport de GFS : une entrée par bibliothèque, avec ce que la fenêtre dit d'elle. Les clés sont celles du relevé (bibliotheques/releve.json) et du
-// catalogue.
-export function gfsReport({ rows, surveyed, generated }) {
+// catalogue. `declarees` : ce que les apps déclarent charger elles-mêmes, et ce que les apps qui n'en chargent aucune ont déclaré (liste vide).
+export function gfsReport({ rows, carried = [], surveyed, generated }) {
   return { format: 'gfs-dependances', version: 1, genere: generated, releve: surveyed || null,
+    declarees: carried.map(group => ({ app: group.id, nombre: group.declared, bibliotheques: group.carried.map(declaredEntry) })),
     bibliotheques: rows.map(row => ({ paquet: row.paquet, version: row.version, etat: row.state, utilisee_par: row.uses.map(useOf),
       fichiers: row.files.map(fileOf),
       derniere_stable: row.latest, ecart: row.ecart, avis: row.advisories.map(advisory => ({ ...advisory })), licence: row.licence, licence_gpl: row.licenceFit,
@@ -27,8 +32,8 @@ export function gfsReport({ rows, surveyed, generated }) {
 }
 
 // Le texte d'un rapport : `serial` ne sert qu'à CycloneDX.
-export function reportText(format, { rows, surveyed, generated, serial }) {
-  const report = format === 'cdx' ? cyclonedx({ rows, surveyed, generated, serial }) : gfsReport({ rows, surveyed, generated });
+export function reportText(format, { rows, carried = [], surveyed, generated, serial }) {
+  const report = format === 'cdx' ? cyclonedx({ rows, carried, surveyed, generated, serial }) : gfsReport({ rows, carried, surveyed, generated });
   return `${JSON.stringify(report, null, 2)}\n`;
 }
 

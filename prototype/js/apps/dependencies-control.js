@@ -5,6 +5,7 @@
 // bibliothèque ou de toutes, que `apply` écrit comme la fiche d'une app (js/apps/dependencies-source.js) ; l'export ne fait que produire un fichier.
 
 import { dependencyRows } from './dependencies-model.js';
+import { carriedOf } from './dependencies-carried.js';
 import { openDependencies } from './dependencies-window.js';
 import { verifyCopy } from './dependencies-audit.js';
 import { allUnits } from './dependencies-source.js';
@@ -35,6 +36,7 @@ export class DependenciesControl {
       const { blocked, apply, ask, doc } = this.#opts;
       await openDependencies({ container, inertTargets, t, locale: locale(), lang: lang(),
         rows: () => dependencyRows({ catalogue: catalogue(), releve, modules: model(), lang: lang() }),
+        carried: rows => carriedOf({ modules: model(), lang: lang(), rows }),
         surveyed: releve ? releve.releve : null, verify: row => this.#verify(row), blocked, apply, ask, units: () => allUnits(model(), lang()),
           now: () => new Date(),
         uuid: () => newSerial(), save: (name, text) => saveText(doc, name, text) });

@@ -116,22 +116,28 @@ export function scopeRow(row, app) {
 }
 
 // Les lignes rangées par app (demande du porteur, 18/11 : « regroupé par app, par défaut seulement celles des apps activées ») : [{ id, name, installed,
-// rows }], les apps par nom, et en dernier ce qu'aucune app ne demande (`id` vide, `name` null). `installed` : l'app est installée (au moins un de ses
-// usages n'est pas « prête »).
-export function groupsOf(rows) {
+// rows, carried, declared }], les apps par nom, et en dernier ce qu'aucune app ne demande (`id` vide, `name` null). `installed` : l'app est installée (au
+// moins un de ses usages n'est pas « prête »). `carried` : ce que l'app déclare charger elle-même (js/apps/dependencies-carried.js, la liste rendue par
+// `carriedOf`) ; `declared` : combien elle en déclare, ou null quand elle n'a encore rien déclaré.
+export function groupsOf(rows, carried = []) {
   const apps = new Map();
   const loose = [];
   for (const row of rows) {
     if (!row.uses.length) { loose.push(scopeRow(row, null)); continue; }
     for (const use of new Map(row.uses.map(each => [each.app, each])).values()) {
-      const group = apps.get(use.app) || { id: use.app, name: use.appName, rows: [] };
+      const group = apps.get(use.app) || { id: use.app, name: use.appName, rows: [], installed: false };
       group.rows.push(scopeRow(row, use.app));
+      group.installed = group.installed || row.uses.some(each => each.app === use.app && each.state !== 'ready');
       apps.set(use.app, group);
     }
   }
-  const named = [...apps.values()].map(group => ({ ...group, rows: group.rows.sort(byState),
-    installed: group.rows.some(row => row.uses.some(use => use.state !== 'ready')) })).sort((a, b) => a.name.localeCompare(b.name));
-  return loose.length ? [...named, { id: '', name: null, installed: false, rows: loose.sort(byState) }] : named;
+  for (const own of carried) {
+    const group = apps.get(own.id) || { id: own.id, name: own.name, rows: [], installed: false };
+    apps.set(own.id, { ...group, installed: group.installed || own.installed, carried: own.carried, declared: own.declared });
+  }
+  const named = [...apps.values()].map(group => ({ carried: [], declared: null, ...group, rows: group.rows.sort(byState) }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  return loose.length ? [...named, { id: '', name: null, installed: false, rows: loose.sort(byState), carried: [], declared: null }] : named;
 }
 
 // Les filtres de la fenêtre : Toutes, Actives, Mises à jour, Avis.

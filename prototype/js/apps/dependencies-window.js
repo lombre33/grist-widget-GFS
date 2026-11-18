@@ -13,6 +13,7 @@ import { normalize, words, matchesWords } from '../ui/search.js';
 import { formatBytes } from '../weight/weight.js';
 import { FILTERS, matchesFilter, summary } from './dependencies-model.js';
 import { sourceOf, planFor } from './dependencies-source.js';
+import { carriedText } from './dependencies-carried.js';
 import { buildList } from './dependencies-list.js';
 import { buildFoot } from './dependencies-foot.js';
 
@@ -27,6 +28,7 @@ function formatDate(iso, locale) {
 // L'en-tête : le titre, le nombre de bibliothèques, la recherche et les filtres. Rend { node, search, chips }.
 function buildHead(t, rows, state, { onFilter, onSearch }) {
   const { bytes } = summary(rows);
+  const declared = state.carried.reduce((total, group) => total + group.carried.length, 0);
   const search = h('input', { type: 'search', autocomplete: 'off', placeholder: t('dep.search'), 'aria-label': t('dep.search'),
     dataset: { fk: 'dep-search' } });
   search.addEventListener('input', onSearch);
@@ -34,19 +36,22 @@ function buildHead(t, rows, state, { onFilter, onSearch }) {
     dataset: { filter, fk: `dep-filter-${filter}` },
     on: { click: () => onFilter(filter) } }, t(`dep.filter.${filter}`), h('span', { class: 'dp-count' })));
   const node = h('header', { class: 'mod-head dp-head' }, h('h2', { id: 'dp-title' }, t('dep.title')),
-    h('p', { class: 'mod-count' }, t('dep.count', { n: rows.length, size: formatBytes(bytes, state.locale, t) })),
+    h('p', { class: 'mod-count' }, t('dep.count', { n: rows.length, size: formatBytes(bytes, state.locale, t) }),
+      declared ? ` · ${t('dep.count.carried', { n: declared })}` : ''),
     h('div', { class: 'dp-bar' }, h('label', { class: 'inp-search dp-search' }, icon('search'), search),
       h('div', { class: 'dp-filters', role: 'group', 'aria-label': t('dep.filters') }, ...chips)));
   return { node, search, chips };
 }
 
 // opts : { container, inertTargets(), t, locale, lang, rows() (js/apps/dependencies-model.js : relues à chaque changement), surveyed (la date du relevé en
-//   ISO, ou null), verify(row) -> Promise<résultats>, blocked() (la raison pour laquelle rien ne s'écrit, ou null), units() (js/apps/dependencies-source.js),
+//   ISO, ou null), carried(rows) (ce que les apps déclarent charger elles-mêmes : js/apps/dependencies-carried.js), verify(row) -> Promise<résultats>,
+//   blocked() (la raison pour laquelle rien ne s'écrit, ou null), units() (js/apps/dependencies-source.js),
 //   apply(plan, mode) -> Promise (l'écriture des choix), ask(opts) -> Promise<booléen>, now() -> Date, uuid() -> texte, save(nom, texte) }.
 // Rend la promesse de la fermeture.
 export function openDependencies(opts) {
   const { t, locale } = opts;
-  const state = { filter: 'all', open: new Set(), more: false, checks: new Map(), details: new Map(), rows: opts.rows(), locale };
+  const rows = opts.rows();
+  const state = { filter: 'all', open: new Set(), more: false, checks: new Map(), details: new Map(), rows, carried: opts.carried(rows), locale };
   const date = opts.surveyed ? formatDate(opts.surveyed, locale) : '';
   const empty = h('p', { class: 'dp-empty', role: 'status', hidden: true }, t('dep.none'));
   const head = buildHead(t, state.rows, state, { onFilter: filter => { state.filter = filter; render(); }, onSearch: () => render() });
@@ -75,8 +80,10 @@ export function openDependencies(opts) {
       chip.querySelector('.dp-count').textContent = String(counts[chip.dataset.filter]);
     }
   };
+  // Ce que les apps déclarent n'a ni état, ni mise à jour, ni avis connus de GFS : il ne se montre que sous « Toutes ».
   const list = buildList({ t, locale, state, date, verify: opts.verify, blocked: () => opts.blocked(), pick, after: showEmpty,
-    matches: row => matchesFilter(row, state.filter) && matchesWords(needles, searchText(row)) });
+    matches: row => matchesFilter(row, state.filter) && matchesWords(needles, searchText(row)),
+    matchesCarried: entry => state.filter === 'all' && matchesWords(needles, carriedText(entry)), plain: () => state.filter === 'all' && !needles.length });
   function render() {
     needles = words(head.search.value);
     list.render();
@@ -86,6 +93,7 @@ export function openDependencies(opts) {
     const doc = empty.ownerDocument;
     const kept = doc.activeElement && section.contains(doc.activeElement) ? doc.activeElement.dataset.fk : null;
     state.rows = opts.rows();
+    state.carried = opts.carried(state.rows);
     render();
     foot.update();
     const again = kept && [...section.querySelectorAll('[data-fk]')].find(node => node.dataset.fk === kept && !node.disabled);

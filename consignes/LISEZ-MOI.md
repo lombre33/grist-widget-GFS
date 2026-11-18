@@ -30,7 +30,7 @@ c'est fait). Quand le détail est dans le guide des apps ou dans le cahier, elle
 
 ## Répondre : `GFS-ETAT.md`
 
-Une page (une soixantaine de lignes au plus), écrite par le projet de l'app à la racine de son dépôt et remise à jour à la fin
+Une page (une soixantaine de lignes au plus, la liste des bibliothèques en plus), écrite par le projet de l'app à la racine de son dépôt et remise à jour à la fin
 de chaque lot qui change l'une de ses trois parties. GFS la lit, il ne la modifie jamais.
 
 ```markdown
@@ -50,7 +50,14 @@ Mis à jour le AAAA-MM-JJ, au commit `xxxxxxx` (le dernier commit de code que ce
 
 ## Demandes à GFS
 - <bibliothèque> · <version exacte> · <fonction concernée> · <à quoi elle sert> ; « aucune » sinon
+
+## Bibliothèques que l'app charge elle-même
+- <id> · <nom> · <version exacte, ou —> · <adresse https> · <démarrage | usage | option> · contient : <noms> · paquet : <npm> · <précision> ; « aucune » sinon
 ```
+
+La dernière section est facultative et vaut dans GFS seulement (décision du porteur du 18/11, « Oui, déclaré par chaque app » ; contrats 2.6, point 17 ; guide des apps 1.2, point 24) :
+elle dit à GFS tout ce que l'app charge ou garde elle-même et que GFS ne sert pas, pour la partie « Portées par l'app » de sa fenêtre « Dépendances ». Une ligne par bibliothèque ou par famille
+(un éditeur et ses dépendances : une ligne, avec `contient`) ; les trois dernières colonnes sont facultatives. GFS la recopie dans le manifeste qu'il tient pour l'app et n'en vérifie rien.
 
 Ce qui touche GFS, et seulement cela (le journal des commits dit déjà le reste) :
 

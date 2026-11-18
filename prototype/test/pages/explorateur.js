@@ -544,8 +544,9 @@ async function mount() {
     return openShareOther({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], file: kind === 'lien' ? null : { id: 'abc', name: 'Facture de la session de formation de septembre.pdf' }, createFlow: (chosen, strict) => { mode = chosen; acts.push(['mode', chosen, Boolean(strict)]); return flow; }, errorText: error => String(error.message), notice: text => acts.push(['notice', text]) });
   };
   // La fenêtre « Recevoir d'un autre document Grist » (js/sharing/share-receive-window.js, test/partager-recevoir-firefox.mjs) : la vraie fenêtre, sur un parcours dont les réponses sont des doublures (le moteur et Grist se mesurent
-  // dans un vrai Grist : labo/run-partager-recevoir.mjs). `kind` : 'ok' (un premier partage : GFS_Recus), 'second' (la table libre suivante : GFS_Recus_2), 'connu' (une réception qui reprend), 'refus' (accepter échoue).
+  // dans un vrai Grist : labo/run-partager-recevoir.mjs). `kind` : 'ok' (un premier partage : GFS_Recus), 'second' (la table libre suivante : GFS_Recus_2), 'connu' (une réception qui reprend), 'serveur' (le code vient d'un autre serveur Grist : refusé dès la lecture), 'refus' (accepter échoue).
   // `window.__receiveActs` note ce que le parcours a reçu.
+  const SERVER_OTHER = 'grist-de-la-direction-des-systemes-d-information.exemple.gouv.fr'; // le même nom dans test/partager-recevoir-firefox.mjs
   window.__receive = kind => {
     const acts = window.__receiveActs = [];
     const table = kind === 'second' ? 'GFS_Recus_2' : 'GFS_Recus';
@@ -554,6 +555,7 @@ async function mount() {
       read: async text => {
         acts.push(['read', text]);
         if (!text.startsWith('GRISTSYNC2.')) throw new Error('Ce texte n’est pas un code de synchro.');
+        if (kind === 'serveur') throw Object.assign(new Error('server'), { share: 'server', vars: { server: SERVER_OTHER } });
         return { name: LONG_DOC, tables: 1, expire: Date.now() / 1000 + 7 * 86400, known: kind === 'connu', table };
       },
       accept: async () => { acts.push(['accept']); if (kind === 'refus') throw new Error('Grist a refusé la création'); return { journal: `GFS_Journal_${LONG_DOC.replace(/ /g, '_')}`, relinked: kind === 'connu', table }; },

@@ -4,7 +4,9 @@ import assert from 'node:assert/strict';
 import { readCatalogue } from '../js/apps/libraries.js';
 import { activeExtensionIds, libraryNeeds, extensionRows, missingLibraries, modeOfExtension, libraryModes, extensionsState } from '../js/apps/extensions.js';
 import { readApps, toOption, patchApps, withApp, withExtension, withMode } from '../js/apps/settings.js';
-import { publipostage, readJson } from './helpers.mjs';
+import { pathToFileURL } from 'node:url';
+import { join } from 'node:path';
+import { publipostage, bi, readJson, ROOT } from './helpers.mjs';
 
 const SRI = `sha384-${'B'.repeat(64)}`;
 const catalogue = readCatalogue({ bibliotheques: [{
@@ -209,6 +211,48 @@ test('Publipostage+ : « Lecture de PDF » reçoit pdf.js de la copie de GFS seu
   assert.equal(state.bibliotheques.pdfjs.forme, 'module');
   assert.equal(state.bibliotheques.pdfjs.src, 'https://exemple.test/gfs/vendor/pdfjs/1.0.0/pdfjs.js');
   assert.match(state.bibliotheques.pdfjs.integrite, /^sha384-[A-Za-z0-9+/]{64}$/);
+});
+
+// Les deux extensions de Grist-BI (ses demandes `d3-cloud` et `pdfjs`, acceptées par le porteur le 18/11) : le nuage de mots (d3-cloud, ESM seul, donc un fichier assemblé de forme « module »)
+// et les mots-clés des PDF (la copie de pdf.js que Publipostage+ lit déjà : le même fichier, pas un second). Ni l'une ni l'autre n'a de CDN : la copie de GFS est leur seul mode.
+test('Grist-BI : « Nuage de mots » et « Mots-clés des PDF » reçoivent leur bibliothèque de la copie de GFS seule, sous la forme module, et ne sont pas grisées', () => {
+  const real = readCatalogue(readJson('bibliotheques/catalogue.json'));
+  const biManifest = bi();
+  assert.deepEqual(biManifest.extensions.map(extension => extension.id), ['nuage-de-mots', 'mots-cles-pdf']);
+  for (const extension of biManifest.extensions) assert.deepEqual(missingLibraries(extension, real), [], `${extension.id} : le catalogue a ce qu'elle exige`);
+  const rows = extensionRows(biManifest, { extensions: ['nuage-de-mots', 'mots-cles-pdf'], modes: {} }, real);
+  assert.deepEqual(rows.map(row => [row.extension.id, row.greyed, row.noCdn, row.mode]), [['nuage-de-mots', false, true, 'vendorise'], ['mots-cles-pdf', false, true, 'vendorise']]);
+  const both = extensionsState(biManifest, { extensions: ['nuage-de-mots', 'mots-cles-pdf'], modes: {} }, real, 'https://exemple.test/gfs/');
+  assert.deepEqual(both.extensions, ['nuage-de-mots', 'mots-cles-pdf']);
+  assert.deepEqual(Object.keys(both.bibliotheques).sort(), ['d3-cloud', 'pdfjs']);
+  assert.equal(both.bibliotheques['d3-cloud'].forme, 'module');
+  assert.equal(both.bibliotheques['d3-cloud'].src, 'https://exemple.test/gfs/vendor/d3-cloud/1.0.0/d3-cloud.js');
+  assert.match(both.bibliotheques['d3-cloud'].integrite, /^sha384-[A-Za-z0-9+/]{64}$/);
+  assert.equal(both.bibliotheques.pdfjs.src, 'https://exemple.test/gfs/vendor/pdfjs/1.0.0/pdfjs.js', 'la copie de pdf.js est celle de Publipostage+ : une seule');
+  const cloudOnly = extensionsState(biManifest, { extensions: ['nuage-de-mots'], modes: {} }, real, 'https://exemple.test/gfs/');
+  assert.deepEqual(Object.keys(cloudOnly.bibliotheques), ['d3-cloud'], 'cocher le nuage de mots ne charge pas pdf.js (1,6 Mo)');
+  const off = extensionsState(biManifest, { extensions: [], modes: {} }, real, 'https://exemple.test/gfs/');
+  assert.deepEqual([off.extensions, Object.keys(off.bibliotheques)], [[], []], 'décochées : l\'app ne reçoit rien et grise leur fonction');
+});
+
+test('d3-cloud : le fichier de GFS est un module qui se range sous son identifiant et donne la classe CloudLayout par défaut, comme la demande de Grist-BI', async () => {
+  const catalogueEntry = readJson('bibliotheques/catalogue.json').bibliotheques.find(entry => entry.id === 'd3-cloud');
+  assert.equal(catalogueEntry.forme, 'module');
+  assert.equal(catalogueEntry.cdn, null, 'sans CDN : la copie de GFS est son seul mode (contrats 2.6, point 12)');
+  assert.deepEqual(catalogueEntry.contient, [{ paquet: 'd3-cloud', version: '2.0.0' }]);
+  assert.deepEqual(catalogueEntry.modules, ['d3-cloud']);
+  const before = globalThis.GfsPaquets;
+  delete globalThis.GfsPaquets;
+  try {
+    await import(pathToFileURL(join(ROOT, catalogueEntry.vendorise.chemin)).href);
+    const loaded = globalThis.GfsPaquets['d3-cloud'];
+    assert.equal(loaded.version, '1.0.0');
+    const cloud = loaded.modules['d3-cloud'];
+    assert.equal(typeof cloud.default, 'function', 'l\'export par défaut est la classe CloudLayout que `import(\'d3-cloud\').default` donnait à l\'app');
+    assert.equal(cloud.default, cloud.CloudLayout);
+  } finally {
+    if (before === undefined) delete globalThis.GfsPaquets; else globalThis.GfsPaquets = before;
+  }
 });
 
 // « Polices » de Publipostage+ (sa demande du 12/11, `GFS-ETAT.md` : la police Marianne de l'État dans le PDF) : un seul fichier de l'app, sans bibliothèque ni point d'entrée (elle ouvre un

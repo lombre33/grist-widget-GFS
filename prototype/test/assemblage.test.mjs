@@ -464,6 +464,36 @@ test('gfs.publication avec git : un fichier sansCdn s\'écrit sans lire le commi
   assert.deepEqual(verify(root).problems, []);
 });
 
+test('gfs.publication dédiée : le petit dépôt à part s\'écrit sans lire de commit (il n\'est jamais dans ce clone), à la racine, et se vérifie par le CDN', async () => {
+  const paquets = archives();
+  const commit = 'b'.repeat(40);
+  assert.deepEqual(readPublication(withPublication({ racine: '', dedie: true })), { ...PUBLICATION, racine: '', dedie: true });
+  assert.equal(readPublication(withPublication({ dedie: false })).dedie, undefined, 'faux : comme sans le mot');
+  for (const dedie of ['oui', 1, null]) assert.throws(() => readPublication(withPublication({ dedie })), /dedie : vrai ou faux attendu/, String(dedie));
+
+  const depot = fresh('depot');
+  const root = rootWithList(LIST(), join(depot, 'prototype'));
+  git(depot, 'init', '-q');
+  git(depot, 'commit', '-q', '--allow-empty', '-m', 'vide');
+  await generate(root, paquets, () => {});
+  pinList(root, { depot: 'essai/cdn', commit, racine: '', dedie: true });
+  const said = [];
+  rewriteCatalogue(root, text => said.push(text));
+  assert.deepEqual(said, [], 'rien à dire : l\'adresse s\'écrit sans lecture');
+  const { catalogue, problems } = verify(root);
+  assert.deepEqual(problems, []);
+  const [entry] = catalogue.bibliotheques;
+  assert.equal(entry.cdn.src, `https://cdn.jsdelivr.net/gh/essai/cdn@${commit}/vendor/essai-live/1.0.0/essai-live.js`, 'le dossier de la copie à la racine du petit dépôt');
+  assert.equal(entry.cdn.integrite, entry.vendorise.integrite);
+  const written = readFileSync(join(root, 'bibliotheques/catalogue.json'), 'utf8');
+  await generate(root, paquets, () => {});
+  assert.equal(readFileSync(join(root, 'bibliotheques/catalogue.json'), 'utf8'), written, 'l\'outil sans option donne le même catalogue');
+
+  // Sans « dedie », le même commit absent du clone reste une erreur : on ne devine pas une adresse.
+  pinList(root, { depot: 'essai/cdn', commit, racine: '' });
+  assert.throws(() => rewriteCatalogue(root, () => {}), /le commit épinglé bbbbbbb n'est pas dans ce clone \(git fetch\)/);
+});
+
 test('rewriteCatalogue : seule l\'adresse du CDN peut changer ; une copie qui n\'est plus celle du catalogue est une erreur', async () => {
   const depot = fresh('depot');
   const root = rootWithList(LIST(), join(depot, 'prototype'));

@@ -435,6 +435,16 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     (le dépôt public définitif de GFS aura la sienne, question 5) : chaque changement est une consigne aux apps. Sans `gfs.publication`
     (un GFS sans dépôt public, une copie d'essai), l'entrée porte `cdn: null` : la copie de GFS est alors le seul mode, la fenêtre
     « Apps et extensions » ne propose pas le CDN pour cette bibliothèque et le dit.
+    **Un petit dépôt dédié, décidé par le porteur le 18/11** (« Petit dépôt dédié aux fichiers CDN ») : pour ne pas attendre la bascule de GFS
+    sous `grist-factory`, ni lier l'adresse que chaque app nomme à l'historique d'un dépôt qu'un outil d'envoi reconstruit (nouveaux commits),
+    les fichiers servis par CDN vivent dans un petit dépôt public à part (`grist-factory/gfs-bibliotheques`, nom modifiable), à la racine
+    (`vendor/<id>/<version>/<id>.js` et son `LICENCES.txt`). `outils/depot-cdn.mjs <dossier>` en fabrique le dossier d'après le catalogue (il
+    refuse une copie qui n'a plus l'empreinte du catalogue, et un dossier qui contient autre chose) ; la personne qui pousse sur `grist-factory`
+    l'envoie de sa machine, jamais du cloud, et donne le commit. La liste le dit par `gfs.publication` : `{ depot, commit, racine: "", dedie: true }`.
+    **`dedie: true`** : ce commit n'est jamais dans le clone de GFS, l'outil ne le lit pas (`--catalogue` écrit l'adresse sans lecture) ; la preuve est
+    alors `--verifier-cdn`, qui compare ce que jsDelivr sert à l'empreinte du catalogue, puis le navigateur de l'app, qui contrôle l'empreinte à chaque
+    chargement. **Une seule adresse à nommer pour toutes les apps** : `https://cdn.jsdelivr.net/gh/<dépôt dédié>@<commit>/`. Le commit ne change que
+    quand un fichier du petit dépôt change, donc rarement. [D]
     [M] **Mesuré le 19/10 avec Publipostage+** (la version que GFS référence, `da919fc` ; `run-edition.mjs`, à 700 × 400, à la vraie
     souris et au vrai clavier, en français / clair et en anglais / sombre) : par défaut (« Depuis un CDN », rien d'écrit dans le
     document), l'app reçoit l'adresse jsDelivr et l'empreinte du catalogue ; **tant que sa CSP ne nomme pas cette adresse, le

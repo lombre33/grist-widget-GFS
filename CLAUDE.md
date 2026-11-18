@@ -147,6 +147,11 @@ Les dépôts servent de boîte aux lettres ; chaque côté ne lit qu'une page (m
   relu) ; pousser ; répondre par une consigne. **Décidé le 04/11 (« Dès la lecture »)** : quand la demande porte sur une fonction que GFS
   propose déjà (le geste existe dans GFS, grisé jusque-là : « Lire » un PDF, par exemple), la bibliothèque ou l'extension s'ajoute dès que GFS lit
   la demande, sans attendre le « demande de… » du porteur ; une fonction nouvelle attend encore son mot.
+- **Montée de version (décidé le 18/11)** : quand GFS voit qu'une bibliothèque qu'une app porte a une version plus récente (relevé des
+  dernières versions, lecture de l'app), il lui pose une consigne : « avant le reste » si la version a un avis de sécurité publié,
+  « sans urgence » sinon (correctif et mineure à prendre, majeure à étudier). L'app dit sa montée dans « Changements qui touchent
+  GFS » ; GFS réécrit alors sa copie. Une bibliothèque que GFS sert lui-même pour une extension se monte par GFS (Dependabot) : l'app
+  n'a de consigne que si l'adresse de son CDN change (sa politique de sécurité nomme l'adresse exacte).
 - On ne pousse jamais dans le dépôt d'une app.
 
 ## Travailler avec le porteur

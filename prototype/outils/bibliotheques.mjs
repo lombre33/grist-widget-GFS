@@ -42,14 +42,17 @@ export function readList(packageJson) {
 
 // Où jsDelivr sert les fichiers assemblés : { depot, commit, racine } (`gfs.publication` de la liste), ou null quand GFS n'a pas d'adresse publique.
 // `commit` est complet : une branche ou une étiquette change sous les pieds de l'empreinte. `racine` est le dossier de GFS dans le dépôt (« prototype/ »).
+// `dedie: true` : le dépôt est un petit dépôt à part qui ne porte que les fichiers servis par CDN (outils/depot-cdn.mjs, `racine` vide) : son commit n'est jamais dans
+// le clone de GFS, l'outil ne peut pas l'y lire, et la preuve est --verifier-cdn (ce que jsDelivr sert vraiment) puis l'empreinte que le navigateur contrôle.
 export function readPublication(packageJson) {
   const publication = packageJson.gfs && packageJson.gfs.publication;
   if (publication === undefined) return null;
-  const { depot, commit, racine } = publication || {};
+  const { depot, commit, racine, dedie } = publication || {};
   if (!REPO_RE.test(depot || '')) throw new Error('gfs.publication.depot : « propriétaire/dépôt » attendu');
   if (!COMMIT_RE.test(commit || '')) throw new Error('gfs.publication.commit : un commit complet (40 chiffres hexadécimaux) attendu, jamais une branche ni une étiquette');
   if (typeof racine !== 'string' || (racine !== '' && !(racine.endsWith('/') && isSafePath(racine.slice(0, -1))))) throw new Error('gfs.publication.racine : le dossier de GFS dans le dépôt, avec sa barre finale (ou vide)');
-  return { depot, commit, racine };
+  if (dedie !== undefined && typeof dedie !== 'boolean') throw new Error('gfs.publication.dedie : vrai ou faux attendu');
+  return { depot, commit, racine, ...(dedie === true ? { dedie: true } : {}) };
 }
 
 // L'adresse jsDelivr d'un fichier de GFS (`chemin` : relatif à prototype/) au commit épinglé.
@@ -251,7 +254,8 @@ const writeCatalogue = (root, entries) => writeFileSync(join(root, 'bibliotheque
 // L'épinglage de la liste : { publication, readAtCommit } quand elle épingle un commit, sinon rien (un fichier assemblé n'a alors pas de CDN).
 function pinOf(root, packageJson) {
   const publication = readPublication(packageJson);
-  return publication ? { publication, readAtCommit: gitReader(root) } : {};
+  if (!publication) return {};
+  return { publication, readAtCommit: publication.dedie ? () => null : gitReader(root) }; // un dépôt dédié n'est pas dans ce clone : rien à y lire
 }
 
 // La publication qui vaut pour ces octets : celle de la liste quand son commit épinglé porte exactement ce fichier ; sinon aucune (cdn: null), et l'outil dit quoi faire.
@@ -260,6 +264,7 @@ function publicationFor(item, bytes, { publication, readAtCommit } = {}, log) {
   const short = publication.commit.slice(0, 7);
   let held;
   try { held = readAtCommit(publication.commit, `${publication.racine}${assembledPath(item)}`); } catch (error) { held = undefined; }
+  if (held === null && publication.dedie) return publication; // dépôt dédié : l'adresse s'écrit sans lecture, --verifier-cdn la compare à ce que jsDelivr sert
   if (held === null) throw new Error(`${item.id} : le commit épinglé ${short} n'est pas dans ce clone (git fetch) : l'adresse du CDN ne s'écrit qu'après avoir lu le fichier à ce commit`);
   if (held && integrity(held) === integrity(bytes)) return publication;
   log(`${item.id} : pas d'adresse de CDN pour l'instant, le commit épinglé ${short} ne porte pas ce fichier. Commiter la copie, mettre son commit dans gfs.publication.commit de la liste, puis relancer avec --catalogue.\n`);
@@ -311,7 +316,7 @@ export function verify(root, readAtCommit = null) {
   const catalogue = JSON.parse(readFileSync(join(root, 'bibliotheques/catalogue.json'), 'utf8'));
   const packageJson = readRootPackage(root);
   const publication = readPublication(packageJson);
-  const pin = { publication, readAtCommit: publication ? (readAtCommit || gitReader(root)) : null };
+  const pin = { publication, readAtCommit: publication ? (readAtCommit || (publication.dedie ? () => null : gitReader(root))) : null };
   return { catalogue, problems: checkFiles(catalogue, readList(packageJson), path => readFileSync(join(root, path)), pin) };
 }
 

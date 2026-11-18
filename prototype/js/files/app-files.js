@@ -22,6 +22,7 @@ import { copyRecipeOf, copiesByApp, copyNameOf, copyPlan } from './gfs-copy.js';
 import { isExcluded } from '../explorer/explorer-model.js';
 import { BIN_TABLE, BIN_COLUMNS, BIN_COLUMN_IDS, recipeOf, asksApp, writable, snapshotOf, parseSnapshot, entryRecord, restorePlan } from './gfs-trash.js';
 import { ERR } from '../broker/filter.js';
+import { isTable } from '../apps/doc-names.js';
 
 const APP_PATIENCE_MS = 20000; // l'app répond sans question à la personne : au bout de ce délai, GFS ne l'attend plus et n'écrit rien
 const SAID_MAX = 200;
@@ -75,7 +76,7 @@ export class AppFiles {
   // pas le supprimer, ou le copier.
   #specOf(file, recipe = recipeOf) {
     for (const { manifest } of this.#opts.apps()) {
-      const spec = manifest.id === file.app ? (manifest.fichiers || []).find(entry => entry.table === file.table && recipe(entry)) : null;
+      const spec = manifest.id === file.app ? (manifest.fichiers || []).find(entry => isTable(entry, file.table) && recipe(entry)) : null;
       if (spec) return spec;
     }
     return null;
@@ -199,7 +200,7 @@ export class AppFiles {
       if (!found) return false;
       this.#refuseAttachments(columns, found);
       const { table, at } = found;
-      const snapshot = snapshotOf(table.data, at, writable(table.data, columns.map(column => column.id)));
+      const snapshot = snapshotOf(table.data, at, writable(table.data, columns.map(column => column.id)), spec);
       const name = text(cell(table.data, spec.colonnes.nom, at));
       const record = entryRecord({ id: newId(), app: file.app, spec, file: { id: file.id, name, type: file.type, ts: file.ts, by: file.by }, snapshot,
         now: now(), author: identity() });

@@ -23,6 +23,7 @@ import { AppLinks } from './broker/links.js';
 import { readCatalogue } from './apps/libraries.js';
 import { extensionsOf } from './apps/extensions.js';
 import { AppsState } from './apps/apps-state.js';
+import { DocNames } from './apps/doc-names.js';
 import { arrivalApp, arrivalProbes } from './broker/arrival.js';
 import { arrivalTableApp } from './broker/arrival-table.js';
 import { Rangement, TableDeclined } from './files/rangement.js';
@@ -111,6 +112,8 @@ export class GfsController {
     });
     // Les apps sont servies par leur site en ligne (le porteur, 22/10) ; `?live=0` : la copie figée du sous-module, celle des mesures de GFS.
     this.live = liveSwitch(search);
+    // Les noms que le document donne aux tables et aux colonnes des apps (js/apps/doc-names.js) : lus avant chaque lecture des fichiers.
+    this.names = new DocNames({ doc: this.port.doc });
     // Les apps installées et leurs extensions : ce que le document retient dans la table `GFS_Rangement` (contrats 7.4), écrit seulement sur un geste de la
     // personne, et la table seulement avec son accord. Cette table apprend aussi à GFS l'adresse de la personne (6.4, point 6) : sans écriture possible, elle
     // reste inconnue.
@@ -136,6 +139,7 @@ export class GfsController {
     this.#buildSharing();
     this.#reading = new FilesReading({
       port: this.port, apps: () => this.validApps(), fullAccess: () => this.fullAccess, rangement: this.rangement, reader: this.fileReader,
+      prepare: () => this.names.refresh(this.apps.filter(item => item.ok)),
       explorer: () => this.explorer, openedBar: () => this.openedBar, appName: this.appName, t: this.t, onSpaces: spaces => { this.spaces = spaces; },
       onFiles: files => void this.followFolders(files), onStats: stats => { this.doc.body.dataset.explorerStats = JSON.stringify(stats); },
     });
@@ -195,11 +199,11 @@ export class GfsController {
   // Sous `full`, GFS ne lit pas les tables de fichiers des apps (contrats 3.1, point 2) : l'explorateur le dit au lieu de rendre l'erreur de Grist.
   get fullAccess() { return levelOf(this.state.grantedAccess) >= levelOf('full'); }
 
-  appById(id) { return this.apps.find(item => item.app.id === id && item.ok) || null; }
+  appById(id) { return this.names.adaptItem(this.apps.find(item => item.app.id === id && item.ok) || null); }
   // Le manifeste d'une app installable, ou celui des fichiers que GFS garde lui-même (js/files/gfs-files.js) : null quand l'id n'est ni l'un ni l'autre.
   manifestOf = id => (id === FILES_APP ? FILES_MANIFEST : (this.appById(id) || { manifest: null }).manifest);
   appName = id => { const manifest = this.manifestOf(id); return manifest ? label(manifest.nom, this.lang) : id; };
-  validApps() { return this.apps.filter(item => item.ok); }
+  validApps() { return this.apps.filter(item => item.ok).map(item => this.names.adaptItem(item)); }
   typeLabel = file => (file.typeInfo ? label(file.typeInfo.nom, this.lang) : (file.type || '—'));
 
   // ---------- démarrage ----------
@@ -289,7 +293,10 @@ export class GfsController {
       explorer: () => this.explorer, session: () => this.session, manifests: this.manifests, appById: id => this.appById(id), appName: this.appName,
       fullAccess: () => this.fullAccess, t: this.t, notice: text => this.notice(text), lockOf: this.lockOf, unlock: lock => this.unlock(lock),
       showExplorer: () => this.showExplorer(), hideExplorer: () => this.hideExplorer(),
-        loadFiles: apps => loadFiles(this.port, apps, this.rangement.learning, this.fileReader),
+        loadFiles: async apps => {
+          await this.names.refresh(this.apps.filter(item => item.ok));
+          return loadFiles(this.port, apps.map(item => this.appById(item.app.id) || item), this.rangement.learning, this.fileReader);
+        },
       openIn: (appId, opening) => this.openings.openIn(appId, opening, 'ex.notice.open'),
     });
   }

@@ -28,6 +28,24 @@
   "ouverture": { "fichier": true, "nouveau": true, "importer": true, "lire": true, "modele": true },
   "permanente": true,
   "tables": { "prefixe": "Publipostage_" },
+  "noms": {
+    "Publipostage_Modeles": {
+      "aussi": ["Publipostage_Templates"],
+      "colonnes": {
+        "Nom": ["Name"], "Contenu": ["Content"], "NomFichierPDF": ["PdfFileName"], "DateModif": ["ModifiedAt"], "EstParDefaut": ["IsDefault"], "TypeModele": ["TemplateType"],
+        "Destinataires": ["To"], "Cci": ["Bcc"], "Objet": ["Subject"], "PJ": ["Attachments"], "SuiviModifications": ["TrackedChanges"], "Jeton": ["Token"],
+        "ModifiePar": ["ModifiedBy"], "MotDePassePdf": ["PdfPassword"]
+      }
+    },
+    "Publipostage_PreferencesModeles": {
+      "aussi": ["Publipostage_TemplatePreferences"],
+      "colonnes": {
+        "Utilisateur": ["User"], "ModeleId": ["TemplateId"], "Epingle": ["Pinned"], "Dossier": ["Folder"], "Replie": ["Collapsed"], "TypeExport": ["ExportType"],
+        "QualitePdf": ["PdfQuality"], "LignesExport": ["ExportLines"]
+      }
+    },
+    "Publipostage_Versions": { "colonnes": { "Jeton": ["Token"], "Auteur": ["Author"], "Nom": ["Name"], "Genre": ["Kind"], "Donnees": ["Data"] } }
+  },
   "fichiers": [{
     "table": "Publipostage_Modeles",
     "colonnes": { "id": "id", "nom": "Nom", "type": "TypeModele", "date": "DateModif", "par": "ModifiePar" },

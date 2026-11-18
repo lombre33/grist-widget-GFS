@@ -3381,7 +3381,7 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
        e. **Refus dans le code** : rien ne se range ni ne se crée dans un dossier lié (`ex.linkTarget`) ; un dossier lié ne se renomme, ne se déplace, ne se supprime ni ne se partage (la source se travaille dans son espace) ;
           le marqueur d'un dossier vide ignore les lignes de lien ; le même lien (même source, même espace, même nom) deux fois est refusé (`exists`) ; lier un dossier dans son propre espace est refusé dès le choix de l'espace (`sameSpace`), avant les autres questions.
        f. **Limites** : trois questions pour créer un lien ; le niveau est commun aux groupes de B ; une personne qui est dans A et dans B voit deux entrées (l'original et le lien) ; un fichier sans auteur
-          (`GFS_Auteur` vide) n'est jamais caché à la racine de « Moi » ; renommer le dossier source d'un lien le rompt sans bruit (même limite que les partages par dossier ; lu dans le code, non mesuré) ; la source d'un lien n'est pas
+          (`GFS_Auteur` vide) n'est jamais caché à la racine de « Moi » ; un dossier d'espace, source d'un lien, ne se renomme ni ne se déplace (refusé avec sa phrase, `ex.spaceFolderFixed`), mais un dossier de « Moi » source d'un lien ou partagé se renomme librement et en perd le lien et les partages sans bruit (même limite que le point 13.n.e ; lu dans le code, non mesuré) ; la source d'un lien n'est pas
           vérifiée à la lecture (un lien dont la source a disparu ne montre rien).
 
 ### 11.8 À mesurer sur le Grist du porteur

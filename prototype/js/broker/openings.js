@@ -1,9 +1,9 @@
-// Les ouvertures (contrats 5.4) : ouvrir un fichier, en créer un vierge (« Nouveau »), en créer un d'après un fichier (« Importer »), lire un fichier que GFS
-// garde, et quitter l'app active pour une autre. Sorties du contrôleur (js/controller.js) pour qu'il reste sous les 600 lignes de code de l'outil d'audit. Le
-// contrôleur (`c`) garde l'app active et ses cadres : ce module lui demande `activate`, `isOpen`, `openable`, `unlock` et `ask`, lit `session`, `opening` et
-// `contextServed`, et n'écrit que `opening` (le fichier part une seule fois).
+// Les ouvertures (contrats 5.4) : ouvrir un fichier, en créer un vierge (« Nouveau »), en créer un d'après un fichier (« Importer ») ou un modèle de départ
+// (« Depuis un modèle »), lire un fichier que GFS garde, et quitter l'app active pour une autre. Sorties du contrôleur (js/controller.js) pour qu'il reste sous
+// les 600 lignes de code de l'outil d'audit. Le contrôleur (`c`) garde l'app active et ses cadres : ce module lui demande `activate`, `isOpen`, `openable`,
+// `unlock` et `ask`, lit `session`, `opening` et `contextServed`, et n'écrit que `opening` (le fichier part une seule fois).
 
-import { acceptsFile, importOpening, openingKind, acceptsOpening, carriesFile, pickFile } from '../files/import-file.js';
+import { acceptsFile, importOpening, templateOpening, openingKind, acceptsOpening, carriesFile, pickFile } from '../files/import-file.js';
 import { readOpening } from './reading.js';
 import { leaveApp, leaveQuestion } from './leave.js';
 import { FILES_APP } from '../files/gfs-files.js';
@@ -34,6 +34,14 @@ export class Openings {
     void this.openIn(entry.app, { fichier: null, type: entry.type, dossier: c.explorer.state.path, raison: 'nouveau' }, 'ex.notice.new');
   }
 
+  // « Depuis un modèle » (contrats 5.4, point 13) : l'app ouvre un modèle non enregistré fait d'après le modèle du catalogue qu'elle a déclaré ; un modèle
+  // grisé dit pourquoi (accès, app à installer, extension, app qui ne sait pas encore le faire).
+  openTemplate(entry) {
+    const { c } = this;
+    if (entry.greyed) { void c.unlock({ text: entry.reason, focus: entry.focus }); return; }
+    void this.openIn(entry.app, templateOpening(entry, c.explorer.state.path), 'ex.notice.template');
+  }
+
   // « Importer » (contrats 5.4, point 1) : la personne choisit le fichier dans le sélecteur de GFS (ouvert ici, dans son geste), puis l'app le reçoit avec
   // l'ouverture et en fait un modèle vierge. Annuler le sélecteur ne change rien ; un fichier qui n'est pas du format est dit sans ouvrir l'app.
   async importFile(entry) {
@@ -59,7 +67,7 @@ export class Openings {
     const running = c.isOpen(appId) && c.contextServed;
     if (!c.activate(appId, opening)) return false;
     c.hideExplorer();
-    // ouvrir un fichier précis, en créer un vierge (« Nouveau »), en créer un d'après un fichier (« Importer »), ou le lire
+    // ouvrir un fichier précis, en créer un vierge (« Nouveau »), en créer un d'après un fichier (« Importer ») ou un modèle de départ, ou le lire
     const knows = acceptsOpening(c.manifestOf(appId), openingKind(opening));
     if (!knows) c.notice(c.t(noticeKey, { app: c.appName(appId) }));
     const session = c.session;

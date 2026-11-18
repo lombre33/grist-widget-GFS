@@ -418,11 +418,11 @@ function checkNatives(m, errors) {
   }
 }
 
-const OPENINGS = ['fichier', 'nouveau', 'importer', 'lire'];
+const OPENINGS = ['fichier', 'nouveau', 'importer', 'lire', 'modele'];
 
-// `ouverture` (facultatif, contrats 2.2) : ce que l'app sait faire d'une ouverture que GFS lui passe, `{ fichier, nouveau, importer, lire }` en booléens ; un
-// genre absent vaut faux (GFS ouvre alors l'app sur son modèle habituel et le dit). `permanente` (facultatif) : l'app ne se retire pas de la fenêtre « Apps et
-// extensions ».
+// `ouverture` (facultatif, contrats 2.2) : ce que l'app sait faire d'une ouverture que GFS lui passe, `{ fichier, nouveau, importer, lire, modele }` en
+// booléens ; un genre absent vaut faux (GFS ouvre alors l'app sur son modèle habituel et le dit). `permanente` (facultatif) : l'app ne se retire pas de la
+// fenêtre « Apps et extensions ».
 function checkOpening(m, errors) {
   if (m.ouverture !== undefined) {
     if (!isObject(m.ouverture)) errors.push('ouverture : objet attendu');
@@ -453,6 +453,14 @@ function checkVitrine(m, errors) {
   }
 }
 
+// `modeles` (facultatif, contrats 2.2 et 5.4, point 13) : où sont les modèles de départ de l'app, `{ catalogue: "publipostage/modeles.json" }`, le chemin
+// relatif sûr d'un fichier JSON rangé dans le dossier `modeles/` de GFS (comme les captures de la vitrine : GFS ne lit et ne montre que ses propres fichiers).
+function checkTemplates(m, errors) {
+  if (m.modeles === undefined) return;
+  if (!isObject(m.modeles) || !isSafePath(m.modeles.catalogue) || !/\.json$/i.test(m.modeles.catalogue)) errors.push(
+    'modeles.catalogue : chemin relatif sûr d\'un fichier .json attendu');
+}
+
 // Rend { ok, errors }. `others` : les manifestes déjà acceptés du catalogue (unicité des id, des préfixes et des clés de réglages).
 export function validateManifest(m, others = []) {
   const errors = [];
@@ -471,6 +479,7 @@ export function validateManifest(m, others = []) {
   checkExtensions(m, errors);
   checkNatives(m, errors);
   checkVitrine(m, errors);
+  checkTemplates(m, errors);
   return { ok: errors.length === 0, errors };
 }
 

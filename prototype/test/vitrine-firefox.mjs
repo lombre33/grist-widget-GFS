@@ -80,7 +80,7 @@ const PROBES = {
   added: ['.fp-added', '.fp-ext'], choiceDesc: ['.fp-choice-desc', '.fp-choice'], pill: ['.fp-pill', '.fp-choice'], seg: ['.fp-segs label', '.fp-segs'], summary: ['.fp-detail summary', '.mod'],
 };
 
-function contrasts(probes) {
+export function contrasts(probes) {
   const rgb = value => (value.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
   const alphaOf = value => { const parts = value.match(/[\d.]+/g) || []; return parts.length > 3 ? Number(parts[3]) : 1; };
   const light = ([r, g, b]) => { const f = c => { const v = c / 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };

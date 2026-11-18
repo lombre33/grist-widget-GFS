@@ -58,6 +58,7 @@ import { ReceivedControl } from './sharing/received-control.js';
 import { loadReceived } from './sharing/received-files.js';
 import { publicationQuestion, sharedLinkQuestion } from './broker/publication-window.js';
 import { ModulesWindow, rowKey } from './apps/modules-window.js';
+import { TemplatesControl } from './apps/templates-control.js';
 import { AppContext } from './broker/app-context.js';
 import { Refus, ERR, levelOf } from './broker/filter.js';
 
@@ -164,6 +165,15 @@ export class GfsController {
     });
     this.weight = new WeightControl({ transfer: this.transfer, container: this.$('stage'), inertTargets: this.inertTargets, t: this.t,
       locale: () => this.locale });
+    this.templates = this.#buildTemplates(entries); // « Nouveau > Depuis un modèle » (js/apps/templates-control.js)
+  }
+
+  // La galerie commune des modèles de départ des apps (contrats 5.4, point 13) : ses catalogues se lisent à l'ouverture de la fenêtre, pas au démarrage.
+  #buildTemplates(entries) {
+    return new TemplatesControl({
+      container: this.$('stage'), i18n: this.i18n, inertTargets: this.inertTargets, manifests: this.manifests, entries: entries.templates, readJson,
+      unlock: lock => this.unlock(lock), onCreate: entry => this.openings.openTemplate(entry),
+    });
   }
 
   $ = id => this.doc.getElementById(id);
@@ -300,6 +310,7 @@ export class GfsController {
       }),
       sharing: this.rights.sharing, links: this.rights.links, onWeight: estimate => void this.weight.open(estimate),
       onOpen: file => this.openings.openFile(file), onNew: entry => this.openings.openNew(entry), onImport: entry => void this.openings.importFile(entry),
+        onTemplates: () => void this.templates.open(),
         onClose: () => this.hideExplorer(), onApps: () => void this.openModules(),
       personal: () => Boolean(this.identity), filing, kept: this.kept, attachments: () => loadAttachments(this.port),
       trash: new Trash({ managers, ask: opts => this.ask(opts), keepFolders: file => filing.keepFoldersOf(file), ...gestures }),
@@ -404,6 +415,7 @@ export class GfsController {
     this.explorer.relocalize(live);
     if (this.modulesWindow) this.modulesWindow.relocalize(live);
     if (this.themeWindow) this.themeWindow.relocalize(live);
+    this.templates.relocalize(live);
     this.dock.relabel(this.t);
     this.workControl.relabel();
     this.#showFileStatus();

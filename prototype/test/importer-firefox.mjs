@@ -2,7 +2,7 @@
 // rejoignent Excel, Markdown, PowerPoint et Word, soit huit lignes avec le PDF de GFS et « D'un autre document Grist… »). Le vrai explorateur (test/pages/explorateur.js) reçoit
 // les articles que le vrai contrôleur lui donnerait : ceux du manifeste de Publipostage+ (test/helpers.mjs), avec la mention d'une app parmi plusieurs (« Document · Publipostage+ »,
 // le cas le plus long), puis le PDF et « D'un autre document Grist… ». À mesurer, à 700 px (le panneau de référence) à la vraie souris et au vrai clavier : « Nouveau » ouvre « Nouveau
-// dossier » et « Importer » ; « Importer » ouvre ses huit lignes dans l'ordre, chacune de 28 px, aucun nom coupé, tout dans la page, sans recouvrir la ligne qui l'ouvre ; un clic sur
+// dossier », « Depuis un modèle… » et « Importer » ; « Importer » ouvre ses huit lignes dans l'ordre, chacune de 28 px, aucun nom coupé, tout dans la page, sans recouvrir la ligne qui l'ouvre ; un clic sur
 // « HTML » puis sur « OpenDocument » rend à l'explorateur le format choisi ; Échap ferme le sous-menu, puis le menu.
 import { createI18n } from '../js/i18n/i18n.js';
 import { importFormats } from '../js/files/import-file.js';
@@ -71,8 +71,8 @@ export async function importerProblems(page, language, tag) {
   const shown = await page.until(measureNewMenu, [], 1500).catch(() => null);
   if (!shown) { run.note('sans menu', 'le clic sur « Nouveau » n\'ouvre aucun menu'); await page.run(() => { window.__importTypes = []; }); return found; }
   const names = shown.menu.items.map(item => item.label);
-  if (names.length !== 2 || !shown.menu.items[1].popup) run.note('le menu', `« Nouveau » montre « ${names.join(' | ')} » au lieu de « Nouveau dossier » et du sous-menu « Importer »`);
-  await page.click(...shown.menu.items[1].center);
+  if (names.length !== 3 || !shown.menu.items[2].popup) run.note('le menu', `« Nouveau » montre « ${names.join(' | ')} » au lieu de « Nouveau dossier », « Depuis un modèle… » et du sous-menu « Importer »`);
+  await page.click(...shown.menu.items[2].center);
   const sub = await page.until(measureNewMenu, [], 1500).then(state => (state.sub ? state : null)).catch(() => null);
   if (!sub) {
     run.note('sans sous-menu', 'la ligne « Importer » n\'ouvre aucun sous-menu');
@@ -86,7 +86,7 @@ export async function importerProblems(page, language, tag) {
     }
     if (sub.sub.scrolls) run.note('défilement', 'le sous-menu défile : ses huit lignes devaient tenir dans la page');
     if (!inside(sub.sub.frame, sub.view)) run.note('hors de la page', `le sous-menu (${sub.sub.frame.map(Math.round).join(', ')}) sort de la page de ${sub.view.join(' × ')} px`);
-    if (overlaps(sub.sub.frame, sub.menu.items[1].frame)) run.note('recouvre sa ligne', 'le sous-menu « Importer » recouvre la ligne qui l\'ouvre');
+    if (overlaps(sub.sub.frame, sub.menu.items[2].frame)) run.note('recouvre sa ligne', 'le sous-menu « Importer » recouvre la ligne qui l\'ouvre');
     for (const wanted of ['HTML', 'OpenDocument']) {
       const row = sub.sub.items.find(item => item.label === wanted);
       if (!row) continue;
@@ -97,7 +97,7 @@ export async function importerProblems(page, language, tag) {
       await page.click(...await page.run(centerOfNew));
       const again = await page.until(measureNewMenu, [], 1500).catch(() => null);
       if (!again) { run.note(`« ${wanted} » : sans menu`, 'le menu « Nouveau » ne se rouvre pas'); break; }
-      await page.click(...again.menu.items[1].center);
+      await page.click(...again.menu.items[2].center);
       const list = await page.until(measureNewMenu, [], 1500).then(state => (state.sub ? state : null)).catch(() => null);
       const row = list && list.sub.items.find(item => item.label === wanted);
       if (!row) { run.note(`« ${wanted} » : sans ligne`, 'la ligne manque au sous-menu'); break; }
@@ -112,7 +112,7 @@ export async function importerProblems(page, language, tag) {
   await page.click(...await page.run(centerOfNew));
   const last = await page.until(measureNewMenu, [], 1500).catch(() => null);
   if (last) {
-    await page.click(...last.menu.items[1].center);
+    await page.click(...last.menu.items[2].center);
     await page.until(measureNewMenu, [], 1500).catch(() => null);
     await page.press('Escape');
     let now = await page.run(() => ({ main: document.querySelectorAll('.menu:not(.menu-sub)').length, sub: document.querySelectorAll('.menu-sub').length }));

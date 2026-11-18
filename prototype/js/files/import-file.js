@@ -19,8 +19,17 @@ export const importOpening = (entry, file, folder) => ({ fichier: null, type: en
   importation: { valeur: entry.valeur, fichier: file } });
 
 // Le genre d'ouverture, tel que `ouverture` du manifeste le range : ouvrir un fichier précis, en créer un vierge (« Nouveau »), en créer un d'après un fichier
-// (« Importer »), ou lire un fichier que GFS garde (js/broker/reading.js).
-export const openingKind = opening => (opening.lecture ? 'lire' : (opening.importation ? 'importer' : (opening.fichier ? 'fichier' : 'nouveau')));
+// (« Importer »), en créer un d'après un modèle de départ de l'app (« Depuis un modèle », contrats 5.4, point 13) ou lire un fichier que GFS garde
+// (js/broker/reading.js).
+export function openingKind(opening) {
+  if (opening.lecture) return 'lire';
+  if (opening.importation) return 'importer';
+  if (opening.modele) return 'modele';
+  return opening.fichier ? 'fichier' : 'nouveau';
+}
+
+// L'ouverture d'un modèle de départ (contrats 5.2, point 3, et 5.4, point 13) : « Nouveau » d'un type, avec l'identifiant du modèle du catalogue de l'app.
+export const templateOpening = (entry, folder) => ({ fichier: null, type: entry.type, dossier: folder, raison: 'modele', modele: { id: entry.id } });
 
 // L'app sait-elle ce genre d'ouverture (contrats 2.2, `ouverture`) ? Sans la déclaration, GFS ouvre l'app sur son modèle habituel et le dit ; `manifest` peut
 // être null (une app absente ou invalide).

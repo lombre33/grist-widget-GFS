@@ -18,6 +18,7 @@
       { "fichier": "publipostage/3.webp", "legende": { "fr": "Une grille Excel remplie par la table Grist", "en": "An Excel grid filled in from the Grist table" } }
     ]
   },
+  "modeles": { "catalogue": "publipostage/modeles.json" },
   "icone": "doc",
   "entree": "index.html",
   "ouverture": { "fichier": true, "nouveau": true, "importer": true, "lire": true },

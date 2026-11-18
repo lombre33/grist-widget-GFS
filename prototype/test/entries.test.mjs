@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { Entries } from '../js/broker/entries.js';
 import { readCatalogue } from '../js/apps/libraries.js';
 import { FILES_APP, FILES_MANIFEST } from '../js/files/gfs-files.js';
+import { parseCatalogue } from '../js/apps/templates-catalogue.js';
 import { catalogue as manifestsOfGfs, readJson } from './helpers.mjs';
 
 const text = (key, vars) => (vars ? `${key} ${JSON.stringify(vars)}` : key);
@@ -97,4 +98,58 @@ test('readerOf : un fichier REÇU dont le type n\'est pas celui de GFS n\'ouvre 
   const installed = { publipostage: { extensions: ['lecture-pdf'] } };
   assert.equal(host({ installed }).entries.readerOf({ type: 'pdf', known: false, received: { state: 'accepted' } }), null, 'type inconnu de GFS : téléchargement seulement');
   assert.deepEqual(host({ installed }).entries.readerOf({ type: 'pdf', known: true, received: { state: 'accepted' } }), { app: 'publipostage', name: 'Publipostage+', lock: null });
+});
+
+// La galerie « Depuis un modèle » (contrats 5.4, point 13) : les apps lues avec leurs modèles (`loaded`, js/apps/templates-control.js), les articles qui en sortent.
+const loadedOf = (manifests, states = {}) => manifests.map(manifest => {
+  if (!manifest.modeles) return { manifest, models: [], state: states[manifest.id] || 'soon', reason: '' };
+  const { models } = parseCatalogue(readJson(`modeles/${manifest.modeles.catalogue}`), manifest);
+  return { manifest, models, state: 'ok', reason: '' };
+});
+const canOpenModels = { publipostage: manifest => ({ ...manifest, ouverture: { ...manifest.ouverture, modele: true } }) };
+const templatesOf = (options, lang = 'fr') => {
+  const { c, entries } = host(options);
+  c.lang = lang;
+  return entries.templates(loadedOf(c.manifests()));
+};
+
+test('templates : une pastille par app (« bientôt » pour celles sans catalogue) et un article par modèle, avec le nom, le type et l\'app dans la langue de la personne', () => {
+  const { apps, models } = templatesOf({ installed: { publipostage: { extensions: ['diapositives', 'graphique'] } }, patch: canOpenModels });
+  assert.deepEqual(apps.map(app => [app.id, app.state, app.count]), [['publipostage', 'ok', 22], ['automation', 'soon', 0], ['form', 'soon', 0], ['bi', 'soon', 0]], 'les apps sans modèle gardent leur pastille');
+  assert.equal(apps[0].name, 'Publipostage+');
+  assert.equal(models.length, 22);
+  const invoice = models.find(model => model.id === 'facture');
+  assert.deepEqual([invoice.app, invoice.type, invoice.greyed, invoice.reason, invoice.focus, invoice.tables], ['publipostage', 'document', false, '', null, true]);
+  assert.deepEqual([invoice.label, invoice.typeLabel, invoice.appLabel, invoice.tags, invoice.thumb], ['Facture, devis ou avoir', 'Document', 'Publipostage+', ['Vente'], 'modeles/publipostage/facture.webp']);
+  assert.equal(invoice.family, 'doc', 'la famille de couleur est celle du type, comme dans « Nouveau »');
+  const english = templatesOf({ installed: { publipostage: { extensions: ['diapositives', 'graphique'] } }, patch: canOpenModels }, 'en').models.find(model => model.id === 'facture');
+  assert.deepEqual([english.label, english.tags], ['Invoice, quote or credit note', ['Sales']]);
+});
+
+test('templates : grisé, jamais masqué, avec la raison et la ligne qui débloque : accès, app à installer, extension du type, extension du modèle, app qui ne sait pas encore', () => {
+  const ready = { publipostage: { extensions: ['diapositives', 'graphique'] } };
+  const find = (models, id) => models.find(model => model.id === id);
+  const noAccess = templatesOf({ fullAccess: false, installed: ready, patch: canOpenModels }).models;
+  assert.ok(noAccess.every(model => model.greyed && model.reason === 'gfs.needsFullAccess'), 'sans l\'accès complet, tout est grisé');
+  const absent = templatesOf({ installed: {}, patch: canOpenModels }).models;
+  assert.ok(absent.every(model => model.greyed && model.reason === 'ex.lockedApp {"app":"Publipostage+"}' && model.focus === 'app:publipostage'), 'l\'app absente : sa ligne de la fenêtre des apps');
+  const noSlides = templatesOf({ installed: { publipostage: { extensions: ['graphique'] } }, patch: canOpenModels }).models;
+  const slides = find(noSlides, 'proposition-commerciale');
+  assert.deepEqual([slides.greyed, slides.focus], [true, 'ext:publipostage/diapositives'], 'l\'extension du type d\'abord');
+  assert.match(slides.reason, /^ex\.lockedExtension /);
+  assert.equal(find(noSlides, 'facture').greyed, false, 'un modèle sans extension reste libre');
+  const noChart = templatesOf({ installed: { publipostage: { extensions: ['diapositives'] } }, patch: canOpenModels }).models;
+  assert.deepEqual([find(noChart, 'proposition-commerciale').greyed, find(noChart, 'proposition-commerciale').focus], [true, 'ext:publipostage/graphique'], 'puis celle que le modèle demande en plus');
+  const notYet = templatesOf({ installed: ready }).models;
+  assert.ok(notYet.every(model => model.greyed && model.reason === 'ex.template.notYet {"app":"Publipostage+"}' && !model.focus), 'sans `ouverture.modele` : « pas encore », rien à débloquer ici');
+  assert.equal(templatesOf({ installed: ready, patch: canOpenModels }).models.filter(model => model.greyed).length, 0, 'tout est prêt : rien de grisé');
+});
+
+test('templates : un catalogue illisible garde la pastille de l\'app, avec son état', () => {
+  const { c, entries } = host({ installed: { publipostage: { extensions: [] } } });
+  const manifests = c.manifests();
+  const loaded = manifests.map(manifest => (manifest.id === 'publipostage' ? { manifest, models: [], state: 'broken', reason: 'modeles/publipostage/modeles.json : 404' } : { manifest, models: [], state: 'soon', reason: '' }));
+  const { apps, models } = entries.templates(loaded);
+  assert.deepEqual(apps.find(app => app.id === 'publipostage'), { id: 'publipostage', name: 'Publipostage+', state: 'broken', reason: 'modeles/publipostage/modeles.json : 404', count: 0 });
+  assert.deepEqual(models, []);
 });

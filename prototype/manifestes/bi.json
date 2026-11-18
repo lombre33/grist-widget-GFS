@@ -3,6 +3,7 @@
   "id": "bi",
   "nom": { "fr": "Grist-BI", "en": "Grist-BI" },
   "version": "0.1.0",
+  "maturite": "alpha",
   "texte": {
     "fr": "Des rapports BI sur les tables du document : pages, graphiques, jointures et commentaires (preuve de concept).",
     "en": "BI reports on the document’s tables: pages, charts, joins and comments (proof of concept)."

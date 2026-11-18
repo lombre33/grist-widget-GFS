@@ -11,10 +11,10 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-FJcfRVyaOdXD9CLm4ujvAyy9smJIqTyVl+cicw3h1p0='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-F1dk552sOpAahi3IqSPj98Ae8KxJqOHbVcf1lhuYk5c='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=6c6e51caa4">
 <link rel="stylesheet" href="css/explorer.css?v=a1c7636359">
-<link rel="stylesheet" href="css/modules.css?v=974f9ab803">
+<link rel="stylesheet" href="css/modules.css?v=db0f4eaa51">
 <link rel="stylesheet" href="css/templates.css?v=48d8b4f22f">
 <link rel="stylesheet" href="css/rights.css?v=bece849c11">
 <link rel="stylesheet" href="css/share.css?v=87bc11dabd">
@@ -31,9 +31,9 @@
     "./js/apps/apps-state.js": "./js/apps/apps-state.js?v=dbd598efa0",
     "./js/apps/catalogue.js": "./js/apps/catalogue.js?v=2e588e5749",
     "./js/apps/extensions.js": "./js/apps/extensions.js?v=a2891b7b64",
-    "./js/apps/fiche.js": "./js/apps/fiche.js?v=043483e0e1",
+    "./js/apps/fiche.js": "./js/apps/fiche.js?v=40571b2d88",
     "./js/apps/libraries.js": "./js/apps/libraries.js?v=10edb6aaa5",
-    "./js/apps/manifest.js": "./js/apps/manifest.js?v=dd303a785b",
+    "./js/apps/manifest.js": "./js/apps/manifest.js?v=a2a0ddea71",
     "./js/apps/modules-model.js": "./js/apps/modules-model.js?v=c3fd60515a",
     "./js/apps/modules-window.js": "./js/apps/modules-window.js?v=6f0bda466f",
     "./js/apps/natives.js": "./js/apps/natives.js?v=d61cf17735",
@@ -41,7 +41,7 @@
     "./js/apps/templates-catalogue.js": "./js/apps/templates-catalogue.js?v=3bd8dd26af",
     "./js/apps/templates-control.js": "./js/apps/templates-control.js?v=2d04c161a5",
     "./js/apps/templates-window.js": "./js/apps/templates-window.js?v=6f9b989991",
-    "./js/apps/vitrine.js": "./js/apps/vitrine.js?v=355a3a6e93",
+    "./js/apps/vitrine.js": "./js/apps/vitrine.js?v=7bafdb9bf8",
     "./js/apps/work-control.js": "./js/apps/work-control.js?v=3a43a1dac2",
     "./js/apps/work-row.js": "./js/apps/work-row.js?v=d41fd514ae",
     "./js/apps/work-window.js": "./js/apps/work-window.js?v=7e55716161",
@@ -123,7 +123,7 @@
     "./js/i18n/i18n-space-links.js": "./js/i18n/i18n-space-links.js?v=7293bccf7c",
     "./js/i18n/i18n-templates.js": "./js/i18n/i18n-templates.js?v=3194fa28f0",
     "./js/i18n/i18n-trash.js": "./js/i18n/i18n-trash.js?v=e5c74092fa",
-    "./js/i18n/i18n-vitrine.js": "./js/i18n/i18n-vitrine.js?v=3d07645ef4",
+    "./js/i18n/i18n-vitrine.js": "./js/i18n/i18n-vitrine.js?v=a86dd1c048",
     "./js/i18n/i18n-weight.js": "./js/i18n/i18n-weight.js?v=e60a5723e4",
     "./js/i18n/i18n.js": "./js/i18n/i18n.js?v=c670b1c5f5",
     "./js/rights/rights-actions.js": "./js/rights/rights-actions.js?v=4e2a8f5882",
@@ -293,7 +293,7 @@
 <!-- préchargement -->
 <link rel="modulepreload" href="./js/controller.js?v=65374b6e19">
 <link rel="modulepreload" href="./js/apps/catalogue.js?v=2e588e5749">
-<link rel="modulepreload" href="./js/apps/manifest.js?v=dd303a785b">
+<link rel="modulepreload" href="./js/apps/manifest.js?v=a2a0ddea71">
 <link rel="modulepreload" href="./js/broker/state.js?v=69aa288268">
 <link rel="modulepreload" href="./js/broker/broker.js?v=07e94d37f4">
 <link rel="modulepreload" href="./js/broker/view-options.js?v=5eb21ceaf1">
@@ -363,7 +363,7 @@
 <link rel="modulepreload" href="./js/i18n/i18n-folders.js?v=71397b35ef">
 <link rel="modulepreload" href="./js/i18n/i18n-weight.js?v=e60a5723e4">
 <link rel="modulepreload" href="./js/i18n/i18n-natives.js?v=6903629298">
-<link rel="modulepreload" href="./js/i18n/i18n-vitrine.js?v=3d07645ef4">
+<link rel="modulepreload" href="./js/i18n/i18n-vitrine.js?v=a86dd1c048">
 <link rel="modulepreload" href="./js/i18n/i18n-rights.js?v=1d8ac3e0c5">
 <link rel="modulepreload" href="./js/i18n/i18n-share.js?v=d256e260c5">
 <link rel="modulepreload" href="./js/i18n/i18n-share-other.js?v=6bd3e812c4">
@@ -433,8 +433,8 @@
 <link rel="modulepreload" href="./js/broker/leave.js?v=5437d0c5dc">
 <link rel="modulepreload" href="./js/sharing/received-window.js?v=4e40f52a8a">
 <link rel="modulepreload" href="./js/sharing/received-state.js?v=1c9496578a">
-<link rel="modulepreload" href="./js/apps/vitrine.js?v=355a3a6e93">
-<link rel="modulepreload" href="./js/apps/fiche.js?v=043483e0e1">
+<link rel="modulepreload" href="./js/apps/vitrine.js?v=7bafdb9bf8">
+<link rel="modulepreload" href="./js/apps/fiche.js?v=40571b2d88">
 <link rel="modulepreload" href="./js/apps/templates-window.js?v=6f9b989991">
 <link rel="modulepreload" href="./js/broker/sharing-rules.js?v=efe8774466">
 <link rel="modulepreload" href="./kit/js/color-math.js?v=e9650179cf">

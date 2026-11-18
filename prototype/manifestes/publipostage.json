@@ -3,6 +3,7 @@
   "id": "publipostage",
   "nom": { "fr": "Publipostage+", "en": "Publipostage+" },
   "version": "1.0.0",
+  "maturite": "v1.1",
   "texte": {
     "fr": "Documents, e-mails, macro-modèles et grilles : le widget d’aujourd’hui.",
     "en": "Documents, emails, macro templates and grids: today’s widget."

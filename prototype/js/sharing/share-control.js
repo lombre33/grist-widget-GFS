@@ -7,6 +7,7 @@ import { FILES_TABLE } from '../files/gfs-files.js';
 import { GROUPS_TABLE, PLACE_TABLE, ROOT, SHARES_TABLE, SPACES_TABLE, STAMP, TARGETS, folderTarget, groupsOf, personalTarget, sharesOf,
   spaceTarget } from './sharing-model.js';
 import { listOf } from './direct-shares.js';
+import { idKey, keysOf } from './folder-identity.js';
 import { openShare } from './share-window.js';
 import { runAction, writeActions } from '../rights/rights-actions.js';
 import { ask } from '../ui/ask-window.js';
@@ -25,15 +26,23 @@ const originsOf = (spaceKey, name, parts) => [{ kind: 'space', name, target: spa
 
 // Les personnes que GFS connaît déjà : celles des lignes de partage, sans les catégories (« @ ») ni les groupes (« # »), en minuscules, sans doublon, triées.
 // Les dossiers au-dessus d'un fichier ou d'un dossier de « Moi » (`parts` : les noms, du haut vers le bas) : ce qu'il hérite des droits donnés à ces dossiers.
-const mineOrigins = (identity, parts) => parts.map((part, at) => ({ kind: 'folder', name: part,
-  target: personalTarget(identity, parts.slice(0, at + 1).join('/')) }));
+// Un dossier de « Moi » se désigne par le numéro de sa ligne d'état (`rows`) et, pour un partage posé avant ce lot, par son chemin : `target` les liste tous.
+const mineOrigins = (identity, parts, rows = []) => parts.map((part, at) => ({ kind: 'folder', name: part,
+  target: keysOf(identity, parts.slice(0, at + 1).join('/'), rows) }));
 const partsOf = path => String(path || '').split('/').filter(Boolean);
 
 // Ce qu'un fichier hérite en plus de ce que son placement dit (`placed`) : hors d'un espace, les dossiers que son auteur lui a donnés dans « Moi » (ceux de
 // la personne qui regarde, quand elle en est l'auteur) ; un dossier garde ses propres origines.
-function inheritedFor(file, placed, me, author) {
+function inheritedFor(file, placed, me, author, rows) {
   if (file.mine || file.shared || placed.length || !file.folder || me === '' || me !== author) return placed;
-  return String(file.folder).split('/')[0] === 'Espaces' ? placed : mineOrigins(me, partsOf(file.folder));
+  return String(file.folder).split('/')[0] === 'Espaces' ? placed : mineOrigins(me, partsOf(file.folder), rows);
+}
+
+// Les cibles du fichier ou du dossier, et ce qu'il hérite : les arguments de `sharesOf`. Un dossier de « Moi » se désigne par le numéro de sa ligne d'état et
+// par son chemin (partages d'avant), ses dossiers parents de même.
+function whatIs(file, { me, author, placed, stateRows }) {
+  if (!file.mine) return [file.key, inheritedFor(file, placed, me, author, stateRows)];
+  return [keysOf(me, file.path, stateRows), mineOrigins(me, partsOf(file.path).slice(0, -1), stateRows)];
 }
 
 // La personne administre-t-elle la cible ? Une ligne `admin` à son adresse, ou à un groupe dont elle est membre (Grist l'a calculé : `AdminsCible` dit qui
@@ -96,24 +105,50 @@ export class ShareControl {
     return originsOf(space.key, space.name, partsOf(path).slice(0, -1));
   }
 
+  // Tout ce que la fenêtre lit, ensemble : un seul aller-retour avec Grist, au lieu de quatre l'un après l'autre (mesuré, labo/run-partager-vitesse.mjs). Un
+  // partage pas activé (pas de table des partages) laisse de côté ce qui a été lu en plus. `stateRows` : les lignes d'état des dossiers de la personne, qui
+  // désignent un dossier de « Moi » par leur numéro (js/sharing/folder-identity.js).
+  #readAll(file, me) {
+    const target = file.shared || file.mine ? null : this.#target(file);
+    const wantsFolders = me !== '' && (file.mine || (file.folder && !file.shared));
+    return Promise.all([this.#o.reader.owner(),
+      this.#try(async () => rowsOf(await this.#o.port.doc.fetchTable(SHARES_TABLE)), null),
+      target ? this.#authorOf(file, target) : { author: file.mine ? me : lower(file.by) },
+      file.shared ? this.#folderOrigins(file.shared) : (file.mine ? [] : this.#inherited(file.key)),
+      this.#try(async () => rowsOf(await this.#o.port.doc.fetchTable(GROUPS_TABLE)), null), wantsFolders ? this.#folderRows() : []]);
+  }
+
   // L'état que la fenêtre dessine : la table des partages (absente : le partage n'est pas activé), la preuve de propriété, ce que la personne peut changer.
   async load(file) {
     const me = lower(this.#o.identity());
-    const target = file.shared || file.mine ? null : this.#target(file);
-    // Tout se lit ensemble : un seul aller-retour avec Grist, au lieu de quatre l'un après l'autre (mesuré, labo/run-partager-vitesse.mjs). Un partage pas
-    // activé (pas de table des partages) laisse de côté ce qui a été lu en plus.
-    const [owner, rows, read, placed, groupRows] = await Promise.all([this.#o.reader.owner(),
-      this.#try(async () => rowsOf(await this.#o.port.doc.fetchTable(SHARES_TABLE)), null),
-      target ? this.#authorOf(file, target) : { author: file.mine ? me : lower(file.by) },
-      file.shared ? this.#folderOrigins(file.shared) : (file.mine ? mineOrigins(me, partsOf(file.path).slice(0, -1)) : this.#inherited(file.key)),
-      this.#try(async () => rowsOf(await this.#o.port.doc.fetchTable(GROUPS_TABLE)), null)]);
+    const [owner, rows, read, placed, groupRows, stateRows] = await this.#readAll(file, me);
     if (!rows) return noShare(owner, false);
     if (read.extend !== undefined) return noShare(owner, read.extend);
     const { author } = read;
-    const shares = sharesOf(rows, file.key, inheritedFor(file, placed, me, author));
+    const shares = sharesOf(rows, ...whatIs(file, { me, author, placed, stateRows }));
     const admin = administers({ me, key: file.key, rows, shares });
     return { active: true, owner, shares, people: peopleOf(rows), groups: groupRows ? groupsOf(groupRows) : [], me, author, folder: Boolean(file.mine),
       canManage: !this.#o.writeBlock() && (owner === true || (me !== '' && me === author) || admin) };
+  }
+
+  // Les lignes d'état des dossiers de la personne ([{ id, path }], relues) : sans le rangement, ou sans sa table, aucune.
+  async #folderRows() {
+    return this.#o.rangement ? this.#try(() => this.#o.rangement.folderRows(), []) : [];
+  }
+
+  // La cible à écrire pour ce dossier (`folderFile`) : pour un dossier de « Moi », le numéro de sa ligne d'état, que GFS crée si le dossier n'en a pas encore
+  // (un dossier existe par ses fichiers : sa ligne naît au premier partage ou au premier lien) ; pour un dossier d'espace, sa clé. Rend la clé de `folderFile`
+  // (le chemin, à l'ancienne) quand la ligne ne peut pas s'écrire : le partage et le lien marchent, ils ne suivront pas un renommage.
+  async keyOf(folder) {
+    if (!folder.mine || !this.#o.rangement) return folder.key;
+    const me = lower(this.#o.identity());
+    try {
+      const found = (await this.#o.rangement.folderIds([folder.path], true)).get(folder.path);
+      return found ? idKey(me, found) : folder.key;
+    } catch (error) {
+      console.warn('GFS : la ligne du dossier n’a pas pu être écrite, le partage garde son chemin', error);
+      return folder.key;
+    }
   }
 
   // Une lecture qui peut échouer (table absente, accès refusé) : `fallback` à la place.
@@ -123,12 +158,12 @@ export class ShareControl {
 
   // L'auteur d'un fichier (d'une app ou un PDF), ou `{ extend }` quand sa table n'est pas prête au partage. La table de fichiers porte-t-elle les colonnes
   // d'aide ? Sinon le partage n'y est pas étendu (une app ajoutée après coup) ; si elle porte celles d'avant les espaces ou d'avant le dossier de « Moi » (pas
-  // `GFS_Directs`, pas `GFS_Dossier`, pas `GFS_Vus`), le partage est à compléter ; l'auteur est la colonne que Grist écrit.
+  // `GFS_Directs`, pas `GFS_Dossier`, pas `GFS_Vus`, pas `GFS_Ids`), le partage est à compléter ; l'auteur est la colonne que Grist écrit.
   async #authorOf(file, target) {
     const table = await this.#try(() => this.#o.port.doc.fetchTable(target.table), null);
     const has = name => Boolean(table) && Object.prototype.hasOwnProperty.call(table, name);
     if (target.stamped && !has('GFS_Lecteurs')) return { extend: true };
-    if (has('GFS_Lecteurs') && !(has('GFS_Directs') && has('GFS_Dossier') && has('GFS_Vus'))) return { extend: 'upgrade' };
+    if (has('GFS_Lecteurs') && !(has('GFS_Directs') && has('GFS_Dossier') && has('GFS_Vus') && has('GFS_Ids'))) return { extend: 'upgrade' };
     // un partage d'avant l'auteur protégé des PDF : « compléter » reprend l'auteur de la colonne « Auteur »
     if (target.stamped && has('GFS_Lecteurs') && !has(STAMP)) return { extend: 'upgrade' };
     return { author: target.stamped ? lower((table[STAMP] || [])[(table.id || []).indexOf(file.row)]) : lower(file.by) };
@@ -153,6 +188,12 @@ export class ShareControl {
     return file.mine ? t('share.folder.inMine', { name: t('ex.me') }) : this.#o.appName(file.app);
   }
 
+  // Écrit un partage : un dossier de « Moi » le reçoit par le numéro de sa ligne d'état (`keyOf`), que la fenêtre ne connaît pas encore quand le dossier
+  // n'avait aucun partage.
+  async add(file, record) {
+    return this.#write([['AddRecord', SHARES_TABLE, null, file.mine ? { ...record, Cible: await this.keyOf(file) } : record]]);
+  }
+
   // Ouvre la fenêtre du fichier ; rend la promesse de sa fermeture.
   open(file) {
     const { t, container, inertTargets } = this.#o;
@@ -160,7 +201,7 @@ export class ShareControl {
       container, t, locale: this.#o.locale(), inertTargets, other: state => this.#o.other(file, state),
         file: { key: file.key, name: file.name, app: this.#appLabel(file) }, startTab: 'here',
       load: () => this.load(file), onManage: () => this.#o.manage.open(),
-      onAdd: record => this.#write([['AddRecord', SHARES_TABLE, null, record]]),
+      onAdd: record => this.add(file, record),
       onChange: (id, patch) => this.#write([['UpdateRecord', SHARES_TABLE, id, patch]]),
       onRemove: id => this.#write([['RemoveRecord', SHARES_TABLE, id]]),
       onActivate: async () => runAction({ kind: 'sharing', plans: await this.#o.writer.plans(), t, ask: options => ask({ container, inertTargets, ...options }),

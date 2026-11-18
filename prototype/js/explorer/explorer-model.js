@@ -129,6 +129,20 @@ export function readGfsFolders(data, identity = '') {
   return [...found];
 }
 
+// Les lignes d'état des dossiers de la personne `identity` (`GFS_Rangement`, ni app ni fichier) : [{ id, path }], une par ligne, `id` le numéro de ligne de
+// Grist. C'est ce numéro, jamais le chemin, qui désigne un dossier de « Moi » dans les partages et les liens (js/sharing/folder-identity.js) : le dossier garde
+// sa ligne quand on le renomme ou le déplace.
+export function readGfsFolderRows(data, identity = '') {
+  const found = [];
+  for (let i = 0; i < rowCount(data); i++) {
+    const user = text(cell(data, 'Utilisateur', i));
+    if (user !== identity || user.startsWith('@') || text(cell(data, 'App', i)) || text(cell(data, 'Fichier', i))) continue;
+    const path = normalizePath(cell(data, 'Dossier', i));
+    if (path) found.push({ id: data.id[i], path });
+  }
+  return found;
+}
+
 // Pose dossier et favori sur les fichiers, et le texte de recherche (nom et dossier, normalisés une fois). Le rangement propre de l'app (`filing`, par
 // identifiant) sert de point de départ ; celui de GFS (`gfsFiling`, par clé « app:fichier ») passe devant : l'app seule garde le sien (6.4, point 5).
 // `appFirst` : l'app tient son rangement et laisse GFS l'écrire (js/files/app-filing.js, 6.4 point 8) : c'est le sien qui passe devant, celui de GFS ne sert

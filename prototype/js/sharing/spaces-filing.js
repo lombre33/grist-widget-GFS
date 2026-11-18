@@ -84,7 +84,8 @@ export function locate(path, info) {
 // espace garde son dossier à lui (rien n'y change) ; un fichier qui en sort va dans le dossier demandé.
 export function splitWrites(entries, folders, files, info) {
   // Un lien montre le dossier d'un autre espace : on n'y range rien et on n'y crée rien (cela se fait dans l'espace d'origine).
-  if ((folders.add || []).some(path => linkWithin(info, path))) return { error: 'ex.linkTarget' };
+  if ([...(folders.add || []), ...[...(folders.moved || []), ...(folders.merged || [])].map(([, to]) => to)].some(path =>
+    linkWithin(info, path))) return { error: 'ex.linkTarget' };
   const byKey = new Map(files.map(file => [file.key, file]));
   const personal = [];
   const ops = [];

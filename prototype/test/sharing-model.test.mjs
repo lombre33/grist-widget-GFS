@@ -44,7 +44,7 @@ test('les colonnes d\'aide d\'une table de fichiers : un calcul et sept listes, 
   assert.doesNotMatch(calc, /\$Auteur\b/, '« Auteur » n\'est que le dernier qui a modifié : il ne donne aucun droit');
   assert.match(calc, /best\[author\] = \(999, 9, 3, ""\)/);
   assert.match(calc, /GFS_Placement\.lookupOne\(Cible=key\)/);
-  const parts = columns.filter(column => !['GFS_Calc', 'GFS_Auteur', 'GFS_Dossier', 'GFS_Vus'].includes(column.id)).map(column => [column.id, column.formula.match(/\[(\d)\]\)$/)[1]]);
+  const parts = columns.filter(column => !['GFS_Calc', 'GFS_Auteur', 'GFS_Dossier', 'GFS_Ids', 'GFS_Vus'].includes(column.id)).map(column => [column.id, column.formula.match(/\[(\d)\]\)$/)[1]]);
   assert.deepEqual(parts, [['GFS_Lecteurs', '0'], ['GFS_Ecrivains', '1'], ['GFS_Admins', '2'], ['GFS_Refus', '3'], ['GFS_Cats', '4'], ['GFS_CatsEcrit', '5'], ['GFS_Directs', '6']]);
   assert.match(calc, /directs = sorted\(who \+ ">" \+ v\[3\]/);
   assert.match(calc, /put\(best, p\.PersonneL, lvl, 2, rank, str\(p\.Auteur/);
@@ -475,4 +475,39 @@ test('les règles du rangement : le partage les pose avec le reste (sinon une li
   const at = added.actions.findIndex(action => action[0] === 'AddColumn' && action[1] === 'GFS_Rangement' && action[2] === 'Adresse');
   assert.ok(at >= 0 && at < added.actions.findIndex(action => action[1] === '_grist_ACLResources'), 'la colonne avant les règles');
   assert.ok(added.adds.includes('GFS_Rangement.Adresse'));
+});
+
+// Un dossier de « Moi » se désigne par le numéro de sa ligne d'état (contrats 11.7, point 13.n.g) : renommer le dossier ne perd plus ses partages.
+test('GFS_Ids : les lignes d\'état des dossiers de l\'AUTEUR du fichier, du plus haut au plus bas ; la chaîne les ajoute à côté des chemins (deux « / » : jamais un nom de dossier)', () => {
+  const ids = model.helperColumns().find(column => column.id === 'GFS_Ids');
+  assert.equal(ids.type, 'Any');
+  assert.match(ids.formula, /GFS_Rangement\.lookupRecords\(App="", Fichier="", Dossier="\/"\.join\(mine\[:i \+ 1\]\)\)/, 'une ligne d\'état : ni app ni fichier');
+  assert.match(ids.formula, /if str\(r\.Utilisateur or ""\)\.strip\(\)\.lower\(\) == author:\n {8}out\.append\(\[r\.id, i\]\)/, 'seules les lignes de l\'auteur comptent');
+  assert.ok(ids.formula.indexOf('author = ') < ids.formula.indexOf('lookupRecords'));
+  for (const id of ['GFS_Calc', 'GFS_Vus']) {
+    const formula = model.helperColumns().find(column => column.id === id).formula;
+    assert.match(formula, /for rid, i in \(\$GFS_Ids or \[\]\):\n {4}chain\["dossier:moi:" \+ author \+ "\/\/" \+ str\(rid\)\] = 2 \+ i/, `${id} lit les numéros`);
+    assert.match(formula, /chain\["dossier:moi:" \+ author \+ "\/" \+ "\/"\.join\(mine\[:i \+ 1\]\)\] = 2 \+ i/, `${id} garde les partages à l'ancienne mode`);
+  }
+  assert.ok(HELPERS.indexOf('GFS_Ids') > HELPERS.indexOf('GFS_Dossier') && HELPERS.indexOf('GFS_Ids') < HELPERS.indexOf('GFS_Calc'), 'la colonne naît avant celles qui la lisent');
+  for (const line of ids.formula.split('\n')) assert.equal(line.split('"').length % 2, 1, `guillemets non fermés : ${line}`);
+});
+
+test('un partage d\'avant GFS_Ids : la colonne s\'ajoute (additif) et les formules d\'aide sont reprises, comme pour GFS_Vus ; un second passage ne trouve rien', () => {
+  const done = applied(base(), planSharing(base(), FILES_COLUMNS).actions);
+  const old = { ...done, columns: done.columns.filter(col => col.colId !== 'GFS_Ids') };
+  const plan = planSharing(old, FILES_COLUMNS);
+  assert.equal(plan.ok, true, 'le partage est à compléter');
+  assert.deepEqual(plan.adds, ['GFS_Fichiers.GFS_Ids']);
+  const modified = plan.actions.filter(action => action[0] === 'ModifyColumn').map(action => action[2]);
+  assert.ok(modified.includes('GFS_Calc') && modified.includes('GFS_Vus'), `les formules qui la lisent sont reprises : ${modified.join(', ')}`);
+  assert.equal(planSharing(applied(old, plan.actions), FILES_COLUMNS).reason, 'already');
+});
+
+test('sharesOf : un dossier se désigne par plusieurs cibles (son numéro, son chemin d\'avant) ; les lignes de toutes viennent, une cible d\'origine liste les siennes', () => {
+  const rows = [{ id: 1, Cible: 'dossier:moi:a@b.fr//4', Personne: 'x@y.fr', Droit: 'lecture' }, { id: 2, Cible: 'dossier:moi:a@b.fr/Docs', Personne: 'z@y.fr', Droit: 'lecture' },
+    { id: 3, Cible: 'dossier:moi:a@b.fr//3', Personne: 'p@y.fr', Droit: 'ecriture' }, { id: 4, Cible: 'dossier:moi:a@b.fr/Autre', Personne: 'q@y.fr', Droit: 'lecture' }];
+  const shares = sharesOf(rows, ['dossier:moi:a@b.fr/Docs/Sous', 'dossier:moi:a@b.fr//4'], [{ kind: 'folder', name: 'Docs', target: ['dossier:moi:a@b.fr/Docs', 'dossier:moi:a@b.fr//3'] }]);
+  assert.deepEqual(shares.map(share => [share.id, share.inherited, share.from && share.from.name]), [[1, false, null], [3, true, 'Docs'], [2, true, 'Docs']]);
+  assert.deepEqual(sharesOf(rows, 'dossier:moi:a@b.fr//4').map(share => share.id), [1], 'une seule cible en texte : comme avant');
 });

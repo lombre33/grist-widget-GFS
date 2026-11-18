@@ -190,6 +190,20 @@ function folderFormula(target) {
     'return out'].join('\n');
 }
 
+// Les lignes d'état des dossiers que l'auteur du fichier lui a donnés dans « Moi » : [numéro de ligne, rang du dossier dans le chemin], du plus haut au plus
+// bas. Un partage de dossier de « Moi » porte ce numéro (`dossier:moi:<adresse>//<numéro>`, js/sharing/folder-identity.js) : renommer le dossier ne le change
+// pas. Seules les lignes de l'auteur comptent (un numéro réutilisé par la ligne d'une autre personne n'ouvre rien).
+function idsFormula(target) {
+  return [
+    `author = str($${target.author}).strip().lower()`, 'out = []', 'if author:',
+    '  mine = [x for x in str($GFS_Dossier or "").split("/") if x]',
+    '  for i in range(len(mine)):',
+    `    for r in ${FILING_TABLE}.lookupRecords(App="", Fichier="", Dossier="/".join(mine[:i + 1])):`,
+    '      if str(r.Utilisateur or "").strip().lower() == author:',
+    '        out.append([r.id, i])',
+    'return out'].join('\n');
+}
+
 // Les cibles qui valent pour un fichier, de la plus large (`*`, 0) à la plus précise (le fichier, 99) : l'espace où il est placé et ses dossiers, ou, hors d'un
 // espace, le dossier que son auteur lui a donné dans « Moi » (`GFS_Dossier`) : les droits de ce dossier et de ceux au-dessus valent pour lui, et pour tout
 // fichier que l'auteur y rangera. Le dossier d'une autre personne ne compte jamais : sa clé porte l'adresse de l'auteur. `full` : les noms de ces dossiers
@@ -211,6 +225,8 @@ const chainLines = target => [
   '  full = mine',
   '  for i in range(len(mine)):',
   `    chain["${PERSONAL_PREFIX}" + author + "/" + "/".join(mine[:i + 1])] = 2 + i`,
+  '  for rid, i in ($GFS_Ids or []):',
+  `    chain["${PERSONAL_PREFIX}" + author + "//" + str(rid)] = 2 + i`,
   'chain[key] = 99'];
 
 // Où le fichier se montre en plus, par les liens d'autres espaces (contrats 11.7, point 13.o) : « <clé de l'espace>/<chemin> », un par lien dont la source est
@@ -270,13 +286,15 @@ function calcFormula(target) {
 
 // Les colonnes d'aide d'une table de fichiers : `GFS_Calc` (le calcul), puis les adresses qui lisent, écrivent, administrent, celles à qui l'accès est retiré
 // (`GFS_Refus`), et les catégories entières (`editeurs`, `tous`) qui lisent ou écrivent.
-export const HELPERS = Object.freeze(['GFS_Dossier', 'GFS_Calc', 'GFS_Lecteurs', 'GFS_Ecrivains', 'GFS_Admins', 'GFS_Refus', 'GFS_Cats', 'GFS_CatsEcrit',
+export const HELPERS = Object.freeze(['GFS_Dossier', 'GFS_Ids', 'GFS_Calc', 'GFS_Lecteurs', 'GFS_Ecrivains', 'GFS_Admins', 'GFS_Refus', 'GFS_Cats',
+  'GFS_CatsEcrit',
   'GFS_Directs', 'GFS_Vus']);
 export function helperColumns(target = FILES_TARGET) {
   const part = at => `tuple(($GFS_Calc or [[], [], [], [], [], [], []])[${at}])`;
   return [
     ...(target.stamped ? [stamped(STAMP, 'user.Email')] : []),
     formula('GFS_Dossier', 'Text', folderFormula(target)),
+    formula('GFS_Ids', 'Any', idsFormula(target)),
     formula('GFS_Calc', 'Any', calcFormula(target)),
     formula('GFS_Lecteurs', 'Any', part(0)),
     formula('GFS_Ecrivains', 'Any', part(1)),
@@ -569,10 +587,14 @@ export function shareRecord({ target, who, right, download = false, end = null }
 // Ce que dit la table de partages d'une cible, pour la fenêtre : les lignes qui la visent (la racine `*` et, pour un fichier placé dans un espace, l'espace et
 // ses dossiers : `extras` = [{ kind, name, target }], marquées héritées), triées, avec leur validité.
 export function sharesOf(rows, target, extras = []) {
-  const origin = row => (row.Cible === ROOT ? { kind: 'root' } : extras.find(item => item.target === row.Cible) || null);
-  return rows.filter(row => row.Cible === target || origin(row)).map(row => ({
-    id: row.id, who: String(row.Personne || ''), right: row.Droit, download: Boolean(row.Telecharger), end: row.Fin || null, inherited: row.Cible !== target,
-      from: row.Cible === target ? null : origin(row), valid: row.Valide !== false, active: row.Actif !== false, author: String(row.Auteur || ''),
+  // `target` : la cible, ou les cibles qui désignent le même dossier (un dossier de « Moi » : par son numéro de ligne et, pour un partage ancien, par son
+  //   chemin) ; `extra.target` de même.
+  const own = [].concat(target);
+  const origin = row => (row.Cible === ROOT ? { kind: 'root' } : extras.find(item => [].concat(item.target).includes(row.Cible)) || null);
+  return rows.filter(row => own.includes(row.Cible) || origin(row)).map(row => ({
+    id: row.id, who: String(row.Personne || ''), right: row.Droit, download: Boolean(row.Telecharger), end: row.Fin || null,
+      inherited: !own.includes(row.Cible),
+      from: own.includes(row.Cible) ? null : origin(row), valid: row.Valide !== false, active: row.Actif !== false, author: String(row.Auteur || ''),
   })).sort((a, b) => Number(a.inherited) - Number(b.inherited) || a.who.localeCompare(b.who));
 }
 

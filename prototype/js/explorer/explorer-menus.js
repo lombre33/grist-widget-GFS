@@ -50,6 +50,14 @@ function shareFolderItem(x, path) {
   return { label: t('share.menu'), icon: 'user', greyed: why !== null, run: () => (why ? opts.notice(why) : void sharing.open(sharing.folderFile(path))) };
 }
 
+// Le lien porte la clé du dossier : pour un dossier de « Moi », le numéro de sa ligne d'état (le lien suit le dossier quand on le renomme), que GFS écrit au
+// besoin.
+async function linkFolder(sharing, links, path) {
+  const folder = sharing.folderFile(path);
+  const target = sharing.keyOf ? await sharing.keyOf(folder) : folder.key;
+  return links.open({ target, name: folder.name, kind: 'folder' });
+}
+
 // « Lier dans un espace… » d'un dossier (js/sharing/link-control.js) : un dossier d'espace ou de « Moi » se montre dans un autre espace ; les autres, l'article
 // reste grisé et le clic dit pourquoi. Rien (liste vide) sans le contrôle des liens (les essais de l'explorateur seul).
 function linkFolderItem(x, path) {
@@ -58,8 +66,7 @@ function linkFolderItem(x, path) {
   if (!links) return [];
   const why = x.choice ? t('ex.choose.newOff') : ((sharing && sharing.whyNotFolder ? sharing.whyNotFolder(path) : t('share.unsupported')) || links.whyNot());
   return [{ label: t('slink.menu'), icon: 'link', greyed: why !== null,
-    run: () => { if (why) opts.notice(why); else {
-      const folder = sharing.folderFile(path); void links.open({ target: folder.key, name: folder.name, kind: 'folder' }); } } }];
+    run: () => { if (why) opts.notice(why); else void linkFolder(sharing, links, path); } }];
 }
 
 // Le menu du dossier d'un lien (un autre espace y montre ses fichiers) : l'ouvrir, ou retirer le lien. Le reste est grisé : le nom, la place et le partage se

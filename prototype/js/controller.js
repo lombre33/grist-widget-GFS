@@ -35,6 +35,7 @@ import { AppsState } from './apps/apps-state.js';
 import { arrivalApp, arrivalProbes } from './broker/arrival.js';
 import { arrivalTableApp } from './broker/arrival-table.js';
 import { Rangement, TableDeclined } from './files/rangement.js';
+import { FolderShares } from './sharing/folder-shares.js';
 import { isNewer } from './files/structure.js';
 import { appFilingOf } from './files/app-filing.js';
 import { RightsControl } from './rights/rights-control.js';
@@ -159,7 +160,7 @@ export class GfsController {
     });
     this.rights = new RightsControl({
       port: this.port, transfer: this.transfer, manifests: this.manifests, now: () => Date.now(), container: this.$('stage'),
-      inertTargets: this.inertTargets, t: this.t, fullAccess: () => this.fullAccess,
+      inertTargets: this.inertTargets, t: this.t, fullAccess: () => this.fullAccess, rangement: this.rangement,
       locale: () => this.locale, identity: () => this.identity, writeBlock: () => this.#writeBlock(), appName: this.appName, spaces: () => this.spaces,
       other: (file, state) => this.otherDocuments.tab(file, state), otherLinks: () => this.otherDocuments.links(),
         otherStop: link => this.otherDocuments.stop(link), otherNew: () => this.otherDocuments.link(), refresh: () => this.refreshFiles(),
@@ -340,6 +341,8 @@ export class GfsController {
       port: this.port, rangement: this.rangement, t: this.t, locale: () => this.locale, files: () => (this.explorer ? this.explorer.files : []),
         folders: () => this.explorer.folders, appName: this.appName,
       spaces: { info: () => this.spaces, owner: async () => (await this.transfer.isOwner()) === true },
+      folderShares: new FolderShares({ port: this.port, rangement: this.rangement, identity: () => this.identity,
+        owner: async () => (await this.transfer.isOwner()) === true }),
       here: () => (this.explorer.state.view === 'folder' ? this.explorer.state.path : ''), writeBlock: () => this.#writeBlock(),
         notice: text => this.notice(text),
       specOf: file => ((this.manifestOf(file.app) || {}).fichiers || []).find(spec => spec.table === file.table) || null,

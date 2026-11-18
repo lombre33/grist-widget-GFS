@@ -104,6 +104,27 @@
       }
     },
     {
+      "id": "d3-cloud",
+      "version": "1.0.0",
+      "forme": "module",
+      "poids": 14747,
+      "contient": [
+        {
+          "paquet": "d3-cloud",
+          "version": "2.0.0"
+        }
+      ],
+      "modules": [
+        "d3-cloud"
+      ],
+      "externes": [],
+      "cdn": null,
+      "vendorise": {
+        "chemin": "vendor/d3-cloud/1.0.0/d3-cloud.js",
+        "integrite": "sha384-q1KvVuPu5gLsypxXouTgdg1dT1JqvKeP9uKICf37NNV5FA5zj9XN55UQwm+Ii76F"
+      }
+    },
+    {
       "id": "docx",
       "version": "9.15.1",
       "poids": 1061633,

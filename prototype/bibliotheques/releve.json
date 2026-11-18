@@ -1,6 +1,6 @@
 {
   "contrat": 0,
-  "releve": "2026-11-18T10:37:24.701Z",
+  "releve": "2026-11-18T12:41:54.041Z",
   "source": "registry.npmjs.org",
   "bibliotheques": {
     "plotly": [
@@ -19,6 +19,9 @@
     ],
     "pdfjs": [
       "pdfjs-dist"
+    ],
+    "d3-cloud": [
+      "d3-cloud"
     ],
     "docx": [
       "docx"
@@ -75,6 +78,15 @@
       "licence": "MIT",
       "site": "https://tiptap.dev",
       "depot": "https://github.com/ueberdosis/tiptap"
+    },
+    "d3-cloud": {
+      "version": "2.0.0",
+      "derniere": "2.0.0",
+      "ecart": "a-jour",
+      "avis": [],
+      "licence": "BSD-3-Clause",
+      "site": "https://www.jasondavies.com/wordcloud/",
+      "depot": "https://github.com/jasondavies/d3-cloud"
     },
     "docx": {
       "version": "9.15.1",

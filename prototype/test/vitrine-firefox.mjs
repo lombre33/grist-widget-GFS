@@ -142,7 +142,7 @@ async function gridProblems(page, t, note) {
   const [pp, au] = [s.cards[0], s.cards[1]];
   if (pp && (pp.button !== t('mod.open') || !pp.badge || !pp.badge.includes(t('mod.badge.on')))) note('app installée', `Publipostage+ (toujours active) devrait dire « ${t('mod.badge.on')} » et proposer « ${t('mod.open')} » : ${pp.badge} / ${pp.button}`);
   if (au && (au.button !== t('ap.install') || au.badge || au.disabled)) note('app à installer', `Automation+ devrait proposer « ${t('ap.install')} », libre, sans pastille : ${au.button} / ${au.badge} / ${au.disabled}`);
-  if (s.count !== `${t('mod.count', { n: 1, total: 9 })} · ${t('mod.countNote')}`) note('compte', `le compte devrait dire « ${t('mod.count', { n: 1, total: 9 })} » : « ${s.count} »`);
+  if (s.count !== `${t('mod.count', { n: 1, total: 11 })} · ${t('mod.countNote')}`) note('compte', `le compte devrait dire « ${t('mod.count', { n: 1, total: 11 })} » : « ${s.count} »`);
   if (s.note !== t('mod.saved')) note('pied', `le pied devrait dire « ${t('mod.saved')} » : « ${s.note} »`);
   if (s.focused !== 'name:publipostage') note('clavier', `à l'ouverture le clavier devrait être sur le premier nom : ${s.focused}`);
   await contrastProblems(page, note, 'la mosaïque');
@@ -157,7 +157,7 @@ async function installProblems(page, t, note) {
   if (JSON.stringify(s.events) !== JSON.stringify([['app', 'automation', true]])) note('installer', `un clic sur « Installer » a envoyé ${JSON.stringify(s.events)}`);
   const au = s.cards[1];
   if (au.button !== t('mod.open') || !au.badge || !au.badge.includes(t('mod.badge.on'))) note('installer', `après le clic Automation+ devrait proposer « ${t('mod.open')} » avec « ${t('mod.badge.on')} » : ${au.button} / ${au.badge}`);
-  if (s.count !== `${t('mod.count', { n: 2, total: 9 })} · ${t('mod.countNote')}`) note('installer', `le compte devrait monter à « ${t('mod.count', { n: 2, total: 9 })} » : « ${s.count} »`);
+  if (s.count !== `${t('mod.count', { n: 2, total: 11 })} · ${t('mod.countNote')}`) note('installer', `le compte devrait monter à « ${t('mod.count', { n: 2, total: 11 })} » : « ${s.count} »`);
   if (s.focused !== 'open:automation') note('installer', `le clavier devrait suivre sur « ${t('mod.open')} » : ${s.focused}`);
 }
 

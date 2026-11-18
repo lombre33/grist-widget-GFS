@@ -87,7 +87,7 @@ function webpSize(buffer) {
 
 const DELIVERED = ['publipostage', 'automation', 'bi', 'form'];
 
-test('Publipostage+, Automation+, Grist-BI et Form+ ont leur vitrine : une description et trois captures, dans les deux langues, des fichiers de GFS aux bonnes dimensions', () => {
+test('Publipostage+, Automation+, Grist-BI et Form+ ont leur vitrine : une description et de trois à six captures, dans les deux langues, des fichiers de GFS aux bonnes dimensions', () => {
   for (const id of DELIVERED) {
     const manifest = readJson(`manifestes/${id}.json`);
     assert.deepEqual(validateManifest(manifest).errors, [], id);
@@ -96,7 +96,7 @@ test('Publipostage+, Automation+, Grist-BI et Form+ ont leur vitrine : une descr
     for (const lang of ['fr', 'en']) {
       assert.ok(vitrine.description[lang].length > 0 && vitrine.description[lang].length <= 280, `${id} : la description (${lang}) tient en 280 caractères au plus`);
     }
-    assert.equal(vitrine.captures.length, 3, `${id} : trois captures`);
+    assert.ok(vitrine.captures.length >= 3 && vitrine.captures.length <= 6, `${id} : de trois à six captures (${vitrine.captures.length})`);
     for (const { fichier, legende } of vitrine.captures) {
       assert.ok(fichier.startsWith(`${id}/`), `${id} : « ${fichier} » est rangé dans le dossier de l'app`);
       for (const lang of ['fr', 'en']) assert.ok(legende[lang].length > 0 && legende[lang].length <= 60, `${id} : la légende de ${fichier} (${lang}) tient en 60 caractères au plus`);

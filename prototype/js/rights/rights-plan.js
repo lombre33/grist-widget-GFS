@@ -101,7 +101,13 @@ export function planOpenStructure(existing) {
 // referme pas ce qu'une personne a rouvert) ; `closes` le dit à la question.
 export function planSharingFor(existing) {
   const plan = planSharing(existing, FILES_COLUMNS);
-  if (!plan.ok || plan.extends) return plan;
+  return !plan.ok || plan.extends ? plan : withStructureClosed(existing, plan);
+}
+
+// Ajoute à un plan qui réussit (`plan` : { ok: true, actions, … }) la fermeture de la structure, dans la même écriture, si elle n'est pas déjà fermée
+// (`closes: true` le dit à la question). Le partage entre deux documents (js/sharing/sync-rules.js) la pose de même, au moment où il protège ses tables
+// (choix du porteur, 18/11 : « Oui, dans la même question »).
+export function withStructureClosed(existing, plan) {
   const closing = planCloseStructure(withAdded(existing, plan.actions));
   return closing.ok ? { ...plan, actions: [...plan.actions, ...closing.actions], closes: true } : plan;
 }

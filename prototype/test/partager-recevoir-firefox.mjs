@@ -51,7 +51,8 @@ async function accordFlow(page, tools, t, flow, table) {
   const now = await toAccord(page, tools, t, kind, flow);
   if (!now || !now.modal) return;
   tools.fits(kind, now, 'l\'accord');
-  for (const part of [LONG_DOC, t('sr.accord.adds'), table, t('sr.accord.keep')]) if (!now.modal.body.toLowerCase().includes(part.toLowerCase())) tools.run.note(kind, `l'accord devait dire « ${part} » (il dit « ${now.modal.body.slice(0, 200)} »)`);
+  // La structure du document se ferme avec le journal (choix du porteur, 18/11) : l'accord le dit avec les mots de la question d'activation du partage.
+  for (const part of [LONG_DOC, t('sr.accord.adds'), table, t('sr.accord.keep'), t('sr.accord.rules'), t('rights.ask.sharing.structure'), t('rights.ask.close.item2')]) if (!now.modal.body.toLowerCase().includes(part.toLowerCase())) tools.run.note(kind, `l'accord devait dire « ${part} » (il dit « ${now.modal.body.slice(0, 200)} »)`);
   if (flow === 'second' && now.modal.body.includes('GFS_Recus ')) tools.run.note(kind, 'l\'accord du second partage ne devait pas annoncer la table du premier');
   for (let i = 0; i < 3; i += 1) { await page.press('Tab'); const inside = await tools.snap(); if (!inside.modal || !inside.modal.inside) tools.run.note(kind, 'Tab devait rester dans la fenêtre'); }
   await page.press('Escape');
@@ -120,6 +121,24 @@ async function refusalFlow(page, tools, t) {
   await tools.expect(kind, 'Échap devait fermer la fenêtre', s => s.modal === null);
 }
 
+// Un code d'un AUTRE serveur Grist (choix du porteur, 18/11) : refusé dès la lecture, avec le nom du serveur, sans quitter l'écran du code ; le serveur au nom très
+// long ne coupe pas le message. Rien n'est créé (mesuré dans un vrai Grist : audits/partage-trois-grist-2026-11-18/banc/s9-autre-serveur.mjs).
+const OTHER_SERVER = 'grist-de-la-direction-des-systemes-d-information.exemple.gouv.fr';
+async function otherServerFlow(page, tools, t) {
+  const kind = 'code d\'un autre serveur';
+  const first = await tools.open(kind, 'serveur');
+  if (!first.modal) return;
+  await tools.paste(kind, 'sr-invite', 'GRISTSYNC2.z');
+  await tools.press(kind, 'sr-continue');
+  const wanted = t('so.failed', { message: t('sr.error.server', { server: OTHER_SERVER }) });
+  const refused = await tools.expect(kind, 'le code d\'un autre serveur devait être refusé avec le nom du serveur, sans quitter l\'écran du code', s => s.modal && s.modal.note === wanted &&
+    s.modal.keys.includes('sr-invite'));
+  tools.fits(kind, refused, 'le refus du serveur');
+  if (refused.acts.some(act => act[0] === 'accept' || act[0] === 'reply')) tools.run.note(kind, 'un refus dès la lecture ne devait rien créer');
+  await page.press('Escape');
+  await tools.expect(kind, 'Échap devait fermer la fenêtre', s => s.modal === null);
+}
+
 export async function partagerRecevoirProblems(page, language, tag) {
   const found = [];
   const t = createI18n(language).t;
@@ -131,6 +150,7 @@ export async function partagerRecevoirProblems(page, language, tag) {
     await replyFlow(page, tools, t);
     await abortFlow(page, tools, t);
     await refusalFlow(page, tools, t);
+    await otherServerFlow(page, tools, t);
   } catch (error) {
     tools.run.note('geste impossible', String(error.message).slice(0, 200));
     await page.press('Escape').catch(() => {});

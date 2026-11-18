@@ -7,6 +7,7 @@
 import { label } from './manifest.js';
 import { gap } from './version-gap.js';
 import { licenceFit } from './licences.js';
+import { extensionUnit, nativeUnit, appNames } from './dependencies-source.js';
 
 const STATE_RANK = { active: 0, installed: 1, ready: 2, unused: 3 };
 const LEVEL_RANK = { critical: 0, high: 1, moderate: 2, low: 3 };
@@ -27,21 +28,23 @@ function packagesOf(entry, releve) {
   return names.map(paquet => ({ paquet, version: entry.version }));
 }
 
-// Qui utilise quoi : Map('<id>@<version>' d'une bibliothèque du catalogue -> [{ app, appName, what, state }]) d'après les lignes de `modulesModel`.
+// Qui utilise quoi : Map('<id>@<version>' d'une bibliothèque du catalogue -> [{ app, appName, what, state, unit }]) d'après les lignes de `modulesModel` ;
+// `unit` dit ce que la personne peut choisir pour cette fonction (js/apps/dependencies-source.js).
 function usesOf(modules, lang) {
   const uses = new Map();
   const add = (library, use) => { const key = `${library.id}@${library.version}`; uses.set(key, [...(uses.get(key) || []), use]); };
-  const names = new Map(modules.items.filter(item => item.kind === 'app' && item.ok).map(item => [item.id, label(item.manifest.nom, lang)]));
+  const names = appNames(modules, lang);
   for (const item of modules.items) {
     if (item.kind === 'ext') {
       const state = item.checked ? 'active' : (item.appInstalled ? 'installed' : 'ready');
       for (const library of item.libraries) add(library, { app: item.app, appName: names.get(item.app) || item.app, what: label(item.extension.nom, lang),
-        state });
+        state, unit: extensionUnit(item, names, lang) });
     } else if (item.kind === 'app' && item.ok) {
       for (const row of item.natives || []) {
         // la copie figée d'une fonction native n'est servie que si la personne l'a choisie ; sinon l'app charge ses propres adresses
         const state = item.installed && row.mode === 'vendorise' ? 'active' : (item.installed ? 'installed' : 'ready');
-        for (const library of row.libraries) add(library, { app: item.id, appName: names.get(item.id), what: label(row.group.nom, lang), state });
+        for (const library of row.libraries) add(library, { app: item.id, appName: names.get(item.id), what: label(row.group.nom, lang), state,
+          unit: nativeUnit(item, row, names, lang) });
       }
     }
   }
@@ -53,7 +56,8 @@ const unique = list => [...new Set(list)];
 const uniqueUses = uses => [...new Map(uses.map(use => [`${use.app}|${use.what}|${use.state}`, use])).values()];
 
 // Un fichier que GFS sert : ce que la fenêtre vérifie (copie) et ce qu'elle dit des adresses contactées en mode CDN.
-const fileOf = entry => ({ id: entry.id, version: entry.version, poids: entry.poids || 0, copie: entry.vendorise, cdn: entry.cdn || null,
+const fileOf = entry => ({ id: entry.id, version: entry.version, forme: entry.forme || 'script', poids: entry.poids || 0, copie: entry.vendorise,
+  cdn: entry.cdn || null,
   cdnHost: entry.cdn ? new URL(entry.cdn.src).hostname : null, memeEmpreinte: Boolean(entry.cdn) && entry.cdn.integrite === entry.vendorise.integrite });
 
 // L'avis le plus grave d'une liste (ou null).

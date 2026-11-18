@@ -19,7 +19,7 @@ export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 // Le Chromium du cloud (141) n'a pas encore `getOrInsert` ni `getOrInsertComputed` de Map et de WeakMap (Chrome 145, Firefox 144, Safari 26.2 : caniuse), que pdf.js 6 attend : sans elles, la
 // première page ne se dessine pas et Publipostage+ dit « Ce navigateur est trop ancien pour lire un PDF ». Le labo les pose (la même fonction que l'essai de Publipostage+) pour mesurer tout le reste ;
 // `LAB_NAVIGATEUR_ANCIEN=1` ne les pose pas : c'est alors ce que voit la personne d'un navigateur ancien (un Firefox 140) qui est mesuré.
-const addModernMethods = () => {
+export const addModernMethods = () => {
   for (const type of [Map, WeakMap]) {
     if (!type.prototype.getOrInsert) Object.defineProperty(type.prototype, 'getOrInsert', { configurable: true, writable: true, value(key, value) { if (!this.has(key)) this.set(key, value); return this.get(key); } });
     if (!type.prototype.getOrInsertComputed) Object.defineProperty(type.prototype, 'getOrInsertComputed', { configurable: true, writable: true, value(key, compute) { if (!this.has(key)) this.set(key, compute(key)); return this.get(key); } });

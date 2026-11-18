@@ -95,3 +95,14 @@ export function withNativeMode(apps, manifest, groupId, mode) {
   for (const group of groups) modes[nativeKey(group.id)] = mode;
   return { ...apps, [manifest.id]: cleanApp(manifest, { extensions: current.extensions, modes }) };
 }
+
+// Plusieurs choix de source à la fois, une seule écriture pour l'app (la fenêtre « Dépendances » : le choix d'une bibliothèque vaut pour chaque fonction qui
+// l'utilise, « tout en copie figée » pour chaque fonction qui se peut). `targets` : { extensions: [id], natives: [id de fonction] }.
+export function withSources(apps, manifest, { extensions = [], natives = [] }, mode) {
+  const current = apps[manifest.id];
+  if (!current || !MODES.includes(mode) || !(extensions.length + natives.length)) return apps;
+  const modes = { ...current.modes };
+  for (const id of extensions) modes[id] = mode;
+  for (const id of natives) modes[nativeKey(id)] = mode;
+  return { ...apps, [manifest.id]: cleanApp(manifest, { extensions: current.extensions, modes }) };
+}

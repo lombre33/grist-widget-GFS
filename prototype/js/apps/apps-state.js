@@ -2,7 +2,7 @@
 // La fenêtre répond tout de suite : l'état change d'abord, l'écriture suit (une à la fois, relue juste avant d'écrire), et si elle échoue l'état revient
 // à ce que la table a dit en dernier. Une écriture n'a lieu que sur un geste de la personne (7.3, point 2) : `load` ne fait que lire.
 
-import { readApps, toOption, patchApps, withApp, withExtension, withMode, withNativeMode } from './settings.js';
+import { readApps, toOption, patchApps, withApp, withExtension, withMode, withNativeMode, withSources } from './settings.js';
 import { extensionsState, extensionsOf } from './extensions.js';
 import { nativesState, copiesInApp } from './natives.js';
 import { modulesModel } from './modules-model.js';
@@ -100,6 +100,14 @@ export class AppsState {
     const manifest = this.manifest(id);
     if (!manifest) return Promise.resolve(false);
     return this.#change(id, withNativeMode(this.apps, manifest, groupId, mode));
+  }
+
+  // Plusieurs fonctions d'une app d'un coup, une seule écriture : `targets` { extensions, natives } (js/apps/dependencies-source.js, la fenêtre « Dépendances
+  // »).
+  setSources(id, targets, mode) {
+    const manifest = this.manifest(id);
+    if (!manifest) return Promise.resolve(false);
+    return this.#change(id, withSources(this.apps, manifest, targets, mode));
   }
 
   async #change(id, next) {

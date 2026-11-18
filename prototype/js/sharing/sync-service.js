@@ -61,6 +61,8 @@ export async function loadReceiveEngine(deps) {
     tableTaken: async name => (await enginePort.readSchema()).resolve(name) !== null,
     // Les colonnes « accepté » et « refusé » de la table reçue, posées d'emblée (js/sharing/received-marks.js).
     ensureMarks: table => marks.ensureMarks(deps.docApi, [table]),
+    // L'instance Grist de CE document (« https://grist.exemple.fr ») : un partage ne passe qu'entre deux documents d'une même instance.
+    ownOrigin: async () => (await enginePort.docIdentity()).origin,
     readInvitation: receive.readInvitation,
     knownReception: receive.knownReception,
     relinkReception: receive.relinkReception,

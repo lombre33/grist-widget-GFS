@@ -144,9 +144,55 @@ test('le catalogue provisoire de Publipostage+ : 22 modèles bien formés, chacu
   assert.deepEqual(files.sort(), models.map(model => model.vignette).sort(), 'aucune vignette orpheline');
 });
 
-test('seule Publipostage+ déclare `modeles` : les autres apps n\'en ont pas encore, la fenêtre les grise « bientôt »', () => {
-  assert.deepEqual(catalogue().filter(manifest => manifest.modeles).map(manifest => manifest.id), ['publipostage']);
-  assert.equal(publipostage().ouverture.modele, undefined, 'tant que l\'app ne sait pas ouvrir un modèle, les siens sont grisés « pas encore » (contrats 5.4, point 13)');
+test('Publipostage+, Form+ et Grist-BI déclarent `modeles` et savent ouvrir un modèle ; Automation+ déclare les siens mais ne sait pas encore les ouvrir (grisés « pas encore »)', () => {
+  const declared = catalogue().filter(manifest => manifest.modeles);
+  assert.deepEqual(declared.map(manifest => manifest.id).sort(), ['automation', 'bi', 'form', 'publipostage']);
+  for (const id of ['publipostage', 'form', 'bi']) assert.equal(declared.find(manifest => manifest.id === id).ouverture.modele, true, `${id} : ouverture.modele dit que l'app ouvre un modèle (contrats 5.4, point 13)`);
+  const automation = declared.find(manifest => manifest.id === 'automation');
+  assert.notEqual(automation.ouverture.modele, true, 'Automation+ n\'ouvre encore aucun modèle (consigne 021) : ses modèles restent grisés « pas encore »');
+  assert.deepEqual(automation.actions.ouvrir, [], 'son type de modèle n\'ouvre ni « Nouveau » ni une ligne de l\'explorateur');
+});
+
+// ---------- le type des modèles d'une app sans type de fichier (Automation+, décision du porteur du 18/11 : « L'app demande ») ----------
+
+const automation = () => catalogue().find(manifest => manifest.id === 'automation');
+const typed = type => ({ ...automation(), modeles: { catalogue: 'automation/modeles.json', type } });
+const AUTOMATISME = { valeur: 'automatisme', nom: L('Automatisme', 'Automation'), icone: 'bolt' };
+
+test('`modeles.type` : la valeur, le nom bilingue et une icône ; jamais une valeur déjà prise par un type de fichier ni un texte quelconque', () => {
+  assert.deepEqual(validateManifest(typed(AUTOMATISME)).errors, []);
+  assert.deepEqual(validateManifest(typed({ valeur: 'automatisme', nom: L('A', 'A') })).errors, [], 'l\'icône est facultative');
+  for (const bad of ['automatisme', {}, { ...AUTOMATISME, valeur: 'Automatisme' }, { ...AUTOMATISME, valeur: '../x' }, { ...AUTOMATISME, nom: 'Automatisme' }, { ...AUTOMATISME, nom: { fr: 'A' } }, { ...AUTOMATISME, icone: 3 }]) {
+    assert.match(validateManifest(typed(bad)).errors.join(), /modeles\.type/, JSON.stringify(bad));
+  }
+  const clash = validateManifest({ ...withModeles({ catalogue: 'publipostage/modeles.json', type: { valeur: 'grille', nom: L('Grille', 'Grid') } }) });
+  assert.match(clash.errors.join(), /modeles\.type grille : valeur déjà prise par un type de fichier/);
+});
+
+test('une app sans type de fichier : ses entrées n\'ont pas de `type`, GFS leur donne celui du manifeste ; un autre type est écarté', () => {
+  const manifest = typed(AUTOMATISME);
+  const raw = [{ id: 'a', nom: L('A', 'A') }, { id: 'b', type: 'automatisme', nom: L('B', 'B') }, { id: 'c', type: 'document', nom: L('C', 'C') }, { id: 'd', type: null, nom: L('D', 'D') }];
+  const { models, dropped } = parseCatalogue(raw, manifest);
+  assert.deepEqual(models.map(model => [model.id, model.type]), [['a', 'automatisme'], ['b', 'automatisme']]);
+  assert.equal(dropped.length, 2);
+  assert.match(dropped.join('\n'), /type « document » que l'app ne sait pas ouvrir/);
+  assert.equal(parseCatalogue([{ id: 'a', nom: L('A', 'A') }], { ...automation(), modeles: { catalogue: 'automation/modeles.json' } }).models.length, 0, 'sans type déclaré, une entrée sans type reste écartée');
+  assert.equal(parseCatalogue([{ id: 'a', nom: L('A', 'A') }], publipostage()).models.length, 0, 'et une app qui a des types de fichier ne reçoit pas de type par défaut');
+});
+
+test('le catalogue d\'Automation+ que GFS copie : cinq modèles bien formés, tous du type « automatisme », chacun avec sa vignette légère', () => {
+  const manifest = automation();
+  const raw = readJson('modeles/automation/modeles.json');
+  const { models, dropped } = parseCatalogue(raw, manifest);
+  assert.deepEqual(dropped, []);
+  assert.deepEqual(models.map(model => model.id), ['statut-vers-archive', 'valeur-a-la-creation', 'seuil-a-verifier', 'total-calcule', 'copie-depuis-une-table']);
+  for (const model of models) {
+    assert.equal(model.type, 'automatisme');
+    assert.ok(model.tables === undefined && model.extensions === undefined, `${model.id} : aucun modèle ne vient avec des tables ni une extension`);
+    assert.ok(statSync(join(ROOT, 'modeles', 'automation', model.vignette)).size <= THUMB_MAX, `${model.id} : une vignette légère`);
+  }
+  const files = readdirSync(join(ROOT, 'modeles', 'automation')).filter(name => /\.(webp|png|jpe?g)$/.test(name));
+  assert.deepEqual(files.sort(), models.map(model => model.vignette).sort(), 'aucune vignette orpheline');
 });
 
 // ---------- l'outil : outils/modeles.mjs ----------
@@ -224,9 +270,9 @@ test('une app sans `modeles/modeles.json` dans son dépôt garde le catalogue qu
     assert.equal(plain.status, 0);
     assert.match(plain.lines.join('\n'), /publipostage : pas de modeles\/modeles\.json dans le dépôt de l'app/);
     assert.equal(planApp(publipostage(), { root }).state, 'sans-source');
-    const unknown = run(root, '--app', 'form');
+    const unknown = run(root, '--app', 'calendar');
     assert.equal(unknown.status, 1);
-    assert.match(unknown.lines.join('\n'), /form : aucune app du catalogue qui déclare « modeles »/);
+    assert.match(unknown.lines.join('\n'), /calendar : aucune app du catalogue qui déclare « modeles »/);
     const elsewhere = mkdtempSync(join(tmpdir(), 'gfs-modeles-depot-'));
     try {
       mkdirSync(join(elsewhere, 'modeles'));

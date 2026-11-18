@@ -67,14 +67,33 @@
 .dp-integrity:empty { display: none; }
 .dp-verify { margin: 0; }
 .dp-latest { font-variant-numeric: tabular-nums; }
+.dp-seg { margin: 0 0 4px; }
+.dp-detail .dp-sub { margin: 3px 0 0; }
+.dp-attn { display: flex; align-items: flex-start; gap: 5px; color: var(--text); font-weight: 700; }
+.dp-attn .ic { flex: none; width: 13px; height: 13px; margin-top: 2px; stroke-width: 2.3; }
 .dp-verify:disabled { cursor: progress; }
 .dp-empty { margin: 0; padding: 14px; color: var(--text-muted); }
 .dp-empty[hidden] { display: none; }
 .dp-apps { margin: 0; padding: 8px 14px 10px; font-size: max(12px, var(--fs-min)); color: var(--text-muted); }
 
+/* Le pied : « Tout en copie figée » et « Exporter le rapport » à côté de « Fermer » ; un bouton grisé garde son texte à 4,5:1 (bordure en tirets) et dit pourquoi dans la phrase du pied. */
+.dp .mod-foot .btn { flex: none; }
+.dp .mod-note { min-height: 2.7em; display: flex; align-items: center; }
+.dp .mod-foot .btn .ic { width: 14px; height: 14px; margin-right: 4px; }
+.dp .btn[aria-disabled="true"] { opacity: 1; border-style: dashed; border-color: var(--border-strong); background: var(--surface); color: var(--text-muted); cursor: not-allowed; }
+.dp-tag .ic { width: 10px; height: 10px; margin-right: 2px; stroke-width: 2.6; }
+.dp-tag.is-on { border-color: var(--accent-soft-border); background: var(--accent-soft); color: var(--accent-ink); font-weight: 700; }
+.dp-export { display: flex; flex-direction: column; gap: 2px; min-width: 220px; max-width: 300px; }
+.dp-export-btn { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; width: 100%; padding: 6px 8px; border: 0; border-radius: var(--radius-sm); background: transparent;
+  color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.dp-export-btn:hover, .dp-export-btn:focus-visible { background: var(--surface-sunken); }
+.dp-export-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
 @media (max-width: 519px) {
   .dp-cols, .dp-row { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.1fr) 16px; }
   .dp-cols > :nth-child(2), .dp-users { display: none; }
   .dp-facts { column-count: 1; }
+  .dp .mod-foot { flex-wrap: wrap; justify-content: flex-end; gap: 6px 8px; }
+  .dp .mod-note { flex: 1 1 100%; min-height: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .dp-chev { transition: none; } }

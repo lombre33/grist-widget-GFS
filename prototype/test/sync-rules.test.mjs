@@ -123,3 +123,53 @@ test('un échec de lecture ou d\'écriture est dit en avertissement et ne lève 
   } finally { console.warn = original; }
   assert.equal(warned.length, 2);
 });
+
+// La structure du document se ferme avec les tables techniques à la fermeture de la fenêtre de liaison (choix du porteur, 18/11 : « Oui, dans la même question » ;
+// audit « trois Grist » : un éditeur supprimait GFS_Synchro ou le journal, et l'envoi s'arrêtait sans avis).
+const structureRule = action => action[1] === '_grist_ACLRules' && action[3].permissionsText === '-S';
+
+test('avec `structure`, la règle « les non-propriétaires ne changent pas la structure » part dans la même liasse, sur la ressource « toutes les tables », avec des identifiants à elle', () => {
+  const plan = planTechnicalRules(world(['Clients', 'GFS_Synchro']), { structure: true });
+  assert.equal(plan.ok, true);
+  assert.equal(plan.closes, true);
+  const closing = plan.actions.filter(structureRule);
+  assert.equal(closing.length, 1);
+  assert.equal(closing[0][3].aclFormula, 'user.Access != OWNER');
+  const resource = plan.actions.find(action => action[1] === '_grist_ACLResources' && action[3].tableId === '*');
+  assert.equal(resource[3].colIds, '*');
+  assert.equal(closing[0][3].resource, resource[2]);
+  assert.equal(new Set(plan.actions.map(action => `${action[1]}#${action[2]}`)).size, plan.actions.length, 'aucun identifiant n\'est pris deux fois');
+  assert.deepEqual(plan.tables, ['GFS_Synchro']);
+});
+
+test('sans `structure` (la reprise à l\'ouverture), la structure n\'est jamais touchée : un propriétaire qui l\'a rouverte la garde ouverte', () => {
+  const plan = planTechnicalRules(world(['GFS_Synchro']));
+  assert.equal(plan.closes, undefined);
+  assert.equal(plan.actions.some(structureRule), false);
+});
+
+test('une structure déjà fermée n\'en reçoit pas une seconde ; des tables déjà protégées ne ferment rien (fenêtre fermée sans rien créer, second lien)', () => {
+  const closed = world(['GFS_Synchro'], [{ id: 1, tableId: '*', colIds: '*' }], [{ id: 1, resource: 1, aclFormula: 'user.Access != OWNER', permissionsText: '-S', rulePos: 1, memo: 'à la main' }]);
+  const plan = planTechnicalRules(closed, { structure: true });
+  assert.equal(plan.ok, true);
+  assert.equal(plan.closes, undefined, 'déjà fermée : la question n\'a rien à annoncer');
+  assert.equal(plan.actions.filter(structureRule).length, 0);
+  const protectedAlready = planTechnicalRules(world(['GFS_Synchro'], [], []), { structure: true });
+  const rows = { resources: protectedAlready.actions.filter(a => a[1] === '_grist_ACLResources').map(a => ({ id: a[2], ...a[3] })),
+    rules: protectedAlready.actions.filter(a => a[1] === '_grist_ACLRules').map(a => ({ id: a[2], ...a[3] })) };
+  assert.deepEqual(planTechnicalRules({ ...rows, tables: tables(['GFS_Synchro']) }, { structure: true }), { ok: false, reason: 'already' }, 'rien à protéger, rien à fermer');
+  assert.deepEqual(planTechnicalRules(world(['Clients']), { structure: true }), { ok: false, reason: 'none' }, 'aucune table technique : la structure reste comme elle est');
+});
+
+test('closeSharingTables({ structure }) écrit les règles des tables et la fermeture de la structure en UNE liasse, puis ne fait plus rien', async () => {
+  const applied = [];
+  const rows = { _grist_ACLResources: [], _grist_ACLRules: [], _grist_Tables: tables(['GFS_Journal_A']) };
+  const first = await closeSharingTables({ docApi: docOf(rows, applied), structure: true });
+  assert.deepEqual(first, { changed: true, tables: ['GFS_Journal_A'], closes: true });
+  assert.equal(applied.length, 1, 'une seule écriture : Grist ne recharge qu\'une fois');
+  assert.equal(applied[0].filter(structureRule).length, 1);
+  rows._grist_ACLResources = applied[0].filter(action => action[1] === '_grist_ACLResources').map(action => ({ id: action[2], ...action[3] }));
+  rows._grist_ACLRules = applied[0].filter(action => action[1] === '_grist_ACLRules').map(action => ({ id: action[2], ...action[3] }));
+  assert.deepEqual(await closeSharingTables({ docApi: docOf(rows, applied), structure: true }), { changed: false, tables: [] });
+  assert.equal(applied.length, 1);
+});

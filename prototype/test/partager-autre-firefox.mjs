@@ -5,6 +5,7 @@
 // refus du parcours est dit sans quitter l'écran ; l'accord offre « Une copie, une fois » et « Une copie qui se met à jour » (la fin dit si le lien reste) ; l'onglet « Dans un autre document Grist » de « Partager »
 // montre les documents reliés avec le niveau de CE fichier, un menu de niveaux (jamais masqué : grisé avec sa raison), « Relier un nouveau document… » ouvre l'accord par-dessus, et Échap ne ferme que la fenêtre du dessus.
 import { createI18n } from '../js/i18n/i18n.js';
+import { formatBytes } from '../js/weight/weight.js';
 import { Run } from './corbeille-firefox.mjs';
 import { LONG_DOC, windowMeasure, windowTools } from './fenetre-firefox.mjs';
 
@@ -53,7 +54,8 @@ async function accordFlow(page, tools, t) {
   const radios = await page.run(() => ['once', 'live'].map(mode => { const node = document.querySelector(`[data-fk="so-mode-${mode}"]`); return node ? node.checked : null; }));
   if (radios[0] !== true || radios[1] !== false) tools.run.note(kind, `l'accord devait proposer « ${t('so.mode.once')} » (coché) et « ${t('so.mode.live')} » (état des deux choix : ${JSON.stringify(radios)})`);
   for (const part of [t('so.mode.once'), t('so.mode.live')]) if (!now.modal.body.includes(part)) tools.run.note(kind, `l'accord devait dire « ${part} »`);
-  for (const part of [t('so.accord.adds'), t('so.accord.hook'), t('so.accord.keep')]) if (!now.modal.body.includes(part)) tools.run.note(kind, `l'accord devait dire « ${part} » (il dit « ${now.modal.body.slice(0, 160)} »)`);
+  // La structure du document se ferme avec les tables techniques (choix du porteur, 18/11) : l'accord le dit avec les mots de la question d'activation du partage.
+  for (const part of [t('so.accord.adds'), t('so.accord.hook'), t('so.accord.keep'), t('so.accord.rules'), t('rights.ask.sharing.structure'), t('rights.ask.close.item2')]) if (!now.modal.body.includes(part)) tools.run.note(kind, `l'accord devait dire « ${part} » (il dit « ${now.modal.body.slice(0, 160)} »)`);
   // « Exiger la comparaison du code de contrôle » : proposé et coché au départ (décision du 09/11, audit de sécurité), décochable à la vraie souris.
   const strict = () => page.run(() => { const node = document.querySelector('[data-fk="so-strict"]'); return node ? node.checked : null; });
   if (!now.modal.body.includes(t('so.strict'))) tools.run.note(kind, `l'accord devait proposer « ${t('so.strict')} »`);
@@ -268,18 +270,25 @@ async function emptyTabFlow(page, tools, t) {
 
 // Un DOSSIER de « Moi » (« Partager… » sur sa ligne) : la fenêtre s'ouvre sur « Dans ce document » (le dossier se partage ici : la personne en est la propriétaire), puis « Dans un autre document Grist » : le texte parle des PDF du dossier et des
 // fichiers d'une app qui ne partent pas, chaque document relié dit le niveau de TOUT le dossier (à jour, une partie, pas partagé), « Arrêter la copie » est libre pour une partie ; un dossier sans PDF est grisé avec sa raison.
-async function folderFlow(page, tools, t, empty) {
-  const kind = empty ? 'l\'onglet d\'un dossier sans PDF' : 'l\'onglet d\'un dossier';
+// « Partager… » sur le dossier « Contrats » (`setup` : { count, tooBig } : les PDF qui partent, les PDF de plus de 25 Mo qui ne partent pas) : rend vrai quand la
+// fenêtre est ouverte.
+async function openFolderShare(page, tools, t, kind, { count, tooBig = 0 }) {
   await tools.run.reset();
-  await page.run(none => { window.__shareOther = true; window.__sendActs = []; window.__links = 'dossier'; window.__shareKind = 'actif'; window.__folderCount = none ? 0 : 3; window.__folderSkipped = 2; window.__keep('Contrats'); }, empty);
+  await page.run(args => { window.__shareOther = true; window.__sendActs = []; window.__links = 'dossier'; window.__shareKind = 'actif'; window.__folderCount = args.count; window.__folderTooBig = args.tooBig; window.__folderSkipped = 2; window.__keep('Contrats'); }, { count, tooBig });
   const at = await page.run(() => { const row = document.querySelector('.ls-row[data-key="dir:Contrats"]'); if (!row) return null; row.scrollIntoView({ block: 'nearest' }); const box = row.getBoundingClientRect(); return [box.left + Math.min(60, box.width / 2), box.top + box.height / 2]; });
-  if (!at) { tools.run.note(kind, 'le dossier « Contrats » devait être dans la liste'); return; }
+  if (!at) { tools.run.note(kind, 'le dossier « Contrats » devait être dans la liste'); return false; }
   await page.rightClick(...at);
   const entry = await itemCenter(page, t('share.menu'));
-  if (!entry) { tools.run.note(kind, `le menu d'un dossier devait proposer « ${t('share.menu')} »`); return; }
+  if (!entry) { tools.run.note(kind, `le menu d'un dossier devait proposer « ${t('share.menu')} »`); return false; }
   const greyed = await page.run(label => { const node = [...document.querySelectorAll('.menu .menu-item')].find(item => item.textContent.trim().startsWith(label)); return node.getAttribute('aria-disabled') === 'true'; }, t('share.menu'));
   if (greyed) tools.run.note(kind, `« ${t('share.menu')} » devait être libre pour un dossier de « Moi »`);
   await page.click(...entry);
+  return true;
+}
+
+async function folderFlow(page, tools, t, empty) {
+  const kind = empty ? 'l\'onglet d\'un dossier sans PDF' : 'l\'onglet d\'un dossier';
+  if (!(await openFolderShare(page, tools, t, kind, { count: empty ? 0 : 3 }))) return;
   const here = await tools.expect(kind, 'la fenêtre devait s\'ouvrir sur « Dans ce document » : le dossier de « Moi » se partage ici, avec la personne propriétaire du dossier', s => s.tab && s.tab.tabs.length === 2 && s.tab.body &&
     s.tab.body.includes(t('share.row.folderOwner', { who: 'essai@example.com' }).split(' · ')[1]) && s.tab.body.includes('marc@example.com'));
   if (here.tab && here.tab.tabs.find(item => item[0] === 'share-tab-here')[1] !== 'true') tools.run.note(kind, 'un dossier de « Moi » devait ouvrir « Dans ce document »');
@@ -334,6 +343,65 @@ async function folderFlow(page, tools, t, empty) {
   await page.press('Escape');
 }
 
+// Un PDF de plus de 25 Mo (choix du porteur, 18/11 : « prévenir avant l'envoi » ; le moteur ne l'enverrait pas) : l'onglet le dit, « Relier un nouveau document… » est grisé et dit
+// pourquoi, « Une copie, une fois » et « Une copie à jour » sont grisés (un clic dit pourquoi et ne demande rien), « Arrêter la copie » reste libre. À 25 Mo pile, le fichier part.
+async function bigFileFlow(page, tools, t, language) {
+  const kind = 'l\'onglet d\'un fichier de plus de 25 Mo';
+  const wording = mb => t('share.other.limit', { size: formatBytes(mb * 1024 * 1024, language, t), max: t('weight.mo', { n: 25 }) });
+  await page.run(() => { window.__fileMb = 31; });
+  try {
+    if (!(await openShareTab(page, tools, t, kind, 'actifs'))) return;
+    const open = await tools.expect(kind, 'l\'onglet devait dire que le fichier ne partirait pas, avant tout envoi', s => s.tab && s.tab.links.length === 3 && s.tab.body.includes(wording(31)));
+    if (!open.tab || open.tab.links.length !== 3) return;
+    tools.fits(kind, open, 'l\'onglet d\'un fichier trop gros');
+    if (open.tab.fresh !== true) tools.run.note(kind, '« Relier un nouveau document… » devait être grisé pour un fichier de plus de 25 Mo');
+    await tools.press(kind, 'other-new');
+    await tools.expect(kind, 'un clic sur « Relier un nouveau document… » devait dire pourquoi, sans ouvrir la fenêtre d\'envoi', s => s.tab && s.tab.note === wording(31) && !s.modal);
+    await tools.press(kind, 'other-level-e3');
+    const menu = await tools.expect(kind, 'le menu devait s\'ouvrir avec les trois niveaux', s => s.tab && s.tab.menu.length === 3);
+    if (menu.tab && menu.tab.menu.length === 3) {
+      const [once, live, stop] = menu.tab.menu;
+      if (!once.greyed || !live.greyed) tools.run.note(kind, `« ${t('so.level.once')} » et « ${t('so.level.live')} » devaient être grisés pour un fichier de plus de 25 Mo (menu : ${JSON.stringify(menu.tab.menu)})`);
+      if (!stop.greyed) tools.run.note(kind, `« ${t('so.level.stop')} » devait être grisé : le fichier n'est pas partagé avec ce document`);
+    }
+    const live = await itemCenter(page, t('so.level.live'));
+    if (live) { await page.click(...live); await tools.expect(kind, 'un clic sur « Copie à jour » devait dire pourquoi, sans rien demander', s => s.tab && s.tab.note === wording(31) && !s.shareActs.some(act => act[0] === 'level')); }
+    // Un fichier déjà dans la condition d'un lien peut en sortir.
+    await tools.press(kind, 'other-level-e1');
+    await tools.expect(kind, 'le menu d\'un fichier à jour devait s\'ouvrir', s => s.tab && s.tab.menu.length === 3);
+    const stop = await itemCenter(page, t('so.level.stop'));
+    if (stop) { await page.click(...stop); await tools.expect(kind, 'arrêter la copie devait rester possible et demander le niveau « pas partagé »', s => s.shareActs.some(act => act[0] === 'level' && act[1] === 'e1' && act[2] === 'none')); }
+    await page.press('Escape');
+    // Pile 25 Mo : le fichier part, rien n'est grisé pour son poids.
+    await page.run(() => { window.__fileMb = 25; });
+    if (!(await openShareTab(page, tools, t, kind, 'actifs'))) return;
+    const exact = await tools.expect(kind, 'à 25 Mo pile, l\'onglet ne devait rien dire du poids', s => s.tab && s.tab.links.length === 3 && !s.tab.body.includes(t('weight.mo', { n: 25 })));
+    if (exact.tab && exact.tab.fresh) tools.run.note(kind, '« Relier un nouveau document… » devait être libre à 25 Mo pile');
+    await page.press('Escape');
+  } finally { await page.run(() => { window.__fileMb = undefined; }); }
+}
+
+// Un dossier avec des PDF de plus de 25 Mo : ceux qui partent partent, le texte dit combien restent (`other-toobig`) ; quand ils sont tous trop gros, l'onglet est grisé avec SA raison.
+async function bigFolderFlow(page, tools, t) {
+  const max = t('weight.mo', { n: 25 });
+  for (const [count, tooBig] of [[3, 2], [0, 2]]) {
+    const kind = count ? 'l\'onglet d\'un dossier qui garde des PDF de plus de 25 Mo' : 'l\'onglet d\'un dossier dont tous les PDF pèsent plus de 25 Mo';
+    if (!(await openFolderShare(page, tools, t, kind, { count, tooBig }))) continue;
+    await tools.expect(kind, 'la fenêtre devait s\'ouvrir', s => s.tab && s.tab.tabs.length === 2 && s.tab.body);
+    await tools.press(kind, 'share-tab-other');
+    const open = await tools.expect(kind, 'l\'onglet devait montrer les trois liens lus', s => s.tab && s.tab.links.length === 3);
+    if (!open.tab || open.tab.links.length !== 3) { await page.press('Escape'); continue; }
+    tools.fits(kind, open, 'l\'onglet du dossier');
+    const said = t('so.tab.toobig.folder', { n: tooBig, max });
+    if (count && !open.tab.body.includes(said)) tools.run.note(kind, `l'onglet devait dire « ${said} » (il dit « ${open.tab.body.slice(0, 260)} »)`);
+    if (count && open.tab.body.includes(t('share.other.why.allTooBig', { max }))) tools.run.note(kind, 'le dossier garde des PDF qui partent : il ne devait pas être grisé comme si tous étaient trop gros');
+    if (!count && !open.tab.body.includes(t('share.other.why.allTooBig', { max }))) tools.run.note(kind, `l'onglet devait dire « ${t('share.other.why.allTooBig', { max })} » (il dit « ${open.tab.body.slice(0, 260)} »)`);
+    if (!count && open.tab.body.includes(t('share.other.why.emptyFolder'))) tools.run.note(kind, 'un dossier de gros PDF ne devait pas dire « aucun PDF que GFS garde »');
+    if (open.tab.fresh !== !count) tools.run.note(kind, `« Relier un nouveau document… » devait être ${count ? 'libre' : 'grisé'}`);
+    await page.press('Escape');
+  }
+}
+
 export async function partagerAutreProblems(page, language, tag) {
   const found = [];
   const t = createI18n(language).t;
@@ -350,11 +418,13 @@ export async function partagerAutreProblems(page, language, tag) {
     await emptyTabFlow(page, tools, t);
     await folderFlow(page, tools, t, false);
     await folderFlow(page, tools, t, true);
+    await bigFileFlow(page, tools, t, language);
+    await bigFolderFlow(page, tools, t);
   } catch (error) {
     tools.run.note('geste impossible', String(error.message).slice(0, 200));
     await page.press('Escape').catch(() => {});
   }
-  await page.run(() => { window.__shareOther = false; window.__shareSend = null; window.__links = null; window.__folderCount = undefined; window.__folderSkipped = undefined; });
+  await page.run(() => { window.__shareOther = false; window.__shareSend = null; window.__links = null; window.__folderCount = undefined; window.__folderTooBig = undefined; window.__folderSkipped = undefined; window.__fileMb = undefined; });
   await tools.run.reset();
   return found;
 }

@@ -46,12 +46,15 @@ import { ThemeWindow } from '/js/theme/theme-window.js';
 import { Trash } from '/js/files/trash.js';
 import { openShare } from '/js/sharing/share-window.js';
 import { openManage } from '/js/sharing/manage-window.js';
-import { whyNot } from '/js/sharing/share-other.js';
+import { limitOf, whyNot } from '/js/sharing/share-other.js';
 import { openShareOther } from '/js/sharing/share-other-window.js';
 import { openShareReceive } from '/js/sharing/share-receive-window.js';
 import { openWeight } from '/js/weight/weight-window.js';
 import { openDependencies } from '/js/apps/dependencies-window.js';
 import { dependencyRows } from '/js/apps/dependencies-model.js';
+import { allUnits } from '/js/apps/dependencies-source.js';
+import { newSerial } from '/js/apps/dependencies-export.js';
+import { AppsState } from '/js/apps/apps-state.js';
 import { verifyCopy } from '/js/apps/dependencies-audit.js';
 import { ModulesWindow } from '/js/apps/modules-window.js';
 import { WorkWindow } from '/js/apps/work-window.js';
@@ -323,15 +326,19 @@ async function mount() {
     });
     win.open();
   };
-  // « Nouveau > Depuis un modèle » (test/modeles-firefox.mjs) : le vrai contrôle, la vraie fenêtre et les vraies `Entries` (js/broker/entries.js) sur les quatre manifestes de GFS et le vrai catalogue
-  // provisoire de Publipostage+ (22 modèles, leurs vignettes). `variant` : 'pret' (Publipostage+ sait ouvrir un modèle, ses extensions sont cochées), 'attente' (le manifeste tel que livré : pas encore
-  // de `ouverture.modele`), 'extension' (le graphique n'est pas coché), 'absente' (l'app n'est pas installée), 'illisible' (le catalogue ne se lit pas). `window.__templatesLog` note ce que la fenêtre
+  // « Nouveau > Depuis un modèle » (test/modeles-firefox.mjs) : le vrai contrôle, la vraie fenêtre et les vraies `Entries` (js/broker/entries.js) sur les quatre manifestes de GFS et les vrais
+  // catalogues de modèles (Publipostage+ 22, Automation+ 5, Form+ 5, Grist-BI 3, leurs vignettes). `variant` : 'pret' (les apps savent ouvrir un modèle comme leur manifeste le dit, leurs extensions sont cochées), 'attente' (sans
+  // `ouverture.modele`), 'bientot' (Automation+ sans catalogue), 'extension' (le graphique n'est pas coché), 'absente' (l'app n'est pas installée), 'illisible' (le catalogue ne se lit pas). `window.__templatesLog` note ce que la fenêtre
   // rend au contrôleur (`created` : « app/modèle » ; `unlocked` : le grisé débloqué) ; `window.__templatesLanguage(lang)` change la langue fenêtre ouverte, comme le contrôleur de GFS.
   window.__templates = async (variant = 'pret') => {
     const manifests = await Promise.all(['publipostage', 'automation', 'form', 'bi'].map(async id => (await fetch(`/manifestes/${id}.json`)).json()));
-    if (variant !== 'attente') manifests[0].ouverture = { ...manifests[0].ouverture, modele: true };
+    // Les manifestes sont ceux de GFS : quatre apps déclarent un catalogue (`modeles`), trois savent ouvrir un modèle (Automation+ pas encore : ses cinq modèles sont grisés « pas encore »
+    // dans toutes les variantes) ; 'attente' ôte ce savoir-faire aux trois ; 'bientot' ôte son catalogue à Automation+ (la pastille grisée « bientôt »).
+    for (const manifest of manifests) if (manifest.ouverture && manifest.ouverture.modele) manifest.ouverture = { ...manifest.ouverture, modele: variant !== 'attente' };
+    if (variant === 'bientot') delete manifests.find(manifest => manifest.id === 'automation').modeles;
     const catalogue = readCatalogue(await (await fetch('/bibliotheques/catalogue.json')).json());
-    const apps = variant === 'absente' ? {} : { publipostage: { extensions: variant === 'extension' ? ['diapositives'] : ['diapositives', 'graphique'], modes: {} } };
+    const apps = variant === 'absente' ? {} : { publipostage: { extensions: variant === 'extension' ? ['diapositives'] : ['diapositives', 'graphique'], modes: {} },
+      automation: { extensions: [], modes: {} }, form: { extensions: [], modes: {} }, bi: { extensions: [], modes: {} } };
     const byId = new Map(manifests.map(manifest => [manifest.id, manifest]));
     let current = { i18n, lang: language };
     const host = {
@@ -537,8 +544,9 @@ async function mount() {
     return openShareOther({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], file: kind === 'lien' ? null : { id: 'abc', name: 'Facture de la session de formation de septembre.pdf' }, createFlow: (chosen, strict) => { mode = chosen; acts.push(['mode', chosen, Boolean(strict)]); return flow; }, errorText: error => String(error.message), notice: text => acts.push(['notice', text]) });
   };
   // La fenêtre « Recevoir d'un autre document Grist » (js/sharing/share-receive-window.js, test/partager-recevoir-firefox.mjs) : la vraie fenêtre, sur un parcours dont les réponses sont des doublures (le moteur et Grist se mesurent
-  // dans un vrai Grist : labo/run-partager-recevoir.mjs). `kind` : 'ok' (un premier partage : GFS_Recus), 'second' (la table libre suivante : GFS_Recus_2), 'connu' (une réception qui reprend), 'refus' (accepter échoue).
+  // dans un vrai Grist : labo/run-partager-recevoir.mjs). `kind` : 'ok' (un premier partage : GFS_Recus), 'second' (la table libre suivante : GFS_Recus_2), 'connu' (une réception qui reprend), 'serveur' (le code vient d'un autre serveur Grist : refusé dès la lecture), 'refus' (accepter échoue).
   // `window.__receiveActs` note ce que le parcours a reçu.
+  const SERVER_OTHER = 'grist-de-la-direction-des-systemes-d-information.exemple.gouv.fr'; // le même nom dans test/partager-recevoir-firefox.mjs
   window.__receive = kind => {
     const acts = window.__receiveActs = [];
     const table = kind === 'second' ? 'GFS_Recus_2' : 'GFS_Recus';
@@ -547,6 +555,7 @@ async function mount() {
       read: async text => {
         acts.push(['read', text]);
         if (!text.startsWith('GRISTSYNC2.')) throw new Error('Ce texte n’est pas un code de synchro.');
+        if (kind === 'serveur') throw Object.assign(new Error('server'), { share: 'server', vars: { server: SERVER_OTHER } });
         return { name: LONG_DOC, tables: 1, expire: Date.now() / 1000 + 7 * 86400, known: kind === 'connu', table };
       },
       accept: async () => { acts.push(['accept']); if (kind === 'refus') throw new Error('Grist a refusé la création'); return { journal: `GFS_Journal_${LONG_DOC.replace(/ /g, '_')}`, relinked: kind === 'connu', table }; },
@@ -570,19 +579,22 @@ async function mount() {
     dossier: [{ id: 'e1', name: 'Compta', files: ['f1', 'f2', 'f3', 'x'], state: 'active', doc: { name: LINK_DOC, id: 'd1' } }, { id: 'e2', name: 'Direction', files: ['f1'], state: 'active', doc: { name: 'Direction', id: 'd2' } }, { id: 'e3', name: 'Archives', files: [], state: 'pending', doc: { name: '', id: '' } }],
   };
   const linksNow = () => { if (window.__links === 'illisible') throw new Error('illisible'); return JSON.parse(JSON.stringify(LINKS[window.__links || 'actifs'])).filter(each => !(window.__removed || []).includes(each.id)); };
-  // `folder` : le dossier que « Partager » a reçu (`window.__folderCount` PDF de GFS dedans, 3 par défaut, et `window.__folderSkipped` fichiers d'une app qui ne partent pas, 2 par défaut).
+  // `folder` : le dossier que « Partager » a reçu (`window.__folderCount` PDF de GFS qui partent, 3 par défaut, `window.__folderTooBig` PDF de plus de 25 Mo qui ne partent pas, et `window.__folderSkipped` fichiers d'une app qui ne partent pas, 2 par défaut).
   const folderTab = (state, folder) => {
     const count = window.__folderCount === undefined ? 3 : window.__folderCount;
     const ids = ['f1', 'f2', 'f3', 'f4', 'f5'].slice(0, count);
+    const tooBig = window.__folderTooBig || 0;
     return {
-      why: whyNot(i18n.t, { file: folder, state, files: ids }), fileId: ids, folder: true, count, skipped: window.__folderSkipped === undefined ? 2 : window.__folderSkipped,
+      why: whyNot(i18n.t, { file: folder, state, files: ids, tooBig }), fileId: ids, folder: true, count, skipped: window.__folderSkipped === undefined ? 2 : window.__folderSkipped, tooBig, limit: null,
       loadLinks: async () => linksNow(),
       onLevel: async (link, level) => { window.__shareActs.push(['level', link.id, level, 'dossier']); return { ok: true, note: level === 'once' ? i18n.t('so.once.going', { name: folder.name }) : undefined }; },
       onNew: async () => { window.__shareActs.push(['new']); await window.__sendOther(window.__shareSend || 'ok'); },
     };
   };
+  // `window.__fileMb` : le fichier pèse autant de Mo (au-delà de 25, le partage le dit avant l'envoi : js/sharing/share-other.js, `limitOf`).
+  const oneFile = () => ({ id: 'abc', name: 'Facture.pdf', app: 'gfs-fichiers', pieces: window.__fileMb ? [['9', window.__fileMb * 1024 * 1024]] : [] });
   const otherTab = (state, folder) => folder ? folderTab(state, folder) : ({
-    why: whyNot(i18n.t, { file: { id: 'abc', name: 'Facture.pdf', app: 'gfs-fichiers' }, state }), fileId: 'abc',
+    why: whyNot(i18n.t, { file: oneFile(), state }), limit: limitOf(i18n.t, language, oneFile()), fileId: 'abc',
     loadLinks: async () => linksNow(),
     onLevel: async (link, level) => { window.__shareActs.push(['level', link.id, level]); return { ok: true, note: level === 'once' ? i18n.t('so.once.going', { name: 'Facture.pdf' }) : undefined }; },
     onNew: async () => { window.__shareActs.push(['new']); await window.__sendOther(window.__shareSend || 'ok'); },
@@ -621,22 +633,34 @@ async function mount() {
     window.__weightEstimate = estimate;
     return openWeight({ container: stage, t: i18n.t, locale, inertTargets: () => [explorer.root], estimate, load: (update, cancelled) => readWeight(fakeSql(window.__weightKind), update, cancelled) });
   };
-  // La fenêtre « Dépendances » (js/apps/dependencies-window.js, test/dependances-firefox.mjs) : la vraie fenêtre, le vrai catalogue et le vrai relevé de GFS (servis par la page d'essai) et le vrai audit des copies
-  // (les fichiers de vendor/, relus par la page). Publipostage+ est installé, son extension « Graphiques » cochée, sa fonction « Export PDF » en copie figée : les lignes d'Écriture en direct, d'ExcelJS… restent « au
-  // catalogue ». `window.__tamper` (un bout de chemin) change les octets que la page lit pour ce fichier : l'audit doit alors dire que la copie ne correspond pas.
-  const DEPENDENCY_MODULES = { items: [
-    { kind: 'app', id: 'publipostage', ok: true, installed: true, manifest: { nom: { fr: 'Publipostage+', en: 'Mail merge+' } },
-      natives: [{ group: { id: 'pdf', nom: { fr: 'Export PDF', en: 'PDF export' } }, mode: 'vendorise', inApp: false, libraries: [{ id: 'pdfmake', version: '0.2.7' }, { id: 'pdfmake-polices', version: '0.2.7' }] }] },
-    { kind: 'ext', app: 'publipostage', appInstalled: true, checked: true, extension: { id: 'graphique', nom: { fr: 'Graphiques', en: 'Charts' } }, libraries: [{ id: 'plotly', version: '2.13.2' }, { id: 'echarts', version: '6.1.0' }] },
-    { kind: 'ext', app: 'publipostage', appInstalled: true, checked: false, extension: { id: 'edition-live', nom: { fr: 'Écriture en direct', en: 'Live editing' } }, libraries: [{ id: 'edition-live', version: '1.0.0' }] },
-  ] };
-  window.__dependencyModules = DEPENDENCY_MODULES;
+  // La fenêtre « Dépendances » (js/apps/dependencies-window.js, test/dependances-firefox.mjs) : la vraie fenêtre, le vrai catalogue et le vrai relevé de GFS (servis par la page d'essai), le vrai audit des copies
+  // (les fichiers de vendor/, relus par la page) et les vraies apps : le vrai manifeste de Publipostage+ et le vrai `AppsState`, dont la table du document est une mémoire (`window.__dependencyMemory`). Publipostage+ est
+  // installé, ses extensions « Graphique » et « Lecture de PDF » cochées : les lignes d'Écriture en direct, d'ExcelJS… restent « au catalogue ». `window.__tamper` (un bout de chemin) change les octets que la page lit
+  // pour ce fichier : l'audit doit alors dire que la copie ne correspond pas. `window.__dependencyBlocked` (un texte) rend les choix impossibles ; `window.__saved` garde les rapports que la page aurait offerts.
+  const docTable = { value: { publipostage: { extensions: ['graphique', 'lecture-pdf'] } }, writes: [] };
+  const appsState = new AppsState({ onChange: () => {}, store: { read: async () => ({ raw: structuredClone(docTable.value) }),
+    update: async mutate => { docTable.value = mutate(structuredClone(docTable.value)); docTable.writes.push(structuredClone(docTable.value)); return structuredClone(docTable.value); } } });
+  window.__dependencyMemory = docTable;
+  window.__saved = [];
+  window.__dependencyBlocked = null;
+  const dependencyData = Promise.all(['/bibliotheques/catalogue.json', '/bibliotheques/releve.json', '/manifestes/publipostage.json'].map(path => fetch(path).then(response => response.json()))).then(
+    async ([catalogueJson, releve, manifest]) => {
+      const catalogue = readCatalogue(catalogueJson);
+      appsState.setApps([{ app: { id: 'publipostage' }, manifest, ok: true, errors: [] }]);
+      appsState.setCatalogue(catalogue);
+      await appsState.load();
+      return { catalogue, releve };
+    });
+  window.__dependencyModules = () => dependencyData.then(() => appsState.model());
   window.__dependencies = async () => {
-    const [catalogueJson, releve] = await Promise.all(['/bibliotheques/catalogue.json', '/bibliotheques/releve.json'].map(path => fetch(path).then(response => response.json())));
-    const rows = dependencyRows({ catalogue: readCatalogue(catalogueJson), releve, modules: DEPENDENCY_MODULES, lang: language });
+    const { catalogue, releve } = await dependencyData;
     const readBytes = async address => (window.__tamper && address.includes(window.__tamper) ? new Uint8Array([1, 2, 3]).buffer : (await fetch(address)).arrayBuffer());
-    return openDependencies({ container: stage, t: i18n.t, locale, inertTargets: () => [explorer.root], rows, surveyed: releve.releve,
-      verify: row => Promise.all(row.files.map(file => verifyCopy(file, { readBytes, base: location.href }))) });
+    return openDependencies({ container: stage, t: i18n.t, locale, lang: language, inertTargets: () => [explorer.root], surveyed: releve.releve,
+      rows: () => dependencyRows({ catalogue, releve, modules: appsState.model(), lang: language }), units: () => allUnits(appsState.model(), language),
+      verify: row => Promise.all(row.files.map(file => verifyCopy(file, { readBytes, base: location.href }))), blocked: () => window.__dependencyBlocked,
+      apply: (plan, mode) => Promise.all(plan.map(({ app, extensions, natives }) => appsState.setSources(app, { extensions, natives }, mode))),
+      ask: opts => ask({ ...opts, container: stage, inertTargets: () => [explorer.root] }), now: () => new Date('2026-11-18T10:30:00Z'), uuid: () => newSerial(),
+      save: (name, text) => { window.__saved.push({ name, text }); } });
   };
   show();
   explorer.open();

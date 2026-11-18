@@ -27,9 +27,9 @@ export class FolderShares {
   }
 
   // Le dossier `from` devient `to` (`known` : les dossiers qui existent, tels que l'explorateur les montre). Rend { refuse, extra, lost, spare } : `spare`, les
-  // chemins qui ont une ligne d'état, **relus ici** (la fenêtre « Partager… » en crée une quand on partage un dossier, et l'explorateur ne la connaît pas encore :
-  // sans elle, le renommage laisserait la ligne derrière, avec le partage) ; un partage posé avant ce lot sur un dossier qui n'en avait pas reçoit sa ligne
-  // d'abord, pour qu'il puisse la suivre.
+  // chemins qui ont une ligne d'état, **relus ici** (la fenêtre « Partager… » en crée une quand on partage un dossier, et l'explorateur ne la connaît pas
+  // encore : sans elle, le renommage laisserait la ligne derrière, avec le partage) ; un partage posé avant ce lot sur un dossier qui n'en avait pas reçoit sa
+  // ligne d'abord, pour qu'il puisse la suivre.
   async relocation(from, to, known) {
     const none = { refuse: null, extra: [], lost: 0, spare: [] };
     const state = await this.#state();

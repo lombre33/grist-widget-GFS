@@ -35,6 +35,7 @@ import { AppsState } from './apps/apps-state.js';
 import { arrivalApp, arrivalProbes } from './broker/arrival.js';
 import { arrivalTableApp } from './broker/arrival-table.js';
 import { Rangement, TableDeclined } from './files/rangement.js';
+import { isNewer } from './files/structure.js';
 import { appFilingOf } from './files/app-filing.js';
 import { RightsControl } from './rights/rights-control.js';
 import { createOtherDocuments } from './sharing/share-other.js';
@@ -224,6 +225,7 @@ export class GfsController {
     // besoin qu'au moment de ranger (js/explorer/explorer-data.js). Une app qui s'ouvre d'emblée, et « prêt », l'attendent.
     const identified = this.fullAccess ? this.rangement.identify() : Promise.resolve('');
     if (this.fullAccess) await this.registry.load();
+    if (isNewer(this.registry.structure)) this.notice(this.t('doc.newer'));
     this.#buildExplorer();
     this.#buildDock();
     const arrived = await this.#arrive(identified);
@@ -555,11 +557,13 @@ export class GfsController {
     });
   }
 
-  // Pourquoi rien ne peut s'enregistrer (contrats 7.4, point 5), ou null : le document est en lecture seule, ou GFS n'a pas l'accès complet.
-  // Une écriture que Grist refuse malgré tout (une règle d'accès) revient par l'avis de `change`.
+  // Pourquoi rien ne peut s'enregistrer (contrats 7.4, point 5), ou null : le document est en lecture seule, GFS n'a pas l'accès complet, ou une version plus
+  // récente de GFS a préparé le document (contrats 6.4, point 16 : GFS lit, n'écrit pas). Une écriture que Grist refuse malgré tout (une règle d'accès) revient
+  // par l'avis de `change`.
   #writeBlock() {
     if (this.readonly) return this.t('mod.readonly');
-    return this.fullAccess ? null : this.t('mod.needsAccess');
+    if (!this.fullAccess) return this.t('mod.needsAccess');
+    return this.registry && isNewer(this.registry.structure) ? this.t('doc.newer') : null;
   }
 
   // La table n'existe pas encore : la personne décide de la créer (contrats 6.2, point 1). Une fenêtre du widget, au-dessus de celle des apps.

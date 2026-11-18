@@ -19,8 +19,9 @@ export class AppsState {
   catalogue = { entries: new Map(), errors: [] };
   apps = {};
   stored = false;
+  structure = null; // le numéro de structure que le document a retenu (js/files/structure.js), ou null
 
-  // opts : { store: { read() -> { raw }, update(mutate) -> raw écrit }, onChange() }
+  // opts : { store: { read() -> { raw, structure }, update(mutate) -> raw écrit }, onChange() }
   constructor({ store, onChange }) {
     this.#store = store;
     this.#onChange = onChange;
@@ -55,9 +56,14 @@ export class AppsState {
 
   // Ce que la table dit. Une table illisible vaut une table absente : la liste par défaut, et un avertissement.
   async load() {
-    try { this.#raw = (await this.#store.read()).raw; } catch (error) {
+    try {
+      const state = await this.#store.read();
+      this.#raw = state.raw;
+      this.structure = state.structure === undefined ? null : state.structure;
+    } catch (error) {
       console.warn('GFS : les apps installées sont illisibles', error);
       this.#raw = null;
+      this.structure = null;
     }
     this.#settle();
   }

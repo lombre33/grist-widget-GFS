@@ -7,8 +7,9 @@
 
 import { OwnTable, TableDeclined } from './own-table.js';
 import { appActions, carryOver, usable } from './app-filing.js';
+import { DocumentNewer, STRUCTURE, STRUCTURE_ROW, isNewer, stamped, structureFrom } from './structure.js';
 
-export { TableDeclined };
+export { TableDeclined, DocumentNewer };
 
 export const TABLE = 'GFS_Rangement';
 export const RESERVED = Object.freeze({ Utilisateur: '@document', App: 'gfs', Fichier: 'apps' });
@@ -74,6 +75,7 @@ export class Rangement {
   #appFilings;
   #identity = null; // null : pas encore lue ; '' : lue, sans adresse de personne ; sinon l'adresse
   #pending = null;
+  #stamped = false; // le numéro de structure a été tenté (noté ou refusé) pendant cette ouverture
 
   // `port` : { doc } (les interfaces brutes de Grist) ; `consent()` : une promesse, true quand la personne accepte la création de la table ;
   // `canWrite()` : faux quand le document est en lecture seule (la sonde n'écrirait que des refus) ; `onIdentity(adresse)` : appelé quand GFS apprend l'adresse
@@ -142,18 +144,53 @@ export class Rangement {
     }
   }
 
-  // Ce que la table dit : { exists, columns, rowId, raw }. `raw` est la valeur JSON de la ligne réservée, ou null (pas de table, pas de ligne, texte
-  // illisible).
+  // Ce que la table dit : { exists, columns, rowId, raw, structure }. `raw` est la valeur JSON de la ligne réservée, ou null (pas de table, pas de ligne,
+  // texte illisible) ; `structure` est le numéro de structure que le document a retenu (structure.js), ou null.
   async read() {
     const { exists, columns, data } = await this.#table.load();
-    if (!exists) return { exists: false, columns: [], rowId: null, raw: null };
+    if (!exists) return { exists: false, columns: [], rowId: null, raw: null, structure: null };
     const at = findRow(data, RESERVED);
-    return { exists: true, columns, rowId: at >= 0 ? data.id[at] : null, raw: at >= 0 && data.Valeur ? parseValue(data.Valeur[at]) : null };
+    return { exists: true, columns, rowId: at >= 0 ? data.id[at] : null, raw: at >= 0 && data.Valeur ? parseValue(data.Valeur[at]) : null,
+      structure: this.#structureIn(data).found };
   }
 
-  // La table prête à être écrite (js/files/own-table.js), avec les colonnes `needed`. La personne est reconnue avant la première écriture.
+  // Le numéro de structure que `data` (la table telle que `fetchTable` la rend, ou null) retient : { at, raw, found } (`at` : la ligne ou -1, `raw` : sa
+  // valeur lue en JSON, `found` : le numéro ou null).
+  #structureIn(data) {
+    const at = findRow(data, STRUCTURE_ROW);
+    const raw = at >= 0 && data.Valeur ? parseValue(data.Valeur[at]) : null;
+    return { at, raw, found: structureFrom(raw) };
+  }
+
+  // Un document qu'une version plus récente a préparé ne s'écrit pas (structure.js) : l'erreur, avant tout geste.
+  #guard(data) {
+    const { found } = this.#structureIn(data);
+    if (isNewer(found)) throw new DocumentNewer(found);
+  }
+
+  // Note le numéro de structure de cette version dans le document, après un geste qui a écrit dans la table : jamais avant (un geste refusé ne note rien),
+  // jamais plus d'une fois par ouverture, et jamais en faisant échouer le geste (un document où la personne n'a pas le droit d'écrire les lignes `@document`
+  // garde son rangement : GFS n'y note rien). La ligne se garde quand sa valeur porte autre chose (6.5, point 4) ; une valeur illisible n'est pas touchée.
+  async #stamp(data) {
+    if (this.#stamped) return;
+    this.#stamped = true;
+    const { at, raw, found } = this.#structureIn(data);
+    if (found === STRUCTURE || (at >= 0 && raw === null)) return;
+    const record = { Valeur: JSON.stringify(stamped(raw)) };
+    const tableId = this.#table.id;
+    try {
+      await this.#port.doc.applyUserActions([at >= 0 ? ['UpdateRecord', tableId, data.id[at], record] :
+        ['AddRecord', tableId, null, { ...STRUCTURE_ROW, ...record }]]);
+    } catch (error) {
+      console.warn('GFS : le numéro de structure n’a pas pu être noté dans le document', error);
+    }
+  }
+
+  // La table prête à être écrite (js/files/own-table.js), avec les colonnes `needed`. La personne est reconnue avant la première écriture. Lève `DocumentNewer`
+  // pour un document qu'une version plus récente a préparé.
   async #ready(needed) {
     const state = await this.#table.ready(needed);
+    this.#guard(state.data);
     await this.identify();
     return state;
   }
@@ -167,6 +204,7 @@ export class Rangement {
     const tableId = this.#table.id;
     await this.#port.doc.applyUserActions([at >= 0 ? ['UpdateRecord', tableId, data.id[at], record] :
       ['AddRecord', tableId, null, { ...RESERVED, ...record }]]);
+    await this.#stamp(data);
     return next;
   }
 
@@ -186,7 +224,7 @@ export class Rangement {
   // dossier d'espace peut n'en avoir aucune) : rend false.
   async follow(link, path, ids) {
     const state = await this.#table.existing(FOLLOW);
-    if (!state) return false;
+    if (!state || isNewer(this.#structureIn(state.data).found)) return false;
     await this.identify();
     const key = followKey(this.identity, link, path);
     const at = findRow(state.data, key);
@@ -200,7 +238,7 @@ export class Rangement {
   // Ne suit plus le dossier `path` pour le lien `link` (ses lignes s'en vont). Rend le nombre de lignes retirées.
   async unfollow(link, path) {
     const { exists, data } = await this.#table.load();
-    if (!exists) return 0;
+    if (!exists || isNewer(this.#structureIn(data).found)) return 0;
     await this.identify();
     const rows = rowsOf(data, followKey(this.identity, link, path));
     if (rows.length) await this.#port.doc.applyUserActions(rows.map(rowId => ['RemoveRecord', this.#table.id, rowId]));
@@ -211,7 +249,7 @@ export class Rangement {
   // n'est ajoutée ici). Pour ce qui ne vaut pas qu'on dérange la personne.
   async #loaded() {
     const state = await this.#table.load();
-    if (!state.exists || FILING.some(column => !state.columns.includes(column))) return null;
+    if (!state.exists || FILING.some(column => !state.columns.includes(column)) || isNewer(this.#structureIn(state.data).found)) return null;
     await this.identify();
     return state;
   }
@@ -259,6 +297,7 @@ export class Rangement {
     for (const [app, target] of targets) actions.push(...this.#appBatch(app, target, { entries, add, drop }, { tableId, data }, identity));
     if (!actions.length) return false;
     await this.#port.doc.applyUserActions(actions);
+    await this.#stamp(data);
     return true;
   }
 

@@ -631,7 +631,7 @@ describe('l\'interface sous Firefox', () => {
         problems.push(...await vitrineProblems(page, language, caption(language, 700, 1, mode), mode));
         problems.push(...await modelesProblems(page, language, caption(language, 700, 1, mode), mode));
         problems.push(...await fenetresProblems(page, caption(language, 700, 1, mode)));
-        problems.push(...await bulleProblems(page, caption(language, 700, 1, mode)));
+        problems.push(...await bulleProblems(page, caption(language, 700, 1, mode), language));
         problems.push(...await lookProblems(page, caption(language, 700, 1, mode)));
         problems.push(...await accesProblems(page, caption(language, 700, 1, mode)));
       }

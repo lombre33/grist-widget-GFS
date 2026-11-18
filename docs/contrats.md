@@ -510,7 +510,7 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     le défaut est le CDN, comme avant. Le jour où l'app nomme l'adresse (la consigne qui remplace la 016 pour Publipostage+), GFS retire le champ : le défaut redevient le CDN, sans
     toucher aux choix déjà écrits. L'app ne lit jamais ce champ : il est à GFS. [M]
 
-16. [D] **La fenêtre « Dépendances » : ce que GFS sert, version par version, en lecture seule** (demande du porteur, 18/11 : « transparent pour les utilisateurs et simple à
+16. [D] **La fenêtre « Dépendances » : ce que GFS sert, version par version, avec le choix de la source et l'export du rapport** (demande du porteur, 18/11 : « transparent pour les utilisateurs et simple à
     comprendre et à auditer » ; « pas de mode administration, mais le plus d'options possible sur les dépendances, clarté et audit de sécurité »). Une ligne « Dépendances… » du menu
     « Réglages » ouvre une fenêtre sur la base commune (7.3), qui liste **un paquet par ligne** (16 au 18/11 : les paquets que le catalogue sert, ceux d'un fichier assemblé comptés
     un à un), avec : ce qui l'utilise et l'état (**active** : une extension cochée d'une app installée, ou une fonction native en copie figée ; **installée, non utilisée** ; **prête,
@@ -523,9 +523,17 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     « relevé par GFS, sans appel externe ») : ils viennent de `bibliotheques/releve.json`, que l'outil `outils/releve-dependances.mjs` écrit d'après le registre npm et que GFS
     commite ; le pied de la fenêtre en dit la date. Un relevé fait pour une autre version que celle servie ne dit rien de sûr : ni avis ni écart, la ligne le signale ; sans relevé
     (fichier absent), la fenêtre montre ce que GFS sert et le dit. Les liens sont des adresses `https` du relevé (jamais d'un réglage, d'une table ou d'un message), dans un nouvel
-    onglet, sans rien transmettre (`noopener`). **Pas encore** : les bibliothèques que chaque app porte elle-même (une note le dit sous la liste), le choix CDN ou copie par ligne, « tout
-    en copie figée » et l'export du rapport (JSON, CycloneDX) : lot suivant. Code : `js/apps/dependencies-model.js` (lignes), `-audit.js`, `-detail.js`, `-window.js`,
-    `-control.js`, `licences.js`, `version-gap.js` (la règle de l'écart, partagée avec l'outil). [M]
+    onglet, sans rien transmettre (`noopener`). **La source** (lot 3, 18/11) : le détail d'une ligne offre le **même segment « CDN | Copie figée » que la fiche d'une app**, pour la bibliothèque. Le choix n'est pas par bibliothèque mais par
+    fonction (une extension d'une app, ou une fonction native, points 12 et 14) : celui d'une bibliothèque vaut pour **chaque fonction qui l'utilise** et s'écrit dans la même table (`modes`), **une seule
+    écriture par app** (`AppsState.setSources`) ; les autres bibliothèques de ces fonctions suivent, et le détail le dit. Grisé, jamais masqué, avec sa raison : le CDN d'une fonction dont une bibliothèque
+    n'a pas d'adresse publique (pdf.js), la copie d'une fonction native dont GFS n'a pas toutes les bibliothèques, une app non installée, une extension non ajoutée, le document en lecture seule ou sans
+    accès complet (la raison de `writeBlock`). Rien ne s'écrit sans un geste de la personne ; un refus de la table se dit et l'état revient à ce qu'elle dit. **« Tout en copie figée »** (pied de la
+    fenêtre) : le réglage des réseaux fermés ; une question (une fenêtre du widget) dit les apps et leurs fonctions, « Annuler » n'écrit rien, confirmer écrit une fois par app ; quand chaque fonction qui le
+    peut y est déjà, le bouton devient « Tout en CDN » (le retour, avec sa question). **« Exporter »** : deux fichiers JSON fabriqués dans le navigateur, sans rien envoyer : le rapport de GFS
+    (`gfs-dependances-AAAA-MM-JJ.json` : ce que la fenêtre montre, source retenue comprise) et l'inventaire **CycloneDX 1.5** (`….cdx.json` : un composant par bibliothèque avec `purl`, licence, empreinte
+    SHA-384 en hexadécimal quand un seul fichier la porte seul, adresses du CDN avec leur empreinte, avis du relevé en `vulnerabilities`). **Pas encore** : les bibliothèques que chaque app porte
+    elle-même (une note le dit sous la liste). Code : `js/apps/dependencies-model.js` (lignes), `-source.js` (ce qui se choisit, le plan d'écriture), `-source-view.js`, `-foot.js`, `-export.js`,
+    `-cyclonedx.js`, `-audit.js`, `-detail.js`, `-window.js`, `-control.js`, `licences.js`, `version-gap.js` (la règle de l'écart, partagée avec l'outil). Mesuré dans un vrai Grist (faits vérifiés 119, `labo/run-dependances.mjs`) : le choix s'écrit et revient au rechargement, la question de « Tout… » rend la fenêtre inerte, la lecture seule n'écrit rien. [M]
 
 ### 2.7 Les actions acceptées
 

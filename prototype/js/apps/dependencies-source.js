@@ -1,15 +1,16 @@
 // La source d'une bibliothèque, depuis la fenêtre « Dépendances » (demande du porteur, 18/11 : « le plus d'options possible sur les dépendances »). Le choix
 // n'est pas par bibliothèque : il est par fonction (une extension d'une app, ou une fonction native d'une app, contrats 2.6 points 12 et 14), et la fiche de
 // l'app l'écrit déjà. Ce fichier lit les mêmes lignes du modèle des apps (`modulesModel`), dit pour chaque fonction ce qui se peut choisir, et prépare la même
-// écriture : un choix par bibliothèque vaut pour chaque fonction qui l'utilise, un choix pour toutes vaut pour chaque fonction qui se peut. Du code sans effet de
-// bord : l'écriture se fait par `AppsState.setSources`, sur un geste de la personne.
+// écriture : un choix par bibliothèque vaut pour chaque fonction qui l'utilise, un choix pour toutes vaut pour chaque fonction qui se peut. Du code sans
+// effet de bord : l'écriture se fait par `AppsState.setSources`, sur un geste de la personne.
 
 import { DEFAULT_MODE, MODES } from './libraries.js';
 import { label } from './manifest.js';
 
 export const COPY_MODE = 'vendorise';
 
-// Pourquoi le choix d'une extension est grisé, ou null : l'app n'est pas installée, une bibliothèque manque, l'extension n'est pas ajoutée, ou elle n'a rien à charger.
+// Pourquoi le choix d'une extension est grisé, ou null : l'app n'est pas installée, une bibliothèque manque, l'extension n'est pas ajoutée, ou elle n'a
+// rien à charger.
 const extensionWhy = item => {
   if (!item.appInstalled) return 'app';
   if (item.greyed) return 'missing';

@@ -377,12 +377,13 @@ export class GfsController {
     this.themeWindow.open();
   }
 
-  // La ligne « Dépendances… » du menu « Réglages » : la fenêtre en lecture seule des bibliothèques que GFS sert (js/apps/dependencies-control.js).
+  // La ligne « Dépendances… » du menu « Réglages » : la fenêtre des bibliothèques que GFS sert, avec le choix de leur source et l'export du rapport
+  // (js/apps/dependencies-control.js).
   openDependencies() {
     this.dependencies ??= new DependenciesControl({ container: this.$('stage'), inertTargets: this.inertTargets, t: this.t, locale: () => this.locale,
       lang: () => this.lang,
       base: this.doc.baseURI, model: () => this.registry.model(), catalogue: () => this.registry.catalogue, readJson,
-      readBytes: async address => (await readFile(address)).arrayBuffer(), blocked: () => this.#writeBlock(), ask: opts => this.ask(opts), doc: this.doc,
+      readBytes: async address => (await readFile(address)).arrayBuffer(), blocked: () => this.writeBlock(), ask: opts => this.ask(opts), doc: this.doc,
       apply: (plan, mode) => Promise.all(plan.map(({ app, extensions, natives }) =>
         this.#saved(this.registry.setSources(app, { extensions, natives }, mode)))) });
     void this.dependencies.open();
@@ -445,8 +446,10 @@ export class GfsController {
 
   // Une fenêtre du widget au-dessus de tout ce qui est ouvert (charte : jamais `confirm()`).
   ask(opts) {
-    const above = this.modulesWindow && this.modulesWindow.element ? [this.modulesWindow.element] : [];
-    return ask({ ...opts, container: this.$('stage'), inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters'), ...above] });
+    // Les fenêtres déjà ouvertes (leurs voiles, relevés avant que la question monte) deviennent inertes à leur tour : « Dépendances », « Apps et extensions ».
+    const above = [...(this.modulesWindow && this.modulesWindow.element ? [this.modulesWindow.element] : []),
+      ...this.$('stage').querySelectorAll('.mod-scrim')];
+    return ask({ ...opts, container: this.$('stage'), inertTargets: () => [this.explorer.root, this.$('frames'), this.$('floaters'), ...new Set(above)] });
   }
 
   // La troisième porte : une section qui n'a encore rien retenu ouvre la fenêtre une fois, pour qu'on y choisisse ses apps (maquette du 12/10).

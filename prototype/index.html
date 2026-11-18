@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-p7glIqSTXfdCnZHYTZXEGJImuV1ZfTzyty0dfCmJkic='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-WjvJlPrqPeqXTKbNd2vnPC5rkpiyfboKCz20G9y0cBE='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=6c6e51caa4">
 <link rel="stylesheet" href="css/explorer.css?v=a1c7636359">
 <link rel="stylesheet" href="css/modules.css?v=db0f4eaa51">
@@ -39,7 +39,7 @@
     "./js/apps/dependencies-foot.js": "./js/apps/dependencies-foot.js?v=d2d7642aa6",
     "./js/apps/dependencies-model.js": "./js/apps/dependencies-model.js?v=64def8606f",
     "./js/apps/dependencies-source-view.js": "./js/apps/dependencies-source-view.js?v=1e1fab7d8c",
-    "./js/apps/dependencies-source.js": "./js/apps/dependencies-source.js?v=cdd3772532",
+    "./js/apps/dependencies-source.js": "./js/apps/dependencies-source.js?v=f91ad88e18",
     "./js/apps/dependencies-window.js": "./js/apps/dependencies-window.js?v=90722df2f3",
     "./js/apps/extensions.js": "./js/apps/extensions.js?v=a2891b7b64",
     "./js/apps/fiche.js": "./js/apps/fiche.js?v=40571b2d88",
@@ -89,7 +89,7 @@
     "./js/broker/transfer.js": "./js/broker/transfer.js?v=5324b55361",
     "./js/broker/view-link.js": "./js/broker/view-link.js?v=1853f29883",
     "./js/broker/view-options.js": "./js/broker/view-options.js?v=5eb21ceaf1",
-    "./js/controller.js": "./js/controller.js?v=21af552a4e",
+    "./js/controller.js": "./js/controller.js?v=b921d1ace8",
     "./js/explorer/explorer-assembly.js": "./js/explorer/explorer-assembly.js?v=69d3817784",
     "./js/explorer/explorer-clipboard.js": "./js/explorer/explorer-clipboard.js?v=62a4670621",
     "./js/explorer/explorer-data.js": "./js/explorer/explorer-data.js?v=a411e57155",
@@ -310,7 +310,7 @@
      Le navigateur les demande tous d'un coup au lieu d'un niveau d'imports à la fois (9 niveaux, donc 9 allers-retours de réseau). Après la carte d'importation, jamais avant : une page qui commence à
      charger un module avant elle l'ignore et demande les modules sans leur ?v=. -->
 <!-- préchargement -->
-<link rel="modulepreload" href="./js/controller.js?v=21af552a4e">
+<link rel="modulepreload" href="./js/controller.js?v=b921d1ace8">
 <link rel="modulepreload" href="./js/apps/catalogue.js?v=2e588e5749">
 <link rel="modulepreload" href="./js/apps/manifest.js?v=a2a0ddea71">
 <link rel="modulepreload" href="./js/broker/state.js?v=69aa288268">
@@ -442,7 +442,7 @@
 <link rel="modulepreload" href="./js/apps/dependencies-model.js?v=64def8606f">
 <link rel="modulepreload" href="./js/apps/dependencies-window.js?v=90722df2f3">
 <link rel="modulepreload" href="./js/apps/dependencies-audit.js?v=268ab61822">
-<link rel="modulepreload" href="./js/apps/dependencies-source.js?v=cdd3772532">
+<link rel="modulepreload" href="./js/apps/dependencies-source.js?v=f91ad88e18">
 <link rel="modulepreload" href="./js/apps/dependencies-export.js?v=a9a5c8d064">
 <link rel="modulepreload" href="./js/broker/context.js?v=549402edc9">
 <link rel="modulepreload" href="./js/broker/sharing-rules.js?v=efe8774466">

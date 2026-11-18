@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { checkBatch, readRefusal, writeRefusal, visibleTables, cleanApplyOptions, realNameRefusal, tokenOptions, classify,
   lowestAccess, batchTouchesTables, publiclyReadable, makePolicy } from '../js/broker/filter.js';
-import { policyOf, publipostage, automation, form } from './helpers.mjs';
+import { policyOf, publipostage, automation, form, bi } from './helpers.mjs';
 
 const pp = policyOf(publipostage());
 const au = policyOf(automation());
@@ -33,6 +33,16 @@ test('contrats 3.2 point 4 : une table interne se lit seulement si elle est déc
   assert.notEqual(readRefusal(pp, '_grist_Shares'), null);
   assert.notEqual(readRefusal(pp, '_grist_Triggers'), null);
   assert.notEqual(readRefusal(au, '_grist_Tables'), null);
+});
+
+test('contrats 3.2 point 4 : Grist-BI lit la langue et la devise du document (`_grist_DocInfo`, carte du 18/11), sans l\'écrire ni lire d\'autre table interne', () => {
+  const gb = policyOf(bi());
+  assert.equal(readRefusal(gb, '_grist_DocInfo'), null, 'déclarée : « Format des nombres : comme dans la colonne » lit `documentSettings`');
+  assert.equal(readRefusal(gb, '_grist_Tables'), null);
+  assert.equal(readRefusal(gb, '_grist_Tables_column'), null);
+  refused(gb, [['UpdateRecord', '_grist_DocInfo', 1, { documentSettings: '{}' }]]);
+  assert.notEqual(readRefusal(gb, '_grist_Attachments'), null, 'seule la lecture demandée est ouverte');
+  assert.notEqual(readRefusal(gb, '_grist_Shares'), null);
 });
 
 test('contrats 3.2 point 5 : listTables rend les tables lisibles, triées, sans _grist_ ni GFS_', () => {

@@ -327,7 +327,11 @@ test('contrats 2.4, 3.2 et 3.4 : le manifeste de Grist-BI range ses rapports dan
   assert.ok(m.permissions.formules.pourquoi.fr && m.permissions.formules.pourquoi.en, 'la table-sonde de l\'adresse e-mail lit user.Email par une formule : elle se déclare, avec son pourquoi');
   const internal = m.permissions.gristInterne;
   assert.ok(internal.every(entry => entry.lit === true && entry.ecrit === undefined && entry.retire === undefined), 'les tables internes ne se lisent que');
-  assert.deepEqual(internal.flatMap(entry => entry.tables), ['_grist_Tables', '_grist_Tables_column']);
+  // `_grist_DocInfo` : la langue et la devise du document (« Format des nombres : comme dans la colonne »), lecture seule, comme Publipostage+ depuis le 21/10 (carte du 18/11, « Oui, lecture seule »).
+  assert.deepEqual(internal.flatMap(entry => entry.tables), ['_grist_Tables', '_grist_Tables_column', '_grist_DocInfo']);
+  const docInfo = internal.find(entry => entry.tables.includes('_grist_DocInfo'));
+  assert.ok(docInfo.pourquoi.fr && docInfo.pourquoi.en, 'la lecture dit pourquoi, en français et en anglais');
+  assert.ok(!internal.some(entry => entry.tables.includes('_grist_Attachments')), 'Grist-BI ne lit pas les pièces jointes : seule la lecture demandée est déclarée');
   assert.equal(m.permissions.lienPublic, undefined, 'aucun lien public : rien de Grist-BI n\'est ouvert à qui n\'a pas le document');
   // ECharts, DuckDB et le reste sont dans le dépôt de l'app ; GFS ne porte que d3-cloud (nuage de mots) et pdf.js (mots-clés des PDF), deux fonctions nouvelles que le porteur a
   // acceptées le 18/11 (cartes « Ajouter à GFS » et « Oui, même copie »).

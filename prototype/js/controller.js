@@ -59,6 +59,7 @@ import { loadReceived } from './sharing/received-files.js';
 import { publicationQuestion, sharedLinkQuestion } from './broker/publication-window.js';
 import { ModulesWindow, rowKey } from './apps/modules-window.js';
 import { TemplatesControl } from './apps/templates-control.js';
+import { DependenciesControl } from './apps/dependencies-control.js';
 import { AppContext } from './broker/app-context.js';
 import { Refus, ERR, levelOf } from './broker/filter.js';
 
@@ -305,7 +306,7 @@ export class GfsController {
         t: this.t, language: () => ({ choice: this.language.choice, grist: this.language.grist }), onLanguage: choice => this.#chooseLanguage(choice),
           onTheme: () => this.openTheme(),
         langtool: () => ({ shown: this.correcteurs.state.shown, toggle: () => this.#chooseLangtool() }),
-        place: () => this.dock.placeRow(), onAbout: () => this.#openAbout(),
+        place: () => this.dock.placeRow(), onAbout: () => this.#openAbout(), onDependencies: () => this.#openDependencies(),
         manage: () => ({ why: this.rights.manage.whyNot(), open: () => void this.rights.manage.open(), notice: text => this.notice(text) }),
       }),
       sharing: this.rights.sharing, links: this.rights.links, onWeight: estimate => void this.weight.open(estimate),
@@ -513,6 +514,15 @@ export class GfsController {
   // bouton « Fermer ».
   #openAbout() {
     void this.ask({ title: this.t('about.title'), message: this.t('about.text'), items: aboutItems(this.t), confirmLabel: this.t('about.close') });
+  }
+
+  // La ligne « Dépendances… » du menu « Réglages » : la fenêtre en lecture seule des bibliothèques que GFS sert (js/apps/dependencies-control.js).
+  #openDependencies() {
+    this.dependencies ??= new DependenciesControl({ container: this.$('stage'), inertTargets: this.inertTargets, t: this.t, locale: () => this.locale,
+      lang: () => this.lang,
+      base: this.doc.baseURI, model: () => this.registry.model(), catalogue: () => this.registry.catalogue, readJson,
+      readBytes: async address => (await readFile(address)).arrayBuffer() });
+    void this.dependencies.open();
   }
 
   // ---------- la fenêtre « Apps et extensions » ----------

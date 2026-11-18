@@ -1,0 +1,80 @@
+/* La fenêtre « Dépendances » (js/apps/dependencies-window.js, demande du porteur du 18/11). Sur la base commune des fenêtres (css/modules.css) : le titre, la recherche, les filtres et le
+   pied restent en place, seule la liste défile. Tout par les jetons de gfs.css, jamais une couleur en dur, et seulement les paires déjà mesurées à 4,5:1 (test/contrast.test.mjs).
+   L'état se lit au mot et à l'icône, jamais à la couleur seule. */
+.mod.dp { width: min(var(--win-l), 100%); }
+.dp-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin-top: 8px; }
+.dp-bar .dp-search { flex: 1 1 180px; width: auto; min-width: 0; }
+.dp-filters { display: flex; flex-wrap: wrap; gap: 4px; }
+.dp-filter { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-pill); background: var(--surface);
+  color: var(--text); font: inherit; font-size: max(12px, var(--fs-min)); cursor: pointer; white-space: nowrap; }
+.dp-filter:hover { background: var(--surface-sunken); }
+.dp-filter[aria-pressed="true"] { border-color: var(--accent-soft-border); background: var(--accent-soft); color: var(--accent-ink); font-weight: 700; }
+.dp-filter:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.dp-count { font-variant-numeric: tabular-nums; font-weight: 700; }
+
+.dp-body { padding: 0; }
+.dp-cols, .dp-row { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr) 16px; align-items: center; gap: 8px; }
+.dp-cols { position: sticky; top: 0; z-index: 1; min-height: 26px; padding: 0 34px 0 14px; border-bottom: 1px solid var(--border); background: var(--surface);
+  font-size: max(11px, var(--fs-min)); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+.dp-list { margin: 0; padding: 0; list-style: none; }
+.dp-item { display: grid; grid-template-columns: minmax(0, 1fr) 30px; align-items: center; border-bottom: 1px solid var(--border); }
+.dp-item.is-open { background: var(--accent-soft); }
+.dp-row { min-height: 44px; margin: 0; padding: 5px 4px 5px 14px; border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.dp-row:hover { background: var(--surface-sunken); }
+.dp-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.dp-cell { display: flex; flex-direction: column; min-width: 0; }
+.dp-lib { flex-direction: row; align-items: flex-start; gap: 7px; }
+.dp-name { overflow-wrap: anywhere; font-weight: 700; }
+.dp-sub { font-size: max(12px, var(--fs-min)); color: var(--text-muted); }
+.dp-ver { font-variant-numeric: tabular-nums; font-weight: 700; }
+.dp-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 1px; }
+.dp-tag { padding: 0 6px; border: 1px solid var(--border-strong); border-radius: var(--radius-xs); font-size: max(11px, var(--fs-min)); color: var(--text-muted); background: var(--surface); white-space: nowrap; }
+.dp-chev { display: grid; place-items: center; color: var(--text-muted); transition: transform .12s; }
+.dp-item.is-open .dp-chev { transform: rotate(180deg); }
+
+/* La pastille d'état d'une ligne : pleine (active), anneau (installée), anneau en tirets (prête), pointillés (au catalogue, demandée par aucune app) ; le mot est à côté. */
+.dp-dot { flex: none; width: 9px; height: 9px; margin-top: 5px; border-radius: 50%; box-sizing: border-box; border: 1.7px solid var(--text-muted); }
+.dp-dot[data-state="active"] { border-color: var(--good); background: var(--good); }
+.dp-dot[data-state="ready"] { border-style: dashed; }
+.dp-dot[data-state="unused"] { border-style: dotted; }
+
+/* Un état en un mot et une icône : un seul sens par teinte (bad : un avis ; warn : version majeure ; info : à mettre à jour ; ok : à jour). */
+.dp-chip { display: inline-flex; align-self: flex-start; align-items: center; gap: 4px; padding: 1px 7px; border: 1px solid var(--border-strong); border-radius: var(--radius-pill);
+  background: var(--surface); font-size: max(12px, var(--fs-min)); font-weight: 700; color: var(--text); white-space: nowrap; }
+.dp-chip .ic { width: 11px; height: 11px; stroke-width: 2.3; }
+.dp-chip.dp-ok { border-color: var(--good-soft-border); background: var(--good-soft); color: var(--good); }
+.dp-chip.dp-info { border-color: var(--accent-soft-border); background: var(--accent-soft); color: var(--accent-ink); }
+.dp-chip.dp-warn { border-color: var(--warn-ink); background: var(--warn-soft); color: var(--warn-ink); }
+.dp-chip.dp-bad { border-color: var(--danger-ink); background: var(--danger-soft); color: var(--danger-ink); }
+.dp-chip.dp-muted { border-style: dashed; color: var(--text-muted); }
+
+.dp-ext, .dp-link { display: inline-flex; align-items: center; gap: 3px; color: var(--accent-ink); }
+.dp-ext { grid-column: 2; justify-self: center; justify-content: center; width: 28px; height: 28px; border-radius: var(--radius-sm); }
+.dp-ext:hover, .dp-link:hover { text-decoration: underline; }
+.dp-ext:focus-visible, .dp-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.dp-link .ic, .dp-ext .ic { width: 13px; height: 13px; }
+
+.dp-detail { grid-column: 1 / -1; padding: 8px 14px 12px; border-top: 1px solid var(--accent-soft-border); font-size: max(12.5px, var(--fs-min)); }
+.dp-facts { column-count: 2; column-gap: 18px; margin: 0; }
+.dp-fact { break-inside: avoid; margin: 0 0 9px; }
+.dp-fact dt { margin: 0 0 2px; font-size: max(11.5px, var(--fs-min)); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+.dp-fact dd { margin: 0; overflow-wrap: anywhere; }
+.dp-lines { margin: 0; padding: 0; list-style: none; }
+.dp-lines li + li { margin-top: 3px; }
+.dp-fp { display: block; margin-top: 1px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: max(11px, var(--fs-min)); color: var(--text-muted); word-break: break-all; }
+.dp-links { display: inline-flex; flex-wrap: wrap; gap: 4px 14px; }
+.dp-integrity { display: block; margin-top: 3px; color: var(--text); }
+.dp-integrity:empty { display: none; }
+.dp-verify { margin: 0; }
+.dp-latest { font-variant-numeric: tabular-nums; }
+.dp-verify:disabled { cursor: progress; }
+.dp-empty { margin: 0; padding: 14px; color: var(--text-muted); }
+.dp-empty[hidden] { display: none; }
+.dp-apps { margin: 0; padding: 8px 14px 10px; font-size: max(12px, var(--fs-min)); color: var(--text-muted); }
+
+@media (max-width: 519px) {
+  .dp-cols, .dp-row { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.1fr) 16px; }
+  .dp-cols > :nth-child(2), .dp-users { display: none; }
+  .dp-facts { column-count: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .dp-chev { transition: none; } }

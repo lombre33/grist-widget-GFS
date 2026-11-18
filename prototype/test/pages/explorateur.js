@@ -49,6 +49,9 @@ import { whyNot } from '/js/sharing/share-other.js';
 import { openShareOther } from '/js/sharing/share-other-window.js';
 import { openShareReceive } from '/js/sharing/share-receive-window.js';
 import { openWeight } from '/js/weight/weight-window.js';
+import { openDependencies } from '/js/apps/dependencies-window.js';
+import { dependencyRows } from '/js/apps/dependencies-model.js';
+import { verifyCopy } from '/js/apps/dependencies-audit.js';
 import { ModulesWindow } from '/js/apps/modules-window.js';
 import { WorkWindow } from '/js/apps/work-window.js';
 import { SQL, readWeight } from '/js/weight/weight-reader.js';
@@ -390,7 +393,7 @@ async function mount() {
     typeLabel: file => (file.received ? received.typeLabel(file) : baseLabel(file)),
     lockOf: file => (file.received ? received.lockOf(file) : (file.type === 'macro' ? { text: i18n.t('ex.lockedExtension', { name: 'Macro-modèles' }) } : null)), newTypes: () => [], importTypes: () => window.__importTypes || [], canClose: () => window.__canClose !== false,
     notice: text => window.__notices.push(text), settings: () => settingsItems({ t: i18n.t, language: () => ({ choice: window.__language, grist: language }), onLanguage: value => { window.__language = value; }, onTheme: () => theme.open(),
-      langtool: () => ({ shown: window.__langtool, toggle: () => { window.__langtool = !window.__langtool; } }), place, onAbout: () => window.__about(),
+      langtool: () => ({ shown: window.__langtool, toggle: () => { window.__langtool = !window.__langtool; } }), place, onAbout: () => window.__about(), onDependencies: () => { window.__dependenciesAsked = (window.__dependenciesAsked || 0) + 1; void window.__dependencies(); },
       manage: () => ({ why: null, open: () => { window.__manageFromSettings = (window.__manageFromSettings || 0) + 1; }, notice: text => window.__notices.push(text) }) }),
     onOpen: file => { window.__opened = file.name; }, onNew: () => {}, get links() { return window.__linkProxy; },
     opened: { keys: () => openedFiles.keys(), shown: () => openedFiles.shown(SESSION), remove: key => openedFiles.remove(key) },
@@ -609,6 +612,23 @@ async function mount() {
   window.__weight = estimate => {
     window.__weightEstimate = estimate;
     return openWeight({ container: stage, t: i18n.t, locale, inertTargets: () => [explorer.root], estimate, load: (update, cancelled) => readWeight(fakeSql(window.__weightKind), update, cancelled) });
+  };
+  // La fenêtre « Dépendances » (js/apps/dependencies-window.js, test/dependances-firefox.mjs) : la vraie fenêtre, le vrai catalogue et le vrai relevé de GFS (servis par la page d'essai) et le vrai audit des copies
+  // (les fichiers de vendor/, relus par la page). Publipostage+ est installé, son extension « Graphiques » cochée, sa fonction « Export PDF » en copie figée : les lignes d'Écriture en direct, d'ExcelJS… restent « au
+  // catalogue ». `window.__tamper` (un bout de chemin) change les octets que la page lit pour ce fichier : l'audit doit alors dire que la copie ne correspond pas.
+  const DEPENDENCY_MODULES = { items: [
+    { kind: 'app', id: 'publipostage', ok: true, installed: true, manifest: { nom: { fr: 'Publipostage+', en: 'Mail merge+' } },
+      natives: [{ group: { id: 'pdf', nom: { fr: 'Export PDF', en: 'PDF export' } }, mode: 'vendorise', inApp: false, libraries: [{ id: 'pdfmake', version: '0.2.7' }, { id: 'pdfmake-polices', version: '0.2.7' }] }] },
+    { kind: 'ext', app: 'publipostage', appInstalled: true, checked: true, extension: { id: 'graphique', nom: { fr: 'Graphiques', en: 'Charts' } }, libraries: [{ id: 'plotly', version: '2.13.2' }, { id: 'echarts', version: '6.1.0' }] },
+    { kind: 'ext', app: 'publipostage', appInstalled: true, checked: false, extension: { id: 'edition-live', nom: { fr: 'Écriture en direct', en: 'Live editing' } }, libraries: [{ id: 'edition-live', version: '1.0.0' }] },
+  ] };
+  window.__dependencyModules = DEPENDENCY_MODULES;
+  window.__dependencies = async () => {
+    const [catalogueJson, releve] = await Promise.all(['/bibliotheques/catalogue.json', '/bibliotheques/releve.json'].map(path => fetch(path).then(response => response.json())));
+    const rows = dependencyRows({ catalogue: readCatalogue(catalogueJson), releve, modules: DEPENDENCY_MODULES, lang: language });
+    const readBytes = async address => (window.__tamper && address.includes(window.__tamper) ? new Uint8Array([1, 2, 3]).buffer : (await fetch(address)).arrayBuffer());
+    return openDependencies({ container: stage, t: i18n.t, locale, inertTargets: () => [explorer.root], rows, surveyed: releve.releve,
+      verify: row => Promise.all(row.files.map(file => verifyCopy(file, { readBytes, base: location.href }))) });
   };
   show();
   explorer.open();

@@ -1,6 +1,6 @@
 // Le menu « Réglages » de GFS (décision du porteur, 04/11 : les réglages de la suite sous un seul bouton de l'explorateur, la barre flottante ne change pas) :
 // la langue (un sous-menu), le thème (sa fenêtre), « Gérer les partages… » (12/11, choix du porteur : une porte directe, sans passer par « Partager… » d'un
-// fichier),
+// fichier), « Dépendances… » (18/11 : les bibliothèques que GFS sert, en lecture),
 // les « Réglages avancés » (un sous-menu, où est le bouton « LanguageTool » de la barre, contrats 5.2, point
 // 13 :
 // le porteur, 12/11, « c'est beaucoup trop niche pour être au même niveau que les autres réglages »), la position de la barre (un sous-menu, le même choix que
@@ -11,9 +11,10 @@
 import { LANGUAGE_NAMES } from './language.js';
 
 // opts : { t, language() → { choice, grist }, onLanguage(choice), onTheme(), langtool() → { shown, toggle() } (js/shell/correcteurs.js), place() → la ligne
-//   « Position de la barre » (js/shell/dock.js), onAbout(), manage() → { why (la raison pour laquelle « Gérer les partages… » est grisé, ou null), open(),
+//   « Position de la barre » (js/shell/dock.js), onAbout(), onDependencies(), manage() → { why (la raison pour laquelle « Gérer les partages… » est grisé, ou
+//   null), open(),
 //   notice(texte) } }
-export function settingsItems({ t, language, onLanguage, onTheme, langtool, place, onAbout, manage }) {
+export function settingsItems({ t, language, onLanguage, onTheme, langtool, place, onAbout, onDependencies, manage }) {
   const { choice, grist } = language();
   const pick = (value, label) => ({ label, check: choice === value, run: () => onLanguage(value) });
   const sharing = manage();
@@ -25,6 +26,8 @@ export function settingsItems({ t, language, onLanguage, onTheme, langtool, plac
     // Grisé avec sa raison, jamais caché : un clic la dit. Le propriétaire est vérifié par la fenêtre elle-même (qui dit à qui s'adresser).
     { label: t('manage.open'), icon: 'users', title: sharing.why || t('manage.open.hint'), greyed: Boolean(sharing.why),
       run: () => (sharing.why ? sharing.notice(sharing.why) : sharing.open()) },
+    // La fenêtre en lecture seule des bibliothèques que GFS sert : versions, avis de sécurité, licences (js/apps/dependencies-window.js).
+    { label: t('dep.menu'), icon: 'package', title: t('dep.menu.tip'), run: () => onDependencies() },
     // Les réglages qu'on touche rarement vont ici, un par ligne : « more » (plus d'articles), l'icône des « Plus d'actions » de l'explorateur, dit la même
     // chose.
     { label: t('set.advanced'), icon: 'more', title: t('set.advanced.tip'), submenu: [

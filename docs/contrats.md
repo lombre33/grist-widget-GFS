@@ -510,6 +510,23 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     le défaut est le CDN, comme avant. Le jour où l'app nomme l'adresse (la consigne qui remplace la 016 pour Publipostage+), GFS retire le champ : le défaut redevient le CDN, sans
     toucher aux choix déjà écrits. L'app ne lit jamais ce champ : il est à GFS. [M]
 
+16. [D] **La fenêtre « Dépendances » : ce que GFS sert, version par version, en lecture seule** (demande du porteur, 18/11 : « transparent pour les utilisateurs et simple à
+    comprendre et à auditer » ; « pas de mode administration, mais le plus d'options possible sur les dépendances, clarté et audit de sécurité »). Une ligne « Dépendances… » du menu
+    « Réglages » ouvre une fenêtre sur la base commune (7.3), qui liste **un paquet par ligne** (16 au 18/11 : les paquets que le catalogue sert, ceux d'un fichier assemblé comptés
+    un à un), avec : ce qui l'utilise et l'état (**active** : une extension cochée d'une app installée, ou une fonction native en copie figée ; **installée, non utilisée** ; **prête,
+    pas encore servie** : l'app n'est pas installée ; **au catalogue, demandée par aucune app**), la version que GFS sert (celle du contenu du fichier, jamais le numéro de
+    l'entrée), ses modes (copie figée toujours, CDN quand le catalogue en a une), la dernière version stable et l'écart (correctif, mineure, majeure ; en 0.x une mineure compte pour
+    une majeure), l'avis de sécurité le plus grave, et un lien vers le site ou le dépôt. Un clic déplie l'**audit** : qui l'utilise, les fichiers servis et leur empreinte SHA-384,
+    **« Vérifier la copie »** (GFS relit le fichier qu'il sert et recalcule l'empreinte : intacte, différente ou illisible ; un fichier vérifié intact n'est pas relu), les adresses que
+    le navigateur contacte en mode CDN (ou « aucune »), les avis (niveau, titre, fiche, version qui corrige), la licence face à la GPL 3.0 de GFS (d'après l'identifiant SPDX :
+    « compatible » ou « à vérifier », jamais « incompatible » par ignorance) et les liens. **Les versions et les avis ne se lisent pas dans le navigateur** (choix du porteur,
+    « relevé par GFS, sans appel externe ») : ils viennent de `bibliotheques/releve.json`, que l'outil `outils/releve-dependances.mjs` écrit d'après le registre npm et que GFS
+    commite ; le pied de la fenêtre en dit la date. Un relevé fait pour une autre version que celle servie ne dit rien de sûr : ni avis ni écart, la ligne le signale ; sans relevé
+    (fichier absent), la fenêtre montre ce que GFS sert et le dit. Les liens sont des adresses `https` du relevé (jamais d'un réglage, d'une table ou d'un message), dans un nouvel
+    onglet, sans rien transmettre (`noopener`). **Pas encore** : les bibliothèques que chaque app porte elle-même (une note le dit sous la liste), le choix CDN ou copie par ligne, « tout
+    en copie figée » et l'export du rapport (JSON, CycloneDX) : lot suivant. Code : `js/apps/dependencies-model.js` (lignes), `-audit.js`, `-detail.js`, `-window.js`,
+    `-control.js`, `licences.js`, `version-gap.js` (la règle de l'écart, partagée avec l'outil). [M]
+
 ### 2.7 Les actions acceptées
 
 ```json

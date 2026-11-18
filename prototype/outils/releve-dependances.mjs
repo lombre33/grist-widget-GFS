@@ -16,35 +16,23 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { ROOT, readList } from './bibliotheques.mjs';
+import { STABLE_RE, parseVersion, compareVersions, gap } from '../js/apps/version-gap.js';
+
+export { gap }; // l'écart se dit comme dans la fenêtre « Dépendances » : une seule règle (js/apps/version-gap.js)
 
 const REGISTRY = 'https://registry.npmjs.org';
-const STABLE_RE = /^(\d+)\.(\d+)\.(\d+)$/;
 const LEVELS = ['critical', 'high', 'moderate', 'low'];
 export const RELEVE_FILE = 'bibliotheques/releve.json';
 
 // Le paquet qui porte les avis d'un paquet de fichiers (« -dist-min ») : le même code, publié sous un autre nom, à la même version.
 export const PAQUET_DES_AVIS = { 'plotly.js-basic-dist-min': 'plotly.js' };
 
-const parse = version => { const found = STABLE_RE.exec(version || ''); return found ? found.slice(1).map(Number) : null; };
-const compare = (a, b) => { for (let i = 0; i < 3; i += 1) if (a[i] !== b[i]) return a[i] - b[i]; return 0; };
 
 // La dernière version stable d'un paquet : la plus haute `x.y.z` sans suffixe, parmi celles qui ne sont pas retirées (`deprecated`).
 export function latestStable(versions) {
   const stable = Object.entries(versions || {}).filter(([number, info]) => STABLE_RE.test(number) && !(info && info.deprecated)).map(([number]) => number);
-  stable.sort((a, b) => compare(parse(a), parse(b)));
+  stable.sort((a, b) => compareVersions(parseVersion(a), parseVersion(b)));
   return stable.length ? stable[stable.length - 1] : null;
-}
-
-// L'écart entre la version servie et la dernière stable : « a-jour », « correctif », « mineure », « majeure » (en 0.x, une version mineure change l'interface : elle
-// compte pour une majeure), « avance » (plus récente que la dernière stable), « inconnu ».
-export function gap(used, latest) {
-  const [a, b] = [parse(used), parse(latest)];
-  if (!a || !b) return 'inconnu';
-  const order = compare(a, b);
-  if (order === 0) return 'a-jour';
-  if (order > 0) return 'avance';
-  if (a[0] !== b[0] || (a[0] === 0 && a[1] !== b[1])) return 'majeure';
-  return a[1] !== b[1] ? 'mineure' : 'correctif';
 }
 
 // La version qui corrige, d'après la plage touchée donnée par le registre (« <6.1.0 », « >=1.0.0 <2.25.2 ») : la borne haute exclue, ou null quand la plage n'en a pas.

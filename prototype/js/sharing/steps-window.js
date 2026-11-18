@@ -21,6 +21,12 @@ export function codeWithCopy(ctx, { fk, copyFk, label, value }) {
   return { code, copy };
 }
 
+// Ce que dit l'accord sur la structure du document, qui se ferme avec les tables techniques à la fermeture de la fenêtre (choix du porteur, 18/11 : « Oui, dans
+// la même question ») : les mêmes mots que la question de « Activer le partage » (js/rights/rights-actions.js), seuls les propriétaires changent les tables,
+// les éditeurs gardent la saisie des lignes, et ce que coûte une table qu'une app créerait plus tard.
+export const structureNotes = t => [h('p', { class: 'fine', dataset: { fk: 'structure-note' } }, t('rights.ask.sharing.structure')),
+  h('p', { class: 'fine' }, t('rights.ask.close.item2'))];
+
 // opts : { container, t, inertTargets, title, sub, foot (la phrase du pied de chaque écran), errorText (le moteur dit ses refus) }. Rend { dialog, result (la
 //   promesse de la fermeture), done(valeur), say(texte), show(écran), go(bouton, travail, grisé?), cancelButton(), copy(zone) } ; un écran est { body, buttons,
 //   first (la clé du bouton qui reçoit le clavier), close? (« so-close » ferme la fenêtre), foot? (le texte du pied, sinon celui de la fenêtre) }.

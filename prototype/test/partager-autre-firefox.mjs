@@ -54,7 +54,8 @@ async function accordFlow(page, tools, t) {
   const radios = await page.run(() => ['once', 'live'].map(mode => { const node = document.querySelector(`[data-fk="so-mode-${mode}"]`); return node ? node.checked : null; }));
   if (radios[0] !== true || radios[1] !== false) tools.run.note(kind, `l'accord devait proposer « ${t('so.mode.once')} » (coché) et « ${t('so.mode.live')} » (état des deux choix : ${JSON.stringify(radios)})`);
   for (const part of [t('so.mode.once'), t('so.mode.live')]) if (!now.modal.body.includes(part)) tools.run.note(kind, `l'accord devait dire « ${part} »`);
-  for (const part of [t('so.accord.adds'), t('so.accord.hook'), t('so.accord.keep')]) if (!now.modal.body.includes(part)) tools.run.note(kind, `l'accord devait dire « ${part} » (il dit « ${now.modal.body.slice(0, 160)} »)`);
+  // La structure du document se ferme avec les tables techniques (choix du porteur, 18/11) : l'accord le dit avec les mots de la question d'activation du partage.
+  for (const part of [t('so.accord.adds'), t('so.accord.hook'), t('so.accord.keep'), t('so.accord.rules'), t('rights.ask.sharing.structure'), t('rights.ask.close.item2')]) if (!now.modal.body.includes(part)) tools.run.note(kind, `l'accord devait dire « ${part} » (il dit « ${now.modal.body.slice(0, 160)} »)`);
   // « Exiger la comparaison du code de contrôle » : proposé et coché au départ (décision du 09/11, audit de sécurité), décochable à la vraie souris.
   const strict = () => page.run(() => { const node = document.querySelector('[data-fk="so-strict"]'); return node ? node.checked : null; });
   if (!now.modal.body.includes(t('so.strict'))) tools.run.note(kind, `l'accord devait proposer « ${t('so.strict')} »`);

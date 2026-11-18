@@ -68,3 +68,13 @@ test('quand les règles viennent d\'être posées, Grist recharge le document : 
   await resumeSharing({ docApi: docOf(['GFS_Fichiers', 'GFS_Synchro']), isOwner: owner }, engineFor(calls), closing(calls, true));
   assert.deepEqual(calls, ['close']);
 });
+
+test('la reprise ne demande jamais la fermeture de la structure : un propriétaire qui l\'a rouverte la garde ouverte (elle ne se ferme qu\'à la fermeture de la fenêtre de liaison)', async () => {
+  const asked = [];
+  const close = async options => { asked.push(options); return { changed: false, tables: [] }; };
+  const docApi = docOf(['GFS_Fichiers', 'GFS_Synchro']);
+  await resumeSharing({ docApi, isOwner: owner }, engineFor([]), close);
+  assert.equal(asked.length, 1);
+  assert.equal(asked[0].docApi, docApi);
+  assert.equal(asked[0].structure, undefined);
+});

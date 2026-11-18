@@ -37,11 +37,12 @@ export async function documentName(transfer, t) {
   } catch (error) { return t('so.link.default'); }
 }
 
-// Les tables techniques que la fenêtre vient de créer (`GFS_Synchro`, un journal) se ferment aux non-propriétaires une fois la fenêtre fermée : Grist recharge
-// alors la page, ce qui aurait défait le parcours en cours. Le moteur de partage reprend à l'ouverture suivante (js/sharing/sync-resume.js). Réservé à un
-// propriétaire que GFS a prouvé tel ; sans effet, et sans bruit, quand rien n'est à poser (js/sharing/sync-rules.js).
-async function closeTechnicalTables(deps) {
-  if ((await deps.transfer.isOwner()) === true) await closeSharingTables({ docApi: deps.docApi() });
+// Les tables techniques que la fenêtre vient de créer (`GFS_Synchro`, un journal) se ferment aux non-propriétaires une fois la fenêtre fermée, et la structure
+// du document avec elles (choix du porteur, 18/11 : la même question que pour activer le partage) : Grist recharge alors la page, ce qui aurait défait le
+// parcours en cours. Le moteur de partage reprend à l'ouverture suivante (js/sharing/sync-resume.js). Réservé à un propriétaire que GFS a prouvé tel ; sans
+// effet, et sans bruit, quand rien n'est à poser (js/sharing/sync-rules.js : une fenêtre fermée avant l'accord n'a rien créé, elle ne ferme rien).
+export async function closeTechnicalTables(deps) {
+  if ((await deps.transfer.isOwner()) === true) await closeSharingTables({ docApi: deps.docApi(), structure: true });
 }
 // L'onglet de « Partager » pour `file` : un fichier, ou un DOSSIER (js/share-folder.js : tous ses PDF, avec le nom du dossier). `tools` : ce que
 // `createOtherDocuments` tient (le moteur, la lecture des liens, la fenêtre du premier envoi).

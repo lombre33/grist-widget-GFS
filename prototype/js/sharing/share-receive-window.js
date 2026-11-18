@@ -8,7 +8,7 @@
 // Fermée avant que la réponse soit rendue, elle défait ce qu'elle a créé ; après, la réception reste (les fichiers arrivent quand l'envoyeur envoie).
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
-import { area, button, codeWithCopy, openSteps } from './steps-window.js';
+import { area, button, codeWithCopy, openSteps, structureNotes } from './steps-window.js';
 
 // Un champ où l'on colle, et le bouton qui le suit : grisé tant que rien n'est collé.
 function pasteField(ctx, { fk, label, action, run }) {
@@ -40,6 +40,7 @@ function accordScreen(ctx, info) {
       h('ul', { class: 'so-list' }, h('li', null, t('sr.accord.table', { table: info.table })), h('li', null, t('sr.accord.journal')),
         h('li', null, t('sr.accord.marks'))),
       h('p', { class: 'fine' }, t('sr.accord.rules')),
+      ...structureNotes(t),
       h('p', { class: 'fine' }, t('sr.accord.keep'))];
   return {
     body: h('div', { class: 'rt-content' }, ...body),

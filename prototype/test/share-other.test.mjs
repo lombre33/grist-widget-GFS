@@ -1,7 +1,7 @@
 // Le changement de niveau d'un lien dans l'onglet de « Partager » (js/sharing/share-other.js, `levelChanger`) : ce qui le bloque, ce qui l'échoue. Le chemin qui réussit passe par le moteur de partage du kit : il se mesure dans le labo.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createOtherDocuments, limitOf, whyNot } from '../js/sharing/share-other.js';
+import { closeTechnicalTables, createOtherDocuments, limitOf, whyNot } from '../js/sharing/share-other.js';
 import { SEND_MAX } from '../js/sharing/share-links.js';
 import { FILES_APP } from '../js/files/gfs-files.js';
 
@@ -57,4 +57,34 @@ test('un dossier dont les PDF sont tous trop gros est grisé avec SA raison (pas
   const some = make({ files: () => [pdf('p1', 10), pdf('p2', SEND_MAX + 1)] }).tab(folder, state);
   assert.equal(some.why, null);
   assert.deepEqual([some.fileId, some.count, some.tooBig, some.skipped, some.limit], [['p1'], 1, 1, 0, null]);
+});
+
+// À la fermeture de la fenêtre de liaison (envoi, réception, « Relier »), les tables techniques se ferment et la structure avec elles, dans une seule écriture
+// (choix du porteur, 18/11) ; jamais sans la preuve d'être propriétaire, jamais quand rien n'a été créé.
+const docWith = (names, applied) => ({
+  fetchTable: async name => {
+    const rows = name === '_grist_Tables' ? names.map((tableId, at) => ({ id: at + 1, tableId })) : [];
+    const keys = [...new Set(rows.flatMap(row => Object.keys(row)))];
+    return Object.fromEntries(keys.map(key => [key, rows.map(row => row[key])]));
+  },
+  applyUserActions: async actions => { applied.push(actions); },
+});
+
+test('la fermeture de la fenêtre de liaison ferme les tables techniques ET la structure, en une seule écriture, pour un propriétaire prouvé', async () => {
+  const applied = [];
+  await closeTechnicalTables({ transfer: { isOwner: async () => true }, docApi: () => docWith(['GFS_Fichiers', 'GFS_Synchro'], applied) });
+  assert.equal(applied.length, 1, 'une seule écriture : Grist ne recharge qu\'une fois');
+  assert.ok(applied[0].some(action => action[1] === '_grist_ACLRules' && action[3].permissionsText === '-CRUD'), 'la table technique est réservée aux propriétaires');
+  assert.ok(applied[0].some(action => action[1] === '_grist_ACLRules' && action[3].aclFormula === 'user.Access != OWNER' && action[3].permissionsText === '-S'), 'la structure est fermée');
+});
+
+test('sans la preuve d\'être propriétaire, ou sans table technique (fenêtre fermée avant l\'accord), rien ne s\'écrit', async () => {
+  for (const owner of [false, null, undefined]) {
+    const applied = [];
+    await closeTechnicalTables({ transfer: { isOwner: async () => owner }, docApi: () => docWith(['GFS_Synchro'], applied) });
+    assert.deepEqual(applied, [], `propriétaire : ${owner}`);
+  }
+  const applied = [];
+  await closeTechnicalTables({ transfer: { isOwner: async () => true }, docApi: () => docWith(['GFS_Fichiers', 'Clients'], applied) });
+  assert.deepEqual(applied, [], 'rien n\'a été créé : la structure reste comme elle est');
 });

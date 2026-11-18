@@ -9,7 +9,7 @@
 
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
-import { area, button, codeWithCopy, openSteps } from './steps-window.js';
+import { area, button, codeWithCopy, openSteps, structureNotes } from './steps-window.js';
 import { FILES_TABLE } from '../files/gfs-files.js';
 import { HELPER_COLUMNS, RECEIVED_TABLE, SYNC_TABLE_NAME } from './share-other-flow.js';
 
@@ -30,6 +30,7 @@ function accordDetails(ctx) {
       h('li', null, t('so.accord.columns', { table: FILES_TABLE, columns: HELPER_COLUMNS.join(', ') })),
       h('li', null, t(live ? 'so.accord.hook.live' : 'so.accord.hook'))),
     h('p', { class: 'fine' }, t('so.accord.rules')),
+    ...structureNotes(t),
     h('p', { class: 'fine' }, t('so.accord.other', { table: RECEIVED_TABLE })),
     h('p', { class: 'fine' }, t('so.accord.keep')),
   ];

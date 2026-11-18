@@ -83,7 +83,7 @@ function replyScreen(ctx, replied, table) {
 //   de sa fermeture.
 export function openShareReceive(opts) {
   const { t } = opts;
-  const errorText = error => (error && error.share ? t(`sr.error.${error.share}`) : opts.errorText(error));
+  const errorText = error => (error && error.share ? t(`sr.error.${error.share}`, error.vars || {}) : opts.errorText(error));
   const steps = openSteps({ container: opts.container, t, inertTargets: opts.inertTargets, title: t('sr.title'), sub: t('sr.sub'), foot: t('sr.foot'),
     errorText });
   const { result, show } = steps;

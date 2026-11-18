@@ -4,13 +4,15 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createTargetFlow, RECEIVED_TABLE } from '../js/sharing/share-receive-flow.js';
 
-const INVITATION = { id: 'i1', export: 'e1', name: 'Fichiers GFS', mode: 'reponse', expire: 1800000000, tables: [{ table: 'GFS_Fichiers', columns: ['Identifiant', 'Nom'] }] };
+const OWN = 'https://grist.exemple.fr';
+const INVITATION = { id: 'i1', export: 'e1', name: 'Fichiers GFS', mode: 'reponse', origin: OWN, expire: 1800000000, tables: [{ table: 'GFS_Fichiers', columns: ['Identifiant', 'Nom'] }] };
 
-function fakeEngine({ invitation = INVITATION, known = null, fail = {}, taken = [] } = {}) {
+function fakeEngine({ invitation = INVITATION, known = null, fail = {}, taken = [], own = OWN } = {}) {
   const calls = [];
   const note = (name, value) => async (...args) => { calls.push([name, ...args]); if (fail[name]) throw fail[name]; return typeof value === 'function' ? value(...args) : value; };
   return {
     calls,
+    ownOrigin: async () => own,
     readInvitation: note('read', invitation),
     knownReception: note('known', known),
     tableTaken: async name => taken.includes(name),
@@ -39,6 +41,20 @@ test('read : GFS ne reçoit ni un lien public ni un échange (d\'autres modes du
   }
   await assert.rejects(() => createTargetFlow({ engine: fakeEngine({ fail: { read: new Error('invitationExpired') } }) }).read('x'), /^Error: invitationExpired$/);
   assert.equal((await createTargetFlow({ engine: fakeEngine({ invitation: { ...INVITATION, mode: undefined } }) }).read('x')).name, 'Fichiers GFS', 'sans mode : une invitation d\'avant, en réponse');
+});
+
+test('read : un code d\'un AUTRE serveur Grist est refusé tout de suite, avant que quoi que ce soit soit créé (choix du porteur, 18/11)', async () => {
+  const engine = fakeEngine({ invitation: { ...INVITATION, origin: 'https://docs.autre-serveur.org' } });
+  const flow = createTargetFlow({ engine });
+  await assert.rejects(() => flow.read('x'), error => error.share === 'server' && error.vars.server === 'docs.autre-serveur.org');
+  assert.deepEqual(names(engine), ['read'], 'ni la réception connue, ni la table, ni le journal ne sont cherchés ou créés');
+  assert.equal(flow.created, false);
+  await flow.abort();
+  assert.deepEqual(names(engine), ['read'], 'rien à défaire');
+  for (const origin of [OWN, '', undefined]) {
+    assert.equal((await createTargetFlow({ engine: fakeEngine({ invitation: { ...INVITATION, origin } }) }).read('x')).name, 'Fichiers GFS', `origine « ${origin} » : le partage continue`);
+  }
+  assert.equal((await createTargetFlow({ engine: fakeEngine({ own: '' }) }).read('x')).name, 'Fichiers GFS', 'sans origine pour ce document : le moteur juge');
 });
 
 test('accept : tout va dans GFS_Recus, en archive, après la vérification des destinations ; rien n\'est créé avant', async () => {

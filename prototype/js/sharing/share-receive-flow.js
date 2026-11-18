@@ -4,7 +4,9 @@
 // (kit/js/synchro/target/receive.js, voir js/sharing/sync-service.js), que les essais remplacent. Le moteur juge le code, le lien et la réponse ; GFS n'en juge
 // rien (décision du 09/11). GFS reçoit TOUJOURS en archive (js/sharing/share-links.js : un fichier qui sort du partage reste ici, marqué « supprimé à la source
 // », mesuré : faits vérifiés, 70) et range tout ce qui arrive dans une seule table, `GFS_Recus`.
-//   read()    le code collé, lu et contrôlé : le nom du partage, ce qu'il apporte, si une réception de ce partage existe déjà ;
+//   read()    le code collé, lu et contrôlé : le nom du partage, ce qu'il apporte, si une réception de ce partage existe déjà ; un code d'un AUTRE serveur
+//             Grist est refusé ici, avant que quoi que ce soit soit créé (choix du porteur, 18/11 : le moteur ne refuse qu'au dernier tour, quand
+//             l'envoyeur contrôle la réponse, et le journal et le formulaire publié restaient chez celui qui reçoit) ;
 //   accept()  le journal du partage, sa table et la page de son formulaire sont créés (ou, si une réception existe déjà de ce même document, reprise avec la
 //             nouvelle invitation) ; les colonnes de marque « accepté » et « refusé » sont posées d'emblée et une colonne envoyée qui porte leur nom arrive
 //             sous
@@ -21,6 +23,7 @@ const TABLES_TRIED = 50;
 const mode = invitation => invitation.mode || 'reponse';
 const refused = code => Object.assign(new Error(code), { share: code });
 const withMap = map => (Object.keys(map).length ? { map } : {});
+const hostOf = origin => { try { return new URL(origin).host; } catch (error) { return origin; } };
 
 // deps : { engine, onReplied (rend la main quand la réponse est rendue : la boucle de réception du document démarre) }.
 export function createTargetFlow({ engine, onReplied = () => {} }) {
@@ -38,11 +41,19 @@ export function createTargetFlow({ engine, onReplied = () => {} }) {
     throw refused('tables');
   }
 
+  // Un partage ne passe qu'entre deux documents du même serveur Grist (le webhook de l'envoyeur ne part que vers sa propre instance) : l'origine que porte
+  // l'invitation est celle de l'envoyeur. Une invitation sans origine est laissée au moteur.
+  async function sameServer(invitation) {
+    const own = await engine.ownOrigin();
+    if (invitation.origin && own && invitation.origin !== own) throw Object.assign(refused('server'), { vars: { server: hostOf(invitation.origin) } });
+  }
+
   // Le code collé : ce que la fenêtre montre. `expire` : la fin de validité du code (secondes) ; `known` : une réception de ce partage existe déjà dans ce
   // document.
   async function read(text) {
     const invitation = await engine.readInvitation(String(text || '').trim());
     if (mode(invitation) !== 'reponse') throw refused('mode');
+    await sameServer(invitation);
     state.invitation = invitation;
     state.known = await engine.knownReception(invitation);
     state.table = await destination(state.known);

@@ -463,10 +463,24 @@ function checkMaturity(m, errors) {
 
 // `modeles` (facultatif, contrats 2.2 et 5.4, point 13) : où sont les modèles de départ de l'app, `{ catalogue: "publipostage/modeles.json" }`, le chemin
 // relatif sûr d'un fichier JSON rangé dans le dossier `modeles/` de GFS (comme les captures de la vitrine : GFS ne lit et ne montre que ses propres fichiers).
+// `type` (facultatif, pour une app SANS type de fichier : Automation+, dont un automatisme est une ligne de sa table) : le type que GFS donne aux modèles de
+// son catalogue, `{ valeur, nom: { fr, en }, icone? }` ; il n'ouvre rien d'autre (ni « Nouveau », ni une ligne de l'explorateur).
+const TEMPLATE_TYPE_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+
+function checkTemplateType(m, errors) {
+  const type = m.modeles.type;
+  if (type === undefined) return;
+  if (!isObject(type) || typeof type.valeur !== 'string' || !TEMPLATE_TYPE_RE.test(type.valeur) || !isBilingual(type.nom)
+    || (type.icone !== undefined && !isText(type.icone))) { errors.push('modeles.type : valeur, nom (fr, en) et, au besoin, icone attendus'); return; }
+  if ((m.fichiers || []).some(file => (file.types || []).some(known => known.valeur === type.valeur))) errors.push(
+    `modeles.type ${type.valeur} : valeur déjà prise par un type de fichier`);
+}
+
 function checkTemplates(m, errors) {
   if (m.modeles === undefined) return;
-  if (!isObject(m.modeles) || !isSafePath(m.modeles.catalogue) || !/\.json$/i.test(m.modeles.catalogue)) errors.push(
-    'modeles.catalogue : chemin relatif sûr d\'un fichier .json attendu');
+  if (!isObject(m.modeles) || !isSafePath(m.modeles.catalogue) || !/\.json$/i.test(m.modeles.catalogue)) { errors.push(
+    'modeles.catalogue : chemin relatif sûr d\'un fichier .json attendu'); return; }
+  checkTemplateType(m, errors);
 }
 
 // Rend { ok, errors }. `others` : les manifestes déjà acceptés du catalogue (unicité des id, des préfixes et des clés de réglages).

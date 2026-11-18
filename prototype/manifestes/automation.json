@@ -18,6 +18,10 @@
       { "fichier": "automation/3.webp", "legende": { "fr": "Le journal garde les exécutions et leur résultat", "en": "The log keeps the runs and their result" } }
     ]
   },
+  "modeles": {
+    "catalogue": "automation/modeles.json",
+    "type": { "valeur": "automatisme", "nom": { "fr": "Automatisme", "en": "Automation" }, "icone": "bolt" }
+  },
   "icone": "bolt",
   "entree": "index.html",
   "ouverture": { "fichier": false, "nouveau": false },

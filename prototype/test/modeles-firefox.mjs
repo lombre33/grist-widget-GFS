@@ -13,10 +13,12 @@ import { Run } from './corbeille-firefox.mjs';
 import { contrasts } from './vitrine-firefox.mjs';
 
 const CATALOGUE = readJson('modeles/publipostage/modeles.json');
-// Les trois apps qui livrent un catalogue (le 18/11 : Publipostage+, Form+, Grist-BI) ; Automation+ n'en a pas encore, sa pastille reste grisée « bientôt ».
+// Les quatre apps qui livrent un catalogue (le 18/11 : Publipostage+, Form+, Grist-BI et, avec un type que GFS lui donne, Automation+, dont les modèles restent grisés « pas encore »).
 const FORM = readJson('modeles/form/modeles.json').length;
 const BI = readJson('modeles/bi/modeles.json').length;
-const TOTAL = CATALOGUE.length + FORM + BI;
+const AUTOMATION_CATALOGUE = readJson('modeles/automation/modeles.json');
+const AUTOMATION = AUTOMATION_CATALOGUE.length;
+const TOTAL = CATALOGUE.length + FORM + BI + AUTOMATION;
 const OTHER = { fr: 'en', en: 'fr' };
 const SEARCH = { fr: 'mouvement stock', en: 'movement stock' }; // un seul modèle : « Bon de mouvement de stock » / « Stock movement slip »
 
@@ -151,7 +153,7 @@ async function startProblems(s, t, note, language) {
   if (s.count !== t('tp.count', { n: TOTAL })) note('nombre', `le nombre devrait dire « ${t('tp.count', { n: TOTAL })} » : « ${s.count} »`);
   if (s.focused !== 'search') note('clavier', `à l'ouverture le clavier devrait être dans la recherche : ${s.focused}`);
   const chips = s.chips.map(chip => `${chip.app}:${chip.text}${chip.pressed ? ':on' : ''}${chip.disabled ? ':off' : ''}`).join(' | ');
-  const wantedChips = [`all:${t('tp.all')}${TOTAL}:on`, `publipostage:Publipostage+${CATALOGUE.length}`, `automation:Automation+${t('tp.soon')}:off`, `form:Form+${FORM}`, `bi:Grist-BI${BI}`].join(' | ');
+  const wantedChips = [`all:${t('tp.all')}${TOTAL}:on`, `publipostage:Publipostage+${CATALOGUE.length}`, `automation:Automation+${AUTOMATION}`, `form:Form+${FORM}`, `bi:Grist-BI${BI}`].join(' | ');
   if (chips !== wantedChips) note('pastilles', `les pastilles devraient être « ${wantedChips} » : « ${chips} »`);
   if (new Set(s.chips.map(chip => Math.round(chip.box.top))).size > 1) note('pastilles', 'les pastilles devraient tenir sur une seule rangée');
   if (s.cards.length !== TOTAL) note('cartes', `la galerie devrait montrer ${TOTAL} cartes : ${s.cards.length}`);
@@ -213,14 +215,14 @@ async function mainProblems(page, language, t, note, { open, close, click, contr
   await page.press('Backspace');
   s = await page.until(total => { const g = gallery(); return g && g.query === '' && g.cards.length === total ? g : null; }, [TOTAL]).catch(() => null);
   if (!s) note('recherche', `effacer la recherche devrait rendre les ${TOTAL} cartes`);
-  await pillProblems(page, t, note, { click });
+  await pillProblems(page, language, t, note, { click });
   await createProblems(page, language, t, note, { open, close, click, contrastsAt, nameOf });
   await languageProblems(page, language, t, note, { open, close, other });
   await narrowProblems(page, t, note, { open, close, mode });
 }
 
 // Les pastilles : filtrer par app, revenir ; une pastille grisée dit pourquoi et ne filtre pas.
-async function pillProblems(page, t, note, { click }) {
+async function pillProblems(page, language, t, note, { click }) {
   if (!await click('[data-app="publipostage"]')) return;
   let s = await page.until(() => { const g = gallery(); return g && g.chips.find(chip => chip.app === 'publipostage').pressed ? g : null; }).catch(() => null);
   if (!s) note('pastille', 'un clic sur « Publipostage+ » devrait la choisir');
@@ -237,13 +239,21 @@ async function pillProblems(page, t, note, { click }) {
     await click(`[data-app="${app}"]`);
     await page.until(() => { const g = gallery(); return g && g.chips[0].pressed ? g : null; }).catch(() => null);
   }
-  await click('[data-app="automation"]');
-  s = await page.until(() => { const g = gallery(); return g && g.note !== undefined && g.note.includes('Automation+') ? g : null; }).catch(() => null);
-  if (!s) note('pastille grisée', 'un clic sur une app sans modèle devrait dire pourquoi, dans le pied');
-  else {
-    if (s.note !== t('tp.appSoon', { app: 'Automation+' })) note('pastille grisée', `le pied devrait dire « ${t('tp.appSoon', { app: 'Automation+' })} » : « ${s.note} »`);
-    if (!s.chips[0].pressed || s.cards.length !== TOTAL) note('pastille grisée', 'une pastille grisée ne filtre pas : « Toutes les apps » reste choisie');
+  // Automation+ livre aussi son catalogue (avec un type que GFS lui donne, car elle n'a pas de fichier) mais ne sait pas encore ouvrir un modèle : ses cinq cartes sont grisées
+  // « pas encore », et la pastille filtre quand même sur elles.
+  if (!await click('[data-app="automation"]')) return;
+  s = await page.until(() => { const g = gallery(); return g && g.chips.find(chip => chip.app === 'automation').pressed ? g : null; }).catch(() => null);
+  if (!s) note('pastille', 'un clic sur la pastille « automation » devrait la choisir');
+  else if (s.cards.length !== AUTOMATION || s.chips[0].pressed || s.cards.some(card => !card.disabled)) note('pastille', `filtrer sur Automation+ devrait montrer ses ${AUTOMATION} cartes grisées « pas encore » : ${s.cards.length} / ${s.cards.filter(card => card.disabled).length} grisées`);
+  if (await click('.tp-card')) {
+    const first = AUTOMATION_CATALOGUE[0].nom[language];
+    const reason = t('tp.locked', { name: first, reason: t('ex.template.notYet', { app: 'Automation+' }) });
+    s = await page.until(() => { const g = gallery(); return g && g.cards[0].pressed ? g : null; }).catch(() => null);
+    if (!s || s.note !== reason) note('pastille', `un modèle d'Automation+ grisé devrait dire « ${reason} » : « ${s && s.note} »`);
+    else if (s.see.shown || !s.create.disabled) note('pastille', 'un modèle d\'Automation+ grisé n\'a rien à débloquer : « Voir dans Apps » caché, « Créer » éteint');
   }
+  await click('[data-app="automation"]');
+  await page.until(() => { const g = gallery(); return g && g.chips[0].pressed ? g : null; }).catch(() => null);
 }
 
 // « Créer » : à la souris (une carte, puis le bouton), au clavier (flèches, Entrée), Échap sans rien créer, « Fermer ».
@@ -371,5 +381,16 @@ async function lockedProblems(page, language, t, note, { open, close, click, con
   s = await page.until(() => { const g = gallery(); return g && g.note.includes('404') ? g : null; }).catch(() => null);
   if (!s) note('catalogue illisible', 'un clic sur la pastille devrait dire la raison (404)');
   await contrastsAt('la galerie vide');
+  await close();
+  // Une app sans catalogue (Automation+ avant ses modèles) : sa pastille est grisée « bientôt », et un clic dit pourquoi sans filtrer.
+  s = await open('bientot');
+  const soon = s.chips.find(chip => chip.app === 'automation');
+  if (!soon || !soon.disabled || soon.text !== `Automation+${t('tp.soon')}`) note('bientôt', `la pastille d'Automation+ sans catalogue devrait être grisée et dire « ${t('tp.soon')} » : ${JSON.stringify(soon)}`);
+  if (s.cards.length !== TOTAL - AUTOMATION) note('bientôt', `sans le catalogue d'Automation+ la galerie devrait montrer ${TOTAL - AUTOMATION} cartes : ${s.cards.length}`);
+  if (await click('[data-app="automation"]')) {
+    s = await page.until(() => { const g = gallery(); return g && g.note !== undefined && g.note.includes('Automation+') ? g : null; }).catch(() => null);
+    if (!s) note('bientôt', 'un clic sur une app sans modèle devrait dire pourquoi, dans le pied');
+    else if (s.note !== t('tp.appSoon', { app: 'Automation+' }) || !s.chips[0].pressed || s.cards.length !== TOTAL - AUTOMATION) note('bientôt', `le pied devrait dire « ${t('tp.appSoon', { app: 'Automation+' })} » sans filtrer : « ${s.note} » / ${s.cards.length} cartes`);
+  }
   await close();
 }

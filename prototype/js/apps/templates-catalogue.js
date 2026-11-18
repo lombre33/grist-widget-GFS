@@ -17,6 +17,9 @@ const isText = value => typeof value === 'string' && value.trim() !== '';
 // Un texte bilingue (fr et en), d'au plus `max` signes dans chaque langue.
 const isBilingual = (value, max) => isObject(value) && isText(value.fr) && isText(value.en) && value.fr.length <= max && value.en.length <= max;
 
+// Le type que le manifeste donne aux modèles d'une app sans type de fichier (`modeles.type`, contrats 2.2), ou null.
+export const templateTypeOf = manifest => (manifest && manifest.modeles && manifest.modeles.type) || null;
+
 // L'adresse du catalogue d'une app (relative à la page de GFS), ou null quand son manifeste n'en déclare pas.
 export const catalogueUrl = manifest => (manifest && manifest.modeles ? `${TEMPLATES_FOLDER}${manifest.modeles.catalogue}` : null);
 
@@ -52,13 +55,17 @@ function optionsProblem(entry, extensions) {
 // les raisons des autres (un avertissement, jamais une panne : les autres modèles restent). Un catalogue qui n'est pas une liste ne donne aucun modèle.
 export function parseCatalogue(raw, manifest) {
   if (!Array.isArray(raw)) return { models: [], dropped: ['le catalogue n\'est pas une liste'] };
+  const own = templateTypeOf(manifest);
   const types = new Set(((manifest.actions && manifest.actions.ouvrir) || []).filter(type =>
     (manifest.fichiers || []).some(spec => (spec.types || []).some(known => known.valeur === type))));
+  if (own) types.add(own.valeur);
   const extensions = new Set(extensionsOf(manifest).map(item => item.id));
   const seen = new Set();
   const models = [];
   const dropped = [];
-  raw.forEach((entry, index) => {
+  raw.forEach((item, index) => {
+    // une app sans type de fichier ne met pas de `type` dans ses entrées : GFS leur donne celui que son manifeste déclare
+    const entry = own && isObject(item) && item.type === undefined ? { ...item, type: own.valeur } : item;
     const problem = problemWith(entry, types, extensions) || (seen.has(entry.id) ? `id « ${entry.id} » déjà pris` : '');
     if (problem) { dropped.push(`modèle ${index + 1} : ${problem}`); return; }
     seen.add(entry.id);

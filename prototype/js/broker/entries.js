@@ -11,10 +11,12 @@ import { FILES_APP } from '../files/gfs-files.js';
 import { RECEIVED_APP } from '../sharing/received-files.js';
 import { importFormats, acceptsOpening } from '../files/import-file.js';
 import { readersOf, chooseReader } from './reading.js';
-import { thumbUrl } from '../apps/templates-catalogue.js';
+import { thumbUrl, templateTypeOf } from '../apps/templates-catalogue.js';
 
-// Le type du manifeste d'une app (`fichiers[].types[]`) : celui d'un modèle de son catalogue (parseCatalogue ne garde que des types déclarés).
-const typeInfoOf = (manifest, value) => manifest.fichiers.flatMap(spec => spec.types).find(type => type.valeur === value);
+// Le type du manifeste d'une app (`fichiers[].types[]`, ou `modeles.type` pour une app sans fichier) : celui d'un modèle de son catalogue (parseCatalogue ne
+// garde que des types déclarés).
+const typeInfoOf = (manifest, value) => (manifest.fichiers || []).flatMap(spec => spec.types).find(type => type.valeur === value)
+  || [templateTypeOf(manifest)].find(type => type && type.valeur === value);
 
 export class Entries {
   constructor(c) { this.c = c; }

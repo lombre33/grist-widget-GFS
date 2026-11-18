@@ -166,6 +166,24 @@ test('templates : Publipostage+, Form+ et Grist-BI livrent chacune leur catalogu
   assert.ok(noForm.filter(model => model.app !== 'form').every(model => !model.greyed), 'les autres apps ne sont pas touchées');
 });
 
+// Automation+ n'a aucun type de fichier (un automatisme est une ligne de sa table) : son manifeste déclare `modeles.type`, et ses cinq modèles prennent ce type (choix du porteur,
+// 18/11, « L'app demande »). Ils restent grisés « pas encore » tant que l'app ne déclare pas `ouverture.modele`.
+test('templates : les modèles d\'Automation+ (une app sans type de fichier) prennent le type que son manifeste déclare ; grisés « pas encore » tant qu\'elle ne sait pas les ouvrir', () => {
+  const only = ['automation'];
+  const installed = { automation: { extensions: [] } };
+  const french = templatesOf({ installed }, 'fr', only);
+  assert.deepEqual(french.apps.find(app => app.id === 'automation'), { id: 'automation', name: 'Automation+', state: 'ok', reason: '', count: 5 });
+  assert.equal(french.models.length, 5);
+  assert.ok(french.models.every(model => model.app === 'automation' && model.type === 'automatisme' && model.icon === 'bolt' && model.typeLabel === 'Automatisme'
+    && model.family === null && !model.tables), 'le type, son icône et son mot vont ensemble ; aucun modèle ne vient avec des tables');
+  assert.ok(french.models.every(model => model.greyed && model.reason === 'ex.template.notYet {"app":"Automation+"}' && !model.focus), 'sans `ouverture.modele` : « pas encore »');
+  assert.equal(templatesOf({ installed }, 'en', only).models[0].typeLabel, 'Automation');
+  const ready = templatesOf({ installed, patch: { automation: manifest => ({ ...manifest, ouverture: { ...manifest.ouverture, modele: true } }) } }, 'fr', only).models;
+  assert.equal(ready.filter(model => model.greyed).length, 0, 'une fois que l\'app dit qu\'elle ouvre un modèle, rien n\'est grisé');
+  const absent = templatesOf({ installed: {}, patch: { automation: manifest => ({ ...manifest, ouverture: { ...manifest.ouverture, modele: true } }) } }, 'fr', only).models;
+  assert.ok(absent.every(model => model.greyed && model.focus === 'app:automation' && model.reason === 'ex.lockedApp {"app":"Automation+"}'), 'app non installée : sa ligne dans « Apps et extensions »');
+});
+
 test('templates : un catalogue illisible garde la pastille de l\'app, avec son état', () => {
   const { c, entries } = host({ installed: { publipostage: { extensions: [] } } });
   const manifests = c.manifests();

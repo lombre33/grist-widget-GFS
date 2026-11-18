@@ -327,16 +327,18 @@ async function mount() {
     win.open();
   };
   // « Nouveau > Depuis un modèle » (test/modeles-firefox.mjs) : le vrai contrôle, la vraie fenêtre et les vraies `Entries` (js/broker/entries.js) sur les quatre manifestes de GFS et les vrais
-  // catalogues de modèles (Publipostage+ 22, Form+ 5, Grist-BI 3, leurs vignettes). `variant` : 'pret' (les trois apps savent ouvrir un modèle, leurs extensions sont cochées), 'attente' (sans
-  // `ouverture.modele`), 'extension' (le graphique n'est pas coché), 'absente' (l'app n'est pas installée), 'illisible' (le catalogue ne se lit pas). `window.__templatesLog` note ce que la fenêtre
+  // catalogues de modèles (Publipostage+ 22, Automation+ 5, Form+ 5, Grist-BI 3, leurs vignettes). `variant` : 'pret' (les apps savent ouvrir un modèle comme leur manifeste le dit, leurs extensions sont cochées), 'attente' (sans
+  // `ouverture.modele`), 'bientot' (Automation+ sans catalogue), 'extension' (le graphique n'est pas coché), 'absente' (l'app n'est pas installée), 'illisible' (le catalogue ne se lit pas). `window.__templatesLog` note ce que la fenêtre
   // rend au contrôleur (`created` : « app/modèle » ; `unlocked` : le grisé débloqué) ; `window.__templatesLanguage(lang)` change la langue fenêtre ouverte, comme le contrôleur de GFS.
   window.__templates = async (variant = 'pret') => {
     const manifests = await Promise.all(['publipostage', 'automation', 'form', 'bi'].map(async id => (await fetch(`/manifestes/${id}.json`)).json()));
-    // Les manifestes sont ceux de GFS : trois apps déclarent un catalogue (`modeles`) et savent ouvrir un modèle ; 'attente' ôte ce savoir-faire aux trois (le grisé « pas encore »).
-    for (const manifest of manifests) if (manifest.modeles) manifest.ouverture = { ...manifest.ouverture, modele: variant !== 'attente' };
+    // Les manifestes sont ceux de GFS : quatre apps déclarent un catalogue (`modeles`), trois savent ouvrir un modèle (Automation+ pas encore : ses cinq modèles sont grisés « pas encore »
+    // dans toutes les variantes) ; 'attente' ôte ce savoir-faire aux trois ; 'bientot' ôte son catalogue à Automation+ (la pastille grisée « bientôt »).
+    for (const manifest of manifests) if (manifest.ouverture && manifest.ouverture.modele) manifest.ouverture = { ...manifest.ouverture, modele: variant !== 'attente' };
+    if (variant === 'bientot') delete manifests.find(manifest => manifest.id === 'automation').modeles;
     const catalogue = readCatalogue(await (await fetch('/bibliotheques/catalogue.json')).json());
     const apps = variant === 'absente' ? {} : { publipostage: { extensions: variant === 'extension' ? ['diapositives'] : ['diapositives', 'graphique'], modes: {} },
-      form: { extensions: [], modes: {} }, bi: { extensions: [], modes: {} } };
+      automation: { extensions: [], modes: {} }, form: { extensions: [], modes: {} }, bi: { extensions: [], modes: {} } };
     const byId = new Map(manifests.map(manifest => [manifest.id, manifest]));
     let current = { i18n, lang: language };
     const host = {

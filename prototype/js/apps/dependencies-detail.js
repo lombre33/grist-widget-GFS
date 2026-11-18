@@ -8,6 +8,7 @@ import { icon } from '../ui/icons.js';
 import { formatBytes } from '../weight/weight.js';
 import { safeLink } from './dependencies-model.js';
 import { verdict } from './dependencies-audit.js';
+import { sourceBody } from './dependencies-source-view.js';
 
 // Un lien qui s'ouvre dans un nouvel onglet, sans rien transmettre de la page.
 export function externalLink(t, { href, what, name, text, cls = 'dp-link' }) {
@@ -19,7 +20,8 @@ const fact = (title, ...content) => h('div', { class: 'dp-fact' }, h('dt', null,
 function usersFact(t, row) {
   if (!row.uses.length) return fact(t('dep.d.users'), t('dep.d.users.none'));
   return fact(t('dep.d.users'), h('ul', { class: 'dp-lines' }, ...row.uses.map(use =>
-    h('li', null, t('dep.d.use', { app: use.appName, what: use.what, state: t(`dep.state.${use.state}`).toLowerCase() })))));
+    h('li', null, t('dep.d.use', { app: use.appName, what: use.what, state: t(`dep.state.${use.state}`).toLowerCase(),
+      source: t(use.unit && use.unit.mode === 'vendorise' ? 'dep.tag.copy' : 'dep.tag.cdn') })))));
 }
 
 function filesFact(t, row, locale) {
@@ -74,12 +76,13 @@ export function integrityText(t, state) {
 }
 
 // Rend { node, setIntegrity(state) }. `verify()` : le geste de la personne (le bouton « Vérifier la copie ») ; `state` : ce qu'une vérification déjà faite a
-// rendu.
-export function buildDetail({ t, locale, row, surveyed, state, verify }) {
+// rendu ; `blocked` : la raison pour laquelle aucun choix ne s'écrit, ou null ; `pick(mode)` : le choix de la source (js/apps/dependencies-source-view.js).
+export function buildDetail({ t, locale, row, surveyed, state, verify, blocked, pick }) {
   const status = h('span', { class: 'dp-integrity', role: 'status', 'aria-live': 'polite' }, integrityText(t, state));
   const button = h('button', { type: 'button', class: 'btn sm dp-verify', dataset: { fk: `dep-verify-${row.key}` }, on: { click: verify } }, icon('check'),
     t('dep.d.verify'));
-  const facts = [usersFact(t, row), filesFact(t, row, locale), fact(t('dep.d.integrity'), button, status), addressesFact(t, row),
+  const facts = [usersFact(t, row), fact(t('dep.d.source'), ...sourceBody({ t, row, blocked, pick })), filesFact(t, row, locale),
+    fact(t('dep.d.integrity'), button, status), addressesFact(t, row),
     advisoriesFact(t, row, surveyed),
     licenceFact(t, row), linksFact(t, row)].filter(Boolean);
   const setIntegrity = next => { status.textContent = integrityText(t, next); button.disabled = next === 'running'; };

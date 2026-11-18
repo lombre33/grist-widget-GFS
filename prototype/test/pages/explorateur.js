@@ -52,6 +52,9 @@ import { openShareReceive } from '/js/sharing/share-receive-window.js';
 import { openWeight } from '/js/weight/weight-window.js';
 import { openDependencies } from '/js/apps/dependencies-window.js';
 import { dependencyRows } from '/js/apps/dependencies-model.js';
+import { allUnits } from '/js/apps/dependencies-source.js';
+import { newSerial } from '/js/apps/dependencies-export.js';
+import { AppsState } from '/js/apps/apps-state.js';
 import { verifyCopy } from '/js/apps/dependencies-audit.js';
 import { ModulesWindow } from '/js/apps/modules-window.js';
 import { WorkWindow } from '/js/apps/work-window.js';
@@ -621,22 +624,34 @@ async function mount() {
     window.__weightEstimate = estimate;
     return openWeight({ container: stage, t: i18n.t, locale, inertTargets: () => [explorer.root], estimate, load: (update, cancelled) => readWeight(fakeSql(window.__weightKind), update, cancelled) });
   };
-  // La fenêtre « Dépendances » (js/apps/dependencies-window.js, test/dependances-firefox.mjs) : la vraie fenêtre, le vrai catalogue et le vrai relevé de GFS (servis par la page d'essai) et le vrai audit des copies
-  // (les fichiers de vendor/, relus par la page). Publipostage+ est installé, son extension « Graphiques » cochée, sa fonction « Export PDF » en copie figée : les lignes d'Écriture en direct, d'ExcelJS… restent « au
-  // catalogue ». `window.__tamper` (un bout de chemin) change les octets que la page lit pour ce fichier : l'audit doit alors dire que la copie ne correspond pas.
-  const DEPENDENCY_MODULES = { items: [
-    { kind: 'app', id: 'publipostage', ok: true, installed: true, manifest: { nom: { fr: 'Publipostage+', en: 'Mail merge+' } },
-      natives: [{ group: { id: 'pdf', nom: { fr: 'Export PDF', en: 'PDF export' } }, mode: 'vendorise', inApp: false, libraries: [{ id: 'pdfmake', version: '0.2.7' }, { id: 'pdfmake-polices', version: '0.2.7' }] }] },
-    { kind: 'ext', app: 'publipostage', appInstalled: true, checked: true, extension: { id: 'graphique', nom: { fr: 'Graphiques', en: 'Charts' } }, libraries: [{ id: 'plotly', version: '2.13.2' }, { id: 'echarts', version: '6.1.0' }] },
-    { kind: 'ext', app: 'publipostage', appInstalled: true, checked: false, extension: { id: 'edition-live', nom: { fr: 'Écriture en direct', en: 'Live editing' } }, libraries: [{ id: 'edition-live', version: '1.0.0' }] },
-  ] };
-  window.__dependencyModules = DEPENDENCY_MODULES;
+  // La fenêtre « Dépendances » (js/apps/dependencies-window.js, test/dependances-firefox.mjs) : la vraie fenêtre, le vrai catalogue et le vrai relevé de GFS (servis par la page d'essai), le vrai audit des copies
+  // (les fichiers de vendor/, relus par la page) et les vraies apps : le vrai manifeste de Publipostage+ et le vrai `AppsState`, dont la table du document est une mémoire (`window.__dependencyMemory`). Publipostage+ est
+  // installé, ses extensions « Graphique » et « Lecture de PDF » cochées : les lignes d'Écriture en direct, d'ExcelJS… restent « au catalogue ». `window.__tamper` (un bout de chemin) change les octets que la page lit
+  // pour ce fichier : l'audit doit alors dire que la copie ne correspond pas. `window.__dependencyBlocked` (un texte) rend les choix impossibles ; `window.__saved` garde les rapports que la page aurait offerts.
+  const docTable = { value: { publipostage: { extensions: ['graphique', 'lecture-pdf'] } }, writes: [] };
+  const appsState = new AppsState({ onChange: () => {}, store: { read: async () => ({ raw: structuredClone(docTable.value) }),
+    update: async mutate => { docTable.value = mutate(structuredClone(docTable.value)); docTable.writes.push(structuredClone(docTable.value)); return structuredClone(docTable.value); } } });
+  window.__dependencyMemory = docTable;
+  window.__saved = [];
+  window.__dependencyBlocked = null;
+  const dependencyData = Promise.all(['/bibliotheques/catalogue.json', '/bibliotheques/releve.json', '/manifestes/publipostage.json'].map(path => fetch(path).then(response => response.json()))).then(
+    async ([catalogueJson, releve, manifest]) => {
+      const catalogue = readCatalogue(catalogueJson);
+      appsState.setApps([{ app: { id: 'publipostage' }, manifest, ok: true, errors: [] }]);
+      appsState.setCatalogue(catalogue);
+      await appsState.load();
+      return { catalogue, releve };
+    });
+  window.__dependencyModules = () => dependencyData.then(() => appsState.model());
   window.__dependencies = async () => {
-    const [catalogueJson, releve] = await Promise.all(['/bibliotheques/catalogue.json', '/bibliotheques/releve.json'].map(path => fetch(path).then(response => response.json())));
-    const rows = dependencyRows({ catalogue: readCatalogue(catalogueJson), releve, modules: DEPENDENCY_MODULES, lang: language });
+    const { catalogue, releve } = await dependencyData;
     const readBytes = async address => (window.__tamper && address.includes(window.__tamper) ? new Uint8Array([1, 2, 3]).buffer : (await fetch(address)).arrayBuffer());
-    return openDependencies({ container: stage, t: i18n.t, locale, inertTargets: () => [explorer.root], rows, surveyed: releve.releve,
-      verify: row => Promise.all(row.files.map(file => verifyCopy(file, { readBytes, base: location.href }))) });
+    return openDependencies({ container: stage, t: i18n.t, locale, lang: language, inertTargets: () => [explorer.root], surveyed: releve.releve,
+      rows: () => dependencyRows({ catalogue, releve, modules: appsState.model(), lang: language }), units: () => allUnits(appsState.model(), language),
+      verify: row => Promise.all(row.files.map(file => verifyCopy(file, { readBytes, base: location.href }))), blocked: () => window.__dependencyBlocked,
+      apply: (plan, mode) => Promise.all(plan.map(({ app, extensions, natives }) => appsState.setSources(app, { extensions, natives }, mode))),
+      ask: opts => ask({ ...opts, container: stage, inertTargets: () => [explorer.root] }), now: () => new Date('2026-11-18T10:30:00Z'), uuid: () => newSerial(),
+      save: (name, text) => { window.__saved.push({ name, text }); } });
   };
   show();
   explorer.open();

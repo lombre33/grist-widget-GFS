@@ -523,7 +523,9 @@ export class GfsController {
     this.dependencies ??= new DependenciesControl({ container: this.$('stage'), inertTargets: this.inertTargets, t: this.t, locale: () => this.locale,
       lang: () => this.lang,
       base: this.doc.baseURI, model: () => this.registry.model(), catalogue: () => this.registry.catalogue, readJson,
-      readBytes: async address => (await readFile(address)).arrayBuffer() });
+      readBytes: async address => (await readFile(address)).arrayBuffer(), blocked: () => this.#writeBlock(), ask: opts => this.ask(opts), doc: this.doc,
+      apply: (plan, mode) => Promise.all(plan.map(({ app, extensions, natives }) =>
+        this.#saved(this.registry.setSources(app, { extensions, natives }, mode)))) });
     void this.dependencies.open();
   }
 
@@ -537,12 +539,17 @@ export class GfsController {
     return new Promise(resolve => this.#modulesWaiters.push(resolve));
   }
 
-  #buildModules() {
-    const change = pending => pending.catch(error => {
+  // L'écriture d'un choix sur les apps : un refus (la table, une règle d'accès) se dit à la personne, il ne casse rien (l'état revient à ce que la table dit).
+  #saved(pending) {
+    return pending.catch(error => {
       if (error instanceof TableDeclined) { this.notice(this.t('table.declined')); return; }
       console.error('GFS : enregistrement des apps impossible', error);
       this.notice(this.t('gfs.settingsFailed', { reason: String(error && error.message) }));
     });
+  }
+
+  #buildModules() {
+    const change = pending => this.#saved(pending);
     return new ModulesWindow({
       container: this.$('stage'), i18n: this.i18n, locale: this.locale, model: () => this.registry.model(), blocked: () => this.#writeBlock(),
       inertTargets: this.inertTargets,

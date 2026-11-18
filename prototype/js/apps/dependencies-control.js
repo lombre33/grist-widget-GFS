@@ -24,7 +24,8 @@ export class DependenciesControl {
   #opened = false;
 
   // opts : { container, inertTargets(), t, locale() -> 'fr-FR', lang() -> 'fr', base (l'adresse de GFS), model() -> modulesModel, catalogue() -> readCatalogue,
-  //   readJson(chemin), readBytes(adresse) -> Promise<ArrayBuffer>, blocked() -> la raison pour laquelle rien ne s'écrit (texte), ou null,
+  //   readJson(chemin), relay() -> ce que le relais des appels bloqués a vu (js/broker/security-relay.js, `snapshot`), readBytes(adresse) ->
+  //   Promise<ArrayBuffer>, blocked() -> la raison pour laquelle rien ne s'écrit (texte), ou null,
   //   apply(plan, mode) -> Promise (écrit les choix de source), ask(opts) -> Promise<booléen>, doc (la page : l'export s'y offre au téléchargement) }
   constructor(opts) { this.#opts = opts; }
 
@@ -41,7 +42,8 @@ export class DependenciesControl {
       await openDependencies({ container, inertTargets, t, locale: locale(), lang: lang(),
         rows: () => dependencyRows({ catalogue: catalogue(), releve, modules: model(), lang: lang() }),
         carried: rows => carriedOf({ modules: model(), lang: lang(), rows }),
-        security: () => securityOf({ report, modules: model(), lang: lang() }), checkCarried: report ? entry => carriedCheck(report, entry) : null,
+        security: () => securityOf({ report, modules: model(), lang: lang(), relay: this.#opts.relay ? this.#opts.relay() : null }),
+          checkCarried: report ? entry => carriedCheck(report, entry) : null,
         surveyed: releve ? releve.releve : null, verify: row => this.#verify(row), blocked, apply, ask, units: () => allUnits(model(), lang()),
           now: () => new Date(),
         uuid: () => newSerial(), save: (name, text) => saveText(doc, name, text) });

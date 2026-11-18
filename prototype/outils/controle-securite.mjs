@@ -20,7 +20,7 @@ import { ROOT } from './bibliotheques.mjs';
 import { integrity } from '../kit/outils/bibliotheques/primitives.mjs';
 import { registryNet, surveyPackage } from './releve-dependances.mjs';
 import { CATALOGUE } from '../js/apps/catalogue.js';
-import { readPage, scanCode, parseState, CDN_HOSTS } from '../js/apps/security-page.js';
+import { readPage, scanCode, scanRelay, parseState, CDN_HOSTS } from '../js/apps/security-page.js';
 import { gradeApp, foundHosts, RULES } from '../js/apps/security-rules.js';
 import { gradeS1, gradeS2, gradeS3, gradeS4 } from '../js/apps/security-policy.js';
 
@@ -105,7 +105,7 @@ export async function controlApp(app, env, previous = null) {
   const libraries = await declaredLibraries(app.portees, env);
   const urls = [...new Set([...(page ? page.ressources.map(resource => resource.url) : []), ...scanned])].sort();
   const prints = await fingerprints(urls, previous && previous.empreintes, env);
-  const graded = gradeApp({ page, scanned, portees: app.portees, state, dependabot, securityMd, advisories: libraries.advisories, changed: prints.changed, codeRead: code.lu, served: env.served || [] });
+  const graded = gradeApp({ page, scanned, portees: app.portees, state, dependabot, securityMd, advisories: libraries.advisories, changed: prints.changed, codeRead: code.lu, relayInCode: scanRelay(code.files), served: env.served || [] });
   const count = genre => (page ? page.ressources.filter(resource => resource.genre === genre).length : 0);
   return {
     depot: app.repo, reference: app.commit, entree: app.entree,

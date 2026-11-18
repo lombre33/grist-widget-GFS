@@ -6,8 +6,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parsePolicy, sourcesOf, kindOf, gradeS1, gradeS2, gradeS3, gradeS4, permitted } from '../js/apps/security-policy.js';
-import { readPage, scanCode, parseState } from '../js/apps/security-page.js';
-import { gradeApp, gradeS5, gradeS7, gradeS9, RULES } from '../js/apps/security-rules.js';
+import { readPage, scanCode, scanRelay, parseState } from '../js/apps/security-page.js';
+import { gradeApp, gradeS5, gradeS7, gradeS8, gradeS9, RULES } from '../js/apps/security-rules.js';
 import { controle, checkSecurite, fingerprintOf, SECURITE_FILE } from '../outils/controle-securite.mjs';
 import { ROOT } from '../outils/bibliotheques.mjs';
 
@@ -108,7 +108,7 @@ test('readPage : les politiques (guillemets doubles ou simples, plusieurs balise
     ['script', 'https://cdn.fr/a.js', true], ['script', 'https://cdn.fr/b.js', false], ['feuille', 'https://cdn.fr/c.css', false],
     ['carte', 'https://esm.sh/x@1.0.0', false], ['carte', 'https://esm.sh/w@2.0.0', false]]);
   assert.equal(page.enLigne, 2);
-  assert.deepEqual(readPage(''), { politiques: [], ressources: [], enLigne: 0 });
+  assert.deepEqual(readPage(''), { politiques: [], ressources: [], enLigne: 0, relais: false });
 });
 
 test('scanCode : seulement les adresses des CDN connus, sans la ponctuation qui les suit ; une adresse de documentation n\'en est pas une', () => {
@@ -155,7 +155,26 @@ test('S7 et S9 : pas de dependabot.yml, un avis grave publié, un avis moindre, 
   assert.deepEqual([true, false, null].map(value => gradeS9(value).etat), ['tenue', 'a-noter', 'non-verifiable']);
 });
 
-test('gradeApp : neuf règles, S6 déclarée par l\'app, S8 sans moyen pour l\'instant ; une page illisible rend S1 à S5 non vérifiables ; ce que l\'app dit se garde à côté', () => {
+test('S8 : le relais des appels bloqués du kit se lit dans la page ou le code ; une page seule ne dit pas non ; le code lu sans relais est « à noter »', () => {
+  const plain = readPage(html(AUTOMATION, `<script src="${GRIST_API}"></script>`));
+  const relayed = readPage(html(AUTOMATION, `<script type="module" src="kit/js/violations-start.js"></script>`));
+  assert.equal(plain.relais, false);
+  assert.equal(relayed.relais, true);
+  assert.deepEqual(gradeS8({ page: relayed }), { etat: 'tenue', motifs: [] });
+  assert.equal(gradeS8({ page: plain }).motifs[0].code, 'relais-a-lusage', 'page seule : le module d\'entrée peut le démarrer');
+  assert.equal(gradeS8({ page: plain }).etat, 'non-verifiable');
+  assert.deepEqual(gradeS8({ page: plain, relayInCode: true }).etat, 'tenue');
+  const missing = gradeS8({ page: plain, codeRead: true });
+  assert.equal(missing.etat, 'a-noter', 'attendue, pas exigée (cahier 3.2.1)');
+  assert.equal(missing.motifs[0].code, 'sans-relais');
+  assert.equal(gradeS8({ page: null }).motifs[0].code, 'page-illisible');
+  assert.equal(scanRelay({ 'a.js': "import { Violations } from './kit/js/violations.js'; Violations.start();" }), true);
+  assert.equal(scanRelay({ 'a.js': 'createViolations({ link })' }), true);
+  assert.equal(scanRelay({ 'a.js': "import { GfsLink } from './kit/js/gfs-link.js';" }), false);
+  assert.equal(scanRelay({}), false);
+});
+
+test('gradeApp : neuf règles, S6 déclarée par l\'app, S8 « à l\'usage » tant que le code n\'est pas lu ; une page illisible rend S1 à S5 non vérifiables ; ce que l\'app dit se garde à côté', () => {
   const page = readPage(html(AUTOMATION, `<script src="${GRIST_API}"></script>`));
   const state = parseState('## Sécurité\n- S1 · tenue · ok\n');
   const graded = gradeApp({ page, portees: [], state, dependabot: true, securityMd: true, advisories: [] });

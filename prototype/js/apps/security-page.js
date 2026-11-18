@@ -31,6 +31,9 @@ const importMapUrls = html => {
 };
 
 // Une page : { politiques: [{ directive: [sources] }], ressources: [{ genre: 'script' | 'feuille' | 'carte', url, empreinte }], enLigne: <scripts en ligne> }.
+// Le relais des appels bloqués du kit (kit 0.25.0, js/violations*.js) : un module importé ou un appel écrit dans la page ou le code (cahier 3.2.2, S8).
+const RELAY = /violations(?:-start|-pose)?\.js|\bcreateViolations\b|\bViolations\.start\b/;
+
 export function readPage(html) {
   const policies = [];
   const resources = [];
@@ -45,7 +48,7 @@ export function readPage(html) {
   for (const url of importMapUrls(html)) resources.push({ genre: 'carte', url, empreinte: false });
   const inline = [...String(html || '').matchAll(SCRIPT_BLOCK)].filter(([, attrs, body]) => !/\bsrc\s*=/.test(attrs) && body.trim() !== '' &&
     !/importmap/.test(attrs)).length;
-  return { politiques: policies, ressources: resources, enLigne: inline };
+  return { politiques: policies, ressources: resources, enLigne: inline, relais: RELAY.test(String(html || '')) };
 }
 
 // Les adresses de CDN écrites dans le code d'une app (`files` : { chemin: texte }) : celles-là seulement, le reste d'un code est plein d'adresses de
@@ -55,6 +58,9 @@ export function scanCode(files) {
   for (const text of Object.values(files)) for (const [url] of String(text).matchAll(CDN_URL)) urls.add(url.replace(/[.,;:]+$/, ''));
   return [...urls].sort();
 }
+
+// Le code de l'app (`files` : { chemin: texte }) démarre-t-il le relais des appels bloqués ?
+export const scanRelay = files => Object.values(files).some(text => RELAY.test(String(text)));
 
 const STATES = [[/^non\s+tenue/i, 'non-tenue'], [/^en\s+cours/i, 'en-cours'], [/^tenue/i, 'tenue']];
 const SECTION = /^##\s+(.+?)\s*$/;

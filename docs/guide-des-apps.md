@@ -371,8 +371,10 @@ GFS ne bloque rien : il montre l'écart.
    dans le dépôt. Une fonction qui envoie quelque chose le dit à la personne avant (comme la publication d'un formulaire, règle 14). GFS ne peut pas le vérifier : tu le déclares, et il montre ce que ta politique permettrait d'atteindre.
 7. **S7 · Dépendances suivies** : Dependabot (ou un outil équivalent) actif sur le dépôt, `.github/dependabot.yml` à la racine ; une montée de version se dit dans « Changements qui touchent GFS » de ton `GFS-ETAT.md` ;
    une version qui a un avis de sécurité publié se monte avant le reste (cahier 3.2, « Montée de version »).
-8. **S8 · Relayer les appels bloqués** (attendue) : ton app dit à GFS, par le kit, quand sa politique bloque un appel, et GFS l'affiche. Le moyen arrive avec une version du kit, annoncée par une consigne ; tant
-   qu'il n'est pas là, rien à faire. Ce relais **informe, il ne protège pas** : un code compromis peut le taire.
+8. **S8 · Relayer les appels bloqués** (attendue) : ton app dit à GFS, par le kit, quand sa politique bloque un appel, et GFS l'affiche (contrats 5.4, point 14). Avec le kit 0.25.0 ou après, **une ligne en tête
+   du module d'entrée** : `import './kit/js/violations-start.js';` (elle démarre le relais avant que les autres modules s'évaluent : une violation d'avant n'est pas vue) ; ou `Violations.start()` de
+   `js/violations.js`. Une app qui a son propre lien avec GFS (Publipostage+) prend `createViolations({ link })` de `js/violations-pose.js`, où `link` sait `hosted` et `tell(nom, args)`. Seul le **nom
+   d'hôte** part, jamais le chemin ni les paramètres. Ce relais **informe, il ne protège pas** : un code compromis peut le taire, et un appel que ta politique permet ne lève aucun événement.
 9. **S9 · `SECURITY.md`** (attendue) à la racine du dépôt : où signaler une faille, en privé (une adresse ou le signalement privé de GitHub).
 
 **Gabarit de politique** (à partir de lui, rouvre ce qui manque, avec sa raison) :

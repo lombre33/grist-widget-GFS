@@ -1,0 +1,27 @@
+{
+  "contrat": 0,
+  "id": "sonde-zv",
+  "nom": {
+    "fr": "Sonde ZV",
+    "en": "Probe ZV"
+  },
+  "version": "0.0.1",
+  "texte": {
+    "fr": "Une app écrite avec le kit commun (Violations.start) qui dit à GFS les appels que sa politique de sécurité bloque",
+    "en": "An app written with the common kit (Violations.start) that tells GFS the calls its security policy blocks"
+  },
+  "icone": "doc",
+  "entree": "index.html",
+  "tables": {
+    "prefixe": "SondeZv_"
+  },
+  "reglages": [],
+  "permissions": {
+    "acces": "none"
+  },
+  "extensions": [],
+  "actions": {
+    "ouvrir": [],
+    "choisir": []
+  }
+}

@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Sonde ZV</title>
+<!-- Politique de l'app sonde ZV : celle que demande la règle S2/S3 du cahier de GFS (rien d'ouvert, aucun appel sortant : `default-src 'none'`, `connect-src 'none'`), et pas `'unsafe-eval'` : un `eval` doit être bloqué.
+     Le kit est servi par le labo sous /prototype/kit/ (le sous-module de GFS), même origine que la page. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'">
+</head>
+<body>
+<h1>Sonde ZV : le kit relaie les appels que sa politique bloque</h1>
+<p>Ce que le navigateur a levé dans ce cadre est écrit dans <code>body[data-sonde]</code>, que le labo lit.</p>
+<script type="module" src="zv.js"></script>
+</body>
+</html>

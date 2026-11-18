@@ -59,7 +59,7 @@ export function openDependencies(opts) {
   const date = opts.surveyed ? formatDate(opts.surveyed, locale) : '';
   const empty = h('p', { class: 'dp-empty', role: 'status', hidden: true }, t('dep.none'));
   const head = buildHead(t, state.rows, state, { onFilter: filter => { state.filter = filter; render(); }, onSearch: () => render(),
-    onView: view => { state.view = view; render(); } });
+    onView: view => { state.view = view; if (opts.security) state.security = opts.security(); render(); } });
   const security = buildSecurity({ t, locale });
   let done = () => {};
   let foot = null;
@@ -96,7 +96,7 @@ export function openDependencies(opts) {
     needles = words(head.search.value);
     const onSecurity = state.view === 'security';
     for (const button of head.views) button.setAttribute('aria-pressed', String(button.dataset.view === state.view));
-    head.views[1].querySelector('.dp-count').textContent = state.security ? String(state.security.problems) : '—';
+    head.views[1].querySelector('.dp-count').textContent = state.security ? String(state.security.attention) : '—';
     for (const node of [head.bar, cols, list.node, appsNote]) node.hidden = onSecurity;
     security.node.hidden = !onSecurity;
     if (onSecurity) { empty.hidden = true; security.render(state.security); return; }

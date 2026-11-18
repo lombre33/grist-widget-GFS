@@ -62,6 +62,14 @@ export function gradeS7({ dependabot, advisories = null }) {
   return result(reasons);
 }
 
+// S8 : l'app démarre le relais des appels bloqués du kit (kit 0.25.0). Lu dans la page ou le code ; une page seule ne dit pas non (l'entrée peut charger un
+//   module qui le démarre) : GFS l'apprend alors à l'usage, quand l'app dit « relais » (js/broker/security-relay.js).
+export function gradeS8({ page, relayInCode = false, codeRead = false }) {
+  if (!page) return unverifiable('page-illisible');
+  if (page.relais || relayInCode) return { etat: 'tenue', motifs: [] };
+  return codeRead ? result([{ code: 'sans-relais', gravite: 'a-noter' }]) : unverifiable('relais-a-lusage');
+}
+
 // S9 : un `SECURITY.md` à la racine.
 export const gradeS9 = securityMd => (securityMd === true ? { etat: 'tenue', motifs: [] }
   : securityMd === false ? { etat: 'a-noter', motifs: [{ code: 'sans-security-md', gravite: 'a-noter' }] } : unverifiable('security-md-illisible'));
@@ -75,7 +83,7 @@ export function gradeApp(input) {
   const rules = {
     S1: unread || gradeS1(policies), S2: unread || gradeS2(policies), S3: unread ||
       gradeS3(policies, state && state.adresses !== null ? { hosts: state.adresses, serveurGrist: state.serveurGrist } : null),
-    S4: unread || gradeS4(policies), S5: unread || gradeS5(input), S6: unverifiable('declaree'), S7: gradeS7(input), S8: unverifiable('kit-sans-relais'),
+    S4: unread || gradeS4(policies), S5: unread || gradeS5(input), S6: unverifiable('declaree'), S7: gradeS7(input), S8: gradeS8(input),
       S9: gradeS9(input.securityMd),
   };
   return { regles: rules, permis: page ? permitted(policies) : null, declaration: state ? state.securite : null };

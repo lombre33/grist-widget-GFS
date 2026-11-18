@@ -49,6 +49,11 @@ function state() {
       items: [...block.querySelectorAll('.dp-item')].map(li => ({ key: li.dataset.key, host: t(li.querySelector('.dp-host').firstChild), sub: t(li.querySelector('.dp-host .dp-sub')),
         facts: [...li.querySelectorAll('.dp-detail .dp-fact')].map(fact => ({ title: t(fact.querySelector('dt')), body: t(fact.querySelector('dd')) })),
         clipped: [...li.querySelectorAll('.dp-row *')].filter(cut).length })) })),
+    alertsBox: (() => { const box = modal.querySelector('.dp-sec-alertbox'); return box ? { count: box.dataset.alerts, title: t(box.querySelector('h3')), chip: t(box.querySelector('.dp-group-head .dp-chip')), text: t(box) } : null; })(),
+    alerts: [...modal.querySelectorAll('.dp-sec-alert')].map(li => ({ app: li.dataset.app, directive: li.dataset.directive, chip: t(li.querySelector('.dp-chip')), icon: Boolean(li.querySelector('.dp-chip svg')),
+      name: t(li.querySelector('strong')), text: t(li.querySelector('.dp-sec-reason')), times: t(li.querySelector('.dp-says')), height: Math.round(li.getBoundingClientRect().height),
+      wide: over(li) || [...li.querySelectorAll('*')].some(over) || li.scrollWidth > li.clientWidth + 1, links: li.querySelectorAll('a, img').length })),
+    relayLines: apps.map(app => ({ id: app.id, s8: (app.rules.find(rule => rule.id === 'S8') || { reasons: [] }).reasons.at(-1) || null })),
     focus: active && active.dataset ? active.dataset.fk || null : null,
     inPage: box.left >= 0 && box.top >= 0 && box.right <= window.innerWidth + 1 && box.bottom <= window.innerHeight + 1, size: [Math.round(box.width), Math.round(box.height)],
     hscroll: body.scrollWidth > body.clientWidth + 1, scrolls: body.scrollHeight > body.clientHeight + 1,
@@ -152,6 +157,38 @@ export async function securiteProblems(page, language, tag) {
     const unchecked = dash.modal.apps.filter(app => !app.rules.length);
     if (unchecked.some(app => !app.line || !app.line.includes(t('sec.app.unchecked')))) run.note('une app non contrôlée', 'une app sans contrôle devait le dire');
 
+    // 4b. Les alertes relayées par les apps (kit 0.25.0, contrats 5.4 point 14) : sans alerte, la phrase qui dit pourquoi cela ne prouve rien ; avec, une ligne par alerte (nom de l'app, directive, cible en mots,
+    // compte et heure), rien de cliquable, le relais actif dit dans la section de l'app, le compte du bouton les ajoute aux règles non tenues.
+    const none = dash.modal.alertsBox;
+    if (!none || none.count !== '0' || !none.text.includes(t('sec.alerts.none'))) run.note('les alertes : aucune', `sans alerte, la fenêtre devait dire « ${t('sec.alerts.none')} » (${none && none.text})`);
+    const relay = (cible, directive = 'connect-src', source = 'app', times = 1) => ({ app: 'publipostage', directive, cible, source, disposition: 'enforce', times, first: '2026-11-18T10:02:00.000Z', last: '2026-11-18T10:02:00.000Z' });
+    await page.run(alertsData => { window.__relay = alertsData; }, { relays: { publipostage: { kit: '0.25.0', at: '2026-11-18T10:00:00.000Z' } },
+      alerts: [relay('evil.example'), relay('inline', 'script-src-elem', 'esm.sh', 12), relay('autre', 'img-src', 'inconnue')] });
+    await page.click(...await page.run(buttonAt, '[data-fk="dep-view-libs"]'));
+    await page.click(...await page.run(buttonAt, '[data-fk="dep-view-security"]'));
+    const warned = await expect('les alertes', 'trois alertes devaient se montrer', s => s.modal && s.modal.alerts.length === 3);
+    if (warned.modal && warned.modal.alerts.length === 3) {
+      const [first, second, third] = warned.modal.alerts;
+      if (warned.modal.alertsBox.count !== '3' || warned.modal.alertsBox.chip !== t('sec.alerts.count', { n: 3 })) run.note('les alertes : le compte', `l'en-tête devait compter 3 alertes (${warned.modal.alertsBox.chip})`);
+      if (first.chip !== t('sec.alert.chip') || !first.icon || first.name !== 'Publipostage+') run.note('une alerte', `une alerte devait dire « ${t('sec.alert.chip')} » avec une icône et le nom de l'app (${first.chip} | ${first.name})`);
+      const want = [t('sec.alert.line', { directive: 'connect-src', target: 'evil.example', by: t('sec.alert.by.app') }),
+        t('sec.alert.line', { directive: 'script-src-elem', target: t('sec.alert.kw.inline'), by: t('sec.alert.by.host', { host: 'esm.sh' }) }),
+        t('sec.alert.line', { directive: 'img-src', target: t('sec.alert.kw.autre'), by: '' })].map(line => line.replace(/\s+/g, ' ').replace(/ ([.,])/g, '$1'));
+      [first, second, third].forEach((alert, index) => { if (alert.text !== want[index]) run.note('le texte d\'une alerte', `l'alerte ${index + 1} devait dire « ${want[index]} » (${alert.text})`); });
+      if (!second.times.includes(t('sec.alert.times', { n: 12, time: '' }).split(',')[0])) run.note('le compte d\'une alerte', `l'alerte 2 devait dire « 12 fois » (${second.times})`);
+      for (const alert of warned.modal.alerts) {
+        if (alert.links) run.note('les alertes : liens', 'une alerte ne devait offrir ni lien ni image (du texte seulement)');
+        if (alert.wide || alert.height < 30) run.note('texte coupé', `une alerte coupe ou déborde (${alert.height} px)`);
+      }
+      if (/\{|undefined|sec\./.test(warned.modal.alertsBox.text)) run.note('un texte non rempli', 'les alertes laissent voir une clé ou un modèle de phrase');
+      const s8 = warned.modal.relayLines.find(line => line.id === 'publipostage');
+      if (!s8 || !s8.s8 || !s8.s8.startsWith(t('sec.relay.on', { kit: '0.25.0', time: '' }).split('(')[0])) run.note('le relais actif', `Publipostage+ devait dire que son relais est actif (${s8 && s8.s8})`);
+      const form = warned.modal.relayLines.find(line => line.id === 'form');
+      if (!form || form.s8 !== t('sec.relay.off')) run.note('le relais absent', `Form+ devait dire qu'aucun relais n'a été reçu (${form && form.s8})`);
+      if (warned.modal.views[1].count !== String(problems + 3)) run.note('le compte du bouton', `le bouton devait compter les règles non tenues et les alertes (${problems + 3}) : ${warned.modal.views[1].count}`);
+    }
+    await page.run(() => { window.__relay = null; });
+
     // 5. « Ce que ce tableau ne voit pas » : un bouton de 44 px qui ouvre, puis referme, quatre limites en clair.
     if (!dash.modal.limits || dash.modal.limits.text !== t('sec.limits') || dash.modal.limits.expanded !== 'false' || dash.modal.limits.panel) run.note('les limites', `le bouton « ${t('sec.limits')} » devait être là, refermé`);
     if (dash.modal.limits && (dash.modal.limits.height < 40 || dash.modal.limits.over)) run.note('les limites : le bouton', `le bouton mesure ${dash.modal.limits.height} px (40 au moins) ou déborde`);
@@ -181,7 +218,7 @@ export async function securiteProblems(page, language, tag) {
     run.note('la mesure a échoué', error.message.slice(0, 300));
     await page.run(() => { for (const node of document.querySelectorAll('.mod-scrim')) node.remove(); }).catch(() => {});
   } finally {
-    await page.run(() => { window.__carried = false; window.__security = false; }).catch(() => {});
+    await page.run(() => { window.__carried = false; window.__security = false; window.__relay = null; }).catch(() => {});
   }
   return found;
 }

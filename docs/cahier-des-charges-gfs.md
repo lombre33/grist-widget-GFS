@@ -212,7 +212,7 @@ une consigne datée : elle dit où elle en est dans la section « Sécurité » 
 | S5 | Chaque bibliothèque chargée de l'extérieur est déclarée (guide 1.2, point 24), à une version exacte ; elle porte son empreinte (`integrity`, `crossorigin="anonymous"`) quand le CDN le permet | les adresses retrouvées dans la page, l'import map et la politique, comparées à la déclaration ; l'empreinte du CDN, relevée à chaque contrôle |
 | S6 | Rien ne quitte le document sans un geste de la personne : aucune donnée du document ni de la personne n'est envoyée à un service tiers, ni mesure d'audience, ni journal d'erreurs envoyé ; aucun secret (clé, jeton) dans le dépôt | déclarée par l'app ; GFS montre ce que la politique permettrait d'atteindre |
 | S7 | Les dépendances sont suivies : Dependabot (ou un outil équivalent) est actif sur le dépôt ; une montée de version se dit dans « Changements qui touchent GFS » ; une version qui a un avis de sécurité publié se monte avant le reste | `.github/dependabot.yml` du dépôt, avis du registre npm |
-| S8 | L'app relaie à GFS, par le kit, les appels que sa politique bloque | la version du kit de l'app ; les alertes reçues |
+| S8 | L'app relaie à GFS, par le kit (0.25.0 ou après : `import './kit/js/violations-start.js'` en tête du module d'entrée), les appels que sa politique bloque | l'import ou l'appel du relais, lu dans la page ou le code ; à l'usage, « relais actif » (l'app l'a dit) et les alertes reçues |
 | S9 | Un fichier `SECURITY.md` à la racine du dépôt dit où signaler une faille, en privé | le fichier |
 
 `'unsafe-eval'` est permis parce que le script d'API de Grist l'exige (faits vérifiés 27) ; `style-src 'unsafe-inline'` est toléré, noté « à noter » au tableau de bord, tant que S3 est tenue (une
@@ -226,7 +226,7 @@ chaque bibliothèque que l'app déclare, ce que GFS a retrouvé dans son code. T
 1. **Ce que GFS vérifie lui-même** (marqué « Vérifié par GFS », avec la date du contrôle) : S1 à S5, S7 à S9, d'après la page de l'app à sa référence et sur son site en ligne, son dépôt, le registre npm
    et l'empreinte que le CDN sert ce jour-là.
 2. **Ce que l'app déclare** (marqué « Déclaré par l'app ») : S6, et chaque ligne de « Portées par l'app » tant que GFS n'a pas retrouvé son adresse et sa version dans le code.
-3. **Ce que GFS voit pendant l'usage** : les appels que la politique d'une app bloque, quand l'app les relaie (S8), pour la session seulement, à titre d'information.
+3. **Ce que GFS voit pendant l'usage** : les appels que la politique d'une app bloque, quand l'app les relaie (S8, kit 0.25.0 ; contrats 5.4, point 14), pour la session seulement, à titre d'information : le nom de l'app, la directive, l'**hôte** bloqué (jamais l'adresse entière : le chemin et les paramètres sont ce qu'un code piraté cherchait à envoyer), qui l'a demandé, le compte ; un avis à la personne (trois au plus par app) et une ligne dans la fenêtre. L'app est tenue pour non fiable : GFS réduit chaque champ à une forme fermée, n'écrit rien dans le document et ne garde rien après la session.
 
 Un contrôle automatique chaque semaine (une tâche GitHub, en lecture seule sur les apps : rien ne se pousse dans leurs dépôts ni chez `grist-factory`) refait les vérifications du point 1 et propose le
 nouveau relevé en demande de fusion sur GFS ; la fenêtre dit « Dernier contrôle : <date> ».

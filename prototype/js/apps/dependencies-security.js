@@ -37,10 +37,11 @@ function liveOf(app) {
   return { etat: 'differe', verdict: worst(states) };
 }
 
-// Une app du catalogue : { id, name, installed, reference, checked, policy, counts, rules, permis, live }.
-function appOf(item, report, lang) {
+// Une app du catalogue : { id, name, installed, reference, checked, policy, counts, rules, permis, live, relay }. `relay` : { kit, at } quand l'app a dit à
+// GFS, pendant cette session, qu'elle relaie les appels que sa politique bloque (js/broker/security-relay.js), sinon null.
+function appOf(item, report, lang, relay) {
   const app = isObject(report.apps[item.id]) ? report.apps[item.id] : null;
-  const base = { id: item.id, name: label(item.manifest.nom, lang), installed: Boolean(item.installed) };
+  const base = { id: item.id, name: label(item.manifest.nom, lang), installed: Boolean(item.installed), relay: isObject(relay) ? relay : null };
   if (!app) return { ...base, checked: false, reference: null, policy: 'non-verifiable',
     counts: { tenue: 0, 'a-noter': 0, 'non-tenue': 0, 'non-verifiable': 0 }, rules: [], permis: null, live: { etat: 'non-lue' } };
   const rules = RULES.map(id => ruleOf(app, id));
@@ -50,14 +51,25 @@ function appOf(item, report, lang) {
     counts, rules, permis: isObject(app.permis) ? app.permis : null, live: liveOf(app), read: isObject(app.lecture) ? app.lecture : {} };
 }
 
-// Le tableau de bord : { controle, origine, apps: [app], problems } (apps installées d'abord, puis par nom), ou null sans fichier. `problems` : les règles non
-// tenues, toutes apps.
-export function securityOf({ report, modules, lang }) {
-  if (!isReport(report)) return null;
-  const apps = modules.items.filter(item => item.kind === 'app' && item.ok).map(item => appOf(item, report, lang))
-    .sort((a, b) => Number(b.installed) - Number(a.installed) || a.name.localeCompare(b.name));
-  return { controle: report.controle, origine: report.origine === 'actions' ? 'actions' : 'local', apps,
-    problems: apps.reduce((total, app) => total + app.counts['non-tenue'], 0) };
+// Le tableau de bord : { controle, origine, apps: [app], alerts: [alerte], problems, attention } (apps installées d'abord, puis par nom), ou null sans fichier
+// et sans alerte.
+// `problems` : les règles non tenues, toutes apps. `relay` : ce que la session a vu (js/broker/security-relay.js, `snapshot`) : { relays: { <app>: { kit, at }
+//   }, alerts: [{ app, directive, cible, source, disposition, times, first, last }] } ; `alerts` y ajoute le nom de l'app, et `attention` compte les règles non
+//   tenues et les alertes : c'est le nombre du bouton « Sécurité ». Sans fichier de contrôle, les alertes se montrent quand même : elles ne dépendent pas de
+//   lui.
+export function securityOf({ report, modules, lang, relay = null }) {
+  const checked = isReport(report);
+  const relays = isObject(relay) && isObject(relay.relays) ? relay.relays : {};
+  const seen = isObject(relay) && Array.isArray(relay.alerts) ? relay.alerts : [];
+  if (!checked && !seen.length) return null;
+  const items = modules.items.filter(item => item.kind === 'app' && item.ok);
+  const names = new Map(items.map(item => [item.id, label(item.manifest.nom, lang)]));
+  const apps = checked ? items.map(item => appOf(item, report, lang, relays[item.id]))
+    .sort((a, b) => Number(b.installed) - Number(a.installed) || a.name.localeCompare(b.name)) : [];
+  const alerts = seen.map(alert => ({ ...alert, name: names.get(alert.app) || alert.app }));
+  const problems = apps.reduce((total, app) => total + app.counts['non-tenue'], 0);
+  return { controle: checked ? report.controle : null, origine: checked && report.origine === 'actions' ? 'actions' : 'local', apps, alerts, problems,
+    attention: problems + alerts.length };
 }
 
 // Ce que GFS a retrouvé d'une bibliothèque que l'app déclare (une entrée de `carriedOf`) : l'adresse est-elle dans la page ou le code (`found`: true, false, ou

@@ -665,13 +665,13 @@ async function mount() {
   };
   window.__dependencies = async () => {
     const { catalogue, releve, securite } = await dependencyData;
-    // `window.__security` : le contrôle de sécurité (bibliotheques/securite.json, vue « Sécurité » et textes « Ce que GFS en a retrouvé ») ; `window.__securityReport` le remplace par un fichier de la page de mesure.
+    // `window.__relay` : ce que le relais des appels bloqués a vu ({ relays, alerts }, js/broker/security-relay.js). `window.__security` : le contrôle de sécurité (bibliotheques/securite.json, vue « Sécurité » et textes « Ce que GFS en a retrouvé ») ; `window.__securityReport` le remplace par un fichier de la page de mesure.
     const report = window.__security ? (window.__securityReport || securite) : null;
     const readBytes = async address => (window.__tamper && address.includes(window.__tamper) ? new Uint8Array([1, 2, 3]).buffer : (await fetch(address)).arrayBuffer());
     return openDependencies({ container: stage, t: i18n.t, locale, lang: language, inertTargets: () => [explorer.root], surveyed: releve.releve,
       rows: () => dependencyRows({ catalogue, releve, modules: appsState.model(), lang: language }), units: () => allUnits(appsState.model(), language),
       carried: rows => carriedOf({ modules: carriedModel(), lang: language, rows }),
-      security: report ? () => securityOf({ report, modules: carriedModel(), lang: language }) : undefined, checkCarried: report ? entry => carriedCheck(report, entry) : undefined,
+      security: report ? () => securityOf({ report, modules: carriedModel(), lang: language, relay: window.__relay || null }) : undefined, checkCarried: report ? entry => carriedCheck(report, entry) : undefined,
       verify: row => Promise.all(row.files.map(file => verifyCopy(file, { readBytes, base: location.href }))), blocked: () => window.__dependencyBlocked,
       apply: (plan, mode) => Promise.all(plan.map(({ app, extensions, natives }) => appsState.setSources(app, { extensions, natives }, mode))),
       ask: opts => ask({ ...opts, container: stage, inertTargets: () => [explorer.root] }), now: () => new Date('2026-11-18T10:30:00Z'), uuid: () => newSerial(),

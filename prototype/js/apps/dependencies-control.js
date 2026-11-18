@@ -6,17 +6,20 @@
 
 import { dependencyRows } from './dependencies-model.js';
 import { carriedOf } from './dependencies-carried.js';
+import { securityOf, carriedCheck, isReport } from './dependencies-security.js';
 import { openDependencies } from './dependencies-window.js';
 import { verifyCopy } from './dependencies-audit.js';
 import { allUnits } from './dependencies-source.js';
 import { saveText, newSerial } from './dependencies-export.js';
 
 export const RELEVE_PATH = 'bibliotheques/releve.json';
+export const SECURITE_PATH = 'bibliotheques/securite.json';
 const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 
 export class DependenciesControl {
   #opts;
   #releve = null; // le relevé, gardé quand il s'est lu ; un fichier absent ou illisible se relit à l'ouverture suivante
+  #securite = null; // le contrôle de sécurité des apps (bibliotheques/securite.json), de même
   #checks = new Map(); // l'id d'un fichier -> sa vérification (rendue à la personne qui rouvre la fenêtre : la copie ne change pas entre deux ouvertures)
   #opened = false;
 
@@ -33,10 +36,12 @@ export class DependenciesControl {
     try {
       const { container, inertTargets, t, locale, lang, model, catalogue } = this.#opts;
       const releve = await this.#read();
+      const report = await this.#readSecurity();
       const { blocked, apply, ask, doc } = this.#opts;
       await openDependencies({ container, inertTargets, t, locale: locale(), lang: lang(),
         rows: () => dependencyRows({ catalogue: catalogue(), releve, modules: model(), lang: lang() }),
         carried: rows => carriedOf({ modules: model(), lang: lang(), rows }),
+        security: () => securityOf({ report, modules: model(), lang: lang() }), checkCarried: report ? entry => carriedCheck(report, entry) : null,
         surveyed: releve ? releve.releve : null, verify: row => this.#verify(row), blocked, apply, ask, units: () => allUnits(model(), lang()),
           now: () => new Date(),
         uuid: () => newSerial(), save: (name, text) => saveText(doc, name, text) });
@@ -55,6 +60,20 @@ export class DependenciesControl {
       console.warn('GFS : le relevé des dépendances est illisible', error);
     }
     return this.#releve;
+  }
+
+  // Le contrôle de sécurité daté (outils/controle-securite.mjs, contrats 2.6 point 18), ou null : sans lui, la vue « Sécurité » le dit et la liste garde ses
+  // textes d'avant.
+  async #readSecurity() {
+    if (this.#securite) return this.#securite;
+    try {
+      const report = await this.#opts.readJson(SECURITE_PATH);
+      if (!isReport(report)) throw new Error('forme inattendue');
+      this.#securite = report;
+    } catch (error) {
+      console.warn('GFS : le contrôle de sécurité des apps est illisible', error);
+    }
+    return this.#securite;
   }
 
   // Relit chaque fichier de la ligne et recalcule son empreinte ; un fichier déjà vérifié, intact, n'est pas relu.

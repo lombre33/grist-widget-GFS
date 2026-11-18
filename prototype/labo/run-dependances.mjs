@@ -84,6 +84,31 @@ check('le détail de TipTap : version, adresse, ce qu\'il contient', /3\.31\.3/.
 await shot('0b-portees-detail');
 await carried.locator('[data-fk="dep-publipostage|portee|tiptap"]').click();
 check('l\'ouvrir n\'écrit rien : la table GFS_Rangement n\'est pas créée par la fenêtre', readonly ? before.table === false : (before.value.publipostage?.modes === undefined), before.value);
+// ----- « Sécurité » (choix du porteur du 18/11) : le contrôle daté (bibliotheques/securite.json) lu par le vrai cadre de GFS dans un vrai Grist ; la vue montre chaque app règle par règle,
+// n'appelle aucune adresse (le fichier est celui de GFS) et n'écrit rien.
+const requestsBefore = outside.length;
+await carried.locator('[data-fk="dep-publipostage|portee|tiptap"]').click();
+await tipDetail.waitFor();
+check('le détail de TipTap dit ce que GFS en a retrouvé (avec le contrôle de sécurité)', /ce que gfs en a retrouvé|what gfs found/i.test(await text(tipDetail)), await text(tipDetail));
+await carried.locator('[data-fk="dep-publipostage|portee|tiptap"]').click();
+await frame.locator('[data-fk="dep-view-security"]').click();
+await frame.locator('.dp-sec-app').first().waitFor();
+const secApps = await frame.locator('.dp-sec-app h3').allInnerTexts();
+say('apps contrôlées :', secApps);
+check('la vue « Sécurité » : la liste s\'efface, les apps se montrent (installée d\'abord)', secApps[0] === 'Publipostage+' && secApps.length >= 2 && !(await frame.locator('.dp-list').first().isVisible())
+  && !(await frame.locator('.dp-bar').isVisible()));
+const ppSec = frame.locator('.dp-sec-app[data-app="publipostage"]');
+check('Publipostage+ : neuf règles, une pastille d\'état en mot, l\'origine du jugement', (await ppSec.locator('.dp-sec-rule').count()) === 9 && (await ppSec.locator('.dp-sec-rule > .dp-chip').first().innerText()).trim().length > 0
+  && (await ppSec.locator('.dp-sec-source').count()) === 9, await text(ppSec.locator('.dp-sec-line')));
+check('la vue dit la date du contrôle et ce que GFS ne voit pas', /2026/.test(await text(frame.locator('.dp-sec-intro'))) && (await frame.locator('[data-fk="dep-sec-limits"]').count()) === 1);
+await frame.locator('[data-fk="dep-sec-limits"]').click();
+check('« Ce que ce tableau ne voit pas » s\'ouvre', (await frame.locator('.dp-sec-limits li').count()) === 4 && await frame.locator('.dp-sec-limits').isVisible());
+await shot('0c-securite');
+await frame.locator('[data-fk="dep-sec-limits"]').click();
+check('la vue « Sécurité » n\'écrit rien et n\'appelle aucune adresse', outside.length === requestsBefore && (await lab.rangement(frame)).table === before.table, outside);
+await frame.locator('[data-fk="dep-view-libs"]').click();
+await frame.locator('.dp-bar').waitFor();
+check('de retour sur « Bibliothèques » : la liste et sa barre', await frame.locator('.dp-list').first().isVisible() && !(await frame.locator('.dp-sec').isVisible()));
 const echarts = await openRow('echarts');
 await shot('1-ligne-ouverte');
 say('source :', await text(echarts.locator('.dp-seg').locator('xpath=..')));

@@ -35,6 +35,7 @@ import { liensEspacesProblems } from './liens-espaces-firefox.mjs';
 import { poidsFenetreProblems } from './poids-fenetre-firefox.mjs';
 import { dependancesProblems } from './dependances-firefox.mjs';
 import { carriedProblems } from './dependances-carried-firefox.mjs';
+import { securiteProblems } from './dependances-securite-firefox.mjs';
 import { importerProblems } from './importer-firefox.mjs';
 import { iconProblems } from './icones-firefox.mjs';
 import { dossiersProblems } from './dossiers-firefox.mjs';
@@ -626,6 +627,7 @@ describe('l\'interface sous Firefox', () => {
         problems.push(...await poidsFenetreProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await dependancesProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await carriedProblems(page, language, caption(language, 700, 1, mode)));
+        problems.push(...await securiteProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await importerProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await dossiersProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await compositeProblems(page, language, caption(language, 700, 1, mode)));

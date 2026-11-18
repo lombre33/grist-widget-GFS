@@ -150,3 +150,9 @@ export function summary(rows) {
   const files = new Map(rows.flatMap(row => row.files).map(file => [file.id, file.poids]));
   return { counts, bytes: [...files.values()].reduce((total, poids) => total + poids, 0) };
 }
+
+// Une date ISO en toutes lettres, dans la langue de la personne (UTC : le relevé et le contrôle sont datés en UTC).
+export function formatDate(iso, locale) {
+  try { return new Date(iso).toLocaleDateString(locale, { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }); }
+    catch (error) { return String(iso).slice(0, 10); }
+}

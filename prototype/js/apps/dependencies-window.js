@@ -11,22 +11,18 @@ import { icon } from '../ui/icons.js';
 import { openModal, listKeys } from '../ui/modal.js';
 import { normalize, words, matchesWords } from '../ui/search.js';
 import { formatBytes } from '../weight/weight.js';
-import { FILTERS, matchesFilter, summary } from './dependencies-model.js';
+import { FILTERS, matchesFilter, summary, formatDate } from './dependencies-model.js';
 import { sourceOf, planFor } from './dependencies-source.js';
 import { carriedText } from './dependencies-carried.js';
 import { buildList } from './dependencies-list.js';
 import { buildFoot } from './dependencies-foot.js';
+import { buildSecurity } from './dependencies-security-view.js';
 
 const searchText = row => normalize([row.paquet, row.version, row.licence, ...row.apps, ...row.functions,
   ...row.files.map(file => file.id)].filter(Boolean).join(' '));
 
-function formatDate(iso, locale) {
-  try { return new Date(iso).toLocaleDateString(locale, { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }); }
-    catch (error) { return String(iso).slice(0, 10); }
-}
-
 // L'en-tête : le titre, le nombre de bibliothèques, la recherche et les filtres. Rend { node, search, chips }.
-function buildHead(t, rows, state, { onFilter, onSearch }) {
+function buildHead(t, rows, state, { onFilter, onSearch, onView }) {
   const { bytes } = summary(rows);
   const declared = state.carried.reduce((total, group) => total + group.carried.length, 0);
   const search = h('input', { type: 'search', autocomplete: 'off', placeholder: t('dep.search'), 'aria-label': t('dep.search'),
@@ -35,26 +31,36 @@ function buildHead(t, rows, state, { onFilter, onSearch }) {
   const chips = FILTERS.map(filter => h('button', { type: 'button', class: 'dp-filter', 'aria-pressed': 'false',
     dataset: { filter, fk: `dep-filter-${filter}` },
     on: { click: () => onFilter(filter) } }, t(`dep.filter.${filter}`), h('span', { class: 'dp-count' })));
+  const views = ['libs', 'security'].map(view => h('button', { type: 'button', class: 'dp-tab', 'aria-pressed': String(view === 'libs'),
+    dataset: { view, fk: `dep-view-${view}` },
+    title: view === 'security' ? t('sec.view.tip') : null, on: { click: () => onView(view) } }, t(`dep.view.${view}`), h('span', { class: 'dp-count' })));
+  const bar = h('div', { class: 'dp-bar' }, h('label', { class: 'inp-search dp-search' }, icon('search'), search),
+    h('div', { class: 'dp-filters', role: 'group', 'aria-label': t('dep.filters') }, ...chips));
   const node = h('header', { class: 'mod-head dp-head' }, h('h2', { id: 'dp-title' }, t('dep.title')),
     h('p', { class: 'mod-count' }, t('dep.count', { n: rows.length, size: formatBytes(bytes, state.locale, t) }),
       declared ? ` · ${t('dep.count.carried', { n: declared })}` : ''),
-    h('div', { class: 'dp-bar' }, h('label', { class: 'inp-search dp-search' }, icon('search'), search),
-      h('div', { class: 'dp-filters', role: 'group', 'aria-label': t('dep.filters') }, ...chips)));
-  return { node, search, chips };
+    h('div', { class: 'dp-views', role: 'group', 'aria-label': t('dep.views') }, ...views), bar);
+  return { node, search, chips, views, bar };
 }
 
 // opts : { container, inertTargets(), t, locale, lang, rows() (js/apps/dependencies-model.js : relues à chaque changement), surveyed (la date du relevé en
-//   ISO, ou null), carried(rows) (ce que les apps déclarent charger elles-mêmes : js/apps/dependencies-carried.js), verify(row) -> Promise<résultats>,
+//   ISO, ou null), security() (le tableau de bord de sécurité : js/apps/dependencies-security.js, ou null sans contrôle), checkCarried(entrée) (ce que GFS a
+//   retrouvé d'une
+//   bibliothèque déclarée : `carriedCheck`, ou absent sans contrôle), carried(rows) (ce que les apps déclarent charger elles-mêmes :
+//   js/apps/dependencies-carried.js), verify(row) -> Promise<résultats>,
 //   blocked() (la raison pour laquelle rien ne s'écrit, ou null), units() (js/apps/dependencies-source.js),
 //   apply(plan, mode) -> Promise (l'écriture des choix), ask(opts) -> Promise<booléen>, now() -> Date, uuid() -> texte, save(nom, texte) }.
 // Rend la promesse de la fermeture.
 export function openDependencies(opts) {
   const { t, locale } = opts;
   const rows = opts.rows();
-  const state = { filter: 'all', open: new Set(), more: false, checks: new Map(), details: new Map(), rows, carried: opts.carried(rows), locale };
+  const state = { view: 'libs', filter: 'all', open: new Set(), more: false, checks: new Map(), details: new Map(), rows, carried: opts.carried(rows),
+    security: opts.security ? opts.security() : null, checkCarried: opts.checkCarried || null, locale };
   const date = opts.surveyed ? formatDate(opts.surveyed, locale) : '';
   const empty = h('p', { class: 'dp-empty', role: 'status', hidden: true }, t('dep.none'));
-  const head = buildHead(t, state.rows, state, { onFilter: filter => { state.filter = filter; render(); }, onSearch: () => render() });
+  const head = buildHead(t, state.rows, state, { onFilter: filter => { state.filter = filter; render(); }, onSearch: () => render(),
+    onView: view => { state.view = view; render(); } });
+  const security = buildSecurity({ t, locale });
   let done = () => {};
   let foot = null;
   let needles = [];
@@ -84,8 +90,16 @@ export function openDependencies(opts) {
   const list = buildList({ t, locale, state, date, verify: opts.verify, blocked: () => opts.blocked(), pick, after: showEmpty,
     matches: row => matchesFilter(row, state.filter) && matchesWords(needles, searchText(row)),
     matchesCarried: entry => state.filter === 'all' && matchesWords(needles, carriedText(entry)), plain: () => state.filter === 'all' && !needles.length });
+  // Deux vues : les bibliothèques (la liste, ses filtres et sa recherche) et la sécurité (js/apps/dependencies-security-view.js). La recherche et les filtres
+  // ne parlent que de la liste.
   function render() {
     needles = words(head.search.value);
+    const onSecurity = state.view === 'security';
+    for (const button of head.views) button.setAttribute('aria-pressed', String(button.dataset.view === state.view));
+    head.views[1].querySelector('.dp-count').textContent = state.security ? String(state.security.problems) : '—';
+    for (const node of [head.bar, cols, list.node, appsNote]) node.hidden = onSecurity;
+    security.node.hidden = !onSecurity;
+    if (onSecurity) { empty.hidden = true; security.render(state.security); return; }
     list.render();
   }
   // Les lignes se relisent d'après les apps (un choix change l'état d'une bibliothèque) ; le clavier reste sur le même élément, retrouvé par sa clé.
@@ -94,6 +108,7 @@ export function openDependencies(opts) {
     const kept = doc.activeElement && section.contains(doc.activeElement) ? doc.activeElement.dataset.fk : null;
     state.rows = opts.rows();
     state.carried = opts.carried(state.rows);
+    state.security = opts.security ? opts.security() : null;
     render();
     foot.update();
     const again = kept && [...section.querySelectorAll('[data-fk]')].find(node => node.dataset.fk === kept && !node.disabled);
@@ -101,10 +116,11 @@ export function openDependencies(opts) {
   }
 
   foot = buildFoot({ opts, state, date, refresh, close: () => done() });
+  const cols = h('div', { class: 'dp-cols', 'aria-hidden': 'true' }, ...['lib', 'users', 'gfs', 'latest'].map(key => h('span', null, t(`dep.col.${key}`))),
+    h('span'));
+  const appsNote = h('p', { class: 'dp-apps' }, t('dep.apps'));
   const section = h('section', { class: 'mod dp', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'dp-title' }, head.node,
-    h('div', { class: 'mod-body dp-body' },
-      h('div', { class: 'dp-cols', 'aria-hidden': 'true' }, ...['lib', 'users', 'gfs', 'latest'].map(key => h('span', null, t(`dep.col.${key}`))), h('span')),
-      list.node, empty, h('p', { class: 'dp-apps' }, t('dep.apps'))), foot.node);
+    h('div', { class: 'mod-body dp-body' }, cols, list.node, empty, appsNote, security.node), foot.node);
   section.addEventListener('keydown', event => { listKeys(event, { search: head.search, items: list.items() }); });
   render();
   foot.update();

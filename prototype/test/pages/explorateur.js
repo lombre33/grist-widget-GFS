@@ -53,6 +53,7 @@ import { openWeight } from '/js/weight/weight-window.js';
 import { openDependencies } from '/js/apps/dependencies-window.js';
 import { dependencyRows } from '/js/apps/dependencies-model.js';
 import { carriedOf } from '/js/apps/dependencies-carried.js';
+import { securityOf, carriedCheck } from '/js/apps/dependencies-security.js';
 import { allUnits } from '/js/apps/dependencies-source.js';
 import { newSerial } from '/js/apps/dependencies-export.js';
 import { AppsState } from '/js/apps/apps-state.js';
@@ -644,13 +645,13 @@ async function mount() {
   window.__dependencyMemory = docTable;
   window.__saved = [];
   window.__dependencyBlocked = null;
-  const dependencyData = Promise.all(['/bibliotheques/catalogue.json', '/bibliotheques/releve.json', '/manifestes/publipostage.json'].map(path => fetch(path).then(response => response.json()))).then(
-    async ([catalogueJson, releve, manifest]) => {
+  const dependencyData = Promise.all(['/bibliotheques/catalogue.json', '/bibliotheques/releve.json', '/manifestes/publipostage.json', '/bibliotheques/securite.json'].map(path => fetch(path).then(response => response.json()))).then(
+    async ([catalogueJson, releve, manifest, securite]) => {
       const catalogue = readCatalogue(catalogueJson);
       appsState.setApps([{ app: { id: 'publipostage' }, manifest, ok: true, errors: [] }]);
       appsState.setCatalogue(catalogue);
       await appsState.load();
-      return { catalogue, releve };
+      return { catalogue, releve, securite };
     });
   window.__dependencyModules = () => dependencyData.then(() => appsState.model());
   // Ce que les apps déclarent charger elles-mêmes (« Portées par l'app », js/apps/dependencies-carried.js, test/dependances-carried-firefox.mjs) : sans `window.__carried`, aucune app ne déclare rien
@@ -663,11 +664,14 @@ async function mount() {
       app('form', 'Form+', false, [{ id: 'leaflet', nom: 'Leaflet', version: '1.9.4', adresse: 'https://unpkg.com/', quand: 'option', paquet: 'leaflet' }])] } : { ...model, items };
   };
   window.__dependencies = async () => {
-    const { catalogue, releve } = await dependencyData;
+    const { catalogue, releve, securite } = await dependencyData;
+    // `window.__security` : le contrôle de sécurité (bibliotheques/securite.json, vue « Sécurité » et textes « Ce que GFS en a retrouvé ») ; `window.__securityReport` le remplace par un fichier de la page de mesure.
+    const report = window.__security ? (window.__securityReport || securite) : null;
     const readBytes = async address => (window.__tamper && address.includes(window.__tamper) ? new Uint8Array([1, 2, 3]).buffer : (await fetch(address)).arrayBuffer());
     return openDependencies({ container: stage, t: i18n.t, locale, lang: language, inertTargets: () => [explorer.root], surveyed: releve.releve,
       rows: () => dependencyRows({ catalogue, releve, modules: appsState.model(), lang: language }), units: () => allUnits(appsState.model(), language),
       carried: rows => carriedOf({ modules: carriedModel(), lang: language, rows }),
+      security: report ? () => securityOf({ report, modules: carriedModel(), lang: language }) : undefined, checkCarried: report ? entry => carriedCheck(report, entry) : undefined,
       verify: row => Promise.all(row.files.map(file => verifyCopy(file, { readBytes, base: location.href }))), blocked: () => window.__dependencyBlocked,
       apply: (plan, mode) => Promise.all(plan.map(({ app, extensions, natives }) => appsState.setSources(app, { extensions, natives }, mode))),
       ask: opts => ask({ ...opts, container: stage, inertTargets: () => [explorer.root] }), now: () => new Date('2026-11-18T10:30:00Z'), uuid: () => newSerial(),

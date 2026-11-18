@@ -21,7 +21,7 @@ import { integrity } from '../kit/outils/bibliotheques/primitives.mjs';
 import { registryNet, surveyPackage } from './releve-dependances.mjs';
 import { CATALOGUE } from '../js/apps/catalogue.js';
 import { readPage, scanCode, parseState, CDN_HOSTS } from '../js/apps/security-page.js';
-import { gradeApp, RULES } from '../js/apps/security-rules.js';
+import { gradeApp, foundHosts, RULES } from '../js/apps/security-rules.js';
 import { gradeS1, gradeS2, gradeS3, gradeS4 } from '../js/apps/security-policy.js';
 
 export const SECURITE_FILE = 'bibliotheques/securite.json';
@@ -111,7 +111,7 @@ export async function controlApp(app, env, previous = null) {
     depot: app.repo, reference: app.commit, entree: app.entree,
     lecture: { page: page !== null, code: code.lu, etat: state.securite !== null || state.adresses !== null, empreintes: prints.computed },
     pages: { scripts: count('script'), feuilles: count('feuille'), carte: count('carte'), enLigne: page ? page.enLigne : 0, politiques: page ? page.politiques.length : 0 },
-    ...graded, enLigne: await liveCheck(app, page, env), bibliotheques: libraries.list,
+    ...graded, adressesTrouvees: page ? foundHosts(page, scanned, env.served || []) : [], enLigne: await liveCheck(app, page, env), bibliotheques: libraries.list,
     empreintes: prints.list, empreintesLe: prints.computed ? env.now.slice(0, 10) : (previous && previous.empreintesLe) || null,
   };
 }

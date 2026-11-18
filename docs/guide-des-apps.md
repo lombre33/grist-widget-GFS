@@ -358,7 +358,10 @@ GFS ne bloque rien : il montre l'écart.
 2. **S2 · Aucune directive de récupération ouverte.** Pars de `default-src 'none'` et rouvre seulement ce que ton app utilise. Ajoute `object-src 'none'`, `base-uri 'none'` et `form-action 'none'`.
 3. **S3 · Appels sortants fermés.** `connect-src`, `img-src`, `font-src`, `media-src`, `frame-src` et `worker-src` n'ouvrent que `'self'` et des adresses exactes (jamais `*`, `https:` ni `http:`). Chaque adresse ouverte est
    dite avec sa raison dans une section « Adresses que l'app appelle » de ton `GFS-ETAT.md`. **C'est la règle qui compte contre une bibliothèque piratée** : une bibliothèque qui ne peut rien appeler d'autre ne peut pas envoyer tes
-   données ailleurs, quel que soit son code.
+   données ailleurs, quel que soit son code. **Une exception, dite** : une app qui appelle le serveur Grist de la personne avec un jeton d'accès (lire une pièce jointe, une table par l'API) ne peut pas nommer cet hôte d'avance (chaque
+   personne a le sien). Elle ouvre alors `connect-src https:` (et `img-src https:` si elle montre ces images) **et rien d'autre en `https:`**, et écrit dans « Adresses que l'app appelle » la ligne
+   `serveur Grist de la personne · connect · <ce qu'elle lit> · oui, après un geste`. GFS note « à noter » au lieu de « non tenue », et la fenêtre dit que toute adresse https est alors joignable : c'est la limite de cette règle, tant que
+   GFS ne lit pas lui-même ces pièces jointes à la place des apps (proposition à part).
 4. **S4 · Scripts nommés.** `script-src` ne garde que `'self'`, le script d'API de Grist par son adresse entière avec `'unsafe-eval'` (règle 11) et les adresses exactes et versionnées des bibliothèques. Jamais `'unsafe-inline'`,
    `*`, `https:`, `data:` ni `blob:` pour un script ; un script en ligne se garde par son empreinte (`'sha256-…'`). `'wasm-unsafe-eval'` et `worker-src blob:` seulement si une bibliothèque l'exige (DuckDB-WASM), et dis laquelle
    dans ton `GFS-ETAT.md`. `style-src 'unsafe-inline'` est toléré tant que S3 est tenue : GFS le note, sans le compter contre toi.

@@ -1,0 +1,545 @@
+{
+  "contrat": 0,
+  "controle": "2026-11-18T20:55:58.600Z",
+  "origine": "local",
+  "apps": {
+    "publipostage": {
+      "depot": "lombre33/publipostageGrist",
+      "reference": "b32f450203042770ec4fc37baf655bad41f78c8f",
+      "entree": "index.html",
+      "lecture": {
+        "page": true,
+        "code": false,
+        "etat": false,
+        "empreintes": false
+      },
+      "pages": {
+        "scripts": 1,
+        "feuilles": 0,
+        "carte": 0,
+        "enLigne": 6,
+        "politiques": 1
+      },
+      "regles": {
+        "S1": {
+          "etat": "tenue",
+          "motifs": []
+        },
+        "S2": {
+          "etat": "non-tenue",
+          "motifs": [
+            {
+              "code": "directives-ouvertes",
+              "directives": [
+                "style-src",
+                "img-src",
+                "font-src",
+                "connect-src",
+                "media-src"
+              ],
+              "gravite": "non-tenue"
+            }
+          ]
+        },
+        "S3": {
+          "etat": "non-tenue",
+          "motifs": [
+            {
+              "code": "appels-ouverts",
+              "directives": [
+                "connect-src",
+                "img-src",
+                "font-src",
+                "media-src"
+              ],
+              "gravite": "non-tenue"
+            },
+            {
+              "code": "section-absente",
+              "hotes": [
+                "player.vimeo.com",
+                "www.youtube-nocookie.com"
+              ],
+              "gravite": "a-noter"
+            }
+          ]
+        },
+        "S4": {
+          "etat": "a-noter",
+          "motifs": [
+            {
+              "code": "sans-version",
+              "nombre": 4,
+              "exemples": [
+                "https://esm.sh/node/async_hooks.mjs",
+                "https://esm.sh/node/events.mjs",
+                "https://esm.sh/node/process.mjs",
+                "https://esm.sh/node/tty.mjs"
+              ],
+              "gravite": "a-noter"
+            }
+          ],
+          "notes": [
+            "'unsafe-eval'"
+          ]
+        },
+        "S5": {
+          "etat": "tenue",
+          "motifs": []
+        },
+        "S6": {
+          "etat": "non-verifiable",
+          "motifs": [
+            {
+              "code": "declaree",
+              "gravite": "non-verifiable"
+            }
+          ]
+        },
+        "S7": {
+          "etat": "tenue",
+          "motifs": []
+        },
+        "S8": {
+          "etat": "non-verifiable",
+          "motifs": [
+            {
+              "code": "kit-sans-relais",
+              "gravite": "non-verifiable"
+            }
+          ]
+        },
+        "S9": {
+          "etat": "a-noter",
+          "motifs": [
+            {
+              "code": "sans-security-md",
+              "gravite": "a-noter"
+            }
+          ]
+        }
+      },
+      "permis": {
+        "ouvert": [
+          "connect-src",
+          "img-src",
+          "font-src",
+          "media-src"
+        ],
+        "adresses": [
+          {
+            "hote": "player.vimeo.com",
+            "directives": [
+              "frame-src"
+            ]
+          },
+          {
+            "hote": "www.youtube-nocookie.com",
+            "directives": [
+              "frame-src"
+            ]
+          }
+        ]
+      },
+      "declaration": null,
+      "enLigne": {
+        "lue": false
+      },
+      "bibliotheques": [
+        {
+          "id": "pdfmake",
+          "paquet": "pdfmake",
+          "version": "0.2.7",
+          "derniere": "0.3.14",
+          "ecart": "majeure",
+          "avis": []
+        },
+        {
+          "id": "pdf-lib",
+          "paquet": "pdf-lib",
+          "version": "1.17.1",
+          "derniere": "1.17.1",
+          "ecart": "a-jour",
+          "avis": []
+        },
+        {
+          "id": "jszip",
+          "paquet": "jszip",
+          "version": "3.10.1",
+          "derniere": "3.10.2",
+          "ecart": "correctif",
+          "avis": []
+        },
+        {
+          "id": "docx",
+          "paquet": "docx",
+          "version": "9.15.1",
+          "derniere": "9.15.4",
+          "ecart": "correctif",
+          "avis": []
+        },
+        {
+          "id": "exceljs",
+          "paquet": "exceljs",
+          "version": "4.4.0",
+          "derniere": "4.4.0",
+          "ecart": "a-jour",
+          "avis": []
+        },
+        {
+          "id": "marked",
+          "paquet": "marked",
+          "version": "15.0.12",
+          "derniere": "18.2.1",
+          "ecart": "majeure",
+          "avis": []
+        },
+        {
+          "id": "qrcode-generator",
+          "paquet": "qrcode-generator",
+          "version": "1.4.4",
+          "derniere": "2.0.4",
+          "ecart": "majeure",
+          "avis": []
+        }
+      ],
+      "empreintes": [],
+      "empreintesLe": null
+    },
+    "automation": {
+      "depot": "lombre33/GRIST_automation",
+      "reference": "1ee28874de4b45a8b1e1d3169fbe75820fb5905c",
+      "entree": "index.html",
+      "lecture": {
+        "page": true,
+        "code": false,
+        "etat": false,
+        "empreintes": false
+      },
+      "pages": {
+        "scripts": 1,
+        "feuilles": 0,
+        "carte": 0,
+        "enLigne": 0,
+        "politiques": 1
+      },
+      "regles": {
+        "S1": {
+          "etat": "tenue",
+          "motifs": []
+        },
+        "S2": {
+          "etat": "tenue",
+          "motifs": []
+        },
+        "S3": {
+          "etat": "tenue",
+          "motifs": []
+        },
+        "S4": {
+          "etat": "tenue",
+          "motifs": [],
+          "notes": [
+            "'unsafe-eval'"
+          ]
+        },
+        "S5": {
+          "etat": "non-verifiable",
+          "motifs": [
+            {
+              "code": "rien-declare",
+              "gravite": "non-verifiable",
+              "hotes": []
+            }
+          ]
+        },
+        "S6": {
+          "etat": "non-verifiable",
+          "motifs": [
+            {
+              "code": "declaree",
+              "gravite": "non-verifiable"
+            }
+          ]
+        },
+        "S7": {
+          "etat": "non-tenue",
+          "motifs": [
+            {
+              "code": "sans-dependabot",
+              "gravite": "non-tenue"
+            }
+          ]
+        },
+        "S8": {
+          "etat": "non-verifiable",
+          "motifs": [
+            {
+              "code": "kit-sans-relais",
+              "gravite": "non-verifiable"
+            }
+          ]
+        },
+        "S9": {
+          "etat": "tenue",
+          "motifs": []
+        }
+      },
+      "permis": {
+        "ouvert": [],
+        "adresses": []
+      },
+      "declaration": null,
+      "enLigne": {
+        "lue": false
+      },
+      "bibliotheques": [],
+      "empreintes": [],
+      "empreintesLe": null
+    },
+    "form": {
+      "depot": "lombre33/FormPlus",
+      "reference": "b9a2ab2f3ee681177b95e28386501b11dbdf82f8",
+      "entree": "poc/widget.html",
+      "lecture": {
+        "page": true,
+        "code": false,
+        "etat": false,
+        "empreintes": false
+      },
+      "pages": {
+        "scripts": 0,
+        "feuilles": 0,
+        "carte": 0,
+        "enLigne": 0,
+        "politiques": 1
+      },
+      "regles": {
+        "S1": {
+          "etat": "tenue",
+          "motifs": []
+        },
+        "S2": {
+          "etat": "a-noter",
+          "motifs": [
+            {
+              "code": "directive-absente",
+              "directive": "form-action",
+              "gravite": "a-noter"
+            },
+            {
+              "code": "style-en-ligne",
+              "gravite": "a-noter"
+            }
+          ]
+        },
+        "S3": {
+          "etat": "non-tenue",
+          "motifs": [
+            {
+              "code": "source-large",
+              "directive": "connect-src",
+              "sources": [
+                "https:"
+              ],
+              "gravite": "non-tenue"
+            },
+            {
+              "code": "source-large",
+              "directive": "img-src",
+              "sources": [
+                "https:"
+              ],
+              "gravite": "non-tenue"
+            }
+          ]
+        },
+        "S4": {
+          "etat": "non-tenue",
+          "motifs": [
+            {
+              "code": "source-large",
+              "directive": "script-src",
+              "sources": [
+                "https://unpkg.com"
+              ],
+              "gravite": "non-tenue"
+            }
+          ],
+          "notes": [
+            "'unsafe-eval'"
+          ]
+        },
+        "S5": {
+          "etat": "non-verifiable",
+          "motifs": [
+            {
+              "code": "rien-declare",
+              "gravite": "non-verifiable",
+              "hotes": [
+                "unpkg.com"
+              ]
+            }
+          ]
+        },
+        "S6": {
+          "etat": "non-verifiable",
+          "motifs": [
+            {
+              "code": "declaree",
+              "gravite": "non-verifiable"
+            }
+          ]
+        },
+        "S7": {
+          "etat": "non-tenue",
+          "motifs": [
+            {
+              "code": "sans-dependabot",
+              "gravite": "non-tenue"
+            }
+          ]
+        },
+        "S8": {
+          "etat": "non-verifiable",
+          "motifs": [
+            {
+              "code": "kit-sans-relais",
+              "gravite": "non-verifiable"
+            }
+          ]
+        },
+        "S9": {
+          "etat": "tenue",
+          "motifs": []
+        }
+      },
+      "permis": {
+        "ouvert": [],
+        "adresses": []
+      },
+      "declaration": null,
+      "enLigne": {
+        "lue": false
+      },
+      "bibliotheques": [],
+      "empreintes": [],
+      "empreintesLe": null
+    },
+    "bi": {
+      "depot": "lombre33/Grist-BI",
+      "reference": "92da65c6e13c23926238aea83b6f230adc5eac1b",
+      "entree": "index.html",
+      "lecture": {
+        "page": true,
+        "code": false,
+        "etat": false,
+        "empreintes": false
+      },
+      "pages": {
+        "scripts": 1,
+        "feuilles": 0,
+        "carte": 0,
+        "enLigne": 0,
+        "politiques": 0
+      },
+      "regles": {
+        "S1": {
+          "etat": "non-tenue",
+          "motifs": [
+            {
+              "code": "aucune-politique",
+              "gravite": "non-tenue"
+            }
+          ]
+        },
+        "S2": {
+          "etat": "non-tenue",
+          "motifs": [
+            {
+              "code": "aucune-politique",
+              "gravite": "non-tenue"
+            }
+          ]
+        },
+        "S3": {
+          "etat": "non-tenue",
+          "motifs": [
+            {
+              "code": "aucune-politique",
+              "gravite": "non-tenue"
+            }
+          ]
+        },
+        "S4": {
+          "etat": "non-tenue",
+          "motifs": [
+            {
+              "code": "aucune-politique",
+              "gravite": "non-tenue"
+            }
+          ]
+        },
+        "S5": {
+          "etat": "non-verifiable",
+          "motifs": [
+            {
+              "code": "rien-declare",
+              "gravite": "non-verifiable",
+              "hotes": []
+            }
+          ]
+        },
+        "S6": {
+          "etat": "non-verifiable",
+          "motifs": [
+            {
+              "code": "declaree",
+              "gravite": "non-verifiable"
+            }
+          ]
+        },
+        "S7": {
+          "etat": "non-tenue",
+          "motifs": [
+            {
+              "code": "sans-dependabot",
+              "gravite": "non-tenue"
+            }
+          ]
+        },
+        "S8": {
+          "etat": "non-verifiable",
+          "motifs": [
+            {
+              "code": "kit-sans-relais",
+              "gravite": "non-verifiable"
+            }
+          ]
+        },
+        "S9": {
+          "etat": "tenue",
+          "motifs": []
+        }
+      },
+      "permis": {
+        "ouvert": [
+          "connect-src",
+          "img-src",
+          "font-src",
+          "media-src",
+          "frame-src",
+          "worker-src"
+        ],
+        "adresses": []
+      },
+      "declaration": null,
+      "enLigne": {
+        "lue": false
+      },
+      "bibliotheques": [],
+      "empreintes": [],
+      "empreintesLe": null
+    }
+  }
+}

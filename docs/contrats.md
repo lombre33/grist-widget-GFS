@@ -574,6 +574,20 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     `dependencies-carried-view.js` (le bloc et son détail), `groupsOf` de `dependencies-model.js`. Mesuré sous Firefox à 700 × 400 (`test/dependances-carried-firefox.mjs`) et dans un vrai Grist (`labo/run-dependances.mjs` :
     le manifeste de Publipostage+ en déclare neuf, la fenêtre n'appelle aucune des adresses déclarées ; faits vérifiés 132). [M]
 
+18. [D] **Le contrôle de sécurité des apps : `bibliotheques/securite.json`** (choix du porteur, 18/11, « Idem + alertes relayées par les apps » ; cahier 3.2.1 et 3.2.2 ; guide des apps 1.4 ; faits
+    vérifiés 133). Le fichier est écrit par `outils/controle-securite.mjs` (à la main, ou chaque lundi par `.github/workflows/controle-securite.yml`, qui ouvre une demande de fusion si autre chose que la date
+    change) et commité ; **la fenêtre « Dépendances » le lit, le navigateur de la personne n'appelle rien**. `{ contrat: 0, controle: <date ISO>, origine: 'local' | 'actions', apps: { <id>: … } }`, une entrée par app du
+    catalogue : `depot`, `reference` (le commit du sous-module), `entree` (la page que le manifeste ouvre : celle qui compte, pas la page d'accueil), `lecture` (`page`, `code` : GFS a lu la copie de l'app
+    et pas seulement sa page, `etat` : son `GFS-ETAT.md` a les sections de sécurité, `empreintes` : recalculées à ce passage), `pages` (nombre de scripts, de feuilles, d'entrées de carte d'importation,
+    de scripts en ligne et de politiques), **`regles`** (`S1` à `S9`, chacune `{ etat: tenue | a-noter | non-tenue | non-verifiable, motifs: [{ code, gravite, … }], notes? }` : des codes et leurs paramètres,
+    jamais un texte ; la fenêtre les met en phrases, en français et en anglais), `permis` (les directives d'appel laissées ouvertes et les hôtes que la politique laisse atteindre), `declaration` (ce que l'app dit
+    d'elle-même dans la section « Sécurité » de son `GFS-ETAT.md` : `{ S1: { etat: tenue | en-cours | non-tenue, texte } }`, ou null ; affiché à côté du jugement de GFS, jamais mêlé), `enLigne` (le site en
+    ligne : `{ lue: false }`, `{ lue: true, identique: true }` ou, quand sa politique diffère de la référence, `regles` pour S1 à S4), `bibliotheques` (les bibliothèques déclarées avec un paquet npm et une
+    version exacte : dernière stable, écart, avis), `empreintes` (`{ url, sha384, octets, vu }` : ce que le CDN servait au premier jour `vu` ; un changement d'empreinte pour une même adresse est un signal : « non tenue »
+    chez un CDN qui sert un fichier figé, cdnjs et jsDelivr, « à noter » chez les autres, qui peuvent reconstruire) et `empreintesLe`. **Ce que le contrôle ne fait pas** : il ne fetch que des adresses de CDN connus
+    (`CDN_HOSTS`), en https, sans joker, trois redirections au plus vers ces mêmes hôtes ; il ne pousse rien dans un dépôt d'app ; il ne lit pas ce qu'une app construirait à l'exécution. **Les limites sont dites
+    dans la fenêtre** (cahier 3.2.2). `--verifier` dit hors réseau si le fichier couvre le catalogue ; `test/securite-controle.test.mjs` garde la lecture d'une politique, les neuf jugements et le fichier commité.
+
 ### 2.7 Les actions acceptées
 
 ```json

@@ -478,3 +478,8 @@ Dans l'app seule, un clic sur une fonction grisée ouvre cette fenêtre (base co
 
 Les mots exacts du panneau de Grist (nom du champ de l'adresse, en français et en anglais) sont à relever dans un vrai Grist
 avant d'écrire le texte définitif.
+
+`{adresse}` (`{address}`) est l'adresse publique du widget de GFS, que GFS donne à chaque app par une consigne quand le porteur l'a choisie
+(elle change avec le dépôt public : une app ne la copie pas dans son code, ni dans un réglage). **Tant que GFS ne la donne pas, la fenêtre se
+passe d'adresse** : « …remplacez l'adresse du widget par celle de Grist Factory Suite » est une phrase complète, sans le bout « : {adresse}
+(« Copier ») » (Grist-BI, 18/11, consigne 022 de GFS).

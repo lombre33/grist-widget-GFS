@@ -42,6 +42,13 @@
         "en": "To know the address of the person who comments on a report, the app places a probe table (BI_Dashboard_UserProbe) whose column reads user.Email through a formula."
       }
     },
+    "jeton": {
+      "lectureSeule": true,
+      "pourquoi": {
+        "fr": "Lire les fichiers joints à vos lignes, pour en tirer des mots-clés (le fichier reste dans votre navigateur).",
+        "en": "Read the files attached to your rows to extract keywords (the file stays in your browser)."
+      }
+    },
     "gristInterne": [
       {
         "tables": ["_grist_Tables", "_grist_Tables_column"],

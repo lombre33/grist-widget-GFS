@@ -12,3 +12,6 @@ export const aboutItems = t => [
   t('about.version', { value: HOST.version }), t('about.author', { value: CREDITS.auteur }), t('about.site', { value: CREDITS.site }),
     t('about.license', { value: CREDITS.licence }),
 ];
+
+// La ligne « À propos » du menu « Réglages » : une fenêtre du widget (`ask`, js/ui/ask-window.js) qui n'a que son bouton « Fermer ».
+export const openAbout = ({ t, ask }) => void ask({ title: t('about.title'), message: t('about.text'), items: aboutItems(t), confirmLabel: t('about.close') });

@@ -74,7 +74,10 @@ Si un fait nouveau remet en cause une de ces lignes : le dire au porteur, avec l
 - Code repris, jamais copié : chercher ce qui existe (dans le kit, dans Publipostage+) avant d'écrire, et relire son diff à
   la recherche de copies.
 - Fichiers et fonctions sous les seuils de l'outil d'audit : 600 lignes de code par fichier, moins de 81 lignes par
-  fonction, complexité 15 au plus.
+  fonction, complexité 15 au plus. `explorer/explorer.js` et `controller.js` sont ceux qui grossissent le plus vite (18/11, après
+  découpe : 518 et 451 lignes de code) : une fonction nouvelle va dans un module voisin (`explorer-keyboard.js` pour les touches,
+  `files-reading.js` pour la lecture des fichiers, `explorer-assembly.js` et `shell/dock-assembly.js` pour le montage), pas dans
+  le fichier quand il dépasse 540.
 - Lignes de 160 caractères au plus dans `prototype/js/` et `prototype/transfer/` (11/11) : `node prototype/outils/couper-lignes.mjs`
   les coupe sans changer le programme (vérifié sur l'arbre) ; `test/hygiene.test.mjs` refuse celles qu'il sait couper. Les phrases
   des tables `i18n*.js` et les chaînes longues restent permises. Couper ajoute des lignes : une fonction proche de 80 lignes peut

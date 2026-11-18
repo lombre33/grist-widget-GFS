@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { importFormats, acceptsFile, importOpening, openingKind, acceptsOpening, pickFile } from '../js/files/import-file.js';
+import { importFormats, acceptsFile, importOpening, templateOpening, openingKind, acceptsOpening, pickFile } from '../js/files/import-file.js';
 import { publipostage, automation, form } from './helpers.mjs';
 
 test('les formats d\'une app : chacun avec le type qu\'il crée, dans l\'ordre du manifeste', () => {
@@ -44,6 +44,16 @@ test('le genre d\'une ouverture range « importer » à part de « nouveau » et
   assert.equal(openingKind({ fichier: { id: '3', type: 'document' }, type: 'document', raison: 'explorateur' }), 'fichier');
   assert.equal(openingKind({ fichier: null, type: 'document', raison: 'nouveau' }), 'nouveau');
   assert.equal(openingKind(importOpening({ valeur: 'excel', type: 'grille' }, {}, '')), 'importer');
+  assert.equal(openingKind(templateOpening({ type: 'document', id: 'facture' }, '')), 'modele');
+});
+
+test('l\'ouverture d\'un modèle de départ : « Nouveau » d\'un type avec l\'identifiant du modèle, sans fichier ni importation (contrats 5.2, point 3)', () => {
+  const opening = templateOpening({ app: 'publipostage', type: 'presentation', id: 'proposition-commerciale', label: 'Présentation commerciale' }, 'Ventes');
+  assert.deepEqual(opening, { fichier: null, type: 'presentation', dossier: 'Ventes', raison: 'modele', modele: { id: 'proposition-commerciale' } });
+  assert.equal(Object.hasOwn(opening, 'importation'), false);
+  assert.equal(acceptsOpening({ ouverture: { nouveau: true } }, openingKind(opening)), false, 'un « Nouveau » déclaré ne vaut pas `ouverture.modele` : l\'app doit dire qu\'elle sait ouvrir un modèle');
+  assert.equal(acceptsOpening({ ouverture: { modele: true } }, openingKind(opening)), true);
+  assert.equal(acceptsOpening(null, 'modele'), false);
 });
 
 // Un document de faux : le champ `file` caché que `pickFile` pose, avec ce que `pickFile` en attend (des écouteurs, `remove`, `click`).

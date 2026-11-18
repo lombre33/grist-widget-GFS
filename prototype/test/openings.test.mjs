@@ -86,6 +86,23 @@ test('openNew : l\'article grisé dit sa raison (ou son rappel) ; sinon l\'app s
   assert.deepEqual(steps(fresh.c, 'activate'), [['activate', 'form', { fichier: null, type: 'formulaire', dossier: 'Dossier', raison: 'nouveau' }]]);
 });
 
+test('openTemplate : l\'article grisé dit sa raison ; sinon l\'app s\'ouvre sur le modèle choisi, une seule fois, avec l\'identifiant du modèle ; une app qui ne sait pas l\'ouvrir le dit', async () => {
+  const grey = host();
+  grey.openings.openTemplate({ greyed: true, reason: 'Demande l\'extension Graphique', focus: 'ext:publipostage/graphique' });
+  assert.deepEqual(steps(grey.c, 'unlock'), [['unlock', { text: 'Demande l\'extension Graphique', focus: 'ext:publipostage/graphique' }]]);
+  assert.equal(steps(grey.c, 'activate').length, 0, 'un modèle grisé n\'ouvre rien');
+  const apps = { publipostage: { ouverture: { fichier: true, nouveau: true, modele: true } } };
+  const fresh = host({ apps });
+  fresh.openings.openTemplate({ app: 'publipostage', type: 'presentation', id: 'proposition-commerciale' });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(steps(fresh.c, 'activate'), [['activate', 'publipostage', { fichier: null, type: 'presentation', dossier: 'Dossier', raison: 'modele', modele: { id: 'proposition-commerciale' } }]]);
+  assert.deepEqual(fresh.c.notes, [], 'l\'app sait ouvrir un modèle : rien à dire');
+  const old = host(); // l'app du jeu d'essai n'a pas `ouverture.modele`
+  old.openings.openTemplate({ app: 'publipostage', type: 'document', id: 'facture' });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(old.c.notes, ['ex.notice.template {"app":"PUBLIPOSTAGE"}'], 'une app qui ne sait pas encore ouvrir un modèle s\'ouvre et le dit');
+});
+
 test('importFile : l\'arrivée d\'un autre document, les formats que GFS garde et le grisé passent avant le sélecteur de fichier', async () => {
   const { c, openings } = host();
   await openings.importFile({ action: 'receive' });

@@ -269,9 +269,10 @@ L'app (sous-cadre sans allow-same-origin)
 | `dependances` | chaîne | non | Chemin de la liste des bibliothèques **natives** de l'app (`package.json`) : celles d'une extension n'y figurent pas (2.6, point 4). |
 | `natives` | liste | non | Les bibliothèques natives de l'app **rangées par fonction**, pour le choix « CDN ou copie figée » : `[ { "id", "nom": { "fr", "en" }, "bibliotheques": [ { "id", "version" } ] } ]` (2.6, point 14 ; 5.2, point 12). Une bibliothèque n'est que dans une fonction, sa version est exacte. L'app le déclare quand elle lit le choix ; sans `natives`, rien n'est proposé et l'app reste au CDN. Une fonction dont la copie figée est **dans le dépôt de l'app** (l'éditeur) s'écrit `{ "id", "nom", "copieDansApp": true, "poids": <octets> }`, sans `bibliotheques`. |
 | `actions` | objet | non | Ce que l'app accepte de la part des autres (2.7). |
-| `ouverture` | objet | non | Ce que l'app sait faire d'une ouverture que GFS lui passe : `{ "fichier": true, "nouveau": true, "importer": true, "lire": true }` (5.2, point 3 ; 5.4, points 1 et 8). Un genre absent vaut faux : GFS ouvre alors l'app sur son modèle habituel et le dit, et grise « Importer » ou « Lire ». |
+| `ouverture` | objet | non | Ce que l'app sait faire d'une ouverture que GFS lui passe : `{ "fichier": true, "nouveau": true, "importer": true, "lire": true, "modele": true }` (5.2, point 3 ; 5.4, points 1, 8 et 13). Un genre absent vaut faux : GFS ouvre alors l'app sur son modèle habituel et le dit, et grise « Importer », « Lire » ou les modèles de « Depuis un modèle ». |
 | `permanente` | booléen | non | `true` : l'app ne se retire pas de la fenêtre « Apps et extensions » (Publipostage+). |
 | `vitrine` | objet | non | Ce que la fenêtre « Apps et extensions » montre de l'app (17/11, mosaïque « Vitrine ») : `{ "description": { "fr", "en" }, "captures": [ { "fichier": "publipostage/1.webp", "legende": { "fr", "en" } } ] }`. `description` : plus longue que `texte`, montrée sur la fiche (sinon `texte`). `captures` : six au plus, des fichiers de GFS rangés dans `vitrine/` (`fichier` est relatif à ce dossier : chemin sûr, `.webp`, `.png` ou `.jpg`), car la politique de sécurité du contenu ne charge une image que de GFS ; la première illustre la carte, toutes la fiche. Sans capture, ou si le fichier ne se charge pas, la carte et la fiche montrent l'icône et le nom de l'app. |
+| `modeles` | objet | non | Où sont les modèles de départ de l'app (18/11, « Nouveau > Depuis un modèle », choix « Une galerie commune ») : `{ "catalogue": "publipostage/modeles.json" }`, le chemin relatif sûr (2.1) d'un fichier JSON rangé dans le dossier `modeles/` de GFS, avec ses vignettes à côté. Le catalogue est une liste d'entrées `{ id, type, nom, description?, etiquettes?, vignette?, extensions?, tables? }` (5.4, point 13). Sans `modeles`, l'app garde sa pastille dans la fenêtre « Depuis un modèle », grisée « bientôt ». |
 | `classes` | objet | non | La classe de chaque table de l'app pour les règles des personnes (11.2) ; une table non déclarée est du travail courant. |
 
 Un champ inconnu est ignoré (le contrat s'étend par ajout) ; un champ obligatoire absent ou mal formé invalide le manifeste.
@@ -1218,7 +1219,7 @@ l'appel `contexte` dès son démarrage ; GFS rend :
    le cas du bouton « Ouvrir » de la fenêtre « Apps et extensions » et de l'arrivée sur une vue qui porte ses réglages, 7.4, point 7) ;
    sinon `{ fichier, type, dossier, raison }` où `fichier` est `{ id, type }` (ou `null` pour « Nouveau »), `type` le type
    demandé quand `fichier` est `null`, `dossier` le dossier courant de l'explorateur (une indication), `raison` l'un de
-   `explorateur`, `nouveau`, `lien`, `importer`, `lire`. Avec `importer`, l'ouverture porte de plus `importation: { valeur, fichier }` :
+   `explorateur`, `nouveau`, `lien`, `importer`, `lire`, `modele`. Avec `modele`, l'ouverture porte de plus `modele: { id }` : l'identifiant d'une entrée du catalogue de l'app (5.4, point 13 ; le `fichier` de l'ouverture reste `null`, `type` est celui du modèle). Avec `importer`, l'ouverture porte de plus `importation: { valeur, fichier }` :
    `valeur` est celle d'un format de `actions.importer` (2.7, point 4) et `fichier` l'objet `File` que la personne a choisi dans le
    sélecteur de GFS (le `fichier` de l'ouverture reste `null`, `type` est celui du format) ; le sous-cadre le lit comme tout fichier
    choisi (`name`, `size`, `type`, `text()`, `arrayBuffer()`), GFS ne le lit ni ne le garde (5.4, point 1). Avec `lire`, l'ouverture porte
@@ -2017,6 +2018,32 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
      « Blocked by column update access rules », la réponse porte `refus`, aucune cellule ne change, et **Grist reconstruit le cadre de GFS** quand une règle
      d'accès change (l'app est alors à rouvrir). **Pas mesuré** : Firefox (aucune interface dans ce geste), l'instance de la DINUM, la vraie app de
      Publipostage+ (elle n'appelle pas encore `joindre`).
+
+13. [D] **Ouvrir un modèle de départ : `modele`** (demande du porteur du 18/11, « Nouveau > Depuis un modèle » : les modèles que chaque app met à disposition, réunis dans une
+   fenêtre ; **le porteur a choisi « Une galerie commune » le 18/11**, contre un sous-menu par app et contre l'ouverture de la galerie de l'app). **Construit côté GFS le
+   18/11** ; Publipostage+ a déjà une galerie de 22 modèles (`templates-gallery/`), Slides+ seule et les autres apps n'en ont pas encore.
+   - [D] **Déclaration** : le champ `modeles` du manifeste (2.2) nomme un catalogue rangé dans le dossier `modeles/` de GFS (`modeles/<id de l'app>/modeles.json`) ; l'app range
+     le sien dans son dépôt (`modeles/modeles.json` et une vignette par modèle) et GFS le copie avec `outils/modeles.mjs`, comme les captures de la vitrine (guide, 1.2 point 23) :
+     la politique de sécurité du contenu de GFS ne charge une image que de lui (`img-src 'self'`) et ne lit que lui (`connect-src 'self'`), donc **aucune adresse de plus**, et la
+     fenêtre s'affiche même quand aucune app n'est ouverte (une seule app tourne à la fois, 1.4). Le catalogue est une liste d'entrées :
+     `{ "id": "facture", "type": "document", "nom": { "fr", "en" }, "description": { "fr", "en" }, "etiquettes": [ { "fr", "en" } ], "vignette": "facture.webp", "extensions": [ "graphique" ], "tables": true }`.
+     `id` : `[a-z0-9][a-z0-9._-]{0,63}`, unique dans le catalogue, jamais changé ni réutilisé (l'app retrouve son modèle par lui) ; `type` : un type de `actions.ouvrir` de l'app
+     (l'icône, la couleur et l'extension du type viennent du manifeste, comme pour « Nouveau ») ; `nom` : bilingue, 60 signes au plus ; `description` (facultative) : bilingue, 140 signes
+     au plus ; `etiquettes` (facultatives) : des mots bilingues que la recherche lit ; `vignette` (facultative) : un fichier du dossier du catalogue (`.webp`, `.png` ou `.jpg`,
+     240 × 320 px, 12 Ko conseillés), sans quoi la carte montre l'icône du type ; `extensions` (facultatif) : les extensions de l'app que le modèle demande **en plus** de celle de son
+     type ; `tables: true` : le modèle vient avec des tables, que l'app peut créer dans le document après l'accord de la personne (la fenêtre le dit). Une entrée mal formée est écartée avec un avertissement, les autres restent.
+   - [T] **L'ouverture** : `{ fichier: null, type, dossier, raison: 'modele', modele: { id } }` (5.2, point 3), rendue **une seule fois** comme les autres (au premier `contexte`, ou par l'appel
+     `ouvrir` quand l'app tourne : elle pose d'abord sa question « Enregistrer / Abandonner / Annuler »). L'app ouvre un modèle **non enregistré** fait d'après le modèle `id`, comme son « Nouveau » :
+     **GFS n'écrit rien dans le document et l'app non plus avant un geste de la personne**. Si le modèle crée des tables (`tables: true`), l'app demande l'accord de la personne avant d'en
+     créer une (cahier 3.1) ; un refus ou « Annuler » rend `{ ouvert: false }`. Un `id` que l'app ne connaît pas, ou un type que sa garde refuse : rien n'est ouvert, `{ ouvert: false }`, **jamais
+     un modèle vierge à la place**. `ouverture.modele: true` (2.2) dit que l'app le sait faire.
+   - [T] **Le grisé, jamais masqué** : un modèle est grisé, avec sa raison dite au clic, quand GFS n'a pas l'accès complet, quand l'app n'est pas installée, quand l'extension de son type ou l'une
+     de ses `extensions` n'est pas active (le clic ouvre la fenêtre « Apps et extensions » sur sa ligne) et quand l'app ne déclare pas `ouverture.modele` (« pas encore »). Une app sans `modeles`
+     garde sa pastille de filtre, grisée « bientôt » ; un catalogue illisible aussi, avec la raison.
+   - [D] **La fenêtre** (maquette du 18/11) : l'article « Depuis un modèle… » du menu « Nouveau », entre les types à créer et « Importer » ; une recherche (mots dans n'importe quel ordre, accents
+     ignorés : le nom, la description, les étiquettes, le type et l'app), un filtre par app, une carte par modèle (vignette, nom, type, app), « Créer » qui ferme la fenêtre et ouvre l'app. Pas
+     d'aperçu en grandes captures dans ce premier lot (celui de la galerie de Publipostage+ reste dans l'app).
+   - [M] Mesuré le 18/11 dans un vrai Grist, à 700 × 400, à la vraie souris, en français et en anglais (`labo/run-modeles.mjs`, 18 vérifications) : une sonde qui déclare `ouverture.modele` et répond à `ouvrir` comme l'app, avec le catalogue de Publipostage+ (grisé « pas encore » tant que cette app ne déclare pas `ouverture.modele`) ; l'ouverture n'est rendue qu'une fois ; le grisé et « Voir dans Apps » ; sous Firefox (`test/modeles-firefox.mjs`, jouée par `test/interfaces-firefox.test.mjs` : 700 × 400, 520 et 400 px, clair et sombre, contraste 4,5:1, clavier). Le **kit 0.24.0** (`7aa030c`) garde `modele` dans l'ouverture : sans lui, `GfsLink.opening()` l'écartait comme toute clé inconnue. Le catalogue de Publipostage+ que GFS porte est **provisoire** (établi d'après sa galerie, consigne 075).
 
 ### 5.5 La table d'un direct : être prévenu quand une autre table change
 

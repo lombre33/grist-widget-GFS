@@ -1,7 +1,7 @@
-// Ce que l'explorateur demande à GFS pour s'afficher (contrats 5.4, point 1, et 6.5, point 3) : le grisé et sa raison, les types du menu « Nouveau », les
-// formats de son sous-menu « Importer », l'app qui lit un fichier que GFS garde. Sorti du contrôleur (js/controller.js) pour qu'il reste sous les 600 lignes de
-// code de l'outil d'audit ; rien ne s'y garde : tout se lit sur le contrôleur (`c`) à l'appel, et le contrôleur prête ces quatre fonctions à l'explorateur, aux
-// liens entre apps et aux gardiens des fichiers.
+// Ce que l'explorateur demande à GFS pour s'afficher (contrats 5.4, points 1 et 13, et 6.5, point 3) : le grisé et sa raison, les types du menu « Nouveau »,
+// les formats de son sous-menu « Importer », les modèles de départ de « Depuis un modèle », l'app qui lit un fichier que GFS garde. Sorti du contrôleur
+// (js/controller.js) pour qu'il reste sous les 600 lignes de code de l'outil d'audit ; rien ne s'y garde : tout se lit sur le contrôleur (`c`) à l'appel, et le
+// contrôleur prête ces quatre fonctions à l'explorateur, aux liens entre apps et aux gardiens des fichiers.
 
 import { label } from '../apps/manifest.js';
 import { familyOf } from '../explorer/explorer-model.js';
@@ -11,6 +11,10 @@ import { FILES_APP } from '../files/gfs-files.js';
 import { RECEIVED_APP } from '../sharing/received-files.js';
 import { importFormats, acceptsOpening } from '../files/import-file.js';
 import { readersOf, chooseReader } from './reading.js';
+import { thumbUrl } from '../apps/templates-catalogue.js';
+
+// Le type du manifeste d'une app (`fichiers[].types[]`) : celui d'un modèle de son catalogue (parseCatalogue ne garde que des types déclarés).
+const typeInfoOf = (manifest, value) => manifest.fichiers.flatMap(spec => spec.types).find(type => type.valeur === value);
 
 export class Entries {
   constructor(c) { this.c = c; }
@@ -63,6 +67,17 @@ export class Entries {
       ...c.kept.importEntries(), c.otherDocuments.entry()];
   };
 
+  // La galerie « Depuis un modèle » (contrats 5.4, point 13) : `loaded` est la liste des apps avec leurs modèles déjà lus (`{ manifest, models, state, reason
+  // }`, js/apps/templates-control.js). Rend { apps, models } : une pastille par app (« ok », « soon » : pas de catalogue, « broken » : illisible) et un article
+  // par modèle, grisé avec sa raison (accès, app à installer, extension du type ou du modèle, app qui ne sait pas encore ouvrir un modèle de départ).
+  templates = loaded => {
+    const { c } = this;
+    return {
+      apps: loaded.map(({ manifest, models, state, reason }) => ({ id: manifest.id, name: label(manifest.nom, c.lang), state, reason, count: models.length })),
+      models: loaded.flatMap(({ manifest, models }) => models.map(model => this.#templateEntry(manifest, model))),
+    };
+  };
+
   // Qui lit ce fichier que GFS garde (js/broker/reading.js) : { app, name, lock } avec le grisé de l'app qui sert (`null` : prête), ou `null` quand aucune app
   // du catalogue ne le lit (il se télécharge).
   readerOf = file => {
@@ -104,6 +119,31 @@ export class Entries {
     const { c } = this;
     return acceptsOpening(c.manifestOf(appId), 'importer') ? null : { text: c.t('ex.import.notYet', { app: c.appName(appId) }),
       hint: c.t('ex.import.notYetHint') };
+  }
+
+  #templateEntry(manifest, model) {
+    const { c } = this;
+    const type = typeInfoOf(manifest, model.type);
+    const lock = this.lockOf({ app: manifest.id, known: true, typeInfo: type }) || this.#extensionsLock(manifest, model) || this.#templateLock(manifest.id);
+    return { ...this.#entry(manifest, type, lock), id: model.id, label: label(model.nom, c.lang), description: label(model.description, c.lang),
+      tags: (model.etiquettes || []).map(tag => label(tag, c.lang)), thumb: thumbUrl(manifest, model), tables: model.tables === true,
+      typeLabel: label(type.nom, c.lang), appLabel: label(manifest.nom, c.lang) };
+  }
+
+  // Une extension que le modèle demande en plus de celle de son type, et qui n'est pas active : la ligne de la fenêtre « Apps et extensions » qui la débloque.
+  #extensionsLock(manifest, model) {
+    const { c } = this;
+    const missing = (model.extensions || []).find(id => !this.isExtensionActive(manifest.id, id));
+    if (!missing) return null;
+    const entry = extensionsOf(manifest).find(item => item.id === missing);
+    return { text: c.t('ex.lockedExtension', { name: entry ? label(entry.nom, c.lang) : missing }), focus: rowKey(manifest.id, missing) };
+  }
+
+  // Une app qui ne sait pas encore ouvrir un modèle de départ : le modèle est grisé et le clic dit quoi faire en attendant (jamais un modèle vierge à la
+  // place).
+  #templateLock(appId) {
+    const { c } = this;
+    return acceptsOpening(c.manifestOf(appId), 'modele') ? null : { text: c.t('ex.template.notYet', { app: c.appName(appId) }) };
   }
 
   // Ce qui empêche l'app de lire : le grisé ordinaire (accès, app à installer, extension éteinte), puis le « pas encore » d'une app qui ne reçoit pas le

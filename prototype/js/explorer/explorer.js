@@ -81,7 +81,7 @@ export class Explorer {
   };
 
   // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), importTypes(), onOpen(file), onNew(entry),
-  //   onImport(entry), onClose(), onApps(), canClose(), notice(text),
+  //   onImport(entry), onTemplates(), onClose(), onApps(), canClose(), notice(text),
   //          settings() → les articles du menu « Réglages » (js/shell/settings-menu.js : langue, thème, position de la barre, « À propos »),
   //          onWeight({ list, pj }) (le total du pied ouvre la fenêtre « Poids du document » : la liste en octets et,
   //          case cochée et lue, les pièces jointes), personal() → le rangement est-il à la personne seule ?,
@@ -719,8 +719,8 @@ export class Explorer {
     openMenu(this.#refs.settingsBtn, this.#opts.settings(), { host: this.root, align: 'right', label: t('set.menu') });
   }
 
-  // Le menu « Nouveau » : « Nouveau dossier » d'abord, puis un article par type de fichier à créer, et « Importer » (un sous-menu : un article par format
-  // qu'une app reçoit d'un autre logiciel, contrats 2.7, point 4).
+  // Le menu « Nouveau » : « Nouveau dossier » d'abord, puis un article par type de fichier à créer, « Depuis un modèle… » (la galerie des modèles de départ) et
+  // « Importer » (un sous-menu : un article par format qu'une app reçoit d'un autre logiciel, contrats 2.7, point 4).
   #newMenu() {
     const { t } = this.#opts.i18n;
     if (this.#choice) { this.#opts.notice(t('ex.choose.newOff')); return; }
@@ -729,7 +729,10 @@ export class Explorer {
     const items = [{ label: t('ex.newFolder'), icon: 'folder-plus', run: () => void this.#newFolder() }, ...(types.length ? ['-', ...types] : [])];
     // Un format grisé garde sa mention courte, coupée si le panneau est étroit : l'infobulle dit la raison en entier (le clic aussi).
     const imports = this.#opts.importTypes().map(entry => ({ ...article(entry, () => this.#opts.onImport(entry)), title: entry.greyed ? entry.reason : null }));
-    if (imports.length) items.push('-', { label: t('ex.import'), icon: 'import', submenu: imports });
+    // « Depuis un modèle… » : la galerie commune des modèles de départ de toutes les apps (contrats 5.4, point 13) ; toujours là, ses apps sans modèle y sont
+    // grisées.
+    items.push('-', { label: t('ex.templates'), icon: 'template', run: () => this.#opts.onTemplates() });
+    if (imports.length) items.push({ label: t('ex.import'), icon: 'import', submenu: imports });
     openMenu(this.#refs.newBtn, items, { host: this.root, align: 'right', label: t('ex.new') });
   }
 

@@ -59,6 +59,8 @@ const ICONS = {
   trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5"/>',
   // Restaurer : la flèche qui revient en arrière (le fichier sort de la corbeille et reprend sa place).
   restore: '<path d="M3 4v5.5h5.5"/><path d="M3.8 15a8.5 8.5 0 1 0 2.2-8.2L3 9.5"/>',
+  // Un modèle de départ (l'article « Depuis un modèle… » du menu « Nouveau ») : une page, son bandeau et ses deux blocs.
+  template: '<rect x="3" y="4" width="18" height="5" rx="1.2"/><rect x="3" y="12" width="8" height="8" rx="1.2"/><rect x="14" y="12" width="7" height="8" rx="1.2"/>',
   // Un formulaire : des questions à cocher (type « Formulaire » de Form+, et l'app elle-même).
   form: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M7.5 8.2l1.2 1.2 2-2.4M13 8.5h4"/><path d="M7.5 14.2l1.2 1.2 2-2.4M13 14.5h4"/>',
   // Le correcteur du navigateur (bouton « LanguageTool » de la barre, contrats 5.2, point 13) : un A que coche un trait.

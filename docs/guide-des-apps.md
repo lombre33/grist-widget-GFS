@@ -312,6 +312,16 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     GFS copie tes images, déclare `vitrine` dans le manifeste de ton app et avance sa référence. Sans capture, la carte montre ton icône et ton nom : rien n'est cassé. **Fait quand** : la
     carte et la fiche de ton app montrent la description et les captures, en français et en anglais, à 700 × 400, en clair et en sombre.
 
+23. Proposer des modèles de départ dans « Nouveau > Depuis un modèle » de GFS (décision du porteur du 18/11 : « Une galerie commune » ; contrats 2.2, champ `modeles` ; 5.4, point 13).
+    **Facultatif, et sans effet hors de GFS.** La fenêtre réunit les modèles de toutes les apps ; une app sans modèle y garde sa pastille, grisée « bientôt ». Pour y figurer, mets dans ton
+    dépôt un dossier `modeles/` à la racine : `modeles.json` (une liste `[ { "id", "type", "nom": { "fr", "en" }, "description"?, "etiquettes"?, "vignette"?, "extensions"?, "tables"? } ]`,
+    `type` étant un type de ton `actions.ouvrir`) et une vignette par modèle (WebP de préférence, 240 × 320 px, 12 Ko au plus, prise dans un vrai Grist avec des données d'exemple sans nom de
+    personne réel). Ce qu'est un modèle chez toi est ton choix : un document, un formulaire, un automatisme, un rapport. Réponds ensuite à l'ouverture `{ fichier: null, type, raison:
+    'modele', modele: { id } }` (comme à « Nouveau » : un modèle **non enregistré**, une question avant de créer des tables, `{ ouvert: false }` pour un `id` inconnu ou une annulation, jamais un
+    modèle vierge à la place) et déclare `ouverture.modele` dans ta demande. Demande ensuite à GFS (« Demandes à GFS » de ton `GFS-ETAT.md`, une ligne `modeles · <commit> · modeles/modeles.json
+    · …`) : GFS copie le dossier chez lui (`img-src 'self'`), déclare `modeles` dans ton manifeste et avance sa référence. **Fait quand** : tes modèles s'affichent dans la fenêtre, un clic sur
+    « Créer » ouvre ton app sur le bon modèle, rien n'est écrit avant un geste de la personne.
+
 ### 1.3 Licence : GPL 3.0 dans tous les dépôts (décision du porteur, 21/10)
 
 1. **Le texte officiel de la GNU General Public License version 3** est le fichier `LICENSE`, à la racine du dépôt : 674

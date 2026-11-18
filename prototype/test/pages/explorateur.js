@@ -53,6 +53,9 @@ import { ModulesWindow } from '/js/apps/modules-window.js';
 import { WorkWindow } from '/js/apps/work-window.js';
 import { SQL, readWeight } from '/js/weight/weight-reader.js';
 import { TransferError } from '/js/broker/transfer.js';
+import { Entries } from '/js/broker/entries.js';
+import { TemplatesControl } from '/js/apps/templates-control.js';
+import { label as manifestLabel } from '/js/apps/manifest.js';
 
 const DAY = 86400;
 // Nom, type (une valeur du manifeste ; `macro` est grisé, son extension étant éteinte), ancienneté en jours, auteur, dossier, poids en octets (de quelques octets à plusieurs Mo : toutes les unités
@@ -316,6 +319,37 @@ async function mount() {
     });
     win.open();
   };
+  // « Nouveau > Depuis un modèle » (test/modeles-firefox.mjs) : le vrai contrôle, la vraie fenêtre et les vraies `Entries` (js/broker/entries.js) sur les quatre manifestes de GFS et le vrai catalogue
+  // provisoire de Publipostage+ (22 modèles, leurs vignettes). `variant` : 'pret' (Publipostage+ sait ouvrir un modèle, ses extensions sont cochées), 'attente' (le manifeste tel que livré : pas encore
+  // de `ouverture.modele`), 'extension' (le graphique n'est pas coché), 'absente' (l'app n'est pas installée), 'illisible' (le catalogue ne se lit pas). `window.__templatesLog` note ce que la fenêtre
+  // rend au contrôleur (`created` : « app/modèle » ; `unlocked` : le grisé débloqué) ; `window.__templatesLanguage(lang)` change la langue fenêtre ouverte, comme le contrôleur de GFS.
+  window.__templates = async (variant = 'pret') => {
+    const manifests = await Promise.all(['publipostage', 'automation', 'form', 'bi'].map(async id => (await fetch(`/manifestes/${id}.json`)).json()));
+    if (variant !== 'attente') manifests[0].ouverture = { ...manifests[0].ouverture, modele: true };
+    const catalogue = readCatalogue(await (await fetch('/bibliotheques/catalogue.json')).json());
+    const apps = variant === 'absente' ? {} : { publipostage: { extensions: variant === 'extension' ? ['diapositives'] : ['diapositives', 'graphique'], modes: {} } };
+    const byId = new Map(manifests.map(manifest => [manifest.id, manifest]));
+    let current = { i18n, lang: language };
+    const host = {
+      get lang() { return current.lang; }, t: (key, vars) => current.i18n.t(key, vars), fullAccess: true,
+      registry: { apps, catalogue, has: id => id in apps, manifest: id => byId.get(id) || null, installedIds: () => Object.keys(apps) },
+      validApps: () => manifests.map(manifest => ({ ok: true, manifest })), manifests: () => manifests, manifestOf: id => byId.get(id) || null,
+      appName: id => manifestLabel(byId.get(id).nom, current.lang),
+    };
+    window.__templatesLog = { created: [], unlocked: [] };
+    const readJson = async path => {
+      const response = await fetch(`/${variant === 'illisible' ? 'absent/' : ''}${path}`);
+      if (!response.ok) throw new Error(`${path} : ${response.status}`);
+      return response.json();
+    };
+    const control = new TemplatesControl({
+      container: stage, i18n, inertTargets: () => [explorer.root], manifests: () => manifests, entries: new Entries(host).templates, readJson,
+      unlock: async lock => { window.__templatesLog.unlocked.push(lock); }, onCreate: entry => window.__templatesLog.created.push(`${entry.app}/${entry.id}`),
+    });
+    window.__templatesControl = control;
+    window.__templatesLanguage = lang => { current = { i18n: createI18n(lang), lang }; control.relocalize({ i18n: current.i18n, locale: lang === 'en' ? 'en-GB' : 'fr-FR' }); };
+    await control.open();
+  };
   window.__workWindow = () => void new WorkWindow({ container: stage, i18n, inertTargets: () => [explorer.root], source: { pageTable: 'Inscrits', pageRow: null, current: null, tables: () => [{ id: 'Inscrits', locked: null }], rows: async () => [] }, onPick: () => {}, onClose: () => {} }).open();
   // « Partagés avec moi » (js/sharing/received-control.js, test/partager-recevoir-firefox.mjs) : le vrai contrôle, la vraie fenêtre « Accepter ? » et les vraies marques, écrites dans un faux Grist en mémoire (`window.__sharedTables`).
   // `window.__shared(kind)` y pose des arrivées et ouvre la vue ; `window.__sharedBlocked` : la phrase qui dit pourquoi rien ne s'écrit.
@@ -360,7 +394,7 @@ async function mount() {
       manage: () => ({ why: null, open: () => { window.__manageFromSettings = (window.__manageFromSettings || 0) + 1; }, notice: text => window.__notices.push(text) }) }),
     onOpen: file => { window.__opened = file.name; }, onNew: () => {}, get links() { return window.__linkProxy; },
     opened: { keys: () => openedFiles.keys(), shown: () => openedFiles.shown(SESSION), remove: key => openedFiles.remove(key) },
-    onImport: entry => { window.__imported = entry.valeur; }, onClose: () => {}, onApps: () => {}, sharing: { whyNot: () => null, whyNotFolder: path => (path.startsWith('Espaces') && path.split('/').length < 3 ? i18n.t('share.folder.space') : null), folderFile: path => ({ key: window.__linkProxy && path.startsWith('Espaces/') ? `dossier:${path.split('/').slice(1).join('/').replace(/^[^/]+/, word => word.toLowerCase())}` : `dossier:${path}`, name: path.split('/').pop(), path, mine: !path.startsWith('Espaces/') }), open: file => window.__share(window.__shareKind || 'actif', file) }, onWeight: estimate => window.__weight(estimate), personal: () => true, kept: null, trash: bin, copying,
+    onImport: entry => { window.__imported = entry.valeur; }, onTemplates: () => { window.__templatesAsked = (window.__templatesAsked || 0) + 1; }, onClose: () => {}, onApps: () => {}, sharing: { whyNot: () => null, whyNotFolder: path => (path.startsWith('Espaces') && path.split('/').length < 3 ? i18n.t('share.folder.space') : null), folderFile: path => ({ key: window.__linkProxy && path.startsWith('Espaces/') ? `dossier:${path.split('/').slice(1).join('/').replace(/^[^/]+/, word => word.toLowerCase())}` : `dossier:${path}`, name: path.split('/').pop(), path, mine: !path.startsWith('Espaces/') }), open: file => window.__share(window.__shareKind || 'actif', file) }, onWeight: estimate => window.__weight(estimate), personal: () => true, kept: null, trash: bin, copying,
     attachments: async () => { window.__attachments += 1; if (window.__attachmentsFail) return { error: new Error(window.__attachmentsFail) }; return { data: attachmentsTable() }; },
     filing: { togglePin: noted('pin', 'name'), rename: noted('rename', 'name'), moveFile: noted('move', 'name'), renameFolder: async path => { window.__filing.push(['renameFolder', path]); }, moveFolder: async path => { window.__filing.push(['moveFolder', path]); }, ...moving,
       newFolder: () => filing.newFolder(), deleteFolder: path => filing.deleteFolder(path), undoStack: filing.undoStack },

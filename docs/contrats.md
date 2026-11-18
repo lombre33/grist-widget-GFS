@@ -474,6 +474,11 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     paquet ne met pas dans le fichier assemblé : un PDF qui en dépend s'affiche avec les polices de repli, ou sans l'image ; un PDF
     scanné, sans texte, n'a pas de couche de texte ; la lecture se fait dans la page, donc une page très lourde fige l'interface
     quelques dixièmes de seconde (mesuré à 0,16 s au plus, faits vérifiés, 19).
+    **d3-cloud** (`d3-cloud` 1.0.0, demande de Grist-BI acceptée par le porteur le 18/11) est la seconde : il contient `d3-cloud` 2.0.0 (BSD-3-Clause,
+    aucune dépendance, **ESM seul** : son fichier ne se sert pas comme un script classique), `modules` `d3-cloud` (l'export par défaut est la
+    classe `CloudLayout`, qui ne fait que placer des mots), `externes` vide, 14 747 octets. Grist-BI prend d3-cloud par l'extension `nuage-de-mots`
+    et la copie de pdf.js, la même que Publipostage+, par `mots-cles-pdf` ; l'app lit `GfsPaquets['d3-cloud'].modules['d3-cloud'].default`
+    après avoir chargé `src` en `<script type="module" integrity crossorigin>`, sans import map (faits vérifiés, 123).
 13. [D] **La licence suit chaque copie vendorisée** (03/11, avec ECharts). L'outil pose `vendor/<id>/<version>/LICENCES.txt` à côté de toute
     copie : le texte de la licence de chaque paquet contenu et, quand le paquet livre un fichier `NOTICE`, son texte à la suite (la
     licence Apache 2.0, article 4 d, veut que la copie redistribuée porte les deux ; ECharts en livre un). Un paquet sans fichier de

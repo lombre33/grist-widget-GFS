@@ -329,7 +329,13 @@ test('contrats 2.4, 3.2 et 3.4 : le manifeste de Grist-BI range ses rapports dan
   assert.ok(internal.every(entry => entry.lit === true && entry.ecrit === undefined && entry.retire === undefined), 'les tables internes ne se lisent que');
   assert.deepEqual(internal.flatMap(entry => entry.tables), ['_grist_Tables', '_grist_Tables_column']);
   assert.equal(m.permissions.lienPublic, undefined, 'aucun lien public : rien de Grist-BI n\'est ouvert à qui n\'a pas le document');
-  assert.deepEqual(m.extensions || [], [], 'ECharts, DuckDB et le reste sont dans le dépôt de l\'app : aucune extension');
+  // ECharts, DuckDB et le reste sont dans le dépôt de l'app ; GFS ne porte que d3-cloud (nuage de mots) et pdf.js (mots-clés des PDF), deux fonctions nouvelles que le porteur a
+  // acceptées le 18/11 (cartes « Ajouter à GFS » et « Oui, même copie »).
+  assert.deepEqual(m.extensions.map(item => [item.id, item.bibliotheques.map(lib => `${lib.id}@${lib.version}`)]), [['nuage-de-mots', ['d3-cloud@1.0.0']], ['mots-cles-pdf', ['pdfjs@1.0.0']]]);
+  for (const extension of m.extensions) {
+    assert.ok(extension.nom.fr && extension.nom.en && extension.texte.fr && extension.texte.en, `${extension.id} : nom et texte en français et en anglais`);
+    assert.ok(iconNames().includes(extension.icone), `${extension.id} : l'icône ${extension.icone} est dans la feuille de symboles`);
+  }
   const names = iconNames();
   for (const name of [m.icone, ...files.types.map(item => item.icone)]) assert.ok(names.includes(name), `l'icône ${name} est dans la feuille de symboles`);
 });

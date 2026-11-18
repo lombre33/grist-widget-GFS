@@ -53,9 +53,9 @@ test('safeLink : une adresse https sans identifiants ; jamais http, javascript:,
   for (const bad of ['http://exemple.fr/x', 'javascript:alert(1)', 'data:text/html,x', 'https://u:p@exemple.fr/', 'exemple.fr', '', null, undefined, 42]) assert.equal(safeLink(bad), null, String(bad));
 });
 
-test('les lignes : une par paquet que GFS sert (16 d\'après le catalogue du 18/11), les six paquets de l\'écriture en direct portent le même fichier, docx et pdfmake en portent deux', () => {
+test('les lignes : une par paquet que GFS sert (17 d\'après le catalogue du 18/11, d3-cloud compris), les six paquets de l\'écriture en direct portent le même fichier, docx et pdfmake en portent deux', () => {
   const rows = byName(rowsOf());
-  assert.equal(Object.keys(rows).length, 16);
+  assert.equal(Object.keys(rows).length, 17);
   for (const name of ['yjs', 'y-protocols', 'lib0', '@tiptap/y-tiptap', '@tiptap/extension-collaboration', '@tiptap/extension-collaboration-caret']) {
     assert.deepEqual(rows[name].files.map(file => file.id), ['edition-live'], name);
   }
@@ -112,7 +112,7 @@ test('les lignes actives passent devant, puis l\'ordre alphabétique ; le nom d\
 
 test('sans relevé (fichier absent ou illisible), la fenêtre montre ce que GFS sert : ni dernière stable, ni avis, ni licence, une licence « inconnue »', () => {
   const rows = rowsOf({ releve: null });
-  assert.equal(rows.length, 18, 'sans le relevé, un script classique est un paquet qui porte l\'id de sa bibliothèque (docx-charts et pdfmake-polices ont chacun leur ligne) ; un fichier assemblé garde ses paquets');
+  assert.equal(rows.length, 19, 'sans le relevé, un script classique est un paquet qui porte l\'id de sa bibliothèque (docx-charts et pdfmake-polices ont chacun leur ligne) ; un fichier assemblé garde ses paquets');
   const plotly = byName(rows).plotly;
   assert.deepEqual([plotly.latest, plotly.ecart, plotly.advisories.length, plotly.licence, plotly.licenceFit], [null, 'inconnu', 0, null, 'inconnue']);
 });
@@ -129,7 +129,7 @@ test('les filtres et le pied : le nombre de lignes par filtre et le poids des co
   const rows = rowsOf({ modules: modules() });
   const { counts, bytes } = summary(rows);
   assert.deepEqual(Object.keys(counts), [...FILTERS]);
-  assert.equal(counts.all, 16);
+  assert.equal(counts.all, 17);
   assert.equal(counts.active, 3, 'Plotly, ECharts et pdfmake (deux fichiers, une seule ligne)');
   assert.equal(counts.advisories, 1);
   assert.equal(counts.updates, rows.filter(row => ['correctif', 'mineure', 'majeure'].includes(row.ecart)).length);

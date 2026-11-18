@@ -10,6 +10,7 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
 - Une app reste **complète et autonome** : GFS ne lui retire rien, il l'héberge.
 - **Dès maintenant, sans attendre GFS**, treize règles qui ne coûtent presque rien et évitent de la dette (section 1.1).
 - **Une seule licence, la GPL 3.0**, dans le dépôt de chaque app (section 1.3).
+- **Neuf règles de sécurité, S1 à S9**, écrites le 18/11 pour toutes les apps, présentes et à venir : une politique de sécurité qui ferme les appels sortants, des scripts nommés, des bibliothèques déclarées, des dépendances suivies (section 1.4). GFS les contrôle et les montre dans la fenêtre « Dépendances ».
 - **Pour Publipostage+, une seule chose est urgente** : la garde « type inconnu », avant que quiconque écrive un nouveau
   type de modèle dans sa table (section 2.2).
 - **Quand GFS arrive** : le kit en sous-module, le manifeste `gfs.json`, la liste unique des bibliothèques natives, le
@@ -333,6 +334,7 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     (celle de GFS) dès que GFS le sert à ton app. « aucune » si ton app ne charge rien. GFS recopie ta liste dans le manifeste qu'il tient pour ton app, **n'en vérifie ni la version ni l'adresse ni l'empreinte**,
     et la montre « déclarée par l'app » ; elle ne ressort donc jamais plus fiable que ta page. Remets la section à jour quand ta liste change (sa date est celle de ta page). **Fait quand** : la fenêtre
     « Dépendances » de GFS montre, sous ton app, le bloc « Portées par l'app » avec tes lignes, ou dit que ton app n'en charge aucune.
+    **Depuis le 18/11 cette déclaration est exigée** (règle S5, section 1.4) : elle sert au tableau de bord de sécurité, qui cherche chaque adresse déclarée dans ton code.
 
 ### 1.3 Licence : GPL 3.0 dans tous les dépôts (décision du porteur, 21/10)
 
@@ -345,6 +347,50 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
    à côté du fichier. Elle doit être compatible avec la GPL 3.0 (MIT, BSD et Apache 2.0 le sont) : lire la licence avant
    d'ajouter du code tiers.
 4. **Aucun en-tête de licence** n'est demandé dans chaque fichier.
+
+### 1.4 Règles de sécurité de la suite (décidé le 18/11)
+
+Le porteur, 18/11 : des règles de sécurité dans le cahier des charges de toutes les apps, « présentes et surtout à venir » ; le tableau de bord de la fenêtre « Dépendances » les contrôle (cahier 3.2.1 et 3.2.2).
+**S1 à S7 sont exigées** : une app nouvelle les tient dès sa première référence dans GFS ; une app déjà dans la suite dit, dans une section « Sécurité » de son `GFS-ETAT.md`, où elle en est. **S8 et S9 sont attendues.**
+GFS ne bloque rien : il montre l'écart.
+
+1. **S1 · Une politique de sécurité dans la page**, en balise `<meta http-equiv="Content-Security-Policy">` (GitHub Pages ne sert aucun en-tête), dès la première version publiée.
+2. **S2 · Aucune directive de récupération ouverte.** Pars de `default-src 'none'` et rouvre seulement ce que ton app utilise. Ajoute `object-src 'none'`, `base-uri 'none'` et `form-action 'none'`.
+3. **S3 · Appels sortants fermés.** `connect-src`, `img-src`, `font-src`, `media-src`, `frame-src` et `worker-src` n'ouvrent que `'self'` et des adresses exactes (jamais `*`, `https:` ni `http:`). Chaque adresse ouverte est
+   dite avec sa raison dans une section « Adresses que l'app appelle » de ton `GFS-ETAT.md`. **C'est la règle qui compte contre une bibliothèque piratée** : une bibliothèque qui ne peut rien appeler d'autre ne peut pas envoyer tes
+   données ailleurs, quel que soit son code.
+4. **S4 · Scripts nommés.** `script-src` ne garde que `'self'`, le script d'API de Grist par son adresse entière avec `'unsafe-eval'` (règle 11) et les adresses exactes et versionnées des bibliothèques. Jamais `'unsafe-inline'`,
+   `*`, `https:`, `data:` ni `blob:` pour un script ; un script en ligne se garde par son empreinte (`'sha256-…'`). `'wasm-unsafe-eval'` et `worker-src blob:` seulement si une bibliothèque l'exige (DuckDB-WASM), et dis laquelle
+   dans ton `GFS-ETAT.md`. `style-src 'unsafe-inline'` est toléré tant que S3 est tenue : GFS le note, sans le compter contre toi.
+5. **S5 · Chaque bibliothèque chargée de l'extérieur est déclarée** (point 24 de la section 1.2), à une version exacte, avec son `integrity` et `crossorigin="anonymous"` quand le CDN permet une empreinte stable
+   (cdnjs : oui ; un service qui reconstruit ses fichiers, comme esm.sh : à ta mesure, dis-le). Chaque adresse que ta page contacte doit retrouver sa ligne déclarée.
+6. **S6 · Rien ne quitte le document sans un geste de la personne** : aucune donnée du document ni de la personne n'est envoyée à un service tiers, ni mesure d'audience, ni journal d'erreurs envoyé ; aucun secret (clé, jeton)
+   dans le dépôt. Une fonction qui envoie quelque chose le dit à la personne avant (comme la publication d'un formulaire, règle 14). GFS ne peut pas le vérifier : tu le déclares, et il montre ce que ta politique permettrait d'atteindre.
+7. **S7 · Dépendances suivies** : Dependabot (ou un outil équivalent) actif sur le dépôt, `.github/dependabot.yml` à la racine ; une montée de version se dit dans « Changements qui touchent GFS » de ton `GFS-ETAT.md` ;
+   une version qui a un avis de sécurité publié se monte avant le reste (cahier 3.2, « Montée de version »).
+8. **S8 · Relayer les appels bloqués** (attendue) : ton app dit à GFS, par le kit, quand sa politique bloque un appel, et GFS l'affiche. Le moyen arrive avec une version du kit, annoncée par une consigne ; tant
+   qu'il n'est pas là, rien à faire. Ce relais **informe, il ne protège pas** : un code compromis peut le taire.
+9. **S9 · `SECURITY.md`** (attendue) à la racine du dépôt : où signaler une faille, en privé (une adresse ou le signalement privé de GitHub).
+
+**Gabarit de politique** (à partir de lui, rouvre ce qui manque, avec sa raison) :
+
+```html
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js;
+  style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+```
+
+**Dans ton `GFS-ETAT.md`**, deux sections (GFS les lit au contrôle et les montre à côté de ce qu'il vérifie) :
+
+```markdown
+## Adresses que l'app appelle
+- <adresse https exacte> · <connect | img | font | media | frame | worker> · <ce qu'elle sert à faire, une phrase> · <envoie des données de la personne : non | oui, après un geste>
+## Sécurité
+- S1 · <tenue | en cours, prévue le JJ/MM | non tenue, pourquoi> · <une phrase si utile>
+… (une ligne par règle, de S1 à S9)
+```
+
+« aucune » dans « Adresses que l'app appelle » si ta politique n'ouvre que `'self'`. Ce que dit ta section « Sécurité » s'affiche comme « L'app dit : … » ; ce que GFS lit dans ta page s'affiche comme « Vérifié par GFS », avec la date
+du contrôle ; quand les deux se contredisent, la fenêtre le montre. **Fait quand** : S1 à S7 sont tenues et vérifiées par GFS, ou ta section « Sécurité » dit pour chacune quand elle le sera.
 
 ---
 

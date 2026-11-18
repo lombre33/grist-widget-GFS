@@ -2170,8 +2170,9 @@ rangée d'un fichier, selon ce qui vient d'abord.
 5. [T] Le rangement propre à une app (les dossiers personnels de Publipostage+) reste valable dans l'app ; l'explorateur de GFS
    le lit (champ `fichiers[].rangement`, 2.4) et ne l'écrit que si le manifeste le déclare (`rangement.ecriture`, point 8).
 6. [T] Une ligne dont `Utilisateur` commence par `@` est une ligne réservée de GFS : l'état du document, jamais le rangement
-   d'une personne. Deux à ce jour : `@document` / `gfs` / `apps`, les apps installées (7.4), et `@sonde`, la ligne-sonde
-   (point 9), qui n'existe que le temps d'une lecture. Le rangement ignore toute ligne en « @ ». Une app n'écrit jamais cette
+   d'une personne. Trois à ce jour : `@document` / `gfs` / `apps`, les apps installées (7.4), `@document` / `gfs` / `structure`,
+   le numéro de structure (point 16), et `@sonde`, la ligne-sonde (point 9), qui n'existe que le temps d'une lecture. Le
+   rangement ignore toute ligne en « @ ». Une app n'écrit jamais cette
    table (6.1, point 1).
 7. [D] GFS écrit ces lignes sur un geste de la personne dans l'explorateur, avant qu'aucune app ne soit ouverte (le porteur,
    21/10) : épingler un fichier, le déplacer, créer, renommer, déplacer ou supprimer un dossier (créer et supprimer : point 11).
@@ -2343,6 +2344,32 @@ rangée d'un fichier, selon ce qui vient d'abord.
     la fenêtre ; `aria-rowcount` et `aria-rowindex` annoncent le vrai nombre de lignes et leur rang ; un glissement en cours tient les lignes en place jusqu'à sa
     fin. **Ce que cela ne fait pas** : la recherche Ctrl+F du navigateur ne trouve pas une ligne qui n'est pas construite (le champ de recherche de l'explorateur,
     lui, cherche dans toutes les données). [M] **Mesuré le 10/11** dans un vrai Grist et sous Firefox à 700 × 400 : faits vérifiés, section 87.
+
+16. [T] **Le numéro de structure du document** (décision du porteur, 18/11 : « Oui, avec ton accord », pour que la bêta relise les documents de l'alpha).
+    Une ligne réservée de plus dans `GFS_Rangement` (`Utilisateur` = `@document`, `App` = `gfs`, `Fichier` = `structure`, point 6), dont `Valeur` est le JSON
+    `{ "structure": 1 }` : un entier de 1 ou plus, la forme que cette version de GFS donne à ses tables dans CE document. Aucune table de plus, aucune colonne de
+    plus (`js/files/structure.js`, `js/files/rangement.js`).
+    - **Quand il s'écrit** : après un geste de la personne qui a écrit dans `GFS_Rangement` (installer une app, ranger ou épingler un fichier, créer un dossier),
+      dans un lot à part qui part APRÈS celui du geste ; jamais avant, jamais seul, jamais plus d'une fois par ouverture, jamais dans un document en lecture
+      seule. La table n'est créée, comme toujours, qu'avec l'accord de la personne (6.2, point 1) : le numéro n'ajoute aucune question. Le lot de la note ne fait
+      jamais échouer le geste : sur un document où la personne n'est pas propriétaire (les lignes `@document` ne s'écrivent qu'aux propriétaires, 11.4, point 2),
+      Grist refuse la note, GFS écrit un avertissement et n'insiste pas. Un document sans numéro (celui d'avant) n'est pas « ancien » : il se lit et s'écrit
+      comme avant, et le numéro est noté au premier geste.
+    - **Ce qu'il dit** : une version de GFS qui lit un numéro **plus grand que le sien** (`isNewer`) lit tout ce qu'elle sait lire et **n'écrit plus dans les
+      tables de GFS** : les gestes qui écrivent sont grisés avec leur raison (`#writeBlock` du contrôleur, comme la lecture seule), une phrase le dit à
+      l'ouverture, `Rangement` refuse d'écrire (`DocumentNewer`) et ne touche à aucune colonne. La phrase : « Ce document a été préparé par une version plus
+      récente de GFS : il se lit, mais rien ne s'y enregistre. Pour y écrire, mettez l'adresse de la dernière version de GFS dans le champ du panneau de droite de
+      Grist. » Seule exception, la ligne-sonde (point 9) : ajoutée puis retirée aussitôt, elle apprend l'adresse de la personne, sans quoi son rangement ne se
+      lirait pas ; elle ne reste jamais dans la table. Une version qui n'a pas ce code (celles d'avant l'alpha) ignore la ligne (point 6) : elle n'est pas
+      protégée, et c'est pourquoi le numéro commence avec l'alpha.
+    - **Quand il monte** (`STRUCTURE`, `js/files/structure.js`) : quand une version change ce qu'une version plus ancienne ne sait ni relire ni ignorer : une
+      colonne renommée, une ligne dont le sens change, un format de valeur qui n'est plus lisible. **Un ajout seul ne le monte pas** (une colonne, une ligne, une
+      clé de plus : 6.1 point 3, 6.5 point 4) ; on ne le baisse jamais. Il vaut 1 pour toute l'alpha ; le premier lot qui le monte le dit dans son commit et dans
+      la section des faits vérifiés, et ajoute au jeu de documents de référence de l'alpha (rejoué à chaque version) le cas qu'il rend illisible.
+    - **Ce qu'il ne fait pas** : il ne migre rien (une migration se propose à la personne dans une fenêtre, avec son accord) ; il ne dit rien des tables des apps
+      (chacune garde les siennes) ni du contrat GFS ↔ app (`contrat`, `gfs=`) ; il ne protège pas un document où GFS n'a encore rien écrit dans `GFS_Rangement`
+      (les tables du partage se complètent par leurs colonnes, `extend: 'upgrade'`). [M] **Mesuré le 18/11** dans un vrai Grist (`labo/run-structure.mjs`, français
+      clair et anglais sombre : 26 vérifications sur 26) et sous Firefox pour la phrase (`test/bulle-firefox.mjs`) : faits vérifiés, section 116.
 
 ### 6.5 Préserver l'inconnu
 

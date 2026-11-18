@@ -9,6 +9,8 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     'share.other.why.pdf': 'Pour l’instant, seuls les PDF que GFS garde se partagent avec un autre document.',
     'share.other.why.owner': 'Seul un propriétaire de ce document peut l’envoyer à un autre document Grist.',
     'share.other.why.emptyFolder': 'Ce dossier ne contient aucun PDF que GFS garde : rien à envoyer pour l’instant.',
+    'share.other.why.allTooBig': 'Tous les PDF de ce dossier pèsent plus de {max} : un partage vers un autre document ne porte pas plus par fichier, rien ne partirait.',
+    'share.other.limit': 'Ce fichier pèse {size} : un partage vers un autre document ne porte pas plus de {max} par fichier, il ne partirait pas.',
     'so.title.link': 'Relier un autre document Grist',
     'so.sub.link': 'Pour lui partager des fichiers ensuite, dans un seul sens',
     'so.link.lead': 'Les deux documents se relient une seule fois. Rien n’est envoyé maintenant : chaque fichier que vous partagez ensuite part sans nouveau code, et l’autre l’accepte quand il arrive.',
@@ -100,6 +102,7 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     'so.tab.lead.folder': 'Envoyez une copie des {n} PDF de ce dossier à un autre document Grist qui a GFS. Ils arrivent chez eux dans un dossier du même nom, « à accepter » d’un coup.',
     'so.tab.none.folder': 'Aucun document relié pour l’instant : reliez-en un, puis choisissez « Copie à jour » pour ce dossier.',
     'so.tab.skipped.folder': '{n} {n|fichier d’une app ne part|fichiers d’apps ne partent} pas : seuls les PDF que GFS garde se partagent pour l’instant.',
+    'so.tab.toobig.folder': '{n} {n|PDF ne part|PDF ne partent} pas : {n|il pèse|ils pèsent} plus de {max}, le plus qu’un partage vers un autre document porte par fichier.',
     'so.once.going': '« {name} » part ; il sortira du partage ensuite.',
     'so.once.done': '« {name} » est arrivé dans « {doc} ».',
     // Le mode d'un partage (un envoi seul, ou un fichier qui reste à jour) et ses explications.
@@ -166,6 +169,8 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     'share.other.why.pdf': 'For now, only the PDFs GFS keeps can be shared with another document.',
     'share.other.why.owner': 'Only an owner of this document can send it to another Grist document.',
     'share.other.why.emptyFolder': 'This folder holds no PDF that GFS keeps: nothing to send for now.',
+    'share.other.why.allTooBig': 'Every PDF in this folder weighs more than {max}: a share to another document carries no more than that per file, so nothing would be sent.',
+    'share.other.limit': 'This file weighs {size}: a share to another document carries no more than {max} per file, so it would not be sent.',
     'so.title.link': 'Link another Grist document',
     'so.sub.link': 'To share files with it afterwards, one way',
     'so.link.lead': 'The two documents link up once. Nothing is sent now: every file you share afterwards goes without a new code, and the other document accepts it when it arrives.',
@@ -257,6 +262,7 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     'so.tab.lead.folder': 'Send a copy of the {n} PDFs in this folder to another Grist document that has GFS. They arrive there in a folder of the same name, “to accept” in one go.',
     'so.tab.none.folder': 'No linked document yet: link one, then choose “Up-to-date copy” for this folder.',
     'so.tab.skipped.folder': '{n} {n|app file does|app files do} not go: only the PDFs GFS keeps can be shared for now.',
+    'so.tab.toobig.folder': '{n} {n|PDF is|PDFs are} not sent: {n|it weighs|they weigh} more than {max}, the most a share to another document carries per file.',
     'so.once.going': '“{name}” is on its way; it will leave the share afterwards.',
     'so.once.done': '“{name}” has arrived in “{doc}”.',
     // Le mode d'un partage (un envoi seul, ou un fichier qui reste à jour) et ses explications.

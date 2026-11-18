@@ -5,7 +5,7 @@
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { openMenu } from '../ui/menu.js';
-import { levelOf } from './share-links.js';
+import { levelOf, maxText } from './share-links.js';
 
 const mark = name => h('span', { class: 'who' }, String(name || '?').trim().slice(0, 2).replace(/^./, first => first.toUpperCase()) || '?');
 
@@ -13,12 +13,15 @@ const mark = name => h('span', { class: 'who' }, String(name || '?').trim().slic
 const word = (ctx, key) => ctx.t(ctx.other.folder ? `${key}.folder` : key);
 
 // Le menu des niveaux d'un fichier (ou d'un dossier) chez un document : une copie une fois, une copie à jour (cochée quand c'est le cas), arrêter la copie
-// (grisé, avec sa raison, quand rien n'est partagé).
+// (grisé, avec sa raison, quand rien n'est partagé). Un fichier de plus de 25 Mo (`other.limit`, js/sharing/share-other.js) ne peut plus y entrer : les
+// deux copies (« une fois », « à jour ») sont grisées, un clic dit pourquoi ; l'arrêt reste permis (le fichier a pu entrer avant).
 function levelItems(ctx, link, level) {
   const { t } = ctx;
+  const limit = ctx.other.limit;
+  const enter = (item, to) => ({ ...item, greyed: Boolean(limit), run: () => (limit ? ctx.say(limit) : void ctx.setLevel(link, to)) });
   return [
-    { label: t('so.level.once'), icon: 'copy', hint: word(ctx, 'so.level.once.hint'), run: () => void ctx.setLevel(link, 'once') },
-    { label: t('so.level.live'), icon: 'link', hint: word(ctx, 'so.level.live.hint'), check: level === 'live', run: () => void ctx.setLevel(link, 'live') },
+    enter({ label: t('so.level.once'), icon: 'copy', hint: word(ctx, 'so.level.once.hint') }, 'once'),
+    enter({ label: t('so.level.live'), icon: 'link', hint: word(ctx, 'so.level.live.hint'), check: level === 'live' }, 'live'),
     '-',
     { label: t('so.level.stop'), icon: 'x', hint: t('so.level.stop.hint'), greyed: level === 'none',
       run: () => (level === 'none' ? ctx.say(word(ctx, 'so.level.stop.why')) : void ctx.setLevel(link, 'none')) },
@@ -45,12 +48,16 @@ function linkRow(ctx, link) {
 // say(text), newDocument() }.
 export function otherTab(ctx) {
   const { t, other } = ctx;
-  const fresh = h('button', { type: 'button', class: 'btn', 'aria-disabled': other.why ? 'true' : null, dataset: { fk: 'other-new' } }, t('so.tab.new'));
-  fresh.addEventListener('click', () => (other.why ? ctx.say(other.why) : ctx.newDocument()));
+  const stuck = other.why || other.limit;
+  const fresh = h('button', { type: 'button', class: 'btn', 'aria-disabled': stuck ? 'true' : null, dataset: { fk: 'other-new' } }, t('so.tab.new'));
+  fresh.addEventListener('click', () => (stuck ? ctx.say(stuck) : ctx.newDocument()));
   const lead = other.folder ? t('so.tab.lead.folder', { n: other.count }) : t('so.tab.lead');
-  const parts = [other.why ? h('p', { class: 'rt-lead' }, icon('lock'), h('span', null, other.why)) : h('p', { class: 'fine' }, lead)];
+  const parts = [stuck ? h('p', { class: 'rt-lead' }, icon('lock'), h('span', null, stuck)) :
+    h('p', { class: 'fine' }, lead)];
   if (other.folder && other.skipped > 0) parts.push(h('p', { class: 'fine', dataset: { fk: 'other-skipped' } },
     t('so.tab.skipped.folder', { n: other.skipped })));
+  if (other.folder && other.tooBig > 0) parts.push(h('p', { class: 'fine', dataset: { fk: 'other-toobig' } },
+    t('so.tab.toobig.folder', { n: other.tooBig, max: maxText(t) })));
   if (ctx.links === null) parts.push(h('p', { class: 'rt-none', 'aria-live': 'polite' }, t('so.tab.loading')));
   else if (ctx.links === false) parts.push(h('p', { class: 'rt-none' }, t('so.tab.unreadable')));
   else {

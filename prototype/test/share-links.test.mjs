@@ -2,7 +2,8 @@
 // ici un faux qui note ses appels ; ce qu'il fait dans un vrai Grist est mesuré par labo/run-sync-retrait.mjs (faits vérifiés 70).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { NONE, SENT_COLUMNS, applyLevel, carriesFolder, docOf, filesOf, idsWith, levelOf, linksFrom, selectionFor, setCondition, settle, stopLink } from '../js/sharing/share-links.js';
+import { NONE, SEND_MAX, SENT_COLUMNS, applyLevel, carriesFolder, docOf, filesOf, idsWith, isTooBig, levelOf, linksFrom, maxText, selectionFor, setCondition, settle, sizeOf, stopLink } from '../js/sharing/share-links.js';
+import { FILE_MAX } from '../kit/js/synchro/logic/files.js';
 
 const tablesWith = values => [{ table: 'GFS_Fichiers', columns: [], filter: { mode: 'all', conds: [{ id: 'Identifiant', op: 'in', values }] } }];
 const hook = (id, memo = 'ami@exemple.fr · abcdef123456 · Equipe/Compta') => ({ id, fields: { memo, enabled: true } });
@@ -181,4 +182,16 @@ test('arrêter le lien : ses invitations en attente sont annulées, puis l\'expo
   const alone = fakeEngine();
   await stopLink(alone, { ...LINK, exp: { ...LINK.exp, invitations: [] } });
   assert.deepEqual(alone.calls, [['end', 'e1']]);
+});
+
+test('la limite de GFS est celle du moteur de partage (25 Mo par fichier) : au-delà, le moteur ne l\'envoie pas et l\'autre document recevrait une ligne vide (audit du 18/11)', () => {
+  assert.equal(SEND_MAX, FILE_MAX, 'si le kit change sa limite, GFS la dit : ce test le rappelle');
+  const piece = size => ({ pieces: [['1', size]] });
+  assert.equal(isTooBig(piece(SEND_MAX)), false, 'pile 25 Mo part (le moteur compare avec « au plus »)');
+  assert.equal(isTooBig(piece(SEND_MAX + 1)), true);
+  assert.equal(isTooBig({ pieces: [] }), false);
+  assert.equal(isTooBig({}), false, 'un fichier sans pièce jointe connue (taille absente) n\'est pas écarté à tort');
+  assert.equal(isTooBig(null), false);
+  assert.equal(sizeOf({ pieces: [['1', 10], ['2', 5], ['3', 'x']] }), 15, 'la somme des pièces, une taille illisible compte zéro');
+  assert.equal(maxText((key, vars) => `${key}:${vars.n}`), 'weight.mo:25');
 });

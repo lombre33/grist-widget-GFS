@@ -1,7 +1,8 @@
 // Partager un dossier avec un autre document Grist (js/share-folder.js) : quels fichiers partent, le nom du dossier écrit sur eux (la colonne de plus), et ce qu'on efface quand le partage s'arrête.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { filesOfFolder, folderLabel, isFolderTarget, skippedInFolder, writeFolderName } from '../js/sharing/share-folder.js';
+import { filesOfFolder, folderLabel, isFolderTarget, skippedInFolder, tooBigInFolder, writeFolderName } from '../js/sharing/share-folder.js';
+import { SEND_MAX } from '../js/sharing/share-links.js';
 import { FILES_APP, FILES_TABLE, SHARED_FOLDER_COLUMN } from '../js/files/gfs-files.js';
 import { fakeGrist } from './fake-grist.mjs';
 
@@ -11,9 +12,20 @@ test('les fichiers d\'un dossier qui partent : les PDF de GFS rangés dans ce do
   const files = [file('p1'), file('p2', { folder: 'Contrats/Sous' }), file('p3', { folder: '' }), file('p4', { trashed: { ts: 1 } }), file('p5', { received: { table: 'GFS_Recus' } }), file('p6', { direct: { url: 'x' } }), file('p7', { app: 'publipostage' }), file('p8')];
   const sent = filesOfFolder(files, 'Contrats');
   assert.deepEqual(sent.map(each => each.id), ['p1', 'p8'], 'le niveau du dossier seulement : un sous-dossier est un autre dossier');
-  assert.equal(skippedInFolder(files, 'Contrats', sent), 1, 'le fichier d\'une app ne part pas : il se compte, pour le dire');
+  assert.equal(skippedInFolder(files, 'Contrats'), 1, 'le fichier d\'une app ne part pas : il se compte, pour le dire');
   assert.deepEqual(filesOfFolder(undefined, 'Contrats'), []);
-  assert.equal(skippedInFolder(null, 'Contrats', null), 0);
+  assert.equal(skippedInFolder(null, 'Contrats'), 0);
+});
+
+test('un PDF de plus de 25 Mo ne part pas avec son dossier (le moteur ne l\'enverrait pas) : il ne se compte ni parmi ceux qui partent ni parmi les fichiers d\'une app, il a son propre compte', () => {
+  const big = size => ({ pieces: [['9', size]] });
+  const files = [file('p1', big(1000)), file('p2', big(SEND_MAX)), file('p3', big(SEND_MAX + 1)), file('p4', { ...big(SEND_MAX + 5), trashed: { ts: 1 } }),
+    file('p5', { ...big(SEND_MAX + 5), folder: 'Contrats/Sous' }), file('p6', { app: 'autre', ...big(SEND_MAX + 5) })];
+  const sent = filesOfFolder(files, 'Contrats');
+  assert.deepEqual(sent.map(each => each.id), ['p1', 'p2'], 'p3 pèse plus de 25 Mo : il reste ; p2 pèse pile 25 Mo : il part');
+  assert.equal(tooBigInFolder(files, 'Contrats'), 1, 'p3 seul : p4 est à la corbeille, p5 dans un autre dossier, p6 est d\'une app');
+  assert.equal(skippedInFolder(files, 'Contrats'), 1, 'p6 seul : les fichiers d\'une app, gros ou non');
+  assert.equal(tooBigInFolder(null, 'Contrats'), 0);
 });
 
 test('un dossier est un chemin sans app ; son nom chez l\'autre est le dernier mot du chemin', () => {

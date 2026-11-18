@@ -46,7 +46,7 @@ import { ThemeWindow } from '/js/theme/theme-window.js';
 import { Trash } from '/js/files/trash.js';
 import { openShare } from '/js/sharing/share-window.js';
 import { openManage } from '/js/sharing/manage-window.js';
-import { whyNot } from '/js/sharing/share-other.js';
+import { limitOf, whyNot } from '/js/sharing/share-other.js';
 import { openShareOther } from '/js/sharing/share-other-window.js';
 import { openShareReceive } from '/js/sharing/share-receive-window.js';
 import { openWeight } from '/js/weight/weight-window.js';
@@ -579,19 +579,22 @@ async function mount() {
     dossier: [{ id: 'e1', name: 'Compta', files: ['f1', 'f2', 'f3', 'x'], state: 'active', doc: { name: LINK_DOC, id: 'd1' } }, { id: 'e2', name: 'Direction', files: ['f1'], state: 'active', doc: { name: 'Direction', id: 'd2' } }, { id: 'e3', name: 'Archives', files: [], state: 'pending', doc: { name: '', id: '' } }],
   };
   const linksNow = () => { if (window.__links === 'illisible') throw new Error('illisible'); return JSON.parse(JSON.stringify(LINKS[window.__links || 'actifs'])).filter(each => !(window.__removed || []).includes(each.id)); };
-  // `folder` : le dossier que « Partager » a reçu (`window.__folderCount` PDF de GFS dedans, 3 par défaut, et `window.__folderSkipped` fichiers d'une app qui ne partent pas, 2 par défaut).
+  // `folder` : le dossier que « Partager » a reçu (`window.__folderCount` PDF de GFS qui partent, 3 par défaut, `window.__folderTooBig` PDF de plus de 25 Mo qui ne partent pas, et `window.__folderSkipped` fichiers d'une app qui ne partent pas, 2 par défaut).
   const folderTab = (state, folder) => {
     const count = window.__folderCount === undefined ? 3 : window.__folderCount;
     const ids = ['f1', 'f2', 'f3', 'f4', 'f5'].slice(0, count);
+    const tooBig = window.__folderTooBig || 0;
     return {
-      why: whyNot(i18n.t, { file: folder, state, files: ids }), fileId: ids, folder: true, count, skipped: window.__folderSkipped === undefined ? 2 : window.__folderSkipped,
+      why: whyNot(i18n.t, { file: folder, state, files: ids, tooBig }), fileId: ids, folder: true, count, skipped: window.__folderSkipped === undefined ? 2 : window.__folderSkipped, tooBig, limit: null,
       loadLinks: async () => linksNow(),
       onLevel: async (link, level) => { window.__shareActs.push(['level', link.id, level, 'dossier']); return { ok: true, note: level === 'once' ? i18n.t('so.once.going', { name: folder.name }) : undefined }; },
       onNew: async () => { window.__shareActs.push(['new']); await window.__sendOther(window.__shareSend || 'ok'); },
     };
   };
+  // `window.__fileMb` : le fichier pèse autant de Mo (au-delà de 25, le partage le dit avant l'envoi : js/sharing/share-other.js, `limitOf`).
+  const oneFile = () => ({ id: 'abc', name: 'Facture.pdf', app: 'gfs-fichiers', pieces: window.__fileMb ? [['9', window.__fileMb * 1024 * 1024]] : [] });
   const otherTab = (state, folder) => folder ? folderTab(state, folder) : ({
-    why: whyNot(i18n.t, { file: { id: 'abc', name: 'Facture.pdf', app: 'gfs-fichiers' }, state }), fileId: 'abc',
+    why: whyNot(i18n.t, { file: oneFile(), state }), limit: limitOf(i18n.t, language, oneFile()), fileId: 'abc',
     loadLinks: async () => linksNow(),
     onLevel: async (link, level) => { window.__shareActs.push(['level', link.id, level]); return { ok: true, note: level === 'once' ? i18n.t('so.once.going', { name: 'Facture.pdf' }) : undefined }; },
     onNew: async () => { window.__shareActs.push(['new']); await window.__sendOther(window.__shareSend || 'ok'); },

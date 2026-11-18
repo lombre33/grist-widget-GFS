@@ -16,6 +16,17 @@ import { FILES_COLUMN_IDS, FILES_TABLE, SHARED_FOLDER_COLUMN, TRASH_COLUMN_IDS }
 // 11/11).
 export const SENT_COLUMNS = Object.freeze(FILES_COLUMN_IDS.filter(id => !TRASH_COLUMN_IDS.includes(id)));
 export const NONE = 'gfs-aucun';
+
+// Ce que le partage ne porte pas : un fichier de plus de 25 Mo. Le moteur ne l'envoie pas (kit/js/synchro/logic/files.js, `FILE_MAX` :
+// `test/share-links.test.mjs` garde l'égalité des deux nombres, GFS ne charge pas le moteur pour le lire) ; l'autre document recevait alors sa ligne vide (« à
+// accepter, 100 o ») et l'envoyeur voyait « À jour » (audit « trois Grist » du 18/11). GFS le dit AVANT l'envoi (choix du porteur, 18/11 : « Prévenir avant
+// l'envoi ») : le fichier ne part pas, et la fenêtre dit pourquoi.
+export const SEND_MAX = 25 * 1024 * 1024;
+// Le contenu d'un fichier de l'explorateur : la somme de ses pièces jointes (`pieces`, [[clé, octets]] : le PDF que GFS garde en a une, que dit `Taille`).
+export const sizeOf = file => ((file && file.pieces) || []).reduce((total, piece) => total + (Number(piece[1]) || 0), 0);
+export const isTooBig = file => sizeOf(file) > SEND_MAX;
+// « 25 Mo » dans la langue de `t` (le nombre vient de `SEND_MAX` : un texte écrit à la main dirait un jour autre chose que le code).
+export const maxText = t => t('weight.mo', { n: SEND_MAX / (1024 * 1024) });
 export const LEVELS = Object.freeze(['none', 'once', 'live']);
 export const PASS_MS = 2000; // entre deux passages du rattrapage, tant que des fichiers partent
 export const PASSES = 90; // trois minutes au plus avant de dire que l'envoi n'est pas fini

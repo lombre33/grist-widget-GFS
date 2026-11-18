@@ -5,18 +5,27 @@
 // d'essai Firefox (test/pages/explorateur.js). Grisé, jamais masqué, quand ça ne peut pas servir : un clic dit pourquoi. Le premier lot ne couvre que les PDF
 // que GFS garde, et un propriétaire du document.
 import { FILES_APP } from '../files/gfs-files.js';
-import { applyLevel, stopLink } from './share-links.js';
-import { filesOfFolder, folderLabel, isFolderTarget, skippedInFolder, writeFolderName } from './share-folder.js';
+import { formatBytes } from '../weight/weight.js';
+import { applyLevel, isTooBig, maxText, sizeOf, stopLink } from './share-links.js';
+import { filesOfFolder, folderLabel, isFolderTarget, skippedInFolder, tooBigInFolder, writeFolderName } from './share-folder.js';
 import { closeSharingTables } from './sync-rules.js';
 
 // Pourquoi l'onglet est grisé (une phrase), ou null. `files` : pour un dossier, les fichiers qui peuvent y partir (js/share-folder.js) ; un dossier sans PDF à
-// partager n'a rien à envoyer.
-export function whyNot(t, { file, state, files }) {
+// partager n'a rien à envoyer (`tooBig` : combien de PDF de plus de 25 Mo l'en empêchent, le dire plutôt que « aucun PDF »).
+export function whyNot(t, { file, state, files, tooBig = 0 }) {
   if (!file) return t('share.other.why.pdf');
-  if (isFolderTarget(file)) { if (!files || !files.length) return t('share.other.why.emptyFolder'); }
-    else if (file.app !== FILES_APP) return t('share.other.why.pdf');
+  if (isFolderTarget(file)) {
+    if (!files || !files.length) return tooBig > 0 ? t('share.other.why.allTooBig', { max: maxText(t) }) : t('share.other.why.emptyFolder');
+  } else if (file.app !== FILES_APP) return t('share.other.why.pdf');
   if (!state || state.owner !== true) return t('share.other.why.owner');
   return null;
+}
+
+// Pourquoi CE fichier ne peut pas partir (une phrase), ou null : plus de 25 Mo, le moteur ne l'enverrait pas (js/sharing/share-links.js, `SEND_MAX`). Le
+// fichier seul ; un dossier dit combien de PDF restent chez lui (`tooBigInFolder`). N'empêche pas d'arrêter un partage qui le portait déjà.
+export function limitOf(t, language, file) {
+  if (!file || isFolderTarget(file) || file.app !== FILES_APP || !isTooBig(file)) return null;
+  return t('share.other.limit', { size: formatBytes(sizeOf(file), language, t), max: maxText(t) });
 }
 
 // Le nom de ce document, pour nommer le lien chez l'autre (le journal qu'il y reçoit) ; à défaut, un nom neutre.
@@ -34,7 +43,6 @@ export async function documentName(transfer, t) {
 async function closeTechnicalTables(deps) {
   if ((await deps.transfer.isOwner()) === true) await closeSharingTables({ docApi: deps.docApi() });
 }
-
 // L'onglet de « Partager » pour `file` : un fichier, ou un DOSSIER (js/share-folder.js : tous ses PDF, avec le nom du dossier). `tools` : ce que
 // `createOtherDocuments` tient (le moteur, la lecture des liens, la fenêtre du premier envoi).
 function buildTab({ deps, links, open, engine, said }, file, state) {
@@ -42,15 +50,20 @@ function buildTab({ deps, links, open, engine, said }, file, state) {
   const folder = isFolderTarget(file);
   const all = folder && deps.files ? deps.files() : [];
   const picked = folder ? filesOfFolder(all, file.path) : null;
-  const why = whyNot(t, { file, state, files: picked });
+  const tooBig = folder ? tooBigInFolder(all, file.path) : 0;
+  const why = whyNot(t, { file, state, files: picked, tooBig });
+  const limit = limitOf(t, deps.language(), file);
   const ids = picked ? picked.map(each => each.id) : null;
   const rows = picked ? picked.map(each => each.row) : [];
   const label = folder ? folderLabel(file.path) : '';
+  // Ce qui empêche ce niveau : l'onglet grisé, un blocage d'écriture, ou un fichier trop gros pour y entrer (seul « Arrêter la copie » reste permis).
+  const refusal = level => why || deps.writeBlock() || (limit && level !== 'none' ? limit : null);
   return {
-    why, fileId: ids || (file ? file.id : ''), folder, count: rows.length, skipped: folder ? skippedInFolder(all, file.path, picked) : 0, loadLinks: links,
-      onNew: () => open(folder ? null : file),
+    why, fileId: ids || (file ? file.id : ''), folder, count: rows.length, skipped: folder ? skippedInFolder(all, file.path) : 0, tooBig, limit,
+      loadLinks: links,
+      onNew: () => (limit ? deps.notice(limit) : open(folder ? null : file)),
     async onLevel(link, level) {
-      const blocked = why || deps.writeBlock();
+      const blocked = refusal(level);
       if (blocked) return { ok: false, message: blocked };
       try {
         if (folder && level !== 'live') await deps.following.unfollow(link.id, file.path); // d'abord : le suivi ne doit pas rajouter ce que la personne retire

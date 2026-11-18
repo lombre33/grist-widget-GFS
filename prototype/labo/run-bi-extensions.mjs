@@ -1,5 +1,6 @@
-// Les deux extensions de Grist-BI (ses demandes `d3-cloud` et `pdfjs`, acceptées par le porteur le 18/11), avec la VRAIE Grist-BI que GFS référence, dans un vrai Grist (grist-static) : à la vraie
-// souris, à 700 × 400. L'app ne branche pas encore ces bibliothèques (consigne 019) : ce que le labo mesure, c'est ce que GFS lui donne et que le fichier marche dans SON cadre, comme elle le fera.
+// Les deux extensions de Grist-BI (ses demandes `d3-cloud` et `pdfjs`, acceptées par le porteur le 18/11), avec la VRAIE Grist-BI que GFS référence (92da65c), dans un vrai Grist (grist-static) : à la vraie
+// souris, à 700 × 400. L'app branche ces bibliothèques depuis la consigne 019 (`js/extensions.js`, `GristBI.extensions`) : le labo mesure ce que GFS lui donne, que le fichier marche dans SON cadre, et que le
+// chargeur de l'app suit les trois états (`inactive`, `active`, retirée) sans recharger, sa tuile « Nuage de mots » et son menu « Mots-clés des publications » restant grisés, jamais masqués, sans l'extension.
 //   1. La fiche de Grist-BI : « Nuage de mots » et « Mots-clés des PDF », décochées au départ, chacune avec sa bibliothèque ; la copie de GFS est le seul mode (le CDN est grisé avec sa raison).
 //   2. Décochées : l'app ne reçoit ni extension ni bibliothèque (`GfsLink.extensions()` vide, `GfsLink.library()` rend `null`).
 //   3. Cochée, « Nuage de mots » : l'app (déjà ouverte) reçoit l'extension et d3-cloud seul, de la copie de GFS, forme « module », empreinte du catalogue ; pas pdf.js.
@@ -50,6 +51,14 @@ const waitReceived = async (app, test, label) => {
   return last;
 };
 
+// Ce que le chargeur de l'app (js/extensions.js) dit d'une extension : son état, et ce que `load` rend (le module, ou null quand elle n'est pas donnée).
+const loader = (app, id) => app.evaluate(async extension => {
+  const api = GristBI.extensions;
+  const state = api.stateOf(extension);
+  const module = await api.load(extension);
+  return { state, loaded: module ? Object.keys(module).length : null, default: module && typeof module.default, getDocument: module && typeof module.getDocument, version: module && module.version };
+}, id);
+
 // ----- 1. La fiche de Grist-BI.
 await lab.openModules(frame);
 await installApp(frame, 'bi');
@@ -76,6 +85,10 @@ await page.waitForTimeout(3000);
 const off = await received(app);
 say('décochées, l\'app reçoit :', JSON.stringify(off));
 check('décochées : aucune extension, aucune bibliothèque', off.extensions.length === 0 && off.cloud === null && off.pdfjs === null, off);
+const offCloud = await loader(app, 'nuage-de-mots');
+const offKeywords = await loader(app, 'mots-cles-pdf');
+check('décochées, le chargeur de l\'app dit « inactive » pour les deux et ne charge rien (les fonctions restent grisées, jamais masquées)', offCloud.state === 'inactive' && offCloud.loaded === null &&
+  offKeywords.state === 'inactive' && offKeywords.loaded === null, { offCloud, offKeywords });
 
 // ----- 3. Le nuage de mots coché, l'app étant ouverte.
 await lab.openModules(frame);
@@ -90,6 +103,10 @@ say('nuage coché, l\'app reçoit :', JSON.stringify(cloudOn));
 check('l\'app reçoit l\'extension, sans rechargement', cloudOn.extensions.join() === 'nuage-de-mots', cloudOn);
 check('d3-cloud vient de la copie de GFS : sa source, l\'empreinte du catalogue, la forme « module »', cloudOn.cloud && cloudOn.cloud.src === `${ORIGIN}vendor/d3-cloud/1.0.0/d3-cloud.js` && /^sha384-q1KvVuPu5gLsypxXouTgdg1dT1JqvKeP9uKICf37NNV5FA5zj9XN55UQwm\+Ii76F$/.test(cloudOn.cloud.integrite) && cloudOn.cloud.forme === 'module', cloudOn.cloud);
 check('pdf.js n\'est pas livré avec le nuage de mots (1,6 Mo de moins)', cloudOn.pdfjs === null, cloudOn.pdfjs);
+const onCloud = await loader(app, 'nuage-de-mots');
+const stillKeywords = await loader(app, 'mots-cles-pdf');
+check('l\'app (ouverte, sans rechargement) passe « Nuage de mots » à « active » et son chargeur rend le module de d3-cloud ; « Mots-clés des PDF » reste « inactive »', onCloud.state === 'active' &&
+  onCloud.default === 'function' && stillKeywords.state === 'inactive' && stillKeywords.loaded === null, { onCloud, stillKeywords });
 
 // ----- 4. Le fichier se charge dans le cadre de l'app, comme elle le fera, et place des mots.
 const loaded = await app.evaluate(async source => {
@@ -155,6 +172,9 @@ say('pdf.js dans le cadre de l\'app :', JSON.stringify(reading));
 check('pdf.js 6.5.438 se charge dans le cadre de l\'app sans refus', !reading.erreur && reading.version === '6.5.438' && reading.violations.length === 0, reading);
 check('il lit le texte d\'un vrai PDF : deux pages, le titre de chacune, accents compris', reading.pages === 2 && reading.texts[0].includes(pageTitle('Publication', 1)) && reading.texts[1].includes(pageTitle('Publication', 2)) && reading.texts[0].includes(ACCENTED_LINE), reading.texts);
 
+const onKeywords = await loader(app, 'mots-cles-pdf');
+check('« Mots-clés des PDF » passe à « active » et le chargeur de l\'app rend le module de pdf.js (version 6.5.438)', onKeywords.state === 'active' && onKeywords.getDocument === 'function' && onKeywords.version === '6.5.438', onKeywords);
+
 // ----- 6. Retirer « Nuage de mots » : d3-cloud s'en va, pdf.js reste.
 await lab.openModules(frame);
 await setExtension(frame, CLOUD, false);
@@ -163,5 +183,7 @@ await closeModules(page, frame);
 const removed = await waitReceived(app, state => !state.extensions.includes('nuage-de-mots'), 'le retrait');
 say('nuage retiré, l\'app reçoit :', JSON.stringify(removed));
 check('retirer « ' + NAMES.cloud + ' » : l\'app ne reçoit plus d3-cloud, pdf.js reste', removed.extensions.join() === 'mots-cles-pdf' && removed.cloud === null && removed.pdfjs !== null, removed);
+const gone = await loader(app, 'nuage-de-mots');
+check('« Nuage de mots » retirée pendant que l\'app est ouverte : elle repasse « inactive » et ne rend plus le module déjà chargé (la fonction se grise, jamais à moitié)', gone.state === 'inactive' && gone.loaded === null, gone);
 check('aucune erreur de script dans l\'app', errors.length === 0, errors.slice(0, 3));
 await lab.browser.close();

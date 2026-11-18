@@ -8,6 +8,7 @@ import { createLightReader, neededColumns, rowsStatement, schemaStatement, readR
 import { rowWeigher } from '../js/weight/weight.js';
 import { FILES_ENTRY, FILES_MANIFEST } from '../js/files/gfs-files.js';
 import { BIN_COLUMNS } from '../js/files/gfs-trash.js';
+import { DocNames } from '../js/apps/doc-names.js';
 import { publipostage, form, bi } from './helpers.mjs';
 
 const sqlite = await import('node:sqlite').catch(() => null);
@@ -158,6 +159,42 @@ test('loadFiles : la première lecture est complète et apprend que le document 
     if (call.endsWith('FROM "GFS_Corbeille"')) assert.ok(!selected(call).includes('"Instantane"'), `la copie JSON de la corbeille n'est pas rendue : ${call}`);
   }
   assert.ok(reads.some(call => call.includes('length(CAST("Contenu" AS BLOB))')) && reads.some(call => call.includes('length(CAST("Instantane" AS BLOB))')), 'elles sont comptées, pour le poids');
+});
+
+// Le même document, sous les noms anglais de Publipostage+ (js/apps/doc-names.js) : la table des modèles et quelques colonnes renommées, `Jeton` des versions aussi.
+const ENGLISH_NAMES = { Nom: 'Name', Contenu: 'Content', TypeModele: 'TemplateType', DateModif: 'ModifiedAt', ModifiePar: 'ModifiedBy', Jeton: 'Token', EstParDefaut: 'IsDefault' };
+function toEnglish(tables) {
+  const out = {};
+  for (const [name, table] of Object.entries(tables)) {
+    const map = name === 'Publipostage_Modeles' ? ENGLISH_NAMES : (name === 'Publipostage_Versions' ? { Jeton: 'Token' } : {});
+    out[name === 'Publipostage_Modeles' ? 'Publipostage_Templates' : name] = { colonnes: table.colonnes.map(column => ({ ...column, id: map[column.id] || column.id })),
+      lignes: table.lignes.map(row => Object.fromEntries(Object.entries(row).map(([key, value]) => [map[key] || key, value]))) };
+  }
+  return out;
+}
+
+test('un document aux noms anglais : la lecture complète et la lecture légère donnent les mêmes fichiers, le même poids et la même corbeille avec le manifeste réécrit (SQLite réel)', { skip }, async () => {
+  const db = makeDb(toEnglish(document()));
+  const rowsOf = async statement => { const rows = await db.sql(statement); return Object.fromEntries(Object.keys(rows[0]).map(key => [key, rows.map(row => row[key])])); };
+  const names = new DocNames({ doc: { fetchTable: name => rowsOf(name === '_grist_Tables' ? 'SELECT id, tableId FROM _grist_Tables' : 'SELECT id, parentId, colId FROM _grist_Tables_column') } });
+  const item = { manifest: publipostage() };
+  await names.refresh([item]);
+  const apps = [names.adaptItem(item), FILES_ENTRY];
+  assert.equal(apps[0].manifest.fichiers[0].table, 'Publipostage_Templates');
+  const reader = createLightReader({ sql: db.sql, threshold: 1000 });
+  const first = await loadFiles(db.port, apps, '', reader);
+  assert.deepEqual(first.problems, []);
+  assert.ok(first.files.some(file => file.app === 'publipostage' && file.name === 'Convocation' && file.weight > 5000), 'les modèles de la table renommée sont lus, avec le poids de leurs versions (Token)');
+  assert.equal(first.stats.light, false);
+  const second = await loadFiles(db.port, apps, '', reader);
+  assert.equal(second.stats.light, true);
+  assert.deepEqual(second.files, first.files);
+  assert.deepEqual(second.trash, first.trash);
+  assert.equal(second.stats.bytes, first.stats.bytes);
+  const legacy = await loadFiles(makeDb(document()).port, [{ manifest: publipostage() }, FILES_ENTRY], '');
+  assert.deepEqual(first.files.map(file => [file.key, file.name, file.type, file.weight]), legacy.files.map(file => [file.key, file.name, file.type, file.weight]),
+    'le même document sous les deux jeux de noms : les mêmes fichiers, au même poids');
+  assert.deepEqual(first.trash.map(file => file.key), legacy.trash.map(file => file.key), 'et la même corbeille : ses entrées portent le nom du manifeste');
 });
 
 test('un document léger ne demande rien de SQL, jamais : la lecture complète d\'avant reste la seule', { skip }, async () => {

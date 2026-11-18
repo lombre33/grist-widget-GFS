@@ -7,7 +7,9 @@ import { Explorer } from './explorer.js';
 import { loadAttachments } from './explorer-data.js';
 import { Filing } from './filing.js';
 import { askName, chooseFolder } from './filing-window.js';
+import { FolderShares } from '../sharing/folder-shares.js';
 import { FILES_APP, cleanName } from '../files/gfs-files.js';
+import { isTable } from '../apps/doc-names.js';
 import { buildAppFiles, buildKept } from '../files/file-managers.js';
 import { Trash } from '../files/trash.js';
 import { Copying } from '../files/copying.js';
@@ -23,8 +25,10 @@ export function buildFiling(c) {
     port: c.port, rangement: c.rangement, t: c.t, locale: () => c.locale, files: () => (c.explorer ? c.explorer.files : []),
       folders: () => c.explorer.folders, appName: c.appName,
     spaces: { info: () => c.spaces, owner: async () => (await c.transfer.isOwner()) === true },
+    folderShares: new FolderShares({ port: c.port, rangement: c.rangement, identity: () => c.identity,
+      owner: async () => (await c.transfer.isOwner()) === true }),
     here: () => (c.explorer.state.view === 'folder' ? c.explorer.state.path : ''), writeBlock: () => c.writeBlock(), notice: text => c.notice(text),
-    specOf: file => ((c.manifestOf(file.app) || {}).fichiers || []).find(spec => spec.table === file.table) || null,
+    specOf: file => ((c.manifestOf(file.app) || {}).fichiers || []).find(spec => isTable(spec, file.table)) || null,
     cleanName: file => (file.app === FILES_APP ? cleanName : undefined),
     refresh: () => c.refreshFiles(), windows: { name: opts => askName(layer(opts)), folder: opts => chooseFolder(layer(opts)) },
   });

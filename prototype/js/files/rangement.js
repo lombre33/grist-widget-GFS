@@ -7,6 +7,7 @@
 
 import { OwnTable, TableDeclined } from './own-table.js';
 import { appActions, carryOver, usable } from './app-filing.js';
+import { readGfsFolderRows } from '../explorer/explorer-model.js';
 import { DocumentNewer, STRUCTURE, STRUCTURE_ROW, isNewer, stamped, structureFrom } from './structure.js';
 
 export { TableDeclined, DocumentNewer };
@@ -66,6 +67,30 @@ const rowsOf = (data, values) => ((data && data.id) || []).filter((rowId, i) => 
 
 // La ligne d'état d'un dossier que la personne garde sans fichier : ni app ni fichier (6.4, point 11).
 const folderKey = (identity, path) => ({ Utilisateur: identity, App: '', Fichier: '', Dossier: path });
+
+// Les dossiers gardés qui changent de chemin (`moved` : [[de, vers]]) : leur ligne d'état change de chemin, sur place ; sans ligne, le chemin d'arrivée est
+// gardé comme avant ; si le chemin d'arrivée a déjà sa ligne, celle du dossier qui arrive est retirée (le dossier d'arrivée garde ses partages).
+function movedActions(tableId, data, identity, moved) {
+  const actions = [];
+  for (const [from, to] of moved) {
+    const rows = rowsOf(data, folderKey(identity, from));
+    const taken = findRow(data, folderKey(identity, to)) >= 0;
+    if (!rows.length) { if (!taken) actions.push(['AddRecord', tableId, null, { ...folderKey(identity, to), Favori: false }]); continue; }
+    actions.push(...rows.map(rowId => (taken ? ['RemoveRecord', tableId, rowId] : ['UpdateRecord', tableId, rowId, { Dossier: to }])));
+  }
+  return actions;
+}
+
+// Les actions sur les lignes d'état des dossiers gardés (`add`, `drop`, `moved`, `merged` : voir `setFiling`) : celles qu'on retire, celles qu'on ajoute (si le
+// chemin n'a pas déjà sa ligne), celles qui changent de chemin sur place, celles qui se fondent dans un dossier qui existe déjà.
+function folderActions(tableId, data, identity, { add, drop, moved, merged }) {
+  const removal = rowId => ['RemoveRecord', tableId, rowId];
+  return [...drop.flatMap(path => rowsOf(data, folderKey(identity, path)).map(removal)),
+    ...add.filter(path => !drop.includes(path) && findRow(data, folderKey(identity, path)) < 0).map(path => (
+      ['AddRecord', tableId, null, { ...folderKey(identity, path), Favori: false }])),
+    ...movedActions(tableId, data, identity, moved),
+    ...merged.flatMap(([from]) => rowsOf(data, folderKey(identity, from)).map(removal))];
+}
 
 export class Rangement {
   #port;
@@ -266,19 +291,42 @@ export class Rangement {
     return targets;
   }
 
+  // Les lignes d'état des dossiers de la personne, relues : [{ id, path }] (un dossier de « Moi » se désigne dans les partages par le numéro de sa ligne,
+  // js/sharing/folder-identity.js). Sans la table : aucune.
+  async folderRows() {
+    const state = await this.#loaded();
+    return state ? readGfsFolderRows(state.data, this.identity) : [];
+  }
+
+  // Le numéro de la ligne d'état de chaque dossier de `paths` : une Map chemin -> numéro. `create` : le dossier qui n'a pas de ligne en reçoit une (aux deux
+  // endroits, comme un dossier gardé sans fichier : ici et chez l'app qui tient une ligne d'état) ; sans cela, les dossiers sans ligne manquent à la Map.
+  async folderIds(paths, create = false) {
+    if (create && paths.length) await this.setFiling([], { add: paths, quiet: true });
+    const rows = await this.folderRows();
+    return new Map(paths.map(path => [path, (rows.find(row => row.path === path) || {}).id]).filter(([, id]) => id !== undefined));
+  }
+
   // Range des fichiers pour la personne que Grist connaît (`identity`, ou '' quand son adresse n'est pas lue : le rangement est alors commun au document, 6.4
   // point 4) : la ligne de chaque (personne, app, fichier) est mise à jour si elle existe, ajoutée sinon. `entries` : [{ app, file, pinned, folder }], le
   // dossier en chemin normalisé. **Les fichiers d'une app qui tient son rangement et le laisse écrire (6.4, point 8) sont rangés dans la table de l'app**, pas
   // ici ; ce que `GFS_Rangement` disait déjà d'elle passe alors chez elle, dans le même lot.
-  // `folders` : { add, drop, quiet }, les dossiers que la personne garde sans fichier (6.4, point 11) : `add` les chemins à garder (une ligne chacun, s'il n'y
-  //   en a pas déjà, ici et chez chaque app qui a une ligne d'état de dossier), `drop` ceux à ne plus garder (toutes leurs lignes) ; `quiet` : sans la table,
-  //   rien
-  //   n'est écrit et rien n'est demandé. Relit d'abord ; fichiers et dossiers partent dans un seul lot, que Grist rejoue en entier ou pas du tout : un dossier
-  //   déplacé n'est jamais rangé à moitié. Rend true quand le lot est parti.
+  // `folders` : { add, drop, moved, merged, extra, quiet }, les dossiers que la personne garde sans fichier (6.4, point 11) :
+  // - `add` : les chemins à garder (une ligne chacun, s'il n'y en a pas déjà, ici et chez chaque app qui a une ligne d'état de dossier) ;
+  // - `drop` : ceux à ne plus garder (toutes leurs lignes) ;
+  // - `moved` : [[de, vers]], un dossier gardé qui change de chemin : sa ligne d'état est **changée sur place** ici (son numéro, que les partages portent, ne
+  //   change pas ; js/sharing/folder-identity.js), et retirée puis ajoutée chez l'app ;
+  // - `merged` : [[de, vers]], un dossier gardé qui se fond dans un dossier qui existe déjà : sa ligne est retirée (le dossier d'arrivée garde ses partages,
+  //   ceux du dossier qui arrive ne le suivent pas) ;
+  // - `extra` : des actions de plus (les partages et les liens de ces dossiers) pour le même lot ;
+  // - `quiet` : sans la table, rien n'est écrit et rien n'est demandé.
+  // Relit d'abord ; fichiers et dossiers partent dans un seul lot, que Grist rejoue en entier ou pas du tout : un dossier déplacé n'est jamais rangé à moitié.
+  // Rend true quand le lot est parti.
   async setFiling(entries, folders = {}) {
+    const moved = folders.moved || [];
+    const merged = folders.merged || [];
     const add = [...new Set(folders.add || [])];
     const drop = [...new Set(folders.drop || [])];
-    if (!entries.length && !add.length && !drop.length) return false;
+    if (!entries.length && !add.length && !drop.length && !moved.length && !merged.length) return false;
     const state = folders.quiet === true ? await this.#loaded() : await this.#ready(FILING);
     if (!state) return false;
     const { data } = state;
@@ -291,10 +339,11 @@ export class Rangement {
       const record = { Favori: pinned === true, Dossier: folder || '' };
       return at >= 0 ? ['UpdateRecord', tableId, data.id[at], record] : ['AddRecord', tableId, null, { ...key, ...record }];
     });
-    for (const path of drop) actions.push(...rowsOf(data, folderKey(identity, path)).map(rowId => ['RemoveRecord', tableId, rowId]));
-    for (const path of add.filter(each => !drop.includes(each) && findRow(data, folderKey(identity, each)) < 0)) actions.push(
-      ['AddRecord', tableId, null, { ...folderKey(identity, path), Favori: false }]);
-    for (const [app, target] of targets) actions.push(...this.#appBatch(app, target, { entries, add, drop }, { tableId, data }, identity));
+    actions.push(...folderActions(tableId, data, identity, { add, drop, moved, merged }));
+    // Chez une app, un dossier déplacé est une ligne d'état retirée puis ajoutée : son numéro ne désigne rien dans les partages.
+    const batch = { entries, add: [...add, ...moved.map(([, to]) => to)], drop: [...drop, ...moved.map(([from]) => from), ...merged.map(([from]) => from)] };
+    for (const [app, target] of targets) actions.push(...this.#appBatch(app, target, batch, { tableId, data }, identity));
+    actions.push(...(folders.extra || []));
     if (!actions.length) return false;
     await this.#port.doc.applyUserActions(actions);
     await this.#stamp(data);

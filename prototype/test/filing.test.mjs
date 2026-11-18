@@ -17,21 +17,23 @@ const META = {
 
 // Une doublure de tout ce que le contrôleur donne : `stored` est ce que la table de GFS retient, et la liste relue après chaque geste en part.
 // `spare` : les dossiers que la personne garde sans fichier (les lignes d'état de `GFS_Rangement`) ; la doublure les suit quand un lot en ajoute ou en retire. Un lot de dossiers n'est noté que s'il y en a.
-function harness({ files = [file(1), file(2, 'A/B'), file(3, 'A/B/C'), file(4, 'X')], spare = [], block = null, answers = [], setFiling = null, meta = META, cleanName = undefined } = {}) {
+function harness({ files = [file(1), file(2, 'A/B'), file(3, 'A/B/C'), file(4, 'X')], spare = [], block = null, answers = [], setFiling = null, meta = META, cleanName = undefined, folderShares = null } = {}) {
   const log = { writes: [], actions: [], notices: [], windows: [], refreshes: 0 };
   let list = files;
   let kept = [...spare];
   const rangement = { setFiling: setFiling || (async (entries, folders = {}) => {
     const add = folders.add || [];
     const drop = folders.drop || [];
-    log.writes.push(add.length || drop.length ? { entries, folders } : { entries });
+    const moved = folders.moved || [];
+    const merged = folders.merged || [];
+    log.writes.push(add.length || drop.length || moved.length || merged.length ? { entries, folders } : { entries });
     list = list.map(item => { const entry = entries.find(e => e.app === item.app && e.file === item.id); return entry ? { ...item, pinned: entry.pinned, folder: entry.folder } : item; });
-    kept = [...kept.filter(path => !drop.includes(path)), ...add.filter(path => !kept.includes(path))];
+    kept = [...kept.filter(path => !drop.includes(path) && !merged.some(([from]) => from === path)).map(path => (moved.find(([from]) => from === path) || [0, path])[1]), ...add.filter(path => !kept.includes(path))];
   }) };
   const ask = kind => async opts => { log.windows.push({ kind, ...opts }); return answers.shift() ?? null; };
   const port = { doc: { fetchTable: async name => meta[name], applyUserActions: async actions => { log.actions.push(...actions); for (const action of actions) if (action[0] === 'UpdateRecord') list = list.map(item => (item.row === action[2] ? { ...item, name: Object.values(action[3])[0] } : item)); } } };
   const filing = new Filing({
-    port, rangement, t, locale: () => 'fr', files: () => list, folders: () => kept, here: () => 'X', specOf: () => SPEC, appName: () => 'Publipostage+', cleanName,
+    port, rangement, t, locale: () => 'fr', files: () => list, folders: () => kept, here: () => 'X', specOf: () => SPEC, appName: () => 'Publipostage+', cleanName, folderShares,
     writeBlock: () => block, notice: text => log.notices.push(text), refresh: async () => { log.refreshes += 1; }, windows: { name: ask('name'), folder: ask('folder') },
   });
   return { filing, log, current: () => list, kept: () => kept };
@@ -301,7 +303,7 @@ test('déplacer un fichier par la fenêtre, comme le couper-coller : le dossier 
 test('renommer un dossier gardé sans fichier : sa ligne d\'état est réécrite, rien d\'autre ; son nom passe les mêmes règles', async () => {
   const { filing, log, kept } = harness({ spare: ['E', 'E/F'], answers: ['Neuf'] });
   await filing.renameFolder('E');
-  assert.deepEqual(log.writes, [{ entries: [], folders: { drop: ['E', 'E/F'], add: ['Neuf', 'Neuf/F'] } }]);
+  assert.deepEqual(log.writes, [{ entries: [], folders: { add: [], drop: [], merged: [], moved: [['E', 'Neuf'], ['E/F', 'Neuf/F']] } }], 'leur ligne change de chemin sur place');
   assert.deepEqual(kept(), ['Neuf', 'Neuf/F']);
   assert.equal(log.refreshes, 1);
 });
@@ -310,19 +312,19 @@ test('renommer un dossier : ses fichiers et ses sous-dossiers vides le suivent d
   const { filing, log } = harness({ spare: ['A/B/Vide', 'A/Autre'], answers: ['Neuf'] });
   await filing.renameFolder('A/B');
   assert.deepEqual(log.writes[0].entries.map(entry => entry.folder), ['A/Neuf', 'A/Neuf/C']);
-  assert.deepEqual(log.writes[0].folders, { drop: ['A/B/Vide'], add: ['A/Neuf/Vide'] }, '« A » a encore ses fichiers : rien ne reste derrière');
+  assert.deepEqual(log.writes[0].folders, { add: [], drop: [], merged: [], moved: [['A/B/Vide', 'A/Neuf/Vide']] }, '« A » a encore ses fichiers : rien ne reste derrière');
 });
 
 test('déplacer un dossier hors de son parent : le parent qui n\'a plus rien reste, comme après un déplacement de fichier ; le dossier lui-même ne reste pas derrière', async () => {
   const { filing, log } = harness({ files: [file(1, 'P/Q'), file(2, 'X')] });
   assert.equal(await filing.moveFolderTo('P/Q', 'X'), 'moved');
-  assert.deepEqual(log.writes[0], { entries: [{ app: 'publipostage', file: '1', pinned: false, folder: 'X/Q' }], folders: { add: ['P'], drop: [] } });
+  assert.deepEqual(log.writes[0], { entries: [{ app: 'publipostage', file: '1', pinned: false, folder: 'X/Q' }], folders: { add: ['P'], drop: [], merged: [], moved: [] } });
 });
 
 test('déplacer un dossier gardé sans fichier : il va dans le dossier d\'arrivée avec ses sous-dossiers ; « gone » seulement quand plus rien ne le nomme', async () => {
   const { filing, log, kept } = harness({ spare: ['E', 'E/F'] });
   assert.equal(await filing.moveFolderTo('E', 'X'), 'moved');
-  assert.deepEqual(log.writes[0], { entries: [], folders: { drop: ['E', 'E/F'], add: ['X/E', 'X/E/F'] } });
+  assert.deepEqual(log.writes[0], { entries: [], folders: { add: [], drop: [], merged: [], moved: [['E', 'X/E'], ['E/F', 'X/E/F']] } });
   assert.deepEqual(kept(), ['X/E', 'X/E/F']);
   assert.equal(await filing.moveFolderTo('Z', 'X'), 'gone');
   assert.equal(log.writes.length, 1);
@@ -633,4 +635,74 @@ test('Ctrl+Y dans un document qui ne s\'enregistre plus : rien n\'est écrit, la
   await lock.filing.undoStack.undo();
   await lock.filing.undoStack.redo();
   assert.deepEqual([lock.log.notices.at(-1), lock.log.writes], [t('mod.readonly'), []]);
+});
+
+// Un dossier de « Moi » partagé : ses partages portent le numéro de sa ligne d'état (js/sharing/folder-identity.js), la ligne change de chemin sur place.
+const shares = (over = {}) => {
+  const calls = [];
+  return { calls, relocation: async (...args) => { calls.push(['relocation', ...args]); return { refuse: null, extra: [], lost: 0, spare: [], ...over }; },
+    removal: async paths => { calls.push(['removal', paths]); return { refuse: null, extra: [], removed: 0, ...over }; } };
+};
+
+test('renommer un dossier partagé : sa ligne d\'état change de chemin sur place, ses partages passent au numéro dans le même lot, rien n\'est refusé', async () => {
+  const extra = [['UpdateRecord', 'GFS_Partages', 3, { Cible: 'dossier:moi:a@b.fr//9' }]];
+  const folderShares = shares({ extra });
+  const { filing, log, kept } = harness({ spare: ['A/B'], answers: ['Neuf'], folderShares });
+  await filing.renameFolder('A/B');
+  assert.deepEqual(folderShares.calls, [['relocation', 'A/B', 'A/Neuf', ['A', 'A/B', 'A/B/C', 'X']]], 'les dossiers qui existent sont dits (les chemins à l\'ancienne mode d\'un dossier disparu sont laissés)');
+  assert.deepEqual(log.writes[0].folders, { add: [], drop: [], merged: [], moved: [['A/B', 'A/Neuf']], extra });
+  assert.deepEqual(kept(), ['A/Neuf']);
+  assert.deepEqual(log.notices, []);
+});
+
+test('renommer un dossier dont la ligne d\'état n\'est pas dans la liste de l\'explorateur (créée à l\'instant par la fenêtre « Partager… », ou pour un partage ancien) : elle suit le déplacement avec les autres', async () => {
+  const folderShares = shares({ spare: ['A/B'] });
+  const { filing, log } = harness({ answers: ['Neuf'], folderShares });
+  await filing.renameFolder('A/B');
+  assert.deepEqual(log.writes[0].folders.moved, [['A/B', 'A/Neuf']]);
+});
+
+test('un lien empêche de renommer, de déplacer ou de supprimer : la phrase est dite, rien n\'est écrit', async () => {
+  const folderShares = shares({ refuse: 'ex.folderLinked' });
+  const { filing, log } = harness({ spare: ['A/B', 'E'], answers: ['Neuf', 'X'], folderShares });
+  await filing.renameFolder('A/B');
+  assert.equal(await filing.moveFolderTo('A/B', 'X'), undefined);
+  assert.equal(await filing.deleteFolder('E'), false);
+  assert.deepEqual(log.notices, Array(3).fill(t('ex.folderLinked')));
+  assert.deepEqual([log.writes, log.refreshes], [[], 0]);
+});
+
+test('un dossier fondu dans un dossier qui existe déjà : la phrase dit combien de partages n\'ont pas suivi', async () => {
+  const { filing, log } = harness({ spare: ['A/B', 'X/B'], folderShares: shares({ lost: 2 }) });
+  assert.equal(await filing.moveFolderTo('A/B', 'X'), 'moved');
+  assert.equal(log.notices.at(-1), t('ex.folderMerged', { name: 'B', n: 2 }));
+  assert.deepEqual([log.writes[0].folders.moved, log.writes[0].folders.merged], [[], [['A/B', 'X/B']]], 'sa ligne n\'est pas déplacée : elle est retirée');
+});
+
+test('supprimer un dossier partagé : ses partages partent dans le même lot (le numéro d\'une ligne supprimée peut être redonné à un dossier neuf), la phrase les compte', async () => {
+  const extra = [['RemoveRecord', 'GFS_Partages', 4], ['RemoveRecord', 'GFS_Partages', 5]];
+  const folderShares = shares({ extra, removed: 2 });
+  const { filing, log, kept } = harness({ spare: ['E', 'E/F', 'G'], folderShares });
+  assert.equal(await filing.deleteFolder('E'), true);
+  assert.deepEqual(folderShares.calls, [['removal', ['E', 'E/F']]]);
+  assert.deepEqual(log.writes, [{ entries: [], folders: { drop: ['E', 'E/F'], extra } }]);
+  assert.deepEqual(kept(), ['G']);
+  assert.equal(log.notices.at(-1), t('ex.folderDeletedShared', { name: 'E', n: 2 }));
+});
+
+test('Ctrl+Z après avoir renommé un dossier gardé : sa ligne retourne à son chemin, sur place (le numéro que les partages portent ne change pas)', async () => {
+  const { filing, log, kept } = harness({ spare: ['E'], answers: ['Neuf'], folderShares: shares() });
+  await filing.renameFolder('E');
+  assert.deepEqual(kept(), ['Neuf']);
+  await filing.undoStack.undo();
+  assert.deepEqual(log.writes.at(-1).folders, { add: [], drop: [], moved: [['Neuf', 'E']] });
+  assert.deepEqual(kept(), ['E']);
+});
+
+test('Ctrl+Z après une fusion : le dossier qui arrivait retrouve une ligne à son ancien chemin (celle qui a été retirée ne revient pas)', async () => {
+  const { filing, kept } = harness({ spare: ['E', 'X/E'], folderShares: shares() });
+  await filing.moveFolderTo('E', 'X');
+  assert.deepEqual(kept(), ['X/E'], 'la ligne de « E » est retirée, celle de « X/E » reste');
+  await filing.undoStack.undo();
+  assert.deepEqual(kept().sort(), ['E', 'X/E']);
 });

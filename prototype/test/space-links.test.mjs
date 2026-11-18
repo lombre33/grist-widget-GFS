@@ -122,6 +122,7 @@ test('on ne range rien dans un lien et on n\'y crée rien (la phrase le dit) ; s
   assert.equal(splitWrites([entry], {}, [file(1)], info()).error, 'ex.linkTarget');
   assert.equal(splitWrites([{ ...entry, folder: 'Espaces/Ventes/Contrats achats/Sous' }], {}, [file(1)], info()).error, 'ex.linkTarget');
   assert.equal(splitWrites([], { add: ['Espaces/Ventes/Contrats achats/Neuf'] }, [], info()).error, 'ex.linkTarget');
+  assert.equal(splitWrites([], { moved: [['E', 'Espaces/Ventes/Contrats achats/E']] }, [], info()).error, 'ex.linkTarget', 'un dossier gardé qu\'on déplace dans un lien : refusé aussi');
   assert.equal(splitWrites([{ ...entry, folder: 'Espaces/Ventes/Autre' }], {}, [file(1)], info()).error, undefined);
   assert.equal(splitWrites([entry], {}, [file(1)], readSpaces(SPACES, table({ Cible: [], Espace: [], Dossier: [] }))).error, undefined);
 });

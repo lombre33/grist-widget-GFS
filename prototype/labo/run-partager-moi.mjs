@@ -19,6 +19,7 @@ import { createI18n } from '../js/i18n/i18n.js';
 import { PAGE_PORT, openGfs, importSamples, openRowMenu, rowOf, goTo, names, contrastProblems, shot as pdfShot } from './lab-pdf.mjs';
 import { gfsFrame, fits, shareWithEditorAndViewer } from './lab-droits.mjs';
 import { call, apply, rowsOf as rows, closingRules } from './lab-rest.mjs';
+import { FILES, SHARES, FILING, has, fileRow, keyOf, personal, idTarget, folderId, addFile, filing, openShareFor, closeShare, folderRow, openFolderShare, pickWho, waitReload } from './lab-dossier-moi.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -26,51 +27,10 @@ const phase = process.env.PHASE || 'proprietaire';
 const STATE = process.env.PARTAGER_MOI_ETAT || '/tmp/partager-moi-etat.json';
 const { t } = createI18n(lang);
 const OWNER = 'essai@example.com', EDITOR = 'editor@example.com', VIEWER = 'viewer@example.com';
-const FILES = 'GFS_Fichiers', SHARES = 'GFS_Partages', FILING = 'GFS_Rangement';
 const FOLDER = 'Contrats';
 const shot = (frame, name) => pdfShot(frame, `partager-moi-${lang}-${scheme}-${name}`);
 const unexpected = run => run.problems.filter(problem => !run.allow.some(known => known.test(problem)));
-const has = (value, who) => JSON.stringify(value ?? null).toLowerCase().includes(who);
-const fileRow = async (run, name) => ((await rows(run, FILES)) || []).find(row => row.Nom === name);
-const keyOf = row => `gfs-fichiers:${row.Identifiant}`;
-const personal = (who, path) => `dossier:moi:${who}/${path}`;
 
-// Un fichier de plus dans la table des fichiers (une ligne sans pièce jointe : la liste et le partage ne lisent que les lignes), à l'adresse de la session de la page : Grist écrit l'auteur.
-async function addFile(run, name, id, who) {
-  const answer = await call(run.page, 'POST', `/api/docs/${run.docId}/tables/${FILES}/records`, { records: [{ fields: { Identifiant: id, Nom: name, Type: 'application/pdf', Auteur: who, Taille: 1000, Origine: 'import' } }] });
-  check(`« ${name} » est ajouté (auteur écrit par Grist)`, answer.status === 200, answer.text);
-  return fileRow(run, name);
-}
-// La ligne de rangement d'une personne : où ELLE range ce fichier.
-const filing = (who, row, folder) => ['AddRecord', FILING, null, { Utilisateur: who, App: 'gfs-fichiers', Fichier: row.Identifiant, Dossier: folder, Favori: false }];
-
-async function openShareFor(frame, name) {
-  await openRowMenu(frame, name);
-  await frame.getByRole('menuitem', { name: new RegExp(`^${t('share.menu')}`) }).click();
-  await frame.locator('.mod.sh .rt-content').waitFor();
-}
-const closeShare = async frame => { await frame.locator('[data-fk="share-close"]').click(); await frame.locator('.mod.sh').waitFor({ state: 'detached' }); };
-const folderRow = (frame, name) => frame.locator('.ls-row.folder', { has: frame.locator('.t', { hasText: new RegExp(`^${name}$`) }) });
-async function openFolderShare(frame, name) {
-  await folderRow(frame, name).click({ button: 'right' });
-  const entry = frame.getByRole('menuitem', { name: new RegExp(`^${t('share.menu')}`) });
-  await entry.waitFor();
-  const greyed = (await entry.getAttribute('aria-disabled')) === 'true';
-  await entry.click();
-  await frame.locator('.mod.sh .rt-content').waitFor();
-  return greyed;
-}
-async function pickWho(frame, who, label = who) {
-  await frame.locator('[data-fk="share-add"]').click();
-  await frame.locator('[data-fk="share-add"]').fill(label);
-  await frame.locator(`[data-fk="share-pick-${who}"]`).click();
-  await frame.locator('[data-fk="share-confirm"]').click();
-  await frame.locator('.mod.sh .rr[data-share]').first().waitFor({ timeout: 15000 });
-}
-async function waitReload(page, old) {
-  for (let i = 0; i < 240 && !old.isDetached(); i++) await page.waitForTimeout(250);
-  return gfsFrame(page, { keep: true });
-}
 async function pickLevel(frame, who, level) {
   await frame.locator('.mod.sh .rr[data-share]').filter({ hasText: who }).locator('button.lvl').click();
   const item = frame.getByRole('menuitemradio', { name: new RegExp(t(`share.right.${level}`)) }).first();
@@ -126,8 +86,11 @@ async function playOwner(run) {
   await pickWho(frame, EDITOR);
   check('la fenêtre tient à 700 × 400, contraste de 4,5:1', await fits(frame, '.mod.sh'), await contrastProblems(frame, '.mod.sh'));
   await shot(frame, '1-dossier');
-  const folderShare = ((await rows(run, SHARES)) || []).find(row => row.Cible === personal(OWNER, FOLDER));
-  check('la ligne de partage vise `dossier:moi:<adresse>/Contrats`, valide', folderShare && folderShare.Personne === EDITOR && folderShare.Droit === 'lecture' && folderShare.Valide === true, folderShare);
+  // Depuis le 18/11 (contrats 11.7, point 13.n.g) la cible porte le numéro de la ligne d'état du dossier, pas son chemin (run-renommer-dossier.mjs).
+  const contractsId = await folderId(run, OWNER, FOLDER);
+  const folderShare = ((await rows(run, SHARES)) || []).find(row => row.Cible === idTarget(OWNER, contractsId));
+  check('la ligne de partage vise `dossier:moi:<adresse>//<numéro de la ligne d\'état de Contrats>`, valide', folderShare && folderShare.Personne === EDITOR && folderShare.Droit === 'lecture'
+    && folderShare.Valide === true, folderShare);
   if (legacy) {
     const bare = [await fileRow(run, 'Facture.pdf'), await fileRow(run, 'Devis.pdf')];
     check('sans auteur connu, un fichier ne reçoit rien d\'un dossier de « Moi » (verrou fermé par défaut : le rangement seul ne prouve pas à qui est le fichier)',

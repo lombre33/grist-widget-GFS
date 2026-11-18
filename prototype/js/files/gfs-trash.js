@@ -20,6 +20,7 @@
 import { isExcluded } from '../explorer/explorer-model.js';
 import { sameName, freeName } from './gfs-files.js';
 import { rowWeigher } from '../weight/weight.js';
+import { canonicalTable, isTable, canonicalColumn, documentColumn } from '../apps/doc-names.js';
 
 export const BIN_TABLE = 'GFS_Corbeille';
 
@@ -48,10 +49,11 @@ export const asksApp = spec => Boolean(recipeOf(spec) && spec.suppression.appel 
 // tables internes de Grist).
 export const writable = (data, dataColumns) => dataColumns.filter(column => column !== 'id' && Array.isArray(data && data[column]));
 
-// L'instantané d'une ligne : { format, id, valeurs } ; `columns` : les colonnes à garder.
-export function snapshotOf(data, i, columns) {
+// L'instantané d'une ligne : { format, id, valeurs } ; `columns` : les colonnes à garder. Les clés sont celles du manifeste (`spec`, js/apps/doc-names.js) :
+// une ligne mise de côté avant que le document change les noms de l'app se restaure après.
+export function snapshotOf(data, i, columns, spec = null) {
   const values = {};
-  for (const column of columns) values[column] = data[column][i];
+  for (const column of columns) values[canonicalColumn(spec, column)] = data[column][i];
   return { format: FORMAT, id: data.id[i], valeurs: values };
 }
 
@@ -68,7 +70,8 @@ export function parseSnapshot(json) {
 // La ligne de `GFS_Corbeille` d'un fichier supprimé. `file` : { id, name, type, ts, by } tel que la table de l'app le disait ; `id` : l'identifiant de
 // l'entrée.
 export const entryRecord = ({ id, app, spec, file, snapshot, now, author }) => ({
-  Identifiant: id, App: app, Table: spec.table, FichierId: String(file.id), Nom: file.name, Type: file.type || '', Date: file.ts ?? null, Auteur: file.by || '',
+  Identifiant: id, App: app, Table: canonicalTable(spec), FichierId: String(file.id), Nom: file.name, Type: file.type || '', Date: file.ts ?? null,
+    Auteur: file.by || '',
   SupprimeLe: Math.floor(now / 1000), SupprimePar: author || '', Instantane: JSON.stringify(snapshot),
 });
 
@@ -80,7 +83,7 @@ export const entryRecord = ({ id, app, spec, file, snapshot, now, author }) => (
 export function binFiles(spec, bin, appId, counted = null) {
   const cols = spec.colonnes || {};
   const all = Array.from({ length: bin && Array.isArray(bin.id) ? bin.id.length : 0 }, (_, i) => i);
-  const rows = all.filter(i => text(cell(bin, 'App', i)) === appId && text(cell(bin, 'Table', i)) === spec.table);
+  const rows = all.filter(i => text(cell(bin, 'App', i)) === appId && isTable(spec, text(cell(bin, 'Table', i))));
   const pick = column => rows.map(i => cell(bin, column, i));
   const binTable = { id: rows.map(i => bin.id[i]), FichierId: pick('FichierId'), SupprimeLe: pick('SupprimeLe'), SupprimePar: pick('SupprimePar') };
   for (const [key, from] of [['nom', 'Nom'], ['type', 'Type'], ['date', 'Date'], ['par', 'Auteur']]) if (cols[key]) binTable[cols[key]] = pick(from);
@@ -96,7 +99,7 @@ export function restorePlan({ snapshot, spec, data, columns }) {
   const recipe = recipeOf(spec) || {};
   const cols = spec.colonnes || {};
   const live = (data.id || []).map((row, i) => i).filter(i => !isExcluded(spec, data, i));
-  const kept = snapshot.valeurs || {};
+  const kept = Object.fromEntries(Object.entries(snapshot.valeurs || {}).map(([column, value]) => [documentColumn(spec, column), value]));
   const present = presentRow({ recipe, cols, kept, data, live });
   if (present) return present;
   const taken = live.map(i => text(cell(data, cols.nom, i)));

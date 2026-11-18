@@ -3,6 +3,7 @@
 
 import { covers } from '../broker/filter.js';
 import { PROVIDERS } from '../broker/player-sites.js';
+import { checkNames } from './manifest-names.js';
 
 export const CONTRACT = 0;
 
@@ -491,6 +492,7 @@ export function validateManifest(m, others = []) {
   checkDisplay(m, 'app', errors);
   checkCatalogue(m, others, errors);
   checkFiles(m, errors);
+  checkNames(m, errors);
   checkSettings(m, errors);
   checkPermissions(m, errors);
   checkArrival(m, errors);

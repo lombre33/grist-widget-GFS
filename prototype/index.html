@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-cljCgHlmZg1awPWmr5GO1MdXdmnsmyX2EQEGZ6kXDXY='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-9qQxyQyKySr+b7AoVN2WqtjZLVk/nPmY/hlSmlXQtR0='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=6c6e51caa4">
 <link rel="stylesheet" href="css/explorer.css?v=a1c7636359">
 <link rel="stylesheet" href="css/modules.css?v=db0f4eaa51">
@@ -41,11 +41,13 @@
     "./js/apps/dependencies-source-view.js": "./js/apps/dependencies-source-view.js?v=1e1fab7d8c",
     "./js/apps/dependencies-source.js": "./js/apps/dependencies-source.js?v=f91ad88e18",
     "./js/apps/dependencies-window.js": "./js/apps/dependencies-window.js?v=90722df2f3",
+    "./js/apps/doc-names.js": "./js/apps/doc-names.js?v=3eddbe6f4d",
     "./js/apps/extensions.js": "./js/apps/extensions.js?v=a2891b7b64",
     "./js/apps/fiche.js": "./js/apps/fiche.js?v=40571b2d88",
     "./js/apps/libraries.js": "./js/apps/libraries.js?v=10edb6aaa5",
     "./js/apps/licences.js": "./js/apps/licences.js?v=74fe9ec9ae",
-    "./js/apps/manifest.js": "./js/apps/manifest.js?v=fe9a09b88e",
+    "./js/apps/manifest-names.js": "./js/apps/manifest-names.js?v=c4e17ea272",
+    "./js/apps/manifest.js": "./js/apps/manifest.js?v=12acd0208f",
     "./js/apps/modules-model.js": "./js/apps/modules-model.js?v=c3fd60515a",
     "./js/apps/modules-window.js": "./js/apps/modules-window.js?v=6f0bda466f",
     "./js/apps/natives.js": "./js/apps/natives.js?v=d61cf17735",
@@ -89,15 +91,15 @@
     "./js/broker/transfer.js": "./js/broker/transfer.js?v=5324b55361",
     "./js/broker/view-link.js": "./js/broker/view-link.js?v=1853f29883",
     "./js/broker/view-options.js": "./js/broker/view-options.js?v=5eb21ceaf1",
-    "./js/controller.js": "./js/controller.js?v=b921d1ace8",
-    "./js/explorer/explorer-assembly.js": "./js/explorer/explorer-assembly.js?v=69d3817784",
+    "./js/controller.js": "./js/controller.js?v=80b21cf769",
+    "./js/explorer/explorer-assembly.js": "./js/explorer/explorer-assembly.js?v=8726ff6bfa",
     "./js/explorer/explorer-clipboard.js": "./js/explorer/explorer-clipboard.js?v=62a4670621",
     "./js/explorer/explorer-data.js": "./js/explorer/explorer-data.js?v=a411e57155",
     "./js/explorer/explorer-drag.js": "./js/explorer/explorer-drag.js?v=bb4575a2a0",
     "./js/explorer/explorer-keyboard.js": "./js/explorer/explorer-keyboard.js?v=263046c444",
     "./js/explorer/explorer-keys.js": "./js/explorer/explorer-keys.js?v=15a584580c",
-    "./js/explorer/explorer-menus.js": "./js/explorer/explorer-menus.js?v=1c2738eae1",
-    "./js/explorer/explorer-model.js": "./js/explorer/explorer-model.js?v=6414a28b63",
+    "./js/explorer/explorer-menus.js": "./js/explorer/explorer-menus.js?v=d78436ab2d",
+    "./js/explorer/explorer-model.js": "./js/explorer/explorer-model.js?v=62a428ae2f",
     "./js/explorer/explorer-pj.js": "./js/explorer/explorer-pj.js?v=a53d75eda6",
     "./js/explorer/explorer-removal.js": "./js/explorer/explorer-removal.js?v=0d645f72be",
     "./js/explorer/explorer-sql.js": "./js/explorer/explorer-sql.js?v=9534e5498d",
@@ -106,12 +108,12 @@
     "./js/explorer/explorer-window.js": "./js/explorer/explorer-window.js?v=6ea159dddf",
     "./js/explorer/explorer.js": "./js/explorer/explorer.js?v=4626c2f527",
     "./js/explorer/file-refresh.js": "./js/explorer/file-refresh.js?v=95f9f8d898",
-    "./js/explorer/files-reading.js": "./js/explorer/files-reading.js?v=30711bca50",
+    "./js/explorer/files-reading.js": "./js/explorer/files-reading.js?v=a7c275e0f8",
     "./js/explorer/filing-window.js": "./js/explorer/filing-window.js?v=6752e9e381",
-    "./js/explorer/filing.js": "./js/explorer/filing.js?v=3918abd73f",
+    "./js/explorer/filing.js": "./js/explorer/filing.js?v=03961437b9",
     "./js/explorer/opened-bar.js": "./js/explorer/opened-bar.js?v=32d7e317a6",
     "./js/explorer/opened-files.js": "./js/explorer/opened-files.js?v=975feeb422",
-    "./js/files/app-files.js": "./js/files/app-files.js?v=8f8645531d",
+    "./js/files/app-files.js": "./js/files/app-files.js?v=b386c7e10b",
     "./js/files/app-filing.js": "./js/files/app-filing.js?v=2cf85eb04c",
     "./js/files/conflict-window.js": "./js/files/conflict-window.js?v=cd891b5136",
     "./js/files/copying.js": "./js/files/copying.js?v=a806ab3271",
@@ -119,17 +121,17 @@
     "./js/files/files-store.js": "./js/files/files-store.js?v=7157158fdb",
     "./js/files/gfs-copy.js": "./js/files/gfs-copy.js?v=a43281652a",
     "./js/files/gfs-files.js": "./js/files/gfs-files.js?v=e3ef1e908b",
-    "./js/files/gfs-trash.js": "./js/files/gfs-trash.js?v=d498878638",
+    "./js/files/gfs-trash.js": "./js/files/gfs-trash.js?v=8f7fdba21e",
     "./js/files/import-file.js": "./js/files/import-file.js?v=f020cf547b",
     "./js/files/kept-files.js": "./js/files/kept-files.js?v=f0430d76d6",
     "./js/files/own-table.js": "./js/files/own-table.js?v=daf40276b1",
-    "./js/files/rangement.js": "./js/files/rangement.js?v=7fd2db1534",
+    "./js/files/rangement.js": "./js/files/rangement.js?v=364c8289d4",
     "./js/files/structure.js": "./js/files/structure.js?v=91b3e5224a",
     "./js/files/trash.js": "./js/files/trash.js?v=f5e61f59a7",
     "./js/files/undo-stack.js": "./js/files/undo-stack.js?v=03740febaf",
     "./js/i18n/i18n-dependencies.js": "./js/i18n/i18n-dependencies.js?v=faa1941b8e",
     "./js/i18n/i18n-explorer.js": "./js/i18n/i18n-explorer.js?v=e00ea91d82",
-    "./js/i18n/i18n-folders.js": "./js/i18n/i18n-folders.js?v=71397b35ef",
+    "./js/i18n/i18n-folders.js": "./js/i18n/i18n-folders.js?v=d284a5dc12",
     "./js/i18n/i18n-manage.js": "./js/i18n/i18n-manage.js?v=217c17b408",
     "./js/i18n/i18n-natives.js": "./js/i18n/i18n-natives.js?v=6903629298",
     "./js/i18n/i18n-notifications.js": "./js/i18n/i18n-notifications.js?v=f703a62960",
@@ -151,6 +153,8 @@
     "./js/rights/rights-writer.js": "./js/rights/rights-writer.js?v=e48c6b17e1",
     "./js/rights/rights.js": "./js/rights/rights.js?v=e23059be21",
     "./js/sharing/direct-shares.js": "./js/sharing/direct-shares.js?v=f54afc3fca",
+    "./js/sharing/folder-identity.js": "./js/sharing/folder-identity.js?v=59423d4464",
+    "./js/sharing/folder-shares.js": "./js/sharing/folder-shares.js?v=6c417666ed",
     "./js/sharing/group-suggest.js": "./js/sharing/group-suggest.js?v=711bce825d",
     "./js/sharing/link-control.js": "./js/sharing/link-control.js?v=82427e1692",
     "./js/sharing/manage-control.js": "./js/sharing/manage-control.js?v=bdb3c90bf6",
@@ -163,7 +167,7 @@
     "./js/sharing/received-marks.js": "./js/sharing/received-marks.js?v=013c676333",
     "./js/sharing/received-state.js": "./js/sharing/received-state.js?v=1c9496578a",
     "./js/sharing/received-window.js": "./js/sharing/received-window.js?v=4e40f52a8a",
-    "./js/sharing/share-control.js": "./js/sharing/share-control.js?v=65b67b7ef1",
+    "./js/sharing/share-control.js": "./js/sharing/share-control.js?v=b61bdd9fe2",
     "./js/sharing/share-folder.js": "./js/sharing/share-folder.js?v=0a4b8960db",
     "./js/sharing/share-follow.js": "./js/sharing/share-follow.js?v=e57af62f86",
     "./js/sharing/share-links.js": "./js/sharing/share-links.js?v=b64ff21f2f",
@@ -174,9 +178,9 @@
     "./js/sharing/share-receive-flow.js": "./js/sharing/share-receive-flow.js?v=8fd6a4dd3a",
     "./js/sharing/share-receive-window.js": "./js/sharing/share-receive-window.js?v=945d13b4b6",
     "./js/sharing/share-window.js": "./js/sharing/share-window.js?v=90a960f53c",
-    "./js/sharing/sharing-model.js": "./js/sharing/sharing-model.js?v=1229d5efb7",
+    "./js/sharing/sharing-model.js": "./js/sharing/sharing-model.js?v=3e545c7ed2",
     "./js/sharing/space-links.js": "./js/sharing/space-links.js?v=1f98c3b5f3",
-    "./js/sharing/spaces-filing.js": "./js/sharing/spaces-filing.js?v=7d1211f66e",
+    "./js/sharing/spaces-filing.js": "./js/sharing/spaces-filing.js?v=11c792e6f9",
     "./js/sharing/steps-window.js": "./js/sharing/steps-window.js?v=d33d144714",
     "./js/sharing/sync-port-text.js": "./js/sharing/sync-port-text.js?v=6d023ab3c2",
     "./js/sharing/sync-port.js": "./js/sharing/sync-port.js?v=e7994b3c52",
@@ -310,9 +314,9 @@
      Le navigateur les demande tous d'un coup au lieu d'un niveau d'imports à la fois (9 niveaux, donc 9 allers-retours de réseau). Après la carte d'importation, jamais avant : une page qui commence à
      charger un module avant elle l'ignore et demande les modules sans leur ?v=. -->
 <!-- préchargement -->
-<link rel="modulepreload" href="./js/controller.js?v=b921d1ace8">
+<link rel="modulepreload" href="./js/controller.js?v=80b21cf769">
 <link rel="modulepreload" href="./js/apps/catalogue.js?v=2e588e5749">
-<link rel="modulepreload" href="./js/apps/manifest.js?v=fe9a09b88e">
+<link rel="modulepreload" href="./js/apps/manifest.js?v=12acd0208f">
 <link rel="modulepreload" href="./js/broker/state.js?v=69aa288268">
 <link rel="modulepreload" href="./js/broker/broker.js?v=07e94d37f4">
 <link rel="modulepreload" href="./js/broker/view-options.js?v=5eb21ceaf1">
@@ -333,9 +337,10 @@
 <link rel="modulepreload" href="./js/apps/libraries.js?v=10edb6aaa5">
 <link rel="modulepreload" href="./js/apps/extensions.js?v=a2891b7b64">
 <link rel="modulepreload" href="./js/apps/apps-state.js?v=a3a73912bb">
+<link rel="modulepreload" href="./js/apps/doc-names.js?v=3eddbe6f4d">
 <link rel="modulepreload" href="./js/broker/arrival.js?v=7694fcdfd6">
 <link rel="modulepreload" href="./js/broker/arrival-table.js?v=46265f4a63">
-<link rel="modulepreload" href="./js/files/rangement.js?v=7fd2db1534">
+<link rel="modulepreload" href="./js/files/rangement.js?v=364c8289d4">
 <link rel="modulepreload" href="./js/files/structure.js?v=91b3e5224a">
 <link rel="modulepreload" href="./js/files/app-filing.js?v=2cf85eb04c">
 <link rel="modulepreload" href="./js/rights/rights-control.js?v=5f068b6925">
@@ -352,8 +357,8 @@
 <link rel="modulepreload" href="./js/broker/entries.js?v=a2d8813af5">
 <link rel="modulepreload" href="./js/broker/openings.js?v=1ebb9ed407">
 <link rel="modulepreload" href="./js/explorer/opened-files.js?v=975feeb422">
-<link rel="modulepreload" href="./js/explorer/files-reading.js?v=30711bca50">
-<link rel="modulepreload" href="./js/explorer/explorer-assembly.js?v=69d3817784">
+<link rel="modulepreload" href="./js/explorer/files-reading.js?v=a7c275e0f8">
+<link rel="modulepreload" href="./js/explorer/explorer-assembly.js?v=8726ff6bfa">
 <link rel="modulepreload" href="./js/shell/dock-assembly.js?v=7f5a151aa4">
 <link rel="modulepreload" href="./js/sharing/received-files.js?v=b4c5151049">
 <link rel="modulepreload" href="./js/broker/publication-window.js?v=387f9b97c4">
@@ -363,6 +368,7 @@
 <link rel="modulepreload" href="./js/broker/app-context.js?v=c9b4491db6">
 <link rel="modulepreload" href="./js/broker/filter.js?v=0c9dfa9363">
 <link rel="modulepreload" href="./js/broker/player-sites.js?v=79d15fdf51">
+<link rel="modulepreload" href="./js/apps/manifest-names.js?v=c4e17ea272">
 <link rel="modulepreload" href="./js/broker/options-slice.js?v=63ada0fcde">
 <link rel="modulepreload" href="./js/broker/publication.js?v=fc697bbcec">
 <link rel="modulepreload" href="./js/broker/sharing.js?v=e6dccec1cd">
@@ -370,7 +376,7 @@
 <link rel="modulepreload" href="./js/broker/rpc.js?v=d54b5c5f33">
 <link rel="modulepreload" href="./js/broker/envelope.js?v=761782e0d4">
 <link rel="modulepreload" href="./js/i18n/i18n-trash.js?v=e5c74092fa">
-<link rel="modulepreload" href="./js/i18n/i18n-folders.js?v=71397b35ef">
+<link rel="modulepreload" href="./js/i18n/i18n-folders.js?v=d284a5dc12">
 <link rel="modulepreload" href="./js/i18n/i18n-weight.js?v=e60a5723e4">
 <link rel="modulepreload" href="./js/i18n/i18n-natives.js?v=6903629298">
 <link rel="modulepreload" href="./js/i18n/i18n-vitrine.js?v=a86dd1c048">
@@ -393,13 +399,13 @@
 <link rel="modulepreload" href="./js/ui/dom.js?v=8a85959bdc">
 <link rel="modulepreload" href="./js/ui/modal.js?v=afe775a169">
 <link rel="modulepreload" href="./js/theme/theme-color.js?v=c94f777ad7">
-<link rel="modulepreload" href="./js/explorer/explorer-model.js?v=6414a28b63">
-<link rel="modulepreload" href="./js/files/gfs-trash.js?v=d498878638">
+<link rel="modulepreload" href="./js/explorer/explorer-model.js?v=62a428ae2f">
+<link rel="modulepreload" href="./js/files/gfs-trash.js?v=8f7fdba21e">
 <link rel="modulepreload" href="./js/weight/weight.js?v=e7a9477391">
-<link rel="modulepreload" href="./js/sharing/spaces-filing.js?v=7d1211f66e">
+<link rel="modulepreload" href="./js/sharing/spaces-filing.js?v=11c792e6f9">
 <link rel="modulepreload" href="./js/sharing/direct-shares.js?v=f54afc3fca">
 <link rel="modulepreload" href="./js/sharing/space-links.js?v=1f98c3b5f3">
-<link rel="modulepreload" href="./js/sharing/sharing-model.js?v=1229d5efb7">
+<link rel="modulepreload" href="./js/sharing/sharing-model.js?v=3e545c7ed2">
 <link rel="modulepreload" href="./js/rights/rights.js?v=e23059be21">
 <link rel="modulepreload" href="./js/weight/weight-reader.js?v=5b2909ec19">
 <link rel="modulepreload" href="./js/apps/settings.js?v=487e0165e5">
@@ -408,7 +414,7 @@
 <link rel="modulepreload" href="./js/files/own-table.js?v=daf40276b1">
 <link rel="modulepreload" href="./js/rights/rights-reader.js?v=6facae89da">
 <link rel="modulepreload" href="./js/rights/rights-writer.js?v=e48c6b17e1">
-<link rel="modulepreload" href="./js/sharing/share-control.js?v=65b67b7ef1">
+<link rel="modulepreload" href="./js/sharing/share-control.js?v=b61bdd9fe2">
 <link rel="modulepreload" href="./js/sharing/manage-control.js?v=bdb3c90bf6">
 <link rel="modulepreload" href="./js/sharing/link-control.js?v=82427e1692">
 <link rel="modulepreload" href="./js/sharing/share-links.js?v=b64ff21f2f">
@@ -423,8 +429,9 @@
 <link rel="modulepreload" href="./js/broker/leave.js?v=5437d0c5dc">
 <link rel="modulepreload" href="./js/explorer/file-refresh.js?v=95f9f8d898">
 <link rel="modulepreload" href="./js/explorer/explorer.js?v=4626c2f527">
-<link rel="modulepreload" href="./js/explorer/filing.js?v=3918abd73f">
+<link rel="modulepreload" href="./js/explorer/filing.js?v=03961437b9">
 <link rel="modulepreload" href="./js/explorer/filing-window.js?v=6752e9e381">
+<link rel="modulepreload" href="./js/sharing/folder-shares.js?v=6c417666ed">
 <link rel="modulepreload" href="./js/files/file-managers.js?v=e6bd6c62ab">
 <link rel="modulepreload" href="./js/files/trash.js?v=f5e61f59a7">
 <link rel="modulepreload" href="./js/files/copying.js?v=a806ab3271">
@@ -453,6 +460,7 @@
 <link rel="modulepreload" href="./js/ui/search.js?v=0921c92eb3">
 <link rel="modulepreload" href="./js/sharing/received-folders.js?v=1867d68ede">
 <link rel="modulepreload" href="./js/rights/rights-plan.js?v=2c9c515601">
+<link rel="modulepreload" href="./js/sharing/folder-identity.js?v=59423d4464">
 <link rel="modulepreload" href="./js/sharing/share-window.js?v=90a960f53c">
 <link rel="modulepreload" href="./js/rights/rights-actions.js?v=af82d308a9">
 <link rel="modulepreload" href="./js/sharing/manage-window.js?v=395f400909">
@@ -468,11 +476,11 @@
 <link rel="modulepreload" href="./js/explorer/explorer-clipboard.js?v=62a4670621">
 <link rel="modulepreload" href="./js/explorer/explorer-drag.js?v=bb4575a2a0">
 <link rel="modulepreload" href="./js/explorer/explorer-window.js?v=6ea159dddf">
-<link rel="modulepreload" href="./js/explorer/explorer-menus.js?v=1c2738eae1">
+<link rel="modulepreload" href="./js/explorer/explorer-menus.js?v=d78436ab2d">
 <link rel="modulepreload" href="./js/sharing/notifications.js?v=ee6948014f">
 <link rel="modulepreload" href="./js/files/files-store.js?v=7157158fdb">
 <link rel="modulepreload" href="./js/files/kept-files.js?v=f0430d76d6">
-<link rel="modulepreload" href="./js/files/app-files.js?v=8f8645531d">
+<link rel="modulepreload" href="./js/files/app-files.js?v=b386c7e10b">
 <link rel="modulepreload" href="./js/broker/app-calls.js?v=b78fa262c3">
 <link rel="modulepreload" href="./js/sharing/received-window.js?v=4e40f52a8a">
 <link rel="modulepreload" href="./js/shell/dock-state.js?v=bf40af2343">

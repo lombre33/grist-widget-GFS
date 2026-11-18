@@ -171,3 +171,21 @@ test('« Partagés avec moi » : un fichier donné par une adresse a le menu d\'
   assert.equal(items[0].label, t('ex.open'));
   assert.ok(items.some(entry => entry.label === t('share.menu')));
 });
+
+test('un dossier : « Lier dans un espace… » porte la clé que donne `keyOf` (le numéro de la ligne d\'état d\'un dossier de « Moi »), à défaut celle de `folderFile`', async () => {
+  const make = keyOf => {
+    const x = context();
+    x.opts.sharing = { ...x.opts.sharing, folderFile: path => ({ key: `ancienne:${path}`, name: 'Contrats', path, mine: true }), ...(keyOf ? { keyOf } : {}) };
+    x.opts.links = { whyNot: () => null, linkAt: () => null, open: async source => { x.calls.push(['link', source]); return true; } };
+    return x;
+  };
+  const item = x => rowItems(x, 'dir:Contrats').find(entry => entry !== '-' && entry.label === t('slink.menu'));
+  const withId = make(async folder => `dossier:moi:a@b.fr//${folder.path.length}`);
+  item(withId).run();
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.deepEqual(withId.calls, [['link', { target: 'dossier:moi:a@b.fr//8', name: 'Contrats', kind: 'folder' }]]);
+  const old = make(null);
+  item(old).run();
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.deepEqual(old.calls, [['link', { target: 'ancienne:Contrats', name: 'Contrats', kind: 'folder' }]]);
+});

@@ -5,9 +5,9 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { validateManifest, isSafePath, loadAll, label, listCapabilities } from '../js/apps/manifest.js';
 import { CATALOGUE } from '../js/apps/catalogue.js';
-import { makePolicy } from '../js/broker/filter.js';
+import { makePolicy, checkBatch, tokenOptions } from '../js/broker/filter.js';
 import { iconNames } from '../js/ui/icons.js';
-import { publipostage, automation, form, bi, readJson, ROOT } from './helpers.mjs';
+import { publipostage, automation, form, bi, catalogue, readJson, ROOT } from './helpers.mjs';
 
 const bad = (mutate, others) => { const m = publipostage(); mutate(m); const r = validateManifest(m, others); assert.equal(r.ok, false); return r.errors.join(' | '); };
 
@@ -566,4 +566,20 @@ test('contrats 2.2 et 2.8 : `ouverture` et `permanente` — des booléens, facul
   assert.equal(ok({ ouverture: ['fichier'] }).errors.join(), 'ouverture : objet attendu');
   assert.equal(ok({ permanente: 1 }).errors.join(), 'permanente : true ou false attendu');
   assert.equal(ok({ ouverture: { sonde: 'x' } }).ok, true, 'un genre inconnu est ignoré (le contrat s\'étend par ajout)');
+});
+
+// Grist-BI, « Mots-clés des publications » (consigne 022, demande du 18/11 de l'app) : lire le PDF joint à une ligne (`jeton`, en lecture seule : le même geste que Publipostage+ pour ses
+// pièces jointes) et écrire UNE colonne de texte dans la table que la personne choisit (`AddColumn` sans formule, puis `UpdateRecord`) ; la déclaration `ecrit: ["*"]` couvre déjà ce geste.
+test('contrats 3.3 et 3.4 : Grist-BI lit ses pièces jointes par `jeton` en lecture seule et écrit une colonne de texte dans une table de la personne, jamais ailleurs', () => {
+  const m = bi();
+  assert.deepEqual(m.permissions.jeton.lectureSeule, true, 'le jeton ne sert qu\'à lire');
+  assert.ok(m.permissions.jeton.pourquoi.fr && m.permissions.jeton.pourquoi.en, 'la capacité dit pourquoi, en français et en anglais');
+  const policy = makePolicy(m, catalogue());
+  assert.deepEqual(tokenOptions(policy, { readOnly: false }), { readOnly: true, route: undefined }, 'même quand l\'app demande l\'écriture, GFS ne rend qu\'un jeton de lecture');
+  const batch = actions => checkBatch(policy, actions);
+  assert.equal(batch([['AddColumn', 'Publications', 'MotsCles', { type: 'Text', isFormula: false }]]).ok, true, 'une colonne de texte, sans formule, dans une table de la personne');
+  assert.equal(batch([['UpdateRecord', 'Publications', 3, { MotsCles: 'budget, rapport' }]]).ok, true);
+  assert.equal(batch([['AddColumn', 'GFS_Fichiers', 'MotsCles', { type: 'Text' }]]).ok, false, 'jamais une table de GFS');
+  assert.equal(batch([['AddColumn', 'PubliPostage_Modeles', 'MotsCles', { type: 'Text' }]]).ok, false, 'jamais la table d\'une autre app');
+  assert.equal(batch([['ModifyColumn', 'Publications', 'MotsCles', { type: 'Int' }]]).ok, false, '`ModifyColumn` n\'est pas dans la liste des verbes');
 });

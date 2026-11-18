@@ -1,10 +1,10 @@
 // Publipostage+ renomme ses tables et ses colonnes en anglais (son traducteur, js/schema-columns.js, lots 1 à 4 sur 5 ; l'interrupteur `englishOnDisk` est encore éteint) :
-// ce que GFS voit d'un document qui porte DÉJÀ les noms anglais, dans un vrai Grist (grist-static), à 700 × 400. Le manifeste de GFS ne connaît qu'un jeu de noms
-// (`Publipostage_Modeles` et ses colonnes, `Publipostage_Versions`, `Publipostage_PreferencesModeles`) : cet essai MESURE ce qui se passe quand un document est renommé.
+// ce que GFS montre d'un document qui porte DÉJÀ les noms anglais, dans un vrai Grist (grist-static), à 700 × 400. Le manifeste de GFS dit les deux jeux de noms (`noms`, contrats 2.4,
+// js/apps/doc-names.js) : l'explorateur lit la table qui porte l'un ou l'autre.
 //   1. Témoin : le document d'essai aux noms d'avant, l'explorateur montre les modèles de Publipostage+.
-//   2. Le même document renommé comme le registre de l'app le dit (RenameTable et RenameColumn de Grist, les lignes suivent) : ce que l'explorateur montre.
-// Cet essai décrit l'état d'AVANT la prise en compte des noms anglais par GFS : son « OK » dit que la liste est perdue ; il s'inverse le jour où GFS lit les deux jeux de noms.
-// LAB_LANG=fr|en, LAB_SCHEME=light|dark.
+//   2. Le même document renommé comme le registre de l'app le dit (RenameTable et RenameColumn de Grist, les lignes suivent) : l'explorateur montre les mêmes modèles.
+// Avant la prise en compte des noms anglais (`b168e75`), l'essai mesurait l'inverse : 3 fichiers avant le renommage, 0 après, console muette. Les gestes (étoile, F2, copie, corbeille) se jouent dans
+// run-pp-noms-anglais-reel.mjs (vrai serveur). LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { startLab } from './lab-setup.mjs';
 import { seedFiles } from './seed.mjs';
 import { say, check } from './lab-common.mjs';
@@ -67,6 +67,7 @@ await reopen();
 await goHome();
 const after = await fileNames();
 console.log('MESURE  fichiers montrés avant :', before.length, ' après le renommage :', after.length, after.slice(0, 5));
-check('MESURE : l\'explorateur de GFS ne montre plus les modèles de Publipostage+ une fois la table renommée', !after.includes('Contrat de prestation'), after.slice(0, 5));
+check('l\'explorateur de GFS montre toujours les modèles de Publipostage+ une fois la table renommée, les mêmes qu\'avant', after.includes('Contrat de prestation') && after.length === before.length &&
+  JSON.stringify([...after].sort()) === JSON.stringify([...before].sort()), after.slice(0, 5));
 check('la console de GFS est restée muette (aucun avertissement)', warnings.length === 0, warnings);
 await lab.browser.close();

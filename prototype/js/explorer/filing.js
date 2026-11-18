@@ -24,7 +24,8 @@ const lastPart = path => path.split('/').pop();
 const parentOf = path => path.split('/').slice(0, -1).join('/');
 const reasonOf = error => String((error && error.message) || error).slice(0, 120);
 // Un lot sans rien à écrire : ni fichier, ni dossier gardé à ajouter ou à retirer.
-const isEmptyWrite = (entries, folders) => !entries.length && !(folders.add || []).length && !(folders.drop || []).length;
+const isEmptyWrite = (entries, folders) => !entries.length && !(folders.add || []).length && !(folders.drop || []).length && !(folders.moved || []).length &&
+  !(folders.merged || []).length;
 
 // Les colonnes de la table `tableId` d'après les tables internes de Grist (deux petites tables : la table de fichiers peut peser des mégaoctets).
 async function columnsOf(doc, tableId) {
@@ -42,6 +43,8 @@ export class Filing {
   // opts : { port, rangement, t, locale(), files() -> [fichier], folders?() -> les dossiers gardés sans fichier, here() -> le dossier ouvert, specOf(file) ->
   //   son entrée `fichiers` du manifeste,
   //          spaces?: { info() -> ce que disent les espaces (js/sharing/spaces-filing.js), owner() -> Promise<vrai si la personne est propriétaire> },
+  //          folderShares?: { relocation(de, vers, dossiers), removal(chemins) } (js/sharing/folder-shares.js) : ce que renommer, déplacer ou supprimer un
+  //          dossier de « Moi » change à ses partages et à ses liens, dans le même lot,
   //          cleanName?(file)
   //          -> la fonction qui met en forme le nom saisi (un PDF garde son « .pdf »), appName(id), writeBlock() -> texte | null, notice(texte), refresh() ->
   //          Promise,
@@ -147,8 +150,13 @@ export class Filing {
       if (this.#opts.files().some(file => inside(file.folder, path))) { notice(t('ex.folderNotEmpty')); return false; }
       const kept = this.#spare().filter(each => inside(each, path));
       if (!kept.length) { notice(t('ex.folderGone')); return false; }
-      if (!(await this.#write([], { drop: kept }, said('undo.folder', 'redo.folderDeleted', { name: lastPart(path) })))) return false;
-      notice(t('ex.folderDeleted', { name: lastPart(path) }));
+      // Un dossier partagé emporte ses partages (même lot) : le numéro de sa ligne pourrait sinon être redonné à un dossier neuf ; un dossier qu'un lien montre
+      // reste (le lien se retire d'abord).
+      const shared = this.#opts.folderShares ? await this.#opts.folderShares.removal(kept) : { extra: [], removed: 0 };
+      if (shared.refuse) { notice(t(shared.refuse)); return false; }
+      const folders = shared.extra.length ? { drop: kept, extra: shared.extra } : { drop: kept };
+      if (!(await this.#write([], folders, said('undo.folder', 'redo.folderDeleted', { name: lastPart(path) })))) return false;
+      notice(shared.removed ? t('ex.folderDeletedShared', { name: lastPart(path), n: shared.removed }) : t('ex.folderDeleted', { name: lastPart(path) }));
       return true;
     });
   }
@@ -274,6 +282,12 @@ export class Filing {
   // `kept` : { drop, add }, ce que les dossiers gardés sans fichier ont à suivre (js/explorer/explorer-model.js, `spareMoves`).
   #writeMoves(entries, moving = null, kept = {}, undo = null) {
     const vacated = vacatedFolders(this.#opts.files(), entries, this.#spare(), kept).filter(path => moving === null || !inside(path, moving));
+    // Les dossiers gardés qui changent de chemin (`moved`) gardent leur ligne d'état, donc leur numéro : ils n'entrent ni dans `add` ni dans `drop` ; ceux qui
+    // se fondent dans un dossier qui existe déjà (`merged`) perdent la leur.
+    if (kept.moved) {
+      const extra = kept.extra && kept.extra.length ? { extra: kept.extra } : {};
+      return this.#write(entries, { add: vacated, drop: [], moved: kept.moved, merged: kept.merged, ...extra }, undo);
+    }
     return this.#write(entries, { add: [...(kept.add || []), ...vacated], drop: kept.drop }, undo);
   }
 
@@ -289,9 +303,22 @@ export class Filing {
   // dite).
   async #relocate(path, target) {
     const moves = folderMoves(this.#opts.files(), path, target);
-    const kept = spareMoves(this.#spare(), path, target);
-    if (!moves.length && !kept.add.length) return 'gone';
-    return this.#writeMoves(moves, path, kept, said('undo.folder', 'redo.folder', { name: lastPart(path) }, { name: lastPart(target) }));
+    let spare = this.#spare();
+    if (!moves.length && !spareMoves(spare, path, target).add.length) return 'gone';
+    // Les partages et les liens du dossier le suivent par le numéro de sa ligne d'état (js/sharing/folder-identity.js) : ceux qui portent encore son chemin
+    // passent au numéro (les dossiers qui en portent reçoivent leur ligne d'abord, et suivent le déplacement), ceux d'un dossier fondu dans un autre partent.
+    const shared = this.#opts.folderShares ? await this.#opts.folderShares.relocation(path, target, this.#folders()) : null;
+    if (shared && shared.refuse) { this.#opts.notice(this.#opts.t(shared.refuse)); return false; }
+    if (shared) spare = [...spare, ...shared.spare.filter(each => !spare.includes(each))];
+    const kept = spareMoves(spare, path, target);
+    // Un dossier gardé qui arrive sur un dossier qui existe déjà s'y fond : sa ligne (et ses partages) ne le suit pas ; les autres gardent leur ligne.
+    const outside = new Set([...this.#folders(), ...spare].filter(each => !inside(each, path)));
+    const pairs = kept.drop.map((from, at) => [from, kept.add[at]]);
+    const done = await this.#writeMoves(moves, path, { ...kept, moved: pairs.filter(([, to]) => !outside.has(to)),
+      merged: pairs.filter(([, to]) => outside.has(to)),
+      extra: shared ? shared.extra : [] }, said('undo.folder', 'redo.folder', { name: lastPart(path) }, { name: lastPart(target) }));
+    if (done && shared && shared.lost) this.#opts.notice(this.#opts.t('ex.folderMerged', { name: lastPart(target), n: shared.lost }));
+    return done;
   }
 
   async #relocateOrSay(path, target) {
@@ -344,13 +371,18 @@ export class Filing {
     const live = this.#opts.files();
     const spare = this.#spare();
     const dropped = folders.drop || [];
+    // Un dossier gardé qui a changé de chemin y retourne (sa ligne, et son numéro, avec lui) ; arrivé sur un dossier qui existait déjà, il n'a plus de ligne :
+    // l'annulation lui en redonne une.
+    const moved = (folders.moved || []).filter(([from]) => spare.includes(from)).map(([from, to]) => [to, from]);
+    const fused = (folders.merged || []).filter(([from]) => spare.includes(from)).map(([from]) => from);
     return {
       entries: entries.map(entry => {
         const was = live.find(item => item.app === entry.app && item.id === String(entry.file));
         return { app: entry.app, file: entry.file, pinned: Boolean(was && was.pinned), folder: was ? was.folder || '' : '' };
       }),
-      add: dropped.filter(path => spare.includes(path)),
+      add: [...dropped.filter(path => spare.includes(path)), ...fused],
       drop: (folders.add || []).filter(path => !spare.includes(path) && !dropped.includes(path)),
+      moved,
     };
   }
 
@@ -358,7 +390,8 @@ export class Filing {
   // tour le geste inverse, avec les deux phrases échangées. Rend la phrase de ce qui vient de se faire (`phrases.undo` : l'entrée porte celle qu'elle dit quand
   // on la joue).
   #replayWrite(before, phrases) {
-    return this.#gesture(async () => ((await this.#write(before.entries, { add: before.add, drop: before.drop }, { undo: phrases.redo, redo: phrases.undo })) ?
+    return this.#gesture(async () => ((await this.#write(before.entries, { add: before.add, drop: before.drop, moved: before.moved },
+      { undo: phrases.redo, redo: phrases.undo })) ?
       this.#opts.t(phrases.undo.key, phrases.undo.params) : null));
   }
 }

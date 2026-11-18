@@ -34,6 +34,7 @@ import { fakeGrist } from '/test/fake-grist.mjs';
 import { createI18n } from '/js/i18n/i18n.js';
 import { installSprite } from '/js/ui/icons.js';
 import { leaveQuestion } from '/js/broker/leave.js';
+import { askOptions } from '/js/rights/rights-actions.js';
 import { ThemeHost } from '/js/theme/theme-apply.js';
 import { settingsItems } from '/js/shell/settings-menu.js';
 import { aboutItems } from '/js/shell/about.js';
@@ -471,6 +472,13 @@ async function mount() {
     window.__leave = null;
     ask({ ...leaveQuestion({ t: i18n.t, app: 'Publipostage+', fault: reason === null ? null : new Error(reason) }), container: stage, inertTargets: () => [explorer.root] })
       .then(answer => { window.__leave = answer ? 'force' : 'stay'; });
+  };
+  // La question d'activation du partage (js/rights/rights-actions.js, test/activation-firefox.mjs) : la plus longue, avec la fermeture de la structure, trois tables d'apps, le rangement et la première règle ;
+  // `window.__sharing` garde la réponse de la personne (`yes` : « Activer le partage », `no` : « Annuler »).
+  window.__askSharing = () => {
+    window.__sharing = null;
+    const plan = { ok: true, closes: true, firstRule: true, filing: true, extends: false, appTables: ['Publipostage_Modeles', 'FormPlus_Formulaires', 'Automation_Fichiers'] };
+    ask({ ...askOptions(i18n.t, 'sharing', plan), container: stage, inertTargets: () => [explorer.root] }).then(answer => { window.__sharing = answer ? 'yes' : 'no'; });
   };
   // La fenêtre « Partager » (js/sharing/share-window.js, test/partager-firefox.mjs) : la vraie fenêtre sur un état que le contrôleur aurait lu ; `kind` : 'inactif' (le partage n'est pas activé, une personne propriétaire),
   // 'actif' (propriétaire : des lignes de personnes à l'adresse très longue, de catégories, une fin d'accès, un accès échu), 'lecture' (une personne qui ne peut rien changer). `window.__shareActs` note ce que la

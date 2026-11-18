@@ -3178,7 +3178,7 @@ soit la dernière de sa ressource. Les droits s'écrivent comme Grist les range 
 7. [T] **Ne jamais** : donner à tous le droit de copier le document entier (cela rend ce que les règles cachent) ; poser un jeu de
    règles sans celle des propriétaires en tête ; retirer la règle d'un autre auteur sans case « Retirer » cochée ; ranger un
    secret ; écrire dans une table de données ; déclarer un attribut de personne ; écrire une règle de lecture qui cite `newRec` ;
-   fermer la structure de lui-même (11.7, point 1) ; laisser publier un formulaire qui remplit une table protégée (11.9, point 4).
+   fermer la structure sans le dire (11.7, point 1 : l'activation du partage la ferme, et sa question le dit) ; laisser publier un formulaire qui remplit une table protégée (11.9, point 4).
 8. [D] Une nouvelle table de classe (une app installée plus tard) demande de poser ses règles : c'est une action sur les tables
    de règles, donc la même liasse, le même avertissement, le même rechargement.
 9. [T] **Codé le 06/11 (étape 7, lot a)** : dans le panneau « Permissions » (supprimé le 13/11 : seules la structure et l'activation du partage ont gardé une porte, par « Gérer les partages… » ; `js/rights/rights-plan.js`, `rights-writer.js`, `rights-actions.js`), un propriétaire prouvé pose ou retire **Partagé sur le rangement** (les six règles de
@@ -3229,8 +3229,13 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
 ### 11.7 Ce qui n'est pas décidé
 
 1. [D] **Ce que GFS fait de la structure du document** (la case de Grist) : **le porteur a choisi le 04/11 (15 h 57) de la proposer d'un clic**
-   (avec son prix, dit avant le clic : import et copie perdus pour les éditeurs, pages, tables et colonnes fermées ; le bouton rouvre de même). Rien n'est codé : le bouton
-   est de l'étape 7, avec l'accord d'un propriétaire à chaque pose. Jusque-là : [T] GFS ne la ferme jamais de lui-même ; il
+   (avec son prix, dit avant le clic : import et copie perdus pour les éditeurs, pages, tables et colonnes fermées ; le bouton rouvre de même).
+   **Le porteur a choisi le 18/11 (10 h 35) de la fermer aussi « dans la même question » que l'activation du partage** : [T] activer le partage
+   écrit, dans la même liasse, la règle de la structure (`user.Access != OWNER` → `-S` sur `*` / `*`, note « GFS : Structure fermée · … ») et la
+   question le dit (« seuls les propriétaires ajoutent, retirent ou changent des tables, des colonnes et des pages, tables de données comprises ; les
+   éditeurs gardent la saisie des lignes », plus le prix des tables qu'une app voudrait créer plus tard) à la place de « rien ne change pour les tables de
+   données ». Elle ne se referme pas à « Compléter le partage… » (une personne a pu la rouvrir : la question n'en parle pas) ; « Retirer les règles du partage »
+   la laisse fermée (« Gérer les partages… », Options, la rouvre). Hors partage, [T] GFS ne la ferme jamais de lui-même ; il
    dit, dans le pied, si elle est ouverte ou fermée et ce que cela change. Seul « Protégé » (11.4, point 7) et le caractère
    *secret* des contenus réservés (11.1, point 8) en dépendent. Grist décoche la case de lui-même quand un propriétaire active les
    Permissions avancées (lu), et le porteur a confirmé qu'elle se décoche sur son instance (21/10). Elle pèse aussi sur les liens publics : structure ouverte,
@@ -3405,7 +3410,8 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
        c. **Le rangement de chacun est protégé à l'activation du partage** : six règles « GFS : Partagé · … » sur `GFS_Rangement` (les propriétaires gardent la main, la liste des apps se lit par tous, chacun lit et
           écrit son propre rangement et jamais celui d'un autre, la ligne-sonde, le reste refusé), posées par l'activation et reprises par « Compléter le partage… ». Sans elles, un éditeur écrivait une ligne de rangement
           au nom d'un autre et faisait entrer un fichier dans un dossier partagé. Des règles d'un autre auteur sur cette table : l'activation s'arrête (« étrangères »), rien n'est écrit.
-       d. **Il faut aussi fermer la structure** (« Gérer les partages… », Options). Mesuré : tant qu'elle est ouverte (le réglage par défaut de Grist), un éditeur peut changer la formule d'une colonne d'aide
+       d. **Il faut aussi fermer la structure : l'activation du partage la ferme depuis le 18/11** (choix du porteur, « Oui, dans la même question » ; « Gérer les partages… », Options, la rouvre ou la referme ;
+          un document activé avant le 18/11 la garde ouverte jusqu'à ce geste). Mesuré : tant qu'elle est ouverte (le réglage par défaut de Grist), un éditeur peut changer la formule d'une colonne d'aide
           (`ModifyColumn` répondu 200), ce qui annule les partages par dossier. Structure fermée, il ne peut ni changer ni retirer une colonne d'aide, ni retirer la table des partages, ni retirer une règle d'accès.
           Le verrou sur la donnée brute est donc **le partage activé et la structure fermée**.
        e. **Limites** : un PDF importé avant que GFS ait appris l'adresse de la personne n'a pas d'auteur (`GFS_Auteur` vide) : un dossier de « Moi » ne lui donne rien (échec fermé : le rangement seul ne prouve pas à qui

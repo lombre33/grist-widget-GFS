@@ -24,6 +24,7 @@ import { findFirefox, serveSite, startFirefox } from './firefox.mjs';
 import { corbeilleProblems } from './corbeille-firefox.mjs';
 import { copierProblems } from './copier-firefox.mjs';
 import { fermerProblems } from './fermer-firefox.mjs';
+import { activationProblems } from './activation-firefox.mjs';
 import { ouvertsProblems } from './ouverts-firefox.mjs';
 import { barrePages, barreProblems } from './barre-ouverts-firefox.mjs';
 import { partagerProblems } from './partager-firefox.mjs';
@@ -614,6 +615,7 @@ describe('l\'interface sous Firefox', () => {
         problems.push(...await corbeilleProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await copierProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await fermerProblems(page, language, caption(language, 700, 1, mode)));
+        problems.push(...await activationProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await ouvertsProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await partagerProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await partagerAutreProblems(page, language, caption(language, 700, 1, mode)));

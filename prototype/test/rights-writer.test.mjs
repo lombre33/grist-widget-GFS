@@ -96,6 +96,26 @@ test('activer le partage depuis la fenêtre « Partager » : la reprise retenue 
   assert.equal(writer.take(), null);
 });
 
+test('activer le partage : UNE liasse écrit le partage et ferme la structure ; une structure déjà fermée n\u2019en reçoit pas une seconde', async () => {
+  const { writer, sent } = setup();
+  assert.deepEqual(await writer.apply('sharing'), { ok: true });
+  assert.equal(sent.length, 1, 'une seule écriture : la page ne se recharge qu\u2019une fois');
+  const closing = sent[0].filter(action => action[1] === '_grist_ACLRules' && action[3].permissionsText === '-S');
+  assert.equal(closing.length, 1);
+  assert.equal(closing[0][3].aclFormula, 'user.Access != OWNER');
+  assert.ok(sent[0].indexOf(closing[0]) > sent[0].findIndex(action => action[0] === 'AddTable'), 'la structure se ferme après la création des tables');
+  const closed = setup({ raw: { ...RAW(), rules: [{ ...BUILT_IN }, { id: 9, resource: 1, aclFormula: 'user.Access != OWNER', permissionsText: '-S', memo: '', rulePos: 1 }] } });
+  await closed.writer.apply('sharing');
+  assert.equal(closed.sent[0].filter(action => action[1] === '_grist_ACLRules' && action[3].permissionsText === '-S').length, 0);
+});
+
+test('la question d\u2019activation dit que la structure se ferme, et ce que les éditeurs gardent, à la place de « rien ne change pour les tables »', () => {
+  const closes = askOptions(t, 'sharing', { ok: true, closes: true, firstRule: false });
+  assert.deepEqual(closes.items, ['rights.ask.sharing.structure', 'rights.ask.close.item2', 'rights.ask.sharing.item1'], 'le prix en tête : il se lit sans défiler');
+  const stays = askOptions(t, 'sharing', { ok: true, firstRule: false });
+  assert.deepEqual(stays.items, ['rights.ask.sharing.item1', 'rights.ask.sharing.item2']);
+});
+
 test('activer le partage : les PDF déjà rangés restent lisibles de tous (un partage « tout le document » par fichier), les nouveaux ne le sont pas', async () => {
   const { writer, sent } = setup({ raw: { ...RAW(), fileIds: ['a1', 'b2'] } });
   await writer.apply('sharing');

@@ -9,9 +9,11 @@ export function askOptions(t, kind, plan) {
   const key = KIND[kind];
   const items = [];
   if (kind === 'close') items.push(t('rights.ask.close.item1'), t('rights.ask.close.item2'));
-  if (kind === 'sharing') items.push(t('rights.ask.sharing.item1'), ...(plan.appTables &&
-    plan.appTables.length ? [t('rights.ask.sharing.apps', { tables: plan.appTables.join(', ') })] : []), t('rights.ask.sharing.item2'),
-    ...(plan.filing ? [t('rights.ask.sharing.filing')] : []));
+  // Le partage qui ferme la structure dit son prix en tête de liste, à la place de « rien ne change pour les tables de données » : la règle vaut pour tout le
+  // document, et dans la fenêtre de 700 × 400 la liste défile (le titre et les boutons restent) : ce qui coûte quelque chose se lit sans défiler.
+  if (kind === 'sharing') items.push(...(plan.closes ? [t('rights.ask.sharing.structure'), t('rights.ask.close.item2')] : []), t('rights.ask.sharing.item1'),
+    ...(plan.appTables && plan.appTables.length ? [t('rights.ask.sharing.apps', { tables: plan.appTables.join(', ') })] : []),
+    ...(plan.closes ? [] : [t('rights.ask.sharing.item2')]), ...(plan.filing ? [t('rights.ask.sharing.filing')] : []));
   if (plan.firstRule) items.push(t('rights.ask.firstRule'));
   const word = kind === 'sharing' && plan.extends ? `${key}.extend` : key;
   return { title: t(`rights.ask.${word}.title`), message: t(`rights.ask.${word}.message`), items, note: t('rights.ask.reload'),

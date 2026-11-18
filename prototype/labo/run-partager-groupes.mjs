@@ -83,6 +83,8 @@ async function playOwner(run) {
   await frame.locator('.mod.sh .rt-content').waitFor({ timeout: 40000 });
   const tables = ((await call(page, 'GET', `/api/docs/${run.docId}/tables`)).json.tables || []).map(table => table.id);
   check('GFS_Groupes est créée avec le partage', tables.includes('GFS_Groupes'), tables);
+  const closed = ((await rows(run, '_grist_ACLRules')) || []).filter(rule => rule.aclFormula === 'user.Access != OWNER' && String(rule.permissionsText || '').includes('-S'));
+  check('l\'activation a fermé la structure (une règle « GFS : Structure fermée »), sans « Gérer les partages… »', closed.length === 1 && /^GFS : Structure fermée/.test(closed[0].memo || ''), closed);
 
   say('--- 2. « Gérer les partages… » : un groupe tapé ---');
   check('« Gérer les partages… » est dans la fenêtre « Partager », possible pour un propriétaire', (await frame.locator('[data-fk="share-manage"]').count()) === 1 && (await frame.locator('[data-fk="share-manage"]').getAttribute('aria-disabled')) === null);
@@ -171,12 +173,12 @@ async function playOwner(run) {
   check('le modèle « racine » est lu des éditeurs (GFS_Cats) mais pas du lecteur', JSON.stringify(rowR.GFS_Cats).includes('editeurs') || JSON.stringify(rowR.GFS_Cats).includes('@'), rowR && rowR.GFS_Cats);
   await shot(frame, '6-categories');
 
-  say('--- 7. la structure, depuis la fenêtre ---');
+  say('--- 7. la structure, depuis la fenêtre : déjà fermée par l\'activation, le bouton propose de la rouvrir ---');
   await frame.locator('[data-fk="manage-tab-options"]').click();
   await frame.locator('[data-fk="manage-structure"]').click();
   await frame.locator('.mod.ask').waitFor();
   const closing = (await frame.locator('.mod.ask').innerText()).replace(/\s+/g, ' ');
-  check('la question de la structure est celle du panneau (fermer)', closing.includes(t('rights.ask.close.title')), closing);
+  check('la question de la structure est celle du panneau (rouvrir : elle est fermée)', closing.includes(t('rights.ask.open.title')), closing);
   await frame.locator('[data-fk="ask-no"]').click().catch(() => {});
   await frame.locator('.mod.ask').waitFor({ state: 'detached' }).catch(() => {});
   await closeManage(frame);

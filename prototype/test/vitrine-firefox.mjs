@@ -4,7 +4,7 @@
 // « Installer » (la carte passe à « Ouvrir », le compte monte, le clavier suit), la fiche (un clic sur le nom ou la capture, Échap qui revient au même nom et au même défilement, le bandeau et son
 // bouton, la barre du haut qui reprend le nom et le bouton quand le bandeau est sorti de l'écran, les extensions en cartes qui s'ajoutent et se retirent, le lien qui y mène), l'ordre de Tab,
 // la lecture seule et l'app refusée (grisées, avec leur raison au clic), les captures (une bande qui défile, un fichier qui se charge, un fichier absent qui laisse la vignette d'attente), la fenêtre
-// étroite (deux colonnes, une colonne), les vitrines rendues par les apps le 17/11 (Automation+, Form+, Grist-BI : leurs vraies images de GFS sur la carte et sur la fiche, légendes et description comprises), le contraste des textes, boutons grisés compris : l'opacité d'un bouton grisé compte (mesuré le 17/11 : « Installer » grisé tombait à 2:1).
+// étroite (deux colonnes, une colonne), les vitrines rendues par les apps le 17/11 (Publipostage+, Automation+, Form+, Grist-BI : leurs vraies images de GFS sur la carte et sur la fiche, légendes et description comprises), le contraste des textes, boutons grisés compris : l'opacité d'un bouton grisé compte (mesuré le 17/11 : « Installer » grisé tombait à 2:1).
 import { createI18n } from '../js/i18n/i18n.js';
 import { readJson } from './helpers.mjs';
 
@@ -336,16 +336,16 @@ async function blockedProblems(page, t, note) {
 // sans vignette d'attente) ; la fiche porte les trois captures, leurs légendes dans la langue de la personne, la description de l'app, et la bande des captures prend le clavier.
 async function deliveredProblems(page, language, t, note) {
   await page.run(() => window.__vitrine('livrees'));
-  const ids3 = ['automation', 'form', 'bi'];
-  const s = await page.until(() => { const g = grid(); return g && g.cards.filter(card => card.id !== 'publipostage').every(card => card.image && card.image.loaded) ? g : null; }, [], 5000)
+  const ids = ['publipostage', 'automation', 'form', 'bi'];
+  const s = await page.until(() => { const g = grid(); return g && g.cards.every(card => card.image && card.image.loaded) ? g : null; }, [], 5000)
     .catch(() => null);
   const seen = s || await page.run(grid);
-  for (const id of ids3) {
+  for (const id of ids) {
     const card = seen.cards.find(item => item.id === id);
     if (!card || card.placeholder || !card.image || !card.image.loaded) note('vitrines rendues : carte', `la carte de « ${id} » devrait montrer sa première capture, chargée : ${JSON.stringify(card && { placeholder: card.placeholder, image: card.image })}`);
     else if (card.overflow > 1 || card.shot.height < 40) note('vitrines rendues : carte', `la carte de « ${id} » est coupée (${card.overflow} px) ou sa vignette trop basse (${card.shot.height.toFixed(0)} px)`);
   }
-  for (const id of ids3) {
+  for (const id of ids) {
     const manifest = readJson(`manifestes/${id}.json`);
     await page.click(...await page.run(centerOf, `[data-fk="name:${id}"]`));
     const f = await page.until(() => { const x = fiche(); return x && x.slides.length === 3 && x.slides.every(slide => slide.image) ? x : null; }, [], 5000).catch(() => null);

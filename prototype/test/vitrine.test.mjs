@@ -85,9 +85,9 @@ function webpSize(buffer) {
   return assert.fail(`morceau WebP inconnu : ${chunk}`);
 }
 
-const DELIVERED = ['automation', 'bi', 'form'];
+const DELIVERED = ['publipostage', 'automation', 'bi', 'form'];
 
-test('Automation+, Grist-BI et Form+ ont leur vitrine : une description et trois captures, dans les deux langues, des fichiers de GFS aux bonnes dimensions', () => {
+test('Publipostage+, Automation+, Grist-BI et Form+ ont leur vitrine : une description et trois captures, dans les deux langues, des fichiers de GFS aux bonnes dimensions', () => {
   for (const id of DELIVERED) {
     const manifest = readJson(`manifestes/${id}.json`);
     assert.deepEqual(validateManifest(manifest).errors, [], id);

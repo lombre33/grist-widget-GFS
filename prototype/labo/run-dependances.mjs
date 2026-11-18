@@ -49,8 +49,21 @@ check('rien d\'ouvert devant le réglage', (await frame.locator('.mod').count())
 // ----- La fenêtre : une ligne par bibliothèque, l'audit et le choix de la source dans le détail.
 await openWindow();
 say('titre :', await text(frame.locator('.dp-head')));
+// Demande du 18/11 : rangées par app ; au départ seules les apps installées (Publipostage+) sont montrées, les autres bibliothèques sont dans un panneau refermé.
 const names = await frame.locator('.dp-name').allInnerTexts();
-check('la fenêtre liste les bibliothèques que GFS sert (echarts, plotly.js-dist-min, pdfjs-dist…)', names.length >= 10 && names.some(name => /echarts/.test(name)) && names.some(name => /plotly/.test(name)), names);
+check('au départ : seule l\'app installée est montrée, avec ses bibliothèques (echarts, plotly…)', (await frame.locator('.dp-group-head h3').allInnerTexts()).join() === 'Publipostage+'
+  && names.length >= 8 && names.some(name => /echarts/.test(name)) && names.some(name => /plotly/.test(name)) && !names.includes('docx'), names);
+const panel = frame.locator('[data-fk="dep-more"]');
+check('le panneau refermé propose les apps non installées et les bibliothèques sans app', (await panel.getAttribute('aria-expanded')) === 'false', await text(panel));
+await panel.click();
+await page.waitForTimeout(200);
+const everything = await frame.locator('.dp-name').allInnerTexts();
+check('le panneau ouvert montre aussi docx, exceljs, pdfmake… sous « Aucune app » (au moins seize bibliothèques en tout)', everything.length >= 16 && everything.includes('docx')
+  && (await frame.locator('.dp-more .dp-group-head h3').allInnerTexts()).length >= 1 && (await frame.evaluate(() => document.activeElement.dataset.fk)) === 'dep-more', everything);
+await shot('0-panneau-ouvert');
+await panel.click();
+await page.waitForTimeout(200);
+check('le panneau se referme', (await panel.getAttribute('aria-expanded')) === 'false' && (await frame.locator('.dp-name').count()) === names.length);
 const before = await lab.rangement(frame);
 check('l\'ouvrir n\'écrit rien : la table GFS_Rangement n\'est pas créée par la fenêtre', readonly ? before.table === false : (before.value.publipostage?.modes === undefined), before.value);
 const echarts = await openRow('echarts');
@@ -82,7 +95,7 @@ await lab.settle(frame);
 await page.waitForTimeout(400);
 check('« Copie figée » écrit le mode de l\'extension Graphique dans le document', (await modes()).graphique === 'vendorise', await modes());
 check('la fenêtre l\'affiche (état de la ligne relu)', (await checkedSource(rowOf('echarts'))) === 'vendorise' && (await rowOf('echarts').locator('.dp-tag.is-on').count()) === 1);
-check('le clavier est resté sur le choix de la ligne', await frame.evaluate(() => (document.activeElement.dataset.fk || '').startsWith('dep-src-echarts')));
+check('le clavier est resté sur le choix de la ligne', await frame.evaluate(() => /^dep-src-publipostage\|echarts@/.test(document.activeElement.dataset.fk || '')));
 say('état :', await text(rowOf('echarts').locator('.dp-detail [role="status"]').first()));
 await shot('3-copie-figee-choisie');
 

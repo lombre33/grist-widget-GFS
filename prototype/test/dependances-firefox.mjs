@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createI18n } from '../js/i18n/i18n.js';
 import { formatBytes } from '../js/weight/weight.js';
-import { dependencyRows, summary, FILTERS } from '../js/apps/dependencies-model.js';
+import { dependencyRows, groupsOf, summary, FILTERS } from '../js/apps/dependencies-model.js';
 import { allUnits, planFor, planSize } from '../js/apps/dependencies-source.js';
 import { readCatalogue } from '../js/apps/libraries.js';
 import { Run, centerOfSelector } from './corbeille-firefox.mjs';
@@ -55,7 +55,7 @@ function state() {
     const source = seg ? { radios: [...seg.querySelectorAll('input')].map(input => ({ value: input.value, checked: input.checked, disabled: input.disabled,
       off: input.closest('label').classList.contains('is-off'), text: t(input.closest('label')), fk: input.dataset.fk })), legend: t(seg.querySelector('legend')),
       notes: [...seg.closest('.dp-fact').querySelectorAll('.dp-sub')].map(t), attn: [...seg.closest('.dp-fact').querySelectorAll('.dp-attn')].map(t) } : null;
-    return { key: li.dataset.key, on: [...row.querySelectorAll('.dp-tag.is-on')].map(node => t(node).replace(/ \([^)]*\)$/, '')), source, name: t(row.querySelector('.dp-name')), sub: t(row.querySelector('.dp-lib .dp-sub')), users: t(row.querySelector('.dp-users')),
+    return { key: li.dataset.key, slot: row.dataset.fk.slice(4), scope: li.dataset.scope, on: [...row.querySelectorAll('.dp-tag.is-on')].map(node => t(node).replace(/ \([^)]*\)$/, '')), source, name: t(row.querySelector('.dp-name')), sub: t(row.querySelector('.dp-lib .dp-sub')), users: t(row.querySelector('.dp-users')),
       version: t(row.querySelector('.dp-ver')), tags: [...row.querySelectorAll('.dp-tag')].map(t), latest: t(row.querySelector('.dp-cell:nth-child(4)')), dot: row.querySelector('.dp-dot').dataset.state,
       expanded: row.getAttribute('aria-expanded'), height: rect.height, clipped, wide: rect.right > box.right + 1, link: ext ? link(ext) : null, ext: ext ? ext.getBoundingClientRect().width : 0,
       detail: detail ? { facts: [...detail.querySelectorAll('.dp-fact')].map(fact => ({ title: t(fact.querySelector('dt')), body: t(fact.querySelector('dd')) })),
@@ -64,6 +64,10 @@ function state() {
   });
   return { ...out, modal: { title: t(modal.querySelector('.mod-head h2')), count: t(modal.querySelector('.mod-count')), role: modal.getAttribute('role'), modalAttr: modal.getAttribute('aria-modal'),
     labelled: t(document.getElementById(modal.getAttribute('aria-labelledby'))), rows,
+    groups: [...modal.querySelectorAll('.dp-group')].map(group => ({ id: group.dataset.group, name: t(group.querySelector('h3')), count: t(group.querySelector('.dp-group-head > .dp-sub')),
+      chip: t(group.querySelector('.dp-group-head .dp-chip')), rows: group.querySelectorAll('.dp-item').length, inMore: Boolean(group.closest('.dp-more')) })),
+    more: (() => { const button = modal.querySelector('.dp-more-btn'); return button ? { text: t(button), expanded: button.getAttribute('aria-expanded'), height: Math.round(button.getBoundingClientRect().height),
+      over: over(button) } : null; })(),
     chips: [...modal.querySelectorAll('.dp-filter')].map(chip => ({ filter: chip.dataset.filter, text: t(chip), pressed: chip.getAttribute('aria-pressed') })),
     cols: [...modal.querySelectorAll('.dp-cols > span')].filter(node => node.getBoundingClientRect().width > 0 && getComputedStyle(node).display !== 'none').length,
     foot2: (() => { const all = modal.querySelector('[data-fk="dep-all"]'); const exp = modal.querySelector('[data-fk="dep-export"]'); const closeBtn = modal.querySelector('[data-fk="dep-close"]');
@@ -86,7 +90,8 @@ async function expectedRows(page, language) {
   const catalogue = readCatalogue(JSON.parse(readFileSync(join(ROOT, 'bibliotheques/catalogue.json'), 'utf8')));
   const releve = JSON.parse(readFileSync(join(ROOT, 'bibliotheques/releve.json'), 'utf8'));
   const modules = await page.run(() => window.__dependencyModules());
-  return { rows: dependencyRows({ catalogue, releve, modules, lang: language }), releve, modules, catalogue };
+  const rows = dependencyRows({ catalogue, releve, modules, lang: language });
+  return { rows, groups: groupsOf(rows), releve, modules, catalogue };
 }
 
 export async function dependancesProblems(page, language, tag) {
@@ -111,8 +116,13 @@ export async function dependancesProblems(page, language, tag) {
   try {
     await page.run(() => { window.__resetSettings(); window.__saved = []; window.__dependencyBlocked = null; });
     await run.reset().catch(() => {});
-    const { rows, releve, modules: startModules } = await expectedRows(page, language);
+    const { rows, groups, releve, modules: startModules } = await expectedRows(page, language);
     const sum = summary(rows);
+    // Au départ seules les apps installées sont montrées, chacune sous son nom ; les autres sont dans le panneau refermé (demande du porteur du 18/11).
+    const installed = groups.filter(group => group.installed);
+    const shownRows = installed.flatMap(group => group.rows);
+    const rest = groups.filter(group => !group.installed);
+    const restCount = new Set(rest.flatMap(group => group.rows.map(row => row.key))).size;
     const asked = (await snap()).asked;
 
     // 1. La souris ouvre la fenêtre par « Réglages » puis « Dépendances… ».
@@ -127,9 +137,12 @@ export async function dependancesProblems(page, language, tag) {
     if (modal.foot !== t('dep.foot', { date })) run.note('le pied', `le pied devait dire « ${t('dep.foot', { date })} » (il dit « ${modal.foot} »)`);
     if (modal.apps !== t('dep.apps')) run.note('la note', `la note sous la liste devait dire « ${t('dep.apps')} » (elle dit « ${modal.apps} »)`);
     const names = modal.rows.map(row => row.name);
-    if (names.join('|') !== rows.map(row => row.paquet).join('|')) run.note('les lignes', `les lignes devaient être celles du modèle dans son ordre, les actives d'abord (${names.join(' | ')})`);
+    if (names.join('|') !== shownRows.map(row => row.paquet).join('|')) run.note('les lignes', `les lignes devaient être celles des apps installées, dans l'ordre du modèle (${names.join(' | ')})`);
     const dots = modal.rows.map(row => row.dot).join();
-    if (dots !== rows.map(row => row.state).join()) run.note('les états', `les pastilles devaient suivre l'état des lignes (${dots})`);
+    if (dots !== shownRows.map(row => row.state).join()) run.note('les états', `les pastilles devaient suivre l'état des lignes (${dots})`);
+    const heads = modal.groups.map(group => `${group.name}|${group.count}|${group.chip}|${group.rows}`).join();
+    if (heads !== installed.map(group => `${group.name}|${t('dep.group.count', { n: group.rows.length })}|${t('dep.group.on')}|${group.rows.length}`).join() || modal.groups.some(group => group.inMore)) run.note('les apps', `une section par app installée, avec son nom, son nombre de bibliothèques et « ${t('dep.group.on')} » (${heads})`);
+    if (!modal.more || modal.more.expanded !== 'false' || modal.more.text !== t('dep.more', { n: restCount }) || modal.more.height < 40 || modal.more.over) run.note('le panneau refermé', `« ${t('dep.more', { n: restCount })} » devait être là, refermé, d'au moins 40 px (${JSON.stringify(modal.more)})`);
     const chips = Object.fromEntries(modal.chips.map(chip => [chip.filter, chip]));
     for (const filter of FILTERS) if (!chips[filter] || chips[filter].text !== `${t(`dep.filter.${filter}`)}${sum.counts[filter]}`) run.note('les filtres', `le filtre « ${filter} » devait dire « ${t(`dep.filter.${filter}`)}${sum.counts[filter]} » (${chips[filter] && chips[filter].text})`);
     if (modal.chips.filter(chip => chip.pressed === 'true').map(chip => chip.filter).join() !== 'all') run.note('le filtre choisi', 'seul « Toutes » devait être enfoncé à l\'ouverture');
@@ -142,17 +155,19 @@ export async function dependancesProblems(page, language, tag) {
     if (!modal.scrolls) run.note('la liste défile', 'seize lignes devaient dépasser la hauteur de la liste à 400 px');
     if (modal.rows.some(row => row.height < 40)) run.note('hauteur des lignes', `une ligne mesure moins de 40 px (${modal.rows.filter(row => row.height < 40).map(row => `${row.name} ${row.height}`).join(', ')})`);
     if (modal.rows.some(row => row.clipped || row.wide)) run.note('texte coupé', `une ligne coupe ou fait déborder un mot : ${modal.rows.filter(row => row.clipped || row.wide).map(row => row.name).join(', ')}`);
-    const wantCols = modal.size[0] >= 520 ? 5 : 4;
+    const shared = rows.some(row => new Set(row.uses.map(use => use.app)).size > 1);
+    const wantCols = modal.size[0] >= 520 && shared ? 5 : 4;
     if (modal.cols !== wantCols) run.note('les colonnes', `la fenêtre devait montrer ${wantCols} titres de colonne à ${modal.size[0]} px (${modal.cols})`);
     const linked = modal.rows.filter(row => row.link);
     if (linked.length !== modal.rows.length || linked.some(row => row.ext < 24 || row.link.target !== '_blank' || !/noopener/.test(row.link.rel) || !/^https:\/\//.test(row.link.href) || !row.link.label.includes(row.name))) run.note('le lien de la ligne', 'chaque ligne devait finir par un lien https de 24 px au moins, dans un nouvel onglet, noopener, nommé par la bibliothèque');
     const plotly = modal.rows.find(row => row.name === 'plotly.js-basic-dist-min');
+    if (modal.rows.some(row => row.name === 'docx')) run.note('le panneau refermé cache', 'docx (aucune app ne le demande) ne devait pas être montré avant d\'ouvrir le panneau');
     if (!plotly || !/critique|Critical/i.test(plotly.latest)) run.note('l\'avis', `la ligne de Plotly devait annoncer son avis critique (${plotly && plotly.latest})`);
     if (modal.rows.filter(row => /^(?:Active|Active)$/.test(row.sub)).length > 0 || modal.rows.some(row => !row.sub)) run.note('les mots d\'état', 'chaque ligne devait dire son état en mots');
 
     // 3. Les filtres à la souris : « Avis » n'a que Plotly, « Mises à jour » le compte du modèle, « Actives » les trois actives ; la recherche prend les mots dans n'importe quel ordre.
-    for (const [filter, expected] of [['advisories', rows.filter(row => row.flagged).map(row => row.paquet)], ['active', rows.filter(row => row.state === 'active').map(row => row.paquet)],
-      ['updates', rows.filter(row => row.updatable).map(row => row.paquet)], ['all', rows.map(row => row.paquet)]]) {
+    for (const [filter, expected] of [['advisories', shownRows.filter(row => row.flagged).map(row => row.paquet)], ['active', shownRows.filter(row => row.state === 'active').map(row => row.paquet)],
+      ['updates', shownRows.filter(row => row.updatable).map(row => row.paquet)], ['all', shownRows.map(row => row.paquet)]]) {
       await page.click(...await page.run(centerOfSelector, `.dp-filter[data-filter="${filter}"]`));
       const now = await expect(`filtre ${filter}`, `le filtre devait montrer ${expected.length} ligne(s)`, s => s.modal && s.modal.rows.map(row => row.name).join('|') === expected.join('|') && s.modal.chips.find(chip => chip.filter === filter).pressed === 'true');
       if (now.modal && now.modal.chips.filter(chip => chip.pressed === 'true').length !== 1) run.note('filtre enfoncé', 'un seul filtre devait être enfoncé');
@@ -168,19 +183,36 @@ export async function dependancesProblems(page, language, tag) {
     const none = await expect('recherche : rien', 'chercher « zzz » devait n\'afficher aucune ligne et dire « Aucune bibliothèque ne correspond. »', s => s.modal && s.modal.rows.length === 0 && s.modal.empty);
     if (none.modal && none.modal.empty && none.modal.rows.length) run.note('vide', 'le message de liste vide ne devait pas s\'afficher avec des lignes');
     await page.press('Backspace', 'Backspace', 'Backspace');
-    await expect('recherche effacée', 'effacer la recherche devait rendre toutes les lignes', s => s.modal && s.modal.rows.length === rows.length && !s.modal.empty);
+    await expect('recherche effacée', 'effacer la recherche devait rendre toutes les lignes des apps installées', s => s.modal && s.modal.rows.length === shownRows.length && !s.modal.empty);
+    // Une bibliothèque que seul le panneau refermé a : le vide le dit, le panneau garde son compte ; l'ouvrir la montre sous « Aucune app ».
+    await page.press(...'docx'.split(''));
+    const inMore = await expect('recherche : seul le panneau', 'chercher « docx » (aucune app ne le demande) devait dire qu\'aucune app installée ne correspond et compter une bibliothèque dans le panneau',
+      s => s.modal && s.modal.rows.length === 0 && s.modal.empty && s.modal.more && s.modal.more.text === t('dep.more', { n: 1 }));
+    await page.click(...await page.run(buttonAt, '[data-fk="dep-more"]'));
+    const opened = await expect('le panneau', 'un clic sur le panneau devait l\'ouvrir, montrer docx sous « Aucune app », cacher le message vide et garder le clavier sur le bouton',
+      s => s.modal && s.modal.more && s.modal.more.expanded === 'true' && s.modal.rows.map(row => row.name).join() === 'docx' && !s.modal.empty && s.modal.focus === 'dep-more'
+        && s.modal.groups.length === 1 && s.modal.groups[0].name === t('dep.group.none') && s.modal.groups[0].inMore);
+    if (opened.modal && opened.modal.rows[0] && opened.modal.rows[0].users !== '—') run.note('le panneau : la colonne', `« ${t('dep.col.users')} » devait dire « — » pour une bibliothèque qu'aucune app ne demande (${opened.modal.rows[0].users})`);
+    await page.click(...await page.run(buttonAt, '[data-fk="dep-more"]'));
+    await expect('le panneau : refermer', 'un second clic devait refermer le panneau', s => s.modal && s.modal.more.expanded === 'false' && s.modal.rows.length === 0 && s.modal.empty);
+    await page.click(...await page.run(centerOfSelector, '.dp-search input'));
+    await page.press(...Array(4).fill('Backspace'));
+    await expect('recherche effacée de nouveau', 'effacer la recherche devait rendre les lignes des apps installées', s => s.modal && s.modal.rows.length === shownRows.length && !s.modal.empty);
 
     // 4. Le clavier : la flèche du bas va de la recherche à la première ligne, la flèche du haut revient à la recherche. Entrée et Espace sur un bouton ne se jouent pas sous ce Firefox sans écran
     // (voir test/interfaces-firefox.test.mjs, conflictProblems) : la ligne se déplie ici à la souris, Entrée se mesure dans le labo.
     await page.click(...await page.run(centerOfSelector, '.dp-search input'));
     await page.press('ArrowDown');
-    const first = rows[0].key;
+    const first = shownRows[0].slot;
     await expect('clavier : la flèche du bas', 'la flèche du bas devait mener à la première ligne', s => s.modal && s.modal.focus === `dep-${first}`);
     await page.press('ArrowUp');
     await expect('clavier : la flèche du haut', 'la flèche du haut sur la première ligne devait revenir à la recherche', s => s.modal && s.modal.focus === 'dep-search');
+    await page.press(...Array(shownRows.length + 1).fill('ArrowDown'));
+    await expect('clavier : jusqu\'au panneau', 'après la dernière ligne, la flèche du bas devait mener au bouton du panneau refermé', s => s.modal && s.modal.focus === 'dep-more');
+    await page.click(...await page.run(centerOfSelector, '.dp-search input'));
 
     // 5. Le détail de Plotly à la souris : ce qui l'utilise, ses fichiers, l'avis, la licence, ses liens ; la copie se vérifie, et se dit différente quand les octets changent.
-    const plotlyRow = rows.find(row => row.paquet === 'plotly.js-basic-dist-min');
+    const plotlyRow = shownRows.find(row => row.paquet === 'plotly.js-basic-dist-min');
     await page.click(...await page.run(rowAt, plotlyRow.key));
     const detail = await expect('détail', 'un clic sur la ligne de Plotly devait la déplier', s => s.modal && s.modal.rows.some(row => row.key === plotlyRow.key && row.expanded === 'true' && row.detail));
     const shown = detail.modal && detail.modal.rows.find(row => row.key === plotlyRow.key).detail;
@@ -206,6 +238,8 @@ export async function dependancesProblems(page, language, tag) {
     await page.click(...await page.run(buttonAt, '.dp-verify'));
     await expect('vérifier : de nouveau', 'la copie rétablie devait être dite intacte', s => s.modal && s.modal.rows.some(row => row.detail && row.detail.integrity === t('dep.d.ok')));
     // docx : deux fichiers, une seule ligne, « n copies intactes »
+    await page.click(...await page.run(buttonAt, '[data-fk="dep-more"]'));
+    await expect('docx : le panneau', 'docx (aucune app ne le demande) devait se montrer à l\'ouverture du panneau', s => s.modal && s.modal.rows.some(row => row.name === 'docx'));
     await page.click(...await page.run(rowAt, rows.find(row => row.paquet === 'docx').key));
     await page.click(...await page.run(buttonAt, '.dp-item.is-open:last-of-type .dp-verify, .dp-item[data-key^="docx@"] .dp-verify'));
     await expect('vérifier : deux fichiers', 'docx (deux fichiers) devait dire ses deux copies intactes', s => s.modal && s.modal.rows.some(row => row.name === 'docx' && row.detail && row.detail.integrity === t('dep.d.ok.n', { n: 2 })));
@@ -220,21 +254,21 @@ export async function dependancesProblems(page, language, tag) {
     if (source0 && source0.radios.map(item => item.text).join('|') !== `${t('mod.native.cdn')}|${t('mod.native.copy')}`) run.note('la source : les mots', `les choix devaient dire « ${t('mod.native.cdn')} » et « ${t('mod.native.copy')} », comme la fiche de l'app (${source0.radios.map(item => item.text).join('|')})`);
     if (source0 && !source0.notes.some(text => text.includes('echarts'))) run.note('la source : ce qui suit', `le détail devait dire qu'ECharts suit le choix (${source0.notes.join(' / ')})`);
     const writes0 = start5.writes;
-    await page.click(...await page.run(buttonAt, `[data-fk="dep-src-${plotlyKey}-vendorise"]`));
+    await page.click(...await page.run(buttonAt, `[data-fk="dep-src-${plotlyRow.slot}-vendorise"]`));
     const copied = await expect('la source : copie figée', 'un clic sur « Copie figée » devait l\'écrire (une écriture), la cocher, garder le clavier dessus et marquer la ligne', s => s.writes === writes0 + 1 && s.modes && s.modes.graphique === 'vendorise' &&
-      radio(s, 'vendorise') && radio(s, 'vendorise').checked && s.modal && s.modal.focus === `dep-src-${plotlyKey}-vendorise` && s.modal.rows.find(row => row.key === plotlyKey).on.join() === t('dep.tag.copy'));
+      radio(s, 'vendorise') && radio(s, 'vendorise').checked && s.modal && s.modal.focus === `dep-src-${plotlyRow.slot}-vendorise` && s.modal.rows.find(row => row.key === plotlyKey).on.join() === t('dep.tag.copy'));
     if (copied.modal) {
       const row = copied.modal.rows.find(item => item.key === plotlyKey);
       if (!row.detail.facts.find(fact => fact.title === t('dep.d.users')).body.includes(t('dep.tag.copy'))) run.note('la source : la liste des usages', 'la rubrique « Utilisée par » devait dire que Graphique est en copie figée');
       if (!row.source.notes.some(text => text === t('dep.src.is.vendorise'))) run.note('la source : la phrase', `la phrase devait dire « ${t('dep.src.is.vendorise')} » (${row.source.notes.join(' / ')})`);
       if (row.detail.wide || copied.modal.hscroll) run.note('la source déborde', 'le détail ne devait pas déborder après le choix');
     }
-    await page.click(...await page.run(buttonAt, `[data-fk="dep-src-${plotlyKey}-cdn"]`));
+    await page.click(...await page.run(buttonAt, `[data-fk="dep-src-${plotlyRow.slot}-cdn"]`));
     await expect('la source : retour au CDN', 'un clic sur « CDN » devait le défaire (le défaut ne s\'écrit pas dans `modes`)', s => s.writes === writes0 + 2 && !(s.modes && s.modes.graphique) &&
       radio(s, 'cdn') && radio(s, 'cdn').checked && s.modal.rows.find(row => row.key === plotlyKey).on.join() === t('dep.tag.cdn'));
 
     // 5c. pdf.js n'a pas de CDN : « CDN » grisé avec sa raison, la copie choisie ; rien ne s'écrit à un clic sur le choix grisé.
-    const pdfjs = rows.find(row => row.paquet === 'pdfjs-dist');
+    const pdfjs = shownRows.find(row => row.paquet === 'pdfjs-dist');
     await page.click(...await page.run(rowAt, pdfjs.key));
     const pdfOpen = await expect('pdf.js', 'un clic sur la ligne de pdf.js devait la déplier avec son choix', s => s.modal && s.modal.rows.some(row => row.key === pdfjs.key && row.source));
     const pdfSource = pdfOpen.modal && pdfOpen.modal.rows.find(row => row.key === pdfjs.key).source;
@@ -243,7 +277,7 @@ export async function dependancesProblems(page, language, tag) {
       if (!cdn.disabled || !cdn.off || cdn.checked || !copy.checked) run.note('pdf.js : le CDN grisé', `« CDN » devait être grisé et décoché, « Copie figée » choisie (${JSON.stringify(pdfSource.radios)})`);
       if (!pdfSource.notes.includes(t('mod.mode.cdnNone'))) run.note('pdf.js : la raison', `la raison devait être dite (« ${t('mod.mode.cdnNone')} » : ${pdfSource.notes.join(' / ')})`);
     }
-    await page.click(...await page.run(buttonAt, `[data-fk="dep-src-${pdfjs.key}-cdn"]`));
+    await page.click(...await page.run(buttonAt, `[data-fk="dep-src-${pdfjs.slot}-cdn"]`));
     const afterPdf = await snap();
     if (afterPdf.writes !== writes0 + 2) run.note('pdf.js : un choix grisé', 'un clic sur « CDN » grisé ne devait rien écrire');
     await page.click(...await page.run(rowAt, pdfjs.key));
@@ -295,7 +329,7 @@ export async function dependancesProblems(page, language, tag) {
     await page.click(...await allAt());
     const said = await expect('bloqué : la raison', 'un clic sur le bouton grisé devait dire la raison dans le pied, sans question', s => !s.ask && s.modal.foot === reason && s.writes === writesBlocked);
     if (said.ask) await page.press('Escape');
-    await page.click(...await page.run(buttonAt, `[data-fk="dep-src-${plotlyKey}-vendorise"]`));
+    await page.click(...await page.run(buttonAt, `[data-fk="dep-src-${plotlyRow.slot}-vendorise"]`));
     if ((await snap()).writes !== writesBlocked) run.note('bloqué : un choix grisé', 'un choix grisé ne devait rien écrire');
     await page.run(() => { window.__dependencyBlocked = null; });
     await page.click(...await page.run(centerOfSelector, '[data-fk="dep-close"]'));

@@ -17,9 +17,11 @@ export function externalLink(t, { href, what, name, text, cls = 'dp-link' }) {
 
 const fact = (title, ...content) => h('div', { class: 'dp-fact' }, h('dt', null, title), h('dd', null, ...content));
 
+// Tous les usages de la bibliothèque, ceux des autres apps comprises (la ligne n'est vue que depuis une app, mais l'audit voit tout).
 function usersFact(t, row) {
-  if (!row.uses.length) return fact(t('dep.d.users'), t('dep.d.users.none'));
-  return fact(t('dep.d.users'), h('ul', { class: 'dp-lines' }, ...row.uses.map(use =>
+  const uses = row.all || row.uses;
+  if (!uses.length) return fact(t('dep.d.users'), t('dep.d.users.none'));
+  return fact(t('dep.d.users'), h('ul', { class: 'dp-lines' }, ...uses.map(use =>
     h('li', null, t('dep.d.use', { app: use.appName, what: use.what, state: t(`dep.state.${use.state}`).toLowerCase(),
       source: t(use.unit && use.unit.mode === 'vendorise' ? 'dep.tag.copy' : 'dep.tag.cdn') })))));
 }
@@ -79,7 +81,8 @@ export function integrityText(t, state) {
 // rendu ; `blocked` : la raison pour laquelle aucun choix ne s'écrit, ou null ; `pick(mode)` : le choix de la source (js/apps/dependencies-source-view.js).
 export function buildDetail({ t, locale, row, surveyed, state, verify, blocked, pick }) {
   const status = h('span', { class: 'dp-integrity', role: 'status', 'aria-live': 'polite' }, integrityText(t, state));
-  const button = h('button', { type: 'button', class: 'btn sm dp-verify', dataset: { fk: `dep-verify-${row.key}` }, on: { click: verify } }, icon('check'),
+  const button = h('button', { type: 'button', class: 'btn sm dp-verify', dataset: { fk: `dep-verify-${row.slot || row.key}` }, on: { click: verify } },
+    icon('check'),
     t('dep.d.verify'));
   const facts = [usersFact(t, row), fact(t('dep.d.source'), ...sourceBody({ t, row, blocked, pick })), filesFact(t, row, locale),
     fact(t('dep.d.integrity'), button, status), addressesFact(t, row),

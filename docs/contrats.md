@@ -536,7 +536,13 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     « relevé par GFS, sans appel externe ») : ils viennent de `bibliotheques/releve.json`, que l'outil `outils/releve-dependances.mjs` écrit d'après le registre npm et que GFS
     commite ; le pied de la fenêtre en dit la date. Un relevé fait pour une autre version que celle servie ne dit rien de sûr : ni avis ni écart, la ligne le signale ; sans relevé
     (fichier absent), la fenêtre montre ce que GFS sert et le dit. Les liens sont des adresses `https` du relevé (jamais d'un réglage, d'une table ou d'un message), dans un nouvel
-    onglet, sans rien transmettre (`noopener`). **La source** (lot 3, 18/11) : le détail d'une ligne offre le **même segment « CDN | Copie figée » que la fiche d'une app**, pour la bibliothèque. Le choix n'est pas par bibliothèque mais par
+    onglet, sans rien transmettre (`noopener`). **Rangée par app** (demande du porteur, 18/11 soir : « regroupé par app, par défaut seulement celles des apps activées, un panneau refermé pour les autres ») : une section par app **installée**
+    (son nom, « n bibliothèques », « Installée »), et sous elles un **panneau refermé** « Montrer également les dépendances des apps non installées et celles sans app (n) » qui garde les apps
+    non installées (« Non installée ») et les bibliothèques qu'aucune app ne demande (section « Aucune app »). Une bibliothèque se trouve sous **chaque app qui l'utilise**, vue depuis cette app
+    (`scopeRow` : son état, ses fonctions et le choix de sa source ne parlent que d'elle ; le détail nomme tous les usages) ; la colonne « Aussi utilisée par » n'apparaît que lorsqu'une
+    bibliothèque sert à plusieurs apps. Les compteurs des filtres (Toutes, Actives, Mises à jour, Avis) et l'export portent sur toutes les bibliothèques, panneau fermé ou non : rien d'une
+    liste d'audit n'est caché, seulement replié (le nombre du panneau suit les filtres et la recherche ; quand seules les apps non installées correspondent, le vide le dit). Code :
+    `js/apps/dependencies-list.js`, `groupsOf` et `scopeRow` de `js/apps/dependencies-model.js`. **La source** (lot 3, 18/11) : le détail d'une ligne offre le **même segment « CDN | Copie figée » que la fiche d'une app**, pour la bibliothèque. Le choix n'est pas par bibliothèque mais par
     fonction (une extension d'une app, ou une fonction native, points 12 et 14) : celui d'une bibliothèque vaut pour **chaque fonction qui l'utilise** et s'écrit dans la même table (`modes`), **une seule
     écriture par app** (`AppsState.setSources`) ; les autres bibliothèques de ces fonctions suivent, et le détail le dit. Grisé, jamais masqué, avec sa raison : le CDN d'une fonction dont une bibliothèque
     n'a pas d'adresse publique (pdf.js), la copie d'une fonction native dont GFS n'a pas toutes les bibliothèques, une app non installée, une extension non ajoutée, le document en lecture seule ou sans

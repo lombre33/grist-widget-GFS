@@ -12,16 +12,21 @@
 //   - la colonne est écrite AVANT la condition : le moteur ne compose ses colonnes que d'après ce que la table porte au moment de l'enregistrement.
 import { FILES_APP, FILES_COLUMNS, FILES_TABLE, SHARED_FOLDER_COLUMN } from '../files/gfs-files.js';
 import { OwnTable } from '../files/own-table.js';
+import { isTooBig } from './share-links.js';
+
+// Un fichier du niveau de ce dossier, ni à la corbeille, ni reçu d'un autre document, ni donné par une adresse.
+const insideFolder = (file, path) => !file.trashed && !file.received && !file.direct && file.folder === path;
 
 // Les fichiers d'un dossier qui peuvent partir : les PDF de GFS rangés dans ce dossier même, ni à la corbeille, ni reçus d'un autre document, ni donnés par une
-// adresse.
-export const filesOfFolder = (files, path) => (files || []).filter(file => file.app === FILES_APP && !file.trashed && !file.received && !file.direct &&
-  file.folder === path);
+// adresse, et pas plus de 25 Mo chacun (js/sharing/share-links.js, `SEND_MAX` : au-delà, le moteur ne les envoie pas, `tooBigInFolder` les compte).
+export const filesOfFolder = (files, path) => (files || []).filter(file => file.app === FILES_APP && insideFolder(file, path) && !isTooBig(file));
 
-// Les fichiers du dossier qui ne partent pas (ceux d'une app : le premier lot du partage entre documents ne couvre que les PDF de GFS) : leur nombre, pour le
-// dire à la personne.
-export const skippedInFolder = (files, path, sent) => (files || []).filter(file => file.folder === path && !file.trashed && !file.received && !file.direct &&
-  !(sent || []).includes(file)).length;
+// Les fichiers du dossier qui ne partent pas parce qu'ils sont ceux d'une app (le premier lot du partage entre documents ne couvre que les PDF de GFS) : leur
+// nombre, pour le dire à la personne.
+export const skippedInFolder = (files, path) => (files || []).filter(file => file.app !== FILES_APP && insideFolder(file, path)).length;
+
+// Les PDF de GFS du dossier qui ne partent pas parce qu'ils pèsent plus de 25 Mo : leur nombre, pour le dire à la personne avant l'envoi.
+export const tooBigInFolder = (files, path) => (files || []).filter(file => file.app === FILES_APP && insideFolder(file, path) && isTooBig(file)).length;
 
 // L'objet que la fenêtre « Partager » reçoit pour un dossier (js/share-control.js, `folderFile`) : un chemin, jamais une app (un fichier de l'explorateur a
 // toujours la sienne).

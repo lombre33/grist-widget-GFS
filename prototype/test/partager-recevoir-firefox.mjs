@@ -51,7 +51,8 @@ async function accordFlow(page, tools, t, flow, table) {
   const now = await toAccord(page, tools, t, kind, flow);
   if (!now || !now.modal) return;
   tools.fits(kind, now, 'l\'accord');
-  for (const part of [LONG_DOC, t('sr.accord.adds'), table, t('sr.accord.keep')]) if (!now.modal.body.toLowerCase().includes(part.toLowerCase())) tools.run.note(kind, `l'accord devait dire « ${part} » (il dit « ${now.modal.body.slice(0, 200)} »)`);
+  // La structure du document se ferme avec le journal (choix du porteur, 18/11) : l'accord le dit avec les mots de la question d'activation du partage.
+  for (const part of [LONG_DOC, t('sr.accord.adds'), table, t('sr.accord.keep'), t('sr.accord.rules'), t('rights.ask.sharing.structure'), t('rights.ask.close.item2')]) if (!now.modal.body.toLowerCase().includes(part.toLowerCase())) tools.run.note(kind, `l'accord devait dire « ${part} » (il dit « ${now.modal.body.slice(0, 200)} »)`);
   if (flow === 'second' && now.modal.body.includes('GFS_Recus ')) tools.run.note(kind, 'l\'accord du second partage ne devait pas annoncer la table du premier');
   for (let i = 0; i < 3; i += 1) { await page.press('Tab'); const inside = await tools.snap(); if (!inside.modal || !inside.modal.inside) tools.run.note(kind, 'Tab devait rester dans la fenêtre'); }
   await page.press('Escape');

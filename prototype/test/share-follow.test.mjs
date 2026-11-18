@@ -38,6 +38,13 @@ test('un fichier ajouté au dossier suivi : son nom de dossier est écrit AVANT 
   assert.deepEqual(run.memory, [['remember', 'e1', 'Contrats', ['p1', 'p2', 'p3']]]);
 });
 
+test('un PDF de plus de 25 Mo ajouté au dossier suivi n\'entre pas dans la condition : il ne partirait pas (le dossier dit combien restent chez lui)', async () => {
+  const run = setup({ files: [file('p1'), file('p2'), file('p3', { pieces: [['9', 26 * 1024 * 1024]] })] });
+  const changed = await followFolders(run.args);
+  assert.deepEqual(changed, [], 'p3 est trop gros : rien n\'entre, rien n\'est écrit');
+  assert.deepEqual(run.calls, []);
+});
+
 test('un fichier qui n\'est plus dans le dossier sort de la condition (la copie reste chez l\'autre), un fichier partagé à côté reste ; la condition ne devient jamais vide (`setCondition` nomme alors un identifiant qui n\'existe pas)', async () => {
   const run = setup({ files: [file('p1'), file('p2', { folder: 'Autre' })] });
   assert.equal((await followFolders(run.args))[0].drop[0], 'p2');

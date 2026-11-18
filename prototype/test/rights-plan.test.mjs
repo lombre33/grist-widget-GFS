@@ -3,6 +3,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { planShared, planRemoveLevel, planCloseStructure, planOpenStructure, planSharingFor, planUnsharing, sharedRules, actionsOf, RANGEMENT } from '../js/rights/rights-plan.js';
 import { userRules, structureClosed, tableLevels } from '../js/rights/rights.js';
+import { base as bareDocument, applied } from './sharing-fixtures.mjs';
+import { targetsOf } from '../js/sharing/sharing-model.js';
+import { askOptions } from '../js/rights/rights-actions.js';
+
+const t = (key, vars) => (vars ? `${key} ${JSON.stringify(vars)}` : key);
 
 const BUILT_IN = { id: 1, resource: 1, permissions: 63, principals: '[1]', aclFormula: '', aclColumn: 0, permissionsText: '', rulePos: null, memo: '' };
 const base = () => ({
@@ -143,4 +148,50 @@ test('« Retirer » (remove-level) ne touche pas aux règles du partage de fichi
   const left = apply(both, plan.actions);
   assert.ok(left.rules.some(rule => /^GFS : Partages/.test(rule.memo || '')), 'les règles de partage restent');
   assert.ok(!left.rules.some(rule => /^GFS : Partagé/.test(rule.memo || '')), 'les règles de Partagé sont retirées');
+});
+
+// Activer le partage ferme aussi la structure (choix du porteur, 18/11) : sans elle, un éditeur réécrit les formules d'aide et le partage n'est qu'un verrou d'interface.
+const closing = rule => rule.aclFormula === 'user.Access != OWNER' && rule.permissionsText === '-S';
+
+test('Activer le partage : la même liasse ferme la structure (règle `-S` sur */*, identifiants après ceux du partage), et la question le dit', () => {
+  const plan = planSharingFor(bareDocument());
+  assert.equal(plan.ok, true);
+  assert.equal(plan.closes, true);
+  const after = applied(bareDocument(), plan.actions);
+  assert.equal(structureClosed(userRules(after.resources, after.rules)), true, 'GFS relit la structure comme fermée');
+  assert.equal(after.rules.filter(closing).length, 1);
+  assert.match(after.rules.find(closing).memo, /^GFS : Structure fermée/);
+  const ids = [after.resources.map(resource => resource.id), after.rules.map(rule => rule.id)];
+  for (const list of ids) assert.equal(new Set(list).size, list.length, 'aucun identifiant pris deux fois');
+  assert.equal(plan.actions.filter(action => action[1] === '_grist_ACLResources' && action[3].tableId === '*').length, 1, 'la ressource */* est créée une fois');
+  assert.equal(planSharingFor(after).reason, 'already');
+  assert.equal(planCloseStructure(after).reason, 'already');
+  const reopened = applied(after, planOpenStructure(after).actions);
+  assert.equal(structureClosed(userRules(reopened.resources, reopened.rules)), false, '« Rouvrir » retire cette règle');
+  assert.ok(reopened.rules.some(rule => /^GFS : Partages/.test(rule.memo || '')), 'et ne touche pas aux règles du partage');
+  assert.equal(askOptions(t, 'sharing', plan).items.includes('rights.ask.sharing.structure'), true);
+});
+
+test('Activer le partage : une structure déjà fermée (à la main ou par GFS) n\u2019ajoute pas de seconde règle, et la question ne le promet pas', () => {
+  const hand = { id: 50, resource: 1, aclFormula: 'user.Access != OWNER', permissionsText: '-S', memo: '', rulePos: 1 };
+  const plan = planSharingFor({ ...bareDocument(), rules: [{ ...BUILT_IN }, hand] });
+  assert.equal(plan.ok, true);
+  assert.equal(plan.closes, undefined);
+  assert.ok(!plan.actions.some(action => action[3] && closing({ aclFormula: action[3].aclFormula, permissionsText: action[3].permissionsText })));
+  assert.equal(askOptions(t, 'sharing', plan).items.includes('rights.ask.sharing.structure'), false);
+});
+
+test('Compléter le partage ne referme pas une structure qu\u2019une personne a rouverte : seule l\u2019activation ferme', () => {
+  const done = applied(bareDocument(), planSharingFor(bareDocument()).actions);
+  const reopened = applied(done, planOpenStructure(done).actions);
+  assert.equal(planSharingFor(reopened).reason, 'already', 'sans table nouvelle, rien à compléter (et rien n\u2019est refermé)');
+  const PP = { id: 'publipostage', fichiers: [{ table: 'Publipostage_Modeles', colonnes: { id: 'id', nom: 'Nom' }, exclure: { TypeModele: ['reglages'] } }] };
+  const later = { ...reopened, tables: [...reopened.tables, { id: 70, tableId: 'Publipostage_Modeles' }], columns: [...reopened.columns, { parentId: 70, colId: 'Nom' }],
+    targets: targetsOf([PP]), files: { Publipostage_Modeles: [3] } };
+  const plan = planSharingFor(later);
+  assert.equal(plan.ok, true);
+  assert.equal(plan.extends, true);
+  assert.equal(plan.closes, undefined, 'un partage déjà là : la structure reste comme la personne l\u2019a laissée');
+  assert.ok(!plan.actions.some(action => action[1] === '_grist_ACLRules' && closing(action[3])), 'aucune règle de structure dans la liasse');
+  assert.equal(askOptions(t, 'sharing', plan).items.includes('rights.ask.sharing.structure'), false);
 });

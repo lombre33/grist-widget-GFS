@@ -2,7 +2,7 @@
 // La fenêtre répond tout de suite : l'état change d'abord, l'écriture suit (une à la fois, relue juste avant d'écrire), et si elle échoue l'état revient
 // à ce que la table a dit en dernier. Une écriture n'a lieu que sur un geste de la personne (7.3, point 2) : `load` ne fait que lire.
 
-import { readApps, toOption, patchApps, withApp, withExtension, withMode, withNativeMode } from './settings.js';
+import { readApps, toOption, patchApps, withApp, withExtension, withMode, withNativeMode, withSources } from './settings.js';
 import { extensionsState, extensionsOf } from './extensions.js';
 import { nativesState, copiesInApp } from './natives.js';
 import { modulesModel } from './modules-model.js';
@@ -19,8 +19,9 @@ export class AppsState {
   catalogue = { entries: new Map(), errors: [] };
   apps = {};
   stored = false;
+  structure = null; // le numéro de structure que le document a retenu (js/files/structure.js), ou null
 
-  // opts : { store: { read() -> { raw }, update(mutate) -> raw écrit }, onChange() }
+  // opts : { store: { read() -> { raw, structure }, update(mutate) -> raw écrit }, onChange() }
   constructor({ store, onChange }) {
     this.#store = store;
     this.#onChange = onChange;
@@ -55,9 +56,14 @@ export class AppsState {
 
   // Ce que la table dit. Une table illisible vaut une table absente : la liste par défaut, et un avertissement.
   async load() {
-    try { this.#raw = (await this.#store.read()).raw; } catch (error) {
+    try {
+      const state = await this.#store.read();
+      this.#raw = state.raw;
+      this.structure = state.structure === undefined ? null : state.structure;
+    } catch (error) {
       console.warn('GFS : les apps installées sont illisibles', error);
       this.#raw = null;
+      this.structure = null;
     }
     this.#settle();
   }
@@ -94,6 +100,14 @@ export class AppsState {
     const manifest = this.manifest(id);
     if (!manifest) return Promise.resolve(false);
     return this.#change(id, withNativeMode(this.apps, manifest, groupId, mode));
+  }
+
+  // Plusieurs fonctions d'une app d'un coup, une seule écriture : `targets` { extensions, natives } (js/apps/dependencies-source.js, la fenêtre « Dépendances
+  // »).
+  setSources(id, targets, mode) {
+    const manifest = this.manifest(id);
+    if (!manifest) return Promise.resolve(false);
+    return this.#change(id, withSources(this.apps, manifest, targets, mode));
   }
 
   async #change(id, next) {

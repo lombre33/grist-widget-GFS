@@ -14,6 +14,7 @@ import { createI18n } from '../js/i18n/i18n.js';
 import { seedFiles } from './seed.mjs';
 import { PAGE_PORT, openGfs, openRowMenu } from './lab-pdf.mjs';
 import { gfsFrame, shareWithEditorAndViewer } from './lab-droits.mjs';
+import { closingRules } from './lab-rest.mjs';
 
 const OLD_LOT = process.env.OLD_LOT || '3';
 const lang = process.env.LAB_LANG || 'fr';
@@ -124,6 +125,7 @@ async function playNew(run) {
     check('les six règles « GFS : Partagé » du rangement sont posées', rules.filter(rule => /^GFS : Partagé/.test(rule.memo || '')).length === 6, rules.map(rule => rule.memo));
   }
   check('les anciens fichiers (« tous » en lecture) restent lisibles de tous', has((await byName(run))[FIRST].GFS_Cats, 'tous'));
+  check('« Compléter le partage… » ne ferme pas la structure (18/11 : seule l\'activation la ferme ; un document activé avant la garde ouverte jusqu\'à « Gérer les partages… »)', (await closingRules(run)).length === 0, await closingRules(run));
   await frame.locator('[data-fk="share-close"]').click();
   await openShareFor(frame, B);
   check('le partage n\'est plus « à compléter »', (await frame.locator('[data-fk="share-activate"]').count()) === 0 && (await frame.locator('[data-fk="share-add"]').count()) === 1);

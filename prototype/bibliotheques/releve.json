@@ -1,0 +1,208 @@
+{
+  "contrat": 0,
+  "releve": "2026-11-18T10:37:24.701Z",
+  "source": "registry.npmjs.org",
+  "bibliotheques": {
+    "plotly": [
+      "plotly.js-basic-dist-min"
+    ],
+    "echarts": [
+      "echarts"
+    ],
+    "edition-live": [
+      "yjs",
+      "y-protocols",
+      "lib0",
+      "@tiptap/y-tiptap",
+      "@tiptap/extension-collaboration",
+      "@tiptap/extension-collaboration-caret"
+    ],
+    "pdfjs": [
+      "pdfjs-dist"
+    ],
+    "docx": [
+      "docx"
+    ],
+    "docx-charts": [
+      "docx"
+    ],
+    "exceljs": [
+      "exceljs"
+    ],
+    "jszip": [
+      "jszip"
+    ],
+    "marked": [
+      "marked"
+    ],
+    "pdf-lib": [
+      "pdf-lib"
+    ],
+    "pdfmake": [
+      "pdfmake"
+    ],
+    "pdfmake-polices": [
+      "pdfmake"
+    ],
+    "qrcode-generator": [
+      "qrcode-generator"
+    ]
+  },
+  "paquets": {
+    "@tiptap/extension-collaboration": {
+      "version": "3.31.3",
+      "derniere": "3.34.0",
+      "ecart": "mineure",
+      "avis": [],
+      "licence": "MIT",
+      "site": "https://tiptap.dev",
+      "depot": "https://github.com/ueberdosis/tiptap"
+    },
+    "@tiptap/extension-collaboration-caret": {
+      "version": "3.31.3",
+      "derniere": "3.34.0",
+      "ecart": "mineure",
+      "avis": [],
+      "licence": "MIT",
+      "site": "https://tiptap.dev",
+      "depot": "https://github.com/ueberdosis/tiptap"
+    },
+    "@tiptap/y-tiptap": {
+      "version": "3.0.10",
+      "derniere": "3.3.0",
+      "ecart": "mineure",
+      "avis": [],
+      "licence": "MIT",
+      "site": "https://tiptap.dev",
+      "depot": "https://github.com/ueberdosis/tiptap"
+    },
+    "docx": {
+      "version": "9.15.1",
+      "derniere": "9.15.4",
+      "ecart": "correctif",
+      "avis": [],
+      "licence": "MIT",
+      "site": "https://docx.js.org",
+      "depot": "https://github.com/dolanmiu/docx"
+    },
+    "echarts": {
+      "version": "6.1.0",
+      "derniere": "6.1.0",
+      "ecart": "a-jour",
+      "avis": [],
+      "licence": "Apache-2.0",
+      "site": "https://echarts.apache.org",
+      "depot": "https://github.com/apache/echarts"
+    },
+    "exceljs": {
+      "version": "4.4.0",
+      "derniere": "4.4.0",
+      "ecart": "a-jour",
+      "avis": [],
+      "licence": "MIT",
+      "site": "https://github.com/exceljs/exceljs#readme",
+      "depot": "https://github.com/exceljs/exceljs"
+    },
+    "jszip": {
+      "version": "3.10.1",
+      "derniere": "3.10.2",
+      "ecart": "correctif",
+      "avis": [],
+      "licence": "(MIT OR GPL-3.0-or-later)",
+      "site": "https://github.com/Stuk/jszip#readme",
+      "depot": "https://github.com/Stuk/jszip"
+    },
+    "lib0": {
+      "version": "0.2.119",
+      "derniere": "0.2.120",
+      "ecart": "correctif",
+      "avis": [],
+      "licence": "MIT",
+      "site": "https://github.com/dmonad/lib0#readme",
+      "depot": "https://github.com/dmonad/lib0"
+    },
+    "marked": {
+      "version": "15.0.12",
+      "derniere": "18.2.1",
+      "ecart": "majeure",
+      "avis": [],
+      "licence": "MIT",
+      "site": "https://marked.js.org",
+      "depot": "https://github.com/markedjs/marked"
+    },
+    "pdf-lib": {
+      "version": "1.17.1",
+      "derniere": "1.17.1",
+      "ecart": "a-jour",
+      "avis": [],
+      "licence": "MIT",
+      "site": "https://pdf-lib.js.org/",
+      "depot": "https://github.com/Hopding/pdf-lib"
+    },
+    "pdfjs-dist": {
+      "version": "6.5.438",
+      "derniere": "6.5.438",
+      "ecart": "a-jour",
+      "avis": [],
+      "licence": "Apache-2.0",
+      "site": "https://mozilla.github.io/pdf.js/",
+      "depot": "https://github.com/mozilla/pdf.js"
+    },
+    "pdfmake": {
+      "version": "0.2.7",
+      "derniere": "0.3.14",
+      "ecart": "majeure",
+      "avis": [],
+      "licence": "MIT",
+      "site": "http://pdfmake.org",
+      "depot": "https://github.com/bpampuch/pdfmake"
+    },
+    "plotly.js-basic-dist-min": {
+      "version": "2.13.2",
+      "derniere": "4.3.0",
+      "ecart": "majeure",
+      "paquetAvis": "plotly.js",
+      "avis": [
+        {
+          "id": "GHSA-wjc4-73q6-gv3m",
+          "niveau": "critical",
+          "titre": "plotly.js prototype pollution vulnerability",
+          "url": "https://github.com/advisories/GHSA-wjc4-73q6-gv3m",
+          "touche": "<2.25.2",
+          "corrigeEn": "2.25.2",
+          "cvss": 9.8
+        }
+      ],
+      "licence": "MIT",
+      "site": "https://github.com/plotly/plotly.js#readme",
+      "depot": "https://github.com/plotly/plotly.js"
+    },
+    "qrcode-generator": {
+      "version": "1.4.4",
+      "derniere": "2.0.4",
+      "ecart": "majeure",
+      "avis": [],
+      "licence": "MIT",
+      "site": "https://github.com/kazuhikoarase/qrcode-generator#readme",
+      "depot": "https://github.com/kazuhikoarase/qrcode-generator"
+    },
+    "y-protocols": {
+      "version": "1.0.7",
+      "derniere": "1.0.7",
+      "ecart": "a-jour",
+      "avis": [],
+      "licence": "MIT",
+      "site": "https://github.com/yjs/y-protocols#readme",
+      "depot": "https://github.com/yjs/y-protocols"
+    },
+    "yjs": {
+      "version": "13.6.33",
+      "derniere": "13.6.33",
+      "ecart": "a-jour",
+      "avis": [],
+      "licence": "MIT",
+      "site": "https://docs.yjs.dev",
+      "depot": "https://github.com/yjs/yjs"
+    }
+  }
+}

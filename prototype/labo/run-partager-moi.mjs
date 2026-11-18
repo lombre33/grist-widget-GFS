@@ -18,7 +18,7 @@ import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { createI18n } from '../js/i18n/i18n.js';
 import { PAGE_PORT, openGfs, importSamples, openRowMenu, rowOf, goTo, names, contrastProblems, shot as pdfShot } from './lab-pdf.mjs';
 import { gfsFrame, fits, shareWithEditorAndViewer } from './lab-droits.mjs';
-import { call, apply, rowsOf as rows } from './lab-rest.mjs';
+import { call, apply, rowsOf as rows, closingRules } from './lab-rest.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -88,11 +88,13 @@ async function playOwner(run) {
   await frame.locator('.mod.ask').waitFor();
   const asking = (await frame.locator('.mod.ask').innerText()).replace(/\s+/g, ' ');
   check('la question dit que le rangement de chacun n\'est plus lisible ni modifiable par une autre personne', asking.includes(t('rights.ask.sharing.filing').slice(0, 60)), asking);
+  check('la question dit que la structure se ferme : seuls les propriétaires changent tables, colonnes et pages, les éditeurs gardent leurs lignes', asking.includes(t('rights.ask.sharing.structure').slice(0, 90)) && !asking.includes(t('rights.ask.sharing.item2')), asking);
   await Promise.all([waitReload(page, frame).then(next => { frame = next; }), frame.locator('[data-fk="ask-yes"]').click()]);
   await frame.locator('.mod.sh .rt-content').waitFor({ timeout: 40000 });
   await closeShare(frame);
   const rules = (await rows(run, '_grist_ACLRules')) || [];
   check('six règles « GFS : Partagé » sont posées sur GFS_Rangement (le rangement de chacun est à lui seul)', rules.filter(rule => /^GFS : Partagé/.test(rule.memo || '')).length === 6, rules.map(rule => rule.memo));
+  check('l\'activation a fermé la structure, par UNE règle « GFS : Structure fermée » (sans « Gérer les partages… »)', (await closingRules(run)).length === 1 && rules.filter(rule => /^GFS : Structure fermée/.test(rule.memo || '')).length === 1, rules.map(rule => rule.memo));
   const columns = (await run.rest.columns(FILES)).map(column => column.id);
   check('la colonne d\'aide GFS_Dossier est dans la table des fichiers', columns.includes('GFS_Dossier'), columns);
 
@@ -184,17 +186,7 @@ async function playOwner(run) {
   answer = await apply(run, [['AddRecord', SHARES, null, { Cible: keyOf(autre), Personne: '#Autres', Droit: 'admin' }]]);
   check('« Autres » (le lecteur, pas l\'éditeur) administre Autre.pdf', answer.status === 200, answer.text);
 
-  say('--- 7. fermer la structure : par défaut un éditeur peut changer les colonnes, donc réécrire les formules du partage ---');
-  await openShareFor(frame, 'Admin.pdf');
-  await frame.locator('[data-fk="share-manage"]').click();
-  await frame.locator('.mod.mg .rt-content').waitFor();
-  await frame.locator('[data-fk="manage-tab-options"]').click();
-  await frame.locator('[data-fk="manage-structure"]').click();
-  await frame.locator('.mod.ask').waitFor();
-  await Promise.all([waitReload(page, frame).then(next => { frame = next; }), frame.locator('[data-fk="ask-yes"]').click()]);
-  await frame.locator('.ls-row').first().waitFor({ timeout: 40000 });
-  await page.waitForTimeout(1500);
-  if (await frame.locator('.mod.mg').count()) { await frame.locator('.mod.mg [data-fk="manage-close"]').click(); await frame.locator('.mod.mg').waitFor({ state: 'detached' }); }
+  say('--- 7. la structure est déjà fermée par l\'activation : le bouton de « Gérer les partages… » propose de la rouvrir ---');
   await openShareFor(frame, 'Admin.pdf');
   await frame.locator('[data-fk="share-manage"]').click();
   await frame.locator('.mod.mg .rt-content').waitFor();
@@ -249,6 +241,15 @@ async function playEditor(run) {
   check('il ne peut PAS retirer les règles d\'accès (aucune des quarante premières)', answer.status !== 200, answer.text);
   answer = await apply(run, [['UpdateRecord', SHARES, 1, { Auteur: EDITOR, AuteurAcces: 'owners' }]]);
   check('il ne peut PAS écrire l\'auteur ni l\'accès d\'une ligne de partage (écrits par Grist à la création)', answer.status !== 200, answer.text);
+  say(`(refus de Grist, tel quel : ${answer.text.slice(0, 160)})`);
+  answer = await apply(run, [['AddTable', 'Pirate', [{ id: 'A', type: 'Text' }]]]);
+  check('il ne peut PAS créer une table (la structure est fermée : le prix dit à la question)', answer.status !== 200 && !(await call(run.page, 'GET', `/api/docs/${run.docId}/tables`)).text.includes('"Pirate"'), answer.text);
+  answer = await apply(run, [['AddColumn', FILES, 'Ruse', { type: 'Text' }]]);
+  check('il ne peut PAS ajouter une colonne aux fichiers', answer.status !== 200, answer.text);
+  const columnsNow = (await call(run.page, 'GET', `/api/docs/${run.docId}/tables/${FILES}/columns`)).json.columns || [];
+  const lecteurs = columnsNow.find(column => column.id === 'GFS_Lecteurs');
+  check('après ces essais, GFS_Dossier existe encore et la formule de GFS_Lecteurs est celle de GFS (relue)', columnsNow.some(column => column.id === 'GFS_Dossier') && lecteurs && !String(lecteurs.fields.formula).includes(EDITOR) && !columnsNow.some(column => column.id === 'Ruse'), lecteurs && lecteurs.fields.formula);
+  check('et la table des partages est toujours là', (await rows(run, SHARES)) !== null);
   const afterForge = ((await rows(run, FILES)) || []).map(row => row.Nom);
   check('« Prive.pdf » reste illisible pour l\'éditeur après ces essais', !afterForge.includes('Prive.pdf'), afterForge);
   const forged = ((await rows(run, SHARES)) || []).filter(row => String(row.Auteur).toLowerCase() === EDITOR && [personal(OWNER, FOLDER), `gfs-fichiers:${state.prive}`].includes(row.Cible));

@@ -41,11 +41,14 @@
 .btn.sm { height: 26px; padding: 0 8px; font-size: max(12px, var(--fs-min)); }
 
 /* L'état en un mot et une icône : la couleur ne le porte jamais seule. */
-.badge { display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 7px; border: 1px solid var(--border-strong); border-radius: calc(var(--radius-pill) - 1px);
+.badge, .lvl { display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 7px; border: 1px solid var(--border-strong); border-radius: calc(var(--radius-pill) - 1px);
   background: var(--surface); font-size: max(10.5px, var(--fs-min)); font-weight: 700; letter-spacing: .02em; color: var(--text-muted); white-space: nowrap; }
 .badge .ic { width: 10px; height: 10px; stroke-width: 2.4; color: inherit; }
 .badge.on { border-color: var(--good-soft-border); background: var(--good-soft); color: var(--good); }
 .badge.locked { border-style: dashed; }
+/* Le niveau d'une app (contrats 2.2) : un mot, jamais la couleur seule ; l'alpha en pointillé, la bêta au trait, la version stable à l'accent. */
+.lvl-alpha { border-style: dashed; }
+.lvl-stable { border-color: var(--accent-soft-border); background: var(--accent-soft); color: var(--accent-ink); }
 
 /* ---------- le bouton radio à deux lignes (nom et phrase) : la fenêtre « Thème » (`.th-col`) ---------- */
 .rd { display: flex; flex: 1 1 200px; align-items: flex-start; gap: 7px; min-width: 0; padding: 3px 0; cursor: pointer; }

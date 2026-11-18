@@ -3,6 +3,7 @@
   "id": "bi",
   "nom": { "fr": "Grist-BI", "en": "Grist-BI" },
   "version": "0.1.0",
+  "maturite": "alpha",
   "texte": {
     "fr": "Des rapports BI sur les tables du document : pages, graphiques, jointures et commentaires (preuve de concept).",
     "en": "BI reports on the document’s tables: pages, charts, joins and comments (proof of concept)."
@@ -13,14 +14,15 @@
       "en": "A dashboard inside Grist: tiles (charts, indicators, pivot table) on one table that filter each other with a click, plus drill-down, pages, saved views and Excel, PDF and PowerPoint exports. A draft to try out, not ready for real use yet."
     },
     "captures": [
-      { "fichier": "bi/1.webp", "legende": { "fr": "Un rapport : indicateurs avec tendance et graphiques", "en": "A report: indicators with trend, and charts" } },
+      { "fichier": "bi/1.webp", "legende": { "fr": "Indicateurs, courbe, anneau et barres triées", "en": "Indicators, area chart, donut and sorted bars" } },
       { "fichier": "bi/2.webp", "legende": { "fr": "Un clic filtre toutes les tuiles, le drill-down descend", "en": "One click filters every tile; drill-down goes deeper" } },
-      { "fichier": "bi/3.webp", "legende": { "fr": "Cascade, N-1, cumul, tableau croisé et nuage de points", "en": "Waterfall, prior year, running total, pivot and scatter" } }
+      { "fichier": "bi/3.webp", "legende": { "fr": "Cascade, comparaison N-1 et cumuls dans le temps", "en": "Waterfall, prior-year comparison and running totals" } }
     ]
   },
+  "modeles": { "catalogue": "bi/modeles.json" },
   "icone": "chart",
   "entree": "index.html",
-  "ouverture": { "fichier": true, "nouveau": true },
+  "ouverture": { "fichier": true, "nouveau": true, "modele": true },
   "tables": { "prefixe": "BI_" },
   "fichiers": [{
     "table": "BI_Dashboard_Config",

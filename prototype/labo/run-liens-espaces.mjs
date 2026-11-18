@@ -3,7 +3,7 @@
 // l'état passe par /tmp/liens-espaces-etat.json), six passages. Le décor : l'espace « achats » (le propriétaire), l'espace « ventes » (le groupe Ventes, dont editor@ est membre), le dossier Contrats
 // d'achats (Plan, Notes ; le sous-dossier Sous : Sous.pdf), le dossier Interne (Interne.pdf), Memo.pdf à la racine d'achats ; viewer@ n'est dans aucun groupe.
 //   PHASE=proprietaire  active le partage ; décor ; « Lier dans un espace… » sur le dossier Contrats (espace Ventes, nom « Contrats achats », lecture) puis sur Memo.pdf (écriture) ; ce que Grist en calcule
-//                       (lecteurs, copies visibles `GFS_Vus`) ; l'espace Ventes montre le lien et ses fichiers ; ferme la structure (sans quoi un éditeur réécrit les formules) ;
+//                       (lecteurs, copies visibles `GFS_Vus`) ; l'espace Ventes montre le lien et ses fichiers ; vérifie que l'activation a fermé la structure (sans quoi un éditeur réécrit les formules) ;
 //   PHASE=editeur       editor@ (lecture sur le dossier lié) : voit le lien et ses fichiers dans Ventes, pas à la racine de « Moi » ; n'écrit pas Plan.pdf, écrit Memo.pdf ; ne forge ni lien, ni partage, ne retire
 //                       rien, ne change aucune colonne ; ne lit ni Interne.pdf ni l'espace Achats ;
 //   PHASE=releve        le propriétaire donne l'écriture au groupe dans « Partager… » du dossier d'origine (le droit posé par le lien s'affine) ;
@@ -19,7 +19,7 @@ import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { createI18n } from '../js/i18n/i18n.js';
 import { PAGE_PORT, openGfs, importSamples, openRowMenu, names, folders, waitFor, shot as pdfShot } from './lab-pdf.mjs';
 import { gfsFrame, fits, shareWithEditorAndViewer } from './lab-droits.mjs';
-import { call, apply, rowsOf, patchRow } from './lab-rest.mjs';
+import { call, apply, rowsOf, patchRow, closingRules } from './lab-rest.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -98,24 +98,6 @@ async function activate(run) {
   await frame.locator('.mod.sh .rt-content').waitFor({ timeout: 40000 });
   await frame.locator('[data-fk="share-close"]').click();
   await frame.locator('.mod.sh').waitFor({ state: 'detached' });
-  return frame;
-}
-
-async function closeStructure(run, frame) {
-  const { page } = run;
-  await toMe(frame);
-  await openRowMenu(frame, 'Facture.pdf');
-  await frame.getByRole('menuitem', { name: new RegExp(`^${t('share.menu')}`) }).click();
-  await frame.locator('.mod.sh .rt-content').waitFor();
-  await frame.locator('[data-fk="share-manage"]').click();
-  await frame.locator('.mod.mg .rt-content').waitFor();
-  await frame.locator('[data-fk="manage-tab-options"]').click();
-  await frame.locator('[data-fk="manage-structure"]').click();
-  await frame.locator('.mod.ask').waitFor();
-  await Promise.all([waitReload(page, frame).then(next => { frame = next; }), frame.locator('[data-fk="ask-yes"]').click()]);
-  await frame.locator('.ls-row').first().waitFor({ timeout: 40000 });
-  await page.waitForTimeout(1500);
-  if (await frame.locator('.mod.mg').count()) { await frame.locator('.mod.mg [data-fk="manage-close"]').click(); await frame.locator('.mod.mg').waitFor({ state: 'detached' }); }
   return frame;
 }
 
@@ -198,7 +180,7 @@ async function playOwner(run) {
   check('sous le lien : Plan et Notes, et le sous-dossier Sous', JSON.stringify((await names(frame)).sort()) === JSON.stringify(['Notes.pdf', 'Plan.pdf']) && (await folders(frame)).includes('Sous'), [await names(frame), await folders(frame)]);
   await shot(frame, '3-sous-le-lien');
 
-  frame = await closeStructure(run, frame);
+  check('l\'activation a fermé la structure : une seule règle « GFS : Structure fermée », sans « Gérer les partages… » (sans quoi un éditeur réécrit les formules)', (await closingRules(run)).length === 1, await closingRules(run));
   writeFileSync(STATE, JSON.stringify({ path: run.path, docId: run.docId, plan: plan.Identifiant, sous: sous.Identifiant, interne: interne.Identifiant, memo: memo.Identifiant, shared: given.id, linkId: link.id }));
   check('aucune erreur de GFS dans la console', unexpected(run).length === 0, unexpected(run));
 }

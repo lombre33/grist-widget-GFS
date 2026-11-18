@@ -11,6 +11,7 @@ import { serve } from './lab-server.mjs';
 import { chromium, say, check } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { createI18n } from '../js/i18n/i18n.js';
+import { closingRules } from './lab-rest.mjs';
 import { PAGE_PORT, openGfs, importSamples, importPdf, pdfFile, waitForNames, names, goTo, rowOf, openRowMenu, contrastProblems, shot as pdfShot } from './lab-pdf.mjs';
 import { gfsFrame, fits } from './lab-droits.mjs';
 
@@ -71,6 +72,11 @@ async function playOwner(run) {
   await frame.locator('.mod.ask').waitFor();
   const asked = (await frame.locator('.mod.ask').innerText()).replace(/\s+/g, ' ');
   check('la question dit ce qui s\'écrit, le prix de la première règle et le rechargement', [t('rights.ask.sharing.title'), t('rights.ask.firstRule'), t('rights.ask.reload')].every(part => asked.includes(part)), asked);
+  check('la question dit que la structure se ferme (ce que les éditeurs gardent, le prix pour les tables créées plus tard) à la place de « rien ne change pour les tables »', asked.includes(t('rights.ask.sharing.structure').slice(0, 80)) && asked.includes(t('rights.ask.close.item2').slice(0, 60)) && !asked.includes(t('rights.ask.sharing.item2')), asked);
+  const askBox = await frame.evaluate(() => { const yes = document.querySelector('[data-fk="ask-yes"]').getBoundingClientRect(); const no = document.querySelector('[data-fk="ask-no"]').getBoundingClientRect();
+    return { yesTop: yes.top, yesBottom: yes.bottom, noBottom: no.bottom, height: innerHeight, width: innerWidth, right: yes.right }; });
+  check('la question, plus longue, tient dans 700 × 400 : « Activer le partage » et « Annuler » se voient sans défiler', askBox.yesTop >= 0 && askBox.yesBottom <= askBox.height && askBox.noBottom <= askBox.height && askBox.right <= askBox.width, askBox);
+  check('la question reste lisible (4,5:1)', (await contrastProblems(frame, '.mod.ask')).length === 0, await contrastProblems(frame, '.mod.ask'));
   await shot(frame, '3-question');
   await Promise.all([waitReload(page, frame).then(next => { frame = next; }), frame.locator('[data-fk="ask-yes"]').click()]);
   await frame.locator('.mod.sh .rt-content').waitFor({ timeout: 40000 });
@@ -80,6 +86,7 @@ async function playOwner(run) {
   const legacy = await shares(run);
   check('les PDF déjà dans GFS restent lisibles par tous : une ligne « tous » par PDF', legacy.length === 2 && legacy.every(row => row[1] === '@tous' && row[2] === 'lecture' && row[3] === true), legacy);
   check('la ligne « tous » apparaît dans la liste de la fenêtre', (await frame.locator('.mod.sh .rr[data-share]').count()) === 1, text);
+  check('l\'activation a fermé la structure : une seule règle « GFS : Structure fermée », posée avec le reste', (await closingRules(run)).length === 1, await closingRules(run));
   await shot(frame, '4-actif');
 
   say('--- 3. ajouter viewer@, changer le niveau, retirer ---');

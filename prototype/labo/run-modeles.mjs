@@ -16,7 +16,9 @@ const TEXT = lang === 'fr'
   ? { menu: 'Depuis un modèle…', title: 'Créer à partir d’un modèle', notYet: /ne sait pas encore ouvrir un modèle de départ/, lockedApp: /Demande l’app Sonde O/, seeApps: 'Voir dans Apps', create: 'Créer', invoice: 'Facture, devis ou avoir', word: 'facture' }
   : { menu: 'From a template…', title: 'Create from a template', notYet: /cannot open a starter template/, lockedApp: /Needs the Probe O app/, seeApps: 'See in Apps', create: 'Create', invoice: 'Invoice, quote or credit note', word: 'invoice' };
 const ACCEPTS = probeDeclares('sonde-o', { ouverture: { fichier: true, nouveau: true, modele: true }, modeles: { catalogue: 'publipostage/modeles.json' } });
-const lab = await startLab({ lang, probes: true, patches: [ACCEPTS] });
+// Le manifeste que GFS livre le 18/11 dit que Publipostage+ sait ouvrir un modèle ; pour mesurer le grisé « pas encore » (une app qui a son catalogue sans savoir l'ouvrir), le labo retire ce mot à Publipostage+.
+const NOT_YET = { chemin: '/prototype/manifestes/publipostage.json', de: '"lire": true, "modele": true }', vers: '"lire": true }' };
+const lab = await startLab({ lang, probes: true, patches: [ACCEPTS, NOT_YET] });
 await lab.fitPanel(undefined, 700, 400);
 const { page } = lab;
 const warnings = [];
@@ -65,7 +67,9 @@ check('une pastille par app du catalogue, la première « toutes les apps »', a
 check('la sonde propose les 18 documents du catalogue de Publipostage+ (ses types : document et macro), Publipostage+ ses 22 modèles', probeCards === 18 && ppCards === 22, { probeCards, ppCards });
 check('les modèles de la sonde sont libres, ceux de Publipostage+ grisés « pas encore » (son manifeste ne déclare pas `ouverture.modele`)',
   (await card(NAME, TEXT.invoice).getAttribute('aria-disabled')) === null && (await card('Publipostage+', TEXT.invoice).getAttribute('aria-disabled')) === 'true');
-check('Automation+, Form+ et Grist-BI, sans catalogue, gardent leur pastille grisée (« bientôt »)', (await chip('Automation+').getAttribute('aria-disabled')) === 'true' && (await chip('Form+').getAttribute('aria-disabled')) === 'true' && (await chip('Grist-BI').getAttribute('aria-disabled')) === 'true');
+check('Automation+, sans catalogue, garde sa pastille grisée (« bientôt ») ; Form+ (5 modèles) et Grist-BI (3) montrent la leur, avec leur nombre',
+  (await chip('Automation+').getAttribute('aria-disabled')) === 'true' && (await chip('Form+').getAttribute('aria-disabled')) === null && (await chip('Form+').innerText()).includes('5')
+  && (await chip('Grist-BI').getAttribute('aria-disabled')) === null && (await chip('Grist-BI').innerText()).includes('3'));
 await lab.shot(`modeles-${lang}`, '1-galerie');
 
 // 2. Un modèle grisé n'ouvre rien : sa raison est dans le pied, « Créer » reste éteint.

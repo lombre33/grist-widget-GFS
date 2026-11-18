@@ -272,6 +272,7 @@ L'app (sous-cadre sans allow-same-origin)
 | `ouverture` | objet | non | Ce que l'app sait faire d'une ouverture que GFS lui passe : `{ "fichier": true, "nouveau": true, "importer": true, "lire": true, "modele": true }` (5.2, point 3 ; 5.4, points 1, 8 et 13). Un genre absent vaut faux : GFS ouvre alors l'app sur son modèle habituel et le dit, et grise « Importer », « Lire » ou les modèles de « Depuis un modèle ». |
 | `permanente` | booléen | non | `true` : l'app ne se retire pas de la fenêtre « Apps et extensions » (Publipostage+). |
 | `vitrine` | objet | non | Ce que la fenêtre « Apps et extensions » montre de l'app (17/11, mosaïque « Vitrine ») : `{ "description": { "fr", "en" }, "captures": [ { "fichier": "publipostage/1.webp", "legende": { "fr", "en" } } ] }`. `description` : plus longue que `texte`, montrée sur la fiche (sinon `texte`). `captures` : six au plus, des fichiers de GFS rangés dans `vitrine/` (`fichier` est relatif à ce dossier : chemin sûr, `.webp`, `.png` ou `.jpg`), car la politique de sécurité du contenu ne charge une image que de GFS ; la première illustre la carte, toutes la fiche. Sans capture, ou si le fichier ne se charge pas, la carte et la fiche montrent l'icône et le nom de l'app. |
+| `maturite` | chaîne | non | Le niveau de l'app, que la mosaïque et la fiche montrent par une pastille à côté du nom (18/11, demande du porteur : « indiquer clairement si les widgets sont en alpha, bêta ou V1 et plus ») : `"alpha"`, `"beta"`, ou sa version stable, `"v1"` ou `"v1.1"` (la pastille dit « V1.1 »). C'est le porteur qui le décide, dans le manifeste que GFS tient pour l'app : l'app ne se donne pas son niveau. Absent : aucune pastille (GFS n'invente jamais un niveau) ; mal formé : le manifeste est invalide. Une app stable ne montre pas en plus la ligne « Version » de sa fiche. |
 | `modeles` | objet | non | Où sont les modèles de départ de l'app (18/11, « Nouveau > Depuis un modèle », choix « Une galerie commune ») : `{ "catalogue": "publipostage/modeles.json" }`, le chemin relatif sûr (2.1) d'un fichier JSON rangé dans le dossier `modeles/` de GFS, avec ses vignettes à côté. Le catalogue est une liste d'entrées `{ id, type, nom, description?, etiquettes?, vignette?, extensions?, tables? }` (5.4, point 13). Sans `modeles`, l'app garde sa pastille dans la fenêtre « Depuis un modèle », grisée « bientôt ». |
 | `classes` | objet | non | La classe de chaque table de l'app pour les règles des personnes (11.2) ; une table non déclarée est du travail courant. |
 
@@ -434,6 +435,16 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     (le dépôt public définitif de GFS aura la sienne, question 5) : chaque changement est une consigne aux apps. Sans `gfs.publication`
     (un GFS sans dépôt public, une copie d'essai), l'entrée porte `cdn: null` : la copie de GFS est alors le seul mode, la fenêtre
     « Apps et extensions » ne propose pas le CDN pour cette bibliothèque et le dit.
+    **Un petit dépôt dédié, décidé par le porteur le 18/11** (« Petit dépôt dédié aux fichiers CDN ») : pour ne pas attendre la bascule de GFS
+    sous `grist-factory`, ni lier l'adresse que chaque app nomme à l'historique d'un dépôt qu'un outil d'envoi reconstruit (nouveaux commits),
+    les fichiers servis par CDN vivent dans un petit dépôt public à part (`grist-factory/gfs-bibliotheques`, nom modifiable), à la racine
+    (`vendor/<id>/<version>/<id>.js` et son `LICENCES.txt`). `outils/depot-cdn.mjs <dossier>` en fabrique le dossier d'après le catalogue (il
+    refuse une copie qui n'a plus l'empreinte du catalogue, et un dossier qui contient autre chose) ; la personne qui pousse sur `grist-factory`
+    l'envoie de sa machine, jamais du cloud, et donne le commit. La liste le dit par `gfs.publication` : `{ depot, commit, racine: "", dedie: true }`.
+    **`dedie: true`** : ce commit n'est jamais dans le clone de GFS, l'outil ne le lit pas (`--catalogue` écrit l'adresse sans lecture) ; la preuve est
+    alors `--verifier-cdn`, qui compare ce que jsDelivr sert à l'empreinte du catalogue, puis le navigateur de l'app, qui contrôle l'empreinte à chaque
+    chargement. **Une seule adresse à nommer pour toutes les apps** : `https://cdn.jsdelivr.net/gh/<dépôt dédié>@<commit>/`. Le commit ne change que
+    quand un fichier du petit dépôt change, donc rarement. [D]
     [M] **Mesuré le 19/10 avec Publipostage+** (la version que GFS référence, `da919fc` ; `run-edition.mjs`, à 700 × 400, à la vraie
     souris et au vrai clavier, en français / clair et en anglais / sombre) : par défaut (« Depuis un CDN », rien d'écrit dans le
     document), l'app reçoit l'adresse jsDelivr et l'empreinte du catalogue ; **tant que sa CSP ne nomme pas cette adresse, le
@@ -498,6 +509,31 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     quand il n'est pas le défaut de l'extension** : choisir le CDN s'écrit (`modes.<extension>: "cdn"`), choisir la copie, qui est le défaut, n'écrit rien. **Absent ou `true`** :
     le défaut est le CDN, comme avant. Le jour où l'app nomme l'adresse (la consigne qui remplace la 016 pour Publipostage+), GFS retire le champ : le défaut redevient le CDN, sans
     toucher aux choix déjà écrits. L'app ne lit jamais ce champ : il est à GFS. [M]
+
+16. [D] **La fenêtre « Dépendances » : ce que GFS sert, version par version, avec le choix de la source et l'export du rapport** (demande du porteur, 18/11 : « transparent pour les utilisateurs et simple à
+    comprendre et à auditer » ; « pas de mode administration, mais le plus d'options possible sur les dépendances, clarté et audit de sécurité »). Une ligne « Dépendances… » du menu
+    « Réglages » ouvre une fenêtre sur la base commune (7.3), qui liste **un paquet par ligne** (16 au 18/11 : les paquets que le catalogue sert, ceux d'un fichier assemblé comptés
+    un à un), avec : ce qui l'utilise et l'état (**active** : une extension cochée d'une app installée, ou une fonction native en copie figée ; **installée, non utilisée** ; **prête,
+    pas encore servie** : l'app n'est pas installée ; **au catalogue, demandée par aucune app**), la version que GFS sert (celle du contenu du fichier, jamais le numéro de
+    l'entrée), ses modes (copie figée toujours, CDN quand le catalogue en a une), la dernière version stable et l'écart (correctif, mineure, majeure ; en 0.x une mineure compte pour
+    une majeure), l'avis de sécurité le plus grave, et un lien vers le site ou le dépôt. Un clic déplie l'**audit** : qui l'utilise, les fichiers servis et leur empreinte SHA-384,
+    **« Vérifier la copie »** (GFS relit le fichier qu'il sert et recalcule l'empreinte : intacte, différente ou illisible ; un fichier vérifié intact n'est pas relu), les adresses que
+    le navigateur contacte en mode CDN (ou « aucune »), les avis (niveau, titre, fiche, version qui corrige), la licence face à la GPL 3.0 de GFS (d'après l'identifiant SPDX :
+    « compatible » ou « à vérifier », jamais « incompatible » par ignorance) et les liens. **Les versions et les avis ne se lisent pas dans le navigateur** (choix du porteur,
+    « relevé par GFS, sans appel externe ») : ils viennent de `bibliotheques/releve.json`, que l'outil `outils/releve-dependances.mjs` écrit d'après le registre npm et que GFS
+    commite ; le pied de la fenêtre en dit la date. Un relevé fait pour une autre version que celle servie ne dit rien de sûr : ni avis ni écart, la ligne le signale ; sans relevé
+    (fichier absent), la fenêtre montre ce que GFS sert et le dit. Les liens sont des adresses `https` du relevé (jamais d'un réglage, d'une table ou d'un message), dans un nouvel
+    onglet, sans rien transmettre (`noopener`). **La source** (lot 3, 18/11) : le détail d'une ligne offre le **même segment « CDN | Copie figée » que la fiche d'une app**, pour la bibliothèque. Le choix n'est pas par bibliothèque mais par
+    fonction (une extension d'une app, ou une fonction native, points 12 et 14) : celui d'une bibliothèque vaut pour **chaque fonction qui l'utilise** et s'écrit dans la même table (`modes`), **une seule
+    écriture par app** (`AppsState.setSources`) ; les autres bibliothèques de ces fonctions suivent, et le détail le dit. Grisé, jamais masqué, avec sa raison : le CDN d'une fonction dont une bibliothèque
+    n'a pas d'adresse publique (pdf.js), la copie d'une fonction native dont GFS n'a pas toutes les bibliothèques, une app non installée, une extension non ajoutée, le document en lecture seule ou sans
+    accès complet (la raison de `writeBlock`). Rien ne s'écrit sans un geste de la personne ; un refus de la table se dit et l'état revient à ce qu'elle dit. **« Tout en copie figée »** (pied de la
+    fenêtre) : le réglage des réseaux fermés ; une question (une fenêtre du widget) dit les apps et leurs fonctions, « Annuler » n'écrit rien, confirmer écrit une fois par app ; quand chaque fonction qui le
+    peut y est déjà, le bouton devient « Tout en CDN » (le retour, avec sa question). **« Exporter »** : deux fichiers JSON fabriqués dans le navigateur, sans rien envoyer : le rapport de GFS
+    (`gfs-dependances-AAAA-MM-JJ.json` : ce que la fenêtre montre, source retenue comprise) et l'inventaire **CycloneDX 1.5** (`….cdx.json` : un composant par bibliothèque avec `purl`, licence, empreinte
+    SHA-384 en hexadécimal quand un seul fichier la porte seul, adresses du CDN avec leur empreinte, avis du relevé en `vulnerabilities`). **Pas encore** : les bibliothèques que chaque app porte
+    elle-même (une note le dit sous la liste). Code : `js/apps/dependencies-model.js` (lignes), `-source.js` (ce qui se choisit, le plan d'écriture), `-source-view.js`, `-foot.js`, `-export.js`,
+    `-cyclonedx.js`, `-audit.js`, `-detail.js`, `-window.js`, `-control.js`, `licences.js`, `version-gap.js` (la règle de l'écart, partagée avec l'outil). Mesuré dans un vrai Grist (faits vérifiés 119, `labo/run-dependances.mjs`) : le choix s'écrit et revient au rechargement, la question de « Tout… » rend la fenêtre inerte, la lecture seule n'écrit rien. [M]
 
 ### 2.7 Les actions acceptées
 
@@ -2169,8 +2205,9 @@ rangée d'un fichier, selon ce qui vient d'abord.
 5. [T] Le rangement propre à une app (les dossiers personnels de Publipostage+) reste valable dans l'app ; l'explorateur de GFS
    le lit (champ `fichiers[].rangement`, 2.4) et ne l'écrit que si le manifeste le déclare (`rangement.ecriture`, point 8).
 6. [T] Une ligne dont `Utilisateur` commence par `@` est une ligne réservée de GFS : l'état du document, jamais le rangement
-   d'une personne. Deux à ce jour : `@document` / `gfs` / `apps`, les apps installées (7.4), et `@sonde`, la ligne-sonde
-   (point 9), qui n'existe que le temps d'une lecture. Le rangement ignore toute ligne en « @ ». Une app n'écrit jamais cette
+   d'une personne. Trois à ce jour : `@document` / `gfs` / `apps`, les apps installées (7.4), `@document` / `gfs` / `structure`,
+   le numéro de structure (point 16), et `@sonde`, la ligne-sonde (point 9), qui n'existe que le temps d'une lecture. Le
+   rangement ignore toute ligne en « @ ». Une app n'écrit jamais cette
    table (6.1, point 1).
 7. [D] GFS écrit ces lignes sur un geste de la personne dans l'explorateur, avant qu'aucune app ne soit ouverte (le porteur,
    21/10) : épingler un fichier, le déplacer, créer, renommer, déplacer ou supprimer un dossier (créer et supprimer : point 11).
@@ -2342,6 +2379,32 @@ rangée d'un fichier, selon ce qui vient d'abord.
     la fenêtre ; `aria-rowcount` et `aria-rowindex` annoncent le vrai nombre de lignes et leur rang ; un glissement en cours tient les lignes en place jusqu'à sa
     fin. **Ce que cela ne fait pas** : la recherche Ctrl+F du navigateur ne trouve pas une ligne qui n'est pas construite (le champ de recherche de l'explorateur,
     lui, cherche dans toutes les données). [M] **Mesuré le 10/11** dans un vrai Grist et sous Firefox à 700 × 400 : faits vérifiés, section 87.
+
+16. [T] **Le numéro de structure du document** (décision du porteur, 18/11 : « Oui, avec ton accord », pour que la bêta relise les documents de l'alpha).
+    Une ligne réservée de plus dans `GFS_Rangement` (`Utilisateur` = `@document`, `App` = `gfs`, `Fichier` = `structure`, point 6), dont `Valeur` est le JSON
+    `{ "structure": 1 }` : un entier de 1 ou plus, la forme que cette version de GFS donne à ses tables dans CE document. Aucune table de plus, aucune colonne de
+    plus (`js/files/structure.js`, `js/files/rangement.js`).
+    - **Quand il s'écrit** : après un geste de la personne qui a écrit dans `GFS_Rangement` (installer une app, ranger ou épingler un fichier, créer un dossier),
+      dans un lot à part qui part APRÈS celui du geste ; jamais avant, jamais seul, jamais plus d'une fois par ouverture, jamais dans un document en lecture
+      seule. La table n'est créée, comme toujours, qu'avec l'accord de la personne (6.2, point 1) : le numéro n'ajoute aucune question. Le lot de la note ne fait
+      jamais échouer le geste : sur un document où la personne n'est pas propriétaire (les lignes `@document` ne s'écrivent qu'aux propriétaires, 11.4, point 2),
+      Grist refuse la note, GFS écrit un avertissement et n'insiste pas. Un document sans numéro (celui d'avant) n'est pas « ancien » : il se lit et s'écrit
+      comme avant, et le numéro est noté au premier geste.
+    - **Ce qu'il dit** : une version de GFS qui lit un numéro **plus grand que le sien** (`isNewer`) lit tout ce qu'elle sait lire et **n'écrit plus dans les
+      tables de GFS** : les gestes qui écrivent sont grisés avec leur raison (`#writeBlock` du contrôleur, comme la lecture seule), une phrase le dit à
+      l'ouverture, `Rangement` refuse d'écrire (`DocumentNewer`) et ne touche à aucune colonne. La phrase : « Ce document a été préparé par une version plus
+      récente de GFS : il se lit, mais rien ne s'y enregistre. Pour y écrire, mettez l'adresse de la dernière version de GFS dans le champ du panneau de droite de
+      Grist. » Seule exception, la ligne-sonde (point 9) : ajoutée puis retirée aussitôt, elle apprend l'adresse de la personne, sans quoi son rangement ne se
+      lirait pas ; elle ne reste jamais dans la table. Une version qui n'a pas ce code (celles d'avant l'alpha) ignore la ligne (point 6) : elle n'est pas
+      protégée, et c'est pourquoi le numéro commence avec l'alpha.
+    - **Quand il monte** (`STRUCTURE`, `js/files/structure.js`) : quand une version change ce qu'une version plus ancienne ne sait ni relire ni ignorer : une
+      colonne renommée, une ligne dont le sens change, un format de valeur qui n'est plus lisible. **Un ajout seul ne le monte pas** (une colonne, une ligne, une
+      clé de plus : 6.1 point 3, 6.5 point 4) ; on ne le baisse jamais. Il vaut 1 pour toute l'alpha ; le premier lot qui le monte le dit dans son commit et dans
+      la section des faits vérifiés, et ajoute au jeu de documents de référence de l'alpha (rejoué à chaque version) le cas qu'il rend illisible.
+    - **Ce qu'il ne fait pas** : il ne migre rien (une migration se propose à la personne dans une fenêtre, avec son accord) ; il ne dit rien des tables des apps
+      (chacune garde les siennes) ni du contrat GFS ↔ app (`contrat`, `gfs=`) ; il ne protège pas un document où GFS n'a encore rien écrit dans `GFS_Rangement`
+      (les tables du partage se complètent par leurs colonnes, `extend: 'upgrade'`). [M] **Mesuré le 18/11** dans un vrai Grist (`labo/run-structure.mjs`, français
+      clair et anglais sombre : 26 vérifications sur 26) et sous Firefox pour la phrase (`test/bulle-firefox.mjs`) : faits vérifiés, section 116.
 
 ### 6.5 Préserver l'inconnu
 
@@ -3123,7 +3186,7 @@ soit la dernière de sa ressource. Les droits s'écrivent comme Grist les range 
 7. [T] **Ne jamais** : donner à tous le droit de copier le document entier (cela rend ce que les règles cachent) ; poser un jeu de
    règles sans celle des propriétaires en tête ; retirer la règle d'un autre auteur sans case « Retirer » cochée ; ranger un
    secret ; écrire dans une table de données ; déclarer un attribut de personne ; écrire une règle de lecture qui cite `newRec` ;
-   fermer la structure de lui-même (11.7, point 1) ; laisser publier un formulaire qui remplit une table protégée (11.9, point 4).
+   fermer la structure sans le dire (11.7, point 1 : l'activation du partage la ferme, et sa question le dit) ; laisser publier un formulaire qui remplit une table protégée (11.9, point 4).
 8. [D] Une nouvelle table de classe (une app installée plus tard) demande de poser ses règles : c'est une action sur les tables
    de règles, donc la même liasse, le même avertissement, le même rechargement.
 9. [T] **Codé le 06/11 (étape 7, lot a)** : dans le panneau « Permissions » (supprimé le 13/11 : seules la structure et l'activation du partage ont gardé une porte, par « Gérer les partages… » ; `js/rights/rights-plan.js`, `rights-writer.js`, `rights-actions.js`), un propriétaire prouvé pose ou retire **Partagé sur le rangement** (les six règles de
@@ -3174,8 +3237,13 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
 ### 11.7 Ce qui n'est pas décidé
 
 1. [D] **Ce que GFS fait de la structure du document** (la case de Grist) : **le porteur a choisi le 04/11 (15 h 57) de la proposer d'un clic**
-   (avec son prix, dit avant le clic : import et copie perdus pour les éditeurs, pages, tables et colonnes fermées ; le bouton rouvre de même). Rien n'est codé : le bouton
-   est de l'étape 7, avec l'accord d'un propriétaire à chaque pose. Jusque-là : [T] GFS ne la ferme jamais de lui-même ; il
+   (avec son prix, dit avant le clic : import et copie perdus pour les éditeurs, pages, tables et colonnes fermées ; le bouton rouvre de même).
+   **Le porteur a choisi le 18/11 (10 h 35) de la fermer aussi « dans la même question » que l'activation du partage** : [T] activer le partage
+   écrit, dans la même liasse, la règle de la structure (`user.Access != OWNER` → `-S` sur `*` / `*`, note « GFS : Structure fermée · … ») et la
+   question le dit (« seuls les propriétaires ajoutent, retirent ou changent des tables, des colonnes et des pages, tables de données comprises ; les
+   éditeurs gardent la saisie des lignes », plus le prix des tables qu'une app voudrait créer plus tard) à la place de « rien ne change pour les tables de
+   données ». Elle ne se referme pas à « Compléter le partage… » (une personne a pu la rouvrir : la question n'en parle pas) ; « Retirer les règles du partage »
+   la laisse fermée (« Gérer les partages… », Options, la rouvre). Hors partage, [T] GFS ne la ferme jamais de lui-même ; il
    dit, dans le pied, si elle est ouverte ou fermée et ce que cela change. Seul « Protégé » (11.4, point 7) et le caractère
    *secret* des contenus réservés (11.1, point 8) en dépendent. Grist décoche la case de lui-même quand un propriétaire active les
    Permissions avancées (lu), et le porteur a confirmé qu'elle se décoche sur son instance (21/10). Elle pèse aussi sur les liens publics : structure ouverte,
@@ -3350,7 +3418,8 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
        c. **Le rangement de chacun est protégé à l'activation du partage** : six règles « GFS : Partagé · … » sur `GFS_Rangement` (les propriétaires gardent la main, la liste des apps se lit par tous, chacun lit et
           écrit son propre rangement et jamais celui d'un autre, la ligne-sonde, le reste refusé), posées par l'activation et reprises par « Compléter le partage… ». Sans elles, un éditeur écrivait une ligne de rangement
           au nom d'un autre et faisait entrer un fichier dans un dossier partagé. Des règles d'un autre auteur sur cette table : l'activation s'arrête (« étrangères »), rien n'est écrit.
-       d. **Il faut aussi fermer la structure** (« Gérer les partages… », Options). Mesuré : tant qu'elle est ouverte (le réglage par défaut de Grist), un éditeur peut changer la formule d'une colonne d'aide
+       d. **Il faut aussi fermer la structure : l'activation du partage la ferme depuis le 18/11** (choix du porteur, « Oui, dans la même question » ; « Gérer les partages… », Options, la rouvre ou la referme ;
+          un document activé avant le 18/11 la garde ouverte jusqu'à ce geste). Mesuré : tant qu'elle est ouverte (le réglage par défaut de Grist), un éditeur peut changer la formule d'une colonne d'aide
           (`ModifyColumn` répondu 200), ce qui annule les partages par dossier. Structure fermée, il ne peut ni changer ni retirer une colonne d'aide, ni retirer la table des partages, ni retirer une règle d'accès.
           Le verrou sur la donnée brute est donc **le partage activé et la structure fermée**.
        e. **Limites** : un PDF importé avant que GFS ait appris l'adresse de la personne n'a pas d'auteur (`GFS_Auteur` vide) : un dossier de « Moi » ne lui donne rien (échec fermé : le rangement seul ne prouve pas à qui

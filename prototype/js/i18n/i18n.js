@@ -16,6 +16,7 @@ import { NOTIFICATION_STRINGS } from './i18n-notifications.js';
 import { EXPLORER_STRINGS } from './i18n-explorer.js';
 import { SHARING_STRINGS } from './i18n-sharing.js';
 import { TEMPLATE_STRINGS } from './i18n-templates.js';
+import { DEPENDENCIES_STRINGS } from './i18n-dependencies.js';
 
 const STRINGS = {
   fr: {
@@ -25,6 +26,7 @@ const STRINGS = {
     ...NATIVES_STRINGS.fr,
     ...VITRINE_STRINGS.fr,
     ...TEMPLATE_STRINGS.fr,
+    ...DEPENDENCIES_STRINGS.fr,
     ...RIGHTS_STRINGS.fr,
     ...SHARE_STRINGS.fr,
     ...SHARE_OTHER_STRINGS.fr,
@@ -168,6 +170,7 @@ const STRINGS = {
     'mod.saved': 'Ces choix s’enregistrent tout de suite, pour tout le document.',
     'mod.readonly': 'Lecture seule : ces choix ne s’enregistrent pas.',
     'mod.needsAccess': 'Accès complet au document requis : ces choix ne s’enregistrent pas.',
+    'doc.newer': 'Ce document a été préparé par une version plus récente de GFS : il se lit, mais rien ne s’y enregistre. Pour y écrire, mettez l’adresse de la dernière version de GFS dans le champ du panneau de droite de Grist.',
     // Les questions « Créer la table … ? » : aucune table n'est créée sans l'accord de la personne.
     'table.title': 'Créer la table GFS_Rangement ?',
     'table.text': 'GFS y retient les apps installées de ce document et le rangement de ses fichiers (favoris, dossiers). Pour que ce rangement soit à chacun, GFS y lit aussi l’adresse de la personne : Grist l’inscrit dans une ligne ajoutée puis retirée aussitôt. La table est ajoutée au document, avec une page pour elle ; les apps ne l’écrivent jamais. Sans elle, rien ne s’installe ni ne se range.',
@@ -205,6 +208,7 @@ const STRINGS = {
     ...NATIVES_STRINGS.en,
     ...VITRINE_STRINGS.en,
     ...TEMPLATE_STRINGS.en,
+    ...DEPENDENCIES_STRINGS.en,
     ...RIGHTS_STRINGS.en,
     ...SHARE_STRINGS.en,
     ...SHARE_OTHER_STRINGS.en,
@@ -348,6 +352,7 @@ const STRINGS = {
     'mod.saved': 'These choices are saved right away, for the whole document.',
     'mod.readonly': 'Read-only: these choices are not saved.',
     'mod.needsAccess': 'Full document access required: these choices are not saved.',
+    'doc.newer': 'This document was prepared by a newer version of GFS: you can read it, but nothing is saved in it. To write to it, put the address of the latest version of GFS in the field of Grist’s right panel.',
     // Les questions « Créer la table … ? » : aucune table n'est créée sans l'accord de la personne.
     'table.title': 'Create the GFS_Rangement table?',
     'table.text': 'GFS keeps this document’s installed apps there, and how its files are filed (favorites, folders). So that the filing belongs to each person, GFS also reads the person’s address there: Grist writes it into a row that is added and removed straight away. The table is added to the document, with a page of its own; apps never write to it. Without it, nothing can be installed or filed.',

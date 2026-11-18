@@ -20,3 +20,7 @@ export const rowsOf = async (run, table) => {
 
 // Change des cellules d'une ligne par l'API des enregistrements : { status }.
 export const patchRow = (run, table, id, fields) => call(run.page, 'PATCH', `/api/docs/${run.docId}/tables/${table}/records`, { records: [{ id, fields }] });
+
+// Les règles qui ferment la structure du document (`user.Access != OWNER` → `-S`), lues par un propriétaire : l'activation du partage en pose une seule (18/11).
+export const closingRules = async run => ((await rowsOf(run, '_grist_ACLRules')) || []).filter(rule => rule.aclFormula === 'user.Access != OWNER' &&
+  String(rule.permissionsText || '').includes('-S'));

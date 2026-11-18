@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validateManifest } from '../js/apps/manifest.js';
-import { vitrineOf, SHOT_FOLDER } from '../js/apps/vitrine.js';
+import { vitrineOf, levelOf, SHOT_FOLDER } from '../js/apps/vitrine.js';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { STRING_TABLES } from '../js/i18n/i18n.js';
@@ -87,7 +87,7 @@ function webpSize(buffer) {
 
 const DELIVERED = ['publipostage', 'automation', 'bi', 'form'];
 
-test('Publipostage+, Automation+, Grist-BI et Form+ ont leur vitrine : une description et trois captures, dans les deux langues, des fichiers de GFS aux bonnes dimensions', () => {
+test('Publipostage+, Automation+, Grist-BI et Form+ ont leur vitrine : une description et de trois à six captures, dans les deux langues, des fichiers de GFS aux bonnes dimensions', () => {
   for (const id of DELIVERED) {
     const manifest = readJson(`manifestes/${id}.json`);
     assert.deepEqual(validateManifest(manifest).errors, [], id);
@@ -96,7 +96,7 @@ test('Publipostage+, Automation+, Grist-BI et Form+ ont leur vitrine : une descr
     for (const lang of ['fr', 'en']) {
       assert.ok(vitrine.description[lang].length > 0 && vitrine.description[lang].length <= 280, `${id} : la description (${lang}) tient en 280 caractères au plus`);
     }
-    assert.equal(vitrine.captures.length, 3, `${id} : trois captures`);
+    assert.ok(vitrine.captures.length >= 3 && vitrine.captures.length <= 6, `${id} : de trois à six captures (${vitrine.captures.length})`);
     for (const { fichier, legende } of vitrine.captures) {
       assert.ok(fichier.startsWith(`${id}/`), `${id} : « ${fichier} » est rangé dans le dossier de l'app`);
       for (const lang of ['fr', 'en']) assert.ok(legende[lang].length > 0 && legende[lang].length <= 60, `${id} : la légende de ${fichier} (${lang}) tient en 60 caractères au plus`);
@@ -104,5 +104,41 @@ test('Publipostage+, Automation+, Grist-BI et Form+ ont leur vitrine : une descr
       assert.ok(buffer.length <= 60000, `${id} : ${fichier} pèse ${buffer.length} octets (60 000 au plus)`);
       assert.deepEqual(webpSize(buffer), [960, 600], `${id} : ${fichier} mesure 960 × 600 px`);
     }
+  }
+});
+
+// Le niveau de l'app (18/11, demande du porteur : « indiquer clairement si les widgets sont en alpha, bêta ou V1 et plus ») : `maturite`, contrats 2.2.
+const withLevel = maturite => ({ ...bi(), maturite });
+const withoutLevel = ({ maturite, ...rest }) => rest;
+
+test('le niveau (`maturite`) est facultatif : « alpha », « beta » ou une version stable, rien d\'autre', () => {
+  assert.deepEqual(validateManifest(withoutLevel(bi())).errors, [], 'sans niveau, le manifeste reste valide : aucune pastille');
+  for (const level of ['alpha', 'beta', 'v1', 'v1.1', 'v2', 'v12.30']) assert.deepEqual(validateManifest(withLevel(level)).errors, [], level);
+  for (const level of ['Alpha', 'gamma', 'v0', 'v0.9', 'v1.', 'v1.1.1', '1.1', 'v', '', 1, null, ['alpha']]) {
+    assert.match(validateManifest(withLevel(level)).errors.join(), /maturite : « alpha », « beta » ou une version stable/, String(level));
+  }
+});
+
+test('le niveau lu du manifeste : alpha, bêta, stable avec sa version ; rien quand le manifeste n\'en dit rien ou le dit mal', () => {
+  assert.deepEqual(levelOf(withLevel('alpha')), { kind: 'alpha', version: null });
+  assert.deepEqual(levelOf(withLevel('beta')), { kind: 'beta', version: null });
+  assert.deepEqual(levelOf(withLevel('v1.1')), { kind: 'stable', version: '1.1' });
+  assert.deepEqual(levelOf(withLevel('v2')), { kind: 'stable', version: '2' });
+  for (const none of [withoutLevel(bi()), withLevel('gamma'), withLevel(7), null, undefined]) assert.equal(levelOf(none), null);
+});
+
+test('les textes du niveau sont dans les deux langues, et l\'anglais ne vouvoie rien : un mot, une info-bulle par niveau', () => {
+  for (const language of ['fr', 'en']) {
+    for (const key of ['prefix', 'alpha', 'beta', 'alphaTip', 'betaTip', 'stableTip']) assert.ok(STRING_TABLES[language][`ap.level.${key}`], `${language} : ap.level.${key}`);
+  }
+  assert.equal(STRING_TABLES.fr['ap.level.beta'], 'Bêta');
+  assert.equal(STRING_TABLES.en['ap.level.beta'], 'Beta');
+});
+
+test('les manifestes livrés qui disent leur niveau le disent bien : Publipostage+ et Grist-BI le portent, et la liste « Version » d\'une app stable est retirée de sa fiche', () => {
+  for (const id of ['publipostage', 'bi']) {
+    const manifest = readJson(`manifestes/${id}.json`);
+    assert.deepEqual(validateManifest(manifest).errors, [], id);
+    assert.ok(levelOf(manifest), `${id} : le manifeste porte un niveau`);
   }
 });

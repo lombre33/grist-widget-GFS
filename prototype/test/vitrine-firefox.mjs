@@ -18,8 +18,9 @@ function grid() {
   const cards = [...gridNode.querySelectorAll('.ap-card')].map(card => {
     const button = card.querySelector('.ap-act .btn');
     const image = card.querySelector('.ap-shot img');
+    const level = card.querySelector('.lvl');
     return { id: card.dataset.app, box: box(card), name: card.querySelector('.ap-name').textContent, text: card.querySelector('.ap-text').textContent, locked: card.classList.contains('is-locked'),
-      button: button.textContent.trim(), disabled: button.getAttribute('aria-disabled') === 'true', buttonKey: button.dataset.fk, badge: (card.querySelector('.badge') || {}).textContent || null,
+      level: level ? level.textContent.replace(/\s+/g, ' ').trim() : null, levelTip: level ? level.title : null, button: button.textContent.trim(), disabled: button.getAttribute('aria-disabled') === 'true', buttonKey: button.dataset.fk, badge: (card.querySelector('.badge') || {}).textContent || null,
       warn: (card.querySelector('.ap-warn') || {}).textContent || null, placeholder: Boolean(card.querySelector('.ap-shot .ap-ph')), placeholderName: (card.querySelector('.ap-ph-name') || {}).textContent || null,
       image: image ? { loaded: image.complete && image.naturalWidth > 0 } : null, shot: box(card.querySelector('.ap-shot')), overflow: card.scrollWidth - card.clientWidth };
   });
@@ -45,7 +46,7 @@ function fiche() {
   const count = exts && exts.querySelector('.fp-count');
   const slides = [...page.querySelectorAll('.fp-slide')].map(slide => ({ caption: text(slide.querySelector('figcaption')), placeholder: Boolean(slide.querySelector('.ap-ph')), image: slide.querySelector('img') ? slide.querySelector('img').complete && slide.querySelector('img').naturalWidth > 0 : false, box: box(slide) }));
   const nav = dir => { const node = page.querySelector(`.fp-nav.${dir}`); return node ? { shown: node.getClientRects().length > 0 && getComputedStyle(node).visibility !== 'hidden', disabled: node.disabled } : null; };
-  return { window: box(modal), title: hero.querySelector('h1').firstChild.textContent, badge: Boolean(hero.querySelector('h1 .badge')), back: text(head.querySelector('.ap-back')), mini: head.classList.contains('is-mini'),
+  return { window: box(modal), title: hero.querySelector('h1').firstChild.textContent, badge: Boolean(hero.querySelector('h1 .badge')), level: hero.querySelector('h1 .lvl') ? text(hero.querySelector('h1 .lvl')) : null, back: text(head.querySelector('.ap-back')), mini: head.classList.contains('is-mini'),
     miniButtons: [...head.querySelectorAll('.fp-head-cta .btn')].map(button), miniName: head.querySelector('.fp-mini strong') ? text(head.querySelector('.fp-mini strong')) : null, head: box(head),
     buttons: [...hero.querySelectorAll('.fp-cta .btn')].map(button), cta: box(hero.querySelector('.fp-cta-wrap')), hero: box(hero), tag: (hero.querySelector('.fp-tag') || {}).textContent || null,
     chips: [...hero.querySelectorAll('.fp-chips li')].map(text), link: hero.querySelector('.fp-chip-link') ? text(hero.querySelector('.fp-chip-link')) : null,
@@ -75,6 +76,7 @@ const PROBES = {
   tag: ['.fp-tag', '.fp-hero'], chip: ['.fp-chips li', '.fp-hero'], chipLink: ['.fp-chip-link', 'li'], heroInstall: ['.fp-hero .btn.primary:not([aria-disabled="true"])', '.fp-hero'],
   heroDisabled: ['.fp-hero .btn.primary[aria-disabled="true"]', '.fp-hero'], heroOpen: ['.fp-hero .btn.primary', '.fp-hero'], remove: ['.fp-hero .btn.quiet:not([aria-disabled="true"])', '.fp-hero'],
   removeDisabled: ['.fp-hero .btn.quiet[aria-disabled="true"]', '.fp-hero'], miniDisabled: ['.fp-head .btn.primary[aria-disabled="true"]', '.mod'],
+  levelAlpha: ['.ap-card .lvl-alpha', '.ap-card'], levelBeta: ['.ap-card .lvl-beta', '.ap-card'], levelStable: ['.ap-card .lvl-stable', '.ap-card'], heroLevel: ['.fp-hero .lvl', '.fp-hero'],
   about: ['.fp-long', '.mod'], lead: ['.fp-lead', '.mod'], count: ['.fp-count', '.mod'], caption: ['.fp-slide figcaption', '.mod'], noShot: ['.fp-noshot', '.mod'],
   extText: ['.fp-ext-text', '.fp-ext'], extNote: ['.fp-ext .fp-note', '.fp-ext'], extAdd: ['.fp-ext .btn:not([aria-disabled="true"])', '.fp-ext'], extDisabled: ['.fp-ext .btn[aria-disabled="true"]', '.fp-ext'],
   added: ['.fp-added', '.fp-ext'], choiceDesc: ['.fp-choice-desc', '.fp-choice'], pill: ['.fp-pill', '.fp-choice'], seg: ['.fp-segs label', '.fp-segs'], summary: ['.fp-detail summary', '.mod'],
@@ -108,6 +110,12 @@ async function contrastProblems(page, note, where) {
 }
 
 const ids = cards => cards.map(card => card.id).join();
+// Le niveau que le manifeste donne à une app, tel que la pastille le dit (le préfixe lu par les lecteurs d'écran compris) : « Niveau : Alpha », « Niveau : V1.1 », ou null quand il n'en dit rien.
+const levelText = (t, id) => {
+  const value = readJson(`manifestes/${id}.json`).maturite;
+  if (!value) return null;
+  return `${t('ap.level.prefix')} ${value === 'alpha' || value === 'beta' ? t(`ap.level.${value}`) : `V${value.slice(1)}`}`;
+};
 const closed = () => !document.querySelector('.mod-scrim');
 const memo = {}; // ce qu'un essai garde pour un autre : la hauteur de la fenêtre d'une fiche
 
@@ -123,6 +131,8 @@ async function gridProblems(page, t, note) {
     if (card.box.left < s.window.left || card.box.right > s.window.right) note('carte hors de la fenêtre', `« ${card.name} » sort de la fenêtre`);
     if (card.overflow > 1) note('carte coupée', `« ${card.name} » déborde de ${card.overflow} px`);
     if (!card.placeholder || card.placeholderName !== card.name) note('vignette d\'attente', `« ${card.name} » sans capture devrait montrer son icône et son nom (vignette : ${card.placeholder}, nom : ${card.placeholderName})`);
+    if (card.level !== levelText(t, card.id)) note('niveau', `« ${card.name} » devrait montrer ${levelText(t, card.id) ? `la pastille « ${levelText(t, card.id)} »` : 'aucune pastille de niveau'} : ${card.level}`);
+    if (card.level && !card.levelTip) note('niveau', `la pastille de « ${card.name} » devrait porter son info-bulle`);
     if (card.shot.height < 40) note('vignette', `la vignette de « ${card.name} » est trop basse : ${card.shot.height.toFixed(0)} px`);
   }
   const [first, second, , fourth] = s.cards;
@@ -174,6 +184,7 @@ async function ficheProblems(page, t, note) {
   if (f.focused !== 'back') note('fiche', `le clavier devrait être sur « ${t('ap.back')} » : ${f.focused}`);
   if (f.tag !== card.text) note('fiche', `le bandeau reprend le texte de la carte : « ${f.tag} »`);
   if (f.about !== null) note('fiche', `sans description à elle, la fiche ne répète pas le texte court : « ${f.about} »`);
+  if (f.level !== levelText(t, 'form')) note('niveau', `la fiche de Form+ devrait montrer ${levelText(t, 'form') || 'aucune pastille de niveau'} : ${f.level}`);
   if (!f.noShot || f.strip || f.slides.length) note('captures', 'sans capture la fiche le dit en une phrase, sans bande de captures');
   if (f.chips[0] !== t('ap.version', { v: '0.1.0' }) || f.chips[f.chips.length - 1] !== t('ap.noExt')) note('fiche', `les pastilles devraient dire la version et « ${t('ap.noExt')} » : ${JSON.stringify(f.chips)}`);
   if (JSON.stringify(f.buttons.map(item => item.text)) !== JSON.stringify([t('ap.install')]) || f.buttons[0].disabled) note('fiche', `Form+ n'est pas installée : le bandeau devrait proposer seulement « ${t('ap.install')} » : ${JSON.stringify(f.buttons)}`);
@@ -197,6 +208,9 @@ async function ficheProblems(page, t, note) {
   await page.click(...await page.run(centerOf, '[data-app="bi"] .ap-shot'));
   f = await page.until(fiche);
   if (f.title !== 'Grist-BI') note('fiche', `un clic sur la capture devrait ouvrir la fiche de Grist-BI : ${f.title}`);
+  if (f.level !== levelText(t, 'bi')) note('niveau', `la fiche de Grist-BI devrait montrer « ${levelText(t, 'bi')} » : ${f.level}`);
+  if (!f.chips[0].startsWith(t('ap.version', { v: '' }).trim().split(' ')[0])) note('niveau', `une app qui n'est pas encore stable garde sa ligne « Version » : ${JSON.stringify(f.chips)}`);
+  await contrastProblems(page, note, 'la fiche de Grist-BI');
   await page.click(...await page.run(centerOf, '[data-fk="back"]'));
   await page.until(grid);
 }
@@ -208,6 +222,8 @@ async function extensionsProblems(page, t, note) {
   if (f.window.height !== memo.height) note('fenêtre fixe', `la fenêtre d'une fiche garde sa hauteur d'une app à l'autre (${memo.height} px, ici ${f.window.height} px)`);
   if (!f.libs || f.choices !== 2) note('bibliothèques', `la fiche de Publipostage+ devrait porter le choix de ses bibliothèques en deux cartes : ${f.choices}`);
   if (f.buttons.map(item => item.text).join() !== t('mod.open')) note('fiche', `Publipostage+ est toujours active : pas de « ${t('ap.remove')} », seulement « ${t('mod.open')} » : ${JSON.stringify(f.buttons)}`);
+  if (f.level !== levelText(t, 'publipostage')) note('niveau', `la fiche de Publipostage+ devrait montrer « ${levelText(t, 'publipostage')} » : ${f.level}`);
+  if (f.chips.some(chip => chip.startsWith(t('ap.version', { v: '' }).trim().split(' ')[0]))) note('niveau', `une app stable dit sa version dans la pastille du niveau, pas sur une deuxième ligne : ${JSON.stringify(f.chips)}`);
   if (!f.chips.includes(t('mod.always').replace(/\.$/, ''))) note('fiche', `les pastilles devraient dire que l'app est toujours active : ${JSON.stringify(f.chips)}`);
   if (f.cards.length !== 5 || f.link !== t('ap.extCount', { n: 5 })) note('extensions', `la fiche devrait montrer cinq extensions et un lien « ${t('ap.extCount', { n: 5 })} » : ${f.cards.length} / ${f.link}`);
   if (!f.section || f.section.count !== t('ap.extOf', { n: 0, total: 5 })) note('extensions', `le compte devrait dire « ${t('ap.extOf', { n: 0, total: 5 })} » : ${f.section && f.section.count}`);
@@ -333,7 +349,7 @@ async function blockedProblems(page, t, note) {
 }
 
 // Les vitrines que les apps ont rendues (consignes 014, 018 et 031, 17/11) : sur les vrais manifestes, les vraies images de `vitrine/` s'affichent. Chaque carte montre sa première capture (chargée,
-// sans vignette d'attente) ; la fiche porte les trois captures, leurs légendes dans la langue de la personne, la description de l'app, et la bande des captures prend le clavier.
+// sans vignette d'attente) ; la fiche porte toutes ses captures (de trois à six), leurs légendes dans la langue de la personne, la description de l'app, et la bande des captures prend le clavier.
 async function deliveredProblems(page, language, t, note) {
   await page.run(() => window.__vitrine('livrees'));
   const ids = ['publipostage', 'automation', 'form', 'bi'];
@@ -348,8 +364,14 @@ async function deliveredProblems(page, language, t, note) {
   for (const id of ids) {
     const manifest = readJson(`manifestes/${id}.json`);
     await page.click(...await page.run(centerOf, `[data-fk="name:${id}"]`));
-    const f = await page.until(() => { const x = fiche(); return x && x.slides.length === 3 && x.slides.every(slide => slide.image) ? x : null; }, [], 5000).catch(() => null);
-    if (!f) { note('vitrines rendues : fiche', `la fiche de « ${id} » devrait porter trois captures chargées`); await page.press('Escape'); await page.until(grid).catch(() => null); continue; }
+    // Les captures se chargent à l'approche (`loading="lazy"`) : celles qu'on voit d'abord, puis le reste quand la bande défile jusqu'à lui.
+    const f = await page.until(count => { const x = fiche(); return x && x.slides.length === count && x.slides.filter(slide => slide.box.left < x.window.right).every(slide => slide.image) ? x : null; },
+      [manifest.vitrine.captures.length], 5000).catch(() => null);
+    if (!f) { note('vitrines rendues : fiche', `la fiche de « ${id} » devrait porter ses ${manifest.vitrine.captures.length} captures, celles qu'on voit chargées`); await page.press('Escape'); await page.until(grid).catch(() => null); continue; }
+    await page.run(() => { const strip = document.querySelector('.fp-strip'); if (strip) strip.scrollLeft = strip.scrollWidth; });
+    const all = await page.until(() => { const x = fiche(); return x && x.slides.every(slide => slide.image) ? x : null; }, [], 5000).catch(() => null);
+    if (!all) note('vitrines rendues : fiche', `la bande de « ${id} » défilée jusqu'au bout devrait avoir chargé ses ${manifest.vitrine.captures.length} captures`);
+    await page.run(() => { const strip = document.querySelector('.fp-strip'); if (strip) strip.scrollLeft = 0; });
     const wanted = manifest.vitrine.captures.map(capture => capture.legende[language]);
     if (f.slides.map(slide => slide.caption).join('|') !== wanted.join('|')) note('vitrines rendues : légendes', `la fiche de « ${id} » devrait dire « ${wanted.join(' | ')} » : ${f.slides.map(slide => slide.caption).join(' | ')}`);
     if (f.about !== manifest.vitrine.description[language]) note('vitrines rendues : description', `la fiche de « ${id} » devrait montrer la description de l'app : « ${f.about} »`);

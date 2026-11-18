@@ -5,9 +5,27 @@
 
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
-import { label } from './manifest.js';
+import { label, MATURITY_RE } from './manifest.js';
 
 export const SHOT_FOLDER = 'vitrine/';
+
+// Le niveau que le manifeste donne à l'app (`maturite`, contrats 2.2) : { kind: 'alpha' | 'beta' | 'stable', version } (`version` : « 1.1 » d'un « v1.1 »,
+// null avant la V1), ou null quand le manifeste n'en dit rien ou le dit mal : la pastille n'invente jamais un niveau.
+export function levelOf(manifest) {
+  const value = manifest && manifest.maturite;
+  if (typeof value !== 'string' || !MATURITY_RE.test(value)) return null;
+  return value === 'alpha' || value === 'beta' ? { kind: value, version: null } : { kind: 'stable', version: value.slice(1) };
+}
+
+// La pastille du niveau, à côté du nom (la carte, le haut de la fiche) : un mot (« Alpha », « Bêta », « V1.1 ») qui dit où en est l'app, jamais la couleur
+// seule ; le préfixe « Niveau : » est lu par les lecteurs d'écran, la phrase entière est dans l'info-bulle. Rien quand le manifeste ne donne pas de niveau.
+export function levelBadge({ t }, manifest) {
+  const level = levelOf(manifest);
+  if (!level) return null;
+  const text = level.kind === 'stable' ? `V${level.version}` : t(`ap.level.${level.kind}`);
+  return h('span', { class: `lvl lvl-${level.kind}`, title: t(`ap.level.${level.kind}Tip`, { v: level.version }) },
+    h('span', { class: 'fp-sr' }, `${t('ap.level.prefix')} `), text);
+}
 
 // Ce que la vitrine montre d'une app : sa description (celle de `vitrine`, sinon le texte court de la carte) et ses captures `{ src, caption }`. Un manifeste
 // invalide (ou absent) n'a rien à montrer que son nom.
@@ -72,7 +90,7 @@ export function appCard(ctx, item, reason) {
     h('div', { class: 'ap-main' },
       h('div', { class: 'ap-title' }, icon(glyph),
         h('button', { type: 'button', class: 'ap-name', 'aria-label': t('ap.details', { app: name }),
-          dataset: { act: 'show', id: item.id, fk: `name:${item.id}` } }, name), state),
+          dataset: { act: 'show', id: item.id, fk: `name:${item.id}` } }, name), levelBadge(ctx, item.manifest), state),
       h('p', { class: 'ap-text' }, item.manifest ? label(item.manifest.texte, lang) : ''),
       item.ok ? null : h('p', { class: 'ap-warn' }, t('mod.invalid', { reasons: item.errors.join(' ; ') }))),
     h('div', { class: 'ap-act' }, mainButton(ctx, item, reason)));

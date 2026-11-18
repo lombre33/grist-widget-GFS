@@ -18,7 +18,8 @@ import { buildShell, relabel, paintBell, crumbs, tree, listHead, fileRow, folder
 import { sumWeights } from '../weight/weight.js';
 import { PiecesBox } from './explorer-pj.js';
 import { Removal } from './explorer-removal.js';
-import { listAction, moveTarget, isSearchKey, clipboardAction, parentPath } from './explorer-keys.js';
+import { parentPath } from './explorer-keys.js';
+import { Keyboard } from './explorer-keyboard.js';
 import { UndoStack } from '../files/undo-stack.js';
 import { undoable } from './explorer-undo.js';
 import { Clipboard } from './explorer-clipboard.js';
@@ -26,7 +27,7 @@ import { Dragging } from './explorer-drag.js';
 import { RowWindow, WINDOW_FROM } from './explorer-window.js';
 import { rowItems } from './explorer-menus.js';
 import { notificationItems } from '../sharing/notifications.js';
-import { openMenu, closeMenu, menuIsOpen } from '../ui/menu.js';
+import { openMenu, closeMenu } from '../ui/menu.js';
 
 // Sans fichiers que GFS garde lui-même (les essais de l'explorateur seul) : aucun fichier n'est de ceux-là.
 const NO_KEPT = Object.freeze({ has: () => false, extras: () => [] });
@@ -34,9 +35,6 @@ const NO_KEPT = Object.freeze({ has: () => false, extras: () => [] });
 const NO_TRASH = Object.freeze({ handles: () => false });
 // Sans copie (les essais de l'explorateur seul) : aucun fichier ne peut se copier.
 const NO_COPYING = Object.freeze({ handles: () => false, copy: async () => null });
-// Ce que la case « + pièces jointes » ajoute tant que rien n'est lu.
-// Les gestes d'une ligne qu'un clavier posé sur ☆ ou ⋯ (ou ailleurs dans la ligne) fait aussi ; les flèches et Entrée restent aux boutons.
-const FROM_BUTTONS = new Set(['rename', 'delete', 'menu', 'parent']);
 
 export class Explorer {
   #opts;
@@ -79,6 +77,17 @@ export class Explorer {
     view: 'folder', path: '', group: null, open: new Set(), display: 'list', sort: { key: 'name', dir: 1 }, recentSort: { key: 'mod', dir: -1 },
       trashSort: { key: 'mod', dir: -1 }, sharedSort: { key: 'mod', dir: -1 }, type: 'all', q: '', sel: null,
   };
+
+  // Les touches (js/explorer/explorer-keyboard.js) : ce que chacune fait de la ligne choisie.
+  #keyboard = new Keyboard({
+    root: () => this.root, state: () => this.state, search: () => this.#refs.search, list: () => this.#refs.list, filtering: () => this.#filtering,
+    keys: () => this.#keys, choice: () => this.#choice, opts: () => this.#opts, undo: () => this.#undo, clipboard: () => this.#clipboard,
+      removal: () => this.#removal,
+    select: (key, focus) => this.#select(key, focus), rowFor: key => this.#rowFor(key), activate: key => this.#activate(key),
+      rename: key => this.#renameKey(key),
+    rowMenu: (key, anchor) => this.#rowMenu(key, anchor), goParent: event => this.#goParent(event),
+    searched: () => { this.#renderCrumbs(); this.#renderList(); }, requestClose: () => this.#requestClose(),
+  });
 
   // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), importTypes(), onOpen(file), onNew(entry),
   //   onImport(entry), onTemplates(), onClose(), onApps(), canClose(), notice(text),
@@ -448,7 +457,7 @@ export class Explorer {
     list.addEventListener('click', event => this.#onList(event));
     list.addEventListener('dblclick', event => {
       const row = event.target.closest('[data-key]'); if (row && !event.target.closest('button')) this.#activate(row.dataset.key); });
-    list.addEventListener('keydown', event => this.#onListKey(event));
+    list.addEventListener('keydown', event => this.#keyboard.onList(event));
     list.addEventListener('contextmenu', event => this.#onContext(event));
     this.root.addEventListener('dragend', () => this.#win.settle());
     notices.addEventListener('click', event => {
@@ -456,7 +465,7 @@ export class Explorer {
       else if (event.target.closest('[data-answer-folder]')) void this.#askFolder(this.state.group); });
     // Échap sur le document : il ferme aussi quand le focus est tombé sur le fond (clic dans une zone vide, liste redessinée). Un menu ou une
     // fenêtre qui l'a pris pour lui (preventDefault, stopPropagation) passe avant.
-    this.root.ownerDocument.addEventListener('keydown', event => { if (this.isOpen) this.#onKey(event); });
+    this.root.ownerDocument.addEventListener('keydown', event => { if (this.isOpen) this.#keyboard.onDocument(event); });
   }
 
   #setDisplay(mode) { this.state.display = mode; this.#renderHead(); this.#renderList(); }
@@ -549,43 +558,6 @@ export class Explorer {
     this.#renderInfo();
   }
 
-  // Les touches de la liste (js/explorer/explorer-keys.js). La ligne visée par un geste est la ligne choisie, sinon celle où est le clavier : à l'ouverture, le
-  // clavier est sur la première ligne sans qu'aucune soit choisie, et Entrée, F2 ou Suppr doivent y répondre.
-  #onListKey(event) {
-    const action = listAction(event, { display: this.state.display, filtering: this.#filtering });
-    if (!action || (event.target.closest('button') && !FROM_BUTTONS.has(action))) return;
-    const keys = this.#keys;
-    if (!keys.length) { if (action === 'parent') this.#goParent(event); return; }
-    const at = keys.indexOf(this.state.sel);
-    const to = moveTarget(action, at, keys.length, () => this.#columns());
-    if (to !== null) this.#moveSelection(event, to);
-    else if (action === 'parent') this.#goParent(event);
-    else this.#keyOnRow(event, action, at >= 0 ? this.#rowFor(keys[at]) : event.target.closest('[data-key]'));
-  }
-
-  // Le choix va à la ligne d'index `to` (tenu dans la liste).
-  #moveSelection(event, to) {
-    event.preventDefault();
-    this.#select(this.#keys[Math.min(Math.max(to, 0), this.#keys.length - 1)], true);
-  }
-
-  // Un geste sur la ligne choisie, ou sur celle où est le focus (`here`) ; rien quand il n'y en a pas.
-  #keyOnRow(event, action, here) {
-    if (!here) return;
-    event.preventDefault();
-    const key = here.dataset.key;
-    if (action === 'activate') this.#activate(key);
-    else if (action === 'rename') this.#renameKey(key);
-    else if (action === 'delete') { this.#select(key, false); void this.#removal.trash(key); }
-    else if (action === 'menu') this.#rowMenu(key, here.querySelector('[data-menu]') || here);
-  }
-
-  // Le nombre de vignettes par rangée : celles qui sont à la hauteur de la première.
-  #columns() {
-    const rows = [...this.#refs.list.querySelectorAll('[data-key]')];
-    return rows.filter(row => row.offsetTop === rows[0].offsetTop).length;
-  }
-
   // Retour arrière : le dossier parent ; depuis Récents, Favoris ou la corbeille, la racine ; à la racine, rien.
   #goParent(event) {
     const { view, path, group } = this.state;
@@ -595,68 +567,12 @@ export class Explorer {
     else this.#goFolder(view === 'folder' ? parentPath(path) : '');
   }
 
-  // Le clic droit : le menu de la ligne, comme « ⋯ » (le clavier le demande par Maj+F10 ou la touche Menu, dans #onListKey).
+  // Le clic droit : le menu de la ligne, comme « ⋯ » (le clavier le demande par Maj+F10 ou la touche Menu : js/explorer/explorer-keyboard.js).
   #onContext(event) {
     const row = event.target.closest('[data-key]');
     if (!row) return;
     event.preventDefault();
     this.#rowMenu(row.dataset.key, row.querySelector('[data-menu]') || row);
-  }
-
-  #onKey(event) {
-    if (event.defaultPrevented) return;
-    if (isSearchKey(event) && this.root.contains(event.target) && !menuIsOpen()) {
-      event.preventDefault();
-      this.#refs.search.focus();
-      this.#refs.search.select();
-      return;
-    }
-    const clip = clipboardAction(event);
-    if (clip && this.#keysAreOurs(event.target) && !menuIsOpen() && !(['copy', 'cut'].includes(clip) && this.#hasTextSelected())) {
-      event.preventDefault(); this.#onClipboard(clip, event); return; }
-    if (event.key !== 'Escape') return;
-    if (event.target === this.#refs.search && this.#refs.search.value) {
-      this.#refs.search.value = '';
-      this.state.q = '';
-      this.#renderCrumbs();
-      this.#renderList();
-    } else {
-      this.#requestClose();
-    }
-    event.preventDefault();
-  }
-
-  // Les touches du presse-papiers sont à l'explorateur quand le clavier est chez lui, ou nulle part (le corps de la page : la liste vient d'être redessinée, la
-  // ligne qui l'avait n'existe plus) ; pas quand une fenêtre, un menu ou un autre panneau l'a.
-  #keysAreOurs(target) {
-    const doc = this.root.ownerDocument;
-    return this.root.contains(target) || target === doc.body || target === doc.documentElement;
-  }
-
-  // Du texte est choisi dans la page (la personne en a surligné) : Ctrl+C et Ctrl+X le copient, comme partout.
-  #hasTextSelected() {
-    const selection = this.root.ownerDocument.getSelection();
-    return Boolean(selection && !selection.isCollapsed && String(selection).trim());
-  }
-
-  // Le presse-papiers et Ctrl+D (js/explorer/explorer-clipboard.js), l'annulation (Ctrl+Z : le dernier geste revient) et le rétablissement (Ctrl+Y ou
-  // Ctrl+Maj+Z : on le refait ; js/files/undo-stack.js). Copier, couper et dupliquer visent la ligne choisie, sinon celle où est le clavier ; coller n'a besoin
-  // d'aucune ligne (un dossier vide se colle). Pendant un choix de fichier pour une app, rien de tout cela : comme « Nouveau » et la corbeille, il est grisé.
-  #onClipboard(action, event) {
-    if (this.#choice) { this.#opts.notice(this.#opts.i18n.t('ex.choose.newOff')); return; }
-    if (action === 'undo' || action === 'redo') { void this.#undo[action](); return; }
-    if (action === 'paste') { void this.#clipboard.paste(); return; }
-    if (action === 'duplicate' && event.repeat) return; // la touche tenue enfoncée ne fait qu'une copie
-    const key = this.#keyOf(event);
-    if (key) void this.#clipboard.take(key, action);
-  }
-
-  // La clé de la ligne que vise un geste : la ligne choisie, sinon celle où est le clavier (à l'ouverture, le clavier est sur la première ligne sans qu'aucune
-  // soit choisie).
-  #keyOf(event) {
-    if (this.state.sel && this.#keys.includes(this.state.sel)) return this.state.sel;
-    const here = event.target && typeof event.target.closest === 'function' ? event.target.closest('[data-key]') : null;
-    return here ? here.dataset.key : null;
   }
 
   // La ligne `key` prend le clavier, quand la liste la montre (le fichier qu'on vient de copier ou de déplacer).

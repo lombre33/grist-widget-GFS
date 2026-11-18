@@ -8,20 +8,23 @@ import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { label } from './manifest.js';
 import { MODES, DEFAULT_MODE } from './libraries.js';
-import { shot, glyphOf, nameOf, mainButton, removeButton } from './vitrine.js';
+import { shot, glyphOf, nameOf, mainButton, removeButton, levelBadge, levelOf } from './vitrine.js';
 
 const cap = text => text.charAt(0).toUpperCase() + text.slice(1);
 const modeName = (t, mode) => t(mode === DEFAULT_MODE ? 'mod.native.cdn' : 'mod.native.copy');
 
 // ---------- le haut de la page ----------
 
-// Les pastilles sous le nom : la version, « toujours active », puis le nombre d'extensions (un bouton qui mène à elles, ou « Sans extension »).
+// Les pastilles sous le nom : la version, « toujours active », puis le nombre d'extensions (un bouton qui mène à elles, ou « Sans extension »). Une app
+// stable (« V1.1 ») dit sa version dans la pastille du niveau, à côté du nom : la ligne « Version » ne la redirait pas, et pourrait la contredire.
 function chips(ctx, app, exts) {
   const { t } = ctx;
   const link = exts.length
     ? h('button', { type: 'button', class: 'fp-chip-link', dataset: { act: 'ext', fk: 'to-ext' } }, t('ap.extCount', { n: exts.length }), icon('chev-down'))
     : t('ap.noExt');
-  const items = [app.manifest ? t('ap.version', { v: app.manifest.version }) : null, app.always ? t('mod.always').replace(/\.$/, '') : null, link];
+  const level = levelOf(app.manifest);
+  const version = app.manifest && !(level && level.kind === 'stable') ? t('ap.version', { v: app.manifest.version }) : null;
+  const items = [version, app.always ? t('mod.always').replace(/\.$/, '') : null, link];
   return h('ul', { class: 'fp-chips' }, ...items.filter(Boolean).map(item => h('li', null, item)));
 }
 
@@ -33,7 +36,7 @@ export function hero(ctx, app, { exts, reason, blocked }) {
   const tagline = app.manifest ? label(app.manifest.texte, lang) : '';
   const actions = [mainButton(ctx, app, reason, { size: 'lg', solid: true }), removeButton(ctx, app, blocked, { size: 'lg' })];
   return h('header', { class: 'fp-hero' }, h('span', { class: 'fp-tile' }, icon(glyphOf(app))),
-    h('div', { class: 'fp-hero-main' }, h('h1', { id: 'mod-title' }, nameOf(app, lang), state),
+    h('div', { class: 'fp-hero-main' }, h('h1', { id: 'mod-title' }, nameOf(app, lang), levelBadge(ctx, app.manifest), state),
       tagline ? h('p', { class: 'fp-tag' }, tagline) : null, chips(ctx, app, exts),
       app.ok ? null : h('p', { class: 'fp-warn' }, t('mod.invalid', { reasons: app.errors.join(' ; ') }))),
     h('div', { class: 'fp-cta-wrap', dataset: { hero: 'cta' } }, h('div', { class: 'fp-cta' }, ...actions)));

@@ -310,7 +310,9 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     bas) ; la première illustre la carte. Demande ensuite à GFS (section « Demandes à GFS » de ton `GFS-ETAT.md`, une ligne `vitrine · <commit> · vitrine/vitrine.json · …`). **Les captures
     servies sont des fichiers de GFS**, rangés dans son dossier `vitrine/` : la politique de sécurité du contenu de GFS ne charge une image que de lui, jamais de ton dépôt ni d'un CDN ;
     GFS copie tes images, déclare `vitrine` dans le manifeste de ton app et avance sa référence. Sans capture, la carte montre ton icône et ton nom : rien n'est cassé. **Fait quand** : la
-    carte et la fiche de ton app montrent la description et les captures, en français et en anglais, à 700 × 400, en clair et en sombre.
+    carte et la fiche de ton app montrent la description et les captures, en français et en anglais, à 700 × 400, en clair et en sombre. **Le niveau de ton app** (« Alpha », « Bêta » ou « V1.1 »,
+    la pastille à côté de son nom) n'est pas à toi : c'est le porteur qui le décide, dans le manifeste que GFS tient pour ton app (`maturite`, contrats 2.2). Tu n'as rien à écrire ; si ton
+    niveau change, dis-le dans ton `GFS-ETAT.md`.
 
 23. Proposer des modèles de départ dans « Nouveau > Depuis un modèle » de GFS (décision du porteur du 18/11 : « Une galerie commune » ; contrats 2.2, champ `modeles` ; 5.4, point 13).
     **Facultatif, et sans effet hors de GFS.** La fenêtre réunit les modèles de toutes les apps ; une app sans modèle y garde sa pastille, grisée « bientôt ». Pour y figurer, mets dans ton

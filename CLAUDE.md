@@ -74,7 +74,10 @@ Si un fait nouveau remet en cause une de ces lignes : le dire au porteur, avec l
 - Code repris, jamais copié : chercher ce qui existe (dans le kit, dans Publipostage+) avant d'écrire, et relire son diff à
   la recherche de copies.
 - Fichiers et fonctions sous les seuils de l'outil d'audit : 600 lignes de code par fichier, moins de 81 lignes par
-  fonction, complexité 15 au plus.
+  fonction, complexité 15 au plus. `explorer/explorer.js` et `controller.js` sont ceux qui grossissent le plus vite (18/11, après
+  découpe : 518 et 451 lignes de code) : une fonction nouvelle va dans un module voisin (`explorer-keyboard.js` pour les touches,
+  `files-reading.js` pour la lecture des fichiers, `explorer-assembly.js` et `shell/dock-assembly.js` pour le montage), pas dans
+  le fichier quand il dépasse 540.
 - Lignes de 160 caractères au plus dans `prototype/js/` et `prototype/transfer/` (11/11) : `node prototype/outils/couper-lignes.mjs`
   les coupe sans changer le programme (vérifié sur l'arbre) ; `test/hygiene.test.mjs` refuse celles qu'il sait couper. Les phrases
   des tables `i18n*.js` et les chaînes longues restent permises. Couper ajoute des lignes : une fonction proche de 80 lignes peut
@@ -147,6 +150,11 @@ Les dépôts servent de boîte aux lettres ; chaque côté ne lit qu'une page (m
   relu) ; pousser ; répondre par une consigne. **Décidé le 04/11 (« Dès la lecture »)** : quand la demande porte sur une fonction que GFS
   propose déjà (le geste existe dans GFS, grisé jusque-là : « Lire » un PDF, par exemple), la bibliothèque ou l'extension s'ajoute dès que GFS lit
   la demande, sans attendre le « demande de… » du porteur ; une fonction nouvelle attend encore son mot.
+- **Montée de version (décidé le 18/11)** : quand GFS voit qu'une bibliothèque qu'une app porte a une version plus récente (relevé des
+  dernières versions, lecture de l'app), il lui pose une consigne : « avant le reste » si la version a un avis de sécurité publié,
+  « sans urgence » sinon (correctif et mineure à prendre, majeure à étudier). L'app dit sa montée dans « Changements qui touchent
+  GFS » ; GFS réécrit alors sa copie. Une bibliothèque que GFS sert lui-même pour une extension se monte par GFS (Dependabot) : l'app
+  n'a de consigne que si l'adresse de son CDN change (sa politique de sécurité nomme l'adresse exacte).
 - On ne pousse jamais dans le dépôt d'une app.
 
 ## Travailler avec le porteur

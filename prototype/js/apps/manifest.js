@@ -453,6 +453,14 @@ function checkVitrine(m, errors) {
   }
 }
 
+// Le niveau d'une app (`maturite`, facultatif, contrats 2.2) : « alpha », « beta », ou sa version stable, « v1 » ou « v1.1 » (V1 et plus).
+export const MATURITY_RE = /^(alpha|beta|v[1-9]\d{0,2}(\.\d{1,3})?)$/;
+
+function checkMaturity(m, errors) {
+  if (m.maturite !== undefined && !(typeof m.maturite === 'string' && MATURITY_RE.test(m.maturite))) errors.push(
+    'maturite : « alpha », « beta » ou une version stable comme « v1 » ou « v1.1 » attendu');
+}
+
 // `modeles` (facultatif, contrats 2.2 et 5.4, point 13) : où sont les modèles de départ de l'app, `{ catalogue: "publipostage/modeles.json" }`, le chemin
 // relatif sûr d'un fichier JSON rangé dans le dossier `modeles/` de GFS (comme les captures de la vitrine : GFS ne lit et ne montre que ses propres fichiers).
 function checkTemplates(m, errors) {
@@ -479,6 +487,7 @@ export function validateManifest(m, others = []) {
   checkExtensions(m, errors);
   checkNatives(m, errors);
   checkVitrine(m, errors);
+  checkMaturity(m, errors);
   checkTemplates(m, errors);
   return { ok: errors.length === 0, errors };
 }

@@ -95,12 +95,28 @@ export function planOpenStructure(existing) {
     ...(emptied.length ? [['BulkRemoveRecord', '_grist_ACLResources', emptied]] : [])] };
 }
 
+// Le partage de fichiers (js/sharing/sharing-model.js) : activer, ou retirer ses règles. Activer le partage ferme aussi la structure, dans la même écriture
+// (choix du porteur, 18/11 : « Oui, dans la même question ») : sans elle, un éditeur réécrit les formules d'aide (`ModifyColumn` répondu 200, contrats 11.7,
+// point 13.n.d) et le partage n'est qu'un verrou d'interface. Seulement à l'activation, jamais quand le partage est déjà là (« Compléter le partage… » ne
+// referme pas ce qu'une personne a rouvert) ; `closes` le dit à la question.
+export function planSharingFor(existing) {
+  const plan = planSharing(existing, FILES_COLUMNS);
+  if (!plan.ok || plan.extends) return plan;
+  const closing = planCloseStructure(withAdded(existing, plan.actions));
+  return closing.ok ? { ...plan, actions: [...plan.actions, ...closing.actions], closes: true } : plan;
+}
+
+// Les lignes que ces actions ajoutent aux règles et aux ressources : le plan de la structure choisit ses identifiants après celles du partage.
+function withAdded(existing, actions) {
+  const rows = table => actions.filter(([kind, name]) => kind === 'AddRecord' && name === table).map(([, , id, fields]) => ({ id, ...fields }));
+  return { ...existing, resources: [...existing.resources, ...rows('_grist_ACLResources')], rules: [...existing.rules, ...rows('_grist_ACLRules')] };
+}
+
+export { planUnsharing };
+
 // Les deux lignes du bloc « Poser des règles » du panneau d'après les plans (`RightsWriter.plans()`) : chacune rend { kind | null, label, hint, why }. `kind`
 // est le geste possible (celui que le bouton envoie) ; `null` veut dire grisé, avec `why` : la clé de la raison (jamais masqué, charte). Sans plans (règles
 // illisibles), tout est grisé. Le partage de fichiers (js/sharing/sharing-model.js) : activer, ou retirer ses règles.
-export const planSharingFor = existing => planSharing(existing, FILES_COLUMNS);
-export { planUnsharing };
-
 export function actionsOf(plans) {
   const none = reason => ({ kind: null, why: `rights.act.why.${reason}` });
   if (!plans) return ['shared', 'close', 'sharing'].map(key => ({ label: `rights.act.${key}`, ...none('unreadable') }));

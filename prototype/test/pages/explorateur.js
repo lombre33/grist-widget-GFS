@@ -34,6 +34,7 @@ import { fakeGrist } from '/test/fake-grist.mjs';
 import { createI18n } from '/js/i18n/i18n.js';
 import { installSprite } from '/js/ui/icons.js';
 import { leaveQuestion } from '/js/broker/leave.js';
+import { askOptions } from '/js/rights/rights-actions.js';
 import { ThemeHost } from '/js/theme/theme-apply.js';
 import { settingsItems } from '/js/shell/settings-menu.js';
 import { aboutItems } from '/js/shell/about.js';
@@ -49,6 +50,12 @@ import { whyNot } from '/js/sharing/share-other.js';
 import { openShareOther } from '/js/sharing/share-other-window.js';
 import { openShareReceive } from '/js/sharing/share-receive-window.js';
 import { openWeight } from '/js/weight/weight-window.js';
+import { openDependencies } from '/js/apps/dependencies-window.js';
+import { dependencyRows } from '/js/apps/dependencies-model.js';
+import { allUnits } from '/js/apps/dependencies-source.js';
+import { newSerial } from '/js/apps/dependencies-export.js';
+import { AppsState } from '/js/apps/apps-state.js';
+import { verifyCopy } from '/js/apps/dependencies-audit.js';
 import { ModulesWindow } from '/js/apps/modules-window.js';
 import { WorkWindow } from '/js/apps/work-window.js';
 import { SQL, readWeight } from '/js/weight/weight-reader.js';
@@ -319,15 +326,17 @@ async function mount() {
     });
     win.open();
   };
-  // « Nouveau > Depuis un modèle » (test/modeles-firefox.mjs) : le vrai contrôle, la vraie fenêtre et les vraies `Entries` (js/broker/entries.js) sur les quatre manifestes de GFS et le vrai catalogue
-  // provisoire de Publipostage+ (22 modèles, leurs vignettes). `variant` : 'pret' (Publipostage+ sait ouvrir un modèle, ses extensions sont cochées), 'attente' (le manifeste tel que livré : pas encore
-  // de `ouverture.modele`), 'extension' (le graphique n'est pas coché), 'absente' (l'app n'est pas installée), 'illisible' (le catalogue ne se lit pas). `window.__templatesLog` note ce que la fenêtre
+  // « Nouveau > Depuis un modèle » (test/modeles-firefox.mjs) : le vrai contrôle, la vraie fenêtre et les vraies `Entries` (js/broker/entries.js) sur les quatre manifestes de GFS et les vrais
+  // catalogues de modèles (Publipostage+ 22, Form+ 5, Grist-BI 3, leurs vignettes). `variant` : 'pret' (les trois apps savent ouvrir un modèle, leurs extensions sont cochées), 'attente' (sans
+  // `ouverture.modele`), 'extension' (le graphique n'est pas coché), 'absente' (l'app n'est pas installée), 'illisible' (le catalogue ne se lit pas). `window.__templatesLog` note ce que la fenêtre
   // rend au contrôleur (`created` : « app/modèle » ; `unlocked` : le grisé débloqué) ; `window.__templatesLanguage(lang)` change la langue fenêtre ouverte, comme le contrôleur de GFS.
   window.__templates = async (variant = 'pret') => {
     const manifests = await Promise.all(['publipostage', 'automation', 'form', 'bi'].map(async id => (await fetch(`/manifestes/${id}.json`)).json()));
-    if (variant !== 'attente') manifests[0].ouverture = { ...manifests[0].ouverture, modele: true };
+    // Les manifestes sont ceux de GFS : trois apps déclarent un catalogue (`modeles`) et savent ouvrir un modèle ; 'attente' ôte ce savoir-faire aux trois (le grisé « pas encore »).
+    for (const manifest of manifests) if (manifest.modeles) manifest.ouverture = { ...manifest.ouverture, modele: variant !== 'attente' };
     const catalogue = readCatalogue(await (await fetch('/bibliotheques/catalogue.json')).json());
-    const apps = variant === 'absente' ? {} : { publipostage: { extensions: variant === 'extension' ? ['diapositives'] : ['diapositives', 'graphique'], modes: {} } };
+    const apps = variant === 'absente' ? {} : { publipostage: { extensions: variant === 'extension' ? ['diapositives'] : ['diapositives', 'graphique'], modes: {} },
+      form: { extensions: [], modes: {} }, bi: { extensions: [], modes: {} } };
     const byId = new Map(manifests.map(manifest => [manifest.id, manifest]));
     let current = { i18n, lang: language };
     const host = {
@@ -390,7 +399,7 @@ async function mount() {
     typeLabel: file => (file.received ? received.typeLabel(file) : baseLabel(file)),
     lockOf: file => (file.received ? received.lockOf(file) : (file.type === 'macro' ? { text: i18n.t('ex.lockedExtension', { name: 'Macro-modèles' }) } : null)), newTypes: () => [], importTypes: () => window.__importTypes || [], canClose: () => window.__canClose !== false,
     notice: text => window.__notices.push(text), settings: () => settingsItems({ t: i18n.t, language: () => ({ choice: window.__language, grist: language }), onLanguage: value => { window.__language = value; }, onTheme: () => theme.open(),
-      langtool: () => ({ shown: window.__langtool, toggle: () => { window.__langtool = !window.__langtool; } }), place, onAbout: () => window.__about(),
+      langtool: () => ({ shown: window.__langtool, toggle: () => { window.__langtool = !window.__langtool; } }), place, onAbout: () => window.__about(), onDependencies: () => { window.__dependenciesAsked = (window.__dependenciesAsked || 0) + 1; void window.__dependencies(); },
       manage: () => ({ why: null, open: () => { window.__manageFromSettings = (window.__manageFromSettings || 0) + 1; }, notice: text => window.__notices.push(text) }) }),
     onOpen: file => { window.__opened = file.name; }, onNew: () => {}, get links() { return window.__linkProxy; },
     opened: { keys: () => openedFiles.keys(), shown: () => openedFiles.shown(SESSION), remove: key => openedFiles.remove(key) },
@@ -468,6 +477,13 @@ async function mount() {
     window.__leave = null;
     ask({ ...leaveQuestion({ t: i18n.t, app: 'Publipostage+', fault: reason === null ? null : new Error(reason) }), container: stage, inertTargets: () => [explorer.root] })
       .then(answer => { window.__leave = answer ? 'force' : 'stay'; });
+  };
+  // La question d'activation du partage (js/rights/rights-actions.js, test/activation-firefox.mjs) : la plus longue, avec la fermeture de la structure, trois tables d'apps, le rangement et la première règle ;
+  // `window.__sharing` garde la réponse de la personne (`yes` : « Activer le partage », `no` : « Annuler »).
+  window.__askSharing = () => {
+    window.__sharing = null;
+    const plan = { ok: true, closes: true, firstRule: true, filing: true, extends: false, appTables: ['Publipostage_Modeles', 'FormPlus_Formulaires', 'Automation_Fichiers'] };
+    ask({ ...askOptions(i18n.t, 'sharing', plan), container: stage, inertTargets: () => [explorer.root] }).then(answer => { window.__sharing = answer ? 'yes' : 'no'; });
   };
   // La fenêtre « Partager » (js/sharing/share-window.js, test/partager-firefox.mjs) : la vraie fenêtre sur un état que le contrôleur aurait lu ; `kind` : 'inactif' (le partage n'est pas activé, une personne propriétaire),
   // 'actif' (propriétaire : des lignes de personnes à l'adresse très longue, de catégories, une fin d'accès, un accès échu), 'lecture' (une personne qui ne peut rien changer). `window.__shareActs` note ce que la
@@ -609,6 +625,35 @@ async function mount() {
   window.__weight = estimate => {
     window.__weightEstimate = estimate;
     return openWeight({ container: stage, t: i18n.t, locale, inertTargets: () => [explorer.root], estimate, load: (update, cancelled) => readWeight(fakeSql(window.__weightKind), update, cancelled) });
+  };
+  // La fenêtre « Dépendances » (js/apps/dependencies-window.js, test/dependances-firefox.mjs) : la vraie fenêtre, le vrai catalogue et le vrai relevé de GFS (servis par la page d'essai), le vrai audit des copies
+  // (les fichiers de vendor/, relus par la page) et les vraies apps : le vrai manifeste de Publipostage+ et le vrai `AppsState`, dont la table du document est une mémoire (`window.__dependencyMemory`). Publipostage+ est
+  // installé, ses extensions « Graphique » et « Lecture de PDF » cochées : les lignes d'Écriture en direct, d'ExcelJS… restent « au catalogue ». `window.__tamper` (un bout de chemin) change les octets que la page lit
+  // pour ce fichier : l'audit doit alors dire que la copie ne correspond pas. `window.__dependencyBlocked` (un texte) rend les choix impossibles ; `window.__saved` garde les rapports que la page aurait offerts.
+  const docTable = { value: { publipostage: { extensions: ['graphique', 'lecture-pdf'] } }, writes: [] };
+  const appsState = new AppsState({ onChange: () => {}, store: { read: async () => ({ raw: structuredClone(docTable.value) }),
+    update: async mutate => { docTable.value = mutate(structuredClone(docTable.value)); docTable.writes.push(structuredClone(docTable.value)); return structuredClone(docTable.value); } } });
+  window.__dependencyMemory = docTable;
+  window.__saved = [];
+  window.__dependencyBlocked = null;
+  const dependencyData = Promise.all(['/bibliotheques/catalogue.json', '/bibliotheques/releve.json', '/manifestes/publipostage.json'].map(path => fetch(path).then(response => response.json()))).then(
+    async ([catalogueJson, releve, manifest]) => {
+      const catalogue = readCatalogue(catalogueJson);
+      appsState.setApps([{ app: { id: 'publipostage' }, manifest, ok: true, errors: [] }]);
+      appsState.setCatalogue(catalogue);
+      await appsState.load();
+      return { catalogue, releve };
+    });
+  window.__dependencyModules = () => dependencyData.then(() => appsState.model());
+  window.__dependencies = async () => {
+    const { catalogue, releve } = await dependencyData;
+    const readBytes = async address => (window.__tamper && address.includes(window.__tamper) ? new Uint8Array([1, 2, 3]).buffer : (await fetch(address)).arrayBuffer());
+    return openDependencies({ container: stage, t: i18n.t, locale, lang: language, inertTargets: () => [explorer.root], surveyed: releve.releve,
+      rows: () => dependencyRows({ catalogue, releve, modules: appsState.model(), lang: language }), units: () => allUnits(appsState.model(), language),
+      verify: row => Promise.all(row.files.map(file => verifyCopy(file, { readBytes, base: location.href }))), blocked: () => window.__dependencyBlocked,
+      apply: (plan, mode) => Promise.all(plan.map(({ app, extensions, natives }) => appsState.setSources(app, { extensions, natives }, mode))),
+      ask: opts => ask({ ...opts, container: stage, inertTargets: () => [explorer.root] }), now: () => new Date('2026-11-18T10:30:00Z'), uuid: () => newSerial(),
+      save: (name, text) => { window.__saved.push({ name, text }); } });
   };
   show();
   explorer.open();

@@ -125,5 +125,19 @@
       }
     }
   },
+  "portees": [
+    { "id": "grist-api", "nom": "API de Grist", "adresse": "https://docs.getgrist.com/", "quand": "demarrage",
+      "note": { "fr": "Le script de l’API des widgets de Grist : indispensable pour parler au document, demandé à cette adresse, sans copie dans l’app.",
+        "en": "The script of Grist’s widget API: needed to talk to the document, asked for at this address, with no copy in the app." } },
+    { "id": "leaflet", "nom": "Leaflet", "version": "1.9.4", "adresse": "https://unpkg.com/", "quand": "option", "paquet": "leaflet", "contient": ["leaflet.js", "leaflet.css"],
+      "note": { "fr": "Type de question « Lieu sur carte » : inactive aujourd’hui, dans GFS comme ailleurs ; rien n’est chargé tant que la carte n’est pas activée.",
+        "en": "“Place on a map” question type: inactive today, in GFS as elsewhere; nothing is loaded until the map is turned on." } },
+    { "id": "tuiles-openstreetmap", "nom": "Tuiles de la carte OpenStreetMap", "adresse": "https://tile.openstreetmap.org/", "quand": "option",
+      "note": { "fr": "Images de fond de carte, contactées seulement avec la carte Leaflet ci-dessus : jamais aujourd’hui.",
+        "en": "Map background images, contacted only with the Leaflet map above: never today." } },
+    { "id": "qrcodejs", "nom": "qrcodejs", "adresse": "https://lombre33.github.io/FormPlus/", "quand": "demarrage",
+      "note": { "fr": "Copie rangée avec l’app (licence MIT), chargée à l’ouverture pour le code QR du lien public.",
+        "en": "Copy kept with the app (MIT licence), loaded at opening for the public link’s QR code." } }
+  ],
   "actions": { "ouvrir": ["formulaire"], "choisir": [] }
 }

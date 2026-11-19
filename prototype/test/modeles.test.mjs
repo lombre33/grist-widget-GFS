@@ -144,12 +144,11 @@ test('le catalogue provisoire de Publipostage+ : 22 modèles bien formés, chacu
   assert.deepEqual(files.sort(), models.map(model => model.vignette).sort(), 'aucune vignette orpheline');
 });
 
-test('Publipostage+, Form+ et Grist-BI déclarent `modeles` et savent ouvrir un modèle ; Automation+ déclare les siens mais ne sait pas encore les ouvrir (grisés « pas encore »)', () => {
+test('Publipostage+, Form+, Grist-BI et Automation+ déclarent `modeles` et savent ouvrir un modèle (Automation+ depuis sa 021, 0.15.4 ; GFS le déclare le 19/11)', () => {
   const declared = catalogue().filter(manifest => manifest.modeles);
   assert.deepEqual(declared.map(manifest => manifest.id).sort(), ['automation', 'bi', 'form', 'publipostage']);
-  for (const id of ['publipostage', 'form', 'bi']) assert.equal(declared.find(manifest => manifest.id === id).ouverture.modele, true, `${id} : ouverture.modele dit que l'app ouvre un modèle (contrats 5.4, point 13)`);
+  for (const id of ['publipostage', 'form', 'bi', 'automation']) assert.equal(declared.find(manifest => manifest.id === id).ouverture.modele, true, `${id} : ouverture.modele dit que l'app ouvre un modèle (contrats 5.4, point 13)`);
   const automation = declared.find(manifest => manifest.id === 'automation');
-  assert.notEqual(automation.ouverture.modele, true, 'Automation+ n\'ouvre encore aucun modèle (consigne 021) : ses modèles restent grisés « pas encore »');
   assert.deepEqual(automation.actions.ouvrir, [], 'son type de modèle n\'ouvre ni « Nouveau » ni une ligne de l\'explorateur');
 });
 

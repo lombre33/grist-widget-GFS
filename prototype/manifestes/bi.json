@@ -14,9 +14,9 @@
       "en": "A dashboard inside Grist: tiles (charts, indicators, pivot table) on one table that filter each other with a click, plus drill-down, pages, saved views and Excel, PDF and PowerPoint exports. A draft to try out, not ready for real use yet."
     },
     "captures": [
-      { "fichier": "bi/1.webp", "legende": { "fr": "Indicateurs, courbe, anneau et barres triées", "en": "Indicators, area chart, donut and sorted bars" } },
+      { "fichier": "bi/1.webp", "legende": { "fr": "Indicateurs, jauge, barres et aire, en verre dépoli", "en": "Indicators, gauge, bars and area chart, frosted glass" } },
       { "fichier": "bi/2.webp", "legende": { "fr": "Un clic filtre toutes les tuiles, le drill-down descend", "en": "One click filters every tile; drill-down goes deeper" } },
-      { "fichier": "bi/3.webp", "legende": { "fr": "Cascade, comparaison N-1 et cumuls dans le temps", "en": "Waterfall, prior-year comparison and running totals" } }
+      { "fichier": "bi/3.webp", "legende": { "fr": "Cascade, radar, tableau croisé et cumuls dans le temps", "en": "Waterfall, radar, pivot table and running totals" } }
     ]
   },
   "modeles": { "catalogue": "bi/modeles.json" },
@@ -68,6 +68,24 @@
       }
     ]
   },
+  "portees": [
+    { "id": "echarts", "nom": "ECharts", "version": "6.1.0", "adresse": "https://lombre33.github.io/Grist-BI/", "quand": "demarrage", "paquet": "echarts",
+      "note": { "fr": "Copie modifiée rangée avec l’app (sans new Function, écritures innerHTML assainies), chargée par la page avant tout rendu : ce n’est pas celle que GFS sert à Publipostage+.",
+        "en": "Modified copy kept with the app (no new Function, sanitized innerHTML writes), loaded by the page before any rendering: not the one GFS serves to Publipostage+." } },
+    { "id": "exceljs", "nom": "ExcelJS", "version": "4.4.0", "adresse": "https://lombre33.github.io/Grist-BI/", "quand": "usage", "paquet": "exceljs",
+      "note": { "fr": "Copie rangée avec l’app, chargée au premier clic sur l’export Excel.",
+        "en": "Copy kept with the app, loaded at the first click on the Excel export." } },
+    { "id": "duckdb-wasm", "nom": "DuckDB-WASM", "version": "1.32.0", "adresse": "https://lombre33.github.io/Grist-BI/", "quand": "usage", "paquet": "@duckdb/duckdb-wasm",
+      "contient": ["Apache Arrow 17.0.0", "flatbuffers 24.3.25", "tslib 2.8.1"],
+      "note": { "fr": "Environ 34 Mo, chargé au premier calcul sur 5 000 lignes ou plus, jamais à l’ouverture ; un échec retombe sur le calcul sans lui.",
+        "en": "About 34 MB, loaded at the first calculation on 5,000 rows or more, never at opening; a failure falls back to the calculation without it." } },
+    { "id": "pptxgenjs", "nom": "PptxGenJS", "version": "4.0.1", "adresse": "https://cdn.jsdelivr.net/", "quand": "usage", "paquet": "pptxgenjs", "contient": ["JSZip"],
+      "note": { "fr": "Chargé au premier clic sur l’export PowerPoint ; version figée dans l’adresse, empreinte vérifiée.",
+        "en": "Loaded at the first click on the PowerPoint export; version pinned in the address, fingerprint checked." } },
+    { "id": "grist-api", "nom": "API de Grist", "adresse": "https://docs.getgrist.com/", "quand": "demarrage",
+      "note": { "fr": "Le script de l’API des widgets de Grist : indispensable pour parler au document, demandé à cette adresse, sans copie dans l’app.",
+        "en": "The script of Grist’s widget API: needed to talk to the document, asked for at this address, with no copy in the app." } }
+  ],
   "actions": { "ouvrir": ["rapport"], "choisir": [] },
   "extensions": [
     {

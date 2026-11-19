@@ -8,6 +8,9 @@
 //   4. Suppr puis la corbeille : l'entrée garde le nom du manifeste (`Table`), la ligne revient au même numéro avec les mêmes valeurs, sous les noms anglais.
 //   5. Un modèle mis à la corbeille AVANT le renommage se restaure APRÈS, sans rien perdre (nom, type, contenu) : l'instantané est écrit sous les noms du manifeste.
 //   6. La vraie Publipostage+ ouvre un modèle du document renommé (nom et texte).
+//   7. (a6465c1 : les deux interrupteurs de l'app sont allumés, mais sa reprise des documents d'avant ne tourne pas dans GFS : `isHostedByGfs()`, le courtier refuse RenameColumn et ModifyColumn) le document est
+//      remis aux noms d'avant, la vraie app ouvre un modèle : elle ne renomme rien, elle et GFS le lisent tel quel ; GFS rechargé montre les mêmes modèles, dossiers et étoiles, sans rien écrire dans `GFS_Rangement`.
+//   8. Un document neuf pour l'app (ses tables retirées) : la vraie app crée ses tables SOUS LES NOMS ANGLAIS (aucun nom d'avant), la personne enregistre un modèle, GFS le liste et le rouvre.
 import { createServer } from 'node:http';
 import { serve } from './lab-server.mjs';
 import { chromium, say, check } from './lab-common.mjs';
@@ -24,7 +27,7 @@ const ME = 'essai@example.com';
 const BIN = 'GFS_Corbeille';
 const FILING = 'GFS_Rangement';
 const APP_URL = `http://127.0.0.1:${PAGE_PORT}/prototype/apps/publipostage/`;
-// Le registre de l'app à b32f450 pour les tables que GFS lit : [table d'avant, table anglaise, [[colonne d'avant, colonne anglaise]…]].
+// Le registre de l'app (b32f450, inchangé à a6465c1) pour les tables que GFS lit : [table d'avant, table anglaise, [[colonne d'avant, colonne anglaise]…]].
 const RENAMES = [
   ['Publipostage_Modeles', 'Publipostage_Templates', [['Nom', 'Name'], ['Contenu', 'Content'], ['TypeModele', 'TemplateType'], ['DateModif', 'ModifiedAt'], ['ModifiePar', 'ModifiedBy'], ['Jeton', 'Token'],
     ['EstParDefaut', 'IsDefault']]],
@@ -207,6 +210,82 @@ async function playRealApp(run) {
   await shot(frame, `${TAG}-2-app`);
 }
 
+
+// ----- 7. Dans GFS, la vraie app ne renomme rien (a6465c1 : `isHostedByGfs()` coupe sa reprise, le courtier refuse RenameColumn et ModifyColumn) : le document garde ses noms d'avant, elle et GFS le lisent tel quel.
+async function playHostedKeepsNames(run) {
+  const { page, frame } = run;
+  say('--- 7. dans GFS, la vraie app laisse le document aux noms d\'avant ---');
+  for (const [legacyTable, englishTable, columns] of RENAMES) {
+    await apply(run, [...columns.map(([from, to]) => ['RenameColumn', englishTable, to, from]), ['RenameTable', englishTable, legacyTable]]);
+  }
+  await reload(run);
+  await goHome(frame);
+  const before = sorted(await fileNames(frame));
+  const foldersBefore = await frame.locator('.ls-row.folder .t').allInnerTexts();
+  const starBefore = await frame.locator('.ls-row .rb.pin.on').count();
+  const legacy = await run.rest.tables();
+  check('témoin : le document est aux noms d\'avant, GFS montre ses modèles, ses dossiers et ses étoiles', legacy.includes('Publipostage_Modeles') && !legacy.includes(MODELS) && before.length >= 3 && starBefore >= 1, [before, starBefore]);
+  await rowOf(frame, 'Contrat de prestation').dblclick();
+  const appFrame = () => page.frames().find(each => each.url().startsWith(APP_URL) && !each.isDetached());
+  const opened = await waitFor(page, 'l\'app montre le modèle', async () => { const each = appFrame(); return Boolean(each) && await each.evaluate(() => document.getElementById('template-name').value === 'Contrat de prestation').catch(() => false); }, 60000);
+  check('la vraie app ouvre le modèle d\'un document aux noms d\'avant', opened);
+  await page.waitForTimeout(8000);
+  const tables = await run.rest.tables();
+  check('hébergée par GFS, elle ne renomme rien (sa reprise attend une ouverture hors de GFS) : les tables gardent leurs noms d\'avant, aucune table anglaise ne naît à côté',
+    tables.includes('Publipostage_Modeles') && tables.includes('Publipostage_PreferencesModeles') && !tables.includes(MODELS) && !tables.includes(PREFS), tables);
+  await reload(run);
+  await goHome(frame);
+  check('GFS rechargé montre les mêmes modèles, les mêmes dossiers et les mêmes étoiles', same(sorted(await fileNames(frame)), before) &&
+    same(await frame.locator('.ls-row.folder .t').allInnerTexts(), foldersBefore) && await frame.locator('.ls-row .rb.pin.on').count() === starBefore, [sorted(await fileNames(frame)), before]);
+  const lines = (await run.rest.rows(FILING)).filter(row => row.App === 'publipostage');
+  check('GFS_Rangement ne garde rien de Publipostage+ : le rangement de l\'app fait foi', lines.length === 0, lines);
+  await shot(frame, `${TAG}-3-noms-d-avant-dans-gfs`);
+}
+
+// ----- 8. Un document neuf pour l'app : les tables naissent sous les noms anglais.
+async function playBornEnglish(run) {
+  const { page, frame } = run;
+  say('--- 8. un document neuf : la vraie app crée ses tables sous les noms anglais ---');
+  const own = (await run.rest.tables()).filter(name => /^Publipostage_/.test(name));
+  await apply(run, own.map(name => ['RemoveTable', name]));
+  await reload(run);
+  await goHome(frame);
+  check('plus aucune table de l\'app dans le document : GFS ne montre aucun modèle de Publipostage+ et n\'en crée aucune', !(await run.rest.tables()).some(name => /^Publipostage_/.test(name)) &&
+    (await rowOf(frame, 'Contrat de prestation').count()) === 0, await run.rest.tables());
+  await frame.locator('.btn.primary').click();
+  await frame.locator('.menu').waitFor();
+  await frame.locator('.menu-item', { hasText: /^\s*Document\s*$/ }).first().click();
+  const appFrame = () => page.frames().find(each => each.url().startsWith(APP_URL) && !each.isDetached());
+  await waitFor(page, 'l\'app demande de créer ses tables', async () => Boolean(appFrame()), 60000);
+  const create = appFrame().getByRole('button', { name: /Create the tables|Créer les tables/ });
+  await create.first().waitFor({ timeout: 60000 });
+  await create.first().click();
+  await appFrame().locator('#editor-container .ProseMirror').waitFor({ timeout: 60000 });
+  await page.waitForTimeout(2500);
+  const born = await run.rest.tables();
+  const english = born.filter(name => /^Publipostage_/.test(name));
+  check('la vraie app a créé ses tables sous les noms anglais, aucune sous un nom d\'avant', english.includes(MODELS) && english.includes(PREFS) && !english.some(name => /^Publipostage_(Modeles|PreferencesModeles|Commentaires)$/.test(name)), english);
+  const born1 = (await run.rest.columns(MODELS)).map(column => column.id);
+  check('les colonnes de `Publipostage_Templates` sont les anglaises (`Name`, `Content`, `TemplateType`, `ModifiedAt`)', ['Name', 'Content', 'TemplateType', 'ModifiedAt'].every(id => born1.includes(id)) && !born1.includes('Nom'), born1);
+  await appFrame().locator('#editor-container .ProseMirror').click();
+  await page.keyboard.type('Écrit dans un document neuf', { delay: 15 });
+  await appFrame().locator('#btn-rename-template').click();
+  await page.keyboard.type('Né en anglais', { delay: 20 });
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(500);
+  await appFrame().locator('#btn-save').click();
+  await waitFor(page, 'le modèle est enregistré', async () => Boolean(byName(await run.rest.rows(MODELS), 'Né en anglais')), 30000);
+  const saved = byName(await run.rest.rows(MODELS), 'Né en anglais');
+  check('l\'app enregistre le modèle dans `Publipostage_Templates`, sous `Name`', Boolean(saved) && /Écrit dans un document neuf/.test(String(saved.Content)), saved && saved.id);
+  await reload(run);
+  await goHome(frame);
+  check('GFS liste le modèle d\'un document né anglais et le rouvre dans la vraie app', (await rowOf(frame, 'Né en anglais').count()) === 1, await fileNames(frame));
+  await rowOf(frame, 'Né en anglais').dblclick();
+  const opened = await waitFor(page, 'l\'app rouvre le modèle', async () => { const each = appFrame(); return Boolean(each) && await each.evaluate(() => document.getElementById('template-name').value === 'Né en anglais').catch(() => false); }, 60000);
+  check('l\'app rouvre ce modèle (son nom et son texte)', opened && /Écrit dans un document neuf/.test(await appFrame().evaluate(() => document.querySelector('.ProseMirror').textContent)));
+  await shot(frame, `${TAG}-4-ne-en-anglais`);
+}
+
 const server = await requireServer();
 const pages = createServer(serve(process.env.REPO_DIR, undefined, openConnectIn(/prototype[/\\]transfer[/\\]index\.html$/))).listen(PAGE_PORT, '127.0.0.1');
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
@@ -220,6 +299,8 @@ try {
   await playTrash(run);
   await playBeforeRename(run);
   await playRealApp(run);
+  await playHostedKeepsNames(run);
+  await playBornEnglish(run);
   const unexpected = run.problems.filter(problem => !run.allow.some(known => known.test(problem)));
   check('aucune erreur ni avertissement de GFS dans la console (hors les refus de la politique que l\'essai a posés lui-même)', unexpected.length === 0, unexpected);
 } finally {

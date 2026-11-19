@@ -115,11 +115,25 @@ test('le rapport exporté garde ce que les apps déclarent, marqué non vérifi�
   assert.equal(JSON.parse(reportText('cdx', { rows: [], carried, surveyed: null, generated: 'g', serial: 's' })).components.length, 4);
 });
 
-test('Publipostage+ déclare ce qu\'il charge lui-même : l\'éditeur et l\'API de Grist au démarrage, les sept bibliothèques d\'export au premier usage', () => {
+test('Publipostage+ déclare ce qu\'il charge lui-même (sa section du 18/11, consigne 081) : l\'éditeur et l\'API de Grist au démarrage, les sept bibliothèques d\'export et les polices du PDF au premier usage, deux familles de polices en option', () => {
   const portees = manifest('publipostage').portees;
   assert.deepEqual(validateManifest(manifest('publipostage')).errors, []);
   assert.deepEqual(portees.filter(entry => entry.quand === 'demarrage').map(entry => entry.id), ['tiptap', 'grist-api']);
-  assert.deepEqual(portees.filter(entry => entry.quand === 'usage').map(entry => entry.paquet).sort(),
-    ['docx', 'exceljs', 'jszip', 'marked', 'pdf-lib', 'pdfmake', 'qrcode-generator']);
+  assert.deepEqual(portees.filter(entry => entry.quand === 'usage').map(entry => entry.id).sort(),
+    ['docx', 'exceljs', 'jszip', 'marked', 'pdf-lib', 'pdfmake', 'polices-pdf', 'qrcode-generator']);
+  assert.deepEqual(portees.filter(entry => entry.quand === 'option').map(entry => entry.id), ['polices-libres', 'marianne']);
+  assert.equal(portees.find(entry => entry.id === 'docx').adresse, 'https://cdn.jsdelivr.net/', 'docx est sur jsDelivr, pas sur cdnjs (la page de l\'app le dit)');
+  assert.equal(portees.find(entry => entry.id === 'polices-pdf').adresse, 'https://lombre33.github.io/publipostageGrist/', 'rangées avec l\'app : son propre site');
   assert.deepEqual(portees.find(entry => entry.id === 'tiptap').contient, ['ProseMirror', 'floating-ui', 'prosemirror-suggest-changes', 'linkifyjs']);
+});
+
+test('Grist-BI, Form+ et Automation+ déclarent ce qu\'ils chargent eux-mêmes (leurs sections du 18/11, consignes 023, 035 et 022) ; le kit n\'y est pas : c\'est du code de GFS', () => {
+  for (const id of ['bi', 'form', 'automation']) assert.deepEqual(validateManifest(manifest(id)).errors, [], id);
+  const ids = id => manifest(id).portees.map(entry => entry.id);
+  assert.deepEqual(ids('bi'), ['echarts', 'exceljs', 'duckdb-wasm', 'pptxgenjs', 'grist-api']);
+  assert.deepEqual(ids('form'), ['grist-api', 'leaflet', 'tuiles-openstreetmap', 'qrcodejs']);
+  assert.deepEqual(ids('automation'), ['grist-api'], 'Automation+ : le script de Grist et rien d\'autre');
+  assert.equal(manifest('form').portees.find(entry => entry.id === 'leaflet').quand, 'option', 'Leaflet est inactive tant que la carte n\'est pas activée');
+  assert.equal(manifest('bi').portees.find(entry => entry.id === 'duckdb-wasm').quand, 'usage', 'DuckDB-WASM (34 Mo) : jamais à l\'ouverture');
+  for (const id of ['publipostage', 'bi', 'form', 'automation']) assert.ok(!manifest(id).portees.some(entry => entry.id === 'kit'), `${id} : pas de ligne « kit »`);
 });

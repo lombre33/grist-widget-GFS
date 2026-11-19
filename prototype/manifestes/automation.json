@@ -24,7 +24,7 @@
   },
   "icone": "bolt",
   "entree": "index.html",
-  "ouverture": { "fichier": false, "nouveau": false },
+  "ouverture": { "fichier": false, "nouveau": false, "modele": true },
   "tables": { "prefixe": "Automation_" },
   "reglages": ["workflow"],
   "arrivee": { "table": "Automation", "colonne": "Table", "lignes": { "Type": "Workflow" } },
@@ -39,5 +39,10 @@
       }
     }
   },
+  "portees": [
+    { "id": "grist-api", "nom": "API de Grist", "adresse": "https://docs.getgrist.com/", "quand": "demarrage",
+      "note": { "fr": "Le script de l’API des widgets de Grist : indispensable pour parler au document, demandé à cette adresse, sans copie dans l’app.",
+        "en": "The script of Grist’s widget API: needed to talk to the document, asked for at this address, with no copy in the app." } }
+  ],
   "actions": { "ouvrir": [], "choisir": [] }
 }

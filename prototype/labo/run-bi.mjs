@@ -18,8 +18,8 @@ const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
 const run = `bi-${lang}-${scheme}`;
 const WORDS = lang === 'fr'
-  ? { report: /^Rapport BI/, label: 'Rapport BI', untitled: '(sans nom)', provisional: /Provisoire/ }
-  : { report: /^BI report/, label: 'BI report', untitled: '(untitled)', provisional: /Provisional/ };
+  ? { report: /^Rapport BI/, label: 'Rapport BI', untitled: '(sans nom)', provisional: /Provisoire/, createPage: 'Créer la page' }
+  : { report: /^BI report/, label: 'BI report', untitled: '(untitled)', provisional: /Provisional/, createPage: 'Create page' };
 const BI_URL = /(apps\/bi|Grist-BI)\//;
 const CONFIG = 'BI_Dashboard_Config';
 
@@ -110,16 +110,21 @@ const started = seen.langue;
 
 // ----- 3. Le choix de sa table de travail n'écrit pas de ligne ; la ligne de configuration naît au premier geste (« + Page »), avec le nom « Rapport BI 1 ».
 if (started) {
+  // Depuis la refonte de l'app (19/11), le choix de la table est dans la fenêtre « Données » de la pastille de la barre (`#data-pill`).
+  await app.locator('#data-pill').click();
   await app.locator('#table-select').click();
   await app.locator('#table-select').fill('Clients');
   await page.waitForTimeout(500);
   await page.keyboard.press('Enter');
   await page.waitForTimeout(5000);
+  if (await app.locator('#data-popover').isVisible()) await app.locator('#data-pill').click();
   const beforeGesture = await configState();
   const createdBefore = (await listTables()).filter(name => !tablesBefore.includes(name));
   say('avant tout geste : tables créées par l\'app :', JSON.stringify(createdBefore), 'configuration :', JSON.stringify(beforeGesture));
   check('choisir la table de travail sans rien faire de plus n\'écrit aucune ligne de configuration (la table de configuration n\'existe pas encore)', beforeGesture.table === false, beforeGesture);
   await app.locator('#add-page').click();
+  // Depuis la refonte de l'app (19/11), « + Page » ouvre une fenêtre « Nouvelle page » : le geste qui crée la page est « Créer la page ».
+  await app.getByRole('button', { name: WORDS.createPage }).click();
   await page.waitForTimeout(6000);
   const tables = await listTables();
   const created = tables.filter(name => !tablesBefore.includes(name));

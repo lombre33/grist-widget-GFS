@@ -19,7 +19,10 @@ export const SQL = {
   // attente comprises.
   stored: 'SELECT COALESCE(SUM(LENGTH(data)), 0) AS octets FROM _gristsys_Files',
   // Les pièces jointes comme Grist les compte pour sa limite (`DocStorage.js` de la 1.7.19) : une par empreinte, sans les supprimées, à la plus grande taille.
-  counted: 'SELECT COALESCE(SUM(len), 0) AS octets FROM (SELECT CASE WHEN files.storageId IS NOT NULL THEN MAX(meta.fileSize) ELSE MAX(LENGTH(files.data)) END AS len FROM _gristsys_Files AS files JOIN _grist_Attachments AS meta ON meta.fileIdent = files.ident WHERE meta.timeDeleted IS NULL GROUP BY meta.fileIdent)',
+  // Sans `CASE WHEN` : le pare-feu devant le Grist de la DINUM refuse en 403, sans en-tête CORS, toute lecture dont le corps contient ces mots (relevé de Sync+
+  // le 18/11, faits vérifiés 136) ; une valeur de 0 ou de 1 par ligne dit la même chose (comparé à l'ancienne lecture sur 300 jeux de pièces jointes au
+  // hasard : aucun écart).
+  counted: 'SELECT COALESCE(SUM(len), 0) AS octets FROM (SELECT COALESCE(MAX(meta.fileSize), 0) * (files.storageId IS NOT NULL) + COALESCE(MAX(LENGTH(files.data)), 0) * (files.storageId IS NULL) AS len FROM _gristsys_Files AS files JOIN _grist_Attachments AS meta ON meta.fileIdent = files.ident WHERE meta.timeDeleted IS NULL GROUP BY meta.fileIdent)',
   tables: 'SELECT tableId FROM _grist_Tables ORDER BY tableId',
   // Le poids exact d'une table : ses pages moins l'espace libre (ce que Grist compte pour les données). `name` est celui d'une table ; 150 ms pour 461 Mo.
   table: name => `SELECT COALESCE(SUM(pgsize - unused), 0) AS octets FROM dbstat WHERE name = '${name}'`,

@@ -3,12 +3,13 @@
 // (faits vérifiés 133), réduites à ce qui compte.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parsePolicy, sourcesOf, kindOf, gradeS1, gradeS2, gradeS3, gradeS4, permitted } from '../js/apps/security-policy.js';
 import { readPage, scanCode, scanRelay, parseState } from '../js/apps/security-page.js';
 import { gradeApp, gradeS5, gradeS7, gradeS8, gradeS9, RULES } from '../js/apps/security-rules.js';
-import { controle, checkSecurite, fingerprintOf, SECURITE_FILE } from '../outils/controle-securite.mjs';
+import { controle, checkSecurite, fingerprintOf, walk, SECURITE_FILE } from '../outils/controle-securite.mjs';
 import { ROOT } from '../outils/bibliotheques.mjs';
 
 const GRIST_API = 'https://docs.getgrist.com/grist-plugin-api.js';
@@ -275,4 +276,24 @@ test('la tâche hebdomadaire : un lundi, les sous-modules lus, les empreintes re
   assert.doesNotMatch(text, /git push[^\n]*(publipostage|FormPlus|GRIST_automation|Grist-BI|grist-factory)/i, 'rien ne part vers un dépôt d\'app');
   assert.match(text, /git push origin HEAD:main/, 'la date seule : un commit direct');
   assert.match(text, /gh pr create/, 'un vrai changement : une demande de fusion');
+});
+
+test('le code lu est celui que l\'app écrit : le dossier `kit/` de sa racine n\'en fait pas partie (S8 et S5 ne se lisent pas dans le kit de GFS), un autre dossier `kit` plus bas si', () => {
+  const root = mkdtempSync(join(tmpdir(), 'gfs-walk-'));
+  try {
+    mkdirSync(join(root, 'kit', 'js'), { recursive: true });
+    mkdirSync(join(root, 'kit', 'test'), { recursive: true });
+    mkdirSync(join(root, 'js', 'kit'), { recursive: true });
+    writeFileSync(join(root, 'kit', 'js', 'violations.js'), 'export function createViolations() {}');
+    writeFileSync(join(root, 'kit', 'test', 'a.test.mjs'), "const x = 'https://cdn.jsdelivr.net/npm/exemple@1.0.0/x.js';");
+    writeFileSync(join(root, 'js', 'gfs.js'), "import '../kit/js/gfs-link.js';");
+    writeFileSync(join(root, 'js', 'kit', 'b.js'), 'export const b = 1;');
+    writeFileSync(join(root, 'index.html'), '<html></html>');
+    const files = Object.keys(walk(root)).map(path => path.slice(root.length + 1)).sort();
+    assert.deepEqual(files, ['index.html', 'js/gfs.js', 'js/kit/b.js']);
+    assert.equal(scanRelay(walk(root)), false, 'le relais du kit ne rend pas S8 « tenue » à une app qui ne le démarre pas');
+    assert.deepEqual(scanCode(walk(root)), [], 'les adresses d\'exemple du kit ne rendent pas S5 « non tenue »');
+    writeFileSync(join(root, 'js', 'gfs.js'), "import '../kit/js/violations-start.js';");
+    assert.equal(scanRelay(walk(root)), true, 'le relais que l\'app démarre se lit dans son propre code');
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });

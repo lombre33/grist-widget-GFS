@@ -14,7 +14,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { ROOT } from './bibliotheques.mjs';
 import { integrity } from '../kit/outils/bibliotheques/primitives.mjs';
@@ -166,11 +166,15 @@ async function fetchWith(url, wantText) {
 
 const getText = async url => (await fetchWith(url, true)).text;
 
-function walk(dir, found = {}) {
+// Le code que l'app écrit : `kit/` (le sous-module du kit de GFS, au même commit que prototype/kit) n'en fait pas partie. Lu, il rendait S8 « tenue » pour toute app
+// dont le kit est de la 0.25.0 ou après (ses fichiers `violations*.js`) et S5 « non tenue » pour les adresses d'exemple de son outil de miroir et de ses essais
+// (retour d'Automation+ du 19/11) ; le relais que l'app démarre se lit dans SON code (`import '…/kit/js/violations-start.js'`), pas dans le kit.
+export function walk(dir, found = {}, root = dir) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
-    if (entry.isDirectory() && !SKIP_DIRS.has(entry.name)) walk(path, found);
-    else if (entry.isFile() && /\.(m?js|html)$/.test(entry.name) && statSync(path).size < MAX_FILE) found[path] = readFileSync(path, 'utf8');
+    if (entry.isDirectory()) {
+      if (!SKIP_DIRS.has(entry.name) && relative(root, path) !== 'kit') walk(path, found, root);
+    } else if (entry.isFile() && /\.(m?js|html)$/.test(entry.name) && statSync(path).size < MAX_FILE) found[path] = readFileSync(path, 'utf8');
   }
   return found;
 }

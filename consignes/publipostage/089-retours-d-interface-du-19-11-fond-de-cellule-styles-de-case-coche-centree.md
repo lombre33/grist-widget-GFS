@@ -1,0 +1,31 @@
+# 089 · Retours d'interface du 19/11 : le fond de cellule en pot de peinture, trois styles de case qui montrent leur rendu coché, une coche centrée
+
+App : Publipostage+ (`lombre33/publipostageGrist`) · posée le 19/11/2026 · retours d'interface du porteur du 19/11 (trois captures) · rien à changer dans GFS
+quand : à lire au prochain lot, sans urgence ; des icônes et un peu de CSS ; vaut dans GFS et seule
+
+## Quoi
+
+Trois retours du porteur en essayant l'éditeur sous GFS, tous sur des icônes ou des dessins de l'éditeur.
+
+**1. Fond de cellule : un pot de peinture, et un bouton qui se voit actif.** Dans la barre flottante du tableau, le bouton « Fond de cellule (remplir) » (`#v2-table-fill-btn`, `js/floating-toolbars.js`, lignes 219 et 220) donne l'impression d'être grisé alors qu'il ne l'est pas.
+- *L'icône.* `fill` dans `js/icons.js` (ligne 145) est une goutte et un trait : cela se lit « liquide », pas « peindre le fond de la case ». Un pot de peinture (un pot qui verse), au trait comme les autres icônes (viewBox 24, `currentColor`). Attention : `Icons.svg('fill')` sert aussi à la ligne « Personnalisé… » des menus de couleur (`js/color-palette.js`, ligne 57). Une icône = une fonction (charte, section 1) : « Personnalisé… » ne prend pas le pot ; elle garde la goutte sous un autre nom, ou a la sienne.
+- *Le bouton se voit actif.* D'après ton code (une lecture de GFS, pas une mesure à l'écran) : quand la case n'a pas de fond, `setColorBar` (`js/editor-core.js`) met la pastille `.v2-fill-bar` à `transparent`, et il ne reste que son contour à 8 % de noir (`css/editor-v2.css`, ligne 925) : un petit tiret pâle à côté de l'icône, que l'œil prend pour un bouton éteint, alors que « Bordures », juste à côté, est franc. Demande : la pastille se voit toujours, sans fond comme avec un fond (par exemple un contour au ton du texte, ou une barre barrée pour « aucun fond » ; le choix est à toi), et le bouton ne se lit plus comme un grisé. Mesure l'écran avant et après, à la vraie souris, en clair et en sombre : si la cause n'est pas celle-là, dis laquelle.
+- *Le même bouton ailleurs.* La barre du cadre libre construit ses boutons de fond et de trait avec la même pastille (`js/free-frame-toolbar.js`, ligne 30) : si le défaut y est le même, la même correction.
+
+**2. Les trois icônes de case à cocher montrent le rendu une fois cochée.** Dans la barre des listes, les trois boutons (`checklistAccentStrike`, `checklistClassic`, `checklistAccentPlain`, `js/icons.js`, lignes 54 à 56) dessinent un petit carré de 7 sur 7 dans un cadre de 24, avec sa coche et un tiret : à 16 px, le trait de 2 a rempli le carré (sur la capture du porteur, ce sont trois petits carrés pleins, le premier en bleu parce qu'il est actif, la coche à peine lisible), et ce qui les distingue est un coin arrondi et la longueur du tiret. Ils ne ressemblent pas à ce que la liste dessine une fois cochée (`css/editor-v2.css`, lignes 48 à 79). Demande : chaque icône montre **son rendu coché**, tel que le document le dessine :
+- « accent, texte barré » (le défaut) : case pleine à la couleur d'accent, coche en réserve, et à côté une ligne de texte **barrée et grisée** ;
+- « accent, texte normal » : la même case pleine, et une ligne de texte **normale** ;
+- « classique » : case carrée à contour, intérieur blanc, coche franche, et une ligne de texte normale.
+Une icône au trait n'a qu'une couleur : la coche en réserve dans une case pleine se dessine par un masque ou un tracé évidé, pas par une seconde couleur écrite en dur (charte : couleurs par les jetons). La case doit être assez grande pour que la coche se lise à 16 px. Si le choix du style d'une variable Oui / Non (`js/variable-format.js`) reprend ces trois icônes, la même correction.
+
+**3. La coche de la case cochée est centrée.** Sur la capture du porteur (style classique, la seule case que tu dessines à la main : `css/editor-v2.css`, lignes 63 à 75, coche en `::after` posée à `left: 3px; top: -1px`, pivotée), la coche est un peu haute et un peu à gauche : à vue sur la capture, environ un pixel en haut et un demi-pixel à gauche pour une case de 15 px. Demande : la coche tombe au milieu de la case, mesurée dans Firefox (le navigateur du porteur) et dans Chromium, dans l'éditeur et en Lecture (`.reader-content`). Les deux styles d'accent sont des cases natives du navigateur : ils ne sont pas concernés. Si tu bouges la coche de l'éditeur, vérifie que le PDF la place au même endroit (`taskCheckboxCanvas`, `js/pdf-export.js`, dont ton fichier règle déjà la position sur celle de l'éditeur) ; même vérification pour les cases dessinées à la main d'une variable Oui / Non.
+
+Ce que cette consigne ne demande pas : un autre menu, une autre palette, un nouveau texte (les `title` des boutons ne changent pas), ni un quatrième style de case.
+
+## Pourquoi
+
+Le porteur, en trois phrases du 19/11. Sur le fond de cellule : « l'icône pour la couleur de fond des colonnes donne l'impression d'être grisée alors que non. Revoir son icône avec un pot de peinture et mieux la faire ressortir ». Sur les cases : « les icônes du style des 3 cases à cocher ne correspondent pas à ce à quoi elle ressemble : à corriger avec une icône qui montre fidèlement le style une fois cochée ». Sur la coche : « la tick ne semble pas super centrée ». Dans la suite, le gris veut dire « pas disponible » (`aria-disabled`, et un clic explique pourquoi : charte, « grisé, jamais masqué ») : un bouton actif qui se lit comme grisé est le piège inverse, la personne n'ose plus cliquer. Et une icône de style qui ne montre pas le style oblige à essayer chacun pour savoir.
+
+## Fait quand
+
+Le bouton de fond de cellule porte un pot de peinture, « Personnalisé… » garde son icône, et avec une case sans fond la pastille se voit (contraste de 4,5:1 contre la barre, en clair et en sombre, mesuré) ; les trois icônes de case se distinguent d'un coup d'œil à 16 px et montrent chacune son rendu coché (pleine ou à contour, texte barré ou non) ; la coche de la case classique est centrée, mesurée dans Firefox et dans Chromium ; ta page `GFS-ETAT.md` le dit (une ligne dans « Changements qui touchent GFS » avec la date et le commit, et ta ligne « Consignes » : « 089 · faite » avec le commit). GFS lit le dépôt de ton app (`js/icons.js`, `css/editor-v2.css`), puis passe cette consigne à « faite ».

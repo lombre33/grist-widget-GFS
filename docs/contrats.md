@@ -152,8 +152,13 @@ L'app (sous-cadre sans allow-same-origin)
    à son parent et à ses voisins (`parent.frames[i]`) ; `event.origin` y vaut `"null"` mais `event.source` identifie le cadre.
 3. [T] Dans l'app, le kit enregistre, avant le script d'API de Grist, une garde du même genre : tout message dont la source
    n'est pas `window.parent` est jeté. Sans elle, un cadre voisin parle au script d'API de l'app (mesuré).
-4. [T] Les messages partent avec `targetOrigin "*"` dans les deux sens (une origine opaque ne peut pas être visée).
-   L'identification se fait par `event.source`, jamais par `event.origin`.
+4. [T] Les messages partent avec `targetOrigin "*"` de GFS vers l'app (une origine opaque ne peut pas être visée).
+   **De l'app vers GFS (kit 0.27.0, 19/11)** : la demande de `contexte` (le premier message, sans donnée) part à `"*"`, l'app ne
+   sachant pas encore d'où elle est cadrée ; dès le premier message valide de GFS (venu du cadre parent, au contrat de GFS), l'app
+   retient `event.origin` (un `http(s)://hôte` sans chemin ; `"null"`, une adresse avec chemin ou rien ne sont pas retenus) et ses
+   envois suivants la visent : le navigateur jette un message que le cadre parent, passé à une autre origine, ne devrait pas lire.
+   [M] Chromium, Firefox 160 et un vrai Grist (faits vérifiés 138). L'identification se fait par `event.source`, jamais par
+   `event.origin` : l'origine retenue ne sert qu'à viser.
 
 ### 1.3 Le sous-cadre
 

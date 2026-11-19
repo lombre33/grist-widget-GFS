@@ -25,7 +25,9 @@ const NO_ONCLOSE = { chemin: '/prototype/apps/bi/js/main-core.js', de: "GfsLink.
 const lab = await startLab({ lang, colorScheme: scheme, patches: WITHOUT ? [DEBOUNCE, NO_ONCLOSE] : [DEBOUNCE] });
 const { page } = lab;
 const warnings = [];
-page.on('console', message => { if (message.type() === 'warning' && isGfsWarning(message.text())) warnings.push(message.text()); });
+// Les deux refus du rangement des pages de Grist-BI (`_grist_Pages`, `_grist_Views_section`) sont attendus tant que le porteur n'a pas répondu à la carte (voir run-bi.mjs).
+const PAGES_PENDING = /_grist_(Pages|Views_section) non déclarée/;
+page.on('console', message => { if (message.type() === 'warning' && isGfsWarning(message.text()) && !PAGES_PENDING.test(message.text())) warnings.push(message.text()); });
 // (L'app d'avant la refonte du 19/11 ajoutait la page par `prompt()` ; la fenêtre de l'app la remplace.)
 page.on('dialog', dialog => dialog.accept('Pause').catch(() => {}));
 await lab.fitPanel(undefined, 700, 400);

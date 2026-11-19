@@ -28,10 +28,15 @@ const FIRST = { title: 'Inscription à une formation', question: 'Ville de dépa
 const SECOND = { title: 'Demande de matériel', question: 'Matériel demandé' };
 const FORM_URL = /(apps\/form|FormPlus)\//;
 // Le Grist du labo est en http : la politique de l'app (`connect-src 'self' https:`) refuse sa lecture de /forms/N, ce que Grist en ligne (https) laisse passer. Propre au labo.
-const LAB_ONLY = /Content Security Policy|Refused to connect/;
+// L'adresse du Grist du labo ajoutée à `connect-src` (ci-dessus), le navigateur ne refuse plus l'appel par la politique mais par CORS : grist-static ne sert pas la route des formulaires.
+const LAB_ONLY = /Content Security Policy|Refused to connect|blocked by CORS policy/;
 const LAB_GRIST = /127\.0\.0\.1:8910\/o\/docs\/api\/s\/LABO\/forms\/\d+/;
 
-const lab = await startLab({ lang, colorScheme: scheme });
+// Depuis le 19/11 (672a552, consigne 037 de GFS) la politique de poc/widget.html n'ouvre `connect-src` qu'à 'self' et à `https:` : le Grist du labo (grist-static, http://127.0.0.1:8910)
+// est en http, l'appel au formulaire natif serait bloqué (et GFS le dirait, relais S8, ce que l'essai ne mesure pas ici). Comme le banc de Form+ (« seule l'origine HTTP du Grist de
+// test ajoutée »), l'essai ajoute cette origine-là, et elle seule. Un vrai Grist est en https.
+const LAB_CONNECT = { chemin: '/prototype/apps/form/poc/widget.html', de: "connect-src 'self' https:;", vers: "connect-src 'self' https: http://127.0.0.1:8910;" };
+const lab = await startLab({ lang, colorScheme: scheme, patches: [LAB_CONNECT] });
 const { page } = lab;
 const warnings = [];
 const errors = [];

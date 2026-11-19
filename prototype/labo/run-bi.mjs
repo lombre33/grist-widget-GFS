@@ -27,8 +27,12 @@ const lab = await startLab({ lang, colorScheme: scheme });
 const { page } = lab;
 const warnings = [];
 const errors = [];
+// Le rangement des pages de Grist-BI (0d39c4b, `js/internal-pages.js`) lit `_grist_Pages` et `_grist_Views_section` : GFS ne les déclare pas avant le mot du porteur (19/11,
+// carte « ranger ses trois pages »), le courtier refuse et l'app attrape le refus. Ces deux refus-là sont attendus ; toute autre alerte reste une alerte.
+const PAGES_PENDING = /_grist_(Pages|Views_section) non déclarée/;
+const pendingPages = [];
 page.on('console', message => {
-  if (message.type() === 'warning' && message.text().startsWith('GFS')) warnings.push(message.text());
+  if (message.type() === 'warning' && message.text().startsWith('GFS')) (PAGES_PENDING.test(message.text()) ? pendingPages : warnings).push(message.text());
   if (message.type() === 'error' && BI_URL.test(message.location().url || '')) errors.push(message.text());
 });
 page.on('pageerror', error => errors.push(error.message));
@@ -213,4 +217,5 @@ await watch(4000);
 const afterSecond = await configState();
 check('« Nouveau > Rapport BI » sans rien faire dans le rapport ne laisse aucun fichier de plus dans le document (consigne 009 de GFS : la ligne ne naît qu\'au premier geste)', afterSecond.rows.length === renamed.rows.length, afterSecond.rows.map(row => [row.TableId, row.Nom]));
 check('aucun avertissement de GFS' + (started ? ', aucune erreur de script dans l\'app' : ''), warnings.length === 0 && (!started || errors.length === 0), { avertissements: warnings, erreurs: errors });
+check('le rangement des pages de Grist-BI est refusé à la lecture, rien n\'est écrit (`_grist_Pages` et `_grist_Views_section` non déclarées, en attente du mot du porteur)', pendingPages.every(text => /fetchTable/.test(text)), pendingPages);
 await lab.browser.close();

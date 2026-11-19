@@ -253,7 +253,7 @@ test('lien public et journal : publicAccess dit le droit, « » s\'il est fermé
   assert.equal(await port({ 'GET anonymous': new TransferError('network', 'x') }).port.publicAccess(BASE), null);
   const run = port({ 'GET /sql': { status: 200, body: { records: [{ fields: { n: '3', last: 1700000000.5, raw: null } }] } } });
   assert.deepEqual(await run.port.journalStats('GFS_Journal_x', 'Recu', 'Type'), { n: 3, last: 1700000000.5, raw: 0 });
-  assert.match(run.transfer.asked[0].params.q, /^select count\(\*\) as n, max\("Recu"\) as last, sum\(case when "Type" is not null and "Type" != '' then 1 else 0 end\) as raw from "GFS_Journal_x"$/);
+  assert.match(run.transfer.asked[0].params.q, /^select count\(\*\) as n, max\("Recu"\) as last, sum\("Type" is not null and "Type" != ''\) as raw from "GFS_Journal_x"$/);
   assert.equal(await run.port.journalStats('Mauvais nom"; drop', 'a', 'b'), null, 'un nom de table qui n\'en est pas un ne part pas');
   assert.equal(run.transfer.asked.length, 1);
   assert.equal(await port({ 'GET /sql': http(400, 'no such table') }).port.journalStats('T', 'a', 'b'), null);

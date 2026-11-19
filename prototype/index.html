@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-APDuuDZP4xMzh0zg7Chk7HnDjaChrucXhk+9MgGqa/k='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-jKdPlC1u2Jcuxz01K2bPVXOIfIgqiOi9mMjvUKbl9TU='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=6c6e51caa4">
 <link rel="stylesheet" href="css/explorer.css?v=a1c7636359">
 <link rel="stylesheet" href="css/modules.css?v=db0f4eaa51">
@@ -224,7 +224,7 @@
     "./js/ui/search.js": "./js/ui/search.js?v=0921c92eb3",
     "./js/ui/tabs.js": "./js/ui/tabs.js?v=b412c3fcbc",
     "./js/weight/weight-control.js": "./js/weight/weight-control.js?v=9f56bb2a73",
-    "./js/weight/weight-reader.js": "./js/weight/weight-reader.js?v=5b2909ec19",
+    "./js/weight/weight-reader.js": "./js/weight/weight-reader.js?v=aacaa876ec",
     "./js/weight/weight-window.js": "./js/weight/weight-window.js?v=70b38075d2",
     "./js/weight/weight.js": "./js/weight/weight.js?v=e7a9477391",
     "./kit/js/ambiance-message.js": "./kit/js/ambiance-message.js?v=7578c9862c",
@@ -257,7 +257,7 @@
     "./kit/js/synchro/logic/codes.js": "./kit/js/synchro/logic/codes.js?v=2354701724",
     "./kit/js/synchro/logic/column-formulas.js": "./kit/js/synchro/logic/column-formulas.js?v=37b78d5020",
     "./kit/js/synchro/logic/common.js": "./kit/js/synchro/logic/common.js?v=6e8041af84",
-    "./kit/js/synchro/logic/consolidation.js": "./kit/js/synchro/logic/consolidation.js?v=844c2274b9",
+    "./kit/js/synchro/logic/consolidation.js": "./kit/js/synchro/logic/consolidation.js?v=5b65a596d9",
     "./kit/js/synchro/logic/descriptions.js": "./kit/js/synchro/logic/descriptions.js?v=340f6174a8",
     "./kit/js/synchro/logic/diagnostic.js": "./kit/js/synchro/logic/diagnostic.js?v=92b1191eb8",
     "./kit/js/synchro/logic/docformat.js": "./kit/js/synchro/logic/docformat.js?v=854d5c0edb",
@@ -268,7 +268,7 @@
     "./kit/js/synchro/logic/formulas.js": "./kit/js/synchro/logic/formulas.js?v=73bb54e2a3",
     "./kit/js/synchro/logic/health.js": "./kit/js/synchro/logic/health.js?v=396a10aadb",
     "./kit/js/synchro/logic/journal.js": "./kit/js/synchro/logic/journal.js?v=7b92012484",
-    "./kit/js/synchro/logic/keys.js": "./kit/js/synchro/logic/keys.js?v=8c693a1728",
+    "./kit/js/synchro/logic/keys.js": "./kit/js/synchro/logic/keys.js?v=e8ab9afcab",
     "./kit/js/synchro/logic/layout.js": "./kit/js/synchro/logic/layout.js?v=6ec3fba78c",
     "./kit/js/synchro/logic/links.js": "./kit/js/synchro/logic/links.js?v=4f979e97c1",
     "./kit/js/synchro/logic/lost.js": "./kit/js/synchro/logic/lost.js?v=b199ab48ba",
@@ -282,6 +282,7 @@
     "./kit/js/synchro/logic/reinforce.js": "./kit/js/synchro/logic/reinforce.js?v=43ea5c59b9",
     "./kit/js/synchro/logic/report.js": "./kit/js/synchro/logic/report.js?v=dd84fccbe1",
     "./kit/js/synchro/logic/resend.js": "./kit/js/synchro/logic/resend.js?v=4480446432",
+    "./kit/js/synchro/logic/rhythm.js": "./kit/js/synchro/logic/rhythm.js?v=361141728f",
     "./kit/js/synchro/logic/rules.js": "./kit/js/synchro/logic/rules.js?v=756a7781bd",
     "./kit/js/synchro/logic/schema.js": "./kit/js/synchro/logic/schema.js?v=7dbdefce02",
     "./kit/js/synchro/logic/strays.js": "./kit/js/synchro/logic/strays.js?v=7111fe7b44",
@@ -291,7 +292,7 @@
     "./kit/js/synchro/note-move.js": "./kit/js/synchro/note-move.js?v=49df9a6ed9",
     "./kit/js/synchro/pages.js": "./kit/js/synchro/pages.js?v=d4e9d9a9e1",
     "./kit/js/synchro/port.js": "./kit/js/synchro/port.js?v=582badc5e8",
-    "./kit/js/synchro/rest-port.js": "./kit/js/synchro/rest-port.js?v=ed98122817",
+    "./kit/js/synchro/rest-port.js": "./kit/js/synchro/rest-port.js?v=1eea7cf6ed",
     "./kit/js/synchro/source/actions.js": "./kit/js/synchro/source/actions.js?v=1f6e3c05b3",
     "./kit/js/synchro/source/estimate.js": "./kit/js/synchro/source/estimate.js?v=582828d5a0",
     "./kit/js/synchro/source/export.js": "./kit/js/synchro/source/export.js?v=f13b5ea709",
@@ -311,12 +312,12 @@
     "./kit/js/synchro/target/formulas.js": "./kit/js/synchro/target/formulas.js?v=57fd187e98",
     "./kit/js/synchro/target/journals.js": "./kit/js/synchro/target/journals.js?v=ca5763ec64",
     "./kit/js/synchro/target/layout.js": "./kit/js/synchro/target/layout.js?v=59464fc20c",
-    "./kit/js/synchro/target/loop.js": "./kit/js/synchro/target/loop.js?v=fab35ec39c",
+    "./kit/js/synchro/target/loop.js": "./kit/js/synchro/target/loop.js?v=c0cb5f28b0",
     "./kit/js/synchro/target/lost.js": "./kit/js/synchro/target/lost.js?v=d2cf32e033",
     "./kit/js/synchro/target/receive.js": "./kit/js/synchro/target/receive.js?v=4cfb0af6eb",
     "./kit/js/synchro/target/style.js": "./kit/js/synchro/target/style.js?v=245a1671e7",
-    "./kit/js/synchro/textes.js": "./kit/js/synchro/textes.js?v=c0110309d4",
-    "./kit/js/synchro/version.js": "./kit/js/synchro/version.js?v=3a1ed8753e",
+    "./kit/js/synchro/textes.js": "./kit/js/synchro/textes.js?v=ee2c3972ce",
+    "./kit/js/synchro/version.js": "./kit/js/synchro/version.js?v=51eff2e566",
     "./kit/js/theme.js": "./kit/js/theme.js?v=55b9ccfb58",
     "./kit/js/violations-message.js": "./kit/js/violations-message.js?v=58bb483682",
     "./kit/js/violations-pose.js": "./kit/js/violations-pose.js?v=42826f2d54",
@@ -425,7 +426,7 @@
 <link rel="modulepreload" href="./js/sharing/space-links.js?v=1f98c3b5f3">
 <link rel="modulepreload" href="./js/sharing/sharing-model.js?v=3e545c7ed2">
 <link rel="modulepreload" href="./js/rights/rights.js?v=e23059be21">
-<link rel="modulepreload" href="./js/weight/weight-reader.js?v=5b2909ec19">
+<link rel="modulepreload" href="./js/weight/weight-reader.js?v=aacaa876ec">
 <link rel="modulepreload" href="./js/apps/settings.js?v=487e0165e5">
 <link rel="modulepreload" href="./js/apps/natives.js?v=d61cf17735">
 <link rel="modulepreload" href="./js/apps/modules-model.js?v=c3fd60515a">

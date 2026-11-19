@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { dependencyRows, matchesFilter, summary, safeLink, FILTERS } from '../js/apps/dependencies-model.js';
+import { dependencyRows, matchesFilter, summary, safeLink, scopeRow, groupsOf, FILTERS } from '../js/apps/dependencies-model.js';
 import { licenceFit } from '../js/apps/licences.js';
 import { fingerprint, verifyCopy, verdict } from '../js/apps/dependencies-audit.js';
 import { readCatalogue } from '../js/apps/libraries.js';
@@ -166,4 +166,42 @@ test('les copies que GFS sert sont celles que le catalogue annonce : la vérific
   for (const row of rowsOf()) {
     for (const file of row.files) assert.equal((await verifyCopy(file, { readBytes, base })).state, 'ok', `${row.paquet} : ${file.copie.chemin}`);
   }
+});
+
+// Demande du porteur du 18/11 : « regroupé par app, par défaut seulement celles des apps activées, un panneau refermé pour les autres ».
+const USE = (app, what, state) => ({ app, appName: app.toUpperCase(), what, state, unit: null });
+const ROW = (paquet, uses) => ({ key: `${paquet}@1.0.0`, paquet, version: '1.0.0', uses, state: 'unused' });
+
+test('scopeRow : la ligne vue depuis une app ne parle que d\'elle (état, fonctions), nomme les autres apps et garde tous les usages', () => {
+  const row = ROW('x', [USE('a', 'Graphique', 'active'), USE('b', 'Export', 'ready')]);
+  const fromA = scopeRow(row, 'a');
+  assert.deepEqual([fromA.state, fromA.apps, fromA.functions, fromA.others, fromA.slot, fromA.scope], ['active', ['A'], ['Graphique'], ['B'], 'a|x@1.0.0', 'a']);
+  assert.equal(fromA.all.length, 2, 'l\'audit voit tous les usages');
+  assert.deepEqual(fromA.uses.map(use => use.app), ['a'], 'le choix de la source ne vaut que pour les fonctions de cette app');
+  const fromB = scopeRow(row, 'b');
+  assert.deepEqual([fromB.state, fromB.others, fromB.slot], ['ready', ['A'], 'b|x@1.0.0']);
+  const loose = scopeRow(ROW('y', []), null);
+  assert.deepEqual([loose.state, loose.uses, loose.others, loose.slot], ['unused', [], [], 'none|y@1.0.0']);
+});
+
+test('groupsOf : une section par app installée (par nom), les apps non installées puis ce qu\'aucune app ne demande à part, une bibliothèque sous chaque app qui l\'utilise', () => {
+  const groups = groupsOf([ROW('zlib', [USE('b', 'Export', 'ready')]), ROW('shared', [USE('a', 'Graphique', 'installed'), USE('b', 'Export', 'ready')]),
+    ROW('mine', [USE('a', 'Graphique', 'active')]), ROW('orphan', [])]);
+  assert.deepEqual(groups.map(group => [group.id, group.name, group.installed]), [['a', 'A', true], ['b', 'B', false], ['', null, false]]);
+  assert.deepEqual(groups[0].rows.map(row => `${row.paquet}:${row.state}`), ['mine:active', 'shared:installed'], 'les actives d\'abord, puis par nom');
+  assert.deepEqual(groups[1].rows.map(row => `${row.paquet}:${row.state}`), ['shared:ready', 'zlib:ready'], 'la bibliothèque commune est aussi sous l\'app non installée');
+  assert.deepEqual(groups[2].rows.map(row => row.paquet), ['orphan']);
+  assert.deepEqual(groupsOf([ROW('mine', [USE('a', 'Graphique', 'active')])]).map(group => group.id), ['a'], 'sans bibliothèque orpheline, pas de section « aucune app »');
+});
+
+test('les lignes de GFS rangées par app : Publipostage+ (installée) a les siennes, ce qu\'aucune app ne demande va au panneau refermé', () => {
+  const groups = groupsOf(rowsOf({ modules: modules() }));
+  const pub = groups.find(group => group.id === 'publipostage');
+  assert.ok(pub && pub.installed, 'Publipostage+ est installée');
+  assert.ok(pub.rows.every(row => row.uses.length && row.uses.every(use => use.app === 'publipostage')));
+  const loose = groups.find(group => group.id === '');
+  assert.ok(loose && !loose.installed && loose.rows.every(row => row.state === 'unused'), 'ce qu\'aucune app ne demande va avec les apps non installées');
+  assert.equal(new Set(groups.flatMap(group => group.rows.map(row => row.key))).size, rowsOf({ modules: modules() }).length, 'aucune bibliothèque ne manque');
+  const off = groupsOf(rowsOf({ modules: modules({ installed: false, checked: false }) })).find(group => group.id === 'publipostage');
+  assert.equal(off.installed, false, 'une app qui n\'est pas installée est dans le panneau refermé');
 });

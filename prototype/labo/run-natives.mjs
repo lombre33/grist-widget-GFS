@@ -1,6 +1,7 @@
 // Le choix « CDN ou copie figée » des bibliothèques natives d'une app (demande du porteur du 10/11, choix du 11/11 ; contrats 2.6 point 14, 5.2 point 12) dans un VRAI Grist (grist-static) avec la vraie
-// Publipostage+ : la vraie fenêtre « Apps et extensions », à 700 × 400, à la vraie souris (Playwright : événements du pointeur du navigateur, jamais dispatchEvent). Ce que Publipostage+ déclarera quand
-// elle lira le choix (`natives` dans son manifeste, quatre fonctions) est ajouté ICI au manifeste que GFS lit : le labo seul (`transform` de lab-server.mjs), le fichier du dépôt n'est pas touché.
+// Publipostage+ (référence a6465c1) : la vraie fenêtre « Apps et extensions », à 700 × 400, à la vraie souris (Playwright : événements du pointeur du navigateur, jamais dispatchEvent). Le manifeste est celui du
+// dépôt : les sept fonctions que le porteur a choisies le 18/11 (consigne 076) et l'éditeur. L'app charge ensuite sa fonction par `NativeLibs.load` (js/native-libs.js), qui lit la copie de GFS, la charge avec
+// son empreinte et, quand elle ne vaut pas (fausse empreinte, version en retard), le dit par `pp:nativeFallback`.
 // À mesurer : le détail se déplie, le geste sur Word s'écrit tout de suite dans la table de GFS (`modes`, jamais dans les réglages de la vue), l'app reçoit l'événement `extensions` avec `natives` (version,
 // adresse de la copie de GFS, empreinte ; jamais le CDN de GFS), le fichier servi a bien cette empreinte et le navigateur le charge en la contrôlant, `contexte` le rend à l'app qui le redemande, le retour
 // au CDN vide `natives`, et en lecture seule tout est grisé et rien ne s'écrit. L'éditeur a sa copie figée dans le dépôt de l'app : son choix s'écrit, ne change rien à l'app ouverte (aucun événement, pas de
@@ -22,24 +23,9 @@ const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
 const readonly = process.env.LAB_READONLY === '1';
 const run = `natives-${lang}-${scheme}${readonly ? '-lecture-seule' : ''}`;
-const GROUPS = [
-  { id: 'editeur', nom: { fr: 'Éditeur (TipTap)', en: 'Editor (TipTap)' }, copieDansApp: true, poids: 1172757 },
-  { id: 'pdf', nom: { fr: 'Export PDF (pdfmake, polices, JSZip)', en: 'PDF export (pdfmake, fonts, JSZip)' }, bibliotheques: [['pdfmake', '0.2.7'], ['pdfmake-polices', '0.2.7'], ['jszip', '3.10.1']] },
-  { id: 'word', nom: { fr: 'Export Word (docx)', en: 'Word export (docx)' }, bibliotheques: [['docx', '9.15.1'], ['docx-charts', '9.15.1']] },
-  { id: 'excel', nom: { fr: 'Export Excel (ExcelJS)', en: 'Excel export (ExcelJS)' }, bibliotheques: [['exceljs', '4.4.0']] },
-  { id: 'divers', nom: { fr: 'Divers (marked, QR code, pdf-lib)', en: 'Other (marked, QR code, pdf-lib)' }, bibliotheques: [['pdf-lib', '1.17.1'], ['marked', '15.0.12'], ['qrcode-generator', '1.4.4']] },
-].map(group => (group.bibliotheques ? { ...group, bibliotheques: group.bibliotheques.map(([id, version]) => ({ id, version })) } : group));
-
-// Le manifeste de Publipostage+ que GFS lit, avec ses quatre fonctions : tout le reste du site est servi tel quel.
-const transform = (file, bytes) => {
-  if (!/manifestes[/\\]publipostage\.json$/.test(file)) return bytes;
-  const manifest = JSON.parse(bytes.toString('utf8'));
-  manifest.natives = GROUPS;
-  return Buffer.from(JSON.stringify(manifest));
-};
 const servers = [
   createServer(serve(join(LAB, 'site'), { prefix: '/dist/', root: join(LAB, 'node_modules/grist-static/dist') })).listen(8910, '127.0.0.1'),
-  createServer(serve(REPO, { prefix: '/prototype/apps/publipostage/', root: PP }, transform)).listen(8911, '127.0.0.1'),
+  createServer(serve(REPO, { prefix: '/prototype/apps/publipostage/', root: PP })).listen(8911, '127.0.0.1'),
 ];
 
 const lab = await startLab({ lang, colorScheme: scheme, query: readonly ? 'readonly=true' : '' });
@@ -90,7 +76,7 @@ check('les bibliothèques natives sont une rubrique de la fiche, au CDN, détail
 await shot('1-replie');
 await frame.locator('.fp-libs details summary').click();
 s = await state();
-check('le détail se déplie à la souris : une ligne par fonction (l\'éditeur et les quatre exports), rien ne déborde', s.open && s.rows.length === 5 && s.bodyOverflow <= 1 && s.rows.every(row => row.overflow <= 1), s);
+check('le détail se déplie à la souris : une ligne par fonction (l\'éditeur et les sept fonctions de l\'app), rien ne déborde', s.open && s.rows.length === 8 && s.bodyOverflow <= 1 && s.rows.every(row => row.overflow <= 1), s);
 await shot('2-deplie');
 
 if (readonly) {
@@ -152,11 +138,34 @@ if (readonly) {
   await labelOf(null, 'vendorise').click();
   await page.waitForTimeout(1500);
   const all = await modes();
-  check('« toutes » en copie figée écrit les cinq fonctions', JSON.stringify(Object.keys(all || {}).sort()) === JSON.stringify(['natif:divers', 'natif:editeur', 'natif:excel', 'natif:pdf', 'natif:word']), all);
+  check('« toutes » en copie figée écrit les huit fonctions', JSON.stringify(Object.keys(all || {}).sort()) === JSON.stringify(['natif:editeur', 'natif:excel', 'natif:markdown', 'natif:pdf', 'natif:pdf-assemblage', 'natif:qr', 'natif:word', 'natif:zip']), all);
   await app.waitForFunction(() => window.__events.some(data => data.natives && data.natives.pdfmake && data.natives.exceljs && data.natives['qrcode-generator']), null, { timeout: 15000 }).catch(() => {});
   const many = (await app.evaluate(() => window.__events)).pop() || {};
-  check('l\'app reçoit alors les neuf bibliothèques natives du manifeste d\'essai', Object.keys(many.natives || {}).length === 9, Object.keys(many.natives || {}));
+  check('l\'app reçoit alors les neuf bibliothèques natives du manifeste', Object.keys(many.natives || {}).length === 9, Object.keys(many.natives || {}));
   await shot('4-toutes-en-copie');
+
+  // ----- La vraie `NativeLibs.load` de l'app (js/native-libs.js) : les copies de GFS se chargent avec leur empreinte, et ce qui ne vaut pas le dit (`pp:nativeFallback`), jamais en silence.
+  await app.evaluate(() => { window.__fallbacks = []; document.addEventListener('pp:nativeFallback', event => window.__fallbacks.push(event.detail)); });
+  const loadedQr = await app.evaluate(async () => {
+    try { await NativeLibs.load('qrcode-generator'); } catch (error) { return { error: String(error && error.message || error).slice(0, 120) }; }
+    const tags = [...document.querySelectorAll('script[src*="/prototype/vendor/qrcode-generator/"]')];
+    return { tags: tags.length, integrity: tags.map(tag => tag.integrity.slice(0, 7)), crossorigin: tags.map(tag => tag.crossOrigin), global: typeof window.qrcode };
+  });
+  check('`NativeLibs.load` charge la copie de GFS du QR code, avec son empreinte (`sha384-`, `crossorigin`), la bibliothèque répond', loadedQr.tags === 1 && loadedQr.integrity[0] === 'sha384-' && loadedQr.crossorigin[0] === 'anonymous' && loadedQr.global === 'function', loadedQr);
+  const withoutFallback = await app.evaluate(() => window.__fallbacks);
+  check('une copie qui se charge ne dit rien (aucun `pp:nativeFallback`)', withoutFallback.length === 0, withoutFallback);
+  // Une fausse empreinte (le navigateur refuse la copie) puis une version en retard chez GFS : l'app le dit et retombe sur le CDN, que ce labo ne joint pas (la réponse du CDN n'est pas mesurée ici).
+  const faked = await app.evaluate(async () => {
+    const real = GfsLink.native;
+    GfsLink.native = id => { const copy = real(id); return copy && id === 'marked' ? { ...copy, integrite: 'sha384-' + 'A'.repeat(64) } : copy; };
+    await Promise.race([NativeLibs.load('marked').catch(() => 'cdn'), new Promise(resolve => setTimeout(resolve, 12000))]);
+    GfsLink.native = id => { const copy = real(id); return copy && id === 'pdf-lib' ? { ...copy, version: '0.0.1' } : copy; };
+    await Promise.race([NativeLibs.load('pdf-lib').catch(() => 'cdn'), new Promise(resolve => setTimeout(resolve, 12000))]);
+    GfsLink.native = real;
+    return window.__fallbacks;
+  });
+  check('fausse empreinte : l\'app dit `echec` pour `marked` (fonction `markdown`) ; copie en retard : elle dit `ecart` pour `pdf-assemblage`',
+    faked.some(each => each.fonction === 'markdown' && each.raison === 'echec' && each.bibliotheque === 'marked') && faked.some(each => each.fonction === 'pdf-assemblage' && each.raison === 'ecart'), faked);
   await labelOf(null, 'cdn').click();
   await page.waitForTimeout(1500);
   check('« toutes » au CDN retire les clés : rien n\'est écrit pour le CDN', JSON.stringify(await modes()) === '{}', await modes());

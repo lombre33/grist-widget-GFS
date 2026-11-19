@@ -114,7 +114,7 @@ export function registryNet(fetchFn = fetch) {
 }
 
 // Le relevé d'un paquet : sa dernière stable, l'écart, les avis de la version servie, sa licence, son site et son dépôt.
-async function surveyPackage(paquet, version, net) {
+export async function surveyPackage(paquet, version, net) {
   const sourceName = PAQUET_DES_AVIS[paquet] || paquet;
   const [packument, manifest] = await Promise.all([
     net.getJson(`/${scoped(paquet)}`, { accept: 'application/vnd.npm.install-v1+json' }),

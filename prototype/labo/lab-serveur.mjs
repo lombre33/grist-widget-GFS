@@ -7,9 +7,9 @@ import { addCustomWidget, chooseFullAccess } from './lab-setup.mjs';
 
 export const GRIST = process.env.GRIST_URL || 'http://127.0.0.1:8484';
 
-// Ajoute l'adresse du serveur au `connect-src https:` des pages que `pattern` désigne (pour CET essai : le fichier du dépôt n'est pas touché) ; l'adresse d'une instance n'est connue qu'à
+// Ajoute l'adresse du serveur au `connect-src https:` (ou `connect-src 'self' https:`, la politique de Grist-BI) des pages que `pattern` désigne (pour CET essai : le fichier du dépôt n'est pas touché) ; l'adresse d'une instance n'est connue qu'à
 // l'exécution (le baseUrl du jeton), la vraie page la permet par `https:`, un serveur local est en http.
-export const openConnectIn = pattern => (file, bytes) => (pattern.test(file) ? Buffer.from(bytes.toString('utf8').replace(/(content="[^"]*connect-src https:)/, `$1 ${GRIST}`)) : bytes);
+export const openConnectIn = pattern => (file, bytes) => (pattern.test(file) ? Buffer.from(bytes.toString('utf8').replace(/(content="[^"]*connect-src (?:'self' )?https:)/, `$1 ${GRIST}`)) : bytes);
 
 // Le serveur répond-il ? Sinon on le dit et on s'arrête. Rend le script de l'API des widgets, tel que ce serveur le sert.
 export async function requireServer() {

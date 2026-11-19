@@ -34,8 +34,8 @@ export function sourceBody({ t, row, blocked, pick }) {
   const options = MODES.map(mode => {
     const off = !enabled || !source.can[mode];
     return h('label', { class: off ? 'is-off' : null },
-      h('input', { type: 'radio', name: `dep-src-${row.key}`, value: mode, checked: source.mode === mode, disabled: off,
-        dataset: { fk: `dep-src-${row.key}-${mode}`, source: mode }, on: { change: () => pick(mode) } }), modeName(t, mode));
+      h('input', { type: 'radio', name: `dep-src-${row.slot || row.key}`, value: mode, checked: source.mode === mode, disabled: off,
+        dataset: { fk: `dep-src-${row.slot || row.key}-${mode}`, source: mode }, on: { change: () => pick(mode) } }), modeName(t, mode));
   });
   const follow = source.follow.length ? h('p', { class: 'dp-sub' }, t('dep.src.follow', { n: source.follow.length, list: source.follow.join(', ') })) : null;
   return [h('fieldset', { class: 'fp-seg dp-seg' }, h('legend', { class: 'fp-sr' }, t('dep.src.legend', { name: row.paquet })),

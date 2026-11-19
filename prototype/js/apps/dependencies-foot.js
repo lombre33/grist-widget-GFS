@@ -75,7 +75,7 @@ export function buildFoot({ opts, state, date, refresh, close }) {
     const generated = opts.now().toISOString();
     const name = reportName(format, generated);
     try {
-      opts.save(name, reportText(format, { rows: state.rows, surveyed: opts.surveyed, generated, serial: opts.uuid() }));
+      opts.save(name, reportText(format, { rows: state.rows, carried: state.carried, surveyed: opts.surveyed, generated, serial: opts.uuid() }));
       flash(t('dep.export.done', { name }));
     } catch (error) {
       console.warn('GFS : le rapport des dépendances ne s’enregistre pas', error);

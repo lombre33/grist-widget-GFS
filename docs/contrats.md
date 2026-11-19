@@ -152,8 +152,13 @@ L'app (sous-cadre sans allow-same-origin)
    à son parent et à ses voisins (`parent.frames[i]`) ; `event.origin` y vaut `"null"` mais `event.source` identifie le cadre.
 3. [T] Dans l'app, le kit enregistre, avant le script d'API de Grist, une garde du même genre : tout message dont la source
    n'est pas `window.parent` est jeté. Sans elle, un cadre voisin parle au script d'API de l'app (mesuré).
-4. [T] Les messages partent avec `targetOrigin "*"` dans les deux sens (une origine opaque ne peut pas être visée).
-   L'identification se fait par `event.source`, jamais par `event.origin`.
+4. [T] Les messages partent avec `targetOrigin "*"` de GFS vers l'app (une origine opaque ne peut pas être visée).
+   **De l'app vers GFS (kit 0.27.0, 19/11)** : la demande de `contexte` (le premier message, sans donnée) part à `"*"`, l'app ne
+   sachant pas encore d'où elle est cadrée ; dès le premier message valide de GFS (venu du cadre parent, au contrat de GFS), l'app
+   retient `event.origin` (un `http(s)://hôte` sans chemin ; `"null"`, une adresse avec chemin ou rien ne sont pas retenus) et ses
+   envois suivants la visent : le navigateur jette un message que le cadre parent, passé à une autre origine, ne devrait pas lire.
+   [M] Chromium, Firefox 160 et un vrai Grist (faits vérifiés 138). L'identification se fait par `event.source`, jamais par
+   `event.origin` : l'origine retenue ne sert qu'à viser.
 
 ### 1.3 Le sous-cadre
 
@@ -269,6 +274,7 @@ L'app (sous-cadre sans allow-same-origin)
 | `extensions` | liste | non | Les extensions de l'app (2.6). |
 | `dependances` | chaîne | non | Chemin de la liste des bibliothèques **natives** de l'app (`package.json`) : celles d'une extension n'y figurent pas (2.6, point 4). |
 | `natives` | liste | non | Les bibliothèques natives de l'app **rangées par fonction**, pour le choix « CDN ou copie figée » : `[ { "id", "nom": { "fr", "en" }, "bibliotheques": [ { "id", "version" } ] } ]` (2.6, point 14 ; 5.2, point 12). Une bibliothèque n'est que dans une fonction, sa version est exacte. L'app le déclare quand elle lit le choix ; sans `natives`, rien n'est proposé et l'app reste au CDN. Une fonction dont la copie figée est **dans le dépôt de l'app** (l'éditeur) s'écrit `{ "id", "nom", "copieDansApp": true, "poids": <octets> }`, sans `bibliotheques`. |
+| `portees` | liste | non | Les bibliothèques que l'app **charge elle-même** (18/11, demande du porteur : « Oui, déclaré par chaque app »), que la fenêtre « Dépendances » montre sous l'app comme « Portées par l'app » : `[ { "id", "nom", "version"?, "adresse", "quand": "demarrage" \| "usage" \| "option", "contient"?, "paquet"?, "note"?: { "fr", "en" } } ]` (2.6, point 17). Une liste vide : l'app dit n'en charger aucune ; le champ absent : elle n'a encore rien déclaré. GFS les écrit d'après la section de son `GFS-ETAT.md` et n'en vérifie rien. |
 | `actions` | objet | non | Ce que l'app accepte de la part des autres (2.7). |
 | `ouverture` | objet | non | Ce que l'app sait faire d'une ouverture que GFS lui passe : `{ "fichier": true, "nouveau": true, "importer": true, "lire": true, "modele": true }` (5.2, point 3 ; 5.4, points 1, 8 et 13). Un genre absent vaut faux : GFS ouvre alors l'app sur son modèle habituel et le dit, et grise « Importer », « Lire » ou les modèles de « Depuis un modèle ». |
 | `permanente` | booléen | non | `true` : l'app ne se retire pas de la fenêtre « Apps et extensions » (Publipostage+). |
@@ -536,7 +542,13 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     « relevé par GFS, sans appel externe ») : ils viennent de `bibliotheques/releve.json`, que l'outil `outils/releve-dependances.mjs` écrit d'après le registre npm et que GFS
     commite ; le pied de la fenêtre en dit la date. Un relevé fait pour une autre version que celle servie ne dit rien de sûr : ni avis ni écart, la ligne le signale ; sans relevé
     (fichier absent), la fenêtre montre ce que GFS sert et le dit. Les liens sont des adresses `https` du relevé (jamais d'un réglage, d'une table ou d'un message), dans un nouvel
-    onglet, sans rien transmettre (`noopener`). **La source** (lot 3, 18/11) : le détail d'une ligne offre le **même segment « CDN | Copie figée » que la fiche d'une app**, pour la bibliothèque. Le choix n'est pas par bibliothèque mais par
+    onglet, sans rien transmettre (`noopener`). **Rangée par app** (demande du porteur, 18/11 soir : « regroupé par app, par défaut seulement celles des apps activées, un panneau refermé pour les autres ») : une section par app **installée**
+    (son nom, « n bibliothèques », « Installée »), et sous elles un **panneau refermé** « Montrer également les dépendances des apps non installées et celles sans app (n) » qui garde les apps
+    non installées (« Non installée ») et les bibliothèques qu'aucune app ne demande (section « Aucune app »). Une bibliothèque se trouve sous **chaque app qui l'utilise**, vue depuis cette app
+    (`scopeRow` : son état, ses fonctions et le choix de sa source ne parlent que d'elle ; le détail nomme tous les usages) ; la colonne « Aussi utilisée par » n'apparaît que lorsqu'une
+    bibliothèque sert à plusieurs apps. Les compteurs des filtres (Toutes, Actives, Mises à jour, Avis) et l'export portent sur toutes les bibliothèques, panneau fermé ou non : rien d'une
+    liste d'audit n'est caché, seulement replié (le nombre du panneau suit les filtres et la recherche ; quand seules les apps non installées correspondent, le vide le dit). Code :
+    `js/apps/dependencies-list.js`, `groupsOf` et `scopeRow` de `js/apps/dependencies-model.js`. **La source** (lot 3, 18/11) : le détail d'une ligne offre le **même segment « CDN | Copie figée » que la fiche d'une app**, pour la bibliothèque. Le choix n'est pas par bibliothèque mais par
     fonction (une extension d'une app, ou une fonction native, points 12 et 14) : celui d'une bibliothèque vaut pour **chaque fonction qui l'utilise** et s'écrit dans la même table (`modes`), **une seule
     écriture par app** (`AppsState.setSources`) ; les autres bibliothèques de ces fonctions suivent, et le détail le dit. Grisé, jamais masqué, avec sa raison : le CDN d'une fonction dont une bibliothèque
     n'a pas d'adresse publique (pdf.js), la copie d'une fonction native dont GFS n'a pas toutes les bibliothèques, une app non installée, une extension non ajoutée, le document en lecture seule ou sans
@@ -544,9 +556,42 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     fenêtre) : le réglage des réseaux fermés ; une question (une fenêtre du widget) dit les apps et leurs fonctions, « Annuler » n'écrit rien, confirmer écrit une fois par app ; quand chaque fonction qui le
     peut y est déjà, le bouton devient « Tout en CDN » (le retour, avec sa question). **« Exporter »** : deux fichiers JSON fabriqués dans le navigateur, sans rien envoyer : le rapport de GFS
     (`gfs-dependances-AAAA-MM-JJ.json` : ce que la fenêtre montre, source retenue comprise) et l'inventaire **CycloneDX 1.5** (`….cdx.json` : un composant par bibliothèque avec `purl`, licence, empreinte
-    SHA-384 en hexadécimal quand un seul fichier la porte seul, adresses du CDN avec leur empreinte, avis du relevé en `vulnerabilities`). **Pas encore** : les bibliothèques que chaque app porte
-    elle-même (une note le dit sous la liste). Code : `js/apps/dependencies-model.js` (lignes), `-source.js` (ce qui se choisit, le plan d'écriture), `-source-view.js`, `-foot.js`, `-export.js`,
+    SHA-384 en hexadécimal quand un seul fichier la porte seul, adresses du CDN avec leur empreinte, avis du relevé en `vulnerabilities`). **Les bibliothèques que chaque app porte
+    elle-même** : point 17. Code : `js/apps/dependencies-model.js` (lignes), `-source.js` (ce qui se choisit, le plan d'écriture), `-source-view.js`, `-foot.js`, `-export.js`,
     `-cyclonedx.js`, `-audit.js`, `-detail.js`, `-window.js`, `-control.js`, `licences.js`, `version-gap.js` (la règle de l'écart, partagée avec l'outil). Mesuré dans un vrai Grist (faits vérifiés 119, `labo/run-dependances.mjs`) : le choix s'écrit et revient au rechargement, la question de « Tout… » rend la fenêtre inerte, la lecture seule n'écrit rien. [M]
+
+17. [D] **« Portées par l'app » : ce que chaque app charge elle-même** (demande du porteur, 18/11 : « es-tu sûr que ta fenêtre est exhaustive ? », puis la carte « Afficher aussi ce que chaque app charge elle-même ? » : « Oui, déclaré par chaque app »).
+    La fenêtre du point 16 ne listait que ce que GFS sert : elle ne disait rien de ce qu'une app charge de son côté (l'éditeur de Publipostage+ depuis esm.sh, ses bibliothèques d'export depuis cdnjs, l'API de Grist depuis
+    docs.getgrist.com, Leaflet de Form+…). Le champ `portees` du manifeste (2.2) le dit, app par app : une liste de `{ id, nom, version?, adresse, quand, contient?, paquet?, note? }`. `id` : minuscules, chiffres et tirets,
+    unique dans la liste. `nom` : 60 signes au plus ; une famille est **une entrée**, pas cinquante (« TipTap », avec `contient` : « ProseMirror », « linkifyjs »…, douze noms au plus). `version` : exacte (ni intervalle ni `latest`),
+    absente pour un service sans numéro (l'API de Grist). `adresse` : `https`, un nom d'hôte avec un point, sans identifiants ni port ; c'est ce que le navigateur contacte, ou le site de l'app elle-même pour une copie qu'elle garde
+    dans son dépôt. `quand` : `demarrage` (à l'ouverture de l'app), `usage` (au premier usage de la fonction qui la demande) ou `option` (seulement si la personne active l'option qui la demande). `paquet` : le nom npm, facultatif ;
+    il sert à dire que GFS en garde aussi une copie, et à ôter l'entrée quand GFS sert ce paquet à cette même app (sa ligne est alors celle de la fenêtre, avec la source à choisir). `note` : `{ fr, en }`, 240 signes au plus.
+    Une liste vide dit que l'app n'en charge aucune ; le champ absent, qu'elle n'a encore rien déclaré (la fenêtre le dit sous sa liste). **Qui écrit quoi** : l'app déclare dans la section « Bibliothèques que l'app charge
+    elle-même » de son `GFS-ETAT.md` (guide des apps 1.2, point 24 ; `consignes/LISEZ-MOI.md`), GFS recopie dans le manifeste qu'il tient pour elle (le contrat s'étend par ajout) ; **GFS n'en vérifie rien** (ni la version,
+    ni l'adresse, ni l'empreinte) et n'offre aucun choix de source : c'est l'app qui charge. La fenêtre l'écrit en toutes lettres (« déclarée par l'app » : sous le titre du bloc, sur la note, dans le détail) et **n'offre aucune
+    adresse déclarée en lien** : elle vient de l'app, pas du relevé de GFS. **Rangement** : sous chaque app, installée ou non comme ses lignes de GFS, un bloc « Portées par l'app » à trois colonnes (la bibliothèque et son moment,
+    la version déclarée, l'adresse contactée), le démarrage avant le premier usage ; un clic déplie l'origine, la version, ce que la bibliothèque contient, l'adresse, le moment, la précision de l'app et, quand `paquet` en est un
+    que GFS garde, « GFS garde aussi une copie figée ». Elles ne se montrent que sous « Toutes » (GFS n'en connaît ni l'état, ni l'écart, ni les avis), se cherchent par nom, version, hôte et contenu, et le sous-titre les compte
+    (« n bibliothèques déclarées par les apps ») ; une app qui déclare n'en charger aucune le dit. **L'export les garde** : le rapport de GFS porte une clé `declarees` (par app, `nombre` et la liste, chaque entrée
+    `declaree_par: "app"` et `verifiee: false`) ; l'inventaire CycloneDX un composant `gfs:declared:<app>:<id>` sans `purl`, sans licence et sans empreinte, avec les propriétés `gfs:declared-by-app`, `gfs:verified` (`false`) et
+    `gfs:loaded`. **Pas encore** (second lot) : la dernière version stable et les avis de ces bibliothèques, que le relevé ne couvre pas. Code : `js/apps/manifest-carried.js` (la validation), `dependencies-carried.js` (le modèle),
+    `dependencies-carried-view.js` (le bloc et son détail), `groupsOf` de `dependencies-model.js`. Mesuré sous Firefox à 700 × 400 (`test/dependances-carried-firefox.mjs`) et dans un vrai Grist (`labo/run-dependances.mjs` :
+    le manifeste de Publipostage+ en déclare neuf, la fenêtre n'appelle aucune des adresses déclarées ; faits vérifiés 132). [M]
+
+18. [D] **Le contrôle de sécurité des apps : `bibliotheques/securite.json`** (choix du porteur, 18/11, « Idem + alertes relayées par les apps » ; cahier 3.2.1 et 3.2.2 ; guide des apps 1.4 ; faits
+    vérifiés 133). Le fichier est écrit par `outils/controle-securite.mjs` (à la main, ou chaque lundi par `.github/workflows/controle-securite.yml`, qui ouvre une demande de fusion si autre chose que la date
+    change) et commité ; **la fenêtre « Dépendances » le lit, le navigateur de la personne n'appelle rien**. `{ contrat: 0, controle: <date ISO>, origine: 'local' | 'actions', apps: { <id>: … } }`, une entrée par app du
+    catalogue : `depot`, `reference` (le commit du sous-module), `entree` (la page que le manifeste ouvre : celle qui compte, pas la page d'accueil), `lecture` (`page`, `code` : GFS a lu la copie de l'app
+    et pas seulement sa page, `etat` : son `GFS-ETAT.md` a les sections de sécurité, `empreintes` : recalculées à ce passage), `pages` (nombre de scripts, de feuilles, d'entrées de carte d'importation,
+    de scripts en ligne et de politiques), **`regles`** (`S1` à `S9`, chacune `{ etat: tenue | a-noter | non-tenue | non-verifiable, motifs: [{ code, gravite, … }], notes? }` : des codes et leurs paramètres,
+    jamais un texte ; la fenêtre les met en phrases, en français et en anglais), `permis` (les directives d'appel laissées ouvertes et les hôtes que la politique laisse atteindre), `declaration` (ce que l'app dit
+    d'elle-même dans la section « Sécurité » de son `GFS-ETAT.md` : `{ S1: { etat: tenue | en-cours | non-tenue, texte } }`, ou null ; affiché à côté du jugement de GFS, jamais mêlé), `enLigne` (le site en
+    ligne : `{ lue: false }`, `{ lue: true, identique: true }` ou, quand sa politique diffère de la référence, `regles` pour S1 à S4), `bibliotheques` (les bibliothèques déclarées avec un paquet npm et une
+    version exacte : dernière stable, écart, avis), `empreintes` (`{ url, sha384, octets, vu }` : ce que le CDN servait au premier jour `vu` ; un changement d'empreinte pour une même adresse est un signal : « non tenue »
+    chez un CDN qui sert un fichier figé, cdnjs et jsDelivr, « à noter » chez les autres, qui peuvent reconstruire) et `empreintesLe`, `adressesTrouvees` (les hôtes de CDN que GFS a retrouvés dans la page et le code de l'app : la fenêtre en tire « Adresse retrouvée / non retrouvée par GFS » pour chaque bibliothèque que l'app déclare). **La fenêtre « Dépendances » a deux vues** (boutons « Bibliothèques » et « Sécurité », js/apps/dependencies-security.js et dependencies-security-view.js) : « Sécurité » montre, pour chaque app, ses neuf règles (état en mot et en icône, motifs, origine du jugement : « Vérifié par GFS », « Déclaré par l'app » ou « Pas vérifié ») ; sans le fichier, la vue le dit au lieu de disparaître. **Ce que le contrôle ne fait pas** : il ne fetch que des adresses de CDN connus
+    (`CDN_HOSTS`), en https, sans joker, trois redirections au plus vers ces mêmes hôtes ; il ne pousse rien dans un dépôt d'app ; il ne lit pas ce qu'une app construirait à l'exécution. **Les limites sont dites
+    dans la fenêtre** (cahier 3.2.2). `--verifier` dit hors réseau si le fichier couvre le catalogue ; `test/securite-controle.test.mjs` garde la lecture d'une politique, les neuf jugements et le fichier commité.
 
 ### 2.7 Les actions acceptées
 
@@ -615,6 +660,9 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
      absent, sans français ou sans anglais, des `fournisseurs` absents, vides, hors de `youtube` et `vimeo` ou en double ;
    - une extension dont le `dossier` sort de l'app, ou dont une entrée de `bibliotheques` n'a pas d'`id` ou n'a pas une
      `version` exacte (un intervalle, `latest`) ;
+   - dans `portees` (2.6, point 17) : autre chose qu'une liste, une entrée qui n'est pas un objet ou qui porte un champ inconnu, un `id` hors format ou déjà pris, un `nom` vide ou de plus de 60 signes, une `version`
+     qui n'est pas exacte, une `adresse` qui n'est pas en `https` (ou porte des identifiants, un port, un nom d'hôte sans point), un `quand` hors de `demarrage`, `usage` et `option`, un `contient` de plus de douze noms,
+     un `paquet` qui n'est pas un nom npm, une `note` sans français ou sans anglais ;
    - dans `actions.importer` (2.7, point 4) : une entrée sans `valeur` ou sans `nom` en français et en anglais, une `valeur` déjà
      prise, un `type` qui n'est pas dans `actions.ouvrir`, des `extensions` qui ne sont pas une liste non vide de terminaisons (un
      point, puis un à huit caractères ou chiffres : `.xlsx`) ;
@@ -1198,6 +1246,7 @@ Les noms de la v0 :
 | `lecteur.deplacer` | app → GFS | `{ id, rect, zone }` (5.2, point 11) | aucune ; un refus se lit en console |
 | `lecteur.masquer` | app → GFS | `{ id, masque }`, vrai ou faux (5.2, point 11) | aucune ; un refus se lit en console |
 | `lecteur.fermer` | app → GFS | `{ id }` (5.2, point 11) | aucune ; un refus se lit en console |
+| `securite` | app → GFS | 5.4, point 14 : `{ quoi: 'relais', kit }` ou `{ quoi: 'bloque', directive, cible, source, disposition, fois }` | aucune |
 | `ouvrir` | app → GFS, puis GFS → app active | 5.4 | 5.4 |
 | `choisir` | app → GFS | 5.4 | 5.4 |
 | `ranger` | app → GFS | 5.4 | 5.4 |
@@ -2094,6 +2143,11 @@ raccourcis, zoom…) et les lui rend. **Le porteur a demandé le 21/10 de le fai
      d'aperçu en grandes captures dans ce premier lot (celui de la galerie de Publipostage+ reste dans l'app).
    - [M] Mesuré le 18/11 dans un vrai Grist, à 700 × 400, à la vraie souris, en français et en anglais (`labo/run-modeles.mjs`, 18 vérifications) : une sonde qui déclare `ouverture.modele` et répond à `ouvrir` comme l'app, avec le catalogue de Publipostage+ (grisé « pas encore » tant que cette app ne déclare pas `ouverture.modele`) ; l'ouverture n'est rendue qu'une fois ; le grisé et « Voir dans Apps » ; sous Firefox (`test/modeles-firefox.mjs`, jouée par `test/interfaces-firefox.test.mjs` : 700 × 400, 520 et 400 px, clair et sombre, contraste 4,5:1, clavier). Le **kit 0.24.0** (`7aa030c`) garde `modele` dans l'ouverture : sans lui, `GfsLink.opening()` l'écartait comme toute clé inconnue. Le catalogue de Publipostage+ que GFS porte est **provisoire** (établi d'après sa galerie, consigne 075).
    - [D] **Un modèle d'automatisme sur une table qui porte déjà un automatisme** (choix du porteur, 18/11, « L'app demande ») : **l'app demande avant de remplacer** l'automatisme existant et rend `{ ouvert: false }` si la personne refuse (rien n'est ouvert ni écrit) ; GFS ne repère pas ces tables et ne grise pas le modèle pour cela. Les cinq modèles d'Automation+ sont déclarés (`modeles` et `modeles.type`, catalogue copié le 18/11) mais **restent grisés « pas encore »** tant que son manifeste ne dit pas `ouverture.modele` : sa copie du kit est en 0.13.0, qui écarte `modele` de l'ouverture (consigne 021).
+
+14. [D] **Dire à GFS les appels que la politique de l'app bloque : `securite`** (demande du porteur du 18/11 : « une alerte si une librairie se met à faire un appel externe autre que les liens prévus dans la CSP », choix « alertes relayées par les apps » ; cahier 3.2.1 règle S8 et 3.2.2 ; faits vérifiés 135 ; kit 0.25.0). GFS ne voit un cadre d'app que de l'extérieur : une violation de politique (`securitypolicyviolation`) ne se lève que dans le cadre qui la subit (faits vérifiés 133). Le kit (`Violations.start()`, `violations-start.js`) l'écoute dans l'app et poste à GFS, **sans réponse attendue** (appel sans `id`, 5.1 point 2), deux sortes de corps :
+    - `{ quoi: 'relais', kit: '0.25.0' }`, une fois au départ : le relais de cette app est actif pour la session ;
+    - `{ quoi: 'bloque', directive, cible, source, disposition, fois }` : `directive` un nom de directive de la politique (`connect-src`, `img-src`, `script-src-elem`…) ou `autre` ; `cible` ce qui a été bloqué : **le nom d'hôte seul**, ou un mot du navigateur (`inline`, `eval`, `data`, `blob`, `self`…) ou `autre` ; `source` qui l'a demandé : `app` (le code de l'app), un nom d'hôte (une bibliothèque), `inconnue` ou `autre` ; `disposition` `enforce` (bloqué) ou `report` ; `fois` le compte (la même violation ne repart qu'à la 1re, 10e, 100e et 1000e fois).
+    **L'app est tenue pour non fiable** (`js/broker/security-relay.js`) : chaque champ est réduit à cette forme fermée avant d'être gardé (un champ hors forme vaut `autre`), le compte est plafonné (99 999), au plus 50 alertes différentes par app, trois avis à la personne par app (et aucun pour `report`) ; **jamais d'adresse entière, de chemin ni de paramètres** (ni le kit ne les envoie, ni GFS ne les garderait) ; rien n'est écrit dans le document, rien ne survit à la session, rien ne s'affiche comme lien. Un message inconnu est ignoré, un appel `securite` n'a jamais de réponse (un refus n'apprendrait rien à un code piraté). **Cela informe, cela ne protège pas** : la protection est la politique de l'app, appliquée par le navigateur ; un code piraté peut taire son relais, et un appel que la politique permet ne lève aucun événement : la fenêtre « Dépendances » le dit. La fenêtre montre les alertes de la session et, dans la section de chaque app, « Relais actif depuis l'ouverture » ou « Aucun signal de relais reçu ».
 
 ### 5.5 La table d'un direct : être prévenu quand une autre table change
 

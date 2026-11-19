@@ -150,3 +150,23 @@ test('un propriétaire d\'un document à règles d\'accès : la sonde est refus�
   assert.equal(last.status, 'ok');
   assert.ok(writableCalls.length >= 5, 'toutes les lectures ont suivi le jeton qui peut écrire');
 });
+
+// Le pare-feu devant le Grist de la DINUM (Incapsula) refuse en 403, sans en-tête CORS, toute demande dont l'adresse ou le corps contient `case when`, `or 1=1` ou
+// `drop table` (relevé de Sync+ le 18/11, vérifié en direct par cette app, faits vérifiés 136) : le navigateur dit « CORS manquant » et la lecture est perdue sans
+// message. Les lectures que GFS envoie à `/sql` (le poids exact et l'explorateur) n'ont jamais ces mots ; ce qui les reconstituerait ferait taire une ligne du poids.
+test('pare-feu de la DINUM : aucune lecture SQL de GFS ne contient `case when`, `or 1=1` ni `drop table`', async () => {
+  const { schemaStatement, rowsStatement } = await import('../js/explorer/explorer-sql.js');
+  const columns = [{ colId: 'Titre', type: 'Text' }, { colId: 'Montant', type: 'Numeric' }, { colId: 'Notes', type: 'Text' }];
+  const statements = [SQL.file, SQL.history, SQL.stored, SQL.counted, SQL.tables, SQL.table('Grosse'), schemaStatement(['Petite', 'Grosse']),
+    rowsStatement('Grosse', columns, new Set(['Titre'])).statement];
+  const forbidden = /case\s+when|or\s+1\s*=\s*1|drop\s+table/i;
+  for (const statement of statements) assert.ok(!forbidden.test(statement), `lecture refusée par le pare-feu : ${statement.slice(0, 80)}…`);
+});
+
+test('pare-feu de la DINUM : les pièces jointes comptées gardent leur sens sans `CASE WHEN` (stockées dans le fichier ou chez un stockage externe)', () => {
+  // Une valeur de 0 ou de 1 par ligne choisit la taille de Grist (stockage externe) ou la longueur du fichier gardé ; l'équivalence avec l'ancienne lecture à `CASE WHEN`
+  // est mesurée sur 300 jeux au hasard (faits vérifiés 136) ; ici la forme : les deux termes, chacun gardé par son test sur `storageId`.
+  assert.match(SQL.counted, /MAX\(meta\.fileSize\), 0\) \* \(files\.storageId IS NOT NULL\)/);
+  assert.match(SQL.counted, /MAX\(LENGTH\(files\.data\)\), 0\) \* \(files\.storageId IS NULL\)/);
+  assert.match(SQL.counted, /meta\.timeDeleted IS NULL GROUP BY meta\.fileIdent/, 'une par empreinte, sans les supprimées');
+});

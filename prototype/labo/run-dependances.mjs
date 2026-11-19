@@ -15,6 +15,9 @@ const run = `dependances-${lang}-${scheme}${readonly ? '-lecture-seule' : ''}`;
 const lab = await startLab({ lang, colorScheme: scheme, query: readonly ? 'readonly=true' : '' });
 const { page } = lab;
 const warnings = [];
+// Les adresses que Publipostage+ déclare charger lui-même (« Portées par l'app ») : la fenêtre les montre, elle ne les appelle jamais.
+const outside = [];
+page.on('request', request => { const host = new URL(request.url()).hostname; if (/(^|\.)(esm\.sh|cdnjs\.cloudflare\.com|unpkg\.com)$/.test(host)) outside.push(host); });
 page.on('console', m => { if ((m.type() === 'warning' || m.type() === 'error') && /GFS/.test(m.text())) warnings.push(m.text().slice(0, 200)); });
 await lab.fitPanel(undefined, 700, 400);
 let frame = lab.frame;
@@ -29,7 +32,9 @@ const openWindow = async () => {
   await page.waitForTimeout(300);
 };
 const closeWindow = async () => { await frame.locator('[data-fk="dep-close"]').click(); await frame.locator('.dp').waitFor({ state: 'hidden' }); };
-const rowOf = name => frame.locator('.dp-item', { has: frame.locator('.dp-name', { hasText: new RegExp(`^${name}$`) }) });
+// Les lignes que GFS sert, sans celles que l'app déclare (« Portées par l'app » : docx s'y trouve aussi, déclaré par Publipostage+).
+const GFS_NAMES = '.dp-group > .dp-list .dp-name';
+const rowOf = name => frame.locator('.dp-group > .dp-list > .dp-item', { has: frame.locator('.dp-name', { hasText: new RegExp(`^${name}$`) }) });
 const openRow = async name => { const item = rowOf(name); if (!(await item.evaluate(node => node.classList.contains('is-open')))) await item.locator('.dp-row').click(); return item; };
 const sourceRadios = item => item.locator('.dp-seg input[type="radio"]');
 const checkedSource = async item => item.locator('.dp-seg input:checked').evaluate(node => node.dataset.source).catch(() => null);
@@ -49,10 +54,61 @@ check('rien d\'ouvert devant le réglage', (await frame.locator('.mod').count())
 // ----- La fenêtre : une ligne par bibliothèque, l'audit et le choix de la source dans le détail.
 await openWindow();
 say('titre :', await text(frame.locator('.dp-head')));
-const names = await frame.locator('.dp-name').allInnerTexts();
-check('la fenêtre liste les bibliothèques que GFS sert (echarts, plotly.js-dist-min, pdfjs-dist…)', names.length >= 10 && names.some(name => /echarts/.test(name)) && names.some(name => /plotly/.test(name)), names);
+// Demande du 18/11 : rangées par app ; au départ seules les apps installées (Publipostage+) sont montrées, les autres bibliothèques sont dans un panneau refermé.
+const names = await frame.locator(GFS_NAMES).allInnerTexts();
+check('au départ : seule l\'app installée est montrée, avec ses bibliothèques (echarts, plotly…)', (await frame.locator('.dp-group-head h3').allInnerTexts()).join() === 'Publipostage+'
+  && names.length >= 8 && names.some(name => /echarts/.test(name)) && names.some(name => /plotly/.test(name)) && !names.includes('docx'), names);
+const panel = frame.locator('[data-fk="dep-more"]');
+check('le panneau refermé propose les apps non installées et les bibliothèques sans app', (await panel.getAttribute('aria-expanded')) === 'false', await text(panel));
+await panel.click();
+await page.waitForTimeout(200);
+const everything = await frame.locator(GFS_NAMES).allInnerTexts();
+check('le panneau ouvert montre aussi docx, exceljs, pdfmake… sous « Aucune app » (au moins seize bibliothèques en tout)', everything.length >= 16 && everything.includes('docx')
+  && (await frame.locator('.dp-more .dp-group-head h3').allInnerTexts()).length >= 1 && (await frame.evaluate(() => document.activeElement.dataset.fk)) === 'dep-more', everything);
+await shot('0-panneau-ouvert');
+await panel.click();
+await page.waitForTimeout(200);
+check('le panneau se referme', (await panel.getAttribute('aria-expanded')) === 'false' && (await frame.locator(GFS_NAMES).count()) === names.length);
 const before = await lab.rangement(frame);
+// ----- « Portées par l'app » (demande du 18/11) : ce que Publipostage+ déclare charger lui-même, lu du manifeste que GFS tient pour lui.
+const carried = frame.locator('.dp-carried[aria-labelledby="dp-c-publipostage"]');
+const carriedNames = await carried.locator('.dp-name').allInnerTexts();
+check('« Portées par l\'app » : Publipostage+ déclare neuf bibliothèques, l\'API de Grist et TipTap au démarrage, docx au premier usage', carriedNames.length === 9
+  && carriedNames.slice(0, 2).join() === 'API de Grist,TipTap' && carriedNames.includes('docx') && (await carried.locator('.dp-chip').first().innerText()).length > 0, carriedNames);
+check('le bloc dit que l\'app déclare et que GFS ne vérifie rien', /GFS/.test(await text(carried.locator('.dp-carried-note'))) && (await carried.locator('a').count()) === 0, await text(carried.locator('.dp-carried-note')));
+await carried.locator('[data-fk="dep-publipostage|portee|tiptap"]').click();
+const tipDetail = carried.locator('.dp-item', { has: frame.locator('.dp-name', { hasText: /^TipTap$/ }) }).locator('.dp-detail');
+await tipDetail.waitFor();
+check('le détail de TipTap : version, adresse, ce qu\'il contient', /3\.31\.3/.test(await text(tipDetail)) && /https:\/\/esm\.sh\//.test(await text(tipDetail)) && /ProseMirror/.test(await text(tipDetail))
+  && /linkifyjs/.test(await text(tipDetail)), await text(tipDetail));
+await shot('0b-portees-detail');
+await carried.locator('[data-fk="dep-publipostage|portee|tiptap"]').click();
 check('l\'ouvrir n\'écrit rien : la table GFS_Rangement n\'est pas créée par la fenêtre', readonly ? before.table === false : (before.value.publipostage?.modes === undefined), before.value);
+// ----- « Sécurité » (choix du porteur du 18/11) : le contrôle daté (bibliotheques/securite.json) lu par le vrai cadre de GFS dans un vrai Grist ; la vue montre chaque app règle par règle,
+// n'appelle aucune adresse (le fichier est celui de GFS) et n'écrit rien.
+const requestsBefore = outside.length;
+await carried.locator('[data-fk="dep-publipostage|portee|tiptap"]').click();
+await tipDetail.waitFor();
+check('le détail de TipTap dit ce que GFS en a retrouvé (avec le contrôle de sécurité)', /ce que gfs en a retrouvé|what gfs found/i.test(await text(tipDetail)), await text(tipDetail));
+await carried.locator('[data-fk="dep-publipostage|portee|tiptap"]').click();
+await frame.locator('[data-fk="dep-view-security"]').click();
+await frame.locator('.dp-sec-app').first().waitFor();
+const secApps = await frame.locator('.dp-sec-app h3').allInnerTexts();
+say('apps contrôlées :', secApps);
+check('la vue « Sécurité » : la liste s\'efface, les apps se montrent (installée d\'abord)', secApps[0] === 'Publipostage+' && secApps.length >= 2 && !(await frame.locator('.dp-list').first().isVisible())
+  && !(await frame.locator('.dp-bar').isVisible()));
+const ppSec = frame.locator('.dp-sec-app[data-app="publipostage"]');
+check('Publipostage+ : neuf règles, une pastille d\'état en mot, l\'origine du jugement', (await ppSec.locator('.dp-sec-rule').count()) === 9 && (await ppSec.locator('.dp-sec-rule > .dp-chip').first().innerText()).trim().length > 0
+  && (await ppSec.locator('.dp-sec-source').count()) === 9, await text(ppSec.locator('.dp-sec-line')));
+check('la vue dit la date du contrôle et ce que GFS ne voit pas', /2026/.test(await text(frame.locator('.dp-sec-intro'))) && (await frame.locator('[data-fk="dep-sec-limits"]').count()) === 1);
+await frame.locator('[data-fk="dep-sec-limits"]').click();
+check('« Ce que ce tableau ne voit pas » s\'ouvre', (await frame.locator('.dp-sec-limits li').count()) === 4 && await frame.locator('.dp-sec-limits').isVisible());
+await shot('0c-securite');
+await frame.locator('[data-fk="dep-sec-limits"]').click();
+check('la vue « Sécurité » n\'écrit rien et n\'appelle aucune adresse', outside.length === requestsBefore && (await lab.rangement(frame)).table === before.table, outside);
+await frame.locator('[data-fk="dep-view-libs"]').click();
+await frame.locator('.dp-bar').waitFor();
+check('de retour sur « Bibliothèques » : la liste et sa barre', await frame.locator('.dp-list').first().isVisible() && !(await frame.locator('.dp-sec').isVisible()));
 const echarts = await openRow('echarts');
 await shot('1-ligne-ouverte');
 say('source :', await text(echarts.locator('.dp-seg').locator('xpath=..')));
@@ -82,7 +138,7 @@ await lab.settle(frame);
 await page.waitForTimeout(400);
 check('« Copie figée » écrit le mode de l\'extension Graphique dans le document', (await modes()).graphique === 'vendorise', await modes());
 check('la fenêtre l\'affiche (état de la ligne relu)', (await checkedSource(rowOf('echarts'))) === 'vendorise' && (await rowOf('echarts').locator('.dp-tag.is-on').count()) === 1);
-check('le clavier est resté sur le choix de la ligne', await frame.evaluate(() => (document.activeElement.dataset.fk || '').startsWith('dep-src-echarts')));
+check('le clavier est resté sur le choix de la ligne', await frame.evaluate(() => /^dep-src-publipostage\|echarts@/.test(document.activeElement.dataset.fk || '')));
 say('état :', await text(rowOf('echarts').locator('.dp-detail [role="status"]').first()));
 await shot('3-copie-figee-choisie');
 
@@ -155,6 +211,7 @@ if (file) {
     && body.bomFormat === 'CycloneDX' && body.specVersion === '1.5' && body.components.length >= 10, Object.keys(body));
 } else say('CONSTAT : pas de téléchargement reçu depuis le cadre du widget (le cadre de Grist le refuse ?) — voir la note de la fenêtre :', await text(frame.locator('.dp .mod-note')));
 check('la fenêtre dit le nom du rapport (ou l\'échec)', /gfs-dependances|rapport|report/i.test(await text(frame.locator('.dp .mod-note'))), await text(frame.locator('.dp .mod-note')));
+check('la fenêtre n\'a appelé aucune adresse que les apps déclarent (esm.sh, cdnjs, unpkg)', outside.length === 0, outside);
 await closeWindow();
 await lab.browser.close();
 say('avertissements GFS :', warnings);

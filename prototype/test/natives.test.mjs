@@ -10,6 +10,9 @@ import { readApps, patchApps, withNativeMode, withExtension } from '../js/apps/s
 import { AppsState } from '../js/apps/apps-state.js';
 import { buildContext } from '../js/broker/context.js';
 import { publipostage } from './helpers.mjs';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { ROOT } from '../outils/bibliotheques.mjs';
 
 const SRI = `sha384-${'C'.repeat(64)}`;
 const entry = (id, version, poids) => ({ id, version, poids, cdn: { src: `https://cdn.jsdelivr.net/npm/${id}@${version}/${id}.js`, integrite: SRI }, vendorise: { chemin: `vendor/${id}/${version}/${id}.js`, integrite: SRI } });
@@ -173,17 +176,27 @@ test('l\'adresse du cadre porte `copie=` pour les fonctions rangées dans l\'app
   assert.equal(url.searchParams.get('gfs'), '0', 'le numéro de contrat reste là, c\'est lui qui dit à l\'app que GFS l\'héberge');
 });
 
-// Publipostage+ a fait la consigne 066 (12/11, `db6b388`) : la copie figée de son éditeur est dans son dépôt (`vendor/editeur`), sa page la charge quand l'adresse dit `copie=editeur`. GFS déclare
-// donc cette seule fonction ; les six autres (exports) attendent la 065 et le choix du porteur.
-test('Publipostage+ : le manifeste réel déclare la fonction « Éditeur » dont la copie est dans l\'app, et elle seule', () => {
+// Publipostage+ a fait la consigne 066 (12/11, `db6b388`) : la copie figée de son éditeur est dans son dépôt (`vendor/editeur`), sa page la charge quand l'adresse dit `copie=editeur`. Puis la 065
+// (18/11, `563d5bd`, sa page dit « 065 · faite ») : les sept fonctions d'export, que le porteur a choisies le 18/11 (consigne 076), se chargent par la copie de GFS quand la personne l'a choisie.
+const SEVEN = [['pdf', ['pdfmake', 'pdfmake-polices']], ['pdf-assemblage', ['pdf-lib']], ['zip', ['jszip']], ['word', ['docx', 'docx-charts']], ['excel', ['exceljs']],
+  ['markdown', ['marked']], ['qr', ['qrcode-generator']]];
+test('Publipostage+ : le manifeste réel déclare l\'éditeur (copie dans l\'app) et les sept fonctions que GFS sert, chaque bibliothèque dans une seule', () => {
   const real = publipostage();
   assert.deepEqual(validateManifest(real).errors, []);
-  assert.deepEqual(nativesOf(real), [{ id: 'editeur', nom: { fr: 'Éditeur (TipTap)', en: 'Editor (TipTap)' }, copieDansApp: true, poids: 615704 }], 'le poids est celui de la copie construite (vendor/editeur, 57 fichiers)');
+  const [editor, ...served] = nativesOf(real);
+  assert.deepEqual(editor, { id: 'editeur', nom: { fr: 'Éditeur (TipTap)', en: 'Editor (TipTap)' }, copieDansApp: true, poids: 615704 }, 'le poids est celui de la copie construite (vendor/editeur, 57 fichiers)');
+  assert.deepEqual(served.map(group => [group.id, group.bibliotheques.map(lib => lib.id)]), SEVEN, 'les ids et les bibliothèques de la consigne 076, dans l\'ordre de la page de l\'app');
+  const all = served.flatMap(group => group.bibliotheques.map(lib => lib.id));
+  assert.equal(new Set(all).size, all.length, 'chaque bibliothèque dans une seule fonction');
+  const full = readCatalogue(JSON.parse(readFileSync(join(ROOT, 'bibliotheques/catalogue.json'), 'utf8')));
+  assert.deepEqual(nativeRows(real, { extensions: [], modes: {} }, full).map(row => [row.group.id, row.missing.length, row.mode]),
+    [['editeur', 0, 'cdn'], ...SEVEN.map(([id]) => [id, 0, 'cdn'])], 'GFS a la copie de chaque bibliothèque, à la version de la liste de l\'app ; au départ, tout est au CDN');
   const empty = readCatalogue({ bibliotheques: [] });
   const [row] = nativeRows(real, { extensions: [], modes: {} }, empty);
   assert.equal(row.inApp, true, 'sa copie est dans l\'app : le catalogue de GFS n\'a rien à y mettre');
   assert.equal(row.poids, 615704);
   assert.equal(row.mode, 'cdn', 'au départ, la page lit le CDN');
   assert.deepEqual(copiesInApp(real, { extensions: [], modes: {} }), [], 'rien à demander à l\'app tant que la personne n\'a pas choisi la copie');
-  assert.deepEqual(copiesInApp(real, { extensions: [], modes: { [nativeKey('editeur')]: 'vendorise' } }), ['editeur'], 'la copie choisie part dans l\'adresse du cadre (`copie=editeur`)');
+  assert.deepEqual(copiesInApp(real, { extensions: [], modes: { [nativeKey('editeur')]: 'vendorise', [nativeKey('word')]: 'vendorise' } }), ['editeur'],
+    'la copie choisie part dans l\'adresse du cadre (`copie=editeur`) ; Word et les autres sont servis par GFS, pas rangés dans l\'app');
 });

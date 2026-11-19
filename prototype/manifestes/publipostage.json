@@ -151,7 +151,7 @@
         "en": "A chart configured in Grist, placed in a document."
       },
       "icone": "chart",
-      "poids": 189,
+      "poids": 205,
       "dossier": "extensions/graphique/",
       "pointsEntree": [{ "genre": "bouton", "id": "graphique" }],
       "bibliotheques": [{ "id": "plotly", "version": "2.13.2" }, { "id": "echarts", "version": "6.1.0" }]
@@ -207,7 +207,43 @@
     }
   ],
   "natives": [
-    { "id": "editeur", "nom": { "fr": "Éditeur (TipTap)", "en": "Editor (TipTap)" }, "copieDansApp": true, "poids": 615704 }
+    { "id": "editeur", "nom": { "fr": "Éditeur (TipTap)", "en": "Editor (TipTap)" }, "copieDansApp": true, "poids": 615704 },
+    { "id": "pdf", "nom": { "fr": "Export PDF", "en": "PDF export" }, "bibliotheques": [{ "id": "pdfmake", "version": "0.2.7" }, { "id": "pdfmake-polices", "version": "0.2.7" }] },
+    { "id": "pdf-assemblage", "nom": { "fr": "Assemblage de PDF", "en": "PDF assembly" }, "bibliotheques": [{ "id": "pdf-lib", "version": "1.17.1" }] },
+    { "id": "zip", "nom": { "fr": "Archives ZIP", "en": "ZIP archives" }, "bibliotheques": [{ "id": "jszip", "version": "3.10.1" }] },
+    { "id": "word", "nom": { "fr": "Word et graphiques", "en": "Word and charts" }, "bibliotheques": [{ "id": "docx", "version": "9.15.1" }, { "id": "docx-charts", "version": "9.15.1" }] },
+    { "id": "excel", "nom": { "fr": "Export Excel", "en": "Excel export" }, "bibliotheques": [{ "id": "exceljs", "version": "4.4.0" }] },
+    { "id": "markdown", "nom": { "fr": "Import Markdown", "en": "Markdown import" }, "bibliotheques": [{ "id": "marked", "version": "15.0.12" }] },
+    { "id": "qr", "nom": { "fr": "QR code", "en": "QR code" }, "bibliotheques": [{ "id": "qrcode-generator", "version": "1.4.4" }] }
+  ],
+  "portees": [
+    { "id": "tiptap", "nom": "TipTap", "version": "3.31.3", "adresse": "https://esm.sh/", "quand": "demarrage",
+      "contient": ["ProseMirror", "floating-ui", "prosemirror-suggest-changes", "linkifyjs"],
+      "note": { "fr": "Si vous cochez l’option « Éditeur hors ligne », l’éditeur se charge depuis la copie de l’app (vendor/editeur) au lieu d’esm.sh.",
+        "en": "If you tick the “Offline editor” option, the editor loads from the app’s own copy (vendor/editeur) instead of esm.sh." } },
+    { "id": "grist-api", "nom": "API de Grist", "adresse": "https://docs.getgrist.com/", "quand": "demarrage",
+      "note": { "fr": "Le script de l’API des widgets de Grist : l’app le demande toujours à cette adresse, même quand Grist est hébergé ailleurs, et n’en garde aucune copie.",
+        "en": "The script of Grist’s widget API: the app always asks for it at this address, even when Grist is hosted elsewhere, and keeps no copy of it." } },
+    { "id": "pdfmake", "nom": "pdfmake", "version": "0.2.7", "adresse": "https://cdnjs.cloudflare.com/", "quand": "usage", "paquet": "pdfmake",
+      "contient": ["polices (vfs_fonts)"] },
+    { "id": "polices-pdf", "nom": "Polices du PDF", "adresse": "https://lombre33.github.io/publipostageGrist/", "quand": "usage",
+      "contient": ["Roboto gras", "Arimo", "Tinos", "Cousine", "Gelasio", "Carlito", "cases à cocher", "pictogrammes"],
+      "note": { "fr": "Rangées avec l’app et lues de son site au premier « Export PDF » : rien n’est demandé à un autre site.",
+        "en": "Kept with the app and read from its own site at the first “PDF export”: nothing is asked from another site." } },
+    { "id": "pdf-lib", "nom": "pdf-lib", "version": "1.17.1", "adresse": "https://cdnjs.cloudflare.com/", "quand": "usage", "paquet": "pdf-lib" },
+    { "id": "jszip", "nom": "JSZip", "version": "3.10.1", "adresse": "https://cdnjs.cloudflare.com/", "quand": "usage", "paquet": "jszip" },
+    { "id": "docx", "nom": "docx", "version": "9.15.1", "adresse": "https://cdn.jsdelivr.net/", "quand": "usage", "paquet": "docx",
+      "contient": ["docx-charts (graphiques)"] },
+    { "id": "exceljs", "nom": "ExcelJS", "version": "4.4.0", "adresse": "https://cdnjs.cloudflare.com/", "quand": "usage", "paquet": "exceljs" },
+    { "id": "marked", "nom": "marked", "version": "15.0.12", "adresse": "https://cdnjs.cloudflare.com/", "quand": "usage", "paquet": "marked" },
+    { "id": "qrcode-generator", "nom": "qrcode-generator", "version": "1.4.4", "adresse": "https://cdnjs.cloudflare.com/", "quand": "usage",
+      "paquet": "qrcode-generator" },
+    { "id": "polices-libres", "nom": "Polices libres du PDF (Fontsource)", "adresse": "https://cdn.jsdelivr.net/", "quand": "option", "contient": ["48 polices libres"],
+      "note": { "fr": "Seulement quand le PDF emploie l’une de ces polices (Open Sans, Lato ou Inter par exemple) et que « Polices du document » reste cochée ; empreinte vérifiée avant usage.",
+        "en": "Only when the PDF uses one of these fonts (Open Sans, Lato or Inter for example) and “Document fonts” stays ticked; fingerprint checked before use." } },
+    { "id": "marianne", "nom": "Marianne (Système de Design de l’État)", "version": "1.15.4", "adresse": "https://cdn.jsdelivr.net/", "quand": "option",
+      "note": { "fr": "Seulement si le PDF est écrit en Marianne et que la personne déclare avoir le droit de l’employer ; quatre fichiers du paquet @gouvfr/dsfr, empreinte vérifiée avant usage.",
+        "en": "Only if the PDF is set in Marianne and the person states they have the right to use it; four files of the @gouvfr/dsfr package, fingerprint checked before use." } }
   ],
   "actions": {
     "ouvrir": ["document", "grille", "presentation", "email", "macro"],

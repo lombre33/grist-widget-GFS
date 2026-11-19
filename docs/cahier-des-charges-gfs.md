@@ -143,6 +143,7 @@ Slides+ (`lombre33/SlidesPlus`) n'est pas une app de GFS : les diapositives devi
 | **Accessibilité renforcée : un réglage à part, un interrupteur de la fenêtre « Thème »** (le porteur, 04/11, « un réglage à part » ; premier temps, puis second temps livré le 10/11) : combinable avec n'importe quelle ambiance et avec la couleur libre ; le texte à 7:1 (WCAG 1.4.6) et le trait de chaque commande à 3:1 (1.4.11), des cadres de 2 px et une barre de 6 px, ni trame, ni ombre, ni filet, ni dégradé, ni capitales ; les apps la reçoivent par le même message (`id` `renforcee`, mêmes jetons : aucune consigne). **Second temps (feu vert du porteur, 10/11)** : cibles de 36 px, texte de 14 px, anneau de focus de 3 px à deux couleurs, aucun mouvement, barre de sélection en vrai trait ; le contraste forcé du système vaut pour toute ambiance, interrupteur allumé ou non ; tout cela est l'interface de GFS : aucun jeton de plus, aucune consigne aux apps | 04/11 | Contrats 5.2 (point 10) ; section 3.4 |
 | **Les réglages de GFS sont réunis dans un seul menu « Réglages » du panneau de l'explorateur** : un bouton à icône seule (curseurs), le dernier de la ligne du titre, avec « Langue » (Comme Grist, Français, English), « Thème… », « Position de la barre » et « À propos… » (version, éditeur, site, licence) ; les boutons « Langue » et « Thème » de l'explorateur disparaissent, **la barre flottante ne change pas** (elle garde ses trois boutons). Raison : une seule commande pour un réglage, au même endroit (charte, section 1) | 04/11 (étude et carte des menus, réponse « ok pour la capture 1 / pas d'ajout sur la barre flottante ») | Sections 3.4 et 6.3 ; contrats 5.2 (points 6 et 10) ; mesuré sous Firefox (`test/interfaces-firefox.test.mjs`) et dans un vrai Grist (`labo/run-langue.mjs`, `labo/run-theme.mjs`) |
 | **« Nouveau > Depuis un modèle » est une galerie commune** : un article du menu « Nouveau » ouvre une seule fenêtre qui réunit les modèles de départ de toutes les apps (une carte par modèle avec sa vignette, une recherche, un filtre par app, « Créer »), contre un sous-menu par app et contre l'ouverture de la galerie de chaque app | 18/11 | **Le catalogue est déclaré dans le dépôt de chaque app (`modeles/modeles.json`) et copié par GFS** dans `modeles/<app>/` (comme les captures de la vitrine : aucune adresse de plus dans la politique de sécurité) ; « Créer » ouvre l'app sur **un modèle non enregistré** (`ouverture` `raison: 'modele'`, `modele: { id }`, kit 0.24.0), jamais un modèle vierge à la place ; grisé, jamais masqué (app ou extension absente, app qui ne sait pas encore ; une app sans modèle garde sa pastille « bientôt ») ; Publipostage+ a déjà sa galerie (22 modèles, catalogue provisoire dans GFS), Form+, Automation+ et Grist-BI sont invitées à en avoir (consignes 033, 020 et 016) ; contrats 2.2, 5.2 point 3, 5.4 point 13 ; mesuré sous Firefox (`test/modeles-firefox.mjs`) et dans un vrai Grist (`labo/run-modeles.mjs`) |
+| **Des règles de sécurité écrites pour toutes les apps, présentes et surtout à venir, et un tableau de bord de sécurité dans la fenêtre « Dépendances »** (le porteur, 18/11, « Idem + alertes relayées par les apps » : verdict par app, contrôle automatique chaque semaine, alertes d'appels bloqués relayées par les apps ; « Publipostage+ va limiter ses appels sortants, Grist-BI écrit sa politique ») | 18/11 | Sections 3.2.1 (règles S1 à S9) et 3.2.2 (le tableau de bord) ; guide des apps 1.4 ; consignes à chaque app ; faits vérifiés 133 |
 
 Si un fait nouveau remet en cause une de ces lignes, le dire au porteur avec ce fait, sur une carte de décision. Ne jamais
 proposer l'inverse de son propre chef.
@@ -194,6 +195,45 @@ Numérotées pour que les tests les citent (« 3.1, point 4 »).
 6. GFS et chaque app ont une politique de sécurité du contenu (CSP) stricte.
 7. Aucune page de démonstration ni de test n'est publiée sur l'origine de production.
 8. Le courtier reste petit (quelques centaines de lignes), sans bibliothèque, couvert par ses propres tests.
+9. Les règles de sécurité des apps (3.2.1) sont exigées de toute app qui entre dans la suite ; GFS les contrôle et montre où chacune en est (3.2.2).
+
+#### 3.2.1 Règles de sécurité des apps (décidé le 18/11 : « des règles de sécurité dans le cahier des charges de toutes les apps, présentes et surtout à venir »)
+
+Neuf règles, numérotées S1 à S9. Le guide des apps (1.4) dit comment les tenir ; le tableau de bord (3.2.2) montre où chaque app en est.
+**S1 à S7 sont exigées.** Une app nouvelle n'entre dans la suite (catalogue, manifeste, référence) que si elle les tient à sa première référence. Une app déjà dans la suite reçoit
+une consigne datée : elle dit où elle en est dans la section « Sécurité » de son `GFS-ETAT.md`, et GFS montre l'écart sans rien bloquer. **S8 et S9 sont attendues.**
+
+| N° | Règle | Ce que GFS en contrôle |
+|---|---|---|
+| S1 | Une politique de sécurité du contenu (CSP) dans la page de l'app, en balise `<meta http-equiv="Content-Security-Policy">` (GitHub Pages ne sert aucun en-tête), dès la première version publiée | la page de l'app, à sa référence et en ligne |
+| S2 | Aucune directive de récupération laissée ouverte : `default-src 'none'`, puis seulement ce que l'app utilise ; `object-src 'none'`, `base-uri 'none'`, `form-action 'none'` | les directives lues |
+| S3 | Appels sortants fermés : `connect-src`, `img-src`, `font-src`, `media-src`, `frame-src` et `worker-src` n'ouvrent que `'self'` et des adresses exactes, jamais `*`, `https:` ni `http:` ; chaque adresse est dite avec sa raison (section « Adresses que l'app appelle » du `GFS-ETAT.md`) ; exception dite : une app qui appelle le serveur Grist de la personne avec un jeton ne peut pas nommer cet hôte et ouvre `connect-src https:`, en le disant (« à noter », jamais « tenue ») | les adresses ouvertes, comparées à celles que l'app dit |
+| S4 | Scripts nommés : `script-src` ne garde que `'self'`, le script d'API de Grist (adresse entière, avec `'unsafe-eval'` que ce fichier exige : guide 1.1, règle 11) et les adresses exactes et versionnées des bibliothèques ; jamais `'unsafe-inline'`, `*`, `https:`, `data:` ni `blob:` (un script en ligne se garde par son empreinte) ; `'wasm-unsafe-eval'` et `worker-src blob:` seulement pour une bibliothèque qui l'exige, dits dans le `GFS-ETAT.md` | les directives lues |
+| S5 | Chaque bibliothèque chargée de l'extérieur est déclarée (guide 1.2, point 24), à une version exacte ; elle porte son empreinte (`integrity`, `crossorigin="anonymous"`) quand le CDN le permet | les adresses retrouvées dans la page, l'import map et la politique, comparées à la déclaration ; l'empreinte du CDN, relevée à chaque contrôle |
+| S6 | Rien ne quitte le document sans un geste de la personne : aucune donnée du document ni de la personne n'est envoyée à un service tiers, ni mesure d'audience, ni journal d'erreurs envoyé ; aucun secret (clé, jeton) dans le dépôt | déclarée par l'app ; GFS montre ce que la politique permettrait d'atteindre |
+| S7 | Les dépendances sont suivies : Dependabot (ou un outil équivalent) est actif sur le dépôt ; une montée de version se dit dans « Changements qui touchent GFS » ; une version qui a un avis de sécurité publié se monte avant le reste | `.github/dependabot.yml` du dépôt, avis du registre npm |
+| S8 | L'app relaie à GFS, par le kit (0.25.0 ou après : `import './kit/js/violations-start.js'` en tête du module d'entrée), les appels que sa politique bloque | l'import ou l'appel du relais, lu dans la page ou le code ; à l'usage, « relais actif » (l'app l'a dit) et les alertes reçues |
+| S9 | Un fichier `SECURITY.md` à la racine du dépôt dit où signaler une faille, en privé | le fichier |
+
+`'unsafe-eval'` est permis parce que le script d'API de Grist l'exige (faits vérifiés 27) ; `style-src 'unsafe-inline'` est toléré, noté « à noter » au tableau de bord, tant que S3 est tenue (une
+feuille injectée n'atteint alors aucune adresse).
+
+#### 3.2.2 Le tableau de bord de sécurité (choix du porteur, 18/11)
+
+La fenêtre « Dépendances » devient le tableau de bord de sécurité de la suite : pour chaque app, S1 à S9 une à une (tenue, à noter, non tenue, non vérifiable, ou « l'app dit : en cours »), et pour
+chaque bibliothèque que l'app déclare, ce que GFS a retrouvé dans son code. Trois sources, toujours dites comme telles :
+
+1. **Ce que GFS vérifie lui-même** (marqué « Vérifié par GFS », avec la date du contrôle) : S1 à S5, S7 à S9, d'après la page de l'app à sa référence et sur son site en ligne, son dépôt, le registre npm
+   et l'empreinte que le CDN sert ce jour-là.
+2. **Ce que l'app déclare** (marqué « Déclaré par l'app ») : S6, et chaque ligne de « Portées par l'app » tant que GFS n'a pas retrouvé son adresse et sa version dans le code.
+3. **Ce que GFS voit pendant l'usage** : les appels que la politique d'une app bloque, quand l'app les relaie (S8, kit 0.25.0 ; contrats 5.4, point 14), pour la session seulement, à titre d'information : le nom de l'app, la directive, l'**hôte** bloqué (jamais l'adresse entière : le chemin et les paramètres sont ce qu'un code piraté cherchait à envoyer), qui l'a demandé, le compte ; un avis à la personne (trois au plus par app) et une ligne dans la fenêtre. L'app est tenue pour non fiable : GFS réduit chaque champ à une forme fermée, n'écrit rien dans le document et ne garde rien après la session.
+
+Un contrôle automatique chaque semaine (une tâche GitHub, en lecture seule sur les apps : rien ne se pousse dans leurs dépôts ni chez `grist-factory`) refait les vérifications du point 1 et propose le
+nouveau relevé en demande de fusion sur GFS ; la fenêtre dit « Dernier contrôle : <date> ».
+
+**Limites, dites dans la fenêtre** (mesurées le 18/11, faits vérifiés 133) : la politique est appliquée par le navigateur, jamais par GFS, qui ne peut en imposer aucune à un sous-cadre ; GFS ne voit ni un
+appel vers une adresse autorisée, ni un appel bloqué que l'app ne relaie pas, et un code compromis peut taire son propre relais : **l'alerte informe, elle ne protège pas** ; aucune app n'impose d'empreinte,
+GFS dit donc « identique à la dernière fois que GFS a regardé », jamais « conforme à ce que l'app attend » ; le contrôle lit la référence et le site en ligne, pas ce qu'une app construirait à l'exécution.
 
 ### 3.3 Audit et maintenance
 
@@ -783,6 +823,7 @@ Un test de bout en bout le vérifie dans un vrai Grist, pour chaque app : seule,
 | Une seule origine pour tous les sites d'un compte GitHub (`lombre33.github.io`, `grist-factory.github.io`) : des pages de même origine partagent le stockage et, dans des cadres voisins, peuvent agir l'une sur l'autre | Sous-cadres sans `allow-same-origin` ; stockage par app ; aucune page de démonstration ni de test sur l'origine de production ; un domaine par app seulement si un audit l'exige |
 | Écriture des tables internes de Grist (`_grist_*`) | Refusée par défaut ; déclarée et justifiée dans le manifeste (Form+ écrit `_grist_Views_section` ; Publipostage+ une fois `_grist_Tables_column`) |
 | Apps sans CSP (Form+, Grist-BI) | Gabarit de CSP du kit, appliqué partout |
+| Une app dont la politique laisse les appels sortants ouverts (Publipostage+, 18/11) ou n'en a aucune (Grist-BI) : une bibliothèque piratée peut envoyer les données où elle veut | Règles S1 à S9 (3.2.1), consigne à chaque app, tableau de bord (3.2.2) qui montre l'écart ; la mesure réelle reste la politique de l'app, appliquée par le navigateur |
 | Le courtier, nouvelle pièce critique | Petit, sans bibliothèque, tests dédiés, audité à chaque version |
 | Messages d'un autre cadre | GFS ne lit que les messages de son sous-cadre actif ; le kit ne lit que ceux de son parent |
 | Promettre trop | Pas de « cocher un module rend plus sûr » ; la sécurité se décrit par l'isolement et le filtrage, mesurés |

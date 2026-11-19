@@ -39,6 +39,7 @@ import { FILES_APP, FILES_MANIFEST } from './files/gfs-files.js';
 import { Transfer, buildTransferFrame } from './broker/transfer.js';
 import { Attach } from './broker/attach.js';
 import { Player } from './broker/player.js';
+import { SecurityRelay } from './broker/security-relay.js';
 import { ask } from './ui/ask-window.js';
 import { Entries } from './broker/entries.js';
 import { Openings } from './broker/openings.js';
@@ -136,6 +137,8 @@ export class GfsController {
     this.player = new Player({ container: this.$('frames') }); // le lecteur de vidéos posé par-dessus l'app (contrats 5.2, point 11)
     // `joindre` (contrats 5.4, point 12)
     this.attach = new Attach({ doc: this.port.doc, transfer: this.transfer, session: () => this.session, readonly: () => this.readonly });
+    // les appels que la politique d'une app bloque, relayés par le kit (contrats 5.4, point 14), pour la session seulement
+    this.relay = new SecurityRelay({ appName: this.appName, t: this.t, notice: text => this.notice(text), now: () => new Date() });
     this.#buildSharing();
     this.#reading = new FilesReading({
       port: this.port, apps: () => this.validApps(), fullAccess: () => this.fullAccess, rangement: this.rangement, reader: this.fileReader,
@@ -389,7 +392,7 @@ export class GfsController {
   openDependencies() {
     this.dependencies ??= new DependenciesControl({ container: this.$('stage'), inertTargets: this.inertTargets, t: this.t, locale: () => this.locale,
       lang: () => this.lang,
-      base: this.doc.baseURI, model: () => this.registry.model(), catalogue: () => this.registry.catalogue, readJson,
+      base: this.doc.baseURI, model: () => this.registry.model(), catalogue: () => this.registry.catalogue, readJson, relay: () => this.relay.snapshot(),
       readBytes: async address => (await readFile(address)).arrayBuffer(), blocked: () => this.writeBlock(), ask: opts => this.ask(opts), doc: this.doc,
       apply: (plan, mode) => Promise.all(plan.map(({ app, extensions, natives }) =>
         this.#saved(this.registry.setSources(app, { extensions, natives }, mode)))) });
@@ -534,6 +537,7 @@ export class GfsController {
       ...this.kept.handlers(session),
       ...this.attach.handlers(session),
       ...this.player.handlers(session),
+      ...this.relay.handlers(session),
     };
   }
 

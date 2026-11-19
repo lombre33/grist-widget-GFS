@@ -72,9 +72,11 @@ test('planFor : seulement ce qui se peut et ce qui change, une liste par app ave
   const { state } = await setup();
   const units = allUnits(state.model(), 'fr');
   const copy = planFor(units.values(), 'vendorise');
-  assert.deepEqual(copy, [{ app: 'publipostage', appName: 'Publipostage+', extensions: ['graphique'], natives: ['editeur'], names: [pub.natives[0].nom.fr, 'Graphique'] }],
+  const natives = pub.natives.map(group => group.id);
+  assert.deepEqual(natives, ['editeur', 'pdf', 'pdf-assemblage', 'zip', 'word', 'excel', 'markdown', 'qr'], 'l\'éditeur et les sept fonctions de la consigne 076');
+  assert.deepEqual(copy, [{ app: 'publipostage', appName: 'Publipostage+', extensions: ['graphique'], natives, names: [...pub.natives.map(group => group.nom.fr), 'Graphique'] }],
     'Écriture en direct et lecture PDF sont déjà en copie : rien à y écrire');
-  assert.equal(planSize(copy), 2);
+  assert.equal(planSize(copy), 9, 'huit fonctions natives et une extension');
   const cdn = planFor(units.values(), 'cdn');
   assert.deepEqual(cdn.map(entry => [entry.extensions, entry.natives]), [[['edition'], []]], 'le CDN : Écriture en direct (qui peut) ; pas la lecture PDF (aucun CDN), rien pour ce qui y est déjà');
   assert.deepEqual(planFor(units.values(), 'inconnu'), [], 'un mode inconnu ne change rien');
@@ -84,7 +86,7 @@ test('planFor : seulement ce qui se peut et ce qui change, une liste par app ave
 test('allTarget : « tout en copie figée », sauf quand chaque fonction qui le peut y est déjà (le bouton propose le retour au CDN)', async () => {
   const { state } = await setup();
   assert.equal(allTarget(allUnits(state.model(), 'fr')), 'vendorise');
-  await state.setSources('publipostage', { extensions: ['graphique'], natives: ['editeur'] }, 'vendorise');
+  await state.setSources('publipostage', { extensions: ['graphique'], natives: pub.natives.map(group => group.id) }, 'vendorise');
   assert.equal(allTarget(allUnits(state.model(), 'fr')), 'cdn');
   const none = await setup({ publipostage: { extensions: [] } });
   assert.equal(allTarget(new Map([...allUnits(none.state.model(), 'fr')].filter(([, unit]) => unit.kind === 'extension'))), 'vendorise', 'rien ne se choisit : la copie par défaut, le plan sera vide');
@@ -131,8 +133,9 @@ test('sourceOf : ce que la ligne d\'une bibliothèque propose, d\'après les fon
   assert.deepEqual([edition.mode, edition.refused, edition.follow], ['vendorise', false, []]);
   await state.setMode('publipostage', 'edition', 'cdn');
   assert.equal(sourceOf(byName(rowsOf(state)).yjs).refused, true, 'en CDN avec une app qui ne nomme pas encore l\'adresse : le navigateur refuserait, la ligne le dit');
-  assert.deepEqual(sourceOf(rows.marked).units, [], 'aucune app ne la demande : rien à choisir');
-  assert.equal(sourceOf(rows.marked).mode, null);
+  assert.deepEqual(sourceOf(rows.marked).units.map(unit => unit.key), ['publipostage|native|markdown'], 'marked n\'est demandée que par « Import Markdown » de Publipostage+');
+  assert.deepEqual(sourceOf(rows['d3-cloud']).units, [], 'aucune app installée ne la demande : rien à choisir');
+  assert.equal(sourceOf(rows['d3-cloud']).mode, null);
   const { state: bare } = await setup({ publipostage: { extensions: [] } });
   const off = sourceOf(byName(rowsOf(bare))['plotly.js-basic-dist-min']);
   assert.deepEqual([off.open.length, off.why], [0, ['off']], 'l\'extension n\'est pas ajoutée : le choix attend');

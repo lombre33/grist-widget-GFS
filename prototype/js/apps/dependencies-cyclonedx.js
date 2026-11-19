@@ -60,6 +60,16 @@ function componentOf(row) {
       properties };
 }
 
+// Une bibliothèque que l'app déclare charger elle-même (js/apps/dependencies-carried.js) : GFS ne la sert pas et n'en sait que ce que l'app en dit, donc ni
+// identifiant `purl`, ni licence, ni empreinte ; l'adresse déclarée et la mention « non vérifiée » y sont.
+function declaredComponentOf(entry) {
+  return { type: 'library', 'bom-ref': `gfs:declared:${entry.app}:${entry.id}`, name: entry.name, ...(entry.version ? { version: entry.version } : {}),
+    scope: 'optional',
+    externalReferences: [{ type: 'distribution', url: entry.address, comment: 'Address declared by the app, not checked by GFS' }],
+    properties: [{ name: 'gfs:declared-by-app', value: entry.app }, { name: 'gfs:verified', value: 'false' }, { name: 'gfs:loaded', value: entry.when },
+      ...entry.contains.map(name => ({ name: 'gfs:contains', value: name }))] };
+}
+
 // Les avis du relevé comme des vulnérabilités, un enregistrement par avis : les lignes qui le portent sont dans `affects`.
 function vulnerabilitiesOf(rows) {
   const found = new Map();
@@ -78,9 +88,9 @@ function vulnerabilitiesOf(rows) {
   return [...found.values()];
 }
 
-// `generated` : la date de l'export, en ISO ; `serial` : un UUID ; `surveyed` : la date du relevé (ISO), ou null.
-export function cyclonedx({ rows, surveyed, generated, serial }) {
-  const components = rows.map(componentOf);
+// `generated` : la date de l'export, en ISO ; `serial` : un UUID ; `surveyed` : la date du relevé (ISO), ou null ; `carried` : ce que les apps déclarent.
+export function cyclonedx({ rows, carried = [], surveyed, generated, serial }) {
+  const components = [...rows.map(componentOf), ...carried.flatMap(group => group.carried.map(declaredComponentOf))];
   return { bomFormat: 'CycloneDX', specVersion: '1.5', serialNumber: `urn:uuid:${serial}`, version: 1,
     metadata: { timestamp: generated, tools: { components: [{ type: 'application', name: 'GFS « Dépendances »',
       description: 'Grist Factory Suite, fenêtre Dépendances' }] },

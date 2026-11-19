@@ -1,4 +1,4 @@
-// « Mots-clés des publications » de Grist-BI avec la VRAIE app (référence 92da65c), dans un VRAI serveur Grist (l'image officielle, `bash vrai-serveur.sh`), à 700 × 400 : ce que l'app
+// « Mots-clés des publications » de Grist-BI avec la VRAIE app (référence 94607b9 : sa politique de sécurité est dans index.html, `connect-src 'self' https:` ; le labo ajoute l'adresse du Grist local, en http), dans un VRAI serveur Grist (l'image officielle, `bash vrai-serveur.sh`), à 700 × 400 : ce que l'app
 // demandait à GFS dans « Demandes à GFS » (`jeton` et `ecrit`) et n'avait « jamais rejoué contre un vrai document ». Les gestes sont ceux de js/grist-api.js de l'app (`GristBI.api`),
 // appelés dans son sous-cadre isolé (origine « null »), après « Apps > Grist-BI » et « Nouveau > Rapport BI » à la vraie souris.
 //   bash vrai-serveur.sh && REPO_DIR="$(realpath ../..)" node run-bi-jeton.mjs        (LAB_LANG=fr|en, LAB_SCHEME=light|dark)
@@ -99,7 +99,7 @@ async function playWrite(run, app, rows) {
 }
 
 const server = await requireServer();
-const pages = createServer(serve(process.env.REPO_DIR, undefined, openConnectIn(/prototype[/\\]transfer[/\\]index\.html$/))).listen(PAGE_PORT, '127.0.0.1');
+const pages = createServer(serve(process.env.REPO_DIR, undefined, openConnectIn(/prototype[/\\](transfer|apps[/\\]bi)[/\\]index\.html$/))).listen(PAGE_PORT, '127.0.0.1');
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
 try {
   const context = await newContext(browser, server, { colorScheme: scheme });

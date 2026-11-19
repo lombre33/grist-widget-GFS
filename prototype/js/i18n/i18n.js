@@ -17,6 +17,7 @@ import { EXPLORER_STRINGS } from './i18n-explorer.js';
 import { SHARING_STRINGS } from './i18n-sharing.js';
 import { TEMPLATE_STRINGS } from './i18n-templates.js';
 import { DEPENDENCIES_STRINGS } from './i18n-dependencies.js';
+import { SECURITY_STRINGS } from './i18n-security.js';
 
 const STRINGS = {
   fr: {
@@ -27,6 +28,7 @@ const STRINGS = {
     ...VITRINE_STRINGS.fr,
     ...TEMPLATE_STRINGS.fr,
     ...DEPENDENCIES_STRINGS.fr,
+    ...SECURITY_STRINGS.fr,
     ...RIGHTS_STRINGS.fr,
     ...SHARE_STRINGS.fr,
     ...SHARE_OTHER_STRINGS.fr,
@@ -209,6 +211,7 @@ const STRINGS = {
     ...VITRINE_STRINGS.en,
     ...TEMPLATE_STRINGS.en,
     ...DEPENDENCIES_STRINGS.en,
+    ...SECURITY_STRINGS.en,
     ...RIGHTS_STRINGS.en,
     ...SHARE_STRINGS.en,
     ...SHARE_OTHER_STRINGS.en,

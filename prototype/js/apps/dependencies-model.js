@@ -52,6 +52,9 @@ function usesOf(modules, lang) {
 }
 
 const unique = list => [...new Set(list)];
+// L'état d'une ligne : le meilleur de ses usages (active avant installée avant prête), « unused » quand aucune app ne la demande.
+const stateOf = uses => (uses.length ? uses.map(use => use.state).sort((a, b) => STATE_RANK[a] - STATE_RANK[b])[0] : 'unused');
+const byState = (a, b) => STATE_RANK[a.state] - STATE_RANK[b.state] || a.paquet.localeCompare(b.paquet);
 // Les usages sans doublon : `docx` et `docx-charts` sont deux entrées d'une même fonction, la ligne du paquet ne la nomme qu'une fois.
 const uniqueUses = uses => [...new Map(uses.map(use => [`${use.app}|${use.what}|${use.state}`, use])).values()];
 
@@ -70,7 +73,7 @@ function rowOf({ paquet, version, files, uses }, releve) {
   const stale = Boolean(found) && found.version !== version;
   const advisories = found && !stale ? found.avis : [];
   const latest = found ? found.derniere : null;
-  const state = uses.length ? uses.map(use => use.state).sort((a, b) => STATE_RANK[a] - STATE_RANK[b])[0] : 'unused';
+  const state = stateOf(uses);
   const worst = worstAdvisory(advisories);
   const ecart = found ? gap(version, latest) : 'inconnu';
   return {
@@ -97,7 +100,44 @@ export function dependencyRows({ catalogue, releve, modules, lang }) {
     }
   }
   return [...byKey.values()].map(row => rowOf({ ...row, uses: uniqueUses(row.uses) }, releve))
-    .sort((a, b) => STATE_RANK[a.state] - STATE_RANK[b.state] || a.paquet.localeCompare(b.paquet));
+    .sort(byState);
+}
+
+// Une ligne vue depuis une app (`app` : son id, ou null pour une bibliothèque qu'aucune app ne demande) : ses usages seulement, donc son état, ses
+// fonctions et le choix de sa source (js/apps/dependencies-source.js) ne parlent que de cette app ; `all` garde tous les usages (le détail les nomme),
+// `others` les autres apps qui la demandent aussi (la mise en commun qu'on cherche à voir). `slot` identifie la ligne dans la fenêtre : une bibliothèque
+// s'y trouve une fois par app.
+export function scopeRow(row, app) {
+  const uses = app === null ? [] : row.uses.filter(use => use.app === app);
+  const scope = app === null ? 'none' : app;
+  return { ...row, uses, all: row.uses, scope, slot: `${scope}|${row.key}`, state: stateOf(uses),
+    apps: unique(uses.map(use => use.appName)), functions: unique(uses.map(use => use.what)),
+    others: unique(row.uses.filter(use => use.app !== app).map(use => use.appName)) };
+}
+
+// Les lignes rangées par app (demande du porteur, 18/11 : « regroupé par app, par défaut seulement celles des apps activées ») : [{ id, name, installed,
+// rows, carried, declared }], les apps par nom, et en dernier ce qu'aucune app ne demande (`id` vide, `name` null). `installed` : l'app est installée (au
+// moins un de ses usages n'est pas « prête »). `carried` : ce que l'app déclare charger elle-même (js/apps/dependencies-carried.js, la liste rendue par
+// `carriedOf`) ; `declared` : combien elle en déclare, ou null quand elle n'a encore rien déclaré.
+export function groupsOf(rows, carried = []) {
+  const apps = new Map();
+  const loose = [];
+  for (const row of rows) {
+    if (!row.uses.length) { loose.push(scopeRow(row, null)); continue; }
+    for (const use of new Map(row.uses.map(each => [each.app, each])).values()) {
+      const group = apps.get(use.app) || { id: use.app, name: use.appName, rows: [], installed: false };
+      group.rows.push(scopeRow(row, use.app));
+      group.installed = group.installed || row.uses.some(each => each.app === use.app && each.state !== 'ready');
+      apps.set(use.app, group);
+    }
+  }
+  for (const own of carried) {
+    const group = apps.get(own.id) || { id: own.id, name: own.name, rows: [], installed: false };
+    apps.set(own.id, { ...group, installed: group.installed || own.installed, carried: own.carried, declared: own.declared });
+  }
+  const named = [...apps.values()].map(group => ({ carried: [], declared: null, ...group, rows: group.rows.sort(byState) }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  return loose.length ? [...named, { id: '', name: null, installed: false, rows: loose.sort(byState), carried: [], declared: null }] : named;
 }
 
 // Les filtres de la fenêtre : Toutes, Actives, Mises à jour, Avis.
@@ -109,4 +149,10 @@ export function summary(rows) {
   const counts = Object.fromEntries(FILTERS.map(filter => [filter, rows.filter(row => matchesFilter(row, filter)).length]));
   const files = new Map(rows.flatMap(row => row.files).map(file => [file.id, file.poids]));
   return { counts, bytes: [...files.values()].reduce((total, poids) => total + poids, 0) };
+}
+
+// Une date ISO en toutes lettres, dans la langue de la personne (UTC : le relevé et le contrôle sont datés en UTC).
+export function formatDate(iso, locale) {
+  try { return new Date(iso).toLocaleDateString(locale, { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }); }
+    catch (error) { return String(iso).slice(0, 10); }
 }

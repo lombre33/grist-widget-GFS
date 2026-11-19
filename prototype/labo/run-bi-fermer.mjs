@@ -15,18 +15,18 @@ import { installApp } from './lab-gestes.mjs';
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
 const run = `bi-fermer-${lang}-${scheme}`;
-const WORDS = lang === 'fr' ? { report: 'Rapport BI', document: 'Document' } : { report: 'BI report', document: 'Document' };
+const WORDS = lang === 'fr' ? { report: 'Rapport BI', document: 'Document', createPage: 'Créer la page' } : { report: 'BI report', document: 'Document', createPage: 'Create page' };
 const BI_URL = /(apps\/bi|Grist-BI)\//;
 const PP_URL = /(apps\/publipostage|publipostageGrist)\//;
-const DEBOUNCE = { chemin: '/prototype/apps/bi/js/main.js', de: '    }, 600);\n  }\n\n  // Partagé par scheduleSave/flushPendingSave', vers: '    }, 600000);\n  }\n\n  // Partagé par scheduleSave/flushPendingSave' };
+const DEBOUNCE = { chemin: '/prototype/apps/bi/js/main-session.js', de: '    }, 600);\n  }\n\n  // Partagé par scheduleSave/flushPendingSave', vers: '    }, 600000);\n  }\n\n  // Partagé par scheduleSave/flushPendingSave' };
 
 const WITHOUT = process.env.LAB_SANS_ONCLOSE === '1';
-const NO_ONCLOSE = { chemin: '/prototype/apps/bi/js/main.js', de: "GfsLink.onClose(async () => {\n        await flushPendingSave();\n        return true;\n      });", vers: '/* témoin : pas d\'abonné à fermer */' };
+const NO_ONCLOSE = { chemin: '/prototype/apps/bi/js/main-core.js', de: "GfsLink.onClose(async () => {\n        await flushPendingSave();\n        return true;\n      });", vers: '/* témoin : pas d\'abonné à fermer */' };
 const lab = await startLab({ lang, colorScheme: scheme, patches: WITHOUT ? [DEBOUNCE, NO_ONCLOSE] : [DEBOUNCE] });
 const { page } = lab;
 const warnings = [];
 page.on('console', message => { if (message.type() === 'warning' && isGfsWarning(message.text())) warnings.push(message.text()); });
-// La page est ajoutée par `prompt()` dans l'app (le sous-cadre a `allow-modals`) : la personne tape « Pause » et valide.
+// (L'app d'avant la refonte du 19/11 ajoutait la page par `prompt()` ; la fenêtre de l'app la remplace.)
 page.on('dialog', dialog => dialog.accept('Pause').catch(() => {}));
 await lab.fitPanel(undefined, 700, 400);
 
@@ -60,9 +60,12 @@ await frame.locator('.menu').waitFor();
 await frame.locator('.menu-item', { hasText: WORDS.report }).first().click();
 const app = await lab.appFrame(BI_URL);
 check('l\'app a un cadre', Boolean(app));
-await app.locator('#table-select').waitFor();
+await app.locator('#table-select').waitFor({ state: 'attached' });
 await page.waitForTimeout(3000);
 await app.locator('#add-page').click();
+// Depuis la refonte de l'app (19/11), « + Page » ouvre sa fenêtre « Nouvelle page » (plus de `prompt()`) : la personne tape « Pause » et crée la page.
+await app.locator('[role=dialog] input[type=text]:visible, dialog input[type=text]:visible').last().fill('Pause');
+await app.getByRole('button', { name: WORDS.createPage }).click();
 await page.waitForTimeout(1200);
 const pagesShown = await app.evaluate(() => [...document.querySelectorAll('#page-tabs .page-tab, .page-tab')].map(each => each.textContent.replace(/\s+/g, ' ').trim()));
 say('pages affichées dans l\'app :', JSON.stringify(pagesShown));

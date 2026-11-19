@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-jKdPlC1u2Jcuxz01K2bPVXOIfIgqiOi9mMjvUKbl9TU='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-KBwpUksDJIp0s1XpU5mXA8+TQ3/aeT1TVFCbHSPSBec='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=6c6e51caa4">
 <link rel="stylesheet" href="css/explorer.css?v=a1c7636359">
 <link rel="stylesheet" href="css/modules.css?v=db0f4eaa51">
@@ -239,7 +239,7 @@
     "./kit/js/correcteurs.js": "./kit/js/correcteurs.js?v=4d2246e0c2",
     "./kit/js/dialogs.js": "./kit/js/dialogs.js?v=e2e71809c1",
     "./kit/js/dom.js": "./kit/js/dom.js?v=bb61d5ebe7",
-    "./kit/js/gfs-link.js": "./kit/js/gfs-link.js?v=9799a8a256",
+    "./kit/js/gfs-link.js": "./kit/js/gfs-link.js?v=3d73bf690d",
     "./kit/js/host.js": "./kit/js/host.js?v=daec6a3a1d",
     "./kit/js/i18n.js": "./kit/js/i18n.js?v=34aa7f2b67",
     "./kit/js/layers.js": "./kit/js/layers.js?v=0a7ababe40",
@@ -319,7 +319,7 @@
     "./kit/js/synchro/textes.js": "./kit/js/synchro/textes.js?v=ee2c3972ce",
     "./kit/js/synchro/version.js": "./kit/js/synchro/version.js?v=51eff2e566",
     "./kit/js/theme.js": "./kit/js/theme.js?v=55b9ccfb58",
-    "./kit/js/violations-message.js": "./kit/js/violations-message.js?v=58bb483682",
+    "./kit/js/violations-message.js": "./kit/js/violations-message.js?v=078add5281",
     "./kit/js/violations-pose.js": "./kit/js/violations-pose.js?v=42826f2d54",
     "./kit/js/violations-start.js": "./kit/js/violations-start.js?v=ebb25b673e",
     "./kit/js/violations.js": "./kit/js/violations.js?v=5dca5d589e"

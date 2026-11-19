@@ -167,20 +167,23 @@ test('templates : Publipostage+, Form+ et Grist-BI livrent chacune leur catalogu
 });
 
 // Automation+ n'a aucun type de fichier (un automatisme est une ligne de sa table) : son manifeste déclare `modeles.type`, et ses cinq modèles prennent ce type (choix du porteur,
-// 18/11, « L'app demande »). Ils restent grisés « pas encore » tant que l'app ne déclare pas `ouverture.modele`.
-test('templates : les modèles d\'Automation+ (une app sans type de fichier) prennent le type que son manifeste déclare ; grisés « pas encore » tant qu\'elle ne sait pas les ouvrir', () => {
+// 18/11, « L'app demande »). Depuis le 19/11 son manifeste déclare aussi `ouverture.modele` (l'app 0.15.4 ouvre le modèle, mesuré dans un vrai Grist) : ils sont libres. Sans cette ligne
+// (une app qui ne saurait pas encore les ouvrir), ils resteraient grisés « pas encore ».
+test('templates : les modèles d\'Automation+ (une app sans type de fichier) prennent le type que son manifeste déclare ; libres depuis `ouverture.modele`, grisés « pas encore » sans elle', () => {
   const only = ['automation'];
   const installed = { automation: { extensions: [] } };
-  const french = templatesOf({ installed }, 'fr', only);
+  const without = { automation: manifest => ({ ...manifest, ouverture: { ...manifest.ouverture, modele: false } }) };
+  const french = templatesOf({ installed, patch: without }, 'fr', only);
   assert.deepEqual(french.apps.find(app => app.id === 'automation'), { id: 'automation', name: 'Automation+', state: 'ok', reason: '', count: 5 });
   assert.equal(french.models.length, 5);
   assert.ok(french.models.every(model => model.app === 'automation' && model.type === 'automatisme' && model.icon === 'bolt' && model.typeLabel === 'Automatisme'
     && model.family === null && !model.tables), 'le type, son icône et son mot vont ensemble ; aucun modèle ne vient avec des tables');
   assert.ok(french.models.every(model => model.greyed && model.reason === 'ex.template.notYet {"app":"Automation+"}' && !model.focus), 'sans `ouverture.modele` : « pas encore »');
-  assert.equal(templatesOf({ installed }, 'en', only).models[0].typeLabel, 'Automation');
-  const ready = templatesOf({ installed, patch: { automation: manifest => ({ ...manifest, ouverture: { ...manifest.ouverture, modele: true } }) } }, 'fr', only).models;
-  assert.equal(ready.filter(model => model.greyed).length, 0, 'une fois que l\'app dit qu\'elle ouvre un modèle, rien n\'est grisé');
-  const absent = templatesOf({ installed: {}, patch: { automation: manifest => ({ ...manifest, ouverture: { ...manifest.ouverture, modele: true } }) } }, 'fr', only).models;
+  assert.equal(templatesOf({ installed, patch: without }, 'en', only).models[0].typeLabel, 'Automation');
+  const real = templatesOf({ installed }, 'fr', only).models;
+  assert.equal(real.length, 5);
+  assert.equal(real.filter(model => model.greyed).length, 0, 'le manifeste de GFS dit que l\'app ouvre un modèle (19/11) : rien n\'est grisé');
+  const absent = templatesOf({ installed: {} }, 'fr', only).models;
   assert.ok(absent.every(model => model.greyed && model.focus === 'app:automation' && model.reason === 'ex.lockedApp {"app":"Automation+"}'), 'app non installée : sa ligne dans « Apps et extensions »');
 });
 

@@ -50,6 +50,23 @@ test('openedItems : le fichier que l\'app montre est marqué par un mot et ne se
   assert.match(other.drop.label, /Retirer des ouverts : Inscription/);
 });
 
+test('openedItems : la croix du fichier que l\'app montre est grisée et explique au lieu de retirer ; celle des autres retire', () => {
+  const { built, calls, t } = items();
+  const [shown, other] = built.slice(1, 3);
+  assert.equal(shown.drop.greyed, true);
+  assert.equal(other.drop.greyed, false);
+  assert.match(shown.drop.label, /Retirer des ouverts : Émargement/, 'elle garde son nom');
+  shown.drop.run();
+  assert.deepEqual(calls, [['notice', t('dock.openedShownWhy')]], 'rien n\'est retiré : la phrase dit pourquoi');
+  other.drop.run();
+  assert.deepEqual(calls.slice(1), [['drop', 'form:3', 1]]);
+});
+
+test('openedItems : sans fichier affiché, aucune croix n\'est grisée', () => {
+  const { built } = items({ shownKey: null });
+  assert.deepEqual(built.slice(1, 4).map(item => item.drop.greyed), [false, false, false]);
+});
+
 test('openedItems : sans fichier ouvert, un article grisé le dit et son clic explique ; « Ouvrir un autre fichier… » reste', () => {
   const { built, calls, t } = items({ list: [], shownKey: null });
   assert.equal(built[1].greyed, true);

@@ -3,7 +3,8 @@
 // et en sombre, à la vraie souris et au vrai clavier : les cinq boutons dans l'ordre et la barre de 34 × 154 ; le bouton grisé sans fichier ouvert et son menu (titre, article grisé qui explique, « Ouvrir un autre
 // fichier… ») ; la pastille et le nom qui portent le nombre ; chaque ligne (28 px, contenu dans la ligne, fichier affiché en gras avec son mot, indice de l'app, croix de 24 px au moins) ; un clic sur un fichier l'ouvre,
 // sur le fichier affiché ne fait rien ; la croix retire la ligne et rouvre le menu ; le clavier (↓, →, ←, Suppr, Début, Fin, Échap) ; le menu sur les quatre bords, sans recouvrir la barre et dans la page ; un nom
-// très long coupé par « … » avec son texte entier au survol ; l'accessibilité renforcée (cibles de 36 px). Le contraste se mesure dans un vrai Grist (labo/run-ouverts-barre.mjs).
+// très long coupé par « … » avec son texte entier au survol ; la croix du fichier affiché, grisée (23/11) ; un clic dans le cadre d'une app, qui referme le menu (23/11 : un vrai cadre sandboxé sur la page d'essai ; le `blur` de la fenêtre,
+// que Firefox sans écran ne donne jamais, est dans labo/run-menu-hors-widget.mjs) ; l'accessibilité renforcée (cibles de 36 px). Le contraste se mesure dans un vrai Grist (labo/run-ouverts-barre.mjs).
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT } from './helpers.mjs';
@@ -24,7 +25,7 @@ export function barrePages() {
   const floaters = (index.match(/<div class="floaters"[\s\S]*?<\/div>/) || [''])[0];
   if (sheets.length < 3 || !importMap || !floaters) throw new Error('index.html : ses feuilles de style, sa carte d\'importation et sa barre');
   const page = `<!doctype html>\n<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>essai</title>\n${sheets.join('\n')}\n${importMap}\n</head>\n`
-    + `<body><main class="stage" id="stage"><div class="frames" id="frames"></div>${floaters.replace(' hidden>', '>')}<p class="status toast" id="toast" role="status" hidden></p></main><script type="module" src="/test/pages/barre-ouverts.js"></script></body></html>`;
+    + `<body><main class="stage" id="stage"><div class="frames" id="frames"><iframe class="app-frame" id="app-cadre" title="app" sandbox="allow-scripts" srcdoc="<p>app</p>"></iframe></div>${floaters.replace(' hidden>', '>')}<p class="status toast" id="toast" role="status" hidden></p></main><script type="module" src="/test/pages/barre-ouverts.js"></script></body></html>`;
   return { [PAGE]: page };
 }
 
@@ -49,7 +50,7 @@ function read() {
       name: text(label), hint: text(hint), height: Math.round(row.getBoundingClientRect().height), current: main.getAttribute('aria-current') === 'true', word: text(main.querySelector('.sr-only')),
       weight: Number(getComputedStyle(main).fontWeight), cut: label.scrollWidth > label.clientWidth + 1 && !main.title, title: main.title,
       contained: [label, hint, drop].every(node => !node || (box(node)[0] >= here[0] - 0.5 && box(node)[2] <= here[2] + 0.5 && box(node)[1] >= here[1] - 0.5 && box(node)[3] <= here[3] + 0.5)),
-      drop: { w: drop.getBoundingClientRect().width, h: drop.getBoundingClientRect().height, label: drop.getAttribute('aria-label') },
+      drop: { w: drop.getBoundingClientRect().width, h: drop.getBoundingClientRect().height, label: drop.getAttribute('aria-label'), greyed: drop.getAttribute('aria-disabled') === 'true' },
     };
   };
   return {
@@ -76,6 +77,8 @@ const centerOfRow = (name, drop) => {
   const box = row.children[drop ? 1 : 0].getBoundingClientRect();
   return [box.left + Math.min(drop ? box.width / 2 : 40, box.width / 2), box.top + box.height / 2];
 };
+// Un point du cadre de l'app, à droite et en bas, loin du menu et de la barre.
+const centerOfFrame = () => { const box = document.getElementById('app-cadre').getBoundingClientRect(); return [box.right - 60, box.bottom - 40]; };
 const centerOfMore = () => { const node = [...document.querySelectorAll('.menu-opened .menu-item')].pop(); const box = node.getBoundingClientRect(); return [box.left + 40, box.top + box.height / 2]; };
 const centerOfGreyed = () => { const node = document.querySelector('.menu-opened .menu-item[aria-disabled="true"]'); const box = node.getBoundingClientRect(); return [box.left + 40, box.top + box.height / 2]; };
 
@@ -220,6 +223,42 @@ async function mouse(run) {
   await run.expectState('« Ouvrir un autre fichier… »', `« ${t('dock.openedMore')} » devait montrer l'explorateur`, state => !state.menu && state.explorer === 1);
 }
 
+// La croix du fichier que l'app affiche est grisée (retirer de la liste le fichier que l'app montre n'a pas de sens) : elle garde sa place et son nom, un clic explique sans rien retirer, Suppr de
+// même ; les croix des autres fichiers retirent toujours.
+async function shownCross(run) {
+  const { t } = run;
+  await run.setup(3);
+  await run.openMenu();
+  const open = await run.expectState('la croix du fichier affiché', 'le menu devait s\'ouvrir avec trois lignes', state => state.menu && state.menu.rows.length === 3);
+  if (!open.menu) return;
+  const [shown, ...others] = open.menu.rows;
+  if (!shown.drop.greyed || others.some(row => row.drop.greyed)) run.note('la croix du fichier affiché', `seule la croix du fichier affiché devait être grisée (${JSON.stringify(open.menu.rows.map(row => [row.name, row.drop.greyed]))})`);
+  if (shown.drop.w < 24 || shown.drop.h < 24) run.note('la croix du fichier affiché', `la croix grisée devait garder sa place (${shown.drop.w} × ${shown.drop.h})`);
+  await run.clickAt('la croix du fichier affiché', centerOfRow, 'Inscription à la formation', true);
+  const after = await run.expectState('la croix du fichier affiché', 'un clic sur la croix grisée devait dire pourquoi, sans retirer le fichier', state => state.toast === t('dock.openedShownWhy'));
+  if (after.keys.join() !== 'pp:1,pp:2,form:3') run.note('la croix du fichier affiché', `la liste ne devait pas changer (${after.keys.join()})`);
+  await run.setup(3);
+  await run.openMenu();
+  await run.expectState('Suppr sur le fichier affiché', 'le menu devait s\'ouvrir, le clavier sur le fichier affiché', state => state.menu && state.focus && state.focus.label === 'Inscription à la formation');
+  await run.page.press('Delete');
+  const kept = await run.expectState('Suppr sur le fichier affiché', 'Suppr sur le fichier affiché devait dire pourquoi, sans le retirer', state => state.toast === t('dock.openedShownWhy'));
+  if (kept.keys.join() !== 'pp:1,pp:2,form:3') run.note('Suppr sur le fichier affiché', `la liste ne devait pas changer (${kept.keys.join()})`);
+}
+
+// Un clic ailleurs referme le menu, y compris dans le cadre d'une app : un clic dans un sous-cadre ne remonte pas à la page (pas de `pointerdown` pour elle), seul le focus quitte la page. Vrai
+// cadre sandboxé de la page d'essai, vraie souris ; le menu doit pouvoir se rouvrir ensuite, et son bouton garder son état.
+async function clickElsewhere(run) {
+  await run.setup(3);
+  await run.openMenu();
+  await run.expectState('un clic dans le cadre', 'le menu devait s\'ouvrir', state => state.menu && state.expanded === 'true');
+  await run.clickAt('le cadre de l\'app', centerOfFrame);
+  await run.expectState('un clic dans le cadre', 'un clic dans le cadre de l\'app devait refermer le menu (et le bouton ne plus être « ouvert »)', state => !state.menu && state.expanded === 'false');
+  await run.openMenu();
+  await run.expectState('un clic dans le cadre', 'le menu devait se rouvrir après un clic dans le cadre', state => state.menu && state.menu.rows.length === 3);
+  await run.page.press('Escape');
+  await run.expectState('un clic dans le cadre', 'Échap devait refermer le menu rouvert', state => !state.menu);
+}
+
 // Le clavier : le menu ouvert prend le fichier affiché, ↓ passe à la ligne suivante, → à sa croix, ← revient, ↓ depuis la croix saute à la ligne d'après, Suppr retire, Début et Fin, Échap.
 async function keyboard(run) {
   const { t } = run;
@@ -305,7 +344,7 @@ export async function barreProblems(page, site, language, mode, width = 700) {
   await page.view({ width, height: 400, scale: 1, mode });
   await page.activate();
   const run = new Bar(page, language, `${width} px, ${mode === 'dark' ? 'sombre' : 'clair'}, ${language}`, found);
-  const steps = width === 700 ? [layout, emptyMenu, filled, mouse, keyboard, edges, longName, access, langTool] : [longName, edges];
+  const steps = width === 700 ? [layout, emptyMenu, filled, mouse, shownCross, clickElsewhere, keyboard, edges, longName, access, langTool] : [longName, edges, clickElsewhere];
   for (const step of steps) {
     try {
       await step(run);

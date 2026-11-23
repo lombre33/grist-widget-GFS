@@ -2,7 +2,7 @@
 // dans le menu et reste cliquable : son `run` dit pourquoi il ne fait rien (« grisé, jamais masqué »). Une liste de fichiers (la barre,
 // js/explorer/opened-bar.js) y
 // ajoute : un titre (`{ heading }`), l'article que l'app montre (`current` : le mot que lit un lecteur d'écran), et pour chaque article une action de retrait
-// au bout de la ligne (`drop : { label, run }` : la croix, Suppr au clavier ; → y va, ← revient à l'article). Un article qui porte `submenu` (une liste
+// au bout de la ligne (`drop : { label, run, greyed }` : la croix, Suppr au clavier ; → y va, ← revient à l'article). Un article qui porte `submenu` (une liste
 // d'articles, et `'-'` pour un séparateur) ouvre un sous-menu à côté de lui : par un clic, Entrée ou la flèche droite ; Échap ou la flèche gauche le referme.
 
 import { h } from './dom.js';
@@ -48,9 +48,12 @@ function markCurrent(node, word) {
   node.append(h('span', { class: 'sr-only' }, `, ${word}`));
 }
 
-// La ligne d'un article et de sa croix de retrait (`drop : { label, run }`).
+// La ligne d'un article et de sa croix de retrait (`drop : { label, run, greyed }`). Une croix `greyed` reste là, grisée : son `run` dit pourquoi elle ne
+// retire rien.
 function dropRow(node, drop, close) {
-  const button = h('button', { type: 'button', class: 'menu-item menu-drop', role: 'menuitem', title: drop.label, 'aria-label': drop.label }, icon('x'));
+  const button = h('button', {
+    type: 'button', class: 'menu-item menu-drop', role: 'menuitem', title: drop.label, 'aria-label': drop.label, 'aria-disabled': drop.greyed ? 'true' : null,
+  }, icon('x'));
   button.addEventListener('click', () => { close(); drop.run(); });
   return h('div', { class: 'menu-row' }, node, button);
 }
@@ -138,6 +141,7 @@ export function openMenu(anchor, items, { host, align = 'left', label = '', side
     closed = true;
     closeSub();
     document.removeEventListener('pointerdown', outside, true);
+    window.removeEventListener('blur', close);
     menu.remove();
     anchor.setAttribute('aria-expanded', 'false');
     if (current && current.menu === menu) current = null;
@@ -180,6 +184,9 @@ export function openMenu(anchor, items, { host, align = 'left', label = '', side
   place(menu, anchor, container, align, side);
   anchor.setAttribute('aria-expanded', 'true');
   document.addEventListener('pointerdown', outside, true);
+  // Un clic dans le cadre d'une app, ou ailleurs dans la page de Grist, n'envoie aucun `pointerdown` à cette page : le focus la quitte, et c'est tout (`blur`
+  // de la fenêtre).
+  window.addEventListener('blur', close);
   const rows = menu.querySelectorAll('.menu-item:not(.menu-drop)');
   const first = (start !== null && rows[Math.min(start, rows.length - 1)]) || menu.querySelector('[aria-checked="true"]') || menu.querySelector('.menu-item');
   if (first) first.focus({ preventScroll: true });

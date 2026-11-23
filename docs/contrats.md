@@ -2432,7 +2432,11 @@ rangée d'un fichier, selon ce qui vient d'abord.
     avec son texte entier au survol), l'app en indice, et le fichier que l'app montre **en gras, avec un trait et son mot « affiché »** pour un lecteur d'écran. Un clic sur un
     autre fichier l'ouvre comme dans l'explorateur (une autre app est d'abord priée de se fermer, 5.4 point 3) ; **un clic sur le fichier affiché referme le menu sans
     rien relancer**. **La croix de la ligne (ou Suppr)** retire le fichier de la liste sans le fermer, et le menu se rouvre sans lui, le clavier sur la ligne qui prend sa
-    place ; au clavier, → va à la croix, ← revient, ↓ et ↑ ne s'y arrêtent pas, Début et Fin vont au premier et au dernier article. **« Ouvrir un autre fichier… »** montre
+    place, **sauf pour le fichier que l'app affiche** (23/11, retour du porteur : « ça n'a pas trop de sens » de pouvoir retirer le fichier en cours) : sa croix reste, **grisée**,
+    et son clic (ou Suppr) dit pourquoi sans rien retirer ; elle redevient une croix dès que l'app montre un autre fichier. **Un clic ailleurs referme le menu** (23/11, comme tout
+    menu de GFS), **y compris dans le cadre de l'app** : un clic dans un sous-cadre ne remonte pas à la page de GFS (aucun `pointerdown`), donc le cadre ne prend plus la souris
+    le temps du menu (`:root:has(.menu) .app-frame`, `css/gfs.css` : le premier clic ferme le menu, l'app ne le reçoit pas) et la fenêtre qui perd le focus (`blur` : un clic sur la page de
+    Grist autour du widget) le referme aussi ; faits vérifiés, section 145 ; au clavier, → va à la croix, ← revient, ↓ et ↑ ne s'y arrêtent pas, Début et Fin vont au premier et au dernier article. **« Ouvrir un autre fichier… »** montre
     l'explorateur, comme « Fichiers ». La barre est une barre d'app : elle s'efface sous l'explorateur, et le menu s'ouvre à côté d'une barre verticale, au-dessous ou au-dessus
     d'une barre horizontale, sans la recouvrir. **Les onglets
     vivants** (plusieurs cadres d'app gardés ensemble) **ne sont pas faits** : une seule app est vivante à la fois. [M] **Mesuré le 10/11** dans un vrai Grist

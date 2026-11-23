@@ -1,7 +1,8 @@
 // Le 5e bouton de la barre : les fichiers ouverts (js/explorer/opened-files.js), à portée d'un clic sans repasser par l'explorateur (contrats 5.2 point 7 et
 // 6.4 point 14). La liste va du plus récent au plus ancien (le dernier fichier ouvert en tête : le va-et-vient entre deux fichiers reste aux mêmes places) ; le
 // fichier que l'app affiche est marqué (gras, trait et mot, jamais une couleur seule), un clic sur un autre fichier l'ouvre comme dans l'explorateur, la croix
-// (ou Suppr) le retire de la liste sans le fermer, et « Ouvrir un autre fichier… » montre l'explorateur. Pas de couleur par type ici : elle est réservée à
+// (ou Suppr) le retire de la liste sans le fermer (celle du fichier que l'app affiche est grisée : retirer de la liste ce que l'app montre n'a pas de
+// sens, et son clic le dit), et « Ouvrir un autre fichier… » montre l'explorateur. Pas de couleur par type ici : elle est réservée à
 // l'explorateur (charte). Sans fichier ouvert le bouton est grisé, jamais masqué, et son menu dit pourquoi.
 
 // Les fichiers ouverts qui sont encore là (un fichier renommé y est à jour, un fichier disparu n'y est plus), du plus récent au plus ancien.
@@ -18,10 +19,12 @@ export function openedItems({ t, list, shownKey, appName, onOpen, onDrop, onMore
     ? list.map((file, at) => {
       const name = file.name || t('ex.untitled');
       const app = appName(file.app);
+      const shown = file.key === shownKey;
       return {
-        label: name, icon: file.icon, hint: app, title: `${name} · ${app}`, current: file.key === shownKey ? t('ex.shown') : null,
-        run: () => { if (file.key !== shownKey) onOpen(file); },
-        drop: { label: t('dock.openedDropName', { name }), run: () => onDrop(file, at) },
+        label: name, icon: file.icon, hint: app, title: `${name} · ${app}`, current: shown ? t('ex.shown') : null,
+        run: () => { if (!shown) onOpen(file); },
+        // La croix du fichier que l'app affiche reste, grisée : son clic dit pourquoi elle ne retire rien.
+        drop: { label: t('dock.openedDropName', { name }), greyed: shown, run: shown ? () => notice(t('dock.openedShownWhy')) : () => onDrop(file, at) },
       };
     })
     : [{ label: t('dock.openedNone'), icon: 'stack', greyed: true, run: () => notice(t('dock.openedWhy')) }];

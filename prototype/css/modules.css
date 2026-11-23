@@ -78,6 +78,10 @@
 .wk-label { display: flex; flex: 1; flex-direction: column; min-width: 0; }
 .wk-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wk-reason { font-size: max(11.5px, var(--fs-min)); font-weight: 400; color: var(--text-muted); }
+/* Le second geste d'une ligne (js/ui/pick-window.js `alt` : « nouvel onglet » de la recherche de fichiers de la barre) : un bouton à icône seule, que la souris atteint et → au clavier. */
+.wk-row > .wk-item { min-width: 0; }
+.wk-alt { flex: none; justify-content: center; width: 30px; padding: 0; }
+.wk-alt .ic { width: 15px; height: 15px; }
 .wk-item.is-locked { cursor: not-allowed; }
 .wk-item.is-locked .wk-name { color: var(--text-muted); }
 /* Déplacer (filing-window.js) : le nouveau dossier que dit la recherche porte le « + » de l'accent. */

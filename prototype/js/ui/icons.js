@@ -52,6 +52,8 @@ const ICONS = {
   // Les notifications (la cloche, à droite de l'en-tête de l'explorateur) : une cloche et son battant. À ajouter à la charte (icônes de la section 1).
   bell: '<path d="M6 16v-5a6 6 0 0 1 12 0v5l1.6 2.4H4.4z"/><path d="M10 21a2 2 0 0 0 4 0"/>',
   // Les gestes sur un fichier (menu d'une ligne) : un tracé chacun.
+  // « Ouvrir dans un nouvel onglet » (la recherche de fichiers de la barre, js/explorer/opened-bar.js) : un onglet et son « + ».
+  'tab-plus': '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 9v6M9 12h6"/>',
   open: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
   edit: '<path d="M4 20h4L19 9a2.1 2.1 0 0 0-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
   copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>',

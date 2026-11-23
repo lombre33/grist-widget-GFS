@@ -22,7 +22,7 @@ function items(overrides = {}) {
   const list = openedList(['pp:1', 'form:3', 'pp:2'], FILES);
   const built = openedItems({
     t, list, shownKey: 'pp:2', appName: id => names[id], onOpen: item => calls.push(['open', item.key]), onDrop: (item, at) => calls.push(['drop', item.key, at]),
-    onMore: () => calls.push(['more']), notice: text => calls.push(['notice', text]), ...overrides,
+    onFind: () => calls.push(['find']), onMore: () => calls.push(['more']), notice: text => calls.push(['notice', text]), ...overrides,
   });
   return { built, calls, t };
 }
@@ -32,7 +32,9 @@ test('openedItems : un titre, un article par fichier avec son app, un séparateu
   assert.deepEqual(built[0], { heading: t('dock.opened') });
   assert.deepEqual(built.slice(1, 4).map(item => [item.label, item.hint, item.icon]), [['Émargement', 'Publipostage+', 'doc'], ['Inscription', 'Form+', 'check'], ['Convocation', 'Publipostage+', 'doc']]);
   assert.equal(built[4], '-');
-  assert.equal(built[5].label, 'Ouvrir un autre fichier…');
+  assert.equal(built[5].label, 'Rechercher un fichier…');
+  assert.equal(built[5].icon, 'search');
+  assert.equal(built[6].label, 'Ouvrir un autre fichier…');
   assert.equal(built.some(item => item && item.family), false, 'pas de couleur par type hors de l\'explorateur');
 });
 
@@ -46,7 +48,8 @@ test('openedItems : le fichier que l\'app montre est marqué par un mot et ne se
   other.run();
   other.drop.run();
   built[5].run();
-  assert.deepEqual(calls, [['open', 'form:3'], ['drop', 'form:3', 1], ['more']]);
+  built[6].run();
+  assert.deepEqual(calls, [['open', 'form:3'], ['drop', 'form:3', 1], ['find'], ['more']]);
   assert.match(other.drop.label, /Retirer des ouverts : Inscription/);
 });
 
@@ -81,17 +84,21 @@ test('openedItems : un fichier sans nom porte le mot « sans titre » de l\'expl
   assert.equal(built[1].label, t('ex.untitled'));
 });
 
-function bar(live = FILES) {
+function bar(live = FILES, { adds = false, pick = null } = {}) {
   const opened = new OpenedFiles();
   const shown = [];
   const counts = [];
   const dock = { setOpened: count => counts.push(count), showOpened: (menu, start) => shown.push({ menu, start }) };
   const session = {};
   const opens = [];
+  const picks = [];
+  // `adds` : ouvrir un fichier le fait entrer dans la liste (comme `Openings`) ; sinon l'app refuse (rien n'entre) ; `pick` : la réponse de la recherche.
+  const open = async item => { opens.push(item.key); if (adds) opened.add(item.key, session); return adds; };
   const component = new OpenedBar({
-    opened, files: () => live, session: () => session, dock, t: createI18n('fr').t, appName: id => names[id], open: item => opens.push(item.key), showExplorer: () => opens.push('explorer'), notice: () => {},
+    opened, files: () => live, session: () => session, dock, t: createI18n('fr').t, appName: id => names[id], open, showExplorer: () => opens.push('explorer'), notice: () => {},
+    container: () => 'stage', inertTargets: () => [], pick: async opts => { picks.push(opts); return pick; },
   });
-  return { opened, shown, counts, session, opens, component };
+  return { opened, shown, counts, session, opens, picks, component };
 }
 
 test('OpenedBar : le nombre du bouton suit la liste et les fichiers vivants ; un fichier disparu ne compte plus', () => {
@@ -131,4 +138,74 @@ test('OpenedBar : une autre session d\'app ne montre plus aucun fichier affiché
   opened.add('pp:1', {});
   component.show();
   assert.equal(shown[0].menu[1].current, null);
+});
+
+// ---------- « Rechercher un fichier… » (demande du porteur, 23/11) ----------
+
+test('OpenedBar.find : la liste avec recherche porte tous les fichiers vivants (nom, app, icône), le fichier affiché en coche, un second geste « nouvel onglet »', async () => {
+  const { opened, session, component, picks } = bar(FILES, { adds: true });
+  opened.add('pp:2', session);
+  await component.find();
+  const [opts] = picks;
+  const t = createI18n('fr').t;
+  assert.equal(opts.title, t('dock.findTitle'));
+  assert.equal(opts.current, 'pp:2');
+  assert.equal(opts.quick, true, 'Entrée dans la recherche ouvre le premier');
+  assert.deepEqual(opts.items.map(item => [item.value, item.label, item.hint, item.glyph]), [
+    ['pp:1', 'Convocation', 'Publipostage+', 'doc'], ['pp:2', 'Émargement', 'Publipostage+', 'doc'], ['form:3', 'Inscription', 'Form+', 'check'], ['pp:4', 'Grille de suivi', 'Publipostage+', 'grid']]);
+  assert.equal(opts.alt.icon, 'tab-plus');
+  assert.equal(opts.alt.label({ label: 'Convocation' }), t('dock.findNewTab', { name: 'Convocation' }));
+});
+
+test('OpenedBar.find : sans réponse, ou pour un fichier qui n\'existe plus, rien ne s\'ouvre', async () => {
+  const none = bar(FILES, { adds: true, pick: null });
+  await none.component.find();
+  const gone = bar(FILES, { adds: true, pick: { value: 'pp:99', alt: false } });
+  await gone.component.find();
+  assert.deepEqual([none.opens, gone.opens], [[], []]);
+});
+
+test('OpenedBar.find : un fichier sans nom porte le mot « sans titre » de l\'explorateur', async () => {
+  const { component, picks } = bar([file('pp', 5, '')], { adds: true });
+  await component.find();
+  assert.equal(picks[0].items[0].label, createI18n('fr').t('ex.untitled'));
+});
+
+test('openFound dans l\'onglet actif : le fichier prend la place du fichier affiché (celui-ci sort des ouverts) ; dans un nouvel onglet, il reste', async () => {
+  const active = bar(FILES, { adds: true, pick: { value: 'pp:4', alt: false } });
+  active.opened.add('pp:1', active.session);
+  active.opened.add('form:3', active.session);
+  await active.component.find();
+  assert.deepEqual(active.opens, ['pp:4']);
+  assert.deepEqual(active.opened.keys(), ['pp:1', 'pp:4'], 'form:3 (le fichier affiché) est remplacé, pp:1 reste');
+  const tab = bar(FILES, { adds: true, pick: { value: 'pp:4', alt: true } });
+  tab.opened.add('pp:1', tab.session);
+  tab.opened.add('form:3', tab.session);
+  await tab.component.find();
+  assert.deepEqual(tab.opened.keys(), ['pp:1', 'form:3', 'pp:4'], 'le fichier affiché reste dans les ouverts');
+});
+
+test('openFound : un refus ou une annulation dans l\'app ne retire pas le fichier affiché', async () => {
+  const { opened, session, component, opens } = bar(FILES, { adds: false });
+  opened.add('form:3', session);
+  await component.openFound(FILES[3], false);
+  assert.deepEqual(opens, ['pp:4']);
+  assert.deepEqual(opened.keys(), ['form:3']);
+});
+
+test('openFound : le fichier déjà affiché ne se rouvre pas ; sans fichier affiché rien ne sort de la liste ; un fichier déjà ouvert reprend la place du fichier affiché', async () => {
+  const same = bar(FILES, { adds: true });
+  same.opened.add('pp:1', same.session);
+  await same.component.openFound(FILES[0], false);
+  assert.deepEqual(same.opens, []);
+  const nothing = bar(FILES, { adds: true });
+  nothing.opened.add('pp:1', {});
+  await nothing.component.openFound(FILES[3], false);
+  assert.deepEqual(nothing.opened.keys(), ['pp:1', 'pp:4'], 'aucun fichier n\'est affiché dans cette session : rien à remplacer');
+  const back = bar(FILES, { adds: true });
+  back.opened.add('pp:1', back.session);
+  back.opened.add('pp:4', back.session);
+  back.opened.add('form:3', back.session);
+  await back.component.openFound(FILES[0], false);
+  assert.deepEqual(back.opened.keys(), ['pp:4', 'pp:1'], 'pp:1 est rouvert, form:3 (le fichier affiché) en sort');
 });

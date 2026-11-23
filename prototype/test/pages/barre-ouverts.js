@@ -1,6 +1,6 @@
 // La page d'essai du 5e bouton de la barre sous Firefox (test/barre-ouverts-firefox.mjs) : la vraie barre de index.html (ses six boutons, le sixième caché), le vrai `Dock` (js/shell/dock.js) et le vrai `OpenedBar`
 // (js/explorer/opened-bar.js) sur des fichiers d'essai ; le reste de GFS est absent. `window.__bar` : `fill(n)` ouvre les n premiers fichiers (le dernier est celui que l'app affiche), `clear()` vide la liste,
-// `edge(nom)` choisit le bord de la barre, `access(bool)` allume l'accessibilité renforcée, `lt(shown, coupes)` montre et règle le bouton « LanguageTool » (`ltClicks` compte ses clics), `opens` garde les clés des fichiers que le menu a fait ouvrir, `explorer` compte les « Ouvrir un autre fichier… ».
+// `edge(nom)` choisit le bord de la barre, `access(bool)` allume l'accessibilité renforcée, `real(bool)` fait entrer les fichiers que le menu ouvre dans la liste des ouverts, `lt(shown, coupes)` montre et règle le bouton « LanguageTool » (`ltClicks` compte ses clics), `opens` garde les clés des fichiers que le menu a fait ouvrir, `explorer` compte les « Ouvrir un autre fichier… ».
 import { Dock } from '/js/shell/dock.js';
 import { OpenedBar } from '/js/explorer/opened-bar.js';
 import { OpenedFiles } from '/js/explorer/opened-files.js';
@@ -19,7 +19,7 @@ const toast = document.getElementById('toast');
 const stage = document.getElementById('stage');
 const session = {};
 const opened = new OpenedFiles();
-const state = { opens: [], explorer: 0, lt: { shown: false, coupes: false }, ltClicks: 0 };
+const state = { opens: [], explorer: 0, lt: { shown: false, coupes: false }, ltClicks: 0, real: false };
 
 const dock = new Dock({
   root: document.getElementById('floaters'), stage, onFiles: () => {}, onOpened: () => bar.show(), onApps: () => {}, onWork: () => {}, onNotKept: () => {},
@@ -27,7 +27,10 @@ const dock = new Dock({
   onLt: () => { state.ltClicks += 1; state.lt = { ...state.lt, coupes: !state.lt.coupes }; dock.setLt(state.lt); },
 });
 const bar = new OpenedBar({
-  opened, files: () => FILES, session: () => session, dock, t, appName: id => APPS[id], open: file => state.opens.push(file.key), showExplorer: () => { state.explorer += 1; },
+  opened, files: () => FILES, session: () => session, dock, t, appName: id => APPS[id], showExplorer: () => { state.explorer += 1; },
+  // Ouvrir un fichier : la clé est gardée ; avec `real(true)` il entre aussi dans la liste des ouverts et devient celui que l'app affiche, comme le fait `Openings` (js/broker/openings.js).
+  open: file => { state.opens.push(file.key); if (state.real) opened.add(file.key, session); return Promise.resolve(true); },
+  container: () => stage, inertTargets: () => [document.getElementById('frames'), document.getElementById('floaters')],
   notice: text => { toast.textContent = text; toast.hidden = false; },
 });
 dock.relabel(t);
@@ -41,7 +44,8 @@ window.__bar = {
   // Le 6e bouton : dans la barre (`shown`) et coupé ou non (`coupes`), comme le contrôleur le dit au `Dock`.
   lt(shown, coupes) { state.lt = { shown, coupes }; dock.setLt(state.lt); },
   fill(count) { for (const file of FILES.slice(0, count)) opened.add(file.key, session); },
-  clear() { for (const key of opened.keys()) opened.remove(key); state.opens.length = 0; toast.hidden = true; },
+  clear() { for (const key of opened.keys()) opened.remove(key); state.opens.length = 0; state.real = false; toast.hidden = true; },
+  real(on) { state.real = on; },
   keys: () => opened.keys(),
   edge(name) { dock.placeRow().submenu.find(item => item.label === t(`dock.${name}`)).run(); },
   access(on) { if (on) document.documentElement.setAttribute('data-ambiance', 'renforcee'); else document.documentElement.removeAttribute('data-ambiance'); },

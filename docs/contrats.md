@@ -2436,7 +2436,15 @@ rangée d'un fichier, selon ce qui vient d'abord.
     et son clic (ou Suppr) dit pourquoi sans rien retirer ; elle redevient une croix dès que l'app montre un autre fichier. **Un clic ailleurs referme le menu** (23/11, comme tout
     menu de GFS), **y compris dans le cadre de l'app** : un clic dans un sous-cadre ne remonte pas à la page de GFS (aucun `pointerdown`), donc le cadre ne prend plus la souris
     le temps du menu (`:root:has(.menu) .app-frame`, `css/gfs.css` : le premier clic ferme le menu, l'app ne le reçoit pas) et la fenêtre qui perd le focus (`blur` : un clic sur la page de
-    Grist autour du widget) le referme aussi ; faits vérifiés, section 145 ; au clavier, → va à la croix, ← revient, ↓ et ↑ ne s'y arrêtent pas, Début et Fin vont au premier et au dernier article. **« Ouvrir un autre fichier… »** montre
+    Grist autour du widget) le referme aussi ; faits vérifiés, section 145 ; **« Rechercher un fichier… »** (demande du porteur, 23/11 : « ouvrir un document en recherchant
+    son nom sans repasser par l'explorateur, dans l'onglet actif ou dans un nouvel onglet, par défaut l'onglet actif et une icône pour le nouvel onglet ») est l'article qui
+    précède « Ouvrir un autre fichier… » : il ouvre la fenêtre « Ouvrir un fichier » (la liste avec recherche de la charte, `js/ui/pick-window.js`) sur **tous les fichiers
+    vivants** de l'explorateur (la corbeille n'y est pas), par leur nom (mots dans n'importe quel ordre, accents, casse et ponctuation ignorés), l'app en indice, la coche sur le
+    fichier que l'app affiche. **Un clic ou Entrée** ouvre le fichier **dans l'onglet actif** : il prend la place du fichier affiché, qui sort de la liste des ouverts, mais seulement
+    quand le nouveau s'est bien ouvert (un refus, ou une annulation dans l'app, ne change rien) ; **le « + » de la ligne** (icône `tab-plus`, que la souris atteint et → au clavier,
+    hors de Tab) ou **Ctrl+Entrée** l'ouvre **dans un nouvel onglet** : le fichier affiché reste dans la liste. Entrée dans la recherche ouvre le premier fichier trouvé. Le
+    fichier déjà affiché ne se rouvre pas. Un fichier grisé, gardé par GFS ou d'une app absente passe par les mêmes gestes que dans l'explorateur (`Openings.openFile`, qui rend la
+    promesse de `true` quand le fichier s'est ouvert). **Les onglets restent des lignes de la liste** : une seule app est vivante à la fois (les onglets vivants ne sont pas faits) ; au clavier, → va à la croix, ← revient, ↓ et ↑ ne s'y arrêtent pas, Début et Fin vont au premier et au dernier article. **« Ouvrir un autre fichier… »** montre
     l'explorateur, comme « Fichiers ». La barre est une barre d'app : elle s'efface sous l'explorateur, et le menu s'ouvre à côté d'une barre verticale, au-dessous ou au-dessus
     d'une barre horizontale, sans la recouvrir. **Les onglets
     vivants** (plusieurs cadres d'app gardés ensemble) **ne sont pas faits** : une seule app est vivante à la fois. [M] **Mesuré le 10/11** dans un vrai Grist

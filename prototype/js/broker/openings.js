@@ -18,13 +18,15 @@ export class Openings {
   // La personne repart explorer (ou fait autre chose) : une app qui répondrait « fermer » plus tard ne change plus rien.
   moved() { this.#leaveRun++; }
 
+  // Rend la promesse de `true` quand le fichier s'est ouvert, `false` quand il ne s'ouvre pas (grisé, app absente, annulé dans l'app) : la recherche de la
+  // barre (js/explorer/opened-bar.js) en a besoin pour remplacer le fichier affiché seulement quand le nouveau est bien là.
   openFile(file) {
     const { c } = this;
     const lock = c.lockOf(file);
-    if (lock) { void c.unlock(lock); return; }
-    if (c.kept.has(file)) { void this.#openKept(file); return; }
-    if (!c.appById(file.app)) { c.notice(c.t('ex.notice.noApp')); return; }
-    void this.openIn(file.app, { fichier: { id: file.id, type: file.type }, type: file.type, dossier: c.explorer.state.path, raison: 'explorateur' },
+    if (lock) { void c.unlock(lock); return Promise.resolve(false); }
+    if (c.kept.has(file)) return this.#openKept(file);
+    if (!c.appById(file.app)) { c.notice(c.t('ex.notice.noApp')); return Promise.resolve(false); }
+    return this.openIn(file.app, { fichier: { id: file.id, type: file.type }, type: file.type, dossier: c.explorer.state.path, raison: 'explorateur' },
       'ex.notice.open');
   }
 
@@ -110,10 +112,12 @@ export class Openings {
   async #openKept(file) {
     const { c } = this;
     const reader = c.readerOf(file);
-    if (!reader) { await c.kept.open(file); return; }
-    if (reader.lock) { await c.unlock(reader.lock); return; }
+    if (!reader) { await c.kept.open(file); return false; }
+    if (reader.lock) { await c.unlock(reader.lock); return false; }
     const bytes = await c.kept.load(file);
-    if (bytes && (await this.openIn(reader.app, readOpening(file, bytes, c.explorer.state.path), 'ex.notice.read'))) c.opened.add(file.key, c.session);
+    const opened = Boolean(bytes) && (await this.openIn(reader.app, readOpening(file, bytes, c.explorer.state.path), 'ex.notice.read'));
+    if (opened) c.opened.add(file.key, c.session);
+    return opened;
   }
 
   // L'app ouvre le fichier elle-même, après sa propre question d'enregistrement : `{ ouvert: false }` veut dire que la personne a annulé, GFS n'ajoute rien.

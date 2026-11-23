@@ -4,7 +4,8 @@
 // fichier… ») ; la pastille et le nom qui portent le nombre ; chaque ligne (28 px, contenu dans la ligne, fichier affiché en gras avec son mot, indice de l'app, croix de 24 px au moins) ; un clic sur un fichier l'ouvre,
 // sur le fichier affiché ne fait rien ; la croix retire la ligne et rouvre le menu ; le clavier (↓, →, ←, Suppr, Début, Fin, Échap) ; le menu sur les quatre bords, sans recouvrir la barre et dans la page ; un nom
 // très long coupé par « … » avec son texte entier au survol ; la croix du fichier affiché, grisée (23/11) ; un clic dans le cadre d'une app, qui referme le menu (23/11 : un vrai cadre sandboxé sur la page d'essai ; le `blur` de la fenêtre,
-// que Firefox sans écran ne donne jamais, est dans labo/run-menu-hors-widget.mjs) ; l'accessibilité renforcée (cibles de 36 px). Le contraste se mesure dans un vrai Grist (labo/run-ouverts-barre.mjs).
+// que Firefox sans écran ne donne jamais, est dans labo/run-menu-hors-widget.mjs) ; « Rechercher un fichier… » (23/11 : la fenêtre « Ouvrir un fichier », la recherche sans accent ni casse,
+// l'ouverture dans l'onglet actif ou dans un nouvel onglet à la souris et au clavier) ; l'accessibilité renforcée (cibles de 36 px). Le contraste se mesure dans un vrai Grist (labo/run-ouverts-barre.mjs).
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT } from './helpers.mjs';
@@ -53,8 +54,29 @@ function read() {
       drop: { w: drop.getBoundingClientRect().width, h: drop.getBoundingClientRect().height, label: drop.getAttribute('aria-label'), greyed: drop.getAttribute('aria-disabled') === 'true' },
     };
   };
+  // La fenêtre « Ouvrir un fichier » (la recherche de la barre) : titre, recherche, lignes une à une (nom, indice, coche, second bouton), note, où est le clavier.
+  const finderOf = () => {
+    const win = document.querySelector('.pk');
+    if (!win) return null;
+    const search = win.querySelector('input[type="search"]');
+    const rowOf = row => {
+      const [main, alt] = [...row.children];
+      const label = main.querySelector('.wk-name');
+      const here = box(row);
+      const altBox = alt ? box(alt) : null;
+      return {
+        name: text(label), hint: text(main.querySelector('.wk-reason')), current: main.getAttribute('aria-current') === 'true', title: main.title, height: Math.round(main.getBoundingClientRect().height),
+        cut: label.scrollWidth > label.clientWidth + 1 && !main.title, inside: !altBox || (altBox[0] >= here[0] - 0.5 && altBox[2] <= here[2] + 0.5), alt: alt ? { w: altBox[2] - altBox[0], h: altBox[3] - altBox[1], label: alt.getAttribute('aria-label'), tab: alt.tabIndex } : null,
+      };
+    };
+    return {
+      box: box(win), title: text(win.querySelector('#pk-title')), text: text(win.querySelector('.wk-text')), note: text(win.querySelector('.mod-note')), rows: [...win.querySelectorAll('.wk-row')].map(rowOf),
+      onSearch: document.activeElement === search, onRow: document.activeElement && document.activeElement.classList.contains('wk-item') ? text(document.activeElement.querySelector('.wk-name')) : null,
+      onAlt: document.activeElement && document.activeElement.classList.contains('wk-alt') ? document.activeElement.getAttribute('aria-label') : null, onButton: document.activeElement && document.activeElement.id === 'floater-opened',
+    };
+  };
   return {
-    view: [document.documentElement.clientWidth, document.documentElement.clientHeight], ids: [...bar.querySelectorAll('.floater:not([hidden])')].map(node => node.id),
+    finder: finderOf(), view: [document.documentElement.clientWidth, document.documentElement.clientHeight], ids: [...bar.querySelectorAll('.floater:not([hidden])')].map(node => node.id),
     sizes: [...bar.querySelectorAll('.floater:not([hidden])')].map(node => [Math.round(node.getBoundingClientRect().width), Math.round(node.getBoundingClientRect().height)]),
     bar: box(bar), button: box(button), name: button.getAttribute('aria-label'), title: button.title, empty: button.dataset.empty, expanded: button.getAttribute('aria-expanded'),
     badge: badge ? { text: text(badge), box: box(badge) } : null,
@@ -79,6 +101,14 @@ const centerOfRow = (name, drop) => {
 };
 // Un point du cadre de l'app, à droite et en bas, loin du menu et de la barre.
 const centerOfFrame = () => { const box = document.getElementById('app-cadre').getBoundingClientRect(); return [box.right - 60, box.bottom - 40]; };
+// Le centre de l'article du menu dont le nom est `name` ; celui de la ligne (ou de son second bouton) de la fenêtre de recherche dont le nom est `name`.
+const centerOfItem = name => { const node = [...document.querySelectorAll('.menu-opened .menu-item')].find(item => (item.querySelector('.menu-label') || {}).textContent === name); if (!node) return null; const box = node.getBoundingClientRect(); return [box.left + 40, box.top + box.height / 2]; };
+const centerOfFound = (name, alt) => {
+  const row = [...document.querySelectorAll('.pk .wk-row')].find(node => node.querySelector('.wk-name').textContent.trim() === name);
+  if (!row) return null;
+  const box = row.children[alt ? 1 : 0].getBoundingClientRect();
+  return [box.left + Math.min(alt ? box.width / 2 : 40, box.width / 2), box.top + box.height / 2];
+};
 const centerOfMore = () => { const node = [...document.querySelectorAll('.menu-opened .menu-item')].pop(); const box = node.getBoundingClientRect(); return [box.left + 40, box.top + box.height / 2]; };
 const centerOfGreyed = () => { const node = document.querySelector('.menu-opened .menu-item[aria-disabled="true"]'); const box = node.getBoundingClientRect(); return [box.left + 40, box.top + box.height / 2]; };
 
@@ -169,9 +199,9 @@ async function emptyMenu(run) {
   const { t } = run;
   await run.setup(0);
   await run.openMenu();
-  const menu = await run.expectState('le menu vide', 'le menu devait s\'ouvrir avec son titre, l\'article grisé et « Ouvrir un autre fichier… »', state => state.menu && state.menu.items.length === 2);
+  const menu = await run.expectState('le menu vide', 'le menu devait s\'ouvrir avec son titre, l\'article grisé, « Rechercher un fichier… » et « Ouvrir un autre fichier… »', state => state.menu && state.menu.items.length === 3);
   const names = menu.menu ? menu.menu.items.map(item => item.name).join('|') : '';
-  if (menu.menu && (menu.menu.title !== t('dock.opened') || names !== `${t('dock.openedNone')}|${t('dock.openedMore')}` || !menu.menu.items[0].greyed || menu.menu.separators !== 1 || menu.expanded !== 'true')) run.note('le menu vide', `titre, article grisé, séparateur et « ${t('dock.openedMore')} » attendus (${names})`);
+  if (menu.menu && (menu.menu.title !== t('dock.opened') || names !== `${t('dock.openedNone')}|${t('dock.openedFind')}|${t('dock.openedMore')}` || !menu.menu.items[0].greyed || menu.menu.separators !== 1 || menu.expanded !== 'true')) run.note('le menu vide', `titre, article grisé, séparateur et « ${t('dock.openedMore')} » attendus (${names})`);
   await run.clickAt('l\'article grisé', centerOfGreyed);
   await run.expectState('l\'article grisé', 'un clic sur l\'article grisé devait dire pourquoi', state => state.toast === t('dock.openedWhy'));
   await run.page.press('Escape');
@@ -221,6 +251,128 @@ async function mouse(run) {
   if (dropped.keys.join() !== 'pp:1,form:3') run.note('la croix', `la liste devait garder « Convocation » puis « Inscription » (${dropped.keys.join()})`);
   await run.clickAt('« Ouvrir un autre fichier… »', centerOfMore);
   await run.expectState('« Ouvrir un autre fichier… »', `« ${t('dock.openedMore')} » devait montrer l'explorateur`, state => !state.menu && state.explorer === 1);
+}
+
+// « Rechercher un fichier… » (demande du porteur, 23/11) : la fenêtre « Ouvrir un fichier » se lit sans repasser par l'explorateur. Elle liste les huit fichiers (nom, app en indice, coche sur celui qui est affiché,
+// un second bouton « nouvel onglet » à icône seule, hors de Tab), la recherche prend le clavier et ignore accents et casse ; un clic ouvre le fichier à la place de celui qui est affiché (celui-ci sort de la liste
+// des ouverts), le « + » dans un nouvel onglet (il y reste) ; Entrée ouvre le premier, Ctrl+Entrée le premier dans un nouvel onglet ; → ← ↓ ; Échap rend le clavier au bouton de la barre ; aucun fichier ne porte ce nom.
+async function openFinder(run) {
+  await run.openMenu();
+  if (!(await run.clickAt('« Rechercher un fichier… »', centerOfItem, run.t('dock.openedFind')))) return null;
+  return run.expectState('la recherche', 'la fenêtre « Ouvrir un fichier » devait s\'ouvrir, la recherche au clavier', state => state.finder && state.finder.onSearch && !state.menu);
+}
+
+async function finderWindow(run) {
+  const { t } = run;
+  await run.setup(3);
+  await run.page.run(() => window.__bar.real(true));
+  const open = await openFinder(run);
+  if (!open || !open.finder) return;
+  const win = open.finder;
+  if (win.title !== t('dock.findTitle') || win.text !== t('dock.findText')) run.note('la fenêtre', `titre et phrase attendus (${win.title} / ${win.text})`);
+  if (!inside(win.box, open.view)) run.note('la fenêtre', `la fenêtre devait tenir dans la page (${win.box.map(Math.round)} / ${open.view})`);
+  if (win.rows.length !== 8 || win.rows.some(row => !row.hint)) run.note('la liste', `les huit fichiers, chacun avec son app en indice (${win.rows.length})`);
+  const shown = win.rows.filter(row => row.current).map(row => row.name).join();
+  if (shown !== 'Inscription à la formation') run.note('le fichier affiché', `seul le fichier affiché devait porter la coche (${shown})`);
+  for (const row of win.rows) {
+    if (row.cut) run.note('nom coupé', `« ${row.name} » est coupé sans son texte entier au survol`);
+    if (!row.alt || row.alt.label !== t('dock.findNewTab', { name: row.name }) || row.alt.tab !== -1 || row.alt.w < 24 || row.alt.h < 24 || !row.inside) run.note('le second bouton', `« ${row.name} » devait avoir un bouton « nouvel onglet » de 24 px au moins, dans la ligne, hors de Tab (${JSON.stringify(row.alt)})`);
+    if (row.height < 32) run.note('une ligne', `« ${row.name} » devait mesurer 32 px au moins (${row.height})`);
+  }
+  await run.page.press('Escape');
+  await run.expectState('Échap', 'Échap devait fermer la fenêtre', state => !state.finder);
+}
+
+// Chercher « gril » ou « emarg » (sans accent ni majuscule) ne laisse que le fichier qui porte ce nom ; aucun nom, aucune ligne et la phrase qui le dit.
+async function finderSearch(run) {
+  const { t } = run;
+  await run.setup(3);
+  if (!(await openFinder(run))) return;
+  await run.page.press(...'gril'.split(''));
+  const grille = await run.expectState('chercher', 'chercher « gril » devait ne laisser que « Grille de suivi »', state => state.finder && state.finder.rows.length === 1);
+  if (grille.finder && grille.finder.rows[0].name !== 'Grille de suivi') run.note('chercher', `« gril » devait donner « Grille de suivi » (${grille.finder.rows.map(row => row.name)})`);
+  await run.page.press('Backspace', 'Backspace', 'Backspace', 'Backspace');
+  await run.page.press(...'emarg'.split(''));
+  const accent = await run.expectState('chercher sans accent', '« emarg » devait trouver « Émargement »', state => state.finder && state.finder.rows.length === 1);
+  if (accent.finder && accent.finder.rows[0].name !== 'Émargement') run.note('chercher sans accent', `« emarg » devait donner « Émargement » (${accent.finder.rows.map(row => row.name)})`);
+  await run.page.press('Backspace', 'Backspace', 'Backspace', 'Backspace', 'Backspace');
+  await run.page.press(...'zzz'.split(''));
+  const none = await run.expectState('aucun résultat', 'chercher « zzz » devait ne laisser aucune ligne et le dire', state => state.finder && state.finder.rows.length === 0 && state.finder.note === t('dock.findNone'));
+  if (!none.finder) return;
+  await run.page.press('Escape');
+  await run.expectState('Échap', 'Échap devait fermer la fenêtre et rendre le clavier au bouton de la barre', state => !state.finder && state.focus && state.focus.onButton);
+}
+
+// Un clic sur le fichier trouvé l'ouvre à la place de celui qui est affiché ; le « + » l'ouvre dans un nouvel onglet (le fichier affiché reste) ; le fichier déjà affiché ne se rouvre pas.
+async function finderOpen(run) {
+  await run.setup(3);
+  await run.page.run(() => window.__bar.real(true));
+  if (!(await openFinder(run))) return;
+  await run.page.press(...'gril'.split(''));
+  await run.expectState('chercher', 'chercher « gril » devait ne laisser qu\'une ligne', state => state.finder && state.finder.rows.length === 1);
+  await run.clickAt('« Grille de suivi »', centerOfFound, 'Grille de suivi', false);
+  const replaced = await run.expectState('dans l\'onglet actif', 'un clic devait ouvrir « Grille de suivi » à la place du fichier affiché (« Inscription » sort des ouverts)', state => !state.finder && state.opens.join() === 'pp:4');
+  if (replaced.keys.join() !== 'pp:1,pp:2,pp:4') run.note('dans l\'onglet actif', `les ouverts devaient être « Convocation », « Émargement », « Grille » (${replaced.keys.join()})`);
+  if (!replaced.finder && replaced.focus && !replaced.focus.onButton) run.note('dans l\'onglet actif', 'le clavier devait revenir au bouton de la barre');
+  if (!(await openFinder(run))) return;
+  await run.page.press(...'attest'.split(''));
+  await run.expectState('chercher', 'chercher « attest » devait ne laisser qu\'une ligne', state => state.finder && state.finder.rows.length === 1);
+  await run.clickAt('le « + » d\'« Attestation »', centerOfFound, 'Attestation', true);
+  const added = await run.expectState('dans un nouvel onglet', 'le « + » devait ouvrir « Attestation » en gardant « Grille de suivi » dans les ouverts', state => !state.finder && state.opens.join() === 'pp:4,pp:5');
+  if (added.keys.join() !== 'pp:1,pp:2,pp:4,pp:5') run.note('dans un nouvel onglet', `les ouverts devaient garder « Grille de suivi » (${added.keys.join()})`);
+  if (!(await openFinder(run))) return;
+  await run.page.press(...'attest'.split(''));
+  await run.clickAt('« Attestation » (déjà affiché)', centerOfFound, 'Attestation', false);
+  const same = await run.expectState('le fichier affiché', 'un clic sur le fichier affiché devait fermer la fenêtre sans rien ouvrir', state => !state.finder);
+  if (same.opens.join() !== 'pp:4,pp:5' || same.keys.join() !== 'pp:1,pp:2,pp:4,pp:5') run.note('le fichier affiché', `rien ne devait être ouvert ni retiré (${same.opens.join()} / ${same.keys.join()})`);
+  await run.page.run(() => window.__bar.real(false));
+}
+
+// Au clavier : Entrée ouvre le premier fichier trouvé à la place du fichier affiché, Ctrl+Entrée le premier dans un nouvel onglet ; ↓ va de la recherche à la liste, → au second bouton, ← en revient, ↓ depuis lui passe à
+// la ligne d'après.
+async function finderKeys(run) {
+  const { t } = run;
+  await run.setup(3);
+  await run.page.run(() => window.__bar.real(true));
+  if (!(await openFinder(run))) return;
+  await run.page.press(...'progr'.split(''));
+  await run.expectState('chercher', 'chercher « progr » devait ne laisser qu\'une ligne', state => state.finder && state.finder.rows.length === 1);
+  await run.page.press('Enter');
+  const entered = await run.expectState('Entrée', 'Entrée devait ouvrir « Programme » à la place du fichier affiché', state => !state.finder && state.opens.join() === 'pp:6');
+  if (entered.keys.join() !== 'pp:1,pp:2,pp:6') run.note('Entrée', `les ouverts devaient être « Convocation », « Émargement », « Programme » (${entered.keys.join()})`);
+  if (!(await openFinder(run))) return;
+  await run.page.press(...'liste'.split(''));
+  await run.expectState('chercher', 'chercher « liste » devait ne laisser qu\'une ligne', state => state.finder && state.finder.rows.length === 1);
+  await run.page.chord('Control', 'Enter');
+  const added = await run.expectState('Ctrl+Entrée', 'Ctrl+Entrée devait ouvrir « Liste des présents » dans un nouvel onglet (« Programme » reste)', state => !state.finder && state.opens.join() === 'pp:6,pp:7');
+  if (added.keys.join() !== 'pp:1,pp:2,pp:6,pp:7') run.note('Ctrl+Entrée', `les ouverts devaient garder « Programme » (${added.keys.join()})`);
+  if (!(await openFinder(run))) return;
+  await run.page.press('ArrowDown');
+  await run.expectState('↓', '↓ devait aller du champ de recherche à la première ligne, « Convocation »', state => state.finder && state.finder.onRow === 'Convocation');
+  await run.page.press('ArrowRight');
+  await run.expectState('→', '→ devait aller au second bouton de « Convocation »', state => state.finder && state.finder.onAlt === t('dock.findNewTab', { name: 'Convocation' }));
+  await run.page.press('ArrowDown');
+  await run.expectState('↓ depuis le second bouton', '↓ depuis le second bouton devait passer à « Émargement »', state => state.finder && state.finder.onRow === 'Émargement');
+  await run.page.press('ArrowRight');
+  await run.page.press('ArrowLeft');
+  await run.expectState('←', '← devait revenir à « Émargement »', state => state.finder && state.finder.onRow === 'Émargement');
+  await run.page.press('Escape');
+  await run.expectState('Échap', 'Échap devait fermer la fenêtre', state => !state.finder);
+  await run.page.run(() => window.__bar.real(false));
+}
+
+// L'accessibilité renforcée : les lignes et le second bouton mesurent 36 px au moins.
+async function finderAccess(run) {
+  await run.setup(3);
+  await run.page.run(() => window.__bar.access(true));
+  await new Promise(resolve => setTimeout(resolve, 150));
+  const open = await openFinder(run);
+  if (open && open.finder) {
+    const small = open.finder.rows.filter(row => row.height < 36 || !row.alt || row.alt.w < 36 || row.alt.h < 36).map(row => row.name);
+    if (small.length) run.note('l\'accessibilité renforcée', `les lignes et leur second bouton devaient mesurer 36 px au moins (${small.join(', ')})`);
+    await run.page.press('Escape');
+  }
+  await run.page.run(() => window.__bar.access(false));
 }
 
 // La croix du fichier que l'app affiche est grisée (retirer de la liste le fichier que l'app montre n'a pas de sens) : elle garde sa place et son nom, un clic explique sans rien retirer, Suppr de
@@ -344,7 +496,8 @@ export async function barreProblems(page, site, language, mode, width = 700) {
   await page.view({ width, height: 400, scale: 1, mode });
   await page.activate();
   const run = new Bar(page, language, `${width} px, ${mode === 'dark' ? 'sombre' : 'clair'}, ${language}`, found);
-  const steps = width === 700 ? [layout, emptyMenu, filled, mouse, shownCross, clickElsewhere, keyboard, edges, longName, access, langTool] : [longName, edges, clickElsewhere];
+  const steps = width === 700 ? [layout, emptyMenu, filled, mouse, shownCross, finderWindow, finderSearch, finderOpen, finderKeys, finderAccess, clickElsewhere, keyboard, edges, longName, access, langTool]
+    : [longName, edges, clickElsewhere, finderWindow, finderOpen];
   for (const step of steps) {
     try {
       await step(run);

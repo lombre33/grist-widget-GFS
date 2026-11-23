@@ -30,6 +30,7 @@
 :root[data-ambiance="renforcee"] .ls-row { height: calc(var(--target) + 1px); scroll-margin-top: calc(var(--target) + 2px); }
 :root[data-ambiance="renforcee"] .menu-item { height: var(--target); }
 :root[data-ambiance="renforcee"] .menu-item.menu-drop { width: var(--target); }
+:root[data-ambiance="renforcee"] .wk-alt { width: var(--target); }
 :root[data-ambiance="renforcee"] .ex-total { min-height: var(--target); }
 :root[data-ambiance="renforcee"] .ex-pj { min-height: var(--target); }
 :root[data-ambiance="renforcee"] .ex-pj input { width: 22px; height: 22px; }

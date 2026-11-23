@@ -1,6 +1,6 @@
 {
   "contrat": 0,
-  "releve": "2026-11-18T12:41:54.041Z",
+  "releve": "2026-11-23T16:00:06.671Z",
   "source": "registry.npmjs.org",
   "bibliotheques": {
     "plotly": [
@@ -54,7 +54,7 @@
   "paquets": {
     "@tiptap/extension-collaboration": {
       "version": "3.31.3",
-      "derniere": "3.34.0",
+      "derniere": "3.35.0",
       "ecart": "mineure",
       "avis": [],
       "licence": "MIT",
@@ -63,7 +63,7 @@
     },
     "@tiptap/extension-collaboration-caret": {
       "version": "3.31.3",
-      "derniere": "3.34.0",
+      "derniere": "3.35.0",
       "ecart": "mineure",
       "avis": [],
       "licence": "MIT",
@@ -72,7 +72,7 @@
     },
     "@tiptap/y-tiptap": {
       "version": "3.0.10",
-      "derniere": "3.3.0",
+      "derniere": "3.3.1",
       "ecart": "mineure",
       "avis": [],
       "licence": "MIT",
@@ -90,8 +90,8 @@
     },
     "docx": {
       "version": "9.15.1",
-      "derniere": "9.15.4",
-      "ecart": "correctif",
+      "derniere": "9.16.0",
+      "ecart": "mineure",
       "avis": [],
       "licence": "MIT",
       "site": "https://docx.js.org",
@@ -162,7 +162,7 @@
     },
     "pdfmake": {
       "version": "0.2.7",
-      "derniere": "0.3.14",
+      "derniere": "0.3.15",
       "ecart": "majeure",
       "avis": [],
       "licence": "MIT",

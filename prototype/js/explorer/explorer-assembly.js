@@ -30,7 +30,7 @@ export function buildFiling(c) {
     here: () => (c.explorer.state.view === 'folder' ? c.explorer.state.path : ''), writeBlock: () => c.writeBlock(), notice: text => c.notice(text),
     specOf: file => ((c.manifestOf(file.app) || {}).fichiers || []).find(spec => isTable(spec, file.table)) || null,
     cleanName: file => (file.app === FILES_APP ? cleanName : undefined),
-    refresh: () => c.refreshFiles(), windows: { name: opts => askName(layer(opts)), folder: opts => chooseFolder(layer(opts)) },
+    refresh: opts => c.refreshFiles(opts), pending: c.pending, windows: { name: opts => askName(layer(opts)), folder: opts => chooseFolder(layer(opts)) },
   });
 }
 
@@ -68,8 +68,9 @@ export function buildExplorer(c) {
     onOpen: file => c.openings.openFile(file), onNew: entry => c.openings.openNew(entry), onImport: entry => void c.openings.importFile(entry),
       onTemplates: () => void c.templates.open(),
       onClose: () => c.hideExplorer(), onApps: () => void c.openModules(),
-    personal: () => Boolean(c.identity), filing, kept: c.kept, attachments: () => loadAttachments(c.port),
+    personal: () => Boolean(c.identity), filing, pending: c.pending, kept: c.kept, attachments: () => loadAttachments(c.port),
     trash: new Trash({ managers, ask: opts => c.ask(opts), keepFolders: file => filing.keepFoldersOf(file), ...gestures }),
     copying: new Copying({ managers, file: (app, id, folder) => filing.rangeNew([{ app, file: id, pinned: false, folder }]), ...gestures }),
   });
+  c.pending.onChange = () => c.explorer.repaint(); // un geste de rangement s'affiche (ou s'en va, refusé) sans attendre la lecture des fichiers
 }

@@ -47,6 +47,9 @@ export class Explorer {
   #win; // la liste fenêtrée quand elle est longue (js/explorer/explorer-window.js)
   #refs;
   #files = [];
+  // les fichiers et les dossiers tels que la lecture les a rendus : `#files` et `#folders` y ajoutent les changements en attente
+  #raw = { files: [], folders: [] };
+  #received = []; // les arrivées d'un autre document, telles que la lecture les a rendues
   #trashed = []; // les fichiers à la corbeille (la vue « Corbeille »)
   #arrivals = []; // les fichiers reçus d'un autre document, refusés exceptés (la vue « Partagés avec moi », js/sharing/received-files.js)
   #folders = []; // les dossiers que la personne garde sans fichier (js/explorer/explorer-data.js)
@@ -105,6 +108,8 @@ export class Explorer {
   //          copying?: la copie (js/files/copying.js) : { handles(file), appLockOf?(file) -> { text } | null, copy(file, dossier) -> Promise<{ key, name } |
   //          null> }
   //          },
+  //          pending?: les gestes de rangement affichés avant d'être écrits (js/explorer/pending.js : `apply({ files, folders })`), posés sur ce que la lecture
+  //          a rendu,
   //          attachments?() -> Promise<{ data } | { error }> : la table des pièces jointes de Grist (js/explorer/explorer-data.js, `loadAttachments`), lue
   //          quand la case
   //          « + pièces jointes » est cochée ; sans elle, la case est grisée }
@@ -173,22 +178,37 @@ export class Explorer {
   // `files` : les fichiers vivants ; `trashed` : ceux qui sont à la corbeille ; `folders` : les dossiers gardés sans fichier ; `received` : les arrivées d'un
   //   autre document, tous états (js/explorer/explorer-data.js).
   setFiles(files, trashed = [], folders = [], received = []) {
-    this.#files = files;
-    this.#trashed = trashed;
-    this.#folders = folders;
-    this.#arrivals = shownReceived(received);
-    const keys = new Set([...files, ...trashed, ...this.#arrivals].map(file => file.key));
-    if (this.state.sel && !/^(dir|grp):/.test(this.state.sel) && !keys.has(this.state.sel)) this.state.sel = null;
-    // le dossier reçu n'a plus de fichier montré (tous refusés)
-    if (this.state.group && !receivedFolders(this.#arrivals).folders.some(folder => folder.id === this.state.group)) this.state.group = null;
+    this.#show(files, trashed, folders, received);
     this.#pieces.filesChanged();
     if (this.isOpen) this.render();
     this.#pieces.reread();
   }
 
+  // Les listes que la vue montre : celles que la lecture a rendues, avec par-dessus les gestes de rangement qui s'affichent avant d'être écrits
+  // (js/explorer/pending.js).
+  #show(files, trashed, folders, received) {
+    this.#raw = { files, folders };
+    this.#received = received;
+    const shown = this.#opts.pending ? this.#opts.pending.apply(this.#raw) : this.#raw;
+    this.#files = shown.files;
+    this.#trashed = trashed;
+    this.#folders = shown.folders;
+    this.#arrivals = shownReceived(received);
+    const keys = new Set([...shown.files, ...trashed, ...this.#arrivals].map(file => file.key));
+    if (this.state.sel && !/^(dir|grp):/.test(this.state.sel) && !keys.has(this.state.sel)) this.state.sel = null;
+    // le dossier reçu n'a plus de fichier montré (tous refusés)
+    if (this.state.group && !receivedFolders(this.#arrivals).folders.some(folder => folder.id === this.state.group)) this.state.group = null;
+  }
+
   // Les arrivées d'un autre document ont changé pendant que l'explorateur est ouvert (js/sharing/sync-service.js, `whenReceived`) : seule leur liste se
   // remplace, le reste ne bouge pas.
-  setReceived(received) { this.setFiles(this.#files, this.#trashed, this.#folders, received); }
+  setReceived(received) { this.setFiles(this.#raw.files, this.#trashed, this.#raw.folders, received); }
+
+  // Un changement de rangement s'affiche ou s'en va avant qu'une lecture n'arrive (js/explorer/pending.js) : la liste se redessine d'après la dernière lecture.
+  repaint() {
+    this.#show(this.#raw.files, this.#trashed, this.#raw.folders, this.#received);
+    if (this.isOpen) this.render();
+  }
 
   // `restricted` : GFS n'a pas l'accès complet, la liste est vide pour cette raison et non parce qu'il n'y a aucun fichier.
   setStatus({ loading = false, problems = [], restricted = false }) {

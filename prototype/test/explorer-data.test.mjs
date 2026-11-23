@@ -121,6 +121,55 @@ test('sans la table de GFS, ou avec une table illisible, aucun dossier n\'est ga
   try { assert.deepEqual((await loadFiles(port(tables(), { broken: 'gfs_rangement' }), [{ manifest }], '')).folders, []); } finally { console.warn = warn; }
 });
 
+test('la lecture rend le nom que le document donne à la table du rangement (sans tenir compte de la casse), ou null quand elle manque ou qu\'elle est illisible', async () => {
+  assert.equal((await loadFiles(port(tables()), [{ manifest }], '')).gfsTable, 'gfs_rangement');
+  const data = tables();
+  delete data.gfs_rangement;
+  assert.equal((await loadFiles(port(data), [{ manifest }], '')).gfsTable, null);
+  const warn = console.warn;
+  console.warn = () => {};
+  try { assert.equal((await loadFiles(port(tables(), { broken: 'gfs_rangement' }), [{ manifest }], '')).gfsTable, null); } finally { console.warn = warn; }
+});
+
+// La copie des tables lourdes (js/broker/table-cache.js) : la première lecture complète d'un document lourd garde les tables de fichiers pour l'app qu'on ouvre.
+const keeper = head => {
+  const kept = [];
+  return { kept, keep: { mark: Promise.resolve(head), cache: { keep: (...args) => kept.push(args) } } };
+};
+const heavyTables = () => { const data = tables(); data[spec.table].Contenu = ['x'.repeat(3 * 1024 * 1024), 'y'.repeat(2 * 1024 * 1024)]; return data; };
+
+test('un document lourd lu en entier la première fois : les tables de fichiers se gardent avec l\'empreinte d\'avant la lecture et le poids total', async () => {
+  const { kept, keep } = keeper('h1');
+  const found = await loadFiles(port(heavyTables()), [{ manifest }], '', null, keep);
+  assert.equal(kept.length, 1);
+  const [head, list, bytes] = kept[0];
+  assert.equal(head, 'h1');
+  assert.deepEqual(list.map(item => item.id), [spec.table], 'le nom que le document donne à la table');
+  assert.equal(list[0].data.Nom[0], 'Convocation', 'la table en entier, comme l\'app la lirait');
+  assert.equal(bytes, found.stats.bytes);
+});
+
+test('un document léger, une lecture légère ou une empreinte qui n\'est pas venue : rien ne se garde', async () => {
+  const light = keeper('h1');
+  await loadFiles(port(tables()), [{ manifest }], '', null, light.keep);
+  const none = keeper(null);
+  await loadFiles(port(heavyTables()), [{ manifest }], '', null, none.keep);
+  const lightRead = keeper('h1');
+  const reader = { isActive: () => true, learn: () => {}, prepare: async () => {}, read: async () => null };
+  await loadFiles(port(heavyTables()), [{ manifest }], '', reader, lightRead.keep);
+  assert.deepEqual([light.kept.length, none.kept.length, lightRead.kept.length], [0, 0, 0]);
+});
+
+test('l\'empreinte d\'avant la lecture est arrivée avant que la première table ne soit demandée à Grist', async () => {
+  const order = [];
+  const data = heavyTables();
+  const slow = { doc: { listTables: async () => Object.keys(data), fetchTable: async name => { order.push(`lit ${name}`); return data[name]; } } };
+  const keep = { cache: { keep: () => {} }, mark: new Promise(resolve => setTimeout(() => { order.push('empreinte'); resolve('h1'); }, 30)) };
+  await loadFiles(slow, [{ manifest }], '', null, keep);
+  const firstRead = order.findIndex(entry => entry.startsWith('lit '));
+  assert.ok(order.indexOf('empreinte') < firstRead, order.join(' > '));
+});
+
 // ---------- le poids ----------
 
 test('le poids : un PDF de GFS pèse sa ligne et sa pièce jointe (`Taille`), une copie qui cite la même pièce ne la compte pas deux fois dans une somme', async () => {

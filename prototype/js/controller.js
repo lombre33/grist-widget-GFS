@@ -5,6 +5,7 @@ import { CATALOGUE } from './apps/catalogue.js';
 import { loadAll, label } from './apps/manifest.js';
 import { GristState } from './broker/state.js';
 import { createPort } from './broker/broker.js';
+import { TableCache } from './broker/table-cache.js';
 import { ViewOptions, addressOf } from './broker/view-options.js';
 import { ViewLink, LINK_KEY } from './broker/view-link.js';
 import { AppSession } from './broker/session.js';
@@ -45,6 +46,7 @@ import { Entries } from './broker/entries.js';
 import { Openings } from './broker/openings.js';
 import { OpenedFiles } from './explorer/opened-files.js';
 import { FilesReading } from './explorer/files-reading.js';
+import { Pending } from './explorer/pending.js';
 import { buildExplorer } from './explorer/explorer-assembly.js';
 import { buildDock } from './shell/dock-assembly.js';
 import { loadReceived } from './sharing/received-files.js';
@@ -96,7 +98,9 @@ export class GfsController {
     this.state = new GristState();
     // Les choix de chaque app (contrats 5.3) : un espace par app dans le navigateur de GFS, jamais dans le document.
     this.appStorage = new AppStorage({ backend: browserBackend(window) });
-    this.port = createPort(grist);
+    // la copie d'une table lourde que l'explorateur lit, rendue à l'app qu'il ouvre (js/broker/table-cache.js) ; son empreinte vient du cadre d'envoi, plus bas
+    this.tableCache = new TableCache({ head: () => this.#stateHead() });
+    this.port = createPort(grist, this.tableCache);
     this.readonly = this.params.get('readonly') === 'true';
     // Les réglages des apps s'écrivent dans la vue, sans « Enregistrer » (contrats 7.3) : GFS retrouve sa section par son adresse et sa table.
     this.viewOptions = new ViewOptions({
@@ -140,8 +144,11 @@ export class GfsController {
     // les appels que la politique d'une app bloque, relayés par le kit (contrats 5.4, point 14), pour la session seulement
     this.relay = new SecurityRelay({ appName: this.appName, t: this.t, notice: text => this.notice(text), now: () => new Date() });
     this.#buildSharing();
+    this.pending = new Pending(); // les gestes de rangement affichés avant d'être écrits (js/explorer/pending.js) ; l'explorateur se redessine à chacun
     this.#reading = new FilesReading({
-      port: this.port, apps: () => this.validApps(), fullAccess: () => this.fullAccess, rangement: this.rangement, reader: this.fileReader,
+      pending: this.pending, cache: this.tableCache, port: this.port, apps: () => this.validApps(), fullAccess: () => this.fullAccess,
+        rangement: this.rangement,
+        reader: this.fileReader,
       prepare: () => this.names.refresh(this.apps.filter(item => item.ok)),
       explorer: () => this.explorer, openedBar: () => this.openedBar, appName: this.appName, t: this.t, onSpaces: spaces => { this.spaces = spaces; },
       onFiles: files => void this.followFolders(files), onStats: stats => { this.doc.body.dataset.explorerStats = JSON.stringify(stats); },
@@ -367,9 +374,17 @@ export class GfsController {
     }
   }
 
-  // Une seule lecture des fichiers fait foi, la dernière lancée (js/explorer/files-reading.js).
-  refreshFiles() {
-    return this.#reading.refresh();
+  // L'empreinte de l'état du document (`GET /states`, le dernier : elle change à chaque écriture, de qui qu'elle vienne) ; rien quand le serveur ne la rend
+  // pas.
+  async #stateHead() {
+    const { body } = await this.transfer.rest('GET', '/states', { writable: false, params: { limit: 1 } });
+    const [state] = (body && body.states) || [];
+    return state && typeof state.h === 'string' ? state.h : null;
+  }
+
+  // Une seule lecture des fichiers fait foi, la dernière lancée (js/explorer/files-reading.js). `quiet` : sans « Lecture des fichiers… ».
+  refreshFiles(opts) {
+    return this.#reading.refresh(opts);
   }
 
   // ---------- la fenêtre « Thème » ----------

@@ -176,3 +176,43 @@ test('`again` au rétablissement : le geste reste à refaire', async () => {
   await stack.redo();
   assert.deepEqual([notices.at(-1), stack.redoSize], ['refait', 0]);
 });
+
+test('un geste qui dépose plus tard (écrit en différé) dépose dans la pile qu\'il visait, même si la pile a changé de mode entre-temps', async () => {
+  const { stack } = make();
+  let deposit;
+  stack.push({
+    run: async () => {
+      deposit = stack.later(); // le geste de l'annulation s'écrit en différé : il aboutira quand l'annulation est déjà finie
+      return 'défait';
+    },
+  });
+  await stack.undo();
+  deposit({ run: async () => 'refait' });
+  assert.deepEqual([stack.size, stack.redoSize], [0, 1], 'de quoi refaire, comme si le geste avait déposé pendant l\'annulation');
+  const fresh = stack.later();
+  fresh({ run: async () => 'neuf' });
+  assert.deepEqual([stack.size, stack.redoSize], [1, 0], 'un geste neuf, même en différé, vide le rétablissement');
+});
+
+test('Ctrl+Z attend les écritures en route : le geste qu\'elles déposent est celui qui se défait', async () => {
+  const notices = [];
+  let finish;
+  const writing = new Promise(resolve => { finish = resolve; });
+  const stack = new UndoStack({ t, notice: text => notices.push(text), settle: () => writing });
+  const late = stack.later();
+  const undone = stack.undo(); // le geste n'a encore rien déposé : l'écriture est en route
+  assert.equal(await stack.undo(), false, 'un second appui pendant l\'attente est ignoré');
+  late({ run: async () => 'défait le dernier' });
+  finish();
+  assert.equal(await undone, true);
+  assert.deepEqual(notices, ['défait le dernier']);
+});
+
+test('sans écriture en route, Ctrl+Z ne dit pas « rien à défaire » avant d\'avoir attendu : la pile est lue après l\'attente', async () => {
+  let finish;
+  const stack = new UndoStack({ t, notice: () => {}, settle: () => new Promise(resolve => { finish = resolve; }) });
+  const undone = stack.undo();
+  stack.push({ run: async () => 'ok' });
+  finish();
+  assert.equal(await undone, true);
+});

@@ -11,8 +11,9 @@ const spec = manifest.fichiers[0];
 const tables = () => ({ [spec.table]: { id: [1], Nom: ['Convocation'], TypeModele: [''], DateModif: [0], ModifiePar: [''] } });
 
 // Un banc : un port de doublure, l'explorateur et ses voisins qui notent ce qu'on leur dit.
-function bench({ data = tables(), broken = null, unreachable = false, access = true, learning = 'moi@exemple.org', apps = [{ manifest, app: { id: 'publipostage' } }] } = {}) {
+function bench({ data = tables(), broken = null, unreachable = false, access = true, learning = 'moi@exemple.org', apps = [{ manifest, app: { id: 'publipostage' } }], pending = null } = {}) { // `pending` : (log) => les gestes affichés d'avance, ou rien
   const log = [];
+  const notes = []; // ce que la lecture dit du nom de la table du rangement
   const state = { access, learning, lang: 'fr' };
   // Tant que `hold` est vrai, toute lecture du document attend `release()` : le temps de regarder ce que la lecture dit en route.
   let pass;
@@ -26,7 +27,8 @@ function bench({ data = tables(), broken = null, unreachable = false, access = t
     } },
     apps: () => apps,
     fullAccess: () => state.access,
-    rangement: { get learning() { return unreachable ? { then: (ok, fail) => fail(new Error('réseau coupé')) } : state.learning; } },
+    rangement: { get learning() { return unreachable ? { then: (ok, fail) => fail(new Error('réseau coupé')) } : state.learning; }, note: id => notes.push(id) },
+    pending: pending && pending(log),
     reader: null,
     explorer: () => ({
       setFiles: (...args) => log.push(['setFiles', args[0].length, (args[1] || []).length]),
@@ -39,7 +41,7 @@ function bench({ data = tables(), broken = null, unreachable = false, access = t
     onFiles: files => log.push(['files', files.length]),
     onStats: stats => log.push(['stats', typeof stats]),
   };
-  return { reading: new FilesReading(x), log, state, gate };
+  return { reading: new FilesReading(x), log, state, gate, notes };
 }
 
 const statuses = log => log.filter(entry => entry[0] === 'setStatus').map(entry => entry[1]);
@@ -105,4 +107,26 @@ test('`show` redit la dernière phrase dans la langue qui vaut maintenant, sans 
   b.state.lang = 'en';
   b.reading.show();
   assert.deepEqual(statuses(b.log).pop(), { loading: false, restricted: true, problems: ['en:gfs.needsFullAccess'] });
+});
+
+// La table du rangement telle que `fetchTable` la rend : les colonnes que GFS lit, sans une ligne.
+const rangementTable = () => ({ id: [], Utilisateur: [], App: [], Fichier: [], Favori: [], Dossier: [], Valeur: [] });
+
+test('la lecture dit au rangement le nom que le document donne à sa table (ou qu\'elle manque) : un geste de rangement le sait sans la relire', async () => {
+  const without = bench();
+  await without.reading.refresh();
+  assert.deepEqual(without.notes, [null]);
+  const withTable = bench({ data: { ...tables(), gfs_rangement: rangementTable() } });
+  await withTable.reading.refresh();
+  assert.deepEqual(withTable.notes, ['gfs_rangement']);
+});
+
+test('les gestes affichés d\'avance : la lecture note, au départ, ce qui était confirmé, et le retire avant que la liste lue ne soit posée', async () => {
+  const b = bench({ pending: log => ({ stamp: () => 7, retire: stamp => log.push(['retire', stamp]) }) });
+  await b.reading.refresh({ quiet: true });
+  assert.deepEqual(b.log.map(entry => entry[0]).slice(0, 3), ['spaces', 'retire', 'setFiles'], 'une lecture discrète ne dit pas « chargement »');
+  assert.deepEqual(b.log.find(entry => entry[0] === 'retire'), ['retire', 7]);
+  const loud = bench({ pending: () => ({ stamp: () => 0, retire: () => {} }) });
+  await loud.reading.refresh();
+  assert.equal(statuses(loud.log)[0].loading, true, 'une lecture ordinaire dit toujours « chargement »');
 });

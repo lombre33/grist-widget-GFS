@@ -21,6 +21,7 @@ export class OwnTable {
   #columns;
   #consent;
   #tableId;
+  #seen = null; // l'identifiant que Grist a donné à la table la dernière fois qu'elle a été lue ou créée ; null tant qu'elle n'a jamais été vue
 
   // `port` : { doc } (les interfaces brutes de Grist) ; `columns` : [{ id, type, … }] telles que `AddTable` les reçoit ; `consent()` : une promesse, `true`
   //   quand la personne accepte la création.
@@ -35,26 +36,45 @@ export class OwnTable {
   // L'identifiant que Grist a vraiment donné à la table (le nom voulu tant qu'elle n'est pas lue).
   get id() { return this.#tableId; }
 
-  // La table telle qu'elle est : { exists, columns, data }. Ne crée rien.
+  // La table a-t-elle été vue (lue ou créée) ? Un geste qui n'a pas à la créer peut alors s'afficher avant d'être écrit (js/explorer/pending.js).
+  get known() { return this.#seen !== null; }
+
+  // Une lecture qu'un autre a faite dit où en est la table : son identifiant réel, ou null quand elle n'existe pas.
+  note(id) {
+    this.#seen = id || null;
+    if (id) this.#tableId = id;
+  }
+
+  // La table telle qu'elle est : { exists, columns, data }. Ne crée rien. Une table déjà vue est lue en même temps que la liste des tables qui confirme son nom
+  // (un aller-retour de réseau de moins avant chaque écriture) : la liste fait foi, et la lecture d'avance est jetée si la table a changé de nom ou disparu.
   async load() {
+    const known = this.#seen;
+    const guess = known === null ? null : this.#port.doc.fetchTable(known).catch(() => null);
     const tables = (await this.#port.doc.listTables()).map(String);
     const found = tables.find(name => sameName(name, this.#name));
-    if (!found) return { exists: false, columns: [], data: null };
+    if (!found) {
+      this.#seen = null;
+      return { exists: false, columns: [], data: null };
+    }
     this.#tableId = found;
-    const fetched = await this.#port.doc.fetchTable(found);
+    this.#seen = found;
+    const fetched = (guess && found === known && (await guess)) || (await this.#port.doc.fetchTable(found));
     return { exists: true, columns: Object.keys(fetched || {}), data: fetched };
   }
 
-  // La table prête à être écrite, relue juste avant, avec les colonnes `needed` : sans table, l'accord de la personne, puis la création.
+  // La table prête à être écrite, relue juste avant, avec les colonnes `needed` : sans table, l'accord de la personne, puis la création. `created` : la table
+  // vient de naître (ou la personne vient d'être interrogée) : ce que l'appelant a lu pendant ce temps est à relire.
   async ready(needed = []) {
     let state = await this.load();
+    let created = false;
     if (!state.exists) {
+      created = true;
       if (!(await this.#consent())) throw new TableDeclined(this.#name);
       state = await this.load(); // la table a pu naître pendant la question
       if (!state.exists) state = await this.#create();
     }
     for (const column of needed.filter(name => !state.columns.includes(name))) await this.addColumn(column);
-    return state;
+    return created ? { ...state, created } : state;
   }
 
   // La table seulement si elle existe, relue juste avant, avec les colonnes `needed` ajoutées au besoin ; null sans table. Pour un geste sur une ligne qui y
@@ -77,6 +97,7 @@ export class OwnTable {
     const result = await this.#port.doc.applyUserActions([['AddTable', this.#name, this.#columns.map(column => ({ ...column }))]]);
     const made = result && Array.isArray(result.retValues) && result.retValues[0];
     this.#tableId = (made && made.table_id) || this.#name;
+    this.#seen = this.#tableId;
     if (!sameName(this.#tableId, this.#name)) console.warn(`GFS : Grist a nommé la table ${this.#tableId} au lieu de ${this.#name}`);
     return { exists: true, columns: this.#columns.map(column => column.id), data: null };
   }

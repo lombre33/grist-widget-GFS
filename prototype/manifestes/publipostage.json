@@ -127,6 +127,12 @@
         "en": "The gallery creates formula columns and the displayed column of References, and the person's identification reads user.Email through a formula."
       }
     },
+    "identite": {
+      "pourquoi": {
+        "fr": "Savoir qui est la personne devant le document : droits d'accès, auteur des commentaires et des modifications, préférences.",
+        "en": "Know who is using the document: access rights, author of comments and changes, preferences."
+      }
+    },
     "jeton": {
       "lectureSeule": true,
       "pourquoi": {

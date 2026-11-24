@@ -224,8 +224,12 @@ test('contrats 3.4, point 6 : `identite` se déclare avec sa raison en français
   assert.equal(validateManifest(bare).ok, true, 'ni lit, ni ecrit, ni accès full : valable');
   const readOnly = { ...publipostage(), permissions: { acces: 'read table', identite: { pourquoi: why } } };
   assert.equal(validateManifest(readOnly).ok, true);
-  // Les manifestes du prototype n\'en déclarent aucune tant qu\'une app ne l\'a pas demandée à GFS.
-  for (const m of [publipostage(), automation(), form()]) assert.equal(m.permissions.identite, undefined, m.id);
+  // Une app ne la reçoit que si elle l\'a demandée à GFS (« Demandes à GFS » de sa page) : Publipostage+ l\'a demandée le 24/11 (consigne 095), pas les autres.
+  for (const m of [automation(), form(), bi()]) assert.equal(m.permissions.identite, undefined, m.id);
+  const asked = publipostage().permissions.identite;
+  assert.ok(asked && asked.pourquoi.fr && asked.pourquoi.en, 'Publipostage+ déclare `identite` avec sa raison en français et en anglais');
+  assert.match(asked.pourquoi.fr, /droits d'accès/);
+  assert.equal(validateManifest(publipostage()).ok, true);
 });
 
 test('contrats 3.4, point 2 : Automation+ déclare « formules » pour la colonne « Auteur » de son journal, avec sa raison (décision du porteur du 09/11)', () => {

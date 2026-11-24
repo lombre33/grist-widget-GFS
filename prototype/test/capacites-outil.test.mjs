@@ -20,11 +20,33 @@ function withIdentity() {
 }
 const collect = () => { const lines = []; return { lines, write: text => lines.push(text) }; };
 
-test('--identite : aucune app du catalogue ne la reçoit tant qu\'aucune ne l\'a déclarée', () => {
+// Le même dossier, où aucune app ne déclare l'identité.
+function withoutIdentity() {
+  const root = mkdtempSync(join(tmpdir(), 'gfs-capacites-'));
+  mkdirSync(join(root, 'manifestes'));
+  for (const m of [publipostage(), automation(), form(), bi()]) {
+    const copy = JSON.parse(JSON.stringify(m));
+    delete copy.permissions.identite;
+    writeFileSync(join(root, 'manifestes', `${m.id}.json`), JSON.stringify(copy));
+  }
+  return root;
+}
+
+test('--identite : dans le catalogue du prototype, seule Publipostage+ la reçoit (demande du 24/11, consigne 095)', () => {
   const out = collect();
   const rows = main(['--identite'], ROOT, out.write);
-  assert.deepEqual(rows, []);
-  assert.match(out.lines.join('\n'), /Aucune app du catalogue ne reçoit l'adresse e-mail/);
+  assert.deepEqual(rows.map(row => row.app), ['publipostage']);
+  assert.match(out.lines.join('\n'), /^publipostage \(Publipostage\+\) · identite : Savoir qui est la personne/);
+});
+
+test('--identite : aucune app du catalogue ne la reçoit tant qu\'aucune ne l\'a déclarée', () => {
+  const root = withoutIdentity();
+  try {
+    const out = collect();
+    const rows = main(['--identite'], root, out.write);
+    assert.deepEqual(rows, []);
+    assert.match(out.lines.join('\n'), /Aucune app du catalogue ne reçoit l'adresse e-mail/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
 test('--identite : l\'app qui la déclare, avec sa raison dans la langue demandée', () => {

@@ -93,3 +93,18 @@ test('sans l\'accès complet, rien n\'est lu', async () => {
   await b.refresh();
   assert.deepEqual(b.log, ['restricted']);
 });
+
+test('une lecture discrète (après un geste de rangement) ne dit pas « chargement » : la liste montre déjà le résultat ; elle garde la garde de séquence', async () => {
+  const b = bench();
+  const quiet = b.refresh({ quiet: true });
+  const loud = b.refresh();
+  await b.finish(1, 'B');
+  await b.finish(0, 'A');
+  await Promise.all([quiet, loud]);
+  assert.deepEqual(b.log, ['loading', 'loaded:B'], 'seule la lecture ordinaire annonce son départ ; la plus ancienne est jetée');
+  const only = bench();
+  const solo = only.refresh({ quiet: true });
+  await only.finish(0, 'C');
+  await solo;
+  assert.deepEqual(only.log, ['loaded:C']);
+});

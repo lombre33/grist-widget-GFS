@@ -15,10 +15,10 @@ const scheme = process.env.LAB_SCHEME || 'light';
 const fr = lang === 'fr';
 const run = `ouverts-barre-${lang}-${scheme}`;
 const WORD = fr
-  ? { tip: 'Fichiers ouverts', tipN: n => `Fichiers ouverts : ${n}`, none: 'Aucun fichier ouvert', more: 'Ouvrir un autre fichier…', shown: 'affiché', dropOf: name => `Retirer des ouverts : ${name}`,
+  ? { tip: 'Fichiers ouverts', tipN: n => `Fichiers ouverts : ${n}`, none: 'Aucun fichier ouvert', find: 'Rechercher un fichier…', more: 'Ouvrir un autre fichier…', shown: 'affiché', dropOf: name => `Retirer des ouverts : ${name}`,
     why: /Les fichiers que vous ouvrez depuis l’explorateur restent ici/, files: 'Ouvrir l’explorateur de fichiers', apps: 'Apps et extensions de Grist Factory Suite', place: 'Position de la barre',
     edges: { gauche: 'À gauche', haut: 'En haut', droite: 'À droite', bas: 'En bas' } }
-  : { tip: 'Open files', tipN: n => `Open files: ${n}`, none: 'No open files', more: 'Open another file…', shown: 'shown', dropOf: name => `Remove from open files: ${name}`,
+  : { tip: 'Open files', tipN: n => `Open files: ${n}`, none: 'No open files', find: 'Find a file…', more: 'Open another file…', shown: 'shown', dropOf: name => `Remove from open files: ${name}`,
     why: /Files you open from the explorer stay here/, files: 'Open the file explorer', apps: 'Apps and extensions of Grist Factory Suite', place: 'Bar position',
     edges: { gauche: 'Left', haut: 'Top', droite: 'Right', bas: 'Bottom' } };
 const ACCEPTS = [probeDeclares('sonde-o', { ouverture: { fichier: true, nouveau: true } }), probeDeclares('sonde-q', { ouverture: { fichier: true, nouveau: true } })];
@@ -108,7 +108,7 @@ check('grisé : sa couleur n\'est pas celle des boutons actifs', idle.color !== 
 // ---------------------------------------------------------------------------------------------------------------------------------
 say('=== 2. rien d\'ouvert : le menu le dit, l\'article grisé explique, « Ouvrir un autre fichier… » reste ===');
 await openMenu();
-check('le menu a un titre, un article grisé « Aucun fichier ouvert », un séparateur, « Ouvrir un autre fichier… »', JSON.stringify(await menu.evaluate(m => [...m.children].map(el => (el.tagName === 'HR' ? '-' : el.textContent.trim())))) === JSON.stringify([WORD.tip, WORD.none, '-', WORD.more]), await menu.innerText());
+check('le menu a un titre, un article grisé « Aucun fichier ouvert », un séparateur, « Rechercher un fichier… », « Ouvrir un autre fichier… »', JSON.stringify(await menu.evaluate(m => [...m.children].map(el => (el.tagName === 'HR' ? '-' : el.textContent.trim())))) === JSON.stringify([WORD.tip, WORD.none, '-', WORD.find, WORD.more]), await menu.innerText());
 check('le bouton déclare le menu ouvert (aria-expanded)', (await button.getAttribute('aria-expanded')) === 'true');
 await shot('1-vide');
 await menu.locator('.menu-item', { hasText: WORD.none }).click({ force: true });

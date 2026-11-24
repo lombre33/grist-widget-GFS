@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { SHOTS, withProbes, routePatches, mirrorCdns, say, check } from './lab-common.mjs';
 import { GRIST, createDocument, addWidget, docIdOf } from './lab-serveur.mjs';
 import { makePdf } from './pdf-fixture.mjs';
+import { quiet } from './lab-rest.mjs';
 
 export const PAGE_PORT = 8917;
 export const GFS = `http://127.0.0.1:${PAGE_PORT}/prototype/index.html`;
@@ -94,7 +95,9 @@ export async function fitPanel(page, frame, width = 700, height = 400) {
 
 // Ce que le serveur retient, lu avec la session de la personne (la page de Grist est de l'origine du serveur : aucun jeton ici).
 function rest(page, docId) {
-  const get = path => page.evaluate(async ([id, suffix]) => (await fetch(`/api/docs/${id}${suffix}`)).json(), [docId, path]);
+  const fetchJson = path => page.evaluate(async ([id, suffix]) => (await fetch(`/api/docs/${id}${suffix}`)).json(), [docId, path]);
+  // Un geste de rangement s'affiche avant d'être écrit (23/11) : la lecture attend que le document ne bouge plus (lab-rest.mjs, `quiet`).
+  const get = async path => { await quiet(page, docId); return fetchJson(path); };
   return {
     tables: async () => (await get('/tables')).tables.map(table => table.id),
     columns: async table => (await get(`/tables/${table}/columns`)).columns.map(column => ({ id: column.id, type: column.fields.type })),

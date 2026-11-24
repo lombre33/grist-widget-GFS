@@ -60,6 +60,7 @@ export function buildDock(c) {
     opened: c.opened, files: () => (c.explorer ? c.explorer.files : []), session: () => c.session, dock: c.dock, t: c.t,
       appName: c.appName,
     open: file => c.openings.openFile(file), showExplorer: () => c.showExplorer(), notice: text => c.notice(text),
+    container: () => c.$('stage'), inertTargets: c.inertTargets,
   });
   c.dock.relabel(c.t);
   c.workControl.relabel();

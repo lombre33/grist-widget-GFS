@@ -6,19 +6,22 @@
 // createFileRefresh({ canRead, load, onRestricted, onLoading, onLoaded, onFailed }) rend la fonction à appeler à chaque lecture :
 //   canRead()      : la personne a l'accès complet (sinon la lecture n'a pas lieu) ;
 //   load()         : lit les fichiers, rend ce que `onLoaded` reçoit (une promesse) ;
-//   onRestricted() : pas d'accès complet ; onLoading() : la lecture commence ; onLoaded(résultat) : elle a réussi ; onFailed(erreur) : elle a échoué.
+//   onRestricted() : pas d'accès complet ; onLoading() : la lecture commence (pas pour une lecture `quiet`) ; onLoaded(résultat) : elle a réussi ;
+//   onFailed(erreur) :
+//   elle a échoué.
 // Une lecture dépassée (une plus récente a été lancée depuis, ou l'accès a été perdu) ne rappelle rien : ni sa réussite ni son échec ne touche l'état que la
 // plus récente a posé.
 
 export function createFileRefresh({ canRead, load, onRestricted, onLoading, onLoaded, onFailed }) {
   let latest = 0;
-  return async function refresh() {
+  // `quiet` : la lecture qui suit un geste de rangement, pendant que la liste montre déjà le résultat : « Lecture des fichiers… » ne s'affiche pas.
+  return async function refresh({ quiet = false } = {}) {
     const mine = ++latest;
     if (!canRead()) {
       onRestricted();
       return;
     }
-    onLoading();
+    if (!quiet) onLoading();
     try {
       const result = await load();
       if (mine === latest) onLoaded(result);

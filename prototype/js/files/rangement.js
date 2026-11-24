@@ -98,6 +98,7 @@ export class Rangement {
   #canWrite;
   #onIdentity;
   #appFilings;
+  #appTables = new Map(); // une `OwnTable` par table d'app : elle retient l'identifiant vu, la lecture suivante part d'avance (js/files/own-table.js)
   #identity = null; // null : pas encore lue ; '' : lue, sans adresse de personne ; sinon l'adresse
   #pending = null;
   #stamped = false; // le numéro de structure a été tenté (noté ou refusé) pendant cette ouverture
@@ -114,6 +115,13 @@ export class Rangement {
     this.#onIdentity = onIdentity;
     this.#appFilings = appFilings;
   }
+
+  // La table du rangement existe-t-elle, d'après ce que GFS a lu ou écrit ? Sans elle, le premier geste de rangement pose une question (créer la table) : il ne
+  // s'affiche pas avant d'être écrit (js/explorer/filing.js).
+  get known() { return this.#table.known; }
+
+  // La lecture des fichiers a vu la table du rangement sous ce nom (null : elle n'existe pas) : le geste suivant s'en sert sans la chercher.
+  note(tableId) { this.#table.note(tableId); }
 
   // L'adresse de la personne, '' tant que GFS ne la connaît pas : son rangement est alors commun au document (contrats 6.4, point 4).
   get identity() { return this.#identity || ''; }
@@ -280,15 +288,17 @@ export class Rangement {
   }
 
   // Les rangements que les apps tiennent elles-mêmes et que GFS écrit, pour celles dont la table est là avec ses colonnes (js/files/app-filing.js) : une Map,
-  // app -> { filing, tableId, data }. Pour les autres (la table n'est pas née, une colonne manque), GFS range comme avant, dans `GFS_Rangement`.
+  // app -> { filing, tableId, data }. Pour les autres (la table n'est pas née, une colonne manque), GFS range comme avant, dans `GFS_Rangement`. Les tables des
+  // apps se lisent toutes ensemble : un aller-retour de réseau pour toutes, non un par app.
   async #appTargets() {
-    const targets = new Map();
-    for (const filing of this.#appFilings()) {
-      const table = new OwnTable({ port: this.#port, name: filing.table, columns: [], consent: async () => false });
+    const found = await Promise.all(this.#appFilings().map(async filing => {
+      if (!this.#appTables.has(filing.table)) this.#appTables.set(filing.table, new OwnTable(
+        { port: this.#port, name: filing.table, columns: [], consent: async () => false }));
+      const table = this.#appTables.get(filing.table);
       const { data } = await table.load();
-      if (usable(filing, data)) targets.set(filing.app, { filing, tableId: table.id, data });
-    }
-    return targets;
+      return usable(filing, data) ? [filing.app, { filing, tableId: table.id, data }] : null;
+    }));
+    return new Map(found.filter(Boolean));
   }
 
   // Les lignes d'état des dossiers de la personne, relues : [{ id, path }] (un dossier de « Moi » se désigne dans les partages par le numéro de sa ligne,
@@ -327,12 +337,23 @@ export class Rangement {
     const add = [...new Set(folders.add || [])];
     const drop = [...new Set(folders.drop || [])];
     if (!entries.length && !add.length && !drop.length && !moved.length && !merged.length) return false;
-    const state = folders.quiet === true ? await this.#loaded() : await this.#ready(FILING);
+    // La table du rangement et celles des apps se lisent en même temps. Quand la table du rangement vient de naître (la personne a été interrogée entre-temps),
+    // ce que les apps ont rendu peut avoir vieilli : leurs tables se relisent.
+    const [state, firstTargets] = await Promise.all([folders.quiet === true ? this.#loaded() : this.#ready(FILING), this.#appTargets()]);
     if (!state) return false;
-    const { data } = state;
+    const targets = state.created ? await this.#appTargets() : firstTargets;
+    const actions = this.#actionsOf(state.data, targets, entries, { add, drop, moved, merged, extra: folders.extra || [] });
+    if (!actions.length) return false;
+    await this.#port.doc.applyUserActions(actions);
+    await this.#stamp(state.data);
+    return true;
+  }
+
+  // Les actions d'un lot de rangement : les lignes des fichiers dans `GFS_Rangement` (ceux des apps qui tiennent leur rangement vont chez elles), les lignes
+  // d'état des dossiers, ce que les apps tiennent, puis les actions de plus (`extra`).
+  #actionsOf(data, targets, entries, { add, drop, moved, merged, extra }) {
     const identity = this.identity;
     const tableId = this.#table.id;
-    const targets = await this.#appTargets();
     const actions = entries.filter(({ app }) => !targets.has(app)).map(({ app, file, pinned, folder }) => {
       const key = { Utilisateur: identity, App: app, Fichier: String(file) };
       const at = findRow(data, key);
@@ -343,11 +364,7 @@ export class Rangement {
     // Chez une app, un dossier déplacé est une ligne d'état retirée puis ajoutée : son numéro ne désigne rien dans les partages.
     const batch = { entries, add: [...add, ...moved.map(([, to]) => to)], drop: [...drop, ...moved.map(([from]) => from), ...merged.map(([from]) => from)] };
     for (const [app, target] of targets) actions.push(...this.#appBatch(app, target, batch, { tableId, data }, identity));
-    actions.push(...(folders.extra || []));
-    if (!actions.length) return false;
-    await this.#port.doc.applyUserActions(actions);
-    await this.#stamp(data);
-    return true;
+    return [...actions, ...extra];
   }
 
   // Les actions d'un lot pour une app qui tient son rangement : ses fichiers du lot, les dossiers gardés ou retirés, et ce que `GFS_Rangement` disait d'elle

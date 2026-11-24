@@ -361,3 +361,18 @@ test('les colonnes de données : celles de la table, sans les formules, sans la 
   assert.deepEqual(await dataColumnsOf(docOf(internals()), 'publipostage_modeles'), [{ id: 'Nom', type: 'Text' }, { id: 'Pieces', type: 'Attachments' }, { id: 'Jeton', type: 'Text' }, { id: 'Contenu', type: 'Text' }]);
   assert.deepEqual(await dataColumnsOf(docOf(internals()), 'Inconnue'), []);
 });
+
+test('le fichier peut partir de la liste avant d\'être écrit à la corbeille seulement quand rien ne reste à demander : la table de la corbeille est connue, l\'app n\'a pas à répondre', async () => {
+  const run = setup();
+  const { files } = await run.load();
+  assert.equal(run.trash.instant(files[0]), false, 'la table de la corbeille n\'a jamais été vue : la créer demande l\'accord de la personne');
+  run.trash.noteBin('GFS_Corbeille');
+  assert.equal(run.trash.instant(files[0]), true);
+  run.trash.noteBin(null);
+  assert.equal(run.trash.instant(files[0]), false, 'la dernière lecture dit qu\'elle n\'existe pas');
+  run.trash.noteBin('GFS_Corbeille');
+  assert.equal(run.trash.instant({ ...files[0], table: 'Autre' }), false, 'un fichier que le gardien ne gère pas');
+  const composite = setup({ over: { apps: () => [{ manifest: form() }] } });
+  composite.trash.noteBin('GFS_Corbeille');
+  assert.equal(composite.trash.instant({ app: 'form', table: 'FormPlus_Formulaires', id: '1' }), false, 'un formulaire se ferme par l\'app ouverte, qui peut refuser : on attend sa réponse');
+});

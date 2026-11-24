@@ -9,11 +9,25 @@ export const call = (page, method, path, body) => page.evaluate(async ([m, p, b]
   return { status: response.status, json, text: text.slice(0, 500) };
 }, [method, path, body]);
 
+// Un geste de rangement s'affiche avant d'être écrit (23/11, js/explorer/filing.js) : Grist reçoit l'écriture un instant après ce que la personne voit. Avant de lire l'état du
+// document, l'essai attend donc qu'il ne bouge plus : l'empreinte de son dernier état (`/states`) reste la même 600 ms.
+export async function quiet(page, docId) {
+  let head = null;
+  let since = Date.now();
+  for (let i = 0; i < 80; i++) {
+    const answer = await call(page, 'GET', `/api/docs/${docId}/states`);
+    const [state] = (answer.json && answer.json.states) || [];
+    if (!state || state.h !== head) { head = state ? state.h : null; since = Date.now(); } else if (Date.now() - since >= 600) return;
+    await page.waitForTimeout(150);
+  }
+}
+
 // Des actions utilisateur en un lot (`/apply`), comme le fait `applyUserActions` du widget.
 export const apply = (run, actions) => call(run.page, 'POST', `/api/docs/${run.docId}/apply`, actions);
 
 // Les lignes d'une table : [{ id, …colonnes }], ou null quand Grist refuse la lecture.
 export const rowsOf = async (run, table) => {
+  await quiet(run.page, run.docId);
   const answer = await call(run.page, 'GET', `/api/docs/${run.docId}/tables/${table}/records`);
   return answer.status === 200 ? answer.json.records.map(row => ({ id: row.id, ...row.fields })) : null;
 };

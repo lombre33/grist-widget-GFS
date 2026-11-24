@@ -86,6 +86,18 @@ export class AppFiles {
 
   copies = file => this.#specOf(file, copyRecipeOf) !== null;
 
+  // Le fichier peut-il partir de la liste avant d'être écrit à la corbeille (js/files/trash.js, choix du porteur du 24/11 : « sauf si l'app doit répondre ») ?
+  // Oui quand rien ne reste à demander : la table de la corbeille existe déjà (la créer demande l'accord de la personne) et l'app n'a pas à fermer le fichier
+  // (`appel` : elle seule sait le refuser, et GFS l'attend jusqu'à vingt secondes).
+  instant = file => {
+    const spec = this.#specOf(file);
+    return spec !== null && !asksApp(spec) && this.#bin.known;
+  };
+
+  // L'identifiant que le document donne à la table de la corbeille d'après la dernière lecture des fichiers, ou null quand elle n'existe pas
+  // (js/files/own-table.js).
+  noteBin(id) { this.#bin.note(id); }
+
   // Ce qui empêche d'écrire : pas l'accès complet (les tables internes de Grist ne se lisent pas sans lui), un document en lecture seule, ou, pour un fichier
   // que l'app ouverte doit aider à supprimer ou à copier (`gesture` : 'trash' ou 'copy'), l'app qui n'est pas ouverte.
   lock(file, gesture) {

@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { Filing } from '../js/explorer/filing.js';
 import { TableDeclined } from '../js/files/rangement.js';
 import { createI18n } from '../js/i18n/i18n.js';
+import { Pending } from '../js/explorer/pending.js';
 
 const { t } = createI18n('fr');
 const file = (id, folder = '', extra = {}) => ({ key: `publipostage:${id}`, app: 'publipostage', id: String(id), table: 'Publipostage_Modeles', row: Number(id) * 10, name: `Modèle ${id}`, folder, pinned: false, ...extra });
@@ -17,11 +18,15 @@ const META = {
 
 // Une doublure de tout ce que le contrôleur donne : `stored` est ce que la table de GFS retient, et la liste relue après chaque geste en part.
 // `spare` : les dossiers que la personne garde sans fichier (les lignes d'état de `GFS_Rangement`) ; la doublure les suit quand un lot en ajoute ou en retire. Un lot de dossiers n'est noté que s'il y en a.
-function harness({ files = [file(1), file(2, 'A/B'), file(3, 'A/B/C'), file(4, 'X')], spare = [], block = null, answers = [], setFiling = null, meta = META, cleanName = undefined, folderShares = null } = {}) {
-  const log = { writes: [], actions: [], notices: [], windows: [], refreshes: 0 };
+function harness({ files = [file(1), file(2, 'A/B'), file(3, 'A/B/C'), file(4, 'X')], spare = [], block = null, answers = [], setFiling = null, meta = META, cleanName = undefined, folderShares = null, pending = null, known = true, hold = null, refuse = null } = {}) {
+  const log = { writes: [], actions: [], notices: [], windows: [], refreshes: 0, refreshed: [] };
   let list = files;
   let kept = [...spare];
-  const rangement = { setFiling: setFiling || (async (entries, folders = {}) => {
+  // `pending` : les gestes affichés d'avance (la liste que les gestes lisent est alors celle que la personne voit) ; `known` : la table du rangement a été vue
+  // `hold` : une promesse que l'écriture attend avant de partir ; `refuse` : le message dont Grist refuse le lot
+  const rangement = { ...(pending ? { known } : {}), setFiling: setFiling || (async (entries, folders = {}) => {
+    if (hold) await hold;
+    if (refuse) throw new Error(refuse);
     const add = folders.add || [];
     const drop = folders.drop || [];
     const moved = folders.moved || [];
@@ -33,10 +38,11 @@ function harness({ files = [file(1), file(2, 'A/B'), file(3, 'A/B/C'), file(4, '
   const ask = kind => async opts => { log.windows.push({ kind, ...opts }); return answers.shift() ?? null; };
   const port = { doc: { fetchTable: async name => meta[name], applyUserActions: async actions => { log.actions.push(...actions); for (const action of actions) if (action[0] === 'UpdateRecord') list = list.map(item => (item.row === action[2] ? { ...item, name: Object.values(action[3])[0] } : item)); } } };
   const filing = new Filing({
-    port, rangement, t, locale: () => 'fr', files: () => list, folders: () => kept, here: () => 'X', specOf: () => SPEC, appName: () => 'Publipostage+', cleanName, folderShares,
-    writeBlock: () => block, notice: text => log.notices.push(text), refresh: async () => { log.refreshes += 1; }, windows: { name: ask('name'), folder: ask('folder') },
+    port, rangement, t, locale: () => 'fr', files: () => (pending ? pending.apply({ files: list, folders: kept }).files : list),
+    folders: () => (pending ? pending.apply({ files: list, folders: kept }).folders : kept), pending, here: () => 'X', specOf: () => SPEC, appName: () => 'Publipostage+', cleanName, folderShares,
+    writeBlock: () => block, notice: text => log.notices.push(text), refresh: async opts => { log.refreshes += 1; log.refreshed.push(opts); }, windows: { name: ask('name'), folder: ask('folder') },
   });
-  return { filing, log, current: () => list, kept: () => kept };
+  return { filing, log, current: () => list, kept: () => kept, shown: () => (pending ? pending.apply({ files: list, folders: kept }) : { files: list, folders: kept }) };
 }
 
 test('épingler : une ligne pour ce fichier, son dossier gardé, puis la liste est relue', async () => {
@@ -363,6 +369,33 @@ test('mettre à la corbeille un fichier dont le dossier a un autre fichier, ou e
   const { filing } = harness({ files: [file(1, 'P'), file(2, 'P')], spare: ['E'], setFiling: async (entries, folders) => { calls.push({ entries, folders }); } });
   await filing.keepFoldersOf(file(1, 'P'));
   assert.deepEqual(calls, []);
+});
+
+test('la corbeille affichée d\'avance : les dossiers que le fichier laisse vides se disent d\'avance (seulement avec la table du rangement), et se gardent depuis la file sans s\'y remettre', async () => {
+  const calls = [];
+  const setFiling = async (entries, folders) => { calls.push(folders); };
+  const known = harness({ files: [file(1, 'P/Q'), file(2, 'P/R')], setFiling, pending: new Pending(), known: true });
+  assert.deepEqual(known.filing.foldersLeftBy(file(1, 'P/Q')), ['P/Q']);
+  assert.deepEqual(known.filing.foldersLeftBy(file(9, '')), []);
+  const unknown = harness({ files: [file(1, 'P/Q')], setFiling, pending: new Pending(), known: false });
+  assert.deepEqual(unknown.filing.foldersLeftBy(file(1, 'P/Q')), [], 'sans table, le dossier vide ne s\'écrirait pas : il ne s\'afficherait que le temps d\'une lecture');
+  let inside = null;
+  await known.filing.queued(async () => { await known.filing.keepFoldersNow(file(1, 'P/Q')); inside = calls.length; });
+  assert.equal(inside, 1, 'écrit dans la file, sans s\'y remettre derrière lui-même (la file attendrait pour toujours)');
+  assert.deepEqual(calls, [{ add: ['P/Q'], quiet: true }]);
+});
+
+test('les écritures d\'un autre geste (la corbeille) prennent leur rang dans la file : Ctrl+Z les attend comme celles du rangement', async () => {
+  const { hold, go } = held();
+  const { filing } = instant({ answers: ['Neuf'], hold });
+  await filing.newFolder('');
+  const order = [];
+  const other = filing.queued(async () => { order.push('corbeille'); });
+  assert.deepEqual(order, [], 'elle attend l\'écriture du dossier, partie avant elle');
+  go();
+  await filing.settled();
+  await other;
+  assert.deepEqual(order, ['corbeille']);
 });
 
 // ---------- Ctrl+Z : chaque geste qui a abouti dépose de quoi se défaire (js/files/undo-stack.js) ----------
@@ -705,4 +738,167 @@ test('Ctrl+Z après une fusion : le dossier qui arrivait retrouve une ligne à s
   assert.deepEqual(kept(), ['X/E'], 'la ligne de « E » est retirée, celle de « X/E » reste');
   await filing.undoStack.undo();
   assert.deepEqual(kept().sort(), ['E', 'X/E']);
+});
+
+// ---------- afficher avant d'écrire (js/explorer/pending.js ; étude du 23/11) ----------
+
+// Une écriture que le test laisse partir à la main : `go()` la libère.
+const held = () => { let go; const hold = new Promise(resolve => { go = resolve; }); return { hold, go }; };
+const instant = (options = {}) => { const pending = new Pending(); return { pending, ...harness({ pending, ...options }) }; };
+
+test('un dossier neuf s\'affiche tout de suite, avant que Grist n\'ait rien reçu ; une fois écrit, il reste affiché et la liste se relit sans rien dire', async () => {
+  const { hold, go } = held();
+  const { filing, log, kept, shown } = instant({ answers: ['Neuf'], hold });
+  assert.equal(await filing.newFolder(''), 'Neuf');
+  assert.deepEqual([shown().folders, log.writes, kept()], [['Neuf'], [], []], 'la personne le voit ; Grist n\'a encore rien reçu');
+  assert.equal(filing.undoStack.size, 0, 'rien à défaire tant que ce n\'est pas écrit');
+  go();
+  await filing.settled();
+  assert.deepEqual(log.writes, [{ entries: [], folders: { add: ['Neuf'] } }]);
+  assert.deepEqual([log.refreshes, log.refreshed], [1, [{ quiet: true }]], 'une seule relecture, et discrète');
+  assert.equal(filing.undoStack.size, 1);
+});
+
+test('Grist refuse : le dossier s\'en va, la phrase dit pourquoi, rien n\'est à défaire', async () => {
+  const warn = console.warn;
+  console.warn = () => {};
+  try {
+    const { hold, go } = held();
+    const { filing, log, shown } = instant({ answers: ['Neuf'], hold, refuse: 'Grist dit non' });
+    await filing.newFolder('');
+    assert.deepEqual(shown().folders, ['Neuf']);
+    go();
+    await filing.settled();
+    assert.deepEqual(shown().folders, [], 'le dossier a disparu');
+    assert.deepEqual(log.notices, [t('ex.filingFailed', { reason: 'Grist dit non' })]);
+    assert.equal(filing.undoStack.size, 0);
+  } finally { console.warn = warn; }
+});
+
+test('l\'étoile s\'allume tout de suite, et deux clics rapides s\'écrivent dans l\'ordre où ils ont été faits', async () => {
+  const { hold, go } = held();
+  const { filing, log, shown } = instant({ hold });
+  const stale = file(1);
+  await filing.togglePin(stale);
+  assert.equal(shown().files[0].pinned, true);
+  await filing.togglePin(stale); // le second part de ce que la personne voit : il éteint
+  assert.equal(shown().files[0].pinned, false);
+  go();
+  await filing.settled();
+  assert.deepEqual(log.writes.map(write => write.entries[0].pinned), [true, false]);
+});
+
+test('un geste refusé n\'emporte pas les autres : seul son changement s\'en va', async () => {
+  const { filing, shown, log } = instant({ answers: ['Un', 'Deux'], setFiling: async (entries, folders = {}) => { if ((folders.add || []).includes('Un')) throw new Error('refus'); log2.push(folders.add); } });
+  const log2 = [];
+  const warn = console.warn;
+  console.warn = () => {};
+  try {
+    await filing.newFolder('');
+    await filing.newFolder('');
+    await filing.settled();
+  } finally { console.warn = warn; }
+  assert.deepEqual([shown().folders, log2], [['Deux'], [['Deux']]]);
+  assert.equal(log.notices.length, 1);
+});
+
+test('la table du rangement jamais vue : le geste s\'écrit d\'abord (elle se crée avec l\'accord de la personne), puis la liste se relit en entier', async () => {
+  const { hold, go } = held();
+  const { filing, log, shown } = instant({ answers: ['Neuf'], hold, known: false });
+  const done = filing.newFolder('');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(shown().folders, [], 'rien ne s\'affiche avant l\'accord : la question pourrait être refusée');
+  go();
+  assert.equal(await done, 'Neuf');
+  assert.deepEqual([shown().folders, log.refreshed], [['Neuf'], [undefined]], 'écrit puis relu, avec « Lecture des fichiers… »');
+});
+
+test('un dossier partagé qui s\'écrit avec ses partages : le geste attend Grist (le numéro de sa ligne est l\'identité du partage)', async () => {
+  const { hold, go } = held();
+  const folderShares = { removal: async () => ({ extra: [['RemoveRecord', 'GFS_Partages', 7]], removed: 1 }) };
+  const { filing, log, shown } = instant({ spare: ['Partagé'], hold, folderShares });
+  const done = filing.deleteFolder('Partagé');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(shown().folders, ['Partagé'], 'le dossier est encore là tant que Grist n\'a pas répondu');
+  go();
+  assert.equal(await done, true);
+  assert.deepEqual([shown().folders, log.refreshes], [[], 1]);
+});
+
+test('un dossier vide qui se supprime s\'en va tout de suite ; Grist refuse : il revient avec la phrase', async () => {
+  const warn = console.warn;
+  console.warn = () => {};
+  try {
+    const { hold, go } = held();
+    const { filing, shown, log } = instant({ spare: ['Vide'], hold, refuse: 'Grist dit non' });
+    assert.equal(await filing.deleteFolder('Vide'), true);
+    assert.deepEqual(shown().folders, [], 'disparu pour la personne');
+    go();
+    await filing.settled();
+    assert.deepEqual(shown().folders, ['Vide'], 'il revient');
+    assert.match(log.notices.at(-1), /Grist dit non/);
+  } finally { console.warn = warn; }
+});
+
+test('renommer un dossier : ses fichiers et ses sous-dossiers suivent à l\'écran tout de suite, dans un seul changement', async () => {
+  const { hold, go } = held();
+  const { filing, shown, log } = instant({ answers: ['Bis'], hold, spare: ['A/B/Z'] });
+  await filing.renameFolder('A/B');
+  assert.deepEqual(shown().files.map(item => item.folder), ['', 'A/Bis', 'A/Bis/C', 'X']);
+  assert.deepEqual(shown().folders, ['A/Bis/Z']);
+  go();
+  await filing.settled();
+  assert.equal(log.writes.length, 1, 'un seul lot, comme avant');
+});
+
+test('déplacer un fichier : il change de dossier à l\'écran, et le dossier qu\'il laisse vide reste affiché', async () => {
+  const { filing, shown } = instant({ answers: ['A'], hold: new Promise(() => {}) });
+  await filing.moveFile(file(4, 'X'));
+  assert.deepEqual(shown().files.map(item => item.folder), ['', 'A/B', 'A/B/C', 'A']);
+  assert.deepEqual(shown().folders, ['X']);
+});
+
+test('renommer un fichier : le nom change tout de suite ; la colonne manque ou Grist refuse : l\'ancien nom revient avec la phrase', async () => {
+  const { hold, go } = held();
+  const ok = instant({ answers: ['Nouveau nom'], hold });
+  await ok.filing.rename(file(1));
+  assert.equal(ok.shown().files[0].name, 'Nouveau nom');
+  assert.deepEqual(ok.log.actions, [], 'Grist n\'a encore rien reçu');
+  go();
+  await ok.filing.settled();
+  assert.deepEqual(ok.log.actions, [['UpdateRecord', 'Publipostage_modeles', 10, { Nom: 'Nouveau nom' }]]);
+  assert.equal(ok.filing.undoStack.size, 1);
+  const missing = instant({ answers: ['Autre'], meta: { ...META, _grist_Tables_column: { id: [2], parentId: [2], colId: ['Nom'] } } });
+  await missing.filing.rename(file(1));
+  assert.equal(missing.shown().files[0].name, 'Autre');
+  await missing.filing.settled();
+  assert.equal(missing.shown().files[0].name, 'Modèle 1');
+  assert.deepEqual(missing.log.notices, [t('ex.renameNoColumn', { app: 'Publipostage+' })]);
+  assert.deepEqual(missing.log.actions, [], 'une colonne absente n\'est jamais écrite');
+});
+
+test('Ctrl+Z juste après un geste affiché d\'avance attend son écriture, puis le défait ; Ctrl+Y le refait', async () => {
+  const { hold, go } = held();
+  const { filing, shown, log } = instant({ answers: ['Neuf'], hold });
+  await filing.newFolder('');
+  const undone = filing.undoStack.undo(); // l'écriture n'est pas partie : il n'y a encore rien à défaire
+  go();
+  assert.equal(await undone, true);
+  await filing.settled();
+  assert.deepEqual(shown().folders, [], 'le dossier est retiré');
+  assert.deepEqual(log.writes.map(write => write.folders), [{ add: ['Neuf'] }, { add: [], drop: ['Neuf'], moved: [] }]);
+  assert.deepEqual([filing.undoStack.size, filing.undoStack.redoSize], [0, 1], 'de quoi refaire est dans la pile du rétablissement, pas dans celle des annulations');
+  assert.equal(await filing.undoStack.redo(), true);
+  await filing.settled();
+  assert.deepEqual(shown().folders, ['Neuf']);
+});
+
+test('un geste qui s\'écrit d\'abord (un fichier rangé par une copie) attend derrière les écritures déjà parties', async () => {
+  const { hold, go } = held();
+  const { filing, log } = instant({ answers: ['Neuf'], hold });
+  await filing.newFolder('');
+  const copied = filing.rangeNew([{ app: 'publipostage', file: '9', pinned: false, folder: 'Neuf' }]);
+  go();
+  await copied;
+  assert.deepEqual(log.writes.map(write => (write.folders ? 'dossier' : 'copie')), ['dossier', 'copie']);
 });

@@ -19,8 +19,10 @@ export class UndoStack {
   #done = []; // les gestes à défaire (Ctrl+Z), le dernier en dernier
   #undone = []; // les gestes défaits, à refaire (Ctrl+Y)
   #mode = null; // 'undo' ou 'redo' pendant qu'une annulation ou un rétablissement écrit, sinon null
+  #waiting = false; // une annulation ou un rétablissement attend les écritures en route
 
-  // opts : { t, notice(texte) }
+  // opts : { t, notice(texte), settle?() -> Promise } ; `settle` : rendue quand les écritures parties sont finies (un geste affiché d'avance ne dépose de quoi
+  //   se défaire qu'une fois écrit : Ctrl+Z, juste après lui, l'attend)
   constructor(opts) { this.#opts = opts; }
 
   get size() { return this.#done.length; }
@@ -31,10 +33,19 @@ export class UndoStack {
   // dite lui-même (la corbeille), ou `{ said, again: true }` quand rien n'a pu se faire mais que cela pourra plus tard (l'app qui doit être ouverte : la phrase
   // le dit, et le geste reste à défaire). Pendant une annulation, ce qui est déposé est de quoi la refaire (pile du rétablissement) ; pendant un
   // rétablissement, de quoi le défaire de nouveau ; un geste neuf vide la pile du rétablissement.
-  push(entry) {
-    if (this.#mode === 'undo') { keep(this.#undone, entry); return; }
+  push(entry) { this.#put(entry, this.#mode); }
+
+  // Où ira ce qui se dépose à cet instant, pour un geste qui dépose plus tard (une écriture qui s'affiche d'avance) : la pile aura peut-être changé de mode
+  // quand il aboutira. Rend la fonction qui dépose.
+  later() {
+    const mode = this.#mode;
+    return entry => this.#put(entry, mode);
+  }
+
+  #put(entry, mode) {
+    if (mode === 'undo') { keep(this.#undone, entry); return; }
     keep(this.#done, entry);
-    if (this.#mode === null) this.#undone = [];
+    if (mode === null) this.#undone = [];
   }
 
   clear() { this.#done = []; this.#undone = []; }
@@ -46,8 +57,12 @@ export class UndoStack {
   redo() { return this.#replay('redo'); }
 
   async #replay(kind) {
-    const { t, notice } = this.#opts;
-    if (this.#mode) return false;
+    const { t, notice, settle } = this.#opts;
+    if (this.#mode || this.#waiting) return false;
+    if (settle) {
+      this.#waiting = true;
+      try { await settle(); } finally { this.#waiting = false; }
+    }
     const from = kind === 'undo' ? this.#done : this.#undone;
     const entry = from.pop();
     if (!entry) { notice(t(`${kind}.nothing`)); return false; }

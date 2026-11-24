@@ -11,9 +11,11 @@ import { sliceOf, optionOf, checkKey, planSetOptions, planClear } from './option
 import { touchesPublication, publicationOpens, protectedRefusal } from './publication.js';
 import { touchesSharing, judgeSharing } from './sharing.js';
 
-export function createPort(grist) {
+// `cache` : la copie des tables lourdes (js/broker/table-cache.js) devant `fetchTable`, ou rien.
+export function createPort(grist, cache = null) {
+  const doc = grist.rpc.getStub('GristDocAPI@grist');
   return {
-    doc: grist.rpc.getStub('GristDocAPI@grist'),
+    doc: cache ? cache.wrap(doc) : doc,
     view: grist.rpc.getStub('GristView'),
     widget: grist.rpc.getStub('WidgetAPI'),
   };

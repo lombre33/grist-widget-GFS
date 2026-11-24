@@ -6,6 +6,14 @@
 // (`undoStack`, js/files/undo-stack.js) de quoi se défaire : Ctrl+Z remet le rangement ou le nom comme ils étaient (l'état d'avant est relu juste avant
 // d'écrire), et ce que Ctrl+Z écrit dépose de quoi le refaire (Ctrl+Y). Chaque geste donne deux phrases : celle de Ctrl+Z (`undo.*`) et celle de Ctrl+Y
 // (`redo.*`).
+//
+// Afficher avant d'écrire (étude du 23/11, choix du porteur : « raccourcir, puis afficher tout de suite ») : quand tout se sait d'avance, le geste s'affiche à
+// l'instant (`opts.pending`, js/explorer/pending.js) et Grist s'écrit ensuite, derrière les écritures déjà parties (`#enqueue` : une à la fois, dans l'ordre
+// des gestes). Si Grist refuse, le changement s'en va et la phrase du refus est dite ; s'il aboutit, il reste affiché jusqu'à la lecture qui le porte, et le
+// geste dépose alors de quoi se défaire (Ctrl+Z attend les écritures en route : `settle`). Le geste reste écrit d'abord, puis affiché, dans quatre cas : la
+// table du rangement n'a jamais été vue (la créer demande l'accord de la personne), un espace est touché (seul un propriétaire y écrit : la réponse vient d'une
+// lecture), un partage est écrit avec le lot (le numéro d'une ligne d'état est l'identité du partage ; un refus se saurait trop tard), et jamais de droits, de
+// partages ni d'envois.
 
 import { folderMoves, folderName, folderPaths, inside, normalizePath, spareMoves, vacatedFolders } from './explorer-model.js';
 import { TableDeclined } from '../files/rangement.js';
@@ -27,6 +35,14 @@ const reasonOf = error => String((error && error.message) || error).slice(0, 120
 const isEmptyWrite = (entries, folders) => !entries.length && !(folders.add || []).length && !(folders.drop || []).length && !(folders.moved || []).length &&
   !(folders.merged || []).length;
 
+// Ce qu'un lot de rangement change à la liste que la personne voit (js/explorer/pending.js) : le ★ et le dossier des fichiers, les dossiers gardés sans fichier
+// qui s'ajoutent, s'en vont ou changent de chemin.
+const showsOf = (entries, folders) => [
+  ...entries.map(entry => ({ op: 'place', app: entry.app, id: entry.file, pinned: entry.pinned, folder: entry.folder })),
+  { op: 'dropFolders', paths: [...(folders.drop || []), ...(folders.moved || []).map(([from]) => from), ...(folders.merged || []).map(([from]) => from)] },
+  { op: 'addFolders', paths: [...(folders.add || []), ...(folders.moved || []).map(([, to]) => to)] },
+];
+
 // Les colonnes de la table `tableId` d'après les tables internes de Grist (deux petites tables : la table de fichiers peut peser des mégaoctets).
 async function columnsOf(doc, tableId) {
   const tables = await doc.fetchTable('_grist_Tables');
@@ -39,6 +55,8 @@ async function columnsOf(doc, tableId) {
 export class Filing {
   #opts;
   #queue = Promise.resolve();
+  #writes = Promise.resolve(); // les écritures de rangement, une à la fois : celle qui part attend celles qui sont parties avant
+  #inFlight = 0; // les écritures parties ou en route
 
   // opts : { port, rangement, t, locale(), files() -> [fichier], folders?() -> les dossiers gardés sans fichier, here() -> le dossier ouvert, specOf(file) ->
   //   son entrée `fichiers` du manifeste,
@@ -47,12 +65,16 @@ export class Filing {
   //          dossier de « Moi » change à ses partages et à ses liens, dans le même lot,
   //          cleanName?(file)
   //          -> la fonction qui met en forme le nom saisi (un PDF garde son « .pdf »), appName(id), writeBlock() -> texte | null, notice(texte), refresh() ->
-  //          Promise,
+  //          Promise (`refresh({ quiet })` : sans « Lecture des fichiers… » quand la liste montre déjà le résultat), pending? (les gestes qui s'affichent avant
+  //          d'être écrits : js/explorer/pending.js ; sans lui, chaque geste s'écrit puis s'affiche),
   //          windows: { name(opts) -> Promise<texte | null>, folder(opts) -> Promise<chemin | null> } }
   constructor(opts) {
     this.#opts = opts;
-    this.undoStack = new UndoStack({ t: opts.t, notice: opts.notice });
+    this.undoStack = new UndoStack({ t: opts.t, notice: opts.notice, settle: () => this.settled() });
   }
+
+  // Rendue quand les écritures de rangement parties sont finies (celles que la liste montre déjà comprises).
+  settled() { return this.#writes; }
 
   // Deux clics rapides sur l'étoile l'allument puis l'éteignent : le second part de la liste relue après le premier.
   togglePin(file) {
@@ -165,11 +187,38 @@ export class Filing {
   // `GFS_Rangement`, rien ne s'écrit et rien n'est demandé : on ne crée pas une table pour cela. Peut lever (Grist refuse le lot) : la corbeille le dit à la
   // console seulement, le fichier est à la corbeille.
   async keepFoldersOf(file) {
+    const plan = this.#keepPlan(file);
+    if (plan) await this.#enqueue(() => this.#keepWrite(plan));
+  }
+
+  // La même écriture, pour un geste qui est déjà dans la file des écritures (la corbeille qui s'affiche d'avance, `queued`) : se remettre en file derrière
+  // elle-même attendrait pour toujours.
+  async keepFoldersNow(file) {
+    const plan = this.#keepPlan(file);
+    if (plan) await this.#keepWrite(plan);
+  }
+
+  // Les dossiers que ce fichier laisserait sans fichier s'il partait à la corbeille : ceux que la liste doit garder d'avance. Aucun sans la table du rangement
+  // (la corbeille n'en crée pas, le dossier vide disparaîtrait à la lecture suivante).
+  foldersLeftBy(file) {
+    const plan = this.#opts.rangement.known === true ? this.#keepPlan(file) : null;
+    return plan ? plan.keep : [];
+  }
+
+  // Une écriture d'un autre geste (la corbeille, js/files/trash.js) qui prend son rang dans la file : une à la fois, dans l'ordre des gestes, et Ctrl+Z
+  // l'attend comme les autres (`settled`). C'est à elle de relire la liste quand elle a fini.
+  queued(task) { return this.#enqueue(task); }
+
+  #keepPlan(file) {
     const list = [...this.#opts.files().filter(other => other.key !== file.key), file];
     const keep = vacatedFolders(list, [{ app: file.app, file: file.id, folder: null }], this.#spare());
-    if (!keep.length) return;
+    if (!keep.length) return null;
     const plan = this.#opts.spaces ? splitWrites([], { add: keep }, [], this.#opts.spaces.info()) :
       { entries: [], folders: { add: keep }, ops: [], markers: { add: [], drop: [] } };
+    return { ...plan, keep };
+  }
+
+  async #keepWrite(plan) {
     // Le dossier d'un espace que la corbeille vide est gardé aussi, si la personne peut écrire l'espace.
     if (touchesSpaces(plan) && (await this.#opts.spaces.owner())) await writePlacement(this.#opts.port.doc, plan);
     if ((plan.folders.add || []).length) await this.#opts.rangement.setFiling([], { add: plan.folders.add, quiet: true });
@@ -177,13 +226,15 @@ export class Filing {
 
   // Range des fichiers neufs (une copie, un PDF importé), sans geste ni annulation : dans un dossier d'espace s'ils y sont placés, à la racine de la personne
   // si elle n'est pas propriétaire (la phrase le dit).
-  async rangeNew(entries) {
-    const { rangement, notice, t, spaces, port } = this.#opts;
-    if (!spaces || !entries.some(entry => isSpacePath(normalizePath(entry.folder)))) return rangement.setFiling(entries);
-    const plan = splitWrites(entries, {}, [], spaces.info());
-    if (!plan.error && (await spaces.owner())) { await writePlacement(port.doc, plan); return rangement.setFiling(plan.entries); }
-    notice(t(plan.error || 'ex.spaceOwnersOnly'));
-    return rangement.setFiling(entries.map(entry => ({ ...entry, folder: isSpacePath(normalizePath(entry.folder)) ? '' : entry.folder })));
+  rangeNew(entries) {
+    return this.#enqueue(async () => {
+      const { rangement, notice, t, spaces, port } = this.#opts;
+      if (!spaces || !entries.some(entry => isSpacePath(normalizePath(entry.folder)))) return rangement.setFiling(entries);
+      const plan = splitWrites(entries, {}, [], spaces.info());
+      if (!plan.error && (await spaces.owner())) { await writePlacement(port.doc, plan); return rangement.setFiling(plan.entries); }
+      notice(t(plan.error || 'ex.spaceOwnersOnly'));
+      return rangement.setFiling(entries.map(entry => ({ ...entry, folder: isSpacePath(normalizePath(entry.folder)) ? '' : entry.folder })));
+    });
   }
 
   // Un dossier d'espace ne se renomme ni ne se déplace (ses partages portent son chemin : ils ne le suivraient pas) ; ni « Espaces » ni un espace ne s'écrivent
@@ -209,13 +260,34 @@ export class Filing {
       const name = await windows.name({ title: t('ex.renameTitle', { name: this.#title(now) }), label: t('ex.nameLabel'), value: now.name,
         confirmLabel: t('ex.rename'), clean, refuse });
       if (name === null || name === now.name) return;
-      if (await this.#setName(now, name)) this.undoStack.push(this.#nameEntry(now, now.name, name, 'undo'));
+      await this.#setName(now, name, this.#nameEntry(now, now.name, name, 'undo'));
     });
   }
 
-  // Écrit le nom `name` du fichier `now` dans la colonne que le manifeste désigne, puis relit la liste. Rend true quand c'est écrit ; sinon la phrase dit
-  // pourquoi (colonne absente, Grist refuse).
-  async #setName(now, name) {
+  // Écrit le nom `name` du fichier `now` dans la colonne que le manifeste désigne. Rend true quand c'est accepté : écrit puis relu, ou affiché d'avance et
+  // écrit derrière (sans la colonne, ou si Grist refuse, il s'en va et la phrase dit pourquoi). `entry` : de quoi défaire, déposé quand le nom est écrit.
+  async #setName(now, name, entry) {
+    const { pending } = this.#opts;
+    const deposit = this.undoStack.later();
+    if (!pending) {
+      return this.#enqueue(async () => {
+        if (!(await this.#storeName(now, name))) return false;
+        deposit(entry);
+        await this.#opts.refresh();
+        return true;
+      });
+    }
+    const change = pending.add({ op: 'rename', key: now.key, name });
+    void this.#enqueue(async () => {
+      if (await this.#storeName(now, name)) { pending.confirm(change); deposit(entry); } else pending.cancel(change);
+      this.#readWhenIdle();
+    });
+    return true;
+  }
+
+  // Le nom seul dans la table de l'app, sa colonne du nom lue d'abord (une colonne absente n'est jamais écrite). Rend true quand c'est écrit ; sinon la phrase
+  // dit pourquoi (colonne absente, Grist refuse).
+  async #storeName(now, name) {
     const { t, port, notice, appName } = this.#opts;
     const spec = this.#opts.specOf(now);
     const column = spec && spec.colonnes ? spec.colonnes.nom : null;
@@ -223,13 +295,12 @@ export class Filing {
       const found = column ? await columnsOf(port.doc, spec.table) : null;
       if (!found || !found.columns.includes(column)) { notice(t('ex.renameNoColumn', { app: appName(now.app) })); return false; }
       await port.doc.applyUserActions([['UpdateRecord', found.tableId, now.row, { [column]: name }]]);
+      return true;
     } catch (error) {
       console.warn('GFS : le fichier n’a pas pu être renommé', error);
       notice(t('ex.renameFailed', { reason: reasonOf(error) }));
       return false;
     }
-    await this.#opts.refresh();
-    return true;
   }
 
   // De quoi remettre le nom `was` à `file`, qui porte aujourd'hui `renamed` : `kind` 'undo' (Ctrl+Z défait le renommage) ou 'redo' (Ctrl+Y le refait ; `was`
@@ -246,8 +317,7 @@ export class Filing {
       if (now.name !== renamed) return t(`${kind}.changed`, { name: renamed });
       if (this.#opts.files().some(other => other.key !== now.key && other.app === now.app && other.table === now.table && sameName(other.name, was))) return t(
         'ex.nameTaken', { app: appName(now.app) });
-      if (!(await this.#setName(now, was))) return null;
-      this.undoStack.push(this.#nameEntry(now, renamed, was, kind === 'undo' ? 'redo' : 'undo'));
+      if (!(await this.#setName(now, was, this.#nameEntry(now, renamed, was, kind === 'undo' ? 'redo' : 'undo')))) return null;
       return t(`${kind}.renamed`, { name: was });
     });
   }
@@ -325,27 +395,67 @@ export class Filing {
     if ((await this.#relocate(path, target)) === 'gone') this.#opts.notice(this.#opts.t('ex.folderGone'));
   }
 
-  // Rien quand il n'y a rien à écrire ; l'explorateur se relit après. `folders` : { add, drop }, les dossiers gardés sans fichier. Rend true quand le rangement
-  // est écrit, false sinon (la personne a refusé la table, Grist a refusé le lot : la phrase est dite).
+  // Rien quand il n'y a rien à écrire. `folders` : { add, drop }, les dossiers gardés sans fichier. Rend true quand le rangement est accepté : écrit puis relu,
+  // ou affiché d'avance et écrit derrière (Grist le refuse : il s'en va, la phrase est dite) ; false sinon (la personne a refusé la table, Grist a refusé le
+  // lot : la phrase est dite).
   // `undo` : { undo, redo } (`said`), les phrases de l'annulation et du rétablissement ; l'état d'avant est relu ici, avant d'écrire, et sert à remettre le
   //   rangement comme il était.
   async #write(entries, folders = {}, undo = null) {
     if (isEmptyWrite(entries, folders)) return false;
     const before = undo ? this.#before(entries, folders) : null;
     const plan = this.#opts.spaces ? splitWrites(entries, folders, this.#opts.files(), this.#opts.spaces.info()) : null;
+    if (plan && plan.error) { this.#opts.notice(this.#opts.t(plan.error)); return false; }
+    // `deposit` : où ira de quoi se défaire quand le lot sera écrit (la pile aura peut-être changé de mode d'ici là)
+    const lot = { entries, folders, plan, deposit: this.undoStack.later(), again: before && { run: () => this.#replayWrite(before, undo) } };
+    if (!this.#instant(plan, folders)) return this.#enqueue(() => this.#writeNow(lot));
+    const change = this.#opts.pending.add(showsOf(entries, folders));
+    void this.#enqueue(() => this.#writeLater(lot, change));
+    return true;
+  }
+
+  // Le lot peut-il s'afficher avant d'être écrit ? Voir l'en-tête : il faut que tout se sache d'avance.
+  #instant(plan, folders) {
+    const { pending, rangement } = this.#opts;
+    return Boolean(pending) && rangement.known === true && !(plan && touchesSpaces(plan)) && !(folders.extra || []).length;
+  }
+
+  // Écrit puis relit : le geste qui ne peut pas s'afficher d'avance.
+  async #writeNow({ entries, folders, plan, deposit, again }) {
     const refusal = await this.#refusalOf(plan);
     if (refusal) { this.#opts.notice(this.#opts.t(refusal)); return false; }
     if (!(await this.#store(entries, folders, plan))) return false;
-    if (before) this.undoStack.push({ run: () => this.#replayWrite(before, undo) });
+    if (again) deposit(again);
     await this.#opts.refresh();
     return true;
   }
 
-  // Pourquoi le lot ne s'écrit pas (la clé de sa phrase), ou null : les espaces le refusent, ou seul un propriétaire du document touche à un espace.
+  // Écrit ce qui s'affiche déjà : le changement est confirmé (il reste affiché jusqu'à la lecture qui le porte) ou retiré (Grist a refusé).
+  async #writeLater({ entries, folders, plan, deposit, again }, change) {
+    const { pending } = this.#opts;
+    if (await this.#store(entries, folders, plan)) {
+      pending.confirm(change);
+      if (again) deposit(again);
+    } else pending.cancel(change);
+    this.#readWhenIdle();
+  }
+
+  // Une écriture à la fois, dans l'ordre des gestes, qu'elles s'affichent d'avance ou non.
+  #enqueue(task) {
+    this.#inFlight += 1;
+    const run = this.#writes.then(task).finally(() => { this.#inFlight -= 1; });
+    this.#writes = run.catch(() => {});
+    return run;
+  }
+
+  // La liste se relit quand la dernière écriture partie est finie (sans « Lecture des fichiers… » : elle montre déjà le résultat) : elle porte alors les
+  // changements confirmés, qui cessent d'être posés par-dessus.
+  #readWhenIdle() {
+    if (this.#inFlight === 1) void this.#opts.refresh({ quiet: true });
+  }
+
+  // Seul un propriétaire du document touche à un espace : la clé de la phrase du refus, ou null.
   async #refusalOf(plan) {
-    if (!plan) return null;
-    if (plan.error) return plan.error;
-    return touchesSpaces(plan) && !(await this.#opts.spaces.owner()) ? 'ex.spaceOwnersOnly' : null;
+    return plan && touchesSpaces(plan) && !(await this.#opts.spaces.owner()) ? 'ex.spaceOwnersOnly' : null;
   }
 
   // Écrit le placement dans les espaces et le rangement. Rend true quand c'est écrit, false sinon (la personne a refusé la table, Grist a refusé le lot : la

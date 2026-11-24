@@ -6,7 +6,10 @@
 //   apps : js/apps/doc-names.js), fullAccess(), rangement ({ learning }), reader (la lecture légère, js/explorer/explorer-sql.js),
 //   explorer() (l'explorateur, ou null avant sa construction), openedBar(), appName(id), t(clé, variables), onSpaces(espaces), onFiles(fichiers) (la suite
 //   d'une
-//   lecture réussie : les dossiers partagés « à jour »), onStats(mesures) }
+//   lecture réussie : les dossiers partagés « à jour »), onStats(mesures), noteBin?(table) (la table de la corbeille existe, ou non : js/files/app-files.js),
+//   cache? (la copie des tables lourdes, js/broker/table-cache.js), pending? (les
+//   changements de rangement affichés avant d'être écrits,
+//   js/explorer/pending.js : une lecture partie après leur confirmation les remplace) }
 
 import { loadFiles } from './explorer-data.js';
 import { createFileRefresh } from './file-refresh.js';
@@ -26,9 +29,12 @@ export class FilesReading {
       canRead: () => x.fullAccess(),
       load: async () => {
         const { learning } = x.rangement;
+        const stamp = x.pending ? x.pending.stamp() : 0;
+        // la première lecture de la page prend l'empreinte du document avant de lire (js/broker/table-cache.js), pendant que le reste se prépare
+        const keep = x.cache ? { cache: x.cache, mark: x.cache.mark() } : null;
         this.#waited = typeof learning !== 'string';
         if (x.prepare) await x.prepare();
-        return loadFiles(x.port, [...x.apps(), FILES_ENTRY], learning, x.reader);
+        return { ...(await loadFiles(x.port, [...x.apps(), FILES_ENTRY], learning, x.reader, keep)), stamp };
       },
       onRestricted: () => {
         x.explorer().setFiles([]);
@@ -43,8 +49,8 @@ export class FilesReading {
     });
   }
 
-  // Lit les fichiers : la dernière lecture lancée fait seule foi.
-  refresh() { return this.#run(); }
+  // Lit les fichiers : la dernière lecture lancée fait seule foi. `quiet` : après un geste de rangement, sans « Lecture des fichiers… ».
+  refresh(opts) { return this.#run(opts); }
 
   // Une lecture est en cours et attend l'adresse de la personne : la relancer jetterait ce qu'elle a lu.
   get waitingForIdentity() { return this.#status.loading && this.#waited; }
@@ -61,9 +67,12 @@ export class FilesReading {
     this.show();
   }
 
-  #loaded({ files, trash, folders, received, spaces, problems, stats }) {
+  #loaded({ files, trash, folders, received, spaces, problems, stats, stamp, gfsTable, binTable }) {
     const x = this.#x;
     x.onSpaces(spaces);
+    x.rangement.note(gfsTable); // la table du rangement existe (ou non) : un geste de rangement le sait sans la relire
+    if (x.noteBin) x.noteBin(binTable); // de même pour la table de la corbeille : mettre un fichier à la corbeille le sait
+    if (x.pending) x.pending.retire(stamp);
     x.explorer().setFiles(files, trash, folders, received);
     x.onFiles(files);
     x.openedBar().sync(); // un fichier renommé, ou disparu, change le compte de la barre

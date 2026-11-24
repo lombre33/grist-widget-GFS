@@ -2432,7 +2432,19 @@ rangée d'un fichier, selon ce qui vient d'abord.
     avec son texte entier au survol), l'app en indice, et le fichier que l'app montre **en gras, avec un trait et son mot « affiché »** pour un lecteur d'écran. Un clic sur un
     autre fichier l'ouvre comme dans l'explorateur (une autre app est d'abord priée de se fermer, 5.4 point 3) ; **un clic sur le fichier affiché referme le menu sans
     rien relancer**. **La croix de la ligne (ou Suppr)** retire le fichier de la liste sans le fermer, et le menu se rouvre sans lui, le clavier sur la ligne qui prend sa
-    place ; au clavier, → va à la croix, ← revient, ↓ et ↑ ne s'y arrêtent pas, Début et Fin vont au premier et au dernier article. **« Ouvrir un autre fichier… »** montre
+    place, **sauf pour le fichier que l'app affiche** (23/11, retour du porteur : « ça n'a pas trop de sens » de pouvoir retirer le fichier en cours) : sa croix reste, **grisée**,
+    et son clic (ou Suppr) dit pourquoi sans rien retirer ; elle redevient une croix dès que l'app montre un autre fichier. **Un clic ailleurs referme le menu** (23/11, comme tout
+    menu de GFS), **y compris dans le cadre de l'app** : un clic dans un sous-cadre ne remonte pas à la page de GFS (aucun `pointerdown`), donc le cadre ne prend plus la souris
+    le temps du menu (`:root:has(.menu) .app-frame`, `css/gfs.css` : le premier clic ferme le menu, l'app ne le reçoit pas) et la fenêtre qui perd le focus (`blur` : un clic sur la page de
+    Grist autour du widget) le referme aussi ; faits vérifiés, section 145 ; **« Rechercher un fichier… »** (demande du porteur, 23/11 : « ouvrir un document en recherchant
+    son nom sans repasser par l'explorateur, dans l'onglet actif ou dans un nouvel onglet, par défaut l'onglet actif et une icône pour le nouvel onglet ») est l'article qui
+    précède « Ouvrir un autre fichier… » : il ouvre la fenêtre « Ouvrir un fichier » (la liste avec recherche de la charte, `js/ui/pick-window.js`) sur **tous les fichiers
+    vivants** de l'explorateur (la corbeille n'y est pas), par leur nom (mots dans n'importe quel ordre, accents, casse et ponctuation ignorés), l'app en indice, la coche sur le
+    fichier que l'app affiche. **Un clic ou Entrée** ouvre le fichier **dans l'onglet actif** : il prend la place du fichier affiché, qui sort de la liste des ouverts, mais seulement
+    quand le nouveau s'est bien ouvert (un refus, ou une annulation dans l'app, ne change rien) ; **le « + » de la ligne** (icône `tab-plus`, que la souris atteint et → au clavier,
+    hors de Tab) ou **Ctrl+Entrée** l'ouvre **dans un nouvel onglet** : le fichier affiché reste dans la liste. Entrée dans la recherche ouvre le premier fichier trouvé. Le
+    fichier déjà affiché ne se rouvre pas. Un fichier grisé, gardé par GFS ou d'une app absente passe par les mêmes gestes que dans l'explorateur (`Openings.openFile`, qui rend la
+    promesse de `true` quand le fichier s'est ouvert). **Les onglets restent des lignes de la liste** : une seule app est vivante à la fois (les onglets vivants ne sont pas faits) ; au clavier, → va à la croix, ← revient, ↓ et ↑ ne s'y arrêtent pas, Début et Fin vont au premier et au dernier article. **« Ouvrir un autre fichier… »** montre
     l'explorateur, comme « Fichiers ». La barre est une barre d'app : elle s'efface sous l'explorateur, et le menu s'ouvre à côté d'une barre verticale, au-dessous ou au-dessus
     d'une barre horizontale, sans la recouvrir. **Les onglets
     vivants** (plusieurs cadres d'app gardés ensemble) **ne sont pas faits** : une seule app est vivante à la fois. [M] **Mesuré le 10/11** dans un vrai Grist
@@ -2702,6 +2714,14 @@ d'app mis à la corbeille (6.2), jamais avant.
    **vider la corbeille** ne l'appellent pas (le lien est fermé depuis la mise à la corbeille ; ce que l'app garde ailleurs reste à la personne).
 7. [M] **Mesuré le 04/11** dans un vrai serveur Grist 1.7.19 avec les modèles et la vraie Publipostage+, à 700 × 400, souris et clavier réels
    (`prototype/labo/run-corbeille-apps.mjs`, 40 vérifications dans chacune des quatre passes, aucune en échec) : voir faits vérifiés, 26.
+8. [T] **Mettre à la corbeille s'affiche avant d'être écrit** (choix du porteur, 24/11 : « oui, sauf si l'app doit répondre »). Quand rien ne reste à demander,
+   la ligne part de la liste à l'instant et l'écriture suit, à son rang dans la file des écritures de rangement (une à la fois, dans l'ordre des gestes) :
+   la phrase « est à la corbeille » est dite quand elle a abouti, la liste est relue sans rien dire, et la pile d'annulation ne reçoit de quoi défaire le geste
+   qu'à cet instant (Ctrl+Z attend l'écriture). Si Grist refuse (une ligne avec des pièces jointes, un échec), la ligne revient et la phrase dit pourquoi. **Rien
+   ne reste à demander** quand : la table `GFS_Corbeille` existe (sa lecture la plus récente le dit ; la créer demande l'accord de la personne, donc le premier
+   fichier s'écrit d'abord), le document s'écrit (pas de lecture seule, accès complet) et le fichier ne passe pas par l'app ouverte (`appel`, point 6 : elle
+   peut refuser, et GFS l'attend jusqu'à vingt secondes) ; un PDF que GFS garde s'affiche toujours d'avance. **Restaurer, supprimer pour de bon et vider la
+   corbeille s'écrivent toujours d'abord.** [M] Mesuré le 24/11 (faits vérifiés, 148).
 
 ---
 

@@ -605,3 +605,70 @@ test('folderRows et folderIds : les lignes d\'état de la personne (numéro, che
     'chez l\'app aussi (A avec ce que GFS disait de l\'app), comme un dossier gardé sans fichier');
   assert.deepEqual(mine(tables, BEN).map(line => line.Dossier), ['B'], 'les lignes de Ben ne bougent pas');
 });
+
+// ----- Les lectures d'avant l'écriture partent ensemble (23/11, étude « écrire sans attendre » : huit allers-retours en file avant que le dossier ne s'affiche).
+// Un faux Grist dont chaque lecture dure un instant : `peak` est le plus grand nombre de lectures de tables ou de listes en même temps.
+function slowReads(port) {
+  const state = { peak: 0, open: 0, calls: [] };
+  for (const method of ['listTables', 'fetchTable']) {
+    const real = port.doc[method];
+    port.doc[method] = async (...args) => {
+      state.calls.push([method, args[0] || '']);
+      state.open += 1;
+      state.peak = Math.max(state.peak, state.open);
+      await new Promise(resolve => setTimeout(resolve, 15));
+      try { return await real(...args); } finally { state.open -= 1; }
+    };
+  }
+  return state;
+}
+
+test('setFiling : la table du rangement et celle de l\'app se lisent en même temps, non l\'une après l\'autre', async () => {
+  const tables = { [TABLE]: { columns: full, rows: [] }, [PREFS]: { columns: prefColumns, rows: [pref(1, { ModeleId: 3 })] } };
+  const { port } = fakeGrist(tables);
+  const reads = slowReads(port);
+  const store = new Rangement({ port, consent: () => assert.fail('les tables existent'), appFilings, ...noProbe });
+  await store.setFiling([{ app: 'publipostage', file: '3', pinned: true, folder: 'A' }]);
+  assert.equal(reads.peak, 2, 'la première fois : la liste des tables se lit deux fois à la fois (rangement et app), puis les deux tables');
+  reads.peak = 0;
+  await store.setFiling([{ app: 'publipostage', file: '3', pinned: false, folder: 'A' }]);
+  assert.equal(reads.peak, 4, 'les identifiants sont connus : les deux tables et les deux listes partent ensemble');
+});
+
+test('une table déjà vue est lue en même temps que la liste qui confirme son nom : le deuxième geste attend un aller-retour de moins', async () => {
+  const { port } = fakeGrist({ [TABLE]: { columns: full, rows: [row(1, { ...RESERVED, Valeur: '{}' })] } });
+  const reads = slowReads(port);
+  const store = new Rangement({ port, consent: accept() });
+  await store.read();
+  assert.deepEqual(reads.calls.map(call => call[0]), ['listTables', 'fetchTable'], 'la première fois : la liste, puis la table');
+  reads.calls.length = 0;
+  reads.peak = 0;
+  await store.read();
+  assert.equal(reads.peak, 2, 'la deuxième fois : la table part sans attendre la liste');
+  assert.deepEqual(reads.calls.map(call => call[0]).sort(), ['fetchTable', 'listTables']);
+});
+
+test('une table vue qui change de nom ou disparaît : la liste fait foi, la lecture d\'avance est jetée sans erreur', async () => {
+  const tables = { [TABLE]: { columns: full, rows: [row(1, { ...RESERVED, Valeur: '{"a":1}' })] } };
+  const { port } = fakeGrist(tables);
+  const store = new Rangement({ port, consent: accept() });
+  assert.equal((await store.read()).exists, true);
+  tables.gfs_rangement = tables[TABLE]; // Grist rend la table sous un autre nom (la casse)
+  delete tables[TABLE];
+  assert.deepEqual((await store.read()).raw, { a: 1 }, 'lue sous son nouveau nom');
+  delete tables.gfs_rangement;
+  assert.equal((await store.read()).exists, false, 'disparue : rien n\'existe, sans erreur ni lecture en suspens');
+});
+
+test('setFiling : la table du rangement née pendant la question, les tables des apps sont relues après sa création', async () => {
+  const tables = { [PREFS]: { columns: prefColumns, rows: [pref(1, { ModeleId: 3 })] } };
+  const { port } = fakeGrist(tables);
+  const events = [];
+  const apply = port.doc.applyUserActions;
+  port.doc.applyUserActions = list => { events.push(`écrit:${list[0][0]}`); return apply(list); };
+  const fetch = port.doc.fetchTable;
+  port.doc.fetchTable = name => { events.push(`lu:${name}`); return fetch(name); };
+  await new Rangement({ port, consent: async () => { events.push('question'); return true; }, appFilings, ...noProbe }).setFiling([{ app: 'publipostage', file: '3', pinned: true, folder: 'A' }]);
+  assert.ok(events.lastIndexOf(`lu:${PREFS}`) > events.indexOf('écrit:AddTable'), `la table de l'app est relue après la création : ${events.join(' ')}`);
+  assert.ok(events.indexOf('question') < events.indexOf('écrit:AddTable'));
+});

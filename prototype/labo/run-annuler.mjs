@@ -48,7 +48,18 @@ const quiet = () => toast.waitFor({ state: 'hidden', timeout: 20000 }).catch(() 
 const ready = () => waitFor('le contexte de la sonde ZF', async () => { const each = frameOf(ZF); return Boolean(each) && (await readProbe(each)).contexte === true; }, 120);
 const answer = (name, value) => frameOf(ZF).evaluate(([key, mode]) => { if (mode) document.body.dataset[key] = mode; else delete document.body.dataset[key]; }, [name, value]);
 const showFiles = async name => { if (!(await frame.locator('.ex').isVisible())) await frame.locator('#floater-files').click(); await frame.locator('.tr-row[data-path=""]').click(); await row(name).waitFor(); }; // la racine : l'explorateur rouvre où la personne l'a laissé (la corbeille, par exemple)
-const table = name => frame.evaluate(async tableId => {
+// Un geste de rangement s'affiche avant d'être écrit (23/11, js/explorer/filing.js) : la lecture d'une table attend qu'elle ne bouge plus (deux lectures à 400 ms d'écart disent la même chose).
+const table = async name => {
+  let last = JSON.stringify(await tableNow(name));
+  for (let i = 0; i < 25; i++) {
+    await page.waitForTimeout(400);
+    const now = JSON.stringify(await tableNow(name));
+    if (now === last) break;
+    last = now;
+  }
+  return JSON.parse(last);
+};
+const tableNow = name => frame.evaluate(async tableId => {
   if (!(await grist.docApi.listTables()).includes(tableId)) return null;
   const data = await grist.docApi.fetchTable(tableId);
   const columns = Object.keys(data).filter(each => each !== 'id' && !each.startsWith('manualSort'));

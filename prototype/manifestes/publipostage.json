@@ -130,8 +130,8 @@
     "jeton": {
       "lectureSeule": true,
       "pourquoi": {
-        "fr": "Télécharger les pièces jointes du document et nommer le document par son adresse d'interface de programmation.",
-        "en": "Download the document's attachments and name the document by its API address."
+        "fr": "Télécharger les pièces jointes du document, nommer le document par son adresse d'interface de programmation et lire, en lecture seule, la ligne du fichier ouvert pour l'afficher pendant que la liste des fichiers se charge.",
+        "en": "Download the document's attachments, name the document by its API address and read, read-only, the opened file's row to show it while the list of files loads."
       }
     },
     "lecteurs": {

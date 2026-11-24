@@ -1,7 +1,7 @@
 // Le souvenir d'un document lourd (js/explorer/heavy-hint.js) : la lecture légère d'emblée quand la visite précédente l'a vu lourd ; jamais obligatoire.
-import { test } from 'node:test';
+import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { createHeavyHint, HINT_PREFIX } from '../js/explorer/heavy-hint.js';
+import { createHeavyHint, HINT_PREFIX, DOC_ID_WAIT_MS } from '../js/explorer/heavy-hint.js';
 import { createLightReader, HEAVY_BYTES } from '../js/explorer/explorer-sql.js';
 import { keyStore } from '../js/shell/stored-choice.js';
 
@@ -80,4 +80,19 @@ test('le souvenir n\'est jamais lu deux fois pour un identifiant : `prime` deman
   await Promise.all([hint.prime(lightReader()), hint.prime(lightReader())]);
   await hint.prime(lightReader());
   assert.equal(asked, 1);
+});
+
+test('Grist qui ne dit jamais le nom du document (serveur lent ou muet) n\'arrête pas la liste : après un délai bref, la première lecture est celle d\'avant', async () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  try {
+    const b = browser({ values: { [`${HINT_PREFIX}AbC123xyz`]: String(42 * MIB) } });
+    const reader = lightReader();
+    const hint = hintFor(b, () => new Promise(() => {})); // la promesse ne se résout jamais
+    const priming = hint.prime(reader);
+    mock.timers.tick(DOC_ID_WAIT_MS + 1);
+    assert.equal(await priming, null);
+    assert.equal(reader.isActive(), false, 'sans identifiant, pas de souvenir : lecture complète comme avant');
+    hint.note(50 * MIB);
+    assert.deepEqual(b.writes, [], 'rien ne s\'écrit sans identifiant');
+  } finally { mock.timers.reset(); }
 });

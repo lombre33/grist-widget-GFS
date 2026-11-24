@@ -154,16 +154,14 @@ export async function loadFiles(port, apps, identity = '', reader = null, keep =
     binTable: raw.bin.data ? nameIn(raw.tables, BIN_TABLE) : null };
 }
 
-// Un document lourd, à la première lecture de la page : les tables de fichiers se gardent pour l'app qui s'ouvre (js/broker/table-cache.js), avec l'empreinte
-// du document prise avant la lecture. Une table lue en entier se garde telle quelle ; une table que la lecture légère a lue (le document était connu lourd
-// d'une visite précédente : js/explorer/heavy-hint.js) n'a que ses colonnes utiles, et se lit en entier derrière la liste (`fill`).
+// Un document lourd, à la première lecture de la page : les tables de fichiers lues EN ENTIER se gardent pour l'app qui s'ouvre (js/broker/table-cache.js),
+// avec l'empreinte du document prise avant la lecture. Une table que la lecture légère a lue (le document était connu lourd d'une visite précédente :
+// js/explorer/heavy-hint.js) n'a que ses colonnes utiles : rien ne la lit en entier derrière la liste (24/11 : cette lecture en fond retardait la demande de
+// jeton de l'app qui s'ouvrait, et chargeait le serveur à chaque rafraîchissement de la page) ; l'app lit sa table elle-même, quand elle en a besoin.
 function keepWhole(keep, raw, stats) {
   if (!keep || !raw.head || stats.bytes < HEAVY_BYTES) return;
-  const found = raw.reads.filter(read => read.main.data).map(read => ({ id: nameIn(raw.tables, read.spec.table), main: read.main }));
-  const whole = found.filter(item => !item.main.weights).map(({ id, main }) => ({ id, data: main.data }));
-  const partial = found.filter(item => item.main.weights).map(item => item.id);
+  const whole = raw.reads.filter(read => read.main.data && !read.main.weights).map(read => ({ id: nameIn(raw.tables, read.spec.table), data: read.main.data }));
   if (whole.length) keep.cache.keep(raw.head, whole, stats.bytes);
-  if (partial.length) keep.cache.fill(raw.head, partial, stats.bytes);
 }
 
 // Ce que la lecture range avec l'adresse de la personne : le rangement de GFS, les espaces partagés et la corbeille des apps. Rend { context, folders },

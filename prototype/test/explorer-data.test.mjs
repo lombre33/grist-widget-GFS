@@ -141,10 +141,10 @@ test('la lecture rend le nom que le document donne à la table de la corbeille, 
 });
 
 // La copie des tables lourdes (js/broker/table-cache.js) : la première lecture complète d'un document lourd garde les tables de fichiers pour l'app qu'on ouvre.
+// La copie ne sait que garder (`keep`) : la lecture en fond (`fill`, 24/11) a été retirée le soir même, un appel à `fill` ferait échouer ces essais.
 const keeper = head => {
   const kept = [];
-  const filled = [];
-  return { kept, filled, keep: { mark: Promise.resolve(head), cache: { keep: (...args) => kept.push(args), fill: (...args) => filled.push(args) } } };
+  return { kept, keep: { mark: Promise.resolve(head), cache: { keep: (...args) => kept.push(args) } } };
 };
 const heavyTables = () => { const data = tables(); data[spec.table].Contenu = ['x'.repeat(3 * 1024 * 1024), 'y'.repeat(2 * 1024 * 1024)]; return data; };
 
@@ -159,12 +159,12 @@ test('un document lourd lu en entier la première fois : les tables de fichiers 
   assert.equal(bytes, found.stats.bytes);
 });
 
-test('un document léger ou une empreinte qui n\'est pas venue : rien ne se garde, rien ne se lit derrière la liste', async () => {
+test('un document léger ou une empreinte qui n\'est pas venue : rien ne se garde', async () => {
   const light = keeper('h1');
   await loadFiles(port(tables()), [{ manifest }], '', null, light.keep);
   const none = keeper(null);
   await loadFiles(port(heavyTables()), [{ manifest }], '', null, none.keep);
-  assert.deepEqual([light.kept, light.filled, none.kept, none.filled].map(list => list.length), [0, 0, 0, 0]);
+  assert.deepEqual([light.kept, none.kept].map(list => list.length), [0, 0]);
 });
 
 // La lecture légère d'un document connu lourd (js/explorer/heavy-hint.js) : les colonnes utiles seulement, et le poids de chaque ligne.
@@ -174,30 +174,20 @@ const lightReader = (weights = [3 * MIB, 2 * MIB]) => ({
   read: async table => (table === spec.table ? { data: tables()[spec.table], weights } : null),
 });
 
-test('un document connu lourd, lu en légère à la première lecture : la table de fichiers se lit en entier derrière la liste, avec l\'empreinte d\'avant et le poids', async () => {
-  const { kept, filled, keep } = keeper('h1');
+test('un document connu lourd, lu en légère à la première lecture : rien ne se garde et rien ne se lit en entier derrière la liste (la cache n\'a pas de `fill`)', async () => {
+  const { kept, keep } = keeper('h1');
   const found = await loadFiles(port(tables()), [{ manifest }], '', lightReader(), keep);
   assert.equal(found.stats.light, true);
   assert.equal(kept.length, 0, 'la copie d\'une table lue en légère n\'a pas ses colonnes lourdes : elle ne se garde pas');
-  assert.equal(filled.length, 1);
-  assert.deepEqual([filled[0][0], filled[0][1], filled[0][2]], ['h1', [spec.table], found.stats.bytes]);
-});
-
-test('lecture légère d\'un document devenu léger, ou sans empreinte : aucune lecture complète derrière la liste', async () => {
-  const lighter = keeper('h1');
-  await loadFiles(port(tables()), [{ manifest }], '', lightReader([100, 200]), lighter.keep);
-  const unmarked = keeper(null);
-  await loadFiles(port(tables()), [{ manifest }], '', lightReader(), unmarked.keep);
-  assert.deepEqual([lighter.filled, unmarked.filled].map(list => list.length), [0, 0]);
+  assert.equal(typeof keep.cache.fill, 'undefined', 'aucune lecture complète ne part derrière la liste : elle retardait la demande de jeton de l\'app qui s\'ouvre');
 });
 
 test('une lecture légère refusée (une personne qui n\'est pas propriétaire : `/sql` lui est fermé) rend les tables en entier : elles se gardent comme avant', async () => {
   const refused = { isActive: () => true, learn: () => {}, prepare: async () => {}, read: async () => null };
-  const { kept, filled, keep } = keeper('h1');
+  const { kept, keep } = keeper('h1');
   await loadFiles(port(heavyTables()), [{ manifest }], '', refused, keep);
   assert.equal(kept.length, 1);
   assert.equal(kept[0][1][0].data.Nom[0], 'Convocation');
-  assert.equal(filled.length, 0);
 });
 
 test('l\'empreinte d\'avant la lecture est arrivée avant que la première table ne soit demandée à Grist', async () => {

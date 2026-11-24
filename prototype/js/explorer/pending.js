@@ -1,5 +1,6 @@
 // Les gestes de rangement qui s'affichent avant d'être écrits (étude du 23/11, choix du porteur : « raccourcir, puis afficher tout de suite ») : le dossier
-// créé, le ★, un nom, un dossier renommé, déplacé ou retiré apparaissent à l'instant ; Grist est écrit ensuite, à son rang (js/explorer/filing.js). Ce module
+// créé, le ★, un nom, un dossier renommé, déplacé ou retiré, un fichier mis à la corbeille (24/11) apparaissent à l'instant ; Grist est écrit ensuite, à son
+// rang (js/explorer/filing.js, js/files/trash.js). Ce module
 // ne sait rien de Grist : il tient la liste des changements en attente et les pose sur la liste que l'explorateur a lue.
 //
 // Le cycle d'un changement : `add` (il s'affiche), puis `confirm` quand l'écriture a abouti, ou `cancel` quand Grist l'a refusé (il disparaît, la phrase du
@@ -21,6 +22,8 @@ const SHOW = {
   // le nom d'un fichier
   rename: ({ files, folders }, { key, name }) => ({
     files: files.map(file => (file.key === key ? { ...file, name, search: searchOf({ ...file, name }) } : file)), folders }),
+  // un fichier qui part à la corbeille (choix du porteur, 24/11) : il quitte la liste des fichiers vivants
+  leave: ({ files, folders }, { app, id }) => ({ files: files.filter(file => !(file.app === app && file.id === String(id))), folders }),
   // des dossiers gardés sans fichier qui s'ajoutent (un dossier neuf, ou celui qu'un déplacement a vidé), une fois chacun
   addFolders: ({ files, folders }, { paths }) => ({ files, folders: [...folders, ...paths.filter(path => !folders.includes(path))] }),
   // des dossiers gardés sans fichier qui s'en vont

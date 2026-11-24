@@ -2714,6 +2714,14 @@ d'app mis à la corbeille (6.2), jamais avant.
    **vider la corbeille** ne l'appellent pas (le lien est fermé depuis la mise à la corbeille ; ce que l'app garde ailleurs reste à la personne).
 7. [M] **Mesuré le 04/11** dans un vrai serveur Grist 1.7.19 avec les modèles et la vraie Publipostage+, à 700 × 400, souris et clavier réels
    (`prototype/labo/run-corbeille-apps.mjs`, 40 vérifications dans chacune des quatre passes, aucune en échec) : voir faits vérifiés, 26.
+8. [T] **Mettre à la corbeille s'affiche avant d'être écrit** (choix du porteur, 24/11 : « oui, sauf si l'app doit répondre »). Quand rien ne reste à demander,
+   la ligne part de la liste à l'instant et l'écriture suit, à son rang dans la file des écritures de rangement (une à la fois, dans l'ordre des gestes) :
+   la phrase « est à la corbeille » est dite quand elle a abouti, la liste est relue sans rien dire, et la pile d'annulation ne reçoit de quoi défaire le geste
+   qu'à cet instant (Ctrl+Z attend l'écriture). Si Grist refuse (une ligne avec des pièces jointes, un échec), la ligne revient et la phrase dit pourquoi. **Rien
+   ne reste à demander** quand : la table `GFS_Corbeille` existe (sa lecture la plus récente le dit ; la créer demande l'accord de la personne, donc le premier
+   fichier s'écrit d'abord), le document s'écrit (pas de lecture seule, accès complet) et le fichier ne passe pas par l'app ouverte (`appel`, point 6 : elle
+   peut refuser, et GFS l'attend jusqu'à vingt secondes) ; un PDF que GFS garde s'affiche toujours d'avance. **Restaurer, supprimer pour de bon et vider la
+   corbeille s'écrivent toujours d'abord.** [M] Mesuré le 24/11 (faits vérifiés, 148).
 
 ---
 

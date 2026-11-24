@@ -4,6 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Trash } from '../js/files/trash.js';
+import { Pending } from '../js/explorer/pending.js';
 import { FR, EN } from './kept-setup.mjs';
 
 // Un gardien de doublure : il garde la trace de ce qu'on lui demande et rend ce qu'on lui a dit de rendre.
@@ -226,4 +227,111 @@ test('l\'app ne ferme pas le fichier (`declined`) : rien n\'est à la corbeille,
   assert.equal(await none.bin.move(file()), false);
   assert.deepEqual(none.log.notices, [], 'une app qui ne dit rien : GFS ne dit rien non plus');
   assert.equal(none.log.refreshes, 1);
+});
+
+// ---------- la corbeille affichée d'avance (choix du porteur, 24/11 : « oui, sauf si l'app doit répondre ») ----------
+
+// Une file d'écritures qui se vide à la demande : `go()` laisse partir l'écriture tenue, `settled()` attend la fin de tout ce qui est parti.
+function waiting() {
+  let go;
+  const hold = new Promise(resolve => { go = resolve; });
+  return { hold, go };
+}
+
+function shownFirst({ instant = () => true, lock = null, trash = async () => true, left = [], hold = null, keep = async () => {}, managers = null } = {}) {
+  const log = { notices: [], refreshes: [], order: [], dones: 0, kept: [] };
+  const pending = new Pending();
+  let queue = Promise.resolve();
+  const manager = { ...guardian({ lock, trash: async item => { log.order.push('écrire'); if (hold) await hold; return trash(item); } }), instant };
+  const bin = new Trash({
+    managers: managers || [manager], ask: async () => true, t: FR.t, notice: text => log.notices.push(text), refresh: async () => { log.order.push('relire'); },
+    keepFolders: async item => { log.order.push(`garder ${item.id} (dans la file)`); },
+    later: { pending, queue: task => { queue = queue.then(task); return queue; }, left: () => left,
+      keep: async item => { log.kept.push(item.id); log.order.push(`garder ${item.id}`); return keep(item); }, refresh: async opts => { log.order.push('relire'); log.refreshes.push(opts); } },
+  });
+  const lists = () => ({ files: [file('aa'), file('bb'), file('cc')], folders: ['Vide'] });
+  return { bin, log, pending, manager, shown: () => pending.apply(lists()), settled: () => queue, done: () => { log.dones += 1; } };
+}
+
+test('quand le gardien n\'a rien à demander, le fichier part de la liste tout de suite ; l\'écriture suit, la phrase est dite après, la liste est relue sans rien dire', async () => {
+  const { hold, go } = waiting();
+  const run = shownFirst({ hold, left: ['Rapports'] });
+  assert.equal(await run.bin.move(file('aa'), run.done), true, 'rendu avant l\'écriture');
+  assert.deepEqual(run.shown().files.map(item => item.id), ['bb', 'cc']);
+  assert.deepEqual(run.shown().folders, ['Vide', 'Rapports'], 'le dossier que le fichier laisse vide reste affiché');
+  assert.deepEqual([run.log.notices, run.log.dones], [[], 0], 'rien n\'est dit ni à défaire tant que ce n\'est pas écrit');
+  go();
+  await run.settled();
+  assert.deepEqual(run.log.notices, [FR.t('trash.moved', { name: 'Facture.pdf' })]);
+  assert.deepEqual(run.log.order, ['écrire', 'garder aa', 'relire'], 'le dossier est gardé dans la file (celle qui rangerait derrière elle-même attendrait pour toujours)');
+  assert.deepEqual([run.log.dones, run.log.refreshes], [1, [{ quiet: true }]]);
+  assert.equal(run.pending.size, 1, 'il reste affiché jusqu\'à la lecture qui le porte');
+});
+
+test('Grist refuse : le fichier revient dans la liste, la phrase dit pourquoi, rien n\'est à défaire', async () => {
+  const { hold, go } = waiting();
+  const run = shownFirst({ hold, trash: async () => { throw Object.assign(new Error('une pièce jointe'), { expected: true }); } });
+  assert.equal(await run.bin.move(file('aa'), run.done), true);
+  assert.deepEqual(run.shown().files.map(item => item.id), ['bb', 'cc']);
+  go();
+  await run.settled();
+  assert.deepEqual(run.shown().files.map(item => item.id), ['aa', 'bb', 'cc'], 'revenu');
+  assert.deepEqual(run.log.notices, [FR.t('trash.failed', { name: 'Facture.pdf', reason: 'une pièce jointe' })]);
+  assert.deepEqual([run.log.dones, run.pending.size, run.log.kept], [0, 0, []]);
+  assert.deepEqual(run.log.refreshes, [{ quiet: true }]);
+});
+
+test('le fichier n\'est plus dans la table de l\'app : il reste hors de la liste (il n\'est plus vivant), la phrase le dit, rien n\'est à défaire', async () => {
+  const run = shownFirst({ trash: async () => false });
+  await run.bin.move(file('aa'), run.done);
+  await run.settled();
+  assert.deepEqual(run.shown().files.map(item => item.id), ['bb', 'cc']);
+  assert.deepEqual(run.log.notices, [FR.t('trash.gone', { name: 'Facture.pdf' })]);
+  assert.equal(run.log.dones, 0);
+});
+
+test('l\'app ne ferme pas le fichier (`declined`) : il revient, sa phrase est dite', async () => {
+  const run = shownFirst({ trash: async () => ({ declined: 'Le formulaire est ouvert ailleurs.' }) });
+  await run.bin.move(file('aa'), run.done);
+  await run.settled();
+  assert.deepEqual(run.shown().files.map(item => item.id), ['aa', 'bb', 'cc']);
+  assert.deepEqual(run.log.notices, ['Le formulaire est ouvert ailleurs.']);
+});
+
+test('rien ne peut s\'écrire (lecture seule) : la phrase le dit, le fichier ne part pas de la liste, rien n\'est écrit', async () => {
+  const lock = { text: FR.t('trash.readonly') };
+  const run = shownFirst({ lock });
+  assert.equal(await run.bin.move(file('aa'), run.done), false);
+  await run.settled();
+  assert.deepEqual([run.log.notices, run.shown().files.length, run.pending.size, run.log.order], [[lock.text], 3, 0, []]);
+});
+
+test('une corbeille qui doit attendre (le gardien dit non : l\'app doit répondre, la table est à créer) s\'écrit d\'abord, puis s\'affiche, comme avant', async () => {
+  const run = shownFirst({ instant: () => false, left: ['Rapports'] });
+  assert.equal(await run.bin.move(file('aa'), run.done), true);
+  assert.deepEqual(run.log.order, ['écrire', 'garder aa (dans la file)', 'relire'], 'le geste a fini son écriture et sa relecture avant de répondre');
+  assert.deepEqual([run.pending.size, run.log.dones, run.log.refreshes], [0, 1, []]);
+  assert.deepEqual(run.log.notices, [FR.t('trash.moved', { name: 'Facture.pdf' })]);
+});
+
+test('sans de quoi afficher d\'avance, ou avec un gardien qui n\'a pas d\'avis, tout reste comme avant', async () => {
+  const { bin, log, managers } = setup();
+  assert.equal(await bin.move(file(), () => { log.order.push('fait'); }), true);
+  assert.deepEqual(log.order, ['refresh', 'fait']);
+  assert.deepEqual(managers[0].calls, [['trash', 'aa']]);
+  const bare = shownFirst({ managers: [guardian()] });
+  assert.equal(await bare.bin.move(file('aa'), bare.done), true);
+  assert.deepEqual([bare.pending.size, bare.log.dones], [0, 1]);
+});
+
+test('deux fichiers mis à la corbeille de suite s\'écrivent l\'un après l\'autre, dans l\'ordre des gestes', async () => {
+  const { hold, go } = waiting();
+  const run = shownFirst({ hold });
+  await run.bin.move(file('aa'), run.done);
+  await run.bin.move(file('bb'), run.done);
+  assert.deepEqual(run.shown().files.map(item => item.id), ['cc']);
+  go();
+  await run.settled();
+  assert.deepEqual(run.manager.calls, [['trash', 'aa'], ['trash', 'bb']]);
+  assert.equal(run.log.dones, 2);
 });

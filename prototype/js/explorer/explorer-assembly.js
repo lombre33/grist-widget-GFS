@@ -47,10 +47,15 @@ export function buildExplorer(c) {
   const askFor = opts => c.ask(opts);
   c.kept = buildKept(c, { ask: askFor, hideNotice: () => c.hideNotice() });
   // les gardiens des fichiers : les PDF de GFS, les fichiers des apps (la corbeille et la copie les interrogent)
-  const managers = [c.kept, buildAppFiles(c, { ask: askFor })];
+  c.appFiles = buildAppFiles(c, { ask: askFor });
+  const managers = [c.kept, c.appFiles];
   const gestures = { t: c.t, notice: text => c.notice(text), refresh: () => c.refreshFiles() };
   c.filing = buildFiling(c);
   const { filing } = c;
+  // la corbeille qui s'affiche d'avance (js/files/trash.js) : la liste des changements en attente, la file des écritures de rangement, les dossiers que le
+  // fichier laisse
+  const later = { pending: c.pending, queue: task => filing.queued(task), left: file => filing.foldersLeftBy(file), keep: file => filing.keepFoldersNow(file),
+    refresh: opts => c.refreshFiles(opts) };
   // « Partagés avec moi » (js/sharing/received-control.js) : les fichiers reçus d'un autre document, grisés tant qu'ils ne sont pas acceptés.
   c.received = new ReceivedControl({
     port: c.port, t: c.t, locale: () => c.locale, container: c.$('stage'), inertTargets: c.inertTargets, typeLabel: c.typeLabel,
@@ -69,7 +74,7 @@ export function buildExplorer(c) {
       onTemplates: () => void c.templates.open(),
       onClose: () => c.hideExplorer(), onApps: () => void c.openModules(),
     personal: () => Boolean(c.identity), filing, pending: c.pending, kept: c.kept, attachments: () => loadAttachments(c.port),
-    trash: new Trash({ managers, ask: opts => c.ask(opts), keepFolders: file => filing.keepFoldersOf(file), ...gestures }),
+    trash: new Trash({ managers, ask: opts => c.ask(opts), keepFolders: file => filing.keepFoldersOf(file), later, ...gestures }),
     copying: new Copying({ managers, file: (app, id, folder) => filing.rangeNew([{ app, file: id, pinned: false, folder }]), ...gestures }),
   });
   c.pending.onChange = () => c.explorer.repaint(); // un geste de rangement s'affiche (ou s'en va, refusé) sans attendre la lecture des fichiers

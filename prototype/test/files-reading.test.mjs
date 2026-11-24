@@ -14,6 +14,7 @@ const tables = () => ({ [spec.table]: { id: [1], Nom: ['Convocation'], TypeModel
 function bench({ data = tables(), broken = null, unreachable = false, access = true, learning = 'moi@exemple.org', apps = [{ manifest, app: { id: 'publipostage' } }], pending = null } = {}) { // `pending` : (log) => les gestes affichés d'avance, ou rien
   const log = [];
   const notes = []; // ce que la lecture dit du nom de la table du rangement
+  const bins = []; // et de celle de la corbeille
   const state = { access, learning, lang: 'fr' };
   // Tant que `hold` est vrai, toute lecture du document attend `release()` : le temps de regarder ce que la lecture dit en route.
   let pass;
@@ -40,8 +41,9 @@ function bench({ data = tables(), broken = null, unreachable = false, access = t
     onSpaces: spaces => log.push(['spaces', spaces ? 'oui' : 'non']),
     onFiles: files => log.push(['files', files.length]),
     onStats: stats => log.push(['stats', typeof stats]),
+    noteBin: id => bins.push(id),
   };
-  return { reading: new FilesReading(x), log, state, gate, notes };
+  return { reading: new FilesReading(x), log, state, gate, notes, bins };
 }
 
 const statuses = log => log.filter(entry => entry[0] === 'setStatus').map(entry => entry[1]);
@@ -119,6 +121,15 @@ test('la lecture dit au rangement le nom que le document donne à sa table (ou q
   const withTable = bench({ data: { ...tables(), gfs_rangement: rangementTable() } });
   await withTable.reading.refresh();
   assert.deepEqual(withTable.notes, ['gfs_rangement']);
+});
+
+test('la lecture dit aussi le nom que le document donne à la table de la corbeille (ou qu\'elle manque) : mettre un fichier à la corbeille le sait sans la relire', async () => {
+  const without = bench();
+  await without.reading.refresh();
+  assert.deepEqual(without.bins, [null]);
+  const withBin = bench({ data: { ...tables(), GFS_Corbeille: { id: [] } } });
+  await withBin.reading.refresh();
+  assert.deepEqual(withBin.bins, ['GFS_Corbeille']);
 });
 
 test('les gestes affichés d\'avance : la lecture note, au départ, ce qui était confirmé, et le retire avant que la liste lue ne soit posée', async () => {

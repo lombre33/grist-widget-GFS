@@ -21,6 +21,7 @@ const opposite = kind => (kind === 'undo' ? 'redo' : 'undo');
 // Rend { bin, copying } : de quoi mettre à la place de ceux qu'on entoure (même forme, mêmes gestes).
 export function undoable({ stack, bin, copying, trashed, live, t, appName, reveal }) {
   const nameOf = file => file.name || t('ex.untitled');
+  const later = () => (stack.later ? stack.later() : entry => stack.push(entry));
   const newestInBin = key => trashed().filter(file => file.key === key).reduce((best, file) => (!best || stamp(file) >= stamp(best) ? file : best), null);
   // Remet à la corbeille le fichier vivant `key` (`kind` : 'undo' pour défaire une restauration ou une copie, 'redo' pour refaire une suppression). Cela attend
   // l'app ouverte pour un fichier qui tient à plus qu'une ligne (contrats 2.4 `appel`) : on le dit, et le geste reste à défaire.
@@ -30,7 +31,8 @@ export function undoable({ stack, bin, copying, trashed, live, t, appName, revea
     const lock = bin.appLockOf ? bin.appLockOf(file) : null;
     if (lock) return { said: lock.text, again: true };
     if (!bin.handles(file)) return t('trash.appOnly', { app: appName(file.app) });
-    if (await bin.move(file)) stack.push({ run: fromBin({ key, name }, opposite(kind)) });
+    const deposit = later();
+    await bin.move(file, () => deposit({ run: fromBin({ key, name }, opposite(kind)) }));
     return undefined;
   };
   // Restaure l'entrée la plus récente de la corbeille pour ce fichier ; restaurer n'a pas besoin de l'app. La restauration peut donner une autre clé (une
@@ -52,10 +54,11 @@ export function undoable({ stack, bin, copying, trashed, live, t, appName, revea
       appLockOf: file => (bin.appLockOf ? bin.appLockOf(file) : null),
       purge: file => bin.purge(file),
       empty: files => bin.empty(files),
-      async move(file) {
-        const done = await bin.move(file);
-        if (done) stack.push({ run: fromBin(file, 'undo') });
-        return done;
+      // la pile reçoit de quoi défaire quand le fichier est vraiment à la corbeille : une corbeille affichée d'avance rend true avant son écriture
+      // (js/files/trash.js)
+      move(file) {
+        const deposit = later();
+        return bin.move(file, () => deposit({ run: fromBin(file, 'undo') }));
       },
       async restore(file) {
         const before = new Set(live().map(item => item.key));

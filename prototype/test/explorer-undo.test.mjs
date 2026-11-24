@@ -18,13 +18,14 @@ function harness({ restoreAs = null, lock = null, handles = true } = {}) {
   const bin = {
     handles: () => handles,
     appLockOf: () => lock,
-    async move(file) {
+    async move(file, onDone = () => {}) {
       calls.push(['move', file.key]);
       const at = live.findIndex(item => item.key === file.key);
       if (at < 0) return false;
       const [item] = live.splice(at, 1);
       trashed.push({ ...item, trashed: { ts: 100 + trashed.length, by: '' } });
       said.push(`à la corbeille ${item.name}`);
+      onDone();
       return true;
     },
     async restore(file) {
@@ -259,4 +260,32 @@ test('un fichier qui n\'est plus à la corbeille : rien n\'est donné à l\'expl
   trashed.length = 0;
   await stack.undo();
   assert.deepEqual(revealed, []);
+});
+
+test('une corbeille affichée d\'avance rend true avant son écriture : la pile ne reçoit de quoi défaire que lorsque le fichier est vraiment à la corbeille', async () => {
+  const stack = new UndoStack({ t, notice: () => {} });
+  const done = [];
+  const bin = { handles: () => true, appLockOf: () => null, move: async (file, onDone) => { done.push(onDone); return true; } };
+  const wrapped = undoable({ stack, bin, copying: {}, trashed: () => [], live: () => [], t, appName: id => id });
+  assert.equal(await wrapped.bin.move(entry(1, 'Un')), true);
+  assert.equal(stack.size, 0, 'rien à défaire tant que l\'écriture n\'est pas finie');
+  done[0]();
+  assert.equal(stack.size, 1);
+});
+
+test('Ctrl+Z d\'une restauration remet le fichier à la corbeille d\'avance : quand l\'écriture aboutit, de quoi le refaire va dans la pile du rétablissement, même si le Ctrl+Z est fini', async () => {
+  const stack = new UndoStack({ t, notice: () => {} });
+  const done = [];
+  const live = [];
+  const binned = [entry(1, 'Un', { trashed: { ts: 5, by: '' } })];
+  const bin = { handles: () => true, appLockOf: () => null, move: async (file, onDone) => { done.push(onDone); return true; },
+    restore: async file => { live.push({ ...file, trashed: null }); return true; } };
+  const wrapped = undoable({ stack, bin, copying: {}, trashed: () => binned, live: () => live, t, appName: id => id });
+  assert.equal(await wrapped.bin.restore(binned[0]), true);
+  assert.deepEqual([stack.size, stack.redoSize], [1, 0]);
+  assert.equal(await stack.undo(), true);
+  assert.equal(done.length, 1, 'le fichier est remis à la corbeille (l\'écriture est en route)');
+  assert.deepEqual([stack.size, stack.redoSize], [0, 0]);
+  done[0]();
+  assert.deepEqual([stack.size, stack.redoSize], [0, 1], 'Ctrl+Y le refera');
 });

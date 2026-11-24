@@ -8,7 +8,12 @@
 //   5. Un refus de Grist (injecté : l'appel d'écriture du courtier lève, pour un seul nom de dossier) : le dossier s'en va, la phrase dit pourquoi, rien n'est à défaire pour lui ;
 //      Ctrl+Z défait le geste d'avant, qui avait abouti.
 //   6. Supprimer un dossier vide : il s'en va tout de suite ; Grist retire sa ligne.
-//   7. Aucune erreur ni avertissement de GFS dans la console (les refus injectés exceptés).
+//   7. La corbeille (choix du porteur, 24/11 : « oui, sauf si l'app doit répondre ») : le premier fichier attend l'accord de la personne pour la table (il reste dans la
+//      liste) ; les suivants partent en moins de 250 ms, ne reviennent à aucune image des trois secondes qui suivent, et Grist les garde (une entrée à la corbeille,
+//      la ligne de l'app retirée) ; Ctrl+Z tout de suite après les rend (il attend l'écriture), dans la liste et dans Grist.
+//   8. Un refus de Grist pour la corbeille (injecté : l'ajout à `GFS_Corbeille` lève quand le drapeau `__refuseTrash` est levé) : le fichier part, puis revient avec la phrase
+//      qui dit pourquoi ; Grist n'a rien changé.
+//   9. Aucune erreur ni avertissement de GFS dans la console (les refus injectés exceptés).
 // Le relais : `/mnt/project-files/gfs/audits/ouverture-fichiers-2026-11-23/banc/relay.sh 20`, puis le serveur sur 8485 (voir le LISEZ-MOI de ce dossier).
 //   REPO_DIR="$(realpath ../..)" node run-affichage-immediat.mjs
 import { createServer } from 'node:http';
@@ -33,7 +38,11 @@ const patches = [
   return new Proxy(doc, { get(target, key) {
     const value = target[key];
     if (key !== 'applyUserActions') return value;
-    return (...args) => (JSON.stringify(args).includes('${FORBIDDEN}') ? Promise.reject(new Error('${REFUSAL}')) : value.apply(target, args));
+    return (...args) => {
+      const text = JSON.stringify(args);
+      const trash = globalThis.__refuseTrash && text.includes('AddRecord') && text.includes('GFS_Corbeille');
+      return text.includes('${FORBIDDEN}') || trash ? Promise.reject(new Error('${REFUSAL}')) : value.apply(target, args);
+    };
   } });
 }
 export function createPort(grist, cache = null) {` },
@@ -162,7 +171,58 @@ try {
   check('il s\'en va en moins de 250 ms', removed < 250, `${removed} ms`);
   check('Grist retire sa ligne', !(await stateRows()).includes('À jeter'), await stateRows());
 
-  say('--- 7. la console ---');
+  say('--- 7. la corbeille ---');
+  const binRows = async () => (await run.rest.rows('GFS_Corbeille')).map(each => each.Nom).sort();
+  const binState = async () => ({ corbeille: await binRows(), modeles: (await modelNames()).length });
+  // les images où le fichier est dans la liste pendant `ms` : le fichier qui revient (clignotement)
+  const shownFor = async (name, ms) => frame.evaluate(([n, duration]) => new Promise(resolve => {
+    let seen = 0;
+    const end = performance.now() + duration;
+    const tick = () => { if ([...document.querySelectorAll('.ls-row')].some(r => r.textContent.includes(n))) seen += 1; if (performance.now() < end) requestAnimationFrame(tick); else resolve(seen); };
+    tick();
+  }), [name, ms]);
+  await row(MODEL).click();
+  await page.keyboard.press('Delete');
+  await frame.locator('[data-fk="ask-yes"]').first().waitFor({ timeout: 20000 });
+  check('la table de la corbeille n\'existe pas : GFS demande l\'accord, le fichier est encore dans la liste', await has(MODEL));
+  await frame.locator('[data-fk="ask-yes"]').first().click();
+  await absent(MODEL);
+  check('le premier fichier est à la corbeille dans Grist, retiré de la table de l\'app', same(await binRows(), [MODEL]) && !(await modelNames()).includes(MODEL), await binState());
+  await page.keyboard.press('Control+z');
+  await present(MODEL);
+  check('Ctrl+Z le rend, dans la liste et dans Grist', (await modelNames()).includes(MODEL) && same(await binRows(), []), await binState());
+  await page.waitForTimeout(2000);
+  await row(MODEL).click();
+  const binned = await timed(() => page.keyboard.press('Delete'), () => absent(MODEL));
+  check('le fichier part en moins de 250 ms (la table de la corbeille existe)', binned < 250, `${binned} ms`);
+  const back = await shownFor(MODEL, 3000);
+  check('il ne revient dans la liste à aucune image des trois secondes qui suivent', back === 0, `${back} images avec lui`);
+  check('Grist le garde à la corbeille : une entrée, et la ligne de l\'app est retirée', same(await binRows(), [MODEL]) && !(await modelNames()).includes(MODEL), await binState());
+  check('la phrase « à la corbeille » est dite après l\'écriture', (await toasts()).join(' | ').includes(t('trash.moved', { name: MODEL })), (await toasts()).join(' | '));
+  await page.keyboard.press('Control+z'); // l'écriture est finie ici ; le cas « tout de suite » vient juste après
+  await present(MODEL);
+  check('Ctrl+Z rend le fichier, dans la liste et dans Grist', (await modelNames()).includes(MODEL) && same(await binRows(), []), await binState());
+  await page.waitForTimeout(1500);
+  await row(MODEL).click();
+  await page.keyboard.press('Delete');
+  await absent(MODEL);
+  await page.keyboard.press('Control+z'); // sans attendre : Ctrl+Z attend l'écriture partie, puis la relecture de la corbeille
+  await present(MODEL);
+  check('Ctrl+Z tout de suite après la corbeille : le fichier revient quand même, dans Grist aussi', (await modelNames()).includes(MODEL) && same(await binRows(), []), await binState());
+
+  say('--- 8. un refus de Grist pour la corbeille ---');
+  await page.waitForTimeout(1500);
+  await frame.evaluate(() => { globalThis.__refuseTrash = true; });
+  await row(MODEL).click();
+  await page.keyboard.press('Delete');
+  await absent(MODEL);
+  await present(MODEL);
+  const refused = (await toasts()).join(' | ');
+  check('le fichier revient dans la liste, la phrase dit pourquoi', refused.includes(t('trash.failed', { name: MODEL, reason: REFUSAL })), refused);
+  check('Grist n\'a rien changé : le fichier est dans sa table, la corbeille est vide', (await modelNames()).includes(MODEL) && same(await binRows(), []), await binState());
+  await frame.evaluate(() => { globalThis.__refuseTrash = false; });
+
+  say('--- 9. la console ---');
   const unexpected = run.problems.filter(problem => !run.allow.some(known => known.test(problem)) && !problem.includes(REFUSAL));
   check('aucune erreur ni avertissement inattendu de GFS', unexpected.length === 0, unexpected);
 } finally {

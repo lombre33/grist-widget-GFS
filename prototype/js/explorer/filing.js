@@ -187,16 +187,41 @@ export class Filing {
   // `GFS_Rangement`, rien ne s'écrit et rien n'est demandé : on ne crée pas une table pour cela. Peut lever (Grist refuse le lot) : la corbeille le dit à la
   // console seulement, le fichier est à la corbeille.
   async keepFoldersOf(file) {
+    const plan = this.#keepPlan(file);
+    if (plan) await this.#enqueue(() => this.#keepWrite(plan));
+  }
+
+  // La même écriture, pour un geste qui est déjà dans la file des écritures (la corbeille qui s'affiche d'avance, `queued`) : se remettre en file derrière
+  // elle-même attendrait pour toujours.
+  async keepFoldersNow(file) {
+    const plan = this.#keepPlan(file);
+    if (plan) await this.#keepWrite(plan);
+  }
+
+  // Les dossiers que ce fichier laisserait sans fichier s'il partait à la corbeille : ceux que la liste doit garder d'avance. Aucun sans la table du rangement
+  // (la corbeille n'en crée pas, le dossier vide disparaîtrait à la lecture suivante).
+  foldersLeftBy(file) {
+    const plan = this.#opts.rangement.known === true ? this.#keepPlan(file) : null;
+    return plan ? plan.keep : [];
+  }
+
+  // Une écriture d'un autre geste (la corbeille, js/files/trash.js) qui prend son rang dans la file : une à la fois, dans l'ordre des gestes, et Ctrl+Z
+  // l'attend comme les autres (`settled`). C'est à elle de relire la liste quand elle a fini.
+  queued(task) { return this.#enqueue(task); }
+
+  #keepPlan(file) {
     const list = [...this.#opts.files().filter(other => other.key !== file.key), file];
     const keep = vacatedFolders(list, [{ app: file.app, file: file.id, folder: null }], this.#spare());
-    if (!keep.length) return;
+    if (!keep.length) return null;
     const plan = this.#opts.spaces ? splitWrites([], { add: keep }, [], this.#opts.spaces.info()) :
       { entries: [], folders: { add: keep }, ops: [], markers: { add: [], drop: [] } };
-    await this.#enqueue(async () => {
-      // Le dossier d'un espace que la corbeille vide est gardé aussi, si la personne peut écrire l'espace.
-      if (touchesSpaces(plan) && (await this.#opts.spaces.owner())) await writePlacement(this.#opts.port.doc, plan);
-      if ((plan.folders.add || []).length) await this.#opts.rangement.setFiling([], { add: plan.folders.add, quiet: true });
-    });
+    return { ...plan, keep };
+  }
+
+  async #keepWrite(plan) {
+    // Le dossier d'un espace que la corbeille vide est gardé aussi, si la personne peut écrire l'espace.
+    if (touchesSpaces(plan) && (await this.#opts.spaces.owner())) await writePlacement(this.#opts.port.doc, plan);
+    if ((plan.folders.add || []).length) await this.#opts.rangement.setFiling([], { add: plan.folders.add, quiet: true });
   }
 
   // Range des fichiers neufs (une copie, un PDF importé), sans geste ni annulation : dans un dossier d'espace s'ils y sont placés, à la racine de la personne

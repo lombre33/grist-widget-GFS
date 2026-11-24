@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildContext, identityFor, instanceOf, pageOf, HOST } from '../js/broker/context.js';
-import { policyOf, publipostage } from './helpers.mjs';
+import { policyOf, publipostage, automation } from './helpers.mjs';
 
 test('instanceOf : l\'origine de la page de Grist, ou rien', () => {
   assert.equal(instanceOf('https://docs.getgrist.com/o/docs/abc123/Mon-doc/p/4'), 'https://docs.getgrist.com');
@@ -61,7 +61,8 @@ const declaring = () => policyOf({ ...publipostage(), permissions: { ...publipos
 test('identityFor : seulement à l\'app qui a déclaré l\'identité, et quand GFS connaît l\'adresse', () => {
   assert.deepEqual(identityFor(declaring(), 'ana@exemple.org'), { email: 'ana@exemple.org' });
   assert.deepEqual(identityFor(declaring(), '  Ana@Exemple.org '), { email: 'Ana@Exemple.org' }, 'la casse de Grist est gardée, les blancs de bord partent');
-  assert.equal(identityFor(policyOf(publipostage()), 'ana@exemple.org'), null, 'une app qui ne l\'a pas déclarée n\'en reçoit rien');
+  assert.equal(identityFor(policyOf(automation()), 'ana@exemple.org'), null, 'une app qui ne l\'a pas déclarée n\'en reçoit rien');
+  assert.deepEqual(identityFor(policyOf(publipostage()), 'ana@exemple.org'), { email: 'ana@exemple.org' }, 'Publipostage+ l\'a déclarée (demande du 24/11) : elle la reçoit');
   assert.equal(identityFor(declaring(), ''), null, 'GFS ne la connaît pas : null');
   assert.equal(identityFor(declaring(), undefined), null);
   assert.equal(identityFor(declaring(), 42), null, 'ce qui n\'est pas un texte n\'est pas une adresse');
@@ -69,7 +70,7 @@ test('identityFor : seulement à l\'app qui a déclaré l\'identité, et quand G
 });
 
 test('identityFor : l\'app ne distingue pas « pas déclarée » de « GFS ne la connaît pas »', () => {
-  const undeclared = identityFor(policyOf(publipostage()), 'ana@exemple.org');
+  const undeclared = identityFor(policyOf(automation()), 'ana@exemple.org');
   const unknown = identityFor(declaring(), '');
   assert.deepEqual(undeclared, unknown);
 });

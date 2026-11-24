@@ -120,7 +120,8 @@ async function readEverything(port, apps, reader, keep = null) {
 //   supprimé ;
 //   `folders` les dossiers que la personne garde sans fichier (6.4, point 11) ; `gfsTable` le nom que le document donne à la table du rangement, ou null quand
 //   elle
-//   n'existe pas. Un rangement de GFS illisible ne cache aucun fichier : ils restent à leur place
+//   n'existe pas ; `binTable` celui de la table de la corbeille (js/files/gfs-trash.js), ou null. Un rangement de GFS illisible ne cache aucun fichier : ils
+//   restent à leur place
 //   d'avant.
 // `keep` : { cache, mark } (js/broker/table-cache.js), pour la première lecture de la page seulement.
 // `reader` : la lecture légère (js/explorer/explorer-sql.js), qui prend la suite de la lecture complète quand un document lourd a été vu ; sans elle, ou
@@ -149,7 +150,8 @@ export async function loadFiles(port, apps, identity = '', reader = null, keep =
   if (reader && !raw.light) reader.learn(stats.bytes);
   keepWhole(keep, raw, stats);
   stats.ms = Math.round(performance.now() - started);
-  return { files, trash, folders, received: raw.received, spaces: raw.spaces, problems, stats, gfsTable: raw.gfs.data ? nameIn(raw.tables, TABLE) : null };
+  return { files, trash, folders, received: raw.received, spaces: raw.spaces, problems, stats, gfsTable: raw.gfs.data ? nameIn(raw.tables, TABLE) : null,
+    binTable: raw.bin.data ? nameIn(raw.tables, BIN_TABLE) : null };
 }
 
 // Un document lourd lu en entier pour la première fois : les tables de fichiers se gardent pour l'app qui s'ouvre (js/broker/table-cache.js), avec l'empreinte

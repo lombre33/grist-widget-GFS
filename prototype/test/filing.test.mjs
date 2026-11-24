@@ -371,6 +371,33 @@ test('mettre à la corbeille un fichier dont le dossier a un autre fichier, ou e
   assert.deepEqual(calls, []);
 });
 
+test('la corbeille affichée d\'avance : les dossiers que le fichier laisse vides se disent d\'avance (seulement avec la table du rangement), et se gardent depuis la file sans s\'y remettre', async () => {
+  const calls = [];
+  const setFiling = async (entries, folders) => { calls.push(folders); };
+  const known = harness({ files: [file(1, 'P/Q'), file(2, 'P/R')], setFiling, pending: new Pending(), known: true });
+  assert.deepEqual(known.filing.foldersLeftBy(file(1, 'P/Q')), ['P/Q']);
+  assert.deepEqual(known.filing.foldersLeftBy(file(9, '')), []);
+  const unknown = harness({ files: [file(1, 'P/Q')], setFiling, pending: new Pending(), known: false });
+  assert.deepEqual(unknown.filing.foldersLeftBy(file(1, 'P/Q')), [], 'sans table, le dossier vide ne s\'écrirait pas : il ne s\'afficherait que le temps d\'une lecture');
+  let inside = null;
+  await known.filing.queued(async () => { await known.filing.keepFoldersNow(file(1, 'P/Q')); inside = calls.length; });
+  assert.equal(inside, 1, 'écrit dans la file, sans s\'y remettre derrière lui-même (la file attendrait pour toujours)');
+  assert.deepEqual(calls, [{ add: ['P/Q'], quiet: true }]);
+});
+
+test('les écritures d\'un autre geste (la corbeille) prennent leur rang dans la file : Ctrl+Z les attend comme celles du rangement', async () => {
+  const { hold, go } = held();
+  const { filing } = instant({ answers: ['Neuf'], hold });
+  await filing.newFolder('');
+  const order = [];
+  const other = filing.queued(async () => { order.push('corbeille'); });
+  assert.deepEqual(order, [], 'elle attend l\'écriture du dossier, partie avant elle');
+  go();
+  await filing.settled();
+  await other;
+  assert.deepEqual(order, ['corbeille']);
+});
+
 // ---------- Ctrl+Z : chaque geste qui a abouti dépose de quoi se défaire (js/files/undo-stack.js) ----------
 
 const placesOf = list => list.map(item => [item.id, item.folder, item.pinned]);

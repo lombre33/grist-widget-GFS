@@ -95,3 +95,17 @@ test('une sorte de changement inconnue est refusée tout de suite, même au mili
   assert.throws(() => pending.add([{ op: 'addFolders', paths: [] }, { op: 'inconnu' }]), /changement inconnu/);
   assert.equal(pending.size, 0, 'rien n\'est posé à moitié');
 });
+
+test('un fichier mis à la corbeille quitte la liste (par son app et son numéro) ; les dossiers qu\'il laisse vides s\'ajoutent ; refusé, il revient', () => {
+  const pending = new Pending();
+  const change = pending.add([{ op: 'leave', app: 'publipostage', id: '2' }, { op: 'addFolders', paths: ['A/B'] }]);
+  const shown = pending.apply(lists());
+  assert.deepEqual(shown.files.map(item => item.id), ['1', '3', '4']);
+  assert.deepEqual(shown.folders, ['Vide', 'A/B/Z', 'A/B']);
+  pending.cancel(change);
+  assert.deepEqual(pending.apply(lists()).files.map(item => item.id), ['1', '2', '3', '4']);
+  pending.add({ op: 'leave', app: 'publipostage', id: 3 });
+  assert.deepEqual(pending.apply(lists()).files.map(item => item.id), ['1', '2', '4'], 'le numéro se compare comme un texte');
+  pending.add({ op: 'leave', app: 'form', id: '1' });
+  assert.equal(pending.apply(lists()).files.length, 3, 'une autre app garde ses fichiers');
+});

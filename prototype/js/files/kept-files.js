@@ -59,6 +59,9 @@ export class KeptFiles {
 
   lock = () => this.#lock('trash.readonly');
 
+  // Rien n'est à demander pour mettre un PDF à la corbeille (sa table existe puisqu'il y est) : la ligne peut partir de la liste avant d'être écrite.
+  instant = () => true;
+
   // Le geste principal d'un fichier que GFS garde : « Lire » quand une app le lit (grisé tant qu'elle n'est pas prête : le clic dit ce qui la débloque), sinon
   // « Télécharger ». Le bouton, l'article du menu et la phrase de la barre d'information le disent.
   openAs = file => {

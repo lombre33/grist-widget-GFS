@@ -6,7 +6,8 @@
 //   apps : js/apps/doc-names.js), fullAccess(), rangement ({ learning }), reader (la lecture légère, js/explorer/explorer-sql.js),
 //   explorer() (l'explorateur, ou null avant sa construction), openedBar(), appName(id), t(clé, variables), onSpaces(espaces), onFiles(fichiers) (la suite
 //   d'une
-//   lecture réussie : les dossiers partagés « à jour »), onStats(mesures), cache? (la copie des tables lourdes, js/broker/table-cache.js), pending? (les
+//   lecture réussie : les dossiers partagés « à jour »), onStats(mesures), noteBin?(table) (la table de la corbeille existe, ou non : js/files/app-files.js),
+//   cache? (la copie des tables lourdes, js/broker/table-cache.js), pending? (les
 //   changements de rangement affichés avant d'être écrits,
 //   js/explorer/pending.js : une lecture partie après leur confirmation les remplace) }
 
@@ -66,10 +67,11 @@ export class FilesReading {
     this.show();
   }
 
-  #loaded({ files, trash, folders, received, spaces, problems, stats, stamp, gfsTable }) {
+  #loaded({ files, trash, folders, received, spaces, problems, stats, stamp, gfsTable, binTable }) {
     const x = this.#x;
     x.onSpaces(spaces);
     x.rangement.note(gfsTable); // la table du rangement existe (ou non) : un geste de rangement le sait sans la relire
+    if (x.noteBin) x.noteBin(binTable); // de même pour la table de la corbeille : mettre un fichier à la corbeille le sait
     if (x.pending) x.pending.retire(stamp);
     x.explorer().setFiles(files, trash, folders, received);
     x.onFiles(files);

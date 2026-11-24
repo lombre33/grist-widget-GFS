@@ -11,6 +11,13 @@
 // personne l'a demandé (un geste de l'explorateur) ; aucun n'efface sans passer par la corbeille, sauf `empty`, qui ne touche que des fichiers déjà à la
 // corbeille. Une erreur d'un gardien qui porte `expected: true` est un refus voulu (la personne a refusé de créer une table, une ligne ne se garde pas) : la
 // phrase de l'explorateur l'explique, la console reste muette.
+//
+// Afficher avant d'écrire (choix du porteur, 24/11 : « oui, sauf si l'app doit répondre ») : quand le gardien dit qu'il n'a rien à demander
+// (`instant(fichier)` : la table de la corbeille existe déjà, l'app n'a pas à fermer le fichier), mettre à la corbeille fait partir la ligne de la liste à
+// l'instant (`opts.later.pending`, js/explorer/pending.js) et l'écriture suit, à son rang dans la file des écritures de rangement (`opts.later.queue`,
+// js/explorer/filing.js). Si elle aboutit, la phrase est dite et la liste relue ; si Grist refuse (une ligne avec des pièces jointes, un échec), la ligne
+// revient et la phrase dit pourquoi. Le geste rend true tout de suite et appelle `onDone` quand l'écriture a abouti : c'est alors seulement que la pile
+// d'annulation reçoit de quoi le défaire. Restaurer, supprimer pour de bon et vider la corbeille s'écrivent toujours d'abord.
 
 const REASON_MAX = 120;
 const NAMES_SHOWN = 5;
@@ -26,7 +33,9 @@ export class Trash {
   //   les
   //   fichiers),
   //          keepFolders?(fichier) -> Promise (appelé quand le fichier est à la corbeille, avant que la liste soit relue : le dossier qu'il laisse sans fichier
-  //          est gardé, js/explorer/filing.js) }
+  //          est gardé, js/explorer/filing.js),
+  //          later?: { pending (js/explorer/pending.js), queue(tâche) -> Promise (la file des écritures), left(fichier) -> [chemins] (les dossiers que le
+  //          fichier laisse vides), keep(fichier) -> Promise (les garder, depuis la file), refresh({ quiet }) } : de quoi afficher d'avance }
   constructor(opts) {
     this.#opts = { keepFolders: async () => {}, ...opts };
   }
@@ -45,17 +54,51 @@ export class Trash {
 
   // ---------- les gestes ----------
 
-  // Met le fichier à la corbeille. Pas de question : la corbeille se vide à la main, et rien n'est perdu. Rend true quand le fichier y est.
-  move(file) {
+  // Met le fichier à la corbeille. Pas de question : la corbeille se vide à la main, et rien n'est perdu. Rend true quand le fichier y est, ou quand il part de
+  // la liste en attendant (voir l'en-tête). `onDone` : rappelée quand le fichier est vraiment à la corbeille (jamais s'il n'y est pas).
+  async move(file, onDone = () => {}) {
+    const manager = this.managerOf(file);
+    const { later } = this.#opts;
+    if (later && manager && typeof manager.instant === 'function' && manager.instant(file)) return this.#moveLater(manager, file, onDone);
+    const ok = await this.#act(file, 'trash.failed', manager2 => this.#trashTask(manager2, file, () => this.#keepFolders(file)), null, 'trash');
+    if (ok) onDone();
+    return ok;
+  }
+
+  // Le geste lui-même : le gardien met le fichier à la corbeille, le dossier qu'il laisse vide est gardé. Rend { ok, gone?, text } : la phrase à dire ;
+  // `gone` : le fichier n'est plus dans la table de l'app (rien à mettre à la corbeille, mais il n'est plus vivant non plus).
+  async #trashTask(manager, file, keep) {
     const { t } = this.#opts;
     const name = nameOf(file, t);
-    return this.#act(file, 'trash.failed', async manager => {
-      const done = await manager.trash(file);
-      if (done && done.declined !== undefined) return { ok: false, text: done.declined };
-      if (!done) return { ok: false, text: t('trash.gone', { name }) };
-      await this.#keepFolders(file);
-      return { ok: true, text: [t('trash.moved', { name }), done.said].filter(Boolean).join(' ') };
-    }, null, 'trash');
+    const done = await manager.trash(file);
+    if (done && done.declined !== undefined) return { ok: false, text: done.declined };
+    if (!done) return { ok: false, gone: true, text: t('trash.gone', { name }) };
+    await keep();
+    return { ok: true, text: [t('trash.moved', { name }), done.said].filter(Boolean).join(' ') };
+  }
+
+  // Le même geste, affiché d'avance : la ligne part de la liste tout de suite, l'écriture prend son rang dans la file. Le verrou (lecture seule, accès partiel)
+  // se dit avant, comme d'habitude. Le fichier qui n'est plus là reste hors de la liste (la relecture le confirme) ; un refus ou un échec le fait revenir.
+  #moveLater(manager, file, onDone) {
+    const { t, notice, later } = this.#opts;
+    const lock = manager.lock(file, 'trash');
+    if (lock) { notice(lock.text); return Promise.resolve(false); }
+    const left = later.left(file);
+    const change = later.pending.add([{ op: 'leave', app: file.app, id: file.id }, ...(left.length ? [{ op: 'addFolders', paths: left }] : [])]);
+    void later.queue(async () => {
+      let said = null;
+      try {
+        said = await this.#trashTask(manager, file, () => this.#keepFolders(file, later.keep));
+      } catch (error) {
+        if (!(error && error.expected)) console.warn('GFS : le geste sur la corbeille a échoué', error);
+        notice(t('trash.failed', { name: nameOf(file, t), reason: reasonOf(error) }));
+      }
+      if (said && said.text) notice(said.text);
+      if (said && said.ok) onDone();
+      if (said && (said.ok || said.gone)) later.pending.confirm(change); else later.pending.cancel(change);
+      await later.refresh({ quiet: true });
+    }).catch(() => {});
+    return Promise.resolve(true);
   }
 
   // Sort le fichier de la corbeille. Le gardien dit s'il a fallu changer son nom (un autre fichier avait pris le sien).
@@ -113,9 +156,9 @@ export class Trash {
 
   // Le dossier d'un fichier qui part à la corbeille reste, comme après un déplacement. Si cela ne s'écrit pas, le fichier est quand même à la corbeille : la
   // console le sait, la personne n'a rien à en lire.
-  async #keepFolders(file) {
+  async #keepFolders(file, keep = this.#opts.keepFolders) {
     try {
-      await this.#opts.keepFolders(file);
+      await keep(file);
     } catch (error) {
       console.warn('GFS : le dossier du fichier n’a pas pu être gardé', error);
     }

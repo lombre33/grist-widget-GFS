@@ -146,7 +146,8 @@ export class GfsController {
     this.#buildSharing();
     this.pending = new Pending(); // les gestes de rangement affichés avant d'être écrits (js/explorer/pending.js) ; l'explorateur se redessine à chacun
     this.#reading = new FilesReading({
-      pending: this.pending, cache: this.tableCache, port: this.port, apps: () => this.validApps(), fullAccess: () => this.fullAccess,
+      pending: this.pending, cache: this.tableCache, noteBin: id => { if (this.appFiles) this.appFiles.noteBin(id); }, port: this.port,
+        apps: () => this.validApps(), fullAccess: () => this.fullAccess,
         rangement: this.rangement,
         reader: this.fileReader,
       prepare: () => this.names.refresh(this.apps.filter(item => item.ok)),

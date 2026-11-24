@@ -131,6 +131,15 @@ test('la lecture rend le nom que le document donne à la table du rangement (san
   try { assert.equal((await loadFiles(port(tables(), { broken: 'gfs_rangement' }), [{ manifest }], '')).gfsTable, null); } finally { console.warn = warn; }
 });
 
+test('la lecture rend le nom que le document donne à la table de la corbeille, ou null quand elle manque ou qu\'elle est illisible', async () => {
+  const withBin = { ...tables(), GFS_Corbeille: { id: [] } };
+  assert.equal((await loadFiles(port(withBin), [{ manifest }], '')).binTable, 'GFS_Corbeille');
+  assert.equal((await loadFiles(port(tables()), [{ manifest }], '')).binTable, null);
+  const warn = console.warn;
+  console.warn = () => {};
+  try { assert.equal((await loadFiles(port(withBin, { broken: 'GFS_Corbeille' }), [{ manifest }], '')).binTable, null); } finally { console.warn = warn; }
+});
+
 // La copie des tables lourdes (js/broker/table-cache.js) : la première lecture complète d'un document lourd garde les tables de fichiers pour l'app qu'on ouvre.
 const keeper = head => {
   const kept = [];

@@ -20,11 +20,11 @@ test('contrats 2.5 point 5 : seules les clés `reglagesArrivee` d\'une app la fo
     assert.equal(arrivalApp({ [key]: { a: 1 } }, manifests, both), 'publipostage', key);
   }
   const others = publipostage().reglages.filter(key => !publipostage().reglagesArrivee.includes(key));
-  assert.deepEqual(others, ['droitsAcces', 'dateDernierExport', 'pp_attach_column', 'pp_attach_mode']);
+  assert.deepEqual(others, ['droitsAcces', 'dateDernierExport', 'pp_attach_column', 'pp_attach_mode', 'pp_view_open_mode']);
   for (const key of others) {
     assert.equal(arrivalApp({ [key]: { a: 1 } }, manifests, both), null, `${key} seul : l'explorateur (Publipostage+ n'aurait qu'une page blanche)`);
   }
-  assert.equal(arrivalApp({ droitsAcces: { table: 'Equipe' }, dateDernierExport: 'Exporte', pp_attach_column: 'Pieces', pp_attach_mode: 'add' }, manifests, both), null,
+  assert.equal(arrivalApp({ droitsAcces: { table: 'Equipe' }, dateDernierExport: 'Exporte', pp_attach_column: 'Pieces', pp_attach_mode: 'add', pp_view_open_mode: 'read' }, manifests, both), null,
     'tous ensemble, sans modèle : l\'explorateur');
   assert.equal(arrivalApp({ droitsAcces: { table: 'Equipe' }, modeleDeLaVue: '16' }, manifests, both), 'publipostage', 'avec le modèle, elle s\'ouvre');
 });

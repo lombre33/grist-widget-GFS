@@ -63,7 +63,7 @@
     "copie": { "ligne": true, "uniques": ["Jeton"], "exclusives": ["EstParDefaut"] },
     "poids": { "liees": [{ "table": "Publipostage_Versions", "colonne": "Jeton", "fichier": "Jeton" }] }
   }],
-  "reglages": ["modeleDeLaVue", "modeleSelonLigne", "droitsAcces", "dateDernierExport", "pp_attach_column", "pp_attach_mode"],
+  "reglages": ["modeleDeLaVue", "modeleSelonLigne", "droitsAcces", "dateDernierExport", "pp_attach_column", "pp_attach_mode", "pp_view_open_mode"],
   "reglagesArrivee": ["modeleDeLaVue", "modeleSelonLigne"],
   "permissions": {
     "acces": "full",

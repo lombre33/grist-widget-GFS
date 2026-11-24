@@ -535,6 +535,17 @@ test('contrats 5.4, point 12 : Publipostage+ garde la colonne et le mode de « J
   assert.equal(makePolicy({ ...m, reglages: m.reglages.filter(key => !key.startsWith('pp_attach_')) }).reglages.has('pp_attach_column'), false, 'sans la déclaration, le courtier les refuse');
 });
 
+// Le mode d'ouverture de la vue (demande de la page de Publipostage+ du 24/11, `pp_view_open_mode` : `read` ou `edit`) : une clé de `reglages`, pas de `reglagesArrivee`
+// (un mode ne dit pas quoi ouvrir : une vue qui n'a que cette clé arrive sur l'explorateur).
+test('contrats 2.5, points 3 et 5 : `pp_view_open_mode` est un réglage de la vue de Publipostage+, qui ne la fait pas s\'ouvrir', () => {
+  const m = publipostage();
+  assert.ok(m.reglages.includes('pp_view_open_mode'), 'sans la déclaration, `setOption` est refusé (GFS_CLE_NON_DECLAREE) et le choix ne se garde pas');
+  assert.equal(m.reglagesArrivee.includes('pp_view_open_mode'), false);
+  assert.deepEqual(validateManifest(m), { ok: true, errors: [] });
+  assert.equal(makePolicy(m).reglages.has('pp_view_open_mode'), true, 'le courtier laisse passer la clé');
+  assert.equal(makePolicy({ ...m, reglages: m.reglages.filter(key => key !== 'pp_view_open_mode') }).reglages.has('pp_view_open_mode'), false, 'sans la déclaration, le courtier la refuse');
+});
+
 // Le lecteur de vidéos (contrats 3.4, point 7 ; carte du porteur du 07/11, « Politique élargie »).
 test('contrats 3.4, point 7 : `lecteurs` se déclare avec ses sites et sa raison en français et en anglais, sans demander l\'accès full', () => {
   const m = publipostage();

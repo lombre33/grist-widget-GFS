@@ -11,7 +11,7 @@ const spec = manifest.fichiers[0];
 const tables = () => ({ [spec.table]: { id: [1], Nom: ['Convocation'], TypeModele: [''], DateModif: [0], ModifiePar: [''] } });
 
 // Un banc : un port de doublure, l'explorateur et ses voisins qui notent ce qu'on leur dit.
-function bench({ data = tables(), broken = null, unreachable = false, access = true, learning = 'moi@exemple.org', apps = [{ manifest, app: { id: 'publipostage' } }], pending = null } = {}) { // `pending` : (log) => les gestes affichés d'avance, ou rien
+function bench({ data = tables(), broken = null, unreachable = false, access = true, learning = 'moi@exemple.org', apps = [{ manifest, app: { id: 'publipostage' } }], pending = null, hint = null } = {}) { // `pending` : (log) => les gestes affichés d'avance, ou rien
   const log = [];
   const notes = []; // ce que la lecture dit du nom de la table du rangement
   const bins = []; // et de celle de la corbeille
@@ -30,7 +30,8 @@ function bench({ data = tables(), broken = null, unreachable = false, access = t
     fullAccess: () => state.access,
     rangement: { get learning() { return unreachable ? { then: (ok, fail) => fail(new Error('réseau coupé')) } : state.learning; }, note: id => notes.push(id) },
     pending: pending && pending(log),
-    reader: null,
+    reader: hint ? { marker: 'lecture légère', isActive: () => false, learn: () => {} } : null,
+    hint: hint && hint(log),
     explorer: () => ({
       setFiles: (...args) => log.push(['setFiles', args[0].length, (args[1] || []).length]),
       setStatus: status => log.push(['setStatus', status]),
@@ -45,6 +46,12 @@ function bench({ data = tables(), broken = null, unreachable = false, access = t
   };
   return { reading: new FilesReading(x), log, state, gate, notes, bins };
 }
+
+// Le souvenir d'un document lourd (js/explorer/heavy-hint.js) : la lecture le consulte avant de lire, et lui dit ce qu'elle a compté après.
+const hinting = ({ order = [] } = {}) => log => ({
+  prime: async reader => { log.push(['prime', reader.marker]); order.push('prime'); },
+  note: bytes => log.push(['note', typeof bytes]),
+});
 
 const statuses = log => log.filter(entry => entry[0] === 'setStatus').map(entry => entry[1]);
 
@@ -140,4 +147,20 @@ test('les gestes affichés d\'avance : la lecture note, au départ, ce qui étai
   const loud = bench({ pending: () => ({ stamp: () => 0, retire: () => {} }) });
   await loud.reading.refresh();
   assert.equal(statuses(loud.log)[0].loading, true, 'une lecture ordinaire dit toujours « chargement »');
+});
+
+test('le souvenir d\'un document lourd est consulté avant la première lecture, avec la lecture légère ; ce que la lecture a compté lui est dit ensuite', async () => {
+  const b = bench({ hint: hinting() });
+  await b.reading.refresh();
+  const order = b.log.map(entry => entry[0]);
+  assert.ok(order.indexOf('prime') >= 0 && order.indexOf('prime') < order.indexOf('setFiles'), order.join(' > '));
+  assert.deepEqual(b.log.find(entry => entry[0] === 'prime'), ['prime', 'lecture légère']);
+  assert.deepEqual(b.log.find(entry => entry[0] === 'note'), ['note', 'number']);
+  assert.ok(order.indexOf('note') > order.indexOf('setFiles'));
+});
+
+test('une app qu\'on n\'a pas pu lire : son poids manque, le souvenir n\'est pas mis à jour (il dirait « léger » à tort)', async () => {
+  const b = bench({ broken: spec.table, hint: hinting() });
+  await b.reading.refresh();
+  assert.equal(b.log.some(entry => entry[0] === 'note'), false);
 });

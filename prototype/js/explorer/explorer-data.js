@@ -154,12 +154,16 @@ export async function loadFiles(port, apps, identity = '', reader = null, keep =
     binTable: raw.bin.data ? nameIn(raw.tables, BIN_TABLE) : null };
 }
 
-// Un document lourd lu en entier pour la première fois : les tables de fichiers se gardent pour l'app qui s'ouvre (js/broker/table-cache.js), avec l'empreinte
-// du document prise avant la lecture. Une lecture légère n'a pas lu les tables en entier : rien à garder.
+// Un document lourd, à la première lecture de la page : les tables de fichiers se gardent pour l'app qui s'ouvre (js/broker/table-cache.js), avec l'empreinte
+// du document prise avant la lecture. Une table lue en entier se garde telle quelle ; une table que la lecture légère a lue (le document était connu lourd
+// d'une visite précédente : js/explorer/heavy-hint.js) n'a que ses colonnes utiles, et se lit en entier derrière la liste (`fill`).
 function keepWhole(keep, raw, stats) {
-  if (!keep || !raw.head || raw.light || stats.bytes < HEAVY_BYTES) return;
-  keep.cache.keep(raw.head, raw.reads.filter(read => read.main.data).map(read => ({ id: nameIn(raw.tables, read.spec.table), data: read.main.data })),
-    stats.bytes);
+  if (!keep || !raw.head || stats.bytes < HEAVY_BYTES) return;
+  const found = raw.reads.filter(read => read.main.data).map(read => ({ id: nameIn(raw.tables, read.spec.table), main: read.main }));
+  const whole = found.filter(item => !item.main.weights).map(({ id, main }) => ({ id, data: main.data }));
+  const partial = found.filter(item => item.main.weights).map(item => item.id);
+  if (whole.length) keep.cache.keep(raw.head, whole, stats.bytes);
+  if (partial.length) keep.cache.fill(raw.head, partial, stats.bytes);
 }
 
 // Ce que la lecture range avec l'adresse de la personne : le rangement de GFS, les espaces partagés et la corbeille des apps. Rend { context, folders },

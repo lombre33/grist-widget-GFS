@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-8oZyG1X+FM9jMxPoUUw8JO+kl0D4+31lB15ntNF9e98='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-HqJwYH01phG0UaCwxjV01k9uZ+EB/GNxiJ1yJ/Buv5Y='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=ee3d1e7845">
 <link rel="stylesheet" href="css/explorer.css?v=a1c7636359">
 <link rel="stylesheet" href="css/modules.css?v=e3953e3252">
@@ -99,14 +99,14 @@
     "./js/broker/sharing-rules.js": "./js/broker/sharing-rules.js?v=efe8774466",
     "./js/broker/sharing.js": "./js/broker/sharing.js?v=e6dccec1cd",
     "./js/broker/state.js": "./js/broker/state.js?v=69aa288268",
-    "./js/broker/table-cache.js": "./js/broker/table-cache.js?v=ecd6414d89",
+    "./js/broker/table-cache.js": "./js/broker/table-cache.js?v=3aa3cfe119",
     "./js/broker/transfer.js": "./js/broker/transfer.js?v=5324b55361",
     "./js/broker/view-link.js": "./js/broker/view-link.js?v=1853f29883",
     "./js/broker/view-options.js": "./js/broker/view-options.js?v=7c746e590f",
-    "./js/controller.js": "./js/controller.js?v=72241dd8aa",
+    "./js/controller.js": "./js/controller.js?v=adc3d64cc3",
     "./js/explorer/explorer-assembly.js": "./js/explorer/explorer-assembly.js?v=00c79f0659",
     "./js/explorer/explorer-clipboard.js": "./js/explorer/explorer-clipboard.js?v=62a4670621",
-    "./js/explorer/explorer-data.js": "./js/explorer/explorer-data.js?v=6fe455ad1e",
+    "./js/explorer/explorer-data.js": "./js/explorer/explorer-data.js?v=f486b3a547",
     "./js/explorer/explorer-drag.js": "./js/explorer/explorer-drag.js?v=bb4575a2a0",
     "./js/explorer/explorer-keyboard.js": "./js/explorer/explorer-keyboard.js?v=263046c444",
     "./js/explorer/explorer-keys.js": "./js/explorer/explorer-keys.js?v=15a584580c",
@@ -120,9 +120,10 @@
     "./js/explorer/explorer-window.js": "./js/explorer/explorer-window.js?v=6ea159dddf",
     "./js/explorer/explorer.js": "./js/explorer/explorer.js?v=c40ffac4c7",
     "./js/explorer/file-refresh.js": "./js/explorer/file-refresh.js?v=cfc9cbb1b5",
-    "./js/explorer/files-reading.js": "./js/explorer/files-reading.js?v=83105a32f3",
+    "./js/explorer/files-reading.js": "./js/explorer/files-reading.js?v=a97c2130b4",
     "./js/explorer/filing-window.js": "./js/explorer/filing-window.js?v=6752e9e381",
     "./js/explorer/filing.js": "./js/explorer/filing.js?v=9f50d539e2",
+    "./js/explorer/heavy-hint.js": "./js/explorer/heavy-hint.js?v=977b4f606f",
     "./js/explorer/opened-bar.js": "./js/explorer/opened-bar.js?v=0fc35682d4",
     "./js/explorer/opened-files.js": "./js/explorer/opened-files.js?v=975feeb422",
     "./js/explorer/pending.js": "./js/explorer/pending.js?v=d52133a07a",
@@ -265,7 +266,7 @@
     "./kit/js/synchro/logic/diagnostic.js": "./kit/js/synchro/logic/diagnostic.js?v=92b1191eb8",
     "./kit/js/synchro/logic/docformat.js": "./kit/js/synchro/logic/docformat.js?v=854d5c0edb",
     "./kit/js/synchro/logic/estimate.js": "./kit/js/synchro/logic/estimate.js?v=4f061c1bfc",
-    "./kit/js/synchro/logic/exports.js": "./kit/js/synchro/logic/exports.js?v=48a8b6a2ea",
+    "./kit/js/synchro/logic/exports.js": "./kit/js/synchro/logic/exports.js?v=f16e795178",
     "./kit/js/synchro/logic/files.js": "./kit/js/synchro/logic/files.js?v=7886b944b7",
     "./kit/js/synchro/logic/filters.js": "./kit/js/synchro/logic/filters.js?v=dad1731cdd",
     "./kit/js/synchro/logic/formulas.js": "./kit/js/synchro/logic/formulas.js?v=73bb54e2a3",
@@ -274,7 +275,7 @@
     "./kit/js/synchro/logic/keys.js": "./kit/js/synchro/logic/keys.js?v=e8ab9afcab",
     "./kit/js/synchro/logic/layout.js": "./kit/js/synchro/logic/layout.js?v=6ec3fba78c",
     "./kit/js/synchro/logic/links.js": "./kit/js/synchro/logic/links.js?v=4f979e97c1",
-    "./kit/js/synchro/logic/lost.js": "./kit/js/synchro/logic/lost.js?v=ef47b3f4f4",
+    "./kit/js/synchro/logic/lost.js": "./kit/js/synchro/logic/lost.js?v=b199ab48ba",
     "./kit/js/synchro/logic/new-columns.js": "./kit/js/synchro/logic/new-columns.js?v=c70709b316",
     "./kit/js/synchro/logic/note-store.js": "./kit/js/synchro/logic/note-store.js?v=3861fe691e",
     "./kit/js/synchro/logic/notes.js": "./kit/js/synchro/logic/notes.js?v=0faaad1571",
@@ -305,7 +306,7 @@
     "./kit/js/synchro/source/invite.js": "./kit/js/synchro/source/invite.js?v=92e15e1ef1",
     "./kit/js/synchro/source/keys.js": "./kit/js/synchro/source/keys.js?v=484931afbe",
     "./kit/js/synchro/source/new-columns.js": "./kit/js/synchro/source/new-columns.js?v=fe5628f6f6",
-    "./kit/js/synchro/source/pausing.js": "./kit/js/synchro/source/pausing.js?v=92005d9d91",
+    "./kit/js/synchro/source/pausing.js": "./kit/js/synchro/source/pausing.js?v=9d76a3f7d4",
     "./kit/js/synchro/source/resend.js": "./kit/js/synchro/source/resend.js?v=b69c81e1c6",
     "./kit/js/synchro/source/synchro.js": "./kit/js/synchro/source/synchro.js?v=db3020af48",
     "./kit/js/synchro/target/clean.js": "./kit/js/synchro/target/clean.js?v=76530cabe6",
@@ -316,13 +317,13 @@
     "./kit/js/synchro/target/journals.js": "./kit/js/synchro/target/journals.js?v=ca5763ec64",
     "./kit/js/synchro/target/layout.js": "./kit/js/synchro/target/layout.js?v=59464fc20c",
     "./kit/js/synchro/target/loop.js": "./kit/js/synchro/target/loop.js?v=c0cb5f28b0",
-    "./kit/js/synchro/target/lost.js": "./kit/js/synchro/target/lost.js?v=3ebece8a47",
+    "./kit/js/synchro/target/lost.js": "./kit/js/synchro/target/lost.js?v=d2cf32e033",
     "./kit/js/synchro/target/receive.js": "./kit/js/synchro/target/receive.js?v=4cfb0af6eb",
     "./kit/js/synchro/target/style.js": "./kit/js/synchro/target/style.js?v=245a1671e7",
-    "./kit/js/synchro/textes.js": "./kit/js/synchro/textes.js?v=9c4f1753a5",
-    "./kit/js/synchro/version.js": "./kit/js/synchro/version.js?v=58b4f0311b",
+    "./kit/js/synchro/textes.js": "./kit/js/synchro/textes.js?v=ee2c3972ce",
+    "./kit/js/synchro/version.js": "./kit/js/synchro/version.js?v=51eff2e566",
     "./kit/js/theme.js": "./kit/js/theme.js?v=55b9ccfb58",
-    "./kit/js/violations-message.js": "./kit/js/violations-message.js?v=f6b0a351e2",
+    "./kit/js/violations-message.js": "./kit/js/violations-message.js?v=078add5281",
     "./kit/js/violations-pose.js": "./kit/js/violations-pose.js?v=42826f2d54",
     "./kit/js/violations-start.js": "./kit/js/violations-start.js?v=ebb25b673e",
     "./kit/js/violations.js": "./kit/js/violations.js?v=5dca5d589e"
@@ -333,12 +334,12 @@
      Le navigateur les demande tous d'un coup au lieu d'un niveau d'imports à la fois (9 niveaux, donc 9 allers-retours de réseau). Après la carte d'importation, jamais avant : une page qui commence à
      charger un module avant elle l'ignore et demande les modules sans leur ?v=. -->
 <!-- préchargement -->
-<link rel="modulepreload" href="./js/controller.js?v=72241dd8aa">
+<link rel="modulepreload" href="./js/controller.js?v=adc3d64cc3">
 <link rel="modulepreload" href="./js/apps/catalogue.js?v=2e588e5749">
 <link rel="modulepreload" href="./js/apps/manifest.js?v=3dbffcbe2c">
 <link rel="modulepreload" href="./js/broker/state.js?v=69aa288268">
 <link rel="modulepreload" href="./js/broker/broker.js?v=2d5531db1c">
-<link rel="modulepreload" href="./js/broker/table-cache.js?v=ecd6414d89">
+<link rel="modulepreload" href="./js/broker/table-cache.js?v=3aa3cfe119">
 <link rel="modulepreload" href="./js/broker/view-options.js?v=7c746e590f">
 <link rel="modulepreload" href="./js/broker/own-section.js?v=b4451c0cb2">
 <link rel="modulepreload" href="./js/broker/view-link.js?v=1853f29883">
@@ -352,7 +353,7 @@
 <link rel="modulepreload" href="./js/theme/theme-window.js?v=be3e075a12">
 <link rel="modulepreload" href="./js/broker/app-storage.js?v=d24c6008f9">
 <link rel="modulepreload" href="./js/ui/icons.js?v=4ffc4d29fd">
-<link rel="modulepreload" href="./js/explorer/explorer-data.js?v=6fe455ad1e">
+<link rel="modulepreload" href="./js/explorer/explorer-data.js?v=f486b3a547">
 <link rel="modulepreload" href="./js/explorer/explorer-sql.js?v=9534e5498d">
 <link rel="modulepreload" href="./js/broker/links.js?v=cbae3923c2">
 <link rel="modulepreload" href="./js/apps/libraries.js?v=10edb6aaa5">
@@ -379,7 +380,9 @@
 <link rel="modulepreload" href="./js/broker/entries.js?v=a2d8813af5">
 <link rel="modulepreload" href="./js/broker/openings.js?v=cb95a404fe">
 <link rel="modulepreload" href="./js/explorer/opened-files.js?v=975feeb422">
-<link rel="modulepreload" href="./js/explorer/files-reading.js?v=83105a32f3">
+<link rel="modulepreload" href="./js/explorer/files-reading.js?v=a97c2130b4">
+<link rel="modulepreload" href="./js/explorer/heavy-hint.js?v=977b4f606f">
+<link rel="modulepreload" href="./js/shell/stored-choice.js?v=08d02d1bfe">
 <link rel="modulepreload" href="./js/explorer/pending.js?v=d52133a07a">
 <link rel="modulepreload" href="./js/explorer/explorer-assembly.js?v=00c79f0659">
 <link rel="modulepreload" href="./js/shell/dock-assembly.js?v=4f4dc888d3">
@@ -416,7 +419,6 @@
 <link rel="modulepreload" href="./js/i18n/i18n-templates.js?v=3194fa28f0">
 <link rel="modulepreload" href="./js/i18n/i18n-dependencies.js?v=d89224ea22">
 <link rel="modulepreload" href="./js/i18n/i18n-security.js?v=74b1fa72f0">
-<link rel="modulepreload" href="./js/shell/stored-choice.js?v=08d02d1bfe">
 <link rel="modulepreload" href="./js/theme/ambiance.js?v=6608543445">
 <link rel="modulepreload" href="./js/theme/oklch.js?v=7ef04e0793">
 <link rel="modulepreload" href="./js/theme/ambiance-forme.js?v=9945157b3b">

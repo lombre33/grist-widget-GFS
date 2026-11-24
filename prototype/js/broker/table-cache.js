@@ -10,6 +10,10 @@
 //
 // Seules les tables de fichiers que l'explorateur a lues en entier d'un document lourd se gardent, une seule fois par ouverture de la page (la première
 // lecture) : un document léger ne paie ni cadre d'envoi ni jeton de plus. Rien ne se garde dans le navigateur : la copie vit autant que la page, en mémoire.
+//
+// Un document connu lourd d'une visite précédente se liste en lecture légère, sans lire ces tables : leur lecture complète (`fill`) part alors derrière la
+// liste, et l'app qui demande la table pendant qu'elle se lit attend cette lecture au lieu d'en lancer une seconde (24/11, choix du porteur : « Liste plus vite
+// au démarrage »). Une copie qui n'a pas servi s'en va au bout de deux minutes, avec la mémoire qu'elle tient.
 
 const TTL_MS = 2 * 60 * 1000;
 const MARK_TIMEOUT_MS = 1500; // l'explorateur n'attend jamais plus longtemps l'empreinte d'avant sa lecture
@@ -21,8 +25,9 @@ const keyOf = tableId => String(tableId).toLowerCase();
 export class TableCache {
   #head;
   #now;
-  #entries = new Map(); // identifiant de table en minuscules -> { data, head, at }
+  #entries = new Map(); // identifiant de table en minuscules -> { data (la table, ou la promesse de sa lecture), head, at }
   #marked = false;
+  #doc = null; // le document sans la copie : `fill` lit par lui, jamais par la copie qu'il remplit
 
   // opts : { head() -> Promise<texte | null> : l'empreinte de l'état du document (null quand le serveur ne la rend pas), now?() -> millisecondes }
   constructor({ head, now = () => Date.now() }) {
@@ -35,6 +40,7 @@ export class TableCache {
   // Les interfaces du document (`GristDocAPI`) avec la copie devant `fetchTable` et l'oubli derrière `applyUserActions` ; tout le reste passe tel quel.
   wrap(doc) {
     const cache = this;
+    this.#doc = doc;
     return new Proxy(doc, {
       get(target, key) {
         const value = target[key];
@@ -61,8 +67,37 @@ export class TableCache {
   // empreinte, ou trop lourdes pour la mémoire, rien.
   keep(head, tables, bytes) {
     if (!head || bytes > KEEP_MAX_BYTES) return;
-    const at = this.#now();
-    for (const { id, data } of tables) this.#entries.set(keyOf(id), { data, head, at });
+    for (const { id, data } of tables) this.#set(id, data, head);
+  }
+
+  // Lit en entier, derrière la liste, les tables `ids` que la lecture légère n'a pas lues en entier : même empreinte `head` (prise avant), même limite de
+  // poids `bytes`. Une lecture qui échoue ne garde rien : l'app lit elle-même. Rend la promesse de toutes ces lectures (les essais l'attendent).
+  fill(head, ids, bytes) {
+    if (!head || bytes > KEEP_MAX_BYTES || !this.#doc) return Promise.resolve();
+    const seen = new Set();
+    const reads = [];
+    for (const id of ids) {
+      if (seen.has(keyOf(id))) continue;
+      seen.add(keyOf(id));
+      const read = this.#load(id);
+      this.#set(id, read, head);
+      reads.push(read);
+    }
+    return Promise.all(reads).then(() => undefined);
+  }
+
+  // La table lue par le document lui-même (`fetchTable` part tout de suite) ; null quand la lecture échoue : l'app lira elle-même.
+  async #load(id) {
+    try { return (await this.#doc.fetchTable(id)) || null; } catch (error) { return null; }
+  }
+
+  // Une copie, ou la lecture qui la fera ; elle s'en va d'elle-même au bout de TTL_MS si personne ne l'a prise.
+  #set(id, data, head) {
+    const key = keyOf(id);
+    const entry = { data, head, at: this.#now() };
+    this.#entries.set(key, entry);
+    const timer = setTimeout(() => { if (this.#entries.get(key) === entry) this.#entries.delete(key); }, TTL_MS);
+    if (timer && typeof timer.unref === 'function') timer.unref();
   }
 
   // Une écriture : l'empreinte a changé, aucune copie ne vaut plus.
@@ -75,8 +110,8 @@ export class TableCache {
     if (!entry) return null;
     this.#entries.delete(key);
     if (this.#now() - entry.at > TTL_MS) return null;
-    let current = null;
-    try { current = await this.#head(); } catch (error) { current = null; }
-    return current && current === entry.head ? entry.data : null;
+    // l'empreinte d'aujourd'hui se prend pendant que la table finit de se lire, quand elle se lit encore
+    const [current, data] = await Promise.all([Promise.resolve().then(() => this.#head()).catch(() => null), entry.data]);
+    return current && current === entry.head ? data : null;
   }
 }

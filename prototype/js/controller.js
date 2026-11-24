@@ -47,6 +47,8 @@ import { Entries } from './broker/entries.js';
 import { Openings } from './broker/openings.js';
 import { OpenedFiles } from './explorer/opened-files.js';
 import { FilesReading } from './explorer/files-reading.js';
+import { createHeavyHint } from './explorer/heavy-hint.js';
+import { keyStore } from './shell/stored-choice.js';
 import { Pending } from './explorer/pending.js';
 import { buildExplorer } from './explorer/explorer-assembly.js';
 import { buildDock } from './shell/dock-assembly.js';
@@ -151,6 +153,8 @@ export class GfsController {
         apps: () => this.validApps(), fullAccess: () => this.fullAccess,
         rangement: this.rangement,
         reader: this.fileReader,
+        // un document vu lourd à la visite d'avant se lit d'emblée en lecture légère (js/explorer/heavy-hint.js) ; ses tables se lisent derrière la liste
+        hint: createHeavyHint({ docId: () => this.port.doc.getDocName(), store: key => keyStore(window, key) }),
       prepare: () => this.names.refresh(this.apps.filter(item => item.ok)),
       explorer: () => this.explorer, openedBar: () => this.openedBar, appName: this.appName, t: this.t, onSpaces: spaces => { this.spaces = spaces; },
       onFiles: files => void this.followFolders(files), onStats: stats => { this.doc.body.dataset.explorerStats = JSON.stringify(stats); },

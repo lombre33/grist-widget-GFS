@@ -7,6 +7,7 @@ import { GristState } from './broker/state.js';
 import { createPort } from './broker/broker.js';
 import { TableCache } from './broker/table-cache.js';
 import { ViewOptions, addressOf } from './broker/view-options.js';
+import { ownSectionHandlers } from './broker/own-section.js';
 import { ViewLink, LINK_KEY } from './broker/view-link.js';
 import { AppSession } from './broker/session.js';
 import { AppStatus } from './broker/app-status.js';
@@ -105,7 +106,7 @@ export class GfsController {
     // Les réglages des apps s'écrivent dans la vue, sans « Enregistrer » (contrats 7.3) : GFS retrouve sa section par son adresse et sa table.
     this.viewOptions = new ViewOptions({
       doc: this.port.doc, widget: this.port.widget, address: addressOf(location.href), tableId: () => (this.state.table ? this.state.table.tableId : null),
-      enabled: () => this.fullAccess && !this.readonly,
+      enabled: () => this.fullAccess && !this.readonly, readable: () => this.fullAccess,
     });
     // La section de GFS se relie d'elle-même à la grille de la même table (js/broker/view-link.js, contrats 4.5 point 8) : « La table de la page » suit alors
     // la ligne que la personne clique.
@@ -547,6 +548,7 @@ export class GfsController {
     return {
       contexte: () => this.#told.contextFor(session),
       installer: args => this.#install(session, args),
+      ...ownSectionHandlers({ locate: () => this.viewOptions.locate() }),
       ...storageHandlers(this.appStorage, session.id),
       ...this.dock.handlers(session.id),
       ...this.links.handlers(session),

@@ -104,6 +104,7 @@ export class ViewOptions {
   #address;
   #tableId;
   #enabled;
+  #readable;
   #timers;
   #queue = Promise.resolve();
   #own = null; // le numéro de la section que la recherche a reconnue pour la nôtre, tant qu'elle reste parmi les candidates
@@ -112,13 +113,15 @@ export class ViewOptions {
   #warned = new Set();
 
   // doc : `GristDocAPI` de GFS ; widget : son `WidgetAPI` ; address : `addressOf` de l'adresse de GFS ; tableId() : la table de la section de GFS ; enabled() :
-  //   GFS a le niveau `full` et le document s'écrit ; timers : { setTimeout }.
-  constructor({ doc, widget, address, tableId, enabled = () => true, timers = globalThis }) {
+  //   GFS a le niveau `full` et le document s'écrit ; readable() : GFS a le niveau `full` (il lit les sections, même d'un document qui ne s'écrit pas) ;
+  //   timers : { setTimeout }.
+  constructor({ doc, widget, address, tableId, enabled = () => true, readable = enabled, timers = globalThis }) {
     this.#doc = doc;
     this.#widget = widget;
     this.#address = address;
     this.#tableId = tableId;
     this.#enabled = enabled;
+    this.#readable = readable;
     this.#timers = timers;
   }
 
@@ -144,6 +147,33 @@ export class ViewOptions {
     });
     this.#queue = run.catch(() => {});
     return run;
+  }
+
+  // La section de GFS pour une app qui la demande (contrats 5.4, point 15) : `{ id }` quand GFS en est SÛR, `{ reason }` sinon : 'access' (pas le niveau
+  // `full`), 'read-only' (plusieurs sections de GFS pareilles et un document qui ne s'écrit pas : seule une marque le dirait), 'draft', 'no-section',
+  // 'refused'. Sûr : la seule section de la table à l'adresse de GFS, la section déjà reconnue par une marque, ou une marque posée à l'instant (même une
+  // candidate seule parmi d'autres : ce que Grist dit à GFS peut coïncider avec une autre section quand un brouillon est posé, et rien n'a été écrit ici pour
+  // le confirmer par l'écho). Rien d'autre que cette marque, retirée aussitôt, ne s'écrit ; la réponse reste dans `#own`, la recherche ne se refait pas.
+  locate() {
+    const run = this.#queue.then(() => this.#locate());
+    this.#queue = run.catch(() => {});
+    return run;
+  }
+
+  async #locate() {
+    if (!this.#readable()) return { reason: 'access' };
+    try {
+      const current = await this.#widget.getOptions();
+      const { agree, count, reason } = await this.#agreeing(current);
+      if (!agree) return { reason };
+      const known = agree.find(item => item.id === this.#own) || (count === 1 ? agree[0] : null);
+      if (known) return { id: known.id };
+      if (!this.#enabled()) return { reason: 'read-only' };
+      const found = await this.#find(current, true);
+      return found.target ? { id: found.target.id } : { reason: found.reason };
+    } catch (error) {
+      return { reason: 'refused' };
+    }
   }
 
   async #write(changes) {
@@ -182,15 +212,16 @@ export class ViewOptions {
     return false;
   }
 
-  // Les sections où GFS peut se trouver, en lecture seule : `{ agree }`, les candidates dont les réglages enregistrés disent ce que Grist dit à GFS (`current`,
-  // hors marques de recherche), ou `{ reason }` quand il n'y en a aucune. Une candidate qui dit autre chose n'est pas la nôtre, et si aucune ne le dit, c'est
-  // qu'un brouillon est posé (« Enregistrer » est là : il masque les réglages enregistrés, l'écho ne reviendrait pas et « Enregistrer » le remplacerait).
+  // Les sections où GFS peut se trouver, en lecture seule : `{ agree, count }`, les candidates dont les réglages enregistrés disent ce que Grist dit à GFS
+  // (`current`, hors marques de recherche) et le nombre des candidates avant ce tri, ou `{ reason }` quand il n'y en a aucune. Une candidate qui dit autre
+  // chose n'est pas la nôtre, et si aucune ne le dit, c'est qu'un brouillon est posé (« Enregistrer » est là : il masque les réglages enregistrés, l'écho ne
+  // reviendrait pas et « Enregistrer » le remplacerait).
   async #agreeing(current) {
     const [sections, tables] = await Promise.all([this.#doc.fetchTable(SECTIONS), this.#doc.fetchTable(TABLES)]);
     const candidates = candidatesOf(sections, tables, { address: this.#address, tableId: this.#tableId() }).filter(item => !this.#notOurs.has(item.id));
     if (!candidates.length) return { reason: 'no-section' };
     const agree = candidates.filter(item => sameValue(clean(current), clean(savedOptionsOf(item.text))));
-    return agree.length ? { agree } : { reason: 'draft' };
+    return agree.length ? { agree, count: candidates.length } : { reason: 'draft' };
   }
 
   // Ce que GFS peut dire à une app dès son ouverture, avant tout réglage : ses réglages iront-ils dans la vue ? Vrai : une seule section dit ce que Grist dit à
@@ -210,11 +241,12 @@ export class ViewOptions {
 
   // La section de GFS : `{ target: { id, text } }`, ou `{ reason }` quand GFS ne peut pas écrire dans la vue. `current` : ce que Grist dit à GFS de ses
   // réglages. Une seule candidate qui
-  // s'accorde : c'est elle, et l'écho le confirme. Plusieurs : la recherche par marques.
-  async #find(current) {
+  // s'accorde : c'est elle, et l'écho le confirme. Plusieurs : la recherche par marques. `sure` : même une seule qui s'accorde passe par la marque (`locate`,
+  //   qui n'écrit aucun réglage pour la confirmer).
+  async #find(current, sure = false) {
     const { agree, reason } = await this.#agreeing(current);
     if (!agree) return { reason };
-    if (agree.length === 1) return { target: agree[0] };
+    if (agree.length === 1 && !sure) return { target: agree[0] };
     const known = agree.find(item => item.id === this.#own);
     if (known) return { target: known };
     const signature = agree.map(item => item.id).join();

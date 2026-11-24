@@ -336,6 +336,15 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     « Dépendances » de GFS montre, sous ton app, le bloc « Portées par l'app » avec tes lignes, ou dit que ton app n'en charge aucune.
     **Depuis le 18/11 cette déclaration est exigée** (règle S5, section 1.4) : elle sert au tableau de bord de sécurité, qui cherche chaque adresse déclarée dans ton code.
 
+25. Demander à GFS quelle est ta section quand tu la cherches par ton adresse (décision du porteur du 24/11 : « Oui, GFS dit à l'app où il est » ; contrats 5.4, point 15, et 5.2, `section`). Dans GFS,
+    toutes les sections de GFS ont **l'adresse de GFS** : une app qui retrouve sa section dans `_grist_Views_section` en gardant celles de la table qui portent son adresse ne sait pas laquelle est la sienne dès que
+    deux GFS partagent la table sans être liés à la même vue (deux pages, chacune avec sa grille et son GFS : c'est le cas courant, GFS relie chaque section à la grille de sa page). Publipostage+ le dit alors
+    à l'export en lot : « plusieurs widgets de cette table ont la même adresse que lui ». **Demande à GFS** par l'appel `section` (sans argument) : il répond `{ id }`, le numéro de la ligne de ta section, ou
+    `{ id: null, raison }` (`acces`, `lecture-seule`, `inconnue`) quand il n'en est pas sûr ; prends alors **cette** section, vérifie que son `tableRef` est celui de ta table, et lis son lien et ses filtres comme
+    avant. Sans identifiant (GFS ne sait pas, ou GFS plus ancien : `GFS_INCONNU`), garde ta conduite d'avant. **Seule, sans GFS**, tu gardes ta recherche par adresse : il n'y a qu'une section à ton adresse. Ne
+    garde pas l'identifiant d'une session à l'autre (il se redemande ; une page recopiée ou une vue défaite en change le numéro). **Fait quand** : dans deux GFS à deux grilles, ton export en lot propose les lignes de la
+    vue liée au GFS où tu es, sans dire que tu ne sais pas laquelle est la tienne.
+
 ### 1.3 Licence : GPL 3.0 dans tous les dépôts (décision du porteur, 21/10)
 
 1. **Le texte officiel de la GNU General Public License version 3** est le fichier `LICENSE`, à la racine du dépôt : 674

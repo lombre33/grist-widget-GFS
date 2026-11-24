@@ -288,3 +288,72 @@ test('expect : une lecture qui échoue ne lève jamais d\'erreur, GFS ne dit rie
   const view = make({ doc: { fetchTable: async () => { throw new Error('hors ligne'); }, applyUserActions: async () => assert.fail('rien ne s\'écrit') } });
   assert.equal(await view.expect(), null);
 });
+
+// ===== `locate` : la section de GFS dite à une app (contrats 5.4, point 15)
+
+test('locate : la seule section de la table à l\'adresse de GFS, sans rien écrire', async () => {
+  const { make, log } = fakeGrist({ sections: [section(4), section(9, {}, 2)], own: 4 });
+  assert.deepEqual(await make().locate(), { id: 4 });
+  assert.equal(log.applied.length, 0, 'aucune marque pour une section seule');
+});
+
+test('locate : plusieurs GFS pareils, une marque reconnaît la bonne, la retire, et la réponse est gardée', async () => {
+  const { make, document, log } = fakeGrist({ sections: [section(4, { widgetOptions: { 'gfs.grille': 'lie' } }), section(5, { widgetOptions: { 'gfs.grille': 'lie' } })], own: 5 });
+  const view = make();
+  assert.deepEqual(await view.locate(), { id: 5 });
+  for (const row of document.sections) assert.equal(PROBE_KEY in (widgetOptionsOf(row.options) || {}), false, 'aucune marque ne reste');
+  const first = log.applied.length;
+  assert.equal(first, 2, 'les marques, puis leur retrait');
+  assert.deepEqual(await view.locate(), { id: 5 });
+  assert.equal(log.applied.length, first, 'la section reconnue est gardée : rien de plus écrit');
+});
+
+test('locate : deux GFS pareils et un document qui ne s\'écrit pas, GFS ne sait pas et n\'écrit rien', async () => {
+  const { make, log } = fakeGrist({ sections: [section(4), section(5)], own: 5 });
+  assert.deepEqual(await make({ enabled: () => false, readable: () => true }).locate(), { reason: 'read-only' });
+  assert.equal(log.applied.length, 0);
+});
+
+test('locate : une seule section de la table, même dans un document qui ne s\'écrit pas', async () => {
+  const { make, log } = fakeGrist({ sections: [section(4)], own: 4 });
+  assert.deepEqual(await make({ enabled: () => false, readable: () => true }).locate(), { id: 4 });
+  assert.equal(log.applied.length, 0);
+});
+
+test('locate : sans le niveau `full`, rien n\'est lu ni écrit', async () => {
+  const { make, log } = fakeGrist({ sections: [section(4)], own: 4 });
+  const view = make({ doc: { fetchTable: async () => assert.fail('rien ne se lit'), applyUserActions: async () => assert.fail('rien ne s\'écrit') }, readable: () => false, enabled: () => false });
+  assert.deepEqual(await view.locate(), { reason: 'access' });
+  assert.equal(log.applied.length, 0);
+});
+
+test('locate : une seule section qui s\'accorde avec Grist parmi plusieurs est confirmée par une marque, jamais prise sur parole', async () => {
+  // Un brouillon est posé dans la section de GFS (5) : ce que Grist lui dit est ce que la section 4 a d'enregistré. Sans marque, on dirait 4.
+  const sections = [section(4, { widgetOptions: { droitsAcces: 'x' } }), section(5, { widgetOptions: { autre: 'y' } })];
+  const { make, document } = fakeGrist({ sections, own: 5, draft: { droitsAcces: 'x' } });
+  assert.deepEqual(await make().locate(), { reason: 'no-section' }, 'la marque posée dans 4 n\'arrive pas à GFS : ce n\'est pas sa section');
+  for (const row of document.sections) assert.equal(PROBE_KEY in (widgetOptionsOf(row.options) || {}), false, 'la marque est retirée');
+  const sure = fakeGrist({ sections, own: 4 }); // sans brouillon, la section 4 est bien celle de GFS : la marque la reconnaît
+  assert.deepEqual(await sure.make().locate(), { id: 4 });
+});
+
+test('locate : aucune section reconnue, un brouillon sans section qui s\'accorde, ou une lecture qui échoue : jamais d\'erreur', async () => {
+  const none = fakeGrist({ sections: [section(4, { address: 'https://autre.example/w/index.html' })], own: 4 });
+  assert.deepEqual(await none.make().locate(), { reason: 'no-section' });
+  const draft = fakeGrist({ sections: [section(4)], own: 4, draft: { droitsAcces: 'brouillon' } });
+  assert.deepEqual(await draft.make().locate(), { reason: 'draft' });
+  const broken = fakeGrist({ sections: [section(4)], own: 4 });
+  const view = broken.make({ doc: { fetchTable: async () => { throw new Error('hors ligne'); }, applyUserActions: async () => assert.fail('rien ne s\'écrit') } });
+  assert.deepEqual(await view.locate(), { reason: 'refused' });
+  assert.equal(none.log.applied.length + draft.log.applied.length, 0);
+});
+
+test('locate : la recherche passe dans la file des écritures, jamais deux à la fois', async () => {
+  const { make, document } = fakeGrist({ sections: [section(4), section(5)], own: 5 });
+  const view = make();
+  const [a, b, c] = await Promise.all([view.locate(), view.write([['modeleDeLaVue', '16']]), view.locate()]);
+  assert.deepEqual([a, c], [{ id: 5 }, { id: 5 }]);
+  assert.equal(b, true);
+  assert.deepEqual(widgetOptionsOf(document.sections[1].options), { modeleDeLaVue: '16' });
+  for (const row of document.sections) assert.equal(PROBE_KEY in (widgetOptionsOf(row.options) || {}), false, 'aucune marque ne reste');
+});

@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-ibw4o9+HyECrPOY4syOCWVzvRQuSp05gh1/gMQ2MkZI='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-8oZyG1X+FM9jMxPoUUw8JO+kl0D4+31lB15ntNF9e98='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=ee3d1e7845">
 <link rel="stylesheet" href="css/explorer.css?v=a1c7636359">
 <link rel="stylesheet" href="css/modules.css?v=e3953e3252">
@@ -87,6 +87,7 @@
     "./js/broker/links.js": "./js/broker/links.js?v=cbae3923c2",
     "./js/broker/openings.js": "./js/broker/openings.js?v=cb95a404fe",
     "./js/broker/options-slice.js": "./js/broker/options-slice.js?v=63ada0fcde",
+    "./js/broker/own-section.js": "./js/broker/own-section.js?v=b4451c0cb2",
     "./js/broker/player-sites.js": "./js/broker/player-sites.js?v=79d15fdf51",
     "./js/broker/player.js": "./js/broker/player.js?v=4044b3ca68",
     "./js/broker/publication-window.js": "./js/broker/publication-window.js?v=387f9b97c4",
@@ -101,8 +102,8 @@
     "./js/broker/table-cache.js": "./js/broker/table-cache.js?v=ecd6414d89",
     "./js/broker/transfer.js": "./js/broker/transfer.js?v=5324b55361",
     "./js/broker/view-link.js": "./js/broker/view-link.js?v=1853f29883",
-    "./js/broker/view-options.js": "./js/broker/view-options.js?v=5eb21ceaf1",
-    "./js/controller.js": "./js/controller.js?v=c6e0e18274",
+    "./js/broker/view-options.js": "./js/broker/view-options.js?v=7c746e590f",
+    "./js/controller.js": "./js/controller.js?v=72241dd8aa",
     "./js/explorer/explorer-assembly.js": "./js/explorer/explorer-assembly.js?v=00c79f0659",
     "./js/explorer/explorer-clipboard.js": "./js/explorer/explorer-clipboard.js?v=62a4670621",
     "./js/explorer/explorer-data.js": "./js/explorer/explorer-data.js?v=6fe455ad1e",
@@ -332,13 +333,14 @@
      Le navigateur les demande tous d'un coup au lieu d'un niveau d'imports à la fois (9 niveaux, donc 9 allers-retours de réseau). Après la carte d'importation, jamais avant : une page qui commence à
      charger un module avant elle l'ignore et demande les modules sans leur ?v=. -->
 <!-- préchargement -->
-<link rel="modulepreload" href="./js/controller.js?v=c6e0e18274">
+<link rel="modulepreload" href="./js/controller.js?v=72241dd8aa">
 <link rel="modulepreload" href="./js/apps/catalogue.js?v=2e588e5749">
 <link rel="modulepreload" href="./js/apps/manifest.js?v=3dbffcbe2c">
 <link rel="modulepreload" href="./js/broker/state.js?v=69aa288268">
 <link rel="modulepreload" href="./js/broker/broker.js?v=2d5531db1c">
 <link rel="modulepreload" href="./js/broker/table-cache.js?v=ecd6414d89">
-<link rel="modulepreload" href="./js/broker/view-options.js?v=5eb21ceaf1">
+<link rel="modulepreload" href="./js/broker/view-options.js?v=7c746e590f">
+<link rel="modulepreload" href="./js/broker/own-section.js?v=b4451c0cb2">
 <link rel="modulepreload" href="./js/broker/view-link.js?v=1853f29883">
 <link rel="modulepreload" href="./js/broker/session.js?v=9921c3d5ac">
 <link rel="modulepreload" href="./js/broker/app-status.js?v=651007029f">

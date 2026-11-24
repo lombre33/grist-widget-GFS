@@ -5,7 +5,9 @@
 //      à deux grilles différentes. Publipostage+, ouverte dans chacun, répond « ambiguous » (le message du porteur) ;
 //   2. ce que Publipostage+ sait déjà par Grist (`getLinkState`) ne départage pas ces deux sections : les deux sont « reliées » ;
 //   3. ce que GFS sait : chaque GFS retrouve SA section (`ViewOptions.section()`, le code de GFS, importé tel quel) et la grille qui la pilote est celle de sa page, sans qu'aucune marque ne
-//      reste dans les réglages, sans barre « Enregistrer », sans cadre reconstruit ; le temps que cela prend.
+//      reste dans les réglages, sans barre « Enregistrer », sans cadre reconstruit ; le temps que cela prend ;
+//   4. ce que GFS dit à l'app (contrats 5.4, point 15, choix du porteur le 24/11) : l'appel `section`, posté depuis le cadre de la vraie Publipostage+ comme le ferait son lien avec GFS,
+//      rend l'identifiant de la section de CE GFS, et la grille qui la pilote est celle de sa page : de quoi lever l'ambiguïté. Aucune marque ne reste, aucune barre, aucun cadre reconstruit.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 //   REPO_DIR=<dépôt> node lab-server.mjs &   puis   REPO_DIR=<dépôt> node run-pp-vue-ambigue.mjs
 import { startLab } from './lab-setup.mjs';
@@ -40,6 +42,20 @@ const sections = frame => frame.evaluate(async () => {
 });
 const appFrame = () => page.frames().find(f => /^http:\/\/127\.0\.0\.1:8911\/prototype\/apps\/publipostage\//.test(f.url()));
 const link = (list, id) => (list.find(item => item.id === id) || {}).link;
+// L'appel `section`, tel que le cadre d'une app le poste à GFS (l'enveloppe de 5.1) ; la réponse revient par un message du cadre parent.
+const askSection = app => app.evaluate(() => new Promise(resolve => {
+  const id = 9000 + Math.floor(Math.random() * 900);
+  const timer = setTimeout(() => { removeEventListener('message', on); resolve({ delai: true }); }, 15000);
+  function on(event) {
+    const data = event.data;
+    if (!data || data.gfs !== 0 || data.id !== id || (data.type !== 'reponse' && data.type !== 'erreur')) return;
+    clearTimeout(timer);
+    removeEventListener('message', on);
+    resolve(data.type === 'reponse' ? data.data : { erreur: data.code });
+  }
+  addEventListener('message', on);
+  window.parent.postMessage({ gfs: 0, type: 'appel', id, nom: 'section' }, '*');
+}));
 
 say('--- 1. première page : GFS, relié à la grille de sa page, et Publipostage+ ouverte dedans');
 const first = lab.frame;
@@ -97,6 +113,17 @@ const seenB = await linked(ppB);
 check('Publipostage+ du deuxième GFS : « ambiguous » (« plusieurs widgets de cette table ont la même adresse que lui »)', seenB.found && seenB.found.unreadable === 'ambiguous', seenB);
 check('ce que Grist lui dit ne la départage pas : sa section est « reliée », comme l\'autre', seenB.state === 'linked', seenB.state);
 await lab.shotPanel(run, '2-pp-deuxieme-gfs', second);
+await lab.forgetActions();
+const calledB = await askSection(ppB);
+check('l\'appel `section` de la Publipostage+ du deuxième GFS rend la section de CE GFS', calledB.id === B && Object.keys(calledB).join() === 'id', calledB);
+{
+  const after = await sections(second);
+  check('la grille qui pilote cette section est celle de sa page', link(after, calledB.id) === gridB, after.map(({ id, link: l }) => ({ id, link: l })));
+  check('aucune marque ne reste, aucune barre « Enregistrer »', after.every(item => !(item.widgetOptions && 'gfs.sonde' in item.widgetOptions)) && (await saveBars()) === 0);
+  const again = await askSection(ppB);
+  const writes2 = (await lab.actions()).filter(line => /^UpdateRecord _grist_Views_section/.test(line)).length;
+  check('une deuxième demande rend la même réponse sans écrire de plus', again.id === B && writes2 === 4, { again, writes2 });
+}
 
 say('--- 4. ce que GFS sait de sa propre section');
 // `ViewOptions.section()` : la recherche que le courtier fait déjà (réglages d'une app, lien « Select by »), avec les mêmes arguments que le contrôleur (js/controller.js).
@@ -127,6 +154,11 @@ if (firstAgain) {
   check('le premier GFS retrouve sa section', answerA.found.id === A, answerA);
   list = await sections(firstAgain);
   check('et la grille de sa page', link(list, answerA.found.id) === gridA, list.map(({ id, link: l }) => ({ id, link: l })));
+  const ppA2 = await lab.openApp('publipostage', /\/apps\/publipostage\//, firstAgain);
+  await ppA2.waitForFunction(() => { const e = document.getElementById('status-msg'); return Boolean(e && e.textContent); }, null, { timeout: 30000 }).catch(() => {});
+  await page.waitForTimeout(1500);
+  const calledA = await askSection(ppA2);
+  check('l\'appel `section` de la Publipostage+ du premier GFS rend la sienne, pas celle de l\'autre page', calledA.id === A, calledA);
 } else say('CONSTAT le premier GFS n\'a pas rechargé après le changement de page', page.frames().map(f => f.url()).filter(u => /8911/.test(u)));
 
 say('--- 6. une troisième page, avec un GFS NON relié (`grille=0` : GFS ne pose pas le lien) : le cas où Grist suffit à départager');
@@ -156,6 +188,8 @@ await page.waitForTimeout(1500);
 const seenC = await linked(ppC);
 check('Publipostage+ du troisième GFS : « ambiguous » aussi (la table a des GFS reliés à des grilles et un qui ne l\'est pas)', seenC.found && seenC.found.unreadable === 'ambiguous', seenC);
 check('mais Grist lui dit que SA section n\'est pas reliée : « unlinked » départage ce cas', seenC.state === 'unlinked', seenC.state);
+const calledC = await askSection(ppC);
+check('l\'appel `section` du troisième GFS (non relié) rend la sienne parmi trois', calledC.id === C, calledC);
 const answerC = await own(third);
 check('le troisième GFS retrouve sa section parmi trois candidates', answerC.found.id === C, answerC);
 list = await sections(third);

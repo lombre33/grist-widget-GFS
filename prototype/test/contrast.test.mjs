@@ -38,6 +38,7 @@ const PAIRS = [
   ['--danger-ink', '--surface'], ['--danger-ink', '--danger-soft'],
   ['--t-doc-ink', '--t-doc-soft'], ['--t-doc-ink', '--surface'], ['--t-grid-ink', '--t-grid-soft'], ['--t-grid-ink', '--surface'],
   ['--t-slides-ink', '--t-slides-soft'], ['--t-slides-ink', '--surface'], ['--t-pdf-ink', '--t-pdf-soft'], ['--t-pdf-ink', '--surface'],
+  ['--t-email-ink', '--t-email-soft'], ['--t-email-ink', '--surface'],
 ];
 
 for (const [name, set] of [['clair', light], ['sombre (réglage de Grist)', dark], ['sombre (système)', darkSystem]]) {

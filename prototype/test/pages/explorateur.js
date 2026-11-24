@@ -401,7 +401,7 @@ async function mount() {
   const explorer = new Explorer({
     container: stage, i18n, locale, now: () => new Date(), appName: () => 'Publipostage+', received,
     typeLabel: file => (file.received ? received.typeLabel(file) : baseLabel(file)),
-    lockOf: file => (file.received ? received.lockOf(file) : (file.type === 'macro' ? { text: i18n.t('ex.lockedExtension', { name: 'Macro-modèles' }) } : null)), newTypes: () => [], importTypes: () => window.__importTypes || [], canClose: () => window.__canClose !== false,
+    lockOf: file => (file.received ? received.lockOf(file) : (file.name === 'Autre format' ? { text: i18n.t('ex.lockedExtension', { name: 'Macro-modèles' }) } : null)), newTypes: () => [], importTypes: () => window.__importTypes || [], canClose: () => window.__canClose !== false,
     notice: text => window.__notices.push(text), settings: () => settingsItems({ t: i18n.t, language: () => ({ choice: window.__language, grist: language }), onLanguage: value => { window.__language = value; }, onTheme: () => theme.open(),
       langtool: () => ({ shown: window.__langtool, toggle: () => { window.__langtool = !window.__langtool; } }), place, onAbout: () => window.__about(), onDependencies: () => { window.__dependenciesAsked = (window.__dependenciesAsked || 0) + 1; void window.__dependencies(); },
       manage: () => ({ why: null, open: () => { window.__manageFromSettings = (window.__manageFromSettings || 0) + 1; }, notice: text => window.__notices.push(text) }) }),
@@ -462,6 +462,14 @@ async function mount() {
     const more = { id: indexes.map(index => 1000 + index), Nom: indexes.map(index => `Fichier ${at(index)}`), TypeModele: indexes.map(index => ['document', 'presentation', 'grille'][index % 3]), DateModif: indexes.map(index => Math.floor(Date.now() / 1000) - index * 600), ModifiePar: indexes.map(() => 'Service RH') };
     const nobody = { id: [], Utilisateur: [], ModeleId: [], Dossier: [], Epingle: [] }; // aucun rangement : tous à la racine ; `applyFiling` pose aussi ce que la recherche lit (`file.search`)
     live.push(...applyFiling(readFiles(manifest, spec, more, indexes.map(index => 1000 + (index % 97) * 5000)), readFiling(spec.rangement, nobody, '')));
+    show();
+  };
+  // Un e-mail et un macro-modèle de plus (décision du 24/11 : le violet de l'e-mail, les trois feuilles du macro-modèle ; test/icones-firefox.mjs), lus par le vrai modèle avec le vrai manifeste de GFS ;
+  // `__reset` les retire. « Autre format » est aussi un macro-modèle, mais grisé : son icône reste au trait d'une seule couleur.
+  window.__withMailAndMacro = () => {
+    const more = { id: [2001, 2002], Nom: ['Courrier de relance', 'Mailing annuel'], TypeModele: ['email', 'macro'], DateModif: [Math.floor(Date.now() / 1000) - 7200, Math.floor(Date.now() / 1000) - 9000], ModifiePar: ['Service RH', 'Service RH'] };
+    const nobody = { id: [], Utilisateur: [], ModeleId: [], Dossier: [], Epingle: [] };
+    live.push(...applyFiling(readFiles(manifest, spec, more, [4200, 9100]), readFiling(spec.rangement, nobody, '')));
     show();
   };
   // Le fichier gardé qui porte déjà le nom, tel que GFS le décrit (date et auteur) ; la copie prendrait « (1) ».

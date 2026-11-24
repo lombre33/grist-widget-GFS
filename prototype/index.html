@@ -11,9 +11,9 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-oysuFP2zF804l5lbDY40+1smFl+11YKL/WJgZ+hmKw0='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
-<link rel="stylesheet" href="css/gfs.css?v=ee3d1e7845">
-<link rel="stylesheet" href="css/explorer.css?v=a1c7636359">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-o7gOoow+TRqYnabyEQ4r/xLvOX2qJStXiNbZm28Wu0E='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<link rel="stylesheet" href="css/gfs.css?v=ab090ade63">
+<link rel="stylesheet" href="css/explorer.css?v=1e388f523b">
 <link rel="stylesheet" href="css/modules.css?v=e3953e3252">
 <link rel="stylesheet" href="css/templates.css?v=48d8b4f22f">
 <link rel="stylesheet" href="css/rights.css?v=bece849c11">
@@ -111,7 +111,7 @@
     "./js/explorer/explorer-keyboard.js": "./js/explorer/explorer-keyboard.js?v=263046c444",
     "./js/explorer/explorer-keys.js": "./js/explorer/explorer-keys.js?v=15a584580c",
     "./js/explorer/explorer-menus.js": "./js/explorer/explorer-menus.js?v=d78436ab2d",
-    "./js/explorer/explorer-model.js": "./js/explorer/explorer-model.js?v=62a428ae2f",
+    "./js/explorer/explorer-model.js": "./js/explorer/explorer-model.js?v=6e69056aa7",
     "./js/explorer/explorer-pj.js": "./js/explorer/explorer-pj.js?v=a53d75eda6",
     "./js/explorer/explorer-removal.js": "./js/explorer/explorer-removal.js?v=0d645f72be",
     "./js/explorer/explorer-sql.js": "./js/explorer/explorer-sql.js?v=9534e5498d",
@@ -211,7 +211,7 @@
     "./js/shell/settings-menu.js": "./js/shell/settings-menu.js?v=b305d1ff04",
     "./js/shell/stored-choice.js": "./js/shell/stored-choice.js?v=08d02d1bfe",
     "./js/theme/ambiance-forme.js": "./js/theme/ambiance-forme.js?v=9945157b3b",
-    "./js/theme/ambiance-types.js": "./js/theme/ambiance-types.js?v=deef46c542",
+    "./js/theme/ambiance-types.js": "./js/theme/ambiance-types.js?v=5ecb4f8640",
     "./js/theme/ambiance.js": "./js/theme/ambiance.js?v=6608543445",
     "./js/theme/oklch.js": "./js/theme/oklch.js?v=7ef04e0793",
     "./js/theme/theme-apply.js": "./js/theme/theme-apply.js?v=01cd2ffc43",
@@ -220,7 +220,7 @@
     "./js/theme/theme.js": "./js/theme/theme.js?v=e97475679a",
     "./js/ui/ask-window.js": "./js/ui/ask-window.js?v=bc29f4db59",
     "./js/ui/dom.js": "./js/ui/dom.js?v=8a85959bdc",
-    "./js/ui/icons.js": "./js/ui/icons.js?v=4ffc4d29fd",
+    "./js/ui/icons.js": "./js/ui/icons.js?v=46b2ec5c12",
     "./js/ui/layers.js": "./js/ui/layers.js?v=8fb5891dcf",
     "./js/ui/menu.js": "./js/ui/menu.js?v=727d1dc390",
     "./js/ui/modal.js": "./js/ui/modal.js?v=afe775a169",
@@ -352,7 +352,7 @@
 <link rel="modulepreload" href="./js/theme/theme-apply.js?v=01cd2ffc43">
 <link rel="modulepreload" href="./js/theme/theme-window.js?v=be3e075a12">
 <link rel="modulepreload" href="./js/broker/app-storage.js?v=d24c6008f9">
-<link rel="modulepreload" href="./js/ui/icons.js?v=4ffc4d29fd">
+<link rel="modulepreload" href="./js/ui/icons.js?v=46b2ec5c12">
 <link rel="modulepreload" href="./js/explorer/explorer-data.js?v=f486b3a547">
 <link rel="modulepreload" href="./js/explorer/explorer-sql.js?v=9534e5498d">
 <link rel="modulepreload" href="./js/broker/links.js?v=cbae3923c2">
@@ -422,11 +422,11 @@
 <link rel="modulepreload" href="./js/theme/ambiance.js?v=6608543445">
 <link rel="modulepreload" href="./js/theme/oklch.js?v=7ef04e0793">
 <link rel="modulepreload" href="./js/theme/ambiance-forme.js?v=9945157b3b">
-<link rel="modulepreload" href="./js/theme/ambiance-types.js?v=deef46c542">
+<link rel="modulepreload" href="./js/theme/ambiance-types.js?v=5ecb4f8640">
 <link rel="modulepreload" href="./js/ui/dom.js?v=8a85959bdc">
 <link rel="modulepreload" href="./js/ui/modal.js?v=afe775a169">
 <link rel="modulepreload" href="./js/theme/theme-color.js?v=c94f777ad7">
-<link rel="modulepreload" href="./js/explorer/explorer-model.js?v=62a428ae2f">
+<link rel="modulepreload" href="./js/explorer/explorer-model.js?v=6e69056aa7">
 <link rel="modulepreload" href="./js/files/gfs-trash.js?v=8f7fdba21e">
 <link rel="modulepreload" href="./js/weight/weight.js?v=e7a9477391">
 <link rel="modulepreload" href="./js/sharing/spaces-filing.js?v=11c792e6f9">

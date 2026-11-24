@@ -126,10 +126,10 @@ test('couleurs de type : le texte tient 4,5:1 et l\'icône 3:1 sur les fonds de 
   assert.deepEqual(failures, []);
 });
 
-test('couleurs de type : l\'ambiance d\'origine dit ce que css/gfs.css dit (le PDF compris), clair et sombre', () => {
+test('couleurs de type : l\'ambiance d\'origine dit ce que css/gfs.css dit (le PDF et l\'e-mail compris), clair et sombre', () => {
   for (const mode of MODES) {
     const tokens = typeTokens('defaut', mode);
-    assert.equal(Object.keys(tokens).length, 16, mode);
+    assert.equal(Object.keys(tokens).length, 20, mode);
     for (const [name, value] of Object.entries(tokens)) assert.equal(charter[mode][name], value, `${mode} ${name}`);
   }
 });
@@ -322,7 +322,7 @@ test('css/gfs.css : en accessibilité renforcée, le texte d\'état et de type p
   assert.ok(rule > CSS.gfs.indexOf(':root:not([data-grist-appearance="light"]) {'), 'après le bloc sombre du système');
   const block = CSS.gfs.slice(CSS.gfs.indexOf('{', rule) + 1, CSS.gfs.indexOf('}', rule));
   const tokens = Object.fromEntries([...block.matchAll(/(--[a-z-]+):\s*([^;]+);/g)].map(([, name, value]) => [name, value.trim()]));
-  assert.deepEqual(Object.keys(tokens).sort(), [...FIXED, ...TYPES.map(type => `--t-${type}-ink`)].sort(), 'le texte d\'état et celui des quatre types : les couleurs que l\'ambiance ne règle pas à 7:1');
+  assert.deepEqual(Object.keys(tokens).sort(), [...FIXED, ...TYPES.map(type => `--t-${type}-ink`)].sort(), 'le texte d\'état et celui des cinq types : les couleurs que l\'ambiance ne règle pas à 7:1');
   for (const value of Object.values(tokens)) assert.equal(value, 'var(--text)');
 });
 

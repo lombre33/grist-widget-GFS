@@ -111,7 +111,7 @@ Slides+ (`lombre33/SlidesPlus`) n'est pas une app de GFS : les diapositives devi
 | Limiter le nombre de tables créées dans le document | 08/10 | Une ligne réservée d'une table existante avant une table de plus |
 | Reprendre le code, ne pas dupliquer ; une refonte est acceptée si elle évite des copies | 08/10 et 12/10 | Kit commun |
 | Charte Grist Factory : monochrome, un seul bleu d'accent, police du système, grisé jamais masqué, panneau de 700 × 400, français et anglais dans le même lot | 18/09 au 12/10 | Section 3.4 et `contexte/charte-ui-ux-grist-factory.md` |
-| Couleurs par type, dans l'explorateur seulement : document bleu, grille vert, présentation orange ; **le PDF est rouge, et ces quatre couleurs comme le trait des icônes de type suivent l'ambiance** (la règle « elles ne changent jamais d'une ambiance à l'autre » est levée) | 12/10, 04/11 | Section 6.5 |
+| Couleurs par type, dans l'explorateur seulement : document bleu, grille vert, présentation orange ; **le PDF est rouge, et ces quatre couleurs comme le trait des icônes de type suivent l'ambiance** (la règle « elles ne changent jamais d'une ambiance à l'autre » est levée) ; **l'e-mail est violet, le macro-modèle a trois feuilles** (bleu, vert, orange) | 12/10, 04/11, 24/11 | Section 6.5 |
 | Notes = un document ; diapositives d'abord ; PowerPoint précis et OnlyOffice libre « très importants » | 12/10 | Extensions de Publipostage+ ; cadres libres avant PowerPoint |
 | Barre d'outils de Publipostage+ gelée : aucun bouton de plus | 12/10 | Dans Publipostage+, l'entrée de l'explorateur est « Organiser » |
 | **Isolement : chaque app dans un sous-cadre sans `allow-same-origin`** ; un domaine par app seulement si un audit l'exige. Critères du porteur : interopérabilité par GFS, bonne performance, code clair et modulaire, sécurité maximale | 16/10 | Rapport de l'étape 2, section 3 ; trois prix, chacun à un seul endroit : stockage par le kit, impression de Publipostage+ par sa propre page, lien e-mail dans un nouvel onglet |
@@ -738,7 +738,7 @@ enregistrée par l'autre app.
 
 ### 6.5 Couleurs par type (explorateur seulement)
 
-Le tableau donne l'ambiance d'origine (Grist Factory) ; chaque autre ambiance accorde ces quatre couleurs à son fond (plus bas).
+Le tableau donne l'ambiance d'origine (Grist Factory) ; chaque autre ambiance accorde ces couleurs à son fond (plus bas).
 
 | Type | Clair : icône · texte · fond de pastille · trait | Sombre : icône · texte · fond de pastille · trait |
 |---|---|---|
@@ -746,7 +746,9 @@ Le tableau donne l'ambiance d'origine (Grist Factory) ; chaque autre ambiance ac
 | Grille | `#2e7d32` · `#1f6a24` · `#e7f4e8` · `#bfe0c2` | `#6cc57a` · `#8fd694` · `#16301a` · `#2c5a31` |
 | Présentation | `#c7600a` · `#9a4a05` · `#fff0e0` · `#f6cc9d` | `#f0933e` · `#ffb06b` · `#3a2412` · `#6b4420` |
 | PDF (gardé par GFS ; rouge carmin, décision du 04/11) | `#d32c4d` · `#af1a3c` · `#ffebeb` · `#f9cacb` | `#f37984` · `#ff989f` · `#422426` · `#733e42` |
-| E-mail, macro-modèle, et les types des autres apps | neutres | neutres |
+| E-mail (violet, décision du 24/11) | `#8c57c9` · `#7243a5` · `#f3edfe` · `#decef8` | `#b68cf1` · `#c8a5fb` · `#312741` · `#574473` |
+| Macro-modèle (trois feuilles, décision du 24/11) | l'icône prend le bleu du document, le vert de la grille et l'orange de la présentation ; texte et pastille neutres | idem |
+| Les types des autres apps | neutres | neutres |
 
 - Seulement dans l'explorateur : icône de la ligne, pastille du type, vignettes, barre d'information, menu « Nouveau »,
   filtre de type. L'éditeur et le sélecteur de modèle de Publipostage+ restent monochromes.
@@ -763,6 +765,11 @@ Le tableau donne l'ambiance d'origine (Grist Factory) ; chaque autre ambiance ac
   (contrats 5.2, point 10), et la règle d'une couleur qui ne porte jamais seule le type tient pour chaque ambiance. **Avec l'accessibilité renforcée** (04/11), la page prend les couleurs d'origine de ce tableau (le message a l'`id`
   `renforcee`, sans couleur de type propre), le trait des icônes est celui d'origine, sans remplissage ni halo, et le texte du type et de la pastille est celui de la page (7:1) : la pastille est unie, à contour de 2 px, et le type se dit
   par l'icône colorée et par le mot ; l'icône tient 3:1 sur les fonds de chaque ambiance renforcée et de toute couleur libre (`test/ambiance.test.mjs`).
+- **L'e-mail est violet et le macro-modèle a trois feuilles** (décision du porteur, 24/11, « Oui, les deux », après la demande de Publipostage+ qui voulait les mêmes icônes dans l'explorateur que dans l'app) : le violet est la
+  cinquième famille (`email`, teinte OKLCH 300° à 315°, à l'écart du bleu du document, vers 250° à 265°, et du carmin du PDF), avec ses quatre jetons par ambiance, en clair et en sombre, comme les quatre autres. Le macro-modèle
+  n'a pas de couleur à lui : son icône est faite de trois feuilles empilées, peintes du bleu du document, du vert de la grille et de l'orange de la présentation **de l'ambiance** (variables `--mc-1` à `--mc-3`, `css/explorer.css`) ;
+  sa pastille et son texte restent neutres. Une ligne grisée garde une icône d'une seule couleur (le cadenas ; ailleurs, le trait au repos), et l'accessibilité renforcée garde les couleurs d'origine, le texte du type à 7:1.
+  Le champ `couleur` du manifeste dit `email` ou `macro` (Publipostage+ les déclare).
 - Contrastes mesurés pour les cinq ambiances et pour toute couleur libre : texte de type à 4,57:1 au moins, icône à 3,18:1 au moins (`test/ambiance.test.mjs`), et dans un vrai Grist, texte par texte (`labo/run-theme.mjs`).
 - Couleur des types des autres apps (formulaire, automatisme, rapport BI, tableau de bord, projet) : neutre tant que le porteur n'en
   demande pas (question 8, section 12). Les jetons se déclarent dans le kit, jamais en dur.

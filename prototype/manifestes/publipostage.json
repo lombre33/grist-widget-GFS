@@ -54,8 +54,8 @@
       { "valeur": "document", "nom": { "fr": "Document", "en": "Document" }, "icone": "doc", "couleur": "document" },
       { "valeur": "grille", "nom": { "fr": "Grille", "en": "Grid" }, "icone": "grid", "couleur": "grille" },
       { "valeur": "presentation", "nom": { "fr": "Présentation", "en": "Presentation" }, "icone": "slides", "couleur": "presentation", "extension": "diapositives" },
-      { "valeur": "email", "nom": { "fr": "E-mail", "en": "Email" }, "icone": "mail" },
-      { "valeur": "macro", "nom": { "fr": "Macro-modèle", "en": "Macro template" }, "icone": "macro" }
+      { "valeur": "email", "nom": { "fr": "E-mail", "en": "Email" }, "icone": "mail", "couleur": "email" },
+      { "valeur": "macro", "nom": { "fr": "Macro-modèle", "en": "Macro template" }, "icone": "macro", "couleur": "macro" }
     ],
     "exclure": { "TypeModele": ["reglages"] },
     "rangement": { "table": "Publipostage_PreferencesModeles", "utilisateur": "Utilisateur", "fichier": "ModeleId", "dossier": "Dossier", "epingle": "Epingle", "ecriture": { "dossiers": 0 } },

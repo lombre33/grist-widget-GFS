@@ -39,7 +39,7 @@ test('readFiles : la ligne réservée est exclue, le type vide devient le type p
   const [first, mail, unknown, noName, grid] = list;
   assert.equal(first.type, 'document');
   assert.equal(first.family, 'doc');
-  assert.equal(mail.family, '', 'e-mail : neutre');
+  assert.equal(mail.family, 'email', 'e-mail : le violet (décision du porteur, 24/11)');
   assert.equal(unknown.known, false);
   assert.equal(unknown.typeInfo, null);
   assert.equal(unknown.family, '');
@@ -49,8 +49,8 @@ test('readFiles : la ligne réservée est exclue, le type vide devient le type p
 });
 
 test('familyOf : le champ `couleur` du manifeste dit la famille de la charte (cahier 6.5) ; tout autre mot, et jamais un mot de la chaîne de prototypes, est neutre', () => {
-  assert.deepEqual(['document', 'grille', 'presentation', 'pdf'].map(familyOf), ['doc', 'grid', 'slides', 'pdf']);
-  assert.deepEqual(FAMILY_NAMES, ['doc', 'grid', 'slides', 'pdf']);
+  assert.deepEqual(['document', 'grille', 'presentation', 'pdf', 'email', 'macro'].map(familyOf), ['doc', 'grid', 'slides', 'pdf', 'email', 'macro']);
+  assert.deepEqual(FAMILY_NAMES, ['doc', 'grid', 'slides', 'pdf', 'email', 'macro']);
   for (const odd of ['neutre', '', 'rouge', 'DOCUMENT', undefined, null, 3, 'constructor', 'toString', '__proto__', 'hasOwnProperty']) assert.equal(familyOf(odd), '', String(odd));
 });
 

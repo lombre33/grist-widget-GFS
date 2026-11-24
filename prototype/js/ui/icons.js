@@ -10,7 +10,11 @@ const ICONS = {
   // Un PDF gardé par GFS : la page, et les lignes de ce qu'elle porte (le mot « PDF » l'accompagne toujours).
   pdf: '<path d="M7 2h7l4 4v16H7z"/><path d="M14 2v4h4"/><path d="M10 12h5M10 15.5h5M10 19h3"/>',
   mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M3 6l9 7 9-7"/>',
-  macro: '<rect x="2" y="6" width="14" height="16" rx="1.5"/><path d="M7 2h11a1.5 1.5 0 0 1 1.5 1.5V18"/>',
+  // Un macro-modèle : trois feuilles empilées, celles d'un document, d'une grille et d'une présentation (décision du porteur, 24/11). Dans
+  // l'explorateur, une ligne de cette famille les peint du bleu, du vert et de l'orange du document, de la grille et de la présentation (variables
+  // `--mc-*`, css/explorer.css) ; ailleurs, et grisée, elle est au trait, d'une seule couleur.
+  macro: '<rect class="mc-1" x="2" y="10" width="12" height="12" rx="1.5"/><path class="mc-2" d="M6 6.5h9.5A1.5 1.5 0 0 1 17 8v11"/>'
+    + '<path class="mc-3" d="M10 3h9a1.5 1.5 0 0 1 1.5 1.5V15"/>',
   grid: '<rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 9.3h18M3 14.6h18M9 4v16M15 4v16"/>',
   folder: '<path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/>',
   // Créer un dossier : le dossier et un « + » (l'article « Nouveau dossier » du menu « Nouveau »).

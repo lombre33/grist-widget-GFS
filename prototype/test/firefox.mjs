@@ -123,6 +123,13 @@ export class Page {
     await delay(60);
   }
 
+  // Une capture PNG (un Buffer) du rectangle `{ x, y, width, height }` de la page, en pixels CSS : ce que Firefox PEINT, que le DOM ne dit pas d'un trait dessiné dans un `<use>`. Elle sort au zoom
+  // réglé par `view` (à 3, un trait de 1,8 px fait 5 pixels de large : son cœur a la couleur du trait, sans mélange).
+  async shot({ x, y, width, height }) {
+    const reply = await this.#bidi.send('browsingContext.captureScreenshot', { context: this.#context, origin: 'viewport', clip: { type: 'box', x, y, width, height } });
+    return Buffer.from(reply.data, 'base64');
+  }
+
   // `fn` s'exécute dans la page (elle ne voit rien du module qui l'écrit) ; `args` et le résultat passent en JSON.
   run(fn, ...args) { return this.#evaluate(this.#context, fn, args); }
 

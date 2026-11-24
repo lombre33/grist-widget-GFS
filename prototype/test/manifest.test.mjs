@@ -7,6 +7,7 @@ import { validateManifest, isSafePath, loadAll, label, listCapabilities } from '
 import { CATALOGUE } from '../js/apps/catalogue.js';
 import { makePolicy, checkBatch, tokenOptions } from '../js/broker/filter.js';
 import { iconNames } from '../js/ui/icons.js';
+import { familyOf } from '../js/explorer/explorer-model.js';
 import { publipostage, automation, form, bi, catalogue, readJson, ROOT } from './helpers.mjs';
 
 const bad = (mutate, others) => { const m = publipostage(); mutate(m); const r = validateManifest(m, others); assert.equal(r.ok, false); return r.errors.join(' | '); };
@@ -285,6 +286,15 @@ test('contrats 2.4 et 2.6 : les renvois du manifeste de Publipostage+ se recoupe
   const slides = types.find(item => item.valeur === 'presentation');
   assert.deepEqual([slides.couleur, slides.icone, slides.extension], ['presentation', 'slides', 'diapositives']);
   assert.ok(m.actions.ouvrir.includes('presentation'), 'le double-clic d\'une présentation ouvre l\'app (contrats 5.4)');
+});
+
+// Décision du porteur, 24/11 (« Oui, les deux ») : l'e-mail a sa couleur (le violet, cinquième famille) et le macro-modèle ses trois feuilles ; chaque type de Publipostage+ dit donc la sienne.
+test('charte 6.5 : chaque type de Publipostage+ dit sa famille de couleur, l\'e-mail le violet et le macro-modèle ses trois feuilles', () => {
+  const types = publipostage().fichiers[0].types;
+  assert.deepEqual(types.map(item => [item.valeur, item.couleur]),
+    [['document', 'document'], ['grille', 'grille'], ['presentation', 'presentation'], ['email', 'email'], ['macro', 'macro']]);
+  assert.deepEqual(types.map(item => familyOf(item.couleur)), ['doc', 'grid', 'slides', 'email', 'macro']);
+  assert.deepEqual(types.filter(item => item.valeur === 'email' || item.valeur === 'macro').map(item => item.icone), ['mail', 'macro']);
 });
 
 // Form+ (consigne 007) : l'app est dans le catalogue, son type de fichier est « Formulaire », et sa déclaration ne nomme rien de ce que le

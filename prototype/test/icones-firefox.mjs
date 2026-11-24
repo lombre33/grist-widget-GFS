@@ -7,12 +7,14 @@
 // `stroke-width` (`calc(1.8 * var(--ic-k))` y tombe à 1 px sans rien dire) ; le trait s'écrit donc en longueur (`calc(1.8px * var(--ic-k))`).
 import { AMBIANCES, DEFAULT_AMBIANCE } from '../js/theme/ambiance.js';
 import { typeTokens } from '../js/theme/ambiance-types.js';
-import { STROKE, infoProblems, readIcons, rgbOf, rowProblems } from '../labo/mesures-icones.mjs';
+import { STROKE, infoProblems, paintProblems, readIcons, rgbOf, rowProblems } from '../labo/mesures-icones.mjs';
+import { countNear, decodePng } from './png-pixels.mjs';
 
 const MODES = [['light', 'clair'], ['dark', 'sombre']];
 // Les fichiers de la page d'essai (test/pages/explorateur.js) : un par famille, un fichier grisé (son extension est éteinte), un dossier ; `fam` : la famille que le modèle doit leur donner.
 const SAMPLES = [
   { name: 'Convocation', fam: 'doc' }, { name: 'Grille de suivi', fam: 'grid' }, { name: 'Main', fam: 'slides' }, { name: 'Attestation.pdf', fam: 'pdf' },
+  { name: 'Courrier de relance', fam: 'email' }, { name: 'Mailing annuel', fam: 'macro' }, // le violet de l'e-mail et les trois feuilles du macro-modèle (décision du 24/11)
   { name: 'Autre format', fam: null, locked: true }, { name: 'Formation', fam: null, folder: true },
 ];
 
@@ -35,6 +37,14 @@ const themeRowCenter = () => { const row = document.querySelectorAll('.menu:not(
 
 // L'ambiance posée sur la page, comme la lit la feuille de style : `data-ambiance`, ou null pour l'ambiance d'origine.
 const posed = id => { window.__ambiance(id); return document.documentElement.getAttribute('data-ambiance'); };
+
+// Le rectangle de l'icône du macro-modèle « Mailing annuel » dans la liste, amené à l'écran, avec une marge d'un pixel.
+const macroIconBox = () => {
+  const row = [...document.querySelectorAll('.ls-row')].find(item => item.querySelector('.t').textContent === 'Mailing annuel');
+  row.scrollIntoView({ block: 'nearest' });
+  const box = row.querySelector('.nm .ic').getBoundingClientRect();
+  return { x: Math.floor(box.left) - 1, y: Math.floor(box.top) - 1, width: Math.ceil(box.width) + 2, height: Math.ceil(box.height) + 2 };
+};
 
 // La fenêtre « Thème » : l'identifiant de chaque vignette et la couleur de fond de sa pastille « document ».
 function readThemeWindow() {
@@ -90,6 +100,22 @@ async function strokeProblems(page) {
   return found;
 }
 
+// Ce que Firefox PEINT pour l'icône du macro-modèle (une capture au zoom 3, décodée) : ses trois feuilles ont chacune la couleur du jeton du document, de la grille et de la présentation de l'ambiance,
+// en clair et en sombre. Les styles calculés ne le disent pas : les feuilles sont dans un `<use>`, que le DOM n'ouvre pas.
+async function sheetPaintProblems(page) {
+  const found = [];
+  for (const [appearance, mode] of MODES) {
+    await page.view({ width: 700, scale: 3, mode: appearance });
+    for (const id of AMBIANCES.filter(item => STROKE[item])) {
+      await page.run(posed, id);
+      const box = await page.run(macroIconBox);
+      found.push(...paintProblems(decodePng(await page.shot(box)), { id, mode, tag: `macro-modèle peint, ${id}, ${mode}` }, countNear));
+    }
+    await page.run(posed, DEFAULT_AMBIANCE);
+  }
+  return found;
+}
+
 // La fenêtre « Thème » ouverte quand la page porte Pop : ses vignettes d'origine, de Papier et de Brut (pastille « document » à fond doux) gardent les couleurs de type de leur ambiance, pas celles de la page.
 async function themeWindowProblems(page) {
   const found = [];
@@ -112,8 +138,8 @@ async function themeWindowProblems(page) {
 
 export async function iconProblems(page) {
   await page.view({ width: 700, scale: 1, mode: 'light' });
-  await page.run(() => { window.__reset(); window.__withPdf(); });
-  const problems = [...await strokeProblems(page), ...await themeWindowProblems(page)];
+  await page.run(() => { window.__reset(); window.__withPdf(); window.__withMailAndMacro(); });
+  const problems = [...await strokeProblems(page), ...await sheetPaintProblems(page), ...await themeWindowProblems(page)];
   await page.run(() => window.__reset()); // le PDF, la sélection et l'ambiance repartent comme au début
   return problems;
 }

@@ -13,7 +13,10 @@ export const STROKE = {
 };
 export const BASE = { list: 1.8, tiles: 1.4, info: 1.8 }; // l'épaisseur d'origine du trait : en liste et dans la barre d'information 1,8, en vignette 1,4
 export const FILL_ALPHA = 0.17; // le remplissage doux de Pop : 17 % de la couleur de l'icône
-export const FAMILY_TOKEN = { doc: '--t-doc', grid: '--t-grid', slides: '--t-slides', pdf: '--t-pdf' }; // l'attribut `data-fam` d'une ligne -> son jeton de couleur d'icône
+export const FAMILY_TOKEN = { doc: '--t-doc', grid: '--t-grid', slides: '--t-slides', pdf: '--t-pdf', email: '--t-email' }; // l'attribut `data-fam` d'une ligne -> son jeton de couleur d'icône
+// Le macro-modèle (décision du 24/11) n'a pas de jeton à lui : ses trois feuilles prennent, de devant en arrière, la couleur du document, de la grille et de la présentation (variables `--mc-1` à `--mc-3`).
+export const SHEET_VARIABLES = ['--mc-1', '--mc-2', '--mc-3'];
+export const SHEET_TOKENS = ['--t-doc', '--t-grid', '--t-slides'];
 
 // ---------- lire une couleur que le navigateur a calculée ----------
 
@@ -37,7 +40,8 @@ export function readIcons({ display }) {
   const look = svg => {
     if (!svg) return null;
     const style = getComputedStyle(svg);
-    return { color: style.color, width: parseFloat(style.strokeWidth), join: style.strokeLinejoin, cap: style.strokeLinecap, fill: style.fill, filter: style.filter };
+    return { color: style.color, width: parseFloat(style.strokeWidth), join: style.strokeLinejoin, cap: style.strokeLinecap, fill: style.fill, filter: style.filter,
+      sheets: ['--mc-1', '--mc-2', '--mc-3'].map(name => style.getPropertyValue(name).trim()) };
   };
   const tiles = display === 'tiles';
   const rows = [...document.querySelectorAll(tiles ? '.th' : '.ls-row')].map(node => {
@@ -53,12 +57,35 @@ export function readIcons({ display }) {
 
 // ---------- ce que la mesure constate : des écarts { kind, text } ----------
 
+// Les trois feuilles d'un macro-modèle : les variables que la ligne pose sont les jetons du document, de la grille et de la présentation de l'ambiance (ce que le navigateur peint de chaque feuille se juge
+// sur la capture, `paintProblems`). Le texte et la pastille d'un macro-modèle restent neutres : aucune couleur de type à juger.
+function sheetProblems(row, tokens, note) {
+  SHEET_VARIABLES.forEach((variable, at) => {
+    const value = (row.sheets && row.sheets[at]) || '';
+    if (value.toLowerCase() !== tokens[SHEET_TOKENS[at]]) note('feuille du macro-modèle', `${variable} vaut « ${value} » au lieu de ${tokens[SHEET_TOKENS[at]]} (${SHEET_TOKENS[at]} de l'ambiance)`);
+  });
+}
+
+// Ce que Firefox PEINT pour l'icône d'un macro-modèle (une capture PNG décodée, test/png-pixels.mjs) : chacune des trois feuilles a sa couleur, au moins quelques pixels pleins de la couleur du jeton
+// (le cœur du trait, à fort zoom). Une feuille que le `<use>` ne reçoit pas peindrait la couleur du texte : ce que ni le DOM ni les styles calculés ne voient.
+export function paintProblems(shot, { id, mode, tag }, count) {
+  const tokens = typeTokens(id, mode);
+  const found = [];
+  SHEET_TOKENS.forEach((token, at) => {
+    const rgb = [1, 3, 5].map(from => parseInt(tokens[token].slice(from, from + 2), 16));
+    const painted = count(shot, rgb);
+    if (painted < 3) found.push({ kind: 'icône de type : feuille du macro-modèle non peinte', text: `${tag} : la feuille ${at + 1} n'a que ${painted} pixels de ${tokens[token]} (${token})` });
+  });
+  return found;
+}
+
 // La couleur : celle du tableau pour une ligne de famille (et, en vignette, celle du mot du type) ; un dossier, un fichier grisé ou sans famille n'a aucune couleur de type.
 function colorProblems(row, { tokens, display }, note) {
   if (!row.fam || row.locked || row.folder) {
     if (Object.values(FAMILY_TOKEN).some(token => row.color === rgbOf(tokens[token]))) note('couleur d\'un fichier sans famille', `dessinée ${row.color}, une couleur de type`);
     return;
   }
+  if (row.fam === 'macro') { sheetProblems(row, tokens, note); return; }
   const wanted = rgbOf(tokens[FAMILY_TOKEN[row.fam]]);
   if (row.color !== wanted) note('couleur', `dessinée ${row.color} au lieu de ${wanted} (${FAMILY_TOKEN[row.fam]} de l'ambiance)`);
   if (display !== 'tiles') return;

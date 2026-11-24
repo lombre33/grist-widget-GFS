@@ -3,7 +3,8 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { typeTokens } from '../js/theme/ambiance-types.js';
-import { BASE, STROKE, infoProblems, parseColor, rgbOf, rowProblems } from '../labo/mesures-icones.mjs';
+import { BASE, STROKE, SHEET_TOKENS, infoProblems, paintProblems, parseColor, rgbOf, rowProblems } from '../labo/mesures-icones.mjs';
+import { countNear } from './png-pixels.mjs';
 
 const ctx = (id, mode = 'sombre', display = 'list') => ({ id, mode, display, tag: `${id}, ${mode}` });
 // Une ligne « document » telle que le navigateur la calcule dans l'ambiance `id`.
@@ -73,5 +74,39 @@ describe('mesures-icones : une ligne juste ne dit rien, une ligne fausse est vue
     assert.deepEqual(infoProblems(info, 'doc', ctx('papier', 'clair')), []);
     assert.equal(infoProblems({ ...info, width: 1 }, 'doc', ctx('papier', 'clair')).length, 1);
     assert.equal(infoProblems(null, 'doc', ctx('papier', 'clair'))[0].kind, 'barre d\'information : barre absente');
+  });
+});
+
+// Décision du 24/11 : l'e-mail a son violet, le macro-modèle ses trois feuilles (le bleu, le vert et l'orange du document, de la grille et de la présentation) et une pastille neutre.
+describe('mesures-icones : l\'e-mail violet et le macro-modèle à trois feuilles', () => {
+  // Une ligne lue comme le navigateur la calcule : la couleur de l'icône `color` et, dans Pop, 17 % de cette couleur en remplissage.
+  const row = (id, mode, name, fam, color, changes) => {
+    const [r, g, b] = parseColor(color).rgb;
+    return { ...docRow(id, mode, 'list'), name, fam, color, fill: STROKE[id].fill ? `color(srgb ${r / 255} ${g / 255} ${b / 255} / 0.17)` : 'none', ...changes };
+  };
+  const mail = (id, mode, changes = {}) => row(id, mode, 'Courrier de relance', 'email', rgbOf(typeTokens(id, mode)['--t-email']), changes);
+  const macro = (id, mode, changes = {}) => row(id, mode, 'Mailing annuel', 'macro', 'rgb(90, 99, 112)', { sheets: SHEET_TOKENS.map(token => typeTokens(id, mode)[token]), ...changes });
+
+  test('un e-mail juste ne dit rien ; une autre couleur (le bleu du document) est vue', () => {
+    for (const id of Object.keys(STROKE)) for (const mode of ['clair', 'sombre']) assert.deepEqual(rowProblems(mail(id, mode), ctx(id, mode, 'list')), [], `${id}, ${mode}`);
+    assert.deepEqual(kinds(mail('pop', 'sombre', { color: rgbOf(typeTokens('pop', 'sombre')['--t-doc']) }), ctx('pop')).slice(0, 1), ['couleur']);
+  });
+
+  test('un macro-modèle dont les trois feuilles prennent les jetons de l\'ambiance ne dit rien ; une feuille d\'une autre couleur est vue', () => {
+    for (const id of Object.keys(STROKE)) for (const mode of ['clair', 'sombre']) assert.deepEqual(rowProblems(macro(id, mode), ctx(id, mode, 'list')), [], `${id}, ${mode}`);
+    const wrong = macro('papier', 'clair', { sheets: [typeTokens('papier', 'clair')['--t-doc'], typeTokens('pop', 'clair')['--t-grid'], typeTokens('papier', 'clair')['--t-slides']] });
+    assert.deepEqual(kinds(wrong, ctx('papier', 'clair')), ['feuille du macro-modèle']);
+    assert.deepEqual(kinds(macro('brut', 'sombre', { sheets: ['', '', ''] }), ctx('brut')), ['feuille du macro-modèle', 'feuille du macro-modèle', 'feuille du macro-modèle'], 'des variables absentes : trois écarts');
+  });
+
+  test('ce que Firefox peint : une feuille manquante dans la capture est vue, les trois couleurs présentes ne disent rien', () => {
+    const colors = id => SHEET_TOKENS.map(token => [1, 3, 5].map(from => parseInt(typeTokens(id, 'clair')[token].slice(from, from + 2), 16)));
+    const shot = list => ({ pixels: list.flatMap(rgb => Array.from({ length: 5 }, () => [...rgb, 255])) });
+    const here = { id: 'pop', mode: 'clair', tag: 'pop, clair' };
+    assert.deepEqual(paintProblems(shot(colors('pop')), here, countNear), []);
+    const missing = paintProblems(shot(colors('pop').slice(0, 2)), here, countNear);
+    assert.equal(missing.length, 1);
+    assert.match(missing[0].text, /feuille 3 .*--t-slides/);
+    assert.equal(paintProblems(shot([]), here, countNear).length, 3, 'une capture sans aucune des trois couleurs');
   });
 });

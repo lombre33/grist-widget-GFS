@@ -1,4 +1,4 @@
-// Les couleurs de type de chaque ambiance (décision du porteur, 04/11 : « adapter les icônes des types de fichier aussi au thème », et une icône colorée pour le PDF) : leur forme, leurs teintes, et les
+// Les couleurs de type de chaque ambiance (décision du porteur, 04/11 : « adapter les icônes des types de fichier aussi au thème », et une icône colorée pour le PDF ; 24/11 : un violet pour l'e-mail) : leur forme, leurs teintes, et les
 // règles de l'explorateur qui les lisent. Leur contraste (4,5:1 pour le texte, 3:1 pour l'icône, avec toute couleur libre) et leur accord avec css/gfs.css sont mesurés avec les ambiances (test/ambiance.test.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -6,17 +6,18 @@ import { readFileSync } from 'node:fs';
 import { AMBIANCES } from '../js/theme/ambiance.js';
 import { TYPES, TYPE_TOKENS, typeTokens } from '../js/theme/ambiance-types.js';
 import { hexToOklch, isHex } from '../js/theme/oklch.js';
+import { iconNames } from '../js/ui/icons.js';
 
 const MODES = ['clair', 'sombre'];
 const read = name => readFileSync(new URL(`../css/${name}`, import.meta.url), 'utf8');
 
-test('quatre types, quatre jetons chacun : le document, la grille, la présentation et le PDF', () => {
-  assert.deepEqual(TYPES, ['doc', 'grid', 'slides', 'pdf']);
-  assert.equal(TYPE_TOKENS.length, 16);
+test('cinq types, quatre jetons chacun : le document, la grille, la présentation, le PDF et l\'e-mail', () => {
+  assert.deepEqual(TYPES, ['doc', 'grid', 'slides', 'pdf', 'email']);
+  assert.equal(TYPE_TOKENS.length, 20);
   for (const type of TYPES) for (const part of ['', '-ink', '-soft', '-line']) assert.ok(TYPE_TOKENS.includes(`--t-${type}${part}`), `--t-${type}${part}`);
 });
 
-test('typeTokens : les seize jetons en `#rrggbb` pour chaque ambiance et chaque mode ; une ambiance ou un mode inconnu ne pose rien', () => {
+test('typeTokens : les vingt jetons en `#rrggbb` pour chaque ambiance et chaque mode ; une ambiance ou un mode inconnu ne pose rien', () => {
   for (const id of AMBIANCES) for (const mode of MODES) {
     const tokens = typeTokens(id, mode);
     assert.deepEqual(Object.keys(tokens).sort(), [...TYPE_TOKENS].sort(), `${id} ${mode}`);
@@ -32,11 +33,11 @@ test('typeTokens rend des objets neufs : on ne change pas les couleurs d\'une am
   assert.notEqual(typeTokens('pop', 'clair')['--t-pdf'], '#000000');
 });
 
-// Les quatre familles gardent leur teinte d'une ambiance à l'autre (OKLCH, en degrés) : le bleu, le vert, l'orange et le rouge se reconnaissent partout, seule leur nuance suit l'ambiance.
-const HUES = { doc: [235, 285], grid: [135, 175], slides: [35, 95] };
+// Les cinq familles gardent leur teinte d'une ambiance à l'autre (OKLCH, en degrés) : le bleu, le vert, l'orange, le rouge et le violet se reconnaissent partout, seule leur nuance suit l'ambiance.
+const HUES = { doc: [235, 285], grid: [135, 175], slides: [35, 95], email: [290, 335] };
 const inHues = (type, hue) => (type === 'pdf' ? hue >= 340 || hue <= 45 : hue >= HUES[type][0] && hue <= HUES[type][1]);
 
-test('les quatre familles gardent leur teinte dans chaque ambiance : bleu, vert, orange, rouge', () => {
+test('les cinq familles gardent leur teinte dans chaque ambiance : bleu, vert, orange, rouge, violet', () => {
   const off = [];
   for (const id of AMBIANCES) for (const mode of MODES) {
     const tokens = typeTokens(id, mode);
@@ -52,7 +53,7 @@ test('les quatre familles gardent leur teinte dans chaque ambiance : bleu, vert,
 const lab = hex => { const { L, C, h } = hexToOklch(hex); return [L, C * Math.cos(h * Math.PI / 180), C * Math.sin(h * Math.PI / 180)]; };
 const gap = (a, b) => Math.hypot(...lab(a).map((value, i) => value - lab(b)[i]));
 
-test('les quatre types se distinguent l\'un de l\'autre dans chaque ambiance et chaque mode', () => {
+test('les cinq types se distinguent l\'un de l\'autre dans chaque ambiance et chaque mode', () => {
   const close = [];
   for (const id of AMBIANCES) for (const mode of MODES) {
     const tokens = typeTokens(id, mode);
@@ -86,7 +87,7 @@ test('explorer.css lit une famille par type : la règle `[data-fam]` qui pose le
   }
 });
 
-test('gfs.css dit les seize jetons de type dans ses trois blocs (clair, sombre de Grist, sombre du système)', () => {
+test('gfs.css dit les vingt jetons de type dans ses trois blocs (clair, sombre de Grist, sombre du système)', () => {
   const css = read('gfs.css');
   const blocks = [css.indexOf(':root {'), css.indexOf(':root:not([data-grist-appearance="light"]) {'), css.indexOf(':root[data-grist-appearance="dark"] {')];
   assert.ok(blocks.every(at => at >= 0), 'les trois blocs sont là');
@@ -94,4 +95,20 @@ test('gfs.css dit les seize jetons de type dans ses trois blocs (clair, sombre d
     const body = css.slice(css.indexOf('{', at), css.indexOf('}', at));
     for (const token of TYPE_TOKENS) assert.ok(new RegExp(`${token}:\\s*#[0-9a-f]{6}`, 'i').test(body), `${token} manque dans le bloc qui commence par ${css.slice(at, at + 40).split('\n')[0]}`);
   }
+});
+
+// Le macro-modèle n'a pas de jetons à lui (décision du 24/11) : ses trois feuilles prennent le bleu du document, le vert de la grille et l'orange de la présentation, de l'ambiance choisie.
+test('le macro-modèle : trois feuilles dans le sprite, peintes par les jetons du document, de la grille et de la présentation, jamais un jeton de couleur à lui', () => {
+  const css = read('explorer.css');
+  const rule = css.match(/\[data-fam="macro"\]\s*\{([^}]*)\}/);
+  assert.ok(rule, 'explorer.css n\'a pas de règle pour la famille macro');
+  for (const [n, type] of [[1, 'doc'], [2, 'grid'], [3, 'slides']]) {
+    assert.ok(new RegExp(`--mc-${n}:\\s*var\\(--t-${type}\\)`).test(rule[1]), `--mc-${n} ne lit pas --t-${type}`);
+    assert.ok(new RegExp(`\\.mc-${n}\\s*\\{\\s*stroke:\\s*var\\(--mc-${n},\\s*currentColor\\)`).test(css), `.mc-${n} : pas de repli sur la couleur du texte (ligne grisée)`);
+  }
+  assert.ok(!TYPES.includes('macro'), 'pas de couleur à lui');
+  assert.ok(iconNames().includes('macro'));
+  const icons = readFileSync(new URL('../js/ui/icons.js', import.meta.url), 'utf8');
+  const macro = icons.slice(icons.indexOf('macro:'), icons.indexOf('grid:'));
+  for (const n of [1, 2, 3]) assert.equal((macro.match(new RegExp(`class="mc-${n}"`, 'g')) || []).length, 1, `une feuille mc-${n}`);
 });

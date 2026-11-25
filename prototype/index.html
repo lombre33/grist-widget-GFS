@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-7AZDEiXv6lxQXH8Gd891d+y5oDdMSyU0X5FxYAciM4w='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-8RQJI4zSECRHGFXDges616BWUbA+JMBv1f2Y63yI5OU='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=a2e086add5">
 <link rel="stylesheet" href="css/explorer.css?v=c8ff42b04b">
 <link rel="stylesheet" href="css/modules.css?v=b467d702a6">
@@ -162,7 +162,7 @@
     "./js/explorer/explorer-model.js": "./js/explorer/explorer-model.js?v=ddab6cdcea",
     "./js/explorer/explorer-pj.js": "./js/explorer/explorer-pj.js?v=d42f8b3b9a",
     "./js/explorer/explorer-removal.js": "./js/explorer/explorer-removal.js?v=0d645f72be",
-    "./js/explorer/explorer-sql.js": "./js/explorer/explorer-sql.js?v=5ae335f10e",
+    "./js/explorer/explorer-sql.js": "./js/explorer/explorer-sql.js?v=66f84311f5",
     "./js/explorer/explorer-undo.js": "./js/explorer/explorer-undo.js?v=c36b8ccc27",
     "./js/explorer/explorer-view.js": "./js/explorer/explorer-view.js?v=6c6ab70753",
     "./js/explorer/explorer-window.js": "./js/explorer/explorer-window.js?v=6ea159dddf",
@@ -413,7 +413,7 @@
 <link rel="modulepreload" href="./js/broker/app-storage.js?v=d24c6008f9">
 <link rel="modulepreload" href="./js/ui/icons.js?v=b0217c0028">
 <link rel="modulepreload" href="./js/explorer/explorer-data.js?v=3789e0d46e">
-<link rel="modulepreload" href="./js/explorer/explorer-sql.js?v=5ae335f10e">
+<link rel="modulepreload" href="./js/explorer/explorer-sql.js?v=66f84311f5">
 <link rel="modulepreload" href="./js/broker/links.js?v=ce850aa50e">
 <link rel="modulepreload" href="./js/apps/libraries.js?v=c7b6ef11fd">
 <link rel="modulepreload" href="./js/apps/extensions.js?v=753ee79a2f">

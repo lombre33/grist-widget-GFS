@@ -1,5 +1,5 @@
 // Ce que le pare-feu devant une instance de Grist laisse passer de `GET /sql` (faits vérifiés 173). À COLLER dans la console du navigateur (F12, onglet « Console »), sur une page d'un document
-// Grist de l'instance (l'adresse est de la forme https://<serveur>/o/<équipe>/<document>/<titre>/p/<page>), avec la session de la personne : seize lectures, toutes en `SELECT`, sur son
+// Grist de l'instance (l'adresse est de la forme https://<serveur>/o/<équipe>/<document>/<titre>/p/<page>), avec la session de la personne : dix-neuf lectures, toutes en `SELECT`, sur son
 // document, une toutes les 0,4 s. Rien ne s'écrit, rien ne part ailleurs que vers le serveur de la page.
 // Chaque ligne du résultat dit la réponse : « Grist » (le serveur a répondu : une ligne ou une erreur JSON, donc le pare-feu a laissé passer la forme) ou « PARE-FEU » (une page HTML, ou un refus 403
 // qui ne vient pas de Grist : la forme est refusée). La sonde copie ensuite le même tableau, en une ligne de texte, dans le presse-papiers (Firefox : fonction `copy` de la console) : il n'y a plus qu'à le coller.
@@ -25,6 +25,13 @@
     ['13 substr seul', 'SELECT COUNT(*) AS n FROM _grist_Tables_column WHERE substr(colId, 1, 11) = \'gristHelper\''],
     ['14 <> seul', 'SELECT COUNT(*) AS n FROM _grist_Tables_column WHERE colId <> \'manualSort\''],
     ['15 lignes : CAST et length', 'SELECT id, COALESCE(length(CAST(tableId AS BLOB)), 0) AS gfs_octets FROM _grist_Tables LIMIT 5'],
+    // Les trois lectures du poids que la sonde de 11 lectures (25/11) n'avait pas vues, telles que GFS les envoie (js/weight/weight-reader.js), puis la structure à plusieurs tables.
+    ['16 pièces jointes comptées (forme actuelle de GFS)', 'SELECT COALESCE(SUM(len), 0) AS octets FROM (SELECT COALESCE(MAX(meta.fileSize), 0) * (files.storageId IS NOT NULL) + COALESCE(MAX(LENGTH(files.data)), 0) * (files.storageId IS NULL) AS len '
+      + 'FROM _gristsys_Files AS files JOIN _grist_Attachments AS meta ON meta.fileIdent = files.ident WHERE meta.timeDeleted IS NULL GROUP BY meta.fileIdent)'],
+    ['17 poids d\'une table (pgsize - unused)', 'SELECT COALESCE(SUM(pgsize - unused), 0) AS octets FROM dbstat WHERE name = \'_grist_Tables\''],
+    ['18 liste des tables', 'SELECT tableId FROM _grist_Tables ORDER BY tableId'],
+    ['19 structure (forme de GFS, plusieurs tables)', 'SELECT t.tableId AS tableId, c.colId AS colId, c.type AS type FROM _grist_Tables_column AS c JOIN _grist_Tables AS t ON t.id = c.parentId '
+      + 'WHERE t.tableId IN (\'GFS_Corbeille\', \'GFS_Fichiers\', \'GFS_Annuaires\', \'Publipostage_Templates\') AND c.colId NOT LIKE \'gristHelper%\' AND c.colId != \'manualSort\' ORDER BY c.parentId, c.colId'],
   ];
   const out = [];
   for (const [label, q] of tests) {

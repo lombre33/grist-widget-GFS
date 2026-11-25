@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validateManifest } from '../js/apps/manifest.js';
 import { readCatalogue } from '../js/apps/libraries.js';
-import { nativeRows, nativesState, modeOfGroup, nativeKey, copiesInApp, nativesOf } from '../js/apps/natives.js';
+import { nativeRows, nativesState, nativesSecours, modeOfGroup, nativeKey, copiesInApp, nativesOf } from '../js/apps/natives.js';
 import { frameUrl } from '../js/broker/frames.js';
 import { CATALOGUE } from '../js/apps/catalogue.js';
 import { readApps, patchApps, withNativeMode, withExtension } from '../js/apps/settings.js';
@@ -67,6 +67,22 @@ test('nativesState : l\'app ne reçoit que les copies des fonctions en copie fig
   assert.equal(JSON.stringify(state).includes('jsdelivr'), false, 'jamais l\'adresse du CDN de GFS : le CDN d\'une app est le sien (contrats 2.6, point 14)');
 });
 
+test('nativesSecours : la copie de GFS de chaque bibliothèque d\'une fonction restée au CDN, rien pour celles en copie figée ni pour l\'éditeur', () => {
+  const m = manifest();
+  const cdn = nativesSecours(m, { extensions: [], modes: {} }, catalogue, BASE);
+  assert.deepEqual(Object.keys(cdn), ['pdfmake', 'pdfmake-polices', 'docx']);
+  assert.deepEqual(cdn.docx, { version: '9.15.1', src: 'https://exemple.test/gfs/vendor/docx/9.15.1/docx.js', integrite: SRI, forme: 'script' });
+  assert.equal(JSON.stringify(cdn).includes('jsdelivr'), false, 'jamais l\'adresse du CDN de GFS (contrats 2.6, point 14)');
+  const mixed = nativesSecours(m, { extensions: [], modes: { 'natif:pdf': 'vendorise' } }, catalogue, BASE);
+  assert.deepEqual(Object.keys(mixed), ['docx'], 'les deux polices sont déjà servies par la copie : seule la fonction au CDN a un secours');
+  assert.deepEqual(Object.keys(nativesState(m, { extensions: [], modes: { 'natif:pdf': 'vendorise' } }, catalogue, BASE)), ['pdfmake', 'pdfmake-polices'], 'les deux listes ne se recouvrent jamais');
+  assert.deepEqual(nativesSecours(m, undefined, catalogue, BASE), {}, 'une app non installée ne reçoit rien');
+  const half = readCatalogue({ bibliotheques: [entry('pdfmake', '0.2.7', 2048)] });
+  assert.deepEqual(Object.keys(nativesSecours(m, { extensions: [], modes: {} }, half, BASE)), ['pdfmake'], 'une bibliothèque que le catalogue n\'a pas n\'a pas de secours');
+  const inApp = { ...m, natives: [{ id: 'editeur', nom: { fr: 'Éditeur', en: 'Editor' }, copieDansApp: true, poids: 1, bibliotheques: [] }] };
+  assert.deepEqual(nativesSecours(inApp, { extensions: [], modes: {} }, catalogue, BASE), {}, 'la copie de l\'éditeur est dans l\'app : GFS n\'en sert aucune');
+});
+
 test('settings : le mode d\'une fonction, ou de toutes ; le CDN n\'est pas écrit ; ce que cette version ne connaît pas est gardé', () => {
   const m = manifest();
   const apps = readApps({ publipostage: { extensions: [] } }, new Map([[m.id, m]]), [m.id]).apps;
@@ -96,10 +112,12 @@ test('AppsState : le geste écrit dans la table, le modèle de la fenêtre et l\
   const rows = () => state.model().items.find(item => item.id === m.id).natives.map(row => `${row.group.id}:${row.mode}`);
   assert.deepEqual(rows(), ['pdf:cdn', 'word:cdn']);
   assert.deepEqual(state.extensionsFor(m.id, BASE).natives, {});
+  assert.deepEqual(Object.keys(state.extensionsFor(m.id, BASE).secours), ['pdfmake', 'pdfmake-polices', 'docx'], 'tout au CDN : tout a son secours');
   assert.equal(await state.setNativeMode(m.id, 'pdf', 'vendorise'), true);
   assert.deepEqual(rows(), ['pdf:vendorise', 'word:cdn']);
   assert.deepEqual(store.value.publipostage.modes, { 'natif:pdf': 'vendorise' });
   assert.deepEqual(Object.keys(state.extensionsFor(m.id, BASE).natives), ['pdfmake', 'pdfmake-polices']);
+  assert.deepEqual(Object.keys(state.extensionsFor(m.id, BASE).secours), ['docx'], 'la fonction passée en copie figée quitte le secours');
   assert.equal(await state.setNativeMode(m.id, 'pdf', 'vendorise'), false, 'rien à écrire quand le choix ne change pas');
   assert.equal(await state.setNativeMode('inconnue', null, 'vendorise'), false);
   await state.setNativeMode(m.id, null, 'cdn');

@@ -3506,6 +3506,11 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
        `labo/run-partager-fenetre.mjs`) ; les PDF déjà rangés restent lisibles de tous (une ligne « tout le document » par PDF). Chacun lit les lignes qui le concernent, catégories
        comprises. Mesuré : vrai Grist à trois comptes (`labo/run-partager.mjs` 25, `labo/run-partager-fenetre.mjs` 26), 700 × 400 à la vraie souris, clair et sombre, français et anglais ;
        Firefox (`test/partager-firefox.mjs`).
+       **Rien de choisi ou de tapé ne se perd sans le dire (25/11, constaté : « Terminé » avait fermé la fenêtre sur une personne choisie pour un dossier de « Moi », jamais ajoutée).** Une personne choisie et
+       pas encore ajoutée : le bas de la fenêtre dit « Pas encore ajouté… » (et non « enregistrés tout de suite ») ; « Terminé » ne ferme rien, dit quoi faire et met le clavier sur « Ajouter » ; Échap ferme d'abord
+       le formulaire et dit que rien n'est enregistré (la touche suivante ferme la fenêtre) ; une adresse tapée sans avoir été choisie n'est pas laissée tomber par « Terminé » ; le droit, « Peut télécharger » et la
+       date saisis survivent à un redessin (autre onglet, « Gérer les partages… »). Code : `holdClose` (`js/sharing/share-window.js`), option `keepOpen` de `openModal` (`js/ui/modal.js`) ; mesuré sous Firefox
+       (`test/partager-firefox.mjs`).
 
     h. [T] **Fichiers des apps livrés le 07/11** (lot 2 ; `appTargets` et `targetsOf` de `js/sharing/sharing-model.js`, d'après `fichiers[]` des manifestes). Pour chaque table de fichiers d'une app **présente dans le document** : GFS ajoute `GFS_Auteur`
        (colonne déclenchée, `user.Email`, écrite par Grist ; jamais rétro-remplie : les lignes d'avant n'ont pas d'auteur) et les cinq colonnes d'aide, pose les règles (création à son nom d'après `newRec.GFS_Auteur`, `-U` sur

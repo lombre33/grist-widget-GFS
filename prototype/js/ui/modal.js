@@ -66,9 +66,10 @@ export function mountWindow({ container, root, inertTargets, onKey }) {
   return { opener, unmount() { doc.removeEventListener('keydown', onKey, true); root.remove(); release(); } };
 }
 
-// opts : { container, section (la fenêtre), inertTargets() -> [élément], first (l'élément qui prend le clavier), cancel (la valeur d'Échap) }.
+// opts : { container, section (la fenêtre), inertTargets() -> [élément], first (l'élément qui prend le clavier), cancel (la valeur d'Échap),
+//   keepOpen() (facultatif : appelée à Échap avant de fermer ; rend vrai quand elle a répondu elle-même à la touche, la fenêtre reste alors ouverte) }.
 // Rend { done(valeur), result } : `done` ferme la fenêtre une fois pour toutes, `result` est la promesse de la valeur.
-export function openModal({ container, section, inertTargets, first, cancel = null }) {
+export function openModal({ container, section, inertTargets, first, cancel = null, keepOpen = null }) {
   const doc = container.ownerDocument;
   const opener = doc.activeElement;
   const openerKey = opener && opener.dataset ? opener.dataset.fk : null;
@@ -85,7 +86,7 @@ export function openModal({ container, section, inertTargets, first, cancel = nu
   const onKey = event => {
     if (stack[stack.length - 1] !== token) return;
     if (doc.activeElement && doc.activeElement.closest('[data-popover]')) return;
-    if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); done(cancel); return; }
+    if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); if (!(keepOpen && keepOpen())) done(cancel); return; }
     if (event.key !== 'Tab') return;
     event.preventDefault();
     const nodes = tabStops([...section.querySelectorAll(FOCUSABLE)].filter(node => !node.closest('[hidden]') && node.tabIndex >= 0));

@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-XItH8on/gnscku7/rlykibggRsGSH0ac+P7xD4dBVQQ='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-PtywTcEl/0AXXx+Cv8l8VKHxWNfExtxGm00S43bRgfI='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=ab090ade63">
 <link rel="stylesheet" href="css/explorer.css?v=c460d6176d">
 <link rel="stylesheet" href="css/modules.css?v=e3953e3252">
@@ -54,22 +54,23 @@
     "./js/apps/dependencies-foot.js": "./js/apps/dependencies-foot.js?v=b69746e725",
     "./js/apps/dependencies-list.js": "./js/apps/dependencies-list.js?v=71954c0bbf",
     "./js/apps/dependencies-model.js": "./js/apps/dependencies-model.js?v=0121c428e3",
-    "./js/apps/dependencies-security-view.js": "./js/apps/dependencies-security-view.js?v=c1b03c006d",
+    "./js/apps/dependencies-security-view.js": "./js/apps/dependencies-security-view.js?v=eb1c650660",
     "./js/apps/dependencies-security.js": "./js/apps/dependencies-security.js?v=211ef74ba2",
     "./js/apps/dependencies-source-view.js": "./js/apps/dependencies-source-view.js?v=ad87b7ba0a",
     "./js/apps/dependencies-source.js": "./js/apps/dependencies-source.js?v=f91ad88e18",
-    "./js/apps/dependencies-window.js": "./js/apps/dependencies-window.js?v=a054343ab0",
-    "./js/apps/doc-names.js": "./js/apps/doc-names.js?v=3eddbe6f4d",
+    "./js/apps/dependencies-window.js": "./js/apps/dependencies-window.js?v=4d6dd42249",
+    "./js/apps/doc-names.js": "./js/apps/doc-names.js?v=709850f3a9",
     "./js/apps/extensions.js": "./js/apps/extensions.js?v=a2891b7b64",
     "./js/apps/fiche.js": "./js/apps/fiche.js?v=40571b2d88",
     "./js/apps/libraries.js": "./js/apps/libraries.js?v=10edb6aaa5",
     "./js/apps/licences.js": "./js/apps/licences.js?v=74fe9ec9ae",
     "./js/apps/manifest-carried.js": "./js/apps/manifest-carried.js?v=a1c60ab0bd",
     "./js/apps/manifest-names.js": "./js/apps/manifest-names.js?v=c4e17ea272",
-    "./js/apps/manifest.js": "./js/apps/manifest.js?v=3dbffcbe2c",
+    "./js/apps/manifest.js": "./js/apps/manifest.js?v=0ea5a03874",
     "./js/apps/modules-model.js": "./js/apps/modules-model.js?v=c3fd60515a",
     "./js/apps/modules-window.js": "./js/apps/modules-window.js?v=6f0bda466f",
     "./js/apps/natives.js": "./js/apps/natives.js?v=d61cf17735",
+    "./js/apps/row-count.js": "./js/apps/row-count.js?v=156be165af",
     "./js/apps/security-page.js": "./js/apps/security-page.js?v=dc21f859a8",
     "./js/apps/security-policy.js": "./js/apps/security-policy.js?v=4178b7ad89",
     "./js/apps/security-rules.js": "./js/apps/security-rules.js?v=7994bb9559",
@@ -78,7 +79,7 @@
     "./js/apps/templates-control.js": "./js/apps/templates-control.js?v=2d04c161a5",
     "./js/apps/templates-window.js": "./js/apps/templates-window.js?v=6f9b989991",
     "./js/apps/version-gap.js": "./js/apps/version-gap.js?v=2e9a581227",
-    "./js/apps/vitrine.js": "./js/apps/vitrine.js?v=7bafdb9bf8",
+    "./js/apps/vitrine.js": "./js/apps/vitrine.js?v=fbd61e67f1",
     "./js/apps/work-control.js": "./js/apps/work-control.js?v=3a43a1dac2",
     "./js/apps/work-row.js": "./js/apps/work-row.js?v=d41fd514ae",
     "./js/apps/work-window.js": "./js/apps/work-window.js?v=7e55716161",
@@ -89,12 +90,12 @@
     "./js/broker/arrival-table.js": "./js/broker/arrival-table.js?v=46265f4a63",
     "./js/broker/arrival.js": "./js/broker/arrival.js?v=7694fcdfd6",
     "./js/broker/attach.js": "./js/broker/attach.js?v=1c1097b59b",
-    "./js/broker/broker.js": "./js/broker/broker.js?v=2d5531db1c",
+    "./js/broker/broker.js": "./js/broker/broker.js?v=91241fc26d",
     "./js/broker/context.js": "./js/broker/context.js?v=549402edc9",
     "./js/broker/deposit.js": "./js/broker/deposit.js?v=357a730c38",
     "./js/broker/entries.js": "./js/broker/entries.js?v=a2d8813af5",
     "./js/broker/envelope.js": "./js/broker/envelope.js?v=761782e0d4",
-    "./js/broker/filter.js": "./js/broker/filter.js?v=0c9dfa9363",
+    "./js/broker/filter.js": "./js/broker/filter.js?v=bc7c4073e1",
     "./js/broker/frames.js": "./js/broker/frames.js?v=f45d5dcf64",
     "./js/broker/leave.js": "./js/broker/leave.js?v=5437d0c5dc",
     "./js/broker/links.js": "./js/broker/links.js?v=cbae3923c2",
@@ -112,14 +113,13 @@
     "./js/broker/sharing-rules.js": "./js/broker/sharing-rules.js?v=efe8774466",
     "./js/broker/sharing.js": "./js/broker/sharing.js?v=e6dccec1cd",
     "./js/broker/state.js": "./js/broker/state.js?v=69aa288268",
-    "./js/broker/table-cache.js": "./js/broker/table-cache.js?v=3ccb5d38fa",
     "./js/broker/transfer.js": "./js/broker/transfer.js?v=063ac32914",
     "./js/broker/view-link.js": "./js/broker/view-link.js?v=1853f29883",
     "./js/broker/view-options.js": "./js/broker/view-options.js?v=7c746e590f",
-    "./js/controller.js": "./js/controller.js?v=b15d8d2f11",
+    "./js/controller.js": "./js/controller.js?v=d6a65597bf",
     "./js/explorer/explorer-assembly.js": "./js/explorer/explorer-assembly.js?v=256a78cd0f",
     "./js/explorer/explorer-clipboard.js": "./js/explorer/explorer-clipboard.js?v=62a4670621",
-    "./js/explorer/explorer-data.js": "./js/explorer/explorer-data.js?v=de27f405d9",
+    "./js/explorer/explorer-data.js": "./js/explorer/explorer-data.js?v=b1895cd6b0",
     "./js/explorer/explorer-drag.js": "./js/explorer/explorer-drag.js?v=bb4575a2a0",
     "./js/explorer/explorer-keyboard.js": "./js/explorer/explorer-keyboard.js?v=263046c444",
     "./js/explorer/explorer-keys.js": "./js/explorer/explorer-keys.js?v=15a584580c",
@@ -127,16 +127,16 @@
     "./js/explorer/explorer-model.js": "./js/explorer/explorer-model.js?v=6e69056aa7",
     "./js/explorer/explorer-pj.js": "./js/explorer/explorer-pj.js?v=a53d75eda6",
     "./js/explorer/explorer-removal.js": "./js/explorer/explorer-removal.js?v=0d645f72be",
-    "./js/explorer/explorer-sql.js": "./js/explorer/explorer-sql.js?v=9534e5498d",
+    "./js/explorer/explorer-sql.js": "./js/explorer/explorer-sql.js?v=35b5217178",
     "./js/explorer/explorer-undo.js": "./js/explorer/explorer-undo.js?v=c36b8ccc27",
     "./js/explorer/explorer-view.js": "./js/explorer/explorer-view.js?v=e1df78432c",
     "./js/explorer/explorer-window.js": "./js/explorer/explorer-window.js?v=6ea159dddf",
     "./js/explorer/explorer.js": "./js/explorer/explorer.js?v=14bb4d0b2d",
     "./js/explorer/file-refresh.js": "./js/explorer/file-refresh.js?v=cfc9cbb1b5",
-    "./js/explorer/files-reading.js": "./js/explorer/files-reading.js?v=a97c2130b4",
+    "./js/explorer/files-reading.js": "./js/explorer/files-reading.js?v=ecc0c9a21b",
     "./js/explorer/filing-window.js": "./js/explorer/filing-window.js?v=6752e9e381",
     "./js/explorer/filing.js": "./js/explorer/filing.js?v=9f50d539e2",
-    "./js/explorer/heavy-hint.js": "./js/explorer/heavy-hint.js?v=65125a3adc",
+    "./js/explorer/heavy-hint.js": "./js/explorer/heavy-hint.js?v=99118387e4",
     "./js/explorer/opened-bar.js": "./js/explorer/opened-bar.js?v=0fc35682d4",
     "./js/explorer/opened-files.js": "./js/explorer/opened-files.js?v=975feeb422",
     "./js/explorer/pending.js": "./js/explorer/pending.js?v=d52133a07a",
@@ -157,7 +157,7 @@
     "./js/files/trash.js": "./js/files/trash.js?v=3e36b5ca0a",
     "./js/files/undo-stack.js": "./js/files/undo-stack.js?v=bb94cd21d3",
     "./js/i18n/i18n-annuaire.js": "./js/i18n/i18n-annuaire.js?v=c0fb068638",
-    "./js/i18n/i18n-dependencies.js": "./js/i18n/i18n-dependencies.js?v=d89224ea22",
+    "./js/i18n/i18n-dependencies.js": "./js/i18n/i18n-dependencies.js?v=6d1bf6469a",
     "./js/i18n/i18n-explorer.js": "./js/i18n/i18n-explorer.js?v=e00ea91d82",
     "./js/i18n/i18n-folders.js": "./js/i18n/i18n-folders.js?v=d284a5dc12",
     "./js/i18n/i18n-manage.js": "./js/i18n/i18n-manage.js?v=217c17b408",
@@ -165,7 +165,7 @@
     "./js/i18n/i18n-notifications.js": "./js/i18n/i18n-notifications.js?v=f703a62960",
     "./js/i18n/i18n-received.js": "./js/i18n/i18n-received.js?v=684f00488e",
     "./js/i18n/i18n-rights.js": "./js/i18n/i18n-rights.js?v=1d8ac3e0c5",
-    "./js/i18n/i18n-security.js": "./js/i18n/i18n-security.js?v=74b1fa72f0",
+    "./js/i18n/i18n-security.js": "./js/i18n/i18n-security.js?v=a64372bbb1",
     "./js/i18n/i18n-share-other.js": "./js/i18n/i18n-share-other.js?v=e8864f99d8",
     "./js/i18n/i18n-share.js": "./js/i18n/i18n-share.js?v=8528698c0a",
     "./js/i18n/i18n-sharing.js": "./js/i18n/i18n-sharing.js?v=7e09272a2c",
@@ -193,13 +193,13 @@
     "./js/sharing/received-control.js": "./js/sharing/received-control.js?v=9602f0a1c2",
     "./js/sharing/received-files.js": "./js/sharing/received-files.js?v=b4c5151049",
     "./js/sharing/received-folders.js": "./js/sharing/received-folders.js?v=1867d68ede",
-    "./js/sharing/received-marks.js": "./js/sharing/received-marks.js?v=013c676333",
+    "./js/sharing/received-marks.js": "./js/sharing/received-marks.js?v=71373cded0",
     "./js/sharing/received-state.js": "./js/sharing/received-state.js?v=1c9496578a",
     "./js/sharing/received-window.js": "./js/sharing/received-window.js?v=4e40f52a8a",
     "./js/sharing/share-control.js": "./js/sharing/share-control.js?v=b61bdd9fe2",
     "./js/sharing/share-folder.js": "./js/sharing/share-folder.js?v=0a4b8960db",
     "./js/sharing/share-follow.js": "./js/sharing/share-follow.js?v=e57af62f86",
-    "./js/sharing/share-links.js": "./js/sharing/share-links.js?v=b64ff21f2f",
+    "./js/sharing/share-links.js": "./js/sharing/share-links.js?v=b9a6a1c4f0",
     "./js/sharing/share-other-flow.js": "./js/sharing/share-other-flow.js?v=9f937aefea",
     "./js/sharing/share-other-tab.js": "./js/sharing/share-other-tab.js?v=9309dad3d7",
     "./js/sharing/share-other-window.js": "./js/sharing/share-other-window.js?v=fc07e9d41f",
@@ -234,7 +234,7 @@
     "./js/theme/theme-window.js": "./js/theme/theme-window.js?v=be3e075a12",
     "./js/theme/theme.js": "./js/theme/theme.js?v=e97475679a",
     "./js/ui/ask-window.js": "./js/ui/ask-window.js?v=bc29f4db59",
-    "./js/ui/dom.js": "./js/ui/dom.js?v=8a85959bdc",
+    "./js/ui/dom.js": "./js/ui/dom.js?v=7847ab7084",
     "./js/ui/icons.js": "./js/ui/icons.js?v=919e961bde",
     "./js/ui/layers.js": "./js/ui/layers.js?v=8fb5891dcf",
     "./js/ui/menu.js": "./js/ui/menu.js?v=727d1dc390",
@@ -351,12 +351,11 @@
      Le navigateur les demande tous d'un coup au lieu d'un niveau d'imports à la fois (9 niveaux, donc 9 allers-retours de réseau). Après la carte d'importation, jamais avant : une page qui commence à
      charger un module avant elle l'ignore et demande les modules sans leur ?v=. -->
 <!-- préchargement -->
-<link rel="modulepreload" href="./js/controller.js?v=b15d8d2f11">
+<link rel="modulepreload" href="./js/controller.js?v=d6a65597bf">
 <link rel="modulepreload" href="./js/apps/catalogue.js?v=2e588e5749">
-<link rel="modulepreload" href="./js/apps/manifest.js?v=3dbffcbe2c">
+<link rel="modulepreload" href="./js/apps/manifest.js?v=0ea5a03874">
 <link rel="modulepreload" href="./js/broker/state.js?v=69aa288268">
-<link rel="modulepreload" href="./js/broker/broker.js?v=2d5531db1c">
-<link rel="modulepreload" href="./js/broker/table-cache.js?v=3ccb5d38fa">
+<link rel="modulepreload" href="./js/broker/broker.js?v=91241fc26d">
 <link rel="modulepreload" href="./js/broker/view-options.js?v=7c746e590f">
 <link rel="modulepreload" href="./js/broker/own-section.js?v=b4451c0cb2">
 <link rel="modulepreload" href="./js/broker/view-link.js?v=1853f29883">
@@ -370,13 +369,14 @@
 <link rel="modulepreload" href="./js/theme/theme-window.js?v=be3e075a12">
 <link rel="modulepreload" href="./js/broker/app-storage.js?v=d24c6008f9">
 <link rel="modulepreload" href="./js/ui/icons.js?v=919e961bde">
-<link rel="modulepreload" href="./js/explorer/explorer-data.js?v=de27f405d9">
-<link rel="modulepreload" href="./js/explorer/explorer-sql.js?v=9534e5498d">
+<link rel="modulepreload" href="./js/explorer/explorer-data.js?v=b1895cd6b0">
+<link rel="modulepreload" href="./js/explorer/explorer-sql.js?v=35b5217178">
 <link rel="modulepreload" href="./js/broker/links.js?v=cbae3923c2">
 <link rel="modulepreload" href="./js/apps/libraries.js?v=10edb6aaa5">
 <link rel="modulepreload" href="./js/apps/extensions.js?v=a2891b7b64">
 <link rel="modulepreload" href="./js/apps/apps-state.js?v=a3a73912bb">
-<link rel="modulepreload" href="./js/apps/doc-names.js?v=3eddbe6f4d">
+<link rel="modulepreload" href="./js/apps/doc-names.js?v=709850f3a9">
+<link rel="modulepreload" href="./js/apps/row-count.js?v=156be165af">
 <link rel="modulepreload" href="./js/broker/arrival.js?v=7694fcdfd6">
 <link rel="modulepreload" href="./js/broker/arrival-table.js?v=46265f4a63">
 <link rel="modulepreload" href="./js/files/rangement.js?v=045bec5dfc">
@@ -397,8 +397,8 @@
 <link rel="modulepreload" href="./js/broker/entries.js?v=a2d8813af5">
 <link rel="modulepreload" href="./js/broker/openings.js?v=cb95a404fe">
 <link rel="modulepreload" href="./js/explorer/opened-files.js?v=975feeb422">
-<link rel="modulepreload" href="./js/explorer/files-reading.js?v=a97c2130b4">
-<link rel="modulepreload" href="./js/explorer/heavy-hint.js?v=65125a3adc">
+<link rel="modulepreload" href="./js/explorer/files-reading.js?v=ecc0c9a21b">
+<link rel="modulepreload" href="./js/explorer/heavy-hint.js?v=99118387e4">
 <link rel="modulepreload" href="./js/shell/stored-choice.js?v=08d02d1bfe">
 <link rel="modulepreload" href="./js/explorer/pending.js?v=d52133a07a">
 <link rel="modulepreload" href="./js/explorer/explorer-assembly.js?v=256a78cd0f">
@@ -409,7 +409,7 @@
 <link rel="modulepreload" href="./js/apps/templates-control.js?v=2d04c161a5">
 <link rel="modulepreload" href="./js/apps/dependencies-control.js?v=8b4cdf633a">
 <link rel="modulepreload" href="./js/broker/app-context.js?v=c9b4491db6">
-<link rel="modulepreload" href="./js/broker/filter.js?v=0c9dfa9363">
+<link rel="modulepreload" href="./js/broker/filter.js?v=bc7c4073e1">
 <link rel="modulepreload" href="./js/broker/player-sites.js?v=79d15fdf51">
 <link rel="modulepreload" href="./js/apps/manifest-names.js?v=c4e17ea272">
 <link rel="modulepreload" href="./js/apps/manifest-carried.js?v=a1c60ab0bd">
@@ -434,14 +434,14 @@
 <link rel="modulepreload" href="./js/i18n/i18n-explorer.js?v=e00ea91d82">
 <link rel="modulepreload" href="./js/i18n/i18n-sharing.js?v=7e09272a2c">
 <link rel="modulepreload" href="./js/i18n/i18n-templates.js?v=3194fa28f0">
-<link rel="modulepreload" href="./js/i18n/i18n-dependencies.js?v=d89224ea22">
-<link rel="modulepreload" href="./js/i18n/i18n-security.js?v=74b1fa72f0">
+<link rel="modulepreload" href="./js/i18n/i18n-dependencies.js?v=6d1bf6469a">
+<link rel="modulepreload" href="./js/i18n/i18n-security.js?v=a64372bbb1">
 <link rel="modulepreload" href="./js/i18n/i18n-annuaire.js?v=c0fb068638">
 <link rel="modulepreload" href="./js/theme/ambiance.js?v=6608543445">
 <link rel="modulepreload" href="./js/theme/oklch.js?v=7ef04e0793">
 <link rel="modulepreload" href="./js/theme/ambiance-forme.js?v=9945157b3b">
 <link rel="modulepreload" href="./js/theme/ambiance-types.js?v=5ecb4f8640">
-<link rel="modulepreload" href="./js/ui/dom.js?v=8a85959bdc">
+<link rel="modulepreload" href="./js/ui/dom.js?v=7847ab7084">
 <link rel="modulepreload" href="./js/ui/modal.js?v=afe775a169">
 <link rel="modulepreload" href="./js/theme/theme-color.js?v=c94f777ad7">
 <link rel="modulepreload" href="./js/explorer/explorer-model.js?v=6e69056aa7">
@@ -462,11 +462,11 @@
 <link rel="modulepreload" href="./js/sharing/share-control.js?v=b61bdd9fe2">
 <link rel="modulepreload" href="./js/sharing/manage-control.js?v=bdb3c90bf6">
 <link rel="modulepreload" href="./js/sharing/link-control.js?v=82427e1692">
-<link rel="modulepreload" href="./js/sharing/share-links.js?v=b64ff21f2f">
+<link rel="modulepreload" href="./js/sharing/share-links.js?v=b9a6a1c4f0">
 <link rel="modulepreload" href="./js/sharing/share-folder.js?v=0a4b8960db">
 <link rel="modulepreload" href="./js/sharing/sync-rules.js?v=7c89a0d3cc">
 <link rel="modulepreload" href="./js/sharing/share-other-flow.js?v=9f937aefea">
-<link rel="modulepreload" href="./js/sharing/received-marks.js?v=013c676333">
+<link rel="modulepreload" href="./js/sharing/received-marks.js?v=71373cded0">
 <link rel="modulepreload" href="./js/weight/weight-window.js?v=70b38075d2">
 <link rel="modulepreload" href="./js/weight/weight-guard.js?v=23387ca160">
 <link rel="modulepreload" href="./js/weight/weight-alert.js?v=1ece7de8c8">
@@ -492,13 +492,13 @@
 <link rel="modulepreload" href="./js/apps/work-control.js?v=3a43a1dac2">
 <link rel="modulepreload" href="./js/explorer/opened-bar.js?v=0fc35682d4">
 <link rel="modulepreload" href="./js/sharing/received-state.js?v=1c9496578a">
-<link rel="modulepreload" href="./js/apps/vitrine.js?v=7bafdb9bf8">
+<link rel="modulepreload" href="./js/apps/vitrine.js?v=fbd61e67f1">
 <link rel="modulepreload" href="./js/apps/fiche.js?v=40571b2d88">
 <link rel="modulepreload" href="./js/apps/templates-window.js?v=6f9b989991">
 <link rel="modulepreload" href="./js/apps/dependencies-model.js?v=0121c428e3">
 <link rel="modulepreload" href="./js/apps/dependencies-carried.js?v=cb4530eef9">
 <link rel="modulepreload" href="./js/apps/dependencies-security.js?v=211ef74ba2">
-<link rel="modulepreload" href="./js/apps/dependencies-window.js?v=a054343ab0">
+<link rel="modulepreload" href="./js/apps/dependencies-window.js?v=4d6dd42249">
 <link rel="modulepreload" href="./js/apps/dependencies-audit.js?v=268ab61822">
 <link rel="modulepreload" href="./js/apps/dependencies-source.js?v=f91ad88e18">
 <link rel="modulepreload" href="./js/apps/dependencies-export.js?v=0d69369ed3">
@@ -541,7 +541,7 @@
 <link rel="modulepreload" href="./js/apps/security-policy.js?v=4178b7ad89">
 <link rel="modulepreload" href="./js/apps/dependencies-list.js?v=71954c0bbf">
 <link rel="modulepreload" href="./js/apps/dependencies-foot.js?v=b69746e725">
-<link rel="modulepreload" href="./js/apps/dependencies-security-view.js?v=c1b03c006d">
+<link rel="modulepreload" href="./js/apps/dependencies-security-view.js?v=eb1c650660">
 <link rel="modulepreload" href="./js/apps/dependencies-cyclonedx.js?v=eb9730f52e">
 <link rel="modulepreload" href="./js/sharing/share-other-tab.js?v=9309dad3d7">
 <link rel="modulepreload" href="./js/ui/tabs.js?v=b412c3fcbc">

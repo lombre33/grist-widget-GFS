@@ -24,6 +24,16 @@
   "entree": "index.html",
   "ouverture": { "fichier": true, "nouveau": true, "modele": true },
   "tables": { "prefixe": "BI_" },
+  "noms": {
+    "BI_Dashboard_Config": {
+      "colonnes": {
+        "Nom": ["Name"],
+        "TypeRapport": ["ReportType"],
+        "DateModif": ["ModifiedAt"],
+        "ModifiePar": ["ModifiedBy"]
+      }
+    }
+  },
   "fichiers": [{
     "table": "BI_Dashboard_Config",
     "colonnes": { "id": "id", "nom": "Nom", "type": "TypeRapport", "date": "DateModif", "par": "ModifiePar" },
@@ -40,6 +50,12 @@
       "pourquoi": {
         "fr": "Pour connaître l'adresse de la personne qui commente un rapport, l'app pose une table-sonde (BI_Dashboard_UserProbe) dont une colonne lit user.Email par une formule.",
         "en": "To know the address of the person who comments on a report, the app places a probe table (BI_Dashboard_UserProbe) whose column reads user.Email through a formula."
+      }
+    },
+    "renommage": {
+      "pourquoi": {
+        "fr": "Passer sur place les colonnes des tables de l'app aux noms anglais, en un seul lot, sans copier ni perdre une ligne ; jamais une table de la personne.",
+        "en": "Move the columns of the app's own tables to their English names in place, in a single batch, without copying or losing a row; never one of the person's tables."
       }
     },
     "jeton": {

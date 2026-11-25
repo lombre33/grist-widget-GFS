@@ -26,6 +26,8 @@ export const ROW_VERBS = new Set(['AddRecord', 'BulkAddRecord', 'UpdateRecord', 
 const REMOVE_VERBS = new Set(['RemoveRecord', 'BulkRemoveRecord']);
 const COLUMN_VERBS = new Set(['AddColumn', 'AddVisibleColumn', 'AddHiddenColumn', 'RemoveColumn', 'SetDisplayFormula']);
 const TABLE_VERBS = new Set(['AddTable', 'RemoveTable', 'RenameTable']);
+// Renommer une colonne et changer son libellé (le seul changement de `ModifyColumn` permis) : ils demandent la capacité `renommage`, comme `RenameTable`.
+const RENAME_COLUMN_VERBS = new Set(['RenameColumn', 'ModifyColumn']);
 const STRUCTURE_VERBS = new Set(['CreateViewSection']);
 
 // Tables internes qu'aucune app ne lit (3.2, point 4) ni n'écrit (3.3, point 6), quoi que le manifeste déclare.
@@ -63,6 +65,8 @@ export function makePolicy(manifest, catalogue = []) {
     jeton: perm.jeton || null,
     formules: Boolean(perm.formules),
     structure: Boolean(perm.structure),
+    // l'app renomme sur place ses propres tables et colonnes, en un lot (contrats 3.3, point 10 ; guide des apps 1.1, point 15)
+    renommage: Boolean(perm.renommage),
     // l'app pose le partage de la page de son formulaire : une ligne de `_grist_Shares` et `shareRef` (contrats 3.3 point 6 : l'exception ; 3.4, point 8)
     partage: Boolean(perm.partage),
     identite: Boolean(perm.identite), // l'app reçoit l'adresse e-mail de la personne dans son contexte (contrats 3.4, point 6 ; 5.2, point 9)
@@ -184,6 +188,19 @@ function columnsRefusal(policy, verb, args) {
   return !policy.formules && hasFormula(info) ? 'Une colonne à formule demande la capacité « formules ».' : null;
 }
 
+// Renommer (3.3, point 10) : la capacité `renommage`, et seulement les tables de l'app (son préfixe), avant comme après ; jamais une table de la personne, même
+// si un motif de `ecrit` la couvre. Pour une colonne : `RenameColumn` (table, ancien, nouveau) ou `ModifyColumn` qui ne change que `label`.
+function renamingRefusal(policy, verb, args) {
+  if (!policy.renommage) return `${verb} demande la capacité « renommage ».`;
+  const names = verb === 'RenameTable' ? [args[0], args[1]] : [args[0]];
+  if (names.some(name => classify(policy, name) !== 'propre')) return `${verb} ne vise que les tables de l'app (son préfixe).`;
+  if (verb === 'RenameTable') return null;
+  if (!namesTable(args[1]) || (verb === 'RenameColumn' && !namesTable(args[2]))) return `${verb} : le nom de la colonne manque.`;
+  if (verb === 'RenameColumn') return null;
+  const keys = args[2] && typeof args[2] === 'object' ? Object.keys(args[2]) : [];
+  return keys.length && keys.every(key => key === 'label') ? null : 'ModifyColumn ne change que le libellé de la colonne (« label »).';
+}
+
 function tablesRefusal(policy, verb, args) {
   const names = verb === 'RenameTable' ? [args[0], args[1]] : [args[0]];
   for (const name of names) {
@@ -191,6 +208,7 @@ function tablesRefusal(policy, verb, args) {
     const refusal = writeRefusal(policy, name);
     if (refusal) return refusal;
   }
+  if (verb === 'RenameTable') return renamingRefusal(policy, verb, args);
   if (verb === 'AddTable' && !policy.formules && (args[1] || []).some(hasFormula)) {
     return 'Une colonne à formule demande la capacité « formules ».';
   }
@@ -212,10 +230,11 @@ function actionRefusal(policy, action, ctx) {
   if (!Array.isArray(action) || typeof action[0] !== 'string') return 'Action mal formée.';
   const [verb, ...args] = action;
   if (STRUCTURE_VERBS.has(verb)) return structureRefusal(policy, args, ctx);
-  const known = ROW_VERBS.has(verb) || COLUMN_VERBS.has(verb) || TABLE_VERBS.has(verb);
+  const known = ROW_VERBS.has(verb) || COLUMN_VERBS.has(verb) || TABLE_VERBS.has(verb) || RENAME_COLUMN_VERBS.has(verb);
   if (!known) return `Le verbe ${verb} n'est pas dans la liste fermée de GFS.`;
   if (!namesTable(args[0]) || (verb === 'RenameTable' && !namesTable(args[1]))) return `${verb} : le nom de la table manque.`;
   if (ROW_VERBS.has(verb)) return rowsRefusal(policy, verb, args);
+  if (RENAME_COLUMN_VERBS.has(verb)) return isInternal(args[0]) ? `${verb} ne vise jamais une table interne.` : renamingRefusal(policy, verb, args);
   return COLUMN_VERBS.has(verb) ? columnsRefusal(policy, verb, args) : tablesRefusal(policy, verb, args);
 }
 

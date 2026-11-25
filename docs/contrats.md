@@ -343,7 +343,7 @@ Une entrée de `fichiers` par table de fichiers :
    - le manifeste lu n'est jamais modifié : la copie réécrite garde `canonique` (le nom de table du manifeste) et `renommees` (les colonnes que le document nomme autrement) ;
    - **ce que GFS garde pour lui s'écrit sous les noms du manifeste, quel que soit le jeu du document** : la colonne `Table` de `GFS_Corbeille` et les clés de l'instantané d'une ligne mise de côté. Un modèle mis à la corbeille AVANT le renommage d'un document se restaure donc APRÈS, sous les noms que le document porte alors (mesuré, faits vérifiés 129) ;
    - un nom que le document ne porte pas ne change rien : la table (que l'app n'a pas encore créée) ou la colonne (un document ancien) garde le nom du manifeste, et la lecture dit « vide » comme avant ;
-   - **quand le document porte le nom du manifeste ET un autre, le nom du manifeste gagne** et GFS le dit dans la console (un avertissement) : l'app qui renomme par `RenameTable` et `RenameColumn` de Grist n'en laisse jamais deux ; en porter deux est un reste que GFS ne devine pas. Si l'app veut l'inverse, elle le dit à GFS ;
+   - **quand le document porte plusieurs noms d'une même table (le nom du manifeste ET un autre), GFS lit la table qui a des lignes ; si les deux en ont, ou si aucune, ou si le nombre est inconnu, l'autre nom du manifeste (`aussi`, celui où l'app va)** : c'est la règle que l'app applique elle-même (consigne Publipostage+ 096, livrée le 25/11, faits vérifiés 158) ; une colonne qui porte deux noms : l'autre nom ; GFS le dit dans la console (un avertissement). Le manifeste garde donc, dans `noms`, **l'ancien nom en nom du manifeste et les noms où l'app va dans `aussi`**. **GFS lit toujours les deux jeux, sans date de fin** (décision du porteur, 25/11) ;
    - **l'app dit à GFS quand ses noms changent** (un nom ajouté, une table de plus que GFS lit) : « Changements qui touchent GFS » ; le manifeste est la copie que GFS en tient, et un nom que `noms` ne donne pas est un nom que GFS ne sait pas lire. Sans `noms`, rien ne change : les manifestes d'avant se lisent comme avant.
 
 ### 2.5 Les réglages
@@ -847,13 +847,15 @@ ne lit pas).
    le lot l'est (`GFS_REFUSE`, avec le rang de l'action et le motif), sans appeler Grist.
 2. [D] **Verbes autorisés** (liste fermée de la v0 : ceux que les quatre apps emploient). Tout autre verbe est refusé, dont
    `ApplyDocActions` et `ApplyUndoActions` (des actions de bas niveau qui échapperaient au contrôle), `ReplaceTableData`,
-   `RenameColumn`, `ModifyColumn`, `AddView`, `AddViewSection`, `RemoveView`, `RemoveViewSection`.
+   `AddView`, `AddViewSection`, `RemoveView`, `RemoveViewSection`. `RenameTable`, `RenameColumn` et `ModifyColumn` ne passent que par
+   la capacité `renommage` (point 10).
 
    | Classe | Verbes | Table visée |
    |---|---|---|
    | Lignes | `AddRecord`, `BulkAddRecord`, `UpdateRecord`, `BulkUpdateRecord`, `RemoveRecord`, `BulkRemoveRecord`, `AddOrUpdateRecord`, `BulkAddOrUpdateRecord` | 1er argument |
    | Colonnes | `AddColumn`, `AddVisibleColumn`, `AddHiddenColumn`, `RemoveColumn`, `SetDisplayFormula` | 1er argument |
-   | Tables | `AddTable`, `RemoveTable`, `RenameTable` | le nom demandé ; `RenameTable` : l'ancien et le nouveau |
+   | Tables | `AddTable`, `RemoveTable`, `RenameTable` (capacité `renommage`, point 10) | le nom demandé ; `RenameTable` : l'ancien et le nouveau |
+   | Renommage | `RenameColumn`, `ModifyColumn` (libellé seul), capacité `renommage` (point 10) | 1er argument |
    | Structure | `CreateViewSection` (avec `permissions.structure`) | la table de la ligne `table_ref` (1er argument), que le courtier retrouve dans `_grist_Tables` ; si `table_ref` vaut 0, le nom du 5e argument, comme pour `AddTable` ; une section de synthèse (`groupby_colrefs` non nul) est refusée en v0 |
 
 3. [D] **Tables possédées et tables de la personne.** Une action qui vise une table possédée passe. Une action qui vise une
@@ -926,13 +928,31 @@ ne lit pas).
    modifiée à `c249c4a` (son enregistrement par le lien ouvre deux fenêtres : la table des réponses à l'ajout, puis la lecture de
    `FormPlus_Formulaires.Definition` ; le second formulaire, aucune). **Non mesuré** : ce que Grist ouvre vraiment à qui a le lien,
    grist-static n'a pas de partages (faits vérifiés 10.11 ; la mesure est celle de Form+, sur un vrai Grist, et les six mesures du porteur).
+10. [D] **Renommer sur place : la capacité `renommage`** (décision du porteur du 25/11, carte « Faire dire à chaque app, dans sa fiche, qu'elle renomme ses
+    tables ? » : « Oui, une ligne dans la fiche ») : `{ "pourquoi": { … } }` (3.4). Pour passer les noms d'une app à l'anglais, dans un document qui a déjà ses
+    tables, sans copier une ligne (guide des apps 1.1, point 15). Sans elle, `RenameTable`, `RenameColumn` et `ModifyColumn` sont refusés (`GFS_REFUSE`, « demande la
+    capacité « renommage » »). Avec elle :
+    - **seulement les tables de l'app** (son préfixe), avant comme après : jamais une table de la personne, même si un motif de `ecrit` la couvre ; jamais un nom
+      de GFS (`GFS_`) ni le préfixe d'une autre app ; jamais une table interne (`_grist_*`) ;
+    - `RenameColumn` : `[table, ancien, nouveau]`, trois noms ; `ModifyColumn` : **le libellé seul** (`{ "label": … }`), jamais un type, une formule, une option ;
+      Grist ne renomme pas le libellé d'une colonne qu'on renomme : l'app le fait, dans le même lot ;
+    - le lot est jugé en entier (point 1) ; après un lot qui renomme une table, le courtier relit `_grist_Tables` et fait retrouver son nom à une table que
+      Grist aurait nommée comme un nom interdit (point 4).
+    [M] **Mesuré le 25/11** dans un vrai Grist (grist-static, 700 × 400 ; `labo/run-noms-courtier.mjs`, 24 vérifications) avec la vraie Publipostage+ : son lot
+    (`SchemaColumns.planRenames` : 2 `RenameTable`, 11 `RenameColumn`, 11 `ModifyColumn`) passe par le courtier, en entier ; cinq modèles et deux préférences gardent
+    leurs numéros et leur contenu ; les libellés suivent ; neuf refus (table de la personne, colonne d'une table de la personne, nom de GFS, nom d'une autre app,
+    table interne, type changé, formule posée, nom manquant, lot dont une action est refusée) ne changent rien ; Automation+, qui ne la déclare pas, est refusée
+    sur les trois verbes. **Ce que le courtier ne juge pas** : si le nom cible est libre (Grist ajoute un « 2 » à un nom pris au lieu de refuser, faits vérifiés 158) : c'est
+    à l'app de relire les noms juste avant d'envoyer. Déclarée dans GFS pour Publipostage+, Form+ et Grist-BI (celles dont GFS a écrit les noms anglais, `noms`) ;
+    une app qui ne renomme pas ne la déclare pas.
 
 ### 3.4 Les capacités à déclarer
 
 Trois capacités contournent un filtre de tables. L'app les déclare, avec une raison en français et en anglais ; GFS les montre
-à la personne dans la fenêtre d'installation, en mots simples. Quatre déclarations de plus se font de la même façon : `lienPublic` resserre un filtre (point 5),
+à la personne dans la fenêtre d'installation, en mots simples. Cinq déclarations de plus se font de la même façon : `lienPublic` resserre un filtre (point 5),
 `identite` donne une donnée que GFS seul sait (point 6), `lecteurs` fait poser par GFS un lecteur de vidéo par-dessus le cadre de l'app (point 7), et `partage` lève,
-dans une forme très étroite, deux des interdictions de 3.3 point 6 (point 8).
+dans une forme très étroite, deux des interdictions de 3.3 point 6 (point 8) ; `renommage` (3.3 point 10) laisse l'app passer les noms de ses propres tables et colonnes à
+l'anglais.
 
 1. [D] **`jeton`** : `{ "lectureSeule": true, "pourquoi": { … } }`. Sans elle, `getAccessToken` est refusé. Avec elle, le
    courtier force `readOnly: true` sauf `lectureSeule: false`, et transmet `route` tel quel. Un jeton ouvre l'API REST sur

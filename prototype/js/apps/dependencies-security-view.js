@@ -73,11 +73,12 @@ function appSection(t, app, locale) {
       t('sec.policy', { state: t(`sec.state.low.${app.policy}`) })) : null);
   if (!app.checked) return h('section', { class: 'dp-sec-app', dataset: { app: app.id }, 'aria-labelledby': id }, head,
     h('p', { class: 'dp-sub dp-sec-line' }, [t('sec.app.unchecked'), app.relay ? relayText(t, app.relay, locale) : ''].filter(Boolean).join(' · ')));
-  const c = app.counts;
+  const counts = app.counts;
   const live = t(`sec.live.${app.live.etat}`, { state: app.live.verdict ? t(`sec.state.low.${app.live.verdict}`) : '' });
   return h('section', { class: 'dp-sec-app', dataset: { app: app.id }, 'aria-labelledby': id }, head,
     h('p', { class: 'dp-sub dp-sec-line' }, [app.reference ? t('sec.app.ref', { ref: app.reference }) : '',
-      t('sec.counts', { ok: c.tenue, note: c['a-noter'], bad: c['non-tenue'], unk: c['non-verifiable'] }), live].filter(Boolean).join(' · ')),
+      t('sec.counts', { ok: counts.tenue, note: counts['a-noter'], bad: counts['non-tenue'], unk: counts['non-verifiable'] }), live]
+      .filter(Boolean).join(' · ')),
     h('ul', { class: 'dp-sec-rules' }, ...app.rules.map(rule => ruleRow(t, app, rule, locale))));
 }
 

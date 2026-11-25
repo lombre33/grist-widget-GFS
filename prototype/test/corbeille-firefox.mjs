@@ -338,3 +338,13 @@ export async function corbeilleProblems(page, language, tag) {
   }
   return found;
 }
+
+// Après une mesure qui a échoué en route : ferme ce qu'elle a laissé ouvert (fenêtres, menus), à la touche Échap comme le ferait la personne. Retirer seulement le voile ne suffit pas : la page reste rendue
+// inerte, et chaque mesure suivante échoue à son tour (le 25/11, une attente périmée de la fenêtre « Dépendances » faisait ainsi tomber onze autres mesures).
+export async function closeLeftOpen(page) {
+  for (let turn = 0; turn < 4; turn += 1) {
+    if (!await page.run(() => document.querySelector('.mod-scrim, .menu') !== null).catch(() => false)) return;
+    await page.press('Escape').catch(() => {});
+  }
+  await page.run(() => { for (const node of document.querySelectorAll('.mod-scrim')) node.remove(); }).catch(() => {});
+}

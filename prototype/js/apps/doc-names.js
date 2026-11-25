@@ -4,15 +4,18 @@
 // noms du manifeste (`fichiers[]`) en ceux que le document porte, une fois pour toutes : la lecture de l'explorateur, le rangement, la corbeille, la copie, le
 // renommage, le poids et le partage parlent alors tous au document par ses vrais noms, sans rien savoir de ce qui précède.
 //
-// Trois règles :
+// Quatre règles :
 //   - le manifeste reste ce que l'app a écrit : la copie réécrite est une autre valeur (`canonique` y garde le nom de table du manifeste), jamais une
 //   modification ;
 //   - un nom que le document ne porte pas ne change rien : la table ou la colonne garde le nom du manifeste (l'app ne l'a pas encore créée, ou une colonne
 //   manque
 //   et la lecture la dit comme avant) ;
-//   - quand le document porte le nom du manifeste ET un autre, le nom du manifeste gagne et GFS le dit dans la console (un avertissement) : le document d'une
-//   app
-//   qui renomme ses tables par un renommage de Grist n'en porte jamais deux ; en porter deux est un reste que GFS ne devine pas.
+//   - quand le document porte plusieurs noms d'une même table (une ancienne copie de l'app a recréé la table d'avant, ou une fusion n'est pas faite), GFS lit
+//   celle qui a des lignes ; quand les deux en ont, ou qu'aucune n'en a, l'autre nom que le manifeste donne (`aussi`, le nom où l'app va) : c'est la règle de
+//   l'app (consigne Publipostage+ 096), pour que GFS et elle lisent la même table. Une colonne qui porte deux noms : le nom où l'app va. GFS le dit dans la
+//   console (un avertissement) ;
+//   - GFS lit toujours les deux jeux de noms, sans date de fin : un document jamais rouvert dans la nouvelle version de l'app, ou restauré d'une sauvegarde,
+//   reste lisible (décidé par le porteur le 25/11).
 // Rien n'est écrit dans le document : ces noms viennent du manifeste et des tables internes de Grist, jamais d'un texte lu ailleurs.
 
 const lower = name => String(name).toLowerCase();
@@ -46,21 +49,32 @@ export async function readSchema(doc) {
   }
 }
 
-// Le premier de `candidates` que `has` retient, ou null. Le nom du manifeste est le premier : s'il y en a deux, il gagne (`warn` le dit).
-function firstOf(candidates, has, warn, what) {
+// Parmi les noms `found` que le document porte pour une même table (le nom du manifeste d'abord, puis ses autres noms) : celui qui a des lignes (`rows` :
+// nombre de lignes par nom de table en minuscules ; inconnu = on ne sait pas, donc des lignes), et si les deux en ont ou aucun, l'autre nom du manifeste, celui
+// où l'app va.
+function choose(found, rows) {
+  const filled = found.filter(each => rows.get(lower(each)) !== 0);
+  const among = filled.length ? filled : found;
+  return among.length > 1 ? among[1] : among[0];
+}
+
+// Le nom que le document porte parmi `candidates` (voir `choose`), ou null. `warn` dit un nom porté en double.
+function pick(candidates, has, rows, warn, what) {
   const found = candidates.filter(has);
-  if (found.length > 1) warn(`GFS : ${what} porte deux noms dans le document (${found.join(', ')}) : GFS lit ${found[0]}`);
-  return found.length ? found[0] : null;
+  if (found.length < 2) return found.length ? found[0] : null;
+  const chosen = choose(found, rows);
+  warn(`GFS : ${what} porte plusieurs noms dans le document (${found.join(', ')}) : GFS lit ${chosen}`);
+  return chosen;
 }
 
 // Les noms d'une app : { table(nom du manifeste) -> nom que le document porte, column(table du manifeste, colonne du manifeste) -> nom que le document porte }.
-function resolver(noms, schema, warn) {
+function resolver(noms, schema, warn, rows) {
   const entryOf = table => (noms && Object.hasOwn(noms, table) ? noms[table] : {});
   const asked = new Map();
   const table = name => {
     if (asked.has(name)) return asked.get(name);
     const candidates = [name, ...(entryOf(name).aussi || [])];
-    const found = firstOf(candidates, each => schema.has(lower(each)), warn, `la table ${name}`);
+    const found = pick(candidates, each => schema.has(lower(each)), rows, warn, `la table ${name}`);
     const actual = found ? schema.get(lower(found)).id : name;
     asked.set(name, actual);
     return actual;
@@ -69,7 +83,7 @@ function resolver(noms, schema, warn) {
     const here = schema.get(lower(table(tableName)));
     if (!here || name === 'id') return name;
     const candidates = [name, ...((entryOf(tableName).colonnes || {})[name] || [])];
-    const found = firstOf(candidates, each => here.columns.has(lower(each)), warn, `la colonne ${name} de ${tableName}`);
+    const found = pick(candidates, each => here.columns.has(lower(each)), new Map(), warn, `la colonne ${name} de ${tableName}`);
     return found ? here.columns.get(lower(found)) : name;
   };
   return { table, column };
@@ -133,10 +147,10 @@ function adaptSpec(spec, at, noms) {
 }
 
 // Le manifeste sous les noms que le document porte : le même objet quand il ne dit pas `noms` (ou que le schéma est inconnu), sinon une copie dont les
-// `fichiers[]` sont réécrits. `warn(texte)` dit un document qui porte deux noms.
-export function adaptManifest(manifest, schema, warn = text => console.warn(text)) {
+// `fichiers[]` sont réécrits. `warn(texte)` dit un document qui porte deux noms ; `rows` : le nombre de lignes des tables qui portent plusieurs noms.
+export function adaptManifest(manifest, schema, warn = text => console.warn(text), rows = new Map()) {
   if (!manifest || !manifest.noms || !schema || !Array.isArray(manifest.fichiers)) return manifest;
-  const at = resolver(manifest.noms, schema, warn);
+  const at = resolver(manifest.noms, schema, warn, rows);
   return { ...manifest, fichiers: manifest.fichiers.map(spec => adaptSpec(spec, at, manifest.noms)) };
 }
 
@@ -158,26 +172,57 @@ export const isTable = (spec, name) => Boolean(spec) && (spec.table === name || 
 const watched = items => new Set((items || []).flatMap(item => Object.entries((item && item.manifest && item.manifest.noms) || {})
   .flatMap(([table, entry]) => [table, ...((entry && entry.aussi) || [])])).map(lower));
 
+// Les tables que les manifestes disent sous plusieurs noms et que le document porte sous plusieurs : [nom de table du document, …] pour chacune.
+function doubledTables(items, schema) {
+  const doubled = [];
+  for (const item of items || []) {
+    for (const [table, entry] of Object.entries((item && item.manifest && item.manifest.noms) || {})) {
+      const present = [table, ...((entry && entry.aussi) || [])].filter(name => schema.has(lower(name))).map(name => schema.get(lower(name)).id);
+      if (present.length > 1) doubled.push(present);
+    }
+  }
+  return doubled;
+}
+
 // Les noms des apps pour le document ouvert : le schéma lu (`refresh`), et les manifestes qu'il réécrit (`adapt`, `adaptItem`), gardés tant que ce que le
-// schéma dit des tables de `noms` ne change pas. Sans `noms` dans aucun manifeste, `refresh` ne lit rien.
+// schéma dit des tables de `noms` ne change pas. Sans `noms` dans aucun manifeste, `refresh` ne lit rien. `count(table)` (facultative) rend le nombre de lignes
+// d'une table, ou null : elle ne sert qu'aux tables que le document porte sous plusieurs noms (la règle du haut de ce fichier).
 export class DocNames {
   #doc;
+  #count;
   #schema = null;
+  #rows = new Map();
   #version = 0;
   #seen = '';
   #manifests = new WeakMap();
   #items = new WeakMap();
   #warned = new Set();
 
-  constructor({ doc }) { this.#doc = doc; }
+  constructor({ doc, count = null }) { this.#doc = doc; this.#count = count; }
+
+  async #countDoubles(items) {
+    const rows = new Map();
+    if (!this.#schema || !this.#count) return rows;
+    for (const names of doubledTables(items, this.#schema)) {
+      for (const name of names) {
+        const n = await this.#count(name).catch(() => null);
+        if (Number.isFinite(n)) rows.set(lower(name), n);
+      }
+    }
+    return rows;
+  }
 
   // Lit le schéma du document quand une des `items` ({ manifest }) dit `noms`. Rend true quand ce que les manifestes réécrits disent a changé.
   async refresh(items) {
     const tables = watched(items);
     if (!tables.size) return false;
     this.#schema = await readSchema(this.#doc);
-    const now = this.#schema ? [...this.#schema].filter(([name]) => tables.has(name)).map(([, entry]) => `${entry.id}:${[...entry.columns.values()].join(',')}`)
+    this.#rows = await this.#countDoubles(items);
+    const shape = this.#schema ? [...this.#schema].filter(([name]) => tables.has(name)).map(([, entry]) =>
+      `${entry.id}:${[...entry.columns.values()].join(',')}`)
       .sort().join(';') : '';
+    const chosen = this.#schema ? doubledTables(items, this.#schema).map(names => choose(names, this.#rows)).sort().join(',') : '';
+    const now = this.#schema ? `${shape}|${chosen}` : '';
     if (now === this.#seen) return false;
     this.#seen = now;
     this.#version += 1;
@@ -189,7 +234,7 @@ export class DocNames {
     if (!manifest || !manifest.noms || !this.#schema) return manifest;
     const memo = this.#manifests.get(manifest);
     if (memo && memo.version === this.#version) return memo.value;
-    const value = adaptManifest(manifest, this.#schema, text => { if (!this.#warned.has(text)) { this.#warned.add(text); console.warn(text); } });
+    const value = adaptManifest(manifest, this.#schema, text => { if (!this.#warned.has(text)) { this.#warned.add(text); console.warn(text); } }, this.#rows);
     this.#manifests.set(manifest, { version: this.#version, value });
     return value;
   }

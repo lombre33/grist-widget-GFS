@@ -239,18 +239,18 @@ async function pillProblems(page, language, t, note, { click }) {
     await click(`[data-app="${app}"]`);
     await page.until(() => { const g = gallery(); return g && g.chips[0].pressed ? g : null; }).catch(() => null);
   }
-  // Automation+ livre aussi son catalogue (avec un type que GFS lui donne, car elle n'a pas de fichier) mais ne sait pas encore ouvrir un modèle : ses cinq cartes sont grisées
-  // « pas encore », et la pastille filtre quand même sur elles.
+  // Automation+ livre aussi son catalogue (avec un type que GFS lui donne, car elle n'a pas de fichier) et sait ouvrir un modèle depuis le 19/11 (`ouverture.modele` de son manifeste) :
+  // ses cartes sont libres, et « Créer » ouvre un document non enregistré.
   if (!await click('[data-app="automation"]')) return;
   s = await page.until(() => { const g = gallery(); return g && g.chips.find(chip => chip.app === 'automation').pressed ? g : null; }).catch(() => null);
   if (!s) note('pastille', 'un clic sur la pastille « automation » devrait la choisir');
-  else if (s.cards.length !== AUTOMATION || s.chips[0].pressed || s.cards.some(card => !card.disabled)) note('pastille', `filtrer sur Automation+ devrait montrer ses ${AUTOMATION} cartes grisées « pas encore » : ${s.cards.length} / ${s.cards.filter(card => card.disabled).length} grisées`);
+  else if (s.cards.length !== AUTOMATION || s.chips[0].pressed || s.cards.some(card => card.disabled)) note('pastille', `filtrer sur Automation+ devrait montrer ses ${AUTOMATION} cartes libres : ${s.cards.length} / ${s.cards.filter(card => card.disabled).length} grisées`);
   if (await click('.tp-card')) {
     const first = AUTOMATION_CATALOGUE[0].nom[language];
-    const reason = t('tp.locked', { name: first, reason: t('ex.template.notYet', { app: 'Automation+' }) });
+    const reason = t('tp.chosen', { name: first, app: 'Automation+' });
     s = await page.until(() => { const g = gallery(); return g && g.cards[0].pressed ? g : null; }).catch(() => null);
-    if (!s || s.note !== reason) note('pastille', `un modèle d'Automation+ grisé devrait dire « ${reason} » : « ${s && s.note} »`);
-    else if (s.see.shown || !s.create.disabled) note('pastille', 'un modèle d\'Automation+ grisé n\'a rien à débloquer : « Voir dans Apps » caché, « Créer » éteint');
+    if (!s || s.note !== reason) note('pastille', `un modèle d'Automation+ devrait dire « ${reason} » : « ${s && s.note} »`);
+    else if (s.see.shown || s.create.disabled) note('pastille', 'un modèle d\'Automation+ n\'a rien à débloquer : « Voir dans Apps » caché, « Créer » allumé');
   }
   await click('[data-app="automation"]');
   await page.until(() => { const g = gallery(); return g && g.chips[0].pressed ? g : null; }).catch(() => null);

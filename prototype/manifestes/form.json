@@ -23,6 +23,17 @@
   "entree": "poc/widget.html",
   "ouverture": { "fichier": true, "nouveau": true, "modele": true },
   "tables": { "prefixe": "FormPlus_" },
+  "noms": {
+    "FormPlus_Formulaires": {
+      "aussi": ["FormPlus_Forms"],
+      "colonnes": {
+        "Nom": ["Name"],
+        "TypeFormulaire": ["FormType"],
+        "DateModif": ["ModifiedAt"],
+        "ModifiePar": ["ModifiedBy"]
+      }
+    }
+  },
   "fichiers": [{
     "table": "FormPlus_Formulaires",
     "colonnes": { "id": "id", "nom": "Nom", "type": "TypeFormulaire", "date": "DateModif", "par": "ModifiePar" },
@@ -41,6 +52,12 @@
       "pourquoi": {
         "fr": "Le mode interne pose une table-sonde dont une colonne lit user.Email par une formule, pour connaître l'adresse de la personne qui remplit le formulaire.",
         "en": "Internal mode places a probe table whose column reads user.Email through a formula, to know the address of the person filling in the form."
+      }
+    },
+    "renommage": {
+      "pourquoi": {
+        "fr": "Passer sur place les tables et les colonnes de l'app aux noms anglais, en un seul lot, sans copier ni perdre une ligne ; jamais une table de la personne.",
+        "en": "Move the app's own tables and columns to their English names in place, in a single batch, without copying or losing a row; never one of the person's tables."
       }
     },
     "jeton": {

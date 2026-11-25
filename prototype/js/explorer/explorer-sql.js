@@ -4,16 +4,14 @@
 // SQL (`GET /sql`, par le cadre d'envoi, `Transfer.sql`) rend ces colonnes et le poids de la ligne, sans la cellule lourde : 30 ms.
 //
 // Trois règles font la forme de ce module :
-//   - elle ne sert qu'APRÈS une lecture complète qui a trouvé un document lourd (`learn`, plus de 4 Mo de fichiers) : un document léger garde la lecture
-//   d'avant, sans cadre d'envoi ni jeton de plus ;
+//   - elle ne sert qu'APRÈS une lecture complète qui a trouvé un document lourd (`learn`, plus de 4 Mo de fichiers), à cette visite ou à une précédente (le
+//     souvenir de js/explorer/heavy-hint.js) : un document léger garde la lecture d'avant, sans cadre d'envoi ni jeton de plus ;
 //   - elle n'emploie que le jeton en lecture seule : Grist ne rend `/sql` qu'à qui peut tout copier (faits vérifiés 43) ; un refus, une lecture coupée ou un
-//   serveur muet l'éteignent pour la session et
-//     l'explorateur relit comme avant (jamais de jeton qui peut écrire pour une lecture que la personne n'a pas demandée) ;
-//   - le poids rendu est celui de `js/weight/weight.js` : les colonnes du texte (texte, choix, listes, pièces jointes) se comptent en SQL (`length(CAST(… AS
-//   BLOB))`,
-//   les octets UTF-8 que SQLite garde) quand la
-//     lecture ne les rend pas, toutes les autres sont lues (ce sont des nombres) et pèsent par `cellBytes`, la fonction de la lecture complète : les deux
-//     lectures donnent le même poids à l'octet près.
+//     serveur muet l'éteignent pour la session et l'explorateur relit comme avant (jamais de jeton qui peut écrire pour une lecture que la personne n'a pas
+//     demandée) ;
+//   - le poids rendu est celui de `js/weight/weight.js` : les colonnes du texte (texte, choix, listes, pièces jointes) se comptent en SQL
+//     (`length(CAST(… AS BLOB))`, les octets UTF-8 que SQLite garde) quand la lecture ne les rend pas, toutes les autres sont lues (ce sont des nombres) et
+//     pèsent par `cellBytes`, la fonction de la lecture complète : les deux lectures donnent le même poids à l'octet près.
 // Rien n'est écrit, rien n'est gardé : les noms de tables et de colonnes viennent du manifeste et des tables internes de Grist, jamais d'un texte lu ailleurs,
 // et passent par `TABLE_ID`.
 
@@ -67,10 +65,10 @@ function decodeList(value) {
 
 // Les lignes de la lecture, dans la forme de `fetchTable` ({ id: [..], <colonne>: [..] }), et le poids de chacune.
 export function readRows(records, keep, wanted) {
-  const data = { id: records.map(row => row.id) };
-  for (const { colId, type } of keep) data[colId] = records.map(row => (wanted.has(colId) && isList(type) ? decodeList(row[colId]) : row[colId]));
+  const byColumn = { id: records.map(row => row.id) };
+  for (const { colId, type } of keep) byColumn[colId] = records.map(row => (wanted.has(colId) && isList(type) ? decodeList(row[colId]) : row[colId]));
   const weights = records.map(row => keep.reduce((sum, { colId }) => sum + cellBytes(row[colId]), Number(row.gfs_octets) || 0));
-  return { data, weights };
+  return { data: byColumn, weights };
 }
 
 // Les lectures d'un même passage sont demandées ensemble : le jeton d'une requête est demandé à Grist à chaque fois (js/broker/transfer.js), et deux lectures

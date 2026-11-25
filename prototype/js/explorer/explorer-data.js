@@ -13,7 +13,7 @@ import { applyLinks } from '../sharing/space-links.js';
 import { SHARES_TABLE } from '../sharing/sharing-model.js';
 import { rowsOf } from '../rights/rights.js';
 import { loadReceived } from '../sharing/received-files.js';
-import { neededColumns, HEAVY_BYTES } from './explorer-sql.js';
+import { neededColumns } from './explorer-sql.js';
 
 const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 
@@ -22,8 +22,7 @@ const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 const BIN_LIGHT = ['App', 'Table', 'FichierId', 'Nom', 'Type', 'Date', 'Auteur', 'SupprimeLe', 'SupprimePar'];
 
 // Les lectures que la lecture légère aura à faire (js/explorer/explorer-sql.js, `prepare`) : [{ table, wanted }], une par table lue plus bas avec les mêmes
-// colonnes
-// voulues : les tables des fichiers des apps, leurs tables liées et la corbeille, sous le nom que le document leur donne.
+// colonnes voulues : les tables des fichiers des apps, leurs tables liées et la corbeille, sous le nom que le document leur donne.
 function lightPlan(tables, apps) {
   const plan = [{ table: nameIn(tables, BIN_TABLE), wanted: BIN_LIGHT }];
   for (const { manifest } of apps) {
@@ -35,8 +34,8 @@ function lightPlan(tables, apps) {
   return plan;
 }
 
-// L'adresse que disent les lignes de partage lues, quand la personne n'a pu l'apprendre autrement (js/sharing/direct-shares.js) ; '' sans table de partages ou
-// sans certitude.
+// L'adresse que disent les lignes de partage lues, quand la personne n'a pu l'apprendre autrement (js/sharing/direct-shares.js) ;
+// '' sans table de partages ou sans certitude.
 async function sharedAddress(port, tables) {
   if (!tables || !tables.some(name => sameName(name, SHARES_TABLE))) return '';
   try { return addressFromShares(rowsOf(await port.doc.fetchTable(SHARES_TABLE))); } catch (error) { return ''; }
@@ -75,8 +74,8 @@ async function readLinked(port, tables, spec, light) {
 }
 
 // La case « + pièces jointes » de l'explorateur (faits vérifiés, section 39) : la table des pièces jointes de Grist, telle que l'API des widgets la rend avec
-// l'accès complet que GFS a déjà. Lue seulement quand la personne coche la case. Rend { data } ou { error } : une lecture qui échoue n'arrête rien, la case se
-// grise avec la raison.
+// l'accès complet que GFS a déjà. Lue seulement quand la personne coche la case. Rend { data } ou { error } : une lecture qui échoue n'arrête rien, la case
+// se grise avec la raison.
 export async function loadAttachments(port) {
   try { return { data: await port.doc.fetchTable('_grist_Attachments') }; } catch (error) { return { error }; }
 }
@@ -94,10 +93,8 @@ async function readSpec(port, tables, spec, light) {
 // Tout ce que la lecture demande à Grist, en deux temps : la liste des tables, puis toutes les tables ensemble (chacune ne dépend que de son nom, jamais d'une
 // autre ni de l'adresse de la personne). Une lecture qui allait table après table coûtait un aller-retour de réseau par table, et l'explorateur paraissait lent
 // dès que Grist n'était pas sur la même machine. Rend { tables, light, gfs, spaces, bin, received, reads: [{ manifest, spec, main, filing, links }] }.
-async function readEverything(port, apps, reader, keep = null) {
+async function readEverything(port, apps, reader) {
   const tables = await existingTables(port);
-  // l'empreinte du document, prise avant toute lecture de table (js/broker/table-cache.js) : celle-ci doit être arrivée avant que les tables ne partent
-  const head = keep && keep.mark ? await keep.mark : null;
   const light = reader && reader.isActive() && tables ? reader : null;
   // le rangement de GFS, les espaces et les fichiers reçus se lisent pendant que la lecture légère prépare la sienne
   const own = Promise.all([readTable(port, tables, TABLE), loadSpaces(port.doc, tables), loadReceived(port, tables)]);
@@ -106,30 +103,23 @@ async function readEverything(port, apps, reader, keep = null) {
   const [bin, ...found] = await Promise.all([readTable(port, tables, BIN_TABLE, light, BIN_LIGHT),
     ...specs.map(({ spec }) => readSpec(port, tables, spec, light))]);
   const [gfs, spaces, received] = await own;
-  return { tables, light, gfs, spaces, bin, received, head, reads: specs.map((item, index) => ({ ...item, ...found[index] })) };
+  return { tables, light, gfs, spaces, bin, received, reads: specs.map((item, index) => ({ ...item, ...found[index] })) };
 }
 
 // `apps` : les apps installées dont le manifeste est valide, { manifest }. `identity` : l'adresse de la personne, '' tant que GFS ne la connaît pas ; ou la
 //   promesse de cette adresse, quand GFS l'apprend encore (js/files/rangement.js, `identify`) : la lecture des tables n'en dépend pas, elle part tout de suite,
-//   et
-//   l'adresse n'est attendue qu'au moment de ranger. Rend {
-//   files, trash, folders, received, spaces, problems: [{ app, reason }], stats: { ms, tables, rows } } : `spaces` ce que disent les espaces partagés
-//   (js/sharing/spaces-filing.js, null sans partage), dont les dossiers sont ajoutés à `folders` ; `files` les fichiers vivants, `trash` ceux qui sont à la
-//   corbeille
-//   (js/explorer/explorer-model.js, `trashed`) : ils ne sont jamais mêlés, pour que rien de ce qui lit `files` (choisir, ouvrir, lire) ne voie un fichier
-//   supprimé ;
-//   `folders` les dossiers que la personne garde sans fichier (6.4, point 11) ; `gfsTable` le nom que le document donne à la table du rangement, ou null quand
-//   elle
-//   n'existe pas ; `binTable` celui de la table de la corbeille (js/files/gfs-trash.js), ou null. Un rangement de GFS illisible ne cache aucun fichier : ils
-//   restent à leur place
-//   d'avant.
-// `keep` : { cache, mark } (js/broker/table-cache.js), pour la première lecture de la page seulement.
+//   et l'adresse n'est attendue qu'au moment de ranger.
+// Rend { files, trash, folders, received, spaces, problems: [{ app, reason }], stats: { ms, tables, rows } } :
+//   `spaces` ce que disent les espaces partagés (js/sharing/spaces-filing.js, null sans partage), dont les dossiers sont ajoutés à `folders` ;
+//   `files` les fichiers vivants, `trash` ceux qui sont à la corbeille (js/explorer/explorer-model.js, `trashed`) : ils ne sont jamais mêlés, pour que rien de
+//   ce qui lit `files` (choisir, ouvrir, lire) ne voie un fichier supprimé ; `folders` les dossiers que la personne garde sans fichier (6.4, point 11) ;
+//   `gfsTable` le nom que le document donne à la table du rangement, ou null quand elle n'existe pas ; `binTable` celui de la table de la corbeille
+//   (js/files/gfs-trash.js), ou null. Un rangement de GFS illisible ne cache aucun fichier : ils restent à leur place d'avant.
 // `reader` : la lecture légère (js/explorer/explorer-sql.js), qui prend la suite de la lecture complète quand un document lourd a été vu ; sans elle, ou
-//   éteinte, rien
-//   ne change.
-export async function loadFiles(port, apps, identity = '', reader = null, keep = null) {
+//   éteinte, rien ne change.
+export async function loadFiles(port, apps, identity = '', reader = null) {
   const started = performance.now();
-  const raw = await readEverything(port, apps, reader, keep);
+  const raw = await readEverything(port, apps, reader);
   const who = await identity;
   const { context, folders } = await arrange(port, raw, who);
   const files = [];
@@ -148,20 +138,9 @@ export async function loadFiles(port, apps, identity = '', reader = null, keep =
   stats.bytes = [...files, ...trash].reduce((sum, file) => sum + file.weight, 0);
   stats.light = Boolean(raw.light && raw.light.isActive());
   if (reader && !raw.light) reader.learn(stats.bytes);
-  keepWhole(keep, raw, stats);
   stats.ms = Math.round(performance.now() - started);
   return { files, trash, folders, received: raw.received, spaces: raw.spaces, problems, stats, gfsTable: raw.gfs.data ? nameIn(raw.tables, TABLE) : null,
     binTable: raw.bin.data ? nameIn(raw.tables, BIN_TABLE) : null };
-}
-
-// Un document lourd, à la première lecture de la page : les tables de fichiers lues EN ENTIER se gardent pour l'app qui s'ouvre (js/broker/table-cache.js),
-// avec l'empreinte du document prise avant la lecture. Une table que la lecture légère a lue (le document était connu lourd d'une visite précédente :
-// js/explorer/heavy-hint.js) n'a que ses colonnes utiles : rien ne la lit en entier derrière la liste (24/11 : cette lecture en fond retardait la demande de
-// jeton de l'app qui s'ouvrait, et chargeait le serveur à chaque rafraîchissement de la page) ; l'app lit sa table elle-même, quand elle en a besoin.
-function keepWhole(keep, raw, stats) {
-  if (!keep || !raw.head || stats.bytes < HEAVY_BYTES) return;
-  const whole = raw.reads.filter(read => read.main.data && !read.main.weights).map(read => ({ id: nameIn(raw.tables, read.spec.table), data: read.main.data }));
-  if (whole.length) keep.cache.keep(raw.head, whole, stats.bytes);
 }
 
 // Ce que la lecture range avec l'adresse de la personne : le rangement de GFS, les espaces partagés et la corbeille des apps. Rend { context, folders },

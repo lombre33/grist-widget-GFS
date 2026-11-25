@@ -5,7 +5,6 @@ import { CATALOGUE } from './apps/catalogue.js';
 import { loadAll, label } from './apps/manifest.js';
 import { GristState } from './broker/state.js';
 import { createPort } from './broker/broker.js';
-import { TableCache } from './broker/table-cache.js';
 import { ViewOptions, addressOf } from './broker/view-options.js';
 import { ownSectionHandlers } from './broker/own-section.js';
 import { ViewLink, LINK_KEY } from './broker/view-link.js';
@@ -26,6 +25,7 @@ import { readCatalogue } from './apps/libraries.js';
 import { extensionsOf } from './apps/extensions.js';
 import { AppsState } from './apps/apps-state.js';
 import { DocNames } from './apps/doc-names.js';
+import { countRows } from './apps/row-count.js';
 import { arrivalApp, arrivalProbes } from './broker/arrival.js';
 import { arrivalTableApp } from './broker/arrival-table.js';
 import { Rangement, TableDeclined } from './files/rangement.js';
@@ -101,9 +101,7 @@ export class GfsController {
     this.state = new GristState();
     // Les choix de chaque app (contrats 5.3) : un espace par app dans le navigateur de GFS, jamais dans le document.
     this.appStorage = new AppStorage({ backend: browserBackend(window) });
-    // la copie d'une table lourde que l'explorateur lit, rendue à l'app qu'il ouvre (js/broker/table-cache.js) ; son empreinte vient du cadre d'envoi, plus bas
-    this.tableCache = new TableCache({ head: () => this.#stateHead() });
-    this.port = createPort(grist, this.tableCache);
+    this.port = createPort(grist);
     this.readonly = this.params.get('readonly') === 'true';
     // Les réglages des apps s'écrivent dans la vue, sans « Enregistrer » (contrats 7.3) : GFS retrouve sa section par son adresse et sa table.
     this.viewOptions = new ViewOptions({
@@ -120,8 +118,9 @@ export class GfsController {
     });
     // Les apps sont servies par leur site en ligne (le porteur, 22/10) ; `?live=0` : la copie figée du sous-module, celle des mesures de GFS.
     this.live = liveSwitch(search);
-    // Les noms que le document donne aux tables et aux colonnes des apps (js/apps/doc-names.js) : lus avant chaque lecture des fichiers.
-    this.names = new DocNames({ doc: this.port.doc });
+    // Les noms que le document donne aux tables et aux colonnes des apps (js/apps/doc-names.js) : lus avant chaque lecture des fichiers ; le nombre de lignes
+    // d'une table n'est lu que si le document la porte sous deux noms.
+    this.names = new DocNames({ doc: this.port.doc, count: table => countRows(table, { sql: statement => this.transfer.sql(statement), doc: this.port.doc }) });
     // Les apps installées et leurs extensions : ce que le document retient dans la table `GFS_Rangement` (contrats 7.4), écrit seulement sur un geste de la
     // personne, et la table seulement avec son accord. Cette table apprend aussi à GFS l'adresse de la personne (6.4, point 6) : sans écriture possible, elle
     // reste inconnue.
@@ -149,7 +148,7 @@ export class GfsController {
     this.#buildSharing();
     this.pending = new Pending(); // les gestes de rangement affichés avant d'être écrits (js/explorer/pending.js) ; l'explorateur se redessine à chacun
     this.#reading = new FilesReading({
-      pending: this.pending, cache: this.tableCache, noteBin: id => { if (this.appFiles) this.appFiles.noteBin(id); }, port: this.port,
+      pending: this.pending, noteBin: id => { if (this.appFiles) this.appFiles.noteBin(id); }, port: this.port,
         apps: () => this.validApps(), fullAccess: () => this.fullAccess,
         rangement: this.rangement,
         reader: this.fileReader,
@@ -381,14 +380,6 @@ export class GfsController {
       this.session.show(true);
       this.session.focus();
     }
-  }
-
-  // L'empreinte de l'état du document (`GET /states`, le dernier : elle change à chaque écriture, de qui qu'elle vienne) ; rien quand le serveur ne la rend
-  // pas.
-  async #stateHead() {
-    const { body } = await this.transfer.rest('GET', '/states', { writable: false, params: { limit: 1 } });
-    const [state] = (body && body.states) || [];
-    return state && typeof state.h === 'string' ? state.h : null;
   }
 
   // Une seule lecture des fichiers fait foi, la dernière lancée (js/explorer/files-reading.js). `quiet` : sans « Lecture des fichiers… ».

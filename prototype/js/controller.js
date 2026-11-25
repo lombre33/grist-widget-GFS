@@ -349,6 +349,7 @@ export class GfsController {
     if (this.modulesWindow) this.modulesWindow.relocalize(live);
     if (this.themeWindow) this.themeWindow.relocalize(live);
     this.templates.relocalize(live);
+    if (this.annuaire) this.annuaire.relocalize();
     this.dock.relabel(this.t);
     this.workControl.relabel();
     this.#reading.show();

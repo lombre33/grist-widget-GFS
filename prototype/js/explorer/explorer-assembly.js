@@ -16,6 +16,7 @@ import { Copying } from '../files/copying.js';
 import { ReceivedControl } from '../sharing/received-control.js';
 import { settingsItems } from '../shell/settings-menu.js';
 import { openAbout } from '../shell/about.js';
+import { openAnnuaire } from '../shell/annuaire-entry.js';
 
 // Épingler, renommer, déplacer depuis l'explorateur (js/explorer/filing.js) : les fenêtres du widget par-dessus l'explorateur, et la liste relue après chaque
 // geste.
@@ -72,7 +73,7 @@ export function buildExplorer(c) {
     sharing: c.rights.sharing, links: c.rights.links, onWeight: estimate => void c.weight.open(estimate),
     onOpen: file => c.openings.openFile(file), onNew: entry => c.openings.openNew(entry), onImport: entry => void c.openings.importFile(entry),
       onTemplates: () => void c.templates.open(),
-      onClose: () => c.hideExplorer(), onApps: () => void c.openModules(),
+      onClose: () => c.hideExplorer(), onApps: () => void c.openModules(), onAnnuaire: () => void openAnnuaire(c),
     personal: () => Boolean(c.identity), filing, pending: c.pending, kept: c.kept, attachments: () => loadAttachments(c.port),
     trash: new Trash({ managers, ask: opts => c.ask(opts), keepFolders: file => filing.keepFoldersOf(file), later, ...gestures }),
     copying: new Copying({ managers, file: (app, id, folder) => filing.rangeNew([{ app, file: id, pinned: false, folder }]), ...gestures }),

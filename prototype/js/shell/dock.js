@@ -1,5 +1,6 @@
-// La barre de GFS au-dessus d'une app (cahier 6.3, contrats 5.2 point 7) : cinq boutons à icône seule (« Fichiers », « Fichiers ouverts » avec son nombre,
-// « Apps », la ligne de travail, contrats 4.5, et la position de la barre), et un sixième, « LanguageTool », que la personne ajoute par les réglages (contrats
+// La barre de GFS au-dessus d'une app (cahier 6.3, contrats 5.2 point 7) : six boutons à icône seule (« Fichiers », « Fichiers ouverts » avec son nombre,
+// « Apps », la ligne de travail, contrats 4.5, l'annuaire et la position de la barre), et un septième, « LanguageTool », que la personne ajoute par les
+// réglages (contrats
 // 5.2,
 // point 13), posés par-dessus le cadre de l'app, au bord que la personne choisit, centrés sur ce
 // bord. Le cadre de l'app reste plein : la barre ne prend de place à personne, et dit à l'app ce qu'elle recouvre (`dock-state.js`). Le bord est retenu dans le
@@ -24,6 +25,7 @@ export class Dock {
   #openedCount = 0;
   #apps;
   #work;
+  #annuaire;
   #workTip = null;
   #lt;
   #ltState = { shown: false, coupes: false };
@@ -32,16 +34,18 @@ export class Dock {
   #t = key => key;
   #onNotKept;
 
-  // root : l'élément de la barre, avec ses boutons ; stage : la scène (sa taille est celle du cadre de l'app) ; onFiles, onOpened, onApps, onWork et onLt : les
+  // root : l'élément de la barre, avec ses boutons ; stage : la scène (sa taille est celle du cadre de l'app) ; onFiles, onOpened, onApps, onWork, onAnnuaire
+  //   et onLt : les
   //   boutons qui font quelque chose (le menu de position est celui de la barre) ; onNotKept : le navigateur refuse de retenir le bord choisi (il vaut alors
   //   pour la page).
-  constructor({ root, stage, onFiles, onOpened, onApps, onWork, onLt, onNotKept, win = window }) {
+  constructor({ root, stage, onFiles, onOpened, onApps, onWork, onAnnuaire, onLt, onNotKept, win = window }) {
     this.#root = root;
     this.#stage = stage;
     this.#files = root.querySelector('#floater-files');
     this.#opened = root.querySelector('#floater-opened');
     this.#apps = root.querySelector('#floater-apps');
     this.#work = root.querySelector('#floater-work');
+    this.#annuaire = root.querySelector('#floater-annuaire');
     this.#lt = root.querySelector('#floater-lt');
     this.#place = root.querySelector('#floater-place');
     this.#onNotKept = onNotKept;
@@ -51,6 +55,7 @@ export class Dock {
     this.#opened.addEventListener('click', onOpened);
     this.#apps.addEventListener('click', onApps);
     this.#work.addEventListener('click', onWork);
+    this.#annuaire.addEventListener('click', onAnnuaire);
     this.#lt.addEventListener('click', onLt);
     this.#place.addEventListener('click', () => this.#openPlaceMenu());
     watchKey(setting, STORAGE_KEY, win);
@@ -79,6 +84,7 @@ export class Dock {
     this.#paintOpened();
     this.#name(this.#apps, 'modules', t('gfs.appsTip'));
     this.#name(this.#work, 'work-row', this.#workTip || t('work.title'));
+    this.#name(this.#annuaire, 'annuaire', t('an.tip'));
     this.#paintLt();
     this.#name(this.#place, EDGE_ICONS[this.edge], t('dock.place'));
     this.#place.dataset.edge = this.edge;

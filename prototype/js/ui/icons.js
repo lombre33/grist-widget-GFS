@@ -84,6 +84,16 @@ const ICONS = {
   package: '<path d="M12 3l8.5 4.5v9L12 21l-8.5-4.5v-9z"/><path d="M3.5 7.5L12 12l8.5-4.5M12 12v9"/>',
   shield: '<path d="M12 3l7.5 3v5.6c0 4.3-3 8-7.5 9.4-4.5-1.4-7.5-5.1-7.5-9.4V6z"/>',
   'chev-left': '<path d="M15 6l-6 6 6 6"/>',
+  'chev-up': '<path d="M6 15l6-6 6 6"/>',
+  // Le module Annuaire (la barre de GFS et l'en-tête de l'explorateur) : un carnet d'adresses, sa silhouette et ses onglets ; le moins du zoom, « Tout voir »
+  // (quatre coins), l'organigramme (une carte, deux cartes dessous) et le téléphone d'une fiche.
+  annuaire: '<rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="10" r="2.6"/><path d="M7.8 17c.6-2 2.3-3 4.2-3s3.6 1 4.2 3"/><path d="M2.8 7.5h2.4M2.8 12h2.4M2.8 16.5h2.4"/>',
+  minus: '<path d="M5 12h14"/>',
+  // Les filtres de la liste de l'annuaire : un entonnoir.
+  filter: '<path d="M4 5h16l-6 7v6l-4 2v-8z"/>',
+  fit: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+  org: '<rect x="8.5" y="3" width="7" height="5" rx="1"/><rect x="2.5" y="16" width="7" height="5" rx="1"/><rect x="14.5" y="16" width="7" height="5" rx="1"/><path d="M12 8v4M6 16v-4h12v4"/>',
+  phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1.5 1.5 0 0 1-1.5 1.5A15.5 15.5 0 0 1 3.5 5.5 1.5 1.5 0 0 1 5 4Z"/>',
 };
 
 export const iconNames = () => Object.keys(ICONS);

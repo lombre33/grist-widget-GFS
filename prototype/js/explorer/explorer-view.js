@@ -21,6 +21,7 @@ export function buildShell(i18n) {
         keep('title', h('h2', { class: 'ex-title', id: 'ex-title' })),
         h('span', { class: 'grow' }),
         keep('appsBtn', h('button', { type: 'button', class: 'tb', 'aria-haspopup': 'dialog' })),
+        keep('annuaireBtn', h('button', { type: 'button', class: 'tb', 'aria-haspopup': 'dialog' }, icon('annuaire'))),
         keep('display', h('div', { class: 'tb-group', role: 'group' }, toggle('viewList', 'list'), toggle('viewTiles', 'tiles'))),
         keep('bellBtn', h('button', { type: 'button', class: 'tb tb-bell', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, icon('bell'),
           keep('bellCount', h('span', { class: 'tb-badge', hidden: true })))),
@@ -56,6 +57,7 @@ export function relabel(refs, i18n) {
   refs.appsBtn.title = t('gfs.appsTip');
   refs.appsBtn.replaceChildren(icon('modules'), t('gfs.apps'));
   describe(refs.settingsBtn, t('set.tip'));
+  describe(refs.annuaireBtn, t('an.tip'));
   describe(refs.bellBtn, t('nt.tip'));
   refs.display.setAttribute('aria-label', t('ex.display'));
   describe(refs.viewList, t('ex.list'));

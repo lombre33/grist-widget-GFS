@@ -48,6 +48,7 @@ import { voileProblems } from './voile-firefox.mjs';
 import { nativesProblems } from './natives-firefox.mjs';
 import { vitrineProblems } from './vitrine-firefox.mjs';
 import { modelesProblems } from './modeles-firefox.mjs';
+import { annuaireProblems } from './annuaire-firefox.mjs';
 import { fenetresProblems } from './fenetres-firefox.mjs';
 import { bulleProblems } from './bulle-firefox.mjs';
 import { lecteurPages, lecteurProblems, stubProviders } from './lecteur-firefox.mjs';
@@ -60,18 +61,20 @@ const SCALES = [1, 1.5];
 const MODES = ['light', 'dark'];
 const LANGUAGES = ['fr', 'en'];
 const PAGE = '/essai-explorateur.html';
+const ANNUAIRE_PAGE = '/essai-annuaire.html';
+const ANNUAIRE_WIDTHS = [700, 520, 400]; // le panneau de référence, puis les deux largeurs où la fiche prend la place de la hiérarchie et où la liste n'écrit plus les niveaux
 
 const firefox = findFirefox();
 if (!firefox) process.stderr.write(process.env.GFS_SANS_FIREFOX ? 'GFS_SANS_FIREFOX : l\'interface n\'est PAS mesurée sous Firefox sur cette machine (les polices changent la mise en page).\n' : 'Firefox introuvable : l\'interface n\'est PAS mesurée sous Firefox (labo/installer-firefox.sh, ou GFS_FIREFOX=<fichier exécutable>).\n');
 
-// La page d'essai : les feuilles de style et la carte d'importation de index.html, dans son ordre ; le reste est test/pages/explorateur.js.
-function essayPage() {
+// La page d'essai : les feuilles de style et la carte d'importation de index.html, dans son ordre ; le reste est `script` (test/pages/explorateur.js, ou test/pages/annuaire.js).
+function essayPage(script = '/test/pages/explorateur.js') {
   const index = readFileSync(join(ROOT, 'index.html'), 'utf8');
   const sheets = index.match(/<link rel="stylesheet"[^>]*>/g) || [];
   const importMap = (index.match(/<script type="importmap">[\s\S]*?<\/script>/) || [''])[0];
   assert.ok(sheets.length >= 3 && importMap, 'index.html : ses feuilles de style et sa carte d\'importation');
   return `<!doctype html>\n<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>essai</title>\n${sheets.join('\n')}\n${importMap}\n</head>\n`
-    + '<body><main class="stage" id="stage"></main><script type="module" src="/test/pages/explorateur.js"></script></body></html>';
+    + '<body><main class="stage" id="stage"></main><script type="module" src="' + script + '"></script></body></html>';
 }
 
 // ---------- ce qui s'exécute dans la page (rien du module n'y est visible) ----------
@@ -585,7 +588,7 @@ describe('l\'interface sous Firefox', () => {
 
   before(async () => {
     if (!firefox) return;
-    site = await serveSite(ROOT, { [PAGE]: essayPage() });
+    site = await serveSite(ROOT, { [PAGE]: essayPage(), [ANNUAIRE_PAGE]: essayPage('/test/pages/annuaire.js') });
     browser = await startFirefox(firefox);
   });
 
@@ -689,6 +692,24 @@ describe('l\'interface sous Firefox', () => {
         await page.view({ width: 700, scale: 1, mode });
         problems.push(...await glisserProblems(page, language, caption(language, 700, 1, mode)));
       }
+      assert.equal(problems.length, 0, report(problems));
+    });
+
+    // L'annuaire (test/annuaire-firefox.mjs, module Annuaire, 25/11) : la vraie fenêtre sur un faux Grist en mémoire (test/pages/annuaire.js), à 700, 520 et 400 px de large sur 400 de haut, à la vraie souris et au vrai clavier, en clair et en sombre ; une page rechargée par largeur et par mode.
+    test(`l'annuaire en ${language === 'fr' ? 'français' : 'anglais'}, en clair et en sombre à 700, 520 et 400 px : cadre, liste, hiérarchie, fiche, recherche, filtres, cartes, organigramme, réglage, langue, clavier, contraste`, { skip: SKIP, timeout: 360000 }, async () => {
+      const { page } = browser;
+      const problems = [];
+      const since = page.logs.length;
+      for (const width of ANNUAIRE_WIDTHS) {
+        for (const mode of MODES) {
+          await page.goto(`${site.url}${ANNUAIRE_PAGE}?lang=${language}`);
+          await page.run(() => window.__ready);
+          await page.view({ width, scale: 1, mode });
+          problems.push(...await annuaireProblems(page, language, caption(language, width, 1, mode), { width, mode }));
+        }
+      }
+      const logged = page.logs.slice(since).filter(entry => (entry.level === 'error' && entry.type === 'javascript') || /GFS/.test(entry.text || ''));
+      for (const entry of logged) problems.push({ kind: 'la page écrit dans la console', text: `la page a écrit « ${String(entry.text).slice(0, 120)} »` });
       assert.equal(problems.length, 0, report(problems));
     });
   }

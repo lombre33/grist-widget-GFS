@@ -91,7 +91,9 @@ export const lookup = (catalogue, id, version) => catalogue.entries.get(`${id}@$
 
 // `required` : [{ id, version }] ; `modeOf(id)` : 'cdn' ou 'vendorise' ; `base` : l'adresse de GFS (la copie vendorisée est servie à côté de lui).
 // Une entrée sans CDN est toujours servie par la copie de GFS, quel que soit le mode demandé.
-// Rend { libraries: { id: { version, mode, forme, src, integrite, poids } }, missing: [{ id, version }] }.
+// Rend { libraries: { id: { version, mode, forme, src, integrite, poids, copie } }, missing: [{ id, version }] } ; `copie` est toujours la copie de GFS ({ src,
+// integrite }),
+// quel que soit le mode : c'est elle qui sert de secours à une bibliothèque chargée par un CDN (`secoursOf`).
 export function resolveLibraries(catalogue, required, modeOf, base) {
   const libraries = {};
   const missing = [];
@@ -99,8 +101,9 @@ export function resolveLibraries(catalogue, required, modeOf, base) {
     const entry = lookup(catalogue, id, version);
     if (!entry) { missing.push({ id, version }); continue; }
     const mode = modeOf(id) === 'vendorise' || !entry.cdn ? 'vendorise' : DEFAULT_MODE;
-    const source = mode === 'vendorise' ? { src: new URL(entry.vendorise.chemin, base).href, integrite: entry.vendorise.integrite } : entry.cdn;
-    libraries[id] = { version, mode, forme: entry.forme || DEFAULT_FORM, src: source.src, integrite: source.integrite, poids: entry.poids || 0 };
+    const copy = { src: new URL(entry.vendorise.chemin, base).href, integrite: entry.vendorise.integrite };
+    const source = mode === 'vendorise' ? copy : entry.cdn;
+    libraries[id] = { version, mode, forme: entry.forme || DEFAULT_FORM, src: source.src, integrite: source.integrite, poids: entry.poids || 0, copie: copy };
   }
   return { libraries, missing };
 }
@@ -109,5 +112,16 @@ export function resolveLibraries(catalogue, required, modeOf, base) {
 export function forContext(libraries) {
   const out = {};
   for (const [id, { src, integrite, forme }] of Object.entries(libraries)) out[id] = { src, integrite, forme };
+  return out;
+}
+
+// Le secours (contrats 5.2, point 14 ; choix du porteur, 25/11 : « la copie figée en back-up », jamais un deuxième CDN) : pour chaque bibliothèque que l'app
+// charge par un CDN, la copie de GFS, `{ version, src, integrite, forme }`. L'app l'essaie quand le CDN échoue (erreur, empreinte refusée) ou ne répond pas à
+// temps. Une bibliothèque déjà servie par la copie n'en a pas besoin : elle n'y est pas.
+export function secoursOf(libraries) {
+  const out = {};
+  for (const [id, lib] of Object.entries(libraries)) {
+    if (lib.mode === DEFAULT_MODE) out[id] = { version: lib.version, src: lib.copie.src, integrite: lib.copie.integrite, forme: lib.forme };
+  }
   return out;
 }

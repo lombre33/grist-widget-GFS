@@ -594,7 +594,7 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     le manifeste de Publipostage+ en déclare neuf, la fenêtre n'appelle aucune des adresses déclarées ; faits vérifiés 132). [M]
 
 18. [D] **Le contrôle de sécurité des apps : `bibliotheques/securite.json`** (choix du porteur, 18/11, « Idem + alertes relayées par les apps » ; cahier 3.2.1 et 3.2.2 ; guide des apps 1.4 ; faits
-    vérifiés 133). Le fichier est écrit par `outils/controle-securite.mjs` (à la main, ou chaque lundi par `.github/workflows/controle-securite.yml`, qui ouvre une demande de fusion si autre chose que la date
+    vérifiés 133). Le fichier est écrit par `outils/controle-securite.mjs` (à la main, ou chaque lundi par `.github/workflows/controle-securite.yml`, qui pousse une branche `controle-securite-AAAAMMJJ` (jamais une demande de fusion : choix du porteur, 25/11) si autre chose que la date
     change) et commité ; **la fenêtre « Dépendances » le lit, le navigateur de la personne n'appelle rien**. `{ contrat: 0, controle: <date ISO>, origine: 'local' | 'actions', apps: { <id>: … } }`, une entrée par app du
     catalogue : `depot`, `reference` (le commit du sous-module), `entree` (la page que le manifeste ouvre : celle qui compte, pas la page d'accueil), `lecture` (`page`, `code` : GFS a lu la copie de l'app
     et pas seulement sa page, `etat` : son `GFS-ETAT.md` a les sections de sécurité, `empreintes` : recalculées à ce passage), `pages` (nombre de scripts, de feuilles, d'entrées de carte d'importation,
@@ -1341,6 +1341,7 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 | `acces` | niveau de **cette app** (3.1) | oui | celui de Grist |
 | `extensions` | identifiants des extensions actives de l'app | liste de la section | `[]` |
 | `bibliotheques` | source de chaque bibliothèque que les extensions actives exigent : `{ "<id>": { src, integrite, forme } }` (2.6) ; `forme` vaut toujours `script` ou `module` | oui | `{}` |
+| `secours` | la copie de GFS de ce que l'app charge par un CDN : `{ "<id>": { version, src, integrite, forme } }` (point 14) | oui, relue à chaque appel ; additif (un GFS d'avant n'en parle pas) | `{}` |
 | `ouverture` | pourquoi et sur quoi l'app s'ouvre, ou `null` (5.4) | oui | `null` |
 | `stockage` | copie de l'espace de cette app, `{ clé: valeur }` (5.3) | oui, relue à chaque appel | contenu du navigateur |
 | `barre` | la barre de GFS qui recouvre le cadre de l'app, `{ bord, epaisseur, zone }`, ou `null` quand rien ne le recouvre (point 7) | oui, mesurée à chaque appel | `null` |
@@ -1354,7 +1355,7 @@ l'appel `contexte` dès son démarrage ; GFS rend :
 1. [T] Les six paramètres de l'adresse (1.3) et le contexte disent la même chose : l'adresse existe pour le code des apps
    qui la lit déjà, le contexte pour le kit. Une seule différence dans le temps : la langue de l'adresse est celle du cadre
    quand il a été créé, et le contexte dit la langue qui vaut maintenant (point 6).
-2. [D] Sept événements en cours de vie. `extensions` (`{ "extensions": [ … ], "bibliotheques": { … }, "natives": { … } }`), quand la personne
+2. [D] Sept événements en cours de vie. `extensions` (`{ "extensions": [ … ], "bibliotheques": { … }, "natives": { … }, "secours": { … } }`), quand la personne
    active ou désactive une extension dans GFS, ou change le mode d'une bibliothèque native (point 12) : l'app charge alors l'extension au premier usage, comme ses moteurs d'export.
    `langue` (`{ "langue": "fr" | "en" }`), quand la personne change la langue de GFS (point 6). `barre` (`{ "barre": { … } | null }`),
    quand la barre de GFS change de bord, de taille, ou disparaît et revient (point 7). `identite` (`{ "identite": { "email": … } | null }`),
@@ -1710,6 +1711,23 @@ sans événement : seule une règle posée recharge la page (11.5, point 3), et 
     n'est pas touchée : le bouton est sans effet sur elle (GFS ne le grise pas : il n'a aucun moyen de savoir si l'app lit le champ). [M] **Mesuré le 12/11** dans un vrai Grist (`labo/run-correcteurs.mjs`,
     sonde ZL qui pose la marque comme le fera le kit : 29 vérifications en français et en anglais, en clair et en sombre) et sous Firefox 160 sans écran (menu « Réglages » à cinq lignes, barre à
     six boutons sur les quatre bords) ; la réponse de LanguageTool lui-même est celle du porteur (faits vérifiés 104).
+
+14. [D] **`secours`** (choix du porteur, 25/11 : « oui très bien, copie figée en back-up », jamais un deuxième CDN ; faits vérifiés 170 ; kit 0.31.0) : `{ "<id de bibliothèque>": { "version", "src", "integrite", "forme" } }`,
+    dans le contexte et dans l'événement `extensions` (point 2). **Additif** : `bibliotheques` et `natives` ne changent pas d'un octet, un GFS d'avant ne l'envoie pas, une app d'avant ne le lit pas
+    et charge comme avant. Pour chaque bibliothèque que l'app charge **par un CDN**, c'est **la copie de GFS** (la même que le mode « copie figée » aurait donnée : `src` à côté de GFS, sa
+    propre `integrite`, sa `forme`), jamais l'adresse d'un CDN. Il couvre (a) les bibliothèques des extensions restées au CDN, quand leur entrée a un CDN (sans CDN, la copie est déjà le seul mode : elle
+    est dans `bibliotheques`, pas dans `secours`), et (b) les bibliothèques natives des fonctions restées au CDN, quand le catalogue les a, à la version du manifeste (une bibliothèque que le
+    catalogue n'a pas n'a pas de secours) ; **pas** l'éditeur, dont la copie est dans l'app. Une bibliothèque que la copie sert déjà n'y est pas ; si l'id est à la fois d'une extension et d'une
+    fonction native, c'est l'entrée de l'extension qui vaut. Chaque entrée dit sa `version` : l'app ne la prend que si c'est celle que son code attend, comme pour `natives`.
+    **Ce que fait l'app** : elle charge par son CDN, comme toujours ; quand la balise lève `error` (un hôte mort, des octets que l'empreinte refuse et une adresse que sa politique de sécurité ne nomme
+    pas lèvent le même événement), ou que rien n'est arrivé en 3 secondes (un hôte muet ne lève rien), elle charge la copie, avec sa propre empreinte et `crossorigin="anonymous"`. La politique de l'app ne nomme rien
+    de plus : `'self'` suffit (point 5). Le kit en fait l'aide : `GfsLink.secours(id, version)` et `loadScript(lib, { secours })` (`js/script-loader.js`). Une app qui ne l'adopte pas n'est pas touchée.
+    [M] **Mesuré le 25/11** : sous Firefox 160, dans un cadre isolé (`sandbox="allow-scripts"`, sans `allow-same-origin`), avec le vrai `loadScript` du kit (`test/secours-firefox.test.mjs`, six essais) : un CDN qui
+    charge ne fait jamais demander la copie ; des octets changés chez le CDN sont refusés par l'empreinte, le code changé ne s'exécute jamais, la copie charge (5 ms) ; un hôte mort (4 ms) et une adresse que la
+    politique ne nomme pas (12 ms) donnent la copie tout de suite ; un hôte muet la donne après 3 004 ms ; sans secours l'erreur remonte, et une copie dont les octets sont changés est refusée à son tour ;
+    un fichier assemblé (forme `module`) suit la même route. Dans un vrai Grist (grist-static) avec la vraie Publipostage+ (`labo/run-graphique.mjs`, au CDN puis en copie figée) : l'événement `extensions`
+    porte les neuf natives et, au CDN, Plotly et ECharts (11 entrées) ; en copie figée, neuf (Plotly et ECharts n'y sont plus), jamais une adresse de jsDelivr. **Non mesuré** : le chargement par la vraie
+    Publipostage+ avec le kit 0.31.0 (son kit est celui d'avant : elle ne lit pas encore `secours`) ; la copie sous la politique d'une app d'un autre site que GFS (les essais mettent l'app et la copie à la même origine, comme sur le site de `grist-factory`).
 
 ### 5.3 Le stockage du navigateur
 

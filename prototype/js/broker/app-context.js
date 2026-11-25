@@ -40,7 +40,7 @@ export class AppContext {
   pushExtensions() {
     const { c } = this;
     const given = c.registry.extensionsFor(c.session.id, c.doc.baseURI);
-    const sent = JSON.stringify([given.extensions, given.bibliotheques, given.natives]);
+    const sent = JSON.stringify([given.extensions, given.bibliotheques, given.natives, given.secours]);
     if (sent === this.#sentExtensions) return;
     this.#sentExtensions = sent;
     c.session.sendExtensions(given);
@@ -63,7 +63,7 @@ export class AppContext {
     c.dock.mask(false); // un cadre qui redemande son contexte repart avec la barre (contrats 5.2, point 7)
     const opening = this.#takeOpening(session);
     const given = c.registry.extensionsFor(session.id, c.doc.baseURI);
-    this.#sentExtensions = JSON.stringify([given.extensions, given.bibliotheques, given.natives]);
+    this.#sentExtensions = JSON.stringify([given.extensions, given.bibliotheques, given.natives, given.secours]);
     const facts = await this.readFacts();
     const storage = c.appStorage.read(session.id);
     const identity = identityFor(session.policy, c.identity);
@@ -71,7 +71,8 @@ export class AppContext {
     const role = await c.rights.reader.role(); // ce que GFS a prouvé : propriétaire ou non, `null` sinon (contrats 5.2, point 8)
     // d'avance, ce que deviendront ses réglages de vue : dans la vue (rien à enregistrer dans Grist) ou en brouillon (contrats 7.3, point 5)
     session.announceSaved();
-    return buildContext(facts, { access: session.access, extensions: given.extensions, libraries: given.bibliotheques, natives: given.natives, opening, storage,
+    return buildContext(facts, { access: session.access, extensions: given.extensions, libraries: given.bibliotheques, natives: given.natives,
+      secours: given.secours, opening, storage,
       bar: c.dock.barre(), identity, players: session.policy.lecteurs, ambiance: c.theme.message(), correcteurs: c.correcteurs.message(), role },
       { preferences: c.appPreferences(), readonly: c.readonly });
   }

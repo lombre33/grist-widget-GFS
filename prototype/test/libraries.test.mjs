@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { readCatalogue, resolveLibraries, forContext, lookup, CDN_HOSTS } from '../js/apps/libraries.js';
+import { readCatalogue, resolveLibraries, forContext, secoursOf, lookup, CDN_HOSTS } from '../js/apps/libraries.js';
 
 const SRI = `sha384-${'A'.repeat(64)}`;
 const entry = (extra = {}) => ({
@@ -62,6 +62,18 @@ test('resolveLibraries : CDN par défaut, copie vendorisée servie à côté de 
   const none = resolveLibraries(catalogue, [{ id: 'plotly', version: '2.13.3' }, { id: 'marked', version: '1.0.0' }], () => 'cdn', BASE);
   assert.deepEqual(none.missing, [{ id: 'plotly', version: '2.13.3' }, { id: 'marked', version: '1.0.0' }]);
   assert.deepEqual(none.libraries, {});
+});
+
+test('secoursOf : la copie de GFS de ce qui se charge par un CDN, jamais l\'adresse du CDN ; rien pour ce que la copie sert déjà ou qui n\'a pas de CDN', () => {
+  const catalogue = read([entry()]);
+  const need = [{ id: 'plotly', version: '2.13.2' }];
+  const cdn = secoursOf(resolveLibraries(catalogue, need, () => 'cdn', BASE).libraries);
+  assert.deepEqual(cdn, { plotly: { version: '2.13.2', src: 'https://exemple.github.io/grist-widget-GFS/prototype/vendor/plotly/2.13.2/plotly-basic.min.js', integrite: SRI, forme: 'script' } });
+  assert.equal(JSON.stringify(cdn).includes('jsdelivr'), false, 'le secours est la copie de GFS, pas un deuxième CDN');
+  assert.deepEqual(secoursOf(resolveLibraries(catalogue, need, () => 'vendorise', BASE).libraries), {}, 'déjà servie par la copie : pas de secours');
+  const bare = read([entry({ cdn: null })]);
+  assert.deepEqual(secoursOf(resolveLibraries(bare, need, () => 'cdn', BASE).libraries), {}, 'sans CDN, la copie est le seul mode : pas de secours');
+  assert.deepEqual(secoursOf({}), {});
 });
 
 test('forContext : l\'adresse, l\'empreinte et la forme, rien d\'autre', () => {

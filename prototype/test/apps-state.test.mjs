@@ -141,6 +141,11 @@ test('setExtension et setMode : par extension, bornés par le manifeste', async 
   assert.deepEqual(given.extensions, ['graphique']);
   assert.match(given.bibliotheques.plotly.src, /^https:\/\/exemple\.test\/gfs\/vendor\/plotly\/2\.13\.2\//);
   assert.match(given.bibliotheques.echarts.src, /^https:\/\/exemple\.test\/gfs\/vendor\/echarts\/6\.1\.0\/dist\/echarts\.min\.js$/, 'le graphique créé dans l\'app a la bibliothèque qui le dessine');
+  assert.deepEqual(given.secours, {}, 'en copie de GFS, il n\'y a rien à secourir');
+  await state.setMode('publipostage', 'graphique', 'cdn');
+  const online = state.extensionsFor('publipostage', 'https://exemple.test/gfs/');
+  assert.deepEqual(Object.keys(online.secours).sort(), ['echarts', 'plotly'], 'au CDN, la copie de GFS est le secours de chaque bibliothèque');
+  assert.equal(online.secours.plotly.src, given.bibliotheques.plotly.src, 'le secours est l\'adresse de la copie, celle que le mode copie aurait donnée');
 });
 
 test('une extension dont une bibliothèque manque au catalogue ne s\'allume pas à moitié : sans ECharts, « graphique » n\'est pas donnée à l\'app', async () => {

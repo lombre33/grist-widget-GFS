@@ -23,12 +23,15 @@ test('buildContext : tous les champs du contrat, les paramètres de l\'adresse d
   const facts = { instance: 'https://docs.getgrist.com', document: 'abc123', page: 4, widgetAddress: 'https://exemple.test/gfs/index.html' };
   const session = { access: 'read table', extensions: ['graphique'], libraries: { plotly: { src: 'https://x/p.js', integrite: 'sha384-X' } }, opening: { fichier: null, type: 'modele', dossier: '', raison: 'nouveau' } };
   const context = buildContext(facts, session, { preferences: { language: 'fr', timeZone: 'Europe/Paris' }, readonly: false });
-  assert.deepEqual(Object.keys(context), ['contrat', 'hote', 'instance', 'document', 'page', 'section', 'adresseWidget', 'langue', 'culture', 'fuseau', 'devise', 'lectureSeule', 'acces', 'extensions', 'bibliotheques', 'natives', 'ouverture', 'stockage', 'barre', 'lecteurs', 'identite', 'ambiance', 'correcteurs', 'role']);
+  assert.deepEqual(Object.keys(context), ['contrat', 'hote', 'instance', 'document', 'page', 'section', 'adresseWidget', 'langue', 'culture', 'fuseau', 'devise', 'lectureSeule', 'acces', 'extensions', 'bibliotheques', 'natives', 'secours', 'ouverture', 'stockage', 'barre', 'lecteurs', 'identite', 'ambiance', 'correcteurs', 'role']);
   assert.equal(context.contrat, 0);
   assert.deepEqual(context.hote, HOST);
   assert.equal(context.acces, 'read table');
   assert.deepEqual(context.extensions, ['graphique']);
   assert.deepEqual(context.natives, {}, 'sans copie figée choisie, l\'app charge tout par son CDN');
+  assert.deepEqual(context.secours, {}, 'sans secours donné, `{}` : l\'app n\'a que son CDN');
+  const spare = { plotly: { version: '2.13.2', src: 'https://x/plotly.js', integrite: 'sha384-Z', forme: 'script' } };
+  assert.deepEqual(buildContext(facts, { ...session, secours: spare }, { preferences: {}, readonly: false }).secours, spare);
   const copy = { docx: { version: '9.15.1', src: 'https://x/docx.js', integrite: 'sha384-Y', forme: 'script' } };
   assert.deepEqual(buildContext(facts, { ...session, natives: copy }, { preferences: {}, readonly: false }).natives, copy);
   assert.equal(context.langue, 'fr');

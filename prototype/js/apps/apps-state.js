@@ -4,7 +4,7 @@
 
 import { readApps, toOption, patchApps, withApp, withExtension, withMode, withNativeMode, withSources } from './settings.js';
 import { extensionsState, extensionsOf } from './extensions.js';
-import { nativesState, copiesInApp } from './natives.js';
+import { nativesState, nativesSecours, copiesInApp } from './natives.js';
 import { modulesModel } from './modules-model.js';
 
 export class AppsState {
@@ -48,10 +48,12 @@ export class AppsState {
   model() { return modulesModel(this.#loaded, { apps: this.apps }, this.catalogue, this.always); }
   // Les fonctions dont la copie figée est dans l'app et que la personne a choisies : dans l'adresse de son cadre à son démarrage (contrats 1.3, 2.6 point 14).
   copiesFor(id) { return copiesInApp(this.manifest(id), this.apps[id]); }
-  // Ce que l'app reçoit d'elle-même (contrats 5.2) : ses extensions actives, leurs bibliothèques, et les copies figées de ses bibliothèques natives.
+  // Ce que l'app reçoit d'elle-même (contrats 5.2) : ses extensions actives, leurs bibliothèques, les copies figées de ses bibliothèques natives, et le secours
+  // (la copie de GFS de ce qu'elle charge par un CDN : celui de ses extensions, puis celui de ses fonctions natives restées au CDN).
   extensionsFor(id, base) {
-    return { ...extensionsState(this.manifest(id), this.apps[id], this.catalogue, base),
-      natives: nativesState(this.manifest(id), this.apps[id], this.catalogue, base) };
+    const given = extensionsState(this.manifest(id), this.apps[id], this.catalogue, base);
+    return { ...given, natives: nativesState(this.manifest(id), this.apps[id], this.catalogue, base),
+      secours: { ...nativesSecours(this.manifest(id), this.apps[id], this.catalogue, base), ...given.secours } };
   }
 
   // Ce que la table dit. Une table illisible vaut une table absente : la liste par défaut, et un avertissement.

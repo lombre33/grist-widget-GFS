@@ -46,8 +46,18 @@ export function copiesInApp(manifest, setting) {
 // comme toujours, par ses propres adresses. `version` est celle de la copie : l'app ne la prend que si c'est celle que son code attend (sinon, son CDN).
 // `base` : l'adresse de GFS, d'où part le chemin de la copie.
 export function nativesState(manifest, setting, catalogue, base) {
+  return copiesOf(manifest, setting, catalogue, base, row => row.mode !== DEFAULT_MODE);
+}
+
+// Le secours des bibliothèques natives que l'app charge par son CDN (5.2, point 14) : la même copie de GFS, `{ version, src, integrite, forme }`, pour chaque
+// bibliothèque d'une fonction restée au CDN que le catalogue a (une qu'il n'a pas n'a pas de secours). L'éditeur, dont la copie est dans l'app, n'y est pas.
+export function nativesSecours(manifest, setting, catalogue, base) {
+  return copiesOf(manifest, setting, catalogue, base, row => row.mode === DEFAULT_MODE);
+}
+
+function copiesOf(manifest, setting, catalogue, base, wantsRow) {
   if (!setting) return {};
-  const wanted = nativeRows(manifest, setting, catalogue).filter(row => row.mode !== DEFAULT_MODE && !row.inApp).flatMap(row => row.group.bibliotheques);
+  const wanted = nativeRows(manifest, setting, catalogue).filter(row => wantsRow(row) && !row.inApp).flatMap(row => row.group.bibliotheques);
   const { libraries } = resolveLibraries(catalogue, wanted, () => 'vendorise', base);
   return Object.fromEntries(Object.entries(libraries).map(([id, { version, src, integrite, forme }]) => [id, { version, src, integrite, forme }]));
 }

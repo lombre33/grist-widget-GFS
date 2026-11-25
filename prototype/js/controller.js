@@ -32,7 +32,7 @@ import { Rangement, TableDeclined } from './files/rangement.js';
 import { isNewer } from './files/structure.js';
 import { appFilingOf } from './files/app-filing.js';
 import { RightsControl } from './rights/rights-control.js';
-import { openAnnuaire } from './shell/annuaire-entry.js';
+import { openAnnuaire, pickPerson, cancelPick } from './shell/annuaire-entry.js';
 import { createOtherDocuments } from './sharing/share-other.js';
 import { createFollower } from './sharing/share-follow.js';
 import { resumeSharing } from './sharing/sync-resume.js';
@@ -134,7 +134,8 @@ export class GfsController {
     // Ce que l'explorateur et les liens demandent (grisé, types de « Nouveau » et d'« Importer », qui lit un fichier : js/broker/entries.js), et les ouvertures
     // (js/broker/openings.js).
     const entries = new Entries(this);
-    Object.assign(this, { lockOf: entries.lockOf, newTypes: entries.newTypes, importTypes: entries.importTypes, readerOf: entries.readerOf });
+    Object.assign(this, { lockOf: entries.lockOf, newTypes: entries.newTypes, importTypes: entries.importTypes, readerOf: entries.readerOf,
+      personTargets: entries.personTargets });
     this.opened = new OpenedFiles(); // les fichiers que GFS a ouverts dans une app, pour la vue « Ouverts » de l'explorateur (js/explorer/opened-files.js)
     this.openings = new Openings(this);
     this.links = this.#buildLinks();
@@ -322,7 +323,8 @@ export class GfsController {
           await this.names.refresh(this.apps.filter(item => item.ok));
           return loadFiles(this.port, apps.map(item => this.appById(item.app.id) || item), this.rangement.learning, this.fileReader);
         },
-      openIn: (appId, opening) => this.openings.openIn(appId, opening, 'ex.notice.open'),
+      openIn: (appId, opening) => this.openings.openIn(appId, opening, 'ex.notice.open'), manifestOf: id => this.manifestOf(id),
+      pickPerson: opts => pickPerson(this, opts), cancelPick: () => cancelPick(this),
     });
   }
 

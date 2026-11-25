@@ -19,6 +19,7 @@ export const ANNUAIRE_MERGE_STRINGS = Object.freeze({
     'an.merge.noOrg': 'L’organigramme se montre dans un seul annuaire : choisissez-en un.',
     'an.merge.newSubTitle': 'Sous-annuaire de quel annuaire ?',
     'an.merge.menu': 'Annuaires affichés : choisir lesquels réunir',
+    'an.check.merged': 'Les contrôles se font dans chaque annuaire, un à la fois.',
   },
   en: {
     'an.merge.title': 'All my directories',
@@ -37,5 +38,6 @@ export const ANNUAIRE_MERGE_STRINGS = Object.freeze({
     'an.merge.noOrg': 'The org chart shows one directory at a time: choose one.',
     'an.merge.newSubTitle': 'Sub-directory of which directory?',
     'an.merge.menu': 'Directories shown: choose which to gather',
+    'an.check.merged': 'The checks are done in each directory, one at a time.',
   },
 });

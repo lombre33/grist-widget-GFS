@@ -171,6 +171,9 @@
   .mod-body.an-body, .an-body[data-side="true"], .an-body[data-view="org"], .an-body[data-view="org"][data-side="true"] { grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr); }
   .an-tree { grid-row: 1; max-height: 84px; }
+  /* L'en-tête : les réglages montent sur la première ligne (à droite du titre) ; la recherche, l'affichage et les outils prennent la deuxième. */
+  .an-top > .an-ib[data-fk="configure"] { order: 1; }
+  .an-top > :is(.an-search, .an-top-tools, .an-seg) { order: 2; }
   .an-main { grid-row: 2; }
   .an-side { grid-row: 1 / -1; }
   .an-body[data-side="true"] .an-tree, .an-body[data-side="true"] .an-main { display: none; }
@@ -199,6 +202,8 @@
 .an-fiche-acts { display: flex; flex-wrap: wrap; gap: 6px; }
 .an-write { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
 .an-write .ic { width: 14px; height: 14px; }
+.an-insert-b { display: inline-flex; align-items: center; gap: 6px; }
+.an-insert-b .ic { width: 14px; height: 14px; }
 .an-fs { padding: 10px 0 12px; border-top: 1px solid var(--border); }
 .an-fs-h { margin: 0 0 8px; font-size: max(11px, var(--fs-min)); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
 .an-hp { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }

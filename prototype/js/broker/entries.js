@@ -41,6 +41,18 @@ export class Entries {
     return null;
   };
 
+  // Les apps qui acceptent qu'on leur pose une personne de l'annuaire (« Insérer dans… » de la fiche, contrats 2.7, point 8, et 5.4, point 16) : celles dont le
+  // manifeste déclare `actions.personnes.inserer`. [{ id, name, where (les mots de l'app, dans la langue du moment), lock (ce qui la grise : le texte, ou ''),
+  // focus (la ligne de la fenêtre « Apps et extensions » qui la débloque), ready (elle déclare aussi `ouverture.personne`) }].
+  personTargets = () => {
+    const { c } = this;
+    return c.validApps().filter(({ manifest }) => manifest.actions && manifest.actions.personnes && manifest.actions.personnes.inserer).map(({ manifest }) => {
+      const lock = this.lockOf({ app: manifest.id, known: true, typeInfo: { extension: null } });
+      return { id: manifest.id, name: c.appName(manifest.id), where: label(manifest.actions.personnes.inserer, c.lang), lock: lock ? lock.text : '',
+        focus: lock ? lock.focus || null : null, ready: acceptsOpening(manifest, 'personne') };
+    });
+  };
+
   isExtensionActive = (appId, extensionId) => {
     const { registry } = this.c;
     return activeExtensionIds(registry.manifest(appId), registry.apps[appId], registry.catalogue).includes(extensionId);

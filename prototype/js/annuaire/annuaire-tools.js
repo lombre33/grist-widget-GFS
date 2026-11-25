@@ -10,12 +10,12 @@ import { switchButton } from './annuaire-setup-shared.js';
 // La pastille de la barre : le triangle d'alerte et le nombre de points (ambre). `state` : { admin, on (au moins un contrôle allumé), total }. Un lecteur qui
 // n'est pas administrateur la voit grisée ; sans contrôle allumé, un clic dit où les allumer.
 export function checkButton(state, t) {
-  const { admin, on, total, sub } = state;
-  const label = sub ? t('an.check.sub') : !admin ? t('an.check.admin') : (!on ? t('an.check.off') :
+  const { admin, on, total, sub, merged } = state;
+  const label = merged ? t('an.check.merged') : sub ? t('an.check.sub') : !admin ? t('an.check.admin') : (!on ? t('an.check.off') :
     t(total ? 'an.check.tip' : 'an.check.tipNone', { n: total }));
   const flagged = admin && on && total > 0;
   return h('button', { type: 'button', class: `an-ib an-chk-b${flagged ? ' is-flagged' : ''}`, title: label, 'aria-label': label,
-    'aria-disabled': admin && !sub ? null : 'true',
+    'aria-disabled': admin && !sub && !merged ? null : 'true',
     dataset: { act: 'check', fk: 'check' } }, icon('warning'), flagged ? h('b', { class: 'an-chk-n', 'aria-hidden': 'true' }, String(total)) : null);
 }
 

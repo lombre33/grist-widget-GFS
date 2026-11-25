@@ -1,15 +1,15 @@
-// Les couleurs de type de chaque ambiance (décision du porteur, 04/11 : « adapter les icônes des types de fichier aussi au thème », et une icône colorée
-// pour le PDF ; 24/11 : un violet pour l'e-mail). Cinq familles, chacune en quatre jetons : l'icône (`--t-doc`), le texte de sa pastille (`-ink`), le
-// fond doux de la pastille (`-soft`) et son trait (`-line`), en clair et en sombre. Les familles gardent leur teinte d'une ambiance à l'autre (document
-// : bleu, grille : vert, présentation : orange, PDF : rouge carmin, e-mail : violet) : un type se reconnaît partout ; l'ambiance en règle la clarté, la
-// vivacité et la nuance. Le macro-modèle n'a pas de jetons à lui : ses trois feuilles prennent ceux du document, de la grille et de la présentation
-// (css/explorer.css). Des DONNÉES, comme ORIGIN (js/theme/ambiance.js) : GFS les pose avec l'ambiance (js/theme/theme-apply.js), sur la page et sur
-// chaque vignette de la fenêtre « Thème » ; elles ne vont pas aux apps, car les couleurs par type ne vivent que dans l'explorateur (cahier 6.5 ;
-// contrats 5.2, point 10). La couleur libre de la personne ne les change pas : elle ne change que l'accent. L'ambiance d'origine dit ce que css/gfs.css
-// dit. Le contraste (texte 4,5:1, icône 3:1, avec toute couleur libre) et l'accord avec css/gfs.css sont mesurés par test/ambiance.test.mjs ; les
-// teintes et l'écart entre les types, par test/ambiance-types.test.mjs.
+// Les couleurs de type de chaque ambiance (décision du porteur, 04/11 : « adapter les icônes des types de fichier aussi au thème », et une icône colorée pour
+// le PDF ; 24/11 : un violet pour l'e-mail ; 25/11 : un turquoise pour l'annuaire, scène 11 de la maquette retenue). Six familles, chacune en quatre jetons :
+// l'icône (`--t-doc`), le texte de sa pastille (`-ink`), le fond doux de la pastille (`-soft`) et son trait (`-line`), en clair et en sombre. Les familles
+// gardent leur teinte d'une ambiance à l'autre (document : bleu, grille : vert, présentation : orange, PDF : rouge carmin, e-mail : violet, annuaire :
+// turquoise) : un type se reconnaît partout ; l'ambiance en règle la clarté, la vivacité et la nuance. Le macro-modèle n'a pas de jetons à lui : ses trois
+// feuilles prennent ceux du document, de la grille et de la présentation (css/explorer.css). Des DONNÉES, comme ORIGIN (js/theme/ambiance.js) : GFS les pose
+// avec l'ambiance (js/theme/theme-apply.js), sur la page et sur chaque vignette de la fenêtre « Thème » ; elles ne vont pas aux apps, car les couleurs par type
+// ne vivent que dans l'explorateur (cahier 6.5 ; contrats 5.2, point 10). La couleur libre de la personne ne les change pas : elle ne change que l'accent.
+// L'ambiance d'origine dit ce que css/gfs.css dit. Le contraste (texte 4,5:1, icône 3:1, avec toute couleur libre) et l'accord avec css/gfs.css sont mesurés
+// par test/ambiance.test.mjs ; les teintes et l'écart entre les types, par test/ambiance-types.test.mjs.
 
-export const TYPES = Object.freeze(['doc', 'grid', 'slides', 'pdf', 'email']);
+export const TYPES = Object.freeze(['doc', 'grid', 'slides', 'pdf', 'email', 'annuaire']);
 const PARTS = Object.freeze(['', '-ink', '-soft', '-line']);
 
 // Tous les jetons de type : de quoi les retirer d'un coup quand on change d'ambiance (js/theme/theme-apply.js).
@@ -25,6 +25,7 @@ const COLORS = Object.freeze({
       slides: ['#c7600a', '#9a4a05', '#fff0e0', '#f6cc9d'],
       pdf: ['#d32c4d', '#af1a3c', '#ffebeb', '#f9cacb'],
       email: ['#8c57c9', '#7243a5', '#f3edfe', '#decef8'],
+      annuaire: ['#0e8a8a', '#0a6666', '#e2f4f4', '#b5e2e1'],
     },
     sombre: {
       doc: ['#5b91f5', '#74a3f7', '#24324b', '#35507d'],
@@ -32,6 +33,7 @@ const COLORS = Object.freeze({
       slides: ['#f0933e', '#ffb06b', '#3a2412', '#6b4420'],
       pdf: ['#f37984', '#ff989f', '#422426', '#733e42'],
       email: ['#b68cf1', '#c8a5fb', '#312741', '#574473'],
+      annuaire: ['#3dbbc7', '#66d2dd', '#12302f', '#24605e'],
     },
   },
   // Pop : des bonbons, vifs et un peu lumineux, loin du violet de l'ambiance ; le rouge du PDF y vire au rose framboise.
@@ -42,6 +44,7 @@ const COLORS = Object.freeze({
       slides: ['#d95c00', '#b04900', '#fcede6', '#f3cfbe'],
       pdf: ['#dc3174', '#b8215e', '#ffeaef', '#f9c9d4'],
       email: ['#9960cd', '#7c4ca9', '#f3edfa', '#dfd1f0'],
+      annuaire: ['#0d6e6f', '#015556', '#e6f3f3', '#bedfdf'],
     },
     sombre: {
       doc: ['#2da6fa', '#69bcff', '#173044', '#255479'],
@@ -49,6 +52,7 @@ const COLORS = Object.freeze({
       slides: ['#ffa566', '#ffc6a1', '#3d281a', '#6c452b'],
       pdf: ['#ff789d', '#ffa2b7', '#43232a', '#753b4a'],
       email: ['#c595fe', '#d5b4ff', '#332840', '#594572'],
+      annuaire: ['#0cd5f1', '#74e8ff', '#0a3535', '#005c5d'],
     },
   },
   // Papier : des encres, sourdes et chaudes ; le rouge du PDF est un vermillon d'imprimeur, plus clair et plus orangé que le bordeaux de l'ambiance.
@@ -59,6 +63,7 @@ const COLORS = Object.freeze({
       slides: ['#9e7112', '#825b00', '#f1ece4', '#e3d6c1'],
       pdf: ['#b63c2e', '#952a1f', '#f8e9e6', '#f3cec7'],
       email: ['#7a539f', '#614081', '#efebf4', '#ddd3e9'],
+      annuaire: ['#4f8c8d', '#3e7474', '#e4efef', '#c4dddd'],
     },
     sombre: {
       doc: ['#7fafe2', '#99c5f4', '#242f3b', '#3d5268'],
@@ -66,6 +71,7 @@ const COLORS = Object.freeze({
       slides: ['#d9ba70', '#edd18f', '#342d1c', '#5b4e2f'],
       pdf: ['#f68861', '#ffa789', '#40261d', '#714130'],
       email: ['#b788d4', '#d8b7f6', '#32293a', '#584867'],
+      annuaire: ['#a0dfdf', '#bbf5f5', '#1a3232', '#2a5959'],
     },
   },
   // Brut : des primaires franches, à plat.
@@ -76,6 +82,7 @@ const COLORS = Object.freeze({
       slides: ['#cc6300', '#a95100', '#faede6', '#efd0be'],
       pdf: ['#d40033', '#ac0027', '#ffebea', '#fdc9c7'],
       email: ['#864ed0', '#6c3daa', '#f2edfb', '#dcd1f5'],
+      annuaire: ['#01818b', '#006870', '#e4f3f3', '#b8e1e1'],
     },
     sombre: {
       doc: ['#679cff', '#8bb4ff', '#212e45', '#384f7b'],
@@ -83,6 +90,7 @@ const COLORS = Object.freeze({
       slides: ['#ffa658', '#ffc79a', '#3d2917', '#6c4625'],
       pdf: ['#ff7074', '#ff9a99', '#452222', '#793a3b'],
       email: ['#bc9cff', '#cfbaff', '#312844', '#564578'],
+      annuaire: ['#00e0e2', '#32f8fa', '#003636', '#005c5d'],
     },
   },
   // Enseigne (à la place de Néon, 04/11) : des tubes allumés ; en sombre ils brillent, en clair (l'enseigne de jour) ils s'approfondissent pour rester
@@ -94,6 +102,7 @@ const COLORS = Object.freeze({
       slides: ['#b56100', '#944e00', '#f8eee6', '#ebd2c0'],
       pdf: ['#c60475', '#a0005d', '#ffeaf1', '#f9c8d9'],
       email: ['#8e48b4', '#723891', '#f4edfa', '#e2cfee'],
+      annuaire: ['#047784', '#025f69', '#e5f3f3', '#bbe0e0'],
     },
     sombre: {
       doc: ['#6dadff', '#96c4ff', '#202f42', '#365175'],
@@ -101,6 +110,7 @@ const COLORS = Object.freeze({
       slides: ['#ffb169', '#ffd1a9', '#3c2919', '#694829'],
       pdf: ['#ff74ac', '#ff9fc2', '#43222e', '#753950'],
       email: ['#d79fff', '#e2bdff', '#352740', '#5d4370'],
+      annuaire: ['#00eef0', '#4efafb', '#003636', '#005c5d'],
     },
   },
 });

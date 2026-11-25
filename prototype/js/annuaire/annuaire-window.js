@@ -17,10 +17,12 @@ import { copyText } from './annuaire-copy.js';
 import { FilterMenu } from './annuaire-filters.js';
 import { sortPeople, nextSort, sortKeys, sortButton } from './annuaire-sort.js';
 import { subButton, openSubMenu, copyDate } from './annuaire-sub-menu.js';
+import { MergePanel } from './annuaire-merge-panel.js';
 import { checkButton, mailButton } from './annuaire-tools.js';
+import { openInsertMenu } from './annuaire-insert-menu.js';
 import { listKeys, treeKeys } from './annuaire-keys.js';
 import { addressesOf } from './annuaire-mail.js';
-import { canSwitch, presenceCol } from './annuaire-presence.js';
+import { presenceState } from './annuaire-presence.js';
 
 const FOCUSABLE = 'button:not([disabled]):not([tabindex="-1"]), input:not([disabled]), [tabindex="0"], a[href]';
 const VIEWS = Object.freeze([['list', 'list', 'an.view.list'], ['cards', 'tiles', 'an.view.cards'], ['org', 'org', 'an.view.org']]);
@@ -42,13 +44,14 @@ export class AnnuaireWindow {
   #struct = null; // l'identifiant du nœud dont la fiche est ouverte (l'organigramme des structures)
   #open = new Set(['']);
   #menu; // le bouton « Filtres » et son panneau (js/annuaire/annuaire-filters.js)
+  #merge; // le panneau « Annuaires affichés » de la vue fusionnée (js/annuaire/annuaire-merge-panel.js)
   #sort = null; // le tri de la liste et des cartes : { key, dir }, ou rien (l'ordre de l'annuaire : par nom ; js/annuaire/annuaire-sort.js)
   #note = '';
   #store;
   #orgPeople = false; // l'organigramme des structures dessine aussi les personnes (le bouton « Personnes »)
 
   // opts : { container, t, locale() (la langue des dates), inertTargets(), writeBlock() (ce qui empêche d'écrire : le texte, ou rien), onSwitch(),
-  //   onConfigure(),
+  //   onConfigure(), onMergePick(ligne) -> Promise<faux si c'était le dernier annuaire coché> (la vue fusionnée),
   //   onNew(), onEdit(ligne) (la fenêtre « Modifier »), onCheck() (« À vérifier »), onMail(personnes) (« Écrire au groupe »), onPresence(ligne, apparaît) (« Ma
   //   présence »), onFilterMore(colonne, option) -> Promise<valeur ou null>, onSortPick(clés, tri), onClose() }
   constructor(opts) {
@@ -56,6 +59,7 @@ export class AnnuaireWindow {
     this.#store = keyStore((opts.container && opts.container.ownerDocument && opts.container.ownerDocument.defaultView) || globalThis, PEOPLE_KEY);
     this.#orgPeople = this.#store.read() === '1';
     this.#menu = new FilterMenu({ host: () => this.#root, t: () => this.#o.t, locale: () => this.#o.locale() });
+    this.#merge = new MergePanel({ host: () => this.#root, t: () => this.#o.t });
   }
 
   get isOpen() { return this.#root !== null; }
@@ -74,6 +78,7 @@ export class AnnuaireWindow {
   close() {
     if (!this.#root) return;
     this.#menu.close();
+    this.#merge.close();
     const { opener, unmount } = this.#mounted;
     unmount();
     this.#root = null;
@@ -86,6 +91,7 @@ export class AnnuaireWindow {
   // La langue de GFS a changé : une fenêtre ouverte réécrit ses textes, une fenêtre fermée prendra les nouveaux à son ouverture.
   relocalize({ t }) {
     this.#menu.close();
+    this.#merge.close();
     this.#o = { ...this.#o, t };
     if (this.#org) this.#org.relabel(t);
     this.#paint();
@@ -157,6 +163,14 @@ export class AnnuaireWindow {
     this.#paintHead();
     this.#paintBody();
     this.#paintFoot();
+    const merged = this.#merged();
+    if (merged) this.#merge.refresh(merged); else this.#merge.close();
+  }
+
+  // Ce que dit la vue fusionnée (js/annuaire/annuaire-merge-view.js), ou null quand la fenêtre montre un seul annuaire.
+  #merged() {
+    const { state, data } = this.#show;
+    return state === 'ready' && data && data.merged ? data.merged : null;
   }
 
   #paintHead() {
@@ -169,18 +183,23 @@ export class AnnuaireWindow {
     tag.title = sub ? t('an.sub.of', { name: sub.parent }) : '';
     title.textContent = t('an.title');
     name.replaceChildren(h('span', { class: 'an-name-t' }, current ? current.name : t('an.none.name')), icon('chev-down'));
-    name.title = t('an.switch');
-    name.setAttribute('aria-label', t('an.switch'));
+    name.title = this.#merged() ? t('an.merge.menu') : t('an.switch');
+    name.setAttribute('aria-label', name.title);
     search.placeholder = t('an.search');
     search.setAttribute('aria-label', t('an.searchLabel'));
     views.setAttribute('aria-label', t('an.views'));
     const greyed = id => id === 'org' && this.#show.state === 'ready' && !this.#orgPossible(); // grisé, jamais masqué : un clic dit comment l'allumer
     views.replaceChildren(...VIEWS.map(([id, glyph, key]) => h('button', { type: 'button', class: 'an-seg-b', 'aria-pressed': String(this.#view === id),
-      'aria-disabled': greyed(id) ? 'true' : null, title: greyed(id) ? t('an.org.noHierarchy') : t(key), 'aria-label': t(key),
+      'aria-disabled': greyed(id) ? 'true' : null, title: greyed(id) ? t(this.#merged() ? 'an.merge.noOrg' : 'an.org.noHierarchy') : t(key),
+        'aria-label': t(key),
       dataset: { act: 'view', view: id, fk: `v:${id}` } }, icon(glyph), h('span', { class: 'an-seg-t' }, t(key)))));
     tools.replaceChildren(...(this.#show.state === 'ready' && data ? [checkButton(data.checks, t), sub ? subButton(t) : null].filter(Boolean) : []));
-    config.title = t('an.configure');
-    config.setAttribute('aria-label', t('an.configure'));
+    const merged = this.#merged();
+    const configLabel = merged ? t('an.merge.noConfig') : t('an.configure');
+    config.title = configLabel;
+    config.setAttribute('aria-label', configLabel);
+    if (merged) config.setAttribute('aria-disabled', 'true'); else config.removeAttribute('aria-disabled');
+    name.setAttribute('aria-haspopup', merged ? 'true' : 'dialog');
     close.textContent = t('an.close');
   }
 
@@ -332,7 +351,7 @@ export class AnnuaireWindow {
     const relations = relationsOf(data.config, t);
     const ctx = { t, locale: this.#o.locale(), levels: data.config.levels, config: data.config, genres, relations,
       index: relationIndex(data.people, relations), writeBlock: this.#writeBlock(), masked: data.masked,
-        presence: person => this.#presenceOf(person) };
+        presence: person => this.#presenceOf(person), insert: true };
     const person = this.#person === null ? null : data.people.find(each => each.row === this.#person);
     // la fiche d'une carte de l'organigramme parle des mêmes personnes que la carte
     const tree = this.#view === 'org' ? reducedTree(data, this.#matching(), this.#orgSignature()) : data.tree;
@@ -357,7 +376,10 @@ export class AnnuaireWindow {
     const chosen = this.#menu.summary(this.#filterModel(data.people), this.#filters);
     const count = found === total ? t('an.foot.all', { n: total }) : t('an.foot.some', { n: found, total });
     const date = data.sub ? copyDate(data.sub.at, this.#o.locale()) : '';
-    const text = data.sub ? `${count} · ${date ? t('an.sub.stamp', { date }) : t('an.sub.stampNoDate')}` : count;
+    const merged = this.#merged();
+    const stamp = data.sub ? `${count} · ${date ? t('an.sub.stamp', { date }) : t('an.sub.stampNoDate')}` : count;
+    const text = merged ? [count, t('an.merge.foot', { n: merged.sources.filter(each => each.on).length }),
+      merged.skipped.length ? t('an.merge.skipped', { names: merged.skipped.join(', ') }) : ''].filter(Boolean).join(' · ') : stamp;
     note.replaceChildren(...[h('span', { class: 'an-foot-t' }, chosen ? `${text} · ${chosen}` : text),
       chosen ? h('button', { type: 'button', class: 'an-reset', dataset: { act: 'filters-reset', fk: 'filters-reset' } }, t('an.filters.reset')) :
         null].filter(Boolean));
@@ -409,6 +431,7 @@ export class AnnuaireWindow {
   // Ce qui empêche d'écrire une fiche : une copie ne s'y modifie pas (la fiche se modifie dans l'annuaire d'origine), sinon ce que dit le document.
   #writeBlock() {
     const { data } = this.#show;
+    if (data && data.merged) return this.#o.t('an.merge.noEdit');
     return data && data.sub ? this.#o.t('an.sub.noEdit') : (this.#o.writeBlock ? this.#o.writeBlock() : null);
   }
 
@@ -420,6 +443,30 @@ export class AnnuaireWindow {
       run: key => this.callout('onSub', key) });
   }
 
+  // Le nom de l'annuaire, en haut : la liste des annuaires du document, ou, dans la vue fusionnée, le panneau « Annuaires affichés ».
+  nameClick() {
+    const merged = this.#merged();
+    if (!merged) { this.callout('onSwitch'); return; }
+    this.#merge.toggle(this.#refs.name, merged);
+  }
+
+  // Le bouton de réglage : celui d'un seul annuaire ; dans la vue fusionnée, le pied dit pourquoi il ne s'allume pas.
+  configureClick() {
+    if (this.#merged()) { this.#say(this.#o.t('an.merge.noConfig')); return; }
+    this.callout('onConfigure');
+  }
+
+  // Une case du panneau « Annuaires affichés » : le contrôle relit la vue ; le dernier annuaire coché ne se décoche pas.
+  async mergePick(row) {
+    if (!(await this.#o.onMergePick(row))) this.#say(this.#o.t('an.merge.atLeast'));
+  }
+
+  // « Un seul annuaire… » : le panneau se ferme et la liste des annuaires s'ouvre.
+  mergeOne() {
+    this.#merge.close();
+    this.callout('onSwitch');
+  }
+
   // Le bouton « Modifier » de la fiche : grisé quand le document ne s'écrit pas (le pied dit pourquoi), sinon la fenêtre « Modifier » (le contrôle l'ouvre).
   editPerson(row) {
     const blocked = this.#writeBlock();
@@ -427,16 +474,18 @@ export class AnnuaireWindow {
     void this.#o.onEdit(row);
   }
 
+  // « Insérer dans… » : le menu des apps qui reçoivent une personne ; l'app choisie s'ouvre avec elle (le contrôle ouvre, puis ferme cette fenêtre).
+  insertTool(row, anchor) {
+    const { current, data } = this.#show;
+    const person = data && data.people.find(each => each.row === row);
+    if (person && anchor) openInsertMenu({ anchor, host: this.#root, t: this.#o.t, person, current, hooks: this.#o, say: text => this.#say(text) });
+  }
+
   // Ce que « Écrire » sait des personnes affichées : combien, et si l'une au moins a une adresse.
   #mailState(people) { return { count: people.length, addresses: addressesOf(people).length > 0 }; }
 
   // La ligne « Apparaître dans l'annuaire » d'une fiche : rien quand l'option « Ma présence » est éteinte.
-  #presenceOf(person) {
-    const { data } = this.#show;
-    if (!data || !presenceCol(data.config)) return null;
-    return { on: !data.masked.has(person.row), can: canSwitch(person, { admin: data.admin, identity: data.identity, people: data.people }),
-      blocked: this.#o.writeBlock ? this.#o.writeBlock() : null };
-  }
+  #presenceOf(person) { return presenceState(this.#show.data, person, this.#o.writeBlock ? this.#o.writeBlock() : null); }
 
   // L'interrupteur de la fiche : la personne (ou l'administrateur) choisit d'apparaître ou non ; le contrôle écrit, la fenêtre le dit dans le pied.
   togglePresence(row) {
@@ -450,7 +499,7 @@ export class AnnuaireWindow {
   // La pastille « À vérifier » : réservée aux administrateurs (grisée, avec sa raison, pour les autres) ; sans contrôle allumé, le pied dit où les allumer.
   checkTool() {
     const { checks, admin } = this.#show.data;
-    if (checks.sub) { this.#say(this.#o.t('an.check.sub')); return; }
+    if (checks.sub || checks.merged) { this.#say(this.#o.t(checks.merged ? 'an.check.merged' : 'an.check.sub')); return; }
     if (!admin) { this.#say(this.#o.t('an.check.admin')); return; }
     if (!checks.on) { this.#say(this.#o.t('an.check.off')); return; }
     void this.#o.onCheck();
@@ -495,7 +544,8 @@ export class AnnuaireWindow {
   }
 
   setView(view) {
-    if (view === 'org' && this.#show.state === 'ready' && !this.#orgPossible()) { this.#say(this.#o.t('an.org.noHierarchy')); return; }
+    if (view === 'org' && this.#show.state === 'ready' && !this.#orgPossible()) {
+      this.#say(this.#o.t(this.#merged() ? 'an.merge.noOrg' : 'an.org.noHierarchy')); return; }
     this.#menu.close();
     this.#view = view;
     this.#note = '';
@@ -619,7 +669,7 @@ export class AnnuaireWindow {
   #keydown(event) {
     if (this.#covered()) return;
     const doc = this.#root.ownerDocument;
-    if (doc.activeElement && doc.activeElement.closest('[data-popover]')) return; // le panneau des filtres garde Échap et Tab
+    if (doc.activeElement && doc.activeElement.closest('[data-popover], .menu')) return; // un panneau (filtres) ou un menu garde Échap et Tab
     if (event.key === 'Escape') { this.#escape(event); return; }
     if (event.key === 'Tab') { this.#tab(event, doc); return; }
     const active = doc.activeElement;
@@ -637,6 +687,7 @@ export class AnnuaireWindow {
   #escape(event) {
     event.preventDefault();
     event.stopImmediatePropagation();
+    if (this.#merge.isOpen) { this.#merge.close(); this.#focus('switch', 'search'); return; }
     if (!this.#menu.isOpen) { this.close(); return; }
     this.#menu.close();
     this.#focus('filters', 'search');
@@ -654,8 +705,10 @@ export class AnnuaireWindow {
 // Ce que fait chaque `data-act` de la fenêtre (hors de l'organigramme, qui lit les siens).
 const ACTIONS = Object.freeze({
   close: window_ => window_.close(),
-  switch: window_ => window_.callout('onSwitch'),
-  configure: window_ => window_.callout('onConfigure'),
+  switch: window_ => window_.nameClick(),
+  configure: window_ => window_.configureClick(),
+  'merge-pick': (window_, data) => void window_.mergePick(Number(data.row)),
+  'merge-one': window_ => window_.mergeOne(),
   new: window_ => window_.callout('onNew'),
   view: (window_, data) => window_.setView(data.view),
   'tree-pick': (window_, data) => window_.pickNode(data.id),
@@ -677,4 +730,5 @@ const ACTIONS = Object.freeze({
   sub: window_ => window_.subTool(),
   mail: window_ => window_.mailTool(),
   presence: (window_, data) => window_.togglePresence(Number(data.row)),
+  insert: (window_, data, button) => window_.insertTool(Number(data.row), button),
 });

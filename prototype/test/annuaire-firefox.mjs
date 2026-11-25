@@ -17,6 +17,10 @@ import { pathPickerProblems } from './annuaire-path-firefox.mjs';
 import { editProblems } from './annuaire-edit-firefox.mjs';
 import { toolsProblems } from './annuaire-tools-firefox.mjs';
 import { subProblems } from './annuaire-sub-firefox.mjs';
+import { mergeProblems } from './annuaire-merge-firefox.mjs';
+import { linksProblems } from './annuaire-links-firefox.mjs';
+import { ambiancesProblems } from './annuaire-ambiances-firefox.mjs';
+import { PROBES } from './annuaire-probes.mjs';
 import { ficheSectionsProblems } from './annuaire-fiche-firefox.mjs';
 import { listColumnsProblems, sortProblems, orgFiltersProblems } from './annuaire-columns-firefox.mjs';
 
@@ -116,19 +120,6 @@ function topWindow() {
     focused: document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.fk || document.activeElement.tagName : null, scrims: scrims.length };
 }
 
-// Les textes dont le contraste se mesure : [le texte, le fond sur lequel il se pose].
-const PROBES = {
-  title: ['.an-top h2', '.mod'], name: ['.an-name-t', '.an-name'], seg: ['.an-seg-b[aria-pressed="true"]', '.an-seg-b'], segOff: ['.an-seg-b[aria-pressed="false"]', '.an-seg'],
-  personName: ['.an-person[aria-pressed="false"] .an-pe-name', '.an-card'], personSub: ['.an-person[aria-pressed="false"] .an-pe-sub', '.an-card'],
-  pill: ['.an-person[aria-pressed="false"] .an-pill', '.an-card'], treeName: ['.an-tn[aria-selected="false"] .an-tn-name', '.an-card'], treeCount: ['.an-tn[aria-selected="false"] .an-pill', '.an-card'],
-  treeOn: ['.an-tn[aria-selected="true"] .an-tn-name', '.an-tb'], rowOn: ['.an-person[aria-pressed="true"] .an-pe-name', '.an-person'], rowOnSub: ['.an-person[aria-pressed="true"] .an-pe-sub', '.an-person'],
-  foot: ['.an-foot', '.mod'], crumb: ['.an-crumb', '.an-card'], cardName: ['.an-pcard[aria-pressed="false"] .an-pe-name', '.an-card'], cardLine: ['.an-pcard .an-pc-line', '.an-card'],
-  ficheName: ['.an-fiche-id h3', '.an-card'], ficheSub: ['.an-fiche-id .an-pe-sub', '.an-card'], ficheLabel: ['.an-fr dt', '.an-card'], ficheValue: ['.an-fr dd', '.an-card'],
-  ficheLink: ['.an-fiche-card .an-link', '.an-card'], fvRow: ['.an-fv[aria-checked="false"] .an-fv-t', '.menu-panel'], fvOn: ['.an-fv[aria-checked="true"] .an-fv-t', '.an-fv'], fvCount: ['.an-fv-n', '.menu-panel'],
-  fsecHead: ['.an-fsec-h .an-fsec-t', '.menu-panel'], badge: ['.an-badge', '.an-badge'], reset: ['.an-reset', '.mod'], toolOn: ['.an-tbtn.is-on .an-tb-t', '.an-tbtn'],
-  orgTitle: ['.an-oc[aria-pressed="false"] .an-oc-title', '.an-card'], orgSub: ['.an-oc[aria-pressed="false"] .an-oc-sub', '.an-card'], orgOn: ['.an-oc[aria-pressed="true"] .an-oc-title', '.an-oc'],
-  zoom: ['.an-zoom', '.an-card'], note: ['.an-note', '.an-card'],
-};
 
 // ---------- les mesures ----------
 
@@ -217,7 +208,10 @@ export async function annuaireProblems(page, language, tag, { width, mode }) {
     await languageProblems(page, language, t, other, note, inspectNow);
     await keyboardProblems(page, t, note, inspectNow);
     await editProblems(page, t, note, click, { width, mode }); // il écrit dans le faux Grist : en dernier
+    await mergeProblems(page, t, note, click, { width, mode, language }); // il recharge la page (`?sub=1&home=merged`) et ne fait que lire
     await subProblems(page, t, note, click, { width, mode, language }); // il recharge la page (`?sub=1`) et écrit dans le faux Grist
+    await linksProblems(page, t, note, click, { width, mode, language }); // il recharge la page (`?links=1&sub=1`) et ne fait que lire
+    await ambiancesProblems(page, t, note, click, { width, mode, language }); // il recharge la page (`?links=1&sub=1`), pose chaque ambiance de GFS et ne fait que lire
     await toolsProblems(page, t, note, click, { width, mode, language }); // il recharge la page (`?tools=1`) : tout dernier
     const said = await page.run(() => window.__annuaireNotices);
     if (said.length) note('phrase inattendue', `l'annuaire a dit : ${said.join(' | ')}`);

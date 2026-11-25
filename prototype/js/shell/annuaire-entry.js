@@ -16,3 +16,24 @@ export async function openAnnuaire(c, row = null) {
     c.notice(c.t('an.loadFailed'));
   }
 }
+
+// « Choisir une personne dans l'annuaire » pour une app (contrats 5.4, point 16) : la fenêtre de choix s'ouvre par-dessus l'app. Rend la personne choisie ({
+// nom, email, titre, telephone, annuaire }) ou `null` (annulé, ou le module ne se charge pas : la personne en est prévenue).
+export async function pickPerson(c, opts) {
+  try {
+    if (!c.annuaire) {
+      const { createAnnuaire } = await import('../annuaire/annuaire-control.js');
+      c.annuaire ??= createAnnuaire(c);
+    }
+    return await c.annuaire.pick(opts);
+  } catch (error) {
+    console.error('GFS : le choix d\'une personne n\'aboutit pas', error);
+    c.notice(c.t('an.loadFailed'));
+    return null;
+  }
+}
+
+// Ferme la fenêtre de choix quand l'app qui la demandait n'est plus là.
+export function cancelPick(c) {
+  if (c.annuaire) c.annuaire.cancelPick();
+}

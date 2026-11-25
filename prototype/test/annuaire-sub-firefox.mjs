@@ -122,7 +122,7 @@ async function switcherProblems(page, t, note, click, where) {
   const list = await openSwitcher(page, click);
   if (!list) { note('sous-annuaires', `${where} : la liste des annuaires ne s'ouvre pas`); return; }
   const labels = list.rows.map(row => row.label);
-  const wanted = ['Annuaire principal', 'Pôle Ressources', 'Annuaire des directions', t('an.new'), t('an.sub.new')];
+  const wanted = [t('an.merge.title'), 'Annuaire principal', 'Pôle Ressources', 'Annuaire des directions', t('an.new'), t('an.sub.new')];
   if (labels.join('|') !== wanted.join('|')) note('sous-annuaires', `${where} : la liste dit « ${labels.join(' | ')} » (« ${wanted.join(' | ')} » attendus : le sous-annuaire sous son origine)`);
   const sub = list.rows.find(row => row.label === 'Pôle Ressources');
   if (sub && sub.hint !== t('an.sub.of', { name: 'Annuaire principal' })) note('sous-annuaires', `${where} : la ligne du sous-annuaire dit « ${sub.hint} » (« ${t('an.sub.of', { name: 'Annuaire principal' })} » attendu)`);

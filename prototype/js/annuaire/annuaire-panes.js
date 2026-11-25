@@ -7,6 +7,7 @@ import { icon } from '../ui/icons.js';
 import { initials, levelLabel, headsOf, telHref } from './annuaire-items.js';
 import { fieldLabel } from './annuaire-config.js';
 import { maskedPill, presenceRow } from './annuaire-tools.js';
+import { insertButton } from './annuaire-insert-menu.js';
 
 // Combien de personnes une relation montre avant « +n » (une ligne de la fiche).
 export const CHIPS_SHOWN = 6;
@@ -178,22 +179,29 @@ function fieldRows(person, ctx) {
   });
 }
 
-// La fiche d'une personne, en sections comme la carte du suivi de projet du porteur : l'en-tête (avatar, nom, poste, « Écrire »), « Coordonnées »,
-// « Rattachement » (le découpage hiérarchique), « Informations » (les champs). `ctx` : { t, locale, levels, config, genres: { colonne: genre }, relations,
-// index, writeBlock (ce qui empêche d'écrire : le texte, ou rien), masked (Set : les fiches masquées qu'on voit grisées), presence(personne) -> { on, can,
-// blocked } ou rien : la ligne « Apparaître dans l'annuaire » quand l'option « Ma présence » est allumée }.
-export function fiche(person, ctx) {
+// Les boutons de l'en-tête de la fiche : « Écrire » (une adresse), « Modifier » et « Insérer dans… ».
+function ficheActions(person, ctx) {
   const { t } = ctx;
-  const contact = contactRows(person, ctx);
-  const fields = fieldRows(person, ctx);
-  const path = attachment(person, ctx);
   const mail = person.email ? h('a', { class: 'btn sm an-write', href: `mailto:${person.email}`, target: '_blank', rel: 'noopener',
     title: t('an.writeTo', { name: person.name }), dataset: { fk: 'write' } }, icon('mail'), t('an.write')) : null;
   // « Modifier » : grisé, jamais masqué, quand le document ne s'écrit pas (`ctx.writeBlock` dit pourquoi) ; un clic le redit dans le pied de la fenêtre
   const edit = h('button', { type: 'button', class: 'btn sm an-edit-b', 'aria-disabled': ctx.writeBlock ? 'true' : null, title: ctx.writeBlock ||
     t('an.edit.tip'),
     dataset: { act: 'edit', row: String(person.row), fk: 'edit' } }, icon('edit'), t('an.edit'));
-  const write = h('div', { class: 'an-fiche-acts' }, mail, edit);
+  return h('div', { class: 'an-fiche-acts' }, mail, edit, ctx.insert ? insertButton(person, t) : null);
+}
+
+// La fiche d'une personne, en sections comme la carte du suivi de projet du porteur : l'en-tête (avatar, nom, poste, « Écrire »), « Coordonnées »,
+// « Rattachement » (le découpage hiérarchique), « Informations » (les champs). `ctx` : { t, locale, levels, config, genres: { colonne: genre }, relations,
+// index, writeBlock (ce qui empêche d'écrire : le texte, ou rien), masked (Set : les fiches masquées qu'on voit grisées), presence(personne) -> { on, can,
+// blocked } ou rien : la ligne « Apparaître dans l'annuaire » quand l'option « Ma présence » est allumée, insert (vrai : le bouton « Insérer dans… »
+// est posé ; js/annuaire/annuaire-insert-menu.js) }.
+export function fiche(person, ctx) {
+  const { t } = ctx;
+  const contact = contactRows(person, ctx);
+  const fields = fieldRows(person, ctx);
+  const path = attachment(person, ctx);
+  const write = ficheActions(person, ctx);
   return h('div', { class: 'an-fiche-card' },
     h('div', { class: 'an-fiche-head' }, h('span', { class: 'an-av an-av-xl' }, who(person)),
       h('div', { class: 'an-fiche-id' }, h('h3', null, person.name), person.title ? h('p', { class: 'an-pe-sub' }, person.title) : null,

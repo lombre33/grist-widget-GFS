@@ -22,9 +22,13 @@ import { copyText } from './annuaire-copy.js';
 import { saveText } from '../apps/dependencies-export.js';
 import { SubControl } from './annuaire-sub-control.js';
 import { isSub, parentOf, orderAnnuaires } from './annuaire-sub.js';
+import { MergedView, canMerge } from './annuaire-merge-view.js';
+import { MERGED_ROW, mergeReads } from './annuaire-merge.js';
+import { PickWindow, personPayload } from './annuaire-pick.js';
 
 const NEW = '__new__';
 const NEW_SUB = '__new_sub__';
+const MERGED = '__merged__';
 const SUB_WHY = Object.freeze({ refresh: 'an.sub.refreshWhy', share: 'an.sub.shareWhy', remove: 'an.sub.removeWhy' });
 
 export class AnnuaireControl {
@@ -36,6 +40,8 @@ export class AnnuaireControl {
   #reading = 0; // le numéro de la dernière lecture lancée : une lecture plus ancienne qui finit après ne montre rien
   #data = null; // la dernière lecture de l'annuaire montré (le formulaire « Modifier » en prend les valeurs et les choix), vue de la personne qui lit
   #sub; // les gestes d'un sous-annuaire (js/annuaire/annuaire-sub-control.js)
+  #merge = new MergedView(); // la vue « Tous mes annuaires » (js/annuaire/annuaire-merge-view.js)
+  #picker = null; // la fenêtre « Choisir une personne » qu'une app a demandée (js/annuaire/annuaire-pick.js)
   #admin = null; // la preuve qu'a GFS que la personne administre le document (une promesse, demandée une fois : js/broker/transfer.js, `isOwner`)
 
   // opts : { port ({ doc }), container, t, locale(), inertTargets(), ask(opts) -> Promise<boolean>, notice(texte), writeBlock() -> texte ou null, fullAccess(),
@@ -54,7 +60,8 @@ export class AnnuaireControl {
     this.#window = new AnnuaireWindow({ container: opts.container, t: opts.t, locale: opts.locale, inertTargets: opts.inertTargets, writeBlock: opts.writeBlock,
       onSwitch: () => void this.#switch(), onConfigure: () => void this.#configure(), onNew: () => void this.#create(), onEdit: row => this.#edit(row),
       onCheck: () => this.#check(), onMail: people => this.#mail(people), onPresence: (row, on) => this.#setPresence(row, on),
-        onSub: key => this.#subGesture(key),
+        onSub: key => this.#subGesture(key), onMergePick: row => this.#mergePick(row), targets: () => (opts.targets ? opts.targets() : []),
+      onInsert: (id, person) => this.#insert(id, person), onUnlock: target => (opts.unlock ? opts.unlock(target) : undefined),
       onFilterMore: (col, option) => this.#more(col, option), onSortPick: (keys, sort) => this.#pickSort(keys, sort), onClose: () => {} });
   }
 
@@ -66,17 +73,78 @@ export class AnnuaireControl {
   async open(row = null) {
     if (this.#window.isOpen) return;
     if (Number.isFinite(row)) this.#row = row;
-    this.#admin ??= Promise.resolve().then(() => this.#o.isOwner()).then(owner => owner === true, () => false);
+    this.#proof();
     this.#window.show({ state: 'loading', error: '' });
     this.#window.open();
     await this.#load();
   }
 
+  // La preuve que GFS a que la personne administre le document, demandée une fois.
+  #proof() {
+    this.#admin ??= Promise.resolve().then(() => this.#o.isOwner()).then(owner => owner === true, () => false);
+    return this.#admin;
+  }
+
   close() { this.#window.close(); }
+
+  // ---------- les liens avec les apps (contrats 5.4, point 16) ----------
+
+  // « Insérer dans… » : l'app s'ouvre avec la personne ; la fenêtre de l'annuaire se referme quand l'ouverture est partie.
+  async #insert(appId, person) {
+    if (!this.#o.insert) return false;
+    const opened = await this.#o.insert(appId, person);
+    if (opened) this.#window.close();
+    return opened;
+  }
+
+  // Les groupes de la fenêtre « Choisir une personne » : « Tous mes annuaires » (quand il y en a plusieurs : une adresse e-mail ne fait qu'une personne), puis
+  // chaque annuaire que la personne lit, vu comme dans la fenêtre de l'annuaire (sans les fiches masquées, sauf pour un administrateur).
+  async #pickGroups() {
+    const { t } = this.#o;
+    const admin = (await this.#proof()) === true;
+    const identity = this.#o.identity();
+    const list = orderAnnuaires(await this.#store.list());
+    const settled = await Promise.all(list.map(async annuaire => {
+      try { return { annuaire, read: presenceView(await this.#store.read(annuaire), { admin, identity }) }; } catch (error) { return null; }
+    }));
+    const sources = settled.filter(Boolean);
+    const labels = { origin: t('an.merge.origin'), path: t('an.merge.path') };
+    const path = person => person.levels.filter(Boolean).join(' · ');
+    const groups = sources.map(({ annuaire, read }) => ({ label: annuaire.name, people: read.people, path, origin: () => annuaire.name }));
+    if (sources.length < 2) return groups;
+    const merged = mergeReads(sources, labels);
+    return [{ label: t('an.merge.title'), people: merged.people, path: person => (person.fields[labels.path] || []).join(' ; '),
+      origin: person => (person.fields[labels.origin] || [])[0] || '' }, ...groups];
+  }
+
+  // `choisirPersonne` d'une app : la fenêtre s'ouvre par-dessus l'app ; rend la personne choisie, ou null (annulé). Une seule à la fois.
+  async pick({ title = '', app = '' } = {}) {
+    const { t } = this.#o;
+    if (this.#picker) return null;
+    let groups = [];
+    let problem = '';
+    try {
+      groups = this.#o.fullAccess() ? await this.#pickGroups() : [];
+      if (!this.#o.fullAccess()) problem = t('an.needsAccess');
+      else if (!groups.length) problem = t('an.pick.noAnnuaire');
+    } catch (error) {
+      console.error('GFS : lecture des personnes impossible', error);
+      problem = t('an.pick.failed', { reason: String(error && error.message ? error.message : error) });
+    }
+    this.#picker = new PickWindow({ container: this.#o.container, inertTargets: this.#o.inertTargets, t, title, app, groups, problem });
+    try { return await this.#picker.run(); } finally { this.#picker = null; }
+  }
+
+  // L'app qui demandait n'est plus là : la fenêtre se ferme sans rien rendre.
+  cancelPick() { if (this.#picker) this.#picker.cancel(); }
 
   relocalize() { this.#window.relocalize({ t: this.#o.t }); }
 
-  get #current() { return this.#list.find(each => each.row === this.#row) || null; }
+  // L'annuaire montré ; la vue fusionnée n'existe qu'avec deux annuaires au moins.
+  get #current() {
+    if (this.#row === MERGED_ROW) return canMerge(this.#list) ? this.#merge.annuaire(this.#o.t, this.#merge.on(this.#list).length) : null;
+    return this.#list.find(each => each.row === this.#row) || null;
+  }
 
   // Lit la liste des annuaires, puis celui qu'on montre (le dernier vu, sinon le premier).
   async #load() {
@@ -90,7 +158,7 @@ export class AnnuaireControl {
       return;
     }
     if (!this.#list.length) { this.#row = null; this.#window.show({ state: 'none', annuaires: [], current: null, data: null }); return; }
-    if (!this.#current) this.#row = this.#list[0].row;
+    if (!this.#current) this.#row = this.#row === null && canMerge(this.#list) ? MERGED_ROW : this.#list[0].row; // la première fois : tous les annuaires réunis
     await this.#read();
   }
 
@@ -101,7 +169,7 @@ export class AnnuaireControl {
     const mine = ++this.#reading;
     if (!silent) this.#window.show({ state: 'loading', annuaires: this.#list, current, data: null });
     try {
-      const data = await this.#viewOf(await this.#store.read(current));
+      const data = current.merged ? await this.#readMerged() : await this.#viewOf(await this.#store.read(current));
       this.#data = data;
       if (mine === this.#reading) this.#window.show({ state: 'ready', annuaires: this.#list, current, data, error: '' });
     } catch (error) {
@@ -110,6 +178,21 @@ export class AnnuaireControl {
       const text = error instanceof MissingTable ? t('an.tableGone', { table: error.table }) : t('an.readFailed', { reason: String(error && error.message) });
       this.#window.show({ state: 'error', annuaires: this.#list, current, data: null, error: text });
     }
+  }
+
+  // La vue fusionnée : chaque annuaire coché se lit comme pour un seul (sans les fiches masquées, sauf pour un administrateur), puis la réunion.
+  async #readMerged() {
+    const admin = (await this.#admin) === true;
+    const identity = this.#o.identity();
+    return this.#merge.read(this.#list, { t: this.#o.t, admin, identity, read: async annuaire =>
+      presenceView(await this.#store.read(annuaire), { admin, identity }) });
+  }
+
+  // Une case du panneau « Annuaires affichés » : la vue se relit sur place (sans repasser par « Lecture… »). Faux : c'était le dernier annuaire coché.
+  async #mergePick(row) {
+    if (!this.#merge.toggle(row, this.#list)) return false;
+    await this.#read(true);
+    return true;
   }
 
   // Ce que la personne qui lit voit : sans les fiches masquées (sauf si elle administre ou si c'est la sienne), et les points de « À vérifier » (calculés pour
@@ -218,9 +301,19 @@ export class AnnuaireControl {
   // Un nouveau sous-annuaire de l'annuaire montré (ou, dans un sous-annuaire, de son annuaire d'origine).
   async #newSub() {
     const current = this.#current;
-    const parent = current && isSub(current) ? parentOf(this.#list, current) : current;
-    if (!parent) { this.#o.notice(this.#o.t('an.sub.parentGone')); return; }
+    const parent = current && current.merged ? await this.#parentFor() : current && isSub(current) ? parentOf(this.#list, current) : current;
+    if (!parent) { if (!(current && current.merged)) this.#o.notice(this.#o.t('an.sub.parentGone')); return; }
     await this.#sub.create(parent, this.#list);
+  }
+
+  // Dans la vue fusionnée, l'annuaire d'origine d'un nouveau sous-annuaire se choisit (le seul annuaire principal, sinon la liste avec recherche).
+  async #parentFor() {
+    const mains = this.#list.filter(each => !isSub(each));
+    if (mains.length <= 1) return mains[0] || null;
+    const t = this.#o.t;
+    const chosen = await pickFrom({ container: this.#o.container, inertTargets: this.#o.inertTargets, t, title: t('an.merge.newSubTitle'),
+      items: mains.map(each => ({ value: String(each.row), label: each.name, glyph: 'annuaire', hint: each.table })), none: t('an.noneFound') });
+    return chosen === null ? null : mains.find(each => String(each.row) === chosen) || null;
   }
 
   // Le menu d'un sous-annuaire : actualiser, partager, supprimer. Un geste que la personne ne peut pas faire dit pourquoi.
@@ -238,14 +331,17 @@ export class AnnuaireControl {
   async #switch() {
     const t = this.#o.t;
     const parentName = each => (parentOf(this.#list, each) || { name: '' }).name;
-    const items = [...this.#list.map(each => ({ value: String(each.row), label: each.name, glyph: isSub(each) ? 'lock' : 'annuaire',
+    const items = [...(canMerge(this.#list) ? [{ value: MERGED, label: t('an.merge.title'), glyph: 'users',
+      hint: t('an.merge.foot', { n: this.#list.length }) }] : []),
+    ...this.#list.map(each => ({ value: String(each.row), label: each.name, glyph: isSub(each) ? 'lock' : 'annuaire',
       hint: isSub(each) ? t('an.sub.of', { name: parentName(each) }) : each.table })),
     { value: NEW, label: t('an.new'), glyph: 'plus', hint: '' },
     ...(this.#list.length ? [{ value: NEW_SUB, label: t('an.sub.new'), glyph: 'plus', hint: t('an.sub.newHint') }] : [])];
     const chosen = await pickFrom({ container: this.#o.container, inertTargets: this.#o.inertTargets, t, title: t('an.switch'), items,
-      current: String(this.#row),
+      current: this.#row === MERGED_ROW ? MERGED : String(this.#row),
       none: t('an.noneFound') });
     if (chosen === null) return;
+    if (chosen === MERGED) { if (this.#row !== MERGED_ROW) { this.#row = MERGED_ROW; await this.#read(); } return; }
     if (chosen === NEW) { await this.#create(); return; }
     if (chosen === NEW_SUB) { await this.#newSub(); return; }
     if (Number(chosen) === this.#row) return;
@@ -341,5 +437,6 @@ export class AnnuaireControl {
 export function createAnnuaire(c) {
   return new AnnuaireControl({ port: c.port, container: c.$('stage'), t: c.t, locale: () => c.locale, inertTargets: c.inertTargets, ask: opts => c.ask(opts),
     notice: text => c.notice(text), writeBlock: () => c.writeBlock(), fullAccess: () => c.fullAccess, isOwner: () => c.transfer.isOwner(),
-    identity: () => c.identity || '', rights: c.rights });
+    identity: () => c.identity || '', rights: c.rights, targets: () => c.personTargets(), insert: (id, person) => c.openings.openPerson(id, person),
+    unlock: target => c.unlock({ text: target.lock, focus: target.focus }) });
 }

@@ -3,7 +3,7 @@
 // les 600 lignes de code de l'outil d'audit. Le contrôleur (`c`) garde l'app active et ses cadres : ce module lui demande `activate`, `isOpen`, `openable`,
 // `unlock` et `ask`, lit `session`, `opening` et `contextServed`, et n'écrit que `opening` (le fichier part une seule fois).
 
-import { acceptsFile, importOpening, templateOpening, openingKind, acceptsOpening, carriesFile, pickFile } from '../files/import-file.js';
+import { acceptsFile, importOpening, templateOpening, personOpening, openingKind, acceptsOpening, carriesFile, pickFile } from '../files/import-file.js';
 import { readOpening } from './reading.js';
 import { leaveApp, leaveQuestion } from './leave.js';
 import { FILES_APP } from '../files/gfs-files.js';
@@ -45,6 +45,12 @@ export class Openings {
     const { c } = this;
     if (entry.greyed) { void c.unlock({ text: entry.reason, focus: entry.focus }); return; }
     void this.openIn(entry.app, templateOpening(entry, c.explorer.state.path), 'ex.notice.template');
+  }
+
+  // « Insérer dans… » de la fiche d'une personne (contrats 5.4, point 16) : l'app s'ouvre avec la personne (`person` : { nom, email, titre, telephone, annuaire
+  // }) ; une app qui ne sait pas encore la recevoir s'ouvre sur son modèle habituel et le dit. Rend vrai quand l'ouverture est partie vers l'app.
+  openPerson(appId, person) {
+    return this.openIn(appId, personOpening(person), 'ex.notice.person');
   }
 
   // « Importer » (contrats 5.4, point 1) : la personne choisit le fichier dans le sélecteur de GFS (ouvert ici, dans son geste), puis l'app le reçoit avec

@@ -7,6 +7,10 @@
 // cinquante agents aux adresses longues (de quoi dépasser le lien d'un message) ; `&admin=0` : la personne qui lit n'administre pas le document ; `&me=adresse` : son adresse.
 // L'essai part de zéro pour le bouton « Personnes » de l'organigramme (clé `gfs.annuaire.orgPeople` retirée du navigateur). `window.__annuaire` est le contrôle ; `window.__annuaireNotices` garde les phrases qu'il dit ; `window.__annuaireLanguage(lang)` change la langue fenêtre ouverte, comme le
 // contrôleur de GFS ; `window.__annuaireCopied` garde le dernier texte copié (le presse-papiers lui-même se mesure dans le labo).
+// `?home=merged` : l'annuaire s'ouvre sur la vue fusionnée « Tous mes annuaires » (test/annuaire-merge-firefox.mjs), sinon sur l'annuaire de la ligne 1.
+// `window.__ambiance(id)` et `window.__theme.chooseAccess(on)` posent l'ambiance et l'accessibilité renforcée comme GFS (test/annuaire-ambiances-firefox.mjs).
+// `?links=1` : les apps du menu « Insérer dans… » (voir `FAKE_TARGETS`) ; sans lui aucune app n'accepte de personne.
+//
 // `?sub=1` : les sous-annuaires (test/annuaire-sub-firefox.mjs) : `GFS_Annuaires` porte les colonnes que le moteur de partage y pose (lecteurs, écrivains, administrateurs,
 // refus), un faux « Partager » (`window.__annuaireShared` garde le fichier demandé ; `window.__annuaireShareWhy` : un texte qui le grise), et un sous-annuaire déjà là, « Pôle
 // Ressources » (copie du 20/11), dont `ecrivain@exemple.fr` est écrivain (`&me=`). Le vrai verrou de Grist se mesure dans le labo (labo/run-annuaire-sous.mjs).
@@ -15,6 +19,8 @@ import { installSprite } from '/js/ui/icons.js';
 import { fakeGrist } from '/test/fake-grist.mjs';
 import { AnnuaireStore } from '/js/annuaire/annuaire-store.js';
 import { AnnuaireControl } from '/js/annuaire/annuaire-control.js';
+import { ThemeSetting } from '/js/theme/theme.js';
+import { ThemeHost } from '/js/theme/theme-apply.js';
 import { documentFixture, configFixture } from '/test/annuaire-fixtures.mjs';
 import { presenceView } from '/js/annuaire/annuaire-presence.js';
 import { levelKey } from '/js/annuaire/annuaire-model.js';
@@ -96,6 +102,18 @@ async function seedSub(grist, seed) {
   await applyUserActions([['UpdateRecord', ANNUAIRES_TABLE, made.row, { GFS_Ecrivains: ['L', 'ecrivain@exemple.fr'] }]]);
 }
 
+// Les apps du menu « Insérer dans… » de `?links=1` (test/annuaire-links-firefox.mjs) : deux qui reçoivent une personne, une qu'il faut d'abord activer, une qui ne sait
+// pas encore. `window.__annuaireInserted` garde ce que le menu leur a envoyé, `window.__annuaireUnlocked` les apps grisées qu'on a cliquées.
+const FAKE_TARGETS = Object.freeze([
+  { id: 'pp', name: 'Publipostage+', where: 'dans un modèle', lock: '', focus: null, ready: true },
+  { id: 'fp', name: 'Form+', where: 'dans un formulaire', lock: '', focus: null, ready: true },
+  { id: 'tu', name: 'Thusday', where: 'dans une tâche', lock: 'Activez l’extension « Équipes » pour insérer dans Thusday.', focus: 'tu:equipes', ready: true },
+  { id: 'bi', name: 'Grist-BI', where: 'dans un tableau', lock: '', focus: null, ready: false },
+]);
+
+// Un réglage qui ne retient rien, pour le thème de l'essai.
+const memory = () => { const store = { value: null, read: () => store.value, write: value => { store.value = value; return true; } }; return store; };
+
 async function mount() {
   const language = new URLSearchParams(location.search).get('lang') === 'en' ? 'en' : 'fr';
   let i18n = createI18n(language);
@@ -123,12 +141,25 @@ async function mount() {
   window.__annuaireNotices = [];
   window.__annuaireCopied = null;
   window.__annuaireShared = null;
+  window.__annuaireInserted = [];
+  window.__annuaireUnlocked = [];
   let lang = language;
   const control = new AnnuaireControl({ port: grist.port, container: document.getElementById('stage'), t: (key, vars) => i18n.t(key, vars), locale: () => locale(lang),
     inertTargets: () => [], ask: async () => true, notice: text => window.__annuaireNotices.push(text), writeBlock: () => window.__annuaireBlock || null, fullAccess: () => true,
     isOwner: async () => query.get('admin') !== '0', identity: () => query.get('me') || '',
-    rights: query.get('sub') === '1' ? fakeRights() : undefined });
+    rights: query.get('sub') === '1' ? fakeRights() : undefined,
+    targets: () => (query.get('links') === '1' ? FAKE_TARGETS : []),
+    insert: async (id, person) => { window.__annuaireInserted.push({ id, person }); return true; },
+    unlock: async target => { window.__annuaireUnlocked.push(target.id); } });
+  // Sans numéro, l'annuaire s'ouvre sur la vue fusionnée dès qu'il y a deux annuaires : les essais d'un seul annuaire partent de la ligne 1 (`?home=merged` : la vue fusionnée).
+  const openIt = control.open.bind(control);
+  control.open = (row = query.get('home') === 'merged' ? null : 1) => openIt(row);
   window.__annuaire = control;
+  // Le thème comme dans GFS (test/annuaire-ambiances-firefox.mjs) : le vrai réglage et le vrai hôte ; le mode vient de `data-grist-appearance`.
+  const theme = new ThemeSetting({ ambianceStore: memory(), colorStore: memory(), accessStore: memory() });
+  window.__theme = theme;
+  window.__ambiance = id => theme.choose(id);
+  new ThemeHost({ win: window, setting: theme }).start();
   window.__annuaireBatches = () => JSON.parse(JSON.stringify(grist.batches)); // les actions que le faux Grist a reçues, dans l'ordre
   window.__annuaireLanguage = next => { lang = next; i18n = createI18n(next); control.relocalize(); };
 }

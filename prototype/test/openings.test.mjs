@@ -103,6 +103,27 @@ test('openTemplate : l\'article grisé dit sa raison ; sinon l\'app s\'ouvre sur
   assert.deepEqual(old.c.notes, ['ex.notice.template {"app":"PUBLIPOSTAGE"}'], 'une app qui ne sait pas encore ouvrir un modèle s\'ouvre et le dit');
 });
 
+test('openPerson : « Insérer dans… » ouvre l\'app avec la personne (cinq textes) ; une app qui ne sait pas la recevoir le dit ; la personne part une seule fois', async () => {
+  const person = { nom: 'Léa Garnier', email: 'lea@exemple.fr', titre: 'Cheffe', telephone: '', annuaire: 'Annuaire principal', row: 4 };
+  const knows = host({ apps: { publipostage: { ouverture: { personne: true } } } });
+  assert.equal(await knows.openings.openPerson('publipostage', person), true);
+  const [, , opening] = knows.c.calls.find(call => call[0] === 'activate');
+  assert.equal(opening.raison, 'personne');
+  assert.deepEqual(opening.personne, { nom: 'Léa Garnier', email: 'lea@exemple.fr', titre: 'Cheffe', telephone: '', annuaire: 'Annuaire principal' });
+  assert.deepEqual(knows.c.notes, [], 'l\'app déclare `ouverture.personne` : rien à dire');
+  const silent = host({ apps: { publipostage: { ouverture: { fichier: true, nouveau: true } } } });
+  assert.equal(await silent.openings.openPerson('publipostage', person), true);
+  assert.deepEqual(silent.c.notes, ['ex.notice.person {"app":"PUBLIPOSTAGE"}'], 'sans `ouverture.personne`, l\'app s\'ouvre sur son modèle habituel et GFS le dit');
+  const running = host({ apps: { publipostage: { ouverture: { personne: true } } }, session: sessionOf('publipostage') });
+  const received = [];
+  running.c.session.openFile = async value => { received.push(value.raison); return { ouvert: true }; };
+  assert.equal(await running.openings.openPerson('publipostage', person), true);
+  assert.deepEqual(received, ['personne'], 'l\'app déjà ouverte reçoit la personne par l\'appel `ouvrir`');
+  assert.equal(running.c.opening, null, 'la personne part une seule fois');
+  const absent = host();
+  assert.equal(await absent.openings.openPerson('inconnue', person), false, 'une app qu\'on ne peut pas activer : rien ne part');
+});
+
 test('importFile : l\'arrivée d\'un autre document, les formats que GFS garde et le grisé passent avant le sélecteur de fichier', async () => {
   const { c, openings } = host();
   await openings.importFile({ action: 'receive' });

@@ -30,6 +30,13 @@ export function mineOf(people, identity) {
 // Qui peut changer l'interrupteur d'une fiche : un administrateur (de toutes), chacun de la sienne. Grist garde le dernier mot (ses règles d'accès).
 export const canSwitch = (person, { admin, identity, people }) => admin || (mineOf(people, identity) || {}).row === person.row;
 
+// La ligne « Apparaître dans l'annuaire » d'une fiche : { on, can, blocked }, ou rien quand l'option « Ma présence » est éteinte. `blocked` : ce qui empêche
+// d'écrire (le texte, ou rien).
+export function presenceState(data, person, blocked) {
+  if (!data || !presenceCol(data.config)) return null;
+  return { on: !data.masked.has(person.row), can: canSwitch(person, { admin: data.admin, identity: data.identity, people: data.people }), blocked };
+}
+
 // Ce que la personne qui lit voit : sans les personnes masquées, sauf pour un administrateur et pour la personne elle-même. { ...read, people, tree, masked }
 // où `masked` est l'ensemble des lignes masquées qui restent à l'écran (elles s'y voient grisées). Sans l'option, rien ne change.
 export function presenceView(read, { admin = false, identity = '' } = {}) {

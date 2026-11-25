@@ -20,24 +20,31 @@ export const importOpening = (entry, file, folder) => ({ fichier: null, type: en
 
 // Le genre d'ouverture, tel que `ouverture` du manifeste le range : ouvrir un fichier précis, en créer un vierge (« Nouveau »), en créer un d'après un fichier
 // (« Importer »), en créer un d'après un modèle de départ de l'app (« Depuis un modèle », contrats 5.4, point 13) ou lire un fichier que GFS garde
-// (js/broker/reading.js).
+// (js/broker/reading.js) ou recevoir une personne de l'annuaire (« Insérer dans… », contrats 5.4, point 16).
 export function openingKind(opening) {
   if (opening.lecture) return 'lire';
   if (opening.importation) return 'importer';
   if (opening.modele) return 'modele';
+  if (opening.personne) return 'personne';
   return opening.fichier ? 'fichier' : 'nouveau';
 }
 
 // L'ouverture d'un modèle de départ (contrats 5.2, point 3, et 5.4, point 13) : « Nouveau » d'un type, avec l'identifiant du modèle du catalogue de l'app.
 export const templateOpening = (entry, folder) => ({ fichier: null, type: entry.type, dossier: folder, raison: 'modele', modele: { id: entry.id } });
 
+// La personne que l'annuaire pose dans une app (contrats 5.2, point 3, et 5.4, point 16) : `{ nom, email, titre, telephone, annuaire }`, des textes.
+// L'ouverture n'a ni fichier ni type ni dossier.
+export const personOpening = person => ({ fichier: null, type: null, dossier: '', raison: 'personne',
+  personne: { nom: String(person.nom ?? ''), email: String(person.email ?? ''),
+  titre: String(person.titre ?? ''), telephone: String(person.telephone ?? ''), annuaire: String(person.annuaire ?? '') } });
+
 // L'app sait-elle ce genre d'ouverture (contrats 2.2, `ouverture`) ? Sans la déclaration, GFS ouvre l'app sur son modèle habituel et le dit ; `manifest` peut
 // être null (une app absente ou invalide).
 export const acceptsOpening = (manifest, kind) => Boolean(manifest && manifest.ouverture && manifest.ouverture[kind] === true);
 
-// L'ouverture porte-t-elle un fichier du navigateur (`importation`, `lecture`) ? Il part une seule fois, avec l'ouverture ou avec l'appel `ouvrir` : une
-// réouverture de l'app ne le reprend pas.
-export const carriesFile = opening => Boolean(opening && (opening.importation || opening.lecture));
+// L'ouverture porte-t-elle un fichier du navigateur (`importation`, `lecture`) ou une personne de l'annuaire (`personne`) ? Cela part une seule fois, avec
+// l'ouverture ou avec l'appel `ouvrir` : une réouverture de l'app ne le reprend pas.
+export const carriesFile = opening => Boolean(opening && (opening.importation || opening.lecture || opening.personne));
 
 // Le sélecteur de fichier de GFS : un champ « file » caché, cliqué ici même, donc DANS le geste de la personne (le navigateur refuse sinon). Rend le fichier
 // choisi, ou `null` si la personne annule (un navigateur qui ne dit pas l'annulation laisse la promesse en suspens, sans rien casser).

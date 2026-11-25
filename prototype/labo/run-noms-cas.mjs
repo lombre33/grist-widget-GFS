@@ -8,9 +8,7 @@
 //   partage    « Partager » activé sur les modèles, puis le lot de renommage de l'app : les règles d'accès, la formule des partages et les colonnes d'aide suivent-elles ?
 //   annuler    la vraie app renomme le document, puis la personne fait « Annuler » (Ctrl+Z) dans Grist : que reste-t-il, que voit GFS, que fait l'app au rechargement ?
 import { createServer } from 'node:http';
-import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import vm from 'node:vm';
 import { serve } from './lab-server.mjs';
 import { chromium, say, check, constat } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
@@ -20,6 +18,7 @@ import { addCustomWidget } from './lab-setup.mjs';
 import { PAGE_PORT, openGfs, openRowMenu, rowOf, goTo } from './lab-pdf.mjs';
 import { call, apply, rowsOf } from './lab-rest.mjs';
 import { gfsFrame } from './lab-droits.mjs';
+import { appRegistry, appBatch } from './lab-noms.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const { t } = createI18n(lang);
@@ -31,16 +30,6 @@ const PREFS = 'Publipostage_TemplatePreferences';
 const OLD_PREFS = 'Publipostage_PreferencesModeles';
 const REPO = process.env.REPO_DIR;
 
-// Le traducteur de l'app, chargé tel qu'elle l'écrit : son `planRenames` donne le lot que l'app enverrait à Grist (les deux interrupteurs allumés, comme dans le widget servi).
-function appRegistry() {
-  const source = readFileSync(join(process.env.PP_DIR || join(REPO, 'prototype/apps/publipostage'), 'js/schema-columns.js'), 'utf8');
-  const sandbox = { grist: { docApi: {} }, console };
-  sandbox.globalThis = sandbox;
-  vm.createContext(sandbox);
-  vm.runInContext(`${source}\n;globalThis.__SC = SchemaColumns;`, sandbox);
-  return sandbox.__SC;
-}
-
 const sorted = list => [...list].sort();
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const fileNames = frame => frame.locator('.ls-row:not(.folder) .t').allInnerTexts();
@@ -50,22 +39,6 @@ const reload = async run => {
   await run.page.waitForTimeout(1500);
 };
 const goHome = frame => frame.evaluate(label => { const rows = [...document.querySelectorAll('.tr-row')]; const home = rows.find(row => new RegExp(`^\\s*${label}\\s*\\d*\\s*$`).test(row.textContent)); if (home) home.click(); }, t('ex.me'));
-
-// Ce que l'app lit du document pour calculer son lot : les noms des tables et le libellé de chaque colonne (les métadonnées de Grist, comme son `readSchema`).
-async function appBatch(run, registry) {
-  const tables = await rowsOf(run, '_grist_Tables');
-  const columns = await rowsOf(run, '_grist_Tables_column');
-  const names = new Set(tables.map(row => row.tableId));
-  const byRef = new Map(tables.map(row => [row.id, row.tableId]));
-  const labels = new Map();
-  for (const column of columns) {
-    const table = byRef.get(column.parentId);
-    if (!table) continue;
-    if (!labels.has(table)) labels.set(table, new Map());
-    labels.get(table).set(column.colId, column.label);
-  }
-  return registry.planRenames(names, id => labels.get(id) || null);
-}
 
 // Les tables de l'app d'avant, plus complètes que celles de `seedFiles` : commentaires, versions et abréviations avec quelques lignes, comme un document qui a servi.
 async function seedLegacy(run) {

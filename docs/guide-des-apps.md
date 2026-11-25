@@ -89,7 +89,9 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     anglaise quand la française existe, ne renomme pas un document qui porte déjà les deux jeux, et annonce ses noms dans « Changements qui
     touchent GFS » **avant** de renommer (contrats 2.4, point 6 : `noms` du manifeste). Dans GFS, le courtier ne laisse renommer que l'app qui déclare la capacité
     `renommage` (contrats 3.3, point 10) et seulement ses propres tables et colonnes (le libellé par `ModifyColumn`, rien d'autre) ; Grist **ne refuse pas** un nom cible déjà
-    pris, il ajoute « 2 » : l'app relit les noms juste avant d'envoyer et ne renomme rien si un nom cible existe (faits vérifiés 158). Un nom qui voyage entre deux documents (le
+    pris, il ajoute « 2 » : l'app relit les noms juste avant d'envoyer et ne renomme rien si un nom cible existe (faits vérifiés 158). **Elle ne renomme jamais une table
+    ni une colonne qu'un partage de Sync+ utilise** : renommée, une table rend le lien muet et une colonne le fait envoyer du vide (faits vérifiés 160) ; elle les garde et renomme
+    le reste. Un nom qui voyage entre deux documents (le
     protocole de Sync+) ne change qu'avec un numéro de version majeur ; **Sync+ ne migre aucun lien existant** (décision du porteur, 25/11) :
     seuls les nouveaux partages prennent les noms anglais. **GFS lit toujours les deux jeux de noms, sans date de fin** (un document jamais rouvert
     dans la nouvelle version, ou restauré d'une sauvegarde, reste lisible) ; il ne retire cette lecture que sur l'accord du porteur.

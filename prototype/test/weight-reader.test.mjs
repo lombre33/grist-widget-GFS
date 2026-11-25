@@ -121,6 +121,23 @@ test('escalating : lecture seule d\'abord ; refusée (403), un seul nouvel essai
   assert.deepEqual(calls, [['A', false], ['A', true], ['B', true]], 'le refus coûte un essai, une seule fois');
 });
 
+test('escalating : `startWritable` vrai (un refus déjà vu) part d\'emblée avec le jeton qui peut écrire ; faux ou en erreur, la lecture seule d\'abord', async () => {
+  const seen = [];
+  const sqlWith = async (statement, writable) => { seen.push(writable); if (!writable) throw http(403, 'insufficient document access'); return [{ octets: 7 }]; };
+  assert.deepEqual(await escalating(sqlWith, () => true)('A'), [{ octets: 7 }]);
+  assert.deepEqual(seen, [true], 'aucune requête en lecture seule : celle que la console écrirait en rouge');
+  seen.length = 0;
+  await escalating(sqlWith, async () => false)('A');
+  assert.deepEqual(seen, [false, true], 'faux : comme avant');
+  seen.length = 0;
+  await escalating(sqlWith, async () => { throw new Error('mémoire illisible'); })('A');
+  assert.deepEqual(seen, [false, true], 'une mémoire qui échoue ne change rien');
+  seen.length = 0;
+  const once = escalating(sqlWith, () => true);
+  await once('A'); await once('B');
+  assert.deepEqual(seen, [true, true]);
+});
+
 test('escalating : une lecture qui passe en lecture seule ne monte jamais ; un refus des deux jetons (éditeur, lecteur) reste un refus, une lecture coupée (400) ne change pas de jeton', async () => {
   const quiet = [];
   const fine = escalating(async (statement, writable) => { quiet.push(writable); return [{ octets: 1 }]; });
@@ -161,6 +178,13 @@ test('pare-feu de la DINUM : aucune lecture SQL de GFS ne contient `case when`, 
     rowsStatement('Grosse', columns, new Set(['Titre'])).statement];
   const forbidden = /case\s+when|or\s+1\s*=\s*1|drop\s+table/i;
   for (const statement of statements) assert.ok(!forbidden.test(statement), `lecture refusée par le pare-feu : ${statement.slice(0, 80)}…`);
+});
+
+// Mesuré dans le navigateur du porteur sur grist.numerique.gouv.fr (25/11, faits vérifiés 174) : la lecture du fichier à deux sous-requêtes `(SELECT page_count
+// FROM pragma_page_count())` revient en 403 sans CORS ; la même sans sous-requête passe (200). Aucune lecture du poids ne doit donc les réintroduire.
+test('pare-feu de la DINUM : le fichier entier se lit sans sous-requête (`(SELECT` refusé), par `page_count * page_size FROM pragma_page_count(), pragma_page_size()`', () => {
+  assert.doesNotMatch(SQL.file, /\(\s*SELECT/i, 'une sous-requête dans la lecture du fichier : le pare-feu la refuse');
+  assert.equal(SQL.file, 'SELECT page_count * page_size AS octets FROM pragma_page_count(), pragma_page_size()');
 });
 
 test('pare-feu de la DINUM : les pièces jointes comptées gardent leur sens sans `CASE WHEN` (stockées dans le fichier ou chez un stockage externe)', () => {

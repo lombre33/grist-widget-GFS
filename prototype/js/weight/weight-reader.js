@@ -11,8 +11,10 @@
 
 // Les lectures. Rien n'y entre que du texte écrit ici : le nom d'une table (un identifiant de Grist) n'est écrit dans une lecture qu'après `TABLE_ID`.
 export const SQL = {
-  // Le fichier entier : le nombre de pages fois leur taille (6 ms sur un document de 1,9 Go).
-  file: 'SELECT (SELECT page_count FROM pragma_page_count()) * (SELECT page_size FROM pragma_page_size()) AS octets',
+  // Le fichier entier : le nombre de pages fois leur taille (6 ms sur un document de 1,9 Go). Sans sous-requête : le pare-feu devant le Grist de la DINUM
+  // refuse en 403, sans en-tête CORS, la forme à deux `(SELECT …)` ; celle-ci passe (sonde lancée dans le navigateur du porteur sur grist.numerique.gouv.fr,
+  // 25/11, faits vérifiés 174).
+  file: 'SELECT page_count * page_size AS octets FROM pragma_page_count(), pragma_page_size()',
   // L'historique des modifications : le corps de chaque action gardée pour pouvoir annuler (10 ms sur 922 Mo).
   history: 'SELECT COALESCE(SUM(LENGTH(body)), 0) AS octets FROM _gristsys_ActionHistory',
   // Les pièces jointes stockées dans le fichier (celles qu'un stockage externe garde ailleurs n'y sont pas) : ce qui pèse dans le fichier, supprimées en
@@ -43,9 +45,14 @@ export function failureKind(error) {
 // qui peut écrire, et tout le reste de la lecture avec lui. Un document à règles d'accès refuse `/sql` au jeton en lecture seule même à son propriétaire, mais
 // le rend à son jeton qui peut écrire (mesuré, faits vérifiés 43) ; un éditeur ou un lecteur y est refusé des deux façons. Rien d'autre ne passe par ce jeton
 // que des `SELECT` écrits ici.
-export function escalating(sqlWith) {
-  let writable = false;
+// `startWritable()` (facultatif, vrai ou promesse de vrai) : GFS a déjà vu Grist refuser le jeton en lecture seule sur ce document (`denied()` de
+// js/broker/sql-gate.js) ; la lecture part alors d'emblée avec le jeton qui peut écrire, au lieu de refaire la requête que la console écrirait en rouge. Même
+// règle
+// qu'avant : le jeton qui peut écrire ne sert qu'après un refus réellement vu.
+export function escalating(sqlWith, startWritable = null) {
+  let writable = null; // null : pas encore décidé (le premier appel le lit)
   return async statement => {
+    if (writable === null) writable = await Promise.resolve().then(startWritable || (() => false)).then(Boolean, () => false);
     try {
       return await sqlWith(statement, writable);
     } catch (error) {

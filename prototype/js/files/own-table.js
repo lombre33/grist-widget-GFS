@@ -6,6 +6,19 @@
 
 const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 
+// Qui veut savoir qu'une table de GFS vient de naître (js/files/page-tree.js range sa page sous celle de GFS) : `listener(tableId)`, appelé après chaque
+// `AddTable` réussi ; ce qu'il lève ou rejette ne gêne jamais la création. Rend la fonction qui retire l'écoute.
+const creationListeners = new Set();
+export function onTableCreated(listener) {
+  creationListeners.add(listener);
+  return () => creationListeners.delete(listener);
+}
+function announceCreated(tableId) {
+  for (const listener of creationListeners) {
+    try { Promise.resolve(listener(tableId)).catch(() => {}); } catch (error) { /* une écoute ne gêne pas la création */ }
+  }
+}
+
 // La personne a refusé de créer la table : rien ne s'installe, rien ne se range.
 export class TableDeclined extends Error {
   code = 'GFS_TABLE_REFUSEE';
@@ -99,6 +112,7 @@ export class OwnTable {
     this.#tableId = (made && made.table_id) || this.#name;
     this.#seen = this.#tableId;
     if (!sameName(this.#tableId, this.#name)) console.warn(`GFS : Grist a nommé la table ${this.#tableId} au lieu de ${this.#name}`);
+    announceCreated(this.#tableId);
     return { exists: true, columns: this.#columns.map(column => column.id), data: null };
   }
 }

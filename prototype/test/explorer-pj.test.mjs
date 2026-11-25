@@ -19,9 +19,38 @@ function bench({ hasSource = true, restricted = false, files = [], trashed = [] 
   return { box, state, calls, answer: async (at, response) => { calls[at](response); await settle(); } };
 }
 
-test('au départ : décochée, prête à rien, sans raison de grisé', () => {
-  const { box } = bench();
-  assert.deepEqual(box.facts(), { on: false, ready: false, busy: false, bytes: 0, count: 0, grey: '' });
+test('au départ : cochée (demande du porteur, 25/11), rien lu encore, sans raison de grisé', () => {
+  const { box, calls } = bench();
+  assert.deepEqual(box.facts(), { on: true, ready: false, busy: false, bytes: 0, count: 0, grey: '' });
+  assert.equal(calls.length, 0, 'rien ne se lit avant la première liste');
+});
+
+test('cochée de départ : la première relecture (derrière la liste, ou à l\'ouverture) lit la table, sans que la personne ait cliqué', async () => {
+  const b = bench({ files: [{ key: 'f', pieces: [['1', 100]] }] });
+  b.box.reread();
+  assert.equal(b.calls.length, 1);
+  assert.equal(b.box.facts().busy, true);
+  await b.answer(0, { data: table });
+  assert.deepEqual(b.box.facts(), { on: true, ready: true, busy: false, bytes: 600, count: 2, grey: '' });
+});
+
+test('cochée de départ mais sans lecture possible : rien ne se lit (ni source, ni accès complet) ; la case est grisée avec sa raison, jamais masquée', () => {
+  const none = bench({ hasSource: false });
+  none.box.reread();
+  const restricted = bench({ restricted: true });
+  restricted.box.reread();
+  assert.deepEqual([none.calls.length, restricted.calls.length], [0, 0]);
+  assert.deepEqual([none.box.facts().on, none.box.facts().grey], [false, 'weight.pjNone']);
+  assert.deepEqual([restricted.box.facts().on, restricted.box.facts().grey], [false, 'gfs.needsFullAccess']);
+});
+
+test('décochée par la personne : plus aucune lecture, même après une nouvelle liste', () => {
+  const b = bench();
+  b.box.toggle(false);
+  b.box.reread();
+  b.box.reread();
+  assert.equal(b.calls.length, 0);
+  assert.equal(b.box.facts().on, false);
 });
 
 test('grisée, jamais masquée : sans lecture possible, sans l\'accès complet, après un échec ; le clic rend la raison et ne coche rien', () => {
@@ -98,6 +127,7 @@ test('les fichiers changent pendant que la case est cochée : le compte est refa
   b.box.reread();
   assert.equal(b.calls.length, 2, 'cochée, la case relit');
   const off = bench();
+  off.box.toggle(false);
   off.box.reread();
   assert.equal(off.calls.length, 0, 'décochée, elle ne lit rien');
 });

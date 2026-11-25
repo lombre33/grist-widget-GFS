@@ -224,14 +224,14 @@ test('le bandeau dit le poids et la limite de La Suite numérique dans la langue
 // Le contrôleur du poids (js/weight/weight-control.js) : la surveillance lit par le cadre d'envoi (lecture seule d'abord, le jeton qui peut écrire seulement après un refus), le bandeau suit le poids, et l'explorateur fermé
 // le message bref le dit une fois.
 const DINUM = 'https://grist.numerique.gouv.fr/o/dinum/api/docs/abc'; // l'adresse que donne le Grist de La Suite numérique
-function control({ open = true, readable = true, sqlOf, base = DINUM, suite }) {
+function control({ open = true, readable = true, sqlOf, base = DINUM, suite, deniedBefore }) {
   const time = clock();
   const said = { repaint: 0, notices: [], jetons: [] };
   const transfer = { baseUrl: async () => base, sql: async (statement, { writable }) => { said.jetons.push(writable); return sqlOf(statement, writable); } };
   const fr = createI18n('fr');
   const weight = new WeightControl({
     transfer, container: { ownerDocument: { hidden: false } }, inertTargets: () => [], t: fr.t, locale: () => 'fr-FR', canRead: () => readable, repaint: () => { said.repaint++; },
-    notice: text => said.notices.push(text), explorerOpen: () => open, timers: time.timers, ...(suite ? { suite } : {}),
+    notice: text => said.notices.push(text), explorerOpen: () => open, timers: time.timers, ...(suite ? { suite } : {}), ...(deniedBefore ? { deniedBefore } : {}),
   });
   return { weight, time, said };
 }
@@ -260,6 +260,23 @@ test('le contrôleur : l\'explorateur fermé (une app est ouverte), le message b
   await time.fire();
   assert.equal(said.notices.length, 1, 'une seule fois');
   assert.equal(said.notices[0].startsWith('Ce document pèse 13,10 Go. La limite de 15 Go de La Suite numérique'), true);
+});
+
+test('le contrôleur : quand Grist a déjà refusé le jeton en lecture seule (`deniedBefore`), les lectures du poids partent d\'emblée avec le jeton qui peut écrire, sans la requête refusée', async () => {
+  const rules = (statement, writable) => { if (!writable) throw http(403, 'Insufficient access'); return sizes(12.5 * GO)(statement); };
+  const known = control({ sqlOf: rules, deniedBefore: async () => true });
+  known.weight.watch();
+  await known.time.fire();
+  assert.deepEqual(known.said.jetons, [true, true, true], 'trois lectures, toutes avec le jeton qui peut écrire : aucune requête refusée de plus');
+  assert.equal(known.weight.alerts({ detail() {} }).length, 1, 'le bandeau paraît comme avant');
+  const unknown = control({ sqlOf: rules, deniedBefore: async () => false });
+  unknown.weight.watch();
+  await unknown.time.fire();
+  assert.deepEqual(unknown.said.jetons, [false, true, true, true], 'rien de vu avant : lecture seule d\'abord, un seul refus, puis le jeton qui peut écrire');
+  const refused = control({ sqlOf: () => { throw http(403, 'Insufficient access'); }, deniedBefore: async () => true });
+  refused.weight.watch();
+  await refused.time.fire();
+  assert.deepEqual([refused.said.jetons, refused.time.waiting()], [[true], []], 'un éditeur ou un lecteur : un seul refus (plus deux), la surveillance s\'arrête');
 });
 
 test('le contrôleur : sans l\'accès complet rien ne se lit ; un refus du jeton en lecture seule essaie une fois le jeton qui peut écrire, puis un second refus arrête tout', async () => {

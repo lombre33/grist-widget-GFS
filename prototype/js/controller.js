@@ -8,6 +8,8 @@ import { createPort } from './broker/broker.js';
 import { ViewOptions, addressOf } from './broker/view-options.js';
 import { ownSectionHandlers } from './broker/own-section.js';
 import { ViewLink, LINK_KEY } from './broker/view-link.js';
+import { PageTree, PAGES_KEY } from './files/page-tree.js';
+import { onTableCreated } from './files/own-table.js';
 import { AppSession } from './broker/session.js';
 import { AppStatus } from './broker/app-status.js';
 import { readPreferences, liveSwitch } from './broker/frames.js';
@@ -26,6 +28,7 @@ import { extensionsOf } from './apps/extensions.js';
 import { AppsState } from './apps/apps-state.js';
 import { DocNames } from './apps/doc-names.js';
 import { countRows } from './apps/row-count.js';
+import { createSqlGate } from './broker/sql-gate.js';
 import { arrivalApp, arrivalProbes } from './broker/arrival.js';
 import { arrivalTableApp } from './broker/arrival-table.js';
 import { Rangement, TableDeclined } from './files/rangement.js';
@@ -120,11 +123,11 @@ export class GfsController {
       chosen: () => Boolean(this.workControl && this.workControl.work.choice), mark: value => this.viewOptions.write([[LINK_KEY, value]]),
         say: (key, vars) => this.notice(this.t(key, vars)),
     });
+    this.#installPageTree();
     // Les apps sont servies par leur site en ligne (le porteur, 22/10) ; `?live=0` : la copie figée du sous-module, celle des mesures de GFS.
     this.live = liveSwitch(search);
-    // Les noms que le document donne aux tables et aux colonnes des apps (js/apps/doc-names.js) : lus avant chaque lecture des fichiers ; le nombre de lignes
-    // d'une table n'est lu que si le document la porte sous deux noms.
-    this.names = new DocNames({ doc: this.port.doc, count: table => countRows(table, { sql: statement => this.transfer.sql(statement), doc: this.port.doc }) });
+    const docId = docKey(() => this.port.doc.getDocName()); // demandé une fois à Grist, pour ce qui se garde par document sur le navigateur
+    this.#buildLightReads(docId);
     // Les apps installées et leurs extensions : ce que le document retient dans la table `GFS_Rangement` (contrats 7.4), écrit seulement sur un geste de la
     // personne, et la table seulement avec son accord. Cette table apprend aussi à GFS l'adresse de la personne (6.4, point 6) : sans écriture possible, elle
     // reste inconnue.
@@ -142,10 +145,6 @@ export class GfsController {
     // Le cadre d'envoi (js/broker/transfer.js) ne s'ouvre qu'à la première requête : les pièces jointes, et la preuve que la personne est propriétaire
     // (js/rights/rights-reader.js).
     this.transfer = new Transfer({ doc: this.port.doc, base: this.doc.baseURI, createFrame: url => buildTransferFrame(this.doc, url) });
-    // la lecture des fichiers sans leurs cellules lourdes, d'abord et tant que le document n'est pas connu léger (js/explorer/explorer-sql.js) : jeton en
-    // lecture seule, éteinte au premier refus
-    this.fileReader = createLightReader({ sql: statement => this.transfer.sql(statement),
-      warn: error => console.warn('GFS : la lecture légère des fichiers est éteinte pour cette session, l\'explorateur relit les tables en entier', error) });
     this.player = new Player({ container: this.$('frames') }); // le lecteur de vidéos posé par-dessus l'app (contrats 5.2, point 11)
     // `joindre` (contrats 5.4, point 12)
     this.attach = new Attach({ doc: this.port.doc, transfer: this.transfer, session: () => this.session, readonly: () => this.readonly });
@@ -153,7 +152,6 @@ export class GfsController {
     this.relay = new SecurityRelay({ appName: this.appName, t: this.t, notice: text => this.notice(text), now: () => new Date() });
     this.#buildSharing();
     this.pending = new Pending(); // les gestes de rangement affichés avant d'être écrits (js/explorer/pending.js) ; l'explorateur se redessine à chacun
-    const docId = docKey(() => this.port.doc.getDocName()); // demandé une fois à Grist, pour ce qui se garde par document sur le navigateur
     this.#reading = new FilesReading({
       pending: this.pending, noteBin: id => { if (this.appFiles) this.appFiles.noteBin(id); }, port: this.port,
         apps: () => this.validApps(), fullAccess: () => this.fullAccess,
@@ -176,6 +174,19 @@ export class GfsController {
       container: this.$('stage'), i18n: this.i18n, inertTargets: this.inertTargets, manifests: this.manifests, entries: entries.templates, readJson,
       unlock: lock => this.unlock(lock), onCreate: entry => this.openings.openTemplate(entry),
     });
+  }
+
+  // Les lectures SQL que GFS fait sans geste de la personne, avec le jeton en lecture seule : le nombre de lignes d'une table que le document porte sous deux
+  // noms, et la lecture des fichiers sans leurs cellules lourdes (js/explorer/explorer-sql.js : d'abord, et tant que le document n'est pas connu léger). Le
+  // premier refus du serveur les ferme toutes les deux, sur la page et sur l'onglet (js/broker/sql-gate.js) : la console de la personne ne reçoit pas la
+  // même requête refusée à chaque affichage, et l'explorateur relit les tables en entier.
+  #buildLightReads(docId) {
+    this.sqlGate = createSqlGate({ sql: statement => this.transfer.sql(statement), docId, store: key => keyStore(window, key, 'sessionStorage') });
+    // Les noms que le document donne aux tables et aux colonnes des apps (js/apps/doc-names.js) : lus avant chaque lecture des fichiers ; le nombre de lignes
+    // d'une table n'est lu que si le document la porte sous deux noms.
+    this.names = new DocNames({ doc: this.port.doc, count: table => countRows(table, { sql: statement => this.sqlGate.read(statement), doc: this.port.doc }) });
+    this.fileReader = createLightReader({ sql: statement => this.sqlGate.read(statement),
+      warn: error => console.warn('GFS : la lecture légère des fichiers est éteinte pour cette session, l\'explorateur relit les tables en entier', error) });
   }
 
   // Le partage entre documents, les droits et le poids : ce que les fenêtres du widget lisent du document (js/sharing/, js/rights/, js/weight/).
@@ -203,7 +214,8 @@ export class GfsController {
     });
     this.weight = new WeightControl({ transfer: this.transfer, container: this.$('stage'), inertTargets: this.inertTargets, t: this.t,
       locale: () => this.locale, canRead: () => this.fullAccess, repaint: () => this.#reading.show(), notice: text => this.notice(text),
-      explorerOpen: () => Boolean(this.explorer && this.explorer.isOpen), suite: (this.params.get('suite') || '').split(',').filter(Boolean) });
+      explorerOpen: () => Boolean(this.explorer && this.explorer.isOpen), suite: (this.params.get('suite') || '').split(',').filter(Boolean),
+      deniedBefore: () => this.sqlGate.denied() });
   }
 
   $ = id => this.doc.getElementById(id);
@@ -230,6 +242,16 @@ export class GfsController {
   appName = id => { const manifest = this.manifestOf(id); return manifest ? label(manifest.nom, this.lang) : id; };
   validApps() { return this.apps.filter(item => item.ok).map(item => this.names.adaptItem(item)); }
   typeLabel = file => (file.typeInfo ? label(file.typeInfo.nom, this.lang) : (file.type || '—'));
+
+  // Les pages des tables de GFS se rangent sous celle de GFS, repliée par défaut (js/files/page-tree.js, contrats 6.6) : à l'ouverture, et à chaque table
+  // créée.
+  #installPageTree() {
+    this.pageTree = new PageTree({
+      doc: this.port.doc, state: this.state, section: () => this.viewOptions.section(), mark: list => this.viewOptions.write([[PAGES_KEY, list]]),
+      enabled: () => this.fullAccess && !this.readonly && !isNewer(this.registry.structure),
+    });
+    onTableCreated(() => this.pageTree.tidy());
+  }
 
   // ---------- démarrage ----------
 
@@ -261,10 +283,10 @@ export class GfsController {
     doc.body.dataset.gfs = 'ready';
     if (!arrived) await this.#firstRun(); // une section qui s'ouvre sur son app n'est pas neuve : la fenêtre des apps ne passe pas par-dessus
     doc.body.dataset.gfsFirstRun = 'done';
-    void this.state.whenTable().then(() => this.viewLink.ensure());
+    void this.state.whenTable().then(() => this.viewLink.ensure()).then(() => this.pageTree.tidy());
     // Un envoi laissé en route, ou un partage reçu dont le contenu arrive encore : les boucles du moteur reprennent d'où elles en étaient
     // (js/sharing/sync-resume.js ; rien ne se charge sans table de partage).
-    whenReceived(() => void this.#refreshReceived());
+    whenReceived(() => { void this.pageTree.tidy(); void this.#refreshReceived(); });
     if (!this.writeBlock()) void resumeSharing({ docApi: this.grist.docApi, transfer: this.transfer, language: () => this.lang, busy: () => false,
       isOwner: () => this.transfer.isOwner() }).catch(error => console.warn('GFS : le partage entre documents ne reprend pas', error));
     this.weight.watch(); // le poids du document, 5 s plus tard (js/weight/weight-guard.js) : en dernier, rien d'autre n'attend après lui

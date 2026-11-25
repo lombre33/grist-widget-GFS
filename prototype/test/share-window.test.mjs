@@ -2,7 +2,7 @@
 // se mesure sous Firefox (test/partager-firefox.mjs) et dans un vrai Grist (labo/run-partager-fenetre.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { suggestions, levelItems, whoLabel } from '../js/sharing/share-window.js';
+import { suggestions, levelItems, whoLabel, holdClose } from '../js/sharing/share-window.js';
 import { createOtherDocuments, documentName, whyNot } from '../js/sharing/share-other.js';
 import { createI18n } from '../js/i18n/i18n.js';
 import { SHARE_OTHER_STRINGS } from '../js/i18n/i18n-share-other.js';
@@ -173,4 +173,60 @@ test('le nom du document, pour nommer le lien chez l\'autre : celui que Grist do
   assert.deepEqual(asks[0], ['GET', '', { writable: false }], 'une lecture, sans droit d\'écrire');
   for (const body of [{ name: '   ' }, { name: 3 }, {}, null, 'throw']) assert.equal(await documentName(reply(body), t), t('so.link.default'));
   assert.equal(await documentName({ rest: async () => null }, t), t('so.link.default'));
+});
+
+// Ce qui est choisi ou tapé et pas encore écrit ne se perd jamais sans le dire (constaté le 25/11 : « Terminé » avait fermé la fenêtre sur une personne choisie, jamais ajoutée).
+const guard = (extra = {}) => {
+  const out = { said: [], focused: [], chose: [] };
+  const ctx = { t, pending: null, typed: null, say: text => out.said.push(text), focus: key => out.focused.push(key), choose: who => { out.chose.push(who); ctx.pending = who; }, ...extra };
+  return { ctx, out };
+};
+
+test('« Terminé » avec une personne choisie et pas ajoutée ne ferme rien : il dit quoi faire (le nom de la personne) et met le clavier sur « Ajouter »', () => {
+  const { ctx, out } = guard({ pending: 'contact@x.fr' });
+  assert.equal(holdClose(ctx, 'done'), true);
+  assert.deepEqual(out.focused, ['share-confirm']);
+  assert.equal(out.said.length, 1);
+  assert.match(out.said[0], /contact@x\.fr/);
+  assert.match(out.said[0], /Ajouter/);
+  assert.deepEqual(out.chose, [], 'rien n\'est jeté : le formulaire reste ouvert');
+  assert.equal(ctx.pending, 'contact@x.fr');
+});
+
+test('Échap avec un ajout en cours ferme d\'abord le formulaire et le dit (rien n\'a été enregistré) ; la fenêtre reste ouverte', () => {
+  const { ctx, out } = guard({ pending: '@editeurs' });
+  assert.equal(holdClose(ctx, 'escape'), true);
+  assert.deepEqual(out.chose, [null]);
+  assert.match(out.said.at(-1), /annulé/);
+  assert.match(out.said.at(-1), /enregistré/);
+  assert.match(out.said.at(-1), /éditeurs/i, 'une catégorie se nomme dans la langue de la personne');
+  assert.deepEqual(out.focused, ['share-close']);
+  assert.equal(holdClose(ctx, 'escape'), false, 'le formulaire fermé, une seconde touche ferme la fenêtre');
+});
+
+test('sans ajout en cours, « Terminé » et Échap ferment comme avant', () => {
+  const { ctx, out } = guard();
+  assert.equal(holdClose(ctx, 'done'), false);
+  assert.equal(holdClose(ctx, 'escape'), false);
+  assert.deepEqual([out.said, out.focused, out.chose], [[], [], []]);
+});
+
+test('une adresse tapée sans avoir été choisie : « Terminé » ne la laisse pas tomber sans le dire ; Échap ferme (une saisie de recherche)', () => {
+  const { ctx, out } = guard({ typed: () => '  nouveau@x.fr ' });
+  assert.equal(holdClose(ctx, 'done'), true);
+  assert.match(out.said[0], /nouveau@x\.fr/);
+  assert.deepEqual(out.focused, ['share-add']);
+  assert.equal(holdClose(ctx, 'escape'), false);
+  assert.equal(holdClose(guard({ typed: () => '   ' }).ctx, 'done'), false, 'des espaces seuls ne comptent pas');
+});
+
+test('les phrases de la garde existent en français et en anglais, avec le nom de la personne', () => {
+  const en = createI18n('en').t;
+  for (const key of ['share.pending', 'share.pending.close', 'share.pending.dropped']) {
+    assert.match(t(key, { who: 'ann@x.fr' }), /ann@x\.fr/);
+    assert.match(en(key, { who: 'ann@x.fr' }), /ann@x\.fr/);
+    assert.notEqual(t(key, { who: 'a' }), en(key, { who: 'a' }));
+  }
+  assert.match(t('share.typed', { text: 'zz' }), /zz/);
+  assert.match(en('share.typed', { text: 'zz' }), /zz/);
 });

@@ -109,6 +109,18 @@ test('rowsStatement : la cellule lourde n\'est jamais lue, seulement comptée ; 
   assert.ok(encodeURIComponent(rowsStatement('Une_table', wide, new Set()).statement).length < 3500, 'l\'adresse de la lecture reste courte (un GET : les serveurs coupent vers 8 Ko)');
 });
 
+// Le pare-feu devant le Grist de la DINUM refuse en 403, sans en-tête CORS, la lecture des colonnes écrite `substr(…) <> …` (sonde du porteur, 25/11, faits vérifiés 173) : GFS lit alors
+// tous les fichiers en entier et la console se remplit d'un « CORS manquant » à chaque affichage. La forme `NOT LIKE` et `!=` y passe (200) : elle garde les mêmes colonnes.
+test('schemaStatement : la forme que le pare-feu de la DINUM laisse passer (ni `substr(` ni `<>`), et les mêmes colonnes qu\'avant', { skip }, async () => {
+  const statement = schemaStatement(['GFS_Fichiers', 'Publipostage_Modeles']);
+  assert.ok(!/substr\s*\(|<>/i.test(statement), `forme refusée par le pare-feu : ${statement}`);
+  assert.match(statement, /c\.colId NOT LIKE 'gristHelper%' AND c\.colId != 'manualSort'/);
+  const db = makeDb({ GFS_Fichiers: { colonnes: [{ id: 'Nom', type: 'Text' }, { id: 'Taille', type: 'Int' }], lignes: [] }, Autre: { colonnes: [{ id: 'X', type: 'Text' }], lignes: [] } });
+  const rows = (await db.sql(statement)).map(row => ({ ...row }));
+  assert.deepEqual(rows, [{ tableId: 'GFS_Fichiers', colId: 'Nom', type: 'Text' }, { tableId: 'GFS_Fichiers', colId: 'Taille', type: 'Int' }],
+    'ni `manualSort` ni `gristHelper_Display`, et seulement les tables demandées');
+});
+
 test('readRows : une liste de Grist se lit comme fetchTable la rend ; un texte qui n\'en est pas une reste tel quel ; le poids ajoute les octets comptés par SQL à ceux des colonnes lues', () => {
   const keep = [{ colId: 'Contenu', type: 'Attachments' }, { colId: 'Taille', type: 'Int' }, { colId: 'Nom', type: 'Text' }];
   const { data, weights } = readRows([{ id: 4, Contenu: '[7,9]', Taille: 300, Nom: 'é', gfs_octets: 10 }, { id: 5, Contenu: 'pas une liste', Taille: null, Nom: null, gfs_octets: 0 }], keep, new Set(['Contenu', 'Nom']));

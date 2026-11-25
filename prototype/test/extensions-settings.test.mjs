@@ -130,13 +130,17 @@ test('libraryModes : la copie de GFS dès qu\'une extension active la demande', 
 test('extensionsState : ce que l\'app reçoit (adresse, empreinte et forme seulement) et ce que GFS garde', () => {
   const base = 'https://exemple.test/gfs/';
   const off = extensionsState(pub, { extensions: [], modes: {} }, catalogue, base);
-  assert.deepEqual(off, { extensions: [], bibliotheques: {}, details: {} });
+  assert.deepEqual(off, { extensions: [], bibliotheques: {}, secours: {}, details: {} });
   const cdn = extensionsState(pub, { extensions: ['graphique'], modes: {} }, catalogue, base);
   assert.deepEqual(cdn.extensions, ['graphique']);
   assert.deepEqual(cdn.bibliotheques, {
     plotly: { src: 'https://cdn.jsdelivr.net/npm/plotly.js-basic-dist-min@2.13.2/plotly-basic.min.js', integrite: SRI, forme: 'script' },
     echarts: { src: 'https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js', integrite: SRI, forme: 'script' },
   });
+  assert.deepEqual(cdn.secours, {
+    plotly: { version: '2.13.2', src: 'https://exemple.test/gfs/vendor/plotly/2.13.2/plotly-basic.min.js', integrite: SRI, forme: 'script' },
+    echarts: { version: '6.1.0', src: 'https://exemple.test/gfs/vendor/echarts/6.1.0/dist/echarts.min.js', integrite: SRI, forme: 'script' },
+  }, 'au CDN, la copie de GFS suit en secours (mêmes octets, mêmes versions)');
   assert.equal(cdn.details.plotly.mode, 'cdn');
   assert.equal(cdn.details.echarts.mode, 'cdn');
   const local = extensionsState(pub, { extensions: ['graphique'], modes: { graphique: 'vendorise' } }, catalogue, base);
@@ -144,6 +148,7 @@ test('extensionsState : ce que l\'app reçoit (adresse, empreinte et forme seule
     plotly: { src: 'https://exemple.test/gfs/vendor/plotly/2.13.2/plotly-basic.min.js', integrite: SRI, forme: 'script' },
     echarts: { src: 'https://exemple.test/gfs/vendor/echarts/6.1.0/dist/echarts.min.js', integrite: SRI, forme: 'script' },
   });
+  assert.deepEqual(local.secours, {}, 'en copie de GFS, la copie est déjà la route : pas de secours');
   assert.equal(local.details.plotly.mode, 'vendorise');
   assert.equal(local.details.echarts.mode, 'vendorise', 'les deux bibliothèques d\'une extension suivent le même mode');
   assert.deepEqual(extensionsState(pub, { extensions: ['graphique'], modes: {} }, empty, base).extensions, [], 'une bibliothèque absente du catalogue : l\'extension n\'est pas servie');

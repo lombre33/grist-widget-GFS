@@ -1,0 +1,39 @@
+/* La fenêtre « Modifier » d'une fiche de l'annuaire (demande du porteur du 25/11) : le formulaire, puis la relecture. Elle réutilise la base du réglage
+   (`.an-set` : lignes « libellé, contrôle, aide », champs, listes avec recherche, interrupteur). Couleurs par jetons seulement. */
+.an-edit-b { display: inline-flex; align-items: center; gap: 6px; }
+.an-edit-b .ic { width: 14px; height: 14px; }
+.an-edit-b[aria-disabled="true"] { background: var(--surface-sunken); color: var(--text-muted); cursor: not-allowed; }
+
+.an-ed-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.an-ed-who { color: var(--text-muted); font-size: max(13px, var(--fs-min)); font-weight: 600; overflow-wrap: anywhere; }
+.an-ed-sec h3 { margin: 0 0 6px; }
+.an-edit :is(input, button):focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.an-edit .an-set-input[aria-invalid="true"], .an-edit .an-ed-chips[aria-invalid="true"] { border-color: var(--danger); box-shadow: 0 0 0 1px var(--danger); }
+
+.an-ed-bool { display: inline-flex; align-items: center; gap: 8px; min-height: 30px; font-size: max(13px, var(--fs-min)); }
+.an-ed-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 30px; }
+.an-ed-chip, .an-ed-pill { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; max-width: 100%; padding: 0 9px; border: 1px solid var(--border-strong);
+  border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; font-size: max(12.5px, var(--fs-min)); cursor: pointer; }
+.an-ed-chip:hover { background: var(--surface-sunken); }
+.an-ed-chip[aria-checked="true"] { border-color: var(--accent-soft-border); background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; }
+.an-ed-chip .ic { width: 12px; height: 12px; }
+.an-ed-pill { gap: 2px; padding: 0 2px 0 10px; background: var(--accent-soft); border-color: var(--accent-soft-border); color: var(--accent-ink); font-weight: 600; cursor: default; }
+.an-ed-pill > span { overflow-wrap: anywhere; }
+.an-ed-pill .an-ib { width: 22px; height: 22px; }
+.an-ed-add { display: inline-flex; align-items: center; gap: 4px; }
+.an-ed-add .ic { width: 13px; height: 13px; }
+
+.an-ed-locked .an-set-example { color: var(--text-muted); }
+.an-ed-why { display: flex; align-items: flex-start; gap: 5px; }
+.an-ed-why .ic { flex: none; width: 12px; height: 12px; margin-top: 2px; }
+
+.an-ed-intro { padding-top: 8px; }
+.an-ed-review { margin: 4px 0 0; padding: 0; display: grid; gap: 6px; }
+.an-ed-change { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 8px; align-items: baseline; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); }
+.an-ed-change dt { font-size: max(12.5px, var(--fs-min)); font-weight: 600; }
+.an-ed-change dd { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; overflow-wrap: anywhere; }
+.an-ed-was { color: var(--text-muted); text-decoration: line-through; }
+.an-ed-change dd .ic { flex: none; width: 13px; height: 13px; color: var(--text-muted); }
+.an-ed-now { color: var(--text); }
+@container anset (max-width: 560px) { .an-ed-change { grid-template-columns: minmax(0, 1fr); gap: 2px; } }

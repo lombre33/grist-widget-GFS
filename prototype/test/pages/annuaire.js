@@ -45,6 +45,13 @@ async function mount() {
   installSprite(document);
   try { window.localStorage.removeItem('gfs.annuaire.orgPeople'); } catch (error) { /* sans stockage, l'essai part du réglage par défaut */ }
   const grist = fakeGrist(tablesOf(longDocument()));
+  // Deux réglages pour les essais de « Modifier » : `window.__annuaireRefuse` (un texte : Grist refuse d'écrire la table des personnes, comme le ferait une règle d'accès)
+  // et `window.__annuaireBlock` (un texte : le document ne s'écrit pas, ce que dit `writeBlock`).
+  const applyUserActions = grist.port.doc.applyUserActions;
+  grist.port.doc.applyUserActions = async list => {
+    if (window.__annuaireRefuse && list.some(action => action[0] === 'UpdateRecord' && action[1] === 'Personnes')) throw new Error(window.__annuaireRefuse);
+    return applyUserActions(list);
+  };
   const seed = new AnnuaireStore({ port: grist.port, consent: async () => true });
   // L'annuaire principal met l'adresse et le télétravail (un oui/non) en colonnes de la liste (retour du porteur, 25/11) : toute la mesure de la liste les porte.
   const base = configFixture();
@@ -55,7 +62,7 @@ async function mount() {
   window.__annuaireCopied = null;
   let lang = language;
   const control = new AnnuaireControl({ port: grist.port, container: document.getElementById('stage'), t: (key, vars) => i18n.t(key, vars), locale: () => locale(lang),
-    inertTargets: () => [], ask: async () => true, notice: text => window.__annuaireNotices.push(text), writeBlock: () => null, fullAccess: () => true });
+    inertTargets: () => [], ask: async () => true, notice: text => window.__annuaireNotices.push(text), writeBlock: () => window.__annuaireBlock || null, fullAccess: () => true });
   window.__annuaire = control;
   window.__annuaireBatches = () => JSON.parse(JSON.stringify(grist.batches)); // les actions que le faux Grist a reçues, dans l'ordre
   window.__annuaireLanguage = next => { lang = next; i18n = createI18n(next); control.relocalize(); };

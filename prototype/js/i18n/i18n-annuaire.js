@@ -2,8 +2,11 @@
 // lot. Ils rejoignent js/i18n/i18n.js, qui reste sous les 600 lignes de code de l'outil d'audit. Les « niveaux » sont ceux de la hiérarchie de l'annuaire
 // (pôle, direction, service…), pas ceux de l'accès de Grist.
 
+import { ANNUAIRE_EDIT_STRINGS } from './i18n-annuaire-edit.js';
+
 export const ANNUAIRE_STRINGS = Object.freeze({
   fr: {
+    ...ANNUAIRE_EDIT_STRINGS.fr,
     'an.tip': 'Annuaire',
     'an.tipLong': 'Annuaire des personnes du document',
     'an.title': 'Annuaire',
@@ -262,6 +265,7 @@ export const ANNUAIRE_STRINGS = Object.freeze({
     'an.call': 'Appeler {what}',
   },
   en: {
+    ...ANNUAIRE_EDIT_STRINGS.en,
     'an.tip': 'Directory',
     'an.tipLong': 'Directory of the people in the document',
     'an.title': 'Directory',

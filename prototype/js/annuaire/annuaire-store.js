@@ -1,6 +1,7 @@
 // La lecture et l'écriture d'un annuaire dans le document (module Annuaire, demande du porteur du 25/11). La définition vit dans `GFS_Annuaires` (une table de
 // GFS, créée avec l'accord de la personne : js/files/own-table.js et js/annuaire/annuaire-config.js) ; les personnes restent dans la table que la définition
-// désigne : GFS la lit, ne l'écrit pas et n'en garde aucune copie (cahier 2, « deux zones »). Lire ne crée rien ; seule la création d'un annuaire, qui écrit
+// désigne : GFS la lit et n'en garde aucune copie (cahier 2, « deux zones ») ; elle ne l'écrit que sur le geste « Enregistrer » de la fenêtre « Modifier »
+// (`update`). Lire ne crée rien ; seule la création d'un annuaire, qui écrit
 // une ligne, peut demander à la personne de créer la table. Les gestes s'enchaînent l'un après l'autre.
 
 import { OwnTable, TableDeclined } from '../files/own-table.js';
@@ -65,7 +66,13 @@ export class AnnuaireStore {
     };
     await Promise.all([...tablesNeeded(config, annuaire.table, schema)].map(async name => { data[name] = await fetch(name); }));
     const people = buildPeople(config, annuaire.table, data, schema);
-    return { annuaire, config, schema, people, tree: buildTree(people, config.levels, annuaire.name) };
+    return { annuaire, config, schema, people, tree: buildTree(people, config.levels, annuaire.name), data };
+  }
+
+  // Écrit la fiche d'une personne : `action` est l'`UpdateRecord` de js/annuaire/annuaire-edit.js (une ligne, les colonnes changées). Le geste vient du bouton
+  // « Enregistrer » d'une fenêtre qui a dit ce qui change ; Grist répond par ses règles d'accès (une erreur dit pourquoi : la fenêtre la montre telle quelle).
+  update(action) {
+    return this.#then(() => this.#port.doc.applyUserActions([action]));
   }
 
   // Une table du document, en tableaux de colonnes (pour les exemples du réglage).

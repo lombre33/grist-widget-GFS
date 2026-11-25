@@ -3,7 +3,9 @@
 //
 // Un type de Grist devient un genre, celui dont l'annuaire a besoin : « text », « choice » et « choicelist » (un filtre par valeur), « bool » (un filtre
 // oui/non), « date », « number », « ref » et « reflist » (une référence : sa valeur est celle de la colonne visible de la table visée), « file » (des pièces
-// jointes : jamais lues). Un type que l'annuaire ne connaît pas est du texte.
+// jointes : jamais lues). Un type que l'annuaire ne connaît pas est du texte. Une colonne dit aussi si Grist la calcule (`formula`) et, pour un choix, ses
+//   valeurs
+// (`choices`) : de quoi proposer de la modifier (js/annuaire/annuaire-edit.js).
 
 import { keyPath } from './annuaire-config.js';
 
@@ -23,11 +25,22 @@ export const targetOf = type => (/^Ref(?:List)?:(.+)$/.exec(String(type ?? '')) 
 // Les tables qu'un annuaire peut choisir : pas celles de Grist, pas celles de GFS, pas les tables de synthèse.
 export const isPeopleTable = tableId => !/^(_grist_|GFS_)/i.test(tableId);
 
+// Les choix qu'une colonne « Choix » ou « Choix multiple » propose, lus dans ses options (un texte JSON : `{"choices": ["Titulaire", …]}`) ; [] quand elle n'en
+// dit pas ou que le texte est illisible.
+function choicesOf(options) {
+  try {
+    const list = (typeof options === 'string' && options ? JSON.parse(options) : {}).choices;
+    return Array.isArray(list) ? list.filter(each => typeof each === 'string' && each) : [];
+  } catch (error) {
+    return [];
+  }
+}
+
 const column = (data, name, i) => (data && Array.isArray(data[name]) ? data[name][i] : undefined);
 
-// { [tableId]: { columns: [{ id, type, genre, ref, visible }] } } d'après les deux tables internes de Grist. Une colonne « manualSort », une colonne d'aide de
-// Grist (`gristHelper_…`) et une colonne sans nom sont ignorées. `visible` : le nom de la colonne que Grist montre pour une référence (celle de la table visée,
-// sinon vide : la valeur est alors le numéro de la ligne, que l'annuaire n'affiche jamais).
+// { [tableId]: { columns: [{ id, type, genre, ref, visible, formula, choices }] } } d'après les deux tables internes de Grist. Une colonne « manualSort », une
+// colonne d'aide de Grist (`gristHelper_…`) et une colonne sans nom sont ignorées. `visible` : le nom de la colonne que Grist montre pour une référence (celle
+// de la table visée, sinon vide : la valeur est alors le numéro de la ligne, que l'annuaire n'affiche jamais).
 export function schemaOf(tablesData, columnsData) {
   const names = new Map();
   (tablesData && tablesData.id || []).forEach((id, i) => {
@@ -44,7 +57,7 @@ export function schemaOf(tablesData, columnsData) {
     if (!table || !colId || colId === 'manualSort' || colId.startsWith('gristHelper_')) return;
     const type = String(column(columnsData, 'type', i) ?? 'Any');
     schema[table].columns.push({ id: colId, type, genre: genreOf(type), ref: targetOf(type), visible: colNames.get(column(columnsData, 'visibleCol', i)) ||
-      '' });
+      '', formula: column(columnsData, 'isFormula', i) === true, choices: choicesOf(column(columnsData, 'widgetOptions', i)) });
   });
   return schema;
 }

@@ -168,3 +168,25 @@ test('lire une table pour les exemples : une lecture, sans rien écrire', async 
   assert.ok(Array.isArray(data.id) && data.id.length > 0);
   assert.equal(grist.actions.length, 0);
 });
+
+test('modifier une fiche : une seule écriture de la ligne, rien que les colonnes données ; Grist qui refuse laisse le document intact', async () => {
+  const grist = world();
+  const made = await store(grist).create({ name: 'Annuaire principal', table: 'Personnes', config: configFixture() });
+  assert.ok(made.row);
+  const before = grist.actions.length;
+  await store(grist).update(['UpdateRecord', 'Personnes', 1, { Poste: 'Cheffe', Tel: '01 02 03 04 12' }]);
+  assert.deepEqual(grist.actions.slice(before), [['UpdateRecord', 'Personnes', 1, { Poste: 'Cheffe', Tel: '01 02 03 04 12' }]]);
+  const row = grist.tables.Personnes.rows.find(each => each.id === 1);
+  assert.equal(row.Poste, 'Cheffe');
+  assert.equal(row.Nom, 'Camille Durand', 'les autres colonnes ne bougent pas');
+  await assert.rejects(store(grist).update(['UpdateRecord', 'Personnes', 1, { Absente: 'x' }]), /Invalid column Absente/, 'une colonne absente annule tout le lot');
+  assert.equal(grist.tables.Personnes.rows.find(each => each.id === 1).Poste, 'Cheffe');
+});
+
+test('la lecture rend aussi les tables lues : de quoi proposer les valeurs et les choix du formulaire « Modifier »', async () => {
+  const grist = world();
+  const made = await store(grist).create({ name: 'Annuaire principal', table: 'Personnes', config: configFixture() });
+  const read = await store(grist).read(made);
+  assert.deepEqual(Object.keys(read.data).sort(), ['Personnes', 'Structures']);
+  assert.deepEqual(read.data.Personnes.id, [1, 2, 3, 4, 5, 6]);
+});

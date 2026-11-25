@@ -403,6 +403,47 @@ await settleUi();
 check('la liste montre la catégorie choisie comme poste (et non le libellé qui concatène tout)', (await frame.locator('.an-person', { hasText: 'Camille Durand' }).first().locator('.an-pe-sub').innerText()) === 'Catégorie A',
   await frame.locator('.an-person .an-pe-sub').allInnerTexts());
 await lab.shotPanel(run, '13-poste-sous-attribut');
+
+// 5. « Modifier » : le formulaire des colonnes directes, la relecture, puis une seule écriture dans la table des personnes (le seul geste qui l'écrit).
+await frame.locator('.an-person', { hasText: 'Camille Durand' }).first().click();
+await settleUi();
+check('la fiche a son bouton « Modifier », actif (le document s’écrit)', (await frame.locator('.an-side [data-fk="edit"]').count()) === 1
+  && (await frame.locator('.an-side [data-fk="edit"]').getAttribute('aria-disabled')) === null);
+await frame.locator('.an-side [data-fk="edit"]').click();
+const edit = frame.locator('.mod.an-edit');
+await edit.waitFor({ timeout: 10000 });
+await settleUi();
+const lockedRows = edit.locator('.an-ed-locked');
+check('le poste vient de la table « Postes » : il est dans le formulaire, grisé, avec sa raison, et sans champ à écrire', (await lockedRows.count()) >= 1
+  && (await lockedRows.first().innerText()).includes('Catégorie A') && (await lockedRows.first().innerText()).includes('Postes') && (await lockedRows.first().locator('input').count()) === 0,
+  await lockedRows.allInnerTexts());
+check('le contrat propose les choix de la colonne dans Grist (lus dans ses options) ; les écritures du nom sont celles de la fiche', (await edit.locator('[data-fk="ef:Contrat"]').count()) === 1
+  && (await edit.locator('[data-fk="ef:name"]').inputValue()) === 'Camille Durand', await edit.locator('.an-set-row').allInnerTexts());
+await lab.shotPanel(run, '14-modifier');
+await edit.locator('[data-fk="ef:phone"]').click();
+await page.keyboard.press('Control+A');
+await page.keyboard.type('01 02 03 04 77');
+await edit.locator('[data-fk="ef:Contrat"]').click();
+await frame.locator('.mod.pk [data-fk="pick-Contractuelle"]').click();
+await settleUi();
+check('le pied compte les deux champs changés', (await edit.locator('.mod-note').innerText()).startsWith('2'), await edit.locator('.mod-note').innerText());
+await edit.locator('[data-fk="ed-next"]').click();
+await settleUi();
+const changed = await edit.locator('.an-ed-change').allInnerTexts();
+check('la relecture dit le téléphone et le contrat, avant et après', changed.length === 2 && changed.some(text => text.includes('01 02 03 04 11') && text.includes('01 02 03 04 77'))
+  && changed.some(text => text.includes('Titulaire') && text.includes('Contractuelle')), changed);
+await lab.shotPanel(run, '15-relecture');
+const writesBefore = (await lab.actions()).length;
+await edit.locator('[data-fk="ed-next"]').click();
+await edit.waitFor({ state: 'detached', timeout: 15000 });
+await settleUi();
+const written = (await lab.actions()).slice(writesBefore);
+check('Grist a reçu une seule écriture : un UpdateRecord de la table des personnes', written.length === 1 && written[0] === 'UpdateRecord Personnes', written);
+const ficheText = await frame.locator('.an-side').innerText();
+check('la fiche relue montre le nouveau numéro et le nouveau contrat, le même nom, le même poste ; le pied dit la fiche enregistrée', ficheText.includes('01 02 03 04 77')
+  && ficheText.includes('Contractuelle') && ficheText.includes('Camille Durand') && ficheText.includes('Catégorie A') && (await win.locator('.mod-foot .mod-note').innerText()).includes('Camille Durand'),
+  [ficheText, await win.locator('.mod-foot .mod-note').innerText()]);
+await lab.shotPanel(run, '16-fiche-enregistree');
 // Le clavier : Échap ferme la fenêtre.
 await page.keyboard.press('Escape');
 await win.waitFor({ state: 'detached' });
@@ -410,10 +451,11 @@ check('Échap ferme la fenêtre et rend le clavier', true);
 
 // Ce que le module a écrit : la colonne créée à la demande, la table de ses annuaires et leurs lignes ; rien dans les tables de la personne, ni dans les structures.
 const actions = await lab.actions();
-check('deux colonnes ajoutées (« Suppleant » et « Matricule », avec l’accord de la personne), la table des annuaires et sa ligne, rien d’autre',
+check('deux colonnes ajoutées (« Suppleant » et « Matricule », avec l’accord de la personne), la table des annuaires et sa ligne, la fiche de Camille écrite par « Modifier », rien d’autre',
   actions.filter(action => /^AddColumn Personnes/.test(action)).length === 2 && actions.some(action => /^AddTable GFS_Annuaires/.test(action))
   && actions.filter(action => /^SetDisplayFormula Personnes/.test(action)).length === 1
-  && !actions.some(action => /^(Update|BulkUpdate|Remove|BulkRemove|AddRecord|BulkAddRecord|RenameColumn|ModifyColumn|RemoveColumn).* (Personnes|Structures)/.test(action))
+  && !actions.some(action => /^(Update|BulkUpdate|Remove|BulkRemove|AddRecord|BulkAddRecord|RenameColumn|ModifyColumn|RemoveColumn).* (Personnes|Structures)/.test(action) && action !== 'UpdateRecord Personnes')
+  && actions.filter(action => action === 'UpdateRecord Personnes').length === 1
   && !actions.some(action => / Structures/.test(action)), actions);
 check('le changement du poste ne réécrit que la ligne de l’annuaire', actions.filter(action => /^UpdateRecord GFS_Annuaires/.test(action)).length === 1, actions.filter(action => /GFS_Annuaires/.test(action)).map(action => action.slice(0, 60)));
 check('aucun avertissement ni erreur de GFS ou de politique de sécurité', problems.length === 0, problems);

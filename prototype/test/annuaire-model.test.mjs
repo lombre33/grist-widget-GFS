@@ -24,6 +24,26 @@ test('config : une configuration illisible donne une configuration vide, jamais 
   }
 });
 
+test('config : les options (À vérifier, Ma présence, Écrire au groupe) ont leurs valeurs par défaut et se relisent sans rien perdre', () => {
+  const bare = readConfig({});
+  assert.deepEqual(bare.checks, ['dup', 'mail', 'att', 'resp'], 'tous les contrôles sauf « départ dépassé », qui demande une colonne');
+  assert.deepEqual(bare.mail, { per: 40, to: 'bcc' });
+  assert.deepEqual(bare.presence, { on: false, col: '' });
+  assert.equal(bare.leave, '');
+  const set = readConfig({ checks: ['dep', 'dup', 'inconnu', 'dup'], leave: ' Depart ', presence: { on: true, col: ' Visible ' }, mail: { per: 12.4, to: 'to' } });
+  assert.deepEqual(set.checks, ['dup', 'dep'], 'l\'ordre est celui de la fenêtre, sans inconnu ni doublon');
+  assert.equal(set.leave, 'Depart');
+  assert.deepEqual(set.presence, { on: true, col: 'Visible' });
+  assert.deepEqual(set.mail, { per: 12, to: 'to' });
+  assert.equal(readConfig({ presence: { on: true, col: '' } }).presence.on, false, 'sans colonne, « Ma présence » ne peut pas être allumée');
+  assert.equal(readConfig({ mail: { per: 1 } }).mail.per, 5);
+  assert.equal(readConfig({ mail: { per: 9999 } }).mail.per, 200);
+  assert.equal(readConfig({ mail: { per: 'x', to: 'cc' } }).mail.per, 40);
+  assert.equal(readConfig({ mail: { to: 'cc' } }).mail.to, 'bcc');
+  assert.deepEqual(readConfig({ checks: [] }).checks, [], 'tous les contrôles éteints : permis');
+  assert.deepEqual(readConfig(writeConfig(set)), set);
+});
+
 test('config : les niveaux sans colonne et les champs en double sont écartés, le reste est gardé', () => {
   const config = readConfig({ name: ' Nom ', levels: [{ label: 'Pôle', path: ['Structure', 'Pole', ''] }, { label: 'Vide', path: [] }, null, { path: 'x' }],
     fields: [{ col: 'Contrat', filter: 1 }, { col: 'Contrat' }, { col: '' }, { col: 'Site', filter: false }], inconnue: 'perdue' });
@@ -57,7 +77,7 @@ test('schéma : les colonnes de chaque table, leur genre et la table visée ; le
   assert.ok(ids.includes('Nom') && ids.includes('Structure'));
   assert.equal(ids.includes('gristHelper_Display'), false);
   assert.equal(ids.includes('manualSort'), false);
-  assert.deepEqual(columnOf(schema, 'Personnes', 'Structure'), { id: 'Structure', type: 'Ref:Structures', genre: 'ref', ref: 'Structures', visible: 'Nom' });
+  assert.deepEqual(columnOf(schema, 'Personnes', 'Structure'), { id: 'Structure', type: 'Ref:Structures', genre: 'ref', ref: 'Structures', visible: 'Nom', formula: false, choices: [] });
   assert.equal(columnOf(schema, 'Personnes', 'Absente'), null);
   assert.equal(isPeopleTable('Personnes'), true);
   assert.equal(isPeopleTable('GFS_Annuaires'), false);

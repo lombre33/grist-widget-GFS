@@ -13,6 +13,14 @@ export const ANNUAIRES_COLUMNS = Object.freeze([
 ]);
 export const CONFIG_VERSION = 1;
 
+// Les contrôles de « À vérifier » (js/annuaire/annuaire-check.js), dans l'ordre où la fenêtre les montre ; allumés par défaut : tous sauf « départ dépassé »,
+// qui demande une colonne de date de départ.
+export const CHECK_KINDS = Object.freeze(['dup', 'mail', 'att', 'resp', 'dep']);
+export const DEFAULT_CHECKS = Object.freeze(['dup', 'mail', 'att', 'resp']);
+// « Écrire au groupe » : combien d'adresses par message au plus, et où elles vont (Cci par défaut : les personnes ne se voient pas entre elles).
+export const MAIL_DEFAULT = Object.freeze({ per: 40, to: 'bcc' });
+export const MAIL_PER = Object.freeze({ min: 5, max: 200 });
+
 // Un champ est une colonne de la table des personnes (`col`), ou, depuis le retour du porteur du 25/11 (« je n'ai pas de colonne pour le pôle, c'est dans la
 // table des postes, mais j'ai une référence de poste »), un chemin de colonnes à suivre (`path`, au moins deux : « Poste › Pôle ») ; `col` en est alors le nom,
 // les colonnes jointes par ce séparateur : c'est la clé du champ partout (la liste, les filtres).
@@ -30,6 +38,17 @@ export const NAME_ORDERS = Object.freeze(['first-last', 'last-first', 'last-comm
 // Les colonnes fixes qui peuvent devenir une colonne de la liste, dans l'ordre où la liste les montre.
 export const FIXED_COLUMNS = Object.freeze(['email', 'phone']);
 
+// Les options de l'annuaire (« À vérifier », « Ma présence », « Écrire au groupe ») : toujours complètes, jamais d'exception.
+function readOptions(input) {
+  const object = value => (value && typeof value === 'object' ? value : {});
+  const presence = object(input.presence);
+  const mail = object(input.mail);
+  const per = Math.round(Number(mail.per));
+  return { leave: text(input.leave), checks: Array.isArray(input.checks) ? CHECK_KINDS.filter(kind => input.checks.includes(kind)) : [...DEFAULT_CHECKS],
+    presence: { on: presence.on === true && Boolean(text(presence.col)), col: text(presence.col) },
+    mail: { per: Number.isFinite(per) ? Math.min(MAIL_PER.max, Math.max(MAIL_PER.min, per)) : MAIL_DEFAULT.per, to: mail.to === 'to' ? 'to' : 'bcc' } };
+}
+
 // La configuration lue d'un texte JSON (ou d'un objet) : toujours complète, jamais d'exception. Ce que GFS ne connaît pas (une clé d'une version plus récente)
 // est ignoré à la lecture et perdu à la réécriture : `writeConfig` ne garde que ce qu'elle connaît ; une version plus récente écrit donc sa propre ligne. { v,
 // name, first, order, upper, hierarchy, title, email, phone, lead, manager, levels: [{ label, path: [colonnes] }], relations: [{ col, label, inverse, card }],
@@ -41,6 +60,9 @@ export const FIXED_COLUMNS = Object.freeze(['email', 'phone']);
 // « le poste est une référence, je veux choisir une autre colonne de la table des postes »), un chemin écrit « Poste › Intitulé » (`keyPath`).
 // `relations` (demande du porteur, 25/11 : assistant·e, référent·e, suppléant·e) : voir js/annuaire/annuaire-relations.js ; une colonne ne sert qu'une fois (au
 // responsable direct, à une relation ou à un champ).
+// `checks` (demande du porteur du 25/11 : « À vérifier ») : les contrôles allumés ; `leave` : la colonne de la date de départ (pour « départ dépassé ») ;
+// `presence` (« Ma présence », une option de l'administrateur) : { on, col } : `col` est une colonne oui/non de la personne, « apparaître dans l'annuaire » ;
+// `mail` : { per, to } (« Écrire au groupe »).
 // `hierarchy` : l'option « postes et hiérarchie » (décision du porteur, 25/11 : par défaut seulement le nom et l'adresse). Une ligne écrite avant elle, qui a
 // déjà un poste ou des niveaux, la garde allumée : rien ne change pour elle. Éteinte, elle garde ses niveaux écrits (on les retrouve en la rallumant) mais
 // la lecture ne s'en sert pas : voir `effectiveConfig`.
@@ -63,6 +85,7 @@ export function readConfig(source) {
   config.relations = relations.map(rel => ({ col: text(rel && rel.col), label: text(rel && rel.label), inverse: text(rel && rel.inverse),
     card: !(rel && rel.card === false) }))
     .filter(rel => rel.col && !used.has(rel.col) && used.add(rel.col));
+  Object.assign(config, readOptions(input));
   const fields = Array.isArray(input.fields) ? input.fields : [];
   const seen = new Set();
   config.fields = fields.map(field => {

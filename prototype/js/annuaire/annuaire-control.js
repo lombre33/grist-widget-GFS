@@ -8,6 +8,8 @@ import { AnnuaireWindow } from './annuaire-window.js';
 import { AnnuaireSetup } from './annuaire-setup.js';
 import { pickFrom } from '../ui/pick-window.js';
 import { shown } from './annuaire-panes.js';
+import { EditWindow } from './annuaire-edit-window.js';
+import { editableFields, personValues } from './annuaire-edit.js';
 
 const NEW = '__new__';
 
@@ -18,6 +20,7 @@ export class AnnuaireControl {
   #list = [];
   #row = null; // l'annuaire montré (le numéro de sa ligne)
   #reading = 0; // le numéro de la dernière lecture lancée : une lecture plus ancienne qui finit après ne montre rien
+  #data = null; // la dernière lecture de l'annuaire montré (le formulaire « Modifier » en prend les valeurs et les choix)
 
   // opts : { port ({ doc }), container, t, locale(), inertTargets(), ask(opts) -> Promise<boolean>, notice(texte), writeBlock() -> texte ou null, fullAccess()
   //   }
@@ -26,8 +29,8 @@ export class AnnuaireControl {
     const consent = () => opts.ask({ title: opts.t('an.table.title'), message: opts.t('an.table.text'), confirmLabel: opts.t('table.create'),
       cancelLabel: opts.t('table.cancel') });
     this.#store = new AnnuaireStore({ port: opts.port, consent });
-    this.#window = new AnnuaireWindow({ container: opts.container, t: opts.t, locale: opts.locale, inertTargets: opts.inertTargets,
-      onSwitch: () => void this.#switch(), onConfigure: () => void this.#configure(), onNew: () => void this.#create(),
+    this.#window = new AnnuaireWindow({ container: opts.container, t: opts.t, locale: opts.locale, inertTargets: opts.inertTargets, writeBlock: opts.writeBlock,
+      onSwitch: () => void this.#switch(), onConfigure: () => void this.#configure(), onNew: () => void this.#create(), onEdit: row => this.#edit(row),
       onFilterMore: (col, option) => this.#more(col, option), onSortPick: (keys, sort) => this.#pickSort(keys, sort), onClose: () => {} });
   }
 
@@ -64,14 +67,15 @@ export class AnnuaireControl {
     await this.#read();
   }
 
-  // Lit l'annuaire montré (ses personnes et sa hiérarchie).
-  async #read() {
+  // Lit l'annuaire montré (ses personnes et sa hiérarchie) ; `silent` : sans repasser par « Lecture… » (la fiche qu'on vient d'écrire se relit sur place).
+  async #read(silent = false) {
     const current = this.#current;
     const t = this.#o.t;
     const mine = ++this.#reading;
-    this.#window.show({ state: 'loading', annuaires: this.#list, current, data: null });
+    if (!silent) this.#window.show({ state: 'loading', annuaires: this.#list, current, data: null });
     try {
       const data = await this.#store.read(current);
+      this.#data = data;
       if (mine === this.#reading) this.#window.show({ state: 'ready', annuaires: this.#list, current, data, error: '' });
     } catch (error) {
       if (mine !== this.#reading) return;
@@ -79,6 +83,25 @@ export class AnnuaireControl {
       const text = error instanceof MissingTable ? t('an.tableGone', { table: error.table }) : t('an.readFailed', { reason: String(error && error.message) });
       this.#window.show({ state: 'error', annuaires: this.#list, current, data: null, error: text });
     }
+  }
+
+  // « Modifier » une fiche : le formulaire des colonnes directes de la personne, la relecture, puis l'écriture (une ligne de la table des personnes, sur le
+  // geste « Enregistrer »). Rien d'autre n'est écrit ; la fiche se relit sur place.
+  async #edit(row) {
+    const t = this.#o.t;
+    const read = this.#data;
+    const person = read && read.people.find(each => each.row === row);
+    if (!person) return;
+    const table = read.annuaire.table;
+    const { fields, locked } = editableFields(read.config, read.schema, table, t);
+    const saved = await new EditWindow({ container: this.#o.container, inertTargets: this.#o.inertTargets, t, locale: this.#o.locale(), person, table, fields,
+      locked,
+      values: personValues(fields, read.data[table], row), options: { data: read.data, people: read.people, table },
+      lockedText: entry => (['name', 'title', 'email', 'phone'].includes(entry.key) ? person[entry.key] : (person.fields[entry.key] || []).join(', ')),
+      save: action => this.#store.update(action) }).run();
+    if (!saved) return;
+    await this.#read(true);
+    this.#window.say(t('an.edit.saved', { name: person.name }));
   }
 
   // Un autre annuaire du document, ou un nouveau.

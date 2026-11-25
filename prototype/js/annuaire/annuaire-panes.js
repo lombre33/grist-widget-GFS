@@ -177,15 +177,19 @@ function fieldRows(person, ctx) {
 
 // La fiche d'une personne, en sections comme la carte du suivi de projet du porteur : l'en-tête (avatar, nom, poste, « Écrire »), « Coordonnées »,
 // « Rattachement » (le découpage hiérarchique), « Informations » (les champs). `ctx` : { t, locale, levels, config, genres: { colonne: genre }, relations,
-// index }.
+// index, writeBlock (ce qui empêche d'écrire : le texte, ou rien) }.
 export function fiche(person, ctx) {
   const { t } = ctx;
   const contact = contactRows(person, ctx);
   const fields = fieldRows(person, ctx);
   const path = attachment(person, ctx);
-  const write = person.email ? h('div', { class: 'an-fiche-acts' }, h('a', { class: 'btn sm an-write', href: `mailto:${person.email}`, target: '_blank',
-    rel: 'noopener',
-    title: t('an.writeTo', { name: person.name }), dataset: { fk: 'write' } }, icon('mail'), t('an.write'))) : null;
+  const mail = person.email ? h('a', { class: 'btn sm an-write', href: `mailto:${person.email}`, target: '_blank', rel: 'noopener',
+    title: t('an.writeTo', { name: person.name }), dataset: { fk: 'write' } }, icon('mail'), t('an.write')) : null;
+  // « Modifier » : grisé, jamais masqué, quand le document ne s'écrit pas (`ctx.writeBlock` dit pourquoi) ; un clic le redit dans le pied de la fenêtre
+  const edit = h('button', { type: 'button', class: 'btn sm an-edit-b', 'aria-disabled': ctx.writeBlock ? 'true' : null, title: ctx.writeBlock ||
+    t('an.edit.tip'),
+    dataset: { act: 'edit', row: String(person.row), fk: 'edit' } }, icon('edit'), t('an.edit'));
+  const write = h('div', { class: 'an-fiche-acts' }, mail, edit);
   return h('div', { class: 'an-fiche-card' },
     h('div', { class: 'an-fiche-head' }, h('span', { class: 'an-av an-av-xl' }, who(person)),
       h('div', { class: 'an-fiche-id' }, h('h3', null, person.name), person.title ? h('p', { class: 'an-pe-sub' }, person.title) : null)), write,

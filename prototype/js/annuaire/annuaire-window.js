@@ -42,8 +42,9 @@ export class AnnuaireWindow {
   #store;
   #orgPeople = false; // l'organigramme des structures dessine aussi les personnes (le bouton « Personnes »)
 
-  // opts : { container, t, locale() (la langue des dates), inertTargets(), onSwitch(), onConfigure(), onNew(), onFilterMore(colonne, option) -> Promise<valeur
-  //   ou null>, onClose() }
+  // opts : { container, t, locale() (la langue des dates), inertTargets(), writeBlock() (ce qui empêche d'écrire : le texte, ou rien), onSwitch(),
+  //   onConfigure(),
+  //   onNew(), onEdit(ligne) (la fenêtre « Modifier »), onFilterMore(colonne, option) -> Promise<valeur ou null>, onSortPick(clés, tri), onClose() }
   constructor(opts) {
     this.#o = opts;
     this.#store = keyStore((opts.container && opts.container.ownerDocument && opts.container.ownerDocument.defaultView) || globalThis, PEOPLE_KEY);
@@ -318,7 +319,7 @@ export class AnnuaireWindow {
     const genres = fieldGenres(data.config, current.table, data.schema);
     const relations = relationsOf(data.config, t);
     const ctx = { t, locale: this.#o.locale(), levels: data.config.levels, config: data.config, genres, relations,
-      index: relationIndex(data.people, relations) };
+      index: relationIndex(data.people, relations), writeBlock: this.#o.writeBlock ? this.#o.writeBlock() : null };
     const person = this.#person === null ? null : data.people.find(each => each.row === this.#person);
     // la fiche d'une carte de l'organigramme parle des mêmes personnes que la carte
     const tree = this.#view === 'org' ? reducedTree(data, this.#matching(), this.#orgSignature()) : data.tree;
@@ -383,9 +384,19 @@ export class AnnuaireWindow {
     this.#paintFoot();
   }
 
+  // Une phrase dans le pied (la fiche qu'on vient d'enregistrer) ; elle s'efface au geste suivant.
+  say(text) { if (this.#root) this.#say(text); }
+
   // Choisit un nœud de la hiérarchie : lui et tout ce qui le porte se déplient, pour qu'il se voie.
   // Un geste que le contrôle fait (changer d'annuaire, en créer un, le régler).
   callout(name) { this.#o[name](); }
+
+  // Le bouton « Modifier » de la fiche : grisé quand le document ne s'écrit pas (le pied dit pourquoi), sinon la fenêtre « Modifier » (le contrôle l'ouvre).
+  editPerson(row) {
+    const blocked = this.#o.writeBlock ? this.#o.writeBlock() : null;
+    if (blocked) { this.#say(blocked); return; }
+    void this.#o.onEdit(row);
+  }
 
   pickNode(id) {
     this.#node = id;
@@ -609,4 +620,5 @@ const ACTIONS = Object.freeze({
   copy: (window_, data) => void window_.copy(data.value),
   'side-close': window_ => window_.closeSide(),
   'node-list': (window_, data) => window_.listNode(data.id),
+  edit: (window_, data) => window_.editPerson(Number(data.row)),
 });

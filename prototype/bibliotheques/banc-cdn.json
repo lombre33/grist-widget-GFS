@@ -1,0 +1,3091 @@
+{
+  "contrat": 0,
+  "lu": "2026-11-25T11:12:12.876Z",
+  "essais": 3,
+  "depuis": "GitHub Actions",
+  "fichiers": [
+    {
+      "id": "angular@1.8.3/angular.min.js",
+      "paquet": "angular",
+      "version": "1.8.3",
+      "chemin": "angular.min.js",
+      "origines": [
+        "publipostage"
+      ],
+      "npm": {
+        "sha384": "sha384-quGekMf1ic6tIOn1GgLl0Pzra4ZkFyTcaDW3hZRjORqPQe3HnTKGl+lNPpuh7Lwv",
+        "octets": 177368
+      },
+      "cdn": [
+        {
+          "cdn": "jsdelivr",
+          "url": "https://cdn.jsdelivr.net/npm/angular@1.8.3/angular.min.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 177368,
+          "stable": true,
+          "http": "2",
+          "ip": "151.101.1.229",
+          "publie": {
+            "algo": "sha256",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "public, max-age=31536000, s-maxage=31536000, immutable",
+            "etag": "W/\"d3be-3366534b3fb983f7\"",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "x-served-by": "cache-fra-eddf8230088-FRA, cache-dfw-kdfw8210073-DFW",
+            "x-cache": "HIT, HIT"
+          },
+          "premierOctetMs": [
+            65,
+            35,
+            28
+          ],
+          "totalMs": [
+            80,
+            37,
+            30
+          ],
+          "cache": [
+            "HIT, HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "unpkg",
+          "url": "https://unpkg.com/angular@1.8.3/angular.min.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 177368,
+          "stable": true,
+          "http": "2",
+          "ip": "104.18.0.22",
+          "publie": null,
+          "entetes": {
+            "cache-control": "public, max-age=31536000",
+            "content-type": "text/javascript; charset=utf-8",
+            "content-encoding": "gzip",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "via": "1.1 fly.io, 1.1 fly.io",
+            "cf-ray": "a60037e42f8219ca-MSP",
+            "cf-cache-status": "MISS"
+          },
+          "premierOctetMs": [
+            227,
+            63,
+            51
+          ],
+          "totalMs": [
+            235,
+            64,
+            69
+          ],
+          "cache": [
+            "MISS",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "cdnjs",
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.8.3/angular.min.js",
+          "etat": "identique",
+          "rapprochement": "meme-fichier",
+          "octets": 177368,
+          "stable": true,
+          "http": "2",
+          "ip": "104.17.24.14",
+          "publie": {
+            "algo": "sha512",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "no-transform, public, s-maxage=30672000, max-age=30672000, immutable",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=15780000",
+            "server": "cloudflare",
+            "cf-ray": "a60037e6ac45acf4-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            40,
+            41,
+            42
+          ],
+          "totalMs": [
+            41,
+            47,
+            43
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "docx@9.15.1/dist/index.iife.js",
+      "paquet": "docx",
+      "version": "9.15.1",
+      "chemin": "dist/index.iife.js",
+      "origines": [
+        "gfs",
+        "publipostage"
+      ],
+      "npm": {
+        "sha384": "sha384-ud8085E8t6iW4uUom5nN5cpzTZ4OdsNKB/AKWfOsI62tzsoV2X7r7/o4KWESO8rq",
+        "octets": 1061633
+      },
+      "cdn": [
+        {
+          "cdn": "jsdelivr",
+          "url": "https://cdn.jsdelivr.net/npm/docx@9.15.1/dist/index.iife.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 1061633,
+          "stable": true,
+          "http": "2",
+          "ip": "104.16.180.112",
+          "publie": {
+            "algo": "sha256",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "public, max-age=31536000, s-maxage=31536000, immutable",
+            "etag": "W/\"2beb3-74516448c5b9e97f\"",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "cf-ray": "a60037e7ddbe9200-MSP",
+            "x-served-by": "cache-fra-etou8220078-FRA, cache-iad-kiad7000192-IAD",
+            "x-cache": "HIT, HIT",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            33,
+            30,
+            31
+          ],
+          "totalMs": [
+            47,
+            43,
+            44
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "unpkg",
+          "url": "https://unpkg.com/docx@9.15.1/dist/index.iife.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 1061633,
+          "stable": true,
+          "http": "2",
+          "ip": "104.18.0.22",
+          "publie": null,
+          "entetes": {
+            "cache-control": "public, max-age=31536000",
+            "content-type": "text/javascript; charset=utf-8",
+            "content-encoding": "gzip",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "via": "1.1 fly.io, 1.1 fly.io",
+            "cf-ray": "a60037e92baa510a-MSP",
+            "cf-cache-status": "MISS"
+          },
+          "premierOctetMs": [
+            546,
+            62,
+            88
+          ],
+          "totalMs": [
+            666,
+            132,
+            100
+          ],
+          "cache": [
+            "MISS",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "cdnjs",
+          "url": null,
+          "etat": "absent",
+          "rapprochement": null,
+          "octets": null,
+          "stable": null,
+          "http": null,
+          "ip": null,
+          "publie": null,
+          "entetes": {},
+          "premierOctetMs": [],
+          "totalMs": [],
+          "cache": []
+        }
+      ]
+    },
+    {
+      "id": "docx@9.15.1/dist/charts.iife.js",
+      "paquet": "docx",
+      "version": "9.15.1",
+      "chemin": "dist/charts.iife.js",
+      "origines": [
+        "gfs",
+        "publipostage"
+      ],
+      "npm": {
+        "sha384": "sha384-PFbg0J+cwbPG1He8zpFvlw/uXmHMA3ea3Gyyw9aS2IIjX0zKpD7YeprlCNVCMs1Y",
+        "octets": 215515
+      },
+      "cdn": [
+        {
+          "cdn": "jsdelivr",
+          "url": "https://cdn.jsdelivr.net/npm/docx@9.15.1/dist/charts.iife.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 215515,
+          "stable": true,
+          "http": "2",
+          "ip": "104.16.180.112",
+          "publie": {
+            "algo": "sha256",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "public, max-age=31536000, s-maxage=31536000, immutable",
+            "etag": "W/\"a4ce-e6ecc9398d839a4b\"",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "cf-ray": "a60037ee5c984c9d-MSP",
+            "x-served-by": "cache-fra-etou8220111-FRA, cache-ewr-kewr1740064-EWR",
+            "x-cache": "MISS, HIT",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            36,
+            37,
+            31
+          ],
+          "totalMs": [
+            38,
+            38,
+            32
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "unpkg",
+          "url": "https://unpkg.com/docx@9.15.1/dist/charts.iife.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 215515,
+          "stable": true,
+          "http": "2",
+          "ip": "104.18.0.22",
+          "publie": null,
+          "entetes": {
+            "cache-control": "public, max-age=31536000",
+            "content-type": "text/javascript; charset=utf-8",
+            "content-encoding": "gzip",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "via": "1.1 fly.io, 1.1 fly.io",
+            "cf-ray": "a60037ef89da3cdb-MSP",
+            "cf-cache-status": "MISS"
+          },
+          "premierOctetMs": [
+            218,
+            67,
+            67
+          ],
+          "totalMs": [
+            235,
+            69,
+            68
+          ],
+          "cache": [
+            "MISS",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "cdnjs",
+          "url": null,
+          "etat": "absent",
+          "rapprochement": null,
+          "octets": null,
+          "stable": null,
+          "http": null,
+          "ip": null,
+          "publie": null,
+          "entetes": {},
+          "premierOctetMs": [],
+          "totalMs": [],
+          "cache": []
+        }
+      ]
+    },
+    {
+      "id": "docx@9.7.1/dist/index.iife.js",
+      "paquet": "docx",
+      "version": "9.7.1",
+      "chemin": "dist/index.iife.js",
+      "origines": [
+        "publipostage"
+      ],
+      "npm": {
+        "sha384": "sha384-9OH56uLhIvkZkwF0jWNlfpcK3gPuSy5DfEMNqKe156wCpkND+MDdtaRyd05kwpG0",
+        "octets": 1123332
+      },
+      "cdn": [
+        {
+          "cdn": "jsdelivr",
+          "url": "https://cdn.jsdelivr.net/npm/docx@9.7.1/dist/index.iife.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 1123332,
+          "stable": true,
+          "http": "2",
+          "ip": "104.16.180.112",
+          "publie": {
+            "algo": "sha256",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "public, max-age=31536000, s-maxage=31536000, immutable",
+            "etag": "W/\"2ba2d-d7c8cd88c8ba5751\"",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "cf-ray": "a60037f20a812c5f-MSP",
+            "x-served-by": "cache-fra-eddf8230093-FRA, cache-iad-kiad7000167-IAD",
+            "x-cache": "HIT, HIT",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            28,
+            32,
+            30
+          ],
+          "totalMs": [
+            40,
+            44,
+            40
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "unpkg",
+          "url": "https://unpkg.com/docx@9.7.1/dist/index.iife.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 1123332,
+          "stable": true,
+          "http": "2",
+          "ip": "104.18.0.22",
+          "publie": null,
+          "entetes": {
+            "cache-control": "public, max-age=31536000",
+            "content-type": "text/javascript; charset=utf-8",
+            "content-encoding": "gzip",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "via": "1.1 fly.io, 1.1 fly.io",
+            "cf-ray": "a60037f34ec8accc-MSP",
+            "cf-cache-status": "MISS"
+          },
+          "premierOctetMs": [
+            162,
+            113,
+            131
+          ],
+          "totalMs": [
+            263,
+            127,
+            144
+          ],
+          "cache": [
+            "MISS",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "cdnjs",
+          "url": null,
+          "etat": "absent",
+          "rapprochement": null,
+          "octets": null,
+          "stable": null,
+          "http": null,
+          "ip": null,
+          "publie": null,
+          "entetes": {},
+          "premierOctetMs": [],
+          "totalMs": [],
+          "cache": []
+        }
+      ]
+    },
+    {
+      "id": "echarts@6.1.0/dist/echarts.min.js",
+      "paquet": "echarts",
+      "version": "6.1.0",
+      "chemin": "dist/echarts.min.js",
+      "origines": [
+        "gfs",
+        "publipostage"
+      ],
+      "npm": {
+        "sha384": "sha384-C2iskrW/uPW46KzOjrvJIQo4YkV8lkD+QS0CrDN18IIPIpT/g2USu8bTP3nvmIAD",
+        "octets": 1121883
+      },
+      "cdn": [
+        {
+          "cdn": "jsdelivr",
+          "url": "https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 1121883,
+          "stable": true,
+          "http": "2",
+          "ip": "104.16.180.112",
+          "publie": {
+            "algo": "sha256",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "public, max-age=31536000, s-maxage=31536000, immutable",
+            "etag": "W/\"48f58-23e9d10a7341b936\"",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "cf-ray": "a60037f5fda00640-MSP",
+            "x-served-by": "cache-fra-eddf8230085-FRA, cache-iad-kiad7000023-IAD",
+            "x-cache": "HIT, HIT",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            30,
+            31,
+            34
+          ],
+          "totalMs": [
+            46,
+            50,
+            50
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "unpkg",
+          "url": "https://unpkg.com/echarts@6.1.0/dist/echarts.min.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 1121883,
+          "stable": true,
+          "http": "2",
+          "ip": "104.18.0.22",
+          "publie": null,
+          "entetes": {
+            "cache-control": "public, max-age=31536000",
+            "content-type": "text/javascript; charset=utf-8",
+            "content-encoding": "gzip",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "via": "1.1 fly.io, 1.1 fly.io",
+            "cf-ray": "a60037f74a76a1b9-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            45,
+            99,
+            132
+          ],
+          "totalMs": [
+            124,
+            114,
+            148
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "cdnjs",
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/echarts/6.1.0/echarts.min.js",
+          "etat": "identique",
+          "rapprochement": "meme-fichier",
+          "octets": 1121883,
+          "stable": true,
+          "http": "2",
+          "ip": "104.17.25.14",
+          "publie": {
+            "algo": "sha512",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "no-transform, public, s-maxage=30672000, max-age=30672000, immutable",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=15780000",
+            "server": "cloudflare",
+            "cf-ray": "a60037f91b14b45f-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            33,
+            35,
+            42
+          ],
+          "totalMs": [
+            47,
+            50,
+            85
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "exceljs@4.4.0/dist/exceljs.min.js",
+      "paquet": "exceljs",
+      "version": "4.4.0",
+      "chemin": "dist/exceljs.min.js",
+      "origines": [
+        "gfs",
+        "publipostage"
+      ],
+      "npm": {
+        "sha384": "sha384-Pqp51FUN2/qzfxZxBCtF0stpc9ONI6MYZpVqmo8m20SoaQCzf+arZvACkLkirlPz",
+        "octets": 947702
+      },
+      "cdn": [
+        {
+          "cdn": "jsdelivr",
+          "url": "https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 947702,
+          "stable": true,
+          "http": "2",
+          "ip": "104.16.179.112",
+          "publie": {
+            "algo": "sha256",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "public, max-age=31536000, s-maxage=31536000, immutable",
+            "etag": "W/\"31170-c1e79d4422ceb80f\"",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "cf-ray": "a60037fa6ba49007-MSP",
+            "x-served-by": "cache-fra-eddf8230060-FRA, cache-chi-kmdw8640041-CHI",
+            "x-cache": "HIT, HIT",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            30,
+            30,
+            31
+          ],
+          "totalMs": [
+            44,
+            43,
+            43
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "unpkg",
+          "url": "https://unpkg.com/exceljs@4.4.0/dist/exceljs.min.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 947702,
+          "stable": true,
+          "http": "2",
+          "ip": "104.18.0.22",
+          "publie": null,
+          "entetes": {
+            "cache-control": "public, max-age=31536000",
+            "content-type": "text/javascript; charset=utf-8",
+            "content-encoding": "gzip",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "via": "1.1 fly.io, 1.1 fly.io",
+            "cf-ray": "a60037fbaa62314d-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            93,
+            99,
+            121
+          ],
+          "totalMs": [
+            106,
+            112,
+            134
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "cdnjs",
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js",
+          "etat": "identique",
+          "rapprochement": "meme-fichier",
+          "octets": 947702,
+          "stable": true,
+          "http": "2",
+          "ip": "104.17.24.14",
+          "publie": {
+            "algo": "sha512",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "no-transform, public, s-maxage=30672000, max-age=30672000, immutable",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=15780000",
+            "server": "cloudflare",
+            "cf-ray": "a60037fd6a5b4bce-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            42,
+            46,
+            37
+          ],
+          "totalMs": [
+            56,
+            73,
+            63
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "jsqr@1.4.0/dist/jsQR.js",
+      "paquet": "jsqr",
+      "version": "1.4.0",
+      "chemin": "dist/jsQR.js",
+      "origines": [
+        "publipostage"
+      ],
+      "npm": {
+        "sha384": "sha384-b5Ya4Bq3qCyz39m2ISh+4DxjAIljdeFwK/BsXLuj9gugaNwAcj/ia15fxNZL9Nlx",
+        "octets": 256885
+      },
+      "cdn": [
+        {
+          "cdn": "jsdelivr",
+          "url": "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 256885,
+          "stable": true,
+          "http": "2",
+          "ip": "104.16.179.112",
+          "publie": {
+            "algo": "sha256",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "public, max-age=31536000, s-maxage=31536000, immutable",
+            "etag": "W/\"81c7-9178119691b66a1e\"",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "cf-ray": "a60037febb4daccf-MSP",
+            "x-served-by": "cache-fra-eddf8230148-FRA, cache-iad-kiad7000114-IAD",
+            "x-cache": "HIT, HIT",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            32,
+            31,
+            34
+          ],
+          "totalMs": [
+            33,
+            33,
+            35
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "unpkg",
+          "url": "https://unpkg.com/jsqr@1.4.0/dist/jsQR.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 256885,
+          "stable": true,
+          "http": "2",
+          "ip": "104.18.0.22",
+          "publie": null,
+          "entetes": {
+            "cache-control": "public, max-age=31536000",
+            "content-type": "text/javascript; charset=utf-8",
+            "content-encoding": "gzip",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "via": "1.1 fly.io",
+            "cf-ray": "a60037ffee3a1ee8-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            52,
+            71,
+            75
+          ],
+          "totalMs": [
+            78,
+            72,
+            76
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "cdnjs",
+          "url": null,
+          "etat": "absent",
+          "rapprochement": null,
+          "octets": null,
+          "stable": null,
+          "http": null,
+          "ip": null,
+          "publie": null,
+          "entetes": {},
+          "premierOctetMs": [],
+          "totalMs": [],
+          "cache": []
+        }
+      ]
+    },
+    {
+      "id": "jszip@3.10.1/dist/jszip.min.js",
+      "paquet": "jszip",
+      "version": "3.10.1",
+      "chemin": "dist/jszip.min.js",
+      "origines": [
+        "gfs",
+        "publipostage"
+      ],
+      "npm": {
+        "sha384": "sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG",
+        "octets": 97630
+      },
+      "cdn": [
+        {
+          "cdn": "jsdelivr",
+          "url": "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 97630,
+          "stable": true,
+          "http": "2",
+          "ip": "104.16.180.112",
+          "publie": {
+            "algo": "sha256",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "public, max-age=31536000, s-maxage=31536000, immutable",
+            "etag": "W/\"6270-4b3d6f02a3e430f0\"",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "cf-ray": "a600380169b6acd5-MSP",
+            "x-served-by": "cache-fra-eddf8230084-FRA, cache-iad-kiad7000115-IAD",
+            "x-cache": "HIT, HIT",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            35,
+            30,
+            35
+          ],
+          "totalMs": [
+            36,
+            31,
+            36
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "unpkg",
+          "url": "https://unpkg.com/jszip@3.10.1/dist/jszip.min.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 97630,
+          "stable": true,
+          "http": "2",
+          "ip": "104.18.0.22",
+          "publie": null,
+          "entetes": {
+            "cache-control": "public, max-age=31536000",
+            "content-type": "text/javascript; charset=utf-8",
+            "content-encoding": "gzip",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "via": "1.1 fly.io, 1.1 fly.io",
+            "cf-ray": "a6003802a8094c9d-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            51,
+            48,
+            41
+          ],
+          "totalMs": [
+            52,
+            49,
+            46
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "cdnjs",
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js",
+          "etat": "identique",
+          "rapprochement": "meme-fichier",
+          "octets": 97630,
+          "stable": true,
+          "http": "2",
+          "ip": "104.17.24.14",
+          "publie": {
+            "algo": "sha512",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "no-transform, public, s-maxage=30672000, max-age=30672000, immutable",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=15780000",
+            "server": "cloudflare",
+            "cf-ray": "a6003803fe8aa21f-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            30,
+            33,
+            35
+          ],
+          "totalMs": [
+            31,
+            34,
+            36
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "leaflet@1.9.4/dist/leaflet.css",
+      "paquet": "leaflet",
+      "version": "1.9.4",
+      "chemin": "dist/leaflet.css",
+      "origines": [
+        "form"
+      ],
+      "npm": {
+        "sha384": "sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H",
+        "octets": 14806
+      },
+      "cdn": [
+        {
+          "cdn": "jsdelivr",
+          "url": "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 14806,
+          "stable": true,
+          "http": "2",
+          "ip": "104.16.179.112",
+          "publie": {
+            "algo": "sha256",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "public, max-age=31536000, s-maxage=31536000, immutable",
+            "etag": "W/\"b97-b4a928e9467ebcc7\"",
+            "content-type": "text/css; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "cf-ray": "a60038052fbd29c6-MSP",
+            "x-served-by": "cache-fra-eddf8230197-FRA, cache-iad-kiad7000153-IAD",
+            "x-cache": "HIT, HIT",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            30,
+            30,
+            31
+          ],
+          "totalMs": [
+            30,
+            31,
+            32
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "unpkg",
+          "url": "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 14806,
+          "stable": true,
+          "http": "2",
+          "ip": "104.18.0.22",
+          "publie": null,
+          "entetes": {
+            "cache-control": "public, max-age=31536000",
+            "content-type": "text/css; charset=utf-8",
+            "content-encoding": "gzip",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "via": "1.1 fly.io, 1.1 fly.io",
+            "cf-ray": "a60038065befa1d2-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            39,
+            31,
+            41
+          ],
+          "totalMs": [
+            40,
+            32,
+            41
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "cdnjs",
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css",
+          "etat": "identique",
+          "rapprochement": "meme-fichier",
+          "octets": 14806,
+          "stable": true,
+          "http": "2",
+          "ip": "104.17.25.14",
+          "publie": {
+            "algo": "sha512",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "no-transform, public, s-maxage=30672000, max-age=30672000, immutable",
+            "content-type": "text/css; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=15780000",
+            "server": "cloudflare",
+            "cf-ray": "a60038079d251e27-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            33,
+            32,
+            33
+          ],
+          "totalMs": [
+            33,
+            32,
+            33
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "leaflet@1.9.4/dist/leaflet.js",
+      "paquet": "leaflet",
+      "version": "1.9.4",
+      "chemin": "dist/leaflet.js",
+      "origines": [
+        "form"
+      ],
+      "npm": {
+        "sha384": "sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH",
+        "octets": 147552
+      },
+      "cdn": [
+        {
+          "cdn": "jsdelivr",
+          "url": "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 147552,
+          "stable": true,
+          "http": "2",
+          "ip": "104.16.180.112",
+          "publie": {
+            "algo": "sha256",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "public, max-age=31536000, s-maxage=31536000, immutable",
+            "etag": "W/\"904a-81ba75ae88f460b8\"",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "cf-ray": "a6003808ce8dff48-MSP",
+            "x-served-by": "cache-fra-etou8220035-FRA, cache-iad-kiad7000187-IAD",
+            "x-cache": "HIT, HIT",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            29,
+            29,
+            31
+          ],
+          "totalMs": [
+            31,
+            31,
+            32
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "unpkg",
+          "url": "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 147552,
+          "stable": true,
+          "http": "2",
+          "ip": "104.18.0.22",
+          "publie": null,
+          "entetes": {
+            "cache-control": "public, max-age=31536000",
+            "content-type": "text/javascript; charset=utf-8",
+            "content-encoding": "gzip",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "via": "1.1 fly.io",
+            "cf-ray": "a6003809fd4e68e8-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            41,
+            45,
+            46
+          ],
+          "totalMs": [
+            43,
+            46,
+            47
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "cdnjs",
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js",
+          "etat": "identique",
+          "rapprochement": "meme-fichier",
+          "octets": 147552,
+          "stable": true,
+          "http": "2",
+          "ip": "104.17.24.14",
+          "publie": {
+            "algo": "sha512",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "no-transform, public, s-maxage=30672000, max-age=30672000, immutable",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=15780000",
+            "server": "cloudflare",
+            "cf-ray": "a600380b3e26a215-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            31,
+            31,
+            35
+          ],
+          "totalMs": [
+            32,
+            32,
+            36
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "lodash@4.17.21/lodash.min.js",
+      "paquet": "lodash",
+      "version": "4.17.21",
+      "chemin": "lodash.min.js",
+      "origines": [
+        "publipostage"
+      ],
+      "npm": {
+        "sha384": "sha384-H6KKS1H1WwuERMSm+54dYLzjg0fKqRK5ZRyASdbrI/lwrCc6bXEmtGYr5SwvP1pZ",
+        "octets": 73015
+      },
+      "cdn": [
+        {
+          "cdn": "jsdelivr",
+          "url": "https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 73015,
+          "stable": true,
+          "http": "2",
+          "ip": "104.16.179.112",
+          "publie": {
+            "algo": "sha256",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "public, max-age=31536000, s-maxage=31536000, immutable",
+            "etag": "W/\"5a31-3d579149801dda80\"",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "cf-ray": "a600380c8999102a-MSP",
+            "x-served-by": "cache-fra-etou8220086-FRA, cache-lga-kjfk8660037-LGA",
+            "x-cache": "HIT, HIT",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            40,
+            30,
+            33
+          ],
+          "totalMs": [
+            41,
+            31,
+            34
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "unpkg",
+          "url": "https://unpkg.com/lodash@4.17.21/lodash.min.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 73015,
+          "stable": true,
+          "http": "2",
+          "ip": "104.18.1.22",
+          "publie": null,
+          "entetes": {
+            "cache-control": "public, max-age=31536000",
+            "content-type": "text/javascript; charset=utf-8",
+            "content-encoding": "gzip",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "via": "1.1 fly.io",
+            "cf-ray": "a600380dbe774840-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            56,
+            59,
+            72
+          ],
+          "totalMs": [
+            57,
+            60,
+            73
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "cdnjs",
+          "url": null,
+          "etat": "absent",
+          "rapprochement": null,
+          "octets": null,
+          "stable": null,
+          "http": null,
+          "ip": null,
+          "publie": null,
+          "entetes": {},
+          "premierOctetMs": [],
+          "totalMs": [],
+          "cache": []
+        }
+      ]
+    },
+    {
+      "id": "marked@15.0.12/marked.min.js",
+      "paquet": "marked",
+      "version": "15.0.12",
+      "chemin": "marked.min.js",
+      "origines": [
+        "gfs",
+        "publipostage"
+      ],
+      "npm": {
+        "sha384": "sha384-948ahk4ZmxYVYOc+rxN1H2gM1EJ2Duhp7uHtZ4WSLkV4Vtx5MUqnV+l7u9B+jFv+",
+        "octets": 39903
+      },
+      "cdn": [
+        {
+          "cdn": "jsdelivr",
+          "url": "https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 39903,
+          "stable": true,
+          "http": "2",
+          "ip": "104.16.180.112",
+          "publie": {
+            "algo": "sha256",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "public, max-age=31536000, s-maxage=31536000, immutable",
+            "etag": "W/\"2c88-6ff4d72c9a8a8ebd\"",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "cf-ray": "a600380f1dd19007-MSP",
+            "x-served-by": "cache-fra-eddf8230175-FRA, cache-pdk-kfty8610050-PDK",
+            "x-cache": "HIT, HIT",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            32,
+            36,
+            30
+          ],
+          "totalMs": [
+            32,
+            36,
+            31
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "unpkg",
+          "url": "https://unpkg.com/marked@15.0.12/marked.min.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 39903,
+          "stable": true,
+          "http": "2",
+          "ip": "104.18.0.22",
+          "publie": null,
+          "entetes": {
+            "cache-control": "public, max-age=31536000",
+            "content-type": "text/javascript; charset=utf-8",
+            "content-encoding": "gzip",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "via": "1.1 fly.io, 1.1 fly.io",
+            "cf-ray": "a60038104b27acde-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            49,
+            50,
+            68
+          ],
+          "totalMs": [
+            50,
+            50,
+            70
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "cdnjs",
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/marked/15.0.12/marked.min.js",
+          "etat": "identique",
+          "rapprochement": "meme-fichier",
+          "octets": 39903,
+          "stable": true,
+          "http": "2",
+          "ip": "104.17.24.14",
+          "publie": {
+            "algo": "sha512",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "no-transform, public, s-maxage=30672000, max-age=30672000, immutable",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=15780000",
+            "server": "cloudflare",
+            "cf-ray": "a600381199cdacf4-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            31,
+            38,
+            32
+          ],
+          "totalMs": [
+            32,
+            39,
+            32
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pdf-lib@1.17.1/dist/pdf-lib.min.js",
+      "paquet": "pdf-lib",
+      "version": "1.17.1",
+      "chemin": "dist/pdf-lib.min.js",
+      "origines": [
+        "gfs",
+        "publipostage"
+      ],
+      "npm": {
+        "sha384": "sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI",
+        "octets": 525099
+      },
+      "cdn": [
+        {
+          "cdn": "jsdelivr",
+          "url": "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 525099,
+          "stable": true,
+          "http": "2",
+          "ip": "104.16.180.112",
+          "publie": {
+            "algo": "sha256",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "public, max-age=31536000, s-maxage=31536000, immutable",
+            "etag": "W/\"28978-0f4dbc8418b426ea\"",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "cf-ray": "a6003812cafb9200-MSP",
+            "x-served-by": "cache-fra-eddf8230163-FRA, cache-nyc-kteb1890077-NYC",
+            "x-cache": "HIT, HIT",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            31,
+            33,
+            28
+          ],
+          "totalMs": [
+            45,
+            46,
+            40
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "unpkg",
+          "url": "https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 525099,
+          "stable": true,
+          "http": "2",
+          "ip": "104.18.1.22",
+          "publie": null,
+          "entetes": {
+            "cache-control": "public, max-age=31536000",
+            "content-type": "text/javascript; charset=utf-8",
+            "content-encoding": "gzip",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "via": "1.1 fly.io",
+            "cf-ray": "a60038141c47a206-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            65,
+            52,
+            67
+          ],
+          "totalMs": [
+            78,
+            64,
+            79
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "cdnjs",
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js",
+          "etat": "identique",
+          "rapprochement": "meme-fichier",
+          "octets": 525099,
+          "stable": true,
+          "http": "2",
+          "ip": "104.17.25.14",
+          "publie": {
+            "algo": "sha512",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "no-transform, public, s-maxage=30672000, max-age=30672000, immutable",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=15780000",
+            "server": "cloudflare",
+            "cf-ray": "a600381598678605-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            33,
+            34,
+            37
+          ],
+          "totalMs": [
+            54,
+            43,
+            52
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pdfjs-dist@3.11.174/build/pdf.min.js",
+      "paquet": "pdfjs-dist",
+      "version": "3.11.174",
+      "chemin": "build/pdf.min.js",
+      "origines": [
+        "publipostage"
+      ],
+      "npm": {
+        "sha384": "sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e",
+        "octets": 320004
+      },
+      "cdn": [
+        {
+          "cdn": "jsdelivr",
+          "url": "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 320004,
+          "stable": true,
+          "http": "2",
+          "ip": "104.16.180.112",
+          "publie": {
+            "algo": "sha256",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "public, max-age=31536000, s-maxage=31536000, immutable",
+            "etag": "W/\"12103-85e06a1343450fd1\"",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "cf-ray": "a6003816ec5c4c9d-MSP",
+            "x-served-by": "cache-fra-etou8220036-FRA, cache-iad-kiad7000072-IAD",
+            "x-cache": "HIT, HIT",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            31,
+            31,
+            32
+          ],
+          "totalMs": [
+            33,
+            34,
+            38
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "unpkg",
+          "url": "https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 320004,
+          "stable": true,
+          "http": "2",
+          "ip": "104.18.1.22",
+          "publie": null,
+          "entetes": {
+            "cache-control": "public, max-age=31536000",
+            "content-type": "text/javascript; charset=utf-8",
+            "content-encoding": "gzip",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "via": "1.1 fly.io",
+            "cf-ray": "a6003818297223db-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            60,
+            53,
+            57
+          ],
+          "totalMs": [
+            66,
+            59,
+            63
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "cdnjs",
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js",
+          "etat": "identique",
+          "rapprochement": "meme-fichier",
+          "octets": 320004,
+          "stable": true,
+          "http": "2",
+          "ip": "104.17.25.14",
+          "publie": {
+            "algo": "sha512",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "no-transform, public, s-maxage=30672000, max-age=30672000, immutable",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=15780000",
+            "server": "cloudflare",
+            "cf-ray": "a60038198b74502f-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            32,
+            32,
+            33
+          ],
+          "totalMs": [
+            38,
+            38,
+            35
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pdfjs-dist@3.11.174/build/pdf.worker.min.js",
+      "paquet": "pdfjs-dist",
+      "version": "3.11.174",
+      "chemin": "build/pdf.worker.min.js",
+      "origines": [
+        "publipostage"
+      ],
+      "npm": {
+        "sha384": "sha384-SnzOobpRMLXZ52iJvZm/C0fYw0OQemTXzTjIsdsfMcrCtCEe9qgzxTd3RSklO5x2",
+        "octets": 1087212
+      },
+      "cdn": [
+        {
+          "cdn": "jsdelivr",
+          "url": "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 1087212,
+          "stable": true,
+          "http": "2",
+          "ip": "104.16.180.112",
+          "publie": {
+            "algo": "sha256",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "public, max-age=31536000, s-maxage=31536000, immutable",
+            "etag": "W/\"39301-cba0c2a325350eb4\"",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "cf-ray": "a600381acc90fb43-MSP",
+            "x-served-by": "cache-fra-eddf8230035-FRA, cache-iad-kiad7000093-IAD",
+            "x-cache": "HIT, HIT",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            32,
+            37,
+            31
+          ],
+          "totalMs": [
+            47,
+            51,
+            43
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "unpkg",
+          "url": "https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 1087212,
+          "stable": true,
+          "http": "2",
+          "ip": "104.18.1.22",
+          "publie": null,
+          "entetes": {
+            "cache-control": "public, max-age=31536000",
+            "content-type": "text/javascript; charset=utf-8",
+            "content-encoding": "gzip",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "via": "1.1 fly.io, 1.1 fly.io",
+            "cf-ray": "a600381c3fe7a1fb-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            67,
+            91,
+            43
+          ],
+          "totalMs": [
+            132,
+            105,
+            95
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "cdnjs",
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js",
+          "etat": "identique",
+          "rapprochement": "meme-fichier",
+          "octets": 1087212,
+          "stable": true,
+          "http": "2",
+          "ip": "104.17.25.14",
+          "publie": {
+            "algo": "sha512",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "no-transform, public, s-maxage=30672000, max-age=30672000, immutable",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=15780000",
+            "server": "cloudflare",
+            "cf-ray": "a600381df944a1f1-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            36,
+            34,
+            34
+          ],
+          "totalMs": [
+            49,
+            48,
+            47
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pdfmake@0.2.7/build/pdfmake.min.js",
+      "paquet": "pdfmake",
+      "version": "0.2.7",
+      "chemin": "build/pdfmake.min.js",
+      "origines": [
+        "gfs",
+        "publipostage"
+      ],
+      "npm": {
+        "sha384": "sha384-VFQrHzqBh5qiJIU0uGU5CIW3+OWpdGGJM9LBnGbuIH2mkICcFZ7lPd/AAtI7SNf7",
+        "octets": 1357654
+      },
+      "cdn": [
+        {
+          "cdn": "jsdelivr",
+          "url": "https://cdn.jsdelivr.net/npm/pdfmake@0.2.7/build/pdfmake.min.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 1357654,
+          "stable": true,
+          "http": "2",
+          "ip": "104.16.180.112",
+          "publie": {
+            "algo": "sha256",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "public, max-age=31536000, s-maxage=31536000, immutable",
+            "etag": "W/\"630dd-4dacb1c4acdaa94e\"",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "cf-ray": "a600381fb88ee895-MSP",
+            "x-served-by": "cache-fra-eddf8230118-FRA, cache-iad-kiad7000081-IAD",
+            "x-cache": "HIT, HIT",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            95,
+            33,
+            32
+          ],
+          "totalMs": [
+            113,
+            51,
+            48
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "unpkg",
+          "url": "https://unpkg.com/pdfmake@0.2.7/build/pdfmake.min.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 1357654,
+          "stable": true,
+          "http": "2",
+          "ip": "104.18.0.22",
+          "publie": null,
+          "entetes": {
+            "cache-control": "public, max-age=31536000",
+            "content-type": "text/javascript; charset=utf-8",
+            "content-encoding": "gzip",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "via": "1.1 fly.io, 1.1 fly.io",
+            "cf-ray": "a60038210c26510a-MSP",
+            "cf-cache-status": "MISS"
+          },
+          "premierOctetMs": [
+            239,
+            75,
+            98
+          ],
+          "totalMs": [
+            360,
+            133,
+            116
+          ],
+          "cache": [
+            "MISS",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "cdnjs",
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js",
+          "etat": "identique",
+          "rapprochement": "meme-fichier",
+          "octets": 1357654,
+          "stable": true,
+          "http": "2",
+          "ip": "104.17.25.14",
+          "publie": {
+            "algo": "sha512",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "no-transform, public, s-maxage=30672000, max-age=30672000, immutable",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=15780000",
+            "server": "cloudflare",
+            "cf-ray": "a60038244e2bb45f-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            30,
+            31,
+            42
+          ],
+          "totalMs": [
+            48,
+            50,
+            96
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pdfmake@0.2.7/build/vfs_fonts.js",
+      "paquet": "pdfmake",
+      "version": "0.2.7",
+      "chemin": "build/vfs_fonts.js",
+      "origines": [
+        "gfs"
+      ],
+      "npm": {
+        "sha384": "sha384-go03OGrgP7enVgJF/9UK2k6D5xW+f7Vq1WHLp75VqnMN5uu+CZDXu7uGjjzZReI5",
+        "octets": 798329
+      },
+      "cdn": [
+        {
+          "cdn": "jsdelivr",
+          "url": "https://cdn.jsdelivr.net/npm/pdfmake@0.2.7/build/vfs_fonts.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 798329,
+          "stable": true,
+          "http": "2",
+          "ip": "104.16.179.112",
+          "publie": {
+            "algo": "sha256",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "public, max-age=31536000, s-maxage=31536000, immutable",
+            "etag": "W/\"4647b-675fed8899b21bac\"",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "cf-ray": "a6003825af799007-MSP",
+            "x-served-by": "cache-fra-etou8220114-FRA, cache-bos-kbos510035-BOS",
+            "x-cache": "HIT, HIT",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            32,
+            33,
+            35
+          ],
+          "totalMs": [
+            47,
+            48,
+            48
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "unpkg",
+          "url": "https://unpkg.com/pdfmake@0.2.7/build/vfs_fonts.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 798329,
+          "stable": true,
+          "http": "2",
+          "ip": "104.18.1.22",
+          "publie": null,
+          "entetes": {
+            "cache-control": "public, max-age=31536000",
+            "content-type": "text/javascript; charset=utf-8",
+            "content-encoding": "gzip",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "via": "1.1 fly.io",
+            "cf-ray": "a6003826f8b41ee8-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            95,
+            88,
+            67
+          ],
+          "totalMs": [
+            150,
+            106,
+            143
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "cdnjs",
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js",
+          "etat": "different",
+          "rapprochement": "meme-fichier",
+          "octets": 798324,
+          "stable": true,
+          "http": "2",
+          "ip": "104.17.25.14",
+          "publie": {
+            "algo": "sha512",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "no-transform, public, s-maxage=30672000, max-age=30672000, immutable",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=15780000",
+            "server": "cloudflare",
+            "cf-ray": "a6003828e8c6e18a-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            41,
+            33,
+            33
+          ],
+          "totalMs": [
+            75,
+            47,
+            48
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.min.js",
+      "paquet": "pdfmake",
+      "version": "0.2.7",
+      "chemin": null,
+      "origines": [
+        "publipostage"
+      ],
+      "npm": null,
+      "cdn": [
+        {
+          "cdn": "cdnjs",
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.min.js",
+          "etat": "sans-reference",
+          "rapprochement": "variante-du-cdn",
+          "octets": 798300,
+          "stable": true,
+          "http": "2",
+          "ip": "104.17.24.14",
+          "publie": null,
+          "entetes": {
+            "cache-control": "no-transform, public, s-maxage=30672000, max-age=30672000, immutable",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=15780000",
+            "server": "cloudflare",
+            "cf-ray": "a600382a68894bce-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            31,
+            34,
+            33
+          ],
+          "totalMs": [
+            46,
+            49,
+            47
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "plotly.js-basic-dist-min@2.13.1/plotly-basic.min.js",
+      "paquet": "plotly.js-basic-dist-min",
+      "version": "2.13.1",
+      "chemin": "plotly-basic.min.js",
+      "origines": [
+        "publipostage"
+      ],
+      "npm": {
+        "sha384": "sha384-ZgRvXQ/yJj+0yEJzDvnR4VM8E7ApVemZSsTnBPW4SU1nKYQFt/6B6QdHPDJVmFxm",
+        "octets": 1021817
+      },
+      "cdn": [
+        {
+          "cdn": "jsdelivr",
+          "url": "https://cdn.jsdelivr.net/npm/plotly.js-basic-dist-min@2.13.1/plotly-basic.min.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 1021817,
+          "stable": true,
+          "http": "2",
+          "ip": "104.16.179.112",
+          "publie": {
+            "algo": "sha256",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "public, max-age=31536000, s-maxage=31536000, immutable",
+            "etag": "W/\"42a28-cad1611f7e9f23e0\"",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "cf-ray": "a600382bbcb6accf-MSP",
+            "x-served-by": "cache-fra-etou8220168-FRA, cache-ewr-kewr1740042-EWR",
+            "x-cache": "MISS, MISS",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            31,
+            30,
+            34
+          ],
+          "totalMs": [
+            45,
+            44,
+            49
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "unpkg",
+          "url": "https://unpkg.com/plotly.js-basic-dist-min@2.13.1/plotly-basic.min.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 1021817,
+          "stable": true,
+          "http": "2",
+          "ip": "104.18.0.22",
+          "publie": null,
+          "entetes": {
+            "cache-control": "public, max-age=31536000",
+            "content-type": "text/javascript; charset=utf-8",
+            "content-encoding": "gzip",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "via": "1.1 fly.io, 1.1 fly.io",
+            "cf-ray": "a600382cfec8accc-MSP",
+            "cf-cache-status": "MISS"
+          },
+          "premierOctetMs": [
+            330,
+            81,
+            92
+          ],
+          "totalMs": [
+            404,
+            96,
+            108
+          ],
+          "cache": [
+            "MISS",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "cdnjs",
+          "url": null,
+          "etat": "absent",
+          "rapprochement": null,
+          "octets": null,
+          "stable": null,
+          "http": null,
+          "ip": null,
+          "publie": null,
+          "entetes": {},
+          "premierOctetMs": [],
+          "totalMs": [],
+          "cache": []
+        }
+      ]
+    },
+    {
+      "id": "plotly.js-basic-dist-min@2.13.2/plotly-basic.min.js",
+      "paquet": "plotly.js-basic-dist-min",
+      "version": "2.13.2",
+      "chemin": "plotly-basic.min.js",
+      "origines": [
+        "gfs",
+        "publipostage"
+      ],
+      "npm": {
+        "sha384": "sha384-1heFF/cJ46y4QUvJzTPTs4/F4/UYCTLl6QErQgvqkxbzN+5yx5TQUVGf6ufPqcve",
+        "octets": 1021827
+      },
+      "cdn": [
+        {
+          "cdn": "jsdelivr",
+          "url": "https://cdn.jsdelivr.net/npm/plotly.js-basic-dist-min@2.13.2/plotly-basic.min.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 1021827,
+          "stable": true,
+          "http": "2",
+          "ip": "104.16.180.112",
+          "publie": {
+            "algo": "sha256",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "public, max-age=31536000, s-maxage=31536000, immutable",
+            "etag": "W/\"42af7-e89ae033c78415fd\"",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "cf-ray": "a600383098a4acd5-MSP",
+            "x-served-by": "cache-fra-etou8220184-FRA, cache-lga-kjfk8660065-LGA",
+            "x-cache": "MISS, HIT",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            37,
+            32,
+            31
+          ],
+          "totalMs": [
+            51,
+            51,
+            47
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "unpkg",
+          "url": "https://unpkg.com/plotly.js-basic-dist-min@2.13.2/plotly-basic.min.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 1021827,
+          "stable": true,
+          "http": "2",
+          "ip": "104.18.0.22",
+          "publie": null,
+          "entetes": {
+            "cache-control": "public, max-age=31536000",
+            "content-type": "text/javascript; charset=utf-8",
+            "content-encoding": "gzip",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "via": "1.1 fly.io",
+            "cf-ray": "a6003831d9e5a1b9-MSP",
+            "cf-cache-status": "MISS"
+          },
+          "premierOctetMs": [
+            275,
+            48,
+            47
+          ],
+          "totalMs": [
+            334,
+            103,
+            98
+          ],
+          "cache": [
+            "MISS",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "cdnjs",
+          "url": null,
+          "etat": "absent",
+          "rapprochement": null,
+          "octets": null,
+          "stable": null,
+          "http": null,
+          "ip": null,
+          "publie": null,
+          "entetes": {},
+          "premierOctetMs": [],
+          "totalMs": [],
+          "cache": []
+        }
+      ]
+    },
+    {
+      "id": "pptxgenjs@4.0.1/dist/pptxgen.bundle.js",
+      "paquet": "pptxgenjs",
+      "version": "4.0.1",
+      "chemin": "dist/pptxgen.bundle.js",
+      "origines": [
+        "bi"
+      ],
+      "npm": {
+        "sha384": "sha384-qb0Xhi7LLYpvW1HCK6oMrmDLSY9sy7vwm6ZlV6KjtrlL9yg30+YN4neTwnmX+Kp8",
+        "octets": 460889
+      },
+      "cdn": [
+        {
+          "cdn": "jsdelivr",
+          "url": "https://cdn.jsdelivr.net/npm/pptxgenjs@4.0.1/dist/pptxgen.bundle.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 460889,
+          "stable": true,
+          "http": "2",
+          "ip": "104.16.179.112",
+          "publie": {
+            "algo": "sha256",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "public, max-age=31536000, s-maxage=31536000, immutable",
+            "etag": "W/\"21b7b-7337726586a47863\"",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "cf-ray": "a6003834fc8f102a-MSP",
+            "x-served-by": "cache-fra-etou8220172-FRA, cache-iad-kiad7000039-IAD",
+            "x-cache": "HIT, HIT",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            31,
+            31,
+            30
+          ],
+          "totalMs": [
+            40,
+            39,
+            38
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "unpkg",
+          "url": "https://unpkg.com/pptxgenjs@4.0.1/dist/pptxgen.bundle.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 460889,
+          "stable": true,
+          "http": "2",
+          "ip": "104.18.0.22",
+          "publie": null,
+          "entetes": {
+            "cache-control": "public, max-age=31536000",
+            "content-type": "text/javascript; charset=utf-8",
+            "content-encoding": "gzip",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "via": "1.1 fly.io, 1.1 fly.io",
+            "cf-ray": "a60038363ffe314d-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            70,
+            42,
+            68
+          ],
+          "totalMs": [
+            85,
+            61,
+            79
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "cdnjs",
+          "url": null,
+          "etat": "absent",
+          "rapprochement": null,
+          "octets": null,
+          "stable": null,
+          "http": null,
+          "ip": null,
+          "publie": null,
+          "entetes": {},
+          "premierOctetMs": [],
+          "totalMs": [],
+          "cache": []
+        }
+      ]
+    },
+    {
+      "id": "qrcode-generator@1.4.4/qrcode.js",
+      "paquet": "qrcode-generator",
+      "version": "1.4.4",
+      "chemin": "qrcode.js",
+      "origines": [
+        "gfs"
+      ],
+      "npm": {
+        "sha384": "sha384-8FWZA6BGMXhsfO+BLtrJK0We6gg5o1JyO8xQm6peWDEUs17ACA5ziE/NIAkl9z2k",
+        "octets": 56694
+      },
+      "cdn": [
+        {
+          "cdn": "jsdelivr",
+          "url": "https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 56694,
+          "stable": true,
+          "http": "2",
+          "ip": "104.16.179.112",
+          "publie": {
+            "algo": "sha256",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "public, max-age=31536000, s-maxage=31536000, immutable",
+            "etag": "W/\"2783-673799e2de7296c3\"",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "cf-ray": "a6003837cbb8502f-MSP",
+            "x-served-by": "cache-fra-eddf8230024-FRA, cache-lga-kjfk8660049-LGA",
+            "x-cache": "HIT, HIT",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            32,
+            32,
+            29
+          ],
+          "totalMs": [
+            32,
+            32,
+            30
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "unpkg",
+          "url": "https://unpkg.com/qrcode-generator@1.4.4/qrcode.js",
+          "etat": "identique",
+          "rapprochement": null,
+          "octets": 56694,
+          "stable": true,
+          "http": "2",
+          "ip": "104.18.1.22",
+          "publie": null,
+          "entetes": {
+            "cache-control": "public, max-age=31536000",
+            "content-type": "text/javascript; charset=utf-8",
+            "content-encoding": "gzip",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "server": "cloudflare",
+            "via": "1.1 fly.io",
+            "cf-ray": "a6003838ff774840-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            46,
+            47,
+            52
+          ],
+          "totalMs": [
+            49,
+            52,
+            52
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        },
+        {
+          "cdn": "cdnjs",
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.js",
+          "etat": "identique",
+          "rapprochement": "meme-fichier",
+          "octets": 56694,
+          "stable": true,
+          "http": "2",
+          "ip": "104.17.24.14",
+          "publie": {
+            "algo": "sha512",
+            "concorde": true
+          },
+          "entetes": {
+            "cache-control": "no-transform, public, s-maxage=30672000, max-age=30672000, immutable",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=15780000",
+            "server": "cloudflare",
+            "cf-ray": "a600383a4cd7acf4-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            32,
+            36,
+            32
+          ],
+          "totalMs": [
+            33,
+            37,
+            32
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js",
+      "paquet": "qrcode-generator",
+      "version": "1.4.4",
+      "chemin": null,
+      "origines": [
+        "publipostage"
+      ],
+      "npm": null,
+      "cdn": [
+        {
+          "cdn": "cdnjs",
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js",
+          "etat": "sans-reference",
+          "rapprochement": "variante-du-cdn",
+          "octets": 20387,
+          "stable": true,
+          "http": "2",
+          "ip": "104.17.25.14",
+          "publie": null,
+          "entetes": {
+            "cache-control": "no-transform, public, s-maxage=30672000, max-age=30672000, immutable",
+            "content-type": "application/javascript; charset=utf-8",
+            "content-encoding": "br",
+            "access-control-allow-origin": "*",
+            "cross-origin-resource-policy": "cross-origin",
+            "x-content-type-options": "nosniff",
+            "strict-transport-security": "max-age=15780000",
+            "server": "cloudflare",
+            "cf-ray": "a600383b7bc81e27-MSP",
+            "cf-cache-status": "HIT"
+          },
+          "premierOctetMs": [
+            31,
+            34,
+            32
+          ],
+          "totalMs": [
+            32,
+            34,
+            32
+          ],
+          "cache": [
+            "HIT",
+            "HIT",
+            "HIT"
+          ]
+        }
+      ]
+    }
+  ],
+  "esm": [
+    {
+      "racine": "@tiptap/starter-kit@3.31.3",
+      "esm": {
+        "racine": "https://esm.sh/@tiptap/starter-kit@3.31.3",
+        "statut": 200,
+        "fichiers": 74,
+        "octets": 466761,
+        "aiguillages": 15,
+        "profondeur": 5,
+        "nonFiges": [
+          "https://esm.sh/linkifyjs@^4.3.3?target=es2022",
+          "https://esm.sh/prosemirror-transform@^1.12.0?target=es2022",
+          "https://esm.sh/prosemirror-commands@^1.7.1?target=es2022",
+          "https://esm.sh/prosemirror-state@^1.4.4?target=es2022",
+          "https://esm.sh/prosemirror-model@^1.25.11?target=es2022",
+          "https://esm.sh/prosemirror-schema-list@^1.5.1?target=es2022",
+          "https://esm.sh/prosemirror-view@^1.42.3?target=es2022",
+          "https://esm.sh/prosemirror-keymap@^1.2.3?target=es2022",
+          "https://esm.sh/prosemirror-dropcursor@^1.8.2?target=es2022",
+          "https://esm.sh/prosemirror-gapcursor@^1.4.1?target=es2022",
+          "https://esm.sh/prosemirror-history@^1.5.0?target=es2022",
+          "https://esm.sh/prosemirror-model@^1.21.0?target=es2022",
+          "https://esm.sh/prosemirror-model@^1.0.0?target=es2022",
+          "https://esm.sh/prosemirror-state@^1.0.0?target=es2022",
+          "https://esm.sh/prosemirror-transform@^1.10.2?target=es2022",
+          "https://esm.sh/prosemirror-transform@^1.0.0?target=es2022",
+          "https://esm.sh/orderedmap@^2.0.0?target=es2022",
+          "https://esm.sh/prosemirror-transform@^1.7.3?target=es2022",
+          "https://esm.sh/prosemirror-model@^1.25.12?target=es2022",
+          "https://esm.sh/prosemirror-transform@^1.1.0?target=es2022",
+          "https://esm.sh/w3c-keyname@^2.2.0?target=es2022",
+          "https://esm.sh/prosemirror-keymap@^1.0.0?target=es2022",
+          "https://esm.sh/prosemirror-view@^1.0.0?target=es2022",
+          "https://esm.sh/prosemirror-state@^1.2.2?target=es2022",
+          "https://esm.sh/rope-sequence@^1.3.0?target=es2022"
+        ],
+        "hotes": [
+          "https://esm.sh"
+        ],
+        "coupe": false,
+        "erreurs": 0,
+        "relus": 74,
+        "differents": 0,
+        "ms": 67
+      },
+      "jsdelivr": {
+        "racine": "https://cdn.jsdelivr.net/npm/@tiptap/starter-kit@3.31.3/+esm",
+        "statut": 200,
+        "fichiers": 55,
+        "octets": 918453,
+        "aiguillages": 0,
+        "profondeur": 5,
+        "nonFiges": [],
+        "hotes": [
+          "https://cdn.jsdelivr.net"
+        ],
+        "coupe": false,
+        "erreurs": 0,
+        "relus": 55,
+        "differents": 0,
+        "ms": 31
+      }
+    },
+    {
+      "racine": "@tiptap/pm@3.31.3",
+      "esm": {
+        "racine": "https://esm.sh/@tiptap/pm@3.31.3",
+        "statut": 404,
+        "fichiers": 1,
+        "octets": 29,
+        "aiguillages": 0,
+        "profondeur": 0,
+        "nonFiges": [],
+        "hotes": [
+          "https://esm.sh"
+        ],
+        "coupe": false,
+        "erreurs": 1,
+        "relus": 0,
+        "differents": 0,
+        "ms": 64
+      },
+      "jsdelivr": {
+        "racine": "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/+esm",
+        "statut": 404,
+        "fichiers": 1,
+        "octets": 33,
+        "aiguillages": 0,
+        "profondeur": 0,
+        "nonFiges": [],
+        "hotes": [
+          "https://cdn.jsdelivr.net"
+        ],
+        "coupe": false,
+        "erreurs": 1,
+        "relus": 0,
+        "differents": 0,
+        "ms": 446
+      }
+    },
+    {
+      "racine": "lib0@0.2.119",
+      "esm": {
+        "racine": "https://esm.sh/lib0@0.2.119",
+        "statut": 200,
+        "fichiers": 45,
+        "octets": 112526,
+        "aiguillages": 0,
+        "profondeur": 4,
+        "nonFiges": [],
+        "hotes": [
+          "https://esm.sh"
+        ],
+        "coupe": false,
+        "erreurs": 0,
+        "relus": 45,
+        "differents": 0,
+        "ms": 72
+      },
+      "jsdelivr": {
+        "racine": "https://cdn.jsdelivr.net/npm/lib0@0.2.119/+esm",
+        "statut": 200,
+        "fichiers": 2,
+        "octets": 87955,
+        "aiguillages": 0,
+        "profondeur": 1,
+        "nonFiges": [],
+        "hotes": [
+          "https://cdn.jsdelivr.net"
+        ],
+        "coupe": false,
+        "erreurs": 0,
+        "relus": 2,
+        "differents": 0,
+        "ms": 453
+      }
+    }
+  ],
+  "hotes": {
+    "jsdelivr": {
+      "hote": "cdn.jsdelivr.net",
+      "alias": [
+        "cdn.jsdelivr.net.cdn.cloudflare.net"
+      ],
+      "adresses": [
+        "104.16.180.112",
+        "104.16.179.112"
+      ]
+    },
+    "cdnjs": {
+      "hote": "cdnjs.cloudflare.com",
+      "alias": [],
+      "adresses": [
+        "104.17.24.14",
+        "104.17.25.14"
+      ]
+    },
+    "unpkg": {
+      "hote": "unpkg.com",
+      "alias": [],
+      "adresses": [
+        "104.18.1.22",
+        "104.18.0.22"
+      ]
+    }
+  },
+  "depots": 1,
+  "resume": {
+    "jsdelivr": {
+      "adresses": 21,
+      "trouvees": 21,
+      "absentes": 0,
+      "erreurs": 0,
+      "identiques": 21,
+      "differents": 0,
+      "comparables": 21,
+      "variantes": 0,
+      "publient": 21,
+      "concordent": 21,
+      "discordent": 0,
+      "instables": 0,
+      "premierOctetMs": {
+        "mediane": 31,
+        "plusLent": 37
+      },
+      "totalMs": {
+        "mediane": 40,
+        "plusLent": 51
+      },
+      "http": [
+        "2"
+      ],
+      "cookies": 0,
+      "cors": 21,
+      "nosniff": 21,
+      "hsts": 21,
+      "caches": [
+        "public, max-age=31536000, s-maxage=31536000, immutable"
+      ]
+    },
+    "cdnjs": {
+      "adresses": 23,
+      "trouvees": 15,
+      "absentes": 8,
+      "erreurs": 0,
+      "identiques": 12,
+      "differents": 1,
+      "comparables": 21,
+      "variantes": 0,
+      "publient": 13,
+      "concordent": 13,
+      "discordent": 0,
+      "instables": 0,
+      "premierOctetMs": {
+        "mediane": 33,
+        "plusLent": 42
+      },
+      "totalMs": {
+        "mediane": 43,
+        "plusLent": 75
+      },
+      "http": [
+        "2"
+      ],
+      "cookies": 0,
+      "cors": 15,
+      "nosniff": 15,
+      "hsts": 15,
+      "caches": [
+        "no-transform, public, s-maxage=30672000, max-age=30672000, immutable"
+      ]
+    },
+    "unpkg": {
+      "adresses": 21,
+      "trouvees": 21,
+      "absentes": 0,
+      "erreurs": 0,
+      "identiques": 21,
+      "differents": 0,
+      "comparables": 21,
+      "variantes": 0,
+      "publient": 0,
+      "concordent": 0,
+      "discordent": 0,
+      "instables": 0,
+      "premierOctetMs": {
+        "mediane": 67,
+        "plusLent": 239
+      },
+      "totalMs": {
+        "mediane": 79,
+        "plusLent": 334
+      },
+      "http": [
+        "2"
+      ],
+      "cookies": 0,
+      "cors": 21,
+      "nosniff": 21,
+      "hsts": 21,
+      "caches": [
+        "public, max-age=31536000"
+      ]
+    }
+  }
+}

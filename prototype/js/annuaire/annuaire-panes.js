@@ -20,6 +20,23 @@ export function shown(value, genre, { t, locale }) {
   return value;
 }
 
+// Les champs que le réglage met en liste (« Liste » de la fenêtre « Champs de la fiche »), de la personne aux textes de ses pastilles : `genres` : voir
+// `fieldGenres` ;
+// `columns` : les colonnes de la liste (js/annuaire/annuaire-items.js, `listColumns`) : un champ qui est aussi une colonne n'est pas écrit deux fois (les
+//   cartes n'ont pas de colonnes : elles gardent la pastille).
+export function listedTexts(config, genres, ctx, columns) {
+  const listed = config.fields.filter(field => field.list && !columns.some(col => col.key === field.col));
+  return person => listed.flatMap(field => (person.fields[field.col] || []).map(value => shown(value, genres[field.col], ctx)));
+}
+
+// Les textes des colonnes de la liste (« Colonne » de la fenêtre « Champs de la fiche »), de la personne à [libellé, texte] par colonne : l'adresse, le numéro,
+// puis les champs ; les valeurs d'un champ à plusieurs s'écrivent à la suite, séparées par une virgule.
+export function columnTexts(columns, genres, ctx) {
+  const text = (person, col) => (col.fixed ? person[col.key] || '' : (person.fields[col.key] ||
+    []).map(value => shown(value, genres[col.key], ctx)).join(', '));
+  return person => columns.map(col => [col.label, text(person, col)]);
+}
+
 // La hiérarchie : une ligne par nœud visible, un bouton pour le déplier et un pour le choisir. `ctx` : { t, selected (l'identifiant du nœud), open (Set) }.
 export function treeList(root, ctx) {
   const items = [];
@@ -47,15 +64,24 @@ const pathOf = person => person.levels.filter(Boolean);
 
 const who = person => person.initials ?? initials(person.name);
 
-// Une ligne de la liste : l'avatar à initiales, le nom, le poste, et le niveau le plus bas en pastille (le chemin entier est dans l'info-bulle) puis les champs
-// que le réglage met en liste (`extra`, des textes : décision de la fenêtre « Champs de la fiche »). Un seul bouton : toute la ligne se choisit.
-export function personRow(person, { selected, tabStop, extra = [] }) {
-  return h('button', { type: 'button', class: 'an-person', 'aria-pressed': String(selected), tabindex: tabStop ? '0' : '-1',
+// Une ligne de la liste : l'avatar à initiales, le nom, le poste, les colonnes que le réglage met en colonne (`cells`, des [libellé, texte] : « Colonne » de la
+// fenêtre « Champs de la fiche » ; le libellé ne s'écrit que dans une liste étroite, où les colonnes passent sous le nom), et le niveau le plus bas en pastille
+// (le chemin entier est dans l'info-bulle) puis les champs que le réglage met en liste (`extra`, des textes : « Liste »). Un seul bouton : toute la ligne se
+// choisit.
+export function personRow(person, { selected, tabStop, extra = [], cells = null }) {
+  return h('button', { type: 'button', class: `an-person${cells ? ' has-cols' : ''}`, 'aria-pressed': String(selected), tabindex: tabStop ? '0' : '-1',
     dataset: { act: 'person', row: String(person.row), fk: `pe:${person.row}` } },
   h('span', { class: 'an-av' }, who(person)),
   h('span', { class: 'an-pe-text' }, h('span', { class: 'an-pe-name' }, person.name), person.title ? h('span', { class: 'an-pe-sub' }, person.title) : null),
+  ...(cells || []).map(([label, text]) => h('span', { class: 'an-pe-col', title: text, dataset: { label } }, text)),
   h('span', { class: 'an-pe-pills', title: [...pathOf(person), ...extra].join(' › ') },
     ...[...pathOf(person).slice(-1), ...extra].slice(0, 3).map(value => h('span', { class: 'an-pill' }, value))));
+}
+
+// La ligne de titres au-dessus des lignes d'une liste à colonnes : le nom, puis le libellé de chaque colonne (même grille que les lignes).
+export function columnHead(columns, t) {
+  return h('div', { class: 'an-cols-head', role: 'presentation' }, h('span', null), h('span', { class: 'an-ch' }, t('an.col.name')),
+    ...columns.map(col => h('span', { class: 'an-ch', title: col.label }, col.label)), h('span', null));
 }
 
 // Une carte de contact (la vue « Cartes ») : l'avatar, le nom, le poste, les deux derniers niveaux, l'adresse et le téléphone.
@@ -84,16 +110,16 @@ function peopleLinks(list, key, t) {
   list.length > first.length ? h('span', { class: 'an-pill' }, t('an.rel.more', { n: list.length - first.length })) : null);
 }
 
-// Les lignes de la fiche que les relations donnent : ce que la personne désigne (« Assistant·e : Camille », un tiret quand elle n'a personne : la ligne reste),
-// puis ce qui la désigne (« Assistant·e de : … »), seulement quand la relation a un sens inverse et que quelqu'un la désigne. `ctx.relations` et `ctx.index` :
-// voir js/annuaire/annuaire-relations.js.
+// Les lignes de la fiche que les relations donnent : ce que la personne désigne (« Assistant·e : Camille »), puis ce qui la désigne (« Assistant·e de : … »),
+// seulement quand la relation a un sens inverse. Une relation sans personne n'a pas de ligne (retour du porteur, 25/11 : « ne les afficher que si valeur
+// présente »). `ctx.relations` et `ctx.index` : voir js/annuaire/annuaire-relations.js.
 function relationRows(person, ctx) {
   const { t, relations = [], index } = ctx;
   if (!index) return [];
   return relations.flatMap(rel => {
     const to = index.direct(person, rel);
     const from = rel.inverse ? index.inverse(person, rel) : [];
-    return [ficheRow(rel.label, to.length ? peopleLinks(to, `${rel.key}>`, t) : emptyValue(t), '', t),
+    return [to.length ? ficheRow(rel.label, peopleLinks(to, `${rel.key}>`, t), '', t) : null,
       from.length ? ficheRow(rel.inverse, peopleLinks(from, `${rel.key}<`, t), '', t) : null].filter(Boolean);
   });
 }
@@ -115,7 +141,7 @@ function attachment(person, ctx) {
     vars: { '--d': depth } }, h('span', { class: 'an-hp-k' }, step.label), h('span', { class: 'an-hp-v' }, step.value))));
 }
 
-// Les lignes de coordonnées : l'adresse, le numéro (un lien d'appel), puis les relations (ce que la personne désigne, même vide : un tiret).
+// Les lignes de coordonnées : l'adresse, le numéro (un lien d'appel), puis les relations qui ont une personne.
 function contactRows(person, ctx) {
   const { t } = ctx;
   const rows = [];
@@ -185,8 +211,9 @@ export function filterBar(options, filters, ctx) {
     const visible = [...chosen, ...option.values.filter(entry => !on.has(entry.value))].slice(0, CHIPS_SHOWN);
     const rest = option.values.length - visible.length;
     const chip = entry => h('button', { type: 'button', class: 'an-chip', 'aria-pressed': String(on.has(entry.value)),
+      title: shown(entry.value, option.genre, ctx),
       dataset: { act: 'filter', col: option.col, value: entry.value, fk: `fl:${option.col}:${entry.value}` } },
-    shown(entry.value, option.genre, ctx), h('b', null, String(entry.count)));
+    h('span', { class: 'an-chip-t' }, shown(entry.value, option.genre, ctx)), h('b', null, String(entry.count)));
     return h('div', { class: 'an-fgroup', role: 'group', 'aria-label': option.label || option.col },
       h('span', { class: 'an-flabel' }, option.label || option.col), ...visible.map(chip),
       rest > 0 ? h('button', { type: 'button', class: 'an-chip an-more', title: ctx.t('an.filter.more', { n: rest }),

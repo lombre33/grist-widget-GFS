@@ -365,6 +365,7 @@ async function fieldsProblems(page, t, note, { click, snap }, where) {
   await click(`[data-fk="${first.fk}"]`);
   if ((await snap()).switches.find(sw => sw.fk === first.fk).on === first.on) note('réglage', `${where} : l'interrupteur « ${t('an.fld.col.list')} » ne bascule pas à la souris`);
   await click(`[data-fk="${first.fk}"]`);
+  await columnSwitches(page, t, note, { click, snap }, where, state);
   const dateFilter = dates >= 0 ? state.switches.filter(sw => sw.fk && sw.fk.startsWith('ff:'))[dates - state.fields.filter(field => field.locked).length] : null;
   if (dateFilter && !dateFilter.disabled) note('réglage', `${where} : le filtre d'un champ date n'est pas grisé`);
   const locked = state.switches.filter(sw => sw.fk && sw.fk.startsWith('lk-'));
@@ -373,6 +374,23 @@ async function fieldsProblems(page, t, note, { click, snap }, where) {
   await moveProblems(t, note, { click, snap }, where);
   await sugProblems(t, note, { click, snap }, where, state);
   await contrast(page, note, `${where}, champs`);
+}
+
+// L'interrupteur « Colonne » de chaque champ et celui de l'adresse et du téléphone (retour du porteur, 25/11 : « des colonnes pour les attributs, réglables comme les filtres ») : le
+// titre de la colonne est là, chaque interrupteur bascule à la souris, les deux lignes fixes ont le leur.
+async function columnSwitches(page, t, note, { click, snap }, where, state) {
+  const heads = await page.run(() => [...document.querySelectorAll('.an-frow.is-head span')].map(node => node.textContent.trim()));
+  if (!heads.includes(t('an.fld.col.column'))) note('réglage', `${where} : le titre « ${t('an.fld.col.column')} » manque (${heads.join(' | ')})`);
+  const column = state.switches.find(sw => sw.fk && sw.fk.startsWith('fk:'));
+  const fixed = state.switches.filter(sw => sw.fk && sw.fk.startsWith('fc:'));
+  if (!column) note('réglage', `${where} : aucun interrupteur « ${t('an.fld.col.column')} » sur les champs`);
+  if (fixed.map(sw => sw.fk).join() !== 'fc:email,fc:phone') note('réglage', `${where} : les lignes de l'adresse et du téléphone ont les interrupteurs « ${fixed.map(sw => sw.fk).join(', ')} » (fc:email, fc:phone attendus)`);
+  for (const target of [column, fixed[1]].filter(Boolean)) {
+    await click(`[data-fk="${target.fk}"]`);
+    if ((await snap()).switches.find(sw => sw.fk === target.fk).on === target.on) note('réglage', `${where} : l'interrupteur « ${t('an.fld.col.column')} » (${target.fk}) ne bascule pas à la souris`);
+    await click(`[data-fk="${target.fk}"]`);
+    if ((await snap()).switches.find(sw => sw.fk === target.fk).on !== target.on) note('réglage', `${where} : l'interrupteur « ${t('an.fld.col.column')} » (${target.fk}) ne revient pas à son état`);
+  }
 }
 
 // « Créer une colonne » d'un champ propose six types : ils tiennent tous dans la fenêtre (à la ligne quand la place manque), chacun assez large pour se lire.

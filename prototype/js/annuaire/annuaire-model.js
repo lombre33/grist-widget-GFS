@@ -6,8 +6,8 @@
 // rangée au niveau qu'elle a (« niveau sauté »).
 
 import { columnOf, columnAt } from './annuaire-schema.js';
-import { fieldPath, fieldLabel } from './annuaire-config.js';
-import { initials } from './annuaire-items.js';
+import { fieldPath, fieldLabel, keyPath } from './annuaire-config.js';
+import { initials, levelLabel } from './annuaire-items.js';
 import { idsOf } from './annuaire-relations.js';
 import { normalize, words, matchesWords } from '../ui/search.js';
 
@@ -98,7 +98,7 @@ export function buildPeople(config, tableId, data, schema) {
   const ctx = { ...lookup(data), schema };
   const table = data[tableId];
   if (!table || !Array.isArray(table.id)) return [];
-  const one = (key, i) => (config[key] ? followPath(ctx, tableId, i, [config[key]])[0] || '' : '');
+  const one = (key, i) => (config[key] ? followPath(ctx, tableId, i, keyPath(config[key]))[0] || '' : '');
   const people = table.id.map((row, i) => {
     const managerCell = config.manager && Array.isArray(table[config.manager]) ? table[config.manager][i] : null;
     const lead = config.lead ? followPath(ctx, tableId, i, [config.lead]) : [];
@@ -155,21 +155,37 @@ export function peopleIn(node) {
   return all.sort(bySort);
 }
 
-// Le texte de recherche d'une personne : son nom, son poste, son adresse, ses niveaux et ses champs, comparables (js/ui/search.js).
+// Le texte de recherche d'une personne : tout ce que l'annuaire en sait (retour du porteur, 25/11 : « chercher tout : nom, prénom, étiquette, établissement…
+// »), son nom (le prénom y est), son poste, son adresse, son téléphone, ses niveaux et tous ses champs (qu'ils soient en liste, en colonne ou en filtre),
+// comparables
+// (js/ui/search.js : accents, casse et ponctuation ignorés). Une colonne que l'annuaire ne montre pas n'est pas cherchée : la recherche ne dit rien de plus que
+// la fiche.
 const keys = new WeakMap(); // le texte comparable de chaque personne, calculé une fois (une frappe ne le recalcule pas pour des milliers de personnes)
 export function searchKey(person) {
-  if (!keys.has(person)) keys.set(person, normalize([person.name, person.title, person.email, ...person.levels,
-    ...Object.values(person.fields).flat()].join(' ')));
+  if (!keys.has(person)) keys.set(person, normalize([person.name, person.title, person.email, person.phone, String(person.phone || '').replace(/\D/g, ''),
+    ...person.levels,
+    ...Object.values(person.fields).flat()].filter(Boolean).join(' ')));
   return keys.get(person);
 }
 
-// Les personnes qui passent la recherche (des mots dans n'importe quel ordre) et les filtres : { colonne: Set(valeurs) } ; plusieurs valeurs d'une même colonne
-// s'additionnent (« ou »), les colonnes se cumulent (« et »).
+// La clé du filtre d'un niveau de la hiérarchie (« @L0 » : le premier niveau) : elle ne peut pas être celle d'une colonne (Grist n'en écrit aucune qui commence
+// par « @ »).
+export const levelKey = at => `@L${at}`;
+const levelAt = key => (String(key).startsWith('@L') ? Number(String(key).slice(2)) : -1);
+
+// Les valeurs qu'une personne a pour un filtre : celle de son niveau, ou celles de son champ.
+export function valuesFor(person, key) {
+  const at = levelAt(key);
+  return at >= 0 ? [person.levels[at]].filter(Boolean) : (person.fields[key] || []);
+}
+
+// Les personnes qui passent la recherche (des mots dans n'importe quel ordre) et les filtres : { clé: Set(valeurs) } (la clé d'un champ, ou celle d'un niveau :
+// `levelKey`) ; plusieurs valeurs d'une même clé s'additionnent (« ou »), les clés se cumulent (« et »).
 export function filterPeople(people, { query = '', filters = {} } = {}) {
   const needles = words(query);
   const active = Object.entries(filters).filter(([, set]) => set && set.size > 0);
   return people.filter(person => (!needles.length || matchesWords(needles, searchKey(person))) &&
-    active.every(([col, set]) => (person.fields[col] || []).some(value => set.has(value))));
+    active.every(([key, set]) => valuesFor(person, key).some(value => set.has(value))));
 }
 
 // Le genre de chaque champ, par sa clé (`field.col`) : celui de la dernière colonne de son chemin.
@@ -177,19 +193,33 @@ export function fieldGenres(config, tableId, schema) {
   return Object.fromEntries(config.fields.map(field => [field.col, (columnAt(schema, tableId, fieldPath(field)) || {}).genre]));
 }
 
-// Les filtres que les champs donnent : [{ col, values: [{ value, count }] }] pour chaque champ marqué « filtre » dont le genre s'y prête (un choix, un choix
-// multiple, un oui/non, une référence), avec le nombre de personnes de `people` par valeur (les plus nombreuses d'abord).
+// Les filtres de l'annuaire (retour du porteur, 25/11 : les mêmes partout, la hiérarchie et les champs de la fiche réglés en filtre) : [{ col, label, genre,
+// values: [{ value, count }] }]. D'abord un filtre par niveau de la hiérarchie (`levelKey`), puis un par champ marqué « filtre » dont le genre s'y prête (un
+// choix, un choix multiple, un oui/non, une référence), avec le nombre de personnes de `people` par valeur (les plus nombreuses d'abord).
 export function filterOptions(people, config, schema, tableId) {
-  const options = [];
+  const counted = (key, label, genre) => {
+    const counts = new Map();
+    for (const person of people) for (const value of new Set(valuesFor(person, key))) counts.set(value, (counts.get(value) || 0) + 1);
+    const values = [...counts].map(([value, count]) => ({ value, count })).sort((a, b) => b.count - a.count || a.value.localeCompare(b.value, 'fr'));
+    return { col: key, label, genre, values };
+  };
+  const options = config.levels.map((level, at) => counted(levelKey(at), levelLabel(level), 'text'));
   for (const field of config.fields.filter(each => each.filter)) {
     const col = columnAt(schema, tableId, fieldPath(field));
-    if (!col || !['choice', 'choicelist', 'bool', 'ref', 'reflist'].includes(col.genre)) continue;
-    const counts = new Map();
-    for (const person of people) for (const value of new Set(person.fields[field.col] || [])) counts.set(value, (counts.get(value) || 0) + 1);
-    const values = [...counts].map(([value, count]) => ({ value, count })).sort((a, b) => b.count - a.count || a.value.localeCompare(b.value, 'fr'));
-    options.push({ col: field.col, label: fieldLabel(field), genre: col.genre, values });
+    if (col && ['choice', 'choicelist', 'bool', 'ref', 'reflist'].includes(col.genre)) options.push(counted(field.col, fieldLabel(field), col.genre));
   }
   return options;
+}
+
+// Les personnes de `found` et tous leurs responsables jusqu'au sommet (dans l'ordre de `people`) : de quoi dessiner l'organigramme des responsables d'une
+// recherche sans perdre le fil qui relie ; les responsables ajoutés n'y sont que pour relier.
+export function withManagers(people, found) {
+  const byRow = new Map(people.map(person => [person.row, person]));
+  const keep = new Set();
+  for (const person of found) {
+    for (let at = person; at && !keep.has(at.row); at = at.manager !== null ? byRow.get(at.manager) : null) keep.add(at.row);
+  }
+  return people.filter(person => keep.has(person.row));
 }
 
 // L'arbre des responsables : chaque personne est rangée sous celle que sa colonne `manager` désigne ; sans responsable (ou un responsable qui n'est pas dans

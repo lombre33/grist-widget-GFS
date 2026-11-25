@@ -2,7 +2,7 @@
 // fenêtre, la vraie lecture (js/annuaire/annuaire-store.js) et les vraies feuilles de style de index.html, sur un faux Grist en mémoire (test/fake-grist.mjs) qui tient le document fictif
 // des essais (test/annuaire-fixtures.mjs) plus deux lignes qui poussent la mise en page : un nom, un poste, une adresse et une structure très longs (et le nom très long est l'assistant de quelqu'un). Aucun Grist : ce que l'essai
 // mesure est la mise en page, la souris et le clavier ; ce que Grist envoie vraiment se mesure dans le labo (labo/run-annuaire.mjs). La langue vient de `?lang=fr|en`.
-// `window.__annuaire` est le contrôle ; `window.__annuaireNotices` garde les phrases qu'il dit ; `window.__annuaireLanguage(lang)` change la langue fenêtre ouverte, comme le
+// L'essai part de zéro pour le bouton « Personnes » de l'organigramme (clé `gfs.annuaire.orgPeople` retirée du navigateur). `window.__annuaire` est le contrôle ; `window.__annuaireNotices` garde les phrases qu'il dit ; `window.__annuaireLanguage(lang)` change la langue fenêtre ouverte, comme le
 // contrôleur de GFS ; `window.__annuaireCopied` garde le dernier texte copié (le presse-papiers lui-même se mesure dans le labo).
 import { createI18n } from '/js/i18n/i18n.js';
 import { installSprite } from '/js/ui/icons.js';
@@ -43,9 +43,13 @@ async function mount() {
   let i18n = createI18n(language);
   const locale = lang => (lang === 'en' ? 'en-GB' : 'fr-FR');
   installSprite(document);
+  try { window.localStorage.removeItem('gfs.annuaire.orgPeople'); } catch (error) { /* sans stockage, l'essai part du réglage par défaut */ }
   const grist = fakeGrist(tablesOf(longDocument()));
   const seed = new AnnuaireStore({ port: grist.port, consent: async () => true });
-  await seed.create({ name: 'Annuaire principal', table: 'Personnes', config: configFixture() });
+  // L'annuaire principal met l'adresse et le télétravail (un oui/non) en colonnes de la liste (retour du porteur, 25/11) : toute la mesure de la liste les porte.
+  const base = configFixture();
+  await seed.create({ name: 'Annuaire principal', table: 'Personnes', config: { ...base, columns: ['email'],
+    fields: base.fields.map(field => (field.col === 'Teletravail' ? { ...field, column: true } : field)) } });
   await seed.create({ name: 'Annuaire des directions', table: 'Personnes', config: { ...configFixture(), levels: configFixture().levels.slice(0, 2) } });
   window.__annuaireNotices = [];
   window.__annuaireCopied = null;

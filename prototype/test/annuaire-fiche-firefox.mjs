@@ -1,7 +1,7 @@
 // La fiche d'une personne en sections sous Firefox (règle du 03/11 ; module Annuaire, retour du porteur du 25/11 : « sur le volet droit, le découpage hiérarchique », comme sa
 // carte du suivi de projet), à la vraie souris et sur le vrai contrôle avec un faux Grist en mémoire (test/pages/annuaire.js). Suite de test/annuaire-firefox.mjs. À mesurer :
 // les trois sections dans l'ordre (Coordonnées, Rattachement, Informations) avec leur titre, le rattachement (chaque niveau un cran plus bas, puis le poste, tout dans la fiche),
-// une relation vide qui garde sa ligne avec un tiret, « Écrire » (un lien « mailto: » qui s'ouvre à part, absent sans adresse), et la lisibilité de chaque texte.
+// une relation sans personne qui n'a pas de ligne (retour du porteur, 25/11 : « ne les afficher que si valeur présente »), « Écrire » (un lien « mailto: » qui s'ouvre à part, absent sans adresse), et la lisibilité de chaque texte.
 import { delay } from './corbeille-firefox.mjs';
 import { contrasts } from './vitrine-firefox.mjs';
 
@@ -17,6 +17,7 @@ function sectionsSnap() {
     box: box(card), sections: [...card.querySelectorAll('.an-fs')].map(each => ({ title: text(each.querySelector('.an-fs-h')), box: box(each) })),
     steps: [...card.querySelectorAll('.an-hp-step')].map(step => ({ key: text(step.querySelector('.an-hp-k')), value: text(step.querySelector('.an-hp-v')), sub: step.classList.contains('is-sub'), box: box(step) })),
     empties: [...card.querySelectorAll('.an-fr')].filter(row => row.querySelector('.an-empty')).map(row => text(row.querySelector('dt'))),
+    labels: [...card.querySelectorAll('.an-fr')].map(row => text(row.querySelector('dt'))),
     write: write ? { href: write.getAttribute('href'), target: write.target, rel: write.rel, text: text(write), box: box(write) } : null,
     subtitle: card.querySelector('.an-fiche-id .an-pe-sub') ? text(card.querySelector('.an-fiche-id .an-pe-sub')) : '',
   };
@@ -50,7 +51,9 @@ export async function ficheSectionsProblems(page, t, note, click) {
     if (i && !step.sub) note('fiche', `${where} : l'étage « ${step.key} » n'a pas son trait`);
     if (i > 0 && step.box.top <= snap.steps[i - 1].box.top) note('fiche', `${where} : l'étage « ${step.key} » n'est pas sous le précédent`);
   });
-  if (!snap.empties.includes('Assistant·e')) note('fiche', `${where} : une relation vide n'a pas sa ligne avec un tiret (${snap.empties.join(' | ') || 'aucune'})`);
+  if (snap.labels.some(label => label.startsWith('Assistant·e'))) note('fiche', `${where} : une relation sans personne garde sa ligne (${snap.labels.join(' | ')})`);
+  if (snap.empties.some(label => label.startsWith('Assistant·e') || label.startsWith('Référent·e'))) note('fiche', `${where} : une relation sans personne a un tiret (${snap.empties.join(' | ')})`);
+  if (!snap.labels.includes('Référent·e')) note('fiche', `${where} : la relation qui a des personnes (« Référent·e ») perd sa ligne (${snap.labels.join(' | ')})`);
   if (!snap.write) note('fiche', `${where} : « ${t('an.write')} » manque`);
   else {
     if (snap.write.href !== 'mailto:camille.durand@exemple.fr' || snap.write.target !== '_blank' || !snap.write.rel.includes('noopener')) note('fiche', `${where} : « ${t('an.write')} » est ${JSON.stringify(snap.write)}`);

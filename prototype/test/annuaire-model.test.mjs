@@ -2,10 +2,11 @@
 // la recherche, les filtres et l'arbre des responsables. Sur un document fictif (test/annuaire-fixtures.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readConfig, writeConfig, annuairesOf, newRecord, addAction, effectiveConfig, fieldPath, fieldLabel, ANNUAIRES_COLUMNS } from '../js/annuaire/annuaire-config.js';
+import { readConfig, writeConfig, annuairesOf, newRecord, addAction, effectiveConfig, fieldPath, fieldLabel, keyPath, ANNUAIRES_COLUMNS } from '../js/annuaire/annuaire-config.js';
 import { schemaOf, genreOf, targetOf, isPeopleTable, tablesNeeded, columnOf, columnAt } from '../js/annuaire/annuaire-schema.js';
-import { valuesOf, followPath, buildPeople, buildTree, findNode, peopleIn, searchKey, filterPeople, filterOptions, managerTree, nameOf, fieldGenres } from '../js/annuaire/annuaire-model.js';
-import { telHref } from '../js/annuaire/annuaire-items.js';
+import { valuesOf, followPath, buildPeople, buildTree, findNode, peopleIn, searchKey, filterPeople, filterOptions, managerTree, withManagers, nameOf, fieldGenres,
+  levelKey, valuesFor } from '../js/annuaire/annuaire-model.js';
+import { telHref, listColumns } from '../js/annuaire/annuaire-items.js';
 import { documentFixture, configFixture, metaTables, metaColumns } from './annuaire-fixtures.mjs';
 
 const doc = documentFixture();
@@ -28,7 +29,7 @@ test('config : les niveaux sans colonne et les champs en double sont écartés, 
     fields: [{ col: 'Contrat', filter: 1 }, { col: 'Contrat' }, { col: '' }, { col: 'Site', filter: false }], inconnue: 'perdue' });
   assert.equal(config.name, 'Nom');
   assert.deepEqual(config.levels, [{ label: 'Pôle', path: ['Structure', 'Pole'] }]);
-  assert.deepEqual(config.fields, [{ col: 'Contrat', path: [], filter: true, list: false }, { col: 'Site', path: [], filter: false, list: false }]);
+  assert.deepEqual(config.fields, [{ col: 'Contrat', path: [], filter: true, list: false, column: false }, { col: 'Site', path: [], filter: false, list: false, column: false }]);
   assert.equal('inconnue' in config, false);
   assert.deepEqual(readConfig(writeConfig(config)), config);
 });
@@ -166,7 +167,7 @@ test('filtres : « ou » dans un champ, « et » entre les champs', () => {
 });
 
 test('filtres : un filtre par champ marqué, avec le nombre de personnes par valeur ; une date n\'en donne pas', () => {
-  const options = filterOptions(people, configFixture(), schema, 'Personnes');
+  const options = filterOptions(people, configFixture(), schema, 'Personnes').filter(option => !option.col.startsWith('@L'));
   assert.deepEqual(options.map(option => option.col), ['Contrat', 'Competences', 'Teletravail']);
   assert.deepEqual(options[0].values, [{ value: 'Titulaire', count: 5 }, { value: 'Contractuelle', count: 1 }]);
   assert.deepEqual(options[1].values.map(value => [value.value, value.count]), [['Marchés publics', 2], ['Budget', 1], ['Pilotage', 1]]);
@@ -212,7 +213,7 @@ test('config : l\'ordre du nom est celui qu\'on a dit, sinon « prénom nom » ;
   assert.equal(readConfig({ order: 'last-comma' }).order, 'last-comma');
   assert.deepEqual([readConfig({}).upper, readConfig({ upper: true }).upper, readConfig({ upper: 'oui' }).upper], [false, true, false]);
   assert.equal(readConfig({ first: ' Prénom ' }).first, 'Prénom');
-  assert.deepEqual(readConfig({ fields: [{ col: 'Contrat', list: true }] }).fields, [{ col: 'Contrat', path: [], filter: false, list: true }]);
+  assert.deepEqual(readConfig({ fields: [{ col: 'Contrat', list: true }] }).fields, [{ col: 'Contrat', path: [], filter: false, list: true, column: false }]);
 });
 
 test('nom : une colonne seule, ou le prénom et le nom dans l\'ordre dit ; le tri est par nom de famille, les initiales celles du prénom et du nom', () => {
@@ -262,16 +263,17 @@ test('numéro : le lien d\'appel ne garde que ce qui se compose (chiffres, « + 
 
 test('champs : une colonne de la table, ou un chemin à suivre (retour du porteur, 25/11) ; sa clé, son nom, son genre, ses valeurs, son filtre et les tables lues', () => {
   const read = readConfig({ fields: [{ col: 'Contrat' }, { path: ['Structure', 'Pole'], filter: true, list: true }, { col: 'Structure', path: ['Structure'] }, { path: ['Structure', 'Pole'] }] });
-  assert.deepEqual(read.fields, [{ col: 'Contrat', path: [], filter: false, list: false }, { col: 'Structure › Pole', path: ['Structure', 'Pole'], filter: true, list: true },
-    { col: 'Structure', path: [], filter: false, list: false }], 'une colonne seule garde sa clé ; le même chemin ne compte qu\'une fois');
+  assert.deepEqual(read.fields, [{ col: 'Contrat', path: [], filter: false, list: false, column: false },
+    { col: 'Structure › Pole', path: ['Structure', 'Pole'], filter: true, list: true, column: false },
+    { col: 'Structure', path: [], filter: false, list: false, column: false }], 'une colonne seule garde sa clé ; le même chemin ne compte qu\'une fois');
   const [contrat, chemin] = read.fields;
   assert.deepEqual([fieldPath(contrat), fieldPath(chemin), fieldLabel(contrat), fieldLabel(chemin)], [['Contrat'], ['Structure', 'Pole'], 'Contrat', 'Pole']);
-  assert.deepEqual(JSON.parse(writeConfig(read)).fields[1], { col: 'Structure › Pole', path: ['Structure', 'Pole'], filter: true, list: true });
+  assert.deepEqual(JSON.parse(writeConfig(read)).fields[1], { col: 'Structure › Pole', path: ['Structure', 'Pole'], filter: true, list: true, column: false });
   const config = { ...configFixture(), fields: [{ col: 'Pôle de la structure', path: ['Structure', 'Pole'], filter: true, list: true }] };
   const built = buildPeople(config, 'Personnes', doc, schema);
   assert.deepEqual(built.find(person => person.row === 1).fields['Pôle de la structure'], ['Pôle Ressources']);
   assert.deepEqual(fieldGenres(config, 'Personnes', schema), { 'Pôle de la structure': 'ref' });
-  const options = filterOptions(built, config, schema, 'Personnes');
+  const options = filterOptions(built, config, schema, 'Personnes').filter(option => !option.col.startsWith('@L'));
   assert.equal(options[0].col, 'Pôle de la structure');
   assert.equal(options[0].label, 'Pole');
   assert.ok(options[0].values.some(entry => entry.value === 'Pôle Ressources'));
@@ -279,4 +281,65 @@ test('champs : une colonne de la table, ou un chemin à suivre (retour du porteu
   assert.equal(columnAt(schema, 'Personnes', ['Nom', 'Pole']), null, 'on ne suit qu\'une référence simple');
   assert.equal(columnAt(schema, 'Personnes', ['Inconnue']), null);
   assert.ok(tablesNeeded(config, 'Personnes', schema).has('Structures'), 'le chemin d\'un champ fait lire la table qu\'il suit');
+});
+
+// ---------- les sept retours du 25/11 (colonnes de la liste, sous-attribut d'une référence, filtres d'organigramme, recherche) ----------
+
+test('config : un champ garde « colonne », les colonnes fixes (adresse, numéro) se gardent dans l\'ordre de la liste, le reste est écarté', () => {
+  const read = readConfig({ columns: ['phone', 'email', 'phone', 'poste', 3], fields: [{ col: 'Contrat', column: true }, { col: 'Site', column: 1 }, { col: 'Service' }] });
+  assert.deepEqual(read.columns, ['email', 'phone']);
+  assert.deepEqual(read.fields.map(field => field.column), [true, true, false]);
+  assert.deepEqual(readConfig({}).columns, []);
+  assert.deepEqual(readConfig(writeConfig(read)), read);
+  const config = readConfig({ email: 'Email', phone: 'Tel', columns: ['email', 'phone'], fields: [{ col: 'Contrat', column: true }, { col: 'Site', column: false }] });
+  const t = key => ({ 'an.mail': 'E-mail', 'an.phone': 'Téléphone' })[key];
+  assert.deepEqual(listColumns(config, t), [{ key: 'email', label: 'E-mail', fixed: true }, { key: 'phone', label: 'Téléphone', fixed: true },
+    { key: 'Contrat', label: 'Contrat', fixed: false }]);
+  assert.deepEqual(listColumns(readConfig({ phone: 'Tel', columns: ['email'] }), t), [], 'une colonne fixe sans colonne de la table n\'a rien à montrer');
+});
+
+test('chemins : le poste, le nom, l\'adresse peuvent suivre une référence (« Structure › Niveau ») ; les tables suivies sont lues', () => {
+  assert.deepEqual(keyPath('Structure › Niveau'), ['Structure', 'Niveau']);
+  assert.deepEqual(keyPath('Poste'), ['Poste']);
+  assert.deepEqual(keyPath(''), []);
+  const config = { ...configFixture(), title: 'Structure › Niveau' };
+  const list = buildPeople(config, 'Personnes', doc, schema);
+  assert.equal(list.find(person => person.row === 1).title, 'Service', 'le poste est la colonne choisie de la table liée, pas ce que la référence affiche');
+  assert.equal(list.find(person => person.row === 3).title, 'Direction');
+  assert.ok(tablesNeeded(config, 'Personnes', schema).has('Structures'));
+  assert.equal(buildPeople({ ...configFixture(), title: 'Structure › Inconnue' }, 'Personnes', doc, schema).every(person => person.title === ''), true);
+});
+
+test('recherche : le nom (prénom compris), le poste, l\'adresse, le numéro avec ou sans espaces, les niveaux et les champs', () => {
+  const found = query => filterPeople(people, { query }).map(person => person.row);
+  assert.deepEqual(found('camille'), [1]);
+  assert.deepEqual(found('0102030411'), [1], 'le numéro se trouve sans ses espaces');
+  assert.deepEqual(found('01 02 03'), [1]);
+  assert.deepEqual(found('titulaire pilotage'), [4], 'un champ de la fiche (le contrat, une compétence) se cherche');
+  assert.deepEqual(found('siège'), [], 'une colonne que l\'annuaire ne montre pas (ici « Site ») n\'est pas cherchée');
+  assert.deepEqual(found('ressources'), [1, 5, 2, 3], 'un niveau de la hiérarchie se cherche');
+});
+
+test('filtres : un filtre par niveau de la hiérarchie, puis ceux des champs ; les mêmes valeurs pour l\'un et pour l\'autre', () => {
+  const options = filterOptions(people, configFixture(), schema, 'Personnes');
+  assert.deepEqual(options.slice(0, 3).map(option => [option.col, option.label]), [[levelKey(0), 'Pôle'], [levelKey(1), 'Direction'], [levelKey(2), 'Service']]);
+  assert.deepEqual(options[0].values.map(entry => [entry.value, entry.count]), [['Pôle Ressources', 4], ['Pôle Numérique', 1], ['Pôle Vie de campus', 1]]);
+  const person = people.find(each => each.row === 1);
+  assert.deepEqual([valuesFor(person, levelKey(0)), valuesFor(person, levelKey(2)), valuesFor(person, 'Contrat'), valuesFor(person, 'Inconnu')],
+    [['Pôle Ressources'], ['Budget'], ['Titulaire'], []]);
+  const found = filters => filterPeople(people, { filters }).map(each => each.row);
+  assert.deepEqual(found({ [levelKey(0)]: new Set(['Pôle Numérique']) }), [4]);
+  assert.deepEqual(found({ [levelKey(0)]: new Set(['Pôle Ressources']), Contrat: new Set(['Contractuelle']) }), [2], 'un niveau et un champ se cumulent (« et »)');
+  assert.deepEqual(found({ [levelKey(0)]: new Set(['Pôle Numérique', 'Pôle Vie de campus']) }), [4, 6], 'plusieurs valeurs d\'un niveau s\'additionnent (« ou »)');
+  assert.deepEqual(filterOptions(people, { ...configFixture(), levels: [] }, schema, 'Personnes').some(option => option.col.startsWith('@L')), false);
+});
+
+test('responsables : une recherche garde aussi leurs responsables, jusqu\'au sommet, pour que le fil ne casse pas', () => {
+  const found = filterPeople(people, { query: 'camille' });
+  const kept = withManagers(people, found).map(person => person.row);
+  assert.deepEqual(kept.sort(), [1, 3, 5], 'Camille, son responsable Nathan, puis Emma');
+  assert.deepEqual(managerTree(withManagers(people, found)).map(node => node.person.row), [5]);
+  assert.deepEqual(withManagers(people, []), []);
+  const loop = [{ row: 1, name: 'A', manager: 2 }, { row: 2, name: 'B', manager: 1 }];
+  assert.equal(withManagers(loop, [loop[0]]).length, 2, 'un cycle ne boucle pas');
 });

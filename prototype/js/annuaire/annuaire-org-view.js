@@ -5,7 +5,7 @@
 
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
-import { layoutOrg, defaultOpen, step, fitZoom } from './annuaire-org.js';
+import { layoutOrg, defaultOpen, allOpen, step, fitZoom } from './annuaire-org.js';
 
 // La carte (largeur, hauteur) et l'espace entre deux cartes d'un étage (gx) et entre deux étages (gy) ; chaque petite ligne de relation ajoute LINE à la
 // hauteur.
@@ -27,8 +27,11 @@ export class OrgView {
   #size = { width: 0, height: 0 };
   #layout = null;
   #lines = 0;
+  #expand = '';
+  #emptyText = '';
 
-  // opts : { t, onPick(item), onMode(id), onNote(texte) } ; `item` est l'élément dont la carte a reçu le clic.
+  // opts : { t, onPick(item), onMode(id), onTool(geste, données) } ; `item` est l'élément dont la carte a reçu le clic ; `onTool` reçoit les clics des boutons
+  //   que la fenêtre a mis dans `tools`.
   constructor(opts) {
     this.#opts = opts;
     this.#t = opts.t;
@@ -37,13 +40,14 @@ export class OrgView {
       modes: h('div', { class: 'an-seg', role: 'group' }),
       out: button('org-out', 'minus'), zoom: h('span', { class: 'an-zoom', 'aria-live': 'polite' }), in: button('org-in', 'plus'),
       fit: button('org-fit', 'fit'), all: button('org-all', 'chev-down'),
+      tools: h('div', { class: 'an-org-tools' }),
       canvas: h('div', { class: 'an-org-canvas' }),
       empty: h('p', { class: 'an-org-none', hidden: true }),
     };
     this.#refs.sheet = h('div', { class: 'an-org-sheet' }, this.#refs.canvas);
     this.#refs.scroll = h('div', { class: 'an-org-scroll', tabindex: '0', role: 'group' }, this.#refs.sheet, this.#refs.empty);
     this.element = h('div', { class: 'an-org' },
-      h('div', { class: 'an-org-bar' }, this.#refs.modes, h('span', { class: 'an-grow' }),
+      h('div', { class: 'an-org-bar' }, this.#refs.modes, this.#refs.tools, h('span', { class: 'an-grow' }),
         h('div', { class: 'an-zoombar', role: 'group' }, this.#refs.out, this.#refs.zoom, this.#refs.in, this.#refs.fit, this.#refs.all)),
       this.#refs.scroll);
     this.#refs.canvas.style.setProperty('--ow', `${BOX.w}px`);
@@ -57,19 +61,29 @@ export class OrgView {
     this.#labels();
   }
 
-  // Montre `roots` ([{ id, ch, card, pick }]). `key` : change quand ce sont d'autres éléments (un autre annuaire, l'autre organigramme) : les branches repliées
-  // et le zoom repartent de zéro, sinon ils restent comme la personne les a laissés. `modes` : [{ id, label, greyed, why }] ; `selected` : l'identifiant de
-  // l'élément choisi ; `lines` : combien de petites lignes de relation les cartes peuvent porter (elles gardent toutes la même hauteur).
-  show(roots, { key, selected = '', modes = [], mode = '', lines = 0 }) {
+  // L'endroit des boutons que la fenêtre ajoute à la barre (les filtres, les personnes) : elle les dessine, l'organigramme ne fait que leur donner la place.
+  get tools() { return this.#refs.tools; }
+
+  // Montre `roots` ([{ id, ch, card, pick, people }]). `key` : change quand ce sont d'autres éléments (un autre annuaire, l'autre organigramme) : les branches
+  // repliées et le zoom repartent de zéro, sinon ils restent comme la personne les a laissés. `expand` : change quand ce qu'on voit change de fond (les
+  // filtres, la recherche, les personnes) : tout se déplie de nouveau (jusqu'au niveau le plus bas) et le dessin se recentre. `modes` : [{ id, label, greyed,
+  // why }] ;
+  // `selected` : l'identifiant de l'élément choisi ; `lines` : combien de petites lignes de relation les cartes peuvent porter (elles gardent toutes la même
+  // hauteur) ; `empty` : ce que le dessin dit quand il n'a rien à montrer (le texte par défaut : l'annuaire est vide).
+  show(roots, { key, expand = '', selected = '', modes = [], mode = '', lines = 0, empty = '' }) {
     const fresh = key !== this.#key;
+    const changed = !fresh && expand !== this.#expand;
     this.#lines = lines;
     this.#roots = roots;
     this.#selected = selected;
     this.#modes = modes;
     this.#mode = mode;
-    if (fresh) { this.#key = key; this.#open = defaultOpen(roots); }
+    this.#expand = expand;
+    this.#emptyText = empty;
+    if (fresh) this.#key = key;
+    if (fresh || changed) this.#open = defaultOpen(roots);
     this.#render();
-    if (fresh) this.start();
+    if (fresh || changed) this.start();
   }
 
   // Le premier regard : tout l'organigramme quand il tient à un zoom lisible (80 % au moins), sinon 80 %, centré sur la première carte.
@@ -100,14 +114,11 @@ export class OrgView {
     all.replaceChildren(icon(this.#allOpen() ? 'chev-up' : 'chev-down'));
     scroll.setAttribute('aria-label', t('an.org.label'));
     modes.setAttribute('aria-label', t('an.org.modes'));
-    this.#refs.empty.textContent = t('an.org.none');
+    this.#refs.empty.textContent = this.#emptyText || t('an.org.none');
   }
 
   #allOpen() {
-    let every = true;
-    const walk = item => { if (item.ch.length && !this.#open.has(item.id)) every = false; item.ch.forEach(walk); };
-    this.#roots.forEach(walk);
-    return every;
+    return [...allOpen(this.#roots)].every(id => this.#open.has(id));
   }
 
   #render() {
@@ -140,8 +151,9 @@ export class OrgView {
     const { item } = entry;
     const { card } = item;
     const t = this.#t;
+    if (entry.person) return this.#personCard(entry);
     const extra = (card.lines || []).map(text => h('span', { class: 'an-oc-line', title: text }, text));
-    const body = h('button', { type: 'button', class: 'an-oc', 'aria-pressed': String(item.id === this.#selected),
+    const body = h('button', { type: 'button', class: `an-oc${card.dim ? ' is-dim' : ''}`, 'aria-pressed': String(item.id === this.#selected),
       dataset: { act: 'org-pick', id: item.id, fk: `oc:${item.id}` } },
       card.initials ? h('span', { class: 'an-av' }, card.initials) : null,
       h('span', { class: 'an-oc-text' }, h('span', { class: 'an-oc-title' }, card.title), card.head ||
@@ -154,6 +166,16 @@ export class OrgView {
         'aria-label': t(opened ? 'an.org.fold' : 'an.org.unfold', { n: item.ch.length }), dataset: { act: 'org-fold', id: item.id, fk: `of:${item.id}` } },
       opened ? icon('chev-up') : `+${item.ch.length}`) : null;
     return h('div', { class: 'an-ocw', vars: { '--x': `${entry.x}px`, '--y': `${entry.y}px` } }, body, fold);
+  }
+
+  // Une personne sous sa structure (le bouton « Personnes ») : une petite carte d'une ligne, le nom et le poste.
+  #personCard(entry) {
+    const { card } = entry.item;
+    const body = h('button', { type: 'button', class: 'an-oc is-person', 'aria-pressed': String(entry.item.id === this.#selected),
+      title: [card.title, card.sub].filter(Boolean).join(' · '),
+      dataset: { act: 'org-pick', id: entry.item.id, fk: `oc:${entry.item.id}` } }, h('span', { class: 'an-av an-av-s' }, card.initials),
+    h('span', { class: 'an-oc-text' }, h('span', { class: 'an-oc-title' }, card.title), card.sub ? h('span', { class: 'an-oc-sub' }, card.sub) : null));
+    return h('div', { class: 'an-ocw is-person', vars: { '--x': `${entry.x}px`, '--y': `${entry.y}px`, '--oh': `${entry.h}px` } }, body);
   }
 
   #paintModes() {
@@ -193,11 +215,12 @@ export class OrgView {
     else if (act === 'org-fold') this.#toggle(id);
     else if (act === 'org-mode') this.#opts.onMode(mode);
     else if (act === 'org-pick') this.#opts.onPick(this.#find(id));
+    else this.#opts.onTool(act, button.dataset);
   }
 
   #find(id) {
     let found = null;
-    const walk = item => { if (item.id === id) found = item; else item.ch.forEach(walk); };
+    const walk = item => { if (item.id === id) found = item; else { item.ch.forEach(walk); if (!found) (item.people || []).forEach(walk); } };
     this.#roots.forEach(walk);
     return found;
   }
@@ -213,8 +236,7 @@ export class OrgView {
   // Tout déplier quand une branche est repliée, sinon tout replier sauf la racine.
   #toggleAll() {
     if (this.#allOpen()) this.#open = new Set(this.#roots.map(root => root.id));
-    else { const every = new Set(); const walk = item => { if (item.ch.length) every.add(item.id); item.ch.forEach(walk); }; this.#roots.forEach(walk);
-      this.#open = every; }
+    else this.#open = allOpen(this.#roots);
     this.#render();
   }
 

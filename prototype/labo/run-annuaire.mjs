@@ -17,9 +17,10 @@ const scheme = process.env.LAB_SCHEME || 'light';
 const run = `annuaire-${lang}-${scheme}`;
 const T = lang === 'fr'
   ? { open: 'Annuaire', none: 'Aucun annuaire dans ce document', create: 'Nouvel annuaire', name: 'Annuaire de l’établissement', pole: 'Pôle', direction: 'Direction', service: 'Service',
-    structures: 'Structures', managers: 'Responsables', fit: 'Tout voir', assistant: 'Assistant·e', referent: 'Référent·e', contact: 'Coordonnées', attach: 'Rattachement', info: 'Informations' }
+    structures: 'Structures', managers: 'Responsables', fit: 'Tout voir', assistant: 'Assistant·e', referent: 'Référent·e', contact: 'Coordonnées', attach: 'Rattachement', info: 'Informations',
+    column: 'Colonne', mail: 'E-mail', yes: 'Oui', no: 'Non' }
   : { open: 'Directory', none: 'No directory in this document', create: 'New directory', name: 'Staff directory', pole: 'Pole', direction: 'Direction', service: 'Service',
-    structures: 'Structures', managers: 'Managers', fit: 'Fit to view', assistant: 'Assistant', referent: 'Referent', contact: 'Contact', attach: 'Placement', info: 'Details' };
+    structures: 'Structures', managers: 'Managers', fit: 'Fit to view', assistant: 'Assistant', referent: 'Referent', contact: 'Contact', attach: 'Placement', info: 'Details', column: 'Column', mail: 'Email', yes: 'Yes', no: 'No' };
 const lab = await startLab({ lang, colorScheme: scheme });
 const { page } = lab;
 const problems = [];
@@ -200,6 +201,13 @@ const made = await frame.evaluate(async () => { const meta = await grist.docApi.
 check('Grist a reçu la colonne « Matricule » (texte), vide', Boolean(made) && made.type === 'Text', made);
 check('la colonne créée est un champ de la fiche', (await setup.locator('.an-frow:not(.is-head) .an-f-name', { hasText: 'Matricule' }).count()) === 1);
 await lab.shotPanel(run, '4-champs');
+// « Colonne » : l'adresse (ligne fixe) et le télétravail (un oui/non) deviennent des colonnes de la liste, comme les filtres se règlent par champ.
+check('le tableau des champs a son titre « Colonne », et un interrupteur par champ et pour l’adresse', (await setup.locator('.an-frow.is-head').textContent()).includes(T.column)
+  && (await setup.locator('[data-fk^="fk:"]').count()) === 6 && (await setup.locator('[data-fk="fc:email"]').count()) === 1 && (await setup.locator('[data-fk="fc:phone"]').count()) === 1);
+await setup.locator('[data-fk="fc:email"]').click();
+await setup.locator('[data-fk="fk:2"]').click();
+check('« Colonne » s’allume à la souris, sur une ligne fixe et sur un champ', (await setup.locator('[data-fk="fc:email"]').getAttribute('aria-checked')) === 'true'
+  && (await setup.locator('[data-fk="fk:2"]').getAttribute('aria-checked')) === 'true' && (await setup.locator('[data-fk="fk:0"]').getAttribute('aria-checked')) === 'false');
 const noFilter = await setup.locator('.an-frow:not(.is-head):not(.is-locked)').evaluateAll(rows => rows.map(row => [row.innerText.trim(), row.querySelector('[data-act="fld-filter"]').getAttribute('aria-disabled')]));
 check('un champ qui ne se prête pas à un filtre garde son interrupteur, grisé (la date)', noFilter.some(([text, disabled]) => text.includes('Arrivee') && disabled === 'true')
   && noFilter.some(([text, disabled]) => text.includes('Contrat') && disabled !== 'true'), noFilter);
@@ -214,6 +222,9 @@ check('la table GFS_Annuaires existe maintenant', (await tables()).includes('GFS
 check('la hiérarchie montre le nom de l’annuaire et ses trois pôles', (await frame.locator('.an-tn-name').allInnerTexts()).slice(0, 4).join('|') === `${T.name}|Pôle Numérique|Pôle Ressources|Pôle Vie de campus`,
   await frame.locator('.an-tn-name').allInnerTexts());
 await lab.shotPanel(run, '6-liste');
+const cells = await frame.locator('.an-person').first().locator('.an-pe-col').evaluateAll(nodes => nodes.map(node => [node.dataset.label, node.innerText, getComputedStyle(node, '::before').content]));
+check('les colonnes de la liste : l’adresse et le télétravail (« oui » ou « non » en toutes lettres), chacune avec son libellé', cells.length === 2 && cells[0][0] === T.mail && cells[0][1].includes('@')
+  && cells[1][0] === 'Teletravail' && [T.yes, T.no].includes(cells[1][1]) && cells.every(cell => cell[2].includes(cell[0])), cells);
 
 // 3. Parcourir : un nœud, une personne, la recherche, un filtre.
 const rows = () => frame.locator('.an-person');
@@ -230,8 +241,8 @@ check('la fiche est en sections : Coordonnées, Rattachement (le découpage hié
   await frame.locator('.an-side .an-fs-h').allInnerTexts());
 check('le rattachement de Camille : Pôle › Direction › Service puis le poste, un cran plus bas chaque fois', (await frame.locator('.an-side .an-hp-v').allInnerTexts()).join('|') === 'Pôle Ressources|Direction des finances|Budget|Cheffe du service Budget',
   await frame.locator('.an-side .an-hp-v').allInnerTexts());
-check('la fiche dit ses relations : les référents de Camille, un tiret pour l’assistant·e qu’elle n’a pas', (await frame.locator('.an-side .an-fr', { hasText: T.referent }).innerText()).includes('Emma Rolland')
-  && (await frame.locator('.an-side .an-fr', { hasText: T.assistant }).first().locator('.an-empty').count()) === 1);
+check('la fiche dit ses relations : les référents de Camille ; pas de ligne pour l’assistant·e qu’elle n’a pas', (await frame.locator('.an-side .an-fr', { hasText: T.referent }).innerText()).includes('Emma Rolland')
+  && (await frame.locator('.an-side .an-fr', { hasText: T.assistant }).count()) === 0, await frame.locator('.an-side .an-fr dt').allInnerTexts());
 await lab.shotPanel(run, '7-fiche');
 await frame.locator('.an-side [data-act="copy"]').first().click();
 await settleUi();
@@ -241,6 +252,10 @@ await frame.locator('[data-fk="search"]').click();
 await page.keyboard.type('numérique louis');
 await settleUi();
 check('la recherche cherche dans tout l’annuaire, des mots dans n’importe quel ordre', (await rows().count()) === 1 && (await rows().first().innerText()).includes('Louis Girard'), await rows().allInnerTexts());
+const searchFor = async text => { await page.keyboard.press('Control+A'); await page.keyboard.type(text); await settleUi(); return rows().evaluateAll(nodes => nodes.map(node => node.querySelector('.an-pe-name').textContent)); };
+check('la recherche trouve aussi un champ de la fiche (« marchés publics ») et un numéro sans ses espaces', (await searchFor('marchés publics')).join('|') === 'Camille Durand|Inès Marchand'
+  && (await searchFor('0102030411')).join('|') === 'Camille Durand', await searchFor('marchés publics'));
+check('la recherche trouve un niveau de la hiérarchie et un contrat', (await searchFor('contractuelle')).length === 4 && (await searchFor('budget')).includes('Théo Lambert'), await searchFor('contractuelle'));
 await page.keyboard.press('Control+A');
 await page.keyboard.press('Backspace');
 await frame.locator('.an-tb', { hasText: T.name }).click();
@@ -264,6 +279,8 @@ await lab.shotPanel(run, '9-cartes');
 await frame.locator('[data-fk="v:org"]').click();
 await settleUi();
 check('l’organigramme des structures se dessine : des cartes, des traits', (await frame.locator('.an-oc').count()) >= 4 && (await frame.locator('.an-lines path').count()) >= 3);
+check('déplié jusqu’au niveau le plus bas dès le premier regard (aucune branche repliée, « Budget » est là)', (await frame.locator('.an-fold[aria-expanded="false"]').count()) === 0
+  && (await frame.locator('.an-oc', { hasText: 'Budget' }).count()) >= 1 && (await frame.locator('.an-oc.is-person').count()) === 0, await frame.locator('.an-oc .an-oc-title').allInnerTexts());
 await lab.shotPanel(run, '10-organigramme');
 await frame.locator('[data-fk="org-fit"]').click();
 await settleUi();
@@ -288,10 +305,61 @@ await settleUi();
 check('un clic sur une structure ouvre sa fiche (nombre, « Voir les personnes »)', (await frame.locator('.an-side').isVisible()) && (await frame.locator('.an-side [data-act="node-list"]').count()) === 1,
   await frame.locator('.an-side').innerText());
 await lab.shotPanel(run, '11-fiche-structure');
+await frame.locator('.an-side-x').click();
+await settleUi();
+// Les filtres de l'organigramme sont ceux de la liste (niveaux d'abord) ; « Personnes » dessine une petite carte par personne sans clic de plus, et se retient.
+await frame.locator('.an-org-tools [data-fk="filters"]').click();
+await settleUi();
+await frame.locator('.an-filters .an-chip', { hasText: 'Pôle Numérique' }).first().click();
+await settleUi();
+const structuresDrawn = () => frame.locator('.an-oc:not(.is-person) .an-oc-title').allInnerTexts();
+check('un filtre de niveau réduit l’organigramme à sa branche (l’annuaire, le pôle et ses deux directions)', (await structuresDrawn()).length === 4 && (await structuresDrawn()).includes('Pôle Numérique'), await structuresDrawn());
+await frame.locator('.an-org-tools [data-fk="org-people"]').click();
+await settleUi();
+check('« Personnes » dessine les quatre personnes du pôle, une petite carte chacune', (await frame.locator('.an-oc.is-person').count()) === 4
+  && (await frame.locator('.an-oc.is-person .an-oc-title').allInnerTexts()).includes('Louis Girard'), await frame.locator('.an-oc.is-person .an-oc-title').allInnerTexts());
+check('le choix « Personnes » est retenu sur le navigateur', (await frame.evaluate(() => window.localStorage.getItem('gfs.annuaire.orgPeople'))) === '1');
+await lab.shotPanel(run, '10c-organigramme-filtre');
+await frame.locator('.an-filters .an-chip[aria-pressed="true"]').first().click();
+await frame.locator('.an-org-tools [data-fk="filters"]').click();
+await frame.locator('[data-fk="search"]').click();
+await page.keyboard.type('camille');
+await settleUi();
+check('la recherche réduit aussi l’organigramme : la branche de Camille et sa petite carte', (await structuresDrawn()).length === 4 && (await frame.locator('.an-oc.is-person .an-oc-title').allInnerTexts()).join('|') === 'Camille Durand',
+  [await structuresDrawn(), await frame.locator('.an-oc.is-person .an-oc-title').allInnerTexts()]);
+await frame.locator('.an-seg-b', { hasText: T.managers }).click();
+await settleUi();
+check('chez les responsables, ceux de Camille sont des cartes estompées, et « Personnes » n’y est pas', (await frame.locator('.an-oc.is-dim').count()) >= 2 && (await frame.locator('.an-org-tools [data-fk="org-people"]').count()) === 0,
+  await frame.locator('.an-oc .an-oc-title').allInnerTexts());
+await lab.shotPanel(run, '10d-responsables-recherche');
+await page.keyboard.press('Control+A');
+await page.keyboard.press('Backspace');
+await frame.locator('.an-seg-b', { hasText: T.structures }).click();
+await frame.locator('.an-org-tools [data-fk="org-people"]').click();
 await frame.locator('.an-seg-b', { hasText: T.managers }).click();
 await settleUi();
 check('l’organigramme des responsables part de la directrice générale', (await frame.locator('.an-oc').first().innerText()).includes('Hélène Marchetti') || (await frame.locator('.an-oc').allInnerTexts()).some(text => text.includes('Hélène Marchetti')));
 await lab.shotPanel(run, '12-responsables');
+// Le poste suit une colonne d'une table liée (retour du porteur, 25/11 : la référence « Fonction » montre un libellé qui concatène tout, il veut en choisir une autre) : « Fonction › Categorie ».
+await win.locator('[data-fk="configure"]').click();
+await setup.waitFor({ state: 'visible' });
+await settleUi();
+await setup.locator('[data-fk="tab:hier"]').click();
+await setup.locator('[data-fk="pc:title"]').click();
+await frame.locator('[data-fk="pick-alt-use:Fonction"]').click();
+await settleUi();
+check('la référence « Fonction » se suit : le fil dit Personnes › Fonction, et la liste propose les colonnes des postes', (await frame.locator('.wk-crumb').allInnerTexts()).join('|') === 'Personnes|Fonction'
+  && (await frame.locator('[data-fk="pick-use:Categorie"]').count()) === 1 && (await frame.locator('[data-fk="pick-use:Libelle"]').count()) === 1, await frame.locator('.wk-name').allInnerTexts());
+await pick('Categorie');
+check('le poste dit son chemin « Fonction › Categorie »', (await setup.locator('[data-fk="pc:title"]').innerText()).includes('Fonction › Categorie'), await setup.locator('[data-fk="pc:title"]').innerText());
+await setup.locator('[data-fk="set-save"]').click();
+await setup.waitFor({ state: 'detached', timeout: 15000 });
+await settleUi();
+await frame.locator('[data-fk="v:list"]').click();
+await settleUi();
+check('la liste montre la catégorie choisie comme poste (et non le libellé qui concatène tout)', (await frame.locator('.an-person', { hasText: 'Camille Durand' }).first().locator('.an-pe-sub').innerText()) === 'Catégorie A',
+  await frame.locator('.an-person .an-pe-sub').allInnerTexts());
+await lab.shotPanel(run, '13-poste-sous-attribut');
 // Le clavier : Échap ferme la fenêtre.
 await page.keyboard.press('Escape');
 await win.waitFor({ state: 'detached' });
@@ -304,5 +372,6 @@ check('deux colonnes ajoutées (« Suppleant » et « Matricule », avec l’acc
   && actions.filter(action => /^SetDisplayFormula Personnes/.test(action)).length === 1
   && !actions.some(action => /^(Update|BulkUpdate|Remove|BulkRemove|AddRecord|BulkAddRecord|RenameColumn|ModifyColumn|RemoveColumn).* (Personnes|Structures)/.test(action))
   && !actions.some(action => / Structures/.test(action)), actions);
+check('le changement du poste ne réécrit que la ligne de l’annuaire', actions.filter(action => /^UpdateRecord GFS_Annuaires/.test(action)).length === 1, actions.filter(action => /GFS_Annuaires/.test(action)).map(action => action.slice(0, 60)));
 check('aucun avertissement ni erreur de GFS ou de politique de sécurité', problems.length === 0, problems);
 await lab.browser.close();

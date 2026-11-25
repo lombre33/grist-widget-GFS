@@ -27,11 +27,18 @@ export const PERSON_KEYS = Object.freeze(['name', 'first', 'title', 'email', 'ph
 // L'ordre dans lequel le nom s'écrit quand le prénom est une colonne à part : « Camille Durand », « Durand Camille », « Durand, Camille » ; `upper` (un oui/non
 // à côté) met le nom de famille en capitales (« Camille DURAND », retour du porteur, 25/11).
 export const NAME_ORDERS = Object.freeze(['first-last', 'last-first', 'last-comma']);
+// Les colonnes fixes qui peuvent devenir une colonne de la liste, dans l'ordre où la liste les montre.
+export const FIXED_COLUMNS = Object.freeze(['email', 'phone']);
 
 // La configuration lue d'un texte JSON (ou d'un objet) : toujours complète, jamais d'exception. Ce que GFS ne connaît pas (une clé d'une version plus récente)
 // est ignoré à la lecture et perdu à la réécriture : `writeConfig` ne garde que ce qu'elle connaît ; une version plus récente écrit donc sa propre ligne. { v,
 // name, first, order, upper, hierarchy, title, email, phone, lead, manager, levels: [{ label, path: [colonnes] }], relations: [{ col, label, inverse, card }],
-//   fields: [{ col, path, filter, list }] }
+//   columns: ['email', 'phone'], fields: [{ col, path, filter, list, column }] }
+// `columns` : les colonnes fixes que la personne met en colonne de la liste (retour du porteur, 25/11 : « des colonnes pour les attributs, réglables comme les
+// filtres ») ; les champs ont leur propre `column`.
+// `name`, `first`, `title`, `email` et `phone` sont une colonne de la personne ou, quand la personne en a dit une dans une table liée (retour du porteur,
+// 25/11 :
+// « le poste est une référence, je veux choisir une autre colonne de la table des postes »), un chemin écrit « Poste › Intitulé » (`keyPath`).
 // `relations` (demande du porteur, 25/11 : assistant·e, référent·e, suppléant·e) : voir js/annuaire/annuaire-relations.js ; une colonne ne sert qu'une fois (au
 // responsable direct, à une relation ou à un champ).
 // `hierarchy` : l'option « postes et hiérarchie » (décision du porteur, 25/11 : par défaut seulement le nom et l'adresse). Une ligne écrite avant elle, qui a
@@ -50,6 +57,7 @@ export function readConfig(source) {
   config.upper = input.upper === true;
   config.levels = levels.map(level => ({ label: text(level && level.label), path: path(level && level.path) })).filter(level => level.path.length > 0);
   config.hierarchy = typeof input.hierarchy === 'boolean' ? input.hierarchy : Boolean(config.levels.length || config.title || config.lead);
+  config.columns = FIXED_COLUMNS.filter(key => Array.isArray(input.columns) && input.columns.includes(key));
   const relations = Array.isArray(input.relations) ? input.relations : [];
   const used = new Set([config.manager]);
   config.relations = relations.map(rel => ({ col: text(rel && rel.col), label: text(rel && rel.label), inverse: text(rel && rel.inverse),
@@ -61,11 +69,13 @@ export function readConfig(source) {
     const route = path(field && field.path);
     const steps = route.length ? route : [text(field && field.col)].filter(Boolean);
     return { col: steps.join(FIELD_SEPARATOR), path: steps.length > 1 ? steps : [], filter: Boolean(field && field.filter),
-      list: Boolean(field && field.list) };
+      list: Boolean(field && field.list), column: Boolean(field && field.column) };
   }).filter(field => field.col && !seen.has(field.col) && seen.add(field.col));
   return config;
 }
 
+// Les colonnes que suit une clé de la personne (`name`, `title`…) : « Poste › Intitulé » donne ['Poste', 'Intitulé'], une colonne seule [colonne], rien [].
+export const keyPath = key => (key ? String(key).split(FIELD_SEPARATOR).map(step => step.trim()).filter(Boolean) : []);
 // Les colonnes qu'un champ suit depuis la personne, et le nom qu'on lui donne à l'écran (la dernière colonne du chemin).
 export const fieldPath = field => (field.path && field.path.length ? field.path : [field.col]);
 export const fieldLabel = field => fieldPath(field).at(-1);

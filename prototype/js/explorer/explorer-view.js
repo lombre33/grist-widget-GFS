@@ -363,20 +363,23 @@ export function trashBar(ctx) {
 // (`ctx.pj`), les pièces jointes du document qui ne sont pas des fichiers de l'explorateur (js/weight/weight.js, `otherAttachments`). Le mot « Total » est dit
 // aux lecteurs d'écran, avec la part de chacun ; l'infobulle dit ce qui est compté.
 const pjCounted = ctx => ctx.pj.on && ctx.pj.ready;
+// La part de chacun ne se dit que s'il y a des pièces jointes à ajouter : cochée de départ (25/11), la case ne dit pas « + 0 o pour 0 pièce jointe » à chaque
+// document.
+const pjAdds = ctx => pjCounted(ctx) && ctx.pj.count > 0;
 const totalSplit = ctx => ctx.t('weight.totalSplit', { list: weightText(ctx, ctx.total), pj: weightText(ctx, ctx.pj.bytes), n: ctx.pj.count });
 
 export function totalBar(ctx) {
   const counted = pjCounted(ctx);
   const parts = [h('span', { class: 'sr-only' }, `${ctx.t('weight.total')} : `),
     h('b', { class: 'tot-n' }, weightText(ctx, ctx.total + (counted ? ctx.pj.bytes : 0)))];
-  if (counted) parts.push(h('span', { class: 'sr-only' }, `, ${totalSplit(ctx)}`));
+  if (pjAdds(ctx)) parts.push(h('span', { class: 'sr-only' }, `, ${totalSplit(ctx)}`));
   return parts;
 }
 
 // L'infobulle du total, et l'état du pied de fenêtre : occupé tant que les pièces jointes se lisent.
 export function totalTip(ctx) {
   const { t, pj } = ctx;
-  return [t('weight.totalTip'), pjCounted(ctx) ? totalSplit(ctx) : null, pj.on && pj.busy ? t('weight.pjLoading') : null,
+  return [t('weight.totalTip'), pjAdds(ctx) ? totalSplit(ctx) : null, pj.on && pj.busy ? t('weight.pjLoading') : null,
     t('weight.detailTip')].filter(Boolean).join(' ');
 }
 

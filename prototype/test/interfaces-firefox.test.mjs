@@ -282,6 +282,8 @@ const TOTAL = { fr: '18,1 Mo', en: '18.1 MB' };
 async function columnProblems(page, width, language, tag) {
   const narrow = width < 600; // la liste perd « Modifié » et « Par » sous 600 px
   const found = [];
+  // Ici le total est celui de la liste seule : la case « + pièces jointes », cochée de départ depuis le 25/11, ajouterait les pièces (elle se mesure dans test/pieces-jointes-firefox.mjs).
+  await page.run(() => { const box = document.querySelector('.ex-pj input'); if (box && box.checked) box.click(); });
   const measure = async what => found.push(...columnFaults(await page.run(measureColumns), narrow, `${tag}, ${what}`, TOTAL[language]));
   const header = key => page.run(centerOfSelector, `.ls-head .hd[data-sort="${key}"]`);
   await measure('tri par nom');

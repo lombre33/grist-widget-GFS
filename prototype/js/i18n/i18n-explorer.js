@@ -32,7 +32,7 @@ export const EXPLORER_STRINGS = {
     'ex.modified': 'Modifié',
     'ex.by': 'Par',
     'ex.open': 'Ouvrir',
-    'ex.close': 'Fermer',
+    'ex.close': 'Retour à l’app',
     'ex.closeNone': 'Aucune app n’est ouverte : choisissez d’abord un fichier.',
     'ex.untitled': '(sans nom)',
     // Les comptes (avec leurs pluriels) et ce que dit une liste vide, selon la vue.
@@ -178,7 +178,7 @@ export const EXPLORER_STRINGS = {
     'ex.modified': 'Modified',
     'ex.by': 'By',
     'ex.open': 'Open',
-    'ex.close': 'Close',
+    'ex.close': 'Back to the app',
     'ex.closeNone': 'No app is open: pick a file first.',
     'ex.untitled': '(untitled)',
     // Les comptes (avec leurs pluriels) et ce que dit une liste vide, selon la vue.

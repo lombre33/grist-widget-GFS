@@ -1,7 +1,8 @@
-// La case « + pièces jointes » de l'explorateur sous Firefox (demande du porteur du 04/11, lot 2 du poids ; règle du 03/11 : toute nouvelle interface ajoute ses mesures à test/interfaces-firefox.test.mjs).
+// La case « + pièces jointes » de l'explorateur sous Firefox (demande du porteur du 04/11, lot 2 du poids ; cochée par défaut depuis le 25/11 ; règle du 03/11 : toute nouvelle interface ajoute ses mesures à test/interfaces-firefox.test.mjs).
 // Les gestes se font à la vraie souris et au vrai clavier de Firefox, sur la page d'essai (test/pages/explorateur.js : le vrai explorateur et le vrai calcul des pièces jointes, sur une table `_grist_Attachments` de
 // doublure, de la forme que `fetchTable` la rend : un PDF, trois photos dont l'une est là deux fois, une pièce supprimée). Ce que Grist rend vraiment se mesure dans un vrai Grist (labo/run-poids.mjs).
-// À chaque largeur, en clair et en sombre, à 100 % et à 150 % : rien ne se lit tant que la case n'est pas cochée ; à la souris, elle se coche et se décoche, le total prend les pièces jointes qui ne sont pas des
+// À chaque largeur, en clair et en sombre, à 100 % et à 150 % : la case est cochée de départ, la table des pièces jointes se lit à l'ouverture de l'explorateur sans un clic, et rien ne se lit une fois
+// la case décochée ; à la souris, elle se décoche et se recoche, le total prend les pièces jointes qui ne sont pas des
 // fichiers de l'explorateur (la copie d'un même fichier comptée une fois, la pièce supprimée non comptée) et son infobulle dit d'où vient chaque part ; au clavier, elle est un arrêt de Tab après le total (un bouton) et avant la pastille des droits et « Ouvrir » ;
 // avec le PDF dans la liste, sa pièce n'est pas recomptée ; un refus de Grist décoche la case et la grise avec la raison, que son clic redit sans relire ; le pied (total, case,
 // boutons) ne se recouvre ni ne se coupe. Ce Firefox sans écran n'a pas le focus du système (`document.hasFocus()` est faux, `:focus` et `:focus-visible` ne s'appliquent jamais), n'active ni un bouton ni
@@ -61,23 +62,19 @@ export async function piecesJointesProblems(page, width, language, tag) {
   };
   const clickBox = async () => page.click(...await page.run(centerOfSelector, BOX));
 
-  // Départ propre : la case décochée, rien de lu.
-  if ((await foot()).checked) await clickBox();
+  // Départ propre : la case cochée (par défaut), ce que l'ouverture lit sans un clic. La page garde l'état de la case d'un essai à l'autre : on la coche si un essai précédent l'a laissée décochée, et la
+  // remise à zéro de la page ferme puis rouvre l'explorateur, dont l'ouverture lit la table.
+  if (!(await foot()).checked) await clickBox();
   await page.run(() => window.__reset());
-  await expect('au départ', 'la case devait être décochée, dégrisée, sans lecture, le total à celui de la liste', state => !state.checked && !state.grey && state.reads === 0 && state.total === x.base);
-  const start = await foot();
-  if (start.text !== `${t('weight.total')} : ${x.base}`) note('texte du total au départ', `le total devait se lire « ${t('weight.total')} : ${x.base} », sans rien d'autre (il se lit « ${start.text} »)`);
-
-  // 1. La souris : la case se coche, une lecture, le total prend les pièces qui ne sont pas des fichiers de l'explorateur, l'infobulle dit d'où il vient ; le pied tient.
-  await clickBox();
-  const checked = await expect('à la souris', `la case devait se cocher, lire une fois et dire ${x.all}`, state => state.checked && !state.busy && state.reads === 1 && state.total === x.all);
-  if (checked.text !== `${t('weight.total')} : ${x.all}, ${split(x.base, x.other, 4)}`) note('texte du total', `case cochée, le total devait se lire « ${t('weight.total')} : ${x.all}, ${split(x.base, x.other, 4)} » (il se lit « ${checked.text} »)`);
+  const checked = await expect('au départ', `la case cochée devait avoir lu la table une fois sans clic, dégrisée, et le total dire ${x.all}`, state => state.checked && !state.grey && !state.busy && state.reads === 1 && state.total === x.all);
+  if (checked.text !== `${t('weight.total')} : ${x.all}, ${split(x.base, x.other, 4)}`) note('texte du total au départ', `case cochée de départ, le total devait se lire « ${t('weight.total')} : ${x.all}, ${split(x.base, x.other, 4)} » (il se lit « ${checked.text} »)`);
   if (!checked.title.includes(split(x.base, x.other, 4))) note('infobulle du total', `l'infobulle devait dire « ${split(x.base, x.other, 4)} » (infobulle : « ${checked.title} »)`);
   found.push(...columnFaults(await page.run(measureColumns), width < 600, `${tag}, case cochée`, x.all));
 
-  // 2. La souris encore : elle décoche (le total revient, rien n'est relu) puis recoche (une lecture de plus).
+  // 1. La souris : elle décoche (le total revient à celui de la liste, rien n'est relu) puis recoche (une lecture de plus, le total reprend les pièces qui ne sont pas des fichiers de l'explorateur).
   await clickBox();
-  await expect('décocher', `un clic sur la case cochée devait la décocher et ramener le total à ${x.base}, sans relire`, state => !state.checked && state.reads === 1 && state.total === x.base);
+  const unchecked = await expect('décocher', `un clic sur la case cochée devait la décocher et ramener le total à ${x.base}, sans relire`, state => !state.checked && state.reads === 1 && state.total === x.base);
+  if (unchecked.text !== `${t('weight.total')} : ${x.base}`) note('texte du total décoché', `le total devait se lire « ${t('weight.total')} : ${x.base} », sans rien d'autre (il se lit « ${unchecked.text} »)`);
   await clickBox();
   await expect('recocher', `un clic de plus devait la recocher, relire une fois de plus et dire ${x.all}`, state => state.checked && state.reads === 2 && state.total === x.all);
 

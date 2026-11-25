@@ -15,6 +15,7 @@ import { setupProblems, savedProblems } from './annuaire-setup-firefox.mjs';
 import { relationsReadProblems } from './annuaire-relations-firefox.mjs';
 import { pathPickerProblems } from './annuaire-path-firefox.mjs';
 import { ficheSectionsProblems } from './annuaire-fiche-firefox.mjs';
+import { listColumnsProblems, orgFiltersProblems } from './annuaire-columns-firefox.mjs';
 
 const OTHER = { fr: 'en', en: 'fr' };
 const LONG_NAME = 'Jean-Baptiste de la Rochefoucauld-Montmorency';
@@ -193,9 +194,11 @@ export async function annuaireProblems(page, language, tag, { width, mode }) {
     await treeProblems(page, t, note, click, { wide });
     await ficheProblems(page, t, note, click, { wide });
     await searchProblems(page, t, note, click, inspectNow);
+    await listColumnsProblems(page, t, note, click, { width, mode });
     await filtersProblems(page, t, note, click, inspectNow, { wide });
     await cardsProblems(page, t, note, click, inspectNow, { wide });
     await orgProblems(page, t, note, click, inspectNow, { wide, mode, width });
+    await orgFiltersProblems(page, t, note, click, inspectNow, async label => frameProblems(await inspectNow(), note, label, { wide }));
     await ficheSectionsProblems(page, t, note, click);
     await relationsReadProblems(page, t, note, click);
     await switchProblems(page, t, note, click, { wide });

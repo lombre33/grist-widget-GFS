@@ -32,21 +32,30 @@ const PEOPLE = [
   ['Léa Chevalier', 'Chargée d’accueil', 'lea.chevalier@exemple.fr', '', 9, 'Contractuelle', ['Accueil'], false, 17, false, '2023-09-04', ''],
 ];
 
+// Les postes (retour du porteur, 25/11 : « le poste est une référence sur une colonne qui concatène tout, je veux en choisir une autre ») : chaque personne a une `Fonction` qui
+// montre le libellé complet (« Cheffe du service Budget · Catégorie A »), et la catégorie est une colonne à part.
+const CATEGORIES = ['A', 'A', 'A', 'A', 'B', 'B', 'A', 'B', 'A', 'A', 'B', 'B', 'A', 'A', 'A', 'C', 'A', 'C'];
+const POSTES = PEOPLE.map((row, i) => [`${row[1]} · Catégorie ${CATEGORIES[i]}`, `Catégorie ${CATEGORIES[i]}`]);
+
 const dayOf = iso => Math.floor(Date.parse(`${iso}T00:00:00Z`) / 1000);
 
 // Les actions qui créent les deux tables, règlent la colonne que Grist montre pour chaque référence, puis les remplissent.
 export const SEED = {
   tables: [
+    ['AddTable', 'Postes', [{ id: 'Libelle', type: 'Text' }, { id: 'Categorie', type: 'Text' }]],
     ['AddTable', 'Structures', [{ id: 'Nom', type: 'Text' }, { id: 'Niveau', type: 'Text' }, { id: 'Pole', type: 'Ref:Structures' }, { id: 'Direction', type: 'Ref:Structures' }]],
     ['AddTable', 'Personnes', [{ id: 'Nom', type: 'Text' }, { id: 'Poste', type: 'Text' }, { id: 'Email', type: 'Text' }, { id: 'Tel', type: 'Text' },
       { id: 'Structure', type: 'Ref:Structures' }, { id: 'Contrat', type: 'Choice', widgetOptions: JSON.stringify({ choices: ['Titulaire', 'Contractuel', 'Contractuelle'] }) },
       { id: 'Competences', type: 'ChoiceList' }, { id: 'Teletravail', type: 'Bool' }, { id: 'Responsable', type: 'Ref:Personnes' }, { id: 'Chef', type: 'Bool' },
-      { id: 'Arrivee', type: 'Date' }, { id: 'Service', type: 'Text' }, { id: 'Assistant', type: 'Ref:Personnes' }, { id: 'Referents', type: 'RefList:Personnes' }]],
+      { id: 'Arrivee', type: 'Date' }, { id: 'Service', type: 'Text' }, { id: 'Assistant', type: 'Ref:Personnes' }, { id: 'Referents', type: 'RefList:Personnes' }, { id: 'Fonction', type: 'Ref:Postes' }]],
   ],
   // Les références qui montrent la colonne « Nom » de leur table : [table, colonne, table visée].
   visible: [['Structures', 'Pole', 'Structures'], ['Structures', 'Direction', 'Structures'], ['Personnes', 'Structure', 'Structures'], ['Personnes', 'Responsable', 'Personnes'],
     ['Personnes', 'Assistant', 'Personnes'], ['Personnes', 'Referents', 'Personnes']],
+  // La référence qui montre la colonne `Libelle` des postes (pas « Nom » : cette table n'en a pas).
+  shownLibelle: [['Personnes', 'Fonction', 'Postes']],
   rows: [
+    ['BulkAddRecord', 'Postes', POSTES.map(() => null), { Libelle: POSTES.map(row => row[0]), Categorie: POSTES.map(row => row[1]) }],
     ['BulkAddRecord', 'Structures', STRUCTURES.map(() => null), { Nom: STRUCTURES.map(row => row[0]), Niveau: STRUCTURES.map(row => row[1]), Pole: STRUCTURES.map(row => row[2]),
       Direction: STRUCTURES.map(row => row[3]) }],
     ['BulkAddRecord', 'Personnes', PEOPLE.map(() => null), { Nom: PEOPLE.map(row => row[0]), Poste: PEOPLE.map(row => row[1]), Email: PEOPLE.map(row => row[2]),
@@ -54,7 +63,7 @@ export const SEED = {
       Teletravail: PEOPLE.map(row => row[7]), Responsable: PEOPLE.map(row => row[8]), Chef: PEOPLE.map(row => row[9]), Arrivee: PEOPLE.map(row => dayOf(row[10])),
       Service: PEOPLE.map(row => row[11]),
       // Les relations : Inès Marchand (5) est l'assistante d'Emma Rolland (2) et de Nathan Roussel (3) ; Camille Durand (4) a pour référents Emma et Nathan.
-      Assistant: PEOPLE.map((_, i) => ([1, 2].includes(i) ? 5 : 0)), Referents: PEOPLE.map((_, i) => (i === 3 ? ['L', 2, 3] : null)) }],
+      Assistant: PEOPLE.map((_, i) => ([1, 2].includes(i) ? 5 : 0)), Referents: PEOPLE.map((_, i) => (i === 3 ? ['L', 2, 3] : null)), Fonction: PEOPLE.map((_, i) => i + 1) }],
   ],
 };
 
@@ -68,6 +77,7 @@ export async function seedAnnuaire(frame) {
     const tableRow = name => tables.id[tables.tableId.indexOf(name)];
     const colRow = (table, col) => meta.id.find((id, i) => meta.parentId[i] === tableRow(table) && meta.colId[i] === col);
     await api.applyUserActions(seed.visible.map(([table, col, target]) => ['UpdateRecord', '_grist_Tables_column', colRow(table, col), { visibleCol: colRow(target, 'Nom') }]));
+    await api.applyUserActions(seed.shownLibelle.map(([table, col, target]) => ['UpdateRecord', '_grist_Tables_column', colRow(table, col), { visibleCol: colRow(target, 'Libelle') }]));
     await api.applyUserActions(seed.rows);
   }, SEED);
 }

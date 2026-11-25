@@ -18,6 +18,7 @@ import { h } from '../ui/dom.js';
 import { openModal } from '../ui/modal.js';
 import { normalize } from '../ui/search.js';
 import { columnOf } from './annuaire-schema.js';
+import { keyPath } from './annuaire-config.js';
 import { nameOf } from './annuaire-model.js';
 import { GLYPHS, MAX_PATH, typeLabel, formRow } from './annuaire-setup-shared.js';
 
@@ -38,9 +39,9 @@ export function tableAfter(schema, table, path) {
 // Le nom de la personne d'exemple, écrit comme l'annuaire l'écrira ; '' tant qu'il n'y a pas d'exemple ou de colonne du nom.
 export function personName(host) {
   const { config } = host.draft;
-  const last = config.name ? host.sample.text([config.name]) : '';
+  const last = config.name ? host.sample.text(keyPath(config.name)) : '';
   if (!last) return '';
-  return nameOf(config.first ? host.sample.text([config.first]) : '', last, config.order, config.upper).name;
+  return nameOf(config.first ? host.sample.text(keyPath(config.first)) : '', last, config.order, config.upper).name;
 }
 
 // D'où viennent les exemples : une ligne sous la recherche.
@@ -145,31 +146,44 @@ function createWindow(host, { table, types }) {
 }
 
 // Un chemin de colonnes depuis la personne, ou null quand la personne renonce. opts : { title, text, types ([{ type, label }] : les types qu'on propose pour
-// créer une colonne ; rien : pas de création), filter(col, path) -> bool (les colonnes qu'on propose) }.
-export async function pickPath(host, { title, text = '', types = [], filter = () => true }) {
+// créer une colonne ; rien : pas de création), filter(col, path) -> bool (les colonnes qu'on propose), clear (propose « Aucune » au premier étage : rend []),
+// current (le chemin en cours, qu'on retrouve marqué dans la liste) }.
+export async function pickPath(host, { title, text = '', types = [], filter = () => true, clear = false, current = [] }) {
   const { t, schema, draft } = host;
   const path = [];
   host.sample.load();
   for (;;) {
     const table = tableAfter(schema, draft.table, path);
     const cols = (schema[table] ? schema[table].columns : []).filter(col => col.genre !== 'file' && filter(col, path));
-    const items = [...(types.length ? [createRow(host, table)] : []), ...cols.map(col => columnRow(host, col, path, path.length < MAX_PATH - 1)),
+    const none = clear && path.length === 0 ? [{ value: 'none', label: t('an.set.none'), glyph: 'x', hint: '', alt: false }] : [];
+    const items = [...(types.length ? [createRow(host, table)] : []), ...none, ...cols.map(col => columnRow(host, col, path, path.length < MAX_PATH - 1)),
       ...deepRows(host, table, path)];
+    const here = current.length === path.length + 1 && path.every((id, i) => id === current[i]) ? `use:${current[path.length]}` : null;
     const chosen = await host.list({ title, text: path.length ? '' : text, crumbs: [draft.table, ...path], back: true, items, none: t('an.set.noColumn'),
-      alt: { icon: 'chev-right', label: item => t('an.set.follow', { table: item.follow }), text: item => item.follow }, example: () => exampleLine(host),
+      current: here, alt: { icon: 'chev-right', label: item => t('an.set.follow', { table: item.follow }), text: item => item.follow },
+        example: () => exampleLine(host),
       watch: refresh => host.sample.whenLoaded(refresh) });
-    if (chosen === null) return null;
-    if (chosen.jump !== undefined) { path.length = chosen.jump; continue; }
-    if (chosen.value === 'new:') {
+    if (chosen !== null && chosen.value === 'new:') {
       const made = await createWindow(host, { table, types });
       if (made) return [...path, made];
       continue;
     }
-    if (chosen.value.startsWith('deep:')) return [...path, ...chosen.value.slice(5).split(SEP)];
-    const col = chosen.value.slice(4);
-    if (!chosen.alt) return [...path, col];
-    path.push(col);
+    const answer = answerOf(chosen, path);
+    if (answer !== undefined) return answer;
   }
+}
+
+// Ce que le choix d'une ligne répond : un chemin (c'est fini), `null` (la personne renonce), ou `undefined` (le choix continue : on suit une référence ou on
+// revient en arrière, `path` change).
+function answerOf(chosen, path) {
+  if (chosen === null) return null;
+  if (chosen.jump !== undefined) { path.length = chosen.jump; return undefined; }
+  if (chosen.value === 'none') return [];
+  if (chosen.value.startsWith('deep:')) return [...path, ...chosen.value.slice(5).split(SEP)];
+  const col = chosen.value.slice(4);
+  if (!chosen.alt) return [...path, col];
+  path.push(col);
+  return undefined;
 }
 
 // Une colonne de la table des personnes : son identifiant, '' pour « Aucune » (avec `clear`), ou null quand la personne renonce. opts : { title, text, types,

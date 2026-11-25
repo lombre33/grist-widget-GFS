@@ -6,9 +6,9 @@
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { isPeopleTable } from './annuaire-schema.js';
-import { CONFIG_VERSION, NAME_ORDERS, readConfig } from './annuaire-config.js';
+import { CONFIG_VERSION, FIELD_SEPARATOR, NAME_ORDERS, keyPath, readConfig } from './annuaire-config.js';
 import { chooser, formRow, switchButton } from './annuaire-setup-shared.js';
-import { pickColumn, personName } from './annuaire-setup-path.js';
+import { pickColumn, pickPath, personName } from './annuaire-setup-path.js';
 import { nameOf } from './annuaire-model.js';
 
 // Le nom du texte et l'aide de chaque colonne lue, et si elle est obligatoire.
@@ -100,14 +100,21 @@ async function pickTable(host) {
   host.changed();
 }
 
-// Une colonne que GFS lit par un nom : le nom (obligatoire), le prénom, l'adresse, le téléphone. Les facultatives se vident par « Aucune » ; une colonne peut
-// aussi se créer, avec l'accord de la personne (js/annuaire/annuaire-setup-path.js).
+// Une colonne que GFS lit par un nom : le nom (obligatoire), le prénom, l'adresse, le téléphone, le poste. Les facultatives se vident par « Aucune » ; une
+// colonne peut aussi se créer, avec l'accord de la personne (js/annuaire/annuaire-setup-path.js). Le nom, le prénom, l'adresse, le téléphone et le poste
+// peuvent venir d'une table liée (retour du porteur, 25/11 : « le poste est une référence : je veux choisir une autre colonne de la table des postes ») : la
+// liste suit les références comme celle d'un champ de la fiche ; « Responsable de sa structure » (un oui/non) reste une colonne de la personne.
 async function pickPerson(host, key) {
   const { t, draft } = host;
   const [label, required] = KEYS[key];
-  const chosen = await pickColumn(host, { title: t(key === 'name' && (host.ui.split || draft.config.first) ? 'an.set.last' : label), text: t(`${label}Hint`),
-    types: [{ type: CREATES[key] || 'Text', label: t(CREATES[key] === 'Bool' ? 'an.type.bool' : 'an.type.text') }], clear: !required,
-      current: draft.config[key] });
+  const options = { title: t(key === 'name' && (host.ui.split || draft.config.first) ? 'an.set.last' : label), text: t(`${label}Hint`),
+    types: [{ type: CREATES[key] || 'Text', label: t(CREATES[key] === 'Bool' ? 'an.type.bool' : 'an.type.text') }], clear: !required };
+  let chosen;
+  if (key === 'lead') chosen = await pickColumn(host, { ...options, current: draft.config[key] });
+  else {
+    const path = await pickPath(host, { ...options, current: keyPath(draft.config[key]) });
+    chosen = path === null ? null : path.join(FIELD_SEPARATOR);
+  }
   if (chosen === null) return;
   draft.config[key] = chosen;
   if (key === 'phone' && !chosen) host.ui.phone = false;

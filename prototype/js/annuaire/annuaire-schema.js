@@ -5,6 +5,8 @@
 // oui/non), « date », « number », « ref » et « reflist » (une référence : sa valeur est celle de la colonne visible de la table visée), « file » (des pièces
 // jointes : jamais lues). Un type que l'annuaire ne connaît pas est du texte.
 
+import { keyPath } from './annuaire-config.js';
+
 const GENRES = Object.freeze({ Choice: 'choice', ChoiceList: 'choicelist', Bool: 'bool', Int: 'number', Numeric: 'number', Date: 'date', Attachments: 'file' });
 
 export function genreOf(type) {
@@ -74,6 +76,7 @@ export function tablesNeeded(config, tableId, schema) {
   const walk = columns => { let at = tableId; for (const colId of columns) { if (!at) break; at = follow(at, colId); } };
   for (const level of config.levels) walk(level.path);
   for (const field of config.fields) walk(field.path && field.path.length ? field.path : [field.col]);
-  for (const key of ['name', 'first', 'title', 'email', 'phone', 'lead']) if (config[key]) walk([config[key]]);
+  for (const key of ['name', 'first', 'title', 'email', 'phone']) if (config[key]) walk(keyPath(config[key]));
+  if (config.lead) walk([config.lead]);
   return needed;
 }

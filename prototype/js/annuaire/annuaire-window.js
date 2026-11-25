@@ -6,15 +6,18 @@
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { mountWindow, giveBackFocus, tabStops, LIST_SHOWN } from '../ui/modal.js';
-import { findNode, peopleIn, filterPeople, filterOptions, managerTree, fieldGenres } from './annuaire-model.js';
-import { structureItems, managerItems, pathIds, levelLabel } from './annuaire-items.js';
-import { treeList, personRow, personCard, fiche, nodeFiche, filterBar, shown } from './annuaire-panes.js';
+import { keyStore } from '../shell/stored-choice.js';
+import { findNode, peopleIn, filterPeople, filterOptions, fieldGenres } from './annuaire-model.js';
+import { pathIds, levelLabel, listColumns } from './annuaire-items.js';
+import { treeList, personRow, personCard, fiche, nodeFiche, filterBar, columnHead, listedTexts, columnTexts } from './annuaire-panes.js';
+import { PEOPLE_MAX, orgSignature, orgData, reducedTree } from './annuaire-org-data.js';
 import { relationsOf, relationIndex, cardLines, cardLineCount } from './annuaire-relations.js';
 import { OrgView } from './annuaire-org-view.js';
 import { copyText } from './annuaire-copy.js';
 
 const FOCUSABLE = 'button:not([disabled]):not([tabindex="-1"]), input:not([disabled]), [tabindex="0"], a[href]';
 const VIEWS = Object.freeze([['list', 'list', 'an.view.list'], ['cards', 'tiles', 'an.view.cards'], ['org', 'org', 'an.view.org']]);
+const PEOPLE_KEY = 'gfs.annuaire.orgPeople'; // le choix « Personnes » de l'organigramme, retenu sur le navigateur (js/shell/stored-choice.js)
 
 export class AnnuaireWindow {
   #o;
@@ -33,10 +36,16 @@ export class AnnuaireWindow {
   #open = new Set(['']);
   #filtersOpen = false;
   #note = '';
+  #store;
+  #orgPeople = false; // l'organigramme des structures dessine aussi les personnes (le bouton « Personnes »)
 
   // opts : { container, t, locale() (la langue des dates), inertTargets(), onSwitch(), onConfigure(), onNew(), onFilterMore(colonne, option) -> Promise<valeur
   //   ou null>, onClose() }
-  constructor(opts) { this.#o = opts; }
+  constructor(opts) {
+    this.#o = opts;
+    this.#store = keyStore((opts.container && opts.container.ownerDocument && opts.container.ownerDocument.defaultView) || globalThis, PEOPLE_KEY);
+    this.#orgPeople = this.#store.read() === '1';
+  }
 
   get isOpen() { return this.#root !== null; }
   get element() { return this.#root; }
@@ -113,7 +122,8 @@ export class AnnuaireWindow {
       note: h('p', { class: 'mod-note an-foot', 'aria-live': 'polite' }), close: h('button',
         { type: 'button', class: 'btn', dataset: { act: 'close', fk: 'close' } }),
     };
-    this.#org = new OrgView({ t, onPick: item => this.#orgPick(item), onMode: id => this.#orgMode(id) });
+    this.#org = new OrgView({ t, onPick: item => this.#orgPick(item), onMode: id => this.#orgMode(id),
+      onTool: (act, data) => { const handler = ACTIONS[act]; if (handler) handler(this, data); } });
     refs.main.append(refs.crumb, refs.filters, refs.list, this.#org.element);
     refs.body.append(refs.state, refs.tree, refs.main, refs.side);
     this.#refs = refs;
@@ -157,6 +167,11 @@ export class AnnuaireWindow {
 
   // Les personnes que le volet du milieu montre : toute la liste quand on cherche, sinon le nœud choisi et ce qui est dessous ; puis la recherche et les
   // filtres.
+  // Les personnes de tout l'annuaire qui passent la recherche et les filtres (l'organigramme, lui, ne se limite pas à un nœud).
+  #matching() {
+    return filterPeople(this.#show.data.people, { query: this.#query, filters: this.#filters });
+  }
+
   #scope() {
     const { tree, people } = this.#show.data;
     const node = findNode(tree, this.#node) || tree;
@@ -204,15 +219,40 @@ export class AnnuaireWindow {
   }
 
   #paintMain() {
-    const { crumb, filters, list, main } = this.#refs;
+    const { crumb, list, main } = this.#refs;
     const org = this.#view === 'org';
     crumb.hidden = org;
     list.hidden = org;
-    if (org) filters.hidden = true;
     this.#org.element.hidden = !org;
     main.dataset.view = this.#view;
     if (org) { this.#paintOrg(); return; }
     this.#paintList();
+  }
+
+  // Les filtres de ce que `base` contient (les mêmes dans la liste, les cartes et l'organigramme : retour du porteur, 25/11) : ce qu'on peut cocher, et combien
+  // de cases le sont.
+  #filterModel(base) {
+    const { current, data } = this.#show;
+    const options = filterOptions(base, data.config, data.schema, current.table).filter(option => option.values.length);
+    const active = Object.values(this.#filters).reduce((sum, set) => sum + (set ? set.size : 0), 0);
+    return { options, active };
+  }
+
+  // Le bouton « Filtres » (un seul, dans l'en-tête de la liste ou dans la barre de l'organigramme) ; rien quand aucun filtre n'est réglé.
+  #filterButton({ options, active }) {
+    if (!options.length) return null;
+    const label = this.#o.t('an.filters');
+    return h('button', { type: 'button', class: 'an-chip an-ftoggle', 'aria-pressed': String(this.#filtersOpen || active > 0),
+      'aria-expanded': String(this.#filtersOpen),
+      'aria-label': active ? `${label} (${active})` : label, title: label, dataset: { act: 'filters', fk: 'filters' } }, icon('filter'),
+        h('span', { class: 'an-chip-t' }, label),
+    active ? h('b', null, String(active)) : null);
+  }
+
+  #paintFilters(model) {
+    const { filters } = this.#refs;
+    filters.hidden = !model.options.length || !this.#filtersOpen;
+    filters.replaceChildren(filterBar(model.options, this.#filters, { t: this.#o.t, locale: this.#o.locale() }));
   }
 
   #paintList() {
@@ -222,36 +262,42 @@ export class AnnuaireWindow {
     const levels = data.config.levels;
     const searching = this.#query.trim() !== '';
     const level = !searching && node.level >= 0 ? levelLabel(levels[node.level]) : '';
-    const options = filterOptions(base, data.config, data.schema, current.table).filter(option => option.values.length);
-    const active = Object.values(this.#filters).reduce((sum, set) => sum + (set ? set.size : 0), 0);
+    const model = this.#filterModel(base);
     this.#refs.crumb.replaceChildren(...[h('h3', null, searching ? t('an.results') : node.name), level ? h('span', { class: 'an-pill' }, level) : null,
-      h('span', { class: 'an-count' }, t('an.count', { n: found.length })),
-      options.length ? h('button', { type: 'button', class: 'an-chip an-ftoggle', 'aria-pressed': String(this.#filtersOpen || active > 0),
-        'aria-expanded': String(this.#filtersOpen),
-        dataset: { act: 'filters', fk: 'filters' } }, icon('filter'), t('an.filters'), active ? h('b', null, String(active)) : null) : null].filter(Boolean));
-    this.#refs.filters.hidden = !options.length || !this.#filtersOpen;
+      h('span', { class: 'an-count' }, t('an.count', { n: found.length })), this.#filterButton(model)].filter(Boolean));
+    this.#paintFilters(model);
     const ctx = { t, locale: this.#o.locale() };
-    this.#refs.filters.replaceChildren(filterBar(options, this.#filters, ctx));
     const rows = found.slice(0, LIST_SHOWN);
-    const make = this.#view === 'cards' ? personCard : personRow;
-    const extraOf = this.#listedValues(data, current.table, ctx);
+    const cards = this.#view === 'cards';
+    const columns = cards ? [] : listColumns(data.config, t);
+    const genres = fieldGenres(data.config, current.table, data.schema);
+    const extraOf = listedTexts(data.config, genres, ctx, columns);
+    const cellsOf = columnTexts(columns, genres, ctx);
     const at = Math.max(0, rows.findIndex(person => person.row === this.#person));
-    this.#refs.list.className = this.#view === 'cards' ? 'an-list an-grid' : 'an-list';
-    this.#refs.list.replaceChildren(...rows.map((person, i) => make(person, { selected: person.row === this.#person, tabStop: i === at,
-      extra: extraOf(person) })),
-      ...(found.length > rows.length ? [h('p', { class: 'an-note' }, t('work.more', { n: LIST_SHOWN, total: found.length }))] : []),
-      ...(found.length ? [] : [h('p', { class: 'an-note' }, t(data.people.length ? 'an.list.none' : 'an.list.empty'))]));
+    const { list } = this.#refs;
+    list.className = `${cards ? 'an-list an-grid' : 'an-list'}${columns.length ? ' has-cols' : ''}`;
+    list.style.setProperty('--n', String(columns.length));
+    list.replaceChildren(...(columns.length ? [columnHead(columns, t)] : []), ...rows.map((person, i) => (cards ? personCard : personRow)(person,
+      { selected: person.row === this.#person, tabStop: i === at, extra: extraOf(person), cells: columns.length ? cellsOf(person) : null })),
+    ...(found.length > rows.length ? [h('p', { class: 'an-note' }, t('work.more', { n: LIST_SHOWN, total: found.length }))] : []),
+    ...(found.length ? [] : [h('p', { class: 'an-note' }, t(data.people.length ? 'an.list.none' : 'an.list.empty'))]));
   }
 
-  // Les champs que le réglage met en liste (« Liste » de la fenêtre « Champs de la fiche ») : de la personne aux textes de ses pastilles.
-  #listedValues(data, table, ctx) {
-    const listed = data.config.fields.filter(field => field.list);
-    if (!listed.length) return () => [];
-    const genres = fieldGenres(data.config, table, data.schema);
-    return person => listed.flatMap(field => (person.fields[field.col] || []).map(value => shown(value, genres[field.col], ctx)));
+  #orgSignature() { return orgSignature(this.#query, this.#filters); }
+
+  // Les outils que la barre de l'organigramme reçoit : « Filtres » (les mêmes que la liste), et « Personnes » quand c'est celui des structures.
+  #paintOrgTools(model, mode, found) {
+    const t = this.#o.t;
+    const many = found > PEOPLE_MAX;
+    const on = this.#orgPeople && !many;
+    const people = mode !== 'structures' ? null : h('button', { type: 'button', class: 'an-chip an-ptoggle', 'aria-pressed': String(on),
+      'aria-disabled': many ? 'true' : null, 'aria-label': t('an.org.people'), title: many ? t('an.org.peopleMany', { n: found }) : t('an.org.peopleTip'),
+      dataset: { act: 'org-people', fk: 'org-people' } }, icon('users'), h('span', { class: 'an-chip-t' }, t('an.org.people')));
+    this.#org.tools.replaceChildren(...[this.#filterButton(model), people].filter(Boolean));
   }
 
-  // L'organigramme : celui des structures (l'arbre des niveaux), ou celui des responsables quand l'annuaire dit qui est le responsable de chacun.
+  // L'organigramme : celui des structures (l'arbre des niveaux), ou celui des responsables quand l'annuaire dit qui est le responsable de chacun. Il montre
+  // toujours tout l'annuaire (pas un nœud), réduit par la recherche et les filtres (les mêmes que la liste) ; déplié jusqu'au niveau le plus bas.
   #paintOrg() {
     const t = this.#o.t;
     const { current, data } = this.#show;
@@ -260,14 +306,22 @@ export class AnnuaireWindow {
     const mode = hasManager && (this.#mode === 'managers' || !hasLevels) ? 'managers' : 'structures';
     const relations = relationsOf(data.config, t);
     const index = relationIndex(data.people, relations);
-    const lines = mode === 'managers' ? cardLineCount(relations) : 0;
-    const roots = mode === 'managers' ? managerItems(managerTree(data.people), person => cardLines(person, relations, index)) :
-      structureItems(data.tree, data.config.levels);
-    const selected = mode === 'managers' ? (this.#person === null ? '' : `p${this.#person}`) : (this.#struct === null ? '' : (this.#struct || 'root'));
-    this.#org.show(roots, { key: `${current.row}:${mode}`, selected, mode, lines, modes: [
-      { id: 'structures', label: t('an.org.structures'), greyed: !hasLevels, why: t('an.org.noLevels') },
-      { id: 'managers', label: t('an.org.managers'), greyed: !hasManager, why: t('an.org.noManager') }] });
+    const model = this.#filterModel(data.people);
+    this.#paintFilters(model);
+    const { roots, found, withPeople, signature } = orgData({ mode, data, query: this.#query, filters: this.#filters, wantPeople: this.#orgPeople,
+      linesOf: person => cardLines(person, relations, index) });
+    const person = this.#person === null ? '' : `p${this.#person}`;
+    const selected = mode === 'managers' || (withPeople && person) ? person : this.#structId();
+    this.#paintOrgTools(model, mode, found.length);
+    this.#org.show(roots, { key: `${current.row}:${mode}`, expand: `${signature}|${withPeople}`, selected, mode,
+      lines: mode === 'managers' ? cardLineCount(relations) : 0,
+      empty: data.people.length ? t('an.list.none') : '',
+      modes: [{ id: 'structures', label: t('an.org.structures'), greyed: !hasLevels, why: t('an.org.noLevels') },
+        { id: 'managers', label: t('an.org.managers'), greyed: !hasManager, why: t('an.org.noManager') }] });
   }
+
+  // L'identifiant de la carte de la structure dont la fiche est ouverte (« root » pour la racine), ou rien.
+  #structId() { return this.#struct === null ? '' : (this.#struct || 'root'); }
 
   #paintSide() {
     const { current, data } = this.#show;
@@ -277,7 +331,9 @@ export class AnnuaireWindow {
     const ctx = { t, locale: this.#o.locale(), levels: data.config.levels, config: data.config, genres, relations,
       index: relationIndex(data.people, relations) };
     const person = this.#person === null ? null : data.people.find(each => each.row === this.#person);
-    const node = this.#struct === null ? null : findNode(data.tree, this.#struct);
+    // la fiche d'une carte de l'organigramme parle des mêmes personnes que la carte
+    const tree = this.#view === 'org' ? reducedTree(data, this.#matching(), this.#orgSignature()) : data.tree;
+    const node = this.#struct === null ? null : findNode(tree, this.#struct) || findNode(data.tree, this.#struct);
     const body = person ? fiche(person, ctx) : (node ? nodeFiche(node, ctx) : null);
     const closer = h('button', { type: 'button', class: 'an-ib an-side-x', title: t('an.fiche.close'), 'aria-label': t('an.fiche.close'),
       dataset: { act: 'side-close', fk: 'side-x' } },
@@ -291,7 +347,7 @@ export class AnnuaireWindow {
     if (this.#note) { this.#refs.note.textContent = this.#note; return; }
     if (state !== 'ready' || !data) { this.#refs.note.textContent = ''; return; }
     const total = data.people.length;
-    const found = this.#view === 'org' ? total : this.#scope().found.length;
+    const found = this.#view === 'org' ? this.#matching().length : this.#scope().found.length;
     this.#refs.note.textContent = found === total ? t('an.foot.all', { n: total }) : t('an.foot.some', { n: found, total });
   }
 
@@ -381,6 +437,19 @@ export class AnnuaireWindow {
     this.#focus('filters');
   }
 
+  // Le bouton « Personnes » de l'organigramme : dessiner ou non les personnes sous leur structure, sans clic de plus ; le choix est retenu sur le navigateur.
+  // Au-delà de PEOPLE_MAX personnes, le bouton dit pourquoi il ne peut pas.
+  toggleOrgPeople() {
+    const found = this.#matching().length;
+    if (found > PEOPLE_MAX) { this.#say(this.#o.t('an.org.peopleMany', { n: found })); return; }
+    this.#orgPeople = !this.#orgPeople;
+    this.#store.write(this.#orgPeople ? '1' : '0');
+    this.#note = '';
+    this.#paintBody();
+    this.#paintFoot();
+    this.#focus('org-people');
+  }
+
   toggleFilter(col, value) {
     const set = new Set(this.#filters[col] || []);
     if (!set.delete(value)) set.add(value);
@@ -404,7 +473,8 @@ export class AnnuaireWindow {
 
   // La fiche se ferme : le clavier revient à la ligne ou à la carte qu'elle montrait (la recherche si elle n'est plus là).
   closeSide() {
-    const back = this.#person !== null ? `pe:${this.#person}` : (this.#struct !== null ? `oc:${this.#struct || 'root'}` : '');
+    const row = this.#person;
+    const back = row !== null ? (this.#view === 'org' ? `oc:p${row}` : `pe:${row}`) : (this.#struct !== null ? `oc:${this.#struct || 'root'}` : '');
     this.#person = null;
     this.#struct = null;
     this.#paintBody();
@@ -494,6 +564,7 @@ const ACTIONS = Object.freeze({
   'tree-toggle': (window_, data) => window_.toggleNode(data.id),
   person: (window_, data) => window_.pickPerson(Number(data.row)),
   filters: window_ => window_.toggleFilters(),
+  'org-people': window_ => window_.toggleOrgPeople(),
   filter: (window_, data) => window_.toggleFilter(data.col, data.value),
   'filter-more': (window_, data) => window_.moreFilter(data.col),
   copy: (window_, data) => void window_.copy(data.value),

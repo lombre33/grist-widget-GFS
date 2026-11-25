@@ -1,0 +1,48 @@
+# La sonde de la carte d'importation de l'éditeur chez jsDelivr (choix du porteur du 25/11 : « jsDelivr, pas esm.sh »), à lancer à la main : pour chaque nom de la carte d'une app, les
+# versions que le `+esm` de jsDelivr ferait charger (prototype/outils/sonde-carte-jsdelivr.mjs). jsDelivr est injoignable du cloud de développement ; les exécuteurs de GitHub l'atteignent.
+# Il ne pousse RIEN dans le dépôt d'une app : le `package.json` de l'app est lu en lecture seule sur son dépôt public ; le résultat va sur une branche `sonde-carte-<date>` de GFS.
+# Aucune action tierce : seulement `actions/checkout` et `actions/setup-node`.
+name: Sonde de la carte chez jsDelivr
+
+on:
+  workflow_dispatch:
+    inputs:
+      depot:
+        description: Dépôt public de l'app (propriétaire/nom)
+        default: lombre33/publipostageGrist
+      branche:
+        description: Branche lue
+        default: main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sonde-carte-jsdelivr
+  cancel-in-progress: false
+
+jobs:
+  sonde:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Lire la liste de l'app
+        run: curl -fsSL "https://raw.githubusercontent.com/${{ inputs.depot }}/${{ inputs.branche }}/package.json" -o "$RUNNER_TEMP/package.json"
+      - name: Lancer la sonde
+        run: node outils/sonde-carte-jsdelivr.mjs "$RUNNER_TEMP/package.json" bibliotheques/sonde-carte-jsdelivr.json | tee "$GITHUB_STEP_SUMMARY"
+        working-directory: prototype
+      - name: Pousser le résultat sur une branche
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          branch="sonde-carte-$(date -u +%Y%m%d%H%M)"
+          git switch -c "$branch"
+          git add prototype/bibliotheques/sonde-carte-jsdelivr.json
+          git commit -m "Sonde de la carte chez jsDelivr du $(date -u +%d/%m/%Y) : résultat brut"
+          git push origin "$branch"

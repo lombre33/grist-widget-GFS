@@ -94,7 +94,10 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     `renommage` (contrats 3.3, point 10) et seulement ses propres tables et colonnes (le libellé par `ModifyColumn`, rien d'autre) ; Grist **ne refuse pas** un nom cible déjà
     pris, il ajoute « 2 » : l'app relit les noms juste avant d'envoyer et ne renomme rien si un nom cible existe (faits vérifiés 158). **Elle ne renomme jamais une table
     ni une colonne qu'un partage de Sync+ utilise** : renommée, une table rend le lien muet et une colonne le fait envoyer du vide (faits vérifiés 160) ; elle les garde et renomme
-    le reste. Un nom qui voyage entre deux documents (le
+    le reste. **Une écriture qui répond « table introuvable »** (ou « colonne introuvable ») pendant ou juste après un renommage, venu d'un autre onglet, d'une autre personne
+    ou d'une restauration : l'app relit les noms du document et recommence **une fois**, sinon elle dit « Rechargez la page » sans rien écrire de plus. **Le compte des lignes
+    (`rowCount` de la fenêtre) ne se donne pas pour une table qui peut être lourde** (lire la table entière : quelques secondes à 100 Mo, un échec vers 500 Mo, faits vérifiés 161) ;
+    sans lui, la fenêtre dit « Terminé » sans le nombre et les noms relus prouvent le lot. Un nom qui voyage entre deux documents (le
     protocole de Sync+) ne change qu'avec un numéro de version majeur ; **Sync+ ne migre aucun lien existant** (décision du porteur, 25/11) :
     seuls les nouveaux partages prennent les noms anglais. **GFS lit toujours les deux jeux de noms, sans date de fin** (un document jamais rouvert
     dans la nouvelle version, ou restauré d'une sauvegarde, reste lisible) ; il ne retire cette lecture que sur l'accord du porteur.

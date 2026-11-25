@@ -6,13 +6,27 @@ import { arrivalByTable } from './arrival.js';
 
 const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 
-async function readOne(doc, tables, spec) {
-  const found = tables.find(name => sameName(name, spec.table));
-  if (!found) return null;
-  try { return await doc.fetchTable(found); } catch (error) {
-    console.warn(`GFS : la table ${spec.table} ne se lit pas pour l'arrivée`, error);
+// Les noms que l'app donne à sa table : `table`, puis ses `aussi` (contrats 2.5, point 4 : le nom d'avant le passage à l'anglais). Comme pour les tables de
+// `noms` (2.4), c'est la table qui a des lignes que GFS lit ; si plusieurs en ont, ou aucune, la première de la liste (le nom du manifeste).
+const rowCount = data => (data && Array.isArray(data.id) ? data.id.length : 0);
+
+async function readTable(doc, name) {
+  try { return await doc.fetchTable(name); } catch (error) {
+    console.warn(`GFS : la table ${name} ne se lit pas pour l'arrivée`, error);
     return null;
   }
+}
+
+async function readOne(doc, tables, spec) {
+  let first = null;
+  for (const wanted of [spec.table, ...(spec.aussi || [])]) {
+    const found = tables.find(name => sameName(name, wanted));
+    if (!found) continue;
+    const data = await readTable(doc, found);
+    if (rowCount(data) > 0) return data;
+    first = first || data;
+  }
+  return first;
 }
 
 // `probes` : les manifestes à interroger (leur `arrivee`), `tableId` : la table de la section. Rend l'id de l'app que sa table désigne, ou null.

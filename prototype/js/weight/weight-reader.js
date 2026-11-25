@@ -57,7 +57,7 @@ export function escalating(sqlWith) {
 }
 
 // Une lecture qui rend des octets, ou null (`optional` : un échec autre qu'un refus de droits laisse null au lieu de lever).
-async function readOne(sql, statement, optional) {
+export async function readOne(sql, statement, optional) {
   try {
     return bytesOf(await sql(statement));
   } catch (error) {

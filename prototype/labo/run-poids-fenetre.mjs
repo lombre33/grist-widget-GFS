@@ -17,7 +17,7 @@ import { createI18n } from '../js/i18n/i18n.js';
 import { formatBytes } from '../js/weight/weight.js';
 import { SQL } from '../js/weight/weight-reader.js';
 import { PAGE_PORT, contrastProblems, openGfs, shot } from './lab-pdf.mjs';
-import { apply, noise, sql, upload } from './lab-poids.mjs';
+import { apply, noise, reopened, sql, upload } from './lab-poids.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
@@ -173,18 +173,4 @@ try {
 } finally {
   await browser.close();
   pages.close();
-}
-
-// Le cadre de GFS (accès complet) prêt après un rechargement de la page par Grist, sa première fenêtre refermée.
-async function reopened(page) {
-  for (let i = 0; i < 120; i++) {
-    const frame = page.frames().find(each => /\/prototype\/index\.html/.test(each.url()) && /access=full/.test(each.url()));
-    if (frame && await frame.evaluate(() => document.body.dataset.gfs === 'ready' && document.body.dataset.gfsFirstRun === 'done').catch(() => false)) {
-      await page.waitForTimeout(600);
-      if (await frame.locator('.mod-scrim').count()) await page.keyboard.press('Escape');
-      return frame;
-    }
-    await page.waitForTimeout(500);
-  }
-  throw new Error('Le cadre de GFS ne s\'est pas rouvert.');
 }

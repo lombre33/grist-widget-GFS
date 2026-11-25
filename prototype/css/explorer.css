@@ -57,6 +57,10 @@ button { cursor: pointer; }
 
 .ex-notices:empty { display: none; }
 .banner { display: flex; align-items: center; gap: 8px; padding: 6px 16px; border-top: 1px solid var(--border-strong); background: var(--warn-soft); color: var(--warn-ink); font-size: max(12.5px, var(--fs-min)); }
+/* Le message d'erreur du poids du document (js/weight/weight-alert.js) : rouge, le texte garde la place et le bouton ne se serre pas. */
+.banner--danger { border-top-color: var(--danger); background: var(--danger-soft); color: var(--danger-ink); }
+.banner--danger .banner-text { flex: 1; min-width: 0; }
+.banner--danger .btn { flex: none; height: 26px; padding: 0 8px; }
 
 /* La corbeille : sa barre (la règle, « Vider la corbeille… »), une ligne du volet grisée pendant le choix d'un fichier. */
 .trash-bar { display: flex; align-items: center; gap: 8px; padding: 4px 16px; border-top: 1px solid var(--border-strong); background: var(--surface-sunken); color: var(--text-muted); font-size: max(12.5px, var(--fs-min)); }

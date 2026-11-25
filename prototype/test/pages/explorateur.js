@@ -50,6 +50,7 @@ import { limitOf, whyNot } from '/js/sharing/share-other.js';
 import { openShareOther } from '/js/sharing/share-other-window.js';
 import { openShareReceive } from '/js/sharing/share-receive-window.js';
 import { openWeight } from '/js/weight/weight-window.js';
+import { alertBar } from '/js/weight/weight-alert.js';
 import { openDependencies } from '/js/apps/dependencies-window.js';
 import { dependencyRows } from '/js/apps/dependencies-model.js';
 import { carriedOf } from '/js/apps/dependencies-carried.js';
@@ -407,7 +408,7 @@ async function mount() {
       manage: () => ({ why: null, open: () => { window.__manageFromSettings = (window.__manageFromSettings || 0) + 1; }, notice: text => window.__notices.push(text) }) }),
     onOpen: file => { window.__opened = file.name; }, onNew: () => {}, get links() { return window.__linkProxy; },
     opened: { keys: () => openedFiles.keys(), shown: () => openedFiles.shown(SESSION), remove: key => openedFiles.remove(key) },
-    onImport: entry => { window.__imported = entry.valeur; }, onTemplates: () => { window.__templatesAsked = (window.__templatesAsked || 0) + 1; }, onClose: () => {}, onApps: () => {}, sharing: { whyNot: () => null, whyNotFolder: path => (path.startsWith('Espaces') && path.split('/').length < 3 ? i18n.t('share.folder.space') : null), folderFile: path => ({ key: window.__linkProxy && path.startsWith('Espaces/') ? `dossier:${path.split('/').slice(1).join('/').replace(/^[^/]+/, word => word.toLowerCase())}` : `dossier:${path}`, name: path.split('/').pop(), path, mine: !path.startsWith('Espaces/') }), open: file => window.__share(window.__shareKind || 'actif', file) }, onWeight: estimate => window.__weight(estimate), personal: () => true, kept: null, trash: bin, copying,
+    onImport: entry => { window.__imported = entry.valeur; }, onTemplates: () => { window.__templatesAsked = (window.__templatesAsked || 0) + 1; }, onClose: () => {}, onApps: () => {}, sharing: { whyNot: () => null, whyNotFolder: path => (path.startsWith('Espaces') && path.split('/').length < 3 ? i18n.t('share.folder.space') : null), folderFile: path => ({ key: window.__linkProxy && path.startsWith('Espaces/') ? `dossier:${path.split('/').slice(1).join('/').replace(/^[^/]+/, word => word.toLowerCase())}` : `dossier:${path}`, name: path.split('/').pop(), path, mine: !path.startsWith('Espaces/') }), open: file => window.__share(window.__shareKind || 'actif', file) }, onWeight: estimate => window.__weight(estimate), alerts: ({ detail }) => (window.__alertBytes ? [alertBar({ bytes: window.__alertBytes, locale, t: i18n.t, detail })] : []), personal: () => true, kept: null, trash: bin, copying,
     attachments: async () => { window.__attachments += 1; if (window.__attachmentsFail) return { error: new Error(window.__attachmentsFail) }; return { data: attachmentsTable() }; },
     filing: { togglePin: noted('pin', 'name'), rename: noted('rename', 'name'), moveFile: noted('move', 'name'), renameFolder: async path => { window.__filing.push(['renameFolder', path]); }, moveFolder: async path => { window.__filing.push(['moveFolder', path]); }, ...moving,
       newFolder: () => filing.newFolder(), deleteFolder: path => filing.deleteFolder(path), undoStack: filing.undoStack },
@@ -639,6 +640,8 @@ async function mount() {
     return [{ octets: TABLE_BYTES[name] || 8192 * (BIG.indexOf(name) + 1) }];
   };
   window.__weightKind = 'ok';
+  // Le bandeau d'erreur du poids du document (js/weight/weight-alert.js, test/poids-alerte-firefox.mjs) : `window.__alert(octets)` le montre avec ce poids, `window.__alert(null)` le retire.
+  window.__alert = bytes => { window.__alertBytes = bytes; explorer.repaint(); };
   window.__weight = estimate => {
     window.__weightEstimate = estimate;
     return openWeight({ container: stage, t: i18n.t, locale, inertTargets: () => [explorer.root], estimate, load: (update, cancelled) => readWeight(fakeSql(window.__weightKind), update, cancelled) });

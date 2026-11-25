@@ -81,6 +81,14 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     elle-même le partage de la page de son formulaire (la recette du bouton « Publier » de Grist) : poser le partage n'ouvre rien, l'accord se demande à la publication ; un refus de la
     personne (`GFS_ANNULE`) n'est pas un échec de l'app, elle le dit comme tel et laisse la personne recommencer ou publier à la main. Un lien commun à deux formulaires ne se propose que
     **décoché**, et la personne le confirme dans une fenêtre de GFS (3.4, point 8 d).
+15. **Tout en anglais dès le départ** (décision du porteur, 25/11) : une app nouvelle écrit en anglais son code (variables, fonctions,
+    fichiers), ses **tables** et leurs **colonnes** (`Tuesday_Projects`, `Name`, `ModifiedAt`), sans attendre une bascule. Seule l'interface
+    reste en français et en anglais. Une app déjà sortie dont les noms sont encore en français bascule **sur place** (`RenameTable`,
+    `RenameColumn` et le libellé, dans **un seul lot**, tout ou rien : jamais une table de plus, jamais une ligne copiée) ; elle **lit
+    d'abord les deux jeux de noms** (une version qui sait lire les deux sort avant celle qui renomme, partout), ne crée jamais la table
+    anglaise quand la française existe, ne renomme pas un document qui porte déjà les deux jeux, et annonce ses noms dans « Changements qui
+    touchent GFS » **avant** de renommer (contrats 2.4, point 6 : `noms` du manifeste). Un nom qui voyage entre deux documents (le
+    protocole de Sync+) ne change qu'avec un numéro de version majeur.
 
 ### 1.2 Quand GFS arrive (étapes 3 à 5 du plan, cahier 10)
 

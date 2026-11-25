@@ -85,9 +85,11 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     fichiers), ses **tables** et leurs **colonnes** (`Tuesday_Projects`, `Name`, `ModifiedAt`), sans attendre une bascule. Seule l'interface
     reste en français et en anglais. Une app déjà sortie dont les noms sont encore en français bascule **sur place** (`RenameTable`,
     `RenameColumn` et le libellé, dans **un seul lot**, tout ou rien : jamais une table de plus, jamais une ligne copiée) ; elle **lit
-    d'abord les deux jeux de noms** (une version qui sait lire les deux sort avant celle qui renomme, partout), ne crée jamais la table
+    les deux jeux de noms dans la version même qui renomme** (décision du porteur, 25/11 : les gens sont toujours sur le dernier lien, pas de sortie en deux temps), ne crée jamais la table
     anglaise quand la française existe, ne renomme pas un document qui porte déjà les deux jeux, et annonce ses noms dans « Changements qui
-    touchent GFS » **avant** de renommer (contrats 2.4, point 6 : `noms` du manifeste). Un nom qui voyage entre deux documents (le
+    touchent GFS » **avant** de renommer (contrats 2.4, point 6 : `noms` du manifeste). Dans GFS, le courtier ne laisse renommer que l'app qui déclare la capacité
+    `renommage` (contrats 3.3, point 10) et seulement ses propres tables et colonnes (le libellé par `ModifyColumn`, rien d'autre) ; Grist **ne refuse pas** un nom cible déjà
+    pris, il ajoute « 2 » : l'app relit les noms juste avant d'envoyer et ne renomme rien si un nom cible existe (faits vérifiés 158). Un nom qui voyage entre deux documents (le
     protocole de Sync+) ne change qu'avec un numéro de version majeur ; **Sync+ ne migre aucun lien existant** (décision du porteur, 25/11) :
     seuls les nouveaux partages prennent les noms anglais. **GFS lit toujours les deux jeux de noms, sans date de fin** (un document jamais rouvert
     dans la nouvelle version, ou restauré d'une sauvegarde, reste lisible) ; il ne retire cette lecture que sur l'accord du porteur.

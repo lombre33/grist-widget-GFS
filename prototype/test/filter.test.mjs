@@ -58,12 +58,66 @@ test('contrats 3.3 point 1 : un lot est permis en entier ou refusé en entier, a
 });
 
 test('contrats 3.3 point 2 : verbes en liste fermée', () => {
-  for (const verb of ['ApplyDocActions', 'ApplyUndoActions', 'ReplaceTableData', 'RenameColumn', 'ModifyColumn', 'AddView', 'AddViewSection', 'RemoveView', 'RemoveViewSection']) {
+  for (const verb of ['ApplyDocActions', 'ApplyUndoActions', 'ReplaceTableData', 'AddView', 'AddViewSection', 'RemoveView', 'RemoveViewSection']) {
     assert.match(refused(pp, [[verb, 'Clients']]).reason, /liste fermée/, verb);
   }
   refused(pp, [['AddRecord']]);
   refused(pp, ['AddRecord']);
   refused(pp, 'AddRecord');
+});
+
+// Le renommage sur place (contrats 3.3, point 10) : la capacité `renommage`, les tables de l'app seulement, le libellé seulement.
+const renaming = () => { const m = publipostage(); assert.ok(m.permissions.renommage.pourquoi.fr, 'Publipostage+ le déclare'); return m; };
+const withoutRenaming = () => { const m = renaming(); delete m.permissions.renommage; return policyOf(m); };
+const ppBatch = [
+  ['RenameTable', 'Publipostage_Modeles', 'Publipostage_Templates'],
+  ['RenameColumn', 'Publipostage_Templates', 'Nom', 'Name'],
+  ['ModifyColumn', 'Publipostage_Templates', 'Name', { label: 'Name' }],
+];
+
+test('contrats 3.3 point 10 : le lot de renommage de Publipostage+ passe avec la capacité « renommage »', () => {
+  assert.equal(pp.renommage, true);
+  allowed(pp, ppBatch);
+  assert.equal(policyOf(automation()).renommage, false, 'une app qui ne le déclare pas ne renomme rien');
+});
+
+test('contrats 3.3 point 10 : sans la capacité, ni RenameTable, ni RenameColumn, ni le libellé ne passent', () => {
+  const plain = withoutRenaming();
+  assert.equal(plain.renommage, false);
+  for (const [rank, action] of ppBatch.entries()) assert.match(refused(plain, [action]).reason, /renommage/, `${action[0]} (${rank})`);
+  assert.equal(refused(plain, ppBatch).rank, 0);
+});
+
+test('contrats 3.3 point 10 : jamais une table de la personne, d\'une autre app ni de GFS, même avec la capacité', () => {
+  refused(pp, [['RenameTable', 'Clients', 'Clients2']]);
+  refused(pp, [['RenameTable', 'Publipostage_Modeles', 'Clients']]);
+  refused(pp, [['RenameTable', 'Publipostage_Modeles', 'Automation_Modeles']]);
+  refused(pp, [['RenameTable', 'Publipostage_Modeles', 'GFS_Modeles']]);
+  refused(pp, [['RenameTable', 'GFS_Rangement', 'Publipostage_Rangement']]);
+  refused(pp, [['RenameTable', '_grist_Tables', 'Publipostage_Tables']]);
+  refused(pp, [['RenameColumn', 'Clients', 'Nom', 'Name']]);
+  refused(pp, [['RenameColumn', 'GFS_Rangement', 'Nom', 'Name']]);
+  refused(pp, [['RenameColumn', '_grist_Tables_column', 'label', 'Label']]);
+  refused(pp, [['ModifyColumn', 'Clients', 'Nom', { label: 'Name' }]]);
+  refused(pp, [['ModifyColumn', '_grist_Tables_column', 'label', { label: 'Label' }]]);
+});
+
+test('contrats 3.3 point 10 : ModifyColumn ne change que le libellé ; un nom manquant est refusé', () => {
+  allowed(pp, [['ModifyColumn', 'Publipostage_Templates', 'Name', { label: 'Name' }]]);
+  for (const info of [{ type: 'Int' }, { formula: '1', isFormula: true }, { label: 'Name', widgetOptions: '{}' }, { widgetOptions: '{}' }, {}, null, undefined, 'label']) {
+    refused(pp, [['ModifyColumn', 'Publipostage_Templates', 'Name', info]]);
+  }
+  refused(pp, [['RenameColumn', 'Publipostage_Templates', 'Nom']]);
+  refused(pp, [['RenameColumn', 'Publipostage_Templates', '', 'Name']]);
+  refused(pp, [['ModifyColumn', 'Publipostage_Templates']]);
+  refused(pp, [['RenameTable', 'Publipostage_Modeles']]);
+});
+
+test('contrats 3.3 point 10 : un lot de renommage est permis en entier ou refusé en entier, avec le rang de l\'action fautive', () => {
+  const r = refused(pp, [...ppBatch, ['RenameColumn', 'Clients', 'Nom', 'Name']]);
+  assert.equal(r.rank, 3);
+  assert.equal(refused(pp, [ppBatch[0], ['ModifyColumn', 'Publipostage_Templates', 'Name', { type: 'Int' }], ppBatch[1]]).rank, 1);
+  assert.equal(batchTouchesTables(ppBatch), true, 'le lot est relu après coup : le nom que Grist a donné est contrôlé');
 });
 
 test('contrats 3.3 point 3 : jamais GFS_, jamais la table d\'une autre app, même si un motif la nomme', () => {

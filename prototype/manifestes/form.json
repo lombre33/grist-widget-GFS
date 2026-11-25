@@ -54,6 +54,12 @@
         "en": "Internal mode places a probe table whose column reads user.Email through a formula, to know the address of the person filling in the form."
       }
     },
+    "renommage": {
+      "pourquoi": {
+        "fr": "Passer sur place les tables et les colonnes de l'app aux noms anglais, en un seul lot, sans copier ni perdre une ligne ; jamais une table de la personne.",
+        "en": "Move the app's own tables and columns to their English names in place, in a single batch, without copying or losing a row; never one of the person's tables."
+      }
+    },
     "jeton": {
       "lectureSeule": true,
       "pourquoi": {

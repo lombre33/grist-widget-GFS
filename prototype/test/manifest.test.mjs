@@ -243,6 +243,18 @@ test('contrats 3.4, point 2 : Automation+ déclare « formules » pour la colonn
   assert.ok(row && row.app === 'automation' && row.pourquoi.fr === m.permissions.formules.pourquoi.fr, 'un client la relit dans la liste des capacités');
 });
 
+test('contrats 3.3, point 10 : `renommage` se déclare avec sa raison dans les deux langues, et un client le relit dans la liste des capacités', () => {
+  const m = publipostage();
+  assert.deepEqual(validateManifest(m), { ok: true, errors: [] });
+  assert.match(bad(x => { delete x.permissions.renommage.pourquoi; }), /permissions\.renommage : pourquoi doit porter fr et en/);
+  assert.match(bad(x => { x.permissions.renommage.pourquoi = { fr: 'a' }; }), /permissions\.renommage : pourquoi doit porter fr et en/);
+  assert.match(bad(x => { x.permissions.renommage = true; }), /permissions\.renommage : pourquoi doit porter fr et en/);
+  assert.match(bad(x => { x.permissions.acces = 'read table'; }), /capacités demandent l'accès full/);
+  const apps = listCapabilities([publipostage(), form(), bi(), automation()]).filter(row => row.capacite === 'renommage');
+  assert.deepEqual(apps.map(row => row.app), ['publipostage', 'form', 'bi'], 'les trois apps dont GFS déclare les noms anglais ; Automation+ n\'a rien à renommer');
+  assert.ok(apps.every(row => row.pourquoi.fr && row.pourquoi.en));
+});
+
 test('contrats 3.4 : listCapabilities dit, pour chaque app, les capacités déclarées et leur raison (ce que lit un client)', () => {
   const why = { fr: 'Pour « Mes tâches »', en: 'For “My tasks”' };
   const withIdentity = publipostage(); withIdentity.permissions.identite = { pourquoi: why };
@@ -561,7 +573,7 @@ test('contrats 3.4, point 7 : `lecteurs` se déclare avec ses sites et sa raison
   const m = publipostage();
   assert.deepEqual(m.permissions.lecteurs.fournisseurs, ['youtube', 'vimeo'], 'Publipostage+ demande le lecteur de Slides+ pour les deux sites');
   assert.deepEqual(validateManifest(m), { ok: true, errors: [] });
-  const none = publipostage(); none.permissions.acces = 'none'; delete none.permissions.lit; delete none.permissions.ecrit; delete none.permissions.gristInterne; delete none.permissions.jeton; delete none.permissions.formules; delete none.permissions.structure; delete none.permissions.lienPublic;
+  const none = publipostage(); none.permissions.acces = 'none'; delete none.permissions.lit; delete none.permissions.ecrit; delete none.permissions.gristInterne; delete none.permissions.jeton; delete none.permissions.formules; delete none.permissions.renommage; delete none.permissions.structure; delete none.permissions.lienPublic;
   assert.deepEqual(validateManifest(none), { ok: true, errors: [] }, 'elle ne demande pas l\'accès full : aucune table ne passe par le lecteur');
   assert.match(bad(m => { delete m.permissions.lecteurs.pourquoi; }), /permissions\.lecteurs : pourquoi doit porter fr et en/);
   assert.match(bad(m => { m.permissions.lecteurs.pourquoi = { fr: 'a' }; }), /permissions\.lecteurs : pourquoi doit porter fr et en/);

@@ -152,6 +152,32 @@ test('copiesInApp : l\'éditeur en copie figée va dans l\'adresse du cadre, jam
   assert.deepEqual(Object.keys(both), ['docx'], 'les autres fonctions en copie figée sont servies comme avant');
 });
 
+// Une fonction sans CDN (kit 0.30.0, choix du porteur du 25/11 : l'éditeur de Publipostage+ n'est plus chargé depuis esm.sh) : la copie de l'app est son seul mode.
+const withoutCdn = () => { const m = withEditor(); m.natives[0].sansCdn = true; return m; };
+
+test('manifeste : `sansCdn` se dit pour une fonction dont la copie est dans l\'app, en vrai ou faux, et nulle part ailleurs', () => {
+  assert.deepEqual(validateManifest(withoutCdn()).errors, []);
+  const refuse = (change, reason) => { const m = withoutCdn(); change(m.natives); assert.match(validateManifest(m).errors.join('|'), reason); };
+  refuse(natives => { natives[0].sansCdn = 'oui'; }, /natives editeur : sansCdn : vrai ou faux attendu/);
+  refuse(natives => { natives[1].sansCdn = true; }, /natives pdf : sansCdn ne se dit que pour une fonction dont la copie est dans l'app/);
+});
+
+test('nativeRows : une fonction sans CDN est en copie figée quoi que la personne ait écrit, et `fixed` le dit ; une fonction avec CDN ne l\'est pas', () => {
+  const rows = nativeRows(withoutCdn(), { extensions: [], modes: {} }, catalogue);
+  assert.deepEqual([rows[0].mode, rows[0].fixed, rows[0].inApp], ['vendorise', true, true], 'sans rien écrit : la copie, pas le CDN par défaut');
+  assert.equal(nativeRows(withoutCdn(), { extensions: [], modes: { 'natif:editeur': 'cdn' } }, catalogue)[0].mode, 'vendorise', 'un CDN écrit autrefois ne compte plus');
+  assert.equal(nativeRows(withEditor(), { extensions: [], modes: {} }, catalogue)[0].fixed, false, 'une fonction qui a son CDN reste libre');
+  assert.equal(rows[1].fixed, undefined, 'une fonction que GFS sert n\'est pas concernée');
+});
+
+test('copiesInApp : une fonction sans CDN va toujours dans l\'adresse du cadre ; GFS ne sert rien pour elle', () => {
+  const m = withoutCdn();
+  assert.deepEqual(copiesInApp(m, { extensions: [], modes: {} }), ['editeur'], 'même sans choix');
+  assert.deepEqual(copiesInApp(m, { extensions: [], modes: { 'natif:editeur': 'cdn' } }), ['editeur']);
+  assert.deepEqual(copiesInApp(m, undefined), [], 'une app non installée n\'a rien');
+  assert.deepEqual(nativesState(m, { extensions: [], modes: {} }, catalogue, BASE), {});
+});
+
 test('AppsState : `copiesFor` suit le choix de l\'éditeur, écrit tout de suite dans la table', async () => {
   const m = { ...withEditor(), permanente: true };
   const store = { value: null, read: async () => ({ raw: structuredClone(store.value) }), update: async (mutate) => { store.value = mutate(structuredClone(store.value)); return structuredClone(store.value); } };

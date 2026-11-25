@@ -170,6 +170,24 @@ export async function nativesProblems(page, language, tag) {
   if (!checked(s, 'native:publipostage/editeur/vendorise') || !s.legend.includes(t('mod.native.mixed'))) note('éditeur', 'la ligne de l\'éditeur ne montre pas la copie figée choisie, ou la légende ne dit pas « mélange »');
   await close();
 
+  // L'éditeur sans CDN (kit 0.30.0, choix du porteur du 25/11 : plus d'esm.sh) : sa copie figée est le seul mode ; le CDN est grisé avec sa raison, un clic dessus ne fait rien, et la fonction ne compte pas dans
+  // « toutes » (sans elle, le départ dirait « mélange »).
+  s = await open('editeur-sans-cdn');
+  if (s.legend.includes(t('mod.native.mixed')) || !checked(s, 'nativeall:publipostage/cdn')) note('éditeur sans CDN', `au départ le choix de toutes devrait rester le CDN, sans « mélange » : « ${s.legend} »`);
+  await click(SUMMARY);
+  s = await page.run(state);
+  const fixed = s.rows.find(row => /^(Éditeur|Editor)/.test(row.name));
+  const cdnRadio = s.radios.find(item => item.key === 'native:publipostage/editeur/cdn') || {};
+  const copyRadio = s.radios.find(item => item.key === 'native:publipostage/editeur/vendorise') || {};
+  if (!fixed || fixed.note !== t('mod.native.noCdn') || fixed.warn) note('éditeur sans CDN', `la ligne devrait dire « ${t('mod.native.noCdn')} » (note : ${fixed && fixed.note}, grisé : ${fixed && fixed.warn})`);
+  if (!cdnRadio.disabled || cdnRadio.checked || !copyRadio.checked) note('éditeur sans CDN', `le CDN devrait être grisé et décoché, la copie figée choisie (CDN grisé : ${cdnRadio.disabled}, coché : ${cdnRadio.checked}, copie : ${copyRadio.checked})`);
+  if (fixed && (fixed.overflow > 1 || s.bodyOverflow > 1 || fixed.box.left < s.window.left || fixed.box.right > s.window.right)) note('éditeur sans CDN', 'la ligne de l\'éditeur déborde de la fenêtre');
+  const eventsBefore = s.events.length;
+  await click(ROW('editeur', 'cdn'));
+  s = await page.run(state);
+  if (s.events.length !== eventsBefore) note('éditeur sans CDN', 'un clic sur le CDN grisé a quand même envoyé un choix');
+  await close();
+
   // L'édition collaborative cochée, au défaut : « Copie figée » est choisie (Publipostage+ ne nomme pas encore l'adresse du CDN), avec « Par défaut » ; « CDN » reste libre et, une fois choisi
   // à la souris, la phrase dit que le navigateur le refuse ; la copie la fait disparaître.
   await open('direct');

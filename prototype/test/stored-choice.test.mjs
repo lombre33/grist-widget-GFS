@@ -92,6 +92,24 @@ test('keyStore : une clé à soi ; lit, écrit, retire ; un localStorage qui lè
   assert.equal(full.write(null), false);
 });
 
+test('keyStore sur l\'onglet (`sessionStorage`) : la même clé y vit à part de celle du navigateur ; un onglet qui refuse ne fait rien de pire', () => {
+  const kept = new Map();
+  const tab = new Map();
+  const area = data => ({ getItem: key => data.get(key) ?? null, setItem: (key, value) => data.set(key, value), removeItem: key => data.delete(key) });
+  const win = { localStorage: area(kept), sessionStorage: area(tab) };
+  const store = keyStore(win, 'gfs.reading.doc.Table', 'sessionStorage');
+  assert.equal(store.write('1:5'), true);
+  assert.deepEqual([tab.get('gfs.reading.doc.Table'), kept.size], ['1:5', 0]);
+  assert.equal(keyStore(win, 'gfs.reading.doc.Table').read(), null);
+  assert.equal(store.read(), '1:5');
+  assert.equal(store.write(null), true);
+  assert.equal(tab.size, 0);
+  const blocked = keyStore({ localStorage: area(kept), get sessionStorage() { throw new Error('SecurityError'); } }, 'gfs.reading.doc.Table', 'sessionStorage');
+  assert.equal(blocked.read(), null);
+  assert.equal(blocked.write('1:5'), false);
+});
+
+
 test('watchKey : suit la clé donnée (ou un effacement général), rien d\'autre ; se retire', () => {
   const listeners = new Map();
   const win = {

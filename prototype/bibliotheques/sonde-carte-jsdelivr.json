@@ -1,0 +1,1050 @@
+{
+  "lu": "2026-11-25T12:32:48.708Z",
+  "racines": [
+    {
+      "nom": "prosemirror-model",
+      "adresse": "https://cdn.jsdelivr.net/npm/prosemirror-model@1.25.11/+esm",
+      "statut": 200,
+      "fichiers": 2,
+      "octets": 47141,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "orderedmap",
+      "adresse": "https://cdn.jsdelivr.net/npm/orderedmap@2.1.1/+esm",
+      "statut": 200,
+      "fichiers": 1,
+      "octets": 1799,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "prosemirror-state",
+      "adresse": "https://cdn.jsdelivr.net/npm/prosemirror-state@1.4.4/+esm",
+      "statut": 200,
+      "fichiers": 5,
+      "octets": 135026,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "prosemirror-transform",
+      "adresse": "https://cdn.jsdelivr.net/npm/prosemirror-transform@1.12.0/+esm",
+      "statut": 200,
+      "fichiers": 3,
+      "octets": 78647,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "prosemirror-view",
+      "adresse": "https://cdn.jsdelivr.net/npm/prosemirror-view@1.42.3/+esm",
+      "statut": 200,
+      "fichiers": 8,
+      "octets": 311099,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "rope-sequence",
+      "adresse": "https://cdn.jsdelivr.net/npm/rope-sequence@1.3.4/+esm",
+      "statut": 200,
+      "fichiers": 1,
+      "octets": 3755,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "prosemirror-history",
+      "adresse": "https://cdn.jsdelivr.net/npm/prosemirror-history@1.5.0/+esm",
+      "statut": 200,
+      "fichiers": 8,
+      "octets": 176613,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "prosemirror-keymap",
+      "adresse": "https://cdn.jsdelivr.net/npm/prosemirror-keymap@1.2.3/+esm",
+      "statut": 200,
+      "fichiers": 6,
+      "octets": 90007,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "w3c-keyname",
+      "adresse": "https://cdn.jsdelivr.net/npm/w3c-keyname@2.2.8/+esm",
+      "statut": 200,
+      "fichiers": 1,
+      "octets": 1846,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "prosemirror-commands",
+      "adresse": "https://cdn.jsdelivr.net/npm/prosemirror-commands@1.7.1/+esm",
+      "statut": 200,
+      "fichiers": 8,
+      "octets": 219849,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "prosemirror-schema-list",
+      "adresse": "https://cdn.jsdelivr.net/npm/prosemirror-schema-list@1.5.1/+esm",
+      "statut": 200,
+      "fichiers": 7,
+      "octets": 167365,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "prosemirror-tables",
+      "adresse": "https://cdn.jsdelivr.net/npm/prosemirror-tables@1.8.5/+esm",
+      "statut": 200,
+      "fichiers": 13,
+      "octets": 394504,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "prosemirror-gapcursor",
+      "adresse": "https://cdn.jsdelivr.net/npm/prosemirror-gapcursor@1.4.1/+esm",
+      "statut": 200,
+      "fichiers": 13,
+      "octets": 356280,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "prosemirror-dropcursor",
+      "adresse": "https://cdn.jsdelivr.net/npm/prosemirror-dropcursor@1.8.2/+esm",
+      "statut": 200,
+      "fichiers": 7,
+      "octets": 165853,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "prosemirror-inputrules",
+      "adresse": "https://cdn.jsdelivr.net/npm/prosemirror-inputrules@1.5.1/+esm",
+      "statut": 200,
+      "fichiers": 7,
+      "octets": 165670,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "prosemirror-changeset",
+      "adresse": "https://cdn.jsdelivr.net/npm/prosemirror-changeset@2.4.1/+esm",
+      "statut": 200,
+      "fichiers": 1,
+      "octets": 8925,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/core",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/core@3.31.3/+esm",
+      "statut": 200,
+      "fichiers": 26,
+      "octets": 644907,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/starter-kit",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/starter-kit@3.31.3/+esm",
+      "statut": 200,
+      "fichiers": 55,
+      "octets": 918453,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/extension-document",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/extension-document@3.31.3/+esm",
+      "statut": 200,
+      "fichiers": 27,
+      "octets": 645495,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/extension-underline",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/extension-underline@3.31.3/+esm",
+      "statut": 200,
+      "fichiers": 27,
+      "octets": 646378,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/extension-text-align",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/extension-text-align@3.31.3/+esm",
+      "statut": 200,
+      "fichiers": 27,
+      "octets": 646514,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/extension-text-style",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/extension-text-style@3.31.3/+esm",
+      "statut": 200,
+      "fichiers": 27,
+      "octets": 649823,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/extension-font-family",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/extension-font-family@3.31.3/+esm",
+      "statut": 200,
+      "fichiers": 28,
+      "octets": 650386,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/extension-table",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/extension-table@3.31.3/+esm",
+      "statut": 200,
+      "fichiers": 31,
+      "octets": 829710,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/extension-table-row",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/extension-table-row@3.31.3/+esm",
+      "statut": 200,
+      "fichiers": 32,
+      "octets": 830255,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/extension-table-cell",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/extension-table-cell@3.31.3/+esm",
+      "statut": 200,
+      "fichiers": 32,
+      "octets": 830259,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/extension-table-header",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/extension-table-header@3.31.3/+esm",
+      "statut": 200,
+      "fichiers": 32,
+      "octets": 830267,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/extension-task-list",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/extension-task-list@3.31.3/+esm",
+      "statut": 200,
+      "fichiers": 28,
+      "octets": 668996,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/extension-task-item",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/extension-task-item@3.31.3/+esm",
+      "statut": 200,
+      "fichiers": 28,
+      "octets": 668996,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/extension-placeholder",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/extension-placeholder@3.31.3/+esm",
+      "statut": 200,
+      "fichiers": 38,
+      "octets": 835138,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/suggestion",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/suggestion@3.31.3/+esm",
+      "statut": 200,
+      "fichiers": 31,
+      "octets": 680910,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@floating-ui/dom",
+      "adresse": "https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.6.12/+esm",
+      "statut": 200,
+      "fichiers": 5,
+      "octets": 27805,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@handlewithcare/prosemirror-suggest-changes",
+      "adresse": "https://cdn.jsdelivr.net/npm/@handlewithcare/prosemirror-suggest-changes@0.1.8/+esm",
+      "statut": 200,
+      "fichiers": 12,
+      "octets": 407383,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/pm/model",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/model/+esm",
+      "statut": 200,
+      "fichiers": 3,
+      "octets": 47545,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/pm/state",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/state/+esm",
+      "statut": 200,
+      "fichiers": 6,
+      "octets": 135428,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/pm/view",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/view/+esm",
+      "statut": 200,
+      "fichiers": 9,
+      "octets": 311500,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/pm/transform",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/transform/+esm",
+      "statut": 200,
+      "fichiers": 4,
+      "octets": 79584,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/pm/keymap",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/keymap/+esm",
+      "statut": 200,
+      "fichiers": 7,
+      "octets": 90411,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/pm/commands",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/commands/+esm",
+      "statut": 200,
+      "fichiers": 9,
+      "octets": 225951,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/pm/schema-list",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/schema-list/+esm",
+      "statut": 200,
+      "fichiers": 8,
+      "octets": 167779,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/pm/tables",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/tables/+esm",
+      "statut": 200,
+      "fichiers": 14,
+      "octets": 394908,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/pm/gapcursor",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/gapcursor/+esm",
+      "statut": 200,
+      "fichiers": 14,
+      "octets": 356690,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/pm/dropcursor",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/dropcursor/+esm",
+      "statut": 200,
+      "fichiers": 8,
+      "octets": 171119,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/pm/inputrules",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/inputrules/+esm",
+      "statut": 200,
+      "fichiers": 8,
+      "octets": 166082,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/pm/history",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/history/+esm",
+      "statut": 200,
+      "fichiers": 9,
+      "octets": 177019,
+      "erreurs": 0,
+      "coupe": false
+    },
+    {
+      "nom": "@tiptap/pm/changeset",
+      "adresse": "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/changeset/+esm",
+      "statut": 200,
+      "fichiers": 2,
+      "octets": 9398,
+      "erreurs": 0,
+      "coupe": false
+    }
+  ],
+  "fichiers": 89,
+  "paquets": [
+    {
+      "paquet": "@floating-ui/core",
+      "versions": [
+        "1.6.8",
+        "1.8.0"
+      ],
+      "liste": null,
+      "verdict": "doublon"
+    },
+    {
+      "paquet": "@floating-ui/dom",
+      "versions": [
+        "1.6.12",
+        "1.8.0"
+      ],
+      "liste": "1.6.12",
+      "verdict": "doublon"
+    },
+    {
+      "paquet": "@floating-ui/utils",
+      "versions": [
+        "0.2.11",
+        "0.2.12",
+        "0.2.8"
+      ],
+      "liste": null,
+      "verdict": "doublon"
+    },
+    {
+      "paquet": "@handlewithcare/prosemirror-suggest-changes",
+      "versions": [
+        "0.1.8"
+      ],
+      "liste": "0.1.8",
+      "verdict": "ok"
+    },
+    {
+      "paquet": "@tiptap/core",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": "3.31.3",
+      "verdict": "ok"
+    },
+    {
+      "paquet": "@tiptap/extension-blockquote",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": null,
+      "verdict": "hors-liste"
+    },
+    {
+      "paquet": "@tiptap/extension-bold",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": null,
+      "verdict": "hors-liste"
+    },
+    {
+      "paquet": "@tiptap/extension-code",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": null,
+      "verdict": "hors-liste"
+    },
+    {
+      "paquet": "@tiptap/extension-code-block",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": null,
+      "verdict": "hors-liste"
+    },
+    {
+      "paquet": "@tiptap/extension-document",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": "3.31.3",
+      "verdict": "ok"
+    },
+    {
+      "paquet": "@tiptap/extension-font-family",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": "3.31.3",
+      "verdict": "ok"
+    },
+    {
+      "paquet": "@tiptap/extension-hard-break",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": null,
+      "verdict": "hors-liste"
+    },
+    {
+      "paquet": "@tiptap/extension-heading",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": null,
+      "verdict": "hors-liste"
+    },
+    {
+      "paquet": "@tiptap/extension-horizontal-rule",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": null,
+      "verdict": "hors-liste"
+    },
+    {
+      "paquet": "@tiptap/extension-italic",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": null,
+      "verdict": "hors-liste"
+    },
+    {
+      "paquet": "@tiptap/extension-link",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": null,
+      "verdict": "hors-liste"
+    },
+    {
+      "paquet": "@tiptap/extension-list",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": null,
+      "verdict": "hors-liste"
+    },
+    {
+      "paquet": "@tiptap/extension-paragraph",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": null,
+      "verdict": "hors-liste"
+    },
+    {
+      "paquet": "@tiptap/extension-placeholder",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": "3.31.3",
+      "verdict": "ok"
+    },
+    {
+      "paquet": "@tiptap/extension-strike",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": null,
+      "verdict": "hors-liste"
+    },
+    {
+      "paquet": "@tiptap/extension-table",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": "3.31.3",
+      "verdict": "ok"
+    },
+    {
+      "paquet": "@tiptap/extension-table-cell",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": "3.31.3",
+      "verdict": "ok"
+    },
+    {
+      "paquet": "@tiptap/extension-table-header",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": "3.31.3",
+      "verdict": "ok"
+    },
+    {
+      "paquet": "@tiptap/extension-table-row",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": "3.31.3",
+      "verdict": "ok"
+    },
+    {
+      "paquet": "@tiptap/extension-task-item",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": "3.31.3",
+      "verdict": "ok"
+    },
+    {
+      "paquet": "@tiptap/extension-task-list",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": "3.31.3",
+      "verdict": "ok"
+    },
+    {
+      "paquet": "@tiptap/extension-text",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": null,
+      "verdict": "hors-liste"
+    },
+    {
+      "paquet": "@tiptap/extension-text-align",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": "3.31.3",
+      "verdict": "ok"
+    },
+    {
+      "paquet": "@tiptap/extension-text-style",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": "3.31.3",
+      "verdict": "ok"
+    },
+    {
+      "paquet": "@tiptap/extension-underline",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": "3.31.3",
+      "verdict": "ok"
+    },
+    {
+      "paquet": "@tiptap/extensions",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": null,
+      "verdict": "hors-liste"
+    },
+    {
+      "paquet": "@tiptap/pm",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": "3.31.3",
+      "verdict": "ok"
+    },
+    {
+      "paquet": "@tiptap/starter-kit",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": "3.31.3",
+      "verdict": "ok"
+    },
+    {
+      "paquet": "@tiptap/suggestion",
+      "versions": [
+        "3.31.3"
+      ],
+      "liste": "3.31.3",
+      "verdict": "ok"
+    },
+    {
+      "paquet": "linkifyjs",
+      "versions": [
+        "4.3.3"
+      ],
+      "liste": null,
+      "verdict": "hors-liste"
+    },
+    {
+      "paquet": "orderedmap",
+      "versions": [
+        "2.1.1"
+      ],
+      "liste": "2.1.1",
+      "verdict": "ok"
+    },
+    {
+      "paquet": "prosemirror-changeset",
+      "versions": [
+        "2.4.1",
+        "2.4.2"
+      ],
+      "liste": "2.4.1",
+      "verdict": "doublon"
+    },
+    {
+      "paquet": "prosemirror-commands",
+      "versions": [
+        "1.7.1",
+        "1.7.2"
+      ],
+      "liste": "1.7.1",
+      "verdict": "doublon"
+    },
+    {
+      "paquet": "prosemirror-dropcursor",
+      "versions": [
+        "1.8.2",
+        "1.8.3"
+      ],
+      "liste": "1.8.2",
+      "verdict": "doublon"
+    },
+    {
+      "paquet": "prosemirror-gapcursor",
+      "versions": [
+        "1.4.1"
+      ],
+      "liste": "1.4.1",
+      "verdict": "ok"
+    },
+    {
+      "paquet": "prosemirror-history",
+      "versions": [
+        "1.5.0"
+      ],
+      "liste": "1.5.0",
+      "verdict": "ok"
+    },
+    {
+      "paquet": "prosemirror-inputrules",
+      "versions": [
+        "1.5.1"
+      ],
+      "liste": "1.5.1",
+      "verdict": "ok"
+    },
+    {
+      "paquet": "prosemirror-keymap",
+      "versions": [
+        "1.2.3"
+      ],
+      "liste": "1.2.3",
+      "verdict": "ok"
+    },
+    {
+      "paquet": "prosemirror-model",
+      "versions": [
+        "1.19.1",
+        "1.24.1",
+        "1.25.0",
+        "1.25.1",
+        "1.25.11",
+        "1.25.3",
+        "1.25.4"
+      ],
+      "liste": "1.25.11",
+      "verdict": "doublon"
+    },
+    {
+      "paquet": "prosemirror-schema-list",
+      "versions": [
+        "1.5.1"
+      ],
+      "liste": "1.5.1",
+      "verdict": "ok"
+    },
+    {
+      "paquet": "prosemirror-state",
+      "versions": [
+        "1.4.3",
+        "1.4.4"
+      ],
+      "liste": "1.4.4",
+      "verdict": "doublon"
+    },
+    {
+      "paquet": "prosemirror-tables",
+      "versions": [
+        "1.8.5"
+      ],
+      "liste": "1.8.5",
+      "verdict": "ok"
+    },
+    {
+      "paquet": "prosemirror-transform",
+      "versions": [
+        "1.10.3",
+        "1.10.4",
+        "1.10.5",
+        "1.11.0",
+        "1.12.0",
+        "1.12.1",
+        "1.7.2"
+      ],
+      "liste": "1.12.0",
+      "verdict": "doublon"
+    },
+    {
+      "paquet": "prosemirror-view",
+      "versions": [
+        "1.41.3",
+        "1.41.4",
+        "1.41.6",
+        "1.42.3"
+      ],
+      "liste": "1.42.3",
+      "verdict": "doublon"
+    },
+    {
+      "paquet": "rope-sequence",
+      "versions": [
+        "1.3.4"
+      ],
+      "liste": "1.3.4",
+      "verdict": "ok"
+    },
+    {
+      "paquet": "w3c-keyname",
+      "versions": [
+        "2.2.8"
+      ],
+      "liste": "2.2.8",
+      "verdict": "ok"
+    }
+  ],
+  "doublons": [
+    {
+      "paquet": "@floating-ui/core",
+      "versions": [
+        "1.6.8",
+        "1.8.0"
+      ],
+      "liste": null,
+      "verdict": "doublon"
+    },
+    {
+      "paquet": "@floating-ui/dom",
+      "versions": [
+        "1.6.12",
+        "1.8.0"
+      ],
+      "liste": "1.6.12",
+      "verdict": "doublon"
+    },
+    {
+      "paquet": "@floating-ui/utils",
+      "versions": [
+        "0.2.11",
+        "0.2.12",
+        "0.2.8"
+      ],
+      "liste": null,
+      "verdict": "doublon"
+    },
+    {
+      "paquet": "prosemirror-changeset",
+      "versions": [
+        "2.4.1",
+        "2.4.2"
+      ],
+      "liste": "2.4.1",
+      "verdict": "doublon"
+    },
+    {
+      "paquet": "prosemirror-commands",
+      "versions": [
+        "1.7.1",
+        "1.7.2"
+      ],
+      "liste": "1.7.1",
+      "verdict": "doublon"
+    },
+    {
+      "paquet": "prosemirror-dropcursor",
+      "versions": [
+        "1.8.2",
+        "1.8.3"
+      ],
+      "liste": "1.8.2",
+      "verdict": "doublon"
+    },
+    {
+      "paquet": "prosemirror-model",
+      "versions": [
+        "1.19.1",
+        "1.24.1",
+        "1.25.0",
+        "1.25.1",
+        "1.25.11",
+        "1.25.3",
+        "1.25.4"
+      ],
+      "liste": "1.25.11",
+      "verdict": "doublon"
+    },
+    {
+      "paquet": "prosemirror-state",
+      "versions": [
+        "1.4.3",
+        "1.4.4"
+      ],
+      "liste": "1.4.4",
+      "verdict": "doublon"
+    },
+    {
+      "paquet": "prosemirror-transform",
+      "versions": [
+        "1.10.3",
+        "1.10.4",
+        "1.10.5",
+        "1.11.0",
+        "1.12.0",
+        "1.12.1",
+        "1.7.2"
+      ],
+      "liste": "1.12.0",
+      "verdict": "doublon"
+    },
+    {
+      "paquet": "prosemirror-view",
+      "versions": [
+        "1.41.3",
+        "1.41.4",
+        "1.41.6",
+        "1.42.3"
+      ],
+      "liste": "1.42.3",
+      "verdict": "doublon"
+    }
+  ],
+  "ecarts": [],
+  "urls": [
+    "https://cdn.jsdelivr.net/npm/@floating-ui/core@1.6.8/+esm",
+    "https://cdn.jsdelivr.net/npm/@floating-ui/core@1.8.0/+esm",
+    "https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.6.12/+esm",
+    "https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.8.0/+esm",
+    "https://cdn.jsdelivr.net/npm/@floating-ui/utils@0.2.11/+esm",
+    "https://cdn.jsdelivr.net/npm/@floating-ui/utils@0.2.12/+esm",
+    "https://cdn.jsdelivr.net/npm/@floating-ui/utils@0.2.12/dom/+esm",
+    "https://cdn.jsdelivr.net/npm/@floating-ui/utils@0.2.8/+esm",
+    "https://cdn.jsdelivr.net/npm/@floating-ui/utils@0.2.8/dom/+esm",
+    "https://cdn.jsdelivr.net/npm/@handlewithcare/prosemirror-suggest-changes@0.1.8/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/core@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/core@3.31.3/jsx-runtime/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extension-blockquote@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extension-bold@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extension-code-block@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extension-code@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extension-document@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extension-font-family@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extension-hard-break@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extension-heading@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extension-horizontal-rule@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extension-italic@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extension-link@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extension-list@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extension-paragraph@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extension-placeholder@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extension-strike@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extension-table-cell@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extension-table-header@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extension-table-row@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extension-table@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extension-task-item@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extension-task-list@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extension-text-align@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extension-text-style@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extension-text@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extension-underline@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/extensions@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/changeset/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/commands/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/dropcursor/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/gapcursor/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/history/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/inputrules/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/keymap/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/model/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/schema-list/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/state/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/tables/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/transform/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/pm@3.31.3/view/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/starter-kit@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/@tiptap/suggestion@3.31.3/+esm",
+    "https://cdn.jsdelivr.net/npm/linkifyjs@4.3.3/+esm",
+    "https://cdn.jsdelivr.net/npm/orderedmap@2.1.1/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-changeset@2.4.1/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-changeset@2.4.2/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-commands@1.7.1/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-commands@1.7.2/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-dropcursor@1.8.2/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-dropcursor@1.8.3/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-gapcursor@1.4.1/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-history@1.5.0/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-inputrules@1.5.1/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-keymap@1.2.3/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-model@1.19.1/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-model@1.24.1/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-model@1.25.0/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-model@1.25.1/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-model@1.25.11/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-model@1.25.3/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-model@1.25.4/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-schema-list@1.5.1/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-state@1.4.3/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-state@1.4.4/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-tables@1.8.5/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-transform@1.10.3/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-transform@1.10.4/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-transform@1.10.5/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-transform@1.11.0/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-transform@1.12.0/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-transform@1.12.1/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-transform@1.7.2/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-view@1.41.3/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-view@1.41.4/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-view@1.41.6/+esm",
+    "https://cdn.jsdelivr.net/npm/prosemirror-view@1.42.3/+esm",
+    "https://cdn.jsdelivr.net/npm/rope-sequence@1.3.4/+esm",
+    "https://cdn.jsdelivr.net/npm/w3c-keyname@2.2.8/+esm"
+  ]
+}

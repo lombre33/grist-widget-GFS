@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-s4gAYoC3LCtI91/HtRkKto42P5FPyS3X3MrfLAtaWYI='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-AleGUN8OJjZjRqHutagL+W+cdRX4oP/0MVD3tZ4LjTw='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=ab090ade63">
 <link rel="stylesheet" href="css/explorer.css?v=c460d6176d">
 <link rel="stylesheet" href="css/modules.css?v=361fd55b06">
@@ -120,7 +120,7 @@
     "./js/broker/transfer.js": "./js/broker/transfer.js?v=063ac32914",
     "./js/broker/view-link.js": "./js/broker/view-link.js?v=1853f29883",
     "./js/broker/view-options.js": "./js/broker/view-options.js?v=7c746e590f",
-    "./js/controller.js": "./js/controller.js?v=d6a65597bf",
+    "./js/controller.js": "./js/controller.js?v=4106a12e3e",
     "./js/explorer/explorer-assembly.js": "./js/explorer/explorer-assembly.js?v=256a78cd0f",
     "./js/explorer/explorer-clipboard.js": "./js/explorer/explorer-clipboard.js?v=62a4670621",
     "./js/explorer/explorer-data.js": "./js/explorer/explorer-data.js?v=b1895cd6b0",
@@ -155,7 +155,8 @@
     "./js/files/gfs-trash.js": "./js/files/gfs-trash.js?v=8f7fdba21e",
     "./js/files/import-file.js": "./js/files/import-file.js?v=f020cf547b",
     "./js/files/kept-files.js": "./js/files/kept-files.js?v=091eaca3f6",
-    "./js/files/own-table.js": "./js/files/own-table.js?v=aadc76194f",
+    "./js/files/own-table.js": "./js/files/own-table.js?v=c6653c44a6",
+    "./js/files/page-tree.js": "./js/files/page-tree.js?v=dd42347e00",
     "./js/files/rangement.js": "./js/files/rangement.js?v=045bec5dfc",
     "./js/files/structure.js": "./js/files/structure.js?v=91b3e5224a",
     "./js/files/trash.js": "./js/files/trash.js?v=3e36b5ca0a",
@@ -355,7 +356,7 @@
      Le navigateur les demande tous d'un coup au lieu d'un niveau d'imports à la fois (9 niveaux, donc 9 allers-retours de réseau). Après la carte d'importation, jamais avant : une page qui commence à
      charger un module avant elle l'ignore et demande les modules sans leur ?v=. -->
 <!-- préchargement -->
-<link rel="modulepreload" href="./js/controller.js?v=d6a65597bf">
+<link rel="modulepreload" href="./js/controller.js?v=4106a12e3e">
 <link rel="modulepreload" href="./js/apps/catalogue.js?v=2e588e5749">
 <link rel="modulepreload" href="./js/apps/manifest.js?v=77b79cb0fa">
 <link rel="modulepreload" href="./js/broker/state.js?v=69aa288268">
@@ -363,6 +364,8 @@
 <link rel="modulepreload" href="./js/broker/view-options.js?v=7c746e590f">
 <link rel="modulepreload" href="./js/broker/own-section.js?v=b4451c0cb2">
 <link rel="modulepreload" href="./js/broker/view-link.js?v=1853f29883">
+<link rel="modulepreload" href="./js/files/page-tree.js?v=dd42347e00">
+<link rel="modulepreload" href="./js/files/own-table.js?v=c6653c44a6">
 <link rel="modulepreload" href="./js/broker/session.js?v=9921c3d5ac">
 <link rel="modulepreload" href="./js/broker/app-status.js?v=651007029f">
 <link rel="modulepreload" href="./js/broker/frames.js?v=f45d5dcf64">
@@ -421,6 +424,8 @@
 <link rel="modulepreload" href="./js/broker/publication.js?v=fc697bbcec">
 <link rel="modulepreload" href="./js/broker/sharing.js?v=e6dccec1cd">
 <link rel="modulepreload" href="./js/apps/work-row.js?v=d41fd514ae">
+<link rel="modulepreload" href="./kit/js/synchro/logic/page-order.js?v=6e1140e2ce">
+<link rel="modulepreload" href="./kit/js/synchro/logic/common.js?v=6e8041af84">
 <link rel="modulepreload" href="./js/broker/rpc.js?v=d54b5c5f33">
 <link rel="modulepreload" href="./js/broker/envelope.js?v=761782e0d4">
 <link rel="modulepreload" href="./js/i18n/i18n-trash.js?v=e5c74092fa">
@@ -460,7 +465,6 @@
 <link rel="modulepreload" href="./js/apps/settings.js?v=487e0165e5">
 <link rel="modulepreload" href="./js/apps/natives.js?v=d61cf17735">
 <link rel="modulepreload" href="./js/apps/modules-model.js?v=c3fd60515a">
-<link rel="modulepreload" href="./js/files/own-table.js?v=aadc76194f">
 <link rel="modulepreload" href="./js/rights/rights-reader.js?v=6facae89da">
 <link rel="modulepreload" href="./js/rights/rights-writer.js?v=e48c6b17e1">
 <link rel="modulepreload" href="./js/sharing/share-control.js?v=b61bdd9fe2">

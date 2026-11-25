@@ -2263,6 +2263,16 @@ paquet de frappes, une par personne pour la présence) doit savoir quand cette t
 2. [T] Après un `AddTable`, relire l'identifiant réellement créé (3.3, point 4 pour les noms ; chaque `AddTable` crée aussi une
    page dans le document).
 3. [T] Une table créée par la galerie de Publipostage+ n'est pas préfixée : elle appartient à la personne (d'où `ecrit: ["*"]`).
+4. [T] **La page que Grist crée pour une table de GFS** (préfixe `GFS_`, 25/11, demande du porteur : « une table principale, les autres dessous, repliée par
+   défaut »). Grist pose chaque page au premier niveau, en bas du volet : GFS les range sous la page qui porte GFS (`UpdateRecord` sur `_grist_Pages`,
+   `indentation` + 1 et `pagePos` juste après les dernières sous-pages, la position que calcule `placeBelow` du kit) et replie cette page par défaut
+   (`_grist_Pages.options` = `{"collapsed": true}`, les autres clés de `options` gardées). Une seule fois par table : la marque `gfs.pages` (7.1, point 4) dit
+   celles que GFS a déjà rangées ou vues ; une table qu'elle ne connaît pas se range (une table créée, un partage reçu, un document d'avant), une table qu'elle
+   connaît ne se touche plus (la personne qui sort une page ou déplie la page ne la voit jamais revenir) ; la page de GFS ne se replie qu'au premier
+   rangement. GFS ne touche ni une page déjà sous une autre page, ni une page qui montre autre chose que la table, ni quoi que ce soit quand il n'est pas sûr de sa
+   propre page (section non reconnue, niveau sans accès complet, document en lecture seule ou « plus récent »). **Le repli se voit à l'ouverture suivante du
+   document** : Grist lit `collapsed` une fois, à la création de la ligne de page (mesuré, faits vérifiés 166). `js/files/page-tree.js` ; déclenché à l'ouverture,
+   après chaque `AddTable` d'une `OwnTable` (`onTableCreated`, js/files/own-table.js) et à chaque arrivée d'un partage.
 
 ### 6.3 Les lignes réservées
 
@@ -2783,6 +2793,9 @@ d'app mis à la corbeille (6.2), jamais avant.
 2. [T] Les mêmes clés seule et dans GFS ; le courtier les transmet sans les renommer (aller-retour, cahier 7).
 3. [T] Toutes les clés d'une section sont dans un seul objet, celui de Grist (`customView.widgetOptions`). Celles de GFS
    commencent par `gfs.`.
+4. [T] Les clés de GFS : `gfs.grille` (4.5, point 8 : `lie` ou `plusieurs`), `gfs.pages` (6.2, point 4 : la liste des identifiants des tables de GFS dont la
+   page a été rangée ou vue ; écrite sans geste, comme `gfs.grille`, par la même écriture de la section qui n'affiche aucun « Enregistrer »), `gfs.sonde` (la
+   marque d'une recherche de section, retirée aussitôt). Aucune n'est transmise à une app.
 
 ### 7.2 La tranche de l'app
 

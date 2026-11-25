@@ -2908,3 +2908,21 @@ Suite du fait 155 (choix du porteur le 25/11, « Oui, tout de suite »). Bancs :
 - **Ce que cela fixe** : un document ouvert une fois par la version de développement devient illisible, sans bruit, pour la version publiée (le cas 5 du rapport, avec le vrai code). La prochaine version publiée ne doit sortir qu'avec la fenêtre commune (kit 0.29.1), la lecture des deux jeux et sans recréer les tables françaises quand les anglaises existent (consigne 105).
 - **Sync+, code lu** (le moteur du kit 5.1.0 et le widget 0.31.0) : `exportDrift` (`logic/exports.js`) rend les tables **introuvables** (« renommées ou effacées : leurs lignes ne partent plus ») et les colonnes renommées, effacées ou d'un autre type (« elles partiraient vides ou fausses ») ; l'onglet « Envoyer » les dit sur la ligne de l'export (« Table introuvable (renommée ou supprimée) : … Ses lignes ne sont plus envoyées. Redonnez-lui son nom, ou retirez-la de l'export »), la table `Synchro` renommée a sa carte, et le côté cible un message (journal renommé). **Le lien se tait donc seulement tant que personne n'ouvre l'onglet** ; rien ne prévient avant, ni la personne qui a renommé, ni le document qui reçoit. Le moteur du kit (5.1.0) est en retard sur le widget (5.2.0).
 - **Pas mesuré** : l'écran de Sync+ (il demande un vrai serveur pour ses webhooks) ; la version publiée dans un vrai Grist avec un autre compte ; les gens restés sur `/beta/`.
+
+## 166. Les pages des tables de GFS passent sous celle de GFS, repliée par défaut : Grist ne replie qu'à l'ouverture suivante du document (25/11 ; Grist 1.7.19 officiel (Docker), Chromium 700 × 400 ; GFS `cd920e3` avec ce lot ; `labo/run-pages-gfs.mjs`)
+
+- **Code lu, le client de Grist** (le source embarqué dans `grist-static` 0.1.6, `PageRec`) : `isCollapsedByDefault` est calculé depuis `options.collapsed`, mais `isCollapsed`, ce que le volet montre, est **créé une fois**
+  avec cette valeur quand la ligne de page apparaît dans le navigateur. Écrire `collapsed` pendant que le document est ouvert ne replie donc rien dans cet onglet ; l'ouverture suivante, si. Le menu de la page
+  (« Replier par défaut ») écrit la même clé par `setAndSaveCollapsed`.
+- **Mesuré** (document créé, quatre tables posées à plat par l'API : `GFS_Rangement`, `GFS_Groupes`, `Autre_Table`, `GFS_Fichiers`, une page chacune au premier niveau, en bas) : à l'ouverture GFS les met sous la page qui porte son
+  widget, **dans leur ordre** (`Clients`, puis trois pages à l'indentation 1, puis `Autre_Table` restée au premier niveau, en bas), en **une seule** écriture, pose `{"collapsed":true}` sur la page de GFS et la
+  marque `gfs.pages` (les trois tables) dans les réglages de la vue, à côté de `gfs.grille`. Aucune barre « Enregistrer » dans Grist.
+- **Mesuré, le document rouvert** (toute la page de Grist rechargée) : le volet ne montre plus les trois tables, montre `Autre_Table`, la flèche de la page de GFS les montre ; la déplier ou la replier à la main n'écrit rien
+  dans le document (l'état est celui du navigateur).
+- **Mesuré, une table que GFS crée ensuite** (le chemin de `OwnTable` avec le vrai contrôleur : `GFS_Corbeille`) : sa page vient sous celle de GFS, après les autres, la page de GFS garde son réglage, `Autre_Table` reste en bas,
+  la marque compte quatre tables.
+- **Mesuré, la personne sort une page de dessous** (`GFS_Groupes` remise au premier niveau), GFS rechargé : elle reste dehors, rien d'autre ne bouge. Console de GFS muette.
+- **Dans le document d'un essai, la page de GFS n'est pas toujours la première** : on la retrouve par sa section (`viewOptions.section()`, la même recherche que pour le lien « Select by »), jamais par son nom ; `Table1`, la page
+  de Grist, reste où elle est.
+- **Pas mesuré** : Firefox (aucune interface de GFS ici, seul le volet de Grist change) ; un compte sans droit de structure (le refus de Grist est attrapé et dit une fois en console, testé sur un faux Grist) ; plusieurs
+  sections de GFS sur des pages différentes (GFS ne range que s'il reconnaît la sienne) ; l'instance de la DINUM ; une page déjà partagée (`shareRef`).

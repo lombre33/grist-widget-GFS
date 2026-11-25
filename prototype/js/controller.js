@@ -8,6 +8,8 @@ import { createPort } from './broker/broker.js';
 import { ViewOptions, addressOf } from './broker/view-options.js';
 import { ownSectionHandlers } from './broker/own-section.js';
 import { ViewLink, LINK_KEY } from './broker/view-link.js';
+import { PageTree, PAGES_KEY } from './files/page-tree.js';
+import { onTableCreated } from './files/own-table.js';
 import { AppSession } from './broker/session.js';
 import { AppStatus } from './broker/app-status.js';
 import { readPreferences, liveSwitch } from './broker/frames.js';
@@ -116,6 +118,7 @@ export class GfsController {
       chosen: () => Boolean(this.workControl && this.workControl.work.choice), mark: value => this.viewOptions.write([[LINK_KEY, value]]),
         say: (key, vars) => this.notice(this.t(key, vars)),
     });
+    this.#installPageTree();
     // Les apps sont servies par leur site en ligne (le porteur, 22/10) ; `?live=0` : la copie figée du sous-module, celle des mesures de GFS.
     this.live = liveSwitch(search);
     // Les noms que le document donne aux tables et aux colonnes des apps (js/apps/doc-names.js) : lus avant chaque lecture des fichiers ; le nombre de lignes
@@ -222,6 +225,16 @@ export class GfsController {
   validApps() { return this.apps.filter(item => item.ok).map(item => this.names.adaptItem(item)); }
   typeLabel = file => (file.typeInfo ? label(file.typeInfo.nom, this.lang) : (file.type || '—'));
 
+  // Les pages des tables de GFS se rangent sous celle de GFS, repliée par défaut (js/files/page-tree.js, contrats 6.6) : à l'ouverture, et à chaque table
+  // créée.
+  #installPageTree() {
+    this.pageTree = new PageTree({
+      doc: this.port.doc, state: this.state, section: () => this.viewOptions.section(), mark: list => this.viewOptions.write([[PAGES_KEY, list]]),
+      enabled: () => this.fullAccess && !this.readonly && !isNewer(this.registry.structure),
+    });
+    onTableCreated(() => this.pageTree.tidy());
+  }
+
   // ---------- démarrage ----------
 
   async start() {
@@ -252,10 +265,10 @@ export class GfsController {
     doc.body.dataset.gfs = 'ready';
     if (!arrived) await this.#firstRun(); // une section qui s'ouvre sur son app n'est pas neuve : la fenêtre des apps ne passe pas par-dessus
     doc.body.dataset.gfsFirstRun = 'done';
-    void this.state.whenTable().then(() => this.viewLink.ensure());
+    void this.state.whenTable().then(() => this.viewLink.ensure()).then(() => this.pageTree.tidy());
     // Un envoi laissé en route, ou un partage reçu dont le contenu arrive encore : les boucles du moteur reprennent d'où elles en étaient
     // (js/sharing/sync-resume.js ; rien ne se charge sans table de partage).
-    whenReceived(() => void this.#refreshReceived());
+    whenReceived(() => { void this.pageTree.tidy(); void this.#refreshReceived(); });
     if (!this.writeBlock()) void resumeSharing({ docApi: this.grist.docApi, transfer: this.transfer, language: () => this.lang, busy: () => false,
       isOwner: () => this.transfer.isOwner() }).catch(error => console.warn('GFS : le partage entre documents ne reprend pas', error));
     this.weight.watch(); // le poids du document, 5 s plus tard (js/weight/weight-guard.js) : en dernier, rien d'autre n'attend après lui

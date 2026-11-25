@@ -5,6 +5,7 @@
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { initials, levelLabel, headsOf, telHref } from './annuaire-items.js';
+import { fieldLabel } from './annuaire-config.js';
 
 // Combien de valeurs un filtre montre avant « +n » (le reste se choisit dans une liste avec recherche).
 export const CHIPS_SHOWN = 6;
@@ -109,7 +110,8 @@ export function fiche(person, ctx) {
   rows.push(...relationRows(person, ctx));
   for (const field of config.fields) {
     const values = (person.fields[field.col] || []).map(value => shown(value, ctx.genres[field.col], ctx));
-    if (values.length) rows.push(ficheRow(field.col, h('span', { class: 'an-fr-vals' }, ...values.map(value => h('span', { class: 'an-pill' }, value))), '',
+    if (values.length) rows.push(ficheRow(fieldLabel(field), h('span', { class: 'an-fr-vals' }, ...values.map(value => h('span', { class: 'an-pill' }, value))),
+      '',
       t));
   }
   return h('div', { class: 'an-fiche-card' },
@@ -147,7 +149,8 @@ export function filterBar(options, filters, ctx) {
     const chip = entry => h('button', { type: 'button', class: 'an-chip', 'aria-pressed': String(on.has(entry.value)),
       dataset: { act: 'filter', col: option.col, value: entry.value, fk: `fl:${option.col}:${entry.value}` } },
     shown(entry.value, option.genre, ctx), h('b', null, String(entry.count)));
-    return h('div', { class: 'an-fgroup', role: 'group', 'aria-label': option.col }, h('span', { class: 'an-flabel' }, option.col), ...visible.map(chip),
+    return h('div', { class: 'an-fgroup', role: 'group', 'aria-label': option.label || option.col },
+      h('span', { class: 'an-flabel' }, option.label || option.col), ...visible.map(chip),
       rest > 0 ? h('button', { type: 'button', class: 'an-chip an-more', title: ctx.t('an.filter.more', { n: rest }),
         dataset: { act: 'filter-more', col: option.col, fk: `fm:${option.col}` } }, `+${rest}`) : null);
   });

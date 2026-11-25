@@ -7,11 +7,15 @@ import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { isPeopleTable } from './annuaire-schema.js';
 import { CONFIG_VERSION, NAME_ORDERS, readConfig } from './annuaire-config.js';
-import { columnItems, chooser, formRow } from './annuaire-setup-shared.js';
+import { chooser, formRow, switchButton } from './annuaire-setup-shared.js';
+import { pickColumn, personName } from './annuaire-setup-path.js';
+import { nameOf } from './annuaire-model.js';
 
 // Le nom du texte et l'aide de chaque colonne lue, et si elle est obligatoire.
 const KEYS = Object.freeze({ name: ['an.set.name', true], first: ['an.set.first', true], email: ['an.set.email', false], phone: ['an.set.phone', false],
   title: ['an.set.title', false], lead: ['an.set.lead', false] }); // le poste et « responsable de sa structure » se choisissent depuis l'onglet « Hiérarchie »
+// Le type d'une colonne que GFS propose de créer pour chacune (« Responsable de sa structure » : un oui/non).
+const CREATES = Object.freeze({ lead: 'Bool' });
 
 export function peopleTab(host) {
   const { t, draft, ui, editing } = host;
@@ -29,7 +33,7 @@ export function peopleTab(host) {
       formRow(`${t('an.set.table')} *`, chooser(t, 'pt', table, { act: 'pick-table' }, { disabled: fixed, title: fixed ? t('an.set.tableFixed') : '' }),
         fixed ? '' : t('an.set.tableHint'))),
     h('section', { class: 'an-sec' }, h('h3', null, t('an.set.persons')), column('name'),
-      split ? column('first') : null, split ? orderRow(host) : null, splitDisclosure(host, split), column('email'),
+      split ? column('first') : null, ...(split ? orderRows(host) : []), splitDisclosure(host, split), column('email'),
       phone ? column('phone') : h('div', { class: 'an-set-add' }, h('button', { type: 'button', class: 'an-sug', 'aria-disabled': table ? null : 'true',
         title: table ? null : t('an.set.needTable'), dataset: { act: 'add-phone', fk: 'add-phone' } }, icon('plus'), t('an.set.phone')))));
 }
@@ -43,13 +47,20 @@ function splitDisclosure(host, split) {
     split ? h('p', { class: 'an-set-why' }, icon('info'), t('an.set.splitWhy')) : null);
 }
 
-// Dans quel ordre le nom s'écrit : « Prénom Nom » ou « Nom Prénom » (un choix à deux boutons, comme la maquette).
-function orderRow(host) {
+// Comment le nom s'écrit : l'ordre (« Prénom Nom », « Nom Prénom », « Nom, Prénom »), le nom de famille en capitales ou non, et l'aperçu que donne la personne
+// d'exemple de la table (js/annuaire/annuaire-sample.js : la mieux remplie), sinon un nom fictif.
+function orderRows(host) {
   const { t, draft } = host;
+  const { config } = draft;
   const seg = h('div', { class: 'an-seg', role: 'group', 'aria-label': t('an.set.order') },
     ...NAME_ORDERS.map(order => h('button', { type: 'button', class: 'an-seg-b',
-    'aria-pressed': String(draft.config.order === order), dataset: { act: 'order', order, fk: `order:${order}` } }, t(`an.set.order.${order}`))));
-  return formRow(t('an.set.order'), seg, t('an.set.orderHint'));
+      'aria-pressed': String(config.order === order), dataset: { act: 'order', order, fk: `order:${order}` } }, t(`an.set.order.${order}`))));
+  const live = config.first ? personName(host) : '';
+  const preview = live || nameOf('Camille', 'Durand', config.order, config.upper).name;
+  return [formRow(t('an.set.order'), seg, t('an.set.orderHint')),
+    formRow(t('an.set.upper'), switchButton({ on: config.upper, label: t('an.set.upper'), fk: 'upper-toggle', data: { act: 'upper-toggle' } }),
+      t('an.set.upperHint')),
+    h('p', { class: 'an-set-example', 'aria-live': 'polite', dataset: { fk: 'name-example' } }, t('an.set.orderExample', { name: preview }))];
 }
 
 // Les gestes de l'onglet : chacun reçoit l'hôte et les attributs `data-*` du bouton.
@@ -65,6 +76,7 @@ const ACTS = Object.freeze({
     host.repaint();
   },
   order: (host, data) => { host.draft.config.order = data.order; host.repaint(); },
+  'upper-toggle': host => { host.draft.config.upper = !host.draft.config.upper; host.repaint(); },
 });
 
 // Rend true quand le geste est de cet onglet.
@@ -88,16 +100,16 @@ async function pickTable(host) {
   host.changed();
 }
 
-// Une colonne que GFS lit par un nom : le nom (obligatoire), le prénom, l'adresse, le téléphone. Les facultatives se vident par le premier article de la liste.
+// Une colonne que GFS lit par un nom : le nom (obligatoire), le prénom, l'adresse, le téléphone. Les facultatives se vident par « Aucune » ; une colonne peut
+// aussi se créer, avec l'accord de la personne (js/annuaire/annuaire-setup-path.js).
 async function pickPerson(host, key) {
   const { t, draft } = host;
   const [label, required] = KEYS[key];
-  const clear = required ? [] : [{ value: 'none', label: t('an.set.none'), glyph: 'x', hint: '' }];
-  const chosen = await host.list({ title: t(key === 'name' && (host.ui.split || draft.config.first) ? 'an.set.last' : label), text: t(`${label}Hint`),
-    items: [...clear, ...columnItems(host.schema, draft.table, t, { follow: false })], current: draft.config[key] ? `use:${draft.config[key]}` : null,
-    none: t('an.set.noColumn') });
+  const chosen = await pickColumn(host, { title: t(key === 'name' && (host.ui.split || draft.config.first) ? 'an.set.last' : label), text: t(`${label}Hint`),
+    types: [{ type: CREATES[key] || 'Text', label: t(CREATES[key] === 'Bool' ? 'an.type.bool' : 'an.type.text') }], clear: !required,
+      current: draft.config[key] });
   if (chosen === null) return;
-  draft.config[key] = chosen === 'none' ? '' : chosen.slice(4);
-  if (key === 'phone' && chosen === 'none') host.ui.phone = false;
+  draft.config[key] = chosen;
+  if (key === 'phone' && !chosen) host.ui.phone = false;
   host.changed();
 }

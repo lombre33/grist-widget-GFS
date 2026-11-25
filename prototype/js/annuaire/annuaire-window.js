@@ -6,7 +6,7 @@
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { mountWindow, giveBackFocus, tabStops, LIST_SHOWN } from '../ui/modal.js';
-import { findNode, peopleIn, filterPeople, filterOptions, managerTree } from './annuaire-model.js';
+import { findNode, peopleIn, filterPeople, filterOptions, managerTree, fieldGenres } from './annuaire-model.js';
 import { structureItems, managerItems, pathIds, levelLabel } from './annuaire-items.js';
 import { treeList, personRow, personCard, fiche, nodeFiche, filterBar, shown } from './annuaire-panes.js';
 import { relationsOf, relationIndex, cardLines, cardLineCount } from './annuaire-relations.js';
@@ -247,7 +247,7 @@ export class AnnuaireWindow {
   #listedValues(data, table, ctx) {
     const listed = data.config.fields.filter(field => field.list);
     if (!listed.length) return () => [];
-    const genres = Object.fromEntries(((data.schema[table] && data.schema[table].columns) || []).map(col => [col.id, col.genre]));
+    const genres = fieldGenres(data.config, table, data.schema);
     return person => listed.flatMap(field => (person.fields[field.col] || []).map(value => shown(value, genres[field.col], ctx)));
   }
 
@@ -272,7 +272,7 @@ export class AnnuaireWindow {
   #paintSide() {
     const { current, data } = this.#show;
     const t = this.#o.t;
-    const genres = Object.fromEntries((data.schema[current.table] ? data.schema[current.table].columns : []).map(col => [col.id, col.genre]));
+    const genres = fieldGenres(data.config, current.table, data.schema);
     const relations = relationsOf(data.config, t);
     const ctx = { t, locale: this.#o.locale(), levels: data.config.levels, config: data.config, genres, relations,
       index: relationIndex(data.people, relations) };

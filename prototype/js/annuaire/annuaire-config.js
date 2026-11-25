@@ -13,19 +13,25 @@ export const ANNUAIRES_COLUMNS = Object.freeze([
 ]);
 export const CONFIG_VERSION = 1;
 
+// Un champ est une colonne de la table des personnes (`col`), ou, depuis le retour du porteur du 25/11 (« je n'ai pas de colonne pour le pôle, c'est dans la
+// table des postes, mais j'ai une référence de poste »), un chemin de colonnes à suivre (`path`, au moins deux : « Poste › Pôle ») ; `col` en est alors le nom,
+// les colonnes jointes par ce séparateur : c'est la clé du champ partout (la liste, les filtres).
+export const FIELD_SEPARATOR = ' › ';
+
 const text = value => (typeof value === 'string' ? value.trim() : '');
 const path = value => (Array.isArray(value) ? value.map(text).filter(Boolean) : []);
 
 // Les colonnes de la personne que GFS lit par un nom : toutes facultatives, sauf le nom. `name` est le nom complet (« Camille Martin ») ou, quand `first` est
 // dit, le nom de famille seul ; `first` est le prénom (la bonne pratique : deux colonnes, pour trier par nom, saluer par le prénom et éviter les doublons).
 export const PERSON_KEYS = Object.freeze(['name', 'first', 'title', 'email', 'phone', 'lead', 'manager']);
-// L'ordre dans lequel le nom s'écrit quand le prénom est une colonne à part.
-export const NAME_ORDERS = Object.freeze(['first-last', 'last-first']);
+// L'ordre dans lequel le nom s'écrit quand le prénom est une colonne à part : « Camille Durand », « Durand Camille », « Durand, Camille » ; `upper` (un oui/non
+// à côté) met le nom de famille en capitales (« Camille DURAND », retour du porteur, 25/11).
+export const NAME_ORDERS = Object.freeze(['first-last', 'last-first', 'last-comma']);
 
 // La configuration lue d'un texte JSON (ou d'un objet) : toujours complète, jamais d'exception. Ce que GFS ne connaît pas (une clé d'une version plus récente)
-// est ignoré à la lecture et perdu à la réécriture : `writeConfig` ne garde que ce qu'elle connaît ; une version plus récente écrit donc sa propre ligne.
-// { v, name, first, order, hierarchy, title, email, phone, lead, manager, levels: [{ label, path: [colonnes] }], relations: [{ col, label, inverse, card }],
-//   fields: [{ col, filter, list }] }
+// est ignoré à la lecture et perdu à la réécriture : `writeConfig` ne garde que ce qu'elle connaît ; une version plus récente écrit donc sa propre ligne. { v,
+// name, first, order, upper, hierarchy, title, email, phone, lead, manager, levels: [{ label, path: [colonnes] }], relations: [{ col, label, inverse, card }],
+//   fields: [{ col, path, filter, list }] }
 // `relations` (demande du porteur, 25/11 : assistant·e, référent·e, suppléant·e) : voir js/annuaire/annuaire-relations.js ; une colonne ne sert qu'une fois (au
 // responsable direct, à une relation ou à un champ).
 // `hierarchy` : l'option « postes et hiérarchie » (décision du porteur, 25/11 : par défaut seulement le nom et l'adresse). Une ligne écrite avant elle, qui a
@@ -41,6 +47,7 @@ export function readConfig(source) {
   for (const key of PERSON_KEYS) config[key] = text(input[key]);
   const levels = Array.isArray(input.levels) ? input.levels : [];
   config.order = NAME_ORDERS.includes(input.order) ? input.order : NAME_ORDERS[0];
+  config.upper = input.upper === true;
   config.levels = levels.map(level => ({ label: text(level && level.label), path: path(level && level.path) })).filter(level => level.path.length > 0);
   config.hierarchy = typeof input.hierarchy === 'boolean' ? input.hierarchy : Boolean(config.levels.length || config.title || config.lead);
   const relations = Array.isArray(input.relations) ? input.relations : [];
@@ -50,10 +57,18 @@ export function readConfig(source) {
     .filter(rel => rel.col && !used.has(rel.col) && used.add(rel.col));
   const fields = Array.isArray(input.fields) ? input.fields : [];
   const seen = new Set();
-  config.fields = fields.map(field => ({ col: text(field && field.col), filter: Boolean(field && field.filter), list: Boolean(field && field.list) }))
-    .filter(field => field.col && !seen.has(field.col) && seen.add(field.col));
+  config.fields = fields.map(field => {
+    const route = path(field && field.path);
+    const steps = route.length ? route : [text(field && field.col)].filter(Boolean);
+    return { col: steps.join(FIELD_SEPARATOR), path: steps.length > 1 ? steps : [], filter: Boolean(field && field.filter),
+      list: Boolean(field && field.list) };
+  }).filter(field => field.col && !seen.has(field.col) && seen.add(field.col));
   return config;
 }
+
+// Les colonnes qu'un champ suit depuis la personne, et le nom qu'on lui donne à l'écran (la dernière colonne du chemin).
+export const fieldPath = field => (field.path && field.path.length ? field.path : [field.col]);
+export const fieldLabel = field => fieldPath(field).at(-1);
 
 export const writeConfig = config => JSON.stringify(readConfig(config));
 
@@ -81,3 +96,6 @@ export const newRecord = (name, table, config) => ({ Nom: text(name), Table: tex
 // Les actions de Grist qui créent ou réécrivent une ligne : `AddRecord` (la table, un identifiant nul, les valeurs) et `UpdateRecord`.
 export const addAction = (tableId, record) => ['AddRecord', tableId, null, record];
 export const updateAction = (tableId, row, record) => ['UpdateRecord', tableId, row, record];
+// L'action qui ajoute une colonne vide (retour du porteur, 25/11 : « le widget propose de la créer ») ; `type` : un type de Grist (« Text », « Ref:Personnes
+// »…).
+export const addColumnAction = (tableId, name, type) => ['AddColumn', tableId, text(name), { type, isFormula: false, label: text(name) }];

@@ -8,7 +8,8 @@ import { icon } from '../ui/icons.js';
 import { openModal } from '../ui/modal.js';
 import { columnOf } from './annuaire-schema.js';
 import { levelLabel } from './annuaire-items.js';
-import { columnItems, chooser, formRow, switchButton, iconButton, shift, MAX_PATH } from './annuaire-setup-shared.js';
+import { chooser, formRow, switchButton, iconButton, shift } from './annuaire-setup-shared.js';
+import { pickPath } from './annuaire-setup-path.js';
 
 const PREVIEW_NODES = 80; // combien de lignes l'aperçu écrit avant « … »
 
@@ -143,23 +144,16 @@ export function levelInput(host, input) {
   if (level) level.label = input.value;
 }
 
-// Le chemin d'un niveau : une colonne de la personne, ou une référence qu'on suit vers la table qu'elle vise (le fil dit où l'on est), et on recommence.
-// Renoncer en route laisse le niveau comme il était (orange s'il n'avait pas de colonne).
+// Le chemin d'un niveau : une colonne de la personne, ou celle d'une table qu'une de ses références vise (« Poste › Pôle »), suivie pas à pas ou trouvée d'un
+// coup par la recherche ; on peut revenir en arrière, et créer la colonne (js/annuaire/annuaire-setup-path.js). Renoncer laisse le niveau comme il était
+// (orange s'il n'avait pas de colonne).
 async function pickLevel(host, at) {
-  const { t, draft } = host;
-  const level = draft.config.levels[at];
+  const { t } = host;
+  const level = host.draft.config.levels[at];
   if (!level) return;
-  const path = [];
-  let table = draft.table;
-  while (path.length < MAX_PATH) {
-    const chosen = await host.list({ title: t('an.lv.pickTitle', { name: levelLabel(level) || t('an.set.levelName') }), crumbs: [draft.table, ...path],
-      text: path.length ? '' : t('an.set.pickLevelText'), items: columnItems(host.schema, table, t, { follow: path.length < MAX_PATH - 1 }),
-        none: t('an.set.noColumn') });
-    if (chosen === null) return;
-    path.push(chosen.slice(chosen.indexOf(':') + 1));
-    if (chosen.startsWith('use:')) break;
-    table = columnOf(host.schema, table, path.at(-1)).ref;
-  }
+  const path = await pickPath(host, { title: t('an.lv.pickTitle', { name: levelLabel(level) || t('an.set.levelName') }), text: t('an.set.pickLevelText'),
+    types: [{ type: 'Text', label: t('an.type.text') }, { type: 'Choice', label: t('an.type.choice') }] });
+  if (path === null) return;
   level.path = path;
   host.changed();
   host.focus(`lp:${at}`);

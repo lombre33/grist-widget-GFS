@@ -5,7 +5,8 @@
 // nœud. Ajouter, déplacer ou retirer un niveau change la liste des niveaux et rien d'autre ; une personne qui n'a pas de valeur à un niveau le saute, et reste
 // rangée au niveau qu'elle a (« niveau sauté »).
 
-import { columnOf } from './annuaire-schema.js';
+import { columnOf, columnAt } from './annuaire-schema.js';
+import { fieldPath, fieldLabel } from './annuaire-config.js';
 import { initials } from './annuaire-items.js';
 import { idsOf } from './annuaire-relations.js';
 import { normalize, words, matchesWords } from '../ui/search.js';
@@ -13,7 +14,7 @@ import { normalize, words, matchesWords } from '../ui/search.js';
 const MAX_DEPTH = 4; // les références qu'on suit pour montrer une valeur (une colonne visible qui est elle-même une référence)
 
 // L'accès aux lignes de chaque table lue : `at(tableId, rowId)` rend la ligne (son rang dans les tableaux de colonnes), ou -1.
-function lookup(data) {
+export function lookup(data) {
   const maps = new Map();
   return {
     data,
@@ -76,10 +77,13 @@ export function followPath(ctx, tableId, rowAt, columns) {
 }
 
 // Le nom qu'une personne porte : `last` seul (la colonne du nom complet), ou le prénom et le nom de famille dans l'ordre que l'annuaire dit quand le prénom est
-// une colonne à part. { name (ce qui s'écrit), sort (ce qui trie : le nom de famille d'abord), initials }.
-export function nameOf(first, last, order) {
+// une colonne à part (`order` : voir `NAME_ORDERS`), le nom de famille en capitales quand `upper`. { name (ce qui s'écrit), sort (ce qui trie : le nom de
+// famille d'abord, tel qu'il est écrit dans la table), initials }.
+export function nameOf(first, last, order, upper = false) {
   if (!first) return { name: last, sort: last, initials: initials(last) };
-  const name = (order === 'last-first' ? `${last} ${first}` : `${first} ${last}`).trim();
+  const family = upper ? last.toLocaleUpperCase('fr') : last;
+  const joined = { 'last-first': `${family} ${first}`, 'last-comma': `${family}, ${first}` }[order] || `${first} ${family}`;
+  const name = joined.trim();
   return { name, sort: `${last} ${first}`.trim(), initials: (initials(first)[0] || '') + (initials(last)[0] || '') || initials(name) };
 }
 
@@ -98,9 +102,10 @@ export function buildPeople(config, tableId, data, schema) {
   const people = table.id.map((row, i) => {
     const managerCell = config.manager && Array.isArray(table[config.manager]) ? table[config.manager][i] : null;
     const lead = config.lead ? followPath(ctx, tableId, i, [config.lead]) : [];
-    return { row, ...nameOf(one('first', i), one('name', i), config.order), title: one('title', i), email: one('email', i), phone: one('phone', i),
+    return { row, ...nameOf(one('first', i), one('name', i), config.order, config.upper), title: one('title', i), email: one('email', i),
+      phone: one('phone', i),
       levels: config.levels.map(level => followPath(ctx, tableId, i, level.path)[0] || ''),
-      fields: Object.fromEntries(config.fields.map(field => [field.col, followPath(ctx, tableId, i, [field.col])])),
+      fields: Object.fromEntries(config.fields.map(field => [field.col, followPath(ctx, tableId, i, fieldPath(field))])),
       rel: Object.fromEntries((config.relations || []).map(rel => [rel.col, idsOf(Array.isArray(table[rel.col]) ? table[rel.col][i] : null)])),
       lead: lead.length > 0 && lead[0] !== 'false', manager: typeof managerCell === 'number' && managerCell > 0 ? managerCell : null };
   });
@@ -167,17 +172,22 @@ export function filterPeople(people, { query = '', filters = {} } = {}) {
     active.every(([col, set]) => (person.fields[col] || []).some(value => set.has(value))));
 }
 
+// Le genre de chaque champ, par sa clé (`field.col`) : celui de la dernière colonne de son chemin.
+export function fieldGenres(config, tableId, schema) {
+  return Object.fromEntries(config.fields.map(field => [field.col, (columnAt(schema, tableId, fieldPath(field)) || {}).genre]));
+}
+
 // Les filtres que les champs donnent : [{ col, values: [{ value, count }] }] pour chaque champ marqué « filtre » dont le genre s'y prête (un choix, un choix
 // multiple, un oui/non, une référence), avec le nombre de personnes de `people` par valeur (les plus nombreuses d'abord).
 export function filterOptions(people, config, schema, tableId) {
   const options = [];
   for (const field of config.fields.filter(each => each.filter)) {
-    const col = columnOf(schema, tableId, field.col);
+    const col = columnAt(schema, tableId, fieldPath(field));
     if (!col || !['choice', 'choicelist', 'bool', 'ref', 'reflist'].includes(col.genre)) continue;
     const counts = new Map();
     for (const person of people) for (const value of new Set(person.fields[field.col] || [])) counts.set(value, (counts.get(value) || 0) + 1);
     const values = [...counts].map(([value, count]) => ({ value, count })).sort((a, b) => b.count - a.count || a.value.localeCompare(b.value, 'fr'));
-    options.push({ col: field.col, genre: col.genre, values });
+    options.push({ col: field.col, label: fieldLabel(field), genre: col.genre, values });
   }
   return options;
 }

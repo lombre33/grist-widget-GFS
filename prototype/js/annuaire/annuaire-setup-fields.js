@@ -7,8 +7,10 @@
 
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
-import { columnOf } from './annuaire-schema.js';
-import { columnItems, switchButton, iconButton, shift, typeLabel, FILTERABLE, GLYPHS } from './annuaire-setup-shared.js';
+import { columnAt } from './annuaire-schema.js';
+import { FIELD_SEPARATOR, fieldPath } from './annuaire-config.js';
+import { switchButton, iconButton, shift, typeLabel, FILTERABLE, GLYPHS } from './annuaire-setup-shared.js';
+import { pickPath } from './annuaire-setup-path.js';
 
 const SUGGESTED = 6;
 // l'ordre des suggestions : ce qui donne un filtre d'abord
@@ -47,7 +49,7 @@ function lockedRow(t, { glyph, name, type, listOn, why }) {
 
 function fieldRow(host, field, at) {
   const { t, draft, schema } = host;
-  const col = columnOf(schema, draft.table, field.col);
+  const col = columnAt(schema, draft.table, fieldPath(field));
   const can = col ? FILTERABLE.includes(col.genre) : false;
   const name = h('span', { class: 'an-f-name', title: col ? '' : t('an.fld.absent') }, icon(GLYPHS[col ? col.genre : ''] || 'table'), field.col);
   const last = draft.config.fields.length - 1;
@@ -87,7 +89,7 @@ const ACTS = Object.freeze({
   'fld-up': (host, data) => reorder(host, Number(data.index), -1),
   'fld-down': (host, data) => reorder(host, Number(data.index), 1),
   'fld-remove': (host, data) => { host.draft.config.fields.splice(Number(data.index), 1); host.repaint(); },
-  sug: (host, data) => { addField(host, data.col); },
+  sug: (host, data) => { addField(host, [data.col]); },
   'field-add': host => void pickField(host),
 });
 
@@ -104,18 +106,28 @@ export function fieldsAct(host, act, data) {
   return Boolean(run);
 }
 
-function addField(host, colId) {
-  const col = columnOf(host.schema, host.draft.table, colId);
+// Un champ nouveau : le chemin de ses colonnes depuis la personne ; un champ déjà là n'est pas ajouté deux fois (le focus va à sa ligne).
+function addField(host, path) {
+  const col = columnAt(host.schema, host.draft.table, path);
   if (!col) return;
-  host.draft.config.fields.push({ col: colId, filter: FILTERABLE.includes(col.genre), list: false });
+  const key = path.join(FIELD_SEPARATOR);
+  const { fields } = host.draft.config;
+  const known = fields.findIndex(field => field.col === key);
+  if (known < 0) fields.push({ col: key, path: path.length > 1 ? path : [], filter: FILTERABLE.includes(col.genre), list: false });
   host.repaint();
-  host.focus(`fl:${host.draft.config.fields.length - 1}`);
+  host.focus(`fl:${known < 0 ? fields.length - 1 : known}`);
 }
 
+// Un champ : la colonne d'une table liée se cherche d'un coup ou se suit pas à pas, et une colonne peut se créer (js/annuaire/annuaire-setup-path.js). Les
+// colonnes que GFS lit déjà par un nom (et celles des niveaux et des relations) ne se proposent pas dans la table des personnes.
 async function pickField(host) {
   const { t, draft } = host;
   const taken = takenColumns(draft.config);
-  const items = columnItems(host.schema, draft.table, t, { follow: false }).filter(item => !taken.has(item.label));
-  const chosen = await host.list({ title: t('an.set.pickField'), text: t('an.set.pickFieldText'), items, none: t('an.set.noColumn') });
-  if (chosen !== null) addField(host, chosen.slice(4));
+  const kinds = [['Text', 'an.type.text'], ['Choice', 'an.type.choice'], ['ChoiceList', 'an.type.choicelist'], ['Bool', 'an.type.bool'],
+    ['Date', 'an.type.date'],
+    ['Numeric', 'an.type.number']];
+  const path = await pickPath(host, { title: t('an.set.pickField'), text: t('an.set.pickFieldText'),
+    types: kinds.map(([type, key]) => ({ type, label: t(key) })),
+    filter: (col, followed) => followed.length > 0 || !taken.has(col.id) });
+  if (path !== null) addField(host, path);
 }

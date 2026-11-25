@@ -4,7 +4,8 @@
 // une ligne, peut demander à la personne de créer la table. Les gestes s'enchaînent l'un après l'autre.
 
 import { OwnTable, TableDeclined } from '../files/own-table.js';
-import { ANNUAIRES_TABLE, ANNUAIRES_COLUMNS, annuairesOf, newRecord, addAction, updateAction, writeConfig, effectiveConfig } from './annuaire-config.js';
+import { ANNUAIRES_TABLE, ANNUAIRES_COLUMNS, annuairesOf, newRecord, addAction, updateAction, addColumnAction, writeConfig,
+  effectiveConfig } from './annuaire-config.js';
 import { schemaOf, tablesNeeded } from './annuaire-schema.js';
 import { buildPeople, buildTree } from './annuaire-model.js';
 
@@ -65,6 +66,19 @@ export class AnnuaireStore {
     await Promise.all([...tablesNeeded(config, annuaire.table, schema)].map(async name => { data[name] = await fetch(name); }));
     const people = buildPeople(config, annuaire.table, data, schema);
     return { annuaire, config, schema, people, tree: buildTree(people, config.levels, annuaire.name) };
+  }
+
+  // Une table du document, en tableaux de colonnes (pour les exemples du réglage).
+  table(name) { return this.#port.doc.fetchTable(name); }
+
+  // Ajoute la colonne `name` (vide, du type `type` : « Text », « Ref:Personnes »…) à `table` : { id }. Grist choisit l'identifiant (il peut différer du nom) :
+  // on le relit dans sa réponse. Le geste vient d'une fenêtre qui a dit ce qui s'écrit (js/annuaire/annuaire-setup-path.js).
+  addColumn(table, name, type) {
+    return this.#then(async () => {
+      const result = await this.#port.doc.applyUserActions([addColumnAction(table, name, type)]);
+      const made = result && Array.isArray(result.retValues) ? result.retValues[0] : null;
+      return { id: made && typeof made.colId === 'string' && made.colId ? made.colId : String(name).trim() };
+    });
   }
 
   #then(task) {

@@ -53,6 +53,7 @@ async function mount() {
   const control = new AnnuaireControl({ port: grist.port, container: document.getElementById('stage'), t: (key, vars) => i18n.t(key, vars), locale: () => locale(lang),
     inertTargets: () => [], ask: async () => true, notice: text => window.__annuaireNotices.push(text), writeBlock: () => null, fullAccess: () => true });
   window.__annuaire = control;
+  window.__annuaireBatches = () => JSON.parse(JSON.stringify(grist.batches)); // les actions que le faux Grist a reçues, dans l'ordre
   window.__annuaireLanguage = next => { lang = next; i18n = createI18n(next); control.relocalize(); };
 }
 

@@ -12,6 +12,8 @@ import { h } from '../ui/dom.js';
 import { openModal } from '../ui/modal.js';
 import { pickFrom } from '../ui/pick-window.js';
 import { readConfig } from './annuaire-config.js';
+import { genreOf, targetOf } from './annuaire-schema.js';
+import { Sampler } from './annuaire-sample.js';
 import { peopleTab, peopleAct } from './annuaire-setup-people.js';
 import { hierarchyTab, hierarchyAct, levelInput, paintPreview } from './annuaire-setup-levels.js';
 import { relationsTab, relationsAct, relationInput } from './annuaire-setup-relations.js';
@@ -28,11 +30,15 @@ export class AnnuaireSetup {
   #refs = {};
   #preview = { state: 'idle', tree: null, counts: null };
   #cache = new Map();
+  #sampler = null;
   #stamp = 0;
   #timer = null;
 
   // opts : { container, inertTargets(), t, schema, annuaire (celui qu'on règle, ou null), taken: [noms déjà pris], read(annuaire, cache) -> { people, tree }
-  //   (facultatif) }
+  //   (facultatif), fetch(table) -> les tableaux de colonnes de la table (pour les exemples ; facultatif), createColumn(table, nom, type) -> { id } (l'écriture
+  //   d'une
+  //   colonne, avec l'accord de la personne donné dans la fenêtre « Créer une colonne » ; facultatif), writeBlock() -> texte ou null (ce qui empêche d'écrire)
+  //   }
   constructor(opts) {
     this.#o = opts;
     const base = opts.annuaire;
@@ -44,9 +50,42 @@ export class AnnuaireSetup {
   // Ce que les onglets voient de la fenêtre.
   get #host() {
     return { t: this.#o.t, schema: this.#o.schema, draft: this.#draft, ui: this.#ui, editing: Boolean(this.#o.annuaire), container: this.#o.container,
-      inertTargets: this.#o.inertTargets, preview: this.#preview, body: this.#refs.body,
+      inertTargets: this.#o.inertTargets, preview: this.#preview, body: this.#refs.body, sample: this.#sample(),
       repaint: () => this.#paint(), changed: () => { this.#paint(); this.#schedule(); }, list: opts => this.#list(opts),
-        focus: (...keys) => this.#focus(...keys) };
+        focus: (...keys) => this.#focus(...keys), createColumn: (table, made) => this.#createColumn(table, made),
+        writeBlock: () => (this.#o.writeBlock ? this.#o.writeBlock() : null) };
+  }
+
+  // Les exemples en direct : une personne de la table choisie (js/annuaire/annuaire-sample.js), lue une fois par table ; le réglage se redessine quand elle
+  // arrive.
+  #sample() {
+    const table = this.#draft.table;
+    if (!this.#sampler || this.#sampler.table !== table) {
+      const { t, schema } = this.#o;
+      const sampler = new Sampler({ schema, table, fetch: name => this.#fetch(name),
+        format: (value, genre) => (genre === 'bool' ? t(value === 'true' ? 'an.yes' : 'an.no') : value) });
+      this.#sampler = sampler;
+      if (table) { sampler.load(); sampler.whenLoaded(() => { if (this.#sampler === sampler && this.#ui.tab === 'people' && this.#refs.body) this.#paint(); });
+        }
+    }
+    return this.#sampler;
+  }
+
+  // Une table lue pour les exemples : par le même cache que l'aperçu (une lecture par table) ; une lecture qui échoue n'y reste pas.
+  #fetch(name) {
+    if (!this.#o.fetch) return Promise.reject(new Error('lecture indisponible'));
+    if (!this.#cache.has(name)) this.#cache.set(name, this.#o.fetch(name).catch(error => { this.#cache.delete(name); throw error; }));
+    return this.#cache.get(name);
+  }
+
+  // Une colonne nouvelle dans `table` : Grist l'écrit (le nom réel peut changer : on le relit), le schéma du réglage la connaît aussitôt, la table se relira.
+  async #createColumn(table, { name, type }) {
+    if (!this.#o.createColumn) throw new Error('écriture indisponible');
+    const made = await this.#o.createColumn(table, name, type);
+    const col = { id: made.id, type, genre: genreOf(type), ref: targetOf(type), visible: '' };
+    if (this.#o.schema[table]) this.#o.schema[table].columns.push(col);
+    this.#cache.delete(table);
+    return col;
   }
 
   // La fenêtre : rend { name, table, config } ou null.

@@ -103,8 +103,7 @@ export class AnnuaireControl {
     if (blocked) { this.#o.notice(blocked); return; }
     const schema = await this.#schema();
     if (!schema) return;
-    const made = await new AnnuaireSetup({ container: this.#o.container, inertTargets: this.#o.inertTargets, t, schema, annuaire: null,
-      taken: this.#list.map(each => each.name), read: (draft, cache) => this.#store.read(draft, schema, cache) }).run();
+    const made = await new AnnuaireSetup({ ...this.#setupTools(schema), annuaire: null, taken: this.#list.map(each => each.name) }).run();
     if (!made) return;
     try {
       const annuaire = await this.#store.create(made);
@@ -126,8 +125,9 @@ export class AnnuaireControl {
     if (blocked) { this.#o.notice(blocked); return; }
     const schema = await this.#schema();
     if (!schema) return;
-    const done = await new AnnuaireSetup({ container: this.#o.container, inertTargets: this.#o.inertTargets, t, schema, annuaire: current, taken: [],
-      read: (draft, cache) => this.#store.read({ ...current, ...draft }, schema, cache) }).run();
+    const done = await new AnnuaireSetup({ ...this.#setupTools(schema), annuaire: current, taken: [],
+      read: (draft, cache) => this.#store.read({ ...current, ...draft },
+      schema, cache) }).run();
     if (!done) return;
     try {
       const saved = await this.#store.save(current, done.config, done.table);
@@ -137,6 +137,15 @@ export class AnnuaireControl {
       console.error('GFS : enregistrement de l\'annuaire impossible', error);
       this.#o.notice(t('an.saveFailed', { reason: String(error && error.message) }));
     }
+  }
+
+  // Ce que le réglage reçoit : la fenêtre, les tables du document, de quoi lire (l'aperçu et les exemples) et de quoi créer une colonne (l'accord est donné
+  // dans sa propre fenêtre ; `writeBlock` dit ce qui empêche d'écrire).
+  #setupTools(schema) {
+    return { container: this.#o.container, inertTargets: this.#o.inertTargets, t: this.#o.t, schema,
+      read: (draft, cache) => this.#store.read(draft, schema, cache),
+      fetch: name => this.#store.table(name), createColumn: (table, name, type) => this.#store.addColumn(table, name, type),
+        writeBlock: () => this.#o.writeBlock() };
   }
 
   // Les tables et les colonnes du document ; sans elles (l'accès complet manque), le réglage ne s'ouvre pas et la personne le sait.

@@ -20,20 +20,6 @@ export function typeLabel(col, table, t) {
   return t(TYPE_KEYS[col.genre] || 'an.type.text');
 }
 
-// Une colonne dite à la personne : son nom et son type.
-export const columnItem = (col, hint) => ({ value: `use:${col.id}`, label: col.id, glyph: GLYPHS[col.genre] || 'table', hint: hint ?? col.type });
-
-// Les articles d'une liste de colonnes : une colonne de référence en donne deux (sa valeur affichée, ou « suivre » vers les colonnes de la table visée).
-export function columnItems(schema, tableId, t, { follow }) {
-  const cols = (schema[tableId] ? schema[tableId].columns : []).filter(col => col.genre !== 'file');
-  return cols.flatMap(col => {
-    const items = [columnItem(col, col.ref ? t('an.set.shows', { table: col.ref }) : col.type)];
-    if (follow && col.genre === 'ref' && schema[col.ref]) items.push({ value: `go:${col.id}`, label: `${col.id} ›`, glyph: 'chev-right',
-      hint: t('an.set.follow', { table: col.ref }) });
-    return items;
-  });
-}
-
 // Le bouton qui ouvre une liste avec recherche : le choix en cours (ou « — Choisir … — »), une flèche.
 export function chooser(t, fk, text, data, { disabled = false, title = '' } = {}) {
   return h('button', { type: 'button', class: 'an-pickbtn', 'aria-disabled': disabled ? 'true' : null, title: title || null, dataset: { ...data, fk } },

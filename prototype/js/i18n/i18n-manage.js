@@ -5,6 +5,8 @@ export const MANAGE_STRINGS = Object.freeze({
   fr: {
     'pick.search': 'Chercher…',
     'pick.path': 'Chemin',
+    'pick.back': 'Retour',
+    'pick.backTo': 'Revenir à « {step} »',
     'manage.open': 'Gérer les partages…',
     'manage.open.hint': 'Les groupes de personnes, les droits de tout le document et la structure.',
     'manage.title': 'Gérer les partages',
@@ -91,6 +93,8 @@ export const MANAGE_STRINGS = Object.freeze({
   en: {
     'pick.search': 'Search…',
     'pick.path': 'Path',
+    'pick.back': 'Back',
+    'pick.backTo': 'Go back to “{step}”',
     'manage.open': 'Manage sharing…',
     'manage.open.hint': 'Groups of people, rights for the whole document and its structure.',
     'manage.title': 'Manage sharing',

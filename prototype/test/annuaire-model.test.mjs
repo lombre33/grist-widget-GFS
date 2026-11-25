@@ -2,9 +2,9 @@
 // la recherche, les filtres et l'arbre des responsables. Sur un document fictif (test/annuaire-fixtures.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readConfig, writeConfig, annuairesOf, newRecord, addAction, effectiveConfig, ANNUAIRES_COLUMNS } from '../js/annuaire/annuaire-config.js';
-import { schemaOf, genreOf, targetOf, isPeopleTable, tablesNeeded, columnOf } from '../js/annuaire/annuaire-schema.js';
-import { valuesOf, followPath, buildPeople, buildTree, findNode, peopleIn, searchKey, filterPeople, filterOptions, managerTree, nameOf } from '../js/annuaire/annuaire-model.js';
+import { readConfig, writeConfig, annuairesOf, newRecord, addAction, effectiveConfig, fieldPath, fieldLabel, ANNUAIRES_COLUMNS } from '../js/annuaire/annuaire-config.js';
+import { schemaOf, genreOf, targetOf, isPeopleTable, tablesNeeded, columnOf, columnAt } from '../js/annuaire/annuaire-schema.js';
+import { valuesOf, followPath, buildPeople, buildTree, findNode, peopleIn, searchKey, filterPeople, filterOptions, managerTree, nameOf, fieldGenres } from '../js/annuaire/annuaire-model.js';
 import { telHref } from '../js/annuaire/annuaire-items.js';
 import { documentFixture, configFixture, metaTables, metaColumns } from './annuaire-fixtures.mjs';
 
@@ -28,7 +28,7 @@ test('config : les niveaux sans colonne et les champs en double sont écartés, 
     fields: [{ col: 'Contrat', filter: 1 }, { col: 'Contrat' }, { col: '' }, { col: 'Site', filter: false }], inconnue: 'perdue' });
   assert.equal(config.name, 'Nom');
   assert.deepEqual(config.levels, [{ label: 'Pôle', path: ['Structure', 'Pole'] }]);
-  assert.deepEqual(config.fields, [{ col: 'Contrat', filter: true, list: false }, { col: 'Site', filter: false, list: false }]);
+  assert.deepEqual(config.fields, [{ col: 'Contrat', path: [], filter: true, list: false }, { col: 'Site', path: [], filter: false, list: false }]);
   assert.equal('inconnue' in config, false);
   assert.deepEqual(readConfig(writeConfig(config)), config);
 });
@@ -209,8 +209,10 @@ test('config : l\'ordre du nom est celui qu\'on a dit, sinon « prénom nom » ;
   assert.equal(readConfig({}).order, 'first-last');
   assert.equal(readConfig({ order: 'last-first' }).order, 'last-first');
   assert.equal(readConfig({ order: 'au hasard' }).order, 'first-last');
+  assert.equal(readConfig({ order: 'last-comma' }).order, 'last-comma');
+  assert.deepEqual([readConfig({}).upper, readConfig({ upper: true }).upper, readConfig({ upper: 'oui' }).upper], [false, true, false]);
   assert.equal(readConfig({ first: ' Prénom ' }).first, 'Prénom');
-  assert.deepEqual(readConfig({ fields: [{ col: 'Contrat', list: true }] }).fields, [{ col: 'Contrat', filter: false, list: true }]);
+  assert.deepEqual(readConfig({ fields: [{ col: 'Contrat', list: true }] }).fields, [{ col: 'Contrat', path: [], filter: false, list: true }]);
 });
 
 test('nom : une colonne seule, ou le prénom et le nom dans l\'ordre dit ; le tri est par nom de famille, les initiales celles du prénom et du nom', () => {
@@ -220,6 +222,16 @@ test('nom : une colonne seule, ou le prénom et le nom dans l\'ordre dit ; le tr
   assert.equal(nameOf('Élodie', 'de la Fontaine', 'first-last').initials, 'ÉD');
   assert.equal(nameOf('Jean-Pierre', 'Roux', 'last-first').initials, 'JR');
   assert.deepEqual(nameOf('', '', 'first-last'), { name: '', sort: '', initials: '' });
+});
+
+test('nom : les autres écritures (retour du porteur, 25/11) : « Prénom NOM », « NOM Prénom », « Nom, Prénom » ; le tri et les initiales gardent le nom tel qu\'il est écrit dans la table', () => {
+  assert.equal(nameOf('Camille', 'Martin', 'first-last', true).name, 'Camille MARTIN');
+  assert.equal(nameOf('Camille', 'Martin', 'last-first', true).name, 'MARTIN Camille');
+  assert.equal(nameOf('Camille', 'Martin', 'last-comma').name, 'Martin, Camille');
+  assert.equal(nameOf('Camille', 'Martin', 'last-comma', true).name, 'MARTIN, Camille');
+  assert.equal(nameOf('Élodie', 'de la Fontaine', 'first-last', true).name, 'Élodie DE LA FONTAINE');
+  assert.deepEqual(nameOf('Camille', 'Martin', 'first-last', true), { name: 'Camille MARTIN', sort: 'Martin Camille', initials: 'CM' });
+  assert.equal(nameOf('', 'Camille Martin', 'first-last', true).name, 'Camille Martin', 'un nom en une seule colonne s\'écrit comme la table l\'écrit');
 });
 
 test('personnes : avec une colonne de prénom, le nom s\'écrit dans l\'ordre dit, la liste est triée par nom de famille et la recherche trouve les deux', () => {
@@ -246,4 +258,25 @@ test('numéro : le lien d\'appel ne garde que ce qui se compose (chiffres, « + 
   assert.equal(telHref('01 02 03 04 55, poste 12'), 'tel:0102030455');
   assert.equal(telHref('01 02 03 04 55 p. 12'), 'tel:0102030455');
   for (const none of ['', null, undefined, 'poste 12', 'ext. 4455', '12', 'standard du lundi 0102030405']) assert.equal(telHref(none), null);
+});
+
+test('champs : une colonne de la table, ou un chemin à suivre (retour du porteur, 25/11) ; sa clé, son nom, son genre, ses valeurs, son filtre et les tables lues', () => {
+  const read = readConfig({ fields: [{ col: 'Contrat' }, { path: ['Structure', 'Pole'], filter: true, list: true }, { col: 'Structure', path: ['Structure'] }, { path: ['Structure', 'Pole'] }] });
+  assert.deepEqual(read.fields, [{ col: 'Contrat', path: [], filter: false, list: false }, { col: 'Structure › Pole', path: ['Structure', 'Pole'], filter: true, list: true },
+    { col: 'Structure', path: [], filter: false, list: false }], 'une colonne seule garde sa clé ; le même chemin ne compte qu\'une fois');
+  const [contrat, chemin] = read.fields;
+  assert.deepEqual([fieldPath(contrat), fieldPath(chemin), fieldLabel(contrat), fieldLabel(chemin)], [['Contrat'], ['Structure', 'Pole'], 'Contrat', 'Pole']);
+  assert.deepEqual(JSON.parse(writeConfig(read)).fields[1], { col: 'Structure › Pole', path: ['Structure', 'Pole'], filter: true, list: true });
+  const config = { ...configFixture(), fields: [{ col: 'Pôle de la structure', path: ['Structure', 'Pole'], filter: true, list: true }] };
+  const built = buildPeople(config, 'Personnes', doc, schema);
+  assert.deepEqual(built.find(person => person.row === 1).fields['Pôle de la structure'], ['Pôle Ressources']);
+  assert.deepEqual(fieldGenres(config, 'Personnes', schema), { 'Pôle de la structure': 'ref' });
+  const options = filterOptions(built, config, schema, 'Personnes');
+  assert.equal(options[0].col, 'Pôle de la structure');
+  assert.equal(options[0].label, 'Pole');
+  assert.ok(options[0].values.some(entry => entry.value === 'Pôle Ressources'));
+  assert.equal(columnAt(schema, 'Personnes', ['Structure', 'Pole']).id, 'Pole');
+  assert.equal(columnAt(schema, 'Personnes', ['Nom', 'Pole']), null, 'on ne suit qu\'une référence simple');
+  assert.equal(columnAt(schema, 'Personnes', ['Inconnue']), null);
+  assert.ok(tablesNeeded(config, 'Personnes', schema).has('Structures'), 'le chemin d\'un champ fait lire la table qu\'il suit');
 });

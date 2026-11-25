@@ -1,25 +1,25 @@
 // L'onglet « Relations » du réglage de l'annuaire (module Annuaire, demande du porteur du 25/11 : assistant·e, référent·e, suppléant·e et les autres, avec
 // leurs règles ; choix du porteur : un quatrième onglet, trois modèles prêts, une petite ligne sur la carte de l'organigramme). Une relation est une colonne de
-// la table des personnes qui en désigne une autre : GFS n'en crée aucune (additif seulement, jamais sans l'accord de la personne), la personne choisit celle
-// qui existe. Une relation se crée en trois temps, comme un niveau : son nom, sa colonne (orange tant qu'elle manque), puis ses règles (le sens inverse, la
-// ligne sur la carte). Le responsable direct est la première relation, quand il y en a un : il donne l'organigramme des responsables. `host` : voir
-// js/annuaire/annuaire-setup.js.
+// la table des personnes qui en désigne une autre : la personne choisit une colonne qui existe, ou GFS la crée avec son accord
+// (js/annuaire/annuaire-setup-path.js). Une relation se crée en trois temps, comme un niveau : son nom, sa colonne (orange tant qu'elle manque), puis ses
+// règles (le sens inverse, la ligne sur la carte). Le responsable direct est la première relation, quand il y en a un : il donne l'organigramme des
+// responsables. `host` : voir js/annuaire/annuaire-setup.js.
 
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { openModal } from '../ui/modal.js';
 import { TEMPLATES } from './annuaire-relations.js';
 import { columnOf } from './annuaire-schema.js';
-import { columnItem, formRow, switchButton, iconButton, shift, typeLabel } from './annuaire-setup-shared.js';
+import { formRow, switchButton, iconButton, shift, typeLabel } from './annuaire-setup-shared.js';
+import { pickColumn } from './annuaire-setup-path.js';
 
 // Les colonnes qui peuvent porter une relation : celles de la table des personnes qui désignent une personne (une référence, ou une liste de références, vers
 // cette même table), sauf celles que le responsable direct ou une autre relation lisent déjà (`keep` : la colonne qu'on est en train de changer).
-function relationColumns(host, keep) {
-  const { schema, draft, t } = host;
+function relationFilter(host, keep) {
+  const { draft } = host;
   const taken = new Set([draft.config.manager, ...draft.config.relations.map(rel => rel.col)].filter(Boolean));
   taken.delete(keep);
-  return (schema[draft.table] ? schema[draft.table].columns : []).filter(col => (col.genre === 'ref' || col.genre === 'reflist') && col.ref === draft.table &&
-    !taken.has(col.id)).map(col => columnItem(col, typeLabel(col, draft.table, t)));
+  return col => (col.genre === 'ref' || col.genre === 'reflist') && col.ref === draft.table && !taken.has(col.id);
 }
 
 // Le fil d'une colonne choisie : « Personnes › Assistant » et ce qu'elle désigne (une personne, ou plusieurs).
@@ -90,8 +90,8 @@ const atOf = data => Number(data.index);
 
 const ACTS = Object.freeze({
   'rel-add': (host, data) => void addRelation(host, data.template),
-  'pick-relation': (host, data) => void pickColumn(host, host.draft.config.relations[atOf(data)]),
-  'pick-manager': host => void pickColumn(host, null),
+  'pick-relation': (host, data) => void pickRelationColumn(host, host.draft.config.relations[atOf(data)]),
+  'pick-manager': host => void pickRelationColumn(host, null),
   'rel-card': (host, data) => { const rel = host.draft.config.relations[atOf(data)]; rel.card = !rel.card; host.repaint(); },
   'rel-up': (host, data) => move(host, atOf(data), -1),
   'rel-down': (host, data) => move(host, atOf(data), 1),
@@ -118,16 +118,17 @@ export function relationInput(host, input) {
   if (rel) rel[input.dataset.input === 'rel-inverse' ? 'inverse' : 'label'] = input.value;
 }
 
-// La colonne d'une relation (ou, sans relation, celle du responsable direct) : une liste avec recherche des colonnes qui désignent une personne. Renoncer
-// laisse la relation comme elle était (orange si elle n'avait pas de colonne).
-async function pickColumn(host, rel) {
+// La colonne d'une relation (ou, sans relation, celle du responsable direct) : une liste avec recherche des colonnes qui désignent une personne, ou la création
+// d'une colonne (une personne, ou plusieurs : js/annuaire/annuaire-setup-path.js). Renoncer laisse la relation comme elle était (orange si elle n'avait pas de
+// colonne).
+async function pickRelationColumn(host, rel) {
   const { t, draft } = host;
   const current = rel ? rel.col : draft.config.manager;
-  const chosen = await host.list({ title: t('an.rel.pickTitle', { name: rel ? (rel.label || t('an.rel.nameLabel')) : t('an.rel.manager') }),
+  const kinds = [{ type: `Ref:${draft.table}`, label: t('an.type.person') }, ...(rel ? [{ type: `RefList:${draft.table}`, label: t('an.type.people') }] : [])];
+  const col = await pickColumn(host, { title: t('an.rel.pickTitle', { name: rel ? (rel.label || t('an.rel.nameLabel')) : t('an.rel.manager') }),
     text: t('an.rel.pickText'),
-    items: relationColumns(host, current), current: current ? `use:${current}` : null, none: t('an.rel.noColumn') });
-  if (chosen === null) return;
-  const col = chosen.slice(4);
+    types: kinds, filter: relationFilter(host, current), current });
+  if (col === null) return;
   if (rel) rel.col = col; else draft.config.manager = col;
   draft.config.fields = draft.config.fields.filter(field => field.col !== col);
   host.changed();
@@ -138,13 +139,13 @@ async function pickColumn(host, rel) {
 // (son nom est fixe : on passe à sa colonne).
 async function addRelation(host, template) {
   const { t, draft } = host;
-  if (template === 'manager') { await pickColumn(host, null); return; }
+  if (template === 'manager') { await pickRelationColumn(host, null); return; }
   const made = template === 'other' ? await newRelationWindow(host) : { label: t(`an.rel.tpl.${template}`), inverse: t(`an.rel.tpl.${template}.inverse`) };
   if (!made) return;
   const rel = { col: '', label: made.label, inverse: made.inverse, card: true };
   draft.config.relations.push(rel);
   host.changed();
-  await pickColumn(host, rel);
+  await pickRelationColumn(host, rel);
   host.focus(`rp:${draft.config.relations.indexOf(rel)}`);
 }
 

@@ -200,7 +200,7 @@
    raison au survol ; l'option « postes et hiérarchie » éteinte laisse son onglet visible, grisé. Orange (jetons `warn`) : ce qui attend un choix, comme la colonne d'un niveau. */
 .mod.an-set { width: min(664px, 100%); height: 100%; container: anset / inline-size; }
 .mod-body.an-set-body { padding: 0 14px 10px; }
-.an-tabs { flex: none; display: flex; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--border); background: var(--surface); overflow-x: auto; }
+.an-tabs { flex: none; display: flex; flex-wrap: wrap; gap: 0 2px; padding: 0 12px; border-bottom: 1px solid var(--border); background: var(--surface); }
 .an-tab { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px 7px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--text-muted);
   font: inherit; font-size: max(12.5px, var(--fs-min)); font-weight: 600; white-space: nowrap; cursor: pointer; }
 .an-tab:hover { color: var(--text); }
@@ -217,6 +217,8 @@
 .an-set-label { padding-top: 6px; font-size: max(12.5px, var(--fs-min)); font-weight: 600; }
 .an-set-control { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .an-set-hint { font-size: max(11.5px, var(--fs-min)); color: var(--text-muted); }
+/* L'aperçu du nom que donnent l'ordre et les capitales : la personne d'exemple, ou un nom fictif. */
+.an-set-example { margin: 0; padding: 6px 10px; border-radius: var(--radius-sm); background: var(--surface-sunken); color: var(--text); font-size: max(13px, var(--fs-min)); overflow-wrap: anywhere; }
 .an-set-input { width: 100%; height: 30px; padding: 0 8px; box-sizing: border-box; border: var(--bw) solid var(--border-strong); border-radius: var(--radius-input); background: var(--surface);
   color: var(--text); font: inherit; font-size: max(12.5px, var(--fs-min)); }
 .an-set-input:disabled { background: var(--surface-sunken); color: var(--text-muted); }

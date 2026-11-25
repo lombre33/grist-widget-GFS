@@ -16,7 +16,7 @@ const PROBES = {
   prev: ['.an-prev li', '.an-prev'], ftype: ['.an-f-type', '.mod'], fname: ['.an-f-name', '.mod'], fhead: ['.an-frow.is-head span', '.mod'], sug: ['.an-sug', '.an-sug'],
   disclose: ['.an-disclose-b', '.mod'], slot: ['.an-slot-lv', '.an-slot-lv'], note: ['.an-set-note', '.mod-foot'],
   relName: ['.an-relrow .an-lv-name', '.an-relrow'], relFixed: ['.an-rel-fixed', '.an-relrow'], relNote: ['.an-rel-note', '.an-relrow'], relKind: ['.an-rel-kind', '.an-relrow'],
-  relRule: ['.an-rel-inv .an-set-hint', '.an-relrow'],
+  relRule: ['.an-rel-inv .an-set-hint', '.an-relrow'], example: ['.an-set-example', '.an-set-example'],
 };
 
 // ---------- ce qui s'exécute dans la page ----------
@@ -74,9 +74,9 @@ function windowSnap() {
 // ---------- les gestes ----------
 
 // Taper au clavier puis laisser les frappes se poser (la liste des places se redessine à chaque lettre).
-const press = async (page, text) => { await page.press(...text.split('')); await delay(250); };
+export const press = async (page, text) => { await page.press(...text.split('')); await delay(250); };
 
-function tools(page, note) {
+export function tools(page, note) {
   const click = async (selector, wanted = null, exact = false) => {
     const at = wanted === null ? await page.run(selectorCenter, selector) : await page.run(centerOfText, selector, wanted, exact);
     if (!at) { note('introuvable', `${selector}${wanted ? ` « ${wanted} »` : ''} n'est pas dans la page`); return false; }
@@ -109,7 +109,7 @@ function frame(snap, note, where, tab) {
   for (const tabBox of snap.tabs) if (!fits(tabBox.box, view)) note('réglage', `${where} : l'onglet « ${tabBox.text} » sort de la page`);
 }
 
-async function contrast(page, note, where) {
+export async function contrast(page, note, where) {
   for (const [what, value] of Object.entries(await page.run(contrasts, PROBES))) if (value < 4.5) note('contraste', `${where} : le texte « ${what} » est trop pâle (contraste ${value.toFixed(2)}, 4,5 attendu)`);
 }
 
@@ -136,17 +136,19 @@ export async function setupProblems(page, t, note, { wide, width, mode }) {
 }
 
 // « Séparer le nom et le prénom » : le prénom et l'ordre du nom apparaissent, et disparaissent quand on referme.
-async function peopleProblems(page, t, note, { click, snap }, where) {
+async function peopleProblems(page, t, note, tool, where) {
+  const { click, snap } = tool;
   await click('[data-fk="tab:people"]');
   const before = await snap();
   if (before.keys.includes('pc:first') || before.keys.includes('order:first-last')) note('réglage', `${where} : le prénom est là avant d'avoir déplié « ${t('an.set.split')} »`);
   await click('[data-fk="toggle-split"]');
   const open = await snap();
   if (!open.keys.includes('pc:first')) note('réglage', `${where} : « ${t('an.set.split')} » ne montre pas la colonne du prénom`);
-  if (open.order.join() !== 'first-last:true,last-first:false') note('réglage', `${where} : l'ordre du nom dit ${open.order.join()} (prénom d'abord attendu)`);
+  if (open.order.join() !== 'first-last:true,last-first:false,last-comma:false') note('réglage', `${where} : l'ordre du nom dit ${open.order.join()} (prénom d'abord attendu)`);
   frame(open, note, `${where}, nom séparé`, 'people');
   await click('[data-fk="order:last-first"]');
-  if ((await snap()).order.join() !== 'first-last:false,last-first:true') note('réglage', `${where} : « ${t('an.set.order.last-first')} » ne se choisit pas à la souris`);
+  if ((await snap()).order.join() !== 'first-last:false,last-first:true,last-comma:false') note('réglage', `${where} : « ${t('an.set.order.last-first')} » ne se choisit pas à la souris`);
+  await nameFormats(page, t, note, tool, where);
   await click('[data-fk="toggle-split"]');
   if ((await snap()).keys.includes('pc:first')) note('réglage', `${where} : refermer « ${t('an.set.split')} » laisse la colonne du prénom`);
 }
@@ -208,7 +210,7 @@ async function createLevel(page, t, note, { click, snap }, where) {
   const placed = await page.run(() => document.querySelector('[data-fk="nl-slot:1"]').getAttribute('aria-pressed'));
   if (placed !== 'true') note('réglage', `${where} : la place choisie à la souris ne se marque pas`);
   await click('[data-fk="nl-ok"]');
-  await click('.wk-name', 'Structure ›', true);
+  await click('[data-fk="pick-alt-use:Structure"]');
   await click('.wk-name', 'Direction', true);
   const state = await snap();
   const [, made] = state.levels;
@@ -277,7 +279,7 @@ async function relationsSetupProblems(page, t, note, tool, where) {
   await contrast(page, note, `${here}, cartes`);
   // un modèle : la liste ne propose que les colonnes libres ; Échap laisse la relation orange et l'enregistrement refuse
   await click('[data-fk="rt:substitute"]');
-  const names = await page.run(() => [...document.querySelectorAll('.mod.pk .wk-name')].map(node => node.textContent.trim()));
+  const names = await page.run(() => [...document.querySelectorAll('.mod.pk .wk-item:not([data-fk="pick-new:"]) .wk-name')].map(node => node.textContent.trim()));
   if (names.join() !== 'Suppleant') note('réglage', `${here} : la liste des colonnes dit « ${names.join(' | ')} » (« Suppleant » seule attendue : les autres servent déjà)`);
   await page.press('Escape');
   await delay(150);
@@ -315,8 +317,8 @@ async function otherRelation(page, t, note, { click, snap }, where) {
   await press(page, 'Tuteur');
   await page.press('Enter');
   await delay(250);
-  const empty = await page.run(() => { const note = document.querySelector('.mod.pk .mod-note'); return note ? note.textContent.trim() : null; });
-  if (empty !== t('an.rel.noColumn')) note('réglage', `${where} : sans colonne libre, la liste dit « ${empty} » (« ${t('an.rel.noColumn')} » attendu)`);
+  const rest = await page.run(() => [...document.querySelectorAll('.mod.pk .wk-item')].map(node => node.dataset.fk));
+  if (rest.join() !== 'pick-new:') note('réglage', `${where} : sans colonne libre, la liste montre « ${rest.join(' | ')} » (seule la création attendue)`);
   await page.press('Escape');
   await delay(150);
   const after = await snap();
@@ -331,7 +333,7 @@ async function rulesOfRelation(page, t, note, { click, snap }, where) {
   await click('[data-fk="rc:2"]');
   if ((await snap()).relations[3].onCard === before.onCard) note('réglage', `${where} : l'interrupteur « ${t('an.rel.card')} » ne bascule pas à la souris`);
   await click('[data-fk="ru:2"]');
-  if ((await snap()).relations.map(card => card.name).slice(1).join() !== `${t('an.rel.tpl.assistant')},${t('an.rel.tpl.substitute')},Référent·e`) note('réglage', `${where} : « ${t('an.set.up')} » ne monte pas la relation`);
+  if ((await snap()).relations.map(card => card.name).slice(1).join() !== `Assistant·e,${t('an.rel.tpl.substitute')},Référent·e`) note('réglage', `${where} : « ${t('an.set.up')} » ne monte pas la relation`);
   await click('[data-fk="rd:1"]');
   await click('[data-fk="rr:2"]');
   const after = await snap();
@@ -392,6 +394,23 @@ async function sugProblems(t, note, { click, snap }, where, state) {
   if (added.fields.length !== before + 1) { note('réglage', `${where} : une suggestion cliquée n'ajoute pas de champ (${before} puis ${added.fields.length})`); return; }
   await click(`[data-fk="fr:${added.fields.filter(field => !field.locked).length - 1}"]`);
   if ((await snap()).fields.length !== before) note('réglage', `${where} : « ${t('an.set.remove')} » ne retire pas le champ ajouté`);
+}
+
+// Les écritures du nom (retour du porteur, 25/11) : l'ordre à trois boutons, les capitales du nom de famille, et l'aperçu qui suit (un nom fictif tant que le prénom n'a pas sa colonne).
+async function nameFormats(page, t, note, { click }, where) {
+  const example = () => page.run(() => { const node = document.querySelector('[data-fk="name-example"]'); return node ? node.textContent.replace(/\s+/g, ' ').trim() : null; });
+  const wanted = { 'first-last': 'Camille Durand', 'last-first': 'Durand Camille', 'last-comma': 'Durand, Camille' };
+  for (const [order, name] of Object.entries(wanted)) {
+    await click(`[data-fk="order:${order}"]`);
+    if ((await example()) !== t('an.set.orderExample', { name })) note('réglage', `${where} : l'aperçu du nom ne dit pas « ${name} » pour « ${t(`an.set.order.${order}`)} » (« ${await example()} »)`);
+  }
+  await click('[data-fk="upper-toggle"]');
+  if ((await example()) !== t('an.set.orderExample', { name: 'DURAND, Camille' })) note('réglage', `${where} : « ${t('an.set.upper')} » ne met pas le nom de famille en capitales dans l'aperçu (« ${await example()} »)`);
+  if (await page.run(() => document.querySelector('[data-fk="upper-toggle"]').getAttribute('aria-checked')) !== 'true') note('réglage', `${where} : l'interrupteur « ${t('an.set.upper')} » ne se dit pas allumé`);
+  await click('[data-fk="order:first-last"]');
+  if ((await example()) !== t('an.set.orderExample', { name: 'Camille DURAND' })) note('réglage', `${where} : l'aperçu ne dit pas « Camille DURAND » (« ${await example()} »)`);
+  await contrast(page, note, `${where}, aperçu du nom`);
+  await click('[data-fk="upper-toggle"]');
 }
 
 // Ce que la fenêtre de l'annuaire fait de ce qu'on enregistre : sans la hiérarchie ni le responsable, plus d'arbre et un organigramme grisé qui dit comment l'allumer ; un champ

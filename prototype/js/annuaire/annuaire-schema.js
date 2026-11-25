@@ -50,6 +50,17 @@ export function schemaOf(tablesData, columnsData) {
 // La colonne `colId` d'une table du schéma, ou null.
 export const columnOf = (schema, tableId, colId) => ((schema[tableId] && schema[tableId].columns) || []).find(each => each.id === colId) || null;
 
+// La colonne qu'un chemin désigne depuis `tableId` (les colonnes suivies sont des références simples), ou null.
+export function columnAt(schema, tableId, columns) {
+  let table = tableId;
+  let col = null;
+  for (const id of columns) {
+    col = table ? columnOf(schema, table, id) : null;
+    table = col && col.genre === 'ref' ? col.ref : '';
+  }
+  return col;
+}
+
 // Les tables que la lecture d'un annuaire demande : celle des personnes et, pour chaque colonne d'un niveau ou d'un champ qui est une référence, la table visée
 // (de proche en proche : un chemin `Structure › Pôle` lit la table des structures). `config` : voir js/annuaire/annuaire-config.js.
 export function tablesNeeded(config, tableId, schema) {
@@ -62,7 +73,7 @@ export function tablesNeeded(config, tableId, schema) {
   };
   const walk = columns => { let at = tableId; for (const colId of columns) { if (!at) break; at = follow(at, colId); } };
   for (const level of config.levels) walk(level.path);
-  for (const field of config.fields) walk([field.col]);
+  for (const field of config.fields) walk(field.path && field.path.length ? field.path : [field.col]);
   for (const key of ['name', 'first', 'title', 'email', 'phone', 'lead']) if (config[key]) walk([config[key]]);
   return needed;
 }

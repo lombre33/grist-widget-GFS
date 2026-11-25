@@ -34,6 +34,7 @@ const inside = (inner, outer, slack = 1) => inner.left >= outer.left - slack && 
 
 // Une fiche : les libellés et les personnes de chaque ligne de relation, chaque ligne et chaque bouton dans la fiche.
 async function oneFiche(page, note, click, row, where, expected) {
+  await page.run(selector => { const node = document.querySelector(selector); if (node) node.scrollIntoView({ block: 'center' }); }, `[data-fk="pe:${row}"]`); // sous la barre du chemin, un clic touche autre chose
   if (!await click(`[data-fk="pe:${row}"]`)) return null;
   const fiche = await page.run(ficheRows);
   if (!fiche) { note('fiche', `${where} : aucune fiche`); return null; }
@@ -57,6 +58,7 @@ async function ficheProblems(page, t, note, click) {
     if (nathan.rows.some(each => each.label === 'Référent·e de')) note('relations', 'la fiche de Nathan Roussel : une ligne « Référent·e de » alors que la relation n\'a pas de sens inverse');
   }
   await click('[data-fk="side-x"]');
+  await delay(250); // sous 540 px la fiche recouvre la liste : la liste revient après un instant
   const ines = await oneFiche(page, note, click, 2, 'la fiche d\'Inès Marchand', [['Assistant·e de', ['Emma Rolland', 'Nathan Roussel']], ['Référent·e', ['Emma Rolland']]]);
   if (ines) {
     const linked = ines.rows.find(each => each.label === 'Référent·e');
@@ -66,6 +68,7 @@ async function ficheProblems(page, t, note, click) {
     }
   }
   await click('[data-fk="side-x"]');
+  await delay(250);
   await oneFiche(page, note, click, 4, 'la fiche de Louis Girard', [['Assistant·e', ['Jean-Baptiste de la Rochefoucauld-Montmorency']]]);
   await click('[data-fk="side-x"]');
 }

@@ -13,6 +13,7 @@ import { Run, delay } from './corbeille-firefox.mjs';
 import { contrasts } from './vitrine-firefox.mjs';
 import { setupProblems, savedProblems } from './annuaire-setup-firefox.mjs';
 import { relationsReadProblems } from './annuaire-relations-firefox.mjs';
+import { pathPickerProblems } from './annuaire-path-firefox.mjs';
 
 const OTHER = { fr: 'en', en: 'fr' };
 const LONG_NAME = 'Jean-Baptiste de la Rochefoucauld-Montmorency';
@@ -476,6 +477,7 @@ async function settingsProblems(page, t, note, click, { wide, width, mode }) {
   }
   await contrastProblems(page, note, where);
   await setupProblems(page, t, note, { wide, width, mode });
+  await pathPickerProblems(page, t, note, { wide, width, mode });
   await click('[data-fk="set-cancel"]');
   await delay(150);
   if (await page.run(topWindow)) note('réglage', `${where} : « Annuler » ne ferme pas la fenêtre`);

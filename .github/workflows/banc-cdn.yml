@@ -1,0 +1,46 @@
+# Le banc de comparaison des CDN (choix du porteur du 25/11, « banc complet », critères d'un RSSI), à lancer à la main : jsDelivr, cdnjs et unpkg comparés sur chaque fichier de bibliothèque que GFS
+# et les apps chargent (prototype/outils/banc-cdn.mjs : octets comparés à l'archive npm, chiffres que chaque CDN publie, protocole, en-têtes, latence), et les modules que esm.sh fabrique (TipTap)
+# comparés au `+esm` de jsDelivr. Les CDN sont injoignables du cloud de développement ; les exécuteurs de GitHub les atteignent (comme `controle-securite.yml`).
+# Il ne pousse RIEN dans le dépôt d'une app ni chez grist-factory : le résultat (`prototype/bibliotheques/banc-cdn.json`) est poussé sur une branche `banc-cdn-<date>` de GFS, sans demande de fusion.
+# Aucune action tierce : seulement `actions/checkout` et `actions/setup-node`.
+name: Banc des CDN
+
+on:
+  workflow_dispatch:
+    inputs:
+      essais:
+        description: Lectures par adresse
+        default: '3'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: banc-cdn
+  cancel-in-progress: false
+
+jobs:
+  banc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Lancer le banc
+        run: node outils/banc-cdn.mjs --essais "${{ inputs.essais }}" | tee "$GITHUB_STEP_SUMMARY"
+        working-directory: prototype
+      - name: Pousser le résultat sur une branche
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          branch="banc-cdn-$(date -u +%Y%m%d%H%M)"
+          git switch -c "$branch"
+          git add prototype/bibliotheques/banc-cdn.json
+          git commit -m "Banc des CDN du $(date -u +%d/%m/%Y) : résultat brut"
+          git push origin "$branch"

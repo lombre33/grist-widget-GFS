@@ -106,3 +106,42 @@ test('les textes : chaque état, chaque source, chaque règle et chaque code de 
     for (const key of need) assert.ok(texts[key], `${lang} : ${key}`);
   }
 });
+
+const withCatalogue = catalogue => ({ ...reportWith({}), catalogue });
+const catalogueFile = ({ entrees = [], lu = '2026-11-25', problemes = [], over = {} } = {}) => ({
+  cdn: { lu, entrees }, npm: { releve: '2026-11-25', paquets: 17, valides: 17 - problemes.length, nonVerifiees: 0, provenance: 6, problemes, ...over },
+});
+
+test('securityOf : le catalogue de GFS (adresses relues chez le CDN, signatures du registre) se lit à part ; un fichier d\'avant n\'en a pas', () => {
+  assert.equal(securityOf({ report: reportWith({}), modules, lang: 'fr' }).catalogue, null, 'un fichier sans partie catalogue : rien d\'inventé');
+  const entry = (id, etat) => ({ id, etat, url: `https://cdn.jsdelivr.net/npm/${id}/x.js`, attendu: 'sha384-A', vu: etat === 'non-lu' ? null : 'sha384-A', octets: 1 });
+  const view = securityOf({ report: withCatalogue(catalogueFile({ entrees: [entry('a', 'identique'), entry('b', 'identique'), entry('c', 'different'), entry('d', 'non-lu')] })), modules, lang: 'fr' });
+  assert.deepEqual(view.catalogue.cdn, { lu: '2026-11-25', n: 4, identiques: 2, nonLues: 1, differentes: [{ id: 'c' }] });
+  assert.deepEqual([view.catalogue.npm.n, view.catalogue.npm.valides, view.catalogue.npm.provenance, view.catalogue.problems], [17, 17, 6, 1]);
+});
+
+test('securityOf : un écart du catalogue (fichier différent chez le CDN, signature invalide) compte dans le nombre du bouton « Sécurité », une adresse non lue non', () => {
+  const quiet = securityOf({ report: withCatalogue(catalogueFile({ entrees: [{ id: 'd', etat: 'non-lu' }] })), modules, lang: 'fr' });
+  assert.deepEqual([quiet.catalogue.problems, quiet.attention], [0, 0]);
+  const loud = securityOf({ report: withCatalogue(catalogueFile({ entrees: [{ id: 'c', etat: 'different' }], problemes: [{ paquet: 'jszip', version: '3.10.1', signature: 'invalide' }] })),
+    modules, lang: 'fr' });
+  assert.deepEqual([loud.catalogue.problems, loud.attention, loud.problems], [2, 2, 0]);
+  assert.deepEqual(loud.catalogue.npm.problemes, [{ paquet: 'jszip', version: '3.10.1', signature: 'invalide' }]);
+});
+
+test('securityOf : un catalogue mal formé (texte à la place d\'une liste, date illisible) se lit comme vide, sans erreur', () => {
+  const view = securityOf({ report: withCatalogue({ cdn: { lu: 'hier', entrees: 'x' }, npm: { releve: 3, problemes: { a: 1 }, paquets: 'beaucoup' } }), modules, lang: 'fr' });
+  assert.deepEqual(view.catalogue.cdn, { lu: null, n: 0, identiques: 0, nonLues: 0, differentes: [] });
+  assert.deepEqual([view.catalogue.npm.releve, view.catalogue.npm.n, view.catalogue.npm.problemes, view.catalogue.problems], [null, 0, [], 0]);
+});
+
+test('les textes du catalogue : chaque phrase de « Ce que GFS sert lui-même » existe en français et en anglais, avec les mêmes paramètres', () => {
+  const keys = Object.keys(TEXTS.fr).filter(key => key.startsWith('sec.cat.'));
+  assert.ok(keys.length >= 12, `${keys.length} phrases`);
+  const params = text => [...String(text).matchAll(/\{(\w+)[|}]/g)].map(match => match[1]).sort().join();
+  for (const key of keys) {
+    assert.ok(TEXTS.en[key], `en : ${key}`);
+    assert.equal(params(TEXTS.en[key]), params(TEXTS.fr[key]), `les paramètres de ${key}`);
+  }
+  for (const state of ['invalide', 'absente', 'cle-inconnue']) assert.ok(TEXTS.fr[`sec.cat.npm.${state}`], `fr : sec.cat.npm.${state}`);
+});

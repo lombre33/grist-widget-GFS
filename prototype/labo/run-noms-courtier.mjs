@@ -7,6 +7,7 @@
 //   4. Une app qui ne déclare pas la capacité (Automation+) ne renomme ni table ni colonne.
 import { startLab } from './lab-setup.mjs';
 import { say, check } from './lab-common.mjs';
+import { frameSend, frameTables, frameRows, legacyDocument, planInFrame } from './lab-noms.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
 const lab = await startLab({ lang, colorScheme: process.env.LAB_SCHEME || 'light' });
@@ -18,48 +19,21 @@ await page.waitForTimeout(4000);
 const consent = app.getByRole('button', { name: /Create the tables|Créer les tables/ });
 if (await consent.count()) { await consent.first().click(); await page.waitForTimeout(6000); }
 
-// Ce que l'app envoie : `try` / `catch` dans son cadre, la réponse du courtier telle quelle.
-const send = (frame, actions) => frame.evaluate(async list => {
-  try { await grist.docApi.applyUserActions(list); return { ok: true }; } catch (error) { return { ok: false, error: String((error && error.message) || error).slice(0, 220) }; }
-}, actions);
-const tablesOf = frame => frame.evaluate(async () => (await grist.docApi.fetchTable('_grist_Tables')).tableId.filter(id => !/^_?grist/i.test(id)).sort());
-const rowsOf = (frame, table) => frame.evaluate(async id => { const data = await grist.docApi.fetchTable(id); return data.id.map((rowId, i) => ({ id: rowId, ...Object.fromEntries(Object.keys(data).filter(key => key !== 'id' && key !== 'manualSort').map(key => [key, data[key][i]])) })); }, table);
+const send = frameSend;
+const tablesOf = frameTables;
+const rowsOf = frameRows;
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 // ----- Un document aux noms d'avant : les tables anglaises que l'app vient de créer sont retirées, celles d'avant posées avec quelques lignes.
-const english = ['Publipostage_Templates', 'Publipostage_TemplatePreferences', 'Publipostage_TableLinks'];
-const gone = await send(app, english.map(name => ['RemoveTable', name]));
-check('témoin : l\'app retire ses tables anglaises neuves (le document redevient « d\'avant »)', gone.ok, gone);
-const legacy = [
-  ['AddTable', 'Publipostage_Modeles', ['Nom', 'Contenu', 'Jeton', 'TypeModele', 'DateModif', 'ModifiePar', 'NomFichierPDF'].map(id => ({ id, type: 'Text' }))],
-  ['AddTable', 'Publipostage_PreferencesModeles', [{ id: 'Utilisateur', type: 'Text' }, { id: 'ModeleId', type: 'Int' }, { id: 'Epingle', type: 'Bool' }, { id: 'Dossier', type: 'Text' }]],
-];
-check('témoin : les tables d\'avant se créent', (await send(app, legacy)).ok);
-const added = await send(app, [
-  ['BulkAddRecord', 'Publipostage_Modeles', [null, null, null, null, null], { Nom: ['Facture', 'Devis', 'Contrat', 'Lettre', 'Bon'], Contenu: ['<p>a</p>', '<p>b</p>', '<p>c</p>', '<p>d</p>', '<p>e</p>'], Jeton: ['t1', 't2', 't3', 't4', 't5'], TypeModele: ['document', 'document', 'grille', 'document', 'presentation'] }],
-  ['BulkAddRecord', 'Publipostage_PreferencesModeles', [null, null], { Utilisateur: ['a@x.test', 'b@x.test'], ModeleId: [1, 2], Epingle: [true, false], Dossier: ['', 'Clients'] }],
-]);
-check('témoin : cinq modèles et deux préférences', added.ok, added);
-const before = { modeles: await rowsOf(app, 'Publipostage_Modeles'), prefs: await rowsOf(app, 'Publipostage_PreferencesModeles') };
+const start = await legacyDocument(app);
+check('témoin : l\'app retire ses tables anglaises neuves (le document redevient « d\'avant »)', start.gone.ok, start.gone);
+check('témoin : les tables d\'avant se créent', start.made.ok);
+check('témoin : cinq modèles et deux préférences', start.added.ok, start.added);
+const before = start.before;
 say('   tables avant :', JSON.stringify(await tablesOf(app)));
 
 // ----- 1. Le lot de l'app, tel qu'elle le calcule, passe par le courtier.
-const plan = await app.evaluate(async () => {
-  const tables = await grist.docApi.fetchTable('_grist_Tables');
-  const columns = await grist.docApi.fetchTable('_grist_Tables_column');
-  const byRef = new Map(tables.id.map((id, i) => [id, tables.tableId[i]]));
-  const labels = new Map();
-  columns.id.forEach((id, i) => {
-    const table = byRef.get(columns.parentId[i]);
-    if (!table) return;
-    if (!labels.has(table)) labels.set(table, new Map());
-    labels.get(table).set(columns.colId[i], columns.label[i]);
-  });
-  SchemaColumns.setEnglishOnDisk(true);
-  SchemaColumns.setRenameDocuments(true);
-  const batch = SchemaColumns.planRenames(new Set(tables.tableId), id => labels.get(id) || null);
-  return batch && batch.actions ? batch.actions : batch;
-});
+const plan = await app.evaluate(planInFrame);
 const verbs = {};
 for (const action of plan || []) verbs[action[0]] = (verbs[action[0]] || 0) + 1;
 say('   le lot de l\'app :', JSON.stringify(verbs));

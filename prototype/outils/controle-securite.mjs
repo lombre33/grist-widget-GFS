@@ -7,6 +7,7 @@
 //   node outils/controle-securite.mjs --empreintes    recalcule aussi l'empreinte de chaque adresse de CDN trouvée (cdnjs, jsDelivr, unpkg, esm.sh) : depuis GitHub Actions ou chez le porteur
 //                                                      (ces hôtes sont injoignables du cloud de développement), jamais d'une autre adresse
 //   node outils/controle-securite.mjs --sans-avis     ne demande rien au registre npm
+//   node outils/controle-securite.mjs --catalogue     ne refait que ce que GFS sert lui-même (signatures npm d'après le relevé ; avec --empreintes, les adresses du catalogue chez le CDN), sans relire les apps
 //   node outils/controle-securite.mjs --verifier      dit si le fichier couvre les apps du catalogue, sans réseau (code de sortie 1 sinon)
 //
 // Sûreté : l'outil ne lit, dans le code d'une app, que des adresses de CDN connus (CDN_HOSTS), en https, sans joker, et suit au plus trois redirections vers ces mêmes hôtes : une app n'a
@@ -23,6 +24,7 @@ import { CATALOGUE } from '../js/apps/catalogue.js';
 import { readPage, scanCode, scanRelay, parseState, CDN_HOSTS } from '../js/apps/security-page.js';
 import { gradeApp, foundHosts, RULES } from '../js/apps/security-rules.js';
 import { gradeS1, gradeS2, gradeS3, gradeS4 } from '../js/apps/security-policy.js';
+import { controlCatalogue, checkCatalogue } from './controle-catalogue.mjs';
 
 export const SECURITE_FILE = 'bibliotheques/securite.json';
 // Les CDN qui servent un fichier octet pour octet à une version exacte (une empreinte qui change y est un signal) et ceux qui peuvent le reconstruire sans changer de version.
@@ -119,7 +121,8 @@ export async function controlApp(app, env, previous = null) {
 export async function controle(env, previous = null) {
   const apps = {};
   for (const app of env.apps) apps[app.id] = await controlApp(app, env, previous && previous.apps && previous.apps[app.id]);
-  return { contrat: 0, controle: env.now, origine: env.origine, apps };
+  const catalogue = await controlCatalogue(env, previous && previous.catalogue);
+  return { contrat: 0, controle: env.now, origine: env.origine, catalogue, apps };
 }
 
 // Le fichier couvre-t-il le catalogue ? Chaque app y est avec ses neuf règles, chacune avec un état connu et des motifs.
@@ -127,6 +130,7 @@ export function checkSecurite(report, ids = CATALOGUE.map(entry => entry.id)) {
   const problems = [];
   if (!report || report.contrat !== 0 || !report.apps) return ['le contrôle n\'a pas la forme attendue (contrat 0, apps)'];
   if (Number.isNaN(Date.parse(report.controle))) problems.push('la date du contrôle n\'est pas une date');
+  problems.push(...checkCatalogue(report.catalogue));
   for (const id of ids) {
     const app = report.apps[id];
     if (!app) { problems.push(`${id} : absente du contrôle (refaire : node outils/controle-securite.mjs)`); continue; }
@@ -142,6 +146,10 @@ export function checkSecurite(report, ids = CATALOGUE.map(entry => entry.id)) {
 
 // Les adresses de CDN que GFS sert lui-même, à des versions et des empreintes qu'il garde (bibliotheques/catalogue.json) : l'app n'a pas à les déclarer.
 const servedByGfs = root => JSON.parse(readFileSync(join(root, 'bibliotheques/catalogue.json'), 'utf8')).bibliotheques.map(entry => entry.cdn && entry.cdn.src).filter(Boolean);
+
+// Les entrées du catalogue de GFS (adresse du CDN et empreinte attendue) et le relevé des dépendances (signatures du registre), lus sur disque.
+const catalogueEntries = root => JSON.parse(readFileSync(join(root, 'bibliotheques/catalogue.json'), 'utf8')).bibliotheques;
+const releveOf = root => (existsSync(join(root, 'bibliotheques/releve.json')) ? JSON.parse(readFileSync(join(root, 'bibliotheques/releve.json'), 'utf8')) : null);
 
 const repoOf = url => /github\.com[/:]([^/]+\/[^/.]+)(?:\.git)?$/.exec(url)[1];
 
@@ -186,7 +194,7 @@ export function realEnv(options = {}, root = ROOT) {
   return {
     apps, now: new Date().toISOString(), origine: process.env.GITHUB_ACTIONS ? 'actions' : 'local',
     withFingerprints: Boolean(options.empreintes), withAdvisories: !options.sansAvis, withCode: apps.some(local), net: registryNet(),
-    fingerprint: url => fingerprintOf(url), served: servedByGfs(root),
+    fingerprint: url => fingerprintOf(url), served: servedByGfs(root), catalogue: catalogueEntries(root), releve: releveOf(root),
     read: async (app, path, where) => {
       if (where === 'live') return getText(`https://${app.repo.split('/')[0]}.github.io/${app.repo.split('/')[1]}/${path}`);
       if (where === 'etat') return getText(rawUrl(app, 'main', path));
@@ -217,6 +225,14 @@ async function main(args) {
     return;
   }
   const previous = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : null;
+  if (args.includes('--catalogue')) {
+    if (!previous) throw new Error('--catalogue complète un contrôle déjà fait : lancez d\'abord node outils/controle-securite.mjs');
+    const env = realEnv({ empreintes: args.includes('--empreintes') });
+    const { apps, ...head } = previous;
+    writeFileSync(file, `${JSON.stringify({ ...head, catalogue: await controlCatalogue(env, previous.catalogue), apps }, null, 2)}\n`);
+    process.stdout.write('Le contrôle du catalogue est refait (les apps ne sont pas relues).\n');
+    return;
+  }
   const report = await controle(realEnv({ empreintes: args.includes('--empreintes'), sansAvis: args.includes('--sans-avis') }), previous);
   writeFileSync(file, `${JSON.stringify(report, null, 2)}\n`);
   process.stdout.write(`Contrôle du ${report.controle} (${report.origine}) :\n`);

@@ -3,6 +3,7 @@
 //   - la dernière version STABLE de chaque paquet (jamais une préversion ni une version de développement : le « latest » de DuckDB-WASM en est une) ;
 //   - les avis de sécurité publiés pour la version que GFS sert ;
 //   - la licence, le site et le dépôt de cette version ;
+//   - la signature du registre sur cette version et la preuve de publication de son auteur, quand il en a publié une (outils/signatures-npm.mjs) ;
 // et écrit `bibliotheques/releve.json`. Le résultat est commité : aucune étape de construction pour servir.
 //
 //   node outils/releve-dependances.mjs             refait le relevé (réseau : registry.npmjs.org) ; dans le cloud, NODE_USE_ENV_PROXY=1
@@ -17,6 +18,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { ROOT, readList } from './bibliotheques.mjs';
 import { STABLE_RE, parseVersion, compareVersions, gap } from '../js/apps/version-gap.js';
+import { registrySignature } from './signatures-npm.mjs';
 
 export { gap }; // l'écart se dit comme dans la fenêtre « Dépendances » : une seule règle (js/apps/version-gap.js)
 
@@ -113,8 +115,9 @@ export function registryNet(fetchFn = fetch) {
   };
 }
 
-// Le relevé d'un paquet : sa dernière stable, l'écart, les avis de la version servie, sa licence, son site et son dépôt.
-export async function surveyPackage(paquet, version, net) {
+// Le relevé d'un paquet : sa dernière stable, l'écart, les avis de la version servie, sa licence, son site et son dépôt, la signature du registre et la preuve de
+// publication (outils/signatures-npm.mjs ; `keys` : les clés du registre, ou null).
+export async function surveyPackage(paquet, version, net, keys = null) {
   const sourceName = PAQUET_DES_AVIS[paquet] || paquet;
   const [packument, manifest] = await Promise.all([
     net.getJson(`/${scoped(paquet)}`, { accept: 'application/vnd.npm.install-v1+json' }),
@@ -133,6 +136,7 @@ export async function surveyPackage(paquet, version, net) {
     licence: licenseOf(manifest),
     site: manifest.homepage || null,
     depot: repositoryLink(manifest.repository),
+    ...registrySignature({ paquet, version, manifest, keys }),
   };
 }
 
@@ -140,7 +144,9 @@ export async function surveyPackage(paquet, version, net) {
 export async function survey(packageJson, net, now = new Date().toISOString()) {
   const packages = packagesOfList(packageJson);
   const paquets = {};
-  for (const paquet of [...packages.keys()].sort()) paquets[paquet] = await surveyPackage(paquet, packages.get(paquet).version, net);
+  let keys = null;
+  try { keys = (await net.getJson('/-/npm/v1/keys')).keys || null; } catch (error) { keys = null; }
+  for (const paquet of [...packages.keys()].sort()) paquets[paquet] = await surveyPackage(paquet, packages.get(paquet).version, net, keys);
   return { contrat: 0, releve: now, source: REGISTRY.replace('https://', ''), bibliotheques: librariesOf(packages), paquets };
 }
 
@@ -177,7 +183,8 @@ async function main(args) {
   const releve = await survey(packageJson, registryNet());
   writeFileSync(join(ROOT, RELEVE_FILE), `${JSON.stringify(releve, null, 2)}\n`);
   const withAdvisories = Object.entries(releve.paquets).filter(([, p]) => p.avis.length);
-  process.stdout.write(`${Object.keys(releve.paquets).length} paquets relevés (${releve.releve}), ${withAdvisories.length} avec un avis de sécurité.\n`);
+  const valid = Object.values(releve.paquets).filter(p => p.signature === 'valide').length;
+  process.stdout.write(`${Object.keys(releve.paquets).length} paquets relevés (${releve.releve}), ${withAdvisories.length} avec un avis de sécurité, ${valid} avec une signature du registre valide.\n`);
   for (const [paquet, p] of withAdvisories) process.stdout.write(`  ${paquet} ${p.version} : ${p.avis.map(a => `${a.niveau} ${a.id}`).join(', ')}\n`);
 }
 

@@ -34,6 +34,7 @@ import { partagesRecusProblems } from './partages-recus-firefox.mjs';
 import { liensEspacesProblems } from './liens-espaces-firefox.mjs';
 import { poidsFenetreProblems } from './poids-fenetre-firefox.mjs';
 import { poidsAlerteProblems } from './poids-alerte-firefox.mjs';
+import { lectureRetenueProblems } from './lecture-retenue-firefox.mjs';
 import { dependancesProblems } from './dependances-firefox.mjs';
 import { carriedProblems } from './dependances-carried-firefox.mjs';
 import { securiteProblems } from './dependances-securite-firefox.mjs';
@@ -56,6 +57,7 @@ import { lecteurPages, lecteurProblems, stubProviders } from './lecteur-firefox.
 import { accesProblems, contrasteForceProblems } from './acces-firefox.mjs';
 import { ROW_BUTTON, ROW_BUTTON_ACCESS, ROW_HEIGHT, ROW_HEIGHT_ACCESS, TILE_MIN, columnFaults, expectedTileColumns, measureColumns, measureRows, measureTiles } from '../labo/mesures-liste.mjs';
 import { calendarLogs, calendarProblems } from './mesures-calendrier.mjs';
+import { namesLogs, namesWindowProblems } from './mesures-noms-kit.mjs';
 
 const WIDTHS = [700, 640, 600, 520, 500, 400]; // 700 : le panneau de référence ; 640 : le portable du porteur ; 600 : la plus étroite où la liste a toutes ses colonnes ; 520 : la dernière où le volet reste (liste sans « Modifié » ni « Par ») ; 500 et 400 : la vue étroite
 const SCALES = [1, 1.5];
@@ -630,6 +632,7 @@ describe('l\'interface sous Firefox', () => {
         problems.push(...await liensEspacesProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await poidsFenetreProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await poidsAlerteProblems(page, language, caption(language, 700, 1, mode)));
+        problems.push(...await lectureRetenueProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await dependancesProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await carriedProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await securiteProblems(page, language, caption(language, 700, 1, mode)));
@@ -745,6 +748,40 @@ describe('le calendrier du kit sous Firefox', () => {
       const problems = [];
       for (const mode of MODES) problems.push(...await calendarProblems(page, site, language, mode));
       problems.push(...calendarLogs(page, logged));
+      assert.equal(problems.length, 0, report(problems));
+    });
+  }
+});
+
+// La fenêtre commune de mise à jour des noms (kit 0.29, décision du 25/11 : bloquante, pour qui a les droits ; test/mesures-noms-kit.mjs) : la page d'essai du kit (`kit/navigateur/noms.html`, un faux document qui se
+// comporte comme le vrai Grist) jouée dans un vrai Firefox sans écran à 700 × 400, en français et en anglais, en clair et en sombre : mise en page, liste qui s'ouvre au clavier, bouton unique, Échap sans effet,
+// résultat, table gardée pour Sync+, refus. Le kit est un sous-module (`prototype/kit`).
+const KIT_NAMES = existsSync(join(ROOT, 'kit', 'js', 'names-update', 'index.js'));
+if (firefox && !KIT_NAMES) process.stderr.write('Le kit 0.29 est absent (git submodule update --init prototype/kit) : la fenêtre de mise à jour des noms n\'est PAS mesurée sous Firefox.\n');
+const SKIP_NAMES = !firefox ? SKIP : (KIT_NAMES ? false : 'le kit 0.29 est absent (git submodule update --init prototype/kit)');
+
+describe('la fenêtre de mise à jour des noms du kit sous Firefox', () => {
+  let site;
+  let browser;
+
+  before(async () => {
+    if (SKIP_NAMES) return;
+    site = await serveSite(ROOT);
+    browser = await startFirefox(firefox);
+  });
+
+  after(async () => {
+    if (browser) await browser.close();
+    if (site) await site.close();
+  });
+
+  for (const language of LANGUAGES) {
+    test(`la fenêtre de mise à jour des noms en ${language === 'fr' ? 'français' : 'anglais'}, en clair et en sombre : mise en page, clavier, liste, bloquante, résultat, Sync+, refus`, { skip: SKIP_NAMES, timeout: 240000 }, async () => {
+      const { page } = browser;
+      const logged = page.logs.length;
+      const problems = [];
+      for (const mode of MODES) problems.push(...await namesWindowProblems(page, site, language, mode));
+      problems.push(...namesLogs(page, logged));
       assert.equal(problems.length, 0, report(problems));
     });
   }

@@ -70,7 +70,7 @@ test('les lignes : une par paquet que GFS sert (17 d\'après le catalogue du 18/
 test('sans app qui la demande, une bibliothèque est « au catalogue, demandée par aucune app » ; le relevé donne la dernière stable, l\'écart, la licence et les liens', () => {
   const rows = byName(rowsOf());
   assert.ok(Object.values(rows).every(row => row.state === 'unused' && row.uses.length === 0));
-  assert.deepEqual([rows.marked.latest, rows.marked.ecart, rows.marked.licence, rows.marked.licenceFit], ['18.2.1', 'majeure', 'MIT', 'compatible']);
+  assert.deepEqual([rows.marked.latest, rows.marked.ecart, rows.marked.licence, rows.marked.licenceFit], ['18.3.0', 'majeure', 'MIT', 'compatible']);
   assert.equal(rows.echarts.ecart, 'a-jour');
   assert.equal(rows.marked.site, 'https://marked.js.org/');
   assert.equal(rows.marked.depot, 'https://github.com/markedjs/marked');

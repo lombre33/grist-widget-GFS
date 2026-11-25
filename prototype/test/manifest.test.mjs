@@ -53,6 +53,16 @@ test('contrats 2.5 point 4 : `arrivee` dit la table, la colonne et les lignes qu
   assert.match(ok({ table: 'Automation', colonne: 'Table' }, m => { m.permissions.lit = ['Clients']; m.permissions.ecrit = []; }).errors.join(' | '), /ne lit pas/, 'une table que l\'app ne lit pas');
 });
 
+test('contrats 2.5 point 4 : `arrivee.aussi` dit le nom d\'avant de la table, que l\'app lit ; une liste non vide de noms, jamais le nom de `table`', () => {
+  const ok = (aussi, mutate = () => {}) => { const m = automation(); m.arrivee = { table: 'Automation_Store', aussi, colonne: 'Table', lignes: { Type: 'Workflow' } }; mutate(m); return validateManifest(m, [publipostage()]); };
+  assert.deepEqual(ok(['Automation']), { ok: true, errors: [] }, 'le nom d\'avant est hors du préfixe : permis, `lit` le couvre');
+  assert.match(ok('Automation').errors.join(' | '), /arrivee\.aussi : liste/);
+  assert.match(ok([]).errors.join(' | '), /arrivee\.aussi : liste/);
+  assert.match(ok(['Automation', 3]).errors.join(' | '), /arrivee\.aussi : liste/);
+  assert.match(ok(['automation_store']).errors.join(' | '), /déjà la table de l'arrivée/, 'un nom qui n\'en est pas un autre, à la casse près');
+  assert.match(ok(['Automation'], m => { m.permissions.lit = ['Automation_*']; m.permissions.ecrit = []; }).errors.join(' | '), /arrivee\.aussi Automation : une table que l'app ne lit pas/);
+});
+
 test('contrats 2.5 point 5 : `reglagesArrivee` est une liste de clés de `reglages` ; facultative', () => {
   const ok = reglagesArrivee => { const m = publipostage(); m.reglagesArrivee = reglagesArrivee; return validateManifest(m); };
   assert.deepEqual(ok(['modeleDeLaVue']), { ok: true, errors: [] });

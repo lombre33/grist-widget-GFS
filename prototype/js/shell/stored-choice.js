@@ -4,16 +4,17 @@
 // clé est suivi par l'événement `storage` du navigateur.
 
 // Ce que le navigateur garde pour une clé : la lire, l'écrire, la retirer (`write(null)`). Un navigateur qui refuse (cadre sans stockage, navigation privée,
-// quota) n'arrête rien : la lecture rend `null`, l'écriture rend `false`.
-export function keyStore(win, key) {
+// quota) n'arrête rien : la lecture rend `null`, l'écriture rend `false`. `area` : `localStorage` (ce qui se garde d'une visite à l'autre), ou
+// `sessionStorage` pour ce qui ne vaut que dans l'onglet (le garde-fou des lectures complètes, js/explorer/read-guard.js).
+export function keyStore(win, key, area = 'localStorage') {
   return {
     read() {
-      try { return win.localStorage.getItem(key); } catch (error) { return null; }
+      try { return win[area].getItem(key); } catch (error) { return null; }
     },
     write(value) {
       try {
-        if (value === null) win.localStorage.removeItem(key);
-        else win.localStorage.setItem(key, value);
+        if (value === null) win[area].removeItem(key);
+        else win[area].setItem(key, value);
         return true;
       } catch (error) { return false; }
     },

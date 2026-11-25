@@ -8,6 +8,8 @@
 
 const FRAME_PAGE = 'transfer/index.html';
 const READY_TIMEOUT_MS = 8000;
+const LOAD_TIMEOUT_MS = 15 * 1000; // la page du cadre se charge (la page de GFS, un script) : au-delà, elle ne viendra pas
+const TOKEN_TIMEOUT_MS = 30 * 1000; // Grist rend un jeton après les lectures qui le précèdent (42 Mo sur un serveur lent : une dizaine de secondes)
 const UPLOAD_TIMEOUT_MS = 10 * 60 * 1000;
 const DOWNLOAD_TIMEOUT_MS = 3 * 60 * 1000;
 const STATUS_TIMEOUT_MS = 10 * 1000;
@@ -38,6 +40,15 @@ export function buildTransferFrame(doc, url, container = doc.body) {
   frame.src = url;
   container.append(frame);
   return { get window() { return frame.contentWindow; }, loaded, remove: () => frame.remove() };
+}
+
+// `promise`, ou l'échec `error()` au bout de `ms` : une attente qui ne vient jamais (un cadre qui ne se charge pas, un jeton que Grist ne rend pas) ne doit pas
+// retenir ce qui la suit. La lecture légère de la liste des fichiers en dépend au démarrage : sans limite, la liste restait sur « Lecture des fichiers… » au
+// lieu de se rabattre sur la lecture complète.
+function within(promise, ms, error) {
+  let timer = null;
+  const late = new Promise((resolve, reject) => { timer = setTimeout(() => reject(error()), ms); });
+  return Promise.race([promise, late]).finally(() => clearTimeout(timer));
 }
 
 export class Transfer {
@@ -145,7 +156,7 @@ export class Transfer {
   async #token(readOnly) {
     let given;
     try {
-      given = await this.#opts.doc.getAccessToken({ readOnly });
+      given = await within(this.#opts.doc.getAccessToken({ readOnly }), TOKEN_TIMEOUT_MS, () => new Error('délai dépassé'));
     } catch (error) {
       throw new TransferError('token', `Grist n’a pas donné de jeton d’accès : ${String((error && error.message) || error)}`);
     }
@@ -182,7 +193,7 @@ export class Transfer {
   async #open() {
     const frame = this.#opts.createFrame(new URL(FRAME_PAGE, this.#opts.base).href);
     this.#frame = frame;
-    await frame.loaded;
+    await within(frame.loaded, LOAD_TIMEOUT_MS, () => new TransferError('frame', 'Le cadre d’envoi de GFS ne se charge pas.'));
     const { port1, port2 } = this.#opts.channel();
     const ready = new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new TransferError('frame', 'Le cadre d’envoi de GFS ne répond pas.')), READY_TIMEOUT_MS);

@@ -202,19 +202,21 @@ test('ajouter un groupe à un espace : la liste propose les groupes qui n\'y son
   assert.equal(asked[2].create.refuse('Ventes'), null);
 });
 
-test('créer un groupe depuis un espace : la ligne du groupe (sans personne) et son rôle de lecture dans l\'espace partent dans UNE écriture ; un nom pris ou refusé n\'écrit rien', async () => {
+test('créer un groupe depuis un espace : la ligne du groupe (avec ses personnes) et son rôle de lecture dans l\'espace partent dans UNE écriture ; un nom pris ou refusé n\'écrit rien', async () => {
   const written = [];
   const control = make({ fetch: fetchAll, written });
   const state = await control.load();
   const space = { key: 'achats', name: 'Achats', groups: [] };
-  assert.equal((await control.addSpaceGroup(state, space, '  Ventes   Sud ')).ok, true);
+  assert.equal((await control.addSpaceGroup(state, space, { name: '  Ventes   Sud ', people: 'lea@example.com\nmarc@example.com' })).ok, true);
   assert.equal(written.length, 1, 'une seule applyUserActions : le groupe n\'existe jamais sans son entrée dans l\'espace, ni l\'inverse');
   assert.deepEqual(written[0].map(action => action.slice(0, 2)), [['AddRecord', 'GFS_Groupes'], ['AddRecord', 'GFS_Partages']]);
-  assert.deepEqual([written[0][0][3].Nom, written[0][0][3].PersonnesIci], ['Ventes Sud', '']);
+  assert.deepEqual([written[0][0][3].Nom, written[0][0][3].PersonnesIci], ['Ventes Sud', 'lea@example.com\nmarc@example.com'], 'les personnes tapées sont dans le groupe');
   assert.deepEqual([written[0][1][3].Cible, written[0][1][3].Personne, written[0][1][3].Droit], ['espace:achats', '#Ventes Sud', 'lecture']);
-  const taken = await control.addSpaceGroup(state, space, 'achats');
+  assert.equal((await control.addSpaceGroup(state, space, { name: 'Zoe' })).ok, true, 'sans personne, le groupe se crée vide');
+  assert.equal(written[1][0][3].PersonnesIci, '');
+  const taken = await control.addSpaceGroup(state, space, { name: 'achats', people: 'a@example.com' });
   assert.deepEqual([taken.ok, taken.message], [false, t('manage.groups.exists')]);
-  const bad = await control.addSpaceGroup(state, space, '#Ventes');
+  const bad = await control.addSpaceGroup(state, space, { name: '#Ventes' });
   assert.deepEqual([bad.ok, bad.message], [false, t('manage.groups.invalid')]);
-  assert.equal(written.length, 1, 'rien n\'est écrit pour un nom pris ou refusé');
+  assert.equal(written.length, 2, 'rien n\'est écrit pour un nom pris ou refusé');
 });

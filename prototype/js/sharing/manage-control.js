@@ -145,10 +145,10 @@ export class ManageControl {
         refuse: typed => (!groupName(typed) ? t('manage.groups.invalid') : (named.has(groupName(typed).toLowerCase()) ? t('manage.groups.exists') : null)) } });
   }
 
-  // Un groupe créé depuis l'espace : la ligne du groupe (sans personne : elles s'ajoutent dans « Groupes ») et son rôle de lecture dans l'espace, en UNE
-  // écriture.
-  addSpaceGroup(state, space, name) {
-    const created = planGroupAdd(state.rows, groupRecord({ name }));
+  // Un groupe créé depuis l'espace (le formulaire à pastilles rend { name, people }) : la ligne du groupe, avec ses personnes, et son rôle de lecture dans
+  // l'espace, en UNE écriture.
+  addSpaceGroup(state, space, { name, people = '' }) {
+    const created = planGroupAdd(state.rows, groupRecord({ name, people }));
     if (!created.ok) return Promise.resolve({ ok: false, message: this.#o.t(`manage.groups.${created.reason}`) });
     const entered = planSpaceGroup(space, state.shareRows, groupName(name), 'lecture');
     return entered.ok ? this.#write([...created.actions, ...entered.actions]) : Promise.resolve({ ok: false, message: this.#o.t('manage.spaces.invalid') });

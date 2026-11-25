@@ -53,6 +53,8 @@ import { Openings } from './broker/openings.js';
 import { OpenedFiles } from './explorer/opened-files.js';
 import { FilesReading } from './explorer/files-reading.js';
 import { createHeavyHint } from './explorer/heavy-hint.js';
+import { LiveList } from './explorer/live-list.js';
+import { NoticeStore, noticeStorage } from './sharing/notice-store.js';
 import { createReadGuard } from './explorer/read-guard.js';
 import { docKey } from './explorer/doc-key.js';
 import { keyStore } from './shell/stored-choice.js';
@@ -163,9 +165,22 @@ export class GfsController {
         guard: createReadGuard({ docId, store: key => keyStore(window, key, 'sessionStorage') }),
       prepare: () => this.names.refresh(this.apps.filter(item => item.ok)),
       explorer: () => this.explorer, openedBar: () => this.openedBar, appName: this.appName, t: this.t, onSpaces: spaces => { this.spaces = spaces; },
-      onFiles: files => void this.followFolders(files), onStats: stats => { this.doc.body.dataset.explorerStats = JSON.stringify(stats); },
+      onFiles: files => void this.followFolders(files),
+      onNotices: result => void this.notices.update({ files: result.files, spaces: result.spaces, sources: result.notices }),
+      onStats: stats => { this.doc.body.dataset.explorerStats = JSON.stringify(stats); this.liveList.note(stats); },
     });
+    this.#buildLive(docId);
     this.templates = this.#buildTemplates(entries); // « Nouveau > Depuis un modèle » (js/apps/templates-control.js)
+  }
+
+  // Ce qu'on a donné à la personne dans le document, et « lu » : la table `GFS_Notifications`, ou le navigateur (js/sharing/notice-store.js) ; et la liste qui
+  // se tient à jour toute seule, doucement, sans lire un contenu (js/explorer/live-list.js).
+  #buildLive(docId) {
+    this.notices = new NoticeStore({ doc: this.port.doc, identity: () => this.identity, canWrite: () => this.fullAccess && !this.readonly,
+      owner: () => this.transfer.isOwner(), onChange: state => { if (this.explorer) this.explorer.setNotices(state); },
+      storage: async () => noticeStorage(await docId(), this.identity, key => keyStore(window, key)) });
+    this.liveList = new LiveList({ doc: this.doc, refresh: opts => this.refreshFiles(opts), isOpen: () => Boolean(this.explorer && this.explorer.isOpen),
+      canRead: () => this.fullAccess, loading: () => this.#reading.loading || this.pending.size > 0 });
   }
 
   // La galerie commune des modèles de départ des apps (contrats 5.4, point 13) : ses catalogues se lisent à l'ouverture de la fenêtre, pas au démarrage.
@@ -208,6 +223,7 @@ export class GfsController {
       port: this.port, transfer: this.transfer, manifests: this.manifests, now: () => Date.now(), container: this.$('stage'),
       inertTargets: this.inertTargets, t: this.t, fullAccess: () => this.fullAccess, rangement: this.rangement,
       locale: () => this.locale, identity: () => this.identity, writeBlock: () => this.writeBlock(), appName: this.appName, spaces: () => this.spaces,
+      pageLink: () => this.doc.referrer || '',
       other: (file, state) => this.otherDocuments.tab(file, state), otherLinks: () => this.otherDocuments.links(),
         otherStop: link => this.otherDocuments.stop(link), otherNew: () => this.otherDocuments.link(), refresh: () => this.refreshFiles(),
       notice: text => this.notice(text), files: () => this.explorer.files,
@@ -399,11 +415,13 @@ export class GfsController {
     if (this.session) this.session.show(false);
     this.explorer.open();
     void this.refreshFiles();
+    this.liveList.start();
     this.rights.resume(this.explorer, { annuaire: () => void openAnnuaire(this).then(() => this.notice(this.t('an.sub.ready'))) });
   }
 
   hideExplorer() {
     this.links.cancel(false); // un choix de fichier en cours finit sans choix (contrats 5.4, point 2)
+    this.liveList.stop();
     this.explorer.close();
     this.status.cover(false);
     this.$('frames').inert = false;

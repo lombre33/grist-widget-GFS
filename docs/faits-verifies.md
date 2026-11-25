@@ -3046,3 +3046,35 @@ Retour du porteur le 25/11, en test sur docs.getgrist.com sous Firefox : « quan
   (la table existe) et arrive chez l'autre en « Copie à jour » sans nouveau code ; un document qui a déjà des PDF garde les mots d'avant ; console de GFS muette. **Firefox sans écran** : accord de la
   fenêtre en fr/en, clair/sombre, 700 px : 0 écart (8 sur l'ancien code).
 - **Pas mesuré** : docs.getgrist.com lui-même (injoignable du cloud ; même code que le Grist 1.7.19 du labo) ; la DINUM ; un compte éditeur (seul un propriétaire relie).
+
+## 179. Les notifications de GFS (la cloche annonce « ce qu'on me partage », « lu » dans une table du document, « Prévenir par e-mail ») et la liste qui se tient à jour toute seule, sans jamais lire un contenu (25/11 ; Grist 1.7.19 officiel (Docker), Chromium 700 × 400 à la vraie souris, Firefox sans écran ; bancs `etudes/notifications-2026-11-25/banc/n1` à `n9` dans les fichiers du projet)
+
+Demande du porteur le 25/11 : « quand et comment faire des notifs GFS » (l'invité qu'il venait d'ajouter n'avait ni dossier ni notification), puis « tout les 5 s ok, que ça voie tout, et pour les gros fichiers aucun impact : jamais
+les lire en entier, juste leur nom ». Choix sur cartes (20:01Z) : la cloche annonce d'abord ce qu'on lui partage ; « lu » dans une table du document, pas dans le navigateur ; un bouton « Prévenir par e-mail » après « Partager ».
+
+- **Ce que Grist ne fait pas** (lu dans grist-core 1.7.19 et mesuré) : `ICreate.Notifier()` rend `undefined` (aucun e-mail sans SendGrid ou l'édition Enterprise) ; l'API des widgets n'a aucune fonction « notifier ». La
+  pop-up en bas à droite du commentaire d'une règle de refus (idée du porteur) paraît quand LA PERSONNE fait le geste refusé dans la grille de Grist ; quand c'est le widget qui est refusé, le widget reçoit l'erreur seule
+  et rien ne s'affiche : GFS ne peut pas la déclencher.
+- **La table `GFS_Notifications`** (`Pour`, `Type`, `Cible`, `Par`, `Cle`, `Quand`, `Lu`), mesurée sous cinq comptes (`n1`, `n2`, `n5`, puis de bout en bout `n9`) : chacun écrit SES lignes (la règle `newRec.Pour` = son adresse
+  en minuscules), un éditeur ne peut pas forger la notification d'un autre, chacun lit et retire les siennes, seule la colonne `Lu` change (une règle `+U` sur cette colonne seule, les cinq autres figées pour qui n'est pas
+  propriétaire), `Quand` est posée par Grist à la création (`NOW()` déclenché une fois : `DateTime:UTC`, ni formule ni recalcul), une personne retirée du document ne lit plus rien. Un lecteur ne peut rien écrire (403) : son « lu »
+  reste dans son navigateur, pour lui seul. La table naît avec l'activation du partage (par le propriétaire, avec l'accord qui la nomme), ses règles portent la note « GFS : Partages · » que le reste du partage reconnaît ;
+  un document déjà partagé la reçoit au « Compléter / Mettre à jour le partage » du propriétaire (d'ici là, « lu » reste dans le navigateur et la cloche marche).
+- **Ce que la cloche annonce** : les fichiers donnés par l'adresse de la personne (`file.direct`), les espaces qu'elle voit (un propriétaire voit tous les espaces : il n'est prévenu que de ceux qu'on lui a donnés par son adresse) et les
+  dossiers donnés par son adresse (une ligne de partage dont la cible est `dossier:…`) ; une chose n'est annoncée qu'une fois (`type|cible`), un clic la marque lue et l'ouvre. **Pas annoncé** : un fichier donné seulement par
+  un groupe ou une catégorie (les lignes d'un groupe ne se lisent pas ; il se voit par l'espace ou dans « Partagés avec moi »).
+- **« Prévenir par e-mail »** : un lien `mailto:` (adresses en copie cachée, objet, mot et lien de la page du document), grisé avec sa raison tant qu'aucune adresse n'est ajoutée dans la fenêtre ; GFS n'envoie rien.
+- **La liste se relit seule** (rien n'est poussé : une section de widget n'est prévenue que pour la table de SA section, 0 notification sur 6 tables voisines) : toutes les 5 s pour la lecture complète d'un document léger, 15 s
+  quand la lecture passe par l'API REST (`/sql` compte dans le plafond d'appels des offres hébergées), jamais plus vite que 5 fois la durée de la dernière lecture ; rien explorateur fermé, page cachée, ni après 5 minutes
+  sans geste, jamais pendant qu'un menu ou une fenêtre est ouvert ; une lecture qui ne change rien (signature de la liste) ne redessine rien. **Mesuré chez un invité, dans un vrai Grist, sans recharger** : un fichier
+  créé apparaît en 5 s, un renommage en 2,6 à 4 s, une suppression en 4,5 à 5 s, la pastille de la cloche suit.
+- **Gros document que Grist ne laisse lire qu'en entier** (règles d'accès, `/sql` refusé, 4 Mo de fichiers ou plus) : il ne se relit PAS tout seul, c'est exactement la lecture qu'on voulait épargner. Il attend un index des noms.
+  **Mesuré (`n8`, carte posée, rien codé)** : une table-résumé de Grist groupée par `Identifiant`, avec des colonnes de formule (nom, type, auteur, date, poids), se lit en 3 à 4 ms pour 60 fichiers (5 Ko) contre 830 à
+  1 100 ms pour la table entière (18 Mo), en 31 à 104 ms pour 3 500 fichiers (331 Ko) ; à 250 ms de relecture, un renommage se voit en 102 à 145 ms, une création en 71 à 116 ms, une suppression en 546 ms ; le changement du
+  seul contenu n'y est pas vu (voulu). Sans règle sur le résumé, il **laisse voir les noms des fichiers des autres** (60 lignes pour un éditeur qui n'en lit que 30) ; avec la même règle que la table de base, 30 lignes et aucun
+  nom d'un autre. Création des deux résumés : 3,3 s, écriture additive.
+- **Firefox sans écran** (`test/notifications-firefox.mjs`, fr et en, clair et sombre, 700 × 400) : pastille et menu de la cloche (trois choses données, une lue absente, « Tout marquer comme lu », rien de non lu : lignes grisées
+  qui disent pourquoi), un clic marque lu et ouvre (fichier : « Partagés avec moi », espace : son dossier), « Prévenir par e-mail » grisé puis allumé par une adresse ajoutée à la vraie souris, pied de « Partager » tenu dans
+  700 px : 0 écart (l'essai échoue bien quand on change une attente). L'attente périmée de « Partager… » sur un espace (`test/dossiers-firefox.mjs`, grisé avant la demande du 25/11) est remise à jour.
+- **Pas mesuré** : docs.getgrist.com et la DINUM eux-mêmes (injoignables du cloud) ; le plafond d'appels des offres hébergées (Free : 3 000 appels par mois d'après les tarifs, à confirmer) que la relecture légère par l'API REST
+  consomme ; la relecture d'un document en entier au-delà de 50 Mo.

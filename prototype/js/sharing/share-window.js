@@ -3,6 +3,7 @@
 // `onChange`, `onRemove` et `onActivate` écrivent (js/sharing/share-control.js). Sur la base commune des fenêtres (js/ui/modal.js) : le titre et le bouton
 // restent en place, seul le contenu défile. Un geste impossible est grisé avec sa raison, jamais masqué (charte).
 
+import { mailButton } from './share-mail-button.js';
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { openModal, listKeys } from '../ui/modal.js';
@@ -252,7 +253,21 @@ export function shareBody(ctx) {
   return h('div', { class: 'rt-content' }, ...parts);
 }
 
-// opts : { container, t, locale, inertTargets, file: { key, name, app }, load() → état, onAdd(record), onChange(id, patch), onRemove(id) → { ok, message? },
+// « Gérer les partages… » prend la place de cette fenêtre (une seule fenêtre à lire, un seul voile) et la rend, avec le clavier sur son bouton, à sa
+// fermeture ; grisé, il dit pourquoi à qui n'est pas propriétaire.
+function wireManage({ manage, dialog, ctx, opts, reload }) {
+  manage.addEventListener('click', async () => {
+    if (!opts.onManage) return;
+    if (!ctx.state || ctx.state.owner !== true) { ctx.say(ctx.t('manage.other')); return; }
+    const veil = dialog.closest('.mod-scrim');
+    if (veil) veil.classList.add('is-under');
+    try { await opts.onManage(); } finally { if (veil) veil.classList.remove('is-under'); }
+    if (dialog.isConnected) { manage.focus({ preventScroll: true }); await reload(); }
+  });
+}
+
+// opts : { container, t, locale, inertTargets, file: { key, name, app }, link?() (la page du document, pour « Prévenir par e-mail »), load() → état,
+//   onAdd(record), onChange(id, patch), onRemove(id) → { ok, message? },
 //   onActivate() → true quand Grist va recharger, onManage() ouvre « Gérer les partages » (propriétaire), startTab ('here' par défaut), other: { why, fileId,
 //   loadLinks(), onLevel(link, level) → { ok, message?, note? }, onNew() } ou state → cet objet (l'onglet « Dans un autre
 //   document Grist » : js/sharing/share-other-tab.js, js/sharing/share-other.js ; sans lui, pas d'onglets) }. Rend la promesse de la fermeture.
@@ -264,10 +279,13 @@ export function openShare(opts) {
   // « Gérer les partages… » : les groupes, les catégories et la structure (js/sharing/manage-window.js) ; grisé avec sa raison pour qui n'est pas propriétaire.
   const manage = h('button', { type: 'button', class: 'btn', 'aria-disabled': opts.onManage ? null : 'true', dataset: { fk: 'share-manage' } }, icon('users'),
     t('manage.open'));
+  // « Prévenir par e-mail » : la messagerie de la personne, avec les adresses qu'elle vient d'ajouter ici (js/sharing/share-mail-button.js) ; GFS n'envoie
+  // rien.
+  const mail = mailButton({ t, name: file.name, link: opts.link, say: text => ctx.say(text) });
   const dialog = h('section', { class: 'mod pt sh', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'share-title' },
     h('header', { class: 'mod-head' }, h('h2', { id: 'share-title' }, t('share.title', { name: file.name })),
       h('p', { class: 'mod-count' }, t('share.sub', { app: file.app }))),
-    body, h('footer', { class: 'mod-foot' }, status, manage, close));
+    body, h('footer', { class: 'mod-foot' }, status, mail.node, manage, close));
   const { done, result } = openModal({ container, section: dialog, inertTargets: opts.inertTargets, first: close, cancel: null,
     keepOpen: () => holdClose(ctx, 'escape') });
   close.addEventListener('click', () => { if (!holdClose(ctx, 'done')) done(null); });
@@ -279,6 +297,7 @@ export function openShare(opts) {
   const footText = () => (ctx.pending ? t('share.pending', { who: whoLabel(t, ctx.pending) }) : t('share.foot'));
   const draw = () => {
     if (!dialog.isConnected || !ctx.state) return;
+    mail.paint(ctx.state.me);
     const content = ctx.other && ctx.tab === 'other' ? otherTab(ctx) : shareBody(ctx);
     if (ctx.other) content.prepend(tabsBar(ctx));
     replaceKeepingFocus(body, content);
@@ -319,20 +338,15 @@ export function openShare(opts) {
     if (dialog.isConnected) await reload();
   };
   ctx.choose = who => { ctx.pending = who; ctx.draft = null; ctx.say(footText()); draw(); };
-  ctx.add = record => (record ? write(() => opts.onAdd(record), true) : Promise.resolve());
+  ctx.add = async record => {
+    const answer = record ? await write(() => opts.onAdd(record), true) : undefined;
+    mail.added(record, answer);
+    return answer;
+  };
   ctx.change = (share, right) => write(() => opts.onChange(share.id, { Droit: right }));
   ctx.remove = share => write(() => opts.onRemove(share.id));
   ctx.activate = async () => { if (!(await opts.onActivate())) await reload(); };
-  manage.addEventListener('click', async () => {
-    if (!opts.onManage) return;
-    if (!ctx.state || ctx.state.owner !== true) { ctx.say(t('manage.other')); return; }
-    // « Gérer les partages » prend la place de cette fenêtre (une seule fenêtre à lire, un seul voile) et la rend, avec le clavier sur son bouton, à sa
-    // fermeture.
-    const veil = dialog.closest('.mod-scrim');
-    if (veil) veil.classList.add('is-under');
-    try { await opts.onManage(); } finally { if (veil) veil.classList.remove('is-under'); }
-    if (dialog.isConnected) { manage.focus({ preventScroll: true }); await reload(); }
-  });
+  wireManage({ manage, dialog, ctx, opts, reload });
   void reload();
   return result;
 }

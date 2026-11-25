@@ -31,6 +31,7 @@ import { partagerProblems } from './partager-firefox.mjs';
 import { partagerAutreProblems } from './partager-autre-firefox.mjs';
 import { partagerRecevoirProblems } from './partager-recevoir-firefox.mjs';
 import { partagesRecusProblems } from './partages-recus-firefox.mjs';
+import { notificationsProblems } from './notifications-firefox.mjs';
 import { liensEspacesProblems } from './liens-espaces-firefox.mjs';
 import { poidsFenetreProblems } from './poids-fenetre-firefox.mjs';
 import { poidsAlerteProblems } from './poids-alerte-firefox.mjs';
@@ -631,6 +632,7 @@ describe('l\'interface sous Firefox', () => {
         problems.push(...await partagerAutreProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await partagerRecevoirProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await partagesRecusProblems(page, language, caption(language, 700, 1, mode)));
+        problems.push(...await notificationsProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await liensEspacesProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await poidsFenetreProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await poidsAlerteProblems(page, language, caption(language, 700, 1, mode)));

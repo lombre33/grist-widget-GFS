@@ -407,7 +407,7 @@ async function mount() {
     notice: text => window.__notices.push(text), settings: () => settingsItems({ t: i18n.t, language: () => ({ choice: window.__language, grist: language }), onLanguage: value => { window.__language = value; }, onTheme: () => theme.open(),
       langtool: () => ({ shown: window.__langtool, toggle: () => { window.__langtool = !window.__langtool; } }), place, onAbout: () => window.__about(), onDependencies: () => { window.__dependenciesAsked = (window.__dependenciesAsked || 0) + 1; void window.__dependencies(); },
       manage: () => ({ why: null, open: () => { window.__manageFromSettings = (window.__manageFromSettings || 0) + 1; }, notice: text => window.__notices.push(text) }) }),
-    onOpen: file => { window.__opened = file.name; }, onNew: () => {}, get links() { return window.__linkProxy; },
+    onOpen: file => { window.__opened = file.name; }, onNew: () => {}, get links() { return window.__linkProxy; }, get notices() { return window.__noticeStore; },
     opened: { keys: () => openedFiles.keys(), shown: () => openedFiles.shown(SESSION), remove: key => openedFiles.remove(key) },
     onImport: entry => { window.__imported = entry.valeur; }, onTemplates: () => { window.__templatesAsked = (window.__templatesAsked || 0) + 1; }, onClose: () => {}, onApps: () => {}, sharing: { whyNot: () => null, whyNotFolder: path => (path.startsWith('Espaces') && path.split('/').length < 3 ? i18n.t('share.folder.space') : null), folderFile: path => ({ key: window.__linkProxy && path.startsWith('Espaces/') ? `dossier:${path.split('/').slice(1).join('/').replace(/^[^/]+/, word => word.toLowerCase())}` : `dossier:${path}`, name: path.split('/').pop(), path, mine: !path.startsWith('Espaces/') }), open: file => window.__share(window.__shareKind || 'actif', file),
       // « Partager… » sur la ligne d'un espace entier (demande du 25/11) : il ouvre le partage de l'espace ; « Espaces » seul et un espace inconnu restent grisés.
@@ -418,6 +418,13 @@ async function mount() {
       newFolder: () => filing.newFolder(), deleteFolder: path => filing.deleteFolder(path), undoStack: filing.undoStack },
   });
   window.__explorer = explorer;
+  // Ce qu'on a donné à la personne dans le document (la cloche, test/notifications-firefox.mjs) : `window.__given(items)` pose la liste que le magasin rendrait (js/sharing/notice-store.js) et un faux magasin
+  // qui note ce que la cloche lui demande de marquer lu (`window.__noticeMarked`) ; sans appel, l'explorateur n'a pas de magasin, comme avant.
+  window.__given = items => {
+    window.__noticeMarked = [];
+    window.__noticeStore = { markRead: async keys => { window.__noticeMarked.push(keys ? keys.slice() : 'all'); } };
+    explorer.setNotices({ items, unread: items.filter(item => !item.lu).length });
+  };
   window.__open = names => { for (const name of names) openedFiles.add(live.find(file => file.name === name).key, SESSION); explorer.render(); };
   window.__reset = () => {
     explorer.close(); // la fermeture vide le presse-papiers : chaque mesure part de rien
@@ -432,6 +439,8 @@ async function mount() {
     window.__filing.length = 0;
     window.__copies.length = 0;
     window.__notices.length = 0;
+    window.__noticeStore = undefined;
+    explorer.setNotices({ items: [], unread: 0 });
     window.__attachments = 0;
     window.__attachmentsFail = '';
     window.__opened = null;

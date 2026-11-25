@@ -397,18 +397,23 @@ function checkExtensions(m, errors) {
   }
 }
 
+// La fonction dont la copie est dans l'app : son poids se dit, rien ne se liste, et `sansCdn` (la copie est le seul mode) est vrai ou faux.
+function checkInAppNative(group, errors) {
+  if (group.bibliotheques !== undefined) errors.push(`natives ${group.id} : une fonction dont la copie est dans l'app n'a pas de bibliotheques`);
+  if (!Number.isInteger(group.poids) || group.poids <= 0) errors.push(`natives ${group.id} : poids (octets) attendu`);
+  if (group.sansCdn !== undefined && typeof group.sansCdn !== 'boolean') errors.push(`natives ${group.id} : sansCdn : vrai ou faux attendu`);
+}
 // Les bibliothèques natives de l'app, rangées par fonction (`natives`, facultatif, contrats 2.6 point 14) : { id, nom (fr, en), bibliotheques: [{ id, version
 // exacte }] }, ou, quand la copie figée est dans le
-// dépôt de l'app (l'éditeur : sa copie est une carte d'importation), { id, nom, copieDansApp: true, poids }. L'app les
+// dépôt de l'app (l'éditeur : sa copie est une carte d'importation), { id, nom, copieDansApp: true, poids, sansCdn? } (`sansCdn: true` : la copie est le seul
+// mode, l'app n'a pas de CDN pour
+// cette fonction, kit 0.30.0). L'app les
 // emploie déjà (sa liste) ; GFS en garde la copie figée, que la personne peut choisir à la place du CDN, fonction par fonction. Une bibliothèque n'est que dans
 // une seule fonction.
 function checkNativeLibraries(group, libraries, errors) {
   // la copie est dans le dépôt de l'app : GFS n'a aucune bibliothèque à lister, seulement le poids à dire (contrats 2.6, point 14)
-  if (group.copieDansApp === true) {
-    if (group.bibliotheques !== undefined) errors.push(`natives ${group.id} : une fonction dont la copie est dans l'app n'a pas de bibliotheques`);
-    if (!Number.isInteger(group.poids) || group.poids <= 0) errors.push(`natives ${group.id} : poids (octets) attendu`);
-    return;
-  }
+  if (group.copieDansApp === true) { checkInAppNative(group, errors); return; }
+  if (group.sansCdn !== undefined) errors.push(`natives ${group.id} : sansCdn ne se dit que pour une fonction dont la copie est dans l'app (copieDansApp)`);
   if (!Array.isArray(group.bibliotheques) || !group.bibliotheques.length) {
     errors.push(`natives ${group.id} : bibliotheques : liste non vide attendue`); return; }
   for (const lib of group.bibliotheques) {

@@ -201,10 +201,11 @@ function nativeRow(ctx, app, row, enabled) {
   const [first] = row.missing;
   const group = label(row.group.nom, lang);
   return h('li', { class: 'fp-fn' }, h('span', { class: 'fp-fn-name' }, group), h('span', { class: 'fp-fn-size' }, size(row.poids / 1024)),
-    segments({ name: `native-${app.id}-${row.group.id}`, current: row.mode, legend: group, enabled, offMode: first ? 'vendorise' : null, t,
+    segments({ name: `native-${app.id}-${row.group.id}`, current: row.mode, legend: group, enabled, offMode: first ? 'vendorise' : (row.fixed ? 'cdn' : null),
+      t,
       dataset: mode => ({ nativeFor: row.group.id, parent: app.id, fk: `native:${app.id}/${row.group.id}/${mode}` }) }),
     first ? h('p', { class: 'fp-warn fp-fn-note' }, t('mod.native.missing', { lib: cap(first.id), version: first.version })) : null,
-    row.inApp ? h('p', { class: 'fp-note fp-fn-note' }, t('mod.native.restart')) : null);
+    row.inApp ? h('p', { class: 'fp-note fp-fn-note' }, t(row.fixed ? 'mod.native.noCdn' : 'mod.native.restart')) : null);
 }
 
 // La rubrique des bibliothèques natives de l'app (contrats 2.6, point 14) : un choix pour toutes, en deux cartes, et, dépliable, un choix par fonction ; sans
@@ -214,7 +215,10 @@ export function libraries(ctx, app, { enabled, open, installFirst }) {
   if (!app.ok) return null;
   const title = h('h2', null, t('ap.libsTitle'));
   if (!app.natives.length) return h('section', { class: 'fp-sec fp-libs' }, title, h('p', { class: 'fp-note' }, t('ap.noNatives')));
-  const modes = new Set(app.natives.map(row => row.mode));
+  // Une fonction sans CDN n'a rien à choisir : elle ne compte pas dans « toutes » (sans elle, le défaut serait un « mélange »), sauf quand toutes sont dans ce
+  // cas.
+  const free = app.natives.filter(row => !row.fixed);
+  const modes = new Set((free.length ? free : app.natives).map(row => row.mode));
   const all = modes.size === 1 ? [...modes][0] : null;
   const total = size(app.natives.reduce((sum, row) => sum + row.poids, 0) / 1024);
   title.append(h('span', { class: 'fp-count' }, `${total}${all === null ? ` · ${t('mod.native.mixed')}` : ''}`));

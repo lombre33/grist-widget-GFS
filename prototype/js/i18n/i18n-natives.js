@@ -11,6 +11,7 @@ export const NATIVES_STRINGS = Object.freeze({
     'mod.native.missing': 'Copie indisponible : GFS n’a pas {lib} {version}.',
     'mod.native.missingSome': 'Indisponible : GFS n’a pas toutes les copies (voir le détail).',
     'mod.native.restart': 'La copie est dans l’app : le choix prend effet au prochain démarrage de l’app.',
+    'mod.native.noCdn': 'Indisponible : cette fonction n’a pas de CDN. Sa copie figée est dans l’app et sert seule.',
   },
   en: {
     'mod.native.mixed': 'mixed',
@@ -21,5 +22,6 @@ export const NATIVES_STRINGS = Object.freeze({
     'mod.native.missing': 'Copy unavailable: GFS does not have {lib} {version}.',
     'mod.native.missingSome': 'Unavailable: GFS does not have every copy (see the detail).',
     'mod.native.restart': 'The copy is in the app: the choice applies the next time the app starts.',
+    'mod.native.noCdn': 'Unavailable: this function has no CDN. Its frozen copy is in the app and is the only source.',
   },
 });

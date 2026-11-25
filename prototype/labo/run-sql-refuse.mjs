@@ -20,7 +20,8 @@ const lang = process.env.LAB_LANG || 'fr';
 const scheme = process.env.LAB_SCHEME || 'light';
 const SUITE = '&suite=127.0.0.1'; // l'hôte du serveur d'essai, donné comme instance de La Suite : la surveillance du poids lit aussi
 const WAIT_MS = 9000; // la surveillance du poids lit 5 s après le départ
-const LOADS = 3;
+const LOADS = Number(process.env.LOADS || 3);
+const PASSES = (process.env.PASSES || '1,2,3').split(','); // les passes jouées ; BIG_COUNT : le nombre de modèles de 400 Ko (14 par défaut ; 300 : un document de 120 Mo)
 const DELAY_MS = Number(process.env.SQL_DELAY || 86); // la réponse de `/sql` à la DINUM : 86 ms dans la console du porteur
 // Les doublures du pare-feu. MESURÉ : celui de la DINUM refuse la structure écrite avec `substr(…) <> …` et le poids écrit avec deux sous-requêtes (sonde du porteur, 25/11) et laisse passer `NOT LIKE` /
 // `!=` et `page_count * page_size FROM pragma_page_count(), pragma_page_size()` ; ANY : refuse toute lecture de la structure (le cas où aucune forme ne passerait).
@@ -36,7 +37,7 @@ const TABLES = {
   Publipostage_TemplatePreferences: [...TEXT(['User', 'Folder']), { id: 'TemplateId', type: 'Int' }, { id: 'Pinned', type: 'Bool' }],
 };
 const SMALL = ['Attestation', 'Convocation', 'Lettre'];
-const BIG = Array.from({ length: 14 }, (unused, i) => `Gros ${String(i + 1).padStart(2, '0')}`); // 14 modèles de 400 Ko : plus de 4 Mo, à partir desquels GFS lit les fichiers en lecture légère (js/explorer/explorer-sql.js)
+const BIG = Array.from({ length: Number(process.env.BIG_COUNT || 14) }, (unused, i) => `Gros ${String(i + 1).padStart(3, '0')}`); // 14 modèles de 400 Ko : plus de 4 Mo, à partir desquels GFS lit les fichiers en lecture légère (js/explorer/explorer-sql.js)
 const NAMES = [...SMALL, ...BIG].sort();
 
 // Ce que la page demande à `/sql`, et ce qu'elle en reçoit : `answer` vaut « 200 », « 403 Grist » (réponse lue, en-têtes CORS de Grist) ou « bloquée » (le pare-feu : pas d'en-tête CORS, la page ne lit rien).
@@ -65,6 +66,8 @@ const summary = () => {
   for (const { q, answer } of net) { const key = `${kindOf(q)} ${answer}`; out[key] = (out[key] || 0) + 1; }
   return out;
 };
+// La liste ne dessine que les lignes qu'on voit : avec 300 modèles, elle montre les premiers, dans l'ordre.
+const sameNames = shown => JSON.stringify(shown) === JSON.stringify(NAMES.slice(0, shown.length));
 const names = frame => frame.locator('.ls-row:not(.folder) .t').allInnerTexts().then(list => [...list].sort());
 
 // Un document d'essai : les quatre tables (l'ancienne vide, l'anglaise avec trois modèles), et, si `rules`, une règle d'accès qui fait refuser `/sql` au jeton en lecture seule.
@@ -105,13 +108,14 @@ const browser = await chromium.launch({ args: ['--no-sandbox'] });
 try {
   const context = await newContext(browser, pluginApi, { colorScheme: scheme });
   await install(context);
+  const count = each => Object.entries(each.sent).filter(([key]) => key.startsWith('compte')).reduce((sum, [, n]) => sum + n, 0);
 
+  if (PASSES.includes('1')) {
   say('--- 1. un document à règles d\'accès (Grist refuse `/sql` au jeton en lecture seule), derrière le pare-feu ---');
   const ruled = await openGfs(context, { lang, query: SUITE });
   await seed(ruled, true);
   const first = await loads(ruled, 'règles');
-  check('l\'explorateur montre les trois modèles, à chaque chargement', first.every(each => JSON.stringify(each.shown) === JSON.stringify(NAMES)), first.map(each => each.shown));
-  const count = each => Object.entries(each.sent).filter(([key]) => key.startsWith('compte')).reduce((sum, [, n]) => sum + n, 0);
+  check('l\'explorateur montre les trois modèles, à chaque chargement', first.every(each => sameNames(each.shown)), first.map(each => each.shown));
   check(`au premier chargement : au plus un compte de lignes refusé (et pas un par table)`, count(first[0]) <= 1, first[0].sent);
   check('le poids (jeton qui peut écrire, d\'emblée : Grist a déjà refusé le jeton en lecture seule) ne se fait refuser à aucun chargement', first.every(each => each.sent['poids 200'] === 1 && !Object.keys(each.sent).some(key => key.startsWith('poids') && key !== 'poids 200')), first.map(each => each.sent));
   check('aux chargements suivants (même onglet) : aucun compte de lignes, aucune lecture de la structure', first.slice(1).every(each => count(each) === 0 && !Object.keys(each.sent).some(key => key.startsWith('structure'))),
@@ -122,23 +126,29 @@ try {
   const unknown = ruled.problems.filter(problem => !ruled.allow.some(known => known.test(problem)) && !expected.test(problem));
   check('aucune autre erreur ni avertissement de GFS dans la console', unknown.length === 0, unknown);
 
+  }
+
+  if (PASSES.includes('2')) {
   say('--- 2. un document sans règle, derrière un pare-feu qui refuserait toute lecture de la structure : les comptes passent, la structure est bloquée ---');
   firewall = ANY_STRUCTURE;
   const open = await openGfs(context, { lang, query: SUITE });
   await seed(open, false);
   const second = await loads(open, 'sans règle');
-  check('l\'explorateur montre les trois modèles, à chaque chargement', second.every(each => JSON.stringify(each.shown) === JSON.stringify(NAMES)), second.map(each => each.shown));
+  check('l\'explorateur montre les trois modèles, à chaque chargement', second.every(each => sameNames(each.shown)), second.map(each => each.shown));
   const asked = second.reduce((sum, each) => sum + Object.entries(each.sent).filter(([key]) => key.startsWith('structure')).reduce((total, [, n]) => total + n, 0), 0);
   check('la structure refusée par le pare-feu n\'est demandée qu\'une fois sur les trois chargements (la mémoire de l\'onglet la retient)', asked === 1, second.map(each => each.sent));
   const comptes = second.map(count);
   check('les comptes de lignes (qui passent) cessent dès que la lecture légère est fermée : aucun au dernier chargement', comptes[2] === 0, comptes);
 
+  }
+
+  if (PASSES.includes('3')) {
   say('--- 3. un document sans règle, derrière le pare-feu tel que la DINUM l\'a mesuré : la structure (forme `NOT LIKE`) passe, la lecture légère sert ---');
   firewall = MEASURED;
   const light = await openGfs(context, { lang, query: SUITE });
   await seed(light, false);
   const third = await loads(light, 'pare-feu mesuré');
-  check('l\'explorateur montre les trois modèles, à chaque chargement', third.every(each => JSON.stringify(each.shown) === JSON.stringify(NAMES)), third.map(each => each.shown));
+  check('l\'explorateur montre les trois modèles, à chaque chargement', third.every(each => sameNames(each.shown)), third.map(each => each.shown));
   const kinds = (each, kind) => Object.entries(each.sent).filter(([key]) => key.startsWith(kind));
   // Le premier chargement lit en entier : l'ouverture de la page avait vu le document léger (tables vides), et le souvenir « léger » (js/explorer/heavy-hint.js) ne change qu'à cette lecture ;
   // les suivants savent le document lourd (14 modèles de 400 Ko) et lisent en SQL.
@@ -149,6 +159,7 @@ try {
     heavy.every(each => kinds(each, 'lignes').length === 1 && kinds(each, 'lignes')[0][0] === 'lignes 200'), third.map(each => each.sent));
   const off = light.problems.filter(problem => /lecture légère des fichiers est éteinte/.test(problem));
   check('GFS ne dit jamais que la lecture légère est éteinte', off.length === 0, off);
+  }
 } finally {
   await browser.close();
   pages.close();

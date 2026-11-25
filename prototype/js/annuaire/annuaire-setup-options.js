@@ -7,7 +7,7 @@
 // js/annuaire/annuaire-setup.js.
 
 import { h } from '../ui/dom.js';
-import { CHECK_KINDS, MAIL_PER } from './annuaire-config.js';
+import { CHECK_KINDS, MAIL_PER, FILTER_MODES, EDIT_LEVELS, effectiveConfig } from './annuaire-config.js';
 import { checkNeeds } from './annuaire-check.js';
 import { pickColumn } from './annuaire-setup-path.js';
 import { chooser, switchButton, iconButton, formRow } from './annuaire-setup-shared.js';
@@ -61,9 +61,37 @@ function mailBlock(host) {
       t('an.opt.toNote')));
 }
 
+// Comment l'annuaire montre ses filtres (retour du porteur, 25/11) : le panneau (un bouton « Filtres ») ou la barre (un menu par champ).
+function filtersBlock(host) {
+  const { t, draft } = host;
+  const choice = mode => h('button', { type: 'button', class: 'an-ob-seg-b', 'aria-pressed': String(draft.config.filterMode === mode),
+    dataset: { act: 'opt-filter-mode', mode, fk: `of:${mode}` } }, t(mode === 'bar' ? 'an.opt.fmBar' : 'an.opt.fmPanel'));
+  return block(t('an.opt.filters'), t('an.opt.filtersSub'), formRow(t('an.opt.filterMode'), h('span', { class: 'an-ob-seg', role: 'group',
+    'aria-label': t('an.opt.filterMode') }, ...FILTER_MODES.map(choice))), h('p', { class: 'an-set-hint an-ob-note' }, t('an.opt.fmNote')));
+}
+
+// Qui modifie les fiches (retour du porteur, 25/11) : les administrateurs toujours ; en plus, chacun sa fiche, les personnes de sa structure (avec ou sans
+// celles qui sont dessous) et des personnes désignées par une colonne oui/non. Sans hiérarchie, le choix de la structure reste là, grisé, avec ce qu'il lui
+// faut.
+function rightsBlock(host) {
+  const { t, draft } = host;
+  const { edit } = draft.config;
+  const noLevels = !effectiveConfig(draft.config).levels.length;
+  const label = { '': 'an.opt.rlNone', own: 'an.opt.rlOwn', below: 'an.opt.rlBelow' };
+  const choice = level => h('button', { type: 'button', class: 'an-ob-seg-b', 'aria-pressed': String(edit.level === level),
+    'aria-disabled': noLevels && level !== '' ? 'true' : null, title: noLevels ? t('an.opt.reNoLevels') : null,
+      dataset: { act: 'opt-edit-level', level, fk: `oe:${level || 'none'}` } }, t(label[level]));
+  return block(t('an.opt.rights'), t('an.opt.rightsSub'),
+    switchRow({ on: edit.self, label: t('an.opt.reSelf'), sub: t('an.opt.reSelfSub'), fk: 'oe:self', data: { act: 'opt-edit-self' } }),
+    formRow(t('an.opt.reLevel'), h('span', { class: 'an-ob-seg', role: 'group', 'aria-label': t('an.opt.reLevel') }, ...EDIT_LEVELS.map(choice)),
+      noLevels ? t('an.opt.reNoLevels') : t('an.opt.reLevelNote')),
+    formRow(t('an.opt.reRole'), chooser(t, 'oe:role', edit.role, { act: 'opt-edit-role' })),
+    h('p', { class: 'an-set-hint an-ob-note' }, t('an.opt.reNote')));
+}
+
 export function optionsTab(host) {
-  return h('div', { class: 'an-tabpanel an-obs' }, h('p', { class: 'an-set-help' }, host.t('an.opt.help')), presenceBlock(host), checksBlock(host),
-    mailBlock(host));
+  return h('div', { class: 'an-tabpanel an-obs' }, h('p', { class: 'an-set-help' }, host.t('an.opt.help')), presenceBlock(host), rightsBlock(host),
+    checksBlock(host), filtersBlock(host), mailBlock(host));
 }
 
 // ---------- les gestes ----------
@@ -84,6 +112,18 @@ async function presenceColumn(host) {
   host.changed();
   host.focus('op:col');
   return Boolean(col);
+}
+
+// Les personnes désignées : une colonne oui/non de la table des personnes (celles dont la case est cochée modifient toutes les fiches), à choisir ou à créer ;
+// vide, plus personne.
+async function editRole(host) {
+  const { t, draft } = host;
+  const col = await pickOption(host, { title: t('an.opt.reRolePick'), text: t('an.opt.reRolePickText'), type: 'Bool', genre: 'bool', label: 'an.type.bool',
+    current: draft.config.edit.role });
+  if (col === null) return;
+  draft.config.edit.role = col;
+  host.changed();
+  host.focus('oe:role');
 }
 
 async function presenceSwitch(host) {
@@ -111,6 +151,14 @@ const ACTS = Object.freeze({
   'opt-presence': host => void presenceSwitch(host),
   'opt-presence-col': host => void presenceColumn(host),
   'opt-leave': host => void leaveColumn(host),
+  'opt-edit-role': host => void editRole(host),
+  'opt-edit-self': host => { host.draft.config.edit.self = !host.draft.config.edit.self; host.repaint(); host.focus('oe:self'); },
+  'opt-edit-level': (host, data) => {
+    if (data.level && !effectiveConfig(host.draft.config).levels.length) return; // grisé : la phrase sous le choix dit pourquoi
+    host.draft.config.edit.level = EDIT_LEVELS.includes(data.level) ? data.level : '';
+    host.repaint();
+    host.focus(`oe:${data.level || 'none'}`);
+  },
   'opt-check': (host, data) => {
     const { config } = host.draft;
     config.checks = CHECK_KINDS.filter(kind => (kind === data.kind ? !config.checks.includes(kind) : config.checks.includes(kind)));
@@ -122,6 +170,11 @@ const ACTS = Object.freeze({
     mail.per = Math.min(MAIL_PER.max, Math.max(MAIL_PER.min, mail.per + Number(data.by)));
     host.repaint();
     host.focus(`om:${Number(data.by) < 0 ? 'less' : 'more'}`, 'om:less', 'om:more');
+  },
+  'opt-filter-mode': (host, data) => {
+    host.draft.config.filterMode = FILTER_MODES.includes(data.mode) ? data.mode : FILTER_MODES[0];
+    host.repaint();
+    host.focus(`of:${data.mode}`);
   },
   'opt-to': (host, data) => { host.draft.config.mail.to = data.to === 'to' ? 'to' : 'bcc'; host.repaint(); host.focus(`om:${data.to}`); },
 });

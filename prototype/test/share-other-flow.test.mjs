@@ -50,6 +50,21 @@ test('prepare : l\'export du seul fichier, l\'invitation, son code ; rien n\'est
   assert.deepEqual(engine.calls[2].slice(1, 3), [{ id: 'exp1', name: 'Facture 2026', tables: [], recipients: [] }, { id: 'inv1' }]);
 });
 
+test('prepare : la table des fichiers est assurée AVANT l\'export (le moteur ne la crée pas : sans PDF, « cols is null », retour du 25/11) ; si elle ne peut pas l\'être, le moteur n\'est pas appelé', async () => {
+  const engine = fakeEngine();
+  const order = [];
+  const ensureFiles = async () => { order.push('ensure'); engine.calls.push(['ensure']); };
+  await flow(engine, { ensureFiles, file: null, mode: 'live', name: 'Ce document' }).prepare();
+  assert.deepEqual(names(engine), ['ensure', 'save', 'invite', 'code'], 'la table d\'abord, puis l\'export, l\'invitation et son code');
+  assert.deepEqual(engine.calls[1][1].selection, selectionOf(null), 'relier sans fichier nomme toujours la table des fichiers de GFS dans sa condition');
+  const refused = fakeEngine();
+  const declined = flow(refused, { ensureFiles: async () => { throw new Error('Grist a refusé la création'); } });
+  await assert.rejects(() => declined.prepare(), /Grist a refusé la création/);
+  assert.deepEqual(refused.calls, [], 'rien n\'est préparé chez le moteur');
+  await declined.abort();
+  assert.deepEqual(refused.calls, [], 'et rien n\'est à défaire');
+});
+
 test('check : le document que Grist désigne et le code de contrôle ; un refus du moteur remonte tel quel', async () => {
   const engine = fakeEngine();
   const run = flow(engine);

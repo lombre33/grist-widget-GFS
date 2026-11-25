@@ -101,6 +101,22 @@ export class ShareControl {
     return !at && this.whyNotFolder(path) === null ? { key: personalTarget(this.#o.identity(), path), name, path, mine: true } : null;
   }
 
+  // Pourquoi « Partager… » est grisé pour ce chemin (une phrase), ou null : comme `whyNotFolder`, mais un espace entier se partage aussi (demande du porteur du
+  // 25/11 : « Partager… » sur la ligne d'un espace ouvre le partage de cet espace). `whyNotFolder` ne change pas : « Lier dans un espace… » s'en sert, et un
+  //   espace entier ne se lie pas.
+  whyNotShareFolder(path) {
+    const at = locate(path, this.#o.spaces ? this.#o.spaces() : null);
+    return at && !at.folder && this.#o.fullAccess() ? null : this.whyNotFolder(path);
+  }
+
+  // Ce que « Partager… » ouvre pour ce chemin : un espace entier (sa clé `espace:<clé>`, son nom, et ni chemin ni app : ce n'est ni un dossier ni un fichier,
+  // la fenêtre et l'onglet « autre document » le reconnaissent à `wholeSpace` : `space` seul ne le dit pas, un fichier rangé dans un espace porte aussi
+  // `space`), sinon le dossier (`folderFile`).
+  shareFolderFile(path) {
+    const at = locate(path, this.#o.spaces ? this.#o.spaces() : null);
+    return at && !at.folder ? { key: spaceTarget(at.space.key), name: at.space.name, space: at.space, wholeSpace: true } : this.folderFile(path);
+  }
+
   // L'espace, puis les dossiers au-dessus de celui-ci : ce qu'il hérite (la fenêtre les marque « Hérité »).
   #folderOrigins({ space, path }) {
     return originsOf(space.key, space.name, partsOf(path).slice(0, -1));
@@ -115,7 +131,7 @@ export class ShareControl {
     return Promise.all([this.#o.reader.owner(),
       this.#try(async () => rowsOf(await this.#o.port.doc.fetchTable(SHARES_TABLE)), null),
       target ? this.#authorOf(file, target) : { author: file.mine ? me : lower(file.by) },
-      file.shared ? this.#folderOrigins(file.shared) : (file.mine ? [] : this.#inherited(file.key)),
+      file.shared ? this.#folderOrigins(file.shared) : (file.mine || file.wholeSpace ? [] : this.#inherited(file.key)),
       this.#try(async () => rowsOf(await this.#o.port.doc.fetchTable(GROUPS_TABLE)), null), wantsFolders ? this.#folderRows() : []]);
   }
 
@@ -187,6 +203,7 @@ export class ShareControl {
   #appLabel(file) {
     const { t } = this.#o;
     if (file.shared) return t('share.folder.in', { name: file.shared.space.name });
+    if (file.wholeSpace) return t('share.space.kind');
     return file.mine ? t('share.folder.inMine', { name: t('ex.me') }) : this.#o.appName(file.app);
   }
 
@@ -201,7 +218,7 @@ export class ShareControl {
     const { t, container, inertTargets } = this.#o;
     return openShare({
       container, t, locale: this.#o.locale(), inertTargets, other: state => this.#o.other(file, state),
-        file: { key: file.key, name: file.name, app: this.#appLabel(file) }, startTab: 'here',
+        file: { key: file.key, name: file.name, app: this.#appLabel(file) }, startTab: 'here', link: this.#o.pageLink,
       load: () => this.load(file), onManage: () => this.#o.manage.open(),
       onAdd: record => this.add(file, record),
       onChange: (id, patch) => this.#write([['UpdateRecord', SHARES_TABLE, id, patch]]),

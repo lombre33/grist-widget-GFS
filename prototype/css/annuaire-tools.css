@@ -97,6 +97,7 @@
 .an-ob-seg { display: inline-flex; align-self: flex-start; border: 1px solid var(--border-strong); border-radius: var(--radius-btn); background: var(--surface); overflow: hidden; }
 .an-ob-seg-b { height: 28px; padding: 0 12px; border: 0; background: transparent; color: var(--text); font: inherit; font-size: max(12.5px, var(--fs-min)); cursor: pointer; }
 .an-ob-seg-b + .an-ob-seg-b { border-left: 1px solid var(--border); }
+.an-ob-seg-b[aria-disabled="true"] { background: var(--surface-sunken); color: var(--text-muted); cursor: not-allowed; }
 .an-ob-seg-b[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; }
 .an-ob-seg-b:focus-visible, .an-chk-b:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 

@@ -210,3 +210,35 @@ test('sans `lienPublic` dans son manifeste, aucune table de l\'app qui publie n\
   assert.equal(calls.applied.length, before);
 });
 
+
+test('un lot que Grist a appliqué est dit à GFS (`onApplied`, avec les actions et ce que Grist a rendu), sans que cela puisse faire échouer l\'appel de l\'app', async () => {
+  const told = [];
+  const { apply, env } = setup({ onApplied: (actions, result) => told.push([actions, result]) });
+  env.port.doc.applyUserActions = async () => ({ retValues: [21] });
+  const actions = [['AddRecord', 'FormPlus_Formulaires', null, { Nom: 'a', Definition: '{}' }]];
+  assert.deepEqual(await apply(actions), { retValues: [21] }, 'l\'app reçoit la réponse de Grist telle quelle');
+  assert.deepEqual(told, [[actions, { retValues: [21] }]]);
+
+  const failing = setup({ onApplied: () => { throw new Error('rangement'); } });
+  const warnings = [];
+  const original = console.warn;
+  console.warn = (...args) => warnings.push(String(args[0]));
+  try {
+    await failing.apply([['AddRecord', 'FormPlus_Formulaires', null, { Nom: 'b', Definition: '{}' }]]);
+  } finally {
+    console.warn = original;
+  }
+  assert.equal(warnings.length, 1, 'ce que GFS en fait peut échouer : un avertissement, pas une erreur pour l\'app');
+});
+
+test('un lot refusé par le filtre ou par la personne n\'est pas dit comme appliqué ; un lot qui publie l\'est, après l\'accord', async () => {
+  const told = [];
+  const refused = setup({ onApplied: actions => told.push(actions) });
+  await assert.rejects(() => refused.apply([['AddRecord', 'GFS_Espaces', null, { Nom: 'x' }]]), error => error.code === 'GFS_REFUSE');
+  const declined = setup({ authorize: async () => false, onApplied: actions => told.push(actions) });
+  await assert.rejects(() => declined.apply(publish()), error => error.code === 'GFS_ANNULE');
+  assert.deepEqual(told, [], 'rien n\'a été appliqué : rien à dire');
+  const agreed = setup({ onApplied: actions => told.push(actions) });
+  await agreed.apply(publish());
+  assert.equal(told.length, 1, 'le lot qui publie, une fois accordé et appliqué, est dit aussi');
+});

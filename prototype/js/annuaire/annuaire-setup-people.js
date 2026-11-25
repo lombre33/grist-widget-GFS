@@ -9,6 +9,7 @@ import { isPeopleTable } from './annuaire-schema.js';
 import { CONFIG_VERSION, FIELD_SEPARATOR, NAME_ORDERS, keyPath, readConfig } from './annuaire-config.js';
 import { chooser, formRow, switchButton } from './annuaire-setup-shared.js';
 import { pickColumn, pickPath, personName } from './annuaire-setup-path.js';
+import { createTableRow, createTableWindow } from './annuaire-setup-table.js';
 import { nameOf } from './annuaire-model.js';
 
 // Le nom du texte et l'aide de chaque colonne lue, et si elle est obligatoire.
@@ -88,12 +89,30 @@ export function peopleAct(host, act, data) {
 
 async function pickTable(host) {
   const { t, schema, draft } = host;
-  const items = Object.keys(schema).filter(isPeopleTable).sort((a, b) => a.localeCompare(b)).map(name => ({ value: name, label: name, glyph: 'table',
-    hint: t('an.set.columns', { n: schema[name].columns.length }) }));
-  const chosen = await host.list({ title: t('an.set.pickTable'), text: t('an.set.pickTableText'), items, current: draft.table, none: t('an.set.noTable') });
-  if (chosen === null || chosen === draft.table) return;
-  draft.table = chosen;
-  draft.config = { ...readConfig({}), v: CONFIG_VERSION };
+  for (;;) {
+    const items = Object.keys(schema).filter(isPeopleTable).sort((a, b) => a.localeCompare(b)).map(name => ({ value: name, label: name, glyph: 'table',
+      hint: t('an.set.columns', { n: schema[name].columns.length }) }));
+    const chosen = await host.list({ title: t('an.set.pickTable'), text: t('an.set.pickTableText'), items: [createTableRow(host), ...items],
+      current: draft.table,
+      none: t('an.set.noTable') });
+    if (chosen === null) return;
+    if (chosen === 'new:') {
+      const made = await createTableWindow(host);
+      if (!made) continue;
+      adoptTable(host, made.table, { name: made.name, email: made.email });
+      host.focus('pc:name');
+      return;
+    }
+    if (chosen !== draft.table) adoptTable(host, chosen, {});
+    return;
+  }
+}
+
+// La table des personnes d'un annuaire change : les colonnes se règlent de nouveau (celles que GFS vient de créer sont déjà prises : le nom et l'adresse).
+function adoptTable(host, table, config) {
+  const { draft } = host;
+  draft.table = table;
+  draft.config = { ...readConfig({}), v: CONFIG_VERSION, ...config };
   host.ui.split = false;
   host.ui.phone = false;
   host.ui.fresh = null;

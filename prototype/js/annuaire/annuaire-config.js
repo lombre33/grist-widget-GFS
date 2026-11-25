@@ -42,14 +42,24 @@ export const PERSON_KEYS = Object.freeze(['name', 'first', 'title', 'email', 'ph
 export const NAME_ORDERS = Object.freeze(['first-last', 'last-first', 'last-comma']);
 // Les colonnes fixes qui peuvent devenir une colonne de la liste, dans l'ordre où la liste les montre.
 export const FIXED_COLUMNS = Object.freeze(['email', 'phone']);
+// Comment l'annuaire montre ses filtres (retour du porteur, 25/11 : « une option pour choisir par annuaire ») : « panel », un bouton qui ouvre un panneau avec
+// un titre par filtre (le premier), ou « bar », une barre de menus, un par filtre, sous le nom de chaque champ (comme l'annuaire PUI).
+export const FILTER_MODES = Object.freeze(['panel', 'bar']);
+// Qui modifie les fiches, en plus des administrateurs (retour du porteur, 25/11 : « par défaut les admins, mais aussi chacun sa propre fiche, son niveau
+// hiérarchique avec en option le niveau en dessous, ou un rôle désigné ») : `level` vaut '' (aucun), 'own' (les personnes de sa structure) ou 'below' (sa
+// structure et celles qui sont dessous). Voir js/annuaire/annuaire-edit-rights.js.
+export const EDIT_LEVELS = Object.freeze(['', 'own', 'below']);
 
 // Les options de l'annuaire (« À vérifier », « Ma présence », « Écrire au groupe ») : toujours complètes, jamais d'exception.
 function readOptions(input) {
   const object = value => (value && typeof value === 'object' ? value : {});
   const presence = object(input.presence);
   const mail = object(input.mail);
+  const edit = object(input.edit);
   const per = Math.round(Number(mail.per));
-  return { leave: text(input.leave), checks: Array.isArray(input.checks) ? CHECK_KINDS.filter(kind => input.checks.includes(kind)) : [...DEFAULT_CHECKS],
+  return { edit: { self: edit.self === true, level: EDIT_LEVELS.includes(edit.level) ? edit.level : '', role: text(edit.role) },
+    filterMode: FILTER_MODES.includes(input.filterMode) ? input.filterMode : FILTER_MODES[0], leave: text(input.leave),
+    checks: Array.isArray(input.checks) ? CHECK_KINDS.filter(kind => input.checks.includes(kind)) : [...DEFAULT_CHECKS],
     presence: { on: presence.on === true && Boolean(text(presence.col)), col: text(presence.col) },
     mail: { per: Number.isFinite(per) ? Math.min(MAIL_PER.max, Math.max(MAIL_PER.min, per)) : MAIL_DEFAULT.per, to: mail.to === 'to' ? 'to' : 'bcc' } };
 }
@@ -75,7 +85,8 @@ function readSub(input) {
 // responsable direct, à une relation ou à un champ).
 // `checks` (demande du porteur du 25/11 : « À vérifier ») : les contrôles allumés ; `leave` : la colonne de la date de départ (pour « départ dépassé ») ;
 // `presence` (« Ma présence », une option de l'administrateur) : { on, col } : `col` est une colonne oui/non de la personne, « apparaître dans l'annuaire » ;
-// `mail` : { per, to } (« Écrire au groupe »).
+// `mail` : { per, to } (« Écrire au groupe ») ; `filterMode` : « panel » ou « bar » (voir FILTER_MODES) ; `edit` : { self, level, role } (qui modifie les
+//   fiches, voir EDIT_LEVELS ; `role` est une colonne oui/non de la personne : les personnes dont la case est cochée modifient toutes les fiches).
 // `hierarchy` : l'option « postes et hiérarchie » (décision du porteur, 25/11 : par défaut seulement le nom et l'adresse). Une ligne écrite avant elle, qui a
 // déjà un poste ou des niveaux, la garde allumée : rien ne change pour elle. Éteinte, elle garde ses niveaux écrits (on les retrouve en la rallumant) mais
 // la lecture ne s'en sert pas : voir `effectiveConfig`.
@@ -155,5 +166,13 @@ export const updateAction = (tableId, row, record) => ['UpdateRecord', tableId, 
 // »…). `shown` : le numéro de la colonne que montre une référence (Grist écrit le nom de la personne plutôt que son numéro), 0 sans.
 export const addColumnAction = (tableId, name, type, shown = 0) => ['AddColumn', tableId, text(name),
   { type, isFormula: false, label: text(name), ...(shown ? { visibleCol: shown } : {}) }];
+// La table que GFS crée quand l'annuaire n'a pas encore sa table de personnes (retour du porteur, 25/11 : « laisser l'option d'en créer une ») : une ligne par
+// personne, le nom et l'adresse e-mail ; les autres colonnes se créent ensuite depuis le réglage, une à une. Des noms anglais dès le départ (décision du
+// 25/11 : les tables et les colonnes de la suite sont en anglais). Le préfixe `GFS_` est celui de la mécanique de GFS : la table des personnes est celle de la
+// personne.
+export const PEOPLE_TABLE = Object.freeze({ id: 'Directory_People', name: 'Name', email: 'Email' });
+export const PEOPLE_COLUMNS = Object.freeze([{ id: PEOPLE_TABLE.name, type: 'Text' }, { id: PEOPLE_TABLE.email, type: 'Text' }]);
+// L'action qui crée une table avec ses colonnes (Grist rend l'identifiant réel : on le relit).
+export const addTableAction = (name, columns) => ['AddTable', text(name), columns.map(column => ({ ...column }))];
 // L'action qui range dans une référence la formule de la colonne qu'elle montre (`$Assistant.Nom`) : la colonne d'aide que Grist lit pour l'écran.
 export const displayAction = (tableId, colRef, colId, shown) => ['SetDisplayFormula', tableId, null, colRef, `$${colId}.${shown}`];

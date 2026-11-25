@@ -37,7 +37,10 @@ function lineOf(target, { t, go, unlock, say }) {
 export function openInsertMenu({ anchor, host, t, person, current, hooks, say }) {
   const go = id => void hooks.onInsert(id, personPayload(person, originOf(person, current, t)));
   const lines = hooks.targets().map(target => lineOf(target, { t, go, unlock: app => void hooks.onUnlock(app), say }));
-  const none = { icon: 'link', label: t('an.link.noneLine'), greyed: true, title: t('an.link.none'), run: () => say(t('an.link.none')) };
+  // Sans app : la ligne reste grisée, et un clic ouvre la fenêtre des apps de GFS (retour du porteur, 25/11), là où une app s'active ; sans elle, la raison se
+  // dit.
+  const none = { icon: 'link', label: t('an.link.noneLine'), greyed: true, title: t('an.link.noneTip'),
+    run: () => { if (hooks.onApps) void hooks.onApps(); else say(t('an.link.none')); } };
   openMenu(anchor, [{ heading: t('an.link.menuTitle', { name: person.name }) }, ...(lines.length ? lines : [none])], { host, align: 'right',
     label: t('an.link.insert') });
 }

@@ -5,6 +5,7 @@ export const ANNUAIRE_SUB_STRINGS = Object.freeze({
   fr: {
     'an.sub.tag': 'Sous-annuaire',
     'an.sub.of': 'Sous-annuaire de « {name} »',
+    'an.newMenuHint': 'Le premier, ou un sous-annuaire réservé',
     'an.sub.new': 'Nouveau sous-annuaire…',
     'an.sub.newHint': 'Réservé : seuls ceux à qui vous le partagez le voient',
     'an.sub.newWhy': 'Seul un propriétaire du document crée un sous-annuaire (Grist en pose le verrou).',
@@ -65,6 +66,7 @@ export const ANNUAIRE_SUB_STRINGS = Object.freeze({
   en: {
     'an.sub.tag': 'Sub-directory',
     'an.sub.of': 'Sub-directory of “{name}”',
+    'an.newMenuHint': 'The first one, or a restricted sub-directory',
     'an.sub.new': 'New sub-directory…',
     'an.sub.newHint': 'Reserved: only those you share it with can see it',
     'an.sub.newWhy': 'Only an owner of the document creates a sub-directory (Grist applies its lock).',

@@ -232,7 +232,8 @@ async function spacesRoot(run, t) {
   await run.page.press('Backspace');
   await run.expect('retour à « Espaces »', 'Retour arrière deux fois devait revenir à la racine des espaces', state => names(state).join() === 'Achats');
   const space = await menuOf('Achats');
-  if (space !== true) run.note('« Partager… » d\'un espace', 'l\'article devait être grisé sur un espace (ses droits se règlent dans « Gérer les partages… »)');
+  // Demande du 25/11 : « Partager… » sur la ligne d'un espace entier ouvre le partage de l'espace (js/sharing/share-control.js, `whyNotShareFolder`) ; seul « Espaces » lui-même reste grisé.
+  if (space !== false) run.note('« Partager… » d\'un espace', 'l\'article devait être dégrisé sur un espace (il ouvre le partage de l\'espace)');
 }
 
 // « Partagés avec moi » (lot 4c) : un fichier donné par une adresse n'est pas à la racine de « Moi » tant que la personne ne l'a pas rangé ; il est dans « Partagés avec moi », avec son menu de fichier ordinaire.

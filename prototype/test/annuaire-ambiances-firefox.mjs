@@ -1,12 +1,14 @@
 // L'annuaire dans les ambiances de GFS et sous l'accessibilité renforcée, sous Firefox (demande du porteur du 25/11 : « il faudra s'adapter aux thèmes de GFS » ; ambiances décidées le 03/11,
 // accessibilité renforcée le 04/11 ; css/acces.css), à 700, 520 et 400 px, en clair et en sombre. L'essai pose chaque ambiance comme GFS la pose, par le vrai `ThemeSetting` et le vrai
 // `ThemeHost` (test/pages/annuaire.js : `window.__ambiance(id)`, `window.__theme.chooseAccess(on)`), puis ouvre chaque écran de l'annuaire (la liste et la fiche, le panneau des filtres,
-// l'organigramme, le menu « Insérer dans… », la fenêtre « Choisir une personne ») et mesure : le contraste de chaque texte (4,5:1) ; sous l'accessibilité renforcée, en plus, aucun texte sous
+// l'organigramme, le menu « Insérer dans… », la fenêtre « Choisir une personne », la barre des filtres et le menu de l'un d'eux) et mesure : le contraste de chaque texte (4,5:1) ; sous l'accessibilité renforcée, en plus, aucun texte sous
 // 14 px et aucune commande sous 36 × 36 px (labo/mesures-acces.mjs, que partage test/acces-firefox.mjs), et que rien ne sort de la fenêtre ni ne défile de côté.
 import { delay } from './corbeille-firefox.mjs';
 import { contrasts } from './vitrine-firefox.mjs';
 import { PROBES } from './annuaire-probes.mjs';
 import { MENU_PROBES, PICK_PROBES } from './annuaire-links-firefox.mjs';
+import { TABLE_PROBES, clickOn } from './annuaire-table-firefox.mjs';
+import { FILTER_PROBES as BAR_PROBES } from './annuaire-filtres-firefox.mjs';
 import { MIN_TARGET, MIN_TEXT, sweep } from '../labo/mesures-acces.mjs';
 import { AMBIANCES } from '../js/theme/ambiance.js';
 
@@ -77,6 +79,45 @@ async function pickScreen(page, note, where, opts) {
   await delay(150);
 }
 
+// « Créer la table des personnes » : le réglage d'un nouvel annuaire, le choix de la table et la fenêtre qui crée la table ; tout se referme par Échap et « Annuler ».
+async function tableScreen(page, note, where, opts) {
+  const hit = selector => clickOn(page, note, selector);
+  await page.run(() => { void window.__annuaire.open(1); });
+  await page.until(() => document.querySelector('.mod.an .an-person') !== null);
+  if (!await hit('[data-fk="switch"]')) return;
+  await delay(250);
+  if (!await hit('[data-fk="pick-__new__"]')) return;
+  await delay(400);
+  if (await hit('[data-fk="pt"]')) {
+    await delay(250);
+    if (await hit('[data-fk="pick-new:"]')) {
+      await delay(250);
+      await measure(page, note, `${where}, « Créer la table des personnes »`, TABLE_PROBES, opts);
+      await page.press('Escape');
+      await delay(200);
+    }
+    await page.press('Escape');
+    await delay(200);
+  }
+  await hit('[data-fk="set-cancel"]');
+  await delay(200);
+  await page.run(() => window.__annuaire.close());
+}
+
+// La barre des filtres (`?filters=bar`) : la rangée de boutons et le menu d'un filtre, dans chaque ambiance et sous l'accessibilité renforcée.
+async function barScreen(page, note, where, opts) {
+  await page.run(() => { void window.__annuaire.open(1); });
+  await page.until(() => document.querySelector('.mod.an .an-person') !== null);
+  await measure(page, note, `${where}, la barre des filtres`, BAR_PROBES, opts);
+  if (await clickOn(page, note, '[data-fk="fb:Contrat"]')) {
+    await delay(250);
+    await measure(page, note, `${where}, le menu d'un filtre de la barre`, { ...FILTER_PROBES, ...BAR_PROBES }, opts);
+    await page.press('Escape');
+    await delay(150);
+  }
+  await page.run(() => window.__annuaire.close());
+}
+
 export async function ambiancesProblems(page, t, note, click, { width, mode, language }) {
   await page.goto(`${await page.run(() => `${location.origin}${location.pathname}`)}?lang=${language}&links=1&sub=1`);
   await page.run(() => window.__ready);
@@ -87,6 +128,14 @@ export async function ambiancesProblems(page, t, note, click, { width, mode, lan
     const opts = { access: choice.access, width };
     await listScreens(page, note, click, where, opts);
     await pickScreen(page, note, where, opts);
+    await tableScreen(page, note, where, opts);
+  }
+  await page.goto(`${await page.run(() => `${location.origin}${location.pathname}`)}?lang=${language}&filters=bar`);
+  await page.run(() => window.__ready);
+  await page.view({ width, scale: 1, mode });
+  for (const choice of SETTINGS) {
+    await setting(page, choice);
+    await barScreen(page, note, `l'annuaire en « ${choice.id} »${choice.access ? ' avec l\'accessibilité renforcée' : ''} (${mode}, ${width} px)`, { access: choice.access, width });
   }
   await setting(page, { id: 'defaut', access: false });
 }

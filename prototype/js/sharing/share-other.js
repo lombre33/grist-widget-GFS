@@ -9,11 +9,14 @@ import { formatBytes } from '../weight/weight.js';
 import { applyLevel, isTooBig, maxText, sizeOf, stopLink } from './share-links.js';
 import { filesOfFolder, folderLabel, isFolderTarget, skippedInFolder, tooBigInFolder, writeFolderName } from './share-folder.js';
 import { closeSharingTables } from './sync-rules.js';
+import { filesTableOf } from './share-files-table.js';
+import { createReceiving } from './share-receive.js';
 
 // Pourquoi l'onglet est grisé (une phrase), ou null. `files` : pour un dossier, les fichiers qui peuvent y partir (js/share-folder.js) ; un dossier sans PDF à
 // partager n'a rien à envoyer (`tooBig` : combien de PDF de plus de 25 Mo l'en empêchent, le dire plutôt que « aucun PDF »).
 export function whyNot(t, { file, state, files, tooBig = 0 }) {
   if (!file) return t('share.other.why.pdf');
+  if (file.wholeSpace) return t('share.other.why.space');
   if (isFolderTarget(file)) {
     if (!files || !files.length) return tooBig > 0 ? t('share.other.why.allTooBig', { max: maxText(t) }) : t('share.other.why.emptyFolder');
   } else if (file.app !== FILES_APP) return t('share.other.why.pdf');
@@ -101,39 +104,27 @@ export function createOtherDocuments(deps) {
     const blocked = deps.writeBlock();
     if (blocked) { deps.notice(blocked); return; }
     try {
-      const [{ openShareOther }, { createSourceFlow }, running, name] = await Promise.all(
-        [import('./share-other-window.js'), import('./share-other-flow.js'), engine(), documentName(deps.transfer, t)]);
+      // Un document sans PDF n'a pas la table des fichiers : l'accord le dit, et la table naît au « Continuer » (js/sharing/share-files-table.js).
+      const files = filesTableOf(deps.docApi());
+      const [{ openShareOther }, { createSourceFlow }, running, name, hasFiles] = await Promise.all(
+        [import('./share-other-window.js'), import('./share-other-flow.js'), engine(), documentName(deps.transfer, t), files.exists()]);
       const below = [...deps.container.querySelectorAll('.mod-scrim')];
       await openShareOther({
         container: deps.container, t, inertTargets: () => [...deps.inertTargets(), ...below], file: file ? { id: file.id, name: file.name } : null,
-        createFlow: (mode, strict) => createSourceFlow({ engine: running, file, mode: file ? mode : 'live', strict, name }), errorText: running.errorText,
+          filesTable: hasFiles,
+        createFlow: (mode, strict) => createSourceFlow({ engine: running, file, mode: file ? mode : 'live', strict, name, ensureFiles: files.ensure }),
+          errorText: running.errorText,
           notice: deps.notice, settled: () => closeTechnicalTables(deps),
       });
     } catch (error) { deps.notice(await said(error)); }
   }
 
-  // « Nouveau > Importer > D'un autre document Grist… » : recevoir un partage. L'article du sous-menu (grisé avec sa raison quand rien ne peut s'écrire) et la
-  // fenêtre de la réception (js/sharing/share-receive-window.js) ; la boucle de réception du moteur démarre dès que la réponse est rendue, pour que les
-  // fichiers arrivent sans recharger la page.
-  async function receive() {
-    const blocked = deps.writeBlock();
-    if (blocked) { deps.notice(blocked); return; }
-    try {
-      if ((await deps.transfer.isOwner()) !== true) { deps.notice(t('sr.why.owner')); return; }
-      const sync = await import('./sync-service.js');
-      const engineDeps = { docApi: deps.docApi(), transfer: deps.transfer, language: deps.language, busy: () => false };
-      const [{ openShareReceive }, { createTargetFlow }, running] = await Promise.all(
-        [import('./share-receive-window.js'), import('./share-receive-flow.js'), sync.loadReceiveEngine(engineDeps)]);
-      await openShareReceive({
-        container: deps.container, t, inertTargets: deps.inertTargets, createFlow: () =>
-          createTargetFlow({ engine: running, onReplied: () => void sync.startReceiving(engineDeps).catch(() => {}) }),
-        errorText: running.errorText, notice: deps.notice, settled: () => closeTechnicalTables(deps),
-      });
-    } catch (error) { deps.notice(await said(error)); }
-  }
+  // « Nouveau > Importer > D'un autre document Grist… » et la reprise de la fenêtre après un rechargement de Grist : js/sharing/share-receive.js.
+  const receiving = createReceiving({ deps, said, settled: () => closeTechnicalTables(deps) });
 
   return {
-    receive,
+    receive: receiving.receive,
+    resumeReceive: receiving.resumeReceive,
     engine,
     link: () => open(null),
     entry() {

@@ -178,3 +178,54 @@ test('une app qu\'on n\'a pas pu lire : son poids manque, le souvenir n\'est pas
   await b.reading.refresh();
   assert.equal(b.log.some(entry => entry[0] === 'note'), false);
 });
+
+// La relecture automatique (js/explorer/live-list.js) : une lecture silencieuse qui ne trouve rien de changé ne redessine rien ; une qui trouve un changement le pose.
+test('relecture automatique : la même liste ne redessine rien, un renommage la redessine, un échec se tait', async () => {
+  const data = tables();
+  const b = bench({ data });
+  await b.reading.refresh();
+  b.log.length = 0;
+  await b.reading.refresh({ quiet: true, live: true });
+  assert.deepEqual(b.log, [['stats', 'object']], 'rien de changé : ni la liste, ni l\'état sous la liste, ni la barre des ouverts');
+  data[spec.table].Nom = ['Convocation renommée'];
+  await b.reading.refresh({ quiet: true, live: true });
+  assert.ok(b.log.some(entry => entry[0] === 'setFiles'), 'un renommage fait par quelqu\'un d\'autre se voit');
+  assert.deepEqual(statuses(b.log), [{ loading: false, restricted: false, problems: [] }], 'sans « Lecture des fichiers… » : la lecture est silencieuse');
+  b.log.length = 0;
+  data[spec.table].Nom = ['Convocation renommée'];
+  await b.reading.refresh({ quiet: true, live: true });
+  assert.deepEqual(b.log, [['stats', 'object']]);
+});
+
+test('relecture automatique : un geste de rangement affiché d\'avance est retiré par la lecture, même quand la liste ne change pas', async () => {
+  const pend = { size: 0, retired: [] };
+  const b = bench({ pending: () => ({ get size() { return pend.size; }, stamp: () => 3, retire: stamp => pend.retired.push(stamp), apply: lists => lists }) });
+  await b.reading.refresh();
+  pend.retired.length = 0;
+  pend.size = 1;
+  await b.reading.refresh({ quiet: true, live: true });
+  assert.deepEqual(pend.retired, [3], 'sans cela, le geste resterait posé sur la liste');
+});
+
+test('relecture automatique qui échoue : aucune phrase d\'erreur sous la liste, un avertissement en console (la suivante réessaiera)', async () => {
+  const b = bench({ unreachable: true });
+  const error = console.error;
+  const warn = console.warn;
+  const seen = { error: [], warn: [] };
+  console.error = (...args) => seen.error.push(args[0]);
+  console.warn = (...args) => seen.warn.push(args[0]);
+  try { await b.reading.refresh({ quiet: true, live: true }); } finally { console.error = error; console.warn = warn; }
+  assert.deepEqual(seen.error, []);
+  assert.deepEqual(seen.warn, ['GFS : la relecture automatique des fichiers a échoué']);
+  assert.deepEqual(statuses(b.log), [], 'rien n\'est dit à la personne pour une lecture qu\'elle n\'a pas demandée');
+});
+
+test('`loading` : vrai pendant une lecture qui dit « Lecture des fichiers… », faux pendant une silencieuse', async () => {
+  const b = bench();
+  b.gate.hold = true;
+  const first = b.reading.refresh();
+  assert.equal(b.reading.loading, true);
+  b.gate.release();
+  await first;
+  assert.equal(b.reading.loading, false);
+});

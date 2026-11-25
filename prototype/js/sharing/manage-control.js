@@ -8,7 +8,8 @@ import { runAction, writeActions } from '../rights/rights-actions.js';
 import { ask } from '../ui/ask-window.js';
 import { openManage } from './manage-window.js';
 import { pickFrom } from '../ui/pick-window.js';
-import { CATEGORIES, GROUPS_TABLE, PLACE_TABLE, ROOT, SHARES_TABLE, SPACES_TABLE, groupRecord, groupsOf, isIdent, planGroupAdd, planGroupsRead, planSpaceAdd,
+import { CATEGORIES, GROUPS_TABLE, PLACE_TABLE, ROOT, SHARES_TABLE, SPACES_TABLE, groupName, groupRecord, groupsOf, isIdent, planGroupAdd, planGroupsRead,
+  planSpaceAdd,
   planSpaceGroup, planSpaceRemove, shareRecord, spacesOf } from './sharing-model.js';
 import { askName } from '../explorer/filing-window.js';
 import { TABLE as FILING_TABLE } from '../files/rangement.js';
@@ -129,12 +130,28 @@ export class ManageControl {
       Promise.resolve({ ok: false, message: this.#o.t('manage.spaces.invalid') });
   }
 
+  // Le groupe à ajouter à l'espace : un groupe qui existe, ou « Créer le groupe … » avec le nom tapé dans la recherche (rend alors { create: nom }). La liste
+  // n'est jamais une impasse : sans groupe, le dernier choix reste là, grisé avec ce qu'il faut taper.
   pickGroup(state, space) {
     const { t, container } = this.#o;
     const taken = new Set(space.groups.map(item => item.group.toLowerCase()));
-    return pickFrom({ container, inertTargets: this.#o.inertTargets, t, title: t('manage.spaces.pick'), text: t('manage.spaces.pickText', { name: space.name }),
+    const named = new Set(state.groups.map(group => group.name.toLowerCase()));
+    return (this.#o.pick || pickFrom)({ container, inertTargets: this.#o.inertTargets, t, title: t('manage.spaces.pick'),
+      text: t('manage.spaces.pickText', { name: space.name }),
       none: t('pick.none'),
-      items: state.groups.filter(group => !taken.has(group.name.toLowerCase())).map(group => ({ value: group.name, label: group.name, glyph: 'users' })) });
+      items: state.groups.filter(group => !taken.has(group.name.toLowerCase())).map(group => ({ value: group.name, label: group.name, glyph: 'users' })),
+      create: { glyph: 'plus', label: typed => (typed ? t('manage.spaces.pick.create', { name: typed }) : t('manage.spaces.pick.new')),
+        hint: () => t('manage.spaces.pick.hint'), blank: t('manage.spaces.pick.blank'), empty: t('manage.spaces.pick.empty'),
+        refuse: typed => (!groupName(typed) ? t('manage.groups.invalid') : (named.has(groupName(typed).toLowerCase()) ? t('manage.groups.exists') : null)) } });
+  }
+
+  // Un groupe créé depuis l'espace (le formulaire à pastilles rend { name, people }) : la ligne du groupe, avec ses personnes, et son rôle de lecture dans
+  // l'espace, en UNE écriture.
+  addSpaceGroup(state, space, { name, people = '' }) {
+    const created = planGroupAdd(state.rows, groupRecord({ name, people }));
+    if (!created.ok) return Promise.resolve({ ok: false, message: this.#o.t(`manage.groups.${created.reason}`) });
+    const entered = planSpaceGroup(space, state.shareRows, groupName(name), 'lecture');
+    return entered.ok ? this.#write([...created.actions, ...entered.actions]) : Promise.resolve({ ok: false, message: this.#o.t('manage.spaces.invalid') });
   }
 
   // La structure : fermer ou rouvrir, avec la question qui dit le prix ; la page se recharge, la fenêtre se rouvre (clé `manage`).
@@ -228,7 +245,8 @@ export class ManageControl {
       onReadTable: state => this.readTable(state), onSuggest: (state, typed) => this.suggest(state, typed), onColumn: state => this.chooseColumn(state),
         onAddSpace: state => this.addSpace(state), onRemoveSpace: (state, space) => this.removeSpace(state, space),
         onSpaceGroup: (state, space, group, right) => this.setSpaceGroup(state, space, group, right),
-        onPickGroup: (state, space) => this.pickGroup(state, space), onRoot: (state, who, right) => this.setRoot(state, who, right),
+        onPickGroup: (state, space) => this.pickGroup(state, space), onNewSpaceGroup: (state, space, name) => this.addSpaceGroup(state, space, name),
+          onRoot: (state, who, right) => this.setRoot(state, who, right),
         onStructure: () => this.structure(),
       onConfirmRemove: name => ask({ container, inertTargets, title: t('manage.groups.remove.title', { name }), message: t('manage.groups.remove.message'),
         confirmLabel: t('manage.groups.remove.confirm'), cancelLabel: t('rights.ask.cancel'), safeFirst: true }),

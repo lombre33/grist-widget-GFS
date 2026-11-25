@@ -180,3 +180,43 @@ test('choisir la colonne d\'adresses d\'une table : ses adresses s\'ajoutent aux
   await control.suggest(state, '');
   assert.equal(asked[0].text, t('manage.suggest.from', { table: 'Contacts', column: 'Mail' }), 'la colonne d\'avant reste choisie');
 });
+
+test('ajouter un groupe à un espace : la liste propose les groupes qui n\'y sont pas et, toujours, « Créer le groupe … » avec le nom tapé (grisé sans nom, avec un nom pris ou refusé) ; sans aucun groupe, elle n\'est plus une impasse', async () => {
+  const asked = [];
+  const control = fetch => make({ fetch, extra: { pick: async options => { asked.push(options); return { create: 'Ventes' }; } } });
+  const state = await control(fetchAll).load();
+  assert.deepEqual(await control(fetchAll).pickGroup(state, { key: 'achats', name: 'Achats', groups: [] }), { create: 'Ventes' });
+  assert.deepEqual(asked[0].items.map(item => item.value), ['Achats']);
+  const { create } = asked[0];
+  assert.equal(create.label(''), t('manage.spaces.pick.new'));
+  assert.equal(create.label('Ventes'), t('manage.spaces.pick.create', { name: 'Ventes' }));
+  assert.deepEqual([create.refuse('Ventes'), create.refuse('achats'), create.refuse('#Ventes'), create.refuse('@Ventes'), create.refuse('x'.repeat(61))],
+    [null, t('manage.groups.exists'), t('manage.groups.invalid'), t('manage.groups.invalid'), t('manage.groups.invalid')]);
+  assert.deepEqual([create.blank, create.empty, create.hint('Ventes')], [t('manage.spaces.pick.blank'), t('manage.spaces.pick.empty'), t('manage.spaces.pick.hint')]);
+  await control(fetchAll).pickGroup(state, { key: 'achats', name: 'Achats', groups: [{ group: 'Achats', right: 'lecture' }] });
+  assert.deepEqual(asked[1].items, [], 'le groupe déjà dans l\'espace n\'est pas reproposé');
+  assert.equal(asked[1].create.refuse('ACHATS'), t('manage.groups.exists'), 'mais son nom reste pris : on ne crée pas un second groupe du même nom');
+  const none = await control(async name => (name === 'GFS_Groups' ? table({ Name: [], Count: [], Source: [], People: [] }) : fetchAll(name))).load();
+  await control(fetchAll).pickGroup(none, { key: 'achats', name: 'Achats', groups: [] });
+  assert.deepEqual(asked[2].items, []);
+  assert.equal(asked[2].create.refuse('Ventes'), null);
+});
+
+test('créer un groupe depuis un espace : la ligne du groupe (avec ses personnes) et son rôle de lecture dans l\'espace partent dans UNE écriture ; un nom pris ou refusé n\'écrit rien', async () => {
+  const written = [];
+  const control = make({ fetch: fetchAll, written });
+  const state = await control.load();
+  const space = { key: 'achats', name: 'Achats', groups: [] };
+  assert.equal((await control.addSpaceGroup(state, space, { name: '  Ventes   Sud ', people: 'lea@example.com\nmarc@example.com' })).ok, true);
+  assert.equal(written.length, 1, 'une seule applyUserActions : le groupe n\'existe jamais sans son entrée dans l\'espace, ni l\'inverse');
+  assert.deepEqual(written[0].map(action => action.slice(0, 2)), [['AddRecord', 'GFS_Groups'], ['AddRecord', 'GFS_Shares']]);
+  assert.deepEqual([written[0][0][3].Name, written[0][0][3].People], ['Ventes Sud', 'lea@example.com\nmarc@example.com'], 'les personnes tapées sont dans le groupe');
+  assert.deepEqual([written[0][1][3].Target, written[0][1][3].Person, written[0][1][3].Right], ['espace:achats', '#Ventes Sud', 'lecture']);
+  assert.equal((await control.addSpaceGroup(state, space, { name: 'Zoe' })).ok, true, 'sans personne, le groupe se crée vide');
+  assert.equal(written[1][0][3].People, '');
+  const taken = await control.addSpaceGroup(state, space, { name: 'achats', people: 'a@example.com' });
+  assert.deepEqual([taken.ok, taken.message], [false, t('manage.groups.exists')]);
+  const bad = await control.addSpaceGroup(state, space, { name: '#Ventes' });
+  assert.deepEqual([bad.ok, bad.message], [false, t('manage.groups.invalid')]);
+  assert.equal(written.length, 2, 'rien n\'est écrit pour un nom pris ou refusé');
+});

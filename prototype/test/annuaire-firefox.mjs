@@ -20,6 +20,10 @@ import { subProblems } from './annuaire-sub-firefox.mjs';
 import { mergeProblems } from './annuaire-merge-firefox.mjs';
 import { linksProblems } from './annuaire-links-firefox.mjs';
 import { ambiancesProblems } from './annuaire-ambiances-firefox.mjs';
+import { tableProblems } from './annuaire-table-firefox.mjs';
+import { filtresProblems } from './annuaire-filtres-firefox.mjs';
+import { nouveauProblems } from './annuaire-nouveau-firefox.mjs';
+import { droitsProblems } from './annuaire-droits-firefox.mjs';
 import { PROBES } from './annuaire-probes.mjs';
 import { ficheSectionsProblems } from './annuaire-fiche-firefox.mjs';
 import { listColumnsProblems, sortProblems, orgFiltersProblems } from './annuaire-columns-firefox.mjs';
@@ -208,6 +212,10 @@ export async function annuaireProblems(page, language, tag, { width, mode }) {
     await languageProblems(page, language, t, other, note, inspectNow);
     await keyboardProblems(page, t, note, inspectNow);
     await editProblems(page, t, note, click, { width, mode }); // il écrit dans le faux Grist : en dernier
+    await tableProblems(page, t, note, click, { width, mode }); // il écrit dans le faux Grist (une table, une colonne) : avant les essais qui rechargent la page
+    await filtresProblems(page, t, note, click, { width, mode, language }); // il recharge la page (`?filters=bar`) et ne fait que lire (il coche et décoche des filtres)
+    await droitsProblems(page, t, note, click, { width, mode, language }); // il recharge la page (`?rights=…`) et ne fait que lire
+    await nouveauProblems(page, t, note, click, { width, mode, language }); // il recharge la page (`?none=1`, `?sub=1`) et ne fait que lire
     await mergeProblems(page, t, note, click, { width, mode, language }); // il recharge la page (`?sub=1&home=merged`) et ne fait que lire
     await subProblems(page, t, note, click, { width, mode, language }); // il recharge la page (`?sub=1`) et écrit dans le faux Grist
     await linksProblems(page, t, note, click, { width, mode, language }); // il recharge la page (`?links=1&sub=1`) et ne fait que lire

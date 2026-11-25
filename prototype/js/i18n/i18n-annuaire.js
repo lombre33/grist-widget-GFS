@@ -7,6 +7,9 @@ import { ANNUAIRE_TOOLS_STRINGS } from './i18n-annuaire-tools.js';
 import { ANNUAIRE_SUB_STRINGS } from './i18n-annuaire-sub.js';
 import { ANNUAIRE_MERGE_STRINGS } from './i18n-annuaire-merge.js';
 import { ANNUAIRE_LINKS_STRINGS } from './i18n-annuaire-links.js';
+import { ANNUAIRE_TABLE_STRINGS } from './i18n-annuaire-table.js';
+import { ANNUAIRE_FILTER_STRINGS } from './i18n-annuaire-filters.js';
+import { ANNUAIRE_RIGHTS_STRINGS } from './i18n-annuaire-rights.js';
 
 export const ANNUAIRE_STRINGS = Object.freeze({
   fr: {
@@ -15,6 +18,9 @@ export const ANNUAIRE_STRINGS = Object.freeze({
     ...ANNUAIRE_SUB_STRINGS.fr,
     ...ANNUAIRE_MERGE_STRINGS.fr,
     ...ANNUAIRE_LINKS_STRINGS.fr,
+    ...ANNUAIRE_TABLE_STRINGS.fr,
+    ...ANNUAIRE_FILTER_STRINGS.fr,
+    ...ANNUAIRE_RIGHTS_STRINGS.fr,
     'an.tip': 'Annuaire',
     'an.tipLong': 'Annuaire des personnes du document',
     'an.title': 'Annuaire',
@@ -117,7 +123,7 @@ export const ANNUAIRE_STRINGS = Object.freeze({
     'an.set.nameLabel': 'Nom de l’annuaire',
     'an.set.namePlaceholder': 'Par exemple : Annuaire de l’établissement',
     'an.set.table': 'Table des personnes',
-    'an.set.tableHint': 'La table de votre document qui compte une ligne par personne. GFS la lit, il ne la modifie pas.',
+    'an.set.tableHint': 'La table de votre document qui compte une ligne par personne, ou une table que GFS crée pour votre annuaire. GFS la lit ; il n’y écrit que sur votre demande.',
     'an.set.tableFixed': 'La table d’un annuaire ne change pas.',
     'an.set.needTable': 'Choisissez d’abord la table des personnes.',
     'an.set.choose': '— Choisir … —',
@@ -278,6 +284,9 @@ export const ANNUAIRE_STRINGS = Object.freeze({
     ...ANNUAIRE_SUB_STRINGS.en,
     ...ANNUAIRE_MERGE_STRINGS.en,
     ...ANNUAIRE_LINKS_STRINGS.en,
+    ...ANNUAIRE_TABLE_STRINGS.en,
+    ...ANNUAIRE_FILTER_STRINGS.en,
+    ...ANNUAIRE_RIGHTS_STRINGS.en,
     'an.tip': 'Directory',
     'an.tipLong': 'Directory of the people in the document',
     'an.title': 'Directory',
@@ -377,7 +386,7 @@ export const ANNUAIRE_STRINGS = Object.freeze({
     'an.set.nameLabel': 'Directory name',
     'an.set.namePlaceholder': 'For example: Staff directory',
     'an.set.table': 'People table',
-    'an.set.tableHint': 'The table of your document with one row per person. GFS reads it, it never changes it.',
+    'an.set.tableHint': 'The table of your document with one row per person, or a table GFS creates for your directory. GFS reads it; it only writes to it when you ask.',
     'an.set.tableFixed': 'A directory’s table does not change.',
     'an.set.needTable': 'Choose the people table first.',
     'an.set.choose': '— Choose … —',

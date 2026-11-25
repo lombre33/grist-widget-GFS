@@ -11,20 +11,20 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-O9g+dtSJahWh1o2wMExFEDNUx7V758eV2mPv/YOcD6A='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-YtEk7TK0QvN8EcfA6eTC43wT374Bs7ZnPNzm6S4nij0='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=a2e086add5">
 <link rel="stylesheet" href="css/explorer.css?v=c8ff42b04b">
-<link rel="stylesheet" href="css/modules.css?v=e9c4b9e4fe">
+<link rel="stylesheet" href="css/modules.css?v=dcbf3e09ce">
 <link rel="stylesheet" href="css/templates.css?v=48d8b4f22f">
 <link rel="stylesheet" href="css/rights.css?v=bece849c11">
-<link rel="stylesheet" href="css/share.css?v=87bc11dabd">
+<link rel="stylesheet" href="css/share.css?v=b67a1d00e2">
 <link rel="stylesheet" href="css/weight.css?v=c84019fbca">
 <link rel="stylesheet" href="css/dependencies.css?v=053a86a6ce">
-<link rel="stylesheet" href="css/annuaire.css?v=05ebb5684e">
+<link rel="stylesheet" href="css/annuaire.css?v=bd8643ea7a">
 <link rel="stylesheet" href="css/annuaire-edit.css?v=ae5b6d55f1">
-<link rel="stylesheet" href="css/annuaire-tools.css?v=d3da4a85c0">
+<link rel="stylesheet" href="css/annuaire-tools.css?v=ad068ab9ee">
 <link rel="stylesheet" href="kit/css/color-picker.css?v=c5a41d6681">
-<link rel="stylesheet" href="css/acces.css?v=3e77c7b565">
+<link rel="stylesheet" href="css/acces.css?v=37f61fd8f0">
 <!-- Le routeur d'abord : il doit être enregistré avant que le script d'API de Grist n'affecte window.onmessage (contrats 1.2). -->
 <script src="js/broker/router.js?v=20d0f9a823"></script>
 <!-- La carte d'importation, écrite par outils/versions.mjs (ne pas la modifier à la main) : chaque module se charge à son adresse versionnée, si bien que le cache de Pages
@@ -34,14 +34,16 @@
   "imports": {
     "./js/annuaire/annuaire-check-window.js": "./js/annuaire/annuaire-check-window.js?v=db6771440e",
     "./js/annuaire/annuaire-check.js": "./js/annuaire/annuaire-check.js?v=2f4c9669cc",
-    "./js/annuaire/annuaire-config.js": "./js/annuaire/annuaire-config.js?v=f9e9fa7e75",
-    "./js/annuaire/annuaire-control.js": "./js/annuaire/annuaire-control.js?v=f48d297871",
+    "./js/annuaire/annuaire-config.js": "./js/annuaire/annuaire-config.js?v=f46d82bbb3",
+    "./js/annuaire/annuaire-control.js": "./js/annuaire/annuaire-control.js?v=eb5adcf014",
     "./js/annuaire/annuaire-copy.js": "./js/annuaire/annuaire-copy.js?v=c7b90011f9",
     "./js/annuaire/annuaire-edit-controls.js": "./js/annuaire/annuaire-edit-controls.js?v=e88be2d954",
+    "./js/annuaire/annuaire-edit-rights.js": "./js/annuaire/annuaire-edit-rights.js?v=70a52da576",
     "./js/annuaire/annuaire-edit-window.js": "./js/annuaire/annuaire-edit-window.js?v=fb785e6c17",
     "./js/annuaire/annuaire-edit.js": "./js/annuaire/annuaire-edit.js?v=d06a98101f",
-    "./js/annuaire/annuaire-filters.js": "./js/annuaire/annuaire-filters.js?v=d8d8de6e2a",
-    "./js/annuaire/annuaire-insert-menu.js": "./js/annuaire/annuaire-insert-menu.js?v=d41cad0037",
+    "./js/annuaire/annuaire-filter-panel.js": "./js/annuaire/annuaire-filter-panel.js?v=e74648385b",
+    "./js/annuaire/annuaire-filters.js": "./js/annuaire/annuaire-filters.js?v=edddfbea00",
+    "./js/annuaire/annuaire-insert-menu.js": "./js/annuaire/annuaire-insert-menu.js?v=3d9e77114b",
     "./js/annuaire/annuaire-items.js": "./js/annuaire/annuaire-items.js?v=603798534c",
     "./js/annuaire/annuaire-keys.js": "./js/annuaire/annuaire-keys.js?v=c27d4b074e",
     "./js/annuaire/annuaire-mail-window.js": "./js/annuaire/annuaire-mail-window.js?v=8e05997e89",
@@ -49,11 +51,11 @@
     "./js/annuaire/annuaire-merge-panel.js": "./js/annuaire/annuaire-merge-panel.js?v=7b24d9b097",
     "./js/annuaire/annuaire-merge-view.js": "./js/annuaire/annuaire-merge-view.js?v=277ddd5f3e",
     "./js/annuaire/annuaire-merge.js": "./js/annuaire/annuaire-merge.js?v=048b7c5248",
-    "./js/annuaire/annuaire-model.js": "./js/annuaire/annuaire-model.js?v=c95a787525",
+    "./js/annuaire/annuaire-model.js": "./js/annuaire/annuaire-model.js?v=cb24cfb020",
     "./js/annuaire/annuaire-org-data.js": "./js/annuaire/annuaire-org-data.js?v=b34d096fe6",
-    "./js/annuaire/annuaire-org-view.js": "./js/annuaire/annuaire-org-view.js?v=99d0ca921c",
+    "./js/annuaire/annuaire-org-view.js": "./js/annuaire/annuaire-org-view.js?v=be6365f6de",
     "./js/annuaire/annuaire-org.js": "./js/annuaire/annuaire-org.js?v=996cdabd56",
-    "./js/annuaire/annuaire-panes.js": "./js/annuaire/annuaire-panes.js?v=bf7404e688",
+    "./js/annuaire/annuaire-panes.js": "./js/annuaire/annuaire-panes.js?v=3f5d579b1f",
     "./js/annuaire/annuaire-pick.js": "./js/annuaire/annuaire-pick.js?v=f206d18eca",
     "./js/annuaire/annuaire-presence.js": "./js/annuaire/annuaire-presence.js?v=b3fa19812d",
     "./js/annuaire/annuaire-relations.js": "./js/annuaire/annuaire-relations.js?v=aec60ceb61",
@@ -61,20 +63,21 @@
     "./js/annuaire/annuaire-schema.js": "./js/annuaire/annuaire-schema.js?v=73535c107f",
     "./js/annuaire/annuaire-setup-fields.js": "./js/annuaire/annuaire-setup-fields.js?v=a45512d688",
     "./js/annuaire/annuaire-setup-levels.js": "./js/annuaire/annuaire-setup-levels.js?v=3402897566",
-    "./js/annuaire/annuaire-setup-options.js": "./js/annuaire/annuaire-setup-options.js?v=c9b5b792bd",
+    "./js/annuaire/annuaire-setup-options.js": "./js/annuaire/annuaire-setup-options.js?v=aed6fd6dbd",
     "./js/annuaire/annuaire-setup-path.js": "./js/annuaire/annuaire-setup-path.js?v=4a393470e8",
-    "./js/annuaire/annuaire-setup-people.js": "./js/annuaire/annuaire-setup-people.js?v=c0042642f8",
+    "./js/annuaire/annuaire-setup-people.js": "./js/annuaire/annuaire-setup-people.js?v=0c2d95dd57",
     "./js/annuaire/annuaire-setup-relations.js": "./js/annuaire/annuaire-setup-relations.js?v=2cd3e340ff",
     "./js/annuaire/annuaire-setup-shared.js": "./js/annuaire/annuaire-setup-shared.js?v=f447ef34e8",
-    "./js/annuaire/annuaire-setup.js": "./js/annuaire/annuaire-setup.js?v=fd5265801d",
+    "./js/annuaire/annuaire-setup-table.js": "./js/annuaire/annuaire-setup-table.js?v=0c011475d9",
+    "./js/annuaire/annuaire-setup.js": "./js/annuaire/annuaire-setup.js?v=b8de12f9c7",
     "./js/annuaire/annuaire-sort.js": "./js/annuaire/annuaire-sort.js?v=aa8418e9be",
-    "./js/annuaire/annuaire-store.js": "./js/annuaire/annuaire-store.js?v=5aa8b9748b",
-    "./js/annuaire/annuaire-sub-control.js": "./js/annuaire/annuaire-sub-control.js?v=f6f5c3bab4",
+    "./js/annuaire/annuaire-store.js": "./js/annuaire/annuaire-store.js?v=76e0679bfd",
+    "./js/annuaire/annuaire-sub-control.js": "./js/annuaire/annuaire-sub-control.js?v=99117efd21",
     "./js/annuaire/annuaire-sub-menu.js": "./js/annuaire/annuaire-sub-menu.js?v=f4e9cb5838",
     "./js/annuaire/annuaire-sub-window.js": "./js/annuaire/annuaire-sub-window.js?v=df1750d487",
     "./js/annuaire/annuaire-sub.js": "./js/annuaire/annuaire-sub.js?v=fe2f433d49",
-    "./js/annuaire/annuaire-tools.js": "./js/annuaire/annuaire-tools.js?v=c559eb5fff",
-    "./js/annuaire/annuaire-window.js": "./js/annuaire/annuaire-window.js?v=77d09c7bfc",
+    "./js/annuaire/annuaire-tools.js": "./js/annuaire/annuaire-tools.js?v=e6e5895fd7",
+    "./js/annuaire/annuaire-window.js": "./js/annuaire/annuaire-window.js?v=a826725254",
     "./js/apps/apps-state.js": "./js/apps/apps-state.js?v=a9238d6e1b",
     "./js/apps/catalogue.js": "./js/apps/catalogue.js?v=2e588e5749",
     "./js/apps/dependencies-audit.js": "./js/apps/dependencies-audit.js?v=268ab61822",
@@ -123,16 +126,17 @@
     "./js/broker/arrival-table.js": "./js/broker/arrival-table.js?v=58ba2ca762",
     "./js/broker/arrival.js": "./js/broker/arrival.js?v=7694fcdfd6",
     "./js/broker/attach.js": "./js/broker/attach.js?v=1c1097b59b",
-    "./js/broker/broker.js": "./js/broker/broker.js?v=91241fc26d",
+    "./js/broker/broker.js": "./js/broker/broker.js?v=0ebcd8a01c",
     "./js/broker/context.js": "./js/broker/context.js?v=319559f3bd",
+    "./js/broker/created-files.js": "./js/broker/created-files.js?v=4b6cddf6fb",
     "./js/broker/deposit.js": "./js/broker/deposit.js?v=357a730c38",
-    "./js/broker/entries.js": "./js/broker/entries.js?v=a9fb06f388",
+    "./js/broker/entries.js": "./js/broker/entries.js?v=e6788e056c",
     "./js/broker/envelope.js": "./js/broker/envelope.js?v=761782e0d4",
     "./js/broker/filter.js": "./js/broker/filter.js?v=bc7c4073e1",
     "./js/broker/frames.js": "./js/broker/frames.js?v=f45d5dcf64",
     "./js/broker/leave.js": "./js/broker/leave.js?v=5437d0c5dc",
     "./js/broker/links.js": "./js/broker/links.js?v=ce850aa50e",
-    "./js/broker/openings.js": "./js/broker/openings.js?v=51b2c28e70",
+    "./js/broker/openings.js": "./js/broker/openings.js?v=900f1ab12c",
     "./js/broker/options-slice.js": "./js/broker/options-slice.js?v=63ada0fcde",
     "./js/broker/own-section.js": "./js/broker/own-section.js?v=b4451c0cb2",
     "./js/broker/player-sites.js": "./js/broker/player-sites.js?v=79d15fdf51",
@@ -142,77 +146,82 @@
     "./js/broker/reading.js": "./js/broker/reading.js?v=750a14c1da",
     "./js/broker/rpc.js": "./js/broker/rpc.js?v=d54b5c5f33",
     "./js/broker/security-relay.js": "./js/broker/security-relay.js?v=2e0d2107de",
-    "./js/broker/session.js": "./js/broker/session.js?v=c5ae6f1148",
+    "./js/broker/session.js": "./js/broker/session.js?v=7a615e2d56",
     "./js/broker/sharing-rules.js": "./js/broker/sharing-rules.js?v=efe8774466",
     "./js/broker/sharing.js": "./js/broker/sharing.js?v=e6dccec1cd",
-    "./js/broker/sql-gate.js": "./js/broker/sql-gate.js?v=d3992fab10",
+    "./js/broker/sql-gate.js": "./js/broker/sql-gate.js?v=9cb1720289",
     "./js/broker/state.js": "./js/broker/state.js?v=69aa288268",
     "./js/broker/transfer.js": "./js/broker/transfer.js?v=063ac32914",
     "./js/broker/view-link.js": "./js/broker/view-link.js?v=1853f29883",
     "./js/broker/view-options.js": "./js/broker/view-options.js?v=7c746e590f",
-    "./js/controller.js": "./js/controller.js?v=c5584183cd",
+    "./js/controller.js": "./js/controller.js?v=eb41cf3df6",
     "./js/explorer/doc-key.js": "./js/explorer/doc-key.js?v=4c44c49f1a",
-    "./js/explorer/explorer-assembly.js": "./js/explorer/explorer-assembly.js?v=256a78cd0f",
+    "./js/explorer/explorer-assembly.js": "./js/explorer/explorer-assembly.js?v=6c261c39dd",
     "./js/explorer/explorer-clipboard.js": "./js/explorer/explorer-clipboard.js?v=62a4670621",
-    "./js/explorer/explorer-data.js": "./js/explorer/explorer-data.js?v=dbde14958d",
+    "./js/explorer/explorer-data.js": "./js/explorer/explorer-data.js?v=c58d0bdf12",
     "./js/explorer/explorer-drag.js": "./js/explorer/explorer-drag.js?v=bb4575a2a0",
     "./js/explorer/explorer-keyboard.js": "./js/explorer/explorer-keyboard.js?v=263046c444",
     "./js/explorer/explorer-keys.js": "./js/explorer/explorer-keys.js?v=15a584580c",
-    "./js/explorer/explorer-menus.js": "./js/explorer/explorer-menus.js?v=d78436ab2d",
+    "./js/explorer/explorer-menus.js": "./js/explorer/explorer-menus.js?v=6f37bb2b42",
     "./js/explorer/explorer-model.js": "./js/explorer/explorer-model.js?v=5ab87f7af8",
     "./js/explorer/explorer-pj.js": "./js/explorer/explorer-pj.js?v=d42f8b3b9a",
     "./js/explorer/explorer-removal.js": "./js/explorer/explorer-removal.js?v=0d645f72be",
-    "./js/explorer/explorer-sql.js": "./js/explorer/explorer-sql.js?v=66f84311f5",
+    "./js/explorer/explorer-sql.js": "./js/explorer/explorer-sql.js?v=b22f2f137d",
     "./js/explorer/explorer-undo.js": "./js/explorer/explorer-undo.js?v=c36b8ccc27",
     "./js/explorer/explorer-view.js": "./js/explorer/explorer-view.js?v=6c6ab70753",
     "./js/explorer/explorer-window.js": "./js/explorer/explorer-window.js?v=6ea159dddf",
-    "./js/explorer/explorer.js": "./js/explorer/explorer.js?v=eb2da00e72",
-    "./js/explorer/file-refresh.js": "./js/explorer/file-refresh.js?v=cfc9cbb1b5",
-    "./js/explorer/files-reading.js": "./js/explorer/files-reading.js?v=1e23914567",
+    "./js/explorer/explorer.js": "./js/explorer/explorer.js?v=16856d87c0",
+    "./js/explorer/file-refresh.js": "./js/explorer/file-refresh.js?v=14ee4e203f",
+    "./js/explorer/files-reading.js": "./js/explorer/files-reading.js?v=ee12a159ef",
     "./js/explorer/filing-window.js": "./js/explorer/filing-window.js?v=6752e9e381",
     "./js/explorer/filing.js": "./js/explorer/filing.js?v=d699ab008e",
     "./js/explorer/heavy-hint.js": "./js/explorer/heavy-hint.js?v=b10999c56c",
+    "./js/explorer/list-signature.js": "./js/explorer/list-signature.js?v=133e376535",
+    "./js/explorer/live-list.js": "./js/explorer/live-list.js?v=c8fca4fc46",
     "./js/explorer/opened-bar.js": "./js/explorer/opened-bar.js?v=0fc35682d4",
     "./js/explorer/opened-files.js": "./js/explorer/opened-files.js?v=975feeb422",
     "./js/explorer/pending.js": "./js/explorer/pending.js?v=d52133a07a",
     "./js/explorer/read-guard.js": "./js/explorer/read-guard.js?v=78d3c86dbb",
-    "./js/files/annuaire-files.js": "./js/files/annuaire-files.js?v=169c00dfd9",
+    "./js/files/annuaire-files.js": "./js/files/annuaire-files.js?v=a79597cbf5",
     "./js/files/app-files.js": "./js/files/app-files.js?v=59b3119c94",
     "./js/files/app-filing.js": "./js/files/app-filing.js?v=6a1875e0f5",
     "./js/files/conflict-window.js": "./js/files/conflict-window.js?v=cd891b5136",
     "./js/files/copying.js": "./js/files/copying.js?v=a806ab3271",
-    "./js/files/file-managers.js": "./js/files/file-managers.js?v=3ad384a62a",
-    "./js/files/files-store.js": "./js/files/files-store.js?v=7157158fdb",
+    "./js/files/file-managers.js": "./js/files/file-managers.js?v=846233fe95",
+    "./js/files/files-store.js": "./js/files/files-store.js?v=f62a6f1507",
     "./js/files/gfs-copy.js": "./js/files/gfs-copy.js?v=a43281652a",
-    "./js/files/gfs-files.js": "./js/files/gfs-files.js?v=e3ef1e908b",
-    "./js/files/gfs-names.js": "./js/files/gfs-names.js?v=46cb9e74d7",
+    "./js/files/gfs-files.js": "./js/files/gfs-files.js?v=1c6aa9de1b",
+    "./js/files/gfs-names.js": "./js/files/gfs-names.js?v=c7db6e7f8b",
     "./js/files/gfs-trash.js": "./js/files/gfs-trash.js?v=cfb556bc0b",
     "./js/files/import-file.js": "./js/files/import-file.js?v=916d102222",
-    "./js/files/kept-files.js": "./js/files/kept-files.js?v=091eaca3f6",
-    "./js/files/names-update.js": "./js/files/names-update.js?v=1677043b4a",
-    "./js/files/own-table.js": "./js/files/own-table.js?v=1fc10c26f7",
-    "./js/files/page-tree.js": "./js/files/page-tree.js?v=e1d8234412",
+    "./js/files/kept-files.js": "./js/files/kept-files.js?v=dd3f6d93b6",
+    "./js/files/names-update.js": "./js/files/names-update.js?v=9eef56ddc1",
+    "./js/files/own-table.js": "./js/files/own-table.js?v=082bb1cdee",
+    "./js/files/page-tree.js": "./js/files/page-tree.js?v=2485763f34",
     "./js/files/rangement.js": "./js/files/rangement.js?v=546af7e657",
-    "./js/files/structure.js": "./js/files/structure.js?v=8172704c09",
+    "./js/files/structure.js": "./js/files/structure.js?v=0fb5b524df",
     "./js/files/trash.js": "./js/files/trash.js?v=3e36b5ca0a",
     "./js/files/undo-stack.js": "./js/files/undo-stack.js?v=bb94cd21d3",
     "./js/i18n/i18n-annuaire-edit.js": "./js/i18n/i18n-annuaire-edit.js?v=3a2235d58a",
-    "./js/i18n/i18n-annuaire-links.js": "./js/i18n/i18n-annuaire-links.js?v=fad6f3f77d",
+    "./js/i18n/i18n-annuaire-filters.js": "./js/i18n/i18n-annuaire-filters.js?v=c1df565431",
+    "./js/i18n/i18n-annuaire-links.js": "./js/i18n/i18n-annuaire-links.js?v=e0f8866e44",
     "./js/i18n/i18n-annuaire-merge.js": "./js/i18n/i18n-annuaire-merge.js?v=faf4d2d98c",
-    "./js/i18n/i18n-annuaire-sub.js": "./js/i18n/i18n-annuaire-sub.js?v=b619fbd9ae",
-    "./js/i18n/i18n-annuaire-tools.js": "./js/i18n/i18n-annuaire-tools.js?v=48995be7cd",
-    "./js/i18n/i18n-annuaire.js": "./js/i18n/i18n-annuaire.js?v=93e4bf055d",
+    "./js/i18n/i18n-annuaire-rights.js": "./js/i18n/i18n-annuaire-rights.js?v=583dcf949a",
+    "./js/i18n/i18n-annuaire-sub.js": "./js/i18n/i18n-annuaire-sub.js?v=669d977f47",
+    "./js/i18n/i18n-annuaire-table.js": "./js/i18n/i18n-annuaire-table.js?v=3bb31cc3d7",
+    "./js/i18n/i18n-annuaire-tools.js": "./js/i18n/i18n-annuaire-tools.js?v=4d20a30a9f",
+    "./js/i18n/i18n-annuaire.js": "./js/i18n/i18n-annuaire.js?v=44a2570021",
     "./js/i18n/i18n-dependencies.js": "./js/i18n/i18n-dependencies.js?v=6d1bf6469a",
-    "./js/i18n/i18n-explorer.js": "./js/i18n/i18n-explorer.js?v=36147f5497",
+    "./js/i18n/i18n-explorer.js": "./js/i18n/i18n-explorer.js?v=9b9ca1353d",
     "./js/i18n/i18n-folders.js": "./js/i18n/i18n-folders.js?v=d284a5dc12",
-    "./js/i18n/i18n-manage.js": "./js/i18n/i18n-manage.js?v=96ccfd68fa",
+    "./js/i18n/i18n-manage.js": "./js/i18n/i18n-manage.js?v=3a26464780",
     "./js/i18n/i18n-natives.js": "./js/i18n/i18n-natives.js?v=e97e96b787",
-    "./js/i18n/i18n-notifications.js": "./js/i18n/i18n-notifications.js?v=f703a62960",
+    "./js/i18n/i18n-notifications.js": "./js/i18n/i18n-notifications.js?v=67008acb81",
     "./js/i18n/i18n-received.js": "./js/i18n/i18n-received.js?v=684f00488e",
     "./js/i18n/i18n-rights.js": "./js/i18n/i18n-rights.js?v=1d8ac3e0c5",
     "./js/i18n/i18n-security.js": "./js/i18n/i18n-security.js?v=7139f06696",
-    "./js/i18n/i18n-share-other.js": "./js/i18n/i18n-share-other.js?v=e8864f99d8",
-    "./js/i18n/i18n-share.js": "./js/i18n/i18n-share.js?v=c6b0149390",
+    "./js/i18n/i18n-share-other.js": "./js/i18n/i18n-share-other.js?v=df8ecffabc",
+    "./js/i18n/i18n-share.js": "./js/i18n/i18n-share.js?v=929fb488be",
     "./js/i18n/i18n-sharing.js": "./js/i18n/i18n-sharing.js?v=7e09272a2c",
     "./js/i18n/i18n-space-links.js": "./js/i18n/i18n-space-links.js?v=7293bccf7c",
     "./js/i18n/i18n-templates.js": "./js/i18n/i18n-templates.js?v=3194fa28f0",
@@ -222,47 +231,56 @@
     "./js/i18n/i18n.js": "./js/i18n/i18n.js?v=f7916dd826",
     "./js/rights/rights-actions.js": "./js/rights/rights-actions.js?v=af82d308a9",
     "./js/rights/rights-control.js": "./js/rights/rights-control.js?v=5750f7187b",
-    "./js/rights/rights-plan.js": "./js/rights/rights-plan.js?v=bd39a45378",
-    "./js/rights/rights-reader.js": "./js/rights/rights-reader.js?v=6facae89da",
+    "./js/rights/rights-plan.js": "./js/rights/rights-plan.js?v=31e9a0fe65",
+    "./js/rights/rights-reader.js": "./js/rights/rights-reader.js?v=883a3e510a",
     "./js/rights/rights-writer.js": "./js/rights/rights-writer.js?v=e48c6b17e1",
     "./js/rights/rights.js": "./js/rights/rights.js?v=e23059be21",
-    "./js/sharing/direct-shares.js": "./js/sharing/direct-shares.js?v=8dc7a738b0",
+    "./js/sharing/address-field.js": "./js/sharing/address-field.js?v=ad7b0dfabb",
+    "./js/sharing/direct-shares.js": "./js/sharing/direct-shares.js?v=40c1780cfa",
     "./js/sharing/folder-identity.js": "./js/sharing/folder-identity.js?v=a358bcf620",
     "./js/sharing/folder-shares.js": "./js/sharing/folder-shares.js?v=32c00ae828",
-    "./js/sharing/group-suggest.js": "./js/sharing/group-suggest.js?v=880824f339",
+    "./js/sharing/group-suggest.js": "./js/sharing/group-suggest.js?v=5030668c75",
+    "./js/sharing/helper-names.js": "./js/sharing/helper-names.js?v=50d3acb092",
     "./js/sharing/link-control.js": "./js/sharing/link-control.js?v=82427e1692",
-    "./js/sharing/manage-control.js": "./js/sharing/manage-control.js?v=c5527270c6",
-    "./js/sharing/manage-other-tab.js": "./js/sharing/manage-other-tab.js?v=132e9a4141",
-    "./js/sharing/manage-window.js": "./js/sharing/manage-window.js?v=395f400909",
-    "./js/sharing/notifications.js": "./js/sharing/notifications.js?v=ee6948014f",
+    "./js/sharing/manage-control.js": "./js/sharing/manage-control.js?v=4d9ee538c8",
+    "./js/sharing/manage-other-tab.js": "./js/sharing/manage-other-tab.js?v=74766ea3c3",
+    "./js/sharing/manage-window.js": "./js/sharing/manage-window.js?v=459a7d2c7d",
+    "./js/sharing/notice-model.js": "./js/sharing/notice-model.js?v=81b38a2d61",
+    "./js/sharing/notice-store.js": "./js/sharing/notice-store.js?v=83d5c5a3e2",
+    "./js/sharing/notifications.js": "./js/sharing/notifications.js?v=0a6254b953",
+    "./js/sharing/other-beta-notice.js": "./js/sharing/other-beta-notice.js?v=02d0828958",
     "./js/sharing/received-control.js": "./js/sharing/received-control.js?v=9602f0a1c2",
-    "./js/sharing/received-files.js": "./js/sharing/received-files.js?v=e4ae087601",
+    "./js/sharing/received-files.js": "./js/sharing/received-files.js?v=b8fa94e47e",
     "./js/sharing/received-folders.js": "./js/sharing/received-folders.js?v=1867d68ede",
-    "./js/sharing/received-marks.js": "./js/sharing/received-marks.js?v=71373cded0",
+    "./js/sharing/received-marks.js": "./js/sharing/received-marks.js?v=2480781931",
     "./js/sharing/received-state.js": "./js/sharing/received-state.js?v=1c9496578a",
     "./js/sharing/received-window.js": "./js/sharing/received-window.js?v=4e40f52a8a",
-    "./js/sharing/share-control.js": "./js/sharing/share-control.js?v=85c2c71bb0",
-    "./js/sharing/share-folder.js": "./js/sharing/share-folder.js?v=0a4b8960db",
+    "./js/sharing/share-control.js": "./js/sharing/share-control.js?v=40a999df81",
+    "./js/sharing/share-files-table.js": "./js/sharing/share-files-table.js?v=1cf317e1ac",
+    "./js/sharing/share-folder.js": "./js/sharing/share-folder.js?v=35077f538b",
     "./js/sharing/share-follow.js": "./js/sharing/share-follow.js?v=e57af62f86",
-    "./js/sharing/share-links.js": "./js/sharing/share-links.js?v=b9a6a1c4f0",
-    "./js/sharing/share-other-flow.js": "./js/sharing/share-other-flow.js?v=9f937aefea",
-    "./js/sharing/share-other-tab.js": "./js/sharing/share-other-tab.js?v=9309dad3d7",
-    "./js/sharing/share-other-window.js": "./js/sharing/share-other-window.js?v=fc07e9d41f",
-    "./js/sharing/share-other.js": "./js/sharing/share-other.js?v=4483077564",
-    "./js/sharing/share-receive-flow.js": "./js/sharing/share-receive-flow.js?v=30e587574b",
-    "./js/sharing/share-receive-window.js": "./js/sharing/share-receive-window.js?v=945d13b4b6",
-    "./js/sharing/share-window.js": "./js/sharing/share-window.js?v=8759d659f8",
-    "./js/sharing/sharing-model.js": "./js/sharing/sharing-model.js?v=c80fd22780",
-    "./js/sharing/space-links.js": "./js/sharing/space-links.js?v=d1ec7dd894",
+    "./js/sharing/share-links.js": "./js/sharing/share-links.js?v=59ed3f5abb",
+    "./js/sharing/share-mail-button.js": "./js/sharing/share-mail-button.js?v=8c02b43117",
+    "./js/sharing/share-mail.js": "./js/sharing/share-mail.js?v=0c3ae22c8e",
+    "./js/sharing/share-other-flow.js": "./js/sharing/share-other-flow.js?v=cf1fd0c9fc",
+    "./js/sharing/share-other-tab.js": "./js/sharing/share-other-tab.js?v=7f478b9ea4",
+    "./js/sharing/share-other-window.js": "./js/sharing/share-other-window.js?v=afa68af4dd",
+    "./js/sharing/share-other.js": "./js/sharing/share-other.js?v=21012c2a69",
+    "./js/sharing/share-receive-flow.js": "./js/sharing/share-receive-flow.js?v=80f2d2792d",
+    "./js/sharing/share-receive-window.js": "./js/sharing/share-receive-window.js?v=1a72a8c91f",
+    "./js/sharing/share-receive.js": "./js/sharing/share-receive.js?v=a03b1c0e22",
+    "./js/sharing/share-window.js": "./js/sharing/share-window.js?v=871f546eb7",
+    "./js/sharing/sharing-model.js": "./js/sharing/sharing-model.js?v=184bf6446b",
+    "./js/sharing/space-links.js": "./js/sharing/space-links.js?v=9e4af9335e",
     "./js/sharing/spaces-filing.js": "./js/sharing/spaces-filing.js?v=51f9bae1b9",
     "./js/sharing/steps-window.js": "./js/sharing/steps-window.js?v=d33d144714",
     "./js/sharing/sync-port-text.js": "./js/sharing/sync-port-text.js?v=6d023ab3c2",
     "./js/sharing/sync-port.js": "./js/sharing/sync-port.js?v=e7994b3c52",
-    "./js/sharing/sync-resume.js": "./js/sharing/sync-resume.js?v=5a875cd98f",
+    "./js/sharing/sync-resume.js": "./js/sharing/sync-resume.js?v=f785f6f289",
     "./js/sharing/sync-rules.js": "./js/sharing/sync-rules.js?v=7c89a0d3cc",
-    "./js/sharing/sync-service.js": "./js/sharing/sync-service.js?v=0d255ac6f3",
+    "./js/sharing/sync-service.js": "./js/sharing/sync-service.js?v=cf1dcccb6f",
     "./js/shell/about.js": "./js/shell/about.js?v=d2b02ee6a7",
-    "./js/shell/annuaire-entry.js": "./js/shell/annuaire-entry.js?v=7e7297e0dc",
+    "./js/shell/annuaire-entry.js": "./js/shell/annuaire-entry.js?v=01171f733b",
     "./js/shell/correcteurs.js": "./js/shell/correcteurs.js?v=55348b7ebd",
     "./js/shell/dock-assembly.js": "./js/shell/dock-assembly.js?v=c80490a181",
     "./js/shell/dock-state.js": "./js/shell/dock-state.js?v=bf40af2343",
@@ -285,7 +303,7 @@
     "./js/ui/menu.js": "./js/ui/menu.js?v=727d1dc390",
     "./js/ui/modal.js": "./js/ui/modal.js?v=718eb713ce",
     "./js/ui/names-window.js": "./js/ui/names-window.js?v=19688016dd",
-    "./js/ui/pick-window.js": "./js/ui/pick-window.js?v=fd2570404f",
+    "./js/ui/pick-window.js": "./js/ui/pick-window.js?v=3fff60a7b6",
     "./js/ui/search.js": "./js/ui/search.js?v=0921c92eb3",
     "./js/ui/tabs.js": "./js/ui/tabs.js?v=b412c3fcbc",
     "./js/weight/weight-alert.js": "./js/weight/weight-alert.js?v=1ece7de8c8",
@@ -398,17 +416,17 @@
      Le navigateur les demande tous d'un coup au lieu d'un niveau d'imports à la fois (9 niveaux, donc 9 allers-retours de réseau). Après la carte d'importation, jamais avant : une page qui commence à
      charger un module avant elle l'ignore et demande les modules sans leur ?v=. -->
 <!-- préchargement -->
-<link rel="modulepreload" href="./js/controller.js?v=c5584183cd">
+<link rel="modulepreload" href="./js/controller.js?v=eb41cf3df6">
 <link rel="modulepreload" href="./js/apps/catalogue.js?v=2e588e5749">
 <link rel="modulepreload" href="./js/apps/manifest.js?v=e4ffb08a57">
 <link rel="modulepreload" href="./js/broker/state.js?v=69aa288268">
-<link rel="modulepreload" href="./js/broker/broker.js?v=91241fc26d">
+<link rel="modulepreload" href="./js/broker/broker.js?v=0ebcd8a01c">
 <link rel="modulepreload" href="./js/broker/view-options.js?v=7c746e590f">
 <link rel="modulepreload" href="./js/broker/own-section.js?v=b4451c0cb2">
 <link rel="modulepreload" href="./js/broker/view-link.js?v=1853f29883">
-<link rel="modulepreload" href="./js/files/page-tree.js?v=e1d8234412">
-<link rel="modulepreload" href="./js/files/own-table.js?v=1fc10c26f7">
-<link rel="modulepreload" href="./js/broker/session.js?v=c5ae6f1148">
+<link rel="modulepreload" href="./js/files/page-tree.js?v=2485763f34">
+<link rel="modulepreload" href="./js/files/own-table.js?v=082bb1cdee">
+<link rel="modulepreload" href="./js/broker/session.js?v=7a615e2d56">
 <link rel="modulepreload" href="./js/broker/app-status.js?v=651007029f">
 <link rel="modulepreload" href="./js/broker/frames.js?v=f45d5dcf64">
 <link rel="modulepreload" href="./js/i18n/i18n.js?v=f7916dd826">
@@ -418,47 +436,49 @@
 <link rel="modulepreload" href="./js/theme/theme-window.js?v=be3e075a12">
 <link rel="modulepreload" href="./js/broker/app-storage.js?v=d24c6008f9">
 <link rel="modulepreload" href="./js/ui/icons.js?v=b0217c0028">
-<link rel="modulepreload" href="./js/explorer/explorer-data.js?v=dbde14958d">
-<link rel="modulepreload" href="./js/explorer/explorer-sql.js?v=66f84311f5">
+<link rel="modulepreload" href="./js/explorer/explorer-data.js?v=c58d0bdf12">
+<link rel="modulepreload" href="./js/explorer/explorer-sql.js?v=b22f2f137d">
 <link rel="modulepreload" href="./js/broker/links.js?v=ce850aa50e">
 <link rel="modulepreload" href="./js/apps/libraries.js?v=c7b6ef11fd">
 <link rel="modulepreload" href="./js/apps/extensions.js?v=753ee79a2f">
 <link rel="modulepreload" href="./js/apps/apps-state.js?v=a9238d6e1b">
 <link rel="modulepreload" href="./js/apps/doc-names.js?v=709850f3a9">
 <link rel="modulepreload" href="./js/apps/row-count.js?v=156be165af">
-<link rel="modulepreload" href="./js/broker/sql-gate.js?v=d3992fab10">
+<link rel="modulepreload" href="./js/broker/sql-gate.js?v=9cb1720289">
 <link rel="modulepreload" href="./js/broker/arrival.js?v=7694fcdfd6">
 <link rel="modulepreload" href="./js/broker/arrival-table.js?v=58ba2ca762">
 <link rel="modulepreload" href="./js/files/rangement.js?v=546af7e657">
-<link rel="modulepreload" href="./js/files/structure.js?v=8172704c09">
-<link rel="modulepreload" href="./js/files/names-update.js?v=1677043b4a">
+<link rel="modulepreload" href="./js/files/structure.js?v=0fb5b524df">
+<link rel="modulepreload" href="./js/files/names-update.js?v=9eef56ddc1">
 <link rel="modulepreload" href="./js/files/app-filing.js?v=6a1875e0f5">
 <link rel="modulepreload" href="./js/rights/rights-control.js?v=5750f7187b">
-<link rel="modulepreload" href="./js/shell/annuaire-entry.js?v=7e7297e0dc">
-<link rel="modulepreload" href="./js/sharing/share-other.js?v=4483077564">
+<link rel="modulepreload" href="./js/shell/annuaire-entry.js?v=01171f733b">
+<link rel="modulepreload" href="./js/sharing/share-other.js?v=21012c2a69">
 <link rel="modulepreload" href="./js/sharing/share-follow.js?v=e57af62f86">
-<link rel="modulepreload" href="./js/sharing/sync-resume.js?v=5a875cd98f">
-<link rel="modulepreload" href="./js/sharing/sync-service.js?v=0d255ac6f3">
+<link rel="modulepreload" href="./js/sharing/sync-resume.js?v=f785f6f289">
+<link rel="modulepreload" href="./js/sharing/sync-service.js?v=cf1dcccb6f">
 <link rel="modulepreload" href="./js/weight/weight-control.js?v=f497becfb5">
-<link rel="modulepreload" href="./js/files/gfs-files.js?v=e3ef1e908b">
-<link rel="modulepreload" href="./js/files/annuaire-files.js?v=169c00dfd9">
+<link rel="modulepreload" href="./js/files/gfs-files.js?v=1c6aa9de1b">
+<link rel="modulepreload" href="./js/files/annuaire-files.js?v=a79597cbf5">
 <link rel="modulepreload" href="./js/broker/transfer.js?v=063ac32914">
 <link rel="modulepreload" href="./js/broker/attach.js?v=1c1097b59b">
 <link rel="modulepreload" href="./js/broker/player.js?v=4044b3ca68">
 <link rel="modulepreload" href="./js/broker/security-relay.js?v=2e0d2107de">
 <link rel="modulepreload" href="./js/ui/ask-window.js?v=bc29f4db59">
-<link rel="modulepreload" href="./js/broker/entries.js?v=a9fb06f388">
-<link rel="modulepreload" href="./js/broker/openings.js?v=51b2c28e70">
+<link rel="modulepreload" href="./js/broker/entries.js?v=e6788e056c">
+<link rel="modulepreload" href="./js/broker/openings.js?v=900f1ab12c">
 <link rel="modulepreload" href="./js/explorer/opened-files.js?v=975feeb422">
-<link rel="modulepreload" href="./js/explorer/files-reading.js?v=1e23914567">
+<link rel="modulepreload" href="./js/explorer/files-reading.js?v=ee12a159ef">
 <link rel="modulepreload" href="./js/explorer/heavy-hint.js?v=b10999c56c">
+<link rel="modulepreload" href="./js/explorer/live-list.js?v=c8fca4fc46">
+<link rel="modulepreload" href="./js/sharing/notice-store.js?v=83d5c5a3e2">
 <link rel="modulepreload" href="./js/explorer/read-guard.js?v=78d3c86dbb">
 <link rel="modulepreload" href="./js/explorer/doc-key.js?v=4c44c49f1a">
 <link rel="modulepreload" href="./js/shell/stored-choice.js?v=038e7aba55">
 <link rel="modulepreload" href="./js/explorer/pending.js?v=d52133a07a">
-<link rel="modulepreload" href="./js/explorer/explorer-assembly.js?v=256a78cd0f">
+<link rel="modulepreload" href="./js/explorer/explorer-assembly.js?v=6c261c39dd">
 <link rel="modulepreload" href="./js/shell/dock-assembly.js?v=c80490a181">
-<link rel="modulepreload" href="./js/sharing/received-files.js?v=e4ae087601">
+<link rel="modulepreload" href="./js/sharing/received-files.js?v=b8fa94e47e">
 <link rel="modulepreload" href="./js/broker/publication-window.js?v=387f9b97c4">
 <link rel="modulepreload" href="./js/apps/modules-window.js?v=6f0bda466f">
 <link rel="modulepreload" href="./js/apps/templates-control.js?v=2d04c161a5">
@@ -474,7 +494,8 @@
 <link rel="modulepreload" href="./js/apps/work-row.js?v=d41fd514ae">
 <link rel="modulepreload" href="./kit/js/synchro/logic/page-order.js?v=6e1140e2ce">
 <link rel="modulepreload" href="./kit/js/synchro/logic/common.js?v=6e8041af84">
-<link rel="modulepreload" href="./js/files/gfs-names.js?v=46cb9e74d7">
+<link rel="modulepreload" href="./js/files/gfs-names.js?v=c7db6e7f8b">
+<link rel="modulepreload" href="./js/sharing/helper-names.js?v=50d3acb092">
 <link rel="modulepreload" href="./js/broker/rpc.js?v=d54b5c5f33">
 <link rel="modulepreload" href="./js/broker/envelope.js?v=761782e0d4">
 <link rel="modulepreload" href="./js/i18n/i18n-trash.js?v=a7a20cc738">
@@ -483,18 +504,18 @@
 <link rel="modulepreload" href="./js/i18n/i18n-natives.js?v=e97e96b787">
 <link rel="modulepreload" href="./js/i18n/i18n-vitrine.js?v=a86dd1c048">
 <link rel="modulepreload" href="./js/i18n/i18n-rights.js?v=1d8ac3e0c5">
-<link rel="modulepreload" href="./js/i18n/i18n-share.js?v=c6b0149390">
-<link rel="modulepreload" href="./js/i18n/i18n-share-other.js?v=e8864f99d8">
-<link rel="modulepreload" href="./js/i18n/i18n-manage.js?v=96ccfd68fa">
+<link rel="modulepreload" href="./js/i18n/i18n-share.js?v=929fb488be">
+<link rel="modulepreload" href="./js/i18n/i18n-share-other.js?v=df8ecffabc">
+<link rel="modulepreload" href="./js/i18n/i18n-manage.js?v=3a26464780">
 <link rel="modulepreload" href="./js/i18n/i18n-space-links.js?v=7293bccf7c">
 <link rel="modulepreload" href="./js/i18n/i18n-received.js?v=684f00488e">
-<link rel="modulepreload" href="./js/i18n/i18n-notifications.js?v=f703a62960">
-<link rel="modulepreload" href="./js/i18n/i18n-explorer.js?v=36147f5497">
+<link rel="modulepreload" href="./js/i18n/i18n-notifications.js?v=67008acb81">
+<link rel="modulepreload" href="./js/i18n/i18n-explorer.js?v=9b9ca1353d">
 <link rel="modulepreload" href="./js/i18n/i18n-sharing.js?v=7e09272a2c">
 <link rel="modulepreload" href="./js/i18n/i18n-templates.js?v=3194fa28f0">
 <link rel="modulepreload" href="./js/i18n/i18n-dependencies.js?v=6d1bf6469a">
 <link rel="modulepreload" href="./js/i18n/i18n-security.js?v=7139f06696">
-<link rel="modulepreload" href="./js/i18n/i18n-annuaire.js?v=93e4bf055d">
+<link rel="modulepreload" href="./js/i18n/i18n-annuaire.js?v=44a2570021">
 <link rel="modulepreload" href="./js/theme/ambiance.js?v=6608543445">
 <link rel="modulepreload" href="./js/theme/oklch.js?v=7ef04e0793">
 <link rel="modulepreload" href="./js/theme/ambiance-forme.js?v=9945157b3b">
@@ -506,40 +527,45 @@
 <link rel="modulepreload" href="./js/files/gfs-trash.js?v=cfb556bc0b">
 <link rel="modulepreload" href="./js/weight/weight.js?v=e7a9477391">
 <link rel="modulepreload" href="./js/sharing/spaces-filing.js?v=51f9bae1b9">
-<link rel="modulepreload" href="./js/sharing/direct-shares.js?v=8dc7a738b0">
-<link rel="modulepreload" href="./js/sharing/space-links.js?v=d1ec7dd894">
-<link rel="modulepreload" href="./js/sharing/sharing-model.js?v=c80fd22780">
+<link rel="modulepreload" href="./js/sharing/direct-shares.js?v=40c1780cfa">
+<link rel="modulepreload" href="./js/sharing/space-links.js?v=9e4af9335e">
+<link rel="modulepreload" href="./js/sharing/sharing-model.js?v=184bf6446b">
 <link rel="modulepreload" href="./js/rights/rights.js?v=e23059be21">
 <link rel="modulepreload" href="./js/weight/weight-reader.js?v=29bbcd0374">
 <link rel="modulepreload" href="./js/apps/settings.js?v=0f283908bd">
 <link rel="modulepreload" href="./js/apps/natives.js?v=1595303d5d">
 <link rel="modulepreload" href="./js/apps/modules-model.js?v=c3fd60515a">
 <link rel="modulepreload" href="./kit/js/i18n.js?v=34aa7f2b67">
-<link rel="modulepreload" href="./js/ui/names-window.js?v=19688016dd">
-<link rel="modulepreload" href="./js/rights/rights-reader.js?v=6facae89da">
-<link rel="modulepreload" href="./js/rights/rights-writer.js?v=e48c6b17e1">
-<link rel="modulepreload" href="./js/sharing/share-control.js?v=85c2c71bb0">
-<link rel="modulepreload" href="./js/sharing/manage-control.js?v=c5527270c6">
-<link rel="modulepreload" href="./js/sharing/link-control.js?v=82427e1692">
-<link rel="modulepreload" href="./js/sharing/share-links.js?v=b9a6a1c4f0">
-<link rel="modulepreload" href="./js/sharing/share-folder.js?v=0a4b8960db">
 <link rel="modulepreload" href="./js/sharing/sync-rules.js?v=7c89a0d3cc">
-<link rel="modulepreload" href="./js/sharing/share-other-flow.js?v=9f937aefea">
-<link rel="modulepreload" href="./js/sharing/received-marks.js?v=71373cded0">
+<link rel="modulepreload" href="./js/ui/names-window.js?v=19688016dd">
+<link rel="modulepreload" href="./js/rights/rights-reader.js?v=883a3e510a">
+<link rel="modulepreload" href="./js/rights/rights-writer.js?v=e48c6b17e1">
+<link rel="modulepreload" href="./js/sharing/share-control.js?v=40a999df81">
+<link rel="modulepreload" href="./js/sharing/manage-control.js?v=4d9ee538c8">
+<link rel="modulepreload" href="./js/sharing/link-control.js?v=82427e1692">
+<link rel="modulepreload" href="./js/sharing/share-links.js?v=59ed3f5abb">
+<link rel="modulepreload" href="./js/sharing/share-folder.js?v=35077f538b">
+<link rel="modulepreload" href="./js/sharing/share-files-table.js?v=1cf317e1ac">
+<link rel="modulepreload" href="./js/sharing/share-receive.js?v=a03b1c0e22">
+<link rel="modulepreload" href="./js/sharing/share-other-flow.js?v=cf1fd0c9fc">
+<link rel="modulepreload" href="./js/sharing/received-marks.js?v=2480781931">
 <link rel="modulepreload" href="./js/weight/weight-window.js?v=70b38075d2">
 <link rel="modulepreload" href="./js/weight/weight-guard.js?v=23387ca160">
 <link rel="modulepreload" href="./js/weight/weight-alert.js?v=1ece7de8c8">
 <link rel="modulepreload" href="./js/files/import-file.js?v=916d102222">
 <link rel="modulepreload" href="./js/broker/reading.js?v=750a14c1da">
 <link rel="modulepreload" href="./js/apps/templates-catalogue.js?v=29be066234">
+<link rel="modulepreload" href="./js/broker/created-files.js?v=4b6cddf6fb">
 <link rel="modulepreload" href="./js/broker/leave.js?v=5437d0c5dc">
-<link rel="modulepreload" href="./js/explorer/file-refresh.js?v=cfc9cbb1b5">
+<link rel="modulepreload" href="./js/explorer/file-refresh.js?v=14ee4e203f">
+<link rel="modulepreload" href="./js/explorer/list-signature.js?v=133e376535">
+<link rel="modulepreload" href="./js/sharing/notice-model.js?v=81b38a2d61">
 <link rel="modulepreload" href="./js/ui/search.js?v=0921c92eb3">
-<link rel="modulepreload" href="./js/explorer/explorer.js?v=eb2da00e72">
+<link rel="modulepreload" href="./js/explorer/explorer.js?v=16856d87c0">
 <link rel="modulepreload" href="./js/explorer/filing.js?v=d699ab008e">
 <link rel="modulepreload" href="./js/explorer/filing-window.js?v=6752e9e381">
 <link rel="modulepreload" href="./js/sharing/folder-shares.js?v=32c00ae828">
-<link rel="modulepreload" href="./js/files/file-managers.js?v=3ad384a62a">
+<link rel="modulepreload" href="./js/files/file-managers.js?v=846233fe95">
 <link rel="modulepreload" href="./js/files/trash.js?v=3e36b5ca0a">
 <link rel="modulepreload" href="./js/files/copying.js?v=a806ab3271">
 <link rel="modulepreload" href="./js/sharing/received-control.js?v=9602f0a1c2">
@@ -563,10 +589,13 @@
 <link rel="modulepreload" href="./js/broker/context.js?v=319559f3bd">
 <link rel="modulepreload" href="./js/broker/sharing-rules.js?v=efe8774466">
 <link rel="modulepreload" href="./js/i18n/i18n-annuaire-edit.js?v=3a2235d58a">
-<link rel="modulepreload" href="./js/i18n/i18n-annuaire-tools.js?v=48995be7cd">
-<link rel="modulepreload" href="./js/i18n/i18n-annuaire-sub.js?v=b619fbd9ae">
+<link rel="modulepreload" href="./js/i18n/i18n-annuaire-tools.js?v=4d20a30a9f">
+<link rel="modulepreload" href="./js/i18n/i18n-annuaire-sub.js?v=669d977f47">
 <link rel="modulepreload" href="./js/i18n/i18n-annuaire-merge.js?v=faf4d2d98c">
-<link rel="modulepreload" href="./js/i18n/i18n-annuaire-links.js?v=fad6f3f77d">
+<link rel="modulepreload" href="./js/i18n/i18n-annuaire-links.js?v=e0f8866e44">
+<link rel="modulepreload" href="./js/i18n/i18n-annuaire-table.js?v=3bb31cc3d7">
+<link rel="modulepreload" href="./js/i18n/i18n-annuaire-filters.js?v=c1df565431">
+<link rel="modulepreload" href="./js/i18n/i18n-annuaire-rights.js?v=583dcf949a">
 <link rel="modulepreload" href="./kit/js/color-math.js?v=e9650179cf">
 <link rel="modulepreload" href="./kit/js/dom.js?v=bb61d5ebe7">
 <link rel="modulepreload" href="./js/ui/layers.js?v=8fb5891dcf">
@@ -575,13 +604,13 @@
 <link rel="modulepreload" href="./kit/js/once.js?v=11c957f00b">
 <link rel="modulepreload" href="./kit/js/host.js?v=daec6a3a1d">
 <link rel="modulepreload" href="./kit/js/color-strings.js?v=1bae4317a5">
-<link rel="modulepreload" href="./js/rights/rights-plan.js?v=bd39a45378">
+<link rel="modulepreload" href="./js/rights/rights-plan.js?v=31e9a0fe65">
 <link rel="modulepreload" href="./js/sharing/folder-identity.js?v=a358bcf620">
-<link rel="modulepreload" href="./js/sharing/share-window.js?v=8759d659f8">
+<link rel="modulepreload" href="./js/sharing/share-window.js?v=871f546eb7">
 <link rel="modulepreload" href="./js/rights/rights-actions.js?v=af82d308a9">
-<link rel="modulepreload" href="./js/sharing/manage-window.js?v=395f400909">
-<link rel="modulepreload" href="./js/ui/pick-window.js?v=fd2570404f">
-<link rel="modulepreload" href="./js/sharing/group-suggest.js?v=880824f339">
+<link rel="modulepreload" href="./js/sharing/manage-window.js?v=459a7d2c7d">
+<link rel="modulepreload" href="./js/ui/pick-window.js?v=3fff60a7b6">
+<link rel="modulepreload" href="./js/sharing/group-suggest.js?v=5030668c75">
 <link rel="modulepreload" href="./js/explorer/explorer-view.js?v=6c6ab70753">
 <link rel="modulepreload" href="./js/explorer/explorer-pj.js?v=d42f8b3b9a">
 <link rel="modulepreload" href="./js/explorer/explorer-removal.js?v=0d645f72be">
@@ -592,10 +621,10 @@
 <link rel="modulepreload" href="./js/explorer/explorer-clipboard.js?v=62a4670621">
 <link rel="modulepreload" href="./js/explorer/explorer-drag.js?v=bb4575a2a0">
 <link rel="modulepreload" href="./js/explorer/explorer-window.js?v=6ea159dddf">
-<link rel="modulepreload" href="./js/explorer/explorer-menus.js?v=d78436ab2d">
-<link rel="modulepreload" href="./js/sharing/notifications.js?v=ee6948014f">
-<link rel="modulepreload" href="./js/files/files-store.js?v=7157158fdb">
-<link rel="modulepreload" href="./js/files/kept-files.js?v=091eaca3f6">
+<link rel="modulepreload" href="./js/explorer/explorer-menus.js?v=6f37bb2b42">
+<link rel="modulepreload" href="./js/sharing/notifications.js?v=0a6254b953">
+<link rel="modulepreload" href="./js/files/files-store.js?v=f62a6f1507">
+<link rel="modulepreload" href="./js/files/kept-files.js?v=dd3f6d93b6">
 <link rel="modulepreload" href="./js/files/app-files.js?v=59b3119c94">
 <link rel="modulepreload" href="./js/broker/app-calls.js?v=b78fa262c3">
 <link rel="modulepreload" href="./js/sharing/received-window.js?v=4e40f52a8a">
@@ -609,16 +638,21 @@
 <link rel="modulepreload" href="./js/apps/dependencies-foot.js?v=b69746e725">
 <link rel="modulepreload" href="./js/apps/dependencies-security-view.js?v=0fbc04896b">
 <link rel="modulepreload" href="./js/apps/dependencies-cyclonedx.js?v=eb9730f52e">
-<link rel="modulepreload" href="./js/sharing/share-other-tab.js?v=9309dad3d7">
+<link rel="modulepreload" href="./js/sharing/share-mail-button.js?v=8c02b43117">
+<link rel="modulepreload" href="./js/sharing/share-other-tab.js?v=7f478b9ea4">
 <link rel="modulepreload" href="./js/ui/tabs.js?v=b412c3fcbc">
-<link rel="modulepreload" href="./js/sharing/manage-other-tab.js?v=132e9a4141">
+<link rel="modulepreload" href="./js/sharing/address-field.js?v=ad7b0dfabb">
+<link rel="modulepreload" href="./js/sharing/manage-other-tab.js?v=74766ea3c3">
 <link rel="modulepreload" href="./js/files/conflict-window.js?v=cd891b5136">
 <link rel="modulepreload" href="./js/broker/deposit.js?v=357a730c38">
 <link rel="modulepreload" href="./js/files/gfs-copy.js?v=a43281652a">
 <link rel="modulepreload" href="./js/sharing/steps-window.js?v=d33d144714">
 <link rel="modulepreload" href="./js/apps/dependencies-detail.js?v=e34b2e5f84">
 <link rel="modulepreload" href="./js/apps/dependencies-carried-view.js?v=6fbfbf0ca6">
+<link rel="modulepreload" href="./js/sharing/share-mail.js?v=0c3ae22c8e">
+<link rel="modulepreload" href="./js/sharing/other-beta-notice.js?v=02d0828958">
 <link rel="modulepreload" href="./js/apps/dependencies-source-view.js?v=ad87b7ba0a">
+<link rel="modulepreload" href="./js/annuaire/annuaire-mail.js?v=0ab8f61b11">
 <!-- /préchargement -->
 <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
 <script type="module" src="js/gfs.js?v=44003a27d4"></script>

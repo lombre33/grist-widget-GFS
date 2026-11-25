@@ -11,6 +11,7 @@ import { groupColumns, spaceColumns, placeColumns, shareColumns, helperColumns, 
 import { readFileSync } from 'node:fs';
 import { BIN_COLUMNS } from '../js/files/gfs-trash.js';
 import { ANNUAIRES_COLUMNS } from '../js/annuaire/annuaire-config.js';
+import { noticeColumns } from '../js/sharing/notice-model.js';
 import { filesColumns, filesNames } from '../js/files/gfs-files.js';
 import { fakeGrist } from './fake-grist.mjs';
 import { fakeDoc } from '../kit/test/names-update-fake.mjs';
@@ -24,11 +25,12 @@ const BEFORE = {
   GFS_Partages: ['Cible', 'Personne', 'Droit', 'Telecharger', 'Fin', 'Auteur', 'AuteurAcces', 'PersonneL', 'Actif', 'Valide1', 'AdminsBase', 'Valide', 'AdminsCible'],
   GFS_Corbeille: ['Identifiant', 'App', 'Table', 'FichierId', 'Nom', 'Type', 'Date', 'Auteur', 'SupprimeLe', 'SupprimePar', 'Instantane'],
   GFS_Annuaires: ['Nom', 'Table', 'Config', 'Parent', 'Fiches'],
+  GFS_Notifications: ['Pour', 'Type', 'Cible', 'Par', 'Cle', 'Quand', 'Lu'],
   GFS_Fichiers: ['Identifiant', 'Nom', 'Type', 'Date', 'Auteur', 'Contenu', 'Taille', 'Origine', 'SupprimeLe', 'SupprimePar', 'Dossier_partage'],
 };
 const NOW = {
   GFS_Filing: FILING_COLUMNS, GFS_Groups: groupColumns(), GFS_Spaces: spaceColumns(), GFS_Placement: placeColumns(), GFS_Shares: shareColumns(), GFS_Trash: BIN_COLUMNS,
-  GFS_Directories: ANNUAIRES_COLUMNS, GFS_Files: [...filesColumns(), { id: filesNames().folder }],
+  GFS_Directories: ANNUAIRES_COLUMNS, GFS_Notifications: noticeColumns(), GFS_Files: [...filesColumns(), { id: filesNames().folder }],
 };
 const idsOf = list => list.map(column => column.id);
 
@@ -262,7 +264,7 @@ test('updateNames : « Continuer sans mettre à jour » (refus de Grist) laisse 
   fake.next = { refuse: 'Blocked by table structure access rules' };
   const show = async ({ run }) => { const result = await run(); return { state: 'skipped', result }; };
   const outcome = await updateNames(flow(fake, { show }));
-  assert.deepEqual([outcome.state, outcome.legacy.length], ['skipped', 8]);
+  assert.deepEqual([outcome.state, outcome.legacy.length], ['skipped', 9]);
   assert.deepEqual(Object.keys(fake.tables()).includes('GFS_Rangement'), true);
   const broken = { fetchTable: async () => { throw new Error('boom'); }, applyUserActions: async () => {} };
   assert.deepEqual(await updateNames({ ...flow(fake), doc: broken }), { state: 'wait', legacy: [], tables: [] });

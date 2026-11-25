@@ -363,3 +363,10 @@ test('responsables : une recherche garde aussi leurs responsables, jusqu\'au som
   const loop = [{ row: 1, name: 'A', manager: 2 }, { row: 2, name: 'B', manager: 1 }];
   assert.equal(withManagers(loop, [loop[0]]).length, 2, 'un cycle ne boucle pas');
 });
+
+test('config : l\'affichage des filtres (panneau ou barre) est un choix de l\'annuaire ; sans lui, le panneau, et une valeur inconnue y revient', () => {
+  assert.equal(readConfig({}).filterMode, 'panel');
+  assert.equal(readConfig({ filterMode: 'bar' }).filterMode, 'bar');
+  assert.equal(readConfig({ filterMode: 'horizontal' }).filterMode, 'panel');
+  assert.equal(readConfig(writeConfig({ ...configFixture(), filterMode: 'bar' })).filterMode, 'bar', 'il survit à l\'écriture dans la ligne de l\'annuaire');
+});

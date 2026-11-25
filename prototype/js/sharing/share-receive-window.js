@@ -9,6 +9,7 @@
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { area, button, codeWithCopy, openSteps, structureNotes } from './steps-window.js';
+import { betaNotice } from './other-beta-notice.js';
 
 // Un champ où l'on colle, et le bouton qui le suit : grisé tant que rien n'est collé.
 function pasteField(ctx, { fk, label, action, run }) {
@@ -24,7 +25,8 @@ function pasteScreen(ctx) {
   const { field, go } = pasteField(ctx, { fk: 'sr-invite', label: t('sr.paste.label'), action: { fk: 'sr-continue', label: t('so.continue') },
     run: text => ctx.read(text) });
   return {
-    body: h('div', { class: 'rt-content' }, h('div', { class: 'sec' }, t('sr.paste.step')), h('p', { class: 'fine' }, t('sr.paste.hint')), field,
+    body: h('div', { class: 'rt-content' }, betaNotice(t, 'sr-beta'), h('div', { class: 'sec' }, t('sr.paste.step')),
+      h('p', { class: 'fine' }, t('sr.paste.hint')), field,
       h('p', { class: 'fine' }, t('sr.paste.after'))),
     buttons: [ctx.cancelButton(), go],
     first: 'sr-invite',
@@ -38,7 +40,7 @@ function accordScreen(ctx, info) {
     : [h('p', { class: 'so-lead' }, icon('info'), h('span', null, t('sr.accord.lead', { name: info.name }))),
       h('div', { class: 'sec' }, t('sr.accord.adds')),
       h('ul', { class: 'so-list' }, h('li', null, t('sr.accord.table', { table: info.table })), h('li', null, t('sr.accord.journal')),
-        h('li', null, t('sr.accord.marks'))),
+        h('li', null, t('sr.accord.marks', { accepted: (info.marks || [])[0] || 'Accepted', refused: (info.marks || [])[1] || 'Refused' }))),
       h('p', { class: 'fine' }, t('sr.accord.rules')),
       ...structureNotes(t),
       h('p', { class: 'fine' }, t('sr.accord.keep'))];
@@ -54,8 +56,10 @@ function linkScreen(ctx, made) {
   const { field, go } = pasteField(ctx, { fk: 'sr-link', label: t('sr.link.label'), action: { fk: 'sr-check', label: t('sr.link.check') },
     run: text => ctx.reply(text) });
   return {
-    body: h('div', { class: 'rt-content' }, h('div', { class: 'sec' }, t('sr.link.step')),
-      h('p', { class: 'fine' }, t('sr.link.hint', { journal: made.journal })), field),
+    body: h('div', { class: 'rt-content' },
+      ...(made.resumed ? [h('p', { class: 'so-lead', dataset: { fk: 'sr-resumed' } }, icon('info'),
+        h('span', null, t('sr.link.resumed', { name: made.resumed.name })))] : []),
+      h('div', { class: 'sec' }, t('sr.link.step')), h('p', { class: 'fine' }, t('sr.link.hint', { journal: made.journal })), field),
     buttons: [ctx.cancelButton(), go],
     first: 'sr-link',
     foot: t('sr.foot.link'),
@@ -80,8 +84,9 @@ function replyScreen(ctx, replied, table) {
   };
 }
 
-// opts : { container, t, inertTargets, createFlow() (le parcours : createTargetFlow), errorText (le moteur), notice (un avis hors fenêtre) }. Rend la promesse
-//   de sa fermeture.
+// opts : { container, t, inertTargets, createFlow() (le parcours : createTargetFlow), errorText (le moteur), notice (un avis hors fenêtre), resumed ({ name } :
+//   Grist a rechargé la page pendant que la fenêtre attendait le lien du formulaire ; la fenêtre revient à cette étape, sans redemander le code) }. Rend la
+//   promesse de sa fermeture.
 export function openShareReceive(opts) {
   const { t } = opts;
   const errorText = error => (error && error.share ? t(`sr.error.${error.share}`, error.vars || {}) : opts.errorText(error));
@@ -101,7 +106,10 @@ export function openShareReceive(opts) {
     ctx.replied = true;
     show(replyScreen(ctx, replied, ctx.table));
   };
-  show(pasteScreen(ctx));
+  if (opts.resumed) {
+    ctx.table = flow.table;
+    show(linkScreen(ctx, { journal: flow.journal, resumed: opts.resumed }));
+  } else show(pasteScreen(ctx));
   // Fermée avant la réponse : ce qui a été créé est défait (une réception reprise ou répondue reste).
   // `settled` (la clôture : js/sharing/sync-rules.js) vient ensuite, une fois le défait terminé.
   void result.then(async () => {

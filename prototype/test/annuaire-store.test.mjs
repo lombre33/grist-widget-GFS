@@ -190,3 +190,24 @@ test('la lecture rend aussi les tables lues : de quoi proposer les valeurs et le
   assert.deepEqual(Object.keys(read.data).sort(), ['Personnes', 'Structures']);
   assert.deepEqual(read.data.Personnes.id, [1, 2, 3, 4, 5, 6]);
 });
+
+test('créer une table pour l\'annuaire : une seule action « AddTable » (le nom et l\'adresse), les identifiants que Grist a donnés ; sans réponse lisible, ceux qu\'on a demandés', async () => {
+  const grist = world();
+  const made = await store(grist).addTable('Directory_People');
+  assert.deepEqual(grist.batches.at(-1), [['AddTable', 'Directory_People', [{ id: 'Name', type: 'Text' }, { id: 'Email', type: 'Text' }]]]);
+  assert.deepEqual(made, { id: 'Directory_People', columns: [{ id: 'Name', type: 'Text' }, { id: 'Email', type: 'Text' }] }, 'sans identifiants dans la réponse : ceux du nom demandé');
+  const batches = [];
+  const port = { doc: { applyUserActions: async actions => { batches.push(actions); return { retValues: [{ table_id: 'Directory_People2', columns: ['Name2', 'Email2'] }] }; } } };
+  assert.deepEqual(await new AnnuaireStore({ port, consent: async () => true }).addTable(' Directory_People '), { id: 'Directory_People2',
+    columns: [{ id: 'Name2', type: 'Text' }, { id: 'Email2', type: 'Text' }] }, 'Grist peut renommer la table et ses colonnes : on prend sa réponse');
+  assert.equal(batches.length, 1, 'un seul lot : tout ou rien');
+  const refused = { port: { doc: { applyUserActions: async () => { throw new Error('refusé'); } } }, consent: async () => true };
+  await assert.rejects(() => new AnnuaireStore(refused).addTable('Directory_People'), /refusé/);
+});
+
+test('le nom proposé pour la table des personnes : « Directory_People », puis _2, _3 tant qu\'une table du document le porte (casse ignorée)', async () => {
+  const { suggestedName } = await import('../js/annuaire/annuaire-setup-table.js');
+  assert.equal(suggestedName({ Personnes: {} }), 'Directory_People');
+  assert.equal(suggestedName({ Personnes: {}, directory_people: {} }), 'Directory_People_2');
+  assert.equal(suggestedName({ Directory_People: {}, DIRECTORY_PEOPLE_2: {} }), 'Directory_People_3');
+});

@@ -7,6 +7,31 @@ import { icon } from './icons.js';
 import { LIST_SHOWN as SHOWN, listKeys, openModal } from './modal.js';
 import { normalize, words, matchesWords } from './search.js';
 
+const fkOf = item => item.fk || `pick-${item.value}`;
+
+// La classe d'un choix, et son grisé : « Créer… » prend la couleur d'accent, un choix grisé garde sa raison dessous (jamais masqué).
+const stateOf = item => ({ class: `wk-item${item.create ? ' is-create' : ''}${item.locked ? ' is-locked' : ''}`,
+  'aria-disabled': item.locked ? 'true' : null });
+
+// Le dernier choix d'une liste qui peut créer : « Créer… » avec ce que la personne a tapé dans la recherche (`typed`, les blancs réduits). Grisé, avec sa
+// raison, quand rien n'est tapé ou que le texte ne va pas. Il rend { create: texte }.
+function createChoice(create, typed) {
+  const reason = typed ? create.refuse(typed) : create.blank;
+  return { create: true, fk: 'pick-create', label: create.label(typed), hint: reason || create.hint(typed), glyph: create.glyph || 'plus',
+    locked: Boolean(reason), alt: false };
+}
+
+const typedIn = search => search.value.replace(/\s+/g, ' ').trim();
+
+// Le texte du pied quand rien ne correspond : celui de la liste, ou, pour une liste qui crée, `create.empty` quand elle est vide et que rien n'est tapé.
+const emptyNote = (create, none, items, search) => (create && !items.length && !typedIn(search) ? create.empty : none);
+
+// Ce que le clic sur un choix rend : { create } pour « Créer… » (rien quand il est grisé), { value, alt } avec un second geste, sinon la valeur.
+function chosenBy(item, button, alt, typed) {
+  if (item.create) return item.locked ? undefined : { create: typed };
+  return alt ? { value: item.value, alt: button.classList.contains('wk-alt') } : item.value;
+}
+
 // La ligne d'un choix : le bouton du choix (son icône, son nom, `hint` dessous quand il y en a un, `sample` à droite : ce que le choix contient pour une
 // personne d'exemple, la coche du choix en cours) et, avec `alt`, un second bouton au bout de la ligne (icône seule, ou icône et texte quand `alt.text`
 // existe) ; on n'y va qu'à la souris ou par → (jamais par Tab : la liste en compterait deux arrêts par ligne). Un choix qui porte `alt: false` n'a pas de
@@ -14,8 +39,8 @@ import { normalize, words, matchesWords } from './search.js';
 function rowOf(item, index, { current, alt }) {
   const mark = { index: String(index) };
   const sample = typeof item.sample === 'function' ? item.sample() : item.sample;
-  const main = h('button', { type: 'button', class: 'wk-item', title: [item.label, item.hint, sample].filter(Boolean).join(' · ') || null,
-    dataset: { ...mark, fk: `pick-${item.value}` },
+  const main = h('button', { type: 'button', title: [item.label, item.hint, sample].filter(Boolean).join(' · ') || null,
+    dataset: { ...mark, fk: fkOf(item) }, ...stateOf(item),
     'aria-current': item.value === current ? 'true' : null },
   icon(item.glyph || 'table'), h('span', { class: 'wk-label' }, h('span', { class: 'wk-name' }, item.label),
     item.hint ? h('span', { class: 'wk-reason' }, item.hint) : null),
@@ -75,10 +100,14 @@ function crumbBar(crumbs, t, back) {
 //   alors
 //   { jump: n } : n est le nombre d'étapes qu'on garde), example (une fonction qui dit d'où viennent les exemples : une ligne sous la recherche), watch (reçoit
 //   une
-//   fonction qui redessine la liste : à appeler quand les exemples arrivent) }.
-// Rend la valeur choisie, ou null quand la personne renonce ; avec `alt`, { value, alt } (`alt` vrai quand elle a pris le second geste).
+//   fonction qui redessine la liste : à appeler quand les exemples arrivent), create : { label(typed), hint(typed), refuse(typed) (la raison qui grise le
+//   choix,
+//   ou null), blank (la raison quand rien n'est tapé), empty (le texte du pied d'une liste vide où rien n'est tapé), glyph } (un dernier choix, « Créer… », qui
+//   garde ce que la personne a tapé dans la recherche : jamais masqué, grisé avec sa raison) }.
+// Rend la valeur choisie, ou null quand la personne renonce ; avec `alt`, { value, alt } (`alt` vrai quand elle a pris le second geste) ; { create: texte }
+// quand elle a pris « Créer… ».
 export function pickFrom({ container, inertTargets, t, title, text = '', items, current = null, none = '', alt = null, quick = false, crumbs = [], back = false,
-  example = null, watch = null }) {
+  example = null, watch = null, create = null }) {
   const search = h('input', { type: 'search', autocomplete: 'off', placeholder: t('pick.search'), 'aria-label': t('pick.search'),
     dataset: { fk: 'pick-search' } });
   const list = h('ul', { class: 'wk-list', 'aria-labelledby': 'pk-title' });
@@ -97,12 +126,12 @@ export function pickFrom({ container, inertTargets, t, title, text = '', items, 
   const render = () => {
     const needles = words(search.value);
     const found = items.filter(item => item.pinned || ((needles.length || !item.searchOnly) && matchesWords(needles, normalize(item.label))));
-    shown = found.slice(0, SHOWN);
+    shown = [...found.slice(0, SHOWN), ...(create ? [createChoice(create, typedIn(search))] : [])];
     const kept = list.ownerDocument.activeElement && list.contains(list.ownerDocument.activeElement) ? list.ownerDocument.activeElement.dataset.fk : null;
     list.replaceChildren(...shown.map((item, index) => rowOf(item, index, { current, alt })));
     const again = kept && [...list.querySelectorAll('[data-fk]')].find(node => node.dataset.fk === kept);
     if (again) again.focus({ preventScroll: true });
-    note.textContent = !found.length ? none : (found.length > SHOWN ? t('work.more', { n: SHOWN, total: found.length }) : '');
+    note.textContent = !found.length ? emptyNote(create, none, items, search) : (found.length > SHOWN ? t('work.more', { n: SHOWN, total: found.length }) : '');
     const where = example ? example() : '';
     source.textContent = where;
     source.hidden = !where;
@@ -111,7 +140,8 @@ export function pickFrom({ container, inertTargets, t, title, text = '', items, 
   list.addEventListener('click', event => {
     const button = event.target.closest('.wk-item, .wk-alt');
     const item = button && shown[Number(button.dataset.index)];
-    if (item) done(alt ? { value: item.value, alt: button.classList.contains('wk-alt') } : item.value);
+    const picked = item ? chosenBy(item, button, alt, typedIn(search)) : undefined;
+    if (picked !== undefined) done(picked);
   });
   cancel.addEventListener('click', () => done(null));
   if (canBack) {

@@ -24,6 +24,9 @@ export const GFS_RENAMES = Object.freeze([
   { table: 'GFS_Trash', before: 'GFS_Corbeille', columns: {
     Identifiant: 'EntryId', FichierId: 'FileId', Nom: 'Name', Auteur: 'Author', SupprimeLe: 'DeletedAt', SupprimePar: 'DeletedBy', Instantane: 'Snapshot' } },
   { table: 'GFS_Directories', before: 'GFS_Annuaires', columns: { Nom: 'Name', Fiches: 'Copy' } },
+  // Les notifications (js/sharing/notice-model.js) : née le 25/11, la table garde son nom, ses colonnes passent à l'anglais.
+  { table: 'GFS_Notifications', before: 'GFS_Notifications', columns: { Pour: 'Recipient', Cible: 'Target', Par: 'By', Cle: 'Key', Quand: 'When',
+    Lu: 'Read' } },
   // Les PDF que GFS garde (js/files/gfs-files.js, `FILES_NAMES`) : renommée quand Sync+ ne l'utilise pas, laissée telle quelle sinon (ci-dessous).
   { table: 'GFS_Files', before: 'GFS_Fichiers', columns: { Identifiant: 'FileId', Nom: 'Name', Auteur: 'Author', Contenu: 'Content', Taille: 'Size',
     Origine: 'Origin',

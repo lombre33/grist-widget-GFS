@@ -78,3 +78,19 @@ test('la reprise ne demande jamais la fermeture de la structure : un propriétai
   assert.equal(asked[0].docApi, docApi);
   assert.equal(asked[0].structure, undefined);
 });
+
+test('une réception qui attendait le lien du formulaire rouvre sa fenêtre APRÈS la reprise des boucles, et seulement si la page n\'est pas sur le point d\'être rechargée par Grist', async () => {
+  const calls = [];
+  const resumeReception = async () => { calls.push('window'); };
+  await resumeSharing({ docApi: docOf(['GFS_Recus', 'GFS_Journal_Facture']), isOwner: owner, resumeReception }, engineFor(calls), closing(calls), async () => []);
+  assert.deepEqual(calls, ['close', 'receive', 'window'], 'les règles, la boucle, puis la fenêtre');
+  const reloading = [];
+  await resumeSharing({ docApi: docOf(['GFS_Recus', 'GFS_Journal_Facture']), isOwner: owner, resumeReception: async () => { reloading.push('window'); } }, engineFor(reloading), closing(reloading, true), async () => []);
+  assert.deepEqual(reloading, ['close'], 'Grist recharge la page : la fenêtre s\'ouvrirait pour être fermée aussitôt');
+  const sending = [];
+  await resumeSharing({ docApi: docOf(['GFS_Fichiers', 'GFS_Synchro']), isOwner: owner, resumeReception: async () => { sending.push('window'); } }, engineFor(sending), closing(sending), async () => []);
+  assert.deepEqual(sending, ['close', 'load'], 'sans journal reçu, aucune réception n\'attend');
+  const stranger = [];
+  await resumeSharing({ docApi: docOf(['GFS_Recus', 'GFS_Journal_Facture']), isOwner: async () => false, resumeReception: async () => { stranger.push('window'); } }, engineFor(stranger), closing(stranger));
+  assert.deepEqual(stranger, [], 'sans la preuve d\'être propriétaire, rien ne s\'ouvre');
+});

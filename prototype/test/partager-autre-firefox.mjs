@@ -16,7 +16,9 @@ function shareTabOwn() {
   const text = node => (node ? node.textContent.replace(/\s+/g, ' ').trim() : null);
   return {
     tabs: [...share.querySelectorAll('.mg-tab')].map(node => [node.dataset.fk, node.getAttribute('aria-selected')]),
-    links: [...share.querySelectorAll('.rr[data-link]')].map(row => ({ id: row.dataset.link, level: row.dataset.level, label: text(row.querySelector('.lvl')), locked: row.querySelector('.lvl').getAttribute('aria-disabled') === 'true', tag: text(row.querySelector('.tag')) })),
+    links: [...share.querySelectorAll('.rr[data-link]')].map(row => ({ id: row.dataset.link, level: row.dataset.level, label: text(row.querySelector('.lvl')), locked: row.querySelector('.lvl').getAttribute('aria-disabled') === 'true', busy: row.querySelector('.lvl').getAttribute('aria-busy') === 'true',
+      spinning: row.querySelector('.lvl .ic') ? getComputedStyle(row.querySelector('.lvl .ic')).animationName : null, tag: text(row.querySelector('.tag')) })),
+    foot: text(share.querySelector('.mod-note')),
     fresh: (() => { const node = share.querySelector('[data-fk="other-new"]'); return node ? node.getAttribute('aria-disabled') === 'true' : null; })(),
     menu: [...document.querySelectorAll('.menu .menu-item')].map(node => ({ text: text(node), greyed: node.getAttribute('aria-disabled') === 'true' })),
   };
@@ -53,7 +55,7 @@ async function accordFlow(page, tools, t) {
   tools.fits(kind, now, 'l\'accord');
   const radios = await page.run(() => ['once', 'live'].map(mode => { const node = document.querySelector(`[data-fk="so-mode-${mode}"]`); return node ? node.checked : null; }));
   if (radios[0] !== true || radios[1] !== false) tools.run.note(kind, `l'accord devait proposer « ${t('so.mode.once')} » (coché) et « ${t('so.mode.live')} » (état des deux choix : ${JSON.stringify(radios)})`);
-  for (const part of [t('so.mode.once'), t('so.mode.live')]) if (!now.modal.body.includes(part)) tools.run.note(kind, `l'accord devait dire « ${part} »`);
+  for (const part of [t('so.mode.once'), t('so.mode.live'), t('so.beta')]) if (!now.modal.body.includes(part)) tools.run.note(kind, `l'accord devait dire « ${part} »`);
   // La structure du document se ferme avec les tables techniques (choix du porteur, 18/11) : l'accord le dit avec les mots de la question d'activation du partage.
   for (const part of [t('so.accord.adds'), t('so.accord.hook'), t('so.accord.keep'), t('so.accord.rules'), t('rights.ask.sharing.structure'), t('rights.ask.close.item2')]) if (!now.modal.body.includes(part)) tools.run.note(kind, `l'accord devait dire « ${part} » (il dit « ${now.modal.body.slice(0, 160)} »)`);
   // « Exiger la comparaison du code de contrôle » : proposé et coché au départ (décision du 09/11, audit de sécurité), décochable à la vraie souris.
@@ -134,6 +136,7 @@ async function linkFlow(page, tools, t) {
   const now = await tools.open(kind, 'lien');
   if (!now.modal) return;
   tools.fits(kind, now, 'l\'accord du lien');
+  if (!now.modal.body.includes(t('so.beta'))) tools.run.note(kind, 'l\'accord du lien devait dire que la fonction repose sur Sync+, encore en bêta, donc très expérimentale');
   if (!now.modal.body.includes(t('so.link.lead')) || now.modal.keys.some(key => key.startsWith('so-mode-')) || !now.modal.body.includes(t('so.accord.hook.live'))) tools.run.note(kind, `l'accord devait dire que rien n'est envoyé maintenant, sans choix une fois / à jour (il dit « ${now.modal.body.slice(0, 200)} »)`);
   if (!now.modal.title.includes(t('so.title.link'))) tools.run.note(kind, `le titre devait être « ${t('so.title.link')} » (il est « ${now.modal.title} »)`);
   await tools.press(kind, 'so-continue');
@@ -153,6 +156,21 @@ async function linkFlow(page, tools, t) {
   tools.fits(kind, done, 'la fin du lien');
   await tools.press(kind, 'so-close');
   await tools.expect(kind, '« Fermer » devait fermer la fenêtre', s => s.modal === null);
+}
+
+// Relier un document qui n'a aucun PDF de GFS (retour du porteur du 25/11 : « cols is null » au « Continuer ») : l'accord dit que la table des fichiers naît (vide, avec les trois colonnes d'aide), et plus
+// « trois colonnes d'aide dans la table » (elle n'existe pas encore) ; la fenêtre tient dans la page ; un document qui a déjà des PDF garde les mots d'avant (le parcours `lien`, plus haut).
+async function newTableFlow(page, tools, t) {
+  const kind = 'relier un document sans PDF';
+  const now = await tools.open(kind, 'lien-neuf');
+  if (!now.modal) return;
+  tools.fits(kind, now, 'l\'accord du lien, table à créer');
+  const created = t('so.accord.files', { table: 'GFS_Fichiers', columns: 'id_sync, MajLe, RecalculLe' });
+  const before = t('so.accord.columns', { table: 'GFS_Fichiers', columns: 'id_sync, MajLe, RecalculLe' });
+  if (!now.modal.body.includes(created)) tools.run.note(kind, `l'accord devait dire « ${created} » (il dit « ${now.modal.body.slice(0, 200)} »)`);
+  if (now.modal.body.includes(before)) tools.run.note(kind, 'l\'accord ne devait plus dire que la table a déjà ses colonnes d\'aide : elle n\'existe pas encore');
+  await page.press('Escape');
+  await tools.expect(kind, 'Échap devait fermer la fenêtre', s => s.modal === null);
 }
 
 async function failureFlow(page, tools, t) {
@@ -206,6 +224,8 @@ async function openShareTab(page, tools, t, kind, links) {
   return tools.press(kind, 'share-tab-other');
 }
 
+const linkOf = (id, tab) => tab.links.find(link => link.id === id);
+
 async function tabFlow(page, tools, t) {
   const kind = 'l\'onglet de « Partager »';
   if (!(await openShareTab(page, tools, t, kind, 'actifs'))) return;
@@ -213,6 +233,7 @@ async function tabFlow(page, tools, t) {
   const tab = open.tab;
   if (!tab || tab.links.length !== 3) return;
   const by = id => tab.links.find(link => link.id === id);
+  if (!tab.body.includes(t('so.beta'))) tools.run.note(kind, 'l\'onglet devait dire que la fonction repose sur Sync+, encore en bêta, donc très expérimentale');
   if (tab.tabs.find(item => item[0] === 'share-tab-other')[1] !== 'true') tools.run.note(kind, 'l\'onglet « Dans un autre document Grist » devait être le choisi');
   if (!tab.inPage || !tab.sticky || tab.outside.length) tools.run.note(kind, `la fenêtre devait tenir dans la page, titre et bouton en place, rien ne sortir (sort : ${tab.outside.join(', ')})`);
   const expectLink = (id, level, label, tag, locked) => {
@@ -236,7 +257,24 @@ async function tabFlow(page, tools, t) {
   }
   const itemAt = label => itemCenter(page, label);
   const live = await itemAt(t('so.level.live'));
-  if (live) { await page.click(...live); await tools.expect(kind, 'le choix devait demander le niveau « à jour »', s => s.shareActs.some(act => act[0] === 'level' && act[1] === 'e3' && act[2] === 'live')); }
+  // Sur un serveur lointain, le niveau met plusieurs secondes à s'écrire (retour du porteur du 25/11) : la page retient la réponse (`window.__levelHold`), et le lien doit dire tout de suite
+  // « Mise à jour… » (bouton occupé, flèche qui tourne, bas de la fenêtre), sans menu, puis revenir à son niveau quand la réponse arrive.
+  if (live) {
+    await page.run(() => { window.__levelHold = true; });
+    await page.click(...live);
+    const writing = await tools.expect(kind, 'le choix devait demander le niveau « à jour » et le lien dire « Mise à jour… » tout de suite', s => s.shareActs.some(act => act[0] === 'level' && act[1] === 'e3' && act[2] === 'live') && s.tab && linkOf('e3', s.tab).busy);
+    const link = writing.tab && linkOf('e3', writing.tab);
+    if (link && (link.label !== t('so.level.working') || !link.locked)) tools.run.note(kind, `le lien occupé devait dire « ${t('so.level.working')} » et être fermé (il dit ${JSON.stringify(link)})`);
+    if (link && link.spinning === 'none') tools.run.note(kind, 'la flèche du lien occupé devait tourner');
+    if (writing.tab && writing.tab.foot !== t('so.level.working.foot', { doc: 'Archives' })) tools.run.note(kind, `le bas de la fenêtre devait nommer le document (il dit « ${writing.tab && writing.tab.foot} »)`);
+    if (writing.tab && !writing.tab.inPage) tools.run.note(kind, 'la fenêtre du niveau qui s\'écrit devait tenir dans la page');
+    await tools.press(kind, 'other-level-e3');
+    const stillBusy = await tools.snap();
+    if (stillBusy.tab && stillBusy.tab.menu.length) tools.run.note(kind, 'un lien occupé ne devait ouvrir aucun menu');
+    await page.run(() => { window.__levelHold = false; window.__levelRelease(); });
+    const written = await tools.expect(kind, 'la réponse reçue, le lien devait cesser d\'être occupé et le bas de la fenêtre revenir à son texte', s => s.tab && !linkOf('e3', s.tab).busy && s.tab.foot === t('share.foot'));
+    if (written.tab && linkOf('e3', written.tab).label === t('so.level.working')) tools.run.note(kind, 'le lien devait reprendre son niveau');
+  }
   // « Une copie, une fois » : l'avis dit que le fichier part, sans attendre la fin.
   await tools.press(kind, 'other-level-e1');
   await tools.expect(kind, 'le menu devait s\'ouvrir', s => s.tab && s.tab.menu.length === 3);
@@ -413,6 +451,7 @@ export async function partagerAutreProblems(page, language, tag) {
     await sendingFlow(page, tools, t, 'perso');
     await sendingFlow(page, tools, t, 'ok', 'once', false);
     await linkFlow(page, tools, t);
+    await newTableFlow(page, tools, t);
     await failureFlow(page, tools, t);
     await tabFlow(page, tools, t);
     await emptyTabFlow(page, tools, t);

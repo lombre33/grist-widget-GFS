@@ -112,6 +112,12 @@
 .wk-alt.has-text span { overflow: hidden; text-overflow: ellipsis; }
 .wk-item.is-locked { cursor: not-allowed; }
 .wk-item.is-locked .wk-name { color: var(--text-muted); }
+/* « Créer… » au bout d'une liste qui peut créer (js/ui/pick-window.js `create`) : la couleur d'accent, un filet au-dessus quand des choix le précèdent ; grisé, il garde sa raison
+   dessous (jamais masqué). */
+.wk-item.is-create:not(.is-locked) .wk-name { color: var(--accent-ink); font-weight: 600; }
+.wk-item.is-create:not(.is-locked) .ic { color: var(--accent-ink); }
+.wk-row:not(:first-child):has(> .is-create) { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--border); }
+.wk-item.is-create .wk-name { white-space: normal; }
 /* Déplacer (filing-window.js) : le nouveau dossier que dit la recherche porte le « + » de l'accent. */
 .wk-item.is-fresh .ic { color: var(--accent-ink); }
 

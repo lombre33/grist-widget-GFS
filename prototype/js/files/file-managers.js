@@ -5,13 +5,15 @@
 
 import { FilesStore } from './files-store.js';
 import { KeptFiles } from './kept-files.js';
+import { filesNames } from './gfs-files.js';
 import { AppFiles } from './app-files.js';
 import { activeAppCalls } from '../broker/app-calls.js';
 
-// Les fichiers que GFS garde lui-même, les PDF : le cadre d'envoi, la table `GFS_Fichiers` (créée avec l'accord de la personne), et ce qu'il faut pour
+// Les fichiers que GFS garde lui-même, les PDF : le cadre d'envoi, la table `GFS_Files` (créée avec l'accord de la personne), et ce qu'il faut pour
 // importer, télécharger et supprimer. Le cadre d'envoi ne s'ouvre qu'au premier transfert.
 export function buildKept(c, { ask, hideNotice }) {
-  const consent = () => ask({ title: c.t('files.table.title'), message: c.t('files.table.text'), confirmLabel: c.t('table.create'),
+  const consent = () => ask({ title: c.t('files.table.title', { table: filesNames().table }), message: c.t('files.table.text'),
+    confirmLabel: c.t('table.create'),
     cancelLabel: c.t('table.cancel') });
   return new KeptFiles({
     store: new FilesStore({ port: c.port, transfer: c.transfer, consent, identity: () => c.identity }), doc: c.doc, container: c.$('stage'),

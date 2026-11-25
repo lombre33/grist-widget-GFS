@@ -9,6 +9,10 @@
 // contrôleur de GFS ; `window.__annuaireCopied` garde le dernier texte copié (le presse-papiers lui-même se mesure dans le labo).
 // `?home=merged` : l'annuaire s'ouvre sur la vue fusionnée « Tous mes annuaires » (test/annuaire-merge-firefox.mjs), sinon sur l'annuaire de la ligne 1.
 // `window.__ambiance(id)` et `window.__theme.chooseAccess(on)` posent l'ambiance et l'accessibilité renforcée comme GFS (test/annuaire-ambiances-firefox.mjs).
+// `?none=1` : le document n'a encore aucun annuaire (test/annuaire-nouveau-firefox.mjs : « Nouveau > Annuaire » commence par le réglage du premier).
+// `?filters=bar` : l'annuaire principal montre ses filtres en barre (`filterMode`, test/annuaire-filtres-firefox.mjs), sinon en panneau.
+// `?rights=self,own,below,role` : qui modifie les fiches de l'annuaire principal en plus des administrateurs (`edit` : sa fiche, sa structure, avec celles en dessous, la colonne
+// « Gestion », cochée pour Louis Girard) ; avec `&admin=0&me=adresse`, une personne qui lit sans être administratrice.
 // `?links=1` : les apps du menu « Insérer dans… » (voir `FAKE_TARGETS`) ; sans lui aucune app n'accepte de personne.
 //
 // `?sub=1` : les sous-annuaires (test/annuaire-sub-firefox.mjs) : `GFS_Directories` porte les colonnes que le moteur de partage y pose (lecteurs, écrivains, administrateurs,
@@ -42,6 +46,22 @@ function longDocument() {
   };
   for (const [key, value] of Object.entries(person)) people[key].push(value);
   people.Assistant[3] = person.id; // la personne au nom très long est l'assistant de Louis Girard : une relation qui pousse la mise en page
+  return document;
+}
+
+// Le document des essais de `?rights=…` (test/annuaire-droits-firefox.mjs) : celui de `longDocument`, plus une colonne oui/non « Gestion » (cochée pour Louis Girard seul)
+// que l'annuaire peut prendre pour le rôle désigné.
+function rightsDocument() {
+  const document = longDocument();
+  const { Personnes: people, _grist_Tables_column: columns } = document;
+  people.Gestion = people.id.map(row => row === 4);
+  columns.id.push(39);
+  columns.parentId.push(1);
+  columns.colId.push('Gestion');
+  columns.type.push('Bool');
+  columns.visibleCol.push(0);
+  columns.widgetOptions.push('');
+  columns.isFormula.push(false);
   return document;
 }
 
@@ -103,7 +123,7 @@ async function seedSub(grist, seed) {
 }
 
 // Les apps du menu « Insérer dans… » de `?links=1` (test/annuaire-links-firefox.mjs) : deux qui reçoivent une personne, une qu'il faut d'abord activer, une qui ne sait
-// pas encore. `window.__annuaireInserted` garde ce que le menu leur a envoyé, `window.__annuaireUnlocked` les apps grisées qu'on a cliquées.
+// pas encore. `window.__annuaireInserted` garde ce que le menu leur a envoyé, `window.__annuaireUnlocked` les apps grisées qu'on a cliquées, `window.__annuaireApps` les ouvertures de la fenêtre des apps.
 const FAKE_TARGETS = Object.freeze([
   { id: 'pp', name: 'Publipostage+', where: 'dans un modèle', lock: '', focus: null, ready: true },
   { id: 'fp', name: 'Form+', where: 'dans un formulaire', lock: '', focus: null, ready: true },
@@ -122,7 +142,8 @@ async function mount() {
   try { window.localStorage.removeItem('gfs.annuaire.orgPeople'); } catch (error) { /* sans stockage, l'essai part du réglage par défaut */ }
   const query = new URLSearchParams(location.search);
   const tools = query.get('tools') === '1';
-  const grist = fakeGrist(tablesOf(tools ? toolsDocument() : longDocument()));
+  const rights = (query.get('rights') || '').split(',');
+  const grist = fakeGrist(tablesOf(tools ? toolsDocument() : (rights.includes('role') ? rightsDocument() : longDocument())));
   // Deux réglages pour les essais de « Modifier » : `window.__annuaireRefuse` (un texte : Grist refuse d'écrire la table des personnes, comme le ferait une règle d'accès)
   // et `window.__annuaireBlock` (un texte : le document ne s'écrit pas, ce que dit `writeBlock`).
   const applyUserActions = grist.port.doc.applyUserActions;
@@ -133,16 +154,21 @@ async function mount() {
   const seed = new AnnuaireStore({ port: grist.port, consent: async () => true });
   // L'annuaire principal met l'adresse et le télétravail (un oui/non) en colonnes de la liste (retour du porteur, 25/11) : toute la mesure de la liste les porte.
   const base = configFixture();
-  const options = tools ? { checks: ['dup', 'mail', 'att', 'resp', 'dep'], leave: 'Depart', presence: { on: true, col: 'Masquee' }, mail: { per: 40, to: 'bcc' } } : {};
-  await seed.create({ name: 'Annuaire principal', table: 'Personnes', config: { ...base, ...options, columns: ['email'],
-    fields: base.fields.map(field => (field.col === 'Teletravail' ? { ...field, column: true } : field)) } });
-  await seed.create({ name: 'Annuaire des directions', table: 'Personnes', config: { ...configFixture(), levels: configFixture().levels.slice(0, 2) } });
+  const options = { ...(tools ? { checks: ['dup', 'mail', 'att', 'resp', 'dep'], leave: 'Depart', presence: { on: true, col: 'Masquee' }, mail: { per: 40, to: 'bcc' } } : {}),
+    ...(query.get('filters') === 'bar' ? { filterMode: 'bar' } : {}),
+    edit: { self: rights.includes('self'), level: rights.includes('below') ? 'below' : (rights.includes('own') ? 'own' : ''), role: rights.includes('role') ? 'Gestion' : '' } };
+  if (query.get('none') !== '1') {
+    await seed.create({ name: 'Annuaire principal', table: 'Personnes', config: { ...base, ...options, columns: ['email'],
+      fields: base.fields.map(field => (field.col === 'Teletravail' ? { ...field, column: true } : field)) } });
+    await seed.create({ name: 'Annuaire des directions', table: 'Personnes', config: { ...configFixture(), levels: configFixture().levels.slice(0, 2) } });
+  }
   if (query.get('sub') === '1') await seedSub(grist, seed);
   window.__annuaireNotices = [];
   window.__annuaireCopied = null;
   window.__annuaireShared = null;
   window.__annuaireInserted = [];
   window.__annuaireUnlocked = [];
+  window.__annuaireApps = 0;
   let lang = language;
   const control = new AnnuaireControl({ port: grist.port, container: document.getElementById('stage'), t: (key, vars) => i18n.t(key, vars), locale: () => locale(lang),
     inertTargets: () => [], ask: async () => true, notice: text => window.__annuaireNotices.push(text), writeBlock: () => window.__annuaireBlock || null, fullAccess: () => true,
@@ -150,7 +176,7 @@ async function mount() {
     rights: query.get('sub') === '1' ? fakeRights() : undefined,
     targets: () => (query.get('links') === '1' ? FAKE_TARGETS : []),
     insert: async (id, person) => { window.__annuaireInserted.push({ id, person }); return true; },
-    unlock: async target => { window.__annuaireUnlocked.push(target.id); } });
+    unlock: async target => { window.__annuaireUnlocked.push(target.id); }, apps: async () => { window.__annuaireApps += 1; } });
   // Sans numéro, l'annuaire s'ouvre sur la vue fusionnée dès qu'il y a deux annuaires : les essais d'un seul annuaire partent de la ligne 1 (`?home=merged` : la vue fusionnée).
   const openIt = control.open.bind(control);
   control.open = (row = query.get('home') === 'merged' ? null : 1) => openIt(row);

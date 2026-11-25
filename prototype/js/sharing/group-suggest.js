@@ -4,11 +4,19 @@
 
 const ADDRESS = /^[^\s@,;<>()"'[\]]+@[^\s@,;<>()"'[\]]+\.[^\s@,;<>()"'[\]]+$/;
 
-// Les adresses d'un texte (séparées par des espaces, retours à la ligne, virgules ou points-virgules), en minuscules, sans doublon, dans l'ordre.
-export function addressesIn(text) {
-  const found = String(text ?? '').split(/[\s,;]+/).map(word => word.trim().toLowerCase()).filter(word => ADDRESS.test(word));
-  return [...new Set(found)];
+// Les mots d'un texte (séparés par des espaces, retours à la ligne, virgules ou points-virgules), rangés : `good` les adresses, en minuscules, sans doublon,
+// dans l'ordre ; `bad` ce qui n'en est pas, tel que tapé, sans doublon.
+export function splitAddresses(text) {
+  const good = new Set();
+  const bad = new Set();
+  for (const word of String(text ?? '').split(/[\s,;]+/).filter(Boolean)) {
+    if (ADDRESS.test(word.toLowerCase())) good.add(word.toLowerCase()); else bad.add(word);
+  }
+  return { good: [...good], bad: [...bad] };
 }
+
+// Les adresses d'un texte, en minuscules, sans doublon, dans l'ordre ; le reste est ignoré.
+export const addressesIn = text => splitAddresses(text).good;
 
 // Les adresses d'une colonne : les valeurs d'une colonne de texte, de choix ou de liste de choix (un tableau commençant par « L » dans le format de Grist).
 export function addressesOfColumn(values) {

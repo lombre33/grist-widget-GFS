@@ -1,4 +1,4 @@
-// Les fichiers que GFS garde lui-même (contrats 6.6) : les PDF. Ils vivent dans la table `GFS_Fichiers` du document (une ligne par fichier, le PDF en pièce
+// Les fichiers que GFS garde lui-même (contrats 6.6) : les PDF. Ils vivent dans la table `GFS_Files` du document (une ligne par fichier, le PDF en pièce
 // jointe Grist), et ce module est tout ce que GFS en sait sans toucher à Grist : le manifeste « intégré » qui les fait lister par l'explorateur comme ceux
 // d'une app, les colonnes de la table, les règles de nom (un nom est pris sans tenir compte de la casse ni des espaces ; une copie s'appelle « Nom (1).pdf »),
 // l'identifiant d'un fichier et l'enregistrement qu'on écrit. Du code sans effet de bord.

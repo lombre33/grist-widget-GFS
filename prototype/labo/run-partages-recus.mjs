@@ -2,7 +2,7 @@
 // (`GRIST_DOCKER_ARGS="-e ALLOWED_WEBHOOK_DOMAINS=*" bash vrai-serveur.sh`). Le premier document envoie (le premier partage est monté par les fonctions du moteur, comme `run-recus-etat.mjs` : la fenêtre qui
 // reçoit un premier code est mesurée par `run-partager-recevoir.mjs`) ; le second ouvre GFS :
 //   1. deux arrivées : « Partagés avec moi » porte le nombre à accepter, les lignes sont grisées (cadenas, mot « À accepter », sans étoile), nulle d'elles n'est dans « Moi » ni dans « Récents » ;
-//   2. une ligne, à la souris : le bouton « Ouvrir » devient « Accepter ou refuser… », la fenêtre dit le nom, qui partage et le poids ; Échap n'écrit rien (aucune colonne, aucune marque) ;
+//   2. une ligne, à la souris : le bouton « Ouvrir » devient « Accepter ou refuser… », la fenêtre dit le nom, qui partage et le poids ; Échap n'écrit rien (aucune marque posée, pas de colonne en double) ;
 //   3. « Accepter » : la ligne n'est plus grisée, son mot est « PDF », le nombre baisse, la marque est écrite sur SA ligne (deux colonnes ajoutées à la table reçue, rien d'autre) ; « Refuser » : la ligne n'est plus montrée ;
 //   4. l'envoyeur renomme les deux fichiers : l'accepté garde son état sous son nouveau nom, le refusé ne revient pas, aucun doublon ;
 //   5. un fichier de plus arrive : lui seul est « à accepter » ;
@@ -89,7 +89,7 @@ try {
   check('la cloche Notifications porte le nombre à accepter (2), dit aussi à la voix', (await bellBadge(frame)) === '2' && bellLabel === t('nt.tipCount', { n: 2 }), { badge: await bellBadge(frame), bellLabel });
   await frame.locator('.tb-bell').click();
   const bellItems = (await frame.locator('.menu .menu-item .menu-label').allInnerTexts()).map(item => item.trim());
-  check('le menu de la cloche nomme les deux arrivées, puis ouvre « Partagés avec moi »', bellItems.length === 3 && bellItems.some(item => item.includes('Facture.pdf')) && bellItems.some(item => item.includes('Devis.pdf')) && bellItems.at(-1) === t('nt.open'), bellItems);
+  check('le menu de la cloche nomme les deux arrivées, propose « Tout marquer comme lu », puis ouvre « Partagés avec moi »', bellItems.length === 4 && bellItems.some(item => item.includes('Facture.pdf')) && bellItems.some(item => item.includes('Devis.pdf')) && bellItems.at(-2) === t('nt.markAll') && bellItems.at(-1) === t('nt.open'), bellItems);
   const menuIn = await frame.evaluate(() => { const at = document.querySelector('.menu').getBoundingClientRect(); return at.left >= 0 && at.top >= 0 && at.right <= window.innerWidth && at.bottom <= window.innerHeight; });
   check('le menu de la cloche tient dans le panneau, contraste de 4,5:1', menuIn && (await contrastProblems(frame, '.menu')).length === 0, { menuIn, weak: await contrastProblems(frame, '.menu') });
   await shot(frame, '1-cloche');
@@ -118,7 +118,8 @@ try {
   await page.keyboard.press('Escape');
   await frame.locator('.mod.so').waitFor({ state: 'detached' });
   const bare = await target.rest.rows('GFS_Received');
-  check('Échap n\'écrit rien : aucune marque, aucune colonne de GFS ajoutée', bare.every(row => !row.Accepted && !row.Refused) && !(Object.keys(bare[0]).some(key => /^(Accepted|Refused)$/.test(key))), Object.keys(bare[0]));
+  // Les deux colonnes de marque existent déjà depuis la réception (`ensureMarks`, 11/11) : Échap ne pose aucune marque et n'en ajoute pas de seconde paire.
+  check('Échap n\'écrit rien : aucune marque posée, pas de colonne de marque en double', bare.every(row => !row.Accepted && !row.Refused) && Object.keys(bare[0]).filter(key => /^(Accepted|Refused)/i.test(key)).sort().join() === 'Accepted,Refused', Object.keys(bare[0]));
   check('les deux arrivées sont toujours à accepter', (await badge(frame)) === '2');
 
   say('--- 3. accepter, refuser ---');

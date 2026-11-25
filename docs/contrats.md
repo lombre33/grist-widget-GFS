@@ -2566,7 +2566,7 @@ rangée d'un fichier, selon ce qui vient d'abord.
 
 16. [T] **Le numéro de structure du document** (décision du porteur, 18/11 : « Oui, avec ton accord », pour que la bêta relise les documents de l'alpha).
     Une ligne réservée de plus dans `GFS_Rangement` (`Utilisateur` = `@document`, `App` = `gfs`, `Fichier` = `structure`, point 6), dont `Valeur` est le JSON
-    `{ "structure": 1 }` : un entier de 1 ou plus, la forme que cette version de GFS donne à ses tables dans CE document. Aucune table de plus, aucune colonne de
+    `{ "structure": 2 }` (1 avant le passage aux noms anglais, 6.8) : un entier de 1 ou plus, la forme que cette version de GFS donne à ses tables dans CE document. Aucune table de plus, aucune colonne de
     plus (`js/files/structure.js`, `js/files/rangement.js`).
     - **Quand il s'écrit** : après un geste de la personne qui a écrit dans `GFS_Rangement` (installer une app, ranger ou épingler un fichier, créer un dossier),
       dans un lot à part qui part APRÈS celui du geste ; jamais avant, jamais seul, jamais plus d'une fois par ouverture, jamais dans un document en lecture
@@ -2834,6 +2834,62 @@ d'app mis à la corbeille (6.2), jamais avant.
    corbeille s'écrivent toujours d'abord.** [M] Mesuré le 24/11 (faits vérifiés, 148).
 
 ---
+
+### 6.8 Les noms de GFS en anglais (structure 2, décision du porteur du 25/11)
+
+**Tout ce que GFS met dans un document porte un nom anglais** : tables, colonnes, colonnes d'aide du partage, table reçue. Les points 6.2 à 6.7 et 11
+ci-dessus gardent les noms d'avant (`GFS_Rangement`, `Utilisateur`, `GFS_Fichiers`…) : lire un nom d'avant comme son nom d'arrivée, dans la table
+ci-dessous. Ce qui ne change pas : les **valeurs** que GFS écrit (les droits `lecture`, `ecriture`, `admin`, `aucun` ; les catégories `editeurs`, `tous` ; les
+clés `dossier:…`, `espace:…`, `gfs-fichiers:…`), qui sont des données et non des noms, et le nom des **apps** et de leurs tables (celui du manifeste).
+
+1. [T] **Les tables et leurs colonnes** (`js/files/gfs-names.js`, `GFS_RENAMES`). Une colonne qui n'y est pas ne change pas (`Type`, `Date`, `App`, `Table`,
+   `Config`, `Parent`, `Source`, `SourceEmail`, `Download`…).
+
+   | Avant | Maintenant | Colonnes qui changent |
+   |---|---|---|
+   | `GFS_Rangement` | `GFS_Filing` | `Utilisateur` `User`, `Fichier` `File`, `Favori` `Favorite`, `Dossier` `Folder`, `Replie` `Collapsed`, `Valeur` `Value`, `Adresse` `Address` |
+   | `GFS_Groupes` | `GFS_Groups` | `Nom` `Name`, `NomL` `NameL`, `PersonnesIci` `People`, `SourceGroupe` `SourceGroup`, `Membres` `Members`, `Nb` `Count` |
+   | `GFS_Espaces` | `GFS_Spaces` | `Cle` `Key`, `Nom` `Name`, `Voit` `Sees` |
+   | `GFS_Placement` | `GFS_Placement` | `Cible` `Target`, `Espace` `Space`, `Dossier` `Folder`, `Voit` `Sees`, `Lien` `Link`, `Partages` `Shares` |
+   | `GFS_Partages` | `GFS_Shares` | `Cible` `Target`, `Personne` `Person`, `Droit` `Right`, `Telecharger` `Download`, `Fin` `End`, `Auteur` `Author`, `AuteurAcces` `AuthorAccess`, `PersonneL` `PersonL`, `Actif` `Active`, `Valide1` `AuthorOwner`, `Valide` `Valid`, `AdminsCible` `AdminsTarget` |
+   | `GFS_Corbeille` | `GFS_Trash` | `Identifiant` `EntryId`, `FichierId` `FileId`, `Nom` `Name`, `Auteur` `Author`, `SupprimeLe` `DeletedAt`, `SupprimePar` `DeletedBy`, `Instantane` `Snapshot` |
+   | `GFS_Annuaires` | `GFS_Directories` | `Nom` `Name`, `Fiches` `Copy` |
+   | `GFS_Notifications` | `GFS_Notifications` | `Pour` `Recipient`, `Cible` `Target`, `Par` `By`, `Cle` `Key`, `Quand` `When`, `Lu` `Read` |
+   | `GFS_Fichiers` | `GFS_Files` | `Identifiant` `FileId`, `Nom` `Name`, `Auteur` `Author`, `Contenu` `Content`, `Taille` `Size`, `Origine` `Origin`, `SupprimeLe` `DeletedAt`, `SupprimePar` `DeletedBy`, `Dossier_partage` `SharedFolder` |
+   | `GFS_Recus`, `_2`… | `GFS_Received`, `_2`… | les colonnes de l'envoyeur (point 4) ; marques `Accepte` `Accepted`, `Refuse` `Refused` |
+
+2. [T] **Les colonnes d'aide du partage** (`js/sharing/helper-names.js`), posées sur les tables de fichiers de GFS et sur celles des apps : `GFS_Auteur`
+   `GFS_Author`, `GFS_Dossier` `GFS_Folder`, `GFS_Lecteurs` `GFS_Readers`, `GFS_Ecrivains` `GFS_Writers`, `GFS_Refus` `GFS_Denied`, `GFS_CatsEcrit`
+   `GFS_CatsWrite`, `GFS_Directs` `GFS_Direct`, `GFS_Vus` `GFS_Seen`. `GFS_Ids`, `GFS_Calc`, `GFS_Admins` et `GFS_Cats` n'ont pas changé. **Le code de GFS ne
+   parle qu'anglais** ; deux endroits connaissent le français : la lecture d'une table (`aliased` rend les colonnes d'aide sous leur nom d'arrivée) et l'écriture
+   sur une table restée au jeu d'avant (`inSet` met en français la formule, la règle ou le nom d'une colonne qu'on lui ajoute : jamais deux colonnes pour la
+   même chose, jamais une règle qui lit une colonne absente). Une table porte **un seul des deux jeux** (`helperSetOf`).
+
+3. [T] **Ce que Sync+ tient garde ses noms** (décision du porteur, 25/11 : un lien de Sync+ ne se rompt jamais ; faits vérifiés 160). `GFS_Fichiers` quand elle
+   est envoyée, `GFS_Recus*`, `GFS_Synchro`, `GFS_Journal_*`, avec leurs colonnes et les colonnes d'aide que GFS pose dessus. Le kit les écarte du lot (`keepOut`).
+   GFS lit et écrit alors **les deux jeux** de la table des fichiers (`FILES_NAMES.en` / `.fr`, `js/files/gfs-files.js` : `filesNames()`, `useFilesNames`,
+   `filesNamesOfTables`, `filesNamesOfColumns`) : le jeu est celui de la table du document, une table reçue prend celui de son envoyeur. Les noms que le moteur de
+   Sync+ écrit lui-même (`id_sync`, `MajLe`, `RecalculLe`, `Supprime`, `Supprimee_a_la_source`, `Synchro`, `Journal_*`) sont **son protocole** : ils attendent les
+   consignes de Sync+ (007, 008). Un lien neuf n'a pas ce souci : un document sans lien reçoit tout en anglais.
+
+4. [T] **Les réceptions** : un document qui reçoit crée `GFS_Received`, puis `GFS_Received_2`… (les `GFS_Recus*` d'avant restent à leurs liens ; les deux
+   familles se lisent). Les colonnes de la table reçue sont celles de l'envoyeur ; les marques « accepté » et « refusé » prennent **le jeu de l'envoyeur**
+   (`Accepted`/`Refused` ou `Accepte`/`Refuse`), les deux étant réservés : une colonne envoyée qui porte l'un de ces noms arrive sous `<nom>_sent`.
+
+5. [M] **La mise à jour d'un document d'avant** (`js/files/names-update.js`, la fenêtre commune du kit, `NamesUpdate`) : un seul lot atomique (renommages de
+   tables, de colonnes, colonnes d'aide), proposé à l'ouverture, bloquant ; « Continuer sans mettre à jour » (comme un refus de Grist, ou une personne qui n'est pas
+   propriétaire) laisse le document tel quel : GFS n'y lit pas ses tables d'avant, n'y crée ni n'y écrit rien et le dit (`doc.legacy`) ; la mise à jour se
+   propose de nouveau à l'ouverture suivante. **Ce que Grist suit tout seul** (mesuré dans Grist 1.7.19 : règles d'accès, `$colonne`, `rec.colonne`, les
+   arguments de `lookupOne`) et **ce qu'il ne suit pas** (les variables d'une boucle ; une variable réaffectée dans plusieurs branches, qu'il ne suit que pour la
+   première table ; les titres de pages) : GFS reprend ces formules et ces titres lui-même, en un lot (`mendDocument`), à l'ouverture suivante si besoin ; les
+   formules obtenues sont, à l'octet près, celles que le nouveau GFS écrit (`test/golden/formules-apres-renommage.json`, mesuré). Rien ne se perd : mêmes lignes,
+   mêmes valeurs, mêmes pages.
+
+6. [T] **Le numéro de structure passe à 2** (point 16 de 6.4) : une version de GFS d'avant ne lit plus un document qui l'a ; un document sans numéro ou à 1 est un
+   document d'avant, que la mise à jour propose de passer.
+
+Mesures : `labo/run-noms-gfs.mjs` (un document bâti avec le code d'avant, rouvert avec celui d'aujourd'hui, avec et sans Sync+ : tables, colonnes, lignes,
+formules, règles, pages), faits vérifiés 181.
 
 ## 7. Les réglages de la vue
 

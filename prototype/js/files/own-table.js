@@ -1,4 +1,4 @@
-// Une table que GFS crée et écrit lui-même dans le document (`GFS_Filing`, contrats 6.4 ; `GFS_Fichiers`, contrats 6.6) : la relire, la créer avec l'accord
+// Une table que GFS crée et écrit lui-même dans le document (`GFS_Filing`, contrats 6.4 ; `GFS_Files`, contrats 6.6) : la relire, la créer avec l'accord
 // de la personne, lui ajouter une colonne absente. Un seul lieu pour ces règles, pour que chaque table de GFS les suive :
 //   lire ne crée rien ; écrire relit d'abord, et ne crée la table qu'avec l'accord de la personne (6.2, point 1) ;
 //   après `AddTable`, l'identifiant réel est relu (6.2, point 2) ; une colonne absente est ajoutée avant d'être écrite (6.1, point 3) : une seule colonne

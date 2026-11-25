@@ -61,7 +61,7 @@ async function accordFlow(page, tools, t, flow, table) {
   tools.fits(kind, now, 'l\'accord');
   // La structure du document se ferme avec le journal (choix du porteur, 18/11) : l'accord le dit avec les mots de la question d'activation du partage.
   for (const part of [LONG_DOC, t('sr.accord.adds'), table, t('sr.accord.keep'), t('sr.accord.rules'), t('rights.ask.sharing.structure'), t('rights.ask.close.item2')]) if (!now.modal.body.toLowerCase().includes(part.toLowerCase())) tools.run.note(kind, `l'accord devait dire « ${part} » (il dit « ${now.modal.body.slice(0, 200)} »)`);
-  if (flow === 'second' && now.modal.body.includes('GFS_Recus ')) tools.run.note(kind, 'l\'accord du second partage ne devait pas annoncer la table du premier');
+  if (flow === 'second' && now.modal.body.includes('GFS_Received ')) tools.run.note(kind, 'l\'accord du second partage ne devait pas annoncer la table du premier');
   for (let i = 0; i < 3; i += 1) { await page.press('Tab'); const inside = await tools.snap(); if (!inside.modal || !inside.modal.inside) tools.run.note(kind, 'Tab devait rester dans la fenêtre'); }
   await page.press('Escape');
   const closed = await tools.expect(kind, 'Échap devait fermer la fenêtre', s => s.modal === null);
@@ -98,7 +98,7 @@ async function replyFlow(page, tools, t) {
   await tools.press(kind, 'sr-check');
   const reply = await tools.expect(kind, 'la réponse devait s\'afficher avec son code de contrôle, le clavier sur le code', s => s.modal && s.modal.keys.includes('sr-code') && s.modal.control === 'N5H-2AH' && s.modal.focus === 'sr-code');
   tools.fits(kind, reply, 'la réponse');
-  if (reply.modal && !reply.modal.body.includes(t('sr.reply.after', { table: 'GFS_Recus' }))) tools.run.note(kind, `la fenêtre devait dire où les fichiers arriveront (« ${t('sr.reply.after', { table: 'GFS_Recus' })} »)`);
+  if (reply.modal && !reply.modal.body.includes(t('sr.reply.after', { table: 'GFS_Received' }))) tools.run.note(kind, `la fenêtre devait dire où les fichiers arriveront (« ${t('sr.reply.after', { table: 'GFS_Received' })} »)`);
   await tools.press(kind, 'sr-copy');
   await tools.expect(kind, 'copier devait dire « copié » ou « sélectionné »', s => s.modal && [t('so.code.copied'), t('so.code.select')].includes(s.modal.note));
   await tools.press(kind, 'so-close');
@@ -177,8 +177,8 @@ export async function partagerRecevoirProblems(page, language, tag) {
   const t = createI18n(language).t;
   const tools = toolsFor(page, tag, found);
   try {
-    await accordFlow(page, tools, t, 'ok', 'GFS_Recus');
-    await accordFlow(page, tools, t, 'second', 'GFS_Recus_2');
+    await accordFlow(page, tools, t, 'ok', 'GFS_Received');
+    await accordFlow(page, tools, t, 'second', 'GFS_Received_2');
     await knownFlow(page, tools, t);
     await replyFlow(page, tools, t);
     await abortFlow(page, tools, t);

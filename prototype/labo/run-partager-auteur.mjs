@@ -9,7 +9,7 @@ import { requireServer, newContext, createDocument, docIdOf, GRIST } from './lab
 import { shareWithEditorAndViewer } from './lab-droits.mjs';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { planSharing, SHARES_TABLE, shareRecord } from '../js/sharing/sharing-model.js';
-import { FILES_COLUMNS } from '../js/files/gfs-files.js';
+import { filesColumns } from '../js/files/gfs-files.js';
 
 const phase = process.env.PHASE || 'proprietaire';
 const STATE = process.env.AUTEUR_ETAT || '/tmp/partager-auteur-etat.json';
@@ -38,9 +38,9 @@ try {
     writeFileSync(STATE, JSON.stringify({ id }));
     say('partage au document :', await shareWithEditorAndViewer(page, id));
     // Le document d'avant : GFS_Files existe, trois PDF y ont leur « Author », la colonne protégée n'existe pas encore.
-    let answer = await apply(page, id, [['AddTable', 'GFS_Files', FILES_COLUMNS.map(column => ({ ...column }))], ['BulkAddRecord', 'GFS_Files', [null, null], { FileId: ['v1', 'v2'], Name: ['Ancien-editeur.pdf', 'Ancien-proprio.pdf'], Author: [EDITOR, OWNER] }]]);
+    let answer = await apply(page, id, [['AddTable', 'GFS_Files', filesColumns().map(column => ({ ...column }))], ['BulkAddRecord', 'GFS_Files', [null, null], { FileId: ['v1', 'v2'], Name: ['Ancien-editeur.pdf', 'Ancien-proprio.pdf'], Author: [EDITOR, OWNER] }]]);
     check('un document d\'avant : deux PDF, leur « Author » écrit', answer.status === 200, answer.text);
-    const plan = planSharing(await existingOf(page, id), FILES_COLUMNS);
+    const plan = planSharing(await existingOf(page, id), filesColumns());
     check('le plan est posé en une liasse', plan.ok && (await apply(page, id, plan.actions)).status === 200, plan.reason);
     const legacy = await records(page, id, 'GFS_Files');
     check('l\'auteur des PDF d\'avant est repris de « Author » (GFS_Author)', legacy.length === 2 && legacy.every(row => row.GFS_Author === row.Author && row.GFS_Author), legacy.map(row => [row.Author, row.GFS_Author]));

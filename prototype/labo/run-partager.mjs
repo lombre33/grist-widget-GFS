@@ -7,7 +7,7 @@ import { requireServer, newContext, createDocument, docIdOf, GRIST } from './lab
 import { shareWithEditorAndViewer } from './lab-droits.mjs';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { planSharing, planUnsharing, SHARES_TABLE, shareRecord } from '../js/sharing/sharing-model.js';
-import { FILES_COLUMNS } from '../js/files/gfs-files.js';
+import { filesColumns } from '../js/files/gfs-files.js';
 
 const phase = process.env.PHASE || 'proprietaire';
 const STATE = process.env.PARTAGER_ETAT || '/tmp/partager-gfs-etat.json';
@@ -40,11 +40,11 @@ try {
     writeFileSync(STATE, JSON.stringify({ id }));
     say('partage au document :', await shareWithEditorAndViewer(page, id));
     const existing = await existingOf(page, id);
-    const plan = planSharing(existing, FILES_COLUMNS);
+    const plan = planSharing(existing, filesColumns());
     check('le plan est possible, sans règle d\'un autre auteur, pour un document neuf', plan.ok && plan.firstRule && [SHARES_TABLE, 'GFS_Filing', 'GFS_Files'].every(name => plan.creates.includes(name)), plan.creates);
     let answer = await apply(page, id, plan.actions);
     check('les deux tables, les colonnes d\'aide et les règles s\'écrivent en UNE liasse', answer.status === 200, answer.text);
-    const again = planSharing(await existingOf(page, id), FILES_COLUMNS);
+    const again = planSharing(await existingOf(page, id), filesColumns());
     check('le plan suivant dit « déjà posé »', !again.ok && again.reason === 'already', again);
     answer = await apply(page, id, [['BulkAddRecord', 'GFS_Files', [null, null, null, null], {
       FileId: ['f1', 'f2', 'f3', 'f4'], Name: ['Devis.pdf', 'Secret.pdf', 'Public.pdf', 'Equipe.pdf'], Author: [EDITOR, OWNER, OWNER, OWNER], GFS_Author: [EDITOR, OWNER, OWNER, OWNER] }]]);

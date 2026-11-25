@@ -11,7 +11,7 @@
 //   send()     le webhook, le fichier, puis le partage s'arrête (la copie reste chez l'autre), sauf pour une copie à jour : le lien reste ; `{ compared }` : la
 //              personne a comparé le code ;
 //   abort()    défait ce qui a été préparé.
-// Le premier lot ne couvre que les PDF que GFS garde (`GFS_Fichiers`).
+// Le premier lot ne couvre que les PDF que GFS garde (`GFS_Files`).
 import { PASS_MS, PASSES, sentColumns, selectionFor } from './share-links.js';
 import { RECEIVED_TABLE } from './received-files.js';
 

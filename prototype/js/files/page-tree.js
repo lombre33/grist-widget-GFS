@@ -1,5 +1,5 @@
 // Les pages que Grist crée pour les tables de GFS (contrats 6.6). Grist ajoute une page au premier niveau, tout en bas du volet des pages, pour chaque
-// `AddTable` : GFS en laissait six ou sept à plat sous sa propre page (`GFS_Filing`, `GFS_Groups`, `GFS_Fichiers`…), autant de lignes dans la navigation.
+// `AddTable` : GFS en laissait six ou sept à plat sous sa propre page (`GFS_Filing`, `GFS_Groups`, `GFS_Files`…), autant de lignes dans la navigation.
 // Ici : la page de chaque table de GFS (préfixe `GFS_`) passe sous la page qui porte GFS, comme le glisser-déposer de Grist (`UpdateRecord` sur `_grist_Pages`,
 // `indentation` et `pagePos`, vérifié dans un vrai Grist), et la page de GFS se replie par défaut (`_grist_Pages.options` = {"collapsed": true}, la case
 // « Replier par défaut » du menu d'une page). La position vient du kit (`placeBelow`, js/synchro/logic/page-order.js) : juste après les dernières sous-pages,

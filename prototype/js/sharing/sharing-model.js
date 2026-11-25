@@ -3,7 +3,7 @@
 // fichiers, en tirent les listes que lisent les règles (une règle ne lit que `rec` et `newRec` : faits vérifiés, 46 et 55). Ce module ne touche pas à Grist :
 // il rend les actions à envoyer en UNE `applyUserActions` et les lignes à écrire.
 //
-// Le premier lot couvre les fichiers que GFS garde (`GFS_Fichiers`, les PDF : une table de GFS, sans app) : « lecture » et « écriture » et « administration ».
+// Le premier lot couvre les fichiers que GFS garde (`GFS_Files`, les PDF : une table de GFS, sans app) : « lecture » et « écriture » et « administration ».
 // « Commentaires » (ceux des apps) et « dépôt seul » attendent leurs tables ; « peut télécharger » est un confort de GFS (le bouton), jamais une protection :
 // qui lit la pièce jointe peut la copier (contrats 11.1, point 8).
 
@@ -426,7 +426,7 @@ function dropRules(existing, items) {
   return [['BulkRemoveRecord', '_grist_ACLRules', [...dropped]], ...(emptied.length ? [['BulkRemoveRecord', '_grist_ACLResources', emptied]] : [])];
 }
 
-// Activer le partage : crée `GFS_Shares` (et `GFS_Fichiers`, `GFS_Filing` s'ils manquent), ajoute les colonnes d'aide aux tables de fichiers (celles que
+// Activer le partage : crée `GFS_Shares` (et `GFS_Files`, `GFS_Filing` s'ils manquent), ajoute les colonnes d'aide aux tables de fichiers (celles que
 // GFS garde et celles des apps : `GFS_Author`, que Grist écrit à la création, en plus pour les apps), pose les règles. Rejoué quand une app a été ajoutée
 // depuis (ou après un retrait), il ne complète que ce qui manque. `existing` : { resources, rules, tables, columns, targets, files: { table: [identifiants] }
 // } ; `targets` : les tables de fichiers (`targetsOf`, js/sharing/sharing-model.js), celles des apps seulement si elles sont dans le document. Rend { ok: true,

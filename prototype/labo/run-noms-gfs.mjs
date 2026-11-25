@@ -26,6 +26,7 @@ import { PAGE_PORT, openGfs, windowFits } from './lab-pdf.mjs';
 import * as now from '../js/sharing/sharing-model.js';
 import { filesColumns, FILES_NAMES, useFilesNames, filesNamesOfTables } from '../js/files/gfs-files.js';
 import { HELPER_BEFORE } from '../js/sharing/helper-names.js';
+import { NOTICES_TABLE, noticeColumns } from '../js/sharing/notice-model.js';
 import { planGfsNames } from '../js/files/gfs-names.js';
 import { COLUMNS as FILING_NOW } from '../js/files/rangement.js';
 import { BIN_COLUMNS as TRASH_NOW } from '../js/files/gfs-trash.js';
@@ -68,6 +69,22 @@ const rows = async (run, name) => {
   }
 };
 const pick = (list, keys) => list.map(row => Object.fromEntries(keys.map(key => [key, row[key]])));
+
+// Les notifications d'avant (`Pour`, `Cible`, `Par`, `Cle`, `Quand`, `Lu` : faits vérifiés 179) : le code d'avant du labo ne les connaît pas (elles sont nées après lui). On les pose sous
+// leurs noms d'avant, avec les règles que le code d'aujourd'hui écrit, les noms d'avant remis dans les formules et les colonnes des ressources (les notes restent telles quelles).
+const NOTICE_WAS = Object.freeze({ Recipient: 'Pour', Target: 'Cible', By: 'Par', Key: 'Cle', When: 'Quand', Read: 'Lu' });
+const noticeWas = text => String(text).replace(/\b(Recipient|Target|By|Key|When|Read)\b/g, name => NOTICE_WAS[name]);
+function noticesBefore(existing) {
+  let resource = Math.max(...existing.resources.map(item => item.id));
+  let id = Math.max(...existing.rules.map(item => item.id));
+  const actions = [['AddTable', NOTICES_TABLE, noticeColumns().map(column => ({ ...column, id: NOTICE_WAS[column.id] || column.id }))]];
+  for (const { colIds, rules } of [...now.noticeColumnGroups(), { colIds: '*', rules: now.noticeTableRules() }]) {
+    resource += 1;
+    actions.push(['AddRecord', '_grist_ACLResources', resource, { tableId: NOTICES_TABLE, colIds: noticeWas(colIds) }]);
+    rules.forEach((rule, at) => actions.push(['AddRecord', '_grist_ACLRules', (id += 1), { resource, aclFormula: noticeWas(rule.formula), permissionsText: rule.rights, rulePos: at + 1, memo: rule.memo }]));
+  }
+  return actions;
+}
 
 // Ce que le lecteur des droits de GFS rend (js/rights/rights-reader.js, `raw`) : les règles et ressources en entier, les tables et leurs colonnes.
 async function existingOf(run, targets) {
@@ -146,6 +163,8 @@ try {
   check('le plan d\'avant du partage réussit (tables de partage, colonnes d\'aide sur la table de l\'app, règles d\'accès)', planBefore.ok === true, planBefore.reason);
   answer = await apply(run, planBefore.actions);
   check('Grist applique le plan d\'avant', !answer.error, answer);
+  answer = await apply(run, noticesBefore(await existingOf(run, targetsBefore)));
+  check('les notifications d\'avant sont posées (table sous ses noms d\'avant, règles d\'accès sur `Pour`)', !answer.error, answer);
   answer = await apply(run, [
     ['AddRecord', 'GFS_Rangement', null, { Utilisateur: '@document', App: 'gfs', Fichier: 'structure', Valeur: '{"structure":1}' }],
     ['AddRecord', 'GFS_Rangement', null, { Utilisateur: '', App: 'publipostage', Fichier: '2', Favori: true, Dossier: 'Contrats', Replie: false, Valeur: '' }],
@@ -158,6 +177,8 @@ try {
       SupprimeLe: 1762000000, SupprimePar: 'ana@example.org', Instantane: '{"format":1,"id":9,"valeurs":{"Nom":"Vieux modèle"}}' }],
     ['AddRecord', 'GFS_Annuaires', null, { Nom: 'Personnes', Table: PEOPLE, Config: '{"v":1}', Parent: '', Fiches: '' }],
     ['AddRecord', 'GFS_Fichiers', null, PDF],
+    ['AddRecord', NOTICES_TABLE, null, { Pour: 'lea@example.org', Type: 'fichier', Cible: 'gfs-fichiers:ab12cd34', Par: 'ana@example.org', Cle: 'fichier|gfs-fichiers:ab12cd34', Lu: false }],
+    ['AddRecord', NOTICES_TABLE, null, { Pour: 'marc@example.org', Type: 'espace', Cible: 'espace:achats', Par: 'ana@example.org', Cle: 'espace|achats', Lu: true }],
     ...(held ? [['AddTable', 'GFS_Synchro', [col('Cle')]], ['AddColumn', 'GFS_Fichiers', 'id_sync', { type: 'Text' }]] : [])]);
   check('les lignes d\'avant sont écrites (rangement, partages, groupe, espace, placement, corbeille, annuaire)', !answer.error, answer);
   const tablesBefore = await schemaOf(run);
@@ -238,7 +259,7 @@ try {
   say('   tables après :', Object.keys(tablesAfter).join(', '));
   const filesTable = held ? 'GFS_Fichiers' : 'GFS_Files';
   const newNames = { [filesTable]: held ? FILES_BEFORE : filesColumns(), GFS_Filing: FILING_NOW, GFS_Groups: now.groupColumns(), GFS_Spaces: now.spaceColumns(), GFS_Placement: now.placeColumns(), GFS_Shares: now.shareColumns(), GFS_Trash: TRASH_NOW,
-    GFS_Directories: DIRS_NOW };
+    GFS_Directories: DIRS_NOW, [NOTICES_TABLE]: noticeColumns() };
   for (const [name, columns] of Object.entries(newNames)) {
     const actual = (tablesAfter[name] || []).filter(id => id !== 'id' && id !== 'id_sync' && !id.startsWith('GFS_')); // les colonnes d'aide, posées sur les tables de fichiers, ont leur propre contrôle ; `id_sync` est celle de Sync+
     check(`${name} : exactement les colonnes que le code d'aujourd'hui pose (aucune oubliée, aucune en trop)`, JSON.stringify(actual) === JSON.stringify(columns.map(column => column.id)), actual);

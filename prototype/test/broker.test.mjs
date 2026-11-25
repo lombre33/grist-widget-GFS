@@ -234,7 +234,7 @@ test('un lot que Grist a appliqué est dit à GFS (`onApplied`, avec les actions
 test('un lot refusé par le filtre ou par la personne n\'est pas dit comme appliqué ; un lot qui publie l\'est, après l\'accord', async () => {
   const told = [];
   const refused = setup({ onApplied: actions => told.push(actions) });
-  await assert.rejects(() => refused.apply([['AddRecord', 'GFS_Espaces', null, { Nom: 'x' }]]), error => error.code === 'GFS_REFUSE');
+  await assert.rejects(() => refused.apply([['AddRecord', 'GFS_Spaces', null, { Name: 'x' }]]), error => error.code === 'GFS_REFUSE');
   const declined = setup({ authorize: async () => false, onApplied: actions => told.push(actions) });
   await assert.rejects(() => declined.apply(publish()), error => error.code === 'GFS_ANNULE');
   assert.deepEqual(told, [], 'rien n\'a été appliqué : rien à dire');

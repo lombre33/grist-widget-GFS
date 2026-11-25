@@ -27,7 +27,10 @@ import { applyFiling, folderMoves, inside, normalizePath, readFiles, readFiling 
 import { Copying } from '/js/files/copying.js';
 import { applyPlacement, readSpaces } from '/js/sharing/spaces-filing.js';
 import { LinkControl } from '/js/sharing/link-control.js';
-import { FILES_MANIFEST, FILES_COLUMN_IDS } from '/js/files/gfs-files.js';
+import { filesManifest, filesColumnIds } from '/js/files/gfs-files.js';
+import { showNamesWindow } from '/js/ui/names-window.js';
+import { NAMES_STRINGS } from '/kit/js/names-update/strings.js';
+import { createI18n as createKitI18n } from '/kit/js/i18n.js';
 import { ReceivedControl } from '/js/sharing/received-control.js';
 import { loadReceived, answerFile, answerFolder } from '/js/sharing/received-files.js';
 import { fakeGrist } from '/test/fake-grist.mjs';
@@ -378,19 +381,19 @@ async function mount() {
   window.__sharedBlocked = '';
   // Un fichier arrive pendant que l'explorateur est ouvert : la ligne est posée dans le faux Grist, puis la liste des arrivées se remplace seule (`Explorer.setReceived`, comme le fait le contrôleur).
   window.__arrive = async name => {
-    const rows = sharedGrist.tables.GFS_Recus.rows;
+    const rows = sharedGrist.tables.GFS_Received.rows;
     const id = rows.length + 1;
-    rows.push({ ...rows[0], id, Identifiant: `r${id}`, Nom: name, Accepte: false, Refuse: false, Contenu: ['L', id] });
+    rows.push({ ...rows[0], id, FileId: `r${id}`, Name: name, Accepted: false, Refused: false, Content: ['L', id] });
     arrivals = await loadReceived(sharedGrist.port, await sharedGrist.port.doc.listTables());
     explorer.setReceived(arrivals);
   };
   window.__shared = async kind => {
     const day = Math.floor(Date.now() / 1000) - 86400;
-    const row = (id, name, extra = {}) => ({ id, Identifiant: `r${id}`, Nom: name, Type: 'pdf', Date: day - id * 3600, Auteur: 'Comptabilité <compta@exemple.fr>', Contenu: ['L', id], Taille: 1500 * id, Origine: 'import', Supprimee_a_la_source: false, ...extra });
-    const rows = kind === 'vide' ? [] : kind === 'dossier' ? [row(1, 'Contrat de prestation.pdf', { Dossier_partage: 'Contrats' }), row(2, 'Avenant 1.pdf', { Dossier_partage: 'Contrats' }), row(3, 'Avenant 2.pdf', { Dossier_partage: 'Contrats', Accepte: true, Refuse: false }),
-      row(4, 'Plan.pdf', { Dossier_partage: 'Archives', Accepte: true, Refuse: false }), row(5, 'Rapport.pdf', { Dossier_partage: 'Archives', Accepte: true, Refuse: false }), row(6, 'Seul.pdf', { Dossier_partage: '' })] : [row(1, 'Facture de la session de formation de septembre 2026.pdf'), row(2, 'Devis.pdf'), row(3, 'Contrat.pdf', { Accepte: true, Refuse: false }), row(4, 'Ancien refus.pdf', { Accepte: false, Refuse: true }), row(5, 'Retiré.pdf', { Accepte: true, Refuse: false, Supprimee_a_la_source: true })];
-    const columns = ['id', ...FILES_COLUMN_IDS, 'Supprimee_a_la_source', 'Accepte', 'Refuse', 'Dossier_partage'];
-    sharedGrist = fakeGrist(kind === 'vide' ? {} : { GFS_Recus: { columns, rows } });
+    const row = (id, name, extra = {}) => ({ id, FileId: `r${id}`, Name: name, Type: 'pdf', Date: day - id * 3600, Author: 'Comptabilité <compta@exemple.fr>', Content: ['L', id], Size: 1500 * id, Origin: 'import', Supprimee_a_la_source: false, ...extra });
+    const rows = kind === 'vide' ? [] : kind === 'dossier' ? [row(1, 'Contrat de prestation.pdf', { SharedFolder: 'Contrats' }), row(2, 'Avenant 1.pdf', { SharedFolder: 'Contrats' }), row(3, 'Avenant 2.pdf', { SharedFolder: 'Contrats', Accepted: true, Refused: false }),
+      row(4, 'Plan.pdf', { SharedFolder: 'Archives', Accepted: true, Refused: false }), row(5, 'Rapport.pdf', { SharedFolder: 'Archives', Accepted: true, Refused: false }), row(6, 'Seul.pdf', { SharedFolder: '' })] : [row(1, 'Facture de la session de formation de septembre 2026.pdf'), row(2, 'Devis.pdf'), row(3, 'Contrat.pdf', { Accepted: true, Refused: false }), row(4, 'Ancien refus.pdf', { Accepted: false, Refused: true }), row(5, 'Retiré.pdf', { Accepted: true, Refused: false, Supprimee_a_la_source: true })];
+    const columns = ['id', ...filesColumnIds(), 'Supprimee_a_la_source', 'Accepted', 'Refused', 'SharedFolder'];
+    sharedGrist = fakeGrist(kind === 'vide' ? {} : { GFS_Received: { columns, rows } });
     window.__sharedTables = sharedGrist.tables;
     window.__sharedActions = sharedGrist.actions;
     await readArrivals();
@@ -463,9 +466,9 @@ async function mount() {
   window.__ambiance = id => setting.choose(id);
   const themeWindow = new ThemeWindow({ container: stage, i18n, locale, setting, mode, inertTargets: () => [explorer.root] });
   theme.open = () => themeWindow.open();
-  // Un PDF gardé par GFS, lu comme l'explorateur le lit : les colonnes de `GFS_Fichiers` et le manifeste de GFS. `__reset` remet `live` aux fichiers de départ : le PDF disparaît.
+  // Un PDF gardé par GFS, lu comme l'explorateur le lit : les colonnes de `GFS_Files` et le manifeste de GFS. `__reset` remet `live` aux fichiers de départ : le PDF disparaît.
   window.__withPdf = () => {
-    const [pdf] = readFiles(FILES_MANIFEST, FILES_MANIFEST.fichiers[0], { id: [900], Identifiant: ['essai-pdf'], Nom: ['Attestation.pdf'], Type: ['pdf'], Date: [Math.floor(Date.now() / 1000) - 3600], Auteur: ['Service RH'], Contenu: [['L', 900]], Taille: [640000] });
+    const [pdf] = readFiles(filesManifest(), filesManifest().fichiers[0], { id: [900], FileId: ['essai-pdf'], Name: ['Attestation.pdf'], Type: ['pdf'], Date: [Math.floor(Date.now() / 1000) - 3600], Author: ['Service RH'], Content: [['L', 900]], Size: [640000] });
     live.push(pdf);
     show();
   };
@@ -510,6 +513,20 @@ async function mount() {
     window.__sharing = null;
     const plan = { ok: true, closes: true, firstRule: true, filing: true, extends: false, appTables: ['Publipostage_Modeles', 'FormPlus_Formulaires', 'Automation_Fichiers'] };
     ask({ ...askOptions(i18n.t, 'sharing', plan), container: stage, inertTargets: () => [explorer.root] }).then(answer => { window.__sharing = answer ? 'yes' : 'no'; });
+  };
+  // La fenêtre de mise à jour des noms (js/ui/names-window.js, test/noms-gfs-firefox.mjs) : la vraie fenêtre sur ce que `prepare` du kit rendrait (neuf tables, de longs noms) ; `kind` : 'fait' (le lot réussit après
+  // un temps), 'refus' (Grist refuse : « Réessayer » et « Continuer sans mettre à jour »). `window.__names` garde l'état final dit à GFS (`done`, `skipped`).
+  window.__namesWindow = kind => {
+    window.__names = null;
+    const pairs = [['GFS_Rangement', 'GFS_Filing'], ['GFS_Groupes', 'GFS_Groups'], ['GFS_Espaces', 'GFS_Spaces'], ['GFS_Placement', 'GFS_Placement'], ['GFS_Partages', 'GFS_Shares'],
+      ['GFS_Corbeille', 'GFS_Trash'], ['GFS_Annuaires', 'GFS_Directories'], ['GFS_Notifications', 'GFS_Notifications'], ['GFS_Fichiers', 'GFS_Files']];
+    const prepared = { state: 'ready', summary: { tables: pairs, columns: 74 } };
+    const run = async () => {
+      await new Promise(resolve => setTimeout(resolve, 400));
+      return kind === 'refus' ? { state: 'refused', detail: 'Blocked by table structure access rules' } : { state: 'done', tables: 9, rows: null, mismatch: [] };
+    };
+    const t = createKitI18n({ strings: NAMES_STRINGS, language }).t;
+    showNamesWindow({ container: stage, inertTargets: () => [explorer.root], t, appName: 'GFS', prepared, run }).then(answer => { window.__names = answer.state; });
   };
   // La fenêtre « Partager » (js/sharing/share-window.js, test/partager-firefox.mjs) : la vraie fenêtre sur un état que le contrôleur aurait lu ; `kind` : 'inactif' (le partage n'est pas activé, une personne propriétaire),
   // 'actif' (propriétaire : des lignes de personnes à l'adresse très longue, de catégories, une fin d'accès, un accès échu), 'lecture' (une personne qui ne peut rien changer). `window.__shareActs` note ce que la
@@ -571,12 +588,12 @@ async function mount() {
     return openShareOther({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], file: kind === 'lien' || kind === 'lien-neuf' ? null : { id: 'abc', name: 'Facture de la session de formation de septembre.pdf' }, filesTable: kind !== 'lien-neuf', createFlow: (chosen, strict) => { mode = chosen; acts.push(['mode', chosen, Boolean(strict)]); return flow; }, errorText: error => String(error.message), notice: text => acts.push(['notice', text]) });
   };
   // La fenêtre « Recevoir d'un autre document Grist » (js/sharing/share-receive-window.js, test/partager-recevoir-firefox.mjs) : la vraie fenêtre, sur un parcours dont les réponses sont des doublures (le moteur et Grist se mesurent
-  // dans un vrai Grist : labo/run-partager-recevoir.mjs). `kind` : 'ok' (un premier partage : GFS_Recus), 'second' (la table libre suivante : GFS_Recus_2), 'connu' (une réception qui reprend), 'reprise' (Grist a rechargé la page pendant que la fenêtre attendait le lien du formulaire : la fenêtre s'ouvre directement sur ce lien), 'serveur' (le code vient d'un autre serveur Grist : refusé dès la lecture), 'refus' (accepter échoue).
+  // dans un vrai Grist : labo/run-partager-recevoir.mjs). `kind` : 'ok' (un premier partage : GFS_Received), 'second' (la table libre suivante : GFS_Received_2), 'connu' (une réception qui reprend), 'reprise' (Grist a rechargé la page pendant que la fenêtre attendait le lien du formulaire : la fenêtre s'ouvre directement sur ce lien), 'serveur' (le code vient d'un autre serveur Grist : refusé dès la lecture), 'refus' (accepter échoue).
   // `window.__receiveActs` note ce que le parcours a reçu.
   const SERVER_OTHER = 'grist-de-la-direction-des-systemes-d-information.exemple.gouv.fr'; // le même nom dans test/partager-recevoir-firefox.mjs
   window.__receive = kind => {
     const acts = window.__receiveActs = [];
-    const table = kind === 'second' ? 'GFS_Recus_2' : 'GFS_Recus';
+    const table = kind === 'second' ? 'GFS_Received_2' : 'GFS_Received';
     let replied = false;
     const flow = {
       read: async text => {

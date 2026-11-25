@@ -109,9 +109,9 @@ test('le rangement en échec (autre cause) : le fichier est gardé, l\'avertisse
 test('la table GFS_Files refusée : GFS_ANNULE, et le reste du lot est refusé tout de suite, sans redemander la table', async () => {
   const run = setup({ add: async () => { throw new TableDeclined('GFS_Files'); } });
   const batch = newBatch();
-  await refusedWith(run.kept.deposit(request({ batch })), ERR.ANNULE, FR.t('files.declined'));
+  await refusedWith(run.kept.deposit(request({ batch })), ERR.ANNULE, FR.t('files.declined', { table: 'GFS_Files' }));
   assert.equal(batch.declined, true);
-  await refusedWith(run.kept.deposit(request({ batch })), ERR.ANNULE, FR.t('files.declined'));
+  await refusedWith(run.kept.deposit(request({ batch })), ERR.ANNULE, FR.t('files.declined', { table: 'GFS_Files' }));
   assert.equal(run.log.adds.length, 1, 'le second fichier ne rouvre pas la question');
   const another = setup({ add: async () => { throw new TableDeclined('GFS_Files'); } });
   await refusedWith(another.kept.deposit(request()), ERR.ANNULE);

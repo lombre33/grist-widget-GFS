@@ -1,6 +1,6 @@
 // Partager un DOSSIER avec un autre document Grist (« Partager… » sur un dossier > « Dans un autre document Grist » ; choix du porteur, 11/11 : « un seul lien
-// par document »). Un dossier n'est pas dans `GFS_Fichiers` (le rangement est ailleurs, js/rangement.js) : partager un dossier, c'est partager les PDF qui y
-// sont, dans la condition du lien déjà fait avec ce document, en donnant à chacun le nom du dossier dans une colonne de plus de `GFS_Fichiers`
+// par document »). Un dossier n'est pas dans `GFS_Files` (le rangement est ailleurs, js/rangement.js) : partager un dossier, c'est partager les PDF qui y
+// sont, dans la condition du lien déjà fait avec ce document, en donnant à chacun le nom du dossier dans une colonne de plus de `GFS_Files`
 // (`Dossier_partage`, js/gfs-files.js) que le moteur envoie avec le fichier. Chez l'autre, les fichiers de même nom forment un dossier
 // (js/received-folders.js).
 //   - le niveau du dossier est le niveau de TOUS ses fichiers (js/share-links.js, `levelOf`) : « Copie à jour » = tous dans la condition, « Une partie » =

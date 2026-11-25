@@ -110,12 +110,12 @@ async function playScreen(run, frame, keyA) {
   await frame.locator('.mod.mg .rr[data-space-group="Ventes"]').waitFor({ timeout: 15000 });
   const ventes = (await rows(run, 'GFS_Groups')).find(row => row.Name === 'Ventes');
   check('le groupe Ventes est créé avec la personne tapée', ventes && ventes.Count === 1 && ventes.People === VIEWER, ventes);
-  const entered = (await rows(run, 'GFS_Partages')).find(row => row.Cible === `espace:${made.Cle}` && row.Personne === '#Ventes');
-  check('il entre dans l\'espace en lecture, la ligne est valide', entered && entered.Droit === 'lecture' && entered.Valide === true, entered);
+  const entered = (await rows(run, 'GFS_Shares')).find(row => row.Target === `espace:${made.Key}` && row.Person === '#Ventes');
+  check('il entre dans l\'espace en lecture, la ligne est valide', entered && entered.Right === 'lecture' && entered.Valid === true, entered);
   const said = (await frame.locator('.mod.mg .mod-note').innerText()).replace(/\s+/g, ' ');
   check('le pied dit combien de personnes le groupe a', said === t('manage.spaces.created.people', { name: 'Ventes', n: 1 }), said);
-  const seenByVentes = (await rows(run, 'GFS_Espaces')).find(row => row.Cle === made.Cle);
-  check('l\'espace voit le lecteur (membre du groupe Ventes) dès la création', has(seenByVentes.Voit, VIEWER), seenByVentes);
+  const seenByVentes = (await rows(run, 'GFS_Spaces')).find(row => row.Key === made.Key);
+  check('l\'espace voit le lecteur (membre du groupe Ventes) dès la création', has(seenByVentes.Sees, VIEWER), seenByVentes);
   await shot(frame, 'groupe-creer-espace');
   // sans personne : le groupe naît vide, et le pied dit où en ajouter
   await frame.locator('[data-fk="manage-space-add-group"]').click();
@@ -124,8 +124,8 @@ async function playScreen(run, frame, keyA) {
   await frame.locator('[data-fk="manage-group-save"]').click();
   await frame.locator('.mod.mg .rr[data-space-group="Vide"]').waitFor({ timeout: 15000 });
   const vide = (await rows(run, 'GFS_Groups')).find(row => row.Name === 'Vide');
-  check('« Créer le groupe » sans personne crée le groupe vide, dans l\'espace', vide && vide.Nb === 0 && !vide.PersonnesIci &&
-    (await rows(run, 'GFS_Partages')).some(row => row.Cible === `espace:${made.Cle}` && row.Personne === '#Vide' && row.Droit === 'lecture'), vide);
+  check('« Créer le groupe » sans personne crée le groupe vide, dans l\'espace', vide && vide.Count === 0 && !vide.People &&
+    (await rows(run, 'GFS_Shares')).some(row => row.Target === `espace:${made.Key}` && row.Person === '#Vide' && row.Right === 'lecture'), vide);
   const saidEmpty = (await frame.locator('.mod.mg .mod-note').innerText()).replace(/\s+/g, ' ');
   check('le pied dit où ajouter ses personnes', saidEmpty === t('manage.spaces.created', { name: 'Vide', tab: t('manage.tab.groups') }), saidEmpty);
   // « Annuler » revient à l'espace sans rien écrire
@@ -145,9 +145,9 @@ async function playScreen(run, frame, keyA) {
   await frame.locator('[data-fk="manage-group-save"]').click();
   await frame.locator('.rr[data-group="Ventes"]').filter({ hasText: '2' }).waitFor({ timeout: 15000 });
   const filled = (await rows(run, 'GFS_Groups')).find(row => row.Name === 'Ventes');
-  check('le groupe compte les deux personnes (une adresse par ligne dans la table)', filled && filled.Nb === 2 && filled.PersonnesIci === `${VIEWER}\n${EDITOR}`, filled);
+  check('le groupe compte les deux personnes (une adresse par ligne dans la table)', filled && filled.Count === 2 && filled.People === `${VIEWER}\n${EDITOR}`, filled);
   await frame.locator('[data-fk="manage-tab-spaces"]').click();
-  await frame.locator(`[data-fk="manage-space-${made.Cle}"]`).click();
+  await frame.locator(`[data-fk="manage-space-${made.Key}"]`).click();
   await frame.locator('[data-fk="manage-space-remove"]').click();
   await frame.locator('[data-fk="ask-yes"]').click();
   await frame.locator('.mod.mg .rr[data-space]').filter({ hasText: 'Équipe UI' }).waitFor({ state: 'detached', timeout: 15000 });
@@ -232,12 +232,12 @@ async function playExplorer(run, frame) {
   await frame.locator('[data-fk="share-pick-marc@example.com"]').click();
   await frame.locator('[data-fk="share-confirm"]').click();
   await frame.locator('.mod.sh .rr[data-share]').filter({ hasText: 'marc@example.com' }).waitFor({ timeout: 15000 });
-  const spaceGiven = (await rows(run, 'GFS_Partages')).find(line => line.Cible === 'espace:achats' && line.Personne === 'marc@example.com');
-  check('un droit donné dans la fenêtre de l\'espace s\'écrit sur « espace:achats », valide', spaceGiven && spaceGiven.Droit === 'lecture' && spaceGiven.Valide === true, spaceGiven);
+  const spaceGiven = (await rows(run, 'GFS_Shares')).find(line => line.Target === 'espace:achats' && line.Person === 'marc@example.com');
+  check('un droit donné dans la fenêtre de l\'espace s\'écrit sur « espace:achats », valide', spaceGiven && spaceGiven.Right === 'lecture' && spaceGiven.Valid === true, spaceGiven);
   const withMarc = (await byName(run))[NAMES.F];
-  check('la personne lit le fichier rangé dans l\'espace (Grist le calcule)', has(withMarc.GFS_Lecteurs, 'marc@example.com'), withMarc.GFS_Calc);
-  const spacesNow = (await rows(run, 'GFS_Espaces')).find(line => line.Cle === 'achats');
-  check('l\'espace dit qui le voit : la personne y est', has(spacesNow.Voit, 'marc@example.com'), spacesNow);
+  check('la personne lit le fichier rangé dans l\'espace (Grist le calcule)', has(withMarc.GFS_Readers, 'marc@example.com'), withMarc.GFS_Calc);
+  const spacesNow = (await rows(run, 'GFS_Spaces')).find(line => line.Key === 'achats');
+  check('l\'espace dit qui le voit : la personne y est', has(spacesNow.Sees, 'marc@example.com'), spacesNow);
   await frame.locator('[data-fk="share-close"]').click();
   await frame.locator('.mod.sh').waitFor({ state: 'detached' });
   await spaceRow.dblclick();
@@ -337,7 +337,7 @@ async function playEditor(run) {
   check('il n\'écrit pas D : le sous-dossier, plus précis, ne lui laisse que la lecture', answer.status !== 200, answer.text);
   check('« Aucun accès » posé par l\'écran cache le premier modèle à l\'éditeur', !seen.includes(FIRST), seen.filter(name => name === FIRST));
   const spaces = await rows(run, 'GFS_Spaces');
-  check('il voit l\'espace achats', spaces.length === 1 && spaces[0].Nom === 'Achats', spaces);
+  check('il voit l\'espace achats', spaces.length === 1 && spaces[0].Name === 'Achats', spaces);
   const groups = await call(page, 'GET', `/api/docs/${run.docId}/tables/GFS_Groups/records`);
   check('il ne lit pas les adresses des groupes', !groups.text.includes('example.com'), groups.text.slice(0, 160));
   answer = await apply(run, [['AddRecord', 'GFS_Spaces', null, { Key: 'pirate', Name: 'Pirate' }]]);

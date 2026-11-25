@@ -1,4 +1,4 @@
-// Les fichiers que GFS garde, côté données (contrats 6.6) : la table `GFS_Fichiers`, une ligne par PDF, le fichier en pièce jointe Grist. Ce module ajoute,
+// Les fichiers que GFS garde, côté données (contrats 6.6) : la table `GFS_Files`, une ligne par PDF, le fichier en pièce jointe Grist. Ce module ajoute,
 // remplace, retire et lit un fichier ; il ne montre rien à la personne (les fenêtres et les phrases sont à js/files/kept-files.js) et ne parle à Grist que par
 // le port de GFS et le cadre d'envoi (js/broker/transfer.js).
 //

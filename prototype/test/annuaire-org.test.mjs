@@ -1,7 +1,11 @@
 // La mise en page de l'organigramme (js/annuaire/annuaire-org.js) : feuilles côte à côte, parents centrés, traits en équerre, éléments repliés, zoom.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { defaultOpen, layoutOrg, step, fitZoom, ZOOMS } from '../js/annuaire/annuaire-org.js';
+import { defaultOpen, allOpen, layoutOrg, step, fitZoom, ZOOMS, CREW } from '../js/annuaire/annuaire-org.js';
+import { orgData, PEOPLE_MAX } from '../js/annuaire/annuaire-org-data.js';
+import { buildPeople, buildTree, levelKey } from '../js/annuaire/annuaire-model.js';
+import { schemaOf } from '../js/annuaire/annuaire-schema.js';
+import { documentFixture, configFixture } from './annuaire-fixtures.mjs';
 
 const box = { w: 100, h: 40, gx: 10, gy: 20 };
 const leaf = id => ({ id, ch: [] });
@@ -65,4 +69,77 @@ test('zoom : un cran de plus ou de moins, bornés ; « tout voir » choisit le z
   assert.equal(fitZoom({ width: 800, height: 300 }, { width: 600, height: 300 }), 0.67);
   assert.equal(fitZoom({ width: 5000, height: 3000 }, { width: 600, height: 300 }), ZOOMS[0]);
   assert.equal(fitZoom({ width: 0, height: 0 }, { width: 600, height: 300 }), 1);
+});
+
+// ---------- retour du porteur, 25/11 : déplié jusqu'au niveau le plus bas, les personnes sous leur structure, les filtres ----------
+
+test('étages dépliés : par défaut tout l\'organigramme est déplié jusqu\'au niveau le plus bas, même à plusieurs centaines de cartes', () => {
+  const many = { id: 'r', ch: Array.from({ length: 30 }, (_, i) => ({ id: `n${i}`, ch: Array.from({ length: 5 }, (_, j) => ({ id: `n${i}-${j}`, ch: [leaf(`n${i}-${j}x`)] })) })) };
+  const open = defaultOpen([many]); // 1 + 30 + 150 + 150 = 331 éléments
+  assert.deepEqual([...open].sort(), [...allOpen([many])].sort());
+  assert.equal(open.has('n7-3'), true, 'le dernier étage qui a des enfants est déplié');
+  assert.equal(defaultOpen([many], 100).has('n7-3'), false, 'au-delà de la limite, seuls deux étages');
+});
+
+test('mise en page : les personnes d\'une structure se rangent en pile sous sa carte, et l\'étage d\'en dessous commence sous la pile', () => {
+  const node = id => ({ id, ch: [], people: [leaf(`${id}1`), leaf(`${id}2`)] });
+  const root = { id: 'r', ch: [node('a'), node('b')], people: [leaf('r1')] };
+  const layout = layoutOrg([root], { box, open: new Set(['r']) });
+  const entry = id => layout.entries.find(each => each.item.id === id);
+  const stack = CREW.top + 2 * (CREW.h + CREW.gap);
+  assert.equal(entry('r').stack, CREW.top + (CREW.h + CREW.gap));
+  assert.equal(entry('a').y, box.h + entry('r').stack + box.gy, 'les enfants commencent sous la pile de la racine');
+  assert.deepEqual([entry('a1').y, entry('a2').y], [entry('a').y + box.h + CREW.top, entry('a').y + box.h + CREW.top + CREW.h + CREW.gap]);
+  assert.equal(entry('a1').person, true);
+  assert.equal(entry('a1').x, entry('a').x, 'les personnes sont sous leur structure');
+  assert.equal(layout.height, entry('a').y + box.h + stack, 'le dessin va jusqu\'au bas de la pile la plus basse');
+  const folded = layoutOrg([root], { box, open: new Set() });
+  assert.equal(folded.entries.some(each => each.person), false, 'une structure repliée cache ses personnes avec elle');
+});
+
+test('organigramme : les filtres et la recherche réduisent les structures aux personnes qui passent, les autres cartes sont estompées', () => {
+  const doc = documentFixture();
+  const schema = schemaOf(doc._grist_Tables, doc._grist_Tables_column);
+  const config = configFixture();
+  const people = buildPeople(config, 'Personnes', doc, schema);
+  const data = { people, config, tree: buildTree(people, config.levels, 'Annuaire') };
+  const walk = (item, each) => { each(item); item.ch.forEach(child => walk(child, each)); };
+  const titles = (roots, pick) => { const found = []; roots.forEach(root => walk(root, item => found.push(...pick(item)))); return found; };
+
+  const all = orgData({ mode: 'structures', data, query: '', filters: {}, wantPeople: false });
+  assert.equal(all.signature, '');
+  assert.equal(all.found.length, 6);
+  assert.deepEqual(titles(all.roots, item => item.people.map(person => person.card.title)), [], 'sans le bouton « Personnes », aucune personne n\'est dessinée');
+
+  const one = orgData({ mode: 'structures', data, query: 'camille', filters: {}, wantPeople: true });
+  assert.equal(one.signature, 'camille');
+  assert.equal(one.withPeople, true);
+  assert.deepEqual(titles(one.roots, item => [item.card.title]), ['Annuaire', 'Pôle Ressources', 'Direction des finances', 'Budget'], 'seule la branche de Camille reste');
+  assert.deepEqual(titles(one.roots, item => item.people.map(person => person.card.title)), ['Camille Durand']);
+  assert.equal(one.roots[0].card.count, 1, 'les comptes disent les personnes qui passent');
+
+  const level = orgData({ mode: 'structures', data, query: '', filters: { [levelKey(0)]: new Set(['Pôle Numérique']) }, wantPeople: false });
+  assert.deepEqual(titles(level.roots, item => [item.card.title]), ['Annuaire', 'Pôle Numérique', 'Direction du numérique'], 'un filtre de niveau garde sa branche');
+  assert.notEqual(level.signature, one.signature, 'la signature change avec les filtres : l\'organigramme se déplie de nouveau');
+
+  const none = orgData({ mode: 'structures', data, query: 'zzz', filters: {}, wantPeople: true });
+  assert.deepEqual([none.roots, none.found], [[], []]);
+
+  const managers = orgData({ mode: 'managers', data, query: 'camille', filters: {}, wantPeople: true, linesOf: () => [] });
+  assert.equal(managers.withPeople, false, 'chez les responsables, les personnes sont déjà les cartes');
+  const flat = titles(managers.roots, item => [[item.card.title, item.card.dim]]);
+  assert.deepEqual(flat, [['Emma Rolland', true], ['Nathan Roussel', true], ['Camille Durand', false]], 'le responsable d\'une personne trouvée relie, estompé');
+  assert.equal(orgData({ mode: 'managers', data, query: '', filters: {}, wantPeople: false, linesOf: () => [] }).roots.length, 2);
+});
+
+test('organigramme : au-delà de la limite, les personnes ne se dessinent plus', () => {
+  const doc = documentFixture();
+  const schema = schemaOf(doc._grist_Tables, doc._grist_Tables_column);
+  const config = configFixture();
+  const people = buildPeople(config, 'Personnes', doc, schema);
+  const many = Array.from({ length: PEOPLE_MAX + 1 }, (_, i) => ({ ...people[i % people.length], row: 100 + i }));
+  const data = { people: many, config, tree: buildTree(many, config.levels, 'Annuaire') };
+  assert.equal(orgData({ mode: 'structures', data, query: '', filters: {}, wantPeople: true }).withPeople, false);
+  assert.equal(orgData({ mode: 'structures', data: { ...data, people: many.slice(0, PEOPLE_MAX), tree: buildTree(many.slice(0, PEOPLE_MAX), config.levels, 'A') }, query: '', filters: {},
+    wantPeople: true }).withPeople, true);
 });

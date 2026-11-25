@@ -2,7 +2,7 @@
 // contrôleur joué par l'essai. Ce que Grist envoie (les tables, les fenêtres, le cadre) se mesure dans un vrai Grist : labo/run-liens.mjs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { AppLinks, chooser, readChoice, readOpen } from '../js/broker/links.js';
+import { AppLinks, chooser, readChoice, readOpen, readPersonChoice, personAnswer, mayAskPerson } from '../js/broker/links.js';
 import { ERR } from '../js/broker/filter.js';
 import { automation, form, publipostage } from './helpers.mjs';
 
@@ -180,7 +180,85 @@ test('ouvrir : l\'app qui a demandé a été remplacée pendant l\'attente, rien
   assert.equal(log.filter(entry => entry[0] === 'openIn').length, 0);
 });
 
-test('les poignées de l\'enveloppe : `choisir` et `ouvrir`, rien d\'autre', () => {
+test('les poignées de l\'enveloppe : `choisir`, `ouvrir` et `choisirPersonne`, rien d\'autre', () => {
   const { links } = setup();
-  assert.deepEqual(Object.keys(links.handlers('S1')).sort(), ['choisir', 'ouvrir']);
+  assert.deepEqual(Object.keys(links.handlers('S1')).sort(), ['choisir', 'choisirPersonne', 'ouvrir']);
+});
+
+// ---------- choisirPersonne (contrats 5.4, point 16) ----------
+
+test('readPersonChoice : le texte que l\'app dit dans la fenêtre, sur une ligne, 120 signes au plus', () => {
+  assert.deepEqual(readPersonChoice({}), { titre: '' });
+  assert.deepEqual(readPersonChoice({ titre: '  Choisir\n un   destinataire ' }), { titre: 'Choisir un destinataire' });
+  assert.equal(readPersonChoice({ titre: 'x'.repeat(300) }).titre.length, 120);
+  for (const bad of [{ titre: 5 }, { titre: {} }, { titre: ['a'] }]) refused(() => readPersonChoice(bad), ERR.REFUSE);
+});
+
+test('personAnswer : cinq textes, jamais autre chose de la fiche ; null quand la personne annule', () => {
+  assert.equal(personAnswer(null), null);
+  assert.equal(personAnswer(undefined), null);
+  assert.equal(personAnswer('Léa'), null);
+  assert.deepEqual(personAnswer({ nom: 'Léa Garnier', email: 'lea@exemple.fr', titre: 'Cheffe', telephone: '01', annuaire: 'Annuaire principal', row: 3, fields: { Pole: ['A'] } }),
+    { nom: 'Léa Garnier', email: 'lea@exemple.fr', titre: 'Cheffe', telephone: '01', annuaire: 'Annuaire principal' }, 'ni numéro de ligne, ni champs');
+  assert.deepEqual(personAnswer({ nom: 'Noé', email: 5, titre: null }), { nom: 'Noé', email: '', titre: '', telephone: '', annuaire: '' }, 'ce qui n\'est pas un texte devient vide');
+});
+
+test('mayAskPerson : seule une app qui déclare actions.personnes.choisir peut demander une personne', () => {
+  assert.equal(mayAskPerson({ actions: { personnes: { choisir: true } } }), true);
+  for (const manifest of [null, {}, { actions: {} }, { actions: { personnes: {} } }, { actions: { personnes: { choisir: false } } }, { actions: { personnes: { choisir: 'oui' } } },
+    { actions: { personnes: { inserer: { fr: 'x', en: 'x' } } } }]) assert.equal(mayAskPerson(manifest), false);
+});
+
+// Le contrôleur joué par l'essai pour `choisirPersonne` : `answer` rend la personne (ou null), ou la retient jusqu'à `finish`.
+function personSetup({ full = true, manifest = { actions: { personnes: { choisir: true } } }, hold = false } = {}) {
+  const log = [];
+  const asker = { id: 'S1' };
+  const state = { session: asker };
+  let finish = null;
+  const host = {
+    session: () => state.session, fullAccess: () => full, t: key => key, appName: id => `App ${id}`, manifestOf: id => (id === 'S1' ? manifest : null),
+    pickPerson: opts => { log.push(['pickPerson', opts]); return hold ? new Promise(resolve => { finish = resolve; }) : Promise.resolve({ nom: 'Léa', email: 'l@e.fr', titre: 'T', telephone: '', annuaire: 'A', row: 9 }); },
+    cancelPick: () => { log.push(['cancelPick']); if (finish) finish(null); },
+  };
+  return { links: new AppLinks(host), log, state, asker, finish: value => finish(value) };
+}
+
+test('choisirPersonne : la fenêtre s\'ouvre avec le texte de l\'app et son nom ; la personne choisie est rendue en cinq textes', async () => {
+  const { links, log, asker } = personSetup();
+  const answer = await links.handlers(asker).choisirPersonne({ titre: ' Choisir  un destinataire ' });
+  assert.deepEqual(log, [['pickPerson', { title: 'Choisir un destinataire', app: 'App S1' }]]);
+  assert.deepEqual(answer, { nom: 'Léa', email: 'l@e.fr', titre: 'T', telephone: '', annuaire: 'A' });
+});
+
+test('choisirPersonne : refusée sans la déclaration du manifeste ; sans l\'accès complet : refus d\'accès ; une seule demande à la fois', async () => {
+  const noDeclaration = personSetup({ manifest: { actions: {} } });
+  await refusedLater(noDeclaration.links.choosePerson(noDeclaration.asker, {}), ERR.REFUSE);
+  assert.deepEqual(noDeclaration.log, [], 'la fenêtre ne s\'ouvre pas');
+  const noAccess = personSetup({ full: false });
+  await refusedLater(noAccess.links.choosePerson(noAccess.asker, {}), ERR.ACCES);
+  assert.deepEqual(noAccess.log, []);
+  const { links, finish, asker } = personSetup({ hold: true });
+  const first = links.choosePerson(asker, {});
+  await refusedLater(links.choosePerson(asker, {}), ERR.REFUSE);
+  finish({ nom: 'Noé' });
+  assert.equal((await first).nom, 'Noé');
+  const again = links.choosePerson(asker, {});
+  finish({ nom: 'Mia' });
+  assert.equal((await again).nom, 'Mia', 'une fois le choix fini, un autre peut s\'ouvrir');
+});
+
+test('choisirPersonne : annuler rend null ; l\'app remplacée pendant le choix ferme la fenêtre et n\'a plus de destinataire', async () => {
+  const cancelled = personSetup({ hold: true });
+  const pending = cancelled.links.choosePerson(cancelled.asker, {});
+  cancelled.finish(null);
+  assert.equal(await pending, null);
+  const { links, log, state, asker } = personSetup({ hold: true });
+  const later = links.choosePerson(asker, {});
+  state.session = { id: 'S2' };
+  links.drop();
+  assert.deepEqual(log.at(-1), ['cancelPick'], 'la fenêtre de choix se ferme');
+  await refusedLater(later, ERR.INACTIF);
+  const idle = personSetup();
+  idle.links.drop();
+  assert.deepEqual(idle.log, [], 'sans choix de personne en cours, drop() ne ferme rien');
 });

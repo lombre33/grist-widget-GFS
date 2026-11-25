@@ -123,6 +123,11 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
    (`gfs.copie` dans ta liste, puis `node kit/outils/bibliotheques.mjs --copies` : le dossier commité, ses licences et ses empreintes) ; ta page garde
    alors **deux cartes d'importation en données et un script** qui pose la bonne au démarrage (copie quand l'adresse dit `copie=editeur`, CDN sinon) ;
    l'outil tient le bloc et la politique (consigne 066, faits vérifiés 98).
+   **Le secours d'un CDN** (décision du porteur, 25/11 : « la copie figée en back-up », jamais un deuxième CDN ; kit 0.31.0, 5.2 point 14) : pour tout ce que l'app
+   charge par un CDN et que GFS a en copie (ses bibliothèques natives restées au CDN et celles de ses extensions), `GfsLink.secours(id, version)` rend la copie de GFS
+   (`{ version, src, integrite, forme }`, ou `null`). **`loadScript(lib, { secours })`** (kit, `js/script-loader.js`) charge par le CDN, puis par cette copie quand le CDN échoue
+   (hôte mort, empreinte refusée, adresse que la politique ne nomme pas) ou ne répond pas en 3 secondes ; la politique de l'app ne nomme rien de plus (`'self'`).
+   Sans GFS, ou sans copie, `secours` est `null` et rien ne change.
 4. Passer le contexte et le stockage par le client du courtier du kit (avec ses replis quand l'app est seule).
 5. Ranger les fonctions lourdes dans `extensions/`, avec le registre et le grisé du kit, et retirer leurs bibliothèques de la
    liste et de l'import map de l'app : GFS les porte (la CSP garde l'adresse du mode CDN, règle 9).
@@ -394,8 +399,10 @@ GFS ne bloque rien : il montre l'écart.
 4. **S4 · Scripts nommés.** `script-src` ne garde que `'self'`, le script d'API de Grist par son adresse entière avec `'unsafe-eval'` (règle 11) et les adresses exactes et versionnées des bibliothèques. Jamais `'unsafe-inline'`,
    `*`, `https:`, `data:` ni `blob:` pour un script ; un script en ligne se garde par son empreinte (`'sha256-…'`). `'wasm-unsafe-eval'` et `worker-src blob:` seulement si une bibliothèque l'exige (DuckDB-WASM), et dis laquelle
    dans ton `GFS-ETAT.md`. `style-src 'unsafe-inline'` est toléré tant que S3 est tenue : GFS le note, sans le compter contre toi.
-5. **S5 · Chaque bibliothèque chargée de l'extérieur est déclarée** (point 24 de la section 1.2), à une version exacte, avec son `integrity` et `crossorigin="anonymous"` quand le CDN permet une empreinte stable
-   (cdnjs : oui ; un service qui reconstruit ses fichiers, comme esm.sh : à ta mesure, dis-le). Chaque adresse que ta page contacte doit retrouver sa ligne déclarée.
+5. **S5 · Chaque bibliothèque chargée de l'extérieur est déclarée** (point 24 de la section 1.2), à une version exacte, avec son `integrity` et `crossorigin="anonymous"`. **Le CDN de la suite est jsDelivr**
+   (`https://cdn.jsdelivr.net/npm/<paquet>@<version exacte>/<fichier>`, décidé le 25/11 ; l'empreinte se prend sur l'archive npm, que l'outil du kit fait avec `{ paquet, fichier }` : faits vérifiés 163 et 167). Une autre adresse
+   ne sert qu'une bibliothèque que jsDelivr n'a pas : dis laquelle et pourquoi dans ton `GFS-ETAT.md`. Un fichier qu'un service fabrique à la demande (esm.sh, le `+esm` de jsDelivr, une variante `.min.js` minifiée par le CDN)
+   n'a pas les octets de npm : aucune empreinte ne le contrôle, il se garde en copie dans ton dépôt (TipTap de Publipostage+ : en attente du choix du porteur, cahier section 12, question 2). Chaque adresse que ta page contacte doit retrouver sa ligne déclarée.
 6. **S6 · Rien ne quitte le document sans un geste de la personne** : aucune donnée du document ni de la personne n'est envoyée à un service tiers, ni mesure d'audience, ni journal d'erreurs envoyé ; aucun secret (clé, jeton)
    dans le dépôt. Une fonction qui envoie quelque chose le dit à la personne avant (comme la publication d'un formulaire, règle 14). GFS ne peut pas le vérifier : tu le déclares, et il montre ce que ta politique permettrait d'atteindre.
 7. **S7 · Dépendances suivies** : Dependabot (ou un outil équivalent) actif sur le dépôt, `.github/dependabot.yml` à la racine ; une montée de version se dit dans « Changements qui touchent GFS » de ton `GFS-ETAT.md` ;

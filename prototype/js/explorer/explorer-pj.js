@@ -11,8 +11,9 @@ import { pieceKeys, otherAttachments } from '../weight/weight.js';
 const NO_OTHER = Object.freeze({ bytes: 0, count: 0 });
 
 export class PiecesBox {
-  // cochée (`on`), la table de Grist lue (`table`), ce qu'elle ajoute au total (`other`), une lecture en cours (`busy`), ou en échec (`failed`, `reason`)
-  #state = { on: false, table: null, other: NO_OTHER, busy: false, failed: false, reason: '' };
+  // cochée (`on`, par défaut : demande du porteur, 25/11), la table de Grist lue (`table`), ce qu'elle ajoute au total (`other`), une lecture en cours
+  // (`busy`), ou en échec (`failed`, `reason`)
+  #state = { on: true, table: null, other: NO_OTHER, busy: false, failed: false, reason: '' };
   #run = 0; // le numéro de la dernière lecture : une réponse plus ancienne est ignorée
   #deps;
 
@@ -35,13 +36,14 @@ export class PiecesBox {
     this.#count();
   }
 
-  // Après la mise à jour de la liste : la case cochée relit (un PDF ajouté ou retiré change les pièces jointes).
+  // Après la mise à jour de la liste, et à l'ouverture de l'explorateur : la case cochée lit, ou relit (un PDF ajouté ou retiré change les pièces jointes).
+  // Sans l'accès complet rien ne se lit : la case est cochée de départ, mais grisée avec sa raison.
   reread() {
-    if (this.#state.on && this.#deps.hasSource()) void this.#read();
+    if (this.#state.on && this.#deps.hasSource() && !this.#deps.restricted()) void this.#read();
   }
 
   // Un clic sur la case, `checked` son nouvel état : grisée, rend la raison (le clic ne coche rien) ; sinon rend `null`, et les pièces jointes ne se lisent que
-  // cochée.
+  // cochée (de départ, elle l'est : la lecture suit la première liste).
   toggle(checked) {
     const { grey } = this.facts();
     if (grey) return grey;

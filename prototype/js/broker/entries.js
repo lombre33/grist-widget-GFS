@@ -8,6 +8,7 @@ import { familyOf } from '../explorer/explorer-model.js';
 import { activeExtensionIds, extensionsOf } from '../apps/extensions.js';
 import { rowKey } from '../apps/modules-window.js';
 import { FILES_APP } from '../files/gfs-files.js';
+import { ANNUAIRES_APP } from '../files/annuaire-files.js';
 import { RECEIVED_APP } from '../sharing/received-files.js';
 import { importFormats, acceptsOpening } from '../files/import-file.js';
 import { readersOf, chooseReader } from './reading.js';
@@ -28,7 +29,8 @@ export class Entries {
     if (!c.fullAccess) return { text: c.t('gfs.needsFullAccess'), hint: c.t('gfs.needsFullAccessHint') };
     // un fichier que GFS garde, ou reçu d'un autre document et accepté : aucune app à installer (une arrivée en attente est grisée par
     // js/sharing/received-control.js)
-    if (file.app === FILES_APP || file.app === RECEIVED_APP) return null;
+    // un annuaire : le module de GFS qui le lit (js/annuaire/), aucune app à installer
+    if (file.app === FILES_APP || file.app === RECEIVED_APP || file.app === ANNUAIRES_APP) return null;
     if (!c.registry.has(file.app)) return { text: c.t('ex.lockedApp', { app: c.appName(file.app) }), focus: rowKey(file.app) };
     if (!file.known) return { text: c.t('ex.lockedType', { app: c.appName(file.app) }) };
     const extension = file.typeInfo.extension;
@@ -37,6 +39,18 @@ export class Entries {
       return { text: c.t('ex.lockedExtension', { name: entry ? label(entry.nom, c.lang) : extension }), focus: rowKey(file.app, extension) };
     }
     return null;
+  };
+
+  // Les apps qui acceptent qu'on leur pose une personne de l'annuaire (« Insérer dans… » de la fiche, contrats 2.7, point 8, et 5.4, point 16) : celles dont le
+  // manifeste déclare `actions.personnes.inserer`. [{ id, name, where (les mots de l'app, dans la langue du moment), lock (ce qui la grise : le texte, ou ''),
+  // focus (la ligne de la fenêtre « Apps et extensions » qui la débloque), ready (elle déclare aussi `ouverture.personne`) }].
+  personTargets = () => {
+    const { c } = this;
+    return c.validApps().filter(({ manifest }) => manifest.actions && manifest.actions.personnes && manifest.actions.personnes.inserer).map(({ manifest }) => {
+      const lock = this.lockOf({ app: manifest.id, known: true, typeInfo: { extension: null } });
+      return { id: manifest.id, name: c.appName(manifest.id), where: label(manifest.actions.personnes.inserer, c.lang), lock: lock ? lock.text : '',
+        focus: lock ? lock.focus || null : null, ready: acceptsOpening(manifest, 'personne') };
+    });
   };
 
   isExtensionActive = (appId, extensionId) => {

@@ -28,18 +28,21 @@ import { extensionsOf } from './apps/extensions.js';
 import { AppsState } from './apps/apps-state.js';
 import { DocNames } from './apps/doc-names.js';
 import { countRows } from './apps/row-count.js';
+import { createSqlGate } from './broker/sql-gate.js';
 import { arrivalApp, arrivalProbes } from './broker/arrival.js';
 import { arrivalTableApp } from './broker/arrival-table.js';
 import { Rangement, TableDeclined } from './files/rangement.js';
 import { isNewer } from './files/structure.js';
 import { appFilingOf } from './files/app-filing.js';
 import { RightsControl } from './rights/rights-control.js';
+import { openAnnuaire, pickPerson, cancelPick } from './shell/annuaire-entry.js';
 import { createOtherDocuments } from './sharing/share-other.js';
 import { createFollower } from './sharing/share-follow.js';
 import { resumeSharing } from './sharing/sync-resume.js';
 import { whenReceived } from './sharing/sync-service.js';
 import { WeightControl } from './weight/weight-control.js';
 import { FILES_APP, FILES_MANIFEST } from './files/gfs-files.js';
+import { ANNUAIRES_APP, ANNUAIRES_MANIFEST } from './files/annuaire-files.js';
 import { Transfer, buildTransferFrame } from './broker/transfer.js';
 import { Attach } from './broker/attach.js';
 import { Player } from './broker/player.js';
@@ -50,6 +53,8 @@ import { Openings } from './broker/openings.js';
 import { OpenedFiles } from './explorer/opened-files.js';
 import { FilesReading } from './explorer/files-reading.js';
 import { createHeavyHint } from './explorer/heavy-hint.js';
+import { createReadGuard } from './explorer/read-guard.js';
+import { docKey } from './explorer/doc-key.js';
 import { keyStore } from './shell/stored-choice.js';
 import { Pending } from './explorer/pending.js';
 import { buildExplorer } from './explorer/explorer-assembly.js';
@@ -121,9 +126,8 @@ export class GfsController {
     this.#installPageTree();
     // Les apps sont servies par leur site en ligne (le porteur, 22/10) ; `?live=0` : la copie figée du sous-module, celle des mesures de GFS.
     this.live = liveSwitch(search);
-    // Les noms que le document donne aux tables et aux colonnes des apps (js/apps/doc-names.js) : lus avant chaque lecture des fichiers ; le nombre de lignes
-    // d'une table n'est lu que si le document la porte sous deux noms.
-    this.names = new DocNames({ doc: this.port.doc, count: table => countRows(table, { sql: statement => this.transfer.sql(statement), doc: this.port.doc }) });
+    const docId = docKey(() => this.port.doc.getDocName()); // demandé une fois à Grist, pour ce qui se garde par document sur le navigateur
+    this.#buildLightReads(docId);
     // Les apps installées et leurs extensions : ce que le document retient dans la table `GFS_Rangement` (contrats 7.4), écrit seulement sur un geste de la
     // personne, et la table seulement avec son accord. Cette table apprend aussi à GFS l'adresse de la personne (6.4, point 6) : sans écriture possible, elle
     // reste inconnue.
@@ -133,16 +137,14 @@ export class GfsController {
     // Ce que l'explorateur et les liens demandent (grisé, types de « Nouveau » et d'« Importer », qui lit un fichier : js/broker/entries.js), et les ouvertures
     // (js/broker/openings.js).
     const entries = new Entries(this);
-    Object.assign(this, { lockOf: entries.lockOf, newTypes: entries.newTypes, importTypes: entries.importTypes, readerOf: entries.readerOf });
+    Object.assign(this, { lockOf: entries.lockOf, newTypes: entries.newTypes, importTypes: entries.importTypes, readerOf: entries.readerOf,
+      personTargets: entries.personTargets });
     this.opened = new OpenedFiles(); // les fichiers que GFS a ouverts dans une app, pour la vue « Ouverts » de l'explorateur (js/explorer/opened-files.js)
     this.openings = new Openings(this);
     this.links = this.#buildLinks();
     // Le cadre d'envoi (js/broker/transfer.js) ne s'ouvre qu'à la première requête : les pièces jointes, et la preuve que la personne est propriétaire
     // (js/rights/rights-reader.js).
     this.transfer = new Transfer({ doc: this.port.doc, base: this.doc.baseURI, createFrame: url => buildTransferFrame(this.doc, url) });
-    // la lecture des fichiers d'un document lourd sans ses cellules lourdes (js/explorer/explorer-sql.js) : jeton en lecture seule, éteinte au premier refus
-    this.fileReader = createLightReader({ sql: statement => this.transfer.sql(statement),
-      warn: error => console.warn('GFS : la lecture légère des fichiers est éteinte pour cette session, l\'explorateur relit les tables en entier', error) });
     this.player = new Player({ container: this.$('frames') }); // le lecteur de vidéos posé par-dessus l'app (contrats 5.2, point 11)
     // `joindre` (contrats 5.4, point 12)
     this.attach = new Attach({ doc: this.port.doc, transfer: this.transfer, session: () => this.session, readonly: () => this.readonly });
@@ -155,8 +157,10 @@ export class GfsController {
         apps: () => this.validApps(), fullAccess: () => this.fullAccess,
         rangement: this.rangement,
         reader: this.fileReader,
-        // un document vu lourd à la visite d'avant se lit d'emblée en lecture légère (js/explorer/heavy-hint.js) ; l'app qu'on ouvre lit sa table elle-même
-        hint: createHeavyHint({ docId: () => this.port.doc.getDocName(), store: key => keyStore(window, key) }),
+        // ce que le document pesait à la visite d'avant choisit la lecture (js/explorer/heavy-hint.js) ; l'app qu'on ouvre lit sa table elle-même
+        hint: createHeavyHint({ docId, store: key => keyStore(window, key) }),
+        // une table que Grist ne sait plus envoyer en entier n'est pas redemandée sans fin (js/explorer/read-guard.js)
+        guard: createReadGuard({ docId, store: key => keyStore(window, key, 'sessionStorage') }),
       prepare: () => this.names.refresh(this.apps.filter(item => item.ok)),
       explorer: () => this.explorer, openedBar: () => this.openedBar, appName: this.appName, t: this.t, onSpaces: spaces => { this.spaces = spaces; },
       onFiles: files => void this.followFolders(files), onStats: stats => { this.doc.body.dataset.explorerStats = JSON.stringify(stats); },
@@ -170,6 +174,19 @@ export class GfsController {
       container: this.$('stage'), i18n: this.i18n, inertTargets: this.inertTargets, manifests: this.manifests, entries: entries.templates, readJson,
       unlock: lock => this.unlock(lock), onCreate: entry => this.openings.openTemplate(entry),
     });
+  }
+
+  // Les lectures SQL que GFS fait sans geste de la personne, avec le jeton en lecture seule : le nombre de lignes d'une table que le document porte sous deux
+  // noms, et la lecture des fichiers sans leurs cellules lourdes (js/explorer/explorer-sql.js : d'abord, et tant que le document n'est pas connu léger). Le
+  // premier refus du serveur les ferme toutes les deux, sur la page et sur l'onglet (js/broker/sql-gate.js) : la console de la personne ne reçoit pas la
+  // même requête refusée à chaque affichage, et l'explorateur relit les tables en entier.
+  #buildLightReads(docId) {
+    this.sqlGate = createSqlGate({ sql: statement => this.transfer.sql(statement), docId, store: key => keyStore(window, key, 'sessionStorage') });
+    // Les noms que le document donne aux tables et aux colonnes des apps (js/apps/doc-names.js) : lus avant chaque lecture des fichiers ; le nombre de lignes
+    // d'une table n'est lu que si le document la porte sous deux noms.
+    this.names = new DocNames({ doc: this.port.doc, count: table => countRows(table, { sql: statement => this.sqlGate.read(statement), doc: this.port.doc }) });
+    this.fileReader = createLightReader({ sql: statement => this.sqlGate.read(statement),
+      warn: error => console.warn('GFS : la lecture légère des fichiers est éteinte pour cette session, l\'explorateur relit les tables en entier', error) });
   }
 
   // Le partage entre documents, les droits et le poids : ce que les fenêtres du widget lisent du document (js/sharing/, js/rights/, js/weight/).
@@ -197,7 +214,8 @@ export class GfsController {
     });
     this.weight = new WeightControl({ transfer: this.transfer, container: this.$('stage'), inertTargets: this.inertTargets, t: this.t,
       locale: () => this.locale, canRead: () => this.fullAccess, repaint: () => this.#reading.show(), notice: text => this.notice(text),
-      explorerOpen: () => Boolean(this.explorer && this.explorer.isOpen), suite: (this.params.get('suite') || '').split(',').filter(Boolean) });
+      explorerOpen: () => Boolean(this.explorer && this.explorer.isOpen), suite: (this.params.get('suite') || '').split(',').filter(Boolean),
+      deniedBefore: () => this.sqlGate.denied() });
   }
 
   $ = id => this.doc.getElementById(id);
@@ -220,7 +238,7 @@ export class GfsController {
 
   appById(id) { return this.names.adaptItem(this.apps.find(item => item.app.id === id && item.ok) || null); }
   // Le manifeste d'une app installable, ou celui des fichiers que GFS garde lui-même (js/files/gfs-files.js) : null quand l'id n'est ni l'un ni l'autre.
-  manifestOf = id => (id === FILES_APP ? FILES_MANIFEST : (this.appById(id) || { manifest: null }).manifest);
+  manifestOf = id => (id === FILES_APP ? FILES_MANIFEST : id === ANNUAIRES_APP ? ANNUAIRES_MANIFEST : (this.appById(id) || { manifest: null }).manifest);
   appName = id => { const manifest = this.manifestOf(id); return manifest ? label(manifest.nom, this.lang) : id; };
   validApps() { return this.apps.filter(item => item.ok).map(item => this.names.adaptItem(item)); }
   typeLabel = file => (file.typeInfo ? label(file.typeInfo.nom, this.lang) : (file.type || '—'));
@@ -327,7 +345,8 @@ export class GfsController {
           await this.names.refresh(this.apps.filter(item => item.ok));
           return loadFiles(this.port, apps.map(item => this.appById(item.app.id) || item), this.rangement.learning, this.fileReader);
         },
-      openIn: (appId, opening) => this.openings.openIn(appId, opening, 'ex.notice.open'),
+      openIn: (appId, opening) => this.openings.openIn(appId, opening, 'ex.notice.open'), manifestOf: id => this.manifestOf(id),
+      pickPerson: opts => pickPerson(this, opts), cancelPick: () => cancelPick(this),
     });
   }
 
@@ -380,7 +399,7 @@ export class GfsController {
     if (this.session) this.session.show(false);
     this.explorer.open();
     void this.refreshFiles();
-    this.rights.resume(this.explorer);
+    this.rights.resume(this.explorer, { annuaire: () => void openAnnuaire(this).then(() => this.notice(this.t('an.sub.ready'))) });
   }
 
   hideExplorer() {

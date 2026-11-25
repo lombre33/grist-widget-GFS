@@ -12,6 +12,17 @@ import { createI18n } from '../js/i18n/i18n.js';
 import { Run, delay } from './corbeille-firefox.mjs';
 import { contrasts } from './vitrine-firefox.mjs';
 import { setupProblems, savedProblems } from './annuaire-setup-firefox.mjs';
+import { relationsReadProblems } from './annuaire-relations-firefox.mjs';
+import { pathPickerProblems } from './annuaire-path-firefox.mjs';
+import { editProblems } from './annuaire-edit-firefox.mjs';
+import { toolsProblems } from './annuaire-tools-firefox.mjs';
+import { subProblems } from './annuaire-sub-firefox.mjs';
+import { mergeProblems } from './annuaire-merge-firefox.mjs';
+import { linksProblems } from './annuaire-links-firefox.mjs';
+import { ambiancesProblems } from './annuaire-ambiances-firefox.mjs';
+import { PROBES } from './annuaire-probes.mjs';
+import { ficheSectionsProblems } from './annuaire-fiche-firefox.mjs';
+import { listColumnsProblems, sortProblems, orgFiltersProblems } from './annuaire-columns-firefox.mjs';
 
 const OTHER = { fr: 'en', en: 'fr' };
 const LONG_NAME = 'Jean-Baptiste de la Rochefoucauld-Montmorency';
@@ -28,6 +39,7 @@ function inspect() {
   const visible = node => node.getClientRects().length > 0;
   const q = selector => modal.querySelector(selector);
   const all = selector => [...modal.querySelectorAll(selector)].filter(visible);
+  const panelNode = document.querySelector('.an-fpanel'); // le panneau des filtres est posé sur le voile, à côté de la fenêtre
   const named = node => `${node.tagName.toLowerCase()}${node.className && typeof node.className === 'string' ? `.${node.className.trim().split(/\s+/)[0]}` : ''} « ${text(node).slice(0, 40)} »`;
   // Ce qui dépasse le cadre qui le coupe (une bande qui défile ne coupe pas : elle montre le reste en défilant).
   const escapes = [];
@@ -65,9 +77,13 @@ function inspect() {
     nodes: all('.an-tn').map(node => ({ id: node.querySelector('.an-tb').dataset.id, name: text(node.querySelector('.an-tn-name')), count: text(node.querySelector('.an-pill')), expanded: node.getAttribute('aria-expanded'),
       selected: node.getAttribute('aria-selected') === 'true', box: box(node), toggle: node.querySelector('button.an-tt') ? box(node.querySelector('button.an-tt')) : null })),
     persons: all('.an-person').map(rowOf), cards: all('.an-pcard').map(rowOf), listBox: pane('.an-list'),
-    filtersToggle: q('[data-fk="filters"]') ? control(q('[data-fk="filters"]')) : null, filtersOpen: Boolean(q('.an-filters-host') && visible(q('.an-filters-host')) && q('.an-filters-host').querySelector('.an-chip')),
-    chips: all('.an-chip').map(chip => ({ text: text(chip), pressed: chip.getAttribute('aria-pressed') === 'true', box: box(chip), fk: chip.dataset.fk })),
-    filtersBox: q('.an-filters-host') && visible(q('.an-filters-host')) ? box(q('.an-filters-host')) : null,
+    filtersToggle: q('[data-fk="filters"]') ? control(q('[data-fk="filters"]')) : null,
+    panel: panelNode && visible(panelNode) ? { box: box(panelNode), outer: box(panelNode.parentElement), scrolls: panelNode.scrollHeight > panelNode.clientHeight + 1,
+      expanded: q('[data-fk="filters"]').getAttribute('aria-expanded'),
+      heads: [...panelNode.querySelectorAll('.an-fsec-h')].map(head => ({ fk: head.dataset.fk, text: text(head), open: head.getAttribute('aria-expanded') === 'true', box: box(head) })),
+      rows: [...panelNode.querySelectorAll('.an-fv')].map(row => ({ fk: row.dataset.fk, text: text(row), checked: row.getAttribute('aria-checked') === 'true', box: box(row),
+        role: row.getAttribute('role'), cut: row.querySelector('.an-fv-t').scrollWidth > row.querySelector('.an-fv-t').clientWidth + 1 })) } : null,
+    footReset: q('.an-reset') ? control(q('.an-reset')) : null,
     fiche: fiche ? { box: box(fiche), name: text(fiche.querySelector('h3')), nameCut: fiche.querySelector('h3').scrollWidth > fiche.querySelector('h3').clientWidth + 1,
       rows: [...fiche.querySelectorAll('.an-fr')].map(row => ({ label: text(row.querySelector('dt')), value: text(row.querySelector('dd')), box: box(row) })),
       copies: [...fiche.querySelectorAll('.an-copy')].map(button => ({ label: button.title, box: box(button) })), pills: [...fiche.querySelectorAll('.an-pill')].map(pill => ({ box: box(pill), text: text(pill) })) } : null,
@@ -104,18 +120,6 @@ function topWindow() {
     focused: document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.fk || document.activeElement.tagName : null, scrims: scrims.length };
 }
 
-// Les textes dont le contraste se mesure : [le texte, le fond sur lequel il se pose].
-const PROBES = {
-  title: ['.an-top h2', '.mod'], name: ['.an-name-t', '.an-name'], seg: ['.an-seg-b[aria-pressed="true"]', '.an-seg-b'], segOff: ['.an-seg-b[aria-pressed="false"]', '.an-seg'],
-  personName: ['.an-person[aria-pressed="false"] .an-pe-name', '.an-card'], personSub: ['.an-person[aria-pressed="false"] .an-pe-sub', '.an-card'],
-  pill: ['.an-person[aria-pressed="false"] .an-pill', '.an-card'], treeName: ['.an-tn[aria-selected="false"] .an-tn-name', '.an-card'], treeCount: ['.an-tn[aria-selected="false"] .an-pill', '.an-card'],
-  treeOn: ['.an-tn[aria-selected="true"] .an-tn-name', '.an-tb'], rowOn: ['.an-person[aria-pressed="true"] .an-pe-name', '.an-person'], rowOnSub: ['.an-person[aria-pressed="true"] .an-pe-sub', '.an-person'],
-  foot: ['.an-foot', '.mod'], crumb: ['.an-crumb', '.an-card'], cardName: ['.an-pcard[aria-pressed="false"] .an-pe-name', '.an-card'], cardLine: ['.an-pcard .an-pc-line', '.an-card'],
-  ficheName: ['.an-fiche-id h3', '.an-card'], ficheSub: ['.an-fiche-id .an-pe-sub', '.an-card'], ficheLabel: ['.an-fr dt', '.an-card'], ficheValue: ['.an-fr dd', '.an-card'],
-  ficheLink: ['.an-fiche-card .an-link', '.an-card'], chip: ['.an-chip[aria-pressed="false"]', '.an-card'], chipOn: ['.an-chip[aria-pressed="true"]', '.an-card'], flabel: ['.an-flabel', '.an-card'],
-  orgTitle: ['.an-oc[aria-pressed="false"] .an-oc-title', '.an-card'], orgSub: ['.an-oc[aria-pressed="false"] .an-oc-sub', '.an-card'], orgOn: ['.an-oc[aria-pressed="true"] .an-oc-title', '.an-oc'],
-  zoom: ['.an-zoom', '.an-card'], note: ['.an-note', '.an-card'],
-};
 
 // ---------- les mesures ----------
 
@@ -190,14 +194,25 @@ export async function annuaireProblems(page, language, tag, { width, mode }) {
     await treeProblems(page, t, note, click, { wide });
     await ficheProblems(page, t, note, click, { wide });
     await searchProblems(page, t, note, click, inspectNow);
+    await listColumnsProblems(page, t, note, click, { width, mode });
+    await sortProblems(page, t, note, click, { width, mode });
     await filtersProblems(page, t, note, click, inspectNow, { wide });
     await cardsProblems(page, t, note, click, inspectNow, { wide });
     await orgProblems(page, t, note, click, inspectNow, { wide, mode, width });
+    await orgFiltersProblems(page, t, note, click, inspectNow, async label => frameProblems(await inspectNow(), note, label, { wide }));
+    await ficheSectionsProblems(page, t, note, click);
+    await relationsReadProblems(page, t, note, click);
     await switchProblems(page, t, note, click, { wide });
     await settingsProblems(page, t, note, click, { wide, width, mode });
     if (wide) await savedProblems(page, t, note, click);
     await languageProblems(page, language, t, other, note, inspectNow);
     await keyboardProblems(page, t, note, inspectNow);
+    await editProblems(page, t, note, click, { width, mode }); // il écrit dans le faux Grist : en dernier
+    await mergeProblems(page, t, note, click, { width, mode, language }); // il recharge la page (`?sub=1&home=merged`) et ne fait que lire
+    await subProblems(page, t, note, click, { width, mode, language }); // il recharge la page (`?sub=1`) et écrit dans le faux Grist
+    await linksProblems(page, t, note, click, { width, mode, language }); // il recharge la page (`?links=1&sub=1`) et ne fait que lire
+    await ambiancesProblems(page, t, note, click, { width, mode, language }); // il recharge la page (`?links=1&sub=1`), pose chaque ambiance de GFS et ne fait que lire
+    await toolsProblems(page, t, note, click, { width, mode, language }); // il recharge la page (`?tools=1`) : tout dernier
     const said = await page.run(() => window.__annuaireNotices);
     if (said.length) note('phrase inattendue', `l'annuaire a dit : ${said.join(' | ')}`);
   } catch (error) {
@@ -321,39 +336,66 @@ async function searchProblems(page, t, note, click, inspectNow) {
   if (snap.persons.length !== 7) note('recherche', `la recherche effacée laisse ${snap.persons.length} lignes (7 attendues)`);
 }
 
-// Les filtres derrière leur bouton : la liste garde sa place, une pastille filtre, le bouton compte, un second clic les range.
+// Le bouton « Filtres » et son panneau (retour du porteur, 25/11 : comme la maquette de l'annuaire) : le bouton est une cible de 24 px qui compte les choix, le panneau se pose
+// sous lui dans la fenêtre sans rien déplacer, les deux premiers filtres sont dépliés, une case filtre sans fermer le panneau, le pied dit les valeurs choisies et
+// « Réinitialiser » les retire, Échap ferme le panneau et rend le clavier au bouton, un second clic sur le bouton le range.
 async function filtersProblems(page, t, note, click, inspectNow, { wide }) {
   const before = await inspectNow();
   if (!before.filtersToggle) { note('filtres', 'le bouton des filtres manque'); return; }
   if (before.filtersToggle.box.height < 24) note('cible trop petite', `le bouton « ${before.filtersToggle.text} » mesure ${Math.round(before.filtersToggle.box.height)} px de haut`);
-  const closedHeight = before.list ? before.list.height : 0;
+  if (before.panel) note('filtres', 'le panneau des filtres est ouvert avant tout clic');
+  const closedList = before.list ? before.list.height : 0;
   await click('[data-fk="filters"]');
   let snap = await inspectNow();
-  const where = 'les filtres ouverts';
-  if (!snap.filtersOpen) { note('filtres', `${where} : un clic sur le bouton ne montre aucune pastille`); return; }
+  const where = 'le panneau des filtres';
+  if (!snap.panel) { note('filtres', `${where} : un clic sur le bouton ne l'ouvre pas`); return; }
   frameProblems(snap, note, where, { wide });
-  if (snap.list && snap.list.height < 80) note('place', `${where} : la liste ne mesure que ${Math.round(snap.list.height)} px de haut (${Math.round(closedHeight)} px fermés ; 80 au moins ouverts)`);
-  for (const chip of snap.chips) {
-    if (chip.box.height < 24) note('cible trop petite', `${where} : la pastille « ${chip.text} » mesure ${Math.round(chip.box.height)} px de haut`);
-    if (snap.main && !insideX(chip.box, snap.main)) note('filtres', `${where} : la pastille « ${chip.text} » sort du volet`);
+  if (snap.list && Math.abs(snap.list.height - closedList) > 1) note('place', `${where} : la liste passe de ${Math.round(closedList)} à ${Math.round(snap.list.height)} px de haut (le panneau flotte, il ne pousse rien)`);
+  if (!inside(snap.panel.box, snap.window)) note('filtres', `${where} : le panneau sort de la fenêtre`);
+  if (snap.panel.box.top < snap.filtersToggle.box.bottom - 1) note('filtres', `${where} : le panneau n'est pas sous le bouton (haut ${Math.round(snap.panel.box.top)}, bas du bouton ${Math.round(snap.filtersToggle.box.bottom)})`);
+  if (snap.panel.expanded !== 'true') note('filtres', `${where} : le bouton ne dit pas qu'il est ouvert (aria-expanded « ${snap.panel.expanded} »)`);
+  if (!snap.focused || !/^f[ls]:/.test(snap.focused)) note('clavier', `${where} : le clavier est sur « ${snap.focused} » à l'ouverture (une case du panneau attendue)`);
+  if (snap.panel.heads.length < 2) note('filtres', `${where} : ${snap.panel.heads.length} filtre(s) seulement`);
+  if (!snap.panel.heads.slice(0, 2).every(head => head.open)) note('filtres', `${where} : les deux premiers filtres ne sont pas dépliés`);
+  for (const row of snap.panel.rows) {
+    if (row.box.height < 24) note('cible trop petite', `${where} : la ligne « ${row.text} » mesure ${Math.round(row.box.height)} px de haut`);
+    if (!insideX(row.box, snap.panel.box)) note('filtres', `${where} : la ligne « ${row.text} » sort du panneau`);
+    if (row.role !== 'checkbox') note('accessibilité', `${where} : la ligne « ${row.text} » n'a pas le rôle de case à cocher`);
   }
   await contrastProblems(page, note, where);
-  const chip = snap.chips.find(each => each.fk === 'fl:Contrat:Contractuelle');
-  if (!chip) { note('filtres', `${where} : la pastille « Contractuelle » manque (${snap.chips.map(each => each.text).join(' | ')})`); }
-  else {
-    await click(`[data-fk="${chip.fk}"]`);
-    snap = await inspectNow();
-    const now = snap.chips.find(each => each.fk === chip.fk);
-    if (!now || !now.pressed) note('filtres', `${where} : la pastille « Contractuelle » ne se dit pas choisie`);
-    if (snap.persons.length !== 1) note('filtres', `${where} : « Contractuelle » laisse ${snap.persons.length} lignes (1 attendue)`);
-    if (!snap.filtersToggle.text.includes('1')) note('filtres', `${where} : le bouton ne compte pas le filtre (« ${snap.filtersToggle.text} »)`);
-    await click(`[data-fk="${chip.fk}"]`);
-    snap = await inspectNow();
-    if (snap.persons.length !== 7) note('filtres', `${where} : la pastille relâchée laisse ${snap.persons.length} lignes (7 attendues)`);
-  }
+  await click('[data-fk="fs:Contrat"]');
+  snap = await inspectNow();
+  const row = snap.panel && snap.panel.rows.find(each => each.fk === 'fl:Contrat:Contractuelle');
+  if (!row) { note('filtres', `${where} : la case « Contractuelle » manque après avoir déplié « Contrat » (${snap.panel ? snap.panel.rows.map(each => each.text).join(' | ') : 'panneau fermé'})`); return; }
+  await click(`[data-fk="${row.fk}"]`);
+  snap = await inspectNow();
+  const now = snap.panel && snap.panel.rows.find(each => each.fk === row.fk);
+  if (!snap.panel) note('filtres', `${where} : le panneau se ferme à une case cochée (il doit rester ouvert pour en cocher plusieurs)`);
+  if (!now || !now.checked) note('filtres', `${where} : la case « Contractuelle » ne se dit pas cochée`);
+  if (snap.persons.length !== 1) note('filtres', `${where} : « Contractuelle » laisse ${snap.persons.length} lignes (1 attendue)`);
+  if (!snap.filtersToggle.text.includes('1')) note('filtres', `${where} : le bouton ne compte pas le choix (« ${snap.filtersToggle.text} »)`);
+  if (!snap.foots.includes('Contractuelle') || !snap.footReset) note('pied', `${where} : le pied dit « ${snap.foots} » (les valeurs choisies et « Réinitialiser » attendus)`);
+  if (snap.focused !== row.fk) note('clavier', `${where} : après la case, le clavier est sur « ${snap.focused} » (« ${row.fk} » attendu)`);
+  await contrastProblems(page, note, `${where}, une case cochée`);
+  await click(`[data-fk="${row.fk}"]`);
+  snap = await inspectNow();
+  if (snap.persons.length !== 7) note('filtres', `${where} : la case relâchée laisse ${snap.persons.length} lignes (7 attendues)`);
+  await click(`[data-fk="${row.fk}"]`);
+  await click('[data-fk="filters-reset"]');
+  snap = await inspectNow();
+  if (snap.persons.length !== 7 || snap.footReset) note('filtres', `${where} : « Réinitialiser » laisse ${snap.persons.length} lignes et ${snap.footReset ? 'son bouton' : 'plus de bouton'} (7 lignes, plus de bouton attendus)`);
+  // Un clic ailleurs (« Réinitialiser », dans le pied) range le panneau ; on le rouvre pour essayer Échap.
+  if (snap.panel) note('filtres', `${where} : un clic dans le pied ne range pas le panneau`);
+  await click('[data-fk="filters"]');
+  await page.press('Escape');
+  snap = await inspectNow().catch(() => null);
+  if (!snap) { note('filtres', 'Échap ferme la fenêtre au lieu du panneau'); return; }
+  if (snap.panel) note('filtres', 'Échap ne ferme pas le panneau');
+  if (snap.focused !== 'filters') note('clavier', `après Échap le clavier est sur « ${snap.focused} » (le bouton des filtres attendu)`);
+  await click('[data-fk="filters"]');
   await click('[data-fk="filters"]');
   snap = await inspectNow();
-  if (snap.filtersOpen) note('filtres', 'un second clic sur le bouton ne range pas les filtres');
+  if (snap.panel) note('filtres', 'un second clic sur le bouton ne range pas le panneau');
 }
 
 // Les cartes de contact : au moins deux colonnes à 700 px, dans le volet, une carte choisie ouvre la fiche.
@@ -474,6 +516,7 @@ async function settingsProblems(page, t, note, click, { wide, width, mode }) {
   }
   await contrastProblems(page, note, where);
   await setupProblems(page, t, note, { wide, width, mode });
+  await pathPickerProblems(page, t, note, { wide, width, mode });
   await click('[data-fk="set-cancel"]');
   await delay(150);
   if (await page.run(topWindow)) note('réglage', `${where} : « Annuler » ne ferme pas la fenêtre`);

@@ -385,6 +385,18 @@ function checkFiled(m, errors) {
   }
 }
 
+// Les personnes de l'annuaire (`actions.personnes`, 2.7 point 8) : `choisir` (l'app peut demander à GFS de lui faire choisir une personne) en booléen, et
+// `inserer` (l'app en reçoit une, et dit où elle la pose) en texte français et anglais.
+function checkPeople(m, errors) {
+  const actions = isObject(m.actions) ? m.actions : {};
+  const people = actions.personnes;
+  if (people === undefined) return;
+  if (!isObject(people)) { errors.push('actions.personnes : objet attendu'); return; }
+  if (people.choisir !== undefined && typeof people.choisir !== 'boolean') errors.push('actions.personnes.choisir : true ou false attendu');
+  if (people.inserer !== undefined && !isBilingual(people.inserer)) errors.push(
+    'actions.personnes.inserer : un texte en français et en anglais attendu (où l\'app pose la personne)');
+}
+
 // `cdnAccepte` (facultatif, contrats 2.6 point 15) : faux quand la politique de sécurité de l'app ne nomme pas encore l'adresse du CDN de GFS pour cette
 // extension ; la fenêtre le dit sous le choix « CDN » (qui reste libre) et conseille « Copie figée ». Absent ou vrai : rien à dire.
 function checkExtensions(m, errors) {
@@ -397,18 +409,23 @@ function checkExtensions(m, errors) {
   }
 }
 
+// La fonction dont la copie est dans l'app : son poids se dit, rien ne se liste, et `sansCdn` (la copie est le seul mode) est vrai ou faux.
+function checkInAppNative(group, errors) {
+  if (group.bibliotheques !== undefined) errors.push(`natives ${group.id} : une fonction dont la copie est dans l'app n'a pas de bibliotheques`);
+  if (!Number.isInteger(group.poids) || group.poids <= 0) errors.push(`natives ${group.id} : poids (octets) attendu`);
+  if (group.sansCdn !== undefined && typeof group.sansCdn !== 'boolean') errors.push(`natives ${group.id} : sansCdn : vrai ou faux attendu`);
+}
 // Les bibliothèques natives de l'app, rangées par fonction (`natives`, facultatif, contrats 2.6 point 14) : { id, nom (fr, en), bibliotheques: [{ id, version
 // exacte }] }, ou, quand la copie figée est dans le
-// dépôt de l'app (l'éditeur : sa copie est une carte d'importation), { id, nom, copieDansApp: true, poids }. L'app les
+// dépôt de l'app (l'éditeur : sa copie est une carte d'importation), { id, nom, copieDansApp: true, poids, sansCdn? } (`sansCdn: true` : la copie est le seul
+// mode, l'app n'a pas de CDN pour
+// cette fonction, kit 0.30.0). L'app les
 // emploie déjà (sa liste) ; GFS en garde la copie figée, que la personne peut choisir à la place du CDN, fonction par fonction. Une bibliothèque n'est que dans
 // une seule fonction.
 function checkNativeLibraries(group, libraries, errors) {
   // la copie est dans le dépôt de l'app : GFS n'a aucune bibliothèque à lister, seulement le poids à dire (contrats 2.6, point 14)
-  if (group.copieDansApp === true) {
-    if (group.bibliotheques !== undefined) errors.push(`natives ${group.id} : une fonction dont la copie est dans l'app n'a pas de bibliotheques`);
-    if (!Number.isInteger(group.poids) || group.poids <= 0) errors.push(`natives ${group.id} : poids (octets) attendu`);
-    return;
-  }
+  if (group.copieDansApp === true) { checkInAppNative(group, errors); return; }
+  if (group.sansCdn !== undefined) errors.push(`natives ${group.id} : sansCdn ne se dit que pour une fonction dont la copie est dans l'app (copieDansApp)`);
   if (!Array.isArray(group.bibliotheques) || !group.bibliotheques.length) {
     errors.push(`natives ${group.id} : bibliotheques : liste non vide attendue`); return; }
   for (const lib of group.bibliotheques) {
@@ -433,11 +450,11 @@ function checkNatives(m, errors) {
   }
 }
 
-const OPENINGS = ['fichier', 'nouveau', 'importer', 'lire', 'modele'];
+const OPENINGS = ['fichier', 'nouveau', 'importer', 'lire', 'modele', 'personne'];
 
 // `ouverture` (facultatif, contrats 2.2) : ce que l'app sait faire d'une ouverture que GFS lui passe, `{ fichier, nouveau, importer, lire, modele }` en
-// booléens ; un genre absent vaut faux (GFS ouvre alors l'app sur son modèle habituel et le dit). `permanente` (facultatif) : l'app ne se retire pas de la
-// fenêtre « Apps et extensions ».
+// booléens (`personne` : l'app reçoit une personne de l'annuaire, contrats 5.2 point 3) ; un genre absent vaut faux (GFS ouvre alors l'app sur son modèle
+// habituel et le dit). `permanente` (facultatif) : l'app ne se retire pas de la fenêtre « Apps et extensions ».
 function checkOpening(m, errors) {
   if (m.ouverture !== undefined) {
     if (!isObject(m.ouverture)) errors.push('ouverture : objet attendu');
@@ -511,6 +528,7 @@ export function validateManifest(m, others = []) {
   checkPermissions(m, errors);
   checkArrival(m, errors);
   checkOpening(m, errors);
+  checkPeople(m, errors);
   checkImports(m, errors);
   checkReads(m, errors);
   checkFiled(m, errors);

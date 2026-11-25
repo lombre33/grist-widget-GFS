@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validateManifest } from '../js/apps/manifest.js';
 import { readCatalogue } from '../js/apps/libraries.js';
-import { nativeRows, nativesState, modeOfGroup, nativeKey, copiesInApp, nativesOf } from '../js/apps/natives.js';
+import { nativeRows, nativesState, nativesSecours, modeOfGroup, nativeKey, copiesInApp, nativesOf } from '../js/apps/natives.js';
 import { frameUrl } from '../js/broker/frames.js';
 import { CATALOGUE } from '../js/apps/catalogue.js';
 import { readApps, patchApps, withNativeMode, withExtension } from '../js/apps/settings.js';
@@ -67,6 +67,22 @@ test('nativesState : l\'app ne reçoit que les copies des fonctions en copie fig
   assert.equal(JSON.stringify(state).includes('jsdelivr'), false, 'jamais l\'adresse du CDN de GFS : le CDN d\'une app est le sien (contrats 2.6, point 14)');
 });
 
+test('nativesSecours : la copie de GFS de chaque bibliothèque d\'une fonction restée au CDN, rien pour celles en copie figée ni pour l\'éditeur', () => {
+  const m = manifest();
+  const cdn = nativesSecours(m, { extensions: [], modes: {} }, catalogue, BASE);
+  assert.deepEqual(Object.keys(cdn), ['pdfmake', 'pdfmake-polices', 'docx']);
+  assert.deepEqual(cdn.docx, { version: '9.15.1', src: 'https://exemple.test/gfs/vendor/docx/9.15.1/docx.js', integrite: SRI, forme: 'script' });
+  assert.equal(JSON.stringify(cdn).includes('jsdelivr'), false, 'jamais l\'adresse du CDN de GFS (contrats 2.6, point 14)');
+  const mixed = nativesSecours(m, { extensions: [], modes: { 'natif:pdf': 'vendorise' } }, catalogue, BASE);
+  assert.deepEqual(Object.keys(mixed), ['docx'], 'les deux polices sont déjà servies par la copie : seule la fonction au CDN a un secours');
+  assert.deepEqual(Object.keys(nativesState(m, { extensions: [], modes: { 'natif:pdf': 'vendorise' } }, catalogue, BASE)), ['pdfmake', 'pdfmake-polices'], 'les deux listes ne se recouvrent jamais');
+  assert.deepEqual(nativesSecours(m, undefined, catalogue, BASE), {}, 'une app non installée ne reçoit rien');
+  const half = readCatalogue({ bibliotheques: [entry('pdfmake', '0.2.7', 2048)] });
+  assert.deepEqual(Object.keys(nativesSecours(m, { extensions: [], modes: {} }, half, BASE)), ['pdfmake'], 'une bibliothèque que le catalogue n\'a pas n\'a pas de secours');
+  const inApp = { ...m, natives: [{ id: 'editeur', nom: { fr: 'Éditeur', en: 'Editor' }, copieDansApp: true, poids: 1, bibliotheques: [] }] };
+  assert.deepEqual(nativesSecours(inApp, { extensions: [], modes: {} }, catalogue, BASE), {}, 'la copie de l\'éditeur est dans l\'app : GFS n\'en sert aucune');
+});
+
 test('settings : le mode d\'une fonction, ou de toutes ; le CDN n\'est pas écrit ; ce que cette version ne connaît pas est gardé', () => {
   const m = manifest();
   const apps = readApps({ publipostage: { extensions: [] } }, new Map([[m.id, m]]), [m.id]).apps;
@@ -96,10 +112,12 @@ test('AppsState : le geste écrit dans la table, le modèle de la fenêtre et l\
   const rows = () => state.model().items.find(item => item.id === m.id).natives.map(row => `${row.group.id}:${row.mode}`);
   assert.deepEqual(rows(), ['pdf:cdn', 'word:cdn']);
   assert.deepEqual(state.extensionsFor(m.id, BASE).natives, {});
+  assert.deepEqual(Object.keys(state.extensionsFor(m.id, BASE).secours), ['pdfmake', 'pdfmake-polices', 'docx'], 'tout au CDN : tout a son secours');
   assert.equal(await state.setNativeMode(m.id, 'pdf', 'vendorise'), true);
   assert.deepEqual(rows(), ['pdf:vendorise', 'word:cdn']);
   assert.deepEqual(store.value.publipostage.modes, { 'natif:pdf': 'vendorise' });
   assert.deepEqual(Object.keys(state.extensionsFor(m.id, BASE).natives), ['pdfmake', 'pdfmake-polices']);
+  assert.deepEqual(Object.keys(state.extensionsFor(m.id, BASE).secours), ['docx'], 'la fonction passée en copie figée quitte le secours');
   assert.equal(await state.setNativeMode(m.id, 'pdf', 'vendorise'), false, 'rien à écrire quand le choix ne change pas');
   assert.equal(await state.setNativeMode('inconnue', null, 'vendorise'), false);
   await state.setNativeMode(m.id, null, 'cdn');
@@ -150,6 +168,32 @@ test('copiesInApp : l\'éditeur en copie figée va dans l\'adresse du cadre, jam
   assert.deepEqual(given, {}, 'GFS ne sert rien pour l\'éditeur : aucune bibliothèque dans `natives`');
   const both = nativesState(m, { extensions: [], modes: { 'natif:editeur': 'vendorise', 'natif:word': 'vendorise' } }, catalogue, BASE);
   assert.deepEqual(Object.keys(both), ['docx'], 'les autres fonctions en copie figée sont servies comme avant');
+});
+
+// Une fonction sans CDN (kit 0.30.0, choix du porteur du 25/11 : l'éditeur de Publipostage+ n'est plus chargé depuis esm.sh) : la copie de l'app est son seul mode.
+const withoutCdn = () => { const m = withEditor(); m.natives[0].sansCdn = true; return m; };
+
+test('manifeste : `sansCdn` se dit pour une fonction dont la copie est dans l\'app, en vrai ou faux, et nulle part ailleurs', () => {
+  assert.deepEqual(validateManifest(withoutCdn()).errors, []);
+  const refuse = (change, reason) => { const m = withoutCdn(); change(m.natives); assert.match(validateManifest(m).errors.join('|'), reason); };
+  refuse(natives => { natives[0].sansCdn = 'oui'; }, /natives editeur : sansCdn : vrai ou faux attendu/);
+  refuse(natives => { natives[1].sansCdn = true; }, /natives pdf : sansCdn ne se dit que pour une fonction dont la copie est dans l'app/);
+});
+
+test('nativeRows : une fonction sans CDN est en copie figée quoi que la personne ait écrit, et `fixed` le dit ; une fonction avec CDN ne l\'est pas', () => {
+  const rows = nativeRows(withoutCdn(), { extensions: [], modes: {} }, catalogue);
+  assert.deepEqual([rows[0].mode, rows[0].fixed, rows[0].inApp], ['vendorise', true, true], 'sans rien écrit : la copie, pas le CDN par défaut');
+  assert.equal(nativeRows(withoutCdn(), { extensions: [], modes: { 'natif:editeur': 'cdn' } }, catalogue)[0].mode, 'vendorise', 'un CDN écrit autrefois ne compte plus');
+  assert.equal(nativeRows(withEditor(), { extensions: [], modes: {} }, catalogue)[0].fixed, false, 'une fonction qui a son CDN reste libre');
+  assert.equal(rows[1].fixed, undefined, 'une fonction que GFS sert n\'est pas concernée');
+});
+
+test('copiesInApp : une fonction sans CDN va toujours dans l\'adresse du cadre ; GFS ne sert rien pour elle', () => {
+  const m = withoutCdn();
+  assert.deepEqual(copiesInApp(m, { extensions: [], modes: {} }), ['editeur'], 'même sans choix');
+  assert.deepEqual(copiesInApp(m, { extensions: [], modes: { 'natif:editeur': 'cdn' } }), ['editeur']);
+  assert.deepEqual(copiesInApp(m, undefined), [], 'une app non installée n\'a rien');
+  assert.deepEqual(nativesState(m, { extensions: [], modes: {} }, catalogue, BASE), {});
 });
 
 test('AppsState : `copiesFor` suit le choix de l\'éditeur, écrit tout de suite dans la table', async () => {

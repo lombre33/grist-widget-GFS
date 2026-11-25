@@ -8,6 +8,7 @@
 // qui lit la pièce jointe peut la copier (contrats 11.1, point 8).
 
 import { FILES_TABLE } from '../files/gfs-files.js';
+import { ANNUAIRES_APP, ANNUAIRES_TABLE } from '../files/annuaire-files.js';
 import { TABLE as FILING_TABLE, COLUMNS as FILING_COLUMNS } from '../files/rangement.js';
 
 export const SHARES_TABLE = 'GFS_Partages';
@@ -33,6 +34,10 @@ export const isGfsNote = memo => GFS_ANY.test(String(memo ?? ''));
 export const STAMP = 'GFS_Auteur';
 export const FILES_TARGET = Object.freeze({ table: FILES_TABLE, prefix: 'gfs-fichiers:', id: 'Identifiant', author: STAMP, stamped: true, open: '' });
 export const TARGETS = Object.freeze([FILES_TARGET]);
+// Les annuaires (js/files/annuaire-files.js) : un annuaire principal reste ouvert comme avant (`Parent` vide) ; un sous-annuaire (`Parent` dit son annuaire
+// d'origine) n'est lu que de ceux à qui il est partagé : sa ligne porte la copie des personnes (`Fiches`), donc le verrou de Grist est celui de la ligne.
+export const ANNUAIRES_TARGET = Object.freeze({ table: ANNUAIRES_TABLE, prefix: `${ANNUAIRES_APP}:`, id: null, author: STAMP, stamped: true,
+  open: 'not rec.Parent' });
 
 // Les tables de fichiers que les manifestes des apps déclarent (`fichiers[]`) : une cible par table, d'après la forme de l'explorateur
 // (js/explorer/explorer-model.js).
@@ -50,7 +55,7 @@ export function appTargets(manifests) {
   }
   return out;
 }
-export const targetsOf = manifests => [FILES_TARGET, ...appTargets(manifests)];
+export const targetsOf = manifests => [FILES_TARGET, ANNUAIRES_TARGET, ...appTargets(manifests)];
 const idOf = target => (target.id ? `$${target.id}` : '$id');
 // La ligne d'un fichier d'après sa clé, dans une formule de la table de partages (le numéro de ligne se lit par `id`).
 const findFile = target => (target.id

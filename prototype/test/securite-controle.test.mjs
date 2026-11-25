@@ -274,8 +274,11 @@ test('la tâche hebdomadaire : un lundi, les sous-modules lus, les empreintes re
   const uses = [...text.matchAll(/^\s*- uses: (\S+)/gm)].map(match => match[1].split('@')[0]);
   assert.deepEqual(uses, ['actions/checkout', 'actions/setup-node'], 'seulement les actions de GitHub, comme essais.yml');
   assert.doesNotMatch(text, /git push[^\n]*(publipostage|FormPlus|GRIST_automation|Grist-BI|grist-factory)/i, 'rien ne part vers un dépôt d\'app');
-  assert.match(text, /git push origin HEAD:main/, 'la date seule : un commit direct');
-  assert.match(text, /gh pr create/, 'un vrai changement : une demande de fusion');
+  assert.match(text, /git push origin HEAD:main/, 'la date seule : un commit direct, jamais un changement de fond');
+  assert.match(text, /git push origin "\$branch"/, 'un vrai changement : sur une branche à lui, que le porteur lit avant tout push sur main');
+  assert.doesNotMatch(text, /gh pr create/, 'aucune demande de fusion : GitHub Actions n\'a pas le droit d\'en créer (choix du porteur, 25/11)');
+  assert.doesNotMatch(text, /pull-requests:\s*write/, 'le workflow n\'a aucun droit sur les demandes de fusion');
+  assert.match(text, /^\s*contents: write\s*$/m, 'le seul droit d\'écriture : le contenu du dépôt (le commit de la date, la branche)');
 });
 
 test('le code lu est celui que l\'app écrit : le dossier `kit/` de sa racine n\'en fait pas partie (S8 et S5 ne se lisent pas dans le kit de GFS), un autre dossier `kit` plus bas si', () => {

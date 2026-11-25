@@ -37,9 +37,10 @@ export function reportText(format, { rows, carried = [], surveyed, generated, se
   return `${JSON.stringify(report, null, 2)}\n`;
 }
 
-// Offre le texte au navigateur sous son nom : un lien invisible, cliqué ici même.
-export function saveText(doc, name, text) {
-  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+// Offre le texte au navigateur sous son nom : un lien invisible, cliqué ici même. `type` : le type du fichier (le rapport est du JSON ; l'export de l'annuaire
+// du CSV).
+export function saveText(doc, name, text, type = 'application/json') {
+  const url = URL.createObjectURL(new Blob([text], { type }));
   const link = doc.createElement('a');
   link.href = url;
   link.download = name;

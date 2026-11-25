@@ -11,7 +11,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { startLab } from './lab-setup.mjs';
 import { say, check, LAB } from './lab-common.mjs';
-import { readCatalogue, resolveLibraries, forContext } from '../js/apps/libraries.js';
+import { readCatalogue, resolveLibraries, forContext, secoursOf } from '../js/apps/libraries.js';
+import { nativesSecours } from '../js/apps/natives.js';
 import { showFiche, setExtension, closeModules } from './lab-gestes.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
@@ -25,9 +26,13 @@ const WORDS = lang === 'fr'
   ? { row: 'Créer un graphique…', title: 'Créer un graphique', insert: 'Insérer', whole: 'Toute la table', kinds: { radar: 'Radar', funnel: 'Entonnoir', gauge: 'Jauge' }, unavailable: /Aperçu indisponible/ }
   : { row: 'Create a chart…', title: 'Create a chart', insert: 'Insert', whole: 'Whole table', kinds: { radar: 'Radar', funnel: 'Funnel', gauge: 'Gauge' }, unavailable: /Preview unavailable/ };
 const catalogue = readCatalogue(JSON.parse(readFileSync(join(LAB, '..', 'bibliotheques', 'catalogue.json'), 'utf8')));
-const declared = JSON.parse(readFileSync(join(LAB, '..', 'manifestes', 'publipostage.json'), 'utf8')).extensions.find(extension => extension.id === 'graphique');
+const manifest = JSON.parse(readFileSync(join(LAB, '..', 'manifestes', 'publipostage.json'), 'utf8'));
+const declared = manifest.extensions.find(extension => extension.id === 'graphique');
 // Ce que GFS doit donner à l'app pour ce mode, lu dans son catalogue (la même fonction que GFS) ; les deux adresses sont aussi écrites, de mémoire de la demande, pour ne pas se fier qu'à elle.
 const expected = forContext(resolveLibraries(catalogue, declared.bibliotheques, () => mode, GFS_BASE).libraries);
+// Le secours (contrats 5.2, point 14) : la copie de GFS de ce que l'app charge par un CDN. Les bibliothèques natives de Publipostage+ restées au CDN (neuf, tout est au CDN ici) y sont
+// toujours ; celles de l'extension (Plotly, ECharts) y sont quand l'extension est au CDN, et n'y sont pas en copie figée (la copie sert déjà).
+const expectedSpare = { ...nativesSecours(manifest, { extensions: [], modes: {} }, catalogue, GFS_BASE), ...secoursOf(resolveLibraries(catalogue, declared.bibliotheques, () => mode, GFS_BASE).libraries) };
 const ECHARTS = mode === 'cdn' ? 'https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js' : `${GFS_BASE}vendor/echarts/6.1.0/dist/echarts.min.js`;
 
 const lab = await startLab({
@@ -135,6 +140,8 @@ const sizes = await row.locator('.fp-ext-size').allInnerTexts();
 say('la ligne dans la fenêtre :', (await row.innerText()).replace(/\s+/g, ' '));
 check('la ligne de l\'extension nomme ses DEUX bibliothèques (Plotly, ECharts), chacune avec son poids, et dit le sien du manifeste',
   /Plotly/i.test(legend) && /E-?charts/i.test(legend) && (legend.match(/≈\s[\d\u00a0\u202f.,]+\s(Ko|Mo|KB|MB)/g) || []).length === 2 && sizes.length === 1 && new RegExp(`^≈\\s${declared.poids}\\s(Ko|KB)$`).test(sizes[0].trim()), `${legend} | ${sizes}`);
+// Ce que la vraie app reçoit, vu au message : le kit qu'elle embarque ne lit pas encore `secours` (kit 0.31.0), le message brut suffit.
+await app.evaluate(() => { window.__extensionEvents = []; addEventListener('message', event => { if (event.data && event.data.nom === 'extensions') window.__extensionEvents.push(event.data.data); }); });
 await setExtension(gfs, FK, true);
 await lab.settle(gfs);
 if (mode === 'vendorise') {
@@ -151,6 +158,13 @@ const given = await app.evaluate(() => ({ echarts: GfsLink.library('echarts'), p
 check('GFS donne à l\'app ECharts (adresse, empreinte, forme) comme son catalogue le dit', Boolean(given.echarts) && given.echarts.src === ECHARTS && JSON.stringify(given.echarts) === JSON.stringify(expected.echarts), given.echarts);
 check('GFS donne aussi Plotly, comme avant (le graphique de la page)', Boolean(given.plotly) && JSON.stringify(given.plotly) === JSON.stringify(expected.plotly), given.plotly);
 check('rien n\'est demandé de la bibliothèque tant que la personne ne dessine pas', requests.length === 0, requests);
+const events = await app.evaluate(() => window.__extensionEvents);
+const lastGiven = events.at(-1) || {};
+const spare = lastGiven.secours || {};
+check(mode === 'cdn' ? 'l\'événement `extensions` porte le secours : la copie de GFS de Plotly et d\'ECharts, avec les neuf bibliothèques natives restées au CDN, jamais l\'adresse d\'un CDN'
+  : 'en copie figée, Plotly et ECharts n\'ont pas de secours (la copie sert déjà) ; les neuf natives restées au CDN gardent le leur',
+  JSON.stringify(spare) === JSON.stringify(expectedSpare) && Object.keys(spare).length === (mode === 'cdn' ? 11 : 9) && ['plotly', 'echarts'].every(id => (id in spare) === (mode === 'cdn'))
+    && !JSON.stringify(spare).includes('jsdelivr'), Object.keys(spare));
 
 // ----- 2. La fenêtre « Créer un graphique… » : une table du document, toute la table, l'aperçu.
 await app.locator('#editor-container .ProseMirror').click();

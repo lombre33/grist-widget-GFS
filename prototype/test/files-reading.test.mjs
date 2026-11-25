@@ -11,7 +11,7 @@ const spec = manifest.fichiers[0];
 const tables = () => ({ [spec.table]: { id: [1], Nom: ['Convocation'], TypeModele: [''], DateModif: [0], ModifiePar: [''] } });
 
 // Un banc : un port de doublure, l'explorateur et ses voisins qui notent ce qu'on leur dit.
-function bench({ data = tables(), broken = null, unreachable = false, access = true, learning = 'moi@exemple.org', apps = [{ manifest, app: { id: 'publipostage' } }], pending = null, hint = null } = {}) { // `pending` : (log) => les gestes affichés d'avance, ou rien
+function bench({ data = tables(), broken = null, unreachable = false, access = true, learning = 'moi@exemple.org', apps = [{ manifest, app: { id: 'publipostage' } }], pending = null, hint = null, guard = null } = {}) { // `pending` : (log) => les gestes affichés d'avance, ou rien
   const log = [];
   const notes = []; // ce que la lecture dit du nom de la table du rangement
   const bins = []; // et de celle de la corbeille
@@ -32,6 +32,7 @@ function bench({ data = tables(), broken = null, unreachable = false, access = t
     pending: pending && pending(log),
     reader: hint ? { marker: 'lecture légère', isActive: () => false, learn: () => {} } : null,
     hint: hint && hint(log),
+    guard,
     explorer: () => ({
       setFiles: (...args) => log.push(['setFiles', args[0].length, (args[1] || []).length]),
       setStatus: status => log.push(['setStatus', status]),
@@ -76,6 +77,19 @@ test('une app qu\'on n\'a pas pu lire : la liste se montre, et la phrase nomme l
   const last = statuses(b.log).pop();
   assert.equal(last.problems.length, 1);
   assert.match(last.problems[0], /^fr:ex\.readFailed:App publipostage:/);
+});
+
+test('une table que le garde-fou retient (Grist a coupé sa lecture plusieurs fois de suite) : la liste se montre, la phrase dit que les fichiers de l\'app manquent et que GFS réessaiera', async () => {
+  const asked = [];
+  const held = Object.assign(new Error('la lecture de la table a été interrompue 3 fois de suite'), { held: true });
+  const guard = { run: async (table, read) => { asked.push(table); if (table === spec.table) throw held; return read(); } };
+  const b = bench({ guard, hint: hinting() });
+  await b.reading.refresh();
+  assert.ok(asked.includes(spec.table), 'la lecture des fichiers passe par le garde-fou');
+  const last = statuses(b.log).pop();
+  assert.deepEqual(last.problems, ['fr:ex.readHeld:App publipostage:la lecture de la table a été interrompue 3 fois de suite']);
+  assert.deepEqual(b.log.find(entry => entry[0] === 'setFiles'), ['setFiles', 0, 0]);
+  assert.equal(b.log.some(entry => entry[0] === 'note'), false, 'le poids de cette app manque : le souvenir n\'est pas mis à jour');
 });
 
 test('une lecture qui échoue : la phrase le dit avec la raison, et la console l\'enregistre', async () => {

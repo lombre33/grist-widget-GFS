@@ -5,8 +5,9 @@
 .mod-scrim { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 12px; background: var(--scrim); }
 /* Une fenêtre posée par-dessus une autre (« Gérer les partages » depuis « Partager ») cache celle du dessous, voile compris : un seul voile, une seule fenêtre à lire. */
 .mod-scrim.is-under { visibility: hidden; }
-/* Les trois largeurs de la charte (section 1, « une nouvelle fenêtre choisit l'une des trois ») : 400 px (question, saisie), 480 px (formulaire), grande (liste ou tableau : 960 px plafonnés au panneau). */
-:root { --win-s: 400px; --win-m: 480px; --win-l: 960px; }
+/* Les trois largeurs de la charte (section 1, « une nouvelle fenêtre choisit l'une des trois ») : 400 px (question, saisie), 480 px (formulaire), grande (liste ou tableau : 960 px plafonnés au panneau).
+   Une quatrième, très large (1440 px plafonnés au panneau), pour l'Annuaire seul (demande du porteur du 25/11 : « une version plus large par défaut »). */
+:root { --win-s: 400px; --win-m: 480px; --win-l: 960px; --win-xl: 1440px; }
 .mod { display: flex; flex-direction: column; width: min(var(--win-l), 100%); max-height: 100%; overflow: hidden; background: var(--surface); color: var(--text);
   border: var(--bw) solid var(--border-strong); border-radius: var(--radius-lg); box-shadow: var(--shadow-float); font-family: var(--font-ui); font-size: max(13px, var(--fs-min)); line-height: 1.35; }
 
@@ -71,6 +72,12 @@
 .wk-crumbs .ic { flex: none; width: 12px; height: 12px; color: var(--text-muted); }
 .wk-crumb { padding: 1px 8px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); font-size: max(12px, var(--fs-min)); }
 .wk-crumb:last-child { border-color: var(--accent-soft-border); background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; }
+/* Une étape déjà parcourue est un bouton (retour arrière, retour du porteur du 25/11). */
+.wk-crumb.is-link { color: var(--text); font: inherit; font-size: max(12px, var(--fs-min)); cursor: pointer; }
+.wk-crumb.is-link:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-ink); }
+.wk-crumb.is-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* D'où viennent les exemples d'une liste de colonnes : une ligne sous la recherche. */
+.wk-example { margin: 6px 0 0; font-size: max(12px, var(--fs-min)); color: var(--text-muted); }
 .wk-list { margin: 0; padding: 4px 0; list-style: none; }
 .wk-row { display: flex; align-items: center; gap: 6px; }
 .wk-rows { flex: none; gap: 2px; }
@@ -84,10 +91,15 @@
 .wk-label { display: flex; flex: 1; flex-direction: column; min-width: 0; }
 .wk-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wk-reason { font-size: max(11.5px, var(--fs-min)); font-weight: 400; color: var(--text-muted); }
+/* Ce que le choix contient pour une personne d'exemple : à droite, court, sur une ligne. */
+.wk-sample { flex: 0 1 42%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: max(12px, var(--fs-min)); font-weight: 400; color: var(--text-muted); text-align: right; }
+.wk-item[aria-current="true"] .wk-sample { color: var(--accent-ink); }
 /* Le second geste d'une ligne (js/ui/pick-window.js `alt` : « nouvel onglet » de la recherche de fichiers de la barre) : un bouton à icône seule, que la souris atteint et → au clavier. */
 .wk-row > .wk-item { min-width: 0; }
 .wk-alt { flex: none; justify-content: center; width: 30px; padding: 0; }
 .wk-alt .ic { width: 15px; height: 15px; }
+.wk-alt.has-text { width: auto; max-width: 40%; gap: 4px; padding: 0 8px; white-space: nowrap; }
+.wk-alt.has-text span { overflow: hidden; text-overflow: ellipsis; }
 .wk-item.is-locked { cursor: not-allowed; }
 .wk-item.is-locked .wk-name { color: var(--text-muted); }
 /* Déplacer (filing-window.js) : le nouveau dossier que dit la recherche porte le « + » de l'accent. */

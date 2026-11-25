@@ -163,8 +163,9 @@ const ids = { id: 'fichier', fichiers: [{ table: 'Autre_Fichiers', colonnes: { i
 const withApp = (extra = {}) => ({ ...base(), tables: [{ id: 7, tableId: 'Publipostage_Modeles' }], columns: [{ parentId: 7, colId: 'Nom' }], targets: targetsOf([PP]), files: { Publipostage_Modeles: [3, 5] }, ...extra });
 
 test('les cibles des apps : une par table de fichiers du manifeste, le numéro de ligne quand l\'identifiant est « id », les lignes exclues ouvertes', () => {
-  const [files, pp, other] = targetsOf([PP, ids]);
+  const [files, annuaires, pp, other] = targetsOf([PP, ids]);
   assert.equal(files.table, 'GFS_Fichiers');
+  assert.deepEqual([annuaires.table, annuaires.prefix, annuaires.author, annuaires.stamped], ['GFS_Annuaires', 'gfs-annuaires:', 'GFS_Auteur', true]); // le verrou des sous-annuaires
   assert.deepEqual([pp.table, pp.prefix, pp.id, pp.author, pp.stamped], ['Publipostage_Modeles', 'publipostage:', null, 'GFS_Auteur', true]);
   assert.equal(pp.open, 'rec.TypeModele in ("reglages",)');
   assert.deepEqual([other.id, other.open], ['Jeton', '']);
@@ -172,7 +173,7 @@ test('les cibles des apps : une par table de fichiers du manifeste, le numéro d
 });
 
 test('une table d\'app : GFS pose sa colonne d\'auteur (écrite par Grist) et les colonnes d\'aide, lit la ligne par son numéro, ouvre les lignes de réglages', () => {
-  const [, pp] = targetsOf([PP]);
+  const [, , pp] = targetsOf([PP]);
   const columns = helperColumns(pp);
   assert.deepEqual(columns.map(column => column.id), ['GFS_Auteur', ...HELPERS]);
   assert.equal(columns[0].isFormula, false);

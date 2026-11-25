@@ -99,6 +99,20 @@
 :root[data-ambiance="renforcee"] .amb-grid { padding: 2px 8px; }
 :root[data-ambiance="renforcee"] .th-col { padding-top: 0; padding-bottom: 4px; }
 
+/* ---------- l'annuaire (module Annuaire, demande du porteur du 25/11) : les mêmes 36 px, commande par commande ---------- */
+/* La barre (nom, vues, réglage, À vérifier, fermer), les boutons à icône seule (copier, zoom, fermer la fiche), l'arbre (le pli et le nom d'un nœud), les panneaux (filtres, annuaires affichés), le
+   choix de l'annuaire de « Choisir une personne », les liens et valeurs cliquables d'une fiche, et le pli d'une carte de l'organigramme. Une icône seule garde sa taille : c'est la commande qui grandit. */
+:root[data-ambiance="renforcee"] :is(.an-ib, .an-copy) { width: var(--target); height: var(--target); }
+:root[data-ambiance="renforcee"] :is(.an-name, .an-seg-b, .an-tb, .an-fsec-h, .an-fv, .an-pickbtn, .an-link, .an-link-b) { min-height: var(--target); }
+:root[data-ambiance="renforcee"] .an-name { height: var(--target); }
+:root[data-ambiance="renforcee"] :is(.an-seg-b, .an-tbtn) { min-width: var(--target); justify-content: center; }
+:root[data-ambiance="renforcee"] .an-tt { width: var(--target); height: var(--target); }
+:root[data-ambiance="renforcee"] .an-tb { height: var(--target); }
+:root[data-ambiance="renforcee"] .an-pickbtn { height: var(--target); }
+:root[data-ambiance="renforcee"] :is(.an-link, .an-link-b) { display: inline-flex; align-items: center; }
+/* Le dessin de l'organigramme se réduit avec le zoom (`--z`) : le pli grandit d'autant pour que sa taille à l'écran reste de 36 px (jusqu'au double, sinon il couvrirait les cartes). */
+:root[data-ambiance="renforcee"] .an-fold { --fold: min(calc(var(--target) / var(--z, 1)), calc(var(--target) * 2)); min-width: var(--fold); height: var(--fold); bottom: calc(var(--fold) / -2); }
+
 /* ---------- le contraste forcé du système (`forced-colors: active`, « contraste élevé » de Windows) : pour toute ambiance ---------- */
 /* Le système remplace les couleurs et retire les ombres : ce qu'une teinte ou une ombre disait doit se lire autrement. La ligne choisie (liste, volet, table de travail) prend une barre à gauche, un vrai trait
    (la bordure existe d'avance, de la couleur du fond, pour que rien ne bouge au choix) ; la vignette et la case des ambiances prennent une bordure plus épaisse ; le bouton enfoncé et la cible d'un dépôt un contour ;

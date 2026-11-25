@@ -43,6 +43,24 @@ test('lockOf : sous l\'accès complet seulement, puis l\'app à installer, le ty
   assert.deepEqual(noAccess.entries.lockOf(file(FILES_APP)), { text: 'gfs.needsFullAccess', hint: 'gfs.needsFullAccessHint' }, 'l\'accès complet passe avant tout, fichiers de GFS compris');
 });
 
+test('personTargets : les apps dont le manifeste dit où elles posent une personne ; grisées tant qu\'elles ne sont pas prêtes (app à installer) ou que `ouverture.personne` manque', () => {
+  const inserer = { fr: 'destinataire d\'un envoi', en: 'recipient of a mailing' };
+  const patch = { publipostage: manifest => ({ ...manifest, actions: { ...manifest.actions, personnes: { choisir: true, inserer } }, ouverture: { ...manifest.ouverture, personne: true } }),
+    form: manifest => ({ ...manifest, actions: { ...manifest.actions, personnes: { inserer: { fr: 'liste de choix', en: 'choice list' } } } }) };
+  const { entries } = host({ installed: { publipostage: { extensions: [] }, form: { extensions: [] } }, patch });
+  const targets = entries.personTargets();
+  assert.deepEqual(targets.map(target => target.id), ['publipostage', 'form'], 'seules les apps qui déclarent `actions.personnes.inserer`');
+  assert.deepEqual(targets[0], { id: 'publipostage', name: 'Publipostage+', where: 'destinataire d\'un envoi', lock: '', focus: null, ready: true });
+  assert.equal(targets[1].ready, false, 'Form+ dit où elle poserait une personne, mais ne déclare pas encore `ouverture.personne`');
+  assert.equal(targets[1].where, 'liste de choix');
+  const missing = host({ installed: { publipostage: { extensions: [] } }, patch }).entries.personTargets().find(target => target.id === 'form');
+  assert.equal(missing.lock, 'ex.lockedApp {"app":"Form+"}', 'une app à installer : grisée, avec sa raison');
+  assert.equal(missing.focus, 'app:form', 'et la ligne de la fenêtre « Apps et extensions » qui la débloque');
+  const noAccess = host({ fullAccess: false, installed: { publipostage: { extensions: [] } }, patch }).entries.personTargets()[0];
+  assert.equal(noAccess.lock, 'gfs.needsFullAccess', 'sans l\'accès complet, tout est grisé');
+  assert.deepEqual(host({}).entries.personTargets(), [], 'aucune app ne déclare rien : le menu dit « Aucune app… »');
+});
+
 test('newTypes : un article par type que l\'app sait ouvrir ; grisé avec sa raison si l\'app n\'est pas là ; le nom de l\'app s\'ajoute quand il y en a plusieurs', () => {
   const one = host({ installed: { publipostage: { extensions: [] } } }).entries.newTypes();
   assert.ok(one.filter(entry => entry.app !== 'publipostage').every(entry => entry.greyed), 'les apps absentes sont grisées, jamais masquées');

@@ -64,6 +64,7 @@ const ICONS = {
   move: '<path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/><path d="M9 14h6M13 11l3 3-3 3"/>',
   trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5"/>',
   // Restaurer : la flèche qui revient en arrière (le fichier sort de la corbeille et reprend sa place).
+  refresh: '<path d="M20 11a8 8 0 0 0-14.7-3"/><path d="M4.5 4v4h4"/><path d="M4 13a8 8 0 0 0 14.7 3"/><path d="M19.5 20v-4h-4"/>',
   restore: '<path d="M3 4v5.5h5.5"/><path d="M3.8 15a8.5 8.5 0 1 0 2.2-8.2L3 9.5"/>',
   // Un modèle de départ (l'article « Depuis un modèle… » du menu « Nouveau ») : une page, son bandeau et ses deux blocs.
   template: '<rect x="3" y="4" width="18" height="5" rx="1.2"/><rect x="3" y="12" width="8" height="8" rx="1.2"/><rect x="14" y="12" width="7" height="8" rx="1.2"/>',
@@ -91,6 +92,8 @@ const ICONS = {
   minus: '<path d="M5 12h14"/>',
   // Les filtres de la liste de l'annuaire : un entonnoir.
   filter: '<path d="M4 5h16l-6 7v6l-4 2v-8z"/>',
+  // Trier : une flèche qui monte et une qui descend (le bouton « Trier » de l'annuaire).
+  sort: '<path d="M8 20V4M4.5 7.5 8 4l3.5 3.5M16 4v16M12.5 16.5 16 20l3.5-3.5"/>',
   fit: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
   org: '<rect x="8.5" y="3" width="7" height="5" rx="1"/><rect x="2.5" y="16" width="7" height="5" rx="1"/><rect x="14.5" y="16" width="7" height="5" rx="1"/><path d="M12 8v4M6 16v-4h12v4"/>',
   phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1.5 1.5 0 0 1-1.5 1.5A15.5 15.5 0 0 1 3.5 5.5 1.5 1.5 0 0 1 5 4Z"/>',

@@ -124,3 +124,69 @@ test('lire un annuaire avec un cache : une table n\'est lue qu\'une fois, même 
   await one.read(made, first.schema);
   assert.ok(fetched.filter(name => !name.startsWith('_grist_')).length > afterFirst, 'sans cache, on relit');
 });
+
+test('créer une colonne : une seule action « AddColumn », vide, du type dit ; l\'identifiant que Grist rend est celui qu\'on garde, sinon le nom', async () => {
+  const grist = world();
+  const made = await store(grist).addColumn('Personnes', ' Matricule ', 'Text');
+  assert.deepEqual(made, { id: 'Matricule' });
+  assert.deepEqual(grist.batches.at(-1), [['AddColumn', 'Personnes', 'Matricule', { type: 'Text', isFormula: false, label: 'Matricule' }]]);
+  assert.ok(grist.tables.Personnes.columns.includes('Matricule'));
+  const asked = { port: { doc: { applyUserActions: async () => ({ retValues: [{ colRef: 9, colId: 'Date_d_arrivee' }] }), fetchTable: async () => ({ id: [] }) } }, consent: async () => true };
+  assert.deepEqual(await new AnnuaireStore(asked).addColumn('Personnes', 'Date d\'arrivée', 'Date'), { id: 'Date_d_arrivee' }, 'Grist peut changer l\'identifiant : on garde le sien');
+});
+
+test('créer une colonne de référence : le type désigne la table des personnes ; une écriture refusée remonte à la fenêtre qui l\'a demandée', async () => {
+  const grist = world();
+  await store(grist).addColumn('Personnes', 'Tuteur', 'Ref:Personnes');
+  assert.equal(grist.batches.at(-1)[0][3].type, 'Ref:Personnes');
+  const refused = { port: { doc: { applyUserActions: async () => { throw new Error('refusé'); } } }, consent: async () => true };
+  await assert.rejects(() => new AnnuaireStore(refused).addColumn('Personnes', 'X', 'Text'), /refusé/);
+});
+
+test('créer une colonne de personne : elle montre le nom de la personne (colonne montrée + formule d\'affichage), pas son numéro ; sans la colonne, elle reste créée', async () => {
+  const batches = [];
+  const meta = { _grist_Tables: { id: [1, 2], tableId: ['Structures', 'Personnes'] },
+    _grist_Tables_column: { id: [10, 11, 12], parentId: [1, 2, 2], colId: ['Nom', 'Prenom', 'Nom'] } };
+  const port = { doc: { fetchTable: async name => meta[name], applyUserActions: async actions => { batches.push(actions); return { retValues: [{ colRef: 40, colId: 'Assistant' }] }; } } };
+  assert.deepEqual(await new AnnuaireStore({ port, consent: async () => true }).addColumn('Personnes', 'Assistant', 'Ref:Personnes', 'Nom'), { id: 'Assistant' });
+  assert.deepEqual(batches, [[['AddColumn', 'Personnes', 'Assistant', { type: 'Ref:Personnes', isFormula: false, label: 'Assistant', visibleCol: 12 }]],
+    [['SetDisplayFormula', 'Personnes', null, 40, '$Assistant.Nom']]], 'la colonne montrée est celle de la table visée, pas celle d\'une autre table qui porte le même nom');
+  batches.length = 0;
+  await new AnnuaireStore({ port, consent: async () => true }).addColumn('Personnes', 'Matricule', 'Text', 'Nom');
+  assert.equal(batches.length, 1, 'un texte ne montre rien d\'autre');
+  assert.equal(batches[0][0][3].visibleCol, undefined);
+  batches.length = 0;
+  const failing = { doc: { fetchTable: async () => { throw new Error('refusé'); }, applyUserActions: async actions => { batches.push(actions); return { retValues: [{ colRef: 41, colId: 'Suppleant' }] }; } } };
+  assert.deepEqual(await new AnnuaireStore({ port: failing, consent: async () => true }).addColumn('Personnes', 'Suppleant', 'Ref:Personnes', 'Nom'), { id: 'Suppleant' });
+  assert.equal(batches.length, 1);
+  assert.equal(batches[0][0][3].visibleCol, undefined, 'sans lecture des numéros, la colonne est créée quand même (avec ses numéros)');
+});
+
+test('lire une table pour les exemples : une lecture, sans rien écrire', async () => {
+  const grist = world();
+  const data = await store(grist).table('Personnes');
+  assert.ok(Array.isArray(data.id) && data.id.length > 0);
+  assert.equal(grist.actions.length, 0);
+});
+
+test('modifier une fiche : une seule écriture de la ligne, rien que les colonnes données ; Grist qui refuse laisse le document intact', async () => {
+  const grist = world();
+  const made = await store(grist).create({ name: 'Annuaire principal', table: 'Personnes', config: configFixture() });
+  assert.ok(made.row);
+  const before = grist.actions.length;
+  await store(grist).update(['UpdateRecord', 'Personnes', 1, { Poste: 'Cheffe', Tel: '01 02 03 04 12' }]);
+  assert.deepEqual(grist.actions.slice(before), [['UpdateRecord', 'Personnes', 1, { Poste: 'Cheffe', Tel: '01 02 03 04 12' }]]);
+  const row = grist.tables.Personnes.rows.find(each => each.id === 1);
+  assert.equal(row.Poste, 'Cheffe');
+  assert.equal(row.Nom, 'Camille Durand', 'les autres colonnes ne bougent pas');
+  await assert.rejects(store(grist).update(['UpdateRecord', 'Personnes', 1, { Absente: 'x' }]), /Invalid column Absente/, 'une colonne absente annule tout le lot');
+  assert.equal(grist.tables.Personnes.rows.find(each => each.id === 1).Poste, 'Cheffe');
+});
+
+test('la lecture rend aussi les tables lues : de quoi proposer les valeurs et les choix du formulaire « Modifier »', async () => {
+  const grist = world();
+  const made = await store(grist).create({ name: 'Annuaire principal', table: 'Personnes', config: configFixture() });
+  const read = await store(grist).read(made);
+  assert.deepEqual(Object.keys(read.data).sort(), ['Personnes', 'Structures']);
+  assert.deepEqual(read.data.Personnes.id, [1, 2, 3, 4, 5, 6]);
+});

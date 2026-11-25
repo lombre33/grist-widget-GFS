@@ -93,12 +93,17 @@ async function readSpec(port, tables, spec, light) {
 // Tout ce que la lecture demande à Grist, en deux temps : la liste des tables, puis toutes les tables ensemble (chacune ne dépend que de son nom, jamais d'une
 // autre ni de l'adresse de la personne). Une lecture qui allait table après table coûtait un aller-retour de réseau par table, et l'explorateur paraissait lent
 // dès que Grist n'était pas sur la même machine. Rend { tables, light, gfs, spaces, bin, received, reads: [{ manifest, spec, main, filing, links }] }.
-async function readEverything(port, apps, reader) {
-  const tables = await existingTables(port);
+// `real` : le port de GFS ; `guard` : le garde-fou des lectures complètes, ou rien.
+async function readEverything(real, apps, reader, guard) {
+  const tables = await existingTables(real);
   const light = reader && reader.isActive() && tables ? reader : null;
+  // les lectures complètes des tables de fichiers passent par le garde-fou (js/explorer/read-guard.js) : une table que Grist ne sait plus envoyer n'est
+  // pas redemandée sans fin
+  const port = guard ? { doc: { fetchTable: name => guard.run(name, () => real.doc.fetchTable(name)) } } : real;
   // le rangement de GFS, les espaces et les fichiers reçus se lisent pendant que la lecture légère prépare la sienne
-  const own = Promise.all([readTable(port, tables, TABLE), loadSpaces(port.doc, tables), loadReceived(port, tables)]);
-  if (light) await light.prepare(lightPlan(tables, apps));
+  const own = Promise.all([readTable(port, tables, TABLE), loadSpaces(real.doc, tables), loadReceived(real, tables)]);
+  // seulement les tables que le document a : un document sans aucune table de fichiers ne demande ni cadre d'envoi ni jeton
+  if (light) await light.prepare(lightPlan(tables, apps).filter(item => tables.includes(item.table)));
   const specs = apps.flatMap(({ manifest }) => (manifest.fichiers || []).map(spec => ({ manifest, spec })));
   const [bin, ...found] = await Promise.all([readTable(port, tables, BIN_TABLE, light, BIN_LIGHT),
     ...specs.map(({ spec }) => readSpec(port, tables, spec, light))]);
@@ -109,17 +114,18 @@ async function readEverything(port, apps, reader) {
 // `apps` : les apps installées dont le manifeste est valide, { manifest }. `identity` : l'adresse de la personne, '' tant que GFS ne la connaît pas ; ou la
 //   promesse de cette adresse, quand GFS l'apprend encore (js/files/rangement.js, `identify`) : la lecture des tables n'en dépend pas, elle part tout de suite,
 //   et l'adresse n'est attendue qu'au moment de ranger.
-// Rend { files, trash, folders, received, spaces, problems: [{ app, reason }], stats: { ms, tables, rows } } :
+// Rend { files, trash, folders, received, spaces, problems: [{ app, reason, held }], stats: { ms, tables, rows } } :
 //   `spaces` ce que disent les espaces partagés (js/sharing/spaces-filing.js, null sans partage), dont les dossiers sont ajoutés à `folders` ;
 //   `files` les fichiers vivants, `trash` ceux qui sont à la corbeille (js/explorer/explorer-model.js, `trashed`) : ils ne sont jamais mêlés, pour que rien de
 //   ce qui lit `files` (choisir, ouvrir, lire) ne voie un fichier supprimé ; `folders` les dossiers que la personne garde sans fichier (6.4, point 11) ;
 //   `gfsTable` le nom que le document donne à la table du rangement, ou null quand elle n'existe pas ; `binTable` celui de la table de la corbeille
 //   (js/files/gfs-trash.js), ou null. Un rangement de GFS illisible ne cache aucun fichier : ils restent à leur place d'avant.
-// `reader` : la lecture légère (js/explorer/explorer-sql.js), qui prend la suite de la lecture complète quand un document lourd a été vu ; sans elle, ou
-//   éteinte, rien ne change.
-export async function loadFiles(port, apps, identity = '', reader = null) {
+// `reader` : la lecture légère (js/explorer/explorer-sql.js), qui lit d'abord et tant que le document n'est pas connu léger ; sans elle, ou éteinte, tout
+//   se lit en entier.
+// `guard` : le garde-fou des lectures complètes (js/explorer/read-guard.js) ; une table qu'il retient est un problème de son app, marqué `held`.
+export async function loadFiles(port, apps, identity = '', reader = null, guard = null) {
   const started = performance.now();
-  const raw = await readEverything(port, apps, reader);
+  const raw = await readEverything(port, apps, reader, guard);
   const who = await identity;
   const { context, folders } = await arrange(port, raw, who);
   const files = [];
@@ -137,7 +143,7 @@ export async function loadFiles(port, apps, identity = '', reader = null) {
   }
   stats.bytes = [...files, ...trash].reduce((sum, file) => sum + file.weight, 0);
   stats.light = Boolean(raw.light && raw.light.isActive());
-  if (reader && !raw.light) reader.learn(stats.bytes);
+  if (reader) reader.learn(stats.bytes, problems.length > 0);
   stats.ms = Math.round(performance.now() - started);
   return { files, trash, folders, received: raw.received, spaces: raw.spaces, problems, stats, gfsTable: raw.gfs.data ? nameIn(raw.tables, TABLE) : null,
     binTable: raw.bin.data ? nameIn(raw.tables, BIN_TABLE) : null };
@@ -158,7 +164,7 @@ async function arrange(port, raw, identity) {
 // Les fichiers d'une table de fichiers d'une app, rangés et placés : { found, binned } (`binned` : ceux qu'elle a mis à la corbeille de GFS), ou { problem }
 // quand sa table est illisible.
 function readAppFiles({ identity, address, spaces, bin, gfsFiling }, { manifest, spec, main, filing: filingTable, links }) {
-  if (main.error) return { problem: { app: manifest.id, reason: String(main.error.message || main.error) } };
+  if (main.error) return { problem: { app: manifest.id, reason: String(main.error.message || main.error), held: Boolean(main.error.held) } };
   const filing = filingTable.data ? readFiling(spec.rangement, filingTable.data, identity) : null;
   // L'app tient son rangement et laisse GFS l'écrire (6.4, point 8) : le sien fait foi, et ses dossiers sans fichier s'ajoutent à ceux de la personne.
   const appFirst = Boolean(spec.rangement && spec.rangement.ecriture) && usable(spec.rangement, filingTable.data);

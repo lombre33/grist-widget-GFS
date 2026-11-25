@@ -159,6 +159,7 @@ function addField(ctx) {
     dataset: { fk: 'share-add' } });
   const slot = h('div', { class: 'sg-slot' });
   const draw = () => slot.replaceChildren(suggestionList(ctx, suggestions(t, state, input.value)));
+  ctx.typed = () => (input.isConnected ? input.value : ''); // ce qui est tapé sans avoir été choisi (« Terminé » ne le perd pas sans le dire)
   input.addEventListener('focus', draw);
   input.addEventListener('click', draw); // le champ déjà actif (la liste fermée par Échap) rouvre sa liste au clic
   input.addEventListener('input', draw);
@@ -172,31 +173,55 @@ function addField(ctx) {
   return h('div', { class: 'sg-add' }, h('div', { class: 'field' }, icon('search'), input), slot);
 }
 
-// Après le choix d'une personne : son droit, « Peut télécharger », la fin d'accès, puis « Ajouter ».
+// Après le choix d'une personne : son droit, « Peut télécharger », la fin d'accès, puis « Ajouter ». Ce qui est saisi tient dans `ctx.draft` : un redessin
+// (l'autre onglet, « Gérer les partages… ») le rend tel quel, il ne revient pas aux valeurs de départ sans le dire.
 function pendingForm(ctx, who) {
   const { t } = ctx;
-  let right = 'lecture';
-  const level = h('button', { type: 'button', class: 'lvl', 'aria-haspopup': 'menu', dataset: { fk: 'share-new-level' } }, t(`share.right.${right}`),
+  const draft = ctx.draft && ctx.draft.who === who ? ctx.draft : { who, right: 'lecture', download: false, endOn: false, date: '' };
+  ctx.draft = draft;
+  const level = h('button', { type: 'button', class: 'lvl', 'aria-haspopup': 'menu', dataset: { fk: 'share-new-level' } }, t(`share.right.${draft.right}`),
     icon('chev-down'));
-  const setLevel = next => { right = next; level.replaceChildren(t(`share.right.${right}`), icon('chev-down')); };
-  level.addEventListener('click', () => openMenu(level, levelItems(t, { current: right, category: isCategory(who), onPick: setLevel,
+  const setLevel = next => { draft.right = next; level.replaceChildren(t(`share.right.${draft.right}`), icon('chev-down')); };
+  level.addEventListener('click', () => openMenu(level, levelItems(t, { current: draft.right, category: isCategory(who), onPick: setLevel,
     onWhy: why => ctx.say(why) }), { host: ctx.container, align: 'right', label: t('share.sec.add') }));
-  const download = h('input', { type: 'checkbox', dataset: { fk: 'share-download' } });
-  const endOn = h('input', { type: 'checkbox', dataset: { fk: 'share-end-on' } });
-  const date = h('input', { type: 'date', disabled: true, 'aria-label': t('share.end.date'), dataset: { fk: 'share-end' } });
-  endOn.addEventListener('change', () => { date.disabled = !endOn.checked; if (endOn.checked) date.focus(); });
+  const download = h('input', { type: 'checkbox', checked: draft.download, dataset: { fk: 'share-download' } });
+  const endOn = h('input', { type: 'checkbox', checked: draft.endOn, dataset: { fk: 'share-end-on' } });
+  const date = h('input', { type: 'date', disabled: !draft.endOn, value: draft.date, 'aria-label': t('share.end.date'), dataset: { fk: 'share-end' } });
+  download.addEventListener('change', () => { draft.download = download.checked; });
+  date.addEventListener('input', () => { draft.date = date.value; });
+  endOn.addEventListener('change', () => { draft.endOn = endOn.checked; date.disabled = !endOn.checked; if (endOn.checked) date.focus(); });
   const yes = h('button', { type: 'button', class: 'btn primary', dataset: { fk: 'share-confirm' } }, t('share.confirm'));
   const no = h('button', { type: 'button', class: 'btn', dataset: { fk: 'share-cancel' } }, t('share.cancel'));
   no.addEventListener('click', () => ctx.choose(null));
   yes.addEventListener('click', () => {
     const end = endOn.checked && date.value ? Date.UTC(...date.value.split('-').map((part, at) => (at === 1 ? Number(part) - 1 : Number(part)))) / 1000 : null;
-    void ctx.add(shareRecord({ target: ctx.target, who, right, download: download.checked, end }));
+    void ctx.add(shareRecord({ target: ctx.target, who, right: draft.right, download: download.checked, end }));
   });
   return h('div', { class: 'sg-new', dataset: { who } },
     h('div', { class: 'rr' }, avatar(who), h('span', { class: 'nm' }, h('b', null, whoLabel(t, who))), level),
     h('label', { class: 'chk' }, download, h('span', null, h('b', null, t('share.download')), h('small', null, t('share.download.hint')))),
     h('label', { class: 'chk' }, endOn, h('span', null, h('b', null, t('share.end')), h('small', null, date), h('small', null, t('share.end.hint')))),
     h('p', { class: 'sg-actions' }, no, yes));
+}
+
+// Ce qui est choisi ou tapé et pas encore écrit ne se perd jamais sans le dire (constaté le 25/11 : la personne choisie pour un dossier de « Moi » n'était pas
+// partagée, « Terminé » ayant fermé la fenêtre avant « Ajouter »). `how` : 'done' (« Terminé ») ou 'escape' (Échap). « Terminé » avec un
+// ajout en cours ne ferme rien : le bas de la fenêtre dit quoi faire et le clavier va sur « Ajouter ». Échap ferme d'abord le formulaire et le dit (une seconde
+// touche ferme la fenêtre). Une adresse tapée sans avoir été choisie n'est pas non plus laissée tomber par « Terminé ». Rend vrai quand la fermeture est
+// retenue.
+export function holdClose(ctx, how) {
+  const { t } = ctx;
+  if (ctx.pending) {
+    const who = whoLabel(t, ctx.pending);
+    if (how === 'escape') { ctx.choose(null); ctx.say(t('share.pending.dropped', { who })); ctx.focus('share-close'); }
+    else { ctx.say(t('share.pending.close', { who })); ctx.focus('share-confirm'); }
+    return true;
+  }
+  const typed = how === 'done' && ctx.typed ? String(ctx.typed()).trim() : '';
+  if (!typed) return false;
+  ctx.say(t('share.typed', { text: typed }));
+  ctx.focus('share-add');
+  return true;
 }
 
 // L'état « partage pas activé » : le propriétaire peut l'activer ; les autres lisent à qui le demander.
@@ -243,10 +268,15 @@ export function openShare(opts) {
     h('header', { class: 'mod-head' }, h('h2', { id: 'share-title' }, t('share.title', { name: file.name })),
       h('p', { class: 'mod-count' }, t('share.sub', { app: file.app }))),
     body, h('footer', { class: 'mod-foot' }, status, manage, close));
-  const { done, result } = openModal({ container, section: dialog, inertTargets: opts.inertTargets, first: close, cancel: null });
-  close.addEventListener('click', () => done(null));
-  const ctx = { t, container, locale: opts.locale, target: file.key, state: null, pending: null, tab: opts.startTab || 'here', links: null, other: null,
-    say: text => { status.textContent = text; } };
+  const { done, result } = openModal({ container, section: dialog, inertTargets: opts.inertTargets, first: close, cancel: null,
+    keepOpen: () => holdClose(ctx, 'escape') });
+  close.addEventListener('click', () => { if (!holdClose(ctx, 'done')) done(null); });
+  const ctx = { t, container, locale: opts.locale, target: file.key, state: null, pending: null, draft: null, tab: opts.startTab || 'here', links: null,
+    other: null,
+    say: text => { status.textContent = text; },
+    focus: key => { const node = dialog.querySelector(`[data-fk="${key}"]`); if (node) node.focus(); } };
+  // Le bas de la fenêtre : « enregistrés tout de suite », sauf quand une personne est choisie et pas encore ajoutée : ce n'est pas enregistré, et il le dit.
+  const footText = () => (ctx.pending ? t('share.pending', { who: whoLabel(t, ctx.pending) }) : t('share.foot'));
   const draw = () => {
     if (!dialog.isConnected || !ctx.state) return;
     const content = ctx.other && ctx.tab === 'other' ? otherTab(ctx) : shareBody(ctx);
@@ -264,15 +294,18 @@ export function openShare(opts) {
   const readLinks = async () => { try { ctx.links = await ctx.other.loadLinks(); } catch (error) { ctx.links = false; } };
   const reload = async () => {
     try {
-      ctx.state = await opts.load(); ctx.pending = null; ctx.other = otherOf();
+      ctx.state = await opts.load(); ctx.other = otherOf();
       if (ctx.other && (ctx.links !== null || ctx.tab === 'other')) await readLinks();
       draw();
     } catch (error) { if (dialog.isConnected) body.replaceChildren(h('p', { class: 'rt-none' }, t('share.unreadable'))); }
   };
-  const write = async job => {
+  // `adds` : l'écriture est l'ajout du formulaire ouvert (réussie, il est fait ; ratée, il reste ouvert) ; tout autre geste le laisse en place.
+  const write = async (job, adds = false) => {
     const answer = await job();
-    ctx.say(answer && !answer.ok ? t('share.failed', { message: answer.message || '' }) : ((answer && answer.note) || t('share.foot')));
-    if (!answer || answer.ok) await reload();
+    const ok = !answer || answer.ok;
+    if (adds && ok) { ctx.pending = null; ctx.draft = null; }
+    ctx.say(ok ? ((answer && answer.note) || footText()) : t('share.failed', { message: answer.message || '' }));
+    if (ok) await reload();
     return answer;
   };
   ctx.goTab = async tab => {
@@ -285,8 +318,8 @@ export function openShare(opts) {
     await ctx.other.onNew();
     if (dialog.isConnected) await reload();
   };
-  ctx.choose = who => { ctx.pending = who; draw(); };
-  ctx.add = record => (record ? write(() => opts.onAdd(record)) : Promise.resolve());
+  ctx.choose = who => { ctx.pending = who; ctx.draft = null; ctx.say(footText()); draw(); };
+  ctx.add = record => (record ? write(() => opts.onAdd(record), true) : Promise.resolve());
   ctx.change = (share, right) => write(() => opts.onChange(share.id, { Droit: right }));
   ctx.remove = share => write(() => opts.onRemove(share.id));
   ctx.activate = async () => { if (!(await opts.onActivate())) await reload(); };

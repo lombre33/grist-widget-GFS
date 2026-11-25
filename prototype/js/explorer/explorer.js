@@ -181,8 +181,10 @@ export class Explorer {
   setFiles(files, trashed = [], folders = [], received = []) {
     this.#show(files, trashed, folders, received);
     this.#pieces.filesChanged();
-    if (this.isOpen) this.render();
-    this.#pieces.reread();
+    if (this.isOpen) {
+      this.render();
+      this.#pieces.reread(); // cochée de départ : lue derrière la liste, et seulement quand l'explorateur se voit (`open` relit à son ouverture)
+    }
   }
 
   // Les listes que la vue montre : celles que la lecture a rendues, avec par-dessus les gestes de rangement qui s'affichent avant d'être écrits
@@ -222,6 +224,7 @@ export class Explorer {
   open() {
     this.root.hidden = false;
     this.render();
+    this.#pieces.reread();
     const row = this.#refs.list.querySelector('[tabindex="0"]');
     (row || this.#refs.search).focus({ preventScroll: true });
   }

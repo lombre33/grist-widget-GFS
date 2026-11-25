@@ -1,7 +1,7 @@
-// Les liens entre apps (contrats 5.4, points 2 et 7) : une app demande à GFS de lui faire choisir un fichier d'une autre app (`choisir`), puis de l'ouvrir plus
-// tard (`ouvrir`). Elle garde la clé { app, id, type } que rend `choisir` ; GFS n'écrit rien pour elle et ne lit rien de ses tables. Ce module lit les deux
-// demandes (sans effet de bord) et mène les deux appels ; le contrôleur lui prête ce qu'il sait faire (l'explorateur, le grisé et sa fenêtre, l'ouverture d'une
-// app) par l'objet `host` : ni lui ni ce module ne connaît le code d'une app.
+// Les liens entre apps (contrats 5.4, points 2, 7 et 16) : une app demande à GFS de lui faire choisir un fichier d'une autre app (`choisir`), puis de l'ouvrir
+// plus tard (`ouvrir`), ou une personne de l'annuaire du document (`choisirPersonne`). Elle garde la clé { app, id, type } que rend `choisir` ; GFS n'écrit
+// rien pour elle et ne lit rien de ses tables. Ce module lit les deux demandes (sans effet de bord) et mène les deux appels ; le contrôleur lui prête ce qu'il
+// sait faire (l'explorateur, le grisé et sa fenêtre, l'ouverture d'une app) par l'objet `host` : ni lui ni ce module ne connaît le code d'une app.
 
 import { ERR, Refus } from './filter.js';
 
@@ -41,6 +41,25 @@ export function chooser(manifests, { types, apps }) {
   return file => types.includes(file.type) && (!apps || apps.includes(file.app)) && Boolean(offered.get(file.app) && offered.get(file.app).has(file.type));
 }
 
+// `choisirPersonne { titre? }` (5.4, point 16) -> { titre } : le texte que GFS montre dans sa fenêtre, déjà traduit par l'app, sur une ligne, 120 signes au
+// plus.
+export function readPersonChoice(args) {
+  const { titre } = args;
+  if (titre !== undefined && typeof titre !== 'string') throw refuse('choisirPersonne : titre doit être un texte.');
+  return { titre: (titre || '').replace(/\s+/g, ' ').trim().slice(0, TITLE_MAX) };
+}
+
+// La personne que GFS rend (5.4, point 16) : { nom, email, titre, telephone, annuaire }, des textes ; jamais autre chose de la fiche. `null` : la personne a
+// annulé.
+export function personAnswer(person) {
+  if (!isObject(person)) return null;
+  const text = value => (typeof value === 'string' ? value : '');
+  return { nom: text(person.nom), email: text(person.email), titre: text(person.titre), telephone: text(person.telephone), annuaire: text(person.annuaire) };
+}
+
+// L'app peut-elle demander une personne ? `actions.personnes.choisir` (2.7, point 8).
+export const mayAskPerson = manifest => Boolean(manifest && manifest.actions && manifest.actions.personnes && manifest.actions.personnes.choisir === true);
+
 // `ouvrir { app, fichier: { id, type }, raison? }` (5.4, point 7) -> { app, id, type }, l'`id` pris comme texte. `raison` ne peut valoir que « lien » ici : GFS
 // donne lui-même la raison à l'app visée.
 export function readOpen(args) {
@@ -55,15 +74,39 @@ export function readOpen(args) {
 export class AppLinks {
   #host;
   #choice = null;
+  #asking = false; // une fenêtre « Choisir une personne » est ouverte pour une app
 
   // host : { explorer(), session(), manifests(), appById(id), appName(id), fullAccess(), t(clé, vars), notice(texte), lockOf(fichier), unlock(grisé) ->
   //   Promise, showExplorer(), hideExplorer(),
-  //          loadFiles(apps) -> Promise<{ files, problems }>, openIn(app, ouverture) -> Promise<boolean> }
+  //          loadFiles(apps) -> Promise<{ files, problems }>, openIn(app, ouverture) -> Promise<boolean>, manifestOf(app), pickPerson({ title, app }) ->
+  //          Promise<personne ou
+  //          null> (la fenêtre de l'annuaire), cancelPick() (la ferme) }
   constructor(host) { this.#host = host; }
 
   // Les deux appels de l'app à GFS, pour la table des poignées de l'enveloppe (5.1).
   handlers(session) {
-    return { choisir: args => this.choose(session, args), ouvrir: args => this.open(session, args) };
+    return { choisir: args => this.choose(session, args), ouvrir: args => this.open(session, args), choisirPersonne: args => this.choosePerson(session, args) };
+  }
+
+  // ---------- choisirPersonne ----------
+
+  // La fenêtre de l'annuaire s'ouvre par-dessus l'app (qui reste en place) ; la promesse se tient jusqu'au choix (la personne : `{ nom, email, titre,
+  // telephone, annuaire }`) ou à l'annulation (`null`). Une app qui ne déclare pas `actions.personnes.choisir` est refusée ; un seul choix à la fois ; l'app
+  // remplacée pendant le choix n'a plus de destinataire.
+  async choosePerson(session, args) {
+    const request = readPersonChoice(args);
+    const host = this.#host;
+    if (!mayAskPerson(host.manifestOf(session.id))) throw refuse(`choisirPersonne : l'app « ${session.id} » ne déclare pas actions.personnes.choisir.`);
+    if (!host.fullAccess()) throw new Refus(ERR.ACCES, host.t('gfs.needsFullAccess'));
+    if (this.#asking) throw refuse('choisirPersonne : un choix de personne est déjà en cours.');
+    this.#asking = true;
+    try {
+      const person = personAnswer(await host.pickPerson({ title: request.titre, app: host.appName(session.id) }));
+      this.#stillActive(session);
+      return person;
+    } finally {
+      this.#asking = false;
+    }
   }
 
   // ---------- choisir ----------
@@ -97,7 +140,10 @@ export class AppLinks {
   cancel(hide = true) { this.#end(null, hide); }
 
   // L'app qui demandait n'est plus là (retirée, remplacée) : le choix finit sans toucher à ce qui est affiché, le contrôleur décide de la suite.
-  drop() { this.#end(null, false); }
+  drop() {
+    this.#end(null, false);
+    if (this.#asking) this.#host.cancelPick();
+  }
 
   #end(result, hide) {
     const choice = this.#choice;

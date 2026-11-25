@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { importFormats, acceptsFile, importOpening, templateOpening, openingKind, acceptsOpening, pickFile } from '../js/files/import-file.js';
+import { importFormats, acceptsFile, importOpening, templateOpening, personOpening, openingKind, acceptsOpening, carriesFile, pickFile } from '../js/files/import-file.js';
 import { publipostage, automation, form } from './helpers.mjs';
 
 test('les formats d\'une app : chacun avec le type qu\'il crée, dans l\'ordre du manifeste', () => {
@@ -54,6 +54,18 @@ test('l\'ouverture d\'un modèle de départ : « Nouveau » d\'un type avec l\'i
   assert.equal(acceptsOpening({ ouverture: { nouveau: true } }, openingKind(opening)), false, 'un « Nouveau » déclaré ne vaut pas `ouverture.modele` : l\'app doit dire qu\'elle sait ouvrir un modèle');
   assert.equal(acceptsOpening({ ouverture: { modele: true } }, openingKind(opening)), true);
   assert.equal(acceptsOpening(null, 'modele'), false);
+});
+
+test('l\'ouverture d\'une personne : « Insérer dans… » ; cinq textes, sans fichier ni type ; un genre à part, que l\'app doit déclarer, et qui part une seule fois (contrats 5.4, point 16)', () => {
+  const opening = personOpening({ nom: 'Léa Garnier', email: 'lea@exemple.fr', titre: 'Cheffe', telephone: '', annuaire: 'Annuaire principal', row: 4, fields: { a: 1 } });
+  assert.deepEqual(opening, { fichier: null, type: null, dossier: '', raison: 'personne',
+    personne: { nom: 'Léa Garnier', email: 'lea@exemple.fr', titre: 'Cheffe', telephone: '', annuaire: 'Annuaire principal' } }, 'ni numéro de ligne, ni champs');
+  assert.deepEqual(personOpening({ nom: 'Noé' }).personne, { nom: 'Noé', email: '', titre: '', telephone: '', annuaire: '' }, 'ce qui manque devient vide');
+  assert.equal(openingKind(opening), 'personne');
+  assert.equal(acceptsOpening({ ouverture: { nouveau: true, modele: true } }, 'personne'), false, 'les autres genres ne valent pas `ouverture.personne`');
+  assert.equal(acceptsOpening({ ouverture: { personne: true } }, 'personne'), true);
+  assert.equal(carriesFile(opening), true, 'une réouverture de l\'app ne reprend pas la personne');
+  assert.equal(carriesFile(templateOpening({ type: 'document', id: 'x' }, '')), false);
 });
 
 // Un document de faux : le champ `file` caché que `pickFile` pose, avec ce que `pickFile` en attend (des écouteurs, `remove`, `click`).

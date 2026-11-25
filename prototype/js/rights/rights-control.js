@@ -40,9 +40,12 @@ export class RightsControl {
   // Ce que GFS avait retenu de rouvrir : « Gérer les partages », ou la fenêtre « Partager » d'un fichier (que l'explorateur a peut-être pas encore lu : on
   // attend ses
   // fichiers un instant).
-  resume(explorer) {
+  // `again` : ce que d'autres gestes de GFS rouvrent, par le mot que `RightsWriter.apply` a retenu (`annuaire` : le module Annuaire,
+  //   js/annuaire/annuaire-sub-control.js).
+  resume(explorer, again = {}) {
     const wanted = this.writer.take();
     if (wanted === 'manage') void this.manage.open();
+    else if (wanted && typeof again[wanted] === 'function') again[wanted]();
     else if (wanted && wanted.startsWith('share:')) void this.#reopenShare(explorer, wanted.slice(6));
   }
 

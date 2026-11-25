@@ -1,7 +1,7 @@
 // Les extensions d'une app (contrats 2.6) : lesquelles sont actives, ce que leur code exige, lesquelles sont grisées et pourquoi.
 // Du code sans effet de bord : le contrôleur et la fenêtre « Modules » s'en servent, aucun ne recalcule cela de son côté.
 
-import { lookup, resolveLibraries, forContext, DEFAULT_MODE, defaultModeOf } from './libraries.js';
+import { lookup, resolveLibraries, forContext, secoursOf, DEFAULT_MODE, defaultModeOf } from './libraries.js';
 
 export const extensionsOf = manifest => (manifest && manifest.extensions) || [];
 export const findExtension = (manifest, id) => extensionsOf(manifest).find(ext => ext.id === id) || null;
@@ -66,11 +66,11 @@ export function libraryModes(manifest, setting, activeIds, catalogue) {
   return modes;
 }
 
-// Ce que l'app reçoit d'une app installée (contrats 5.2) : `extensions` et `bibliotheques` pour le message, `details` (mode, poids) pour GFS.
+// Ce que l'app reçoit d'une app installée (contrats 5.2) : `extensions`, `bibliotheques` et `secours` pour le message, `details` (mode, poids) pour GFS.
 // `base` : l'adresse de GFS, d'où part le chemin de la copie vendorisée.
 export function extensionsState(manifest, setting, catalogue, base) {
   const extensions = activeExtensionIds(manifest, setting, catalogue);
   const modes = libraryModes(manifest, setting, extensions, catalogue);
   const { libraries } = resolveLibraries(catalogue, libraryNeeds(manifest, extensions), id => modes.get(id), base);
-  return { extensions, bibliotheques: forContext(libraries), details: libraries };
+  return { extensions, bibliotheques: forContext(libraries), secours: secoursOf(libraries), details: libraries };
 }

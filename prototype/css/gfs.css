@@ -19,6 +19,7 @@
   --t-slides: #c7600a; --t-slides-ink: #9a4a05; --t-slides-soft: #fff0e0; --t-slides-line: #f6cc9d;
   --t-pdf: #d32c4d; --t-pdf-ink: #af1a3c; --t-pdf-soft: #ffebeb; --t-pdf-line: #f9cacb;
   --t-email: #8c57c9; --t-email-ink: #7243a5; --t-email-soft: #f3edfe; --t-email-line: #decef8;
+  --t-annuaire: #0e8a8a; --t-annuaire-ink: #0a6666; --t-annuaire-soft: #e2f4f4; --t-annuaire-line: #b5e2e1;
   --scrim: rgba(15, 23, 42, .45);
   --shadow-float: 0 14px 32px -8px rgba(9, 16, 35, .35), 0 2px 8px rgba(9, 16, 35, .12);
   --shadow-card: 0 1px 2px rgba(20, 28, 46, .05);
@@ -60,6 +61,7 @@
     --t-slides: #f0933e; --t-slides-ink: #ffb06b; --t-slides-soft: #3a2412; --t-slides-line: #6b4420;
     --t-pdf: #f37984; --t-pdf-ink: #ff989f; --t-pdf-soft: #422426; --t-pdf-line: #733e42;
     --t-email: #b68cf1; --t-email-ink: #c8a5fb; --t-email-soft: #312741; --t-email-line: #574473;
+    --t-annuaire: #3dbbc7; --t-annuaire-ink: #66d2dd; --t-annuaire-soft: #12302f; --t-annuaire-line: #24605e;
     --scrim: rgba(3, 6, 12, .62);
     --shadow-float: 0 14px 32px -8px rgba(0, 0, 0, .65), 0 2px 8px rgba(0, 0, 0, .45);
     --shadow-card: 0 1px 2px rgba(0, 0, 0, .45);
@@ -81,6 +83,7 @@
   --t-slides: #f0933e; --t-slides-ink: #ffb06b; --t-slides-soft: #3a2412; --t-slides-line: #6b4420;
   --t-pdf: #f37984; --t-pdf-ink: #ff989f; --t-pdf-soft: #422426; --t-pdf-line: #733e42;
   --t-email: #b68cf1; --t-email-ink: #c8a5fb; --t-email-soft: #312741; --t-email-line: #574473;
+  --t-annuaire: #3dbbc7; --t-annuaire-ink: #66d2dd; --t-annuaire-soft: #12302f; --t-annuaire-line: #24605e;
   --scrim: rgba(3, 6, 12, .62);
   --shadow-float: 0 14px 32px -8px rgba(0, 0, 0, .65), 0 2px 8px rgba(0, 0, 0, .45);
   --shadow-card: 0 1px 2px rgba(0, 0, 0, .45);
@@ -88,7 +91,7 @@
 /* L'accessibilité renforcée (décision du 04/11, js/theme/theme.js) tient le texte à 7:1 sur les fonds de l'ambiance ; les couleurs d'état de la charte, qui ne changent pas d'une ambiance à l'autre, et celles de type
    (le message de l'accessibilité renforcée a l'`id` `renforcee` et pas de couleur de type propre : ce sont celles d'origine, ci-dessus) ne le tiennent pas toutes. Leur texte prend donc celui de la page, après les deux
    blocs sombres ci-dessus (même poids, le dernier gagne) ; l'icône, le contour et le fond doux gardent la couleur : l'état ou le type se lit aussi par le mot et par l'icône. */
-:root[data-ambiance="renforcee"] { --danger-ink: var(--text); --warn-ink: var(--text); --good: var(--text); --t-doc-ink: var(--text); --t-grid-ink: var(--text); --t-slides-ink: var(--text); --t-pdf-ink: var(--text); --t-email-ink: var(--text); }
+:root[data-ambiance="renforcee"] { --danger-ink: var(--text); --warn-ink: var(--text); --good: var(--text); --t-doc-ink: var(--text); --t-grid-ink: var(--text); --t-slides-ink: var(--text); --t-pdf-ink: var(--text); --t-email-ink: var(--text); --t-annuaire-ink: var(--text); }
 
 * { box-sizing: border-box; }
 html, body { height: 100%; }

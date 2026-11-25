@@ -34,6 +34,7 @@ import { partagesRecusProblems } from './partages-recus-firefox.mjs';
 import { liensEspacesProblems } from './liens-espaces-firefox.mjs';
 import { poidsFenetreProblems } from './poids-fenetre-firefox.mjs';
 import { poidsAlerteProblems } from './poids-alerte-firefox.mjs';
+import { lectureRetenueProblems } from './lecture-retenue-firefox.mjs';
 import { dependancesProblems } from './dependances-firefox.mjs';
 import { carriedProblems } from './dependances-carried-firefox.mjs';
 import { securiteProblems } from './dependances-securite-firefox.mjs';
@@ -281,6 +282,8 @@ const TOTAL = { fr: '18,1 Mo', en: '18.1 MB' };
 async function columnProblems(page, width, language, tag) {
   const narrow = width < 600; // la liste perd « Modifié » et « Par » sous 600 px
   const found = [];
+  // Ici le total est celui de la liste seule : la case « + pièces jointes », cochée de départ depuis le 25/11, ajouterait les pièces (elle se mesure dans test/pieces-jointes-firefox.mjs).
+  await page.run(() => { const box = document.querySelector('.ex-pj input'); if (box && box.checked) box.click(); });
   const measure = async what => found.push(...columnFaults(await page.run(measureColumns), narrow, `${tag}, ${what}`, TOTAL[language]));
   const header = key => page.run(centerOfSelector, `.ls-head .hd[data-sort="${key}"]`);
   await measure('tri par nom');
@@ -631,6 +634,7 @@ describe('l\'interface sous Firefox', () => {
         problems.push(...await liensEspacesProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await poidsFenetreProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await poidsAlerteProblems(page, language, caption(language, 700, 1, mode)));
+        problems.push(...await lectureRetenueProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await dependancesProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await carriedProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await securiteProblems(page, language, caption(language, 700, 1, mode)));

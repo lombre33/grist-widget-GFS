@@ -4,7 +4,7 @@
    et le pied restent en place, seuls les volets défilent. Les classes de ce module portent toutes `an-` : aucune ne rejoint celles de l'explorateur. */
 
 .mod-scrim.an-scrim { padding: 6px; }
-.mod.an { width: min(var(--win-l), 100%); height: 100%; container: an / inline-size; }
+.mod.an { width: min(var(--win-xl), 100%); height: 100%; container: an / inline-size; }
 
 /* L'en-tête : le titre, l'annuaire montré, la recherche, l'affichage, les réglages. */
 .an-head { padding: 8px 12px; }
@@ -36,7 +36,7 @@
 .an-seg-b[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); }
 .an-seg-b[aria-disabled="true"] { background: var(--surface-sunken); color: var(--text-muted); }
 .an-name:focus-visible, .an-ib:focus-visible, .an-seg-b:focus-visible, .an-tb:focus-visible, .an-tt:focus-visible, .an-person:focus-visible, .an-pcard:focus-visible,
-.an-chip:focus-visible, .an-oc:focus-visible, .an-fold:focus-visible, .an-link-b:focus-visible, .an-link:focus-visible, .an-pickbtn:focus-visible, .an-org-scroll:focus-visible
+.an-reset:focus-visible, .an-ch:focus-visible, .an-oc:focus-visible, .an-fold:focus-visible, .an-link-b:focus-visible, .an-link:focus-visible, .an-pickbtn:focus-visible, .an-org-scroll:focus-visible
 { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* Le corps : le fond gris clair des maquettes, les volets sont des cartes. */
@@ -85,21 +85,45 @@
 .an-main > [hidden] { display: none; }
 .an-crumb { flex: none; display: flex; align-items: center; gap: 8px; padding: 10px 14px 6px; }
 .an-crumb h3 { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-head); }
-.an-ftoggle { flex: none; }
-.an-ftoggle .ic { width: 13px; height: 13px; }
+/* Les boutons de la barre (« Filtres », « Personnes ») : les boutons communs, allumés d'un accent quand ils servent (retour du porteur, 25/11 : ils doivent ressembler
+   à ceux de la maquette de l'annuaire et du suivi de projet). Le nombre de choix d'un filtre est une pastille pleine. */
+.an-tbtn { flex: none; min-width: 0; max-width: 100%; }
+.an-tbtn .ic { width: 13px; height: 13px; }
+.an-tb-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.an-tbtn.is-on, .an-tbtn[aria-pressed="true"] { border-color: var(--accent-soft-border); background: var(--accent-soft); color: var(--accent-ink); }
+.an-badge { flex: none; min-width: 16px; height: 16px; padding: 0 5px; border-radius: 8px; background: var(--accent-solid); color: var(--on-accent); font-size: max(10.5px, var(--fs-min));
+  font-weight: 700; line-height: 16px; text-align: center; font-variant-numeric: tabular-nums; }
 .an-count { margin-left: auto; flex: none; font-size: max(12px, var(--fs-min)); color: var(--text-muted); }
-.an-filters-host { flex: none; max-height: 104px; overflow: auto; padding: 2px 14px 8px; border-bottom: 1px solid var(--border); }
-.an-filters-host[hidden] { display: none; }
-.an-filters { display: flex; flex-direction: column; gap: 4px; }
-.an-filters:empty { display: none; }
-.an-fgroup { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; padding: 2px 0; }
-.an-flabel { flex: none; font-size: max(11px, var(--fs-min)); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
-.an-chip { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface);
-  color: var(--text); font: inherit; font-size: max(12px, var(--fs-min)); font-weight: 600; white-space: nowrap; cursor: pointer; }
-.an-chip b { font-weight: 600; color: var(--text-muted); }
-.an-chip:hover { background: var(--surface-sunken); }
-.an-chip[aria-pressed="true"] { border-color: var(--accent-soft-border); background: var(--accent-soft); color: var(--accent-ink); }
-.an-chip[aria-pressed="true"] b { color: var(--accent-ink); }
+/* Le panneau des filtres (js/annuaire/annuaire-filters.js, posé par le menu commun) : un titre par filtre, une case par valeur avec son nombre de personnes ; les
+   filtres au-delà des deux premiers sont repliés avec le nombre de leurs valeurs (la maquette de l'annuaire). Il défile quand la fenêtre est basse. */
+.menu-panel:has(> .an-fpanel) { max-width: calc(100% - 8px); padding: 4px; }
+.an-fpanel { width: 300px; max-width: 100%; overflow-y: auto; font-size: max(12.5px, var(--fs-min)); }
+.an-fsec + .an-fsec { margin-top: 3px; padding-top: 3px; border-top: 1px solid var(--border); }
+.an-fsec-h { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 28px; padding: 2px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--text-muted);
+  font: inherit; font-size: max(11px, var(--fs-min)); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; text-align: left; cursor: pointer; }
+.an-fsec-h:hover, .an-fsec-h:focus-visible { background: var(--surface-sunken); color: var(--text); }
+.an-fsec-h .ic { flex: none; width: 12px; height: 12px; }
+.an-fsec-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-fsec-n { flex: none; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.an-fv { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 28px; padding: 3px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--text);
+  font: inherit; text-align: left; cursor: pointer; }
+.an-fv:hover, .an-fv:focus-visible, .an-fv[aria-checked="true"] { background: var(--surface-sunken); }
+.an-fv[aria-checked="true"] { font-weight: 600; }
+.an-fv:hover .an-fv-n, .an-fv:focus-visible .an-fv-n, .an-fv[aria-checked="true"] .an-fv-n { color: var(--text); }
+.an-fv-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-fv-n { flex: none; font-size: max(11px, var(--fs-min)); font-variant-numeric: tabular-nums; color: var(--text-muted); }
+.an-box { flex: none; display: inline-grid; place-items: center; width: 16px; height: 16px; border: 1.5px solid var(--border-strong); border-radius: 4px; background: var(--surface);
+  color: var(--on-accent); }
+.an-box .ic { width: 11px; height: 11px; }
+.an-fv[aria-checked="true"] .an-box { border-color: var(--accent-solid); background: var(--accent-solid); }
+.an-fmore { color: var(--accent-ink); }
+.an-fmore .an-fv-t { padding-left: 24px; }
+.an-fmore .ic { flex: none; width: 12px; height: 12px; }
+/* Le pied : le nombre de personnes, les valeurs choisies, et « Réinitialiser » pour les retirer d'un clic. */
+.an-foot { display: flex; align-items: center; gap: 8px; }
+.an-foot-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-reset { flex: none; height: 24px; padding: 0 6px; border: 0; border-radius: 4px; background: transparent; color: var(--accent-ink); font: inherit; font-weight: 600; cursor: pointer; }
+.an-reset:hover { background: var(--accent-soft); }
 .an-list { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 4px 8px 8px; }
 .an-list > .an-note { padding: 10px 6px; }
 .an-person { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 8px; border: 0; border-radius: calc(var(--radius-lg) * 1.25); background: transparent; color: var(--text);
@@ -112,6 +136,27 @@
 .an-person[aria-pressed="true"] .an-pe-sub, .an-pcard[aria-pressed="true"] .an-pe-sub { color: var(--text); }
 .an-pe-pills { flex: 0 1 auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; min-width: 0; max-width: 55%; }
 .an-person[aria-pressed="true"] .an-pill, .an-pcard[aria-pressed="true"] .an-pill { background: var(--surface); }
+/* Les colonnes de la liste (réglage « Colonne » des champs de la fiche) : une grille commune à la ligne de titres et à chaque ligne ; au-delà de la place, la liste défile de côté.
+   Étroit : les colonnes passent sous le nom, chacune avec son libellé, et la ligne de titres s'efface (rien n'est retiré). */
+.an-list.has-cols { --minw: calc(204px + var(--n) * 108px + 140px); }
+.an-cols-head, .an-person.has-cols { display: grid; grid-template-columns: 32px minmax(150px, 1.7fr) repeat(var(--n), minmax(96px, 1fr)) minmax(0, 140px); align-items: center;
+  column-gap: 10px; min-width: var(--minw); }
+.an-cols-head { position: sticky; top: 0; z-index: 1; padding: 4px 8px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.an-ch { display: flex; align-items: center; gap: 4px; min-width: 0; min-height: 24px; padding: 2px 0; border: 0; background: transparent; font: inherit; font-size: max(11px, var(--fs-min)); font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; text-align: left; color: var(--text-muted); white-space: nowrap; cursor: pointer; }
+.an-ch-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.an-ch .ic { flex: none; width: 11px; height: 11px; }
+.an-ch:hover, .an-ch.is-sorted { color: var(--text); }
+.an-pe-col { min-width: 0; font-size: max(12px, var(--fs-min)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-person.has-cols .an-pe-pills { max-width: none; }
+@container anmain (max-width: 560px) {
+  .an-cols-head { display: none; }
+  .an-person.has-cols { grid-template-columns: 32px minmax(0, 1fr); row-gap: 1px; min-width: 0; }
+  .an-person.has-cols > .an-pe-col, .an-person.has-cols > .an-pe-pills { grid-column: 1 / -1; padding-left: 42px; }
+  .an-person.has-cols > .an-pe-pills { justify-content: flex-start; }
+  .an-pe-col::before { content: attr(data-label) " : "; color: var(--text-muted); }
+  .an-pe-col:empty { display: none; }
+}
 
 /* Étroit (le panneau de 700 px et moins) : la fiche prend la place de la hiérarchie tant qu'elle est ouverte, et la liste n'écrit plus les niveaux de chaque personne. */
 @container an (max-width: 780px) {
@@ -126,14 +171,16 @@
   .mod-body.an-body, .an-body[data-side="true"], .an-body[data-view="org"], .an-body[data-view="org"][data-side="true"] { grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr); }
   .an-tree { grid-row: 1; max-height: 84px; }
+  /* L'en-tête : les réglages montent sur la première ligne (à droite du titre) ; la recherche, l'affichage et les outils prennent la deuxième. */
+  .an-top > .an-ib[data-fk="configure"] { order: 1; }
+  .an-top > :is(.an-search, .an-top-tools, .an-seg) { order: 2; }
   .an-main { grid-row: 2; }
   .an-side { grid-row: 1 / -1; }
   .an-body[data-side="true"] .an-tree, .an-body[data-side="true"] .an-main { display: none; }
-  /* Le volet du milieu défile d'un bloc (le nœud, les filtres, la liste) : ouvrir les filtres ne laisse pas la liste sans place. */
+  /* Le volet du milieu défile d'un bloc (le nœud, la liste). */
   .an-main:not([data-view="org"]) { overflow: auto; }
   .an-main:not([data-view="org"]) .an-list { flex: none; overflow: visible; }
   .an-main:not([data-view="org"]) .an-crumb { position: sticky; top: 0; z-index: 1; background: var(--surface); }
-  .an-main .an-filters-host { max-height: none; overflow: visible; }
 }
 
 /* La vue « Cartes » : une carte de contact par personne. */
@@ -150,7 +197,22 @@
 /* La fiche : l'avatar, le nom, le poste, les niveaux en pastilles, puis une ligne par information. */
 .an-side { position: relative; padding: 0; }
 .an-side-x { position: absolute; top: 6px; right: 6px; }
-.an-fiche-card { display: flex; flex-direction: column; gap: 10px; padding: 14px 12px 12px; }
+.an-fiche-card { display: flex; flex-direction: column; gap: 10px; padding: 14px 12px 4px; }
+/* La fiche en sections (retour du porteur, 25/11 : le découpage hiérarchique, comme sa carte du suivi de projet) : un titre en petites capitales, un filet au-dessus. */
+.an-fiche-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.an-write { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
+.an-write .ic { width: 14px; height: 14px; }
+.an-insert-b { display: inline-flex; align-items: center; gap: 6px; }
+.an-insert-b .ic { width: 14px; height: 14px; }
+.an-fs { padding: 10px 0 12px; border-top: 1px solid var(--border); }
+.an-fs-h { margin: 0 0 8px; font-size: max(11px, var(--fs-min)); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+.an-hp { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.an-hp-step { display: flex; flex-wrap: wrap; align-items: baseline; gap: 1px 8px; min-width: 0; margin-left: calc(var(--d, 0) * 14px); }
+.an-hp-step.is-sub::before { content: ""; flex: none; align-self: center; width: 10px; height: 10px; margin: -6px -2px 0 0; border-bottom: 1.5px solid var(--border-strong);
+  border-left: 1.5px solid var(--border-strong); border-bottom-left-radius: 4px; }
+.an-hp-k { font-size: max(11px, var(--fs-min)); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+.an-hp-v { min-width: 0; font-size: max(13px, var(--fs-min)); font-weight: 600; overflow-wrap: anywhere; }
+.an-empty { color: var(--text-muted); }
 .an-fiche-head { display: flex; align-items: center; gap: 10px; padding-right: 26px; }
 .an-fiche-id { min-width: 0; }
 .an-fiche-id h3 { margin: 0; font-size: var(--fs-head); overflow-wrap: anywhere; }
@@ -186,8 +248,30 @@
 .an-oc-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .an-oc-title { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: max(12.5px, var(--fs-min)); font-weight: 700; line-height: 1.2; }
 .an-oc-sub, .an-oc-head { font-size: max(11.5px, var(--fs-min)); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-oc-line { font-size: max(11px, var(--fs-min)); color: var(--accent-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .an-oc[aria-pressed="true"] .an-oc-sub, .an-oc[aria-pressed="true"] .an-oc-head { color: var(--text); }
 .an-oc[aria-pressed="true"] .an-pill { background: var(--surface); }
+.an-oc .an-pill { flex: none; } /* le nombre de personnes d'une carte ne se coupe jamais (c'est le titre qui passe à la ligne) */
+/* Une carte estompée n'est là que pour relier celles qui passent la recherche et les filtres : cadre en pointillés, fond creusé, jamais d'opacité (le contraste reste). */
+.an-oc.is-dim { border-style: dashed; background: var(--surface-sunken); box-shadow: none; }
+.an-oc.is-dim .an-oc-title { color: var(--text-muted); }
+/* Une personne sous sa structure (le bouton « Personnes ») : une petite carte d'une ligne, en retrait. */
+.an-ocw.is-person { margin-left: 14px; width: calc(var(--ow) - 14px); }
+.an-oc.is-person { gap: 6px; padding: 0 8px; border-radius: var(--radius-lg); box-shadow: none; }
+.an-oc.is-person .an-oc-title { -webkit-line-clamp: 1; line-clamp: 1; }
+.an-av-s { width: 22px; height: 22px; font-size: max(10px, var(--fs-min)); }
+.an-org-tools { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+/* Étroit : « Filtres » et « Personnes » ne gardent que leur icône (le nom reste en info-bulle et pour la lecture d'écran), pour que la barre tienne sur deux lignes. */
+@container anmain (max-width: 520px) {
+  .an-org-tools .an-tb-t { display: none; }
+  .an-org-tools .an-tbtn { padding: 0 8px; }
+}
+/* Étroit, « Trier » ne garde que son icône tant qu'aucun tri n'est choisi ; un tri choisi dit sa colonne, coupée au besoin. */
+@container anmain (max-width: 560px) {
+  .an-sbtn:not(.is-on) .an-tb-t { display: none; }
+  .an-sbtn:not(.is-on) { padding: 0 8px; }
+  .an-sbtn .an-tb-t { max-width: 84px; }
+}
 .an-fold { position: absolute; left: 50%; bottom: -11px; display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 20px; padding: 0 6px; border: 1px solid var(--border-strong);
   border-radius: 999px; background: var(--surface); color: var(--text-muted); font: inherit; font-size: max(11px, var(--fs-min)); font-weight: 700; transform: translateX(-50%); cursor: pointer; }
 .an-fold:hover { background: var(--surface-sunken); color: var(--text); }
@@ -199,7 +283,7 @@
    raison au survol ; l'option « postes et hiérarchie » éteinte laisse son onglet visible, grisé. Orange (jetons `warn`) : ce qui attend un choix, comme la colonne d'un niveau. */
 .mod.an-set { width: min(664px, 100%); height: 100%; container: anset / inline-size; }
 .mod-body.an-set-body { padding: 0 14px 10px; }
-.an-tabs { flex: none; display: flex; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--border); background: var(--surface); overflow-x: auto; }
+.an-tabs { flex: none; display: flex; flex-wrap: wrap; gap: 0 2px; padding: 0 12px; border-bottom: 1px solid var(--border); background: var(--surface); }
 .an-tab { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px 7px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--text-muted);
   font: inherit; font-size: max(12.5px, var(--fs-min)); font-weight: 600; white-space: nowrap; cursor: pointer; }
 .an-tab:hover { color: var(--text); }
@@ -216,6 +300,8 @@
 .an-set-label { padding-top: 6px; font-size: max(12.5px, var(--fs-min)); font-weight: 600; }
 .an-set-control { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .an-set-hint { font-size: max(11.5px, var(--fs-min)); color: var(--text-muted); }
+/* L'aperçu du nom que donnent l'ordre et les capitales : la personne d'exemple, ou un nom fictif. */
+.an-set-example { margin: 0; padding: 6px 10px; border-radius: var(--radius-sm); background: var(--surface-sunken); color: var(--text); font-size: max(13px, var(--fs-min)); overflow-wrap: anywhere; }
 .an-set-input { width: 100%; height: 30px; padding: 0 8px; box-sizing: border-box; border: var(--bw) solid var(--border-strong); border-radius: var(--radius-input); background: var(--surface);
   color: var(--text); font: inherit; font-size: max(12.5px, var(--fs-min)); }
 .an-set-input:disabled { background: var(--surface-sunken); color: var(--text-muted); }
@@ -283,6 +369,15 @@
 .an-lv-acts { flex: none; display: inline-flex; margin: -2px -2px -2px 0; }
 .an-lv-acts .an-ib { width: 24px; height: 24px; }
 .an-lv-acts .an-ib .ic { width: 13px; height: 13px; }
+.an-relrow { gap: 2px; }
+.an-rel-fixed { flex: 1 1 auto; min-width: 0; padding: 1px 4px; font-size: max(12.5px, var(--fs-min)); font-weight: 700; }
+.an-rel-kind { padding: 0 7px; border-radius: 999px; background: var(--surface-sunken); font-size: max(11px, var(--fs-min)); color: var(--text-muted); }
+.an-rel-note { margin: 0; padding: 0 4px 2px; }
+.an-rel-rules { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin-top: 3px; padding: 4px 4px 1px; border-top: 1px dashed var(--border); }
+.an-rel-inv { flex: 1 1 210px; min-width: 0; display: flex; align-items: center; gap: 6px; }
+.an-rel-inv .an-set-hint { flex: none; }
+.an-rel-inv .an-lv-name { border-color: var(--border); background: var(--surface); font-weight: 400; }
+.an-rel-card { display: inline-flex; align-items: center; gap: 8px; }
 .an-tag { flex: none; padding: 0 7px; border: 1px solid var(--accent-soft-border); border-radius: 999px; background: var(--accent-soft); color: var(--accent-ink); font-size: max(10.5px, var(--fs-min));
   font-weight: 700; }
 .an-ins { display: flex; align-items: center; gap: 8px; height: 14px; color: var(--accent-ink); font-size: max(11px, var(--fs-min)); font-weight: 600; }
@@ -299,6 +394,11 @@
 
 /* La fenêtre « Nouveau niveau » : le nom, puis la place parmi les niveaux (des repères en pointillés où il peut s'insérer ; celui qu'on a choisi est bleu). */
 .mod.an-nl { width: min(var(--win-m), 100%); }
+/* Les types d'une colonne à créer (jusqu'à six) : des boutons à passer à la ligne, chacun avec son cadre, plutôt qu'un bloc qui sortirait de la fenêtre. */
+.mod.an-nl .an-seg { display: flex; flex-wrap: wrap; gap: 6px; border: 0; background: transparent; overflow: visible; }
+.mod.an-nl .an-seg-b { border: 1px solid var(--border-strong); border-radius: var(--radius-btn); background: var(--surface); }
+.mod.an-nl .an-seg-b + .an-seg-b { border-left: 1px solid var(--border-strong); }
+.mod.an-nl .an-seg-b[aria-pressed="true"] { border-color: var(--accent-soft-border); background: var(--accent-soft); }
 .an-slots { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
 .an-slot { display: flex; align-items: center; gap: 8px; min-height: 22px; padding: 0; border: 0; background: transparent; color: var(--text-muted); font: inherit;
   font-size: max(11px, var(--fs-min)); cursor: pointer; }
@@ -311,7 +411,7 @@
 
 /* Les champs de la fiche : une ligne par champ (nom, type, « Liste », « Filtre »), les suggestions en pointillés dessous. */
 .an-ftable { display: flex; flex-direction: column; }
-.an-frow { display: grid; grid-template-columns: minmax(0, 1fr) 100px 48px 48px 76px; align-items: center; gap: 8px; min-height: 30px; padding: 0 4px; border-bottom: 1px solid var(--border);
+.an-frow { display: grid; grid-template-columns: minmax(0, 1fr) 100px 62px 48px 48px 76px; align-items: center; gap: 8px; min-height: 30px; padding: 0 4px; border-bottom: 1px solid var(--border);
   font-size: max(12.5px, var(--fs-min)); }
 .an-frow.is-head { min-height: 22px; font-size: max(10.5px, var(--fs-min)); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
 .an-f-name { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -323,7 +423,7 @@
 .an-f-acts .an-ib .ic { width: 13px; height: 13px; }
 .an-sugs { display: flex; flex-direction: column; gap: 6px; margin: 12px 0 8px; }
 .an-sug-row { display: flex; flex-wrap: wrap; gap: 6px; }
-@container anset (max-width: 520px) { .an-frow { grid-template-columns: minmax(0, 1fr) 44px 44px 76px; } .an-f-type { display: none; } }
+@container anset (max-width: 520px) { .an-frow { grid-template-columns: minmax(0, 1fr) 58px 44px 44px 76px; } .an-f-type { display: none; } }
 
 /* Le champ caché de la copie de secours (js/annuaire/annuaire-copy.js) : sélectionnable, jamais vu. */
 .an-copy-field { position: fixed; left: -9999px; top: 0; width: 1px; height: 1px; opacity: 0; }

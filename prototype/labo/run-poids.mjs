@@ -209,6 +209,12 @@ async function exactOthers(run) {
 const listBytes = async run => total(await expectedFiles(run));
 const footNumber = frame => frame.locator('.ex-total .tot-n').textContent().then(text => text.trim());
 const footTip = frame => frame.locator('.ex-total').getAttribute('title');
+// La case « + pièces jointes » est cochée de départ (25/11) : les passes qui mesurent la liste seule la décochent d'abord, puis attendent que le total ait fini de changer.
+async function listOnly(frame) {
+  const box = frame.locator('.ex-pj input');
+  if (await box.isChecked()) await box.click();
+  await frame.waitForFunction(() => !document.querySelector('.ex-pj input').checked && document.querySelector('.ex-total').getAttribute('aria-busy') !== 'true');
+}
 
 // Attend que le total du pied dise `text`, puis rend les millisecondes que cela a pris depuis `started`.
 async function waitForTotal(frame, text, started = Date.now(), timeout = 30000) {
@@ -254,8 +260,23 @@ async function attachmentsStart(run) {
   await frame.locator('input[type="search"]').fill('');
   await waitForWeights(frame, 8);
 
-  // Avant de cocher : la case est là, décochée, et le total est celui de la liste.
-  check('la case « + pièces jointes » est dans le pied de fenêtre, décochée, et le total est celui de la liste', await box.count() === 1 && !(await box.isChecked()) && (await footNumber(frame)) === show(base), { vu: await footNumber(frame), attendu: show(base) });
+  // Cochée de départ (demande du porteur, 25/11) : la page est rechargée, comme à l'ouverture de GFS ; la table des pièces jointes se lit derrière la liste, sans un clic, et le total est celui de la liste
+  // plus les pièces que SQL compte (la formule de Grist) ; rien n'est écrit dans le document.
+  const wanted = await exactOthers(run);
+  const tablesBefore = (await run.rest.tables()).join();
+  await frame.evaluate(() => location.reload());
+  await frame.waitForFunction(() => document.body.dataset.gfs === 'ready', null, { timeout: 60000 });
+  await goHome(frame);
+  await waitForWeights(frame, 8);
+  const opened = Date.now();
+  const lasted = await waitForTotal(frame, show(base + wanted.bytes), opened);
+  say(`  ouverture : la case cochée de départ a lu la table et le total est passé à ${await footNumber(frame)} en ${lasted} ms, sans un clic`);
+  check('la case « + pièces jointes » est cochée de départ : à l\'ouverture, sans un clic, le total est la liste plus les pièces jointes que SQL compte', await box.count() === 1 && await box.isChecked() && (await footNumber(frame)) === show(base + wanted.bytes) && wanted.bytes > 0, { vu: await footNumber(frame), attendu: show(base + wanted.bytes) });
+  check('la lecture de départ n\'a rien écrit dans le document (aucune table de plus)', (await run.rest.tables()).join() === tablesBefore);
+  // La personne la décoche : le total est celui de la liste, comme avant ; la suite des passes part de là.
+  await box.click();
+  await waitForTotal(frame, show(base));
+  check('décochée par la personne, la case laisse le total à celui de la liste', !(await box.isChecked()) && (await footNumber(frame)) === show(base), { vu: await footNumber(frame), attendu: show(base) });
   const footBefore = await frame.locator('.ex-foot').boundingBox();
   say(`  contraste des boutons du pied avant la case cochée (sonde) : ${JSON.stringify(await contrastProblems(frame, '.ex-foot button'))}`);
   return { box, base, draft, footBefore };
@@ -442,6 +463,8 @@ async function versionsWeights(run, { token }) {
   check('les versions orphelines (jeton inconnu) et sans jeton ne sont à aucun modèle : elles ne sont pas comptées', attributed === heavy.linked + small.linked && attributed < all && all - attributed > 100000, { toutes: all, rattachees: attributed });
   const wrong = rows.filter(row => row.weight !== show(row.folder ? total(files.filter(file => inFolder(file, row.name))) : files.find(file => file.name === row.name).bytes)).map(row => [row.name, row.weight]);
   check('les autres lignes et les dossiers disent toujours le poids de leurs fichiers (un dossier somme les modèles et leurs versions)', wrong.length === 0, wrong);
+  await listOnly(frame); // la case est cochée de départ : ce passage mesure la liste seule
+  await waitForTotal(frame, show(total(files)));
   check('le total du pied est la somme de ce que la liste montre, versions comprises', (await footNumber(frame)) === show(total(files)), { vu: await footNumber(frame), attendu: show(total(files)) });
   const exact = (await sql(run, `SELECT SUM(pgsize - unused) AS octets FROM dbstat WHERE name = '${VERSIONS}'`))[0].octets;
   say(`  ${VERSIONS} : estimé ${all} o, SQLite ${exact} o, ${(100 * (all - exact) / exact).toFixed(1)} %`);
@@ -489,6 +512,7 @@ async function versionsCost(run, { baseline }) {
   const bytes = (await run.rest.rows(VERSIONS)).reduce((sum, row) => sum + rowBytes(row), 0);
   const loads = [await timeLoad(frame), await timeLoad(frame)];
   const files = await expectedFiles(run);
+  await listOnly(frame); // la case « + pièces jointes » est cochée de départ : le total mesuré ici est celui de la liste
   const slower = Math.round(loads.reduce((a, b) => a + b) / 2 - baseline.reduce((a, b) => a + b) / 2);
   say(`  ouverture de l'explorateur : ${baseline.join(' et ')} ms sans la table, ${loads.join(' et ')} ms avec ${rows} versions (${(bytes / 1048576).toFixed(1)} Mo) : ${slower >= 0 ? '+' : ''}${slower} ms`);
   check(`avec ${rows} versions (${(bytes / 1048576).toFixed(1)} Mo), le poids reste celui des octets de Grist et l'ouverture ne prend pas plus de 3 s de plus`, slower < 3000 && (await weightOf(frame, 'Modèle lourd 2')).weight === show(files.find(file => file.name === 'Modèle lourd 2').bytes) && (await footNumber(frame)) === show(total(files)), { lenteur: slower, vu: await footNumber(frame), attendu: show(total(files)) });

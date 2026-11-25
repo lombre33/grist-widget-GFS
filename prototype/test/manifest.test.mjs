@@ -615,6 +615,19 @@ test('contrats 2.2 et 2.8 : `ouverture` et `permanente` — des booléens, facul
   assert.equal(ok({ ouverture: { sonde: 'x' } }).ok, true, 'un genre inconnu est ignoré (le contrat s\'étend par ajout)');
 });
 
+test('contrats 2.7 point 8 et 2.2 : `actions.personnes` (choisir en booléen, inserer en français et anglais) et `ouverture.personne`, facultatifs', () => {
+  const ok = patch => validateManifest({ ...publipostage(), ...patch });
+  const actions = personnes => ({ ...publipostage().actions, personnes });
+  assert.equal(ok({}).ok, true, 'sans déclaration, rien ne change');
+  assert.equal(ok({ actions: actions({ choisir: true, inserer: { fr: 'destinataire d\'un envoi', en: 'recipient of a mailing' } }), ouverture: { personne: true } }).ok, true);
+  assert.equal(ok({ actions: actions({}) }).ok, true, 'un objet vide : rien n\'est déclaré');
+  assert.equal(ok({ actions: actions('oui') }).errors.join(), 'actions.personnes : objet attendu');
+  assert.equal(ok({ actions: actions({ choisir: 'oui' }) }).errors.join(), 'actions.personnes.choisir : true ou false attendu');
+  assert.match(ok({ actions: actions({ inserer: 'destinataire' }) }).errors.join(), /actions\.personnes\.inserer : un texte en français et en anglais attendu/);
+  assert.match(ok({ actions: actions({ inserer: { fr: 'x' } }) }).errors.join(), /actions\.personnes\.inserer/);
+  assert.equal(ok({ ouverture: { personne: 'oui' } }).errors.join(), 'ouverture.personne : true ou false attendu');
+});
+
 // Grist-BI, « Mots-clés des publications » (consigne 022, demande du 18/11 de l'app) : lire le PDF joint à une ligne (`jeton`, en lecture seule : le même geste que Publipostage+ pour ses
 // pièces jointes) et écrire UNE colonne de texte dans la table que la personne choisit (`AddColumn` sans formule, puis `UpdateRecord`) ; la déclaration `ecrit: ["*"]` couvre déjà ce geste.
 test('contrats 3.3 et 3.4 : Grist-BI lit ses pièces jointes par `jeton` en lecture seule et écrit une colonne de texte dans une table de la personne, jamais ailleurs', () => {

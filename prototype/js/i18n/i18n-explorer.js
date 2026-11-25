@@ -32,7 +32,7 @@ export const EXPLORER_STRINGS = {
     'ex.modified': 'Modifié',
     'ex.by': 'Par',
     'ex.open': 'Ouvrir',
-    'ex.close': 'Fermer',
+    'ex.close': 'Retour à l’app',
     'ex.closeNone': 'Aucune app n’est ouverte : choisissez d’abord un fichier.',
     'ex.untitled': '(sans nom)',
     // Les comptes (avec leurs pluriels) et ce que dit une liste vide, selon la vue.
@@ -90,6 +90,8 @@ export const EXPLORER_STRINGS = {
     'ex.lockedHint': 'Grisé : un double-clic explique pourquoi',
     'ex.loading': 'Lecture des fichiers…',
     'ex.readFailed': '{app} : lecture impossible ({reason}).',
+    // Le garde-fou des lectures complètes (js/explorer/read-guard.js) retient la table de l'app : ses fichiers manquent dans la liste, pour un temps.
+    'ex.readHeld': '{app} : fichiers non listés. La lecture de leur table s’est interrompue plusieurs fois de suite : elle est peut-être trop lourde pour que Grist l’envoie en entier. GFS réessaiera dans quelques minutes.',
     // Les avis provisoires : ce que l'app n'accepte pas encore.
     'ex.notice.open': 'Provisoire : {app} ne sait pas encore ouvrir un fichier précis, il s’ouvre sur son modèle habituel.',
     'ex.notice.new': 'Provisoire : {app} ne sait pas encore créer un fichier de ce type depuis GFS, il s’ouvre sur son modèle habituel.',
@@ -176,7 +178,7 @@ export const EXPLORER_STRINGS = {
     'ex.modified': 'Modified',
     'ex.by': 'By',
     'ex.open': 'Open',
-    'ex.close': 'Close',
+    'ex.close': 'Back to the app',
     'ex.closeNone': 'No app is open: pick a file first.',
     'ex.untitled': '(untitled)',
     // Les comptes (avec leurs pluriels) et ce que dit une liste vide, selon la vue.
@@ -234,6 +236,7 @@ export const EXPLORER_STRINGS = {
     'ex.lockedHint': 'Greyed out: double-click to see why',
     'ex.loading': 'Reading files…',
     'ex.readFailed': '{app}: cannot read ({reason}).',
+    'ex.readHeld': '{app}: files not listed. Reading their table was interrupted several times in a row: it may be too heavy for Grist to send in full. GFS will try again in a few minutes.',
     // Les avis provisoires : ce que l'app n'accepte pas encore.
     'ex.notice.open': 'Provisional: {app} cannot open a specific file yet, it opens on its usual template.',
     'ex.notice.new': 'Provisional: {app} cannot create a file of this type from GFS yet, it opens on its usual template.',

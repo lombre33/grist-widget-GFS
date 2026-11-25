@@ -1,14 +1,111 @@
 {
   "contrat": 0,
-  "controle": "2026-11-23T16:00:11.264Z",
+  "controle": "2026-11-25T10:55:22.535Z",
   "origine": "actions",
   "catalogue": {
     "cdn": {
-      "lu": null,
-      "entrees": []
+      "lu": "2026-11-25",
+      "entrees": [
+        {
+          "id": "docx",
+          "url": "https://cdn.jsdelivr.net/npm/docx@9.15.1/dist/index.iife.js",
+          "attendu": "sha384-ud8085E8t6iW4uUom5nN5cpzTZ4OdsNKB/AKWfOsI62tzsoV2X7r7/o4KWESO8rq",
+          "vu": "sha384-ud8085E8t6iW4uUom5nN5cpzTZ4OdsNKB/AKWfOsI62tzsoV2X7r7/o4KWESO8rq",
+          "octets": 1061633,
+          "etat": "identique"
+        },
+        {
+          "id": "docx-charts",
+          "url": "https://cdn.jsdelivr.net/npm/docx@9.15.1/dist/charts.iife.js",
+          "attendu": "sha384-PFbg0J+cwbPG1He8zpFvlw/uXmHMA3ea3Gyyw9aS2IIjX0zKpD7YeprlCNVCMs1Y",
+          "vu": "sha384-PFbg0J+cwbPG1He8zpFvlw/uXmHMA3ea3Gyyw9aS2IIjX0zKpD7YeprlCNVCMs1Y",
+          "octets": 215515,
+          "etat": "identique"
+        },
+        {
+          "id": "echarts",
+          "url": "https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js",
+          "attendu": "sha384-C2iskrW/uPW46KzOjrvJIQo4YkV8lkD+QS0CrDN18IIPIpT/g2USu8bTP3nvmIAD",
+          "vu": "sha384-C2iskrW/uPW46KzOjrvJIQo4YkV8lkD+QS0CrDN18IIPIpT/g2USu8bTP3nvmIAD",
+          "octets": 1121883,
+          "etat": "identique"
+        },
+        {
+          "id": "edition-live",
+          "url": "https://cdn.jsdelivr.net/gh/lombre33/grist-widget-GFS@cc8707c2ff18a32fd8f43a92a3e1a3026579f713/prototype/vendor/edition-live/1.0.0/edition-live.js",
+          "attendu": "sha384-FVwm2wpVR0CpCNfOg5gpvarCdXlhtI52aCc1Ea/a4wvcy0UUw0/vP4NTBn7KMSU4",
+          "vu": "sha384-FVwm2wpVR0CpCNfOg5gpvarCdXlhtI52aCc1Ea/a4wvcy0UUw0/vP4NTBn7KMSU4",
+          "octets": 145862,
+          "etat": "identique"
+        },
+        {
+          "id": "exceljs",
+          "url": "https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js",
+          "attendu": "sha384-Pqp51FUN2/qzfxZxBCtF0stpc9ONI6MYZpVqmo8m20SoaQCzf+arZvACkLkirlPz",
+          "vu": "sha384-Pqp51FUN2/qzfxZxBCtF0stpc9ONI6MYZpVqmo8m20SoaQCzf+arZvACkLkirlPz",
+          "octets": 947702,
+          "etat": "identique"
+        },
+        {
+          "id": "jszip",
+          "url": "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js",
+          "attendu": "sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG",
+          "vu": "sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG",
+          "octets": 97630,
+          "etat": "identique"
+        },
+        {
+          "id": "marked",
+          "url": "https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js",
+          "attendu": "sha384-948ahk4ZmxYVYOc+rxN1H2gM1EJ2Duhp7uHtZ4WSLkV4Vtx5MUqnV+l7u9B+jFv+",
+          "vu": "sha384-948ahk4ZmxYVYOc+rxN1H2gM1EJ2Duhp7uHtZ4WSLkV4Vtx5MUqnV+l7u9B+jFv+",
+          "octets": 39903,
+          "etat": "identique"
+        },
+        {
+          "id": "pdf-lib",
+          "url": "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js",
+          "attendu": "sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI",
+          "vu": "sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI",
+          "octets": 525099,
+          "etat": "identique"
+        },
+        {
+          "id": "pdfmake",
+          "url": "https://cdn.jsdelivr.net/npm/pdfmake@0.2.7/build/pdfmake.min.js",
+          "attendu": "sha384-VFQrHzqBh5qiJIU0uGU5CIW3+OWpdGGJM9LBnGbuIH2mkICcFZ7lPd/AAtI7SNf7",
+          "vu": "sha384-VFQrHzqBh5qiJIU0uGU5CIW3+OWpdGGJM9LBnGbuIH2mkICcFZ7lPd/AAtI7SNf7",
+          "octets": 1357654,
+          "etat": "identique"
+        },
+        {
+          "id": "pdfmake-polices",
+          "url": "https://cdn.jsdelivr.net/npm/pdfmake@0.2.7/build/vfs_fonts.js",
+          "attendu": "sha384-go03OGrgP7enVgJF/9UK2k6D5xW+f7Vq1WHLp75VqnMN5uu+CZDXu7uGjjzZReI5",
+          "vu": "sha384-go03OGrgP7enVgJF/9UK2k6D5xW+f7Vq1WHLp75VqnMN5uu+CZDXu7uGjjzZReI5",
+          "octets": 798329,
+          "etat": "identique"
+        },
+        {
+          "id": "plotly",
+          "url": "https://cdn.jsdelivr.net/npm/plotly.js-basic-dist-min@2.13.2/plotly-basic.min.js",
+          "attendu": "sha384-1heFF/cJ46y4QUvJzTPTs4/F4/UYCTLl6QErQgvqkxbzN+5yx5TQUVGf6ufPqcve",
+          "vu": "sha384-1heFF/cJ46y4QUvJzTPTs4/F4/UYCTLl6QErQgvqkxbzN+5yx5TQUVGf6ufPqcve",
+          "octets": 1021827,
+          "etat": "identique"
+        },
+        {
+          "id": "qrcode-generator",
+          "url": "https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js",
+          "attendu": "sha384-8FWZA6BGMXhsfO+BLtrJK0We6gg5o1JyO8xQm6peWDEUs17ACA5ziE/NIAkl9z2k",
+          "vu": "sha384-8FWZA6BGMXhsfO+BLtrJK0We6gg5o1JyO8xQm6peWDEUs17ACA5ziE/NIAkl9z2k",
+          "octets": 56694,
+          "etat": "identique"
+        }
+      ]
     },
     "npm": {
-      "releve": "2026-11-25T10:46:44.474Z",
+      "releve": "2026-11-25T10:55:18.850Z",
       "paquets": 17,
       "valides": 17,
       "nonVerifiees": 0,
@@ -93,6 +190,15 @@
           "etat": "a-noter",
           "motifs": [
             {
+              "code": "empreinte-changee",
+              "gravite": "a-noter",
+              "immuable": false,
+              "adresses": [
+                "https://esm.sh/prosemirror-view@^1.0.0?target=es2022"
+              ],
+              "nombre": 1
+            },
+            {
               "code": "non-retrouvee",
               "gravite": "a-noter",
               "hotes": [
@@ -152,12 +258,12 @@
           "texte": "tenue · la balise de politique est dans index.html, avant le premier script"
         },
         "S2": {
-          "etat": "non-tenue",
-          "texte": "non tenue · pas de default-src : styles, images, polices, connexions et médias ne sont limités par rien ; fermer la politique attend le choix du porteur"
+          "etat": "tenue",
+          "texte": "tenue · default-src 'none', puis styles, polices, images et connexions nommés (24/11, `3930bbe`) ; object-src, base-uri et form-action à 'none' ; réserve : style-src garde 'unsafe-inline', l'éditeur é"
         },
         "S3": {
           "etat": "non-tenue",
-          "texte": "non tenue · appels sortants ouverts ; l'exception du serveur Grist est dite dans la section des adresses ; le coût de chaque fermeture est mesuré dans la page du commit `cdc92d2` (ligne 24), le choix "
+          "texte": "non tenue · `img-src` garde `blob:` (images décodées sur place, diaporama) et `data:` comme avant, en attendant le choix du porteur (carte posée chez GFS) ; plus aucun autre site (24/11, `3930bbe`) : "
         },
         "S4": {
           "etat": "tenue",
@@ -177,7 +283,7 @@
         },
         "S8": {
           "etat": "tenue",
-          "texte": "tenue · kit 0.27.0 (ed0a575) depuis le 19/11 ; le relais démarre dans GFS avant les autres scripts, hôte seul ; il informe sans protéger : un fetch ou une image que la politique permet ne lève rien"
+          "texte": "tenue · kit 0.27.0 (ed0a575) depuis le 19/11 ; le relais démarre dans GFS avant les autres scripts, hôte seul ; il informe sans protéger : un fetch ou une image que la politique permet ne lève rien ; "
         },
         "S9": {
           "etat": "tenue",
@@ -198,18 +304,11 @@
             "motifs": []
           },
           "S2": {
-            "etat": "non-tenue",
+            "etat": "a-noter",
             "motifs": [
               {
-                "code": "directives-ouvertes",
-                "directives": [
-                  "style-src",
-                  "img-src",
-                  "font-src",
-                  "connect-src",
-                  "media-src"
-                ],
-                "gravite": "non-tenue"
+                "code": "style-en-ligne",
+                "gravite": "a-noter"
               }
             ]
           },
@@ -217,18 +316,26 @@
             "etat": "non-tenue",
             "motifs": [
               {
-                "code": "appels-ouverts",
-                "directives": [
-                  "connect-src",
-                  "img-src",
-                  "font-src",
-                  "media-src"
+                "code": "source-large",
+                "directive": "connect-src",
+                "sources": [
+                  "https:"
+                ],
+                "gravite": "non-tenue"
+              },
+              {
+                "code": "source-large",
+                "directive": "img-src",
+                "sources": [
+                  "blob:",
+                  "https:"
                 ],
                 "gravite": "non-tenue"
               },
               {
                 "code": "section-absente",
                 "hotes": [
+                  "cdn.jsdelivr.net",
                   "player.vimeo.com",
                   "www.youtube-nocookie.com"
                 ],
@@ -302,7 +409,7 @@
           "id": "marked",
           "paquet": "marked",
           "version": "15.0.12",
-          "derniere": "18.2.1",
+          "derniere": "18.3.0",
           "ecart": "majeure",
           "avis": []
         },
@@ -1158,12 +1265,12 @@
         },
         {
           "url": "https://esm.sh/prosemirror-view@^1.0.0?target=es2022",
-          "sha384": "sha384-xpjw6niSVM/AwOr4oIeyIQy0N7oDh/ZN44A8+BFgIupYes/8i4/p7tpZNahAwT3N",
+          "sha384": "sha384-6m5+3DTqX3gHrNKMDMUkJav++nJ8LCiIdqnmtxaLfE0/geQJPggggefOMEZ+iyam",
           "octets": 265,
-          "vu": "2026-11-23"
+          "vu": "2026-11-25"
         }
       ],
-      "empreintesLe": "2026-11-23"
+      "empreintesLe": "2026-11-25"
     },
     "automation": {
       "depot": "lombre33/GRIST_automation",
@@ -1277,11 +1384,11 @@
       },
       "bibliotheques": [],
       "empreintes": [],
-      "empreintesLe": "2026-11-23"
+      "empreintesLe": "2026-11-25"
     },
     "form": {
       "depot": "lombre33/FormPlus",
-      "reference": "672a552dc79b63f1ac03b7c1d6224ec4edfe9dc0",
+      "reference": "9204b8d4cb0e5fd501719e23b8805fbc6b6c685d",
       "entree": "poc/widget.html",
       "lecture": {
         "page": true,
@@ -1319,8 +1426,11 @@
               "gravite": "a-noter"
             },
             {
-              "code": "https-serveur-grist",
-              "directive": "img-src",
+              "code": "adresses-non-dites",
+              "hotes": [
+                "b.tile.openstreetmap.org",
+                "c.tile.openstreetmap.org"
+              ],
               "gravite": "a-noter"
             }
           ]
@@ -1370,7 +1480,32 @@
       },
       "permis": {
         "ouvert": [],
-        "adresses": []
+        "adresses": [
+          {
+            "hote": "a.tile.openstreetmap.org",
+            "directives": [
+              "img-src"
+            ]
+          },
+          {
+            "hote": "b.tile.openstreetmap.org",
+            "directives": [
+              "img-src"
+            ]
+          },
+          {
+            "hote": "c.tile.openstreetmap.org",
+            "directives": [
+              "img-src"
+            ]
+          },
+          {
+            "hote": "unpkg.com",
+            "directives": [
+              "img-src"
+            ]
+          }
+        ]
       },
       "declaration": {
         "S1": {
@@ -1411,52 +1546,7 @@
       ],
       "enLigne": {
         "lue": true,
-        "identique": false,
-        "regles": {
-          "S1": {
-            "etat": "tenue",
-            "motifs": []
-          },
-          "S2": {
-            "etat": "a-noter",
-            "motifs": [
-              {
-                "code": "style-en-ligne",
-                "gravite": "a-noter"
-              }
-            ]
-          },
-          "S3": {
-            "etat": "non-tenue",
-            "motifs": [
-              {
-                "code": "source-large",
-                "directive": "connect-src",
-                "sources": [
-                  "https:"
-                ],
-                "gravite": "non-tenue"
-              },
-              {
-                "code": "section-absente",
-                "hotes": [
-                  "a.tile.openstreetmap.org",
-                  "b.tile.openstreetmap.org",
-                  "c.tile.openstreetmap.org",
-                  "unpkg.com"
-                ],
-                "gravite": "a-noter"
-              }
-            ]
-          },
-          "S4": {
-            "etat": "tenue",
-            "motifs": [],
-            "notes": [
-              "'unsafe-eval'"
-            ]
-          }
-        }
+        "identique": true
       },
       "bibliotheques": [
         {
@@ -1482,7 +1572,7 @@
           "vu": "2026-11-23"
         }
       ],
-      "empreintesLe": "2026-11-23"
+      "empreintesLe": "2026-11-25"
     },
     "bi": {
       "depot": "lombre33/Grist-BI",
@@ -1686,7 +1776,7 @@
           "vu": "2026-11-23"
         }
       ],
-      "empreintesLe": "2026-11-23"
+      "empreintesLe": "2026-11-25"
     }
   }
 }

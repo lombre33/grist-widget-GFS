@@ -7,11 +7,13 @@
 //   ou null avant sa construction), openedBar(), appName(id), t(clé, variables), onSpaces(espaces), onFiles(fichiers) (la suite d'une lecture réussie : les
 //   dossiers partagés « à jour »), onStats(mesures), noteBin?(table) (la table de la corbeille existe, ou non : js/files/app-files.js), hint? (le souvenir d'un
 //   document lourd, js/explorer/heavy-hint.js : la lecture légère d'emblée), pending? (les changements de rangement affichés avant d'être écrits,
-//   js/explorer/pending.js : une lecture partie après leur confirmation les remplace) }
+//   js/explorer/pending.js : une lecture partie après leur confirmation les remplace), guard? (le garde-fou des lectures complètes,
+//   js/explorer/read-guard.js) }
 
 import { loadFiles } from './explorer-data.js';
 import { createFileRefresh } from './file-refresh.js';
 import { FILES_ENTRY } from '../files/gfs-files.js';
+import { ANNUAIRES_ENTRY } from '../files/annuaire-files.js';
 
 export class FilesReading {
   #x;
@@ -31,7 +33,7 @@ export class FilesReading {
         this.#waited = typeof learning !== 'string';
         if (x.prepare) await x.prepare();
         if (x.hint) await x.hint.prime(x.reader); // un document vu lourd à la visite précédente se lit d'emblée en lecture légère
-        return { ...(await loadFiles(x.port, [...x.apps(), FILES_ENTRY], learning, x.reader)), stamp };
+        return { ...(await loadFiles(x.port, [...x.apps(), FILES_ENTRY, ANNUAIRES_ENTRY], learning, x.reader, x.guard || null)), stamp };
       },
       onRestricted: () => {
         x.explorer().setFiles([]);
@@ -73,7 +75,9 @@ export class FilesReading {
     x.explorer().setFiles(files, trash, folders, received);
     x.onFiles(files);
     x.openedBar().sync(); // un fichier renommé, ou disparu, change le compte de la barre
-    this.#say({ loading: false, restricted: false, problems: problems.map(item => ({ key: 'ex.readFailed', app: item.app, reason: item.reason })) });
+    // une table que le garde-fou retient (js/explorer/read-guard.js) a sa phrase : elle dit pourquoi les fichiers manquent, et que GFS réessaiera
+    this.#say({ loading: false, restricted: false,
+      problems: problems.map(item => ({ key: item.held ? 'ex.readHeld' : 'ex.readFailed', app: item.app, reason: item.reason })) });
     x.onStats(stats);
     if (x.hint && !problems.length) x.hint.note(stats.bytes); // une app illisible n'est pas comptée : son poids manquant ne dirait pas « léger »
   }

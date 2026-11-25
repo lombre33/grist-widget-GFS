@@ -23,6 +23,17 @@
   "entree": "poc/widget.html",
   "ouverture": { "fichier": true, "nouveau": true, "modele": true },
   "tables": { "prefixe": "FormPlus_" },
+  "noms": {
+    "FormPlus_Formulaires": {
+      "aussi": ["FormPlus_Forms"],
+      "colonnes": {
+        "Nom": ["Name"],
+        "TypeFormulaire": ["FormType"],
+        "DateModif": ["ModifiedAt"],
+        "ModifiePar": ["ModifiedBy"]
+      }
+    }
+  },
   "fichiers": [{
     "table": "FormPlus_Formulaires",
     "colonnes": { "id": "id", "nom": "Nom", "type": "TypeFormulaire", "date": "DateModif", "par": "ModifiePar" },

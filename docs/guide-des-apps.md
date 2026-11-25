@@ -88,7 +88,9 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
     d'abord les deux jeux de noms** (une version qui sait lire les deux sort avant celle qui renomme, partout), ne crée jamais la table
     anglaise quand la française existe, ne renomme pas un document qui porte déjà les deux jeux, et annonce ses noms dans « Changements qui
     touchent GFS » **avant** de renommer (contrats 2.4, point 6 : `noms` du manifeste). Un nom qui voyage entre deux documents (le
-    protocole de Sync+) ne change qu'avec un numéro de version majeur.
+    protocole de Sync+) ne change qu'avec un numéro de version majeur ; **Sync+ ne migre aucun lien existant** (décision du porteur, 25/11) :
+    seuls les nouveaux partages prennent les noms anglais. **GFS lit toujours les deux jeux de noms, sans date de fin** (un document jamais rouvert
+    dans la nouvelle version, ou restauré d'une sauvegarde, reste lisible) ; il ne retire cette lecture que sur l'accord du porteur.
 
 ### 1.2 Quand GFS arrive (étapes 3 à 5 du plan, cahier 10)
 

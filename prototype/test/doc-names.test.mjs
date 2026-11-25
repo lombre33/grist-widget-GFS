@@ -5,6 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { adaptManifest, schemaOf, DocNames, isTable, canonicalTable, documentColumn, canonicalColumn } from '../js/apps/doc-names.js';
+import { countRows } from '../js/apps/row-count.js';
 import { validateManifest } from '../js/apps/manifest.js';
 import { loadFiles } from '../js/explorer/explorer-data.js';
 import { AppFiles } from '../js/files/app-files.js';
@@ -13,7 +14,7 @@ import { Filing } from '../js/explorer/filing.js';
 import { appFilingOf, appActions } from '../js/files/app-filing.js';
 import { createI18n } from '../js/i18n/i18n.js';
 import { fakeGrist } from './fake-grist.mjs';
-import { publipostage } from './helpers.mjs';
+import { publipostage, form, bi } from './helpers.mjs';
 
 const FR = createI18n('fr');
 const manifest = publipostage();
@@ -79,16 +80,30 @@ test('une table que le document n\'a pas encore (l\'app ne l\'a pas créée) gar
   assert.deepEqual([cased.table, cased.colonnes.nom], ['publipostage_templates', 'name'], 'le nom que le document porte, avec sa casse');
 });
 
-test('un document qui porte les deux noms : celui du manifeste gagne, et GFS le dit', () => {
+test('un document qui porte les deux noms, sans savoir lequel a des lignes : l\'autre nom du manifeste (celui où l\'app va) gagne, et GFS le dit', () => {
   const both = { ...LEGACY, Publipostage_Templates: ENGLISH.Publipostage_Templates };
   const { said, warn } = quiet();
   const [spec] = adaptManifest(manifest, schemaFrom(both), warn).fichiers;
-  assert.equal(spec.table, 'Publipostage_Modeles');
+  assert.equal(spec.table, 'Publipostage_Templates');
+  assert.equal(spec.canonique, 'Publipostage_Modeles', 'la clé de ce que GFS écrit reste le nom du manifeste');
   assert.ok(said.some(text => text.includes('Publipostage_Modeles') && text.includes('Publipostage_Templates')), said.join(' | '));
   const twin = { Publipostage_Modeles: ['Nom', 'Name', 'TypeModele'] };
   const { said: columns, warn: warnColumns } = quiet();
-  assert.equal(adaptManifest(manifest, schemaFrom(twin), warnColumns).fichiers[0].colonnes.nom, 'Nom');
+  assert.equal(adaptManifest(manifest, schemaFrom(twin), warnColumns).fichiers[0].colonnes.nom, 'Name');
   assert.ok(columns.some(text => text.includes('Nom') && text.includes('Name')));
+});
+
+test('deux noms pour une table : celle qui a des lignes ; si les deux en ont, ou qu\'aucune n\'en a, l\'anglaise (la règle de l\'app, consigne 096)', () => {
+  const both = schemaFrom({ ...LEGACY, Publipostage_Templates: ENGLISH.Publipostage_Templates });
+  const tableFor = rows => adaptManifest(manifest, both, quiet().warn, new Map(Object.entries(rows))).fichiers[0].table;
+  const old = 'publipostage_modeles';
+  const english = 'publipostage_templates';
+  assert.equal(tableFor({ [old]: 0, [english]: 18 }), 'Publipostage_Templates');
+  assert.equal(tableFor({ [old]: 2, [english]: 0 }), 'Publipostage_Modeles', 'l\'anglaise est vide : GFS lit celle qui a des lignes, comme l\'app');
+  assert.equal(tableFor({ [old]: 2, [english]: 18 }), 'Publipostage_Templates', 'les deux en ont : l\'anglaise');
+  assert.equal(tableFor({ [old]: 0, [english]: 0 }), 'Publipostage_Templates', 'aucune n\'en a : l\'anglaise');
+  assert.equal(tableFor({}), 'Publipostage_Templates', 'le nombre de lignes est inconnu : l\'anglaise');
+  assert.equal(tableFor({ [old]: 2 }), 'Publipostage_Templates', 'le compte de l\'anglaise est inconnu : on ne sait pas qu\'elle est vide, donc l\'anglaise');
 });
 
 test('un manifeste sans `noms`, ou un schéma inconnu : le même objet, rien ne change', () => {
@@ -281,4 +296,104 @@ test('les clés de la corbeille : le nom du manifeste, quel que soit le nom que 
   assert.deepEqual([isTable(spec, 'Publipostage_Modeles'), isTable(spec, 'Publipostage_Templates'), isTable(spec, 'Autre'), isTable(null, 'x')], [true, true, false, false]);
   assert.deepEqual([documentColumn(spec, 'Nom'), documentColumn(spec, 'Inconnue'), canonicalColumn(spec, 'Name'), canonicalColumn(spec, 'Inconnue'), canonicalColumn(null, 'Name')],
     ['Name', 'Inconnue', 'Nom', 'Inconnue', 'Name']);
+});
+
+// Un document qui porte les deux jeux de noms : les tables d'avant (`oldRows` lignes) et les tables anglaises (`englishRows`), comme après le passage d'une ancienne
+// copie de l'app sur un document renommé (mesuré dans un vrai Grist : labo/run-noms-cas.mjs, cas `doublons`).
+const bothDocument = (oldCount, englishCount) => {
+  const legacyRow = id => ({ id, Nom: `Ancien ${id}`, Contenu: '<p></p>', TypeModele: 'document', DateModif: 100 + id, ModifiePar: '', EstParDefaut: false, Jeton: `a${id}`, PJ: null });
+  const english = englishRows().filter(row => row.id < 3).slice(0, englishCount);
+  return {
+    Publipostage_Modeles: { columns: ['id', ...LEGACY.Publipostage_Modeles], rows: Array.from({ length: oldCount }, (unused, i) => legacyRow(i + 1)) },
+    Publipostage_Templates: { columns: ['id', ...ENGLISH.Publipostage_Templates], rows: english },
+    Publipostage_PreferencesModeles: { columns: ['id', ...LEGACY.Publipostage_PreferencesModeles], rows: [] },
+    Publipostage_TemplatePreferences: { columns: ['id', ...ENGLISH.Publipostage_TemplatePreferences], rows: [] },
+    Publipostage_Versions: { columns: ['id', ...ENGLISH.Publipostage_Versions], rows: [] },
+  };
+};
+
+async function namesOver(tables, { count = true } = {}) {
+  const run = docOf(tables);
+  const asked = [];
+  const names = new DocNames({ doc: run.doc, count: count ? async table => { asked.push(table); return (await run.doc.fetchTable(table)).id.length; } : null });
+  const item = { app: { id: 'publipostage' }, manifest, ok: true };
+  await names.refresh([item]);
+  return { ...run, names, item, asked, adapted: names.adaptItem(item).manifest };
+}
+
+test('DocNames : un document aux deux jeux de noms, la liste montre la table que l\'app lit (celle qui a des lignes, l\'anglaise si les deux en ont ou aucune)', async () => {
+  const shown = async (oldCount, englishCount) => {
+    const run = await namesOver(bothDocument(oldCount, englishCount));
+    const { files } = await loadFiles(run.port, [{ manifest: run.adapted }], '');
+    return [run.adapted.fichiers[0].table, files.map(file => file.name)];
+  };
+  assert.deepEqual(await shown(0, 2), ['Publipostage_Templates', ['Convocation', 'Attestation']], 'la défaut mesuré : la table d\'avant vide cachait les modèles de l\'anglaise');
+  assert.deepEqual(await shown(2, 0), ['Publipostage_Modeles', ['Ancien 1', 'Ancien 2']], 'l\'anglaise est vide : les modèles de l\'ancienne copie se voient');
+  assert.deepEqual(await shown(2, 2), ['Publipostage_Templates', ['Convocation', 'Attestation']], 'les deux en ont : l\'anglaise, celle de l\'app');
+  assert.deepEqual((await shown(0, 0))[0], 'Publipostage_Templates', 'aucune n\'en a : l\'anglaise');
+});
+
+test('DocNames : le nombre de lignes ne se lit que pour les tables que le document porte sous deux noms ; il change la copie quand la table se remplit', async () => {
+  const single = await namesOver(englishDocument());
+  assert.deepEqual(single.asked, [], 'un document à un seul jeu de noms : aucune lecture de plus');
+  const run = await namesOver(bothDocument(0, 2));
+  assert.deepEqual(run.asked.sort(), ['Publipostage_Modeles', 'Publipostage_PreferencesModeles', 'Publipostage_TemplatePreferences', 'Publipostage_Templates'],
+    'seules les deux paires de tables portées sous deux noms (les modèles, leurs préférences) ; pas `Publipostage_Versions`');
+  assert.equal(await run.names.refresh([run.item]), false, 'rien n\'a changé : la copie reste');
+  const before = run.names.adapt(manifest);
+  await run.doc.applyUserActions([['AddRecord', 'Publipostage_Modeles', null, { Nom: 'Ancien A', TypeModele: 'document' }], ['AddRecord', 'Publipostage_Modeles', null, { Nom: 'Ancien B', TypeModele: 'document' }]]);
+  assert.equal(await run.names.refresh([run.item]), false, 'la table d\'avant a des lignes, mais l\'anglaise aussi : toujours l\'anglaise, la copie reste');
+  assert.equal(run.names.adapt(manifest), before);
+  await run.doc.applyUserActions([['BulkRemoveRecord', 'Publipostage_Templates', [1, 2]]]);
+  assert.equal(await run.names.refresh([run.item]), true, 'l\'anglaise est vidée : GFS lit celle qui a des lignes');
+  assert.equal(run.names.adapt(manifest).fichiers[0].table, 'Publipostage_Modeles');
+});
+
+test('DocNames : sans lecture du nombre de lignes, ou quand elle échoue, l\'autre nom du manifeste gagne', async () => {
+  assert.equal((await namesOver(bothDocument(2, 0), { count: false })).adapted.fichiers[0].table, 'Publipostage_Templates');
+  const run = docOf(bothDocument(2, 0));
+  const names = new DocNames({ doc: run.doc, count: async () => { throw new Error('refusé'); } });
+  const item = { manifest };
+  await names.refresh([item]);
+  assert.equal(names.adapt(manifest).fichiers[0].table, 'Publipostage_Templates');
+});
+
+test('countRows : le SQL d\'abord, puis la table entière, puis null ; un nom qui n\'est pas un identifiant ne part jamais en SQL', async () => {
+  const statements = [];
+  const doc = { fetchTable: async name => ({ id: name === 'Pleine' ? [1, 2, 3] : [] }) };
+  const sql = async statement => { statements.push(statement); return [{ n: 5 }]; };
+  assert.equal(await countRows('Pleine', { sql, doc }), 5);
+  assert.deepEqual(statements, ['SELECT COUNT(*) AS n FROM "Pleine"']);
+  assert.equal(await countRows('Pleine', { sql: async () => { throw new Error('403'); }, doc }), 3, 'la lecture légère est refusée : la table entière');
+  assert.equal(await countRows('Pleine', { doc }), 3, 'pas de lecture légère');
+  assert.equal(await countRows('a"; DROP TABLE x', { sql, doc }), 0, 'jamais en SQL : la table entière (ici rien)');
+  assert.equal(statements.length, 1);
+  assert.equal(await countRows('Autre', { doc: { fetchTable: async () => { throw new Error('absente'); } } }), null);
+});
+
+// Les noms anglais que GFS propose à Form+ et à Grist-BI (consignes 040 et 030) : déclarés AVANT que ces apps renomment, pour que leur liste ne devienne pas vide sans un mot (fait 127).
+test('Form+ et Grist-BI : les manifestes disent leurs noms anglais, et un document anglais ou d\'avant montre les mêmes fichiers', async () => {
+  for (const [id, load, legacyTable, englishTable, legacy, english] of [
+    ['form', form, 'FormPlus_Formulaires', 'FormPlus_Forms', ['Nom', 'TypeFormulaire', 'DateModif', 'ModifiePar'], ['Name', 'FormType', 'ModifiedAt', 'ModifiedBy']],
+    ['bi', bi, 'BI_Dashboard_Config', 'BI_Dashboard_Config', ['Nom', 'TypeRapport', 'DateModif', 'ModifiePar'], ['Name', 'ReportType', 'ModifiedAt', 'ModifiedBy']],
+  ]) {
+    const original = load();
+    assert.deepEqual(validateManifest(original).errors, [], `${id} : le manifeste reste valide avec \`noms\``);
+    const rowsFor = names => [{ id: 1, [names[0]]: 'Premier', [names[1]]: original.fichiers[0].typeParDefaut, [names[2]]: 100, [names[3]]: '' }];
+    const listed = async (table, names) => {
+      const run = docOf({ [table]: { columns: ['id', ...names], rows: rowsFor(names) } });
+      const resolved = new DocNames({ doc: run.doc });
+      const item = { app: { id }, manifest: original, ok: true };
+      await resolved.refresh([item]);
+      const { files, problems } = await loadFiles(run.port, [{ manifest: resolved.adaptItem(item).manifest }], '');
+      return [problems, files.map(file => [file.name, file.type, file.table])];
+    };
+    assert.deepEqual((await listed(legacyTable, legacy))[1].map(([name, type]) => [name, type]), [['Premier', original.fichiers[0].typeParDefaut]], `${id} : un document d'avant`);
+    const [problems, files] = await listed(englishTable, english);
+    assert.deepEqual(problems, [], `${id} : un document anglais se lit sans problème`);
+    assert.deepEqual(files.map(([name, type]) => [name, type]), [['Premier', original.fichiers[0].typeParDefaut]], `${id} : un document anglais montre le même fichier`);
+    assert.equal(files[0][2], englishTable);
+    const blind = await loadFiles(docOf({ [englishTable]: { columns: ['id', ...english], rows: rowsFor(english) } }).port, [{ manifest: original }], '');
+    assert.ok(!blind.files.some(file => file.name === 'Premier'), `${id} : sans la réécriture, la liste d'un document anglais ne montrerait pas le fichier (fait 127)`);
+  }
 });

@@ -24,6 +24,16 @@
   "entree": "index.html",
   "ouverture": { "fichier": true, "nouveau": true, "modele": true },
   "tables": { "prefixe": "BI_" },
+  "noms": {
+    "BI_Dashboard_Config": {
+      "colonnes": {
+        "Nom": ["Name"],
+        "TypeRapport": ["ReportType"],
+        "DateModif": ["ModifiedAt"],
+        "ModifiePar": ["ModifiedBy"]
+      }
+    }
+  },
   "fichiers": [{
     "table": "BI_Dashboard_Config",
     "colonnes": { "id": "id", "nom": "Nom", "type": "TypeRapport", "date": "DateModif", "par": "ModifiePar" },

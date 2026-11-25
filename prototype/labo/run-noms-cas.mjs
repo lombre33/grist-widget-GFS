@@ -1,6 +1,7 @@
 // Les cas du renommage en anglais de Publipostage+ face à GFS, dans un VRAI serveur Grist (`bash vrai-serveur.sh`), avec la vraie app à son sommet de `main` (copie du sous-module) et la vraie GFS.
 // Un cas = un document neuf ; chaque ligne dit OK, ÉCHEC (une attente que le code ne tient pas) ou CONSTAT (un fait que l'essai mesure sans le juger : ce que la personne verrait).
-//   bash vrai-serveur.sh && REPO_DIR="$(realpath ../..)" CAS=doublons node run-noms-cas.mjs        (CAS = doublons, atomique, direct, partage ; LAB_LANG=fr|en)
+//   bash vrai-serveur.sh && REPO_DIR="$(realpath ../..)" CAS=doublons node run-noms-cas.mjs        (CAS = doublons, atomique, direct, partage ; LAB_LANG=fr|en ;
+//   PP_DIR = la copie de Publipostage+ dont on charge `js/schema-columns.js`, quand celle du sous-module est plus ancienne que le sommet de l'app)
 //   doublons   un document qui porte les DEUX jeux de noms (une copie plus ancienne de l'app recrée ses tables vides sous les anciens noms) : qui lit quoi, GFS ou l'app ?
 //   atomique   le lot de renommage de l'app (celui que calcule SON `planRenames`) : tout ou rien, et deux renommages en même temps.
 //   direct     la VRAIE app ouverte seule dans le document (hors de GFS) : elle renomme, et GFS suit.
@@ -31,7 +32,7 @@ const REPO = process.env.REPO_DIR;
 
 // Le traducteur de l'app, chargé tel qu'elle l'écrit : son `planRenames` donne le lot que l'app enverrait à Grist (les deux interrupteurs allumés, comme dans le widget servi).
 function appRegistry() {
-  const source = readFileSync(join(REPO, 'prototype/apps/publipostage/js/schema-columns.js'), 'utf8');
+  const source = readFileSync(join(process.env.PP_DIR || join(REPO, 'prototype/apps/publipostage'), 'js/schema-columns.js'), 'utf8');
   const sandbox = { grist: { docApi: {} }, console };
   sandbox.globalThis = sandbox;
   vm.createContext(sandbox);
@@ -147,14 +148,14 @@ async function playDoubles(run) {
   const empty = sorted(await fileNames(run.frame));
   const shows = await run.frame.locator('.ls-row .t').allInnerTexts();
   say('   GFS affiche :', JSON.stringify(shows));
-  constat('table anglaise (18 modèles) + table d\'avant vide : GFS montre les modèles de la table qui a des lignes (la règle promise à l\'app, consigne 096)', same(empty, before), { montre: empty.length, attendu: before.length });
+  check('table anglaise (18 modèles) + table d\'avant vide : GFS montre les modèles de la table qui a des lignes (la règle promise à l\'app, consigne 096)', same(empty, before), { montre: empty.length, attendu: before.length });
   await apply(run, [['BulkAddRecord', OLD_MODELS, [null, null], { Nom: ['Écrit par l\'ancienne copie 1', 'Écrit par l\'ancienne copie 2'], TypeModele: ['document', 'document'], DateModif: [Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000)],
     Contenu: ['<p>a</p>', '<p>b</p>'], ModifiePar: ['', ''], EstParDefaut: [false, false], NomFichierPDF: ['', ''] }]]);
   await reload(run);
   await goHome(run.frame);
   const mixed = sorted(await fileNames(run.frame));
   say('   GFS affiche :', JSON.stringify(mixed));
-  constat('les deux tables ont des lignes : GFS montre les modèles de la table anglaise, celle que l\'app lit (règle promise : l\'anglaise)', mixed.includes('Contrat de prestation') && !mixed.some(name => /ancienne copie/.test(name)), mixed);
+  check('les deux tables ont des lignes : GFS montre les modèles de la table anglaise, celle que l\'app lit (règle promise : l\'anglaise)', mixed.includes('Contrat de prestation') && !mixed.some(name => /ancienne copie/.test(name)), mixed);
   const written = await rowsOf(run, OLD_MODELS);
   check('témoin : la table d\'avant porte bien les deux modèles de l\'ancienne copie, la table anglaise garde les siens', written.length === 2 && (await rowsOf(run, MODELS)).length === modelsAfter.length, [written.length]);
   // Un geste de GFS sur ce document : où s'écrit-il ?
@@ -168,8 +169,16 @@ async function playDoubles(run) {
     const inOld = (await rowsOf(run, OLD_MODELS)).some(row => /renommé par GFS/.test(row.Nom || ''));
     const inNew = (await rowsOf(run, MODELS)).some(row => /renommé par GFS/.test(row.Name || ''));
     say('   F2 de GFS :', JSON.stringify({ tableAnglaise: inNew, tableDAvant: inOld }));
-    constat('F2 dans GFS s\'écrit dans la table que l\'app lit (l\'anglaise)', inNew && !inOld, { inNew, inOld });
+    check('F2 dans GFS s\'écrit dans la table que l\'app lit (l\'anglaise)', inNew && !inOld, { inNew, inOld });
   }
+  // L'anglaise vidée (une fusion mal finie) : l'app et GFS lisent la table qui a des lignes (la règle de l'app, consigne 096).
+  const english = await rowsOf(run, MODELS);
+  await apply(run, [['BulkRemoveRecord', MODELS, english.map(row => row.id)]]);
+  await reload(run);
+  await goHome(run.frame);
+  const oldOnly = sorted(await fileNames(run.frame));
+  say('   GFS affiche :', JSON.stringify(oldOnly));
+  check('l\'anglaise est vide, celle d\'avant a des lignes : GFS montre celles de l\'ancienne copie', oldOnly.length === 2 && oldOnly.every(name => /ancienne copie/.test(name)), oldOnly);
 }
 
 // ----- Cas « atomique » : tout ou rien, et deux renommages en même temps.

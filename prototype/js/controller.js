@@ -25,6 +25,7 @@ import { readCatalogue } from './apps/libraries.js';
 import { extensionsOf } from './apps/extensions.js';
 import { AppsState } from './apps/apps-state.js';
 import { DocNames } from './apps/doc-names.js';
+import { countRows } from './apps/row-count.js';
 import { arrivalApp, arrivalProbes } from './broker/arrival.js';
 import { arrivalTableApp } from './broker/arrival-table.js';
 import { Rangement, TableDeclined } from './files/rangement.js';
@@ -117,8 +118,9 @@ export class GfsController {
     });
     // Les apps sont servies par leur site en ligne (le porteur, 22/10) ; `?live=0` : la copie figée du sous-module, celle des mesures de GFS.
     this.live = liveSwitch(search);
-    // Les noms que le document donne aux tables et aux colonnes des apps (js/apps/doc-names.js) : lus avant chaque lecture des fichiers.
-    this.names = new DocNames({ doc: this.port.doc });
+    // Les noms que le document donne aux tables et aux colonnes des apps (js/apps/doc-names.js) : lus avant chaque lecture des fichiers ; le nombre de lignes
+    // d'une table n'est lu que si le document la porte sous deux noms.
+    this.names = new DocNames({ doc: this.port.doc, count: table => countRows(table, { sql: statement => this.transfer.sql(statement), doc: this.port.doc }) });
     // Les apps installées et leurs extensions : ce que le document retient dans la table `GFS_Rangement` (contrats 7.4), écrit seulement sur un geste de la
     // personne, et la table seulement avec son accord. Cette table apprend aussi à GFS l'adresse de la personne (6.4, point 6) : sans écriture possible, elle
     // reste inconnue.

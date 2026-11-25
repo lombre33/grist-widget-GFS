@@ -23,7 +23,7 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     // Envoyer un fichier à un autre document : titre, accord et préparation de l'envoi.
     'so.title': 'Envoyer « {name} » à un autre document',
     'so.sub': 'Une copie vers un autre document, dans un seul sens',
-    'so.foot': 'L’autre document doit avoir GFS, sur le même Grist.',
+    'so.foot': 'L’autre document doit avoir GFS et se trouver sur la même instance de Grist (le même site que celui-ci).',
     'so.continue': 'Continuer',
     'so.cancel': 'Annuler',
     'so.close': 'Fermer',
@@ -184,7 +184,7 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     // Envoyer un fichier à un autre document : titre, accord et préparation de l'envoi.
     'so.title': 'Send “{name}” to another document',
     'so.sub': 'A copy to another document, one way',
-    'so.foot': 'The other document must have GFS, on the same Grist.',
+    'so.foot': 'The other document must have GFS and be on the same Grist instance (the same site as this one).',
     'so.continue': 'Continue',
     'so.cancel': 'Cancel',
     'so.close': 'Close',

@@ -1,4 +1,4 @@
-// Ce que les essais du poids se partagent (labo/run-poids.mjs, labo/run-poids-fenetre.mjs) : des octets sans répétition, l'envoi d'une pièce jointe comme un navigateur le fait, une action appliquée par l'API REST et une lecture SQL
+// Ce que les essais du poids se partagent (labo/run-poids.mjs, labo/run-poids-fenetre.mjs, labo/run-poids-alerte.mjs) : des octets sans répétition, l'envoi d'une pièce jointe comme un navigateur le fait, une action appliquée par l'API REST et une lecture SQL
 // du document, toutes par la session de la page de Grist (`run.page`, `run.docId`).
 
 export const sql = (run, query) => run.page.evaluate(async ([docId, q]) => (await (await fetch(`/api/docs/${docId}/sql?q=${encodeURIComponent(q)}`)).json()).records.map(record => record.fields), [run.docId, query]);
@@ -20,3 +20,17 @@ export const upload = (run, files) => run.page.evaluate(async ([docId, list]) =>
 }, [run.docId, files.map(({ name, type, buffer }) => ({ name, type, base64: buffer.toString('base64') }))]);
 
 export const apply = (run, actions) => run.page.evaluate(async ([docId, list]) => (await fetch(`/api/docs/${docId}/apply`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(list) })).json(), [run.docId, actions]);
+
+// Le cadre de GFS (accès complet) prêt après un rechargement de la page par Grist, sa première fenêtre refermée.
+export async function reopened(page) {
+  for (let i = 0; i < 120; i++) {
+    const frame = page.frames().find(each => /\/prototype\/index\.html/.test(each.url()) && /access=full/.test(each.url()));
+    if (frame && await frame.evaluate(() => document.body.dataset.gfs === 'ready' && document.body.dataset.gfsFirstRun === 'done').catch(() => false)) {
+      await page.waitForTimeout(600);
+      if (await frame.locator('.mod-scrim').count()) await page.keyboard.press('Escape');
+      return frame;
+    }
+    await page.waitForTimeout(500);
+  }
+  throw new Error('Le cadre de GFS ne s\'est pas rouvert.');
+}

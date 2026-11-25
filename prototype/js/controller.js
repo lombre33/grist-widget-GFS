@@ -194,7 +194,8 @@ export class GfsController {
       notice: text => this.notice(text), files: () => this.explorer.files,
     });
     this.weight = new WeightControl({ transfer: this.transfer, container: this.$('stage'), inertTargets: this.inertTargets, t: this.t,
-      locale: () => this.locale });
+      locale: () => this.locale, canRead: () => this.fullAccess, repaint: () => this.#reading.show(), notice: text => this.notice(text),
+      explorerOpen: () => Boolean(this.explorer && this.explorer.isOpen) });
   }
 
   $ = id => this.doc.getElementById(id);
@@ -258,6 +259,7 @@ export class GfsController {
     whenReceived(() => void this.#refreshReceived());
     if (!this.writeBlock()) void resumeSharing({ docApi: this.grist.docApi, transfer: this.transfer, language: () => this.lang, busy: () => false,
       isOwner: () => this.transfer.isOwner() }).catch(error => console.warn('GFS : le partage entre documents ne reprend pas', error));
+    this.weight.watch(); // le poids du document, 5 s plus tard (js/weight/weight-guard.js) : en dernier, rien d'autre n'attend après lui
   }
 
   // L'arrivée (cahier 6.2, point 2 ; js/broker/arrival.js) : une section qui servait à une app s'ouvre sur elle, sans consigne et sans rien écrire ; sinon

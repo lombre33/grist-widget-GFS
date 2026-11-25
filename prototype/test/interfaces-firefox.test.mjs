@@ -33,6 +33,7 @@ import { partagerRecevoirProblems } from './partager-recevoir-firefox.mjs';
 import { partagesRecusProblems } from './partages-recus-firefox.mjs';
 import { liensEspacesProblems } from './liens-espaces-firefox.mjs';
 import { poidsFenetreProblems } from './poids-fenetre-firefox.mjs';
+import { poidsAlerteProblems } from './poids-alerte-firefox.mjs';
 import { dependancesProblems } from './dependances-firefox.mjs';
 import { carriedProblems } from './dependances-carried-firefox.mjs';
 import { securiteProblems } from './dependances-securite-firefox.mjs';
@@ -625,6 +626,7 @@ describe('l\'interface sous Firefox', () => {
         problems.push(...await partagesRecusProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await liensEspacesProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await poidsFenetreProblems(page, language, caption(language, 700, 1, mode)));
+        problems.push(...await poidsAlerteProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await dependancesProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await carriedProblems(page, language, caption(language, 700, 1, mode)));
         problems.push(...await securiteProblems(page, language, caption(language, 700, 1, mode)));

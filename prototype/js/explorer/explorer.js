@@ -95,8 +95,9 @@ export class Explorer {
   // opts : { container, i18n, locale, now(), appName(id), typeLabel(file), lockOf(file), newTypes(), importTypes(), onOpen(file), onNew(entry),
   //   onImport(entry), onTemplates(), onClose(), onApps(), canClose(), notice(text),
   //          settings() → les articles du menu « Réglages » (js/shell/settings-menu.js : langue, thème, position de la barre, « À propos »),
-  //          onWeight({ list, pj }) (le total du pied ouvre la fenêtre « Poids du document » : la liste en octets et,
-  //          case cochée et lue, les pièces jointes), personal() → le rangement est-il à la personne seule ?,
+  //          alerts({ detail }) → [élément] (le bandeau d'erreur du poids du document, rien sous la limite ; `detail()` ouvre le poids exact),
+  //          onWeight({ list, pj }) (le total du pied ouvre la fenêtre « Poids du document » : la liste en octets et, case cochée et lue, les pièces jointes),
+  //          personal() → le rangement est-il à la personne seule ?,
   //          filing: { togglePin(file), rename(file), moveFile(file), renameFolder(path), moveFolder(path), moveFileTo(file, dossier), moveFolderTo(path,
   //          dossier) },
   //          kept?: les fichiers que GFS garde lui-même (js/files/kept-files.js) : { has(file), openAs(file) -> { label, icon, greyed }, opensIn(file),
@@ -352,7 +353,9 @@ export class Explorer {
     const tiles = this.state.display === 'tiles';
     list.classList.toggle('is-tiles', tiles);
     this.#paintRows(ctx, tiles, result.flat);
-    notices.replaceChildren(...this.#problems.map(text => h('div', { class: 'banner', role: 'alert' }, icon('warning'), text)), ...this.#bars(ctx));
+    // le poids du document dépasse la limite (js/weight/weight-alert.js)
+    const alerts = this.#opts.alerts ? this.#opts.alerts({ detail: () => this.#openWeight() }) : [];
+    notices.replaceChildren(...alerts, ...this.#problems.map(text => h('div', { class: 'banner', role: 'alert' }, icon('warning'), text)), ...this.#bars(ctx));
     const message = this.#loading ? this.#opts.i18n.t('ex.loading') : (this.#rows.length ? '' :
       (this.#restricted ? this.#opts.i18n.t('ex.emptyNoAccess') : emptyMessage(ctx)));
     empty.textContent = message;

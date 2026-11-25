@@ -69,7 +69,7 @@ export function buildExplorer(c) {
     newTypes: c.newTypes, importTypes: c.importTypes, canClose: () => Boolean(c.session), notice: text => c.notice(text),
     opened: { keys: () => c.opened.keys(), shown: () => c.opened.shown(c.session), remove: key => c.opened.remove(key) },
     settings: settingsOf(c),
-    sharing: c.rights.sharing, links: c.rights.links, onWeight: estimate => void c.weight.open(estimate),
+    sharing: c.rights.sharing, links: c.rights.links, onWeight: estimate => void c.weight.open(estimate), alerts: ctx => c.weight.alerts(ctx),
     onOpen: file => c.openings.openFile(file), onNew: entry => c.openings.openNew(entry), onImport: entry => void c.openings.importFile(entry),
       onTemplates: () => void c.templates.open(),
       onClose: () => c.hideExplorer(), onApps: () => void c.openModules(),

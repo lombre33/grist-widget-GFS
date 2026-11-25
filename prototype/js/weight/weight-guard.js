@@ -1,13 +1,18 @@
-// La surveillance du poids du document (demande du porteur, 25/11 : « au-delà de 12 Go, un message d'erreur dit qu'on ne peut pas dépasser 13 Go » ; choix : le
-// fichier entier du document). Le poids est celui que lit la fenêtre « Poids du document » (js/weight/weight-reader.js) : le fichier entier du document
-// (données, pièces jointes stockées et historique), plus les pièces jointes que Grist compte et que le fichier ne garde pas (un stockage externe). Une lecture
-// légère, faite longtemps après le départ pour ne pas alourdir l'ouverture, puis de temps en temps tant que la page reste ouverte ; rien n'est écrit ni gardé.
-// 1 Go = 1 024³ octets, comme partout dans GFS.
+// La surveillance du poids du document (demande du porteur, 25/11 : un message d'erreur au-delà de 12 Go ; choix : le fichier entier du document). Le porteur
+// a dit le 25/11 d'où vient la limite : la DINUM fixe 15 Go pour TOUTE La Suite numérique, pas pour Grist seul ; GFS prévient avant,
+// pour ne pas bloquer les autres apps, et seulement dans une instance de La Suite (l'adresse que Grist donne pour le document, `inSuite`) : ailleurs, rien
+// ne se lit. Le poids est celui que lit la fenêtre « Poids du document » (js/weight/weight-reader.js) : le fichier entier du document (données, pièces
+// jointes stockées et historique), plus les pièces jointes que Grist compte et que le fichier ne garde pas (un stockage externe). Une lecture légère, faite
+// longtemps après le départ pour ne pas alourdir l'ouverture, puis de temps en temps tant que la page reste ouverte ; rien n'est écrit ni gardé.
+// 1 Go = 1 024³ octets, comme partout dans GFS : à 12 Go de GFS (12,9 milliards d'octets), on reste sous 15 Go décimaux comme sous 15 Gio.
 import { SQL, failureKind, readOne } from './weight-reader.js';
 
 export const GO = 1024 ** 3;
 export const WARN_BYTES = 12 * GO; // au-delà : le message
-export const LIMIT_GO = 13; // ce que le message dit que le document ne peut pas dépasser
+export const SUITE_LIMIT_GO = 15; // la limite de La Suite numérique, que le message dit : pour tous ses services, pas pour ce document seul
+// Les instances de La Suite numérique : un hôte sous ces domaines (`grist.numerique.gouv.fr`, et le serveur de documents qu'une instance peut y ajouter) ;
+// `extra` (le réglage `suite` de l'adresse de GFS, pour les essais) en ajoute d'autres. Mesuré : l'adresse que Grist donne n'a pas été lue à la DINUM.
+export const SUITE_DOMAINS = ['numerique.gouv.fr'];
 export const FIRST_MS = 5000; // la première lecture : 5 s après le départ
 export const EVERY_MS = 30 * 60 * 1000; // puis une lecture toutes les 30 min
 export const HIDDEN_MS = 60 * 1000; // page cachée : pas de lecture, on revoit dans une minute
@@ -25,12 +30,22 @@ export async function readTotal(sql) {
 
 export const isOver = bytes => bytes > WARN_BYTES;
 
+// `address` (l'adresse REST du document, `Transfer.baseUrl()`) est-elle d'une instance de La Suite numérique ? L'hôte seul compte (jamais un chemin) ; une
+// adresse illisible n'en est pas.
+export function inSuite(address, extra = []) {
+  let host;
+  try { host = new URL(address).hostname.toLowerCase(); } catch (error) { return false; }
+  return [...SUITE_DOMAINS, ...extra].some(domain => host === domain || host.endsWith(`.${domain}`));
+}
+
 // Les minuteurs du navigateur : `setTimeout` appelé comme méthode d'un autre objet (`timers.set(…)`) y lève « Illegal invocation » ; chacun est donc appelé
 // seul.
 export const BROWSER_TIMERS = { set: (fn, ms) => setTimeout(fn, ms), clear: id => clearTimeout(id) };
 
-// La surveillance. opts : { read() -> octets (ou null ; un refus de droits lève), onChange({ bytes, over, entering }), visible() -> la page se voit, timers: {
-// set, clear } (les essais en donnent d'autres), firstMs, everyMs }. `onChange` n'est appelé que quand le message paraît, change de poids ou s'en va ;
+// La surveillance. opts : { gate() -> vrai si le document est dans une instance de La Suite (lu une fois, avant toute lecture du poids ; faux : la surveillance
+// s'arrête, et rien ne se lit ; une erreur se retente), read() -> octets (ou null ; un refus de droits lève), onChange({ bytes, over, entering }), visible() ->
+// la page se voit, timers: { set, clear } (les essais en donnent d'autres), firstMs, everyMs }. `onChange` n'est appelé que quand le message paraît, change de
+// poids ou s'en va ;
 // `entering` : le poids vient de passer la limite (la première fois, ou après être revenu dessous).
 export class WeightWatch {
   #opts;
@@ -38,8 +53,9 @@ export class WeightWatch {
   #running = false;
   #stopped = false;
   #bytes = null;
+  #member = null; // le document est-il dans une instance de La Suite ? (null : pas encore lu)
 
-  constructor(opts) { this.#opts = { visible: () => true, timers: BROWSER_TIMERS, firstMs: FIRST_MS, everyMs: EVERY_MS, ...opts }; }
+  constructor(opts) { this.#opts = { gate: () => true, visible: () => true, timers: BROWSER_TIMERS, firstMs: FIRST_MS, everyMs: EVERY_MS, ...opts }; }
 
   get over() { return this.#bytes !== null && isOver(this.#bytes); }
 
@@ -61,8 +77,12 @@ export class WeightWatch {
     if (!this.#opts.visible()) { this.#schedule(HIDDEN_MS); return; }
     this.#running = true;
     try {
-      const bytes = await this.#opts.read();
-      if (bytes !== null && !this.#stopped) this.#note(bytes);
+      if (this.#member === null) this.#member = Boolean(await this.#opts.gate());
+      if (!this.#member) this.stop();
+      else {
+        const bytes = await this.#opts.read();
+        if (bytes !== null && !this.#stopped) this.#note(bytes);
+      }
     } catch (error) {
       if (failureKind(error) === 'denied') this.stop();
     } finally {

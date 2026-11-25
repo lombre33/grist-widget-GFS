@@ -195,7 +195,7 @@ export class GfsController {
     });
     this.weight = new WeightControl({ transfer: this.transfer, container: this.$('stage'), inertTargets: this.inertTargets, t: this.t,
       locale: () => this.locale, canRead: () => this.fullAccess, repaint: () => this.#reading.show(), notice: text => this.notice(text),
-      explorerOpen: () => Boolean(this.explorer && this.explorer.isOpen) });
+      explorerOpen: () => Boolean(this.explorer && this.explorer.isOpen), suite: (this.params.get('suite') || '').split(',').filter(Boolean) });
   }
 
   $ = id => this.doc.getElementById(id);

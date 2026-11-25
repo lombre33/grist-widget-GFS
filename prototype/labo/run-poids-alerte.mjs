@@ -1,10 +1,12 @@
-// Le message d'erreur du poids du document (demande du porteur du 25/11 : au-delà de 12 Go, un message d'erreur dit qu'on ne peut pas dépasser 13 Go ; choix : le fichier entier du document ; faits vérifiés,
-// section 154), joué dans un VRAI serveur Grist (l'image officielle, `bash vrai-serveur.sh`), à 700 × 400, à la vraie souris : GFS ajouté comme widget à un document, la surveillance de js/weight/weight-guard.js
-// lit le poids par le vrai cadre d'envoi et un vrai jeton. Un document de 12 Go ne se fabrique pas ici : la lecture du fichier entier (`page_count × page_size`) reste celle de Grist, mais sa réponse est
-// remplacée, sur le réseau, par 12,4 Go (Playwright, `route.fetch()` puis le corps changé : en-têtes, CORS et forme de la réponse sont ceux de Grist). Se joue en trois passes sur le même document :
+// Le message d'erreur du poids du document (demande du porteur du 25/11 : au-delà de 12 Go, un message d'erreur ; le 25/11 aussi : la limite est celle de La Suite numérique, 15 Go pour tous ses services, et le message ne
+// paraît que dans une de ses instances ; choix : le fichier entier du document ; faits vérifiés, section 154), joué dans un VRAI serveur Grist (l'image officielle, `bash vrai-serveur.sh`), à 700 × 400, à la vraie souris :
+// GFS ajouté comme widget à un document, la surveillance de js/weight/weight-guard.js lit le poids par le vrai cadre d'envoi et un vrai jeton. Le serveur d'essai n'est pas sous numerique.gouv.fr : les passes 1 à 3 ajoutent
+// son hôte à ceux de La Suite par le réglage `suite` de l'adresse de GFS. Un document de 12 Go ne se fabrique pas ici : la lecture du fichier entier (`page_count × page_size`) reste celle de Grist, mais sa réponse est
+// remplacée, sur le réseau, par 12,4 Go (Playwright : la requête part de Node, en-têtes, CORS et forme de la réponse sont ceux de Grist). Se joue en quatre passes :
 //   1. le poids réel (quelques centaines de Ko) : aucune lecture avant 5 s, trois lectures ensuite, aucun bandeau ;
 //   2. le fichier dit 12,4 Go : le bandeau rouge paraît dans l'explorateur ; texte, alerte, place, contraste, un clic sur « Voir le détail » ouvre la fenêtre « Poids du document » (lue avec le vrai poids), Échap la ferme ;
-//   3. le fichier dit exactement 12 Go : rien (« au-delà » est strict).
+//   3. le fichier dit exactement 12 Go : rien (« au-delà » est strict) ;
+//   4. un document d'un autre serveur que La Suite (sans le réglage `suite`) qui dirait 12,4 Go : aucune lecture de `/sql` et aucun bandeau.
 // LAB_LANG=fr|en, LAB_SCHEME=light|dark.
 import { createServer } from 'node:http';
 import { serve } from './lab-server.mjs';
@@ -22,6 +24,7 @@ const scheme = process.env.LAB_SCHEME || 'light';
 const { t } = createI18n(lang);
 const locale = lang === 'en' ? 'en-GB' : 'fr-FR';
 const BANNER = '.ex-notices .banner--danger';
+const SUITE = '&suite=127.0.0.1'; // l'hôte du serveur d'essai, donné comme instance de La Suite
 
 // Ce que la surveillance demande à Grist : le moment de chaque lecture de `/sql` (relevé sur le réseau), celui où la page de GFS a été demandée, et le poids que le fichier « dit » (null : le vrai).
 const net = { fake: null, sql: [], status: [], page: 0 };
@@ -59,7 +62,7 @@ const state = frame => frame.evaluate(selector => {
   const button = bar.querySelector('button');
   const at = button.getBoundingClientRect();
   return { ...out, role: bar.getAttribute('role'), text: text(label), button: text(button), first: document.querySelector('.ex-notices').firstElementChild === bar, height: Math.round(box.height),
-    inside: box.left >= root.left - 1 && box.right <= root.right + 1 && at.left >= box.left - 1 && at.right <= box.right + 1, oneLine: label.getBoundingClientRect().height < 24 && label.scrollWidth <= label.clientWidth + 1 };
+    inside: box.left >= root.left - 1 && box.right <= root.right + 1 && at.left >= box.left - 1 && at.right <= box.right + 1, twoLines: label.getBoundingClientRect().height < 40 && label.scrollWidth <= label.clientWidth + 1 };
 }, BANNER);
 
 // Attend que la page ait fait sa lecture de `delay` ms (jusqu'à `ms`), puis rend l'état.
@@ -83,7 +86,7 @@ try {
   await install(context);
   say('--- 1. le poids réel : rien avant 5 s, trois lectures, aucun bandeau ---');
   net.sql = [];
-  const run = await openGfs(context, { lang });
+  const run = await openGfs(context, { lang, query: SUITE });
   const frame = run.frame;
   await run.page.waitForTimeout(9000);
   const first = net.sql[0];
@@ -103,8 +106,8 @@ try {
   check('le bandeau paraît dans l\'explorateur', shown.bar, shown);
   check(`il dit « ${want} »`, shown.text === want, shown.text);
   check('il est en alerte, en tête des avis, seul, avec le bouton « Voir le détail »', shown.role === 'alert' && shown.first && shown.banners === 1 && shown.button === t('weight.alertDetail'), shown);
-  check('le texte et le bouton tiennent dans la largeur (700 px), sur une ligne', shown.inside && shown.oneLine, shown);
-  check(`la liste garde sa place (${shown.listHeight} px) sous un bandeau de ${shown.height} px`, shown.listHeight >= 150 && shown.height <= 40, shown);
+  check('le texte et le bouton tiennent dans la largeur (700 px), sur deux lignes au plus', shown.inside && shown.twoLines, shown);
+  check(`la liste garde sa place (${shown.listHeight} px) sous un bandeau de ${shown.height} px`, shown.listHeight >= 130 && shown.height <= 64, shown);
   const contrast = await contrastProblems(fresh, BANNER);
   check('les textes du bandeau ont le contraste voulu (4,5:1), en ' + (scheme === 'dark' ? 'sombre' : 'clair'), contrast.length === 0, contrast);
   await shot(fresh, `poids-alerte-${lang}-${scheme}`);
@@ -128,6 +131,16 @@ try {
 
   const bad = unexpected(run);
   check('aucune erreur ni avertissement de GFS dans la console', bad.length === 0, bad);
+
+  say('--- 4. un autre serveur que La Suite numérique (sans le réglage `suite`) : rien ne se lit, aucun bandeau, même à 12,4 Go ---');
+  net.fake = Math.round(12.4 * GO);
+  net.sql = [];
+  const elsewhere = await openGfs(context, { lang });
+  await elsewhere.page.waitForTimeout(12000);
+  check('aucune lecture de `/sql` (la porte est fermée avant la première lecture du poids)', net.sql.length === 0, net.sql.map(entry => entry.q.slice(0, 60)));
+  check('aucun bandeau', !(await state(elsewhere.frame)).bar, await state(elsewhere.frame));
+  const bad4 = unexpected(elsewhere);
+  check('aucune erreur ni avertissement de GFS dans la console', bad4.length === 0, bad4);
 } finally {
   await browser.close();
   pages.close();

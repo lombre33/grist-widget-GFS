@@ -1,5 +1,5 @@
-// La surveillance du poids du document (js/weight/weight-guard.js, demande du porteur du 25/11 : au-delà de 12 Go, un message d'erreur dit qu'on ne peut pas dépasser 13 Go ; choix : le fichier entier du
-// document) : le poids lu (le fichier entier, plus les pièces jointes que le fichier ne garde pas), la première lecture 5 s après le départ puis une toutes les 30 min, la page cachée qui ne lit pas, un échec qui
+// La surveillance du poids du document (js/weight/weight-guard.js, demande du porteur du 25/11 : au-delà de 12 Go, un message d'erreur ; la limite est celle de La Suite numérique, 15 Go pour tous ses
+// services, et le message ne paraît que dans une de ses instances ; choix : le fichier entier du document) : le poids lu (le fichier entier, plus les pièces jointes que le fichier ne garde pas), la première lecture 5 s après le départ puis une toutes les 30 min, la page cachée qui ne lit pas, un échec qui
 // reste silencieux, un refus de droits qui arrête tout, et le message qui n'apparaît qu'au-dessus de 12 Go. Les lectures SQL et les minuteurs sont des doublures ; ce que le vrai Grist rend se mesure dans le labo
 // (labo/run-poids-alerte.mjs).
 import { test } from 'node:test';
@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { installFakeDocument } from './fake-dom.mjs';
 import { SQL } from '../js/weight/weight-reader.js';
 import { TransferError } from '../js/broker/transfer.js';
-import { EVERY_MS, FIRST_MS, GO, HIDDEN_MS, LIMIT_GO, WARN_BYTES, WeightWatch, isOver, readTotal } from '../js/weight/weight-guard.js';
+import { EVERY_MS, FIRST_MS, GO, HIDDEN_MS, SUITE_LIMIT_GO, WARN_BYTES, WeightWatch, inSuite, isOver, readTotal } from '../js/weight/weight-guard.js';
 
 installFakeDocument();
 const { alertBar, alertText } = await import('../js/weight/weight-alert.js');
@@ -28,8 +28,9 @@ function fake(answers) {
   return { sql, asked };
 }
 
-test('les seuils : 12 Go pour le message, 13 Go dits, 1 Go = 1 024³ octets ; « au-delà » veut dire strictement', () => {
-  assert.deepEqual([GO, WARN_BYTES, LIMIT_GO, FIRST_MS, EVERY_MS], [1073741824, 12 * 1073741824, 13, 5000, 1800000]);
+test('les seuils : 12 Go pour le message, les 15 Go de La Suite numérique dits, 1 Go = 1 024³ octets ; « au-delà » veut dire strictement', () => {
+  assert.deepEqual([GO, WARN_BYTES, SUITE_LIMIT_GO, FIRST_MS, EVERY_MS], [1073741824, 12 * 1073741824, 15, 5000, 1800000]);
+  assert.equal(WARN_BYTES < 15e9, true, '12 Go de GFS font 12,9 milliards d\'octets : sous 15 Go décimaux comme sous 15 Gio');
   assert.equal(isOver(WARN_BYTES), false, 'pile 12 Go : pas encore au-delà');
   assert.equal(isOver(WARN_BYTES + 1), true);
   assert.equal(isOver(0), false);
@@ -53,6 +54,18 @@ test('une lecture des pièces jointes qui échoue laisse le fichier seul ; celle
   await assert.rejects(readTotal(fake({ [SQL.file]: [{ octets: 1 }], [SQL.stored]: http(403) }).sql), error => error.status === 403, 'un refus sur les pièces jointes dit la même chose : pas le droit de tout copier');
 });
 
+// Les instances de La Suite numérique : l'hôte de l'adresse que Grist donne au document (`Transfer.baseUrl()`), égal à un domaine de la liste ou dessous.
+test('inSuite : grist.numerique.gouv.fr et ses sous-domaines en sont ; aucun autre hôte, même qui y ressemble ; une adresse illisible n\'en est pas', () => {
+  assert.equal(inSuite('https://grist.numerique.gouv.fr/o/dinum/api/docs/abc'), true);
+  assert.equal(inSuite('https://Grist.Numerique.Gouv.fr:443/api/docs/abc'), true, 'la casse et le port ne comptent pas');
+  assert.equal(inSuite('https://docs-3.grist.numerique.gouv.fr/api/docs/abc'), true, 'un serveur de documents sous l\'instance');
+  for (const other of ['https://docs.getgrist.com/api/docs/abc', 'https://grist.incubateur.anct.gouv.fr/api/docs/abc', 'http://127.0.0.1:8484/api/docs/abc',
+    'https://evil-numerique.gouv.fr/api/docs/abc', 'https://numerique.gouv.fr.evil.example/api/docs/abc', 'https://evil.example/numerique.gouv.fr/api/docs/abc',
+    'https://evil.example/?h=grist.numerique.gouv.fr', 'pas une adresse', '', undefined]) assert.equal(inSuite(other), false, String(other));
+  assert.equal(inSuite('http://127.0.0.1:8484/api/docs/abc', ['127.0.0.1']), true, 'les essais ajoutent leur hôte (réglage `suite` de l\'adresse de GFS)');
+  assert.equal(inSuite('http://127.0.0.1:8484/api/docs/abc', ['0.0.0.1']), false);
+});
+
 // Des minuteurs que l'essai fait avancer à la main.
 function clock() {
   const queue = [];
@@ -72,6 +85,28 @@ function watch(reads, extra = {}) {
   const guard = new WeightWatch({ read: async () => { calls.push('read'); const value = queue.shift(); if (value instanceof Error) throw value; return value; }, onChange: event => changes.push(event), timers: time.timers, ...extra });
   return { guard, time, calls, changes };
 }
+
+test('la porte : hors d\'une instance de La Suite, aucune lecture et plus aucun minuteur ; dedans, lue une seule fois ; une erreur de la porte se retente', async () => {
+  const outside = watch([WARN_BYTES + 1], { gate: async () => false });
+  outside.guard.start();
+  await outside.time.fire();
+  assert.deepEqual([outside.calls.length, outside.time.waiting(), outside.changes.length], [0, [], 0], 'hors de La Suite : rien ne se lit, plus de minuteur, rien à dire');
+  outside.guard.start();
+  assert.deepEqual(outside.time.waiting(), [], 'une surveillance arrêtée ne repart pas');
+  let gates = 0;
+  const inside = watch([1, WARN_BYTES + 1], { gate: async () => { gates++; return true; } });
+  inside.guard.start();
+  await inside.time.fire();
+  await inside.time.fire();
+  assert.deepEqual([gates, inside.calls.length, inside.changes.length], [1, 2, 1], 'la porte se lit une fois ; les lectures suivent');
+  let fails = 1;
+  const flaky = watch([WARN_BYTES + 1], { gate: async () => { if (fails-- > 0) throw new TransferError('token', 'pas de jeton'); return true; } });
+  flaky.guard.start();
+  await flaky.time.fire();
+  assert.deepEqual([flaky.calls.length, flaky.time.waiting()], [0, [EVERY_MS]], 'pas de jeton : silencieux, on revoit à la prochaine');
+  await flaky.time.fire();
+  assert.deepEqual([flaky.calls.length, flaky.changes.length], [1, 1]);
+});
 
 test('la première lecture part 5 s après le départ, la suivante 30 min après la fin de la précédente ; rien ne part avant', async () => {
   const { guard, time, calls } = watch([100, 100]);
@@ -171,10 +206,10 @@ test('les minuteurs par défaut s\'appellent comme dans un navigateur, où `setT
   }
 });
 
-test('le bandeau dit le poids et la limite dans la langue, en alerte, avec un bouton qui ouvre le détail', () => {
+test('le bandeau dit le poids et la limite de La Suite numérique dans la langue, en alerte, avec un bouton qui ouvre le détail', () => {
   const fr = createI18n('fr');
-  assert.equal(alertText(12.4 * GO, 'fr-FR', fr.t), 'Ce document pèse 12,40 Go. Il ne peut pas dépasser 13 Go.');
-  assert.equal(alertText(12.4 * GO, 'en-GB', createI18n('en').t), 'This document weighs 12.40 GB. It cannot exceed 13 GB.');
+  assert.equal(alertText(12.4 * GO, 'fr-FR', fr.t), 'Ce document pèse 12,40 Go. La limite de 15 Go de La Suite numérique est partagée par tous ses services : au-delà, les autres apps risquent d’être bloquées.');
+  assert.equal(alertText(12.4 * GO, 'en-GB', createI18n('en').t), 'This document weighs 12.40 GB. The 15 GB limit of La Suite numérique is shared by all its services: beyond it, your other apps may be blocked.');
   let opened = 0;
   const bar = alertBar({ bytes: 13.3 * GO, locale: 'fr-FR', t: fr.t, detail: () => { opened++; } });
   assert.equal(bar.attrs.role, 'alert');
@@ -188,14 +223,15 @@ test('le bandeau dit le poids et la limite dans la langue, en alerte, avec un bo
 
 // Le contrôleur du poids (js/weight/weight-control.js) : la surveillance lit par le cadre d'envoi (lecture seule d'abord, le jeton qui peut écrire seulement après un refus), le bandeau suit le poids, et l'explorateur fermé
 // le message bref le dit une fois.
-function control({ open = true, readable = true, sqlOf }) {
+const DINUM = 'https://grist.numerique.gouv.fr/o/dinum/api/docs/abc'; // l'adresse que donne le Grist de La Suite numérique
+function control({ open = true, readable = true, sqlOf, base = DINUM, suite }) {
   const time = clock();
   const said = { repaint: 0, notices: [], jetons: [] };
-  const transfer = { sql: async (statement, { writable }) => { said.jetons.push(writable); return sqlOf(statement, writable); } };
+  const transfer = { baseUrl: async () => base, sql: async (statement, { writable }) => { said.jetons.push(writable); return sqlOf(statement, writable); } };
   const fr = createI18n('fr');
   const weight = new WeightControl({
     transfer, container: { ownerDocument: { hidden: false } }, inertTargets: () => [], t: fr.t, locale: () => 'fr-FR', canRead: () => readable, repaint: () => { said.repaint++; },
-    notice: text => said.notices.push(text), explorerOpen: () => open, timers: time.timers,
+    notice: text => said.notices.push(text), explorerOpen: () => open, timers: time.timers, ...(suite ? { suite } : {}),
   });
   return { weight, time, said };
 }
@@ -209,7 +245,7 @@ test('le contrôleur : au-dessus de 12 Go le bandeau paraît (l\'explorateur se 
   assert.equal(said.repaint, 1);
   assert.deepEqual(said.notices, []);
   const [bar] = weight.alerts({ detail() {} });
-  assert.equal(bar.textContent.startsWith('Ce document pèse 12,40 Go. Il ne peut pas dépasser 13 Go.'), true);
+  assert.equal(bar.textContent.startsWith('Ce document pèse 12,40 Go. La limite de 15 Go de La Suite numérique'), true);
   assert.deepEqual(said.jetons, [false, false, false], 'le jeton en lecture seule, pour les trois lectures');
   const small = control({ sqlOf: sizes(3 * GO) });
   small.weight.watch();
@@ -222,7 +258,8 @@ test('le contrôleur : l\'explorateur fermé (une app est ouverte), le message b
   weight.watch();
   await time.fire();
   await time.fire();
-  assert.deepEqual(said.notices, ['Ce document pèse 13,10 Go. Il ne peut pas dépasser 13 Go.'], 'une seule fois');
+  assert.equal(said.notices.length, 1, 'une seule fois');
+  assert.equal(said.notices[0].startsWith('Ce document pèse 13,10 Go. La limite de 15 Go de La Suite numérique'), true);
 });
 
 test('le contrôleur : sans l\'accès complet rien ne se lit ; un refus du jeton en lecture seule essaie une fois le jeton qui peut écrire, puis un second refus arrête tout', async () => {
@@ -239,4 +276,17 @@ test('le contrôleur : sans l\'accès complet rien ne se lit ; un refus du jeton
   await owner.time.fire();
   assert.deepEqual(owner.said.jetons, [false, true, true, true], 'le propriétaire d\'un document à règles : refusé en lecture seule, puis les trois lectures avec le jeton qui peut écrire');
   assert.equal(owner.weight.alerts({ detail() {} }).length, 1);
+});
+
+test('le contrôleur : hors d\'une instance de La Suite numérique, ni lecture ni bandeau, même sur un document de 20 Go ; le réglage `suite` de l\'adresse de GFS ajoute un hôte (les essais)', async () => {
+  for (const base of ['https://docs.getgrist.com/api/docs/abc', 'http://127.0.0.1:8484/api/docs/abc']) {
+    const other = control({ base, sqlOf: sizes(20 * GO) });
+    other.weight.watch();
+    await other.time.fire();
+    assert.deepEqual([other.said.jetons, other.said.repaint, other.said.notices, other.weight.alerts({ detail() {} }), other.time.waiting()], [[], 0, [], [], []], base);
+  }
+  const lab = control({ base: 'http://127.0.0.1:8484/api/docs/abc', suite: ['127.0.0.1'], sqlOf: sizes(12.4 * GO) });
+  lab.weight.watch();
+  await lab.time.fire();
+  assert.equal(lab.weight.alerts({ detail() {} }).length, 1, 'avec le réglage, l\'hôte est de La Suite');
 });

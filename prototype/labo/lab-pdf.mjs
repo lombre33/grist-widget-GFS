@@ -32,7 +32,7 @@ export const oldBrowser = process.env.LAB_NAVIGATEUR_ANCIEN === '1';
 // `probes` : les lettres des sondes (labo/sondes/) que cet essai ajoute au catalogue, `patches` : des fichiers de GFS remplacés pour cet essai seulement (lab-common.mjs, routePatches).
 // `mirrors` : l'essai ouvre une VRAIE app (Publipostage+), qui demande ses bibliothèques à des CDN que le cloud n'atteint pas : le miroir local les rend (lab-common.mjs, mirrorCdns), le script de l'API
 // des widgets restant celui du serveur.
-export async function openGfs(context, { lang = 'fr', probes = null, patches = [], mirrors = false, path: existing = null } = {}) {
+export async function openGfs(context, { lang = 'fr', probes = null, patches = [], mirrors = false, path: existing = null, query = '' } = {}) {
   const page = await context.newPage();
   if (!oldBrowser) await page.addInitScript(addModernMethods);
   if (probes) {
@@ -52,7 +52,7 @@ export async function openGfs(context, { lang = 'fr', probes = null, patches = [
   // `path` : un document qui a déjà GFS (ouvert par une autre personne) ; sinon le document est créé et GFS y est ajouté comme le fait la personne.
   const path = existing || await createDocument(page);
   if (existing) await openExisting(page, existing);
-  else await addWidget(page, path, `${GFS}?language=${lang}&culture=${lang === 'en' ? 'en-GB' : 'fr-FR'}&live=0`);
+  else await addWidget(page, path, `${GFS}?language=${lang}&culture=${lang === 'en' ? 'en-GB' : 'fr-FR'}&live=0${query}`);
   const find = async () => {
     for (let i = 0; i < 80; i++) {
       const frame = page.frames().find(each => each.url().startsWith(GFS) && /access=full/.test(each.url()));

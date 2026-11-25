@@ -29,15 +29,29 @@ function levelItems(ctx, link, level) {
   ];
 }
 
+// Le bouton de niveau d'un lien : son niveau et son menu ; cadenas quand rien ne peut partir ; « Mise à jour… » avec une flèche qui tourne, fermé, quand son
+// niveau s'écrit (4 à 5 secondes sur un serveur lointain : retour du porteur du 25/11) : le niveau d'avant ne se montre pas, il serait faux dans un instant.
+function levelButton(ctx, link, level, locked) {
+  const { t, other } = ctx;
+  const busy = ctx.busy === link.id;
+  const button = h('button', { type: 'button', class: busy ? 'lvl is-busy' : 'lvl', 'aria-disabled': locked || busy ? 'true' : null,
+    'aria-busy': busy ? 'true' : null,
+    'aria-haspopup': locked || busy ? null : 'menu', dataset: { fk: `other-level-${link.id}` } },
+    busy ? t('so.level.working') : t(`so.level.${level}`), icon(busy ? 'refresh' : locked ? 'lock' : 'chev-down'));
+  button.addEventListener('click', () => {
+    if (busy) return;
+    if (locked) ctx.say(other.why || t('so.link.pending'));
+    else openMenu(button, levelItems(ctx, link, level), { host: ctx.container, align: 'right', label: link.doc.name || link.name });
+  });
+  return button;
+}
+
 function linkRow(ctx, link) {
   const { t, other } = ctx;
   const level = levelOf(link, other.fileId);
   const waiting = link.state === 'pending';
   const locked = Boolean(other.why) || waiting;
-  const button = h('button', { type: 'button', class: 'lvl', 'aria-disabled': locked ? 'true' : null, 'aria-haspopup': locked ? null : 'menu',
-    dataset: { fk: `other-level-${link.id}` } }, t(`so.level.${level}`), icon(locked ? 'lock' : 'chev-down'));
-  button.addEventListener('click', () => (locked ? ctx.say(other.why || t('so.link.pending')) :
-    openMenu(button, levelItems(ctx, link, level), { host: ctx.container, align: 'right', label: link.doc.name || link.name })));
+  const button = levelButton(ctx, link, level, locked);
   const tagText = link.state !== 'active' ? t(`so.state.${link.state}`) : (level === 'live' ? t('so.state.active') : null);
   return h('li', { class: 'rr', dataset: { link: link.id, level } }, mark(link.doc.name || link.name),
     h('span', { class: 'nm' }, h('b', null, link.doc.name || link.name), h('small', null,
@@ -45,8 +59,8 @@ function linkRow(ctx, link) {
     tagText ? h('span', { class: 'tag' }, tagText) : null, button);
 }
 
-// Le contenu de l'onglet. ctx : { t, container, other ({ why, fileId }), links (null : en lecture ; false : illisible ; sinon la liste), setLevel(link, level),
-// say(text), newDocument() }.
+// Le contenu de l'onglet. ctx : { t, container, other ({ why, fileId }), links (null : en lecture ; false : illisible ; sinon la liste), busy (l'identifiant du
+// lien dont le niveau s'écrit, ou null), setLevel(link, level), say(text), newDocument() }.
 export function otherTab(ctx) {
   const { t, other } = ctx;
   const stuck = other.why || other.limit;

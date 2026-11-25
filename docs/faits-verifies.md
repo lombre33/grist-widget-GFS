@@ -3044,3 +3044,27 @@ Retour du porteur le 25/11, en test sur docs.getgrist.com sous Firefox : « quan
   (la table existe) et arrive chez l'autre en « Copie à jour » sans nouveau code ; un document qui a déjà des PDF garde les mots d'avant ; console de GFS muette. **Firefox sans écran** : accord de la
   fenêtre en fr/en, clair/sombre, 700 px : 0 écart (8 sur l'ancien code).
 - **Pas mesuré** : docs.getgrist.com lui-même (injoignable du cloud ; même code que le Grist 1.7.19 du labo) ; la DINUM ; un compte éditeur (seul un propriétaire relie).
+
+## 178. Partage entre deux documents : la fenêtre de réception se perdait quand Grist rechargeait la page, et « Copie à jour » mettait 4 à 5 secondes sans rien dire (25/11 ; retours du porteur sur docs.getgrist.com, Firefox ; Grist 1.7.19 officiel (Docker), Chromium 700 × 400 à la vraie souris, Firefox sans écran ; `labo/run-recevoir-reprise.mjs`, `labo/run-relier-document-neuf.mjs`, `js/sharing/share-receive.js`, `js/sharing/sync-service.js`, `js/sharing/sync-resume.js`, `js/sharing/share-other-tab.js`, `test/share-receive-flow.test.mjs`, `test/sync-resume.test.mjs`, `test/share-other-tab.test.mjs`, `test/partager-recevoir-firefox.mjs`, `test/partager-autre-firefox.mjs`)
+
+- **Le fait, reproduit** : publier le formulaire du journal fait recharger la page par Grist. La fenêtre de réception, qui attendait le lien de ce formulaire, disparaissait ; le moteur ne gardait aucune trace
+  de « cette réception attend sa réponse » ; recoller le code passait par le chemin « réception déjà reçue » (`knownReception`) : le parcours repartait du début. Sans bloc-notes pour garder le lien du formulaire,
+  la personne était bloquée.
+- **Correction (additive)** : « Accepter » note dans le journal que la réception attend sa réponse (`gfsAwaiting` dans la note du journal, avec les tables que la réception a créées : `markAwaiting`). Au démarrage de la
+  page, après la pose des règles du journal (Grist recharge la page une seconde fois à ce moment ; rouvrir avant, ce serait ouvrir une fenêtre aussitôt fermée), `resumeSharing` appelle `resumeReception` : la
+  fenêtre se rouvre sur le lien du formulaire, dit « Grist a rechargé la page : la réception de « … » reprend ici, à cette étape. Rien n'est perdu. », sans redemander le code. La réponse rendue efface la note ;
+  « Annuler » défait le journal et les tables que la réception avait créées (ou, pour une réception qui existait déjà, n'efface que la note). Une page rechargée ensuite n'ouvre plus rien. La note
+  se pose dans la note du journal que le moteur tient (`updateJournalNote`), pas dans une ligne : le formulaire public, qui n'écrit que des lignes, ne peut pas la changer.
+- **Piège de l'essai** : `gfsFrame()` du labo ferme par Échap toute fenêtre ouverte à la reprise : il défaisait la réception qu'on voulait voir reprise (le premier essai attendait 60 s une fenêtre déjà annulée).
+  `run-recevoir-reprise.mjs` cherche le cadre à la main.
+- **Mesuré dans un vrai Grist** (`run-recevoir-reprise.mjs`, fr clair et en sombre, 18 vérifications chacun) : accepter → le journal note l'attente → rechargement réel de la page → la fenêtre se rouvre seule sur le lien
+  (clavier sur le champ, tient dans le panneau, contraste 4,5:1) → lien collé → réponse et même code de contrôle des deux côtés → le fichier arrive dans `GFS_Recus` → la note est effacée → une page rechargée ensuite ne
+  rouvre rien ; seconde réception : rechargement → fenêtre rouverte → « Annuler » défait `GFS_Recus_2` et son journal, la première réception reste, rien ne se rouvre ensuite ; console de GFS muette.
+  **Firefox sans écran** (`test/partager-recevoir-firefox.mjs`, fr/en, clair/sombre, 700 px) : 0 écart. Tests unitaires (flux, reprise de la page) qui échouent sur l'ancien code.
+- **« Copie à jour » sans retour** : mesuré dans un vrai Grist (même sur un serveur local) : 3,8 à 4,8 s entre le clic dans le menu et le niveau changé, sans rien changer à l'écran. Le temps est celui du moteur du kit
+  (`finishEdit` / `resendTables` : une vingtaine de lectures de `/webhooks` toutes les 500 ms, jusqu'à la fin de l'envoi) ; le relire ensuite ne prend que ~40 ms. GFS n'y change rien (kit : un autre dépôt) mais le dit
+  maintenant : le bouton du lien affiche « Mise à jour… » (flèche qui tourne, fermé, sans menu) en 3 ms, le bas de la fenêtre nomme le document, un seul niveau à la fois ; au retour, le bouton reprend son niveau
+  (`run-relier-document-neuf.mjs`, 3 vérifications de plus ; **Firefox** : 0 écart, 24 sur l'ancien code).
+- **Le PDF « qui n'arrive pas »** (même retour) : il arrivait ; la personne a cliqué « Terminé » après avoir attendu et il était bien dans `GFS_Recus` et dans « Partagés avec moi ». Seul le retour visuel manquait.
+- **Pas mesuré** : docs.getgrist.com lui-même (injoignable du cloud) ; la DINUM ; un compte éditeur. Le rechargement de la page est celui du navigateur (`page.reload()`), pas le clic « Publier » de l'interface de Grist.
+

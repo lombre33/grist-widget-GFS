@@ -22,6 +22,8 @@ function fakeEngine({ invitation = INVITATION, known = null, fail = {}, taken = 
     receptionReply: note('reply', { code: 'GRISTSYNC2.reponse', control: 'WGV-ME3' }),
     undoReception: note('undo', undefined),
     ensureMarks: note('marks', undefined),
+    markAwaiting: note('await', undefined),
+    clearAwaiting: note('clear', undefined),
   };
 }
 const names = engine => engine.calls.map(call => call[0]);
@@ -64,7 +66,7 @@ test('accept : tout va dans GFS_Recus, en archive, après la vérification des d
   assert.deepEqual(names(engine), ['read', 'known'], 'lire ne crée rien');
   assert.equal(flow.created, false);
   assert.deepEqual(await flow.accept(), { journal: 'GFS_Journal_Fichiers_GFS', relinked: false, table: 'GFS_Recus' });
-  assert.deepEqual(names(engine).slice(2), ['check', 'create', 'marks'], 'les marques « accepté » et « refusé » naissent tout de suite, avant la réponse à l\'envoyeur');
+  assert.deepEqual(names(engine).slice(2), ['check', 'create', 'marks', 'await'], 'les marques « accepté » et « refusé » naissent tout de suite, avant la réponse à l\'envoyeur');
   assert.deepEqual(engine.calls[4], ['marks', 'GFS_Recus']);
   const [, invitation, plans, options] = engine.calls[3];
   assert.equal(invitation, INVITATION);
@@ -79,7 +81,7 @@ test('accept : un partage déjà reçu de ce document reprend sa réception (nou
   const flow = createTargetFlow({ engine });
   await flow.read('x');
   assert.deepEqual(await flow.accept(), { journal: 'GFS_Journal_Ancien', relinked: true, table: 'GFS_Recus' });
-  assert.deepEqual(names(engine).slice(2), ['relink', 'marks'], 'une réception d\'avant reçoit aussi ses colonnes de marque (additif)');
+  assert.deepEqual(names(engine).slice(2), ['relink', 'marks', 'await'], 'une réception d\'avant reçoit aussi ses colonnes de marque (additif)');
   await flow.abort();
   assert.ok(!names(engine).includes('undo'), 'une réception qui existait avant reste');
 });
@@ -111,7 +113,7 @@ test('reply : le lien collé est rogné, le moteur le vérifie, la fenêtre reç
   const flow = createTargetFlow({ engine });
   await flow.read('x'); await flow.accept();
   assert.deepEqual(await flow.reply('  https://exemple.fr/o/eq/forms/cle/1  '), { code: 'GRISTSYNC2.reponse', control: 'WGV-ME3' });
-  assert.equal(engine.calls.at(-1)[2], 'https://exemple.fr/o/eq/forms/cle/1');
+  assert.equal(engine.calls.find(call => call[0] === 'reply')[2], 'https://exemple.fr/o/eq/forms/cle/1');
   const refused = fakeEngine({ fail: { reply: new Error('linkElsewhere') } });
   const other = createTargetFlow({ engine: refused });
   await other.read('x'); await other.accept();
@@ -153,4 +155,64 @@ test('une réception déjà là garde sa table, même quand GFS_Recus est prise'
   const flow = createTargetFlow({ engine: fakeEngine({ known, taken: ['GFS_Recus', 'GFS_Recus_2'] }) });
   assert.equal((await flow.read('x')).table, 'GFS_Recus_2');
   assert.deepEqual(await flow.accept(), { journal: 'GFS_Journal_Ancien', relinked: true, table: 'GFS_Recus_2' });
+});
+
+test('accept : la réception est notée « en attente de la réponse » dans son journal (pour reprendre si Grist recharge la page) ; une réception reprise le dit aussi ; un échec de la note ne gêne pas le parcours', async () => {
+  const engine = fakeEngine();
+  const flow = createTargetFlow({ engine });
+  await flow.read('x'); await flow.accept();
+  assert.deepEqual(engine.calls.find(call => call[0] === 'await'), ['await', 'GFS_Journal_Fichiers_GFS', { relinked: false, created: [RECEIVED_TABLE] }]);
+  const again = fakeEngine({ known: { journal: 'GFS_Journal_Ancien', note: {} } });
+  const relinked = createTargetFlow({ engine: again });
+  await relinked.read('x'); await relinked.accept();
+  assert.deepEqual(again.calls.find(call => call[0] === 'await'), ['await', 'GFS_Journal_Ancien', { relinked: true, created: [] }]);
+  const failing = fakeEngine({ fail: { markAwaiting: null, await: new Error('refusé') } });
+  const quiet = createTargetFlow({ engine: failing });
+  const warn = console.warn;
+  console.warn = () => {};
+  try {
+    await quiet.read('x');
+    assert.equal((await quiet.accept()).journal, 'GFS_Journal_Fichiers_GFS', 'le parcours continue vers le lien du formulaire');
+  } finally { console.warn = warn; }
+});
+
+test('reply : la réponse rendue efface la note « en attente » ; un lien refusé la laisse', async () => {
+  const engine = fakeEngine();
+  const flow = createTargetFlow({ engine });
+  await flow.read('x'); await flow.accept(); await flow.reply('lien');
+  assert.deepEqual(names(engine).slice(-2), ['reply', 'clear']);
+  assert.equal(engine.calls.at(-1)[1], 'GFS_Journal_Fichiers_GFS');
+  const refused = fakeEngine({ fail: { reply: new Error('linkElsewhere') } });
+  const other = createTargetFlow({ engine: refused });
+  await other.read('x'); await other.accept();
+  await assert.rejects(() => other.reply('x'));
+  assert.ok(!names(refused).includes('clear'), 'la réponse n\'est pas rendue : la réception attend toujours');
+});
+
+// Ce que le journal garde après le rechargement de Grist : la note de la réception, avec « en attente » (`gfsAwaiting`).
+const waiting = (over = {}) => ({ journal: 'GFS_Journal_Fichiers_GFS', note: { name: 'Fichiers GFS', tables: [{ table: 'GFS_Fichiers', dest: 'GFS_Recus_2' }], gfsAwaiting: { relinked: false, created: ['GFS_Recus_2'] }, ...over } });
+
+test('une réception retrouvée après un rechargement reprend à l\'étape du lien : le journal et la table viennent de la note, le lien collé donne la réponse, la note « en attente » s\'efface', async () => {
+  const engine = fakeEngine();
+  const resume = waiting();
+  const flow = createTargetFlow({ engine, resume });
+  assert.equal(flow.journal, 'GFS_Journal_Fichiers_GFS');
+  assert.equal(flow.table, 'GFS_Recus_2', 'la table de la note, pas celle d\'une réception neuve');
+  assert.equal(flow.created, true);
+  assert.deepEqual(await flow.reply('  lien  '), { code: 'GRISTSYNC2.reponse', control: 'WGV-ME3' });
+  assert.deepEqual(engine.calls[0], ['reply', { journal: 'GFS_Journal_Fichiers_GFS', note: resume.note, created: ['GFS_Recus_2'] }, 'lien'], 'le moteur reçoit la réception telle que le journal la garde');
+  assert.deepEqual(names(engine), ['reply', 'clear']);
+});
+
+test('une réception reprise puis abandonnée : le journal et la table qu\'elle a créée sont défaits ; une réception qui existait avant reste, sans note « en attente »', async () => {
+  const engine = fakeEngine();
+  const flow = createTargetFlow({ engine, resume: waiting() });
+  await flow.abort();
+  await flow.abort();
+  assert.deepEqual(engine.calls, [['undo', { journal: 'GFS_Journal_Fichiers_GFS', note: waiting().note, created: ['GFS_Recus_2'] }]], 'défaite une seule fois, avec les tables qu\'elle avait créées');
+  const kept = fakeEngine();
+  await createTargetFlow({ engine: kept, resume: waiting({ gfsAwaiting: { relinked: true, created: [] } }) }).abort();
+  assert.deepEqual(kept.calls, [['clear', 'GFS_Journal_Fichiers_GFS']], 'rien n\'est défait, la note est effacée');
+  const bare = createTargetFlow({ engine: fakeEngine(), resume: waiting({ gfsAwaiting: undefined, tables: [] }) });
+  assert.equal(bare.table, RECEIVED_TABLE, 'une note sans table : le nom de GFS');
 });

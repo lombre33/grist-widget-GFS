@@ -2,7 +2,7 @@
 // La vraie fenêtre (js/sharing/share-receive-window.js) sur un parcours dont les réponses sont des doublures (test/pages/explorateur.js, `window.__receive`) : le moteur et Grist se mesurent dans un vrai Grist (labo/run-partager-recevoir.mjs) ;
 // ici, la mise en page et les gestes, à la vraie souris et au vrai clavier. À chaque écran (le code à coller, l'accord, le lien du formulaire, la réponse) : la fenêtre tient dans la page, son titre et ses boutons restent en place,
 // rien n'en sort, le clavier est sur le bon bouton ; « Continuer » reste grisé tant que rien n'est collé et un refus est dit sans quitter l'écran ; l'accord dit ce que GFS ajoute dans la table libre (GFS_Recus, puis GFS_Recus_2) et
-// n'écrit rien (Échap) ; une réception déjà là dit qu'elle reprend ; le lien refusé laisse la fenêtre où elle est ; la réponse et son code de contrôle s'affichent ; fermer avant la réponse défait ce qui a été créé, après elle non.
+// n'écrit rien (Échap) ; une réception déjà là dit qu'elle reprend ; le lien refusé laisse la fenêtre où elle est ; la réponse et son code de contrôle s'affichent ; fermer avant la réponse défait ce qui a été créé, après elle non ; la fenêtre rouverte par la page que Grist a rechargée revient au lien du formulaire.
 import { createI18n } from '../js/i18n/i18n.js';
 import { Run } from './corbeille-firefox.mjs';
 import { LONG_DOC, windowMeasure, windowTools } from './fenetre-firefox.mjs';
@@ -19,12 +19,19 @@ function toolsFor(page, tag, found) {
     await page.run(name => { window.__receive(name); }, flow);
     return expect(kind, 'la fenêtre devait s\'ouvrir sur le code à coller, le clavier dessus, « Continuer » grisé', s => s.modal && s.modal.keys.includes('sr-invite') && s.modal.focus === 'sr-invite' && s.modal.greyed.includes('sr-continue'));
   };
+  // La fenêtre rouverte par la page rechargée (Grist recharge la page quand le formulaire est publié) : elle s'ouvre directement sur le lien du formulaire.
+  const reopen = async kind => {
+    await run.reset();
+    await page.run(() => { window.__receive('reprise'); });
+    return expect(kind, 'la fenêtre devait s\'ouvrir directement sur le lien du formulaire, le clavier dessus, « Vérifier le lien » grisé, sans redemander le code',
+      s => s.modal && s.modal.keys.includes('sr-link') && !s.modal.keys.includes('sr-invite') && s.modal.focus === 'sr-link' && s.modal.greyed.includes('sr-check'));
+  };
   const paste = async (kind, key, text) => {
     await press(kind, key);
     await page.chord('Control', 'a');
     await page.press(...text.split(''));
   };
-  return { run, snap, expect, press, fits, open, paste };
+  return { run, snap, expect, press, fits, open, reopen, paste };
 }
 
 // Du code collé à l'accord : « Continuer » grisé tant que rien n'est collé, un refus dit sans quitter l'écran, puis l'accord (`table` : la table qu'il annonce).
@@ -99,6 +106,31 @@ async function replyFlow(page, tools, t) {
   if (closed.acts.some(act => act[0] === 'abort' && act[1] !== true)) tools.run.note(kind, 'fermer après la réponse ne devait rien défaire');
 }
 
+// Grist a rechargé la page pendant que la fenêtre attendait le lien du formulaire (retour du porteur du 25/11) : la fenêtre revient à cette étape, le dit en une phrase, et
+// la suite est celle d'avant : le lien, la réponse ; « Annuler » défait ce qui avait été créé.
+async function resumedFlow(page, tools, t) {
+  const kind = 'réception reprise après le rechargement';
+  const link = await tools.reopen(kind);
+  if (!link.modal) return;
+  tools.fits(kind, link, 'le lien du formulaire repris');
+  const said = t('sr.link.resumed', { name: LONG_DOC });
+  if (!link.modal.body.includes(said)) tools.run.note(kind, `la fenêtre devait dire que Grist a rechargé la page et que la réception reprend ici (« ${said} ») (il dit « ${link.modal.body.slice(0, 220)} »)`);
+  if (!link.modal.body.includes(t('sr.link.hint', { journal: `GFS_Journal_${LONG_DOC.replace(/ /g, '_')}` }))) tools.run.note(kind, 'la fenêtre devait redire quelle page ouvrir');
+  if (link.acts.some(act => act[0] === 'read' || act[0] === 'accept')) tools.run.note(kind, 'une réception reprise ne devait ni relire le code ni accepter de nouveau');
+  await tools.paste(kind, 'sr-link', 'https://exemple.fr/o/x/forms/abc/1');
+  await tools.press(kind, 'sr-check');
+  const reply = await tools.expect(kind, 'le lien collé devait donner la réponse et son code de contrôle', s => s.modal && s.modal.keys.includes('sr-code') && s.modal.control === 'N5H-2AH');
+  tools.fits(kind, reply, 'la réponse après la reprise');
+  await tools.press(kind, 'so-close');
+  const closed = await tools.expect(kind, '« Fermer » devait fermer la fenêtre', s => s.modal === null);
+  if (closed.acts.some(act => act[0] === 'abort' && act[1] !== true)) tools.run.note(kind, 'fermer après la réponse ne devait rien défaire');
+  // « Annuler » avant la réponse : le parcours est appelé pour défaire.
+  await tools.reopen(kind);
+  await tools.press(kind, 'so-cancel');
+  const undone = await tools.expect(kind, '« Annuler » devait fermer la fenêtre reprise et défaire ce qui avait été créé', s => s.modal === null && s.acts.some(act => act[0] === 'abort'));
+  if (undone.acts.some(act => act[0] === 'abort' && act[1] === true)) tools.run.note(kind, 'rien n\'avait été répondu');
+}
+
 async function abortFlow(page, tools, t) {
   const kind = 'fermer avant la réponse';
   const accord = await toAccord(page, tools, t, kind, 'ok');
@@ -150,6 +182,7 @@ export async function partagerRecevoirProblems(page, language, tag) {
     await knownFlow(page, tools, t);
     await replyFlow(page, tools, t);
     await abortFlow(page, tools, t);
+    await resumedFlow(page, tools, t);
     await refusalFlow(page, tools, t);
     await otherServerFlow(page, tools, t);
   } catch (error) {

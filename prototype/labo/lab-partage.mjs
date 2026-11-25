@@ -66,3 +66,28 @@ export async function reopenedFrame(run) {
   for (let i = 0; i < 60 && (await posed()) < 2; i += 1) await run.page.waitForTimeout(1000);
   run.frame = await gfsFrame(run.page);
 }
+
+// Ce que la fenêtre « Partager » (onglet « Dans un autre document Grist ») montre entre le clic sur un niveau du menu (« Copie à jour ») et le niveau changé : retour du porteur du 25/11
+// (docs.getgrist.com : 4 à 5 secondes sans rien à l'écran). `watchLevel` pose l'observation AVANT le clic dans le menu ; `levelReport` rend l'heure du clic, ce que la première ligne montrait à chaque
+// changement de la fenêtre (niveau, bouton occupé ou non, son texte, le bas de la fenêtre) et le moment où le niveau a changé.
+export const watchLevel = frame => frame.evaluate(() => {
+  const root = document.querySelector('.mod.sh');
+  window.__lvl = { clickAt: null, log: [] };
+  document.addEventListener('click', event => { if (window.__lvl.clickAt === null && event.target.closest('.menu-item')) window.__lvl.clickAt = performance.now(); }, true);
+  const snap = () => {
+    const row = root.querySelector('.rr[data-link]');
+    const button = row && row.querySelector('.lvl');
+    const foot = root.querySelector('.mod-note');
+    window.__lvl.log.push({ at: performance.now(), level: row && row.dataset.level, busy: button && button.getAttribute('aria-busy'), label: button && button.textContent.replace(/\s+/g, ' ').trim(),
+      foot: foot && foot.textContent.replace(/\s+/g, ' ').trim() });
+  };
+  new MutationObserver(snap).observe(root, { subtree: true, childList: true, attributes: true, characterData: true });
+});
+export const levelReport = frame => frame.evaluate(() => {
+  const { clickAt, log } = window.__lvl;
+  const busy = log.find(entry => entry.busy === 'true');
+  const done = log.find(entry => entry.level === 'live');
+  const written = busy && log.find(entry => entry.at > busy.at && entry.foot !== busy.foot); // le moteur a fini d'écrire : le bas de la fenêtre change, la relecture des liens commence
+  return { writtenAfter: written ? Math.round(written.at - clickAt) : null, busyAfter: busy ? Math.round(busy.at - clickAt) : null, busyLabel: busy ? busy.label : null, busyFoot: busy ? busy.foot : null,
+    doneAfter: done ? Math.round(done.at - clickAt) : null, last: log[log.length - 1] || null, anyBusyAtEnd: log.length ? log[log.length - 1].busy === 'true' : null };
+});

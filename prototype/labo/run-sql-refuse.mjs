@@ -13,7 +13,7 @@ import { serve } from './lab-server.mjs';
 import { chromium, say, check } from './lab-common.mjs';
 import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { PAGE_PORT, openGfs } from './lab-pdf.mjs';
-import { reopened } from './lab-poids.mjs';
+import { install, loads as loadsOf } from './lab-sql.mjs';
 import { apply } from './lab-droits.mjs';
 
 const lang = process.env.LAB_LANG || 'fr';
@@ -40,35 +40,8 @@ const SMALL = ['Attestation', 'Convocation', 'Lettre'];
 const BIG = Array.from({ length: Number(process.env.BIG_COUNT || 14) }, (unused, i) => `Gros ${String(i + 1).padStart(3, '0')}`); // 14 modèles de 400 Ko : plus de 4 Mo, à partir desquels GFS lit les fichiers en lecture légère (js/explorer/explorer-sql.js)
 const NAMES = [...SMALL, ...BIG].sort();
 
-// Ce que la page demande à `/sql`, et ce qu'elle en reçoit : `answer` vaut « 200 », « 403 Grist » (réponse lue, en-têtes CORS de Grist) ou « bloquée » (le pare-feu : pas d'en-tête CORS, la page ne lit rien).
-const net = [];
-const kindOf = q => (/COUNT\(\*\)/.test(q) ? 'compte' : /_grist_Tables_column/.test(q) ? 'structure' : /pragma_page_count/.test(q) ? 'poids' : /gfs_octets/.test(q) ? 'lignes' : 'autre');
-
-async function install(context) {
-  context.on('response', response => {
-    if (/\/api\/docs\/[^/]+\/sql\?/.test(response.url())) net.push({ q: new URL(response.url()).searchParams.get('q'), answer: response.status() === 200 ? '200' : `${response.status()} Grist` });
-  });
-  context.on('requestfailed', request => {
-    if (/\/api\/docs\/[^/]+\/sql\?/.test(request.url())) net.push({ q: new URL(request.url()).searchParams.get('q'), answer: 'bloquée' });
-  });
-  // La doublure du pare-feu : la requête n'arrive pas à Grist et la page n'en lit rien (un 403 sans en-tête CORS ne lui rend qu'une erreur de réseau : `route.fulfill` de Playwright ajoute lui-même l'en-tête CORS, donc
-  // c'est `abort` qui rend ce que la page voit).
-  await context.route(/\/api\/docs\/[^/]+\/sql\?/, async route => {
-    const q = new URL(route.request().url()).searchParams.get('q') || '';
-    await new Promise(resolve => setTimeout(resolve, DELAY_MS));
-    if (firewall.test(q)) await route.abort('failed');
-    else await route.continue();
-  });
-}
-
-const summary = () => {
-  const out = {};
-  for (const { q, answer } of net) { const key = `${kindOf(q)} ${answer}`; out[key] = (out[key] || 0) + 1; }
-  return out;
-};
 // La liste ne dessine que les lignes qu'on voit : avec 300 modèles, elle montre les premiers, dans l'ordre.
 const sameNames = shown => JSON.stringify(shown) === JSON.stringify(NAMES.slice(0, shown.length));
-const names = frame => frame.locator('.ls-row:not(.folder) .t').allInnerTexts().then(list => [...list].sort());
 
 // Un document d'essai : les quatre tables (l'ancienne vide, l'anglaise avec trois modèles), et, si `rules`, une règle d'accès qui fait refuser `/sql` au jeton en lecture seule.
 async function seed(run, rules) {
@@ -84,44 +57,30 @@ async function seed(run, rules) {
   }
 }
 
-// Trois chargements de la page : ce que chacun envoie à `/sql`, ce que l'explorateur montre, ce que GFS dit.
-async function loads(run, label) {
-  const seen = [];
-  for (let i = 1; i <= LOADS; i++) {
-    net.length = 0;
-    const started = Date.now();
-    await run.page.reload();
-    const frame = await reopened(run.page);
-    await frame.waitForFunction(() => document.body.dataset.explorerStats, null, { timeout: 60000 });
-    const listed = Date.now() - started; // du rechargement à la liste lue (la mesure de `explorerStats` : la fin de la lecture des fichiers)
-    await run.page.waitForTimeout(WAIT_MS);
-    const shown = await names(frame);
-    seen.push({ load: i, listed, sent: summary(), total: net.length, refused: net.filter(entry => entry.answer !== '200').length, shown });
-    say(`  ${label} chargement ${i} :`, { listeMs: listed, demandes: net.length, refusées: seen[i - 1].refused, détail: seen[i - 1].sent, fichiers: shown });
-  }
-  return seen;
-}
+const loads = (run, label) => loadsOf(run, label, { count: LOADS, wait: WAIT_MS });
 
 const pluginApi = await requireServer();
 const pages = createServer(serve(process.env.REPO_DIR, undefined, openConnectIn(/prototype[/\\]transfer[/\\]index\.html$/))).listen(PAGE_PORT, '127.0.0.1');
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
 try {
   const context = await newContext(browser, pluginApi, { colorScheme: scheme });
-  await install(context);
+  await install(context, { delay: DELAY_MS, blocks: q => firewall.test(q) });
   const count = each => Object.entries(each.sent).filter(([key]) => key.startsWith('compte')).reduce((sum, [, n]) => sum + n, 0);
 
   if (PASSES.includes('1')) {
-  say('--- 1. un document à règles d\'accès (Grist refuse `/sql` au jeton en lecture seule), derrière le pare-feu ---');
+  say('--- 1. un document à règles d\'accès (Grist refuse `/sql` au jeton en lecture seule, le propriétaire lit avec le jeton qui peut écrire), derrière le pare-feu ---');
   const ruled = await openGfs(context, { lang, query: SUITE });
   await seed(ruled, true);
   const first = await loads(ruled, 'règles');
   check('l\'explorateur montre les trois modèles, à chaque chargement', first.every(each => sameNames(each.shown)), first.map(each => each.shown));
-  check(`au premier chargement : au plus un compte de lignes refusé (et pas un par table)`, count(first[0]) <= 1, first[0].sent);
+  check('au premier chargement : un seul refus, celui du jeton prudent (et pas un par table)', first[0].refused <= 1, first[0].sent);
   check('le poids (jeton qui peut écrire, d\'emblée : Grist a déjà refusé le jeton en lecture seule) ne se fait refuser à aucun chargement', first.every(each => each.sent['poids 200'] === 1 && !Object.keys(each.sent).some(key => key.startsWith('poids') && key !== 'poids 200')), first.map(each => each.sent));
-  check('aux chargements suivants (même onglet) : aucun compte de lignes, aucune lecture de la structure', first.slice(1).every(each => count(each) === 0 && !Object.keys(each.sent).some(key => key.startsWith('structure'))),
+  check('aux chargements suivants (même onglet) : aucune requête refusée, tout part d\'emblée avec le jeton qui peut écrire (la note `writable` de l\'onglet)', first.slice(1).every(each => each.refused === 0),
     first.slice(1).map(each => each.sent));
+  check('la lecture légère sert aux chargements suivants (le document est connu lourd) : la structure et les lignes à 200',
+    first.slice(1).every(each => each.sent['structure 200'] === 1 && each.sent['lignes 200'] === 1), first.map(each => each.sent));
   const warns = ruled.problems.filter(problem => /lecture légère des fichiers est éteinte/.test(problem));
-  check('GFS dit une fois par chargement au plus que la lecture légère est éteinte', warns.length <= LOADS, warns.length);
+  check('GFS ne dit jamais que la lecture légère est éteinte (le propriétaire lit avec le jeton qui peut écrire)', warns.length === 0, warns);
   const expected = /lecture légère des fichiers est éteinte|porte plusieurs noms dans le document/; // dits depuis toujours : l'éteinte, et le document aux deux jeux de noms
   const unknown = ruled.problems.filter(problem => !ruled.allow.some(known => known.test(problem)) && !expected.test(problem));
   check('aucune autre erreur ni avertissement de GFS dans la console', unknown.length === 0, unknown);

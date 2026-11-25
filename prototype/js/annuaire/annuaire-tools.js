@@ -6,6 +6,7 @@
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { switchButton } from './annuaire-setup-shared.js';
+import { copyDate } from './annuaire-sub-menu.js';
 
 // La pastille de la barre : le triangle d'alerte et le nombre de points (ambre). `state` : { admin, on (au moins un contrôle allumé), total }. Un lecteur qui
 // n'est pas administrateur la voit grisée ; sans contrôle allumé, un clic dit où les allumer.
@@ -25,6 +26,20 @@ export function mailButton({ count, addresses }, t) {
   const label = addresses ? t('an.mail.tip', { n: count }) : t('an.mail.noAddress');
   return h('button', { type: 'button', class: 'btn sm an-tbtn an-mailbtn', title: label, 'aria-label': label, 'aria-disabled': addresses ? null : 'true',
     dataset: { act: 'mail', fk: 'mail' } }, icon('mail'), h('span', { class: 'an-tb-t' }, t('an.write')));
+}
+
+// Le pied de la fenêtre : combien de personnes passent la recherche et les filtres et, quand des valeurs sont choisies, lesquelles, avec le moyen de les
+// retirer d'un clic (« 10 sur 16 personnes · Titulaire, Siège · Réinitialiser » : la maquette du porteur). `sub` : la copie d'un sous-annuaire (sa date) ;
+// `merged` : la vue « Tous mes annuaires » ({ sources, skipped }) ; `chosen` : les valeurs choisies, déjà dites.
+export function footNodes({ t, locale, total, found, chosen, sub, merged }) {
+  const count = found === total ? t('an.foot.all', { n: total }) : t('an.foot.some', { n: found, total });
+  const date = sub ? copyDate(sub.at, locale) : '';
+  const stamp = sub ? `${count} · ${date ? t('an.sub.stamp', { date }) : t('an.sub.stampNoDate')}` : count;
+  const text = merged ? [count, t('an.merge.foot', { n: merged.sources.filter(each => each.on).length }),
+    merged.skipped.length ? t('an.merge.skipped', { names: merged.skipped.join(', ') }) : ''].filter(Boolean).join(' · ') : stamp;
+  return [h('span', { class: 'an-foot-t' }, chosen ? `${text} · ${chosen}` : text),
+    chosen ? h('button', { type: 'button', class: 'an-reset', dataset: { act: 'filters-reset', fk: 'filters-reset' } }, t('an.filters.reset')) :
+      null].filter(Boolean);
 }
 
 // La pastille d'une personne dont la fiche est masquée (vue d'un administrateur, ou de la personne elle-même).

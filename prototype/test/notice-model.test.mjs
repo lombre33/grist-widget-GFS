@@ -1,6 +1,6 @@
 // Les notifications de GFS (js/sharing/notice-model.js et notice-store.js ; étude du 25/11, choix du porteur : la cloche annonce « ce qu'on me partage », « lu » dans
 // une table du document). Le calcul de ce qui est donné, les règles de la table, et le magasin avec un document de doublure ; ce que Grist accepte vraiment des
-// règles (un éditeur n'écrit que ses lignes, seule « Lu » change) se mesure dans un vrai Grist (labo/run-notifications.mjs, faits vérifiés 179).
+// règles (un éditeur n'écrit que ses lignes, seule « Lu » change) se mesure dans un vrai Grist (banc `n9-notifications-gfs.mjs` des fichiers du projet, faits vérifiés 179).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { NOTICES_TABLE, noticeColumns, noticeRules, noticeFixedRules, noticeReadRules, givenToMe, noticeRows, planNotices, sharesToMe } from '../js/sharing/notice-model.js';

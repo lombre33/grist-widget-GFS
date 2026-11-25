@@ -13,12 +13,13 @@ const JOURNAL = /^GFS_Journal_/;
 // Ce que les tables du document disent : un partage en cours d'envoi (la table technique), un partage reçu (un journal).
 export const sharingNeeds = tables => ({ sending: tables.includes(SYNC_TABLE_NAME), receiving: tables.some(name => JOURNAL.test(name)) });
 
-// deps : { docApi (grist.docApi), transfer, language, busy, isOwner () → vrai/faux/null (la preuve qu'a GFS) } ; `engine` : { load, receive } (les essais le
-//   remplacent) ; `close` : la pose des règles des tables techniques (js/sharing/sync-rules.js) ; `mark` : la pose des colonnes de marque des tables reçues.
-//   Rend ce qui a été repris, sans rien lever : une page qui ne
-//   peut pas
-//   lire ses tables (accès refusé) ne reprend rien. Les tables techniques ne sont lisibles que des propriétaires (audit de sécurité du 09/11) : les boucles du
-//   moteur ne tournent que sur leur page, qui pose aussi les règles qui manquent (Grist recharge alors le document, une seule fois).
+// deps : { docApi (grist.docApi), transfer, language, busy, isOwner () → vrai/faux/null (la preuve qu'a GFS), resumeReception () → promesse (rouvre la fenêtre
+//   d'une réception qui attend le lien du formulaire : js/sharing/share-receive.js) } ; `engine` : { load, receive } (les essais le remplacent) ; `close` : la
+//   pose
+//   des règles des tables techniques (js/sharing/sync-rules.js) ; `mark` : la pose des colonnes de marque des tables reçues.
+//   Rend ce qui a été repris, sans rien lever : une page qui ne peut pas lire ses tables (accès refusé) ne reprend rien. Les tables techniques ne sont lisibles
+//   que des propriétaires (audit de sécurité du 09/11) : les boucles du moteur ne tournent que sur leur page, qui pose aussi les règles qui manquent (Grist
+//   recharge alors le document, une seule fois).
 export async function resumeSharing(deps, engine = { load: loadSharingEngine, receive: startReceiving }, close = closeSharingTables, mark = ensureMarks) {
   let tables;
   try { tables = (await deps.docApi.listTables()).map(String); } catch (error) { return { sending: false, receiving: false }; }
@@ -32,5 +33,8 @@ export async function resumeSharing(deps, engine = { load: loadSharingEngine, re
   if (needs.receiving) await mark(deps.docApi, tables).catch(error => console.warn('GFS : les marques des fichiers reçus ne se posent pas', error));
   if (needs.receiving) await engine.receive(deps);
   else if (needs.sending) await engine.load(deps);
+  // Une réception qui attendait le lien du formulaire quand Grist a rechargé la page (publier le formulaire la recharge) : la fenêtre revient à cette étape.
+  // Après la pose des règles (qui recharge la page une fois) : sinon la fenêtre s'ouvrirait pour être fermée aussitôt par le rechargement.
+  if (needs.receiving && deps.resumeReception) await deps.resumeReception();
   return needs;
 }

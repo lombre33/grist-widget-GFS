@@ -53,8 +53,9 @@ export function loadSharingEngine(deps) {
 // Le côté qui reçoit : le moteur et, en plus, les fonctions d'une réception (kit/js/synchro/target/receive.js), que seul celui qui reçoit charge
 // (js/sharing/share-receive-flow.js).
 export async function loadReceiveEngine(deps) {
-  const [engine, receive, enginePort, marks] = await Promise.all([loadSharingEngine(deps), import('../../kit/js/synchro/target/receive.js'),
-    import('../../kit/js/synchro/port.js'), import('./received-marks.js')]);
+  const [engine, receive, enginePort, marks, journals, received] = await Promise.all([loadSharingEngine(deps), import('../../kit/js/synchro/target/receive.js'),
+    import('../../kit/js/synchro/port.js'), import('./received-marks.js'), import('../../kit/js/synchro/target/journals.js'),
+    import('../../kit/js/synchro/logic/received.js')]);
   return Object.freeze({
     ...engine,
     // Une table de ce nom existe déjà dans ce document (Grist ne distingue pas les majuscules).
@@ -70,6 +71,12 @@ export async function loadReceiveEngine(deps) {
     createReception: receive.createReception,
     receptionReply: receive.receptionReply,
     undoReception: receive.undoReception,
+    // La réception qui attend le lien du formulaire (js/sharing/share-receive-flow.js) : Grist recharge la page quand la personne publie le formulaire, et la
+    // fenêtre disparaît. Un mot dans la note du journal (`gfsAwaiting`, ajouté, jamais retiré d'un champ du moteur) dit que la réponse n'est pas rendue ; la
+    // fenêtre revient à l'étape du lien à l'ouverture suivante. `info` : { relinked, created } (ce que `abort` a besoin de savoir).
+    markAwaiting: (journal, info) => journals.updateJournalNote(journal, note => ({ ...note, gfsAwaiting: info })),
+    clearAwaiting: journal => journals.updateJournalNote(journal, ({ gfsAwaiting, ...note }) => note),
+    awaitingReceptions: async () => received.receivedJournals(await enginePort.readSchema()).filter(each => each.note.gfsAwaiting),
   });
 }
 

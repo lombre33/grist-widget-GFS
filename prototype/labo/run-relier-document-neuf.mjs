@@ -16,7 +16,7 @@ import { openConnectIn, requireServer, newContext } from './lab-serveur.mjs';
 import { createI18n } from '../js/i18n/i18n.js';
 import { PAGE_PORT, openGfs, importPdf, pdfFile, waitForNames, openRowMenu, contrastProblems, shot as pdfShot } from './lab-pdf.mjs';
 import { fits, gfsFrame } from './lab-droits.mjs';
-import { startEngine, formLink, sendComparing, reopenedFrame } from './lab-partage.mjs';
+import { startEngine, formLink, sendComparing, reopenedFrame, watchLevel, levelReport } from './lab-partage.mjs';
 import { seedForms } from './seed.mjs';
 import { FILES_COLUMN_IDS, FILES_TABLE } from '../js/files/gfs-files.js';
 import { HELPER_COLUMNS } from '../js/sharing/share-other-flow.js';
@@ -120,7 +120,21 @@ try {
   await source.frame.locator('[data-fk="share-tab-other"]').click();
   await source.frame.locator('.mod.sh .rr[data-link]').waitFor({ timeout: 20000 });
   await source.frame.locator('.mod.sh .rr[data-link] .lvl').first().click();
+  await watchLevel(source.frame);
+  // LAB_TRACE=1 : chaque requête du navigateur entre le clic et le niveau changé (où vont les secondes d'attente)
+  const trace = [];
+  if (process.env.LAB_TRACE) {
+    const begun = Date.now();
+    for (const page of [source.page, target.page]) page.on('requestfinished', async request => trace.push([Date.now() - begun, request.method(), request.url().replace(/^https?:\/\/[^/]+/, '').slice(0, 110), (await request.timing()).responseEnd | 0]));
+  }
   await source.frame.locator('.menu .menu-item', { hasText: t('so.level.live') }).click();
+  await source.frame.locator('.mod.sh .rr[data-link][data-level="live"]').waitFor({ timeout: 60000 });
+  if (trace.length) say(trace.map(row => row.join(' ')).join('\n'));
+  const level = await levelReport(source.frame);
+  say(`« ${t('so.level.live')} » : bouton occupé après ${level.busyAfter} ms, condition écrite après ${level.writtenAfter} ms, niveau changé après ${level.doneAfter} ms`);
+  check('le clic sur « Copie à jour » montre tout de suite que ça travaille (bouton occupé en moins de 300 ms)', level.busyAfter !== null && level.busyAfter < 300, level);
+  check('le bouton occupé dit « ' + t('so.level.working') + ' » et le bas de la fenêtre dit avec quel document', level.busyLabel === t('so.level.working') && level.busyFoot.includes(t('so.level.working.foot', { doc: 'x' }).split('x')[0]), level);
+  check('une fois le niveau changé, plus rien n\'est occupé', level.anyBusyAtEnd === false && level.last.label === t('so.level.live'), level);
   let rows = [];
   for (let i = 0; i < 90 && !rows.some(row => row.Nom === 'Facture.pdf' && row.Contenu); i += 1) { rows = await target.rest.rows('GFS_Recus'); if (!rows.some(row => row.Contenu)) await source.page.waitForTimeout(1500); }
   check('Facture arrive chez l\'autre avec son contenu, sans nouveau code', rows.some(row => row.Nom === 'Facture.pdf' && row.Contenu) && (await source.frame.locator('.mod.so').count()) === 0, rows.map(row => row.Nom));

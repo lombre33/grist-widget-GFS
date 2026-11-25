@@ -40,7 +40,7 @@ export class OrgView {
       modes: h('div', { class: 'an-seg', role: 'group' }),
       out: button('org-out', 'minus'), zoom: h('span', { class: 'an-zoom', 'aria-live': 'polite' }), in: button('org-in', 'plus'),
       fit: button('org-fit', 'fit'), all: button('org-all', 'chev-down'),
-      tools: h('div', { class: 'an-org-tools' }),
+      tools: h('div', { class: 'an-org-tools' }), filters: h('div', { class: 'an-org-fbar' }),
       canvas: h('div', { class: 'an-org-canvas' }),
       empty: h('p', { class: 'an-org-none', hidden: true }),
     };
@@ -49,7 +49,7 @@ export class OrgView {
     this.element = h('div', { class: 'an-org' },
       h('div', { class: 'an-org-bar' }, this.#refs.modes, this.#refs.tools, h('span', { class: 'an-grow' }),
         h('div', { class: 'an-zoombar', role: 'group' }, this.#refs.out, this.#refs.zoom, this.#refs.in, this.#refs.fit, this.#refs.all)),
-      this.#refs.scroll);
+      this.#refs.filters, this.#refs.scroll);
     this.#refs.canvas.style.setProperty('--ow', `${BOX.w}px`);
     this.#refs.canvas.style.setProperty('--oh', `${BOX.h}px`);
     this.element.addEventListener('click', event => this.#click(event));
@@ -63,6 +63,9 @@ export class OrgView {
 
   // L'endroit des boutons que la fenêtre ajoute à la barre (les filtres, les personnes) : elle les dessine, l'organigramme ne fait que leur donner la place.
   get tools() { return this.#refs.tools; }
+
+  // L'endroit de la barre des filtres, sous la barre d'outils, quand l'annuaire montre ses filtres en barre.
+  get filters() { return this.#refs.filters; }
 
   // Montre `roots` ([{ id, ch, card, pick, people }]). `key` : change quand ce sont d'autres éléments (un autre annuaire, l'autre organigramme) : les branches
   // repliées et le zoom repartent de zéro, sinon ils restent comme la personne les a laissés. `expand` : change quand ce qu'on voit change de fond (les

@@ -196,7 +196,8 @@ export class GfsController {
   // premier refus du serveur les ferme toutes les deux, sur la page et sur l'onglet (js/broker/sql-gate.js) : la console de la personne ne reçoit pas la
   // même requête refusée à chaque affichage, et l'explorateur relit les tables en entier.
   #buildLightReads(docId) {
-    this.sqlGate = createSqlGate({ sql: statement => this.transfer.sql(statement), docId, store: key => keyStore(window, key, 'sessionStorage') });
+    this.sqlGate = createSqlGate({ sql: (statement, writable) => this.transfer.sql(statement, { writable }), docId,
+      store: key => keyStore(window, key, 'sessionStorage') });
     // Les noms que le document donne aux tables et aux colonnes des apps (js/apps/doc-names.js) : lus avant chaque lecture des fichiers ; le nombre de lignes
     // d'une table n'est lu que si le document la porte sous deux noms.
     this.names = new DocNames({ doc: this.port.doc, count: table => countRows(table, { sql: statement => this.sqlGate.read(statement), doc: this.port.doc }) });
@@ -304,7 +305,8 @@ export class GfsController {
     // (js/sharing/sync-resume.js ; rien ne se charge sans table de partage).
     whenReceived(() => { void this.pageTree.tidy(); void this.#refreshReceived(); });
     if (!this.writeBlock()) void resumeSharing({ docApi: this.grist.docApi, transfer: this.transfer, language: () => this.lang, busy: () => false,
-      isOwner: () => this.transfer.isOwner() }).catch(error => console.warn('GFS : le partage entre documents ne reprend pas', error));
+      isOwner: () => this.transfer.isOwner(), resumeReception: () => this.otherDocuments.resumeReceive() }).catch(error =>
+        console.warn('GFS : le partage entre documents ne reprend pas', error));
     this.weight.watch(); // le poids du document, 5 s plus tard (js/weight/weight-guard.js) : en dernier, rien d'autre n'attend après lui
   }
 

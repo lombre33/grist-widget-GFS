@@ -8,7 +8,7 @@ import { familyOf } from '../explorer/explorer-model.js';
 import { activeExtensionIds, extensionsOf } from '../apps/extensions.js';
 import { rowKey } from '../apps/modules-window.js';
 import { FILES_APP } from '../files/gfs-files.js';
-import { ANNUAIRES_APP } from '../files/annuaire-files.js';
+import { ANNUAIRES_APP, ANNUAIRES_MANIFEST } from '../files/annuaire-files.js';
 import { RECEIVED_APP } from '../sharing/received-files.js';
 import { importFormats, acceptsOpening } from '../files/import-file.js';
 import { readersOf, chooseReader } from './reading.js';
@@ -70,8 +70,20 @@ export class Entries {
         }
       }
     }
+    entries.push(this.#annuaireEntry());
     return entries;
   };
+
+  // L'article « Annuaire » de « Nouveau » (retour du porteur, 25/11 : « juste annuaire ») : le module de GFS, aucune app. Le premier annuaire du document, ou
+  // un sous-annuaire de celui qu'on voit (js/annuaire/annuaire-control.js, `createNew`) ; `kind` le distingue d'un type d'app (js/broker/openings.js,
+  // `openNew`).
+  #annuaireEntry() {
+    const { c } = this;
+    const type = ANNUAIRES_MANIFEST.fichiers[0].types[0];
+    const lock = this.lockOf({ app: ANNUAIRES_APP, known: true, typeInfo: type });
+    return { ...this.#entry(ANNUAIRES_MANIFEST, type, lock), kind: 'annuaire', label: label(type.nom, c.lang),
+      hint: lock ? (lock.hint || lock.text) : c.t('an.newMenuHint') };
+  }
 
   // Le sous-menu « Importer » : un article par format que le manifeste d'une app déclare (`actions.importer`, contrats 2.7, point 4), au nom du format ; le
   // type qu'il crée le suit (l'icône et le mot du type vont ensemble). Puis les formats que GFS garde lui-même (les PDF), et l'arrivée d'un partage d'un autre

@@ -89,7 +89,8 @@ async function playScreen(run, frame, keyA) {
     given.some(row => row.Personne === OWNER && row.Droit === 'ecriture'), given);
   const seenSpace = (await rows(run, 'GFS_Espaces')).find(row => row.Cle === made.Cle);
   check('l\'espace voit l\'éditeur (membre du groupe Achats), pas le lecteur', has(seenSpace.Voit, EDITOR) && !has(seenSpace.Voit, VIEWER), seenSpace);
-  // « Ajouter un groupe » > « Créer le groupe … » (demande du 25/11) : sans impasse, le nom tapé crée le groupe et l'ajoute à l'espace en lecture, dans UNE écriture ; il naît sans personne.
+  // « Ajouter un groupe » > « Créer le groupe … » (demandes du 25/11) : sans impasse, le nom tapé ouvre le formulaire à pastilles ; « Créer le groupe » écrit le groupe avec ses personnes et son entrée dans
+  // l'espace en lecture, dans UNE écriture.
   await frame.locator('[data-fk="manage-space-add-group"]').click();
   await frame.locator('[data-fk="pick-search"]').fill('Ventes');
   check('« Créer le groupe … » est dans la liste, disponible, avec le nom tapé', await frame.locator('[data-fk="pick-create"]').getAttribute('aria-disabled') === null &&
@@ -97,27 +98,54 @@ async function playScreen(run, frame, keyA) {
   check('la liste tient à 700 × 400 avec « Créer… » visible', await fits(frame, '.mod.pk') && await frame.locator('[data-fk="pick-create"]').isVisible());
   await shot(frame, 'groupe-creer-liste');
   await frame.locator('[data-fk="pick-create"]').click();
-  await frame.locator('.mod.mg .rr[data-space-group="Ventes"]').waitFor({ timeout: 15000 });
-  const ventes = (await rows(run, 'GFS_Groupes')).find(row => row.Nom === 'Ventes');
-  check('le groupe Ventes est créé, sans personne', ventes && ventes.Nb === 0 && !ventes.PersonnesIci, ventes);
-  const entered = (await rows(run, 'GFS_Partages')).find(row => row.Cible === `espace:${made.Cle}` && row.Personne === '#Ventes');
-  check('il entre dans l\'espace en lecture, la ligne est valide', entered && entered.Droit === 'lecture' && entered.Valide === true, entered);
-  const said = (await frame.locator('.mod.mg .mod-note').innerText()).replace(/\s+/g, ' ');
-  check('le pied dit où ajouter ses personnes', said === t('manage.spaces.created', { name: 'Ventes', tab: t('manage.tab.groups') }), said);
-  await shot(frame, 'groupe-creer-espace');
-  // ses personnes, une à la fois (demande du 25/11) : le groupe neuf se complète, et l'espace voit la personne
-  await frame.locator('[data-fk="manage-tab-groups"]').click();
-  await frame.locator('[data-fk="manage-edit-Ventes"]').click();
+  await frame.locator('[data-fk="manage-group-people"]').waitFor();
+  check('le formulaire s\'ouvre avec le nom tapé, le clavier sur les personnes, rien n\'est écrit', await frame.locator('[data-fk="manage-group-name"]').inputValue() === 'Ventes' &&
+    await frame.evaluate(() => document.activeElement && document.activeElement.dataset.fk) === 'manage-group-people' && !(await rows(run, 'GFS_Groupes')).some(row => row.Nom === 'Ventes'));
   await frame.locator('[data-fk="manage-group-people"]').fill(VIEWER);
   await frame.locator('[data-fk="manage-group-people"]').press('Enter');
   await frame.locator(`.mg-chip[data-person="${VIEWER}"]`).waitFor();
+  check('le formulaire du groupe d\'un espace tient à 700 × 400, « Créer le groupe » visible', await fits(frame, '.mod.mg') && await frame.locator('[data-fk="manage-group-save"]').isVisible());
+  await shot(frame, 'groupe-creer-espace-formulaire');
+  await frame.locator('[data-fk="manage-group-save"]').click();
+  await frame.locator('.mod.mg .rr[data-space-group="Ventes"]').waitFor({ timeout: 15000 });
+  const ventes = (await rows(run, 'GFS_Groupes')).find(row => row.Nom === 'Ventes');
+  check('le groupe Ventes est créé avec la personne tapée', ventes && ventes.Nb === 1 && ventes.PersonnesIci === VIEWER, ventes);
+  const entered = (await rows(run, 'GFS_Partages')).find(row => row.Cible === `espace:${made.Cle}` && row.Personne === '#Ventes');
+  check('il entre dans l\'espace en lecture, la ligne est valide', entered && entered.Droit === 'lecture' && entered.Valide === true, entered);
+  const said = (await frame.locator('.mod.mg .mod-note').innerText()).replace(/\s+/g, ' ');
+  check('le pied dit combien de personnes le groupe a', said === t('manage.spaces.created.people', { name: 'Ventes', n: 1 }), said);
+  const seenByVentes = (await rows(run, 'GFS_Espaces')).find(row => row.Cle === made.Cle);
+  check('l\'espace voit le lecteur (membre du groupe Ventes) dès la création', has(seenByVentes.Voit, VIEWER), seenByVentes);
+  await shot(frame, 'groupe-creer-espace');
+  // sans personne : le groupe naît vide, et le pied dit où en ajouter
+  await frame.locator('[data-fk="manage-space-add-group"]').click();
+  await frame.locator('[data-fk="pick-search"]').fill('Vide');
+  await frame.locator('[data-fk="pick-create"]').click();
+  await frame.locator('[data-fk="manage-group-save"]').click();
+  await frame.locator('.mod.mg .rr[data-space-group="Vide"]').waitFor({ timeout: 15000 });
+  const vide = (await rows(run, 'GFS_Groupes')).find(row => row.Nom === 'Vide');
+  check('« Créer le groupe » sans personne crée le groupe vide, dans l\'espace', vide && vide.Nb === 0 && !vide.PersonnesIci &&
+    (await rows(run, 'GFS_Partages')).some(row => row.Cible === `espace:${made.Cle}` && row.Personne === '#Vide' && row.Droit === 'lecture'), vide);
+  const saidEmpty = (await frame.locator('.mod.mg .mod-note').innerText()).replace(/\s+/g, ' ');
+  check('le pied dit où ajouter ses personnes', saidEmpty === t('manage.spaces.created', { name: 'Vide', tab: t('manage.tab.groups') }), saidEmpty);
+  // « Annuler » revient à l'espace sans rien écrire
+  await frame.locator('[data-fk="manage-space-add-group"]').click();
+  await frame.locator('[data-fk="pick-search"]').fill('Fantôme');
+  await frame.locator('[data-fk="pick-create"]').click();
+  await frame.locator('[data-fk="manage-group-cancel"]').click();
+  await frame.locator('[data-fk="manage-space-add-group"]').waitFor();
+  check('« Annuler » n\'écrit aucun groupe', !(await rows(run, 'GFS_Groupes')).some(row => row.Nom === 'Fantôme'));
+  // ses personnes, une à la fois (demande du 25/11) : le groupe se complète plus tard dans « Groupes », et l'espace voit la personne
+  await frame.locator('[data-fk="manage-tab-groups"]').click();
+  await frame.locator('[data-fk="manage-edit-Ventes"]').click();
+  await frame.locator('[data-fk="manage-group-people"]').fill(EDITOR);
+  await frame.locator('[data-fk="manage-group-people"]').press('Enter');
+  await frame.locator(`.mg-chip[data-person="${EDITOR}"]`).waitFor();
   await shot(frame, 'groupe-pastille');
   await frame.locator('[data-fk="manage-group-save"]').click();
-  await frame.locator('.rr[data-group="Ventes"]').filter({ hasText: '1' }).waitFor({ timeout: 15000 });
+  await frame.locator('.rr[data-group="Ventes"]').filter({ hasText: '2' }).waitFor({ timeout: 15000 });
   const filled = (await rows(run, 'GFS_Groupes')).find(row => row.Nom === 'Ventes');
-  check('le groupe compte la personne tapée en pastille (une adresse par ligne dans la table)', filled && filled.Nb === 1 && filled.PersonnesIci === VIEWER, filled);
-  const seenByVentes = (await rows(run, 'GFS_Espaces')).find(row => row.Cle === made.Cle);
-  check('l\'espace voit maintenant le lecteur (membre du groupe Ventes)', has(seenByVentes.Voit, VIEWER), seenByVentes);
+  check('le groupe compte les deux personnes (une adresse par ligne dans la table)', filled && filled.Nb === 2 && filled.PersonnesIci === `${VIEWER}\n${EDITOR}`, filled);
   await frame.locator('[data-fk="manage-tab-spaces"]').click();
   await frame.locator(`[data-fk="manage-space-${made.Cle}"]`).click();
   await frame.locator('[data-fk="manage-space-remove"]').click();

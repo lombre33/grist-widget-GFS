@@ -266,6 +266,18 @@ function wireManage({ manage, dialog, ctx, opts, reload }) {
   });
 }
 
+// Changer le niveau d'un fichier chez un document relié prend plusieurs secondes sur un serveur lointain (le moteur écrit la condition, puis la fenêtre relit
+// les liens) : le bouton du lien et le bas de la fenêtre le disent tout de suite (retour du porteur du 25/11), jusqu'à la relecture. Un seul niveau à la fois.
+function levelSetter(ctx, write, draw, alive) {
+  return async (link, level) => {
+    if (ctx.busy) return undefined;
+    ctx.busy = link.id;
+    ctx.say(ctx.t('so.level.working.foot', { doc: link.doc.name || link.name }));
+    draw();
+    try { return await write(() => ctx.other.onLevel(link, level)); } finally { ctx.busy = null; if (alive()) draw(); }
+  };
+}
+
 // opts : { container, t, locale, inertTargets, file: { key, name, app }, link?() (la page du document, pour « Prévenir par e-mail »), load() → état,
 //   onAdd(record), onChange(id, patch), onRemove(id) → { ok, message? },
 //   onActivate() → true quand Grist va recharger, onManage() ouvre « Gérer les partages » (propriétaire), startTab ('here' par défaut), other: { why, fileId,
@@ -290,7 +302,7 @@ export function openShare(opts) {
     keepOpen: () => holdClose(ctx, 'escape') });
   close.addEventListener('click', () => { if (!holdClose(ctx, 'done')) done(null); });
   const ctx = { t, container, locale: opts.locale, target: file.key, state: null, pending: null, draft: null, tab: opts.startTab || 'here', links: null,
-    other: null,
+    other: null, busy: null,
     say: text => { status.textContent = text; },
     focus: key => { const node = dialog.querySelector(`[data-fk="${key}"]`); if (node) node.focus(); } };
   // Le bas de la fenêtre : « enregistrés tout de suite », sauf quand une personne est choisie et pas encore ajoutée : ce n'est pas enregistré, et il le dit.
@@ -332,7 +344,7 @@ export function openShare(opts) {
     if (tab === 'other' && ctx.links === null) { draw(); await readLinks(); }
     draw();
   };
-  ctx.setLevel = (link, level) => write(() => ctx.other.onLevel(link, level));
+  ctx.setLevel = levelSetter(ctx, write, draw, () => dialog.isConnected);
   ctx.newDocument = async () => {
     await ctx.other.onNew();
     if (dialog.isConnected) await reload();

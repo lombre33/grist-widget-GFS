@@ -12,7 +12,10 @@
 //             sous
 //             un autre (js/sharing/received-marks.js : sans cela, l'envoyeur écrirait lui-même « accepté ») ;
 //   reply()   le lien du formulaire collé, vérifié (il doit écrire dans CE journal) : le code de réponse et le code de contrôle ;
-//   abort()   défait ce qui vient d'être créé, tant que la réponse n'est pas rendue.
+//   abort()   défait ce qui vient d'être créé, tant que la réponse n'est pas rendue ;
+//   resume    (au départ, `resume` = { journal, note }) la page a été rechargée par Grist quand la personne a publié le formulaire : le parcours reprend à
+//             l'étape
+//             du lien, sur la réception que le journal a gardée (sa note dit qu'elle attend la réponse), sans redemander le code.
 import { RECEIVED_TABLE } from './received-files.js';
 import { reservedMap } from './received-marks.js';
 
@@ -25,9 +28,17 @@ const refused = code => Object.assign(new Error(code), { share: code });
 const withMap = map => (Object.keys(map).length ? { map } : {});
 const hostOf = origin => { try { return new URL(origin).host; } catch (error) { return origin; } };
 
-// deps : { engine, onReplied (rend la main quand la réponse est rendue : la boucle de réception du document démarre) }.
-export function createTargetFlow({ engine, onReplied = () => {} }) {
-  const state = { invitation: null, known: null, table: null, made: null, relinked: false, replied: false };
+// La réception que la page rechargée retrouve : son journal, sa note, et ce que `abort` doit savoir pour la défaire (les tables qu'elle a créées).
+const resumedState = ({ journal, note }) => {
+  const waiting = note.gfsAwaiting || {};
+  return { invitation: { name: note.name }, known: null, table: ((note.tables || [])[0] || {}).dest || RECEIVED_TABLE, relinked: Boolean(waiting.relinked),
+    made: { journal, note, created: Array.isArray(waiting.created) ? waiting.created : [] }, replied: false };
+};
+
+// deps : { engine, onReplied (rend la main quand la réponse est rendue : la boucle de réception du document démarre), resume ({ journal, note } : une réception
+//   qui attend le lien du formulaire, retrouvée après un rechargement) }.
+export function createTargetFlow({ engine, onReplied = () => {}, resume = null }) {
+  const state = resume ? resumedState(resume) : { invitation: null, known: null, table: null, made: null, relinked: false, replied: false };
 
   // La table où arrivent les fichiers de cette réception : une destination ne reçoit les fichiers que d'un seul partage (règle du moteur), donc `GFS_Recus`
   // pour le premier, puis `GFS_Recus_2`, `GFS_Recus_3`… ; une table qui existe déjà n'est jamais reprise (ses lignes ne sont pas à nous). Une réception déjà là
@@ -74,6 +85,10 @@ export function createTargetFlow({ engine, onReplied = () => {} }) {
       state.made = await engine.createReception(invitation, plans, { reserve: true, options: { archive: true } });
     }
     await engine.ensureMarks(state.table);
+    // Sans ce mot, la réception ne reprend pas après le rechargement de Grist : dit en console, le parcours continue.
+    try { await engine.markAwaiting(state.made.journal, { relinked: state.relinked, created: state.made.created || [] }); } catch (error) {
+      console.warn('GFS : la réception ne pourra pas reprendre si Grist recharge la page', error);
+    }
     return { journal: state.made.journal, relinked: state.relinked, table: state.table };
   }
 
@@ -82,6 +97,7 @@ export function createTargetFlow({ engine, onReplied = () => {} }) {
   async function reply(link) {
     const done = await engine.receptionReply(state.made, String(link || '').trim());
     state.replied = true;
+    try { await engine.clearAwaiting(state.made.journal); } catch (error) { console.warn('GFS : la réception en attente de réponse reste notée', error); }
     onReplied();
     return { code: done.code, control: done.control };
   }
@@ -89,9 +105,12 @@ export function createTargetFlow({ engine, onReplied = () => {} }) {
   // Défait la réception qu'on vient de créer (le journal, la page du formulaire, les tables encore vides). Une réception reprise (déjà là avant) ou dont la
   // réponse est rendue reste.
   async function abort() {
-    if (!state.made || state.relinked || state.replied) return;
+    if (!state.made || state.replied) return;
+    // Une réception reprise (déjà là avant) reste : elle n'attend plus de réponse, c'est tout.
+    if (state.relinked) { await engine.clearAwaiting(state.made.journal).catch(() => {}); return; }
     try { await engine.undoReception(state.made); } finally { state.made = null; }
   }
 
-  return { read, accept, reply, abort, get created() { return Boolean(state.made); } };
+  return { read, accept, reply, abort, get created() { return Boolean(state.made); }, get table() { return state.table; },
+    get journal() { return state.made ? state.made.journal : ''; } };
 }

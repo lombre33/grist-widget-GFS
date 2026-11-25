@@ -1,6 +1,6 @@
 {
   "contrat": 0,
-  "releve": "2026-11-23T16:00:06.671Z",
+  "releve": "2026-11-25T10:46:44.474Z",
   "source": "registry.npmjs.org",
   "bibliotheques": {
     "plotly": [
@@ -59,7 +59,9 @@
       "avis": [],
       "licence": "MIT",
       "site": "https://tiptap.dev",
-      "depot": "https://github.com/ueberdosis/tiptap"
+      "depot": "https://github.com/ueberdosis/tiptap",
+      "signature": "valide",
+      "provenance": true
     },
     "@tiptap/extension-collaboration-caret": {
       "version": "3.31.3",
@@ -68,7 +70,9 @@
       "avis": [],
       "licence": "MIT",
       "site": "https://tiptap.dev",
-      "depot": "https://github.com/ueberdosis/tiptap"
+      "depot": "https://github.com/ueberdosis/tiptap",
+      "signature": "valide",
+      "provenance": true
     },
     "@tiptap/y-tiptap": {
       "version": "3.0.10",
@@ -77,7 +81,9 @@
       "avis": [],
       "licence": "MIT",
       "site": "https://tiptap.dev",
-      "depot": "https://github.com/ueberdosis/tiptap"
+      "depot": "https://github.com/ueberdosis/tiptap",
+      "signature": "valide",
+      "provenance": true
     },
     "d3-cloud": {
       "version": "2.0.0",
@@ -86,7 +92,9 @@
       "avis": [],
       "licence": "BSD-3-Clause",
       "site": "https://www.jasondavies.com/wordcloud/",
-      "depot": "https://github.com/jasondavies/d3-cloud"
+      "depot": "https://github.com/jasondavies/d3-cloud",
+      "signature": "valide",
+      "provenance": false
     },
     "docx": {
       "version": "9.15.1",
@@ -95,7 +103,9 @@
       "avis": [],
       "licence": "MIT",
       "site": "https://docx.js.org",
-      "depot": "https://github.com/dolanmiu/docx"
+      "depot": "https://github.com/dolanmiu/docx",
+      "signature": "valide",
+      "provenance": true
     },
     "echarts": {
       "version": "6.1.0",
@@ -104,7 +114,9 @@
       "avis": [],
       "licence": "Apache-2.0",
       "site": "https://echarts.apache.org",
-      "depot": "https://github.com/apache/echarts"
+      "depot": "https://github.com/apache/echarts",
+      "signature": "valide",
+      "provenance": false
     },
     "exceljs": {
       "version": "4.4.0",
@@ -113,7 +125,9 @@
       "avis": [],
       "licence": "MIT",
       "site": "https://github.com/exceljs/exceljs#readme",
-      "depot": "https://github.com/exceljs/exceljs"
+      "depot": "https://github.com/exceljs/exceljs",
+      "signature": "valide",
+      "provenance": false
     },
     "jszip": {
       "version": "3.10.1",
@@ -122,7 +136,9 @@
       "avis": [],
       "licence": "(MIT OR GPL-3.0-or-later)",
       "site": "https://github.com/Stuk/jszip#readme",
-      "depot": "https://github.com/Stuk/jszip"
+      "depot": "https://github.com/Stuk/jszip",
+      "signature": "valide",
+      "provenance": false
     },
     "lib0": {
       "version": "0.2.119",
@@ -131,16 +147,20 @@
       "avis": [],
       "licence": "MIT",
       "site": "https://github.com/dmonad/lib0#readme",
-      "depot": "https://github.com/dmonad/lib0"
+      "depot": "https://github.com/dmonad/lib0",
+      "signature": "valide",
+      "provenance": false
     },
     "marked": {
       "version": "15.0.12",
-      "derniere": "18.2.1",
+      "derniere": "18.3.0",
       "ecart": "majeure",
       "avis": [],
       "licence": "MIT",
       "site": "https://marked.js.org",
-      "depot": "https://github.com/markedjs/marked"
+      "depot": "https://github.com/markedjs/marked",
+      "signature": "valide",
+      "provenance": true
     },
     "pdf-lib": {
       "version": "1.17.1",
@@ -149,7 +169,9 @@
       "avis": [],
       "licence": "MIT",
       "site": "https://pdf-lib.js.org/",
-      "depot": "https://github.com/Hopding/pdf-lib"
+      "depot": "https://github.com/Hopding/pdf-lib",
+      "signature": "valide",
+      "provenance": false
     },
     "pdfjs-dist": {
       "version": "6.5.438",
@@ -158,7 +180,9 @@
       "avis": [],
       "licence": "Apache-2.0",
       "site": "https://mozilla.github.io/pdf.js/",
-      "depot": "https://github.com/mozilla/pdf.js"
+      "depot": "https://github.com/mozilla/pdf.js",
+      "signature": "valide",
+      "provenance": true
     },
     "pdfmake": {
       "version": "0.2.7",
@@ -167,7 +191,9 @@
       "avis": [],
       "licence": "MIT",
       "site": "http://pdfmake.org",
-      "depot": "https://github.com/bpampuch/pdfmake"
+      "depot": "https://github.com/bpampuch/pdfmake",
+      "signature": "valide",
+      "provenance": false
     },
     "plotly.js-basic-dist-min": {
       "version": "2.13.2",
@@ -187,7 +213,9 @@
       ],
       "licence": "MIT",
       "site": "https://github.com/plotly/plotly.js#readme",
-      "depot": "https://github.com/plotly/plotly.js"
+      "depot": "https://github.com/plotly/plotly.js",
+      "signature": "valide",
+      "provenance": false
     },
     "qrcode-generator": {
       "version": "1.4.4",
@@ -196,7 +224,9 @@
       "avis": [],
       "licence": "MIT",
       "site": "https://github.com/kazuhikoarase/qrcode-generator#readme",
-      "depot": "https://github.com/kazuhikoarase/qrcode-generator"
+      "depot": "https://github.com/kazuhikoarase/qrcode-generator",
+      "signature": "valide",
+      "provenance": false
     },
     "y-protocols": {
       "version": "1.0.7",
@@ -205,7 +235,9 @@
       "avis": [],
       "licence": "MIT",
       "site": "https://github.com/yjs/y-protocols#readme",
-      "depot": "https://github.com/yjs/y-protocols"
+      "depot": "https://github.com/yjs/y-protocols",
+      "signature": "valide",
+      "provenance": false
     },
     "yjs": {
       "version": "13.6.33",
@@ -214,7 +246,9 @@
       "avis": [],
       "licence": "MIT",
       "site": "https://docs.yjs.dev",
-      "depot": "https://github.com/yjs/yjs"
+      "depot": "https://github.com/yjs/yjs",
+      "signature": "valide",
+      "provenance": false
     }
   }
 }

@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-1Ukjhk7qHcRli0u5RNYVE94hzJ72THnPdw+aS24dDg8='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-TqCSiouxA+frLgu+JJrTKqkX1DgSd5UxTvp3c/EJCEE='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=ab090ade63">
 <link rel="stylesheet" href="css/explorer.css?v=c460d6176d">
 <link rel="stylesheet" href="css/modules.css?v=361fd55b06">
@@ -19,7 +19,7 @@
 <link rel="stylesheet" href="css/rights.css?v=bece849c11">
 <link rel="stylesheet" href="css/share.css?v=87bc11dabd">
 <link rel="stylesheet" href="css/weight.css?v=c84019fbca">
-<link rel="stylesheet" href="css/dependencies.css?v=a635f48cdc">
+<link rel="stylesheet" href="css/dependencies.css?v=053a86a6ce">
 <link rel="stylesheet" href="css/annuaire.css?v=c978641bc4">
 <link rel="stylesheet" href="kit/css/color-picker.css?v=c5a41d6681">
 <link rel="stylesheet" href="css/acces.css?v=4d8ffc0806">
@@ -58,8 +58,8 @@
     "./js/apps/dependencies-foot.js": "./js/apps/dependencies-foot.js?v=b69746e725",
     "./js/apps/dependencies-list.js": "./js/apps/dependencies-list.js?v=71954c0bbf",
     "./js/apps/dependencies-model.js": "./js/apps/dependencies-model.js?v=0121c428e3",
-    "./js/apps/dependencies-security-view.js": "./js/apps/dependencies-security-view.js?v=eb1c650660",
-    "./js/apps/dependencies-security.js": "./js/apps/dependencies-security.js?v=211ef74ba2",
+    "./js/apps/dependencies-security-view.js": "./js/apps/dependencies-security-view.js?v=0fbc04896b",
+    "./js/apps/dependencies-security.js": "./js/apps/dependencies-security.js?v=ab774a7706",
     "./js/apps/dependencies-source-view.js": "./js/apps/dependencies-source-view.js?v=ad87b7ba0a",
     "./js/apps/dependencies-source.js": "./js/apps/dependencies-source.js?v=f91ad88e18",
     "./js/apps/dependencies-window.js": "./js/apps/dependencies-window.js?v=4d6dd42249",
@@ -169,7 +169,7 @@
     "./js/i18n/i18n-notifications.js": "./js/i18n/i18n-notifications.js?v=f703a62960",
     "./js/i18n/i18n-received.js": "./js/i18n/i18n-received.js?v=684f00488e",
     "./js/i18n/i18n-rights.js": "./js/i18n/i18n-rights.js?v=1d8ac3e0c5",
-    "./js/i18n/i18n-security.js": "./js/i18n/i18n-security.js?v=a64372bbb1",
+    "./js/i18n/i18n-security.js": "./js/i18n/i18n-security.js?v=7139f06696",
     "./js/i18n/i18n-share-other.js": "./js/i18n/i18n-share-other.js?v=e8864f99d8",
     "./js/i18n/i18n-share.js": "./js/i18n/i18n-share.js?v=8528698c0a",
     "./js/i18n/i18n-sharing.js": "./js/i18n/i18n-sharing.js?v=7e09272a2c",
@@ -439,7 +439,7 @@
 <link rel="modulepreload" href="./js/i18n/i18n-sharing.js?v=7e09272a2c">
 <link rel="modulepreload" href="./js/i18n/i18n-templates.js?v=3194fa28f0">
 <link rel="modulepreload" href="./js/i18n/i18n-dependencies.js?v=6d1bf6469a">
-<link rel="modulepreload" href="./js/i18n/i18n-security.js?v=a64372bbb1">
+<link rel="modulepreload" href="./js/i18n/i18n-security.js?v=7139f06696">
 <link rel="modulepreload" href="./js/i18n/i18n-annuaire.js?v=82a124191b">
 <link rel="modulepreload" href="./js/theme/ambiance.js?v=6608543445">
 <link rel="modulepreload" href="./js/theme/oklch.js?v=7ef04e0793">
@@ -501,7 +501,7 @@
 <link rel="modulepreload" href="./js/apps/templates-window.js?v=6f9b989991">
 <link rel="modulepreload" href="./js/apps/dependencies-model.js?v=0121c428e3">
 <link rel="modulepreload" href="./js/apps/dependencies-carried.js?v=cb4530eef9">
-<link rel="modulepreload" href="./js/apps/dependencies-security.js?v=211ef74ba2">
+<link rel="modulepreload" href="./js/apps/dependencies-security.js?v=ab774a7706">
 <link rel="modulepreload" href="./js/apps/dependencies-window.js?v=4d6dd42249">
 <link rel="modulepreload" href="./js/apps/dependencies-audit.js?v=268ab61822">
 <link rel="modulepreload" href="./js/apps/dependencies-source.js?v=f91ad88e18">
@@ -545,7 +545,7 @@
 <link rel="modulepreload" href="./js/apps/security-policy.js?v=4178b7ad89">
 <link rel="modulepreload" href="./js/apps/dependencies-list.js?v=71954c0bbf">
 <link rel="modulepreload" href="./js/apps/dependencies-foot.js?v=b69746e725">
-<link rel="modulepreload" href="./js/apps/dependencies-security-view.js?v=eb1c650660">
+<link rel="modulepreload" href="./js/apps/dependencies-security-view.js?v=0fbc04896b">
 <link rel="modulepreload" href="./js/apps/dependencies-cyclonedx.js?v=eb9730f52e">
 <link rel="modulepreload" href="./js/sharing/share-other-tab.js?v=9309dad3d7">
 <link rel="modulepreload" href="./js/ui/tabs.js?v=b412c3fcbc">

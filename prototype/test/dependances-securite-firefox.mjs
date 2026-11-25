@@ -7,6 +7,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createI18n } from '../js/i18n/i18n.js';
+import { formatDate } from '../js/apps/dependencies-model.js';
 import { Run, centerOfSelector, closeLeftOpen } from './corbeille-firefox.mjs';
 import { centerOfMenuItem } from './copier-firefox.mjs';
 import { ROOT } from './helpers.mjs';
@@ -49,8 +50,17 @@ function state() {
       items: [...block.querySelectorAll('.dp-item')].map(li => ({ key: li.dataset.key, host: t(li.querySelector('.dp-host').firstChild), sub: t(li.querySelector('.dp-host .dp-sub')),
         facts: [...li.querySelectorAll('.dp-detail .dp-fact')].map(fact => ({ title: t(fact.querySelector('dt')), body: t(fact.querySelector('dd')) })),
         clipped: [...li.querySelectorAll('.dp-row *')].filter(cut).length })) })),
-    alertsBox: (() => { const box = modal.querySelector('.dp-sec-alertbox'); return box ? { count: box.dataset.alerts, title: t(box.querySelector('h3')), chip: t(box.querySelector('.dp-group-head .dp-chip')), text: t(box) } : null; })(),
-    alerts: [...modal.querySelectorAll('.dp-sec-alert')].map(li => ({ app: li.dataset.app, directive: li.dataset.directive, chip: t(li.querySelector('.dp-chip')), icon: Boolean(li.querySelector('.dp-chip svg')),
+    alertsBox: (() => { const box = modal.querySelector('.dp-sec-alertbox[data-alerts]'); return box ? { count: box.dataset.alerts, title: t(box.querySelector('h3')), chip: t(box.querySelector('.dp-group-head .dp-chip')), text: t(box) } : null; })(),
+    catalogue: (() => {
+      const box = modal.querySelector('.dp-sec-alertbox[data-catalogue]');
+      if (!box) return null;
+      const row = li => ({ kind: li.dataset.cat, chip: t(li.querySelector('.dp-chip')), icon: Boolean(li.querySelector('.dp-chip svg')), text: t(li.querySelector('.dp-sec-reason')),
+        height: Math.round(li.getBoundingClientRect().height), wide: over(li) || [...li.querySelectorAll('*')].some(over) || li.scrollWidth > li.clientWidth + 1 });
+      return { problems: box.dataset.catalogue, title: t(box.querySelector('h3')), chip: t(box.querySelector('.dp-group-head .dp-chip')), lines: [...box.querySelectorAll('.dp-sec-line')].map(t),
+        rows: [...box.querySelectorAll('.dp-sec-alert')].map(row), wide: over(box) || [...box.querySelectorAll('*')].some(over) || box.scrollWidth > box.clientWidth + 1,
+        order: [...sec.children].map(node => node.dataset.alerts !== undefined ? 'alerts' : node.dataset.catalogue !== undefined ? 'catalogue' : node.className).slice(0, 4) };
+    })(),
+    alerts: [...modal.querySelectorAll('.dp-sec-alertbox[data-alerts] .dp-sec-alert')].map(li => ({ app: li.dataset.app, directive: li.dataset.directive, chip: t(li.querySelector('.dp-chip')), icon: Boolean(li.querySelector('.dp-chip svg')),
       name: t(li.querySelector('strong')), text: t(li.querySelector('.dp-sec-reason')), times: t(li.querySelector('.dp-says')), height: Math.round(li.getBoundingClientRect().height),
       wide: over(li) || [...li.querySelectorAll('*')].some(over) || li.scrollWidth > li.clientWidth + 1, links: li.querySelectorAll('a, img').length })),
     relayLines: apps.map(app => ({ id: app.id, s8: (app.rules.find(rule => rule.id === 'S8') || { reasons: [] }).reasons.at(-1) || null })),
@@ -68,6 +78,7 @@ const STATES = ['tenue', 'a-noter', 'non-tenue', 'non-verifiable'];
 export async function securiteProblems(page, language, tag) {
   const found = [];
   const { t } = createI18n(language);
+  const locale = language === 'en' ? 'en-GB' : 'fr-FR';
   const run = new Run(page, tag, found, 'fenêtre « Dépendances » : sécurité');
   const snap = () => page.run(state);
   const expect = async (kind, what, test) => {
@@ -189,6 +200,22 @@ export async function securiteProblems(page, language, tag) {
     }
     await page.run(() => { window.__relay = null; });
 
+    // 4c. Ce que GFS sert lui-même (choix du porteur du 25/11) : le vrai fichier a les signatures de npm lues et, tant que le contrôle du lundi n'a pas lu les adresses chez le CDN, le dit ; la section
+    // vient après les alertes et avant les limites, sans écart ni compte rouge, sans texte non rempli ni débordement.
+    const cat = dash.modal.catalogue;
+    if (!cat) run.note('le catalogue', `« ${t('sec.cat.title')} » devait se montrer (le fichier a une partie catalogue)`);
+    else {
+      const npmFile = report.catalogue.npm;
+      const wantNpm = t('sec.cat.npm', { date: formatDate(npmFile.releve, locale), ok: npmFile.valides, n: npmFile.paquets, prov: npmFile.provenance });
+      const readCdn = report.catalogue.cdn.lu !== null;
+      if (cat.title !== t('sec.cat.title') || cat.chip !== null || cat.rows.length || cat.problems !== '0') run.note('le catalogue : l\'en-tête', `sans écart, ni pastille ni ligne rouge (${cat.chip} | ${cat.rows.length} ligne(s) | ${cat.problems})`);
+      if (!cat.lines.includes(wantNpm)) run.note('le catalogue : les signatures', `la ligne devait dire « ${wantNpm} » (${cat.lines.join(' | ')})`);
+      if (!readCdn && !cat.lines.includes(t('sec.cat.cdn.none'))) run.note('le catalogue : adresses non lues', `tant que rien n'est lu chez le CDN, la ligne devait dire « ${t('sec.cat.cdn.none')} » (${cat.lines.join(' | ')})`);
+      if (cat.order.join() !== 'dp-sec-intro,alerts,catalogue,dp-more dp-sec-more') run.note('le catalogue : la place', `la section devait venir après les alertes et avant les limites (${cat.order.join(', ')})`);
+      if (cat.wide) run.note('déborde', 'la section du catalogue déborde de la fenêtre');
+      if (dash.modal.views[1].count !== String(problems)) run.note('le compte du bouton', `sans écart du catalogue, le compte ne bouge pas (${dash.modal.views[1].count})`);
+    }
+
     // 5. « Ce que ce tableau ne voit pas » : un bouton de 44 px qui ouvre, puis referme, quatre limites en clair.
     if (!dash.modal.limits || dash.modal.limits.text !== t('sec.limits') || dash.modal.limits.expanded !== 'false' || dash.modal.limits.panel) run.note('les limites', `le bouton « ${t('sec.limits')} » devait être là, refermé`);
     if (dash.modal.limits && (dash.modal.limits.height < 40 || dash.modal.limits.over)) run.note('les limites : le bouton', `le bouton mesure ${dash.modal.limits.height} px (40 au moins) ou déborde`);
@@ -214,11 +241,38 @@ export async function securiteProblems(page, language, tag) {
       await expect('sans fichier', `sans contrôle, la vue devait dire « ${t('sec.none')} »`, s => s.modal && s.modal.secShown && s.modal.none === t('sec.none'));
       await close();
     }
+
+    // 8. Un écart du catalogue (le CDN rend un autre fichier, une signature de npm invalide) : deux lignes rouges avec icône et mot, une pastille « 2 écarts », le bouton « Sécurité » les compte,
+    // la phrase donne le conseil (la copie figée), rien ne se coupe.
+    const bad = JSON.parse(JSON.stringify(report));
+    bad.catalogue = { cdn: { lu: '2026-11-30', entrees: [{ id: 'jszip', url: 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js', attendu: 'sha384-AAA', vu: 'sha384-ZZZ', octets: 9, etat: 'different' },
+      { id: 'marked', url: 'https://cdn.jsdelivr.net/npm/marked@1/marked.min.js', attendu: 'sha384-BBB', vu: 'sha384-BBB', octets: 9, etat: 'identique' },
+      { id: 'ace', url: 'https://cdn.jsdelivr.net/npm/ace@1/ace.js', attendu: 'sha384-CCC', vu: null, octets: null, etat: 'non-lu' }] },
+    npm: { releve: '2026-11-30', paquets: 17, valides: 16, nonVerifiees: 0, provenance: 6, problemes: [{ paquet: 'docx', version: '9.0.0', signature: 'invalide' }] } };
+    await page.run(file => { window.__security = true; window.__securityReport = file; }, bad);
+    const wrong = await open();
+    if (wrong.modal) {
+      if (wrong.modal.views[1].count !== String(problems + 2)) run.note('écart : le compte du bouton', `« ${t('dep.view.security')} » devait compter les règles non tenues et deux écarts (${problems + 2}) : ${wrong.modal.views[1].count}`);
+      await page.click(...await page.run(buttonAt, '[data-fk="dep-view-security"]'));
+      const seen = await expect('écart : la section', 'deux écarts devaient se montrer', s => s.modal && s.modal.catalogue && s.modal.catalogue.rows.length === 2);
+      const box = seen.modal && seen.modal.catalogue;
+      if (box) {
+        const want = [t('sec.cat.cdn.bad', { id: 'jszip' }), t('sec.cat.npm.invalide', { paquet: 'docx', version: '9.0.0' })];
+        if (box.chip !== t('sec.cat.count', { n: 2 }) || box.problems !== '2') run.note('écart : la pastille', `l'en-tête devait dire « ${t('sec.cat.count', { n: 2 })} » (${box.chip})`);
+        box.rows.forEach((row, index) => {
+          if (row.text !== want[index] || row.chip !== t('sec.cat.chip') || !row.icon) run.note('écart : une ligne', `la ligne ${index + 1} devait dire « ${want[index]} » avec un mot et une icône (${row.chip} | ${row.text})`);
+          if (row.wide || row.height < 30) run.note('texte coupé', `la ligne ${index + 1} du catalogue coupe ou déborde (${row.height} px)`);
+        });
+        if (!box.lines.some(line => line.includes(t('sec.cat.cdn.unread', { n: 1 })))) run.note('écart : adresse non lue', `une adresse non lue devait se dire (${box.lines.join(' | ')})`);
+        if (box.wide || /\{|undefined|sec\./.test(box.lines.join(' ') + box.rows.map(row => row.text).join(' '))) run.note('écart : texte', 'la section déborde ou laisse un texte non rempli');
+      }
+      await close();
+    }
   } catch (error) {
     run.note('la mesure a échoué', error.message.slice(0, 300));
     await closeLeftOpen(page);
   } finally {
-    await page.run(() => { window.__carried = false; window.__security = false; window.__relay = null; }).catch(() => {});
+    await page.run(() => { window.__carried = false; window.__security = false; window.__securityReport = null; window.__relay = null; }).catch(() => {});
   }
   return found;
 }

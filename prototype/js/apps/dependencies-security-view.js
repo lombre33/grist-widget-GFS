@@ -110,6 +110,33 @@ function alertsSection(t, alerts, locale) {
       t('sec.alerts.count', { n: alerts.length })) : null), body);
 }
 
+// Ce que GFS sert lui-même : ses adresses de CDN relues chez le CDN et les signatures du registre npm de ses paquets (outils/controle-catalogue.mjs). Un écart
+// se dit en clair, avec la même ligne que les appels bloqués ; ce qui n'a pas encore été lu le dit aussi.
+function catalogueRows(t, catalogue) {
+  const row = (kind, text) => h('li', { class: 'dp-sec-alert', dataset: { cat: kind } },
+    h('span', { class: 'dp-chip dp-bad' }, icon('warning'), t('sec.cat.chip')),
+    h('div', { class: 'dp-sec-main' }, h('p', { class: 'dp-sec-reason' }, text)));
+  return [...catalogue.cdn.differentes.map(entry => row('cdn', t('sec.cat.cdn.bad', { id: entry.id }))),
+    ...catalogue.npm.problemes.map(each =>
+      row('npm', t(`sec.cat.npm.${['invalide', 'absente', 'cle-inconnue'].includes(each.signature) ? each.signature : 'invalide'}`,
+      { paquet: each.paquet, version: each.version })))];
+}
+
+function catalogueSection(t, catalogue, locale) {
+  const { cdn, npm } = catalogue;
+  const cdnLine = cdn.lu ? [t('sec.cat.cdn', { date: formatDate(cdn.lu, locale), ok: cdn.identiques, n: cdn.n }),
+    cdn.nonLues ? t('sec.cat.cdn.unread', { n: cdn.nonLues }) : ''].filter(Boolean).join(' ') : t('sec.cat.cdn.none');
+  const npmLine = npm.n && npm.nonVerifiees < npm.n ? t('sec.cat.npm', { date: formatDate(npm.releve, locale), ok: npm.valides, n: npm.n,
+    prov: npm.provenance })
+    : t('sec.cat.npm.none');
+  const rows = catalogueRows(t, catalogue);
+  return h('section', { class: 'dp-sec-alertbox', 'aria-labelledby': 'dp-sec-cat-title', dataset: { catalogue: String(catalogue.problems) } },
+    h('header', { class: 'dp-group-head' }, h('h3', { id: 'dp-sec-cat-title' }, t('sec.cat.title')),
+      catalogue.problems ? h('span', { class: 'dp-chip dp-bad' }, icon('warning'), t('sec.cat.count', { n: catalogue.problems })) : null),
+    h('p', { class: 'dp-sub dp-sec-line' }, cdnLine), h('p', { class: 'dp-sub dp-sec-line' }, npmLine),
+      rows.length ? h('ul', { class: 'dp-sec-alerts' }, ...rows) : null);
+}
+
 // Les limites : un bouton qui ouvre le panneau, comme celui des apps non installées.
 function limits(t) {
   const body = h('div', { class: 'dp-sec-limits', id: 'dp-sec-limits', hidden: true }, h('ul', null, ...LIMITS.map(n => h('li', null, t(`sec.limits.${n}`)))));
@@ -132,7 +159,7 @@ export function buildSecurity({ t, locale }) {
     if (!model) { node.replaceChildren(h('p', { class: 'dp-empty dp-sec-none', role: 'status' }, t('sec.none'))); return; }
     const intro = model.controle ? t('sec.intro', { date: formatDate(model.controle, locale), origin: t(`sec.origin.${model.origine}`) }) : t('sec.intro.none');
     node.replaceChildren(h('p', { class: 'dp-sec-intro' }, intro, model.problems ? ` ${t('sec.problems', { n: model.problems })}.` : ''),
-      alertsSection(t, model.alerts, locale),
+      alertsSection(t, model.alerts, locale), ...(model.catalogue ? [catalogueSection(t, model.catalogue, locale)] : []),
       limits(t), ...model.apps.map(app => appSection(t, app, locale)));
   }
   return { node, render };

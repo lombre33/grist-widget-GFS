@@ -2,6 +2,20 @@
   "contrat": 0,
   "controle": "2026-11-23T16:00:11.264Z",
   "origine": "actions",
+  "catalogue": {
+    "cdn": {
+      "lu": null,
+      "entrees": []
+    },
+    "npm": {
+      "releve": "2026-11-25T10:46:44.474Z",
+      "paquets": 17,
+      "valides": 17,
+      "nonVerifiees": 0,
+      "provenance": 6,
+      "problemes": []
+    }
+  },
   "apps": {
     "publipostage": {
       "depot": "lombre33/publipostageGrist",

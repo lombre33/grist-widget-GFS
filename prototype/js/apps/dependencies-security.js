@@ -51,12 +51,33 @@ function appOf(item, report, lang, relay) {
     counts, rules, permis: isObject(app.permis) ? app.permis : null, live: liveOf(app), read: isObject(app.lecture) ? app.lecture : {} };
 }
 
-// Le tableau de bord : { controle, origine, apps: [app], alerts: [alerte], problems, attention } (apps installées d'abord, puis par nom), ou null sans fichier
-// et sans alerte.
+const count = value => (Number.isInteger(value) && value >= 0 ? value : 0);
+const day = value => (typeof value === 'string' && !Number.isNaN(Date.parse(value)) ? value : null);
+
+// Ce que GFS sert lui-même (outils/controle-catalogue.mjs) : ses adresses de CDN relues chez le CDN, et les signatures du registre npm de ses paquets. Rend {
+// cdn: { lu, n, identiques, nonLues, differentes: [{ id }] }, npm: { releve, n, valides, provenance, nonVerifiees, problemes: [{ paquet, version, signature }]
+// }, problems }, ou null quand le fichier n'a pas encore cette partie.
+function catalogueOf(report) {
+  if (!isObject(report.catalogue)) return null;
+  const cdn = isObject(report.catalogue.cdn) ? report.catalogue.cdn : {};
+  const npm = isObject(report.catalogue.npm) ? report.catalogue.npm : {};
+  const entries = (Array.isArray(cdn.entrees) ? cdn.entrees : []).filter(isObject);
+  const differentes = entries.filter(entry => entry.etat === 'different').map(entry => ({ id: String(entry.id) }));
+  const problemes = (Array.isArray(npm.problemes) ? npm.problemes : []).filter(isObject)
+    .map(each => ({ paquet: String(each.paquet), version: String(each.version), signature: String(each.signature) }));
+  return { cdn: { lu: day(cdn.lu), n: entries.length, identiques: entries.filter(entry => entry.etat === 'identique').length,
+    nonLues: entries.filter(entry => entry.etat === 'non-lu').length, differentes },
+  npm: { releve: day(npm.releve), n: count(npm.paquets), valides: count(npm.valides), provenance: count(npm.provenance), nonVerifiees: count(npm.nonVerifiees),
+    problemes },
+  problems: differentes.length + problemes.length };
+}
+
+// Le tableau de bord : { controle, origine, catalogue, apps: [app], alerts: [alerte], problems, attention } (apps installées d'abord, puis par nom), ou null
+// sans fichier et sans alerte.
 // `problems` : les règles non tenues, toutes apps. `relay` : ce que la session a vu (js/broker/security-relay.js, `snapshot`) : { relays: { <app>: { kit, at }
 //   }, alerts: [{ app, directive, cible, source, disposition, times, first, last }] } ; `alerts` y ajoute le nom de l'app, et `attention` compte les règles non
-//   tenues et les alertes : c'est le nombre du bouton « Sécurité ». Sans fichier de contrôle, les alertes se montrent quand même : elles ne dépendent pas de
-//   lui.
+//   tenues, les alertes et les écarts du catalogue : c'est le nombre du bouton « Sécurité ». Sans fichier de contrôle, les alertes se montrent quand même :
+//   elles ne dépendent pas de lui.
 export function securityOf({ report, modules, lang, relay = null }) {
   const checked = isReport(report);
   const relays = isObject(relay) && isObject(relay.relays) ? relay.relays : {};
@@ -68,8 +89,10 @@ export function securityOf({ report, modules, lang, relay = null }) {
     .sort((a, b) => Number(b.installed) - Number(a.installed) || a.name.localeCompare(b.name)) : [];
   const alerts = seen.map(alert => ({ ...alert, name: names.get(alert.app) || alert.app }));
   const problems = apps.reduce((total, app) => total + app.counts['non-tenue'], 0);
-  return { controle: checked ? report.controle : null, origine: checked && report.origine === 'actions' ? 'actions' : 'local', apps, alerts, problems,
-    attention: problems + alerts.length };
+  const catalogue = checked ? catalogueOf(report) : null;
+  return { controle: checked ? report.controle : null, origine: checked && report.origine === 'actions' ? 'actions' : 'local', catalogue, apps, alerts,
+    problems,
+    attention: problems + alerts.length + (catalogue ? catalogue.problems : 0) };
 }
 
 // Ce que GFS a retrouvé d'une bibliothèque que l'app déclare (une entrée de `carriedOf`) : l'adresse est-elle dans la page ou le code (`found`: true, false, ou

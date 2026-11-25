@@ -228,7 +228,13 @@ chaque bibliothèque que l'app déclare, ce que GFS a retrouvé dans son code. T
 2. **Ce que l'app déclare** (marqué « Déclaré par l'app ») : S6, et chaque ligne de « Portées par l'app » tant que GFS n'a pas retrouvé son adresse et sa version dans le code.
 3. **Ce que GFS voit pendant l'usage** : les appels que la politique d'une app bloque, quand l'app les relaie (S8, kit 0.25.0 ; contrats 5.4, point 14), pour la session seulement, à titre d'information : le nom de l'app, la directive, l'**hôte** bloqué (jamais l'adresse entière : le chemin et les paramètres sont ce qu'un code piraté cherchait à envoyer), qui l'a demandé, le compte ; un avis à la personne (trois au plus par app) et une ligne dans la fenêtre. L'app est tenue pour non fiable : GFS réduit chaque champ à une forme fermée, n'écrit rien dans le document et ne garde rien après la session.
 
-Un contrôle automatique chaque semaine (une tâche GitHub, en lecture seule sur les apps : rien ne se pousse dans leurs dépôts ni chez `grist-factory`) refait les vérifications du point 1 et propose le
+**Ce que GFS sert lui-même** (choix du porteur, 25/11, « CDN vérifié, secours chez GFS ») : une section de la même fenêtre, après les appels bloqués, dit si chacune des adresses de CDN du catalogue rend,
+le jour du contrôle, exactement le fichier dont GFS garde l'empreinte, et si le registre npm a signé chaque paquet que GFS sert (signature valide, et preuve de publication quand l'auteur en a publié une).
+Un écart (un fichier différent chez le CDN, une signature invalide ou absente) se dit en clair, avec un mot et une icône, conseille de passer la bibliothèque en copie figée et compte dans le nombre du
+bouton « Sécurité » ; une adresse que le contrôle n'a pas pu lire se dit aussi, sans compter. Tant que le contrôle du lundi n'a pas lu les adresses chez le CDN, la section le dit (du cloud de
+développement, jsDelivr n'est pas joignable ; GitHub l'est).
+
+Un contrôle automatique chaque semaine (une tâche GitHub, en lecture seule sur les apps : rien ne se pousse dans leurs dépôts ni chez `grist-factory`) refait les vérifications du point 1 et celles de cette section et propose le
 nouveau relevé en demande de fusion sur GFS ; la fenêtre dit « Dernier contrôle : <date> ».
 
 **Limites, dites dans la fenêtre** (mesurées le 18/11, faits vérifiés 133) : la politique est appliquée par le navigateur, jamais par GFS, qui ne peut en imposer aucune à un sous-cadre ; GFS ne voit ni un

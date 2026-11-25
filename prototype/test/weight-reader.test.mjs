@@ -163,6 +163,13 @@ test('pare-feu de la DINUM : aucune lecture SQL de GFS ne contient `case when`, 
   for (const statement of statements) assert.ok(!forbidden.test(statement), `lecture refusée par le pare-feu : ${statement.slice(0, 80)}…`);
 });
 
+// Mesuré dans le navigateur du porteur sur grist.numerique.gouv.fr (25/11, faits vérifiés 174) : la lecture du fichier à deux sous-requêtes `(SELECT page_count
+// FROM pragma_page_count())` revient en 403 sans CORS ; la même sans sous-requête passe (200). Aucune lecture du poids ne doit donc les réintroduire.
+test('pare-feu de la DINUM : le fichier entier se lit sans sous-requête (`(SELECT` refusé), par `page_count * page_size FROM pragma_page_count(), pragma_page_size()`', () => {
+  assert.doesNotMatch(SQL.file, /\(\s*SELECT/i, 'une sous-requête dans la lecture du fichier : le pare-feu la refuse');
+  assert.equal(SQL.file, 'SELECT page_count * page_size AS octets FROM pragma_page_count(), pragma_page_size()');
+});
+
 test('pare-feu de la DINUM : les pièces jointes comptées gardent leur sens sans `CASE WHEN` (stockées dans le fichier ou chez un stockage externe)', () => {
   // Une valeur de 0 ou de 1 par ligne choisit la taille de Grist (stockage externe) ou la longueur du fichier gardé ; l'équivalence avec l'ancienne lecture à `CASE WHEN`
   // est mesurée sur 300 jeux au hasard (faits vérifiés 136) ; ici la forme : les deux termes, chacun gardé par son test sur `storageId`.

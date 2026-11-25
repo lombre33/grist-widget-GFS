@@ -11,8 +11,10 @@
 
 // Les lectures. Rien n'y entre que du texte écrit ici : le nom d'une table (un identifiant de Grist) n'est écrit dans une lecture qu'après `TABLE_ID`.
 export const SQL = {
-  // Le fichier entier : le nombre de pages fois leur taille (6 ms sur un document de 1,9 Go).
-  file: 'SELECT (SELECT page_count FROM pragma_page_count()) * (SELECT page_size FROM pragma_page_size()) AS octets',
+  // Le fichier entier : le nombre de pages fois leur taille (6 ms sur un document de 1,9 Go). Sans sous-requête : le pare-feu devant le Grist de la DINUM
+  // refuse en 403, sans en-tête CORS, la forme à deux `(SELECT …)` ; celle-ci passe (sonde lancée dans le navigateur du porteur sur grist.numerique.gouv.fr,
+  // 25/11, faits vérifiés 174).
+  file: 'SELECT page_count * page_size AS octets FROM pragma_page_count(), pragma_page_size()',
   // L'historique des modifications : le corps de chaque action gardée pour pouvoir annuler (10 ms sur 922 Mo).
   history: 'SELECT COALESCE(SUM(LENGTH(body)), 0) AS octets FROM _gristsys_ActionHistory',
   // Les pièces jointes stockées dans le fichier (celles qu'un stockage externe garde ailleurs n'y sont pas) : ce qui pèse dans le fichier, supprimées en

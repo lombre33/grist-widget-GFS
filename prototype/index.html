@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-eGy4qn4LX07oSmlaqKgEV+W81VHT3mB7i6lVjMj51FI='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-7AZDEiXv6lxQXH8Gd891d+y5oDdMSyU0X5FxYAciM4w='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=a2e086add5">
 <link rel="stylesheet" href="css/explorer.css?v=c8ff42b04b">
 <link rel="stylesheet" href="css/modules.css?v=b467d702a6">
@@ -287,7 +287,7 @@
     "./js/weight/weight-alert.js": "./js/weight/weight-alert.js?v=1ece7de8c8",
     "./js/weight/weight-control.js": "./js/weight/weight-control.js?v=1644d097a3",
     "./js/weight/weight-guard.js": "./js/weight/weight-guard.js?v=23387ca160",
-    "./js/weight/weight-reader.js": "./js/weight/weight-reader.js?v=07bf5ed5ff",
+    "./js/weight/weight-reader.js": "./js/weight/weight-reader.js?v=2aa77881e4",
     "./js/weight/weight-window.js": "./js/weight/weight-window.js?v=70b38075d2",
     "./js/weight/weight.js": "./js/weight/weight.js?v=e7a9477391",
     "./kit/js/ambiance-message.js": "./kit/js/ambiance-message.js?v=7578c9862c",
@@ -500,7 +500,7 @@
 <link rel="modulepreload" href="./js/sharing/space-links.js?v=1f98c3b5f3">
 <link rel="modulepreload" href="./js/sharing/sharing-model.js?v=d223d95a06">
 <link rel="modulepreload" href="./js/rights/rights.js?v=e23059be21">
-<link rel="modulepreload" href="./js/weight/weight-reader.js?v=07bf5ed5ff">
+<link rel="modulepreload" href="./js/weight/weight-reader.js?v=2aa77881e4">
 <link rel="modulepreload" href="./js/apps/settings.js?v=487e0165e5">
 <link rel="modulepreload" href="./js/apps/natives.js?v=1595303d5d">
 <link rel="modulepreload" href="./js/apps/modules-model.js?v=c3fd60515a">

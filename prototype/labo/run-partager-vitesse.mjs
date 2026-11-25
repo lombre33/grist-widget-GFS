@@ -114,7 +114,7 @@ try {
   await frame.locator('[data-fk="manage-tab-groups"]').click();
   await frame.locator('[data-fk="manage-group-new"]').click();
   await frame.locator('[data-fk="manage-group-name"]').fill('Achats');
-  await frame.locator('[data-fk="manage-group-people"]').fill('equipe@example.com\n');
+  await frame.locator('[data-fk="manage-group-people"]').fill('equipe@example.com');
   const group = await timed('créer le groupe « Achats »', () => frame.locator('[data-fk="manage-group-save"]').click(), () => frame.locator('.rr[data-group="Achats"]').waitFor({ timeout: 60000 }));
   say('--- 5. créer un espace ---');
   await frame.locator('[data-fk="manage-tab-spaces"]').click();

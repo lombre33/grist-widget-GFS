@@ -94,7 +94,10 @@ async function playOwner(run) {
   await frame.locator('[data-fk="manage-tab-groups"]').click();
   await frame.locator('[data-fk="manage-group-new"]').click();
   await frame.locator('[data-fk="manage-group-name"]').fill('Achats');
-  await frame.locator('[data-fk="manage-group-people"]').fill(`${EDITOR}\n`);
+  // une personne à la fois (demande du 25/11) : l'adresse puis Entrée devient une pastille ; ce qui reste dans la saisie à « Créer le groupe » s'ajoute aussi
+  await frame.locator('[data-fk="manage-group-people"]').fill(EDITOR);
+  await frame.locator('[data-fk="manage-group-people"]').press('Enter');
+  await frame.locator(`.mg-chip[data-person="${EDITOR}"]`).waitFor();
   check('le formulaire tient à 700 × 400 (le bouton se voit)', await fits(frame, '.mod.mg') && await frame.locator('[data-fk="manage-group-save"]').isVisible());
   await shot(frame, '2-groupe');
   await frame.locator('[data-fk="manage-group-save"]').click();
@@ -156,7 +159,9 @@ async function playOwner(run) {
   await openManage(frame);
   await frame.locator('[data-fk="manage-tab-groups"]').click();
   await frame.locator('[data-fk="manage-edit-Achats"]').click();
-  await frame.locator('[data-fk="manage-group-people"]').fill(`${EDITOR}\n${VIEWER}\n`);
+  // la zone « plusieurs adresses à la fois » (l'import en masse) reste une option : adresses séparées par des virgules et des retours
+  await frame.locator('[data-fk="manage-group-bulk-toggle"]').check();
+  await frame.locator('[data-fk="manage-group-bulk"]').fill(`${EDITOR},\n${VIEWER}\n`);
   await frame.locator('[data-fk="manage-group-save"]').click();
   await frame.locator('.rr[data-group="Achats"]').filter({ hasText: '2' }).waitFor({ timeout: 15000 });
   const rowA2 = (await inModels(run))[PRIVATE_A];

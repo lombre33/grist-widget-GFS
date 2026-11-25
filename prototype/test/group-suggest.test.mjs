@@ -1,13 +1,20 @@
 // Les adresses proposées en tapant les membres d'un groupe (js/sharing/group-suggest.js ; choix du porteur, 13/11 : « connues + une colonne d'e-mails »).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { addressesIn, addressesOfColumn, knownAddresses, suggestionsFor, withAddress } from '../js/sharing/group-suggest.js';
+import { addressesIn, addressesOfColumn, knownAddresses, splitAddresses, suggestionsFor, withAddress } from '../js/sharing/group-suggest.js';
 
 test('les adresses d\'un texte : séparées par des espaces, retours, virgules ou points-virgules ; minuscules, sans doublon, le reste est ignoré', () => {
   assert.deepEqual(addressesIn('Lea@X.fr, marc@x.fr;\nlea@x.fr  zoe@x.fr'), ['lea@x.fr', 'marc@x.fr', 'zoe@x.fr']);
   assert.deepEqual(addressesIn('pas une adresse, @editeurs, #Equipe, a@b'), []);
   assert.deepEqual(addressesIn(null), []);
   assert.deepEqual(addressesIn('<lea@x.fr>'), [], 'une adresse entourée de signes n\'est pas reprise telle quelle');
+});
+
+test('les mots d\'un texte rangés (saisie des personnes d\'un groupe) : les adresses en minuscules, sans doublon, d\'un côté ; ce qui n\'en est pas, tel que tapé et sans doublon, de l\'autre', () => {
+  assert.deepEqual(splitAddresses('Lea@X.fr, jean dupont; lea@x.fr @editeurs\nzoe@x.fr jean'), { good: ['lea@x.fr', 'zoe@x.fr'], bad: ['jean', 'dupont', '@editeurs'] });
+  assert.deepEqual(splitAddresses('  \n , ;'), { good: [], bad: [] });
+  assert.deepEqual(splitAddresses(null), { good: [], bad: [] });
+  assert.deepEqual(splitAddresses('<lea@x.fr>'), { good: [], bad: ['<lea@x.fr>'] }, 'une adresse entourée de signes n\'est pas reprise : elle reste dans la saisie, avec sa phrase');
 });
 
 test('les adresses d\'une colonne : texte, choix, liste de choix (tableau « L » de Grist) ; les cases vides et les noms sans adresse sont laissés', () => {

@@ -7,6 +7,7 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     // Relier un autre document Grist : le lien se fait une seule fois, dans un seul sens.
     'share.other.sec': 'Autre document Grist',
     'share.other.why.pdf': 'Pour l’instant, seuls les PDF que GFS garde se partagent avec un autre document.',
+    'share.other.why.space': 'Un espace entier ne s’envoie pas à un autre document Grist : envoyez un de ses dossiers, ou ses fichiers un par un.',
     'share.other.why.owner': 'Seul un propriétaire de ce document peut l’envoyer à un autre document Grist.',
     'share.other.why.emptyFolder': 'Ce dossier ne contient aucun PDF que GFS garde : rien à envoyer pour l’instant.',
     'share.other.why.allTooBig': 'Tous les PDF de ce dossier pèsent plus de {max} : un partage vers un autre document ne porte pas plus par fichier, rien ne partirait.',
@@ -23,7 +24,7 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     // Envoyer un fichier à un autre document : titre, accord et préparation de l'envoi.
     'so.title': 'Envoyer « {name} » à un autre document',
     'so.sub': 'Une copie vers un autre document, dans un seul sens',
-    'so.foot': 'L’autre document doit avoir GFS, sur le même Grist.',
+    'so.foot': 'L’autre document doit avoir GFS et se trouver sur la même instance de Grist (le même site que celui-ci).',
     'so.continue': 'Continuer',
     'so.cancel': 'Annuler',
     'so.close': 'Fermer',
@@ -31,6 +32,7 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     'so.accord.adds': 'Pour l’envoyer, GFS ajoute dans ce document',
     'so.accord.table': 'une table « {table} », retirée quand le partage est fini ;',
     'so.accord.columns': 'trois colonnes d’aide dans « {table} » ({columns}), qui restent ;',
+    'so.accord.files': 'une table « {table} » vide, où GFS range vos PDF, avec trois colonnes d’aide ({columns}) : elle reste ;',
     'so.accord.hook': 'un webhook vers l’autre document, retiré lui aussi à la fin.',
     'so.accord.other': 'L’autre document ajoute de son côté une table de réception et la table « {table} » des fichiers reçus.',
     'so.accord.keep': 'Rien n’est supprimé ni modifié dans vos fichiers.',
@@ -117,6 +119,8 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     'so.done.live.hint': 'Le lien reste : les prochains fichiers se partagent dans « Partager > Dans un autre document Grist », sans nouveau code. « Gérer les partages » l’arrête.',
     // La vue « Gérer > Autres documents » : les documents reliés.
     'manage.tab.other': 'Autres documents',
+    // L'avis du partage entre documents Grist (js/sharing/other-beta-notice.js ; demande du porteur du 25/11).
+    'so.beta': 'Ce partage entre documents Grist repose sur le widget Sync+, encore en bêta : cette fonction est donc très expérimentale.',
     'manage.other.lead': 'Les documents Grist reliés à celui-ci. Arrêter un lien ne retire rien de ce qui est déjà arrivé chez l’autre.',
     'manage.other.title': 'Partages vers d’autres documents',
     'manage.other.none': 'Aucun partage vers un autre document.',
@@ -167,6 +171,7 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     // Relier un autre document Grist : le lien se fait une seule fois, dans un seul sens.
     'share.other.sec': 'Another Grist document',
     'share.other.why.pdf': 'For now, only the PDFs GFS keeps can be shared with another document.',
+    'share.other.why.space': 'A whole space cannot be sent to another Grist document: send one of its folders, or its files one by one.',
     'share.other.why.owner': 'Only an owner of this document can send it to another Grist document.',
     'share.other.why.emptyFolder': 'This folder holds no PDF that GFS keeps: nothing to send for now.',
     'share.other.why.allTooBig': 'Every PDF in this folder weighs more than {max}: a share to another document carries no more than that per file, so nothing would be sent.',
@@ -183,7 +188,7 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     // Envoyer un fichier à un autre document : titre, accord et préparation de l'envoi.
     'so.title': 'Send “{name}” to another document',
     'so.sub': 'A copy to another document, one way',
-    'so.foot': 'The other document must have GFS, on the same Grist.',
+    'so.foot': 'The other document must have GFS and be on the same Grist instance (the same site as this one).',
     'so.continue': 'Continue',
     'so.cancel': 'Cancel',
     'so.close': 'Close',
@@ -191,6 +196,7 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     'so.accord.adds': 'To send it, GFS adds to this document',
     'so.accord.table': 'a “{table}” table, removed when sharing is done;',
     'so.accord.columns': 'three helper columns in “{table}” ({columns}), which stay;',
+    'so.accord.files': 'an empty “{table}” table, where GFS keeps your PDFs, with three helper columns ({columns}): it stays;',
     'so.accord.hook': 'a webhook to the other document, also removed at the end.',
     'so.accord.other': 'The other document adds a reception table and the “{table}” table of received files.',
     'so.accord.keep': 'Nothing in your files is deleted or changed.',
@@ -277,6 +283,8 @@ export const SHARE_OTHER_STRINGS = Object.freeze({
     'so.done.live.hint': 'The link stays: the next files are shared in “Share > In another Grist document”, with no new code. “Manage sharing” stops it.',
     // La vue « Gérer > Autres documents » : les documents reliés.
     'manage.tab.other': 'Other documents',
+    // The notice of sharing between Grist documents (js/sharing/other-beta-notice.js).
+    'so.beta': 'This sharing between Grist documents relies on the Sync+ widget, which is still in beta: this feature is therefore very experimental.',
     'manage.other.lead': 'The Grist documents linked to this one. Stopping a link removes nothing that has already arrived in the other document.',
     'manage.other.title': 'Sharing with other documents',
     'manage.other.none': 'No sharing with another document.',

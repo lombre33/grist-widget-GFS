@@ -8,9 +8,13 @@
 //     qu'il le sait lourd (`learn`, plus de 4 Mo de fichiers, à cette visite ou à une précédente : le souvenir de js/explorer/heavy-hint.js). Un document
 //     connu léger garde la lecture complète, sans cadre d'envoi ni jeton de plus. Avant, la première lecture d'un document était toujours complète : 23 s
 //     pour 118 Mo sur un serveur lent, et au-delà de 500 Mo Grist coupait la connexion et GFS redémarrait sans fin (faits vérifiés 161) ;
-//   - elle n'emploie que le jeton en lecture seule : Grist ne rend `/sql` qu'à qui peut tout copier (faits vérifiés 43) ; un refus, une lecture coupée ou un
-//     serveur muet l'éteignent pour la session et l'explorateur relit comme avant (jamais de jeton qui peut écrire pour une lecture que la personne n'a pas
-//     demandée) ;
+//   - elle part avec le jeton en lecture seule, et passe au jeton qui peut écrire après le refus de Grist (js/broker/sql-gate.js ; choix du porteur du 25/11) :
+//   Grist ne
+//     rend `/sql` qu'à qui peut tout copier, et dans un document à règles d'accès le jeton en lecture seule est refusé même au propriétaire (faits vérifiés
+//     43). Un
+//     éditeur, un lecteur ou un serveur muet l'éteignent pour la session et l'explorateur relit comme avant ; les lectures sont toutes écrites ici, jamais d'un
+//     texte lu
+//     ailleurs ;
 //   - le poids rendu est celui de `js/weight/weight.js` : les colonnes du texte (texte, choix, listes, pièces jointes) se comptent en SQL
 //     (`length(CAST(… AS BLOB))`, les octets UTF-8 que SQLite garde) quand la lecture ne les rend pas, toutes les autres sont lues (ce sont des nombres) et
 //     pèsent par `cellBytes`, la fonction de la lecture complète : les deux lectures donnent le même poids à l'octet près.

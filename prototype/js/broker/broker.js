@@ -96,17 +96,29 @@ function inLane(env, task) {
   return run;
 }
 
+// Un lot que Grist vient d'appliquer pour l'app : GFS l'apprend (`env.onApplied`, js/broker/created-files.js) sans que cela puisse faire échouer l'appel de
+// l'app.
+function applied(env, actions, result) {
+  if (typeof env.onApplied !== 'function') return result;
+  try {
+    env.onApplied(actions, result);
+  } catch (error) {
+    console.warn('GFS : ce que GFS fait d\'un lot que l\'app vient d\'écrire a échoué', error);
+  }
+  return result;
+}
+
 async function applyActions(env, [actions, options]) {
   guardWrite(env);
   const ctx = Array.isArray(actions) && batchCreatesSection(actions) ? { tableRefs: await tableMap(env.port) } : {};
   const verdict = checkBatch(env.policy, actions, ctx);
   if (!verdict.ok) fail(ERR.REFUSE, `Action ${verdict.rank + 1} refusée : ${verdict.reason}`);
   const sharing = touchesSharing(actions);
-  if (!sharing && !touchesPublication(actions)) return applyChecked(env, actions, options);
+  if (!sharing && !touchesPublication(actions)) return applied(env, actions, await applyChecked(env, actions, options));
   return inLane(env, async () => {
     if (sharing) await agreeSharedLink(env, await judgeSharing(env.port, actions));
     await agreePublication(env, actions);
-    return applyChecked(env, actions, options);
+    return applied(env, actions, await applyChecked(env, actions, options));
   });
 }
 

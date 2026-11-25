@@ -9,6 +9,7 @@
 import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { area, button, codeWithCopy, openSteps, structureNotes } from './steps-window.js';
+import { betaNotice } from './other-beta-notice.js';
 
 // Un champ où l'on colle, et le bouton qui le suit : grisé tant que rien n'est collé.
 function pasteField(ctx, { fk, label, action, run }) {
@@ -24,7 +25,8 @@ function pasteScreen(ctx) {
   const { field, go } = pasteField(ctx, { fk: 'sr-invite', label: t('sr.paste.label'), action: { fk: 'sr-continue', label: t('so.continue') },
     run: text => ctx.read(text) });
   return {
-    body: h('div', { class: 'rt-content' }, h('div', { class: 'sec' }, t('sr.paste.step')), h('p', { class: 'fine' }, t('sr.paste.hint')), field,
+    body: h('div', { class: 'rt-content' }, betaNotice(t, 'sr-beta'), h('div', { class: 'sec' }, t('sr.paste.step')),
+      h('p', { class: 'fine' }, t('sr.paste.hint')), field,
       h('p', { class: 'fine' }, t('sr.paste.after'))),
     buttons: [ctx.cancelButton(), go],
     first: 'sr-invite',

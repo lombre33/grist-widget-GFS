@@ -46,6 +46,7 @@ import { ThemeWindow } from '/js/theme/theme-window.js';
 import { Trash } from '/js/files/trash.js';
 import { openShare } from '/js/sharing/share-window.js';
 import { openManage } from '/js/sharing/manage-window.js';
+import { ManageControl } from '/js/sharing/manage-control.js';
 import { limitOf, whyNot } from '/js/sharing/share-other.js';
 import { openShareOther } from '/js/sharing/share-other-window.js';
 import { openShareReceive } from '/js/sharing/share-receive-window.js';
@@ -408,7 +409,10 @@ async function mount() {
       manage: () => ({ why: null, open: () => { window.__manageFromSettings = (window.__manageFromSettings || 0) + 1; }, notice: text => window.__notices.push(text) }) }),
     onOpen: file => { window.__opened = file.name; }, onNew: () => {}, get links() { return window.__linkProxy; },
     opened: { keys: () => openedFiles.keys(), shown: () => openedFiles.shown(SESSION), remove: key => openedFiles.remove(key) },
-    onImport: entry => { window.__imported = entry.valeur; }, onTemplates: () => { window.__templatesAsked = (window.__templatesAsked || 0) + 1; }, onClose: () => {}, onApps: () => {}, sharing: { whyNot: () => null, whyNotFolder: path => (path.startsWith('Espaces') && path.split('/').length < 3 ? i18n.t('share.folder.space') : null), folderFile: path => ({ key: window.__linkProxy && path.startsWith('Espaces/') ? `dossier:${path.split('/').slice(1).join('/').replace(/^[^/]+/, word => word.toLowerCase())}` : `dossier:${path}`, name: path.split('/').pop(), path, mine: !path.startsWith('Espaces/') }), open: file => window.__share(window.__shareKind || 'actif', file) }, onWeight: estimate => window.__weight(estimate), alerts: ({ detail }) => (window.__alertBytes ? [alertBar({ bytes: window.__alertBytes, locale, t: i18n.t, detail })] : []), personal: () => true, kept: null, trash: bin, copying,
+    onImport: entry => { window.__imported = entry.valeur; }, onTemplates: () => { window.__templatesAsked = (window.__templatesAsked || 0) + 1; }, onClose: () => {}, onApps: () => {}, sharing: { whyNot: () => null, whyNotFolder: path => (path.startsWith('Espaces') && path.split('/').length < 3 ? i18n.t('share.folder.space') : null), folderFile: path => ({ key: window.__linkProxy && path.startsWith('Espaces/') ? `dossier:${path.split('/').slice(1).join('/').replace(/^[^/]+/, word => word.toLowerCase())}` : `dossier:${path}`, name: path.split('/').pop(), path, mine: !path.startsWith('Espaces/') }), open: file => window.__share(window.__shareKind || 'actif', file),
+      // « Partager… » sur la ligne d'un espace entier (demande du 25/11) : il ouvre le partage de l'espace ; « Espaces » seul et un espace inconnu restent grisés.
+      whyNotShareFolder: path => (path === 'Espaces' ? i18n.t('share.folder.space') : null),
+      shareFolderFile(path) { return /^Espaces\/[^/]+$/.test(path) ? { key: `espace:${path.split('/')[1].toLowerCase()}`, name: path.split('/')[1], space: { name: path.split('/')[1] }, wholeSpace: true } : this.folderFile(path); } }, onWeight: estimate => window.__weight(estimate), alerts: ({ detail }) => (window.__alertBytes ? [alertBar({ bytes: window.__alertBytes, locale, t: i18n.t, detail })] : []), personal: () => true, kept: null, trash: bin, copying,
     attachments: async () => { window.__attachments += 1; if (window.__attachmentsFail) return { error: new Error(window.__attachmentsFail) }; return { data: attachmentsTable() }; },
     filing: { togglePin: noted('pin', 'name'), rename: noted('rename', 'name'), moveFile: noted('move', 'name'), renameFolder: async path => { window.__filing.push(['renameFolder', path]); }, moveFolder: async path => { window.__filing.push(['moveFolder', path]); }, ...moving,
       newFolder: () => filing.newFolder(), deleteFolder: path => filing.deleteFolder(path), undoStack: filing.undoStack },
@@ -519,6 +523,8 @@ async function mount() {
     structure: { kind: 'close', label: 'rights.act.close', hint: 'rights.act.close.hint' },
     spaces: [{ id: 1, key: 'achats', name: 'Achats', people: 3, groups: [{ id: 1, group: 'Achats', right: 'lecture' }] }, { id: 2, key: 'long', name: 'Espace de la comptabilité fournisseurs de la région Nord-Est', people: 12, groups: [] }],
   };
+  // Le vrai choix du groupe d'un espace (js/sharing/manage-control.js `pickGroup` : la liste et son « Créer le groupe … »), seul : le reste du contrôleur parle à Grist.
+  const picker = new ManageControl({ t: i18n.t, container: stage, inertTargets: () => [explorer.root] });
   window.__manage = () => {
     window.__manageActs = [];
     window.__removed = [];
@@ -529,13 +535,14 @@ async function mount() {
       onSuggest: async (state, typed) => { window.__manageActs.push(['suggest', typed]); return 'lea@example.com'; },
       onColumn: async () => { window.__manageActs.push(['column']); return { ok: true, label: i18n.t('manage.suggest.chosen', { table: 'Contacts', column: 'Mail', n: 12 }) }; }, onRoot: (state, who, right) => record(['root', who, right]), onStructure: async () => { window.__manageActs.push(['structure']); return true; }, onConfirmRemove: async name => { window.__manageActs.push(['confirmRemove', name]); return true; },
       onAddSpace: async () => { window.__manageActs.push(['addSpace']); return null; }, onRemoveSpace: async (state, space) => { window.__manageActs.push(['removeSpace', space.key]); return null; },
-      onSpaceGroup: (state, space, group, right) => record(['spaceGroup', space.key, group, right]), onPickGroup: async () => null,
+      onSpaceGroup: (state, space, group, right) => record(['spaceGroup', space.key, group, right]),
+      onPickGroup: (state, space) => picker.pickGroup(window.__noGroups ? { ...state, groups: [] } : state, window.__noGroups ? { ...space, groups: [] } : space), onNewSpaceGroup: (state, space, group) => record(['newSpaceGroup', space.key, group.name, group.people]),
       onLinks: async () => linksNow(),
       onNewLink: async () => { window.__manageActs.push(['newLink']); await window.__sendOther('lien'); },
       onStopLink: async link => { window.__manageActs.push([link.state === 'pending' ? 'cancelLink' : 'stopLink', link.id]); window.__removed.push(link.id); return { ok: true }; } });
   };
   // La fenêtre « Envoyer à un autre document » (js/sharing/share-other-window.js, test/partager-autre-firefox.mjs) : la vraie fenêtre, sur un parcours dont les réponses sont des doublures (le moteur de partage et Grist se
-  // mesurent dans un vrai Grist : labo/run-partager-autre.mjs ; ici, la mise en page et les gestes). `kind` : 'ok' (le document qui répond est dans un dossier, son nom très long), 'perso' (dans l'espace personnel), 'lien' (relier deux documents sans fichier : « Gérer les partages > Autres documents > Relier un document… »),
+  // mesurent dans un vrai Grist : labo/run-partager-autre.mjs ; ici, la mise en page et les gestes). `kind` : 'ok' (le document qui répond est dans un dossier, son nom très long), 'perso' (dans l'espace personnel), 'lien' (relier deux documents sans fichier : « Gérer les partages > Autres documents > Relier un document… »), 'lien-neuf' (idem dans un document sans aucun PDF : la table des fichiers naît au « Continuer »),
   // 'refus' (préparer échoue), 'bloque' (l'envoi ne peut pas finir). `window.__sendActs` note ce que le parcours a reçu ; `window.__sendGo()` laisse l'envoi finir.
   const LONG_DOC = 'Essai de réception du service de la comptabilité fournisseurs de la région Nord-Est';
   window.__sendOther = kind => {
@@ -552,7 +559,7 @@ async function mount() {
       abort: async () => { acts.push(['abort']); },
     };
     let mode = 'once';
-    return openShareOther({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], file: kind === 'lien' ? null : { id: 'abc', name: 'Facture de la session de formation de septembre.pdf' }, createFlow: (chosen, strict) => { mode = chosen; acts.push(['mode', chosen, Boolean(strict)]); return flow; }, errorText: error => String(error.message), notice: text => acts.push(['notice', text]) });
+    return openShareOther({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], file: kind === 'lien' || kind === 'lien-neuf' ? null : { id: 'abc', name: 'Facture de la session de formation de septembre.pdf' }, filesTable: kind !== 'lien-neuf', createFlow: (chosen, strict) => { mode = chosen; acts.push(['mode', chosen, Boolean(strict)]); return flow; }, errorText: error => String(error.message), notice: text => acts.push(['notice', text]) });
   };
   // La fenêtre « Recevoir d'un autre document Grist » (js/sharing/share-receive-window.js, test/partager-recevoir-firefox.mjs) : la vraie fenêtre, sur un parcours dont les réponses sont des doublures (le moteur et Grist se mesurent
   // dans un vrai Grist : labo/run-partager-recevoir.mjs). `kind` : 'ok' (un premier partage : GFS_Recus), 'second' (la table libre suivante : GFS_Recus_2), 'connu' (une réception qui reprend), 'serveur' (le code vient d'un autre serveur Grist : refusé dès la lecture), 'refus' (accepter échoue).
@@ -616,7 +623,8 @@ async function mount() {
     window.__removed = [];
     const record = act => { window.__shareActs.push(act); return Promise.resolve({ ok: true }); };
     const dir = folder && typeof folder.path === 'string' ? folder : null;
-    const file = dir ? { key: dir.key, name: dir.name, app: dir.mine ? i18n.t('share.folder.inMine', { name: i18n.t('ex.me') }) : i18n.t('share.folder.in', { name: 'Achats' }) } : { key: 'gfs-fichiers:abc', name: 'Facture de la session de formation de septembre.pdf', app: 'GFS' };
+    const space = folder && folder.wholeSpace ? folder : null;
+    const file = space ? { key: space.key, name: space.name, app: i18n.t('share.space.kind') } : dir ? { key: dir.key, name: dir.name, app: dir.mine ? i18n.t('share.folder.inMine', { name: i18n.t('ex.me') }) : i18n.t('share.folder.in', { name: 'Achats' }) } : { key: 'gfs-fichiers:abc', name: 'Facture de la session de formation de septembre.pdf', app: 'GFS' };
     return openShare({ container: stage, t: i18n.t, locale: language === 'en' ? 'en-GB' : 'fr-FR', inertTargets: () => [explorer.root], other: window.__shareOther ? state => otherTab(state, dir) : null, file, startTab: 'here',
       load: async () => (dir && dir.mine ? { ...shareStates.actif, folder: true, author: '', shares: [share(1, 'marc@example.com', 'lecture')] } : shareStates[kind]), onAdd: row => record(['add', row.Personne, row.Droit]), onChange: (id, patch) => record(['change', id, patch.Droit]), onRemove: id => record(['remove', id]), onActivate: async () => { window.__shareActs.push(['activate']); return false; }, onManage: kind === 'actif' ? () => window.__manage() : null });
   };

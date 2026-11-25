@@ -3,6 +3,8 @@
 .mod.sh { width: min(var(--win-l), 100%); }
 /* « Gérer les partages » garde la même hauteur à chaque onglet (le titre ne saute plus) : celle du panneau, plafonnée ; le contenu défile dans le corps. */
 .mod.mg { height: min(100%, 440px); }
+/* … et son pied reste en bas : le corps prend la place qui reste (la base `ask-body` ne grandit pas : sans cela le pied « Terminé » remontait au milieu de la fenêtre, avec du vide dessous). */
+.mod.mg > .sh-body { flex: 1 1 auto; }
 /* « Envoyer à un autre document » et « Recevoir » sont des formulaires : la largeur de formulaire de la charte. */
 .mod.sh.so { width: min(var(--win-m), 100%); }
 .sh-body { padding: 8px 16px 12px; }
@@ -55,15 +57,42 @@
 .mg .sg-new .field { margin-top: 8px; }
 /* Les adresses à proposer en tapant un groupe : deux boutons à gauche, sur la ligne de « Annuler » et « Créer le groupe » (qui passent dessous si la fenêtre est étroite). */
 .mg .sg-actions.mg-form { flex-wrap: wrap; align-items: center; }
+/* Les boutons du formulaire de groupe restent en bas de la zone qui défile : « Créer le groupe » se voit, même avec beaucoup de pastilles (700 × 400). Le -12px
+   est le bas de la zone (son remplissage) : collés au pied de la fenêtre, sans laisser voir ce qui défile dessous. */
+.mg .sg-actions.mg-form { position: sticky; bottom: -12px; z-index: 1; margin: 6px 0 -12px; padding: 4px 4px 12px; background: var(--surface); }
 .mg .mg-form .mg-more { margin-right: auto; }
 .mg .mg-form .btn .ic { width: 14px; height: 14px; margin-right: 4px; }
 .mg .rr .btn.sm { flex: none; }
+/* La saisie des personnes d'un groupe (js/sharing/address-field.js) : les pastilles et la ligne de saisie dans un même champ (il grandit, puis défile à 112 px), la case « plusieurs adresses à la
+   fois » dessous, la phrase d'erreur en `--danger-ink`. Un champ ou une phrase `hidden` disparaît (la règle `display` des champs l'emporterait sans cela). */
+.mg .field[hidden], .mg .mg-err[hidden] { display: none; }
+.mg .field.mg-chipbox { height: auto; min-height: 32px; max-height: 112px; overflow-y: auto; align-items: flex-start; padding: 3px 6px 3px 10px; margin-top: 8px; }
+.mg .field.mg-chipbox:has(input[aria-invalid="true"]) { border-color: var(--danger); }
+.mg .mg-chipbox > .ic { margin-top: 6px; }
+.mg .mg-wrap { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.mg .mg-chips { display: flex; flex-wrap: wrap; gap: 4px; max-width: 100%; margin: 0; padding: 0; list-style: none; }
+.mg .field.mg-chipbox input { flex: 1 1 120px; min-width: 96px; height: 24px; }
+.mg .mg-chip { display: inline-flex; align-items: center; gap: 2px; min-height: 24px; max-width: 100%; padding: 0 2px 0 9px; border: 1px solid var(--accent-soft-border); border-radius: 999px;
+  background: var(--accent-soft); color: var(--accent-ink); font-size: max(12.5px, var(--fs-min)); font-weight: 600; }
+.mg .mg-chip > span { min-width: 0; overflow-wrap: anywhere; }
+.mg .mg-chip-x { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: transparent;
+  color: inherit; cursor: pointer; }
+.mg .mg-chip-x:hover { background: var(--accent-soft-border); }
+.mg .mg-chip-x:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
+.mg .mg-chip-x .ic { width: 12px; height: 12px; }
+.mg .mg-err { margin: 4px 4px 0; color: var(--danger-ink); }
+.mg .mg-bulk { display: flex; align-items: center; gap: 8px; min-height: 24px; margin: 8px 4px 0; font-size: max(12.5px, var(--fs-min)); color: var(--text); cursor: pointer; }
+.mg .mg-bulk input { flex: none; width: 16px; height: 16px; margin: 0; accent-color: var(--accent-solid); }
 .sh .mod-foot .btn { flex: none; }
 .sh .mod-foot .btn .ic { width: 14px; height: 14px; margin-right: 4px; }
 
 /* « Envoyer à un autre document » (js/sharing/share-other-window.js) : mêmes jetons ; le code d'invitation et sa réponse en police fixe du système, le code de contrôle bien lisible. */
 .so-lead { display: flex; align-items: flex-start; gap: 8px; margin: 4px 4px 0; font-size: max(13px, var(--fs-min)); }
 .so-lead .ic { flex: none; width: 16px; height: 16px; margin-top: 1px; color: var(--text-muted); }
+/* L'avis « très expérimental » (js/sharing/other-beta-notice.js) : jetons d'avertissement, au-dessus du texte de la fenêtre ou de l'onglet. */
+.so-beta { display: flex; align-items: flex-start; gap: 8px; margin: 4px 4px 8px; padding: 6px 10px; border: 1px solid var(--warn-ink); border-radius: var(--radius-md);
+  background: var(--warn-soft); color: var(--warn-ink); font-size: max(12.5px, var(--fs-min)); }
+.so-beta .ic { flex: none; width: 16px; height: 16px; margin-top: 1px; }
 .so-list { margin: 2px 4px 0; padding-left: 20px; font-size: max(12.5px, var(--fs-min)); }
 .so-list li { margin: 2px 0; }
 .so-box { display: flex; align-items: flex-start; gap: 8px; margin: 4px 4px 0; }

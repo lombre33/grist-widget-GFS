@@ -7,6 +7,7 @@ import { delay } from './corbeille-firefox.mjs';
 import { contrasts } from './vitrine-firefox.mjs';
 import { PROBES } from './annuaire-probes.mjs';
 import { MENU_PROBES, PICK_PROBES } from './annuaire-links-firefox.mjs';
+import { TABLE_PROBES, clickOn } from './annuaire-table-firefox.mjs';
 import { MIN_TARGET, MIN_TEXT, sweep } from '../labo/mesures-acces.mjs';
 import { AMBIANCES } from '../js/theme/ambiance.js';
 
@@ -77,6 +78,31 @@ async function pickScreen(page, note, where, opts) {
   await delay(150);
 }
 
+// « Créer la table des personnes » : le réglage d'un nouvel annuaire, le choix de la table et la fenêtre qui crée la table ; tout se referme par Échap et « Annuler ».
+async function tableScreen(page, note, where, opts) {
+  const hit = selector => clickOn(page, note, selector);
+  await page.run(() => { void window.__annuaire.open(1); });
+  await page.until(() => document.querySelector('.mod.an .an-person') !== null);
+  if (!await hit('[data-fk="switch"]')) return;
+  await delay(250);
+  if (!await hit('[data-fk="pick-__new__"]')) return;
+  await delay(400);
+  if (await hit('[data-fk="pt"]')) {
+    await delay(250);
+    if (await hit('[data-fk="pick-new:"]')) {
+      await delay(250);
+      await measure(page, note, `${where}, « Créer la table des personnes »`, TABLE_PROBES, opts);
+      await page.press('Escape');
+      await delay(200);
+    }
+    await page.press('Escape');
+    await delay(200);
+  }
+  await hit('[data-fk="set-cancel"]');
+  await delay(200);
+  await page.run(() => window.__annuaire.close());
+}
+
 export async function ambiancesProblems(page, t, note, click, { width, mode, language }) {
   await page.goto(`${await page.run(() => `${location.origin}${location.pathname}`)}?lang=${language}&links=1&sub=1`);
   await page.run(() => window.__ready);
@@ -87,6 +113,7 @@ export async function ambiancesProblems(page, t, note, click, { width, mode, lan
     const opts = { access: choice.access, width };
     await listScreens(page, note, click, where, opts);
     await pickScreen(page, note, where, opts);
+    await tableScreen(page, note, where, opts);
   }
   await setting(page, { id: 'defaut', access: false });
 }

@@ -5,8 +5,8 @@
 // une ligne, peut demander à la personne de créer la table. Les gestes s'enchaînent l'un après l'autre.
 
 import { OwnTable, TableDeclined } from '../files/own-table.js';
-import { ANNUAIRES_TABLE, ANNUAIRES_COLUMNS, annuairesOf, newRecord, addAction, updateAction, addColumnAction, displayAction, writeConfig, readConfig,
-  effectiveConfig } from './annuaire-config.js';
+import { ANNUAIRES_TABLE, ANNUAIRES_COLUMNS, PEOPLE_COLUMNS, annuairesOf, newRecord, addAction, updateAction, addColumnAction, addTableAction, displayAction,
+  writeConfig, readConfig, effectiveConfig } from './annuaire-config.js';
 import { SHARES_TABLE, PLACE_TABLE } from '../sharing/sharing-model.js';
 import { TABLE as FILING_TABLE } from '../files/rangement.js';
 import { schemaOf, tablesNeeded, targetOf } from './annuaire-schema.js';
@@ -107,6 +107,19 @@ export class AnnuaireStore {
           catch (error) { console.warn('GFS : la colonne créée montre des numéros', error); }
       }
       return { id };
+    });
+  }
+
+  // Crée la table des personnes `name` avec son nom et son adresse e-mail : { id, columns: [{ id, type }] }. Grist choisit les identifiants (ils peuvent
+  // différer de ce qu'on demande) : on les relit dans sa réponse. Le geste vient d'une fenêtre qui a dit ce qui s'écrit (js/annuaire/annuaire-setup-table.js).
+  addTable(name) {
+    return this.#then(async () => {
+      const result = await this.#port.doc.applyUserActions([addTableAction(name, PEOPLE_COLUMNS)]);
+      const made = result && Array.isArray(result.retValues) ? result.retValues[0] : null;
+      const id = made && typeof made.table_id === 'string' && made.table_id ? made.table_id : String(name).trim();
+      const ids = made && Array.isArray(made.columns) && made.columns.length === PEOPLE_COLUMNS.length ? made.columns.map(String) :
+        PEOPLE_COLUMNS.map(col => col.id);
+      return { id, columns: PEOPLE_COLUMNS.map((col, at) => ({ id: ids[at], type: col.type })) };
     });
   }
 

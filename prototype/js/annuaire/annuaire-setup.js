@@ -38,7 +38,9 @@ export class AnnuaireSetup {
   // opts : { container, inertTargets(), t, schema, annuaire (celui qu'on règle, ou null), taken: [noms déjà pris], read(annuaire, cache) -> { people, tree }
   //   (facultatif), fetch(table) -> les tableaux de colonnes de la table (pour les exemples ; facultatif), createColumn(table, nom, type) -> { id } (l'écriture
   //   d'une
-  //   colonne, avec l'accord de la personne donné dans la fenêtre « Créer une colonne » ; facultatif), writeBlock() -> texte ou null (ce qui empêche d'écrire)
+  //   colonne, avec l'accord de la personne donné dans la fenêtre « Créer une colonne » ; facultatif), createTable(nom) -> { id, columns } (l'écriture de la
+  //   table
+  //   des personnes, avec l'accord donné dans la fenêtre « Créer une table » ; facultatif), writeBlock() -> texte ou null (ce qui empêche d'écrire)
   //   }
   constructor(opts) {
     this.#o = opts;
@@ -53,7 +55,7 @@ export class AnnuaireSetup {
     return { t: this.#o.t, schema: this.#o.schema, draft: this.#draft, ui: this.#ui, editing: Boolean(this.#o.annuaire), container: this.#o.container,
       inertTargets: this.#o.inertTargets, preview: this.#preview, body: this.#refs.body, sample: this.#sample(),
       repaint: () => this.#paint(), changed: () => { this.#paint(); this.#schedule(); }, list: opts => this.#list(opts),
-        focus: (...keys) => this.#focus(...keys), createColumn: (table, made) => this.#createColumn(table, made),
+        focus: (...keys) => this.#focus(...keys), createColumn: (table, made) => this.#createColumn(table, made), createTable: name => this.#createTable(name),
         writeBlock: () => (this.#o.writeBlock ? this.#o.writeBlock() : null) };
   }
 
@@ -87,6 +89,16 @@ export class AnnuaireSetup {
     if (this.#o.schema[table]) this.#o.schema[table].columns.push(col);
     this.#cache.delete(table);
     return col;
+  }
+
+  // La table des personnes que GFS crée (son nom et son adresse e-mail) : Grist l'écrit (l'identifiant réel peut changer : on le relit), le schéma du réglage
+  // la connaît aussitôt. Rend { table, name, email } : l'identifiant de la table et ceux des deux colonnes.
+  async #createTable(name) {
+    if (!this.#o.createTable) throw new Error('écriture indisponible');
+    const made = await this.#o.createTable(name);
+    this.#o.schema[made.id] = { columns: made.columns.map(col => ({ id: col.id, type: col.type, genre: genreOf(col.type), ref: '', visible: '' })) };
+    this.#cache.delete(made.id);
+    return { table: made.id, name: made.columns[0].id, email: made.columns[1].id };
   }
 
   // La fenêtre : rend { name, table, config } ou null.

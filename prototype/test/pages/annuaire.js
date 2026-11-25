@@ -103,7 +103,7 @@ async function seedSub(grist, seed) {
 }
 
 // Les apps du menu « Insérer dans… » de `?links=1` (test/annuaire-links-firefox.mjs) : deux qui reçoivent une personne, une qu'il faut d'abord activer, une qui ne sait
-// pas encore. `window.__annuaireInserted` garde ce que le menu leur a envoyé, `window.__annuaireUnlocked` les apps grisées qu'on a cliquées.
+// pas encore. `window.__annuaireInserted` garde ce que le menu leur a envoyé, `window.__annuaireUnlocked` les apps grisées qu'on a cliquées, `window.__annuaireApps` les ouvertures de la fenêtre des apps.
 const FAKE_TARGETS = Object.freeze([
   { id: 'pp', name: 'Publipostage+', where: 'dans un modèle', lock: '', focus: null, ready: true },
   { id: 'fp', name: 'Form+', where: 'dans un formulaire', lock: '', focus: null, ready: true },
@@ -143,6 +143,7 @@ async function mount() {
   window.__annuaireShared = null;
   window.__annuaireInserted = [];
   window.__annuaireUnlocked = [];
+  window.__annuaireApps = 0;
   let lang = language;
   const control = new AnnuaireControl({ port: grist.port, container: document.getElementById('stage'), t: (key, vars) => i18n.t(key, vars), locale: () => locale(lang),
     inertTargets: () => [], ask: async () => true, notice: text => window.__annuaireNotices.push(text), writeBlock: () => window.__annuaireBlock || null, fullAccess: () => true,
@@ -150,7 +151,7 @@ async function mount() {
     rights: query.get('sub') === '1' ? fakeRights() : undefined,
     targets: () => (query.get('links') === '1' ? FAKE_TARGETS : []),
     insert: async (id, person) => { window.__annuaireInserted.push({ id, person }); return true; },
-    unlock: async target => { window.__annuaireUnlocked.push(target.id); } });
+    unlock: async target => { window.__annuaireUnlocked.push(target.id); }, apps: async () => { window.__annuaireApps += 1; } });
   // Sans numéro, l'annuaire s'ouvre sur la vue fusionnée dès qu'il y a deux annuaires : les essais d'un seul annuaire partent de la ligne 1 (`?home=merged` : la vue fusionnée).
   const openIt = control.open.bind(control);
   control.open = (row = query.get('home') === 'merged' ? null : 1) => openIt(row);

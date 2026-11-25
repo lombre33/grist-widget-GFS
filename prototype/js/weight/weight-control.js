@@ -13,16 +13,24 @@ export class WeightControl {
 
   // opts : { transfer (js/broker/transfer.js : sql(), baseUrl()), container, inertTargets() -> [élément], t, locale(), canRead() (GFS a l'accès complet : le
   //   jeton du cadre d'envoi), repaint() (l'explorateur redit ce qu'il montre), notice(texte) (le message bref), explorerOpen(), suite? (des domaines de plus
-  //   pour La Suite numérique : le réglage `suite` de l'adresse de GFS, pour les essais), timers? (les minuteurs des essais) }
+  //   pour La Suite numérique : le réglage `suite` de l'adresse de GFS, pour les essais), timers? (les minuteurs des essais), deniedBefore? () -> vrai (ou une
+  //   promesse) quand Grist a déjà refusé le jeton en lecture seule sur ce document : les lectures du poids partent avec le jeton qui peut écrire }
   constructor(opts) { this.#opts = opts; }
+
+  // Les lectures SQL du poids : le jeton en lecture seule d'abord, celui qui peut écrire après un refus de Grist (`escalating`), ou d'emblée quand GFS a déjà
+  // vu ce refus sur ce document (`deniedBefore`).
+  #sql() {
+    const { transfer, deniedBefore } = this.#opts;
+    return escalating((statement, writable) => transfer.sql(statement, { writable }), deniedBefore);
+  }
 
   // Ouvre la fenêtre. `estimate` : { list (octets), pj (null ou { bytes }) }, ce que l'explorateur montre au moment du clic ; le poids exact se lit à
   // l'ouverture, à chaque fois.
   open(estimate) {
-    const { transfer, container, inertTargets, t, locale } = this.#opts;
+    const { container, inertTargets, t, locale } = this.#opts;
     return openWeight({
       container, inertTargets, t, locale: locale(), estimate,
-      load: (update, cancelled) => readWeight(escalating((statement, writable) => transfer.sql(statement, { writable })), update, cancelled),
+      load: (update, cancelled) => readWeight(this.#sql(), update, cancelled),
     });
   }
 
@@ -33,7 +41,7 @@ export class WeightControl {
   watch() {
     const { transfer, t, locale, canRead, repaint, notice, explorerOpen, container, timers, suite = [] } = this.#opts;
     if (this.#watch || !canRead()) return;
-    const sql = escalating((statement, writable) => transfer.sql(statement, { writable }));
+    const sql = this.#sql();
     this.#watch = new WeightWatch({
       gate: async () => inSuite(await transfer.baseUrl(), suite),
       read: () => readTotal(sql),

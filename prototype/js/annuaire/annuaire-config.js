@@ -155,5 +155,13 @@ export const updateAction = (tableId, row, record) => ['UpdateRecord', tableId, 
 // »…). `shown` : le numéro de la colonne que montre une référence (Grist écrit le nom de la personne plutôt que son numéro), 0 sans.
 export const addColumnAction = (tableId, name, type, shown = 0) => ['AddColumn', tableId, text(name),
   { type, isFormula: false, label: text(name), ...(shown ? { visibleCol: shown } : {}) }];
+// La table que GFS crée quand l'annuaire n'a pas encore sa table de personnes (retour du porteur, 25/11 : « laisser l'option d'en créer une ») : une ligne par
+// personne, le nom et l'adresse e-mail ; les autres colonnes se créent ensuite depuis le réglage, une à une. Des noms anglais dès le départ (décision du
+// 25/11 : les tables et les colonnes de la suite sont en anglais). Le préfixe `GFS_` est celui de la mécanique de GFS : la table des personnes est celle de la
+// personne.
+export const PEOPLE_TABLE = Object.freeze({ id: 'Directory_People', name: 'Name', email: 'Email' });
+export const PEOPLE_COLUMNS = Object.freeze([{ id: PEOPLE_TABLE.name, type: 'Text' }, { id: PEOPLE_TABLE.email, type: 'Text' }]);
+// L'action qui crée une table avec ses colonnes (Grist rend l'identifiant réel : on le relit).
+export const addTableAction = (name, columns) => ['AddTable', text(name), columns.map(column => ({ ...column }))];
 // L'action qui range dans une référence la formule de la colonne qu'elle montre (`$Assistant.Nom`) : la colonne d'aide que Grist lit pour l'écran.
 export const displayAction = (tableId, colRef, colId, shown) => ['SetDisplayFormula', tableId, null, colRef, `$${colId}.${shown}`];

@@ -2303,6 +2303,16 @@ paquet de frappes, une par personne pour la présence) doit savoir quand cette t
 2. [T] Après un `AddTable`, relire l'identifiant réellement créé (3.3, point 4 pour les noms ; chaque `AddTable` crée aussi une
    page dans le document).
 3. [T] Une table créée par la galerie de Publipostage+ n'est pas préfixée : elle appartient à la personne (d'où `ecrit: ["*"]`).
+4. [T] **La page que Grist crée pour une table de GFS** (préfixe `GFS_`, 25/11, demande du porteur : « une table principale, les autres dessous, repliée par
+   défaut »). Grist pose chaque page au premier niveau, en bas du volet : GFS les range sous la page qui porte GFS (`UpdateRecord` sur `_grist_Pages`,
+   `indentation` + 1 et `pagePos` juste après les dernières sous-pages, la position que calcule `placeBelow` du kit) et replie cette page par défaut
+   (`_grist_Pages.options` = `{"collapsed": true}`, les autres clés de `options` gardées). Une seule fois par table : la marque `gfs.pages` (7.1, point 4) dit
+   celles que GFS a déjà rangées ou vues ; une table qu'elle ne connaît pas se range (une table créée, un partage reçu, un document d'avant), une table qu'elle
+   connaît ne se touche plus (la personne qui sort une page ou déplie la page ne la voit jamais revenir) ; la page de GFS ne se replie qu'au premier
+   rangement. GFS ne touche ni une page déjà sous une autre page, ni une page qui montre autre chose que la table, ni quoi que ce soit quand il n'est pas sûr de sa
+   propre page (section non reconnue, niveau sans accès complet, document en lecture seule ou « plus récent »). **Le repli se voit à l'ouverture suivante du
+   document** : Grist lit `collapsed` une fois, à la création de la ligne de page (mesuré, faits vérifiés 175). `js/files/page-tree.js` ; déclenché à l'ouverture,
+   après chaque `AddTable` d'une `OwnTable` (`onTableCreated`, js/files/own-table.js) et à chaque arrivée d'un partage.
 
 ### 6.3 Les lignes réservées
 
@@ -2686,7 +2696,7 @@ fichier lui-même en pièce jointe de Grist.
     télécharge octet pour octet après la suppression définitive de l'original.
 
 14. [T] **Le cadre d'envoi lit aussi le poids exact du document** (lot 4 du poids, demande du porteur du 04/11). Une opération de plus, `json` : un `GET` dont le JSON revient tel quel, qui ne sert qu'à la lecture SQL du
-    document (`GET <adresse du document>/sql?q=…`, jeton **en lecture seule** d'abord, que GFS demande à chaque lecture et ne garde pas ; **le jeton qui peut écrire seulement après un refus (403) du premier**, et alors pour toute la lecture de cette ouverture : dans un document à règles d'accès, Grist refuse `/sql` au jeton en lecture seule même au propriétaire, et ne le rend qu'au jeton qui peut écrire). Le cadre ne fait toujours que ce que GFS lui demande, requête par requête ; GFS n'écrit dans une
+    document (`GET <adresse du document>/sql?q=…`, jeton **en lecture seule** d'abord, que GFS demande à chaque lecture et ne garde pas ; **le jeton qui peut écrire seulement après un refus (403) du premier**, et alors pour toute la lecture de cette ouverture (un refus que GFS a déjà vu sur ce document, par la mémoire des refus `/sql` de `js/broker/sql-gate.js`, page ou onglet depuis moins de 30 min, compte comme ce refus : la lecture part alors d'emblée avec lui, sans refaire la requête que la console écrirait en rouge, faits vérifiés 174) : dans un document à règles d'accès, Grist refuse `/sql` au jeton en lecture seule même au propriétaire, et ne le rend qu'au jeton qui peut écrire). Le cadre ne fait toujours que ce que GFS lui demande, requête par requête ; GFS n'écrit dans une
     lecture que des `SELECT` écrits dans `js/weight/weight-reader.js`, et le nom d'une table (un identifiant de Grist : lettres, chiffres, soulignés) n'y entre qu'après la vérification de sa forme. La fenêtre « Poids du document »
     (2.4, point 5) en est le premier usage (la surveillance du poids, plus bas, le second) : le fichier entier (`pragma_page_count × pragma_page_size`, écrit sans sous-requête : le pare-feu de la DINUM refuse la forme à `(SELECT …)`, faits vérifiés 174), l'historique (`SUM(LENGTH(body))` de `_gristsys_ActionHistory`), les pièces jointes stockées (`_gristsys_Files`) et comptées
     comme Grist les compte, et **chaque table, seule** (`dbstat`, `name = '<table>'`). [M] Mesuré dans un vrai Grist 1.7.19 (faits vérifiés, 43) : Grist coupe toute lecture de plus d'une seconde (400 : « a slow statement resulted in
@@ -2823,6 +2833,9 @@ d'app mis à la corbeille (6.2), jamais avant.
 2. [T] Les mêmes clés seule et dans GFS ; le courtier les transmet sans les renommer (aller-retour, cahier 7).
 3. [T] Toutes les clés d'une section sont dans un seul objet, celui de Grist (`customView.widgetOptions`). Celles de GFS
    commencent par `gfs.`.
+4. [T] Les clés de GFS : `gfs.grille` (4.5, point 8 : `lie` ou `plusieurs`), `gfs.pages` (6.2, point 4 : la liste des identifiants des tables de GFS dont la
+   page a été rangée ou vue ; écrite sans geste, comme `gfs.grille`, par la même écriture de la section qui n'affiche aucun « Enregistrer »), `gfs.sonde` (la
+   marque d'une recherche de section, retirée aussitôt). Aucune n'est transmise à une app.
 
 ### 7.2 La tranche de l'app
 
@@ -3522,6 +3535,11 @@ les droits de Grist. [D] **Quand : au lot de l'étape 5**, avec `gfs.json`.
        `labo/run-partager-fenetre.mjs`) ; les PDF déjà rangés restent lisibles de tous (une ligne « tout le document » par PDF). Chacun lit les lignes qui le concernent, catégories
        comprises. Mesuré : vrai Grist à trois comptes (`labo/run-partager.mjs` 25, `labo/run-partager-fenetre.mjs` 26), 700 × 400 à la vraie souris, clair et sombre, français et anglais ;
        Firefox (`test/partager-firefox.mjs`).
+       **Rien de choisi ou de tapé ne se perd sans le dire (25/11, constaté : « Terminé » avait fermé la fenêtre sur une personne choisie pour un dossier de « Moi », jamais ajoutée).** Une personne choisie et
+       pas encore ajoutée : le bas de la fenêtre dit « Pas encore ajouté… » (et non « enregistrés tout de suite ») ; « Terminé » ne ferme rien, dit quoi faire et met le clavier sur « Ajouter » ; Échap ferme d'abord
+       le formulaire et dit que rien n'est enregistré (la touche suivante ferme la fenêtre) ; une adresse tapée sans avoir été choisie n'est pas laissée tomber par « Terminé » ; le droit, « Peut télécharger » et la
+       date saisis survivent à un redessin (autre onglet, « Gérer les partages… »). Code : `holdClose` (`js/sharing/share-window.js`), option `keepOpen` de `openModal` (`js/ui/modal.js`) ; mesuré sous Firefox
+       (`test/partager-firefox.mjs`).
 
     h. [T] **Fichiers des apps livrés le 07/11** (lot 2 ; `appTargets` et `targetsOf` de `js/sharing/sharing-model.js`, d'après `fichiers[]` des manifestes). Pour chaque table de fichiers d'une app **présente dans le document** : GFS ajoute `GFS_Auteur`
        (colonne déclenchée, `user.Email`, écrite par Grist ; jamais rétro-remplie : les lignes d'avant n'ont pas d'auteur) et les cinq colonnes d'aide, pose les règles (création à son nom d'après `newRec.GFS_Auteur`, `-U` sur

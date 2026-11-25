@@ -340,6 +340,27 @@ export async function partagerProblems(page, language, tag) {
             if (back) await page.click(...back); else run.note(kind, 'le menu du droit devait proposer « Lecture »');
             await run.clickSelector('[data-fk="share-confirm"]');
             await expect(kind, '« Ajouter » devait demander d\'écrire la ligne', s => JSON.stringify(s.acts) === '[["add","@editeurs","lecture"]]');
+            // Un ajout choisi et pas écrit ne se perd jamais sans le dire (constaté le 25/11 : « Terminé » avait fermé la fenêtre avant « Ajouter ») : le bas de la
+            // fenêtre dit que ce n'est pas encore fait, « Terminé » à la vraie souris ne ferme rien et met le clavier sur « Ajouter », Échap ferme d'abord le formulaire en le disant.
+            const who = t('share.cat.editeurs');
+            await run.clickSelector('[data-fk="share-add"]');
+            const again = await page.run(selector => { const node = document.querySelector(selector); if (!node) return null; node.scrollIntoView({ block: 'nearest' }); const box = node.getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; }, '[data-fk="share-pick-@editeurs"]');
+            if (!again) run.note(kind, 'la liste devait reproposer « les éditeurs » pour l\'essai de « Terminé »');
+            else {
+              await page.click(...again);
+              await expect(kind, 'le bas de la fenêtre devait dire que l\'ajout n\'est pas encore fait', s => s.modal && s.modal.form && s.modal.note === t('share.pending', { who }));
+              await run.clickSelector('[data-fk="share-close"]');
+              await expect(kind, '« Terminé » avec un ajout en cours devait laisser la fenêtre ouverte, dire quoi faire et mettre le clavier sur « Ajouter »', s => s.modal && s.modal.form && s.modal.focus === 'share-confirm' && s.modal.note === t('share.pending.close', { who }));
+              await page.press('Escape');
+              await expect(kind, 'Échap avec un ajout en cours devait fermer le formulaire seul, dire que rien n\'est enregistré, la fenêtre restant ouverte', s => s.modal && !s.modal.form && s.modal.note === t('share.pending.dropped', { who }) && s.modal.focus === 'share-close');
+              await run.clickSelector('[data-fk="share-close"]');
+              await expect(kind, '« Terminé » sans ajout en cours devait fermer la fenêtre', s => s.modal === null);
+              const at = await page.run(rowCenter);
+              await page.rightClick(...at);
+              const entry = await page.run(itemCenter, t('share.menu'));
+              if (!entry) run.note(kind, 'le menu d\'une ligne devait proposer « Partager… » pour rouvrir la fenêtre');
+              else { await page.click(...entry); await expect(kind, 'la fenêtre devait se rouvrir après « Terminé »', s => s.modal && s.modal.focus === 'share-close'); }
+            }
           }
         }
       }

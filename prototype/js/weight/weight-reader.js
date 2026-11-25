@@ -45,9 +45,14 @@ export function failureKind(error) {
 // qui peut écrire, et tout le reste de la lecture avec lui. Un document à règles d'accès refuse `/sql` au jeton en lecture seule même à son propriétaire, mais
 // le rend à son jeton qui peut écrire (mesuré, faits vérifiés 43) ; un éditeur ou un lecteur y est refusé des deux façons. Rien d'autre ne passe par ce jeton
 // que des `SELECT` écrits ici.
-export function escalating(sqlWith) {
-  let writable = false;
+// `startWritable()` (facultatif, vrai ou promesse de vrai) : GFS a déjà vu Grist refuser le jeton en lecture seule sur ce document (`denied()` de
+// js/broker/sql-gate.js) ; la lecture part alors d'emblée avec le jeton qui peut écrire, au lieu de refaire la requête que la console écrirait en rouge. Même
+// règle
+// qu'avant : le jeton qui peut écrire ne sert qu'après un refus réellement vu.
+export function escalating(sqlWith, startWritable = null) {
+  let writable = null; // null : pas encore décidé (le premier appel le lit)
   return async statement => {
+    if (writable === null) writable = await Promise.resolve().then(startWritable || (() => false)).then(Boolean, () => false);
     try {
       return await sqlWith(statement, writable);
     } catch (error) {

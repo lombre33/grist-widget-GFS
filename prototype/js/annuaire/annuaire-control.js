@@ -62,6 +62,7 @@ export class AnnuaireControl {
       onCheck: () => this.#check(), onMail: people => this.#mail(people), onPresence: (row, on) => this.#setPresence(row, on),
         onSub: key => this.#subGesture(key), onMergePick: row => this.#mergePick(row), targets: () => (opts.targets ? opts.targets() : []),
       onInsert: (id, person) => this.#insert(id, person), onUnlock: target => (opts.unlock ? opts.unlock(target) : undefined),
+      onApps: () => (opts.apps ? opts.apps() : undefined),
       onFilterMore: (col, option) => this.#more(col, option), onSortPick: (keys, sort) => this.#pickSort(keys, sort), onClose: () => {} });
   }
 
@@ -399,6 +400,7 @@ export class AnnuaireControl {
     return { container: this.#o.container, inertTargets: this.#o.inertTargets, t: this.#o.t, schema,
       read: (draft, cache) => this.#store.read(draft, schema, cache),
       fetch: name => this.#store.table(name), createColumn: (table, name, type, show) => this.#store.addColumn(table, name, type, show),
+      createTable: name => this.#store.addTable(name),
         writeBlock: () => this.#o.writeBlock() };
   }
 
@@ -438,5 +440,5 @@ export function createAnnuaire(c) {
   return new AnnuaireControl({ port: c.port, container: c.$('stage'), t: c.t, locale: () => c.locale, inertTargets: c.inertTargets, ask: opts => c.ask(opts),
     notice: text => c.notice(text), writeBlock: () => c.writeBlock(), fullAccess: () => c.fullAccess, isOwner: () => c.transfer.isOwner(),
     identity: () => c.identity || '', rights: c.rights, targets: () => c.personTargets(), insert: (id, person) => c.openings.openPerson(id, person),
-    unlock: target => c.unlock({ text: target.lock, focus: target.focus }) });
+    unlock: target => c.unlock({ text: target.lock, focus: target.focus }), apps: () => c.openModules() });
 }

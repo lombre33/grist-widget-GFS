@@ -42,12 +42,15 @@ export function neededColumns(spec) {
 const quote = name => `"${name}"`;
 const valid = name => typeof name === 'string' && TABLE_ID.test(name);
 
-// Les colonnes (identifiant et type de Grist) des tables `tables`, sans les colonnes d'aide de Grist ni le rang. Une seule lecture pour toutes les tables.
+// Les colonnes (identifiant et type de Grist) des tables `tables`, sans les colonnes d'aide de Grist ni le rang. Une seule lecture pour toutes les tables. Le
+// filtre s'écrit `NOT LIKE` et `!=`, pas `substr(…) <> …` (25/11, faits vérifiés 173) : le pare-feu devant le Grist de la DINUM refuse en 403 la forme avec
+// `substr(` et `<>` (sonde lancée par le porteur sur son instance : cette forme-là 403 « PARE-FEU », celle-ci 200 « Grist »). `LIKE` ignore la casse en
+// SQLite : un identifiant « GRISTHELPER… » serait écarté lui aussi ; Grist ne crée que `gristHelper_…`, et aucun manifeste d'app n'en porte un autre.
 export function schemaStatement(tables) {
   const names = tables.filter(valid).map(name => `'${name}'`);
   if (!names.length) return null;
   return 'SELECT t.tableId AS tableId, c.colId AS colId, c.type AS type FROM _grist_Tables_column AS c JOIN _grist_Tables AS t ON t.id = c.parentId '
-    + `WHERE t.tableId IN (${names.join(', ')}) AND substr(c.colId, 1, 11) <> 'gristHelper' AND c.colId <> 'manualSort' ORDER BY c.parentId, c.colId`;
+    + `WHERE t.tableId IN (${names.join(', ')}) AND c.colId NOT LIKE 'gristHelper%' AND c.colId != 'manualSort' ORDER BY c.parentId, c.colId`;
 }
 
 // La lecture d'une table : le numéro de ligne, les colonnes voulues (`wanted`) et toutes celles qui ne sont pas du texte, et la somme des octets des colonnes

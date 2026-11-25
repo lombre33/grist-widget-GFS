@@ -48,6 +48,8 @@ import { Openings } from './broker/openings.js';
 import { OpenedFiles } from './explorer/opened-files.js';
 import { FilesReading } from './explorer/files-reading.js';
 import { createHeavyHint } from './explorer/heavy-hint.js';
+import { createReadGuard } from './explorer/read-guard.js';
+import { docKey } from './explorer/doc-key.js';
 import { keyStore } from './shell/stored-choice.js';
 import { Pending } from './explorer/pending.js';
 import { buildExplorer } from './explorer/explorer-assembly.js';
@@ -137,7 +139,8 @@ export class GfsController {
     // Le cadre d'envoi (js/broker/transfer.js) ne s'ouvre qu'à la première requête : les pièces jointes, et la preuve que la personne est propriétaire
     // (js/rights/rights-reader.js).
     this.transfer = new Transfer({ doc: this.port.doc, base: this.doc.baseURI, createFrame: url => buildTransferFrame(this.doc, url) });
-    // la lecture des fichiers d'un document lourd sans ses cellules lourdes (js/explorer/explorer-sql.js) : jeton en lecture seule, éteinte au premier refus
+    // la lecture des fichiers sans leurs cellules lourdes, d'abord et tant que le document n'est pas connu léger (js/explorer/explorer-sql.js) : jeton en
+    // lecture seule, éteinte au premier refus
     this.fileReader = createLightReader({ sql: statement => this.transfer.sql(statement),
       warn: error => console.warn('GFS : la lecture légère des fichiers est éteinte pour cette session, l\'explorateur relit les tables en entier', error) });
     this.player = new Player({ container: this.$('frames') }); // le lecteur de vidéos posé par-dessus l'app (contrats 5.2, point 11)
@@ -147,13 +150,16 @@ export class GfsController {
     this.relay = new SecurityRelay({ appName: this.appName, t: this.t, notice: text => this.notice(text), now: () => new Date() });
     this.#buildSharing();
     this.pending = new Pending(); // les gestes de rangement affichés avant d'être écrits (js/explorer/pending.js) ; l'explorateur se redessine à chacun
+    const docId = docKey(() => this.port.doc.getDocName()); // demandé une fois à Grist, pour ce qui se garde par document sur le navigateur
     this.#reading = new FilesReading({
       pending: this.pending, noteBin: id => { if (this.appFiles) this.appFiles.noteBin(id); }, port: this.port,
         apps: () => this.validApps(), fullAccess: () => this.fullAccess,
         rangement: this.rangement,
         reader: this.fileReader,
-        // un document vu lourd à la visite d'avant se lit d'emblée en lecture légère (js/explorer/heavy-hint.js) ; l'app qu'on ouvre lit sa table elle-même
-        hint: createHeavyHint({ docId: () => this.port.doc.getDocName(), store: key => keyStore(window, key) }),
+        // ce que le document pesait à la visite d'avant choisit la lecture (js/explorer/heavy-hint.js) ; l'app qu'on ouvre lit sa table elle-même
+        hint: createHeavyHint({ docId, store: key => keyStore(window, key) }),
+        // une table que Grist ne sait plus envoyer en entier n'est pas redemandée sans fin (js/explorer/read-guard.js)
+        guard: createReadGuard({ docId, store: key => keyStore(window, key, 'sessionStorage') }),
       prepare: () => this.names.refresh(this.apps.filter(item => item.ok)),
       explorer: () => this.explorer, openedBar: () => this.openedBar, appName: this.appName, t: this.t, onSpaces: spaces => { this.spaces = spaces; },
       onFiles: files => void this.followFolders(files), onStats: stats => { this.doc.body.dataset.explorerStats = JSON.stringify(stats); },

@@ -4,8 +4,10 @@
 // SQL (`GET /sql`, par le cadre d'envoi, `Transfer.sql`) rend ces colonnes et le poids de la ligne, sans la cellule lourde : 30 ms.
 //
 // Trois règles font la forme de ce module :
-//   - elle ne sert qu'APRÈS une lecture complète qui a trouvé un document lourd (`learn`, plus de 4 Mo de fichiers), à cette visite ou à une précédente (le
-//     souvenir de js/explorer/heavy-hint.js) : un document léger garde la lecture d'avant, sans cadre d'envoi ni jeton de plus ;
+//   - elle sert d'abord (25/11, choix du porteur : « la liste légère dès la première visite ») : tant que GFS ne sait rien du poids du document, puis tant
+//     qu'il le sait lourd (`learn`, plus de 4 Mo de fichiers, à cette visite ou à une précédente : le souvenir de js/explorer/heavy-hint.js). Un document
+//     connu léger garde la lecture complète, sans cadre d'envoi ni jeton de plus. Avant, la première lecture d'un document était toujours complète : 23 s
+//     pour 118 Mo sur un serveur lent, et au-delà de 500 Mo Grist coupait la connexion et GFS redémarrait sans fin (faits vérifiés 161) ;
 //   - elle n'emploie que le jeton en lecture seule : Grist ne rend `/sql` qu'à qui peut tout copier (faits vérifiés 43) ; un refus, une lecture coupée ou un
 //     serveur muet l'éteignent pour la session et l'explorateur relit comme avant (jamais de jeton qui peut écrire pour une lecture que la personne n'a pas
 //     demandée) ;
@@ -18,8 +20,8 @@
 import { TABLE_ID } from '../weight/weight-reader.js';
 import { cellBytes } from '../weight/weight.js';
 
-// Un document est lourd quand la dernière lecture complète a compté au moins ces octets pour ses fichiers : plus bas, le gain d'une lecture SQL ne paie pas le
-// cadre d'envoi et le jeton qu'elle demande.
+// Un document est lourd quand la dernière lecture a compté au moins ces octets pour ses fichiers : plus bas, le gain d'une lecture SQL ne paie pas le cadre
+// d'envoi et le jeton qu'elle demande.
 export const HEAVY_BYTES = 4 * 1024 * 1024;
 
 const TEXT_TYPES = new Set(['Text', 'Choice', 'ChoiceList', 'Attachments']);
@@ -76,10 +78,10 @@ export function readRows(records, keep, wanted) {
 // colonnes voulues ; `read` rend la lecture déjà partie.
 const planKey = (table, wanted) => `${table}\u0000${[...new Set(wanted)].sort().join('\u0001')}`;
 
-// `sql(statement)` rend les lignes (`Transfer.sql`, jeton en lecture seule) ; `threshold` : le poids à partir duquel la lecture complète fait place à
-// celle-ci ; `warn` : dit pourquoi elle s'éteint.
+// `sql(statement)` rend les lignes (`Transfer.sql`, jeton en lecture seule) ; `threshold` : le poids sous lequel celle-ci fait place à la lecture
+// complète ; `warn` : dit pourquoi elle s'éteint.
 export function createLightReader({ sql, threshold = HEAVY_BYTES, warn = () => {} }) {
-  let heavy = false;
+  let heavy = null; // ce que GFS sait du document : rien encore (null : la lecture légère d'abord), lourd (true) ou léger (false : la lecture complète)
   let broken = false;
   let schema = null;
   let prepared = new Map();
@@ -92,10 +94,14 @@ export function createLightReader({ sql, threshold = HEAVY_BYTES, warn = () => {
     try { return readRows(await sql(statement), keep, want); } catch (error) { return stop(error); }
   }
   return {
-    // Prête à servir : un document lourd a été vu, et rien n'a échoué depuis.
-    isActive: () => heavy && !broken,
-    // `bytes` : ce que la dernière lecture complète a compté pour les fichiers du document.
-    learn(bytes) { if (bytes >= threshold) heavy = true; },
+    // Prête à servir : le document n'est pas connu léger, et rien n'a échoué depuis.
+    isActive: () => heavy !== false && !broken,
+    // `bytes` : ce que la dernière lecture (l'une ou l'autre : elles comptent le même poids) a compté pour les fichiers du document. `partial` : une app n'a
+    //   pas pu être lue, son poids manque ; « lourd » reste sûr, « léger » ne le serait pas.
+    learn(bytes, partial = false) {
+      if (bytes >= threshold) heavy = true;
+      else if (!partial) heavy = false;
+    },
     // `plan` : [{ table, wanted }], toutes les lectures du prochain passage. Lit les colonnes de ces tables en une fois, puis lance les lectures ensemble ; une
     //   erreur éteint la lecture légère pour la session.
     async prepare(plan) {

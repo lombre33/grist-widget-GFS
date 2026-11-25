@@ -140,7 +140,7 @@ test('la lecture rend le nom que le document donne à la table de la corbeille, 
   try { assert.equal((await loadFiles(port(withBin, { broken: 'GFS_Corbeille' }), [{ manifest }], '')).binTable, null); } finally { console.warn = warn; }
 });
 
-// La lecture légère d'un document connu lourd (js/explorer/heavy-hint.js) : les colonnes utiles seulement, et le poids de chaque ligne. Aucune table ne se lit en
+// La lecture légère (elle sert d'abord, et tant que le document n'est pas connu léger : js/explorer/heavy-hint.js) : les colonnes utiles seulement, et le poids de chaque ligne. Aucune table ne se lit en
 // entier pour être gardée : la copie de la table pour l'app qui s'ouvre (js/broker/table-cache.js) a été retirée le 25/11, l'app lit sa table elle-même.
 const MIB = 1024 * 1024;
 const lightReader = (weights = [3 * MIB, 2 * MIB]) => ({
@@ -148,14 +148,29 @@ const lightReader = (weights = [3 * MIB, 2 * MIB]) => ({
   read: async table => (table === spec.table ? { data: tables()[spec.table], weights } : null),
 });
 
-test('un document connu lourd, lu en légère à la première lecture : la liste vient des colonnes utiles, le poids de la lecture légère, et la table n\'est lue qu\'une fois par Grist', async () => {
+test('la première lecture est légère : la liste vient des colonnes utiles, le poids de la lecture légère, la table n\'est pas lue en entier, et le poids compté est dit à la lecture légère', async () => {
   const reads = [];
   const data = tables();
   const counting = { doc: { listTables: async () => Object.keys(data), fetchTable: async name => { reads.push(name); return data[name]; } } };
-  const found = await loadFiles(counting, [{ manifest }], '', lightReader());
+  const learnt = [];
+  const found = await loadFiles(counting, [{ manifest }], '', { ...lightReader(), learn: (...args) => learnt.push(args) });
   assert.equal(found.stats.light, true);
   assert.equal(found.stats.bytes, 5 * MIB, 'le poids vient de la lecture légère, ligne par ligne');
   assert.equal(reads.includes(spec.table), false, 'la table des fichiers ne se lit pas en entier derrière la lecture légère');
+  assert.deepEqual(learnt, [[5 * MIB, false]], 'après une lecture légère aussi : c\'est elle qui dit si la suivante reste légère');
+});
+
+test('la lecture légère ne prépare que les tables que le document a ; une app illisible rend le poids partiel', async () => {
+  const plans = [];
+  const learnt = [];
+  const reader = { isActive: () => true, learn: (...args) => learnt.push(args), prepare: async plan => { plans.push(plan.map(item => item.table)); }, read: async () => null };
+  await loadFiles(port(tables()), [{ manifest }, FILES_ENTRY], '', reader);
+  assert.deepEqual(plans, [[spec.table]], 'ni la corbeille, ni les versions, ni les fichiers de GFS : ce document ne les a pas');
+  assert.equal(learnt[0][1], false);
+  const warn = console.warn;
+  console.warn = () => {};
+  try { await loadFiles(port(tables(), { broken: spec.table }), [{ manifest }], '', reader); } finally { console.warn = warn; }
+  assert.deepEqual(learnt[1], [0, true]);
 });
 
 test('une lecture légère refusée (une personne qui n\'est pas propriétaire : `/sql` lui est fermé) lit les tables en entier, comme avant', async () => {
@@ -271,7 +286,7 @@ test('une table d\'app illisible est dite (l\'app et la raison) et n\'arrête pa
   try {
     const data = { ...tables(), GFS_Fichiers: { id: [1], Identifiant: ['aa'], Nom: ['A.pdf'], Type: ['pdf'], Date: [10], Auteur: [''] } };
     const found = await loadFiles(port(data, { broken: spec.table }), [{ manifest }, FILES_ENTRY], '');
-    assert.deepEqual(found.problems, [{ app: 'publipostage', reason: 'accès refusé' }]);
+    assert.deepEqual(found.problems, [{ app: 'publipostage', reason: 'accès refusé', held: false }]);
     assert.deepEqual(found.files.map(file => file.key), ['gfs-fichiers:aa'], 'les fichiers de GFS se lisent quand même');
     assert.deepEqual([found.stats.tables, found.stats.rows], [1, 1], 'seules les tables lues comptent');
   } finally { console.warn = warn; }

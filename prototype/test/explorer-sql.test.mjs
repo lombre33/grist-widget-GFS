@@ -133,17 +133,18 @@ test('les deux lectures donnent les mêmes fichiers, le même poids et les même
   assert.deepEqual(lightVersions.weights, versions.id.map((unused, i) => rowWeigher(versions)(i)));
 });
 
-test('loadFiles : la première lecture est complète et apprend que le document est lourd ; la suivante est légère, sans toucher aux tables lourdes, et rend exactement la même chose', { skip }, async () => {
+test('loadFiles : la toute première lecture d\'un document est déjà légère, sans toucher aux tables lourdes ; elle rend exactement ce que rend la lecture complète, au même poids, et la suivante reste légère', { skip }, async () => {
   const db = makeDb(document());
-  const reader = createLightReader({ sql: db.sql, threshold: 1000 });
   const apps = [{ manifest: publipostage() }, { manifest: form() }, FILES_ENTRY];
-  const first = await loadFiles(db.port, apps, '', reader);
+  const first = await loadFiles(db.port, apps, ''); // la lecture complète, sans lecture légère : ce qu'il faut retrouver
   assert.equal(first.stats.light, false);
-  assert.ok(first.stats.bytes >= 1000, 'la lecture complète a compté le poids des fichiers');
-  assert.ok(db.calls.includes('fetchTable Publipostage_Modeles') && !db.calls.some(call => call.startsWith('SELECT')), 'la première lecture n\'a demandé aucun SQL');
+  assert.ok(first.stats.bytes >= 1000 && db.calls.includes('fetchTable Publipostage_Modeles'));
   db.calls.length = 0;
+  const reader = createLightReader({ sql: db.sql, threshold: 1000 });
+  assert.equal(reader.isActive(), true, 'rien n\'est su du document : la lecture légère d\'abord');
   const second = await loadFiles(db.port, apps, '', reader);
   assert.equal(second.stats.light, true);
+  assert.equal(reader.isActive(), true, 'le poids compté dit « lourd » : elle reste');
   assert.deepEqual(second.files, first.files);
   assert.deepEqual(second.trash, first.trash);
   assert.deepEqual(second.problems, []);
@@ -159,6 +160,11 @@ test('loadFiles : la première lecture est complète et apprend que le document 
     if (call.endsWith('FROM "GFS_Corbeille"')) assert.ok(!selected(call).includes('"Instantane"'), `la copie JSON de la corbeille n'est pas rendue : ${call}`);
   }
   assert.ok(reads.some(call => call.includes('length(CAST("Contenu" AS BLOB))')) && reads.some(call => call.includes('length(CAST("Instantane" AS BLOB))')), 'elles sont comptées, pour le poids');
+  db.calls.length = 0;
+  const third = await loadFiles(db.port, apps, '', reader);
+  assert.equal(third.stats.light, true);
+  assert.deepEqual(third.files, first.files);
+  assert.ok(!db.calls.some(call => heavyTables.some(name => call === `fetchTable ${name}`)));
 });
 
 // Le même document, sous les noms anglais de Publipostage+ (js/apps/doc-names.js) : la table des modèles et quelques colonnes renommées, `Jeton` des versions aussi.
@@ -182,7 +188,7 @@ test('un document aux noms anglais : la lecture complète et la lecture légère
   const apps = [names.adaptItem(item), FILES_ENTRY];
   assert.equal(apps[0].manifest.fichiers[0].table, 'Publipostage_Templates');
   const reader = createLightReader({ sql: db.sql, threshold: 1000 });
-  const first = await loadFiles(db.port, apps, '', reader);
+  const first = await loadFiles(db.port, apps, ''); // la lecture complète
   assert.deepEqual(first.problems, []);
   assert.ok(first.files.some(file => file.app === 'publipostage' && file.name === 'Convocation' && file.weight > 5000), 'les modèles de la table renommée sont lus, avec le poids de leurs versions (Token)');
   assert.equal(first.stats.light, false);
@@ -197,14 +203,51 @@ test('un document aux noms anglais : la lecture complète et la lecture légère
   assert.deepEqual(first.trash.map(file => file.key), legacy.trash.map(file => file.key), 'et la même corbeille : ses entrées portent le nom du manifeste');
 });
 
-test('un document léger ne demande rien de SQL, jamais : la lecture complète d\'avant reste la seule', { skip }, async () => {
+test('un document léger : la lecture légère ne sert qu\'une fois, le temps de compter son poids ; ensuite la lecture complète est la seule, sans rien de SQL', { skip }, async () => {
   const db = makeDb(document());
   const reader = createLightReader({ sql: db.sql });
-  await loadFiles(db.port, [{ manifest: publipostage() }], '', reader);
-  await loadFiles(db.port, [{ manifest: publipostage() }], '', reader);
-  assert.equal(reader.isActive(), false);
-  assert.ok(HEAVY_BYTES > 100000);
+  const first = await loadFiles(db.port, [{ manifest: publipostage() }], '', reader);
+  assert.equal(first.stats.light, true, 'cette lecture-ci est légère');
+  assert.ok(HEAVY_BYTES > 100000 && first.stats.bytes < HEAVY_BYTES);
+  assert.equal(reader.isActive(), false, 'le poids compté est sous le seuil : elle laisse la place');
+  assert.ok(db.calls.some(call => call.startsWith('SELECT')) && !db.calls.includes('fetchTable Publipostage_Modeles'), 'cette première lecture n\'a pas lu le contenu');
+  db.calls.length = 0;
+  const second = await loadFiles(db.port, [{ manifest: publipostage() }], '', reader);
+  assert.equal(second.stats.light, false);
+  assert.deepEqual(second.files, first.files);
   assert.deepEqual(db.calls.filter(call => call.startsWith('SELECT')), []);
+  assert.ok(db.calls.includes('fetchTable Publipostage_Modeles'));
+});
+
+test('un document que le souvenir dit léger ne demande rien de SQL, jamais ; un document sans aucune table de fichiers non plus, même inconnu', { skip }, async () => {
+  const db = makeDb(document());
+  const known = createLightReader({ sql: db.sql });
+  known.learn(1200);
+  await loadFiles(db.port, [{ manifest: publipostage() }], '', known);
+  await loadFiles(db.port, [{ manifest: publipostage() }], '', known);
+  assert.deepEqual(db.calls.filter(call => call.startsWith('SELECT')), []);
+  const empty = makeDb({ Clients: { colonnes: [{ id: 'Nom', type: 'Text' }], lignes: [{ Nom: 'Dupont' }] } });
+  const reader = createLightReader({ sql: empty.sql });
+  const found = await loadFiles(empty.port, [{ manifest: publipostage() }, { manifest: form() }, FILES_ENTRY], '', reader);
+  assert.deepEqual([found.files, found.problems, empty.calls], [[], [], []], 'ni cadre d\'envoi ni jeton pour un document où aucune app n\'a encore de table');
+  assert.equal(reader.isActive(), false, 'zéro octet : léger');
+});
+
+test('une app illisible à la première lecture : son poids manque, « léger » n\'est pas conclu et la lecture légère reste', { skip }, async () => {
+  const db = makeDb(document());
+  const fetchTable = async name => { if (name === 'Publipostage_Modeles') throw new Error('accès refusé'); return db.fetchTable(name); };
+  const sql = async statement => { if (statement.includes('FROM "Publipostage_Modeles"')) throw new Error('refus'); return db.sql(statement); };
+  const partial = createLightReader({ sql: async () => { throw new Error('refus'); } });
+  partial.learn(100, true);
+  assert.equal(partial.isActive(), true, 'un compte partiel sous le seuil ne dit rien');
+  partial.learn(HEAVY_BYTES, true);
+  partial.learn(100, true);
+  assert.equal(partial.isActive(), true, 'un compte partiel au-dessus du seuil dit « lourd », et le reste');
+  const reader = createLightReader({ sql, warn: () => {} });
+  const found = await loadFiles({ doc: { listTables: db.port.doc.listTables, fetchTable } }, [{ manifest: publipostage() }, FILES_ENTRY], '', reader);
+  assert.equal(found.problems.length, 1);
+  reader.learn(100, true);
+  assert.equal(found.stats.light, false, 'la lecture légère s\'est éteinte au refus');
 });
 
 test('un refus de Grist (403 : qui ne peut pas tout copier), une lecture coupée ou un serveur muet éteignent la lecture légère pour la session : l\'explorateur relit comme avant, sans rien perdre', { skip }, async () => {
@@ -251,9 +294,7 @@ test('les lectures de lignes partent ensemble, après la structure : un seul tou
   };
   const reader = createLightReader({ sql, threshold: 0 });
   const apps = [{ manifest: publipostage() }, FILES_ENTRY];
-  await loadFiles(db.port, apps, '', reader); // la première lecture est complète : elle apprend
-  peak = 0;
-  const second = await loadFiles(db.port, apps, '', reader);
+  const second = await loadFiles(db.port, apps, '', reader); // la première lecture est déjà légère
   assert.equal(second.stats.light, true);
   assert.equal(peak, 4, 'les quatre lectures de lignes (modèles, versions, fichiers de GFS, corbeille) sont en vol en même temps');
   assert.equal(db.calls.filter(call => call.startsWith('SELECT id')).length, 4, 'et chaque table n\'est lue qu\'une fois');

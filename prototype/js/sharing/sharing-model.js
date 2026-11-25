@@ -10,6 +10,7 @@
 import { FILES_TABLE } from '../files/gfs-files.js';
 import { ANNUAIRES_APP, ANNUAIRES_TABLE } from '../files/annuaire-files.js';
 import { TABLE as FILING_TABLE, COLUMNS as FILING_COLUMNS } from '../files/rangement.js';
+import { NOTICES_TABLE, noticeColumns, noticeRules, noticeFixedRules, noticeReadRules, NOTICE_FIXED, NOTICE_READ } from './notice-model.js';
 
 export const SHARES_TABLE = 'GFS_Partages';
 // Le dossier d'une personne dans « Moi » se partage par la cible `dossier:moi:<adresse en minuscules>/<chemin>` : le droit vaut pour les fichiers de cette
@@ -317,6 +318,11 @@ const inList = name => `user.Email and rec.${name} and user.Email.lower() in rec
 // Les règles des deux tables d'espaces : les propriétaires font tout ; ceux qui voient l'espace le lisent (son nom, ses membres) ; le reste est refusé.
 export const spaceRules = () => [rule('user.Access in [OWNER]', '+CRUD', 'les propriétaires tiennent les espaces'),
   rule(inList('Voit'), '+R', 'ceux qui ont accès à un espace le voient'), rule('', '-CRUD', 'un espace est caché à qui n’y a pas accès')];
+// Les notifications (js/sharing/notice-model.js) : chacun écrit et lit les siennes ; deux ressources de colonnes passent avant celle de la table (« Lu » seule
+// change, pour ses lignes ; le reste ne change jamais).
+const noted = rules => rules.map(item => rule(item.formula, item.rights, item.memo));
+export const noticeTableRules = () => noted(noticeRules());
+export const noticeColumnGroups = () => [{ colIds: NOTICE_FIXED, rules: noted(noticeFixedRules()) }, { colIds: NOTICE_READ, rules: noted(noticeReadRules()) }];
 const ownShare = 'user.Email and rec.Auteur and rec.Auteur.lower() == user.Email.lower()';
 const rule = (formulaText, rights, memo, extra = {}) => ({ formula: formulaText, rights, memo: `${NOTE}${memo}`, ...extra });
 
@@ -472,11 +478,12 @@ function pickTargets(view, targets, shared) {
   return { skipped, here, hadRules, todo: here.filter(target => !covered(target)) };
 }
 
-// Les tables communes : les groupes (un partage cible `#nom`), les espaces et leur placement. `missing` : celles à créer ; `unruled` : celles qui sont là sans
-// leurs règles.
+// Les tables communes : les groupes (un partage cible `#nom`), les espaces et leur placement, les notifications. `missing` : celles à créer ; `unruled` :
+// celles qui sont là sans leurs règles.
 function coreTables(view) {
   const core = [[GROUPS_TABLE, groupColumns, GROUP_PUBLIC, groupPublicRules, groupRules], [SPACES_TABLE, spaceColumns, 'Cle,Nom,Voit', null, spaceRules],
-    [PLACE_TABLE, placeColumns, 'Cible,Espace,Dossier,Voit', null, spaceRules]];
+    [PLACE_TABLE, placeColumns, 'Cible,Espace,Dossier,Voit', null, spaceRules], [NOTICES_TABLE, noticeColumns, null, null, noticeTableRules,
+      noticeColumnGroups]];
   // Un placement d'avant les liens : ses deux colonnes de lien s'ajoutent (additif, rien ne se recharge).
   const have = view.columnsOf(PLACE_TABLE);
   return { missing: core.filter(([name]) => !view.hasTable(name)), unruled: core.filter(([name]) => view.hasTable(name) && view.mine(name).length === 0),
@@ -557,8 +564,10 @@ function ruleGroups({ sharesRules, core, todo, filing }) {
   return [
     ...(sharesRules ? [] : [{ tableId: SHARES_TABLE, colIds: 'Auteur,AuteurAcces', rules: stampRules() },
       { tableId: SHARES_TABLE, colIds: '*', rules: shareRules() }]),
-    ...[...core.missing, ...core.unruled].flatMap(([name, , publicColumns, publicRules, tableRules]) =>
-      [...(publicRules ? [{ tableId: name, colIds: publicColumns, rules: publicRules() }] : []), { tableId: name, colIds: '*', rules: tableRules() }]),
+    ...[...core.missing, ...core.unruled].flatMap(([name, , publicColumns, publicRules, tableRules, groups]) =>
+      [...(publicRules ? [{ tableId: name, colIds: publicColumns, rules: publicRules() }] : []),
+        ...(groups ? groups().map(group => ({ tableId: name, ...group })) : []),
+        { tableId: name, colIds: '*', rules: tableRules() }]),
     ...todo.flatMap(target => [...(target.stamped ? [{ tableId: target.table, colIds: STAMP,
       rules: stampRules('l’auteur d’un fichier est écrit par Grist, personne ne le change') }] : []),
       { tableId: target.table, colIds: '*', rules: fileRules(target) }]),

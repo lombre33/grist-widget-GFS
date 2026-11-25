@@ -7,8 +7,9 @@ import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { openModal } from '../ui/modal.js';
 import { openMenu } from '../ui/menu.js';
-import { CATEGORIES } from './sharing-model.js';
+import { CATEGORIES, groupName } from './sharing-model.js';
 import { addressField } from './address-field.js';
+import { splitAddresses } from './group-suggest.js';
 import { otherManageTab } from './manage-other-tab.js';
 import { replaceKeepingFocus, tabList } from '../ui/tabs.js';
 
@@ -46,21 +47,23 @@ function groupRow(ctx, group) {
 }
 
 // Le formulaire d'un groupe tapé dans GFS : son nom (fixe à la modification) et ses personnes, une à la fois en pastilles (js/sharing/address-field.js ; la
-// zone « plusieurs adresses à la fois » est une option).
-function groupForm(ctx, group) {
+// zone « plusieurs adresses à la fois » est une option). `draft` : le groupe qu'on crée depuis un espace, { space, name } (le nom est déjà tapé ; le groupe
+// entre dans l'espace en lecture seule, dans la même écriture).
+function groupForm(ctx, group, draft = null) {
   const { t } = ctx;
   const name = h('input', { type: 'text', autocomplete: 'off', 'aria-label': t('manage.groups.name'), placeholder: t('manage.groups.name'),
     disabled: group ? true : null, dataset: { fk: 'manage-group-name' } });
-  name.value = group ? group.name : '';
+  name.value = group ? group.name : (draft ? draft.name : '');
   const people = addressField({ t, value: group ? group.here : '' });
   name.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); people.focus(); } });
   const yes = h('button', { type: 'button', class: 'btn primary', dataset: { fk: 'manage-group-save' } },
     group ? t('manage.groups.save') : t('manage.groups.create'));
   const no = h('button', { type: 'button', class: 'btn', dataset: { fk: 'manage-group-cancel' } }, t('share.cancel'));
-  no.addEventListener('click', () => ctx.edit(null));
+  no.addEventListener('click', () => (draft ? ctx.leaveDraft() : ctx.edit(null)));
   yes.addEventListener('click', () => {
     const text = people.take();
-    if (text !== null) void ctx.saveGroup(group, { name: name.value, people: text });
+    const values = { name: name.value, people: text };
+    if (text !== null) void (draft ? ctx.saveSpaceGroup(draft, values) : ctx.saveGroup(group, values));
   });
   return h('div', { class: 'sg-new' }, h('div', { class: 'field' }, icon('users'), name), people.node,
     h('p', { class: 'sg-actions mg-form' }, ...suggestButtons(ctx, people), no, yes));
@@ -148,6 +151,8 @@ function spacesTab(ctx) {
   const { t, state } = ctx;
   if (!state.active) return lead(t, 'manage.inactive');
   const open = ctx.space && state.spaces.find(item => item.key === ctx.space);
+  if (open && ctx.draft && ctx.draft.space === open.key) return h('div', null, h('div', { class: 'sec' }, t('manage.spaces.newGroup', { name: open.name })),
+    groupForm(ctx, null, ctx.draft));
   if (open) return spaceDetail(ctx, open);
   const create = h('button', { type: 'button', class: 'btn', dataset: { fk: 'manage-space-new' } }, icon('plus'), t('manage.spaces.new'));
   create.addEventListener('click', () => void ctx.addSpace());
@@ -178,6 +183,13 @@ function catsTab(ctx) {
     h('p', { class: 'fine' }, t('manage.cats.hint')));
 }
 
+// La phrase du pied quand un groupe vient d'être créé depuis un espace : combien de personnes il a, ou où en ajouter quand il n'en a aucune.
+function createdNote(t, values) {
+  const name = groupName(values.name) || values.name;
+  const n = splitAddresses(values.people).good.length;
+  return n ? t('manage.spaces.created.people', { name, n }) : t('manage.spaces.created', { name, tab: t('manage.tab.groups') });
+}
+
 // Le contenu d'après l'état : { owner, active, groups, rows, root, structure, tables }. Un non-propriétaire lit seulement à qui s'adresser.
 export function manageBody(ctx) {
   const { t, state } = ctx;
@@ -193,7 +205,7 @@ export function manageBody(ctx) {
 //   who, right), onStructure(), onConfirmRemove(name),
 //   onAddSpace(state), onRemoveSpace(state, space), onSpaceGroup(state, space, group, right), onPickGroup(state, space) (un nom de groupe, { create: nom } ou
 //   null),
-//   onNewSpaceGroup(state, space, name) (créer le groupe et l'ajouter à l'espace), onLinks() → les documents reliés
+//   onNewSpaceGroup(state, space, { name, people }) (créer le groupe, avec ses personnes, et l'ajouter à l'espace), onLinks() → les documents reliés
 //   (js/sharing/share-links.js), onNewLink() (relier un document, sans fichier ; rend quand sa fenêtre est fermée), onStopLink(link) → { ok, message? }
 //   (confirmé par
 //   l'appelant) }.
@@ -207,9 +219,10 @@ export function openManage(opts) {
       h('footer', { class: 'mod-foot' }, status, close));
   const { done, result } = openModal({ container, section: dialog, inertTargets: opts.inertTargets, first: close, cancel: null });
   close.addEventListener('click', () => done(null));
-  const ctx = { t, container, state: null, tab: 'options', editing: null, space: null, links: null,
+  const ctx = { t, container, state: null, tab: 'options', editing: null, space: null, draft: null, links: null,
     say: text => { status.textContent = text; } };
   const draw = () => { if (dialog.isConnected && ctx.state) replaceKeepingFocus(body, manageBody(ctx)); };
+  const focusPeople = () => { const field = body.querySelector('[data-fk="manage-group-people"]'); if (field) field.focus({ preventScroll: true }); };
   const reload = async () => {
     try { ctx.state = await opts.load(); draw(); } catch (error) {
       if (dialog.isConnected) body.replaceChildren(h('p', { class: 'rt-none' }, t('manage.unreadable'))); }
@@ -217,7 +230,7 @@ export function openManage(opts) {
   const write = async job => {
     const answer = await job();
     ctx.say(answer && !answer.ok ? t('share.failed', { message: answer.message || '' }) : t('share.foot'));
-    if (!answer || answer.ok) { ctx.editing = null; await reload(); }
+    if (!answer || answer.ok) { ctx.editing = null; ctx.draft = null; await reload(); }
     return answer;
   };
   ctx.readLinks = async () => {
@@ -233,22 +246,28 @@ export function openManage(opts) {
     if (answer.ok) await ctx.readLinks();
   };
   ctx.newLink = async () => { if (opts.onNewLink) await opts.onNewLink(); await ctx.readLinks(); };
-  ctx.go = key => { ctx.tab = key; ctx.editing = null; ctx.space = null; draw(); if (key === 'other') void ctx.readLinks(); };
-  ctx.openSpace = space => { ctx.space = space ? space.key : null; draw(); };
+  ctx.go = key => { ctx.tab = key; ctx.editing = null; ctx.space = null; ctx.draft = null; draw(); if (key === 'other') void ctx.readLinks(); };
+  ctx.openSpace = space => { ctx.space = space ? space.key : null; ctx.draft = null; draw(); };
   ctx.addSpace = async () => {
     const answer = await opts.onAddSpace(ctx.state); if (answer) {
     ctx.say(answer.ok ? t('share.foot') : t('share.failed', { message: answer.message || '' })); if (answer.ok) await reload(); } };
   ctx.removeSpace = async space => {
     const answer = await opts.onRemoveSpace(ctx.state, space); if (answer && answer.ok) ctx.space = null;
     if (answer) { ctx.say(answer.ok ? t('share.foot') : t('share.failed', { message: answer.message || '' })); if (answer.ok) await reload(); } };
-  // Un groupe de l'espace : celui qu'on choisit, ou celui qu'on crée là (le nom tapé dans la liste) ; la phrase du pied dit ce qui reste à faire pour un groupe
-  // neuf.
+  // Un groupe de l'espace : celui qu'on choisit, ou celui qu'on crée là : le nom tapé dans la liste ouvre le formulaire à pastilles, la personne y saisit
+  // ses personnes (ou aucune) ; « Créer le groupe » l'écrit et l'entre dans l'espace en lecture seule, en une seule fois.
   ctx.addGroupTo = async space => {
     const group = await opts.onPickGroup(ctx.state, space);
     if (!group) return;
     if (!group.create) return void (await write(() => opts.onSpaceGroup(ctx.state, space, group, 'lecture')));
-    const answer = await write(() => opts.onNewSpaceGroup(ctx.state, space, group.create));
-    if (answer && answer.ok) ctx.say(t('manage.spaces.created', { name: group.create, tab: t('manage.tab.groups') }));
+    ctx.draft = { space: space.key, name: group.create };
+    draw();
+    focusPeople();
+  };
+  ctx.leaveDraft = () => { ctx.draft = null; draw(); };
+  ctx.saveSpaceGroup = async (draft, values) => {
+    const answer = await write(() => opts.onNewSpaceGroup(ctx.state, ctx.state.spaces.find(item => item.key === draft.space), values));
+    if (answer && answer.ok) ctx.say(createdNote(t, values));
   };
   ctx.spaceGroup = (space, group, right) => write(() => opts.onSpaceGroup(ctx.state, space, group, right));
   ctx.edit = group => {

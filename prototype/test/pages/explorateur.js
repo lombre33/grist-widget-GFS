@@ -407,7 +407,7 @@ async function mount() {
     notice: text => window.__notices.push(text), settings: () => settingsItems({ t: i18n.t, language: () => ({ choice: window.__language, grist: language }), onLanguage: value => { window.__language = value; }, onTheme: () => theme.open(),
       langtool: () => ({ shown: window.__langtool, toggle: () => { window.__langtool = !window.__langtool; } }), place, onAbout: () => window.__about(), onDependencies: () => { window.__dependenciesAsked = (window.__dependenciesAsked || 0) + 1; void window.__dependencies(); },
       manage: () => ({ why: null, open: () => { window.__manageFromSettings = (window.__manageFromSettings || 0) + 1; }, notice: text => window.__notices.push(text) }) }),
-    onOpen: file => { window.__opened = file.name; }, onNew: () => {}, get links() { return window.__linkProxy; },
+    onOpen: file => { window.__opened = file.name; }, onNew: () => {}, get links() { return window.__linkProxy; }, get notices() { return window.__noticeStore; },
     opened: { keys: () => openedFiles.keys(), shown: () => openedFiles.shown(SESSION), remove: key => openedFiles.remove(key) },
     onImport: entry => { window.__imported = entry.valeur; }, onTemplates: () => { window.__templatesAsked = (window.__templatesAsked || 0) + 1; }, onClose: () => {}, onApps: () => {}, sharing: { whyNot: () => null, whyNotFolder: path => (path.startsWith('Espaces') && path.split('/').length < 3 ? i18n.t('share.folder.space') : null), folderFile: path => ({ key: window.__linkProxy && path.startsWith('Espaces/') ? `dossier:${path.split('/').slice(1).join('/').replace(/^[^/]+/, word => word.toLowerCase())}` : `dossier:${path}`, name: path.split('/').pop(), path, mine: !path.startsWith('Espaces/') }), open: file => window.__share(window.__shareKind || 'actif', file),
       // « Partager… » sur la ligne d'un espace entier (demande du 25/11) : il ouvre le partage de l'espace ; « Espaces » seul et un espace inconnu restent grisés.
@@ -418,6 +418,13 @@ async function mount() {
       newFolder: () => filing.newFolder(), deleteFolder: path => filing.deleteFolder(path), undoStack: filing.undoStack },
   });
   window.__explorer = explorer;
+  // Ce qu'on a donné à la personne dans le document (la cloche, test/notifications-firefox.mjs) : `window.__given(items)` pose la liste que le magasin rendrait (js/sharing/notice-store.js) et un faux magasin
+  // qui note ce que la cloche lui demande de marquer lu (`window.__noticeMarked`) ; sans appel, l'explorateur n'a pas de magasin, comme avant.
+  window.__given = items => {
+    window.__noticeMarked = [];
+    window.__noticeStore = { markRead: async keys => { window.__noticeMarked.push(keys ? keys.slice() : 'all'); } };
+    explorer.setNotices({ items, unread: items.filter(item => !item.lu).length });
+  };
   window.__open = names => { for (const name of names) openedFiles.add(live.find(file => file.name === name).key, SESSION); explorer.render(); };
   window.__reset = () => {
     explorer.close(); // la fermeture vide le presse-papiers : chaque mesure part de rien
@@ -432,6 +439,8 @@ async function mount() {
     window.__filing.length = 0;
     window.__copies.length = 0;
     window.__notices.length = 0;
+    window.__noticeStore = undefined;
+    explorer.setNotices({ items: [], unread: 0 });
     window.__attachments = 0;
     window.__attachmentsFail = '';
     window.__opened = null;
@@ -536,7 +545,7 @@ async function mount() {
       onColumn: async () => { window.__manageActs.push(['column']); return { ok: true, label: i18n.t('manage.suggest.chosen', { table: 'Contacts', column: 'Mail', n: 12 }) }; }, onRoot: (state, who, right) => record(['root', who, right]), onStructure: async () => { window.__manageActs.push(['structure']); return true; }, onConfirmRemove: async name => { window.__manageActs.push(['confirmRemove', name]); return true; },
       onAddSpace: async () => { window.__manageActs.push(['addSpace']); return null; }, onRemoveSpace: async (state, space) => { window.__manageActs.push(['removeSpace', space.key]); return null; },
       onSpaceGroup: (state, space, group, right) => record(['spaceGroup', space.key, group, right]),
-      onPickGroup: (state, space) => picker.pickGroup(window.__noGroups ? { ...state, groups: [] } : state, window.__noGroups ? { ...space, groups: [] } : space), onNewSpaceGroup: (state, space, name) => record(['newSpaceGroup', space.key, name]),
+      onPickGroup: (state, space) => picker.pickGroup(window.__noGroups ? { ...state, groups: [] } : state, window.__noGroups ? { ...space, groups: [] } : space), onNewSpaceGroup: (state, space, group) => record(['newSpaceGroup', space.key, group.name, group.people]),
       onLinks: async () => linksNow(),
       onNewLink: async () => { window.__manageActs.push(['newLink']); await window.__sendOther('lien'); },
       onStopLink: async link => { window.__manageActs.push([link.state === 'pending' ? 'cancelLink' : 'stopLink', link.id]); window.__removed.push(link.id); return { ok: true }; } });
@@ -562,7 +571,7 @@ async function mount() {
     return openShareOther({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], file: kind === 'lien' || kind === 'lien-neuf' ? null : { id: 'abc', name: 'Facture de la session de formation de septembre.pdf' }, filesTable: kind !== 'lien-neuf', createFlow: (chosen, strict) => { mode = chosen; acts.push(['mode', chosen, Boolean(strict)]); return flow; }, errorText: error => String(error.message), notice: text => acts.push(['notice', text]) });
   };
   // La fenêtre « Recevoir d'un autre document Grist » (js/sharing/share-receive-window.js, test/partager-recevoir-firefox.mjs) : la vraie fenêtre, sur un parcours dont les réponses sont des doublures (le moteur et Grist se mesurent
-  // dans un vrai Grist : labo/run-partager-recevoir.mjs). `kind` : 'ok' (un premier partage : GFS_Recus), 'second' (la table libre suivante : GFS_Recus_2), 'connu' (une réception qui reprend), 'serveur' (le code vient d'un autre serveur Grist : refusé dès la lecture), 'refus' (accepter échoue).
+  // dans un vrai Grist : labo/run-partager-recevoir.mjs). `kind` : 'ok' (un premier partage : GFS_Recus), 'second' (la table libre suivante : GFS_Recus_2), 'connu' (une réception qui reprend), 'reprise' (Grist a rechargé la page pendant que la fenêtre attendait le lien du formulaire : la fenêtre s'ouvre directement sur ce lien), 'serveur' (le code vient d'un autre serveur Grist : refusé dès la lecture), 'refus' (accepter échoue).
   // `window.__receiveActs` note ce que le parcours a reçu.
   const SERVER_OTHER = 'grist-de-la-direction-des-systemes-d-information.exemple.gouv.fr'; // le même nom dans test/partager-recevoir-firefox.mjs
   window.__receive = kind => {
@@ -584,11 +593,14 @@ async function mount() {
         return { code: `GRISTSYNC2.${'eyJraW5kIjoicmVwb25zZSJ9'.repeat(30)}`, control: 'N5H-2AH' };
       },
       abort: async () => { acts.push(['abort', replied]); },
+      journal: `GFS_Journal_${LONG_DOC.replace(/ /g, '_')}`,
+      table,
     };
-    return openShareReceive({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], createFlow: () => flow, errorText: error => String(error.message), notice: text => acts.push(['notice', text]) });
+    return openShareReceive({ container: stage, t: i18n.t, inertTargets: () => [explorer.root], createFlow: () => flow, errorText: error => String(error.message), notice: text => acts.push(['notice', text]),
+      resumed: kind === 'reprise' ? { name: LONG_DOC } : undefined });
   };
   // L'onglet « Dans un autre document Grist » de « Partager » (js/sharing/share-other-tab.js) sur des liens que le contrôleur aurait lus : `window.__shareOther = true` le branche ; `window.__links` donne les liens ('actifs'
-  // par défaut : un document à jour, un en attente de réponse, un bloqué ; 'aucun', 'illisible') ; `window.__shareActs` note les niveaux demandés. « Relier un nouveau document… » ouvre la fenêtre d'envoi (`__sendOther`).
+  // par défaut : un document à jour, un en attente de réponse, un bloqué ; 'aucun', 'illisible') ; `window.__shareActs` note les niveaux demandés (`window.__levelHold` : l'écriture d'un niveau attend `window.__levelRelease()`, comme sur un serveur lointain). « Relier un nouveau document… » ouvre la fenêtre d'envoi (`__sendOther`).
   const LINK_DOC = 'Comptabilité fournisseurs de la région Nord-Est';
   const LINKS = {
     actifs: [{ id: 'e1', name: 'Compta', files: ['abc', 'x', 'y'], state: 'active', doc: { name: LINK_DOC, id: 'd1' } }, { id: 'e2', name: 'Direction', files: [], state: 'pending', doc: { name: '', id: '' } }, { id: 'e3', name: 'Archives', files: ['x'], state: 'blocked', doc: { name: 'Archives', id: 'd3' } }],
@@ -614,7 +626,11 @@ async function mount() {
   const otherTab = (state, folder) => folder ? folderTab(state, folder) : ({
     why: whyNot(i18n.t, { file: oneFile(), state }), limit: limitOf(i18n.t, language, oneFile()), fileId: 'abc',
     loadLinks: async () => linksNow(),
-    onLevel: async (link, level) => { window.__shareActs.push(['level', link.id, level]); return { ok: true, note: level === 'once' ? i18n.t('so.once.going', { name: 'Facture.pdf' }) : undefined }; },
+    onLevel: async (link, level) => {
+      window.__shareActs.push(['level', link.id, level]);
+      if (window.__levelHold) await new Promise(resolve => { window.__levelRelease = resolve; }); // un serveur lointain : le niveau s'écrit en plusieurs secondes
+      return { ok: true, note: level === 'once' ? i18n.t('so.once.going', { name: 'Facture.pdf' }) : undefined };
+    },
     onNew: async () => { window.__shareActs.push(['new']); await window.__sendOther(window.__shareSend || 'ok'); },
   });
   // `folder` : l'objet d'un dossier (`mine` : un dossier de « Moi », sans droits à donner ici : la fenêtre s'ouvre sur l'onglet « Dans un autre document Grist »).

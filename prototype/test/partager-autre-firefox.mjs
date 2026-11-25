@@ -16,7 +16,9 @@ function shareTabOwn() {
   const text = node => (node ? node.textContent.replace(/\s+/g, ' ').trim() : null);
   return {
     tabs: [...share.querySelectorAll('.mg-tab')].map(node => [node.dataset.fk, node.getAttribute('aria-selected')]),
-    links: [...share.querySelectorAll('.rr[data-link]')].map(row => ({ id: row.dataset.link, level: row.dataset.level, label: text(row.querySelector('.lvl')), locked: row.querySelector('.lvl').getAttribute('aria-disabled') === 'true', tag: text(row.querySelector('.tag')) })),
+    links: [...share.querySelectorAll('.rr[data-link]')].map(row => ({ id: row.dataset.link, level: row.dataset.level, label: text(row.querySelector('.lvl')), locked: row.querySelector('.lvl').getAttribute('aria-disabled') === 'true', busy: row.querySelector('.lvl').getAttribute('aria-busy') === 'true',
+      spinning: row.querySelector('.lvl .ic') ? getComputedStyle(row.querySelector('.lvl .ic')).animationName : null, tag: text(row.querySelector('.tag')) })),
+    foot: text(share.querySelector('.mod-note')),
     fresh: (() => { const node = share.querySelector('[data-fk="other-new"]'); return node ? node.getAttribute('aria-disabled') === 'true' : null; })(),
     menu: [...document.querySelectorAll('.menu .menu-item')].map(node => ({ text: text(node), greyed: node.getAttribute('aria-disabled') === 'true' })),
   };
@@ -222,6 +224,8 @@ async function openShareTab(page, tools, t, kind, links) {
   return tools.press(kind, 'share-tab-other');
 }
 
+const linkOf = (id, tab) => tab.links.find(link => link.id === id);
+
 async function tabFlow(page, tools, t) {
   const kind = 'l\'onglet de « Partager »';
   if (!(await openShareTab(page, tools, t, kind, 'actifs'))) return;
@@ -253,7 +257,24 @@ async function tabFlow(page, tools, t) {
   }
   const itemAt = label => itemCenter(page, label);
   const live = await itemAt(t('so.level.live'));
-  if (live) { await page.click(...live); await tools.expect(kind, 'le choix devait demander le niveau « à jour »', s => s.shareActs.some(act => act[0] === 'level' && act[1] === 'e3' && act[2] === 'live')); }
+  // Sur un serveur lointain, le niveau met plusieurs secondes à s'écrire (retour du porteur du 25/11) : la page retient la réponse (`window.__levelHold`), et le lien doit dire tout de suite
+  // « Mise à jour… » (bouton occupé, flèche qui tourne, bas de la fenêtre), sans menu, puis revenir à son niveau quand la réponse arrive.
+  if (live) {
+    await page.run(() => { window.__levelHold = true; });
+    await page.click(...live);
+    const writing = await tools.expect(kind, 'le choix devait demander le niveau « à jour » et le lien dire « Mise à jour… » tout de suite', s => s.shareActs.some(act => act[0] === 'level' && act[1] === 'e3' && act[2] === 'live') && s.tab && linkOf('e3', s.tab).busy);
+    const link = writing.tab && linkOf('e3', writing.tab);
+    if (link && (link.label !== t('so.level.working') || !link.locked)) tools.run.note(kind, `le lien occupé devait dire « ${t('so.level.working')} » et être fermé (il dit ${JSON.stringify(link)})`);
+    if (link && link.spinning === 'none') tools.run.note(kind, 'la flèche du lien occupé devait tourner');
+    if (writing.tab && writing.tab.foot !== t('so.level.working.foot', { doc: 'Archives' })) tools.run.note(kind, `le bas de la fenêtre devait nommer le document (il dit « ${writing.tab && writing.tab.foot} »)`);
+    if (writing.tab && !writing.tab.inPage) tools.run.note(kind, 'la fenêtre du niveau qui s\'écrit devait tenir dans la page');
+    await tools.press(kind, 'other-level-e3');
+    const stillBusy = await tools.snap();
+    if (stillBusy.tab && stillBusy.tab.menu.length) tools.run.note(kind, 'un lien occupé ne devait ouvrir aucun menu');
+    await page.run(() => { window.__levelHold = false; window.__levelRelease(); });
+    const written = await tools.expect(kind, 'la réponse reçue, le lien devait cesser d\'être occupé et le bas de la fenêtre revenir à son texte', s => s.tab && !linkOf('e3', s.tab).busy && s.tab.foot === t('share.foot'));
+    if (written.tab && linkOf('e3', written.tab).label === t('so.level.working')) tools.run.note(kind, 'le lien devait reprendre son niveau');
+  }
   // « Une copie, une fois » : l'avis dit que le fichier part, sans attendre la fin.
   await tools.press(kind, 'other-level-e1');
   await tools.expect(kind, 'le menu devait s\'ouvrir', s => s.tab && s.tab.menu.length === 3);

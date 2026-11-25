@@ -13,6 +13,7 @@ import { applyLinks } from '../sharing/space-links.js';
 import { SHARES_TABLE } from '../sharing/sharing-model.js';
 import { rowsOf } from '../rights/rights.js';
 import { loadReceived } from '../sharing/received-files.js';
+import { loadNoticeSources } from '../sharing/notice-store.js';
 import { neededColumns } from './explorer-sql.js';
 
 const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
@@ -92,7 +93,7 @@ async function readSpec(port, tables, spec, light) {
 
 // Tout ce que la lecture demande à Grist, en deux temps : la liste des tables, puis toutes les tables ensemble (chacune ne dépend que de son nom, jamais d'une
 // autre ni de l'adresse de la personne). Une lecture qui allait table après table coûtait un aller-retour de réseau par table, et l'explorateur paraissait lent
-// dès que Grist n'était pas sur la même machine. Rend { tables, light, gfs, spaces, bin, received, reads: [{ manifest, spec, main, filing, links }] }.
+// dès que Grist n'était pas sur la même machine. Rend { tables, light, gfs, spaces, bin, received, notices, reads: [{ manifest, spec, main, filing, links }] }.
 // `real` : le port de GFS ; `guard` : le garde-fou des lectures complètes, ou rien.
 async function readEverything(real, apps, reader, guard) {
   const tables = await existingTables(real);
@@ -101,14 +102,14 @@ async function readEverything(real, apps, reader, guard) {
   // pas redemandée sans fin
   const port = guard ? { doc: { fetchTable: name => guard.run(name, () => real.doc.fetchTable(name)) } } : real;
   // le rangement de GFS, les espaces et les fichiers reçus se lisent pendant que la lecture légère prépare la sienne
-  const own = Promise.all([readTable(port, tables, TABLE), loadSpaces(real.doc, tables), loadReceived(real, tables)]);
+  const own = Promise.all([readTable(port, tables, TABLE), loadSpaces(real.doc, tables), loadReceived(real, tables), loadNoticeSources(real.doc, tables)]);
   // seulement les tables que le document a : un document sans aucune table de fichiers ne demande ni cadre d'envoi ni jeton
   if (light) await light.prepare(lightPlan(tables, apps).filter(item => tables.includes(item.table)));
   const specs = apps.flatMap(({ manifest }) => (manifest.fichiers || []).map(spec => ({ manifest, spec })));
   const [bin, ...found] = await Promise.all([readTable(port, tables, BIN_TABLE, light, BIN_LIGHT),
     ...specs.map(({ spec }) => readSpec(port, tables, spec, light))]);
-  const [gfs, spaces, received] = await own;
-  return { tables, light, gfs, spaces, bin, received, reads: specs.map((item, index) => ({ ...item, ...found[index] })) };
+  const [gfs, spaces, received, notices] = await own;
+  return { tables, light, gfs, spaces, bin, received, notices, reads: specs.map((item, index) => ({ ...item, ...found[index] })) };
 }
 
 // `apps` : les apps installées dont le manifeste est valide, { manifest }. `identity` : l'adresse de la personne, '' tant que GFS ne la connaît pas ; ou la
@@ -145,7 +146,8 @@ export async function loadFiles(port, apps, identity = '', reader = null, guard 
   stats.light = Boolean(raw.light && raw.light.isActive());
   if (reader) reader.learn(stats.bytes, problems.length > 0);
   stats.ms = Math.round(performance.now() - started);
-  return { files, trash, folders, received: raw.received, spaces: raw.spaces, problems, stats, gfsTable: raw.gfs.data ? nameIn(raw.tables, TABLE) : null,
+  return { files, trash, folders, received: raw.received, spaces: raw.spaces, notices: raw.notices, problems, stats,
+    gfsTable: raw.gfs.data ? nameIn(raw.tables, TABLE) : null,
     binTable: raw.bin.data ? nameIn(raw.tables, BIN_TABLE) : null };
 }
 

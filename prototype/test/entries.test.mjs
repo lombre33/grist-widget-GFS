@@ -63,7 +63,7 @@ test('personTargets : les apps dont le manifeste dit où elles posent une person
 
 test('newTypes : un article par type que l\'app sait ouvrir ; grisé avec sa raison si l\'app n\'est pas là ; le nom de l\'app s\'ajoute quand il y en a plusieurs', () => {
   const one = host({ installed: { publipostage: { extensions: [] } } }).entries.newTypes();
-  assert.ok(one.filter(entry => entry.app !== 'publipostage').every(entry => entry.greyed), 'les apps absentes sont grisées, jamais masquées');
+  assert.ok(one.filter(entry => entry.app !== 'publipostage' && entry.kind !== 'annuaire').every(entry => entry.greyed), 'les apps absentes sont grisées, jamais masquées');
   const mine = one.filter(entry => entry.app === 'publipostage');
   assert.deepEqual(mine.map(entry => [entry.type, entry.greyed]), [['document', false], ['grille', false], ['presentation', true], ['email', false], ['macro', false]], 'les présentations attendent l\'extension Diapositives');
   assert.ok(mine.filter(entry => !entry.greyed).every(entry => entry.hint === ''), 'une seule app installée : pas de nom d\'app sous l\'article');
@@ -78,6 +78,19 @@ test('newTypes : un article par type que l\'app sait ouvrir ; grisé avec sa rai
   assert.ok(two.filter(entry => entry.app === 'form' && !entry.greyed).every(entry => entry.hint === 'Form+'), 'plusieurs apps installées : le nom de l\'app sous l\'article');
   const canOpen = new Set(manifestsOfGfs().find(m => m.id === 'automation').actions.ouvrir || []);
   assert.equal(two.filter(entry => entry.app === 'automation').length, [...canOpen].length, 'seuls les types de `actions.ouvrir` sont proposés');
+});
+
+test('newTypes : « Annuaire » est le dernier article, le module de GFS (aucune app à installer) ; grisé seulement sans l\'accès complet', () => {
+  const entries = host({ installed: { publipostage: { extensions: [] } } }).entries.newTypes();
+  const last = entries.at(-1);
+  assert.deepEqual([last.kind, last.app, last.type, last.icon, last.family, last.greyed, last.label, last.hint], ['annuaire', 'gfs-annuaires', 'annuaire', 'annuaire', 'annuaire', false,
+    'Annuaire', 'an.newMenuHint'], 'aucune app installée n\'y change rien : un seul article, sans nom d\'app');
+  assert.equal(entries.filter(entry => entry.kind === 'annuaire').length, 1);
+  assert.equal(host({}).entries.newTypes().at(-1).greyed, false, 'même sans aucune app');
+  const noAccess = host({ installed: { publipostage: { extensions: [] } }, fullAccess: false }).entries.newTypes().at(-1);
+  assert.equal(noAccess.greyed, true, 'sans l\'accès complet, il est grisé comme tout le reste, avec sa raison');
+  assert.equal(noAccess.reason, 'gfs.needsFullAccess');
+  assert.equal(noAccess.family, null);
 });
 
 test('importTypes : un article par format, grisé tant que l\'app ne reçoit pas le fichier ; puis les PDF de GFS, puis l\'arrivée d\'un autre document', () => {

@@ -1,5 +1,5 @@
 // Ce que le pare-feu devant une instance de Grist laisse passer de `GET /sql` (faits vérifiés 173). À COLLER dans la console du navigateur (F12, onglet « Console »), sur une page d'un document
-// Grist de l'instance (l'adresse est de la forme https://<serveur>/o/<équipe>/<document>/<titre>/p/<page>), avec la session de la personne : dix-neuf lectures, toutes en `SELECT`, sur son
+// Grist de l'instance (l'adresse est de la forme https://<serveur>/o/<équipe>/<document>/<titre>/p/<page>), avec la session de la personne : vingt-six lectures, toutes en `SELECT`, sur son
 // document, une toutes les 0,4 s. Rien ne s'écrit, rien ne part ailleurs que vers le serveur de la page.
 // Chaque ligne du résultat dit la réponse : « Grist » (le serveur a répondu : une ligne ou une erreur JSON, donc le pare-feu a laissé passer la forme) ou « PARE-FEU » (une page HTML, ou un refus 403
 // qui ne vient pas de Grist : la forme est refusée). La sonde copie ensuite le même tableau, en une ligne de texte, dans le presse-papiers (Firefox : fonction `copy` de la console) : il n'y a plus qu'à le coller.
@@ -32,6 +32,15 @@
     ['18 liste des tables', 'SELECT tableId FROM _grist_Tables ORDER BY tableId'],
     ['19 structure (forme de GFS, plusieurs tables)', 'SELECT t.tableId AS tableId, c.colId AS colId, c.type AS type FROM _grist_Tables_column AS c JOIN _grist_Tables AS t ON t.id = c.parentId '
       + 'WHERE t.tableId IN (\'GFS_Corbeille\', \'GFS_Fichiers\', \'GFS_Annuaires\', \'Publipostage_Templates\') AND c.colId NOT LIKE \'gristHelper%\' AND c.colId != \'manualSort\' ORDER BY c.parentId, c.colId'],
+    // La lecture légère des fichiers (js/explorer/explorer-sql.js `rowsStatement`) : le nom des colonnes entre guillemets, la taille des cellules lourdes comptée par `length(CAST(… AS BLOB))`.
+    ['20 lignes : plusieurs colonnes et deux tailles additionnées', 'SELECT id, "tableId", COALESCE(length(CAST("summarySourceTable" AS BLOB)), 0) + COALESCE(length(CAST("tableId" AS BLOB)), 0) AS gfs_octets FROM "_grist_Tables"'],
+    ['21 lignes : une vraie table de GFS (sans son contenu)', 'SELECT id, "Nom", "Type", "Date", "Auteur", "Taille", COALESCE(length(CAST("Contenu" AS BLOB)), 0) AS gfs_octets FROM "GFS_Fichiers"'],
+    // Les pièces jointes comptées, par morceaux : laquelle des écritures de GFS le pare-feu refuse-t-il ? (a : jointure seule ; b : table dérivée seule ; c : le test `IS NOT NULL` sans table dérivée ; d : les tailles de Grist sans jointure)
+    ['22 pièces comptées (a) : jointure et somme, sans table dérivée', 'SELECT COALESCE(SUM(LENGTH(files.data)), 0) AS octets FROM _gristsys_Files AS files JOIN _grist_Attachments AS meta ON meta.fileIdent = files.ident WHERE meta.timeDeleted IS NULL'],
+    ['23 pièces comptées (b) : table dérivée, sans `IS NOT NULL`', 'SELECT COALESCE(SUM(len), 0) AS octets FROM (SELECT MAX(LENGTH(files.data)) AS len FROM _gristsys_Files AS files JOIN _grist_Attachments AS meta ON meta.fileIdent = files.ident WHERE meta.timeDeleted IS NULL GROUP BY meta.fileIdent)'],
+    ['24 pièces comptées (c) : `IS NOT NULL` sans table dérivée', 'SELECT COALESCE(SUM(COALESCE(meta.fileSize, 0) * (files.storageId IS NOT NULL) + COALESCE(LENGTH(files.data), 0) * (files.storageId IS NULL)), 0) AS octets FROM _gristsys_Files AS files JOIN _grist_Attachments AS meta ON meta.fileIdent = files.ident WHERE meta.timeDeleted IS NULL'],
+    ['25 pièces comptées (d) : les tailles de Grist, sans jointure', 'SELECT COALESCE(SUM(fileSize), 0) AS octets FROM _grist_Attachments WHERE timeDeleted IS NULL'],
+    ['26 pièces comptées (e) : `IN (SELECT …)`', 'SELECT COALESCE(SUM(LENGTH(data)), 0) AS octets FROM _gristsys_Files WHERE ident IN (SELECT fileIdent FROM _grist_Attachments WHERE timeDeleted IS NULL)'],
   ];
   const out = [];
   for (const [label, q] of tests) {

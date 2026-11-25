@@ -14,15 +14,16 @@ import { PEOPLE_MAX, orgSignature, orgData, reducedTree } from './annuaire-org-d
 import { relationsOf, relationIndex, cardLines, cardLineCount } from './annuaire-relations.js';
 import { OrgView } from './annuaire-org-view.js';
 import { copyText } from './annuaire-copy.js';
-import { FilterMenu } from './annuaire-filters.js';
+import { FilterMenu, place } from './annuaire-filters.js';
 import { sortPeople, nextSort, sortKeys, sortButton } from './annuaire-sort.js';
-import { subButton, openSubMenu, copyDate } from './annuaire-sub-menu.js';
+import { subButton, openSubMenu } from './annuaire-sub-menu.js';
 import { MergePanel } from './annuaire-merge-panel.js';
-import { checkButton, mailButton } from './annuaire-tools.js';
+import { checkButton, mailButton, footNodes } from './annuaire-tools.js';
 import { openInsertMenu } from './annuaire-insert-menu.js';
 import { listKeys, treeKeys } from './annuaire-keys.js';
 import { addressesOf } from './annuaire-mail.js';
 import { presenceState } from './annuaire-presence.js';
+import { editBlock } from './annuaire-edit-rights.js';
 
 const FOCUSABLE = 'button:not([disabled]):not([tabindex="-1"]), input:not([disabled]), [tabindex="0"], a[href]';
 const VIEWS = Object.freeze([['list', 'list', 'an.view.list'], ['cards', 'tiles', 'an.view.cards'], ['org', 'org', 'an.view.org']]);
@@ -136,7 +137,7 @@ export class AnnuaireWindow {
       search: h('input', { type: 'search', autocomplete: 'off', dataset: { fk: 'search' } }),
       views: h('div', { class: 'an-seg', role: 'group' }), tools: h('span', { class: 'an-top-tools' }), config: h('button', { type: 'button', class: 'an-ib',
         dataset: { act: 'configure', fk: 'configure' } }, icon('sliders')),
-      crumb: h('div', { class: 'an-crumb' }), list: h('div', { class: 'an-list' }),
+      crumb: h('div', { class: 'an-crumb' }), fbar: h('div', { class: 'an-fbar-row' }), list: h('div', { class: 'an-list' }),
       body: h('div', { class: 'mod-body an-body' }), state: h('div', { class: 'an-state' }), tree: h('nav', { class: 'an-card an-tree' }),
         main: h('div', { class: 'an-card an-main' }), side: h('aside', { class: 'an-card an-side' }),
       note: h('p', { class: 'mod-note an-foot', 'aria-live': 'polite' }), close: h('button',
@@ -144,7 +145,7 @@ export class AnnuaireWindow {
     };
     this.#org = new OrgView({ t, onPick: item => this.#orgPick(item), onMode: id => this.#orgMode(id),
       onTool: (act, data) => { const handler = ACTIONS[act]; if (handler) handler(this, data); } });
-    refs.main.append(refs.crumb, refs.list, this.#org.element);
+    refs.main.append(refs.crumb, refs.fbar, refs.list, this.#org.element);
     refs.body.append(refs.state, refs.tree, refs.main, refs.side);
     this.#refs = refs;
     const section = h('section', { class: 'mod an', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'an-title' },
@@ -273,7 +274,7 @@ export class AnnuaireWindow {
     const { current, data } = this.#show;
     const options = filterOptions(base, data.config, data.schema, current.table).filter(option => option.values.length);
     const active = Object.values(this.#filters).reduce((sum, set) => sum + (set ? set.size : 0), 0);
-    return { options, active };
+    return { options, active, mode: data.config.filterMode };
   }
 
   #paintList() {
@@ -287,6 +288,7 @@ export class AnnuaireWindow {
     this.#refs.crumb.replaceChildren(...[h('h3', null, searching ? t('an.results') : node.name), level ? h('span', { class: 'an-pill' }, level) : null,
       h('span', { class: 'an-count' }, t('an.count', { n: found.length })), sortButton(this.#sort, sortKeys(data.config, t), t),
       this.#menu.button(model, this.#filters), mailButton(this.#mailState(found), t)].filter(Boolean));
+    place(this.#refs.fbar, this.#menu.bar(model, this.#filters));
     const ctx = { t, locale: this.#o.locale() };
     const rows = sortPeople(found, this.#sort, this.#o.locale()).slice(0, LIST_SHOWN);
     const cards = this.#view === 'cards';
@@ -316,6 +318,7 @@ export class AnnuaireWindow {
       'aria-disabled': many ? 'true' : null, 'aria-label': t('an.org.people'), title: many ? t('an.org.peopleMany', { n: found }) : t('an.org.peopleTip'),
       dataset: { act: 'org-people', fk: 'org-people' } }, icon('users'), h('span', { class: 'an-tb-t' }, t('an.org.people')));
     this.#org.tools.replaceChildren(...[this.#menu.button(model, this.#filters), people, mailButton(this.#mailState(this.#matching()), t)].filter(Boolean));
+    place(this.#org.filters, this.#menu.bar(model, this.#filters));
   }
 
   // L'organigramme : celui des structures (l'arbre des niveaux), ou celui des responsables quand l'annuaire dit qui est le responsable de chacun. Il montre
@@ -350,7 +353,7 @@ export class AnnuaireWindow {
     const genres = fieldGenres(data.config, current.table, data.schema);
     const relations = relationsOf(data.config, t);
     const ctx = { t, locale: this.#o.locale(), levels: data.config.levels, config: data.config, genres, relations,
-      index: relationIndex(data.people, relations), writeBlock: this.#writeBlock(), masked: data.masked,
+      index: relationIndex(data.people, relations), writeBlock: this.#writeBlock(), editBlock: person => this.#editBlock(person), masked: data.masked,
         presence: person => this.#presenceOf(person), insert: true };
     const person = this.#person === null ? null : data.people.find(each => each.row === this.#person);
     // la fiche d'une carte de l'organigramme parle des mêmes personnes que la carte
@@ -371,18 +374,9 @@ export class AnnuaireWindow {
     const note = this.#refs.note;
     if (this.#note) { note.textContent = this.#note; return; }
     if (state !== 'ready' || !data) { note.textContent = ''; return; }
-    const total = data.people.length;
     const found = this.#view === 'org' ? this.#matching().length : this.#scope().found.length;
-    const chosen = this.#menu.summary(this.#filterModel(data.people), this.#filters);
-    const count = found === total ? t('an.foot.all', { n: total }) : t('an.foot.some', { n: found, total });
-    const date = data.sub ? copyDate(data.sub.at, this.#o.locale()) : '';
-    const merged = this.#merged();
-    const stamp = data.sub ? `${count} · ${date ? t('an.sub.stamp', { date }) : t('an.sub.stampNoDate')}` : count;
-    const text = merged ? [count, t('an.merge.foot', { n: merged.sources.filter(each => each.on).length }),
-      merged.skipped.length ? t('an.merge.skipped', { names: merged.skipped.join(', ') }) : ''].filter(Boolean).join(' · ') : stamp;
-    note.replaceChildren(...[h('span', { class: 'an-foot-t' }, chosen ? `${text} · ${chosen}` : text),
-      chosen ? h('button', { type: 'button', class: 'an-reset', dataset: { act: 'filters-reset', fk: 'filters-reset' } }, t('an.filters.reset')) :
-        null].filter(Boolean));
+    note.replaceChildren(...footNodes({ t, locale: this.#o.locale(), total: data.people.length, found, sub: data.sub, merged: this.#merged(),
+      chosen: this.#menu.summary(this.#filterModel(data.people), this.#filters) }));
   }
 
   // ---------- les gestes ----------
@@ -435,6 +429,9 @@ export class AnnuaireWindow {
     return data && data.sub ? this.#o.t('an.sub.noEdit') : (this.#o.writeBlock ? this.#o.writeBlock() : null);
   }
 
+  // Ce qui empêche de modifier cette fiche : le texte, ou rien (voir `editBlock`).
+  #editBlock(person) { return editBlock(person, this.#show.data, this.#writeBlock(), this.#o.t, this.#o.locale()); }
+
   // Le menu du sous-annuaire (actualiser, partager, supprimer), sous le cadenas de la barre.
   subTool() {
     const { data } = this.#show;
@@ -469,7 +466,8 @@ export class AnnuaireWindow {
 
   // Le bouton « Modifier » de la fiche : grisé quand le document ne s'écrit pas (le pied dit pourquoi), sinon la fenêtre « Modifier » (le contrôle l'ouvre).
   editPerson(row) {
-    const blocked = this.#writeBlock();
+    const person = this.#show.data && this.#show.data.people.find(each => each.row === row);
+    const blocked = person ? this.#editBlock(person) : this.#writeBlock();
     if (blocked) { this.#say(blocked); return; }
     void this.#o.onEdit(row);
   }
@@ -590,16 +588,20 @@ export class AnnuaireWindow {
   // Le bouton « Filtres » : ouvre ou ferme le panneau, posé sous lui.
   toggleFilters() { this.#menu.toggle(); }
 
+  // Un bouton de la barre des filtres : ouvre ou ferme le menu de ses valeurs.
+  toggleFilterMenu(col) { this.#menu.toggle(col); }
+
   // Un filtre qu'on replie ou déplie dans le panneau.
   toggleFilterSection(col) { this.#menu.toggleSection(col); }
 
   // Le bouton « Réinitialiser » du pied : plus aucune valeur choisie.
   resetFilters() {
+    const open = this.#menu.isOpen; // un panneau ouvert garde le clavier
     this.#filters = {};
     this.#note = '';
     this.#paintBody();
     this.#paintFoot();
-    this.#focus('filters', 'search');
+    if (!open) this.#focus('filters', 'search');
   }
 
   // Le bouton « Personnes » de l'organigramme : dessiner ou non les personnes sous leur structure, sans clic de plus ; le choix est retenu sur le navigateur.
@@ -718,6 +720,7 @@ const ACTIONS = Object.freeze({
   sort: (window_, data) => window_.sortBy(data.key),
   'sort-pick': window_ => window_.pickSort(),
   fsec: (window_, data) => window_.toggleFilterSection(data.col),
+  'filter-menu': (window_, data) => window_.toggleFilterMenu(data.col),
   'filters-reset': window_ => window_.resetFilters(),
   'org-people': window_ => window_.toggleOrgPeople(),
   filter: (window_, data) => window_.toggleFilter(data.col, data.value),

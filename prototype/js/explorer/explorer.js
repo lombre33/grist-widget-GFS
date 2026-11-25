@@ -51,6 +51,7 @@ export class Explorer {
   #raw = { files: [], folders: [] };
   #received = []; // les arrivées d'un autre document, telles que la lecture les a rendues
   #trashed = []; // les fichiers à la corbeille (la vue « Corbeille »)
+  #notices = { items: [], unread: 0 }; // ce qu'on a donné à la personne dans le document (js/sharing/notice-store.js), pour la cloche
   #arrivals = []; // les fichiers reçus d'un autre document, refusés exceptés (la vue « Partagés avec moi », js/sharing/received-files.js)
   #folders = []; // les dossiers que la personne garde sans fichier (js/explorer/explorer-data.js)
   #rows = [];
@@ -207,6 +208,14 @@ export class Explorer {
   // remplace, le reste ne bouge pas.
   setReceived(received) { this.setFiles(this.#raw.files, this.#trashed, this.#raw.folders, received); }
 
+  // Ce qu'on a donné à la personne a changé (js/sharing/notice-store.js) : la pastille de la cloche suit, rien d'autre ne bouge.
+  setNotices(state) {
+    this.#notices = state;
+    if (this.isOpen) paintBell(this.#refs, this.#opts.i18n.t, this.#bellCount(), this.#choice !== null);
+  }
+
+  #bellCount() { return pendingOf(this.#arrivals).length + this.#notices.unread; }
+
   // Un changement de rangement s'affiche ou s'en va avant qu'une lecture n'arrive (js/explorer/pending.js) : la liste se redessine d'après la dernière lecture.
   repaint() {
     this.#show(this.#raw.files, this.#trashed, this.#raw.folders, this.#received);
@@ -331,7 +340,7 @@ export class Explorer {
     // « Fermer » ramène à l'app ouverte, « Annuler » (un choix de fichier) à celle qui l'attendait ; sans l'une ni l'autre il ne ferait rien : il se cache
     // (décidé le 12/11). Échap garde son explication.
     closeBtn.hidden = !this.#choice && !this.#opts.canClose();
-    paintBell(this.#refs, t, pendingOf(this.#arrivals).length, this.#choice !== null);
+    paintBell(this.#refs, t, this.#bellCount(), this.#choice !== null);
   }
 
   #renderCrumbs() { this.#refs.crumbs.replaceChildren(...crumbs(this.#ctx())); }
@@ -650,9 +659,17 @@ export class Explorer {
   #bellMenu() {
     const { t } = this.#opts.i18n;
     if (this.#choice) { this.#opts.notice(t('ex.choose.newOff')); return; }
+    const marks = this.#opts.notices;
     const x = { t, pending: pendingOf(this.#arrivals), notice: this.#opts.notice, ask: file => this.#shared.activate(file),
-      askFolder: folder => this.#shared.askFolder(folder), openShared: () => this.#goView('shared') };
+      askFolder: folder => this.#shared.askFolder(folder), openShared: () => this.#goView('shared'),
+      ...(marks ? { notices: this.#notices, openNotice: item => this.#openNotice(item), markAll: () => void marks.markRead() } : {}) };
     openMenu(this.#refs.bellBtn, notificationItems(x), { host: this.root, align: 'right', label: t('nt.menu') });
+  }
+
+  // Un clic sur ce qui est donné : il se marque lu et s'ouvre (l'espace, ou « Partagés avec moi » pour un fichier ou un dossier donnés).
+  #openNotice(item) {
+    void this.#opts.notices.markRead([item.cle]);
+    if (item.path) this.#goFolder(item.path); else this.#goView('shared');
   }
 
   // Le menu « Réglages » : ses articles sont ceux du contrôleur (js/shell/settings-menu.js : la langue, le thème, la position de la barre, « À propos »). Le

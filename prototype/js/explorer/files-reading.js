@@ -8,10 +8,11 @@
 //   dossiers partagés « à jour »), onStats(mesures), noteBin?(table) (la table de la corbeille existe, ou non : js/files/app-files.js), hint? (le souvenir d'un
 //   document lourd, js/explorer/heavy-hint.js : la lecture légère d'emblée), pending? (les changements de rangement affichés avant d'être écrits,
 //   js/explorer/pending.js : une lecture partie après leur confirmation les remplace), guard? (le garde-fou des lectures complètes,
-//   js/explorer/read-guard.js) }
+//   js/explorer/read-guard.js), onNotices?(lecture) (la cloche : ce qui est donné à la personne, js/sharing/notice-store.js) }
 
 import { loadFiles } from './explorer-data.js';
 import { createFileRefresh } from './file-refresh.js';
+import { listSignature } from './list-signature.js';
 import { FILES_ENTRY } from '../files/gfs-files.js';
 import { ANNUAIRES_ENTRY } from '../files/annuaire-files.js';
 
@@ -21,6 +22,8 @@ export class FilesReading {
   #status = { loading: false, restricted: false, problems: [] };
   // La dernière lecture a-t-elle attendu l'adresse de la personne (qui s'apprenait encore) ? Alors son rangement est déjà le bon.
   #waited = false;
+  // Ce que la dernière lecture a rendu (js/explorer/list-signature.js) : une relecture automatique qui rend la même chose ne redessine rien.
+  #signature = null;
   #run;
 
   constructor(x) {
@@ -40,8 +43,10 @@ export class FilesReading {
         this.#say({ loading: false, restricted: true, problems: [{ key: 'gfs.needsFullAccess' }] });
       },
       onLoading: () => this.#say({ loading: true, restricted: false, problems: [] }),
-      onLoaded: result => this.#loaded(result),
-      onFailed: error => {
+      onLoaded: (result, opts) => this.#loaded(result, opts),
+      onFailed: (error, opts) => {
+        // une relecture automatique qui échoue se tait : la liste reste celle qu'elle était, la suivante réessaiera (js/explorer/live-list.js)
+        if (opts && opts.live) { console.warn('GFS : la relecture automatique des fichiers a échoué', error); return; }
         console.error('GFS : lecture des fichiers impossible', error);
         this.#say({ loading: false, restricted: false, problems: [{ key: 'gfs.loadFailed', reason: String(error && error.message) }] });
       },
@@ -50,6 +55,9 @@ export class FilesReading {
 
   // Lit les fichiers : la dernière lecture lancée fait seule foi. `quiet` : après un geste de rangement, sans « Lecture des fichiers… ».
   refresh(opts) { return this.#run(opts); }
+
+  // Une lecture qui affiche « Lecture des fichiers… » est en cours (une relecture silencieuse ne compte pas : js/explorer/live-list.js).
+  get loading() { return this.#status.loading; }
 
   // Une lecture est en cours et attend l'adresse de la personne : la relancer jetterait ce qu'elle a lu.
   get waitingForIdentity() { return this.#status.loading && this.#waited; }
@@ -66,14 +74,22 @@ export class FilesReading {
     this.show();
   }
 
-  #loaded({ files, trash, folders, received, spaces, problems, stats, stamp, gfsTable, binTable }) {
+  #loaded(result, opts) {
+    const { files, trash, folders, received, spaces, problems, stats, stamp, gfsTable, binTable } = result;
     const x = this.#x;
+    const signature = listSignature(result);
+    const same = signature === this.#signature;
+    this.#signature = signature;
+    // La relecture automatique qui ne trouve rien de changé ne touche à rien (ni la liste, ni la sélection, ni le défilement) ; pendant qu'un geste de
+    // rangement s'affiche avant d'être écrit, elle pose tout comme une autre lecture : c'est elle qui le retire.
+    if (opts && opts.live && same && !(x.pending && x.pending.size > 0)) { x.onStats(stats); return; }
     x.onSpaces(spaces);
     x.rangement.note(gfsTable); // la table du rangement existe (ou non) : un geste de rangement le sait sans la relire
     if (x.noteBin) x.noteBin(binTable); // de même pour la table de la corbeille : mettre un fichier à la corbeille le sait
     if (x.pending) x.pending.retire(stamp);
     x.explorer().setFiles(files, trash, folders, received);
     x.onFiles(files);
+    if (x.onNotices) x.onNotices(result); // la cloche : ce qu'on a donné à la personne, d'après les fichiers, les espaces et les partages qu'elle lit
     x.openedBar().sync(); // un fichier renommé, ou disparu, change le compte de la barre
     // une table que le garde-fou retient (js/explorer/read-guard.js) a sa phrase : elle dit pourquoi les fichiers manquent, et que GFS réessaiera
     this.#say({ loading: false, restricted: false,

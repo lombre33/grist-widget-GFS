@@ -2,7 +2,7 @@
 // Ce que Grist en fait (l'auteur écrit par lui, les règles lisant les colonnes-formules, un administrateur qui partage sans propriétaire) se mesure dans un vrai Grist : labo/run-partager.mjs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { planSharing, planUnsharing, shareColumns, helperColumns, fileRules, shareRules, stampRules, shareRecord, sharesOf, isSharingNote, sharingActive, TARGETS, SHARES_TABLE, HELPERS, targetsOf, appTargets } from '../js/sharing/sharing-model.js';
+import { noticeTableRules, noticeColumnGroups, planSharing, planUnsharing, shareColumns, helperColumns, fileRules, shareRules, stampRules, shareRecord, sharesOf, isSharingNote, sharingActive, TARGETS, SHARES_TABLE, HELPERS, targetsOf, appTargets } from '../js/sharing/sharing-model.js';
 import { FILES_COLUMNS } from '../js/files/gfs-files.js';
 import { BUILT_IN, base, withFiles, applied } from './sharing-fixtures.mjs';
 import { levelOfNote } from '../js/rights/rights.js';
@@ -70,19 +70,21 @@ test('les règles de la table de partages : création à son nom ET avec son rô
 });
 
 test('les notes du partage disent « Encadré » au panneau (les tables sont protégées par des règles de GFS), jamais « Partagé » (le niveau du rangement)', () => {
-  for (const rule of [...fileRules(), ...shareRules(), ...stampRules()]) assert.equal(levelOfNote(rule.memo), 'encadre', rule.memo);
+  for (const rule of [...fileRules(), ...shareRules(), ...stampRules(), ...noticeTableRules(), ...noticeColumnGroups().flatMap(group => group.rules)]) {
+    assert.equal(levelOfNote(rule.memo), 'encadre', rule.memo);
+  }
 });
 
 test('activer le partage sur un document neuf : les deux tables, les règles, la première règle du document', () => {
   const plan = planSharing(base(), FILES_COLUMNS);
   assert.equal(plan.ok, true);
   assert.equal(plan.firstRule, true);
-  assert.deepEqual(plan.creates, [SHARES_TABLE, 'GFS_Rangement', 'GFS_Fichiers', 'GFS_Groupes', 'GFS_Espaces', 'GFS_Placement']);
-  assert.deepEqual(plan.actions.filter(action => action[0] === 'AddTable').map(action => action[1]), ['GFS_Groupes', 'GFS_Espaces', 'GFS_Placement', 'GFS_Fichiers', 'GFS_Rangement', SHARES_TABLE], 'groupes, espaces et placement d\'abord : les colonnes d\'aide les lisent');
+  assert.deepEqual(plan.creates, [SHARES_TABLE, 'GFS_Rangement', 'GFS_Fichiers', 'GFS_Groupes', 'GFS_Espaces', 'GFS_Placement', 'GFS_Notifications']);
+  assert.deepEqual(plan.actions.filter(action => action[0] === 'AddTable').map(action => action[1]), ['GFS_Groupes', 'GFS_Espaces', 'GFS_Placement', 'GFS_Notifications', 'GFS_Fichiers', 'GFS_Rangement', SHARES_TABLE], 'groupes, espaces et placement d\'abord : les colonnes d\'aide les lisent');
   const created = plan.actions.find(action => action[1] === 'GFS_Fichiers')[2];
   assert.deepEqual(created.map(column => column.id), [...FILES_COLUMNS.map(column => column.id), 'GFS_Auteur', ...HELPERS]);
   const resources = plan.actions.filter(action => action[1] === '_grist_ACLResources').map(action => action[3]);
-  assert.deepEqual(resources.map(resource => `${resource.tableId}/${resource.colIds}`), [`${SHARES_TABLE}/Auteur,AuteurAcces`, `${SHARES_TABLE}/*`, 'GFS_Groupes/Nom,NomL,Nb,Source', 'GFS_Groupes/*', 'GFS_Espaces/*', 'GFS_Placement/*', 'GFS_Fichiers/GFS_Auteur', 'GFS_Fichiers/*', 'GFS_Rangement/*']);
+  assert.deepEqual(resources.map(resource => `${resource.tableId}/${resource.colIds}`), [`${SHARES_TABLE}/Auteur,AuteurAcces`, `${SHARES_TABLE}/*`, 'GFS_Groupes/Nom,NomL,Nb,Source', 'GFS_Groupes/*', 'GFS_Espaces/*', 'GFS_Placement/*', 'GFS_Notifications/Pour,Type,Cible,Par,Cle,Quand', 'GFS_Notifications/Lu', 'GFS_Notifications/*', 'GFS_Fichiers/GFS_Auteur', 'GFS_Fichiers/*', 'GFS_Rangement/*']);
   assert.ok(plan.actions.findIndex(action => action[0] === 'AddTable') < plan.actions.findIndex(action => action[1] === '_grist_ACLResources'), 'les tables avant les règles');
 });
 
@@ -106,7 +108,7 @@ test('les règles se posent aux numéros qui suivent ceux en place, dans l\'ordr
 
 test('une table de fichiers déjà là : seules les colonnes d\'aide manquantes sont ajoutées, jamais la table recréée', () => {
   const plan = planSharing(withFiles(), FILES_COLUMNS);
-  assert.deepEqual(plan.creates, [SHARES_TABLE, 'GFS_Rangement', 'GFS_Groupes', 'GFS_Espaces', 'GFS_Placement']);
+  assert.deepEqual(plan.creates, [SHARES_TABLE, 'GFS_Rangement', 'GFS_Groupes', 'GFS_Espaces', 'GFS_Placement', 'GFS_Notifications']);
   assert.deepEqual(plan.actions.filter(action => action[0] === 'AddColumn').map(action => action[2]), ['GFS_Auteur', ...HELPERS]);
   // Les PDF d'avant : l'auteur est repris de « Auteur » (colonne à formule rendue ordinaire : elle garde ses valeurs), puis la formule de création reprend pour les nouvelles lignes.
   const kept = plan.actions.filter(action => action[2] === 'GFS_Auteur' && action[1] === 'GFS_Fichiers');
@@ -201,7 +203,7 @@ test('activer avec une app : ses colonnes, ses règles (la colonne d\'auteur gar
   const legacy = plan.actions.find(action => action[0] === 'BulkAddRecord');
   assert.deepEqual(legacy[3].Cible, ['publipostage:3', 'publipostage:5']);
   const resources = plan.actions.filter(action => action[1] === '_grist_ACLResources').map(action => `${action[3].tableId}/${action[3].colIds}`);
-  assert.deepEqual(resources, [`${SHARES_TABLE}/Auteur,AuteurAcces`, `${SHARES_TABLE}/*`, 'GFS_Groupes/Nom,NomL,Nb,Source', 'GFS_Groupes/*', 'GFS_Espaces/*', 'GFS_Placement/*', 'GFS_Fichiers/GFS_Auteur', 'GFS_Fichiers/*', 'Publipostage_Modeles/GFS_Auteur', 'Publipostage_Modeles/*', 'GFS_Rangement/*']);
+  assert.deepEqual(resources, [`${SHARES_TABLE}/Auteur,AuteurAcces`, `${SHARES_TABLE}/*`, 'GFS_Groupes/Nom,NomL,Nb,Source', 'GFS_Groupes/*', 'GFS_Espaces/*', 'GFS_Placement/*', 'GFS_Notifications/Pour,Type,Cible,Par,Cle,Quand', 'GFS_Notifications/Lu', 'GFS_Notifications/*', 'GFS_Fichiers/GFS_Auteur', 'GFS_Fichiers/*', 'Publipostage_Modeles/GFS_Auteur', 'Publipostage_Modeles/*', 'GFS_Rangement/*']);
   assert.ok(!plan.actions.some(action => action[0] === 'AddTable' && action[1] === 'Autre_Fichiers'));
 });
 
@@ -511,4 +513,22 @@ test('sharesOf : un dossier se désigne par plusieurs cibles (son numéro, son c
   const shares = sharesOf(rows, ['dossier:moi:a@b.fr/Docs/Sous', 'dossier:moi:a@b.fr//4'], [{ kind: 'folder', name: 'Docs', target: ['dossier:moi:a@b.fr/Docs', 'dossier:moi:a@b.fr//3'] }]);
   assert.deepEqual(shares.map(share => [share.id, share.inherited, share.from && share.from.name]), [[1, false, null], [3, true, 'Docs'], [2, true, 'Docs']]);
   assert.deepEqual(sharesOf(rows, 'dossier:moi:a@b.fr//4').map(share => share.id), [1], 'une seule cible en texte : comme avant');
+});
+
+test('un document partagé avant les notifications : seule leur table naît, avec ses trois groupes de règles, et rien d\'autre ne bouge ; le retrait du partage retire aussi ces règles', () => {
+  const done = applied(withFiles(), planSharing(withFiles(), FILES_COLUMNS).actions);
+  const gone = new Set(['GFS_Notifications']);
+  const goneResources = done.resources.filter(row => gone.has(row.tableId)).map(row => row.id);
+  const old = { ...done, tables: done.tables.filter(row => !gone.has(row.tableId)), resources: done.resources.filter(row => !goneResources.includes(row.id)),
+    rules: done.rules.filter(rule => !goneResources.includes(rule.resource)) };
+  const plan = planSharing(old, FILES_COLUMNS);
+  assert.equal(plan.ok, true);
+  assert.deepEqual(plan.creates, ['GFS_Notifications']);
+  assert.deepEqual(plan.actions.filter(action => action[0] === 'AddTable').map(action => action[1]), ['GFS_Notifications']);
+  assert.deepEqual(plan.actions.filter(action => action[1] === '_grist_ACLResources').map(action => action[3].colIds), ['Pour,Type,Cible,Par,Cle,Quand', 'Lu', '*']);
+  assert.equal(plan.actions.some(action => action[0] === 'BulkRemoveRecord' || action[0] === 'ModifyColumn'), false, 'aucune règle ni formule d\'avant n\'est touchée');
+  const after = applied(old, plan.actions);
+  assert.equal(planSharing(after, FILES_COLUMNS).reason, 'already');
+  const off = applied(after, planUnsharing(after).actions);
+  assert.equal(off.rules.some(rule => String(rule.memo).includes('notification')), false, 'le retrait enlève les règles des notifications avec les autres');
 });

@@ -26,8 +26,11 @@ function tab({ values = {}, refuse = false } = {}) {
 // Un serveur de doublure : rend les lignes, ou lève ce que `fail` désigne ; `calls` : les requêtes parties.
 function server(fail = null) {
   const calls = [];
-  return { calls, sql: async statement => { calls.push(statement); if (fail) throw fail(); return [{ n: 1 }]; } };
+  const tokens = []; // `true` : la requête est partie avec le jeton qui peut écrire
+  return { calls, tokens, sql: async (statement, writable = false) => { calls.push(statement); tokens.push(writable); const error = fail ? fail(writable) : null; if (error) throw error; return [{ n: 1 }]; } };
 }
+// Un document à règles d'accès, lu par son propriétaire : Grist refuse le jeton en lecture seule (403 lisible) et sert celui qui peut écrire (faits vérifiés 43).
+const ownerOfRuledDocument = () => server(writable => (writable ? null : refused()));
 const gateOver = (remote, { browser = tab(), now = () => 1000, docId = async () => DOC } = {}) => createSqlGate({ sql: remote.sql, docId, store: browser.store, now });
 
 test('reasonOf : le refus de Grist, l\'erreur de réseau (le pare-feu sans en-tête CORS), la lecture coupée et le reste', () => {
@@ -41,13 +44,13 @@ test('reasonOf : le refus de Grist, l\'erreur de réseau (le pare-feu sans en-t�
   assert.equal(reasonOf(null), 'failed');
 });
 
-test('le premier refus de Grist ferme la lecture : plus aucune requête ne part, la lecture lève SqlClosedError', async () => {
+test('un refus du jeton qui peut écrire (l\'éditeur, le lecteur) ferme la lecture : plus aucune requête ne part, la lecture lève SqlClosedError', async () => {
   const remote = server(refused);
   const gate = gateOver(remote);
   await assert.rejects(gate.read('SELECT 1'), error => error.status === 403, 'le premier refus est celui du serveur');
   assert.equal(gate.isClosed(), true);
   for (let i = 0; i < 3; i++) await assert.rejects(gate.read('SELECT 2'), error => error instanceof SqlClosedError && error.reason === 'denied');
-  assert.equal(remote.calls.length, 1, 'une seule requête refusée dans la console, pas une par lecture');
+  assert.deepEqual(remote.tokens, [false, true], 'deux requêtes refusées dans la console (le jeton prudent, puis celui qui peut écrire), pas une par lecture');
 });
 
 test('denied() : vrai après un refus de Grist (cette page ou une page de l\'onglet), faux après une erreur de réseau, un refus périmé ou sans rien lu', async () => {
@@ -126,7 +129,7 @@ test('sans stockage, sans identifiant de document ou avec une note illisible : l
     const gate = gateOver(remote, options);
     await assert.rejects(gate.read('SELECT 1'), error => error.status === 403);
     await assert.rejects(gate.read('SELECT 2'), SqlClosedError);
-    assert.equal(remote.calls.length, 1);
+    assert.equal(remote.calls.length, 2, 'les deux jetons, une fois chacun');
   }
   const none = createSqlGate({ sql: server(refused).sql, docId: async () => DOC });
   await assert.rejects(none.read('SELECT 1'));
@@ -158,7 +161,57 @@ test('les deux lectures légères partagent la mémoire : un compte de lignes re
   assert.equal(await reader.prepare([{ table: 'Publipostage_Templates', wanted: ['Name'] }]), null, 'le plan ne part pas');
   assert.equal(reader.isActive(), false, 'la lecture légère est éteinte : l\'explorateur lit en entier');
   assert.equal(await reader.read('Publipostage_Templates', ['Name']), null);
-  assert.equal(remote.calls.length, 1, 'une seule requête refusée pour tout ce passage (avant : deux comptes, la structure, puis les mêmes à chaque affichage)');
+  assert.equal(remote.calls.length, 2, 'deux requêtes refusées (les deux jetons) pour tout ce passage (avant : deux comptes, la structure, puis les mêmes à chaque affichage)');
   assert.equal(warned.length, 1, 'un seul avertissement dans la console');
   assert.ok(warned[0] instanceof SqlClosedError);
+});
+
+test('le propriétaire d\'un document à règles d\'accès : le refus du jeton prudent fait repartir la lecture avec celui qui peut écrire, une fois, et la page y reste', async () => {
+  const remote = ownerOfRuledDocument();
+  const browser = tab();
+  const gate = gateOver(remote, { browser });
+  assert.deepEqual(await gate.read('SELECT 1'), [{ n: 1 }], 'la lecture refusée repart et rend ses lignes');
+  assert.deepEqual(await gate.read('SELECT 2'), [{ n: 1 }]);
+  assert.deepEqual(await gate.read('SELECT 3'), [{ n: 1 }]);
+  assert.deepEqual(remote.tokens, [false, true, true, true], 'un seul refus ; les lectures suivantes partent d\'emblée avec le jeton qui peut écrire');
+  assert.equal(gate.isClosed(), false, 'rien n\'est fermé : la lecture légère sert');
+  assert.equal(await gate.denied(), true, 'la surveillance du poids part, elle aussi, avec le jeton qui peut écrire');
+  assert.deepEqual(browser.values, { [KEY]: 'writable:1000' }, 'l\'onglet ne retient que « jeton prudent refusé » et une date : jamais un jeton, une requête ou un nom');
+});
+
+test('la page rechargée dans l\'onglet part d\'emblée avec le jeton qui peut écrire : la console ne reçoit plus le refus ; la note périmée s\'efface et le jeton prudent revient', async () => {
+  const browser = tab({ values: { [KEY]: 'writable:1000' } });
+  const fresh = ownerOfRuledDocument();
+  assert.equal((await gateOver(fresh, { browser, now: () => 1000 + 60 * 1000 }).read('SELECT 1')).length, 1);
+  assert.deepEqual(fresh.tokens, [true], 'aucun refus');
+  const stale = ownerOfRuledDocument();
+  await gateOver(stale, { browser, now: () => 1000 + HOLD_MS.writable }).read('SELECT 1');
+  assert.deepEqual(stale.tokens, [false, true], 'la note est périmée : le jeton prudent d\'abord (le document a pu changer de règles), puis le refus se retient de nouveau');
+  assert.deepEqual(browser.values, { [KEY]: `writable:${1000 + HOLD_MS.writable}` });
+});
+
+test('des lectures parties ensemble avec le jeton prudent : chacune repart avec celui qui peut écrire, toutes rendent leurs lignes, une seule note', async () => {
+  const remote = ownerOfRuledDocument();
+  const browser = tab();
+  const gate = gateOver(remote, { browser });
+  const results = await Promise.all([1, 2, 3, 4].map(n => gate.read(`SELECT ${n}`)));
+  assert.deepEqual(results.map(rows => rows.length), [1, 1, 1, 1]);
+  assert.equal(remote.tokens.filter(Boolean).length, 4, 'quatre lectures abouties avec le jeton qui peut écrire');
+  assert.equal(remote.tokens.filter(token => !token).length, 4, 'les quatre sont parties ensemble avec le jeton prudent : quatre refus, pas plus (aucune ne repart deux fois)');
+  assert.equal(gate.isClosed(), false);
+  assert.deepEqual(browser.values, { [KEY]: 'writable:1000' });
+});
+
+test('le document à règles d\'accès lu en SQL : le compte de lignes et la lecture légère des fichiers servent avec le jeton qui peut écrire, sans fermer la lecture', async () => {
+  const remote = server(writable => (writable ? null : refused()));
+  const gate = gateOver(remote);
+  const doc = { fetchTable: async () => { throw new Error('la table entière ne doit pas être lue'); } };
+  assert.equal(await countRows('Publipostage_PreferencesModeles', { sql: statement => gate.read(statement), doc }), 1, 'le compte, en SQL');
+  const warned = [];
+  const reader = createLightReader({ sql: async statement => (/_grist_Tables_column/.test(statement) ? [{ tableId: 'Publipostage_Templates', colId: 'Name', type: 'Text' }] : gate.read(statement)),
+    warn: error => warned.push(error) });
+  await reader.prepare([{ table: 'Publipostage_Templates', wanted: ['Name'] }]);
+  assert.equal(reader.isActive(), true, 'la lecture légère reste en service');
+  assert.deepEqual(warned, [], 'aucun avertissement dans la console');
+  assert.deepEqual(remote.tokens, [false, true, true], 'un seul refus pour toute la page : le compte, repris avec le jeton qui peut écrire, puis la lecture des lignes d\'emblée avec lui');
 });

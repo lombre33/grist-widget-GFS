@@ -216,7 +216,7 @@ export class ShareControl {
     const { t, container, inertTargets } = this.#o;
     return openShare({
       container, t, locale: this.#o.locale(), inertTargets, other: state => this.#o.other(file, state),
-        file: { key: file.key, name: file.name, app: this.#appLabel(file) }, startTab: 'here',
+        file: { key: file.key, name: file.name, app: this.#appLabel(file) }, startTab: 'here', link: this.#o.pageLink,
       load: () => this.load(file), onManage: () => this.#o.manage.open(),
       onAdd: record => this.add(file, record),
       onChange: (id, patch) => this.#write([['UpdateRecord', SHARES_TABLE, id, patch]]),

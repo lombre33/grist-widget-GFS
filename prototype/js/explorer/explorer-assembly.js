@@ -64,7 +64,7 @@ export function buildExplorer(c) {
     blocked: () => c.writeBlock(), refresh: () => c.refreshFiles(), open: file => c.openings.openFile(file),
   });
   c.explorer = new Explorer({
-    container: c.$('stage'), i18n: c.i18n, locale: c.locale, now: () => new Date(), appName: c.appName, received: c.received,
+    container: c.$('stage'), i18n: c.i18n, locale: c.locale, now: () => new Date(), appName: c.appName, received: c.received, notices: c.notices,
     typeLabel: file => (file.received ? c.received.typeLabel(file) : c.typeLabel(file)),
       lockOf: file => (file.received ? c.received.lockOf(file) : c.lockOf(file)),
     newTypes: c.newTypes, importTypes: c.importTypes, canClose: () => Boolean(c.session), notice: text => c.notice(text),

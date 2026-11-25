@@ -161,6 +161,27 @@ test('arrivalTableApp : lit la table de l\'app et rend l\'app que sa ligne dési
   assert.equal(await arrivalTableApp(doc, [automation()], 'Commandes'), null);
 });
 
+// Le nom d'avant le passage à l'anglais (`arrivee.aussi`, contrats 2.5, point 4) : un document d'avant garde sa table `Automation`, un document neuf a la nouvelle.
+const renamed = () => { const m = automation(); m.arrivee = { ...m.arrivee, table: 'Automation_Store', aussi: ['Automation'] }; return m; };
+
+test('arrivalTableApp : la table d\'avant se lit comme la nouvelle, la nouvelle d\'abord', async () => {
+  const read = [];
+  const old = fakeDoc({ Clients: graph([]), Automation: graph([['Workflow', 'Clients']]) }, name => read.push(name));
+  assert.equal(await arrivalTableApp(old, [renamed()], 'Clients'), 'automation', 'un document d\'avant : sa table `Automation`');
+  const fresh = fakeDoc({ Clients: graph([]), Automation_Store: graph([['Workflow', 'Clients']]) }, name => read.push(name));
+  assert.equal(await arrivalTableApp(fresh, [renamed()], 'Clients'), 'automation', 'un document neuf : la nouvelle table');
+  assert.deepEqual(read, ['Automation', 'Automation_Store'], 'la table d\'avant n\'est lue que si la nouvelle est absente ou vide');
+});
+
+test('arrivalTableApp : les deux tables, la nouvelle vide : celle qui a des lignes ; les deux ont des lignes : la nouvelle ; aucune : l\'explorateur', async () => {
+  const both = graph => fakeDoc({ Clients: graph([]), Automation: graph([['Workflow', 'Clients']]), Automation_Store: graph([]) });
+  assert.equal(await arrivalTableApp(both(graph), [renamed()], 'Clients'), 'automation', 'la nouvelle est vide : GFS lit celle d\'avant, qui a le graphe');
+  const split = fakeDoc({ Clients: graph([]), Automation: graph([['Workflow', 'Commandes']]), Automation_Store: graph([['Workflow', 'Clients']]) });
+  assert.equal(await arrivalTableApp(split, [renamed()], 'Clients'), 'automation', 'les deux ont des lignes : la nouvelle fait foi');
+  assert.equal(await arrivalTableApp(split, [renamed()], 'Commandes'), null, 'et celle d\'avant n\'est pas lue');
+  assert.equal(await arrivalTableApp(fakeDoc({ Clients: graph([]), Automation: graph([]), Automation_Store: graph([]) }), [renamed()], 'Clients'), null);
+});
+
 test('arrivalTableApp : table absente, illisible ou document illisible : l\'explorateur, rien d\'écrit', async () => {
   assert.equal(await arrivalTableApp(fakeDoc({ Clients: graph([]) }), [automation()], 'Clients'), null, 'Automation+ n\'a pas encore créé sa table');
   const warned = [];

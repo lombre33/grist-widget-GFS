@@ -361,6 +361,10 @@ Une entrée de `fichiers` par table de fichiers :
    valeurs que doit porter la ligne (des textes, comparés tels quels, `Type` = `Workflow` : un `Log` ou un `Lock` ne désigne pas la
    vue). GFS ne s'en sert qu'à l'arrivée, aux conditions de 7.4, point 7 ; il ne fait que comparer, il ne lit jamais une valeur comme
    du code ni comme une adresse. L'app qui garde aussi une clé de réglage (`reglages`) reste reconnue par elle d'abord.
+   **`aussi`** (facultatif, 25/11, décision du porteur : « tout en anglais » et « GFS lit les deux jeux de noms, sans date de fin ») : les autres noms de la
+   table, celui d'avant le passage à l'anglais (Automation+ : `{ "table": "Automation_Store", "aussi": ["Automation"], … }`). Une liste non vide de noms, jamais
+   celui de `table`, que `permissions.lit` couvre ; ils peuvent être hors du préfixe de l'app (un nom d'avant sa règle de préfixe). GFS lit **la table qui a des lignes** ;
+   si plusieurs en ont, ou aucune, la première de la liste (`table`) : même règle que `noms` (2.4, point 6). La table d'avant n'est lue que si la nouvelle est absente ou vide.
 5. [T] **`reglagesArrivee`** (facultatif, décidé par le porteur le 12/11) : parmi les clés de `reglages`, celles dont **une valeur dit à GFS d'ouvrir l'app à
    l'arrivée** (7.4, point 7). Une clé de `reglages` qui n'y est pas se lit, s'écrit et se retire comme les autres, mais ne désigne pas l'app : une vue qui n'a
    que celle-là arrive sur l'explorateur, et non sur la page de départ de l'app. Publipostage+ : `["modeleDeLaVue", "modeleSelonLigne"]` (un modèle choisi pour la
@@ -596,7 +600,13 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     version exacte : dernière stable, écart, avis), `empreintes` (`{ url, sha384, octets, vu }` : ce que le CDN servait au premier jour `vu` ; un changement d'empreinte pour une même adresse est un signal : « non tenue »
     chez un CDN qui sert un fichier figé, cdnjs et jsDelivr, « à noter » chez les autres, qui peuvent reconstruire) et `empreintesLe`, `adressesTrouvees` (les hôtes de CDN que GFS a retrouvés dans la page et le code de l'app : la fenêtre en tire « Adresse retrouvée / non retrouvée par GFS » pour chaque bibliothèque que l'app déclare). **La fenêtre « Dépendances » a deux vues** (boutons « Bibliothèques » et « Sécurité », js/apps/dependencies-security.js et dependencies-security-view.js) : « Sécurité » montre, pour chaque app, ses neuf règles (état en mot et en icône, motifs, origine du jugement : « Vérifié par GFS », « Déclaré par l'app » ou « Pas vérifié ») ; sans le fichier, la vue le dit au lieu de disparaître. **Ce que le contrôle ne fait pas** : il ne fetch que des adresses de CDN connus
     (`CDN_HOSTS`), en https, sans joker, trois redirections au plus vers ces mêmes hôtes ; il ne pousse rien dans un dépôt d'app ; il ne lit pas ce qu'une app construirait à l'exécution. **Les limites sont dites
-    dans la fenêtre** (cahier 3.2.2). `--verifier` dit hors réseau si le fichier couvre le catalogue ; `test/securite-controle.test.mjs` garde la lecture d'une politique, les neuf jugements et le fichier commité.
+    dans la fenêtre** (cahier 3.2.2). **La partie `catalogue`** (choix du porteur, 25/11, « CDN vérifié, secours chez GFS » ; faits vérifiés 164), additive : `{ cdn: { lu: <date> | null, entrees: [{ id, url, attendu, vu, octets, etat: identique |
+    different | non-lu }] }, npm: { releve, paquets, valides, nonVerifiees, provenance, problemes: [{ paquet, version, signature }] } }`. `cdn` : chacune des adresses de CDN du catalogue
+    (`bibliotheques/catalogue.json`, `cdn.src`) relue chez le CDN à chaque `--empreintes` et comparée à l'empreinte `cdn.integrite` que GFS garde ; sans `--empreintes`, la dernière lecture reste avec sa date.
+    `npm` : l'état de la signature du registre de chaque paquet du relevé (`releve.json` : `signature` valide | invalide | absente | cle-inconnue | non-verifiee ; `provenance` : le paquet porte une preuve de
+    publication), ECDSA SHA-256 sur `<paquet>@<version>:<intégrité>` avec les clés du registre (`outils/signatures-npm.mjs`). Un fichier sans cette partie reste lisible (la vue n'affiche pas la section). Une
+    adresse « different » et une signature « invalide », « absente » ou « cle-inconnue » comptent dans le nombre du bouton « Sécurité » ; « non-lu » et « non-verifiee » n'en comptent pas.
+    `node outils/controle-securite.mjs --catalogue [--empreintes]` refait cette partie seule, sans relire les apps. `--verifier` dit hors réseau si le fichier couvre le catalogue ; `test/securite-controle.test.mjs` garde la lecture d'une politique, les neuf jugements et le fichier commité.
 
 ### 2.7 Les actions acceptées
 
@@ -655,7 +665,8 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
    - `reglagesArrivee` (2.5, point 5) : autre chose qu'une liste de chaînes, une entrée qui n'est pas une clé de `reglages` de la même app ;
    - dans `ouverture` : autre chose qu'un objet, un genre (`fichier`, `nouveau`, `importer`, `lire`) qui n'est pas un booléen ; `permanente` qui n'est pas un booléen ;
    - dans `arrivee` (2.5, point 4) : autre chose qu'un objet, une `table` ou une `colonne` qui n'est pas une chaîne, une `table` que
-     `permissions.lit` ne couvre pas, des `lignes` qui ne sont pas un objet de chaînes ;
+     `permissions.lit` ne couvre pas, des `lignes` qui ne sont pas un objet de chaînes, des `aussi` qui ne sont pas une liste non vide de noms
+     que `lit` couvre et qui ne sont pas celui de `table` ;
    - dans `permissions` : une règle de la section 3 non tenue (un motif `ecrit` que `lit` ne couvre pas, un `pourquoi` absent,
      une table ou une colonne de la liste fermée 3.3, une entrée `gristInterne` qui lit `_grist_Shares` ou `_grist_Triggers`,
      qui écrit sans `lit: true` ou qui écrit plus d'une table, `lit`/`ecrit`/`gristInterne`/capacités avec un accès autre que

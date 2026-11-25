@@ -63,6 +63,6 @@ export function tablesNeeded(config, tableId, schema) {
   const walk = columns => { let at = tableId; for (const colId of columns) { if (!at) break; at = follow(at, colId); } };
   for (const level of config.levels) walk(level.path);
   for (const field of config.fields) walk([field.col]);
-  for (const key of ['name', 'title', 'email', 'phone', 'lead']) if (config[key]) walk([config[key]]);
+  for (const key of ['name', 'first', 'title', 'email', 'phone', 'lead']) if (config[key]) walk([config[key]]);
   return needed;
 }

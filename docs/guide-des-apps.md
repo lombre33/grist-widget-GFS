@@ -84,14 +84,20 @@ cahier des charges (`cahier-des-charges-gfs.md`) ; ses numéros de section sont 
 15. **Tout en anglais dès le départ** (décision du porteur, 25/11) : une app nouvelle écrit en anglais son code (variables, fonctions,
     fichiers), ses **tables** et leurs **colonnes** (`Tuesday_Projects`, `Name`, `ModifiedAt`), sans attendre une bascule. Seule l'interface
     reste en français et en anglais. Une app déjà sortie dont les noms sont encore en français bascule **sur place** (`RenameTable`,
-    `RenameColumn` et le libellé, dans **un seul lot**, tout ou rien : jamais une table de plus, jamais une ligne copiée) ; elle **lit
+    `RenameColumn` et le libellé, dans **un seul lot**, tout ou rien : jamais une table de plus, jamais une ligne copiée) **par la fenêtre commune du kit**
+    (`NamesUpdate.run({ port, plan, appName })`, kit 0.29.1, `css/names-update.css` à charger : bloquante, ouverte pour qui est propriétaire seulement, « quelques secondes »,
+    « vos données ne changent pas », vérifiée avant et après ; jamais en silence ; l'app lui donne son lot `plan(schema)` recalculé d'après les noms du document et un `port`
+    dont `isOwner` est `contexte.role.proprietaire` dans GFS, la preuve du moteur de partage seule ; faits vérifiés 162) ; elle **lit
     les deux jeux de noms dans la version même qui renomme** (décision du porteur, 25/11 : les gens sont toujours sur le dernier lien, pas de sortie en deux temps), ne crée jamais la table
     anglaise quand la française existe, ne renomme pas un document qui porte déjà les deux jeux, et annonce ses noms dans « Changements qui
     touchent GFS » **avant** de renommer (contrats 2.4, point 6 : `noms` du manifeste). Dans GFS, le courtier ne laisse renommer que l'app qui déclare la capacité
     `renommage` (contrats 3.3, point 10) et seulement ses propres tables et colonnes (le libellé par `ModifyColumn`, rien d'autre) ; Grist **ne refuse pas** un nom cible déjà
     pris, il ajoute « 2 » : l'app relit les noms juste avant d'envoyer et ne renomme rien si un nom cible existe (faits vérifiés 158). **Elle ne renomme jamais une table
     ni une colonne qu'un partage de Sync+ utilise** : renommée, une table rend le lien muet et une colonne le fait envoyer du vide (faits vérifiés 160) ; elle les garde et renomme
-    le reste. Un nom qui voyage entre deux documents (le
+    le reste. **Une écriture qui répond « table introuvable »** (ou « colonne introuvable ») pendant ou juste après un renommage, venu d'un autre onglet, d'une autre personne
+    ou d'une restauration : l'app relit les noms du document et recommence **une fois**, sinon elle dit « Rechargez la page » sans rien écrire de plus. **Le compte des lignes
+    (`rowCount` de la fenêtre) ne se donne pas pour une table qui peut être lourde** (lire la table entière : quelques secondes à 100 Mo, un échec vers 500 Mo, faits vérifiés 161) ;
+    sans lui, la fenêtre dit « Terminé » sans le nombre et les noms relus prouvent le lot. Un nom qui voyage entre deux documents (le
     protocole de Sync+) ne change qu'avec un numéro de version majeur ; **Sync+ ne migre aucun lien existant** (décision du porteur, 25/11) :
     seuls les nouveaux partages prennent les noms anglais. **GFS lit toujours les deux jeux de noms, sans date de fin** (un document jamais rouvert
     dans la nouvelle version, ou restauré d'une sauvegarde, reste lisible) ; il ne retire cette lecture que sur l'accord du porteur.

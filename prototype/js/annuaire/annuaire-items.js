@@ -9,6 +9,17 @@ export function initials(name) {
   return two.toLocaleUpperCase();
 }
 
+// Le numéro tel que le lien d'appel l'attend (« 01 02 03 04 05 » : « tel:0102030405 », « +33 (0)1 02… » : « tel:+331… ») : les chiffres, avec le « + » du début
+// et sans le « (0) » qui suit un indicatif ; ce qui vient après un « poste », un « ext. » ou une virgule (un numéro de poste) n'est pas composé. null quand il
+// n'y a pas assez de chiffres pour un numéro ou qu'il y reste des mots (« standard du lundi »). Sur un téléphone, le lien lance l'application d'appel ;
+// ailleurs, celle que la personne a choisie pour les numéros, s'il y en a une.
+export function telHref(phone) {
+  const main = String(phone ?? '').split(/\b(?:poste|post|ext|extension)\b|p\.|#|[;,]/i)[0].trim();
+  const international = main.startsWith('+');
+  const digits = (international ? main.replace(/\(0\)/g, '') : main).replace(/\D/g, '');
+  return digits.length < 6 || /\p{L}{2}/u.test(main) ? null : `tel:${international ? '+' : ''}${digits}`;
+}
+
 // Le libellé d'un niveau : celui que la personne a écrit, sinon le nom de la dernière colonne de son chemin.
 export const levelLabel = level => (level && (level.label || (level.path || []).at(-1))) || '';
 
@@ -22,7 +33,8 @@ export function structureItems(tree, levels) {
     const [head] = headsOf(node);
     const level = node.level >= 0 ? levels[node.level] : null;
     return { id: node.id || 'root', ch: node.ch.map(one), pick: { node: node.id },
-      card: { title: node.name, sub: levelLabel(level), count: node.count, head: head ? head.name : '', initials: head ? initials(head.name) : '' } };
+      card: { title: node.name, sub: levelLabel(level), count: node.count, head: head ? head.name : '',
+        initials: head ? (head.initials ?? initials(head.name)) : '' } };
   };
   return [one(tree)];
 }
@@ -34,7 +46,7 @@ export function managerItems(roots) {
     const below = ch.reduce((sum, child) => sum + child.card.count + 1, 0);
     const { person } = node;
     return { id: `p${person.row}`, ch, pick: { person: person.row }, card: { title: person.name, sub: person.title, count: below, head: '',
-      initials: initials(person.name) } };
+      initials: person.initials ?? initials(person.name) } };
   };
   return roots.map(one);
 }

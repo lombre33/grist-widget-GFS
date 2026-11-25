@@ -65,6 +65,12 @@
 .wk-back { flex: none; display: inline-flex; align-items: center; gap: 2px; }
 .wk-back .ic { width: 14px; height: 14px; }
 .inp-search.wk-search { display: block; width: 100%; margin-top: 8px; }
+/* Le chemin parcouru d'un choix en plusieurs étapes (une colonne qu'on suit d'une table à l'autre) : « CHEMIN  Personnes › Structure ». */
+.wk-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 6px; }
+.wk-crumbs-l { margin-right: 2px; font-size: max(11px, var(--fs-min)); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+.wk-crumbs .ic { flex: none; width: 12px; height: 12px; color: var(--text-muted); }
+.wk-crumb { padding: 1px 8px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); font-size: max(12px, var(--fs-min)); }
+.wk-crumb:last-child { border-color: var(--accent-soft-border); background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; }
 .wk-list { margin: 0; padding: 4px 0; list-style: none; }
 .wk-row { display: flex; align-items: center; gap: 6px; }
 .wk-rows { flex: none; gap: 2px; }

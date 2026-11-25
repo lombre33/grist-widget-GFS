@@ -93,3 +93,34 @@ test('enregistrer : la définition est réécrite, la table n\'est jamais créé
   await assert.rejects(store(empty).save({ row: 1, name: 'X', table: 'Personnes', config: configFixture() }, configFixture()), MissingTable);
   assert.equal('GFS_Annuaires' in empty.tables, false);
 });
+
+test('lire un annuaire : l\'option « postes et hiérarchie » éteinte, l\'arbre n\'a que sa racine et le poste n\'est pas lu', async () => {
+  const grist = world();
+  const one = store(grist);
+  const made = await one.create({ name: 'Principal', table: 'Personnes', config: { ...configFixture(), hierarchy: false } });
+  const read = await one.read(made);
+  assert.equal(read.people.length, 6);
+  assert.deepEqual(read.tree.ch, []);
+  assert.equal(read.tree.own.length, 6);
+  assert.deepEqual(read.config.levels, []);
+  assert.equal(read.people.every(person => person.title === ''), true);
+  assert.equal(made.config.levels.length, 3, 'la définition garde ses niveaux écrits');
+});
+
+test('lire un annuaire avec un cache : une table n\'est lue qu\'une fois, même pour plusieurs lectures (l\'aperçu du réglage)', async () => {
+  const grist = world();
+  const one = store(grist);
+  const made = await one.create({ name: 'Principal', table: 'Personnes', config: configFixture() });
+  const fetched = [];
+  const original = grist.port.doc.fetchTable.bind(grist.port.doc);
+  grist.port.doc.fetchTable = name => { fetched.push(name); return original(name); };
+  const cache = new Map();
+  const first = await one.read(made, null, cache);
+  const afterFirst = fetched.filter(name => !name.startsWith('_grist_')).length;
+  const again = await one.read({ ...made, config: { ...made.config, levels: made.config.levels.slice(0, 1) } }, first.schema, cache);
+  assert.equal(again.tree.ch.length, 3);
+  assert.ok(cache.has('Personnes') && cache.has('Structures'));
+  assert.equal(fetched.filter(name => !name.startsWith('_grist_')).length, afterFirst, 'la seconde lecture ne relit aucune table');
+  await one.read(made, first.schema);
+  assert.ok(fetched.filter(name => !name.startsWith('_grist_')).length > afterFirst, 'sans cache, on relit');
+});

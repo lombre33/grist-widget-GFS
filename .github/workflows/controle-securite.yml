@@ -2,7 +2,9 @@
 # Il refait, depuis GitHub (dont les exécuteurs joignent les CDN, ce que le cloud de développement ne peut pas) :
 #   - le relevé des versions et des avis des bibliothèques que GFS sert (prototype/outils/releve-dependances.mjs → bibliotheques/releve.json) ;
 #   - le contrôle des apps (prototype/outils/controle-securite.mjs → bibliotheques/securite.json) : la politique de sécurité de la page de chaque app à la référence de GFS (sous-module),
-#     les adresses de CDN écrites dans son code, son `GFS-ETAT.md`, Dependabot et `SECURITY.md`, les avis sur les bibliothèques qu'elle déclare, et l'empreinte que chaque CDN sert ce jour-là.
+#     les adresses de CDN écrites dans son code, son `GFS-ETAT.md`, Dependabot et `SECURITY.md`, les avis sur les bibliothèques qu'elle déclare, et l'empreinte que chaque CDN sert ce jour-là ;
+#   - ce que GFS sert lui-même (même outil, partie `catalogue`, choix du porteur du 25/11) : chacune des adresses de CDN du catalogue relue chez le CDN et comparée à l'empreinte que GFS
+#     garde, et la signature du registre npm de chaque paquet (le relevé ci-dessus la vérifie).
 # Il ne pousse RIEN dans le dépôt d'une app ni chez grist-factory : seuls ces deux fichiers de GFS changent.
 #   - Rien d'autre que la date n'a changé : un commit direct sur `main` (la fenêtre « Dépendances » affiche « Dernier contrôle : <date> »).
 #   - Quelque chose a changé (un avis, une version, une politique, une empreinte) : une demande de fusion à relire, jamais un commit direct.
@@ -42,7 +44,7 @@ jobs:
       - name: Refaire le relevé des versions et des avis
         run: node outils/releve-dependances.mjs
         working-directory: prototype
-      - name: Contrôler les apps (politiques, adresses, avis, empreintes des CDN)
+      - name: Contrôler les apps et le catalogue (politiques, adresses, avis, empreintes des CDN)
         run: node outils/controle-securite.mjs --empreintes
         working-directory: prototype
       - name: Proposer le résultat
@@ -56,8 +58,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           today=$(date -u +%d/%m/%Y)
-          # Les seules lignes qui changent sont-elles des dates ? (« controle », « releve », « empreintesLe », « origine »)
-          substance=$(git diff -U0 -- $files | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)' | grep -vcE '"(controle|releve|empreintesLe|origine)":' || true)
+          # Les seules lignes qui changent sont-elles des dates ? (« controle », « releve », « empreintesLe », « lu », « origine »)
+          substance=$(git diff -U0 -- $files | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)' | grep -vcE '"(controle|releve|empreintesLe|lu|origine)":' || true)
           if [ "$substance" -eq 0 ]; then
             git add $files
             git commit -m "Contrôle de sécurité du $today : rien n'a changé (date seule)"

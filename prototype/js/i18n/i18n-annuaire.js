@@ -3,10 +3,12 @@
 // (pôle, direction, service…), pas ceux de l'accès de Grist.
 
 import { ANNUAIRE_EDIT_STRINGS } from './i18n-annuaire-edit.js';
+import { ANNUAIRE_TOOLS_STRINGS } from './i18n-annuaire-tools.js';
 
 export const ANNUAIRE_STRINGS = Object.freeze({
   fr: {
     ...ANNUAIRE_EDIT_STRINGS.fr,
+    ...ANNUAIRE_TOOLS_STRINGS.fr,
     'an.tip': 'Annuaire',
     'an.tipLong': 'Annuaire des personnes du document',
     'an.title': 'Annuaire',
@@ -266,6 +268,7 @@ export const ANNUAIRE_STRINGS = Object.freeze({
   },
   en: {
     ...ANNUAIRE_EDIT_STRINGS.en,
+    ...ANNUAIRE_TOOLS_STRINGS.en,
     'an.tip': 'Directory',
     'an.tipLong': 'Directory of the people in the document',
     'an.title': 'Directory',

@@ -15,6 +15,7 @@ import { setupProblems, savedProblems } from './annuaire-setup-firefox.mjs';
 import { relationsReadProblems } from './annuaire-relations-firefox.mjs';
 import { pathPickerProblems } from './annuaire-path-firefox.mjs';
 import { editProblems } from './annuaire-edit-firefox.mjs';
+import { toolsProblems } from './annuaire-tools-firefox.mjs';
 import { ficheSectionsProblems } from './annuaire-fiche-firefox.mjs';
 import { listColumnsProblems, sortProblems, orgFiltersProblems } from './annuaire-columns-firefox.mjs';
 
@@ -215,6 +216,7 @@ export async function annuaireProblems(page, language, tag, { width, mode }) {
     await languageProblems(page, language, t, other, note, inspectNow);
     await keyboardProblems(page, t, note, inspectNow);
     await editProblems(page, t, note, click, { width, mode }); // il écrit dans le faux Grist : en dernier
+    await toolsProblems(page, t, note, click, { width, mode, language }); // il recharge la page (`?tools=1`) : tout dernier
     const said = await page.run(() => window.__annuaireNotices);
     if (said.length) note('phrase inattendue', `l'annuaire a dit : ${said.join(' | ')}`);
   } catch (error) {

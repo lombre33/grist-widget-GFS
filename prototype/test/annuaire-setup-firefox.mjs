@@ -1,6 +1,6 @@
 // Le réglage de l'annuaire sous Firefox (règle du 03/11 ; module Annuaire, demande du porteur du 25/11 : réglage en onglets, sur la maquette), à la vraie souris et au vrai clavier,
-// sur le vrai contrôle et un faux Grist en mémoire (test/pages/annuaire.js). Suite de test/annuaire-firefox.mjs, appelée avec le réglage ouvert. À mesurer : quatre onglets (Personnes,
-// Hiérarchie, Relations, Champs de la fiche), un seul panneau à la fois, la fenêtre et son pied dans la page, rien qui défile de côté ; « Séparer le nom et le prénom » (le prénom et l'ordre du
+// sur le vrai contrôle et un faux Grist en mémoire (test/pages/annuaire.js). Suite de test/annuaire-firefox.mjs, appelée avec le réglage ouvert. À mesurer : cinq onglets (Personnes,
+// Hiérarchie, Relations, Champs de la fiche, Options), un seul panneau à la fois, la fenêtre et son pied dans la page, rien qui défile de côté ; « Séparer le nom et le prénom » (le prénom et l'ordre du
 // nom, qui se referment) ; la hiérarchie (les niveaux de la maquette : nom, compte, colonne, boutons dans leur carte ; l'aperçu de l'arbre ; la création d'un niveau en trois temps :
 // son nom, sa place parmi les autres, puis sa colonne, orange tant qu'elle manque, l'onglet qui avertit, « Enregistrer » qui refuse et montre où) ; l'option éteinte (grisée, jamais
 // masquée) ; les relations (les modèles prêts, la colonne choisie parmi celles qui désignent une personne, orange tant qu'elle manque, « Autre relation », les règles, le responsable direct
@@ -120,7 +120,7 @@ export async function setupProblems(page, t, note, { wide, width, mode }) {
   const where = `le réglage (${mode}, ${width} px)`;
   let state = await snap();
   if (!state) { note('réglage', `${where} : la fenêtre n'est pas ouverte`); return; }
-  const expected = ['people', 'hier', 'relations', 'fields'].map(id => t(`an.tab.${id}`));
+  const expected = ['people', 'hier', 'relations', 'fields', 'options'].map(id => t(`an.tab.${id}`));
   if (state.tabs.map(tab => tab.text.replace(t('an.tab.todo'), '').trim()).join() !== expected.join()) note('réglage', `${where} : les onglets sont « ${state.tabs.map(tab => tab.text).join(' | ')} » (« ${expected.join(' | ')} » attendus)`);
   for (const id of ['people', 'hier', 'relations', 'fields']) {
     if (!await click(`[data-fk="tab:${id}"]`)) continue;

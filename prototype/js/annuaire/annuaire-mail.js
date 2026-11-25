@@ -76,3 +76,17 @@ export function csvName(name, day) {
   const base = normalize(name).replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/^-+|-+$/g, '') || 'annuaire';
   return `${base}-${day}.csv`;
 }
+
+// Les colonnes de l'export : le nom, l'adresse, le téléphone quand l'annuaire en a un, chaque niveau de la hiérarchie, puis les champs que la liste ou la fiche
+// montre (« Liste » ou « Colonne » du réglage). `labels` : { name, email, phone } ; `genres` : { colonne: genre } ; `show(valeur, genre)` écrit une valeur dans
+// la langue de la personne (js/annuaire/annuaire-panes.js, `shown`).
+export function csvColumns(config, { labels, genres, show }) {
+  const columns = [{ label: labels.name, of: person => person.name }, { label: labels.email, of: person => person.email }];
+  if (config.phone) columns.push({ label: labels.phone, of: person => person.phone });
+  config.levels.forEach((level, i) => columns.push({ label: level.label || level.path.at(-1), of: person => person.levels[i] }));
+  for (const field of config.fields.filter(each => each.list || each.column)) {
+    const label = field.path && field.path.length ? field.path.at(-1) : field.col;
+    columns.push({ label, of: person => (person.fields[field.col] || []).map(value => show(value, genres[field.col])).join(', ') });
+  }
+  return columns;
+}

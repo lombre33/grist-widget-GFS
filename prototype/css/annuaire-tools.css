@@ -1,0 +1,111 @@
+/* « À vérifier », « Écrire au groupe », « Ma présence » et l'onglet « Options » de l'annuaire (demande du porteur du 25/11, scènes 12 à 14 de la maquette). Ils
+   réutilisent la base du réglage (`.an-set` : lignes, interrupteur) et celle de « Modifier ». Couleurs par jetons seulement ; ambre = les jetons `warn`. */
+
+/* La pastille de la barre : le triangle d'alerte et le nombre de points. */
+.an-top-tools { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+.an-top-tools:empty { display: none; }
+.an-chk-b { position: relative; }
+.an-chk-b.is-flagged { margin-right: 4px; color: var(--warn-ink); } /* la marge garde le nombre dans la boîte : la barre ne défile pas de côté */
+.an-chk-n { position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px; border: 1px solid var(--warn-ink); border-radius: 8px; background: var(--warn-soft);
+  color: var(--warn-ink); font-size: max(10.5px, var(--fs-min)); font-weight: 700; line-height: 14px; text-align: center; font-variant-numeric: tabular-nums; }
+.an-mailbtn[aria-disabled="true"] { background: var(--surface-sunken); color: var(--text-muted); cursor: not-allowed; }
+/* Étroit, « Écrire » ne garde que son icône (le nom reste en info-bulle et pour la lecture d'écran), comme « Trier » : la barre tient sur une ligne. */
+@container anmain (max-width: 420px) {
+  .an-crumb .an-mailbtn .an-tb-t { display: none; }
+  .an-crumb .an-mailbtn { padding: 0 8px; }
+}
+
+/* La fenêtre « À vérifier » : les contrôles à gauche, les fiches à droite ; sous 560 px les contrôles passent en rangée au-dessus. */
+.mod-body.an-chk-body { display: grid; grid-template-columns: minmax(130px, 180px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 12px; padding: 10px 14px; overflow: hidden; }
+.an-chk-kinds { display: flex; flex-direction: column; gap: 2px; min-height: 0; overflow-y: auto; }
+.an-chk-k { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 6px 8px; border: 0; border-radius: var(--radius-sm); background: transparent;
+  color: var(--text); font: inherit; font-size: max(12.5px, var(--fs-min)); text-align: left; cursor: pointer; }
+.an-chk-k:hover { background: var(--surface-sunken); }
+.an-chk-k[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; }
+.an-chk-k:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.an-chk-kt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-chk-list { display: flex; flex-direction: column; gap: 6px; min-width: 0; min-height: 0; overflow-y: auto; }
+.an-chk-item { flex: none; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+.an-chk-row { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 8px 10px; }
+.an-chk-ic { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: var(--warn-soft); color: var(--warn-ink); }
+.an-chk-ic .ic { width: 15px; height: 15px; }
+.an-chk-t { display: flex; flex-direction: column; gap: 1px; min-width: 0; overflow-wrap: anywhere; font-size: max(12.5px, var(--fs-min)); }
+.an-chk-is { font-weight: 600; color: var(--text-muted); }
+.an-chk-t small { color: var(--text-muted); font-size: max(12px, var(--fs-min)); }
+.an-chk-acts { display: inline-flex; flex-wrap: nowrap; gap: 6px; }
+.an-chk-none { display: flex; align-items: center; gap: 8px; margin: 16px 4px; color: var(--text-muted); }
+.an-chk-none .ic { flex: none; width: 16px; height: 16px; color: var(--good); }
+.an-chk-cmp { padding: 0 10px 10px 46px; overflow-x: auto; }
+.an-chk-cmp table { width: 100%; border-collapse: collapse; font-size: max(12px, var(--fs-min)); }
+.an-chk-cmp th, .an-chk-cmp td { padding: 4px 8px; border-top: 1px solid var(--border); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.an-chk-cmp thead th { border-top: 0; color: var(--text-muted); font-weight: 600; }
+.an-chk-cmp tbody th { width: 28%; font-weight: 600; }
+.an-chk-cmp tbody th .an-pill { margin-left: 6px; background: var(--warn-soft); color: var(--warn-ink); }
+.an-chk-cmp tr.is-diff td { color: var(--text); font-weight: 600; }
+.an-chk-cmp tr:not(.is-diff) td { color: var(--text-muted); }
+@container anset (max-width: 560px) {
+  .mod-body.an-chk-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 8px; }
+  .an-chk-kinds { flex-direction: row; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; padding-bottom: 2px; }
+  .an-chk-k { flex: none; width: auto; gap: 6px; border: 1px solid var(--border); }
+  .an-chk-row { grid-template-columns: 28px minmax(0, 1fr); }
+  .an-chk-acts { grid-column: 2; flex-wrap: wrap; }
+  .an-chk-cmp { padding-left: 10px; }
+}
+
+/* La fenêtre « Écrire au groupe » : la jauge de la longueur du lien, puis une ligne par option. */
+.mod-body.an-mail-body { display: flex; flex-direction: column; gap: 5px; padding: 6px 14px 8px; }
+.an-mbar { display: flex; flex-direction: column; gap: 3px; }
+.an-mbar p { margin: 0; }
+.an-mbar-t { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 12px; font-size: max(12.5px, var(--fs-min)); }
+.an-mbar-t span { color: var(--text-muted); }
+.an-mbar-t .is-over, .an-mbar-s.is-over { color: var(--danger-ink); font-weight: 600; }
+.an-mbar-b { position: relative; height: 8px; border-radius: 4px; background: var(--surface-sunken); border: 1px solid var(--border); }
+.an-mbar-b i { position: absolute; inset: 0 auto 0 0; width: var(--fill, 0%); border-radius: 3px; background: var(--accent-solid); }
+.an-mbar-b[data-over="true"] i { background: var(--danger-ink); }
+.an-mbar-b u { position: absolute; top: -3px; bottom: -3px; left: var(--limit, 100%); width: 2px; margin-left: -1px; background: var(--text); text-decoration: none; }
+.an-mopt { flex: none; display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 5px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); }
+.an-mopt.is-off { background: var(--surface-sunken); }
+.an-mopt.is-off .an-mopt-t b { color: var(--text-muted); }
+.an-mopt-i { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-ink); }
+.an-mopt.is-off .an-mopt-i { background: var(--surface); color: var(--text-muted); }
+.an-mopt-i .ic { width: 15px; height: 15px; }
+.an-mopt-t { display: flex; flex-direction: column; gap: 1px; min-width: 0; font-size: max(12.5px, var(--fs-min)); overflow-wrap: anywhere; }
+.an-mopt-t small { color: var(--text-muted); font-size: max(12px, var(--fs-min)); }
+.an-mopt-b { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.an-mopt-b a.btn { text-decoration: none; }
+@container anset (max-width: 520px) {
+  .an-mopt { grid-template-columns: 32px minmax(0, 1fr); }
+  .an-mopt-b { grid-column: 2; justify-content: flex-start; }
+}
+
+/* L'onglet « Options » du réglage : trois blocs (un titre, une phrase, des lignes). */
+.an-obs { display: flex; flex-direction: column; gap: 10px; }
+.an-ob { border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+.an-ob-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 8px 12px 6px; border-bottom: 1px solid var(--border); font-size: max(12.5px, var(--fs-min)); }
+.an-ob-h small { color: var(--text-muted); font-size: max(12px, var(--fs-min)); }
+.an-ob-b { display: flex; flex-direction: column; gap: 2px; padding: 6px 12px 8px; }
+.an-ob-row { display: flex; align-items: flex-start; gap: 10px; padding: 3px 0; }
+.an-ob-row .an-sw { margin-top: 2px; }
+.an-ob-t { display: flex; flex-direction: column; gap: 1px; min-width: 0; font-size: max(12.5px, var(--fs-min)); }
+.an-ob-t small { color: var(--text-muted); font-size: max(12px, var(--fs-min)); }
+.an-ob-row.is-off .an-ob-t b { color: var(--text-muted); }
+.an-ob-note { margin: 2px 0 0; }
+.an-ob-step { display: inline-flex; align-items: center; gap: 6px; }
+.an-ob-step b { min-width: 3ch; text-align: center; font-variant-numeric: tabular-nums; }
+.an-ob-step .an-ib { border-color: var(--border-strong); }
+.an-ob-seg { display: inline-flex; align-self: flex-start; border: 1px solid var(--border-strong); border-radius: var(--radius-btn); background: var(--surface); overflow: hidden; }
+.an-ob-seg-b { height: 28px; padding: 0 12px; border: 0; background: transparent; color: var(--text); font: inherit; font-size: max(12.5px, var(--fs-min)); cursor: pointer; }
+.an-ob-seg-b + .an-ob-seg-b { border-left: 1px solid var(--border); }
+.an-ob-seg-b[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; }
+.an-ob-seg-b:focus-visible, .an-chk-b:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* « Ma présence » : une fiche masquée se voit grisée, avec sa pastille ; l'interrupteur est sur la fiche. */
+.is-masked .an-pe-name, .is-masked .an-pe-sub, .is-masked .an-pc-line { color: var(--text-muted); }
+.is-masked .an-av { background: var(--surface-sunken); color: var(--text-muted); }
+.an-masked { display: inline-flex; align-items: center; gap: 4px; flex: none; background: var(--surface-sunken); color: var(--text-muted); }
+.an-masked .ic { width: 11px; height: 11px; }
+.an-pres { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-sunken); }
+.an-pres .an-sw { margin-top: 2px; }
+.an-pres-t { display: flex; flex-direction: column; gap: 1px; min-width: 0; font-size: max(12.5px, var(--fs-min)); overflow-wrap: anywhere; }
+.an-pres-t small { color: var(--text-muted); font-size: max(12px, var(--fs-min)); }

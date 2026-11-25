@@ -1,7 +1,7 @@
 // « Écrire au groupe » (module Annuaire, demande du porteur du 25/11) : les adresses, la longueur du lien, les lots qui tiennent et le CSV. Du code sans effet de bord.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { addressesOf, mailLink, linkLength, mailBatches, mailPlan, csvOf, csvName, MAILTO_LIMIT } from '../js/annuaire/annuaire-mail.js';
+import { addressesOf, mailLink, linkLength, mailBatches, mailPlan, csvOf, csvName, csvColumns, MAILTO_LIMIT } from '../js/annuaire/annuaire-mail.js';
 
 const person = email => ({ email });
 const many = n => Array.from({ length: n }, (unused, i) => `personne.numero${i + 1}@universite-exemple.fr`);
@@ -58,4 +58,15 @@ test('le CSV : point-virgule, BOM, guillemets doublés, pas de formule injectée
 test('le nom du fichier exporté : celui de l\'annuaire, sans ce qu\'un nom de fichier refuse', () => {
   assert.equal(csvName('Annuaire de l’établissement', '2026-11-25'), 'annuaire-de-l-etablissement-2026-11-25.csv');
   assert.equal(csvName('///', '2026-11-25'), 'annuaire-2026-11-25.csv');
+});
+
+test('les colonnes de l\'export : nom, adresse, téléphone s\'il existe, niveaux, champs listés ou en colonne (les autres champs n\'y sont pas)', () => {
+  const config = { phone: 'Tel', levels: [{ label: 'Pôle', path: ['Pole'] }, { label: '', path: ['Structure', 'Direction'] }],
+    fields: [{ col: 'Contrat', list: true, column: false }, { col: 'Poste › Famille', path: ['Poste', 'Famille'], list: false, column: true }, { col: 'Notes', list: false, column: false }] };
+  const labels = { name: 'Nom', email: 'E-mail', phone: 'Téléphone' };
+  const columns = csvColumns(config, { labels, genres: { Contrat: 'choice', 'Poste › Famille': 'bool' }, show: (value, genre) => (genre === 'bool' ? (value === 'true' ? 'Oui' : 'Non') : value) });
+  assert.deepEqual(columns.map(column => column.label), ['Nom', 'E-mail', 'Téléphone', 'Pôle', 'Direction', 'Contrat', 'Famille']);
+  const row = { name: 'Ana', email: 'a@x.fr', phone: '01', levels: ['Pôle A', ''], fields: { Contrat: ['Titulaire'], 'Poste › Famille': ['true'], Notes: ['x'] } };
+  assert.deepEqual(columns.map(column => column.of(row)), ['Ana', 'a@x.fr', '01', 'Pôle A', '', 'Titulaire', 'Oui']);
+  assert.equal(csvColumns({ ...config, phone: '' }, { labels, genres: {}, show: value => value }).some(column => column.label === 'Téléphone'), false);
 });

@@ -10,6 +10,16 @@ import { pickFrom } from '../ui/pick-window.js';
 import { shown } from './annuaire-panes.js';
 import { EditWindow } from './annuaire-edit-window.js';
 import { editableFields, personValues } from './annuaire-edit.js';
+import { CheckWindow } from './annuaire-check-window.js';
+import { MailWindow } from './annuaire-mail-window.js';
+import { runChecks, checkNeeds } from './annuaire-check.js';
+import { presenceView, presenceCol } from './annuaire-presence.js';
+import { csvColumns } from './annuaire-mail.js';
+import { CHECK_KINDS, updateAction } from './annuaire-config.js';
+import { columnOf } from './annuaire-schema.js';
+import { fieldGenres } from './annuaire-model.js';
+import { copyText } from './annuaire-copy.js';
+import { saveText } from '../apps/dependencies-export.js';
 
 const NEW = '__new__';
 
@@ -20,10 +30,12 @@ export class AnnuaireControl {
   #list = [];
   #row = null; // l'annuaire montré (le numéro de sa ligne)
   #reading = 0; // le numéro de la dernière lecture lancée : une lecture plus ancienne qui finit après ne montre rien
-  #data = null; // la dernière lecture de l'annuaire montré (le formulaire « Modifier » en prend les valeurs et les choix)
+  #data = null; // la dernière lecture de l'annuaire montré (le formulaire « Modifier » en prend les valeurs et les choix), vue de la personne qui lit
+  #admin = null; // la preuve qu'a GFS que la personne administre le document (une promesse, demandée une fois : js/broker/transfer.js, `isOwner`)
 
-  // opts : { port ({ doc }), container, t, locale(), inertTargets(), ask(opts) -> Promise<boolean>, notice(texte), writeBlock() -> texte ou null, fullAccess()
-  //   }
+  // opts : { port ({ doc }), container, t, locale(), inertTargets(), ask(opts) -> Promise<boolean>, notice(texte), writeBlock() -> texte ou null, fullAccess(),
+  //   isOwner() -> Promise<vrai, faux ou null> (jamais deviné : seul « vrai » compte), identity() -> l'adresse de la personne, ou '' tant qu'on ne la connaît
+  //   pas }
   constructor(opts) {
     this.#o = opts;
     const consent = () => opts.ask({ title: opts.t('an.table.title'), message: opts.t('an.table.text'), confirmLabel: opts.t('table.create'),
@@ -31,6 +43,7 @@ export class AnnuaireControl {
     this.#store = new AnnuaireStore({ port: opts.port, consent });
     this.#window = new AnnuaireWindow({ container: opts.container, t: opts.t, locale: opts.locale, inertTargets: opts.inertTargets, writeBlock: opts.writeBlock,
       onSwitch: () => void this.#switch(), onConfigure: () => void this.#configure(), onNew: () => void this.#create(), onEdit: row => this.#edit(row),
+      onCheck: () => this.#check(), onMail: people => this.#mail(people), onPresence: (row, on) => this.#setPresence(row, on),
       onFilterMore: (col, option) => this.#more(col, option), onSortPick: (keys, sort) => this.#pickSort(keys, sort), onClose: () => {} });
   }
 
@@ -40,6 +53,7 @@ export class AnnuaireControl {
   // Ouvre la fenêtre sur « Lecture… », puis lit les annuaires du document.
   async open() {
     if (this.#window.isOpen) return;
+    this.#admin ??= Promise.resolve().then(() => this.#o.isOwner()).then(owner => owner === true, () => false);
     this.#window.show({ state: 'loading', error: '' });
     this.#window.open();
     await this.#load();
@@ -74,7 +88,7 @@ export class AnnuaireControl {
     const mine = ++this.#reading;
     if (!silent) this.#window.show({ state: 'loading', annuaires: this.#list, current, data: null });
     try {
-      const data = await this.#store.read(current);
+      const data = await this.#viewOf(await this.#store.read(current));
       this.#data = data;
       if (mine === this.#reading) this.#window.show({ state: 'ready', annuaires: this.#list, current, data, error: '' });
     } catch (error) {
@@ -83,6 +97,17 @@ export class AnnuaireControl {
       const text = error instanceof MissingTable ? t('an.tableGone', { table: error.table }) : t('an.readFailed', { reason: String(error && error.message) });
       this.#window.show({ state: 'error', annuaires: this.#list, current, data: null, error: text });
     }
+  }
+
+  // Ce que la personne qui lit voit : sans les fiches masquées (sauf si elle administre ou si c'est la sienne), et les points de « À vérifier » (calculés pour
+  // les administrateurs seulement).
+  async #viewOf(read) {
+    const admin = (await this.#admin) === true;
+    const identity = this.#o.identity();
+    const view = presenceView(read, { admin, identity });
+    const on = CHECK_KINDS.some(kind => view.config.checks.includes(kind) && !checkNeeds(kind, view.config));
+    const found = admin && on ? runChecks(view) : { issues: [], counts: {}, total: 0 };
+    return { ...view, admin, identity, found, checks: { admin, on, total: found.total } };
   }
 
   // « Modifier » une fiche : le formulaire des colonnes directes de la personne, la relecture, puis l'écriture (une ligne de la table des personnes, sur le
@@ -99,9 +124,61 @@ export class AnnuaireControl {
       values: personValues(fields, read.data[table], row), options: { data: read.data, people: read.people, table },
       lockedText: entry => (['name', 'title', 'email', 'phone'].includes(entry.key) ? person[entry.key] : (person.fields[entry.key] || []).join(', ')),
       save: action => this.#store.update(action) }).run();
-    if (!saved) return;
+    if (!saved) return false;
     await this.#read(true);
     this.#window.say(t('an.edit.saved', { name: person.name }));
+    return true;
+  }
+
+  // « À vérifier » : la fenêtre des points, avec les gestes qui les règlent (ouvrir la fiche, la modifier, comparer, masquer) ; elle relit l'annuaire après
+  // chaque écriture et relance les contrôles.
+  async #check() {
+    const read = this.#data;
+    if (!read) return;
+    await new CheckWindow({ container: this.#o.container, inertTargets: this.#o.inertTargets, t: this.#o.t, locale: this.#o.locale(), name: read.annuaire.name,
+      result: read.found, config: read.config, person: row => (this.#data ? this.#data.people.find(each => each.row === row) : null),
+      canHide: Boolean(presenceCol(read.config)), open: row => this.#window.showPerson(row), edit: row => this.#edit(row),
+        hide: row => this.#setPresence(row, false),
+      recheck: async () => { await this.#read(true); return this.#data.found; } }).run();
+  }
+
+  // « Écrire au groupe » : la fenêtre des adresses des personnes affichées (copier, ouvrir des messages qui tiennent, exporter).
+  async #mail(people) {
+    const read = this.#data;
+    if (!read) return;
+    const { t } = this.#o;
+    const locale = this.#o.locale();
+    const doc = this.#o.container.ownerDocument;
+    const genres = fieldGenres(read.config, read.annuaire.table, read.schema);
+    const columns = csvColumns(read.config, { labels: { name: t('an.col.name'), email: t('an.mail'), phone: t('an.phone') }, genres,
+      show: (value, genre) => shown(value, genre, { t, locale }) });
+    await new MailWindow({ container: this.#o.container, inertTargets: this.#o.inertTargets, t, locale, name: read.annuaire.name, people,
+      options: read.config.mail,
+      columns, copy: text => copyText(text, doc), save: (name, text, type) => saveText(doc, name, text, type),
+        day: () => new Date().toISOString().slice(0, 10) }).run();
+  }
+
+  // « Ma présence » : la personne (ou un administrateur) choisit d'apparaître ou non ; une seule case de la table des personnes s'écrit, sur le geste. Grist
+  // garde le dernier mot (ses règles d'accès) : un refus est dit tel quel. Rend vrai quand le choix est écrit.
+  async #setPresence(row, on) {
+    const { t } = this.#o;
+    const read = this.#data;
+    const col = read ? presenceCol(read.config) : '';
+    const person = read && read.people.find(each => each.row === row);
+    if (!col || !person) return false;
+    const blocked = this.#o.writeBlock();
+    if (blocked) { this.#o.notice(blocked); return false; }
+    const table = read.annuaire.table;
+    try {
+      if (!columnOf(read.schema, table, col)) throw new Error(t('an.tableGone', { table: `${table}.${col}` })); // jamais une colonne qui n'existe plus
+      await this.#store.update(updateAction(table, row, { [col]: on }));
+    } catch (error) {
+      this.#window.say(t('an.pres.refused', { reason: String(error && error.message ? error.message : error) }));
+      return false;
+    }
+    await this.#read(true);
+    this.#window.say(t(on ? 'an.pres.shown' : 'an.pres.hidden', { name: person.name }));
+    return true;
   }
 
   // Un autre annuaire du document, ou un nouveau.
@@ -205,5 +282,6 @@ export class AnnuaireControl {
 // Le contrôle monté pour le contrôleur de GFS (`c`) : ce que la fenêtre lui demande (poser une question, dire une phrase, savoir si on peut écrire).
 export function createAnnuaire(c) {
   return new AnnuaireControl({ port: c.port, container: c.$('stage'), t: c.t, locale: () => c.locale, inertTargets: c.inertTargets, ask: opts => c.ask(opts),
-    notice: text => c.notice(text), writeBlock: () => c.writeBlock(), fullAccess: () => c.fullAccess });
+    notice: text => c.notice(text), writeBlock: () => c.writeBlock(), fullAccess: () => c.fullAccess, isOwner: () => c.transfer.isOwner(),
+    identity: () => c.identity || '' });
 }

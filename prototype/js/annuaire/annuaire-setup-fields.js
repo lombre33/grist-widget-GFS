@@ -23,6 +23,7 @@ function takenColumns(config) {
   for (const level of config.levels) if (level.path[0]) taken.add(level.path[0]);
   for (const rel of config.relations) if (rel.col) taken.add(rel.col);
   for (const field of config.fields) taken.add(field.col);
+  for (const col of [config.leave, config.presence.col]) if (col) taken.add(col); // les colonnes des options (départ, présence) ne se proposent pas en champ
   return taken;
 }
 

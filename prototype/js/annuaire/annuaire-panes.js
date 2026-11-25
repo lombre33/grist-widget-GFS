@@ -6,6 +6,7 @@ import { h } from '../ui/dom.js';
 import { icon } from '../ui/icons.js';
 import { initials, levelLabel, headsOf, telHref } from './annuaire-items.js';
 import { fieldLabel } from './annuaire-config.js';
+import { maskedPill, presenceRow } from './annuaire-tools.js';
 
 // Combien de personnes une relation montre avant « +n » (une ligne de la fiche).
 export const CHIPS_SHOWN = 6;
@@ -67,12 +68,14 @@ const who = person => person.initials ?? initials(person.name);
 // Une ligne de la liste : l'avatar à initiales, le nom, le poste, les colonnes que le réglage met en colonne (`cells`, des [libellé, texte] : « Colonne » de la
 // fenêtre « Champs de la fiche » ; le libellé ne s'écrit que dans une liste étroite, où les colonnes passent sous le nom), et le niveau le plus bas en pastille
 // (le chemin entier est dans l'info-bulle) puis les champs que le réglage met en liste (`extra`, des textes : « Liste »). Un seul bouton : toute la ligne se
-// choisit.
-export function personRow(person, { selected, tabStop, extra = [], cells = null }) {
-  return h('button', { type: 'button', class: `an-person${cells ? ' has-cols' : ''}`, 'aria-pressed': String(selected), tabindex: tabStop ? '0' : '-1',
+// choisit. `masked` (« Ma présence ») : la fiche est masquée, la ligne est grisée et le dit (`t` écrit la pastille).
+export function personRow(person, { selected, tabStop, extra = [], cells = null, masked = false, t = null }) {
+  return h('button', { type: 'button', class: `an-person${cells ? ' has-cols' : ''}${masked ? ' is-masked' : ''}`, 'aria-pressed': String(selected),
+    tabindex: tabStop ? '0' : '-1',
     dataset: { act: 'person', row: String(person.row), fk: `pe:${person.row}` } },
   h('span', { class: 'an-av' }, who(person)),
   h('span', { class: 'an-pe-text' }, h('span', { class: 'an-pe-name' }, person.name), person.title ? h('span', { class: 'an-pe-sub' }, person.title) : null),
+  masked && t ? maskedPill(t) : null,
   ...(cells || []).map(([label, text]) => h('span', { class: 'an-pe-col', title: text, dataset: { label } }, text)),
   h('span', { class: 'an-pe-pills', title: [...pathOf(person), ...extra].join(' › ') },
     ...[...pathOf(person).slice(-1), ...extra].slice(0, 3).map(value => h('span', { class: 'an-pill' }, value))));
@@ -94,11 +97,11 @@ export function columnHead(columns, t, sort = null) {
 }
 
 // Une carte de contact (la vue « Cartes ») : l'avatar, le nom, le poste, les deux derniers niveaux, l'adresse et le téléphone.
-export function personCard(person, { selected, tabStop, extra = [] }) {
-  return h('button', { type: 'button', class: 'an-pcard', 'aria-pressed': String(selected), tabindex: tabStop ? '0' : '-1',
+export function personCard(person, { selected, tabStop, extra = [], masked = false, t = null }) {
+  return h('button', { type: 'button', class: `an-pcard${masked ? ' is-masked' : ''}`, 'aria-pressed': String(selected), tabindex: tabStop ? '0' : '-1',
     dataset: { act: 'person', row: String(person.row), fk: `pe:${person.row}` } },
   h('span', { class: 'an-av an-av-l' }, who(person)),
-  h('span', { class: 'an-pe-name' }, person.name), person.title ? h('span', { class: 'an-pe-sub' }, person.title) : null,
+  h('span', { class: 'an-pe-name' }, person.name), person.title ? h('span', { class: 'an-pe-sub' }, person.title) : null, masked && t ? maskedPill(t) : null,
   h('span', { class: 'an-pe-pills' }, ...[...pathOf(person).slice(-2), ...extra].slice(0, 4).map(value => h('span', { class: 'an-pill' }, value))),
   person.email ? h('span', { class: 'an-pc-line' }, icon('mail'), person.email) : null,
     person.phone ? h('span', { class: 'an-pc-line' }, icon('phone'), person.phone) : null);
@@ -177,7 +180,8 @@ function fieldRows(person, ctx) {
 
 // La fiche d'une personne, en sections comme la carte du suivi de projet du porteur : l'en-tête (avatar, nom, poste, « Écrire »), « Coordonnées »,
 // « Rattachement » (le découpage hiérarchique), « Informations » (les champs). `ctx` : { t, locale, levels, config, genres: { colonne: genre }, relations,
-// index, writeBlock (ce qui empêche d'écrire : le texte, ou rien) }.
+// index, writeBlock (ce qui empêche d'écrire : le texte, ou rien), masked (Set : les fiches masquées qu'on voit grisées), presence(personne) -> { on, can,
+// blocked } ou rien : la ligne « Apparaître dans l'annuaire » quand l'option « Ma présence » est allumée }.
 export function fiche(person, ctx) {
   const { t } = ctx;
   const contact = contactRows(person, ctx);
@@ -192,7 +196,9 @@ export function fiche(person, ctx) {
   const write = h('div', { class: 'an-fiche-acts' }, mail, edit);
   return h('div', { class: 'an-fiche-card' },
     h('div', { class: 'an-fiche-head' }, h('span', { class: 'an-av an-av-xl' }, who(person)),
-      h('div', { class: 'an-fiche-id' }, h('h3', null, person.name), person.title ? h('p', { class: 'an-pe-sub' }, person.title) : null)), write,
+      h('div', { class: 'an-fiche-id' }, h('h3', null, person.name), person.title ? h('p', { class: 'an-pe-sub' }, person.title) : null,
+        ctx.masked && ctx.masked.has(person.row) ? maskedPill(t) : null)), write,
+    ctx.presence && ctx.presence(person) ? presenceRow(person, ctx.presence(person), t) : null,
     contact.length ? section(t('an.fiche.contact'), h('dl', { class: 'an-fiche-rows' }, ...contact)) : null, path ? section(t('an.fiche.attach'), path) : null,
     fields.length ? section(t('an.fiche.fields'), h('dl', { class: 'an-fiche-rows' }, ...fields)) : null,
     contact.length || path || fields.length ? null : h('p', { class: 'an-note' }, t('an.fiche.bare')));

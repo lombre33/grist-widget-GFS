@@ -16,6 +16,10 @@ import { OrgView } from './annuaire-org-view.js';
 import { copyText } from './annuaire-copy.js';
 import { FilterMenu } from './annuaire-filters.js';
 import { sortPeople, nextSort, sortKeys, sortButton } from './annuaire-sort.js';
+import { checkButton, mailButton } from './annuaire-tools.js';
+import { listKeys, treeKeys } from './annuaire-keys.js';
+import { addressesOf } from './annuaire-mail.js';
+import { canSwitch, presenceCol } from './annuaire-presence.js';
 
 const FOCUSABLE = 'button:not([disabled]):not([tabindex="-1"]), input:not([disabled]), [tabindex="0"], a[href]';
 const VIEWS = Object.freeze([['list', 'list', 'an.view.list'], ['cards', 'tiles', 'an.view.cards'], ['org', 'org', 'an.view.org']]);
@@ -44,7 +48,8 @@ export class AnnuaireWindow {
 
   // opts : { container, t, locale() (la langue des dates), inertTargets(), writeBlock() (ce qui empêche d'écrire : le texte, ou rien), onSwitch(),
   //   onConfigure(),
-  //   onNew(), onEdit(ligne) (la fenêtre « Modifier »), onFilterMore(colonne, option) -> Promise<valeur ou null>, onSortPick(clés, tri), onClose() }
+  //   onNew(), onEdit(ligne) (la fenêtre « Modifier »), onCheck() (« À vérifier »), onMail(personnes) (« Écrire au groupe »), onPresence(ligne, apparaît) (« Ma
+  //   présence »), onFilterMore(colonne, option) -> Promise<valeur ou null>, onSortPick(clés, tri), onClose() }
   constructor(opts) {
     this.#o = opts;
     this.#store = keyStore((opts.container && opts.container.ownerDocument && opts.container.ownerDocument.defaultView) || globalThis, PEOPLE_KEY);
@@ -122,7 +127,7 @@ export class AnnuaireWindow {
       title: h('h2', { id: 'an-title' }), name: h('button', { type: 'button', class: 'an-name', 'aria-haspopup': 'dialog',
         dataset: { act: 'switch', fk: 'switch' } }),
       search: h('input', { type: 'search', autocomplete: 'off', dataset: { fk: 'search' } }),
-      views: h('div', { class: 'an-seg', role: 'group' }), config: h('button', { type: 'button', class: 'an-ib',
+      views: h('div', { class: 'an-seg', role: 'group' }), tools: h('span', { class: 'an-top-tools' }), config: h('button', { type: 'button', class: 'an-ib',
         dataset: { act: 'configure', fk: 'configure' } }, icon('sliders')),
       crumb: h('div', { class: 'an-crumb' }), list: h('div', { class: 'an-list' }),
       body: h('div', { class: 'mod-body an-body' }), state: h('div', { class: 'an-state' }), tree: h('nav', { class: 'an-card an-tree' }),
@@ -137,7 +142,7 @@ export class AnnuaireWindow {
     this.#refs = refs;
     const section = h('section', { class: 'mod an', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'an-title' },
       h('header', { class: 'mod-head an-head' }, h('div', { class: 'an-top' }, refs.title, refs.name, h('span', { class: 'an-grow' }),
-        h('label', { class: 'inp-search an-search' }, icon('search'), refs.search), refs.views, refs.config)),
+        h('label', { class: 'inp-search an-search' }, icon('search'), refs.search), refs.tools, refs.views, refs.config)),
       refs.body, h('footer', { class: 'mod-foot' }, refs.note, refs.close));
     this.#root = h('div', { class: 'mod-scrim an-scrim' }, section);
     refs.search.addEventListener('input', () => { this.#query = refs.search.value; this.#paintBody(); this.#paintFoot(); });
@@ -155,8 +160,8 @@ export class AnnuaireWindow {
 
   #paintHead() {
     const t = this.#o.t;
-    const { title, name, search, views, config, close } = this.#refs;
-    const { current } = this.#show;
+    const { title, name, search, views, config, close, tools } = this.#refs;
+    const { current, data } = this.#show;
     title.textContent = t('an.title');
     name.replaceChildren(h('span', { class: 'an-name-t' }, current ? current.name : t('an.none.name')), icon('chev-down'));
     name.title = t('an.switch');
@@ -168,6 +173,7 @@ export class AnnuaireWindow {
     views.replaceChildren(...VIEWS.map(([id, glyph, key]) => h('button', { type: 'button', class: 'an-seg-b', 'aria-pressed': String(this.#view === id),
       'aria-disabled': greyed(id) ? 'true' : null, title: greyed(id) ? t('an.org.noHierarchy') : t(key), 'aria-label': t(key),
       dataset: { act: 'view', view: id, fk: `v:${id}` } }, icon(glyph), h('span', { class: 'an-seg-t' }, t(key)))));
+    tools.replaceChildren(...(this.#show.state === 'ready' && data ? [checkButton(data.checks, t)] : []));
     config.title = t('an.configure');
     config.setAttribute('aria-label', t('an.configure'));
     close.textContent = t('an.close');
@@ -256,7 +262,7 @@ export class AnnuaireWindow {
     const model = this.#filterModel(base);
     this.#refs.crumb.replaceChildren(...[h('h3', null, searching ? t('an.results') : node.name), level ? h('span', { class: 'an-pill' }, level) : null,
       h('span', { class: 'an-count' }, t('an.count', { n: found.length })), sortButton(this.#sort, sortKeys(data.config, t), t),
-      this.#menu.button(model, this.#filters)].filter(Boolean));
+      this.#menu.button(model, this.#filters), mailButton(this.#mailState(found), t)].filter(Boolean));
     const ctx = { t, locale: this.#o.locale() };
     const rows = sortPeople(found, this.#sort, this.#o.locale()).slice(0, LIST_SHOWN);
     const cards = this.#view === 'cards';
@@ -269,7 +275,8 @@ export class AnnuaireWindow {
     list.className = `${cards ? 'an-list an-grid' : 'an-list'}${columns.length ? ' has-cols' : ''}`;
     list.style.setProperty('--n', String(columns.length));
     list.replaceChildren(...(columns.length ? [columnHead(columns, t, this.#sort)] : []), ...rows.map((person, i) => (cards ? personCard : personRow)(person,
-      { selected: person.row === this.#person, tabStop: i === at, extra: extraOf(person), cells: columns.length ? cellsOf(person) : null })),
+      { selected: person.row === this.#person, tabStop: i === at, extra: extraOf(person), cells: columns.length ? cellsOf(person) : null,
+      masked: data.masked.has(person.row), t })),
     ...(found.length > rows.length ? [h('p', { class: 'an-note' }, t('work.more', { n: LIST_SHOWN, total: found.length }))] : []),
     ...(found.length ? [] : [h('p', { class: 'an-note' }, t(data.people.length ? 'an.list.none' : 'an.list.empty'))]));
   }
@@ -284,7 +291,7 @@ export class AnnuaireWindow {
     const people = mode !== 'structures' ? null : h('button', { type: 'button', class: 'btn sm an-tbtn an-ptoggle', 'aria-pressed': String(on),
       'aria-disabled': many ? 'true' : null, 'aria-label': t('an.org.people'), title: many ? t('an.org.peopleMany', { n: found }) : t('an.org.peopleTip'),
       dataset: { act: 'org-people', fk: 'org-people' } }, icon('users'), h('span', { class: 'an-tb-t' }, t('an.org.people')));
-    this.#org.tools.replaceChildren(...[this.#menu.button(model, this.#filters), people].filter(Boolean));
+    this.#org.tools.replaceChildren(...[this.#menu.button(model, this.#filters), people, mailButton(this.#mailState(this.#matching()), t)].filter(Boolean));
   }
 
   // L'organigramme : celui des structures (l'arbre des niveaux), ou celui des responsables quand l'annuaire dit qui est le responsable de chacun. Il montre
@@ -319,7 +326,8 @@ export class AnnuaireWindow {
     const genres = fieldGenres(data.config, current.table, data.schema);
     const relations = relationsOf(data.config, t);
     const ctx = { t, locale: this.#o.locale(), levels: data.config.levels, config: data.config, genres, relations,
-      index: relationIndex(data.people, relations), writeBlock: this.#o.writeBlock ? this.#o.writeBlock() : null };
+      index: relationIndex(data.people, relations), writeBlock: this.#o.writeBlock ? this.#o.writeBlock() : null, masked: data.masked,
+        presence: person => this.#presenceOf(person) };
     const person = this.#person === null ? null : data.people.find(each => each.row === this.#person);
     // la fiche d'une carte de l'organigramme parle des mêmes personnes que la carte
     const tree = this.#view === 'org' ? reducedTree(data, this.#matching(), this.#orgSignature()) : data.tree;
@@ -396,6 +404,56 @@ export class AnnuaireWindow {
     const blocked = this.#o.writeBlock ? this.#o.writeBlock() : null;
     if (blocked) { this.#say(blocked); return; }
     void this.#o.onEdit(row);
+  }
+
+  // Ce que « Écrire » sait des personnes affichées : combien, et si l'une au moins a une adresse.
+  #mailState(people) { return { count: people.length, addresses: addressesOf(people).length > 0 }; }
+
+  // La ligne « Apparaître dans l'annuaire » d'une fiche : rien quand l'option « Ma présence » est éteinte.
+  #presenceOf(person) {
+    const { data } = this.#show;
+    if (!data || !presenceCol(data.config)) return null;
+    return { on: !data.masked.has(person.row), can: canSwitch(person, { admin: data.admin, identity: data.identity, people: data.people }),
+      blocked: this.#o.writeBlock ? this.#o.writeBlock() : null };
+  }
+
+  // L'interrupteur de la fiche : la personne (ou l'administrateur) choisit d'apparaître ou non ; le contrôle écrit, la fenêtre le dit dans le pied.
+  togglePresence(row) {
+    const person = this.#show.data.people.find(each => each.row === row);
+    const state = person ? this.#presenceOf(person) : null;
+    if (!state) return;
+    if (state.blocked || !state.can) { this.#say(state.blocked || this.#o.t('an.pres.noRight')); return; }
+    void this.#o.onPresence(row, !state.on);
+  }
+
+  // La pastille « À vérifier » : réservée aux administrateurs (grisée, avec sa raison, pour les autres) ; sans contrôle allumé, le pied dit où les allumer.
+  checkTool() {
+    const { checks, admin } = this.#show.data;
+    if (!admin) { this.#say(this.#o.t('an.check.admin')); return; }
+    if (!checks.on) { this.#say(this.#o.t('an.check.off')); return; }
+    void this.#o.onCheck();
+  }
+
+  // Le bouton « Écrire » : les personnes affichées (celles du nœud, de la recherche et des filtres ; dans l'organigramme, tout l'annuaire filtré).
+  mailTool() {
+    const people = this.#view === 'org' ? this.#matching() : this.#scope().found;
+    if (!addressesOf(people).length) { this.#say(this.#o.t('an.mail.noAddress')); return; }
+    void this.#o.onMail(people);
+  }
+
+  // Une fiche qu'un autre écran demande (le bouton « Ouvrir la fiche » de « À vérifier ») : la fiche s'ouvre sur la liste, la recherche et le nœud remis à
+  // zéro.
+  showPerson(row) {
+    this.#menu.close();
+    this.#query = '';
+    this.#refs.search.value = '';
+    this.#node = '';
+    this.#struct = null;
+    this.#person = row;
+    this.#note = '';
+    if (this.#view === 'org') this.#view = 'list';
+    this.#paint();
+    this.#focus(`pe:${row}`, 'side-x');
   }
 
   pickNode(id) {
@@ -544,8 +602,9 @@ export class AnnuaireWindow {
     if (event.key === 'Tab') { this.#tab(event, doc); return; }
     const active = doc.activeElement;
     if (!active || !active.closest) return;
-    if (active.closest('.an-tn')) this.#treeKeys(event, active);
-    else if (active.closest('.an-list')) this.#listKeys(event, active);
+    if (active.closest('.an-tn')) treeKeys(event, active, { tree: this.#refs.tree, root: this.#show.data.tree, open: this.#open,
+      toggle: id => this.toggleNode(id) });
+    else if (active.closest('.an-list')) listKeys(event, active, { list: this.#refs.list, view: this.#view, search: this.#refs.search });
     else if (active === this.#refs.search && event.key === 'ArrowDown') {
       const first = this.#refs.list.querySelector('.an-person, .an-pcard');
       if (first && !this.#refs.list.hidden) { event.preventDefault(); first.focus(); }
@@ -567,35 +626,6 @@ export class AnnuaireWindow {
     const nodes = tabStops([...this.#root.querySelectorAll(FOCUSABLE)].filter(node => node.getClientRects().length > 0));
     const at = nodes.indexOf(doc.activeElement);
     (at < 0 ? this.#refs.search : nodes[(at + (event.shiftKey ? -1 : 1) + nodes.length) % nodes.length]).focus();
-  }
-
-  // La liste : ↑ et ↓ d'une personne à l'autre (↑ sur la première rend la recherche), ← et → d'une carte à l'autre.
-  #listKeys(event, active) {
-    const rows = [...this.#refs.list.querySelectorAll('.an-person, .an-pcard')];
-    const move = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[event.key];
-    if (!move || !rows.includes(active)) return;
-    if (this.#view === 'list' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) return; // ← et → ne servent pas dans une liste
-    event.preventDefault();
-    const next = rows[rows.indexOf(active) + move];
-    if (next) { next.focus(); next.scrollIntoView({ block: 'nearest' }); } else if (move < 0) this.#refs.search.focus();
-  }
-
-  // La hiérarchie : ↑ et ↓ d'un nœud à l'autre, → déplie, ← replie (ou remonte au parent).
-  #treeKeys(event, active) {
-    const buttons = [...this.#refs.tree.querySelectorAll('.an-tb')];
-    const at = buttons.indexOf(active);
-    if (at < 0) return;
-    const id = active.dataset.id;
-    const node = findNode(this.#show.data.tree, id);
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      const next = buttons[at + (event.key === 'ArrowDown' ? 1 : -1)];
-      if (next) { event.preventDefault(); next.focus(); next.scrollIntoView({ block: 'nearest' }); }
-    } else if (event.key === 'ArrowRight' && node && node.ch.length && !this.#open.has(id)) { event.preventDefault(); this.toggleNode(id); }
-      else if (event.key === 'ArrowLeft') {
-      event.preventDefault();
-      if (this.#open.has(id) && id) this.toggleNode(id);
-      else buttons.slice(0, at).reverse().find(each => each.dataset.id !== id && id.startsWith(each.dataset.id))?.focus();
-    }
   }
 }
 
@@ -621,4 +651,7 @@ const ACTIONS = Object.freeze({
   'side-close': window_ => window_.closeSide(),
   'node-list': (window_, data) => window_.listNode(data.id),
   edit: (window_, data) => window_.editPerson(Number(data.row)),
+  check: window_ => window_.checkTool(),
+  mail: window_ => window_.mailTool(),
+  presence: (window_, data) => window_.togglePresence(Number(data.row)),
 });

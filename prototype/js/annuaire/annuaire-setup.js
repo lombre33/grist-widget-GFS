@@ -1,12 +1,12 @@
-// Le réglage d'un annuaire (module Annuaire, demande du porteur du 25/11) : une fenêtre à trois onglets, sur la maquette. « Personnes » : la table et les
+// Le réglage d'un annuaire (module Annuaire, demande du porteur du 25/11) : une fenêtre à onglets, sur la maquette. « Personnes » : la table et les
 // colonnes lues (par défaut le nom et l'adresse e-mail) ; « Hiérarchie » : l'option « postes et hiérarchie » et les niveaux (un niveau = une colonne au choix,
 // éventuellement après des références : « Structure › Pôle »), avec l'aperçu de l'arbre ; « Relations » : le responsable direct, l'assistant·e, le référent·e
 // et les autres (une colonne qui désigne une personne, avec ses règles) ; « Champs de la fiche » : les champs libres, dont certains donnent des filtres. Une
 // fenêtre du widget sur la base commune (js/ui/modal.js) ; chaque choix de table ou de colonne passe par la liste avec recherche (js/ui/pick-window.js,
 // charte). Elle ne parle pas à Grist : l'aperçu lui vient de `read` (le contrôle lit les tables, une fois), et elle rend { name, table, config }, ou null quand
-// la personne renonce ; l'écriture est à js/annuaire/annuaire-store.js. Les onglets sont dans js/annuaire/annuaire-setup-people.js, -levels.js, -relations.js
-// et -fields.js : ils reçoivent l'hôte (cet objet vu de l'extérieur : l'état, de quoi redessiner, de quoi choisir dans une liste). Grisé, jamais
-// masqué : ce qu'une option éteinte débloque reste visible, grisé, avec sa raison.
+// la personne renonce ; l'écriture est à js/annuaire/annuaire-store.js. Les onglets sont dans js/annuaire/annuaire-setup-people.js, -levels.js, -relations.js,
+// -fields.js et -options.js (« Ma présence », « À vérifier », « Écrire au groupe ») : ils reçoivent l'hôte (cet objet vu de l'extérieur : l'état, de quoi
+// redessiner, de quoi choisir dans une liste). Grisé, jamais masqué : ce qu'une option éteinte débloque reste visible, grisé, avec sa raison.
 
 import { h } from '../ui/dom.js';
 import { openModal } from '../ui/modal.js';
@@ -18,9 +18,10 @@ import { peopleTab, peopleAct } from './annuaire-setup-people.js';
 import { hierarchyTab, hierarchyAct, levelInput, paintPreview } from './annuaire-setup-levels.js';
 import { relationsTab, relationsAct, relationInput } from './annuaire-setup-relations.js';
 import { fieldsTab, fieldsAct } from './annuaire-setup-fields.js';
+import { optionsTab, optionsAct } from './annuaire-setup-options.js';
 
 const TABS = Object.freeze([['people', 'an.tab.people', peopleTab], ['hier', 'an.tab.hier', hierarchyTab], ['relations', 'an.tab.relations', relationsTab],
-  ['fields', 'an.tab.fields', fieldsTab]]);
+  ['fields', 'an.tab.fields', fieldsTab], ['options', 'an.tab.options', optionsTab]]);
 const PREVIEW_DELAY = 120; // ms : le temps qu'une suite de choix se pose avant de relire l'aperçu
 
 export class AnnuaireSetup {
@@ -240,7 +241,7 @@ export class AnnuaireSetup {
     const { act } = button.dataset;
     if (act === 'tab') { this.#select(button.dataset.tab); return; }
     const host = this.#host;
-    [peopleAct, hierarchyAct, relationsAct, fieldsAct].some(run => run(host, act, button.dataset));
+    [peopleAct, hierarchyAct, relationsAct, fieldsAct, optionsAct].some(run => run(host, act, button.dataset));
   }
 
   // ---------- l'aperçu ----------

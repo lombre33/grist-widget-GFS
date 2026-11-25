@@ -3,5 +3,3 @@
 // exactes du kit »). Les enfants sont des nœuds ou du texte (ajouté comme texte) ; aucun `innerHTML`. h('button', { class: 'btn', dataset: { id: 3 }, on: {
 // click: fn }, vars: { '--d': 2 }, 'aria-pressed': false }, enfants…)
 export { h } from '../../kit/js/dom.js';
-
-export const clear = el => { el.replaceChildren(); return el; };

@@ -22,8 +22,7 @@ const sameName = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 const BIN_LIGHT = ['App', 'Table', 'FichierId', 'Nom', 'Type', 'Date', 'Auteur', 'SupprimeLe', 'SupprimePar'];
 
 // Les lectures que la lecture légère aura à faire (js/explorer/explorer-sql.js, `prepare`) : [{ table, wanted }], une par table lue plus bas avec les mêmes
-// colonnes
-// voulues : les tables des fichiers des apps, leurs tables liées et la corbeille, sous le nom que le document leur donne.
+// colonnes voulues : les tables des fichiers des apps, leurs tables liées et la corbeille, sous le nom que le document leur donne.
 function lightPlan(tables, apps) {
   const plan = [{ table: nameIn(tables, BIN_TABLE), wanted: BIN_LIGHT }];
   for (const { manifest } of apps) {
@@ -35,8 +34,8 @@ function lightPlan(tables, apps) {
   return plan;
 }
 
-// L'adresse que disent les lignes de partage lues, quand la personne n'a pu l'apprendre autrement (js/sharing/direct-shares.js) ; '' sans table de partages ou
-// sans certitude.
+// L'adresse que disent les lignes de partage lues, quand la personne n'a pu l'apprendre autrement (js/sharing/direct-shares.js) ;
+// '' sans table de partages ou sans certitude.
 async function sharedAddress(port, tables) {
   if (!tables || !tables.some(name => sameName(name, SHARES_TABLE))) return '';
   try { return addressFromShares(rowsOf(await port.doc.fetchTable(SHARES_TABLE))); } catch (error) { return ''; }
@@ -75,8 +74,8 @@ async function readLinked(port, tables, spec, light) {
 }
 
 // La case « + pièces jointes » de l'explorateur (faits vérifiés, section 39) : la table des pièces jointes de Grist, telle que l'API des widgets la rend avec
-// l'accès complet que GFS a déjà. Lue seulement quand la personne coche la case. Rend { data } ou { error } : une lecture qui échoue n'arrête rien, la case se
-// grise avec la raison.
+// l'accès complet que GFS a déjà. Lue seulement quand la personne coche la case. Rend { data } ou { error } : une lecture qui échoue n'arrête rien, la case
+// se grise avec la raison.
 export async function loadAttachments(port) {
   try { return { data: await port.doc.fetchTable('_grist_Attachments') }; } catch (error) { return { error }; }
 }
@@ -109,21 +108,15 @@ async function readEverything(port, apps, reader) {
 
 // `apps` : les apps installées dont le manifeste est valide, { manifest }. `identity` : l'adresse de la personne, '' tant que GFS ne la connaît pas ; ou la
 //   promesse de cette adresse, quand GFS l'apprend encore (js/files/rangement.js, `identify`) : la lecture des tables n'en dépend pas, elle part tout de suite,
-//   et
-//   l'adresse n'est attendue qu'au moment de ranger. Rend {
-//   files, trash, folders, received, spaces, problems: [{ app, reason }], stats: { ms, tables, rows } } : `spaces` ce que disent les espaces partagés
-//   (js/sharing/spaces-filing.js, null sans partage), dont les dossiers sont ajoutés à `folders` ; `files` les fichiers vivants, `trash` ceux qui sont à la
-//   corbeille
-//   (js/explorer/explorer-model.js, `trashed`) : ils ne sont jamais mêlés, pour que rien de ce qui lit `files` (choisir, ouvrir, lire) ne voie un fichier
-//   supprimé ;
-//   `folders` les dossiers que la personne garde sans fichier (6.4, point 11) ; `gfsTable` le nom que le document donne à la table du rangement, ou null quand
-//   elle
-//   n'existe pas ; `binTable` celui de la table de la corbeille (js/files/gfs-trash.js), ou null. Un rangement de GFS illisible ne cache aucun fichier : ils
-//   restent à leur place
-//   d'avant.
+//   et l'adresse n'est attendue qu'au moment de ranger.
+// Rend { files, trash, folders, received, spaces, problems: [{ app, reason }], stats: { ms, tables, rows } } :
+//   `spaces` ce que disent les espaces partagés (js/sharing/spaces-filing.js, null sans partage), dont les dossiers sont ajoutés à `folders` ;
+//   `files` les fichiers vivants, `trash` ceux qui sont à la corbeille (js/explorer/explorer-model.js, `trashed`) : ils ne sont jamais mêlés, pour que rien de
+//   ce qui lit `files` (choisir, ouvrir, lire) ne voie un fichier supprimé ; `folders` les dossiers que la personne garde sans fichier (6.4, point 11) ;
+//   `gfsTable` le nom que le document donne à la table du rangement, ou null quand elle n'existe pas ; `binTable` celui de la table de la corbeille
+//   (js/files/gfs-trash.js), ou null. Un rangement de GFS illisible ne cache aucun fichier : ils restent à leur place d'avant.
 // `reader` : la lecture légère (js/explorer/explorer-sql.js), qui prend la suite de la lecture complète quand un document lourd a été vu ; sans elle, ou
-//   éteinte, rien
-//   ne change.
+//   éteinte, rien ne change.
 export async function loadFiles(port, apps, identity = '', reader = null) {
   const started = performance.now();
   const raw = await readEverything(port, apps, reader);

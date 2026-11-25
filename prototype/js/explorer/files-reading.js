@@ -3,12 +3,10 @@
 // (seule la dernière lecture lancée fait foi) est celle de js/explorer/file-refresh.js.
 //
 // x : { port, apps() (les apps dont on lit les fichiers), prepare() (facultatif : ce qui se lit avant les tables, les noms que le document donne à celles des
-//   apps : js/apps/doc-names.js), fullAccess(), rangement ({ learning }), reader (la lecture légère, js/explorer/explorer-sql.js),
-//   explorer() (l'explorateur, ou null avant sa construction), openedBar(), appName(id), t(clé, variables), onSpaces(espaces), onFiles(fichiers) (la suite
-//   d'une
-//   lecture réussie : les dossiers partagés « à jour »), onStats(mesures), noteBin?(table) (la table de la corbeille existe, ou non : js/files/app-files.js),
-//   hint? (le souvenir d'un document lourd, js/explorer/heavy-hint.js : la lecture légère d'emblée), pending? (les
-//   changements de rangement affichés avant d'être écrits,
+//   apps : js/apps/doc-names.js), fullAccess(), rangement ({ learning }), reader (la lecture légère, js/explorer/explorer-sql.js), explorer() (l'explorateur,
+//   ou null avant sa construction), openedBar(), appName(id), t(clé, variables), onSpaces(espaces), onFiles(fichiers) (la suite d'une lecture réussie : les
+//   dossiers partagés « à jour »), onStats(mesures), noteBin?(table) (la table de la corbeille existe, ou non : js/files/app-files.js), hint? (le souvenir d'un
+//   document lourd, js/explorer/heavy-hint.js : la lecture légère d'emblée), pending? (les changements de rangement affichés avant d'être écrits,
 //   js/explorer/pending.js : une lecture partie après leur confirmation les remplace) }
 
 import { loadFiles } from './explorer-data.js';

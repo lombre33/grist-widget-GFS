@@ -7,8 +7,8 @@
 // Ce qui se garde : un seul nombre par document lourd (son poids en octets), sur le navigateur de GFS, sous la clé `gfs.heavy.<identifiant du document>`. Aucun
 // contenu, aucun nom : l'identifiant du document est celui que Grist donne à la page. Rien n'est jamais obligatoire : sans souvenir (premier passage,
 // navigateur qui refuse de garder, Grist qui tarde à dire le nom du document), la première lecture se fait en entier, comme avant. Un souvenir faux (le
-// document est redevenu léger) coûte une lecture légère de 0,15 s, puis il s'efface. Ce nombre ne choisit que la manière de lire ; il ne charge rien et n'ouvre
-// rien.
+// document est redevenu léger) coûte une lecture légère de 0,15 s, puis il s'efface. Ce nombre ne choisit que la manière de lire ; il ne charge rien et
+// n'ouvre rien.
 
 import { HEAVY_BYTES } from './explorer-sql.js';
 

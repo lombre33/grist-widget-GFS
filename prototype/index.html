@@ -11,7 +11,7 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-8RQJI4zSECRHGFXDges616BWUbA+JMBv1f2Y63yI5OU='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-oT/YOp0JyXd7iG1mzIEwjSe9C8rSo4yizTHcS8tvURo='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=a2e086add5">
 <link rel="stylesheet" href="css/explorer.css?v=c8ff42b04b">
 <link rel="stylesheet" href="css/modules.css?v=b467d702a6">
@@ -145,7 +145,7 @@
     "./js/broker/session.js": "./js/broker/session.js?v=c5ae6f1148",
     "./js/broker/sharing-rules.js": "./js/broker/sharing-rules.js?v=efe8774466",
     "./js/broker/sharing.js": "./js/broker/sharing.js?v=e6dccec1cd",
-    "./js/broker/sql-gate.js": "./js/broker/sql-gate.js?v=125d05eec8",
+    "./js/broker/sql-gate.js": "./js/broker/sql-gate.js?v=d3992fab10",
     "./js/broker/state.js": "./js/broker/state.js?v=69aa288268",
     "./js/broker/transfer.js": "./js/broker/transfer.js?v=063ac32914",
     "./js/broker/view-link.js": "./js/broker/view-link.js?v=1853f29883",
@@ -420,7 +420,7 @@
 <link rel="modulepreload" href="./js/apps/apps-state.js?v=7fac087b1b">
 <link rel="modulepreload" href="./js/apps/doc-names.js?v=709850f3a9">
 <link rel="modulepreload" href="./js/apps/row-count.js?v=156be165af">
-<link rel="modulepreload" href="./js/broker/sql-gate.js?v=125d05eec8">
+<link rel="modulepreload" href="./js/broker/sql-gate.js?v=d3992fab10">
 <link rel="modulepreload" href="./js/broker/arrival.js?v=7694fcdfd6">
 <link rel="modulepreload" href="./js/broker/arrival-table.js?v=58ba2ca762">
 <link rel="modulepreload" href="./js/files/rangement.js?v=045bec5dfc">

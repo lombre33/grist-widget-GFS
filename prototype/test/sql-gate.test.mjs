@@ -50,6 +50,21 @@ test('le premier refus de Grist ferme la lecture : plus aucune requête ne part,
   assert.equal(remote.calls.length, 1, 'une seule requête refusée dans la console, pas une par lecture');
 });
 
+test('denied() : vrai après un refus de Grist (cette page ou une page de l\'onglet), faux après une erreur de réseau, un refus périmé ou sans rien lu', async () => {
+  const browser = tab();
+  const first = gateOver(server(refused), { browser });
+  assert.equal(await first.denied(), false, 'rien n\'a encore été refusé');
+  await assert.rejects(first.read('SELECT 1'));
+  assert.equal(await first.denied(), true, 'le refus de cette page');
+  const reloaded = gateOver(server(), { browser, now: () => 1000 + 60 * 1000 });
+  assert.equal(await reloaded.denied(), true, 'la page rechargée sait le refus sans envoyer une requête');
+  const later = gateOver(server(), { browser, now: () => 1000 + HOLD_MS.denied + 1 });
+  assert.equal(await later.denied(), false, 'le refus a passé ses 30 minutes');
+  const silenced = gateOver(server(silent));
+  await assert.rejects(silenced.read('SELECT 1'));
+  assert.equal(await silenced.denied(), false, 'une erreur de réseau n\'est pas un refus de droits : le jeton qui peut écrire n\'y changerait rien');
+});
+
 test('une erreur de réseau (le pare-feu) ferme aussi la lecture ; une lecture coupée par Grist (400) ne ferme rien', async () => {
   const blocked = server(silent);
   const gate = gateOver(blocked);

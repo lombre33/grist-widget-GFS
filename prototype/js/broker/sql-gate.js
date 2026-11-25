@@ -73,6 +73,14 @@ export function createSqlGate({ sql, docId, store = null, now = () => Date.now()
 
   return {
     isClosed: () => closed !== null,
+    // Vrai quand Grist a refusé le jeton en lecture seule (cette page, ou une page de l'onglet il y a moins de 30 minutes) : une lecture qui a besoin du jeton
+    // qui peut écrire (la surveillance du poids, js/weight/weight-reader.js `escalating`) peut partir avec lui d'emblée, sans refaire la requête que la console
+    // écrirait en rouge.
+    async denied() {
+      loaded = loaded || find();
+      await loaded;
+      return closed === 'denied';
+    },
     async read(statement) {
       loaded = loaded || find();
       await loaded;

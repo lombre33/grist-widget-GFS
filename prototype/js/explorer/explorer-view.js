@@ -20,12 +20,14 @@ export function buildShell(i18n) {
       h('div', { class: 'ex-title-row' },
         keep('title', h('h2', { class: 'ex-title', id: 'ex-title' })),
         h('span', { class: 'grow' }),
-        keep('appsBtn', h('button', { type: 'button', class: 'tb', 'aria-haspopup': 'dialog' })),
-        keep('annuaireBtn', h('button', { type: 'button', class: 'tb', 'aria-haspopup': 'dialog' }, icon('annuaire'))),
-        keep('display', h('div', { class: 'tb-group', role: 'group' }, toggle('viewList', 'list'), toggle('viewTiles', 'tiles'))),
-        keep('bellBtn', h('button', { type: 'button', class: 'tb tb-bell', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, icon('bell'),
-          keep('bellCount', h('span', { class: 'tb-badge', hidden: true })))),
-        keep('settingsBtn', h('button', { type: 'button', class: 'tb', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, icon('sliders')))),
+        // Un seul bloc d'outils (une barre, des segments de même hauteur) : les apps et l'annuaire, l'affichage, les notifications et les réglages.
+        h('div', { class: 'tb-bar' },
+          keep('appsBtn', h('button', { type: 'button', class: 'tb tb-lbl', 'aria-haspopup': 'dialog' })),
+          keep('annuaireBtn', h('button', { type: 'button', class: 'tb tb-lbl', 'aria-haspopup': 'dialog' })),
+          keep('display', h('div', { class: 'tb-group', role: 'group' }, toggle('viewList', 'list'), toggle('viewTiles', 'tiles'))),
+          keep('bellBtn', h('button', { type: 'button', class: 'tb tb-bell', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, icon('bell'),
+            keep('bellCount', h('span', { class: 'tb-badge', hidden: true })))),
+          keep('settingsBtn', h('button', { type: 'button', class: 'tb', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, icon('sliders'))))),
       h('div', { class: 'ex-nav-row' },
         keep('crumbs', h('nav', { class: 'crumbs' })),
         h('label', { class: 'inp-search' }, icon('search'), keep('search', h('input', { type: 'search', autocomplete: 'off' }))),
@@ -54,10 +56,11 @@ export function relabel(refs, i18n) {
   const { t } = i18n;
   const describe = (node, text) => { node.setAttribute('title', text); node.setAttribute('aria-label', text); };
   refs.title.textContent = t('ex.title');
-  refs.appsBtn.title = t('gfs.appsTip');
-  refs.appsBtn.replaceChildren(icon('modules'), t('gfs.apps'));
+  // Les deux boutons à mot disent leur nom dans une étiquette que l'étroit cache (le titre reste leur nom) ; les autres sont des icônes seules.
+  const labelled = (node, glyph, label, tip) => { node.title = tip; node.replaceChildren(icon(glyph), h('span', { class: 'tb-lbl-t' }, label)); };
+  labelled(refs.appsBtn, 'modules', t('gfs.apps'), t('gfs.appsTip'));
+  labelled(refs.annuaireBtn, 'annuaire', t('an.tip'), t('an.tipLong'));
   describe(refs.settingsBtn, t('set.tip'));
-  describe(refs.annuaireBtn, t('an.tip'));
   describe(refs.bellBtn, t('nt.tip'));
   refs.display.setAttribute('aria-label', t('ex.display'));
   describe(refs.viewList, t('ex.list'));

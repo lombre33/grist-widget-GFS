@@ -26,6 +26,17 @@ button { cursor: pointer; }
 .tb-group { display: inline-flex; flex: none; border: var(--bw) solid var(--border-strong); border-radius: var(--radius-btn); box-shadow: var(--shadow-ctl); overflow: hidden; }
 .tb-group .tb { border: 0; border-radius: 0; }
 .tb-group .tb + .tb { border-left: 1px solid var(--border); }
+/* La barre d'outils de l'en-tête : un seul bloc, des segments de même hauteur séparés par un filet (les apps et l'annuaire, l'affichage, les notifications et les réglages). Les deux
+   boutons à mot ont l'icône et le mot ; l'étroit garde l'icône (le titre dit le nom). La pastille de la cloche déborde : la barre ne coupe rien. */
+.tb-bar { display: inline-flex; flex: none; align-items: stretch; border: var(--bw) solid var(--border-strong); border-radius: var(--radius-btn); background: var(--surface); box-shadow: var(--shadow-ctl); }
+.tb-bar .tb { border: 0; border-radius: 0; }
+.tb-bar .tb:focus-visible { outline-offset: -2px; }
+.tb-bar .tb-group { border: 0; border-radius: 0; box-shadow: none; overflow: visible; }
+.tb-bar > .tb + .tb, .tb-bar > .tb + .tb-group, .tb-bar > .tb-group + .tb, .tb-bar .tb-group .tb + .tb { border-left: 1px solid var(--border); }
+.tb-bar > .tb:first-child { border-radius: max(0px, calc(var(--radius-btn) - var(--bw))) 0 0 max(0px, calc(var(--radius-btn) - var(--bw))); }
+.tb-bar > .tb:last-child { border-radius: 0 max(0px, calc(var(--radius-btn) - var(--bw))) max(0px, calc(var(--radius-btn) - var(--bw))) 0; }
+.tb-lbl { gap: 6px; padding: 0 10px; }
+.tb-bar .tb-badge { position: static; } /* le nombre se pose à côté de la cloche, dans sa case, qui s'élargit : sorti de la case, il couvrirait la voisine */
 
 .btn { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; font-size: max(12.5px, var(--fs-min)); font-weight: 600; white-space: nowrap; border-radius: var(--radius-btn); box-shadow: var(--shadow-ctl); }
 .btn .ic { width: 14px; height: 14px; }
@@ -287,6 +298,8 @@ button { cursor: pointer; }
 /* ---------- étroit : le volet se replie, il reste le fil d'Ariane, Récents et Favoris (cahier 4.4) ---------- */
 @media (max-width: 519px) {
   .ex-head { padding: 8px 10px 6px; }
+  .tb-lbl-t { display: none; }
+  .tb-lbl { padding: 0 5px; }
   .ex-nav-row { flex-wrap: wrap; }
   .crumbs { flex-basis: 100%; }
   .inp-search { flex: 1; width: auto; min-width: 120px; }

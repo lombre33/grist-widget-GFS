@@ -5,6 +5,7 @@
 export const ANNUAIRE_STRINGS = Object.freeze({
   fr: {
     'an.tip': 'Annuaire',
+    'an.tipLong': 'Annuaire des personnes du document',
     'an.title': 'Annuaire',
     'an.close': 'Fermer',
     'an.configure': 'Régler l’annuaire',
@@ -126,6 +127,7 @@ export const ANNUAIRE_STRINGS = Object.freeze({
   },
   en: {
     'an.tip': 'Directory',
+    'an.tipLong': 'Directory of the people in the document',
     'an.title': 'Directory',
     'an.close': 'Close',
     'an.configure': 'Directory settings',

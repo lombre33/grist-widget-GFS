@@ -11,9 +11,9 @@
      connect-src 'self' : GFS ne lit que ses propres manifestes ; style-src 'self' : pas de style en ligne (les styles posés par le code passent par le CSSOM, que cette ligne laisse passer). Le script d'API de Grist pose une feuille de style en ligne (variables --grist-theme-*) : la politique la refuse,
      sans effet ici, car GFS n'emploie que l'attribut data-grist-appearance que ce script pose aussi (à mesurer, rapport) ;
      img-src 'self' data: ; le reste est fermé. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-xQ8Pfbg4CM8z8uhAW79wSG+5lbwfHTzHodhEjhXAiu0='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-eval' https://docs.getgrist.com/grist-plugin-api.js 'sha256-XItH8on/gnscku7/rlykibggRsGSH0ac+P7xD4dBVQQ='; style-src 'self'; img-src 'self' data:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <link rel="stylesheet" href="css/gfs.css?v=ab090ade63">
-<link rel="stylesheet" href="css/explorer.css?v=ce9969b256">
+<link rel="stylesheet" href="css/explorer.css?v=c460d6176d">
 <link rel="stylesheet" href="css/modules.css?v=e3953e3252">
 <link rel="stylesheet" href="css/templates.css?v=48d8b4f22f">
 <link rel="stylesheet" href="css/rights.css?v=bece849c11">
@@ -129,7 +129,7 @@
     "./js/explorer/explorer-removal.js": "./js/explorer/explorer-removal.js?v=0d645f72be",
     "./js/explorer/explorer-sql.js": "./js/explorer/explorer-sql.js?v=9534e5498d",
     "./js/explorer/explorer-undo.js": "./js/explorer/explorer-undo.js?v=c36b8ccc27",
-    "./js/explorer/explorer-view.js": "./js/explorer/explorer-view.js?v=46ca86e1a7",
+    "./js/explorer/explorer-view.js": "./js/explorer/explorer-view.js?v=e1df78432c",
     "./js/explorer/explorer-window.js": "./js/explorer/explorer-window.js?v=6ea159dddf",
     "./js/explorer/explorer.js": "./js/explorer/explorer.js?v=14bb4d0b2d",
     "./js/explorer/file-refresh.js": "./js/explorer/file-refresh.js?v=cfc9cbb1b5",
@@ -156,7 +156,7 @@
     "./js/files/structure.js": "./js/files/structure.js?v=91b3e5224a",
     "./js/files/trash.js": "./js/files/trash.js?v=3e36b5ca0a",
     "./js/files/undo-stack.js": "./js/files/undo-stack.js?v=bb94cd21d3",
-    "./js/i18n/i18n-annuaire.js": "./js/i18n/i18n-annuaire.js?v=414f7e4c18",
+    "./js/i18n/i18n-annuaire.js": "./js/i18n/i18n-annuaire.js?v=c0fb068638",
     "./js/i18n/i18n-dependencies.js": "./js/i18n/i18n-dependencies.js?v=d89224ea22",
     "./js/i18n/i18n-explorer.js": "./js/i18n/i18n-explorer.js?v=e00ea91d82",
     "./js/i18n/i18n-folders.js": "./js/i18n/i18n-folders.js?v=d284a5dc12",
@@ -235,7 +235,7 @@
     "./js/theme/theme.js": "./js/theme/theme.js?v=e97475679a",
     "./js/ui/ask-window.js": "./js/ui/ask-window.js?v=bc29f4db59",
     "./js/ui/dom.js": "./js/ui/dom.js?v=8a85959bdc",
-    "./js/ui/icons.js": "./js/ui/icons.js?v=c4f1b55624",
+    "./js/ui/icons.js": "./js/ui/icons.js?v=919e961bde",
     "./js/ui/layers.js": "./js/ui/layers.js?v=8fb5891dcf",
     "./js/ui/menu.js": "./js/ui/menu.js?v=727d1dc390",
     "./js/ui/modal.js": "./js/ui/modal.js?v=afe775a169",
@@ -369,7 +369,7 @@
 <link rel="modulepreload" href="./js/theme/theme-apply.js?v=01cd2ffc43">
 <link rel="modulepreload" href="./js/theme/theme-window.js?v=be3e075a12">
 <link rel="modulepreload" href="./js/broker/app-storage.js?v=d24c6008f9">
-<link rel="modulepreload" href="./js/ui/icons.js?v=c4f1b55624">
+<link rel="modulepreload" href="./js/ui/icons.js?v=919e961bde">
 <link rel="modulepreload" href="./js/explorer/explorer-data.js?v=de27f405d9">
 <link rel="modulepreload" href="./js/explorer/explorer-sql.js?v=9534e5498d">
 <link rel="modulepreload" href="./js/broker/links.js?v=cbae3923c2">
@@ -436,7 +436,7 @@
 <link rel="modulepreload" href="./js/i18n/i18n-templates.js?v=3194fa28f0">
 <link rel="modulepreload" href="./js/i18n/i18n-dependencies.js?v=d89224ea22">
 <link rel="modulepreload" href="./js/i18n/i18n-security.js?v=74b1fa72f0">
-<link rel="modulepreload" href="./js/i18n/i18n-annuaire.js?v=414f7e4c18">
+<link rel="modulepreload" href="./js/i18n/i18n-annuaire.js?v=c0fb068638">
 <link rel="modulepreload" href="./js/theme/ambiance.js?v=6608543445">
 <link rel="modulepreload" href="./js/theme/oklch.js?v=7ef04e0793">
 <link rel="modulepreload" href="./js/theme/ambiance-forme.js?v=9945157b3b">
@@ -516,7 +516,7 @@
 <link rel="modulepreload" href="./js/sharing/manage-window.js?v=395f400909">
 <link rel="modulepreload" href="./js/ui/pick-window.js?v=05d682ebf6">
 <link rel="modulepreload" href="./js/sharing/group-suggest.js?v=711bce825d">
-<link rel="modulepreload" href="./js/explorer/explorer-view.js?v=46ca86e1a7">
+<link rel="modulepreload" href="./js/explorer/explorer-view.js?v=e1df78432c">
 <link rel="modulepreload" href="./js/explorer/explorer-pj.js?v=a53d75eda6">
 <link rel="modulepreload" href="./js/explorer/explorer-removal.js?v=0d645f72be">
 <link rel="modulepreload" href="./js/explorer/explorer-keys.js?v=15a584580c">

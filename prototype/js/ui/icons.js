@@ -87,7 +87,7 @@ const ICONS = {
   'chev-up': '<path d="M6 15l6-6 6 6"/>',
   // Le module Annuaire (la barre de GFS et l'en-tête de l'explorateur) : un carnet d'adresses, sa silhouette et ses onglets ; le moins du zoom, « Tout voir »
   // (quatre coins), l'organigramme (une carte, deux cartes dessous) et le téléphone d'une fiche.
-  annuaire: '<rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="10" r="2.6"/><path d="M7.8 17c.6-2 2.3-3 4.2-3s3.6 1 4.2 3"/><path d="M2.8 7.5h2.4M2.8 12h2.4M2.8 16.5h2.4"/>',
+  annuaire: '<rect x="5.5" y="3" width="16" height="18" rx="2.2"/><circle cx="13.5" cy="9.8" r="3"/><path d="M8.7 18c.6-2.3 2.6-3.6 4.8-3.6s4.2 1.3 4.8 3.6"/><path d="M2.2 7.5h3.3M2.2 12h3.3M2.2 16.5h3.3"/>',
   minus: '<path d="M5 12h14"/>',
   // Les filtres de la liste de l'annuaire : un entonnoir.
   filter: '<path d="M4 5h16l-6 7v6l-4 2v-8z"/>',

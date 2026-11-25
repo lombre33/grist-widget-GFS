@@ -7,9 +7,10 @@
 #     garde, et la signature du registre npm de chaque paquet (le relevé ci-dessus la vérifie).
 # Il ne pousse RIEN dans le dépôt d'une app ni chez grist-factory : seuls ces deux fichiers de GFS changent.
 #   - Rien d'autre que la date n'a changé : un commit direct sur `main` (la fenêtre « Dépendances » affiche « Dernier contrôle : <date> »).
-#   - Quelque chose a changé (un avis, une version, une politique, une empreinte) : une demande de fusion à relire, jamais un commit direct.
-# Réglage requis, une fois, par le porteur : Réglages du dépôt > Actions > Général > « Allow GitHub Actions to create and approve pull requests ». Sans lui, l'étape « Proposer » échoue
-# et le dit ; rien n'est perdu (le résultat reste dans le journal de l'exécution). Aucune action tierce : seulement `actions/checkout` et `actions/setup-node`, comme `essais.yml`.
+#   - Quelque chose a changé (un avis, une version, une politique, une empreinte) : une branche `controle-securite-AAAAMMJJ` qui porte le résultat, jamais un commit direct sur `main` et JAMAIS une
+#     demande de fusion (choix du porteur, 25/11 : il n'a pas voulu donner à GitHub Actions le droit de créer et d'approuver des demandes de fusion ; le workflow n'a que `contents: write`).
+#     Claude relit la branche et en fait un rapport dans le fil du porteur ; rien n'arrive sur `main` avant que le porteur ait validé (les corrections de sécurité se poussent à la main, après son accord).
+# Aucune action tierce : seulement `actions/checkout` et `actions/setup-node`, comme `essais.yml`.
 name: Contrôle de sécurité
 
 on:
@@ -19,7 +20,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 concurrency:
   group: controle-securite
@@ -47,9 +47,7 @@ jobs:
       - name: Contrôler les apps et le catalogue (politiques, adresses, avis, empreintes des CDN)
         run: node outils/controle-securite.mjs --empreintes
         working-directory: prototype
-      - name: Proposer le résultat
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Garder le résultat
         shell: bash
         run: |
           set -euo pipefail
@@ -71,5 +69,8 @@ jobs:
           git add $files
           git commit -m "Contrôle de sécurité du $today : quelque chose a changé"
           git push origin "$branch"
-          gh pr create --base main --head "$branch" --title "Contrôle de sécurité du $today : quelque chose a changé" \
-            --body "Le contrôle hebdomadaire des apps a relevé un changement (un avis publié, une version, une politique de sécurité, une adresse ou une empreinte de CDN). À relire : le diff de \`prototype/bibliotheques/securite.json\` et de \`releve.json\` dit quoi. Rien n'a été poussé dans le dépôt d'une app. Voir cahier 3.2.2."
+          # Pas de demande de fusion : la branche porte le résultat, Claude la relit et en fait le rapport au porteur, qui valide avant que quoi que ce soit n'arrive sur `main`.
+          {
+            echo "### Contrôle de sécurité du $today : quelque chose a changé"
+            echo "Branche \`$branch\` (rien n'est sur \`main\`, rien n'a été poussé dans le dépôt d'une app). Le diff de \`prototype/bibliotheques/securite.json\` et de \`releve.json\` dit quoi."
+          } >> "$GITHUB_STEP_SUMMARY"

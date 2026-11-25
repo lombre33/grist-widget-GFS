@@ -594,7 +594,7 @@ Une entrée par extension : `{ id, nom: { fr, en }, texte: { fr, en }, poids, do
     le manifeste de Publipostage+ en déclare neuf, la fenêtre n'appelle aucune des adresses déclarées ; faits vérifiés 132). [M]
 
 18. [D] **Le contrôle de sécurité des apps : `bibliotheques/securite.json`** (choix du porteur, 18/11, « Idem + alertes relayées par les apps » ; cahier 3.2.1 et 3.2.2 ; guide des apps 1.4 ; faits
-    vérifiés 133). Le fichier est écrit par `outils/controle-securite.mjs` (à la main, ou chaque lundi par `.github/workflows/controle-securite.yml`, qui ouvre une demande de fusion si autre chose que la date
+    vérifiés 133). Le fichier est écrit par `outils/controle-securite.mjs` (à la main, ou chaque lundi par `.github/workflows/controle-securite.yml`, qui pousse une branche `controle-securite-AAAAMMJJ` (jamais une demande de fusion : choix du porteur, 25/11) si autre chose que la date
     change) et commité ; **la fenêtre « Dépendances » le lit, le navigateur de la personne n'appelle rien**. `{ contrat: 0, controle: <date ISO>, origine: 'local' | 'actions', apps: { <id>: … } }`, une entrée par app du
     catalogue : `depot`, `reference` (le commit du sous-module), `entree` (la page que le manifeste ouvre : celle qui compte, pas la page d'accueil), `lecture` (`page`, `code` : GFS a lu la copie de l'app
     et pas seulement sa page, `etat` : son `GFS-ETAT.md` a les sections de sécurité, `empreintes` : recalculées à ce passage), `pages` (nombre de scripts, de feuilles, d'entrées de carte d'importation,

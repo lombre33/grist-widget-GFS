@@ -235,8 +235,8 @@ Un écart (un fichier différent chez le CDN, une signature invalide ou absente)
 bouton « Sécurité » ; une adresse que le contrôle n'a pas pu lire se dit aussi, sans compter. Tant que le contrôle du lundi n'a pas lu les adresses chez le CDN, la section le dit (du cloud de
 développement, jsDelivr n'est pas joignable ; GitHub l'est).
 
-Un contrôle automatique chaque semaine (une tâche GitHub, en lecture seule sur les apps : rien ne se pousse dans leurs dépôts ni chez `grist-factory`) refait les vérifications du point 1 et celles de cette section et propose le
-nouveau relevé en demande de fusion sur GFS ; la fenêtre dit « Dernier contrôle : <date> ».
+Un contrôle automatique chaque semaine (une tâche GitHub, en lecture seule sur les apps : rien ne se pousse dans leurs dépôts ni chez `grist-factory`) refait les vérifications du point 1 et celles de cette section et garde le
+nouveau relevé sur une branche de GFS (`controle-securite-AAAAMMJJ`, **jamais une demande de fusion** : le porteur n'a pas voulu donner à GitHub le droit d'en créer ni d'en approuver, 25/11). **Claude relit la branche et en fait un rapport dans le fil du porteur ; rien n'arrive sur `main`, et aucune correction de sécurité ne se pousse, avant sa validation** (choix du porteur, 25/11 : « ta routine de check, puis un rapport ici, et je valide à la main »). Un relevé dont seule la date change est écrit directement sur `main` ; la fenêtre dit « Dernier contrôle : <date> ».
 
 **Limites, dites dans la fenêtre** (mesurées le 18/11, faits vérifiés 133) : la politique est appliquée par le navigateur, jamais par GFS, qui ne peut en imposer aucune à un sous-cadre ; GFS ne voit ni un
 appel vers une adresse autorisée, ni un appel bloqué que l'app ne relaie pas, et un code compromis peut taire son propre relais : **l'alerte informe, elle ne protège pas** ; aucune app n'impose d'empreinte,

@@ -7,6 +7,7 @@
 // les responsables des personnes trouvées en cartes estompées.
 import { delay } from './corbeille-firefox.mjs';
 import { contrasts } from './vitrine-firefox.mjs';
+import { clickOn } from './annuaire-table-firefox.mjs';
 
 const PROBES = { col: ['.an-person[aria-pressed="false"] .an-pe-col', '.an-card'], colHead: ['.an-ch', '.an-card'], person: ['.an-oc.is-person .an-oc-title', '.an-oc'],
   dim: ['.an-oc.is-dim .an-oc-title', '.an-oc'] };
@@ -165,13 +166,15 @@ export async function orgFiltersProblems(page, t, note, click, inspectNow, frame
     if (back.focused !== `oc:${person.id}`) note('clavier', `${where} : après « Fermer la fiche » le clavier est sur « ${back.focused} » (« oc:${person.id} » attendu)`);
   } else note('organigramme', `${where} : la petite carte de « Camille Durand » manque`);
 
+  // Le panneau défile sous 400 px de haut : une case plus bas que la première page est d'abord amenée sous la souris.
+  const inPanel = selector => clickOn(page, note, selector);
   // Les filtres : les mêmes que la liste, les niveaux d'abord ; un niveau réduit l'organigramme à sa branche.
   await click(FILTERS);
   snap = await page.run(orgSnap);
   const level = snap.chips.find(chip => chip.fk === 'fl:@L0:Pôle Numérique');
   if (!level) { note('organigramme', `${where} : le filtre du niveau « Pôle » manque dans l'organigramme (${snap.chips.map(chip => chip.fk).join(' | ')})`); return finish(page, click); }
   await frame(`${where}, filtres ouverts`);
-  await click(`[data-fk="${level.fk}"]`);
+  await inPanel(`[data-fk="${level.fk}"]`);
   snap = await page.run(orgSnap);
   if (structures(snap).length !== 3 || !['Pôle Numérique', 'Direction du numérique'].every(name => structures(snap).some(card => card.title === name))) note('organigramme', `${where} : le filtre « Pôle Numérique » laisse ${structures(snap).length} cartes de structure (3 attendues : ${structures(snap).map(card => card.title).join(', ')})`);
   if (people(snap).map(card => card.title).join() !== 'Louis Girard') note('organigramme', `${where} : le filtre « Pôle Numérique » laisse les personnes « ${people(snap).map(card => card.title).join(', ')} » (« Louis Girard » seul attendu)`);
@@ -180,12 +183,12 @@ export async function orgFiltersProblems(page, t, note, click, inspectNow, frame
   await frame(`${where}, filtré par niveau`);
   // Un niveau et un champ se cumulent : Louis Girard n'est pas contractuel, plus personne.
   // Le panneau se souvient des filtres que la personne a dépliés : on ne déplie « Contrat » que s'il est replié.
-  if (!(await page.run(orgSnap)).chips.some(chip => chip.fk === 'fl:Contrat:Contractuelle')) await click('[data-fk="fs:Contrat"]');
-  await click('[data-fk="fl:Contrat:Contractuelle"]');
+  if (!(await page.run(orgSnap)).chips.some(chip => chip.fk === 'fl:Contrat:Contractuelle')) await inPanel('[data-fk="fs:Contrat"]');
+  await inPanel('[data-fk="fl:Contrat:Contractuelle"]');
   snap = await page.run(orgSnap);
   if (snap.cards.length || !snap.none || !snap.none.includes(t('an.list.none'))) note('organigramme', `${where} : sans personne qui passe les filtres l'organigramme dit « ${snap.none} » avec ${snap.cards.length} cartes (« ${t('an.list.none')} » attendu, aucune carte)`);
-  await click('[data-fk="fl:Contrat:Contractuelle"]');
-  await click(`[data-fk="${level.fk}"]`);
+  await inPanel('[data-fk="fl:Contrat:Contractuelle"]');
+  await inPanel(`[data-fk="${level.fk}"]`);
   snap = await page.run(orgSnap);
   if (structures(snap).length !== 9 || people(snap).length !== 7) note('organigramme', `${where} : les filtres relâchés laissent ${structures(snap).length} structures et ${people(snap).length} personnes (9 et 7 attendues)`);
   await click(FILTERS);

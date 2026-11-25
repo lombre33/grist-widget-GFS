@@ -369,7 +369,7 @@ test('DocNames : un serveur qui refuse la lecture SQL (la DINUM) n\'est interrog
   await names.refresh([item]);
   assert.equal(names.adaptItem(item).manifest.fichiers[0].table, 'Publipostage_Templates', 'l\'anglaise a des lignes, l\'ancienne est vide');
   for (let i = 0; i < 3; i++) await names.refresh([item]); // l'explorateur se redessine
-  assert.equal(sent.length, 1, 'une requête refusée, pas une par table et par affichage (avant : deux par affichage, quatre tables comptées)');
+  assert.equal(sent.length, 2, 'deux requêtes refusées (le jeton prudent, puis celui qui peut écrire : un éditeur n\'obtient rien des deux), pas une par table et par affichage (avant : deux par affichage, quatre tables comptées)');
   assert.equal(names.adaptItem(item).manifest.fichiers[0].table, 'Publipostage_Templates');
 });
 

@@ -97,7 +97,7 @@
 /* Le panneau des filtres (js/annuaire/annuaire-filters.js, posé par le menu commun) : un titre par filtre, une case par valeur avec son nombre de personnes ; les
    filtres au-delà des deux premiers sont repliés avec le nombre de leurs valeurs (la maquette de l'annuaire). Il défile quand la fenêtre est basse. */
 .menu-panel:has(> .an-fpanel) { max-width: calc(100% - 8px); padding: 4px; }
-.an-fpanel { width: 300px; max-width: 100%; overflow-y: auto; font-size: max(12.5px, var(--fs-min)); }
+.an-fpanel { width: 300px; max-width: 100%; overflow-y: auto; scroll-padding-top: 44px; font-size: max(12.5px, var(--fs-min)); } /* sous la tête fixe : une case amenée en vue ne passe pas dessous */
 .an-fsec + .an-fsec { margin-top: 3px; padding-top: 3px; border-top: 1px solid var(--border); }
 .an-fsec-h { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 28px; padding: 2px 8px; border: 0; border-radius: 6px; background: transparent; color: var(--text-muted);
   font: inherit; font-size: max(11px, var(--fs-min)); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; text-align: left; cursor: pointer; }
@@ -119,6 +119,27 @@
 .an-fmore { color: var(--accent-ink); }
 .an-fmore .an-fv-t { padding-left: 24px; }
 .an-fmore .ic { flex: none; width: 12px; height: 12px; }
+/* La tête du panneau (ce qui est coché, « Réinitialiser » grisé tant que rien ne l'est), la recherche de chaque filtre et la phrase d'une recherche sans réponse. */
+.an-fp-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 3px; padding: 0 4px 3px 8px;
+  border-bottom: 1px solid var(--border); background: var(--surface); }
+.an-fp-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); font-size: max(12px, var(--fs-min)); }
+.an-reset[aria-disabled="true"] { color: var(--text-muted); font-weight: 400; cursor: not-allowed; }
+.inp-search.an-fsearch { display: block; width: auto; margin: 2px 4px 4px; }
+.an-fsearch input { height: 28px; }
+.an-fnone { margin: 0; padding: 4px 8px 6px; color: var(--text-muted); font-size: max(12px, var(--fs-min)); }
+/* La barre des filtres (l'annuaire qui les montre en barre) : une rangée, un bouton par filtre au nom de son champ, qui défile de côté quand elle est trop longue ;
+   « Réinitialiser » reste au bout. Sans barre, la rangée n'existe pas ; l'organigramme a la sienne sous sa barre d'outils. */
+.an-fbar-row { flex: none; padding: 0 14px 6px; }
+.an-fbar-row:empty, .an-main[data-view="org"] .an-fbar-row, .an-org-fbar:empty { display: none; }
+.an-org-fbar { padding: 0 10px 4px; }
+.an-fbar { display: flex; align-items: center; gap: 6px; padding-bottom: 2px; overflow-x: auto; scrollbar-width: thin; }
+.an-fb { flex: none; max-width: 220px; gap: 6px; }
+.an-fb-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-fb > .ic { flex: none; width: 12px; height: 12px; color: var(--text-muted); }
+.an-fb.is-on > .ic { color: currentColor; }
+.an-freset { flex: none; height: 26px; }
+.an-fb-reset { margin-left: auto; }
+.an-fpanel-bar { width: 260px; }
 /* Le pied : le nombre de personnes, les valeurs choisies, et « Réinitialiser » pour les retirer d'un clic. */
 .an-foot { display: flex; align-items: center; gap: 8px; }
 .an-foot-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

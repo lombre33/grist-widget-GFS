@@ -69,6 +69,7 @@ function manageState() {
     inPage: box.left >= 0 && box.top >= 0 && box.right <= window.innerWidth + 1 && box.bottom <= window.innerHeight + 1, sticky: head.bottom <= foot.top + 1 && foot.bottom <= box.bottom + 1 && head.top >= box.top - 1,
     outside: [...modal.querySelectorAll('.sh-body *, .mod-foot *, .mod-head *')].filter(outside).map(node => node.className || node.tagName).slice(0, 5),
     tabs: [...modal.querySelectorAll('.mg-tab')].map(node => [node.textContent, node.getAttribute('aria-selected')]), groups: [...modal.querySelectorAll('.rr[data-group]')].length, links: [...modal.querySelectorAll('.rr[data-link]')].length, spaces: [...modal.querySelectorAll('.rr[data-space]')].length, spaceGroups: [...modal.querySelectorAll('.rr[data-space-group]')].length, foot: (modal.querySelector('.mod-foot .mod-note') || {}).textContent || '', people: [...modal.querySelectorAll('.mg-chip')].map(node => node.dataset.person), pending: (modal.querySelector('[data-fk="manage-group-people"]') || {}).value || '',
+    nameValue: (modal.querySelector('[data-fk="manage-group-name"]') || {}).value ?? null,
     error: (modal.querySelector('.mg-err:not([hidden])') || {}).textContent || '', bulk: Boolean(modal.querySelector('.mg-area:not([hidden])')), bulkText: (modal.querySelector('[data-fk="manage-group-bulk"]') || {}).value || '',
     saveVisible: (() => { const save = modal.querySelector('[data-fk="manage-group-save"]'); if (!save) return null; const at = save.getBoundingClientRect(); return at.top >= head.bottom - 1 && at.bottom <= foot.top + 1; })(),
     chipsInside: [...modal.querySelectorAll('.mg-chipbox, .mg-chip')].every(node => { const at = node.getBoundingClientRect(); return at.right <= box.right + 1 && at.left >= box.left - 1; }), form: Boolean(modal.querySelector('.sg-new')),
@@ -230,12 +231,29 @@ async function manageFlow(page, run, t) {
   const typed = await seenPick('un nom libre devait rendre « Créer le groupe … » disponible, les blancs réduits', p => p.create && !p.create.locked && p.create.label === t('manage.spaces.pick.create', { name: 'Ventes Sud' }) && p.create.hint === t('manage.spaces.pick.hint'));
   if (typed && !typed.create.seen) run.note(kind, '« Créer le groupe … » devait rester visible dans la liste');
   await run.clickSelector('[data-fk="pick-create"]');
-  await seen('« Créer le groupe … » devait créer le groupe avec le nom tapé dans l\'espace et dire ce qui reste à faire', s => s.acts.some(act => act[0] === 'newSpaceGroup' && act[1] === 'achats' && act[2] === 'Ventes Sud') && s.modal && s.modal.foot === t('manage.spaces.created', { name: 'Ventes Sud', tab: t('manage.tab.groups') }));
-  // Au clavier : Entrée dans la recherche crée le groupe quand rien d'autre ne correspond.
+  // Les personnes tout de suite (choix du 25/11) : « Créer le groupe … » ouvre le formulaire à pastilles, le nom déjà dedans, le clavier sur les personnes ; rien n'est écrit avant « Créer le groupe ».
+  const draft = await seen('« Créer le groupe … » devait ouvrir le formulaire à pastilles : le nom tapé déjà dedans, le clavier sur les personnes, le titre disant l\'espace, rien d\'écrit', s => s.modal && s.modal.form && s.modal.nameValue === 'Ventes Sud' && s.modal.focus === 'manage-group-people' && !s.modal.bulk && s.modal.body.includes(t('manage.spaces.newGroup', { name: 'Achats' })) && !s.acts.some(act => act[0] === 'newSpaceGroup'));
+  steady('formulaire du groupe d\'un espace', draft);
+  if (draft.modal && (draft.modal.outside.length || !draft.modal.inPage || !draft.modal.sticky)) run.note(kind, `le formulaire du groupe d'un espace devait tenir à 700 × 400 (sort : ${draft.modal.outside.join(', ')})`);
+  if (draft.modal && draft.modal.width >= 640 && draft.modal.saveVisible === false) run.note(kind, 'le bouton « Créer le groupe » devait rester visible sans défiler à 700 × 400');
+  await page.press(...'lea@example.com'.split(''), 'Enter', ...'marc@example.com '.split(''));
+  await seen('une adresse puis Entrée, une autre puis un espace devaient devenir deux pastilles', s => s.modal && s.modal.people.join() === 'lea@example.com,marc@example.com' && s.modal.pending === '');
+  await reach('[data-fk="manage-group-save"]');
+  await seen('« Créer le groupe » devait écrire le groupe avec ses personnes dans l\'espace, dire combien elles sont, et revenir à l\'espace', s => s.acts.some(act => act[0] === 'newSpaceGroup' && act[1] === 'achats' && act[2] === 'Ventes Sud' && act[3] === 'lea@example.com\nmarc@example.com') && s.modal && !s.modal.form && s.modal.foot === t('manage.spaces.created.people', { name: 'Ventes Sud', n: 2 }));
+  // Au clavier : Entrée dans la recherche crée le groupe quand rien d'autre ne correspond ; « Annuler » revient à l'espace sans rien écrire.
   await reach('[data-fk="manage-space-add-group"]');
   await seenPick('la liste devait s\'ouvrir', p => p.items.length === 1);
   await page.press(...'Zoe'.split(''), 'Enter');
-  await seen('Entrée dans la recherche devait créer le groupe quand rien d\'autre ne correspond', s => s.acts.some(act => act[0] === 'newSpaceGroup' && act[2] === 'Zoe'));
+  await seen('Entrée dans la recherche devait ouvrir le formulaire du groupe « Zoe », sans rien écrire', s => s.modal && s.modal.form && s.modal.nameValue === 'Zoe' && !s.acts.some(act => act[2] === 'Zoe'));
+  await reach('[data-fk="manage-group-cancel"]');
+  await seen('« Annuler » devait revenir à l\'espace sans rien écrire', s => s.modal && !s.modal.form && s.modal.body.includes(t('manage.spaces.addGroup')) && !s.acts.some(act => act[2] === 'Zoe'));
+  // Sans personne : le groupe se crée quand même (vide), et le pied dit où en ajouter.
+  await reach('[data-fk="manage-space-add-group"]');
+  await seenPick('la liste devait s\'ouvrir', p => p.items.length === 1);
+  await page.press(...'Zoe'.split(''), 'Enter');
+  await seen('Entrée dans la recherche devait rouvrir le formulaire du groupe « Zoe »', s => s.modal && s.modal.form && s.modal.nameValue === 'Zoe');
+  await reach('[data-fk="manage-group-save"]');
+  await seen('« Créer le groupe » sans personne devait écrire le groupe vide et dire où ajouter ses personnes', s => s.acts.some(act => act[0] === 'newSpaceGroup' && act[2] === 'Zoe' && act[3] === '') && s.modal && s.modal.foot === t('manage.spaces.created', { name: 'Zoe', tab: t('manage.tab.groups') }));
   await reach('[data-fk="manage-space-group-Achats"]');
   const roles = await seen('le rôle du groupe devait ouvrir son menu', s => s.menu.length >= 3);
   const role = await page.run(label => { const node = [...document.querySelectorAll('.menu .menu-item')].find(item => item.textContent.trim().startsWith(label)); if (!node) return null; const box = node.getBoundingClientRect(); return [box.left + box.width / 2, box.top + box.height / 2]; }, t('share.right.ecriture'));

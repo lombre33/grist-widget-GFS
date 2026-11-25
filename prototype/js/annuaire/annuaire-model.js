@@ -112,6 +112,10 @@ export function buildPeople(config, tableId, data, schema) {
   return people.filter(person => person.name).sort(bySort);
 }
 
+// L'identifiant du nœud où la personne se range (celui que `buildTree` lui donne : son chemin dans la hiérarchie, les niveaux sautés ne comptent pas) ; '' pour
+// une personne sans niveau, qui reste à la racine.
+export const nodeId = (person, levels) => levels.reduce((id, _level, i) => (person.levels[i] ? `${id}\u001f${i}:${person.levels[i]}` : id), '');
+
 // La hiérarchie : { id, name, level (-1 pour la racine), own: [personnes rangées ici], count (ici et dessous), ch: [nœuds] }. Le nœud d'un niveau s'identifie
 // par son chemin (« Pôle Ressources › Direction des finances » n'est pas « Direction des finances » d'un autre pôle). Les enfants sont triés par nom.
 export function buildTree(people, levels, rootName) {

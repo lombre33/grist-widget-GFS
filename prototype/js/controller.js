@@ -181,7 +181,8 @@ export class GfsController {
   // premier refus du serveur les ferme toutes les deux, sur la page et sur l'onglet (js/broker/sql-gate.js) : la console de la personne ne reçoit pas la
   // même requête refusée à chaque affichage, et l'explorateur relit les tables en entier.
   #buildLightReads(docId) {
-    this.sqlGate = createSqlGate({ sql: statement => this.transfer.sql(statement), docId, store: key => keyStore(window, key, 'sessionStorage') });
+    this.sqlGate = createSqlGate({ sql: (statement, writable) => this.transfer.sql(statement, { writable }), docId,
+      store: key => keyStore(window, key, 'sessionStorage') });
     // Les noms que le document donne aux tables et aux colonnes des apps (js/apps/doc-names.js) : lus avant chaque lecture des fichiers ; le nombre de lignes
     // d'une table n'est lu que si le document la porte sous deux noms.
     this.names = new DocNames({ doc: this.port.doc, count: table => countRows(table, { sql: statement => this.sqlGate.read(statement), doc: this.port.doc }) });

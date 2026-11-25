@@ -46,7 +46,7 @@ export const ANNUAIRE_TOOLS_STRINGS = Object.freeze({
     'an.check.needs.resp': 'Choisissez d’abord le responsable direct (onglet « Relations »).',
     'an.check.needs.dep': 'Choisissez d’abord la colonne de la date de départ.',
     // les options du réglage
-    'an.opt.help': 'Trois options de l’annuaire : la présence de chacun, les contrôles de « À vérifier » et l’envoi d’un message au groupe.',
+    'an.opt.help': 'Cinq options de l’annuaire : la présence de chacun, qui modifie les fiches, les contrôles de « À vérifier », l’affichage des filtres et l’envoi d’un message au groupe.',
     'an.opt.presence': 'Ma présence',
     'an.opt.presenceSub': 'Chacun choisit d’apparaître ou non',
     'an.opt.presenceOn': 'Activée',
@@ -152,7 +152,7 @@ export const ANNUAIRE_TOOLS_STRINGS = Object.freeze({
     'an.check.needs.att': 'First add a level (“Hierarchy” tab).',
     'an.check.needs.resp': 'First choose the direct manager (“Relations” tab).',
     'an.check.needs.dep': 'First choose the departure date column.',
-    'an.opt.help': 'Three options of the directory: everyone’s presence, the “To check” controls and writing to the group.',
+    'an.opt.help': 'Five options of the directory: everyone’s presence, who edits the cards, the “To check” controls, how filters are shown and writing to the group.',
     'an.opt.presence': 'My presence',
     'an.opt.presenceSub': 'Everyone chooses whether to appear',
     'an.opt.presenceOn': 'On',

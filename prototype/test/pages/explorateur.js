@@ -536,7 +536,7 @@ async function mount() {
       onColumn: async () => { window.__manageActs.push(['column']); return { ok: true, label: i18n.t('manage.suggest.chosen', { table: 'Contacts', column: 'Mail', n: 12 }) }; }, onRoot: (state, who, right) => record(['root', who, right]), onStructure: async () => { window.__manageActs.push(['structure']); return true; }, onConfirmRemove: async name => { window.__manageActs.push(['confirmRemove', name]); return true; },
       onAddSpace: async () => { window.__manageActs.push(['addSpace']); return null; }, onRemoveSpace: async (state, space) => { window.__manageActs.push(['removeSpace', space.key]); return null; },
       onSpaceGroup: (state, space, group, right) => record(['spaceGroup', space.key, group, right]),
-      onPickGroup: (state, space) => picker.pickGroup(window.__noGroups ? { ...state, groups: [] } : state, window.__noGroups ? { ...space, groups: [] } : space), onNewSpaceGroup: (state, space, name) => record(['newSpaceGroup', space.key, name]),
+      onPickGroup: (state, space) => picker.pickGroup(window.__noGroups ? { ...state, groups: [] } : state, window.__noGroups ? { ...space, groups: [] } : space), onNewSpaceGroup: (state, space, group) => record(['newSpaceGroup', space.key, group.name, group.people]),
       onLinks: async () => linksNow(),
       onNewLink: async () => { window.__manageActs.push(['newLink']); await window.__sendOther('lien'); },
       onStopLink: async link => { window.__manageActs.push([link.state === 'pending' ? 'cancelLink' : 'stopLink', link.id]); window.__removed.push(link.id); return { ok: true }; } });

@@ -8,6 +8,7 @@
 // qui n'administre pas) ; et la lisibilité (4,5:1).
 import { delay } from './corbeille-firefox.mjs';
 import { contrasts } from './vitrine-firefox.mjs';
+import { clickOn } from './annuaire-table-firefox.mjs';
 
 const PROBES = { 'le titre': ['.an-chk h2', '.an-chk'], 'une ligne': ['.an-chk-t b', '.an-chk-item'], 'une explication': ['.an-chk-t small', '.an-chk-item'],
   'un contrôle': ['.an-chk-k', '.an-chk'] };
@@ -505,7 +506,7 @@ function optionsProblems(snap, t, note, where) {
   if (snap.tabs.join('|') !== tabs) note('options', `${where} : les onglets sont « ${snap.tabs.join(' | ')} » (« ${tabs} » attendus)`);
   framed(snap, note, where, 'options');
   if (snap.bodySideways > 1) note('options', `${where} : l'onglet défile de côté (${snap.bodySideways} px)`);
-  const titles = [t('an.opt.presence'), t('an.opt.checks'), t('an.opt.mail')].join('|');
+  const titles = [t('an.opt.presence'), t('an.opt.rights'), t('an.opt.checks'), t('an.opt.filters'), t('an.opt.mail')].join('|');
   if (snap.blocks.join('|') !== titles) note('options', `${where} : les blocs sont « ${snap.blocks.join(' | ')} » (« ${titles} » attendus)`);
   if (!snap.switches['op:on'] || !snap.switches['op:on'].on) note('options', `${where} : « ${t('an.opt.presenceOn')} » n'est pas allumée`);
   if (snap.column !== 'Masquee' || snap.leave !== 'Depart') note('options', `${where} : les colonnes disent « ${snap.column} » et « ${snap.leave} » (Masquee et Depart attendues)`);
@@ -514,18 +515,35 @@ function optionsProblems(snap, t, note, where) {
   return true;
 }
 
+// Qui modifie les fiches : « chacun la sienne » allumé, « et en dessous » choisi, la colonne des personnes désignées prise dans la liste avec recherche.
+async function rightsEdit(page, note) {
+  await clickOn(page, note, '[data-fk="oe:self"]');
+  await clickOn(page, note, '[data-fk="oe:below"]');
+  await clickOn(page, note, '[data-fk="oe:role"]');
+  await delay(300);
+  await clickOn(page, note, '.mod.pk [data-fk="pick-use:Masquee"]'); // la colonne est plus bas que la première page de la liste
+  await delay(300);
+}
+
 async function optionsEditProblems(page, t, note, click, where) {
-  for (const fk of ['om:more', 'om:less', 'om:less', 'om:less']) await click(`[data-fk="${fk}"]`);
+  const hit = selector => clickOn(page, note, selector); // l'onglet défile : un bouton plus bas que 400 px est d'abord amené sous la souris
+  for (const fk of ['om:more', 'om:less', 'om:less', 'om:less']) await hit(`[data-fk="${fk}"]`);
   let snap = await page.run(optionsSnap);
   if (snap.per !== '30') note('options', `${where} : le compteur « Par message » dit ${snap.per} (30 attendu après +5 −5 −5 −5)`);
-  await click('[data-fk="om:to"]');
-  await click('[data-fk="oc:mail"]');
-  await click('[data-fk="op:leave"]');
+  await hit('[data-fk="om:to"]');
+  await hit('[data-fk="of:bar"]');
+  await rightsEdit(page, note);
+  await hit('[data-fk="oc:mail"]');
+  await hit('[data-fk="op:leave"]');
   await delay(300);
   await click('.mod.pk [data-fk="pick-none"]');
   await delay(300);
   snap = await page.run(optionsSnap);
-  if (snap.seg.find(each => each.on).text !== t('an.opt.toPlain')) note('options', `${where} : « ${t('an.opt.toPlain')} » n'est pas choisi`);
+  const chosen = text => snap.seg.find(each => each.text === text);
+  if (!chosen(t('an.opt.toPlain')) || !chosen(t('an.opt.toPlain')).on) note('options', `${where} : « ${t('an.opt.toPlain')} » n'est pas choisi`);
+  if (!chosen(t('an.opt.rlBelow')) || !chosen(t('an.opt.rlBelow')).on || chosen(t('an.opt.rlNone')).on) note('options', `${where} : « ${t('an.opt.rlBelow')} » n'est pas choisi pour qui modifie`);
+  if (!snap.switches['oe:self'] || !snap.switches['oe:self'].on) note('options', `${where} : « ${t('an.opt.reSelf')} » n'est pas allumé`);
+  if (!chosen(t('an.opt.fmBar')) || !chosen(t('an.opt.fmBar')).on || chosen(t('an.opt.fmPanel')).on) note('options', `${where} : « ${t('an.opt.fmBar')} » n'est pas choisi pour les filtres`);
   if (snap.switches['oc:mail'].on) note('options', `${where} : le contrôle « e-mail manquant » reste allumé`);
   const dep = snap.switches['oc:dep'];
   if (!dep || !dep.disabled || dep.on || dep.title !== t('an.check.needs.dep')) note('options', `${where} : sans colonne de départ, « ${t('an.check.kind.dep')} » devrait être grisé avec « ${t('an.check.needs.dep')} » (${JSON.stringify(dep && { on: dep.on, disabled: dep.disabled, title: dep.title })})`);
@@ -536,6 +554,8 @@ async function optionsEditProblems(page, t, note, click, where) {
   const saved = (await page.run(writes)).slice(before).find(each => each[0] === 'UpdateRecord' && each[1] === 'GFS_Annuaires');
   const config = saved ? JSON.parse(saved[3].Config) : null;
   if (!config) { note('options', `${where} : « Enregistrer » n'écrit pas la définition de l'annuaire`); return; }
+  if (JSON.stringify(config.edit) !== JSON.stringify({ self: true, level: 'below', role: 'Masquee' })) note('options', `${where} : qui modifie est écrit ${JSON.stringify(config.edit)} ({ self: true, level: "below", role: "Masquee" } attendu)`);
+  if (config.filterMode !== 'bar') note('options', `${where} : l'affichage des filtres est écrit « ${config.filterMode} » (« bar » attendu)`);
   if (config.mail.per !== 30 || config.mail.to !== 'to') note('options', `${where} : le message est écrit ${JSON.stringify(config.mail)} ({ per: 30, to: "to" } attendu)`);
   if (config.checks.includes('mail') || !['dup', 'att', 'resp'].every(kind => config.checks.includes(kind))) note('options', `${where} : les contrôles écrits sont ${JSON.stringify(config.checks)} (dup, att et resp, sans mail)`);
   if (config.leave !== '' || !config.presence.on || config.presence.col !== 'Masquee') note('options', `${where} : le départ et la présence sont écrits ${JSON.stringify({ leave: config.leave, presence: config.presence })}`);
@@ -551,7 +571,7 @@ async function optionsTabProblems(page, t, note, click, { width, mode }) {
   await readable(page, note, OPTION_PROBES, `l'onglet « Options » (${mode})`);
   await page.run(() => { document.querySelector('.an-set-body').scrollTop = 9999; });
   const low = await page.run(optionsSnap);
-  if (low.seg.length !== 2 || low.per !== '40') note('options', `${where} : le bas de l'onglet dit « ${low.per} » et ${low.seg.length} choix (40 et 2 attendus)`);
+  if (low.seg.length !== 7 || low.per !== '40') note('options', `${where} : le bas de l'onglet dit « ${low.per} » et ${low.seg.length} choix (40 et 7 attendus : trois pour qui modifie, deux pour les filtres, deux pour l'envoi)`);
   await optionsEditProblems(page, t, note, click, where);
 }
 

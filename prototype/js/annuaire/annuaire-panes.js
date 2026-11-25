@@ -184,18 +184,19 @@ function ficheActions(person, ctx) {
   const { t } = ctx;
   const mail = person.email ? h('a', { class: 'btn sm an-write', href: `mailto:${person.email}`, target: '_blank', rel: 'noopener',
     title: t('an.writeTo', { name: person.name }), dataset: { fk: 'write' } }, icon('mail'), t('an.write')) : null;
-  // « Modifier » : grisé, jamais masqué, quand le document ne s'écrit pas (`ctx.writeBlock` dit pourquoi) ; un clic le redit dans le pied de la fenêtre
-  const edit = h('button', { type: 'button', class: 'btn sm an-edit-b', 'aria-disabled': ctx.writeBlock ? 'true' : null, title: ctx.writeBlock ||
-    t('an.edit.tip'),
+  // « Modifier » : grisé, jamais masqué, quand le document ne s'écrit pas ou que la règle de l'annuaire ne l'ouvre pas à cette personne (`ctx.editBlock` dit
+  // pourquoi) ; un clic le redit dans le pied de la fenêtre
+  const blocked = ctx.editBlock ? ctx.editBlock(person) : ctx.writeBlock;
+  const edit = h('button', { type: 'button', class: 'btn sm an-edit-b', 'aria-disabled': blocked ? 'true' : null, title: blocked || t('an.edit.tip'),
     dataset: { act: 'edit', row: String(person.row), fk: 'edit' } }, icon('edit'), t('an.edit'));
   return h('div', { class: 'an-fiche-acts' }, mail, edit, ctx.insert ? insertButton(person, t) : null);
 }
 
 // La fiche d'une personne, en sections comme la carte du suivi de projet du porteur : l'en-tête (avatar, nom, poste, « Écrire »), « Coordonnées »,
 // « Rattachement » (le découpage hiérarchique), « Informations » (les champs). `ctx` : { t, locale, levels, config, genres: { colonne: genre }, relations,
-// index, writeBlock (ce qui empêche d'écrire : le texte, ou rien), masked (Set : les fiches masquées qu'on voit grisées), presence(personne) -> { on, can,
-// blocked } ou rien : la ligne « Apparaître dans l'annuaire » quand l'option « Ma présence » est allumée, insert (vrai : le bouton « Insérer dans… »
-// est posé ; js/annuaire/annuaire-insert-menu.js) }.
+// index, writeBlock (ce qui empêche d'écrire : le texte, ou rien), editBlock(personne) (ce qui empêche de modifier cette fiche : le texte, ou rien), masked
+// (Set : les fiches masquées qu'on voit grisées), presence(personne) -> { on, can, blocked } ou rien : la ligne « Apparaître dans l'annuaire » quand l'option
+// « Ma présence » est allumée, insert (vrai : le bouton « Insérer dans… » est posé ; js/annuaire/annuaire-insert-menu.js) }.
 export function fiche(person, ctx) {
   const { t } = ctx;
   const contact = contactRows(person, ctx);
@@ -227,49 +228,4 @@ export function nodeFiche(node, ctx) {
     heads.length ? h('dl', { class: 'an-fiche-rows' }, ficheRow(t('an.heads', { n: heads.length }), h('span', { class: 'an-fr-vals' }, ...names), '', t)) :
       null,
     h('button', { type: 'button', class: 'btn sm an-see', dataset: { act: 'node-list', id: node.id, fk: 'node-list' } }, icon('list'), t('an.seePeople')));
-}
-
-// Combien de valeurs un filtre montre dans le panneau avant « Voir les n autres… » (le reste se choisit dans la liste avec recherche).
-export const VALUES_SHOWN = 8;
-
-// Un filtre ouvert par défaut : celui qui a une valeur choisie, sinon les deux premiers (la maquette du porteur : les premiers filtres dépliés, les autres
-// repliés avec le nombre de leurs valeurs).
-export function sectionOpen(option, index, filters, opened) {
-  if (opened.has(option.col)) return opened.get(option.col);
-  return index < 2 || (filters[option.col] && filters[option.col].size > 0);
-}
-
-// Une ligne du panneau des filtres : une case, la valeur, son nombre de personnes (retour du porteur, 25/11 : le bouton « Filtres » ouvre un panneau, comme la
-// maquette de l'annuaire, au lieu d'une barre de pastilles).
-function valueRow(option, entry, on, ctx) {
-  const text = shown(entry.value, option.genre, ctx);
-  return h('button', { type: 'button', class: 'an-fv', role: 'checkbox', 'aria-checked': String(on), title: text,
-    dataset: { act: 'filter', col: option.col, value: entry.value, fk: `fl:${option.col}:${entry.value}` } },
-  h('span', { class: 'an-box', 'aria-hidden': 'true' }, on ? icon('check') : null), h('span', { class: 'an-fv-t' }, text),
-    h('span', { class: 'an-fv-n' }, String(entry.count)));
-}
-
-// Un filtre du panneau : son titre (un bouton qui le replie ou le déplie, avec le nombre de choix ou de valeurs) puis ses valeurs, les plus nombreuses
-// d'abord ; une valeur choisie reste visible même au-delà des premières.
-function sectionOf(option, index, filters, ctx) {
-  const on = filters[option.col] || new Set();
-  const open = sectionOpen(option, index, filters, ctx.opened);
-  const label = option.label || option.col;
-  const visible = option.values.filter((entry, at) => at < VALUES_SHOWN || on.has(entry.value));
-  const rest = option.values.length - visible.length;
-  const head = h('button', { type: 'button', class: 'an-fsec-h', 'aria-expanded': String(open),
-    dataset: { act: 'fsec', col: option.col, fk: `fs:${option.col}` } },
-    icon(open ? 'chev-down' : 'chev-right'), h('span', { class: 'an-fsec-t' }, label),
-    on.size ? h('b', { class: 'an-badge' }, String(on.size)) : h('span', { class: 'an-fsec-n' }, ctx.t('an.filter.values', { n: option.values.length })));
-  return h('section', { class: 'an-fsec' }, head, open ? h('div', { class: 'an-fvals', role: 'group', 'aria-label': label },
-    ...visible.map(entry => valueRow(option, entry, on.has(entry.value), ctx)),
-    rest > 0 ? h('button', { type: 'button', class: 'an-fv an-fmore', dataset: { act: 'filter-more', col: option.col, fk: `fm:${option.col}` } },
-      h('span', { class: 'an-fv-t' }, ctx.t('an.filter.more', { n: rest })), icon('chev-right')) : null) : null);
-}
-
-// Le panneau des filtres : un titre et ses valeurs par filtre (un par niveau de la hiérarchie, puis un par champ réglé « Filtre »).
-// `options` : voir `filterOptions` ; `filters` : { colonne: Set(valeurs) } ; `ctx` : { t, locale, opened (Map : colonne -> déplié ou non, ce que la personne a
-//   décidé) }.
-export function filterPanel(options, filters, ctx) {
-  return h('div', { class: 'an-fp' }, ...options.filter(option => option.values.length).map((option, index) => sectionOf(option, index, filters, ctx)));
 }
